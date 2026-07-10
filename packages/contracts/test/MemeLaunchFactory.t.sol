@@ -67,17 +67,15 @@ contract MemeLaunchFactoryTest {
 
     function testRejectsInvalidRewardSplit() public {
         uint16[5] memory split = [uint16(3000), 2500, 1500, 1500, 1499];
-        (bool success,) = address(factory).call(
-            abi.encodeCall(factory.launch, ("Bad Split", "BAD", 1 ether, "", recipients, split))
-        );
+        (bool success,) =
+            address(factory).call(abi.encodeCall(factory.launch, ("Bad Split", "BAD", 1 ether, "", recipients, split)));
         require(!success, "invalid split accepted");
     }
 
     function testRejectsZeroSupply() public {
         uint16[5] memory split = [uint16(3000), 2500, 1500, 1500, 1500];
-        (bool success,) = address(factory).call(
-            abi.encodeCall(factory.launch, ("Zero", "ZERO", 0, "", recipients, split))
-        );
+        (bool success,) =
+            address(factory).call(abi.encodeCall(factory.launch, ("Zero", "ZERO", 0, "", recipients, split)));
         require(!success, "zero supply accepted");
     }
 }

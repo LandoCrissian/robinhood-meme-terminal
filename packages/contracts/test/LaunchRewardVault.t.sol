@@ -19,9 +19,8 @@ contract LaunchRewardVaultTest {
         RewardRecipient liquidity = new RewardRecipient();
         RewardRecipient platform = new RewardRecipient();
 
-        address[5] memory recipients = [
-            address(creator), address(community), address(trader), address(liquidity), address(platform)
-        ];
+        address[5] memory recipients =
+            [address(creator), address(community), address(trader), address(liquidity), address(platform)];
         uint16[5] memory split = [uint16(3000), 2500, 1500, 1500, 1500];
         LaunchRewardVault vault = new LaunchRewardVault(recipients, split);
 
@@ -36,9 +35,8 @@ contract LaunchRewardVaultTest {
 
     function testRecipientCanClaim() public {
         RewardRecipient recipient = new RewardRecipient();
-        address[5] memory recipients = [
-            address(recipient), address(0xBEEF), address(0xCAFE), address(0xD00D), address(0xF00D)
-        ];
+        address[5] memory recipients =
+            [address(recipient), address(0xBEEF), address(0xCAFE), address(0xD00D), address(0xF00D)];
         uint16[5] memory split = [uint16(10_000), 0, 0, 0, 0];
         LaunchRewardVault vault = new LaunchRewardVault(recipients, split);
 
