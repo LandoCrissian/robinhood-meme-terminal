@@ -4,7 +4,7 @@ pragma solidity ^0.8.26;
 import {BondingCurveMarket} from "../src/BondingCurveMarket.sol";
 import {FixedSupplyMemeToken} from "../src/FixedSupplyMemeToken.sol";
 
-interface Vm {
+interface MarketTestVm {
     function deal(address account, uint256 balance) external;
     function warp(uint256 timestamp) external;
 }
@@ -18,7 +18,8 @@ contract RewardSink {
 }
 
 contract BondingCurveMarketTest {
-    Vm private constant vm = Vm(address(uint160(uint256(keccak256("hevm cheat code")))));
+    MarketTestVm private constant vm =
+        MarketTestVm(address(uint160(uint256(keccak256("hevm cheat code")))));
 
     FixedSupplyMemeToken private token;
     BondingCurveMarket private market;
