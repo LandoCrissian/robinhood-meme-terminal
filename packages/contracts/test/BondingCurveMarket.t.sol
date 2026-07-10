@@ -27,6 +27,8 @@ contract BondingCurveMarketTest {
 
     uint256 private constant TOTAL_SUPPLY = 1_000_000_000 ether;
     uint256 private constant MARKET_INVENTORY = 800_000_000 ether;
+    uint256 private constant MIN_FUZZ_BUY = 1_000_000_000_000;
+    uint256 private constant MAX_FUZZ_BUY = 5 ether;
 
     receive() external payable {}
 
@@ -55,16 +57,24 @@ contract BondingCurveMarketTest {
     }
 
     function testBuyThenSellCannotCreateProfit() public {
-        uint256 startingEth = address(this).balance;
-        (uint256 quote,) = market.quoteBuy(2 ether);
-        uint256 bought = market.buy{value: 2 ether}(address(this), quote, block.timestamp);
+        _assertRoundTripCannotProfit(2 ether);
+    }
 
-        token.approve(address(market), bought);
-        (uint256 sellQuote,,) = market.quoteSell(bought);
-        market.sell(bought, sellQuote, payable(address(this)), block.timestamp);
+    function testFuzzBuyThenSellCannotCreateProfit(uint96 rawAmount) public {
+        uint256 amount = MIN_FUZZ_BUY + (uint256(rawAmount) % (MAX_FUZZ_BUY - MIN_FUZZ_BUY));
+        _assertRoundTripCannotProfit(amount);
+    }
 
-        require(address(this).balance < startingEth, "profitable round trip");
-        require(market.realEthReserve() == address(market).balance, "reserve mismatch");
+    function testFuzzBuyAccountingConservesEth(uint96 rawAmount) public {
+        uint256 amount = MIN_FUZZ_BUY + (uint256(rawAmount) % (MAX_FUZZ_BUY - MIN_FUZZ_BUY));
+        (, uint256 expectedFee) = market.quoteBuy(amount);
+
+        market.buy{value: amount}(address(this), 0, block.timestamp);
+
+        require(rewards.received() == expectedFee, "fee mismatch");
+        require(market.realEthReserve() == amount - expectedFee, "reserve mismatch");
+        require(address(market).balance == market.realEthReserve(), "balance mismatch");
+        require(address(market).balance + address(rewards).balance == amount, "eth not conserved");
     }
 
     function testRejectsExpiredDeadline() public {
@@ -97,5 +107,18 @@ contract BondingCurveMarketTest {
         uint256 targetReserve = 85_000_000_000_000_000_000;
         uint256 expectedProgress = (netReserve * 10_000) / targetReserve;
         require(market.progressBps() == expectedProgress, "wrong progress");
+    }
+
+    function _assertRoundTripCannotProfit(uint256 amount) private {
+        uint256 startingEth = address(this).balance;
+        (uint256 quote,) = market.quoteBuy(amount);
+        uint256 bought = market.buy{value: amount}(address(this), quote, block.timestamp);
+
+        token.approve(address(market), bought);
+        (uint256 sellQuote,,) = market.quoteSell(bought);
+        market.sell(bought, sellQuote, payable(address(this)), block.timestamp);
+
+        require(address(this).balance < startingEth, "profitable round trip");
+        require(market.realEthReserve() == address(market).balance, "reserve mismatch");
     }
 }
