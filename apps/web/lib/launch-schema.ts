@@ -9,7 +9,7 @@ export const launchSchema = z.object({
   traderRewards: z.string().regex(/^0x[a-fA-F0-9]{40}$/, "Enter a valid trader rewards address"),
   liquidityVault: z.string().regex(/^0x[a-fA-F0-9]{40}$/, "Enter a valid liquidity vault address"),
   platformTreasury: z.string().regex(/^0x[a-fA-F0-9]{40}$/, "Enter a valid platform treasury address"),
-  accepted: z.literal(true, { errorMap: () => ({ message: "Confirm the permanent token rules" }) })
+  accepted: z.boolean().refine((value) => value, "Confirm the permanent token rules")
 });
 
 export type LaunchFormValues = z.infer<typeof launchSchema>;
