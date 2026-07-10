@@ -20,7 +20,13 @@ contract FixedSupplyMemeToken {
     error InsufficientBalance();
     error InsufficientAllowance();
 
-    constructor(string memory name_, string memory symbol_, uint256 supply_, address creator_, string memory metadataURI_) {
+    constructor(
+        string memory name_,
+        string memory symbol_,
+        uint256 supply_,
+        address creator_,
+        string memory metadataURI_
+    ) {
         if (creator_ == address(0)) revert ZeroAddress();
         if (supply_ == 0) revert InvalidSupply();
         name = name_;
