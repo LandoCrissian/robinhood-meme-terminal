@@ -1,0 +1,12 @@
+{
+  "name": "@rmt/shared",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./chains": "./src/chains.ts"
+  },
+  "dependencies": {
+    "viem": "^2.23.2"
+  }
+}
