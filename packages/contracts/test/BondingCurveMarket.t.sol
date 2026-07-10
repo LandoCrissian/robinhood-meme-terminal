@@ -93,7 +93,9 @@ contract BondingCurveMarketTest {
 
     function testProgressTracksRealReserve() public {
         market.buy{value: 1 ether}(address(this), 0, block.timestamp);
-        uint256 expectedProgress = (990_000_000_000_000_000 * 10_000) / (85 ether);
+        uint256 netReserve = 990_000_000_000_000_000;
+        uint256 targetReserve = 85_000_000_000_000_000_000;
+        uint256 expectedProgress = (netReserve * 10_000) / targetReserve;
         require(market.progressBps() == expectedProgress, "wrong progress");
     }
 }
