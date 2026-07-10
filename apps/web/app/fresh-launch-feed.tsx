@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { formatUnits, type Address, type Hash } from "viem";
 import { usePublicClient } from "wagmi";
@@ -91,13 +92,15 @@ export function FreshLaunchFeed() {
       </div>
       <div className="filters"><button className="active">Fresh</button><button disabled>Trending</button><button disabled>Community-heavy</button><button disabled>Low creator concentration</button></div>
       {launches.length === 0 ? <div className="emptyFeed"><strong>{status === "loading" ? "Reading Robinhood Chain…" : "No launches to display"}</strong><span>{message}</span>{status === "error" && <button onClick={() => void refresh()}>Retry</button>}</div> : launches.map((launch) => (
-        <article key={`${launch.transactionHash}-${launch.launchId.toString()}`}>
-          <div className="coin">{launch.symbol.slice(0, 2)}</div>
-          <div className="identity"><strong>{launch.name}</strong><span>${launch.symbol} • #{launch.launchId.toString()}</span></div>
-          <div><small>Fixed supply</small><strong>{Number(formatUnits(launch.supply, 18)).toLocaleString(undefined, { maximumFractionDigits: 0 })}</strong></div>
-          <div><small>Community share</small><strong>{launch.communityBps / 100}%</strong></div>
-          <div><small>Creator</small><strong title={launch.creator}>{shortAddress(launch.creator)}</strong></div>
-        </article>
+        <Link className="launchRow" href={`/token/${launch.token}`} key={`${launch.transactionHash}-${launch.launchId.toString()}`}>
+          <article>
+            <div className="coin">{launch.symbol.slice(0, 2)}</div>
+            <div className="identity"><strong>{launch.name}</strong><span>${launch.symbol} • #{launch.launchId.toString()}</span></div>
+            <div><small>Fixed supply</small><strong>{Number(formatUnits(launch.supply, 18)).toLocaleString(undefined, { maximumFractionDigits: 0 })}</strong></div>
+            <div><small>Community share</small><strong>{launch.communityBps / 100}%</strong></div>
+            <div><small>Creator</small><strong title={launch.creator}>{shortAddress(launch.creator)}</strong></div>
+          </article>
+        </Link>
       ))}
       {launches.length > 0 && <p className="feedStatus">{message} Refreshes every 10 seconds.</p>}
     </section>
