@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { formatEther, type Address, type Hash } from "viem";
-import { useAccount, usePublicClient, useReadContracts, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
+import { useAccount, usePublicClient, useReadContract, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { robinhoodChainTestnet } from "@rmt/shared/chains";
 import { getFactoryAddress, memeLaunchFactoryAbi } from "../lib/contracts";
 
@@ -16,6 +16,7 @@ const rewardVaultAbi = [
 ] as const;
 
 const labels = ["Creator", "Community", "Trader rewards", "Graduation liquidity", "Platform"] as const;
+const fallbackAddress = "0x0000000000000000000000000000000000000000" as const;
 
 function shortAddress(address: Address) {
   return `${address.slice(0, 6)}…${address.slice(-4)}`;
@@ -38,15 +39,7 @@ export function RewardVaultPanel({ tokenAddress }: { tokenAddress: Address }) {
         const latestBlock = await publicClient.getBlockNumber();
         const configuredStart = process.env.NEXT_PUBLIC_FACTORY_START_BLOCK;
         const fromBlock = configuredStart && /^\d+$/.test(configuredStart) ? BigInt(configuredStart) : latestBlock > 20_000n ? latestBlock - 20_000n : 0n;
-        const logs = await publicClient.getContractEvents({
-          address: factoryAddress,
-          abi: memeLaunchFactoryAbi,
-          eventName: "TokenLaunched",
-          args: { token: tokenAddress },
-          fromBlock,
-          toBlock: "latest",
-          strict: true
-        });
+        const logs = await publicClient.getContractEvents({ address: factoryAddress, abi: memeLaunchFactoryAbi, eventName: "TokenLaunched", args: { token: tokenAddress }, fromBlock, toBlock: "latest", strict: true });
         if (!cancelled) {
           const match = logs[0];
           setVaultAddress(match?.args.rewardVault ?? null);
@@ -60,35 +53,19 @@ export function RewardVaultPanel({ tokenAddress }: { tokenAddress: Address }) {
     return () => { cancelled = true; };
   }, [factoryAddress, publicClient, tokenAddress]);
 
-  const contracts = useMemo(() => {
-    if (!vaultAddress) return [];
-    const base = { address: vaultAddress, abi: rewardVaultAbi, chainId: robinhoodChainTestnet.id } as const;
-    return [
-      { ...base, functionName: "totalReceived" },
-      { ...base, functionName: "totalClaimed" },
-      ...labels.flatMap((_, index) => [
-        { ...base, functionName: "recipients", args: [BigInt(index)] },
-        { ...base, functionName: "rewardBps", args: [BigInt(index)] }
-      ]),
-      ...(account ? [{ ...base, functionName: "claimable", args: [account] }] : [])
-    ] as const;
-  }, [account, vaultAddress]);
+  const address = vaultAddress ?? fallbackAddress;
+  const enabled = Boolean(vaultAddress);
+  const common = { address, abi: rewardVaultAbi, chainId: robinhoodChainTestnet.id, query: { enabled, refetchInterval: 10_000 } } as const;
+  const totalReceivedRead = useReadContract({ ...common, functionName: "totalReceived" });
+  const totalClaimedRead = useReadContract({ ...common, functionName: "totalClaimed" });
+  const recipientReads = [0n, 1n, 2n, 3n, 4n].map((index) => useReadContract({ ...common, functionName: "recipients", args: [index] }));
+  const splitReads = [0n, 1n, 2n, 3n, 4n].map((index) => useReadContract({ ...common, functionName: "rewardBps", args: [index] }));
+  const claimableRead = useReadContract({ address, abi: rewardVaultAbi, chainId: robinhoodChainTestnet.id, functionName: "claimable", args: [account ?? fallbackAddress], query: { enabled: enabled && Boolean(account), refetchInterval: 10_000 } });
 
-  const reads = useReadContracts({ contracts, query: { enabled: contracts.length > 0, refetchInterval: 10_000 } });
-  const data = reads.data;
-  const totalReceived = data?.[0]?.status === "success" ? data[0].result as bigint : 0n;
-  const totalClaimed = data?.[1]?.status === "success" ? data[1].result as bigint : 0n;
-  const allocations = labels.map((label, index) => {
-    const recipientResult = data?.[2 + index * 2];
-    const bpsResult = data?.[3 + index * 2];
-    return {
-      label,
-      recipient: recipientResult?.status === "success" ? recipientResult.result as Address : null,
-      bps: bpsResult?.status === "success" ? Number(bpsResult.result) : 0
-    };
-  });
-  const claimableResult = account ? data?.[12] : undefined;
-  const claimable = claimableResult?.status === "success" ? claimableResult.result as bigint : 0n;
+  const loading = [totalReceivedRead, totalClaimedRead, ...recipientReads, ...splitReads].some((read) => read.isLoading);
+  const totalReceived = totalReceivedRead.data ?? 0n;
+  const totalClaimed = totalClaimedRead.data ?? 0n;
+  const claimable = claimableRead.data ?? 0n;
 
   function claim() {
     if (!vaultAddress || claimable === 0n) return;
@@ -97,7 +74,7 @@ export function RewardVaultPanel({ tokenAddress }: { tokenAddress: Address }) {
 
   if (!factoryAddress) return <section className="panel rewardDashboard"><p className="eyebrow">REWARD VAULT</p><h2>Awaiting factory deployment</h2><p>The reward dashboard activates after the verified testnet factory address is configured.</p></section>;
   if (lookupError) return <section className="panel rewardDashboard"><p className="eyebrow">REWARD VAULT</p><h2>Vault unavailable</h2><p>{lookupError}</p></section>;
-  if (!vaultAddress || reads.isLoading) return <section className="panel rewardDashboard"><p className="eyebrow">REWARD VAULT</p><h2>Reading reward accounting…</h2></section>;
+  if (!vaultAddress || loading) return <section className="panel rewardDashboard"><p className="eyebrow">REWARD VAULT</p><h2>Reading reward accounting…</h2></section>;
 
   const explorer = `${robinhoodChainTestnet.blockExplorers.default.url}/address/${vaultAddress}`;
   const txExplorer = (hash: Hash) => `${robinhoodChainTestnet.blockExplorers.default.url}/tx/${hash}`;
@@ -106,7 +83,7 @@ export function RewardVaultPanel({ tokenAddress }: { tokenAddress: Address }) {
     <section className="panel rewardDashboard">
       <div className="sectionTitle"><div><p className="eyebrow">REWARD VAULT</p><h2>Transparent fee distribution</h2></div><span className="badge liveBadge">ONCHAIN</span></div>
       <div className="rewardTotals"><div><small>Total received</small><strong>{Number(formatEther(totalReceived)).toLocaleString(undefined, { maximumFractionDigits: 6 })} ETH</strong></div><div><small>Total claimed</small><strong>{Number(formatEther(totalClaimed)).toLocaleString(undefined, { maximumFractionDigits: 6 })} ETH</strong></div></div>
-      <div className="allocationList">{allocations.map((allocation) => <div key={allocation.label}><div><strong>{allocation.label}</strong><span>{allocation.bps / 100}%</span></div><small title={allocation.recipient ?? undefined}>{allocation.recipient ? shortAddress(allocation.recipient) : "Unavailable"}</small></div>)}</div>
+      <div className="allocationList">{labels.map((label, index) => { const recipient = recipientReads[index].data; const split = splitReads[index].data ?? 0; return <div key={label}><div><strong>{label}</strong><span>{Number(split) / 100}%</span></div><small title={recipient}>{recipient ? shortAddress(recipient) : "Unavailable"}</small></div>; })}</div>
       <div className="claimBox"><div><small>Your claimable rewards</small><strong>{account ? `${Number(formatEther(claimable)).toLocaleString(undefined, { maximumFractionDigits: 8 })} ETH` : "Connect wallet"}</strong></div><button disabled={!account || claimable === 0n || isClaimPending || isClaimConfirming} onClick={claim}>{isClaimPending ? "Confirm in wallet…" : isClaimConfirming ? "Confirming…" : "Claim rewards"}</button></div>
       {claimError && <div className="errors"><span>{claimError.message}</span></div>}
       {claimHash && <div className="callout"><strong>{claimConfirmed ? "Claim confirmed" : "Claim submitted"}</strong><a href={txExplorer(claimHash)} target="_blank" rel="noreferrer">View transaction ↗</a></div>}
