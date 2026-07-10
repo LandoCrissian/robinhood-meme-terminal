@@ -1,0 +1,16 @@
+node_modules/
+.next/
+dist/
+out/
+coverage/
+.env
+.env.*
+!.env.example
+.DS_Store
+*.log
+
+# Foundry
+packages/contracts/cache/
+packages/contracts/out/
+packages/contracts/broadcast/
+packages/contracts/lib/
