@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./styles.css";
 import "./feed.css";
 import "./token-detail.css";
+import "./reward-vault.css";
 import { Providers } from "./providers";
 
 export const metadata: Metadata = {
