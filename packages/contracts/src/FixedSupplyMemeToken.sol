@@ -25,17 +25,18 @@ contract FixedSupplyMemeToken {
         string memory symbol_,
         uint256 supply_,
         address creator_,
+        address initialHolder_,
         string memory metadataURI_
     ) {
-        if (creator_ == address(0)) revert ZeroAddress();
+        if (creator_ == address(0) || initialHolder_ == address(0)) revert ZeroAddress();
         if (supply_ == 0) revert InvalidSupply();
         name = name_;
         symbol = symbol_;
         totalSupply = supply_;
         creator = creator_;
         metadataURI = metadataURI_;
-        balanceOf[creator_] = supply_;
-        emit Transfer(address(0), creator_, supply_);
+        balanceOf[initialHolder_] = supply_;
+        emit Transfer(address(0), initialHolder_, supply_);
     }
 
     function transfer(address to, uint256 value) external returns (bool) {
