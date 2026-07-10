@@ -15,6 +15,7 @@ export const memeLaunchFactoryAbi = [
     ],
     outputs: [
       { name: "token", type: "address" },
+      { name: "market", type: "address" },
       { name: "rewardVault", type: "address" }
     ]
   },
@@ -26,6 +27,7 @@ export const memeLaunchFactoryAbi = [
       { name: "launchId", type: "uint256", indexed: true },
       { name: "token", type: "address", indexed: true },
       { name: "creator", type: "address", indexed: true },
+      { name: "market", type: "address", indexed: false },
       { name: "rewardVault", type: "address", indexed: false },
       { name: "name", type: "string", indexed: false },
       { name: "symbol", type: "string", indexed: false },
