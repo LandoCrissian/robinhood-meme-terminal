@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { LaunchForm } from "./launch-form";
 import { WalletButton } from "./wallet-button";
 
 const rewardDefaults = { creator: 30, community: 25, trader: 15, liquidity: 15, platform: 15 };
@@ -11,14 +11,6 @@ const mockLaunches = [
 ];
 
 export default function Home() {
-  const [name, setName] = useState("Robinhood Meme Terminal");
-  const [ticker, setTicker] = useState("RMT");
-  const [supply, setSupply] = useState("1000000000");
-  const formattedSupply = useMemo(() => {
-    const parsed = Number(supply);
-    return Number.isFinite(parsed) ? parsed.toLocaleString() : "Invalid";
-  }, [supply]);
-
   return (
     <main>
       <nav>
@@ -31,22 +23,7 @@ export default function Home() {
         <p className="sub">A mobile-first meme launchpad and live discovery terminal with transparent creator and community economics.</p>
       </section>
       <div className="grid">
-        <section className="panel">
-          <div className="sectionTitle"><div><p className="eyebrow">GENESIS LAUNCH</p><h2>Configure your token</h2></div><span className="badge">CONTRACT PREVIEW</span></div>
-          <label>Token name<input value={name} maxLength={40} onChange={(e) => setName(e.target.value)} /></label>
-          <div className="two">
-            <label>Ticker<input value={ticker} maxLength={10} onChange={(e) => setTicker(e.target.value.toUpperCase())} /></label>
-            <label>Fixed supply<input inputMode="numeric" value={supply} onChange={(e) => setSupply(e.target.value.replace(/\D/g, ""))} /></label>
-          </div>
-          <label>Description<textarea placeholder="What makes this meme worth watching?" /></label>
-          <div className="summary">
-            <div><small>Token</small><strong>{name || "Unnamed"}</strong></div>
-            <div><small>Symbol</small><strong>${ticker || "—"}</strong></div>
-            <div><small>Supply</small><strong>{formattedSupply}</strong></div>
-          </div>
-          <button className="launch" disabled>Deployment unlocks after factory testnet validation</button>
-          <p className="fineprint">No mint authority • No blacklist • No hidden transfer tax • Wallet-signed transactions only</p>
-        </section>
+        <LaunchForm />
         <section className="panel rewards">
           <p className="eyebrow">COMMUNITY LAUNCH MODEL</p><h2>Where every platform fee goes</h2>
           {Object.entries(rewardDefaults).map(([key, value]) => <div className="reward" key={key}><div><span>{key}</span><strong>{value}%</strong></div><div className="track"><div style={{ width: `${value}%` }} /></div></div>)}
