@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { decodeEventLog, parseUnits, type Address } from "viem";
+import { parseEventLogs, parseUnits, type Address } from "viem";
 import { useAccount, useChainId, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { robinhoodChainTestnet } from "@rmt/shared/chains";
 import { getFactoryAddress, memeLaunchFactoryAbi } from "../lib/contracts";
@@ -34,15 +34,9 @@ export function LaunchForm() {
 
   const deployed = useMemo(() => {
     if (!receipt || receipt.status !== "success") return null;
-    for (const log of receipt.logs) {
-      try {
-        const decoded = decodeEventLog({ abi: memeLaunchFactoryAbi, eventName: "TokenLaunched", data: log.data, topics: log.topics });
-        return { token: decoded.args.token, rewardVault: decoded.args.rewardVault, launchId: decoded.args.launchId };
-      } catch {
-        continue;
-      }
-    }
-    return null;
+    const events = parseEventLogs({ abi: memeLaunchFactoryAbi, eventName: "TokenLaunched", logs: receipt.logs, strict: true });
+    const event = events[0];
+    return event ? { token: event.args.token, rewardVault: event.args.rewardVault, launchId: event.args.launchId } : null;
   }, [receipt]);
 
   const readiness = !factoryAddress ? "Factory not deployed" : !isConnected ? "Connect wallet" : chainId !== robinhoodChainTestnet.id ? "Switch to Robinhood Testnet" : "Review and launch";
