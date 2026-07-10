@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./styles.css";
+import "./feed.css";
 import { Providers } from "./providers";
 
 export const metadata: Metadata = {
