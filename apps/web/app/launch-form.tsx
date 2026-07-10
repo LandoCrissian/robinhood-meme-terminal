@@ -1,8 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
-import { parseUnits, type Address } from "viem";
-import { useAccount, useChainId, useWriteContract } from "wagmi";
+import { decodeEventLog, parseUnits, type Address } from "viem";
+import { useAccount, useChainId, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { robinhoodChainTestnet } from "@rmt/shared/chains";
 import { getFactoryAddress, memeLaunchFactoryAbi } from "../lib/contracts";
 import { launchSchema } from "../lib/launch-schema";
@@ -15,6 +16,7 @@ export function LaunchForm() {
   const chainId = useChainId();
   const factoryAddress = getFactoryAddress();
   const { writeContract, isPending, data: transactionHash, error: writeError } = useWriteContract();
+  const { data: receipt, isLoading: isConfirming, error: receiptError } = useWaitForTransactionReceipt({ hash: transactionHash, chainId: robinhoodChainTestnet.id });
   const [name, setName] = useState("Robinhood Meme Terminal");
   const [symbol, setSymbol] = useState("RMT");
   const [supply, setSupply] = useState("1000000000");
@@ -27,20 +29,23 @@ export function LaunchForm() {
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
   const formattedSupply = useMemo(() => {
-    try {
-      return BigInt(supply || "0").toLocaleString();
-    } catch {
-      return "Invalid";
-    }
+    try { return BigInt(supply || "0").toLocaleString(); } catch { return "Invalid"; }
   }, [supply]);
 
-  const readiness = !factoryAddress
-    ? "Factory not deployed"
-    : !isConnected
-      ? "Connect wallet"
-      : chainId !== robinhoodChainTestnet.id
-        ? "Switch to Robinhood Testnet"
-        : "Review and launch";
+  const deployed = useMemo(() => {
+    if (!receipt || receipt.status !== "success") return null;
+    for (const log of receipt.logs) {
+      try {
+        const decoded = decodeEventLog({ abi: memeLaunchFactoryAbi, eventName: "TokenLaunched", data: log.data, topics: log.topics });
+        return { token: decoded.args.token, rewardVault: decoded.args.rewardVault, launchId: decoded.args.launchId };
+      } catch {
+        continue;
+      }
+    }
+    return null;
+  }, [receipt]);
+
+  const readiness = !factoryAddress ? "Factory not deployed" : !isConnected ? "Connect wallet" : chainId !== robinhoodChainTestnet.id ? "Switch to Robinhood Testnet" : "Review and launch";
 
   function submit() {
     const values = { name, symbol, supply, description, communityTreasury, traderRewards, liquidityVault, platformTreasury, accepted };
@@ -55,14 +60,7 @@ export function LaunchForm() {
       address: factoryAddress,
       abi: memeLaunchFactoryAbi,
       functionName: "launch",
-      args: [
-        parsed.data.name,
-        parsed.data.symbol,
-        parseUnits(parsed.data.supply, 18),
-        `data:application/json,${encodeURIComponent(JSON.stringify({ name: parsed.data.name, symbol: parsed.data.symbol, description: parsed.data.description }))}`,
-        [parsed.data.communityTreasury, parsed.data.traderRewards, parsed.data.liquidityVault, parsed.data.platformTreasury] as [Address, Address, Address, Address],
-        rewardBps
-      ]
+      args: [parsed.data.name, parsed.data.symbol, parseUnits(parsed.data.supply, 18), `data:application/json,${encodeURIComponent(JSON.stringify({ name: parsed.data.name, symbol: parsed.data.symbol, description: parsed.data.description }))}`, [parsed.data.communityTreasury, parsed.data.traderRewards, parsed.data.liquidityVault, parsed.data.platformTreasury] as [Address, Address, Address, Address], rewardBps]
     });
   }
 
@@ -70,10 +68,7 @@ export function LaunchForm() {
     <section className="panel">
       <div className="sectionTitle"><div><p className="eyebrow">GENESIS LAUNCH</p><h2>Configure your token</h2></div><span className="badge">TESTNET GUARDED</span></div>
       <label>Token name<input value={name} maxLength={40} onChange={(e) => setName(e.target.value)} /></label>
-      <div className="two">
-        <label>Ticker<input value={symbol} maxLength={10} onChange={(e) => setSymbol(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))} /></label>
-        <label>Fixed supply<input inputMode="numeric" value={supply} onChange={(e) => setSupply(e.target.value.replace(/\D/g, ""))} /></label>
-      </div>
+      <div className="two"><label>Ticker<input value={symbol} maxLength={10} onChange={(e) => setSymbol(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))} /></label><label>Fixed supply<input inputMode="numeric" value={supply} onChange={(e) => setSupply(e.target.value.replace(/\D/g, ""))} /></label></div>
       <label>Description<textarea value={description} maxLength={500} onChange={(e) => setDescription(e.target.value)} /></label>
       <p className="eyebrow addressHeading">REWARD DESTINATIONS</p>
       <label>Community treasury<input placeholder="0x…" value={communityTreasury} onChange={(e) => setCommunityTreasury(e.target.value)} /></label>
@@ -83,9 +78,10 @@ export function LaunchForm() {
       <div className="summary"><div><small>Token</small><strong>{name || "Unnamed"}</strong></div><div><small>Symbol</small><strong>${symbol || "—"}</strong></div><div><small>Supply</small><strong>{formattedSupply}</strong></div></div>
       <label className="confirm"><input type="checkbox" checked={accepted} onChange={(e) => setAccepted(e.target.checked)} /><span>I understand supply, token rules, and reward destinations are permanent after deployment.</span></label>
       {validationErrors.length > 0 && <div className="errors">{validationErrors.map((error) => <span key={error}>{error}</span>)}</div>}
-      {writeError && <div className="errors"><span>{writeError.message}</span></div>}
-      {transactionHash && <div className="callout"><strong>Transaction submitted</strong><span>{transactionHash}</span></div>}
-      <button className="launch" disabled={!factoryAddress || !isConnected || chainId !== robinhoodChainTestnet.id || isPending} onClick={submit}>{isPending ? "Confirming in wallet…" : readiness}</button>
+      {(writeError || receiptError) && <div className="errors"><span>{writeError?.message || receiptError?.message}</span></div>}
+      {transactionHash && !deployed && <div className="callout"><strong>{isConfirming ? "Waiting for confirmation…" : "Transaction submitted"}</strong><a href={`${robinhoodChainTestnet.blockExplorers.default.url}/tx/${transactionHash}`} target="_blank" rel="noreferrer">View transaction ↗</a></div>}
+      {deployed && <div className="launchSuccess"><strong>Launch #{deployed.launchId.toString()} confirmed</strong><span>Token and reward vault were created in one transaction.</span><Link href={`/token/${deployed.token}`}>Open token page →</Link></div>}
+      <button className="launch" disabled={!factoryAddress || !isConnected || chainId !== robinhoodChainTestnet.id || isPending || isConfirming} onClick={submit}>{isPending ? "Confirm in wallet…" : isConfirming ? "Confirming onchain…" : readiness}</button>
       <p className="fineprint">No mint authority • No blacklist • No hidden transfer tax • Wallet-signed transactions only</p>
     </section>
   );
