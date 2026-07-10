@@ -31,3 +31,5 @@ jobs:
       - run: forge fmt
       - run: forge build --sizes
       - run: forge test -vvv
+      - run: bash -n scripts/deploy-testnet.sh
+      - run: bash -n scripts/smoke-test-factory.sh
