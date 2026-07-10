@@ -2,10 +2,12 @@
 pragma solidity ^0.8.26;
 
 import {FixedSupplyMemeToken} from "./FixedSupplyMemeToken.sol";
+import {LaunchRewardVault} from "./LaunchRewardVault.sol";
 
 contract MemeLaunchFactory {
     struct Launch {
         address token;
+        address rewardVault;
         address creator;
         uint64 createdAt;
         uint16 creatorBps;
@@ -21,6 +23,7 @@ contract MemeLaunchFactory {
         uint256 indexed launchId,
         address indexed token,
         address indexed creator,
+        address rewardVault,
         string name,
         string symbol,
         uint256 supply,
@@ -41,8 +44,9 @@ contract MemeLaunchFactory {
         string calldata symbol,
         uint256 supply,
         string calldata metadataURI,
+        address[4] calldata communityRecipients,
         uint16[5] calldata rewardBps
-    ) external returns (address token) {
+    ) external returns (address token, address rewardVault) {
         if (bytes(name).length == 0) revert EmptyName();
         if (bytes(symbol).length == 0) revert EmptySymbol();
 
@@ -52,11 +56,22 @@ contract MemeLaunchFactory {
         }
         if (total != 10_000) revert InvalidRewardSplit();
 
+        address[5] memory recipients = [
+            msg.sender,
+            communityRecipients[0],
+            communityRecipients[1],
+            communityRecipients[2],
+            communityRecipients[3]
+        ];
+
         token = address(new FixedSupplyMemeToken(name, symbol, supply, msg.sender, metadataURI));
+        rewardVault = address(new LaunchRewardVault(recipients, rewardBps));
+
         uint256 launchId = _launches.length;
         _launches.push(
             Launch(
                 token,
+                rewardVault,
                 msg.sender,
                 uint64(block.timestamp),
                 rewardBps[0],
@@ -70,6 +85,7 @@ contract MemeLaunchFactory {
             launchId,
             token,
             msg.sender,
+            rewardVault,
             name,
             symbol,
             supply,
