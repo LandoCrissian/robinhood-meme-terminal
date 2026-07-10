@@ -45,14 +45,41 @@ contract MemeLaunchFactory {
     ) external returns (address token) {
         if (bytes(name).length == 0) revert EmptyName();
         if (bytes(symbol).length == 0) revert EmptySymbol();
+
         uint256 total;
-        for (uint256 i; i < rewardBps.length; ++i) total += rewardBps[i];
+        for (uint256 i; i < rewardBps.length; ++i) {
+            total += rewardBps[i];
+        }
         if (total != 10_000) revert InvalidRewardSplit();
 
         token = address(new FixedSupplyMemeToken(name, symbol, supply, msg.sender, metadataURI));
         uint256 launchId = _launches.length;
-        _launches.push(Launch(token, msg.sender, uint64(block.timestamp), rewardBps[0], rewardBps[1], rewardBps[2], rewardBps[3], rewardBps[4]));
-        emit TokenLaunched(launchId, token, msg.sender, name, symbol, supply, metadataURI, rewardBps[0], rewardBps[1], rewardBps[2], rewardBps[3], rewardBps[4]);
+        _launches.push(
+            Launch(
+                token,
+                msg.sender,
+                uint64(block.timestamp),
+                rewardBps[0],
+                rewardBps[1],
+                rewardBps[2],
+                rewardBps[3],
+                rewardBps[4]
+            )
+        );
+        emit TokenLaunched(
+            launchId,
+            token,
+            msg.sender,
+            name,
+            symbol,
+            supply,
+            metadataURI,
+            rewardBps[0],
+            rewardBps[1],
+            rewardBps[2],
+            rewardBps[3],
+            rewardBps[4]
+        );
     }
 
     function launchCount() external view returns (uint256) {
