@@ -1,12 +1,19 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
+import {BondingCurveMarket} from "./BondingCurveMarket.sol";
 import {FixedSupplyMemeToken} from "./FixedSupplyMemeToken.sol";
 import {LaunchRewardVault} from "./LaunchRewardVault.sol";
 
 contract MemeLaunchFactory {
+    uint16 public constant MARKET_FEE_BPS = 100;
+    uint256 public constant INITIAL_VIRTUAL_ETH_RESERVE = 30 ether;
+    uint256 public constant INITIAL_VIRTUAL_TOKEN_RESERVE = 1_073_000_000 ether;
+    uint256 public constant GRADUATION_TARGET = 85 ether;
+
     struct Launch {
         address token;
+        address market;
         address rewardVault;
         address creator;
         uint64 createdAt;
@@ -23,6 +30,7 @@ contract MemeLaunchFactory {
         uint256 indexed launchId,
         address indexed token,
         address indexed creator,
+        address market,
         address rewardVault,
         string name,
         string symbol,
@@ -38,6 +46,8 @@ contract MemeLaunchFactory {
     error EmptyName();
     error EmptySymbol();
     error InvalidRewardSplit();
+    error InvalidSupply();
+    error InventoryTransferFailed();
 
     function launch(
         string calldata name,
@@ -46,9 +56,10 @@ contract MemeLaunchFactory {
         string calldata metadataURI,
         address[4] calldata communityRecipients,
         uint16[5] calldata rewardBps
-    ) external returns (address token, address rewardVault) {
+    ) external returns (address token, address market, address rewardVault) {
         if (bytes(name).length == 0) revert EmptyName();
         if (bytes(symbol).length == 0) revert EmptySymbol();
+        if (supply == 0) revert InvalidSupply();
 
         uint256 total;
         for (uint256 i; i < rewardBps.length; ++i) {
@@ -64,13 +75,26 @@ contract MemeLaunchFactory {
             communityRecipients[3]
         ];
 
-        token = address(new FixedSupplyMemeToken(name, symbol, supply, msg.sender, metadataURI));
+        token = address(new FixedSupplyMemeToken(name, symbol, supply, msg.sender, address(this), metadataURI));
         rewardVault = address(new LaunchRewardVault(recipients, rewardBps));
+        market = address(
+            new BondingCurveMarket(
+                token,
+                payable(rewardVault),
+                MARKET_FEE_BPS,
+                INITIAL_VIRTUAL_ETH_RESERVE,
+                INITIAL_VIRTUAL_TOKEN_RESERVE,
+                GRADUATION_TARGET
+            )
+        );
+
+        if (!FixedSupplyMemeToken(token).transfer(market, supply)) revert InventoryTransferFailed();
 
         uint256 launchId = _launches.length;
         _launches.push(
             Launch(
                 token,
+                market,
                 rewardVault,
                 msg.sender,
                 uint64(block.timestamp),
@@ -85,6 +109,7 @@ contract MemeLaunchFactory {
             launchId,
             token,
             msg.sender,
+            market,
             rewardVault,
             name,
             symbol,
