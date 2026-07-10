@@ -8,7 +8,7 @@ import { getFactoryAddress, memeLaunchFactoryAbi } from "../lib/contracts";
 import { launchSchema } from "../lib/launch-schema";
 
 const emptyAddress = "";
-const rewardBps = [3000, 2500, 1500, 1500, 1500] as const;
+const rewardBps: readonly [number, number, number, number, number] = [3000, 2500, 1500, 1500, 1500];
 
 export function LaunchForm() {
   const { isConnected } = useAccount();
@@ -27,7 +27,11 @@ export function LaunchForm() {
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
   const formattedSupply = useMemo(() => {
-    try { return BigInt(supply || "0").toLocaleString(); } catch { return "Invalid"; }
+    try {
+      return BigInt(supply || "0").toLocaleString();
+    } catch {
+      return "Invalid";
+    }
   }, [supply]);
 
   const readiness = !factoryAddress
@@ -79,7 +83,7 @@ export function LaunchForm() {
       <div className="summary"><div><small>Token</small><strong>{name || "Unnamed"}</strong></div><div><small>Symbol</small><strong>${symbol || "—"}</strong></div><div><small>Supply</small><strong>{formattedSupply}</strong></div></div>
       <label className="confirm"><input type="checkbox" checked={accepted} onChange={(e) => setAccepted(e.target.checked)} /><span>I understand supply, token rules, and reward destinations are permanent after deployment.</span></label>
       {validationErrors.length > 0 && <div className="errors">{validationErrors.map((error) => <span key={error}>{error}</span>)}</div>}
-      {writeError && <div className="errors"><span>{writeError.shortMessage || writeError.message}</span></div>}
+      {writeError && <div className="errors"><span>{writeError.message}</span></div>}
       {transactionHash && <div className="callout"><strong>Transaction submitted</strong><span>{transactionHash}</span></div>}
       <button className="launch" disabled={!factoryAddress || !isConnected || chainId !== robinhoodChainTestnet.id || isPending} onClick={submit}>{isPending ? "Confirming in wallet…" : readiness}</button>
       <p className="fineprint">No mint authority • No blacklist • No hidden transfer tax • Wallet-signed transactions only</p>
