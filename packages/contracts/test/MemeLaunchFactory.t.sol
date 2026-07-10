@@ -24,15 +24,15 @@ contract MemeLaunchFactoryTest {
 
     function testRejectsInvalidRewardSplit() public {
         uint16[5] memory split = [uint16(3000), 2500, 1500, 1500, 1499];
-        (bool success,) = address(factory).call(
-            abi.encodeCall(factory.launch, ("Bad Split", "BAD", 1 ether, "", split))
-        );
+        (bool success,) =
+            address(factory).call(abi.encodeCall(factory.launch, ("Bad Split", "BAD", 1 ether, "", split)));
         require(!success, "invalid split accepted");
     }
 
     function testTokenTransferPreservesSupply() public {
         uint16[5] memory split = [uint16(3000), 2500, 1500, 1500, 1500];
-        FixedSupplyMemeToken token = FixedSupplyMemeToken(factory.launch("Transfer", "MOVE", 100 ether, "", split));
+        FixedSupplyMemeToken token =
+            FixedSupplyMemeToken(factory.launch("Transfer", "MOVE", 100 ether, "", split));
         token.transfer(address(0xBEEF), 40 ether);
         require(token.balanceOf(address(this)) == 60 ether, "sender balance");
         require(token.balanceOf(address(0xBEEF)) == 40 ether, "receiver balance");
