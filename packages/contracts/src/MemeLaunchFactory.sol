@@ -25,6 +25,7 @@ contract MemeLaunchFactory {
     }
 
     Launch[] private _launches;
+    address public immutable graduationAdapter;
 
     event TokenLaunched(
         uint256 indexed launchId,
@@ -48,6 +49,12 @@ contract MemeLaunchFactory {
     error InvalidRewardSplit();
     error InvalidSupply();
     error InventoryTransferFailed();
+    error ZeroAddress();
+
+    constructor(address graduationAdapter_) {
+        if (graduationAdapter_ == address(0)) revert ZeroAddress();
+        graduationAdapter = graduationAdapter_;
+    }
 
     function launch(
         string calldata name,
@@ -77,6 +84,7 @@ contract MemeLaunchFactory {
             new BondingCurveMarket(
                 token,
                 payable(rewardVault),
+                graduationAdapter,
                 MARKET_FEE_BPS,
                 INITIAL_VIRTUAL_ETH_RESERVE,
                 INITIAL_VIRTUAL_TOKEN_RESERVE,

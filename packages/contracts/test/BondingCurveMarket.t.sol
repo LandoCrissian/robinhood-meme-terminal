@@ -3,6 +3,7 @@ pragma solidity ^0.8.26;
 
 import {BondingCurveMarket} from "../src/BondingCurveMarket.sol";
 import {FixedSupplyMemeToken} from "../src/FixedSupplyMemeToken.sol";
+import {IGraduationAdapter} from "../src/interfaces/IGraduationAdapter.sol";
 
 interface MarketTestVm {
     function deal(address account, uint256 balance) external;
@@ -14,6 +15,19 @@ contract RewardSink {
 
     receive() external payable {
         received += msg.value;
+    }
+}
+
+contract MockGraduationAdapter is IGraduationAdapter {
+    address public constant POOL = address(0xB0A7);
+    uint256 public ethReceived;
+    uint256 public tokensReceived;
+
+    function graduate(address token, uint256 tokenAmount) external payable returns (address pool, uint256 liquidity) {
+        FixedSupplyMemeToken(token).transferFrom(msg.sender, address(this), tokenAmount);
+        ethReceived += msg.value;
+        tokensReceived += tokenAmount;
+        return (POOL, tokenAmount);
     }
 }
 
@@ -46,6 +60,7 @@ contract BondingCurveMarketTest {
     FixedSupplyMemeToken private token;
     BondingCurveMarket private market;
     RewardSink private rewards;
+    MockGraduationAdapter private adapter;
     uint256 private constant TOTAL_SUPPLY = 1_000_000_000 ether;
     uint256 private constant MARKET_INVENTORY = 800_000_000 ether;
     uint256 private constant MIN_FUZZ_BUY = 1_000_000_000_000;
@@ -57,8 +72,9 @@ contract BondingCurveMarketTest {
         vm.deal(address(this), 100 ether);
         token = new FixedSupplyMemeToken("Market Test", "MKT", TOTAL_SUPPLY, address(this), address(this), "");
         rewards = new RewardSink();
+        adapter = new MockGraduationAdapter();
         market = new BondingCurveMarket(
-            address(token), payable(address(rewards)), 100, 30 ether, 1_073_000_000 ether, 85 ether
+            address(token), payable(address(rewards)), address(adapter), 100, 30 ether, 1_073_000_000 ether, 85 ether
         );
         token.transfer(address(market), MARKET_INVENTORY);
     }
@@ -128,7 +144,7 @@ contract BondingCurveMarketTest {
 
     function testGraduationIsIrreversibleAndStopsTrading() public {
         BondingCurveMarket graduatingMarket = new BondingCurveMarket(
-            address(token), payable(address(rewards)), 100, 30 ether, 1_073_000_000 ether, 0.99 ether
+            address(token), payable(address(rewards)), address(adapter), 100, 30 ether, 1_073_000_000 ether, 0.99 ether
         );
         token.transfer(address(graduatingMarket), 100_000_000 ether);
 
@@ -151,7 +167,7 @@ contract BondingCurveMarketTest {
 
     function testGraduationOvershootRemainsFullyAccounted() public {
         BondingCurveMarket graduatingMarket = new BondingCurveMarket(
-            address(token), payable(address(rewards)), 100, 30 ether, 1_073_000_000 ether, 1 ether
+            address(token), payable(address(rewards)), address(adapter), 100, 30 ether, 1_073_000_000 ether, 1 ether
         );
         token.transfer(address(graduatingMarket), 100_000_000 ether);
 
@@ -160,6 +176,34 @@ contract BondingCurveMarketTest {
         require(graduatingMarket.graduated(), "market did not graduate");
         require(graduatingMarket.realEthReserve() == 1.98 ether, "overshoot reserve lost");
         require(address(graduatingMarket).balance == 1.98 ether, "balance mismatch");
+    }
+
+    function testGraduatedMarketMigratesAllAssetsExactlyOnce() public {
+        BondingCurveMarket graduatingMarket = new BondingCurveMarket(
+            address(token), payable(address(rewards)), address(adapter), 100, 30 ether, 1_073_000_000 ether, 0.99 ether
+        );
+        token.transfer(address(graduatingMarket), 100_000_000 ether);
+        graduatingMarket.buy{value: 1 ether}(address(this), 0, block.timestamp);
+        uint256 remainingInventory = token.balanceOf(address(graduatingMarket));
+
+        (address pool, uint256 liquidity) = graduatingMarket.migrateLiquidity();
+
+        require(pool == adapter.POOL(), "wrong pool");
+        require(liquidity == remainingInventory, "wrong liquidity result");
+        require(graduatingMarket.liquidityMigrated(), "migration not recorded");
+        require(graduatingMarket.realEthReserve() == 0, "reserve not cleared");
+        require(address(graduatingMarket).balance == 0, "eth retained");
+        require(token.balanceOf(address(graduatingMarket)) == 0, "tokens retained");
+        require(adapter.ethReceived() == 0.99 ether, "adapter eth mismatch");
+        require(adapter.tokensReceived() == remainingInventory, "adapter token mismatch");
+
+        (bool success,) = address(graduatingMarket).call(abi.encodeCall(graduatingMarket.migrateLiquidity, ()));
+        require(!success, "second migration accepted");
+    }
+
+    function testCannotMigrateBeforeGraduation() public {
+        (bool success,) = address(market).call(abi.encodeCall(market.migrateLiquidity, ()));
+        require(!success, "early migration accepted");
     }
 
     function testProgressTracksRealReserve() public {
