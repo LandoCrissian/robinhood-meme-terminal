@@ -16,6 +16,7 @@ contract BondingCurveMarket {
     IERC20MarketToken public immutable token;
     address payable public immutable rewardVault;
     IGraduationAdapter public immutable graduationAdapter;
+    bytes32 public immutable graduationPoolId;
     uint16 public immutable feeBps;
     uint256 public immutable graduationTarget;
     uint256 public immutable invariantK;
@@ -74,6 +75,7 @@ contract BondingCurveMarket {
         address token_,
         address payable rewardVault_,
         address graduationAdapter_,
+        bytes32 graduationPoolId_,
         uint16 feeBps_,
         uint256 virtualEthReserve_,
         uint256 virtualTokenReserve_,
@@ -82,6 +84,7 @@ contract BondingCurveMarket {
         if (token_ == address(0) || rewardVault_ == address(0) || graduationAdapter_ == address(0)) {
             revert ZeroAddress();
         }
+        if (graduationPoolId_ == bytes32(0)) revert InvalidConfiguration();
         if (
             feeBps_ >= BPS_DENOMINATOR || virtualEthReserve_ == 0 || virtualTokenReserve_ == 0 || graduationTarget_ == 0
         ) revert InvalidConfiguration();
@@ -89,6 +92,7 @@ contract BondingCurveMarket {
         token = IERC20MarketToken(token_);
         rewardVault = rewardVault_;
         graduationAdapter = IGraduationAdapter(graduationAdapter_);
+        graduationPoolId = graduationPoolId_;
         feeBps = feeBps_;
         virtualEthReserve = virtualEthReserve_;
         virtualTokenReserve = virtualTokenReserve_;

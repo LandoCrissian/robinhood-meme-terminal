@@ -22,8 +22,15 @@ contract MockGraduationAdapter is IGraduationAdapter {
     address public constant POOL = address(0xB0A7);
     uint256 public ethReceived;
     uint256 public tokensReceived;
+    mapping(address token => bytes32 poolId) public poolIds;
+
+    function prepare(address token) external returns (bytes32 poolId) {
+        poolId = keccak256(abi.encode("reserved-v4-pool", token));
+        poolIds[token] = poolId;
+    }
 
     function graduate(address token, uint256 tokenAmount) external payable returns (address pool, uint256 liquidity) {
+        require(poolIds[token] != bytes32(0), "pool not prepared");
         FixedSupplyMemeToken(token).transferFrom(msg.sender, address(this), tokenAmount);
         ethReceived += msg.value;
         tokensReceived += tokenAmount;
@@ -73,8 +80,16 @@ contract BondingCurveMarketTest {
         token = new FixedSupplyMemeToken("Market Test", "MKT", TOTAL_SUPPLY, address(this), address(this), "");
         rewards = new RewardSink();
         adapter = new MockGraduationAdapter();
+        bytes32 poolId = adapter.prepare(address(token));
         market = new BondingCurveMarket(
-            address(token), payable(address(rewards)), address(adapter), 100, 30 ether, 1_073_000_000 ether, 85 ether
+            address(token),
+            payable(address(rewards)),
+            address(adapter),
+            poolId,
+            100,
+            30 ether,
+            1_073_000_000 ether,
+            85 ether
         );
         token.transfer(address(market), MARKET_INVENTORY);
     }
@@ -144,7 +159,14 @@ contract BondingCurveMarketTest {
 
     function testGraduationIsIrreversibleAndStopsTrading() public {
         BondingCurveMarket graduatingMarket = new BondingCurveMarket(
-            address(token), payable(address(rewards)), address(adapter), 100, 30 ether, 1_073_000_000 ether, 0.99 ether
+            address(token),
+            payable(address(rewards)),
+            address(adapter),
+            adapter.poolIds(address(token)),
+            100,
+            30 ether,
+            1_073_000_000 ether,
+            0.99 ether
         );
         token.transfer(address(graduatingMarket), 100_000_000 ether);
 
@@ -167,7 +189,14 @@ contract BondingCurveMarketTest {
 
     function testGraduationOvershootRemainsFullyAccounted() public {
         BondingCurveMarket graduatingMarket = new BondingCurveMarket(
-            address(token), payable(address(rewards)), address(adapter), 100, 30 ether, 1_073_000_000 ether, 1 ether
+            address(token),
+            payable(address(rewards)),
+            address(adapter),
+            adapter.poolIds(address(token)),
+            100,
+            30 ether,
+            1_073_000_000 ether,
+            1 ether
         );
         token.transfer(address(graduatingMarket), 100_000_000 ether);
 
@@ -180,7 +209,14 @@ contract BondingCurveMarketTest {
 
     function testGraduatedMarketMigratesAllAssetsExactlyOnce() public {
         BondingCurveMarket graduatingMarket = new BondingCurveMarket(
-            address(token), payable(address(rewards)), address(adapter), 100, 30 ether, 1_073_000_000 ether, 0.99 ether
+            address(token),
+            payable(address(rewards)),
+            address(adapter),
+            adapter.poolIds(address(token)),
+            100,
+            30 ether,
+            1_073_000_000 ether,
+            0.99 ether
         );
         token.transfer(address(graduatingMarket), 100_000_000 ether);
         graduatingMarket.buy{value: 1 ether}(address(this), 0, block.timestamp);

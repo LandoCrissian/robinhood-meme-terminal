@@ -5,22 +5,35 @@ import {BondingCurveMarket} from "../src/BondingCurveMarket.sol";
 import {FixedSupplyMemeToken} from "../src/FixedSupplyMemeToken.sol";
 import {LaunchRewardVault} from "../src/LaunchRewardVault.sol";
 import {MemeLaunchFactory} from "../src/MemeLaunchFactory.sol";
+import {IGraduationAdapter} from "../src/interfaces/IGraduationAdapter.sol";
 import {MockGraduationAdapter} from "./BondingCurveMarket.t.sol";
 
 interface FactoryTestVm {
     function deal(address account, uint256 balance) external;
 }
 
+contract ZeroReservationAdapter is IGraduationAdapter {
+    function prepare(address) external pure returns (bytes32) {
+        return bytes32(0);
+    }
+
+    function graduate(address, uint256) external payable returns (address, uint256) {
+        return (address(0), 0);
+    }
+}
+
 contract MemeLaunchFactoryTest {
     FactoryTestVm private constant vm = FactoryTestVm(address(uint160(uint256(keccak256("hevm cheat code")))));
     MemeLaunchFactory private factory;
+    MockGraduationAdapter private adapter;
     address[4] private recipients = [address(0xBEEF), address(0xCAFE), address(0xD00D), address(0xF00D)];
 
     receive() external payable {}
 
     function setUp() public {
         vm.deal(address(this), 100 ether);
-        factory = new MemeLaunchFactory(address(new MockGraduationAdapter()));
+        adapter = new MockGraduationAdapter();
+        factory = new MemeLaunchFactory(address(adapter));
     }
 
     function testLaunchCreatesTokenMarketAndRewardVault() public {
@@ -42,12 +55,34 @@ contract MemeLaunchFactoryTest {
         require(token.balanceOf(address(factory)) == 0, "factory retained inventory");
         require(created.market == marketAddress, "market not stored");
         require(created.rewardVault == vaultAddress, "vault not stored");
+        require(created.graduationPoolId != bytes32(0), "pool reservation not stored");
         require(address(market.token()) == tokenAddress, "market token");
         require(market.rewardVault() == payable(vaultAddress), "market vault");
         require(address(market.graduationAdapter()) == factory.graduationAdapter(), "market adapter");
+        require(market.graduationPoolId() == created.graduationPoolId, "market pool reservation");
         require(market.feeBps() == factory.MARKET_FEE_BPS(), "market fee");
         require(vault.recipients(0) == address(this), "creator recipient");
         require(vault.recipients(1) == recipients[0], "community recipient");
+    }
+
+    function testEachLaunchAtomicallyReservesUniquePool() public {
+        uint16[5] memory split = [uint16(3000), 2500, 1500, 1500, 1500];
+        (address firstToken,,) = factory.launch("First", "ONE", 1_000_000_000 ether, "", recipients, split);
+        (address secondToken,,) = factory.launch("Second", "TWO", 1_000_000_000 ether, "", recipients, split);
+
+        bytes32 firstPool = factory.getLaunch(0).graduationPoolId;
+        bytes32 secondPool = factory.getLaunch(1).graduationPoolId;
+        require(firstPool == adapter.poolIds(firstToken), "first pool mismatch");
+        require(secondPool == adapter.poolIds(secondToken), "second pool mismatch");
+        require(firstPool != secondPool, "pool reservation reused");
+    }
+
+    function testRejectsZeroPoolReservation() public {
+        MemeLaunchFactory invalidFactory = new MemeLaunchFactory(address(new ZeroReservationAdapter()));
+        uint16[5] memory split = [uint16(3000), 2500, 1500, 1500, 1500];
+        (bool success,) = address(invalidFactory)
+            .call(abi.encodeCall(invalidFactory.launch, ("Invalid", "BAD", 1_000_000_000 ether, "", recipients, split)));
+        require(!success, "zero pool reservation accepted");
     }
 
     function testIntegratedBuyFundsRewardVault() public {

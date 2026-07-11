@@ -29,6 +29,7 @@ export const memeLaunchFactoryAbi = [
       { name: "creator", type: "address", indexed: true },
       { name: "market", type: "address", indexed: false },
       { name: "rewardVault", type: "address", indexed: false },
+      { name: "graduationPoolId", type: "bytes32", indexed: false },
       { name: "name", type: "string", indexed: false },
       { name: "symbol", type: "string", indexed: false },
       { name: "supply", type: "uint256", indexed: false },
