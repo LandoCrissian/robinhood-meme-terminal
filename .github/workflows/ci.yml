@@ -28,6 +28,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: foundry-rs/foundry-toolchain@v1
+      - run: bash scripts/install-v4-deps.sh
       - run: forge fmt
       - name: Build contracts
         run: |
