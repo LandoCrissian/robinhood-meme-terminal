@@ -69,8 +69,7 @@ contract BondingCurveMarket {
     ) {
         if (token_ == address(0) || rewardVault_ == address(0)) revert ZeroAddress();
         if (
-            feeBps_ >= BPS_DENOMINATOR || virtualEthReserve_ == 0 || virtualTokenReserve_ == 0
-                || graduationTarget_ == 0
+            feeBps_ >= BPS_DENOMINATOR || virtualEthReserve_ == 0 || virtualTokenReserve_ == 0 || graduationTarget_ == 0
         ) revert InvalidConfiguration();
 
         token = IERC20MarketToken(token_);

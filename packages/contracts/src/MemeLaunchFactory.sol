@@ -68,11 +68,7 @@ contract MemeLaunchFactory {
         if (total != 10_000) revert InvalidRewardSplit();
 
         address[5] memory recipients = [
-            msg.sender,
-            communityRecipients[0],
-            communityRecipients[1],
-            communityRecipients[2],
-            communityRecipients[3]
+            msg.sender, communityRecipients[0], communityRecipients[1], communityRecipients[2], communityRecipients[3]
         ];
 
         token = address(new FixedSupplyMemeToken(name, symbol, supply, msg.sender, address(this), metadataURI));

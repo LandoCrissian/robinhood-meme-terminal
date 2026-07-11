@@ -11,7 +11,34 @@ interface MarketTestVm {
 
 contract RewardSink {
     uint256 public received;
-    receive() external payable { received += msg.value; }
+
+    receive() external payable {
+        received += msg.value;
+    }
+}
+
+contract ReentrantSeller {
+    BondingCurveMarket private immutable market;
+    FixedSupplyMemeToken private immutable token;
+    bool public reentryAttempted;
+    bool public reentrySucceeded;
+
+    constructor(BondingCurveMarket market_, FixedSupplyMemeToken token_) {
+        market = market_;
+        token = token_;
+    }
+
+    function sellAll() external {
+        uint256 balance = token.balanceOf(address(this));
+        token.approve(address(market), balance);
+        market.sell(balance, 0, payable(address(this)), block.timestamp);
+    }
+
+    receive() external payable {
+        reentryAttempted = true;
+        (reentrySucceeded,) =
+            address(market).call{value: 1}(abi.encodeCall(market.buy, (address(this), 0, block.timestamp)));
+    }
 }
 
 contract BondingCurveMarketTest {
@@ -30,7 +57,9 @@ contract BondingCurveMarketTest {
         vm.deal(address(this), 100 ether);
         token = new FixedSupplyMemeToken("Market Test", "MKT", TOTAL_SUPPLY, address(this), address(this), "");
         rewards = new RewardSink();
-        market = new BondingCurveMarket(address(token), payable(address(rewards)), 100, 30 ether, 1_073_000_000 ether, 85 ether);
+        market = new BondingCurveMarket(
+            address(token), payable(address(rewards)), 100, 30 ether, 1_073_000_000 ether, 85 ether
+        );
         token.transfer(address(market), MARKET_INVENTORY);
     }
 
@@ -46,7 +75,9 @@ contract BondingCurveMarketTest {
         require(address(market).balance == 0.99 ether, "market balance");
     }
 
-    function testBuyThenSellCannotCreateProfit() public { _assertRoundTripCannotProfit(2 ether); }
+    function testBuyThenSellCannotCreateProfit() public {
+        _assertRoundTripCannotProfit(2 ether);
+    }
 
     function testFuzzBuyThenSellCannotCreateProfit(uint96 rawAmount) public {
         uint256 amount = MIN_FUZZ_BUY + (uint256(rawAmount) % (MAX_FUZZ_BUY - MIN_FUZZ_BUY));
@@ -71,14 +102,64 @@ contract BondingCurveMarketTest {
 
     function testRejectsBuySlippage() public {
         (uint256 quote,) = market.quoteBuy(1 ether);
-        (bool success,) = address(market).call{value: 1 ether}(abi.encodeCall(market.buy, (address(this), quote + 1, block.timestamp)));
+        (bool success,) = address(market).call{value: 1 ether}(
+            abi.encodeCall(market.buy, (address(this), quote + 1, block.timestamp))
+        );
         require(!success, "slippage ignored");
     }
 
     function testCannotSellBeyondRealReserve() public {
         token.approve(address(market), 100_000_000 ether);
-        (bool success,) = address(market).call(abi.encodeCall(market.sell, (100_000_000 ether, 0, payable(address(this)), block.timestamp)));
+        (bool success,) = address(market)
+            .call(abi.encodeCall(market.sell, (100_000_000 ether, 0, payable(address(this)), block.timestamp)));
         require(!success, "insolvent sell accepted");
+    }
+
+    function testSellRecipientCannotReenter() public {
+        ReentrantSeller attacker = new ReentrantSeller(market, token);
+        market.buy{value: 2 ether}(address(attacker), 0, block.timestamp);
+
+        attacker.sellAll();
+
+        require(attacker.reentryAttempted(), "reentry not attempted");
+        require(!attacker.reentrySucceeded(), "reentry succeeded");
+        require(market.realEthReserve() == address(market).balance, "reserve mismatch");
+    }
+
+    function testGraduationIsIrreversibleAndStopsTrading() public {
+        BondingCurveMarket graduatingMarket = new BondingCurveMarket(
+            address(token), payable(address(rewards)), 100, 30 ether, 1_073_000_000 ether, 0.99 ether
+        );
+        token.transfer(address(graduatingMarket), 100_000_000 ether);
+
+        graduatingMarket.buy{value: 1 ether}(address(this), 0, block.timestamp);
+
+        require(graduatingMarket.graduated(), "market did not graduate");
+        require(graduatingMarket.progressBps() == 10_000, "progress not complete");
+
+        (bool buySucceeded,) = address(graduatingMarket).call{value: 1 ether}(
+            abi.encodeCall(graduatingMarket.buy, (address(this), 0, block.timestamp))
+        );
+        require(!buySucceeded, "buy accepted after graduation");
+
+        token.approve(address(graduatingMarket), 1 ether);
+        (bool sellSucceeded,) = address(graduatingMarket)
+            .call(abi.encodeCall(graduatingMarket.sell, (1 ether, 0, payable(address(this)), block.timestamp)));
+        require(!sellSucceeded, "sell accepted after graduation");
+        require(graduatingMarket.graduated(), "graduation reversed");
+    }
+
+    function testGraduationOvershootRemainsFullyAccounted() public {
+        BondingCurveMarket graduatingMarket = new BondingCurveMarket(
+            address(token), payable(address(rewards)), 100, 30 ether, 1_073_000_000 ether, 1 ether
+        );
+        token.transfer(address(graduatingMarket), 100_000_000 ether);
+
+        graduatingMarket.buy{value: 2 ether}(address(this), 0, block.timestamp);
+
+        require(graduatingMarket.graduated(), "market did not graduate");
+        require(graduatingMarket.realEthReserve() == 1.98 ether, "overshoot reserve lost");
+        require(address(graduatingMarket).balance == 1.98 ether, "balance mismatch");
     }
 
     function testProgressTracksRealReserve() public {
