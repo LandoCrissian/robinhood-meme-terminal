@@ -12,14 +12,18 @@ import {BeforeSwapDelta, BeforeSwapDeltaLibrary} from "@uniswap/v4-core/src/type
 contract V4GraduationHook is BaseHook {
     using PoolIdLibrary for PoolKey;
 
-    address public immutable adapter;
+    address public immutable deployer;
+    address public adapter;
     mapping(PoolId poolId => bool reserved) public isReserved;
     mapping(PoolId poolId => bool open) public isOpen;
 
     event PoolReserved(PoolId indexed poolId);
     event PoolOpened(PoolId indexed poolId);
+    event AdapterBound(address indexed adapter);
 
     error OnlyAdapter();
+    error OnlyDeployer();
+    error AdapterAlreadyBound();
     error PoolAlreadyReserved();
     error PoolNotReserved();
     error PoolAlreadyOpen();
@@ -30,9 +34,16 @@ contract V4GraduationHook is BaseHook {
         _;
     }
 
-    constructor(IPoolManager manager, address adapter_) BaseHook(manager) {
+    constructor(IPoolManager manager) BaseHook(manager) {
+        deployer = msg.sender;
+    }
+
+    function bindAdapter(address adapter_) external {
+        if (msg.sender != deployer) revert OnlyDeployer();
+        if (adapter != address(0)) revert AdapterAlreadyBound();
         if (adapter_ == address(0)) revert OnlyAdapter();
         adapter = adapter_;
+        emit AdapterBound(adapter_);
     }
 
     function getHookPermissions() public pure override returns (Hooks.Permissions memory permissions) {

@@ -17,6 +17,8 @@ contract ZeroReservationAdapter is IGraduationAdapter {
         return bytes32(0);
     }
 
+    function bindMarket(address, address) external pure {}
+
     function graduate(address, uint256) external payable returns (address, uint256) {
         return (address(0), 0);
     }
@@ -56,6 +58,7 @@ contract MemeLaunchFactoryTest {
         require(created.market == marketAddress, "market not stored");
         require(created.rewardVault == vaultAddress, "vault not stored");
         require(created.graduationPoolId != bytes32(0), "pool reservation not stored");
+        require(adapter.markets(tokenAddress) == marketAddress, "adapter market not bound");
         require(address(market.token()) == tokenAddress, "market token");
         require(market.rewardVault() == payable(vaultAddress), "market vault");
         require(address(market.graduationAdapter()) == factory.graduationAdapter(), "market adapter");
@@ -100,6 +103,14 @@ contract MemeLaunchFactoryTest {
         require(market.realEthReserve() == 1 ether - fee, "reserve mismatch");
         require(vault.totalReceived() == fee, "vault not funded");
         require(vault.claimable(address(this)) == (fee * split[0]) / 10_000, "creator accrual");
+    }
+
+    function testAdapterRejectsGraduationFromUnboundCaller() public {
+        uint16[5] memory split = [uint16(3000), 2500, 1500, 1500, 1500];
+        (address tokenAddress,,) = factory.launch("Bound", "BND", 1_000_000_000 ether, "", recipients, split);
+
+        (bool success,) = address(adapter).call{value: 1 wei}(abi.encodeCall(adapter.graduate, (tokenAddress, 0)));
+        require(!success, "unbound caller graduated pool");
     }
 
     function testRejectsInvalidRewardSplit() public {

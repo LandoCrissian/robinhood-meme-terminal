@@ -10,7 +10,7 @@ import {Currency} from "@uniswap/v4-core/src/types/Currency.sol";
 import {ModifyLiquidityParams, SwapParams} from "@uniswap/v4-core/src/types/PoolOperation.sol";
 
 contract TestV4GraduationHook is V4GraduationHook {
-    constructor(IPoolManager manager, address adapter) V4GraduationHook(manager, adapter) {}
+    constructor(IPoolManager manager) V4GraduationHook(manager) {}
 
     function validateHookAddress(BaseHook) internal pure override {}
 }
@@ -34,6 +34,10 @@ contract MockV4PoolManager {
 }
 
 contract UnauthorizedHookCaller {
+    function bindAdapter(V4GraduationHook hook, address adapter) external returns (bool success) {
+        (success,) = address(hook).call(abi.encodeCall(hook.bindAdapter, (adapter)));
+    }
+
     function reserve(V4GraduationHook hook, PoolKey calldata key) external returns (bool success) {
         (success,) = address(hook).call(abi.encodeCall(hook.reserve, (key)));
     }
@@ -50,7 +54,8 @@ contract V4GraduationHookTest {
 
     function setUp() public {
         manager = new MockV4PoolManager();
-        hook = new TestV4GraduationHook(IPoolManager(address(manager)), address(this));
+        hook = new TestV4GraduationHook(IPoolManager(address(manager)));
+        hook.bindAdapter(address(this));
         key = PoolKey({
             currency0: Currency.wrap(address(0)),
             currency1: Currency.wrap(address(0xBEEF)),
@@ -67,6 +72,17 @@ contract V4GraduationHookTest {
         hook.reserve(key);
         require(!caller.open(hook, key), "unauthorized open accepted");
         hook.open(key);
+    }
+
+    function testAdapterBindingIsDeployerOnlyAndPermanent() public {
+        TestV4GraduationHook unboundHook = new TestV4GraduationHook(IPoolManager(address(manager)));
+        UnauthorizedHookCaller caller = new UnauthorizedHookCaller();
+        require(!caller.bindAdapter(unboundHook, address(caller)), "unauthorized binding accepted");
+
+        unboundHook.bindAdapter(address(this));
+        (bool rebound,) = address(unboundHook).call(abi.encodeCall(unboundHook.bindAdapter, (address(caller))));
+        require(!rebound, "adapter rebound");
+        require(unboundHook.adapter() == address(this), "adapter changed");
     }
 
     function testInitializationRequiresAtomicReservationAndAdapter() public {
