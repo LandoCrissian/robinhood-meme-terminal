@@ -19,20 +19,33 @@ Source records:
 
 Uniswap's official repositories do not currently publish deployments for Robinhood Chain testnet (`46630`). Testnet deployments must therefore use a clearly identified test adapter. Mainnet addresses must never be copied into testnet configuration.
 
-## Migration sequence
+## Migration boundary
 
 1. The curve reaches its immutable ETH graduation target and permanently stops trading.
 2. Anyone may call `migrateLiquidity`; the caller cannot select the destination.
 3. The market approves only its immutable graduation adapter.
 4. The market sends its complete remaining token inventory and accounted ETH reserve.
-5. The adapter rejects a pre-existing V2 pool, creates the initial token/WETH pool, and requires the router to consume the exact supplied amounts.
-6. V2 LP tokens are minted directly to `0x000000000000000000000000000000000000dEaD`.
-7. The market rejects incomplete migrations and records the pool and liquidity result onchain.
+5. The adapter must consume the exact supplied amounts and return a nonzero pool and liquidity result.
+6. The market rejects incomplete migrations and records the result onchain.
 
 The adapter address is immutable per factory deployment. A factory intended for production must be deployed with an adapter configured from verified mainnet addresses; a testnet factory must use a separately labeled test adapter.
 
-## Open production blocker: pool squatting
+## Production decision: V2 rejected
 
-The V2 adapter intentionally rejects a token/WETH pair that already exists. This prevents migration into a pool whose opening price or reserves may have been manipulated, but it also means an attacker could create or seed the deterministic pair before graduation and block migration.
+An earlier prototype targeted Uniswap V2. That approach is not acceptable for production: anyone can create or seed the deterministic token/WETH pair before graduation. Accepting that pool risks a manipulated opening price, while rejecting it creates a pool-squatting denial of service.
 
-The V2 adapter must not be used on mainnet until this denial-of-service risk is resolved and independently reviewed. Candidate mitigations include launch-time pool reservation plus narrowly scoped pre-graduation transfer controls, or a migration venue that does not expose a deterministic public pool before graduation. The clean fixed-supply token requirement and post-graduation permissionlessness remain non-negotiable.
+The V2 production adapter has therefore been removed. The ERC-20 remains unrestricted.
+
+## Selected production direction: Uniswap V4
+
+Uniswap V4 supports pool lifecycle hooks for initialization, adding liquidity, and swaps. Its singleton `PoolManager` is deployed on Robinhood Chain. A V4 pool can be atomically initialized at launch with a hook that rejects pre-graduation liquidity and swaps, then opened during the one-time migration. This reserves the pool before an attacker can initialize it while keeping restrictions out of the token contract.
+
+Uniswap's audited Liquidity Launcher is the preferred reference implementation because it already coordinates price discovery and V4 liquidity migration. Robinhood-specific Liquidity Launcher strategy factories are not currently listed as deployed, so this integration requires a separate deployment and review before mainnet.
+
+Sources:
+
+- <https://github.com/Uniswap/v4-core>
+- <https://github.com/Uniswap/liquidity-launcher>
+- <https://github.com/Uniswap/liquidity-launcher/blob/main/docs/TechnicalReference.md>
+
+Until the V4 adapter and hook are implemented and independently reviewed, factories may use only clearly labeled test adapters. No production factory deployment is authorized.
