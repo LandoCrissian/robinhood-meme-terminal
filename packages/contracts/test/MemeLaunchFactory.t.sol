@@ -5,6 +5,7 @@ import {BondingCurveMarket} from "../src/BondingCurveMarket.sol";
 import {FixedSupplyMemeToken} from "../src/FixedSupplyMemeToken.sol";
 import {LaunchRewardVault} from "../src/LaunchRewardVault.sol";
 import {MemeLaunchFactory} from "../src/MemeLaunchFactory.sol";
+import {MockGraduationAdapter} from "./BondingCurveMarket.t.sol";
 
 interface FactoryTestVm {
     function deal(address account, uint256 balance) external;
@@ -19,7 +20,7 @@ contract MemeLaunchFactoryTest {
 
     function setUp() public {
         vm.deal(address(this), 100 ether);
-        factory = new MemeLaunchFactory();
+        factory = new MemeLaunchFactory(address(new MockGraduationAdapter()));
     }
 
     function testLaunchCreatesTokenMarketAndRewardVault() public {
@@ -43,6 +44,7 @@ contract MemeLaunchFactoryTest {
         require(created.rewardVault == vaultAddress, "vault not stored");
         require(address(market.token()) == tokenAddress, "market token");
         require(market.rewardVault() == payable(vaultAddress), "market vault");
+        require(address(market.graduationAdapter()) == factory.graduationAdapter(), "market adapter");
         require(market.feeBps() == factory.MARKET_FEE_BPS(), "market fee");
         require(vault.recipients(0) == address(this), "creator recipient");
         require(vault.recipients(1) == recipients[0], "community recipient");

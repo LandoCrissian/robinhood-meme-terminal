@@ -5,6 +5,7 @@ import {MemeLaunchFactory} from "../src/MemeLaunchFactory.sol";
 
 interface Vm {
     function envUint(string calldata name) external returns (uint256 value);
+    function envAddress(string calldata name) external returns (address value);
     function startBroadcast(uint256 privateKey) external;
     function stopBroadcast() external;
 }
@@ -19,8 +20,9 @@ contract DeployMemeLaunchFactory {
         if (block.chainid != ROBINHOOD_TESTNET_CHAIN_ID) revert WrongChain(block.chainid);
 
         uint256 deployerPrivateKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
+        address graduationAdapter = vm.envAddress("GRADUATION_ADAPTER");
         vm.startBroadcast(deployerPrivateKey);
-        factory = new MemeLaunchFactory();
+        factory = new MemeLaunchFactory(graduationAdapter);
         vm.stopBroadcast();
     }
 }

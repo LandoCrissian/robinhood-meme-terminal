@@ -1,10 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
+import {IGraduationAdapter} from "./interfaces/IGraduationAdapter.sol";
+
 interface IERC20MarketToken {
     function balanceOf(address account) external view returns (uint256);
     function transfer(address to, uint256 value) external returns (bool);
     function transferFrom(address from, address to, uint256 value) external returns (bool);
+    function approve(address spender, uint256 value) external returns (bool);
 }
 
 contract BondingCurveMarket {
@@ -12,6 +15,7 @@ contract BondingCurveMarket {
 
     IERC20MarketToken public immutable token;
     address payable public immutable rewardVault;
+    IGraduationAdapter public immutable graduationAdapter;
     uint16 public immutable feeBps;
     uint256 public immutable graduationTarget;
     uint256 public immutable invariantK;
@@ -20,6 +24,7 @@ contract BondingCurveMarket {
     uint256 public virtualTokenReserve;
     uint256 public realEthReserve;
     bool public graduated;
+    bool public liquidityMigrated;
     bool private _entered;
 
     event Trade(
@@ -34,6 +39,9 @@ contract BondingCurveMarket {
         uint256 realEthReserve
     );
     event Graduated(uint256 realEthReserve, uint256 tokenInventory);
+    event LiquidityMigrated(
+        address indexed adapter, address indexed pool, uint256 ethAmount, uint256 tokenAmount, uint256 liquidity
+    );
 
     error ZeroAddress();
     error InvalidConfiguration();
@@ -46,6 +54,9 @@ contract BondingCurveMarket {
     error TokenTransferFailed();
     error EthTransferFailed();
     error ReentrantCall();
+    error NotGraduated();
+    error AlreadyMigrated();
+    error InvalidMigration();
 
     modifier nonReentrant() {
         if (_entered) revert ReentrantCall();
@@ -62,18 +73,22 @@ contract BondingCurveMarket {
     constructor(
         address token_,
         address payable rewardVault_,
+        address graduationAdapter_,
         uint16 feeBps_,
         uint256 virtualEthReserve_,
         uint256 virtualTokenReserve_,
         uint256 graduationTarget_
     ) {
-        if (token_ == address(0) || rewardVault_ == address(0)) revert ZeroAddress();
+        if (token_ == address(0) || rewardVault_ == address(0) || graduationAdapter_ == address(0)) {
+            revert ZeroAddress();
+        }
         if (
             feeBps_ >= BPS_DENOMINATOR || virtualEthReserve_ == 0 || virtualTokenReserve_ == 0 || graduationTarget_ == 0
         ) revert InvalidConfiguration();
 
         token = IERC20MarketToken(token_);
         rewardVault = rewardVault_;
+        graduationAdapter = IGraduationAdapter(graduationAdapter_);
         feeBps = feeBps_;
         virtualEthReserve = virtualEthReserve_;
         virtualTokenReserve = virtualTokenReserve_;
@@ -187,6 +202,27 @@ contract BondingCurveMarket {
     function progressBps() external view returns (uint256) {
         if (graduated || realEthReserve >= graduationTarget) return BPS_DENOMINATOR;
         return (realEthReserve * BPS_DENOMINATOR) / graduationTarget;
+    }
+
+    function migrateLiquidity() external nonReentrant returns (address pool, uint256 liquidity) {
+        if (!graduated) revert NotGraduated();
+        if (liquidityMigrated) revert AlreadyMigrated();
+
+        uint256 ethAmount = realEthReserve;
+        uint256 tokenAmount = token.balanceOf(address(this));
+        if (ethAmount == 0 || tokenAmount == 0) revert InvalidMigration();
+
+        liquidityMigrated = true;
+        realEthReserve = 0;
+
+        if (!token.approve(address(graduationAdapter), tokenAmount)) revert TokenTransferFailed();
+        (pool, liquidity) = graduationAdapter.graduate{value: ethAmount}(address(token), tokenAmount);
+
+        if (pool == address(0) || liquidity == 0 || token.balanceOf(address(this)) != 0 || address(this).balance != 0) {
+            revert InvalidMigration();
+        }
+
+        emit LiquidityMigrated(address(graduationAdapter), pool, ethAmount, tokenAmount, liquidity);
     }
 
     function _sendEth(address payable recipient, uint256 amount) private {
