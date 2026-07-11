@@ -4,6 +4,7 @@ pragma solidity ^0.8.26;
 import {BondingCurveMarket} from "./BondingCurveMarket.sol";
 import {FixedSupplyMemeToken} from "./FixedSupplyMemeToken.sol";
 import {LaunchRewardVault} from "./LaunchRewardVault.sol";
+import {IGraduationAdapter} from "./interfaces/IGraduationAdapter.sol";
 
 contract MemeLaunchFactory {
     uint16 public constant MARKET_FEE_BPS = 100;
@@ -15,6 +16,7 @@ contract MemeLaunchFactory {
         address token;
         address market;
         address rewardVault;
+        bytes32 graduationPoolId;
         address creator;
         uint64 createdAt;
         uint16 creatorBps;
@@ -33,6 +35,7 @@ contract MemeLaunchFactory {
         address indexed creator,
         address market,
         address rewardVault,
+        bytes32 graduationPoolId,
         string name,
         string symbol,
         uint256 supply,
@@ -50,6 +53,7 @@ contract MemeLaunchFactory {
     error InvalidSupply();
     error InventoryTransferFailed();
     error ZeroAddress();
+    error InvalidPoolReservation();
 
     constructor(address graduationAdapter_) {
         if (graduationAdapter_ == address(0)) revert ZeroAddress();
@@ -79,12 +83,15 @@ contract MemeLaunchFactory {
         ];
 
         token = address(new FixedSupplyMemeToken(name, symbol, supply, msg.sender, address(this), metadataURI));
+        bytes32 graduationPoolId = IGraduationAdapter(graduationAdapter).prepare(token);
+        if (graduationPoolId == bytes32(0)) revert InvalidPoolReservation();
         rewardVault = address(new LaunchRewardVault(recipients, rewardBps));
         market = address(
             new BondingCurveMarket(
                 token,
                 payable(rewardVault),
                 graduationAdapter,
+                graduationPoolId,
                 MARKET_FEE_BPS,
                 INITIAL_VIRTUAL_ETH_RESERVE,
                 INITIAL_VIRTUAL_TOKEN_RESERVE,
@@ -100,6 +107,7 @@ contract MemeLaunchFactory {
                 token,
                 market,
                 rewardVault,
+                graduationPoolId,
                 msg.sender,
                 uint64(block.timestamp),
                 rewardBps[0],
@@ -115,6 +123,7 @@ contract MemeLaunchFactory {
             msg.sender,
             market,
             rewardVault,
+            graduationPoolId,
             name,
             symbol,
             supply,
