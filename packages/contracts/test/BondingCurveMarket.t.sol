@@ -23,14 +23,22 @@ contract MockGraduationAdapter is IGraduationAdapter {
     uint256 public ethReceived;
     uint256 public tokensReceived;
     mapping(address token => bytes32 poolId) public poolIds;
+    mapping(address token => address market) public markets;
 
     function prepare(address token) external returns (bytes32 poolId) {
         poolId = keccak256(abi.encode("reserved-v4-pool", token));
         poolIds[token] = poolId;
     }
 
+    function bindMarket(address token, address market) external {
+        require(poolIds[token] != bytes32(0), "pool not prepared");
+        require(markets[token] == address(0), "market already bound");
+        markets[token] = market;
+    }
+
     function graduate(address token, uint256 tokenAmount) external payable returns (address pool, uint256 liquidity) {
         require(poolIds[token] != bytes32(0), "pool not prepared");
+        require(markets[token] == msg.sender, "unauthorized market");
         FixedSupplyMemeToken(token).transferFrom(msg.sender, address(this), tokenAmount);
         ethReceived += msg.value;
         tokensReceived += tokenAmount;
@@ -91,6 +99,7 @@ contract BondingCurveMarketTest {
             1_073_000_000 ether,
             85 ether
         );
+        adapter.bindMarket(address(token), address(market));
         token.transfer(address(market), MARKET_INVENTORY);
     }
 
@@ -208,30 +217,33 @@ contract BondingCurveMarketTest {
     }
 
     function testGraduatedMarketMigratesAllAssetsExactlyOnce() public {
+        MockGraduationAdapter migrationAdapter = new MockGraduationAdapter();
+        bytes32 migrationPoolId = migrationAdapter.prepare(address(token));
         BondingCurveMarket graduatingMarket = new BondingCurveMarket(
             address(token),
             payable(address(rewards)),
-            address(adapter),
-            adapter.poolIds(address(token)),
+            address(migrationAdapter),
+            migrationPoolId,
             100,
             30 ether,
             1_073_000_000 ether,
             0.99 ether
         );
+        migrationAdapter.bindMarket(address(token), address(graduatingMarket));
         token.transfer(address(graduatingMarket), 100_000_000 ether);
         graduatingMarket.buy{value: 1 ether}(address(this), 0, block.timestamp);
         uint256 remainingInventory = token.balanceOf(address(graduatingMarket));
 
         (address pool, uint256 liquidity) = graduatingMarket.migrateLiquidity();
 
-        require(pool == adapter.POOL(), "wrong pool");
+        require(pool == migrationAdapter.POOL(), "wrong pool");
         require(liquidity == remainingInventory, "wrong liquidity result");
         require(graduatingMarket.liquidityMigrated(), "migration not recorded");
         require(graduatingMarket.realEthReserve() == 0, "reserve not cleared");
         require(address(graduatingMarket).balance == 0, "eth retained");
         require(token.balanceOf(address(graduatingMarket)) == 0, "tokens retained");
-        require(adapter.ethReceived() == 0.99 ether, "adapter eth mismatch");
-        require(adapter.tokensReceived() == remainingInventory, "adapter token mismatch");
+        require(migrationAdapter.ethReceived() == 0.99 ether, "adapter eth mismatch");
+        require(migrationAdapter.tokensReceived() == remainingInventory, "adapter token mismatch");
 
         (bool success,) = address(graduatingMarket).call(abi.encodeCall(graduatingMarket.migrateLiquidity, ()));
         require(!success, "second migration accepted");

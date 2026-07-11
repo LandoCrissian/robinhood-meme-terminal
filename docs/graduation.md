@@ -67,6 +67,8 @@ Reservations and openings are one-time transitions keyed by the official V4 `Poo
 
 V4 derives enabled callbacks from the low bits of the deployed hook address. This permission set requires the `beforeInitialize`, `beforeAddLiquidity`, and `beforeSwap` flags (`0x2880`). A production hook must therefore be deployed with a mined CREATE2 salt whose resulting address has those bits, then verified against the expected bytecode and immutable PoolManager/adapter addresses. The local test subclass bypasses address-bit validation only to test callback behavior; it is not deployable production code.
 
+The hook uses a one-time deployment handshake to avoid circular CREATE2 address dependencies: its deployer binds the adapter exactly once after both contracts exist. The adapter can never be replaced afterward. Separately, the factory binds each prepared token to the exact market it created before transferring public inventory. A graduation call from any other address must revert. The production deployment script must execute and verify both bindings atomically where possible.
+
 The official dependencies are pinned to the same revisions recorded by Uniswap Liquidity Launcher:
 
 - `v4-core`: `59d3ecf53afa9264a16bba0e38f4c5d2231f80bc`

@@ -99,6 +99,8 @@ contract MemeLaunchFactory {
             )
         );
 
+        IGraduationAdapter(graduationAdapter).bindMarket(token, market);
+
         if (!FixedSupplyMemeToken(token).transfer(market, supply)) revert InventoryTransferFailed();
 
         uint256 launchId = _launches.length;
