@@ -126,4 +126,11 @@ contract MemeLaunchFactoryTest {
             address(factory).call(abi.encodeCall(factory.launch, ("Zero", "ZERO", 0, "", recipients, split)));
         require(!success, "zero supply accepted");
     }
+
+    function testRejectsNonstandardSupply() public {
+        uint16[5] memory split = [uint16(3000), 2500, 1500, 1500, 1500];
+        (bool success,) = address(factory)
+            .call(abi.encodeCall(factory.launch, ("Wrong Supply", "WRONG", 500_000_000 ether, "", recipients, split)));
+        require(!success, "nonstandard supply accepted");
+    }
 }

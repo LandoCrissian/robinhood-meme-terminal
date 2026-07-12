@@ -19,7 +19,7 @@ export function LaunchForm() {
   const { data: receipt, isLoading: isConfirming, error: receiptError } = useWaitForTransactionReceipt({ hash: transactionHash, chainId: robinhoodChainTestnet.id });
   const [name, setName] = useState("Robinhood Meme Terminal");
   const [symbol, setSymbol] = useState("RMT");
-  const [supply, setSupply] = useState("1000000000");
+  const supply = "1000000000";
   const [description, setDescription] = useState("The genesis token launched through Robinhood Meme Terminal.");
   const [communityTreasury, setCommunityTreasury] = useState(emptyAddress);
   const [traderRewards, setTraderRewards] = useState(emptyAddress);
@@ -62,7 +62,7 @@ export function LaunchForm() {
     <section className="panel">
       <div className="sectionTitle"><div><p className="eyebrow">GENESIS LAUNCH</p><h2>Configure your token</h2></div><span className="badge">TESTNET GUARDED</span></div>
       <label>Token name<input value={name} maxLength={40} onChange={(e) => setName(e.target.value)} /></label>
-      <div className="two"><label>Ticker<input value={symbol} maxLength={10} onChange={(e) => setSymbol(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))} /></label><label>Fixed supply<input inputMode="numeric" value={supply} onChange={(e) => setSupply(e.target.value.replace(/\D/g, ""))} /></label></div>
+      <div className="two"><label>Ticker<input value={symbol} maxLength={10} onChange={(e) => setSymbol(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))} /></label><label>Platform supply<input inputMode="numeric" value={supply} readOnly aria-readonly="true" /></label></div>
       <label>Description<textarea value={description} maxLength={500} onChange={(e) => setDescription(e.target.value)} /></label>
       <p className="eyebrow addressHeading">REWARD DESTINATIONS</p>
       <label>Community treasury<input placeholder="0x…" value={communityTreasury} onChange={(e) => setCommunityTreasury(e.target.value)} /></label>

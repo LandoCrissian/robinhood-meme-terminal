@@ -11,6 +11,7 @@ contract MemeLaunchFactory {
     uint256 public constant INITIAL_VIRTUAL_ETH_RESERVE = 30 ether;
     uint256 public constant INITIAL_VIRTUAL_TOKEN_RESERVE = 1_073_000_000 ether;
     uint256 public constant GRADUATION_TARGET = 85 ether;
+    uint256 public constant TOKEN_SUPPLY = 1_000_000_000 ether;
 
     struct Launch {
         address token;
@@ -70,7 +71,7 @@ contract MemeLaunchFactory {
     ) external returns (address token, address market, address rewardVault) {
         if (bytes(name).length == 0) revert EmptyName();
         if (bytes(symbol).length == 0) revert EmptySymbol();
-        if (supply == 0) revert InvalidSupply();
+        if (supply != TOKEN_SUPPLY) revert InvalidSupply();
 
         uint256 total;
         for (uint256 i; i < rewardBps.length; ++i) {
