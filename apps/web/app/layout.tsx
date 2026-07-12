@@ -3,6 +3,7 @@ import "./styles.css";
 import "./feed.css";
 import "./token-detail.css";
 import "./reward-vault.css";
+import "./wallet.css";
 import { Providers } from "./providers";
 
 export const metadata: Metadata = {

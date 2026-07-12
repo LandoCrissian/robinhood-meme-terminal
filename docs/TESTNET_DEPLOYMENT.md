@@ -33,6 +33,12 @@ These are test parameters, not a mainnet proposal. Mainnet economics remain unse
 
 Fund a dedicated EVM wallet with Robinhood Chain testnet ETH using the currently documented official faucet or bridge flow.
 
+### Recommended: wallet-approved deployment page
+
+Set `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID`, open `/deploy-testnet`, connect the dedicated test wallet, and select **Deploy test stack**. The page performs the same guarded sequence while the wallet explicitly approves every transaction. It never requests or stores a private key or recovery phrase. Partial progress is saved in the browser so an interrupted deployment can resume without redeploying completed contracts.
+
+The command-line flow below remains available for automated development environments only.
+
 Set the private key only in the current shell:
 
 ```bash
