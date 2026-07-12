@@ -43,7 +43,7 @@ The V2 production adapter has therefore been removed. The ERC-20 remains unrestr
 
 Uniswap V4 supports pool lifecycle hooks for initialization, adding liquidity, and swaps. Its singleton `PoolManager` is deployed on Robinhood Chain. A V4 pool can be atomically initialized at launch with a hook that rejects pre-graduation liquidity and swaps, then opened during the one-time migration. This reserves the pool before an attacker can initialize it while keeping restrictions out of the token contract.
 
-The factory and market now enforce the venue-neutral reservation half of this design. The next adapter implementation must prove that its returned pool ID corresponds to a V4 pool initialized inside `prepare`, with the expected token, currency, fee, tick spacing, and hook.
+The factory, market, hook, and `V4GraduationAdapter` now implement this lifecycle. `prepare` reserves the exact native/token V4 pool ID atomically during launch. Initialization intentionally waits until graduation so the actual terminal ETH and remaining-token amounts determine the opening square-root price instead of relying on a guessed price.
 
 Uniswap's audited Liquidity Launcher is the preferred reference implementation because it already coordinates price discovery and V4 liquidity migration. Robinhood-specific Liquidity Launcher strategy factories are not currently listed as deployed, so this integration requires a separate deployment and review before mainnet.
 
@@ -53,7 +53,9 @@ Sources:
 - <https://github.com/Uniswap/liquidity-launcher>
 - <https://github.com/Uniswap/liquidity-launcher/blob/main/docs/TechnicalReference.md>
 
-Until the V4 adapter and hook are implemented and independently reviewed, factories may use only clearly labeled test adapters. No production factory deployment is authorized.
+The adapter initializes the reserved pool, mints a permanently held full-range position, settles the exact V4 currency deltas, donates rounding remainders to that position, verifies that neither the market nor adapter retained launch assets, and only then opens public swaps. Tests execute this flow against Uniswap's actual V4 `PoolManager`, including the complete bonding-curve migration path.
+
+The position currently has no removal path, so graduation liquidity is permanently protocol-held. A future, separately reviewed fee-collection policy is required before claiming or redistributing V4 LP fees. No production factory deployment is authorized until the hook CREATE2 deployment, Robinhood-specific configuration, economic parameters, and independent audit are complete.
 
 ## V4 reservation hook prototype
 
@@ -73,3 +75,7 @@ The official dependencies are pinned to the same revisions recorded by Uniswap L
 
 - `v4-core`: `59d3ecf53afa9264a16bba0e38f4c5d2231f80bc`
 - `v4-periphery`: `ad04c9f24a170accf5ea1b2836bbafd514537ca6`
+
+## Standardized launch inventory
+
+The production curve is calibrated for exactly `1,000,000,000` tokens with 18 decimals. The factory now enforces that supply onchain and the launch form exposes it as read-only. Arbitrary creator-selected supplies are rejected because they can make public inventory, curve pricing, and graduation settlement inconsistent.
