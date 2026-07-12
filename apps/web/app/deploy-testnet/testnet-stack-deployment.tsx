@@ -3,7 +3,18 @@
 import { robinhoodChainTestnet } from "@rmt/shared/chains";
 import { useEffect, useMemo, useState } from "react";
 import { useAccount, usePublicClient, useSwitchChain, useWalletClient } from "wagmi";
-import { formatEther, parseEther, type Abi, type Address, type Hex } from "viem";
+import {
+  concat,
+  encodeDeployData,
+  formatEther,
+  getCreate2Address,
+  keccak256,
+  parseEther,
+  toHex,
+  type Abi,
+  type Address,
+  type Hex
+} from "viem";
 import artifactsJson from "../../lib/generated/testnet-stack.json";
 
 const APPROVED_TEST_WALLETS = new Set([
@@ -12,6 +23,7 @@ const APPROVED_TEST_WALLETS = new Set([
   "0xc560a2798824ae50d5d92470f8e15b3f09f45994"
 ]);
 const MINIMUM_BALANCE = parseEther("0.004");
+const CREATE2_DEPLOYER = "0x4e59b44847b379578588920cA78FbF26c0B4956C" as Address;
 
 type Artifact = { abi: Abi; bytecode: Hex };
 type Deployment = { adapter?: Address; factory?: Address };
@@ -75,6 +87,8 @@ export function TestnetStackDeployment() {
       if (chainId !== robinhoodChainTestnet.id) await switchChainAsync({ chainId: robinhoodChainTestnet.id });
       setStage("checking");
       if ((await publicClient.getChainId()) !== robinhoodChainTestnet.id) throw new Error("Connect to Robinhood Chain Testnet.");
+      const create2Code = await publicClient.getBytecode({ address: CREATE2_DEPLOYER });
+      if (!create2Code || create2Code === "0x") throw new Error("The testnet CREATE2 deployer is unavailable.");
       const currentBalance = await publicClient.getBalance({ address });
       setBalance(currentBalance);
       if (currentBalance < MINIMUM_BALANCE) {
@@ -84,16 +98,23 @@ export function TestnetStackDeployment() {
       let adapter = current.adapter;
       if (!adapter || !(await publicClient.getBytecode({ address: adapter }))) {
         setStage("adapter");
-        const hash = await walletClient.deployContract({
-          account: address,
-          chain: robinhoodChainTestnet,
+        const initCode = encodeDeployData({
           abi: artifacts.adapter.abi,
           bytecode: artifacts.adapter.bytecode,
           args: [address]
         });
-        const receipt = await publicClient.waitForTransactionReceipt({ hash });
-        if (!receipt.contractAddress) throw new Error("Test adapter deployment did not return an address.");
-        adapter = receipt.contractAddress;
+        const salt = keccak256(concat([toHex("rmt-lite-adapter-v1"), address]));
+        adapter = getCreate2Address({ from: CREATE2_DEPLOYER, salt, bytecode: initCode });
+        if (!(await publicClient.getBytecode({ address: adapter }))) {
+          const hash = await walletClient.sendTransaction({
+            account: address,
+            chain: robinhoodChainTestnet,
+            to: CREATE2_DEPLOYER,
+            data: concat([salt, initCode])
+          });
+          await publicClient.waitForTransactionReceipt({ hash });
+        }
+        if (!(await publicClient.getBytecode({ address: adapter }))) throw new Error("Test adapter bytecode was not found.");
         current.adapter = adapter;
         setDeployment({ ...current });
         saveDeployment(address, current);
@@ -102,16 +123,23 @@ export function TestnetStackDeployment() {
       let factory = current.factory;
       if (!factory || !(await publicClient.getBytecode({ address: factory }))) {
         setStage("factory");
-        const hash = await walletClient.deployContract({
-          account: address,
-          chain: robinhoodChainTestnet,
+        const initCode = encodeDeployData({
           abi: artifacts.factory.abi,
           bytecode: artifacts.factory.bytecode,
           args: [adapter, 100, parseEther("0.01"), parseEther("1073000000"), parseEther("0.001")]
         });
-        const receipt = await publicClient.waitForTransactionReceipt({ hash });
-        if (!receipt.contractAddress) throw new Error("Launch factory deployment did not return an address.");
-        factory = receipt.contractAddress;
+        const salt = keccak256(concat([toHex("rmt-lite-factory-v1"), adapter]));
+        factory = getCreate2Address({ from: CREATE2_DEPLOYER, salt, bytecode: initCode });
+        if (!(await publicClient.getBytecode({ address: factory }))) {
+          const hash = await walletClient.sendTransaction({
+            account: address,
+            chain: robinhoodChainTestnet,
+            to: CREATE2_DEPLOYER,
+            data: concat([salt, initCode])
+          });
+          await publicClient.waitForTransactionReceipt({ hash });
+        }
+        if (!(await publicClient.getBytecode({ address: factory }))) throw new Error("Launch factory bytecode was not found.");
         current.factory = factory;
         setDeployment({ ...current });
         saveDeployment(address, current);
