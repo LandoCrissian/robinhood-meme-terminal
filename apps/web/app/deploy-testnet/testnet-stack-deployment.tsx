@@ -18,6 +18,10 @@ import artifactsJson from "../../lib/generated/testnet-stack.json";
 const CREATE2_DEPLOYER = "0x4e59b44847b379578588920cA78FbF26c0B4956C" as Address;
 const HOOK_FLAGS = 0x2880n;
 const ALL_HOOK_MASK = 0x3fffn;
+const APPROVED_TEST_WALLETS = new Set([
+  "0x568a5398bdc155d0f567a7722d4a9c32908a1852",
+  "0x7e8e7d3af28584a8b9eeddbe16cd3308bd1e76ca"
+]);
 
 type Artifact = { abi: Abi; bytecode: Hex };
 type Deployment = { manager?: Address; hook?: Address; adapter?: Address; factory?: Address };
@@ -73,7 +77,8 @@ export function TestnetStackDeployment() {
   const [deployment, setDeployment] = useState<Deployment>({});
   const [error, setError] = useState<string>();
   const busy = !["idle", "complete", "failed"].includes(stage);
-  const canStart = Boolean(isConnected && address && walletClient && publicClient && !busy);
+  const approvedWallet = Boolean(address && APPROVED_TEST_WALLETS.has(address.toLowerCase()));
+  const canStart = Boolean(isConnected && address && approvedWallet && walletClient && publicClient && !busy);
   const steps = useMemo(() => ["Network checks", "Pool manager", "Graduation hook", "Adapter", "Launch factory", "Final verification"], []);
 
   useEffect(() => {
@@ -243,6 +248,16 @@ export function TestnetStackDeployment() {
         <p><strong>Test parameters:</strong> 1% curve fee · 0.001 test ETH graduation target</p>
         <p>This deploys a disposable upstream V4 PoolManager for testing. It is not an official Uniswap deployment.</p>
       </div>
+      {address && (
+        <div className="deployment-addresses">
+          <p><span>Connected wallet</span><code>{address}</code></p>
+        </div>
+      )}
+      {isConnected && address && !approvedWallet && (
+        <p className="deployment-error">
+          Wrong test wallet connected. Switch to the account ending in 08a1852, or use the approved MetaMask account ending in 1e76cA.
+        </p>
+      )}
       {Object.entries(deployment).length > 0 && (
         <div className="deployment-addresses">
           {Object.entries(deployment).map(([name, value]) => value && <p key={name}><span>{name}</span><code>{short(value)}</code></p>)}
@@ -250,7 +265,7 @@ export function TestnetStackDeployment() {
       )}
       {error && <p className="deployment-error">{error}</p>}
       <button className="deploy-stack-button" disabled={!canStart} onClick={deploy}>
-        {!isConnected ? "Connect wallet above" : busy ? "Waiting for wallet approval…" : stage === "complete" ? "Deployment verified" : Object.keys(deployment).length ? "Resume deployment" : "Deploy test stack"}
+        {!isConnected ? "Connect wallet above" : !approvedWallet ? "Switch to approved test wallet" : busy ? "Waiting for wallet approval…" : stage === "complete" ? "Deployment verified" : Object.keys(deployment).length ? "Resume deployment" : "Deploy test stack"}
       </button>
       <p className="deployment-safety">Robinhood Wallet will show each transaction before you approve it. Never enter a private key or recovery phrase.</p>
     </section>
