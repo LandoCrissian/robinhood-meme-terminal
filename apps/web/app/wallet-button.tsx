@@ -9,7 +9,7 @@ function shortAddress(address: string) {
 
 export function WalletButton() {
   const { address, chainId, isConnected } = useAccount();
-  const { connectors, connect, isPending } = useConnect();
+  const { connectors, connect, error, isPending } = useConnect();
   const { disconnect } = useDisconnect();
   const { switchChain, isPending: isSwitching } = useSwitchChain();
 
@@ -21,6 +21,15 @@ export function WalletButton() {
             {isPending ? "Connecting…" : connector.name === "WalletConnect" ? "Robinhood Wallet" : "Browser wallet"}
           </button>
         ))}
+        {error ? (
+          <p className="wallet-help" role="alert">
+            Wallet not detected. Open this page inside Robinhood Wallet using Web3 (the globe icon), then try again.
+          </p>
+        ) : (
+          <p className="wallet-help">
+            On mobile, open this page from Robinhood Wallet → Web3 (globe icon).
+          </p>
+        )}
       </div>
     );
   }
