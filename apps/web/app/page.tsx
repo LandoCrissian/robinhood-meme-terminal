@@ -12,7 +12,7 @@ export default function Home() {
     <main>
       <nav>
         <div><span className="logo">RMT</span><strong>Robinhood Meme Terminal</strong></div>
-        <div><Link href="/deploy-testnet" className="setup-link">Testnet setup</Link><WalletButton /></div>
+        <div><WalletButton /></div>
       </nav>
       <section className="hero">
         <p className="eyebrow">ROBINHOOD CHAIN • ALPHA</p>
