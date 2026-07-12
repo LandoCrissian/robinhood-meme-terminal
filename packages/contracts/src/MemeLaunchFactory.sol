@@ -29,6 +29,8 @@ contract MemeLaunchFactory {
     }
 
     Launch[] private _launches;
+    mapping(bytes32 => bool) private _usedNameHashes;
+    mapping(bytes32 => bool) private _usedSymbolHashes;
     address public immutable graduationAdapter;
 
     event TokenLaunched(
@@ -51,6 +53,8 @@ contract MemeLaunchFactory {
 
     error EmptyName();
     error EmptySymbol();
+    error DuplicateName();
+    error DuplicateSymbol();
     error InvalidRewardSplit();
     error InvalidSupply();
     error InventoryTransferFailed();
@@ -88,6 +92,13 @@ contract MemeLaunchFactory {
         if (bytes(name).length == 0) revert EmptyName();
         if (bytes(symbol).length == 0) revert EmptySymbol();
         if (supply != TOKEN_SUPPLY) revert InvalidSupply();
+
+        bytes32 nameHash = _canonicalHash(name);
+        bytes32 symbolHash = _canonicalHash(symbol);
+        if (_usedNameHashes[nameHash]) revert DuplicateName();
+        if (_usedSymbolHashes[symbolHash]) revert DuplicateSymbol();
+        _usedNameHashes[nameHash] = true;
+        _usedSymbolHashes[symbolHash] = true;
 
         uint256 total;
         for (uint256 i; i < rewardBps.length; ++i) {
@@ -161,5 +172,14 @@ contract MemeLaunchFactory {
 
     function getLaunch(uint256 launchId) external view returns (Launch memory) {
         return _launches[launchId];
+    }
+
+    function _canonicalHash(string calldata value) private pure returns (bytes32) {
+        bytes memory normalized = bytes(value);
+        for (uint256 i; i < normalized.length; ++i) {
+            uint8 character = uint8(normalized[i]);
+            if (character >= 65 && character <= 90) normalized[i] = bytes1(character + 32);
+        }
+        return keccak256(normalized);
     }
 }
