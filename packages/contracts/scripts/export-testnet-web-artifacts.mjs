@@ -5,9 +5,7 @@ import { fileURLToPath } from "node:url";
 const contractsRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const output = resolve(contractsRoot, "../../apps/web/lib/generated/testnet-stack.json");
 const artifacts = {
-  poolManager: "out/PoolManager.sol/PoolManager.json",
-  hook: "out/V4GraduationHook.sol/V4GraduationHook.json",
-  adapter: "out/V4GraduationAdapter.sol/V4GraduationAdapter.json",
+  adapter: "out/TestnetGraduationAdapter.sol/TestnetGraduationAdapter.json",
   factory: "out/LowCostMemeLaunchFactory.sol/LowCostMemeLaunchFactory.json"
 };
 
