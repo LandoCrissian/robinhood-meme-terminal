@@ -11,9 +11,9 @@ export default function DeployTestnetPage() {
         <WalletButton />
       </header>
       <section className="deployment-intro">
-        <span className="eyebrow">ROBINHOOD TESTNET ONLY</span>
-        <h1>Deploy the test launch stack</h1>
-        <p>Connect your wallet and approve the guided transactions. No private key or recovery phrase is ever requested.</p>
+        <span className="eyebrow">OPERATOR TOOL · ROBINHOOD TESTNET ONLY</span>
+        <h1>Deploy platform infrastructure</h1>
+        <p>This one-time, gas-heavy setup is for the platform operator. Token creators never deploy this stack or pay this cost.</p>
       </section>
       <TestnetStackDeployment />
     </main>
