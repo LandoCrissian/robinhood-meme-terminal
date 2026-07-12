@@ -28,14 +28,16 @@ contract V4GraduationHook is BaseHook {
     error PoolNotReserved();
     error PoolAlreadyOpen();
     error PoolClosed();
+    error ZeroAddress();
 
     modifier onlyAdapter() {
         if (msg.sender != adapter) revert OnlyAdapter();
         _;
     }
 
-    constructor(IPoolManager manager) BaseHook(manager) {
-        deployer = msg.sender;
+    constructor(IPoolManager manager, address deployer_) BaseHook(manager) {
+        if (deployer_ == address(0)) revert ZeroAddress();
+        deployer = deployer_;
     }
 
     function bindAdapter(address adapter_) external {

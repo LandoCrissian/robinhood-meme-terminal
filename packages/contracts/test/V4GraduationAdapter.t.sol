@@ -16,7 +16,7 @@ interface V4AdapterTestVm {
 }
 
 contract TestableV4GraduationHook is V4GraduationHook {
-    constructor(IPoolManager manager) V4GraduationHook(manager) {}
+    constructor(IPoolManager manager) V4GraduationHook(manager, msg.sender) {}
 
     function validateHookAddress(BaseHook) internal pure override {}
 }

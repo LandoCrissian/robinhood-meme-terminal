@@ -10,7 +10,7 @@ import {Currency} from "@uniswap/v4-core/src/types/Currency.sol";
 import {ModifyLiquidityParams, SwapParams} from "@uniswap/v4-core/src/types/PoolOperation.sol";
 
 contract TestV4GraduationHook is V4GraduationHook {
-    constructor(IPoolManager manager) V4GraduationHook(manager) {}
+    constructor(IPoolManager manager) V4GraduationHook(manager, msg.sender) {}
 
     function validateHookAddress(BaseHook) internal pure override {}
 }

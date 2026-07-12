@@ -1,6 +1,16 @@
 # Robinhood Chain Testnet Deployment
 
-This runbook deploys `MemeLaunchFactory` to Robinhood Chain testnet only.
+This runbook deploys the complete guarded V4 launch stack to Robinhood Chain testnet only:
+
+```text
+Local test V4 PoolManager
+→ CREATE2-mined V4GraduationHook
+→ V4GraduationAdapter
+→ MemeLaunchFactory
+→ permanent hook/adapter/factory bindings
+```
+
+Robinhood testnet does not publish an official Uniswap V4 deployment, so the test stack uses a locally deployed upstream `PoolManager`. It must never be represented as an official Uniswap deployment.
 
 The testnet factory uses immutable low-value economics so the complete buy, graduation, and V4 migration loop can be exercised without pretending test assets have value:
 
@@ -16,6 +26,7 @@ These are test parameters, not a mainnet proposal. Mainnet economics remain unse
 - Use a dedicated testnet-only wallet.
 - Never commit a private key or seed phrase.
 - Confirm the RPC reports chain ID `46630` before broadcasting.
+- Confirm the standard CREATE2 deployer exists at `0x4e59b44847b379578588920cA78FbF26c0B4956C`.
 - Do not set `NEXT_PUBLIC_FACTORY_ADDRESS` until bytecode and `launchCount()` are verified.
 
 ## 1. Prepare the deployer
@@ -39,7 +50,8 @@ export ROBINHOOD_TESTNET_RPC_URL=https://rpc.testnet.chain.robinhood.com/
 ```bash
 cd packages/contracts
 forge fmt --check
-forge build --sizes
+forge build
+forge build --sizes --skip script --skip test
 forge test -vvv
 ```
 
@@ -55,6 +67,9 @@ The script refuses to broadcast unless the RPC returns chain ID `46630`.
 
 From the Foundry broadcast output, record:
 
+- V4 PoolManager address
+- graduation hook address and CREATE2 salt
+- graduation adapter address
 - factory contract address
 - deployment transaction hash
 - deployer address
@@ -74,7 +89,10 @@ bash scripts/smoke-test-factory.sh
 The smoke test confirms:
 
 - the RPC is Robinhood Chain testnet
-- bytecode exists at the address
+- bytecode exists at the factory, adapter, hook, and PoolManager addresses
+- the adapter is permanently bound to the factory
+- the hook is permanently bound to the adapter
+- the factory has the expected low-value testnet graduation target
 - `launchCount()` can be read
 
 ## 6. Configure the web application
@@ -95,4 +113,4 @@ Use non-production treasury addresses and a disposable test token. Confirm that 
 - a token-specific reward vault
 - a `TokenLaunched` event containing both addresses
 
-Only after the event, token balances, reward recipients, and claim accounting are verified should the deployment be treated as usable for the alpha.
+Only after the launch event, curve trade, graduation, V4 migration, token balances, reward recipients, and claim accounting are verified should the deployment be treated as usable for the alpha.
