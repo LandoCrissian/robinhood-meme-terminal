@@ -74,4 +74,12 @@ contract LowCostMemeLaunchFactoryTest {
         require(!duplicateName, "duplicate name accepted");
         require(!duplicateSymbol, "duplicate symbol accepted");
     }
+
+    function testCreatorLaunchStaysBelowOneMillionGas() public {
+        uint256 gasBefore = gasleft();
+        factory.launch("Gas Guard", "GAS", "ipfs://gas", recipients, split);
+        uint256 gasUsed = gasBefore - gasleft();
+
+        require(gasUsed < 1_000_000, "creator launch gas regression");
+    }
 }
