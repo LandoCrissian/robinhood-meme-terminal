@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { parseEventLogs, parseUnits, type Address } from "viem";
+import { parseEventLogs, type Address } from "viem";
 import { useAccount, useChainId, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { robinhoodChainTestnet } from "@rmt/shared/chains";
-import { getFactoryAddress, memeLaunchFactoryAbi } from "../lib/contracts";
+import { memeLaunchFactoryAbi } from "../lib/contracts";
+import { useFactoryAddress } from "../lib/use-factory-address";
 import { launchSchema } from "../lib/launch-schema";
 
 const emptyAddress = "";
@@ -14,7 +15,7 @@ const rewardBps: readonly [number, number, number, number, number] = [3000, 2500
 export function LaunchForm() {
   const { isConnected } = useAccount();
   const chainId = useChainId();
-  const factoryAddress = getFactoryAddress();
+  const factoryAddress = useFactoryAddress();
   const { writeContract, isPending, data: transactionHash, error: writeError } = useWriteContract();
   const { data: receipt, isLoading: isConfirming, error: receiptError } = useWaitForTransactionReceipt({ hash: transactionHash, chainId: robinhoodChainTestnet.id });
   const [name, setName] = useState("Robinhood Meme Terminal");
@@ -54,7 +55,7 @@ export function LaunchForm() {
       address: factoryAddress,
       abi: memeLaunchFactoryAbi,
       functionName: "launch",
-      args: [parsed.data.name, parsed.data.symbol, parseUnits(parsed.data.supply, 18), `data:application/json,${encodeURIComponent(JSON.stringify({ name: parsed.data.name, symbol: parsed.data.symbol, description: parsed.data.description }))}`, [parsed.data.communityTreasury, parsed.data.traderRewards, parsed.data.liquidityVault, parsed.data.platformTreasury] as [Address, Address, Address, Address], rewardBps]
+      args: [parsed.data.name, parsed.data.symbol, `data:application/json,${encodeURIComponent(JSON.stringify({ name: parsed.data.name, symbol: parsed.data.symbol, description: parsed.data.description }))}`, [parsed.data.communityTreasury, parsed.data.traderRewards, parsed.data.liquidityVault, parsed.data.platformTreasury] as [Address, Address, Address, Address], rewardBps]
     });
   }
 
