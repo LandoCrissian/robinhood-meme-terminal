@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { formatUnits, type Address, type Hash } from "viem";
+import { type Address, type Hash } from "viem";
 import { usePublicClient } from "wagmi";
 import { robinhoodChainTestnet } from "@rmt/shared/chains";
-import { getFactoryAddress, memeLaunchFactoryAbi } from "../lib/contracts";
+import { memeLaunchFactoryAbi } from "../lib/contracts";
+import { useFactoryAddress } from "../lib/use-factory-address";
 
 type LaunchItem = {
   launchId: bigint;
@@ -14,7 +15,6 @@ type LaunchItem = {
   rewardVault: Address;
   name: string;
   symbol: string;
-  supply: bigint;
   creatorBps: number;
   communityBps: number;
   transactionHash: Hash;
@@ -27,7 +27,7 @@ function shortAddress(address: Address) {
 
 export function FreshLaunchFeed() {
   const publicClient = usePublicClient({ chainId: robinhoodChainTestnet.id });
-  const factoryAddress = getFactoryAddress();
+  const factoryAddress = useFactoryAddress();
   const [launches, setLaunches] = useState<LaunchItem[]>([]);
   const [status, setStatus] = useState<"idle" | "loading" | "live" | "error">("idle");
   const [message, setMessage] = useState("Factory deployment pending.");
@@ -60,9 +60,8 @@ export function FreshLaunchFeed() {
         rewardVault: log.args.rewardVault,
         name: log.args.name,
         symbol: log.args.symbol,
-        supply: log.args.supply,
-        creatorBps: log.args.creatorBps,
-        communityBps: log.args.communityBps,
+        creatorBps: Number(log.args.rewardBps[0]),
+        communityBps: Number(log.args.rewardBps[1]),
         transactionHash: log.transactionHash,
         blockNumber: log.blockNumber
       })).sort((a, b) => a.blockNumber > b.blockNumber ? -1 : 1).slice(0, 25);
@@ -96,7 +95,7 @@ export function FreshLaunchFeed() {
           <article>
             <div className="coin">{launch.symbol.slice(0, 2)}</div>
             <div className="identity"><strong>{launch.name}</strong><span>${launch.symbol} • #{launch.launchId.toString()}</span></div>
-            <div><small>Fixed supply</small><strong>{Number(formatUnits(launch.supply, 18)).toLocaleString(undefined, { maximumFractionDigits: 0 })}</strong></div>
+            <div><small>Fixed supply</small><strong>1,000,000,000</strong></div>
             <div><small>Community share</small><strong>{launch.communityBps / 100}%</strong></div>
             <div><small>Creator</small><strong title={launch.creator}>{shortAddress(launch.creator)}</strong></div>
           </article>
