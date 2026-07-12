@@ -14,11 +14,14 @@ export function WalletButton() {
   const { switchChain, isPending: isSwitching } = useSwitchChain();
 
   if (!isConnected) {
-    const connector = connectors[0];
     return (
-      <button className="wallet live" disabled={!connector || isPending} onClick={() => connector && connect({ connector })}>
-        {isPending ? "Connecting…" : "Connect wallet"}
-      </button>
+      <div className="wallet-options">
+        {connectors.map((connector) => (
+          <button className="wallet live" key={connector.uid} disabled={isPending} onClick={() => connect({ connector })}>
+            {isPending ? "Connecting…" : connector.name === "WalletConnect" ? "Robinhood Wallet" : "Browser wallet"}
+          </button>
+        ))}
+      </div>
     );
   }
 

@@ -3,6 +3,7 @@
 import { FreshLaunchFeed } from "./fresh-launch-feed";
 import { LaunchForm } from "./launch-form";
 import { WalletButton } from "./wallet-button";
+import Link from "next/link";
 
 const rewardDefaults = { creator: 30, community: 25, trader: 15, liquidity: 15, platform: 15 };
 
@@ -11,7 +12,7 @@ export default function Home() {
     <main>
       <nav>
         <div><span className="logo">RMT</span><strong>Robinhood Meme Terminal</strong></div>
-        <WalletButton />
+        <div><Link href="/deploy-testnet" className="setup-link">Testnet setup</Link><WalletButton /></div>
       </nav>
       <section className="hero">
         <p className="eyebrow">ROBINHOOD CHAIN • ALPHA</p>
