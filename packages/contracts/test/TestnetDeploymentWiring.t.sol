@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import {MemeLaunchFactory} from "../src/MemeLaunchFactory.sol";
+import {LowCostMemeLaunchFactory} from "../src/LowCostMemeLaunchFactory.sol";
 import {V4GraduationAdapter} from "../src/V4GraduationAdapter.sol";
 import {V4GraduationHook} from "../src/V4GraduationHook.sol";
 import {PoolManager} from "@uniswap/v4-core/src/PoolManager.sol";
@@ -22,8 +22,8 @@ contract TestnetDeploymentWiringTest {
 
         V4GraduationAdapter adapter = new V4GraduationAdapter(IPoolManager(address(manager)), hook, 10_000, 200);
         hook.bindAdapter(address(adapter));
-        MemeLaunchFactory factory =
-            new MemeLaunchFactory(address(adapter), 100, 0.01 ether, 1_073_000_000 ether, 0.001 ether);
+        LowCostMemeLaunchFactory factory =
+            new LowCostMemeLaunchFactory(address(adapter), 100, 0.01 ether, 1_073_000_000 ether, 0.001 ether);
         adapter.bindFactory(address(factory));
 
         require(hook.deployer() == address(this), "hook admin mismatch");

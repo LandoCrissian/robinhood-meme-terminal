@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import {MemeLaunchFactory} from "../src/MemeLaunchFactory.sol";
+import {LowCostMemeLaunchFactory} from "../src/LowCostMemeLaunchFactory.sol";
 import {V4GraduationAdapter} from "../src/V4GraduationAdapter.sol";
 import {V4GraduationHook} from "../src/V4GraduationHook.sol";
 import {PoolManager} from "@uniswap/v4-core/src/PoolManager.sol";
@@ -35,7 +35,7 @@ contract DeployMemeLaunchFactory {
 
     function run()
         external
-        returns (PoolManager manager, V4GraduationHook hook, V4GraduationAdapter adapter, MemeLaunchFactory factory)
+        returns (PoolManager manager, V4GraduationHook hook, V4GraduationAdapter adapter, LowCostMemeLaunchFactory factory)
     {
         if (block.chainid != ROBINHOOD_TESTNET_CHAIN_ID) revert WrongChain(block.chainid);
         if (CREATE2_DEPLOYER.code.length == 0) revert MissingCreate2Deployer();
@@ -59,7 +59,7 @@ contract DeployMemeLaunchFactory {
         adapter = new V4GraduationAdapter(IPoolManager(address(manager)), hook, V4_POOL_FEE, V4_TICK_SPACING);
         hook.bindAdapter(address(adapter));
 
-        factory = new MemeLaunchFactory(
+        factory = new LowCostMemeLaunchFactory(
             address(adapter),
             TESTNET_MARKET_FEE_BPS,
             TESTNET_VIRTUAL_ETH_RESERVE,

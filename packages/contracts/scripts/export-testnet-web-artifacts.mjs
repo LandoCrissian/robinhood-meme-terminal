@@ -8,7 +8,7 @@ const artifacts = {
   poolManager: "out/PoolManager.sol/PoolManager.json",
   hook: "out/V4GraduationHook.sol/V4GraduationHook.json",
   adapter: "out/V4GraduationAdapter.sol/V4GraduationAdapter.json",
-  factory: "out/MemeLaunchFactory.sol/MemeLaunchFactory.json"
+  factory: "out/LowCostMemeLaunchFactory.sol/LowCostMemeLaunchFactory.json"
 };
 
 const result = {};
