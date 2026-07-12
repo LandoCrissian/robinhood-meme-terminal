@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { formatEther, type Address, type Hash } from "viem";
 import { useAccount, usePublicClient, useReadContract, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { robinhoodChainTestnet } from "@rmt/shared/chains";
-import { getFactoryAddress, memeLaunchFactoryAbi } from "../lib/contracts";
+import { memeLaunchFactoryAbi } from "../lib/contracts";
+import { useFactoryAddress } from "../lib/use-factory-address";
 
 const rewardVaultAbi = [
   { type: "function", name: "recipients", stateMutability: "view", inputs: [{ name: "", type: "uint256" }], outputs: [{ type: "address" }] },
@@ -23,7 +24,7 @@ function shortAddress(address: Address) {
 }
 
 export function RewardVaultPanel({ tokenAddress }: { tokenAddress: Address }) {
-  const factoryAddress = getFactoryAddress();
+  const factoryAddress = useFactoryAddress();
   const publicClient = usePublicClient({ chainId: robinhoodChainTestnet.id });
   const { address: account } = useAccount();
   const [vaultAddress, setVaultAddress] = useState<Address | null>(null);
