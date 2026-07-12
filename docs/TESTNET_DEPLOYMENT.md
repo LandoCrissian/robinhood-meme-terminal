@@ -2,6 +2,15 @@
 
 This runbook deploys `MemeLaunchFactory` to Robinhood Chain testnet only.
 
+The testnet factory uses immutable low-value economics so the complete buy, graduation, and V4 migration loop can be exercised without pretending test assets have value:
+
+- 1% curve fee
+- 0.01 test ETH initial virtual reserve
+- 1.073 billion virtual token reserve
+- 0.001 test ETH graduation target
+
+These are test parameters, not a mainnet proposal. Mainnet economics remain unset pending simulation and review.
+
 ## Safety requirements
 
 - Use a dedicated testnet-only wallet.

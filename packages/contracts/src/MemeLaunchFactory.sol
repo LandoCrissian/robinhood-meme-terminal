@@ -7,11 +7,12 @@ import {LaunchRewardVault} from "./LaunchRewardVault.sol";
 import {IGraduationAdapter} from "./interfaces/IGraduationAdapter.sol";
 
 contract MemeLaunchFactory {
-    uint16 public constant MARKET_FEE_BPS = 100;
-    uint256 public constant INITIAL_VIRTUAL_ETH_RESERVE = 30 ether;
-    uint256 public constant INITIAL_VIRTUAL_TOKEN_RESERVE = 1_073_000_000 ether;
-    uint256 public constant GRADUATION_TARGET = 85 ether;
     uint256 public constant TOKEN_SUPPLY = 1_000_000_000 ether;
+
+    uint16 public immutable MARKET_FEE_BPS;
+    uint256 public immutable INITIAL_VIRTUAL_ETH_RESERVE;
+    uint256 public immutable INITIAL_VIRTUAL_TOKEN_RESERVE;
+    uint256 public immutable GRADUATION_TARGET;
 
     struct Launch {
         address token;
@@ -55,10 +56,25 @@ contract MemeLaunchFactory {
     error InventoryTransferFailed();
     error ZeroAddress();
     error InvalidPoolReservation();
+    error InvalidMarketConfiguration();
 
-    constructor(address graduationAdapter_) {
+    constructor(
+        address graduationAdapter_,
+        uint16 marketFeeBps_,
+        uint256 initialVirtualEthReserve_,
+        uint256 initialVirtualTokenReserve_,
+        uint256 graduationTarget_
+    ) {
         if (graduationAdapter_ == address(0)) revert ZeroAddress();
+        if (
+            marketFeeBps_ >= 10_000 || initialVirtualEthReserve_ == 0 || initialVirtualTokenReserve_ <= TOKEN_SUPPLY
+                || graduationTarget_ == 0
+        ) revert InvalidMarketConfiguration();
         graduationAdapter = graduationAdapter_;
+        MARKET_FEE_BPS = marketFeeBps_;
+        INITIAL_VIRTUAL_ETH_RESERVE = initialVirtualEthReserve_;
+        INITIAL_VIRTUAL_TOKEN_RESERVE = initialVirtualTokenReserve_;
+        GRADUATION_TARGET = graduationTarget_;
     }
 
     function launch(

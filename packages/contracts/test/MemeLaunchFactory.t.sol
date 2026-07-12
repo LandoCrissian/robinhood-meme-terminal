@@ -24,18 +24,34 @@ contract ZeroReservationAdapter is IGraduationAdapter {
     }
 }
 
+contract FactoryTestDeployer {
+    function deploy(address adapter, uint16 feeBps, uint256 virtualEth, uint256 virtualTokens, uint256 target)
+        external
+        returns (MemeLaunchFactory)
+    {
+        return new MemeLaunchFactory(adapter, feeBps, virtualEth, virtualTokens, target);
+    }
+}
+
 contract MemeLaunchFactoryTest {
     FactoryTestVm private constant vm = FactoryTestVm(address(uint160(uint256(keccak256("hevm cheat code")))));
     MemeLaunchFactory private factory;
     MockGraduationAdapter private adapter;
     address[4] private recipients = [address(0xBEEF), address(0xCAFE), address(0xD00D), address(0xF00D)];
 
+    uint16 private constant MARKET_FEE_BPS = 100;
+    uint256 private constant VIRTUAL_ETH_RESERVE = 30 ether;
+    uint256 private constant VIRTUAL_TOKEN_RESERVE = 1_073_000_000 ether;
+    uint256 private constant GRADUATION_TARGET = 85 ether;
+
     receive() external payable {}
 
     function setUp() public {
         vm.deal(address(this), 100 ether);
         adapter = new MockGraduationAdapter();
-        factory = new MemeLaunchFactory(address(adapter));
+        factory = new MemeLaunchFactory(
+            address(adapter), MARKET_FEE_BPS, VIRTUAL_ETH_RESERVE, VIRTUAL_TOKEN_RESERVE, GRADUATION_TARGET
+        );
     }
 
     function testLaunchCreatesTokenMarketAndRewardVault() public {
@@ -81,7 +97,13 @@ contract MemeLaunchFactoryTest {
     }
 
     function testRejectsZeroPoolReservation() public {
-        MemeLaunchFactory invalidFactory = new MemeLaunchFactory(address(new ZeroReservationAdapter()));
+        MemeLaunchFactory invalidFactory = new MemeLaunchFactory(
+            address(new ZeroReservationAdapter()),
+            MARKET_FEE_BPS,
+            VIRTUAL_ETH_RESERVE,
+            VIRTUAL_TOKEN_RESERVE,
+            GRADUATION_TARGET
+        );
         uint16[5] memory split = [uint16(3000), 2500, 1500, 1500, 1500];
         (bool success,) = address(invalidFactory)
             .call(abi.encodeCall(invalidFactory.launch, ("Invalid", "BAD", 1_000_000_000 ether, "", recipients, split)));
@@ -132,5 +154,32 @@ contract MemeLaunchFactoryTest {
         (bool success,) = address(factory)
             .call(abi.encodeCall(factory.launch, ("Wrong Supply", "WRONG", 500_000_000 ether, "", recipients, split)));
         require(!success, "nonstandard supply accepted");
+    }
+
+    function testMarketConfigurationIsImmutablePerFactory() public view {
+        require(factory.MARKET_FEE_BPS() == MARKET_FEE_BPS, "fee configuration");
+        require(factory.INITIAL_VIRTUAL_ETH_RESERVE() == VIRTUAL_ETH_RESERVE, "virtual ETH configuration");
+        require(factory.INITIAL_VIRTUAL_TOKEN_RESERVE() == VIRTUAL_TOKEN_RESERVE, "virtual token configuration");
+        require(factory.GRADUATION_TARGET() == GRADUATION_TARGET, "graduation configuration");
+    }
+
+    function testRejectsInvalidMarketConfiguration() public {
+        FactoryTestDeployer deployer = new FactoryTestDeployer();
+        (bool zeroTarget,) = address(deployer)
+            .call(
+                abi.encodeCall(
+                    deployer.deploy, (address(adapter), MARKET_FEE_BPS, VIRTUAL_ETH_RESERVE, VIRTUAL_TOKEN_RESERVE, 0)
+                )
+            );
+        require(!zeroTarget, "zero graduation target accepted");
+
+        (bool undersizedVirtualInventory,) = address(deployer)
+            .call(
+                abi.encodeCall(
+                    deployer.deploy,
+                    (address(adapter), MARKET_FEE_BPS, VIRTUAL_ETH_RESERVE, factory.TOKEN_SUPPLY(), GRADUATION_TARGET)
+                )
+            );
+        require(!undersizedVirtualInventory, "undersized virtual inventory accepted");
     }
 }

@@ -79,3 +79,5 @@ The official dependencies are pinned to the same revisions recorded by Uniswap L
 ## Standardized launch inventory
 
 The production curve is calibrated for exactly `1,000,000,000` tokens with 18 decimals. The factory now enforces that supply onchain and the launch form exposes it as read-only. Arbitrary creator-selected supplies are rejected because they can make public inventory, curve pricing, and graduation settlement inconsistent.
+
+Market fee, virtual reserves, and graduation target are immutable factory configuration rather than universal constants. This permits a cheap, clearly labeled testnet factory without silently committing mainnet economics. Every market created by a factory receives the same immutable values. A separate mainnet factory must not be deployed until those values have been economically simulated and publicly documented.
