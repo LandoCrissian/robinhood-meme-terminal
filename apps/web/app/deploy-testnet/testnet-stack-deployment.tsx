@@ -16,6 +16,7 @@ import {
   type Hex
 } from "viem";
 import artifactsJson from "../../lib/generated/testnet-stack.json";
+import { FACTORY_UPDATED_EVENT } from "../../lib/use-factory-address";
 
 const APPROVED_TEST_WALLETS = new Set([
   "0x568a5398bdc155d0f567a7722d4a9c32908a1852",
@@ -23,6 +24,7 @@ const APPROVED_TEST_WALLETS = new Set([
   "0xc560a2798824ae50d5d92470f8e15b3f09f45994"
 ]);
 const MINIMUM_BALANCE = parseEther("0.004");
+const ALPHA_GRADUATION_TARGET = parseEther("1000000");
 const CREATE2_DEPLOYER = "0x4e59b44847b379578588920cA78FbF26c0B4956C" as Address;
 
 type Artifact = { abi: Abi; bytecode: Hex };
@@ -47,6 +49,14 @@ function short(address: Address) {
 
 function saveDeployment(deployer: Address, deployment: Deployment) {
   localStorage.setItem("rmt:testnet-lite-stack:v3", JSON.stringify({ deployer, ...deployment }));
+}
+
+function readableDeploymentError(cause: unknown) {
+  const message = cause instanceof Error ? cause.message : String(cause);
+  if (message.includes("4001") || /rejected|denied|cancelled/i.test(message)) {
+    return "The wallet cancelled or could not approve this deployment. No test ETH was spent. Use desktop MetaMask for this one-time infrastructure deployment; Robinhood Wallet mobile currently blocks this advanced contract-creation transaction.";
+  }
+  return message || "Deployment was stopped by the wallet or network.";
 }
 
 export function TestnetStackDeployment() {
@@ -106,11 +116,14 @@ export function TestnetStackDeployment() {
         const salt = keccak256(concat([toHex("rmt-lite-adapter-v1"), address]));
         adapter = getCreate2Address({ from: CREATE2_DEPLOYER, salt, bytecode: initCode });
         if (!(await publicClient.getBytecode({ address: adapter }))) {
+          const data = concat([salt, initCode]);
+          const estimate = await publicClient.estimateGas({ account: address, to: CREATE2_DEPLOYER, data });
           const hash = await walletClient.sendTransaction({
             account: address,
             chain: robinhoodChainTestnet,
             to: CREATE2_DEPLOYER,
-            data: concat([salt, initCode])
+            data,
+            gas: estimate * 120n / 100n
           });
           await publicClient.waitForTransactionReceipt({ hash });
         }
@@ -126,16 +139,19 @@ export function TestnetStackDeployment() {
         const initCode = encodeDeployData({
           abi: artifacts.factory.abi,
           bytecode: artifacts.factory.bytecode,
-          args: [adapter, 100, parseEther("0.01"), parseEther("1073000000"), parseEther("0.001")]
+          args: [adapter, 100, parseEther("0.01"), parseEther("1073000000"), ALPHA_GRADUATION_TARGET]
         });
         const salt = keccak256(concat([toHex("rmt-lite-factory-v1"), adapter]));
         factory = getCreate2Address({ from: CREATE2_DEPLOYER, salt, bytecode: initCode });
         if (!(await publicClient.getBytecode({ address: factory }))) {
+          const data = concat([salt, initCode]);
+          const estimate = await publicClient.estimateGas({ account: address, to: CREATE2_DEPLOYER, data });
           const hash = await walletClient.sendTransaction({
             account: address,
             chain: robinhoodChainTestnet,
             to: CREATE2_DEPLOYER,
-            data: concat([salt, initCode])
+            data,
+            gas: estimate * 120n / 100n
           });
           await publicClient.waitForTransactionReceipt({ hash });
         }
@@ -168,14 +184,16 @@ export function TestnetStackDeployment() {
       if (
         String(boundFactory).toLowerCase() !== factory.toLowerCase() ||
         String(configuredAdapter).toLowerCase() !== adapter.toLowerCase() ||
-        target !== parseEther("0.001")
+        target !== ALPHA_GRADUATION_TARGET
       ) throw new Error("Final contract verification failed. Do not use this deployment.");
 
       saveDeployment(address, { adapter, factory });
+      localStorage.setItem("rmt:testnet-factory", factory);
+      window.dispatchEvent(new Event(FACTORY_UPDATED_EVENT));
       setBalance(await publicClient.getBalance({ address }));
       setStage("complete");
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Deployment was stopped by the wallet or network.");
+      setError(readableDeploymentError(cause));
       setStage("failed");
     }
   }
@@ -187,7 +205,7 @@ export function TestnetStackDeployment() {
       <div className="deployment-rules">
         <p><strong>Low-cost test stack:</strong> launches, curve trading and reward claims are enabled.</p>
         <p><strong>DEX graduation is disabled in this alpha.</strong> No graduation assets can be withdrawn or silently redirected.</p>
-        <p><strong>Test parameters:</strong> 1% curve fee · 0.001 test ETH graduation target</p>
+        <p><strong>Test parameters:</strong> 1% curve fee · graduation cannot be reached in this alpha</p>
       </div>
       {address && <div className="deployment-addresses"><p><span>Connected wallet</span><code>{address}</code></p>{balance !== undefined && <p><span>Test ETH</span><code>{formatEther(balance)}</code></p>}</div>}
       {isConnected && address && !approvedWallet && <p className="deployment-error">This wallet is not approved for the test deployment.</p>}
