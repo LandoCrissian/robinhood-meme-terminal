@@ -2,6 +2,7 @@
 
 import { robinhoodChainTestnet } from "@rmt/shared/chains";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { useAccount, usePublicClient, useSwitchChain, useWalletClient } from "wagmi";
 import {
@@ -32,7 +33,7 @@ type Artifact = { abi: Abi; bytecode: Hex };
 type Deployment = { adapter?: Address; factory?: Address };
 type Stage = "idle" | "checking" | "adapter" | "factory" | "binding" | "verifying" | "complete" | "failed";
 
-const artifacts = artifactsJson as Record<"adapter" | "factory", Artifact>;
+const artifacts = artifactsJson as Record<"adapter" | "factory" | "factoryV2", Artifact>;
 const labels: Record<Stage, string> = {
   idle: "Ready for wallet connection",
   checking: "Checking testnet wallet…",
@@ -48,8 +49,8 @@ function short(address: Address) {
   return `${address.slice(0, 8)}…${address.slice(-6)}`;
 }
 
-function saveDeployment(deployer: Address, deployment: Deployment) {
-  localStorage.setItem("rmt:testnet-lite-stack:v3", JSON.stringify({ deployer, ...deployment }));
+function saveDeployment(storageKey: string, deployer: Address, deployment: Deployment) {
+  localStorage.setItem(storageKey, JSON.stringify({ deployer, ...deployment }));
 }
 
 function readableDeploymentError(cause: unknown) {
@@ -61,6 +62,8 @@ function readableDeploymentError(cause: unknown) {
 }
 
 export function TestnetStackDeployment() {
+  const versionTwo = useSearchParams().get("version") === "2";
+  const storageKey = versionTwo ? "rmt:testnet-lite-stack:v4" : "rmt:testnet-lite-stack:v3";
   const { address, chainId, isConnected } = useAccount();
   const { data: walletClient } = useWalletClient();
   const publicClient = usePublicClient({ chainId: robinhoodChainTestnet.id });
@@ -77,7 +80,7 @@ export function TestnetStackDeployment() {
   useEffect(() => {
     if (!address || !publicClient) return;
     void publicClient.getBalance({ address }).then(setBalance).catch(() => setBalance(undefined));
-    const saved = localStorage.getItem("rmt:testnet-lite-stack:v3");
+    const saved = localStorage.getItem(storageKey);
     if (!saved) return;
     try {
       const parsed = JSON.parse(saved) as Deployment & { deployer?: Address };
@@ -85,9 +88,9 @@ export function TestnetStackDeployment() {
         setDeployment({ adapter: parsed.adapter, factory: parsed.factory });
       }
     } catch {
-      localStorage.removeItem("rmt:testnet-lite-stack:v3");
+      localStorage.removeItem(storageKey);
     }
-  }, [address, publicClient]);
+  }, [address, publicClient, versionTwo]);
 
   async function deploy() {
     if (!address || !walletClient || !publicClient) return;
@@ -114,7 +117,7 @@ export function TestnetStackDeployment() {
           bytecode: artifacts.adapter.bytecode,
           args: [address]
         });
-        const salt = keccak256(concat([toHex("rmt-lite-adapter-v1"), address]));
+        const salt = keccak256(concat([toHex(versionTwo ? "rmt-lite-adapter-v2" : "rmt-lite-adapter-v1"), address]));
         adapter = getCreate2Address({ from: CREATE2_DEPLOYER, salt, bytecode: initCode });
         if (!(await publicClient.getBytecode({ address: adapter }))) {
           const data = concat([salt, initCode]);
@@ -131,18 +134,15 @@ export function TestnetStackDeployment() {
         if (!(await publicClient.getBytecode({ address: adapter }))) throw new Error("Test adapter bytecode was not found.");
         current.adapter = adapter;
         setDeployment({ ...current });
-        saveDeployment(address, current);
+        saveDeployment(storageKey, address, current);
       }
 
       let factory = current.factory;
       if (!factory || !(await publicClient.getBytecode({ address: factory }))) {
         setStage("factory");
-        const initCode = encodeDeployData({
-          abi: artifacts.factory.abi,
-          bytecode: artifacts.factory.bytecode,
-          args: [adapter, 100, parseEther("0.01"), parseEther("1073000000"), ALPHA_GRADUATION_TARGET]
-        });
-        const salt = keccak256(concat([toHex("rmt-lite-factory-v1"), adapter]));
+        const factoryArtifact = versionTwo ? artifacts.factoryV2 : artifacts.factory;
+        const initCode = encodeDeployData({ abi: factoryArtifact.abi, bytecode: factoryArtifact.bytecode, args: versionTwo ? [adapter, 100, parseEther("0.01"), parseEther("1073000000"), ALPHA_GRADUATION_TARGET, address, address] : [adapter, 100, parseEther("0.01"), parseEther("1073000000"), ALPHA_GRADUATION_TARGET] });
+        const salt = keccak256(concat([toHex(versionTwo ? "rmt-lite-factory-v2" : "rmt-lite-factory-v1"), adapter]));
         factory = getCreate2Address({ from: CREATE2_DEPLOYER, salt, bytecode: initCode });
         if (!(await publicClient.getBytecode({ address: factory }))) {
           const data = concat([salt, initCode]);
@@ -159,7 +159,7 @@ export function TestnetStackDeployment() {
         if (!(await publicClient.getBytecode({ address: factory }))) throw new Error("Launch factory bytecode was not found.");
         current.factory = factory;
         setDeployment({ ...current });
-        saveDeployment(address, current);
+        saveDeployment(storageKey, address, current);
       }
 
       const existingFactory = await publicClient.readContract({ address: adapter, abi: artifacts.adapter.abi, functionName: "factory" });
@@ -179,8 +179,8 @@ export function TestnetStackDeployment() {
       setStage("verifying");
       const [boundFactory, configuredAdapter, target] = await Promise.all([
         publicClient.readContract({ address: adapter, abi: artifacts.adapter.abi, functionName: "factory" }),
-        publicClient.readContract({ address: factory, abi: artifacts.factory.abi, functionName: "graduationAdapter" }),
-        publicClient.readContract({ address: factory, abi: artifacts.factory.abi, functionName: "graduationTarget" })
+        publicClient.readContract({ address: factory, abi: versionTwo ? artifacts.factoryV2.abi : artifacts.factory.abi, functionName: "graduationAdapter" }),
+        publicClient.readContract({ address: factory, abi: versionTwo ? artifacts.factoryV2.abi : artifacts.factory.abi, functionName: "graduationTarget" })
       ]);
       if (
         String(boundFactory).toLowerCase() !== factory.toLowerCase() ||
@@ -188,7 +188,7 @@ export function TestnetStackDeployment() {
         target !== ALPHA_GRADUATION_TARGET
       ) throw new Error("Final contract verification failed. Do not use this deployment.");
 
-      saveDeployment(address, { adapter, factory });
+      saveDeployment(storageKey, address, { adapter, factory });
       localStorage.setItem("rmt:testnet-factory", factory);
       window.dispatchEvent(new Event(FACTORY_UPDATED_EVENT));
       setBalance(await publicClient.getBalance({ address }));
@@ -213,7 +213,7 @@ export function TestnetStackDeployment() {
       {Object.entries(deployment).length > 0 && <div className="deployment-addresses">{Object.entries(deployment).map(([name, value]) => value && <p key={name}><span>{name}</span><code>{short(value)}</code></p>)}</div>}
       {error && <p className="deployment-error">{error}</p>}
       {stage === "complete" ? (
-        <Link className="deploy-stack-button" href="/">Continue to launch a test token →</Link>
+        versionTwo ? <Link className="deploy-stack-button" href="/">Continue to simple launch V2 →</Link> : <Link className="deploy-stack-button" href="/deploy-testnet?version=2">Upgrade to automatic simple launches →</Link>
       ) : (
         <button className="deploy-stack-button" disabled={!canStart} onClick={deploy}>
           {!isConnected ? "Connect wallet above" : !approvedWallet ? "Switch to approved test wallet" : busy ? "Waiting for wallet approval…" : Object.keys(deployment).length ? "Resume low-cost deployment" : "Deploy low-cost test stack"}
