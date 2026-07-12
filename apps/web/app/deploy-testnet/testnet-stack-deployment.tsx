@@ -237,7 +237,7 @@ export function TestnetStackDeployment() {
       <ol className="deployment-steps">
         {steps.map((step, index) => <li key={step}><span>{index + 1}</span>{step}</li>)}
       </ol>
-      <div className="deployment-rules">
+      <div className="deployment-rules">\n        <p><strong>Not a token-launch fee.</strong> This page deploys shared platform infrastructure once.</p>
         <p><strong>Test parameters:</strong> 1% curve fee · 0.001 test ETH graduation target</p>
         <p>This deploys a disposable upstream V4 PoolManager for testing. It is not an official Uniswap deployment.</p>
       </div>
