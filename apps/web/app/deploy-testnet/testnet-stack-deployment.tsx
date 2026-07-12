@@ -1,6 +1,7 @@
 "use client";
 
 import { robinhoodChainTestnet } from "@rmt/shared/chains";
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useAccount, usePublicClient, useSwitchChain, useWalletClient } from "wagmi";
 import {
@@ -211,9 +212,13 @@ export function TestnetStackDeployment() {
       {isConnected && address && !approvedWallet && <p className="deployment-error">This wallet is not approved for the test deployment.</p>}
       {Object.entries(deployment).length > 0 && <div className="deployment-addresses">{Object.entries(deployment).map(([name, value]) => value && <p key={name}><span>{name}</span><code>{short(value)}</code></p>)}</div>}
       {error && <p className="deployment-error">{error}</p>}
-      <button className="deploy-stack-button" disabled={!canStart} onClick={deploy}>
-        {!isConnected ? "Connect wallet above" : !approvedWallet ? "Switch to approved test wallet" : busy ? "Waiting for wallet approval…" : stage === "complete" ? "Launch stack verified" : Object.keys(deployment).length ? "Resume low-cost deployment" : "Deploy low-cost test stack"}
-      </button>
+      {stage === "complete" ? (
+        <Link className="deploy-stack-button" href="/">Continue to launch a test token →</Link>
+      ) : (
+        <button className="deploy-stack-button" disabled={!canStart} onClick={deploy}>
+          {!isConnected ? "Connect wallet above" : !approvedWallet ? "Switch to approved test wallet" : busy ? "Waiting for wallet approval…" : Object.keys(deployment).length ? "Resume low-cost deployment" : "Deploy low-cost test stack"}
+        </button>
+      )}
       <p className="deployment-safety">Your wallet shows every testnet transaction before approval. Never enter a private key or recovery phrase.</p>
     </section>
   );
