@@ -20,7 +20,8 @@ const HOOK_FLAGS = 0x2880n;
 const ALL_HOOK_MASK = 0x3fffn;
 const APPROVED_TEST_WALLETS = new Set([
   "0x568a5398bdc155d0f567a7722d4a9c32908a1852",
-  "0x7e8e7d3af28584a8b9eeddbe16cd3308bd1e76ca"
+  "0x7e8e7d3af28584a8b9eeddbe16cd3308bd1e76ca",
+  "0xc560a2798824ae50d5d92470f8e15b3f09f45994"
 ]);
 
 type Artifact = { abi: Abi; bytecode: Hex };
@@ -255,7 +256,7 @@ export function TestnetStackDeployment() {
       )}
       {isConnected && address && !approvedWallet && (
         <p className="deployment-error">
-          Wrong test wallet connected. Switch to the account ending in 08a1852, or use the approved MetaMask account ending in 1e76cA.
+          This wallet is not approved for the test deployment. Switch to an approved test account.
         </p>
       )}
       {Object.entries(deployment).length > 0 && (
