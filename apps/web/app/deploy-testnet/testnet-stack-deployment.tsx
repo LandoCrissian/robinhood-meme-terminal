@@ -61,7 +61,7 @@ function short(address: Address) {
 }
 
 function saveDeployment(deployer: Address, deployment: Deployment) {
-  localStorage.setItem("rmt:testnet-stack", JSON.stringify({ deployer, ...deployment }));
+  localStorage.setItem("rmt:testnet-stack:v2", JSON.stringify({ deployer, ...deployment }));
 }
 
 export function TestnetStackDeployment() {
@@ -78,7 +78,7 @@ export function TestnetStackDeployment() {
 
   useEffect(() => {
     if (!address) return;
-    const saved = localStorage.getItem("rmt:testnet-stack");
+    const saved = localStorage.getItem("rmt:testnet-stack:v2");
     if (!saved) return;
     try {
       const parsed = JSON.parse(saved) as Deployment & { deployer?: Address };
@@ -86,7 +86,7 @@ export function TestnetStackDeployment() {
         setDeployment({ manager: parsed.manager, hook: parsed.hook, adapter: parsed.adapter, factory: parsed.factory });
       }
     } catch {
-      localStorage.removeItem("rmt:testnet-stack");
+      localStorage.removeItem("rmt:testnet-stack:v2");
     }
   }, [address]);
 
@@ -211,7 +211,7 @@ export function TestnetStackDeployment() {
         publicClient.readContract({ address: hook, abi: artifacts.hook.abi, functionName: "adapter" }),
         publicClient.readContract({ address: adapter, abi: artifacts.adapter.abi, functionName: "factory" }),
         publicClient.readContract({ address: factory, abi: artifacts.factory.abi, functionName: "graduationAdapter" }),
-        publicClient.readContract({ address: factory, abi: artifacts.factory.abi, functionName: "GRADUATION_TARGET" })
+        publicClient.readContract({ address: factory, abi: artifacts.factory.abi, functionName: "graduationTarget" })
       ]);
       if (
         String(boundAdapter).toLowerCase() !== adapter.toLowerCase() ||
@@ -237,7 +237,9 @@ export function TestnetStackDeployment() {
       <ol className="deployment-steps">
         {steps.map((step, index) => <li key={step}><span>{index + 1}</span>{step}</li>)}
       </ol>
-      <div className="deployment-rules">\n        <p><strong>Not a token-launch fee.</strong> This page deploys shared platform infrastructure once.</p>
+      <div className="deployment-rules">
+        <p><strong>Not a token-launch fee.</strong> This page deploys shared platform infrastructure once.</p>
+        <p><strong>Optimized test stack:</strong> low-cost clone launches · no duplicate names or tickers</p>
         <p><strong>Test parameters:</strong> 1% curve fee · 0.001 test ETH graduation target</p>
         <p>This deploys a disposable upstream V4 PoolManager for testing. It is not an official Uniswap deployment.</p>
       </div>
