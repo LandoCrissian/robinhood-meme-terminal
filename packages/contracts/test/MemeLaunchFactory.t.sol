@@ -96,6 +96,24 @@ contract MemeLaunchFactoryTest {
         require(firstPool != secondPool, "pool reservation reused");
     }
 
+    function testRejectsDuplicateNameIgnoringAsciiCase() public {
+        uint16[5] memory split = [uint16(3000), 2500, 1500, 1500, 1500];
+        factory.launch("Popular Meme", "FIRST", 1_000_000_000 ether, "", recipients, split);
+        (bool success,) = address(factory).call(
+            abi.encodeCall(factory.launch, ("popular meme", "SECOND", 1_000_000_000 ether, "", recipients, split))
+        );
+        require(!success, "duplicate name accepted");
+    }
+
+    function testRejectsDuplicateSymbolIgnoringAsciiCase() public {
+        uint16[5] memory split = [uint16(3000), 2500, 1500, 1500, 1500];
+        factory.launch("Original", "VAMP", 1_000_000_000 ether, "", recipients, split);
+        (bool success,) = address(factory).call(
+            abi.encodeCall(factory.launch, ("Copy", "vamp", 1_000_000_000 ether, "", recipients, split))
+        );
+        require(!success, "duplicate symbol accepted");
+    }
+
     function testRejectsZeroPoolReservation() public {
         MemeLaunchFactory invalidFactory = new MemeLaunchFactory(
             address(new ZeroReservationAdapter()),
