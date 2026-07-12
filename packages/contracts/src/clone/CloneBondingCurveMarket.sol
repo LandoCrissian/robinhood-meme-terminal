@@ -19,7 +19,7 @@ contract CloneBondingCurveMarket {
     bytes32 public graduationPoolId;
     uint16 public feeBps;
     uint256 public graduationTarget;
-    uint256 public invariantK;
+    uint256 public curveInvariantK;
 
     uint256 public virtualEthReserve;
     uint256 public virtualTokenReserve;
@@ -101,7 +101,7 @@ contract CloneBondingCurveMarket {
         virtualEthReserve = virtualEthReserve_;
         virtualTokenReserve = virtualTokenReserve_;
         graduationTarget = graduationTarget_;
-        invariantK = virtualEthReserve_ * virtualTokenReserve_;
+        curveInvariantK = virtualEthReserve_ * virtualTokenReserve_;
     }
 
     receive() external payable {
@@ -113,7 +113,7 @@ contract CloneBondingCurveMarket {
         fee = (ethIn * feeBps) / BPS_DENOMINATOR;
         uint256 netEth = ethIn - fee;
         uint256 nextVirtualEth = virtualEthReserve + netEth;
-        uint256 nextVirtualToken = _ceilDiv(invariantK, nextVirtualEth);
+        uint256 nextVirtualToken = _ceilDiv(curveInvariantK, nextVirtualEth);
         if (nextVirtualToken >= virtualTokenReserve) return (0, fee);
         tokensOut = virtualTokenReserve - nextVirtualToken;
     }
@@ -121,7 +121,7 @@ contract CloneBondingCurveMarket {
     function quoteSell(uint256 tokensIn) public view returns (uint256 ethOut, uint256 fee, uint256 grossEth) {
         if (tokensIn == 0) return (0, 0, 0);
         uint256 nextVirtualToken = virtualTokenReserve + tokensIn;
-        uint256 nextVirtualEth = _ceilDiv(invariantK, nextVirtualToken);
+        uint256 nextVirtualEth = _ceilDiv(curveInvariantK, nextVirtualToken);
         if (nextVirtualEth >= virtualEthReserve) return (0, 0, 0);
         grossEth = virtualEthReserve - nextVirtualEth;
         fee = (grossEth * feeBps) / BPS_DENOMINATOR;
