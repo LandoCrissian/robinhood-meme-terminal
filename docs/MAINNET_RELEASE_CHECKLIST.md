@@ -32,6 +32,7 @@ These values are immutable in the release candidate and must be approved before 
 | Community launch fee distribution | 40% creator / 20% community / 10% trader incentives / 30% protocol |
 | Protocol share distribution | 40% treasury / 20% buyback reserve / 20% graduation assistance / 10% referral reserve / 10% ecosystem growth |
 | Factory version activation delay | 48 hours |
+| Community/trader reward release delay | 24 hours |
 
 Percentages distribute the 1% curve fee, not the full trade value. Graduation liquidity stays in each market's reserve and is separate from the protocol graduation-assistance fund.
 
@@ -40,7 +41,7 @@ Percentages distribute the 1% curve fee, not the full trade value. Graduation li
 - Tokens, markets, reward vaults, and graduation bindings are not proxies and cannot be rewritten after launch.
 - The factory and protocol revenue router have no owner, upgrade function, arbitrary-call function, recipient-change function, or emergency withdrawal bypass.
 - Protocol revenue destinations are immutable and must be five distinct deployed multisigs or purpose-specific vault contracts.
-- The rewards controller and factory governance must be deployed contracts; production use should assign both to separately controlled multisigs.
+- The factory deploys a purpose-only rewards controller with a fixed 24-hour release delay. Its separate governance multisig can propose or cancel releases, but cannot make arbitrary calls or touch tokens, markets, graduation liquidity, or protocol revenue.
 - Future releases deploy a new factory. A 48-hour delayed registry proposal changes only the factory used for future launches.
 - A registry update cannot alter existing tokens, markets, rewards, or liquidity.
 - Fair Start is automatic: trading opens after 3 blocks, then protects the next 25 blocks with a 0.5% per-buy cap, 1.5% cumulative wallet cap, one buy per wallet per block, and recipient-equals-caller enforcement.
@@ -54,7 +55,7 @@ Percentages distribute the 1% curve fee, not the full trade value. Graduation li
 - [ ] Complete a Robinhood mainnet fork deployment and smoke test against the canonical PoolManager.
 - [ ] Review and approve every economic and Fair Start parameter above.
 - [ ] Deploy and independently verify five distinct purpose-specific revenue multisigs/vaults.
-- [ ] Deploy and verify a rewards-controller multisig/contract.
+- [ ] Deploy and verify a separate rewards-governance multisig for the purpose-only controller.
 - [ ] Deploy and verify a separate factory-governance multisig.
 - [ ] Confirm multisig signers, thresholds, recovery procedures, and hardware-wallet custody.
 - [ ] Fund a dedicated deployment wallet with only the ETH needed for deployment.
@@ -72,7 +73,7 @@ From `packages/contracts`, export the required values locally. Never paste a pri
 
 Required operator values:
 
-- `REWARDS_CONTROLLER`
+- `REWARDS_GOVERNANCE`
 - `FACTORY_GOVERNANCE`
 - `TREASURY_RECIPIENT`
 - `BUYBACK_RESERVE_RECIPIENT`
@@ -85,6 +86,7 @@ The deployment shell refuses to run unless:
 - the RPC reports chain `4663`;
 - the canonical PoolManager and CREATE2 deployer have bytecode;
 - all operator addresses are valid deployed contracts;
+- the purpose-only rewards controller is deployed and permanently bound to the V4 factory;
 - the five protocol revenue destinations are distinct;
 - the deployer has ETH;
 - `MAINNET_DEPLOYMENT_CONFIRMED=YES_DEPLOY_ROBINHOOD_MAINNET` is explicitly set.
@@ -100,6 +102,7 @@ Do not point the public launcher at the mainnet registry/factory until the smoke
 - V4 factory and all clone implementations;
 - immutable protocol-router recipients and 40/20/20/10/10 accounting;
 - delayed factory registry, governance, active version, and active factory;
+- delayed purpose-rewards controller, separate governance, registered-vault enforcement, and 24-hour release delay;
 - immutable fee and curve values;
 - Fair Start delay, duration, and caps;
 - absence of factory/router owner and proxy upgrade entrypoints;

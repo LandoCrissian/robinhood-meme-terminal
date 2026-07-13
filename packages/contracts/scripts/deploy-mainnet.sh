@@ -32,7 +32,7 @@ require_contract() {
 [[ -n "${DEPLOYER_PRIVATE_KEY:-}" ]] || fail "DEPLOYER_PRIVATE_KEY is required from a dedicated deployment wallet."
 
 OPERATOR_ADDRESSES=(
-  REWARDS_CONTROLLER
+  REWARDS_GOVERNANCE
   FACTORY_GOVERNANCE
   TREASURY_RECIPIENT
   BUYBACK_RESERVE_RECIPIENT
@@ -77,7 +77,7 @@ BALANCE="$(cast balance "$DEPLOYER_ADDRESS" --rpc-url "$RPC_URL")"
 echo "Robinhood Chain mainnet preflight passed."
 echo "Deployer: $DEPLOYER_ADDRESS"
 echo "Governance: $FACTORY_GOVERNANCE"
-echo "Rewards controller: $REWARDS_CONTROLLER"
+echo "Rewards governance: $REWARDS_GOVERNANCE"
 echo "Canonical Uniswap V4 PoolManager: $CANONICAL_POOL_MANAGER"
 echo "Deployer balance: $BALANCE wei"
 echo "All protocol revenue destinations are distinct deployed contracts."

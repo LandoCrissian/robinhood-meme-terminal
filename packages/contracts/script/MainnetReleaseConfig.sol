@@ -18,5 +18,6 @@ library MainnetReleaseConfig {
     uint256 internal constant GRADUATION_TARGET = 1 ether;
 
     uint256 internal constant FACTORY_ACTIVATION_DELAY = 2 days;
+    uint256 internal constant REWARD_RELEASE_DELAY = 1 days;
     bytes32 internal constant FACTORY_VERSION = keccak256("RMT_FACTORY_V4");
 }

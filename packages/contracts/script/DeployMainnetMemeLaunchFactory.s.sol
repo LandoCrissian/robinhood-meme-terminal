@@ -4,6 +4,7 @@ pragma solidity ^0.8.26;
 import {CloneBondingCurveMarketV2} from "../src/clone/CloneBondingCurveMarketV2.sol";
 import {LowCostMemeLaunchFactoryV4} from "../src/LowCostMemeLaunchFactoryV4.sol";
 import {ProtocolRevenueRouter} from "../src/ProtocolRevenueRouter.sol";
+import {PurposeRewardsController} from "../src/PurposeRewardsController.sol";
 import {VersionedFactoryRegistry} from "../src/VersionedFactoryRegistry.sol";
 import {V4GraduationAdapter} from "../src/V4GraduationAdapter.sol";
 import {V4GraduationHook} from "../src/V4GraduationHook.sol";
@@ -27,7 +28,6 @@ contract DeployMainnetMemeLaunchFactory {
     error MissingCanonicalContract(address account);
     error InvalidOperatorAddress();
     error DuplicateRevenueRecipient();
-    error RewardsControllerCodeMissing();
     error HookAddressMismatch();
     error BindingVerificationFailed();
 
@@ -37,6 +37,7 @@ contract DeployMainnetMemeLaunchFactory {
             V4GraduationHook hook,
             V4GraduationAdapter adapter,
             ProtocolRevenueRouter revenueRouter,
+            PurposeRewardsController rewardsController,
             LowCostMemeLaunchFactoryV4 factory,
             VersionedFactoryRegistry registry
         )
@@ -47,7 +48,7 @@ contract DeployMainnetMemeLaunchFactory {
 
         uint256 deployerPrivateKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
         address deployer = vm.addr(deployerPrivateKey);
-        address rewardsController = vm.envAddress("REWARDS_CONTROLLER");
+        address rewardsGovernance = vm.envAddress("REWARDS_GOVERNANCE");
         address governance = vm.envAddress("FACTORY_GOVERNANCE");
         address[5] memory revenueRecipients = [
             vm.envAddress("TREASURY_RECIPIENT"),
@@ -57,10 +58,9 @@ contract DeployMainnetMemeLaunchFactory {
             vm.envAddress("ECOSYSTEM_GROWTH_RECIPIENT")
         ];
 
-        if (deployer == address(0) || rewardsController == address(0) || governance == address(0)) {
+        if (deployer == address(0) || rewardsGovernance == address(0) || governance == address(0)) {
             revert InvalidOperatorAddress();
         }
-        if (rewardsController.code.length == 0) revert RewardsControllerCodeMissing();
         for (uint256 i; i < revenueRecipients.length; ++i) {
             if (revenueRecipients[i] == address(0)) revert InvalidOperatorAddress();
             for (uint256 j; j < i; ++j) {
@@ -83,16 +83,18 @@ contract DeployMainnetMemeLaunchFactory {
         hook.bindAdapter(address(adapter));
 
         revenueRouter = new ProtocolRevenueRouter(revenueRecipients);
+        rewardsController = new PurposeRewardsController(deployer, rewardsGovernance, Config.REWARD_RELEASE_DELAY);
         factory = new LowCostMemeLaunchFactoryV4(
             address(adapter),
             Config.MARKET_FEE_BPS,
             Config.INITIAL_VIRTUAL_ETH_RESERVE,
             Config.INITIAL_VIRTUAL_TOKEN_RESERVE,
             Config.GRADUATION_TARGET,
-            rewardsController,
+            address(rewardsController),
             address(revenueRouter)
         );
         adapter.bindFactory(address(factory));
+        rewardsController.bindFactory(address(factory));
 
         registry = new VersionedFactoryRegistry(
             governance, Config.FACTORY_ACTIVATION_DELAY, address(factory), Config.FACTORY_VERSION
@@ -107,7 +109,11 @@ contract DeployMainnetMemeLaunchFactory {
                 || address(adapter.poolManager()) != Config.POOL_MANAGER || address(adapter.hook()) != address(hook)
                 || factory.graduationAdapter() != address(adapter)
                 || factory.platformTreasury() != address(revenueRouter)
-                || factory.rewardsController() != rewardsController || factory.marketFeeBps() != Config.MARKET_FEE_BPS
+                || factory.rewardsController() != address(rewardsController)
+                || rewardsController.factory() != address(factory)
+                || rewardsController.governance() != rewardsGovernance
+                || rewardsController.releaseDelay() != Config.REWARD_RELEASE_DELAY
+                || factory.marketFeeBps() != Config.MARKET_FEE_BPS
                 || factory.initialVirtualEthReserve() != Config.INITIAL_VIRTUAL_ETH_RESERVE
                 || factory.initialVirtualTokenReserve() != Config.INITIAL_VIRTUAL_TOKEN_RESERVE
                 || factory.graduationTarget() != Config.GRADUATION_TARGET || registry.governance() != governance

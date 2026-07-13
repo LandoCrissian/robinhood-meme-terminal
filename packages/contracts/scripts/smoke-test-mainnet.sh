@@ -8,13 +8,15 @@ EXPECTED_VIRTUAL_ETH="300000000000000000"
 EXPECTED_VIRTUAL_TOKEN="1073000000000000000000000000"
 EXPECTED_GRADUATION_TARGET="1000000000000000000"
 EXPECTED_REGISTRY_DELAY="172800"
+EXPECTED_REWARD_DELAY="86400"
 EXPECTED_FACTORY_VERSION="$(cast keccak 'RMT_FACTORY_V4')"
 
 RPC_URL="${ROBINHOOD_MAINNET_RPC_URL:-}"
 FACTORY_ADDRESS="${FACTORY_ADDRESS:-}"
 ROUTER_ADDRESS="${ROUTER_ADDRESS:-}"
 REGISTRY_ADDRESS="${REGISTRY_ADDRESS:-}"
-EXPECTED_REWARDS_CONTROLLER="${REWARDS_CONTROLLER:-}"
+CONTROLLER_ADDRESS="${CONTROLLER_ADDRESS:-}"
+EXPECTED_REWARDS_GOVERNANCE="${REWARDS_GOVERNANCE:-}"
 EXPECTED_GOVERNANCE="${FACTORY_GOVERNANCE:-}"
 EXPECTED_RECIPIENTS=(
   "${TREASURY_RECIPIENT:-}"
@@ -31,16 +33,16 @@ fail() {
 
 normalize() { printf '%s' "$1" | tr '[:upper:]' '[:lower:]'; }
 
-for NAME in RPC_URL FACTORY_ADDRESS ROUTER_ADDRESS REGISTRY_ADDRESS EXPECTED_REWARDS_CONTROLLER EXPECTED_GOVERNANCE; do
+for NAME in RPC_URL FACTORY_ADDRESS ROUTER_ADDRESS REGISTRY_ADDRESS CONTROLLER_ADDRESS EXPECTED_REWARDS_GOVERNANCE EXPECTED_GOVERNANCE; do
   VALUE="${!NAME}"
   [[ -n "$VALUE" ]] || fail "$NAME is required."
 done
-for ADDRESS in "$FACTORY_ADDRESS" "$ROUTER_ADDRESS" "$REGISTRY_ADDRESS" "$EXPECTED_REWARDS_CONTROLLER" "$EXPECTED_GOVERNANCE" "${EXPECTED_RECIPIENTS[@]}"; do
+for ADDRESS in "$FACTORY_ADDRESS" "$ROUTER_ADDRESS" "$REGISTRY_ADDRESS" "$CONTROLLER_ADDRESS" "$EXPECTED_REWARDS_GOVERNANCE" "$EXPECTED_GOVERNANCE" "${EXPECTED_RECIPIENTS[@]}"; do
   [[ "$ADDRESS" =~ ^0x[0-9a-fA-F]{40}$ ]] || fail "invalid expected address: $ADDRESS."
 done
 
 [[ "$(cast chain-id --rpc-url "$RPC_URL")" == "$EXPECTED_CHAIN_ID" ]] || fail "RPC is not Robinhood Chain mainnet."
-for ADDRESS in "$FACTORY_ADDRESS" "$ROUTER_ADDRESS" "$REGISTRY_ADDRESS"; do
+for ADDRESS in "$FACTORY_ADDRESS" "$ROUTER_ADDRESS" "$REGISTRY_ADDRESS" "$CONTROLLER_ADDRESS"; do
   [[ "$(cast code "$ADDRESS" --rpc-url "$RPC_URL")" != "0x" ]] || fail "protocol contract has no bytecode at $ADDRESS."
 done
 
@@ -51,6 +53,9 @@ BOUND_FACTORY="$(cast call "$ADAPTER" 'factory()(address)' --rpc-url "$RPC_URL")
 BOUND_ADAPTER="$(cast call "$HOOK" 'adapter()(address)' --rpc-url "$RPC_URL")"
 ROUTER="$(cast call "$FACTORY_ADDRESS" 'platformTreasury()(address)' --rpc-url "$RPC_URL")"
 CONTROLLER="$(cast call "$FACTORY_ADDRESS" 'rewardsController()(address)' --rpc-url "$RPC_URL")"
+CONTROLLER_FACTORY="$(cast call "$CONTROLLER_ADDRESS" 'factory()(address)' --rpc-url "$RPC_URL")"
+CONTROLLER_GOVERNANCE="$(cast call "$CONTROLLER_ADDRESS" 'governance()(address)' --rpc-url "$RPC_URL")"
+CONTROLLER_DELAY="$(cast call "$CONTROLLER_ADDRESS" 'releaseDelay()(uint256)' --rpc-url "$RPC_URL" | awk '{print $1}')"
 FEE="$(cast call "$FACTORY_ADDRESS" 'marketFeeBps()(uint16)' --rpc-url "$RPC_URL" | awk '{print $1}')"
 VIRTUAL_ETH="$(cast call "$FACTORY_ADDRESS" 'initialVirtualEthReserve()(uint256)' --rpc-url "$RPC_URL" | awk '{print $1}')"
 VIRTUAL_TOKEN="$(cast call "$FACTORY_ADDRESS" 'initialVirtualTokenReserve()(uint256)' --rpc-url "$RPC_URL" | awk '{print $1}')"
@@ -80,7 +85,10 @@ done
 [[ "$(normalize "$BOUND_FACTORY")" == "$(normalize "$FACTORY_ADDRESS")" ]] || fail "adapter/factory binding mismatch."
 [[ "$(normalize "$BOUND_ADAPTER")" == "$(normalize "$ADAPTER")" ]] || fail "hook/adapter binding mismatch."
 [[ "$(normalize "$ROUTER")" == "$(normalize "$ROUTER_ADDRESS")" ]] || fail "protocol router mismatch."
-[[ "$(normalize "$CONTROLLER")" == "$(normalize "$EXPECTED_REWARDS_CONTROLLER")" ]] || fail "rewards controller mismatch."
+[[ "$(normalize "$CONTROLLER")" == "$(normalize "$CONTROLLER_ADDRESS")" ]] || fail "rewards controller mismatch."
+[[ "$(normalize "$CONTROLLER_FACTORY")" == "$(normalize "$FACTORY_ADDRESS")" ]] || fail "controller/factory binding mismatch."
+[[ "$(normalize "$CONTROLLER_GOVERNANCE")" == "$(normalize "$EXPECTED_REWARDS_GOVERNANCE")" ]] || fail "rewards governance mismatch."
+[[ "$CONTROLLER_DELAY" == "$EXPECTED_REWARD_DELAY" ]] || fail "reward release delay mismatch."
 [[ "$FEE" == "$EXPECTED_MARKET_FEE_BPS" ]] || fail "market fee mismatch: $FEE."
 [[ "$VIRTUAL_ETH" == "$EXPECTED_VIRTUAL_ETH" ]] || fail "virtual ETH reserve mismatch: $VIRTUAL_ETH."
 [[ "$VIRTUAL_TOKEN" == "$EXPECTED_VIRTUAL_TOKEN" ]] || fail "virtual token reserve mismatch: $VIRTUAL_TOKEN."
@@ -122,11 +130,18 @@ fi
 if cast call "$ROUTER_ADDRESS" 'owner()(address)' --rpc-url "$RPC_URL" >/dev/null 2>&1; then
   fail "revenue router unexpectedly exposes an owner."
 fi
+if cast call "$CONTROLLER_ADDRESS" 'owner()(address)' --rpc-url "$RPC_URL" >/dev/null 2>&1; then
+  fail "rewards controller unexpectedly exposes an owner."
+fi
+if cast call "$CONTROLLER_ADDRESS" 'upgradeTo(address)' "$CONTROLLER_ADDRESS" --rpc-url "$RPC_URL" >/dev/null 2>&1; then
+  fail "rewards controller unexpectedly exposes an upgrade path."
+fi
 
 echo "Robinhood Chain secured V4 mainnet stack verified."
 echo "Factory: $FACTORY_ADDRESS"
 echo "Protocol revenue router: $ROUTER_ADDRESS"
 echo "Version registry: $REGISTRY_ADDRESS"
+echo "Delayed rewards controller: $CONTROLLER_ADDRESS"
 echo "Adapter: $ADAPTER"
 echo "Hook: $HOOK"
 echo "Canonical PoolManager: $MANAGER"
