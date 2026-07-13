@@ -57,5 +57,9 @@ jobs:
           name: wallet-deployment-artifacts
           path: apps/web/lib/generated/testnet-stack.json
           retention-days: 3
-      - run: bash -n scripts/deploy-testnet.sh
-      - run: bash -n scripts/smoke-test-factory.sh
+      - name: Validate deployment scripts
+        run: |
+          bash -n scripts/deploy-testnet.sh
+          bash -n scripts/smoke-test-factory.sh
+          bash -n scripts/deploy-mainnet.sh
+          bash -n scripts/smoke-test-mainnet.sh
