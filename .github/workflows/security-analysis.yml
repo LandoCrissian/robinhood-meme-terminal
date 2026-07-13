@@ -30,6 +30,5 @@ jobs:
         uses: crytic/slither-action@v0.4.2
         with:
           target: packages/contracts
-          ignore-compile: true
           fail-on: high
           slither-args: --filter-paths "(lib/|test/|script/|broadcast/)"
