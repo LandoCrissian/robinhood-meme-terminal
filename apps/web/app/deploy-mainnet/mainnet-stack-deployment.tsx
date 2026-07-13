@@ -92,9 +92,19 @@ function purpose(value: string) {
   return keccak256(toHex(value));
 }
 
+function errorCode(cause: unknown) {
+  let current = cause;
+  for (let depth = 0; depth < 6 && current && typeof current === "object"; depth += 1) {
+    const candidate = current as { code?: unknown; cause?: unknown };
+    if (candidate.code === 4001) return 4001;
+    current = candidate.cause;
+  }
+  return undefined;
+}
+
 function describeError(cause: unknown) {
   const message = cause instanceof Error ? cause.message : String(cause);
-  if (/4001|rejected|denied|cancelled/i.test(message)) {
+  if (errorCode(cause) === 4001) {
     return "The wallet cancelled this step. Nothing else was deployed. Reconnect the same RMTMain wallet and choose Resume.";
   }
   return message || "The deployment stopped. The completed steps are saved and will not be repeated.";
@@ -147,10 +157,17 @@ export function MainnetStackDeployment() {
     return Boolean(code && code !== "0x");
   }
 
-  async function prepareGas(data: Hex, to?: Address) {
+  async function prepareGas(data: Hex, to?: Address, reviewedFallbackGas?: bigint) {
     if (!publicClient || !address) throw new Error("Mainnet provider is unavailable.");
-    const gas = await publicClient.estimateGas({ account: address, data, ...(to ? { to } : {}) });
-    const buffered = gas * 115n / 100n;
+    let buffered: bigint;
+    try {
+      const gas = await publicClient.estimateGas({ account: address, data, ...(to ? { to } : {}) });
+      buffered = gas * 115n / 100n;
+    } catch (cause) {
+      if (!reviewedFallbackGas) throw cause;
+      buffered = reviewedFallbackGas;
+      setStatus("RPC estimate unavailable — using reviewed hook gas limit");
+    }
     const gasPrice = await publicClient.getGasPrice();
     const cost = buffered * gasPrice;
     const currentBalance = await publicClient.getBalance({ address });
@@ -256,7 +273,10 @@ export function MainnetStackDeployment() {
     if (!(await hasCode(expected))) {
       setStatus("Approve: Uniswap V4 graduation hook");
       const data = concat([salt, initCode]);
-      const gas = await prepareGas(data, CREATE2_DEPLOYER);
+      // Robinhood's public RPC can reject this canonical CREATE2 estimate before MetaMask opens.
+      // The exact call is exercised in the mainnet-fork release gate; the limit caps execution,
+      // while the wallet only pays gas actually consumed.
+      const gas = await prepareGas(data, CREATE2_DEPLOYER, 8_000_000n);
       const hash = await walletClient.sendTransaction({
         account: address,
         chain: robinhoodChain,
