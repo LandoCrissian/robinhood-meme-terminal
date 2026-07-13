@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { formatEther, formatUnits, maxUint256, parseEther, parseUnits, type Address } from "viem";
-import { useAccount, usePublicClient, useReadContract, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
+import { useAccount, useBalance, usePublicClient, useReadContract, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { activeChain, isMainnetRelease } from "../lib/network";
 import { useLaunchRecord } from "../lib/use-launch-record";
 import { PriceHistoryChart, type PricePoint } from "./price-history-chart";
@@ -161,6 +161,7 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply }: { tokenAddres
   const progress = useReadContract({ address: target, abi: marketAbi, functionName: "progressBps", chainId: activeChain.id, query: { enabled, refetchInterval: 5_000 } });
   const graduated = useReadContract({ address: target, abi: marketAbi, functionName: "graduated", chainId: activeChain.id, query: { enabled, refetchInterval: 5_000 } });
   const balance = useReadContract({ address: tokenAddress, abi: tokenTradeAbi, functionName: "balanceOf", args: [account ?? ZERO], chainId: activeChain.id, query: { enabled: Boolean(account), refetchInterval: 5_000 } });
+  const walletBalance = useBalance({ address: account, chainId: activeChain.id, query: { enabled: Boolean(account), refetchInterval: 5_000 } });
   const allowance = useReadContract({ address: tokenAddress, abi: tokenTradeAbi, functionName: "allowance", args: [account ?? ZERO, target], chainId: activeChain.id, query: { enabled: Boolean(account && market), refetchInterval: 5_000 } });
   const buyOut = buyQuote.data?.[0] ?? 0n;
   const sellOut = sellQuote.data?.[0] ?? 0n;
@@ -168,6 +169,9 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply }: { tokenAddres
   const busy = isPending || receipt.isLoading;
   const priceWei = virtualTokens.data && virtualTokens.data > 0n ? (virtualEth.data ?? 0n) * 10n ** 18n / virtualTokens.data : 0n;
   const marketCapWei = virtualTokens.data && virtualTokens.data > 0n ? (virtualEth.data ?? 0n) * totalSupply / virtualTokens.data : 0n;
+  const positionValueWei = (balance.data ?? 0n) * priceWei / 10n ** 18n;
+  const walletValueUsd = ethUsd === undefined ? undefined : Number(formatEther(walletBalance.data?.value ?? 0n)) * ethUsd;
+  const positionValueUsd = ethUsd === undefined ? undefined : Number(formatEther(positionValueWei)) * ethUsd;
   const tokenPriceUsd = ethUsd === undefined ? undefined : Number(formatEther(priceWei)) * ethUsd;
   const marketCapUsd = ethUsd === undefined ? undefined : Number(formatEther(marketCapWei)) * ethUsd;
   const buyValueUsd = ethUsd === undefined ? undefined : Number(buyAmount || "0") * ethUsd;
@@ -223,7 +227,7 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply }: { tokenAddres
   useEffect(() => {
     if (!receipt.isSuccess) return;
     if (lastAction !== "approve") setTradeMessage(undefined);
-    void Promise.all([buyQuote.refetch(), sellQuote.refetch(), reserve.refetch(), virtualEth.refetch(), virtualTokens.refetch(), graduationTarget.refetch(), progress.refetch(), graduated.refetch(), balance.refetch(), allowance.refetch()]);
+    void Promise.all([buyQuote.refetch(), sellQuote.refetch(), reserve.refetch(), virtualEth.refetch(), virtualTokens.refetch(), graduationTarget.refetch(), progress.refetch(), graduated.refetch(), balance.refetch(), walletBalance.refetch(), allowance.refetch()]);
   }, [receipt.isSuccess]);
 
   useEffect(() => {
@@ -270,7 +274,8 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply }: { tokenAddres
   return (
     <section className="panel marketPanel">
       <div className="sectionTitle"><div><p className="eyebrow">LIVE BONDING CURVE</p><h2>Trade ${symbol}</h2></div><span className="badge liveBadge">{isMainnetRelease ? "MAINNET" : "TESTNET"}</span></div>
-      <div className="marketStats intelligenceStats"><div><small>Token price</small><strong>{formatPrice(priceWei)} ETH</strong><span className="usdSub">≈ {formatUsd(tokenPriceUsd)}</span></div><div><small>Market cap</small><strong>{formatEth(marketCapWei, 6)} ETH</strong><span className="usdSub">≈ {formatUsd(marketCapUsd)}</span></div><div><small>Curve reserve</small><strong>{formatEth(reserve.data ?? 0n, 7)} ETH</strong><span className="usdSub">{ethUsd ? formatUsd(Number(formatEther(reserve.data ?? 0n)) * ethUsd) : "USD unavailable"}</span></div><div><small>Your balance</small><strong>{Number(formatUnits(balance.data ?? 0n, 18)).toLocaleString(undefined, { maximumFractionDigits: 2 })} {symbol}</strong><span className="usdSub">{priceUpdatedAt ? "ETH/USD refreshed automatically" : "Loading ETH/USD…"}</span></div></div>
+      <div className="marketStats intelligenceStats"><div><small>Token price</small><strong>{formatPrice(priceWei)} ETH</strong><span className="usdSub">≈ {formatUsd(tokenPriceUsd)}</span></div><div><small>Market cap</small><strong>{formatEth(marketCapWei, 6)} ETH</strong><span className="usdSub">≈ {formatUsd(marketCapUsd)}</span></div><div><small>Curve reserve</small><strong>{formatEth(reserve.data ?? 0n, 7)} ETH</strong><span className="usdSub">{ethUsd ? formatUsd(Number(formatEther(reserve.data ?? 0n)) * ethUsd) : "USD unavailable"}</span></div><div><small>Your position</small><strong>{Number(formatUnits(balance.data ?? 0n, 18)).toLocaleString(undefined, { maximumFractionDigits: 2 })} {symbol}</strong><span className="usdSub">≈ {formatUsd(positionValueUsd)} · {formatEth(positionValueWei, 7)} ETH</span></div></div>
+      {isConnected && <div className="buyingPowerBar"><div><small>Robinhood Chain buying power</small><strong>{walletBalance.isLoading ? "Reading wallet…" : `${formatEth(walletBalance.data?.value ?? 0n, 7)} ETH`}</strong><span>≈ {formatUsd(walletValueUsd)} available before network fees</span></div><a href="https://docs.robinhood.com/chain/bridging/" target="_blank" rel="noreferrer">Add ETH ↗</a></div>}
       <div className="graduationCard">
         <div><span>Market reserve</span><strong>{formatEth(reserve.data ?? 0n, 7)} ETH</strong></div>
         <small>{isMainnetRelease ? graduated.data ? "Graduated to Uniswap V4. Curve trading is closed; DEX routing is next." : `${Number(progress.data ?? 0n) / 100}% toward automatic Uniswap V4 graduation (${formatEth(graduationTarget.data ?? 0n, 4)} ETH target).` : "DEX migration is disabled in this testnet alpha. Launching, curve trading, and fee accounting remain live."}</small>

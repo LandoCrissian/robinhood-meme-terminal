@@ -75,3 +75,12 @@
 .starterLinks a{min-height:38px;display:inline-flex;align-items:center;padding:0 11px;border:1px solid #2d4935;border-radius:10px;color:#75ef86;text-decoration:none;font-size:.66rem;font-weight:850}
 .starterLinks a:hover,.starterLinks a:focus-visible{background:#12301a}
 @media(max-width:700px){.starterSteps{grid-template-columns:1fr}.starterGuide summary{min-height:56px}.starterLinks a{flex:1;justify-content:center}}
+
+.buyingPowerBar{display:flex;align-items:center;justify-content:space-between;gap:18px;margin:-8px 0 22px;padding:14px 16px;border:1px solid #2b4933;border-radius:14px;background:#0b1710}
+.buyingPowerBar>div{display:grid;grid-template-columns:auto auto;align-items:baseline;gap:3px 12px;min-width:0}
+.buyingPowerBar small{grid-column:1/-1;color:#738078;font-size:.65rem;font-weight:800}
+.buyingPowerBar strong{font-size:.86rem}
+.buyingPowerBar span{color:#7f8d83;font-size:.68rem}
+.buyingPowerBar a{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;min-height:40px;padding:0 13px;border:1px solid #2f5c39;border-radius:10px;color:#76ef87;text-decoration:none;font-size:.7rem;font-weight:900}
+.buyingPowerBar a:hover,.buyingPowerBar a:focus-visible{background:#13331b}
+@media(max-width:560px){.buyingPowerBar{align-items:stretch;flex-direction:column;gap:11px}.buyingPowerBar>div{grid-template-columns:1fr}.buyingPowerBar small{grid-column:auto}.buyingPowerBar a{width:100%}}
