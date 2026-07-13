@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import {LowCostMemeLaunchFactoryV3} from "../src/LowCostMemeLaunchFactoryV3.sol";
+import {CloneBondingCurveMarketV2} from "../src/clone/CloneBondingCurveMarketV2.sol";
+import {LowCostMemeLaunchFactoryV4} from "../src/LowCostMemeLaunchFactoryV4.sol";
+import {ProtocolRevenueRouter} from "../src/ProtocolRevenueRouter.sol";
+import {VersionedFactoryRegistry} from "../src/VersionedFactoryRegistry.sol";
 import {V4GraduationAdapter} from "../src/V4GraduationAdapter.sol";
 import {V4GraduationHook} from "../src/V4GraduationHook.sol";
 import {MainnetReleaseConfig as Config} from "./MainnetReleaseConfig.sol";
@@ -23,12 +26,20 @@ contract DeployMainnetMemeLaunchFactory {
     error WrongChain(uint256 actualChainId);
     error MissingCanonicalContract(address account);
     error InvalidOperatorAddress();
+    error DuplicateRevenueRecipient();
+    error RewardsControllerCodeMissing();
     error HookAddressMismatch();
     error BindingVerificationFailed();
 
     function run()
         external
-        returns (V4GraduationHook hook, V4GraduationAdapter adapter, LowCostMemeLaunchFactoryV3 factory)
+        returns (
+            V4GraduationHook hook,
+            V4GraduationAdapter adapter,
+            ProtocolRevenueRouter revenueRouter,
+            LowCostMemeLaunchFactoryV4 factory,
+            VersionedFactoryRegistry registry
+        )
     {
         if (block.chainid != Config.CHAIN_ID) revert WrongChain(block.chainid);
         if (Config.POOL_MANAGER.code.length == 0) revert MissingCanonicalContract(Config.POOL_MANAGER);
@@ -36,12 +47,26 @@ contract DeployMainnetMemeLaunchFactory {
 
         uint256 deployerPrivateKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
         address deployer = vm.addr(deployerPrivateKey);
-        address platformTreasury = vm.envAddress("PLATFORM_TREASURY");
         address rewardsController = vm.envAddress("REWARDS_CONTROLLER");
-        if (
-            deployer == address(0) || platformTreasury == address(0) || rewardsController == address(0)
-                || platformTreasury == Config.POOL_MANAGER || rewardsController == Config.POOL_MANAGER
-        ) revert InvalidOperatorAddress();
+        address governance = vm.envAddress("FACTORY_GOVERNANCE");
+        address[5] memory revenueRecipients = [
+            vm.envAddress("TREASURY_RECIPIENT"),
+            vm.envAddress("BUYBACK_RESERVE_RECIPIENT"),
+            vm.envAddress("GRADUATION_ASSISTANCE_RECIPIENT"),
+            vm.envAddress("REFERRAL_RESERVE_RECIPIENT"),
+            vm.envAddress("ECOSYSTEM_GROWTH_RECIPIENT")
+        ];
+
+        if (deployer == address(0) || rewardsController == address(0) || governance == address(0)) {
+            revert InvalidOperatorAddress();
+        }
+        if (rewardsController.code.length == 0) revert RewardsControllerCodeMissing();
+        for (uint256 i; i < revenueRecipients.length; ++i) {
+            if (revenueRecipients[i] == address(0)) revert InvalidOperatorAddress();
+            for (uint256 j; j < i; ++j) {
+                if (revenueRecipients[i] == revenueRecipients[j]) revert DuplicateRevenueRecipient();
+            }
+        }
 
         uint160 flags = uint160(Hooks.BEFORE_INITIALIZE_FLAG | Hooks.BEFORE_ADD_LIQUIDITY_FLAG | Hooks.BEFORE_SWAP_FLAG);
         bytes memory constructorArgs = abi.encode(IPoolManager(Config.POOL_MANAGER), deployer);
@@ -57,26 +82,48 @@ contract DeployMainnetMemeLaunchFactory {
         );
         hook.bindAdapter(address(adapter));
 
-        factory = new LowCostMemeLaunchFactoryV3(
+        revenueRouter = new ProtocolRevenueRouter(revenueRecipients);
+        factory = new LowCostMemeLaunchFactoryV4(
             address(adapter),
             Config.MARKET_FEE_BPS,
             Config.INITIAL_VIRTUAL_ETH_RESERVE,
             Config.INITIAL_VIRTUAL_TOKEN_RESERVE,
             Config.GRADUATION_TARGET,
             rewardsController,
-            platformTreasury
+            address(revenueRouter)
         );
         adapter.bindFactory(address(factory));
+
+        registry = new VersionedFactoryRegistry(
+            governance,
+            Config.FACTORY_ACTIVATION_DELAY,
+            address(factory),
+            Config.FACTORY_VERSION
+        );
         vm.stopBroadcast();
+
+        CloneBondingCurveMarketV2 marketImplementation =
+            CloneBondingCurveMarketV2(payable(factory.marketImplementation()));
 
         if (
             hook.adapter() != address(adapter) || adapter.factory() != address(factory)
                 || address(adapter.poolManager()) != Config.POOL_MANAGER || address(adapter.hook()) != address(hook)
-                || factory.graduationAdapter() != address(adapter) || factory.platformTreasury() != platformTreasury
+                || factory.graduationAdapter() != address(adapter)
+                || factory.platformTreasury() != address(revenueRouter)
                 || factory.rewardsController() != rewardsController || factory.marketFeeBps() != Config.MARKET_FEE_BPS
                 || factory.initialVirtualEthReserve() != Config.INITIAL_VIRTUAL_ETH_RESERVE
                 || factory.initialVirtualTokenReserve() != Config.INITIAL_VIRTUAL_TOKEN_RESERVE
                 || factory.graduationTarget() != Config.GRADUATION_TARGET
+                || registry.governance() != governance || registry.activationDelay() != Config.FACTORY_ACTIVATION_DELAY
+                || registry.activeFactory() != address(factory) || registry.activeVersion() != Config.FACTORY_VERSION
+                || marketImplementation.FAIR_START_DELAY_BLOCKS() != 3
+                || marketImplementation.FAIR_START_PROTECTION_BLOCKS() != 25
+                || marketImplementation.FAIR_START_MAX_TX_BPS() != 50
+                || marketImplementation.FAIR_START_MAX_WALLET_BPS() != 150
         ) revert BindingVerificationFailed();
+
+        for (uint256 i; i < revenueRecipients.length; ++i) {
+            if (revenueRouter.recipients(i) != revenueRecipients[i]) revert BindingVerificationFailed();
+        }
     }
 }
