@@ -258,10 +258,13 @@ contract CloneBondingCurveMarketV2 {
         if (!graduated) revert NotGraduated();
         if (liquidityMigrated) revert AlreadyMigrated();
 
-        uint256 ethAmount = realEthReserve;
+        uint256 trackedEthReserve = realEthReserve;
+        uint256 ethAmount = address(this).balance;
         uint256 tokenAmount = token.balanceOf(address(this));
-        if (ethAmount == 0 || tokenAmount == 0) revert InvalidMigration();
+        if (trackedEthReserve == 0 || ethAmount < trackedEthReserve || tokenAmount == 0) revert InvalidMigration();
 
+        // ETH can be forced into any EVM contract without calling receive().
+        // Include any surplus in permanent graduation liquidity so it cannot freeze migration or be withdrawn.
         liquidityMigrated = true;
         realEthReserve = 0;
 

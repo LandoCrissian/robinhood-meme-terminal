@@ -14,6 +14,14 @@ interface V4FactoryVm {
 
 contract RewardsControllerMock {}
 
+contract ForcedEthSender {
+    constructor() payable {}
+
+    function force(address payable recipient) external {
+        selfdestruct(recipient);
+    }
+}
+
 contract LowCostMemeLaunchFactoryV4Test {
     V4FactoryVm private constant vm = V4FactoryVm(address(uint160(uint256(keccak256("hevm cheat code")))));
 
@@ -123,6 +131,34 @@ contract LowCostMemeLaunchFactoryV4Test {
         (uint256 unrestrictedTokens,) = market.quoteBuy(0.01 ether);
         market.buy{value: 0.01 ether}(address(0xCAFE), unrestrictedTokens, block.timestamp);
         require(market.fairStartPurchased(address(0xCAFE)) == 0, "expired protection changed accounting");
+    }
+
+    function testForcedEthCannotBlockGraduationOrBeWithdrawn() public {
+        (address token, address marketAddress,) = factory.launchSimple("Forced ETH", "FORCE", "");
+        CloneBondingCurveMarketV2 market = CloneBondingCurveMarketV2(payable(marketAddress));
+
+        vm.roll(market.fairStartEndsAtBlock());
+        (uint256 tokensOut,) = market.quoteBuy(1.1 ether);
+        market.buy{value: 1.1 ether}(address(this), tokensOut, block.timestamp);
+        require(market.graduated(), "market did not graduate");
+
+        uint256 trackedReserve = market.realEthReserve();
+        uint256 forcedAmount = 0.123 ether;
+        ForcedEthSender sender = new ForcedEthSender{value: forcedAmount}();
+        sender.force(payable(marketAddress));
+        require(address(market).balance == trackedReserve + forcedAmount, "forced eth missing");
+
+        uint256 remainingInventory = market.token().balanceOf(marketAddress);
+        market.migrateLiquidity();
+
+        MockGraduationAdapter adapter = MockGraduationAdapter(factory.graduationAdapter());
+        require(adapter.ethReceived() == trackedReserve + forcedAmount, "surplus not locked as liquidity");
+        require(adapter.tokensReceived() == remainingInventory, "inventory not migrated");
+        require(address(market).balance == 0, "market retained eth");
+        require(market.realEthReserve() == 0, "tracked reserve not cleared");
+        require(market.liquidityMigrated(), "migration not recorded");
+        require(market.token().balanceOf(marketAddress) == 0, "market retained tokens");
+        require(token != address(0), "token missing");
     }
 
     function testProtocolRevenueCanBePermissionlesslyCollected() public {
