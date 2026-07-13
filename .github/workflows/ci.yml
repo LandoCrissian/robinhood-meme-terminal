@@ -63,3 +63,4 @@ jobs:
           bash -n scripts/smoke-test-factory.sh
           bash -n scripts/deploy-mainnet.sh
           bash -n scripts/smoke-test-mainnet.sh
+          bash -n scripts/test-mainnet-fork.sh
