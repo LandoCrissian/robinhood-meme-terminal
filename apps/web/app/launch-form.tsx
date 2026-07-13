@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState, type ChangeEvent } from "react";
 import { parseEventLogs, type Address } from "viem";
 import { useAccount, useChainId, useReadContract, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
-import { robinhoodChainTestnet } from "@rmt/shared/chains";
+import { activeChain, activeNetworkLabel, isMainnetRelease } from "../lib/network";
 import { memeLaunchFactoryAbi } from "../lib/contracts";
 import { useFactoryAddress } from "../lib/use-factory-address";
 import { launchSchema } from "../lib/launch-schema";
@@ -21,7 +21,7 @@ export function LaunchForm() {
   const chainId = useChainId();
   const factoryAddress = useFactoryAddress();
   const { writeContract, isPending, data: transactionHash, error: writeError } = useWriteContract();
-  const { data: receipt, isLoading: isConfirming, error: receiptError } = useWaitForTransactionReceipt({ hash: transactionHash, chainId: robinhoodChainTestnet.id });
+  const { data: receipt, isLoading: isConfirming, error: receiptError } = useWaitForTransactionReceipt({ hash: transactionHash, chainId: activeChain.id });
   const [name, setName] = useState("");
   const [symbol, setSymbol] = useState("");
   const supply = "1000000000";
@@ -41,8 +41,8 @@ export function LaunchForm() {
   const [imagePreview, setImagePreview] = useState("");
   const [mediaStatus, setMediaStatus] = useState<"idle" | "uploading" | "saved">("idle");
   const [mediaError, setMediaError] = useState("");
-  const v2Read = useReadContract({ address: factoryAddress ?? undefined, abi: memeLaunchFactoryAbi, functionName: "purposeVaultImplementation", chainId: robinhoodChainTestnet.id, query: { enabled: Boolean(factoryAddress), retry: false } });
-  const v3Read = useReadContract({ address: factoryAddress ?? undefined, abi: memeLaunchFactoryAbi, functionName: "communityDestinationsForToken", args: [zeroAddress], chainId: robinhoodChainTestnet.id, query: { enabled: Boolean(factoryAddress), retry: false } });
+  const v2Read = useReadContract({ address: factoryAddress ?? undefined, abi: memeLaunchFactoryAbi, functionName: "purposeVaultImplementation", chainId: activeChain.id, query: { enabled: Boolean(factoryAddress), retry: false } });
+  const v3Read = useReadContract({ address: factoryAddress ?? undefined, abi: memeLaunchFactoryAbi, functionName: "communityDestinationsForToken", args: [zeroAddress], chainId: activeChain.id, query: { enabled: Boolean(factoryAddress), retry: false } });
   const v3Available = v3Read.status === "success";
   const simpleAvailable = Boolean(v2Read.data);
 
@@ -64,7 +64,7 @@ export function LaunchForm() {
     return event ? { token: event.args.token, rewardVault: event.args.rewardVault, launchId: event.args.launchId } : null;
   }, [receipt]);
 
-  const readiness = !factoryAddress ? "Factory not deployed" : !isConnected ? "Connect wallet" : chainId !== robinhoodChainTestnet.id ? "Switch to Robinhood Testnet" : "Review and launch";
+  const readiness = !factoryAddress ? "Factory not deployed" : !isConnected ? "Connect wallet" : chainId !== activeChain.id ? `Switch to ${activeNetworkLabel}` : "Review and launch";
 
   function selectImage(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0] ?? null;
@@ -105,7 +105,7 @@ export function LaunchForm() {
       setValidationErrors(parsed.error.issues.map((issue) => issue.message));
       return;
     }
-    if (!factoryAddress || !isConnected || chainId !== robinhoodChainTestnet.id) return;
+    if (!factoryAddress || !isConnected || chainId !== activeChain.id) return;
     setValidationErrors([]);
     setMediaError("");
     let metadata: string;
@@ -115,14 +115,14 @@ export function LaunchForm() {
     } else {
       metadata = `data:application/json,${encodeURIComponent(JSON.stringify({ name: parsed.data.name, symbol: parsed.data.symbol, description: parsed.data.description, website: parsed.data.website || undefined, x: parsed.data.x || undefined, telegram: parsed.data.telegram || undefined }))}`;
     }
-    if (v3Available && preset === "community") writeContract({ address: factoryAddress, abi: memeLaunchFactoryAbi, functionName: "launchCommunity", args: [parsed.data.name, parsed.data.symbol, metadata] });
-    else if (useSimple) writeContract({ address: factoryAddress, abi: memeLaunchFactoryAbi, functionName: "launchSimple", args: [parsed.data.name, parsed.data.symbol, metadata] });
-    else writeContract({ address: factoryAddress, abi: memeLaunchFactoryAbi, functionName: "launch", args: [parsed.data.name, parsed.data.symbol, metadata, [parsed.data.communityTreasury, parsed.data.traderRewards, parsed.data.liquidityVault, parsed.data.platformTreasury] as [Address, Address, Address, Address], rewardBps] });
+    if (v3Available && preset === "community") writeContract({ address: factoryAddress, abi: memeLaunchFactoryAbi, functionName: "launchCommunity", args: [parsed.data.name, parsed.data.symbol, metadata], chainId: activeChain.id });
+    else if (useSimple) writeContract({ address: factoryAddress, abi: memeLaunchFactoryAbi, functionName: "launchSimple", args: [parsed.data.name, parsed.data.symbol, metadata], chainId: activeChain.id });
+    else writeContract({ address: factoryAddress, abi: memeLaunchFactoryAbi, functionName: "launch", args: [parsed.data.name, parsed.data.symbol, metadata, [parsed.data.communityTreasury, parsed.data.traderRewards, parsed.data.liquidityVault, parsed.data.platformTreasury] as [Address, Address, Address, Address], rewardBps], chainId: activeChain.id });
   }
 
   return (
     <section className="panel">
-      <div className="sectionTitle"><div><p className="eyebrow">TOKEN LAUNCH</p><h2>Configure your token</h2></div><span className="badge">TESTNET ALPHA</span></div>
+      <div className="sectionTitle"><div><p className="eyebrow">TOKEN LAUNCH</p><h2>Configure your token</h2></div><span className="badge">{isMainnetRelease ? "MAINNET · REAL ETH" : "TESTNET ALPHA"}</span></div>
       <label>Token name<input value={name} maxLength={40} placeholder="Name your token" onChange={(e) => setName(e.target.value)} /></label>
       <div className="two"><label>Ticker<input value={symbol} maxLength={10} placeholder="TICKER" onChange={(e) => setSymbol(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))} /></label><label>Platform supply<input inputMode="numeric" value={supply} readOnly aria-readonly="true" /></label></div>
       <label>Description<textarea value={description} maxLength={500} placeholder="Tell traders what this token is about" onChange={(e) => setDescription(e.target.value)} /></label>
@@ -142,9 +142,9 @@ export function LaunchForm() {
         {mediaError && <span className="mediaError">{mediaError}</span>}
       </div>
       {v3Available && <div className="presetSection"><p className="eyebrow">LAUNCH STYLE</p><div className="presetGrid">
-        <button type="button" className={preset === "simple" ? "preset active" : "preset"} onClick={() => setPreset("simple")}><strong>Simple</strong><span>Launch instantly. No optional programs.</span><small>85% creator · 15% platform</small></button>
-        <button type="button" className={preset === "community" ? "preset active" : "preset"} onClick={() => setPreset("community")}><strong>Community</strong><span>Add community funding and trader rewards.</span><small>45% creator · 25% community · 15% traders · 15% platform</small></button>
-      </div><div className="graduationNote"><strong>Graduation-ready architecture</strong><span>Curve reserves stay inside the market. DEX migration is intentionally disabled in this testnet alpha.</span></div></div>}
+        <button type="button" className={preset === "simple" ? "preset active" : "preset"} onClick={() => setPreset("simple")}><strong>Simple</strong><span>Launch instantly. No optional programs.</span><small>70% creator · 30% protocol</small></button>
+        <button type="button" className={preset === "community" ? "preset active" : "preset"} onClick={() => setPreset("community")}><strong>Community</strong><span>Add community funding and trader rewards.</span><small>40% creator · 20% community · 10% traders · 30% protocol</small></button>
+      </div><div className="graduationNote"><strong>{isMainnetRelease ? "Automatic Uniswap V4 graduation" : "Graduation-ready architecture"}</strong><span>{isMainnetRelease ? "Curve reserves stay inside the market and migrate automatically at the disclosed target." : "Curve reserves stay inside the market. DEX migration is intentionally disabled in this testnet alpha."}</span></div></div>}
       {!v3Available && simpleAvailable && <div className="callout"><strong>{advanced ? "Advanced rewards" : "Automatic rewards"}</strong><span>{advanced ? "You are manually choosing reward destinations." : "Creator, community, trader, liquidity, and platform destinations are assigned automatically."}</span><button type="button" onClick={() => setAdvanced((value) => !value)}>{advanced ? "Use simple launch" : "Open advanced settings"}</button></div>}
       {!v3Available && (!simpleAvailable || advanced) && <><p className="eyebrow addressHeading">REWARD DESTINATIONS</p>
       <label>Community treasury<input placeholder="0x…" value={communityTreasury} onChange={(e) => setCommunityTreasury(e.target.value)} /></label>
@@ -153,11 +153,12 @@ export function LaunchForm() {
       <label>Platform treasury<input placeholder="0x…" value={platformTreasury} onChange={(e) => setPlatformTreasury(e.target.value)} /></label></>}
       <div className="summary"><div><small>Token</small><strong>{name || "Unnamed"}</strong></div><div><small>Symbol</small><strong>${symbol || "—"}</strong></div><div><small>Supply</small><strong>{formattedSupply}</strong></div></div>
       <label className="confirm"><input type="checkbox" checked={accepted} onChange={(e) => setAccepted(e.target.checked)} /><span>I understand the supply, token rules, and selected fee split are permanent after launch.</span></label>
+      {isMainnetRelease && <div className="callout mainnetWarning"><strong>Mainnet uses real ETH</strong><span>Review the token details and wallet gas estimate before signing. Launch settings are permanent.</span></div>}
       {validationErrors.length > 0 && <div className="errors">{validationErrors.map((error) => <span key={error}>{error}</span>)}</div>}
       {(writeError || receiptError) && <div className="errors"><span>{writeError?.message || receiptError?.message}</span></div>}
-      {transactionHash && !deployed && <div className="callout"><strong>{isConfirming ? "Waiting for confirmation…" : "Transaction submitted"}</strong><a href={`${robinhoodChainTestnet.blockExplorers.default.url}/tx/${transactionHash}`} target="_blank" rel="noreferrer">View transaction ↗</a></div>}
+      {transactionHash && !deployed && <div className="callout"><strong>{isConfirming ? "Waiting for confirmation…" : "Transaction submitted"}</strong><a href={`${activeChain.blockExplorers.default.url}/tx/${transactionHash}`} target="_blank" rel="noreferrer">View transaction ↗</a></div>}
       {deployed && <div className="launchSuccess"><strong>Launch #{deployed.launchId.toString()} confirmed</strong><span>Token and reward vault were created in one transaction.</span><Link href={`/token/${deployed.token}`}>Open token page →</Link></div>}
-      <button className="launch" disabled={!factoryAddress || !isConnected || chainId !== robinhoodChainTestnet.id || isPending || isConfirming || mediaStatus === "uploading"} onClick={submit}>{mediaStatus === "uploading" ? "Saving token media…" : isPending ? "Confirm in wallet…" : isConfirming ? "Confirming onchain…" : readiness}</button>
+      <button className="launch" disabled={!factoryAddress || !isConnected || chainId !== activeChain.id || isPending || isConfirming || mediaStatus === "uploading"} onClick={submit}>{mediaStatus === "uploading" ? "Saving token media…" : isPending ? "Confirm in wallet…" : isConfirming ? "Confirming onchain…" : readiness}</button>
       <p className="fineprint">No mint authority • No blacklist • No hidden transfer tax • Wallet-signed transactions only</p>
     </section>
   );
