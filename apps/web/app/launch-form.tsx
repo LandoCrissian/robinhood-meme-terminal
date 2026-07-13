@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ChangeEvent } from "react";
 import { parseEventLogs, type Address } from "viem";
 import { useAccount, useChainId, useReadContract, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { robinhoodChainTestnet } from "@rmt/shared/chains";
@@ -13,6 +13,8 @@ const emptyAddress = "";
 const zeroAddress = "0x0000000000000000000000000000000000000000" as Address;
 const rewardBps: readonly [number, number, number, number, number] = [3000, 2500, 1500, 1500, 1500];
 type LaunchPreset = "simple" | "community";
+const imageTypes = ["image/jpeg", "image/png", "image/webp"];
+const maxImageBytes = 5_000_000;
 
 export function LaunchForm() {
   const { isConnected, address: account } = useAccount();
@@ -32,10 +34,21 @@ export function LaunchForm() {
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [advanced, setAdvanced] = useState(false);
   const [preset, setPreset] = useState<LaunchPreset>("simple");
+  const [image, setImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState("");
+  const [mediaStatus, setMediaStatus] = useState<"idle" | "uploading" | "saved">("idle");
+  const [mediaError, setMediaError] = useState("");
   const v2Read = useReadContract({ address: factoryAddress ?? undefined, abi: memeLaunchFactoryAbi, functionName: "purposeVaultImplementation", chainId: robinhoodChainTestnet.id, query: { enabled: Boolean(factoryAddress), retry: false } });
   const v3Read = useReadContract({ address: factoryAddress ?? undefined, abi: memeLaunchFactoryAbi, functionName: "communityDestinationsForToken", args: [zeroAddress], chainId: robinhoodChainTestnet.id, query: { enabled: Boolean(factoryAddress), retry: false } });
   const v3Available = v3Read.status === "success";
   const simpleAvailable = Boolean(v2Read.data);
+
+  useEffect(() => {
+    if (!image) { setImagePreview(""); return; }
+    const url = URL.createObjectURL(image);
+    setImagePreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [image]);
 
   const formattedSupply = useMemo(() => {
     try { return BigInt(supply || "0").toLocaleString(); } catch { return "Invalid"; }
@@ -50,7 +63,37 @@ export function LaunchForm() {
 
   const readiness = !factoryAddress ? "Factory not deployed" : !isConnected ? "Connect wallet" : chainId !== robinhoodChainTestnet.id ? "Switch to Robinhood Testnet" : "Review and launch";
 
-  function submit() {
+  function selectImage(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0] ?? null;
+    setMediaError("");
+    setMediaStatus("idle");
+    if (!file) { setImage(null); return; }
+    if (!imageTypes.includes(file.type)) { setImage(null); setMediaError("Use a PNG, JPG, or WebP image."); return; }
+    if (file.size > maxImageBytes) { setImage(null); setMediaError("Image must be 5 MB or smaller."); return; }
+    setImage(file);
+  }
+
+  async function uploadMetadata(tokenName: string, tokenSymbol: string, tokenDescription: string) {
+    if (!image) throw new Error("Choose a token image before launching.");
+    setMediaStatus("uploading");
+    const signResponse = await fetch("/api/media/sign", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ filename: image.name }) });
+    const signResult = (await signResponse.json()) as { url?: string; error?: string };
+    if (!signResponse.ok || !signResult.url) throw new Error(signResult.error || "Could not prepare image upload.");
+    const imageForm = new FormData();
+    imageForm.append("file", image);
+    imageForm.append("network", "public");
+    const imageResponse = await fetch(signResult.url, { method: "POST", body: imageForm });
+    const imageResult = (await imageResponse.json()) as { data?: { cid?: string }; error?: string };
+    const imageCid = imageResult.data?.cid;
+    if (!imageResponse.ok || !imageCid) throw new Error(imageResult.error || "Image upload failed.");
+    const metadataResponse = await fetch("/api/media/metadata", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: tokenName, symbol: tokenSymbol, description: tokenDescription, image: `ipfs://${imageCid}` }) });
+    const metadataResult = (await metadataResponse.json()) as { uri?: string; error?: string };
+    if (!metadataResponse.ok || !metadataResult.uri) throw new Error(metadataResult.error || "Metadata upload failed.");
+    setMediaStatus("saved");
+    return metadataResult.uri;
+  }
+
+  async function submit() {
     const automaticAddress = account ?? emptyAddress;
     const useSimple = simpleAvailable && !advanced;
     const values = { name, symbol, supply, description, communityTreasury: useSimple ? automaticAddress : communityTreasury, traderRewards: useSimple ? automaticAddress : traderRewards, liquidityVault: useSimple ? automaticAddress : liquidityVault, platformTreasury: useSimple ? automaticAddress : platformTreasury, accepted };
@@ -59,9 +102,13 @@ export function LaunchForm() {
       setValidationErrors(parsed.error.issues.map((issue) => issue.message));
       return;
     }
+    if (!image) { setMediaError("Choose a token image before launching."); return; }
     if (!factoryAddress || !isConnected || chainId !== robinhoodChainTestnet.id) return;
     setValidationErrors([]);
-    const metadata = `data:application/json,${encodeURIComponent(JSON.stringify({ name: parsed.data.name, symbol: parsed.data.symbol, description: parsed.data.description }))}`;
+    setMediaError("");
+    let metadata: string;
+    try { metadata = await uploadMetadata(parsed.data.name, parsed.data.symbol, parsed.data.description); }
+    catch (error) { setMediaStatus("idle"); setMediaError(error instanceof Error ? error.message : "Token media upload failed."); return; }
     if (v3Available && preset === "community") writeContract({ address: factoryAddress, abi: memeLaunchFactoryAbi, functionName: "launchCommunity", args: [parsed.data.name, parsed.data.symbol, metadata] });
     else if (useSimple) writeContract({ address: factoryAddress, abi: memeLaunchFactoryAbi, functionName: "launchSimple", args: [parsed.data.name, parsed.data.symbol, metadata] });
     else writeContract({ address: factoryAddress, abi: memeLaunchFactoryAbi, functionName: "launch", args: [parsed.data.name, parsed.data.symbol, metadata, [parsed.data.communityTreasury, parsed.data.traderRewards, parsed.data.liquidityVault, parsed.data.platformTreasury] as [Address, Address, Address, Address], rewardBps] });
@@ -73,6 +120,16 @@ export function LaunchForm() {
       <label>Token name<input value={name} maxLength={40} onChange={(e) => setName(e.target.value)} /></label>
       <div className="two"><label>Ticker<input value={symbol} maxLength={10} onChange={(e) => setSymbol(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))} /></label><label>Platform supply<input inputMode="numeric" value={supply} readOnly aria-readonly="true" /></label></div>
       <label>Description<textarea value={description} maxLength={500} onChange={(e) => setDescription(e.target.value)} /></label>
+      <div className="mediaField">
+        <div className="mediaCopy"><span>Token image</span><small>PNG, JPG, or WebP · 5 MB maximum</small></div>
+        <label className={imagePreview ? "imagePicker selected" : "imagePicker"}>
+          <input type="file" accept={imageTypes.join(",")} onChange={selectImage} />
+          {imagePreview ? <img src={imagePreview} alt="Token artwork preview" /> : <span className="imagePlaceholder"><strong>+</strong>Add artwork</span>}
+          {imagePreview && <span className="imageReplace">Replace</span>}
+        </label>
+        {mediaStatus !== "idle" && <span className="mediaProgress">{mediaStatus === "uploading" ? "Saving artwork to IPFS…" : "Artwork and metadata saved"}</span>}
+        {mediaError && <span className="mediaError">{mediaError}</span>}
+      </div>
       {v3Available && <div className="presetSection"><p className="eyebrow">LAUNCH STYLE</p><div className="presetGrid">
         <button type="button" className={preset === "simple" ? "preset active" : "preset"} onClick={() => setPreset("simple")}><strong>Simple</strong><span>Launch instantly. No optional programs.</span><small>85% creator · 15% platform</small></button>
         <button type="button" className={preset === "community" ? "preset active" : "preset"} onClick={() => setPreset("community")}><strong>Community</strong><span>Add community funding and trader rewards.</span><small>45% creator · 25% community · 15% traders · 15% platform</small></button>
@@ -89,7 +146,7 @@ export function LaunchForm() {
       {(writeError || receiptError) && <div className="errors"><span>{writeError?.message || receiptError?.message}</span></div>}
       {transactionHash && !deployed && <div className="callout"><strong>{isConfirming ? "Waiting for confirmation…" : "Transaction submitted"}</strong><a href={`${robinhoodChainTestnet.blockExplorers.default.url}/tx/${transactionHash}`} target="_blank" rel="noreferrer">View transaction ↗</a></div>}
       {deployed && <div className="launchSuccess"><strong>Launch #{deployed.launchId.toString()} confirmed</strong><span>Token and reward vault were created in one transaction.</span><Link href={`/token/${deployed.token}`}>Open token page →</Link></div>}
-      <button className="launch" disabled={!factoryAddress || !isConnected || chainId !== robinhoodChainTestnet.id || isPending || isConfirming} onClick={submit}>{isPending ? "Confirm in wallet…" : isConfirming ? "Confirming onchain…" : readiness}</button>
+      <button className="launch" disabled={!factoryAddress || !isConnected || chainId !== robinhoodChainTestnet.id || isPending || isConfirming || mediaStatus === "uploading"} onClick={submit}>{mediaStatus === "uploading" ? "Saving token media…" : isPending ? "Confirm in wallet…" : isConfirming ? "Confirming onchain…" : readiness}</button>
       <p className="fineprint">No mint authority • No blacklist • No hidden transfer tax • Wallet-signed transactions only</p>
     </section>
   );
