@@ -95,10 +95,7 @@ contract DeployMainnetMemeLaunchFactory {
         adapter.bindFactory(address(factory));
 
         registry = new VersionedFactoryRegistry(
-            governance,
-            Config.FACTORY_ACTIVATION_DELAY,
-            address(factory),
-            Config.FACTORY_VERSION
+            governance, Config.FACTORY_ACTIVATION_DELAY, address(factory), Config.FACTORY_VERSION
         );
         vm.stopBroadcast();
 
@@ -113,11 +110,11 @@ contract DeployMainnetMemeLaunchFactory {
                 || factory.rewardsController() != rewardsController || factory.marketFeeBps() != Config.MARKET_FEE_BPS
                 || factory.initialVirtualEthReserve() != Config.INITIAL_VIRTUAL_ETH_RESERVE
                 || factory.initialVirtualTokenReserve() != Config.INITIAL_VIRTUAL_TOKEN_RESERVE
-                || factory.graduationTarget() != Config.GRADUATION_TARGET
-                || registry.governance() != governance || registry.activationDelay() != Config.FACTORY_ACTIVATION_DELAY
+                || factory.graduationTarget() != Config.GRADUATION_TARGET || registry.governance() != governance
+                || registry.activationDelay() != Config.FACTORY_ACTIVATION_DELAY
                 || registry.activeFactory() != address(factory) || registry.activeVersion() != Config.FACTORY_VERSION
                 || marketImplementation.FAIR_START_DELAY_BLOCKS() != 3
-                || marketImplementation.FAIR_START_PROTECTION_BLOCKS() != 25
+                || marketImplementation.FAIR_START_DURATION_BLOCKS() != 25
                 || marketImplementation.FAIR_START_MAX_TX_BPS() != 50
                 || marketImplementation.FAIR_START_MAX_WALLET_BPS() != 150
         ) revert BindingVerificationFailed();
