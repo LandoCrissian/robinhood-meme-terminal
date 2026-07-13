@@ -32,11 +32,11 @@ BOUND_FACTORY="$(cast call "$ADAPTER" 'factory()(address)' --rpc-url "$RPC_URL")
 BOUND_ADAPTER="$(cast call "$HOOK" 'adapter()(address)' --rpc-url "$RPC_URL")"
 TREASURY="$(cast call "$FACTORY_ADDRESS" 'platformTreasury()(address)' --rpc-url "$RPC_URL")"
 CONTROLLER="$(cast call "$FACTORY_ADDRESS" 'rewardsController()(address)' --rpc-url "$RPC_URL")"
-FEE="$(cast call "$FACTORY_ADDRESS" 'marketFeeBps()(uint16)' --rpc-url "$RPC_URL")"
-VIRTUAL_ETH="$(cast call "$FACTORY_ADDRESS" 'initialVirtualEthReserve()(uint256)' --rpc-url "$RPC_URL")"
-VIRTUAL_TOKEN="$(cast call "$FACTORY_ADDRESS" 'initialVirtualTokenReserve()(uint256)' --rpc-url "$RPC_URL")"
-TARGET="$(cast call "$FACTORY_ADDRESS" 'graduationTarget()(uint256)' --rpc-url "$RPC_URL")"
-COUNT="$(cast call "$FACTORY_ADDRESS" 'launchCount()(uint256)' --rpc-url "$RPC_URL")"
+FEE="$(cast call "$FACTORY_ADDRESS" 'marketFeeBps()(uint16)' --rpc-url "$RPC_URL" | awk '{print $1}')"
+VIRTUAL_ETH="$(cast call "$FACTORY_ADDRESS" 'initialVirtualEthReserve()(uint256)' --rpc-url "$RPC_URL" | awk '{print $1}')"
+VIRTUAL_TOKEN="$(cast call "$FACTORY_ADDRESS" 'initialVirtualTokenReserve()(uint256)' --rpc-url "$RPC_URL" | awk '{print $1}')"
+TARGET="$(cast call "$FACTORY_ADDRESS" 'graduationTarget()(uint256)' --rpc-url "$RPC_URL" | awk '{print $1}')"
+COUNT="$(cast call "$FACTORY_ADDRESS" 'launchCount()(uint256)' --rpc-url "$RPC_URL" | awk '{print $1}')"
 
 normalize() { printf '%s' "$1" | tr '[:upper:]' '[:lower:]'; }
 
