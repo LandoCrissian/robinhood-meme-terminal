@@ -10,7 +10,9 @@ import { useFactoryAddress } from "../lib/use-factory-address";
 import { launchSchema } from "../lib/launch-schema";
 
 const emptyAddress = "";
+const zeroAddress = "0x0000000000000000000000000000000000000000" as Address;
 const rewardBps: readonly [number, number, number, number, number] = [3000, 2500, 1500, 1500, 1500];
+type LaunchPreset = "simple" | "community";
 
 export function LaunchForm() {
   const { isConnected, address: account } = useAccount();
@@ -29,7 +31,10 @@ export function LaunchForm() {
   const [accepted, setAccepted] = useState(false);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [advanced, setAdvanced] = useState(false);
+  const [preset, setPreset] = useState<LaunchPreset>("simple");
   const v2Read = useReadContract({ address: factoryAddress ?? undefined, abi: memeLaunchFactoryAbi, functionName: "purposeVaultImplementation", chainId: robinhoodChainTestnet.id, query: { enabled: Boolean(factoryAddress), retry: false } });
+  const v3Read = useReadContract({ address: factoryAddress ?? undefined, abi: memeLaunchFactoryAbi, functionName: "communityDestinationsForToken", args: [zeroAddress], chainId: robinhoodChainTestnet.id, query: { enabled: Boolean(factoryAddress), retry: false } });
+  const v3Available = v3Read.status === "success";
   const simpleAvailable = Boolean(v2Read.data);
 
   const formattedSupply = useMemo(() => {
@@ -57,7 +62,8 @@ export function LaunchForm() {
     if (!factoryAddress || !isConnected || chainId !== robinhoodChainTestnet.id) return;
     setValidationErrors([]);
     const metadata = `data:application/json,${encodeURIComponent(JSON.stringify({ name: parsed.data.name, symbol: parsed.data.symbol, description: parsed.data.description }))}`;
-    if (useSimple) writeContract({ address: factoryAddress, abi: memeLaunchFactoryAbi, functionName: "launchSimple", args: [parsed.data.name, parsed.data.symbol, metadata] });
+    if (v3Available && preset === "community") writeContract({ address: factoryAddress, abi: memeLaunchFactoryAbi, functionName: "launchCommunity", args: [parsed.data.name, parsed.data.symbol, metadata] });
+    else if (useSimple) writeContract({ address: factoryAddress, abi: memeLaunchFactoryAbi, functionName: "launchSimple", args: [parsed.data.name, parsed.data.symbol, metadata] });
     else writeContract({ address: factoryAddress, abi: memeLaunchFactoryAbi, functionName: "launch", args: [parsed.data.name, parsed.data.symbol, metadata, [parsed.data.communityTreasury, parsed.data.traderRewards, parsed.data.liquidityVault, parsed.data.platformTreasury] as [Address, Address, Address, Address], rewardBps] });
   }
 
@@ -67,14 +73,18 @@ export function LaunchForm() {
       <label>Token name<input value={name} maxLength={40} onChange={(e) => setName(e.target.value)} /></label>
       <div className="two"><label>Ticker<input value={symbol} maxLength={10} onChange={(e) => setSymbol(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))} /></label><label>Platform supply<input inputMode="numeric" value={supply} readOnly aria-readonly="true" /></label></div>
       <label>Description<textarea value={description} maxLength={500} onChange={(e) => setDescription(e.target.value)} /></label>
-      {simpleAvailable && <div className="callout"><strong>{advanced ? "Advanced rewards" : "Automatic rewards"}</strong><span>{advanced ? "You are manually choosing reward destinations." : "Creator, community, trader, liquidity, and platform destinations are assigned automatically."}</span><button type="button" onClick={() => setAdvanced((value) => !value)}>{advanced ? "Use simple launch" : "Open advanced settings"}</button></div>}
-      {(!simpleAvailable || advanced) && <><p className="eyebrow addressHeading">REWARD DESTINATIONS</p>
+      {v3Available && <div className="presetSection"><p className="eyebrow">LAUNCH STYLE</p><div className="presetGrid">
+        <button type="button" className={preset === "simple" ? "preset active" : "preset"} onClick={() => setPreset("simple")}><strong>Simple</strong><span>Launch instantly. No optional programs.</span><small>85% creator · 15% platform</small></button>
+        <button type="button" className={preset === "community" ? "preset active" : "preset"} onClick={() => setPreset("community")}><strong>Community</strong><span>Add community funding and trader rewards.</span><small>45% creator · 25% community · 15% traders · 15% platform</small></button>
+      </div><div className="graduationNote"><strong>Automatic graduation included</strong><span>Trading builds DEX liquidity. It cannot be withdrawn or redirected.</span></div></div>}
+      {!v3Available && simpleAvailable && <div className="callout"><strong>{advanced ? "Advanced rewards" : "Automatic rewards"}</strong><span>{advanced ? "You are manually choosing reward destinations." : "Creator, community, trader, liquidity, and platform destinations are assigned automatically."}</span><button type="button" onClick={() => setAdvanced((value) => !value)}>{advanced ? "Use simple launch" : "Open advanced settings"}</button></div>}
+      {!v3Available && (!simpleAvailable || advanced) && <><p className="eyebrow addressHeading">REWARD DESTINATIONS</p>
       <label>Community treasury<input placeholder="0x…" value={communityTreasury} onChange={(e) => setCommunityTreasury(e.target.value)} /></label>
       <label>Trader rewards vault<input placeholder="0x…" value={traderRewards} onChange={(e) => setTraderRewards(e.target.value)} /></label>
       <label>Graduation liquidity vault<input placeholder="0x…" value={liquidityVault} onChange={(e) => setLiquidityVault(e.target.value)} /></label>
       <label>Platform treasury<input placeholder="0x…" value={platformTreasury} onChange={(e) => setPlatformTreasury(e.target.value)} /></label></>}
       <div className="summary"><div><small>Token</small><strong>{name || "Unnamed"}</strong></div><div><small>Symbol</small><strong>${symbol || "—"}</strong></div><div><small>Supply</small><strong>{formattedSupply}</strong></div></div>
-      <label className="confirm"><input type="checkbox" checked={accepted} onChange={(e) => setAccepted(e.target.checked)} /><span>I understand supply, token rules, and reward destinations are permanent after deployment.</span></label>
+      <label className="confirm"><input type="checkbox" checked={accepted} onChange={(e) => setAccepted(e.target.checked)} /><span>I understand the supply, token rules, and selected fee split are permanent after launch.</span></label>
       {validationErrors.length > 0 && <div className="errors">{validationErrors.map((error) => <span key={error}>{error}</span>)}</div>}
       {(writeError || receiptError) && <div className="errors"><span>{writeError?.message || receiptError?.message}</span></div>}
       {transactionHash && !deployed && <div className="callout"><strong>{isConfirming ? "Waiting for confirmation…" : "Transaction submitted"}</strong><a href={`${robinhoodChainTestnet.blockExplorers.default.url}/tx/${transactionHash}`} target="_blank" rel="noreferrer">View transaction ↗</a></div>}
