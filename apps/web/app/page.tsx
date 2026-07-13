@@ -21,7 +21,7 @@ export default function Home() {
       </nav>
 
       <section className="hero">
-        <p className="eyebrow">ROBINHOOD CHAIN • {isMainnetRelease ? "LIVE MAINNET" : "ALPHA TESTNET"}</p>
+        <p className="eyebrow">ROBINHOOD CHAIN • {isMainnetRelease ? "MAINNET BETA" : "ALPHA TESTNET"}</p>
         <h1>Find the move.<br />Launch the next one.</h1>
         <p className="sub">Live meme discovery, one-signature launches, transparent rewards, and automatic graduation—all in one focused terminal.</p>
         <div className="heroActions"><a className="primaryAction" href="#explore">See what’s moving</a><a className="secondaryAction" href="#launch">Launch a token</a></div>
@@ -45,11 +45,17 @@ export default function Home() {
               <div><b>2</b><span><strong>Launch with one signature</strong><small>RMT creates the fixed supply, market, and visible reward destinations together.</small></span></div>
               <div><b>3</b><span><strong>Trade, earn, graduate</strong><small>The curve handles trading and rewards; successful tokens graduate automatically.</small></span></div>
             </div>
-            <div className="callout"><strong>{isMainnetRelease ? "Real ETH on mainnet" : "Testnet alpha"}</strong><span>{isMainnetRelease ? "Always review your wallet’s amount and gas estimate before signing." : "Practice launching, trading, and claiming without real funds."}</span></div>
+            <div className="callout"><strong>{isMainnetRelease ? "Unaudited mainnet beta" : "Testnet alpha"}</strong><span>{isMainnetRelease ? "Use only funds you can afford to lose and review every wallet detail before signing." : "Practice launching, trading, and claiming without real funds."}</span></div>
             <Link className="statusLink" href="/status"><span className="statusDot operational" aria-hidden="true" />Live system status</Link>
           </aside>
         </div>
       </section>
+
+      <footer className="siteFooter">
+        <Link href="/terms">Terms</Link><Link href="/privacy">Privacy</Link><Link href="/risks">Risks</Link><Link href="/support">Support</Link><Link href="/status">Status</Link>
+        {isMainnetRelease && <span className="betaDisclosure">Mainnet beta · Contracts are not independently audited</span>}
+        <span>Robinhood Meme Terminal is independent software and is not Robinhood Markets, Inc. or an endorsement by Robinhood.</span>
+      </footer>
 
       <nav className="mobileDock" aria-label="Mobile navigation"><a href="#explore"><span>◉</span>Explore</a><a href="#launch"><span>＋</span>Launch</a><a href="#learn"><span>?</span>Learn</a></nav>
     </main>
