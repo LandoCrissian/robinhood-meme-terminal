@@ -5,7 +5,10 @@ const metadataSchema = z.object({
   name: z.string().trim().min(2).max(40),
   symbol: z.string().trim().min(2).max(10).regex(/^[A-Z0-9]+$/),
   description: z.string().trim().min(10).max(500),
-  image: z.string().regex(/^ipfs:\/\/[a-zA-Z0-9]+$/)
+  image: z.string().regex(/^ipfs:\/\/[a-zA-Z0-9]+$/),
+  website: z.string().url().startsWith("https://").or(z.literal("")),
+  x: z.string().url().startsWith("https://").or(z.literal("")),
+  telegram: z.string().url().startsWith("https://").or(z.literal(""))
 });
 
 export async function POST(request: Request) {
@@ -14,7 +17,7 @@ export async function POST(request: Request) {
   const parsed = metadataSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "The token metadata is invalid." }, { status: 400 });
 
-  const metadata = { ...parsed.data, decimals: 18, properties: { category: "image" } };
+  const metadata = { ...parsed.data, website: parsed.data.website || undefined, x: parsed.data.x || undefined, telegram: parsed.data.telegram || undefined, decimals: 18, properties: { category: "image" } };
   const file = new File([JSON.stringify(metadata)], `${parsed.data.symbol.toLowerCase()}-metadata.json`, { type: "application/json" });
   const form = new FormData();
   form.append("file", file);
