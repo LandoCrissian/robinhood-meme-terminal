@@ -33,15 +33,30 @@ These values are immutable in the release candidate and must be approved before 
 | Protocol share distribution | 40% treasury / 20% buyback reserve / 20% graduation assistance / 10% referral reserve / 10% ecosystem growth |
 | Factory version activation delay | 48 hours |
 | Community/trader reward release delay | 24 hours |
+| Protocol-purpose vault execution delay | 24 hours |
+| Governance threshold | 2 of 3 independent signers |
 
 Percentages distribute the 1% curve fee, not the full trade value. Graduation liquidity stays in each market's reserve and is separate from the protocol graduation-assistance fund.
+
+## Automatic governance and purpose vaults
+
+The production deployment accepts exactly three independent signer addresses. It automatically creates:
+
+- a 2-of-3 factory-governance wallet;
+- a 2-of-3 rewards-governance wallet;
+- a delayed 2-of-3 protocol-governance wallet;
+- five immutable ETH-only purpose vaults for treasury, buyback reserve, graduation assistance, referral reserve, and ecosystem growth.
+
+The five purpose vaults cannot make arbitrary calls and release ETH only to a specified recipient after their governance wallet approves the transaction. Protocol-purpose releases wait 24 hours after the second signer confirms. Factory and purpose-rewards administration use the same 2-of-3 signer set without exposing the protocol-purpose balances to an unsupported third-party multisig service.
+
+Signer addresses are deployment inputs, not hardcoded secrets. Signer replacement requires a 2-of-3 governance transaction executed by the governance contract itself. A lost signer cannot rotate itself or take control alone.
 
 ## Security and future-version model
 
 - Tokens, markets, reward vaults, and graduation bindings are not proxies and cannot be rewritten after launch.
 - The factory and protocol revenue router have no owner, upgrade function, arbitrary-call function, recipient-change function, or emergency withdrawal bypass.
-- Protocol revenue destinations are immutable and must be five distinct deployed multisigs or purpose-specific vault contracts.
-- The factory deploys a purpose-only rewards controller with a fixed 24-hour release delay. Its separate governance multisig can propose or cancel releases, but cannot make arbitrary calls or touch tokens, markets, graduation liquidity, or protocol revenue.
+- Protocol revenue destinations are immutable and are the five automatically deployed purpose vaults.
+- The factory deploys a purpose-only rewards controller with a fixed 24-hour release delay. Its separate 2-of-3 governance wallet can propose or cancel releases, but cannot touch tokens, markets, graduation liquidity, or protocol revenue.
 - Future releases deploy a new factory. A 48-hour delayed registry proposal changes only the factory used for future launches.
 - A registry update cannot alter existing tokens, markets, rewards, or liquidity.
 - Fair Start is automatic: trading opens after 3 blocks, then protects the next 25 blocks with a 0.5% per-buy cap, 1.5% cumulative wallet cap, one buy per wallet per block, and recipient-equals-caller enforcement.
@@ -54,17 +69,16 @@ Percentages distribute the 1% curve fee, not the full trade value. Graduation li
 - [ ] Confirm the exact source commit is green in CI.
 - [ ] Complete a Robinhood mainnet fork deployment and smoke test against the canonical PoolManager.
 - [ ] Review and approve every economic and Fair Start parameter above.
-- [ ] Deploy and independently verify five distinct purpose-specific revenue multisigs/vaults.
-- [ ] Deploy and verify a separate rewards-governance multisig for the purpose-only controller.
-- [ ] Deploy and verify a separate factory-governance multisig.
-- [ ] Confirm multisig signers, thresholds, recovery procedures, and hardware-wallet custody.
+- [ ] Confirm all three signer wallets use independent recovery phrases and are controlled through separate wallet installations.
+- [ ] Confirm the 2-of-3 threshold, 24-hour protocol-purpose delay, signer-rotation procedure, and recovery plan.
+- [ ] Confirm the deployment automatically creates three governance contracts and five distinct purpose vaults.
 - [ ] Fund a dedicated deployment wallet with only the ETH needed for deployment.
 - [ ] Configure a production-capable mainnet RPC.
 - [ ] Run an independent smart-contract security review. If deferred, do not describe the release as audited or safe.
-- [ ] Complete static analysis, fuzz tests, invariants, malicious-recipient tests, reentrancy tests, graduation tests, and mainnet-fork tests.
+- [ ] Complete static analysis, fuzz tests, invariants, malicious-recipient tests, reentrancy tests, graduation tests, governance tests, and mainnet-fork tests.
 - [ ] Confirm the frontend remains testnet-only until the mainnet factory passes the smoke test.
 - [ ] Confirm Blockscout verification commands and compiler settings.
-- [ ] Record deployer, source commit, transaction hashes, deployment block, hook, adapter, router, factory, registry, and all governance/revenue addresses.
+- [ ] Record deployer, source commit, transaction hashes, deployment block, hook, adapter, router, factory, registry, all governance addresses, and all purpose-vault addresses.
 - [ ] Publish immutable parameters and known limitations before public use.
 
 ## Broadcast procedure
@@ -73,25 +87,19 @@ From `packages/contracts`, export the required values locally. Never paste a pri
 
 Required operator values:
 
-- `REWARDS_GOVERNANCE`
-- `FACTORY_GOVERNANCE`
-- `TREASURY_RECIPIENT`
-- `BUYBACK_RESERVE_RECIPIENT`
-- `GRADUATION_ASSISTANCE_RECIPIENT`
-- `REFERRAL_RESERVE_RECIPIENT`
-- `ECOSYSTEM_GROWTH_RECIPIENT`
+- `SIGNER_ONE`
+- `SIGNER_TWO`
+- `SIGNER_THREE`
 
 The deployment shell refuses to run unless:
 
 - the RPC reports chain `4663`;
 - the canonical PoolManager and CREATE2 deployer have bytecode;
-- all operator addresses are valid deployed contracts;
-- the purpose-only rewards controller is deployed and permanently bound to the V4 factory;
-- the five protocol revenue destinations are distinct;
-- the deployer has ETH;
+- all three signer addresses are valid, nonzero, and distinct;
+- the deployment wallet has ETH;
 - `MAINNET_DEPLOYMENT_CONFIRMED=YES_DEPLOY_ROBINHOOD_MAINNET` is explicitly set.
 
-Run `scripts/deploy-mainnet.sh`, record its outputs, and then run `scripts/smoke-test-mainnet.sh`.
+The deployment then creates and verifies the governance wallets, purpose vaults, protocol router, purpose-rewards controller, V4 launch stack, and delayed version registry. Run `scripts/deploy-mainnet.sh`, record its outputs, and then run `scripts/smoke-test-mainnet.sh`.
 
 ## Go-live gate
 
@@ -101,7 +109,9 @@ Do not point the public launcher at the mainnet registry/factory until the smoke
 - permanent hook/adapter/factory bindings;
 - V4 factory and all clone implementations;
 - immutable protocol-router recipients and 40/20/20/10/10 accounting;
-- delayed factory registry, governance, active version, and active factory;
+- three independent governance wallets with the expected signers, thresholds, and delays;
+- five distinct purpose vaults with the expected immutable labels and governance;
+- delayed factory registry, active version, and active factory;
 - delayed purpose-rewards controller, separate governance, registered-vault enforcement, and 24-hour release delay;
 - immutable fee and curve values;
 - Fair Start delay, duration, and caps;
