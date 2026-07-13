@@ -1,6 +1,7 @@
 "use client";
 
 import { formatEther } from "viem";
+import { isMainnetRelease } from "../lib/network";
 
 export type PricePoint = {
   blockNumber: bigint;
@@ -53,7 +54,7 @@ export function PriceHistoryChart({ points, symbol }: { points: PricePoint[]; sy
       <div className="priceChartHeader">
         <div>
           <p className="eyebrow">ONCHAIN PRICE</p>
-          <h3>{formatPrice(latest)} test ETH</h3>
+          <h3>{formatPrice(latest)} {isMainnetRelease ? "ETH" : "test ETH"}</h3>
           <small>per {symbol}</small>
         </div>
         <span className={isPositive ? "priceChange positive" : "priceChange negative"}>
