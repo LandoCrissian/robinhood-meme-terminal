@@ -1,14 +1,15 @@
 "use client";
 
-import { robinhoodChainTestnet } from "@rmt/shared/chains";
+import { robinhoodChain, robinhoodChainTestnet } from "@rmt/shared/chains";
 import { useAccount, useConnect, useDisconnect, useSwitchChain } from "wagmi";
 
 function shortAddress(address: string) {
   return `${address.slice(0, 6)}…${address.slice(-4)}`;
 }
 
-export function WalletButton() {
+export function WalletButton({ target = "testnet" }: { target?: "testnet" | "mainnet" }) {
   const { address, chainId, isConnected } = useAccount();
+  const targetChain = target === "mainnet" ? robinhoodChain : robinhoodChainTestnet;
   const { connectors, connect, error, isPending } = useConnect();
   const { disconnect } = useDisconnect();
   const { switchChain, isPending: isSwitching } = useSwitchChain();
@@ -34,10 +35,10 @@ export function WalletButton() {
     );
   }
 
-  if (chainId !== robinhoodChainTestnet.id) {
+  if (chainId !== targetChain.id) {
     return (
-      <button className="wallet network" disabled={isSwitching} onClick={() => switchChain({ chainId: robinhoodChainTestnet.id })}>
-        {isSwitching ? "Switching…" : "Switch to Robinhood Testnet"}
+      <button className="wallet network" disabled={isSwitching} onClick={() => switchChain({ chainId: targetChain.id })}>
+        {isSwitching ? "Switching…" : `Switch to ${targetChain.name}`}
       </button>
     );
   }
