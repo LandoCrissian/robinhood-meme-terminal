@@ -3,3 +3,30 @@
 @media(max-width:880px){main{padding:0 16px 96px}.appNav{grid-template-columns:1fr auto}.primaryNav{display:none}.hero{padding:48px 0 34px}.grid{grid-template-columns:1fr}.zoneHeading{align-items:flex-start;flex-direction:column;gap:8px}.rewards{order:-1}.mobileDock{position:fixed;z-index:40;right:14px;bottom:max(12px,env(safe-area-inset-bottom));left:14px;display:grid;grid-template-columns:repeat(3,1fr);max-width:440px;margin:auto;padding:7px;border:1px solid rgba(64,85,70,.9);border-radius:18px;background:rgba(9,14,10,.94);box-shadow:0 14px 40px rgba(0,0,0,.55);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}.mobileDock a{display:flex;align-items:center;justify-content:center;gap:6px;min-height:44px;border-radius:12px;color:#94a199;text-decoration:none;font-size:.72rem;font-weight:850}.mobileDock a:active{background:#16231a;color:#52ef74}.mobileDock span{color:#52ef74;font-size:.9rem}}
 @media(max-width:640px){main{padding-right:12px;padding-left:12px}.appNav{height:64px;gap:10px}.brandLockup strong{display:none}.hero h1{font-size:clamp(2.8rem,15vw,4.25rem)}.heroActions{display:grid;grid-template-columns:1fr 1fr}.heroActions a{padding:0 12px}.panel{padding:18px;border-radius:18px}.sectionTitle{align-items:flex-start}.sectionTitle .badge{margin-top:2px}.two{grid-template-columns:1fr}.summary{grid-template-columns:1fr 1fr}.summary div:first-child{grid-column:1/-1}.feed article{grid-template-columns:44px minmax(0,1fr) auto;gap:10px}.feed article>div:nth-child(4),.feed article>div:nth-child(5){display:none}.feed article>div:nth-child(3){text-align:right}.latestHeader{margin-top:24px}.wallet{min-height:44px;padding:10px 12px;font-size:.73rem}input,textarea,select{font-size:16px}.imagePicker{min-height:136px}.trustStrip span{font-size:.64rem}.zoneHeading>p{font-size:.86rem}}
 @media(max-width:380px){.heroActions{grid-template-columns:1fr}.hero{padding-top:36px}.panel{padding:16px}.summary{grid-template-columns:1fr}.summary div:first-child{grid-column:auto}.feed article>div:nth-child(3){display:none}}
+
+
+.statusLink{display:inline-flex;align-items:center;gap:8px;margin-top:14px;color:#75f184;text-decoration:none;font-size:.78rem;font-weight:850}
+.statusPage{width:100%;max-width:1040px;min-height:100vh;margin:auto;padding:0 24px 80px}
+.statusNav{height:72px;display:flex;align-items:center;justify-content:space-between;gap:16px;border-bottom:1px solid rgba(56,77,63,.65)}
+.statusNav>a:last-child{min-height:44px;display:inline-flex;align-items:center;padding:0 13px;border:1px solid #2b3b30;border-radius:11px;color:#a7b3aa;text-decoration:none;font-size:.78rem;font-weight:850}
+.statusHero{display:flex;align-items:flex-start;gap:18px;margin-top:44px}
+.statusHero h1{margin:5px 0 9px;font-size:clamp(2rem,5vw,3.8rem);line-height:1;letter-spacing:-.05em}
+.statusHero p:not(.eyebrow),.statusHero small{display:block;margin:0;color:#8e9a91;line-height:1.55}
+.statusHero small{margin-top:3px;font-size:.72rem}
+.statusPulse{flex:0 0 auto;width:18px;height:18px;margin-top:5px;border-radius:50%}
+.statusPulse.operational{background:#48ef6f;box-shadow:0 0 0 7px rgba(72,239,111,.12)}
+.statusPulse.degraded{background:#ffcc68;box-shadow:0 0 0 7px rgba(255,204,104,.12)}
+.statusGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:18px 0}
+.statusCard>div{display:flex;align-items:center;gap:9px}
+.statusCard>span{display:inline-block;margin-top:14px;color:#7f8c83;font-size:.68rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
+.statusCard p{margin:5px 0 0;color:#a0aca3;font-size:.82rem;line-height:1.5;overflow-wrap:anywhere}
+.statusDot{display:inline-block;flex:0 0 auto;width:9px;height:9px;border-radius:50%}
+.statusDot.operational{background:#48ef6f;box-shadow:0 0 12px rgba(72,239,111,.5)}
+.statusDot.degraded{background:#ffcc68;box-shadow:0 0 12px rgba(255,204,104,.4)}
+.safeguardPanel{margin-top:18px}
+.safeguardPanel h2{margin:5px 0 18px;font-size:clamp(1.6rem,4vw,2.3rem);letter-spacing:-.04em}
+.safeguardGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.safeguardGrid>div{display:flex;flex-direction:column;gap:5px;padding:15px;border:1px solid #263129;border-radius:14px;background:#090e0b}
+.safeguardGrid span{color:#89958d;font-size:.76rem;line-height:1.45}
+.statusFineprint{margin:16px 0 0;color:#718078;font-size:.72rem;line-height:1.55}
+@media(max-width:640px){.statusPage{padding:0 12px 48px}.statusNav{height:64px}.statusHero{margin-top:24px;padding:18px}.statusHero h1{font-size:2rem}.statusGrid,.safeguardGrid{grid-template-columns:1fr}.statusCard{padding:18px}}
