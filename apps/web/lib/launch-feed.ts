@@ -4,6 +4,7 @@ export type LaunchFeedItem = {
   launchId: string;
   token: Address;
   creator: Address;
+  market: Address;
   rewardVault: Address;
   name: string;
   symbol: string;
@@ -12,6 +13,9 @@ export type LaunchFeedItem = {
   transactionHash: Hash;
   blockNumber: string;
   metadataURI: string;
+  reserveWei: string;
+  progressBps: number;
+  graduated: boolean;
   image?: string;
 };
 

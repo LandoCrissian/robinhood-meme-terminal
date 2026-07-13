@@ -3,31 +3,45 @@
 import { FreshLaunchFeed } from "./fresh-launch-feed";
 import { LaunchForm } from "./launch-form";
 import { WalletButton } from "./wallet-button";
-import "./launch-presets.css";
 import { isMainnetRelease } from "../lib/network";
+import "./launch-presets.css";
 
 export default function Home() {
   return (
     <main>
-      <nav>
-        <div className="brandLockup"><img className="brandLogo" src="/brand/rmt-master-logo.png" alt="Robinhood Meme Terminal" /><strong>Robinhood Meme Terminal</strong></div>
-        <div><WalletButton target={isMainnetRelease ? "mainnet" : "testnet"} /></div>
+      <nav className="appNav">
+        <a className="brandLockup" href="#" aria-label="Robinhood Meme Terminal home"><img className="brandLogo" src="/brand/rmt-master-logo.png" alt="" /><strong>RMT</strong></a>
+        <div className="primaryNav" aria-label="Primary navigation"><a href="#explore">Explore</a><a href="#launch">Launch</a><a href="#learn">How it works</a></div>
+        <WalletButton target={isMainnetRelease ? "mainnet" : "testnet"} />
       </nav>
+
       <section className="hero">
         <p className="eyebrow">ROBINHOOD CHAIN • {isMainnetRelease ? "LIVE MAINNET" : "ALPHA TESTNET"}</p>
-        <h1>Launch first. Find runners faster. Reward the people who build.</h1>
-        <p className="sub">A mobile-first meme launchpad and live discovery terminal with transparent creator and community economics.</p>
+        <h1>Find the move.<br />Launch the next one.</h1>
+        <p className="sub">Live meme discovery, one-signature launches, transparent rewards, and automatic graduation—all in one focused terminal.</p>
+        <div className="heroActions"><a className="primaryAction" href="#explore">See what’s moving</a><a className="secondaryAction" href="#launch">Launch a token</a></div>
+        <div className="trustStrip"><span>No hidden minting</span><span>No transfer tax</span><span>Wallet-signed only</span></div>
       </section>
-      <div className="grid">
-        <LaunchForm />
-        <section className="panel rewards">
-          <p className="eyebrow">AUTOMATIC BY DESIGN</p><h2>Launch without the technical setup</h2>
-          <div className="automaticList"><div><b>✓</b><span>Fixed supply and market created together</span></div><div><b>✓</b><span>Trading begins on the bonding curve</span></div><div><b>✓</b><span>Curve reserves remain inside the market</span></div><div><b>✓</b><span>Every fee destination remains visible onchain</span></div></div>
-          <div className="callout"><strong>Three fields. One signature.</strong><span>Choose a launch style and the protocol handles everything else.</span></div>
-          <div className="callout"><strong>{isMainnetRelease ? "Mainnet is live" : "Testnet alpha"}</strong><span>{isMainnetRelease ? "Launching, curve trading, rewards, and automatic Uniswap V4 graduation use real ETH." : "Launching, trading, and reward claims are live. DEX graduation is not active yet."}</span></div>
-        </section>
-      </div>
+
       <FreshLaunchFeed />
+
+      <section className="launchZone" id="launch">
+        <div className="zoneHeading"><div><p className="eyebrow">CREATE</p><h2>Launch in a few taps</h2></div><p>Name it, add the artwork, choose the launch style, and approve it in your wallet.</p></div>
+        <div className="grid">
+          <LaunchForm />
+          <aside className="panel rewards" id="learn">
+            <p className="eyebrow">HOW IT WORKS</p><h2>Simple for newcomers. Transparent for traders.</h2>
+            <div className="howSteps">
+              <div><b>1</b><span><strong>Connect any compatible wallet</strong><small>Use Robinhood Wallet’s Web3 browser, an installed browser wallet, or WalletConnect on mobile.</small></span></div>
+              <div><b>2</b><span><strong>Launch with one signature</strong><small>RMT creates the fixed supply, market, and visible reward destinations together.</small></span></div>
+              <div><b>3</b><span><strong>Trade, earn, graduate</strong><small>The curve handles trading and rewards; successful tokens graduate automatically.</small></span></div>
+            </div>
+            <div className="callout"><strong>{isMainnetRelease ? "Real ETH on mainnet" : "Testnet alpha"}</strong><span>{isMainnetRelease ? "Always review your wallet’s amount and gas estimate before signing." : "Practice launching, trading, and claiming without real funds."}</span></div>
+          </aside>
+        </div>
+      </section>
+
+      <nav className="mobileDock" aria-label="Mobile navigation"><a href="#explore"><span>◉</span>Explore</a><a href="#launch"><span>＋</span>Launch</a><a href="#learn"><span>?</span>Learn</a></nav>
     </main>
   );
 }

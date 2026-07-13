@@ -1,4 +1,4 @@
-import { createPublicClient, getAddress, http, isAddress } from "viem";
+import { createPublicClient, getAddress, http, isAddress, type Address } from "viem";
 import {
   getFactoryAddress,
   memeLaunchFactoryAbi,
@@ -8,6 +8,12 @@ import {
 import { activeChain, activeFactoryStartBlock, isMainnetRelease } from "../network";
 import type { LaunchFeedItem } from "../launch-feed";
 import { resolveTokenMetadata } from "../token-metadata";
+
+const marketSignalsAbi = [
+  { type: "function", name: "realEthReserve", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] },
+  { type: "function", name: "progressBps", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] },
+  { type: "function", name: "graduated", stateMutability: "view", inputs: [], outputs: [{ type: "bool" }] }
+] as const;
 
 const publicClient = createPublicClient({
   chain: activeChain,
@@ -22,6 +28,23 @@ async function resolveActiveFactory() {
     functionName: "activeFactory"
   });
   return isAddress(registered) ? getAddress(registered) : null;
+}
+
+async function readMarketSignals(market: Address) {
+  try {
+    const [reserve, progress, graduated] = await Promise.all([
+      publicClient.readContract({ address: market, abi: marketSignalsAbi, functionName: "realEthReserve" }),
+      publicClient.readContract({ address: market, abi: marketSignalsAbi, functionName: "progressBps" }),
+      publicClient.readContract({ address: market, abi: marketSignalsAbi, functionName: "graduated" })
+    ]);
+    return {
+      reserveWei: reserve.toString(),
+      progressBps: Math.min(10_000, Number(progress)),
+      graduated
+    };
+  } catch {
+    return { reserveWei: "0", progressBps: 0, graduated: false };
+  }
 }
 
 export async function readFreshLaunches(limit = 25): Promise<LaunchFeedItem[]> {
@@ -52,6 +75,7 @@ export async function readFreshLaunches(limit = 25): Promise<LaunchFeedItem[]> {
       launchId: log.args.launchId.toString(),
       token: log.args.token,
       creator: log.args.creator,
+      market: log.args.market,
       rewardVault: log.args.rewardVault,
       name: log.args.name,
       symbol: log.args.symbol,
@@ -59,7 +83,10 @@ export async function readFreshLaunches(limit = 25): Promise<LaunchFeedItem[]> {
       communityBps: Number(log.args.rewardBps[1]),
       transactionHash: log.transactionHash,
       blockNumber: log.blockNumber.toString(),
-      metadataURI: log.args.metadataURI
+      metadataURI: log.args.metadataURI,
+      reserveWei: "0",
+      progressBps: 0,
+      graduated: false
     }] : []));
 
     if (fromBlock === requestedStart) break;
@@ -69,7 +96,10 @@ export async function readFreshLaunches(limit = 25): Promise<LaunchFeedItem[]> {
   launches.sort((a, b) => BigInt(a.blockNumber) > BigInt(b.blockNumber) ? -1 : 1);
   const recent = launches.slice(0, limit);
   return Promise.all(recent.map(async (launch) => {
-    const metadata = await resolveTokenMetadata(launch.metadataURI);
-    return { ...launch, image: metadata?.image };
+    const [metadata, signals] = await Promise.all([
+      resolveTokenMetadata(launch.metadataURI),
+      readMarketSignals(launch.market)
+    ]);
+    return { ...launch, ...signals, image: metadata?.image };
   }));
 }
