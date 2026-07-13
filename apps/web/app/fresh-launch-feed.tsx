@@ -48,8 +48,8 @@ export function FreshLaunchFeed() {
       const configuredStart = process.env.NEXT_PUBLIC_FACTORY_START_BLOCK;
       const requestedStart = configuredStart && /^\d+$/.test(configuredStart) ? BigInt(configuredStart) : publicTestnetFactoryStartBlock;
       let cursor = latestBlock;
-      const logs = [] as Awaited<ReturnType<typeof publicClient.getContractEvents>>;
-      while (cursor >= requestedStart && logs.length < 25) {
+      const parsed: LaunchItem[] = [];
+      while (cursor >= requestedStart && parsed.length < 25) {
         const candidate = cursor > 19_999n ? cursor - 19_999n : 0n;
         const fromBlock = candidate < requestedStart ? requestedStart : candidate;
         const batch = await publicClient.getContractEvents({
@@ -60,24 +60,23 @@ export function FreshLaunchFeed() {
           toBlock: cursor,
           strict: true
         });
-        logs.push(...batch);
+        parsed.push(...batch.flatMap((log) => log.transactionHash ? [{
+          launchId: log.args.launchId,
+          token: log.args.token,
+          creator: log.args.creator,
+          rewardVault: log.args.rewardVault,
+          name: log.args.name,
+          symbol: log.args.symbol,
+          creatorBps: Number(log.args.rewardBps[0]),
+          communityBps: Number(log.args.rewardBps[1]),
+          transactionHash: log.transactionHash,
+          blockNumber: log.blockNumber,
+          metadataURI: log.args.metadataURI
+        }] : []));
         if (fromBlock === requestedStart) break;
         cursor = fromBlock - 1n;
       }
-
-      const parsed = logs.map((log) => ({
-        launchId: log.args.launchId,
-        token: log.args.token,
-        creator: log.args.creator,
-        rewardVault: log.args.rewardVault,
-        name: log.args.name,
-        symbol: log.args.symbol,
-        creatorBps: Number(log.args.rewardBps[0]),
-        communityBps: Number(log.args.rewardBps[1]),
-        transactionHash: log.transactionHash,
-        blockNumber: log.blockNumber,
-        metadataURI: log.args.metadataURI
-      })).sort((a, b) => a.blockNumber > b.blockNumber ? -1 : 1).slice(0, 25);
+      parsed.sort((a, b) => a.blockNumber > b.blockNumber ? -1 : 1).splice(25);
 
       const enriched = await Promise.all(parsed.map(async (launch) => {
         const metadata = await resolveTokenMetadata(launch.metadataURI);
