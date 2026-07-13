@@ -33,8 +33,14 @@ export function readWatchlist() {
 }
 
 function writeWatchlist(entries: WatchlistEntry[]) {
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(entries.slice(0, MAXIMUM_ENTRIES)));
-  window.dispatchEvent(new Event(WATCHLIST_EVENT));
+  if (typeof window === "undefined") return false;
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(entries.slice(0, MAXIMUM_ENTRIES)));
+    window.dispatchEvent(new Event(WATCHLIST_EVENT));
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function isWatched(address: string) {
