@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { formatEther, type Address, type Hash } from "viem";
 import { useAccount, usePublicClient, useReadContract, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { robinhoodChainTestnet } from "@rmt/shared/chains";
-import { memeLaunchFactoryAbi } from "../lib/contracts";
+import { memeLaunchFactoryAbi, publicTestnetFactoryStartBlock } from "../lib/contracts";
 import { useFactoryAddress } from "../lib/use-factory-address";
 
 const rewardVaultAbi = [
@@ -37,11 +37,18 @@ export function RewardVaultPanel({ tokenAddress }: { tokenAddress: Address }) {
     async function findVault() {
       if (!factoryAddress || !publicClient) return;
       try {
-        const count = await publicClient.readContract({ address: factoryAddress, abi: memeLaunchFactoryAbi, functionName: "launchCount" });
-        const launches = await Promise.all(Array.from({ length: Number(count) }, (_, index) => publicClient.readContract({ address: factoryAddress, abi: memeLaunchFactoryAbi, functionName: "getLaunch", args: [BigInt(index)] })));
-        const match = launches.find((launch) => launch.token.toLowerCase() === tokenAddress.toLowerCase());
+        let cursor = await publicClient.getBlockNumber();
+        let match: Address | undefined;
+        while (cursor >= publicTestnetFactoryStartBlock && !match) {
+          const candidate = cursor > 19_999n ? cursor - 19_999n : 0n;
+          const fromBlock = candidate < publicTestnetFactoryStartBlock ? publicTestnetFactoryStartBlock : candidate;
+          const logs = await publicClient.getContractEvents({ address: factoryAddress, abi: memeLaunchFactoryAbi, eventName: "TokenLaunched", args: { token: tokenAddress }, fromBlock, toBlock: cursor, strict: true });
+          match = logs[0]?.args.rewardVault;
+          if (fromBlock === publicTestnetFactoryStartBlock) break;
+          cursor = fromBlock - 1n;
+        }
         if (!cancelled) {
-          setVaultAddress(match?.rewardVault ?? null);
+          setVaultAddress(match ?? null);
           setLookupError(match ? null : "No factory launch record was found for this token.");
         }
       } catch (error) {
