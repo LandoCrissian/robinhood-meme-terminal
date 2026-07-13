@@ -12,6 +12,8 @@ export type SystemHealthReport = {
   network: string;
   chainId: number;
   latestBlock: string;
+  blockAgeSeconds: number | null;
+  latencyMs: number;
   checkedAt: string;
   checks: SystemHealthCheck[];
 };

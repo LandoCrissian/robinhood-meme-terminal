@@ -29,25 +29,37 @@ function check(key: SystemHealthCheck["key"], label: string, healthy: boolean, d
 }
 
 export async function readSystemHealth(): Promise<SystemHealthReport> {
-  const checkedAt = new Date().toISOString();
+  const startedAt = Date.now();
+  const checkedAt = new Date(startedAt).toISOString();
   const checks: SystemHealthCheck[] = [];
+  let blockAgeSeconds: number | null = null;
 
   try {
     const [chainId, latestBlock] = await Promise.all([client.getChainId(), client.getBlockNumber()]);
-    checks.push(check("rpc", "Robinhood Chain connection", chainId === activeChain.id, `Block ${latestBlock.toString()} · Chain ${chainId}`));
+    const block = await client.getBlock({ blockNumber: latestBlock });
+    blockAgeSeconds = Math.max(0, Math.floor(Date.now() / 1_000 - Number(block.timestamp)));
+    checks.push(check(
+      "rpc",
+      "Robinhood Chain connection",
+      chainId === activeChain.id && blockAgeSeconds <= 60,
+      `Block ${latestBlock.toString()} · ${blockAgeSeconds}s old · Chain ${chainId}`
+    ));
 
     let factory: Address | null = getFactoryAddress();
     if (isMainnetRelease) {
-      const registered = await client.readContract({
-        address: publicMainnetVersionRegistryAddress,
-        abi: versionRegistryAbi,
-        functionName: "activeFactory"
-      });
+      const [registryCode, registered] = await Promise.all([
+        client.getBytecode({ address: publicMainnetVersionRegistryAddress }),
+        client.readContract({
+          address: publicMainnetVersionRegistryAddress,
+          abi: versionRegistryAbi,
+          functionName: "activeFactory"
+        })
+      ]);
       factory = isAddress(registered) ? getAddress(registered) : null;
       checks.push(check(
         "registry",
         "Version registry",
-        factory === publicMainnetFactoryAddress,
+        Boolean(registryCode && registryCode !== "0x") && factory === publicMainnetFactoryAddress,
         factory ? `Active factory ${factory.slice(0, 8)}…${factory.slice(-6)}` : "No active factory returned"
       ));
     } else {
@@ -81,15 +93,14 @@ export async function readSystemHealth(): Promise<SystemHealthReport> {
       `${Number(feeBps) / 100}% market fee · ${Number(graduationTarget) / 1e18} ETH graduation target`
     ));
 
-    const boundFactory = await client.readContract({
-      address: adapter,
-      abi: adapterHealthAbi,
-      functionName: "factory"
-    });
+    const [adapterCode, boundFactory] = await Promise.all([
+      client.getBytecode({ address: adapter }),
+      client.readContract({ address: adapter, abi: adapterHealthAbi, functionName: "factory" })
+    ]);
     checks.push(check(
       "graduation",
       "Graduation adapter",
-      getAddress(boundFactory) === factory,
+      Boolean(adapterCode && adapterCode !== "0x") && getAddress(boundFactory) === factory,
       `Bound to active factory · ${adapter.slice(0, 8)}…${adapter.slice(-6)}`
     ));
 
@@ -98,6 +109,8 @@ export async function readSystemHealth(): Promise<SystemHealthReport> {
       network: activeNetworkLabel,
       chainId,
       latestBlock: latestBlock.toString(),
+      blockAgeSeconds,
+      latencyMs: Date.now() - startedAt,
       checkedAt,
       checks
     };
@@ -119,6 +132,8 @@ export async function readSystemHealth(): Promise<SystemHealthReport> {
       network: activeNetworkLabel,
       chainId: activeChain.id,
       latestBlock: "unavailable",
+      blockAgeSeconds,
+      latencyMs: Date.now() - startedAt,
       checkedAt,
       checks
     };
