@@ -83,7 +83,7 @@ export function FreshLaunchFeed() {
         <Link className="hotCard" href={`/token/${launch.token}`} key={`hot-${launch.transactionHash}-${launch.launchId}`}>
           <div className="hotRank">0{index + 1}</div>
           <TokenArtwork launch={launch} featured />
-          <div className="hotIdentity"><strong>{launch.name}</strong><span>{`${displaySymbol(launch.symbol)}`}</span></div>
+          <div className="hotIdentity"><strong>{launch.name}</strong><span>{"$" + displaySymbol(launch.symbol)}</span></div>
           <div className="hotSignal"><small>{launch.graduated ? "Status" : "Curve reserve"}</small><strong>{launch.graduated ? "Graduated" : reserveLabel(launch.reserveWei)}</strong></div>
           <div className="miniProgress" aria-label={`${launch.progressBps / 100}% graduation progress`}><span style={{ width: `${launch.progressBps / 100}%` }} /></div>
         </Link>
@@ -94,7 +94,7 @@ export function FreshLaunchFeed() {
         <Link className="launchRow" href={`/token/${launch.token}`} key={`${launch.transactionHash}-${launch.launchId}`}>
           <article>
             <TokenArtwork launch={launch} />
-            <div className="identity"><strong>{launch.name}</strong><span>{`${displaySymbol(launch.symbol)} • #${launch.launchId}`}</span></div>
+            <div className="identity"><strong>{launch.name}</strong><span>{"$" + displaySymbol(launch.symbol) + " • #" + launch.launchId}</span></div>
             <div><small>Curve reserve</small><strong>{reserveLabel(launch.reserveWei)}</strong></div>
             <div><small>Graduation</small><strong>{launch.graduated ? "Complete" : `${launch.progressBps / 100}%`}</strong></div>
             <div><small>Creator</small><strong title={launch.creator}>{shortAddress(launch.creator)}</strong></div>
