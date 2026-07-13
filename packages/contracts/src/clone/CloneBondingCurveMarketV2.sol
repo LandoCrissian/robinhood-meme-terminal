@@ -255,6 +255,9 @@ contract CloneBondingCurveMarketV2 {
         return (realEthReserve * BPS_DENOMINATOR) / graduationTarget;
     }
 
+    // The market-wide nonReentrant lock covers approval, adapter execution, and post-settlement checks.
+    // The token is the factory's fixed implementation and the adapter is permanently bound to this market.
+    // slither-disable-next-line reentrancy-balance
     function migrateLiquidity() external nonReentrant returns (address pool, uint256 liquidity) {
         if (!graduated) revert NotGraduated();
         if (liquidityMigrated) revert AlreadyMigrated();
