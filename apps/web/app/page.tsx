@@ -21,8 +21,9 @@ export default function Home() {
         <LaunchForm />
         <section className="panel rewards">
           <p className="eyebrow">AUTOMATIC BY DESIGN</p><h2>Launch without the technical setup</h2>
-          <div className="automaticList"><div><b>✓</b><span>Fixed supply and market created together</span></div><div><b>✓</b><span>Trading begins on the bonding curve</span></div><div><b>✓</b><span>Graduation liquidity builds automatically</span></div><div><b>✓</b><span>Every fee destination remains visible onchain</span></div></div>
+          <div className="automaticList"><div><b>✓</b><span>Fixed supply and market created together</span></div><div><b>✓</b><span>Trading begins on the bonding curve</span></div><div><b>✓</b><span>Curve reserves remain inside the market</span></div><div><b>✓</b><span>Every fee destination remains visible onchain</span></div></div>
           <div className="callout"><strong>Three fields. One signature.</strong><span>Choose a launch style and the protocol handles everything else.</span></div>
+          <div className="callout"><strong>Testnet alpha</strong><span>Launching, trading, and reward claims are live. DEX graduation is not active yet.</span></div>
         </section>
       </div>
       <FreshLaunchFeed />
