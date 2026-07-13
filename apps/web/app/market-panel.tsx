@@ -71,7 +71,7 @@ function formatPrice(value: bigint) {
 
 function formatUsd(value?: number) {
   if (value === undefined || !Number.isFinite(value)) return "Unavailable";
-  if (value > 0 && value < 0.01) return `${value.toExponential(2)}`;
+  if (value > 0 && value < 0.01) return `$${value.toExponential(2)}`;
   return value.toLocaleString(undefined, { style: "currency", currency: "USD", maximumFractionDigits: 2 });
 }
 
@@ -303,7 +303,7 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply }: { tokenAddres
       {(writeError || receipt.error) && <div className="errors"><span>{writeError?.message || receipt.error?.message}</span></div>}
       {tradeMessage && <div className="callout"><strong>{tradeMessage}</strong></div>}
       {receipt.isSuccess && lastAction !== "approve" && <div className="callout"><strong>{lastAction === "sell" ? "Sell confirmed" : "Buy confirmed"}</strong><a href={`${activeChain.blockExplorers.default.url}/tx/${hash}`} target="_blank" rel="noreferrer">View transaction ↗</a></div>}
-      <button className="launch" disabled={!isConnected || busy || Boolean(graduated.data) || preflight.status !== "ready" || (mode === "buy" ? buyOut === 0n : sellOut === 0n)} onClick={trade}>{graduated.data ? "Graduated — trade on DEX" : !isConnected ? "Connect wallet to trade" : busy ? lastAction === "approve" ? "Approving…" : lastAction === "sell" ? "Confirm sell in wallet…" : "Confirming…" : preflight.status === "checking" ? "Checking order…" : preflight.status === "error" ? "Review order details" : mode === "buy" ? `Buy ${symbol}` : needsApproval ? `Enable and sell ${symbol}` : `Sell ${symbol}`}</button>
+      <button className="launch" disabled={!isConnected || busy || Boolean(graduated.data) || preflight.status !== "ready" || (mode === "buy" ? buyOut === 0n : sellOut === 0n)} onClick={trade}>{graduated.data ? "Graduated — trade on DEX" : !isConnected ? "Connect wallet to trade" : busy ? lastAction === "approve" ? "Approving…" : lastAction === "sell" ? "Confirm sell in wallet…" : "Confirming…" : preflight.status === "checking" ? "Checking order…" : preflight.status === "error" ? "Review order details" : preflight.status === "idle" ? "Preparing quote…" : mode === "buy" ? `Buy ${symbol}` : needsApproval ? `Enable and sell ${symbol}` : `Sell ${symbol}`}</button>
       <a className="explorerLink" href={`${activeChain.blockExplorers.default.url}/address/${market}`} target="_blank" rel="noreferrer">Open market in explorer ↗</a>
       <div className="tradeHistory">
         <div className="historyHeader"><div><p className="eyebrow">ONCHAIN ACTIVITY</p><h3>Recent trades</h3></div><span>{recentTrades.length} shown</span></div>
