@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { DiscoverySearch } from "./discovery-search";
 import { ExternalMarketFeed } from "./external-market-feed";
 import { FreshLaunchFeed } from "./fresh-launch-feed";
 import { LaunchForm } from "./launch-form";
@@ -26,6 +27,7 @@ export default function Home() {
         <div className="trustStrip"><span>No hidden minting</span><span>No transfer tax</span><span>Wallet-signed only</span></div>
       </section>
 
+      <DiscoverySearch />
       <FreshLaunchFeed />
       <WatchlistPanel />
       <ExternalMarketFeed />
