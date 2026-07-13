@@ -14,6 +14,10 @@ export type LaunchFeedItem = {
   blockNumber: string;
   metadataURI: string;
   reserveWei: string;
+  volumeWei: string;
+  tradeCount: number;
+  buyCount: number;
+  sellCount: number;
   progressBps: number;
   graduated: boolean;
   image?: string;
