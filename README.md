@@ -32,7 +32,7 @@ DEX graduation is deliberately disabled in the lightweight public testnet stack.
 - `packages/shared` — shared chain configuration
 - `docs` — deployment, graduation, and launch-readiness records
 
-The current browser client reads factory and market events directly from Robinhood Chain testnet. That is acceptable for the limited alpha, but a reorg-safe indexer is required before a public mainnet launch.
+The Fresh feed reads verified factory events through a cached server API, while token-market history still comes directly from Robinhood Chain testnet. That is acceptable for the limited alpha, but a persistent reorg-safe indexer is required before a public mainnet launch.
 
 ## Development
 
