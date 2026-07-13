@@ -11,6 +11,8 @@ fail() {
   exit 1
 }
 
+normalize() { printf '%s' "$1" | tr '[:upper:]' '[:lower:]'; }
+
 require_address() {
   local name="$1"
   local value="${!name:-}"
@@ -51,7 +53,7 @@ REVENUE_ADDRESSES=(
 )
 for ((i = 0; i < ${#REVENUE_ADDRESSES[@]}; i++)); do
   for ((j = 0; j < i; j++)); do
-    [[ "${REVENUE_ADDRESSES[$i],,}" != "${REVENUE_ADDRESSES[$j],,}" ]] ||
+    [[ "$(normalize "${REVENUE_ADDRESSES[$i]}")" != "$(normalize "${REVENUE_ADDRESSES[$j]}")" ]] ||
       fail "protocol revenue destinations must be five distinct contracts."
   done
 done
