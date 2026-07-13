@@ -83,8 +83,7 @@ contract DeployMainnetMemeLaunchFactory {
         hook.bindAdapter(address(adapter));
 
         revenueRouter = new ProtocolRevenueRouter(revenueRecipients);
-        rewardsController =
-            new PurposeRewardsController(deployer, rewardsGovernance, Config.REWARD_RELEASE_DELAY);
+        rewardsController = new PurposeRewardsController(deployer, rewardsGovernance, Config.REWARD_RELEASE_DELAY);
         factory = new LowCostMemeLaunchFactoryV4(
             address(adapter),
             Config.MARKET_FEE_BPS,
