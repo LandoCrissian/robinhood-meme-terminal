@@ -5,6 +5,7 @@ import { formatEther, formatUnits, parseEther, parseUnits, type Address } from "
 import { useAccount, usePublicClient, useReadContract, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { robinhoodChainTestnet } from "@rmt/shared/chains";
 import { useLaunchRecord } from "../lib/use-launch-record";
+import { PriceHistoryChart, type PricePoint } from "./price-history-chart";
 
 const marketAbi = [
   { type: "function", name: "quoteBuy", stateMutability: "view", inputs: [{ name: "ethIn", type: "uint256" }], outputs: [{ name: "tokensOut", type: "uint256" }, { name: "fee", type: "uint256" }] },
@@ -35,6 +36,8 @@ type RecentTrade = {
   tokenAmount: bigint;
   ethAmount: bigint;
   feeAmount: bigint;
+  virtualEthReserve: bigint;
+  virtualTokenReserve: bigint;
   blockNumber: bigint;
 };
 
@@ -84,7 +87,7 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply }: { tokenAddres
           const candidate = cursor > 19_999n ? cursor - 19_999n : 0n;
           const fromBlock = candidate < launchBlock ? launchBlock : candidate;
           const logs = await client.getContractEvents({ address: marketAddress, abi: marketAbi, eventName: "Trade", fromBlock, toBlock: cursor, strict: true });
-          newestFirst.push(...logs.reverse().flatMap((log) => log.transactionHash ? [{ transactionHash: log.transactionHash, trader: log.args.trader, isBuy: log.args.isBuy, tokenAmount: log.args.tokenAmount, ethAmount: log.args.ethAmount, feeAmount: log.args.feeAmount, blockNumber: log.blockNumber }] : []));
+          newestFirst.push(...logs.reverse().flatMap((log) => log.transactionHash ? [{ transactionHash: log.transactionHash, trader: log.args.trader, isBuy: log.args.isBuy, tokenAmount: log.args.tokenAmount, ethAmount: log.args.ethAmount, feeAmount: log.args.feeAmount, virtualEthReserve: log.args.virtualEthReserve, virtualTokenReserve: log.args.virtualTokenReserve, blockNumber: log.blockNumber }] : []));
           if (fromBlock === launchBlock) break;
           cursor = fromBlock - 1n;
         }
@@ -120,6 +123,7 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply }: { tokenAddres
   const busy = isPending || receipt.isLoading;
   const priceWei = virtualTokens.data && virtualTokens.data > 0n ? (virtualEth.data ?? 0n) * 10n ** 18n / virtualTokens.data : 0n;
   const marketCapWei = virtualTokens.data && virtualTokens.data > 0n ? (virtualEth.data ?? 0n) * totalSupply / virtualTokens.data : 0n;
+  const chartPoints = useMemo<PricePoint[]>(() => [...recentTrades].reverse().flatMap((trade) => trade.virtualTokenReserve > 0n ? [{ blockNumber: trade.blockNumber, priceWei: trade.virtualEthReserve * 10n ** 18n / trade.virtualTokenReserve, side: trade.isBuy ? "buy" : "sell" }] : []), [recentTrades]);
 
   useEffect(() => {
     if (!receipt.isSuccess) return;
@@ -162,6 +166,7 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply }: { tokenAddres
         <div><span>Market reserve</span><strong>{formatEth(reserve.data ?? 0n, 7)} test ETH</strong></div>
         <small>DEX migration is disabled in this testnet alpha. Launching, curve trading, and fee accounting remain live.</small>
       </div>
+      <PriceHistoryChart points={chartPoints} symbol={symbol} />
       <div className="tradeTabs"><button className={mode === "buy" ? "active" : ""} onClick={() => setMode("buy")}>Buy</button><button className={mode === "sell" ? "active" : ""} onClick={() => setMode("sell")}>Sell</button></div>
       {mode === "buy" ? <label>Pay with test ETH<input inputMode="decimal" value={buyAmount} onChange={(event) => setBuyAmount(event.target.value)} /><small>You receive approximately {Number(formatUnits(buyOut, 18)).toLocaleString(undefined, { maximumFractionDigits: 2 })} {symbol}</small></label> : <label>Sell {symbol}<input inputMode="decimal" value={sellAmount} onChange={(event) => setSellAmount(event.target.value)} /><small>You receive approximately {Number(formatEther(sellOut)).toLocaleString(undefined, { maximumFractionDigits: 8 })} test ETH</small></label>}
       <div className="tradeDisclosure"><span>1% platform fee</span><span>1% slippage protection</span><span>10-minute deadline</span></div>
