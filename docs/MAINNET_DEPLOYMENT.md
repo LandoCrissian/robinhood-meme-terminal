@@ -1,6 +1,6 @@
 # Robinhood Chain mainnet deployment record
 
-Status: **deployed and application-verified; not yet public**
+Status: **deployed, application-verified, and launch-loop smoke-tested; not yet public**
 
 This record captures the reviewed RMT V4 infrastructure deployed through the wallet-signed mainnet console. It does not declare the contracts audited and it does not authorize unrestricted public trading.
 
@@ -43,15 +43,29 @@ Before showing “Mainnet stack verified — not yet published,” the console c
 - 24-hour controlled-release delays and 48-hour factory-version activation delay;
 - Fair Start delay, duration, per-buy limit, cumulative wallet limit, and one-buy-per-block enforcement.
 
+## Disposable mainnet smoke evidence
+
+The operator completed the bounded V4 launch loop with a clearly labeled disposable token:
+
+- Token: `0xbDE596366551AaCae3E7C397b72F53f2A524582A`
+- Market: `0xe0dED88c6D2aB5831C64d57F4d4ed21c3512f6c4`
+- Reward vault: `0x8C91Ac046A6b20f33E43FC4eEc4f765B69c5c83e`
+- Buy transaction: `0x6e15532a730c9721b8cd4ecb457282e0b1e911d814bdcb6ef41f5f1c2091175b`
+- Sell transaction: `0x0a99eb8e438990281d636c505935ece6afa78f573c93b4144c00fd4fb5bb9a15`
+- Creator-reward claim: `0x97248fa1d98f4363d846dd4f95d4d42d6ca70c3c2150c0acc5e61f8d1983eb8c`
+
+This proves factory launch, market custody, curve buy and sell accounting, fee accrual, and pull-based creator claims on Robinhood Chain mainnet. It does not prove DEX graduation or constitute an independent security audit.
+
 ## Remaining go-live gates
 
-- [ ] Publish matching source and compiler settings on Blockscout.
+- [x] Publish matching factory and version-registry source and compiler settings on Blockscout.
+- [ ] Publish or verify the remaining production dependency sources on Blockscout.
 - [ ] Record every governance, vault, hook, adapter, router, and controller address and transaction hash.
-- [ ] Run a disposable low-value mainnet launch.
-- [ ] Run low-value buy, sell, reward accrual, and claim checks.
+- [x] Run a disposable low-value mainnet launch.
+- [x] Run low-value buy, sell, reward accrual, and claim checks.
 - [ ] Exercise graduation on a disposable launch or document a bounded staging exception.
 - [ ] Point the public frontend at the version registry only after the smoke checks pass.
-- [ ] Keep the official RMT project token unlaunched until the disposable smoke launch succeeds.
+- [x] Keep the official RMT project token unlaunched until the disposable smoke launch succeeds.
 - [ ] Obtain an independent smart-contract security review before describing the release as audited.
 
 The registry coordinates future factory versions only. It cannot rewrite existing tokens, markets, reward vaults, or liquidity.
