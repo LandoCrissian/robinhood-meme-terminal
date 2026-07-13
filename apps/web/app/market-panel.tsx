@@ -276,6 +276,15 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply }: { tokenAddres
         <small>{isMainnetRelease ? graduated.data ? "Graduated to Uniswap V4. Curve trading is closed; DEX routing is next." : `${Number(progress.data ?? 0n) / 100}% toward automatic Uniswap V4 graduation (${formatEth(graduationTarget.data ?? 0n, 4)} ETH target).` : "DEX migration is disabled in this testnet alpha. Launching, curve trading, and fee accounting remain live."}</small>
       </div>
       <PriceHistoryChart points={chartPoints} symbol={symbol} />
+      {!isConnected && <details className="starterGuide" open>
+        <summary><span>New to Robinhood Chain?</span><small>3 simple steps</small></summary>
+        <div className="starterSteps">
+          <div><b>1</b><span><strong>Connect a wallet</strong><small>Use Robinhood Wallet, MetaMask, Phantom, or another EVM wallet.</small></span></div>
+          <div><b>2</b><span><strong>Fund it with Chain ETH</strong><small>Gas and purchases use ETH on Robinhood Chain—not ETH sitting on another network or in a brokerage account.</small></span></div>
+          <div><b>3</b><span><strong>Choose dollars and review</strong><small>RMT converts your dollar choice to ETH, simulates the order, then your wallet asks for approval.</small></span></div>
+        </div>
+        <div className="starterLinks"><a href="https://docs.robinhood.com/chain/add-network-to-wallet/" target="_blank" rel="noreferrer">Official wallet setup ↗</a><a href="https://docs.robinhood.com/chain/bridging/" target="_blank" rel="noreferrer">Official funding options ↗</a></div>
+      </details>}
       <div className="tradeTabs"><button className={mode === "buy" ? "active" : ""} onClick={() => setMode("buy")}>Buy</button><button className={mode === "sell" ? "active" : ""} onClick={() => setMode("sell")}>Sell</button></div>
       {mode === "buy" ? <div className="tradeAmountCard">
         <div className="tradeAmountTop"><span>You pay</span><small>{ethUsd ? `1 ETH ≈ ${formatUsd(ethUsd)}` : "Loading ETH/USD…"}</small></div>
