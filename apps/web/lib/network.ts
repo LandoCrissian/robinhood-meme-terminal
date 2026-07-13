@@ -1,4 +1,4 @@
-import { robinhoodChain, robinhoodChainTestnet } from "@rmt/chain";
+import { robinhoodChain, robinhoodChainTestnet } from "@rmt/shared/chains";
 
 export const isMainnetRelease =
   process.env.NEXT_PUBLIC_RMT_NETWORK === "mainnet";
