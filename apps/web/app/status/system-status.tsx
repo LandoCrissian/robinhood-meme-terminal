@@ -28,7 +28,7 @@ export function SystemStatus({ initialReport }: { initialReport: SystemHealthRep
           <p className="eyebrow">SYSTEM STATUS</p>
           <h1>{report.ok ? "All launch systems operational" : "Some systems need review"}</h1>
           <p>{report.network} · Block {report.latestBlock}</p>
-          <small>Checked {new Date(report.checkedAt).toLocaleTimeString()} · Refreshes every 15 seconds</small>
+          <small>Checked {new Date(report.checkedAt).toLocaleTimeString()} · {report.latencyMs}ms verification · Refreshes every 15 seconds</small>
         </div>
       </section>
 
