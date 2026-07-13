@@ -7,6 +7,7 @@ import { usePublicClient } from "wagmi";
 import { robinhoodChainTestnet } from "@rmt/shared/chains";
 import { memeLaunchFactoryAbi } from "../lib/contracts";
 import { useFactoryAddress } from "../lib/use-factory-address";
+import { ipfsToHttp, resolveTokenMetadata } from "../lib/token-metadata";
 
 type LaunchItem = {
   launchId: bigint;
@@ -19,6 +20,8 @@ type LaunchItem = {
   communityBps: number;
   transactionHash: Hash;
   blockNumber: bigint;
+  metadataURI: string;
+  image?: string;
 };
 
 function shortAddress(address: Address) {
@@ -63,10 +66,15 @@ export function FreshLaunchFeed() {
         creatorBps: Number(log.args.rewardBps[0]),
         communityBps: Number(log.args.rewardBps[1]),
         transactionHash: log.transactionHash,
-        blockNumber: log.blockNumber
+        blockNumber: log.blockNumber,
+        metadataURI: log.args.metadataURI
       })).sort((a, b) => a.blockNumber > b.blockNumber ? -1 : 1).slice(0, 25);
 
-      setLaunches(parsed);
+      const enriched = await Promise.all(parsed.map(async (launch) => {
+        const metadata = await resolveTokenMetadata(launch.metadataURI);
+        return { ...launch, image: metadata?.image };
+      }));
+      setLaunches(enriched);
       setStatus("live");
       setMessage(parsed.length === 0 ? "Factory connected. No testnet launches yet." : `${parsed.length} verified factory launch${parsed.length === 1 ? "" : "es"}.`);
     } catch (error) {
@@ -93,7 +101,7 @@ export function FreshLaunchFeed() {
       {launches.length === 0 ? <div className="emptyFeed"><strong>{status === "loading" ? "Reading Robinhood Chain…" : "No launches to display"}</strong><span>{message}</span>{status === "error" && <button onClick={() => void refresh()}>Retry</button>}</div> : launches.map((launch) => (
         <Link className="launchRow" href={`/token/${launch.token}`} key={`${launch.transactionHash}-${launch.launchId.toString()}`}>
           <article>
-            <div className="coin">{launch.symbol.slice(0, 2)}</div>
+            <div className="coin launchArtwork">{launch.image ? <img src={ipfsToHttp(launch.image)} alt="" loading="lazy" /> : launch.symbol.slice(0, 2)}</div>
             <div className="identity"><strong>{launch.name}</strong><span>${launch.symbol} • #{launch.launchId.toString()}</span></div>
             <div><small>Fixed supply</small><strong>1,000,000,000</strong></div>
             <div><small>Community share</small><strong>{launch.communityBps / 100}%</strong></div>

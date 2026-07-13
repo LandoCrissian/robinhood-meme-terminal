@@ -10,3 +10,4 @@
 .tradeDisclosure { display:flex; flex-wrap:wrap; gap:10px; margin:18px 0; color:#8f9b92; font-size:13px; }
 .tradeDisclosure span { border:1px solid #27342b; border-radius:999px; padding:7px 10px; }
 @media (max-width: 640px) { .marketStats { grid-template-columns:1fr; } .detailNav { align-items:flex-start; } }
+.tokenArtwork{overflow:hidden}.tokenArtwork img{width:100%;height:100%;object-fit:cover}.tokenDescription{max-width:620px;margin:14px 0 0;color:#9eaaa1;line-height:1.55}.metadataStatus{display:flex;flex-direction:column;gap:9px}.metadataStatus>span{color:#75f184;font-size:.74rem;font-weight:800}
