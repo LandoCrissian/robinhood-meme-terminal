@@ -1,0 +1,43 @@
+name: Production health
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-health
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Verify live protocol
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Check public health endpoint
+        env:
+          HEALTH_URL: https://robinhood-meme-terminal.vercel.app/api/health
+        run: |
+          body_file="$(mktemp)"
+          status="$(curl --silent --show-error --location --max-time 20 --output "$body_file" --write-out "%{http_code}" "$HEALTH_URL")"
+          cat "$body_file"
+          test "$status" = "200"
+          node - "$body_file" <<'NODE'
+          const fs = require("fs");
+          const report = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+          if (report.ok !== true) {
+            throw new Error("Production health report is degraded.");
+          }
+          const degraded = report.checks.filter((item) => item.state !== "operational");
+          if (degraded.length > 0) {
+            throw new Error(`Degraded checks: ${degraded.map((item) => item.key).join(", ")}`);
+          }
+          if (report.chainId !== 4663) {
+            throw new Error(`Unexpected chain ID: ${report.chainId}`);
+          }
+          console.log(`Verified ${report.checks.length} checks at block ${report.latestBlock}.`);
+          NODE
