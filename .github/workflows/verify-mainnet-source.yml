@@ -1,4 +1,4 @@
-name: Verify mainnet contract source
+name: Verify all mainnet contract source
 
 on:
   workflow_dispatch:
@@ -13,12 +13,34 @@ permissions:
 
 jobs:
   blockscout:
-    if: github.event_name == 'workflow_dispatch' || github.head_ref == 'agent/verify-mainnet-source'
+    if: github.event_name == 'workflow_dispatch' || github.head_ref == 'agent/verify-all-mainnet-source'
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 35
     defaults:
       run:
         working-directory: packages/contracts
+    env:
+      RPC_URL: https://rpc.mainnet.chain.robinhood.com/
+      VERIFIER_URL: https://robinhoodchain.blockscout.com/api/
+      SIGNER_ONE: 0x7e8e7d3af28584a8b9eeddbE16cd3308bd1e76ca
+      SIGNER_TWO: 0xc560a2798824ae50d5d92470f8e15b3f09f45994
+      SIGNER_THREE: 0xa9adbb8322cd187d94b8d9425adc4bde67d5cca4
+      FACTORY_GOVERNANCE: 0xa50a6b977bea3fed6c56a33edade2a4b93f41b99
+      REWARDS_GOVERNANCE: 0xe39ce3259d8e79628afa537e83631b51f74f7416
+      PROTOCOL_GOVERNANCE: 0xd3aad8d7cf148f0134f2cb986e0bba08647678af
+      TREASURY_VAULT: 0x66f589e759b088a070a557e6c4487d18993e923e
+      BUYBACK_VAULT: 0x36d17cd171d54ff4e916af1acaff8a4d54b0b390
+      GRADUATION_VAULT: 0x9407983a579c160c16be2a338280109cfa833394
+      REFERRAL_VAULT: 0x5cdaaac5880071b84b47a78bff3dce97fba6ff87
+      ECOSYSTEM_VAULT: 0xd3dadc00884b60bb1ed945ae5ec5c27e0295b2be
+      GRADUATION_HOOK: 0xb0c7fbd1954b1a81832cd807eb930cd4aa75a880
+      GRADUATION_ADAPTER: 0x183d552b540702fa9bd7fe05f23966e0d449bded
+      REVENUE_ROUTER: 0xea3ecffdbd40c86df510ea48b2750bc0652bfbf6
+      REWARDS_CONTROLLER: 0x000d53f45106e91733fe74d1dd5d32f15b87644c
+      LAUNCH_FACTORY: 0x88b86f10d874c2e3c8cfe63161ffa969f3273cd4
+      VERSION_REGISTRY: 0xfff3f69f473780ea5ea7f5525526986bb491e00e
+      POOL_MANAGER: 0x8366a39cc670b4001a1121b8f6a443a643e40951
+      OPERATOR: 0x7e8e7d3af28584a8b9eeddbE16cd3308bd1e76ca
     steps:
       - uses: actions/checkout@v4
       - uses: foundry-rs/foundry-toolchain@v1
@@ -28,19 +50,55 @@ jobs:
         run: bash scripts/install-v4-deps.sh
       - name: Compile the exact release sources
         run: forge build
-      - name: Publish launch factory source
-        env:
-          RPC_URL: https://rpc.mainnet.chain.robinhood.com/
-          VERIFIER_URL: https://robinhoodchain.blockscout.com/api/
+      - name: Publish every RMT-owned production source
         run: |
           set -euo pipefail
-          ARGS="$(cast abi-encode 'constructor(address,uint16,uint256,uint256,uint256,address,address)' 0x183d552B540702fa9bD7fE05f23966E0d449BdEd 100 300000000000000000 1073000000000000000000000000 1000000000000000000 0x0D53f45106E91733fe74d1Dd5d32f15b87644C00 0xEA3EcFFDBd40c86dF510EA48B2750bc0652BfbF6)"
-          forge verify-contract --rpc-url "$RPC_URL" --verifier blockscout --verifier-url "$VERIFIER_URL" --constructor-args "$ARGS" --watch 0x88b86F10D874C2e3C8CfE63161ffa969f3273Cd4 src/LowCostMemeLaunchFactoryV4.sol:LowCostMemeLaunchFactoryV4
-      - name: Publish version registry source
-        env:
-          RPC_URL: https://rpc.mainnet.chain.robinhood.com/
-          VERIFIER_URL: https://robinhoodchain.blockscout.com/api/
-        run: |
-          set -euo pipefail
-          ARGS="$(cast abi-encode 'constructor(address,uint256,address,bytes32)' 0xA50A6b977BEa3FEd6C56A33EdADE2A4B93F41b99 172800 0x88b86F10D874C2e3C8CfE63161ffa969f3273Cd4 0xdef50385924e38ff5aec5dc38e5e0215be1b43ba2d4d1d0bfbf6f3141e1b3426)"
-          forge verify-contract --rpc-url "$RPC_URL" --verifier blockscout --verifier-url "$VERIFIER_URL" --constructor-args "$ARGS" --watch 0xfff3f69f473780EA5eA7f5525526986Bb491E00e src/VersionedFactoryRegistry.sol:VersionedFactoryRegistry
+
+          verify() {
+            local address="$1"
+            local contract="$2"
+            local args="$3"
+            forge verify-contract \
+              --rpc-url "$RPC_URL" \
+              --verifier blockscout \
+              --verifier-url "$VERIFIER_URL" \
+              --constructor-args "$args" \
+              --watch \
+              "$address" \
+              "$contract"
+          }
+
+          SIGNERS="[$SIGNER_ONE,$SIGNER_TWO,$SIGNER_THREE]"
+          ZERO_DELAY_ARGS="$(cast abi-encode 'constructor(address[3],uint256)' "$SIGNERS" 0)"
+          PROTOCOL_DELAY_ARGS="$(cast abi-encode 'constructor(address[3],uint256)' "$SIGNERS" 86400)"
+
+          verify "$FACTORY_GOVERNANCE" "src/TwoOfThreeTimelock.sol:TwoOfThreeTimelock" "$ZERO_DELAY_ARGS"
+          verify "$REWARDS_GOVERNANCE" "src/TwoOfThreeTimelock.sol:TwoOfThreeTimelock" "$ZERO_DELAY_ARGS"
+          verify "$PROTOCOL_GOVERNANCE" "src/TwoOfThreeTimelock.sol:TwoOfThreeTimelock" "$PROTOCOL_DELAY_ARGS"
+
+          verify "$TREASURY_VAULT" "src/ProtocolPurposeVault.sol:ProtocolPurposeVault" \
+            "$(cast abi-encode 'constructor(address,bytes32)' "$PROTOCOL_GOVERNANCE" "$(cast keccak PROTOCOL_TREASURY)")"
+          verify "$BUYBACK_VAULT" "src/ProtocolPurposeVault.sol:ProtocolPurposeVault" \
+            "$(cast abi-encode 'constructor(address,bytes32)' "$PROTOCOL_GOVERNANCE" "$(cast keccak BUYBACK_RESERVE)")"
+          verify "$GRADUATION_VAULT" "src/ProtocolPurposeVault.sol:ProtocolPurposeVault" \
+            "$(cast abi-encode 'constructor(address,bytes32)' "$PROTOCOL_GOVERNANCE" "$(cast keccak GRADUATION_ASSISTANCE)")"
+          verify "$REFERRAL_VAULT" "src/ProtocolPurposeVault.sol:ProtocolPurposeVault" \
+            "$(cast abi-encode 'constructor(address,bytes32)' "$PROTOCOL_GOVERNANCE" "$(cast keccak REFERRAL_RESERVE)")"
+          verify "$ECOSYSTEM_VAULT" "src/ProtocolPurposeVault.sol:ProtocolPurposeVault" \
+            "$(cast abi-encode 'constructor(address,bytes32)' "$PROTOCOL_GOVERNANCE" "$(cast keccak ECOSYSTEM_GROWTH)")"
+
+          verify "$GRADUATION_HOOK" "src/V4GraduationHook.sol:V4GraduationHook" \
+            "$(cast abi-encode 'constructor(address,address)' "$POOL_MANAGER" "$OPERATOR")"
+          verify "$GRADUATION_ADAPTER" "src/V4GraduationAdapter.sol:V4GraduationAdapter" \
+            "$(cast abi-encode 'constructor(address,address,uint24,int24)' "$POOL_MANAGER" "$GRADUATION_HOOK" 10000 200)"
+
+          RECIPIENTS="[$TREASURY_VAULT,$BUYBACK_VAULT,$GRADUATION_VAULT,$REFERRAL_VAULT,$ECOSYSTEM_VAULT]"
+          verify "$REVENUE_ROUTER" "src/ProtocolRevenueRouter.sol:ProtocolRevenueRouter" \
+            "$(cast abi-encode 'constructor(address[5])' "$RECIPIENTS")"
+          verify "$REWARDS_CONTROLLER" "src/PurposeRewardsController.sol:PurposeRewardsController" \
+            "$(cast abi-encode 'constructor(address,address,uint256)' "$OPERATOR" "$REWARDS_GOVERNANCE" 86400)"
+
+          verify "$LAUNCH_FACTORY" "src/LowCostMemeLaunchFactoryV4.sol:LowCostMemeLaunchFactoryV4" \
+            "$(cast abi-encode 'constructor(address,uint16,uint256,uint256,uint256,address,address)' "$GRADUATION_ADAPTER" 100 300000000000000000 1073000000000000000000000000 1000000000000000000 "$REWARDS_CONTROLLER" "$REVENUE_ROUTER")"
+          verify "$VERSION_REGISTRY" "src/VersionedFactoryRegistry.sol:VersionedFactoryRegistry" \
+            "$(cast abi-encode 'constructor(address,uint256,address,bytes32)' "$FACTORY_GOVERNANCE" 172800 "$LAUNCH_FACTORY" 0xdef50385924e38ff5aec5dc38e5e0215be1b43ba2d4d1d0bfbf6f3141e1b3426)"
