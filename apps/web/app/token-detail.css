@@ -47,3 +47,15 @@
 .tradeStage a{color:#6ee981;text-decoration:none;font-size:.72rem;font-weight:850}
 @keyframes tradePulse{50%{opacity:.45;transform:scale(.82)}}
 @media(max-width:560px){.tradeAmountCard{padding:15px}.tradeInputRow input{font-size:2.25rem}.tradeAmountTop{align-items:flex-start;flex-direction:column;gap:3px}.tradeAmountTop small{text-align:left}.quickAmounts{gap:6px}.orderPreview{grid-template-columns:1fr}.orderPreview>div:last-child{text-align:left}}
+
+.preflightCard{display:flex;align-items:flex-start;gap:11px;margin:0 0 14px;padding:13px 14px;border:1px solid #2b3a31;border-radius:13px;background:#0b120d}
+.preflightIcon{display:grid;place-items:center;flex:0 0 auto;width:24px;height:24px;border-radius:50%;background:#1a241d;color:#839087;font-size:.72rem;font-weight:950}
+.preflightCard>div{display:flex;flex-direction:column;gap:4px;min-width:0}
+.preflightCard strong{font-size:.76rem}
+.preflightCard small{color:#7f8d83;font-size:.68rem;line-height:1.42}
+.preflightCard.checking .preflightIcon{color:#57e978;animation:tradePulse 1.4s ease-in-out infinite}
+.preflightCard.ready{border-color:#285c34;background:#0c1b10}
+.preflightCard.ready .preflightIcon{background:#174221;color:#72f187}
+.preflightCard.error{border-color:#63312f;background:#1a0e0d}
+.preflightCard.error .preflightIcon{background:#4a1c1a;color:#ff9691}
+.preflightCard.error small{color:#d69a96}
