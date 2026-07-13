@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { formatEther, formatUnits, parseEther, parseUnits, type Address } from "viem";
 import { useAccount, usePublicClient, useReadContract, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
-import { robinhoodChainTestnet } from "@rmt/shared/chains";
+import { activeChain, isMainnetRelease } from "../lib/network";
 import { useLaunchRecord } from "../lib/use-launch-record";
 import { PriceHistoryChart, type PricePoint } from "./price-history-chart";
 
@@ -57,7 +57,7 @@ function formatPrice(value: bigint) {
 }
 
 export function MarketPanel({ tokenAddress, symbol, totalSupply }: { tokenAddress: Address; symbol: string; totalSupply: bigint }) {
-  const publicClient = usePublicClient({ chainId: robinhoodChainTestnet.id });
+  const publicClient = usePublicClient({ chainId: activeChain.id });
   const { address: account, isConnected } = useAccount();
   const [recentTrades, setRecentTrades] = useState<RecentTrade[]>([]);
   const [tradeHistoryError, setTradeHistoryError] = useState<string>();
@@ -67,7 +67,7 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply }: { tokenAddres
   const [lastAction, setLastAction] = useState<"buy" | "approve" | "sell" | null>(null);
   const [tradeMessage, setTradeMessage] = useState<string>();
   const { writeContract, data: hash, isPending, error: writeError } = useWriteContract();
-  const receipt = useWaitForTransactionReceipt({ hash, chainId: robinhoodChainTestnet.id });
+  const receipt = useWaitForTransactionReceipt({ hash, chainId: activeChain.id });
   const launchRecord = useLaunchRecord(tokenAddress);
   const market = launchRecord.data?.market ?? null;
   const launchBlock = launchRecord.data?.blockNumber ?? 0n;
@@ -107,16 +107,16 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply }: { tokenAddres
   const tokensIn = useMemo(() => { try { return parseUnits(sellAmount || "0", 18); } catch { return 0n; } }, [sellAmount]);
   const target = market ?? ZERO;
   const enabled = Boolean(market);
-  const buyQuote = useReadContract({ address: target, abi: marketAbi, functionName: "quoteBuy", args: [ethIn], chainId: robinhoodChainTestnet.id, query: { enabled: enabled && ethIn > 0n, refetchInterval: 5_000 } });
-  const sellQuote = useReadContract({ address: target, abi: marketAbi, functionName: "quoteSell", args: [tokensIn], chainId: robinhoodChainTestnet.id, query: { enabled: enabled && tokensIn > 0n, refetchInterval: 5_000 } });
-  const reserve = useReadContract({ address: target, abi: marketAbi, functionName: "realEthReserve", chainId: robinhoodChainTestnet.id, query: { enabled, refetchInterval: 5_000 } });
-  const virtualEth = useReadContract({ address: target, abi: marketAbi, functionName: "virtualEthReserve", chainId: robinhoodChainTestnet.id, query: { enabled, refetchInterval: 5_000 } });
-  const virtualTokens = useReadContract({ address: target, abi: marketAbi, functionName: "virtualTokenReserve", chainId: robinhoodChainTestnet.id, query: { enabled, refetchInterval: 5_000 } });
-  const graduationTarget = useReadContract({ address: target, abi: marketAbi, functionName: "graduationTarget", chainId: robinhoodChainTestnet.id, query: { enabled, refetchInterval: 5_000 } });
-  const progress = useReadContract({ address: target, abi: marketAbi, functionName: "progressBps", chainId: robinhoodChainTestnet.id, query: { enabled, refetchInterval: 5_000 } });
-  const graduated = useReadContract({ address: target, abi: marketAbi, functionName: "graduated", chainId: robinhoodChainTestnet.id, query: { enabled, refetchInterval: 5_000 } });
-  const balance = useReadContract({ address: tokenAddress, abi: tokenTradeAbi, functionName: "balanceOf", args: [account ?? ZERO], chainId: robinhoodChainTestnet.id, query: { enabled: Boolean(account), refetchInterval: 5_000 } });
-  const allowance = useReadContract({ address: tokenAddress, abi: tokenTradeAbi, functionName: "allowance", args: [account ?? ZERO, target], chainId: robinhoodChainTestnet.id, query: { enabled: Boolean(account && market), refetchInterval: 5_000 } });
+  const buyQuote = useReadContract({ address: target, abi: marketAbi, functionName: "quoteBuy", args: [ethIn], chainId: activeChain.id, query: { enabled: enabled && ethIn > 0n, refetchInterval: 5_000 } });
+  const sellQuote = useReadContract({ address: target, abi: marketAbi, functionName: "quoteSell", args: [tokensIn], chainId: activeChain.id, query: { enabled: enabled && tokensIn > 0n, refetchInterval: 5_000 } });
+  const reserve = useReadContract({ address: target, abi: marketAbi, functionName: "realEthReserve", chainId: activeChain.id, query: { enabled, refetchInterval: 5_000 } });
+  const virtualEth = useReadContract({ address: target, abi: marketAbi, functionName: "virtualEthReserve", chainId: activeChain.id, query: { enabled, refetchInterval: 5_000 } });
+  const virtualTokens = useReadContract({ address: target, abi: marketAbi, functionName: "virtualTokenReserve", chainId: activeChain.id, query: { enabled, refetchInterval: 5_000 } });
+  const graduationTarget = useReadContract({ address: target, abi: marketAbi, functionName: "graduationTarget", chainId: activeChain.id, query: { enabled, refetchInterval: 5_000 } });
+  const progress = useReadContract({ address: target, abi: marketAbi, functionName: "progressBps", chainId: activeChain.id, query: { enabled, refetchInterval: 5_000 } });
+  const graduated = useReadContract({ address: target, abi: marketAbi, functionName: "graduated", chainId: activeChain.id, query: { enabled, refetchInterval: 5_000 } });
+  const balance = useReadContract({ address: tokenAddress, abi: tokenTradeAbi, functionName: "balanceOf", args: [account ?? ZERO], chainId: activeChain.id, query: { enabled: Boolean(account), refetchInterval: 5_000 } });
+  const allowance = useReadContract({ address: tokenAddress, abi: tokenTradeAbi, functionName: "allowance", args: [account ?? ZERO, target], chainId: activeChain.id, query: { enabled: Boolean(account && market), refetchInterval: 5_000 } });
   const buyOut = buyQuote.data?.[0] ?? 0n;
   const sellOut = sellQuote.data?.[0] ?? 0n;
   const needsApproval = tokensIn > 0n && (allowance.data ?? 0n) < tokensIn;
@@ -135,7 +135,7 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply }: { tokenAddres
     setLastAction("sell");
     setTradeMessage("Approval confirmed. Confirm the sell in your wallet.");
     const deadline = BigInt(Math.floor(Date.now() / 1000) + 600);
-    writeContract({ address: market, abi: marketAbi, functionName: "sell", args: [tokensIn, sellOut * 99n / 100n, account, deadline], chainId: robinhoodChainTestnet.id });
+    writeContract({ address: market, abi: marketAbi, functionName: "sell", args: [tokensIn, sellOut * 99n / 100n, account, deadline], chainId: activeChain.id });
   }, [receipt.isSuccess, lastAction, market, account, tokensIn, sellOut, writeContract]);
 
   function trade() {
@@ -144,14 +144,14 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply }: { tokenAddres
     setTradeMessage(undefined);
     if (mode === "buy") {
       setLastAction("buy");
-      writeContract({ address: market, abi: marketAbi, functionName: "buy", args: [account, buyOut * 99n / 100n, deadline], value: ethIn, chainId: robinhoodChainTestnet.id });
+      writeContract({ address: market, abi: marketAbi, functionName: "buy", args: [account, buyOut * 99n / 100n, deadline], value: ethIn, chainId: activeChain.id });
     } else if (needsApproval) {
       setLastAction("approve");
       setTradeMessage("First signature: approve this exact sell amount.");
-      writeContract({ address: tokenAddress, abi: tokenTradeAbi, functionName: "approve", args: [market, tokensIn], chainId: robinhoodChainTestnet.id });
+      writeContract({ address: tokenAddress, abi: tokenTradeAbi, functionName: "approve", args: [market, tokensIn], chainId: activeChain.id });
     } else {
       setLastAction("sell");
-      writeContract({ address: market, abi: marketAbi, functionName: "sell", args: [tokensIn, sellOut * 99n / 100n, account, deadline], chainId: robinhoodChainTestnet.id });
+      writeContract({ address: market, abi: marketAbi, functionName: "sell", args: [tokensIn, sellOut * 99n / 100n, account, deadline], chainId: activeChain.id });
     }
   }
 
@@ -160,26 +160,26 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply }: { tokenAddres
 
   return (
     <section className="panel marketPanel">
-      <div className="sectionTitle"><div><p className="eyebrow">LIVE BONDING CURVE</p><h2>Trade ${symbol}</h2></div><span className="badge liveBadge">TESTNET</span></div>
-      <div className="marketStats intelligenceStats"><div><small>Token price</small><strong>{formatPrice(priceWei)} test ETH</strong></div><div><small>Market cap</small><strong>{formatEth(marketCapWei, 6)} test ETH</strong></div><div><small>Curve reserve</small><strong>{formatEth(reserve.data ?? 0n, 7)} ETH</strong></div><div><small>Your balance</small><strong>{Number(formatUnits(balance.data ?? 0n, 18)).toLocaleString(undefined, { maximumFractionDigits: 2 })} {symbol}</strong></div></div>
+      <div className="sectionTitle"><div><p className="eyebrow">LIVE BONDING CURVE</p><h2>Trade ${symbol}</h2></div><span className="badge liveBadge">{isMainnetRelease ? "MAINNET" : "TESTNET"}</span></div>
+      <div className="marketStats intelligenceStats"><div><small>Token price</small><strong>{formatPrice(priceWei)} ETH</strong></div><div><small>Market cap</small><strong>{formatEth(marketCapWei, 6)} ETH</strong></div><div><small>Curve reserve</small><strong>{formatEth(reserve.data ?? 0n, 7)} ETH</strong></div><div><small>Your balance</small><strong>{Number(formatUnits(balance.data ?? 0n, 18)).toLocaleString(undefined, { maximumFractionDigits: 2 })} {symbol}</strong></div></div>
       <div className="graduationCard">
-        <div><span>Market reserve</span><strong>{formatEth(reserve.data ?? 0n, 7)} test ETH</strong></div>
-        <small>DEX migration is disabled in this testnet alpha. Launching, curve trading, and fee accounting remain live.</small>
+        <div><span>Market reserve</span><strong>{formatEth(reserve.data ?? 0n, 7)} ETH</strong></div>
+        <small>{isMainnetRelease ? graduated.data ? "Graduated to Uniswap V4. Curve trading is closed; DEX routing is next." : `${Number(progress.data ?? 0n) / 100}% toward automatic Uniswap V4 graduation (${formatEth(graduationTarget.data ?? 0n, 4)} ETH target).` : "DEX migration is disabled in this testnet alpha. Launching, curve trading, and fee accounting remain live."}</small>
       </div>
       <PriceHistoryChart points={chartPoints} symbol={symbol} />
       <div className="tradeTabs"><button className={mode === "buy" ? "active" : ""} onClick={() => setMode("buy")}>Buy</button><button className={mode === "sell" ? "active" : ""} onClick={() => setMode("sell")}>Sell</button></div>
-      {mode === "buy" ? <label>Pay with test ETH<input inputMode="decimal" value={buyAmount} onChange={(event) => setBuyAmount(event.target.value)} /><small>You receive approximately {Number(formatUnits(buyOut, 18)).toLocaleString(undefined, { maximumFractionDigits: 2 })} {symbol}</small></label> : <label>Sell {symbol}<input inputMode="decimal" value={sellAmount} onChange={(event) => setSellAmount(event.target.value)} /><small>You receive approximately {Number(formatEther(sellOut)).toLocaleString(undefined, { maximumFractionDigits: 8 })} test ETH</small></label>}
+      {mode === "buy" ? <label>Pay with ETH<input inputMode="decimal" value={buyAmount} onChange={(event) => setBuyAmount(event.target.value)} /><small>You receive approximately {Number(formatUnits(buyOut, 18)).toLocaleString(undefined, { maximumFractionDigits: 2 })} {symbol}</small></label> : <label>Sell {symbol}<input inputMode="decimal" value={sellAmount} onChange={(event) => setSellAmount(event.target.value)} /><small>You receive approximately {Number(formatEther(sellOut)).toLocaleString(undefined, { maximumFractionDigits: 8 })} ETH</small></label>}
       <div className="tradeDisclosure"><span>1% platform fee</span><span>1% slippage protection</span><span>10-minute deadline</span></div>
       {(writeError || receipt.error) && <div className="errors"><span>{writeError?.message || receipt.error?.message}</span></div>}
       {tradeMessage && <div className="callout"><strong>{tradeMessage}</strong></div>}
-      {receipt.isSuccess && lastAction !== "approve" && <div className="callout"><strong>{lastAction === "sell" ? "Sell confirmed" : "Buy confirmed"}</strong><a href={`${robinhoodChainTestnet.blockExplorers.default.url}/tx/${hash}`} target="_blank" rel="noreferrer">View transaction ↗</a></div>}
-      <button className="launch" disabled={!isConnected || busy || (mode === "buy" ? buyOut === 0n : sellOut === 0n)} onClick={trade}>{!isConnected ? "Connect wallet to trade" : busy ? lastAction === "approve" ? "Approving…" : lastAction === "sell" ? "Confirm sell in wallet…" : "Confirming…" : mode === "buy" ? `Buy ${symbol}` : needsApproval ? `Approve and sell ${symbol}` : `Sell ${symbol}`}</button>
-      <a className="explorerLink" href={`${robinhoodChainTestnet.blockExplorers.default.url}/address/${market}`} target="_blank" rel="noreferrer">Open market in explorer ↗</a>
+      {receipt.isSuccess && lastAction !== "approve" && <div className="callout"><strong>{lastAction === "sell" ? "Sell confirmed" : "Buy confirmed"}</strong><a href={`${activeChain.blockExplorers.default.url}/tx/${hash}`} target="_blank" rel="noreferrer">View transaction ↗</a></div>}
+      <button className="launch" disabled={!isConnected || busy || Boolean(graduated.data) || (mode === "buy" ? buyOut === 0n : sellOut === 0n)} onClick={trade}>{graduated.data ? "Graduated — trade on DEX" : !isConnected ? "Connect wallet to trade" : busy ? lastAction === "approve" ? "Approving…" : lastAction === "sell" ? "Confirm sell in wallet…" : "Confirming…" : mode === "buy" ? `Buy ${symbol}` : needsApproval ? `Approve and sell ${symbol}` : `Sell ${symbol}`}</button>
+      <a className="explorerLink" href={`${activeChain.blockExplorers.default.url}/address/${market}`} target="_blank" rel="noreferrer">Open market in explorer ↗</a>
       <div className="tradeHistory">
         <div className="historyHeader"><div><p className="eyebrow">ONCHAIN ACTIVITY</p><h3>Recent trades</h3></div><span>{recentTrades.length} shown</span></div>
         {recentTrades.length > 0 ? <div className="tradeList">{recentTrades.map((item) => {
           const effectiveEth = item.isBuy ? item.ethAmount : item.ethAmount - item.feeAmount;
-          return <a key={`${item.transactionHash}-${item.blockNumber}`} href={`${robinhoodChainTestnet.blockExplorers.default.url}/tx/${item.transactionHash}`} target="_blank" rel="noreferrer" className="tradeRow"><span className={item.isBuy ? "tradeSide buy" : "tradeSide sell"}>{item.isBuy ? "BUY" : "SELL"}</span><span><strong>{Number(formatUnits(item.tokenAmount, 18)).toLocaleString(undefined, { maximumFractionDigits: 2 })} {symbol}</strong><small>{compactAddress(item.trader)}</small></span><span><strong>{formatEth(effectiveEth)} ETH</strong><small>Block {item.blockNumber.toString()}</small></span></a>;
+          return <a key={`${item.transactionHash}-${item.blockNumber}`} href={`${activeChain.blockExplorers.default.url}/tx/${item.transactionHash}`} target="_blank" rel="noreferrer" className="tradeRow"><span className={item.isBuy ? "tradeSide buy" : "tradeSide sell"}>{item.isBuy ? "BUY" : "SELL"}</span><span><strong>{Number(formatUnits(item.tokenAmount, 18)).toLocaleString(undefined, { maximumFractionDigits: 2 })} {symbol}</strong><small>{compactAddress(item.trader)}</small></span><span><strong>{formatEth(effectiveEth)} ETH</strong><small>Block {item.blockNumber.toString()}</small></span></a>;
         })}</div> : <div className="emptyTrades"><strong>No trades yet</strong><span>The first confirmed buy or sell will appear here automatically.</span></div>}
         {tradeHistoryError && <small className="historyError">Trade history will retry automatically.</small>}
       </div>
