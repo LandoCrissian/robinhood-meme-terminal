@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { formatEther, formatUnits, parseEther, parseUnits, type Address } from "viem";
+import { formatEther, formatUnits, maxUint256, parseEther, parseUnits, type Address } from "viem";
 import { useAccount, usePublicClient, useReadContract, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { activeChain, isMainnetRelease } from "../lib/network";
 import { useLaunchRecord } from "../lib/use-launch-record";
@@ -28,6 +28,12 @@ const tokenTradeAbi = [
 ] as const;
 
 const ZERO = "0x0000000000000000000000000000000000000000" as Address;
+
+type EthPriceResponse = {
+  usd: number;
+  source: string;
+  updatedAt: string;
+};
 
 type RecentTrade = {
   transactionHash: `0x${string}`;
@@ -56,6 +62,16 @@ function formatPrice(value: bigint) {
   return numeric.toLocaleString(undefined, { maximumFractionDigits: 9 });
 }
 
+function formatUsd(value?: number) {
+  if (value === undefined || !Number.isFinite(value)) return "Unavailable";
+  if (value > 0 && value < 0.01) return `${value.toExponential(2)}`;
+  return value.toLocaleString(undefined, { style: "currency", currency: "USD", maximumFractionDigits: 2 });
+}
+
+function cleanDecimal(value: string) {
+  return value.replace(/(\.\d*?[1-9])0+$|\.0+$/, "$1");
+}
+
 export function MarketPanel({ tokenAddress, symbol, totalSupply }: { tokenAddress: Address; symbol: string; totalSupply: bigint }) {
   const publicClient = usePublicClient({ chainId: activeChain.id });
   const { address: account, isConnected } = useAccount();
@@ -66,13 +82,34 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply }: { tokenAddres
   const [sellAmount, setSellAmount] = useState("1000000");
   const [lastAction, setLastAction] = useState<"buy" | "approve" | "sell" | null>(null);
   const [tradeMessage, setTradeMessage] = useState<string>();
-  const { writeContract, data: hash, isPending, error: writeError } = useWriteContract();
+  const [ethUsd, setEthUsd] = useState<number>();
+  const [priceUpdatedAt, setPriceUpdatedAt] = useState<string>();
+  const { writeContract, data: hash, isPending, error: writeError, reset: resetWrite } = useWriteContract();
   const receipt = useWaitForTransactionReceipt({ hash, chainId: activeChain.id });
   const launchRecord = useLaunchRecord(tokenAddress);
   const market = launchRecord.data?.market ?? null;
   const launchBlock = launchRecord.data?.blockNumber ?? 0n;
   const lookupError = launchRecord.error ? (launchRecord.error instanceof Error ? launchRecord.error.message : "Unable to read market.") : launchRecord.isSuccess && !launchRecord.data ? "Market record not found." : undefined;
 
+  useEffect(() => {
+    let active = true;
+    async function loadEthPrice() {
+      try {
+        const response = await fetch("/api/prices/eth", { cache: "no-store" });
+        const payload = await response.json() as EthPriceResponse | { error?: string };
+        if (!response.ok || !("usd" in payload)) throw new Error("Price unavailable.");
+        if (active) {
+          setEthUsd(payload.usd);
+          setPriceUpdatedAt(payload.updatedAt);
+        }
+      } catch {
+        if (active) setEthUsd(undefined);
+      }
+    }
+    void loadEthPrice();
+    const timer = window.setInterval(() => void loadEthPrice(), 30_000);
+    return () => { active = false; window.clearInterval(timer); };
+  }, []);
 
   useEffect(() => {
     if (!market || !publicClient) return;
@@ -123,10 +160,17 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply }: { tokenAddres
   const busy = isPending || receipt.isLoading;
   const priceWei = virtualTokens.data && virtualTokens.data > 0n ? (virtualEth.data ?? 0n) * 10n ** 18n / virtualTokens.data : 0n;
   const marketCapWei = virtualTokens.data && virtualTokens.data > 0n ? (virtualEth.data ?? 0n) * totalSupply / virtualTokens.data : 0n;
+  const tokenPriceUsd = ethUsd === undefined ? undefined : Number(formatEther(priceWei)) * ethUsd;
+  const marketCapUsd = ethUsd === undefined ? undefined : Number(formatEther(marketCapWei)) * ethUsd;
+  const buyValueUsd = ethUsd === undefined ? undefined : Number(buyAmount || "0") * ethUsd;
+  const sellValueUsd = ethUsd === undefined ? undefined : Number(formatEther(sellOut)) * ethUsd;
+  const buyFee = buyQuote.data?.[1] ?? 0n;
+  const sellFee = sellQuote.data?.[1] ?? 0n;
   const chartPoints = useMemo<PricePoint[]>(() => [...recentTrades].reverse().flatMap((trade) => trade.virtualTokenReserve > 0n ? [{ blockNumber: trade.blockNumber, priceWei: trade.virtualEthReserve * 10n ** 18n / trade.virtualTokenReserve, side: trade.isBuy ? "buy" : "sell" }] : []), [recentTrades]);
 
   useEffect(() => {
     if (!receipt.isSuccess) return;
+    if (lastAction !== "approve") setTradeMessage(undefined);
     void Promise.all([buyQuote.refetch(), sellQuote.refetch(), reserve.refetch(), virtualEth.refetch(), virtualTokens.refetch(), graduationTarget.refetch(), progress.refetch(), graduated.refetch(), balance.refetch(), allowance.refetch()]);
   }, [receipt.isSuccess]);
 
@@ -138,19 +182,32 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply }: { tokenAddres
     writeContract({ address: market, abi: marketAbi, functionName: "sell", args: [tokensIn, sellOut * 99n / 100n, account, deadline], chainId: activeChain.id });
   }, [receipt.isSuccess, lastAction, market, account, tokensIn, sellOut, writeContract]);
 
+  function chooseBuyUsd(usdAmount: number) {
+    if (!ethUsd) return;
+    setBuyAmount(cleanDecimal((usdAmount / ethUsd).toFixed(6)));
+  }
+
+  function chooseSellPercent(percent: number) {
+    const available = balance.data ?? 0n;
+    const amount = percent === 100 ? available : available * BigInt(percent) / 100n;
+    setSellAmount(cleanDecimal(formatUnits(amount, 18)));
+  }
+
   function trade() {
     if (!market || !account) return;
+    resetWrite();
     const deadline = BigInt(Math.floor(Date.now() / 1000) + 600);
-    setTradeMessage(undefined);
     if (mode === "buy") {
       setLastAction("buy");
+      setTradeMessage("Review the ETH amount and network fee in your wallet.");
       writeContract({ address: market, abi: marketAbi, functionName: "buy", args: [account, buyOut * 99n / 100n, deadline], value: ethIn, chainId: activeChain.id });
     } else if (needsApproval) {
       setLastAction("approve");
-      setTradeMessage("First signature: approve this exact sell amount.");
-      writeContract({ address: tokenAddress, abi: tokenTradeAbi, functionName: "approve", args: [market, tokensIn], chainId: activeChain.id });
+      setTradeMessage("One-time market approval. Your sell confirmation follows automatically.");
+      writeContract({ address: tokenAddress, abi: tokenTradeAbi, functionName: "approve", args: [market, maxUint256], chainId: activeChain.id });
     } else {
       setLastAction("sell");
+      setTradeMessage("Review the token amount and minimum ETH received in your wallet.");
       writeContract({ address: market, abi: marketAbi, functionName: "sell", args: [tokensIn, sellOut * 99n / 100n, account, deadline], chainId: activeChain.id });
     }
   }
@@ -161,19 +218,33 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply }: { tokenAddres
   return (
     <section className="panel marketPanel">
       <div className="sectionTitle"><div><p className="eyebrow">LIVE BONDING CURVE</p><h2>Trade ${symbol}</h2></div><span className="badge liveBadge">{isMainnetRelease ? "MAINNET" : "TESTNET"}</span></div>
-      <div className="marketStats intelligenceStats"><div><small>Token price</small><strong>{formatPrice(priceWei)} ETH</strong></div><div><small>Market cap</small><strong>{formatEth(marketCapWei, 6)} ETH</strong></div><div><small>Curve reserve</small><strong>{formatEth(reserve.data ?? 0n, 7)} ETH</strong></div><div><small>Your balance</small><strong>{Number(formatUnits(balance.data ?? 0n, 18)).toLocaleString(undefined, { maximumFractionDigits: 2 })} {symbol}</strong></div></div>
+      <div className="marketStats intelligenceStats"><div><small>Token price</small><strong>{formatPrice(priceWei)} ETH</strong><span className="usdSub">≈ {formatUsd(tokenPriceUsd)}</span></div><div><small>Market cap</small><strong>{formatEth(marketCapWei, 6)} ETH</strong><span className="usdSub">≈ {formatUsd(marketCapUsd)}</span></div><div><small>Curve reserve</small><strong>{formatEth(reserve.data ?? 0n, 7)} ETH</strong><span className="usdSub">{ethUsd ? formatUsd(Number(formatEther(reserve.data ?? 0n)) * ethUsd) : "USD unavailable"}</span></div><div><small>Your balance</small><strong>{Number(formatUnits(balance.data ?? 0n, 18)).toLocaleString(undefined, { maximumFractionDigits: 2 })} {symbol}</strong><span className="usdSub">{priceUpdatedAt ? "ETH/USD refreshed automatically" : "Loading ETH/USD…"}</span></div></div>
       <div className="graduationCard">
         <div><span>Market reserve</span><strong>{formatEth(reserve.data ?? 0n, 7)} ETH</strong></div>
         <small>{isMainnetRelease ? graduated.data ? "Graduated to Uniswap V4. Curve trading is closed; DEX routing is next." : `${Number(progress.data ?? 0n) / 100}% toward automatic Uniswap V4 graduation (${formatEth(graduationTarget.data ?? 0n, 4)} ETH target).` : "DEX migration is disabled in this testnet alpha. Launching, curve trading, and fee accounting remain live."}</small>
       </div>
       <PriceHistoryChart points={chartPoints} symbol={symbol} />
       <div className="tradeTabs"><button className={mode === "buy" ? "active" : ""} onClick={() => setMode("buy")}>Buy</button><button className={mode === "sell" ? "active" : ""} onClick={() => setMode("sell")}>Sell</button></div>
-      {mode === "buy" ? <label>Pay with ETH<input inputMode="decimal" value={buyAmount} onChange={(event) => setBuyAmount(event.target.value)} /><small>You receive approximately {Number(formatUnits(buyOut, 18)).toLocaleString(undefined, { maximumFractionDigits: 2 })} {symbol}</small></label> : <label>Sell {symbol}<input inputMode="decimal" value={sellAmount} onChange={(event) => setSellAmount(event.target.value)} /><small>You receive approximately {Number(formatEther(sellOut)).toLocaleString(undefined, { maximumFractionDigits: 8 })} ETH</small></label>}
-      <div className="tradeDisclosure"><span>1% platform fee</span><span>1% slippage protection</span><span>10-minute deadline</span></div>
+      {mode === "buy" ? <div className="tradeAmountCard">
+        <div className="tradeAmountTop"><span>You pay</span><small>{ethUsd ? `1 ETH ≈ ${formatUsd(ethUsd)}` : "Loading ETH/USD…"}</small></div>
+        <div className="tradeInputRow"><input aria-label="ETH amount to buy" inputMode="decimal" value={buyAmount} onFocus={(event) => event.currentTarget.select()} onChange={(event) => setBuyAmount(event.target.value)} /><span>ETH</span></div>
+        <div className="usdEstimate">≈ {formatUsd(buyValueUsd)} <span>reference value</span></div>
+        <div className="quickAmounts" aria-label="Quick dollar amounts">{[1, 5, 10, 25].map((amount) => <button type="button" key={amount} disabled={!ethUsd} onClick={() => chooseBuyUsd(amount)}>${amount}</button>)}</div>
+        <div className="orderPreview"><div><span>Estimated receive</span><strong>{Number(formatUnits(buyOut, 18)).toLocaleString(undefined, { maximumFractionDigits: 2 })} {symbol}</strong></div><div><span>Platform fee</span><strong>{formatEth(buyFee)} ETH</strong></div></div>
+      </div> : <div className="tradeAmountCard">
+        <div className="tradeAmountTop"><span>You sell</span><small>Balance {Number(formatUnits(balance.data ?? 0n, 18)).toLocaleString(undefined, { maximumFractionDigits: 2 })} {symbol}</small></div>
+        <div className="tradeInputRow"><input aria-label={`${symbol} amount to sell`} inputMode="decimal" value={sellAmount} onFocus={(event) => event.currentTarget.select()} onChange={(event) => setSellAmount(event.target.value)} /><span>{symbol}</span></div>
+        <div className="usdEstimate">≈ {formatUsd(sellValueUsd)} <span>estimated proceeds</span></div>
+        <div className="quickAmounts" aria-label="Quick sell percentages">{[25, 50, 75, 100].map((percent) => <button type="button" key={percent} disabled={(balance.data ?? 0n) === 0n} onClick={() => chooseSellPercent(percent)}>{percent === 100 ? "Max" : `${percent}%`}</button>)}</div>
+        <div className="orderPreview"><div><span>Estimated receive</span><strong>{Number(formatEther(sellOut)).toLocaleString(undefined, { maximumFractionDigits: 8 })} ETH</strong></div><div><span>Platform fee</span><strong>{formatEth(sellFee)} ETH</strong></div></div>
+        {needsApproval && isConnected && <p className="approvalNote">Your first sell creates a reusable allowance for this token’s immutable market. You can revoke it from your wallet at any time.</p>}
+      </div>}
+      <div className="tradeDisclosure"><span>Live curve quote</span><span>1% slippage protection</span><span>10-minute deadline</span><span>USD is an estimate</span></div>
+      {(isPending || receipt.isLoading) && <div className="tradeStage" role="status"><span className="tradeStageDot" /><div><strong>{isPending ? "Review in your wallet" : "Order submitted"}</strong><small>{isPending ? "Confirm the amount and network fee. RMT never signs for you." : "Waiting for Robinhood Chain confirmation."}</small>{receipt.isLoading && hash && <a href={`${activeChain.blockExplorers.default.url}/tx/${hash}`} target="_blank" rel="noreferrer">Track transaction ↗</a>}</div></div>}
       {(writeError || receipt.error) && <div className="errors"><span>{writeError?.message || receipt.error?.message}</span></div>}
       {tradeMessage && <div className="callout"><strong>{tradeMessage}</strong></div>}
       {receipt.isSuccess && lastAction !== "approve" && <div className="callout"><strong>{lastAction === "sell" ? "Sell confirmed" : "Buy confirmed"}</strong><a href={`${activeChain.blockExplorers.default.url}/tx/${hash}`} target="_blank" rel="noreferrer">View transaction ↗</a></div>}
-      <button className="launch" disabled={!isConnected || busy || Boolean(graduated.data) || (mode === "buy" ? buyOut === 0n : sellOut === 0n)} onClick={trade}>{graduated.data ? "Graduated — trade on DEX" : !isConnected ? "Connect wallet to trade" : busy ? lastAction === "approve" ? "Approving…" : lastAction === "sell" ? "Confirm sell in wallet…" : "Confirming…" : mode === "buy" ? `Buy ${symbol}` : needsApproval ? `Approve and sell ${symbol}` : `Sell ${symbol}`}</button>
+      <button className="launch" disabled={!isConnected || busy || Boolean(graduated.data) || (mode === "buy" ? buyOut === 0n : sellOut === 0n)} onClick={trade}>{graduated.data ? "Graduated — trade on DEX" : !isConnected ? "Connect wallet to trade" : busy ? lastAction === "approve" ? "Approving…" : lastAction === "sell" ? "Confirm sell in wallet…" : "Confirming…" : mode === "buy" ? `Buy ${symbol}` : needsApproval ? `Enable and sell ${symbol}` : `Sell ${symbol}`}</button>
       <a className="explorerLink" href={`${activeChain.blockExplorers.default.url}/address/${market}`} target="_blank" rel="noreferrer">Open market in explorer ↗</a>
       <div className="tradeHistory">
         <div className="historyHeader"><div><p className="eyebrow">ONCHAIN ACTIVITY</p><h3>Recent trades</h3></div><span>{recentTrades.length} shown</span></div>
