@@ -33,6 +33,8 @@ export function MarketPanel({ tokenAddress, symbol }: { tokenAddress: Address; s
   const [buyAmount, setBuyAmount] = useState("0.0001");
   const [sellAmount, setSellAmount] = useState("1000000");
   const [lookupError, setLookupError] = useState<string>();
+  const [lastAction, setLastAction] = useState<"buy" | "approve" | "sell" | null>(null);
+  const [tradeMessage, setTradeMessage] = useState<string>();
   const { writeContract, data: hash, isPending, error: writeError } = useWriteContract();
   const receipt = useWaitForTransactionReceipt({ hash, chainId: robinhoodChainTestnet.id });
 
@@ -73,14 +75,27 @@ export function MarketPanel({ tokenAddress, symbol }: { tokenAddress: Address; s
     void Promise.all([buyQuote.refetch(), sellQuote.refetch(), reserve.refetch(), balance.refetch(), allowance.refetch()]);
   }, [receipt.isSuccess]);
 
+  useEffect(() => {
+    if (!receipt.isSuccess || lastAction !== "approve" || !market || !account) return;
+    setLastAction("sell");
+    setTradeMessage("Approval confirmed. Confirm the sell in your wallet.");
+    const deadline = BigInt(Math.floor(Date.now() / 1000) + 600);
+    writeContract({ address: market, abi: marketAbi, functionName: "sell", args: [tokensIn, sellOut * 99n / 100n, account, deadline], chainId: robinhoodChainTestnet.id });
+  }, [receipt.isSuccess, lastAction, market, account, tokensIn, sellOut, writeContract]);
+
   function trade() {
     if (!market || !account) return;
     const deadline = BigInt(Math.floor(Date.now() / 1000) + 600);
+    setTradeMessage(undefined);
     if (mode === "buy") {
+      setLastAction("buy");
       writeContract({ address: market, abi: marketAbi, functionName: "buy", args: [account, buyOut * 99n / 100n, deadline], value: ethIn, chainId: robinhoodChainTestnet.id });
     } else if (needsApproval) {
+      setLastAction("approve");
+      setTradeMessage("First signature: approve this exact sell amount.");
       writeContract({ address: tokenAddress, abi: tokenTradeAbi, functionName: "approve", args: [market, tokensIn], chainId: robinhoodChainTestnet.id });
     } else {
+      setLastAction("sell");
       writeContract({ address: market, abi: marketAbi, functionName: "sell", args: [tokensIn, sellOut * 99n / 100n, account, deadline], chainId: robinhoodChainTestnet.id });
     }
   }
@@ -96,8 +111,9 @@ export function MarketPanel({ tokenAddress, symbol }: { tokenAddress: Address; s
       {mode === "buy" ? <label>Pay with test ETH<input inputMode="decimal" value={buyAmount} onChange={(event) => setBuyAmount(event.target.value)} /><small>You receive approximately {Number(formatUnits(buyOut, 18)).toLocaleString(undefined, { maximumFractionDigits: 2 })} {symbol}</small></label> : <label>Sell {symbol}<input inputMode="decimal" value={sellAmount} onChange={(event) => setSellAmount(event.target.value)} /><small>You receive approximately {Number(formatEther(sellOut)).toLocaleString(undefined, { maximumFractionDigits: 8 })} test ETH</small></label>}
       <div className="tradeDisclosure"><span>1% platform fee</span><span>1% slippage protection</span><span>10-minute deadline</span></div>
       {(writeError || receipt.error) && <div className="errors"><span>{writeError?.message || receipt.error?.message}</span></div>}
-      {receipt.isSuccess && <div className="callout"><strong>Transaction confirmed</strong><a href={`${robinhoodChainTestnet.blockExplorers.default.url}/tx/${hash}`} target="_blank" rel="noreferrer">View transaction ↗</a></div>}
-      <button className="launch" disabled={!isConnected || busy || (mode === "buy" ? buyOut === 0n : sellOut === 0n)} onClick={trade}>{!isConnected ? "Connect wallet to trade" : busy ? "Confirming…" : mode === "buy" ? `Buy ${symbol}` : needsApproval ? `Approve ${symbol}` : `Sell ${symbol}`}</button>
+      {tradeMessage && <div className="callout"><strong>{tradeMessage}</strong></div>}
+      {receipt.isSuccess && lastAction !== "approve" && <div className="callout"><strong>{lastAction === "sell" ? "Sell confirmed" : "Buy confirmed"}</strong><a href={`${robinhoodChainTestnet.blockExplorers.default.url}/tx/${hash}`} target="_blank" rel="noreferrer">View transaction ↗</a></div>}
+      <button className="launch" disabled={!isConnected || busy || (mode === "buy" ? buyOut === 0n : sellOut === 0n)} onClick={trade}>{!isConnected ? "Connect wallet to trade" : busy ? lastAction === "approve" ? "Approving…" : lastAction === "sell" ? "Confirm sell in wallet…" : "Confirming…" : mode === "buy" ? `Buy ${symbol}` : needsApproval ? `Approve and sell ${symbol}` : `Sell ${symbol}`}</button>
       <a className="explorerLink" href={`${robinhoodChainTestnet.blockExplorers.default.url}/address/${market}`} target="_blank" rel="noreferrer">Open market in explorer ↗</a>
     </section>
   );
