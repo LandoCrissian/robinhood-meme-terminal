@@ -18,3 +18,32 @@
 
 .tokenHero>div:last-child{min-width:0}.tokenHero h1,.tokenDescription{overflow-wrap:anywhere}.detailNav>a{color:#75f184;text-decoration:none;font-weight:850}.detailPage{width:100%}.marketPanel input{font-size:16px}
 @media(max-width:560px){.detailPage{padding-top:16px}.detailNav{align-items:center;gap:10px}.detailNav>a{font-size:.76rem}.tokenHero{flex-direction:column;gap:14px}.tokenHero h1{font-size:clamp(2.35rem,14vw,3.6rem);line-height:.95}.largeCoin{width:64px;height:64px}.detailGrid{gap:12px}.graduationCard>div:first-child{align-items:flex-start;flex-direction:column;gap:5px}.tradeDisclosure{gap:6px}.tradeDisclosure span{font-size:.68rem}.historyHeader{align-items:flex-start;flex-direction:column;gap:5px}dl{grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr)}}
+
+
+.usdSub{color:#6f7d73;font-size:.68rem;line-height:1.35}
+.tradeAmountCard{padding:18px;border:1px solid #2b3b30;border-radius:18px;background:linear-gradient(180deg,#0b130e,#08100a)}
+.tradeAmountTop{display:flex;align-items:center;justify-content:space-between;gap:12px;color:#a9b5ac;font-size:.76rem;font-weight:850}
+.tradeAmountTop small{color:#758279;text-align:right}
+.tradeInputRow{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px;margin-top:12px}
+.tradeInputRow input{height:auto;min-height:64px;padding:0;border:0;background:transparent;box-shadow:none;color:#f6faf6;font-size:clamp(2rem,7vw,3.1rem);font-weight:850;letter-spacing:-.045em}
+.tradeInputRow input:focus{border:0;box-shadow:none}
+.tradeInputRow>span{padding:8px 11px;border:1px solid #304038;border-radius:999px;background:#111a14;color:#dce4de;font-size:.78rem;font-weight:900}
+.usdEstimate{display:flex;align-items:baseline;gap:7px;min-height:22px;color:#9da9a0;font-size:.88rem;font-weight:800}
+.usdEstimate>span{color:#68756c;font-size:.66rem;font-weight:700}
+.quickAmounts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:15px}
+.quickAmounts button{min-height:44px;border:1px solid #2b3b30;border-radius:11px;background:#101813;color:#b4c0b7;font-size:.75rem;font-weight:900;cursor:pointer}
+.quickAmounts button:hover:not(:disabled),.quickAmounts button:focus-visible{border-color:#46d965;background:#122518;color:#7cf28d}
+.quickAmounts button:disabled{opacity:.45;cursor:not-allowed}
+.orderPreview{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px;padding-top:14px;border-top:1px solid #202d24}
+.orderPreview>div{display:flex;flex-direction:column;gap:4px}
+.orderPreview>div:last-child{text-align:right}
+.orderPreview span{color:#718078;font-size:.66rem}
+.orderPreview strong{font-size:.78rem;overflow-wrap:anywhere}
+.approvalNote{margin:12px 0 0;padding:11px;border-radius:10px;background:#151b11;color:#a6a88f;font-size:.68rem;line-height:1.45}
+.tradeStage{display:flex;align-items:flex-start;gap:12px;margin:14px 0;padding:14px;border:1px solid #31523a;border-radius:13px;background:#0d1d11}
+.tradeStageDot{flex:0 0 auto;width:10px;height:10px;margin-top:4px;border-radius:50%;background:#48ef6f;box-shadow:0 0 0 6px rgba(72,239,111,.1);animation:tradePulse 1.4s ease-in-out infinite}
+.tradeStage>div{display:flex;flex-direction:column;gap:4px}
+.tradeStage small{color:#8d9a90;font-size:.72rem;line-height:1.4}
+.tradeStage a{color:#6ee981;text-decoration:none;font-size:.72rem;font-weight:850}
+@keyframes tradePulse{50%{opacity:.45;transform:scale(.82)}}
+@media(max-width:560px){.tradeAmountCard{padding:15px}.tradeInputRow input{font-size:2.25rem}.tradeAmountTop{align-items:flex-start;flex-direction:column;gap:3px}.tradeAmountTop small{text-align:left}.quickAmounts{gap:6px}.orderPreview{grid-template-columns:1fr}.orderPreview>div:last-child{text-align:left}}
