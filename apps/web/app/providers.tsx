@@ -18,7 +18,7 @@ const connectors = [
           name: "Robinhood Meme Terminal",
           description: "Robinhood Chain meme launchpad and discovery terminal",
           url: appUrl,
-          icons: []
+          icons: [`${appUrl}/brand/rmt-master-logo.png`]
         }
       })]
     : [])
