@@ -299,7 +299,6 @@ export function MainnetStackDeployment() {
         if (!(await hasCode(canonical))) throw new Error(`Required Robinhood contract is missing at ${canonical}.`);
       }
 
-      const signerArgs = [SIGNERS] as const;
       const factoryGovernance = await deployContract(current, "factoryGovernance", artifacts.governance, [SIGNERS, 0n], "factory governance");
       const rewardsGovernance = await deployContract(current, "rewardsGovernance", artifacts.governance, [SIGNERS, 0n], "rewards governance");
       const protocolGovernance = await deployContract(current, "protocolGovernance", artifacts.governance, [SIGNERS, DAY], "protocol governance");
