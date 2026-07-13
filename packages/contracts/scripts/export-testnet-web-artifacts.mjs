@@ -6,7 +6,8 @@ const contractsRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const output = resolve(contractsRoot, "../../apps/web/lib/generated/testnet-stack.json");
 const artifacts = {
   adapter: "out/TestnetGraduationAdapter.sol/TestnetGraduationAdapter.json",
-  factory: "out/LowCostMemeLaunchFactory.sol/LowCostMemeLaunchFactory.json"
+  factory: "out/LowCostMemeLaunchFactory.sol/LowCostMemeLaunchFactory.json",
+  factoryV2: "out/LowCostMemeLaunchFactoryV2.sol/LowCostMemeLaunchFactoryV2.json"
 };
 
 const result = {};
