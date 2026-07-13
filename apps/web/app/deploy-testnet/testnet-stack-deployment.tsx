@@ -2,7 +2,6 @@
 
 import { robinhoodChainTestnet } from "@rmt/shared/chains";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { useAccount, usePublicClient, useSwitchChain, useWalletClient } from "wagmi";
 import {
@@ -62,7 +61,7 @@ function readableDeploymentError(cause: unknown) {
 }
 
 export function TestnetStackDeployment() {
-  const versionTwo = useSearchParams().get("version") === "2";
+  const [versionTwo] = useState(() => typeof window !== "undefined" && new URLSearchParams(window.location.search).get("version") === "2");
   const storageKey = versionTwo ? "rmt:testnet-lite-stack:v4" : "rmt:testnet-lite-stack:v3";
   const { address, chainId, isConnected } = useAccount();
   const { data: walletClient } = useWalletClient();
