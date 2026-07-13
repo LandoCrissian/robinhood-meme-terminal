@@ -28,7 +28,7 @@ contract DeployedMainnetGraduationForkTest {
     LowCostMemeLaunchFactoryV4 private constant FACTORY =
         LowCostMemeLaunchFactoryV4(0x88b86F10D874C2e3C8CfE63161ffa969f3273Cd4);
     address private constant CANONICAL_POOL_MANAGER =
-        address(uint160(0x8366a39cc670b4001a1121b8f6a443a643e40951));
+        address(uint160(0x008366a39cc670b4001a1121b8f6a443a643e40951));
 
     receive() external payable {}
 
