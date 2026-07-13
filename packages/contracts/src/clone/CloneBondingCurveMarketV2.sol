@@ -190,6 +190,10 @@ contract CloneBondingCurveMarketV2 {
         virtualTokenReserve -= tokensOut;
         realEthReserve += netEth;
 
+        // Commit graduation state before external interactions. A failed transfer still rolls back atomically.
+        bool graduationReached = realEthReserve >= graduationTarget;
+        if (graduationReached) graduated = true;
+
         if (!token.transfer(recipient, tokensOut)) revert TokenTransferFailed();
         _sendEth(rewardVault, fee);
 
@@ -205,10 +209,7 @@ contract CloneBondingCurveMarketV2 {
             realEthReserve
         );
 
-        if (realEthReserve >= graduationTarget) {
-            graduated = true;
-            emit Graduated(realEthReserve, token.balanceOf(address(this)));
-        }
+        if (graduationReached) emit Graduated(realEthReserve, token.balanceOf(address(this)));
     }
 
     function sell(uint256 tokensIn, uint256 minimumEthOut, address payable recipient, uint256 deadline)
@@ -254,6 +255,9 @@ contract CloneBondingCurveMarketV2 {
         return (realEthReserve * BPS_DENOMINATOR) / graduationTarget;
     }
 
+    // The market-wide nonReentrant lock covers approval, adapter execution, and post-settlement checks.
+    // The token is the factory's fixed implementation and the adapter is permanently bound to this market.
+    // slither-disable-next-line reentrancy-balance
     function migrateLiquidity() external nonReentrant returns (address pool, uint256 liquidity) {
         if (!graduated) revert NotGraduated();
         if (liquidityMigrated) revert AlreadyMigrated();
@@ -269,6 +273,9 @@ contract CloneBondingCurveMarketV2 {
         realEthReserve = 0;
 
         if (!token.approve(address(graduationAdapter), tokenAmount)) revert TokenTransferFailed();
+        // The adapter is fixed at initialization by the immutable V4 factory, and it accepts graduation
+        // only from the market permanently bound to this token.
+        // slither-disable-next-line arbitrary-send-eth
         (pool, liquidity) = graduationAdapter.graduate{value: ethAmount}(address(token), tokenAmount);
 
         if (pool == address(0) || liquidity == 0 || token.balanceOf(address(this)) != 0 || address(this).balance != 0) {
