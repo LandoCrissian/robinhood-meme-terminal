@@ -2,94 +2,36 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { type Address, type Hash } from "viem";
-import { usePublicClient } from "wagmi";
-import { robinhoodChainTestnet } from "@rmt/shared/chains";
-import { memeLaunchFactoryAbi, publicTestnetFactoryStartBlock } from "../lib/contracts";
-import { useFactoryAddress } from "../lib/use-factory-address";
-import { ipfsToHttp, resolveTokenMetadata } from "../lib/token-metadata";
+import type { LaunchFeedItem, LaunchFeedResponse } from "../lib/launch-feed";
+import { ipfsToHttp } from "../lib/token-metadata";
 
-type LaunchItem = {
-  launchId: bigint;
-  token: Address;
-  creator: Address;
-  rewardVault: Address;
-  name: string;
-  symbol: string;
-  creatorBps: number;
-  communityBps: number;
-  transactionHash: Hash;
-  blockNumber: bigint;
-  metadataURI: string;
-  image?: string;
-};
-
-function shortAddress(address: Address) {
+function shortAddress(address: string) {
   return `${address.slice(0, 6)}…${address.slice(-4)}`;
 }
 
 export function FreshLaunchFeed() {
-  const publicClient = usePublicClient({ chainId: robinhoodChainTestnet.id });
-  const factoryAddress = useFactoryAddress();
-  const [launches, setLaunches] = useState<LaunchItem[]>([]);
-  const [status, setStatus] = useState<"idle" | "loading" | "live" | "error">("idle");
-  const [message, setMessage] = useState("Factory deployment pending.");
+  const [launches, setLaunches] = useState<LaunchFeedItem[]>([]);
+  const [status, setStatus] = useState<"loading" | "live" | "error">("loading");
+  const [message, setMessage] = useState("Synchronizing verified launches.");
 
   const refresh = useCallback(async () => {
-    if (!publicClient || !factoryAddress) {
-      setStatus("idle");
-      setMessage("Factory deployment pending. Live launches will appear here after testnet activation.");
-      return;
-    }
-
     setStatus((current) => current === "live" ? "live" : "loading");
     try {
-      const latestBlock = await publicClient.getBlockNumber();
-      const configuredStart = process.env.NEXT_PUBLIC_FACTORY_START_BLOCK;
-      const requestedStart = configuredStart && /^\d+$/.test(configuredStart) ? BigInt(configuredStart) : publicTestnetFactoryStartBlock;
-      let cursor = latestBlock;
-      const parsed: LaunchItem[] = [];
-      while (cursor >= requestedStart && parsed.length < 25) {
-        const candidate = cursor > 19_999n ? cursor - 19_999n : 0n;
-        const fromBlock = candidate < requestedStart ? requestedStart : candidate;
-        const batch = await publicClient.getContractEvents({
-          address: factoryAddress,
-          abi: memeLaunchFactoryAbi,
-          eventName: "TokenLaunched",
-          fromBlock,
-          toBlock: cursor,
-          strict: true
-        });
-        parsed.push(...batch.flatMap((log) => log.transactionHash ? [{
-          launchId: log.args.launchId,
-          token: log.args.token,
-          creator: log.args.creator,
-          rewardVault: log.args.rewardVault,
-          name: log.args.name,
-          symbol: log.args.symbol,
-          creatorBps: Number(log.args.rewardBps[0]),
-          communityBps: Number(log.args.rewardBps[1]),
-          transactionHash: log.transactionHash,
-          blockNumber: log.blockNumber,
-          metadataURI: log.args.metadataURI
-        }] : []));
-        if (fromBlock === requestedStart) break;
-        cursor = fromBlock - 1n;
+      const response = await fetch("/api/launches", { cache: "no-store" });
+      const result = (await response.json()) as LaunchFeedResponse | { error?: string };
+      if (!response.ok || !("launches" in result)) {
+        throw new Error("error" in result && result.error ? result.error : "Launch data is temporarily unavailable.");
       }
-      parsed.sort((a, b) => a.blockNumber > b.blockNumber ? -1 : 1).splice(25);
-
-      const enriched = await Promise.all(parsed.map(async (launch) => {
-        const metadata = await resolveTokenMetadata(launch.metadataURI);
-        return { ...launch, image: metadata?.image };
-      }));
-      setLaunches(enriched);
+      setLaunches(result.launches);
       setStatus("live");
-      setMessage(parsed.length === 0 ? "Factory connected. No testnet launches yet." : `${parsed.length} verified factory launch${parsed.length === 1 ? "" : "es"}.`);
+      setMessage(result.launches.length === 0
+        ? "Factory connected. No testnet launches yet."
+        : `${result.launches.length} verified factory launch${result.launches.length === 1 ? "" : "es"}.`);
     } catch (error) {
       setStatus("error");
-      setMessage(error instanceof Error ? error.message : "Unable to read factory events.");
+      setMessage(error instanceof Error ? error.message : "Launch data is temporarily unavailable.");
     }
-  }, [factoryAddress, publicClient]);
+  }, []);
 
   useEffect(() => {
     void refresh();
@@ -102,15 +44,15 @@ export function FreshLaunchFeed() {
       <div className="sectionTitle">
         <div><p className="eyebrow">DISCOVERY TERMINAL</p><h2>Fresh launches</h2></div>
         <span className={`badge ${status === "live" ? "liveBadge" : status === "error" ? "errorBadge" : "warning"}`}>
-          {status === "live" ? "LIVE TESTNET" : status === "error" ? "RPC ERROR" : status === "loading" ? "SYNCING" : "AWAITING FACTORY"}
+          {status === "live" ? "LIVE TESTNET" : status === "error" ? "DATA DELAYED" : "SYNCING"}
         </span>
       </div>
       <div className="filters"><button className="active">Fresh</button><button disabled>Trending</button><button disabled>Community-heavy</button><button disabled>Low creator concentration</button></div>
       {launches.length === 0 ? <div className="emptyFeed"><strong>{status === "loading" ? "Reading Robinhood Chain…" : "No launches to display"}</strong><span>{message}</span>{status === "error" && <button onClick={() => void refresh()}>Retry</button>}</div> : launches.map((launch) => (
-        <Link className="launchRow" href={`/token/${launch.token}`} key={`${launch.transactionHash}-${launch.launchId.toString()}`}>
+        <Link className="launchRow" href={`/token/${launch.token}`} key={`${launch.transactionHash}-${launch.launchId}`}>
           <article>
             <div className="coin launchArtwork">{launch.image ? <img src={ipfsToHttp(launch.image)} alt="" loading="lazy" /> : launch.symbol.slice(0, 2)}</div>
-            <div className="identity"><strong>{launch.name}</strong><span>${launch.symbol} • #{launch.launchId.toString()}</span></div>
+            <div className="identity"><strong>{launch.name}</strong><span>${launch.symbol} • #{launch.launchId}</span></div>
             <div><small>Fixed supply</small><strong>1,000,000,000</strong></div>
             <div><small>Community share</small><strong>{launch.communityBps / 100}%</strong></div>
             <div><small>Creator</small><strong title={launch.creator}>{shortAddress(launch.creator)}</strong></div>
