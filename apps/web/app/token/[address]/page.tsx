@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import { formatUnits, getAddress, isAddress, type Address } from "viem";
 import { useReadContract } from "wagmi";
 import { robinhoodChainTestnet } from "@rmt/shared/chains";
 import { RewardVaultPanel } from "../../reward-vault-panel";
 import { MarketPanel } from "../../market-panel";
 import { WalletButton } from "../../wallet-button";
+import { ipfsToHttp, resolveTokenMetadata, type TokenMetadata } from "../../../lib/token-metadata";
 
 const tokenAbi = [
   { type: "function", name: "name", stateMutability: "view", inputs: [], outputs: [{ type: "string" }] },
@@ -34,6 +36,13 @@ export default function TokenDetailPage() {
   const supplyRead = useReadContract({ ...common, functionName: "totalSupply" });
   const creatorRead = useReadContract({ ...common, functionName: "creator" });
   const metadataRead = useReadContract({ ...common, functionName: "metadataURI" });
+  const [metadata, setMetadata] = useState<TokenMetadata | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    if (metadataRead.data) void resolveTokenMetadata(metadataRead.data).then((value) => { if (active) setMetadata(value); });
+    return () => { active = false; };
+  }, [metadataRead.data]);
 
   if (!tokenAddress) return <main className="detailPage"><Link href="/">← Terminal</Link><section className="panel"><h1>Invalid token address</h1><p>This route requires a valid EVM contract address.</p></section></main>;
 
@@ -47,8 +56,8 @@ export default function TokenDetailPage() {
     <main className="detailPage">
       <div className="detailNav"><Link href="/">← Back to terminal</Link><WalletButton /></div>
       <section className="tokenHero panel">
-        <div className="coin largeCoin">{symbolRead.data.slice(0, 2)}</div>
-        <div><p className="eyebrow">VERIFIED ONCHAIN TOKEN</p><h1>{nameRead.data}</h1><p className="tokenSymbol">${symbolRead.data}</p></div>
+        <div className="coin largeCoin tokenArtwork">{metadata?.image ? <img src={ipfsToHttp(metadata.image)} alt={`${nameRead.data} artwork`} /> : symbolRead.data.slice(0, 2)}</div>
+        <div><p className="eyebrow">VERIFIED ONCHAIN TOKEN</p><h1>{nameRead.data}</h1><p className="tokenSymbol">${symbolRead.data}</p>{metadata?.description && <p className="tokenDescription">{metadata.description}</p>}</div>
       </section>
       <div className="detailGrid">
         <section className="panel"><p className="eyebrow">TOKEN RULES</p><h2>Fixed and transparent</h2><div className="safetyList"><span>✓ Fixed total supply</span><span>✓ No mint function</span><span>✓ No blacklist</span><span>✓ No transfer tax</span><span>✓ No upgrade proxy</span></div></section>
@@ -56,7 +65,7 @@ export default function TokenDetailPage() {
       </div>
       <MarketPanel tokenAddress={tokenAddress} symbol={symbolRead.data} />
       <RewardVaultPanel tokenAddress={tokenAddress} />
-      <section className="panel metadataPanel"><p className="eyebrow">METADATA</p><h2>Permanent launch record</h2><code>{metadataRead.data}</code></section>
+      <section className="panel metadataPanel"><p className="eyebrow">METADATA</p><h2>Permanent launch record</h2><div className="metadataStatus"><span>{metadataRead.data.startsWith("ipfs://") ? "IPFS content address" : "Onchain launch record"}</span><code>{metadataRead.data}</code></div></section>
     </main>
   );
 }
