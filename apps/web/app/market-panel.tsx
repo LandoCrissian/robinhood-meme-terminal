@@ -76,12 +76,19 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply }: { tokenAddres
     let cancelled = false;
     void (async () => {
       try {
-        const count = await publicClient.readContract({ address: factoryAddress, abi: memeLaunchFactoryAbi, functionName: "launchCount" });
-        const launches = await Promise.all(Array.from({ length: Number(count) }, (_, index) => publicClient.readContract({ address: factoryAddress, abi: memeLaunchFactoryAbi, functionName: "getLaunch", args: [BigInt(index)] })));
-        const match = launches.find((launch) => launch.token.toLowerCase() === tokenAddress.toLowerCase());
+        let cursor = await publicClient.getBlockNumber();
+        let match: { market: Address; blockNumber: bigint } | undefined;
+        while (cursor >= publicTestnetFactoryStartBlock && !match) {
+          const candidate = cursor > 19_999n ? cursor - 19_999n : 0n;
+          const fromBlock = candidate < publicTestnetFactoryStartBlock ? publicTestnetFactoryStartBlock : candidate;
+          const logs = await publicClient.getContractEvents({ address: factoryAddress, abi: memeLaunchFactoryAbi, eventName: "TokenLaunched", args: { token: tokenAddress }, fromBlock, toBlock: cursor, strict: true });
+          if (logs[0]) match = { market: logs[0].args.market, blockNumber: logs[0].blockNumber };
+          if (fromBlock === publicTestnetFactoryStartBlock) break;
+          cursor = fromBlock - 1n;
+        }
         if (!cancelled) {
           setMarket(match?.market ?? null);
-          setLaunchBlock(publicTestnetFactoryStartBlock);
+          setLaunchBlock(match?.blockNumber ?? publicTestnetFactoryStartBlock);
           setLookupError(match ? undefined : "Market record not found.");
         }
       } catch (cause) {

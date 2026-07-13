@@ -4,8 +4,6 @@ export const publicTestnetFactoryAddress = getAddress("0x2D075c7FC08508A027191A9
 export const publicTestnetFactoryStartBlock = 89_775_000n;
 
 export const memeLaunchFactoryAbi = [
-  { type: "function", name: "launchCount", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] },
-  { type: "function", name: "getLaunch", stateMutability: "view", inputs: [{ name: "launchId", type: "uint256" }], outputs: [{ name: "launch", type: "tuple", components: [{ name: "token", type: "address" }, { name: "market", type: "address" }, { name: "rewardVault", type: "address" }, { name: "graduationPoolId", type: "bytes32" }, { name: "creator", type: "address" }, { name: "createdAt", type: "uint64" }] }] },
   { type: "function", name: "launchSimple", stateMutability: "nonpayable", inputs: [{ name: "name", type: "string" }, { name: "symbol", type: "string" }, { name: "metadataURI", type: "string" }], outputs: [{ name: "token", type: "address" }, { name: "market", type: "address" }, { name: "rewardVault", type: "address" }] },
   { type: "function", name: "launchCommunity", stateMutability: "nonpayable", inputs: [{ name: "name", type: "string" }, { name: "symbol", type: "string" }, { name: "metadataURI", type: "string" }], outputs: [{ name: "token", type: "address" }, { name: "market", type: "address" }, { name: "rewardVault", type: "address" }] },
   { type: "function", name: "purposeVaultImplementation", stateMutability: "view", inputs: [], outputs: [{ type: "address" }] },
