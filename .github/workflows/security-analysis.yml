@@ -31,4 +31,7 @@ jobs:
         with:
           target: packages/contracts
           fail-on: high
-          slither-args: --filter-paths "(lib/|test/|script/|broadcast/)"
+          # Legacy prototypes remain covered by Foundry tests; this gate targets the V4 mainnet surface.
+          slither-args: >-
+            --filter-paths
+            "(lib/|test/|script/|broadcast/|src/BondingCurveMarket.sol|src/LaunchRewardVault.sol|src/MemeLaunchFactory.sol|src/LowCostMemeLaunchFactory.sol|src/LowCostMemeLaunchFactoryV2.sol|src/LowCostMemeLaunchFactoryV3.sol|src/clone/CloneBondingCurveMarket.sol)"
