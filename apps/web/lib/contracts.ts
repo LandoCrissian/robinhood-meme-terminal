@@ -1,5 +1,7 @@
 import { getAddress, isAddress, type Address } from "viem";
 
+export const publicTestnetFactoryAddress = getAddress("0x2D075c7FC08508A027191A99f146EDD606966fF3");
+
 export const memeLaunchFactoryAbi = [
   { type: "function", name: "launchSimple", stateMutability: "nonpayable", inputs: [{ name: "name", type: "string" }, { name: "symbol", type: "string" }, { name: "metadataURI", type: "string" }], outputs: [{ name: "token", type: "address" }, { name: "market", type: "address" }, { name: "rewardVault", type: "address" }] },
   { type: "function", name: "launchCommunity", stateMutability: "nonpayable", inputs: [{ name: "name", type: "string" }, { name: "symbol", type: "string" }, { name: "metadataURI", type: "string" }], outputs: [{ name: "token", type: "address" }, { name: "market", type: "address" }, { name: "rewardVault", type: "address" }] },
@@ -44,7 +46,7 @@ export const memeLaunchFactoryAbi = [
 export function getFactoryAddress(): Address | null {
   const configured = process.env.NEXT_PUBLIC_FACTORY_ADDRESS;
   if (configured && isAddress(configured)) return getAddress(configured);
-  if (typeof window === "undefined") return null;
+  if (typeof window === "undefined") return publicTestnetFactoryAddress;
   const runtime = window.localStorage.getItem("rmt:testnet-factory");
-  return runtime && isAddress(runtime) ? getAddress(runtime) : null;
+  return runtime && isAddress(runtime) ? getAddress(runtime) : publicTestnetFactoryAddress;
 }
