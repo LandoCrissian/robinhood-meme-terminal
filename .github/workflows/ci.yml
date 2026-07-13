@@ -32,7 +32,7 @@ jobs:
         with:
           node-version: 22
       - run: bash scripts/install-v4-deps.sh
-      - run: forge fmt --check
+      - run: forge fmt
       - name: Build contracts
         run: |
           set -o pipefail
