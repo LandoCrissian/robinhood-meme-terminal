@@ -92,10 +92,12 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply }: { tokenAddres
 
   useEffect(() => {
     if (!market || !publicClient) return;
+    const marketAddress = market;
+    const client = publicClient;
     let cancelled = false;
     async function loadTrades() {
       try {
-        const logs = await publicClient.getContractEvents({ address: market, abi: marketAbi, eventName: "Trade", fromBlock: launchBlock, toBlock: "latest", strict: true });
+        const logs = await client.getContractEvents({ address: marketAddress, abi: marketAbi, eventName: "Trade", fromBlock: launchBlock, toBlock: "latest", strict: true });
         if (cancelled) return;
         setRecentTrades(logs.slice(-12).reverse().flatMap((log) => log.transactionHash ? [{ transactionHash: log.transactionHash, trader: log.args.trader, isBuy: log.args.isBuy, tokenAmount: log.args.tokenAmount, ethAmount: log.args.ethAmount, feeAmount: log.args.feeAmount, blockNumber: log.blockNumber }] : []));
         setTradeHistoryError(undefined);
