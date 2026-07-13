@@ -3,8 +3,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { type Address, type Hash } from "viem";
 import { usePublicClient } from "wagmi";
-import { robinhoodChainTestnet } from "@rmt/shared/chains";
-import { memeLaunchFactoryAbi, publicTestnetFactoryStartBlock } from "./contracts";
+import { memeLaunchFactoryAbi } from "./contracts";
+import { activeChain, activeFactoryStartBlock } from "./network";
 import { useFactoryAddress } from "./use-factory-address";
 
 export type LaunchRecord = {
@@ -21,10 +21,10 @@ export type LaunchRecord = {
 
 export function useLaunchRecord(tokenAddress: Address) {
   const factoryAddress = useFactoryAddress();
-  const publicClient = usePublicClient({ chainId: robinhoodChainTestnet.id });
+  const publicClient = usePublicClient({ chainId: activeChain.id });
 
   return useQuery({
-    queryKey: ["launch-record", robinhoodChainTestnet.id, factoryAddress, tokenAddress],
+    queryKey: ["launch-record", activeChain.id, factoryAddress, tokenAddress],
     enabled: Boolean(factoryAddress && publicClient),
     staleTime: Infinity,
     gcTime: 30 * 60 * 1000,
@@ -32,9 +32,9 @@ export function useLaunchRecord(tokenAddress: Address) {
       if (!factoryAddress || !publicClient) return null;
 
       let cursor = await publicClient.getBlockNumber();
-      while (cursor >= publicTestnetFactoryStartBlock) {
+      while (cursor >= activeFactoryStartBlock) {
         const candidate = cursor > 19_999n ? cursor - 19_999n : 0n;
-        const fromBlock = candidate < publicTestnetFactoryStartBlock ? publicTestnetFactoryStartBlock : candidate;
+        const fromBlock = candidate < activeFactoryStartBlock ? activeFactoryStartBlock : candidate;
         const logs = await publicClient.getContractEvents({
           address: factoryAddress,
           abi: memeLaunchFactoryAbi,
@@ -58,7 +58,7 @@ export function useLaunchRecord(tokenAddress: Address) {
             transactionHash: log.transactionHash
           };
         }
-        if (fromBlock === publicTestnetFactoryStartBlock) break;
+        if (fromBlock === activeFactoryStartBlock) break;
         cursor = fromBlock - 1n;
       }
 
