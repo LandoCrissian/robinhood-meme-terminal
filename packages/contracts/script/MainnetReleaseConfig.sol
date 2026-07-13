@@ -16,4 +16,7 @@ library MainnetReleaseConfig {
     uint256 internal constant INITIAL_VIRTUAL_ETH_RESERVE = 0.3 ether;
     uint256 internal constant INITIAL_VIRTUAL_TOKEN_RESERVE = 1_073_000_000 ether;
     uint256 internal constant GRADUATION_TARGET = 1 ether;
+
+    uint256 internal constant FACTORY_ACTIVATION_DELAY = 2 days;
+    bytes32 internal constant FACTORY_VERSION = keccak256("RMT_FACTORY_V4");
 }
