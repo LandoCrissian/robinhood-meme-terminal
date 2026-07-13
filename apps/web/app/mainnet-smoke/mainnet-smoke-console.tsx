@@ -105,9 +105,9 @@ type SmokeRecord = {
 };
 
 type Metrics = {
-  block?: bigint;
   opens?: bigint;
   fairStartEnds?: bigint;
+  tradingOpen?: boolean;
   reserve?: bigint;
   tokenBalance?: bigint;
   buyQuote?: bigint;
@@ -140,7 +140,7 @@ export function MainnetSmokeConsole() {
   const [error, setError] = useState("");
 
   const isOperator = address?.toLowerCase() === OPERATOR.toLowerCase();
-  const tradingOpen = metrics.block !== undefined && metrics.opens !== undefined && metrics.block >= metrics.opens;
+  const tradingOpen = metrics.tradingOpen === true;
   const sellAmount = metrics.tokenBalance ? metrics.tokenBalance / 2n : 0n;
 
   useEffect(() => {
@@ -172,8 +172,7 @@ export function MainnetSmokeConsole() {
 
   async function refresh(next: SmokeRecord = record) {
     if (!publicClient || !address || !next.market || !next.token || !next.rewardVault) return;
-    const [block, opens, fairStartEnds, reserve, tokenBalance, buyQuote, claimable] = await Promise.all([
-      publicClient.getBlockNumber(),
+    const [opens, fairStartEnds, reserve, tokenBalance, buyQuote, claimable] = await Promise.all([
       publicClient.readContract({ address: next.market, abi: marketAbi, functionName: "tradingOpensAtBlock" }),
       publicClient.readContract({ address: next.market, abi: marketAbi, functionName: "fairStartEndsAtBlock" }),
       publicClient.readContract({ address: next.market, abi: marketAbi, functionName: "realEthReserve" }),
@@ -181,10 +180,20 @@ export function MainnetSmokeConsole() {
       publicClient.readContract({ address: next.market, abi: marketAbi, functionName: "quoteBuy", args: [BUY_AMOUNT] }),
       publicClient.readContract({ address: next.rewardVault, abi: rewardAbi, functionName: "claimable", args: [address] })
     ]);
+    const deadline = BigInt(Math.floor(Date.now() / 1000) + 600);
+    const tradingOpen = await publicClient.simulateContract({
+      account: address,
+      address: next.market,
+      abi: marketAbi,
+      functionName: "buy",
+      args: [address, 0n, deadline],
+      value: BUY_AMOUNT
+    }).then(() => true).catch(() => false);
+
     setMetrics({
-      block,
       opens: BigInt(opens),
       fairStartEnds: BigInt(fairStartEnds),
+      tradingOpen,
       reserve,
       tokenBalance,
       buyQuote: buyQuote[0],
@@ -325,7 +334,7 @@ export function MainnetSmokeConsole() {
 
         <article className={`smoke-stage ${record.buyTx ? "complete" : record.launchTx ? "active" : ""}`}>
           <header><h3>2. Low-value curve buy</h3>{record.buyTx && <a className="smoke-link" href={explorer("tx", record.buyTx)} target="_blank" rel="noreferrer">Transaction ↗</a>}</header>
-          <p>Fixed input: {formatEther(BUY_AMOUNT)} ETH. Fair Start opens at block {metrics.opens?.toString() ?? "—"}; current block {metrics.block?.toString() ?? "—"}.</p>
+          <p>Fixed input: {formatEther(BUY_AMOUNT)} ETH. Contract gate: {metrics.tradingOpen ? "open" : "waiting"}; Fair Start target block {metrics.opens?.toString() ?? "—"}.</p>
         </article>
 
         <article className={`smoke-stage ${record.sellTx ? "complete" : record.buyTx ? "active" : ""}`}>
