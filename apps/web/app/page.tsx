@@ -9,7 +9,7 @@ export default function Home() {
   return (
     <main>
       <nav>
-        <div><span className="logo">RMT</span><strong>Robinhood Meme Terminal</strong></div>
+        <div className="brandLockup"><img className="brandLogo" src="/brand/rmt-master-logo.png" alt="Robinhood Meme Terminal" /><strong>Robinhood Meme Terminal</strong></div>
         <div><WalletButton /></div>
       </nav>
       <section className="hero">
