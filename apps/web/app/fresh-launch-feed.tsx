@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { type Address, type Hash } from "viem";
 import { usePublicClient } from "wagmi";
 import { robinhoodChainTestnet } from "@rmt/shared/chains";
-import { memeLaunchFactoryAbi } from "../lib/contracts";
+import { memeLaunchFactoryAbi, publicTestnetFactoryStartBlock } from "../lib/contracts";
 import { useFactoryAddress } from "../lib/use-factory-address";
 import { ipfsToHttp, resolveTokenMetadata } from "../lib/token-metadata";
 
@@ -46,29 +46,37 @@ export function FreshLaunchFeed() {
     try {
       const latestBlock = await publicClient.getBlockNumber();
       const configuredStart = process.env.NEXT_PUBLIC_FACTORY_START_BLOCK;
-      const requestedStart = configuredStart && /^\d+$/.test(configuredStart) ? BigInt(configuredStart) : latestBlock > 20_000n ? latestBlock - 20_000n : 0n;
-      const logs = await publicClient.getContractEvents({
-        address: factoryAddress,
-        abi: memeLaunchFactoryAbi,
-        eventName: "TokenLaunched",
-        fromBlock: requestedStart,
-        toBlock: "latest",
-        strict: true
-      });
-
-      const parsed = logs.map((log) => ({
-        launchId: log.args.launchId,
-        token: log.args.token,
-        creator: log.args.creator,
-        rewardVault: log.args.rewardVault,
-        name: log.args.name,
-        symbol: log.args.symbol,
-        creatorBps: Number(log.args.rewardBps[0]),
-        communityBps: Number(log.args.rewardBps[1]),
-        transactionHash: log.transactionHash,
-        blockNumber: log.blockNumber,
-        metadataURI: log.args.metadataURI
-      })).sort((a, b) => a.blockNumber > b.blockNumber ? -1 : 1).slice(0, 25);
+      const requestedStart = configuredStart && /^\d+$/.test(configuredStart) ? BigInt(configuredStart) : publicTestnetFactoryStartBlock;
+      let cursor = latestBlock;
+      const parsed: LaunchItem[] = [];
+      while (cursor >= requestedStart && parsed.length < 25) {
+        const candidate = cursor > 19_999n ? cursor - 19_999n : 0n;
+        const fromBlock = candidate < requestedStart ? requestedStart : candidate;
+        const batch = await publicClient.getContractEvents({
+          address: factoryAddress,
+          abi: memeLaunchFactoryAbi,
+          eventName: "TokenLaunched",
+          fromBlock,
+          toBlock: cursor,
+          strict: true
+        });
+        parsed.push(...batch.flatMap((log) => log.transactionHash ? [{
+          launchId: log.args.launchId,
+          token: log.args.token,
+          creator: log.args.creator,
+          rewardVault: log.args.rewardVault,
+          name: log.args.name,
+          symbol: log.args.symbol,
+          creatorBps: Number(log.args.rewardBps[0]),
+          communityBps: Number(log.args.rewardBps[1]),
+          transactionHash: log.transactionHash,
+          blockNumber: log.blockNumber,
+          metadataURI: log.args.metadataURI
+        }] : []));
+        if (fromBlock === requestedStart) break;
+        cursor = fromBlock - 1n;
+      }
+      parsed.sort((a, b) => a.blockNumber > b.blockNumber ? -1 : 1).splice(25);
 
       const enriched = await Promise.all(parsed.map(async (launch) => {
         const metadata = await resolveTokenMetadata(launch.metadataURI);

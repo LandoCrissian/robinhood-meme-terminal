@@ -1,57 +1,59 @@
 # Robinhood Chain Testnet Deployment
 
-This runbook deploys the complete guarded V4 launch stack to Robinhood Chain testnet only:
+This runbook documents the lightweight public RMT alpha stack currently used on Robinhood Chain testnet.
 
 ```text
-Local test V4 PoolManager
-→ CREATE2-mined V4GraduationHook
-→ V4GraduationAdapter
-→ MemeLaunchFactory
-→ permanent hook/adapter/factory bindings
+TestnetGraduationAdapter
+→ LowCostMemeLaunchFactoryV3
+→ fixed-supply token + bonding-curve market + reward vault per launch
 ```
 
-Robinhood testnet does not publish an official Uniswap V4 deployment, so the test stack uses a locally deployed upstream `PoolManager`. It must never be represented as an official Uniswap deployment.
+## What is live
 
-The testnet factory uses immutable low-value economics so the complete buy, graduation, and V4 migration loop can be exercised without pretending test assets have value:
+- wallet-signed token launches
+- fixed one-billion-token supply held by each market
+- bonding-curve buys and sells
+- a 1% market fee
+- Simple and Community reward presets
+- onchain reward claims
+- factory launch and market trade feeds
 
-- 1% curve fee
-- 0.01 test ETH initial virtual reserve
-- 1.073 billion virtual token reserve
-- 0.001 test ETH graduation target
+## What is intentionally disabled
 
-These are test parameters, not a mainnet proposal. Mainnet economics remain unset pending simulation and review.
+The lightweight `TestnetGraduationAdapter` always rejects graduation. The public alpha therefore does **not** create a DEX pool or migrate liquidity. Its configured target is intentionally unreachable so curve trading can be tested without accidentally invoking an incomplete migration path.
+
+The repository also contains a guarded V4 graduation prototype. It is not the adapter behind the current public alpha and must not be described as an official or production Robinhood Chain DEX integration.
 
 ## Safety requirements
 
 - Use a dedicated testnet-only wallet.
-- Never commit a private key or seed phrase.
+- Never commit or paste a private key or seed phrase.
 - Confirm the RPC reports chain ID `46630` before broadcasting.
-- Confirm the standard CREATE2 deployer exists at `0x4e59b44847b379578588920cA78FbF26c0B4956C`.
-- Do not set `NEXT_PUBLIC_FACTORY_ADDRESS` until bytecode and `launchCount()` are verified.
+- Treat test ETH as valueless test infrastructure.
+- Record every deployed address, transaction hash, block number, and source commit.
+- Do not enable mainnet deployment without economic review, independent contract review, and a verified external DEX adapter.
 
-## 1. Prepare the deployer
+## Public alpha deployment
 
-Fund a dedicated EVM wallet with Robinhood Chain testnet ETH using the currently documented official faucet or bridge flow.
-
-### Recommended: wallet-approved deployment page
-
-Set `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID`, open `/deploy-testnet`, connect the dedicated test wallet, and select **Deploy test stack**. The page performs the same guarded sequence while the wallet explicitly approves every transaction. It never requests or stores a private key or recovery phrase. Partial progress is saved in the browser so an interrupted deployment can resume without redeploying completed contracts.
-
-The command-line flow below remains available for automated development environments only.
-
-Set the private key only in the current shell:
+The current verified factory fallback is recorded in `apps/web/lib/contracts.ts` together with its deployment start block. Hosting may override the factory with:
 
 ```bash
-export DEPLOYER_PRIVATE_KEY=0x...
+NEXT_PUBLIC_FACTORY_ADDRESS=0x...
+NEXT_PUBLIC_FACTORY_START_BLOCK=...
 ```
 
-Optionally override the official testnet RPC:
+After any deployment change, rebuild the web application and confirm:
 
-```bash
-export ROBINHOOD_TESTNET_RPC_URL=https://rpc.testnet.chain.robinhood.com/
-```
+1. the factory bytecode exists on chain `46630`
+2. `launchSimple` and `launchCommunity` create a token, market, and reward vault
+3. the token appears in Fresh launches
+4. the token detail page resolves its market and vault from the factory event
+5. buy and sell quotes execute with slippage and deadline protection
+6. market fees accrue in the reward vault
+7. an eligible wallet can claim its reward
+8. every explorer link points to Robinhood Chain testnet
 
-## 2. Build and test
+## Contract validation
 
 ```bash
 cd packages/contracts
@@ -61,62 +63,6 @@ forge build --sizes --skip script --skip test
 forge test -vvv
 ```
 
-## 3. Broadcast
+## Mainnet gate
 
-```bash
-bash scripts/deploy-testnet.sh
-```
-
-The script refuses to broadcast unless the RPC returns chain ID `46630`.
-
-## 4. Record the deployment
-
-From the Foundry broadcast output, record:
-
-- V4 PoolManager address
-- graduation hook address and CREATE2 salt
-- graduation adapter address
-- factory contract address
-- deployment transaction hash
-- deployer address
-- chain ID
-- block number
-- source commit SHA
-
-Do not commit private keys or raw signed transactions.
-
-## 5. Smoke test
-
-```bash
-export FACTORY_ADDRESS=0x...
-bash scripts/smoke-test-factory.sh
-```
-
-The smoke test confirms:
-
-- the RPC is Robinhood Chain testnet
-- bytecode exists at the factory, adapter, hook, and PoolManager addresses
-- the adapter is permanently bound to the factory
-- the hook is permanently bound to the adapter
-- the factory has the expected low-value testnet graduation target
-- `launchCount()` can be read
-
-## 6. Configure the web application
-
-Set the deployment address in the web hosting environment:
-
-```bash
-NEXT_PUBLIC_FACTORY_ADDRESS=0x...
-```
-
-Rebuild the application after changing this value. The browser launch button remains disabled when the address is missing or invalid.
-
-## 7. First test launch
-
-Use non-production treasury addresses and a disposable test token. Confirm that one transaction creates:
-
-- a fixed-supply token
-- a token-specific reward vault
-- a `TokenLaunched` event containing both addresses
-
-Only after the launch event, curve trade, graduation, V4 migration, token balances, reward recipients, and claim accounting are verified should the deployment be treated as usable for the alpha.
+Do not reuse the public alpha's disabled graduation adapter or test economics on mainnet. Mainnet requires a separately reviewed configuration, production DEX integration, locked governance/treasury controls, monitoring, an indexer, incident procedures, and an explicit deployment authorization.

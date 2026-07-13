@@ -147,7 +147,6 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply }: { tokenAddres
   const busy = isPending || receipt.isLoading;
   const priceWei = virtualTokens.data && virtualTokens.data > 0n ? (virtualEth.data ?? 0n) * 10n ** 18n / virtualTokens.data : 0n;
   const marketCapWei = virtualTokens.data && virtualTokens.data > 0n ? (virtualEth.data ?? 0n) * totalSupply / virtualTokens.data : 0n;
-  const progressPercent = Number(progress.data ?? 0n) / 100;
 
   useEffect(() => {
     if (!receipt.isSuccess) return;
@@ -187,9 +186,8 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply }: { tokenAddres
       <div className="sectionTitle"><div><p className="eyebrow">LIVE BONDING CURVE</p><h2>Trade ${symbol}</h2></div><span className="badge liveBadge">TESTNET</span></div>
       <div className="marketStats intelligenceStats"><div><small>Token price</small><strong>{formatPrice(priceWei)} test ETH</strong></div><div><small>Market cap</small><strong>{formatEth(marketCapWei, 6)} test ETH</strong></div><div><small>Curve reserve</small><strong>{formatEth(reserve.data ?? 0n, 7)} ETH</strong></div><div><small>Your balance</small><strong>{Number(formatUnits(balance.data ?? 0n, 18)).toLocaleString(undefined, { maximumFractionDigits: 2 })} {symbol}</strong></div></div>
       <div className="graduationCard">
-        <div><span>{graduated.data ? "Graduated" : "Graduation progress"}</span><strong>{progressPercent.toFixed(2)}%</strong></div>
-        <div className="progressTrack" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progressPercent}><span style={{ width: `${Math.min(progressPercent, 100)}%` }} /></div>
-        <small>{formatEth(reserve.data ?? 0n, 7)} of {formatEth(graduationTarget.data ?? 0n, 7)} test ETH reserved for graduation</small>
+        <div><span>Market reserve</span><strong>{formatEth(reserve.data ?? 0n, 7)} test ETH</strong></div>
+        <small>DEX migration is disabled in this testnet alpha. Launching, curve trading, and fee accounting remain live.</small>
       </div>
       <div className="tradeTabs"><button className={mode === "buy" ? "active" : ""} onClick={() => setMode("buy")}>Buy</button><button className={mode === "sell" ? "active" : ""} onClick={() => setMode("sell")}>Sell</button></div>
       {mode === "buy" ? <label>Pay with test ETH<input inputMode="decimal" value={buyAmount} onChange={(event) => setBuyAmount(event.target.value)} /><small>You receive approximately {Number(formatUnits(buyOut, 18)).toLocaleString(undefined, { maximumFractionDigits: 2 })} {symbol}</small></label> : <label>Sell {symbol}<input inputMode="decimal" value={sellAmount} onChange={(event) => setSellAmount(event.target.value)} /><small>You receive approximately {Number(formatEther(sellOut)).toLocaleString(undefined, { maximumFractionDigits: 8 })} test ETH</small></label>}

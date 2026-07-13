@@ -22,10 +22,10 @@ export function LaunchForm() {
   const factoryAddress = useFactoryAddress();
   const { writeContract, isPending, data: transactionHash, error: writeError } = useWriteContract();
   const { data: receipt, isLoading: isConfirming, error: receiptError } = useWaitForTransactionReceipt({ hash: transactionHash, chainId: robinhoodChainTestnet.id });
-  const [name, setName] = useState("Robinhood Meme Terminal");
-  const [symbol, setSymbol] = useState("RMT");
+  const [name, setName] = useState("");
+  const [symbol, setSymbol] = useState("");
   const supply = "1000000000";
-  const [description, setDescription] = useState("The genesis token launched through Robinhood Meme Terminal.");
+  const [description, setDescription] = useState("");
   const [website, setWebsite] = useState("");
   const [xUrl, setXUrl] = useState("");
   const [telegram, setTelegram] = useState("");
@@ -122,10 +122,10 @@ export function LaunchForm() {
 
   return (
     <section className="panel">
-      <div className="sectionTitle"><div><p className="eyebrow">GENESIS LAUNCH</p><h2>Configure your token</h2></div><span className="badge">TESTNET GUARDED</span></div>
-      <label>Token name<input value={name} maxLength={40} onChange={(e) => setName(e.target.value)} /></label>
-      <div className="two"><label>Ticker<input value={symbol} maxLength={10} onChange={(e) => setSymbol(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))} /></label><label>Platform supply<input inputMode="numeric" value={supply} readOnly aria-readonly="true" /></label></div>
-      <label>Description<textarea value={description} maxLength={500} onChange={(e) => setDescription(e.target.value)} /></label>
+      <div className="sectionTitle"><div><p className="eyebrow">TOKEN LAUNCH</p><h2>Configure your token</h2></div><span className="badge">TESTNET ALPHA</span></div>
+      <label>Token name<input value={name} maxLength={40} placeholder="Name your token" onChange={(e) => setName(e.target.value)} /></label>
+      <div className="two"><label>Ticker<input value={symbol} maxLength={10} placeholder="TICKER" onChange={(e) => setSymbol(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))} /></label><label>Platform supply<input inputMode="numeric" value={supply} readOnly aria-readonly="true" /></label></div>
+      <label>Description<textarea value={description} maxLength={500} placeholder="Tell traders what this token is about" onChange={(e) => setDescription(e.target.value)} /></label>
       <details className="socialFields"><summary>Add social links <span>Optional</span></summary><div>
         <label>Website<input type="url" inputMode="url" placeholder="https://yourproject.com" value={website} onChange={(e) => setWebsite(e.target.value)} /></label>
         <label>X profile<input type="url" inputMode="url" placeholder="https://x.com/yourproject" value={xUrl} onChange={(e) => setXUrl(e.target.value)} /></label>
@@ -144,7 +144,7 @@ export function LaunchForm() {
       {v3Available && <div className="presetSection"><p className="eyebrow">LAUNCH STYLE</p><div className="presetGrid">
         <button type="button" className={preset === "simple" ? "preset active" : "preset"} onClick={() => setPreset("simple")}><strong>Simple</strong><span>Launch instantly. No optional programs.</span><small>85% creator · 15% platform</small></button>
         <button type="button" className={preset === "community" ? "preset active" : "preset"} onClick={() => setPreset("community")}><strong>Community</strong><span>Add community funding and trader rewards.</span><small>45% creator · 25% community · 15% traders · 15% platform</small></button>
-      </div><div className="graduationNote"><strong>Automatic graduation included</strong><span>Trading builds DEX liquidity. It cannot be withdrawn or redirected.</span></div></div>}
+      </div><div className="graduationNote"><strong>Graduation-ready architecture</strong><span>Curve reserves stay inside the market. DEX migration is intentionally disabled in this testnet alpha.</span></div></div>}
       {!v3Available && simpleAvailable && <div className="callout"><strong>{advanced ? "Advanced rewards" : "Automatic rewards"}</strong><span>{advanced ? "You are manually choosing reward destinations." : "Creator, community, trader, liquidity, and platform destinations are assigned automatically."}</span><button type="button" onClick={() => setAdvanced((value) => !value)}>{advanced ? "Use simple launch" : "Open advanced settings"}</button></div>}
       {!v3Available && (!simpleAvailable || advanced) && <><p className="eyebrow addressHeading">REWARD DESTINATIONS</p>
       <label>Community treasury<input placeholder="0x…" value={communityTreasury} onChange={(e) => setCommunityTreasury(e.target.value)} /></label>

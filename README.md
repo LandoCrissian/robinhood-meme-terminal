@@ -1,28 +1,57 @@
 # Robinhood Meme Terminal
 
-Mobile-first EVM meme-token launch and discovery terminal.
+Robinhood Meme Terminal (RMT) is a mobile-first meme-token launchpad, bonding-curve market, reward system, and discovery terminal for Robinhood Chain.
 
-## Status
+## Current status
 
-Initial scaffold. The first release will target a test network before any mainnet deployment.
+The public application is a Robinhood Chain **testnet alpha**. The following loop is live and has been exercised end to end:
 
-## MVP
+- connect an EVM wallet
+- create a fixed-supply token and market in one signature
+- upload optional permanent IPFS artwork and metadata
+- buy and sell through the token's bonding curve
+- route the disclosed trading fee to an onchain reward vault
+- inspect market activity and claim accrued rewards
 
-- Wallet connection and network validation
-- Fixed-supply ERC-20 deployment through a factory
-- Token launch form with image and social metadata
-- Transaction progress and explorer links
-- New-launch feed and basic contract safety indicators
-- No custodial keys and no hidden minting privileges
+DEX graduation is deliberately disabled in the lightweight public testnet stack. The market keeps its real ETH reserve, but no UI or documentation should represent DEX migration as active until the production adapter is deployed and independently reviewed.
+
+## Product principles
+
+- Three-field default launch flow with optional media and socials
+- Fixed one-billion-token supply controlled by the launch market
+- No mint authority, blacklist, transfer tax, or upgrade proxy
+- Wallet-signed transactions only; RMT never requests private keys
+- Transparent creator, community, trader, and platform fee splits
+- Market reserves remain separate from discretionary reward vaults
+- Testnet, staging, and mainnet behavior are labeled honestly
 
 ## Architecture
 
-- `apps/web` — Next.js frontend
-- `packages/contracts` — Foundry smart contracts and tests
-- `packages/shared` — shared types, validation, and chain configuration
+- `apps/web` — Next.js launch, discovery, trading, and rewards interface
+- `packages/contracts` — Foundry contracts, deployment scripts, fuzz tests, and invariants
+- `packages/shared` — shared chain configuration
+- `docs` — deployment, graduation, and launch-readiness records
 
-## Security rules
+The current browser client reads factory and market events directly from Robinhood Chain testnet. That is acceptable for the limited alpha, but a reorg-safe indexer is required before a public mainnet launch.
 
-- Never commit private keys or seed phrases.
-- Mainnet deployment remains disabled until contracts are tested and reviewed.
-- Generated tokens are fixed supply unless a future token template explicitly discloses otherwise.
+## Development
+
+The project targets Node 22, pnpm 10.12.1, and Foundry.
+
+```bash
+pnpm install
+pnpm typecheck
+pnpm build
+
+cd packages/contracts
+forge fmt --check
+forge build
+forge test -vvv
+```
+
+## Security boundary
+
+- Never commit a private key, seed phrase, API secret, or signed production transaction.
+- Mainnet deployment is not authorized by this repository's current testnet status.
+- Current contracts and economic parameters require independent review before mainnet use.
+- Automated checks describe known contract properties; they do not guarantee a token is safe.
