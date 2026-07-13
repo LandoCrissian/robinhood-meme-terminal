@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./styles.css";
 import "./feed.css";
 import "./token-detail.css";
@@ -6,6 +6,13 @@ import "./reward-vault.css";
 import "./wallet.css";
 import "./brand.css";
 import { Providers } from "./providers";
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#060906"
+};
 
 export const metadata: Metadata = {
   title: "Robinhood Meme Terminal",
