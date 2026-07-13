@@ -96,8 +96,8 @@ export function DiscoverySearch() {
     <section className="discoverySearch panel" aria-labelledby="discovery-search-title">
       <div className="searchLead">
         <p className="eyebrow">FIND A TOKEN</p>
-        <h2 id="discovery-search-title">Search the chain</h2>
-        <p>Search by name, ticker, or contract address. RMT launches and external markets stay clearly separated.</p>
+        <h2 id="discovery-search-title">Search tokens</h2>
+        <p>Search verified RMT launches and surfaced external markets by name, ticker, or contract address.</p>
       </div>
       <div className="searchControl">
         <span aria-hidden="true">⌕</span>
@@ -117,7 +117,7 @@ export function DiscoverySearch() {
       {showResults && (
         <div className="searchResults" aria-live="polite">
           {state === "loading" ? (
-            <p className="searchMessage">Searching Robinhood Chain…</p>
+            <p className="searchMessage">Searching available markets…</p>
           ) : resultCount === 0 ? (
             <p className="searchMessage">No matching RMT launches or filtered external markets.</p>
           ) : (
