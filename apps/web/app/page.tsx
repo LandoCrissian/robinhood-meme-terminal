@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { FreshLaunchFeed } from "./fresh-launch-feed";
 import { LaunchForm } from "./launch-form";
 import { WalletButton } from "./wallet-button";
@@ -11,7 +12,7 @@ export default function Home() {
     <main>
       <nav className="appNav">
         <a className="brandLockup" href="#" aria-label="Robinhood Meme Terminal home"><img className="brandLogo" src="/brand/rmt-master-logo.png" alt="" /><strong>RMT</strong></a>
-        <div className="primaryNav" aria-label="Primary navigation"><a href="#explore">Explore</a><a href="#launch">Launch</a><a href="#learn">How it works</a></div>
+        <div className="primaryNav" aria-label="Primary navigation"><a href="#explore">Explore</a><a href="#launch">Launch</a><a href="#learn">How it works</a><Link href="/status">Status</Link></div>
         <WalletButton target={isMainnetRelease ? "mainnet" : "testnet"} />
       </nav>
 
@@ -37,6 +38,7 @@ export default function Home() {
               <div><b>3</b><span><strong>Trade, earn, graduate</strong><small>The curve handles trading and rewards; successful tokens graduate automatically.</small></span></div>
             </div>
             <div className="callout"><strong>{isMainnetRelease ? "Real ETH on mainnet" : "Testnet alpha"}</strong><span>{isMainnetRelease ? "Always review your wallet’s amount and gas estimate before signing." : "Practice launching, trading, and claiming without real funds."}</span></div>
+            <Link className="statusLink" href="/status"><span className="statusDot operational" aria-hidden="true" />Live system status</Link>
           </aside>
         </div>
       </section>
