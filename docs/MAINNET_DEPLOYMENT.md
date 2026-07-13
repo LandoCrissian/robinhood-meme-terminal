@@ -54,7 +54,24 @@ The operator completed the bounded V4 launch loop with a clearly labeled disposa
 - Sell transaction: `0x0a99eb8e438990281d636c505935ece6afa78f573c93b4144c00fd4fb5bb9a15`
 - Creator-reward claim: `0x97248fa1d98f4363d846dd4f95d4d42d6ca70c3c2150c0acc5e61f8d1983eb8c`
 
-This proves factory launch, market custody, curve buy and sell accounting, fee accrual, and pull-based creator claims on Robinhood Chain mainnet. It does not prove DEX graduation or constitute an independent security audit.
+This proves factory launch, market custody, curve buy and sell accounting, fee accrual, and pull-based creator claims on Robinhood Chain mainnet. It does not by itself prove DEX graduation or constitute an independent security audit.
+
+## Bounded graduation validation
+
+A live disposable graduation was intentionally not purchased because the immutable reserve target is `1 ETH`. Instead, the release gate forks the deployed Robinhood Chain mainnet state and exercises the exact deployed factory at `0x88b86F10D874C2e3C8CfE63161ffa969f3273Cd4`.
+
+The fork proof:
+
+- launches a disposable token through the deployed V4 factory;
+- advances beyond the immutable Fair Start window;
+- buys through the curve until the real reserve exceeds the exact `1 ETH` target;
+- verifies the market becomes graduated and curve trading is closed;
+- calls the permissionless liquidity migration;
+- verifies the reserved pool opens through the permanently bound adapter and hook;
+- verifies the returned venue is canonical Uniswap V4 PoolManager `0x8366a39CC670B4001A1121B8F6A443A643E40951`;
+- verifies neither the market nor adapter retains ETH or token inventory after settlement.
+
+This is a bounded staging exception, not a claim that a live token has already graduated. The permanent test is part of the Robinhood mainnet-fork workflow and must remain green for future release changes.
 
 ## Remaining go-live gates
 
@@ -63,7 +80,7 @@ This proves factory launch, market custody, curve buy and sell accounting, fee a
 - [ ] Record every governance, vault, hook, adapter, router, and controller address and transaction hash.
 - [x] Run a disposable low-value mainnet launch.
 - [x] Run low-value buy, sell, reward accrual, and claim checks.
-- [ ] Exercise graduation on a disposable launch or document a bounded staging exception.
+- [x] Exercise full graduation against deployed mainnet state on a fork and document the bounded live-cost exception.
 - [ ] Point the public frontend at the version registry only after the smoke checks pass.
 - [x] Keep the official RMT project token unlaunched until the disposable smoke launch succeeds.
 - [ ] Obtain an independent smart-contract security review before describing the release as audited.

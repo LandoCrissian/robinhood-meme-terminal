@@ -89,4 +89,7 @@ SIGNER_TWO="$TEST_SIGNER_TWO" \
 SIGNER_THREE="$TEST_SIGNER_THREE" \
   bash scripts/smoke-test-mainnet.sh
 
-echo "Secured V4 release stack passed end-to-end deployment and invariant checks on a Robinhood mainnet fork."
+ROBINHOOD_MAINNET_RPC_URL="$FORK_RPC_URL" \
+  forge test --match-contract DeployedMainnetGraduationForkTest -vvv
+
+echo "Secured V4 release stack passed deployment, invariant, and full graduation checks on a Robinhood mainnet fork."
