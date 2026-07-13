@@ -12,7 +12,13 @@ interface V4FactoryVm {
     function roll(uint256 blockNumber) external;
 }
 
-contract RewardsControllerMock {}
+contract RewardsControllerMock {
+    mapping(address vault => bool registered) public isRegistered;
+
+    function registerVault(address vault, address, bytes32) external {
+        isRegistered[vault] = true;
+    }
+}
 
 contract ForcedEthSender {
     constructor() payable {}
@@ -66,6 +72,7 @@ contract LowCostMemeLaunchFactoryV4Test {
             factory.launchCommunity("Community Launch", "COMM", "ipfs://community");
         (address community, address trader) = factory.communityDestinationsForToken(token);
         require(community != address(0) && trader != address(0), "purpose vaults");
+        require(controller.isRegistered(community) && controller.isRegistered(trader), "vault registration");
 
         CloneLaunchRewardVault vault = CloneLaunchRewardVault(payable(rewardVault));
         require(vault.rewardBps(0) == 4_000, "creator");
