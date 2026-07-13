@@ -66,8 +66,7 @@ contract DeployMainnetMemeLaunchFactory {
 
         TwoOfThreeTimelock factoryGovernance = new TwoOfThreeTimelock(signers, 0);
         TwoOfThreeTimelock rewardsGovernance = new TwoOfThreeTimelock(signers, 0);
-        TwoOfThreeTimelock protocolGovernance =
-            new TwoOfThreeTimelock(signers, Config.PROTOCOL_GOVERNANCE_DELAY);
+        TwoOfThreeTimelock protocolGovernance = new TwoOfThreeTimelock(signers, Config.PROTOCOL_GOVERNANCE_DELAY);
 
         address[5] memory revenueRecipients = [
             address(new ProtocolPurposeVault(address(protocolGovernance), TREASURY_PURPOSE)),
@@ -77,8 +76,7 @@ contract DeployMainnetMemeLaunchFactory {
             address(new ProtocolPurposeVault(address(protocolGovernance), ECOSYSTEM_PURPOSE))
         ];
 
-        V4GraduationHook hook =
-            new V4GraduationHook{salt: salt}(IPoolManager(Config.POOL_MANAGER), deployer);
+        V4GraduationHook hook = new V4GraduationHook{salt: salt}(IPoolManager(Config.POOL_MANAGER), deployer);
         if (address(hook) != expectedHook) revert HookAddressMismatch();
 
         V4GraduationAdapter adapter = new V4GraduationAdapter(
@@ -87,9 +85,8 @@ contract DeployMainnetMemeLaunchFactory {
         hook.bindAdapter(address(adapter));
 
         ProtocolRevenueRouter revenueRouter = new ProtocolRevenueRouter(revenueRecipients);
-        PurposeRewardsController rewardsController = new PurposeRewardsController(
-            deployer, address(rewardsGovernance), Config.REWARD_RELEASE_DELAY
-        );
+        PurposeRewardsController rewardsController =
+            new PurposeRewardsController(deployer, address(rewardsGovernance), Config.REWARD_RELEASE_DELAY);
         LowCostMemeLaunchFactoryV4 factory = new LowCostMemeLaunchFactoryV4(
             address(adapter),
             Config.MARKET_FEE_BPS,
@@ -145,8 +142,8 @@ contract DeployMainnetMemeLaunchFactory {
         for (uint256 i; i < revenueRecipients.length; ++i) {
             ProtocolPurposeVault vault = ProtocolPurposeVault(payable(revenueRecipients[i]));
             if (
-                revenueRouter.recipients(i) != revenueRecipients[i]
-                    || vault.governance() != address(protocolGovernance) || vault.purpose() != purposes[i]
+                revenueRouter.recipients(i) != revenueRecipients[i] || vault.governance() != address(protocolGovernance)
+                    || vault.purpose() != purposes[i]
             ) revert BindingVerificationFailed();
         }
     }
