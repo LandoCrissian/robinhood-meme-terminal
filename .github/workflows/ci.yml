@@ -57,9 +57,17 @@ jobs:
         run: |
           node scripts/export-testnet-web-artifacts.mjs
           node scripts/export-mainnet-web-artifacts.mjs
-          git diff --exit-code -- \
-            ../../apps/web/lib/generated/testnet-stack.json \
-            ../../apps/web/lib/generated/mainnet-stack.json
+          if [[ ! -f ../../apps/web/lib/generated/mainnet-stack.json ]]; then
+            exit 1
+          fi
+          echo "RMT_MAINNET_ARTIFACT_BEGIN"
+          base64 -w0 ../../apps/web/lib/generated/mainnet-stack.json
+          echo
+          echo "RMT_MAINNET_ARTIFACT_END"
+          git diff --exit-code -- ../../apps/web/lib/generated/testnet-stack.json
+          if git ls-files --error-unmatch ../../apps/web/lib/generated/mainnet-stack.json >/dev/null 2>&1; then
+            git diff --exit-code -- ../../apps/web/lib/generated/mainnet-stack.json
+          fi
       - name: Upload wallet deployment artifacts
         if: always()
         uses: actions/upload-artifact@v4
