@@ -67,6 +67,22 @@ const marketAbi = [
   { type: "function", name: "quoteBuy", stateMutability: "view", inputs: [{ type: "uint256" }], outputs: [{ type: "uint256" }, { type: "uint256" }] },
   { type: "function", name: "quoteSell", stateMutability: "view", inputs: [{ type: "uint256" }], outputs: [{ type: "uint256" }, { type: "uint256" }, { type: "uint256" }] },
   {
+    type: "event",
+    name: "Trade",
+    anonymous: false,
+    inputs: [
+      { name: "trader", type: "address", indexed: true },
+      { name: "recipient", type: "address", indexed: true },
+      { name: "isBuy", type: "bool", indexed: true },
+      { name: "tokenAmount", type: "uint256", indexed: false },
+      { name: "ethAmount", type: "uint256", indexed: false },
+      { name: "feeAmount", type: "uint256", indexed: false },
+      { name: "virtualEthReserve", type: "uint256", indexed: false },
+      { name: "virtualTokenReserve", type: "uint256", indexed: false },
+      { name: "realEthReserve", type: "uint256", indexed: false }
+    ]
+  },
+  {
     type: "function",
     name: "buy",
     stateMutability: "payable",
@@ -88,12 +104,22 @@ const tokenAbi = [
 ] as const;
 
 const rewardAbi = [
+  {
+    type: "event",
+    name: "RewardsClaimed",
+    anonymous: false,
+    inputs: [
+      { name: "recipient", type: "address", indexed: true },
+      { name: "amount", type: "uint256", indexed: false }
+    ]
+  },
   { type: "function", name: "claimable", stateMutability: "view", inputs: [{ type: "address" }], outputs: [{ type: "uint256" }] },
   { type: "function", name: "claim", stateMutability: "nonpayable", inputs: [], outputs: [] }
 ] as const;
 
 type SmokeRecord = {
   launchId?: string;
+  launchBlock?: string;
   token?: Address;
   market?: Address;
   rewardVault?: Address;
@@ -173,6 +199,7 @@ export function MainnetSmokeConsole() {
 
       const next: SmokeRecord = {
         launchId: event.args.launchId.toString(),
+        launchBlock: event.blockNumber?.toString(),
         token: event.args.token,
         market: event.args.market,
         rewardVault: event.args.rewardVault,
@@ -187,6 +214,76 @@ export function MainnetSmokeConsole() {
 
     return () => { cancelled = true; };
   }, [address, isOperator, publicClient, record.launchTx]);
+
+  useEffect(() => {
+    if (
+      !publicClient || !isOperator || !record.launchTx || !record.market || !record.rewardVault
+      || (record.buyTx && record.sellTx && record.claimTx)
+    ) return;
+
+    let cancelled = false;
+    void (async () => {
+      const launchBlock = record.launchBlock
+        ? BigInt(record.launchBlock)
+        : (await publicClient.getTransactionReceipt({ hash: record.launchTx as Hex })).blockNumber;
+      const [trades, claims] = await Promise.all([
+        publicClient.getContractEvents({
+          address: record.market,
+          abi: marketAbi,
+          eventName: "Trade",
+          args: { trader: OPERATOR },
+          fromBlock: launchBlock,
+          toBlock: "latest"
+        }),
+        publicClient.getContractEvents({
+          address: record.rewardVault,
+          abi: rewardAbi,
+          eventName: "RewardsClaimed",
+          args: { recipient: OPERATOR },
+          fromBlock: launchBlock,
+          toBlock: "latest"
+        })
+      ]);
+      if (cancelled) return;
+
+      const buyEvent = trades.find((entry) => entry.args.isBuy === true);
+      const sellEvent = trades.find((entry) => entry.args.isBuy === false);
+      const claimEvent = claims[0];
+      const next: SmokeRecord = {
+        ...record,
+        launchBlock: launchBlock.toString(),
+        buyTx: record.buyTx ?? buyEvent?.transactionHash ?? undefined,
+        sellTx: record.sellTx ?? sellEvent?.transactionHash ?? undefined,
+        claimTx: record.claimTx ?? claimEvent?.transactionHash ?? undefined
+      };
+      if (
+        next.launchBlock === record.launchBlock && next.buyTx === record.buyTx
+        && next.sellTx === record.sellTx && next.claimTx === record.claimTx
+      ) return;
+
+      persist(next);
+      await refresh(next);
+      setStatus(
+        next.buyTx && next.sellTx && next.claimTx
+          ? "Recovered the complete verified mainnet smoke loop from onchain events."
+          : "Recovered the available mainnet smoke evidence from onchain events."
+      );
+    })().catch((cause) => {
+      if (!cancelled) setError(cause instanceof Error ? cause.message : "Could not recover the smoke-test transactions.");
+    });
+
+    return () => { cancelled = true; };
+  }, [
+    isOperator,
+    publicClient,
+    record.buyTx,
+    record.claimTx,
+    record.launchBlock,
+    record.launchTx,
+    record.market,
+    record.rewardVault,
+    record.sellTx
+  ]);
 
   useEffect(() => {
     if (!publicClient) return;
@@ -266,6 +363,7 @@ export function MainnetSmokeConsole() {
       if (!event) throw new Error("The launch confirmed but its factory event was not found.");
       const next: SmokeRecord = {
         launchId: event.args.launchId.toString(),
+        launchBlock: receipt.blockNumber.toString(),
         token: event.args.token,
         market: event.args.market,
         rewardVault: event.args.rewardVault,
