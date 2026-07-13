@@ -8,6 +8,10 @@ import {ClonePurposeRewardVault} from "./clone/ClonePurposeRewardVault.sol";
 import {MinimalProxy} from "./libraries/MinimalProxy.sol";
 import {IGraduationAdapter} from "./interfaces/IGraduationAdapter.sol";
 
+interface IPurposeRewardsController {
+    function registerVault(address vault, address token, bytes32 purpose) external;
+}
+
 /// @notice Mainnet launch factory V4 with preset economics, protected identities, and Fair Start markets.
 /// @dev This factory has no owner, proxy, arbitrary fee settings, or raw custom-recipient launch function.
 contract LowCostMemeLaunchFactoryV4 {
@@ -143,6 +147,8 @@ contract LowCostMemeLaunchFactoryV4 {
 
         ClonePurposeRewardVault(payable(community)).initialize(rewardsController, token, COMMUNITY_PURPOSE);
         ClonePurposeRewardVault(payable(trader)).initialize(rewardsController, token, TRADER_PURPOSE);
+        IPurposeRewardsController(rewardsController).registerVault(community, token, COMMUNITY_PURPOSE);
+        IPurposeRewardsController(rewardsController).registerVault(trader, token, TRADER_PURPOSE);
         communityDestinationsForToken[token] = CommunityDestinations(community, trader);
 
         emit CommunityDestinationsCreated(token, community, trader, platformTreasury);
