@@ -47,6 +47,13 @@ type RecentTrade = {
   blockNumber: bigint;
 };
 
+type TradePreflight = {
+  status: "idle" | "checking" | "ready" | "error";
+  gas?: bigint;
+  gasPrice?: bigint;
+  message?: string;
+};
+
 function compactAddress(address: Address) {
   return `${address.slice(0, 6)}…${address.slice(-4)}`;
 }
@@ -84,6 +91,7 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply }: { tokenAddres
   const [tradeMessage, setTradeMessage] = useState<string>();
   const [ethUsd, setEthUsd] = useState<number>();
   const [priceUpdatedAt, setPriceUpdatedAt] = useState<string>();
+  const [preflight, setPreflight] = useState<TradePreflight>({ status: "idle" });
   const { writeContract, data: hash, isPending, error: writeError, reset: resetWrite } = useWriteContract();
   const receipt = useWaitForTransactionReceipt({ hash, chainId: activeChain.id });
   const launchRecord = useLaunchRecord(tokenAddress);
@@ -166,7 +174,51 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply }: { tokenAddres
   const sellValueUsd = ethUsd === undefined ? undefined : Number(formatEther(sellOut)) * ethUsd;
   const buyFee = buyQuote.data?.[1] ?? 0n;
   const sellFee = sellQuote.data?.[1] ?? 0n;
+  const estimatedNetworkFeeWei = preflight.status === "ready" && preflight.gas && preflight.gasPrice ? preflight.gas * preflight.gasPrice : undefined;
+  const estimatedNetworkFeeUsd = estimatedNetworkFeeWei !== undefined && ethUsd !== undefined ? Number(formatEther(estimatedNetworkFeeWei)) * ethUsd : undefined;
   const chartPoints = useMemo<PricePoint[]>(() => [...recentTrades].reverse().flatMap((trade) => trade.virtualTokenReserve > 0n ? [{ blockNumber: trade.blockNumber, priceWei: trade.virtualEthReserve * 10n ** 18n / trade.virtualTokenReserve, side: trade.isBuy ? "buy" : "sell" }] : []), [recentTrades]);
+
+  useEffect(() => {
+    if (!publicClient || !market || !account || graduated.data) {
+      setPreflight({ status: "idle" });
+      return;
+    }
+    const hasOrder = mode === "buy" ? ethIn > 0n && buyOut > 0n : tokensIn > 0n && sellOut > 0n;
+    if (!hasOrder) {
+      setPreflight({ status: "idle" });
+      return;
+    }
+    let cancelled = false;
+    setPreflight({ status: "checking" });
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const deadline = BigInt(Math.floor(Date.now() / 1000) + 600);
+          let gas: bigint;
+          if (mode === "buy") {
+            gas = await publicClient.estimateContractGas({ account, address: market, abi: marketAbi, functionName: "buy", args: [account, buyOut * 99n / 100n, deadline], value: ethIn });
+          } else if (needsApproval) {
+            gas = await publicClient.estimateContractGas({ account, address: tokenAddress, abi: tokenTradeAbi, functionName: "approve", args: [market, maxUint256] });
+          } else {
+            gas = await publicClient.estimateContractGas({ account, address: market, abi: marketAbi, functionName: "sell", args: [tokensIn, sellOut * 99n / 100n, account, deadline] });
+          }
+          const gasPrice = await publicClient.getGasPrice();
+          if (!cancelled) setPreflight({ status: "ready", gas, gasPrice });
+        } catch (cause) {
+          if (cancelled) return;
+          const detail = cause instanceof Error ? cause.message : "";
+          const message = /insufficient funds/i.test(detail)
+            ? "This wallet needs enough ETH for the order and its network fee."
+            : "This order would fail onchain. Check the amount, balance, and market status.";
+          setPreflight({ status: "error", message });
+        }
+      })();
+    }, 300);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [account, buyOut, ethIn, graduated.data, market, mode, needsApproval, publicClient, sellOut, tokenAddress, tokensIn]);
 
   useEffect(() => {
     if (!receipt.isSuccess) return;
@@ -194,7 +246,7 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply }: { tokenAddres
   }
 
   function trade() {
-    if (!market || !account) return;
+    if (!market || !account || preflight.status !== "ready") return;
     resetWrite();
     const deadline = BigInt(Math.floor(Date.now() / 1000) + 600);
     if (mode === "buy") {
@@ -240,11 +292,18 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply }: { tokenAddres
         {needsApproval && isConnected && <p className="approvalNote">Your first sell creates a reusable allowance for this token’s immutable market. You can revoke it from your wallet at any time.</p>}
       </div>}
       <div className="tradeDisclosure"><span>Live curve quote</span><span>1% slippage protection</span><span>10-minute deadline</span><span>USD is an estimate</span></div>
-      {(isPending || receipt.isLoading) && <div className="tradeStage" role="status"><span className="tradeStageDot" /><div><strong>{isPending ? "Review in your wallet" : "Order submitted"}</strong><small>{isPending ? "Confirm the amount and network fee. RMT never signs for you." : "Waiting for Robinhood Chain confirmation."}</small>{receipt.isLoading && hash && <a href={`${activeChain.blockExplorers.default.url}/tx/${hash}`} target="_blank" rel="noreferrer">Track transaction ↗</a>}</div></div>}
+      <div className={`preflightCard ${preflight.status}`} role="status">
+        <span className="preflightIcon">{preflight.status === "ready" ? "✓" : preflight.status === "error" ? "!" : "•"}</span>
+        <div>
+          <strong>{!isConnected ? "Connect to review this order" : preflight.status === "checking" ? "Checking this order onchain…" : preflight.status === "ready" ? "Order check passed" : preflight.status === "error" ? "Order needs attention" : "Enter an amount to continue"}</strong>
+          <small>{!isConnected ? "RMT will simulate the transaction and estimate the network fee before your wallet opens." : preflight.status === "ready" && estimatedNetworkFeeWei !== undefined ? `Estimated network fee ${formatEth(estimatedNetworkFeeWei, 7)} ETH · ≈ ${formatUsd(estimatedNetworkFeeUsd)}` : preflight.message ?? "Quotes and network fees refresh automatically."}</small>
+        </div>
+      </div>
+      {(isPending || receipt.isLoading) && <div className="tradeStage" role="status"><span className="tradeStageDot" /><div><strong>{isPending ? "Review in your wallet" : "Order submitted"}</strong><small>{isPending ? "Your wallet should open now. On a phone, switch to the wallet app if needed, approve, then return to RMT." : "Waiting for Robinhood Chain confirmation."}</small>{receipt.isLoading && hash && <a href={`${activeChain.blockExplorers.default.url}/tx/${hash}`} target="_blank" rel="noreferrer">Track transaction ↗</a>}</div></div>}
       {(writeError || receipt.error) && <div className="errors"><span>{writeError?.message || receipt.error?.message}</span></div>}
       {tradeMessage && <div className="callout"><strong>{tradeMessage}</strong></div>}
       {receipt.isSuccess && lastAction !== "approve" && <div className="callout"><strong>{lastAction === "sell" ? "Sell confirmed" : "Buy confirmed"}</strong><a href={`${activeChain.blockExplorers.default.url}/tx/${hash}`} target="_blank" rel="noreferrer">View transaction ↗</a></div>}
-      <button className="launch" disabled={!isConnected || busy || Boolean(graduated.data) || (mode === "buy" ? buyOut === 0n : sellOut === 0n)} onClick={trade}>{graduated.data ? "Graduated — trade on DEX" : !isConnected ? "Connect wallet to trade" : busy ? lastAction === "approve" ? "Approving…" : lastAction === "sell" ? "Confirm sell in wallet…" : "Confirming…" : mode === "buy" ? `Buy ${symbol}` : needsApproval ? `Enable and sell ${symbol}` : `Sell ${symbol}`}</button>
+      <button className="launch" disabled={!isConnected || busy || Boolean(graduated.data) || preflight.status !== "ready" || (mode === "buy" ? buyOut === 0n : sellOut === 0n)} onClick={trade}>{graduated.data ? "Graduated — trade on DEX" : !isConnected ? "Connect wallet to trade" : busy ? lastAction === "approve" ? "Approving…" : lastAction === "sell" ? "Confirm sell in wallet…" : "Confirming…" : preflight.status === "checking" ? "Checking order…" : preflight.status === "error" ? "Review order details" : mode === "buy" ? `Buy ${symbol}` : needsApproval ? `Enable and sell ${symbol}` : `Sell ${symbol}`}</button>
       <a className="explorerLink" href={`${activeChain.blockExplorers.default.url}/address/${market}`} target="_blank" rel="noreferrer">Open market in explorer ↗</a>
       <div className="tradeHistory">
         <div className="historyHeader"><div><p className="eyebrow">ONCHAIN ACTIVITY</p><h3>Recent trades</h3></div><span>{recentTrades.length} shown</span></div>
