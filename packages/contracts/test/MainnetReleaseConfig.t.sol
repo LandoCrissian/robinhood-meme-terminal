@@ -6,7 +6,7 @@ import {MainnetReleaseConfig as Config} from "../script/MainnetReleaseConfig.sol
 contract MainnetReleaseConfigTest {
     function testCanonicalRobinhoodAndUniswapConfiguration() public pure {
         require(Config.CHAIN_ID == 4_663, "chain id");
-        require(Config.POOL_MANAGER == 0x8366a39cC670b4001A1121b8F6A443A643E40951, "pool manager");
+        require(Config.POOL_MANAGER == 0x8366a39CC670B4001A1121B8F6A443A643e40951, "pool manager");
         require(Config.CREATE2_DEPLOYER == 0x4e59b44847b379578588920cA78FbF26c0B4956C, "create2");
         require(Config.V4_POOL_FEE == 10_000, "pool fee");
         require(Config.V4_TICK_SPACING == 200, "tick spacing");

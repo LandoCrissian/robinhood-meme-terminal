@@ -6,7 +6,7 @@ pragma solidity ^0.8.26;
 library MainnetReleaseConfig {
     uint256 internal constant CHAIN_ID = 4_663;
 
-    address internal constant POOL_MANAGER = 0x8366a39cC670b4001A1121b8F6A443A643E40951;
+    address internal constant POOL_MANAGER = 0x8366a39CC670B4001A1121B8F6A443A643e40951;
     address internal constant CREATE2_DEPLOYER = 0x4e59b44847b379578588920cA78FbF26c0B4956C;
 
     uint24 internal constant V4_POOL_FEE = 10_000;
