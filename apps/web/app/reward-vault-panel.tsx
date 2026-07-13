@@ -37,13 +37,11 @@ export function RewardVaultPanel({ tokenAddress }: { tokenAddress: Address }) {
     async function findVault() {
       if (!factoryAddress || !publicClient) return;
       try {
-        const latestBlock = await publicClient.getBlockNumber();
-        const configuredStart = process.env.NEXT_PUBLIC_FACTORY_START_BLOCK;
-        const fromBlock = configuredStart && /^\d+$/.test(configuredStart) ? BigInt(configuredStart) : latestBlock > 20_000n ? latestBlock - 20_000n : 0n;
-        const logs = await publicClient.getContractEvents({ address: factoryAddress, abi: memeLaunchFactoryAbi, eventName: "TokenLaunched", args: { token: tokenAddress }, fromBlock, toBlock: "latest", strict: true });
+        const count = await publicClient.readContract({ address: factoryAddress, abi: memeLaunchFactoryAbi, functionName: "launchCount" });
+        const launches = await Promise.all(Array.from({ length: Number(count) }, (_, index) => publicClient.readContract({ address: factoryAddress, abi: memeLaunchFactoryAbi, functionName: "getLaunch", args: [BigInt(index)] })));
+        const match = launches.find((launch) => launch.token.toLowerCase() === tokenAddress.toLowerCase());
         if (!cancelled) {
-          const match = logs[0];
-          setVaultAddress(match?.args.rewardVault ?? null);
+          setVaultAddress(match?.rewardVault ?? null);
           setLookupError(match ? null : "No factory launch record was found for this token.");
         }
       } catch (error) {
