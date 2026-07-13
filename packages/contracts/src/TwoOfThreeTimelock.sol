@@ -81,7 +81,9 @@ contract TwoOfThreeTimelock {
         if (target == address(0)) revert InvalidConfiguration();
 
         transactionId = transactionCount++;
-        uint64 executeAfter = uint64(block.timestamp + executionDelay);
+        uint256 executeAfter_ = block.timestamp + executionDelay;
+        if (executeAfter_ > type(uint64).max) revert InvalidConfiguration();
+        uint64 executeAfter = uint64(executeAfter_);
         Transaction storage transaction = _transactions[transactionId];
         transaction.target = target;
         transaction.value = value;
@@ -105,6 +107,8 @@ contract TwoOfThreeTimelock {
 
         _executing = true;
         transaction.executed = true;
+        // The transaction is consumed before this call and the mutex blocks this and cross-transaction reentry.
+        // slither-disable-next-line reentrancy-eth
         (bool success, bytes memory result) = transaction.target.call{value: transaction.value}(transaction.data);
         _executing = false;
         if (!success) revert ExecutionFailed(result);
@@ -119,7 +123,7 @@ contract TwoOfThreeTimelock {
             revert InvalidConfiguration();
         }
 
-        for (uint256 i; i < signers.length; ++i) {
+        for (uint256 i; i < 3; ++i) {
             if (signers[i] == previousSigner) {
                 signers[i] = newSigner;
                 isSigner[previousSigner] = false;
