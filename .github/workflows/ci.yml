@@ -50,5 +50,12 @@ jobs:
         run: |
           node scripts/export-testnet-web-artifacts.mjs
           git diff --exit-code -- ../../apps/web/lib/generated/testnet-stack.json
+      - name: Upload wallet deployment artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wallet-deployment-artifacts
+          path: apps/web/lib/generated/testnet-stack.json
+          retention-days: 3
       - run: bash -n scripts/deploy-testnet.sh
       - run: bash -n scripts/smoke-test-factory.sh
