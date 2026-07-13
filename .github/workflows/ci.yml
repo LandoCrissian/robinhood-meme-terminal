@@ -57,5 +57,8 @@ jobs:
           name: wallet-deployment-artifacts
           path: apps/web/lib/generated/testnet-stack.json
           retention-days: 3
+      - name: Emit generated wallet artifact for review
+        if: always()
+        run: base64 -w0 ../../apps/web/lib/generated/testnet-stack.json
       - run: bash -n scripts/deploy-testnet.sh
       - run: bash -n scripts/smoke-test-factory.sh
