@@ -24,6 +24,26 @@ contract GovernanceCallReceiver {
     }
 }
 
+contract ReentrantGovernanceReceiver {
+    TwoOfThreeTimelock private immutable governance;
+    uint256 public nestedTransactionId;
+    bool public nestedExecutionBlocked;
+
+    constructor(TwoOfThreeTimelock governance_) {
+        governance = governance_;
+    }
+
+    function setNestedTransaction(uint256 transactionId) external {
+        nestedTransactionId = transactionId;
+    }
+
+    function attemptNestedExecution() external {
+        (bool success,) =
+            address(governance).call(abi.encodeCall(governance.execute, (nestedTransactionId)));
+        nestedExecutionBlocked = !success;
+    }
+}
+
 contract AutomaticMainnetGovernanceTest {
     AutomaticGovernanceVm private constant vm =
         AutomaticGovernanceVm(address(uint160(uint256(keccak256("hevm cheat code")))));
@@ -67,6 +87,34 @@ contract AutomaticMainnetGovernanceTest {
         require(receiver.received() == 0.25 ether, "value transfer");
         (,,,, bool executed,,) = governance.getTransaction(transactionId);
         require(executed, "execution state");
+    }
+
+    function testExecutionMutexBlocksCrossTransactionReentrancy() public {
+        ReentrantGovernanceReceiver receiver = new ReentrantGovernanceReceiver(governance);
+        GovernanceCallReceiver secondTarget = new GovernanceCallReceiver();
+
+        vm.prank(SIGNER_ONE);
+        uint256 nestedId =
+            governance.propose(address(secondTarget), 0, abi.encodeCall(secondTarget.setValue, (99)));
+        vm.prank(SIGNER_TWO);
+        governance.confirm(nestedId);
+        receiver.setNestedTransaction(nestedId);
+
+        vm.prank(SIGNER_ONE);
+        uint256 outerId =
+            governance.propose(address(receiver), 0, abi.encodeCall(receiver.attemptNestedExecution, ()));
+        vm.prank(SIGNER_THREE);
+        governance.confirm(outerId);
+
+        vm.warp(block.timestamp + 1 days);
+        governance.execute(outerId);
+
+        require(receiver.nestedExecutionBlocked(), "nested execution was not blocked");
+        require(secondTarget.value() == 0, "nested target executed");
+        (,,,, bool outerExecuted,,) = governance.getTransaction(outerId);
+        (,,,, bool nestedExecuted,,) = governance.getTransaction(nestedId);
+        require(outerExecuted, "outer transaction not executed");
+        require(!nestedExecuted, "nested transaction executed");
     }
 
     function testNonSignerCannotProposeOrConfirm() public {
