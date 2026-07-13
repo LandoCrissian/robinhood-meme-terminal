@@ -151,6 +151,44 @@ export function MainnetSmokeConsole() {
   }, []);
 
   useEffect(() => {
+    if (!publicClient || !address || !isOperator || record.launchTx) return;
+
+    let cancelled = false;
+    void (async () => {
+      const latestBlock = await publicClient.getBlockNumber();
+      const fromBlock = latestBlock > 100_000n ? latestBlock - 100_000n : 0n;
+      const events = await publicClient.getContractEvents({
+        address: FACTORY,
+        abi: factoryAbi,
+        eventName: "TokenLaunched",
+        args: { creator: OPERATOR },
+        fromBlock,
+        toBlock: "latest"
+      });
+      const event = [...events].reverse().find((entry) => entry.args.name?.startsWith("RMT Mainnet Smoke "));
+      if (
+        cancelled || !event || event.args.launchId === undefined || !event.args.token || !event.args.market
+        || !event.args.rewardVault || !event.transactionHash
+      ) return;
+
+      const next: SmokeRecord = {
+        launchId: event.args.launchId.toString(),
+        token: event.args.token,
+        market: event.args.market,
+        rewardVault: event.args.rewardVault,
+        launchTx: event.transactionHash
+      };
+      persist(next);
+      await refresh(next);
+      setStatus("Recovered the latest verified disposable launch from the mainnet factory.");
+    })().catch((cause) => {
+      if (!cancelled) setError(cause instanceof Error ? cause.message : "Could not recover the disposable launch.");
+    });
+
+    return () => { cancelled = true; };
+  }, [address, isOperator, publicClient, record.launchTx]);
+
+  useEffect(() => {
     if (!publicClient) return;
     void Promise.all([
       publicClient.readContract({ address: REGISTRY, abi: registryAbi, functionName: "activeFactory" }),
