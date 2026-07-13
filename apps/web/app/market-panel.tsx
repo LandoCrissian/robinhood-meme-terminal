@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { formatEther, formatUnits, parseEther, parseUnits, type Address } from "viem";
 import { useAccount, usePublicClient, useReadContract, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { robinhoodChainTestnet } from "@rmt/shared/chains";
-import { memeLaunchFactoryAbi } from "../lib/contracts";
+import { memeLaunchFactoryAbi, publicTestnetFactoryStartBlock } from "../lib/contracts";
 import { useFactoryAddress } from "../lib/use-factory-address";
 
 const marketAbi = [
@@ -76,12 +76,13 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply }: { tokenAddres
     let cancelled = false;
     void (async () => {
       try {
-        const latest = await publicClient.getBlockNumber();
-        const logs = await publicClient.getContractEvents({ address: factoryAddress, abi: memeLaunchFactoryAbi, eventName: "TokenLaunched", args: { token: tokenAddress }, fromBlock: latest > 20_000n ? latest - 20_000n : 0n, toBlock: "latest", strict: true });
+        const count = await publicClient.readContract({ address: factoryAddress, abi: memeLaunchFactoryAbi, functionName: "launchCount" });
+        const launches = await Promise.all(Array.from({ length: Number(count) }, (_, index) => publicClient.readContract({ address: factoryAddress, abi: memeLaunchFactoryAbi, functionName: "getLaunch", args: [BigInt(index)] })));
+        const match = launches.find((launch) => launch.token.toLowerCase() === tokenAddress.toLowerCase());
         if (!cancelled) {
-          setMarket(logs[0]?.args.market ?? null);
-          setLaunchBlock(logs[0]?.blockNumber ?? 0n);
-          setLookupError(logs[0] ? undefined : "Market record not found.");
+          setMarket(match?.market ?? null);
+          setLaunchBlock(publicTestnetFactoryStartBlock);
+          setLookupError(match ? undefined : "Market record not found.");
         }
       } catch (cause) {
         if (!cancelled) setLookupError(cause instanceof Error ? cause.message : "Unable to read market.");
@@ -97,9 +98,18 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply }: { tokenAddres
     let cancelled = false;
     async function loadTrades() {
       try {
-        const logs = await client.getContractEvents({ address: marketAddress, abi: marketAbi, eventName: "Trade", fromBlock: launchBlock, toBlock: "latest", strict: true });
+        let cursor = await client.getBlockNumber();
+        const newestFirst: RecentTrade[] = [];
+        while (cursor >= launchBlock && newestFirst.length < 12) {
+          const candidate = cursor > 19_999n ? cursor - 19_999n : 0n;
+          const fromBlock = candidate < launchBlock ? launchBlock : candidate;
+          const logs = await client.getContractEvents({ address: marketAddress, abi: marketAbi, eventName: "Trade", fromBlock, toBlock: cursor, strict: true });
+          newestFirst.push(...logs.reverse().flatMap((log) => log.transactionHash ? [{ transactionHash: log.transactionHash, trader: log.args.trader, isBuy: log.args.isBuy, tokenAmount: log.args.tokenAmount, ethAmount: log.args.ethAmount, feeAmount: log.args.feeAmount, blockNumber: log.blockNumber }] : []));
+          if (fromBlock === launchBlock) break;
+          cursor = fromBlock - 1n;
+        }
         if (cancelled) return;
-        setRecentTrades(logs.slice(-12).reverse().flatMap((log) => log.transactionHash ? [{ transactionHash: log.transactionHash, trader: log.args.trader, isBuy: log.args.isBuy, tokenAmount: log.args.tokenAmount, ethAmount: log.args.ethAmount, feeAmount: log.args.feeAmount, blockNumber: log.blockNumber }] : []));
+        setRecentTrades(newestFirst.slice(0, 12));
         setTradeHistoryError(undefined);
       } catch (cause) {
         if (!cancelled) setTradeHistoryError(cause instanceof Error ? cause.message : "Trade history is temporarily unavailable.");
