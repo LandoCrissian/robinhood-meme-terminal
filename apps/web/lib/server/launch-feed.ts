@@ -1,23 +1,38 @@
-import { createPublicClient, http } from "viem";
-import { robinhoodChainTestnet } from "@rmt/shared/chains";
-import { getFactoryAddress, memeLaunchFactoryAbi, publicTestnetFactoryStartBlock } from "../contracts";
+import { createPublicClient, getAddress, http, isAddress } from "viem";
+import {
+  getFactoryAddress,
+  memeLaunchFactoryAbi,
+  publicMainnetVersionRegistryAddress,
+  versionRegistryAbi
+} from "../contracts";
+import { activeChain, activeFactoryStartBlock, isMainnetRelease } from "../network";
 import type { LaunchFeedItem } from "../launch-feed";
 import { resolveTokenMetadata } from "../token-metadata";
 
 const publicClient = createPublicClient({
-  chain: robinhoodChainTestnet,
-  transport: http(robinhoodChainTestnet.rpcUrls.default.http[0], { retryCount: 2, timeout: 8_000 })
+  chain: activeChain,
+  transport: http(activeChain.rpcUrls.default.http[0], { retryCount: 2, timeout: 8_000 })
 });
 
+async function resolveActiveFactory() {
+  if (!isMainnetRelease) return getFactoryAddress();
+  const registered = await publicClient.readContract({
+    address: publicMainnetVersionRegistryAddress,
+    abi: versionRegistryAbi,
+    functionName: "activeFactory"
+  });
+  return isAddress(registered) ? getAddress(registered) : null;
+}
+
 export async function readFreshLaunches(limit = 25): Promise<LaunchFeedItem[]> {
-  const factoryAddress = getFactoryAddress();
+  const factoryAddress = await resolveActiveFactory();
   if (!factoryAddress) return [];
 
   const latestBlock = await publicClient.getBlockNumber();
   const configuredStart = process.env.NEXT_PUBLIC_FACTORY_START_BLOCK;
   const requestedStart = configuredStart && /^\d+$/.test(configuredStart)
     ? BigInt(configuredStart)
-    : publicTestnetFactoryStartBlock;
+    : activeFactoryStartBlock;
   let cursor = latestBlock;
   const launches: LaunchFeedItem[] = [];
 

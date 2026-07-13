@@ -2,7 +2,7 @@
 
 import { formatEther, type Address, type Hash } from "viem";
 import { useAccount, useReadContract, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
-import { robinhoodChainTestnet } from "@rmt/shared/chains";
+import { activeChain, activeNetworkLabel } from "../lib/network";
 import { useFactoryAddress } from "../lib/use-factory-address";
 import { useLaunchRecord } from "../lib/use-launch-record";
 
@@ -29,17 +29,17 @@ export function RewardVaultPanel({ tokenAddress }: { tokenAddress: Address }) {
   const lookupError = launchRecord.error ? (launchRecord.error instanceof Error ? launchRecord.error.message : "Unable to locate reward vault.") : launchRecord.isSuccess && !launchRecord.data ? "No factory launch record was found for this token." : null;
   const { address: account } = useAccount();
   const { writeContract, data: claimHash, isPending: isClaimPending, error: claimError } = useWriteContract();
-  const { isLoading: isClaimConfirming, isSuccess: claimConfirmed } = useWaitForTransactionReceipt({ hash: claimHash, chainId: robinhoodChainTestnet.id });
+  const { isLoading: isClaimConfirming, isSuccess: claimConfirmed } = useWaitForTransactionReceipt({ hash: claimHash, chainId: activeChain.id });
 
 
   const address = vaultAddress ?? fallbackAddress;
   const enabled = Boolean(vaultAddress);
-  const common = { address, abi: rewardVaultAbi, chainId: robinhoodChainTestnet.id, query: { enabled, refetchInterval: 10_000 } } as const;
+  const common = { address, abi: rewardVaultAbi, chainId: activeChain.id, query: { enabled, refetchInterval: 10_000 } } as const;
   const totalReceivedRead = useReadContract({ ...common, functionName: "totalReceived" });
   const totalClaimedRead = useReadContract({ ...common, functionName: "totalClaimed" });
   const recipientReads = [0n, 1n, 2n, 3n, 4n].map((index) => useReadContract({ ...common, functionName: "recipients", args: [index] }));
   const splitReads = [0n, 1n, 2n, 3n, 4n].map((index) => useReadContract({ ...common, functionName: "rewardBps", args: [index] }));
-  const claimableRead = useReadContract({ address, abi: rewardVaultAbi, chainId: robinhoodChainTestnet.id, functionName: "claimable", args: [account ?? fallbackAddress], query: { enabled: enabled && Boolean(account), refetchInterval: 10_000 } });
+  const claimableRead = useReadContract({ address, abi: rewardVaultAbi, chainId: activeChain.id, functionName: "claimable", args: [account ?? fallbackAddress], query: { enabled: enabled && Boolean(account), refetchInterval: 10_000 } });
 
   const loading = [totalReceivedRead, totalClaimedRead, ...recipientReads, ...splitReads].some((read) => read.isLoading);
   const totalReceived = totalReceivedRead.data ?? 0n;
@@ -48,15 +48,15 @@ export function RewardVaultPanel({ tokenAddress }: { tokenAddress: Address }) {
 
   function claim() {
     if (!vaultAddress || claimable === 0n) return;
-    writeContract({ address: vaultAddress, abi: rewardVaultAbi, functionName: "claim", chainId: robinhoodChainTestnet.id });
+    writeContract({ address: vaultAddress, abi: rewardVaultAbi, functionName: "claim", chainId: activeChain.id });
   }
 
-  if (!factoryAddress) return <section className="panel rewardDashboard"><p className="eyebrow">REWARD VAULT</p><h2>Awaiting factory deployment</h2><p>The reward dashboard activates after the verified testnet factory address is configured.</p></section>;
+  if (!factoryAddress) return <section className="panel rewardDashboard"><p className="eyebrow">REWARD VAULT</p><h2>Awaiting factory registry</h2><p>The reward dashboard activates after the verified factory is available on {activeNetworkLabel}.</p></section>;
   if (lookupError) return <section className="panel rewardDashboard"><p className="eyebrow">REWARD VAULT</p><h2>Vault unavailable</h2><p>{lookupError}</p></section>;
   if (!vaultAddress || loading) return <section className="panel rewardDashboard"><p className="eyebrow">REWARD VAULT</p><h2>Reading reward accounting…</h2></section>;
 
-  const explorer = `${robinhoodChainTestnet.blockExplorers.default.url}/address/${vaultAddress}`;
-  const txExplorer = (hash: Hash) => `${robinhoodChainTestnet.blockExplorers.default.url}/tx/${hash}`;
+  const explorer = `${activeChain.blockExplorers.default.url}/address/${vaultAddress}`;
+  const txExplorer = (hash: Hash) => `${activeChain.blockExplorers.default.url}/tx/${hash}`;
 
   return (
     <section className="panel rewardDashboard">

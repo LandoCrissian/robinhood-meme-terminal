@@ -1,10 +1,11 @@
 import { unstable_cache } from "next/cache";
 import type { LaunchFeedResponse } from "../../../lib/launch-feed";
 import { readFreshLaunches } from "../../../lib/server/launch-feed";
+import { activeChain } from "../../../lib/network";
 
 export const dynamic = "force-dynamic";
 
-const getCachedLaunches = unstable_cache(readFreshLaunches, ["rmt-fresh-launches-v1"], {
+const getCachedLaunches = unstable_cache(readFreshLaunches, [`rmt-fresh-launches-v2-${activeChain.id}`], {
   revalidate: 10,
   tags: ["rmt-launches"]
 });

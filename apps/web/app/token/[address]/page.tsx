@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { formatUnits, getAddress, isAddress, type Address } from "viem";
 import { useReadContract } from "wagmi";
-import { robinhoodChainTestnet } from "@rmt/shared/chains";
+import { activeChain, activeNetworkLabel, isMainnetRelease } from "../../../lib/network";
 import { RewardVaultPanel } from "../../reward-vault-panel";
 import { MarketPanel } from "../../market-panel";
 import { WalletButton } from "../../wallet-button";
@@ -30,7 +30,7 @@ export default function TokenDetailPage() {
   const tokenAddress: Address | null = params.address && isAddress(params.address) ? getAddress(params.address) : null;
   const address = tokenAddress ?? fallbackAddress;
   const enabled = Boolean(tokenAddress);
-  const common = { address, abi: tokenAbi, chainId: robinhoodChainTestnet.id, query: { enabled } } as const;
+  const common = { address, abi: tokenAbi, chainId: activeChain.id, query: { enabled } } as const;
   const nameRead = useReadContract({ ...common, functionName: "name" });
   const symbolRead = useReadContract({ ...common, functionName: "symbol" });
   const supplyRead = useReadContract({ ...common, functionName: "totalSupply" });
@@ -48,13 +48,13 @@ export default function TokenDetailPage() {
 
   const reads = [nameRead, symbolRead, supplyRead, creatorRead, metadataRead];
   if (reads.some((read) => read.isLoading)) return <main className="detailPage"><Link href="/">← Terminal</Link><section className="panel"><h1>Reading token…</h1></section></main>;
-  if (reads.some((read) => read.error) || nameRead.data === undefined || symbolRead.data === undefined || supplyRead.data === undefined || creatorRead.data === undefined || metadataRead.data === undefined) return <main className="detailPage"><Link href="/">← Terminal</Link><section className="panel"><h1>Token could not be verified</h1><p>The address may not be an RMT fixed-supply token on Robinhood Chain testnet.</p></section></main>;
+  if (reads.some((read) => read.error) || nameRead.data === undefined || symbolRead.data === undefined || supplyRead.data === undefined || creatorRead.data === undefined || metadataRead.data === undefined) return <main className="detailPage"><Link href="/">← Terminal</Link><section className="panel"><h1>Token could not be verified</h1><p>The address may not be an RMT fixed-supply token on {activeNetworkLabel}.</p></section></main>;
 
-  const explorer = `${robinhoodChainTestnet.blockExplorers.default.url}/address/${tokenAddress}`;
+  const explorer = `${activeChain.blockExplorers.default.url}/address/${tokenAddress}`;
 
   return (
     <main className="detailPage">
-      <div className="detailNav"><Link href="/">← Back to terminal</Link><WalletButton /></div>
+      <div className="detailNav"><Link href="/">← Back to terminal</Link><WalletButton target={isMainnetRelease ? "mainnet" : "testnet"} /></div>
       <section className="tokenHero panel">
         <div className="coin largeCoin tokenArtwork">{metadata?.image ? <img src={ipfsToHttp(metadata.image)} alt={`${nameRead.data} artwork`} /> : symbolRead.data.slice(0, 2)}</div>
         <div><p className="eyebrow">VERIFIED ONCHAIN TOKEN</p><h1>{nameRead.data}</h1><p className="tokenSymbol">${symbolRead.data}</p>{metadata?.description && <p className="tokenDescription">{metadata.description}</p>}{metadata && (metadata.website || metadata.x || metadata.telegram) && <div className="socialLinks">{metadata.website && <a href={metadata.website} target="_blank" rel="noopener noreferrer">Website ↗</a>}{metadata.x && <a href={metadata.x} target="_blank" rel="noopener noreferrer">X ↗</a>}{metadata.telegram && <a href={metadata.telegram} target="_blank" rel="noopener noreferrer">Telegram ↗</a>}</div>}</div>

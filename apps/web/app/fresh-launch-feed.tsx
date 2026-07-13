@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { activeReleaseBadge, isMainnetRelease } from "../lib/network";
 import { useCallback, useEffect, useState } from "react";
 import type { LaunchFeedItem, LaunchFeedResponse } from "../lib/launch-feed";
 import { ipfsToHttp } from "../lib/token-metadata";
@@ -25,7 +26,7 @@ export function FreshLaunchFeed() {
       setLaunches(result.launches);
       setStatus("live");
       setMessage(result.launches.length === 0
-        ? "Factory connected. No testnet launches yet."
+        ? isMainnetRelease ? "Factory connected. No mainnet launches yet." : "Factory connected. No testnet launches yet."
         : `${result.launches.length} verified factory launch${result.launches.length === 1 ? "" : "es"}.`);
     } catch (error) {
       setStatus("error");
@@ -44,7 +45,7 @@ export function FreshLaunchFeed() {
       <div className="sectionTitle">
         <div><p className="eyebrow">DISCOVERY TERMINAL</p><h2>Fresh launches</h2></div>
         <span className={`badge ${status === "live" ? "liveBadge" : status === "error" ? "errorBadge" : "warning"}`}>
-          {status === "live" ? "LIVE TESTNET" : status === "error" ? "DATA DELAYED" : "SYNCING"}
+          {status === "live" ? activeReleaseBadge : status === "error" ? "DATA DELAYED" : "SYNCING"}
         </span>
       </div>
       <div className="filters"><button className="active">Fresh</button><button disabled>Trending</button><button disabled>Community-heavy</button><button disabled>Low creator concentration</button></div>
