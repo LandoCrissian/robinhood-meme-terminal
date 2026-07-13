@@ -32,7 +32,12 @@ jobs:
         with:
           node-version: 22
       - run: bash scripts/install-v4-deps.sh
-      - run: forge fmt --check
+      - name: Verify mainnet release formatting
+        run: |
+          forge fmt --check \
+            script/MainnetReleaseConfig.sol \
+            script/DeployMainnetMemeLaunchFactory.s.sol \
+            test/MainnetReleaseConfig.t.sol
       - name: Build contracts
         run: |
           set -o pipefail
