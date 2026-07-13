@@ -11,7 +11,11 @@ function shortAddress(address: string) {
   return `${address.slice(0, 6)}…${address.slice(-4)}`;
 }
 
-function displaySymbol(symbol: string) {\n  return symbol.replace(/^\\$+/, "");\n}\n\nfunction reserveLabel(reserveWei: string) {
+function displaySymbol(symbol: string) {
+  return symbol.replace(/^\$+/, "");
+}
+
+function reserveLabel(reserveWei: string) {
   const value = Number(formatEther(BigInt(reserveWei)));
   if (value === 0) return "New";
   if (value < 0.001) return "<0.001 ETH";
