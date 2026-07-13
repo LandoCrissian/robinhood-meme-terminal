@@ -23,6 +23,7 @@ DEX graduation is deliberately disabled in the lightweight public testnet stack.
 - Wallet-signed transactions only; RMT never requests private keys
 - Transparent creator, community, trader, and platform fee splits
 - Market reserves remain separate from discretionary reward vaults
+- Mainnet deployment automatically creates 2-of-3 governance and five purpose-specific protocol vaults from three independent signer addresses
 - Testnet, staging, and mainnet behavior are labeled honestly
 
 ## Architecture
@@ -52,6 +53,7 @@ forge test -vvv
 ## Security boundary
 
 - Never commit a private key, seed phrase, API secret, or signed production transaction.
-- Mainnet deployment is not authorized by this repository's current testnet status.
+- Mainnet deployment requires three distinct signer wallets, an explicit confirmation phrase, and a dedicated funded deployer.
+- Governance signers are public address inputs only; private keys and recovery phrases never belong in the repository, chat, Vercel, or screenshots.
 - Current contracts and economic parameters require independent review before mainnet use.
 - Automated checks describe known contract properties; they do not guarantee a token is safe.
