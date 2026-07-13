@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { type Address, type Hash } from "viem";
 import { usePublicClient } from "wagmi";
 import { robinhoodChainTestnet } from "@rmt/shared/chains";
-import { memeLaunchFactoryAbi } from "../lib/contracts";
+import { memeLaunchFactoryAbi, publicTestnetFactoryStartBlock } from "../lib/contracts";
 import { useFactoryAddress } from "../lib/use-factory-address";
 import { ipfsToHttp, resolveTokenMetadata } from "../lib/token-metadata";
 
@@ -46,15 +46,24 @@ export function FreshLaunchFeed() {
     try {
       const latestBlock = await publicClient.getBlockNumber();
       const configuredStart = process.env.NEXT_PUBLIC_FACTORY_START_BLOCK;
-      const requestedStart = configuredStart && /^\d+$/.test(configuredStart) ? BigInt(configuredStart) : latestBlock > 20_000n ? latestBlock - 20_000n : 0n;
-      const logs = await publicClient.getContractEvents({
-        address: factoryAddress,
-        abi: memeLaunchFactoryAbi,
-        eventName: "TokenLaunched",
-        fromBlock: requestedStart,
-        toBlock: "latest",
-        strict: true
-      });
+      const requestedStart = configuredStart && /^\d+$/.test(configuredStart) ? BigInt(configuredStart) : publicTestnetFactoryStartBlock;
+      let cursor = latestBlock;
+      const logs = [] as Awaited<ReturnType<typeof publicClient.getContractEvents>>;
+      while (cursor >= requestedStart && logs.length < 25) {
+        const candidate = cursor > 19_999n ? cursor - 19_999n : 0n;
+        const fromBlock = candidate < requestedStart ? requestedStart : candidate;
+        const batch = await publicClient.getContractEvents({
+          address: factoryAddress,
+          abi: memeLaunchFactoryAbi,
+          eventName: "TokenLaunched",
+          fromBlock,
+          toBlock: cursor,
+          strict: true
+        });
+        logs.push(...batch);
+        if (fromBlock === requestedStart) break;
+        cursor = fromBlock - 1n;
+      }
 
       const parsed = logs.map((log) => ({
         launchId: log.args.launchId,
