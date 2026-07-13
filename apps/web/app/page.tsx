@@ -3,9 +3,7 @@
 import { FreshLaunchFeed } from "./fresh-launch-feed";
 import { LaunchForm } from "./launch-form";
 import { WalletButton } from "./wallet-button";
-import Link from "next/link";
-
-const rewardDefaults = { creator: 30, community: 25, trader: 15, liquidity: 15, platform: 15 };
+import "./launch-presets.css";
 
 export default function Home() {
   return (
@@ -22,9 +20,9 @@ export default function Home() {
       <div className="grid">
         <LaunchForm />
         <section className="panel rewards">
-          <p className="eyebrow">COMMUNITY LAUNCH MODEL</p><h2>Where every platform fee goes</h2>
-          {Object.entries(rewardDefaults).map(([key, value]) => <div className="reward" key={key}><div><span>{key}</span><strong>{value}%</strong></div><div className="track"><div style={{ width: `${value}%` }} /></div></div>)}
-          <div className="callout"><strong>100% disclosed.</strong><span>These percentages apply to the platform fee—not the entire trade value.</span></div>
+          <p className="eyebrow">AUTOMATIC BY DESIGN</p><h2>Launch without the technical setup</h2>
+          <div className="automaticList"><div><b>✓</b><span>Fixed supply and market created together</span></div><div><b>✓</b><span>Trading begins on the bonding curve</span></div><div><b>✓</b><span>Graduation liquidity builds automatically</span></div><div><b>✓</b><span>Every fee destination remains visible onchain</span></div></div>
+          <div className="callout"><strong>Three fields. One signature.</strong><span>Choose a launch style and the protocol handles everything else.</span></div>
         </section>
       </div>
       <FreshLaunchFeed />
