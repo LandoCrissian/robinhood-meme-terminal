@@ -2,6 +2,12 @@ import { getAddress, isAddress, type Address } from "viem";
 
 export const publicTestnetFactoryAddress = getAddress("0x2D075c7FC08508A027191A99f146EDD606966fF3");
 export const publicTestnetFactoryStartBlock = 89_775_000n;
+export const publicMainnetFactoryAddress = getAddress("0x88b86F10D874C2e3C8CfE63161ffa969f3273Cd4");
+export const publicMainnetVersionRegistryAddress = getAddress("0xfff3f69f473780EA5eA7f5525526986Bb491E00e");
+
+export const versionRegistryAbi = [
+  { type: "function", name: "activeFactory", stateMutability: "view", inputs: [], outputs: [{ type: "address" }] }
+] as const;
 
 export const memeLaunchFactoryAbi = [
   { type: "function", name: "launchSimple", stateMutability: "nonpayable", inputs: [{ name: "name", type: "string" }, { name: "symbol", type: "string" }, { name: "metadataURI", type: "string" }], outputs: [{ name: "token", type: "address" }, { name: "market", type: "address" }, { name: "rewardVault", type: "address" }] },
@@ -45,6 +51,7 @@ export const memeLaunchFactoryAbi = [
 ] as const;
 
 export function getFactoryAddress(): Address | null {
+  if (process.env.NEXT_PUBLIC_RMT_NETWORK === "mainnet") return publicMainnetFactoryAddress;
   const configured = process.env.NEXT_PUBLIC_FACTORY_ADDRESS;
   if (configured && isAddress(configured)) return getAddress(configured);
   if (typeof window === "undefined") return publicTestnetFactoryAddress;
