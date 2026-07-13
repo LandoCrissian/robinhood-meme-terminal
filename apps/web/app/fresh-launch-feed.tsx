@@ -22,6 +22,18 @@ function reserveLabel(reserveWei: string) {
   return `${value.toLocaleString(undefined, { maximumFractionDigits: 3 })} ETH`;
 }
 
+function volumeLabel(volumeWei: string) {
+  const value = Number(formatEther(BigInt(volumeWei)));
+  if (value === 0) return "0 ETH";
+  if (value < 0.001) return "<0.001 ETH";
+  return `${value.toLocaleString(undefined, { maximumFractionDigits: 3 })} ETH`;
+}
+
+function activityLabel(launch: LaunchFeedItem) {
+  if (launch.tradeCount === 0) return "No recent trades";
+  return `${launch.buyCount} buy${launch.buyCount === 1 ? "" : "s"} · ${launch.sellCount} sell${launch.sellCount === 1 ? "" : "s"}`;
+}
+
 function TokenArtwork({ launch, featured = false }: { launch: LaunchFeedItem; featured?: boolean }) {
   return (
     <div className={featured ? "coin hotArtwork" : "coin launchArtwork"}>
@@ -62,18 +74,20 @@ export function FreshLaunchFeed() {
   }, [refresh]);
 
   const hot = useMemo(() => [...launches].sort((a, b) => {
-    if (a.graduated !== b.graduated) return a.graduated ? -1 : 1;
+    const volumeDifference = BigInt(b.volumeWei) - BigInt(a.volumeWei);
+    if (volumeDifference !== 0n) return volumeDifference > 0n ? 1 : -1;
+    if (a.tradeCount !== b.tradeCount) return b.tradeCount - a.tradeCount;
     const reserveDifference = BigInt(b.reserveWei) - BigInt(a.reserveWei);
     if (reserveDifference !== 0n) return reserveDifference > 0n ? 1 : -1;
     return BigInt(b.blockNumber) > BigInt(a.blockNumber) ? 1 : -1;
   }).slice(0, 3), [launches]);
-  const moving = hot.some((launch) => BigInt(launch.reserveWei) > 0n);
+  const moving = hot.some((launch) => launch.tradeCount > 0 || BigInt(launch.reserveWei) > 0n);
   const visibleLaunches = showAll ? launches : launches.slice(0, 6);
 
   return (
     <section className="feed panel" id="explore">
       <div className="sectionTitle feedHeading">
-        <div><p className="eyebrow">LIVE DISCOVERY</p><h2>{moving ? "Hot now" : "New now"}</h2><p className="sectionCopy">{moving ? "Ranked by live curve reserve—not paid placement." : "The newest verified launches from the RMT factory."}</p></div>
+        <div><p className="eyebrow">LIVE DISCOVERY</p><h2>{moving ? "Hot now" : "New now"}</h2><p className="sectionCopy">{moving ? "Ranked by recent onchain volume, trade count, and curve reserve—never paid placement." : "The newest verified launches from the RMT factory."}</p></div>
         <span className={`badge ${status === "live" ? "liveBadge" : status === "error" ? "errorBadge" : "warning"}`}>
           {status === "live" ? activeReleaseBadge : status === "error" ? "DATA DELAYED" : "SYNCING"}
         </span>
@@ -84,7 +98,7 @@ export function FreshLaunchFeed() {
           <div className="hotRank">0{index + 1}</div>
           <TokenArtwork launch={launch} featured />
           <div className="hotIdentity"><strong>{launch.name}</strong><span>{"$" + displaySymbol(launch.symbol)}</span></div>
-          <div className="hotSignal"><small>{launch.graduated ? "Status" : "Curve reserve"}</small><strong>{launch.graduated ? "Graduated" : reserveLabel(launch.reserveWei)}</strong></div>
+          <div className="hotSignal"><span><small>{launch.graduated ? "Curve phase complete" : "Recent curve volume"}</small><em>{activityLabel(launch)}</em></span><strong>{volumeLabel(launch.volumeWei)}</strong></div>
           <div className="miniProgress" aria-label={`${launch.progressBps / 100}% graduation progress`}><span style={{ width: `${launch.progressBps / 100}%` }} /></div>
         </Link>
       ))}</div>}

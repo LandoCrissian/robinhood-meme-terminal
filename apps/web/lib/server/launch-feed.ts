@@ -12,7 +12,23 @@ import { resolveTokenMetadata } from "../token-metadata";
 const marketSignalsAbi = [
   { type: "function", name: "realEthReserve", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] },
   { type: "function", name: "progressBps", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] },
-  { type: "function", name: "graduated", stateMutability: "view", inputs: [], outputs: [{ type: "bool" }] }
+  { type: "function", name: "graduated", stateMutability: "view", inputs: [], outputs: [{ type: "bool" }] },
+  {
+    type: "event",
+    name: "Trade",
+    anonymous: false,
+    inputs: [
+      { name: "trader", type: "address", indexed: true },
+      { name: "recipient", type: "address", indexed: true },
+      { name: "isBuy", type: "bool", indexed: true },
+      { name: "tokenAmount", type: "uint256", indexed: false },
+      { name: "ethAmount", type: "uint256", indexed: false },
+      { name: "feeAmount", type: "uint256", indexed: false },
+      { name: "virtualEthReserve", type: "uint256", indexed: false },
+      { name: "virtualTokenReserve", type: "uint256", indexed: false },
+      { name: "realEthReserve", type: "uint256", indexed: false }
+    ]
+  }
 ] as const;
 
 const publicClient = createPublicClient({
@@ -30,20 +46,52 @@ async function resolveActiveFactory() {
   return isAddress(registered) ? getAddress(registered) : null;
 }
 
-async function readMarketSignals(market: Address) {
+async function readMarketSignals(market: Address, launchBlock: bigint, latestBlock: bigint) {
   try {
-    const [reserve, progress, graduated] = await Promise.all([
+    const windowStart = latestBlock > 19_999n ? latestBlock - 19_999n : 0n;
+    const activityFromBlock = launchBlock > windowStart ? launchBlock : windowStart;
+    const [reserve, progress, graduated, trades] = await Promise.all([
       publicClient.readContract({ address: market, abi: marketSignalsAbi, functionName: "realEthReserve" }),
       publicClient.readContract({ address: market, abi: marketSignalsAbi, functionName: "progressBps" }),
-      publicClient.readContract({ address: market, abi: marketSignalsAbi, functionName: "graduated" })
+      publicClient.readContract({ address: market, abi: marketSignalsAbi, functionName: "graduated" }),
+      publicClient.getContractEvents({
+        address: market,
+        abi: marketSignalsAbi,
+        eventName: "Trade",
+        fromBlock: activityFromBlock,
+        toBlock: latestBlock,
+        strict: true
+      }).catch(() => [])
     ]);
+
+    let volume = 0n;
+    let buyCount = 0;
+    let sellCount = 0;
+    for (const trade of trades) {
+      volume += trade.args.ethAmount;
+      if (trade.args.isBuy) buyCount += 1;
+      else sellCount += 1;
+    }
+
     return {
       reserveWei: reserve.toString(),
+      volumeWei: volume.toString(),
+      tradeCount: trades.length,
+      buyCount,
+      sellCount,
       progressBps: Math.min(10_000, Number(progress)),
       graduated
     };
   } catch {
-    return { reserveWei: "0", progressBps: 0, graduated: false };
+    return {
+      reserveWei: "0",
+      volumeWei: "0",
+      tradeCount: 0,
+      buyCount: 0,
+      sellCount: 0,
+      progressBps: 0,
+      graduated: false
+    };
   }
 }
 
@@ -85,6 +133,10 @@ export async function readFreshLaunches(limit = 25): Promise<LaunchFeedItem[]> {
       blockNumber: log.blockNumber.toString(),
       metadataURI: log.args.metadataURI,
       reserveWei: "0",
+      volumeWei: "0",
+      tradeCount: 0,
+      buyCount: 0,
+      sellCount: 0,
       progressBps: 0,
       graduated: false
     }] : []));
@@ -98,7 +150,7 @@ export async function readFreshLaunches(limit = 25): Promise<LaunchFeedItem[]> {
   return Promise.all(recent.map(async (launch) => {
     const [metadata, signals] = await Promise.all([
       resolveTokenMetadata(launch.metadataURI),
-      readMarketSignals(launch.market)
+      readMarketSignals(launch.market, BigInt(launch.blockNumber), latestBlock)
     ]);
     return { ...launch, ...signals, image: metadata?.image };
   }));

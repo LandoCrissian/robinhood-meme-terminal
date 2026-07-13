@@ -5,7 +5,7 @@ import { activeChain } from "../../../lib/network";
 
 export const dynamic = "force-dynamic";
 
-const getCachedLaunches = unstable_cache(readFreshLaunches, [`rmt-fresh-launches-v2-${activeChain.id}`], {
+const getCachedLaunches = unstable_cache(readFreshLaunches, [`rmt-fresh-launches-v3-${activeChain.id}`], {
   revalidate: 10,
   tags: ["rmt-launches"]
 });
