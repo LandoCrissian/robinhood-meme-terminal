@@ -26,6 +26,9 @@ export function LaunchForm() {
   const [symbol, setSymbol] = useState("RMT");
   const supply = "1000000000";
   const [description, setDescription] = useState("The genesis token launched through Robinhood Meme Terminal.");
+  const [website, setWebsite] = useState("");
+  const [xUrl, setXUrl] = useState("");
+  const [telegram, setTelegram] = useState("");
   const [communityTreasury, setCommunityTreasury] = useState(emptyAddress);
   const [traderRewards, setTraderRewards] = useState(emptyAddress);
   const [liquidityVault, setLiquidityVault] = useState(emptyAddress);
@@ -86,7 +89,7 @@ export function LaunchForm() {
     const imageResult = (await imageResponse.json()) as { data?: { cid?: string }; error?: string };
     const imageCid = imageResult.data?.cid;
     if (!imageResponse.ok || !imageCid) throw new Error(imageResult.error || "Image upload failed.");
-    const metadataResponse = await fetch("/api/media/metadata", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: tokenName, symbol: tokenSymbol, description: tokenDescription, image: `ipfs://${imageCid}` }) });
+    const metadataResponse = await fetch("/api/media/metadata", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: tokenName, symbol: tokenSymbol, description: tokenDescription, image: `ipfs://${imageCid}`, website, x: xUrl, telegram }) });
     const metadataResult = (await metadataResponse.json()) as { uri?: string; error?: string };
     if (!metadataResponse.ok || !metadataResult.uri) throw new Error(metadataResult.error || "Metadata upload failed.");
     setMediaStatus("saved");
@@ -96,7 +99,7 @@ export function LaunchForm() {
   async function submit() {
     const automaticAddress = account ?? emptyAddress;
     const useSimple = simpleAvailable && !advanced;
-    const values = { name, symbol, supply, description, communityTreasury: useSimple ? automaticAddress : communityTreasury, traderRewards: useSimple ? automaticAddress : traderRewards, liquidityVault: useSimple ? automaticAddress : liquidityVault, platformTreasury: useSimple ? automaticAddress : platformTreasury, accepted };
+    const values = { name, symbol, supply, description, website, x: xUrl, telegram, communityTreasury: useSimple ? automaticAddress : communityTreasury, traderRewards: useSimple ? automaticAddress : traderRewards, liquidityVault: useSimple ? automaticAddress : liquidityVault, platformTreasury: useSimple ? automaticAddress : platformTreasury, accepted };
     const parsed = launchSchema.safeParse(values);
     if (!parsed.success) {
       setValidationErrors(parsed.error.issues.map((issue) => issue.message));
@@ -110,7 +113,7 @@ export function LaunchForm() {
       try { metadata = await uploadMetadata(parsed.data.name, parsed.data.symbol, parsed.data.description); }
       catch (error) { setMediaStatus("idle"); setMediaError(error instanceof Error ? error.message : "Token media upload failed."); return; }
     } else {
-      metadata = `data:application/json,${encodeURIComponent(JSON.stringify({ name: parsed.data.name, symbol: parsed.data.symbol, description: parsed.data.description }))}`;
+      metadata = `data:application/json,${encodeURIComponent(JSON.stringify({ name: parsed.data.name, symbol: parsed.data.symbol, description: parsed.data.description, website: parsed.data.website || undefined, x: parsed.data.x || undefined, telegram: parsed.data.telegram || undefined }))}`;
     }
     if (v3Available && preset === "community") writeContract({ address: factoryAddress, abi: memeLaunchFactoryAbi, functionName: "launchCommunity", args: [parsed.data.name, parsed.data.symbol, metadata] });
     else if (useSimple) writeContract({ address: factoryAddress, abi: memeLaunchFactoryAbi, functionName: "launchSimple", args: [parsed.data.name, parsed.data.symbol, metadata] });
@@ -123,6 +126,11 @@ export function LaunchForm() {
       <label>Token name<input value={name} maxLength={40} onChange={(e) => setName(e.target.value)} /></label>
       <div className="two"><label>Ticker<input value={symbol} maxLength={10} onChange={(e) => setSymbol(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))} /></label><label>Platform supply<input inputMode="numeric" value={supply} readOnly aria-readonly="true" /></label></div>
       <label>Description<textarea value={description} maxLength={500} onChange={(e) => setDescription(e.target.value)} /></label>
+      <details className="socialFields"><summary>Add social links <span>Optional</span></summary><div>
+        <label>Website<input type="url" inputMode="url" placeholder="https://yourproject.com" value={website} onChange={(e) => setWebsite(e.target.value)} /></label>
+        <label>X profile<input type="url" inputMode="url" placeholder="https://x.com/yourproject" value={xUrl} onChange={(e) => setXUrl(e.target.value)} /></label>
+        <label>Telegram<input type="url" inputMode="url" placeholder="https://t.me/yourproject" value={telegram} onChange={(e) => setTelegram(e.target.value)} /></label>
+      </div></details>
       <div className="mediaField">
         <div className="mediaCopy"><span>Token image · Optional</span><small>PNG, JPG, or WebP · 5 MB maximum</small></div>
         <label className={imagePreview ? "imagePicker selected" : "imagePicker"}>
