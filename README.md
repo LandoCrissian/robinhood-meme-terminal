@@ -4,36 +4,38 @@ Robinhood Meme Terminal (RMT) is a mobile-first meme-token launchpad, bonding-cu
 
 ## Current status
 
-The public application is a Robinhood Chain **testnet alpha**. The following loop is live and has been exercised end to end:
+RMT has deployed a **mainnet beta stack** on Robinhood Chain. The public application reads the active factory through the onchain version registry. A bounded disposable mainnet launch has exercised:
 
-- connect an EVM wallet
-- create a fixed-supply token and market in one signature
-- upload optional permanent IPFS artwork and metadata
-- buy and sell through the token's bonding curve
-- route the disclosed trading fee to an onchain reward vault
-- inspect market activity and claim accrued rewards
+- wallet connection and one-signature token creation
+- fixed-supply market custody
+- bonding-curve buying and selling
+- disclosed fee accrual
+- creator reward claims
+- live discovery, token pages, search, watchlists, and connected-wallet holdings
 
-DEX graduation is deliberately disabled in the lightweight public testnet stack. The market keeps its real ETH reserve, but no UI or documentation should represent DEX migration as active until the production adapter is deployed and independently reviewed.
+Production graduation has passed the permanent mainnet-fork release test against the deployed contracts. No live public token has completed the full DEX migration yet. The contracts have not received an independent security audit and must not be described as audited or risk-free.
+
+See [MAINNET_DEPLOYMENT.md](docs/MAINNET_DEPLOYMENT.md) for deployed addresses and smoke evidence, [LAUNCH_READINESS_AUDIT.md](docs/LAUNCH_READINESS_AUDIT.md) for remaining gates, and [INCIDENT_RESPONSE.md](docs/INCIDENT_RESPONSE.md) for operational procedures.
 
 ## Product principles
 
 - Three-field default launch flow with optional media and socials
 - Fixed one-billion-token supply controlled by the launch market
-- No mint authority, blacklist, transfer tax, or upgrade proxy
+- No mint authority, blacklist, transfer tax, or token upgrade proxy
 - Wallet-signed transactions only; RMT never requests private keys
-- Transparent creator, community, trader, and platform fee splits
+- Transparent creator, community, trader, and protocol fee destinations
 - Market reserves remain separate from discretionary reward vaults
-- Mainnet deployment automatically creates 2-of-3 governance and five purpose-specific protocol vaults from three independent signer addresses
-- Testnet, staging, and mainnet behavior are labeled honestly
+- Mainnet uses 2-of-3 governance and delayed factory-version activation
+- Public claims must match deployed behavior
 
 ## Architecture
 
-- `apps/web` — Next.js launch, discovery, trading, and rewards interface
-- `packages/contracts` — Foundry contracts, deployment scripts, fuzz tests, and invariants
+- `apps/web` — Next.js launch, discovery, trading, portfolio, rewards, and public disclosures
+- `packages/contracts` — Foundry contracts, deployment scripts, fork tests, fuzz tests, and invariants
 - `packages/shared` — shared chain configuration
-- `docs` — deployment, graduation, and launch-readiness records
+- `docs` — deployment, security-review, incident-response, and launch-readiness records
 
-The Fresh feed reads verified factory events through a cached server API, while token-market history still comes directly from Robinhood Chain testnet. That is acceptable for the limited alpha, but a persistent reorg-safe indexer is required before a public mainnet launch.
+The feed is served through a cached API, but token history still relies on RPC event reads. A persistent, reorg-safe indexer and production monitoring remain required before a broad unrestricted launch.
 
 ## Development
 
@@ -52,8 +54,8 @@ forge test -vvv
 
 ## Security boundary
 
-- Never commit a private key, seed phrase, API secret, or signed production transaction.
-- Mainnet deployment requires three distinct signer wallets, an explicit confirmation phrase, and a dedicated funded deployer.
-- Governance signers are public address inputs only; private keys and recovery phrases never belong in the repository, chat, Vercel, or screenshots.
-- Current contracts and economic parameters require independent review before mainnet use.
-- Automated checks describe known contract properties; they do not guarantee a token is safe.
+- Never commit or transmit a private key, seed phrase, API secret, or signed production transaction.
+- Governance signers are public address inputs only.
+- Automated tests and smoke transactions do not replace an independent audit.
+- Existing tokens, markets, reward vaults, and liquidity cannot be rewritten by a future factory version.
+- Report suspected incidents using the public Support page and the private security channel once published.

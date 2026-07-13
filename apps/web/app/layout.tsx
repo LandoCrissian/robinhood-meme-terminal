@@ -5,6 +5,7 @@ import "./token-detail.css";
 import "./reward-vault.css";
 import "./wallet.css";
 import "./brand.css";
+import "./legal.css";
 import { Providers } from "./providers";
 
 export const viewport: Viewport = {

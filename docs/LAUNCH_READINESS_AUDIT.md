@@ -1,88 +1,61 @@
 # RMT Launch-Readiness Audit
 
 Status date: 2026-07-13  
-Scope: public Robinhood Chain testnet alpha and the repository's current `main` branch
+Scope: deployed Robinhood Chain mainnet beta and repository `main`
 
 ## Executive assessment
 
-RMT has a working testnet vertical slice: launch, discover, buy, sell, accrue fees, and claim rewards. The core alpha is real, but it is not yet authorized for a public mainnet launch. The largest remaining risks are the missing production graduation adapter, browser-side historical indexing, unaudited economics/contracts, single-controller community-purpose vaults, and incomplete operational controls.
+RMT has a real mainnet vertical slice: launch, discover, buy, sell, accrue fees, claim rewards, and manage factory versions through delayed governance. Production graduation passes a mainnet-fork test against the deployed stack, but no live public token has graduated. The release is suitable only for a controlled low-value beta until an independent review, live graduation evidence, production indexing, monitoring, source verification, and operational/legal contacts are complete.
 
-## V1 product gate
+## Proven mainnet behavior
 
-The first public release should remain intentionally narrow:
+- 14-address stack deployed and application-verified
+- active factory resolved through the version registry
+- 2-of-3 governance and delayed controlled actions
+- disposable mainnet token launch
+- low-value buy and sell
+- fee accrual and creator claim
+- exact deployed factory exercised through graduation and Uniswap V4 migration on a mainnet fork
+- production web build and full Foundry suite green on every merged change
 
-1. Connect wallet.
-2. Launch a fixed-supply token with name, ticker, and description.
-3. Add optional artwork and social links.
-4. Buy and sell on the bonding curve.
-5. See price, market cap, reserve, and recent trades.
-6. Share a permanent token page.
-7. See and claim transparent rewards.
+## P0 — blocks broad public promotion
 
-Profiles, comments, notifications, creator seasons, Reddit integrations, advanced referrals, and governance remain future modules. They should not delay or complicate V1.
+- **Independent review outstanding.** Factory, clone initialization, curve accounting, rewards, governance, vaults, hook, router, adapter, graduation, MEV assumptions, and economic parameters require an external reviewer. Automated tests are not independence.
+- **Live graduation outstanding.** The exact deployed contracts pass fork validation, but a real public token has not yet reached the immutable 1 ETH target and migrated on live mainnet.
+- **Dependency source verification incomplete.** Factory and registry are verified; every production-owned dependency must also publish matching source and compiler settings.
+- **Private security contact and legal review outstanding.** Public beta disclosures are present, but a dedicated private security/support address and licensed legal review are required before broad promotion.
+- **Permanent domain outstanding.** The Vercel hostname is operational but is not the final production identity.
 
-## Findings
+## P1 — required before unrestricted traffic
 
-### P0 — blocks mainnet
+- **Persistent indexer.** Cached feed APIs reduce browser scanning, but token/trade history needs a reorg-safe, idempotent indexer with retry and checkpoint behavior.
+- **Production monitoring.** Monitor RPC freshness, registry/factory changes, launch events, market reserve invariants, graduation attempts, migration failures, reward claims, purpose-vault releases, and frontend/API availability.
+- **Incident operations.** Assign responders, private contact channels, severity rules, communications ownership, and signer availability. Follow [INCIDENT_RESPONSE.md](INCIDENT_RESPONSE.md).
+- **Reproducible frontend installs.** Commit a pnpm lockfile and switch CI to frozen installs.
+- **Frontend quality gates.** Add linting, component tests, wallet-flow tests, accessibility checks, and a small browser regression suite.
+- **Metadata redundancy.** Use multiple IPFS gateways and visible fallbacks.
 
-- **Production graduation is not active.** The public testnet adapter deliberately reverts. A production DEX adapter, one-time migration flow, LP custody policy, and failure recovery must be reviewed and tested end to end.
-- **No independent smart-contract review.** Factory, market, vault, graduation, clone initialization, rounding, reentrancy, MEV, and economic invariants require an external review before mainnet value is accepted.
-- **No production economic model.** The 1% fee, virtual reserves, graduation threshold, and reward splits are test/prototype decisions until simulated against launches, whales, panic sells, low liquidity, and gas costs.
-- **Operational authority is not hardened.** Community-purpose vault releases use one controller address. Production needs a transparent multisig/timelock policy, monitoring, and documented incident procedures.
+## Narrow beta boundary
 
-### P1 — required before a broad public beta
+A controlled mainnet beta may support:
 
-- **Direct browser event scanning will not scale.** Token pages and the feed query factory/trade history from the RPC. Add a reorg-safe, idempotent indexer and cached API before meaningful traffic.
-- **Launch history must be permanent.** Feed scanning must begin at the recorded factory deployment block, not an arbitrary recent window.
-- **Product claims must match deployed behavior.** Testnet must clearly say that DEX migration is disabled while launch, trading, fees, and claims remain live.
-- **Dependency installs are not reproducible.** The repository has no committed pnpm lockfile. Add one and switch CI to frozen installs.
-- **Frontend quality gates are incomplete.** Type checking and production builds run, but linting, component tests, wallet-flow tests, accessibility checks, and visual regression tests do not.
-- **RPC usage is duplicated.** Market and rewards panels independently rediscover the same factory launch. Centralize launch records and share cached results.
-- **Metadata availability needs redundancy.** IPFS content should use more than one gateway and expose a clear fallback when media cannot load.
+1. Wallet connection.
+2. Standard fixed-supply launch.
+3. Optional artwork and social links.
+4. Curve buy and sell.
+5. Market, reserve, and recent-trade visibility.
+6. Permanent token pages and sharing.
+7. Transparent reward accounting and claims.
 
-### P2 — post-V1 improvements
+The interface must say mainnet beta, not audited, and never guarantee safety, liquidity, graduation, price, or rewards.
 
-- creator profiles and reputation
-- saved scanners and watchlists
-- comments and social activity
-- push/email/webhook notifications
-- public API and bot integrations
-- referral campaigns with abuse controls
-- community governance and bounty workflows
+## Definition of broad-launch ready
 
-## Architecture boundaries
-
-### Keep for V1
-
-- fixed-supply, non-upgradeable token
-- factory-created market and vault
-- market-custodied public inventory
-- pull-based reward claims
-- preset fee configurations
-- wallet-signed transactions
-
-### Replace or harden before mainnet
-
-- lightweight disabled graduation adapter
-- single-controller purpose vault operations
-- browser-only historical indexing
-- testnet economic constants
-- public RPC as the sole data plane
-
-## Revenue and flywheel
-
-Trading fees are protocol revenue; they are not a promise of token appreciation or user income. Every deployed preset must expose the fee and its destinations before signature. Graduation reserves stay in the market and must not be confused with a discretionary fee vault. Future buybacks, referrals, or ecosystem rewards require separate disclosed modules, caps, and abuse-resistant accounting.
-
-## Definition of launch-ready
-
-RMT is ready for mainnet only when:
-
-- the complete launch-to-DEX lifecycle passes testnet and adversarial tests
-- contract and economic reviews have no unresolved critical/high findings
-- the indexer survives reorgs, retries, and RPC outages
-- treasury/controller powers are multisig/timelocked and publicly documented
-- CI is reproducible and covers frontend, contract, integration, accessibility, and deployment checks
-- production monitoring, rollback boundaries, incident response, and source verification are operational
-- every product claim can be proven from the deployed configuration
-
-Until then, the public application remains a clearly labeled testnet alpha.
+- independent review has no unresolved critical/high findings
+- a bounded real mainnet graduation and DEX migration is documented
+- all RMT-owned production dependencies are source-verified
+- the indexer survives reorgs, retries, restarts, and RPC outages
+- monitoring and incident alerting are operational
+- governance signers have tested propose/confirm/execute and incident availability
+- public terms, privacy, risks, support, security contact, and domain are final
+- every public product claim can be proven from deployed configuration
