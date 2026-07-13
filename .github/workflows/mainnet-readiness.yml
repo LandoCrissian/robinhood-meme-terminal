@@ -7,10 +7,14 @@ on:
       - ".github/workflows/mainnet-readiness.yml"
   workflow_dispatch:
 
+concurrency:
+  group: mainnet-readiness-${{ github.repository }}
+  cancel-in-progress: true
+
 jobs:
   robinhood-mainnet-fork:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     defaults:
       run:
         working-directory: packages/contracts
@@ -24,4 +28,16 @@ jobs:
       - name: Deploy and verify exact release stack on a Robinhood mainnet fork
         env:
           ROBINHOOD_MAINNET_RPC_URL: https://rpc.mainnet.chain.robinhood.com/
-        run: bash scripts/test-mainnet-fork.sh
+        run: |
+          for attempt in 1 2; do
+            echo "Robinhood mainnet-fork rehearsal attempt $attempt of 2"
+            if timeout --signal=TERM --kill-after=20s 12m bash scripts/test-mainnet-fork.sh; then
+              exit 0
+            fi
+            if [[ "$attempt" -lt 2 ]]; then
+              echo "Fork rehearsal was rate-limited or timed out; cooling down for 60 seconds."
+              sleep 60
+            fi
+          done
+          echo "Robinhood mainnet-fork rehearsal failed after two bounded attempts." >&2
+          exit 1

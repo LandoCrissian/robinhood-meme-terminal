@@ -56,13 +56,18 @@ jobs:
       - name: Verify wallet deployment artifacts
         run: |
           node scripts/export-testnet-web-artifacts.mjs
-          git diff --exit-code -- ../../apps/web/lib/generated/testnet-stack.json
+          node scripts/export-mainnet-web-artifacts.mjs
+          git diff --exit-code -- \
+            ../../apps/web/lib/generated/testnet-stack.json \
+            ../../apps/web/lib/generated/mainnet-stack.json
       - name: Upload wallet deployment artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: wallet-deployment-artifacts
-          path: apps/web/lib/generated/testnet-stack.json
+          path: |
+            apps/web/lib/generated/testnet-stack.json
+            apps/web/lib/generated/mainnet-stack.json
           retention-days: 3
       - name: Validate deployment scripts
         run: |

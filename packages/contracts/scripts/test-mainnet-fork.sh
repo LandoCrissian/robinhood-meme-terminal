@@ -9,6 +9,10 @@ TEST_SIGNER_ONE="0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
 TEST_SIGNER_TWO="0x2000000000000000000000000000000000000002"
 TEST_SIGNER_THREE="0x3000000000000000000000000000000000000003"
 ANVIL_LOG="${TMPDIR:-/tmp}/rmt-mainnet-fork-anvil.log"
+FORK_COMPUTE_UNITS_PER_SECOND="${RMT_FORK_COMPUTE_UNITS_PER_SECOND:-75}"
+FORK_REQUEST_RETRIES="${RMT_FORK_REQUEST_RETRIES:-8}"
+FORK_RETRY_BACKOFF_MS="${RMT_FORK_RETRY_BACKOFF_MS:-1500}"
+FORK_REQUEST_TIMEOUT_MS="${RMT_FORK_REQUEST_TIMEOUT_MS:-60000}"
 
 cleanup() {
   if [[ -n "${ANVIL_PID:-}" ]]; then
@@ -18,7 +22,15 @@ cleanup() {
 }
 trap cleanup EXIT
 
-anvil --fork-url "$UPSTREAM_RPC_URL" --chain-id 4663 --port "$FORK_PORT" --silent >"$ANVIL_LOG" 2>&1 &
+anvil \
+  --fork-url "$UPSTREAM_RPC_URL" \
+  --chain-id 4663 \
+  --port "$FORK_PORT" \
+  --compute-units-per-second "$FORK_COMPUTE_UNITS_PER_SECOND" \
+  --retries "$FORK_REQUEST_RETRIES" \
+  --fork-retry-backoff "$FORK_RETRY_BACKOFF_MS" \
+  --timeout "$FORK_REQUEST_TIMEOUT_MS" \
+  --silent >"$ANVIL_LOG" 2>&1 &
 ANVIL_PID=$!
 
 for _ in {1..30}; do
