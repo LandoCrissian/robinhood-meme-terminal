@@ -68,7 +68,7 @@ REGISTRY_GOVERNANCE="$(cast call "$REGISTRY_ADDRESS" 'governance()(address)' --r
 REGISTRY_DELAY="$(cast call "$REGISTRY_ADDRESS" 'activationDelay()(uint256)' --rpc-url "$RPC_URL" | awk '{print $1}')"
 
 FAIR_DELAY="$(cast call "$MARKET_IMPLEMENTATION" 'FAIR_START_DELAY_BLOCKS()(uint256)' --rpc-url "$RPC_URL" | awk '{print $1}')"
-FAIR_DURATION="$(cast call "$MARKET_IMPLEMENTATION" 'FAIR_START_PROTECTION_BLOCKS()(uint256)' --rpc-url "$RPC_URL" | awk '{print $1}')"
+FAIR_DURATION="$(cast call "$MARKET_IMPLEMENTATION" 'FAIR_START_DURATION_BLOCKS()(uint256)' --rpc-url "$RPC_URL" | awk '{print $1}')"
 FAIR_TX_CAP="$(cast call "$MARKET_IMPLEMENTATION" 'FAIR_START_MAX_TX_BPS()(uint16)' --rpc-url "$RPC_URL" | awk '{print $1}')"
 FAIR_WALLET_CAP="$(cast call "$MARKET_IMPLEMENTATION" 'FAIR_START_MAX_WALLET_BPS()(uint16)' --rpc-url "$RPC_URL" | awk '{print $1}')"
 
