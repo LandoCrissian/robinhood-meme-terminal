@@ -1,0 +1,35 @@
+name: Smart contract security analysis
+
+on:
+  pull_request:
+    paths:
+      - "packages/contracts/**"
+      - ".github/workflows/security-analysis.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  slither:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: foundry-rs/foundry-toolchain@v1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install pinned Uniswap V4 dependencies
+        working-directory: packages/contracts
+        run: bash scripts/install-v4-deps.sh
+      - name: Compile the exact contract tree
+        working-directory: packages/contracts
+        run: forge build
+      - name: Reject high-severity static-analysis findings
+        uses: crytic/slither-action@v0.4.2
+        with:
+          target: packages/contracts
+          ignore-compile: true
+          fail-on: high
+          slither-args: --filter-paths "(lib/|test/|script/|broadcast/)"
