@@ -20,7 +20,6 @@ export function TokenShareActions({ address, name, symbol }: TokenShareActionsPr
     () => `Check out ${name} ($${cleanSymbol}) on Robinhood Meme Terminal.\n\nCA: ${address}`,
     [address, cleanSymbol, name]
   );
-  const xUrl = `https://x.com/intent/post?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(typeof window === "undefined" ? "" : window.location.href)}`;
 
   async function copyContract() {
     try {
@@ -51,6 +50,11 @@ export function TokenShareActions({ address, name, symbol }: TokenShareActionsPr
     }
   }
 
+  function postOnX() {
+    const intent = `https://x.com/intent/post?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(window.location.href)}`;
+    window.open(intent, "_blank", "noopener,noreferrer");
+  }
+
   return (
     <div className="tokenShareArea">
       <div className="tokenContractQuick" title={address}>
@@ -60,7 +64,7 @@ export function TokenShareActions({ address, name, symbol }: TokenShareActionsPr
       <div className="tokenShareActions" aria-label="Token actions">
         <button type="button" onClick={() => void copyContract()}>Copy CA</button>
         <button type="button" onClick={() => void shareToken()}>Share</button>
-        <a href={xUrl} target="_blank" rel="noreferrer">Post on X ↗</a>
+        <button type="button" onClick={postOnX}>Post on X ↗</button>
       </div>
       <span className="tokenActionNotice" role="status" aria-live="polite">{notice}</span>
     </div>
