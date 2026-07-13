@@ -14,30 +14,52 @@ concurrency:
 
 jobs:
   verify:
-    name: Verify live protocol
+    name: Verify live protocol and data
     runs-on: ubuntu-latest
-    timeout-minutes: 2
+    timeout-minutes: 3
     steps:
-      - name: Check public health endpoint
-        env:
-          HEALTH_URL: https://robinhood-meme-terminal.vercel.app/api/health
+      - name: Check protocol and application health
+        shell: bash
         run: |
-          body_file="$(mktemp)"
-          status="$(curl --silent --show-error --location --max-time 20 --output "$body_file" --write-out "%{http_code}" "$HEALTH_URL")"
-          cat "$body_file"
-          test "$status" = "200"
-          node - "$body_file" <<'NODE'
+          set -euo pipefail
+          base="https://robinhood-meme-terminal.vercel.app"
+          mkdir -p health-artifacts
+
+          check_endpoint() {
+            local name="$1"
+            local url="$2"
+            local output="health-artifacts/$name.json"
+            for attempt in 1 2 3; do
+              if curl --silent --show-error --fail --location --max-time 25 "$url" --output "$output"; then
+                return 0
+              fi
+              sleep $((attempt * 3))
+            done
+            return 1
+          }
+
+          check_endpoint protocol "$base/api/health"
+          check_endpoint launches "$base/api/launches"
+
+          node - <<'NODE'
           const fs = require("fs");
-          const report = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
-          if (report.ok !== true) {
-            throw new Error("Production health report is degraded.");
+          const health = JSON.parse(fs.readFileSync("health-artifacts/protocol.json", "utf8"));
+          const launches = JSON.parse(fs.readFileSync("health-artifacts/launches.json", "utf8"));
+          if (!health.ok) throw new Error("Protocol health is degraded.");
+          if (health.chainId !== 4663) throw new Error(`Unexpected chain ID: ${health.chainId}`);
+          if (!Array.isArray(health.checks) || health.checks.some((check) => check.state !== "operational")) {
+            throw new Error("One or more protocol checks are degraded.");
           }
-          const degraded = report.checks.filter((item) => item.state !== "operational");
-          if (degraded.length > 0) {
-            throw new Error(`Degraded checks: ${degraded.map((item) => item.key).join(", ")}`);
+          if (!Array.isArray(launches.launches) || !launches.syncedAt) {
+            throw new Error("Launch feed response is invalid.");
           }
-          if (report.chainId !== 4663) {
-            throw new Error(`Unexpected chain ID: ${report.chainId}`);
-          }
-          console.log(`Verified ${report.checks.length} checks at block ${report.latestBlock}.`);
+          console.log(`Healthy at block ${health.latestBlock}; ${launches.launches.length} launches indexed.`);
           NODE
+
+      - name: Preserve health evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-health
+          path: health-artifacts/
+          retention-days: 7
