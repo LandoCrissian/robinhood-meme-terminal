@@ -57,7 +57,7 @@ export default function TokenDetailPage() {
       <div className="detailNav"><Link href="/">← Back to terminal</Link><WalletButton /></div>
       <section className="tokenHero panel">
         <div className="coin largeCoin tokenArtwork">{metadata?.image ? <img src={ipfsToHttp(metadata.image)} alt={`${nameRead.data} artwork`} /> : symbolRead.data.slice(0, 2)}</div>
-        <div><p className="eyebrow">VERIFIED ONCHAIN TOKEN</p><h1>{nameRead.data}</h1><p className="tokenSymbol">${symbolRead.data}</p>{metadata?.description && <p className="tokenDescription">{metadata.description}</p>}</div>
+        <div><p className="eyebrow">VERIFIED ONCHAIN TOKEN</p><h1>{nameRead.data}</h1><p className="tokenSymbol">${symbolRead.data}</p>{metadata?.description && <p className="tokenDescription">{metadata.description}</p>}{metadata && (metadata.website || metadata.x || metadata.telegram) && <div className="socialLinks">{metadata.website && <a href={metadata.website} target="_blank" rel="noopener noreferrer">Website ↗</a>}{metadata.x && <a href={metadata.x} target="_blank" rel="noopener noreferrer">X ↗</a>}{metadata.telegram && <a href={metadata.telegram} target="_blank" rel="noopener noreferrer">Telegram ↗</a>}</div>}</div>
       </section>
       <div className="detailGrid">
         <section className="panel"><p className="eyebrow">TOKEN RULES</p><h2>Fixed and transparent</h2><div className="safetyList"><span>✓ Fixed total supply</span><span>✓ No mint function</span><span>✓ No blacklist</span><span>✓ No transfer tax</span><span>✓ No upgrade proxy</span></div></section>
