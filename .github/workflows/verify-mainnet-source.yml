@@ -22,7 +22,7 @@ jobs:
     env:
       RPC_URL: https://rpc.mainnet.chain.robinhood.com/
       VERIFIER_URL: https://robinhoodchain.blockscout.com/api/
-      SIGNER_ONE: 0x7e8e7d3af28584a8b9eeddbE16cd3308bd1e76ca
+      SIGNER_ONE: 0x7e8e7d3af28584a8b9eeddbe16cd3308bd1e76ca
       SIGNER_TWO: 0xc560a2798824ae50d5d92470f8e15b3f09f45994
       SIGNER_THREE: 0xa9adbb8322cd187d94b8d9425adc4bde67d5cca4
       FACTORY_GOVERNANCE: 0xa50a6b977bea3fed6c56a33edade2a4b93f41b99
@@ -40,7 +40,7 @@ jobs:
       LAUNCH_FACTORY: 0x88b86f10d874c2e3c8cfe63161ffa969f3273cd4
       VERSION_REGISTRY: 0xfff3f69f473780ea5ea7f5525526986bb491e00e
       POOL_MANAGER: 0x8366a39cc670b4001a1121b8f6a443a643e40951
-      OPERATOR: 0x7e8e7d3af28584a8b9eeddbE16cd3308bd1e76ca
+      OPERATOR: 0x7e8e7d3af28584a8b9eeddbe16cd3308bd1e76ca
     steps:
       - uses: actions/checkout@v4
       - uses: foundry-rs/foundry-toolchain@v1
