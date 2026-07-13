@@ -5,6 +5,7 @@ import { ExternalMarketFeed } from "./external-market-feed";
 import { FreshLaunchFeed } from "./fresh-launch-feed";
 import { LaunchForm } from "./launch-form";
 import { WalletButton } from "./wallet-button";
+import { WatchlistPanel } from "./watchlist-panel";
 import { isMainnetRelease } from "../lib/network";
 import "./launch-presets.css";
 
@@ -26,6 +27,7 @@ export default function Home() {
       </section>
 
       <FreshLaunchFeed />
+      <WatchlistPanel />
       <ExternalMarketFeed />
 
       <section className="launchZone" id="launch">
