@@ -30,7 +30,7 @@ function volumeLabel(volumeWei: string) {
 }
 
 function activityLabel(launch: LaunchFeedItem) {
-  if (launch.tradeCount === 0) return "No trades yet";
+  if (launch.tradeCount === 0) return "No recent trades";
   return `${launch.buyCount} buy${launch.buyCount === 1 ? "" : "s"} · ${launch.sellCount} sell${launch.sellCount === 1 ? "" : "s"}`;
 }
 
