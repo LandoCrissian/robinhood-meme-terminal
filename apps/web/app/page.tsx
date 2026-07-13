@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ExternalMarketFeed } from "./external-market-feed";
 import { FreshLaunchFeed } from "./fresh-launch-feed";
 import { LaunchForm } from "./launch-form";
 import { WalletButton } from "./wallet-button";
@@ -25,6 +26,7 @@ export default function Home() {
       </section>
 
       <FreshLaunchFeed />
+      <ExternalMarketFeed />
 
       <section className="launchZone" id="launch">
         <div className="zoneHeading"><div><p className="eyebrow">CREATE</p><h2>Launch in a few taps</h2></div><p>Name it, add the artwork, choose the launch style, and approve it in your wallet.</p></div>
