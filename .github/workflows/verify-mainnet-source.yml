@@ -1,0 +1,46 @@
+name: Verify mainnet contract source
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/verify-mainnet-source.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  blockscout:
+    if: github.event_name == 'workflow_dispatch' || github.head_ref == 'agent/verify-mainnet-source'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: packages/contracts
+    steps:
+      - uses: actions/checkout@v4
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+      - name: Install pinned Uniswap V4 dependencies
+        run: bash scripts/install-v4-deps.sh
+      - name: Compile the exact release sources
+        run: forge build
+      - name: Publish launch factory source
+        env:
+          RPC_URL: https://rpc.mainnet.chain.robinhood.com/
+          VERIFIER_URL: https://robinhoodchain.blockscout.com/api/
+        run: |
+          set -euo pipefail
+          ARGS="$(cast abi-encode 'constructor(address,uint16,uint256,uint256,uint256,address,address)' 0x183d552B540702fa9bD7fE05f23966E0d449BdEd 100 300000000000000000 1073000000000000000000000000 1000000000000000000 0x0D53f45106E91733fe74d1Dd5d32f15b87644C00 0xEA3EcFFDBd40c86dF510EA48B2750bc0652BfbF6)"
+          forge verify-contract --rpc-url "$RPC_URL" --verifier blockscout --verifier-url "$VERIFIER_URL" --constructor-args "$ARGS" --watch 0x88b86F10D874C2e3C8CfE63161ffa969f3273Cd4 src/LowCostMemeLaunchFactoryV4.sol:LowCostMemeLaunchFactoryV4
+      - name: Publish version registry source
+        env:
+          RPC_URL: https://rpc.mainnet.chain.robinhood.com/
+          VERIFIER_URL: https://robinhoodchain.blockscout.com/api/
+        run: |
+          set -euo pipefail
+          ARGS="$(cast abi-encode 'constructor(address,uint256,address,bytes32)' 0xA50A6b977BEa3FEd6C56A33EdADE2A4B93F41b99 172800 0x88b86F10D874C2e3C8CfE63161ffa969f3273Cd4 0xdef50385924e38ff5aec5dc38e5e0215be1b43ba2d4d1d0bfbf6f3141e1b3426)"
+          forge verify-contract --rpc-url "$RPC_URL" --verifier blockscout --verifier-url "$VERIFIER_URL" --constructor-args "$ARGS" --watch 0xfff3f69f473780EA5eA7f5525526986Bb491E00e src/VersionedFactoryRegistry.sol:VersionedFactoryRegistry
