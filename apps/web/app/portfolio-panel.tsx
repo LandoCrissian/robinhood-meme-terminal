@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { formatUnits, type Address } from "viem";
 import { useAccount, usePublicClient } from "wagmi";
 import type { LaunchFeedItem, LaunchFeedResponse } from "../lib/launch-feed";
@@ -36,8 +36,10 @@ export function PortfolioPanel() {
   const publicClient = usePublicClient({ chainId: activeChain.id });
   const [holdings, setHoldings] = useState<Holding[]>([]);
   const [ready, setReady] = useState(false);
+  const requestId = useRef(0);
 
   const refresh = useCallback(async () => {
+    const currentRequest = ++requestId.current;
     if (!address || !publicClient) {
       setHoldings([]);
       setReady(false);
@@ -49,6 +51,13 @@ export function PortfolioPanel() {
       if (!response.ok) throw new Error("Launch feed unavailable.");
       const payload = (await response.json()) as LaunchFeedResponse;
       const launches = Array.isArray(payload.launches) ? payload.launches : [];
+      if (launches.length === 0) {
+        if (currentRequest === requestId.current) {
+          setHoldings([]);
+          setReady(true);
+        }
+        return;
+      }
 
       const balances = await publicClient.multicall({
         contracts: launches.map((launch) => ({
@@ -60,6 +69,7 @@ export function PortfolioPanel() {
         allowFailure: true
       });
 
+      if (currentRequest !== requestId.current) return;
       setHoldings(launches.flatMap((launch, index) => {
         const result = balances[index];
         return result?.status === "success" && typeof result.result === "bigint" && result.result > 0n
@@ -68,12 +78,16 @@ export function PortfolioPanel() {
       }));
       setReady(true);
     } catch {
-      setReady(true);
+      if (currentRequest === requestId.current) {
+        setHoldings([]);
+        setReady(true);
+      }
     }
   }, [address, publicClient]);
 
   useEffect(() => {
     if (!isConnected) {
+      requestId.current += 1;
       setHoldings([]);
       setReady(false);
       return;
