@@ -7,7 +7,8 @@ const output = resolve(contractsRoot, "../../apps/web/lib/generated/testnet-stac
 const artifacts = {
   adapter: "out/TestnetGraduationAdapter.sol/TestnetGraduationAdapter.json",
   factory: "out/LowCostMemeLaunchFactory.sol/LowCostMemeLaunchFactory.json",
-  factoryV2: "out/LowCostMemeLaunchFactoryV2.sol/LowCostMemeLaunchFactoryV2.json"
+  factoryV2: "out/LowCostMemeLaunchFactoryV2.sol/LowCostMemeLaunchFactoryV2.json",
+  factoryV3: "out/LowCostMemeLaunchFactoryV3.sol/LowCostMemeLaunchFactoryV3.json"
 };
 
 const result = {};

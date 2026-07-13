@@ -32,7 +32,7 @@ type Artifact = { abi: Abi; bytecode: Hex };
 type Deployment = { adapter?: Address; factory?: Address };
 type Stage = "idle" | "checking" | "adapter" | "factory" | "binding" | "verifying" | "complete" | "failed";
 
-const artifacts = artifactsJson as Record<"adapter" | "factory" | "factoryV2", Artifact>;
+const artifacts = artifactsJson as Record<"adapter" | "factory" | "factoryV2" | "factoryV3", Artifact>;
 const labels: Record<Stage, string> = {
   idle: "Ready for wallet connection",
   checking: "Checking testnet wallet…",
@@ -61,8 +61,14 @@ function readableDeploymentError(cause: unknown) {
 }
 
 export function TestnetStackDeployment() {
-  const [versionTwo] = useState(() => typeof window !== "undefined" && new URLSearchParams(window.location.search).get("version") === "2");
-  const storageKey = versionTwo ? "rmt:testnet-lite-stack:v4" : "rmt:testnet-lite-stack:v3";
+  const [version] = useState<1 | 2 | 3>(() => {
+    if (typeof window === "undefined") return 1;
+    const requested = Number(new URLSearchParams(window.location.search).get("version"));
+    return requested === 3 ? 3 : requested === 2 ? 2 : 1;
+  });
+  const versionTwo = version === 2;
+  const versionThree = version === 3;
+  const storageKey = versionThree ? "rmt:testnet-lite-stack:v5" : versionTwo ? "rmt:testnet-lite-stack:v4" : "rmt:testnet-lite-stack:v3";
   const { address, chainId, isConnected } = useAccount();
   const { data: walletClient } = useWalletClient();
   const publicClient = usePublicClient({ chainId: robinhoodChainTestnet.id });
@@ -89,7 +95,7 @@ export function TestnetStackDeployment() {
     } catch {
       localStorage.removeItem(storageKey);
     }
-  }, [address, publicClient, versionTwo]);
+  }, [address, publicClient, version]);
 
   async function deploy() {
     if (!address || !walletClient || !publicClient) return;
@@ -116,7 +122,8 @@ export function TestnetStackDeployment() {
           bytecode: artifacts.adapter.bytecode,
           args: [address]
         });
-        const salt = keccak256(concat([toHex(versionTwo ? "rmt-lite-adapter-v2" : "rmt-lite-adapter-v1"), address]));
+        const adapterVersion = versionThree ? "rmt-lite-adapter-v3" : versionTwo ? "rmt-lite-adapter-v2" : "rmt-lite-adapter-v1";
+        const salt = keccak256(concat([toHex(adapterVersion), address]));
         adapter = getCreate2Address({ from: CREATE2_DEPLOYER, salt, bytecode: initCode });
         if (!(await publicClient.getBytecode({ address: adapter }))) {
           const data = concat([salt, initCode]);
@@ -139,9 +146,10 @@ export function TestnetStackDeployment() {
       let factory = current.factory;
       if (!factory || !(await publicClient.getBytecode({ address: factory }))) {
         setStage("factory");
-        const factoryArtifact = versionTwo ? artifacts.factoryV2 : artifacts.factory;
-        const initCode = encodeDeployData({ abi: factoryArtifact.abi, bytecode: factoryArtifact.bytecode, args: versionTwo ? [adapter, 100, parseEther("0.01"), parseEther("1073000000"), ALPHA_GRADUATION_TARGET, address, address] : [adapter, 100, parseEther("0.01"), parseEther("1073000000"), ALPHA_GRADUATION_TARGET] });
-        const salt = keccak256(concat([toHex(versionTwo ? "rmt-lite-factory-v2" : "rmt-lite-factory-v1"), adapter]));
+        const factoryArtifact = versionThree ? artifacts.factoryV3 : versionTwo ? artifacts.factoryV2 : artifacts.factory;
+        const initCode = encodeDeployData({ abi: factoryArtifact.abi, bytecode: factoryArtifact.bytecode, args: version >= 2 ? [adapter, 100, parseEther("0.01"), parseEther("1073000000"), ALPHA_GRADUATION_TARGET, address, address] : [adapter, 100, parseEther("0.01"), parseEther("1073000000"), ALPHA_GRADUATION_TARGET] });
+        const factoryVersion = versionThree ? "rmt-lite-factory-v3" : versionTwo ? "rmt-lite-factory-v2" : "rmt-lite-factory-v1";
+        const salt = keccak256(concat([toHex(factoryVersion), adapter]));
         factory = getCreate2Address({ from: CREATE2_DEPLOYER, salt, bytecode: initCode });
         if (!(await publicClient.getBytecode({ address: factory }))) {
           const data = concat([salt, initCode]);
@@ -178,8 +186,8 @@ export function TestnetStackDeployment() {
       setStage("verifying");
       const [boundFactory, configuredAdapter, target] = await Promise.all([
         publicClient.readContract({ address: adapter, abi: artifacts.adapter.abi, functionName: "factory" }),
-        publicClient.readContract({ address: factory, abi: versionTwo ? artifacts.factoryV2.abi : artifacts.factory.abi, functionName: "graduationAdapter" }),
-        publicClient.readContract({ address: factory, abi: versionTwo ? artifacts.factoryV2.abi : artifacts.factory.abi, functionName: "graduationTarget" })
+        publicClient.readContract({ address: factory, abi: versionThree ? artifacts.factoryV3.abi : versionTwo ? artifacts.factoryV2.abi : artifacts.factory.abi, functionName: "graduationAdapter" }),
+        publicClient.readContract({ address: factory, abi: versionThree ? artifacts.factoryV3.abi : versionTwo ? artifacts.factoryV2.abi : artifacts.factory.abi, functionName: "graduationTarget" })
       ]);
       if (
         String(boundFactory).toLowerCase() !== factory.toLowerCase() ||
@@ -212,7 +220,7 @@ export function TestnetStackDeployment() {
       {Object.entries(deployment).length > 0 && <div className="deployment-addresses">{Object.entries(deployment).map(([name, value]) => value && <p key={name}><span>{name}</span><code>{short(value)}</code></p>)}</div>}
       {error && <p className="deployment-error">{error}</p>}
       {stage === "complete" ? (
-        versionTwo ? <Link className="deploy-stack-button" href="/">Continue to simple launch V2 →</Link> : <Link className="deploy-stack-button" href="/deploy-testnet?version=2">Upgrade to automatic simple launches →</Link>
+        versionThree ? <Link className="deploy-stack-button" href="/">Continue to launch presets →</Link> : versionTwo ? <Link className="deploy-stack-button" href="/deploy-testnet?version=3">Upgrade to clean launch presets →</Link> : <Link className="deploy-stack-button" href="/deploy-testnet?version=2">Upgrade to automatic simple launches →</Link>
       ) : (
         <button className="deploy-stack-button" disabled={!canStart} onClick={deploy}>
           {!isConnected ? "Connect wallet above" : !approvedWallet ? "Switch to approved test wallet" : busy ? "Waiting for wallet approval…" : Object.keys(deployment).length ? "Resume low-cost deployment" : "Deploy low-cost test stack"}
