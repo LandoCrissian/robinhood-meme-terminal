@@ -38,6 +38,8 @@ jobs:
             script/MainnetReleaseConfig.sol \
             script/DeployMainnetMemeLaunchFactory.s.sol \
             test/MainnetReleaseConfig.t.sol
+      - name: Format legacy sources for deterministic testnet artifacts
+        run: forge fmt
       - name: Build contracts
         run: |
           set -o pipefail
