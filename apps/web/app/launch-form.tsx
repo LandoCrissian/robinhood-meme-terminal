@@ -102,13 +102,16 @@ export function LaunchForm() {
       setValidationErrors(parsed.error.issues.map((issue) => issue.message));
       return;
     }
-    if (!image) { setMediaError("Choose a token image before launching."); return; }
     if (!factoryAddress || !isConnected || chainId !== robinhoodChainTestnet.id) return;
     setValidationErrors([]);
     setMediaError("");
     let metadata: string;
-    try { metadata = await uploadMetadata(parsed.data.name, parsed.data.symbol, parsed.data.description); }
-    catch (error) { setMediaStatus("idle"); setMediaError(error instanceof Error ? error.message : "Token media upload failed."); return; }
+    if (image) {
+      try { metadata = await uploadMetadata(parsed.data.name, parsed.data.symbol, parsed.data.description); }
+      catch (error) { setMediaStatus("idle"); setMediaError(error instanceof Error ? error.message : "Token media upload failed."); return; }
+    } else {
+      metadata = `data:application/json,${encodeURIComponent(JSON.stringify({ name: parsed.data.name, symbol: parsed.data.symbol, description: parsed.data.description }))}`;
+    }
     if (v3Available && preset === "community") writeContract({ address: factoryAddress, abi: memeLaunchFactoryAbi, functionName: "launchCommunity", args: [parsed.data.name, parsed.data.symbol, metadata] });
     else if (useSimple) writeContract({ address: factoryAddress, abi: memeLaunchFactoryAbi, functionName: "launchSimple", args: [parsed.data.name, parsed.data.symbol, metadata] });
     else writeContract({ address: factoryAddress, abi: memeLaunchFactoryAbi, functionName: "launch", args: [parsed.data.name, parsed.data.symbol, metadata, [parsed.data.communityTreasury, parsed.data.traderRewards, parsed.data.liquidityVault, parsed.data.platformTreasury] as [Address, Address, Address, Address], rewardBps] });
@@ -121,7 +124,7 @@ export function LaunchForm() {
       <div className="two"><label>Ticker<input value={symbol} maxLength={10} onChange={(e) => setSymbol(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))} /></label><label>Platform supply<input inputMode="numeric" value={supply} readOnly aria-readonly="true" /></label></div>
       <label>Description<textarea value={description} maxLength={500} onChange={(e) => setDescription(e.target.value)} /></label>
       <div className="mediaField">
-        <div className="mediaCopy"><span>Token image</span><small>PNG, JPG, or WebP · 5 MB maximum</small></div>
+        <div className="mediaCopy"><span>Token image · Optional</span><small>PNG, JPG, or WebP · 5 MB maximum</small></div>
         <label className={imagePreview ? "imagePicker selected" : "imagePicker"}>
           <input type="file" accept={imageTypes.join(",")} onChange={selectImage} />
           {imagePreview ? <img src={imagePreview} alt="Token artwork preview" /> : <span className="imagePlaceholder"><strong>+</strong>Add artwork</span>}
