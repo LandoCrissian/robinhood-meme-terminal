@@ -4,8 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { formatEther, formatUnits, parseEther, parseUnits, type Address } from "viem";
 import { useAccount, usePublicClient, useReadContract, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { robinhoodChainTestnet } from "@rmt/shared/chains";
-import { memeLaunchFactoryAbi, publicTestnetFactoryStartBlock } from "../lib/contracts";
-import { useFactoryAddress } from "../lib/use-factory-address";
+import { useLaunchRecord } from "../lib/use-launch-record";
 
 const marketAbi = [
   { type: "function", name: "quoteBuy", stateMutability: "view", inputs: [{ name: "ethIn", type: "uint256" }], outputs: [{ name: "tokensOut", type: "uint256" }, { name: "fee", type: "uint256" }] },
@@ -55,48 +54,22 @@ function formatPrice(value: bigint) {
 }
 
 export function MarketPanel({ tokenAddress, symbol, totalSupply }: { tokenAddress: Address; symbol: string; totalSupply: bigint }) {
-  const factoryAddress = useFactoryAddress();
   const publicClient = usePublicClient({ chainId: robinhoodChainTestnet.id });
   const { address: account, isConnected } = useAccount();
-  const [market, setMarket] = useState<Address | null>(null);
-  const [launchBlock, setLaunchBlock] = useState<bigint>(0n);
   const [recentTrades, setRecentTrades] = useState<RecentTrade[]>([]);
   const [tradeHistoryError, setTradeHistoryError] = useState<string>();
   const [mode, setMode] = useState<"buy" | "sell">("buy");
   const [buyAmount, setBuyAmount] = useState("0.0001");
   const [sellAmount, setSellAmount] = useState("1000000");
-  const [lookupError, setLookupError] = useState<string>();
   const [lastAction, setLastAction] = useState<"buy" | "approve" | "sell" | null>(null);
   const [tradeMessage, setTradeMessage] = useState<string>();
   const { writeContract, data: hash, isPending, error: writeError } = useWriteContract();
   const receipt = useWaitForTransactionReceipt({ hash, chainId: robinhoodChainTestnet.id });
+  const launchRecord = useLaunchRecord(tokenAddress);
+  const market = launchRecord.data?.market ?? null;
+  const launchBlock = launchRecord.data?.blockNumber ?? 0n;
+  const lookupError = launchRecord.error ? (launchRecord.error instanceof Error ? launchRecord.error.message : "Unable to read market.") : launchRecord.isSuccess && !launchRecord.data ? "Market record not found." : undefined;
 
-  useEffect(() => {
-    if (!factoryAddress || !publicClient) return;
-    let cancelled = false;
-    void (async () => {
-      try {
-        let cursor = await publicClient.getBlockNumber();
-        let match: { market: Address; blockNumber: bigint } | undefined;
-        while (cursor >= publicTestnetFactoryStartBlock && !match) {
-          const candidate = cursor > 19_999n ? cursor - 19_999n : 0n;
-          const fromBlock = candidate < publicTestnetFactoryStartBlock ? publicTestnetFactoryStartBlock : candidate;
-          const logs = await publicClient.getContractEvents({ address: factoryAddress, abi: memeLaunchFactoryAbi, eventName: "TokenLaunched", args: { token: tokenAddress }, fromBlock, toBlock: cursor, strict: true });
-          if (logs[0]) match = { market: logs[0].args.market, blockNumber: logs[0].blockNumber };
-          if (fromBlock === publicTestnetFactoryStartBlock) break;
-          cursor = fromBlock - 1n;
-        }
-        if (!cancelled) {
-          setMarket(match?.market ?? null);
-          setLaunchBlock(match?.blockNumber ?? publicTestnetFactoryStartBlock);
-          setLookupError(match ? undefined : "Market record not found.");
-        }
-      } catch (cause) {
-        if (!cancelled) setLookupError(cause instanceof Error ? cause.message : "Unable to read market.");
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [factoryAddress, publicClient, tokenAddress]);
 
   useEffect(() => {
     if (!market || !publicClient) return;

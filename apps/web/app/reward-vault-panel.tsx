@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { formatEther, type Address, type Hash } from "viem";
-import { useAccount, usePublicClient, useReadContract, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
+import { useAccount, useReadContract, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { robinhoodChainTestnet } from "@rmt/shared/chains";
-import { memeLaunchFactoryAbi, publicTestnetFactoryStartBlock } from "../lib/contracts";
 import { useFactoryAddress } from "../lib/use-factory-address";
+import { useLaunchRecord } from "../lib/use-launch-record";
 
 const rewardVaultAbi = [
   { type: "function", name: "recipients", stateMutability: "view", inputs: [{ name: "", type: "uint256" }], outputs: [{ type: "address" }] },
@@ -25,39 +24,13 @@ function shortAddress(address: Address) {
 
 export function RewardVaultPanel({ tokenAddress }: { tokenAddress: Address }) {
   const factoryAddress = useFactoryAddress();
-  const publicClient = usePublicClient({ chainId: robinhoodChainTestnet.id });
+  const launchRecord = useLaunchRecord(tokenAddress);
+  const vaultAddress = launchRecord.data?.rewardVault ?? null;
+  const lookupError = launchRecord.error ? (launchRecord.error instanceof Error ? launchRecord.error.message : "Unable to locate reward vault.") : launchRecord.isSuccess && !launchRecord.data ? "No factory launch record was found for this token." : null;
   const { address: account } = useAccount();
-  const [vaultAddress, setVaultAddress] = useState<Address | null>(null);
-  const [lookupError, setLookupError] = useState<string | null>(null);
   const { writeContract, data: claimHash, isPending: isClaimPending, error: claimError } = useWriteContract();
   const { isLoading: isClaimConfirming, isSuccess: claimConfirmed } = useWaitForTransactionReceipt({ hash: claimHash, chainId: robinhoodChainTestnet.id });
 
-  useEffect(() => {
-    let cancelled = false;
-    async function findVault() {
-      if (!factoryAddress || !publicClient) return;
-      try {
-        let cursor = await publicClient.getBlockNumber();
-        let match: Address | undefined;
-        while (cursor >= publicTestnetFactoryStartBlock && !match) {
-          const candidate = cursor > 19_999n ? cursor - 19_999n : 0n;
-          const fromBlock = candidate < publicTestnetFactoryStartBlock ? publicTestnetFactoryStartBlock : candidate;
-          const logs = await publicClient.getContractEvents({ address: factoryAddress, abi: memeLaunchFactoryAbi, eventName: "TokenLaunched", args: { token: tokenAddress }, fromBlock, toBlock: cursor, strict: true });
-          match = logs[0]?.args.rewardVault;
-          if (fromBlock === publicTestnetFactoryStartBlock) break;
-          cursor = fromBlock - 1n;
-        }
-        if (!cancelled) {
-          setVaultAddress(match ?? null);
-          setLookupError(match ? null : "No factory launch record was found for this token.");
-        }
-      } catch (error) {
-        if (!cancelled) setLookupError(error instanceof Error ? error.message : "Unable to locate reward vault.");
-      }
-    }
-    void findVault();
-    return () => { cancelled = true; };
-  }, [factoryAddress, publicClient, tokenAddress]);
 
   const address = vaultAddress ?? fallbackAddress;
   const enabled = Boolean(vaultAddress);
