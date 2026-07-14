@@ -59,6 +59,61 @@ let indexedThrough = config.startBlock - 1n;
 let lastSyncAt: string | null = null;
 let lastError: string | null = null;
 
+type ConfirmedLog<Args> = {
+  address: Address;
+  transactionHash: `0x${string}`;
+  logIndex: number;
+  blockNumber: bigint;
+  args: Args;
+};
+
+type LaunchArgs = {
+  launchId: bigint;
+  token: Address;
+  creator: Address;
+  market: Address;
+  rewardVault: Address;
+  graduationPoolId: `0x${string}`;
+  name: string;
+  symbol: string;
+  supply: bigint;
+  metadataURI: string;
+  creatorBps: number;
+  communityBps: number;
+  traderBps: number;
+  liquidityBps: number;
+  platformBps: number;
+};
+
+type TradeArgs = {
+  trader: Address;
+  recipient: Address;
+  isBuy: boolean;
+  tokenAmount: bigint;
+  ethAmount: bigint;
+  feeAmount: bigint;
+  virtualEthReserve: bigint;
+  virtualTokenReserve: bigint;
+  realEthReserve: bigint;
+};
+
+type GraduationArgs = { realEthReserve: bigint; tokenInventory: bigint };
+type MigrationArgs = {
+  adapter: Address;
+  pool: Address;
+  ethAmount: bigint;
+  tokenAmount: bigint;
+  liquidity: bigint;
+};
+
+function confirmed<Args>(log: {
+  transactionHash: `0x${string}` | null;
+  logIndex: number | null;
+  blockNumber: bigint | null;
+}): log is typeof log & ConfirmedLog<Args> {
+  return log.transactionHash !== null && log.logIndex !== null && log.blockNumber !== null;
+}
+
 function lower(address: Address) {
   return address.toLowerCase();
 }
@@ -154,7 +209,8 @@ async function processRange(fromBlock: bigint, toBlock: bigint) {
 
   const storedMarkets = await pool.query<{ market: string }>("SELECT market FROM launches");
   const marketSet = new Set<string>(storedMarkets.rows.map((row) => row.market));
-  for (const launch of launches) marketSet.add(lower(launch.args.market));
+  const confirmedLaunches = launches.filter((log) => confirmed<LaunchArgs>(log));
+  for (const launch of confirmedLaunches) marketSet.add(lower(launch.args.market));
   const markets = [...marketSet].map((market) => getAddress(market));
   const marketLogs = markets.length
     ? await readMarketLogs(markets, fromBlock, toBlock)
@@ -167,8 +223,7 @@ async function processRange(fromBlock: bigint, toBlock: bigint) {
   try {
     await db.query("BEGIN");
 
-    for (const log of launches) {
-      if (!log.transactionHash || log.logIndex === null) continue;
+    for (const log of confirmedLaunches) {
       const args = log.args;
       await db.query(
         `INSERT INTO launches (
@@ -188,8 +243,9 @@ async function processRange(fromBlock: bigint, toBlock: bigint) {
       );
     }
 
-    for (const log of marketLogs.trades) {
-      if (!log.transactionHash || log.logIndex === null) continue;
+    for (const rawLog of marketLogs.trades) {
+      if (!confirmed<TradeArgs>(rawLog)) continue;
+      const log = rawLog;
       const args = log.args;
       await db.query(
         `INSERT INTO trades (
@@ -208,8 +264,9 @@ async function processRange(fromBlock: bigint, toBlock: bigint) {
       );
     }
 
-    for (const log of marketLogs.graduations) {
-      if (!log.transactionHash || log.logIndex === null) continue;
+    for (const rawLog of marketLogs.graduations) {
+      if (!confirmed<GraduationArgs>(rawLog)) continue;
+      const log = rawLog;
       await db.query(
         `INSERT INTO graduations (
           market, transaction_hash, log_index, real_eth_reserve, token_inventory, block_number
@@ -228,8 +285,9 @@ async function processRange(fromBlock: bigint, toBlock: bigint) {
       );
     }
 
-    for (const log of marketLogs.migrations) {
-      if (!log.transactionHash || log.logIndex === null) continue;
+    for (const rawLog of marketLogs.migrations) {
+      if (!confirmed<MigrationArgs>(rawLog)) continue;
+      const log = rawLog;
       await db.query(
         `INSERT INTO liquidity_migrations (
           market, transaction_hash, log_index, adapter, pool, eth_amount,
