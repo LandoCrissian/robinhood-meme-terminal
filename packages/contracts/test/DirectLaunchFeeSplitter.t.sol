@@ -49,7 +49,7 @@ contract DirectLaunchFeeSplitterTest {
         require(splitter.totalPaid() == 1 ether, "paid accounting");
     }
 
-    function testFailedCreatorPaymentDoesNotBlockProtocolPayment() public {
+    function testCreatorPaymentFailureDoesNotBlockProtocolPayment() public {
         RejectingRecipient creator = new RejectingRecipient();
         AcceptingRecipient treasury = new AcceptingRecipient();
         DirectLaunchFeeSplitter splitter = new DirectLaunchFeeSplitter();
