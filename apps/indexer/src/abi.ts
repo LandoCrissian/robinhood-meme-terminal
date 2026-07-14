@@ -1,7 +1,7 @@
 import { parseAbiItem } from "viem";
 
 export const tokenLaunchedEvent = parseAbiItem(
-  "event TokenLaunched(uint256 indexed launchId, address indexed token, address indexed creator, address market, address rewardVault, bytes32 graduationPoolId, string name, string symbol, uint256 supply, string metadataURI, uint16 creatorBps, uint16 communityBps, uint16 traderBps, uint16 liquidityBps, uint16 platformBps)"
+  "event TokenLaunched(uint256 indexed launchId, address indexed token, address indexed creator, address market, address rewardVault, bytes32 graduationPoolId, string name, string symbol, string metadataURI, uint16[5] rewardBps)"
 );
 
 export const marketEvents = [
