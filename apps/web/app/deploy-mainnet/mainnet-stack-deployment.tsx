@@ -19,14 +19,10 @@ import {
 import artifactsJson from "../../lib/generated/mainnet-stack.json";
 
 const OPERATOR = "0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA" as Address;
-const SIGNERS = [
-  OPERATOR,
-  "0xC560A2798824Ae50d5D92470F8e15b3F09f45994",
-  "0xa9ADBB8322Cd187d94b8D9425ADc4BDe67d5cCa4"
-] as const;
 const POOL_MANAGER = "0x8366a39cc670b4001a1121b8f6a443a643e40951" as Address;
 const CREATE2_DEPLOYER = "0x4e59b44847b379578588920cA78FbF26c0B4956C" as Address;
-const STORAGE_KEY = "rmt:mainnet-stack:v4";
+const LEGACY_FACTORY = "0x88b86F10D874C2e3C8CfE63161ffa969f3273Cd4" as Address;
+const STORAGE_KEY = "rmt:mainnet-stack:v5";
 const DAY = 86_400n;
 const HOOK_FLAGS = 0x2880n;
 const HOOK_MASK = 0x3fffn;
@@ -40,11 +36,9 @@ const PURPOSES = [
 ] as const;
 
 type Artifact = { abi: Abi; bytecode: Hex };
-type ArtifactName = "governance" | "purposeVault" | "hook" | "adapter" | "revenueRouter" | "rewardsController" | "factory" | "registry";
+type ArtifactName = "governance" | "purposeVault" | "hook" | "adapter" | "revenueRouter" | "rewardsController" | "factory" | "market" | "registry";
 type AddressKey =
-  | "factoryGovernance"
-  | "rewardsGovernance"
-  | "protocolGovernance"
+  | "governance"
   | "treasuryVault"
   | "buybackVault"
   | "graduationVault"
@@ -68,9 +62,7 @@ const artifacts = artifactsJson as Record<ArtifactName, Artifact>;
 const EMPTY: Deployment = { addresses: {}, transactions: {} };
 
 const addressSteps: Array<[AddressKey, string]> = [
-  ["factoryGovernance", "Factory governance"],
-  ["rewardsGovernance", "Rewards governance"],
-  ["protocolGovernance", "Protocol governance"],
+  ["governance", "Expandable governance"],
   ["treasuryVault", "Protocol treasury vault"],
   ["buybackVault", "Buyback reserve vault"],
   ["graduationVault", "Graduation assistance vault"],
@@ -268,7 +260,7 @@ export function MainnetStackDeployment() {
         if (nonce > 0n && nonce % 2_000n === 0n) await new Promise((resolve) => setTimeout(resolve, 0));
       }
     }
-    if (!salt || !expected) throw new Error("A valid V4 hook address could not be found.");
+    if (!salt || !expected) throw new Error("A valid V5 hook address could not be found.");
 
     if (!(await hasCode(expected))) {
       setStatus("Approve: Uniswap V4 graduation hook");
@@ -285,10 +277,10 @@ export function MainnetStackDeployment() {
         gas
       });
       const receipt = await publicClient.waitForTransactionReceipt({ hash });
-      if (receipt.status !== "success") throw new Error("V4 hook deployment failed.");
+      if (receipt.status !== "success") throw new Error("V5 hook deployment failed.");
       current.transactions.hook = hash;
     }
-    if (!(await hasCode(expected))) throw new Error("V4 hook bytecode could not be verified.");
+    if (!(await hasCode(expected))) throw new Error("V5 hook bytecode could not be verified.");
     current.addresses.hook = expected;
     persist(current);
     return expected;
@@ -319,14 +311,20 @@ export function MainnetStackDeployment() {
         if (!(await hasCode(canonical))) throw new Error(`Required Robinhood contract is missing at ${canonical}.`);
       }
 
-      const factoryGovernance = await deployContract(current, "factoryGovernance", artifacts.governance, [SIGNERS, 0n], "factory governance");
-      const rewardsGovernance = await deployContract(current, "rewardsGovernance", artifacts.governance, [SIGNERS, 0n], "rewards governance");
-      const protocolGovernance = await deployContract(current, "protocolGovernance", artifacts.governance, [SIGNERS, DAY], "protocol governance");
+      if (!(await hasCode(LEGACY_FACTORY))) throw new Error(`The protected legacy identity factory is missing at ${LEGACY_FACTORY}.`);
+
+      const governance = await deployContract(
+        current,
+        "governance",
+        artifacts.governance,
+        [OPERATOR, DAY],
+        "single-wallet expandable governance"
+      );
 
       const vaultKeys: AddressKey[] = ["treasuryVault", "buybackVault", "graduationVault", "referralVault", "ecosystemVault"];
       const vaults: Address[] = [];
       for (let i = 0; i < PURPOSES.length; i += 1) {
-        vaults.push(await deployContract(current, vaultKeys[i], artifacts.purposeVault, [protocolGovernance, purpose(PURPOSES[i])], PURPOSES[i].toLowerCase().replaceAll("_", " ")));
+        vaults.push(await deployContract(current, vaultKeys[i], artifacts.purposeVault, [governance, purpose(PURPOSES[i])], PURPOSES[i].toLowerCase().replaceAll("_", " ")));
       }
 
       const hook = await deployHook(current);
@@ -337,12 +335,12 @@ export function MainnetStackDeployment() {
 
       const recipients = vaults as [Address, Address, Address, Address, Address];
       const revenueRouter = await deployContract(current, "revenueRouter", artifacts.revenueRouter, [recipients], "protocol revenue router");
-      const rewardsController = await deployContract(current, "rewardsController", artifacts.rewardsController, [OPERATOR, rewardsGovernance, DAY], "rewards controller");
+      const rewardsController = await deployContract(current, "rewardsController", artifacts.rewardsController, [OPERATOR, governance, DAY], "rewards controller");
       const factory = await deployContract(
         current,
         "factory",
         artifacts.factory,
-        [adapter, 100, parseEther("0.3"), parseEther("1073000000"), parseEther("1"), rewardsController, revenueRouter],
+        [adapter, 100, parseEther("0.3"), parseEther("1073000000"), parseEther("1"), rewardsController, revenueRouter, LEGACY_FACTORY],
         "RMT launch factory"
       );
 
@@ -357,7 +355,7 @@ export function MainnetStackDeployment() {
         current,
         "registry",
         artifacts.registry,
-        [factoryGovernance, 2n * DAY, factory, purpose("RMT_FACTORY_V4")],
+        [governance, 2n * DAY, factory, purpose("RMT_FACTORY_V5")],
         "version registry"
       );
 
@@ -377,6 +375,8 @@ export function MainnetStackDeployment() {
         read(factory, artifacts.factory, "initialVirtualEthReserve"),
         read(factory, artifacts.factory, "initialVirtualTokenReserve"),
         read(factory, artifacts.factory, "graduationTarget"),
+        read(factory, artifacts.factory, "legacyIdentityFactory"),
+        read(factory, artifacts.factory, "SETTLEMENT_VERSION"),
         read(rewardsController, artifacts.rewardsController, "factory"),
         read(rewardsController, artifacts.rewardsController, "governance"),
         read(rewardsController, artifacts.rewardsController, "releaseDelay"),
@@ -397,13 +397,15 @@ export function MainnetStackDeployment() {
         parseEther("0.3"),
         parseEther("1073000000"),
         parseEther("1"),
+        LEGACY_FACTORY,
+        2n,
         factory,
-        rewardsGovernance,
+        governance,
         DAY,
-        factoryGovernance,
+        governance,
         2n * DAY,
         factory,
-        purpose("RMT_FACTORY_V4")
+        purpose("RMT_FACTORY_V5")
       ];
       for (let i = 0; i < checks.length; i += 1) {
         if (String(checks[i]).toLowerCase() !== String(expected[i]).toLowerCase()) {
@@ -411,11 +413,26 @@ export function MainnetStackDeployment() {
         }
       }
 
-      for (const governance of [factoryGovernance, rewardsGovernance, protocolGovernance]) {
-        for (let i = 0; i < SIGNERS.length; i += 1) {
-          const configured = await read(governance, artifacts.governance, "signers", [BigInt(i)]);
-          if (String(configured).toLowerCase() !== SIGNERS[i].toLowerCase()) throw new Error("Governance signer verification failed.");
-        }
+      const governanceChecks = await Promise.all([
+        read(governance, artifacts.governance, "isSigner", [OPERATOR]),
+        read(governance, artifacts.governance, "signerCount"),
+        read(governance, artifacts.governance, "threshold"),
+        read(governance, artifacts.governance, "executionDelay")
+      ]);
+      if (governanceChecks[0] !== true || governanceChecks[1] !== 1n || governanceChecks[2] !== 1n || governanceChecks[3] !== DAY) {
+        throw new Error("Expandable governance verification failed.");
+      }
+
+      const marketImplementation = await read(factory, artifacts.factory, "marketImplementation") as Address;
+      const fairStartChecks = await Promise.all([
+        read(marketImplementation, artifacts.market, "FAIR_START_DELAY_BLOCKS"),
+        read(marketImplementation, artifacts.market, "FAIR_START_DURATION_BLOCKS"),
+        read(marketImplementation, artifacts.market, "FAIR_START_MAX_TX_BPS"),
+        read(marketImplementation, artifacts.market, "FAIR_START_MAX_WALLET_BPS")
+      ]);
+      const fairStartExpected = [1n, 10n, 100n, 300n];
+      for (let i = 0; i < fairStartChecks.length; i += 1) {
+        if (fairStartChecks[i] !== fairStartExpected[i]) throw new Error("Fair Start verification failed.");
       }
       for (let i = 0; i < vaults.length; i += 1) {
         const [governance, configuredPurpose] = await Promise.all([
@@ -423,22 +440,36 @@ export function MainnetStackDeployment() {
           read(vaults[i], artifacts.purposeVault, "purpose")
         ]);
         if (
-          String(governance).toLowerCase() !== protocolGovernance.toLowerCase() ||
+          String(governance).toLowerCase() !== current.addresses.governance?.toLowerCase() ||
           String(configuredPurpose).toLowerCase() !== purpose(PURPOSES[i]).toLowerCase()
         ) throw new Error("Purpose vault verification failed.");
+        const recipient = await read(revenueRouter, artifacts.revenueRouter, "recipients", [BigInt(i)]);
+        if (String(recipient).toLowerCase() !== vaults[i].toLowerCase()) {
+          throw new Error("Revenue destination verification failed.");
+        }
       }
 
       current.verified = true;
       persist(current);
       setBalance(await publicClient.getBalance({ address }));
       setEstimate(undefined);
-      setStatus("Mainnet stack verified — not yet published");
+      setStatus("V5 deployment verified — ready for site cutover");
     } catch (cause) {
       setError(describeError(cause));
       setStatus("Deployment paused safely");
     } finally {
       setBusy(false);
     }
+  }
+
+  async function copyManifest() {
+    await navigator.clipboard.writeText(JSON.stringify({
+      chainId: robinhoodChain.id,
+      version: "RMT_FACTORY_V5",
+      operator: OPERATOR,
+      ...deployment
+    }, null, 2));
+    setStatus("Verified deployment manifest copied");
   }
 
   return (
@@ -450,8 +481,8 @@ export function MainnetStackDeployment() {
 
       <div className="deployment-rules">
         <p><strong>One-time operator task:</strong> creators never deploy this infrastructure or pay this gas.</p>
-        <p><strong>Governance:</strong> any two of RMTMain, Robinhood Wallet, and Phantom must approve controlled actions.</p>
-        <p><strong>Safety:</strong> a 24-hour delay protects protocol-purpose funds. The factory and rewards emergency paths require two signers.</p>
+        <p><strong>Governance:</strong> RMTMain starts as the only signer. A second signer can be added later through a visible, delayed governance proposal.</p>
+        <p><strong>Safety:</strong> a 24-hour delay protects protocol-purpose funds. New launches inherit duplicate-name protection and the lighter Fair Start.</p>
       </div>
 
       <div className="deployment-addresses">
@@ -489,17 +520,27 @@ export function MainnetStackDeployment() {
         onClick={run}
       >
         {deployment.verified
-          ? "Mainnet stack verified"
+          ? "V5 deployment verified"
           : busy
             ? status
             : completed > 0
               ? "Resume reviewed deployment"
-              : "Begin reviewed mainnet deployment"}
+              : "Begin corrected V5 deployment"}
       </button>
+      {deployment.verified && (
+        <button className="deploy-stack-button" onClick={copyManifest}>
+          Copy verified deployment manifest
+        </button>
+      )}
       <p className="deployment-safety">
         Each transaction is shown in your wallet before approval. Completed steps are saved in this browser.
         Never enter a private key or recovery phrase.
       </p>
+      {deployment.verified && (
+        <p className="deployment-safety">
+          Deployment is complete, but launches remain paused until the verified registry address is published in the site configuration.
+        </p>
+      )}
     </section>
   );
 }

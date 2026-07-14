@@ -5,13 +5,14 @@ import { fileURLToPath } from "node:url";
 const contractsRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const output = resolve(contractsRoot, "../../apps/web/lib/generated/mainnet-stack.json");
 const artifacts = {
-  governance: "out/TwoOfThreeTimelock.sol/TwoOfThreeTimelock.json",
+  governance: "out/ExpandableGovernance.sol/ExpandableGovernance.json",
   purposeVault: "out/ProtocolPurposeVault.sol/ProtocolPurposeVault.json",
-  hook: "out/V4GraduationHook.sol/V4GraduationHook.json",
+  hook: "out/V5GraduationHook.sol/V5GraduationHook.json",
   adapter: "out/V4GraduationAdapter.sol/V4GraduationAdapter.json",
-  revenueRouter: "out/ProtocolRevenueRouter.sol/ProtocolRevenueRouter.json",
+  revenueRouter: "out/ProtocolRevenueRouterV2.sol/ProtocolRevenueRouterV2.json",
   rewardsController: "out/PurposeRewardsController.sol/PurposeRewardsController.json",
-  factory: "out/LowCostMemeLaunchFactoryV4.sol/LowCostMemeLaunchFactoryV4.json",
+  factory: "out/LowCostMemeLaunchFactoryV5.sol/LowCostMemeLaunchFactoryV5.json",
+  market: "out/CloneBondingCurveMarketV3.sol/CloneBondingCurveMarketV3.json",
   registry: "out/VersionedFactoryRegistry.sol/VersionedFactoryRegistry.json"
 };
 
