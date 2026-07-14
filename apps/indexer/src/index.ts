@@ -106,14 +106,16 @@ type MigrationArgs = {
   liquidity: bigint;
 };
 
-function confirmed<Args>(log: {
-  address: Address;
-  transactionHash: `0x${string}` | null;
-  logIndex: number | null;
-  blockNumber: bigint | null;
-  args?: Args;
-}): log is ConfirmedLog<Args> {
-  return log.transactionHash !== null && log.logIndex !== null && log.blockNumber !== null && log.args !== undefined;
+function asConfirmed<Args>(value: unknown): ConfirmedLog<Args> | null {
+  const log = value as Partial<ConfirmedLog<Args>>;
+  if (
+    typeof log.address !== "string" ||
+    typeof log.transactionHash !== "string" ||
+    typeof log.logIndex !== "number" ||
+    typeof log.blockNumber !== "bigint" ||
+    log.args === undefined
+  ) return null;
+  return log as ConfirmedLog<Args>;
 }
 
 function lower(address: Address) {
@@ -211,7 +213,9 @@ async function processRange(fromBlock: bigint, toBlock: bigint) {
 
   const storedMarkets = await pool.query<{ market: string }>("SELECT market FROM launches");
   const marketSet = new Set<string>(storedMarkets.rows.map((row) => row.market));
-  const confirmedLaunches = launches.filter((log) => confirmed<LaunchArgs>(log));
+  const confirmedLaunches = launches
+    .map((log) => asConfirmed<LaunchArgs>(log))
+    .filter((log): log is ConfirmedLog<LaunchArgs> => log !== null);
   for (const launch of confirmedLaunches) marketSet.add(lower(launch.args.market));
   const markets = [...marketSet].map((market) => getAddress(market));
   const marketLogs = markets.length
@@ -246,8 +250,8 @@ async function processRange(fromBlock: bigint, toBlock: bigint) {
     }
 
     for (const rawLog of marketLogs.trades) {
-      if (!confirmed<TradeArgs>(rawLog)) continue;
-      const log = rawLog;
+      const log = asConfirmed<TradeArgs>(rawLog);
+      if (!log) continue;
       const args = log.args;
       await db.query(
         `INSERT INTO trades (
@@ -267,8 +271,8 @@ async function processRange(fromBlock: bigint, toBlock: bigint) {
     }
 
     for (const rawLog of marketLogs.graduations) {
-      if (!confirmed<GraduationArgs>(rawLog)) continue;
-      const log = rawLog;
+      const log = asConfirmed<GraduationArgs>(rawLog);
+      if (!log) continue;
       await db.query(
         `INSERT INTO graduations (
           market, transaction_hash, log_index, real_eth_reserve, token_inventory, block_number
@@ -288,8 +292,8 @@ async function processRange(fromBlock: bigint, toBlock: bigint) {
     }
 
     for (const rawLog of marketLogs.migrations) {
-      if (!confirmed<MigrationArgs>(rawLog)) continue;
-      const log = rawLog;
+      const log = asConfirmed<MigrationArgs>(rawLog);
+      if (!log) continue;
       await db.query(
         `INSERT INTO liquidity_migrations (
           market, transaction_hash, log_index, adapter, pool, eth_amount,
