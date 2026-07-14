@@ -74,6 +74,7 @@ contract RMTLaunchFactoryV6 is IRMTLaunchFactoryV6 {
     error InventoryTransferFailed();
     error InvalidPoolReservation();
     error InvalidMarketImplementation();
+    error UnsupportedFairStartMode();
 
     constructor(
         address launchGate_,
@@ -99,9 +100,7 @@ contract RMTLaunchFactoryV6 is IRMTLaunchFactoryV6 {
     }
 
     function protocolVersion() external pure returns (uint32) { return 6; }
-
     function launchesPaused() external view returns (bool) { return launchGate.launchesPaused(); }
-
     function defaultPolicyId() public view returns (bytes32) { return policyRegistry.defaultPolicyId(); }
 
     function getPolicy(bytes32 policyId) external view returns (LaunchPolicyView memory viewPolicy) {
@@ -116,7 +115,7 @@ contract RMTLaunchFactoryV6 is IRMTLaunchFactoryV6 {
             protocolFeeShareBps: policy.protocolFeeShareBps,
             postGraduationFeeBps: policy.postGraduationFeeBps,
             graduationTarget: policy.graduationTarget,
-            fairStartEnabled: policy.fairStartEnabled,
+            fairStartEnabled: _fairStartEnabled(policy.fairStartMode),
             fairStartDelayBlocks: policy.fairStartDelayBlocks,
             fairStartDurationBlocks: policy.fairStartDurationBlocks,
             fairStartMaxTxBps: policy.fairStartMaxTxBps,
@@ -143,7 +142,6 @@ contract RMTLaunchFactoryV6 is IRMTLaunchFactoryV6 {
     }
 
     function launchCount() external view returns (uint256) { return _launches.length; }
-
     function getLaunch(uint256 launchId) external view returns (LaunchView memory) { return _launches[launchId]; }
 
     function isNameUsed(string calldata name) external view returns (bool) {
@@ -165,6 +163,7 @@ contract RMTLaunchFactoryV6 is IRMTLaunchFactoryV6 {
         IRMTLaunchPolicyRegistry.LaunchPolicy memory policy = policyRegistry.getPolicy(policyId);
         if (!policy.enabled || !policy.publiclySelectable) revert UnknownOrDisabledPolicy();
         if (policy.marketImplementation.code.length == 0) revert InvalidMarketImplementation();
+        bool fairStartEnabled = _fairStartEnabled(policy.fairStartMode);
 
         _reserveIdentity(name, symbol, metadataURI);
         token = MinimalProxy.clone(tokenImplementation);
@@ -190,7 +189,7 @@ contract RMTLaunchFactoryV6 is IRMTLaunchFactoryV6 {
             initialVirtualEthReserve,
             initialVirtualTokenReserve,
             policy.graduationTarget,
-            policy.fairStartEnabled,
+            fairStartEnabled,
             policy.fairStartDelayBlocks,
             policy.fairStartDurationBlocks,
             policy.fairStartMaxTxBps,
@@ -224,7 +223,7 @@ contract RMTLaunchFactoryV6 is IRMTLaunchFactoryV6 {
             policy.creatorFeeShareBps,
             policy.protocolFeeShareBps,
             policy.postGraduationFeeBps,
-            policy.fairStartEnabled,
+            fairStartEnabled,
             policy.fairStartDelayBlocks,
             policy.fairStartDurationBlocks,
             policy.fairStartMaxTxBps,
@@ -234,6 +233,11 @@ contract RMTLaunchFactoryV6 is IRMTLaunchFactoryV6 {
             symbol,
             metadataURI
         );
+    }
+
+    function _fairStartEnabled(uint8 mode) private pure returns (bool) {
+        if (mode > 1) revert UnsupportedFairStartMode();
+        return mode == 1;
     }
 
     function _reserveIdentity(string calldata name, string calldata symbol, string calldata metadataURI) private {
