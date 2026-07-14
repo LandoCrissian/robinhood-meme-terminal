@@ -62,7 +62,6 @@ jobs:
               --verifier blockscout \
               --verifier-url "$VERIFIER_URL" \
               --constructor-args "$args" \
-              --watch \
               "$address" \
               "$contract"
           }
