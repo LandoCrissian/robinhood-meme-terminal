@@ -17,7 +17,9 @@ contract MainnetReleaseConfigV6Test {
     }
 
     function testSimplePolicyFeeSharesBalance() public pure {
-        require(Config.SIMPLE_V1_POLICY_ID == keccak256("RMT_SIMPLE_V1"), "policy id");
+        require(Config.SIMPLE_FAIR_V1_POLICY_ID == keccak256("RMT_SIMPLE_FAIR_V1"), "fair policy id");
+        require(Config.SIMPLE_OPEN_V1_POLICY_ID == keccak256("RMT_SIMPLE_OPEN_V1"), "open policy id");
+        require(Config.DEFAULT_POLICY_ID == Config.SIMPLE_FAIR_V1_POLICY_ID, "default policy id");
         require(
             uint256(Config.CREATOR_FEE_SHARE_BPS) + uint256(Config.PROTOCOL_FEE_SHARE_BPS) == 10_000,
             "fee shares"
