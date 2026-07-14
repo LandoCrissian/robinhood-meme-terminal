@@ -10,7 +10,7 @@ contract DirectLaunchFeeSplitter {
     address payable public protocolTreasury;
     uint16 public creatorShareBps;
     bool private _initialized;
-    bool private _claiming;
+    bool private _entered;
 
     mapping(address recipient => uint256 amount) public pending;
     uint256 public totalReceived;
@@ -28,6 +28,13 @@ contract DirectLaunchFeeSplitter {
     error TransferFailed();
     error ReentrantCall();
 
+    modifier nonReentrant() {
+        if (_entered) revert ReentrantCall();
+        _entered = true;
+        _;
+        _entered = false;
+    }
+
     function initialize(address payable creator_, address payable protocolTreasury_, uint16 creatorShareBps_) external {
         if (_initialized) revert AlreadyInitialized();
         if (
@@ -42,24 +49,21 @@ contract DirectLaunchFeeSplitter {
         emit Initialized(creator_, protocolTreasury_, creatorShareBps_);
     }
 
-    receive() external payable {
+    receive() external payable nonReentrant {
         _split(msg.sender, msg.value);
     }
 
-    function deposit() external payable {
+    function deposit() external payable nonReentrant {
         _split(msg.sender, msg.value);
     }
 
-    function claimDeferred() external {
-        if (_claiming) revert ReentrantCall();
+    function claimDeferred() external nonReentrant {
         uint256 amount = pending[msg.sender];
         if (amount == 0) revert NothingToClaim();
 
-        _claiming = true;
         pending[msg.sender] = 0;
         totalPaid += amount;
         (bool success,) = payable(msg.sender).call{value: amount}("");
-        _claiming = false;
         if (!success) revert TransferFailed();
         emit DeferredPaymentClaimed(msg.sender, amount);
     }
