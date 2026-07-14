@@ -68,6 +68,8 @@ contract DirectLaunchFeeSplitter {
         emit DeferredPaymentClaimed(msg.sender, amount);
     }
 
+    // All external paths into this helper are nonReentrant; recipient callbacks are covered by the adversarial test.
+    // slither-disable-next-line reentrancy-eth
     function _split(address payer, uint256 amount) private {
         if (!_initialized || amount == 0) revert InvalidConfiguration();
         totalReceived += amount;
