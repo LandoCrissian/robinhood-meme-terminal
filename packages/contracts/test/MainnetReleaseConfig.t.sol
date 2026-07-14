@@ -33,8 +33,7 @@ contract MainnetReleaseConfigTest {
         uint256 poolFdvEth = (Config.GRADUATION_TARGET * supply) / poolTokens;
         require(curveFdvEth >= 17 ether && curveFdvEth <= 18 ether, "graduation valuation");
 
-        uint256 difference =
-            curveFdvEth > poolFdvEth ? curveFdvEth - poolFdvEth : poolFdvEth - curveFdvEth;
+        uint256 difference = curveFdvEth > poolFdvEth ? curveFdvEth - poolFdvEth : poolFdvEth - curveFdvEth;
         require((difference * 10_000) / curveFdvEth <= 50, "graduation price discontinuity");
     }
 }
