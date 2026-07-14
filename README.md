@@ -2,6 +2,8 @@
 
 Robinhood Meme Terminal (RMT) is a mobile-first meme-token launchpad, bonding-curve market, reward system, and discovery terminal for Robinhood Chain.
 
+**Public mainnet beta:** https://www.rmtlaunch.fun
+
 ## Current status
 
 RMT has deployed a **mainnet beta stack** on Robinhood Chain. The public application reads the active factory through the onchain version registry. A bounded disposable mainnet launch has exercised:

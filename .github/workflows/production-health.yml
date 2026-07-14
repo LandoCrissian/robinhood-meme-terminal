@@ -18,12 +18,19 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
-      - name: Check protocol and application health
+      - name: Check canonical domain, protocol, and application health
         shell: bash
         run: |
           set -euo pipefail
-          base="https://robinhood-meme-terminal.vercel.app"
+          apex="https://rmtlaunch.fun"
+          base="https://www.rmtlaunch.fun"
           mkdir -p health-artifacts
+
+          redirect="$(curl --silent --show-error --head --max-time 25 "$apex" | tr -d '\\r' | awk 'BEGIN{IGNORECASE=1} /^location:/{print $2; exit}')"
+          if [[ "$redirect" != "$base/" && "$redirect" != "$base" ]]; then
+            echo "Expected $apex to redirect to $base; received: ${redirect:-none}" >&2
+            exit 1
+          fi
 
           check_endpoint() {
             local name="$1"
