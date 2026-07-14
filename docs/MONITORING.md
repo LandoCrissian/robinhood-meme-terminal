@@ -4,11 +4,15 @@
 
 The `Production health` GitHub Actions workflow runs every five minutes and can be triggered manually. It retries transient failures, validates the machine-readable protocol health report, validates the cached launch feed, and preserves response evidence for seven days.
 
+Canonical production origin: https://www.rmtlaunch.fun
+
+The apex domain https://rmtlaunch.fun must permanently redirect to the canonical `www` origin.
+
 Endpoints:
 
-- `/api/health` — RPC chain ID, latest block freshness, registry bytecode and active factory, factory bytecode and launch count, immutable fee/target, adapter bytecode and factory binding
-- `/api/launches` — cached verified-factory launch data and synchronization timestamp
-- `/status` — user-facing version of the onchain health checks
+- `https://www.rmtlaunch.fun/api/health` — RPC chain ID, latest block freshness, registry bytecode and active factory, factory bytecode and launch count, immutable fee/target, adapter bytecode and factory binding
+- `https://www.rmtlaunch.fun/api/launches` — cached verified-factory launch data and synchronization timestamp
+- `https://www.rmtlaunch.fun/status` — user-facing version of the onchain health checks
 
 ## Alert ownership
 
