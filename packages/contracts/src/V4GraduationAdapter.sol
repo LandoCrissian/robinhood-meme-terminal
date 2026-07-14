@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import {IGraduationAdapter} from "./interfaces/IGraduationAdapter.sol";
+import {IV6GraduationAdapter} from "./interfaces/IV6GraduationAdapter.sol";
+import {DirectLaunchFeeSplitter} from "./DirectLaunchFeeSplitter.sol";
 import {V4GraduationHook} from "./V4GraduationHook.sol";
 import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
 import {IUnlockCallback} from "@uniswap/v4-core/src/interfaces/callback/IUnlockCallback.sol";
@@ -22,13 +23,16 @@ interface IERC20GraduationToken {
     function transferFrom(address from, address to, uint256 value) external returns (bool);
 }
 
-contract V4GraduationAdapter is IGraduationAdapter, IUnlockCallback {
+contract V4GraduationAdapter is IV6GraduationAdapter, IUnlockCallback {
     using BalanceDeltaLibrary for BalanceDelta;
     using CurrencyLibrary for Currency;
     using PoolIdLibrary for PoolKey;
     using SafeCast for uint256;
 
     uint256 private constant Q192 = 1 << 192;
+    uint256 private constant BPS_TO_V4_FEE = 100;
+    uint8 private constant ACTION_SEED = 1;
+    uint8 private constant ACTION_COLLECT = 2;
 
     IPoolManager public immutable poolManager;
     V4GraduationHook public immutable hook;
@@ -40,12 +44,22 @@ contract V4GraduationAdapter is IGraduationAdapter, IUnlockCallback {
     mapping(address token => PoolId poolId) public poolIds;
     mapping(address token => address market) public markets;
     mapping(address token => bool graduated) public isGraduated;
+    mapping(address token => address feeSplitter) public feeSplitters;
+    mapping(address token => uint16 feeBps) public postGraduationFeeBps;
+    mapping(address token => uint128 liquidity) public lockedLiquidity;
+    bool private _entered;
 
     event FactoryBound(address indexed factory);
     event MarketBound(address indexed token, address indexed market, PoolId indexed poolId);
     event PoolPrepared(address indexed token, PoolId indexed poolId);
     event LiquiditySeeded(
         address indexed token, PoolId indexed poolId, uint256 nativeAmount, uint256 tokenAmount, uint128 liquidity
+    );
+    event FeeRoutingConfigured(
+        address indexed token, address indexed feeSplitter, uint16 postGraduationFeeBps
+    );
+    event GraduationFeesCollected(
+        address indexed token, address indexed feeSplitter, uint256 nativeAmount, uint256 tokenAmount
     );
 
     error OnlyDeployer();
@@ -61,10 +75,20 @@ contract V4GraduationAdapter is IGraduationAdapter, IUnlockCallback {
     error TokenTransferFailed();
     error InvalidSettlement();
     error ZeroLiquidity();
+    error FeeRoutingAlreadyConfigured();
+    error FeeRoutingNotConfigured();
+    error ReentrantCall();
 
     modifier onlyFactory() {
         if (msg.sender != factory) revert OnlyFactory();
         _;
+    }
+
+    modifier nonReentrant() {
+        if (_entered) revert ReentrantCall();
+        _entered = true;
+        _;
+        _entered = false;
     }
 
     constructor(IPoolManager poolManager_, V4GraduationHook hook_, uint24 poolFee_, int24 tickSpacing_) {
@@ -109,7 +133,23 @@ contract V4GraduationAdapter is IGraduationAdapter, IUnlockCallback {
         emit MarketBound(token, market, poolId);
     }
 
-    function graduate(address token, uint256 tokenAmount) external payable returns (address pool, uint256 liquidity) {
+    function configureFeeRouting(address token, address feeSplitter, uint16 feeBps) external onlyFactory {
+        if (PoolId.unwrap(poolIds[token]) == bytes32(0)) revert PoolNotPrepared();
+        if (markets[token] != address(0)) revert MarketAlreadyBound();
+        if (feeSplitters[token] != address(0)) revert FeeRoutingAlreadyConfigured();
+        if (
+            feeSplitter == address(0) || feeSplitter.code.length == 0 || feeBps == 0
+                || uint256(feeBps) * BPS_TO_V4_FEE != poolFee
+        ) revert InvalidConfiguration();
+
+        feeSplitters[token] = feeSplitter;
+        postGraduationFeeBps[token] = feeBps;
+        emit FeeRoutingConfigured(token, feeSplitter, feeBps);
+    }
+
+    function graduate(address token, uint256 tokenAmount)
+        external payable nonReentrant returns (address pool, uint256 liquidity)
+    {
         if (msg.sender != markets[token]) revert OnlyBoundMarket();
         if (isGraduated[token]) revert AlreadyGraduated();
         if (msg.value == 0 || tokenAmount == 0) revert InvalidConfiguration();
@@ -137,22 +177,59 @@ contract V4GraduationAdapter is IGraduationAdapter, IUnlockCallback {
         );
         if (liquidityAmount == 0) revert ZeroLiquidity();
 
-        poolManager.unlock(abi.encode(key, tickLower, tickUpper, liquidityAmount));
+        poolManager.unlock(abi.encode(ACTION_SEED, key, tickLower, tickUpper, liquidityAmount));
 
         if (address(this).balance != 0 || IERC20GraduationToken(token).balanceOf(address(this)) != 0) {
             revert InvalidSettlement();
         }
 
         hook.open(key);
+        lockedLiquidity[token] = liquidityAmount;
         emit LiquiditySeeded(token, poolId, msg.value, tokenAmount, liquidityAmount);
         return (address(poolManager), liquidityAmount);
+    }
+
+    /// @notice Permissionlessly realizes fees earned by the permanently locked full-range position.
+    /// @dev Uses a zero-liquidity-delta poke; there is no code path that can decrease liquidity principal.
+    function collectFees(address token)
+        external nonReentrant returns (uint256 nativeAmount, uint256 tokenAmount)
+    {
+        if (!isGraduated[token]) revert PoolNotPrepared();
+        address feeSplitter = feeSplitters[token];
+        if (feeSplitter == address(0)) revert FeeRoutingNotConfigured();
+
+        uint256 nativeBalanceBefore = address(this).balance;
+        uint256 tokenBalanceBefore = IERC20GraduationToken(token).balanceOf(address(this));
+        PoolKey memory key = _poolKey(token);
+        int24 tickLower = TickMath.minUsableTick(tickSpacing);
+        int24 tickUpper = TickMath.maxUsableTick(tickSpacing);
+        bytes memory result = poolManager.unlock(abi.encode(ACTION_COLLECT, key, tickLower, tickUpper));
+        (nativeAmount, tokenAmount) = abi.decode(result, (uint256, uint256));
+
+        if (nativeAmount != 0) DirectLaunchFeeSplitter(payable(feeSplitter)).deposit{value: nativeAmount}();
+        if (tokenAmount != 0) {
+            if (!IERC20GraduationToken(token).transfer(feeSplitter, tokenAmount)) revert TokenTransferFailed();
+            DirectLaunchFeeSplitter(payable(feeSplitter)).depositToken(token, tokenAmount);
+        }
+        if (
+            address(this).balance != nativeBalanceBefore
+                || IERC20GraduationToken(token).balanceOf(address(this)) != tokenBalanceBefore
+        ) {
+            revert InvalidSettlement();
+        }
+
+        emit GraduationFeesCollected(token, feeSplitter, nativeAmount, tokenAmount);
     }
 
     function unlockCallback(bytes calldata data) external returns (bytes memory) {
         if (msg.sender != address(poolManager)) revert OnlyPoolManager();
 
-        (PoolKey memory key, int24 tickLower, int24 tickUpper, uint128 liquidity) =
-            abi.decode(data, (PoolKey, int24, int24, uint128));
+        uint8 action = abi.decode(data, (uint8));
+        if (action == ACTION_COLLECT) return _collectCallback(data);
+        if (action != ACTION_SEED) revert InvalidConfiguration();
+
+        (, PoolKey memory key, int24 tickLower, int24 tickUpper, uint128 liquidity) =
+            abi.decode(data, (uint8, PoolKey, int24, int24, uint128));
 
         ModifyLiquidityParams memory params = ModifyLiquidityParams({
             tickLower: tickLower, tickUpper: tickUpper, liquidityDelta: int256(uint256(liquidity)), salt: bytes32(0)
@@ -170,6 +247,24 @@ contract V4GraduationAdapter is IGraduationAdapter, IUnlockCallback {
         }
 
         return abi.encode(liquidity);
+    }
+
+    function _collectCallback(bytes calldata data) private returns (bytes memory) {
+        (, PoolKey memory key, int24 tickLower, int24 tickUpper) =
+            abi.decode(data, (uint8, PoolKey, int24, int24));
+        ModifyLiquidityParams memory params = ModifyLiquidityParams({
+            tickLower: tickLower, tickUpper: tickUpper, liquidityDelta: 0, salt: bytes32(0)
+        });
+        (BalanceDelta delta,) = poolManager.modifyLiquidity(key, params, "");
+        int128 amount0Delta = delta.amount0();
+        int128 amount1Delta = delta.amount1();
+        if (amount0Delta < 0 || amount1Delta < 0) revert InvalidSettlement();
+
+        uint256 nativeAmount = uint256(uint128(amount0Delta));
+        uint256 tokenAmount = uint256(uint128(amount1Delta));
+        if (nativeAmount != 0) poolManager.take(key.currency0, address(this), nativeAmount);
+        if (tokenAmount != 0) poolManager.take(key.currency1, address(this), tokenAmount);
+        return abi.encode(nativeAmount, tokenAmount);
     }
 
     function _poolKey(address token) private view returns (PoolKey memory) {
