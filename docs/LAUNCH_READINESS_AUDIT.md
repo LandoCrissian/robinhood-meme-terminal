@@ -5,7 +5,7 @@ Scope: deployed Robinhood Chain mainnet beta and repository `main`
 
 ## Executive assessment
 
-RMT has a real mainnet vertical slice: launch, discover, buy, sell, accrue fees, claim rewards, and manage factory versions through delayed governance. Production graduation passes a mainnet-fork test against the deployed stack, but no live public token has graduated. The release is suitable only for a controlled low-value beta until an independent review, live graduation evidence, production indexing, monitoring, source verification, and operational/legal contacts are complete.
+RMT has a real mainnet vertical slice: launch, discover, buy, sell, accrue fees, claim rewards, and manage factory versions through delayed governance. Production graduation passes a mainnet-fork test against the deployed stack, but no live public token has graduated. The release is suitable only for a controlled low-value beta until an independent review, live graduation evidence, production indexer deployment, independent monitoring/RPC redundancy, and operational/legal contacts are complete.
 
 ## Proven mainnet behavior
 
@@ -22,18 +22,25 @@ RMT has a real mainnet vertical slice: launch, discover, buy, sell, accrue fees,
 
 - **Independent review outstanding.** Factory, clone initialization, curve accounting, rewards, governance, vaults, hook, router, adapter, graduation, MEV assumptions, and economic parameters require an external reviewer. Automated tests are not independence.
 - **Live graduation outstanding.** The exact deployed contracts pass fork validation, but a real public token has not yet reached the immutable 1 ETH target and migrated on live mainnet.
-- **Dependency source verification incomplete.** Factory and registry are verified; every production-owned dependency must also publish matching source and compiler settings.
 - **Private security contact and legal review outstanding.** Public beta disclosures are present, but a dedicated private security/support address and licensed legal review are required before broad promotion.
-- **Permanent domain outstanding.** The Vercel hostname is operational but is not the final production identity.
 
 ## P1 — required before unrestricted traffic
 
-- **Persistent indexer.** Cached feed APIs reduce browser scanning, but token/trade history needs a reorg-safe, idempotent indexer with retry and checkpoint behavior.
-- **Production monitoring.** Monitor RPC freshness, registry/factory changes, launch events, market reserve invariants, graduation attempts, migration failures, reward claims, purpose-vault releases, and frontend/API availability.
+- **Persistent indexer deployment.** The reorg-safe, idempotent PostgreSQL indexer is implemented and CI-tested. It still needs managed PostgreSQL, continuous-worker hosting, a complete historical reconciliation, and production cutover.
+- **Production monitoring hardening.** Five-minute application/protocol checks are live on the canonical domain. Add an independent uptime provider, primary production RPC, backup RPC, and alerts for indexer lag, reorgs, graduation attempts, migration failures, and invariant drift.
 - **Incident operations.** Assign responders, private contact channels, severity rules, communications ownership, and signer availability. Follow [INCIDENT_RESPONSE.md](INCIDENT_RESPONSE.md).
-- **Reproducible frontend installs.** Commit a pnpm lockfile and switch CI to frozen installs.
+- **Reproducible installs.** Commit a pnpm lockfile and switch web and indexer CI to frozen installs.
 - **Frontend quality gates.** Add linting, component tests, wallet-flow tests, accessibility checks, and a small browser regression suite.
 - **Metadata redundancy.** Use multiple IPFS gateways and visible fallbacks.
+
+## Completed broad-launch foundations
+
+- Canonical domain: https://www.rmtlaunch.fun with permanent apex redirect
+- All 14 RMT-owned production contracts publish exact-match source records
+- Provider-ready external audit scope and deployed-bytecode handoff
+- Public terms, privacy, risk, support, system-status, and incident-response pages
+- Five-minute protocol and application monitoring
+- Persistent confirmation-aware, reorg-safe indexer implementation with PostgreSQL schema smoke tests
 
 ## Narrow beta boundary
 
