@@ -1,5 +1,6 @@
 import { WalletButton } from "../wallet-button";
 import { MainnetStackDeployment } from "./mainnet-stack-deployment";
+import { OfficialRmtMigration } from "./official-rmt-migration";
 import "../deploy-testnet/deployment.css";
 
 export default function DeployMainnetPage() {
@@ -19,6 +20,15 @@ export default function DeployMainnetPage() {
         </p>
       </section>
       <MainnetStackDeployment />
+      <section className="deployment-hero">
+        <p className="eyebrow">Operator-only V6 identity migration</p>
+        <h1>Prepare the official RMT relaunch</h1>
+        <p>
+          This delayed upgrade preserves every anti-vamping reservation while allowing RMTMain to reclaim
+          exactly the original Robinhood Meme Terminal name and RMT ticker once.
+        </p>
+      </section>
+      <OfficialRmtMigration />
     </main>
   );
 }
