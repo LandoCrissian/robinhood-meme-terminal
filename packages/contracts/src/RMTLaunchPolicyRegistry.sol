@@ -127,7 +127,7 @@ contract RMTLaunchPolicyRegistry is IRMTLaunchPolicyRegistry {
         return policyHash[policyId] != bytes32(0) && _policies[policyId].enabled;
     }
 
-    function _validatePolicy(LaunchPolicy calldata policy) private pure {
+    function _validatePolicy(LaunchPolicy calldata policy) private view {
         if (
             policy.policyId == bytes32(0) || policy.policyVersion == 0 || policy.curveFeeBps >= BPS_DENOMINATOR
                 || uint256(policy.creatorFeeShareBps) + uint256(policy.protocolFeeShareBps) != BPS_DENOMINATOR
