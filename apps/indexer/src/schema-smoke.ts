@@ -28,8 +28,8 @@ try {
 
   await pool.query("BEGIN");
   await pool.query(
-    "INSERT INTO indexer_state (chain_id, next_block) VALUES ($1, $2) ON CONFLICT DO NOTHING",
-    [4663, "8862129"]
+    "INSERT INTO indexer_state (chain_id, next_block, factory, start_block) VALUES ($1, $2, $3, $2) ON CONFLICT DO NOTHING",
+    [4663, "9567266", "0x25a92d8c79c38d07b0d3efd0ebe929d30e401cdd"]
   );
   await pool.query("ROLLBACK");
   console.info("Indexer schema smoke test passed.");
