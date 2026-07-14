@@ -14,8 +14,8 @@ library MainnetReleaseConfig {
 
     uint16 internal constant MARKET_FEE_BPS = 100;
     uint256 internal constant INITIAL_VIRTUAL_ETH_RESERVE = 0.3 ether;
-    uint256 internal constant INITIAL_VIRTUAL_TOKEN_RESERVE = 1_073_000_000 ether;
-    uint256 internal constant GRADUATION_TARGET = 1 ether;
+    uint256 internal constant INITIAL_VIRTUAL_TOKEN_RESERVE = 1_017_500_000 ether;
+    uint256 internal constant GRADUATION_TARGET = 2 ether;
 
     uint256 internal constant FACTORY_ACTIVATION_DELAY = 2 days;
     uint256 internal constant REWARD_RELEASE_DELAY = 1 days;
