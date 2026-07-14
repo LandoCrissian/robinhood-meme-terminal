@@ -15,7 +15,7 @@ export default function DeployMainnetPage() {
         <p>
           This one-time console uses wallet approvals only. It never requests or stores a private key,
           and it verifies one-wallet governance, Fair Start limits, identity protection, revenue destinations,
-          and every permanent binding before the site can be cut over.
+          graduation-price continuity, and every permanent binding before the site can be cut over.
         </p>
       </section>
       <MainnetStackDeployment />
