@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState, type ChangeEvent } from "react";
 import { parseEventLogs, type Address } from "viem";
 import { useAccount, useChainId, useReadContract, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
-import { activeChain, activeNetworkLabel, isMainnetRelease } from "../lib/network";
+import { activeChain, activeNetworkLabel, isMainnetRelease, settlementBlockedFactoryAddress } from "../lib/network";
 import { memeLaunchFactoryAbi } from "../lib/contracts";
 import { useFactoryAddress } from "../lib/use-factory-address";
 import { launchSchema } from "../lib/launch-schema";
@@ -45,6 +45,7 @@ export function LaunchForm() {
   const v3Read = useReadContract({ address: factoryAddress ?? undefined, abi: memeLaunchFactoryAbi, functionName: "communityDestinationsForToken", args: [zeroAddress], chainId: activeChain.id, query: { enabled: Boolean(factoryAddress), retry: false } });
   const v3Available = v3Read.status === "success";
   const simpleAvailable = Boolean(v2Read.data);
+  const launchesPaused = isMainnetRelease && factoryAddress?.toLowerCase() === settlementBlockedFactoryAddress.toLowerCase();
 
   useEffect(() => {
     if (!image) { setImagePreview(""); return; }
@@ -64,7 +65,7 @@ export function LaunchForm() {
     return event ? { token: event.args.token, rewardVault: event.args.rewardVault, launchId: event.args.launchId } : null;
   }, [receipt]);
 
-  const readiness = !factoryAddress ? "Factory not deployed" : !isConnected ? "Connect wallet" : chainId !== activeChain.id ? `Switch to ${activeNetworkLabel}` : "Review and launch";
+  const readiness = launchesPaused ? "New launches temporarily paused" : !factoryAddress ? "Factory not deployed" : !isConnected ? "Connect wallet" : chainId !== activeChain.id ? `Switch to ${activeNetworkLabel}` : "Review and launch";
 
   function selectImage(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0] ?? null;
@@ -97,6 +98,7 @@ export function LaunchForm() {
   }
 
   async function submit() {
+    if (launchesPaused) return;
     const automaticAddress = account ?? emptyAddress;
     const useSimple = simpleAvailable && !advanced;
     const values = { name, symbol, supply, description, website, x: xUrl, telegram, communityTreasury: useSimple ? automaticAddress : communityTreasury, traderRewards: useSimple ? automaticAddress : traderRewards, liquidityVault: useSimple ? automaticAddress : liquidityVault, platformTreasury: useSimple ? automaticAddress : platformTreasury, accepted };
@@ -123,6 +125,7 @@ export function LaunchForm() {
   return (
     <section className="panel">
       <div className="sectionTitle"><div><p className="eyebrow">TOKEN LAUNCH</p><h2>Configure your token</h2></div><span className="badge">{isMainnetRelease ? "MAINNET · REAL ETH" : "TESTNET ALPHA"}</span></div>
+      {launchesPaused && <div className="callout mainnetWarning"><strong>New launches are temporarily paused</strong><span>We are activating a reward-settlement upgrade. Existing tokens can still trade and eligible creator rewards remain claimable.</span></div>}
       <label>Token name<input value={name} maxLength={40} placeholder="Name your token" onChange={(e) => setName(e.target.value)} /></label>
       <div className="two"><label>Ticker<input value={symbol} maxLength={10} placeholder="TICKER" onChange={(e) => setSymbol(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))} /></label><label>Platform supply<input inputMode="numeric" value={supply} readOnly aria-readonly="true" /></label></div>
       <label>Description<textarea value={description} maxLength={500} placeholder="Tell traders what this token is about" onChange={(e) => setDescription(e.target.value)} /></label>
@@ -158,7 +161,7 @@ export function LaunchForm() {
       {(writeError || receiptError) && <div className="errors"><span>{writeError?.message || receiptError?.message}</span></div>}
       {transactionHash && !deployed && <div className="callout"><strong>{isConfirming ? "Waiting for confirmation…" : "Transaction submitted"}</strong><a href={`${activeChain.blockExplorers.default.url}/tx/${transactionHash}`} target="_blank" rel="noreferrer">View transaction ↗</a></div>}
       {deployed && <div className="launchSuccess"><strong>Launch #{deployed.launchId.toString()} confirmed</strong><span>Token and reward vault were created in one transaction.</span><Link href={`/token/${deployed.token}`}>Open token page →</Link></div>}
-      <button className="launch" disabled={!factoryAddress || !isConnected || chainId !== activeChain.id || isPending || isConfirming || mediaStatus === "uploading"} onClick={submit}>{mediaStatus === "uploading" ? "Saving token media…" : isPending ? "Confirm in wallet…" : isConfirming ? "Confirming onchain…" : readiness}</button>
+      <button className="launch" disabled={launchesPaused || !factoryAddress || !isConnected || chainId !== activeChain.id || isPending || isConfirming || mediaStatus === "uploading"} onClick={submit}>{mediaStatus === "uploading" ? "Saving token media…" : isPending ? "Confirm in wallet…" : isConfirming ? "Confirming onchain…" : readiness}</button>
       <p className="fineprint">No mint authority • No blacklist • No hidden transfer tax • Wallet-signed transactions only</p>
     </section>
   );
