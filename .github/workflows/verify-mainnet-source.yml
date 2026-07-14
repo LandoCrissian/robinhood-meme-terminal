@@ -13,8 +13,27 @@ permissions:
 
 jobs:
   blockscout:
+    name: verify-${{ matrix.role }}
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        role:
+          - factory-governance
+          - rewards-governance
+          - protocol-governance
+          - treasury-vault
+          - buyback-vault
+          - graduation-vault
+          - referral-vault
+          - ecosystem-vault
+          - graduation-hook
+          - graduation-adapter
+          - revenue-router
+          - rewards-controller
+          - launch-factory
+          - version-registry
     defaults:
       run:
         working-directory: packages/contracts
@@ -49,54 +68,94 @@ jobs:
         run: bash scripts/install-v4-deps.sh
       - name: Compile the exact release sources
         run: forge build
-      - name: Publish every RMT-owned production source
+      - name: Verify exact deployed contract
         run: |
           set -euo pipefail
-
-          verify() {
-            local address="$1"
-            local contract="$2"
-            local args="$3"
-            forge verify-contract \
-              --rpc-url "$RPC_URL" \
-              --verifier blockscout \
-              --verifier-url "$VERIFIER_URL" \
-              --constructor-args "$args" \
-              "$address" \
-              "$contract"
-          }
-
           SIGNERS="[$SIGNER_ONE,$SIGNER_TWO,$SIGNER_THREE]"
-          ZERO_DELAY_ARGS="$(cast abi-encode 'constructor(address[3],uint256)' "$SIGNERS" 0)"
-          PROTOCOL_DELAY_ARGS="$(cast abi-encode 'constructor(address[3],uint256)' "$SIGNERS" 86400)"
 
-          verify "$FACTORY_GOVERNANCE" "src/TwoOfThreeTimelock.sol:TwoOfThreeTimelock" "$ZERO_DELAY_ARGS"
-          verify "$REWARDS_GOVERNANCE" "src/TwoOfThreeTimelock.sol:TwoOfThreeTimelock" "$ZERO_DELAY_ARGS"
-          verify "$PROTOCOL_GOVERNANCE" "src/TwoOfThreeTimelock.sol:TwoOfThreeTimelock" "$PROTOCOL_DELAY_ARGS"
+          case "${{ matrix.role }}" in
+            factory-governance)
+              ADDRESS="$FACTORY_GOVERNANCE"
+              CONTRACT="src/TwoOfThreeTimelock.sol:TwoOfThreeTimelock"
+              ARGS="$(cast abi-encode 'constructor(address[3],uint256)' "$SIGNERS" 0)"
+              ;;
+            rewards-governance)
+              ADDRESS="$REWARDS_GOVERNANCE"
+              CONTRACT="src/TwoOfThreeTimelock.sol:TwoOfThreeTimelock"
+              ARGS="$(cast abi-encode 'constructor(address[3],uint256)' "$SIGNERS" 0)"
+              ;;
+            protocol-governance)
+              ADDRESS="$PROTOCOL_GOVERNANCE"
+              CONTRACT="src/TwoOfThreeTimelock.sol:TwoOfThreeTimelock"
+              ARGS="$(cast abi-encode 'constructor(address[3],uint256)' "$SIGNERS" 86400)"
+              ;;
+            treasury-vault)
+              ADDRESS="$TREASURY_VAULT"
+              CONTRACT="src/ProtocolPurposeVault.sol:ProtocolPurposeVault"
+              ARGS="$(cast abi-encode 'constructor(address,bytes32)' "$PROTOCOL_GOVERNANCE" "$(cast keccak PROTOCOL_TREASURY)")"
+              ;;
+            buyback-vault)
+              ADDRESS="$BUYBACK_VAULT"
+              CONTRACT="src/ProtocolPurposeVault.sol:ProtocolPurposeVault"
+              ARGS="$(cast abi-encode 'constructor(address,bytes32)' "$PROTOCOL_GOVERNANCE" "$(cast keccak BUYBACK_RESERVE)")"
+              ;;
+            graduation-vault)
+              ADDRESS="$GRADUATION_VAULT"
+              CONTRACT="src/ProtocolPurposeVault.sol:ProtocolPurposeVault"
+              ARGS="$(cast abi-encode 'constructor(address,bytes32)' "$PROTOCOL_GOVERNANCE" "$(cast keccak GRADUATION_ASSISTANCE)")"
+              ;;
+            referral-vault)
+              ADDRESS="$REFERRAL_VAULT"
+              CONTRACT="src/ProtocolPurposeVault.sol:ProtocolPurposeVault"
+              ARGS="$(cast abi-encode 'constructor(address,bytes32)' "$PROTOCOL_GOVERNANCE" "$(cast keccak REFERRAL_RESERVE)")"
+              ;;
+            ecosystem-vault)
+              ADDRESS="$ECOSYSTEM_VAULT"
+              CONTRACT="src/ProtocolPurposeVault.sol:ProtocolPurposeVault"
+              ARGS="$(cast abi-encode 'constructor(address,bytes32)' "$PROTOCOL_GOVERNANCE" "$(cast keccak ECOSYSTEM_GROWTH)")"
+              ;;
+            graduation-hook)
+              ADDRESS="$GRADUATION_HOOK"
+              CONTRACT="src/V4GraduationHook.sol:V4GraduationHook"
+              ARGS="$(cast abi-encode 'constructor(address,address)' "$POOL_MANAGER" "$OPERATOR")"
+              ;;
+            graduation-adapter)
+              ADDRESS="$GRADUATION_ADAPTER"
+              CONTRACT="src/V4GraduationAdapter.sol:V4GraduationAdapter"
+              ARGS="$(cast abi-encode 'constructor(address,address,uint24,int24)' "$POOL_MANAGER" "$GRADUATION_HOOK" 10000 200)"
+              ;;
+            revenue-router)
+              ADDRESS="$REVENUE_ROUTER"
+              CONTRACT="src/ProtocolRevenueRouter.sol:ProtocolRevenueRouter"
+              RECIPIENTS="[$TREASURY_VAULT,$BUYBACK_VAULT,$GRADUATION_VAULT,$REFERRAL_VAULT,$ECOSYSTEM_VAULT]"
+              ARGS="$(cast abi-encode 'constructor(address[5])' "$RECIPIENTS")"
+              ;;
+            rewards-controller)
+              ADDRESS="$REWARDS_CONTROLLER"
+              CONTRACT="src/PurposeRewardsController.sol:PurposeRewardsController"
+              ARGS="$(cast abi-encode 'constructor(address,address,uint256)' "$OPERATOR" "$REWARDS_GOVERNANCE" 86400)"
+              ;;
+            launch-factory)
+              ADDRESS="$LAUNCH_FACTORY"
+              CONTRACT="src/LowCostMemeLaunchFactoryV4.sol:LowCostMemeLaunchFactoryV4"
+              ARGS="$(cast abi-encode 'constructor(address,uint16,uint256,uint256,uint256,address,address)' "$GRADUATION_ADAPTER" 100 300000000000000000 1073000000000000000000000000 1000000000000000000 "$REWARDS_CONTROLLER" "$REVENUE_ROUTER")"
+              ;;
+            version-registry)
+              ADDRESS="$VERSION_REGISTRY"
+              CONTRACT="src/VersionedFactoryRegistry.sol:VersionedFactoryRegistry"
+              ARGS="$(cast abi-encode 'constructor(address,uint256,address,bytes32)' "$FACTORY_GOVERNANCE" 172800 "$LAUNCH_FACTORY" 0xdef50385924e38ff5aec5dc38e5e0215be1b43ba2d4d1d0bfbf6f3141e1b3426)"
+              ;;
+            *)
+              echo "Unknown verification role" >&2
+              exit 1
+              ;;
+          esac
 
-          verify "$TREASURY_VAULT" "src/ProtocolPurposeVault.sol:ProtocolPurposeVault" \
-            "$(cast abi-encode 'constructor(address,bytes32)' "$PROTOCOL_GOVERNANCE" "$(cast keccak PROTOCOL_TREASURY)")"
-          verify "$BUYBACK_VAULT" "src/ProtocolPurposeVault.sol:ProtocolPurposeVault" \
-            "$(cast abi-encode 'constructor(address,bytes32)' "$PROTOCOL_GOVERNANCE" "$(cast keccak BUYBACK_RESERVE)")"
-          verify "$GRADUATION_VAULT" "src/ProtocolPurposeVault.sol:ProtocolPurposeVault" \
-            "$(cast abi-encode 'constructor(address,bytes32)' "$PROTOCOL_GOVERNANCE" "$(cast keccak GRADUATION_ASSISTANCE)")"
-          verify "$REFERRAL_VAULT" "src/ProtocolPurposeVault.sol:ProtocolPurposeVault" \
-            "$(cast abi-encode 'constructor(address,bytes32)' "$PROTOCOL_GOVERNANCE" "$(cast keccak REFERRAL_RESERVE)")"
-          verify "$ECOSYSTEM_VAULT" "src/ProtocolPurposeVault.sol:ProtocolPurposeVault" \
-            "$(cast abi-encode 'constructor(address,bytes32)' "$PROTOCOL_GOVERNANCE" "$(cast keccak ECOSYSTEM_GROWTH)")"
-
-          verify "$GRADUATION_HOOK" "src/V4GraduationHook.sol:V4GraduationHook" \
-            "$(cast abi-encode 'constructor(address,address)' "$POOL_MANAGER" "$OPERATOR")"
-          verify "$GRADUATION_ADAPTER" "src/V4GraduationAdapter.sol:V4GraduationAdapter" \
-            "$(cast abi-encode 'constructor(address,address,uint24,int24)' "$POOL_MANAGER" "$GRADUATION_HOOK" 10000 200)"
-
-          RECIPIENTS="[$TREASURY_VAULT,$BUYBACK_VAULT,$GRADUATION_VAULT,$REFERRAL_VAULT,$ECOSYSTEM_VAULT]"
-          verify "$REVENUE_ROUTER" "src/ProtocolRevenueRouter.sol:ProtocolRevenueRouter" \
-            "$(cast abi-encode 'constructor(address[5])' "$RECIPIENTS")"
-          verify "$REWARDS_CONTROLLER" "src/PurposeRewardsController.sol:PurposeRewardsController" \
-            "$(cast abi-encode 'constructor(address,address,uint256)' "$OPERATOR" "$REWARDS_GOVERNANCE" 86400)"
-
-          verify "$LAUNCH_FACTORY" "src/LowCostMemeLaunchFactoryV4.sol:LowCostMemeLaunchFactoryV4" \
-            "$(cast abi-encode 'constructor(address,uint16,uint256,uint256,uint256,address,address)' "$GRADUATION_ADAPTER" 100 300000000000000000 1073000000000000000000000000 1000000000000000000 "$REWARDS_CONTROLLER" "$REVENUE_ROUTER")"
-          verify "$VERSION_REGISTRY" "src/VersionedFactoryRegistry.sol:VersionedFactoryRegistry" \
-            "$(cast abi-encode 'constructor(address,uint256,address,bytes32)' "$FACTORY_GOVERNANCE" 172800 "$LAUNCH_FACTORY" 0xdef50385924e38ff5aec5dc38e5e0215be1b43ba2d4d1d0bfbf6f3141e1b3426)"
+          forge verify-contract \
+            --rpc-url "$RPC_URL" \
+            --verifier blockscout \
+            --verifier-url "$VERIFIER_URL" \
+            --constructor-args "$ARGS" \
+            --watch \
+            "$ADDRESS" \
+            "$CONTRACT"
