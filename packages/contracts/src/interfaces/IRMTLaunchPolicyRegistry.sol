@@ -2,7 +2,8 @@
 pragma solidity ^0.8.26;
 
 /// @notice Versioned launch-policy registry for RMT V6 and later factories.
-/// @dev Policies are append-only. A policy may be disabled for new launches but never rewritten after registration.
+/// @dev Policies are append-only. V6 uses direct creator and protocol treasury destinations;
+///      future policy versions may introduce additional reviewed routing modules.
 interface IRMTLaunchPolicyRegistry {
     struct LaunchPolicy {
         bytes32 policyId;
@@ -15,7 +16,7 @@ interface IRMTLaunchPolicyRegistry {
         uint16 postGraduationFeeBps;
         uint256 graduationTarget;
         address marketImplementation;
-        address rewardRouter;
+        address protocolTreasury;
         address graduationAdapter;
     }
 
