@@ -4,11 +4,26 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { robinhoodChain, robinhoodChainTestnet } from "@rmt/shared/chains";
 import { useState, type ReactNode } from "react";
 import { WagmiProvider, createConfig, http } from "wagmi";
-import { injected, walletConnect } from "wagmi/connectors";
+import { coinbaseWallet, injected, metaMask, walletConnect } from "wagmi/connectors";
 
 const walletConnectProjectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID;
 const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 const connectors = [
+  metaMask({
+    dappMetadata: {
+      name: "Robinhood Meme Terminal",
+      url: appUrl,
+      iconUrl: `${appUrl}/brand/rmt-master-logo.png`
+    },
+    preferDesktop: false,
+    enableAnalytics: false
+  }),
+  coinbaseWallet({
+    appName: "Robinhood Meme Terminal",
+    appLogoUrl: `${appUrl}/brand/rmt-master-logo.png`,
+    preference: "all",
+    version: "4"
+  }),
   injected({ shimDisconnect: true }),
   ...(walletConnectProjectId
     ? [walletConnect({

@@ -45,13 +45,16 @@ export function SystemStatus({ initialReport }: { initialReport: SystemHealthRep
       <section className="panel safeguardPanel">
         <p className="eyebrow">BUILT-IN SAFEGUARDS</p>
         <h2>Fair Start protects every new launch</h2>
+        <p className="safeguardLead">Fair Start is a brief opening window, not a permanent trading restriction. It limits large early buys so bots or insiders cannot capture most of a launch before everyone else can react.</p>
         <div className="safeguardGrid">
-          <div><strong>3-block delay</strong><span>No immediate same-block launch buy.</span></div>
-          <div><strong>25-block window</strong><span>Early-wallet limits remain active automatically.</span></div>
-          <div><strong>One buy per block</strong><span>Each wallet gets one protected-window buy per block.</span></div>
-          <div><strong>No alternate recipient</strong><span>Protected buys cannot silently route tokens elsewhere.</span></div>
+          <div><strong>3-block opening delay</strong><span>Trading cannot be captured in the same block as launch.</span></div>
+          <div><strong>25 protected blocks</strong><span>The temporary limits cover only the opening window.</span></div>
+          <div><strong>0.5% maximum per buy</strong><span>No single opening purchase can take more than 0.5% of supply.</span></div>
+          <div><strong>1.5% maximum per wallet</strong><span>Each wallet has a temporary opening allowance.</span></div>
+          <div><strong>One buy per block</strong><span>A wallet cannot stack multiple buys into the same block.</span></div>
+          <div><strong>Automatic expiry</strong><span>Normal buying begins automatically when the countdown ends. Once trading opens, selling remains available.</span></div>
         </div>
-        <p className="statusFineprint">These controls reduce common launch-sniping advantages; they do not promise bot-free trading or eliminate market risk.</p>
+        <p className="statusFineprint">Protected buys must send tokens back to the buying wallet, preventing alternate-recipient workarounds. These controls reduce common launch-sniping advantages; they do not promise bot-free trading or eliminate market risk.</p>
       </section>
     </>
   );
