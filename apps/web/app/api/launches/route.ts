@@ -1,13 +1,15 @@
 import { unstable_cache } from "next/cache";
+import { getFactoryAddress } from "../../../lib/contracts";
 import type { LaunchFeedResponse } from "../../../lib/launch-feed";
 import { readFreshLaunches } from "../../../lib/server/launch-feed";
-import { activeChain } from "../../../lib/network";
+import { activeChain, activeFactoryStartBlock } from "../../../lib/network";
 
 export const dynamic = "force-dynamic";
 
-const getCachedLaunches = unstable_cache(readFreshLaunches, [`rmt-fresh-launches-v3-${activeChain.id}`], {
+const launchCacheIdentity = `${activeChain.id}-${getFactoryAddress()?.toLowerCase() ?? "unconfigured"}-${activeFactoryStartBlock.toString()}`;
+const getCachedLaunches = unstable_cache(readFreshLaunches, [`rmt-fresh-launches-${launchCacheIdentity}`], {
   revalidate: 10,
-  tags: ["rmt-launches"]
+  tags: [`rmt-launches-${launchCacheIdentity}`]
 });
 
 export async function GET() {
