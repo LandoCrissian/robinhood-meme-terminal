@@ -107,11 +107,13 @@ type MigrationArgs = {
 };
 
 function confirmed<Args>(log: {
+  address: Address;
   transactionHash: `0x${string}` | null;
   logIndex: number | null;
   blockNumber: bigint | null;
-}): log is typeof log & ConfirmedLog<Args> {
-  return log.transactionHash !== null && log.logIndex !== null && log.blockNumber !== null;
+  args?: Args;
+}): log is ConfirmedLog<Args> {
+  return log.transactionHash !== null && log.logIndex !== null && log.blockNumber !== null && log.args !== undefined;
 }
 
 function lower(address: Address) {
