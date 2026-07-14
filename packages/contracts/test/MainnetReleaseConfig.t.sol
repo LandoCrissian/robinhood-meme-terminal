@@ -16,8 +16,25 @@ contract MainnetReleaseConfigTest {
         require(Config.MARKET_FEE_BPS == 100, "market fee");
         require(Config.MARKET_FEE_BPS <= 100, "fee cap");
         require(Config.INITIAL_VIRTUAL_ETH_RESERVE == 0.3 ether, "virtual eth");
-        require(Config.INITIAL_VIRTUAL_TOKEN_RESERVE == 1_073_000_000 ether, "virtual token");
+        require(Config.INITIAL_VIRTUAL_TOKEN_RESERVE == 1_017_500_000 ether, "virtual token");
         require(Config.INITIAL_VIRTUAL_TOKEN_RESERVE > 1_000_000_000 ether, "inventory buffer");
-        require(Config.GRADUATION_TARGET == 1 ether, "graduation target");
+        require(Config.GRADUATION_TARGET == 2 ether, "graduation target");
+    }
+
+    function testGraduationValuationAndPoolPriceStayAligned() public pure {
+        uint256 supply = 1_000_000_000 ether;
+        uint256 invariant = Config.INITIAL_VIRTUAL_ETH_RESERVE * Config.INITIAL_VIRTUAL_TOKEN_RESERVE;
+        uint256 virtualEthAtGraduation = Config.INITIAL_VIRTUAL_ETH_RESERVE + Config.GRADUATION_TARGET;
+        uint256 virtualTokensAtGraduation = invariant / virtualEthAtGraduation;
+        uint256 tokensSold = Config.INITIAL_VIRTUAL_TOKEN_RESERVE - virtualTokensAtGraduation;
+        uint256 poolTokens = supply - tokensSold;
+
+        uint256 curveFdvEth = (virtualEthAtGraduation * supply) / virtualTokensAtGraduation;
+        uint256 poolFdvEth = (Config.GRADUATION_TARGET * supply) / poolTokens;
+        require(curveFdvEth >= 17 ether && curveFdvEth <= 18 ether, "graduation valuation");
+
+        uint256 difference =
+            curveFdvEth > poolFdvEth ? curveFdvEth - poolFdvEth : poolFdvEth - curveFdvEth;
+        require((difference * 10_000) / curveFdvEth <= 50, "graduation price discontinuity");
     }
 }
