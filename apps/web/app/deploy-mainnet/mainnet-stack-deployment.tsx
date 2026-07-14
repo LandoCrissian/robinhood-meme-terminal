@@ -435,7 +435,11 @@ export function MainnetStackDeployment() {
       ]);
       const fairStartExpected = [1n, 10n, 100n, 300n];
       for (let i = 0; i < fairStartChecks.length; i += 1) {
-        if (fairStartChecks[i] !== fairStartExpected[i]) throw new Error("Fair Start verification failed.");
+        if (String(fairStartChecks[i]) !== String(fairStartExpected[i])) {
+          throw new Error(
+            `Fair Start verification ${i + 1} failed: expected ${fairStartExpected[i]}, received ${String(fairStartChecks[i])}.`
+          );
+        }
       }
       for (let i = 0; i < vaults.length; i += 1) {
         const [governance, configuredPurpose] = await Promise.all([
