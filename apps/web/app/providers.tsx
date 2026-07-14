@@ -7,7 +7,10 @@ import { WagmiProvider, createConfig, http } from "wagmi";
 import { coinbaseWallet, injected, metaMask, walletConnect } from "wagmi/connectors";
 
 const walletConnectProjectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID;
-const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+// Wallet metadata is used by WalletConnect and mobile deep links. Production
+// must never identify itself as localhost when the deployment variable is
+// omitted, because some wallets reject or misroute that session.
+const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.rmtlaunch.fun";
 const connectors = [
   metaMask({
     dappMetadata: {
