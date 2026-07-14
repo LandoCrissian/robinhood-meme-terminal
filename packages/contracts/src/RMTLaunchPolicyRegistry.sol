@@ -57,7 +57,7 @@ contract RMTLaunchPolicyRegistry is IRMTLaunchPolicyRegistry {
         if (policyHash[policy.policyId] != bytes32(0)) revert PolicyAlreadyRegistered();
         bytes32 operationId = keccak256(abi.encode("REGISTER_POLICY", policy));
         _consume(operationId);
-        bytes32 immutableHash = keccak256(abi.encode(policy));
+        bytes32 immutableHash = _immutablePolicyHash(policy);
         _policies[policy.policyId] = policy;
         policyHash[policy.policyId] = immutableHash;
         emit PolicyRegistered(policy.policyId, policy.policyVersion, immutableHash);
@@ -137,13 +137,44 @@ contract RMTLaunchPolicyRegistry is IRMTLaunchPolicyRegistry {
         if (
             policy.policyId == bytes32(0) || policy.policyVersion == 0 || policy.curveFeeBps >= BPS_DENOMINATOR
                 || uint256(policy.creatorFeeShareBps) + uint256(policy.protocolFeeShareBps) != BPS_DENOMINATOR
-                || policy.postGraduationFeeBps >= BPS_DENOMINATOR || policy.graduationTarget == 0
+                || policy.postGraduationFeeBps == 0 || policy.postGraduationFeeBps >= BPS_DENOMINATOR
+                || policy.graduationTarget == 0
                 || !(fairStartDisabled || fairStartEnabled)
                 || policy.marketImplementation == address(0) || policy.marketImplementation.code.length == 0
                 || policy.protocolTreasury == address(0)
                 || policy.graduationAdapter == address(0) || policy.graduationAdapter.code.length == 0
                 || (!policy.enabled && policy.publiclySelectable)
         ) revert InvalidConfiguration();
+
+        (bool feeReadSuccess, bytes memory feeData) =
+            policy.graduationAdapter.staticcall(abi.encodeWithSignature("poolFee()"));
+        if (
+            !feeReadSuccess || feeData.length < 32
+                || abi.decode(feeData, (uint24)) != uint24(uint256(policy.postGraduationFeeBps) * 100)
+        ) revert InvalidConfiguration();
+    }
+
+    /// @dev Availability is mutable by design and is therefore excluded from the permanent economics hash.
+    function _immutablePolicyHash(LaunchPolicy calldata policy) private pure returns (bytes32) {
+        return keccak256(
+            abi.encode(
+                policy.policyId,
+                policy.policyVersion,
+                policy.curveFeeBps,
+                policy.creatorFeeShareBps,
+                policy.protocolFeeShareBps,
+                policy.postGraduationFeeBps,
+                policy.graduationTarget,
+                policy.fairStartMode,
+                policy.fairStartDelayBlocks,
+                policy.fairStartDurationBlocks,
+                policy.fairStartMaxTxBps,
+                policy.fairStartMaxWalletBps,
+                policy.marketImplementation,
+                policy.protocolTreasury,
+                policy.graduationAdapter
+            )
+        );
     }
 
     function _requirePolicy(bytes32 policyId) private view returns (LaunchPolicy storage policy) {
