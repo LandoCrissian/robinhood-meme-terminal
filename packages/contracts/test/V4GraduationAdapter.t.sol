@@ -5,10 +5,18 @@ import {FixedSupplyMemeToken} from "../src/FixedSupplyMemeToken.sol";
 import {BondingCurveMarket} from "../src/BondingCurveMarket.sol";
 import {V4GraduationAdapter} from "../src/V4GraduationAdapter.sol";
 import {V4GraduationHook} from "../src/V4GraduationHook.sol";
+import {DirectLaunchFeeSplitter} from "../src/DirectLaunchFeeSplitter.sol";
 import {BaseHook} from "@uniswap/v4-periphery/src/utils/BaseHook.sol";
 import {PoolManager} from "@uniswap/v4-core/src/PoolManager.sol";
 import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
 import {PoolId} from "@uniswap/v4-core/src/types/PoolId.sol";
+import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
+import {Currency} from "@uniswap/v4-core/src/types/Currency.sol";
+import {IHooks} from "@uniswap/v4-core/src/interfaces/IHooks.sol";
+import {SwapParams} from "@uniswap/v4-core/src/types/PoolOperation.sol";
+import {TickMath} from "@uniswap/v4-core/src/libraries/TickMath.sol";
+import {StateLibrary} from "@uniswap/v4-core/src/libraries/StateLibrary.sol";
+import {PoolSwapTest} from "@uniswap/v4-core/src/test/PoolSwapTest.sol";
 
 interface V4AdapterTestVm {
     function deal(address account, uint256 balance) external;
@@ -111,6 +119,38 @@ contract V4GraduationAdapterTest {
         require(!reboundMarket, "market rebound");
     }
 
+    function testV6FeeRoutingMustMatchImmutablePoolFeeAndCannotBeChanged() public {
+        adapter.prepare(address(token));
+        DirectLaunchFeeSplitter splitter = new DirectLaunchFeeSplitter();
+        splitter.initialize(payable(address(this)), payable(address(0xBEEF)), 7_000);
+
+        (bool mismatchSuccess,) = address(adapter).call(
+            abi.encodeCall(adapter.configureFeeRouting, (address(token), address(splitter), 50))
+        );
+        require(!mismatchSuccess, "mismatched fee policy accepted");
+
+        adapter.configureFeeRouting(address(token), address(splitter), 100);
+        require(adapter.feeSplitters(address(token)) == address(splitter), "splitter not bound");
+        require(adapter.postGraduationFeeBps(address(token)) == 100, "fee bps not recorded");
+
+        (bool reconfigureSuccess,) = address(adapter).call(
+            abi.encodeCall(adapter.configureFeeRouting, (address(token), address(splitter), 100))
+        );
+        require(!reconfigureSuccess, "fee routing changed");
+    }
+
+    function testV6FeeRoutingCannotBeConfiguredAfterMarketBinding() public {
+        adapter.prepare(address(token));
+        adapter.bindMarket(address(token), address(this));
+        DirectLaunchFeeSplitter splitter = new DirectLaunchFeeSplitter();
+        splitter.initialize(payable(address(this)), payable(address(0xBEEF)), 7_000);
+
+        (bool success,) = address(adapter).call(
+            abi.encodeCall(adapter.configureFeeRouting, (address(token), address(splitter), 100))
+        );
+        require(!success, "late fee routing accepted");
+    }
+
     function testCannotGraduateTwice() public {
         adapter.prepare(address(token));
         adapter.bindMarket(address(token), address(this));
@@ -121,6 +161,75 @@ contract V4GraduationAdapterTest {
         (bool secondGraduation,) =
             address(adapter).call{value: 1 ether}(abi.encodeCall(adapter.graduate, (address(token), tokenAmount)));
         require(!secondGraduation, "second graduation accepted");
+    }
+
+    function testCollectsBothFeeCurrenciesWithoutChangingLockedLiquidity() public {
+        bytes32 poolIdValue = adapter.prepare(address(token));
+        DirectLaunchFeeSplitter splitter = new DirectLaunchFeeSplitter();
+        splitter.initialize(payable(address(this)), payable(address(0xBEEF)), 7_000);
+        adapter.configureFeeRouting(address(token), address(splitter), 100);
+        adapter.bindMarket(address(token), address(this));
+
+        uint256 tokenAmount = 200_000_000 ether;
+        require(token.approve(address(adapter), tokenAmount), "adapter approval");
+        adapter.graduate{value: 85 ether}(address(token), tokenAmount);
+
+        PoolKey memory key = PoolKey({
+            currency0: Currency.wrap(address(0)),
+            currency1: Currency.wrap(address(token)),
+            fee: adapter.poolFee(),
+            tickSpacing: adapter.tickSpacing(),
+            hooks: IHooks(address(hook))
+        });
+        int24 tickLower = TickMath.minUsableTick(adapter.tickSpacing());
+        int24 tickUpper = TickMath.maxUsableTick(adapter.tickSpacing());
+        (uint128 liquidityBefore,,) = StateLibrary.getPositionInfo(
+            IPoolManager(address(manager)), PoolId.wrap(poolIdValue), address(adapter), tickLower, tickUpper, bytes32(0)
+        );
+
+        PoolSwapTest swapRouter = new PoolSwapTest(IPoolManager(address(manager)));
+        PoolSwapTest.TestSettings memory settings =
+            PoolSwapTest.TestSettings({takeClaims: false, settleUsingBurn: false});
+        uint256 tokenBalanceBeforeSwap = token.balanceOf(address(this));
+        swapRouter.swap{value: 1 ether}(
+            key,
+            SwapParams({
+                zeroForOne: true,
+                amountSpecified: -int256(1 ether),
+                sqrtPriceLimitX96: TickMath.MIN_SQRT_PRICE + 1
+            }),
+            settings,
+            ""
+        );
+
+        uint256 receivedTokens = token.balanceOf(address(this)) - tokenBalanceBeforeSwap;
+        uint256 tokenSwapAmount = receivedTokens / 2;
+        require(tokenSwapAmount != 0, "no token swap input");
+        require(token.approve(address(swapRouter), tokenSwapAmount), "router approval");
+        swapRouter.swap(
+            key,
+            SwapParams({
+                zeroForOne: false,
+                amountSpecified: -int256(tokenSwapAmount),
+                sqrtPriceLimitX96: TickMath.MAX_SQRT_PRICE - 1
+            }),
+            settings,
+            ""
+        );
+
+        (uint256 nativeFees, uint256 tokenFees) = adapter.collectFees(address(token));
+        (uint128 liquidityAfter,,) = StateLibrary.getPositionInfo(
+            IPoolManager(address(manager)), PoolId.wrap(poolIdValue), address(adapter), tickLower, tickUpper, bytes32(0)
+        );
+
+        require(nativeFees != 0, "native fees not collected");
+        require(tokenFees != 0, "token fees not collected");
+        require(splitter.totalReceived() == nativeFees, "native fees not routed");
+        require(splitter.totalTokenReceived(address(token)) == tokenFees, "token fees not routed");
+        require(liquidityAfter == liquidityBefore, "liquidity principal changed");
+        require(liquidityAfter == adapter.lockedLiquidity(address(token)), "locked liquidity record mismatch");
+        require(address(adapter).balance == 0, "adapter retained native fees");
+        require(token.balanceOf(address(adapter)) == 0, "adapter retained token fees");
     }
 
     function testBondingCurveMigratesEndToEndIntoRealV4Pool() public {
