@@ -6,6 +6,7 @@ import {CloneBondingCurveMarketV6} from "./clone/CloneBondingCurveMarketV6.sol";
 import {DirectLaunchFeeSplitter} from "./DirectLaunchFeeSplitter.sol";
 import {MinimalProxy} from "./libraries/MinimalProxy.sol";
 import {IGraduationAdapter} from "./interfaces/IGraduationAdapter.sol";
+import {IV6GraduationAdapter} from "./interfaces/IV6GraduationAdapter.sol";
 import {IRMTLaunchFactoryV6} from "./interfaces/IRMTLaunchFactoryV6.sol";
 import {IRMTLaunchPolicyRegistry} from "./interfaces/IRMTLaunchPolicyRegistry.sol";
 import {OfficialRMTIdentityMigration} from "./OfficialRMTIdentityMigration.sol";
@@ -210,6 +211,9 @@ contract RMTLaunchFactoryV6 is IRMTLaunchFactoryV6 {
             policy.fairStartDurationBlocks,
             policy.fairStartMaxTxBps,
             policy.fairStartMaxWalletBps
+        );
+        IV6GraduationAdapter(policy.graduationAdapter).configureFeeRouting(
+            token, rewardVault, policy.postGraduationFeeBps
         );
         IGraduationAdapter(policy.graduationAdapter).bindMarket(token, market);
         if (!CloneFixedSupplyMemeToken(token).transfer(market, TOKEN_SUPPLY)) revert InventoryTransferFailed();
