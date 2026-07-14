@@ -1,6 +1,6 @@
 # Robinhood Chain mainnet contract manifest
 
-Status: **deployed and bytecode-verified by the release console; source publication in progress**
+Status: **deployed, release-console verified, and source-verified as exact matches on Blockscout**
 
 - Chain: Robinhood Chain mainnet
 - Chain ID: `4663`
@@ -54,7 +54,7 @@ These bindings were verified by the release console and are rechecked by the pub
 
 ## Source verification
 
-The `.github/workflows/verify-mainnet-source.yml` workflow recompiles the exact pinned release sources and submits all 14 RMT-owned contract sources plus their constructor arguments to Blockscout. A green workflow proves the submitted metadata matched the deployed bytecode; it does not replace an independent security audit.
+The `.github/workflows/verify-mainnet-source.yml` workflow recompiles the exact pinned release sources and verifies all 14 RMT-owned addresses in parallel with their individual constructor arguments. Workflow run 13 passed all 14 exact-address jobs. This proves the published metadata matched the deployed bytecode; it does not replace an independent security audit.
 
 ## Disposable launch evidence
 

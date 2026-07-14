@@ -76,12 +76,12 @@ This is a bounded staging exception, not a claim that a live token has already g
 ## Remaining go-live gates
 
 - [x] Publish matching factory and version-registry source and compiler settings on Blockscout.
-- [ ] Publish or verify the remaining production dependency sources on Blockscout.
-- [ ] Record every governance, vault, hook, adapter, router, and controller address and transaction hash.
+- [x] Publish and exact-match verify all 14 RMT-owned production contract sources on Blockscout.
+- [x] Record every governance, vault, hook, adapter, router, and controller address and transaction hash in `MAINNET_CONTRACTS.md`.
 - [x] Run a disposable low-value mainnet launch.
 - [x] Run low-value buy, sell, reward accrual, and claim checks.
 - [x] Exercise full graduation against deployed mainnet state on a fork and document the bounded live-cost exception.
-- [ ] Point the public frontend at the version registry only after the smoke checks pass.
+- [x] Point the public mainnet-beta frontend at the version registry after smoke checks passed.
 - [x] Keep the official RMT project token unlaunched until the disposable smoke launch succeeds.
 - [ ] Obtain an independent smart-contract security review before describing the release as audited.
 
