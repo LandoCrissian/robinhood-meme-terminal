@@ -47,8 +47,21 @@ export function LaunchForm() {
   const v3Available = v3Read.status === "success";
   const officialMigrationRead = useReadContract({ address: factoryAddress ?? undefined, abi: memeLaunchFactoryAbi, functionName: "officialMigrationAuthority", chainId: activeChain.id, query: { enabled: Boolean(factoryAddress) && isMainnetRelease, retry: false } });
   const officialMigrationCompleteRead = useReadContract({ address: factoryAddress ?? undefined, abi: memeLaunchFactoryAbi, functionName: "officialMigrationComplete", chainId: activeChain.id, query: { enabled: officialMigrationRead.status === "success", retry: false } });
+  const normalizedName = name.trim();
+  const normalizedSymbol = symbol.trim();
+  const nameUsedRead = useReadContract({ address: factoryAddress ?? undefined, abi: memeLaunchFactoryAbi, functionName: "isNameUsed", args: [normalizedName], chainId: activeChain.id, query: { enabled: Boolean(factoryAddress && normalizedName), retry: false } });
+  const symbolUsedRead = useReadContract({ address: factoryAddress ?? undefined, abi: memeLaunchFactoryAbi, functionName: "isSymbolUsed", args: [normalizedSymbol], chainId: activeChain.id, query: { enabled: Boolean(factoryAddress && normalizedSymbol), retry: false } });
   const simpleAvailable = Boolean(v2Read.data);
   const launchesPaused = isMainnetRelease && factoryAddress?.toLowerCase() === settlementBlockedFactoryAddress.toLowerCase();
+  const isOfficialIdentity = normalizedName === "Robinhood Meme Terminal" && normalizedSymbol === "RMT";
+  const officialMigrationAvailable =
+    isOfficialIdentity
+    && account?.toLowerCase() === officialMigrationAuthority.toLowerCase()
+    && String(officialMigrationRead.data).toLowerCase() === officialMigrationAuthority.toLowerCase()
+    && officialMigrationCompleteRead.data === false;
+  const nameUnavailable = nameUsedRead.data === true && !officialMigrationAvailable;
+  const symbolUnavailable = symbolUsedRead.data === true && !officialMigrationAvailable;
+  const identityUnavailable = nameUnavailable || symbolUnavailable;
 
   useEffect(() => {
     if (!image) { setImagePreview(""); return; }
@@ -68,7 +81,7 @@ export function LaunchForm() {
     return event ? { token: event.args.token, rewardVault: event.args.rewardVault, launchId: event.args.launchId } : null;
   }, [receipt]);
 
-  const readiness = launchesPaused ? "New launches temporarily paused" : !factoryAddress ? "Factory not deployed" : !isConnected ? "Connect wallet" : chainId !== activeChain.id ? `Switch to ${activeNetworkLabel}` : "Review and launch";
+  const readiness = launchesPaused ? "New launches temporarily paused" : nameUnavailable ? "Token name already protected" : symbolUnavailable ? "Ticker already protected" : !factoryAddress ? "Reading launch factory…" : !isConnected ? "Connect wallet" : chainId !== activeChain.id ? `Switch to ${activeNetworkLabel}` : "Review and launch";
 
   function selectImage(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0] ?? null;
@@ -120,12 +133,6 @@ export function LaunchForm() {
     } else {
       metadata = `data:application/json,${encodeURIComponent(JSON.stringify({ name: parsed.data.name, symbol: parsed.data.symbol, description: parsed.data.description, website: parsed.data.website || undefined, x: parsed.data.x || undefined, telegram: parsed.data.telegram || undefined }))}`;
     }
-    const isOfficialIdentity = parsed.data.name === "Robinhood Meme Terminal" && parsed.data.symbol === "RMT";
-    const officialMigrationAvailable =
-      isOfficialIdentity
-      && account?.toLowerCase() === officialMigrationAuthority.toLowerCase()
-      && String(officialMigrationRead.data).toLowerCase() === officialMigrationAuthority.toLowerCase()
-      && officialMigrationCompleteRead.data === false;
     if (officialMigrationAvailable && preset === "community") writeContract({ address: factoryAddress, abi: memeLaunchFactoryAbi, functionName: "launchOfficialCommunity", args: [metadata], chainId: activeChain.id });
     else if (officialMigrationAvailable) writeContract({ address: factoryAddress, abi: memeLaunchFactoryAbi, functionName: "launchOfficialSimple", args: [metadata], chainId: activeChain.id });
     else if (v3Available && preset === "community") writeContract({ address: factoryAddress, abi: memeLaunchFactoryAbi, functionName: "launchCommunity", args: [parsed.data.name, parsed.data.symbol, metadata], chainId: activeChain.id });
@@ -137,8 +144,8 @@ export function LaunchForm() {
     <section className="panel">
       <div className="sectionTitle"><div><p className="eyebrow">TOKEN LAUNCH</p><h2>Configure your token</h2></div><span className="badge">{isMainnetRelease ? "MAINNET · REAL ETH" : "TESTNET ALPHA"}</span></div>
       {launchesPaused && <div className="callout mainnetWarning"><strong>New launches are temporarily paused</strong><span>We are activating a reward-settlement upgrade. Existing tokens can still trade and eligible creator rewards remain claimable.</span></div>}
-      <label>Token name<input value={name} maxLength={40} placeholder="Name your token" onChange={(e) => setName(e.target.value)} /></label>
-      <div className="two"><label>Ticker<input value={symbol} maxLength={10} placeholder="TICKER" onChange={(e) => setSymbol(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))} /></label><label>Platform supply<input inputMode="numeric" value={supply} readOnly aria-readonly="true" /></label></div>
+      <label>Token name<input value={name} maxLength={40} placeholder="Name your token" aria-invalid={nameUnavailable} onChange={(e) => setName(e.target.value)} />{normalizedName && <span className={nameUnavailable ? "identityStatus unavailable" : nameUsedRead.data === false ? "identityStatus available" : "identityStatus"} aria-live="polite">{nameUnavailable ? "Already protected — choose a unique name" : nameUsedRead.data === false ? "Name available" : "Checking name…"}</span>}</label>
+      <div className="two"><label>Ticker<input value={symbol} maxLength={10} placeholder="TICKER" aria-invalid={symbolUnavailable} onChange={(e) => setSymbol(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))} />{normalizedSymbol && <span className={symbolUnavailable ? "identityStatus unavailable" : symbolUsedRead.data === false ? "identityStatus available" : "identityStatus"} aria-live="polite">{symbolUnavailable ? "Already protected — choose a unique ticker" : symbolUsedRead.data === false ? "Ticker available" : "Checking ticker…"}</span>}</label><label>Platform supply<input inputMode="numeric" value={supply} readOnly aria-readonly="true" /></label></div>
       <label>Description<textarea value={description} maxLength={500} placeholder="Tell traders what this token is about" onChange={(e) => setDescription(e.target.value)} /></label>
       <details className="socialFields"><summary>Add social links <span>Optional</span></summary><div>
         <label>Website<input type="url" inputMode="url" placeholder="https://yourproject.com" value={website} onChange={(e) => setWebsite(e.target.value)} /></label>
@@ -172,7 +179,7 @@ export function LaunchForm() {
       {(writeError || receiptError) && <div className="errors"><span>{writeError?.message || receiptError?.message}</span></div>}
       {transactionHash && !deployed && <div className="callout"><strong>{isConfirming ? "Waiting for confirmation…" : "Transaction submitted"}</strong><a href={`${activeChain.blockExplorers.default.url}/tx/${transactionHash}`} target="_blank" rel="noreferrer">View transaction ↗</a></div>}
       {deployed && <div className="launchSuccess"><strong>Launch #{deployed.launchId.toString()} confirmed</strong><span>Token and reward vault were created in one transaction.</span><Link href={`/token/${deployed.token}`}>Open token page →</Link></div>}
-      <button className="launch" disabled={launchesPaused || !factoryAddress || !isConnected || chainId !== activeChain.id || isPending || isConfirming || mediaStatus === "uploading"} onClick={submit}>{mediaStatus === "uploading" ? "Saving token media…" : isPending ? "Confirm in wallet…" : isConfirming ? "Confirming onchain…" : readiness}</button>
+      <button className="launch" type="button" disabled={launchesPaused || identityUnavailable || !factoryAddress || !isConnected || chainId !== activeChain.id || isPending || isConfirming || mediaStatus === "uploading"} onClick={submit}>{mediaStatus === "uploading" ? "Saving token media…" : isPending ? "Confirm in wallet…" : isConfirming ? "Confirming onchain…" : readiness}</button>
       <p className="fineprint">No mint authority • No blacklist • No hidden transfer tax • Wallet-signed transactions only</p>
     </section>
   );

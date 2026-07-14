@@ -50,13 +50,27 @@ export function WalletButton({ target = "testnet" }: { target?: "testnet" | "mai
     }
   }, [isConnected]);
 
+  useEffect(() => {
+    if (!open) return;
+    const previousOverflow = document.body.style.overflow;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [open]);
+
   if (!isConnected) {
     return (
       <div className="walletMenu">
-        <button className="wallet live connectTrigger" type="button" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
+        <button className="wallet live connectTrigger" type="button" aria-expanded={open} aria-controls="wallet-connect-dialog" onClick={() => setOpen((value) => !value)}>
           Connect wallet
         </button>
-        {open && <div className="walletPopover" role="dialog" aria-label="Connect a wallet">
+        {open && <><button className="walletBackdrop" type="button" aria-label="Close wallet menu" onClick={() => setOpen(false)} /><div className="walletPopover" id="wallet-connect-dialog" role="dialog" aria-modal="true" aria-label="Connect a wallet">
           <div className="walletPopoverHeader"><div><strong>Choose your wallet</strong><span>RMT never sees your recovery phrase.</span></div><button type="button" aria-label="Close wallet menu" onClick={() => setOpen(false)}>×</button></div>
           <div className="connectorList">{connectors.map((connector) => (
             <button className="connectorOption" key={connector.uid} disabled={isPending} onClick={() => { reset(); setPendingConnectorUid(connector.uid); connect({ connector }); }}>
@@ -76,7 +90,7 @@ export function WalletButton({ target = "testnet" }: { target?: "testnet" | "mai
             <a href="https://robinhood.com/us/en/support/articles/connect-to-dapps/" target="_blank" rel="noreferrer">Official wallet connection guide ↗</a>
           </div>
           {error && <p className="walletError" role="alert">{walletErrorMessage(error.message)}</p>}
-        </div>}
+        </div></>}
       </div>
     );
   }
