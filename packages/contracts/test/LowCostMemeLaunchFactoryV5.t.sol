@@ -6,6 +6,7 @@ import {LowCostMemeLaunchFactoryV5} from "../src/LowCostMemeLaunchFactoryV5.sol"
 import {ProtocolRevenueRouterV2} from "../src/ProtocolRevenueRouterV2.sol";
 import {CloneLaunchRewardVaultV2} from "../src/clone/CloneLaunchRewardVaultV2.sol";
 import {ClonePurposeRewardVault} from "../src/clone/ClonePurposeRewardVault.sol";
+import {CloneBondingCurveMarketV3} from "../src/clone/CloneBondingCurveMarketV3.sol";
 import {MockGraduationAdapter} from "./BondingCurveMarket.t.sol";
 import {RewardsControllerMock} from "./LowCostMemeLaunchFactoryV4.t.sol";
 
@@ -52,6 +53,14 @@ contract LowCostMemeLaunchFactoryV5Test {
 
         require(!duplicateName, "legacy name vamp accepted");
         require(!duplicateTicker, "legacy ticker vamp accepted");
+    }
+
+    function testUsesLighterFairStartMarket() public view {
+        CloneBondingCurveMarketV3 market = CloneBondingCurveMarketV3(payable(factory.marketImplementation()));
+        require(market.FAIR_START_DELAY_BLOCKS() == 1, "delay");
+        require(market.FAIR_START_DURATION_BLOCKS() == 10, "duration");
+        require(market.FAIR_START_MAX_TX_BPS() == 100, "transaction cap");
+        require(market.FAIR_START_MAX_WALLET_BPS() == 300, "wallet cap");
     }
 
     function testCommunityAndProtocolVaultsCanBePermissionlesslySettled() public {
