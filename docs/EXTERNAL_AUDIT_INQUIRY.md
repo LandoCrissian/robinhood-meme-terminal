@@ -2,56 +2,48 @@
 
 ## Subject
 
-RMT V4 deployed mainnet review — bonding curve, rewards, governance, and Uniswap V4 graduation
+RMT V6 pre-deployment review — policy-driven launches, bonding curve, Fair Start, and Uniswap V4 fee flywheel
 
 ## Inquiry
 
-Robinhood Meme Terminal (RMT) is seeking an independent security review of its deployed V4 smart-contract system on Robinhood Chain mainnet.
+Robinhood Meme Terminal (RMT) is seeking an independent security review of its V6 release candidate before deployment or activation on Robinhood Chain mainnet.
 
-The system includes standardized fixed-supply token launches, clone-based bonding-curve markets, pull-based creator/community rewards, Fair Start anti-sniper controls, 2-of-3 delayed governance, a delayed factory-version registry, and one-time automatic graduation into Uniswap V4 liquidity.
+V6 includes fixed-supply clone launches, policy-bound bonding-curve markets, optional Fair Start controls, one-time graduation into a permanently locked Uniswap V4 full-range position, permissionless V4 fee realization, immutable 70/30 creator/protocol fee routing, a shared launch gate, expandable delayed governance, and delayed factory-version activation.
 
 ### Exact target
 
 - Repository: https://github.com/LandoCrissian/robinhood-meme-terminal
-- Deployed release commit: `ce7573b36c924c6933907e7f214d74a215b796f8`
+- Candidate pull request: https://github.com/LandoCrissian/robinhood-meme-terminal/pull/112
+- Review commit: to be frozen before engagement
 - Chain: Robinhood Chain mainnet (`4663`)
-- Factory: `0x88b86F10D874C2e3C8CfE63161ffa969f3273Cd4`
-- Registry: `0xfff3f69f473780EA5eA7f5525526986Bb491E00e`
+- Current V5 registry: `0x4b8b222B5CAa7066c02A54E51eC1a674ADf5b3A1`
+- Current expandable governance: `0x13C0A930516FB6bF0d467B38605d9D2a9c4C6953`
+- Canonical V4 PoolManager: `0x8366a39CC670B4001A1121B8F6A443A643e40951`
 - Public beta: https://www.rmtlaunch.fun
 - Full handoff: [EXTERNAL_AUDIT_HANDOFF.md](EXTERNAL_AUDIT_HANDOFF.md)
-- Threat model and scope: [SECURITY_REVIEW_SCOPE.md](SECURITY_REVIEW_SCOPE.md)
-- Address inventory: [MAINNET_CONTRACTS.md](MAINNET_CONTRACTS.md)
+- Threat model: [SECURITY_REVIEW_SCOPE.md](SECURITY_REVIEW_SCOPE.md)
+- Release sequence: [V6_MAINNET_RELEASE.md](V6_MAINNET_RELEASE.md)
 
-All RMT-owned production contracts have published exact-match source records. The review must independently reproduce the deployed-bytecode/source match and verify constructor parameters and permanent bindings.
+The primary review is pre-deployment. After fixes are accepted, the reviewer must confirm the final compiled artifacts and perform a deployed-bytecode, constructor, binding, policy-hash, and governance verification before public launches reopen.
 
 ### Requested expertise
 
-We need at least two senior Solidity reviewers, including direct experience with:
+We need senior Solidity reviewers with direct experience in:
 
-- AMM or bonding-curve reserve accounting
-- Uniswap V4 hooks, PoolManager settlement, and concentrated liquidity
-- clone initialization and minimal proxies
-- governance/timelock systems
+- bonding-curve reserve accounting and clone initialization
+- Uniswap V4 hooks, PoolManager settlement, fee realization, and concentrated liquidity
+- reentrancy and callback systems involving native currency and ERC-20 tokens
+- delayed governance, launch gating, and version-registry transitions
 - economic attacks, MEV, sandwiching, sybil behavior, and denial of service
 
 ### Requested deliverables
 
 - severity-rated report with reproducible evidence
 - independent tests or proof-of-concept code for critical/high findings
-- deployed-bytecode/source and immutable-configuration confirmation
-- economic and MEV assessment
-- remediation review
-- final public report naming the exact reviewed commit and deployed addresses
+- review of the permanent-liquidity and permissionless-collection claims
+- economic, MEV, and Fair Start assessment
+- remediation review tied to the exact final commit
+- post-deployment bytecode and immutable-configuration confirmation
+- publishable final report naming reviewed commits and deployed addresses
 
-Any unresolved critical or high finding blocks broad promotion.
-
-Please provide:
-
-1. proposed reviewers and their relevant Uniswap V4/AMM experience;
-2. earliest start date and expected review duration;
-3. fixed-price or capped quote, including remediation review;
-4. scope assumptions and exclusions;
-5. whether the final report may be published;
-6. references to comparable public reports.
-
-The system is already deployed as an explicitly unaudited, controlled mainnet beta. Existing markets cannot be rewritten. If remediation requires a new factory, the review must include version-transition and compatibility analysis.
+Any unresolved critical or high finding blocks deployment or reopening. Please provide proposed reviewers, relevant V4/AMM experience, start date, duration, fixed or capped quote including fix review, exclusions, publication terms, and comparable public reports.

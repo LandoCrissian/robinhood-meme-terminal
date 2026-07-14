@@ -36,7 +36,7 @@ Public token creation remains paused until every required item is complete.
 - [x] Liquidity principal cannot be withdrawn.
 - [x] Permissionless fee collection cannot redirect proceeds.
 - [x] Fuzz and invariant coverage.
-- [ ] Final V6 Robinhood mainnet-fork workflow passes on the release commit.
+- [x] Final V6 Robinhood mainnet-fork workflow passes on the release commit.
 
 ## Website and indexer
 
