@@ -2,6 +2,7 @@
 pragma solidity ^0.8.26;
 
 import {ProtocolRevenueRouter} from "../src/ProtocolRevenueRouter.sol";
+import {ProtocolRevenueRouterV2} from "../src/ProtocolRevenueRouterV2.sol";
 import {CloneLaunchRewardVault} from "../src/clone/CloneLaunchRewardVault.sol";
 
 interface RouterVm {
@@ -59,6 +60,18 @@ contract ProtocolRevenueRouterTest {
         (bool success,) =
             address(this).call(abi.encodeWithSelector(this.deployRouter.selector, duplicate));
         require(!success, "duplicate purpose recipient accepted");
+    }
+
+    function testAnyoneCanSettleRouterBalanceToItsFixedDestination() public {
+        ProtocolRevenueRouterV2 correctedRouter = new ProtocolRevenueRouterV2(destinations);
+        correctedRouter.deposit{value: 1 ether}();
+        uint256 expected = correctedRouter.claimable(destinations[0]);
+        uint256 beforeBalance = destinations[0].balance;
+
+        correctedRouter.claimFor(destinations[0]);
+
+        require(destinations[0].balance == beforeBalance + expected, "destination not paid");
+        require(correctedRouter.claimable(destinations[0]) == 0, "claim not cleared");
     }
 
     function deployRouter(address[5] memory recipients) external returns (ProtocolRevenueRouter) {
