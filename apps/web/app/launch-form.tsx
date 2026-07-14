@@ -15,6 +15,7 @@ const rewardBps: readonly [number, number, number, number, number] = [3000, 2500
 type LaunchPreset = "simple" | "community";
 const imageTypes = ["image/jpeg", "image/png", "image/webp"];
 const maxImageBytes = 5_000_000;
+const officialMigrationAuthority = "0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA";
 
 export function LaunchForm() {
   const { isConnected, address: account } = useAccount();
@@ -44,6 +45,8 @@ export function LaunchForm() {
   const v2Read = useReadContract({ address: factoryAddress ?? undefined, abi: memeLaunchFactoryAbi, functionName: "purposeVaultImplementation", chainId: activeChain.id, query: { enabled: Boolean(factoryAddress), retry: false } });
   const v3Read = useReadContract({ address: factoryAddress ?? undefined, abi: memeLaunchFactoryAbi, functionName: "communityDestinationsForToken", args: [zeroAddress], chainId: activeChain.id, query: { enabled: Boolean(factoryAddress), retry: false } });
   const v3Available = v3Read.status === "success";
+  const officialMigrationRead = useReadContract({ address: factoryAddress ?? undefined, abi: memeLaunchFactoryAbi, functionName: "officialMigrationAuthority", chainId: activeChain.id, query: { enabled: Boolean(factoryAddress) && isMainnetRelease, retry: false } });
+  const officialMigrationCompleteRead = useReadContract({ address: factoryAddress ?? undefined, abi: memeLaunchFactoryAbi, functionName: "officialMigrationComplete", chainId: activeChain.id, query: { enabled: officialMigrationRead.status === "success", retry: false } });
   const simpleAvailable = Boolean(v2Read.data);
   const launchesPaused = isMainnetRelease && factoryAddress?.toLowerCase() === settlementBlockedFactoryAddress.toLowerCase();
 
@@ -117,7 +120,15 @@ export function LaunchForm() {
     } else {
       metadata = `data:application/json,${encodeURIComponent(JSON.stringify({ name: parsed.data.name, symbol: parsed.data.symbol, description: parsed.data.description, website: parsed.data.website || undefined, x: parsed.data.x || undefined, telegram: parsed.data.telegram || undefined }))}`;
     }
-    if (v3Available && preset === "community") writeContract({ address: factoryAddress, abi: memeLaunchFactoryAbi, functionName: "launchCommunity", args: [parsed.data.name, parsed.data.symbol, metadata], chainId: activeChain.id });
+    const isOfficialIdentity = parsed.data.name === "Robinhood Meme Terminal" && parsed.data.symbol === "RMT";
+    const officialMigrationAvailable =
+      isOfficialIdentity
+      && account?.toLowerCase() === officialMigrationAuthority.toLowerCase()
+      && String(officialMigrationRead.data).toLowerCase() === officialMigrationAuthority.toLowerCase()
+      && officialMigrationCompleteRead.data === false;
+    if (officialMigrationAvailable && preset === "community") writeContract({ address: factoryAddress, abi: memeLaunchFactoryAbi, functionName: "launchOfficialCommunity", args: [metadata], chainId: activeChain.id });
+    else if (officialMigrationAvailable) writeContract({ address: factoryAddress, abi: memeLaunchFactoryAbi, functionName: "launchOfficialSimple", args: [metadata], chainId: activeChain.id });
+    else if (v3Available && preset === "community") writeContract({ address: factoryAddress, abi: memeLaunchFactoryAbi, functionName: "launchCommunity", args: [parsed.data.name, parsed.data.symbol, metadata], chainId: activeChain.id });
     else if (useSimple) writeContract({ address: factoryAddress, abi: memeLaunchFactoryAbi, functionName: "launchSimple", args: [parsed.data.name, parsed.data.symbol, metadata], chainId: activeChain.id });
     else writeContract({ address: factoryAddress, abi: memeLaunchFactoryAbi, functionName: "launch", args: [parsed.data.name, parsed.data.symbol, metadata, [parsed.data.communityTreasury, parsed.data.traderRewards, parsed.data.liquidityVault, parsed.data.platformTreasury] as [Address, Address, Address, Address], rewardBps], chainId: activeChain.id });
   }

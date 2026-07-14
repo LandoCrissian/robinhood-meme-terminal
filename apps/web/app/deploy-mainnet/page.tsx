@@ -1,5 +1,5 @@
 import { WalletButton } from "../wallet-button";
-import { MainnetStackDeployment } from "./mainnet-stack-deployment";
+import { OfficialRmtMigration } from "./official-rmt-migration";
 import "../deploy-testnet/deployment.css";
 
 export default function DeployMainnetPage() {
@@ -10,15 +10,15 @@ export default function DeployMainnetPage() {
         <WalletButton target="mainnet" />
       </nav>
       <section className="deployment-hero">
-        <p className="eyebrow">Operator-only V5 mainnet release</p>
-        <h1>Deploy the corrected RMT V5 stack</h1>
+        <p className="eyebrow">Operator-only V6 mainnet migration</p>
+        <h1>Prepare the official RMT relaunch</h1>
         <p>
-          This one-time console uses wallet approvals only. It never requests or stores a private key,
-          and it verifies one-wallet governance, Fair Start limits, identity protection, revenue destinations,
-          graduation-price continuity, and every permanent binding before the site can be cut over.
+          V5 is live and remains active while this console prepares the reviewed V6 identity migration.
+          It uses wallet approvals only, preserves the corrected economics, and verifies every permanent
+          binding before the delayed factory upgrade can be activated.
         </p>
       </section>
-      <MainnetStackDeployment />
+      <OfficialRmtMigration />
     </main>
   );
 }
