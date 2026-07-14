@@ -1,8 +1,10 @@
 # Robinhood Chain mainnet deployment record
 
-Status: **deployed, application-verified, and launch-loop smoke-tested; not yet public**
+Status: **deployed, application-verified, launch-loop smoke-tested, and published as a mainnet beta**
 
-This record captures the reviewed RMT V4 infrastructure deployed through the wallet-signed mainnet console. It does not declare the contracts audited and it does not authorize unrestricted public trading.
+Public application: https://www.rmtlaunch.fun
+
+This record captures the reviewed RMT V4 infrastructure deployed through the wallet-signed mainnet console. It does not declare the contracts audited or risk-free.
 
 ## Release identity
 
@@ -73,7 +75,7 @@ The fork proof:
 
 This is a bounded staging exception, not a claim that a live token has already graduated. The permanent test is part of the Robinhood mainnet-fork workflow and must remain green for future release changes.
 
-## Remaining go-live gates
+## Remaining broad-launch gates
 
 - [x] Publish matching factory and version-registry source and compiler settings on Blockscout.
 - [x] Publish and exact-match verify all 14 RMT-owned production contract sources on Blockscout.
@@ -82,7 +84,11 @@ This is a bounded staging exception, not a claim that a live token has already g
 - [x] Run low-value buy, sell, reward accrual, and claim checks.
 - [x] Exercise full graduation against deployed mainnet state on a fork and document the bounded live-cost exception.
 - [x] Point the public mainnet-beta frontend at the version registry after smoke checks passed.
+- [x] Publish the canonical application domain.
 - [x] Keep the official RMT project token unlaunched until the disposable smoke launch succeeds.
 - [ ] Obtain an independent smart-contract security review before describing the release as audited.
+- [ ] Complete one live public-token graduation and DEX migration before a broad unrestricted launch.
+- [ ] Deploy the persistent indexer, primary production RPC, and independent backup RPC.
+- [ ] Complete attorney review of the public disclosures.
 
 The registry coordinates future factory versions only. It cannot rewrite existing tokens, markets, reward vaults, or liquidity.
