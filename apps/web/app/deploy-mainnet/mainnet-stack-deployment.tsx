@@ -26,6 +26,9 @@ const STORAGE_KEY = "rmt:mainnet-stack:v5";
 const DAY = 86_400n;
 const HOOK_FLAGS = 0x2880n;
 const HOOK_MASK = 0x3fffn;
+const INITIAL_VIRTUAL_ETH_RESERVE = parseEther("0.3");
+const INITIAL_VIRTUAL_TOKEN_RESERVE = parseEther("1017500000");
+const GRADUATION_TARGET = parseEther("2");
 
 const PURPOSES = [
   "PROTOCOL_TREASURY",
@@ -340,7 +343,7 @@ export function MainnetStackDeployment() {
         current,
         "factory",
         artifacts.factory,
-        [adapter, 100, parseEther("0.3"), parseEther("1073000000"), parseEther("1"), rewardsController, revenueRouter, LEGACY_FACTORY],
+        [adapter, 100, INITIAL_VIRTUAL_ETH_RESERVE, INITIAL_VIRTUAL_TOKEN_RESERVE, GRADUATION_TARGET, rewardsController, revenueRouter, LEGACY_FACTORY],
         "RMT launch factory"
       );
 
@@ -394,9 +397,9 @@ export function MainnetStackDeployment() {
         rewardsController,
         revenueRouter,
         100n,
-        parseEther("0.3"),
-        parseEther("1073000000"),
-        parseEther("1"),
+        INITIAL_VIRTUAL_ETH_RESERVE,
+        INITIAL_VIRTUAL_TOKEN_RESERVE,
+        GRADUATION_TARGET,
         LEGACY_FACTORY,
         2n,
         factory,
@@ -483,6 +486,7 @@ export function MainnetStackDeployment() {
         <p><strong>One-time operator task:</strong> creators never deploy this infrastructure or pay this gas.</p>
         <p><strong>Governance:</strong> RMTMain starts as the only signer. A second signer can be added later through a visible, delayed governance proposal.</p>
         <p><strong>Safety:</strong> a 24-hour delay protects protocol-purpose funds. New launches inherit duplicate-name protection and the lighter Fair Start.</p>
+        <p><strong>Graduation:</strong> 2 ETH net reserve targets about a 17.3 ETH implied valuation, with the curve and V4 pool prices aligned. The USD value moves with ETH.</p>
       </div>
 
       <div className="deployment-addresses">
