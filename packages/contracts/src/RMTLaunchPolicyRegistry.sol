@@ -133,7 +133,7 @@ contract RMTLaunchPolicyRegistry is IRMTLaunchPolicyRegistry {
                 || uint256(policy.creatorFeeShareBps) + uint256(policy.protocolFeeShareBps) != BPS_DENOMINATOR
                 || policy.postGraduationFeeBps >= BPS_DENOMINATOR || policy.graduationTarget == 0
                 || policy.marketImplementation == address(0) || policy.marketImplementation.code.length == 0
-                || policy.rewardRouter == address(0) || policy.rewardRouter.code.length == 0
+                || policy.protocolTreasury == address(0)
                 || policy.graduationAdapter == address(0) || policy.graduationAdapter.code.length == 0
                 || (!policy.enabled && policy.publiclySelectable)
         ) revert InvalidConfiguration();
