@@ -29,7 +29,6 @@ RMT has a real mainnet vertical slice: launch, discover, buy, sell, accrue fees,
 - **Persistent indexer deployment.** The reorg-safe, idempotent PostgreSQL indexer is implemented and CI-tested. It still needs managed PostgreSQL, continuous-worker hosting, a complete historical reconciliation, and production cutover.
 - **Production monitoring hardening.** Five-minute application/protocol checks are live on the canonical domain. Add an independent uptime provider, primary production RPC, backup RPC, and alerts for indexer lag, reorgs, graduation attempts, migration failures, and invariant drift.
 - **Incident operations.** Assign responders, private contact channels, severity rules, communications ownership, and signer availability. Follow [INCIDENT_RESPONSE.md](INCIDENT_RESPONSE.md).
-- **Reproducible installs.** Commit a pnpm lockfile and switch web and indexer CI to frozen installs.
 - **Frontend quality gates.** Add linting, component tests, wallet-flow tests, accessibility checks, and a small browser regression suite.
 - **Metadata redundancy.** Use multiple IPFS gateways and visible fallbacks.
 
@@ -41,6 +40,7 @@ RMT has a real mainnet vertical slice: launch, discover, buy, sell, accrue fees,
 - Public terms, privacy, risk, support, system-status, and incident-response pages
 - Five-minute protocol and application monitoring
 - Persistent confirmation-aware, reorg-safe indexer implementation with PostgreSQL schema smoke tests
+- Reproducible pnpm dependency graph with frozen web and indexer CI installs
 
 ## Narrow beta boundary
 
