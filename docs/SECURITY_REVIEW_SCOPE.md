@@ -28,6 +28,7 @@ Assess the policy-driven V6 release candidate before deployment and verify the f
 - graduation replay, partial settlement, stuck assets, wrong pool, and price discontinuity
 - liquidity-principal removal through direct, indirect, governance, or callback paths
 - permissionless fee collection changing principal or redirecting native/token proceeds
+- creator-controlled payout-wallet rotation, pending acceptance, cancellation, and ownership of deferred balances
 - signer addition, threshold changes, proposal ordering, cancellation, replay, and delayed execution
 - guardian privilege and launch-entry-point pause bypass
 - version activation while configuration is incomplete or launch gate is open

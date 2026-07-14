@@ -28,6 +28,8 @@ The final V6 addresses and transaction hashes must be added here only after rece
 
 Both bonding-curve fees and collected V4 position fees use the launch's immutable 70/30 splitter. V4 fees can be collected by anyone, but the caller cannot choose the destination.
 
+The creator controls a two-step payout-wallet change: the current creator nominates a new wallet and the new wallet accepts. Only future creator fees follow the new wallet. Previously deferred ETH or token rewards remain owned by the original recipient. There is no administrator or governance override.
+
 ## Fair Start
 
 The website exposes one toggle backed by two immutable policies:

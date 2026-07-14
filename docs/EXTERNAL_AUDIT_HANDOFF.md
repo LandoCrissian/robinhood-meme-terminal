@@ -74,8 +74,9 @@ V6 addresses do not exist yet. Add them only after deployment receipts and bytec
 6. Is locked liquidity principal truly unreachable through every public, governance, hook, PoolManager, and callback path?
 7. Can permissionless fee collection change liquidity, redirect either fee currency, over-account deposits, or reenter the adapter/splitter?
 8. Can policy economics, market implementation, adapter, treasury, or availability be changed for an existing launch?
-9. Can guardian, sole signer, future signer addition, proposal ordering, cancellation, or registry activation bypass the intended delays?
-10. Can the wallet console deploy or bind a different bytecode/configuration than the reviewed Foundry release?
+9. Can creator payout-wallet nomination or acceptance be front-run, hijacked, replayed, reentered, or used to take previously deferred rewards?
+10. Can guardian, sole signer, future signer addition, proposal ordering, cancellation, or registry activation bypass the intended delays?
+11. Can the wallet console deploy or bind a different bytecode/configuration than the reviewed Foundry release?
 
 ## Required reviewer output
 

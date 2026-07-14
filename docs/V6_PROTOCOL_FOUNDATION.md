@@ -107,6 +107,8 @@ The V6 pool charges 0.5% on post-graduation swaps. The permanently locked full-r
 
 The same 70/30 split applies to the 1% bonding-curve fee before graduation. The collector cannot redirect proceeds, and neither creator nor protocol can remove the locked liquidity principal.
 
+The original launch creator remains part of the permanent historical launch record. The current creator may move future reward payments to a new wallet through a two-step nomination and acceptance flow. Governance and the protocol operator cannot perform this change. Rewards deferred before a wallet change remain claimable only by the wallet that originally earned them.
+
 Post-graduation fee routing must not permit withdrawal of locked liquidity principal.
 
 ### 7. Protocol treasury boundary
