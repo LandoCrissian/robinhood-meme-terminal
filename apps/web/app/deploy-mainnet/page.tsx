@@ -1,5 +1,5 @@
 import { WalletButton } from "../wallet-button";
-import { OfficialRmtMigration } from "./official-rmt-migration";
+import { V6ReleaseConsole } from "./v6-release-console";
 import "../deploy-testnet/deployment.css";
 
 export default function DeployMainnetPage() {
@@ -10,15 +10,15 @@ export default function DeployMainnetPage() {
         <WalletButton target="mainnet" />
       </nav>
       <section className="deployment-hero">
-        <p className="eyebrow">Operator-only V6 mainnet migration</p>
-        <h1>Prepare the official RMT relaunch</h1>
+        <p className="eyebrow">Operator-only V6 mainnet release</p>
+        <h1>Deploy V6 without opening it early</h1>
         <p>
-          V5 is live and remains active while this console prepares the reviewed V6 identity migration.
-          It uses wallet approvals only, preserves the corrected economics, and verifies every permanent
-          binding before the delayed factory upgrade can be activated.
+          V5 remains active while this console deploys and verifies the policy-driven V6 foundation.
+          Policies, activation, and reopening each follow their onchain delays. The new launch gate stays
+          paused until the final, separate reopening step.
         </p>
       </section>
-      <OfficialRmtMigration />
+      <V6ReleaseConsole />
     </main>
   );
 }

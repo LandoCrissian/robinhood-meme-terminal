@@ -6,14 +6,19 @@ import {MainnetReleaseConfigV6 as Config} from "../script/MainnetReleaseConfigV6
 contract MainnetReleaseConfigV6Test {
     function testDeveloperOperatorIsCanonicalRMTMainWallet() public pure {
         require(Config.DEVELOPER_OPERATOR == 0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA, "developer operator");
-        require(Config.INITIAL_GOVERNANCE == Config.DEVELOPER_OPERATOR, "governance wallet");
+        require(Config.EXPANDABLE_GOVERNANCE == 0x13C0A930516FB6bF0d467B38605d9D2a9c4C6953, "governance contract");
+        require(Config.INITIAL_GOVERNANCE == Config.EXPANDABLE_GOVERNANCE, "expandable governance");
         require(Config.INITIAL_GUARDIAN == Config.DEVELOPER_OPERATOR, "guardian wallet");
         require(Config.PROTOCOL_TREASURY == Config.DEVELOPER_OPERATOR, "protocol treasury");
+        require(Config.LEGACY_IDENTITY_FACTORY == 0x25A92D8C79c38D07B0d3eFd0ebe929D30e401cdD, "legacy factory");
+        require(Config.VERSION_REGISTRY == 0x4b8b222B5CAa7066c02A54E51eC1a674ADf5b3A1, "version registry");
+        require(Config.FACTORY_VERSION == keccak256("RMT_FACTORY_V6"), "factory version");
     }
 
     function testGovernanceAndRegistryDelaysAreNonZero() public pure {
         require(Config.GOVERNANCE_DELAY == 1 days, "governance delay");
         require(Config.REGISTRY_ACTIVATION_DELAY == 2 days, "registry delay");
+        require(Config.LAUNCH_UNPAUSE_DELAY == 1 days, "launch unpause delay");
     }
 
     function testSimplePolicyFeeSharesBalance() public pure {

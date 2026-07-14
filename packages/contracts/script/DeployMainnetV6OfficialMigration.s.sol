@@ -1,104 +1,174 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import {LowCostMemeLaunchFactoryV6} from "../src/LowCostMemeLaunchFactoryV6.sol";
-import {PurposeRewardsController} from "../src/PurposeRewardsController.sol";
+import {CloneBondingCurveMarketV6} from "../src/clone/CloneBondingCurveMarketV6.sol";
 import {ExpandableGovernance} from "../src/ExpandableGovernance.sol";
-import {VersionedFactoryRegistry} from "../src/VersionedFactoryRegistry.sol";
+import {RMTLaunchFactoryV6} from "../src/RMTLaunchFactoryV6.sol";
+import {RMTLaunchGate} from "../src/RMTLaunchGate.sol";
+import {RMTLaunchPolicyRegistry} from "../src/RMTLaunchPolicyRegistry.sol";
 import {V4GraduationAdapter} from "../src/V4GraduationAdapter.sol";
 import {V5GraduationHook} from "../src/V5GraduationHook.sol";
-import {MainnetReleaseConfig as Config} from "./MainnetReleaseConfig.sol";
+import {VersionedFactoryRegistry} from "../src/VersionedFactoryRegistry.sol";
+import {IRMTLaunchPolicyRegistry} from "../src/interfaces/IRMTLaunchPolicyRegistry.sol";
+import {MainnetReleaseConfigV6 as Config} from "./MainnetReleaseConfigV6.sol";
 import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
 import {Hooks} from "@uniswap/v4-core/src/libraries/Hooks.sol";
 import {HookMiner} from "@uniswap/v4-periphery/src/utils/HookMiner.sol";
 
-interface V6UpgradeVm {
+interface V6ReleaseVm {
     function envUint(string calldata name) external returns (uint256 value);
     function addr(uint256 privateKey) external returns (address keyAddr);
     function startBroadcast(uint256 privateKey) external;
     function stopBroadcast() external;
 }
 
-/// @notice Deploys V6 and submits its delayed activation through the existing V5 governance and registry.
+/// @notice Deploys the paused policy-driven V6 foundation and submits only delayed governance proposals.
+/// @dev This phase cannot register policies, activate V6, set the default, or reopen launches.
 contract DeployMainnetV6OfficialMigration {
-    V6UpgradeVm private constant vm = V6UpgradeVm(address(uint160(uint256(keccak256("hevm cheat code")))));
-
-    address private constant OPERATOR = 0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA;
-    address private constant GOVERNANCE = 0x13C0A930516FB6bF0d467B38605d9D2a9c4C6953;
-    address private constant REVENUE_ROUTER = 0x066Fd10caF090F274d1861e4F838558f98cE1ee9;
-    address private constant V5_FACTORY = 0x25A92D8C79c38D07B0d3eFd0ebe929D30e401cdD;
-    address private constant VERSION_REGISTRY = 0x4b8b222B5CAa7066c02A54E51eC1a674ADf5b3A1;
-    address private constant OFFICIAL_LEGACY_TOKEN = 0xaB374D24aFBD943a134AdB381D9646e71C6f6C0C;
-    bytes32 private constant VERSION = keccak256("RMT_FACTORY_V6");
+    V6ReleaseVm private constant vm = V6ReleaseVm(address(uint160(uint256(keccak256("hevm cheat code")))));
 
     error WrongChain(uint256 actualChainId);
     error WrongOperator(address actualOperator);
     error MissingContract(address account);
+    error WrongActiveFactory(address activeFactory);
+    error HookDeploymentFailed(address expectedHook);
     error BindingVerificationFailed();
 
-    event V6OfficialMigrationUpgradeDeployed(
+    event V6FoundationDeployed(
         address indexed factory,
-        address indexed adapter,
-        address indexed hook,
-        address rewardsController,
-        uint256 governanceProposalId
+        address indexed policyRegistry,
+        address indexed launchGate,
+        address adapter,
+        address hook,
+        address marketImplementation,
+        uint256 fairPolicyProposalId,
+        uint256 openPolicyProposalId,
+        uint256 factoryProposalId
     );
 
     function run() external {
         if (block.chainid != Config.CHAIN_ID) revert WrongChain(block.chainid);
-        address[5] memory requiredContracts =
-            [GOVERNANCE, REVENUE_ROUTER, V5_FACTORY, VERSION_REGISTRY, OFFICIAL_LEGACY_TOKEN];
+        address[5] memory requiredContracts = [
+            Config.EXPANDABLE_GOVERNANCE,
+            Config.LEGACY_IDENTITY_FACTORY,
+            Config.VERSION_REGISTRY,
+            Config.POOL_MANAGER,
+            Config.CREATE2_DEPLOYER
+        ];
         for (uint256 i; i < requiredContracts.length; ++i) {
             address required = requiredContracts[i];
             if (required.code.length == 0) revert MissingContract(required);
         }
+        address activeFactory = VersionedFactoryRegistry(Config.VERSION_REGISTRY).activeFactory();
+        if (activeFactory != Config.LEGACY_IDENTITY_FACTORY) revert WrongActiveFactory(activeFactory);
 
         uint256 privateKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
         address deployer = vm.addr(privateKey);
-        if (deployer != OPERATOR) revert WrongOperator(deployer);
+        if (deployer != Config.DEVELOPER_OPERATOR) revert WrongOperator(deployer);
+
         uint160 flags = uint160(Hooks.BEFORE_INITIALIZE_FLAG | Hooks.BEFORE_ADD_LIQUIDITY_FLAG | Hooks.BEFORE_SWAP_FLAG);
-        bytes memory constructorArgs = abi.encode(IPoolManager(Config.POOL_MANAGER), deployer);
+        bytes memory hookConstructorArgs = abi.encode(IPoolManager(Config.POOL_MANAGER), Config.DEVELOPER_OPERATOR);
+        bytes memory hookInitCode = abi.encodePacked(type(V5GraduationHook).creationCode, hookConstructorArgs);
         (address expectedHook, bytes32 salt) =
-            HookMiner.find(Config.CREATE2_DEPLOYER, flags, type(V5GraduationHook).creationCode, constructorArgs);
+            HookMiner.find(Config.CREATE2_DEPLOYER, flags, type(V5GraduationHook).creationCode, hookConstructorArgs);
 
         vm.startBroadcast(privateKey);
-        V5GraduationHook hook = new V5GraduationHook{salt: salt}(IPoolManager(Config.POOL_MANAGER), deployer);
+        (bool hookDeploymentSuccess,) = Config.CREATE2_DEPLOYER.call(abi.encodePacked(salt, hookInitCode));
+        if (!hookDeploymentSuccess || expectedHook.code.length == 0) revert HookDeploymentFailed(expectedHook);
+        V5GraduationHook hook = V5GraduationHook(expectedHook);
+
         V4GraduationAdapter adapter = new V4GraduationAdapter(
             IPoolManager(Config.POOL_MANAGER), hook, Config.V4_POOL_FEE, Config.V4_TICK_SPACING
         );
         hook.bindAdapter(address(adapter));
-        PurposeRewardsController controller =
-            new PurposeRewardsController(deployer, GOVERNANCE, Config.REWARD_RELEASE_DELAY);
-        LowCostMemeLaunchFactoryV6 factory = new LowCostMemeLaunchFactoryV6(
-            address(adapter),
-            Config.MARKET_FEE_BPS,
+
+        RMTLaunchGate launchGate = new RMTLaunchGate(
+            Config.EXPANDABLE_GOVERNANCE, Config.INITIAL_GUARDIAN, Config.LAUNCH_UNPAUSE_DELAY
+        );
+        RMTLaunchPolicyRegistry policyRegistry = new RMTLaunchPolicyRegistry(
+            Config.EXPANDABLE_GOVERNANCE, Config.INITIAL_GUARDIAN, Config.GOVERNANCE_DELAY
+        );
+        CloneBondingCurveMarketV6 marketImplementation = new CloneBondingCurveMarketV6();
+        RMTLaunchFactoryV6 factory = new RMTLaunchFactoryV6(
+            address(launchGate),
+            address(policyRegistry),
             Config.INITIAL_VIRTUAL_ETH_RESERVE,
             Config.INITIAL_VIRTUAL_TOKEN_RESERVE,
-            Config.GRADUATION_TARGET,
-            address(controller),
-            REVENUE_ROUTER,
-            V5_FACTORY,
-            OFFICIAL_LEGACY_TOKEN,
-            OPERATOR
+            Config.LEGACY_IDENTITY_FACTORY,
+            Config.DEVELOPER_OPERATOR
         );
         adapter.bindFactory(address(factory));
-        controller.bindFactory(address(factory));
-        bytes memory registryProposal = abi.encodeCall(VersionedFactoryRegistry.proposeFactory, (address(factory), VERSION));
-        uint256 proposalId = ExpandableGovernance(payable(GOVERNANCE)).propose(VERSION_REGISTRY, 0, registryProposal);
+
+        IRMTLaunchPolicyRegistry.LaunchPolicy memory fairPolicy =
+            _policy(Config.SIMPLE_FAIR_V1_POLICY_ID, true, address(marketImplementation), address(adapter));
+        IRMTLaunchPolicyRegistry.LaunchPolicy memory openPolicy =
+            _policy(Config.SIMPLE_OPEN_V1_POLICY_ID, false, address(marketImplementation), address(adapter));
+
+        ExpandableGovernance governance = ExpandableGovernance(payable(Config.EXPANDABLE_GOVERNANCE));
+        uint256 fairPolicyProposalId = governance.propose(
+            address(policyRegistry),
+            0,
+            abi.encodeCall(RMTLaunchPolicyRegistry.schedulePolicyRegistration, (fairPolicy))
+        );
+        uint256 openPolicyProposalId = governance.propose(
+            address(policyRegistry),
+            0,
+            abi.encodeCall(RMTLaunchPolicyRegistry.schedulePolicyRegistration, (openPolicy))
+        );
+        uint256 factoryProposalId = governance.propose(
+            Config.VERSION_REGISTRY,
+            0,
+            abi.encodeCall(VersionedFactoryRegistry.proposeFactory, (address(factory), Config.FACTORY_VERSION))
+        );
         vm.stopBroadcast();
 
         if (
             address(hook) != expectedHook || hook.adapter() != address(adapter) || adapter.factory() != address(factory)
-                || factory.graduationAdapter() != address(adapter) || factory.platformTreasury() != REVENUE_ROUTER
-                || factory.rewardsController() != address(controller) || controller.factory() != address(factory)
-                || controller.governance() != GOVERNANCE || factory.legacyIdentityFactory() != V5_FACTORY
-                || factory.officialLegacyToken() != OFFICIAL_LEGACY_TOKEN
-                || factory.officialMigrationAuthority() != OPERATOR || factory.SETTLEMENT_VERSION() != 3
-                || VersionedFactoryRegistry(VERSION_REGISTRY).activeFactory() != V5_FACTORY
+                || adapter.poolFee() != Config.V4_POOL_FEE || launchGate.governance() != Config.EXPANDABLE_GOVERNANCE
+                || launchGate.guardian() != Config.INITIAL_GUARDIAN || !launchGate.launchesPaused()
+                || policyRegistry.governance() != Config.EXPANDABLE_GOVERNANCE
+                || policyRegistry.guardian() != Config.INITIAL_GUARDIAN || factory.protocolVersion() != 6
+                || address(factory.launchGate()) != address(launchGate)
+                || address(factory.policyRegistry()) != address(policyRegistry)
+                || factory.legacyIdentityFactory() != Config.LEGACY_IDENTITY_FACTORY
+                || VersionedFactoryRegistry(Config.VERSION_REGISTRY).activeFactory()
+                    != Config.LEGACY_IDENTITY_FACTORY
         ) revert BindingVerificationFailed();
 
-        emit V6OfficialMigrationUpgradeDeployed(
-            address(factory), address(adapter), address(hook), address(controller), proposalId
+        emit V6FoundationDeployed(
+            address(factory),
+            address(policyRegistry),
+            address(launchGate),
+            address(adapter),
+            address(hook),
+            address(marketImplementation),
+            fairPolicyProposalId,
+            openPolicyProposalId,
+            factoryProposalId
         );
+    }
+
+    function _policy(bytes32 policyId, bool fairStart, address marketImplementation, address adapter)
+        private pure returns (IRMTLaunchPolicyRegistry.LaunchPolicy memory)
+    {
+        return IRMTLaunchPolicyRegistry.LaunchPolicy({
+            policyId: policyId,
+            policyVersion: 1,
+            enabled: true,
+            publiclySelectable: true,
+            curveFeeBps: Config.CURVE_FEE_BPS,
+            creatorFeeShareBps: Config.CREATOR_FEE_SHARE_BPS,
+            protocolFeeShareBps: Config.PROTOCOL_FEE_SHARE_BPS,
+            postGraduationFeeBps: Config.POST_GRADUATION_FEE_BPS,
+            graduationTarget: Config.GRADUATION_TARGET,
+            fairStartMode: fairStart ? Config.FAIR_START_ENABLED : Config.FAIR_START_DISABLED,
+            fairStartDelayBlocks: fairStart ? Config.FAIR_START_DELAY_BLOCKS : 0,
+            fairStartDurationBlocks: fairStart ? Config.FAIR_START_DURATION_BLOCKS : 0,
+            fairStartMaxTxBps: fairStart ? Config.FAIR_START_MAX_TX_BPS : 0,
+            fairStartMaxWalletBps: fairStart ? Config.FAIR_START_MAX_WALLET_BPS : 0,
+            marketImplementation: marketImplementation,
+            protocolTreasury: Config.PROTOCOL_TREASURY,
+            graduationAdapter: adapter
+        });
     }
 }
