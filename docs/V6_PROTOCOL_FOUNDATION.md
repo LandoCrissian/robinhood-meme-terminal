@@ -15,7 +15,10 @@ V6 exposes one public launch flow:
 - automatic graduation
 - permanent post-graduation flywheel
 
-Community, verified, partner, and other future launch styles are not separate factory contracts. They are versioned launch policies registered behind a common factory interface. V6 ships with one enabled public policy: `SIMPLE_V1`.
+Community, verified, partner, and other future launch styles are not separate factory contracts. They are versioned launch policies registered behind a common factory interface. V6 ships with two immutable public policies behind one simple Fair Start toggle:
+
+- `RMT_SIMPLE_FAIR_V1` — the default protected opening
+- `RMT_SIMPLE_OPEN_V1` — the same economics without the opening limits
 
 ## Upgrade model
 
@@ -38,7 +41,7 @@ Responsibilities:
 - retain `launchSimple(name, symbol, metadataURI)` as a compatibility wrapper
 - reject disabled or unknown policies
 - deploy fixed-supply token, reward vault, market, and graduation configuration
-- implement an on-chain emergency launch pause
+- require the shared on-chain launch gate from every launch entry point
 - emit complete launch policy and economics metadata
 
 The pause must block every launch entry point. Existing markets, claims, graduation, and discovery must continue operating.
@@ -58,7 +61,7 @@ A launch policy is immutable once used and contains:
 
 Governance may register a new policy version and enable or disable it for future launches. Governance must not alter the policy attached to an existing launch.
 
-V6 enables only `SIMPLE_V1`. Future Community or Verified policies become additional policy IDs, not ad hoc branches in the website.
+V6 enables only the reviewed Fair and Open variants. Future Community or Verified policies become additional policy IDs, not ad hoc branches in the website.
 
 ### 3. Governance and pause controller
 
@@ -97,30 +100,18 @@ The adapter must:
 
 Graduation must not end creator or protocol economics.
 
-Post-graduation swaps must continue funding, as disclosed by the policy:
+The V6 pool charges 0.5% on post-graduation swaps. The permanently locked full-range position earns both fee currencies. Anyone may realize those fees, but the adapter can route them only to the launch's immutable splitter:
 
-- creator rewards
-- protocol operations treasury
-- RMT buyback reserve
-- ecosystem/liquidity growth
+- 70% creator
+- 30% protocol treasury
 
-Implementation must use a reviewed Uniswap V4-compatible fee mechanism. The hook must account for fees explicitly; a zero-delta pass-through hook is not sufficient.
+The same 70/30 split applies to the 1% bonding-curve fee before graduation. The collector cannot redirect proceeds, and neither creator nor protocol can remove the locked liquidity principal.
 
 Post-graduation fee routing must not permit withdrawal of locked liquidity principal.
 
-### 7. Protocol revenue router
+### 7. Protocol treasury boundary
 
-The router is versioned and purpose-based. Initial proposed protocol allocation:
-
-- 55% operations treasury
-- 20% buyback reserve
-- 10% graduation/liquidity growth
-- 5% referral reserve
-- 10% ecosystem growth
-
-These values remain provisional until economic-model tests and deployment verification are complete.
-
-Every destination must be a fixed purpose vault or reviewed contract. Changing a recipient requires delayed governance and must not change the percentage policy attached to existing launches.
+V6 sends the disclosed 30% protocol share directly to the configured protocol treasury. V6 does not promise an automatic buyback, weekly contest, referral allocation, or multi-vault split. If the protocol later uses treasury funds for a disclosed bonus buy or buyback, that is an operational treasury action and must be reported separately from immutable token economics.
 
 ## Website alignment
 
@@ -137,7 +128,7 @@ Required factory views:
 - `isNameUsed(name)`
 - `isSymbolUsed(symbol)`
 
-The launch page renders one flow from `defaultPolicyId`. When future styles are enabled, the same policy metadata powers the selection UI, disclosures, fee summaries, and transaction arguments.
+The launch page renders one flow from `defaultPolicyId` and one Fair Start toggle that selects between the two reviewed V6 policies. When future styles are enabled, the same policy metadata powers the selection UI, disclosures, fee summaries, and transaction arguments.
 
 The website must fail closed: an unknown factory version, unavailable policy, unhealthy registry, or paused factory disables launch submission while keeping read-only terminal features online.
 

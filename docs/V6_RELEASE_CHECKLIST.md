@@ -8,48 +8,50 @@ Public token creation remains paused until every required item is complete.
 - [x] Append-only launch policy interface defined.
 - [x] Website capability model defined.
 - [x] V6 protocol foundation documented.
-- [ ] Finalize audited post-graduation fee mechanism for Robinhood Chain's Uniswap V4 deployment.
+- [x] Implement the candidate post-graduation fee mechanism for Robinhood Chain's Uniswap V4 deployment.
+- [ ] Complete an independent review of the final candidate commit.
 
 ## Contracts
 
-- [ ] Implement append-only policy registry.
-- [ ] Implement pausable V6 factory with one public `SIMPLE_V1` policy.
-- [ ] Preserve legacy name and symbol protection.
-- [ ] Implement deterministic pre-graduation fee routing.
-- [ ] Implement perpetual post-graduation fee accounting and routing.
-- [ ] Implement permanently locked protocol-owned liquidity accounting.
-- [ ] Implement permissionless accrued-fee collection.
-- [ ] Add delayed unpause and policy-governance controls.
+- [x] Implement append-only policy registry.
+- [x] Implement shared launch gate and reviewed Fair/Open policies.
+- [x] Preserve legacy name and symbol protection.
+- [x] Implement deterministic pre-graduation fee routing.
+- [x] Implement perpetual post-graduation fee accounting and routing.
+- [x] Implement permanently locked protocol-owned liquidity accounting.
+- [x] Implement permissionless accrued-fee collection.
+- [x] Add delayed unpause and policy-governance controls.
 
 ## Tests
 
-- [ ] Compile all contracts.
-- [ ] Factory launch and identity tests.
-- [ ] Pause blocks every launch entry point.
-- [ ] Guardian cannot unpause or move funds.
-- [ ] Policy registration is append-only.
-- [ ] Historical policy data cannot change.
-- [ ] Buy and sell fee accounting.
-- [ ] Graduation valuation and price continuity.
-- [ ] Post-graduation fee accounting and routing.
-- [ ] Liquidity principal cannot be withdrawn.
-- [ ] Permissionless fee collection cannot redirect proceeds.
-- [ ] Fuzz and invariant coverage.
+- [x] Compile all contracts.
+- [x] Factory launch and identity tests.
+- [x] Pause blocks every launch entry point.
+- [x] Guardian cannot unpause or move funds.
+- [x] Policy registration is append-only.
+- [x] Historical policy data cannot change.
+- [x] Buy and sell fee accounting.
+- [x] Graduation valuation and price continuity.
+- [x] Post-graduation fee accounting and routing.
+- [x] Liquidity principal cannot be withdrawn.
+- [x] Permissionless fee collection cannot redirect proceeds.
+- [x] Fuzz and invariant coverage.
+- [ ] Final V6 Robinhood mainnet-fork workflow passes on the release commit.
 
 ## Website and indexer
 
-- [ ] Replace ABI-probing launch-style logic with active-factory capabilities.
-- [ ] Expose only the default simple policy for V6.
-- [ ] Fail closed for unknown versions, unavailable policies, unhealthy registry, or pause state.
-- [ ] Preserve read-only terminal, trading, and claims while launch is paused.
-- [ ] Store policy ID, version, and launch economics per token.
-- [ ] Display historical economics from launch records, not current defaults.
+- [x] Replace ABI-probing launch-style logic with active-factory capabilities.
+- [x] Expose one simple flow with the reviewed Fair Start toggle.
+- [x] Fail closed for unknown versions, unavailable policies, unhealthy registry, or pause state.
+- [x] Preserve read-only terminal, trading, and claims while launch is paused.
+- [x] Store policy ID, version, and launch economics per token.
+- [x] Display historical economics from launch records, not current defaults.
 
 ## Deployment
 
-- [ ] Generate reproducible deployment artifacts.
-- [ ] Add wallet-operated V6 deployment console.
-- [ ] Verify all immutable bindings and purpose destinations.
+- [x] Generate reproducible deployment artifacts.
+- [x] Add wallet-operated phased V6 deployment console.
+- [x] Verify all immutable bindings and fee destinations in code and rehearsal.
 - [ ] Deploy V6 in paused state.
 - [ ] Verify source code.
 - [ ] Complete independent security review.

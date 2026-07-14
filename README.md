@@ -6,7 +6,7 @@ Robinhood Meme Terminal (RMT) is a mobile-first meme-token launchpad, bonding-cu
 
 ## Current status
 
-RMT has deployed a **mainnet beta stack** on Robinhood Chain. The public application reads the active factory through the onchain version registry. A bounded disposable mainnet launch has exercised:
+RMT currently has a **V5 mainnet beta stack** on Robinhood Chain. The policy-driven V6 release is a draft candidate and is not deployed or active. The public application reads the active factory through the onchain version registry. A bounded disposable V5 mainnet launch has exercised:
 
 - wallet connection and one-signature token creation
 - fixed-supply market custody
@@ -17,7 +17,7 @@ RMT has deployed a **mainnet beta stack** on Robinhood Chain. The public applica
 
 Production graduation has passed the permanent mainnet-fork release test against the deployed contracts. No live public token has completed the full DEX migration yet. The contracts have not received an independent security audit and must not be described as audited or risk-free.
 
-See [MAINNET_DEPLOYMENT.md](docs/MAINNET_DEPLOYMENT.md) for deployed addresses and smoke evidence, [LAUNCH_READINESS_AUDIT.md](docs/LAUNCH_READINESS_AUDIT.md) for remaining gates, and [INCIDENT_RESPONSE.md](docs/INCIDENT_RESPONSE.md) for operational procedures.
+See [MAINNET_V5_DEPLOYMENT.md](docs/MAINNET_V5_DEPLOYMENT.md) for current deployed addresses, [V6_MAINNET_RELEASE.md](docs/V6_MAINNET_RELEASE.md) for the paused-first V6 process, [V6_RELEASE_CHECKLIST.md](docs/V6_RELEASE_CHECKLIST.md) for remaining gates, and [INCIDENT_RESPONSE.md](docs/INCIDENT_RESPONSE.md) for operational procedures.
 
 ## Product principles
 
@@ -25,9 +25,9 @@ See [MAINNET_DEPLOYMENT.md](docs/MAINNET_DEPLOYMENT.md) for deployed addresses a
 - Fixed one-billion-token supply controlled by the launch market
 - No mint authority, blacklist, transfer tax, or token upgrade proxy
 - Wallet-signed transactions only; RMT never requests private keys
-- Transparent creator, community, trader, and protocol fee destinations
+- Transparent creator and protocol fee destinations
 - Market reserves remain separate from discretionary reward vaults
-- Mainnet uses 2-of-3 governance and delayed factory-version activation
+- Mainnet uses delayed expandable 1-of-1 governance today, with an onchain path to add signers later
 - Public claims must match deployed behavior
 
 ## Architecture
@@ -37,7 +37,7 @@ See [MAINNET_DEPLOYMENT.md](docs/MAINNET_DEPLOYMENT.md) for deployed addresses a
 - `packages/shared` — shared chain configuration
 - `docs` — deployment, security-review, incident-response, and launch-readiness records
 
-The feed is served through a cached API, but token history still relies on RPC event reads. A persistent, reorg-safe indexer and production monitoring remain required before a broad unrestricted launch.
+The repository includes a persistent indexer with schema checks. Production health, reorg handling, monitoring, and V6 event ingestion must still be verified against the final deployed addresses before public V6 launches reopen.
 
 ## Development
 

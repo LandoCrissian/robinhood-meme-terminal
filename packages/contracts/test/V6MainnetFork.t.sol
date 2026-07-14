@@ -92,25 +92,27 @@ contract V6MainnetForkTest {
             _policy(FAIR_POLICY_ID, true, address(marketImplementation), address(adapter));
         IRMTLaunchPolicyRegistry.LaunchPolicy memory openPolicy =
             _policy(OPEN_POLICY_ID, false, address(marketImplementation), address(adapter));
-        policies.schedulePolicyRegistration(fairPolicy);
-        policies.schedulePolicyRegistration(openPolicy);
-        vm.warp(block.timestamp + 1 days);
+        bytes32 fairRegistration = policies.schedulePolicyRegistration(fairPolicy);
+        bytes32 openRegistration = policies.schedulePolicyRegistration(openPolicy);
+        uint64 fairRegistrationTime = policies.scheduledOperations(fairRegistration);
+        require(fairRegistrationTime == policies.scheduledOperations(openRegistration), "policy delay mismatch");
+        vm.warp(fairRegistrationTime);
         policies.executePolicyRegistration(fairPolicy);
         policies.executePolicyRegistration(openPolicy);
-        policies.scheduleDefaultPolicy(FAIR_POLICY_ID);
-        vm.warp(block.timestamp + 1 days);
+        bytes32 defaultOperation = policies.scheduleDefaultPolicy(FAIR_POLICY_ID);
+        vm.warp(policies.scheduledOperations(defaultOperation));
         policies.executeDefaultPolicy(FAIR_POLICY_ID);
 
         VersionedFactoryRegistry versionRegistry =
             new VersionedFactoryRegistry(address(this), 2 days, address(legacy), keccak256("RMT_FACTORY_V5"));
         versionRegistry.proposeFactory(address(factory), VERSION);
-        vm.warp(block.timestamp + 2 days);
+        vm.warp(versionRegistry.pendingActivationTime());
         versionRegistry.activateFactory();
         require(versionRegistry.activeFactory() == address(factory), "V6 registry activation");
         require(gate.launchesPaused(), "gate opened during activation");
 
-        gate.scheduleUnpause();
-        vm.warp(block.timestamp + 1 days);
+        uint64 unpauseTime = gate.scheduleUnpause();
+        vm.warp(unpauseTime);
         gate.executeUnpause();
 
         (address officialToken, address fairMarket,) = factory.launchSimple(
