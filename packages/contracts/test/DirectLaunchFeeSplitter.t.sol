@@ -88,6 +88,73 @@ contract DirectLaunchFeeSplitterTest {
         require(splitter.totalPaid() == 1 ether, "paid accounting");
     }
 
+    function testCreatorCanMoveFutureNativeAndTokenRewardsWithTwoStepAcceptance() public {
+        AcceptingRecipient originalCreator = new AcceptingRecipient();
+        AcceptingRecipient nextCreator = new AcceptingRecipient();
+        AcceptingRecipient treasury = new AcceptingRecipient();
+        SplitterTestToken token = new SplitterTestToken(1_000 ether);
+        DirectLaunchFeeSplitter splitter = new DirectLaunchFeeSplitter();
+        splitter.initialize(payable(address(originalCreator)), payable(address(treasury)), address(token), 7_000);
+
+        vm.prank(address(0xBEEF));
+        (bool outsiderProposal,) = address(splitter).call(
+            abi.encodeCall(splitter.proposeCreatorWallet, (payable(address(nextCreator))))
+        );
+        require(!outsiderProposal, "outsider proposed creator");
+
+        vm.prank(address(originalCreator));
+        splitter.proposeCreatorWallet(payable(address(nextCreator)));
+        require(splitter.pendingCreator() == address(nextCreator), "pending creator");
+
+        vm.prank(address(0xBEEF));
+        (bool outsiderAcceptance,) = address(splitter).call(abi.encodeCall(splitter.acceptCreatorWallet, ()));
+        require(!outsiderAcceptance, "outsider accepted creator");
+
+        vm.prank(address(nextCreator));
+        splitter.acceptCreatorWallet();
+        require(splitter.creator() == address(nextCreator), "creator not changed");
+        require(splitter.pendingCreator() == address(0), "pending creator not cleared");
+
+        vm.deal(address(this), 1 ether);
+        splitter.deposit{value: 1 ether}();
+        require(address(originalCreator).balance == 0, "old creator received future native fees");
+        require(address(nextCreator).balance == 0.7 ether, "new creator native fees");
+        require(address(treasury).balance == 0.3 ether, "protocol native fees");
+
+        require(token.transfer(address(splitter), 100 ether), "fund token fees");
+        splitter.depositToken(address(token), 100 ether);
+        require(token.balanceOf(address(originalCreator)) == 0, "old creator received future token fees");
+        require(token.balanceOf(address(nextCreator)) == 70 ether, "new creator token fees");
+        require(token.balanceOf(address(treasury)) == 30 ether, "protocol token fees");
+    }
+
+    function testCreatorCanCancelWalletChangeAndDeferredFundsStayWithOriginalRecipient() public {
+        RejectingRecipient originalCreator = new RejectingRecipient();
+        AcceptingRecipient proposedCreator = new AcceptingRecipient();
+        AcceptingRecipient treasury = new AcceptingRecipient();
+        DirectLaunchFeeSplitter splitter = new DirectLaunchFeeSplitter();
+        splitter.initialize(
+            payable(address(originalCreator)), payable(address(treasury)), address(new SplitterTestToken(1)), 7_000
+        );
+
+        vm.prank(address(originalCreator));
+        splitter.proposeCreatorWallet(payable(address(proposedCreator)));
+        vm.prank(address(originalCreator));
+        splitter.cancelCreatorWalletChange();
+        require(splitter.pendingCreator() == address(0), "creator change not cancelled");
+
+        vm.deal(address(this), 1 ether);
+        splitter.deposit{value: 1 ether}();
+        require(splitter.pending(address(originalCreator)) == 0.7 ether, "original deferred balance");
+
+        vm.prank(address(originalCreator));
+        splitter.proposeCreatorWallet(payable(address(proposedCreator)));
+        vm.prank(address(proposedCreator));
+        splitter.acceptCreatorWallet();
+        require(splitter.pending(address(originalCreator)) == 0.7 ether, "deferred balance moved");
+        require(splitter.pending(address(proposedCreator)) == 0, "new creator inherited old balance");
+    }
+
     function testCreatorPaymentFailureDoesNotBlockProtocolPayment() public {
         RejectingRecipient creator = new RejectingRecipient();
         AcceptingRecipient treasury = new AcceptingRecipient();

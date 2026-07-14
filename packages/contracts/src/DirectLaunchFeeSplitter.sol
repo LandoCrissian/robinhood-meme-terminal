@@ -7,6 +7,7 @@ contract DirectLaunchFeeSplitter {
     uint256 private constant BPS_DENOMINATOR = 10_000;
 
     address payable public creator;
+    address payable public pendingCreator;
     address payable public protocolTreasury;
     address public launchToken;
     uint16 public creatorShareBps;
@@ -31,12 +32,17 @@ contract DirectLaunchFeeSplitter {
     event DirectTokenPayment(address indexed token, address indexed recipient, uint256 amount);
     event TokenPaymentDeferred(address indexed token, address indexed recipient, uint256 amount);
     event DeferredTokenPaymentClaimed(address indexed token, address indexed recipient, uint256 amount);
+    event CreatorWalletChangeProposed(address indexed currentCreator, address indexed proposedCreator);
+    event CreatorWalletChangeCancelled(address indexed creator, address indexed proposedCreator);
+    event CreatorWalletChanged(address indexed previousCreator, address indexed newCreator);
 
     error AlreadyInitialized();
     error InvalidConfiguration();
     error NothingToClaim();
     error TransferFailed();
     error ReentrantCall();
+    error OnlyCreator();
+    error OnlyPendingCreator();
 
     modifier nonReentrant() {
         if (_entered) revert ReentrantCall();
@@ -69,6 +75,32 @@ contract DirectLaunchFeeSplitter {
 
     function deposit() external payable nonReentrant {
         _split(msg.sender, msg.value);
+    }
+
+    /// @notice Starts a two-step creator payout-wallet change.
+    /// @dev Only future fees follow the new wallet. Deferred balances remain claimable by their original recipient.
+    function proposeCreatorWallet(address payable nextCreator) external nonReentrant {
+        if (msg.sender != creator) revert OnlyCreator();
+        if (nextCreator == address(0) || nextCreator == creator) revert InvalidConfiguration();
+        pendingCreator = nextCreator;
+        emit CreatorWalletChangeProposed(creator, nextCreator);
+    }
+
+    function cancelCreatorWalletChange() external nonReentrant {
+        if (msg.sender != creator) revert OnlyCreator();
+        address payable proposed = pendingCreator;
+        if (proposed == address(0)) revert InvalidConfiguration();
+        pendingCreator = payable(address(0));
+        emit CreatorWalletChangeCancelled(creator, proposed);
+    }
+
+    /// @notice The nominated wallet must accept before any future creator fees are redirected.
+    function acceptCreatorWallet() external nonReentrant {
+        if (msg.sender != pendingCreator) revert OnlyPendingCreator();
+        address payable previous = creator;
+        creator = payable(msg.sender);
+        pendingCreator = payable(address(0));
+        emit CreatorWalletChanged(previous, msg.sender);
     }
 
     function claimDeferred() external nonReentrant {

@@ -30,6 +30,7 @@ interface IV6ForkVm {
     function deal(address account, uint256 balance) external;
     function roll(uint256 newHeight) external;
     function warp(uint256 newTimestamp) external;
+    function prank(address caller) external;
 }
 
 contract V6ForkLegacyIdentity {
@@ -152,6 +153,14 @@ contract V6MainnetForkTest {
         require(address(curve).balance == 0, "market retained ETH");
         require(token.balanceOf(address(curve)) == 0, "market retained tokens");
 
+        address nextCreator = address(0xCAFE);
+        splitter.proposeCreatorWallet(payable(nextCreator));
+        vm.prank(nextCreator);
+        splitter.acceptCreatorWallet();
+        require(splitter.creator() == nextCreator, "creator wallet rotation");
+        uint256 nextCreatorNativeBefore = nextCreator.balance;
+        uint256 nextCreatorTokensBefore = token.balanceOf(nextCreator);
+
         bytes32 poolIdValue = PoolId.unwrap(adapter.poolIds(tokenAddress));
         PoolKey memory key = PoolKey({
             currency0: Currency.wrap(address(0)),
@@ -200,6 +209,8 @@ contract V6MainnetForkTest {
             POOL_MANAGER, PoolId.wrap(poolIdValue), address(adapter), tickLower, tickUpper, bytes32(0)
         );
         require(nativeFees != 0 && tokenFees != 0, "both fee currencies not collected");
+        require(nextCreator.balance > nextCreatorNativeBefore, "new creator missed native V4 fees");
+        require(token.balanceOf(nextCreator) > nextCreatorTokensBefore, "new creator missed token V4 fees");
         require(splitter.totalReceived() >= nativeFees, "native V4 fees not routed");
         require(splitter.totalTokenReceived(tokenAddress) == tokenFees, "token V4 fees not routed");
         require(address(collector).balance == 0 && token.balanceOf(address(collector)) == 0, "collector redirected fees");
