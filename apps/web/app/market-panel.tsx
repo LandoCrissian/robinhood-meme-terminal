@@ -18,6 +18,16 @@ const marketAbi = [
   { type: "function", name: "graduationTarget", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] },
   { type: "function", name: "progressBps", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] },
   { type: "function", name: "graduated", stateMutability: "view", inputs: [], outputs: [{ type: "bool" }] },
+  { type: "function", name: "fairStartActive", stateMutability: "view", inputs: [], outputs: [{ type: "bool" }] },
+  { type: "function", name: "fairStartPurchased", stateMutability: "view", inputs: [{ name: "wallet", type: "address" }], outputs: [{ type: "uint256" }] },
+  { type: "error", name: "TradingNotOpen", inputs: [] },
+  { type: "error", name: "FairStartRecipientMismatch", inputs: [] },
+  { type: "error", name: "FairStartTransactionLimit", inputs: [] },
+  { type: "error", name: "FairStartWalletLimit", inputs: [] },
+  { type: "error", name: "FairStartBlockLimit", inputs: [] },
+  { type: "error", name: "MarketGraduated", inputs: [] },
+  { type: "error", name: "SlippageExceeded", inputs: [] },
+  { type: "error", name: "InsufficientInventory", inputs: [] },
   { type: "event", name: "Trade", anonymous: false, inputs: [{ name: "trader", type: "address", indexed: true }, { name: "recipient", type: "address", indexed: true }, { name: "isBuy", type: "bool", indexed: true }, { name: "tokenAmount", type: "uint256", indexed: false }, { name: "ethAmount", type: "uint256", indexed: false }, { name: "feeAmount", type: "uint256", indexed: false }, { name: "virtualEthReserve", type: "uint256", indexed: false }, { name: "virtualTokenReserve", type: "uint256", indexed: false }, { name: "realEthReserve", type: "uint256", indexed: false }] }
 ] as const;
 
@@ -160,6 +170,8 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply }: { tokenAddres
   const graduationTarget = useReadContract({ address: target, abi: marketAbi, functionName: "graduationTarget", chainId: activeChain.id, query: { enabled, refetchInterval: 5_000 } });
   const progress = useReadContract({ address: target, abi: marketAbi, functionName: "progressBps", chainId: activeChain.id, query: { enabled, refetchInterval: 5_000 } });
   const graduated = useReadContract({ address: target, abi: marketAbi, functionName: "graduated", chainId: activeChain.id, query: { enabled, refetchInterval: 5_000 } });
+  const fairStartActive = useReadContract({ address: target, abi: marketAbi, functionName: "fairStartActive", chainId: activeChain.id, query: { enabled, refetchInterval: 5_000 } });
+  const fairStartPurchased = useReadContract({ address: target, abi: marketAbi, functionName: "fairStartPurchased", args: [account ?? ZERO], chainId: activeChain.id, query: { enabled: Boolean(account && market), refetchInterval: 5_000 } });
   const balance = useReadContract({ address: tokenAddress, abi: tokenTradeAbi, functionName: "balanceOf", args: [account ?? ZERO], chainId: activeChain.id, query: { enabled: Boolean(account), refetchInterval: 5_000 } });
   const walletBalance = useBalance({ address: account, chainId: activeChain.id, query: { enabled: Boolean(account), refetchInterval: 5_000 } });
   const allowance = useReadContract({ address: tokenAddress, abi: tokenTradeAbi, functionName: "allowance", args: [account ?? ZERO, target], chainId: activeChain.id, query: { enabled: Boolean(account && market), refetchInterval: 5_000 } });
@@ -178,6 +190,15 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply }: { tokenAddres
   const sellValueUsd = ethUsd === undefined ? undefined : Number(formatEther(sellOut)) * ethUsd;
   const buyFee = buyQuote.data?.[1] ?? 0n;
   const sellFee = sellQuote.data?.[1] ?? 0n;
+  const fairStartMaxTx = totalSupply * 50n / 10_000n;
+  const fairStartMaxWallet = totalSupply * 150n / 10_000n;
+  const fairStartTxExceeded = Boolean(fairStartActive.data && mode === "buy" && buyOut > fairStartMaxTx);
+  const fairStartWalletExceeded = Boolean(fairStartActive.data && mode === "buy" && (fairStartPurchased.data ?? 0n) + buyOut > fairStartMaxWallet);
+  const fairStartMessage = fairStartTxExceeded
+    ? `Fair Start limits each buy to ${Number(formatUnits(fairStartMaxTx, 18)).toLocaleString()} ${symbol}. Choose a smaller amount.`
+    : fairStartWalletExceeded
+      ? `This wallet has reached the temporary ${Number(formatUnits(fairStartMaxWallet, 18)).toLocaleString()} ${symbol} Fair Start limit.`
+      : undefined;
   const estimatedNetworkFeeWei = preflight.status === "ready" && preflight.gas && preflight.gasPrice ? preflight.gas * preflight.gasPrice : undefined;
   const estimatedNetworkFeeUsd = estimatedNetworkFeeWei !== undefined && ethUsd !== undefined ? Number(formatEther(estimatedNetworkFeeWei)) * ethUsd : undefined;
   const chartPoints = useMemo<PricePoint[]>(() => [...recentTrades].reverse().flatMap((trade) => trade.virtualTokenReserve > 0n ? [{ blockNumber: trade.blockNumber, priceWei: trade.virtualEthReserve * 10n ** 18n / trade.virtualTokenReserve, side: trade.isBuy ? "buy" : "sell" }] : []), [recentTrades]);
@@ -190,6 +211,10 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply }: { tokenAddres
     const hasOrder = mode === "buy" ? ethIn > 0n && buyOut > 0n : tokensIn > 0n && sellOut > 0n;
     if (!hasOrder) {
       setPreflight({ status: "idle" });
+      return;
+    }
+    if (fairStartMessage) {
+      setPreflight({ status: "error", message: fairStartMessage });
       return;
     }
     let cancelled = false;
@@ -211,9 +236,19 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply }: { tokenAddres
         } catch (cause) {
           if (cancelled) return;
           const detail = cause instanceof Error ? cause.message : "";
-          const message = /insufficient funds/i.test(detail)
-            ? "This wallet needs enough ETH for the order and its network fee."
-            : "This order would fail onchain. Check the amount, balance, and market status.";
+          const message = /FairStartTransactionLimit/i.test(detail)
+            ? `Fair Start limits each buy to ${Number(formatUnits(fairStartMaxTx, 18)).toLocaleString()} ${symbol}. Choose a smaller amount.`
+            : /FairStartWalletLimit/i.test(detail)
+              ? `This wallet has reached the temporary ${Number(formatUnits(fairStartMaxWallet, 18)).toLocaleString()} ${symbol} Fair Start limit.`
+              : /FairStartBlockLimit/i.test(detail)
+                ? "Fair Start allows one buy per block. Wait about 15 seconds, then try again."
+                : /TradingNotOpen/i.test(detail)
+                  ? "Trading opens automatically after the short Fair Start delay."
+                  : /MarketGraduated/i.test(detail)
+                    ? "This curve has graduated. Trading continues on the DEX."
+                    : /insufficient funds/i.test(detail)
+                      ? "This wallet needs enough ETH for the order and its network fee."
+                      : "This order could not be simulated. Refresh the quote, then try a smaller amount.";
           setPreflight({ status: "error", message });
         }
       })();
@@ -222,12 +257,12 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply }: { tokenAddres
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [account, buyOut, ethIn, graduated.data, market, mode, needsApproval, publicClient, sellOut, tokenAddress, tokensIn]);
+  }, [account, buyOut, ethIn, fairStartMaxTx, fairStartMaxWallet, fairStartMessage, graduated.data, market, mode, needsApproval, publicClient, sellOut, symbol, tokenAddress, tokensIn]);
 
   useEffect(() => {
     if (!receipt.isSuccess) return;
     if (lastAction !== "approve") setTradeMessage(undefined);
-    void Promise.all([buyQuote.refetch(), sellQuote.refetch(), reserve.refetch(), virtualEth.refetch(), virtualTokens.refetch(), graduationTarget.refetch(), progress.refetch(), graduated.refetch(), balance.refetch(), walletBalance.refetch(), allowance.refetch()]);
+    void Promise.all([buyQuote.refetch(), sellQuote.refetch(), reserve.refetch(), virtualEth.refetch(), virtualTokens.refetch(), graduationTarget.refetch(), progress.refetch(), graduated.refetch(), fairStartActive.refetch(), fairStartPurchased.refetch(), balance.refetch(), walletBalance.refetch(), allowance.refetch()]);
   }, [receipt.isSuccess]);
 
   useEffect(() => {
@@ -280,6 +315,7 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply }: { tokenAddres
         <div><span>Market reserve</span><strong>{formatEth(reserve.data ?? 0n, 7)} ETH</strong></div>
         <small>{isMainnetRelease ? graduated.data ? "Graduated to Uniswap V4. Curve trading is closed; DEX routing is next." : `${Number(progress.data ?? 0n) / 100}% toward automatic Uniswap V4 graduation (${formatEth(graduationTarget.data ?? 0n, 4)} ETH target).` : "DEX migration is disabled in this testnet alpha. Launching, curve trading, and fee accounting remain live."}</small>
       </div>
+      {fairStartActive.data && <div className="callout"><strong>Fair Start anti-sniper protection is active</strong><span>Maximum {Number(formatUnits(fairStartMaxTx, 18)).toLocaleString()} {symbol} per buy and {Number(formatUnits(fairStartMaxWallet, 18)).toLocaleString()} {symbol} per wallet. Only one buy per block; smaller orders may be required temporarily.</span></div>}
       <PriceHistoryChart points={chartPoints} symbol={symbol} />
       {!isConnected && <details className="starterGuide" open>
         <summary><span>New to Robinhood Chain?</span><small>3 simple steps</small></summary>
