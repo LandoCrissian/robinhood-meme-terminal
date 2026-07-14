@@ -4,6 +4,9 @@ pragma solidity ^0.8.26;
 import {LowCostMemeLaunchFactoryV5} from "../src/LowCostMemeLaunchFactoryV5.sol";
 import {ProtocolRevenueRouterV2} from "../src/ProtocolRevenueRouterV2.sol";
 import {PurposeRewardsController} from "../src/PurposeRewardsController.sol";
+import {ExpandableGovernance} from "../src/ExpandableGovernance.sol";
+import {ProtocolPurposeVault} from "../src/ProtocolPurposeVault.sol";
+import {VersionedFactoryRegistry} from "../src/VersionedFactoryRegistry.sol";
 import {V4GraduationAdapter} from "../src/V4GraduationAdapter.sol";
 import {V5GraduationHook} from "../src/V5GraduationHook.sol";
 import {MainnetReleaseConfig as Config} from "./MainnetReleaseConfig.sol";
@@ -18,21 +21,13 @@ interface UpgradeVm {
     function stopBroadcast() external;
 }
 
-/// @notice Deploys the corrected V5 stack without changing registry state or moving funds.
-/// @dev Registry proposal and activation remain separate 2-of-3 governance actions.
+/// @notice Deploys the corrected V5 stack under expandable single-wallet governance.
 contract DeployMainnetV5Upgrade {
     UpgradeVm private constant vm = UpgradeVm(address(uint160(uint256(keccak256("hevm cheat code")))));
 
     address private constant LEGACY_FACTORY = 0x88b86F10D874C2e3C8CfE63161ffa969f3273Cd4;
-    address private constant REWARDS_GOVERNANCE = 0xE39CE3259d8E79628aFA537e83631b51F74f7416;
-
-    address[5] private PROTOCOL_DESTINATIONS = [
-        0x66f589E759b088A070a557e6c4487D18993E923E,
-        0x36D17cD171D54ff4e916aF1aCaFF8A4D54b0b390,
-        0x9407983a579C160C16BE2a338280109cFA833394,
-        0x5cDaaac5880071b84B47a78bfF3dCE97FBA6Ff87,
-        0xd3dadC00884B60bb1Ed945ae5ec5C27e0295B2bE
-    ];
+    address private constant INITIAL_GOVERNANCE_SIGNER = 0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA;
+    bytes32 private constant VERSION = keccak256("RMT_FACTORY_V5");
 
     error WrongChain(uint256 actualChainId);
     error MissingContract(address account);
@@ -41,7 +36,8 @@ contract DeployMainnetV5Upgrade {
     event V5UpgradeDeployed(
         address indexed factory,
         address indexed revenueRouter,
-        address indexed rewardsController,
+        address indexed registry,
+        address governance,
         address adapter,
         address hook
     );
@@ -49,9 +45,6 @@ contract DeployMainnetV5Upgrade {
     function run() external {
         if (block.chainid != Config.CHAIN_ID) revert WrongChain(block.chainid);
         if (LEGACY_FACTORY.code.length == 0) revert MissingContract(LEGACY_FACTORY);
-        for (uint256 i; i < PROTOCOL_DESTINATIONS.length; ++i) {
-            if (PROTOCOL_DESTINATIONS[i].code.length == 0) revert MissingContract(PROTOCOL_DESTINATIONS[i]);
-        }
 
         uint256 privateKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
         address deployer = vm.addr(privateKey);
@@ -61,14 +54,20 @@ contract DeployMainnetV5Upgrade {
             HookMiner.find(Config.CREATE2_DEPLOYER, flags, type(V5GraduationHook).creationCode, constructorArgs);
 
         vm.startBroadcast(privateKey);
+        ExpandableGovernance governance = new ExpandableGovernance(INITIAL_GOVERNANCE_SIGNER, 1 days);
+        bytes32[5] memory purposes = [keccak256("PROTOCOL_TREASURY"), keccak256("BUYBACK_RESERVE"), keccak256("GRADUATION_ASSISTANCE"), keccak256("REFERRAL_RESERVE"), keccak256("ECOSYSTEM_GROWTH")];
+        address[5] memory destinations;
+        for (uint256 i; i < destinations.length; ++i) {
+            destinations[i] = address(new ProtocolPurposeVault(address(governance), purposes[i]));
+        }
         V5GraduationHook hook = new V5GraduationHook{salt: salt}(IPoolManager(Config.POOL_MANAGER), deployer);
         V4GraduationAdapter adapter = new V4GraduationAdapter(
             IPoolManager(Config.POOL_MANAGER), hook, Config.V4_POOL_FEE, Config.V4_TICK_SPACING
         );
         hook.bindAdapter(address(adapter));
-        ProtocolRevenueRouterV2 router = new ProtocolRevenueRouterV2(PROTOCOL_DESTINATIONS);
+        ProtocolRevenueRouterV2 router = new ProtocolRevenueRouterV2(destinations);
         PurposeRewardsController controller =
-            new PurposeRewardsController(deployer, REWARDS_GOVERNANCE, Config.REWARD_RELEASE_DELAY);
+            new PurposeRewardsController(deployer, address(governance), Config.REWARD_RELEASE_DELAY);
         LowCostMemeLaunchFactoryV5 factory = new LowCostMemeLaunchFactoryV5(
             address(adapter),
             Config.MARKET_FEE_BPS,
@@ -81,19 +80,23 @@ contract DeployMainnetV5Upgrade {
         );
         adapter.bindFactory(address(factory));
         controller.bindFactory(address(factory));
+        VersionedFactoryRegistry registry =
+            new VersionedFactoryRegistry(address(governance), Config.FACTORY_ACTIVATION_DELAY, address(factory), VERSION);
         vm.stopBroadcast();
 
         if (
             address(hook) != expectedHook || hook.adapter() != address(adapter) || adapter.factory() != address(factory)
                 || factory.graduationAdapter() != address(adapter) || factory.platformTreasury() != address(router)
                 || factory.rewardsController() != address(controller) || controller.factory() != address(factory)
-                || controller.governance() != REWARDS_GOVERNANCE || factory.legacyIdentityFactory() != LEGACY_FACTORY
+                || controller.governance() != address(governance) || factory.legacyIdentityFactory() != LEGACY_FACTORY
                 || factory.SETTLEMENT_VERSION() != 2
+                || registry.activeFactory() != address(factory) || registry.governance() != address(governance)
+                || !governance.isSigner(INITIAL_GOVERNANCE_SIGNER) || governance.threshold() != 1
         ) revert BindingVerificationFailed();
-        for (uint256 i; i < PROTOCOL_DESTINATIONS.length; ++i) {
-            if (router.recipients(i) != PROTOCOL_DESTINATIONS[i]) revert BindingVerificationFailed();
+        for (uint256 i; i < destinations.length; ++i) {
+            if (router.recipients(i) != destinations[i]) revert BindingVerificationFailed();
         }
 
-        emit V5UpgradeDeployed(address(factory), address(router), address(controller), address(adapter), address(hook));
+        emit V5UpgradeDeployed(address(factory), address(router), address(registry), address(governance), address(adapter), address(hook));
     }
 }
