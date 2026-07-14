@@ -15,12 +15,28 @@ function formatPrice(value: number) {
   return value.toLocaleString(undefined, { maximumFractionDigits: 9 });
 }
 
-export function PriceHistoryChart({ points, symbol }: { points: PricePoint[]; symbol: string }) {
+function formatUsd(value?: number) {
+  if (value === undefined || !Number.isFinite(value)) return "Unavailable";
+  if (value > 0 && value < 0.01) return `$${value.toExponential(2)}`;
+  return value.toLocaleString(undefined, { style: "currency", currency: "USD", maximumFractionDigits: 2 });
+}
+
+export function PriceHistoryChart({
+  points,
+  symbol,
+  ethUsd,
+  marketCapUsd
+}: {
+  points: PricePoint[];
+  symbol: string;
+  ethUsd?: number;
+  marketCapUsd?: number;
+}) {
   if (points.length < 2) {
     return (
       <div className="priceChart emptyPriceChart">
         <div>
-          <p className="eyebrow">ONCHAIN PRICE</p>
+          <p className="eyebrow">LIVE MARKET</p>
           <h3>Price history</h3>
         </div>
         <p>Two confirmed trades will create the first live chart.</p>
@@ -48,20 +64,24 @@ export function PriceHistoryChart({ points, symbol }: { points: PricePoint[]; sy
   const first = prices[0] ?? latest;
   const change = first > 0 ? ((latest - first) / first) * 100 : 0;
   const isPositive = change >= 0;
+  const latestUsd = ethUsd === undefined ? undefined : latest * ethUsd;
 
   return (
     <div className="priceChart">
       <div className="priceChartHeader">
         <div>
-          <p className="eyebrow">ONCHAIN PRICE</p>
-          <h3>{formatPrice(latest)} {isMainnetRelease ? "ETH" : "test ETH"}</h3>
-          <small>per {symbol}</small>
+          <p className="eyebrow">LIVE USD PRICE</p>
+          <h3>{latestUsd === undefined ? `${formatPrice(latest)} ${isMainnetRelease ? "ETH" : "test ETH"}` : formatUsd(latestUsd)}</h3>
+          <small>
+            {marketCapUsd === undefined ? `per ${symbol}` : `Market cap ${formatUsd(marketCapUsd)}`}
+            {latestUsd !== undefined && <> · {formatPrice(latest)} {isMainnetRelease ? "ETH" : "test ETH"} per {symbol}</>}
+          </small>
         </div>
         <span className={isPositive ? "priceChange positive" : "priceChange negative"}>
           {isPositive ? "+" : ""}{change.toFixed(2)}%
         </span>
       </div>
-      <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label={`${symbol} onchain price history across ${points.length} recent trades`}>
+      <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label={`${symbol} USD price history across ${points.length} recent trades`}>
         <defs>
           <linearGradient id="priceArea" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="#48ed6d" stopOpacity="0.28" />
