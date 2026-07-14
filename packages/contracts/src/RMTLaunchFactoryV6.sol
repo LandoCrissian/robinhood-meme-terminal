@@ -61,6 +61,7 @@ contract RMTLaunchFactoryV6 is IRMTLaunchFactoryV6 {
         uint16 fairStartMaxTxBps,
         uint16 fairStartMaxWalletBps,
         uint256 graduationTarget,
+        bool officialMigration,
         string name,
         string symbol,
         string metadataURI
@@ -250,6 +251,7 @@ contract RMTLaunchFactoryV6 is IRMTLaunchFactoryV6 {
             policy.fairStartMaxTxBps,
             policy.fairStartMaxWalletBps,
             policy.graduationTarget,
+            officialMigration,
             name,
             symbol,
             metadataURI

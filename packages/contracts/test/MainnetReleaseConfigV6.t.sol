@@ -26,5 +26,22 @@ contract MainnetReleaseConfigV6Test {
         );
         require(Config.CURVE_FEE_BPS == 100, "curve fee");
         require(Config.POST_GRADUATION_FEE_BPS == 50, "post graduation fee");
+        require(Config.V4_POOL_FEE == uint24(Config.POST_GRADUATION_FEE_BPS) * 100, "V4 fee mismatch");
+        require(Config.V4_TICK_SPACING == 200, "V4 tick spacing");
+    }
+
+    function testGraduationValuationAndPoolPriceStayAligned() public pure {
+        uint256 supply = 1_000_000_000 ether;
+        uint256 invariant = Config.INITIAL_VIRTUAL_ETH_RESERVE * Config.INITIAL_VIRTUAL_TOKEN_RESERVE;
+        uint256 virtualEthAtGraduation = Config.INITIAL_VIRTUAL_ETH_RESERVE + Config.GRADUATION_TARGET;
+        uint256 virtualTokensAtGraduation = invariant / virtualEthAtGraduation;
+        uint256 tokensSold = Config.INITIAL_VIRTUAL_TOKEN_RESERVE - virtualTokensAtGraduation;
+        uint256 poolTokens = supply - tokensSold;
+
+        uint256 curveFdvEth = (virtualEthAtGraduation * supply) / virtualTokensAtGraduation;
+        uint256 poolFdvEth = (Config.GRADUATION_TARGET * supply) / poolTokens;
+        require(curveFdvEth >= 17 ether && curveFdvEth <= 18 ether, "graduation valuation");
+        uint256 difference = curveFdvEth > poolFdvEth ? curveFdvEth - poolFdvEth : poolFdvEth - curveFdvEth;
+        require((difference * 10_000) / curveFdvEth <= 50, "graduation price discontinuity");
     }
 }

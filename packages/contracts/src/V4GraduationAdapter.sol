@@ -200,22 +200,34 @@ contract V4GraduationAdapter is IV6GraduationAdapter, IUnlockCallback {
         if (feeSplitter == address(0)) revert FeeRoutingNotConfigured();
 
         uint256 nativeBalanceBefore = address(this).balance;
+        // The launched token is fixed by the factory and this entire collection path is guarded by nonReentrant.
+        // slither-disable-next-line reentrancy-balance
         uint256 tokenBalanceBefore = IERC20GraduationToken(token).balanceOf(address(this));
         PoolKey memory key = _poolKey(token);
         int24 tickLower = TickMath.minUsableTick(tickSpacing);
         int24 tickUpper = TickMath.maxUsableTick(tickSpacing);
+        // The immutable PoolManager callback can only reenter unlockCallback, which accepts only PoolManager.
+        // slither-disable-next-line reentrancy-balance
         bytes memory result = poolManager.unlock(abi.encode(ACTION_COLLECT, key, tickLower, tickUpper));
         (nativeAmount, tokenAmount) = abi.decode(result, (uint256, uint256));
 
+        // Recipient callbacks cannot reenter collectFees because of nonReentrant.
+        // slither-disable-next-line reentrancy-balance
         if (nativeAmount != 0) DirectLaunchFeeSplitter(payable(feeSplitter)).deposit{value: nativeAmount}();
         if (tokenAmount != 0) {
+            // The token is the factory-created fixed-supply implementation and collectFees is nonReentrant.
+            // slither-disable-next-line reentrancy-balance
             if (!IERC20GraduationToken(token).transfer(feeSplitter, tokenAmount)) revert TokenTransferFailed();
+            // The splitter has its own reentrancy guard and is permanently bound to this token.
+            // slither-disable-next-line reentrancy-balance
             DirectLaunchFeeSplitter(payable(feeSplitter)).depositToken(token, tokenAmount);
         }
-        if (
-            address(this).balance != nativeBalanceBefore
-                || IERC20GraduationToken(token).balanceOf(address(this)) != tokenBalanceBefore
-        ) {
+        // slither-disable-next-line reentrancy-balance
+        uint256 nativeBalanceAfter = address(this).balance;
+        // This is a post-call conservation assertion, not state used to authorize another external call.
+        // slither-disable-next-line reentrancy-balance
+        uint256 tokenBalanceAfter = IERC20GraduationToken(token).balanceOf(address(this));
+        if (nativeBalanceAfter != nativeBalanceBefore || tokenBalanceAfter != tokenBalanceBefore) {
             revert InvalidSettlement();
         }
 

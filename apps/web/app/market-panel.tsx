@@ -21,6 +21,8 @@ const marketAbi = [
   { type: "function", name: "fairStartActive", stateMutability: "view", inputs: [], outputs: [{ type: "bool" }] },
   { type: "function", name: "tradingOpensAtBlock", stateMutability: "view", inputs: [], outputs: [{ type: "uint64" }] },
   { type: "function", name: "fairStartEndsAtBlock", stateMutability: "view", inputs: [], outputs: [{ type: "uint64" }] },
+  { type: "function", name: "fairStartMaxTxBps", stateMutability: "view", inputs: [], outputs: [{ type: "uint16" }] },
+  { type: "function", name: "fairStartMaxWalletBps", stateMutability: "view", inputs: [], outputs: [{ type: "uint16" }] },
   { type: "function", name: "fairStartPurchased", stateMutability: "view", inputs: [{ name: "wallet", type: "address" }], outputs: [{ type: "uint256" }] },
   { type: "error", name: "TradingNotOpen", inputs: [] },
   { type: "error", name: "FairStartRecipientMismatch", inputs: [] },
@@ -184,6 +186,8 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply, creator }: { to
   const fairStartActive = useReadContract({ address: target, abi: marketAbi, functionName: "fairStartActive", chainId: activeChain.id, query: { enabled, refetchInterval: 5_000 } });
   const tradingOpensAt = useReadContract({ address: target, abi: marketAbi, functionName: "tradingOpensAtBlock", chainId: activeChain.id, query: { enabled, refetchInterval: 5_000 } });
   const fairStartEndsAt = useReadContract({ address: target, abi: marketAbi, functionName: "fairStartEndsAtBlock", chainId: activeChain.id, query: { enabled, refetchInterval: 5_000 } });
+  const fairStartMaxTxBps = useReadContract({ address: target, abi: marketAbi, functionName: "fairStartMaxTxBps", chainId: activeChain.id, query: { enabled, retry: false } });
+  const fairStartMaxWalletBps = useReadContract({ address: target, abi: marketAbi, functionName: "fairStartMaxWalletBps", chainId: activeChain.id, query: { enabled, retry: false } });
   const fairStartPurchased = useReadContract({ address: target, abi: marketAbi, functionName: "fairStartPurchased", args: [account ?? ZERO], chainId: activeChain.id, query: { enabled: Boolean(account && market), refetchInterval: 5_000 } });
   const currentBlock = useBlockNumber({ chainId: activeChain.id, watch: true });
   const balance = useReadContract({ address: tokenAddress, abi: tokenTradeAbi, functionName: "balanceOf", args: [account ?? ZERO], chainId: activeChain.id, query: { enabled: Boolean(account), refetchInterval: 5_000 } });
@@ -207,8 +211,8 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply, creator }: { to
   const sellValueUsd = ethUsd === undefined ? undefined : Number(formatEther(sellOut)) * ethUsd;
   const buyFee = buyQuote.data?.[1] ?? 0n;
   const sellFee = sellQuote.data?.[1] ?? 0n;
-  const fairStartMaxTx = totalSupply * 50n / 10_000n;
-  const fairStartMaxWallet = totalSupply * 150n / 10_000n;
+  const fairStartMaxTx = totalSupply * BigInt(fairStartMaxTxBps.data ?? 50) / 10_000n;
+  const fairStartMaxWallet = totalSupply * BigInt(fairStartMaxWalletBps.data ?? 150) / 10_000n;
   const fairStartBought = fairStartPurchased.data ?? 0n;
   const fairStartWalletRemaining = fairStartMaxWallet > fairStartBought ? fairStartMaxWallet - fairStartBought : 0n;
   const fairStartNextBuyLimit = fairStartMaxTx < fairStartWalletRemaining ? fairStartMaxTx : fairStartWalletRemaining;

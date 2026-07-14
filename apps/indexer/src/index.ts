@@ -73,12 +73,24 @@ type LaunchArgs = {
   token: Address;
   creator: Address;
   market: Address;
-  rewardVault: Address;
+  feeSplitter: Address;
   graduationPoolId: `0x${string}`;
+  policyId: `0x${string}`;
+  policyVersion: number;
+  curveFeeBps: number;
+  creatorFeeShareBps: number;
+  protocolFeeShareBps: number;
+  postGraduationFeeBps: number;
+  fairStartEnabled: boolean;
+  fairStartDelayBlocks: bigint;
+  fairStartDurationBlocks: bigint;
+  fairStartMaxTxBps: number;
+  fairStartMaxWalletBps: number;
+  graduationTarget: bigint;
+  officialMigration: boolean;
   name: string;
   symbol: string;
   metadataURI: string;
-  rewardBps: readonly [number, number, number, number, number];
 };
 
 type TradeArgs = {
@@ -248,6 +260,11 @@ async function processRange(fromBlock: bigint, toBlock: bigint) {
     .map((log) => asConfirmed<LaunchArgs>(log))
     .filter((log): log is ConfirmedLog<LaunchArgs> => log !== null);
   for (const launch of confirmedLaunches) marketSet.add(lower(launch.args.market));
+  const launchTimestamps = new Map<bigint, string>();
+  await Promise.all([...new Set(confirmedLaunches.map((launch) => launch.blockNumber))].map(async (blockNumber) => {
+    const block = await rpc.getBlock({ blockNumber });
+    launchTimestamps.set(blockNumber, new Date(Number(block.timestamp) * 1_000).toISOString());
+  }));
   const markets = [...marketSet].map((market) => getAddress(market));
   const marketLogs = markets.length
     ? await readMarketLogs(markets, fromBlock, toBlock)
@@ -266,16 +283,25 @@ async function processRange(fromBlock: bigint, toBlock: bigint) {
         `INSERT INTO launches (
           token, launch_id, creator, market, reward_vault, graduation_pool_id,
           name, symbol, supply, metadata_uri, creator_bps, community_bps,
-          trader_bps, liquidity_bps, platform_bps, transaction_hash, block_number, log_index
+          trader_bps, liquidity_bps, platform_bps, transaction_hash, block_number, log_index,
+          protocol_version, policy_id, policy_version, curve_fee_bps, protocol_fee_share_bps,
+          post_graduation_fee_bps, graduation_target, fair_start_enabled, fair_start_delay_blocks,
+          fair_start_duration_blocks, fair_start_max_tx_bps, fair_start_max_wallet_bps,
+          official_migration, created_at
         ) VALUES (
-          $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18
+          $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,
+          $19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32
         ) ON CONFLICT (transaction_hash, log_index) DO NOTHING`,
         [
           lower(args.token), args.launchId.toString(), lower(args.creator), lower(args.market),
-          lower(args.rewardVault), args.graduationPoolId, args.name, args.symbol,
-          FIXED_TOKEN_SUPPLY.toString(), args.metadataURI, Number(args.rewardBps[0]), Number(args.rewardBps[1]),
-          Number(args.rewardBps[2]), Number(args.rewardBps[3]), Number(args.rewardBps[4]),
-          log.transactionHash, log.blockNumber.toString(), log.logIndex
+          lower(args.feeSplitter), args.graduationPoolId, args.name, args.symbol,
+          FIXED_TOKEN_SUPPLY.toString(), args.metadataURI, Number(args.creatorFeeShareBps), 0,
+          0, 0, Number(args.protocolFeeShareBps), log.transactionHash, log.blockNumber.toString(), log.logIndex,
+          6, args.policyId, Number(args.policyVersion), Number(args.curveFeeBps), Number(args.protocolFeeShareBps),
+          Number(args.postGraduationFeeBps), args.graduationTarget.toString(), args.fairStartEnabled,
+          args.fairStartDelayBlocks.toString(), args.fairStartDurationBlocks.toString(),
+          Number(args.fairStartMaxTxBps), Number(args.fairStartMaxWalletBps), args.officialMigration,
+          launchTimestamps.get(log.blockNumber)
         ]
       );
     }

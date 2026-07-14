@@ -1,7 +1,7 @@
 import { createPublicClient, getAddress, http, isAddress, type Address } from "viem";
 import {
   getFactoryAddress,
-  memeLaunchFactoryAbi,
+  rmtLaunchFactoryV6Abi,
   publicMainnetVersionRegistryAddress,
   versionRegistryAbi
 } from "../contracts";
@@ -112,8 +112,8 @@ export async function readFreshLaunches(limit = 25): Promise<LaunchFeedItem[]> {
     const fromBlock = candidate < requestedStart ? requestedStart : candidate;
     const logs = await publicClient.getContractEvents({
       address: factoryAddress,
-      abi: memeLaunchFactoryAbi,
-      eventName: "TokenLaunched",
+      abi: rmtLaunchFactoryV6Abi,
+      eventName: "TokenLaunchedV6",
       fromBlock,
       toBlock: cursor,
       strict: true
@@ -124,11 +124,20 @@ export async function readFreshLaunches(limit = 25): Promise<LaunchFeedItem[]> {
       token: log.args.token,
       creator: log.args.creator,
       market: log.args.market,
-      rewardVault: log.args.rewardVault,
+      rewardVault: log.args.feeSplitter,
       name: log.args.name,
       symbol: log.args.symbol,
-      creatorBps: Number(log.args.rewardBps[0]),
-      communityBps: Number(log.args.rewardBps[1]),
+      creatorBps: Number(log.args.creatorFeeShareBps),
+      communityBps: 0,
+      protocolVersion: 6,
+      policyId: log.args.policyId,
+      policyVersion: Number(log.args.policyVersion),
+      curveFeeBps: Number(log.args.curveFeeBps),
+      protocolFeeShareBps: Number(log.args.protocolFeeShareBps),
+      postGraduationFeeBps: Number(log.args.postGraduationFeeBps),
+      graduationTarget: log.args.graduationTarget.toString(),
+      fairStartEnabled: log.args.fairStartEnabled,
+      officialMigration: log.args.officialMigration,
       transactionHash: log.transactionHash,
       blockNumber: log.blockNumber.toString(),
       metadataURI: log.args.metadataURI,

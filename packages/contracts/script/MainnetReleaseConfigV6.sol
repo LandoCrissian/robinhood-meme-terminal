@@ -31,6 +31,8 @@ library MainnetReleaseConfigV6 {
     uint16 internal constant CREATOR_FEE_SHARE_BPS = 7_000;
     uint16 internal constant PROTOCOL_FEE_SHARE_BPS = 3_000;
     uint16 internal constant POST_GRADUATION_FEE_BPS = 50;
+    uint24 internal constant V4_POOL_FEE = 5_000;
+    int24 internal constant V4_TICK_SPACING = 200;
 
     uint256 internal constant INITIAL_VIRTUAL_ETH_RESERVE = 0.3 ether;
     uint256 internal constant INITIAL_VIRTUAL_TOKEN_RESERVE = 1_017_500_000 ether;

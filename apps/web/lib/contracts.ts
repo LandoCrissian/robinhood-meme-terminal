@@ -57,6 +57,63 @@ export const memeLaunchFactoryAbi = [
   }
 ] as const;
 
+const launchPolicyComponents = [
+  { name: "policyId", type: "bytes32" },
+  { name: "policyVersion", type: "uint32" },
+  { name: "enabled", type: "bool" },
+  { name: "publiclySelectable", type: "bool" },
+  { name: "curveFeeBps", type: "uint16" },
+  { name: "creatorFeeShareBps", type: "uint16" },
+  { name: "protocolFeeShareBps", type: "uint16" },
+  { name: "postGraduationFeeBps", type: "uint16" },
+  { name: "graduationTarget", type: "uint256" },
+  { name: "fairStartMode", type: "uint8" },
+  { name: "fairStartDelayBlocks", type: "uint64" },
+  { name: "fairStartDurationBlocks", type: "uint64" },
+  { name: "fairStartMaxTxBps", type: "uint16" },
+  { name: "fairStartMaxWalletBps", type: "uint16" }
+] as const;
+
+export const rmtLaunchFactoryV6Abi = [
+  { type: "function", name: "protocolVersion", stateMutability: "pure", inputs: [], outputs: [{ type: "uint32" }] },
+  { type: "function", name: "launchesPaused", stateMutability: "view", inputs: [], outputs: [{ type: "bool" }] },
+  { type: "function", name: "defaultPolicyId", stateMutability: "view", inputs: [], outputs: [{ type: "bytes32" }] },
+  { type: "function", name: "getPolicy", stateMutability: "view", inputs: [{ name: "policyId", type: "bytes32" }], outputs: [{ name: "policy", type: "tuple", components: launchPolicyComponents }] },
+  { type: "function", name: "isNameUsed", stateMutability: "view", inputs: [{ name: "name", type: "string" }], outputs: [{ type: "bool" }] },
+  { type: "function", name: "isSymbolUsed", stateMutability: "view", inputs: [{ name: "symbol", type: "string" }], outputs: [{ type: "bool" }] },
+  { type: "function", name: "canMigrateOfficialIdentity", stateMutability: "view", inputs: [{ name: "launcher", type: "address" }, { name: "name", type: "string" }, { name: "symbol", type: "string" }], outputs: [{ type: "bool" }] },
+  { type: "function", name: "launch", stateMutability: "nonpayable", inputs: [{ name: "policyId", type: "bytes32" }, { name: "name", type: "string" }, { name: "symbol", type: "string" }, { name: "metadataURI", type: "string" }], outputs: [{ name: "token", type: "address" }, { name: "market", type: "address" }, { name: "rewardVault", type: "address" }] },
+  {
+    type: "event",
+    name: "TokenLaunchedV6",
+    anonymous: false,
+    inputs: [
+      { name: "launchId", type: "uint256", indexed: true },
+      { name: "token", type: "address", indexed: true },
+      { name: "creator", type: "address", indexed: true },
+      { name: "market", type: "address", indexed: false },
+      { name: "feeSplitter", type: "address", indexed: false },
+      { name: "graduationPoolId", type: "bytes32", indexed: false },
+      { name: "policyId", type: "bytes32", indexed: false },
+      { name: "policyVersion", type: "uint32", indexed: false },
+      { name: "curveFeeBps", type: "uint16", indexed: false },
+      { name: "creatorFeeShareBps", type: "uint16", indexed: false },
+      { name: "protocolFeeShareBps", type: "uint16", indexed: false },
+      { name: "postGraduationFeeBps", type: "uint16", indexed: false },
+      { name: "fairStartEnabled", type: "bool", indexed: false },
+      { name: "fairStartDelayBlocks", type: "uint64", indexed: false },
+      { name: "fairStartDurationBlocks", type: "uint64", indexed: false },
+      { name: "fairStartMaxTxBps", type: "uint16", indexed: false },
+      { name: "fairStartMaxWalletBps", type: "uint16", indexed: false },
+      { name: "graduationTarget", type: "uint256", indexed: false },
+      { name: "officialMigration", type: "bool", indexed: false },
+      { name: "name", type: "string", indexed: false },
+      { name: "symbol", type: "string", indexed: false },
+      { name: "metadataURI", type: "string", indexed: false }
+    ]
+  }
+] as const;
+
 export function getFactoryAddress(): Address | null {
   if (process.env.NEXT_PUBLIC_RMT_NETWORK === "mainnet") return publicMainnetFactoryAddress;
   const configured = process.env.NEXT_PUBLIC_FACTORY_ADDRESS;

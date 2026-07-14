@@ -42,6 +42,12 @@ contract UnauthorizedAdapterCaller {
         (success,) = address(adapter).call{value: 1 ether}(abi.encodeCall(adapter.graduate, (token, amount)));
     }
 
+    function collect(V4GraduationAdapter adapter, address token)
+        external returns (uint256 nativeAmount, uint256 tokenAmount)
+    {
+        return adapter.collectFees(token);
+    }
+
     receive() external payable {}
 }
 
@@ -217,7 +223,8 @@ contract V4GraduationAdapterTest {
             ""
         );
 
-        (uint256 nativeFees, uint256 tokenFees) = adapter.collectFees(address(token));
+        UnauthorizedAdapterCaller collector = new UnauthorizedAdapterCaller();
+        (uint256 nativeFees, uint256 tokenFees) = collector.collect(adapter, address(token));
         (uint128 liquidityAfter,,) = StateLibrary.getPositionInfo(
             IPoolManager(address(manager)), PoolId.wrap(poolIdValue), address(adapter), tickLower, tickUpper, bytes32(0)
         );
@@ -226,6 +233,8 @@ contract V4GraduationAdapterTest {
         require(tokenFees != 0, "token fees not collected");
         require(splitter.totalReceived() == nativeFees, "native fees not routed");
         require(splitter.totalTokenReceived(address(token)) == tokenFees, "token fees not routed");
+        require(address(collector).balance == 0, "collector redirected native fees");
+        require(token.balanceOf(address(collector)) == 0, "collector redirected token fees");
         require(liquidityAfter == liquidityBefore, "liquidity principal changed");
         require(liquidityAfter == adapter.lockedLiquidity(address(token)), "locked liquidity record mismatch");
         require(address(adapter).balance == 0, "adapter retained native fees");

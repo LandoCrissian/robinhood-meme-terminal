@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { type Address, type Hash } from "viem";
 import { usePublicClient } from "wagmi";
-import { memeLaunchFactoryAbi } from "./contracts";
+import { rmtLaunchFactoryV6Abi } from "./contracts";
 import { activeChain, activeFactoryStartBlock } from "./network";
 import { useFactoryAddress } from "./use-factory-address";
 
@@ -15,6 +15,13 @@ export type LaunchRecord = {
   rewardVault: Address;
   metadataURI: string;
   rewardBps: readonly [number, number, number, number, number];
+  policyId: Hash;
+  policyVersion: number;
+  curveFeeBps: number;
+  postGraduationFeeBps: number;
+  graduationTarget: bigint;
+  fairStartEnabled: boolean;
+  officialMigration: boolean;
   blockNumber: bigint;
   transactionHash: Hash | null;
 };
@@ -37,8 +44,8 @@ export function useLaunchRecord(tokenAddress: Address) {
         const fromBlock = candidate < activeFactoryStartBlock ? activeFactoryStartBlock : candidate;
         const logs = await publicClient.getContractEvents({
           address: factoryAddress,
-          abi: memeLaunchFactoryAbi,
-          eventName: "TokenLaunched",
+          abi: rmtLaunchFactoryV6Abi,
+          eventName: "TokenLaunchedV6",
           args: { token: tokenAddress },
           fromBlock,
           toBlock: cursor,
@@ -51,9 +58,16 @@ export function useLaunchRecord(tokenAddress: Address) {
             token: log.args.token,
             creator: log.args.creator,
             market: log.args.market,
-            rewardVault: log.args.rewardVault,
+            rewardVault: log.args.feeSplitter,
             metadataURI: log.args.metadataURI,
-            rewardBps: log.args.rewardBps.map(Number) as [number, number, number, number, number],
+            rewardBps: [Number(log.args.creatorFeeShareBps), 0, 0, 0, Number(log.args.protocolFeeShareBps)],
+            policyId: log.args.policyId,
+            policyVersion: Number(log.args.policyVersion),
+            curveFeeBps: Number(log.args.curveFeeBps),
+            postGraduationFeeBps: Number(log.args.postGraduationFeeBps),
+            graduationTarget: log.args.graduationTarget,
+            fairStartEnabled: log.args.fairStartEnabled,
+            officialMigration: log.args.officialMigration,
             blockNumber: log.blockNumber,
             transactionHash: log.transactionHash
           };

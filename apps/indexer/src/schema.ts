@@ -42,6 +42,21 @@ CREATE TABLE IF NOT EXISTS launches (
 );
 CREATE INDEX IF NOT EXISTS launches_block_idx ON launches (block_number DESC);
 
+ALTER TABLE launches ADD COLUMN IF NOT EXISTS protocol_version INTEGER NOT NULL DEFAULT 5;
+ALTER TABLE launches ADD COLUMN IF NOT EXISTS policy_id TEXT;
+ALTER TABLE launches ADD COLUMN IF NOT EXISTS policy_version INTEGER;
+ALTER TABLE launches ADD COLUMN IF NOT EXISTS curve_fee_bps INTEGER;
+ALTER TABLE launches ADD COLUMN IF NOT EXISTS protocol_fee_share_bps INTEGER;
+ALTER TABLE launches ADD COLUMN IF NOT EXISTS post_graduation_fee_bps INTEGER;
+ALTER TABLE launches ADD COLUMN IF NOT EXISTS graduation_target NUMERIC(78,0);
+ALTER TABLE launches ADD COLUMN IF NOT EXISTS fair_start_enabled BOOLEAN;
+ALTER TABLE launches ADD COLUMN IF NOT EXISTS fair_start_delay_blocks BIGINT;
+ALTER TABLE launches ADD COLUMN IF NOT EXISTS fair_start_duration_blocks BIGINT;
+ALTER TABLE launches ADD COLUMN IF NOT EXISTS fair_start_max_tx_bps INTEGER;
+ALTER TABLE launches ADD COLUMN IF NOT EXISTS fair_start_max_wallet_bps INTEGER;
+ALTER TABLE launches ADD COLUMN IF NOT EXISTS official_migration BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE launches ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ;
+
 CREATE TABLE IF NOT EXISTS trades (
   transaction_hash TEXT NOT NULL,
   log_index INTEGER NOT NULL,

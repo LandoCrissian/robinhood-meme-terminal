@@ -3,6 +3,7 @@ import {
   getFactoryAddress,
   publicMainnetFactoryAddress,
   publicMainnetVersionRegistryAddress,
+  rmtLaunchFactoryV6Abi,
   versionRegistryAbi
 } from "../contracts";
 import { activeChain, activeNetworkLabel, isMainnetRelease } from "../network";
@@ -24,6 +25,7 @@ const client = createPublicClient({
   transport: http(activeChain.rpcUrls.default.http[0], { retryCount: 2, timeout: 8_000 })
 });
 const V5_VERSION = keccak256(toHex("RMT_FACTORY_V5"));
+const V6_VERSION = keccak256(toHex("RMT_FACTORY_V6"));
 
 function check(key: SystemHealthCheck["key"], label: string, healthy: boolean, detail: string): SystemHealthCheck {
   return { key, label, state: healthy ? "operational" : "degraded", detail };
@@ -67,7 +69,10 @@ export async function readSystemHealth(): Promise<SystemHealthReport> {
       checks.push(check(
         "registry",
         "Version registry",
-        Boolean(registryCode && registryCode !== "0x") && factory === publicMainnetFactoryAddress,
+        Boolean(registryCode && registryCode !== "0x") && (
+          (factoryVersion === V5_VERSION && factory === publicMainnetFactoryAddress)
+            || factoryVersion === V6_VERSION
+        ),
         factory ? `Active factory ${factory.slice(0, 8)}…${factory.slice(-6)}` : "No active factory returned"
       ));
     } else {
@@ -75,6 +80,53 @@ export async function readSystemHealth(): Promise<SystemHealthReport> {
     }
 
     if (!factory) throw new Error("Active factory is unavailable.");
+
+    if (factoryVersion === V6_VERSION) {
+      const [bytecode, protocolVersion, launchCount, launchesPaused, defaultPolicyId] = await Promise.all([
+        client.getBytecode({ address: factory }),
+        client.readContract({ address: factory, abi: rmtLaunchFactoryV6Abi, functionName: "protocolVersion" }),
+        client.readContract({ address: factory, abi: factoryHealthAbi, functionName: "launchCount" }),
+        client.readContract({ address: factory, abi: rmtLaunchFactoryV6Abi, functionName: "launchesPaused" }),
+        client.readContract({ address: factory, abi: rmtLaunchFactoryV6Abi, functionName: "defaultPolicyId" })
+      ]);
+      const policy = await client.readContract({
+        address: factory,
+        abi: rmtLaunchFactoryV6Abi,
+        functionName: "getPolicy",
+        args: [defaultPolicyId]
+      });
+      checks.push(check(
+        "factory",
+        "V6 launch factory",
+        Boolean(bytecode && bytecode !== "0x") && protocolVersion === 6,
+        `${launchCount.toString()} V6 launch${launchCount === 1n ? "" : "es"} · launches ${launchesPaused ? "paused safely" : "open"}`
+      ));
+      const expectedEconomics = policy.enabled && policy.publiclySelectable
+        && policy.curveFeeBps === 100 && policy.creatorFeeShareBps === 7_000
+        && policy.protocolFeeShareBps === 3_000 && policy.graduationTarget === parseEther("2");
+      checks.push(check(
+        "economics",
+        "Immutable V6 launch economics",
+        expectedEconomics,
+        `${Number(policy.curveFeeBps) / 100}% curve fee · 70/30 creator/RMT split · ${formatEth(policy.graduationTarget)} ETH graduation`
+      ));
+      checks.push(check(
+        "graduation",
+        "Permanent post-graduation flywheel",
+        policy.postGraduationFeeBps === 50,
+        `${Number(policy.postGraduationFeeBps) / 100}% V4 pool fee · policy ${defaultPolicyId.slice(0, 10)}…`
+      ));
+      return {
+        ok: checks.every((item) => item.state === "operational"),
+        network: activeNetworkLabel,
+        chainId,
+        latestBlock: latestBlock.toString(),
+        blockAgeSeconds,
+        latencyMs: Date.now() - startedAt,
+        checkedAt,
+        checks
+      };
+    }
 
     const [bytecode, launchCount, feeBps, graduationTarget, adapter] = await Promise.all([
       client.getBytecode({ address: factory }),
@@ -147,4 +199,8 @@ export async function readSystemHealth(): Promise<SystemHealthReport> {
       checks
     };
   }
+}
+
+function formatEth(value: bigint) {
+  return Number(value) / 1e18;
 }
