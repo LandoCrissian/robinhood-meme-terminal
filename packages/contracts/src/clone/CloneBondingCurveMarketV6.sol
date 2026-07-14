@@ -118,6 +118,9 @@ contract CloneBondingCurveMarketV6 {
     ) external {
         if (_initialized) revert AlreadyInitialized();
         if (token_ == address(0) || feeSplitter_ == address(0) || graduationAdapter_ == address(0)) revert ZeroAddress();
+        if (token_.code.length == 0 || feeSplitter_.code.length == 0 || graduationAdapter_.code.length == 0) {
+            revert InvalidConfiguration();
+        }
         if (graduationPoolId_ == bytes32(0) || policyId_ == bytes32(0) || policyVersion_ == 0) revert InvalidConfiguration();
         if (feeBps_ >= BPS_DENOMINATOR || virtualEthReserve_ == 0 || virtualTokenReserve_ == 0 || graduationTarget_ == 0) {
             revert InvalidConfiguration();
@@ -255,6 +258,8 @@ contract CloneBondingCurveMarketV6 {
         liquidityMigrated = true;
         realEthReserve = 0;
         if (!token.approve(address(graduationAdapter), tokenAmount)) revert TokenTransferFailed();
+        // The factory initializes this clone atomically with a contract-validated adapter and an adapter-prepared pool.
+        // slither-disable-next-line arbitrary-send-eth
         (pool, liquidity) = graduationAdapter.graduate{value: ethAmount}(address(token), tokenAmount);
         if (pool == address(0) || liquidity == 0 || token.balanceOf(address(this)) != 0 || address(this).balance != 0) {
             revert InvalidMigration();
