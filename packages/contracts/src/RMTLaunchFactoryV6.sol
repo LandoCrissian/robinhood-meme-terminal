@@ -8,6 +8,7 @@ import {MinimalProxy} from "./libraries/MinimalProxy.sol";
 import {IGraduationAdapter} from "./interfaces/IGraduationAdapter.sol";
 import {IRMTLaunchFactoryV6} from "./interfaces/IRMTLaunchFactoryV6.sol";
 import {IRMTLaunchPolicyRegistry} from "./interfaces/IRMTLaunchPolicyRegistry.sol";
+import {OfficialRMTIdentityMigration} from "./OfficialRMTIdentityMigration.sol";
 
 interface IRMTLaunchGateView {
     function launchesPaused() external view returns (bool);
@@ -32,6 +33,7 @@ contract RMTLaunchFactoryV6 is IRMTLaunchFactoryV6 {
     address public immutable tokenImplementation;
     address public immutable feeSplitterImplementation;
     address public immutable legacyIdentityFactory;
+    OfficialRMTIdentityMigration public immutable officialIdentityMigration;
     uint256 public immutable initialVirtualEthReserve;
     uint256 public immutable initialVirtualTokenReserve;
 
@@ -63,6 +65,12 @@ contract RMTLaunchFactoryV6 is IRMTLaunchFactoryV6 {
         string metadataURI
     );
     event ProtectedIdentityReserved(bytes32 indexed nameHash, bytes32 indexed symbolHash);
+    event OfficialRMTMigrationLaunched(
+        uint256 indexed launchId,
+        address indexed token,
+        address indexed creator,
+        address migrationAuthority
+    );
 
     error InvalidConfiguration();
     error InvalidName();
@@ -81,13 +89,14 @@ contract RMTLaunchFactoryV6 is IRMTLaunchFactoryV6 {
         address policyRegistry_,
         uint256 initialVirtualEthReserve_,
         uint256 initialVirtualTokenReserve_,
-        address legacyIdentityFactory_
+        address legacyIdentityFactory_,
+        address officialLauncher_
     ) {
         if (
             launchGate_ == address(0) || launchGate_.code.length == 0 || policyRegistry_ == address(0)
                 || policyRegistry_.code.length == 0 || initialVirtualEthReserve_ == 0
                 || initialVirtualTokenReserve_ <= TOKEN_SUPPLY || legacyIdentityFactory_ == address(0)
-                || legacyIdentityFactory_.code.length == 0
+                || legacyIdentityFactory_.code.length == 0 || officialLauncher_ == address(0)
         ) revert InvalidConfiguration();
 
         launchGate = IRMTLaunchGateView(launchGate_);
@@ -95,6 +104,7 @@ contract RMTLaunchFactoryV6 is IRMTLaunchFactoryV6 {
         initialVirtualEthReserve = initialVirtualEthReserve_;
         initialVirtualTokenReserve = initialVirtualTokenReserve_;
         legacyIdentityFactory = legacyIdentityFactory_;
+        officialIdentityMigration = new OfficialRMTIdentityMigration(officialLauncher_, address(this));
         tokenImplementation = address(new CloneFixedSupplyMemeToken());
         feeSplitterImplementation = address(new DirectLaunchFeeSplitter());
     }
@@ -152,6 +162,12 @@ contract RMTLaunchFactoryV6 is IRMTLaunchFactoryV6 {
         return usedSymbolHashes[_canonicalSymbol(symbol)] || ILegacyIdentityFactoryV6(legacyIdentityFactory).isSymbolUsed(symbol);
     }
 
+    function canMigrateOfficialIdentity(address launcher, string calldata name, string calldata symbol)
+        external view returns (bool)
+    {
+        return officialIdentityMigration.canMigrate(launcher, _canonicalName(name), _canonicalSymbol(symbol));
+    }
+
     function _launch(
         bytes32 policyId,
         address creator,
@@ -165,7 +181,7 @@ contract RMTLaunchFactoryV6 is IRMTLaunchFactoryV6 {
         if (policy.marketImplementation.code.length == 0) revert InvalidMarketImplementation();
         bool fairStartEnabled = _fairStartEnabled(policy.fairStartMode);
 
-        _reserveIdentity(name, symbol, metadataURI);
+        bool officialMigration = _reserveIdentity(creator, name, symbol, metadataURI);
         token = MinimalProxy.clone(tokenImplementation);
         CloneFixedSupplyMemeToken(token).initialize(name, symbol, TOKEN_SUPPLY, creator, address(this), metadataURI);
 
@@ -207,7 +223,8 @@ contract RMTLaunchFactoryV6 is IRMTLaunchFactoryV6 {
             creator: creator,
             policyId: policy.policyId,
             policyVersion: policy.policyVersion,
-            createdAt: uint64(block.timestamp)
+            createdAt: uint64(block.timestamp),
+            officialMigration: officialMigration
         }));
 
         emit TokenLaunchedV6(
@@ -233,6 +250,9 @@ contract RMTLaunchFactoryV6 is IRMTLaunchFactoryV6 {
             symbol,
             metadataURI
         );
+        if (officialMigration) {
+            emit OfficialRMTMigrationLaunched(launchId, token, creator, address(officialIdentityMigration));
+        }
     }
 
     function _fairStartEnabled(uint8 mode) private pure returns (bool) {
@@ -240,13 +260,26 @@ contract RMTLaunchFactoryV6 is IRMTLaunchFactoryV6 {
         return mode == 1;
     }
 
-    function _reserveIdentity(string calldata name, string calldata symbol, string calldata metadataURI) private {
+    function _reserveIdentity(
+        address creator,
+        string calldata name,
+        string calldata symbol,
+        string calldata metadataURI
+    ) private returns (bool officialMigration) {
         if (bytes(metadataURI).length > MAX_METADATA_URI_BYTES) revert MetadataTooLong();
         ILegacyIdentityFactoryV6 legacy = ILegacyIdentityFactoryV6(legacyIdentityFactory);
-        if (legacy.isNameUsed(name)) revert DuplicateName();
-        if (legacy.isSymbolUsed(symbol)) revert DuplicateSymbol();
         bytes32 nameHash = _canonicalName(name);
         bytes32 symbolHash = _canonicalSymbol(symbol);
+        bool legacyNameUsed = legacy.isNameUsed(name);
+        bool legacySymbolUsed = legacy.isSymbolUsed(symbol);
+        if (legacyNameUsed || legacySymbolUsed) {
+            if (!officialIdentityMigration.canMigrate(creator, nameHash, symbolHash)) {
+                if (legacyNameUsed) revert DuplicateName();
+                revert DuplicateSymbol();
+            }
+            officialIdentityMigration.consume(creator, nameHash, symbolHash);
+            officialMigration = true;
+        }
         if (usedNameHashes[nameHash]) revert DuplicateName();
         if (usedSymbolHashes[symbolHash]) revert DuplicateSymbol();
         usedNameHashes[nameHash] = true;
