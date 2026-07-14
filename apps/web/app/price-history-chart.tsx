@@ -1,19 +1,12 @@
 "use client";
 
 import { formatEther } from "viem";
-import { isMainnetRelease } from "../lib/network";
 
 export type PricePoint = {
   blockNumber: bigint;
   priceWei: bigint;
   side: "buy" | "sell";
 };
-
-function formatPrice(value: number) {
-  if (!Number.isFinite(value) || value === 0) return "0";
-  if (value < 0.000001) return value.toExponential(4);
-  return value.toLocaleString(undefined, { maximumFractionDigits: 9 });
-}
 
 function formatUsd(value?: number) {
   if (value === undefined || !Number.isFinite(value)) return "Unavailable";
@@ -71,10 +64,9 @@ export function PriceHistoryChart({
       <div className="priceChartHeader">
         <div>
           <p className="eyebrow">LIVE USD PRICE</p>
-          <h3>{latestUsd === undefined ? `${formatPrice(latest)} ${isMainnetRelease ? "ETH" : "test ETH"}` : formatUsd(latestUsd)}</h3>
+          <h3>{latestUsd === undefined ? "USD unavailable" : formatUsd(latestUsd)}</h3>
           <small>
-            {marketCapUsd === undefined ? `per ${symbol}` : `Market cap ${formatUsd(marketCapUsd)}`}
-            {latestUsd !== undefined && <> · {formatPrice(latest)} {isMainnetRelease ? "ETH" : "test ETH"} per {symbol}</>}
+            {marketCapUsd === undefined ? `Price per ${symbol}` : `Market cap ${formatUsd(marketCapUsd)}`}
           </small>
         </div>
         <span className={isPositive ? "priceChange positive" : "priceChange negative"}>
