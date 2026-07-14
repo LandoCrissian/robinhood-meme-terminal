@@ -30,6 +30,7 @@ interface IRMTLaunchFactoryV6 {
         bytes32 policyId;
         uint32 policyVersion;
         uint64 createdAt;
+        bool officialMigration;
     }
 
     function protocolVersion() external pure returns (uint32);
@@ -53,4 +54,6 @@ interface IRMTLaunchFactoryV6 {
     function getLaunch(uint256 launchId) external view returns (LaunchView memory);
     function isNameUsed(string calldata name) external view returns (bool);
     function isSymbolUsed(string calldata symbol) external view returns (bool);
+    function canMigrateOfficialIdentity(address launcher, string calldata name, string calldata symbol)
+        external view returns (bool);
 }
