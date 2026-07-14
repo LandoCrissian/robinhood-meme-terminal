@@ -24,9 +24,9 @@ contract DeployMainnetV6OfficialMigration {
     V6UpgradeVm private constant vm = V6UpgradeVm(address(uint160(uint256(keccak256("hevm cheat code")))));
 
     address private constant OPERATOR = 0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA;
-    address private constant GOVERNANCE = 0x13c0a930516fb6bf0d467b38605d9d2a9c4c6953;
-    address private constant REVENUE_ROUTER = 0x066fd10caf090f274d1861e4f838558f98ce1ee9;
-    address private constant V5_FACTORY = 0x25a92d8c79c38d07b0d3efd0ebe929d30e401cdd;
+    address private constant GOVERNANCE = 0x13C0A930516FB6bF0d467B38605d9D2a9c4C6953;
+    address private constant REVENUE_ROUTER = 0x066Fd10caF090F274d1861e4F838558f98cE1ee9;
+    address private constant V5_FACTORY = 0x25A92D8C79c38D07B0d3eFd0ebe929D30e401cdD;
     address private constant VERSION_REGISTRY = 0x4b8b222B5CAa7066c02A54E51eC1a674ADf5b3A1;
     address private constant OFFICIAL_LEGACY_TOKEN = 0xaB374D24aFBD943a134AdB381D9646e71C6f6C0C;
     bytes32 private constant VERSION = keccak256("RMT_FACTORY_V6");
