@@ -141,7 +141,8 @@ contract RMTLaunchFactoryV6Test {
     }
 
     function testBothLaunchEntrypointsUseTheSharedPauseGate() public {
-        (RMTLaunchFactoryV6 factory,,) = _deploy();
+        (RMTLaunchFactoryV6 factory, MockV6LaunchGate gate,) = _deploy();
+        gate.setPaused(true);
 
         (bool simpleSuccess,) = address(factory).call(
             abi.encodeCall(factory.launchSimple, ("Paused Simple", "PAUS", "ipfs://paused-simple"))
