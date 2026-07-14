@@ -13,6 +13,8 @@ export const versionRegistryAbi = [
 export const memeLaunchFactoryAbi = [
   { type: "function", name: "launchSimple", stateMutability: "nonpayable", inputs: [{ name: "name", type: "string" }, { name: "symbol", type: "string" }, { name: "metadataURI", type: "string" }], outputs: [{ name: "token", type: "address" }, { name: "market", type: "address" }, { name: "rewardVault", type: "address" }] },
   { type: "function", name: "launchCommunity", stateMutability: "nonpayable", inputs: [{ name: "name", type: "string" }, { name: "symbol", type: "string" }, { name: "metadataURI", type: "string" }], outputs: [{ name: "token", type: "address" }, { name: "market", type: "address" }, { name: "rewardVault", type: "address" }] },
+  { type: "function", name: "isNameUsed", stateMutability: "view", inputs: [{ name: "name", type: "string" }], outputs: [{ type: "bool" }] },
+  { type: "function", name: "isSymbolUsed", stateMutability: "view", inputs: [{ name: "symbol", type: "string" }], outputs: [{ type: "bool" }] },
   { type: "function", name: "launchOfficialSimple", stateMutability: "nonpayable", inputs: [{ name: "metadataURI", type: "string" }], outputs: [{ name: "token", type: "address" }, { name: "market", type: "address" }, { name: "rewardVault", type: "address" }] },
   { type: "function", name: "launchOfficialCommunity", stateMutability: "nonpayable", inputs: [{ name: "metadataURI", type: "string" }], outputs: [{ name: "token", type: "address" }, { name: "market", type: "address" }, { name: "rewardVault", type: "address" }] },
   { type: "function", name: "officialMigrationAuthority", stateMutability: "view", inputs: [], outputs: [{ type: "address" }] },
