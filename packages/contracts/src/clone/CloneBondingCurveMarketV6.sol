@@ -257,9 +257,11 @@ contract CloneBondingCurveMarketV6 {
 
         liquidityMigrated = true;
         realEthReserve = 0;
+        // Migration is already finalized under nonReentrant; the post-call balances are conservation assertions.
+        // slither-disable-next-line reentrancy-balance
         if (!token.approve(address(graduationAdapter), tokenAmount)) revert TokenTransferFailed();
         // The factory initializes this clone atomically with a contract-validated adapter and an adapter-prepared pool.
-        // slither-disable-next-line arbitrary-send-eth
+        // slither-disable-next-line arbitrary-send-eth,reentrancy-balance
         (pool, liquidity) = graduationAdapter.graduate{value: ethAmount}(address(token), tokenAmount);
         if (pool == address(0) || liquidity == 0 || token.balanceOf(address(this)) != 0 || address(this).balance != 0) {
             revert InvalidMigration();
