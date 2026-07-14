@@ -8,6 +8,7 @@ contract DirectLaunchFeeSplitter {
 
     address payable public creator;
     address payable public protocolTreasury;
+    address public launchToken;
     uint16 public creatorShareBps;
     bool private _initialized;
     bool private _entered;
@@ -19,7 +20,9 @@ contract DirectLaunchFeeSplitter {
     mapping(address token => uint256 amount) public totalTokenReceived;
     mapping(address token => uint256 amount) public totalTokenPaid;
 
-    event Initialized(address indexed creator, address indexed protocolTreasury, uint16 creatorShareBps);
+    event Initialized(
+        address indexed creator, address indexed protocolTreasury, address indexed launchToken, uint16 creatorShareBps
+    );
     event FeeReceived(address indexed payer, uint256 amount);
     event DirectPayment(address indexed recipient, uint256 amount);
     event PaymentDeferred(address indexed recipient, uint256 amount);
@@ -42,18 +45,22 @@ contract DirectLaunchFeeSplitter {
         _entered = false;
     }
 
-    function initialize(address payable creator_, address payable protocolTreasury_, uint16 creatorShareBps_) external {
+    function initialize(
+        address payable creator_, address payable protocolTreasury_, address launchToken_, uint16 creatorShareBps_
+    ) external {
         if (_initialized) revert AlreadyInitialized();
         if (
-            creator_ == address(0) || protocolTreasury_ == address(0)
+            creator_ == address(0) || protocolTreasury_ == address(0) || launchToken_ == address(0)
+                || launchToken_.code.length == 0
                 || creatorShareBps_ > BPS_DENOMINATOR
         ) revert InvalidConfiguration();
 
         _initialized = true;
         creator = creator_;
         protocolTreasury = protocolTreasury_;
+        launchToken = launchToken_;
         creatorShareBps = creatorShareBps_;
-        emit Initialized(creator_, protocolTreasury_, creatorShareBps_);
+        emit Initialized(creator_, protocolTreasury_, launchToken_, creatorShareBps_);
     }
 
     receive() external payable nonReentrant {
@@ -77,7 +84,7 @@ contract DirectLaunchFeeSplitter {
 
     /// @notice Accounts for tokens already transferred to this splitter and distributes them using the immutable split.
     function depositToken(address token, uint256 amount) external nonReentrant {
-        if (!_initialized || token == address(0) || token.code.length == 0 || amount == 0) {
+        if (!_initialized || token != launchToken || amount == 0) {
             revert InvalidConfiguration();
         }
 
