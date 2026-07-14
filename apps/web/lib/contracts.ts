@@ -6,7 +6,8 @@ export const publicMainnetFactoryAddress = getAddress("0x88b86F10D874C2e3C8CfE63
 export const publicMainnetVersionRegistryAddress = getAddress("0xfff3f69f473780EA5eA7f5525526986Bb491E00e");
 
 export const versionRegistryAbi = [
-  { type: "function", name: "activeFactory", stateMutability: "view", inputs: [], outputs: [{ type: "address" }] }
+  { type: "function", name: "activeFactory", stateMutability: "view", inputs: [], outputs: [{ type: "address" }] },
+  { type: "function", name: "activeVersion", stateMutability: "view", inputs: [], outputs: [{ type: "bytes32" }] }
 ] as const;
 
 export const memeLaunchFactoryAbi = [
