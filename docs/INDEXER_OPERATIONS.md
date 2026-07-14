@@ -14,6 +14,8 @@ The public feed currently has an RPC fallback, but broad public traffic should r
 - Launch, trade, graduation, and migration writes are idempotent.
 - PostgreSQL numeric columns preserve full uint256 values without JavaScript rounding.
 
+Use [PRODUCTION_INDEXER_DEPLOYMENT.md](PRODUCTION_INDEXER_DEPLOYMENT.md) for the provider-ready environment, Railway configuration, reconciliation, and web cutover sequence.
+
 ## Production deployment checklist
 
 1. Create a managed PostgreSQL database with point-in-time recovery and encrypted backups.

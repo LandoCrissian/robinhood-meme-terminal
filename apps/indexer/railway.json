@@ -1,0 +1,20 @@
+{
+  "$schema": "https://railway.com/railway.schema.json",
+  "build": {
+    "builder": "RAILPACK",
+    "buildCommand": "pnpm install --no-frozen-lockfile && pnpm --filter indexer build",
+    "watchPatterns": [
+      "apps/indexer/**",
+      "package.json",
+      "pnpm-workspace.yaml"
+    ]
+  },
+  "deploy": {
+    "startCommand": "pnpm --filter indexer start",
+    "healthcheckPath": "/health",
+    "healthcheckTimeout": 300,
+    "restartPolicyType": "ALWAYS",
+    "restartPolicyMaxRetries": 10,
+    "drainingSeconds": "15"
+  }
+}
