@@ -27,7 +27,7 @@ contract ExpandableGovernanceTest {
         governance.execute(thresholdId);
         require(governance.threshold() == 2, "threshold not raised");
 
-        uint256 next = governance.propose(address(this), 0, "");
+        uint256 next = governance.propose(address(governance), 0, "");
         vm.warp(3 days + 4);
         (bool oneSignature,) = address(governance).call(abi.encodeCall(governance.execute, (next)));
         require(!oneSignature, "threshold bypassed");
