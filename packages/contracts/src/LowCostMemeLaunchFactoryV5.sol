@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import {CloneBondingCurveMarketV2} from "./clone/CloneBondingCurveMarketV2.sol";
+import {CloneBondingCurveMarketV3} from "./clone/CloneBondingCurveMarketV3.sol";
 import {CloneFixedSupplyMemeToken} from "./clone/CloneFixedSupplyMemeToken.sol";
 import {CloneLaunchRewardVaultV2} from "./clone/CloneLaunchRewardVaultV2.sol";
 import {ClonePurposeRewardVault} from "./clone/ClonePurposeRewardVault.sol";
@@ -115,7 +115,7 @@ contract LowCostMemeLaunchFactoryV5 {
         legacyIdentityFactory = legacyIdentityFactory_;
         tokenImplementation = address(new CloneFixedSupplyMemeToken());
         rewardVaultImplementation = address(new CloneLaunchRewardVaultV2());
-        marketImplementation = address(new CloneBondingCurveMarketV2());
+        marketImplementation = address(new CloneBondingCurveMarketV3());
         purposeVaultImplementation = address(new ClonePurposeRewardVault());
     }
 
@@ -186,7 +186,7 @@ contract LowCostMemeLaunchFactoryV5 {
         rewardVault = MinimalProxy.clone(rewardVaultImplementation);
         CloneLaunchRewardVaultV2(payable(rewardVault)).initialize(recipients, splits);
         market = MinimalProxy.clone(marketImplementation);
-        CloneBondingCurveMarketV2(payable(market)).initialize(
+        CloneBondingCurveMarketV3(payable(market)).initialize(
             token,
             payable(rewardVault),
             graduationAdapter,
