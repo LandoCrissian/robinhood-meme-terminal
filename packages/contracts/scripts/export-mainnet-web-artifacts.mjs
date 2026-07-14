@@ -12,6 +12,7 @@ const artifacts = {
   revenueRouter: "out/ProtocolRevenueRouterV2.sol/ProtocolRevenueRouterV2.json",
   rewardsController: "out/PurposeRewardsController.sol/PurposeRewardsController.json",
   factory: "out/LowCostMemeLaunchFactoryV5.sol/LowCostMemeLaunchFactoryV5.json",
+  factoryV6: "out/LowCostMemeLaunchFactoryV6.sol/LowCostMemeLaunchFactoryV6.json",
   market: "out/CloneBondingCurveMarketV3.sol/CloneBondingCurveMarketV3.json",
   registry: "out/VersionedFactoryRegistry.sol/VersionedFactoryRegistry.json"
 };
