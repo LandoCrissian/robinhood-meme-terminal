@@ -191,7 +191,7 @@ contract RMTLaunchFactoryV6 is IRMTLaunchFactoryV6 {
 
         rewardVault = MinimalProxy.clone(feeSplitterImplementation);
         DirectLaunchFeeSplitter(payable(rewardVault)).initialize(
-            payable(creator), payable(policy.protocolTreasury), policy.creatorFeeShareBps
+            payable(creator), payable(policy.protocolTreasury), token, policy.creatorFeeShareBps
         );
 
         market = MinimalProxy.clone(policy.marketImplementation);
