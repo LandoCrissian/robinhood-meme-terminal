@@ -1,12 +1,6 @@
 import type { Address, Hex } from "viem";
 
-/**
- * Stable website model for active-factory launch capabilities.
- *
- * The UI must render from factory-reported policy data instead of probing for
- * incidental ABI methods such as `launchCommunity`. This keeps V6 compatible
- * with future V7+ launch policies without another launch-form rewrite.
- */
+/** Stable website model for active-factory launch capabilities. */
 export type LaunchPolicyCapability = {
   policyId: Hex;
   policyVersion: number;
@@ -17,6 +11,11 @@ export type LaunchPolicyCapability = {
   protocolFeeShareBps: number;
   postGraduationFeeBps: number;
   graduationTarget: bigint;
+  fairStartMode: number;
+  fairStartDelayBlocks: bigint;
+  fairStartDurationBlocks: bigint;
+  fairStartMaxTxBps: number;
+  fairStartMaxWalletBps: number;
 };
 
 export type ActiveLaunchCapabilities = {
@@ -36,6 +35,15 @@ export function canSubmitLaunch(capabilities: ActiveLaunchCapabilities | null) {
   return publicLaunchPolicies(capabilities).some(
     (policy) => policy.policyId.toLowerCase() === capabilities.defaultPolicyId.toLowerCase()
   );
+}
+
+export function hasFairStart(policy: LaunchPolicyCapability) {
+  return policy.fairStartMode === 1;
+}
+
+export function fairStartDisclosure(policy: LaunchPolicyCapability) {
+  if (!hasFairStart(policy)) return "Open trading begins without temporary wallet limits.";
+  return `Fair Start lasts ${policy.fairStartDurationBlocks.toString()} blocks with a ${formatBasisPoints(policy.fairStartMaxTxBps)} max buy and ${formatBasisPoints(policy.fairStartMaxWalletBps)} max wallet.`;
 }
 
 export function formatBasisPoints(bps: number) {
