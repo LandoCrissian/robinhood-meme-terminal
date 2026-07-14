@@ -43,6 +43,8 @@ contract MockV6LegacyIdentityFactory {
 
 contract MockV6GraduationAdapter {
     mapping(address token => address market) public markets;
+    mapping(address token => address splitter) public feeSplitters;
+    uint24 public constant poolFee = 5_000;
 
     function prepare(address token) external pure returns (bytes32) {
         return keccak256(abi.encode("RMT_V6_POOL", token));
@@ -50,6 +52,15 @@ contract MockV6GraduationAdapter {
 
     function bindMarket(address token, address market) external {
         markets[token] = market;
+    }
+
+    function configureFeeRouting(address token, address feeSplitter, uint16 postGraduationFeeBps) external {
+        require(postGraduationFeeBps == 50, "wrong post graduation fee");
+        feeSplitters[token] = feeSplitter;
+    }
+
+    function collectFees(address) external pure returns (uint256 nativeAmount, uint256 tokenAmount) {
+        return (0, 0);
     }
 
     function graduate(address, uint256) external payable returns (address pool, uint256 liquidity) {
