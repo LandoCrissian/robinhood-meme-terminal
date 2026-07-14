@@ -122,7 +122,7 @@ contract V4GraduationAdapterTest {
     function testV6FeeRoutingMustMatchImmutablePoolFeeAndCannotBeChanged() public {
         adapter.prepare(address(token));
         DirectLaunchFeeSplitter splitter = new DirectLaunchFeeSplitter();
-        splitter.initialize(payable(address(this)), payable(address(0xBEEF)), 7_000);
+        splitter.initialize(payable(address(this)), payable(address(0xBEEF)), address(token), 7_000);
 
         (bool mismatchSuccess,) = address(adapter).call(
             abi.encodeCall(adapter.configureFeeRouting, (address(token), address(splitter), 50))
@@ -143,7 +143,7 @@ contract V4GraduationAdapterTest {
         adapter.prepare(address(token));
         adapter.bindMarket(address(token), address(this));
         DirectLaunchFeeSplitter splitter = new DirectLaunchFeeSplitter();
-        splitter.initialize(payable(address(this)), payable(address(0xBEEF)), 7_000);
+        splitter.initialize(payable(address(this)), payable(address(0xBEEF)), address(token), 7_000);
 
         (bool success,) = address(adapter).call(
             abi.encodeCall(adapter.configureFeeRouting, (address(token), address(splitter), 100))
@@ -166,7 +166,7 @@ contract V4GraduationAdapterTest {
     function testCollectsBothFeeCurrenciesWithoutChangingLockedLiquidity() public {
         bytes32 poolIdValue = adapter.prepare(address(token));
         DirectLaunchFeeSplitter splitter = new DirectLaunchFeeSplitter();
-        splitter.initialize(payable(address(this)), payable(address(0xBEEF)), 7_000);
+        splitter.initialize(payable(address(this)), payable(address(0xBEEF)), address(token), 7_000);
         adapter.configureFeeRouting(address(token), address(splitter), 100);
         adapter.bindMarket(address(token), address(this));
 
