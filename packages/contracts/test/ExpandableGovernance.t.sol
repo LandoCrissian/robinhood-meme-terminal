@@ -16,19 +16,19 @@ contract ExpandableGovernanceTest {
         );
         (bool early,) = address(governance).call(abi.encodeCall(governance.execute, (addId)));
         require(!early, "delay bypassed");
-        vm.warp(block.timestamp + 1 days);
+        vm.warp(block.timestamp + 1 days + 1);
         governance.execute(addId);
         require(governance.isSigner(SECOND), "signer missing");
 
         uint256 thresholdId = governance.propose(
             address(governance), 0, abi.encodeCall(governance.setThreshold, (2))
         );
-        vm.warp(block.timestamp + 1 days);
+        vm.warp(block.timestamp + 1 days + 1);
         governance.execute(thresholdId);
         require(governance.threshold() == 2, "threshold not raised");
 
         uint256 next = governance.propose(address(this), 0, "");
-        vm.warp(block.timestamp + 1 days);
+        vm.warp(block.timestamp + 1 days + 1);
         (bool oneSignature,) = address(governance).call(abi.encodeCall(governance.execute, (next)));
         require(!oneSignature, "threshold bypassed");
         vm.prank(SECOND);
