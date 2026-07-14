@@ -92,4 +92,7 @@ SIGNER_THREE="$TEST_SIGNER_THREE" \
 ROBINHOOD_MAINNET_RPC_URL="$FORK_RPC_URL" \
   forge test --match-contract DeployedMainnetGraduationForkTest -vvv
 
-echo "Secured V4 release stack passed deployment, invariant, and full graduation checks on a Robinhood mainnet fork."
+ROBINHOOD_MAINNET_RPC_URL="$FORK_RPC_URL" \
+  forge test --match-contract V6MainnetForkTest -vvv
+
+echo "Secured V4 release and policy-driven V6 candidate passed deployment, trading, graduation, and fee-routing checks on a Robinhood mainnet fork."
