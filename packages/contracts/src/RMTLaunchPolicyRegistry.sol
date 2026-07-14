@@ -13,7 +13,6 @@ contract RMTLaunchPolicyRegistry is IRMTLaunchPolicyRegistry {
     uint64 public immutable governanceDelay;
 
     bytes32 public override defaultPolicyId;
-
     mapping(bytes32 policyId => LaunchPolicy policy) private _policies;
     mapping(bytes32 policyId => bytes32 hash) public override policyHash;
     mapping(bytes32 operationId => uint64 executableAt) public scheduledOperations;
@@ -40,9 +39,7 @@ contract RMTLaunchPolicyRegistry is IRMTLaunchPolicyRegistry {
     }
 
     constructor(address governance_, address guardian_, uint64 governanceDelay_) {
-        if (governance_ == address(0) || guardian_ == address(0) || governanceDelay_ == 0) {
-            revert InvalidConfiguration();
-        }
+        if (governance_ == address(0) || guardian_ == address(0) || governanceDelay_ == 0) revert InvalidConfiguration();
         governance = governance_;
         guardian = guardian_;
         governanceDelay = governanceDelay_;
@@ -60,7 +57,6 @@ contract RMTLaunchPolicyRegistry is IRMTLaunchPolicyRegistry {
         if (policyHash[policy.policyId] != bytes32(0)) revert PolicyAlreadyRegistered();
         bytes32 operationId = keccak256(abi.encode("REGISTER_POLICY", policy));
         _consume(operationId);
-
         bytes32 immutableHash = keccak256(abi.encode(policy));
         _policies[policy.policyId] = policy;
         policyHash[policy.policyId] = immutableHash;
@@ -75,9 +71,7 @@ contract RMTLaunchPolicyRegistry is IRMTLaunchPolicyRegistry {
     }
 
     function schedulePolicyAvailability(bytes32 policyId, bool enabled, bool publiclySelectable)
-        external
-        onlyGovernance
-        returns (bytes32 operationId)
+        external onlyGovernance returns (bytes32 operationId)
     {
         _requirePolicy(policyId);
         if (!enabled && publiclySelectable) revert InvalidConfiguration();
@@ -128,10 +122,23 @@ contract RMTLaunchPolicyRegistry is IRMTLaunchPolicyRegistry {
     }
 
     function _validatePolicy(LaunchPolicy calldata policy) private view {
+        bool fairStartDisabled = policy.fairStartMode == 0
+            && policy.fairStartDelayBlocks == 0
+            && policy.fairStartDurationBlocks == 0
+            && policy.fairStartMaxTxBps == 0
+            && policy.fairStartMaxWalletBps == 0;
+        bool fairStartEnabled = policy.fairStartMode == 1
+            && policy.fairStartDelayBlocks > 0
+            && policy.fairStartDurationBlocks > 0
+            && policy.fairStartMaxTxBps > 0
+            && policy.fairStartMaxWalletBps >= policy.fairStartMaxTxBps
+            && policy.fairStartMaxWalletBps <= BPS_DENOMINATOR;
+
         if (
             policy.policyId == bytes32(0) || policy.policyVersion == 0 || policy.curveFeeBps >= BPS_DENOMINATOR
                 || uint256(policy.creatorFeeShareBps) + uint256(policy.protocolFeeShareBps) != BPS_DENOMINATOR
                 || policy.postGraduationFeeBps >= BPS_DENOMINATOR || policy.graduationTarget == 0
+                || !(fairStartDisabled || fairStartEnabled)
                 || policy.marketImplementation == address(0) || policy.marketImplementation.code.length == 0
                 || policy.protocolTreasury == address(0)
                 || policy.graduationAdapter == address(0) || policy.graduationAdapter.code.length == 0
