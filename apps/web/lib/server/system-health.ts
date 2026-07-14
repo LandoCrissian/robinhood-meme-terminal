@@ -1,4 +1,4 @@
-import { createPublicClient, getAddress, http, isAddress, parseEther, type Address } from "viem";
+import { createPublicClient, getAddress, http, isAddress, keccak256, parseEther, toHex, type Address, type Hex } from "viem";
 import {
   getFactoryAddress,
   publicMainnetFactoryAddress,
@@ -23,6 +23,7 @@ const client = createPublicClient({
   chain: activeChain,
   transport: http(activeChain.rpcUrls.default.http[0], { retryCount: 2, timeout: 8_000 })
 });
+const V5_VERSION = keccak256(toHex("RMT_FACTORY_V5"));
 
 function check(key: SystemHealthCheck["key"], label: string, healthy: boolean, detail: string): SystemHealthCheck {
   return { key, label, state: healthy ? "operational" : "degraded", detail };
@@ -46,16 +47,23 @@ export async function readSystemHealth(): Promise<SystemHealthReport> {
     ));
 
     let factory: Address | null = getFactoryAddress();
+    let factoryVersion: Hex | null = null;
     if (isMainnetRelease) {
-      const [registryCode, registered] = await Promise.all([
+      const [registryCode, registered, registeredVersion] = await Promise.all([
         client.getBytecode({ address: publicMainnetVersionRegistryAddress }),
         client.readContract({
           address: publicMainnetVersionRegistryAddress,
           abi: versionRegistryAbi,
           functionName: "activeFactory"
+        }),
+        client.readContract({
+          address: publicMainnetVersionRegistryAddress,
+          abi: versionRegistryAbi,
+          functionName: "activeVersion"
         })
       ]);
       factory = isAddress(registered) ? getAddress(registered) : null;
+      factoryVersion = registeredVersion;
       checks.push(check(
         "registry",
         "Version registry",
@@ -83,8 +91,9 @@ export async function readSystemHealth(): Promise<SystemHealthReport> {
       `${launchCount.toString()} verified launch${launchCount === 1n ? "" : "es"} recorded`
     ));
 
+    const expectedGraduationTarget = factoryVersion === V5_VERSION ? parseEther("2") : parseEther("1");
     const expectedEconomics = isMainnetRelease
-      ? feeBps === 100 && graduationTarget === parseEther("1")
+      ? feeBps === 100 && graduationTarget === expectedGraduationTarget
       : feeBps < 10_000 && graduationTarget > 0n;
     checks.push(check(
       "economics",
