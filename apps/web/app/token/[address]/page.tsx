@@ -65,7 +65,7 @@ export default function TokenDetailPage() {
         <section className="panel"><p className="eyebrow">TOKEN RULES</p><h2>Fixed and transparent</h2><div className="safetyList"><span>✓ Fixed total supply</span><span>✓ No mint function</span><span>✓ No blacklist</span><span>✓ No transfer tax</span><span>✓ No upgrade proxy</span></div></section>
         <section className="panel"><p className="eyebrow">ONCHAIN DATA</p><h2>Contract details</h2><dl><dt>Total supply</dt><dd>{Number(formatUnits(supplyRead.data, 18)).toLocaleString(undefined, { maximumFractionDigits: 0 })}</dd><dt>Creator</dt><dd title={creatorRead.data}>{shortAddress(creatorRead.data)}</dd><dt>Token contract</dt><dd title={tokenAddress}>{shortAddress(tokenAddress)}</dd></dl><a className="explorerLink" href={explorer} target="_blank" rel="noreferrer">Open in explorer ↗</a></section>
       </div>
-      <MarketPanel tokenAddress={tokenAddress} symbol={symbolRead.data} totalSupply={supplyRead.data} />
+      <MarketPanel tokenAddress={tokenAddress} symbol={symbolRead.data} totalSupply={supplyRead.data} creator={creatorRead.data} />
       <RewardVaultPanel tokenAddress={tokenAddress} />
       <section className="panel metadataPanel"><p className="eyebrow">METADATA</p><h2>Permanent launch record</h2><div className="metadataStatus"><span>{metadataRead.data.startsWith("ipfs://") ? "IPFS content address" : "Onchain launch record"}</span><code>{metadataRead.data}</code></div></section>
     </main>
