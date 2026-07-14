@@ -61,6 +61,8 @@ contract CloneLaunchRewardVaultV2 {
         _claiming = true;
         claimable[recipient] = 0;
         totalClaimed += amount;
+        // Effects and the reentrancy lock are set before this interaction; lock reset is intentional.
+        // slither-disable-next-line reentrancy-eth
         (bool success,) = recipient.call{value: amount}("");
         _claiming = false;
         if (!success) revert TransferFailed();
