@@ -14,6 +14,11 @@ interface IRMTLaunchFactoryV6 {
         uint16 protocolFeeShareBps;
         uint16 postGraduationFeeBps;
         uint256 graduationTarget;
+        uint8 fairStartMode;
+        uint64 fairStartDelayBlocks;
+        uint64 fairStartDurationBlocks;
+        uint16 fairStartMaxTxBps;
+        uint16 fairStartMaxWalletBps;
     }
 
     struct LaunchView {
