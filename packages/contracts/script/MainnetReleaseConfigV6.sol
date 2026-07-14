@@ -2,20 +2,22 @@
 pragma solidity ^0.8.26;
 
 /// @notice Canonical, reviewable constants for the RMT V6 mainnet release.
-/// @dev The developer/operator wallet controls deployment and initial governance actions,
-///      but protocol revenue remains routed through fixed purpose vaults rather than directly
-///      to this externally owned account.
+/// @dev V6 intentionally uses direct creator and protocol treasury destinations.
+///      Optional community, referral, and purpose-vault programs may be introduced
+///      later as new immutable policy versions without changing the base factory interface.
 library MainnetReleaseConfigV6 {
     uint256 internal constant CHAIN_ID = 4663;
 
     // Verified RMTMain developer/operator wallet used by the production deployment console.
     address internal constant DEVELOPER_OPERATOR = 0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA;
 
-    // V6 starts with the same wallet in both roles for mobile-operated deployment.
-    // The contracts deliberately restrict the guardian to pause/cancel powers only.
-    // Governance may later be transferred to reviewed multisig/timelock infrastructure.
+    // Initial mobile-operated governance and emergency guardian.
+    // Guardian powers remain limited to pausing and cancelling scheduled reopening.
     address internal constant INITIAL_GOVERNANCE = DEVELOPER_OPERATOR;
     address internal constant INITIAL_GUARDIAN = DEVELOPER_OPERATOR;
+
+    // V6 protocol revenue is paid directly here. No separate purpose vaults are deployed.
+    address internal constant PROTOCOL_TREASURY = DEVELOPER_OPERATOR;
 
     uint64 internal constant GOVERNANCE_DELAY = 1 days;
     uint64 internal constant REGISTRY_ACTIVATION_DELAY = 2 days;
