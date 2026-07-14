@@ -6,6 +6,8 @@ Independently assess the deployed RMT V4 contracts, their immutable economic par
 
 This handoff is provider-neutral. Automated tests, Slither, fuzzing, fork tests, source verification, and RMT's internal review are evidence inputs—not substitutes for independent judgment.
 
+Use [EXTERNAL_AUDIT_INQUIRY.md](EXTERNAL_AUDIT_INQUIRY.md) as the ready-to-send scope and quote request.
+
 ## Exact review target
 
 - Repository: `LandoCrissian/robinhood-meme-terminal`
