@@ -28,6 +28,18 @@ contract RejectingRecipient {
     }
 }
 
+contract ReenteringRecipient {
+    DirectLaunchFeeSplitter public splitter;
+
+    function configure(DirectLaunchFeeSplitter splitter_) external {
+        splitter = splitter_;
+    }
+
+    receive() external payable {
+        splitter.deposit{value: 1 wei}();
+    }
+}
+
 contract DirectLaunchFeeSplitterTest {
     SplitterVm private constant vm = SplitterVm(address(uint160(uint256(keccak256("hevm cheat code")))));
 
@@ -81,5 +93,21 @@ contract DirectLaunchFeeSplitterTest {
         (bool success,) = address(splitter).call(abi.encodeCall(splitter.claimDeferred, ())); 
         require(!success, "outsider claimed creator funds");
         require(splitter.pending(address(creator)) == 0.7 ether, "creator funds changed");
+    }
+
+    function testReentrantRecipientIsDeferredWithoutBlockingProtocolPayment() public {
+        ReenteringRecipient creator = new ReenteringRecipient();
+        AcceptingRecipient treasury = new AcceptingRecipient();
+        DirectLaunchFeeSplitter splitter = new DirectLaunchFeeSplitter();
+        splitter.initialize(payable(address(creator)), payable(address(treasury)), 7_000);
+        creator.configure(splitter);
+
+        vm.deal(address(this), 1 ether);
+        splitter.deposit{value: 1 ether}();
+
+        require(splitter.pending(address(creator)) == 0.7 ether, "reentrant creator not deferred");
+        require(address(treasury).balance == 0.3 ether, "protocol payment blocked");
+        require(splitter.totalReceived() == 1 ether, "reentrant deposit counted");
+        require(splitter.totalPaid() == 0.3 ether, "paid accounting changed");
     }
 }
