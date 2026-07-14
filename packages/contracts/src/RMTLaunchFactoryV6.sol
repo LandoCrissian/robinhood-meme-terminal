@@ -115,7 +115,7 @@ contract RMTLaunchFactoryV6 is IRMTLaunchFactoryV6 {
             protocolFeeShareBps: policy.protocolFeeShareBps,
             postGraduationFeeBps: policy.postGraduationFeeBps,
             graduationTarget: policy.graduationTarget,
-            fairStartEnabled: _fairStartEnabled(policy.fairStartMode),
+            fairStartMode: policy.fairStartMode,
             fairStartDelayBlocks: policy.fairStartDelayBlocks,
             fairStartDurationBlocks: policy.fairStartDurationBlocks,
             fairStartMaxTxBps: policy.fairStartMaxTxBps,
