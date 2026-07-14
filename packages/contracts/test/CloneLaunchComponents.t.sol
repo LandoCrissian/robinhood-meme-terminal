@@ -3,11 +3,20 @@ pragma solidity ^0.8.26;
 
 import {CloneFixedSupplyMemeToken} from "../src/clone/CloneFixedSupplyMemeToken.sol";
 import {CloneLaunchRewardVault} from "../src/clone/CloneLaunchRewardVault.sol";
+import {CloneLaunchRewardVaultV2} from "../src/clone/CloneLaunchRewardVaultV2.sol";
 import {MinimalProxy} from "../src/libraries/MinimalProxy.sol";
 
 contract CloneHarness {
     function clone(address implementation) external returns (address) {
         return MinimalProxy.clone(implementation);
+    }
+}
+
+contract PassiveRewardRecipient {
+    uint256 public received;
+
+    receive() external payable {
+        received += msg.value;
     }
 }
 
@@ -62,5 +71,21 @@ contract CloneLaunchComponentsTest {
         CloneLaunchRewardVault vault = CloneLaunchRewardVault(payable(harness.clone(address(vaultImplementation))));
         (bool success,) = address(vault).call{value: 1 wei}("");
         require(!success, "uninitialized vault accepted funds");
+    }
+
+    function testAnyoneCanSettleOnlyToTheRecordedRecipient() public {
+        CloneLaunchRewardVaultV2 implementation = new CloneLaunchRewardVaultV2();
+        CloneLaunchRewardVaultV2 vault = CloneLaunchRewardVaultV2(payable(harness.clone(address(implementation))));
+        PassiveRewardRecipient recipient = new PassiveRewardRecipient();
+        address[5] memory recipients = [address(recipient), address(0x2), address(0x3), address(0x4), address(0x5)];
+        uint16[5] memory split = [uint16(10_000), 0, 0, 0, 0];
+        vault.initialize(recipients, split);
+        vault.deposit{value: 1 ether}();
+
+        vault.claimFor(address(recipient));
+
+        require(recipient.received() == 1 ether, "recipient not paid");
+        require(vault.claimable(address(recipient)) == 0, "claim not cleared");
+        require(vault.totalClaimed() == 1 ether, "claimed accounting");
     }
 }
