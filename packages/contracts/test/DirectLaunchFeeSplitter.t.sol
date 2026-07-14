@@ -26,6 +26,31 @@ contract RejectingRecipient {
     function claim(DirectLaunchFeeSplitter splitter) external {
         splitter.claimDeferred();
     }
+
+    function claimToken(DirectLaunchFeeSplitter splitter, address token) external {
+        splitter.claimDeferredToken(token);
+    }
+}
+
+contract SplitterTestToken {
+    mapping(address account => uint256 amount) public balanceOf;
+    address public rejectedRecipient;
+
+    constructor(uint256 supply) {
+        balanceOf[msg.sender] = supply;
+    }
+
+    function setRejectedRecipient(address recipient) external {
+        rejectedRecipient = recipient;
+    }
+
+    function transfer(address recipient, uint256 amount) external returns (bool) {
+        if (recipient == rejectedRecipient) return false;
+        require(balanceOf[msg.sender] >= amount, "balance");
+        balanceOf[msg.sender] -= amount;
+        balanceOf[recipient] += amount;
+        return true;
+    }
 }
 
 contract ReenteringRecipient {
@@ -109,5 +134,47 @@ contract DirectLaunchFeeSplitterTest {
         require(address(treasury).balance == 0.3 ether, "protocol payment blocked");
         require(splitter.totalReceived() == 1 ether, "reentrant deposit counted");
         require(splitter.totalPaid() == 0.3 ether, "paid accounting changed");
+    }
+
+    function testPaysCreatorAndProtocolTokenFeesDirectly() public {
+        AcceptingRecipient creator = new AcceptingRecipient();
+        AcceptingRecipient treasury = new AcceptingRecipient();
+        DirectLaunchFeeSplitter splitter = new DirectLaunchFeeSplitter();
+        SplitterTestToken token = new SplitterTestToken(1_000 ether);
+        splitter.initialize(payable(address(creator)), payable(address(treasury)), 7_000);
+
+        require(token.transfer(address(splitter), 100 ether), "fund splitter");
+        splitter.depositToken(address(token), 100 ether);
+
+        require(token.balanceOf(address(creator)) == 70 ether, "creator token split");
+        require(token.balanceOf(address(treasury)) == 30 ether, "protocol token split");
+        require(token.balanceOf(address(splitter)) == 0, "token residue");
+        require(splitter.totalTokenReceived(address(token)) == 100 ether, "token received accounting");
+        require(splitter.totalTokenPaid(address(token)) == 100 ether, "token paid accounting");
+    }
+
+    function testFailedTokenPaymentIsRecipientClaimableAndCannotBeDoubleAccounted() public {
+        RejectingRecipient creator = new RejectingRecipient();
+        AcceptingRecipient treasury = new AcceptingRecipient();
+        DirectLaunchFeeSplitter splitter = new DirectLaunchFeeSplitter();
+        SplitterTestToken token = new SplitterTestToken(1_000 ether);
+        splitter.initialize(payable(address(creator)), payable(address(treasury)), 7_000);
+        token.setRejectedRecipient(address(creator));
+
+        require(token.transfer(address(splitter), 100 ether), "fund splitter");
+        splitter.depositToken(address(token), 100 ether);
+
+        require(splitter.pendingToken(address(token), address(creator)) == 70 ether, "creator token pending");
+        require(token.balanceOf(address(treasury)) == 30 ether, "protocol token payment");
+        (bool duplicateSuccess,) = address(splitter).call(
+            abi.encodeCall(splitter.depositToken, (address(token), 70 ether))
+        );
+        require(!duplicateSuccess, "pending tokens double accounted");
+
+        token.setRejectedRecipient(address(0));
+        creator.claimToken(splitter, address(token));
+        require(token.balanceOf(address(creator)) == 70 ether, "creator token recovery");
+        require(splitter.pendingToken(address(token), address(creator)) == 0, "token pending not cleared");
+        require(splitter.totalTokenPaid(address(token)) == 100 ether, "token accounting not conserved");
     }
 }
