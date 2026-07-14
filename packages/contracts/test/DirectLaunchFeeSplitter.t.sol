@@ -74,7 +74,9 @@ contract DirectLaunchFeeSplitterTest {
         AcceptingRecipient creator = new AcceptingRecipient();
         AcceptingRecipient treasury = new AcceptingRecipient();
         DirectLaunchFeeSplitter splitter = new DirectLaunchFeeSplitter();
-        splitter.initialize(payable(address(creator)), payable(address(treasury)), 7_000);
+        splitter.initialize(
+            payable(address(creator)), payable(address(treasury)), address(new SplitterTestToken(1)), 7_000
+        );
 
         vm.deal(address(this), 1 ether);
         splitter.deposit{value: 1 ether}();
@@ -90,7 +92,9 @@ contract DirectLaunchFeeSplitterTest {
         RejectingRecipient creator = new RejectingRecipient();
         AcceptingRecipient treasury = new AcceptingRecipient();
         DirectLaunchFeeSplitter splitter = new DirectLaunchFeeSplitter();
-        splitter.initialize(payable(address(creator)), payable(address(treasury)), 7_000);
+        splitter.initialize(
+            payable(address(creator)), payable(address(treasury)), address(new SplitterTestToken(1)), 7_000
+        );
 
         vm.deal(address(this), 1 ether);
         splitter.deposit{value: 1 ether}();
@@ -110,7 +114,9 @@ contract DirectLaunchFeeSplitterTest {
         RejectingRecipient creator = new RejectingRecipient();
         AcceptingRecipient treasury = new AcceptingRecipient();
         DirectLaunchFeeSplitter splitter = new DirectLaunchFeeSplitter();
-        splitter.initialize(payable(address(creator)), payable(address(treasury)), 7_000);
+        splitter.initialize(
+            payable(address(creator)), payable(address(treasury)), address(new SplitterTestToken(1)), 7_000
+        );
 
         vm.deal(address(this), 1 ether);
         splitter.deposit{value: 1 ether}();
@@ -124,7 +130,9 @@ contract DirectLaunchFeeSplitterTest {
         ReenteringRecipient creator = new ReenteringRecipient();
         AcceptingRecipient treasury = new AcceptingRecipient();
         DirectLaunchFeeSplitter splitter = new DirectLaunchFeeSplitter();
-        splitter.initialize(payable(address(creator)), payable(address(treasury)), 7_000);
+        splitter.initialize(
+            payable(address(creator)), payable(address(treasury)), address(new SplitterTestToken(1)), 7_000
+        );
         creator.configure(splitter);
 
         vm.deal(address(this), 1 ether);
@@ -141,7 +149,7 @@ contract DirectLaunchFeeSplitterTest {
         AcceptingRecipient treasury = new AcceptingRecipient();
         DirectLaunchFeeSplitter splitter = new DirectLaunchFeeSplitter();
         SplitterTestToken token = new SplitterTestToken(1_000 ether);
-        splitter.initialize(payable(address(creator)), payable(address(treasury)), 7_000);
+        splitter.initialize(payable(address(creator)), payable(address(treasury)), address(token), 7_000);
 
         require(token.transfer(address(splitter), 100 ether), "fund splitter");
         splitter.depositToken(address(token), 100 ether);
@@ -151,14 +159,21 @@ contract DirectLaunchFeeSplitterTest {
         require(token.balanceOf(address(splitter)) == 0, "token residue");
         require(splitter.totalTokenReceived(address(token)) == 100 ether, "token received accounting");
         require(splitter.totalTokenPaid(address(token)) == 100 ether, "token paid accounting");
+
+        SplitterTestToken unrelatedToken = new SplitterTestToken(1 ether);
+        require(unrelatedToken.transfer(address(splitter), 1 ether), "fund unrelated token");
+        (bool unrelatedSuccess,) = address(splitter).call(
+            abi.encodeCall(splitter.depositToken, (address(unrelatedToken), 1 ether))
+        );
+        require(!unrelatedSuccess, "unrelated token distributed");
     }
 
-    function testFailedTokenPaymentIsRecipientClaimableAndCannotBeDoubleAccounted() public {
+    function testDeferredTokenPaymentIsRecipientClaimableAndCannotBeDoubleAccounted() public {
         RejectingRecipient creator = new RejectingRecipient();
         AcceptingRecipient treasury = new AcceptingRecipient();
         DirectLaunchFeeSplitter splitter = new DirectLaunchFeeSplitter();
         SplitterTestToken token = new SplitterTestToken(1_000 ether);
-        splitter.initialize(payable(address(creator)), payable(address(treasury)), 7_000);
+        splitter.initialize(payable(address(creator)), payable(address(treasury)), address(token), 7_000);
         token.setRejectedRecipient(address(creator));
 
         require(token.transfer(address(splitter), 100 ether), "fund splitter");
