@@ -1,4 +1,6 @@
-# Robinhood Chain mainnet contract manifest
+# Robinhood Chain legacy V4 contract manifest
+
+> Superseded for new launches by the [canonical V5 deployment](./MAINNET_V5_DEPLOYMENT.md). These addresses remain documented for historical verification and legacy identity protection.
 
 Status: **deployed, release-console verified, and source-verified as exact matches on Blockscout**
 

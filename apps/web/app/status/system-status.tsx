@@ -47,10 +47,10 @@ export function SystemStatus({ initialReport }: { initialReport: SystemHealthRep
         <h2>Fair Start protects every new launch</h2>
         <p className="safeguardLead">Fair Start is a brief opening window, not a permanent trading restriction. It limits large early buys so bots or insiders cannot capture most of a launch before everyone else can react.</p>
         <div className="safeguardGrid">
-          <div><strong>3-block opening delay</strong><span>Trading cannot be captured in the same block as launch.</span></div>
-          <div><strong>25 protected blocks</strong><span>The temporary limits cover only the opening window.</span></div>
-          <div><strong>0.5% maximum per buy</strong><span>No single opening purchase can take more than 0.5% of supply.</span></div>
-          <div><strong>1.5% maximum per wallet</strong><span>Each wallet has a temporary opening allowance.</span></div>
+          <div><strong>1-block opening delay</strong><span>Trading cannot be captured in the same block as launch.</span></div>
+          <div><strong>10 protected blocks</strong><span>The temporary limits cover only the opening window.</span></div>
+          <div><strong>1% maximum per buy</strong><span>No single opening purchase can take more than 1% of supply.</span></div>
+          <div><strong>3% maximum per wallet</strong><span>Each wallet has a temporary opening allowance.</span></div>
           <div><strong>One buy per block</strong><span>A wallet cannot stack multiple buys into the same block.</span></div>
           <div><strong>Automatic expiry</strong><span>Normal buying begins automatically when the countdown ends. Once trading opens, selling remains available.</span></div>
         </div>

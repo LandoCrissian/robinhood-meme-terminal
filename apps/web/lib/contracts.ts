@@ -2,8 +2,8 @@ import { getAddress, isAddress, type Address } from "viem";
 
 export const publicTestnetFactoryAddress = getAddress("0x2D075c7FC08508A027191A99f146EDD606966fF3");
 export const publicTestnetFactoryStartBlock = 89_775_000n;
-export const publicMainnetFactoryAddress = getAddress("0x88b86F10D874C2e3C8CfE63161ffa969f3273Cd4");
-export const publicMainnetVersionRegistryAddress = getAddress("0xfff3f69f473780EA5eA7f5525526986Bb491E00e");
+export const publicMainnetFactoryAddress = getAddress("0x25a92d8c79c38d07b0d3efd0ebe929d30e401cdd");
+export const publicMainnetVersionRegistryAddress = getAddress("0x4b8b222b5caa7066c02a54e51ec1a674adf5b3a1");
 
 export const versionRegistryAbi = [
   { type: "function", name: "activeFactory", stateMutability: "view", inputs: [], outputs: [{ type: "address" }] },

@@ -2,8 +2,13 @@ export const schemaSql = `
 CREATE TABLE IF NOT EXISTS indexer_state (
   chain_id INTEGER PRIMARY KEY,
   next_block BIGINT NOT NULL,
+  factory TEXT,
+  start_block BIGINT,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE indexer_state ADD COLUMN IF NOT EXISTS factory TEXT;
+ALTER TABLE indexer_state ADD COLUMN IF NOT EXISTS start_block BIGINT;
 
 CREATE TABLE IF NOT EXISTS sync_points (
   chain_id INTEGER NOT NULL,

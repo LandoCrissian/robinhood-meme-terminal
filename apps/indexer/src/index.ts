@@ -10,8 +10,9 @@ import { marketEvents, tokenLaunchedEvent } from "./abi.js";
 import { schemaSql } from "./schema.js";
 
 const CHAIN_ID = 4663;
-const DEFAULT_FACTORY = "0x88b86F10D874C2e3C8CfE63161ffa969f3273Cd4";
-const DEFAULT_START_BLOCK = 8_862_129n;
+const DEFAULT_FACTORY = "0x25a92d8c79c38d07b0d3efd0ebe929d30e401cdd";
+const DEFAULT_START_BLOCK = 9_567_266n;
+const FIXED_TOKEN_SUPPLY = 1_000_000_000n * 10n ** 18n;
 
 function positiveInteger(name: string, fallback: number) {
   const raw = process.env[name];
@@ -76,13 +77,8 @@ type LaunchArgs = {
   graduationPoolId: `0x${string}`;
   name: string;
   symbol: string;
-  supply: bigint;
   metadataURI: string;
-  creatorBps: number;
-  communityBps: number;
-  traderBps: number;
-  liquidityBps: number;
-  platformBps: number;
+  rewardBps: readonly [number, number, number, number, number];
 };
 
 type TradeArgs = {
@@ -124,11 +120,46 @@ function lower(address: Address) {
 
 async function migrate() {
   await pool.query(schemaSql);
+  const factory = lower(config.factory);
+  const state = await pool.query<{ factory: string | null; start_block: string | null }>(
+    "SELECT factory, start_block FROM indexer_state WHERE chain_id = $1",
+    [CHAIN_ID]
+  );
+  const previous = state.rows[0];
+
+  if (previous && (previous.factory !== factory || previous.start_block !== config.startBlock.toString())) {
+    const db = await pool.connect();
+    try {
+      await db.query("BEGIN");
+      await db.query("DELETE FROM liquidity_migrations");
+      await db.query("DELETE FROM graduations");
+      await db.query("DELETE FROM trades");
+      await db.query("DELETE FROM launches");
+      await db.query("DELETE FROM sync_points WHERE chain_id = $1", [CHAIN_ID]);
+      await db.query(
+        `UPDATE indexer_state
+         SET next_block = $2, factory = $3, start_block = $2, updated_at = NOW()
+         WHERE chain_id = $1`,
+        [CHAIN_ID, config.startBlock.toString(), factory]
+      );
+      await db.query("COMMIT");
+      console.info(JSON.stringify({ event: "factory_cutover", factory, startBlock: config.startBlock.toString() }));
+    } catch (error) {
+      await db.query("ROLLBACK");
+      throw error;
+    } finally {
+      db.release();
+    }
+    return;
+  }
+
   await pool.query(
-    `INSERT INTO indexer_state (chain_id, next_block)
-     VALUES ($1, $2)
-     ON CONFLICT (chain_id) DO NOTHING`,
-    [CHAIN_ID, config.startBlock.toString()]
+    `INSERT INTO indexer_state (chain_id, next_block, factory, start_block)
+     VALUES ($1, $2, $3, $2)
+     ON CONFLICT (chain_id) DO UPDATE SET
+       factory = EXCLUDED.factory,
+       start_block = EXCLUDED.start_block`,
+    [CHAIN_ID, config.startBlock.toString(), factory]
   );
 }
 
@@ -242,8 +273,8 @@ async function processRange(fromBlock: bigint, toBlock: bigint) {
         [
           lower(args.token), args.launchId.toString(), lower(args.creator), lower(args.market),
           lower(args.rewardVault), args.graduationPoolId, args.name, args.symbol,
-          args.supply.toString(), args.metadataURI, Number(args.creatorBps), Number(args.communityBps),
-          Number(args.traderBps), Number(args.liquidityBps), Number(args.platformBps),
+          FIXED_TOKEN_SUPPLY.toString(), args.metadataURI, Number(args.rewardBps[0]), Number(args.rewardBps[1]),
+          Number(args.rewardBps[2]), Number(args.rewardBps[3]), Number(args.rewardBps[4]),
           log.transactionHash, log.blockNumber.toString(), log.logIndex
         ]
       );
