@@ -140,6 +140,7 @@ contract V4GraduationAdapter is IV6GraduationAdapter, IUnlockCallback {
         if (
             feeSplitter == address(0) || feeSplitter.code.length == 0 || feeBps == 0
                 || uint256(feeBps) * BPS_TO_V4_FEE != poolFee
+                || DirectLaunchFeeSplitter(payable(feeSplitter)).launchToken() != token
         ) revert InvalidConfiguration();
 
         feeSplitters[token] = feeSplitter;
