@@ -52,6 +52,10 @@ Simulate low activity, whales, rapid buys, panic sells, oscillating trades, fee-
 - remediation verification for critical/high findings
 - explicit statement of unresolved assumptions and excluded scope
 
+## Engagement handoff
+
+Use [EXTERNAL_AUDIT_HANDOFF.md](EXTERNAL_AUDIT_HANDOFF.md) as the exact provider handoff, acceptance policy, and remediation workflow.
+
 ## Evidence package
 
 - [Mainnet deployment record](MAINNET_DEPLOYMENT.md)
