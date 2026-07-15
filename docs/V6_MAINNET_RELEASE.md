@@ -124,7 +124,7 @@ The Foundry script is rehearsal-only and intentionally has no production broadca
 - Launch gate is paused until the last approved step
 - Official RMT V6 launch is bound to legacy token `0xaB374D24aFBD943a134AdB381D9646e71C6f6C0C`, succeeds once while ordinary launches remain paused, and records the exact old-to-new provenance relationship; the published disclosure states that the new contract/supply does not copy, swap, credit, or migrate old holder balances
 - Production terminal reads only V6 launch events for the new feed
-- Mobile Safari, injected wallets, WalletConnect, and mobile deep links pass
+- Mobile Safari with Robinhood Wallet over WalletConnect, the MetaMask mobile deep link, and compatible injected wallet browsers pass; unverified wallet brands are not advertised
 - Browser, server, and indexer traffic use restricted production-capable RPC endpoints with provider-side rate and spend limits; the rate-limited public RPC is not the production traffic path
 - Monitoring and incident-response contacts are active
 

@@ -80,7 +80,7 @@ Any mismatch blocks deployment. Do not override it in the website or script.
 - [ ] Resolve every critical/high finding and obtain independent remediation review.
 - [ ] Record the reviewed policy hashes and expected constructor arguments.
 - [ ] Prepare Blockscout verification inputs before broadcast.
-- [ ] Confirm mobile Safari, injected wallets, WalletConnect, and deep links can complete the required signatures reliably.
+- [ ] Confirm mobile Safari with Robinhood Wallet over WalletConnect, the MetaMask mobile deep link, and compatible injected wallet browsers can complete the required signatures reliably; do not advertise unverified wallet brands.
 
 ## Phased deployment and activation
 
