@@ -29,7 +29,7 @@ function walletErrorMessage(message: string) {
   return "The wallet did not connect. Close any stale wallet prompt and try again.";
 }
 
-export function WalletButton({ target = "testnet" }: { target?: "testnet" | "mainnet" }) {
+export function WalletButton({ target = "testnet", returnTo }: { target?: "testnet" | "mainnet"; returnTo?: string }) {
   const [open, setOpen] = useState(false);
   const [pendingConnectorUid, setPendingConnectorUid] = useState<string>();
   const [currentUrl, setCurrentUrl] = useState("https://www.rmtlaunch.fun");
@@ -52,12 +52,12 @@ export function WalletButton({ target = "testnet" }: { target?: "testnet" | "mai
   }, [clearPendingConnection]);
 
   useEffect(() => {
-    setCurrentUrl(window.location.href);
+    setCurrentUrl(returnTo ? new URL(returnTo, window.location.origin).toString() : window.location.href);
     if (isConnected) {
       setOpen(false);
       setPendingConnectorUid(undefined);
     }
-  }, [isConnected]);
+  }, [isConnected, returnTo]);
 
   useEffect(() => {
     if (!open) return;

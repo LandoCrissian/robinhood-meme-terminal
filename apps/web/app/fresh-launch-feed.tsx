@@ -2,10 +2,13 @@
 
 import Link from "next/link";
 import { formatEther } from "viem";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { activeReleaseBadge, isMainnetRelease } from "../lib/network";
 import type { LaunchFeedItem, LaunchFeedResponse } from "../lib/launch-feed";
 import { ipfsToHttp } from "../lib/token-metadata";
+import { MarketPanel } from "./market-panel";
+
+const FIXED_SUPPLY = 1_000_000_000n * 10n ** 18n;
 
 function displaySymbol(symbol: string) {
   return symbol.replace(/^\$+/, "");
@@ -38,11 +41,45 @@ function TokenArtwork({ launch, featured = false }: { launch: LaunchFeedItem; fe
   );
 }
 
+function QuickTradeDialog({ launch, side, onClose }: { launch: LaunchFeedItem; side: "buy" | "sell"; onClose: () => void }) {
+  const closeButton = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", closeOnEscape);
+    closeButton.current?.focus();
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [onClose]);
+
+  return <>
+    <button className="quickTradeBackdrop" type="button" aria-label="Close quick trade" onClick={onClose} />
+    <section className="quickTradeDialog" role="dialog" aria-modal="true" aria-label={`${side === "buy" ? "Buy" : "Sell"} ${launch.name}`}>
+      <header className="quickTradeHeader">
+        <div className="quickTradeIdentity"><TokenArtwork launch={launch} featured /><span><small>QUICK TRADE · RMT V6</small><strong>{launch.name}</strong><em>${displaySymbol(launch.symbol)}</em></span></div>
+        <div className="quickTradeHeaderActions"><Link href={`/token/${launch.token}?side=${side}#trade`}>Full page ↗</Link><button ref={closeButton} type="button" aria-label="Close quick trade" onClick={onClose}>×</button></div>
+      </header>
+      <div className="quickTradeBody">
+        <MarketPanel key={`${launch.token}-${side}`} tokenAddress={launch.token} symbol={displaySymbol(launch.symbol)} totalSupply={FIXED_SUPPLY} creator={launch.creator} compact initialMode={side} />
+      </div>
+      <footer className="quickTradeFooter"><span>Live onchain quote</span><span>Wallet confirmation required</span><span>RMT never controls your funds</span></footer>
+    </section>
+  </>;
+}
+
 export function FreshLaunchFeed() {
   const [launches, setLaunches] = useState<LaunchFeedItem[]>([]);
   const [status, setStatus] = useState<"loading" | "live" | "error">("loading");
   const [message, setMessage] = useState("Synchronizing verified launches.");
   const [showAll, setShowAll] = useState(false);
+  const [quickTrade, setQuickTrade] = useState<{ launch: LaunchFeedItem; side: "buy" | "sell" }>();
+  const closeQuickTrade = useCallback(() => setQuickTrade(undefined), []);
 
   const refresh = useCallback(async () => {
     setStatus((current) => current === "live" ? "live" : "loading");
@@ -101,7 +138,7 @@ export function FreshLaunchFeed() {
             <div className="hotSignal"><span><small>{launch.graduated ? "Curve complete" : "Recent volume"}</small><em>{activityLabel(launch)}</em></span><strong>{volumeLabel(launch.volumeWei)}</strong></div>
             <div className="miniProgress" aria-label={`${launch.progressBps / 100}% graduation progress`}><span style={{ width: `${launch.progressBps / 100}%` }} /></div>
           </Link>
-          <div className="tokenCardActions"><Link className="buyCardAction" href={`/token/${launch.token}?side=buy#trade`} aria-label={`Buy ${launch.name}`}>Buy</Link><Link className="sellCardAction" href={`/token/${launch.token}?side=sell#trade`} aria-label={`Sell ${launch.name}`}>Sell</Link></div>
+          <div className="tokenCardActions"><button className="buyCardAction" type="button" aria-haspopup="dialog" aria-label={`Quick buy ${launch.name}`} onClick={() => setQuickTrade({ launch, side: "buy" })}>Buy</button><button className="sellCardAction" type="button" aria-haspopup="dialog" aria-label={`Quick sell ${launch.name}`} onClick={() => setQuickTrade({ launch, side: "sell" })}>Sell</button></div>
         </article>
       ))}</div>}
 
@@ -113,11 +150,12 @@ export function FreshLaunchFeed() {
             <div className="identity"><strong>{launch.name}</strong><span>{"$" + displaySymbol(launch.symbol) + " • #" + launch.launchId}</span></div>
             <div className="launchMetrics"><span><small>Reserve</small><strong>{reserveLabel(launch.reserveWei)}</strong></span><span><small>Volume</small><strong>{volumeLabel(launch.volumeWei)}</strong></span><span><small>Graduation</small><strong>{launch.graduated ? "Complete" : `${launch.progressBps / 100}%`}</strong></span></div>
           </Link>
-          <div className="launchActions"><Link className="buyCardAction" href={`/token/${launch.token}?side=buy#trade`} aria-label={`Buy ${launch.name}`}>Buy</Link><Link className="sellCardAction" href={`/token/${launch.token}?side=sell#trade`} aria-label={`Sell ${launch.name}`}>Sell</Link></div>
+          <div className="launchActions"><button className="buyCardAction" type="button" aria-haspopup="dialog" aria-label={`Quick buy ${launch.name}`} onClick={() => setQuickTrade({ launch, side: "buy" })}>Buy</button><button className="sellCardAction" type="button" aria-haspopup="dialog" aria-label={`Quick sell ${launch.name}`} onClick={() => setQuickTrade({ launch, side: "sell" })}>Sell</button></div>
         </article>
       ))}
       {launches.length > 6 && <button className="showMore" type="button" onClick={() => setShowAll((value) => !value)}>{showAll ? "Show fewer" : `View all ${launches.length}`}</button>}
       {launches.length > 0 && <p className="feedStatus">{message} Refreshes every 10 seconds.</p>}
+      {quickTrade && <QuickTradeDialog launch={quickTrade.launch} side={quickTrade.side} onClose={closeQuickTrade} />}
     </section>
   );
 }

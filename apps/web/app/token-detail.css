@@ -447,10 +447,37 @@ dl{grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr)}
 .aboutPane>section>p:not(.eyebrow){color:#9eaaa1;line-height:1.6}
 .aboutPane .metadataPanel{margin:0;padding:0;border:0;background:transparent;box-shadow:none}
 
+/* Discovery quick-trade reuses the verified market engine in a compact shell. */
+.quickMarketPanel{min-width:0}
+.quickMarketPanel .marketWorkspace{grid-template-columns:minmax(0,1.25fr) minmax(315px,.8fr);gap:12px}
+.quickMarketPanel .tradeRail{position:relative;top:auto;padding:13px;border-radius:15px;box-shadow:none}
+.quickMarketPanel .marketOverview{display:flex;min-width:0;flex-direction:column;gap:10px}
+.quickMarketPanel .marketOverview .priceChart{min-height:0;margin:0;padding:13px;border-radius:14px}
+.quickMarketPanel .priceChartHeader h3{font-size:1.15rem}
+.quickMarketPanel .priceChart svg{max-height:150px;margin-top:7px}
+.quickMarketPanel .chartRange{font-size:.55rem}
+.quickMarketPanel .fairStartCard{margin:0;padding:12px}
+.quickMarketPanel .fairStartCard p{font-size:.68rem}
+.quickMarketPanel>.creatorIntelligence{margin:12px 0 0;padding:13px}
+.quickMarketPanel .starterGuide{display:none}
+.quickMarketSnapshot{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+.quickMarketSnapshot>div{display:flex;min-width:0;flex-direction:column;gap:3px;padding:10px;border:1px solid #24332a;border-radius:11px;background:#0b130e}
+.quickMarketSnapshot small{color:#78867c;font-size:.58rem}
+.quickMarketSnapshot strong{overflow:hidden;color:#eef3ef;font-size:.78rem;text-overflow:ellipsis;white-space:nowrap}
+.walletQuickAmounts button{display:flex;min-width:0;flex-direction:column;gap:2px;padding:6px 3px}
+.walletQuickAmounts button span{font-size:.7rem;font-weight:900}
+.walletQuickAmounts button small{max-width:100%;overflow:hidden;color:#718078;font-size:.5rem;text-overflow:ellipsis;white-space:nowrap}
+.walletPresetNote{display:block;margin-top:6px;color:#69766e;font-size:.57rem;line-height:1.35}
+.quickTradeConnect{display:flex;flex-direction:column;gap:7px}
+.quickTradeConnect .walletMenu,.quickTradeConnect .wallet{width:100%}
+.quickTradeConnect .wallet{min-height:48px}
+.quickTradeConnect>small{color:#718078;font-size:.59rem;line-height:1.4;text-align:center}
+
 @media(max-width:900px){
   .marketWorkspace{grid-template-columns:1fr}
   .tradeRail{position:relative;top:auto;grid-row:1}
   .marketOverview{grid-row:2}
+  .quickMarketPanel .marketWorkspace{grid-template-columns:1fr}
 }
 
 @media(max-width:640px){
@@ -484,6 +511,14 @@ dl{grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr)}
   .mobileTradeBar button{min-height:49px;border:0;border-radius:10px;background:#152119;color:#87948b;font:inherit;font-weight:900;cursor:pointer}
   .mobileTradeBar button:first-child.active{background:#00c805;color:#021506}
   .mobileTradeBar button:last-child.active{background:#e54848;color:#fff}
+  .quickMarketPanel .tradeRail{padding:10px}
+  .quickMarketPanel .tradeRailHeader{margin-bottom:8px}
+  .quickMarketPanel .tradeAmountCard{padding:11px}
+  .quickMarketPanel .tradeDisclosure{margin:7px 0}
+  .quickMarketPanel .creatorRiskSummary,.quickMarketPanel .creatorRiskCheck,.quickMarketPanel .preflightCard{margin-bottom:7px}
+  .quickMarketPanel .marketOverview{gap:8px}
+  .quickMarketPanel .marketOverview .priceChart{padding:11px}
+  .quickMarketPanel .priceChart svg{max-height:125px}
 }
 
 @media(max-width:390px){
