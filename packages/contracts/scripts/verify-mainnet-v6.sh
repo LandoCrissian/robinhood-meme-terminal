@@ -215,6 +215,87 @@ print("Blockscout v2 record: " + json.dumps(summary, sort_keys=True))
 ' "$expected_name" "$expected_path" <<<"$payload"
 }
 
+submit_blockscout_standard_input() {
+  local label="$1"
+  local address="$2"
+  local contract="$3"
+  local constructor_args="$4"
+  local expected_name="${contract##*:}"
+  local expected_path="${contract%%:*}"
+  local standard_json
+  standard_json="$(mktemp)"
+
+  local command=(
+    forge verify-contract
+    --rpc-url "$RPC_URL"
+    --chain "$CHAIN_ID"
+    --compiler-version "$EXPECTED_COMPILER_VERSION"
+    --num-of-optimizations 200
+    --via-ir
+    --skip-is-verified-check
+    --show-standard-json-input
+  )
+  if [[ -n "$constructor_args" ]]; then
+    command+=(--constructor-args "$constructor_args")
+  fi
+  command+=("$address" "$contract")
+
+  if ! "${command[@]}" >"$standard_json"; then
+    rm -f "$standard_json"
+    echo "Could not generate standard JSON for $label"
+    return 1
+  fi
+
+  if ! python3 - "$standard_json" "$expected_path" "$expected_name" <<'PY'
+import json
+import sys
+
+json_path, expected_path, expected_name = sys.argv[1:]
+with open(json_path, encoding="utf-8") as source:
+    compiler_input = json.load(source)
+settings = compiler_input.get("settings")
+optimizer = settings.get("optimizer") if isinstance(settings, dict) else None
+target = settings.get("compilationTarget") if isinstance(settings, dict) else None
+sources = compiler_input.get("sources")
+with open(expected_path, encoding="utf-8", newline="") as reviewed:
+    expected_source = reviewed.read()
+valid = (
+    compiler_input.get("language") == "Solidity"
+    and isinstance(settings, dict)
+    and settings.get("viaIR") is True
+    and settings.get("evmVersion") == "cancun"
+    and isinstance(optimizer, dict)
+    and optimizer.get("enabled") is True
+    and optimizer.get("runs") == 200
+    and target == {expected_path: expected_name}
+    and isinstance(sources, dict)
+    and isinstance(sources.get(expected_path), dict)
+    and sources[expected_path].get("content") == expected_source
+)
+if not valid:
+    raise SystemExit("generated standard JSON does not match the reviewed release settings and source")
+PY
+  then
+    rm -f "$standard_json"
+    echo "Generated standard JSON failed the reviewed-release check for $label"
+    return 1
+  fi
+
+  echo "Submitting exact standard JSON through Blockscout v2 for $label"
+  local response=""
+  local status=0
+  response="$(curl --fail-with-body --silent --show-error --location --connect-timeout 10 --max-time 120 \
+    --request POST "${BLOCKSCOUT_API_V2_URL%/}/$address/verification/via/standard-input" \
+    --form-string "compiler_version=$EXPECTED_COMPILER_VERSION" \
+    --form-string "contract_name=$expected_name" \
+    --form "files[0]=@$standard_json;type=application/json" \
+    --form-string "autodetect_constructor_args=true" \
+    --form-string "license_type=mit" 2>&1)" || status=$?
+  rm -f "$standard_json"
+  printf '%s\n' "$response"
+  return "$status"
+}
+
 verify_contract() {
   local label="$1"
   local address="$2"
@@ -253,6 +334,10 @@ verify_contract() {
   output="$("${command[@]}" 2>&1)" || command_status=$?
   printf '%s\n' "$output"
 
+  if ! exact_blockscout_record "$address" "$expected_name" "$expected_path"; then
+    submit_blockscout_standard_input "$label" "$address" "$contract" "$constructor_args" || true
+  fi
+
   for ((attempt = 1; attempt <= BLOCKSCOUT_POLL_ATTEMPTS; attempt += 1)); do
     if exact_blockscout_record "$address" "$expected_name" "$expected_path"; then
       echo "Exact Blockscout record confirmed for $label at $address"
@@ -271,6 +356,7 @@ verify_contract() {
 require_tool cast
 require_tool forge
 require_tool curl
+require_tool mktemp
 require_tool python3
 
 required_addresses=(
