@@ -15,15 +15,14 @@ import {
   graduationAdapterReadAbi,
   graduationFeesCollectedEvent,
   marketEvents,
+  policyRegistryReadAbi,
   tokenLaunchedEvent
 } from "./abi.js";
 import { schemaSql } from "./schema.js";
 
 const CHAIN_ID = 4663;
-const INDEXER_SCHEMA_VERSION = 4;
+const INDEXER_SCHEMA_VERSION = 5;
 const FIXED_TOKEN_SUPPLY = 1_000_000_000n * 10n ** 18n;
-const CANONICAL_CREATOR_PAYOUT_AUTHORITY = "0x13c0a930516fb6bf0d467b38605d9d2a9c4c6953";
-const CANONICAL_PROTOCOL_TREASURY = "0x7e8e7d3af28584a8b9eeddbe16cd3308bd1e76ca";
 const CANONICAL_CURVE_FEE_BPS = 100;
 const CANONICAL_CREATOR_SHARE_BPS = 7_000;
 const CANONICAL_PROTOCOL_SHARE_BPS = 3_000;
@@ -97,6 +96,16 @@ const pool = new Pool({
 let indexedThrough = config.startBlock - 1n;
 let lastSyncAt: string | null = null;
 let lastError: string | null = null;
+let initialSyncComplete = false;
+
+type V6ProtocolBindings = {
+  policyRegistry: Address;
+  governance: Address;
+  creatorPayoutAuthority: Address;
+  protocolTreasury: Address;
+};
+
+let protocolBindings: V6ProtocolBindings | null = null;
 
 type ConfirmedLog<Args> = {
   address: Address;
@@ -227,8 +236,28 @@ function lower(address: Address) {
   return address.toLowerCase();
 }
 
-async function verifyV6Factory() {
-  const [version, creatorPayoutAuthority] = await Promise.all([
+function requireProtocolBindings() {
+  if (!protocolBindings) throw new Error("V6 protocol bindings have not been verified");
+  return protocolBindings;
+}
+
+async function verifyV6Factory(): Promise<V6ProtocolBindings> {
+  const latestBlock = await rpc.getBlockNumber();
+  if (config.startBlock > latestBlock) {
+    throw new Error("RMT_FACTORY_START_BLOCK is ahead of the current chain head");
+  }
+  const [factoryCodeAtStart, factoryCodeBeforeStart] = await Promise.all([
+    rpc.getBytecode({ address: config.factory, blockNumber: config.startBlock }),
+    rpc.getBytecode({ address: config.factory, blockNumber: config.startBlock - 1n })
+  ]);
+  if (!factoryCodeAtStart || factoryCodeAtStart === "0x") {
+    throw new Error("RMT_FACTORY_START_BLOCK does not contain the configured V6 factory deployment");
+  }
+  if (factoryCodeBeforeStart && factoryCodeBeforeStart !== "0x") {
+    throw new Error("RMT_FACTORY_START_BLOCK is later than the configured factory deployment block");
+  }
+
+  const [version, creatorPayoutAuthority, policyRegistry] = await Promise.all([
     rpc.readContract({
       address: config.factory,
       abi: factoryReadAbi,
@@ -238,6 +267,11 @@ async function verifyV6Factory() {
       address: config.factory,
       abi: factoryReadAbi,
       functionName: "creatorPayoutAuthority"
+    }),
+    rpc.readContract({
+      address: config.factory,
+      abi: factoryReadAbi,
+      functionName: "policyRegistry"
     })
   ]);
   if (Number(version) !== 6) {
@@ -245,15 +279,57 @@ async function verifyV6Factory() {
       `RMT_FACTORY_ADDRESS must expose protocolVersion()==6; received ${String(version)}`
     );
   }
-  if (lower(creatorPayoutAuthority) !== CANONICAL_CREATOR_PAYOUT_AUTHORITY) {
-    throw new Error("RMT_FACTORY_ADDRESS does not use the canonical delayed creator-payout authority");
+  if (policyRegistry === zeroAddress || creatorPayoutAuthority === zeroAddress) {
+    throw new Error("RMT_FACTORY_ADDRESS exposes a zero V6 policy-registry or creator-payout authority");
   }
+
+  const [governance, protocolTreasury, policyRegistryBytecode] = await Promise.all([
+    rpc.readContract({
+      address: policyRegistry,
+      abi: policyRegistryReadAbi,
+      functionName: "governance"
+    }),
+    rpc.readContract({
+      address: policyRegistry,
+      abi: policyRegistryReadAbi,
+      functionName: "canonicalProtocolTreasury"
+    }),
+    rpc.getBytecode({ address: policyRegistry })
+  ]);
+  if (!policyRegistryBytecode || policyRegistryBytecode === "0x") {
+    throw new Error("RMT_FACTORY_ADDRESS points to a policy registry without deployed bytecode");
+  }
+  if (governance === zeroAddress || protocolTreasury === zeroAddress) {
+    throw new Error("The V6 policy registry exposes a zero governance or protocol-treasury address");
+  }
+  if (lower(creatorPayoutAuthority) !== lower(governance)) {
+    throw new Error("The V6 factory creator-payout authority does not match policy-registry governance");
+  }
+  if (lower(protocolTreasury) !== lower(governance)) {
+    throw new Error("The V6 policy registry canonical protocol treasury does not match V6 governance");
+  }
+  const governanceBytecode = await rpc.getBytecode({ address: governance });
+  if (!governanceBytecode || governanceBytecode === "0x") {
+    throw new Error("The V6 governance and protocol-treasury address has no deployed bytecode");
+  }
+
+  const bindings = {
+    policyRegistry: getAddress(policyRegistry),
+    governance: getAddress(governance),
+    creatorPayoutAuthority: getAddress(creatorPayoutAuthority),
+    protocolTreasury: getAddress(protocolTreasury)
+  };
   console.info(JSON.stringify({
     event: "v6_factory_verified",
     factory: lower(config.factory),
     protocolVersion: Number(version),
+    policyRegistry: lower(bindings.policyRegistry),
+    governance: lower(bindings.governance),
+    creatorPayoutAuthority: lower(bindings.creatorPayoutAuthority),
+    protocolTreasury: lower(bindings.protocolTreasury),
     startBlock: config.startBlock.toString()
   }));
+  return bindings;
 }
 
 async function refreshCreatorPayoutState(db: PoolClient) {
@@ -524,6 +600,9 @@ async function insertCreatorPayoutEvent(
 }
 
 async function processRange(fromBlock: bigint, toBlock: bigint) {
+  const bindings = requireProtocolBindings();
+  const canonicalCreatorPayoutAuthority = lower(bindings.creatorPayoutAuthority);
+  const canonicalProtocolTreasury = lower(bindings.protocolTreasury);
   const launches = await rpc.getLogs({
     address: config.factory,
     event: tokenLaunchedEvent,
@@ -750,8 +829,8 @@ async function processRange(fromBlock: bigint, toBlock: bigint) {
             throw new Error(`Fee splitter ${feeSplitter} emitted a mismatched authorized market`);
           }
           if (
-            lower(args.protocolTreasury) !== CANONICAL_PROTOCOL_TREASURY
-              || lower(args.creatorPayoutAuthority) !== CANONICAL_CREATOR_PAYOUT_AUTHORITY
+            lower(args.protocolTreasury) !== canonicalProtocolTreasury
+              || lower(args.creatorPayoutAuthority) !== canonicalCreatorPayoutAuthority
               || Number(args.creatorShareBps) !== CANONICAL_CREATOR_SHARE_BPS
               || lower(args.creator) !== splitterToOriginalCreator.get(feeSplitter)
           ) {
@@ -779,7 +858,7 @@ async function processRange(fromBlock: bigint, toBlock: bigint) {
             throw new Error(`Fee splitter ${feeSplitter} is bound to a noncanonical V6 graduation adapter`);
           }
           splitterToAdapter.set(feeSplitter, adapter);
-          splitterToTreasury.set(feeSplitter, CANONICAL_PROTOCOL_TREASURY);
+          splitterToTreasury.set(feeSplitter, canonicalProtocolTreasury);
           const update = await db.query(
             `UPDATE launches
              SET protocol_treasury = $2,
@@ -814,9 +893,9 @@ async function processRange(fromBlock: bigint, toBlock: bigint) {
           const originalCreator = splitterToOriginalCreator.get(feeSplitter);
           const treasury = splitterToTreasury.get(feeSplitter);
           if (
-            lower(args.authority) !== CANONICAL_CREATOR_PAYOUT_AUTHORITY
+            lower(args.authority) !== canonicalCreatorPayoutAuthority
               || args.evidenceHash.toLowerCase() === ZERO_HASH
-              || !originalCreator || treasury !== CANONICAL_PROTOCOL_TREASURY
+              || !originalCreator || treasury !== canonicalProtocolTreasury
               || ![originalCreator, treasury].includes(lower(args.previousCreator))
               || ![originalCreator, treasury].includes(lower(args.newCreator))
               || lower(args.previousCreator) === lower(args.newCreator)
@@ -841,8 +920,8 @@ async function processRange(fromBlock: bigint, toBlock: bigint) {
           const args = log.args as CreatorPayoutNonceInvalidatedArgs;
           const treasury = splitterToTreasury.get(feeSplitter);
           if (
-            treasury !== CANONICAL_PROTOCOL_TREASURY
-              || lower(args.protocolTreasury) !== CANONICAL_PROTOCOL_TREASURY
+            treasury !== canonicalProtocolTreasury
+              || lower(args.protocolTreasury) !== canonicalProtocolTreasury
               || args.newNonce !== args.previousNonce + 1n
           ) {
             throw new Error(`Fee splitter ${feeSplitter} emitted an invalid payout-nonce invalidation`);
@@ -985,9 +1064,10 @@ async function processRange(fromBlock: bigint, toBlock: bigint) {
           OR curve_fee_bps <> ${CANONICAL_CURVE_FEE_BPS}
           OR post_graduation_fee_bps <> ${CANONICAL_POST_GRADUATION_FEE_BPS}
           OR graduation_target <> '${CANONICAL_GRADUATION_TARGET.toString()}'
-          OR protocol_treasury <> '${CANONICAL_PROTOCOL_TREASURY}'
-          OR creator_payout_authority <> '${CANONICAL_CREATOR_PAYOUT_AUTHORITY}'
-       LIMIT 1`
+          OR protocol_treasury <> $1
+          OR creator_payout_authority <> $2
+       LIMIT 1`,
+      [canonicalProtocolTreasury, canonicalCreatorPayoutAuthority]
     );
     if (incompleteLaunch.rows[0]) {
       throw new Error(`Incomplete V6 launch accounting for ${incompleteLaunch.rows[0].token}`);
@@ -1110,27 +1190,40 @@ function json(response: import("node:http").ServerResponse, status: number, body
 }
 
 function startServer() {
+  const bindings = requireProtocolBindings();
   return createServer(async (request, response) => {
     try {
       const url = new URL(request.url ?? "/", "http://localhost");
       if (request.method === "GET" && url.pathname === "/health") {
         const latest = await rpc.getBlockNumber();
-        json(response, lastError ? 503 : 200, {
-          ok: !lastError,
+        const healthy = initialSyncComplete && !lastError;
+        json(response, healthy ? 200 : 503, {
+          ok: healthy,
           chainId: CHAIN_ID,
           protocolVersion: 6,
           factory: config.factory,
+          policyRegistry: bindings.policyRegistry,
+          governance: bindings.governance,
+          creatorPayoutAuthority: bindings.creatorPayoutAuthority,
+          protocolTreasury: bindings.protocolTreasury,
           factoryStartBlock: config.startBlock.toString(),
           indexedThrough: indexedThrough.toString(),
           latestBlock: latest.toString(),
           confirmationDepth: config.confirmations,
           lagBlocks: latest > indexedThrough ? (latest - indexedThrough).toString() : "0",
+          initialSyncComplete,
           lastSyncAt,
-          error: lastError
+          error: lastError ?? (initialSyncComplete ? null : "Initial V6 backfill and invariants are still running")
         });
         return;
       }
       if (request.method === "GET" && url.pathname === "/launches") {
+        if (!initialSyncComplete || lastError) {
+          json(response, 503, {
+            error: lastError ?? "Initial V6 backfill and invariants are still running"
+          });
+          return;
+        }
         const requested = Number.parseInt(url.searchParams.get("limit") ?? "25", 10);
         const limit = Number.isSafeInteger(requested) ? Math.min(100, Math.max(1, requested)) : 25;
         json(response, 200, { launches: await launchRows(limit), indexedThrough: indexedThrough.toString(), syncedAt: lastSyncAt });
@@ -1147,7 +1240,7 @@ function startServer() {
 
 let stopping = false;
 async function run() {
-  await verifyV6Factory();
+  protocolBindings = await verifyV6Factory();
   await migrate();
   await reconcileReorg();
   const server = startServer();
@@ -1165,6 +1258,7 @@ async function run() {
   while (!stopping) {
     try {
       await syncOnce();
+      initialSyncComplete = true;
       lastError = null;
     } catch (error) {
       lastError = error instanceof Error ? error.message : String(error);

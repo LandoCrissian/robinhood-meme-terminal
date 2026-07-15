@@ -24,6 +24,7 @@ GOVERNANCE_DELAY="86400"
 GOVERNANCE_EXECUTION_WINDOW="604800"
 REGISTRY_ACTIVATION_DELAY="172800"
 LAUNCH_UNPAUSE_DELAY="86400"
+BOOTSTRAP_WINDOW="43200"
 CURVE_FEE_BPS="100"
 CREATOR_FEE_SHARE_BPS="7000"
 PROTOCOL_FEE_SHARE_BPS="3000"
@@ -56,6 +57,14 @@ require_address_env() {
   [[ "$value" =~ ^0x[0-9a-fA-F]{40}$ ]] || fail "$variable is not a valid address."
   [[ "$(lowercase "$value")" != "$(lowercase "$ZERO_ADDRESS")" ]] \
     || fail "$variable cannot be the zero address."
+}
+
+require_address_value() {
+  local label="$1"
+  local value="$2"
+  [[ "$value" =~ ^0x[0-9a-fA-F]{40}$ ]] || fail "$label is not a valid address."
+  [[ "$(lowercase "$value")" != "$(lowercase "$ZERO_ADDRESS")" ]] \
+    || fail "$label cannot be the zero address."
 }
 
 scalar_call() {
@@ -139,6 +148,7 @@ require_tool forge
 
 required_addresses=(
   V6_GOVERNANCE_ADDRESS
+  V6_BOOTSTRAP_CONTROLLER_ADDRESS
   V6_VERSION_REGISTRY_ADDRESS
   V6_HOOK_ADDRESS
   V6_ADAPTER_ADDRESS
@@ -181,9 +191,17 @@ expect_call "V5 graduation target" "$LEGACY_FACTORY" "graduationTarget()(uint256
 V5_VERSION="$(cast keccak 'RMT_FACTORY_V5')"
 V6_VERSION="$(cast keccak 'RMT_FACTORY_V6')"
 FAIR_POLICY_ID="$(cast keccak 'RMT_SIMPLE_FAIR_V1')"
+OPEN_POLICY_ID="$(cast keccak 'RMT_SIMPLE_OPEN_V1')"
 
-echo "Checking the eight operator-supplied V6 contracts"
+echo "Checking the nine operator-supplied V6 contracts"
 require_code "V6 governance" "$V6_GOVERNANCE_ADDRESS"
+require_code "V6 bootstrap controller" "$V6_BOOTSTRAP_CONTROLLER_ADDRESS"
+V6_FOUNDATION_VERIFIER_ADDRESS="$(scalar_call "$V6_BOOTSTRAP_CONTROLLER_ADDRESS" "foundationVerifier()(address)")"
+V6_SMOKE_VERIFIER_ADDRESS="$(scalar_call "$V6_BOOTSTRAP_CONTROLLER_ADDRESS" "smokeVerifier()(address)")"
+require_address_value "V6 foundation verifier" "$V6_FOUNDATION_VERIFIER_ADDRESS"
+require_address_value "V6 smoke verifier" "$V6_SMOKE_VERIFIER_ADDRESS"
+require_code "V6 foundation verifier" "$V6_FOUNDATION_VERIFIER_ADDRESS"
+require_code "V6 smoke verifier" "$V6_SMOKE_VERIFIER_ADDRESS"
 require_code "V6 version registry" "$V6_VERSION_REGISTRY_ADDRESS"
 require_code "V6 hook" "$V6_HOOK_ADDRESS"
 require_code "V6 adapter" "$V6_ADAPTER_ADDRESS"
@@ -216,19 +234,44 @@ expect_call "V6 governance execution window" "$V6_GOVERNANCE_ADDRESS" "execution
 expect_call "V6 governance configuration epoch" "$V6_GOVERNANCE_ADDRESS" "configurationEpoch()(uint64)" "1"
 expect_call "pre-release V6 governance proposal count" "$V6_GOVERNANCE_ADDRESS" "transactionCount()(uint256)" "0"
 
+expect_call "bootstrap governance" "$V6_BOOTSTRAP_CONTROLLER_ADDRESS" "governance()(address)" "$V6_GOVERNANCE_ADDRESS"
+expect_call "bootstrap chain" "$V6_BOOTSTRAP_CONTROLLER_ADDRESS" "CHAIN_ID()(uint256)" "$CHAIN_ID"
+expect_call "bootstrap operator" "$V6_BOOTSTRAP_CONTROLLER_ADDRESS" "OPERATOR()(address)" "$OPERATOR"
+expect_call "bootstrap PoolManager" "$V6_BOOTSTRAP_CONTROLLER_ADDRESS" "POOL_MANAGER()(address)" "$POOL_MANAGER"
+expect_call "bootstrap window" "$V6_BOOTSTRAP_CONTROLLER_ADDRESS" "BOOTSTRAP_WINDOW()(uint64)" "$BOOTSTRAP_WINDOW"
+expect_call "bootstrap virtual ETH reserve" "$V6_BOOTSTRAP_CONTROLLER_ADDRESS" "INITIAL_VIRTUAL_ETH_RESERVE()(uint256)" "$INITIAL_VIRTUAL_ETH_RESERVE"
+expect_call "bootstrap virtual token reserve" "$V6_BOOTSTRAP_CONTROLLER_ADDRESS" "INITIAL_VIRTUAL_TOKEN_RESERVE()(uint256)" "$INITIAL_VIRTUAL_TOKEN_RESERVE"
+expect_call "bootstrap V4 pool fee" "$V6_BOOTSTRAP_CONTROLLER_ADDRESS" "V4_POOL_FEE()(uint24)" "$V4_POOL_FEE"
+expect_call "bootstrap V4 tick spacing" "$V6_BOOTSTRAP_CONTROLLER_ADDRESS" "V4_TICK_SPACING()(int24)" "$V4_TICK_SPACING"
+expect_call "bootstrap hook flags" "$V6_BOOTSTRAP_CONTROLLER_ADDRESS" "REQUIRED_HOOK_FLAGS()(uint160)" "$EXPECTED_HOOK_FLAGS"
+expect_call "bootstrap initial state" "$V6_BOOTSTRAP_CONTROLLER_ADDRESS" "state()(uint8)" "0"
+expect_call "bootstrap availability" "$V6_BOOTSTRAP_CONTROLLER_ADDRESS" "bootstrapAvailable()(bool)" "true"
+expect_call "foundation verifier binding" "$V6_FOUNDATION_VERIFIER_ADDRESS" "controller()(address)" "$V6_BOOTSTRAP_CONTROLLER_ADDRESS"
+expect_call "smoke verifier binding" "$V6_SMOKE_VERIFIER_ADDRESS" "controller()(address)" "$V6_BOOTSTRAP_CONTROLLER_ADDRESS"
+
 expect_call "registry governance" "$V6_VERSION_REGISTRY_ADDRESS" "governance()(address)" "$V6_GOVERNANCE_ADDRESS"
+expect_call "registry bootstrap controller" "$V6_VERSION_REGISTRY_ADDRESS" "bootstrapController()(address)" "$V6_BOOTSTRAP_CONTROLLER_ADDRESS"
+expect_call "registry bootstrap latch" "$V6_VERSION_REGISTRY_ADDRESS" "bootstrapConsumed()(bool)" "false"
 expect_call "registry activation delay" "$V6_VERSION_REGISTRY_ADDRESS" "activationDelay()(uint256)" "$REGISTRY_ACTIVATION_DELAY"
+expect_call "registry initial factory" "$V6_VERSION_REGISTRY_ADDRESS" "initialFactory()(address)" "$LEGACY_FACTORY"
+expect_call "registry initial version" "$V6_VERSION_REGISTRY_ADDRESS" "initialVersion()(bytes32)" "$V5_VERSION"
 expect_call "pre-activation factory" "$V6_VERSION_REGISTRY_ADDRESS" "activeFactory()(address)" "$LEGACY_FACTORY"
 expect_call "pre-activation version" "$V6_VERSION_REGISTRY_ADDRESS" "activeVersion()(bytes32)" "$V5_VERSION"
 expect_call "pending factory" "$V6_VERSION_REGISTRY_ADDRESS" "pendingFactory()(address)" "$ZERO_ADDRESS"
 expect_call "pending version" "$V6_VERSION_REGISTRY_ADDRESS" "pendingVersion()(bytes32)" "$ZERO_BYTES32"
 expect_call "pending activation time" "$V6_VERSION_REGISTRY_ADDRESS" "pendingActivationTime()(uint64)" "0"
+expect_call "pending expiration time" "$V6_VERSION_REGISTRY_ADDRESS" "pendingExpirationTime()(uint64)" "0"
+expect_call "pending governance epoch" "$V6_VERSION_REGISTRY_ADDRESS" "pendingConfigurationEpoch()(uint64)" "0"
 
 expect_call "launch-gate governance" "$V6_LAUNCH_GATE_ADDRESS" "governance()(address)" "$V6_GOVERNANCE_ADDRESS"
 expect_call "launch-gate guardian" "$V6_LAUNCH_GATE_ADDRESS" "guardian()(address)" "$OPERATOR"
+expect_call "launch-gate bootstrap controller" "$V6_LAUNCH_GATE_ADDRESS" "bootstrapController()(address)" "$V6_BOOTSTRAP_CONTROLLER_ADDRESS"
+expect_call "launch-gate bootstrap latch" "$V6_LAUNCH_GATE_ADDRESS" "bootstrapConsumed()(bool)" "false"
 expect_call "launch-gate delay" "$V6_LAUNCH_GATE_ADDRESS" "unpauseDelay()(uint64)" "$LAUNCH_UNPAUSE_DELAY"
 expect_call "launch-gate paused state" "$V6_LAUNCH_GATE_ADDRESS" "launchesPaused()(bool)" "true"
 expect_call "launch-gate unpause schedule" "$V6_LAUNCH_GATE_ADDRESS" "unpauseExecutableAt()(uint64)" "0"
+expect_call "launch-gate unpause expiry" "$V6_LAUNCH_GATE_ADDRESS" "unpauseExpiresAt()(uint64)" "0"
+expect_call "launch-gate unpause epoch" "$V6_LAUNCH_GATE_ADDRESS" "unpauseConfigurationEpoch()(uint64)" "0"
 
 expect_call "policy governance" "$V6_POLICY_REGISTRY_ADDRESS" "governance()(address)" "$V6_GOVERNANCE_ADDRESS"
 expect_call "policy guardian" "$V6_POLICY_REGISTRY_ADDRESS" "guardian()(address)" "$OPERATOR"
@@ -241,7 +284,11 @@ expect_call "canonical creator share" "$V6_POLICY_REGISTRY_ADDRESS" "CANONICAL_C
 expect_call "canonical protocol share" "$V6_POLICY_REGISTRY_ADDRESS" "CANONICAL_PROTOCOL_FEE_SHARE_BPS()(uint16)" "$PROTOCOL_FEE_SHARE_BPS"
 expect_call "canonical post-graduation fee" "$V6_POLICY_REGISTRY_ADDRESS" "CANONICAL_POST_GRADUATION_FEE_BPS()(uint16)" "$POST_GRADUATION_FEE_BPS"
 expect_call "canonical graduation target" "$V6_POLICY_REGISTRY_ADDRESS" "CANONICAL_GRADUATION_TARGET()(uint256)" "$GRADUATION_TARGET"
-expect_call "unset default policy" "$V6_POLICY_REGISTRY_ADDRESS" "defaultPolicyId()(bytes32)" "$ZERO_BYTES32"
+expect_call "Fair default policy" "$V6_POLICY_REGISTRY_ADDRESS" "defaultPolicyId()(bytes32)" "$FAIR_POLICY_ID"
+FAIR_POLICY_HASH="$(scalar_call "$V6_POLICY_REGISTRY_ADDRESS" "policyHash(bytes32)(bytes32)" "$FAIR_POLICY_ID")"
+OPEN_POLICY_HASH="$(scalar_call "$V6_POLICY_REGISTRY_ADDRESS" "policyHash(bytes32)(bytes32)" "$OPEN_POLICY_ID")"
+[[ "$FAIR_POLICY_HASH" != "$ZERO_BYTES32" ]] || fail "Fair genesis policy hash is missing."
+[[ "$OPEN_POLICY_HASH" != "$ZERO_BYTES32" ]] || fail "Open genesis policy hash is missing."
 
 expect_call "factory protocol version" "$V6_FACTORY_ADDRESS" "protocolVersion()(uint32)" "6"
 expect_call "factory launch gate" "$V6_FACTORY_ADDRESS" "launchGate()(address)" "$V6_LAUNCH_GATE_ADDRESS"
@@ -273,14 +320,16 @@ expect_call "official migration factory" "$OFFICIAL_IDENTITY_MIGRATION" "authori
 expect_call "official migration legacy token" "$OFFICIAL_IDENTITY_MIGRATION" "officialLegacyToken()(address)" "$OFFICIAL_LEGACY_RMT_TOKEN"
 expect_call "official migration consumption" "$OFFICIAL_IDENTITY_MIGRATION" "consumed()(bool)" "false"
 
-echo "All onchain checks passed. Starting exact Blockscout source verification for twelve contracts."
+echo "All onchain checks passed. Starting exact Blockscout source verification for fifteen contracts."
 
 V6_GOVERNANCE_ARGS="$(cast abi-encode 'constructor(address,uint64,uint64)' "$OPERATOR" "$GOVERNANCE_DELAY" "$GOVERNANCE_EXECUTION_WINDOW")"
-REGISTRY_ARGS="$(cast abi-encode 'constructor(address,uint256,address,bytes32)' "$V6_GOVERNANCE_ADDRESS" "$REGISTRY_ACTIVATION_DELAY" "$LEGACY_FACTORY" "$V5_VERSION")"
+BOOTSTRAP_ARGS="$(cast abi-encode 'constructor(address)' "$V6_GOVERNANCE_ADDRESS")"
+BOOTSTRAP_VERIFIER_ARGS="$(cast abi-encode 'constructor(address)' "$V6_BOOTSTRAP_CONTROLLER_ADDRESS")"
+REGISTRY_ARGS="$(cast abi-encode 'constructor(address,uint256,address,bytes32,address)' "$V6_GOVERNANCE_ADDRESS" "$REGISTRY_ACTIVATION_DELAY" "$LEGACY_FACTORY" "$V5_VERSION" "$V6_BOOTSTRAP_CONTROLLER_ADDRESS")"
 V5_FACTORY_ARGS="$(cast abi-encode 'constructor(address,uint16,uint256,uint256,uint256,address,address,address)' "$V5_ADAPTER" "$CURVE_FEE_BPS" "$INITIAL_VIRTUAL_ETH_RESERVE" "$INITIAL_VIRTUAL_TOKEN_RESERVE" "$GRADUATION_TARGET" "$V5_REWARDS_CONTROLLER" "$V5_REVENUE_ROUTER" "$V4_IDENTITY_FACTORY")"
 HOOK_ARGS="$(cast abi-encode 'constructor(address,address)' "$POOL_MANAGER" "$OPERATOR")"
 ADAPTER_ARGS="$(cast abi-encode 'constructor(address,address,uint24,int24)' "$POOL_MANAGER" "$V6_HOOK_ADDRESS" "$V4_POOL_FEE" "$V4_TICK_SPACING")"
-GATE_ARGS="$(cast abi-encode 'constructor(address,address,uint64)' "$V6_GOVERNANCE_ADDRESS" "$OPERATOR" "$LAUNCH_UNPAUSE_DELAY")"
+GATE_ARGS="$(cast abi-encode 'constructor(address,address,uint64,address)' "$V6_GOVERNANCE_ADDRESS" "$OPERATOR" "$LAUNCH_UNPAUSE_DELAY" "$V6_BOOTSTRAP_CONTROLLER_ADDRESS")"
 POLICY_ARGS="$(cast abi-encode 'constructor(address,address,uint64,address,address,address)' "$V6_GOVERNANCE_ADDRESS" "$OPERATOR" "$GOVERNANCE_DELAY" "$V6_GOVERNANCE_ADDRESS" "$V6_MARKET_IMPLEMENTATION_ADDRESS" "$V6_ADAPTER_ADDRESS")"
 FACTORY_ARGS="$(cast abi-encode 'constructor(address,address,address,uint256,uint256,address,address,address)' "$V6_LAUNCH_GATE_ADDRESS" "$V6_POLICY_REGISTRY_ADDRESS" "$V6_VERSION_REGISTRY_ADDRESS" "$INITIAL_VIRTUAL_ETH_RESERVE" "$INITIAL_VIRTUAL_TOKEN_RESERVE" "$LEGACY_FACTORY" "$OFFICIAL_LEGACY_RMT_TOKEN" "$OPERATOR")"
 MIGRATION_ARGS="$(cast abi-encode 'constructor(address,address,address)' "$OPERATOR" "$V6_FACTORY_ADDRESS" "$OFFICIAL_LEGACY_RMT_TOKEN")"
@@ -289,6 +338,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR/.."
 
 verify_contract "V6 governance" "$V6_GOVERNANCE_ADDRESS" "src/RMTV6Governance.sol:RMTV6Governance" "$V6_GOVERNANCE_ARGS"
+verify_contract "V6 bootstrap controller" "$V6_BOOTSTRAP_CONTROLLER_ADDRESS" "src/RMTV6BootstrapController.sol:RMTV6BootstrapController" "$BOOTSTRAP_ARGS"
+verify_contract "V6 foundation verifier" "$V6_FOUNDATION_VERIFIER_ADDRESS" "src/RMTV6BootstrapFoundationVerifier.sol:RMTV6BootstrapFoundationVerifier" "$BOOTSTRAP_VERIFIER_ARGS"
+verify_contract "V6 smoke verifier" "$V6_SMOKE_VERIFIER_ADDRESS" "src/RMTV6BootstrapSmokeVerifier.sol:RMTV6BootstrapSmokeVerifier" "$BOOTSTRAP_VERIFIER_ARGS"
 verify_contract "V6 version registry" "$V6_VERSION_REGISTRY_ADDRESS" "src/VersionedFactoryRegistry.sol:VersionedFactoryRegistry" "$REGISTRY_ARGS"
 verify_contract "V5 identity factory" "$LEGACY_FACTORY" "src/LowCostMemeLaunchFactoryV5.sol:LowCostMemeLaunchFactoryV5" "$V5_FACTORY_ARGS"
 verify_contract "V6 graduation hook" "$V6_HOOK_ADDRESS" "src/V5GraduationHook.sol:V5GraduationHook" "$HOOK_ARGS"
@@ -301,4 +353,4 @@ verify_contract "factory fee-splitter implementation" "$FEE_SPLITTER_IMPLEMENTAT
 verify_contract "official identity migration" "$OFFICIAL_IDENTITY_MIGRATION" "src/OfficialRMTIdentityMigration.sol:OfficialRMTIdentityMigration" "$MIGRATION_ARGS"
 verify_contract "V6 launch factory" "$V6_FACTORY_ADDRESS" "src/RMTLaunchFactoryV6.sol:RMTLaunchFactoryV6" "$FACTORY_ARGS"
 
-echo "V6 source verification passed for all twelve contracts. No blockchain transaction was broadcast and V6 remains inactive and paused."
+echo "V6 source verification passed for all fifteen contracts. No blockchain transaction was broadcast and V6 remains inactive and paused."

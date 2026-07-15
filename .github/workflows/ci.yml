@@ -71,21 +71,30 @@ jobs:
             script/MainnetReleaseConfigV6.sol \
             script/DeployMainnetV6OfficialMigration.s.sol \
             src/RMTV6Governance.sol \
+            src/RMTV6BootstrapController.sol \
+            src/RMTV6BootstrapFoundationVerifier.sol \
+            src/RMTV6BootstrapSmokeVerifier.sol \
             src/RMTLaunchGate.sol \
             src/RMTLaunchPolicyRegistry.sol \
             src/RMTLaunchFactoryV6.sol \
+            src/VersionedFactoryRegistry.sol \
             src/OfficialRMTIdentityMigration.sol \
             src/DirectLaunchFeeSplitter.sol \
             src/clone/CloneBondingCurveMarketV6.sol \
-            src/V4GraduationHook.sol \
+            src/V5GraduationHook.sol \
             src/V4GraduationAdapter.sol \
             test/MainnetReleaseConfig.t.sol \
             test/MainnetReleaseConfigV6.t.sol \
             test/RMTV6Governance.t.sol \
+            test/RMTV6BootstrapController.t.sol \
+            test/RMTV6BootstrapFlow.t.sol \
+            test/RMTLaunchGate.t.sol \
+            test/RMTLaunchPolicyRegistry.t.sol \
             test/RMTLaunchFactoryV6.t.sol \
             test/DirectLaunchFeeSplitter.t.sol \
             test/V4GraduationAdapter.t.sol \
-            test/V6MainnetFork.t.sol
+            test/V6MainnetFork.t.sol \
+            test/VersionedFactoryRegistry.t.sol
       - name: Build the exact checked-in contract sources
         run: |
           set -o pipefail

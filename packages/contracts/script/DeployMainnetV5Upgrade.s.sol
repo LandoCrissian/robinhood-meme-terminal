@@ -84,7 +84,9 @@ contract DeployMainnetV5Upgrade {
         adapter.bindFactory(address(factory));
         controller.bindFactory(address(factory));
         VersionedFactoryRegistry registry =
-            new VersionedFactoryRegistry(address(governance), Config.FACTORY_ACTIVATION_DELAY, address(factory), VERSION);
+            new VersionedFactoryRegistry(
+                address(governance), Config.FACTORY_ACTIVATION_DELAY, address(factory), VERSION, address(0)
+            );
         vm.stopBroadcast();
 
         if (

@@ -21,6 +21,7 @@ library MainnetReleaseConfigV6 {
     uint64 internal constant GOVERNANCE_EXECUTION_WINDOW = 7 days;
     uint64 internal constant REGISTRY_ACTIVATION_DELAY = 2 days;
     uint64 internal constant LAUNCH_UNPAUSE_DELAY = 1 days;
+    uint64 internal constant BOOTSTRAP_WINDOW = 12 hours;
 
     // The website presents one Fair Start toggle. Each choice maps to an immutable policy.
     bytes32 internal constant SIMPLE_FAIR_V1_POLICY_ID = keccak256("RMT_SIMPLE_FAIR_V1");
@@ -38,7 +39,7 @@ library MainnetReleaseConfigV6 {
     // then supplied to the policy registry as immutable constructor arguments. They are intentionally
     // not mutable address constants in this configuration library.
 
-    // Provisional economics. These remain release-blocked until model tests and review pass.
+    // Canonical V6 release economics. Every V6 policy is required to preserve these values.
     uint16 internal constant CURVE_FEE_BPS = 100;
     uint16 internal constant CREATOR_FEE_SHARE_BPS = 7_000;
     uint16 internal constant PROTOCOL_FEE_SHARE_BPS = 3_000;

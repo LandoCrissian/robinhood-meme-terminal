@@ -40,6 +40,7 @@ export function LaunchForm() {
   const [imagePreview, setImagePreview] = useState("");
   const [mediaStatus, setMediaStatus] = useState<"idle" | "uploading" | "saved">("idle");
   const [mediaError, setMediaError] = useState("");
+  const [officialIntent, setOfficialIntent] = useState(false);
   const normalizedName = name.trim();
   const normalizedSymbol = symbol.trim();
   const selectedPolicyId = fairStart ? SIMPLE_FAIR_V1_POLICY_ID : SIMPLE_OPEN_V1_POLICY_ID;
@@ -64,6 +65,15 @@ export function LaunchForm() {
   const nameUnavailable = nameUsedRead.data === true && !officialMigrationAvailable;
   const symbolUnavailable = symbolUsedRead.data === true && !officialMigrationAvailable;
   const identityUnavailable = nameUnavailable || symbolUnavailable;
+  const lockOfficialFields = officialIntent && launchesPaused;
+
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("official") !== "v6") return;
+    setOfficialIntent(true);
+    setName("Robinhood Meme Terminal");
+    setSymbol("RMT");
+    setFairStart(true);
+  }, []);
 
   useEffect(() => {
     if (!image) { setImagePreview(""); return; }
@@ -167,10 +177,11 @@ export function LaunchForm() {
     <section className="panel">
       <div className="sectionTitle"><div><p className="eyebrow">TOKEN LAUNCH</p><h2>Configure your token</h2></div><span className="badge">{isMainnetRelease ? "MAINNET · REAL ETH" : "TESTNET ALPHA"}</span></div>
       {launchesPaused && <div className="callout mainnetWarning"><strong>{officialPausedLaunch ? "Public launches remain paused" : "New launches are temporarily paused"}</strong><span>{officialPausedLaunch ? "The verified RMT wallet may complete the one-time official V6 launch without opening creation to anyone else." : "V6 is being verified before public creation reopens. Trading and read-only terminal features remain available."}</span></div>}
+      {lockOfficialFields && !officialPausedLaunch && <div className="callout mainnetWarning"><strong>Official RMT launch is prefilled</strong><span>Connect the RMTMain wallet on the active V6 network. The site will verify the one-time migration permission before enabling the launch.</span></div>}
       {officialPausedLaunch && <div className="callout mainnetWarning"><strong>New token contract—no old-holder migration</strong><span>This action creates a new RMT contract with a new address and new fixed supply of 1,000,000,000 tokens. It does not copy, swap, credit, or migrate any old V5 holder balance. The old RMT contract is used only as the exact identity/provenance anchor. RMTMain receives the ordinary 70% creator fee share; the separate V6 governance treasury receives 30%.</span></div>}
       {capabilityRead.error && <div className="errors"><span>{capabilityRead.error} Launching is disabled safely.</span></div>}
-      <label>Token name<input value={name} maxLength={32} placeholder="Name your token" aria-invalid={nameUnavailable} onChange={(e) => setName(e.target.value)} />{normalizedName && <span className={nameUnavailable ? "identityStatus unavailable" : nameUsedRead.data === false ? "identityStatus available" : "identityStatus"} aria-live="polite">{nameUnavailable ? "Already protected — choose a unique name" : nameUsedRead.data === false ? "Name available" : "Checking name…"}</span>}</label>
-      <div className="two"><label>Ticker<input value={symbol} maxLength={10} placeholder="TICKER" aria-invalid={symbolUnavailable} onChange={(e) => setSymbol(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))} />{normalizedSymbol && <span className={symbolUnavailable ? "identityStatus unavailable" : symbolUsedRead.data === false ? "identityStatus available" : "identityStatus"} aria-live="polite">{symbolUnavailable ? "Already protected — choose a unique ticker" : symbolUsedRead.data === false ? "Ticker available" : "Checking ticker…"}</span>}</label><label>Platform supply<input inputMode="numeric" value={supply} readOnly aria-readonly="true" /></label></div>
+      <label>Token name<input value={name} maxLength={32} placeholder="Name your token" readOnly={lockOfficialFields} aria-readonly={lockOfficialFields} aria-invalid={nameUnavailable} onChange={(e) => setName(e.target.value)} />{normalizedName && <span className={nameUnavailable ? "identityStatus unavailable" : nameUsedRead.data === false ? "identityStatus available" : "identityStatus"} aria-live="polite">{nameUnavailable ? "Already protected — choose a unique name" : nameUsedRead.data === false ? "Name available" : "Checking name…"}</span>}</label>
+      <div className="two"><label>Ticker<input value={symbol} maxLength={10} placeholder="TICKER" readOnly={lockOfficialFields} aria-readonly={lockOfficialFields} aria-invalid={symbolUnavailable} onChange={(e) => setSymbol(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))} />{normalizedSymbol && <span className={symbolUnavailable ? "identityStatus unavailable" : symbolUsedRead.data === false ? "identityStatus available" : "identityStatus"} aria-live="polite">{symbolUnavailable ? "Already protected — choose a unique ticker" : symbolUsedRead.data === false ? "Ticker available" : "Checking ticker…"}</span>}</label><label>Platform supply<input inputMode="numeric" value={supply} readOnly aria-readonly="true" /></label></div>
       <label>Description<textarea value={description} maxLength={500} placeholder="Tell traders what this token is about" onChange={(e) => setDescription(e.target.value)} /></label>
       <details className="socialFields"><summary>Add social links <span>Optional</span></summary><div>
         <label>Website<input type="url" inputMode="url" placeholder="https://yourproject.com" value={website} onChange={(e) => setWebsite(e.target.value)} /></label>
@@ -189,7 +200,7 @@ export function LaunchForm() {
       </div>
       <div className="presetSection">
         <p className="eyebrow">LAUNCH PROTECTION</p>
-        <button type="button" className={fairStart ? "preset active" : "preset"} onClick={() => setFairStart((value) => !value)} aria-pressed={fairStart}>
+        <button type="button" className={fairStart ? "preset active" : "preset"} disabled={lockOfficialFields} onClick={() => setFairStart((value) => !value)} aria-pressed={fairStart}>
           <strong>Fair Start Protection · {fairStart ? "On" : "Off"}</strong>
           <span>{selectedPolicy ? fairStartDisclosure(selectedPolicy) : "Temporary opening protection can be selected after V6 verification."}</span>
           <small>{fairStart ? "Recommended for a more balanced opening" : "Trading opens without temporary wallet limits"}</small>
