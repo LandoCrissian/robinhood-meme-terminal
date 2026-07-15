@@ -11,8 +11,6 @@ function creatorPercent(bps: number) {
 function creatorFlowSuffix(flow: LaunchFeedItem["creatorFlow"]) {
   if (flow === "buying") return " · net buying";
   if (flow === "selling") return " · net selling";
-  if (flow === "balanced") return " · balanced";
-  if (flow === "inactive") return " · no recent moves";
   return "";
 }
 
@@ -25,7 +23,7 @@ export function describeCreatorExposure(launch: LaunchFeedItem) {
   return {
     tone,
     label: tone === "high"
-      ? `High creator concentration · ${creatorPercent(bps)} outside curve${creatorFlowSuffix(launch.creatorFlow)}`
+      ? `High creator · ${creatorPercent(bps)} outside curve${creatorFlowSuffix(launch.creatorFlow)}`
       : `Creator ${creatorPercent(bps)} outside curve${creatorFlowSuffix(launch.creatorFlow)}`
   };
 }
