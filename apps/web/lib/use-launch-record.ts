@@ -56,8 +56,11 @@ export function useLaunchRecord(tokenAddress: Address, hint?: LaunchRecordHint) 
   return useQuery({
     queryKey: ["launch-record", activeChain.id, factoryAddress, tokenAddress, hint?.launchId ?? "discover"],
     enabled: Boolean(factoryAddress && publicClient),
-    staleTime: Infinity,
+    staleTime: 60_000,
     gcTime: 30 * 60 * 1000,
+    retry: 2,
+    retryDelay: (attempt) => Math.min(750 * 2 ** attempt, 3_000),
+    refetchOnReconnect: true,
     queryFn: async (): Promise<LaunchRecord | null> => {
       if (!factoryAddress || !publicClient) return null;
 
@@ -65,7 +68,7 @@ export function useLaunchRecord(tokenAddress: Address, hint?: LaunchRecordHint) 
         address: factoryAddress,
         abi: rmtLaunchFactoryV6Abi,
         functionName: "protocolVersion"
-      }).catch(() => null);
+      });
       if (protocolVersion !== 6) return null;
 
       let launchId: bigint | null = hint ? BigInt(hint.launchId) : null;
