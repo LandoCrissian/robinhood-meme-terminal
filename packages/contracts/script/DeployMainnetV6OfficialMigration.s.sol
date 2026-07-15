@@ -175,8 +175,7 @@ contract DeployMainnetV6OfficialMigration {
                 || factory.officialIdentityMigration().officialLauncher() != Config.DEVELOPER_OPERATOR
                 || factory.officialIdentityMigration().authorizedFactory() != address(factory)
                 || factory.officialIdentityMigration().officialLegacyToken() != Config.OFFICIAL_LEGACY_RMT_TOKEN
-                || factory.officialIdentityMigration().consumed()
-                || versionRegistry.governance() != address(governance)
+                || factory.officialIdentityMigration().consumed() || versionRegistry.governance() != address(governance)
                 || versionRegistry.activationDelay() != Config.REGISTRY_ACTIVATION_DELAY
                 || versionRegistry.activeFactory() != Config.LEGACY_IDENTITY_FACTORY
                 || versionRegistry.activeVersion() != Config.LEGACY_FACTORY_VERSION

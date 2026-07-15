@@ -598,7 +598,8 @@ contract MockV6PolicyRegistry is IRMTLaunchPolicyRegistry {
                 .call(abi.encodeCall(splitter.setCreatorWallet, (payable(protocolTreasury), evidenceHash, 0)));
             require(!creatorChanged, "creator changed payout recipient");
 
-            MockV6CreatorPayoutAuthority authority = MockV6CreatorPayoutAuthority(factory.creatorPayoutAuthority());
+            MockV6CreatorPayoutAuthority authority =
+                MockV6CreatorPayoutAuthority(payable(factory.creatorPayoutAuthority()));
             authority.setCreator(splitter, payable(protocolTreasury), evidenceHash, 0);
             require(splitter.creator() == protocolTreasury, "authority did not redirect payout");
             require(splitter.originalCreator() == address(this), "historical creator changed");
@@ -636,7 +637,9 @@ contract MockV6PolicyRegistry is IRMTLaunchPolicyRegistry {
                 source.legacyIdentityFactory(),
                 source.officialLegacyToken(),
                 OFFICIAL_LAUNCHER
-            ) returns (RMTLaunchFactoryV6 candidate) {
+            ) returns (
+                RMTLaunchFactoryV6 candidate
+            ) {
                 deployed = address(candidate) != address(0);
             } catch {}
         }
@@ -699,9 +702,8 @@ contract MockV6PolicyRegistry is IRMTLaunchPolicyRegistry {
                 graduationAdapter: address(adapter)
             });
             MockV6PolicyRegistry registry = new MockV6PolicyRegistry(fairPolicy, openPolicy, address(payoutAuthority));
-            MockV6FactoryRegistry factoryRegistry = new MockV6FactoryRegistry(
-                address(payoutAuthority), address(legacy), keccak256("RMT_FACTORY_V5")
-            );
+            MockV6FactoryRegistry factoryRegistry =
+                new MockV6FactoryRegistry(address(payoutAuthority), address(legacy), keccak256("RMT_FACTORY_V5"));
             factory = new RMTLaunchFactoryV6(
                 address(gate),
                 address(registry),

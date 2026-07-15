@@ -124,9 +124,8 @@ contract V6MainnetForkTest {
         );
         address legacyFactory = Config.LEGACY_IDENTITY_FACTORY;
         require(legacyFactory.code.length != 0, "live V5 identity factory missing");
-        VersionedFactoryRegistry versionRegistry = new VersionedFactoryRegistry(
-            address(governance), 2 days, legacyFactory, keccak256("RMT_FACTORY_V5")
-        );
+        VersionedFactoryRegistry versionRegistry =
+            new VersionedFactoryRegistry(address(governance), 2 days, legacyFactory, keccak256("RMT_FACTORY_V5"));
         require(versionRegistry.governance() == address(governance), "registry governance mismatch");
         require(versionRegistry.activationDelay() == 2 days, "registry delay mismatch");
         require(versionRegistry.activeFactory() == legacyFactory, "legacy factory not active");
@@ -275,8 +274,7 @@ contract V6MainnetForkTest {
         (bool creatorChanged,) = address(splitter)
             .call(
                 abi.encodeCall(
-                    splitter.setCreatorWallet,
-                    (payable(address(governance)), keccak256("documented-rug-evidence"), 0)
+                    splitter.setCreatorWallet, (payable(address(governance)), keccak256("documented-rug-evidence"), 0)
                 )
             );
         require(!creatorChanged, "creator changed payout recipient");
@@ -359,9 +357,8 @@ contract V6MainnetForkTest {
         uint256 relayerNativeBefore = relayer.balance;
         uint256 relayerTokensBefore = token.balanceOf(relayer);
         uint256 nativeTransferProposal = governance.propose(feeRecipient, nativeTreasuryAmount, "");
-        uint256 tokenTransferProposal = governance.propose(
-            tokenAddress, 0, abi.encodeCall(token.transfer, (feeRecipient, tokenTreasuryAmount))
-        );
+        uint256 tokenTransferProposal =
+            governance.propose(tokenAddress, 0, abi.encodeCall(token.transfer, (feeRecipient, tokenTreasuryAmount)));
         (bool earlyTreasuryTransfer,) =
             address(governance).call(abi.encodeCall(governance.execute, (nativeTransferProposal)));
         require(!earlyTreasuryTransfer, "governance treasury delay bypassed");
@@ -424,8 +421,7 @@ contract V6MainnetForkTest {
         (uint256 redirectedNativeFees, uint256 redirectedTokenFees) = collector.collect(adapter, tokenAddress);
         require(redirectedNativeFees != 0 && redirectedTokenFees != 0, "redirected fee currencies missing");
         require(
-            Config.DEVELOPER_OPERATOR.balance == oldCreatorNativeBefore,
-            "old creator received redirected native fees"
+            Config.DEVELOPER_OPERATOR.balance == oldCreatorNativeBefore, "old creator received redirected native fees"
         );
         require(
             token.balanceOf(Config.DEVELOPER_OPERATOR) == oldCreatorTokensBefore,

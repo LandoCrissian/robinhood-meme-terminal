@@ -295,9 +295,7 @@ contract DirectLaunchFeeSplitterTest {
         require(address(creator).balance == 0.7 ether, "creator native payment blocked");
         require(token.balanceOf(address(creator)) == 70 ether, "creator token payment blocked");
         require(splitter.pending(address(treasury)) == 0.3 ether, "protocol native not deferred");
-        require(
-            splitter.pendingToken(address(token), address(treasury)) == 30 ether, "protocol token not deferred"
-        );
+        require(splitter.pendingToken(address(token), address(treasury)) == 30 ether, "protocol token not deferred");
         (bool outsiderNativeClaim,) = address(splitter).call(abi.encodeCall(splitter.claimDeferred, ()));
         (bool outsiderTokenClaim,) =
             address(splitter).call(abi.encodeCall(splitter.claimDeferredToken, (address(token))));
@@ -311,9 +309,7 @@ contract DirectLaunchFeeSplitterTest {
         require(address(treasury).balance == 0.3 ether, "protocol native recovery");
         require(token.balanceOf(address(treasury)) == 30 ether, "protocol token recovery");
         require(splitter.pending(address(treasury)) == 0, "protocol native pending not cleared");
-        require(
-            splitter.pendingToken(address(token), address(treasury)) == 0, "protocol token pending not cleared"
-        );
+        require(splitter.pendingToken(address(token), address(treasury)) == 0, "protocol token pending not cleared");
     }
 
     function testCoincidentRecipientsStillConserveAccounting() public {
@@ -494,8 +490,7 @@ contract DirectLaunchFeeSplitterTest {
         (bool creatorChange,) = address(splitter)
             .call(
                 abi.encodeCall(
-                    splitter.setCreatorWallet,
-                    (payable(address(governance)), keccak256("documented-rug-evidence"), 0)
+                    splitter.setCreatorWallet, (payable(address(governance)), keccak256("documented-rug-evidence"), 0)
                 )
             );
         require(!creatorChange, "creator changed payout recipient");
@@ -504,8 +499,7 @@ contract DirectLaunchFeeSplitterTest {
         (bool outsiderChange,) = address(splitter)
             .call(
                 abi.encodeCall(
-                    splitter.setCreatorWallet,
-                    (payable(address(governance)), keccak256("documented-rug-evidence"), 0)
+                    splitter.setCreatorWallet, (payable(address(governance)), keccak256("documented-rug-evidence"), 0)
                 )
             );
         require(!outsiderChange, "outsider changed payout recipient");

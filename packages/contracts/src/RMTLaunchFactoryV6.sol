@@ -259,9 +259,8 @@ contract RMTLaunchFactoryV6 is IRMTLaunchFactoryV6 {
         string calldata symbol
     ) external view returns (bool) {
         return policyId == OFFICIAL_MIGRATION_POLICY_ID && factoryRegistry.activeFactory() == address(this)
-            && factoryRegistry.activeVersion() == FACTORY_VERSION
-            && launchGate.launchesPaused() && policyRegistry.defaultPolicyId() == OFFICIAL_MIGRATION_POLICY_ID
-            && _officialLegacyIdentityReserved()
+            && factoryRegistry.activeVersion() == FACTORY_VERSION && launchGate.launchesPaused()
+            && policyRegistry.defaultPolicyId() == OFFICIAL_MIGRATION_POLICY_ID && _officialLegacyIdentityReserved()
             && officialIdentityMigration.canMigrate(launcher, _canonicalName(name), _canonicalSymbol(symbol));
     }
 
