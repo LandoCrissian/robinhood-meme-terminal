@@ -15,6 +15,11 @@
 .hotIdentity{display:flex;flex-direction:column;gap:3px;padding-right:22px;overflow:hidden}
 .hotIdentity strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .hotIdentity span{color:#7f8c83;font-size:.72rem}
+.creatorExposure{display:block;max-width:100%;margin-top:5px;overflow:hidden;color:#7b887f;font-size:.58rem;font-style:normal;font-weight:800;line-height:1.25;text-overflow:ellipsis;white-space:nowrap}
+.creatorExposure.tracked{color:#7f9a87}
+.creatorExposure.notable{color:#d9b873}
+.creatorExposure.high{color:#ffc071}
+.creatorExposure.unknown{color:#69756d}
 .hotSignal{grid-column:1/-1;display:flex;align-items:flex-end;justify-content:space-between;gap:10px}
 .hotSignal>span{display:flex;flex-direction:column;gap:3px}
 .hotSignal small{color:#6e7b72;font-size:.66rem}
@@ -160,6 +165,7 @@
 .launchRowMain .identity{min-width:0}
 .launchRowMain .identity strong,.launchRowMain .identity span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .launchRowMain .identity span{margin-top:3px;color:#748078;font-size:.67rem}
+.launchRowMain .creatorExposure{margin-top:4px;font-size:.57rem}
 .launchMetrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;min-width:0}
 .launchMetrics>span{display:flex;min-width:0;flex-direction:column;gap:3px}
 .launchMetrics small{color:#6d7971;font-size:.61rem}
