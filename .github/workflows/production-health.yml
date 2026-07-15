@@ -24,6 +24,8 @@ jobs:
           set -euo pipefail
           apex="https://rmtlaunch.fun"
           base="https://www.rmtlaunch.fun"
+          indexer="https://robinhood-meme-terminal-production.up.railway.app"
+          official_market="0xb26Fb775c0ac365d369BEe9ac2E044C5D90FfBee"
           mkdir -p health-artifacts
 
           redirect="$(curl --silent --show-error --head --max-time 25 "$apex" | tr -d '\r' | awk 'BEGIN{IGNORECASE=1} /^location:/{print $2; exit}')"
@@ -35,9 +37,15 @@ jobs:
           check_endpoint() {
             local name="$1"
             local url="$2"
+            local headers="${3:-}"
             local output="health-artifacts/$name.json"
             for attempt in 1 2 3; do
-              if curl --silent --show-error --fail --location --max-time 25 "$url" --output "$output"; then
+              if [[ -n "$headers" ]]; then
+                if curl --silent --show-error --fail --location --max-time 25 \
+                  --dump-header "$headers" "$url" --output "$output"; then
+                  return 0
+                fi
+              elif curl --silent --show-error --fail --location --max-time 25 "$url" --output "$output"; then
                 return 0
               fi
               sleep $((attempt * 3))
@@ -47,20 +55,85 @@ jobs:
 
           check_endpoint protocol "$base/api/health"
           check_endpoint launches "$base/api/launches"
+          check_endpoint indexer "$indexer/health"
+          check_endpoint trades "$base/api/markets/$official_market/trades?limit=1" "health-artifacts/trades.headers"
 
           node - <<'NODE'
           const fs = require("fs");
-          const health = JSON.parse(fs.readFileSync("health-artifacts/protocol.json", "utf8"));
+          const protocol = JSON.parse(fs.readFileSync("health-artifacts/protocol.json", "utf8"));
           const launches = JSON.parse(fs.readFileSync("health-artifacts/launches.json", "utf8"));
-          if (!health.ok) throw new Error("Protocol health is degraded.");
-          if (health.chainId !== 4663) throw new Error(`Unexpected chain ID: ${health.chainId}`);
-          if (!Array.isArray(health.checks) || health.checks.some((check) => check.state !== "operational")) {
+          const indexer = JSON.parse(fs.readFileSync("health-artifacts/indexer.json", "utf8"));
+          const trades = JSON.parse(fs.readFileSync("health-artifacts/trades.json", "utf8"));
+          const tradeHeaders = fs.readFileSync("health-artifacts/trades.headers", "utf8").toLowerCase();
+
+          const expected = {
+            chainId: 4663,
+            factory: "0x8e75c57079a01ce2094bc4187b78710887547651",
+            policyRegistry: "0x70177a46a38c981480fee9586ccbe281ee70dfcf",
+            governance: "0x52c43239df8965eb27f26e115cc5ead11b35d5c3",
+            market: "0xb26fb775c0ac365d369bee9ac2e044c5d90ffbee",
+            token: "0xdba33be56c89cc9fc014c4459028d7e5c7878671"
+          };
+          const lower = (value) => typeof value === "string" ? value.toLowerCase() : "";
+
+          if (!protocol.ok) throw new Error("Protocol health is degraded.");
+          if (protocol.chainId !== expected.chainId) {
+            throw new Error(`Unexpected protocol chain ID: ${protocol.chainId}`);
+          }
+          if (!Array.isArray(protocol.checks) || protocol.checks.some((check) => check.state !== "operational")) {
             throw new Error("One or more protocol checks are degraded.");
           }
           if (!Array.isArray(launches.launches) || !launches.syncedAt) {
             throw new Error("Launch feed response is invalid.");
           }
-          console.log(`Healthy at block ${health.latestBlock}; ${launches.launches.length} launches indexed.`);
+
+          if (!indexer.ok || !indexer.initialSyncComplete) {
+            throw new Error(`Production indexer is not ready: ${indexer.error || "unknown error"}`);
+          }
+          if (indexer.chainId !== expected.chainId || indexer.protocolVersion !== 6) {
+            throw new Error("Production indexer is bound to the wrong chain or protocol version.");
+          }
+          for (const key of ["factory", "policyRegistry", "governance"]) {
+            if (lower(indexer[key]) !== expected[key]) {
+              throw new Error(`Production indexer ${key} mismatch: ${indexer[key]}`);
+            }
+          }
+          if (
+            lower(indexer.creatorPayoutAuthority) !== expected.governance ||
+            lower(indexer.protocolTreasury) !== expected.governance
+          ) {
+            throw new Error("Production indexer governance bindings are invalid.");
+          }
+          const lagBlocks = BigInt(indexer.lagBlocks);
+          const confirmationDepth = BigInt(indexer.confirmationDepth);
+          if (lagBlocks > confirmationDepth * 2n) {
+            throw new Error(`Production indexer lag is ${lagBlocks} blocks (limit ${confirmationDepth * 2n}).`);
+          }
+          const lastSyncAge = Date.now() - Date.parse(indexer.lastSyncAt);
+          if (!Number.isFinite(lastSyncAge) || lastSyncAge > 10 * 60 * 1000) {
+            throw new Error(`Production indexer last sync is stale: ${indexer.lastSyncAt}`);
+          }
+
+          if (
+            lower(trades.market) !== expected.market ||
+            lower(trades.token) !== expected.token ||
+            !Array.isArray(trades.trades) ||
+            trades.trades.length < 1 ||
+            !trades.syncedAt
+          ) {
+            throw new Error("Official RMT indexed trade response is invalid.");
+          }
+          if (!tradeHeaders.includes("x-rmt-data-source: indexer")) {
+            throw new Error("Public trade route is not serving the production indexer.");
+          }
+          if (!/^cache-control:.*s-maxage=5/im.test(tradeHeaders)) {
+            throw new Error("Public trade route is missing its five-second shared-cache policy.");
+          }
+
+          console.log(
+            `Healthy at block ${protocol.latestBlock}; ${launches.launches.length} launches; ` +
+            `indexer lag ${lagBlocks} blocks; ${trades.trades.length} official RMT trade sampled.`
+          );
           NODE
 
       - name: Preserve health evidence
