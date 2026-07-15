@@ -168,6 +168,18 @@ contract PoolManagerSyncPoisoner is IUnlockCallback {
     }
 }
 
+contract TestProtocolFeeController {
+    IPoolManager private immutable _manager;
+
+    constructor(IPoolManager manager_) {
+        _manager = manager_;
+    }
+
+    function setProtocolFee(PoolKey calldata key, uint24 fee) external {
+        _manager.setProtocolFee(key, fee);
+    }
+}
+
 contract V4GraduationAdapterTest {
     V4AdapterTestVm private constant vm = V4AdapterTestVm(address(uint160(uint256(keccak256("hevm cheat code")))));
     uint160 private constant REQUIRED_HOOK_FLAGS = (1 << 13) | (1 << 11) | (1 << 7) | (1 << 5);
@@ -526,6 +538,68 @@ contract V4GraduationAdapterTest {
         require(liquidityAfter == adapter.lockedLiquidity(address(token)), "locked liquidity record mismatch");
         require(address(adapter).balance == lockedNativeDust + 1 wei, "recipient dust donation not tolerated");
         require(token.balanceOf(address(adapter)) == lockedTokenDust, "locked token dust changed");
+    }
+
+    function testUpstreamProtocolFeeIsExcludedBeforeRmtSplitAndPrincipalStaysLocked() public {
+        bytes32 poolIdValue = adapter.prepare(address(token));
+        address payable creator = payable(address(0xCAFE));
+        address payable treasury = payable(address(0xBEEF));
+        DirectLaunchFeeSplitter splitter = new DirectLaunchFeeSplitter();
+        splitter.initialize(creator, treasury, address(token), 7_000, address(this), address(this), address(adapter));
+        adapter.configureFeeRouting(address(token), address(splitter), 50);
+        adapter.bindMarket(address(token), address(this));
+
+        uint256 tokenAmount = 200_000_000 ether;
+        require(token.approve(address(adapter), tokenAmount), "adapter approval");
+        adapter.graduate{value: 85 ether}(address(token), tokenAmount);
+
+        PoolKey memory key = _poolKey();
+        TestProtocolFeeController controller = new TestProtocolFeeController(IPoolManager(address(manager)));
+        manager.setProtocolFeeController(address(controller));
+        uint24 protocolFee = 1_000;
+        uint24 bidirectionalProtocolFee = protocolFee | (protocolFee << 12);
+        controller.setProtocolFee(key, bidirectionalProtocolFee);
+
+        uint128 liquidityBefore = adapter.lockedLiquidity(address(token));
+        _accrueBothFeeCurrencies(key);
+
+        Currency nativeCurrency = Currency.wrap(address(0));
+        Currency tokenCurrency = Currency.wrap(address(token));
+        uint256 upstreamNativeFees = manager.protocolFeesAccrued(nativeCurrency);
+        uint256 upstreamTokenFees = manager.protocolFeesAccrued(tokenCurrency);
+        require(upstreamNativeFees == 0.001 ether, "unexpected upstream native fee");
+        require(upstreamTokenFees != 0, "upstream token fee missing");
+
+        uint256 creatorNativeBefore = creator.balance;
+        uint256 treasuryNativeBefore = treasury.balance;
+        uint256 creatorTokenBefore = token.balanceOf(creator);
+        uint256 treasuryTokenBefore = token.balanceOf(treasury);
+        (uint256 nativeLpFees, uint256 tokenLpFees) = adapter.collectFees(address(token));
+        require(nativeLpFees != 0 && tokenLpFees != 0, "LP fees missing");
+
+        uint256 exactNativeLpFee = 0.004995 ether;
+        require(
+            nativeLpFees <= exactNativeLpFee && exactNativeLpFee - nativeLpFees <= 1,
+            "upstream fee was not removed before LP accounting"
+        );
+        require(splitter.totalReceived() == nativeLpFees, "upstream native fee reached RMT splitter");
+        require(
+            splitter.totalTokenReceived(address(token)) == tokenLpFees, "upstream token fee reached RMT splitter"
+        );
+        require(manager.protocolFeesAccrued(nativeCurrency) == upstreamNativeFees, "native protocol fee was moved");
+        require(manager.protocolFeesAccrued(tokenCurrency) == upstreamTokenFees, "token protocol fee was moved");
+
+        uint256 creatorNativeShare = nativeLpFees * 7_000 / 10_000;
+        uint256 creatorTokenShare = tokenLpFees * 7_000 / 10_000;
+        require(creator.balance - creatorNativeBefore == creatorNativeShare, "creator native split");
+        require(treasury.balance - treasuryNativeBefore == nativeLpFees - creatorNativeShare, "treasury native split");
+        require(token.balanceOf(creator) - creatorTokenBefore == creatorTokenShare, "creator token split");
+        require(
+            token.balanceOf(treasury) - treasuryTokenBefore == tokenLpFees - creatorTokenShare,
+            "treasury token split"
+        );
+        require(adapter.lockedLiquidity(address(token)) == liquidityBefore, "locked liquidity record changed");
+        _requireAdapterLiquidity(poolIdValue, liquidityBefore);
     }
 
     function testCollectionUsesCreatorRecipientActiveAtCollectionTimeForBothFeeCurrencies() public {

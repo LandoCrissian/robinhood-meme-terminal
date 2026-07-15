@@ -271,7 +271,7 @@ contract DirectLaunchFeeSplitterTest {
         );
     }
 
-    function testFailedProtocolPaymentsRemainClaimableOnlyByTreasury() public {
+    function testProtocolPaymentFailuresRemainClaimableOnlyByTreasury() public {
         AcceptingRecipient creator = new AcceptingRecipient();
         RejectingRecipient treasury = new RejectingRecipient();
         SplitterTestToken token = new SplitterTestToken(100 ether);
