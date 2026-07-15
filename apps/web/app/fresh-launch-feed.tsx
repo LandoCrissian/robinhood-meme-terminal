@@ -4,6 +4,7 @@ import Link from "next/link";
 import { formatEther } from "viem";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { activeReleaseBadge, isMainnetRelease } from "../lib/network";
+import { describeCreatorExposure } from "../lib/creator-signals";
 import type { LaunchFeedItem, LaunchFeedResponse } from "../lib/launch-feed";
 import { ipfsToHttp } from "../lib/token-metadata";
 import { MarketPanel } from "./market-panel";
@@ -39,6 +40,11 @@ function TokenArtwork({ launch, featured = false }: { launch: LaunchFeedItem; fe
       {launch.image ? <img src={ipfsToHttp(launch.image)} alt="" loading="lazy" /> : launch.symbol.slice(0, 2)}
     </div>
   );
+}
+
+function CreatorExposure({ launch }: { launch: LaunchFeedItem }) {
+  const exposure = describeCreatorExposure(launch);
+  return <small className={`creatorExposure ${exposure.tone}`}>{exposure.label}</small>;
 }
 
 function QuickTradeDialog({ launch, side, onClose }: { launch: LaunchFeedItem; side: "buy" | "sell"; onClose: () => void }) {
@@ -165,7 +171,7 @@ export function FreshLaunchFeed() {
           <Link className="hotCardMain" href={`/token/${launch.token}?launch=${launch.launchId}`} aria-label={`Open ${launch.name}`}>
             <div className="hotRank">0{index + 1}</div>
             <TokenArtwork launch={launch} featured />
-            <div className="hotIdentity"><strong>{launch.name}</strong><span>{"$" + displaySymbol(launch.symbol)}</span></div>
+            <div className="hotIdentity"><strong>{launch.name}</strong><span>{"$" + displaySymbol(launch.symbol)}</span><CreatorExposure launch={launch} /></div>
             <div className="hotSignal"><span><small>{launch.graduated ? "Curve complete" : "Recent volume"}</small><em>{activityLabel(launch)}</em></span><strong>{volumeLabel(launch.volumeWei)}</strong></div>
             <div className="miniProgress" aria-label={`${launch.progressBps / 100}% graduation progress`}><span style={{ width: `${launch.progressBps / 100}%` }} /></div>
           </Link>
@@ -178,7 +184,7 @@ export function FreshLaunchFeed() {
         <article className="launchRowCard" key={`${launch.transactionHash}-${launch.launchId}`}>
           <Link className="launchRowMain" href={`/token/${launch.token}?launch=${launch.launchId}`} aria-label={`Open ${launch.name}`}>
             <TokenArtwork launch={launch} />
-            <div className="identity"><strong>{launch.name}</strong><span>{"$" + displaySymbol(launch.symbol) + " • #" + launch.launchId}</span></div>
+            <div className="identity"><strong>{launch.name}</strong><span>{"$" + displaySymbol(launch.symbol) + " • #" + launch.launchId}</span><CreatorExposure launch={launch} /></div>
             <div className="launchMetrics"><span><small>Reserve</small><strong>{reserveLabel(launch.reserveWei)}</strong></span><span><small>Volume</small><strong>{volumeLabel(launch.volumeWei)}</strong></span><span><small>Graduation</small><strong>{launch.graduated ? "Complete" : `${launch.progressBps / 100}%`}</strong></span></div>
           </Link>
           <div className="launchActions"><button className="buyCardAction" type="button" aria-haspopup="dialog" aria-label={`Quick buy ${launch.name}`} onClick={() => openQuickTrade(launch, "buy")}>Buy</button><button className="sellCardAction" type="button" aria-haspopup="dialog" aria-label={`Quick sell ${launch.name}`} onClick={() => openQuickTrade(launch, "sell")}>Sell</button></div>
