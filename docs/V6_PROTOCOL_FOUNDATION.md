@@ -2,7 +2,7 @@
 
 ## Status
 
-V6 is the required launch foundation before public token creation reopens. The production terminal may remain online, but the public launch path stays paused until V6 is deployed, verified, activated, and independently reviewed.
+V6 is the required launch foundation before public token creation reopens. The production terminal may remain online, but the public launch path stays paused until V6 is deployed, source-verified, activated, the official RMT launch and real fee-producing smoke buy are confirmed, and the final production checks pass. V6 launches as an explicitly disclosed unaudited mainnet beta; an independent human audit remains the first funded post-launch security priority.
 
 ## Product contract
 
@@ -64,7 +64,7 @@ A launch policy is immutable once used and contains:
 
 The registry constructor permanently locks one reviewed market implementation and one reviewed graduation adapter, both of which must already contain contract bytecode. Every policy registration must use those exact two addresses in addition to the canonical economics and treasury. Governance may register a new policy version and enable or disable it for future launches, but a policy ID cannot substitute execution code. Changing either component requires a separately reviewed future protocol deployment; governance must not alter the policy attached to an existing launch.
 
-V6 enables only the reviewed Fair and Open variants. Future Community or Verified policies become additional policy IDs, not ad hoc branches in the website.
+V6 constructor-installs only the reviewed Fair and Open variants and makes Fair the genesis default. Future Community or Verified policies use the permanent delayed registration path and become additional policy IDs, not ad hoc branches in the website.
 
 ### 3. Governance and pause controller
 
@@ -78,16 +78,20 @@ V6 enables only the reviewed Fair and Open variants. Future Community or Verifie
 - a prospective added or replacement signer must prove control and give expiring consent bound to the current configuration epoch, exact add-or-replace action, affected signer, and next threshold before the governance change can execute; the candidate may revoke any unconsumed acceptance before execution, a successful change consumes it, expiration makes it unusable, and an epoch change makes it stale
 - adding, removing, or replacing a signer applies the resulting threshold atomically; a multi-signer configuration can never be 1-of-N, so adding the first extra wallet creates 2-of-2 governance rather than a backup wallet
 - every signer/threshold change advances a monotonic configuration epoch and permanently invalidates every older pending proposal and confirmation
+- registry, launch-gate, and policy schedules snapshot that epoch and expire seven days after their own delay; signer/threshold rotation therefore invalidates older downstream intent too
 - execution is permissionless only for fully approved, uncancelled, unexpired proposals in the current epoch; the executor receives no role or reward
-- emergency pause: immediate, authorized guardian action
-- unpause: delayed governance action after health checks
-- policy registration: delayed governance action
-- version-registry activation: delayed through the same V6 governance, followed by the fresh registry's separate activation delay
+- emergency pause/disable: immediate, authorized guardian action; delayed governance may rotate the gate and policy guardians, and signer rotation does not rotate those roles automatically
+- genesis exception: one chain-4663-only, RMTMain-only, 12-hour controller with two immutable read-only verifier children may activate the exact pristine V6 topology and may open once only after official RMT is launch zero and a genuine pre-graduation fully settled curve fee is observed; none has generic-call, asset, policy, signer, payout, upgrade, or reusable admin authority
+- every post-genesis unpause: delayed governance action after health checks
+- every post-genesis policy registration: delayed governance action
+- every later version-registry activation: delayed through the same V6 governance, followed by the fresh registry's separate activation delay
 - all actions emit public events
+
+The 12-hour bootstrap window is a completion deadline, not a waiting period. The operator may deploy, verify sources, activate V6, launch official RMT, wait the single Fair Start block, make the smoke buy, and open public token creation in one session. The longer governance delays apply only to later changes or recovery after the one-time genesis path is consumed or lost.
 
 `RMTV6Governance` is protocol-wide generic governance, not a creator-payout-only controller. A reviewed proposal may call the launch gate, policy registry, a fee splitter, or another explicit protocol target. Every call is subject to the same delay, approval, epoch, cancellation, expiry, and public-inspection rules. The creator-payout splitter independently limits its own governance-callable destination to the immutable original creator or immutable RMT treasury.
 
-A compromised guardian may pause launches but may not withdraw funds, change economics, activate a factory, or unpause instantly.
+A compromised guardian may pause launches or disable a policy but may not withdraw funds, change economics, activate a factory, or use the one-time controller. After genesis completes, the guardian cannot unpause or re-enable instantly. Delayed governance can rotate a compromised or retired guardian; after rotation, the old wallet loses the role.
 
 A second signer is an active quorum member, not a recovery key. Once the initial 1-of-1 configuration becomes 2-of-2, both wallets must approve future proposals; loss or prolonged unavailability of either wallet can freeze governance. Before that transition, losing the sole RMTMain signer freezes protocol control and treasury assets. Compromise of that signer can authorize governance and treasury calls after the delay.
 
@@ -206,11 +210,11 @@ V6 cannot be activated until all gates pass:
 10. deployment-console binding verification
 11. website production build and contract-capability tests
 12. indexer migration and event-ingestion tests
-13. independent security review
+13. explicit unaudited-mainnet-beta disclosure and funded post-launch audit plan
 14. mainnet dry run and wallet-operated deployment
-15. registry activation while launches remain paused
-16. exact official RMT V6 migration and verification while ordinary launches remain paused
-17. exact fresh-registry, V6 factory/version, factory-start-block, and final production health verification before proposing and executing delayed unpause
+15. fifteen exact Blockscout source records and one-time registry activation while launches remain paused
+16. exact official RMT V6 migration as launch zero plus a genuine pre-graduation settled 70/30 curve-fee smoke buy while ordinary launches remain paused
+17. exact fresh-registry, V6 factory/version, factory-start-block, and final production health verification before permanently consuming the genesis controller and opening public creation
 
 ## Non-negotiable security properties
 
@@ -224,4 +228,4 @@ V6 cannot be activated until all gates pass:
 - No website-only pause as the final safety control.
 - No ordinary public launch entry point that bypasses the pause, active-factory check, or policy registry.
 - The one-time paused official migration is exact-identity, exact-wallet, Fair-policy, active-factory, and non-reopening only.
-- No activation before independent review and verified deployment artifacts.
+- No activation before the exact compile, test, source, topology, and deployment-artifact gates; the independent audit remains explicitly disclosed as the first funded post-launch security priority.

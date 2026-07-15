@@ -21,7 +21,9 @@ It:
 - `RMT_FACTORY_ADDRESS` (must expose `protocolVersion() == 6`)
 - `RMT_FACTORY_START_BLOCK` (the canonical V6 factory deployment block)
 
-There are no legacy-factory or legacy-start-block defaults. A missing value, an invalid address/block, an RPC failure, or a factory version other than V6 stops startup before any database indexing begins.
+There are no legacy-factory or legacy-start-block defaults. A missing value, an invalid address/block, an RPC failure, or a factory version other than V6 stops startup before any database indexing begins. The archive RPC must prove that the configured factory first has bytecode at the exact start block and has no bytecode at the preceding block. The indexer derives the policy registry from the configured factory, reads the V6 governance/creator-payout authority and canonical protocol treasury from that deployed stack, and fails closed unless those bindings match and both authority contracts contain bytecode. No V5 governance or treasury address is configured or accepted as a fallback.
+
+`/health` remains unavailable and `/launches` returns `503` until the first confirmed-chain backfill and all V6 accounting invariants complete successfully. Changing the schema version, factory, or exact deployment block forces a clean replay rather than trusting earlier indexed rows.
 
 Production should also set:
 - `RMT_CONFIRMATION_DEPTH` (default 20)

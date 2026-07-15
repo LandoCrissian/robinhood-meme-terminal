@@ -5,6 +5,7 @@ import {MainnetReleaseConfigV6 as Config} from "../script/MainnetReleaseConfigV6
 
 contract MainnetReleaseConfigV6Test {
     function testDeveloperOperatorIsCanonicalRMTMainWallet() public pure {
+        require(Config.CHAIN_ID == 4_663, "mainnet chain id");
         require(Config.DEVELOPER_OPERATOR == 0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA, "developer operator");
         require(Config.INITIAL_GUARDIAN == Config.DEVELOPER_OPERATOR, "guardian wallet");
         require(Config.LEGACY_IDENTITY_FACTORY == 0x25A92D8C79c38D07B0d3eFd0ebe929D30e401cdD, "legacy factory");
@@ -20,6 +21,8 @@ contract MainnetReleaseConfigV6Test {
         require(Config.GOVERNANCE_EXECUTION_WINDOW == 7 days, "governance execution window");
         require(Config.REGISTRY_ACTIVATION_DELAY == 2 days, "registry delay");
         require(Config.LAUNCH_UNPAUSE_DELAY == 1 days, "launch unpause delay");
+        require(Config.BOOTSTRAP_WINDOW == 12 hours, "bootstrap window");
+        require(Config.BOOTSTRAP_WINDOW < Config.GOVERNANCE_DELAY, "bootstrap must expire before governance matures");
     }
 
     function testSimplePolicyFeeSharesBalance() public pure {

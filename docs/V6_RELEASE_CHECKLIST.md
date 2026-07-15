@@ -1,6 +1,6 @@
 # V6 Release Checklist
 
-Public token creation remains paused until every required item is complete.
+Public token creation remains paused until the pre-opening deployment checks through the one-time controller action are complete. Items explicitly labeled post-launch—most importantly the independent human audit—remain tracked but do not impose a multi-day genesis wait.
 
 ## Architecture
 
@@ -9,7 +9,7 @@ Public token creation remains paused until every required item is complete.
 - [x] Website capability model defined.
 - [x] V6 protocol foundation documented.
 - [x] Implement the candidate post-graduation fee mechanism for Robinhood Chain's Uniswap V4 deployment.
-- [ ] Complete an independent review of the final candidate commit.
+- [x] Publish an explicit unaudited-mainnet-beta disclosure; retain an independent audit as the first funded post-launch security priority.
 
 ## Contracts
 
@@ -30,13 +30,19 @@ Public token creation remains paused until every required item is complete.
 - [x] Reject launches from a V6 factory that is no longer active in the version registry.
 - [x] Add the exact one-time official RMT migration while ordinary public launches remain paused, permanently bound to legacy token `0xaB374D24aFBD943a134AdB381D9646e71C6f6C0C` and its expected creator/name/ticker.
 - [x] Clamp graduation to the exact net reserve target and isolate refunds, forced assets, and seed dust from liquidity and fees.
+- [x] Constructor-install only the exact Fair/Open V1 policies and Fair default.
+- [x] Add a chain-4663-only, operator-only, pristine-governance, 12-hour bootstrap controller with no generic call, asset custody, upgrade, or reusable admin authority.
+- [x] Split the controller's topology and smoke checks into two immutable, controller-bound, read-only verifier children so every runtime and the controller initcode remain below protocol size limits.
+- [x] Require the controller to prove the exact topology, official RMT as launch zero, and a genuine pre-graduation fully settled curve-fee smoke buy before one-time public opening; retain independent replay latches in the controller, registry, gate, and identity migration.
+- [x] Bind registry, gate, and policy schedules to the live governance configuration epoch and expire them seven days after their target delay; allow delayed governance to rotate gate and policy guardians.
 
 ## Tests
 
-- [ ] Final contract candidate compiles with the frozen dependency set.
+- [x] Final contract candidate compiles with the frozen dependency set.
 - [x] Factory launch and identity tests.
 - [x] Pause blocks every ordinary launch entry point; the exact operator-only official migration remains one-time and non-reopening.
 - [x] Guardian cannot schedule reopening or move funds; it may only finalize a governance-authorized reopening after the full gate delay.
+- [x] Genesis bootstrap activation/opening is one-use and expiring; every later registry change and later reopening retains the permanent delays.
 - [x] Policy registration is append-only.
 - [x] Historical policy data cannot change.
 - [x] Registry constructor locks the canonical market implementation and graduation adapter; every policy must use both exact addresses.
@@ -70,25 +76,25 @@ Public token creation remains paused until every required item is complete.
 
 ## Deployment
 
-- [ ] Regenerate and review the deployment artifacts from the final compiled V6 contracts; confirm the V6 governance ABI contains both `acceptSignerRole(uint64,uint8,address,uint256,uint64)` and `revokeSignerRoleAcceptance(uint64)` and the wallet console rejects an artifact missing either function.
+- [x] Regenerate and review the deployment artifacts from the final compiled V6 contracts; confirm the V6 governance ABI contains both `acceptSignerRole(uint64,uint8,address,uint256,uint64)` and `revokeSignerRoleAcceptance(uint64)` and the wallet console rejects an artifact missing either function.
 - [ ] Require the exact artifact-producing CI run to be green before the operator-console deployment; never deploy from the checked-in stale artifact. The Foundry script is fork-rehearsal-only.
 - [x] Add wallet-operated phased V6 deployment console.
-- [x] Separate foundation deployment, live source verification, and governance proposal submission into distinct fail-closed phases.
+- [x] Separate paused foundation deployment, live source verification, one-time activation, production cutover, official launch/smoke, and final opening into distinct fail-closed phases.
 - [x] Restrict the Foundry foundation script to fork rehearsal only and ensure it creates zero governance proposals.
 - [x] Add fail-closed legacy identity/dependency checks before deployment and fresh-registry owner/initial-state checks immediately after deployment.
-- [x] Read governance proposal IDs from confirmed receipt events.
-- [x] Add fail-closed Blockscout verification for all eleven V6 contracts, including the fresh registry, plus the V5 identity factory.
-- [x] Add an eight-address, no-signing-key GitHub workflow that runs the exact source gate on the selected frozen commit and archives its log.
-- [x] Recheck all twelve exact Blockscout records live before every proposal phase and final public reopening; never trust a recovery-file marker.
+- [x] Add fail-closed Blockscout verification for all fourteen V6 contracts, including the bootstrap controller, both immutable verifier children, and fresh registry, plus the V5 identity factory.
+- [x] Add a nine-address, no-signing-key GitHub workflow that runs the exact source gate on the selected frozen commit and archives its log.
+- [x] Recheck all fifteen exact Blockscout records live before activation and final public reopening; never trust a recovery-file marker.
 - [ ] Verify all immutable bindings and fee destinations in the final CI rehearsal, including the factory and migration helper's exact official legacy-token getter.
 - [ ] Verify the registry constructor arguments and live canonical-component getters match the exact reviewed market and adapter addresses.
 - [ ] Deploy V6 in paused state.
-- [ ] Run `scripts/verify-mainnet-v6.sh` after deployment and archive all twelve successful Blockscout results.
-- [ ] Confirm the one V6 governance contract has `transactionCount()` zero before the first proposal. Afterward, prove every ID—including fresh-registry activation—from exact receipts and verify each proposal through `getTransaction` as current-epoch, uncancelled, and unexpired while pending.
-- [ ] Complete independent security review.
-- [ ] Propose and activate V6 through the version registry.
+- [ ] Run `scripts/verify-mainnet-v6.sh` after deployment and archive all fifteen successful Blockscout results.
+- [ ] Confirm the one V6 governance contract remains at epoch 1 with `transactionCount()` zero throughout the expedited bootstrap.
+- [ ] Before the 12-hour window expires, activate only the exact source-verified V6 factory through the one-time controller and confirm public launches remain paused.
 - [ ] Set production `NEXT_PUBLIC_VERSION_REGISTRY_ADDRESS` to the fresh V6-governed registry, `NEXT_PUBLIC_FACTORY_START_BLOCK` to the exact confirmed V6 factory deployment block, and `NEXT_PUBLIC_APP_URL` to the exact public HTTPS origin; redeploy and confirm `/api/health` publishes those exact values.
 - [ ] Confirm production terminal reads V6 from that block and remains paused.
 - [ ] Before signing, disclose that the official V6 launch creates a new token contract/address and new one-billion-token supply and does not copy, swap, credit, or migrate old V5 balances; then launch and verify it while ordinary creation remains paused.
-- [ ] Run final health checks and confirm the operator console rejects local/preview, legacy-registry, stale-factory, wrong-version, wrong-start-block, unhealthy, and stale reports.
-- [ ] Unpause through delayed governance only after approval.
+- [ ] Wait one Fair Start block, make a small official RMT buy, and prove nonzero fully paid 70/30 curve fees with no pending operator or governance payout.
+- [ ] Run final health checks and confirm the operator console rejects local/preview, legacy-registry, stale-factory, wrong-version, wrong-start-block, unhealthy, stale, zero-fee, duplicate-launch, or expired-bootstrap states.
+- [ ] Permanently consume the one-time controller and open public creation; verify all later reopenings and upgrades still require the permanent delays.
+- [ ] Complete an independent human audit as the first funded post-launch security priority.

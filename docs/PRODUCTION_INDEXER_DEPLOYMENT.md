@@ -32,6 +32,8 @@ Create these as encrypted service variables:
 
 Railway injects `PORT`. Do not override it unless the provider requires an explicit value.
 
+Do not configure governance, creator-payout, or treasury addresses separately. At startup the indexer uses the archive RPC to require factory bytecode at the exact configured deployment block and no factory bytecode at the preceding block. It then reads `policyRegistry()` and `creatorPayoutAuthority()` from the configured V6 factory, reads `governance()` and `canonicalProtocolTreasury()` from that policy registry, requires the creator-payout authority and treasury to equal the fresh V6 governance contract, and requires bytecode at the policy-registry and governance addresses. Any future or late start block, missing contract, zero address, mismatch, RPC failure, or legacy factory stops startup before indexing.
+
 ## Railway setup
 
 1. Create a Railway project from the GitHub repository.
@@ -41,7 +43,7 @@ Railway injects `PORT`. Do not override it unless the provider requires an expli
 5. Add the encrypted variables above.
 6. Generate a public service domain only for the indexer API.
 7. Deploy one replica.
-8. Confirm the deployment health check passes at `/health`.
+8. Confirm `/health` stays unavailable during the initial backfill, then passes only after the first safe-head sync and accounting-invariant pass complete.
 
 The committed Railway configuration builds only the indexer, starts the long-running worker/API, checks `/health`, restarts after failure, and limits redeploy triggers to relevant files.
 
@@ -49,7 +51,7 @@ The committed Railway configuration builds only the indexer, starts the long-run
 
 Do not connect the public web app to the indexer until all checks pass:
 
-1. `/health` reports `ok: true`, chain ID `4663`, protocol version `6`, and the exact verified V6 factory.
+1. `/health` reports `ok: true`, chain ID `4663`, protocol version `6`, the exact verified V6 factory, and the derived policy-registry, governance, creator-payout-authority, and protocol-treasury addresses from the verified release record.
 2. The worker has indexed through the confirmed chain head.
 3. Indexed launch count equals the factory's onchain `launchCount()`.
 4. Every indexed token, market, reward vault, and creator matches its canonical launch event.

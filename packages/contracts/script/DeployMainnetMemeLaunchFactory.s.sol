@@ -103,7 +103,11 @@ contract DeployMainnetMemeLaunchFactory {
         rewardsController.bindFactory(address(factory));
 
         VersionedFactoryRegistry registry = new VersionedFactoryRegistry(
-            address(factoryGovernance), Config.FACTORY_ACTIVATION_DELAY, address(factory), Config.FACTORY_VERSION
+            address(factoryGovernance),
+            Config.FACTORY_ACTIVATION_DELAY,
+            address(factory),
+            Config.FACTORY_VERSION,
+            address(0)
         );
         vm.stopBroadcast();
 

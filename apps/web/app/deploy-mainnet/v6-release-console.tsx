@@ -25,7 +25,7 @@ const OFFICIAL_LEGACY_RMT_TOKEN = "0xaB374D24aFBD943a134AdB381D9646e71C6f6C0C" a
 const POOL_MANAGER = "0x8366a39cc670b4001a1121b8f6a443a643e40951" as Address;
 const CREATE2_DEPLOYER = "0x4e59b44847b379578588920cA78FbF26c0B4956C" as Address;
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as Address;
-const STORAGE_KEY = "rmt:v6-release:fresh-governance-registry-foundation";
+const STORAGE_KEY = "rmt:v6-release:same-session-bootstrap";
 const VERSION = keccak256(toHex("RMT_FACTORY_V6"));
 const V5_VERSION = keccak256(toHex("RMT_FACTORY_V5"));
 const FAIR_POLICY_ID = keccak256(toHex("RMT_SIMPLE_FAIR_V1"));
@@ -35,7 +35,7 @@ const GOVERNANCE_EXECUTION_WINDOW = 7n * DAY;
 const HOOK_FLAGS = 0x28a0n;
 const HOOK_MASK = 0x3fffn;
 const ZERO_BYTES32 = `0x${"00".repeat(32)}` as Hex;
-const RECOVERY_SCHEMA = "rmt-v6-release-recovery-v5";
+const RECOVERY_SCHEMA = "rmt-v6-release-recovery-v6-bootstrap";
 const ADDRESS_PATTERN = /^0x[0-9a-fA-F]{40}$/;
 const HASH_PATTERN = /^0x[0-9a-fA-F]{64}$/;
 const DECIMAL_PATTERN = /^\d+$/;
@@ -59,12 +59,16 @@ type ArtifactName =
   | "adapter"
   | "factory"
   | "governanceV6"
+  | "bootstrapV6"
+  | "bootstrapFoundationVerifierV6"
+  | "bootstrapSmokeVerifierV6"
   | "registry"
   | "launchGateV6"
   | "policyRegistryV6"
   | "rmtFactoryV6"
+  | "feeSplitterV6"
   | "marketV6";
-type AddressKey = "governance" | "registry" | "hook" | "adapter" | "launchGate" | "policyRegistry" | "marketImplementation" | "factory";
+type AddressKey = "governance" | "bootstrapController" | "registry" | "hook" | "adapter" | "launchGate" | "policyRegistry" | "marketImplementation" | "factory";
 type ProposalKey = "fairPolicy" | "openPolicy" | "factoryActivation" | "defaultPolicy" | "unpause";
 type ReadyKey = "initialGovernance" | "policyRegistration" | "defaultGovernance" | "defaultPolicy" | "unpauseGovernance" | "unpause";
 type ReleaseDeployment = {
@@ -76,9 +80,19 @@ type ReleaseDeployment = {
   verified?: boolean;
   sourceVerified?: boolean;
   sourceVerifiedAt?: string;
+  /** Immutable evidence committed to the bootstrap controller at activation. */
+  sourceEvidenceHash?: Hex;
+  /** Most recent live Blockscout check; later checks must never replace activation evidence. */
+  latestSourceEvidenceHash?: Hex;
+  smokeEvidenceHash?: Hex;
+  productionVerifiedAt?: string;
+  factoryStartBlock?: string;
 };
 type SourceContractAddresses = {
   governance: Address;
+  bootstrapController: Address;
+  foundationVerifier: Address;
+  smokeVerifier: Address;
   versionRegistry: Address;
   legacyFactory: Address;
   hook: Address;
@@ -126,21 +140,54 @@ const factoryConstructor = artifacts.rmtFactoryV6?.abi?.find((item) => item.type
 const governanceConstructor = artifacts.governanceV6?.abi?.find((item) => item.type === "constructor") as
   | { inputs?: readonly unknown[] }
   | undefined;
+const bootstrapConstructor = artifacts.bootstrapV6?.abi?.find((item) => item.type === "constructor") as
+  | { inputs?: readonly unknown[] }
+  | undefined;
+const launchGateConstructor = artifacts.launchGateV6?.abi?.find((item) => item.type === "constructor") as
+  | { inputs?: readonly unknown[] }
+  | undefined;
 const registryConstructor = artifacts.registry?.abi?.find((item) => item.type === "constructor") as
   | { inputs?: readonly unknown[] }
   | undefined;
+const foundationVerifierConstructor = artifacts.bootstrapFoundationVerifierV6?.abi?.find(
+  (item) => item.type === "constructor"
+) as { inputs?: readonly unknown[] } | undefined;
+const smokeVerifierConstructor = artifacts.bootstrapSmokeVerifierV6?.abi?.find(
+  (item) => item.type === "constructor"
+) as { inputs?: readonly unknown[] } | undefined;
+
+function hasAbiFunction(artifact: Artifact | undefined, name: string, inputTypes: readonly string[]) {
+  return Boolean(artifact?.abi.some((item) => item.type === "function"
+    && item.name === name
+    && item.inputs.length === inputTypes.length
+    && item.inputs.every((input, index) => input.type === inputTypes[index])));
+}
+
+function deployBytecodeFits(artifact: Artifact | undefined, constructorArgumentBytes = 0) {
+  if (!artifact?.bytecode || artifact.bytecode === "0x") return false;
+  return (artifact.bytecode.length - 2) / 2 + constructorArgumentBytes <= 49_152;
+}
+
 const DEPLOYMENT_ARTIFACTS_READY = Boolean(
   artifacts.governanceV6?.bytecode && artifacts.governanceV6.bytecode !== "0x"
     && artifacts.hook?.bytecode && artifacts.hook.bytecode !== "0x"
+    && deployBytecodeFits(artifacts.bootstrapV6, 32)
+    && deployBytecodeFits(artifacts.bootstrapFoundationVerifierV6, 32)
+    && deployBytecodeFits(artifacts.bootstrapSmokeVerifierV6, 32)
     && artifacts.adapter?.bytecode && artifacts.adapter.bytecode !== "0x"
     && artifacts.launchGateV6?.bytecode && artifacts.launchGateV6.bytecode !== "0x"
     && artifacts.policyRegistryV6?.bytecode && artifacts.policyRegistryV6.bytecode !== "0x"
     && artifacts.marketV6?.bytecode && artifacts.marketV6.bytecode !== "0x"
     && artifacts.rmtFactoryV6?.bytecode && artifacts.rmtFactoryV6.bytecode !== "0x"
+    && artifacts.feeSplitterV6?.abi?.length
     && artifacts.registry?.bytecode && artifacts.registry.bytecode !== "0x"
     && factoryConstructor?.inputs?.length === 8
     && governanceConstructor?.inputs?.length === 3
-    && registryConstructor?.inputs?.length === 4
+    && bootstrapConstructor?.inputs?.length === 1
+    && foundationVerifierConstructor?.inputs?.length === 1
+    && smokeVerifierConstructor?.inputs?.length === 1
+    && launchGateConstructor?.inputs?.length === 4
+    && registryConstructor?.inputs?.length === 5
     && artifacts.factory?.abi.some(
       (item) => item.type === "function" && "name" in item && item.name === "isNameUsed"
     )
@@ -150,6 +197,28 @@ const DEPLOYMENT_ARTIFACTS_READY = Boolean(
     && artifacts.rmtFactoryV6.abi.some(
       (item) => item.type === "function" && "name" in item && item.name === "officialLegacyToken"
     )
+    && hasAbiFunction(artifacts.bootstrapV6, "foundationVerifier", [])
+    && hasAbiFunction(artifacts.bootstrapV6, "smokeVerifier", [])
+    && hasAbiFunction(
+      artifacts.bootstrapV6,
+      "activateVerifiedFoundation",
+      ["address", "address", "address", "address", "bytes32"]
+    )
+    && hasAbiFunction(artifacts.bootstrapV6, "openAfterOfficialSmoke", ["bytes32"])
+    && hasAbiFunction(artifacts.bootstrapFoundationVerifierV6, "controller", [])
+    && hasAbiFunction(artifacts.bootstrapSmokeVerifierV6, "controller", [])
+    && hasAbiFunction(artifacts.registry, "bootstrapActivateFactory", ["address", "bytes32"])
+    && hasAbiFunction(artifacts.registry, "pendingExpirationTime", [])
+    && hasAbiFunction(artifacts.registry, "pendingConfigurationEpoch", [])
+    && hasAbiFunction(artifacts.launchGateV6, "bootstrapUnpause", [])
+    && hasAbiFunction(artifacts.launchGateV6, "unpauseExpiresAt", [])
+    && hasAbiFunction(artifacts.launchGateV6, "unpauseConfigurationEpoch", [])
+    && hasAbiFunction(artifacts.rmtFactoryV6, "launchOfficialWhilePaused", ["string"])
+    && hasAbiFunction(artifacts.rmtFactoryV6, "getLaunch", ["uint256"])
+    && hasAbiFunction(artifacts.rmtFactoryV6, "launchCount", [])
+    && hasAbiFunction(artifacts.feeSplitterV6, "totalReceived", [])
+    && hasAbiFunction(artifacts.feeSplitterV6, "totalPaid", [])
+    && hasAbiFunction(artifacts.feeSplitterV6, "pending", ["address"])
     && artifacts.governanceV6.abi.some(
       (item) => item.type === "function" && "name" in item && item.name === "configurationEpoch"
     )
@@ -171,7 +240,7 @@ const DEPLOYMENT_ARTIFACTS_READY = Boolean(
     )
 );
 const EMPTY: ReleaseDeployment = { addresses: {}, transactions: {}, proposalIds: {}, readyAt: {} };
-const ADDRESS_KEYS: readonly AddressKey[] = ["governance", "registry", "hook", "adapter", "launchGate", "policyRegistry", "marketImplementation", "factory"];
+const ADDRESS_KEYS: readonly AddressKey[] = ["governance", "bootstrapController", "registry", "hook", "adapter", "launchGate", "policyRegistry", "marketImplementation", "factory"];
 const PROPOSAL_KEYS: readonly ProposalKey[] = ["fairPolicy", "openPolicy", "factoryActivation", "defaultPolicy", "unpause"];
 const READY_KEYS: readonly ReadyKey[] = ["initialGovernance", "policyRegistration", "defaultGovernance", "defaultPolicy", "unpauseGovernance", "unpause"];
 const PROPOSAL_TRANSACTION_KEYS: Record<ProposalKey, string> = {
@@ -183,6 +252,7 @@ const PROPOSAL_TRANSACTION_KEYS: Record<ProposalKey, string> = {
 };
 const FOUNDATION_TRANSACTION_KEYS = [
   "governance",
+  "bootstrapController",
   "registry",
   "hook",
   "adapter",
@@ -267,6 +337,26 @@ function parseRecoveryDeployment(value: unknown): ReleaseDeployment {
     && (typeof value.sourceVerifiedAt !== "string" || !Number.isFinite(Date.parse(value.sourceVerifiedAt)))) {
     throw new Error("The recovery file contains an invalid source-verification time.");
   }
+  if (value.sourceEvidenceHash !== undefined
+    && (typeof value.sourceEvidenceHash !== "string" || !HASH_PATTERN.test(value.sourceEvidenceHash))) {
+    throw new Error("The recovery file contains an invalid source-evidence hash.");
+  }
+  if (value.latestSourceEvidenceHash !== undefined
+    && (typeof value.latestSourceEvidenceHash !== "string" || !HASH_PATTERN.test(value.latestSourceEvidenceHash))) {
+    throw new Error("The recovery file contains an invalid latest source-evidence hash.");
+  }
+  if (value.smokeEvidenceHash !== undefined
+    && (typeof value.smokeEvidenceHash !== "string" || !HASH_PATTERN.test(value.smokeEvidenceHash))) {
+    throw new Error("The recovery file contains an invalid smoke-evidence hash.");
+  }
+  if (value.productionVerifiedAt !== undefined
+    && (typeof value.productionVerifiedAt !== "string" || !Number.isFinite(Date.parse(value.productionVerifiedAt)))) {
+    throw new Error("The recovery file contains an invalid production-verification time.");
+  }
+  if (value.factoryStartBlock !== undefined
+    && (typeof value.factoryStartBlock !== "string" || !DECIMAL_PATTERN.test(value.factoryStartBlock))) {
+    throw new Error("The recovery file contains an invalid factory start block.");
+  }
 
   return {
     addresses,
@@ -276,7 +366,14 @@ function parseRecoveryDeployment(value: unknown): ReleaseDeployment {
     ...(value.hookSalt ? { hookSalt: value.hookSalt as Hex } : {}),
     verified: value.verified === true,
     sourceVerified: value.sourceVerified === true,
-    ...(typeof value.sourceVerifiedAt === "string" ? { sourceVerifiedAt: value.sourceVerifiedAt } : {})
+    ...(typeof value.sourceVerifiedAt === "string" ? { sourceVerifiedAt: value.sourceVerifiedAt } : {}),
+    ...(typeof value.sourceEvidenceHash === "string" ? { sourceEvidenceHash: value.sourceEvidenceHash as Hex } : {}),
+    ...(typeof value.latestSourceEvidenceHash === "string"
+      ? { latestSourceEvidenceHash: value.latestSourceEvidenceHash as Hex }
+      : {}),
+    ...(typeof value.smokeEvidenceHash === "string" ? { smokeEvidenceHash: value.smokeEvidenceHash as Hex } : {}),
+    ...(typeof value.productionVerifiedAt === "string" ? { productionVerifiedAt: value.productionVerifiedAt } : {}),
+    ...(typeof value.factoryStartBlock === "string" ? { factoryStartBlock: value.factoryStartBlock } : {})
   };
 }
 
@@ -311,6 +408,10 @@ export function V6ReleaseConsole() {
   const [launchesPaused, setLaunchesPaused] = useState(true);
   const [onchainUnpauseTime, setOnchainUnpauseTime] = useState<bigint>();
   const [officialMigrationConsumed, setOfficialMigrationConsumed] = useState<boolean>();
+  const [officialToken, setOfficialToken] = useState<Address>();
+  const [officialSmokeFees, setOfficialSmokeFees] = useState<bigint>();
+  const [bootstrapState, setBootstrapState] = useState<number>();
+  const [bootstrapExpiresAt, setBootstrapExpiresAt] = useState<bigint>();
   const [balance, setBalance] = useState<bigint>();
   const [status, setStatus] = useState(
     DEPLOYMENT_ARTIFACTS_READY
@@ -346,6 +447,8 @@ export function V6ReleaseConsole() {
     deployment.transactions.executeUnpauseSchedule && deployment.readyAt.unpause
   );
   const isOpen = Boolean(isActive && !launchesPaused);
+  const hasRecoveryProgress = Object.keys(deployment.transactions).length > 0
+    || Object.keys(deployment.addresses).length > 0;
 
   function persist(next: ReleaseDeployment) {
     const snapshot = {
@@ -361,12 +464,29 @@ export function V6ReleaseConsole() {
 
   async function refreshOnchain() {
     if (!publicClient) return;
+    if (address) setBalance(await publicClient.getBalance({ address }));
+    const bootstrap = deployment.addresses.bootstrapController;
+    if (bootstrap && await hasCode(bootstrap)) {
+      const [state, expiresAt, latestBlock] = await Promise.all([
+        publicClient.readContract({ address: bootstrap, abi: artifacts.bootstrapV6.abi, functionName: "state" }),
+        publicClient.readContract({ address: bootstrap, abi: artifacts.bootstrapV6.abi, functionName: "expiresAt" }),
+        publicClient.getBlock({ blockTag: "latest" })
+      ]);
+      setBootstrapState(Number(state));
+      setBootstrapExpiresAt(expiresAt as bigint);
+      setCurrentTime(latestBlock.timestamp);
+    } else {
+      setBootstrapState(undefined);
+      setBootstrapExpiresAt(undefined);
+    }
     const registry = deployment.addresses.registry;
     if (!registry || !(await hasCode(registry))) {
       setActiveFactory(undefined);
       setPendingFactory(undefined);
       setPendingActivationTime(undefined);
       setOfficialMigrationConsumed(undefined);
+      setOfficialToken(undefined);
+      setOfficialSmokeFees(undefined);
       return;
     }
     const [active, pending, activation] = await Promise.all([
@@ -378,24 +498,50 @@ export function V6ReleaseConsole() {
     setPendingFactory(pending as Address);
     setPendingActivationTime(activation as bigint);
     const releaseFactory = deployment.addresses.factory;
-    if (
-      releaseFactory
-        && String(active).toLowerCase() === releaseFactory.toLowerCase()
-        && await hasCode(releaseFactory)
-    ) {
+    if (releaseFactory && await hasCode(releaseFactory)) {
       const migration = await publicClient.readContract({
         address: releaseFactory,
         abi: artifacts.rmtFactoryV6.abi,
         functionName: "officialIdentityMigration"
       }) as Address;
       if (!(await hasCode(migration))) throw new Error("The active V6 factory's official migration contract is missing.");
-      setOfficialMigrationConsumed(await publicClient.readContract({
+      const consumed = await publicClient.readContract({
         address: migration,
         abi: officialMigrationAbi,
         functionName: "consumed"
-      }) as boolean);
+      }) as boolean;
+      setOfficialMigrationConsumed(consumed);
+      const launchCount = await publicClient.readContract({
+        address: releaseFactory,
+        abi: artifacts.rmtFactoryV6.abi,
+        functionName: "launchCount"
+      }) as bigint;
+      if (launchCount >= 1n) {
+        const launch = await publicClient.readContract({
+          address: releaseFactory,
+          abi: artifacts.rmtFactoryV6.abi,
+          functionName: "getLaunch",
+          args: [0n]
+        }) as unknown as { token: Address; rewardVault: Address; officialMigration: boolean };
+        if (launch.officialMigration) {
+          setOfficialToken(launch.token);
+          setOfficialSmokeFees(await publicClient.readContract({
+            address: launch.rewardVault,
+            abi: artifacts.feeSplitterV6.abi,
+            functionName: "totalReceived"
+          }) as bigint);
+        } else {
+          setOfficialToken(undefined);
+          setOfficialSmokeFees(undefined);
+        }
+      } else {
+        setOfficialToken(undefined);
+        setOfficialSmokeFees(undefined);
+      }
     } else {
       setOfficialMigrationConsumed(undefined);
+      setOfficialToken(undefined);
+      setOfficialSmokeFees(undefined);
     }
     const gate = deployment.addresses.launchGate;
     if (gate && await hasCode(gate)) {
@@ -406,7 +552,6 @@ export function V6ReleaseConsole() {
       setLaunchesPaused(paused as boolean);
       setOnchainUnpauseTime(unpauseTime as bigint);
     }
-    if (address) setBalance(await publicClient.getBalance({ address }));
   }
 
   useEffect(() => {
@@ -424,7 +569,7 @@ export function V6ReleaseConsole() {
       void refreshOnchain().catch(() => undefined);
     }, 15_000);
     return () => window.clearInterval(timer);
-  }, [publicClient, address, deployment.addresses.registry, deployment.addresses.launchGate, deployment.addresses.factory]);
+  }, [publicClient, address, deployment.addresses.bootstrapController, deployment.addresses.registry, deployment.addresses.launchGate, deployment.addresses.factory]);
 
   async function hasCode(value?: Address) {
     if (!value || !publicClient) return false;
@@ -432,7 +577,55 @@ export function V6ReleaseConsole() {
     return Boolean(code && code !== "0x");
   }
 
-  async function validateV6Governance(governance: Address, expectedTransactionCount?: bigint) {
+  async function validateBootstrapVerifiers(bootstrapController: Address) {
+    if (!publicClient || !(await hasCode(bootstrapController))) {
+      throw new Error("The V6 bootstrap controller is missing onchain.");
+    }
+    const [foundationVerifier, smokeVerifier] = await Promise.all([
+      publicClient.readContract({
+        address: bootstrapController,
+        abi: artifacts.bootstrapV6.abi,
+        functionName: "foundationVerifier"
+      }),
+      publicClient.readContract({
+        address: bootstrapController,
+        abi: artifacts.bootstrapV6.abi,
+        functionName: "smokeVerifier"
+      })
+    ]) as [Address, Address];
+    if (!ADDRESS_PATTERN.test(foundationVerifier) || !ADDRESS_PATTERN.test(smokeVerifier)
+      || foundationVerifier.toLowerCase() === ZERO_ADDRESS.toLowerCase()
+      || smokeVerifier.toLowerCase() === ZERO_ADDRESS.toLowerCase()
+      || foundationVerifier.toLowerCase() === smokeVerifier.toLowerCase()
+      || foundationVerifier.toLowerCase() === bootstrapController.toLowerCase()
+      || smokeVerifier.toLowerCase() === bootstrapController.toLowerCase()
+      || !(await hasCode(foundationVerifier)) || !(await hasCode(smokeVerifier))) {
+      throw new Error("The V6 bootstrap verifier children are missing or invalid.");
+    }
+    const [foundationController, smokeController] = await Promise.all([
+      publicClient.readContract({
+        address: foundationVerifier,
+        abi: artifacts.bootstrapFoundationVerifierV6.abi,
+        functionName: "controller"
+      }),
+      publicClient.readContract({
+        address: smokeVerifier,
+        abi: artifacts.bootstrapSmokeVerifierV6.abi,
+        functionName: "controller"
+      })
+    ]) as [Address, Address];
+    if (foundationController.toLowerCase() !== bootstrapController.toLowerCase()
+      || smokeController.toLowerCase() !== bootstrapController.toLowerCase()) {
+      throw new Error("The V6 bootstrap verifier children are not bound to this controller.");
+    }
+    return { foundationVerifier, smokeVerifier };
+  }
+
+  async function validateV6Governance(
+    governance: Address,
+    expectedTransactionCount?: bigint,
+    requirePristineConfiguration = true
+  ) {
     if (!publicClient || !(await hasCode(governance))) {
       throw new Error("The V6 governance contract is missing onchain.");
     }
@@ -445,12 +638,19 @@ export function V6ReleaseConsole() {
       publicClient.readContract({ address: governance, abi: artifacts.governanceV6.abi, functionName: "configurationEpoch" }),
       publicClient.readContract({ address: governance, abi: artifacts.governanceV6.abi, functionName: "transactionCount" })
     ]);
-    if (
-      operatorIsSigner !== true || signerCount !== 1n || threshold !== 1n || delay !== DAY
-        || window !== GOVERNANCE_EXECUTION_WINDOW || epoch !== 1n
-        || (expectedTransactionCount !== undefined && transactionCount !== expectedTransactionCount)
-    ) {
-      throw new Error("V6 governance does not match the reviewed one-wallet, 24-hour delay, seven-day execution-window configuration.");
+    const signerCountValue = signerCount as bigint;
+    const thresholdValue = threshold as bigint;
+    const epochValue = epoch as bigint;
+    const permanentConfigurationInvalid = delay !== DAY || window !== GOVERNANCE_EXECUTION_WINDOW
+      || signerCountValue < 1n || thresholdValue < 1n || thresholdValue > signerCountValue || epochValue < 1n;
+    const pristineConfigurationInvalid = requirePristineConfiguration && (
+      operatorIsSigner !== true || signerCountValue !== 1n || thresholdValue !== 1n || epochValue !== 1n
+    );
+    if (permanentConfigurationInvalid || pristineConfigurationInvalid
+      || (expectedTransactionCount !== undefined && transactionCount !== expectedTransactionCount)) {
+      throw new Error(requirePristineConfiguration
+        ? "V6 governance does not match the reviewed pristine one-wallet, 24-hour delay, seven-day execution-window configuration."
+        : "V6 governance no longer preserves its reviewed permanent delay, execution window, and valid signer threshold.");
     }
     return transactionCount as bigint;
   }
@@ -485,20 +685,116 @@ export function V6ReleaseConsole() {
 
   async function validateSavedDeploymentReceipts(current: ReleaseDeployment) {
     if (!publicClient) throw new Error("Mainnet provider is unavailable.");
+    const {
+      governance,
+      bootstrapController,
+      registry,
+      hook,
+      adapter,
+      launchGate,
+      policyRegistry,
+      marketImplementation,
+      factory
+    } = current.addresses;
+    if (!governance || !bootstrapController || !registry || !hook || !adapter || !launchGate
+      || !policyRegistry || !marketImplementation || !factory) {
+      throw new Error("The exact V6 deployment addresses are required to validate creation inputs.");
+    }
+    const expectedDirectDeployment = (key: Exclude<AddressKey, "hook">) => {
+      switch (key) {
+        case "governance":
+          return encodeDeployData({
+            abi: artifacts.governanceV6.abi,
+            bytecode: artifacts.governanceV6.bytecode,
+            args: [OPERATOR, DAY, GOVERNANCE_EXECUTION_WINDOW]
+          });
+        case "bootstrapController":
+          return encodeDeployData({
+            abi: artifacts.bootstrapV6.abi,
+            bytecode: artifacts.bootstrapV6.bytecode,
+            args: [governance]
+          });
+        case "registry":
+          return encodeDeployData({
+            abi: artifacts.registry.abi,
+            bytecode: artifacts.registry.bytecode,
+            args: [governance, 2n * DAY, V5_FACTORY, V5_VERSION, bootstrapController]
+          });
+        case "adapter":
+          return encodeDeployData({
+            abi: artifacts.adapter.abi,
+            bytecode: artifacts.adapter.bytecode,
+            args: [POOL_MANAGER, hook, 5_000, 200]
+          });
+        case "launchGate":
+          return encodeDeployData({
+            abi: artifacts.launchGateV6.abi,
+            bytecode: artifacts.launchGateV6.bytecode,
+            args: [governance, OPERATOR, DAY, bootstrapController]
+          });
+        case "marketImplementation":
+          return encodeDeployData({ abi: artifacts.marketV6.abi, bytecode: artifacts.marketV6.bytecode, args: [] });
+        case "policyRegistry":
+          return encodeDeployData({
+            abi: artifacts.policyRegistryV6.abi,
+            bytecode: artifacts.policyRegistryV6.bytecode,
+            args: [governance, OPERATOR, DAY, governance, marketImplementation, adapter]
+          });
+        case "factory":
+          return encodeDeployData({
+            abi: artifacts.rmtFactoryV6.abi,
+            bytecode: artifacts.rmtFactoryV6.bytecode,
+            args: [
+              launchGate,
+              policyRegistry,
+              registry,
+              parseEther("0.3"),
+              parseEther("1017500000"),
+              V5_FACTORY,
+              OFFICIAL_LEGACY_RMT_TOKEN,
+              OPERATOR
+            ]
+          });
+      }
+    };
     await Promise.all(ADDRESS_KEYS.map(async (key) => {
       const addressToVerify = current.addresses[key];
       const transactionHash = current.transactions[key];
-      if (!transactionHash) return;
+      if (!transactionHash) throw new Error(`The recovery record is missing its ${key} deployment transaction.`);
       if (!addressToVerify) {
         throw new Error(`The recovery record has a ${key} deployment receipt without its contract address.`);
       }
       const receipt = await publicClient.getTransactionReceipt({ hash: transactionHash });
+      if (key === "hook") {
+        const salt = current.hookSalt;
+        if (!salt) throw new Error("The recovery record's CREATE2 hook salt is missing.");
+        const initCode = encodeDeployData({
+          abi: artifacts.hook.abi,
+          bytecode: artifacts.hook.bytecode,
+          args: [POOL_MANAGER, OPERATOR]
+        });
+        const expectedHook = getCreate2Address({ from: CREATE2_DEPLOYER, salt, bytecode: initCode });
+        const transaction = await publicClient.getTransaction({ hash: transactionHash });
+        if (receipt.status !== "success" || receipt.to?.toLowerCase() !== CREATE2_DEPLOYER.toLowerCase()
+          || transaction.input.toLowerCase() !== concat([salt, initCode]).toLowerCase()
+          || expectedHook.toLowerCase() !== addressToVerify.toLowerCase()
+          || !(await hasCode(addressToVerify))) {
+          throw new Error("The recovery record's hook transaction did not create the exact recorded CREATE2 hook.");
+        }
+        return;
+      }
       if (
         receipt.status !== "success"
           || !receipt.contractAddress
           || receipt.contractAddress.toLowerCase() !== addressToVerify.toLowerCase()
       ) {
         throw new Error(`The recovery record's ${key} transaction did not create the recorded contract.`);
+      }
+      const transaction = await publicClient.getTransaction({ hash: transactionHash });
+      const expectedInput = expectedDirectDeployment(key as Exclude<AddressKey, "hook">);
+      if (transaction.to !== null || transaction.from.toLowerCase() !== OPERATOR.toLowerCase()
+        || transaction.input.toLowerCase() !== expectedInput.toLowerCase()) {
+        throw new Error(`The recovery record's ${key} creation input differs from the exact reviewed artifact and constructor arguments.`);
       }
     }));
   }
@@ -526,7 +822,8 @@ export function V6ReleaseConsole() {
     factory: Address,
     expectedAdapter?: Address,
     expectedGovernance?: Address,
-    expectedRegistry?: Address
+    expectedRegistry?: Address,
+    requirePristineGovernance = true
   ) {
     if (!publicClient || !(await hasCode(factory))) throw new Error("The adapter's recorded factory has no bytecode.");
     const [
@@ -611,8 +908,10 @@ export function V6ReleaseConsole() {
         || String(officialLegacyToken).toLowerCase() !== OFFICIAL_LEGACY_RMT_TOKEN.toLowerCase()
         || String(officialMigrationPolicyId).toLowerCase() !== FAIR_POLICY_ID.toLowerCase()
         || virtualEthReserve !== parseEther("0.3") || virtualTokenReserve !== parseEther("1017500000")
-        || String(gateGuardian).toLowerCase() !== OPERATOR.toLowerCase() || gateDelay !== DAY
-        || String(policyGuardian).toLowerCase() !== OPERATOR.toLowerCase() || policyDelay !== DAY
+        || (requirePristineGovernance && String(gateGuardian).toLowerCase() !== OPERATOR.toLowerCase())
+        || gateDelay !== DAY
+        || (requirePristineGovernance && String(policyGuardian).toLowerCase() !== OPERATOR.toLowerCase())
+        || policyDelay !== DAY
         || !(await hasCode(canonicalMarketImplementation as Address))
         || !(await hasCode(canonicalGraduationAdapter as Address))
         || (expectedAdapter !== undefined
@@ -632,7 +931,7 @@ export function V6ReleaseConsole() {
         || (expectedGovernance !== undefined
           && recoveredGovernance.toLowerCase() !== expectedGovernance.toLowerCase())
     ) throw new Error("The factory, gate, policy registry, and creator payout authority do not share V6 governance.");
-    await validateV6Governance(recoveredGovernance);
+    await validateV6Governance(recoveredGovernance, undefined, requirePristineGovernance);
     return {
       governance: recoveredGovernance,
       versionRegistry: factoryRegistry as Address,
@@ -950,11 +1249,12 @@ export function V6ReleaseConsole() {
     return { fair, open };
   }
 
-  function policyMatches(actual: LaunchPolicy, expected: LaunchPolicy) {
+  function policyMatches(actual: LaunchPolicy, expected: LaunchPolicy, includeAvailability = true) {
     return actual.policyId.toLowerCase() === expected.policyId.toLowerCase()
       && Number(actual.policyVersion) === expected.policyVersion
-      && actual.enabled === expected.enabled
-      && actual.publiclySelectable === expected.publiclySelectable
+      && (!includeAvailability || (
+        actual.enabled === expected.enabled && actual.publiclySelectable === expected.publiclySelectable
+      ))
       && Number(actual.curveFeeBps) === expected.curveFeeBps
       && Number(actual.creatorFeeShareBps) === expected.creatorFeeShareBps
       && Number(actual.protocolFeeShareBps) === expected.protocolFeeShareBps
@@ -972,19 +1272,23 @@ export function V6ReleaseConsole() {
 
   async function sourceContractAddresses(current: ReleaseDeployment): Promise<SourceContractAddresses> {
     if (!publicClient) throw new Error("Mainnet provider is unavailable.");
-    const { governance, registry, hook, adapter, launchGate, policyRegistry, marketImplementation, factory } = current.addresses;
-    if (!governance || !registry || !hook || !adapter || !launchGate || !policyRegistry || !marketImplementation || !factory) {
-      throw new Error("All eight deployed V6 foundation addresses are required before source verification.");
+    const { governance, bootstrapController, registry, hook, adapter, launchGate, policyRegistry, marketImplementation, factory } = current.addresses;
+    if (!governance || !bootstrapController || !registry || !hook || !adapter || !launchGate || !policyRegistry || !marketImplementation || !factory) {
+      throw new Error("All nine deployed V6 foundation addresses are required before source verification.");
     }
 
-    const [tokenImplementation, feeSplitterImplementation, officialMigration] = await Promise.all([
+    const [tokenImplementation, feeSplitterImplementation, officialMigration, bootstrapVerifiers] = await Promise.all([
       publicClient.readContract({ address: factory, abi: artifacts.rmtFactoryV6.abi, functionName: "tokenImplementation" }),
       publicClient.readContract({ address: factory, abi: artifacts.rmtFactoryV6.abi, functionName: "feeSplitterImplementation" }),
-      publicClient.readContract({ address: factory, abi: artifacts.rmtFactoryV6.abi, functionName: "officialIdentityMigration" })
-    ]) as [Address, Address, Address];
+      publicClient.readContract({ address: factory, abi: artifacts.rmtFactoryV6.abi, functionName: "officialIdentityMigration" }),
+      validateBootstrapVerifiers(bootstrapController)
+    ]) as [Address, Address, Address, Awaited<ReturnType<typeof validateBootstrapVerifiers>>];
 
     const contracts: SourceContractAddresses = {
       governance,
+      bootstrapController,
+      foundationVerifier: bootstrapVerifiers.foundationVerifier,
+      smokeVerifier: bootstrapVerifiers.smokeVerifier,
       versionRegistry: registry,
       legacyFactory: V5_FACTORY,
       hook,
@@ -997,11 +1301,20 @@ export function V6ReleaseConsole() {
       officialMigration,
       factory
     };
-    for (const [label, contractAddress] of Object.entries(contracts)) {
-      if (!ADDRESS_PATTERN.test(contractAddress) || contractAddress.toLowerCase() === ZERO_ADDRESS.toLowerCase()
-        || !(await hasCode(contractAddress))) {
-        throw new Error(`The ${label} source-verification address has no deployed bytecode.`);
-      }
+    const contractEntries = Object.entries(contracts) as Array<[string, Address]>;
+    if (new Set(contractEntries.map(([, contractAddress]) => contractAddress.toLowerCase())).size
+      !== contractEntries.length) {
+      throw new Error("The V6 source-verification address set contains a duplicate contract.");
+    }
+    const codeChecks = await Promise.all(contractEntries.map(async ([label, contractAddress]) => ({
+      label,
+      valid: ADDRESS_PATTERN.test(contractAddress)
+        && contractAddress.toLowerCase() !== ZERO_ADDRESS.toLowerCase()
+        && await hasCode(contractAddress)
+    })));
+    const invalid = codeChecks.find((check) => !check.valid);
+    if (invalid) {
+      throw new Error(`The ${invalid.label} source-verification address has no deployed bytecode.`);
     }
     return contracts;
   }
@@ -1009,8 +1322,9 @@ export function V6ReleaseConsole() {
   async function verifySourcesLive(current: ReleaseDeployment) {
     current.sourceVerified = false;
     delete current.sourceVerifiedAt;
+    delete current.latestSourceEvidenceHash;
     persist(current);
-    setStatus("Checking all twelve V6 contracts and critical RMT dependencies on Blockscout…");
+    setStatus("Checking all fifteen V6 contracts and critical RMT dependencies on Blockscout…");
 
     const contracts = await sourceContractAddresses(current);
     const response = await fetch("/api/deploy-mainnet/v6-source-status", {
@@ -1021,10 +1335,17 @@ export function V6ReleaseConsole() {
     });
     const payload: unknown = await response.json().catch(() => undefined);
     if (!response.ok || !isRecord(payload)) {
-      throw new Error("Blockscout source verification is unavailable. No governance proposal was submitted.");
+      throw new Error("Blockscout source verification is unavailable. No activation transaction was submitted.");
     }
-    if (payload.verified !== true || !Array.isArray(payload.contracts) || payload.contracts.length !== 12
-      || payload.contracts.some((entry) => !isRecord(entry) || entry.verified !== true)) {
+    const expectedSourceEntries = Object.entries(contracts);
+    if (payload.verified !== true || !Array.isArray(payload.contracts)
+      || payload.contracts.length !== expectedSourceEntries.length
+      || payload.contracts.some((entry, index) => {
+        if (!isRecord(entry) || entry.verified !== true) return true;
+        const expected = expectedSourceEntries[index];
+        return entry.key !== expected[0] || typeof entry.address !== "string"
+          || entry.address.toLowerCase() !== expected[1].toLowerCase();
+      })) {
       const failures = Array.isArray(payload.contracts)
         ? payload.contracts.flatMap((entry) => {
           if (!isRecord(entry) || entry.verified === true) return [];
@@ -1035,16 +1356,291 @@ export function V6ReleaseConsole() {
           return [`${name}: ${reasons}`];
         })
         : [];
-      throw new Error(`Exact Blockscout verification is incomplete${failures.length ? ` — ${failures.join("; ")}` : ""}. No governance proposal was submitted.`);
+      throw new Error(`Exact Blockscout verification is incomplete${failures.length ? ` — ${failures.join("; ")}` : ""}. No activation transaction was submitted.`);
     }
 
     if (typeof payload.checkedAt !== "string" || !Number.isFinite(Date.parse(payload.checkedAt))) {
-      throw new Error("Blockscout returned an invalid verification time. No governance proposal was submitted.");
+      throw new Error("Blockscout returned an invalid verification time. No activation transaction was submitted.");
     }
+    const evidenceHash = keccak256(toHex(JSON.stringify({
+      chainId: robinhoodChain.id,
+      version: VERSION,
+      checkedAt: payload.checkedAt,
+      contracts
+    })));
     current.sourceVerified = true;
     current.sourceVerifiedAt = payload.checkedAt;
+    current.latestSourceEvidenceHash = evidenceHash;
+    // The first successful check becomes the immutable activation anchor. Subsequent
+    // cutover/open checks are recorded separately and cannot rewrite onchain history.
+    current.sourceEvidenceHash ??= evidenceHash;
     persist(current);
     return contracts;
+  }
+
+  type BootstrapPhase = "unbound" | "official-pending" | "complete";
+
+  function bootstrapPhaseFromState(value: number): BootstrapPhase {
+    if (value === 0) return "unbound";
+    if (value === 1) return "official-pending";
+    if (value === 2) return "complete";
+    throw new Error("The expedited V6 bootstrap is aborted.");
+  }
+
+  async function validateBootstrapRelease(current: ReleaseDeployment, expectedPhase?: BootstrapPhase) {
+    if (!publicClient) throw new Error("Mainnet provider is unavailable.");
+    const {
+      governance,
+      bootstrapController,
+      registry,
+      hook,
+      adapter,
+      launchGate,
+      policyRegistry,
+      marketImplementation,
+      factory
+    } = current.addresses;
+    if (!governance || !bootstrapController || !registry || !hook || !adapter || !launchGate
+      || !policyRegistry || !marketImplementation || !factory) {
+      throw new Error("The complete V6 bootstrap foundation is required.");
+    }
+    await validateBootstrapVerifiers(bootstrapController);
+    const previewPhase = bootstrapPhaseFromState(Number(await publicClient.readContract({
+      address: bootstrapController,
+      abi: artifacts.bootstrapV6.abi,
+      functionName: "state"
+    })));
+    const requirePristineGovernance = previewPhase !== "complete";
+    await validateSavedDeploymentReceipts(current);
+    const factoryDeploymentHash = current.transactions.factory;
+    if (!factoryDeploymentHash) throw new Error("The V6 factory deployment receipt is missing.");
+    const factoryDeploymentReceipt = await publicClient.getTransactionReceipt({ hash: factoryDeploymentHash });
+    if (factoryDeploymentReceipt.status !== "success"
+      || factoryDeploymentReceipt.contractAddress?.toLowerCase() !== factory.toLowerCase()) {
+      throw new Error("The V6 factory deployment receipt does not match the recorded factory.");
+    }
+    current.factoryStartBlock = factoryDeploymentReceipt.blockNumber.toString();
+    await validateV6Governance(
+      governance,
+      requirePristineGovernance ? 0n : undefined,
+      requirePristineGovernance
+    );
+    if (requirePristineGovernance) await verifyLiveDependencies(current, factory);
+    else await verifyLiveDependencies();
+    const recovered = await validateAndRecoverFactory(
+      factory,
+      adapter,
+      governance,
+      registry,
+      requirePristineGovernance
+    );
+    if (recovered.launchGate.toLowerCase() !== launchGate.toLowerCase()
+      || recovered.policyRegistry.toLowerCase() !== policyRegistry.toLowerCase()
+      || recovered.marketImplementation.toLowerCase() !== marketImplementation.toLowerCase()
+      || recovered.graduationAdapter.toLowerCase() !== adapter.toLowerCase()) {
+      throw new Error("The V6 factory topology differs from the recorded foundation.");
+    }
+    const [hookPoolManager, hookDeployer, hookAdapter] = await Promise.all([
+      publicClient.readContract({ address: hook, abi: artifacts.hook.abi, functionName: "poolManager" }),
+      publicClient.readContract({ address: hook, abi: artifacts.hook.abi, functionName: "deployer" }),
+      publicClient.readContract({ address: hook, abi: artifacts.hook.abi, functionName: "adapter" })
+    ]);
+    const boundFactory = await validateAdapterContract(adapter, hook);
+    if (String(hookPoolManager).toLowerCase() !== POOL_MANAGER.toLowerCase()
+      || String(hookDeployer).toLowerCase() !== OPERATOR.toLowerCase()
+      || String(hookAdapter).toLowerCase() !== adapter.toLowerCase()
+      || boundFactory.toLowerCase() !== factory.toLowerCase()
+      || (BigInt(hook) & HOOK_MASK) !== HOOK_FLAGS) {
+      throw new Error("The V6 hook and adapter bindings do not match the reviewed foundation.");
+    }
+
+    const migration = await publicClient.readContract({
+      address: factory,
+      abi: artifacts.rmtFactoryV6.abi,
+      functionName: "officialIdentityMigration"
+    }) as Address;
+    const [
+      controllerGovernance,
+      controllerOperator,
+      controllerWindow,
+      controllerExpiresAt,
+      controllerState,
+      storedRegistry,
+      storedGate,
+      storedPolicies,
+      storedFactory,
+      controllerSourceEvidence,
+      controllerSmokeEvidence,
+      registryGovernance,
+      registryActivationDelay,
+      registryController,
+      registryInitialFactory,
+      registryInitialVersion,
+      registryBootstrapConsumed,
+      activeRegistryFactory,
+      activeRegistryVersion,
+      pendingRegistryFactory,
+      pendingRegistryVersion,
+      pendingRegistryTime,
+      pendingRegistryExpiration,
+      pendingRegistryEpoch,
+      gateGovernance,
+      gateGuardian,
+      gateController,
+      gateUnpauseDelay,
+      gateBootstrapConsumed,
+      gatePaused,
+      gateUnpauseTime,
+      gateUnpauseExpiration,
+      gateUnpauseEpoch,
+      defaultPolicy,
+      fairPolicy,
+      openPolicy,
+      migrationConsumed,
+      launchCount,
+      latestBlock
+    ] = await Promise.all([
+      publicClient.readContract({ address: bootstrapController, abi: artifacts.bootstrapV6.abi, functionName: "governance" }),
+      publicClient.readContract({ address: bootstrapController, abi: artifacts.bootstrapV6.abi, functionName: "OPERATOR" }),
+      publicClient.readContract({ address: bootstrapController, abi: artifacts.bootstrapV6.abi, functionName: "BOOTSTRAP_WINDOW" }),
+      publicClient.readContract({ address: bootstrapController, abi: artifacts.bootstrapV6.abi, functionName: "expiresAt" }),
+      publicClient.readContract({ address: bootstrapController, abi: artifacts.bootstrapV6.abi, functionName: "state" }),
+      publicClient.readContract({ address: bootstrapController, abi: artifacts.bootstrapV6.abi, functionName: "versionRegistry" }),
+      publicClient.readContract({ address: bootstrapController, abi: artifacts.bootstrapV6.abi, functionName: "launchGate" }),
+      publicClient.readContract({ address: bootstrapController, abi: artifacts.bootstrapV6.abi, functionName: "policyRegistry" }),
+      publicClient.readContract({ address: bootstrapController, abi: artifacts.bootstrapV6.abi, functionName: "factory" }),
+      publicClient.readContract({ address: bootstrapController, abi: artifacts.bootstrapV6.abi, functionName: "sourceEvidenceHash" }),
+      publicClient.readContract({ address: bootstrapController, abi: artifacts.bootstrapV6.abi, functionName: "smokeEvidenceHash" }),
+      publicClient.readContract({ address: registry, abi: artifacts.registry.abi, functionName: "governance" }),
+      publicClient.readContract({ address: registry, abi: artifacts.registry.abi, functionName: "activationDelay" }),
+      publicClient.readContract({ address: registry, abi: artifacts.registry.abi, functionName: "bootstrapController" }),
+      publicClient.readContract({ address: registry, abi: artifacts.registry.abi, functionName: "initialFactory" }),
+      publicClient.readContract({ address: registry, abi: artifacts.registry.abi, functionName: "initialVersion" }),
+      publicClient.readContract({ address: registry, abi: artifacts.registry.abi, functionName: "bootstrapConsumed" }),
+      publicClient.readContract({ address: registry, abi: artifacts.registry.abi, functionName: "activeFactory" }),
+      publicClient.readContract({ address: registry, abi: artifacts.registry.abi, functionName: "activeVersion" }),
+      publicClient.readContract({ address: registry, abi: artifacts.registry.abi, functionName: "pendingFactory" }),
+      publicClient.readContract({ address: registry, abi: artifacts.registry.abi, functionName: "pendingVersion" }),
+      publicClient.readContract({ address: registry, abi: artifacts.registry.abi, functionName: "pendingActivationTime" }),
+      publicClient.readContract({ address: registry, abi: artifacts.registry.abi, functionName: "pendingExpirationTime" }),
+      publicClient.readContract({ address: registry, abi: artifacts.registry.abi, functionName: "pendingConfigurationEpoch" }),
+      publicClient.readContract({ address: launchGate, abi: artifacts.launchGateV6.abi, functionName: "governance" }),
+      publicClient.readContract({ address: launchGate, abi: artifacts.launchGateV6.abi, functionName: "guardian" }),
+      publicClient.readContract({ address: launchGate, abi: artifacts.launchGateV6.abi, functionName: "bootstrapController" }),
+      publicClient.readContract({ address: launchGate, abi: artifacts.launchGateV6.abi, functionName: "unpauseDelay" }),
+      publicClient.readContract({ address: launchGate, abi: artifacts.launchGateV6.abi, functionName: "bootstrapConsumed" }),
+      publicClient.readContract({ address: launchGate, abi: artifacts.launchGateV6.abi, functionName: "launchesPaused" }),
+      publicClient.readContract({ address: launchGate, abi: artifacts.launchGateV6.abi, functionName: "unpauseExecutableAt" }),
+      publicClient.readContract({ address: launchGate, abi: artifacts.launchGateV6.abi, functionName: "unpauseExpiresAt" }),
+      publicClient.readContract({ address: launchGate, abi: artifacts.launchGateV6.abi, functionName: "unpauseConfigurationEpoch" }),
+      publicClient.readContract({ address: policyRegistry, abi: artifacts.policyRegistryV6.abi, functionName: "defaultPolicyId" }),
+      publicClient.readContract({ address: policyRegistry, abi: artifacts.policyRegistryV6.abi, functionName: "getPolicy", args: [FAIR_POLICY_ID] }),
+      publicClient.readContract({ address: policyRegistry, abi: artifacts.policyRegistryV6.abi, functionName: "getPolicy", args: [OPEN_POLICY_ID] }),
+      publicClient.readContract({ address: migration, abi: officialMigrationAbi, functionName: "consumed" }),
+      publicClient.readContract({ address: factory, abi: artifacts.rmtFactoryV6.abi, functionName: "launchCount" }),
+      publicClient.getBlock({ blockTag: "latest" })
+    ]);
+    const phase = bootstrapPhaseFromState(Number(controllerState));
+    if (phase !== previewPhase) throw new Error("The V6 bootstrap changed state while it was being validated.");
+    if (expectedPhase && phase !== expectedPhase) {
+      throw new Error(`The V6 bootstrap is ${phase}, not ${expectedPhase}.`);
+    }
+    const activated = phase !== "unbound";
+    const complete = phase === "complete";
+    const launchCountValue = launchCount as bigint;
+    const { fair, open } = policies(marketImplementation, adapter, governance);
+    const immutableFoundationInvalid = (
+      String(controllerGovernance).toLowerCase() !== governance.toLowerCase()
+        || String(controllerOperator).toLowerCase() !== OPERATOR.toLowerCase()
+        || controllerWindow !== 12n * 60n * 60n
+        || (!complete && latestBlock.timestamp > (controllerExpiresAt as bigint))
+        || String(registryGovernance).toLowerCase() !== governance.toLowerCase()
+        || registryActivationDelay !== 2n * DAY
+        || String(registryController).toLowerCase() !== bootstrapController.toLowerCase()
+        || String(registryInitialFactory).toLowerCase() !== V5_FACTORY.toLowerCase()
+        || String(registryInitialVersion).toLowerCase() !== V5_VERSION.toLowerCase()
+        || String(gateGovernance).toLowerCase() !== governance.toLowerCase()
+        || String(gateController).toLowerCase() !== bootstrapController.toLowerCase()
+        || gateUnpauseDelay !== DAY
+        || !policyMatches(fairPolicy as LaunchPolicy, fair, !complete)
+        || !policyMatches(openPolicy as LaunchPolicy, open, !complete)
+    );
+    const strictBootstrapProgressInvalid = !complete && (
+      String(gateGuardian).toLowerCase() !== OPERATOR.toLowerCase()
+        || registryBootstrapConsumed !== activated
+        || String(activeRegistryFactory).toLowerCase() !== (activated ? factory : V5_FACTORY).toLowerCase()
+        || String(activeRegistryVersion).toLowerCase() !== (activated ? VERSION : V5_VERSION).toLowerCase()
+        || String(pendingRegistryFactory).toLowerCase() !== ZERO_ADDRESS.toLowerCase()
+        || String(pendingRegistryVersion).toLowerCase() !== ZERO_BYTES32.toLowerCase()
+        || pendingRegistryTime !== 0n || pendingRegistryExpiration !== 0n || pendingRegistryEpoch !== 0n
+        || gateBootstrapConsumed !== false || gatePaused !== true || gateUnpauseTime !== 0n
+        || gateUnpauseExpiration !== 0n || gateUnpauseEpoch !== 0n
+        || String(defaultPolicy).toLowerCase() !== FAIR_POLICY_ID.toLowerCase()
+    );
+    const completedBootstrapInvalid = complete && (
+      registryBootstrapConsumed !== true || gateBootstrapConsumed !== true
+        || String(gateGuardian).toLowerCase() === ZERO_ADDRESS.toLowerCase()
+    );
+    if (immutableFoundationInvalid || strictBootstrapProgressInvalid || completedBootstrapInvalid) {
+      throw new Error("The V6 bootstrap foundation no longer matches the reviewed release state.");
+    }
+
+    if (!activated) {
+      if (String(storedRegistry).toLowerCase() !== ZERO_ADDRESS.toLowerCase()
+        || String(storedGate).toLowerCase() !== ZERO_ADDRESS.toLowerCase()
+        || String(storedPolicies).toLowerCase() !== ZERO_ADDRESS.toLowerCase()
+        || String(storedFactory).toLowerCase() !== ZERO_ADDRESS.toLowerCase()
+        || String(controllerSourceEvidence).toLowerCase() !== ZERO_BYTES32.toLowerCase()
+        || migrationConsumed !== false || launchCount !== 0n) {
+        throw new Error("The unused V6 bootstrap controller contains unexpected release state.");
+      }
+    } else {
+      if (String(storedRegistry).toLowerCase() !== registry.toLowerCase()
+        || String(storedGate).toLowerCase() !== launchGate.toLowerCase()
+        || String(storedPolicies).toLowerCase() !== policyRegistry.toLowerCase()
+        || String(storedFactory).toLowerCase() !== factory.toLowerCase()
+        || String(controllerSourceEvidence).toLowerCase() === ZERO_BYTES32.toLowerCase()
+        || (!complete && (migrationConsumed === true ? launchCountValue !== 1n : launchCountValue !== 0n))
+        || (complete && (migrationConsumed !== true || launchCountValue < 1n
+          || String(controllerSmokeEvidence).toLowerCase() === ZERO_BYTES32.toLowerCase()))
+      ) throw new Error("The activated V6 bootstrap record does not match the official migration state.");
+      if (current.sourceEvidenceHash
+        && String(controllerSourceEvidence).toLowerCase() !== current.sourceEvidenceHash.toLowerCase()) {
+        throw new Error("The recovery record's source evidence differs from the immutable onchain evidence.");
+      }
+      current.sourceEvidenceHash = controllerSourceEvidence as Hex;
+    }
+
+    if (complete) {
+      const officialLaunch = await publicClient.readContract({
+        address: factory,
+        abi: artifacts.rmtFactoryV6.abi,
+        functionName: "getLaunch",
+        args: [0n]
+      }) as unknown as {
+        token: Address;
+        market: Address;
+        rewardVault: Address;
+        creator: Address;
+        policyId: Hex;
+        policyVersion: number;
+        officialMigration: boolean;
+      };
+      if (!officialLaunch.officialMigration || officialLaunch.creator.toLowerCase() !== OPERATOR.toLowerCase()
+        || officialLaunch.policyId.toLowerCase() !== FAIR_POLICY_ID.toLowerCase()
+        || Number(officialLaunch.policyVersion) !== 1 || !(await hasCode(officialLaunch.token))
+        || !(await hasCode(officialLaunch.market)) || !(await hasCode(officialLaunch.rewardVault))) {
+        throw new Error("The permanent V6 launch-zero record is not the exact official RMT migration.");
+      }
+      if (current.smokeEvidenceHash
+        && String(controllerSmokeEvidence).toLowerCase() !== current.smokeEvidenceHash.toLowerCase()) {
+        throw new Error("The recovery record's smoke evidence differs from the immutable onchain evidence.");
+      }
+      current.smokeEvidenceHash = controllerSmokeEvidence as Hex;
+    }
+
+    current.verified = true;
+    return { phase, migrationConsumed: migrationConsumed as boolean, launchCount: launchCountValue };
   }
 
   async function verifyLiveProductionHealth(current: ReleaseDeployment) {
@@ -1728,6 +2324,7 @@ export function V6ReleaseConsole() {
     // Every governance boundary rechecks Blockscout live before it can continue.
     current.sourceVerified = false;
     delete current.sourceVerifiedAt;
+    delete current.latestSourceEvidenceHash;
     return current;
   }
 
@@ -1745,8 +2342,12 @@ export function V6ReleaseConsole() {
     const link = document.createElement("a");
     link.href = url;
     link.download = `rmt-v6-recovery-${Date.now()}.json`;
+    document.body.appendChild(link);
     link.click();
-    URL.revokeObjectURL(url);
+    window.setTimeout(() => {
+      link.remove();
+      URL.revokeObjectURL(url);
+    }, 1_000);
     setStatus("Recovery record exported — store it securely with the release evidence");
   }
 
@@ -1765,7 +2366,10 @@ export function V6ReleaseConsole() {
         || typeof parsed.version !== "string" || parsed.version.toLowerCase() !== VERSION.toLowerCase()) {
         throw new Error("This is not a recovery record for the reviewed RMT V6 mainnet release.");
       }
-      const recovered = await validateImportedRecovery(parseRecoveryDeployment(parsed.deployment));
+      const recovered = parseRecoveryDeployment(parsed.deployment);
+      await validateBootstrapRelease(recovered);
+      recovered.sourceVerified = false;
+      delete recovered.sourceVerifiedAt;
       persist(recovered);
       setStatus("Recovery record restored from onchain receipts — Blockscout sources must be checked live again");
     } catch (cause) {
@@ -1789,10 +2393,12 @@ export function V6ReleaseConsole() {
       readyAt: { ...deployment.readyAt }
     };
     try {
-      const recovered = await validateImportedRecovery(current);
-      persist(recovered);
+      await validateBootstrapRelease(current);
+      current.sourceVerified = false;
+      delete current.sourceVerifiedAt;
+      persist(current);
       await refreshOnchain();
-      setStatus("Confirmed V6 progress recovered — recheck all twelve source records before continuing");
+      setStatus("Confirmed V6 progress recovered — recheck all fifteen source records before continuing");
     } catch (cause) {
       setError(describeError(cause));
       setStatus("Mainnet recovery stopped safely");
@@ -1837,11 +2443,34 @@ export function V6ReleaseConsole() {
         "RMT V6 governance (24-hour delay, seven-day execution window)"
       );
       await validateV6Governance(governance, 0n);
+      const bootstrapController = await deployContract(
+        current,
+        "bootstrapController",
+        artifacts.bootstrapV6,
+        [governance],
+        "expiring one-time V6 bootstrap controller"
+      );
+      const [bootstrapStatusAfterDeploy, bootstrapAvailableAfterDeploy] = await Promise.all([
+        publicClient.readContract({
+          address: bootstrapController,
+          abi: artifacts.bootstrapV6.abi,
+          functionName: "state"
+        }),
+        publicClient.readContract({
+          address: bootstrapController,
+          abi: artifacts.bootstrapV6.abi,
+          functionName: "bootstrapAvailable"
+        })
+      ]);
+      if (Number(bootstrapStatusAfterDeploy) !== 0 || bootstrapAvailableAfterDeploy !== true) {
+        throw new Error("This saved bootstrap controller is no longer unused and live. Stop before spending gas on the remaining foundation.");
+      }
+      await validateBootstrapVerifiers(bootstrapController);
       const registry = await deployContract(
         current,
         "registry",
         artifacts.registry,
-        [governance, 2n * DAY, V5_FACTORY, V5_VERSION],
+        [governance, 2n * DAY, V5_FACTORY, V5_VERSION, bootstrapController],
         "fresh V6-governed version registry initialized to V5"
       );
       await verifyLiveDependencies(current);
@@ -1882,7 +2511,13 @@ export function V6ReleaseConsole() {
         current.addresses.marketImplementation = recovered.marketImplementation;
         persist(current);
       } else {
-        launchGate = await deployContract(current, "launchGate", artifacts.launchGateV6, [governance, OPERATOR, DAY], "paused V6 launch gate");
+        launchGate = await deployContract(
+          current,
+          "launchGate",
+          artifacts.launchGateV6,
+          [governance, OPERATOR, DAY, bootstrapController],
+          "paused V6 launch gate"
+        );
         marketImplementation = await deployContract(
           current, "marketImplementation", artifacts.marketV6, [], "V6 market implementation"
         );
@@ -1921,6 +2556,15 @@ export function V6ReleaseConsole() {
       if (boundFactory.toLowerCase() === ZERO_ADDRESS.toLowerCase()) {
         await sendCall(current, "bindAdapterFactory", adapter, artifacts.adapter, "bindFactory", [nextFactory], "bind V6 adapter to factory");
       } else if (boundFactory.toLowerCase() !== nextFactory.toLowerCase()) throw new Error("Adapter is bound to an unexpected factory.");
+      const factoryDeploymentHash = current.transactions.factory;
+      if (!factoryDeploymentHash) throw new Error("The V6 factory deployment receipt is missing.");
+      const factoryDeploymentReceipt = await publicClient.getTransactionReceipt({ hash: factoryDeploymentHash });
+      if (factoryDeploymentReceipt.status !== "success"
+        || factoryDeploymentReceipt.contractAddress?.toLowerCase() !== nextFactory.toLowerCase()) {
+        throw new Error("The V6 factory deployment receipt does not match the recorded factory.");
+      }
+      current.factoryStartBlock = factoryDeploymentReceipt.blockNumber.toString();
+      persist(current);
 
       const [
         gateGovernance,
@@ -2012,7 +2656,7 @@ export function V6ReleaseConsole() {
         || gatePaused !== true || gateDelay !== DAY
         || String(policyGovernance).toLowerCase() !== governance.toLowerCase()
         || String(policyGuardian).toLowerCase() !== OPERATOR.toLowerCase()
-        || policyDelay !== DAY || String(defaultPolicy).toLowerCase() !== ZERO_BYTES32.toLowerCase()
+        || policyDelay !== DAY || String(defaultPolicy).toLowerCase() !== FAIR_POLICY_ID.toLowerCase()
         || String(canonicalTreasury).toLowerCase() !== governance.toLowerCase()
         || String(canonicalMarket).toLowerCase() !== marketImplementation.toLowerCase()
         || String(canonicalAdapter).toLowerCase() !== adapter.toLowerCase()
@@ -2041,13 +2685,36 @@ export function V6ReleaseConsole() {
         || String(authorizedFactory).toLowerCase() !== nextFactory.toLowerCase()
         || String(migrationOfficialLegacyToken).toLowerCase() !== OFFICIAL_LEGACY_RMT_TOKEN.toLowerCase()
         || migrationConsumed !== false
-      ) throw new Error("V6 foundation verification failed. No governance proposals were submitted.");
+      ) throw new Error("V6 foundation verification failed. No activation transaction was submitted.");
+      const [bootstrapGovernance, bootstrapOperator, bootstrapWindow, bootstrapStatus, bootstrapAvailable,
+        registryBootstrap, registryBootstrapConsumed, gateBootstrap, gateBootstrapConsumed] = await Promise.all([
+        publicClient.readContract({ address: bootstrapController, abi: artifacts.bootstrapV6.abi, functionName: "governance" }),
+        publicClient.readContract({ address: bootstrapController, abi: artifacts.bootstrapV6.abi, functionName: "OPERATOR" }),
+        publicClient.readContract({ address: bootstrapController, abi: artifacts.bootstrapV6.abi, functionName: "BOOTSTRAP_WINDOW" }),
+        publicClient.readContract({ address: bootstrapController, abi: artifacts.bootstrapV6.abi, functionName: "state" }),
+        publicClient.readContract({ address: bootstrapController, abi: artifacts.bootstrapV6.abi, functionName: "bootstrapAvailable" }),
+        publicClient.readContract({ address: registry, abi: artifacts.registry.abi, functionName: "bootstrapController" }),
+        publicClient.readContract({ address: registry, abi: artifacts.registry.abi, functionName: "bootstrapConsumed" }),
+        publicClient.readContract({ address: launchGate, abi: artifacts.launchGateV6.abi, functionName: "bootstrapController" }),
+        publicClient.readContract({ address: launchGate, abi: artifacts.launchGateV6.abi, functionName: "bootstrapConsumed" })
+      ]);
+      if (
+        String(bootstrapGovernance).toLowerCase() !== governance.toLowerCase()
+          || String(bootstrapOperator).toLowerCase() !== OPERATOR.toLowerCase()
+          || bootstrapWindow !== 12n * 60n * 60n || Number(bootstrapStatus) !== 0 || bootstrapAvailable !== true
+          || String(registryBootstrap).toLowerCase() !== bootstrapController.toLowerCase()
+          || registryBootstrapConsumed !== false
+          || String(gateBootstrap).toLowerCase() !== bootstrapController.toLowerCase()
+          || gateBootstrapConsumed !== false
+      ) throw new Error("The expiring V6 bootstrap controller is not in its exact unused foundation state.");
       await verifyLiveDependencies(current, nextFactory);
       current.verified = true;
       current.sourceVerified = false;
       delete current.sourceVerifiedAt;
+      delete current.sourceEvidenceHash;
+      delete current.latestSourceEvidenceHash;
       persist(current);
-      setStatus("V6 foundation deployed, bound, and paused — verify all twelve sources before proposing anything");
+      setStatus("V6 foundation deployed, bound, and paused — verify all fifteen sources before activation");
       await refreshOnchain();
     } catch (cause) {
       setError(describeError(cause));
@@ -2071,18 +2738,169 @@ export function V6ReleaseConsole() {
     try {
       if (!isOperator) throw new Error("Connect the RMTMain operator wallet.");
       setStatus("Revalidating the paused V6 foundation against mainnet…");
-      await validateImportedRecovery(current);
-      const recoveredProposalCount = reviewedGovernanceProposalCount(current);
-      await verifyLiveDependencies(current, current.addresses.factory);
+      await validateBootstrapRelease(current, "unbound");
       await verifySourcesLive(current);
-      setStatus(recoveredProposalCount === 0n
-        ? "All twelve V6 contracts and critical RMT dependencies have full Blockscout records — governance proposals remain unsent"
-        : recoveredProposalCount <= 3n
-          ? `All twelve source records passed — ${recoveredProposalCount.toString()} of 3 reviewed initial proposals recovered for safe resume`
-          : `All twelve source records passed — all ${recoveredProposalCount.toString()} reviewed governance proposals recovered for safe resume`);
+      setStatus("All fifteen source records passed — the same-session activation is ready");
     } catch (cause) {
       setError(describeError(cause));
       setStatus("Source-verification gate stopped safely");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function activateBootstrapFoundation() {
+    if (!publicClient || busy) return;
+    setBusy(true);
+    setError(undefined);
+    const current: ReleaseDeployment = {
+      ...deployment,
+      addresses: { ...deployment.addresses },
+      transactions: { ...deployment.transactions },
+      proposalIds: { ...deployment.proposalIds },
+      readyAt: { ...deployment.readyAt }
+    };
+    try {
+      if (!isOperator) throw new Error("Connect the RMTMain operator wallet.");
+      if (chainId !== robinhoodChain.id) await switchChainAsync({ chainId: robinhoodChain.id });
+      setStatus("Rechecking the pristine paused foundation and all source records before one-time activation…");
+      await validateBootstrapRelease(current, "unbound");
+      await verifySourcesLive(current);
+      if (!current.latestSourceEvidenceHash) {
+        throw new Error("The latest exact source-verification evidence is missing.");
+      }
+      current.sourceEvidenceHash = current.latestSourceEvidenceHash;
+      const { bootstrapController, registry, launchGate, policyRegistry, factory } = current.addresses;
+      if (!bootstrapController || !registry || !launchGate || !policyRegistry || !factory
+        || !current.sourceEvidenceHash) {
+        throw new Error("The source-verified V6 bootstrap record is incomplete.");
+      }
+      await sendCall(
+        current,
+        "bootstrapActivate",
+        bootstrapController,
+        artifacts.bootstrapV6,
+        "activateVerifiedFoundation",
+        [registry, launchGate, policyRegistry, factory, current.sourceEvidenceHash],
+        "activate the exact source-verified V6 foundation"
+      );
+      await validateBootstrapRelease(current, "official-pending");
+      delete current.productionVerifiedAt;
+      persist(current);
+      setStatus("V6 is active and still paused — update production routing, verify health, then launch official RMT");
+      await refreshOnchain();
+    } catch (cause) {
+      setError(describeError(cause));
+      setStatus("One-time V6 activation stopped safely");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function verifyProductionCutover() {
+    if (!publicClient || busy) return;
+    setBusy(true);
+    setError(undefined);
+    const current: ReleaseDeployment = {
+      ...deployment,
+      addresses: { ...deployment.addresses },
+      transactions: { ...deployment.transactions },
+      proposalIds: { ...deployment.proposalIds },
+      readyAt: { ...deployment.readyAt }
+    };
+    try {
+      if (!isOperator) throw new Error("Connect the RMTMain operator wallet.");
+      setStatus("Checking the live production site against the active paused V6 foundation…");
+      await validateBootstrapRelease(current, "official-pending");
+      await verifySourcesLive(current);
+      await verifyLiveProductionHealth(current);
+      current.productionVerifiedAt = new Date().toISOString();
+      persist(current);
+      setStatus("Production is routed to the exact paused V6 factory — launch official RMT next");
+    } catch (cause) {
+      delete current.productionVerifiedAt;
+      persist(current);
+      setError(describeError(cause));
+      setStatus("Production cutover is not ready; public creation remains paused");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function openAfterOfficialSmoke() {
+    if (!publicClient || busy) return;
+    setBusy(true);
+    setError(undefined);
+    const current: ReleaseDeployment = {
+      ...deployment,
+      addresses: { ...deployment.addresses },
+      transactions: { ...deployment.transactions },
+      proposalIds: { ...deployment.proposalIds },
+      readyAt: { ...deployment.readyAt }
+    };
+    try {
+      if (!isOperator) throw new Error("Connect the RMTMain operator wallet.");
+      if (chainId !== robinhoodChain.id) await switchChainAsync({ chainId: robinhoodChain.id });
+      setStatus("Verifying the official RMT contract, fee-producing buy, sources, and live production health…");
+      const bootstrap = await validateBootstrapRelease(current, "official-pending");
+      if (!bootstrap.migrationConsumed || bootstrap.launchCount !== 1n) {
+        throw new Error("The exact one-time official RMT V6 launch has not completed.");
+      }
+      await verifySourcesLive(current);
+      await verifyLiveProductionHealth(current);
+      const { bootstrapController, factory, governance } = current.addresses;
+      if (!bootstrapController || !factory || !governance) throw new Error("The V6 bootstrap record is incomplete.");
+      const launch = await publicClient.readContract({
+        address: factory,
+        abi: artifacts.rmtFactoryV6.abi,
+        functionName: "getLaunch",
+        args: [0n]
+      }) as unknown as {
+        token: Address;
+        market: Address;
+        rewardVault: Address;
+        creator: Address;
+        policyId: Hex;
+        policyVersion: number;
+        officialMigration: boolean;
+      };
+      const [totalReceived, totalPaid, operatorPending, governancePending, block] = await Promise.all([
+        publicClient.readContract({ address: launch.rewardVault, abi: artifacts.feeSplitterV6.abi, functionName: "totalReceived" }),
+        publicClient.readContract({ address: launch.rewardVault, abi: artifacts.feeSplitterV6.abi, functionName: "totalPaid" }),
+        publicClient.readContract({ address: launch.rewardVault, abi: artifacts.feeSplitterV6.abi, functionName: "pending", args: [OPERATOR] }),
+        publicClient.readContract({ address: launch.rewardVault, abi: artifacts.feeSplitterV6.abi, functionName: "pending", args: [governance] }),
+        publicClient.getBlock({ blockTag: "latest" })
+      ]);
+      if (!launch.officialMigration || launch.creator.toLowerCase() !== OPERATOR.toLowerCase()
+        || launch.policyId.toLowerCase() !== FAIR_POLICY_ID.toLowerCase() || Number(launch.policyVersion) !== 1
+        || totalReceived === 0n || totalPaid !== totalReceived || operatorPending !== 0n || governancePending !== 0n) {
+        throw new Error("Complete one small official RMT buy after Fair Start opens; its 70/30 fee split must settle before public creation can open.");
+      }
+      current.smokeEvidenceHash = keccak256(toHex(JSON.stringify({
+        chainId: robinhoodChain.id,
+        factory,
+        token: launch.token,
+        market: launch.market,
+        splitter: launch.rewardVault,
+        totalReceived: (totalReceived as bigint).toString(),
+        blockNumber: block.number.toString()
+      })));
+      await sendCall(
+        current,
+        "bootstrapOpen",
+        bootstrapController,
+        artifacts.bootstrapV6,
+        "openAfterOfficialSmoke",
+        [current.smokeEvidenceHash],
+        "permanently consume bootstrap and open V6 public creation"
+      );
+      await validateBootstrapRelease(current, "complete");
+      persist(current);
+      setStatus("V6 public token creation is open; every future reopening and upgrade uses permanent delays");
+      await refreshOnchain();
+    } catch (cause) {
+      setError(describeError(cause));
+      setStatus("Final V6 opening stopped safely; public creation remains paused");
     } finally {
       setBusy(false);
     }
@@ -2379,18 +3197,21 @@ export function V6ReleaseConsole() {
   const nextAction = useMemo(() => {
     if (!DEPLOYMENT_ARTIFACTS_READY) return "artifact";
     if (!deployment.verified) return "deploy";
-    if (!deployment.sourceVerified) return "verify-sources";
-    if (!initialProposed) return "propose-initial";
-    if (!initialExecuted) return "initial-governance";
-    if (!policiesRegistered || !defaultProposed) return "register-policies";
-    if (!defaultScheduled) return "default-governance";
-    if (!defaultSet || !isActive) return "finalize";
-    if (officialMigrationConsumed !== true) return "official";
-    if (!unpauseProposed) return "propose-unpause";
-    if (!unpauseScheduled) return "unpause-governance";
-    if (!isOpen) return "unpause";
-    return "complete";
-  }, [deployment.verified, deployment.sourceVerified, initialProposed, initialExecuted, policiesRegistered, defaultProposed, defaultScheduled, defaultSet, isActive, officialMigrationConsumed, unpauseProposed, unpauseScheduled, isOpen]);
+    if (bootstrapState === undefined) return "reading";
+    const bootstrapExpired = (bootstrapState === 0 || bootstrapState === 1)
+      && bootstrapExpiresAt !== undefined && currentTime > bootstrapExpiresAt;
+    if (bootstrapState === 3 || bootstrapExpired) return "aborted";
+    if (bootstrapState === 0) return deployment.sourceVerified ? "bootstrap-activate" : "verify-sources";
+    if (bootstrapState === 1) {
+      if (!deployment.productionVerifiedAt) return "cutover";
+      if (officialMigrationConsumed !== true) return "official";
+      if (!officialSmokeFees || officialSmokeFees === 0n) return "smoke";
+      return "bootstrap-open";
+    }
+    if (bootstrapState === 2) return "complete";
+    return "reading";
+  }, [deployment.verified, deployment.sourceVerified, deployment.productionVerifiedAt, bootstrapState,
+    bootstrapExpiresAt, currentTime, officialMigrationConsumed, officialSmokeFees, isOpen]);
 
   const ready = (key: ReadyKey) => {
     const value = deployment.readyAt[key];
@@ -2408,8 +3229,8 @@ export function V6ReleaseConsole() {
         <p><strong>Creator payout:</strong> creators cannot propose, authorize, choose, or directly change the payout recipient. The RMT signer may propose only an evidence-linked redirect to the immutable V6 governance treasury or restoration to the original creator. After the 24-hour delay, any account may relay the exact approved governance call but cannot alter its destination or receive funds.</p>
         <p><strong>Fair Start:</strong> optional 1-block delay, 10-block window, 1% per buy and 3% per wallet. The reviewed Fair Start policy becomes the default.</p>
         <p><strong>Governance and treasury:</strong> one fresh V6 governance contract is both the protocol treasury and protocol authority. It starts with RMTMain as its sole signer, a 24-hour delay, a seven-day execution window, signer cancellation, proposal expiry, and atomic signer/threshold rotation. A future signer must prove control and give expiring consent to the exact add-or-replace action, affected signer, threshold, and current configuration epoch, and can revoke unconsumed consent before execution. Adding the first extra wallet creates 2-of-2 governance—not a backup wallet—so both signers must approve future proposals. The fresh version registry is governed by this same contract and starts on the legacy V5 factory/version; V6 has no authority or registry dependency on the legacy V5 stack.</p>
-        <p><strong>Safety:</strong> activation and reopening are separate. V6 stays paused through deployment, activation, the one-time official RMT launch, and verification. The final action also requires this exact live production site&apos;s <code>/api/health</code> to prove the configured fresh registry, active V6 factory/version, and exact V6 factory deployment block.</p>
-        <p><strong>Release evidence:</strong> generated deployment artifacts, CI, independent review, and operational checks are manual approvals. This console cannot prove them; do not proceed until the published checklist is complete.</p>
+        <p><strong>Safety:</strong> activation and reopening remain separate. A narrow 12-hour genesis controller can activate only the exact pristine V6 topology and can open only after the official RMT launch records a real fee-producing buy with a fully settled 70/30 split. V6 remains paused through deployment, source verification, activation, production cutover, the official launch, and that smoke check. The controller then becomes permanently unusable; every later registry change and every later reopening uses the permanent delays.</p>
+        <p><strong>Release evidence:</strong> the final action repeats exact source, onchain topology, receipt, and live production <code>/api/health</code> checks. V6 is still an explicitly disclosed unaudited mainnet beta; green automation and source verification do not replace an independent human audit.</p>
         <p><strong>Identity protection:</strong> the exact legacy RMT token at {OFFICIAL_LEGACY_RMT_TOKEN} is permanently bound to the one-time RMTMain migration. Inside the active, origin-verified V6 launch pipeline, prior V4/V5 names and tickers remain reserved and new identities are normalized against case and separator variations. Unrelated external contracts cannot be globally prevented from copying text, so the terminal labels origin instead of implying chain-wide exclusivity.</p>
         <p><strong>New token—not a holder migration:</strong> the official V6 action creates a new token contract with a new address and new fixed supply of 1,000,000,000 tokens. It does not copy, swap, credit, or migrate any old V5 holder balance. The old contract above is used only as the exact identity/provenance anchor. Do not sign unless this is understood and publicly disclosed.</p>
       </div>
@@ -2419,30 +3240,36 @@ export function V6ReleaseConsole() {
         <p><span>Active factory</span><code>{activeFactory ? short(activeFactory) : "Reading…"}</code></p>
         {factory && <p><span>This V6 factory</span><code>{short(factory)}</code></p>}
         {deployment.addresses.governance && <p><span>V6 governance + treasury</span><code>{short(deployment.addresses.governance)}</code></p>}
+        {deployment.addresses.bootstrapController && <p><span>Expiring genesis controller</span><code>{short(deployment.addresses.bootstrapController)}</code></p>}
         {deployment.addresses.registry && <p><span>Fresh V6 registry</span><code>{short(deployment.addresses.registry)}</code></p>}
+        {deployment.factoryStartBlock && <p><span>V6 factory start block</span><code>{deployment.factoryStartBlock}</code></p>}
         <p><span>Pending factory</span><code>{pendingFactory && pendingFactory !== ZERO_ADDRESS ? short(pendingFactory) : "None"}</code></p>
         <p><span>Registry activation</span><code>{timeLabel(pendingActivationTime)}</code></p>
         <p><span>Launch gate</span><code>{isOpen ? "Open" : "Paused"}</code></p>
-      <p><span>V6 + critical dependency sources</span><code>{deployment.sourceVerified ? `Verified ${deployment.sourceVerifiedAt ? new Date(deployment.sourceVerifiedAt).toLocaleString() : "live"}` : deployment.verified ? "Required before proposals" : "Waiting for deployment"}</code></p>
+        <p><span>One-time bootstrap</span><code>{bootstrapState === 0 ? "Unused" : bootstrapState === 1 ? "Official RMT + smoke pending" : bootstrapState === 2 ? "Permanently complete" : bootstrapState === 3 ? "Aborted" : "Reading…"}</code></p>
+        <p><span>Bootstrap expiry</span><code>{timeLabel(bootstrapExpiresAt)}</code></p>
+      <p><span>V6 + critical dependency sources</span><code>{deployment.sourceVerified ? `Verified ${deployment.sourceVerifiedAt ? new Date(deployment.sourceVerifiedAt).toLocaleString() : "live"}` : deployment.verified ? "Required before activation" : "Waiting for deployment"}</code></p>
         <p><span>Official RMT V6 migration</span><code>{officialMigrationConsumed === true ? "Launched" : isActive ? "Required before reopening" : "Available after activation"}</code></p>
+        {officialToken && <p><span>Official RMT V6 token</span><code>{short(officialToken)}</code></p>}
+        {officialSmokeFees !== undefined && <p><span>Confirmed official curve fees</span><code>{formatEther(officialSmokeFees)} ETH</code></p>}
         <p><span>Gate reopening</span><code>{timeLabel(onchainUnpauseTime || deployment.readyAt.unpause)}</code></p>
       </div>
       {isConnected && !isOperator && <p className="deployment-error">Wrong wallet connected. Use RMTMain: {OPERATOR}</p>}
       {error && <p className="deployment-error">{error}</p>}
 
-      {nextAction === "artifact" && <p className="deployment-error">Deployment is intentionally disabled: the checked-in wallet artifact predates the final V6 governance, prospective-signer opt-in/revocation ABI, or exact legacy-token binding. Use only the artifact regenerated and reviewed from the final green CI compile.</p>}
-      {nextAction === "deploy" && <button className="deploy-stack-button" disabled={!isOperator || busy} onClick={deployFoundation}>{busy ? status : "Deploy paused V6 foundation only"}</button>}
-      {nextAction === "verify-sources" && <p className="deployment-safety">First run and archive the repository's <code>packages/contracts/scripts/verify-mainnet-v6.sh</code> result. That script submits exact source-verification requests to Blockscout but never broadcasts a blockchain transaction. Then use the check below; the site only reads Blockscout and cannot publish source for you. <a href="https://github.com/LandoCrissian/robinhood-meme-terminal/blob/main/docs/V6_MAINNET_RELEASE.md" target="_blank" rel="noreferrer">Open the exact verification instructions ↗</a></p>}
-      {nextAction === "verify-sources" && <button className="deploy-stack-button" disabled={!isOperator || busy} onClick={verifySourcePhase}>{busy ? status : "Check all twelve sources on Blockscout"}</button>}
-      {nextAction === "propose-initial" && <button className="deploy-stack-button" disabled={!isOperator || busy} onClick={proposeInitialGovernance}>{busy ? status : "Recheck sources and submit three governance proposals"}</button>}
-      {nextAction === "initial-governance" && <button className="deploy-stack-button" disabled={!isOperator || busy || !ready("initialGovernance")} onClick={executeInitialGovernance}>{ready("initialGovernance") ? "Execute three reviewed governance proposals" : `Locked until ${timeLabel(deployment.readyAt.initialGovernance)}`}</button>}
-      {nextAction === "register-policies" && <button className="deploy-stack-button" disabled={!isOperator || busy || !ready("policyRegistration")} onClick={registerPoliciesAndProposeDefault}>{ready("policyRegistration") ? "Register both policies and propose the default" : `Policy registration locked until ${timeLabel(deployment.readyAt.policyRegistration)}`}</button>}
-      {nextAction === "default-governance" && <button className="deploy-stack-button" disabled={!isOperator || busy || !ready("defaultGovernance")} onClick={executeDefaultSchedule}>{ready("defaultGovernance") ? "Execute default-policy governance" : `Governance locked until ${timeLabel(deployment.readyAt.defaultGovernance)}`}</button>}
-      {nextAction === "finalize" && <button className="deploy-stack-button" disabled={!isOperator || busy || !ready("defaultPolicy") || !pendingActivationTime || currentTime < pendingActivationTime} onClick={finalizeV6}>{ready("defaultPolicy") && pendingActivationTime && currentTime >= pendingActivationTime ? "Finalize policies and activate paused V6" : `Final activation locked until ${timeLabel(deployment.readyAt.defaultPolicy && pendingActivationTime ? (BigInt(deployment.readyAt.defaultPolicy) > pendingActivationTime ? deployment.readyAt.defaultPolicy : pendingActivationTime) : deployment.readyAt.defaultPolicy)}`}</button>}
-      {nextAction === "official" && <a className="deploy-stack-button" href="/#launch">Launch official RMT while public creation stays paused →</a>}
-      {nextAction === "propose-unpause" && <button className="deploy-stack-button" disabled={!isOperator || busy || officialMigrationConsumed !== true} onClick={proposeUnpause}>Propose V6 public reopening</button>}
-      {nextAction === "unpause-governance" && <button className="deploy-stack-button" disabled={!isOperator || busy || !ready("unpauseGovernance")} onClick={executeUnpauseSchedule}>{ready("unpauseGovernance") ? "Execute reopening governance" : `Reopening governance locked until ${timeLabel(deployment.readyAt.unpauseGovernance)}`}</button>}
-      {nextAction === "unpause" && <button className="deploy-stack-button" disabled={!isOperator || busy || !(onchainUnpauseTime && currentTime >= onchainUnpauseTime)} onClick={reopenLaunches}>{onchainUnpauseTime && currentTime >= onchainUnpauseTime ? "Reopen V6 public launches" : `Final reopening locked until ${timeLabel(onchainUnpauseTime || deployment.readyAt.unpause)}`}</button>}
+      {nextAction === "artifact" && <p className="deployment-error">Deployment is intentionally disabled until CI regenerates the exact V6 bootstrap, gate, registry, policy, and factory wallet bytecode from one green compile.</p>}
+      {nextAction === "deploy" && <button className="deploy-stack-button" disabled={!isOperator || busy} onClick={deployFoundation}>{busy ? status : "Deploy paused V6 foundation + expiring bootstrap"}</button>}
+      {nextAction === "verify-sources" && <p className="deployment-safety">First run and archive <code>packages/contracts/scripts/verify-mainnet-v6.sh</code>. It submits exact source-verification requests to Blockscout but never signs a blockchain transaction. Then use the live check below. The 12-hour bootstrap window begins when its controller is deployed. <a href="https://github.com/LandoCrissian/robinhood-meme-terminal/blob/main/docs/V6_MAINNET_RELEASE.md" target="_blank" rel="noreferrer">Open the exact verification instructions ↗</a></p>}
+      {nextAction === "verify-sources" && <button className="deploy-stack-button" disabled={!isOperator || busy} onClick={verifySourcePhase}>{busy ? status : "Check all fifteen sources on Blockscout"}</button>}
+      {nextAction === "bootstrap-activate" && <button className="deploy-stack-button" disabled={!isOperator || busy} onClick={activateBootstrapFoundation}>{busy ? status : "Activate verified V6 while launches stay paused"}</button>}
+      {nextAction === "cutover" && <div className="deployment-safety"><p>Update production and redeploy it with these public values before launching RMT:</p><p><code>NEXT_PUBLIC_VERSION_REGISTRY_ADDRESS={deployment.addresses.registry}</code><br /><code>NEXT_PUBLIC_FACTORY_START_BLOCK={deployment.factoryStartBlock ?? "read confirmed factory receipt"}</code></p></div>}
+      {nextAction === "cutover" && <button className="deploy-stack-button" disabled={!isOperator || busy} onClick={verifyProductionCutover}>{busy ? status : "Verify live V6 production cutover"}</button>}
+      {nextAction === "official" && <a className="deploy-stack-button" href="/?official=v6#launch">Open the prefilled official RMT launch →</a>}
+      {nextAction === "smoke" && officialToken && <p className="deployment-safety">RMT launched at <code>{officialToken}</code>. Wait one block for Fair Start, make one small buy on its token page, and return here. The controller requires a real fully settled curve fee; sending ETH directly cannot satisfy it.</p>}
+      {nextAction === "smoke" && officialToken && <a className="deploy-stack-button" href={`/token/${officialToken}`}>Open official RMT and make the smoke buy →</a>}
+      {nextAction === "bootstrap-open" && <button className="deploy-stack-button" disabled={!isOperator || busy} onClick={openAfterOfficialSmoke}>{busy ? status : "Recheck everything and open public token creation"}</button>}
+      {nextAction === "reading" && <p className="deployment-safety">Reading the exact V6 bootstrap state from mainnet…</p>}
+      {nextAction === "aborted" && <p className="deployment-error">The expedited bootstrap is permanently aborted or expired. Public launches remain paused; only the normal delayed governance path can continue this deployment.</p>}
       {nextAction === "complete" && <a className="deploy-stack-button" href="/#launch">V6 public creation is open →</a>}
       <div className="deployment-recovery">
         <div>
@@ -2451,7 +3278,7 @@ export function V6ReleaseConsole() {
         </div>
         <div className="deployment-recovery-actions">
           <button type="button" disabled={busy || !deployment.addresses.hook} onClick={recoverCurrentRelease}>Recover mainnet progress</button>
-          <button type="button" disabled={busy || !deployment.addresses.hook} onClick={exportRecovery}>Export record</button>
+          <button type="button" disabled={busy || !hasRecoveryProgress} onClick={exportRecovery}>Export record</button>
           <label className={busy ? "disabled" : undefined}>
             Import record
             <input type="file" accept="application/json,.json" disabled={busy} onChange={importRecovery} />

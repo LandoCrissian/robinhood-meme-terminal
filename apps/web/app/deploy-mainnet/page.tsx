@@ -4,19 +4,22 @@ import "../deploy-testnet/deployment.css";
 
 export default function DeployMainnetPage() {
   return (
-    <main className="deployment-page">
-      <nav className="deployment-nav">
-        <a className="brand" href="/">RMT</a>
+    <main className="deployment-shell">
+      <nav className="deployment-header">
+        <a className="deployment-back" href="/">← Terminal</a>
         <WalletButton target="mainnet" />
       </nav>
-      <section className="deployment-hero">
+      <section className="deployment-intro">
         <p className="eyebrow">Operator-only V6 mainnet release</p>
-        <h1>Deploy V6 without opening it early</h1>
+        <h1>Deploy, prove, launch RMT, then open V6</h1>
         <p>
           The legacy V5 factory remains the identity anchor while this console deploys an independent V6
-          governance-and-treasury contract plus a fresh registry initialized to V5. Policies, V6 activation,
-          and reopening each follow their onchain delays. The launch gate stays paused until the final,
-          separate reopening step.
+          governance-and-treasury contract plus a fresh registry initialized to V5. A narrow 12-hour,
+          one-use controller can activate only this exact verified foundation and can open it only after the
+          official RMT launch produces a real settled fee. The launch gate stays paused until that final step;
+          the 12 hours are a completion deadline, not a waiting period, so deployment, RMT, the smoke buy,
+          and public opening can finish in one session. Afterward every upgrade and later reopening uses the
+          permanent delays.
         </p>
       </section>
       <V6ReleaseConsole />
