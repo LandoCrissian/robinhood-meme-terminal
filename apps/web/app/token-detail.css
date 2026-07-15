@@ -227,6 +227,10 @@ dl{grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr)}
 .creatorIntelligenceHeader{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}
 .creatorIntelligenceHeader h3{margin:3px 0 0;font-size:1.22rem}
 .creatorIntelligenceHeader a{color:#78e78a;font-size:.76rem;font-weight:850;text-decoration:none}
+.creatorIntelligenceActions{display:flex;align-items:center;gap:9px}
+.creatorFlowSignal{padding:5px 8px;border:1px solid #33443a;border-radius:999px;background:#111a14;color:#9ba79f;font-size:.6rem;font-weight:900;letter-spacing:.09em;white-space:nowrap}
+.creatorFlowSignal.buying{border-color:#315f3b;background:#102617;color:#7df08f}
+.creatorFlowSignal.selling{border-color:#71383d;background:#271216;color:#ff8f98}
 .creatorStats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:16px}
 .creatorStats>div{display:flex;flex-direction:column;gap:5px;padding:14px;border:1px solid #223028;border-radius:12px;background:#08100a}
 .creatorStats small,.creatorStats span,.creatorMethod{color:#839087;font-size:.69rem;line-height:1.45}
@@ -243,6 +247,7 @@ dl{grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr)}
 
 @media(max-width:720px){.creatorStats{grid-template-columns:1fr}
 .creatorIntelligenceHeader{align-items:flex-start;flex-direction:column;gap:7px}
+.creatorIntelligenceActions{width:100%;justify-content:space-between}
 }
 
 
