@@ -216,6 +216,29 @@ print("Blockscout v2 record: " + json.dumps(summary, sort_keys=True))
 ' "$expected_name" "$expected_path" <<<"$payload"
 }
 
+prepare_legacy_v5_deployment_sources() {
+  # PR #104's wallet-artifact job ran full-project Forge formatting before
+  # compilation. The browser deployed that deterministic compiler input, while
+  # the formatted source bytes were never committed. Reproduce that exact step
+  # only after the other fourteen reviewed records have passed.
+  echo "Reproducing deployment-era Forge formatting for the legacy V5 factory"
+  forge fmt
+  python3 - <<'PY'
+import hashlib
+
+expected = {
+    "src/LowCostMemeLaunchFactoryV5.sol": "555d7a3a4993093638d1ffbdde197e2d8a3a35416faa14447da8117efd7d450d",
+    "src/libraries/MinimalProxy.sol": "1534bb574b9ee9e36821fbfc4fd6828f1886b543855360c216a867d2c6671284",
+}
+for path, expected_hash in expected.items():
+    with open(path, "rb") as source:
+        actual_hash = hashlib.sha256(source.read()).hexdigest()
+    if actual_hash != expected_hash:
+        raise SystemExit(f"deployment-era formatting mismatch for {path}: {actual_hash}")
+print("Deployment-era V5 source hashes reproduced exactly.")
+PY
+}
+
 submit_blockscout_standard_input() {
   local label="$1"
   local address="$2"
@@ -554,7 +577,6 @@ verify_contract "V6 bootstrap controller" "$V6_BOOTSTRAP_CONTROLLER_ADDRESS" "sr
 verify_contract "V6 foundation verifier" "$V6_FOUNDATION_VERIFIER_ADDRESS" "src/RMTV6BootstrapFoundationVerifier.sol:RMTV6BootstrapFoundationVerifier" "$BOOTSTRAP_VERIFIER_ARGS"
 verify_contract "V6 smoke verifier" "$V6_SMOKE_VERIFIER_ADDRESS" "src/RMTV6BootstrapSmokeVerifier.sol:RMTV6BootstrapSmokeVerifier" "$BOOTSTRAP_VERIFIER_ARGS"
 verify_contract "V6 version registry" "$V6_VERSION_REGISTRY_ADDRESS" "src/VersionedFactoryRegistry.sol:VersionedFactoryRegistry" "$REGISTRY_ARGS"
-verify_contract "V5 identity factory" "$LEGACY_FACTORY" "src/LowCostMemeLaunchFactoryV5.sol:LowCostMemeLaunchFactoryV5" "$V5_FACTORY_ARGS"
 verify_contract "V6 graduation hook" "$V6_HOOK_ADDRESS" "src/V5GraduationHook.sol:V5GraduationHook" "$HOOK_ARGS"
 verify_contract "V6 graduation adapter" "$V6_ADAPTER_ADDRESS" "src/V4GraduationAdapter.sol:V4GraduationAdapter" "$ADAPTER_ARGS"
 verify_contract "V6 launch gate" "$V6_LAUNCH_GATE_ADDRESS" "src/RMTLaunchGate.sol:RMTLaunchGate" "$GATE_ARGS"
@@ -564,5 +586,8 @@ verify_contract "factory token implementation" "$TOKEN_IMPLEMENTATION" "src/clon
 verify_contract "factory fee-splitter implementation" "$FEE_SPLITTER_IMPLEMENTATION" "src/DirectLaunchFeeSplitter.sol:DirectLaunchFeeSplitter"
 verify_contract "official identity migration" "$OFFICIAL_IDENTITY_MIGRATION" "src/OfficialRMTIdentityMigration.sol:OfficialRMTIdentityMigration" "$MIGRATION_ARGS"
 verify_contract "V6 launch factory" "$V6_FACTORY_ADDRESS" "src/RMTLaunchFactoryV6.sol:RMTLaunchFactoryV6" "$FACTORY_ARGS"
+
+prepare_legacy_v5_deployment_sources
+verify_contract "V5 identity factory" "$LEGACY_FACTORY" "src/LowCostMemeLaunchFactoryV5.sol:LowCostMemeLaunchFactoryV5" "$V5_FACTORY_ARGS"
 
 echo "V6 source verification passed for all fifteen contracts. No blockchain transaction was broadcast and V6 remains inactive and paused."
