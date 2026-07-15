@@ -65,7 +65,7 @@ jobs:
       - run: bash scripts/install-v4-deps.sh
       - name: Verify mainnet release formatting
         run: |
-          forge fmt \
+          forge fmt --check \
             script/MainnetReleaseConfig.sol \
             script/DeployMainnetMemeLaunchFactory.s.sol \
             script/MainnetReleaseConfigV6.sol \
@@ -86,16 +86,6 @@ jobs:
             test/DirectLaunchFeeSplitter.t.sol \
             test/V4GraduationAdapter.t.sol \
             test/V6MainnetFork.t.sol
-      - name: Upload forge-formatted contract sources
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: forge-formatted-contract-sources
-          path: |
-            packages/contracts/script
-            packages/contracts/src
-            packages/contracts/test
-          retention-days: 1
       - name: Build the exact checked-in contract sources
         run: |
           set -o pipefail
