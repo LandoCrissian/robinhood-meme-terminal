@@ -3,6 +3,13 @@
 import { useEffect, useState } from "react";
 import type { SystemHealthReport } from "../../lib/system-health";
 
+const statusTimeFormatter = new Intl.DateTimeFormat("en-US", {
+  hour: "numeric",
+  minute: "2-digit",
+  second: "2-digit",
+  timeZone: "UTC"
+});
+
 export function SystemStatus({ initialReport }: { initialReport: SystemHealthReport }) {
   const [report, setReport] = useState(initialReport);
 
@@ -28,7 +35,7 @@ export function SystemStatus({ initialReport }: { initialReport: SystemHealthRep
           <p className="eyebrow">SYSTEM STATUS</p>
           <h1>{report.ok ? "Protocol checks healthy" : "Some systems need review"}</h1>
           <p>{report.network} · Block {report.latestBlock}</p>
-          <small>Checked {new Date(report.checkedAt).toLocaleTimeString()} · {report.latencyMs}ms verification · Refreshes every 15 seconds</small>
+          <small>Checked {statusTimeFormatter.format(new Date(report.checkedAt))} UTC · {report.latencyMs}ms verification · Refreshes every 15 seconds</small>
         </div>
       </section>
 
