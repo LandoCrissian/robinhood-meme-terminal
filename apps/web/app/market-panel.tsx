@@ -69,6 +69,24 @@ type RecentTrade = {
   logIndex: number;
 };
 
+type IndexedTradePayload = {
+  indexedThrough: string;
+  trades: Array<{
+    transactionHash: string;
+    logIndex: number;
+    trader: string;
+    recipient: string;
+    isBuy: boolean;
+    tokenAmount: string;
+    ethAmount: string;
+    feeAmount: string;
+    virtualEthReserve: string;
+    virtualTokenReserve: string;
+    realEthReserve: string;
+    blockNumber: string;
+  }>;
+};
+
 type TradePreflight = {
   status: "idle" | "checking" | "ready" | "error";
   gas?: bigint;
@@ -90,6 +108,70 @@ function cleanDecimal(value: string) {
 
 function formatPercent(bps: bigint) {
   return `${(Number(bps) / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}%`;
+}
+
+function newestTrades(trades: RecentTrade[]) {
+  return [...new Map(trades.map((trade) => [`${trade.transactionHash}-${trade.logIndex}`, trade])).values()]
+    .sort((left, right) => left.blockNumber === right.blockNumber ? right.logIndex - left.logIndex : left.blockNumber > right.blockNumber ? -1 : 1)
+    .slice(0, 12);
+}
+
+function parseIndexedTradePayload(payload: unknown) {
+  if (!payload || typeof payload !== "object") throw new Error("Invalid indexed trade payload.");
+  const candidate = payload as Partial<IndexedTradePayload>;
+  const indexedThrough = candidate.indexedThrough;
+  if (!indexedThrough || !/^\d+$/.test(indexedThrough) || !Array.isArray(candidate.trades)) {
+    throw new Error("Invalid indexed trade payload.");
+  }
+
+  const trades = candidate.trades.map((trade) => {
+    const numericFields = [
+      trade.tokenAmount,
+      trade.ethAmount,
+      trade.feeAmount,
+      trade.virtualEthReserve,
+      trade.virtualTokenReserve,
+      trade.realEthReserve,
+      trade.blockNumber
+    ];
+    if (
+      !/^0x[0-9a-fA-F]{64}$/.test(trade.transactionHash)
+      || !/^0x[0-9a-fA-F]{40}$/.test(trade.trader)
+      || typeof trade.isBuy !== "boolean"
+      || !Number.isSafeInteger(trade.logIndex)
+      || trade.logIndex < 0
+      || numericFields.some((value) => !/^\d+$/.test(value))
+    ) throw new Error("Invalid indexed trade payload.");
+
+    return {
+      transactionHash: trade.transactionHash as `0x${string}`,
+      trader: trade.trader as Address,
+      isBuy: trade.isBuy,
+      tokenAmount: BigInt(trade.tokenAmount),
+      ethAmount: BigInt(trade.ethAmount),
+      feeAmount: BigInt(trade.feeAmount),
+      virtualEthReserve: BigInt(trade.virtualEthReserve),
+      virtualTokenReserve: BigInt(trade.virtualTokenReserve),
+      blockNumber: BigInt(trade.blockNumber),
+      logIndex: trade.logIndex
+    } satisfies RecentTrade;
+  });
+
+  return { trades: newestTrades(trades), indexedThrough: BigInt(indexedThrough) };
+}
+
+async function loadIndexedMarketTrades(market: Address) {
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 4_000);
+  try {
+    const response = await fetch(`/api/markets/${market}/trades?limit=12`, {
+      signal: controller.signal
+    });
+    if (!response.ok) throw new Error("Indexed trade history is unavailable.");
+    return parseIndexedTradePayload(await response.json());
+  } finally {
+    window.clearTimeout(timeout);
+  }
 }
 
 type MarketPanelProps = {
@@ -176,11 +258,28 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply, creator, compac
     let cancelled = false;
     async function loadTrades() {
       try {
+        const indexed = await loadIndexedMarketTrades(marketAddress);
+        if (cancelled) return;
+        const pendingChainTrades = recentTradesRef.current.filter((trade) => trade.blockNumber > indexed.indexedThrough);
+        const newestFirst = newestTrades([...pendingChainTrades, ...indexed.trades]);
+        recentTradesRef.current = newestFirst;
+        lastScannedTradeBlockRef.current = indexed.indexedThrough;
+        setRecentTrades(newestFirst);
+        setTradeHistoryError(undefined);
+        return;
+      } catch {
+        if (cancelled) return;
+      }
+
+      try {
         const latestBlock = await client.getBlockNumber();
         const lastScanned = lastScannedTradeBlockRef.current;
         const historicalStart = launchBlock > 0n ? launchBlock : latestBlock > 19_999n ? latestBlock - 19_999n : 0n;
         const fromBlock = lastScanned !== undefined ? lastScanned + 1n : historicalStart;
-        if (fromBlock > latestBlock) return;
+        if (fromBlock > latestBlock) {
+          if (!cancelled) setTradeHistoryError(undefined);
+          return;
+        }
 
         const collected: RecentTrade[] = [...recentTradesRef.current];
         let batchEnd = latestBlock;
@@ -192,8 +291,7 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply, creator, compac
           batchEnd = batchStart - 1n;
         }
 
-        const deduplicated = [...new Map(collected.map((trade) => [`${trade.transactionHash}-${trade.logIndex}`, trade])).values()];
-        const newestFirst = deduplicated.sort((left, right) => left.blockNumber === right.blockNumber ? right.logIndex - left.logIndex : left.blockNumber > right.blockNumber ? -1 : 1).slice(0, 12);
+        const newestFirst = newestTrades(collected);
         if (cancelled) return;
         recentTradesRef.current = newestFirst;
         lastScannedTradeBlockRef.current = latestBlock;
