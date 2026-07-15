@@ -18,6 +18,7 @@ const marketAbi = [
   { type: "function", name: "graduationTarget", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] },
   { type: "function", name: "progressBps", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] },
   { type: "function", name: "graduated", stateMutability: "view", inputs: [], outputs: [{ type: "bool" }] },
+  { type: "function", name: "graduationAdapter", stateMutability: "view", inputs: [], outputs: [{ type: "address" }] },
   { type: "function", name: "fairStartActive", stateMutability: "view", inputs: [], outputs: [{ type: "bool" }] },
   { type: "function", name: "tradingOpensAtBlock", stateMutability: "view", inputs: [], outputs: [{ type: "uint64" }] },
   { type: "function", name: "fairStartEndsAtBlock", stateMutability: "view", inputs: [], outputs: [{ type: "uint64" }] },
@@ -33,6 +34,10 @@ const marketAbi = [
   { type: "error", name: "SlippageExceeded", inputs: [] },
   { type: "error", name: "InsufficientInventory", inputs: [] },
   { type: "event", name: "Trade", anonymous: false, inputs: [{ name: "trader", type: "address", indexed: true }, { name: "recipient", type: "address", indexed: true }, { name: "isBuy", type: "bool", indexed: true }, { name: "tokenAmount", type: "uint256", indexed: false }, { name: "ethAmount", type: "uint256", indexed: false }, { name: "feeAmount", type: "uint256", indexed: false }, { name: "virtualEthReserve", type: "uint256", indexed: false }, { name: "virtualTokenReserve", type: "uint256", indexed: false }, { name: "realEthReserve", type: "uint256", indexed: false }] }
+] as const;
+
+const graduationAdapterStateAbi = [
+  { type: "function", name: "isGraduated", stateMutability: "view", inputs: [{ name: "token", type: "address" }], outputs: [{ type: "bool" }] }
 ] as const;
 
 const tokenTradeAbi = [
@@ -183,6 +188,9 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply, creator }: { to
   const graduationTarget = useReadContract({ address: target, abi: marketAbi, functionName: "graduationTarget", chainId: activeChain.id, query: { enabled, refetchInterval: 5_000 } });
   const progress = useReadContract({ address: target, abi: marketAbi, functionName: "progressBps", chainId: activeChain.id, query: { enabled, refetchInterval: 5_000 } });
   const graduated = useReadContract({ address: target, abi: marketAbi, functionName: "graduated", chainId: activeChain.id, query: { enabled, refetchInterval: 5_000 } });
+  const graduationAdapter = useReadContract({ address: target, abi: marketAbi, functionName: "graduationAdapter", chainId: activeChain.id, query: { enabled: isMainnetRelease && enabled, retry: false, refetchInterval: 30_000 } });
+  const graduationAdapterAddress = graduationAdapter.data ?? ZERO;
+  const migrated = useReadContract({ address: graduationAdapterAddress, abi: graduationAdapterStateAbi, functionName: "isGraduated", args: [tokenAddress], chainId: activeChain.id, query: { enabled: isMainnetRelease && graduated.data === true && graduationAdapter.data !== undefined && graduationAdapter.data !== ZERO, retry: false, refetchInterval: 5_000 } });
   const fairStartActive = useReadContract({ address: target, abi: marketAbi, functionName: "fairStartActive", chainId: activeChain.id, query: { enabled, refetchInterval: 5_000 } });
   const tradingOpensAt = useReadContract({ address: target, abi: marketAbi, functionName: "tradingOpensAtBlock", chainId: activeChain.id, query: { enabled, refetchInterval: 5_000 } });
   const fairStartEndsAt = useReadContract({ address: target, abi: marketAbi, functionName: "fairStartEndsAtBlock", chainId: activeChain.id, query: { enabled, refetchInterval: 5_000 } });
@@ -211,8 +219,8 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply, creator }: { to
   const sellValueUsd = ethUsd === undefined ? undefined : Number(formatEther(sellOut)) * ethUsd;
   const buyFee = buyQuote.data?.[1] ?? 0n;
   const sellFee = sellQuote.data?.[1] ?? 0n;
-  const fairStartMaxTx = totalSupply * BigInt(fairStartMaxTxBps.data ?? 50) / 10_000n;
-  const fairStartMaxWallet = totalSupply * BigInt(fairStartMaxWalletBps.data ?? 150) / 10_000n;
+  const fairStartMaxTx = totalSupply * BigInt(fairStartMaxTxBps.data ?? 100) / 10_000n;
+  const fairStartMaxWallet = totalSupply * BigInt(fairStartMaxWalletBps.data ?? 300) / 10_000n;
   const fairStartBought = fairStartPurchased.data ?? 0n;
   const fairStartWalletRemaining = fairStartMaxWallet > fairStartBought ? fairStartMaxWallet - fairStartBought : 0n;
   const fairStartNextBuyLimit = fairStartMaxTx < fairStartWalletRemaining ? fairStartMaxTx : fairStartWalletRemaining;
@@ -235,6 +243,10 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply, creator }: { to
   const creatorRecentBuys = creatorRecentTrades.filter((trade) => trade.isBuy);
   const creatorRecentSells = creatorRecentTrades.filter((trade) => !trade.isBuy);
   const creatorRecentNet = creatorRecentBuys.reduce((sum, trade) => sum + trade.tokenAmount, 0n) - creatorRecentSells.reduce((sum, trade) => sum + trade.tokenAmount, 0n);
+  const migratedToV4 = migrated.data === true;
+  const uniswapSwapUrl = mode === "buy"
+    ? `https://app.uniswap.org/swap?chain=robinhood&inputCurrency=NATIVE&outputCurrency=${tokenAddress}`
+    : `https://app.uniswap.org/swap?chain=robinhood&inputCurrency=${tokenAddress}&outputCurrency=NATIVE`;
   const fairStartMessage = fairStartTxExceeded
     ? "This opening buy is above the temporary protected limit. Use the suggested maximum or enter a smaller amount."
     : fairStartWalletExceeded
@@ -392,7 +404,7 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply, creator }: { to
       {isConnected && <div className="buyingPowerBar"><div><small>Robinhood Chain buying power</small><strong>{walletBalance.isLoading ? "Reading wallet…" : `${formatEth(walletBalance.data?.value ?? 0n, 7)} ETH`}</strong><span>≈ {formatUsd(walletValueUsd)} available before network fees</span></div><a href="https://docs.robinhood.com/chain/bridging/" target="_blank" rel="noreferrer">Add ETH ↗</a></div>}
       <div className="graduationCard">
         <div><span>Market reserve</span><strong>{formatEth(reserve.data ?? 0n, 7)} ETH</strong></div>
-        <small>{isMainnetRelease ? graduated.data ? "Graduated to Uniswap V4. Curve trading is closed; DEX routing is next." : `${Number(progress.data ?? 0n) / 100}% toward automatic Uniswap V4 graduation (${formatEth(graduationTarget.data ?? 0n, 4)} ETH target).` : "DEX migration is disabled in this testnet alpha. Launching, curve trading, and fee accounting remain live."}</small>
+        <small>{isMainnetRelease ? graduated.data ? migratedToV4 ? "Graduated to the canonical Uniswap V4 pool. Curve trading is permanently closed; choose Buy or Sell below to continue in the official Uniswap app." : "The curve target is complete and curve trading is permanently closed. The permissionless V4 finalization transaction is available in Graduation & fees below." : `${Number(progress.data ?? 0n) / 100}% toward curve completion and V4 graduation readiness (${formatEth(graduationTarget.data ?? 0n, 4)} ETH target).` : "DEX migration is disabled in this testnet alpha. Launching, curve trading, and fee accounting remain live."}</small>
       </div>
       {fairStartVisible && <section className="fairStartCard" aria-labelledby="fair-start-heading">
         <div className="fairStartHeader"><div><p className="eyebrow">FAIR START</p><h3 id="fair-start-heading">{blocksUntilOpen > 0n ? "Trading opens shortly" : "Protected launch is active"}</h3></div><strong>{blocksUntilOpen > 0n ? `${blocksUntilOpen} block${blocksUntilOpen === 1n ? "" : "s"}` : `${protectedBlocksRemaining} block${protectedBlocksRemaining === 1n ? "" : "s"} left`}</strong></div>
@@ -405,13 +417,13 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply, creator }: { to
         {fairStartActive.data && account && fairStartWalletRemaining === 0n && <small className="fairStartNotice">You have used this wallet’s opening allowance. The limit disappears automatically when Fair Start ends.</small>}
       </section>}
       <section className={`creatorIntelligence ${highCreatorConcentration ? "highRisk" : ""}`} aria-labelledby="creator-wallet-heading">
-        <div className="creatorIntelligenceHeader"><div><p className="eyebrow">CREATOR WALLET</p><h3 id="creator-wallet-heading">Concentration check</h3></div><a href={`${activeChain.blockExplorers.default.url}/address/${creator}`} target="_blank" rel="noreferrer">{compactAddress(creator)} ↗</a></div>
+        <div className="creatorIntelligenceHeader"><div><p className="eyebrow">ORIGINAL LAUNCH CREATOR</p><h3 id="creator-wallet-heading">Wallet concentration check</h3></div><a href={`${activeChain.blockExplorers.default.url}/address/${creator}`} target="_blank" rel="noreferrer">{compactAddress(creator)} ↗</a></div>
         <div className="creatorStats">
           <div><small>Current balance</small><strong>{creatorBalance.isLoading ? "Reading…" : `${Number(formatUnits(creatorBalanceValue, 18)).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${symbol}`}</strong><span>{formatPercent(creatorSupplyBps)} of total supply</span></div>
           <div><small>Share outside curve</small><strong>{creatorConcentrationKnown && circulatingSupply > 0n ? formatPercent(creatorCirculatingBps) : "Not available yet"}</strong><span>Creator balance ÷ tokens outside the curve</span></div>
           <div><small>Recent creator activity</small><strong>{creatorRecentBuys.length} buys · {creatorRecentSells.length} sells</strong><span>{creatorRecentTrades.length > 0 ? `${creatorRecentNet >= 0n ? "+" : "−"}${Number(formatUnits(creatorRecentNet >= 0n ? creatorRecentNet : -creatorRecentNet, 18)).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${symbol} net` : `Across ${recentTrades.length} shown trades`}</span></div>
         </div>
-        {highCreatorConcentration ? <div className="creatorWarning"><strong>High creator concentration</strong><span>The creator controls at least 25% of tokens currently outside the bonding curve. A large creator sale can materially move price. This is an onchain heuristic, not a safety rating.</span></div> : <p className="creatorMethod">Balances refresh from the token contract. “Outside curve” excludes inventory still held by the immutable market.</p>}
+        {highCreatorConcentration ? <div className="creatorWarning"><strong>High launch-creator concentration</strong><span>The original launch wallet controls at least 25% of tokens currently outside the bonding curve. A large sale can materially move price. This is separate from the current fee recipient and is an onchain heuristic, not a safety rating.</span></div> : <p className="creatorMethod">Balances follow the permanent launch-creator address recorded by the token. “Outside curve” excludes inventory still held by the immutable market and does not identify the current fee recipient.</p>}
       </section>
       <PriceHistoryChart points={chartPoints} symbol={symbol} ethUsd={ethUsd} marketCapUsd={marketCapUsd} />
       {!isConnected && <details className="starterGuide" open>
@@ -424,7 +436,10 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply, creator }: { to
         <div className="starterLinks"><a href="https://docs.robinhood.com/chain/add-network-to-wallet/" target="_blank" rel="noreferrer">Official wallet setup ↗</a><a href="https://docs.robinhood.com/chain/bridging/" target="_blank" rel="noreferrer">Official funding options ↗</a></div>
       </details>}
       <div className="tradeTabs"><button className={mode === "buy" ? "active" : ""} onClick={() => setMode("buy")}>Buy</button><button className={mode === "sell" ? "active" : ""} onClick={() => setMode("sell")}>Sell</button></div>
-      {mode === "buy" ? <div className="tradeAmountCard">
+      {graduated.data ? <div className="tradeAmountCard dexHandoffCard">
+        <div className="tradeAmountTop"><span>{migratedToV4 ? `${mode === "buy" ? "Buy" : "Sell"} ${symbol} on Uniswap V4` : "V4 pool finalization required"}</span><small>{migratedToV4 ? "Official Uniswap app" : "One permissionless transaction"}</small></div>
+        <p>{migratedToV4 ? `RMT has verified the adapter migration onchain. Uniswap will show the live pool quote, price impact, and network fee before your wallet confirms the ${mode}.` : "The curve can no longer accept orders. Finalize V4 graduation in the verified Graduation & fees panel below; the caller pays gas but receives no funds, tokens, liquidity, or reward."}</p>
+      </div> : mode === "buy" ? <div className="tradeAmountCard">
         <div className="tradeAmountTop"><span>You pay</span><small>{ethUsd ? `1 ETH ≈ ${formatUsd(ethUsd)}` : "Loading ETH/USD…"}</small></div>
         <div className="tradeInputRow"><input aria-label="ETH amount to buy" inputMode="decimal" value={buyAmount} onFocus={(event) => event.currentTarget.select()} onChange={(event) => setBuyAmount(event.target.value)} /><span>ETH</span></div>
         <div className="usdEstimate">≈ {formatUsd(buyValueUsd)} <span>reference value</span></div>
@@ -438,20 +453,22 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply, creator }: { to
         <div className="orderPreview"><div><span>Estimated receive</span><strong>{Number(formatEther(sellOut)).toLocaleString(undefined, { maximumFractionDigits: 8 })} ETH</strong></div><div><span>Platform fee</span><strong>{formatEth(sellFee)} ETH</strong></div></div>
         {needsApproval && isConnected && <p className="approvalNote">{atomicSellAvailable ? "Your wallet supports a one-confirmation approval-and-sell batch." : "Your first sell creates a reusable allowance for this token’s immutable market. Later sells need only the normal transaction confirmation, and you can revoke access at any time."}</p>}
       </div>}
-      <div className="tradeDisclosure"><span>Live curve quote</span><span>1% slippage protection</span><span>10-minute deadline</span><span>USD is an estimate</span></div>
-      {creatorRiskRequired && <label className="creatorRiskCheck"><input type="checkbox" checked={creatorRiskAccepted} onChange={(event) => setCreatorRiskAccepted(event.target.checked)} /><span><strong>I reviewed the creator concentration</strong><small>Required before buying while the creator holds at least 25% of tokens outside the curve.</small></span></label>}
-      <div className={`preflightCard ${preflight.status}`} role="status">
+      {!graduated.data && <div className="tradeDisclosure"><span>Live curve quote</span><span>1% slippage protection</span><span>10-minute deadline</span><span>USD is an estimate</span></div>}
+      {!graduated.data && creatorRiskRequired && <label className="creatorRiskCheck"><input type="checkbox" checked={creatorRiskAccepted} onChange={(event) => setCreatorRiskAccepted(event.target.checked)} /><span><strong>I reviewed the creator concentration</strong><small>Required before buying while the creator holds at least 25% of tokens outside the curve.</small></span></label>}
+      {!graduated.data && <div className={`preflightCard ${preflight.status}`} role="status">
         <span className="preflightIcon">{preflight.status === "ready" ? "✓" : preflight.status === "error" ? "!" : "•"}</span>
         <div>
           <strong>{!isConnected ? "Connect to review this order" : preflight.status === "checking" ? "Checking this order onchain…" : preflight.status === "ready" ? "Order check passed" : preflight.status === "error" ? "Order needs attention" : "Enter an amount to continue"}</strong>
           <small>{!isConnected ? "RMT will simulate the transaction and estimate the network fee before your wallet opens." : preflight.status === "ready" && estimatedNetworkFeeWei !== undefined ? `Estimated network fee ${formatEth(estimatedNetworkFeeWei, 7)} ETH · ≈ ${formatUsd(estimatedNetworkFeeUsd)}` : preflight.message ?? "Quotes and network fees refresh automatically."}</small>
         </div>
-      </div>
+      </div>}
       {(isPending || receipt.isLoading || callsPending || callsReceipt.isLoading) && <div className="tradeStage" role="status"><span className="tradeStageDot" /><div><strong>{isPending || callsPending ? "Review in your wallet" : "Order submitted"}</strong><small>{isPending || callsPending ? "Your wallet should open now. On a phone, switch to the wallet app if needed, confirm, then return to RMT." : "Waiting for Robinhood Chain confirmation."}</small>{receipt.isLoading && hash && <a href={`${activeChain.blockExplorers.default.url}/tx/${hash}`} target="_blank" rel="noreferrer">Track transaction ↗</a>}</div></div>}
       {(writeError || receipt.error || callsReceipt.error) && <div className="errors"><span>{writeError?.message || receipt.error?.message || callsReceipt.error?.message}</span></div>}
       {tradeMessage && <div className="callout"><strong>{tradeMessage}</strong></div>}
       {receipt.isSuccess && lastAction !== "approve" && <div className="callout"><strong>{lastAction === "sell" ? "Sell confirmed" : "Buy confirmed"}</strong><a href={`${activeChain.blockExplorers.default.url}/tx/${hash}`} target="_blank" rel="noreferrer">View transaction ↗</a></div>}
-      <button className="launch" disabled={!isConnected || busy || Boolean(graduated.data) || preflight.status !== "ready" || (creatorRiskRequired && !creatorRiskAccepted) || (mode === "buy" ? buyOut === 0n : sellOut === 0n)} onClick={trade}>{graduated.data ? "Graduated — trade on DEX" : !isConnected ? "Connect wallet to trade" : busy ? lastAction === "approve" ? "Approving…" : lastAction === "sell" ? "Confirm sell in wallet…" : "Confirming…" : creatorRiskRequired && !creatorRiskAccepted ? "Review creator concentration" : preflight.status === "checking" ? "Checking order…" : preflight.status === "error" ? "Review order details" : preflight.status === "idle" ? "Preparing quote…" : mode === "buy" ? `Buy ${symbol}` : atomicSellAvailable ? `Approve + sell ${symbol}` : needsApproval ? `Enable and sell ${symbol}` : `Sell ${symbol}`}</button>
+      {isMainnetRelease && graduated.data && migratedToV4
+        ? <a className="launch dexTradeLink" href={uniswapSwapUrl} target="_blank" rel="noopener noreferrer">{mode === "buy" ? `Buy ${symbol} on Uniswap ↗` : `Sell ${symbol} on Uniswap ↗`}</a>
+        : <button className="launch" disabled={!isConnected || busy || Boolean(graduated.data) || preflight.status !== "ready" || (creatorRiskRequired && !creatorRiskAccepted) || (mode === "buy" ? buyOut === 0n : sellOut === 0n)} onClick={trade}>{graduated.data ? "Curve complete — finalize V4 graduation below" : !isConnected ? "Connect wallet to trade" : busy ? lastAction === "approve" ? "Approving…" : lastAction === "sell" ? "Confirm sell in wallet…" : "Confirming…" : creatorRiskRequired && !creatorRiskAccepted ? "Review creator concentration" : preflight.status === "checking" ? "Checking order…" : preflight.status === "error" ? "Review order details" : preflight.status === "idle" ? "Preparing quote…" : mode === "buy" ? `Buy ${symbol}` : atomicSellAvailable ? `Approve + sell ${symbol}` : needsApproval ? `Enable and sell ${symbol}` : `Sell ${symbol}`}</button>}
       <a className="explorerLink" href={`${activeChain.blockExplorers.default.url}/address/${market}`} target="_blank" rel="noreferrer">Open market in explorer ↗</a>
       <div className="tradeHistory">
         <div className="historyHeader"><div><p className="eyebrow">ONCHAIN ACTIVITY</p><h3>Recent trades</h3></div><span>{recentTrades.length} shown</span></div>

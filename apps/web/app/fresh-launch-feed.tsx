@@ -111,7 +111,7 @@ export function FreshLaunchFeed() {
             <div className="identity"><strong>{launch.name}</strong><span>{"$" + displaySymbol(launch.symbol) + " • #" + launch.launchId}</span></div>
             <div><small>Curve reserve</small><strong>{reserveLabel(launch.reserveWei)}</strong></div>
             <div><small>Graduation</small><strong>{launch.graduated ? "Complete" : `${launch.progressBps / 100}%`}</strong></div>
-            <div><small>Creator</small><strong title={launch.creator}>{shortAddress(launch.creator)}</strong></div>
+            <div><small>Launch creator</small><strong title={launch.creator}>{shortAddress(launch.creator)}</strong></div>
           </article>
         </Link>
       ))}

@@ -31,6 +31,10 @@ contract MockV4PoolManager {
         (bytes4 selector,,) = hook.beforeSwap(sender, key, params, "");
         return selector;
     }
+
+    function donate(IHooks hook, address sender, PoolKey calldata key) external returns (bytes4) {
+        return hook.beforeDonate(sender, key, 1, 1, "");
+    }
 }
 
 contract UnauthorizedHookCaller {
@@ -79,6 +83,9 @@ contract V4GraduationHookTest {
         UnauthorizedHookCaller caller = new UnauthorizedHookCaller();
         require(!caller.bindAdapter(unboundHook, address(caller)), "unauthorized binding accepted");
 
+        (bool eoaBinding,) = address(unboundHook).call(abi.encodeCall(unboundHook.bindAdapter, (address(0xCAFE))));
+        require(!eoaBinding, "non-contract adapter bound");
+
         unboundHook.bindAdapter(address(this));
         (bool rebound,) = address(unboundHook).call(abi.encodeCall(unboundHook.bindAdapter, (address(caller))));
         require(!rebound, "adapter rebound");
@@ -113,10 +120,10 @@ contract V4GraduationHookTest {
         require(!preGraduationSwap, "pre-graduation swap accepted");
 
         hook.open(key);
-        require(
-            manager.addLiquidity(hook, address(0xBAD), key) == IHooks.beforeAddLiquidity.selector,
-            "public liquidity blocked after opening"
+        (bool publicLiquidityAfterOpening,) = address(manager).call(
+            abi.encodeCall(manager.addLiquidity, (hook, address(0xBAD), key))
         );
+        require(!publicLiquidityAfterOpening, "public liquidity accepted after opening");
         require(manager.swap(hook, address(0xBAD), key) == IHooks.beforeSwap.selector, "swap blocked after opening");
     }
 
@@ -128,5 +135,21 @@ contract V4GraduationHookTest {
         hook.open(key);
         (bool duplicateOpen,) = address(hook).call(abi.encodeCall(hook.open, (key)));
         require(!duplicateOpen, "duplicate open accepted");
+    }
+
+    function testDonationsCannotMasqueradeAsTradingFees() public {
+        hook.reserve(key);
+        manager.initialize(hook, address(this), key);
+        hook.open(key);
+
+        (bool publicDonation,) = address(manager).call(
+            abi.encodeCall(manager.donate, (hook, address(0xBAD), key))
+        );
+        require(!publicDonation, "public donation accepted");
+
+        (bool adapterDonation,) = address(manager).call(
+            abi.encodeCall(manager.donate, (hook, address(this), key))
+        );
+        require(!adapterDonation, "adapter donation accepted");
     }
 }

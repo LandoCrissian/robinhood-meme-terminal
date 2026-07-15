@@ -51,3 +51,4 @@ export function formatBasisPoints(bps: number) {
   const fraction = bps % 100;
   return fraction === 0 ? `${whole}%` : `${whole}.${fraction.toString().padStart(2, "0")}%`;
 }
+

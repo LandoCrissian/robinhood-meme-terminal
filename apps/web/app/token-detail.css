@@ -140,6 +140,12 @@ dl{grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr)}
 
 .tradeAmountCard{padding:18px;border:1px solid #2b3b30;border-radius:18px;background:linear-gradient(180deg,#0b130e,#08100a)}
 
+.dexHandoffCard{margin-bottom:18px;border-color:#2d5d37;background:linear-gradient(180deg,#0d2112,#09130c)}
+
+.dexHandoffCard p{margin:14px 0 0;color:#94a198;font-size:.78rem;line-height:1.55}
+
+.dexTradeLink{display:flex;align-items:center;justify-content:center;text-decoration:none}
+
 .tradeAmountTop{display:flex;align-items:center;justify-content:space-between;gap:12px;color:#a9b5ac;font-size:.76rem;font-weight:850}
 
 .tradeAmountTop small{color:#758279;text-align:right}

@@ -53,12 +53,13 @@ export function LaunchForm() {
     address: factoryAddress ?? undefined,
     abi: rmtLaunchFactoryV6Abi,
     functionName: "canMigrateOfficialIdentity",
-    args: account ? [account, normalizedName, normalizedSymbol] : undefined,
+    args: account ? [account, selectedPolicyId, normalizedName, normalizedSymbol] : undefined,
     chainId: activeChain.id,
     query: { enabled: Boolean(capabilities && account && isOfficialIdentity), retry: false }
   });
   const officialMigrationAvailable = officialMigrationRead.data === true;
   const launchesPaused = !capabilities || capabilities.launchesPaused;
+  const officialPausedLaunch = launchesPaused && officialMigrationAvailable;
   const selectedPolicyReady = Boolean(selectedPolicy?.enabled && selectedPolicy.publiclySelectable);
   const nameUnavailable = nameUsedRead.data === true && !officialMigrationAvailable;
   const symbolUnavailable = symbolUsedRead.data === true && !officialMigrationAvailable;
@@ -82,7 +83,7 @@ export function LaunchForm() {
     return event ? { token: event.args.token, feeSplitter: event.args.feeSplitter, launchId: event.args.launchId } : null;
   }, [receipt]);
 
-  const readiness = capabilityRead.loading ? "Verifying V6 launch configuration…" : launchesPaused ? "New launches temporarily paused" : !selectedPolicyReady ? "Selected policy unavailable" : nameUnavailable ? "Token name already protected" : symbolUnavailable ? "Ticker already protected" : !isConnected ? "Connect wallet" : chainId !== activeChain.id ? `Switch to ${activeNetworkLabel}` : "Review and launch";
+  const readiness = capabilityRead.loading ? "Verifying V6 launch configuration…" : officialPausedLaunch ? "Review and launch official RMT" : launchesPaused ? "New launches temporarily paused" : !selectedPolicyReady ? "Selected policy unavailable" : nameUnavailable ? "Token name already protected" : symbolUnavailable ? "Ticker already protected" : !isConnected ? "Connect wallet" : chainId !== activeChain.id ? `Switch to ${activeNetworkLabel}` : "Review and launch";
 
   function selectImage(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0] ?? null;
@@ -115,7 +116,7 @@ export function LaunchForm() {
   }
 
   async function submit() {
-    if (launchesPaused || !selectedPolicyReady) return;
+    if ((launchesPaused && !officialPausedLaunch) || !selectedPolicyReady) return;
     const values = { name, symbol, supply, description, website, x: xUrl, telegram, accepted };
     const parsed = launchSchema.safeParse(values);
     if (!parsed.success) {
@@ -125,30 +126,42 @@ export function LaunchForm() {
     if (!factoryAddress || !capabilities || !selectedPolicy || !isConnected || chainId !== activeChain.id) return;
     setValidationErrors([]);
     setMediaError("");
+    const launchName = officialPausedLaunch ? "Robinhood Meme Terminal" : parsed.data.name;
+    const launchSymbol = officialPausedLaunch ? "RMT" : parsed.data.symbol;
     let metadata: string;
     if (image) {
-      try { metadata = await uploadMetadata(parsed.data.name, parsed.data.symbol, parsed.data.description); }
+      try { metadata = await uploadMetadata(launchName, launchSymbol, parsed.data.description); }
       catch (error) { setMediaStatus("idle"); setMediaError(error instanceof Error ? error.message : "Token media upload failed."); return; }
     } else {
-      metadata = `data:application/json,${encodeURIComponent(JSON.stringify({ name: parsed.data.name, symbol: parsed.data.symbol, description: parsed.data.description, website: parsed.data.website || undefined, x: parsed.data.x || undefined, telegram: parsed.data.telegram || undefined }))}`;
+      metadata = `data:application/json,${encodeURIComponent(JSON.stringify({ name: launchName, symbol: launchSymbol, description: parsed.data.description, website: parsed.data.website || undefined, x: parsed.data.x || undefined, telegram: parsed.data.telegram || undefined }))}`;
     }
     if (new TextEncoder().encode(metadata).length > 512) {
       setMediaError("Metadata is too large for an onchain launch link. Add an image to save metadata to IPFS, or shorten the description and links.");
       return;
     }
-    writeContract({
-      address: factoryAddress,
-      abi: rmtLaunchFactoryV6Abi,
-      functionName: "launch",
-      args: [selectedPolicy.policyId, parsed.data.name, parsed.data.symbol, metadata],
-      chainId: activeChain.id
-    });
+    if (officialPausedLaunch) {
+      writeContract({
+        address: factoryAddress,
+        abi: rmtLaunchFactoryV6Abi,
+        functionName: "launchOfficialWhilePaused",
+        args: [metadata],
+        chainId: activeChain.id
+      });
+    } else {
+      writeContract({
+        address: factoryAddress,
+        abi: rmtLaunchFactoryV6Abi,
+        functionName: "launch",
+        args: [selectedPolicy.policyId, parsed.data.name, parsed.data.symbol, metadata],
+        chainId: activeChain.id
+      });
+    }
   }
 
   return (
     <section className="panel">
       <div className="sectionTitle"><div><p className="eyebrow">TOKEN LAUNCH</p><h2>Configure your token</h2></div><span className="badge">{isMainnetRelease ? "MAINNET · REAL ETH" : "TESTNET ALPHA"}</span></div>
-      {launchesPaused && <div className="callout mainnetWarning"><strong>New launches are temporarily paused</strong><span>V6 is being verified before public creation reopens. Trading and read-only terminal features remain available.</span></div>}
+      {launchesPaused && <div className="callout mainnetWarning"><strong>{officialPausedLaunch ? "Public launches remain paused" : "New launches are temporarily paused"}</strong><span>{officialPausedLaunch ? "The verified RMT wallet may complete the one-time official V6 migration without opening creation to anyone else." : "V6 is being verified before public creation reopens. Trading and read-only terminal features remain available."}</span></div>}
       {capabilityRead.error && <div className="errors"><span>{capabilityRead.error} Launching is disabled safely.</span></div>}
       <label>Token name<input value={name} maxLength={32} placeholder="Name your token" aria-invalid={nameUnavailable} onChange={(e) => setName(e.target.value)} />{normalizedName && <span className={nameUnavailable ? "identityStatus unavailable" : nameUsedRead.data === false ? "identityStatus available" : "identityStatus"} aria-live="polite">{nameUnavailable ? "Already protected — choose a unique name" : nameUsedRead.data === false ? "Name available" : "Checking name…"}</span>}</label>
       <div className="two"><label>Ticker<input value={symbol} maxLength={10} placeholder="TICKER" aria-invalid={symbolUnavailable} onChange={(e) => setSymbol(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))} />{normalizedSymbol && <span className={symbolUnavailable ? "identityStatus unavailable" : symbolUsedRead.data === false ? "identityStatus available" : "identityStatus"} aria-live="polite">{symbolUnavailable ? "Already protected — choose a unique ticker" : symbolUsedRead.data === false ? "Ticker available" : "Checking ticker…"}</span>}</label><label>Platform supply<input inputMode="numeric" value={supply} readOnly aria-readonly="true" /></label></div>
@@ -176,18 +189,20 @@ export function LaunchForm() {
           <small>{fairStart ? "Recommended for a more balanced opening" : "Trading opens without temporary wallet limits"}</small>
         </button>
         {selectedPolicy && <div className="graduationNote">
-          <strong>Immutable launch economics</strong>
-          <span>{formatBasisPoints(selectedPolicy.curveFeeBps)} curve fee · {formatBasisPoints(selectedPolicy.creatorFeeShareBps)} of fees to creator · {formatBasisPoints(selectedPolicy.protocolFeeShareBps)} to RMT · {formatBasisPoints(selectedPolicy.postGraduationFeeBps)} pool fee after graduation · {formatEther(selectedPolicy.graduationTarget)} ETH graduation target.</span>
+          <strong>Fixed fee percentages</strong>
+          <span>{formatBasisPoints(selectedPolicy.curveFeeBps)} curve fee · {formatBasisPoints(selectedPolicy.creatorFeeShareBps)} creator-share bucket · {formatBasisPoints(selectedPolicy.protocolFeeShareBps)} to RMT · {formatEther(selectedPolicy.graduationTarget)} ETH graduation target.</span>
+          <span>After graduation, the locked V4 position charges {formatBasisPoints(selectedPolicy.postGraduationFeeBps)} and can earn fees in ETH and ${normalizedSymbol || "TOKEN"}. Collected fees use the same split; liquidity principal is not distributed.</span>
+          <span>The token creator cannot initiate, accept, or execute a payout-address change. Only delayed RMT governance may move future fees between the original creator and RMT treasury, using a public evidence hash and replay-protection nonce. Previously paid or deferred fees stay with the wallet that earned them. For uncollected pool fees, the active recipient at collection time receives the creator share.</span>
         </div>}
       </div>
       <div className="summary"><div><small>Token</small><strong>{name || "Unnamed"}</strong></div><div><small>Symbol</small><strong>${symbol || "—"}</strong></div><div><small>Supply</small><strong>{formattedSupply}</strong></div></div>
-      <label className="confirm"><input type="checkbox" checked={accepted} onChange={(e) => setAccepted(e.target.checked)} /><span>I understand the supply, token rules, and selected fee split are permanent after launch.</span></label>
+      <label className="confirm"><input type="checkbox" checked={accepted} onChange={(e) => setAccepted(e.target.checked)} /><span>I understand the supply and fee percentages are permanent. Only delayed RMT governance can move future creator-share fees between the original creator and RMT treasury, with public evidence and replay protection; creators cannot perform the change, and earlier payments or deferred balances cannot be moved.</span></label>
       {isMainnetRelease && <div className="callout mainnetWarning"><strong>Mainnet uses real ETH</strong><span>Review the token details and wallet gas estimate before signing. Launch settings are permanent.</span></div>}
       {validationErrors.length > 0 && <div className="errors">{validationErrors.map((error) => <span key={error}>{error}</span>)}</div>}
       {(writeError || receiptError) && <div className="errors"><span>{writeError?.message || receiptError?.message}</span></div>}
       {transactionHash && !deployed && <div className="callout"><strong>{isConfirming ? "Waiting for confirmation…" : "Transaction submitted"}</strong><a href={`${activeChain.blockExplorers.default.url}/tx/${transactionHash}`} target="_blank" rel="noreferrer">View transaction ↗</a></div>}
-      {deployed && <div className="launchSuccess"><strong>Launch #{deployed.launchId.toString()} confirmed</strong><span>Token and reward vault were created in one transaction.</span><Link href={`/token/${deployed.token}`}>Open token page →</Link></div>}
-      <button className="launch" type="button" disabled={launchesPaused || !selectedPolicyReady || identityUnavailable || !factoryAddress || !isConnected || chainId !== activeChain.id || isPending || isConfirming || mediaStatus === "uploading"} onClick={submit}>{mediaStatus === "uploading" ? "Saving token media…" : isPending ? "Confirm in wallet…" : isConfirming ? "Confirming onchain…" : readiness}</button>
+      {deployed && <div className="launchSuccess"><strong>Launch #{deployed.launchId.toString()} confirmed</strong><span>Token, market, and fee splitter were created in one transaction.</span><Link href={`/token/${deployed.token}`}>Open token page →</Link></div>}
+      <button className="launch" type="button" disabled={(launchesPaused && !officialPausedLaunch) || !selectedPolicyReady || identityUnavailable || !factoryAddress || !isConnected || chainId !== activeChain.id || isPending || isConfirming || mediaStatus === "uploading"} onClick={submit}>{mediaStatus === "uploading" ? "Saving token media…" : isPending ? "Confirm in wallet…" : isConfirming ? "Confirming onchain…" : readiness}</button>
       <p className="fineprint">No mint authority • No blacklist • No hidden transfer tax • Wallet-signed transactions only</p>
     </section>
   );

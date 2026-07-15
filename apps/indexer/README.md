@@ -8,6 +8,9 @@ It:
 - checkpoints every indexed range with its canonical block hash
 - detects reorgs and rolls back launches, trades, graduations, and migrations to the last common checkpoint
 - replays idempotently using transaction-hash and log-index keys
+- preserves the permanent original creator separately from the current creator-fee recipient
+- records append-only governance-only creator-payout changes, stale-nonce invalidations, fee distribution, deferred-payment, and V4 fee-collection events
+- reports cumulative post-graduation ETH and launched-token fees for every V6 launch
 - exposes `/health` and `/launches` for the web tier and monitoring
 - never holds a signing key and cannot move protocol or user funds
 
@@ -15,11 +18,12 @@ It:
 
 - `DATABASE_URL`
 - `RMT_RPC_URL`
+- `RMT_FACTORY_ADDRESS` (must expose `protocolVersion() == 6`)
+- `RMT_FACTORY_START_BLOCK` (the canonical V6 factory deployment block)
+
+There are no legacy-factory or legacy-start-block defaults. A missing value, an invalid address/block, an RPC failure, or a factory version other than V6 stops startup before any database indexing begins.
 
 Production should also set:
-
-- `RMT_FACTORY_ADDRESS`
-- `RMT_FACTORY_START_BLOCK`
 - `RMT_CONFIRMATION_DEPTH` (default 20)
 - `RMT_INDEXER_CHUNK_SIZE` (default 2000)
 - `RMT_INDEXER_POLL_MS` (default 5000)

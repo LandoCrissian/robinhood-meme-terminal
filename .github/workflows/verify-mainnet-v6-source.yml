@@ -1,0 +1,81 @@
+name: Verify V6 mainnet sources
+
+on:
+  workflow_dispatch:
+    inputs:
+      v6_governance_address:
+        description: V6 governance address
+        required: true
+        type: string
+      v6_hook_address:
+        description: V6 graduation hook address
+        required: true
+        type: string
+      v6_adapter_address:
+        description: V6 graduation adapter address
+        required: true
+        type: string
+      v6_launch_gate_address:
+        description: V6 launch gate address
+        required: true
+        type: string
+      v6_policy_registry_address:
+        description: V6 policy registry address
+        required: true
+        type: string
+      v6_market_implementation_address:
+        description: V6 market implementation address
+        required: true
+        type: string
+      v6_factory_address:
+        description: V6 launch factory address
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-v6-mainnet-sources
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: packages/contracts
+    env:
+      V6_GOVERNANCE_ADDRESS: ${{ inputs.v6_governance_address }}
+      V6_HOOK_ADDRESS: ${{ inputs.v6_hook_address }}
+      V6_ADAPTER_ADDRESS: ${{ inputs.v6_adapter_address }}
+      V6_LAUNCH_GATE_ADDRESS: ${{ inputs.v6_launch_gate_address }}
+      V6_POLICY_REGISTRY_ADDRESS: ${{ inputs.v6_policy_registry_address }}
+      V6_MARKET_IMPLEMENTATION_ADDRESS: ${{ inputs.v6_market_implementation_address }}
+      V6_FACTORY_ADDRESS: ${{ inputs.v6_factory_address }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+      - name: Install pinned Uniswap V4 dependencies
+        run: bash scripts/install-v4-deps.sh
+      - name: Compile the selected release commit
+        run: forge build
+      - name: Verify exact V6 and dependency sources
+        run: |
+          set -o pipefail
+          {
+            echo "release_commit=$GITHUB_SHA"
+            echo "workflow_ref=$GITHUB_REF"
+            bash scripts/verify-mainnet-v6.sh
+          } 2>&1 | tee v6-source-verification.log
+      - name: Archive source-verification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v6-source-verification-${{ github.sha }}
+          path: packages/contracts/v6-source-verification.log
+          if-no-files-found: error
+          retention-days: 30

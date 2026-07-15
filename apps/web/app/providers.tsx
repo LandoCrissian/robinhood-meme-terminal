@@ -7,6 +7,8 @@ import { WagmiProvider, createConfig, http } from "wagmi";
 import { coinbaseWallet, injected, metaMask, walletConnect } from "wagmi/connectors";
 
 const walletConnectProjectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID;
+const mainnetRpcUrl = process.env.NEXT_PUBLIC_RMT_RPC_URL ?? robinhoodChain.rpcUrls.default.http[0];
+const testnetRpcUrl = process.env.NEXT_PUBLIC_RMT_TESTNET_RPC_URL ?? robinhoodChainTestnet.rpcUrls.default.http[0];
 // Wallet metadata is used by WalletConnect and mobile deep links. Production
 // must never identify itself as localhost when the deployment variable is
 // omitted, because some wallets reject or misroute that session.
@@ -46,8 +48,8 @@ const config = createConfig({
   chains: [robinhoodChainTestnet, robinhoodChain],
   connectors,
   transports: {
-    [robinhoodChainTestnet.id]: http(robinhoodChainTestnet.rpcUrls.default.http[0]),
-    [robinhoodChain.id]: http(robinhoodChain.rpcUrls.default.http[0])
+    [robinhoodChainTestnet.id]: http(testnetRpcUrl, { retryCount: 3, timeout: 12_000 }),
+    [robinhoodChain.id]: http(mainnetRpcUrl, { retryCount: 3, timeout: 12_000 })
   },
   ssr: true
 });

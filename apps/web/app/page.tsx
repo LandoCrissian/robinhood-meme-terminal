@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { DiscoverySearch } from "./discovery-search";
-import { ExternalMarketFeed } from "./external-market-feed";
 import { FreshLaunchFeed } from "./fresh-launch-feed";
 import { LaunchForm } from "./launch-form";
 import { PortfolioPanel } from "./portfolio-panel";
@@ -23,7 +22,7 @@ export default function Home() {
       <section className="hero">
         <p className="eyebrow">ROBINHOOD CHAIN • {isMainnetRelease ? "MAINNET BETA" : "ALPHA TESTNET"}</p>
         <h1>Find the move.<br />Launch the next one.</h1>
-        <p className="sub">Live meme discovery, one-signature launches, transparent rewards, and automatic graduation—all in one focused terminal.</p>
+        <p className="sub">Live meme discovery, one-signature launches, transparent rewards, and permissionless graduation—all in one focused terminal.</p>
         <div className="heroActions"><a className="primaryAction" href="#explore">See what’s moving</a><a className="secondaryAction" href="#launch">Launch a token</a></div>
         <div className="trustStrip"><span>No hidden minting</span><span>No transfer tax</span><span>Wallet-signed only</span></div>
       </section>
@@ -32,7 +31,6 @@ export default function Home() {
       <FreshLaunchFeed />
       <PortfolioPanel />
       <WatchlistPanel />
-      <ExternalMarketFeed />
 
       <section className="launchZone" id="launch">
         <div className="zoneHeading"><div><p className="eyebrow">CREATE</p><h2>Launch in a few taps</h2></div><p>Name it, add the artwork, choose the launch style, and approve it in your wallet.</p></div>
@@ -42,8 +40,8 @@ export default function Home() {
             <p className="eyebrow">HOW IT WORKS</p><h2>Simple for newcomers. Transparent for traders.</h2>
             <div className="howSteps">
               <div><b>1</b><span><strong>Connect any compatible wallet</strong><small>Use Robinhood Wallet’s Web3 browser, an installed browser wallet, or WalletConnect on mobile.</small></span></div>
-              <div><b>2</b><span><strong>Launch with one signature</strong><small>RMT creates the fixed supply, market, and visible reward destinations together.</small></span></div>
-              <div><b>3</b><span><strong>Trade, earn, graduate</strong><small>The curve handles trading and rewards; successful tokens graduate automatically.</small></span></div>
+              <div><b>2</b><span><strong>Launch with one signature</strong><small>RMT creates the fixed supply, market, and onchain fee splitter together.</small></span></div>
+              <div><b>3</b><span><strong>Trade, earn, graduate</strong><small>The curve routes fees in ETH; after graduation, collected V4 fees can include ETH and the launched token.</small></span></div>
             </div>
             <div className="callout"><strong>{isMainnetRelease ? "Unaudited mainnet beta" : "Testnet alpha"}</strong><span>{isMainnetRelease ? "Use only funds you can afford to lose and review every wallet detail before signing." : "Practice launching, trading, and claiming without real funds."}</span></div>
             <Link className="statusLink" href="/status"><span className="statusDot operational" aria-hidden="true" />Live system status</Link>

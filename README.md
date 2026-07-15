@@ -23,11 +23,15 @@ See [MAINNET_V5_DEPLOYMENT.md](docs/MAINNET_V5_DEPLOYMENT.md) for current deploy
 
 - Three-field default launch flow with optional media and socials
 - Fixed one-billion-token supply controlled by the launch market
+- V6 gives creators no initial token allocation or liquidity ownership; the full supply enters the market
 - No mint authority, blacklist, transfer tax, or token upgrade proxy
 - Wallet-signed transactions only; RMT never requests private keys
 - Transparent creator and protocol fee destinations
-- Market reserves remain separate from discretionary reward vaults
-- Mainnet uses delayed expandable 1-of-1 governance today, with an onchain path to add signers later
+- V6 splits genuine curve and canonical post-graduation swap fees 70% to the current creator-share recipient and 30% to RMT. Post-graduation fees may arrive as ETH or the launched token according to swap direction; they are not supply or liquidity principal.
+- Creators cannot change the payout address. Delayed V6 governance may only redirect future collections to the immutable RMT treasury or restore the immutable original creator.
+- The one-time official V6 RMT migration is permanently bound to legacy token `0xaB374D24aFBD943a134AdB381D9646e71C6f6C0C`; name/ticker protection is scoped to origin-verified RMT launches, not arbitrary external ERC-20 contracts.
+- Market reserves remain separate from fee splitters and treasury actions
+- The existing V5 governance remains only the authority of the existing version registry. V6 deploys separate protocol-wide governance with RMTMain as its sole initial signer, a 24-hour delay, a seven-day execution window, cancellable/expiring proposals, public transaction inspection, atomic signer/threshold rotation, and configuration-epoch invalidation of stale proposals. Any future signer must prove control and give expiring consent to the exact add-or-replace action, affected signer, threshold, and current epoch, and may revoke unconsumed consent before execution. Adding the first extra wallet creates 2-of-2 governance, not a backup key.
 - Public claims must match deployed behavior
 
 ## Architecture
@@ -59,5 +63,5 @@ forge test -vvv
 - Never commit or transmit a private key, seed phrase, API secret, or signed production transaction.
 - Governance signers are public address inputs only.
 - Automated tests and smoke transactions do not replace an independent audit.
-- Existing tokens, markets, reward vaults, and liquidity cannot be rewritten by a future factory version.
+- Existing tokens, markets, fee splitters, and liquidity cannot be rewritten by a future factory version.
 - Report suspected incidents using the public Support page and the private security channel once published.

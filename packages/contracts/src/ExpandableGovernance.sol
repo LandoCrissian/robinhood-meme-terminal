@@ -21,8 +21,9 @@ contract ExpandableGovernance {
     event ThresholdChanged(uint256 threshold);
 
     constructor(address initialSigner, uint256 executionDelay_) {
-        if (initialSigner == address(0)) revert InvalidConfiguration();
-        if (executionDelay_ > 30 days) revert InvalidConfiguration();
+        if (initialSigner == address(0) || executionDelay_ == 0 || executionDelay_ > 30 days) {
+            revert InvalidConfiguration();
+        }
         executionDelay = executionDelay_;
         isSigner[initialSigner] = true; signerCount = 1; emit SignerAdded(initialSigner);
     }

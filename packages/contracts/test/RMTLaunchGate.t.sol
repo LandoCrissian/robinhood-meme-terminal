@@ -47,12 +47,20 @@ contract RMTLaunchGateTest {
 
     function testCannotExecuteUnpauseBeforeDelay() public {
         uint64 executableAt = governance.schedule(gate);
-        (bool earlySuccess,) = address(outsider).call(abi.encodeCall(outsider.execute, (gate)));
+        (bool earlySuccess,) = address(guardian).call(abi.encodeCall(guardian.execute, (gate)));
         require(!earlySuccess, "unpaused early");
         vm.warp(executableAt);
-        outsider.execute(gate);
+        guardian.execute(gate);
         require(!gate.launchesPaused(), "did not unpause after delay");
         gate.requireLaunchesOpen();
+    }
+
+    function testOutsiderCannotExecuteUnpauseAfterDelay() public {
+        uint64 executableAt = governance.schedule(gate);
+        vm.warp(executableAt);
+        (bool success,) = address(outsider).call(abi.encodeCall(outsider.execute, (gate)));
+        require(!success, "outsider executed delayed unpause");
+        require(gate.launchesPaused(), "outsider reopened gate");
     }
 
     function testGuardianCanCancelScheduledUnpause() public {
@@ -67,7 +75,7 @@ contract RMTLaunchGateTest {
     function testGuardianCanPauseImmediatelyAfterUnpause() public {
         uint64 executableAt = governance.schedule(gate);
         vm.warp(executableAt);
-        outsider.execute(gate);
+        guardian.execute(gate);
         guardian.pause(gate);
         require(gate.launchesPaused(), "guardian did not pause");
     }
@@ -75,7 +83,7 @@ contract RMTLaunchGateTest {
     function testOutsiderCannotPause() public {
         uint64 executableAt = governance.schedule(gate);
         vm.warp(executableAt);
-        outsider.execute(gate);
+        governance.execute(gate);
         (bool success,) = address(outsider).call(abi.encodeCall(outsider.pause, (gate)));
         require(!success, "outsider paused launches");
         require(!gate.launchesPaused(), "gate unexpectedly paused");

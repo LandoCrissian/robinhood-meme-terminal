@@ -47,6 +47,8 @@ contract V4GraduationAdapter is IV6GraduationAdapter, IUnlockCallback {
     mapping(address token => address feeSplitter) public feeSplitters;
     mapping(address token => uint16 feeBps) public postGraduationFeeBps;
     mapping(address token => uint128 liquidity) public lockedLiquidity;
+    mapping(address token => uint256 amount) public lockedNativeDust;
+    mapping(address token => uint256 amount) public lockedTokenDust;
     bool private _entered;
 
     event FactoryBound(address indexed factory);
@@ -54,6 +56,9 @@ contract V4GraduationAdapter is IV6GraduationAdapter, IUnlockCallback {
     event PoolPrepared(address indexed token, PoolId indexed poolId);
     event LiquiditySeeded(
         address indexed token, PoolId indexed poolId, uint256 nativeAmount, uint256 tokenAmount, uint128 liquidity
+    );
+    event LiquidityDustLocked(
+        address indexed token, PoolId indexed poolId, uint256 nativeAmount, uint256 tokenAmount
     );
     event FeeRoutingConfigured(
         address indexed token, address indexed feeSplitter, uint16 postGraduationFeeBps
@@ -108,7 +113,7 @@ contract V4GraduationAdapter is IV6GraduationAdapter, IUnlockCallback {
     function bindFactory(address factory_) external {
         if (msg.sender != deployer) revert OnlyDeployer();
         if (factory != address(0)) revert FactoryAlreadyBound();
-        if (factory_ == address(0)) revert InvalidConfiguration();
+        if (factory_ == address(0) || factory_.code.length == 0) revert InvalidConfiguration();
         factory = factory_;
         emit FactoryBound(factory_);
     }
@@ -129,6 +134,11 @@ contract V4GraduationAdapter is IV6GraduationAdapter, IUnlockCallback {
         if (PoolId.unwrap(poolId) == bytes32(0)) revert PoolNotPrepared();
         if (market == address(0)) revert InvalidConfiguration();
         if (markets[token] != address(0)) revert MarketAlreadyBound();
+        address feeSplitter = feeSplitters[token];
+        if (
+            feeSplitter != address(0)
+                && DirectLaunchFeeSplitter(payable(feeSplitter)).authorizedMarket() != market
+        ) revert InvalidConfiguration();
         markets[token] = market;
         emit MarketBound(token, market, poolId);
     }
@@ -141,6 +151,7 @@ contract V4GraduationAdapter is IV6GraduationAdapter, IUnlockCallback {
             feeSplitter == address(0) || feeSplitter.code.length == 0 || feeBps == 0
                 || uint256(feeBps) * BPS_TO_V4_FEE != poolFee
                 || DirectLaunchFeeSplitter(payable(feeSplitter)).launchToken() != token
+                || DirectLaunchFeeSplitter(payable(feeSplitter)).graduationAdapter() != address(this)
         ) revert InvalidConfiguration();
 
         feeSplitters[token] = feeSplitter;
@@ -159,6 +170,8 @@ contract V4GraduationAdapter is IV6GraduationAdapter, IUnlockCallback {
         if (PoolId.unwrap(poolId) == bytes32(0)) revert PoolNotPrepared();
         isGraduated[token] = true;
 
+        uint256 nativeBalanceBefore = address(this).balance - msg.value;
+        uint256 tokenBalanceBefore = IERC20GraduationToken(token).balanceOf(address(this));
         if (!IERC20GraduationToken(token).transferFrom(msg.sender, address(this), tokenAmount)) {
             revert TokenTransferFailed();
         }
@@ -180,13 +193,20 @@ contract V4GraduationAdapter is IV6GraduationAdapter, IUnlockCallback {
 
         poolManager.unlock(abi.encode(ACTION_SEED, key, tickLower, tickUpper, liquidityAmount));
 
-        if (address(this).balance != 0 || IERC20GraduationToken(token).balanceOf(address(this)) != 0) {
+        uint256 nativeBalanceAfter = address(this).balance;
+        uint256 tokenBalanceAfter = IERC20GraduationToken(token).balanceOf(address(this));
+        if (nativeBalanceAfter < nativeBalanceBefore || tokenBalanceAfter < tokenBalanceBefore) {
             revert InvalidSettlement();
         }
+        uint256 nativeDust = nativeBalanceAfter - nativeBalanceBefore;
+        uint256 tokenDust = tokenBalanceAfter - tokenBalanceBefore;
 
         hook.open(key);
         lockedLiquidity[token] = liquidityAmount;
+        lockedNativeDust[token] = nativeDust;
+        lockedTokenDust[token] = tokenDust;
         emit LiquiditySeeded(token, poolId, msg.value, tokenAmount, liquidityAmount);
+        emit LiquidityDustLocked(token, poolId, nativeDust, tokenDust);
         return (address(poolManager), liquidityAmount);
     }
 
@@ -227,7 +247,9 @@ contract V4GraduationAdapter is IV6GraduationAdapter, IUnlockCallback {
         // This is a post-call conservation assertion, not state used to authorize another external call.
         // slither-disable-next-line reentrancy-balance
         uint256 tokenBalanceAfter = IERC20GraduationToken(token).balanceOf(address(this));
-        if (nativeBalanceAfter != nativeBalanceBefore || tokenBalanceAfter != tokenBalanceBefore) {
+        // Unsolicited native currency or launched tokens may arrive during recipient callbacks. They must not
+        // block permissionless collection. The adapter may never spend a balance that existed before collection.
+        if (nativeBalanceAfter < nativeBalanceBefore || tokenBalanceAfter < tokenBalanceBefore) {
             revert InvalidSettlement();
         }
 
@@ -250,14 +272,6 @@ contract V4GraduationAdapter is IV6GraduationAdapter, IUnlockCallback {
         (BalanceDelta delta,) = poolManager.modifyLiquidity(key, params, "");
         _settleDebt(key.currency0, delta.amount0());
         _settleDebt(key.currency1, delta.amount1());
-
-        uint256 nativeRemainder = address(this).balance;
-        uint256 tokenRemainder = key.currency1.balanceOfSelf();
-        if (nativeRemainder != 0 || tokenRemainder != 0) {
-            BalanceDelta donation = poolManager.donate(key, nativeRemainder, tokenRemainder, "");
-            _settleDebt(key.currency0, donation.amount0());
-            _settleDebt(key.currency1, donation.amount1());
-        }
 
         return abi.encode(liquidity);
     }
@@ -295,6 +309,10 @@ contract V4GraduationAdapter is IV6GraduationAdapter, IUnlockCallback {
         if (delta == 0) return;
         uint256 amount = uint256(-int256(delta));
         if (currency.isAddressZero()) {
+            // Reset PoolManager's transaction-scoped synced-currency slot before native settlement.
+            // A prior unlock in the same batched transaction may otherwise leave an ERC-20 selected
+            // and make this native payment settle against the wrong currency balance.
+            poolManager.sync(currency);
             poolManager.settle{value: amount}();
         } else {
             poolManager.sync(currency);

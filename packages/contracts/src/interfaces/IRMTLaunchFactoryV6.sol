@@ -50,10 +50,18 @@ interface IRMTLaunchFactoryV6 {
         external
         returns (address token, address market, address rewardVault);
 
+    function launchOfficialWhilePaused(string calldata metadataURI)
+        external
+        returns (address token, address market, address rewardVault);
+
     function launchCount() external view returns (uint256);
     function getLaunch(uint256 launchId) external view returns (LaunchView memory);
     function isNameUsed(string calldata name) external view returns (bool);
     function isSymbolUsed(string calldata symbol) external view returns (bool);
-    function canMigrateOfficialIdentity(address launcher, string calldata name, string calldata symbol)
-        external view returns (bool);
+    function canMigrateOfficialIdentity(
+        address launcher,
+        bytes32 policyId,
+        string calldata name,
+        string calldata symbol
+    ) external view returns (bool);
 }

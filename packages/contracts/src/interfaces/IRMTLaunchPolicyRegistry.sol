@@ -2,8 +2,8 @@
 pragma solidity ^0.8.26;
 
 /// @notice Versioned launch-policy registry for RMT V6 and later factories.
-/// @dev Policies are append-only. V6 uses direct creator and protocol treasury destinations;
-///      future policy versions may introduce additional reviewed routing modules.
+/// @dev Policies are append-only. A registry instance locks its canonical market and graduation
+///      adapter; changing execution components requires a separately reviewed protocol deployment.
 interface IRMTLaunchPolicyRegistry {
     struct LaunchPolicy {
         bytes32 policyId;
@@ -29,6 +29,9 @@ interface IRMTLaunchPolicyRegistry {
     event PolicyAvailabilityChanged(bytes32 indexed policyId, bool enabled, bool publiclySelectable);
     event DefaultPolicyChanged(bytes32 indexed previousPolicyId, bytes32 indexed newPolicyId);
 
+    function governance() external view returns (address);
+    function canonicalMarketImplementation() external view returns (address);
+    function canonicalGraduationAdapter() external view returns (address);
     function defaultPolicyId() external view returns (bytes32);
     function getPolicy(bytes32 policyId) external view returns (LaunchPolicy memory);
     function policyHash(bytes32 policyId) external view returns (bytes32);

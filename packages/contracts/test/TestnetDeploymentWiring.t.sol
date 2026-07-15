@@ -12,7 +12,10 @@ import {HookMiner} from "@uniswap/v4-periphery/src/utils/HookMiner.sol";
 contract TestnetDeploymentWiringTest {
     function testMinedHookAndAllBindingsMatchDeploymentPlan() public {
         PoolManager manager = new PoolManager(address(this));
-        uint160 flags = uint160(Hooks.BEFORE_INITIALIZE_FLAG | Hooks.BEFORE_ADD_LIQUIDITY_FLAG | Hooks.BEFORE_SWAP_FLAG);
+        uint160 flags = uint160(
+            Hooks.BEFORE_INITIALIZE_FLAG | Hooks.BEFORE_ADD_LIQUIDITY_FLAG | Hooks.BEFORE_SWAP_FLAG
+                | Hooks.BEFORE_DONATE_FLAG
+        );
         bytes memory constructorArgs = abi.encode(IPoolManager(address(manager)), address(this));
         (address expectedHook, bytes32 salt) =
             HookMiner.find(address(this), flags, type(V4GraduationHook).creationCode, constructorArgs);

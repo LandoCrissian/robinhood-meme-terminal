@@ -33,7 +33,12 @@ const marketSignalsAbi = [
 
 const publicClient = createPublicClient({
   chain: activeChain,
-  transport: http(activeChain.rpcUrls.default.http[0], { retryCount: 2, timeout: 8_000 })
+  transport: http(
+    isMainnetRelease
+      ? process.env.RMT_RPC_URL ?? process.env.NEXT_PUBLIC_RMT_RPC_URL ?? activeChain.rpcUrls.default.http[0]
+      : process.env.RMT_TESTNET_RPC_URL ?? process.env.NEXT_PUBLIC_RMT_TESTNET_RPC_URL ?? activeChain.rpcUrls.default.http[0],
+    { retryCount: 3, timeout: 12_000 }
+  )
 });
 
 async function resolveActiveFactory() {
@@ -98,6 +103,13 @@ async function readMarketSignals(market: Address, launchBlock: bigint, latestBlo
 export async function readFreshLaunches(limit = 25): Promise<LaunchFeedItem[]> {
   const factoryAddress = await resolveActiveFactory();
   if (!factoryAddress) return [];
+
+  const protocolVersion = await publicClient.readContract({
+    address: factoryAddress,
+    abi: rmtLaunchFactoryV6Abi,
+    functionName: "protocolVersion"
+  }).catch(() => null);
+  if (protocolVersion !== 6) return [];
 
   const latestBlock = await publicClient.getBlockNumber();
   const configuredStart = process.env.NEXT_PUBLIC_FACTORY_START_BLOCK;

@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-/// @notice Shared V6 launch gate. The guardian can stop launches immediately; only governance can reopen after delay.
+/// @notice Shared V6 launch gate. The guardian can stop launches immediately; governance authorizes reopening,
+///         then only the guardian or governance can finalize it after the delay.
 contract RMTLaunchGate {
     address public immutable governance;
     address public immutable guardian;
@@ -67,7 +68,10 @@ contract RMTLaunchGate {
         emit UnpauseCancelled();
     }
 
-    function executeUnpause() external {
+    /// @notice Completes a delayed reopening only after the operator's final production checks.
+    /// @dev Execution is intentionally not permissionless: otherwise any observer could race the reviewed
+    ///      release console as soon as the delay expired and bypass its final live safety boundary.
+    function executeUnpause() external onlyGuardianOrGovernance {
         if (!launchesPaused) revert AlreadyUnpaused();
         uint64 executableAt = unpauseExecutableAt;
         if (executableAt == 0) revert UnpauseNotScheduled();

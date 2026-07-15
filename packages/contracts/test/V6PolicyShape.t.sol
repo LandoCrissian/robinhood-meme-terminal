@@ -52,3 +52,4 @@ contract V6PolicyShapeTest {
         require(policy.fairStartMode == 0, "open launch mode");
     }
 }
+

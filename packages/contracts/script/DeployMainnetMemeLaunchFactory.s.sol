@@ -57,7 +57,10 @@ contract DeployMainnetMemeLaunchFactory {
             }
         }
 
-        uint160 flags = uint160(Hooks.BEFORE_INITIALIZE_FLAG | Hooks.BEFORE_ADD_LIQUIDITY_FLAG | Hooks.BEFORE_SWAP_FLAG);
+        uint160 flags = uint160(
+            Hooks.BEFORE_INITIALIZE_FLAG | Hooks.BEFORE_ADD_LIQUIDITY_FLAG | Hooks.BEFORE_SWAP_FLAG
+                | Hooks.BEFORE_DONATE_FLAG
+        );
         bytes memory constructorArgs = abi.encode(IPoolManager(Config.POOL_MANAGER), deployer);
         (address expectedHook, bytes32 salt) =
             HookMiner.find(Config.CREATE2_DEPLOYER, flags, type(V4GraduationHook).creationCode, constructorArgs);

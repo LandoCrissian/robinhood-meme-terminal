@@ -2,6 +2,7 @@ import { createPublicClient, getAddress, http, isAddress, keccak256, parseEther,
 import {
   getFactoryAddress,
   publicMainnetFactoryAddress,
+  publicMainnetOperatorAddress,
   publicMainnetVersionRegistryAddress,
   rmtLaunchFactoryV6Abi,
   versionRegistryAbi
@@ -20,12 +21,27 @@ const adapterHealthAbi = [
   { type: "function", name: "factory", stateMutability: "view", inputs: [], outputs: [{ type: "address" }] }
 ] as const;
 
+const governanceHealthAbi = [
+  { type: "function", name: "executionDelay", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] },
+  { type: "function", name: "executionWindow", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] },
+  { type: "function", name: "configurationEpoch", stateMutability: "view", inputs: [], outputs: [{ type: "uint64" }] },
+  { type: "function", name: "threshold", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] },
+  { type: "function", name: "signerCount", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] },
+  { type: "function", name: "isSigner", stateMutability: "view", inputs: [{ name: "signer", type: "address" }], outputs: [{ type: "bool" }] }
+] as const;
+
 const client = createPublicClient({
   chain: activeChain,
-  transport: http(activeChain.rpcUrls.default.http[0], { retryCount: 2, timeout: 8_000 })
+  transport: http(
+    isMainnetRelease
+      ? process.env.RMT_RPC_URL ?? process.env.NEXT_PUBLIC_RMT_RPC_URL ?? activeChain.rpcUrls.default.http[0]
+      : process.env.RMT_TESTNET_RPC_URL ?? process.env.NEXT_PUBLIC_RMT_TESTNET_RPC_URL ?? activeChain.rpcUrls.default.http[0],
+    { retryCount: 3, timeout: 12_000 }
+  )
 });
 const V5_VERSION = keccak256(toHex("RMT_FACTORY_V5"));
 const V6_VERSION = keccak256(toHex("RMT_FACTORY_V6"));
+const FAIR_POLICY_ID = keccak256(toHex("RMT_SIMPLE_FAIR_V1"));
 
 function check(key: SystemHealthCheck["key"], label: string, healthy: boolean, detail: string): SystemHealthCheck {
   return { key, label, state: healthy ? "operational" : "degraded", detail };
@@ -82,12 +98,30 @@ export async function readSystemHealth(): Promise<SystemHealthReport> {
     if (!factory) throw new Error("Active factory is unavailable.");
 
     if (factoryVersion === V6_VERSION) {
-      const [bytecode, protocolVersion, launchCount, launchesPaused, defaultPolicyId] = await Promise.all([
+      const [bytecode, protocolVersion, launchCount, launchesPaused, defaultPolicyId, payoutAuthority] = await Promise.all([
         client.getBytecode({ address: factory }),
         client.readContract({ address: factory, abi: rmtLaunchFactoryV6Abi, functionName: "protocolVersion" }),
         client.readContract({ address: factory, abi: factoryHealthAbi, functionName: "launchCount" }),
         client.readContract({ address: factory, abi: rmtLaunchFactoryV6Abi, functionName: "launchesPaused" }),
-        client.readContract({ address: factory, abi: rmtLaunchFactoryV6Abi, functionName: "defaultPolicyId" })
+        client.readContract({ address: factory, abi: rmtLaunchFactoryV6Abi, functionName: "defaultPolicyId" }),
+        client.readContract({ address: factory, abi: rmtLaunchFactoryV6Abi, functionName: "creatorPayoutAuthority" })
+      ]);
+      const [
+        governanceCode,
+        governanceDelay,
+        governanceWindow,
+        governanceEpoch,
+        governanceThreshold,
+        governanceSignerCount,
+        operatorIsSigner
+      ] = await Promise.all([
+        client.getBytecode({ address: payoutAuthority }),
+        client.readContract({ address: payoutAuthority, abi: governanceHealthAbi, functionName: "executionDelay" }),
+        client.readContract({ address: payoutAuthority, abi: governanceHealthAbi, functionName: "executionWindow" }),
+        client.readContract({ address: payoutAuthority, abi: governanceHealthAbi, functionName: "configurationEpoch" }),
+        client.readContract({ address: payoutAuthority, abi: governanceHealthAbi, functionName: "threshold" }),
+        client.readContract({ address: payoutAuthority, abi: governanceHealthAbi, functionName: "signerCount" }),
+        client.readContract({ address: payoutAuthority, abi: governanceHealthAbi, functionName: "isSigner", args: [publicMainnetOperatorAddress] })
       ]);
       const policy = await client.readContract({
         address: factory,
@@ -95,26 +129,43 @@ export async function readSystemHealth(): Promise<SystemHealthReport> {
         functionName: "getPolicy",
         args: [defaultPolicyId]
       });
+      const payoutControlHealthy = Boolean(governanceCode && governanceCode !== "0x")
+        && governanceDelay === 86_400n
+        && governanceWindow === 604_800n
+        && governanceEpoch > 0n
+        && governanceThreshold > 0n
+        && governanceThreshold <= governanceSignerCount
+        && (governanceSignerCount === 1n || governanceThreshold > 1n)
+        && operatorIsSigner;
+      const payoutControlDetail = payoutControlHealthy
+        ? `creator payouts ${governanceThreshold.toString()}-of-${governanceSignerCount.toString()} delayed governance`
+        : `creator-payout authority mismatch or governance verification failed (${payoutAuthority.slice(0, 8)}…${payoutAuthority.slice(-6)})`;
       checks.push(check(
         "factory",
         "V6 launch factory",
-        Boolean(bytecode && bytecode !== "0x") && protocolVersion === 6,
-        `${launchCount.toString()} V6 launch${launchCount === 1n ? "" : "es"} · launches ${launchesPaused ? "paused safely" : "open"}`
+        Boolean(bytecode && bytecode !== "0x") && protocolVersion === 6 && payoutControlHealthy,
+        `${launchCount.toString()} V6 launch${launchCount === 1n ? "" : "es"} · launches ${launchesPaused ? "paused safely" : "open"} · ${payoutControlDetail}`
       ));
-      const expectedEconomics = policy.enabled && policy.publiclySelectable
+      const expectedEconomics = defaultPolicyId === FAIR_POLICY_ID
+        && policy.policyId === FAIR_POLICY_ID && policy.policyVersion === 1
+        && policy.enabled && policy.publiclySelectable
         && policy.curveFeeBps === 100 && policy.creatorFeeShareBps === 7_000
-        && policy.protocolFeeShareBps === 3_000 && policy.graduationTarget === parseEther("2");
+        && policy.protocolFeeShareBps === 3_000 && policy.postGraduationFeeBps === 50
+        && policy.graduationTarget === parseEther("2")
+        && policy.fairStartMode === 1 && policy.fairStartDelayBlocks === 1n
+        && policy.fairStartDurationBlocks === 10n && policy.fairStartMaxTxBps === 100
+        && policy.fairStartMaxWalletBps === 300;
       checks.push(check(
         "economics",
         "Immutable V6 launch economics",
         expectedEconomics,
-        `${Number(policy.curveFeeBps) / 100}% curve fee · 70/30 creator/RMT split · ${formatEth(policy.graduationTarget)} ETH graduation`
+        `${Number(policy.curveFeeBps) / 100}% curve fee · 70/30 creator-share/RMT split · ${formatEth(policy.graduationTarget)} ETH graduation`
       ));
       checks.push(check(
         "graduation",
-        "Permanent post-graduation flywheel",
-        policy.postGraduationFeeBps === 50,
-        `${Number(policy.postGraduationFeeBps) / 100}% V4 pool fee · policy ${defaultPolicyId.slice(0, 10)}…`
+        "Configured post-graduation fee policy",
+        expectedEconomics,
+        `${Number(policy.postGraduationFeeBps) / 100}% V4 pool fee · may accrue in ETH and/or token by swap direction · policy ${defaultPolicyId.slice(0, 10)}…`
       ));
       return {
         ok: checks.every((item) => item.state === "operational"),

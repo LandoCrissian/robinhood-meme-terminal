@@ -10,9 +10,12 @@ contract OfficialRMTIdentityMigration {
 
     address public immutable officialLauncher;
     address public immutable authorizedFactory;
+    address public immutable officialLegacyToken;
     bool public consumed;
 
-    event OfficialIdentityMigrationConsumed(address indexed launcher, address indexed factory);
+    event OfficialIdentityMigrationConsumed(
+        address indexed launcher, address indexed factory, address indexed officialLegacyToken
+    );
 
     error OnlyAuthorizedFactory();
     error InvalidConfiguration();
@@ -20,10 +23,14 @@ contract OfficialRMTIdentityMigration {
     error InvalidOfficialIdentity();
     error MigrationAlreadyConsumed();
 
-    constructor(address officialLauncher_, address authorizedFactory_) {
-        if (officialLauncher_ == address(0) || authorizedFactory_ == address(0)) revert InvalidConfiguration();
+    constructor(address officialLauncher_, address authorizedFactory_, address officialLegacyToken_) {
+        if (
+            officialLauncher_ == address(0) || authorizedFactory_ == address(0)
+                || officialLegacyToken_ == address(0) || officialLegacyToken_.code.length == 0
+        ) revert InvalidConfiguration();
         officialLauncher = officialLauncher_;
         authorizedFactory = authorizedFactory_;
+        officialLegacyToken = officialLegacyToken_;
     }
 
     function consume(address launcher, bytes32 canonicalNameHash, bytes32 canonicalSymbolHash) external {
@@ -35,7 +42,7 @@ contract OfficialRMTIdentityMigration {
         }
 
         consumed = true;
-        emit OfficialIdentityMigrationConsumed(launcher, msg.sender);
+        emit OfficialIdentityMigrationConsumed(launcher, msg.sender, officialLegacyToken);
     }
 
     function canMigrate(address launcher, bytes32 canonicalNameHash, bytes32 canonicalSymbolHash)
