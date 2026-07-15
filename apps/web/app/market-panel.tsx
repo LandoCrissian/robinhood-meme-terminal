@@ -119,7 +119,8 @@ function newestTrades(trades: RecentTrade[]) {
 function parseIndexedTradePayload(payload: unknown) {
   if (!payload || typeof payload !== "object") throw new Error("Invalid indexed trade payload.");
   const candidate = payload as Partial<IndexedTradePayload>;
-  if (!/^\d+$/.test(candidate.indexedThrough ?? "") || !Array.isArray(candidate.trades)) {
+  const indexedThrough = candidate.indexedThrough;
+  if (!indexedThrough || !/^\d+$/.test(indexedThrough) || !Array.isArray(candidate.trades)) {
     throw new Error("Invalid indexed trade payload.");
   }
 
@@ -156,7 +157,7 @@ function parseIndexedTradePayload(payload: unknown) {
     } satisfies RecentTrade;
   });
 
-  return { trades: newestTrades(trades), indexedThrough: BigInt(candidate.indexedThrough) };
+  return { trades: newestTrades(trades), indexedThrough: BigInt(indexedThrough) };
 }
 
 async function loadIndexedMarketTrades(market: Address) {
