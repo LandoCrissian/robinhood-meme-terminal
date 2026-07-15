@@ -474,8 +474,9 @@ dl{grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr)}
 .walletPresetNote{display:block;margin-top:6px;color:#69766e;font-size:.57rem;line-height:1.35}
 .quickTradeConnect{display:flex;flex-direction:column;gap:7px}
 .quickTradeConnect .walletMenu,.quickTradeConnect .wallet{width:100%}
+.quickTradeConnect .walletMenu{position:static}
 .quickTradeConnect .wallet{min-height:48px}
-.quickTradeConnect .walletPopover{top:auto;right:0;bottom:calc(100% + 8px)}
+.quickTradeConnect .walletPopover{position:absolute;top:14px;right:14px;bottom:auto}
 .quickTradeConnect>small{color:#718078;font-size:.59rem;line-height:1.4;text-align:center}
 
 @media(max-width:900px){
