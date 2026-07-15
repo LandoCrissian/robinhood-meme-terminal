@@ -72,14 +72,25 @@ After reconciliation:
 1. Store the indexer base URL as encrypted Vercel production variable `RMT_INDEXER_URL`.
 2. Store the same long random bearer token in Railway and Vercel as `RMT_INDEXER_READ_TOKEN`; never prefix either value with `NEXT_PUBLIC_`.
 3. Set `RMT_INDEXER_TIMEOUT_MS=5000` in Vercel.
-4. Route `/api/markets/*/trades` through Cloudflare and honor its committed five-second shared-cache headers with stale-while-revalidate enabled.
-5. Apply a per-IP rate limit to the same-origin market-data route while exempting static assets and wallet transaction RPC calls.
+4. Serve `/api/markets/*/trades` through Vercel's edge cache and honor its committed five-second shared-cache headers with stale-while-revalidate enabled.
+5. Use a Vercel Firewall rule restricted to `www.rmtlaunch.fun`, request paths beginning with `/api/markets/`, and request paths ending in `/trades`. Observe the exact match in log-only mode before enabling a per-IP rate limit. Never include static assets, launch routes, wallet transaction RPC calls, or contract writes.
 6. Keep the existing verified-factory RPC feed available as an explicit degraded fallback.
 7. Display a delayed-data state when both the indexer and direct-chain fallback fail.
-8. Add an independent uptime check for the indexer `/health` endpoint.
-9. Alert when lag exceeds twice the confirmation depth.
+8. Keep `.github/workflows/production-health.yml` scheduled every five minutes. It checks the Railway `/health` endpoint and the public official-RMT trade route independently of the application deployment.
+9. Treat indexer lag above twice the confirmation depth, a stale sync, an incorrect V6 binding, a proxy fallback, or missing shared-cache headers as a failed production-health run.
 
 Trading remains wallet-to-contract and must never depend on the indexer being available.
+
+## Current production cutover
+
+- **Railway indexer:** https://robinhood-meme-terminal-production.up.railway.app
+- **Public market-data boundary:** `https://www.rmtlaunch.fun/api/markets/{market}/trades`
+- **Official RMT V6 token:** `0xdBa33be56C89CC9fc014c4459028d7e5c7878671`
+- **Official RMT V6 market:** `0xb26Fb775c0ac365d369BEe9ac2E044C5D90FfBee`
+- **Edge protection:** exact-host and exact-route-shape Vercel Firewall observation rule; wallet and contract traffic are outside the rule
+- **Independent monitoring:** GitHub Actions validates the canonical domain, protocol health, V6 launch feed, Railway health and lag, official-token trade data, indexer source header, and shared-cache policy every five minutes
+
+The public proxy can fall back to verified direct-chain reads when the indexer is unavailable. That degraded read path is intentional. Trading remains wallet-to-contract and does not pass through Railway, PostgreSQL, or the market-data proxy.
 
 ## Cost boundary
 
