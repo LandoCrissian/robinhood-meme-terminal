@@ -63,10 +63,10 @@ function QuickTradeDialog({ launch, side, onClose }: { launch: LaunchFeedItem; s
     <section className="quickTradeDialog" role="dialog" aria-modal="true" aria-label={`${side === "buy" ? "Buy" : "Sell"} ${launch.name}`}>
       <header className="quickTradeHeader">
         <div className="quickTradeIdentity"><TokenArtwork launch={launch} featured /><span><small>QUICK TRADE · RMT V6</small><strong>{launch.name}</strong><em>${displaySymbol(launch.symbol)}</em></span></div>
-        <div className="quickTradeHeaderActions"><Link href={`/token/${launch.token}?side=${side}#trade`}>Full page ↗</Link><button ref={closeButton} type="button" aria-label="Close quick trade" onClick={onClose}>×</button></div>
+        <div className="quickTradeHeaderActions"><Link href={`/token/${launch.token}?side=${side}&launch=${launch.launchId}#trade`}>Full page ↗</Link><button ref={closeButton} type="button" aria-label="Close quick trade" onClick={onClose}>×</button></div>
       </header>
       <div className="quickTradeBody">
-        <MarketPanel key={`${launch.token}-${side}`} tokenAddress={launch.token} symbol={displaySymbol(launch.symbol)} totalSupply={FIXED_SUPPLY} creator={launch.creator} compact initialMode={side} />
+        <MarketPanel key={`${launch.token}-${side}`} tokenAddress={launch.token} symbol={displaySymbol(launch.symbol)} totalSupply={FIXED_SUPPLY} creator={launch.creator} compact initialMode={side} launchHint={launch} />
       </div>
       <footer className="quickTradeFooter"><span>Live onchain quote</span><span>Wallet confirmation required</span><span>RMT never controls your funds</span></footer>
     </section>
@@ -131,7 +131,7 @@ export function FreshLaunchFeed() {
 
       {hot.length > 0 && <div className="hotGrid">{hot.map((launch, index) => (
         <article className="hotCard" key={`hot-${launch.transactionHash}-${launch.launchId}`}>
-          <Link className="hotCardMain" href={`/token/${launch.token}`} aria-label={`Open ${launch.name}`}>
+          <Link className="hotCardMain" href={`/token/${launch.token}?launch=${launch.launchId}`} aria-label={`Open ${launch.name}`}>
             <div className="hotRank">0{index + 1}</div>
             <TokenArtwork launch={launch} featured />
             <div className="hotIdentity"><strong>{launch.name}</strong><span>{"$" + displaySymbol(launch.symbol)}</span></div>
@@ -145,7 +145,7 @@ export function FreshLaunchFeed() {
       <div className="latestHeader"><div><p className="eyebrow">JUST LAUNCHED</p><h3>Latest tokens</h3></div><Link href="/launch">Launch yours</Link></div>
       {launches.length === 0 ? <div className="emptyFeed"><strong>{status === "loading" ? "Reading Robinhood Chain…" : "No launches to display"}</strong><span>{message}</span>{status === "error" && <button onClick={() => void refresh()}>Retry</button>}</div> : visibleLaunches.map((launch) => (
         <article className="launchRowCard" key={`${launch.transactionHash}-${launch.launchId}`}>
-          <Link className="launchRowMain" href={`/token/${launch.token}`} aria-label={`Open ${launch.name}`}>
+          <Link className="launchRowMain" href={`/token/${launch.token}?launch=${launch.launchId}`} aria-label={`Open ${launch.name}`}>
             <TokenArtwork launch={launch} />
             <div className="identity"><strong>{launch.name}</strong><span>{"$" + displaySymbol(launch.symbol) + " • #" + launch.launchId}</span></div>
             <div className="launchMetrics"><span><small>Reserve</small><strong>{reserveLabel(launch.reserveWei)}</strong></span><span><small>Volume</small><strong>{volumeLabel(launch.volumeWei)}</strong></span><span><small>Graduation</small><strong>{launch.graduated ? "Complete" : `${launch.progressBps / 100}%`}</strong></span></div>
