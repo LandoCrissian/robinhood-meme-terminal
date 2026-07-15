@@ -475,6 +475,7 @@ dl{grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr)}
 .quickTradeConnect{display:flex;flex-direction:column;gap:7px}
 .quickTradeConnect .walletMenu,.quickTradeConnect .wallet{width:100%}
 .quickTradeConnect .wallet{min-height:48px}
+.quickTradeConnect .walletPopover{top:auto;right:0;bottom:calc(100% + 8px)}
 .quickTradeConnect>small{color:#718078;font-size:.59rem;line-height:1.4;text-align:center}
 
 @media(max-width:900px){
@@ -523,6 +524,7 @@ dl{grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr)}
   .quickMarketPanel .marketOverview{gap:8px}
   .quickMarketPanel .marketOverview .priceChart{padding:11px}
   .quickMarketPanel .priceChart svg{max-height:125px}
+  .quickTradeConnect .walletPopover{position:fixed;top:50%;right:auto;bottom:auto;left:50%;width:min(350px,calc(100vw - 32px));max-height:calc(100dvh - 32px);overflow:auto;transform:translate(-50%,-50%)}
 }
 
 @media(max-width:390px){
