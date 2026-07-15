@@ -146,11 +146,25 @@ const launchPolicyComponents = [
   { name: "fairStartMaxWalletBps", type: "uint16" }
 ] as const;
 
+const launchViewComponents = [
+  { name: "token", type: "address" },
+  { name: "market", type: "address" },
+  { name: "rewardVault", type: "address" },
+  { name: "graduationPoolId", type: "bytes32" },
+  { name: "creator", type: "address" },
+  { name: "policyId", type: "bytes32" },
+  { name: "policyVersion", type: "uint32" },
+  { name: "createdAt", type: "uint64" },
+  { name: "officialMigration", type: "bool" }
+] as const;
+
 export const rmtLaunchFactoryV6Abi = [
   { type: "function", name: "protocolVersion", stateMutability: "pure", inputs: [], outputs: [{ type: "uint32" }] },
   { type: "function", name: "launchesPaused", stateMutability: "view", inputs: [], outputs: [{ type: "bool" }] },
   { type: "function", name: "creatorPayoutAuthority", stateMutability: "view", inputs: [], outputs: [{ type: "address" }] },
   { type: "function", name: "defaultPolicyId", stateMutability: "view", inputs: [], outputs: [{ type: "bytes32" }] },
+  { type: "function", name: "launchCount", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] },
+  { type: "function", name: "getLaunch", stateMutability: "view", inputs: [{ name: "launchId", type: "uint256" }], outputs: [{ name: "launch", type: "tuple", components: launchViewComponents }] },
   { type: "function", name: "getPolicy", stateMutability: "view", inputs: [{ name: "policyId", type: "bytes32" }], outputs: [{ name: "policy", type: "tuple", components: launchPolicyComponents }] },
   { type: "function", name: "isNameUsed", stateMutability: "view", inputs: [{ name: "name", type: "string" }], outputs: [{ type: "bool" }] },
   { type: "function", name: "isSymbolUsed", stateMutability: "view", inputs: [{ name: "symbol", type: "string" }], outputs: [{ type: "bool" }] },

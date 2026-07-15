@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { encodeFunctionData, formatEther, formatUnits, maxUint256, parseEther, parseUnits, type Address } from "viem";
 import { useAccount, useBalance, useCapabilities, usePublicClient, useReadContract, useSendCalls, useWaitForCallsStatus, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { activeChain, isMainnetRelease } from "../lib/network";
-import { useLaunchRecord } from "../lib/use-launch-record";
+import { useLaunchRecord, type LaunchRecordHint } from "../lib/use-launch-record";
 import { PriceHistoryChart, type PricePoint } from "./price-history-chart";
 import { WalletButton } from "./wallet-button";
 
@@ -110,9 +110,10 @@ type MarketPanelProps = {
   creator: Address;
   compact?: boolean;
   initialMode?: "buy" | "sell";
+  launchHint?: LaunchRecordHint;
 };
 
-export function MarketPanel({ tokenAddress, symbol, totalSupply, creator, compact = false, initialMode }: MarketPanelProps) {
+export function MarketPanel({ tokenAddress, symbol, totalSupply, creator, compact = false, initialMode, launchHint }: MarketPanelProps) {
   const publicClient = usePublicClient({ chainId: activeChain.id });
   const { address: account, isConnected } = useAccount();
   const [recentTrades, setRecentTrades] = useState<RecentTrade[]>([]);
@@ -137,7 +138,7 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply, creator, compac
   const capabilities = useCapabilities({ chainId: activeChain.id, query: { enabled: Boolean(account) } });
   const { sendCalls, data: calls, isPending: callsPending, error: callsError, reset: resetCalls } = useSendCalls();
   const callsReceipt = useWaitForCallsStatus({ id: calls?.id, query: { enabled: Boolean(calls?.id) } });
-  const launchRecord = useLaunchRecord(tokenAddress);
+  const launchRecord = useLaunchRecord(tokenAddress, launchHint);
   const market = launchRecord.data?.market ?? null;
   const launchBlock = launchRecord.data?.blockNumber ?? 0n;
   const lookupError = launchRecord.error ? (launchRecord.error instanceof Error ? launchRecord.error.message : "Unable to read market.") : launchRecord.isSuccess && !launchRecord.data ? "Market record not found." : undefined;
@@ -178,16 +179,11 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply, creator, compac
     let cancelled = false;
     async function loadTrades() {
       try {
-        let cursor = await client.getBlockNumber();
-        const newestFirst: RecentTrade[] = [];
-        while (cursor >= launchBlock && newestFirst.length < 12) {
-          const candidate = cursor > 19_999n ? cursor - 19_999n : 0n;
-          const fromBlock = candidate < launchBlock ? launchBlock : candidate;
-          const logs = await client.getContractEvents({ address: marketAddress, abi: marketAbi, eventName: "Trade", fromBlock, toBlock: cursor, strict: true });
-          newestFirst.push(...logs.reverse().flatMap((log) => log.transactionHash ? [{ transactionHash: log.transactionHash, trader: log.args.trader, isBuy: log.args.isBuy, tokenAmount: log.args.tokenAmount, ethAmount: log.args.ethAmount, feeAmount: log.args.feeAmount, virtualEthReserve: log.args.virtualEthReserve, virtualTokenReserve: log.args.virtualTokenReserve, blockNumber: log.blockNumber }] : []));
-          if (fromBlock === launchBlock) break;
-          cursor = fromBlock - 1n;
-        }
+        const latestBlock = await client.getBlockNumber();
+        const recentStart = latestBlock > 19_999n ? latestBlock - 19_999n : 0n;
+        const fromBlock = launchBlock > recentStart ? launchBlock : recentStart;
+        const logs = await client.getContractEvents({ address: marketAddress, abi: marketAbi, eventName: "Trade", fromBlock, toBlock: latestBlock, strict: true });
+        const newestFirst: RecentTrade[] = logs.reverse().flatMap((log) => log.transactionHash ? [{ transactionHash: log.transactionHash, trader: log.args.trader, isBuy: log.args.isBuy, tokenAmount: log.args.tokenAmount, ethAmount: log.args.ethAmount, feeAmount: log.args.feeAmount, virtualEthReserve: log.args.virtualEthReserve, virtualTokenReserve: log.args.virtualTokenReserve, blockNumber: log.blockNumber }] : []);
         if (cancelled) return;
         setRecentTrades(newestFirst.slice(0, 12));
         setTradeHistoryError(undefined);
@@ -437,8 +433,8 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply, creator, compac
     window.requestAnimationFrame(() => (compact ? creatorAnalyticsRef.current : marketDetailRef.current)?.scrollIntoView({ behavior: "smooth", block: "start" }));
   }
 
-  if (lookupError) return <section className={compact ? "quickMarketPanel" : "panel marketPanel"}><p className="eyebrow">LIVE MARKET</p><h2>Market unavailable</h2><p>{lookupError}</p></section>;
-  if (!market) return <section className={compact ? "quickMarketPanel" : "panel marketPanel"}><p className="eyebrow">LIVE MARKET</p><h2>Reading bonding curve…</h2></section>;
+  if (lookupError) return <section className={compact ? "quickMarketPanel marketLookupState" : "panel marketPanel marketLookupState"}><p className="eyebrow">LIVE MARKET</p><h2>Market connection delayed</h2><p>{lookupError}</p><button type="button" onClick={() => void launchRecord.refetch()}>Retry market</button></section>;
+  if (!market) return <section className={compact ? "quickMarketPanel marketLookupState" : "panel marketPanel marketLookupState"}><p className="eyebrow">LIVE MARKET</p><h2>Opening live market…</h2><p>Verifying this token directly against the active V6 factory.</p><button type="button" disabled={launchRecord.isFetching} onClick={() => void launchRecord.refetch()}>{launchRecord.isFetching ? "Verifying V6…" : "Retry now"}</button></section>;
 
   return (
     <section className={compact ? "quickMarketPanel" : "panel marketPanel"} id={compact ? undefined : "trade"}>
@@ -489,7 +485,7 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply, creator, compac
           {(writeError || receipt.error || callsReceipt.error) && <div className="errors"><span>{writeError?.message || receipt.error?.message || callsReceipt.error?.message}</span></div>}
           {tradeMessage && <div className="callout"><strong>{tradeMessage}</strong></div>}
           {receipt.isSuccess && lastAction !== "approve" && <div className="callout"><strong>{lastAction === "sell" ? "Sell confirmed" : "Buy confirmed"}</strong><a href={`${activeChain.blockExplorers.default.url}/tx/${hash}`} target="_blank" rel="noreferrer">View transaction ↗</a></div>}
-          {compact && !isConnected ? <div className="quickTradeConnect"><WalletButton target={isMainnetRelease ? "mainnet" : "testnet"} returnTo={`/token/${tokenAddress}?side=${mode}#trade`} /><small>Connect once. Your wallet will still confirm every onchain trade.</small></div> : isMainnetRelease && graduated.data && migratedToV4
+          {compact && !isConnected ? <div className="quickTradeConnect"><WalletButton target={isMainnetRelease ? "mainnet" : "testnet"} returnTo={`/token/${tokenAddress}?side=${mode}${launchHint ? `&launch=${launchHint.launchId}` : ""}#trade`} /><small>Connect once. Your wallet will still confirm every onchain trade.</small></div> : isMainnetRelease && graduated.data && migratedToV4
             ? <a className={`launch dexTradeLink ${mode === "sell" ? "sellAction" : ""}`} href={uniswapSwapUrl} target="_blank" rel="noopener noreferrer">{mode === "buy" ? `Buy ${symbol} on Uniswap ↗` : `Sell ${symbol} on Uniswap ↗`}</a>
             : <button className={`launch ${mode === "sell" ? "sellAction" : ""}`} disabled={!isConnected || busy || Boolean(graduated.data) || preflight.status !== "ready" || (creatorRiskRequired && !creatorRiskAccepted) || (mode === "buy" ? buyOut === 0n : sellOut === 0n)} onClick={trade}>{graduated.data ? "Curve complete — finalize V4 graduation below" : !isConnected ? "Connect wallet to trade" : busy ? lastAction === "approve" ? "Approving…" : lastAction === "sell" ? "Confirm sell in wallet…" : "Confirming…" : creatorRiskRequired && !creatorRiskAccepted ? "Review creator concentration" : preflight.status === "checking" ? "Checking order…" : preflight.status === "error" ? "Review order details" : preflight.status === "idle" ? "Preparing quote…" : mode === "buy" ? `Buy ${symbol}` : atomicSellAvailable ? `Approve + sell ${symbol}` : needsApproval ? `Enable and sell ${symbol}` : `Sell ${symbol}`}</button>}
           {!compact && <a className="explorerLink tradeExplorer" href={`${activeChain.blockExplorers.default.url}/address/${market}`} target="_blank" rel="noreferrer">Verified market contract ↗</a>}

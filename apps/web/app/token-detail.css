@@ -449,6 +449,11 @@ dl{grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr)}
 
 /* Discovery quick-trade reuses the verified market engine in a compact shell. */
 .quickMarketPanel{min-width:0}
+.marketLookupState{display:flex;min-height:220px;align-items:center;justify-content:center;flex-direction:column;text-align:center}
+.marketLookupState h2{margin:5px 0 8px}
+.marketLookupState p{max-width:440px;margin:0;color:#8f9c93;line-height:1.5}
+.marketLookupState button{min-height:42px;margin-top:16px;padding:9px 16px;border:1px solid #35633e;border-radius:999px;background:#102817;color:#75ee87;font-weight:900;cursor:pointer}
+.marketLookupState button:disabled{opacity:.55;cursor:wait}
 .quickMarketPanel .marketWorkspace{grid-template-columns:minmax(0,1.25fr) minmax(315px,.8fr);gap:12px}
 .quickMarketPanel .tradeRail{position:relative;top:auto;padding:13px;border-radius:15px;box-shadow:none}
 .quickMarketPanel .tradeRailHeader{margin-bottom:8px}

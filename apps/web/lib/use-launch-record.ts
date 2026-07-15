@@ -7,6 +7,19 @@ import { rmtLaunchFactoryV6Abi } from "./contracts";
 import { activeChain, activeFactoryStartBlock } from "./network";
 import { useFactoryAddress } from "./use-factory-address";
 
+const tokenIdentityAbi = [
+  { type: "function", name: "name", stateMutability: "view", inputs: [], outputs: [{ type: "string" }] },
+  { type: "function", name: "symbol", stateMutability: "view", inputs: [], outputs: [{ type: "string" }] },
+  { type: "function", name: "metadataURI", stateMutability: "view", inputs: [], outputs: [{ type: "string" }] }
+] as const;
+
+export type LaunchRecordHint = {
+  launchId: string;
+  token: Address;
+  blockNumber?: string;
+  transactionHash?: Hash;
+};
+
 export type LaunchRecord = {
   launchId: bigint;
   token: Address;
@@ -32,12 +45,16 @@ export type LaunchRecord = {
   transactionHash: Hash | null;
 };
 
-export function useLaunchRecord(tokenAddress: Address) {
+function sameAddress(left: Address, right: Address) {
+  return left.toLowerCase() === right.toLowerCase();
+}
+
+export function useLaunchRecord(tokenAddress: Address, hint?: LaunchRecordHint) {
   const factoryAddress = useFactoryAddress();
   const publicClient = usePublicClient({ chainId: activeChain.id });
 
   return useQuery({
-    queryKey: ["launch-record", activeChain.id, factoryAddress, tokenAddress],
+    queryKey: ["launch-record", activeChain.id, factoryAddress, tokenAddress, hint?.launchId ?? "discover"],
     enabled: Boolean(factoryAddress && publicClient),
     staleTime: Infinity,
     gcTime: 30 * 60 * 1000,
@@ -51,51 +68,90 @@ export function useLaunchRecord(tokenAddress: Address) {
       }).catch(() => null);
       if (protocolVersion !== 6) return null;
 
-      let cursor = await publicClient.getBlockNumber();
-      while (cursor >= activeFactoryStartBlock) {
-        const candidate = cursor > 19_999n ? cursor - 19_999n : 0n;
-        const fromBlock = candidate < activeFactoryStartBlock ? activeFactoryStartBlock : candidate;
-        const logs = await publicClient.getContractEvents({
-          address: factoryAddress,
-          abi: rmtLaunchFactoryV6Abi,
-          eventName: "TokenLaunchedV6",
-          args: { token: tokenAddress },
-          fromBlock,
-          toBlock: cursor,
-          strict: true
-        });
-        const log = logs[0];
-        if (log) {
-          return {
-            launchId: log.args.launchId,
-            token: log.args.token,
-            creator: log.args.creator,
-            market: log.args.market,
-            rewardVault: log.args.feeSplitter,
-            name: log.args.name,
-            symbol: log.args.symbol,
-            metadataURI: log.args.metadataURI,
-            rewardBps: [Number(log.args.creatorFeeShareBps), 0, 0, 0, Number(log.args.protocolFeeShareBps)],
-            policyId: log.args.policyId,
-            policyVersion: Number(log.args.policyVersion),
-            curveFeeBps: Number(log.args.curveFeeBps),
-            postGraduationFeeBps: Number(log.args.postGraduationFeeBps),
-            graduationTarget: log.args.graduationTarget,
-            fairStartEnabled: log.args.fairStartEnabled,
-            fairStartDelayBlocks: log.args.fairStartDelayBlocks,
-            fairStartDurationBlocks: log.args.fairStartDurationBlocks,
-            fairStartMaxTxBps: Number(log.args.fairStartMaxTxBps),
-            fairStartMaxWalletBps: Number(log.args.fairStartMaxWalletBps),
-            officialMigration: log.args.officialMigration,
-            blockNumber: log.blockNumber,
-            transactionHash: log.transactionHash
-          };
-        }
-        if (fromBlock === activeFactoryStartBlock) break;
-        cursor = fromBlock - 1n;
+      let launchId: bigint | null = hint ? BigInt(hint.launchId) : null;
+      let storedLaunch = launchId === null ? null : await publicClient.readContract({
+        address: factoryAddress,
+        abi: rmtLaunchFactoryV6Abi,
+        functionName: "getLaunch",
+        args: [launchId]
+      }).catch(() => null);
+
+      if (storedLaunch && !sameAddress(storedLaunch.token, tokenAddress)) {
+        storedLaunch = null;
+        launchId = null;
       }
 
-      return null;
+      if (!storedLaunch) {
+        const launchCount = await publicClient.readContract({
+          address: factoryAddress,
+          abi: rmtLaunchFactoryV6Abi,
+          functionName: "launchCount"
+        });
+        const batchSize = 10n;
+        let end = launchCount;
+        while (end > 0n && !storedLaunch) {
+          const start = end > batchSize ? end - batchSize : 0n;
+          const ids = Array.from({ length: Number(end - start) }, (_, index) => end - 1n - BigInt(index));
+          const results = await Promise.all(ids.map((id) => publicClient.readContract({
+              address: factoryAddress,
+              abi: rmtLaunchFactoryV6Abi,
+              functionName: "getLaunch",
+              args: [id]
+            }).catch(() => null)));
+          const matchIndex = results.findIndex((result) => result !== null && sameAddress(result.token, tokenAddress));
+          if (matchIndex >= 0) {
+            const match = results[matchIndex];
+            if (match) {
+              storedLaunch = match;
+              launchId = ids[matchIndex];
+            }
+          }
+          end = start;
+        }
+      }
+
+      if (!storedLaunch || launchId === null) return null;
+
+      const [policy, identity] = await Promise.all([
+        publicClient.readContract({
+          address: factoryAddress,
+          abi: rmtLaunchFactoryV6Abi,
+          functionName: "getPolicy",
+          args: [storedLaunch.policyId]
+        }),
+        Promise.all([
+          publicClient.readContract({ address: tokenAddress, abi: tokenIdentityAbi, functionName: "name" }),
+          publicClient.readContract({ address: tokenAddress, abi: tokenIdentityAbi, functionName: "symbol" }),
+          publicClient.readContract({ address: tokenAddress, abi: tokenIdentityAbi, functionName: "metadataURI" })
+        ])
+      ]);
+
+      if (Number(policy.policyVersion) !== Number(storedLaunch.policyVersion)) return null;
+
+      return {
+        launchId,
+        token: storedLaunch.token,
+        creator: storedLaunch.creator,
+        market: storedLaunch.market,
+        rewardVault: storedLaunch.rewardVault,
+        name: identity[0],
+        symbol: identity[1],
+        metadataURI: identity[2],
+        rewardBps: [Number(policy.creatorFeeShareBps), 0, 0, 0, Number(policy.protocolFeeShareBps)],
+        policyId: storedLaunch.policyId,
+        policyVersion: Number(storedLaunch.policyVersion),
+        curveFeeBps: Number(policy.curveFeeBps),
+        postGraduationFeeBps: Number(policy.postGraduationFeeBps),
+        graduationTarget: policy.graduationTarget,
+        fairStartEnabled: Number(policy.fairStartMode) !== 0,
+        fairStartDelayBlocks: policy.fairStartDelayBlocks,
+        fairStartDurationBlocks: policy.fairStartDurationBlocks,
+        fairStartMaxTxBps: Number(policy.fairStartMaxTxBps),
+        fairStartMaxWalletBps: Number(policy.fairStartMaxWalletBps),
+        officialMigration: storedLaunch.officialMigration,
+        blockNumber: hint?.blockNumber && BigInt(hint.launchId) === launchId ? BigInt(hint.blockNumber) : activeFactoryStartBlock,
+        transactionHash: hint && BigInt(hint.launchId) === launchId ? hint.transactionHash ?? null : null
+      };
     }
   });
 }
