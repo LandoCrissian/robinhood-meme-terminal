@@ -121,9 +121,8 @@ contract RMTV6GovernanceTest {
 
         uint256 nestedId = governance.propose(address(nestedTarget), 0, abi.encodeCall(nestedTarget.record, (99)));
         outerTarget.setNestedTransaction(nestedId);
-        uint256 outerId = governance.propose(
-            address(outerTarget), 0, abi.encodeCall(outerTarget.attemptNestedExecution, ())
-        );
+        uint256 outerId =
+            governance.propose(address(outerTarget), 0, abi.encodeCall(outerTarget.attemptNestedExecution, ()));
 
         vm.warp(block.timestamp + DELAY);
         vm.prank(OUTSIDER);
