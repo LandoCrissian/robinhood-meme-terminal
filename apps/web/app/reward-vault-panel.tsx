@@ -311,16 +311,35 @@ export function RewardVaultPanel({ tokenAddress, symbol }: { tokenAddress: Addre
   const creatorRecipient = creatorRecipientRead.data as Address;
   const protocolTreasury = protocolTreasuryRead.data as Address;
   const payoutAuthority = payoutAuthorityRead.data as Address;
+  const graduationStage = migratedToV4 ? 3 : marketGraduatedRead.data === true ? 2 : 1;
+  const graduationStageLabel = migratedToV4 ? "V4 LIVE" : marketGraduatedRead.data === true ? "READY TO MIGRATE" : "CURVE LIVE";
 
   return (
     <section className="panel rewardDashboard">
-      <div className="sectionTitle"><div><p className="eyebrow">V6 FEE SPLITTER</p><h2>Transparent fee distribution</h2></div><span className={`badge ${recipientRedirected ? "warning" : "liveBadge"}`}>{recipientRedirected ? "RMT DIRECTED" : "ONCHAIN"}</span></div>
+      <div className="sectionTitle rewardTitle"><div><p className="eyebrow">V6 GRADUATION PATH</p><h2>Graduation and creator rewards</h2></div><span className="badge liveBadge">{graduationStageLabel}</span></div>
 
-      <div className="feeRecipientGrid">
-        <a href={addressExplorer(originalCreator)} target="_blank" rel="noreferrer"><small>Original launch creator</small><strong>{shortAddress(originalCreator)}</strong><span>Permanent token record ↗</span></a>
-        <a href={addressExplorer(creatorRecipient)} target="_blank" rel="noreferrer"><small>Current creator-share recipient</small><strong>{shortAddress(creatorRecipient)}</strong><span>{creatorShareBps / 100}% of collected fees ↗</span></a>
+      <div className="feeSplitSummary" aria-label="Verified V6 token economics">
+        <article><small>Curve trading fee</small><strong>1%</strong><span>Paid in ETH on buys and sells</span></article>
+        <article><small>Creator share</small><strong>{creatorShareBps / 100}%</strong><span>Continues after graduation</span></article>
+        <article><small>RMT share</small><strong>{protocolShareBps / 100}%</strong><span>Protocol treasury</span></article>
+        <article><small>V4 pool fee</small><strong>0.5%</strong><span>Starts after migration</span></article>
+      </div>
+
+      <ol className="graduationFlow" aria-label="Graduation path">
+        <li className={graduationStage === 1 ? "active" : "complete"}><span className="graduationStepNumber">01</span><div><strong>Bonding curve</strong><p>Trading remains live until the verified market reserve reaches the 2 ETH target.</p></div><em>{graduationStage === 1 ? "NOW" : "COMPLETE"}</em></li>
+        <li className={graduationStage === 2 ? "active" : graduationStage > 2 ? "complete" : ""}><span className="graduationStepNumber">02</span><div><strong>Permissionless migration</strong><p>Any wallet may finalize once. The market reserve and remaining token inventory become permanently locked V4 liquidity.</p></div><em>{graduationStage === 2 ? "READY" : graduationStage > 2 ? "COMPLETE" : "NEXT"}</em></li>
+        <li className={graduationStage === 3 ? "active" : ""}><span className="graduationStepNumber">03</span><div><strong>V4 trading</strong><p>Trading continues in the canonical pool while collected swap fees keep the verified 70/30 split.</p></div><em>{graduationStage === 3 ? "LIVE" : "AFTER MIGRATION"}</em></li>
+      </ol>
+
+      <div className="callout creatorContinuation">
+        <strong>Creator rewards continue after graduation</strong>
+        <span>Curve trades charge 1% in ETH today. After V4 migration, the 0.5% pool fee may be earned as ETH and/or {symbol}, depending on swap direction. Collected fees keep the same {creatorShareBps / 100}/{protocolShareBps / 100} split. The creator receives no extra token allocation, LP ownership, or graduation payout; liquidity principal stays locked.</span>
+      </div>
+
+      <div className="feeSectionHeading"><div><small>CURRENT RECIPIENTS</small><strong>Where collected fees go</strong></div><span>{recipientRedirected ? "RMT directed" : "Onchain"}</span></div>
+      <div className="feeRecipientGrid primaryFeeRecipients">
+        <a href={addressExplorer(creatorRecipient)} target="_blank" rel="noreferrer"><small>Creator rewards</small><strong>{shortAddress(creatorRecipient)}</strong><span>{creatorShareBps / 100}% of collected fees ↗</span></a>
         <a href={addressExplorer(protocolTreasury)} target="_blank" rel="noreferrer"><small>RMT treasury</small><strong>{shortAddress(protocolTreasury)}</strong><span>{protocolShareBps / 100}% of collected fees ↗</span></a>
-        <a href={addressExplorer(payoutAuthority)} target="_blank" rel="noreferrer"><small>Future-payout authority</small><strong>{shortAddress(payoutAuthority)}</strong><span>Delayed governance ↗</span></a>
       </div>
 
       <div className="feeAssetGrid">
@@ -328,7 +347,14 @@ export function RewardVaultPanel({ tokenAddress, symbol }: { tokenAddress: Addre
         <article><header><span>Token fees</span><strong>{symbol}</strong></header><dl><dt>Received</dt><dd>{amount(tokenReceived, symbol)}</dd><dt>Distributed</dt><dd>{amount(tokenPaid, symbol)}</dd><dt>Deferred</dt><dd>{amount(tokenDeferred, symbol)}</dd></dl></article>
       </div>
 
-      <div className="callout feeAuthorityNote"><strong>{recipientRedirected ? "Future collected creator-share fees currently route to RMT" : "Creator payout control is narrowly governed"}</strong><span>The token creator cannot authorize, propose, choose, or directly change a payout recipient. The RMT signer may propose only an evidence-linked move between the immutable original creator and V6 governance treasury. After 24 hours, any account may relay the exact approved call but cannot alter it or receive funds. Because the treasury is the governance contract, stale-nonce invalidation also requires an approved delayed governance call. Previously paid or deferred ETH and token fees remain with the wallet that earned them. Uncollected pool fees use the recipient active when collection occurs, even if some accrued earlier.</span></div>
+      <details className="feeControlDetails">
+        <summary>Payout controls and original creator record</summary>
+        <div className="feeRecipientGrid secondaryFeeRecipients">
+          <a href={addressExplorer(originalCreator)} target="_blank" rel="noreferrer"><small>Original launch creator</small><strong>{shortAddress(originalCreator)}</strong><span>Permanent token record ↗</span></a>
+          <a href={addressExplorer(payoutAuthority)} target="_blank" rel="noreferrer"><small>Future-payout authority</small><strong>{shortAddress(payoutAuthority)}</strong><span>Delayed governance ↗</span></a>
+        </div>
+        <div className="callout feeAuthorityNote"><strong>{recipientRedirected ? "Future collected creator rewards currently route to RMT" : "Creator payout control is narrowly governed"}</strong><span>The token creator cannot authorize, propose, choose, or directly change a payout recipient. The RMT signer may propose only an evidence-linked move between the immutable original creator and V6 governance treasury. After 24 hours, any account may relay the exact approved call but cannot alter it or receive funds. Previously paid or deferred fees remain with the wallet that earned them.</span></div>
+      </details>
 
       <div className="callout postGraduationFees">
         <strong>{migratedToV4 ? "Post-graduation fees are ready for permissionless collection" : marketGraduatedRead.data ? "Curve complete; V4 migration is still pending" : "Post-graduation fee collection begins after migration"}</strong>
