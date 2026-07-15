@@ -24,6 +24,7 @@ Create these as encrypted service variables:
 | `RMT_RPC_URL` | Primary Robinhood Chain mainnet RPC |
 | `RMT_FACTORY_ADDRESS` | Exact verified V6 factory address recorded after deployment; never use the V5 address with the V6 indexer |
 | `RMT_FACTORY_START_BLOCK` | Confirmed V6 factory deployment block recorded from its deployment receipt |
+| `RMT_INDEXER_READ_TOKEN` | Long random bearer token shared only with the Vercel server |
 | `RMT_CONFIRMATION_DEPTH` | `20` |
 | `RMT_INDEXER_CHUNK_SIZE` | `2000` |
 | `RMT_INDEXER_POLL_MS` | `5000` |
@@ -68,11 +69,15 @@ Do not cut the indexer over before V6 is deployed and verified. The V6 deploymen
 
 After reconciliation:
 
-1. Store the indexer base URL as an encrypted Vercel production variable.
-2. Keep the existing verified-factory RPC feed available as an explicit degraded fallback.
-3. Display a delayed-data state when indexer health fails.
-4. Add an independent uptime check for the indexer `/health` endpoint.
-5. Alert when lag exceeds twice the confirmation depth.
+1. Store the indexer base URL as encrypted Vercel production variable `RMT_INDEXER_URL`.
+2. Store the same long random bearer token in Railway and Vercel as `RMT_INDEXER_READ_TOKEN`; never prefix either value with `NEXT_PUBLIC_`.
+3. Set `RMT_INDEXER_TIMEOUT_MS=5000` in Vercel.
+4. Route `/api/markets/*/trades` through Cloudflare and honor its committed five-second shared-cache headers with stale-while-revalidate enabled.
+5. Apply a per-IP rate limit to the same-origin market-data route while exempting static assets and wallet transaction RPC calls.
+6. Keep the existing verified-factory RPC feed available as an explicit degraded fallback.
+7. Display a delayed-data state when both the indexer and direct-chain fallback fail.
+8. Add an independent uptime check for the indexer `/health` endpoint.
+9. Alert when lag exceeds twice the confirmation depth.
 
 Trading remains wallet-to-contract and must never depend on the indexer being available.
 
