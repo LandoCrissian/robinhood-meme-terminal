@@ -9,9 +9,10 @@ type WatchlistButtonProps = {
   name: string;
   symbol: string;
   image?: string;
+  compactLabel?: boolean;
 };
 
-export function WatchlistButton({ address, name, symbol, image }: WatchlistButtonProps) {
+export function WatchlistButton({ address, name, symbol, image, compactLabel = false }: WatchlistButtonProps) {
   const [watched, setWatched] = useState(false);
 
   useEffect(() => {
@@ -36,7 +37,7 @@ export function WatchlistButton({ address, name, symbol, image }: WatchlistButto
   return (
     <button className={`watchTokenButton${watched ? " active" : ""}`} type="button" aria-pressed={watched} onClick={toggle}>
       <span aria-hidden="true">{watched ? "★" : "☆"}</span>
-      {watched ? "Watching" : "Watch token"}
+      {compactLabel ? watched ? "Saved" : "Watch" : watched ? "Watching" : "Watch token"}
     </button>
   );
 }
