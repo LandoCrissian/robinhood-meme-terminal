@@ -45,11 +45,13 @@ contract RMTV6Governance {
     uint64 public immutable executionWindow;
 
     mapping(uint256 => Transaction) private _transactions;
+    bool private _executing;
 
     error Unauthorized();
     error InvalidConfiguration();
     error InvalidTransaction();
     error ExecutionFailed(bytes revertData);
+    error ReentrantExecution();
 
     event Proposed(
         uint256 indexed id,
@@ -164,8 +166,10 @@ contract RMTV6Governance {
 
     /// @notice Executes a fully approved current-epoch proposal during its execution window.
     /// @dev Execution is permissionless because signers already fixed and approved every call field. The caller
-    ///      receives no privilege, payment, or protocol role and cannot alter the target, value, or calldata.
+    ///      receives no privilege, payment, or protocol role and cannot alter the target, value, or calldata. Nested
+    ///      execution is blocked so a target cannot change proposal ordering from inside its approved call.
     function execute(uint256 id) external returns (bytes memory result) {
+        if (_executing) revert ReentrantExecution();
         Transaction storage transaction = _transactions[id];
         if (
             transaction.target == address(0) || transaction.executed || transaction.cancelled
@@ -173,9 +177,11 @@ contract RMTV6Governance {
                 || block.timestamp < transaction.executeAfter || block.timestamp > transaction.executeBefore
         ) revert InvalidTransaction();
 
+        _executing = true;
         transaction.executed = true;
         (bool success, bytes memory output) = transaction.target.call{value: transaction.value}(transaction.data);
         if (!success) revert ExecutionFailed(output);
+        _executing = false;
 
         emit Executed(id, transaction.configurationEpoch, msg.sender);
         return output;

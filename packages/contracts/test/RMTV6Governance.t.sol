@@ -20,6 +20,25 @@ contract GovernanceCallTarget {
     }
 }
 
+contract ReentrantGovernanceCallTarget {
+    RMTV6Governance private immutable _governance;
+    uint256 public nestedTransactionId;
+    bool public nestedExecutionBlocked;
+
+    constructor(RMTV6Governance governance_) {
+        _governance = governance_;
+    }
+
+    function setNestedTransaction(uint256 transactionId) external {
+        nestedTransactionId = transactionId;
+    }
+
+    function attemptNestedExecution() external {
+        (bool success,) = address(_governance).call(abi.encodeCall(_governance.execute, (nestedTransactionId)));
+        nestedExecutionBlocked = !success;
+    }
+}
+
 contract RMTV6GovernanceTest {
     RMTV6GovernanceVm private constant vm = RMTV6GovernanceVm(address(uint160(uint256(keccak256("hevm cheat code")))));
 
@@ -93,6 +112,31 @@ contract RMTV6GovernanceTest {
 
         require(target.received() == 2 ether, "target value missing");
         require(OUTSIDER.balance == 0, "executor received governance funds");
+    }
+
+    function testExecutionMutexBlocksCrossTransactionReentrancyWithoutDisablingPermissionlessExecution() public {
+        RMTV6Governance governance = _newGovernance();
+        GovernanceCallTarget nestedTarget = new GovernanceCallTarget();
+        ReentrantGovernanceCallTarget outerTarget = new ReentrantGovernanceCallTarget(governance);
+
+        uint256 nestedId = governance.propose(address(nestedTarget), 0, abi.encodeCall(nestedTarget.record, (99)));
+        outerTarget.setNestedTransaction(nestedId);
+        uint256 outerId = governance.propose(
+            address(outerTarget), 0, abi.encodeCall(outerTarget.attemptNestedExecution, ())
+        );
+
+        vm.warp(block.timestamp + DELAY);
+        vm.prank(OUTSIDER);
+        governance.execute(outerId);
+
+        require(outerTarget.nestedExecutionBlocked(), "nested execution was not blocked");
+        require(nestedTarget.calls() == 0, "nested target executed reentrantly");
+        RMTV6Governance.Transaction memory nestedTransaction = governance.getTransaction(nestedId);
+        require(!nestedTransaction.executed, "nested transaction consumed");
+
+        vm.prank(OUTSIDER);
+        governance.execute(nestedId);
+        require(nestedTarget.calls() == 1, "top-level permissionless execution blocked");
     }
 
     function testAddSignerAndThresholdTwoIsAtomicAndNeverOneOfTwo() public {
