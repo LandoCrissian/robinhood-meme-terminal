@@ -183,10 +183,15 @@ function wait(milliseconds: number) {
 
 function verificationFailures(contract: BlockscoutContract, expectedName: string) {
   const failures: string[] = [];
-  if (contract.is_verified !== true) failures.push("not verified");
+  if (contract.is_verified !== true) {
+    failures.push("source not published or verification still pending");
+    if (contract.is_changed_bytecode === true) failures.push("changed bytecode reported");
+    return failures;
+  }
   if (contract.is_fully_verified !== true) failures.push("not fully verified");
   if (contract.is_partially_verified === true) failures.push("partial verification reported");
-  if (contract.is_changed_bytecode !== false) failures.push("changed bytecode reported");
+  if (contract.is_changed_bytecode === true) failures.push("changed bytecode reported");
+  else if (contract.is_changed_bytecode !== false) failures.push("unchanged bytecode is not confirmed");
   if (contract.name !== expectedName) failures.push(`expected source ${expectedName}`);
   if (contract.language !== "solidity") failures.push("language is not Solidity");
   if (contract.compiler_version !== EXPECTED_COMPILER) failures.push(`compiler is not ${EXPECTED_COMPILER}`);
@@ -200,6 +205,9 @@ function verificationFailures(contract: BlockscoutContract, expectedName: string
     const optimizer = contract.compiler_settings.optimizer;
     if (!isRecord(optimizer) || optimizer.enabled !== true || optimizer.runs !== 200) {
       failures.push("compiler-settings optimizer does not match 200 runs");
+    }
+    if (contract.compiler_settings.evmVersion !== "cancun") {
+      failures.push("EVM version is not Cancun");
     }
     const compilationTarget = contract.compiler_settings.compilationTarget;
     if (!isRecord(compilationTarget)
@@ -231,7 +239,9 @@ async function checkContract(key: ContractKey, address: string): Promise<Contrac
           address,
           expectedName: EXPECTED_CONTRACTS[key],
           verified: false,
-          failures: [`Blockscout returned ${response.status}${retryable ? " after one retry" : ""}`]
+          failures: [response.status === 404
+            ? "source record not published or still indexing (404)"
+            : `Blockscout returned ${response.status}${retryable ? " after one retry" : ""}`]
         };
       }
 
