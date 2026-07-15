@@ -24,6 +24,8 @@ export function describeCreatorExposure(launch: LaunchFeedItem) {
   const tone: CreatorExposureTone = bps >= 2_500 ? "high" : bps >= 1_000 ? "notable" : "tracked";
   return {
     tone,
-    label: `Creator ${creatorPercent(bps)} outside curve${creatorFlowSuffix(launch.creatorFlow)}`
+    label: tone === "high"
+      ? `High creator concentration · ${creatorPercent(bps)} outside curve${creatorFlowSuffix(launch.creatorFlow)}`
+      : `Creator ${creatorPercent(bps)} outside curve${creatorFlowSuffix(launch.creatorFlow)}`
   };
 }
