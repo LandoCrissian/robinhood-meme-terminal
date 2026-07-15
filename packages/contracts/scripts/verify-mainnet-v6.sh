@@ -8,6 +8,11 @@ set -euo pipefail
 CHAIN_ID="4663"
 RPC_URL="${ROBINHOOD_MAINNET_RPC_URL:-https://rpc.mainnet.chain.robinhood.com/}"
 VERIFIER_URL="${BLOCKSCOUT_VERIFIER_URL:-https://robinhoodchain.blockscout.com/api/}"
+BLOCKSCOUT_API_V2_URL="${BLOCKSCOUT_API_V2_URL:-https://robinhoodchain.blockscout.com/api/v2/smart-contracts}"
+EXPECTED_COMPILER_VERSION="v0.8.26+commit.8a97fa7a"
+EXPECTED_EVM_VERSION="cancun"
+BLOCKSCOUT_POLL_ATTEMPTS="12"
+BLOCKSCOUT_POLL_INTERVAL="10"
 
 OPERATOR="0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA"
 POOL_MANAGER="0x8366a39CC670B4001A1121B8F6A443A643e40951"
@@ -117,11 +122,64 @@ require_code() {
     || fail "$label has no bytecode at $address."
 }
 
+exact_blockscout_record() {
+  local address="$1"
+  local expected_name="$2"
+  local payload
+  if ! payload="$(curl --fail --silent --show-error --location --connect-timeout 10 --max-time 30 \
+    --header 'Accept: application/json' "${BLOCKSCOUT_API_V2_URL%/}/$address" 2>/dev/null)"; then
+    return 1
+  fi
+
+  python3 -c '
+import json
+import sys
+
+expected_name, expected_compiler, expected_evm = sys.argv[1:]
+record = json.load(sys.stdin)
+settings = record.get("compiler_settings")
+optimizer = settings.get("optimizer") if isinstance(settings, dict) else None
+target = settings.get("compilationTarget") if isinstance(settings, dict) else None
+runs = record.get("optimizations_runs", record.get("optimization_runs"))
+valid = (
+    record.get("is_verified") is True
+    and record.get("is_fully_verified") is True
+    and record.get("is_partially_verified") is not True
+    and record.get("is_changed_bytecode") is False
+    and record.get("name") == expected_name
+    and str(record.get("language", "")).lower() == "solidity"
+    and record.get("compiler_version") == expected_compiler
+    and record.get("optimization_enabled") is True
+    and runs == 200
+    and isinstance(settings, dict)
+    and settings.get("viaIR") is True
+    and isinstance(optimizer, dict)
+    and optimizer.get("enabled") is True
+    and optimizer.get("runs") == 200
+    and settings.get("evmVersion") == expected_evm
+    and isinstance(target, dict)
+    and list(target.values()) == [expected_name]
+    and record.get("creation_status") == "success"
+)
+sys.exit(0 if valid else 1)
+' "$expected_name" "$EXPECTED_COMPILER_VERSION" "$EXPECTED_EVM_VERSION" \
+    <<<"$payload" >/dev/null 2>&1
+}
+
 verify_contract() {
   local label="$1"
   local address="$2"
   local contract="$3"
   local constructor_args="${4:-}"
+  local expected_name="${contract##*:}"
+  local output=""
+  local command_status=0
+
+  if exact_blockscout_record "$address" "$expected_name"; then
+    echo "Exact Blockscout record already verified for $label at $address"
+    return
+  fi
+
   local command=(
     forge verify-contract
     --rpc-url "$RPC_URL"
@@ -131,6 +189,7 @@ verify_contract() {
     --compiler-version 0.8.26
     --num-of-optimizations 200
     --via-ir
+    --skip-is-verified-check
     --watch
   )
   if [[ -n "$constructor_args" ]]; then
@@ -139,12 +198,28 @@ verify_contract() {
   command+=("$address" "$contract")
 
   echo "Verifying $label at $address"
-  "${command[@]}"
+  output="$("${command[@]}" 2>&1)" || command_status=$?
+  printf '%s\n' "$output"
+
+  for ((attempt = 1; attempt <= BLOCKSCOUT_POLL_ATTEMPTS; attempt += 1)); do
+    if exact_blockscout_record "$address" "$expected_name"; then
+      echo "Exact Blockscout record confirmed for $label at $address"
+      return
+    fi
+    if ((attempt < BLOCKSCOUT_POLL_ATTEMPTS)); then
+      echo "Waiting for exact Blockscout record for $label ($attempt/$BLOCKSCOUT_POLL_ATTEMPTS)"
+      sleep "$BLOCKSCOUT_POLL_INTERVAL"
+    fi
+  done
+
+  fail "$label did not produce an exact Blockscout record (forge status $command_status)."
 }
 
 [[ "$#" -eq 0 ]] || fail "this script does not accept positional arguments."
 require_tool cast
 require_tool forge
+require_tool curl
+require_tool python3
 
 required_addresses=(
   V6_GOVERNANCE_ADDRESS
