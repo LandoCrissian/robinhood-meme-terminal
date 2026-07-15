@@ -249,6 +249,9 @@ function verificationFailures(
     || createHash("sha256").update(contract.source_code).digest("hex") !== expectedSourceHash) {
     failures.push("published primary source does not match the reviewed release source");
   }
+  // Blockscout v2 omits compiler_settings.compilationTarget on exact/full records.
+  // The exact name, file path, source hash, and unchanged-bytecode flags bind the
+  // published record to the reviewed primary compilation source instead.
   const optimizationRuns = contract.optimizations_runs ?? contract.optimization_runs;
   if (contract.optimization_enabled !== true || optimizationRuns !== 200) {
     failures.push("optimizer settings do not match 200 runs");
@@ -257,7 +260,6 @@ function verificationFailures(
     failures.push("via-IR compiler setting is not reported");
     failures.push("compiler-settings optimizer does not match 200 runs");
     failures.push("compiler-settings EVM version is not Cancun");
-    failures.push(`compilation target is not exactly ${expectedPath}:${expectedName}`);
   } else {
     if (contract.compiler_settings.viaIR !== true) {
       failures.push("via-IR compiler setting is not reported");
@@ -268,12 +270,6 @@ function verificationFailures(
     }
     if (contract.compiler_settings.evmVersion !== "cancun") {
       failures.push("compiler-settings EVM version is not Cancun");
-    }
-    const compilationTarget = contract.compiler_settings.compilationTarget;
-    if (!isRecord(compilationTarget)
-      || Object.keys(compilationTarget).length !== 1
-      || compilationTarget[expectedPath] !== expectedName) {
-      failures.push(`compilation target is not exactly ${expectedPath}:${expectedName}`);
     }
   }
   if (contract.creation_status !== "success") failures.push("successful creation is not reported");
