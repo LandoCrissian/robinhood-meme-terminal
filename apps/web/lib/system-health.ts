@@ -1,7 +1,7 @@
 export type SystemHealthState = "operational" | "degraded";
 
 export type SystemHealthCheck = {
-  key: "rpc" | "registry" | "factory" | "economics" | "graduation";
+  key: "rpc" | "registry" | "factory" | "economics" | "trading" | "graduation";
   label: string;
   state: SystemHealthState;
   detail: string;

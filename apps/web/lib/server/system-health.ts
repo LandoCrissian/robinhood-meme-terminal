@@ -31,6 +31,13 @@ const adapterHealthAbi = [
   { type: "function", name: "factory", stateMutability: "view", inputs: [], outputs: [{ type: "address" }] }
 ] as const;
 
+const marketHealthAbi = [
+  { type: "function", name: "token", stateMutability: "view", inputs: [], outputs: [{ type: "address" }] },
+  { type: "function", name: "graduationTarget", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] },
+  { type: "function", name: "graduationAdapter", stateMutability: "view", inputs: [], outputs: [{ type: "address" }] },
+  { type: "function", name: "graduated", stateMutability: "view", inputs: [], outputs: [{ type: "bool" }] }
+] as const;
+
 const governanceHealthAbi = [
   { type: "function", name: "executionDelay", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] },
   { type: "function", name: "executionWindow", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] },
@@ -191,11 +198,56 @@ export async function readSystemHealth(): Promise<SystemHealthReport> {
         expectedEconomics,
         `${Number(policy.curveFeeBps) / 100}% curve fee · 70/30 creator-share/RMT split · ${formatEth(policy.graduationTarget)} ETH graduation`
       ));
+
+      let latestMarketHealthy = launchCount === 0n;
+      let latestMarketDetail = "No V6 launches yet; factory is ready for the first market.";
+      let latestGraduationAdapter: Address | null = null;
+      if (launchCount > 0n) {
+        const latestLaunchId = launchCount - 1n;
+        const latestLaunch = await client.readContract({
+          address: factory,
+          abi: rmtLaunchFactoryV6Abi,
+          functionName: "getLaunch",
+          args: [latestLaunchId]
+        });
+        const [marketCode, tokenCode, marketToken, marketTarget, marketAdapter, marketGraduated] = await Promise.all([
+          client.getBytecode({ address: latestLaunch.market }),
+          client.getBytecode({ address: latestLaunch.token }),
+          client.readContract({ address: latestLaunch.market, abi: marketHealthAbi, functionName: "token" }),
+          client.readContract({ address: latestLaunch.market, abi: marketHealthAbi, functionName: "graduationTarget" }),
+          client.readContract({ address: latestLaunch.market, abi: marketHealthAbi, functionName: "graduationAdapter" }),
+          client.readContract({ address: latestLaunch.market, abi: marketHealthAbi, functionName: "graduated" })
+        ]);
+        latestGraduationAdapter = getAddress(marketAdapter);
+        latestMarketHealthy = Boolean(marketCode && marketCode !== "0x" && tokenCode && tokenCode !== "0x")
+          && getAddress(marketToken) === getAddress(latestLaunch.token)
+          && marketTarget === policy.graduationTarget;
+        latestMarketDetail = `Launch #${latestLaunchId.toString()} · ${marketGraduated ? "curve complete" : "curve trading"} · market ${latestLaunch.market.slice(0, 8)}…${latestLaunch.market.slice(-6)}`;
+      }
+      checks.push(check(
+        "trading",
+        "Latest V6 market",
+        latestMarketHealthy,
+        latestMarketDetail
+      ));
+
+      let graduationHealthy = expectedEconomics && latestGraduationAdapter !== null;
+      let graduationDetail = "No live V6 market is available to verify the graduation adapter.";
+      if (latestGraduationAdapter) {
+        const [adapterCode, boundFactory] = await Promise.all([
+          client.getBytecode({ address: latestGraduationAdapter }),
+          client.readContract({ address: latestGraduationAdapter, abi: adapterHealthAbi, functionName: "factory" })
+        ]);
+        graduationHealthy = graduationHealthy
+          && Boolean(adapterCode && adapterCode !== "0x")
+          && getAddress(boundFactory) === factory;
+        graduationDetail = `${Number(policy.postGraduationFeeBps) / 100}% V4 pool fee · latest market adapter bound to active factory · ${latestGraduationAdapter.slice(0, 8)}…${latestGraduationAdapter.slice(-6)}`;
+      }
       checks.push(check(
         "graduation",
-        "Configured post-graduation fee policy",
-        expectedEconomics,
-        `${Number(policy.postGraduationFeeBps) / 100}% V4 pool fee · may accrue in ETH and/or token by swap direction · policy ${defaultPolicyId.slice(0, 10)}…`
+        "V4 graduation route",
+        graduationHealthy,
+        graduationDetail
       ));
       return {
         ok: checks.every((item) => item.state === "operational"),
@@ -266,6 +318,7 @@ export async function readSystemHealth(): Promise<SystemHealthReport> {
       ["registry", "Version registry"],
       ["factory", "Launch factory"],
       ["economics", "Immutable launch economics"],
+      ["trading", "Latest market"],
       ["graduation", "Graduation adapter"]
     ];
     for (const [key, label] of remaining) {
