@@ -79,7 +79,27 @@ export function FreshLaunchFeed() {
   const [message, setMessage] = useState("Synchronizing verified launches.");
   const [showAll, setShowAll] = useState(false);
   const [quickTrade, setQuickTrade] = useState<{ launch: LaunchFeedItem; side: "buy" | "sell" }>();
-  const closeQuickTrade = useCallback(() => setQuickTrade(undefined), []);
+  const restoredQuickTrade = useRef(false);
+  const syncQuickTradeUrl = useCallback((launch?: LaunchFeedItem, side?: "buy" | "sell") => {
+    const url = new URL(window.location.href);
+    if (launch && side) {
+      url.searchParams.set("quickTrade", launch.token);
+      url.searchParams.set("side", side);
+      url.hash = "explore";
+    } else {
+      url.searchParams.delete("quickTrade");
+      url.searchParams.delete("side");
+    }
+    window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+  }, []);
+  const openQuickTrade = useCallback((launch: LaunchFeedItem, side: "buy" | "sell") => {
+    setQuickTrade({ launch, side });
+    syncQuickTradeUrl(launch, side);
+  }, [syncQuickTradeUrl]);
+  const closeQuickTrade = useCallback(() => {
+    setQuickTrade(undefined);
+    syncQuickTradeUrl();
+  }, [syncQuickTradeUrl]);
 
   const refresh = useCallback(async () => {
     setStatus((current) => current === "live" ? "live" : "loading");
@@ -108,6 +128,17 @@ export function FreshLaunchFeed() {
     const interval = window.setInterval(() => void refresh(), 10_000);
     return () => window.clearInterval(interval);
   }, [refresh]);
+
+  useEffect(() => {
+    if (restoredQuickTrade.current || launches.length === 0) return;
+    restoredQuickTrade.current = true;
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get("quickTrade")?.toLowerCase();
+    const side = params.get("side");
+    if (!token || (side !== "buy" && side !== "sell")) return;
+    const launch = launches.find((item) => item.token.toLowerCase() === token);
+    if (launch) setQuickTrade({ launch, side });
+  }, [launches]);
 
   const hot = useMemo(() => [...launches].sort((a, b) => {
     const volumeDifference = BigInt(b.volumeWei) - BigInt(a.volumeWei);
@@ -138,7 +169,7 @@ export function FreshLaunchFeed() {
             <div className="hotSignal"><span><small>{launch.graduated ? "Curve complete" : "Recent volume"}</small><em>{activityLabel(launch)}</em></span><strong>{volumeLabel(launch.volumeWei)}</strong></div>
             <div className="miniProgress" aria-label={`${launch.progressBps / 100}% graduation progress`}><span style={{ width: `${launch.progressBps / 100}%` }} /></div>
           </Link>
-          <div className="tokenCardActions"><button className="buyCardAction" type="button" aria-haspopup="dialog" aria-label={`Quick buy ${launch.name}`} onClick={() => setQuickTrade({ launch, side: "buy" })}>Buy</button><button className="sellCardAction" type="button" aria-haspopup="dialog" aria-label={`Quick sell ${launch.name}`} onClick={() => setQuickTrade({ launch, side: "sell" })}>Sell</button></div>
+          <div className="tokenCardActions"><button className="buyCardAction" type="button" aria-haspopup="dialog" aria-label={`Quick buy ${launch.name}`} onClick={() => openQuickTrade(launch, "buy")}>Buy</button><button className="sellCardAction" type="button" aria-haspopup="dialog" aria-label={`Quick sell ${launch.name}`} onClick={() => openQuickTrade(launch, "sell")}>Sell</button></div>
         </article>
       ))}</div>}
 
@@ -150,7 +181,7 @@ export function FreshLaunchFeed() {
             <div className="identity"><strong>{launch.name}</strong><span>{"$" + displaySymbol(launch.symbol) + " • #" + launch.launchId}</span></div>
             <div className="launchMetrics"><span><small>Reserve</small><strong>{reserveLabel(launch.reserveWei)}</strong></span><span><small>Volume</small><strong>{volumeLabel(launch.volumeWei)}</strong></span><span><small>Graduation</small><strong>{launch.graduated ? "Complete" : `${launch.progressBps / 100}%`}</strong></span></div>
           </Link>
-          <div className="launchActions"><button className="buyCardAction" type="button" aria-haspopup="dialog" aria-label={`Quick buy ${launch.name}`} onClick={() => setQuickTrade({ launch, side: "buy" })}>Buy</button><button className="sellCardAction" type="button" aria-haspopup="dialog" aria-label={`Quick sell ${launch.name}`} onClick={() => setQuickTrade({ launch, side: "sell" })}>Sell</button></div>
+          <div className="launchActions"><button className="buyCardAction" type="button" aria-haspopup="dialog" aria-label={`Quick buy ${launch.name}`} onClick={() => openQuickTrade(launch, "buy")}>Buy</button><button className="sellCardAction" type="button" aria-haspopup="dialog" aria-label={`Quick sell ${launch.name}`} onClick={() => openQuickTrade(launch, "sell")}>Sell</button></div>
         </article>
       ))}
       {launches.length > 6 && <button className="showMore" type="button" onClick={() => setShowAll((value) => !value)}>{showAll ? "Show fewer" : `View all ${launches.length}`}</button>}
