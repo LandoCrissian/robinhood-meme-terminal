@@ -451,6 +451,10 @@ dl{grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr)}
 .quickMarketPanel{min-width:0}
 .quickMarketPanel .marketWorkspace{grid-template-columns:minmax(0,1.25fr) minmax(315px,.8fr);gap:12px}
 .quickMarketPanel .tradeRail{position:relative;top:auto;padding:13px;border-radius:15px;box-shadow:none}
+.quickMarketPanel .tradeRailHeader{margin-bottom:8px}
+.quickMarketPanel .tradeTabs{margin-bottom:7px}
+.quickMarketPanel .tradeAmountCard{padding:11px}
+.quickMarketPanel .tradeDisclosure{margin:7px 0}
 .quickMarketPanel .marketOverview{display:flex;min-width:0;flex-direction:column;gap:10px}
 .quickMarketPanel .marketOverview .priceChart{min-height:0;margin:0;padding:13px;border-radius:14px}
 .quickMarketPanel .priceChartHeader h3{font-size:1.15rem}
