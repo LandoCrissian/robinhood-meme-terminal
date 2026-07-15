@@ -26,7 +26,7 @@ jobs:
           base="https://www.rmtlaunch.fun"
           mkdir -p health-artifacts
 
-          redirect="$(curl --silent --show-error --head --max-time 25 "$apex" | tr -d '\\r' | awk 'BEGIN{IGNORECASE=1} /^location:/{print $2; exit}')"
+          redirect="$(curl --silent --show-error --head --max-time 25 "$apex" | tr -d '\r' | awk 'BEGIN{IGNORECASE=1} /^location:/{print $2; exit}')"
           if [[ "$redirect" != "$base/" && "$redirect" != "$base" ]]; then
             echo "Expected $apex to redirect to $base; received: ${redirect:-none}" >&2
             exit 1
