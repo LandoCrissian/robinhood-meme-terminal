@@ -583,9 +583,7 @@ contract V4GraduationAdapterTest {
             "upstream fee was not removed before LP accounting"
         );
         require(splitter.totalReceived() == nativeLpFees, "upstream native fee reached RMT splitter");
-        require(
-            splitter.totalTokenReceived(address(token)) == tokenLpFees, "upstream token fee reached RMT splitter"
-        );
+        require(splitter.totalTokenReceived(address(token)) == tokenLpFees, "upstream token fee reached RMT splitter");
         require(manager.protocolFeesAccrued(nativeCurrency) == upstreamNativeFees, "native protocol fee was moved");
         require(manager.protocolFeesAccrued(tokenCurrency) == upstreamTokenFees, "token protocol fee was moved");
 
@@ -595,8 +593,7 @@ contract V4GraduationAdapterTest {
         require(treasury.balance - treasuryNativeBefore == nativeLpFees - creatorNativeShare, "treasury native split");
         require(token.balanceOf(creator) - creatorTokenBefore == creatorTokenShare, "creator token split");
         require(
-            token.balanceOf(treasury) - treasuryTokenBefore == tokenLpFees - creatorTokenShare,
-            "treasury token split"
+            token.balanceOf(treasury) - treasuryTokenBefore == tokenLpFees - creatorTokenShare, "treasury token split"
         );
         require(adapter.lockedLiquidity(address(token)) == liquidityBefore, "locked liquidity record changed");
         _requireAdapterLiquidity(poolIdValue, liquidityBefore);
