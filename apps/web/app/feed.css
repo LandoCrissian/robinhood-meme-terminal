@@ -139,3 +139,53 @@
 .portfolioBalance{grid-column:1/-1;padding-top:9px;border-top:1px solid #202923;text-align:left}
 .portfolioStatus{grid-column:1/-1}
 }
+
+/* Trade-first discovery cards */
+.feed{margin-top:12px}
+.feed .hotCard{display:flex;min-width:0;min-height:0;padding:0;flex-direction:column;gap:0;overflow:hidden}
+.hotCardMain{position:relative;display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:11px;min-width:0;padding:14px 14px 10px;color:inherit;text-decoration:none}
+.hotCardMain:focus-visible,.launchRowMain:focus-visible{outline:2px solid #69ec7b;outline-offset:-2px}
+.hotCard .hotSignal{margin-top:3px}
+.hotCard .miniProgress{margin-top:2px}
+.tokenCardActions,.launchActions{display:grid;grid-template-columns:1fr 1fr;gap:7px;padding:8px;border-top:1px solid #243029;background:#080d0a}
+.buyCardAction,.sellCardAction{display:flex;min-height:42px;align-items:center;justify-content:center;border-radius:10px;font-size:.75rem;font-weight:950;text-decoration:none;transition:filter .15s,transform .15s}
+.buyCardAction{background:#00c805;color:#031507}
+.sellCardAction{background:#d94444;color:#fff}
+.buyCardAction:hover,.sellCardAction:hover{filter:brightness(1.12);transform:translateY(-1px)}
+.buyCardAction:focus-visible,.sellCardAction:focus-visible{outline:2px solid #fff;outline-offset:2px}
+
+.feed .launchRowCard{display:grid;grid-template-columns:minmax(0,1fr) 176px;align-items:stretch;gap:0;margin-top:7px;padding:0;overflow:hidden;border:1px solid #26332b;border-radius:14px;background:#090e0b;transition:border-color .15s,background .15s}
+.feed .launchRowCard:hover{border-color:#3c5543;background:#0d140f}
+.launchRowMain{display:grid;grid-template-columns:auto minmax(130px,1.2fr) minmax(280px,1fr);align-items:center;gap:12px;min-width:0;padding:11px 13px;color:inherit;text-decoration:none}
+.launchRowMain .identity{min-width:0}
+.launchRowMain .identity strong,.launchRowMain .identity span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.launchRowMain .identity span{margin-top:3px;color:#748078;font-size:.67rem}
+.launchMetrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;min-width:0}
+.launchMetrics>span{display:flex;min-width:0;flex-direction:column;gap:3px}
+.launchMetrics small{color:#6d7971;font-size:.61rem}
+.launchMetrics strong{overflow:hidden;color:#cbd4cd;font-size:.7rem;text-overflow:ellipsis;white-space:nowrap}
+.launchActions{grid-template-columns:1fr 1fr;align-items:center;border-top:0;border-left:1px solid #243029}
+.launchActions .buyCardAction,.launchActions .sellCardAction{min-height:44px}
+
+@media(max-width:820px){
+  .feed .hotGrid{grid-template-columns:1fr}
+  .hotCardMain{grid-template-columns:auto minmax(0,1fr) minmax(140px,.65fr);padding:11px 13px}
+  .hotCard .hotSignal{grid-column:auto;align-items:flex-end;text-align:right}
+  .hotCard .miniProgress{grid-column:2/-1}
+  .feed .launchRowCard{grid-template-columns:1fr 150px}
+  .launchRowMain{grid-template-columns:auto minmax(0,1fr)}
+  .launchMetrics{grid-column:2/-1}
+}
+
+@media(max-width:560px){
+  .hotCardMain{grid-template-columns:auto minmax(0,1fr);padding:11px}
+  .hotCard .hotSignal{grid-column:1/-1;align-items:flex-end;flex-direction:row;text-align:left}
+  .hotCard .miniProgress{grid-column:1/-1}
+  .tokenCardActions{padding:7px}
+  .buyCardAction,.sellCardAction{min-height:44px}
+  .feed .launchRowCard{grid-template-columns:1fr;margin-top:8px}
+  .launchRowMain{padding:10px}
+  .launchMetrics{gap:5px}
+  .launchMetrics>span{padding:7px;border-radius:8px;background:#0e1611}
+  .launchActions{padding:7px;border-top:1px solid #243029;border-left:0}
+}
