@@ -8,6 +8,11 @@ set -euo pipefail
 CHAIN_ID="4663"
 RPC_URL="${ROBINHOOD_MAINNET_RPC_URL:-https://rpc.mainnet.chain.robinhood.com/}"
 VERIFIER_URL="${BLOCKSCOUT_VERIFIER_URL:-https://robinhoodchain.blockscout.com/api/}"
+BLOCKSCOUT_API_V2_URL="${BLOCKSCOUT_API_V2_URL:-https://robinhoodchain.blockscout.com/api/v2/smart-contracts}"
+EXPECTED_COMPILER_VERSION="v0.8.26+commit.8a97fa7a"
+EXPECTED_EVM_VERSION="cancun"
+BLOCKSCOUT_POLL_ATTEMPTS="12"
+BLOCKSCOUT_POLL_INTERVAL="10"
 
 OPERATOR="0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA"
 POOL_MANAGER="0x8366a39CC670B4001A1121B8F6A443A643e40951"
@@ -117,20 +122,229 @@ require_code() {
     || fail "$label has no bytecode at $address."
 }
 
+exact_blockscout_record() {
+  local address="$1"
+  local expected_name="$2"
+  local expected_path="$3"
+  local payload
+  if ! payload="$(curl --fail --silent --show-error --location --connect-timeout 10 --max-time 30 \
+    --header 'Accept: application/json' "${BLOCKSCOUT_API_V2_URL%/}/$address" 2>/dev/null)"; then
+    return 1
+  fi
+
+  python3 -c '
+import json
+import sys
+
+expected_name, expected_compiler, expected_evm, expected_path = sys.argv[1:]
+record = json.load(sys.stdin)
+settings = record.get("compiler_settings")
+optimizer = settings.get("optimizer") if isinstance(settings, dict) else None
+runs = record.get("optimizations_runs", record.get("optimization_runs"))
+with open(expected_path, "r", encoding="utf-8", newline="") as source_file:
+    expected_source = source_file.read()
+# Blockscout v2 currently omits compiler_settings.compilationTarget even for its
+# exact/full records. Exact path, name, source text, and unchanged bytecode bind
+# this record to the reviewed primary compilation source without that field.
+valid = (
+    record.get("is_verified") is True
+    and record.get("is_fully_verified") is True
+    and record.get("is_partially_verified") is False
+    and record.get("is_changed_bytecode") is False
+    and record.get("name") == expected_name
+    and str(record.get("language", "")).lower() == "solidity"
+    and record.get("compiler_version") == expected_compiler
+    and record.get("evm_version") == expected_evm
+    and record.get("file_path") == expected_path
+    and record.get("source_code") == expected_source
+    and record.get("optimization_enabled") is True
+    and runs == 200
+    and isinstance(settings, dict)
+    and settings.get("viaIR") is True
+    and isinstance(optimizer, dict)
+    and optimizer.get("enabled") is True
+    and optimizer.get("runs") == 200
+    and settings.get("evmVersion") == expected_evm
+    and record.get("creation_status") == "success"
+)
+sys.exit(0 if valid else 1)
+' "$expected_name" "$EXPECTED_COMPILER_VERSION" "$EXPECTED_EVM_VERSION" "$expected_path" \
+    <<<"$payload" >/dev/null 2>&1
+}
+
+describe_blockscout_record() {
+  local address="$1"
+  local expected_name="$2"
+  local expected_path="$3"
+  local payload
+  if ! payload="$(curl --fail --silent --show-error --location --connect-timeout 10 --max-time 30 \
+    --header 'Accept: application/json' "${BLOCKSCOUT_API_V2_URL%/}/$address" 2>/dev/null)"; then
+    echo "Blockscout has no readable v2 source record for $address"
+    return
+  fi
+
+  python3 -c '
+import hashlib
+import json
+import sys
+
+expected_name, expected_path = sys.argv[1:]
+record = json.load(sys.stdin)
+settings = record.get("compiler_settings")
+target = settings.get("compilationTarget") if isinstance(settings, dict) else None
+source = record.get("source_code")
+summary = {
+    "is_verified": record.get("is_verified"),
+    "is_fully_verified": record.get("is_fully_verified"),
+    "is_partially_verified": record.get("is_partially_verified"),
+    "is_changed_bytecode": record.get("is_changed_bytecode"),
+    "name": record.get("name"),
+    "file_path": record.get("file_path"),
+    "language": record.get("language"),
+    "compiler_version": record.get("compiler_version"),
+    "evm_version": record.get("evm_version"),
+    "optimization_enabled": record.get("optimization_enabled"),
+    "optimization_runs": record.get("optimizations_runs", record.get("optimization_runs")),
+    "via_ir": settings.get("viaIR") if isinstance(settings, dict) else None,
+    "compilation_target": target,
+    "creation_status": record.get("creation_status"),
+    "source_sha256": hashlib.sha256(source.encode()).hexdigest() if isinstance(source, str) else None,
+    "expected_name": expected_name,
+    "expected_path": expected_path,
+}
+print("Blockscout v2 record: " + json.dumps(summary, sort_keys=True))
+' "$expected_name" "$expected_path" <<<"$payload"
+}
+
+prepare_legacy_v5_deployment_sources() {
+  # PR #104's wallet-artifact job ran full-project Forge formatting before
+  # compilation. The browser deployed that deterministic compiler input, while
+  # the formatted source bytes were never committed. Reproduce that exact step
+  # only after the other fourteen reviewed records have passed.
+  echo "Reproducing deployment-era Forge formatting for the legacy V5 factory"
+  forge fmt
+  python3 - <<'PY'
+import hashlib
+
+expected = {
+    "src/LowCostMemeLaunchFactoryV5.sol": "555d7a3a4993093638d1ffbdde197e2d8a3a35416faa14447da8117efd7d450d",
+    "src/libraries/MinimalProxy.sol": "1534bb574b9ee9e36821fbfc4fd6828f1886b543855360c216a867d2c6671284",
+}
+for path, expected_hash in expected.items():
+    with open(path, "rb") as source:
+        actual_hash = hashlib.sha256(source.read()).hexdigest()
+    if actual_hash != expected_hash:
+        raise SystemExit(f"deployment-era formatting mismatch for {path}: {actual_hash}")
+print("Deployment-era V5 source hashes reproduced exactly.")
+PY
+}
+
+submit_blockscout_standard_input() {
+  local label="$1"
+  local address="$2"
+  local contract="$3"
+  local constructor_args="$4"
+  local expected_name="${contract##*:}"
+  local expected_path="${contract%%:*}"
+  local standard_json
+  standard_json="$(mktemp)"
+
+  local command=(
+    forge verify-contract
+    --rpc-url "$RPC_URL"
+    --chain "$CHAIN_ID"
+    --compiler-version "$EXPECTED_COMPILER_VERSION"
+    --num-of-optimizations 200
+    --via-ir
+    --skip-is-verified-check
+    --show-standard-json-input
+  )
+  if [[ -n "$constructor_args" ]]; then
+    command+=(--constructor-args "$constructor_args")
+  fi
+  command+=("$address" "$contract")
+
+  if ! "${command[@]}" >"$standard_json"; then
+    rm -f "$standard_json"
+    echo "Could not generate standard JSON for $label"
+    return 1
+  fi
+
+  if ! python3 - "$standard_json" "$expected_path" <<'PY'
+import json
+import sys
+
+json_path, expected_path = sys.argv[1:]
+with open(json_path, encoding="utf-8") as source:
+    compiler_input = json.load(source)
+settings = compiler_input.get("settings")
+optimizer = settings.get("optimizer") if isinstance(settings, dict) else None
+sources = compiler_input.get("sources")
+with open(expected_path, encoding="utf-8", newline="") as reviewed:
+    expected_source = reviewed.read()
+valid = (
+    compiler_input.get("language") == "Solidity"
+    and isinstance(settings, dict)
+    and settings.get("viaIR") is True
+    and settings.get("evmVersion") == "cancun"
+    and isinstance(optimizer, dict)
+    and optimizer.get("enabled") is True
+    and optimizer.get("runs") == 200
+    and isinstance(sources, dict)
+    and isinstance(sources.get(expected_path), dict)
+    and sources[expected_path].get("content") == expected_source
+)
+if not valid:
+    raise SystemExit("generated standard JSON does not match the reviewed release settings and source")
+PY
+  then
+    rm -f "$standard_json"
+    echo "Generated standard JSON failed the reviewed-release check for $label"
+    return 1
+  fi
+
+  echo "Submitting exact standard JSON through Blockscout v2 for $label"
+  local response=""
+  local status=0
+  response="$(curl --fail-with-body --silent --show-error --location --connect-timeout 10 --max-time 120 \
+    --request POST "${BLOCKSCOUT_API_V2_URL%/}/$address/verification/via/standard-input" \
+    --form-string "compiler_version=$EXPECTED_COMPILER_VERSION" \
+    --form-string "contract_name=$expected_name" \
+    --form "files[0]=@$standard_json;type=application/json" \
+    --form-string "autodetect_constructor_args=true" \
+    --form-string "license_type=mit" 2>&1)" || status=$?
+  rm -f "$standard_json"
+  printf '%s\n' "$response"
+  return "$status"
+}
+
 verify_contract() {
   local label="$1"
   local address="$2"
   local contract="$3"
   local constructor_args="${4:-}"
+  local expected_name="${contract##*:}"
+  local expected_path="${contract%%:*}"
+  local output=""
+  local command_status=0
+
+  if exact_blockscout_record "$address" "$expected_name" "$expected_path"; then
+    echo "Exact Blockscout record already verified for $label at $address"
+    return
+  fi
+
+  describe_blockscout_record "$address" "$expected_name" "$expected_path"
+
   local command=(
     forge verify-contract
     --rpc-url "$RPC_URL"
     --chain "$CHAIN_ID"
     --verifier blockscout
     --verifier-url "$VERIFIER_URL"
-    --compiler-version 0.8.26
+    --compiler-version "$EXPECTED_COMPILER_VERSION"
     --num-of-optimizations 200
     --via-ir
+    --skip-is-verified-check
     --watch
   )
   if [[ -n "$constructor_args" ]]; then
@@ -139,12 +353,33 @@ verify_contract() {
   command+=("$address" "$contract")
 
   echo "Verifying $label at $address"
-  "${command[@]}"
+  output="$("${command[@]}" 2>&1)" || command_status=$?
+  printf '%s\n' "$output"
+
+  if ! exact_blockscout_record "$address" "$expected_name" "$expected_path"; then
+    submit_blockscout_standard_input "$label" "$address" "$contract" "$constructor_args" || true
+  fi
+
+  for ((attempt = 1; attempt <= BLOCKSCOUT_POLL_ATTEMPTS; attempt += 1)); do
+    if exact_blockscout_record "$address" "$expected_name" "$expected_path"; then
+      echo "Exact Blockscout record confirmed for $label at $address"
+      return
+    fi
+    if ((attempt < BLOCKSCOUT_POLL_ATTEMPTS)); then
+      echo "Waiting for exact Blockscout record for $label ($attempt/$BLOCKSCOUT_POLL_ATTEMPTS)"
+      sleep "$BLOCKSCOUT_POLL_INTERVAL"
+    fi
+  done
+
+  fail "$label did not produce an exact Blockscout record (forge status $command_status)."
 }
 
 [[ "$#" -eq 0 ]] || fail "this script does not accept positional arguments."
 require_tool cast
 require_tool forge
+require_tool curl
+require_tool mktemp
+require_tool python3
 
 required_addresses=(
   V6_GOVERNANCE_ADDRESS
@@ -342,7 +577,6 @@ verify_contract "V6 bootstrap controller" "$V6_BOOTSTRAP_CONTROLLER_ADDRESS" "sr
 verify_contract "V6 foundation verifier" "$V6_FOUNDATION_VERIFIER_ADDRESS" "src/RMTV6BootstrapFoundationVerifier.sol:RMTV6BootstrapFoundationVerifier" "$BOOTSTRAP_VERIFIER_ARGS"
 verify_contract "V6 smoke verifier" "$V6_SMOKE_VERIFIER_ADDRESS" "src/RMTV6BootstrapSmokeVerifier.sol:RMTV6BootstrapSmokeVerifier" "$BOOTSTRAP_VERIFIER_ARGS"
 verify_contract "V6 version registry" "$V6_VERSION_REGISTRY_ADDRESS" "src/VersionedFactoryRegistry.sol:VersionedFactoryRegistry" "$REGISTRY_ARGS"
-verify_contract "V5 identity factory" "$LEGACY_FACTORY" "src/LowCostMemeLaunchFactoryV5.sol:LowCostMemeLaunchFactoryV5" "$V5_FACTORY_ARGS"
 verify_contract "V6 graduation hook" "$V6_HOOK_ADDRESS" "src/V5GraduationHook.sol:V5GraduationHook" "$HOOK_ARGS"
 verify_contract "V6 graduation adapter" "$V6_ADAPTER_ADDRESS" "src/V4GraduationAdapter.sol:V4GraduationAdapter" "$ADAPTER_ARGS"
 verify_contract "V6 launch gate" "$V6_LAUNCH_GATE_ADDRESS" "src/RMTLaunchGate.sol:RMTLaunchGate" "$GATE_ARGS"
@@ -352,5 +586,8 @@ verify_contract "factory token implementation" "$TOKEN_IMPLEMENTATION" "src/clon
 verify_contract "factory fee-splitter implementation" "$FEE_SPLITTER_IMPLEMENTATION" "src/DirectLaunchFeeSplitter.sol:DirectLaunchFeeSplitter"
 verify_contract "official identity migration" "$OFFICIAL_IDENTITY_MIGRATION" "src/OfficialRMTIdentityMigration.sol:OfficialRMTIdentityMigration" "$MIGRATION_ARGS"
 verify_contract "V6 launch factory" "$V6_FACTORY_ADDRESS" "src/RMTLaunchFactoryV6.sol:RMTLaunchFactoryV6" "$FACTORY_ARGS"
+
+prepare_legacy_v5_deployment_sources
+verify_contract "V5 identity factory" "$LEGACY_FACTORY" "src/LowCostMemeLaunchFactoryV5.sol:LowCostMemeLaunchFactoryV5" "$V5_FACTORY_ARGS"
 
 echo "V6 source verification passed for all fifteen contracts. No blockchain transaction was broadcast and V6 remains inactive and paused."
