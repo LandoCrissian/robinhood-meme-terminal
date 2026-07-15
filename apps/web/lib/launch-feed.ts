@@ -29,6 +29,9 @@ export type LaunchFeedItem = {
   sellCount: number;
   progressBps: number;
   graduated: boolean;
+  creatorBalanceWei?: string;
+  creatorOutsideCurveBps?: number;
+  creatorFlow?: "buying" | "selling" | "balanced" | "inactive" | "unknown";
   image?: string;
 };
 
