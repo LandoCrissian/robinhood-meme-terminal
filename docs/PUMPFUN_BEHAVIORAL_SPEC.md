@@ -1,5 +1,7 @@
 # Pump.fun Behavioral Comparison and RMT Market Specification
 
+> **Historical comparison:** This document records the clean-room behavioral baseline that informed RMT. It is not the V6 release specification. [V6_PROTOCOL_FOUNDATION.md](V6_PROTOCOL_FOUNDATION.md) controls all V6 supply, fee, Fair Start, graduation, liquidity, and governance behavior.
+
 ## Source policy
 
 Pump.fun does not publish an identifiable official production-contract repository. Public GitHub results are third-party recreations and are not treated as authoritative. RMT will use a clean-room implementation based on observable product behavior, onchain transactions, official public fee disclosures where available, and independently verified formulas.
@@ -38,13 +40,7 @@ MemeLaunchFactory
 
 The alpha factory currently mints the full token supply to the creator. That behavior is not permitted in the production market template.
 
-Production allocation must be explicit:
-
-- public curve inventory: transferred directly to the market;
-- graduation inventory: contract-reserved;
-- optional creator allocation: disclosed and vested;
-- optional community allocation: held by a dedicated treasury contract;
-- no undisclosed creator-controlled inventory.
+V6 mints exactly 1,000,000,000 tokens directly into the launch pipeline and transfers the full supply to the market. The creator receives no launch allocation. Unsold tracked inventory migrates with the exact tracked ETH reserve at graduation; purchased tokens remain with buyers.
 
 ## Candidate curve
 
@@ -56,7 +52,7 @@ The first implementation candidate is a virtual constant-product market.
 - Virtual reserves shape the initial price; real ETH reserves cap sell payouts.
 - Integer rounding must always favor solvency, never free-value cycles.
 
-This remains a candidate until simulations and invariant tests pass. Exact virtual reserves, fee rate, graduation target, and inventory split are not production constants yet.
+V6 fixes these values per immutable policy. The reviewed mainnet policies use a 1% curve fee, 0.3 virtual ETH, 1,017,500,000 virtual tokens, and a 2 ETH net graduation target. Final release still requires the V6 checklist and independent review.
 
 ## Required trade interface
 
@@ -98,13 +94,15 @@ Checks:
 
 ## Fee model
 
-The market charges one disclosed fee on buys and sells. The fee is forwarded or accrued to the token-specific reward vault. The reward vault owns the immutable creator/community/trader/liquidity/platform split.
+The V6 market charges one disclosed 1% fee on curve buys and sells. The token-specific splitter routes 70% to the current creator-share recipient and 30% to RMT. After graduation, the locked V4 position charges a 0.5% pool fee and applies the same 70/30 split to collected ETH and/or launched-token swap fees.
 
 No transfer tax is added to the ERC-20 token.
 
 ## Graduation
 
-Graduation is triggered by a deterministic threshold, likely real ETH accumulated or public inventory sold. The final threshold will depend on verified Robinhood Chain DEX infrastructure and required initial liquidity.
+V6 graduation is triggered when the tracked real ETH reserve reaches exactly 2 ETH net of curve fees. The final buy is clamped and excess ETH is refunded or left as a payer-controlled claim.
+
+The threshold-reaching buy closes the bonding curve and records graduation; it does not make an external DEX call. After that confirmation, `migrateLiquidity()` is a permissionless, one-time finalization transaction that moves only the tracked reserve and inventory into the canonical V4 position. The caller pays gas but receives no ETH, tokens, liquidity ownership, or reward.
 
 Graduation must:
 
@@ -129,7 +127,7 @@ Graduation must:
 8. A buy immediately followed by a sell cannot produce risk-free profit before external price movement.
 9. Rounding cannot create value through repeated dust trades.
 10. Graduation happens at most once.
-11. Trading is impossible after graduation.
+11. Curve trading is impossible after graduation; trading continues in the canonical V4 pool after migration.
 12. Creator, fee, reserve, and adapter parameters are immutable per launch.
 13. No privileged address can withdraw public inventory or real reserves.
 14. All external ETH transfers use checks-effects-interactions and reentrancy protection.

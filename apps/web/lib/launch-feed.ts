@@ -10,6 +10,15 @@ export type LaunchFeedItem = {
   symbol: string;
   creatorBps: number;
   communityBps: number;
+  protocolVersion?: number;
+  policyId?: Hash;
+  policyVersion?: number;
+  curveFeeBps?: number;
+  protocolFeeShareBps?: number;
+  postGraduationFeeBps?: number;
+  graduationTarget?: string;
+  fairStartEnabled?: boolean;
+  officialMigration?: boolean;
   transactionHash: Hash;
   blockNumber: string;
   metadataURI: string;

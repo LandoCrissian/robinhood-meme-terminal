@@ -62,6 +62,9 @@ export function FreshLaunchFeed() {
         ? isMainnetRelease ? "Factory connected. No mainnet launches yet." : "Factory connected. No testnet launches yet."
         : `${result.launches.length} verified factory launch${result.launches.length === 1 ? "" : "es"}.`);
     } catch (error) {
+      // Never leave launches from a previously active factory visible when the
+      // registry changes or the current factory cannot be verified.
+      setLaunches([]);
       setStatus("error");
       setMessage(error instanceof Error ? error.message : "Launch data is temporarily unavailable.");
     }
@@ -111,7 +114,7 @@ export function FreshLaunchFeed() {
             <div className="identity"><strong>{launch.name}</strong><span>{"$" + displaySymbol(launch.symbol) + " • #" + launch.launchId}</span></div>
             <div><small>Curve reserve</small><strong>{reserveLabel(launch.reserveWei)}</strong></div>
             <div><small>Graduation</small><strong>{launch.graduated ? "Complete" : `${launch.progressBps / 100}%`}</strong></div>
-            <div><small>Creator</small><strong title={launch.creator}>{shortAddress(launch.creator)}</strong></div>
+            <div><small>Launch creator</small><strong title={launch.creator}>{shortAddress(launch.creator)}</strong></div>
           </article>
         </Link>
       ))}

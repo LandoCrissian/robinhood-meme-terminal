@@ -4,15 +4,35 @@ import {
   createPublicClient,
   getAddress,
   http,
+  keccak256,
+  toHex,
+  zeroAddress,
   type Address
 } from "viem";
-import { marketEvents, tokenLaunchedEvent } from "./abi.js";
+import {
+  factoryReadAbi,
+  feeSplitterEvents,
+  graduationAdapterReadAbi,
+  graduationFeesCollectedEvent,
+  marketEvents,
+  tokenLaunchedEvent
+} from "./abi.js";
 import { schemaSql } from "./schema.js";
 
 const CHAIN_ID = 4663;
-const DEFAULT_FACTORY = "0x25a92d8c79c38d07b0d3efd0ebe929d30e401cdd";
-const DEFAULT_START_BLOCK = 9_567_266n;
+const INDEXER_SCHEMA_VERSION = 4;
 const FIXED_TOKEN_SUPPLY = 1_000_000_000n * 10n ** 18n;
+const CANONICAL_CREATOR_PAYOUT_AUTHORITY = "0x13c0a930516fb6bf0d467b38605d9d2a9c4c6953";
+const CANONICAL_PROTOCOL_TREASURY = "0x7e8e7d3af28584a8b9eeddbe16cd3308bd1e76ca";
+const CANONICAL_CURVE_FEE_BPS = 100;
+const CANONICAL_CREATOR_SHARE_BPS = 7_000;
+const CANONICAL_PROTOCOL_SHARE_BPS = 3_000;
+const CANONICAL_POST_GRADUATION_FEE_BPS = 50;
+const CANONICAL_V4_POOL_FEE = 5_000;
+const CANONICAL_GRADUATION_TARGET = 2n * 10n ** 18n;
+const ZERO_HASH = `0x${"00".repeat(32)}`;
+const FAIR_POLICY_ID = keccak256(toHex("RMT_SIMPLE_FAIR_V1"));
+const OPEN_POLICY_ID = keccak256(toHex("RMT_SIMPLE_OPEN_V1"));
 
 function positiveInteger(name: string, fallback: number) {
   const raw = process.env[name];
@@ -27,11 +47,29 @@ function required(name: string) {
   return value;
 }
 
+function requiredPositiveBigInt(name: string) {
+  const raw = required(name);
+  let value: bigint;
+  try {
+    value = BigInt(raw);
+  } catch {
+    throw new Error(`${name} must be a positive integer`);
+  }
+  if (value <= 0n) throw new Error(`${name} must be a positive integer`);
+  return value;
+}
+
+function requiredFactoryAddress() {
+  const address = getAddress(required("RMT_FACTORY_ADDRESS"));
+  if (address === zeroAddress) throw new Error("RMT_FACTORY_ADDRESS cannot be the zero address");
+  return address;
+}
+
 const config = {
   databaseUrl: required("DATABASE_URL"),
   rpcUrl: required("RMT_RPC_URL"),
-  factory: getAddress(process.env.RMT_FACTORY_ADDRESS ?? DEFAULT_FACTORY),
-  startBlock: BigInt(process.env.RMT_FACTORY_START_BLOCK ?? DEFAULT_START_BLOCK),
+  factory: requiredFactoryAddress(),
+  startBlock: requiredPositiveBigInt("RMT_FACTORY_START_BLOCK"),
   confirmations: positiveInteger("RMT_CONFIRMATION_DEPTH", 20),
   chunkSize: positiveInteger("RMT_INDEXER_CHUNK_SIZE", 2_000),
   pollMs: positiveInteger("RMT_INDEXER_POLL_MS", 5_000),
@@ -73,12 +111,24 @@ type LaunchArgs = {
   token: Address;
   creator: Address;
   market: Address;
-  rewardVault: Address;
+  feeSplitter: Address;
   graduationPoolId: `0x${string}`;
+  policyId: `0x${string}`;
+  policyVersion: number;
+  curveFeeBps: number;
+  creatorFeeShareBps: number;
+  protocolFeeShareBps: number;
+  postGraduationFeeBps: number;
+  fairStartEnabled: boolean;
+  fairStartDelayBlocks: bigint;
+  fairStartDurationBlocks: bigint;
+  fairStartMaxTxBps: number;
+  fairStartMaxWalletBps: number;
+  graduationTarget: bigint;
+  officialMigration: boolean;
   name: string;
   symbol: string;
   metadataURI: string;
-  rewardBps: readonly [number, number, number, number, number];
 };
 
 type TradeArgs = {
@@ -102,6 +152,44 @@ type MigrationArgs = {
   liquidity: bigint;
 };
 
+type InitializedArgs = {
+  creator: Address;
+  protocolTreasury: Address;
+  launchToken: Address;
+  creatorShareBps: number;
+  creatorPayoutAuthority: Address;
+  authorizedMarket: Address;
+  graduationAdapter: Address;
+};
+type CreatorWalletChangedArgs = {
+  previousCreator: Address;
+  newCreator: Address;
+  authority: Address;
+  evidenceHash: `0x${string}`;
+  nonce: bigint;
+};
+type CreatorPayoutNonceInvalidatedArgs = {
+  previousNonce: bigint;
+  newNonce: bigint;
+  protocolTreasury: Address;
+};
+type NativePayerAmountArgs = { payer: Address; amount: bigint };
+type NativeRecipientAmountArgs = { recipient: Address; amount: bigint };
+type TokenPayerAmountArgs = { payer: Address; token: Address; amount: bigint };
+type TokenRecipientAmountArgs = { token: Address; recipient: Address; amount: bigint };
+type GraduationFeesCollectedArgs = {
+  token: Address;
+  feeSplitter: Address;
+  nativeAmount: bigint;
+  tokenAmount: bigint;
+};
+
+type DecodedConfirmedLog<Args = unknown> = ConfirmedLog<Args> & {
+  blockHash: `0x${string}`;
+  transactionIndex: number;
+  eventName: string;
+};
+
 function asConfirmed<Args>(value: unknown): ConfirmedLog<Args> | null {
   const log = value as Partial<ConfirmedLog<Args>>;
   if (
@@ -114,33 +202,122 @@ function asConfirmed<Args>(value: unknown): ConfirmedLog<Args> | null {
   return log as ConfirmedLog<Args>;
 }
 
+function asDecodedConfirmed<Args>(value: unknown): DecodedConfirmedLog<Args> | null {
+  const log = value as Partial<DecodedConfirmedLog<Args>>;
+  if (
+    typeof log.address !== "string" ||
+    typeof log.transactionHash !== "string" ||
+    typeof log.logIndex !== "number" ||
+    typeof log.transactionIndex !== "number" ||
+    typeof log.blockNumber !== "bigint" ||
+    typeof log.blockHash !== "string" ||
+    typeof log.eventName !== "string" ||
+    log.args === undefined
+  ) return null;
+  return log as DecodedConfirmedLog<Args>;
+}
+
+function compareLogs(a: DecodedConfirmedLog, b: DecodedConfirmedLog) {
+  if (a.blockNumber !== b.blockNumber) return a.blockNumber < b.blockNumber ? -1 : 1;
+  if (a.transactionIndex !== b.transactionIndex) return a.transactionIndex - b.transactionIndex;
+  return a.logIndex - b.logIndex;
+}
+
 function lower(address: Address) {
   return address.toLowerCase();
+}
+
+async function verifyV6Factory() {
+  const [version, creatorPayoutAuthority] = await Promise.all([
+    rpc.readContract({
+      address: config.factory,
+      abi: factoryReadAbi,
+      functionName: "protocolVersion"
+    }),
+    rpc.readContract({
+      address: config.factory,
+      abi: factoryReadAbi,
+      functionName: "creatorPayoutAuthority"
+    })
+  ]);
+  if (Number(version) !== 6) {
+    throw new Error(
+      `RMT_FACTORY_ADDRESS must expose protocolVersion()==6; received ${String(version)}`
+    );
+  }
+  if (lower(creatorPayoutAuthority) !== CANONICAL_CREATOR_PAYOUT_AUTHORITY) {
+    throw new Error("RMT_FACTORY_ADDRESS does not use the canonical delayed creator-payout authority");
+  }
+  console.info(JSON.stringify({
+    event: "v6_factory_verified",
+    factory: lower(config.factory),
+    protocolVersion: Number(version),
+    startBlock: config.startBlock.toString()
+  }));
+}
+
+async function refreshCreatorPayoutState(db: PoolClient) {
+  await db.query(
+    `UPDATE launches l
+     SET original_creator = COALESCE(l.original_creator, l.creator),
+         current_creator_fee_recipient = COALESCE(
+           (
+             SELECT e.new_recipient
+             FROM creator_payout_events e
+             WHERE e.fee_splitter = l.reward_vault AND e.event_type = 'changed'
+             ORDER BY e.block_number DESC, e.transaction_index DESC, e.log_index DESC
+             LIMIT 1
+           ),
+           l.original_creator,
+           l.creator
+         )`
+  );
 }
 
 async function migrate() {
   await pool.query(schemaSql);
   const factory = lower(config.factory);
-  const state = await pool.query<{ factory: string | null; start_block: string | null }>(
-    "SELECT factory, start_block FROM indexer_state WHERE chain_id = $1",
+  const state = await pool.query<{
+    factory: string | null;
+    start_block: string | null;
+    schema_version: number | null;
+  }>(
+    "SELECT factory, start_block, schema_version FROM indexer_state WHERE chain_id = $1",
     [CHAIN_ID]
   );
   const previous = state.rows[0];
+  const indexedData = await pool.query<{ has_rows: boolean }>(
+    "SELECT EXISTS (SELECT 1 FROM launches LIMIT 1) AS has_rows"
+  );
+  const hasIndexedRows = indexedData.rows[0]?.has_rows === true;
+  const configurationChanged = previous
+    ? previous.factory !== factory ||
+      previous.start_block !== config.startBlock.toString() ||
+      previous.schema_version !== INDEXER_SCHEMA_VERSION
+    : hasIndexedRows;
 
-  if (previous && (previous.factory !== factory || previous.start_block !== config.startBlock.toString())) {
+  if (configurationChanged) {
     const db = await pool.connect();
     try {
       await db.query("BEGIN");
+      await db.query("DELETE FROM fee_splitter_events");
+      await db.query("DELETE FROM graduation_fee_collections");
+      await db.query("DELETE FROM creator_payout_events");
       await db.query("DELETE FROM liquidity_migrations");
       await db.query("DELETE FROM graduations");
       await db.query("DELETE FROM trades");
       await db.query("DELETE FROM launches");
       await db.query("DELETE FROM sync_points WHERE chain_id = $1", [CHAIN_ID]);
       await db.query(
-        `UPDATE indexer_state
-         SET next_block = $2, factory = $3, start_block = $2, updated_at = NOW()
-         WHERE chain_id = $1`,
-        [CHAIN_ID, config.startBlock.toString(), factory]
+        `INSERT INTO indexer_state (chain_id, next_block, factory, start_block, schema_version)
+         VALUES ($1, $2, $3, $2, $4)
+         ON CONFLICT (chain_id) DO UPDATE SET
+           next_block = EXCLUDED.next_block,
+           factory = EXCLUDED.factory,
+           start_block = EXCLUDED.start_block,
+           schema_version = EXCLUDED.schema_version,
+           updated_at = NOW()`,
+        [CHAIN_ID, config.startBlock.toString(), factory, INDEXER_SCHEMA_VERSION]
       );
       await db.query("COMMIT");
       console.info(JSON.stringify({ event: "factory_cutover", factory, startBlock: config.startBlock.toString() }));
@@ -154,17 +331,27 @@ async function migrate() {
   }
 
   await pool.query(
-    `INSERT INTO indexer_state (chain_id, next_block, factory, start_block)
-     VALUES ($1, $2, $3, $2)
+    `INSERT INTO indexer_state (chain_id, next_block, factory, start_block, schema_version)
+     VALUES ($1, $2, $3, $2, $4)
      ON CONFLICT (chain_id) DO UPDATE SET
        factory = EXCLUDED.factory,
-       start_block = EXCLUDED.start_block`,
-    [CHAIN_ID, config.startBlock.toString(), factory]
+       start_block = EXCLUDED.start_block,
+       schema_version = EXCLUDED.schema_version`,
+    [CHAIN_ID, config.startBlock.toString(), factory, INDEXER_SCHEMA_VERSION]
   );
+  const db = await pool.connect();
+  try {
+    await refreshCreatorPayoutState(db);
+  } finally {
+    db.release();
+  }
 }
 
 async function rollbackAfter(db: PoolClient, blockNumber: bigint) {
   const value = blockNumber.toString();
+  await db.query("DELETE FROM fee_splitter_events WHERE block_number > $1", [value]);
+  await db.query("DELETE FROM graduation_fee_collections WHERE block_number > $1", [value]);
+  await db.query("DELETE FROM creator_payout_events WHERE block_number > $1", [value]);
   await db.query("DELETE FROM liquidity_migrations WHERE block_number > $1", [value]);
   await db.query("DELETE FROM graduations WHERE block_number > $1", [value]);
   await db.query("DELETE FROM trades WHERE block_number > $1", [value]);
@@ -174,6 +361,7 @@ async function rollbackAfter(db: PoolClient, blockNumber: bigint) {
     "UPDATE indexer_state SET next_block = $2, updated_at = NOW() WHERE chain_id = $1",
     [CHAIN_ID, (blockNumber + 1n).toString()]
   );
+  await refreshCreatorPayoutState(db);
 }
 
 async function reconcileReorg() {
@@ -234,6 +422,107 @@ async function readMarketLogs(markets: Address[], fromBlock: bigint, toBlock: bi
   return { trades, graduations, migrations };
 }
 
+async function readFeeSplitterLogs(splitters: Address[], fromBlock: bigint, toBlock: bigint) {
+  const logs: unknown[] = [];
+  for (let offset = 0; offset < splitters.length; offset += 100) {
+    const addresses = splitters.slice(offset, offset + 100);
+    const batch = await rpc.getLogs({
+      address: addresses,
+      events: feeSplitterEvents,
+      fromBlock,
+      toBlock
+    });
+    logs.push(...batch);
+  }
+  return logs;
+}
+
+async function readGraduationFeeLogs(adapters: Address[], fromBlock: bigint, toBlock: bigint) {
+  const logs: unknown[] = [];
+  for (let offset = 0; offset < adapters.length; offset += 100) {
+    const addresses = adapters.slice(offset, offset + 100);
+    const batch = await rpc.getLogs({
+      address: addresses,
+      event: graduationFeesCollectedEvent,
+      fromBlock,
+      toBlock
+    });
+    logs.push(...batch);
+  }
+  return logs;
+}
+
+async function insertFeeSplitterEvent(
+  db: PoolClient,
+  log: DecodedConfirmedLog,
+  launchToken: string,
+  eventType: string,
+  amount: bigint,
+  payer: Address | null,
+  recipient: Address | null,
+  currencyToken: Address | null
+) {
+  await db.query(
+    `INSERT INTO fee_splitter_events (
+       transaction_hash, log_index, transaction_index, block_number, block_hash,
+       fee_splitter, launch_token, event_type, payer, recipient, currency_token, amount
+     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+     ON CONFLICT (transaction_hash, log_index) DO NOTHING`,
+    [
+      log.transactionHash,
+      log.logIndex,
+      log.transactionIndex,
+      log.blockNumber.toString(),
+      log.blockHash,
+      lower(log.address),
+      launchToken,
+      eventType,
+      payer ? lower(payer) : null,
+      recipient ? lower(recipient) : null,
+      currencyToken ? lower(currencyToken) : null,
+      amount.toString()
+    ]
+  );
+}
+
+async function insertCreatorPayoutEvent(
+  db: PoolClient,
+  log: DecodedConfirmedLog,
+  launchToken: string,
+  eventType: "changed" | "invalidated",
+  previousRecipient: Address | null,
+  proposedRecipient: Address | null,
+  newRecipient: Address | null,
+  authority: Address,
+  evidenceHash: `0x${string}` | null,
+  changeNonce: bigint
+) {
+  await db.query(
+    `INSERT INTO creator_payout_events (
+       transaction_hash, log_index, transaction_index, block_number, block_hash,
+       fee_splitter, token, event_type, previous_recipient, proposed_recipient,
+       new_recipient, authority, evidence_hash, change_nonce
+     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+     ON CONFLICT (transaction_hash, log_index) DO NOTHING`,
+    [
+      log.transactionHash,
+      log.logIndex,
+      log.transactionIndex,
+      log.blockNumber.toString(),
+      log.blockHash,
+      lower(log.address),
+      launchToken,
+      eventType,
+      previousRecipient ? lower(previousRecipient) : null,
+      proposedRecipient ? lower(proposedRecipient) : null,
+      newRecipient ? lower(newRecipient) : null,
+      lower(authority),
+      evidenceHash,
+      changeNonce.toString()
+    ]
+  );
+}
+
 async function processRange(fromBlock: bigint, toBlock: bigint) {
   const launches = await rpc.getLogs({
     address: config.factory,
@@ -242,16 +531,104 @@ async function processRange(fromBlock: bigint, toBlock: bigint) {
     toBlock
   });
 
-  const storedMarkets = await pool.query<{ market: string }>("SELECT market FROM launches");
-  const marketSet = new Set<string>(storedMarkets.rows.map((row) => row.market));
+  const storedLaunches = await pool.query<{
+    market: string;
+    reward_vault: string;
+    token: string;
+    fee_graduation_adapter: string | null;
+    original_creator: string;
+    protocol_treasury: string | null;
+  }>(
+    "SELECT market, reward_vault, token, fee_graduation_adapter, original_creator, protocol_treasury FROM launches"
+  );
+  const marketSet = new Set<string>(storedLaunches.rows.map((row) => row.market));
+  const splitterToToken = new Map<string, string>(
+    storedLaunches.rows.map((row) => [row.reward_vault, row.token])
+  );
+  const splitterToMarket = new Map<string, string>(
+    storedLaunches.rows.map((row) => [row.reward_vault, row.market])
+  );
+  const splitterToAdapter = new Map<string, string>(
+    storedLaunches.rows.flatMap((row) => row.fee_graduation_adapter
+      ? [[row.reward_vault, row.fee_graduation_adapter] as const]
+      : [])
+  );
+  const splitterToOriginalCreator = new Map<string, string>(
+    storedLaunches.rows.map((row) => [row.reward_vault, row.original_creator])
+  );
+  const splitterToTreasury = new Map<string, string>(
+    storedLaunches.rows.flatMap((row) => row.protocol_treasury
+      ? [[row.reward_vault, row.protocol_treasury] as const]
+      : [])
+  );
   const confirmedLaunches = launches
     .map((log) => asConfirmed<LaunchArgs>(log))
     .filter((log): log is ConfirmedLog<LaunchArgs> => log !== null);
-  for (const launch of confirmedLaunches) marketSet.add(lower(launch.args.market));
+  for (const launch of confirmedLaunches) {
+    const args = launch.args;
+    const fairPolicy = args.policyId.toLowerCase() === FAIR_POLICY_ID.toLowerCase()
+      && Number(args.policyVersion) === 1
+      && args.fairStartEnabled
+      && args.fairStartDelayBlocks === 1n
+      && args.fairStartDurationBlocks === 10n
+      && Number(args.fairStartMaxTxBps) === 100
+      && Number(args.fairStartMaxWalletBps) === 300;
+    const openPolicy = args.policyId.toLowerCase() === OPEN_POLICY_ID.toLowerCase()
+      && Number(args.policyVersion) === 1
+      && !args.fairStartEnabled
+      && args.fairStartDelayBlocks === 0n
+      && args.fairStartDurationBlocks === 0n
+      && Number(args.fairStartMaxTxBps) === 0
+      && Number(args.fairStartMaxWalletBps) === 0;
+    if (
+      Number(args.curveFeeBps) !== CANONICAL_CURVE_FEE_BPS
+        || Number(args.creatorFeeShareBps) !== CANONICAL_CREATOR_SHARE_BPS
+        || Number(args.protocolFeeShareBps) !== CANONICAL_PROTOCOL_SHARE_BPS
+        || Number(args.postGraduationFeeBps) !== CANONICAL_POST_GRADUATION_FEE_BPS
+        || args.graduationTarget !== CANONICAL_GRADUATION_TARGET
+        || !(fairPolicy || openPolicy)
+        || (args.officialMigration && !fairPolicy)
+    ) {
+      throw new Error(`Launch ${args.token} emitted noncanonical V6 economics`);
+    }
+    marketSet.add(lower(launch.args.market));
+    splitterToToken.set(lower(launch.args.feeSplitter), lower(launch.args.token));
+    splitterToMarket.set(lower(launch.args.feeSplitter), lower(launch.args.market));
+    splitterToOriginalCreator.set(lower(launch.args.feeSplitter), lower(launch.args.creator));
+  }
+  const launchTimestamps = new Map<bigint, string>();
+  await Promise.all([...new Set(confirmedLaunches.map((launch) => launch.blockNumber))].map(async (blockNumber) => {
+    const block = await rpc.getBlock({ blockNumber });
+    launchTimestamps.set(blockNumber, new Date(Number(block.timestamp) * 1_000).toISOString());
+  }));
   const markets = [...marketSet].map((market) => getAddress(market));
   const marketLogs = markets.length
     ? await readMarketLogs(markets, fromBlock, toBlock)
     : { trades: [], graduations: [], migrations: [] };
+
+  const storedAdapters = await pool.query<{ adapter: string }>(
+    "SELECT DISTINCT adapter FROM liquidity_migrations"
+  );
+  const adapterSet = new Set<string>(storedAdapters.rows.map((row) => row.adapter));
+  for (const rawLog of marketLogs.migrations) {
+    const migration = asConfirmed<MigrationArgs>(rawLog);
+    if (migration) adapterSet.add(lower(migration.args.adapter));
+  }
+
+  const splitters = [...splitterToToken.keys()].map((address) => getAddress(address));
+  const adapters = [...adapterSet].map((address) => getAddress(address));
+  const [rawSplitterLogs, rawGraduationFeeLogs] = await Promise.all([
+    splitters.length ? readFeeSplitterLogs(splitters, fromBlock, toBlock) : Promise.resolve([]),
+    adapters.length ? readGraduationFeeLogs(adapters, fromBlock, toBlock) : Promise.resolve([])
+  ]);
+  const splitterLogs = rawSplitterLogs
+    .map((log) => asDecodedConfirmed(log))
+    .filter((log): log is DecodedConfirmedLog => log !== null)
+    .sort(compareLogs);
+  const graduationFeeLogs = rawGraduationFeeLogs
+    .map((log) => asDecodedConfirmed<GraduationFeesCollectedArgs>(log))
+    .filter((log): log is DecodedConfirmedLog<GraduationFeesCollectedArgs> => log !== null)
+    .sort(compareLogs);
 
   const boundary = await rpc.getBlock({ blockNumber: toBlock });
   if (!boundary.hash) throw new Error(`Block ${toBlock} has no hash`);
@@ -266,16 +643,25 @@ async function processRange(fromBlock: bigint, toBlock: bigint) {
         `INSERT INTO launches (
           token, launch_id, creator, market, reward_vault, graduation_pool_id,
           name, symbol, supply, metadata_uri, creator_bps, community_bps,
-          trader_bps, liquidity_bps, platform_bps, transaction_hash, block_number, log_index
+          trader_bps, liquidity_bps, platform_bps, transaction_hash, block_number, log_index,
+          protocol_version, policy_id, policy_version, curve_fee_bps, protocol_fee_share_bps,
+          post_graduation_fee_bps, graduation_target, fair_start_enabled, fair_start_delay_blocks,
+          fair_start_duration_blocks, fair_start_max_tx_bps, fair_start_max_wallet_bps,
+          official_migration, created_at, original_creator, current_creator_fee_recipient
         ) VALUES (
-          $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18
+          $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,
+          $19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34
         ) ON CONFLICT (transaction_hash, log_index) DO NOTHING`,
         [
           lower(args.token), args.launchId.toString(), lower(args.creator), lower(args.market),
-          lower(args.rewardVault), args.graduationPoolId, args.name, args.symbol,
-          FIXED_TOKEN_SUPPLY.toString(), args.metadataURI, Number(args.rewardBps[0]), Number(args.rewardBps[1]),
-          Number(args.rewardBps[2]), Number(args.rewardBps[3]), Number(args.rewardBps[4]),
-          log.transactionHash, log.blockNumber.toString(), log.logIndex
+          lower(args.feeSplitter), args.graduationPoolId, args.name, args.symbol,
+          FIXED_TOKEN_SUPPLY.toString(), args.metadataURI, Number(args.creatorFeeShareBps), 0,
+          0, 0, Number(args.protocolFeeShareBps), log.transactionHash, log.blockNumber.toString(), log.logIndex,
+          6, args.policyId, Number(args.policyVersion), Number(args.curveFeeBps), Number(args.protocolFeeShareBps),
+          Number(args.postGraduationFeeBps), args.graduationTarget.toString(), args.fairStartEnabled,
+          args.fairStartDelayBlocks.toString(), args.fairStartDurationBlocks.toString(),
+          Number(args.fairStartMaxTxBps), Number(args.fairStartMaxWalletBps), args.officialMigration,
+          launchTimestamps.get(log.blockNumber), lower(args.creator), lower(args.creator)
         ]
       );
     }
@@ -348,6 +734,265 @@ async function processRange(fromBlock: bigint, toBlock: bigint) {
       );
     }
 
+    for (const log of splitterLogs) {
+      const feeSplitter = lower(log.address);
+      const launchToken = splitterToToken.get(feeSplitter);
+      if (!launchToken) throw new Error(`Unknown V6 fee splitter ${feeSplitter}`);
+
+      switch (log.eventName) {
+        case "Initialized": {
+          const args = log.args as InitializedArgs;
+          if (lower(args.launchToken) !== launchToken) {
+            throw new Error(`Fee splitter ${feeSplitter} emitted a mismatched launch token`);
+          }
+          const expectedMarket = splitterToMarket.get(feeSplitter);
+          if (!expectedMarket || lower(args.authorizedMarket) !== expectedMarket) {
+            throw new Error(`Fee splitter ${feeSplitter} emitted a mismatched authorized market`);
+          }
+          if (
+            lower(args.protocolTreasury) !== CANONICAL_PROTOCOL_TREASURY
+              || lower(args.creatorPayoutAuthority) !== CANONICAL_CREATOR_PAYOUT_AUTHORITY
+              || Number(args.creatorShareBps) !== CANONICAL_CREATOR_SHARE_BPS
+              || lower(args.creator) !== splitterToOriginalCreator.get(feeSplitter)
+          ) {
+            throw new Error(`Fee splitter ${feeSplitter} emitted noncanonical V6 payout bindings`);
+          }
+          const adapter = lower(args.graduationAdapter);
+          if (adapter === lower(zeroAddress)) {
+            throw new Error(`Fee splitter ${feeSplitter} emitted a zero graduation adapter`);
+          }
+          const [adapterFactory, adapterPoolFee, adapterMarket, adapterSplitter, adapterLaunchFee] =
+            await Promise.all([
+              rpc.readContract({ address: args.graduationAdapter, abi: graduationAdapterReadAbi, functionName: "factory" }),
+              rpc.readContract({ address: args.graduationAdapter, abi: graduationAdapterReadAbi, functionName: "poolFee" }),
+              rpc.readContract({ address: args.graduationAdapter, abi: graduationAdapterReadAbi, functionName: "markets", args: [args.launchToken] }),
+              rpc.readContract({ address: args.graduationAdapter, abi: graduationAdapterReadAbi, functionName: "feeSplitters", args: [args.launchToken] }),
+              rpc.readContract({ address: args.graduationAdapter, abi: graduationAdapterReadAbi, functionName: "postGraduationFeeBps", args: [args.launchToken] })
+            ]);
+          if (
+            lower(adapterFactory) !== lower(config.factory)
+              || Number(adapterPoolFee) !== CANONICAL_V4_POOL_FEE
+              || lower(adapterMarket) !== expectedMarket
+              || lower(adapterSplitter) !== feeSplitter
+              || Number(adapterLaunchFee) !== CANONICAL_POST_GRADUATION_FEE_BPS
+          ) {
+            throw new Error(`Fee splitter ${feeSplitter} is bound to a noncanonical V6 graduation adapter`);
+          }
+          splitterToAdapter.set(feeSplitter, adapter);
+          splitterToTreasury.set(feeSplitter, CANONICAL_PROTOCOL_TREASURY);
+          const update = await db.query(
+            `UPDATE launches
+             SET protocol_treasury = $2,
+                 creator_payout_authority = $3,
+                 original_creator = $4,
+                 current_creator_fee_recipient = COALESCE(current_creator_fee_recipient, $4),
+                 fee_authorized_market = $7,
+                 fee_graduation_adapter = $8
+             WHERE reward_vault = $1
+               AND token = $5
+               AND creator = $4
+               AND creator_bps = $6
+               AND market = $7`,
+            [
+              feeSplitter,
+              lower(args.protocolTreasury),
+              lower(args.creatorPayoutAuthority),
+              lower(args.creator),
+              launchToken,
+              Number(args.creatorShareBps),
+              lower(args.authorizedMarket),
+              lower(args.graduationAdapter)
+            ]
+          );
+          if (update.rowCount !== 1) {
+            throw new Error(`Fee splitter initialization did not match launch ${launchToken}`);
+          }
+          break;
+        }
+        case "CreatorWalletChanged": {
+          const args = log.args as CreatorWalletChangedArgs;
+          const originalCreator = splitterToOriginalCreator.get(feeSplitter);
+          const treasury = splitterToTreasury.get(feeSplitter);
+          if (
+            lower(args.authority) !== CANONICAL_CREATOR_PAYOUT_AUTHORITY
+              || args.evidenceHash.toLowerCase() === ZERO_HASH
+              || !originalCreator || treasury !== CANONICAL_PROTOCOL_TREASURY
+              || ![originalCreator, treasury].includes(lower(args.previousCreator))
+              || ![originalCreator, treasury].includes(lower(args.newCreator))
+              || lower(args.previousCreator) === lower(args.newCreator)
+          ) {
+            throw new Error(`Fee splitter ${feeSplitter} emitted an invalid creator-payout change`);
+          }
+          await insertCreatorPayoutEvent(
+            db,
+            log,
+            launchToken,
+            "changed",
+            args.previousCreator,
+            null,
+            args.newCreator,
+            args.authority,
+            args.evidenceHash,
+            args.nonce
+          );
+          break;
+        }
+        case "CreatorPayoutNonceInvalidated": {
+          const args = log.args as CreatorPayoutNonceInvalidatedArgs;
+          const treasury = splitterToTreasury.get(feeSplitter);
+          if (
+            treasury !== CANONICAL_PROTOCOL_TREASURY
+              || lower(args.protocolTreasury) !== CANONICAL_PROTOCOL_TREASURY
+              || args.newNonce !== args.previousNonce + 1n
+          ) {
+            throw new Error(`Fee splitter ${feeSplitter} emitted an invalid payout-nonce invalidation`);
+          }
+          await insertCreatorPayoutEvent(
+            db,
+            log,
+            launchToken,
+            "invalidated",
+            null,
+            null,
+            null,
+            args.protocolTreasury,
+            null,
+            args.previousNonce
+          );
+          break;
+        }
+        case "FeeReceived": {
+          const args = log.args as NativePayerAmountArgs;
+          const payer = lower(args.payer);
+          if (payer !== splitterToMarket.get(feeSplitter) && payer !== splitterToAdapter.get(feeSplitter)) {
+            throw new Error(`Fee splitter ${feeSplitter} reported native fees from an unauthorized source`);
+          }
+          await insertFeeSplitterEvent(db, log, launchToken, "fee_received", args.amount, args.payer, null, null);
+          break;
+        }
+        case "DirectPayment": {
+          const args = log.args as NativeRecipientAmountArgs;
+          await insertFeeSplitterEvent(
+            db, log, launchToken, "direct_payment", args.amount, null, args.recipient, null
+          );
+          break;
+        }
+        case "PaymentDeferred": {
+          const args = log.args as NativeRecipientAmountArgs;
+          await insertFeeSplitterEvent(
+            db, log, launchToken, "payment_deferred", args.amount, null, args.recipient, null
+          );
+          break;
+        }
+        case "DeferredPaymentClaimed": {
+          const args = log.args as NativeRecipientAmountArgs;
+          await insertFeeSplitterEvent(
+            db, log, launchToken, "deferred_payment_claimed", args.amount, null, args.recipient, null
+          );
+          break;
+        }
+        case "TokenFeeReceived": {
+          const args = log.args as TokenPayerAmountArgs;
+          if (lower(args.payer) !== splitterToAdapter.get(feeSplitter)) {
+            throw new Error(`Fee splitter ${feeSplitter} reported token fees from an unauthorized source`);
+          }
+          if (lower(args.token) !== launchToken) {
+            throw new Error(`Fee splitter ${feeSplitter} reported fees for a different token`);
+          }
+          await insertFeeSplitterEvent(
+            db, log, launchToken, "token_fee_received", args.amount, args.payer, null, args.token
+          );
+          break;
+        }
+        case "DirectTokenPayment": {
+          const args = log.args as TokenRecipientAmountArgs;
+          await insertFeeSplitterEvent(
+            db, log, launchToken, "direct_token_payment", args.amount, null, args.recipient, args.token
+          );
+          break;
+        }
+        case "TokenPaymentDeferred": {
+          const args = log.args as TokenRecipientAmountArgs;
+          await insertFeeSplitterEvent(
+            db, log, launchToken, "token_payment_deferred", args.amount, null, args.recipient, args.token
+          );
+          break;
+        }
+        case "DeferredTokenPaymentClaimed": {
+          const args = log.args as TokenRecipientAmountArgs;
+          await insertFeeSplitterEvent(
+            db,
+            log,
+            launchToken,
+            "deferred_token_payment_claimed",
+            args.amount,
+            null,
+            args.recipient,
+            args.token
+          );
+          break;
+        }
+        default:
+          throw new Error(`Unsupported fee splitter event ${log.eventName}`);
+      }
+    }
+
+    for (const log of graduationFeeLogs) {
+      const args = log.args;
+      const token = lower(args.token);
+      const feeSplitter = lower(args.feeSplitter);
+      if (splitterToToken.get(feeSplitter) !== token) {
+        throw new Error(`Graduation fee collection used an unknown token/splitter binding`);
+      }
+      if (splitterToAdapter.get(feeSplitter) !== lower(log.address)) {
+        throw new Error(`Graduation fee collection used an unknown adapter/splitter binding`);
+      }
+      await db.query(
+        `INSERT INTO graduation_fee_collections (
+           transaction_hash, log_index, transaction_index, block_number, block_hash,
+           adapter, token, fee_splitter, native_amount, token_amount
+         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+         ON CONFLICT (transaction_hash, log_index) DO NOTHING`,
+        [
+          log.transactionHash,
+          log.logIndex,
+          log.transactionIndex,
+          log.blockNumber.toString(),
+          log.blockHash,
+          lower(log.address),
+          token,
+          feeSplitter,
+          args.nativeAmount.toString(),
+          args.tokenAmount.toString()
+        ]
+      );
+    }
+
+    await refreshCreatorPayoutState(db);
+    const incompleteLaunch = await db.query<{ token: string }>(
+      `SELECT token
+       FROM launches
+       WHERE protocol_version <> 6
+          OR original_creator IS NULL
+          OR current_creator_fee_recipient IS NULL
+          OR protocol_treasury IS NULL
+          OR creator_payout_authority IS NULL
+          OR fee_authorized_market IS NULL
+          OR fee_authorized_market <> market
+          OR fee_graduation_adapter IS NULL
+          OR creator_bps <> ${CANONICAL_CREATOR_SHARE_BPS}
+          OR protocol_fee_share_bps <> ${CANONICAL_PROTOCOL_SHARE_BPS}
+          OR curve_fee_bps <> ${CANONICAL_CURVE_FEE_BPS}
+          OR post_graduation_fee_bps <> ${CANONICAL_POST_GRADUATION_FEE_BPS}
+          OR graduation_target <> '${CANONICAL_GRADUATION_TARGET.toString()}'
+          OR protocol_treasury <> '${CANONICAL_PROTOCOL_TREASURY}'
+          OR creator_payout_authority <> '${CANONICAL_CREATOR_PAYOUT_AUTHORITY}'
+       LIMIT 1`
+    );
+    if (incompleteLaunch.rows[0]) {
+      throw new Error(`Incomplete V6 launch accounting for ${incompleteLaunch.rows[0].token}`);
+    }
+
     await db.query(
       `INSERT INTO sync_points (chain_id, block_number, block_hash, parent_hash)
        VALUES ($1,$2,$3,$4)
@@ -378,7 +1023,9 @@ async function processRange(fromBlock: bigint, toBlock: bigint) {
     launches: launches.length,
     trades: marketLogs.trades.length,
     graduations: marketLogs.graduations.length,
-    migrations: marketLogs.migrations.length
+    migrations: marketLogs.migrations.length,
+    feeSplitterEvents: splitterLogs.length,
+    graduationFeeCollections: graduationFeeLogs.length
   }));
 }
 
@@ -417,7 +1064,10 @@ async function launchRows(limit: number) {
       COALESCE(stats.sell_count, 0)::INTEGER AS sell_count,
       COALESCE(last_trade.real_eth_reserve, 0)::TEXT AS reserve_wei,
       (g.market IS NOT NULL) AS graduated,
-      m.pool AS dex_pool
+      m.pool AS dex_pool,
+      COALESCE(post_grad.native_fees, 0)::TEXT AS post_graduation_native_fees_collected,
+      COALESCE(post_grad.token_fees, 0)::TEXT AS post_graduation_token_fees_collected,
+      COALESCE(post_grad.collection_count, 0)::INTEGER AS post_graduation_collection_count
     FROM launches l
     LEFT JOIN LATERAL (
       SELECT
@@ -434,6 +1084,15 @@ async function launchRows(limit: number) {
     ) last_trade ON TRUE
     LEFT JOIN graduations g ON g.market = l.market
     LEFT JOIN liquidity_migrations m ON m.market = l.market
+    LEFT JOIN LATERAL (
+      SELECT
+        SUM(native_amount) AS native_fees,
+        SUM(token_amount) AS token_fees,
+        COUNT(*) AS collection_count
+      FROM graduation_fee_collections f
+      WHERE f.token = l.token
+    ) post_grad ON TRUE
+    WHERE l.protocol_version = 6
     ORDER BY l.block_number DESC, l.log_index DESC
     LIMIT $1`,
     [limit]
@@ -459,7 +1118,9 @@ function startServer() {
         json(response, lastError ? 503 : 200, {
           ok: !lastError,
           chainId: CHAIN_ID,
+          protocolVersion: 6,
           factory: config.factory,
+          factoryStartBlock: config.startBlock.toString(),
           indexedThrough: indexedThrough.toString(),
           latestBlock: latest.toString(),
           confirmationDepth: config.confirmations,
@@ -486,6 +1147,7 @@ function startServer() {
 
 let stopping = false;
 async function run() {
+  await verifyV6Factory();
   await migrate();
   await reconcileReorg();
   const server = startServer();

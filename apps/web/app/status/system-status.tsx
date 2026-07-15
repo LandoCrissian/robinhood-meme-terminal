@@ -26,7 +26,7 @@ export function SystemStatus({ initialReport }: { initialReport: SystemHealthRep
         <div className={report.ok ? "statusPulse operational" : "statusPulse degraded"} aria-hidden="true" />
         <div>
           <p className="eyebrow">SYSTEM STATUS</p>
-          <h1>{report.ok ? "All launch systems operational" : "Some systems need review"}</h1>
+          <h1>{report.ok ? "Protocol checks healthy" : "Some systems need review"}</h1>
           <p>{report.network} · Block {report.latestBlock}</p>
           <small>Checked {new Date(report.checkedAt).toLocaleTimeString()} · {report.latencyMs}ms verification · Refreshes every 15 seconds</small>
         </div>
@@ -44,8 +44,8 @@ export function SystemStatus({ initialReport }: { initialReport: SystemHealthRep
 
       <section className="panel safeguardPanel">
         <p className="eyebrow">BUILT-IN SAFEGUARDS</p>
-        <h2>Fair Start protects every new launch</h2>
-        <p className="safeguardLead">Fair Start is a brief opening window, not a permanent trading restriction. It limits large early buys so bots or insiders cannot capture most of a launch before everyone else can react.</p>
+        <h2>Fair Start is the protected default</h2>
+        <p className="safeguardLead">Creators may keep the reviewed Fair Start default or explicitly choose the open policy. Fair Start is a brief opening window, not a permanent trading restriction. It limits large early buys so bots or insiders cannot capture most of a launch before everyone else can react.</p>
         <div className="safeguardGrid">
           <div><strong>1-block opening delay</strong><span>Trading cannot be captured in the same block as launch.</span></div>
           <div><strong>10 protected blocks</strong><span>The temporary limits cover only the opening window.</span></div>

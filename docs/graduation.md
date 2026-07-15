@@ -1,5 +1,7 @@
 # Graduation architecture
 
+> **V6 release note:** This document preserves the dependency research and architectural history. The binding V6 behavior is defined in [V6_PROTOCOL_FOUNDATION.md](V6_PROTOCOL_FOUNDATION.md) and [V6_MAINNET_RELEASE.md](V6_MAINNET_RELEASE.md). Where older prototype language conflicts with those documents, the V6 specification controls.
+
 ## Verified Robinhood Chain mainnet dependencies
 
 The following values were verified on 2026-07-10 against Robinhood Chain's official documentation and the official `Uniswap/contracts` deployment registry for chain ID `4663`:
@@ -27,8 +29,8 @@ Uniswap's official repositories do not currently publish deployments for Robinho
 4. The curve reaches its immutable ETH graduation target and permanently stops trading.
 5. Anyone may call `migrateLiquidity`; the caller cannot select the destination.
 6. The market approves only its immutable graduation adapter.
-7. The market sends its complete remaining token inventory and accounted ETH reserve.
-8. The adapter must consume the exact supplied amounts and return a nonzero pool and liquidity result.
+7. The V6 market sends only its tracked remaining token inventory and exact accounted ETH reserve. Pending refunds, forced assets, and other surplus are excluded.
+8. The adapter must consume the exact supplied amounts, keep unavoidable seed dust separately locked, and return a nonzero pool and liquidity result.
 9. The market rejects incomplete migrations and records the result onchain.
 
 The adapter address is immutable per factory deployment. A factory intended for production must be deployed with an adapter configured from verified mainnet addresses; a testnet factory must use a separately labeled test adapter.
@@ -45,7 +47,7 @@ Uniswap V4 supports pool lifecycle hooks for initialization, adding liquidity, a
 
 The factory, market, hook, and `V4GraduationAdapter` now implement this lifecycle. `prepare` reserves the exact native/token V4 pool ID atomically during launch. Initialization intentionally waits until graduation so the actual terminal ETH and remaining-token amounts determine the opening square-root price instead of relying on a guessed price.
 
-Uniswap's audited Liquidity Launcher is the preferred reference implementation because it already coordinates price discovery and V4 liquidity migration. Robinhood-specific Liquidity Launcher strategy factories are not currently listed as deployed, so this integration requires a separate deployment and review before mainnet.
+Uniswap's Liquidity Launcher is a useful reference implementation because it coordinates price discovery and V4 liquidity migration. Robinhood-specific Liquidity Launcher strategy factories are not currently listed as deployed, so RMT's separate integration requires its own deployment verification and independent review before public V6 launches reopen.
 
 Sources:
 
@@ -53,21 +55,21 @@ Sources:
 - <https://github.com/Uniswap/liquidity-launcher>
 - <https://github.com/Uniswap/liquidity-launcher/blob/main/docs/TechnicalReference.md>
 
-The adapter initializes the reserved pool, mints a permanently held full-range position, settles the exact V4 currency deltas, donates rounding remainders to that position, verifies that neither the market nor adapter retained launch assets, and only then opens public swaps. Tests execute this flow against Uniswap's actual V4 `PoolManager`, including the complete bonding-curve migration path.
+The V6 adapter initializes the reserved pool, mints one permanently locked full-range position, settles the exact V4 currency deltas, records unavoidable seed remainders as non-collectible locked dust, verifies conservation, and only then opens public swaps. Tests execute this flow against Uniswap's actual V4 `PoolManager`, including the complete bonding-curve migration path.
 
-The position currently has no removal path, so graduation liquidity is permanently protocol-held. A future, separately reviewed fee-collection policy is required before claiming or redistributing V4 LP fees. No production factory deployment is authorized until the hook CREATE2 deployment, Robinhood-specific configuration, economic parameters, and independent audit are complete.
+The position has no removal path. V6 realizes earned LP fees permissionlessly with a zero-liquidity-delta poke and routes ETH and/or launched-token swap fees through the immutable 70% current creator-share recipient / 30% RMT splitter. Collection cannot remove principal and the collector receives nothing. V6 remains a release candidate until its CREATE2 hook deployment, Robinhood-specific configuration, final fork rehearsal, generated artifacts, and independent review are complete.
 
 ## V4 reservation hook prototype
 
 `V4GraduationHook` implements the first three required V4 lifecycle controls:
 
 - `beforeInitialize`: only the immutable adapter may initialize a pool that it already reserved.
-- `beforeAddLiquidity`: before opening, only the adapter may seed liquidity; after opening, liquidity is permissionless.
+- `beforeAddLiquidity`: only the immutable adapter may create the single full-range position; outside liquidity additions remain rejected after opening.
 - `beforeSwap`: all swaps revert until the adapter permanently opens the pool.
 
 Reservations and openings are one-time transitions keyed by the official V4 `PoolId`. The hook never restricts ERC-20 transfers.
 
-V4 derives enabled callbacks from the low bits of the deployed hook address. This permission set requires the `beforeInitialize`, `beforeAddLiquidity`, and `beforeSwap` flags (`0x2880`). A production hook must therefore be deployed with a mined CREATE2 salt whose resulting address has those bits, then verified against the expected bytecode and immutable PoolManager/adapter addresses. The local test subclass bypasses address-bit validation only to test callback behavior; it is not deployable production code.
+V4 derives enabled callbacks from the low bits of the deployed hook address. This permission set requires the `beforeInitialize`, `beforeAddLiquidity`, `beforeSwap`, and `beforeDonate` flags (`0x28a0`). The hook rejects permissionless donations so outside assets cannot be presented as fees earned by the locked RMT position. A production hook must therefore be deployed with a mined CREATE2 salt whose resulting address has those bits, then verified against the expected bytecode and immutable PoolManager/adapter addresses. The local test subclass bypasses address-bit validation only to test callback behavior; it is not deployable production code.
 
 The hook uses a one-time deployment handshake to avoid circular CREATE2 address dependencies: its explicitly configured deployer binds the adapter exactly once after both contracts exist. The shared CREATE2 proxy never receives this authority. The adapter can never be replaced afterward. Separately, the factory binds each prepared token to the exact market it created before transferring public inventory. A graduation call from any other address must revert. The guarded testnet script deploys the upstream V4 manager, mines and checks the hook address, performs every binding, and verifies the final graph before completing.
 
@@ -80,4 +82,4 @@ The official dependencies are pinned to the same revisions recorded by Uniswap L
 
 The production curve is calibrated for exactly `1,000,000,000` tokens with 18 decimals. The factory now enforces that supply onchain and the launch form exposes it as read-only. Arbitrary creator-selected supplies are rejected because they can make public inventory, curve pricing, and graduation settlement inconsistent.
 
-Market fee, virtual reserves, and graduation target are immutable factory configuration rather than universal constants. This permits a cheap, clearly labeled testnet factory without silently committing mainnet economics. Every market created by a factory receives the same immutable values. A separate mainnet factory must not be deployed until those values have been economically simulated and publicly documented.
+Market fee, virtual reserves, and graduation target are immutable launch-policy configuration. The reviewed V6 mainnet policies use a 1% curve fee, 0.3 virtual ETH, 1,017,500,000 virtual tokens, and a 2 ETH net graduation target. Every launch permanently records its policy version and economics; deployment remains blocked until the V6 release gates pass.

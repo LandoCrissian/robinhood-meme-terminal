@@ -24,6 +24,14 @@
 .deployment-error { color: #ff8b8b; background: rgba(255,107,107,.08); border: 1px solid rgba(255,107,107,.25); border-radius: 12px; padding: 12px; font-size: 13px; }
 .deploy-stack-button { width: 100%; margin-top: 18px; border: 0; border-radius: 14px; padding: 16px; font: inherit; font-weight: 800; background: #53f28a; color: #07110b; cursor: pointer; }
 .deploy-stack-button:disabled { background: #242b27; color: #747d78; cursor: not-allowed; }
+.deployment-recovery { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-top: 18px; padding: 14px; border: 1px solid var(--line); border-radius: 14px; background: rgba(255,255,255,.025); }
+.deployment-recovery > div:first-child { display: grid; gap: 4px; }
+.deployment-recovery strong { font-size: 12px; }
+.deployment-recovery span { max-width: 390px; color: var(--muted); font-size: 11px; line-height: 1.45; }
+.deployment-recovery-actions { display: flex; flex: 0 0 auto; gap: 8px; }
+.deployment-recovery-actions button, .deployment-recovery-actions label { border: 1px solid var(--line); border-radius: 10px; padding: 9px 11px; background: #18201c; color: var(--foreground); font: inherit; font-size: 11px; font-weight: 700; cursor: pointer; }
+.deployment-recovery-actions button:disabled, .deployment-recovery-actions label.disabled { opacity: .45; cursor: not-allowed; }
+.deployment-recovery-actions input { position: absolute; width: 1px; height: 1px; overflow: hidden; opacity: 0; pointer-events: none; }
 .deployment-safety { margin: 12px 6px 0; text-align: center; color: var(--muted); font-size: 11px; line-height: 1.5; }
 @keyframes deploy-pulse { 50% { opacity: .35; } }
-@media (max-width: 520px) { .deployment-steps { grid-template-columns: 1fr; } .deployment-card { padding: 18px; } }
+@media (max-width: 520px) { .deployment-steps { grid-template-columns: 1fr; } .deployment-card { padding: 18px; } .deployment-recovery { align-items: stretch; flex-direction: column; } .deployment-recovery-actions > * { flex: 1; text-align: center; } }

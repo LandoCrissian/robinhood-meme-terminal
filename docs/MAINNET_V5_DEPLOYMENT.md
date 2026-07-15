@@ -1,6 +1,6 @@
 # Robinhood Chain canonical V5 deployment
 
-Status: **deployed and verified by the wallet-signed release console**
+Status: **deployed and application-verified by the wallet-signed release console; Blockscout source publication is required before V6 governance proposals**
 
 - Chain: Robinhood Chain mainnet
 - Chain ID: `4663`

@@ -68,14 +68,31 @@ jobs:
           forge fmt --check \
             script/MainnetReleaseConfig.sol \
             script/DeployMainnetMemeLaunchFactory.s.sol \
-            test/MainnetReleaseConfig.t.sol
-      - name: Format legacy sources for deterministic testnet artifacts
-        run: forge fmt
-      - name: Build contracts
+            script/MainnetReleaseConfigV6.sol \
+            script/DeployMainnetV6OfficialMigration.s.sol \
+            src/RMTV6Governance.sol \
+            src/RMTLaunchGate.sol \
+            src/RMTLaunchPolicyRegistry.sol \
+            src/RMTLaunchFactoryV6.sol \
+            src/OfficialRMTIdentityMigration.sol \
+            src/DirectLaunchFeeSplitter.sol \
+            src/clone/CloneBondingCurveMarketV6.sol \
+            src/V4GraduationHook.sol \
+            src/V4GraduationAdapter.sol \
+            test/MainnetReleaseConfig.t.sol \
+            test/MainnetReleaseConfigV6.t.sol \
+            test/RMTV6Governance.t.sol \
+            test/RMTLaunchFactoryV6.t.sol \
+            test/DirectLaunchFeeSplitter.t.sol \
+            test/V4GraduationAdapter.t.sol \
+            test/V6MainnetFork.t.sol
+      - name: Build the exact checked-in contract sources
         run: |
           set -o pipefail
+          git diff --exit-code -- .
           forge build 2>&1 | tee forge-build.log
           forge build --sizes --skip script --skip test 2>&1 | tee -a forge-build.log
+          git diff --exit-code -- .
       - name: Upload Foundry diagnostics
         if: always()
         uses: actions/upload-artifact@v4
@@ -107,3 +124,4 @@ jobs:
           bash -n scripts/deploy-mainnet.sh
           bash -n scripts/smoke-test-mainnet.sh
           bash -n scripts/test-mainnet-fork.sh
+          bash -n scripts/verify-mainnet-v6.sh

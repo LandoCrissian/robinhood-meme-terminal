@@ -1,11 +1,22 @@
-import { createPublicClient, getAddress, http, isAddress, type Address } from "viem";
+import { createPublicClient, getAddress, http, isAddress, keccak256, toHex, type Address } from "viem";
 import {
   getFactoryAddress,
+  isFreshMainnetVersionRegistryConfigured,
+  isMainnetVersionRegistryConfigurationValid,
   memeLaunchFactoryAbi,
+  publicMainnetV5FactoryAddress,
+  rmtLaunchFactoryV6Abi,
   publicMainnetVersionRegistryAddress,
   versionRegistryAbi
 } from "../contracts";
-import { activeChain, activeFactoryStartBlock, isMainnetRelease } from "../network";
+import {
+  activeChain,
+  activeFactoryStartBlock,
+  isFactoryStartBlockConfigurationValid,
+  isFactoryStartBlockExplicitlyConfigured,
+  isMainnetRelease,
+  publicMainnetV5FactoryStartBlock
+} from "../network";
 import type { LaunchFeedItem } from "../launch-feed";
 import { resolveTokenMetadata } from "../token-metadata";
 
@@ -33,17 +44,52 @@ const marketSignalsAbi = [
 
 const publicClient = createPublicClient({
   chain: activeChain,
-  transport: http(activeChain.rpcUrls.default.http[0], { retryCount: 2, timeout: 8_000 })
+  transport: http(
+    isMainnetRelease
+      ? process.env.RMT_RPC_URL ?? process.env.NEXT_PUBLIC_RMT_RPC_URL ?? activeChain.rpcUrls.default.http[0]
+      : process.env.RMT_TESTNET_RPC_URL ?? process.env.NEXT_PUBLIC_RMT_TESTNET_RPC_URL ?? activeChain.rpcUrls.default.http[0],
+    { retryCount: 3, timeout: 12_000 }
+  )
 });
+const V5_VERSION = keccak256(toHex("RMT_FACTORY_V5"));
+const V6_VERSION = keccak256(toHex("RMT_FACTORY_V6"));
 
-async function resolveActiveFactory() {
-  if (!isMainnetRelease) return getFactoryAddress();
-  const registered = await publicClient.readContract({
-    address: publicMainnetVersionRegistryAddress,
-    abi: versionRegistryAbi,
-    functionName: "activeFactory"
-  });
-  return isAddress(registered) ? getAddress(registered) : null;
+export async function resolveActiveFactory() {
+  if (!isMainnetRelease) {
+    const address = getFactoryAddress();
+    if (!address) return null;
+    const protocolVersion = await publicClient.readContract({
+      address,
+      abi: rmtLaunchFactoryV6Abi,
+      functionName: "protocolVersion"
+    }).catch(() => null);
+    return { address, version: Number(protocolVersion) === 6 ? 6 : 5 } as const;
+  }
+  if (!isMainnetVersionRegistryConfigurationValid) return null;
+  const [registered, registeredVersion] = await Promise.all([
+    publicClient.readContract({
+      address: publicMainnetVersionRegistryAddress,
+      abi: versionRegistryAbi,
+      functionName: "activeFactory"
+    }),
+    publicClient.readContract({
+      address: publicMainnetVersionRegistryAddress,
+      abi: versionRegistryAbi,
+      functionName: "activeVersion"
+    })
+  ]);
+  if (!isAddress(registered)) return null;
+  const address = getAddress(registered);
+  if (registeredVersion === V5_VERSION && address === publicMainnetV5FactoryAddress) {
+    return { address, version: 5 } as const;
+  }
+  if (
+    registeredVersion === V6_VERSION
+      && isFreshMainnetVersionRegistryConfigured
+      && isFactoryStartBlockExplicitlyConfigured
+      && isFactoryStartBlockConfigurationValid
+  ) return { address, version: 6 } as const;
+  return null;
 }
 
 async function readMarketSignals(market: Address, launchBlock: bigint, latestBlock: bigint) {
@@ -95,54 +141,114 @@ async function readMarketSignals(market: Address, launchBlock: bigint, latestBlo
   }
 }
 
-export async function readFreshLaunches(limit = 25): Promise<LaunchFeedItem[]> {
-  const factoryAddress = await resolveActiveFactory();
-  if (!factoryAddress) return [];
+export async function readFreshLaunches(
+  limit = 25,
+  resolvedFactory?: Awaited<ReturnType<typeof resolveActiveFactory>>
+): Promise<LaunchFeedItem[]> {
+  const activeFactory = resolvedFactory ?? await resolveActiveFactory();
+  if (!activeFactory) return [];
+
+  const protocolVersion = await publicClient.readContract({
+    address: activeFactory.address,
+    abi: rmtLaunchFactoryV6Abi,
+    functionName: "protocolVersion"
+  }).catch(() => null);
+  if (activeFactory.version === 6 && Number(protocolVersion) !== 6) return [];
 
   const latestBlock = await publicClient.getBlockNumber();
-  const configuredStart = process.env.NEXT_PUBLIC_FACTORY_START_BLOCK;
-  const requestedStart = configuredStart && /^\d+$/.test(configuredStart)
-    ? BigInt(configuredStart)
-    : activeFactoryStartBlock;
+  const requestedStart = activeFactory.version === 6
+    ? activeFactoryStartBlock
+    : isMainnetRelease ? publicMainnetV5FactoryStartBlock : activeFactoryStartBlock;
+  if (latestBlock < requestedStart) return [];
   let cursor = latestBlock;
   const launches: LaunchFeedItem[] = [];
 
-  while (cursor >= requestedStart && launches.length < limit) {
-    const candidate = cursor > 19_999n ? cursor - 19_999n : 0n;
-    const fromBlock = candidate < requestedStart ? requestedStart : candidate;
-    const logs = await publicClient.getContractEvents({
-      address: factoryAddress,
-      abi: memeLaunchFactoryAbi,
-      eventName: "TokenLaunched",
-      fromBlock,
-      toBlock: cursor,
-      strict: true
-    });
+  if (activeFactory.version === 6) {
+    while (cursor >= requestedStart && launches.length < limit) {
+      const candidate = cursor > 19_999n ? cursor - 19_999n : 0n;
+      const fromBlock = candidate < requestedStart ? requestedStart : candidate;
+      const logs = await publicClient.getContractEvents({
+        address: activeFactory.address,
+        abi: rmtLaunchFactoryV6Abi,
+        eventName: "TokenLaunchedV6",
+        fromBlock,
+        toBlock: cursor,
+        strict: true
+      });
 
-    launches.push(...logs.flatMap((log) => log.transactionHash ? [{
-      launchId: log.args.launchId.toString(),
-      token: log.args.token,
-      creator: log.args.creator,
-      market: log.args.market,
-      rewardVault: log.args.rewardVault,
-      name: log.args.name,
-      symbol: log.args.symbol,
-      creatorBps: Number(log.args.rewardBps[0]),
-      communityBps: Number(log.args.rewardBps[1]),
-      transactionHash: log.transactionHash,
-      blockNumber: log.blockNumber.toString(),
-      metadataURI: log.args.metadataURI,
-      reserveWei: "0",
-      volumeWei: "0",
-      tradeCount: 0,
-      buyCount: 0,
-      sellCount: 0,
-      progressBps: 0,
-      graduated: false
-    }] : []));
+      launches.push(...logs.flatMap((log) => log.transactionHash ? [{
+        launchId: log.args.launchId.toString(),
+        token: log.args.token,
+        creator: log.args.creator,
+        market: log.args.market,
+        rewardVault: log.args.feeSplitter,
+        name: log.args.name,
+        symbol: log.args.symbol,
+        creatorBps: Number(log.args.creatorFeeShareBps),
+        communityBps: 0,
+        protocolVersion: 6,
+        policyId: log.args.policyId,
+        policyVersion: Number(log.args.policyVersion),
+        curveFeeBps: Number(log.args.curveFeeBps),
+        protocolFeeShareBps: Number(log.args.protocolFeeShareBps),
+        postGraduationFeeBps: Number(log.args.postGraduationFeeBps),
+        graduationTarget: log.args.graduationTarget.toString(),
+        fairStartEnabled: log.args.fairStartEnabled,
+        officialMigration: log.args.officialMigration,
+        transactionHash: log.transactionHash,
+        blockNumber: log.blockNumber.toString(),
+        metadataURI: log.args.metadataURI,
+        reserveWei: "0",
+        volumeWei: "0",
+        tradeCount: 0,
+        buyCount: 0,
+        sellCount: 0,
+        progressBps: 0,
+        graduated: false
+      }] : []));
 
-    if (fromBlock === requestedStart) break;
-    cursor = fromBlock - 1n;
+      if (fromBlock === requestedStart) break;
+      cursor = fromBlock - 1n;
+    }
+  } else {
+    while (cursor >= requestedStart && launches.length < limit) {
+      const candidate = cursor > 19_999n ? cursor - 19_999n : 0n;
+      const fromBlock = candidate < requestedStart ? requestedStart : candidate;
+      const logs = await publicClient.getContractEvents({
+        address: activeFactory.address,
+        abi: memeLaunchFactoryAbi,
+        eventName: "TokenLaunched",
+        fromBlock,
+        toBlock: cursor,
+        strict: true
+      });
+
+      launches.push(...logs.flatMap((log) => log.transactionHash ? [{
+        launchId: log.args.launchId.toString(),
+        token: log.args.token,
+        creator: log.args.creator,
+        market: log.args.market,
+        rewardVault: log.args.rewardVault,
+        name: log.args.name,
+        symbol: log.args.symbol,
+        creatorBps: Number(log.args.rewardBps[0]),
+        communityBps: Number(log.args.rewardBps[1]),
+        protocolVersion: 5,
+        transactionHash: log.transactionHash,
+        blockNumber: log.blockNumber.toString(),
+        metadataURI: log.args.metadataURI,
+        reserveWei: "0",
+        volumeWei: "0",
+        tradeCount: 0,
+        buyCount: 0,
+        sellCount: 0,
+        progressBps: 0,
+        graduated: false
+      }] : []));
+
+      if (fromBlock === requestedStart) break;
+      cursor = fromBlock - 1n;
+    }
   }
 
   launches.sort((a, b) => BigInt(a.blockNumber) > BigInt(b.blockNumber) ? -1 : 1);

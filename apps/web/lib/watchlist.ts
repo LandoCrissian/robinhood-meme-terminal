@@ -1,3 +1,5 @@
+import { activeChain } from "./network";
+
 export type WatchlistEntry = {
   address: string;
   name: string;
@@ -7,7 +9,7 @@ export type WatchlistEntry = {
 };
 
 export const WATCHLIST_EVENT = "rmt:watchlist-changed";
-const STORAGE_KEY = "rmt-watchlist-v1";
+const STORAGE_KEY = `rmt-watchlist-v6:${activeChain.id}`;
 const MAXIMUM_ENTRIES = 50;
 
 function validEntry(value: unknown): value is WatchlistEntry {

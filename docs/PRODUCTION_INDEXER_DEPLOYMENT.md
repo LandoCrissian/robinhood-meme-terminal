@@ -22,8 +22,8 @@ Create these as encrypted service variables:
 | --- | --- |
 | `DATABASE_URL` | Managed PostgreSQL connection string |
 | `RMT_RPC_URL` | Primary Robinhood Chain mainnet RPC |
-| `RMT_FACTORY_ADDRESS` | `0x25a92d8c79c38d07b0d3efd0ebe929d30e401cdd` |
-| `RMT_FACTORY_START_BLOCK` | `9567266` |
+| `RMT_FACTORY_ADDRESS` | Exact verified V6 factory address recorded after deployment; never use the V5 address with the V6 indexer |
+| `RMT_FACTORY_START_BLOCK` | Confirmed V6 factory deployment block recorded from its deployment receipt |
 | `RMT_CONFIRMATION_DEPTH` | `20` |
 | `RMT_INDEXER_CHUNK_SIZE` | `2000` |
 | `RMT_INDEXER_POLL_MS` | `5000` |
@@ -49,7 +49,7 @@ The committed Railway configuration builds only the indexer, starts the long-run
 
 Do not connect the public web app to the indexer until all checks pass:
 
-1. `/health` reports `ok: true`, chain ID `4663`, and the canonical V5 factory.
+1. `/health` reports `ok: true`, chain ID `4663`, protocol version `6`, and the exact verified V6 factory.
 2. The worker has indexed through the confirmed chain head.
 3. Indexed launch count equals the factory's onchain `launchCount()`.
 4. Every indexed token, market, reward vault, and creator matches its canonical launch event.
@@ -60,7 +60,7 @@ Do not connect the public web app to the indexer until all checks pass:
 9. A database restore into a temporary project can resume indexing.
 10. The backup RPC can complete a reconciliation pass.
 
-The V5 start block is an intentional product boundary. The production indexer and terminal do not ingest legacy V4 launches; V4 is consulted only by the V5 factory to prevent reuse of protected names and tickers.
+Do not cut the indexer over before V6 is deployed and verified. The V6 deployment block is the intentional product boundary: the production indexer and V6 terminal do not ingest V4/V5 launches as V6. The V6 factory consults the active V5 factory only to preserve protected names and tickers.
 
 ## Web cutover
 

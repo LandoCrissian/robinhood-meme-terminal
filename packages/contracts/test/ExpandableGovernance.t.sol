@@ -9,6 +9,12 @@ contract ExpandableGovernanceTest {
     GovernanceVm private constant vm = GovernanceVm(address(uint160(uint256(keccak256("hevm cheat code")))));
     address private constant SECOND = address(0xBEEF);
 
+    function testRejectsZeroExecutionDelay() public {
+        try new ExpandableGovernance(address(this), 0) returns (ExpandableGovernance deployed) {
+            require(address(deployed) == address(0), "zero-delay governance deployed");
+        } catch {}
+    }
+
     function testStartsOneOfOneAndCanAddSignerThenRaiseThreshold() public {
         ExpandableGovernance governance = new ExpandableGovernance(address(this), 1 days);
         uint256 addId = governance.propose(
