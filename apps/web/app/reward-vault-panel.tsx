@@ -6,7 +6,6 @@ import { useAccount, useReadContract, useWaitForTransactionReceipt, useWriteCont
 import {
   bondingCurveMarketV6FeeAbi,
   directLaunchFeeSplitterV6Abi,
-  publicMainnetOperatorAddress,
   rmtLaunchFactoryV6Abi,
   v4GraduationFeeCollectorAbi
 } from "../lib/contracts";
@@ -247,7 +246,7 @@ export function RewardVaultPanel({ tokenAddress, symbol }: { tokenAddress: Addre
     )
     && creatorShareRead.data === canonicalCreatorShareBps
     && sameAddress(payoutAuthorityRead.data, factoryPayoutAuthorityRead.data)
-    && sameAddress(protocolTreasuryRead.data, publicMainnetOperatorAddress)
+    && sameAddress(protocolTreasuryRead.data, factoryPayoutAuthorityRead.data)
     && (sameAddress(creatorRecipientRead.data, originalCreatorRead.data) || sameAddress(creatorRecipientRead.data, protocolTreasuryRead.data))
   );
 
