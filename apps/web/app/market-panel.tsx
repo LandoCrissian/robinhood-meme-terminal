@@ -6,6 +6,7 @@ import { useAccount, useBalance, useCapabilities, usePublicClient, useReadContra
 import { activeChain, isMainnetRelease } from "../lib/network";
 import { useLaunchRecord } from "../lib/use-launch-record";
 import { PriceHistoryChart, type PricePoint } from "./price-history-chart";
+import { WalletButton } from "./wallet-button";
 
 const marketAbi = [
   { type: "function", name: "quoteBuy", stateMutability: "view", inputs: [{ name: "ethIn", type: "uint256" }], outputs: [{ name: "tokensOut", type: "uint256" }, { name: "fee", type: "uint256" }] },
@@ -102,12 +103,21 @@ function formatPercent(bps: bigint) {
   return `${(Number(bps) / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}%`;
 }
 
-export function MarketPanel({ tokenAddress, symbol, totalSupply, creator }: { tokenAddress: Address; symbol: string; totalSupply: bigint; creator: Address }) {
+type MarketPanelProps = {
+  tokenAddress: Address;
+  symbol: string;
+  totalSupply: bigint;
+  creator: Address;
+  compact?: boolean;
+  initialMode?: "buy" | "sell";
+};
+
+export function MarketPanel({ tokenAddress, symbol, totalSupply, creator, compact = false, initialMode }: MarketPanelProps) {
   const publicClient = usePublicClient({ chainId: activeChain.id });
   const { address: account, isConnected } = useAccount();
   const [recentTrades, setRecentTrades] = useState<RecentTrade[]>([]);
   const [tradeHistoryError, setTradeHistoryError] = useState<string>();
-  const [mode, setMode] = useState<"buy" | "sell">("buy");
+  const [mode, setMode] = useState<"buy" | "sell">(initialMode ?? "buy");
   const [buyAmount, setBuyAmount] = useState("0.0001");
   const [sellAmount, setSellAmount] = useState("1000000");
   const [lastAction, setLastAction] = useState<"buy" | "approve" | "sell" | null>(null);
@@ -120,6 +130,8 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply, creator }: { to
   const [marketDetail, setMarketDetail] = useState<"activity" | "risk">("activity");
   const tradeRailRef = useRef<HTMLElement>(null);
   const marketDetailRef = useRef<HTMLDivElement>(null);
+  const creatorAnalyticsRef = useRef<HTMLElement>(null);
+  const seededQuickBuy = useRef(false);
   const { writeContract, data: hash, isPending, error: writeError, reset: resetWrite } = useWriteContract();
   const receipt = useWaitForTransactionReceipt({ hash, chainId: activeChain.id });
   const capabilities = useCapabilities({ chainId: activeChain.id, query: { enabled: Boolean(account) } });
@@ -131,9 +143,13 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply, creator }: { to
   const lookupError = launchRecord.error ? (launchRecord.error instanceof Error ? launchRecord.error.message : "Unable to read market.") : launchRecord.isSuccess && !launchRecord.data ? "Market record not found." : undefined;
 
   useEffect(() => {
+    if (initialMode) {
+      setMode(initialMode);
+      return;
+    }
     const requestedSide = new URLSearchParams(window.location.search).get("side");
     if (requestedSide === "buy" || requestedSide === "sell") setMode(requestedSide);
-  }, []);
+  }, [initialMode]);
 
   useEffect(() => {
     let active = true;
@@ -254,6 +270,9 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply, creator }: { to
       : undefined;
   const estimatedNetworkFeeWei = preflight.status === "ready" && preflight.gas && preflight.gasPrice ? preflight.gas * preflight.gasPrice : undefined;
   const estimatedNetworkFeeUsd = estimatedNetworkFeeWei !== undefined && ethUsd !== undefined ? Number(formatEther(estimatedNetworkFeeWei)) * ethUsd : undefined;
+  const gasReserveWei = estimatedNetworkFeeWei !== undefined ? estimatedNetworkFeeWei * 2n : parseEther("0.00002");
+  const walletBalanceWei = walletBalance.data?.value ?? 0n;
+  const walletSpendableWei = walletBalanceWei > gasReserveWei ? walletBalanceWei - gasReserveWei : 0n;
   const chartPoints = useMemo<PricePoint[]>(() => [...recentTrades].reverse().flatMap((trade) => trade.virtualTokenReserve > 0n ? [{ blockNumber: trade.blockNumber, priceWei: trade.virtualEthReserve * 10n ** 18n / trade.virtualTokenReserve, side: trade.isBuy ? "buy" : "sell" }] : []), [recentTrades]);
 
   useEffect(() => {
@@ -345,9 +364,23 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply, creator }: { to
     void Promise.all([sellQuote.refetch(), reserve.refetch(), virtualEth.refetch(), virtualTokens.refetch(), graduationTarget.refetch(), progress.refetch(), graduated.refetch(), balance.refetch(), walletBalance.refetch(), allowance.refetch()]);
   }, [callsReceipt.data?.status]);
 
+  useEffect(() => {
+    if (!compact || mode !== "buy" || seededQuickBuy.current || !isConnected || !ethUsd || walletSpendableWei <= 0n) return;
+    const walletStarter = walletSpendableWei * 5n / 100n;
+    const fiveDollarCap = parseEther((5 / ethUsd).toFixed(8));
+    const starter = walletStarter < fiveDollarCap ? walletStarter : fiveDollarCap;
+    if (starter > 0n) setBuyAmount(cleanDecimal(formatEther(starter)));
+    seededQuickBuy.current = true;
+  }, [compact, ethUsd, isConnected, mode, walletSpendableWei]);
+
   function chooseBuyUsd(usdAmount: number) {
     if (!ethUsd) return;
     setBuyAmount(cleanDecimal((usdAmount / ethUsd).toFixed(6)));
+  }
+
+  function chooseBuyPercent(percent: number) {
+    const amount = percent === 100 ? walletSpendableWei : walletSpendableWei * BigInt(percent) / 100n;
+    if (amount > 0n) setBuyAmount(cleanDecimal(formatEther(amount)));
   }
 
   function chooseSellPercent(percent: number) {
@@ -401,23 +434,23 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply, creator }: { to
 
   function showCreatorAnalytics() {
     setMarketDetail("risk");
-    window.requestAnimationFrame(() => marketDetailRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+    window.requestAnimationFrame(() => (compact ? creatorAnalyticsRef.current : marketDetailRef.current)?.scrollIntoView({ behavior: "smooth", block: "start" }));
   }
 
-  if (lookupError) return <section className="panel marketPanel"><p className="eyebrow">LIVE MARKET</p><h2>Market unavailable</h2><p>{lookupError}</p></section>;
-  if (!market) return <section className="panel marketPanel"><p className="eyebrow">LIVE MARKET</p><h2>Reading bonding curve…</h2></section>;
+  if (lookupError) return <section className={compact ? "quickMarketPanel" : "panel marketPanel"}><p className="eyebrow">LIVE MARKET</p><h2>Market unavailable</h2><p>{lookupError}</p></section>;
+  if (!market) return <section className={compact ? "quickMarketPanel" : "panel marketPanel"}><p className="eyebrow">LIVE MARKET</p><h2>Reading bonding curve…</h2></section>;
 
   return (
-    <section className="panel marketPanel" id="trade">
-      <div className="sectionTitle marketTitle"><div><p className="eyebrow">LIVE BONDING CURVE</p><h2>Trade ${symbol}</h2></div><span className="badge liveBadge">{isMainnetRelease ? "MAINNET" : "TESTNET"}</span></div>
+    <section className={compact ? "quickMarketPanel" : "panel marketPanel"} id={compact ? undefined : "trade"}>
+      {!compact && <div className="sectionTitle marketTitle"><div><p className="eyebrow">LIVE BONDING CURVE</p><h2>Trade ${symbol}</h2></div><span className="badge liveBadge">{isMainnetRelease ? "MAINNET" : "TESTNET"}</span></div>}
       <div className="marketWorkspace">
         <div className="marketOverview">
-          <div className="marketStats intelligenceStats"><div><small>Token price</small><strong>{formatUsd(tokenPriceUsd)}</strong><span className="usdSub">{formatPrice(priceWei)} ETH</span></div><div><small>Market cap</small><strong>{formatUsd(marketCapUsd)}</strong><span className="usdSub">{formatEth(marketCapWei, 6)} ETH fully diluted</span></div><div><small>Curve reserve</small><strong>{ethUsd ? formatUsd(Number(formatEther(reserve.data ?? 0n)) * ethUsd) : "USD unavailable"}</strong><span className="usdSub">{formatEth(reserve.data ?? 0n, 7)} ETH</span></div><div><small>Your position</small><strong>{Number(formatUnits(balance.data ?? 0n, 18)).toLocaleString(undefined, { maximumFractionDigits: 2 })} {symbol}</strong><span className="usdSub">≈ {formatUsd(positionValueUsd)} · {formatEth(positionValueWei, 7)} ETH</span></div></div>
+          {compact ? <div className="quickMarketSnapshot"><div><small>Price</small><strong>{formatUsd(tokenPriceUsd)}</strong></div><div><small>Market cap</small><strong>{formatUsd(marketCapUsd)}</strong></div><div><small>Graduation</small><strong>{Number(progress.data ?? 0n) / 100}%</strong></div></div> : <><div className="marketStats intelligenceStats"><div><small>Token price</small><strong>{formatUsd(tokenPriceUsd)}</strong><span className="usdSub">{formatPrice(priceWei)} ETH</span></div><div><small>Market cap</small><strong>{formatUsd(marketCapUsd)}</strong><span className="usdSub">{formatEth(marketCapWei, 6)} ETH fully diluted</span></div><div><small>Curve reserve</small><strong>{ethUsd ? formatUsd(Number(formatEther(reserve.data ?? 0n)) * ethUsd) : "USD unavailable"}</strong><span className="usdSub">{formatEth(reserve.data ?? 0n, 7)} ETH</span></div><div><small>Your position</small><strong>{Number(formatUnits(balance.data ?? 0n, 18)).toLocaleString(undefined, { maximumFractionDigits: 2 })} {symbol}</strong><span className="usdSub">≈ {formatUsd(positionValueUsd)} · {formatEth(positionValueWei, 7)} ETH</span></div></div>
           {isConnected && <div className="buyingPowerBar"><div><small>Robinhood Chain buying power</small><strong>{walletBalance.isLoading ? "Reading wallet…" : `${formatEth(walletBalance.data?.value ?? 0n, 7)} ETH`}</strong><span>≈ {formatUsd(walletValueUsd)} available before network fees</span></div><a href="https://docs.robinhood.com/chain/bridging/" target="_blank" rel="noreferrer">Add ETH ↗</a></div>}
           <div className="graduationCard">
             <div><span>Market reserve</span><strong>{formatEth(reserve.data ?? 0n, 7)} ETH</strong></div>
             <small>{isMainnetRelease ? graduated.data ? migratedToV4 ? "Graduated to the canonical Uniswap V4 pool. Curve trading is permanently closed; choose Buy or Sell to continue in the official Uniswap app." : "The curve target is complete and curve trading is permanently closed. The permissionless V4 finalization transaction is available in Graduation & fees." : `${Number(progress.data ?? 0n) / 100}% toward curve completion and V4 graduation readiness (${formatEth(graduationTarget.data ?? 0n, 4)} ETH target).` : "DEX migration is disabled in this testnet alpha. Launching, curve trading, and fee accounting remain live."}</small>
-          </div>
+          </div></>}
           {fairStartVisible && <section className="fairStartCard" aria-labelledby="fair-start-heading">
             <div className="fairStartHeader"><div><p className="eyebrow">FAIR START</p><h3 id="fair-start-heading">Fair Start protection is active</h3></div><strong>ACTIVE</strong></div>
             <p>Large early buys are temporarily limited so more traders get a fair chance. The contract removes these limits automatically when its protected window ends. Selling remains available.</p>
@@ -438,7 +471,7 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply, creator }: { to
             <div className="tradeAmountTop"><span>You pay</span><small>{ethUsd ? `1 ETH ≈ ${formatUsd(ethUsd)}` : "Loading ETH/USD…"}</small></div>
             <div className="tradeInputRow"><input aria-label="ETH amount to buy" inputMode="decimal" value={buyAmount} onFocus={(event) => event.currentTarget.select()} onChange={(event) => setBuyAmount(event.target.value)} /><span>ETH</span></div>
             <div className="usdEstimate">≈ {formatUsd(buyValueUsd)} <span>reference value</span></div>
-            <div className="quickAmounts" aria-label="Quick dollar amounts">{[1, 5, 10, 25].map((amount) => <button type="button" key={amount} disabled={!ethUsd} onClick={() => chooseBuyUsd(amount)}>${amount}</button>)}</div>
+            {isConnected && walletBalance.data ? <><div className="quickAmounts walletQuickAmounts" aria-label="Quick wallet balance amounts">{[5, 10, 25, 100].map((percent) => { const amount = percent === 100 ? walletSpendableWei : walletSpendableWei * BigInt(percent) / 100n; return <button type="button" key={percent} disabled={amount === 0n} onClick={() => chooseBuyPercent(percent)}><span>{percent === 100 ? "Max" : `${percent}%`}</span><small>{formatEth(amount, 5)} ETH</small></button>; })}</div><small className="walletPresetNote">Based on your Robinhood Chain ETH. Max leaves room for the estimated network fee.</small></> : <div className="quickAmounts" aria-label="Quick dollar amounts">{[1, 5, 10, 25].map((amount) => <button type="button" key={amount} disabled={!ethUsd} onClick={() => chooseBuyUsd(amount)}>${amount}</button>)}</div>}
             <div className="orderPreview"><div><span>Estimated receive</span><strong>{Number(formatUnits(buyOut, 18)).toLocaleString(undefined, { maximumFractionDigits: 2 })} {symbol}</strong></div><div><span>Platform fee</span><strong>{formatEth(buyFee)} ETH</strong></div></div>
           </div> : <div className="tradeAmountCard">
             <div className="tradeAmountTop"><span>You sell</span><small>Balance {Number(formatUnits(balance.data ?? 0n, 18)).toLocaleString(undefined, { maximumFractionDigits: 2 })} {symbol}</small></div>
@@ -456,25 +489,26 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply, creator }: { to
           {(writeError || receipt.error || callsReceipt.error) && <div className="errors"><span>{writeError?.message || receipt.error?.message || callsReceipt.error?.message}</span></div>}
           {tradeMessage && <div className="callout"><strong>{tradeMessage}</strong></div>}
           {receipt.isSuccess && lastAction !== "approve" && <div className="callout"><strong>{lastAction === "sell" ? "Sell confirmed" : "Buy confirmed"}</strong><a href={`${activeChain.blockExplorers.default.url}/tx/${hash}`} target="_blank" rel="noreferrer">View transaction ↗</a></div>}
-          {isMainnetRelease && graduated.data && migratedToV4
+          {compact && !isConnected ? <div className="quickTradeConnect"><WalletButton target={isMainnetRelease ? "mainnet" : "testnet"} returnTo={`/token/${tokenAddress}?side=${mode}#trade`} /><small>Connect once. Your wallet will still confirm every onchain trade.</small></div> : isMainnetRelease && graduated.data && migratedToV4
             ? <a className={`launch dexTradeLink ${mode === "sell" ? "sellAction" : ""}`} href={uniswapSwapUrl} target="_blank" rel="noopener noreferrer">{mode === "buy" ? `Buy ${symbol} on Uniswap ↗` : `Sell ${symbol} on Uniswap ↗`}</a>
             : <button className={`launch ${mode === "sell" ? "sellAction" : ""}`} disabled={!isConnected || busy || Boolean(graduated.data) || preflight.status !== "ready" || (creatorRiskRequired && !creatorRiskAccepted) || (mode === "buy" ? buyOut === 0n : sellOut === 0n)} onClick={trade}>{graduated.data ? "Curve complete — finalize V4 graduation below" : !isConnected ? "Connect wallet to trade" : busy ? lastAction === "approve" ? "Approving…" : lastAction === "sell" ? "Confirm sell in wallet…" : "Confirming…" : creatorRiskRequired && !creatorRiskAccepted ? "Review creator concentration" : preflight.status === "checking" ? "Checking order…" : preflight.status === "error" ? "Review order details" : preflight.status === "idle" ? "Preparing quote…" : mode === "buy" ? `Buy ${symbol}` : atomicSellAvailable ? `Approve + sell ${symbol}` : needsApproval ? `Enable and sell ${symbol}` : `Sell ${symbol}`}</button>}
           <a className="explorerLink tradeExplorer" href={`${activeChain.blockExplorers.default.url}/address/${market}`} target="_blank" rel="noreferrer">Verified market contract ↗</a>
+          {compact && <a className="explorerLink tradeExplorer" href={`/token/${tokenAddress}?side=${mode}#trade`}>Open full token page →</a>}
           {!isConnected && <details className="starterGuide"><summary><span>New to Robinhood Chain?</span><small>3 steps</small></summary><div className="starterSteps"><div><b>1</b><span><strong>Connect a wallet</strong><small>Use Robinhood Wallet or another EVM wallet.</small></span></div><div><b>2</b><span><strong>Fund it with Chain ETH</strong><small>Gas and purchases use ETH on Robinhood Chain.</small></span></div><div><b>3</b><span><strong>Review and confirm</strong><small>RMT simulates the order before your wallet asks you to confirm.</small></span></div></div><div className="starterLinks"><a href="https://docs.robinhood.com/chain/add-network-to-wallet/" target="_blank" rel="noreferrer">Wallet setup ↗</a><a href="https://docs.robinhood.com/chain/bridging/" target="_blank" rel="noreferrer">Funding options ↗</a></div></details>}
         </aside>
       </div>
 
-      <div className="marketDetailTabs" ref={marketDetailRef} role="tablist" aria-label="Market details"><button type="button" role="tab" aria-selected={marketDetail === "activity"} className={marketDetail === "activity" ? "active" : ""} onClick={() => setMarketDetail("activity")}>Activity</button><button type="button" role="tab" aria-selected={marketDetail === "risk"} className={marketDetail === "risk" ? "active" : ""} onClick={() => setMarketDetail("risk")}>Creator analytics</button></div>
-      {marketDetail === "activity" ? <div className="tradeHistory">
+      {!compact && <div className="marketDetailTabs" ref={marketDetailRef} role="tablist" aria-label="Market details"><button type="button" role="tab" aria-selected={marketDetail === "activity"} className={marketDetail === "activity" ? "active" : ""} onClick={() => setMarketDetail("activity")}>Activity</button><button type="button" role="tab" aria-selected={marketDetail === "risk"} className={marketDetail === "risk" ? "active" : ""} onClick={() => setMarketDetail("risk")}>Creator analytics</button></div>}
+      {!compact && marketDetail === "activity" ? <div className="tradeHistory">
         <div className="historyHeader"><div><p className="eyebrow">ONCHAIN ACTIVITY</p><h3>Recent trades</h3></div><span>{recentTrades.length} shown</span></div>
         {recentTrades.length > 0 ? <div className="tradeList">{recentTrades.map((item) => { const effectiveEth = item.isBuy ? item.ethAmount : item.ethAmount - item.feeAmount; return <a key={`${item.transactionHash}-${item.blockNumber}`} href={`${activeChain.blockExplorers.default.url}/tx/${item.transactionHash}`} target="_blank" rel="noreferrer" className="tradeRow"><span className={item.isBuy ? "tradeSide buy" : "tradeSide sell"}>{item.isBuy ? "BUY" : "SELL"}</span><span><strong>{Number(formatUnits(item.tokenAmount, 18)).toLocaleString(undefined, { maximumFractionDigits: 2 })} {symbol}</strong><small>{compactAddress(item.trader)}</small></span><span><strong>{formatEth(effectiveEth)} ETH</strong><small>Block {item.blockNumber.toString()}</small></span></a>; })}</div> : <div className="emptyTrades"><strong>No trades yet</strong><span>The first confirmed buy or sell will appear here automatically.</span></div>}
         {tradeHistoryError && <small className="historyError">Trade history will retry automatically.</small>}
-      </div> : <section className={`creatorIntelligence ${highCreatorConcentration ? "highRisk" : ""}`} aria-labelledby="creator-wallet-heading">
+      </div> : (!compact || marketDetail === "risk") ? <section ref={creatorAnalyticsRef} className={`creatorIntelligence ${highCreatorConcentration ? "highRisk" : ""}`} aria-labelledby="creator-wallet-heading">
         <div className="creatorIntelligenceHeader"><div><p className="eyebrow">ORIGINAL LAUNCH CREATOR</p><h3 id="creator-wallet-heading">Wallet concentration check</h3></div><a href={`${activeChain.blockExplorers.default.url}/address/${creator}`} target="_blank" rel="noreferrer">{compactAddress(creator)} ↗</a></div>
         <div className="creatorStats"><div><small>Current balance</small><strong>{creatorBalance.isLoading ? "Reading…" : `${Number(formatUnits(creatorBalanceValue, 18)).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${symbol}`}</strong><span>{formatPercent(creatorSupplyBps)} of total supply</span></div><div><small>Share outside curve</small><strong>{creatorConcentrationKnown && circulatingSupply > 0n ? formatPercent(creatorCirculatingBps) : "Not available yet"}</strong><span>Creator balance ÷ tokens outside the curve</span></div><div><small>Recent creator activity</small><strong>{creatorRecentBuys.length} buys · {creatorRecentSells.length} sells</strong><span>{creatorRecentTrades.length > 0 ? `${creatorRecentNet >= 0n ? "+" : "−"}${Number(formatUnits(creatorRecentNet >= 0n ? creatorRecentNet : -creatorRecentNet, 18)).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${symbol} net` : `Across ${recentTrades.length} shown trades`}</span></div></div>
         {highCreatorConcentration ? <div className="creatorWarning"><strong>High launch-creator concentration</strong><span>The original launch wallet controls at least 25% of tokens currently outside the bonding curve. A large sale can materially move price. This is separate from the current fee recipient and is an onchain heuristic, not a safety rating.</span></div> : <p className="creatorMethod">Balances follow the permanent launch-creator address recorded by the token. “Outside curve” excludes inventory still held by the immutable market and does not identify the current fee recipient.</p>}
-      </section>}
-      <div className="mobileTradeBar" aria-label="Quick trade actions"><button type="button" className={mode === "buy" ? "active" : ""} onClick={() => focusTradeMode("buy")}>Buy</button><button type="button" className={mode === "sell" ? "active" : ""} onClick={() => focusTradeMode("sell")}>Sell</button></div>
+      </section> : null}
+      {!compact && <div className="mobileTradeBar" aria-label="Quick trade actions"><button type="button" className={mode === "buy" ? "active" : ""} onClick={() => focusTradeMode("buy")}>Buy</button><button type="button" className={mode === "sell" ? "active" : ""} onClick={() => focusTradeMode("sell")}>Sell</button></div>}
     </section>
   );
 }
