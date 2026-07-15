@@ -38,7 +38,8 @@ interface IV6ForkVm {
 
 contract V6ForkCollector {
     function collect(V4GraduationAdapter adapter, address token)
-        external returns (uint256 nativeAmount, uint256 tokenAmount)
+        external
+        returns (uint256 nativeAmount, uint256 tokenAmount)
     {
         return adapter.collectFees(token);
     }
@@ -64,8 +65,7 @@ interface IV6LiveOfficialRMTToken {
 ///      official identity migration, graduation, two-way V4 trading, fee routing, and principal locking.
 contract V6MainnetForkTest {
     IV6ForkVm private constant vm = IV6ForkVm(address(uint160(uint256(keccak256("hevm cheat code")))));
-    IPoolManager private constant POOL_MANAGER =
-        IPoolManager(0x8366a39CC670B4001A1121B8F6A443A643e40951);
+    IPoolManager private constant POOL_MANAGER = IPoolManager(0x8366a39CC670B4001A1121B8F6A443A643e40951);
     bytes32 private constant FAIR_POLICY_ID = keccak256("RMT_SIMPLE_FAIR_V1");
     bytes32 private constant OPEN_POLICY_ID = keccak256("RMT_SIMPLE_OPEN_V1");
     bytes32 private constant VERSION = keccak256("RMT_FACTORY_V6");
@@ -103,8 +103,7 @@ contract V6MainnetForkTest {
         IV6LiveLegacyIdentity legacy = IV6LiveLegacyIdentity(Config.LEGACY_IDENTITY_FACTORY);
         require(legacy.isNameUsed("Robinhood Meme Terminal"), "official RMT name is not protected");
         require(legacy.isSymbolUsed("RMT"), "official RMT ticker is not protected");
-        IV6LiveOfficialRMTToken officialLegacyToken =
-            IV6LiveOfficialRMTToken(Config.OFFICIAL_LEGACY_RMT_TOKEN);
+        IV6LiveOfficialRMTToken officialLegacyToken = IV6LiveOfficialRMTToken(Config.OFFICIAL_LEGACY_RMT_TOKEN);
         require(officialLegacyToken.creator() == Config.DEVELOPER_OPERATOR, "official legacy RMT creator mismatch");
         require(
             keccak256(bytes(officialLegacyToken.name())) == keccak256(bytes("Robinhood Meme Terminal")),
@@ -140,15 +139,14 @@ contract V6MainnetForkTest {
         V6ForkTreasury treasury = new V6ForkTreasury();
         RMTLaunchGate gate = new RMTLaunchGate(address(governance), address(this), 1 days);
         CloneBondingCurveMarketV6 marketImplementation = new CloneBondingCurveMarketV6();
-        RMTLaunchPolicyRegistry policies =
-            new RMTLaunchPolicyRegistry(
-                address(governance),
-                address(this),
-                1 days,
-                address(treasury),
-                address(marketImplementation),
-                address(adapter)
-            );
+        RMTLaunchPolicyRegistry policies = new RMTLaunchPolicyRegistry(
+            address(governance),
+            address(this),
+            1 days,
+            address(treasury),
+            address(marketImplementation),
+            address(adapter)
+        );
         address legacyFactory = Config.LEGACY_IDENTITY_FACTORY;
         require(legacyFactory.code.length != 0, "live V5 identity factory missing");
         VersionedFactoryRegistry versionRegistry = new VersionedFactoryRegistry(
@@ -176,12 +174,10 @@ contract V6MainnetForkTest {
             _policy(FAIR_POLICY_ID, true, address(marketImplementation), address(adapter), address(treasury));
         IRMTLaunchPolicyRegistry.LaunchPolicy memory openPolicy =
             _policy(OPEN_POLICY_ID, false, address(marketImplementation), address(adapter), address(treasury));
-        uint256 fairProposal = governance.propose(
-            address(policies), 0, abi.encodeCall(policies.schedulePolicyRegistration, (fairPolicy))
-        );
-        uint256 openProposal = governance.propose(
-            address(policies), 0, abi.encodeCall(policies.schedulePolicyRegistration, (openPolicy))
-        );
+        uint256 fairProposal =
+            governance.propose(address(policies), 0, abi.encodeCall(policies.schedulePolicyRegistration, (fairPolicy)));
+        uint256 openProposal =
+            governance.propose(address(policies), 0, abi.encodeCall(policies.schedulePolicyRegistration, (openPolicy)));
         (bool earlyPolicyExecution,) = address(governance).call(abi.encodeCall(governance.execute, (fairProposal)));
         require(!earlyPolicyExecution, "governance policy delay bypassed");
         vm.warp(block.timestamp + governance.executionDelay());
@@ -192,18 +188,15 @@ contract V6MainnetForkTest {
         vm.warp(fairRegistrationTime);
         policies.executePolicyRegistration(fairPolicy);
         policies.executePolicyRegistration(openPolicy);
-        uint256 defaultProposal = governance.propose(
-            address(policies), 0, abi.encodeCall(policies.scheduleDefaultPolicy, (FAIR_POLICY_ID))
-        );
+        uint256 defaultProposal =
+            governance.propose(address(policies), 0, abi.encodeCall(policies.scheduleDefaultPolicy, (FAIR_POLICY_ID)));
         vm.warp(block.timestamp + governance.executionDelay());
         bytes32 defaultOperation = abi.decode(governance.execute(defaultProposal), (bytes32));
         vm.warp(policies.scheduledOperations(defaultOperation));
         policies.executeDefaultPolicy(FAIR_POLICY_ID);
 
         uint256 factoryProposal = registryGovernance.propose(
-            address(versionRegistry),
-            0,
-            abi.encodeCall(versionRegistry.proposeFactory, (address(factory), VERSION))
+            address(versionRegistry), 0, abi.encodeCall(versionRegistry.proposeFactory, (address(factory), VERSION))
         );
         (bool earlyFactoryProposal,) =
             address(registryGovernance).call(abi.encodeCall(registryGovernance.execute, (factoryProposal)));
@@ -215,26 +208,23 @@ contract V6MainnetForkTest {
         require(versionRegistry.activeFactory() == address(factory), "V6 registry activation");
         require(gate.launchesPaused(), "gate opened during activation");
 
-        (bool openOfficialMigration,) = address(factory).call(
-            abi.encodeCall(
-                factory.launch,
-                (OPEN_POLICY_ID, "Robinhood Meme Terminal", "RMT", "ipfs://wrong-open-policy")
-            )
-        );
+        (bool openOfficialMigration,) = address(factory)
+            .call(
+                abi.encodeCall(
+                    factory.launch, (OPEN_POLICY_ID, "Robinhood Meme Terminal", "RMT", "ipfs://wrong-open-policy")
+                )
+            );
         require(!openOfficialMigration, "official migration accepted non-Fair policy");
         require(!factory.officialIdentityMigration().consumed(), "wrong policy consumed official migration");
 
         vm.prank(Config.DEVELOPER_OPERATOR);
-        (address officialToken, address fairMarket,) =
-            factory.launchOfficialWhilePaused("ipfs://official-rmt-v6-fork");
+        (address officialToken, address fairMarket,) = factory.launchOfficialWhilePaused("ipfs://official-rmt-v6-fork");
         IRMTLaunchFactoryV6.LaunchView memory official = factory.getLaunch(0);
         require(official.officialMigration, "official identity not migrated");
         require(official.token == officialToken, "official token record");
         require(gate.launchesPaused(), "official launch reopened public gate");
 
-        uint256 unpauseProposal = governance.propose(
-            address(gate), 0, abi.encodeCall(gate.scheduleUnpause, ())
-        );
+        uint256 unpauseProposal = governance.propose(address(gate), 0, abi.encodeCall(gate.scheduleUnpause, ()));
         vm.warp(block.timestamp + governance.executionDelay());
         uint64 unpauseTime = abi.decode(governance.execute(unpauseProposal), (uint64));
         vm.warp(unpauseTime);
@@ -263,9 +253,8 @@ contract V6MainnetForkTest {
         require(splitter.graduationAdapter() == address(adapter), "splitter adapter source");
         (bool unauthorizedNativeDeposit,) = address(splitter).call{value: 1 wei}("");
         require(!unauthorizedNativeDeposit, "fork unauthorized native fee source");
-        (bool unauthorizedTokenDeposit,) = address(splitter).call(
-            abi.encodeCall(splitter.depositToken, (tokenAddress, 1 wei))
-        );
+        (bool unauthorizedTokenDeposit,) =
+            address(splitter).call(abi.encodeCall(splitter.depositToken, (tokenAddress, 1 wei)));
         require(!unauthorizedTokenDeposit, "fork unauthorized token fee source");
 
         (uint256 tokensOut,) = curve.quoteBuy(2.1 ether);
@@ -278,12 +267,12 @@ contract V6MainnetForkTest {
         require(address(curve).balance == 0, "market retained ETH");
         require(token.balanceOf(address(curve)) == 0, "market retained tokens");
 
-        (bool creatorChanged,) = address(splitter).call(
-            abi.encodeCall(
-                splitter.setCreatorWallet,
-                (payable(address(treasury)), keccak256("documented-rug-evidence"), 0)
-            )
-        );
+        (bool creatorChanged,) = address(splitter)
+            .call(
+                abi.encodeCall(
+                    splitter.setCreatorWallet, (payable(address(treasury)), keccak256("documented-rug-evidence"), 0)
+                )
+            );
         require(!creatorChanged, "creator changed payout recipient");
 
         bytes32 poolIdValue = PoolId.unwrap(adapter.poolIds(tokenAddress));
@@ -307,9 +296,7 @@ contract V6MainnetForkTest {
         router.swap{value: 0.1 ether}(
             key,
             SwapParams({
-                zeroForOne: true,
-                amountSpecified: -int256(0.1 ether),
-                sqrtPriceLimitX96: TickMath.MIN_SQRT_PRICE + 1
+                zeroForOne: true, amountSpecified: -int256(0.1 ether), sqrtPriceLimitX96: TickMath.MIN_SQRT_PRICE + 1
             }),
             settings,
             ""
@@ -337,9 +324,17 @@ contract V6MainnetForkTest {
         uint256 expectedCreatorNative = (nativeFees * 7_000) / 10_000;
         uint256 expectedCreatorTokens = (tokenFees * 7_000) / 10_000;
         require(address(this).balance - creatorNativeBefore == expectedCreatorNative, "creator native 70 percent");
-        require(address(treasury).balance - treasuryNativeBefore == nativeFees - expectedCreatorNative, "RMT native 30 percent");
-        require(token.balanceOf(address(this)) - creatorTokensBefore == expectedCreatorTokens, "creator token 70 percent");
-        require(token.balanceOf(address(treasury)) - treasuryTokensBefore == tokenFees - expectedCreatorTokens, "RMT token 30 percent");
+        require(
+            address(treasury).balance - treasuryNativeBefore == nativeFees - expectedCreatorNative,
+            "RMT native 30 percent"
+        );
+        require(
+            token.balanceOf(address(this)) - creatorTokensBefore == expectedCreatorTokens, "creator token 70 percent"
+        );
+        require(
+            token.balanceOf(address(treasury)) - treasuryTokensBefore == tokenFees - expectedCreatorTokens,
+            "RMT token 30 percent"
+        );
 
         bytes32 evidenceHash = keccak256("documented-rug-evidence");
         uint256 redirectProposal = governance.propose(
@@ -358,9 +353,7 @@ contract V6MainnetForkTest {
         router.swap{value: 0.05 ether}(
             key,
             SwapParams({
-                zeroForOne: true,
-                amountSpecified: -int256(0.05 ether),
-                sqrtPriceLimitX96: TickMath.MIN_SQRT_PRICE + 1
+                zeroForOne: true, amountSpecified: -int256(0.05 ether), sqrtPriceLimitX96: TickMath.MIN_SQRT_PRICE + 1
             }),
             settings,
             ""
@@ -401,17 +394,17 @@ contract V6MainnetForkTest {
         );
         require(nativeFees != 0 && tokenFees != 0, "both fee currencies not collected");
         require(splitter.totalReceived() >= nativeFees + redirectedNativeFees, "native V4 fees not routed");
-        require(splitter.totalTokenReceived(tokenAddress) == tokenFees + redirectedTokenFees, "token V4 fees not routed");
-        require(address(collector).balance == 0 && token.balanceOf(address(collector)) == 0, "collector redirected fees");
-        require(liquidityAfter == liquidityBefore, "locked principal changed");
-        require(liquidityAfter == adapter.lockedLiquidity(tokenAddress), "locked liquidity mismatch");
         require(
-            address(adapter).balance == adapter.lockedNativeDust(tokenAddress),
-            "adapter native dust changed"
+            splitter.totalTokenReceived(tokenAddress) == tokenFees + redirectedTokenFees, "token V4 fees not routed"
         );
         require(
-            token.balanceOf(address(adapter)) == adapter.lockedTokenDust(tokenAddress),
-            "adapter token dust changed"
+            address(collector).balance == 0 && token.balanceOf(address(collector)) == 0, "collector redirected fees"
+        );
+        require(liquidityAfter == liquidityBefore, "locked principal changed");
+        require(liquidityAfter == adapter.lockedLiquidity(tokenAddress), "locked liquidity mismatch");
+        require(address(adapter).balance == adapter.lockedNativeDust(tokenAddress), "adapter native dust changed");
+        require(
+            token.balanceOf(address(adapter)) == adapter.lockedTokenDust(tokenAddress), "adapter token dust changed"
         );
     }
 
@@ -421,9 +414,7 @@ contract V6MainnetForkTest {
         address marketImplementation,
         address adapter,
         address protocolTreasury
-    )
-        private pure returns (IRMTLaunchPolicyRegistry.LaunchPolicy memory)
-    {
+    ) private pure returns (IRMTLaunchPolicyRegistry.LaunchPolicy memory) {
         return IRMTLaunchPolicyRegistry.LaunchPolicy({
             policyId: policyId,
             policyVersion: 1,

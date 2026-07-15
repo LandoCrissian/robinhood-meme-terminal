@@ -61,9 +61,9 @@ contract RMTLaunchPolicyRegistry is IRMTLaunchPolicyRegistry {
     ) {
         if (
             governance_ == address(0) || guardian_ == address(0) || governanceDelay_ == 0
-                || canonicalProtocolTreasury_ == address(0)
-                || canonicalMarketImplementation_ == address(0) || canonicalMarketImplementation_.code.length == 0
-                || canonicalGraduationAdapter_ == address(0) || canonicalGraduationAdapter_.code.length == 0
+                || canonicalProtocolTreasury_ == address(0) || canonicalMarketImplementation_ == address(0)
+                || canonicalMarketImplementation_.code.length == 0 || canonicalGraduationAdapter_ == address(0)
+                || canonicalGraduationAdapter_.code.length == 0
         ) revert InvalidConfiguration();
         governance = governance_;
         guardian = guardian_;
@@ -73,7 +73,11 @@ contract RMTLaunchPolicyRegistry is IRMTLaunchPolicyRegistry {
         canonicalGraduationAdapter = canonicalGraduationAdapter_;
     }
 
-    function schedulePolicyRegistration(LaunchPolicy calldata policy) external onlyGovernance returns (bytes32 operationId) {
+    function schedulePolicyRegistration(LaunchPolicy calldata policy)
+        external
+        onlyGovernance
+        returns (bytes32 operationId)
+    {
         _validatePolicy(policy);
         if (policyHash[policy.policyId] != bytes32(0)) revert PolicyAlreadyRegistered();
         operationId = keccak256(abi.encode("REGISTER_POLICY", policy));
@@ -100,18 +104,14 @@ contract RMTLaunchPolicyRegistry is IRMTLaunchPolicyRegistry {
     }
 
     function schedulePolicyAvailability(bytes32 policyId, bool enabled, bool publiclySelectable)
-        external onlyGovernance returns (bytes32 operationId)
+        external
+        onlyGovernance
+        returns (bytes32 operationId)
     {
         _requirePolicy(policyId);
         if (!enabled && publiclySelectable) revert InvalidConfiguration();
         operationId = keccak256(
-            abi.encode(
-                "POLICY_AVAILABILITY",
-                policyId,
-                policyOperationEpoch[policyId],
-                enabled,
-                publiclySelectable
-            )
+            abi.encode("POLICY_AVAILABILITY", policyId, policyOperationEpoch[policyId], enabled, publiclySelectable)
         );
         _schedule(operationId);
     }
@@ -120,13 +120,7 @@ contract RMTLaunchPolicyRegistry is IRMTLaunchPolicyRegistry {
         if (!enabled && publiclySelectable) revert InvalidConfiguration();
         LaunchPolicy storage policy = _requirePolicy(policyId);
         bytes32 operationId = keccak256(
-            abi.encode(
-                "POLICY_AVAILABILITY",
-                policyId,
-                policyOperationEpoch[policyId],
-                enabled,
-                publiclySelectable
-            )
+            abi.encode("POLICY_AVAILABILITY", policyId, policyOperationEpoch[policyId], enabled, publiclySelectable)
         );
         _consume(operationId);
         bool availabilityChanged = policy.enabled != enabled || policy.publiclySelectable != publiclySelectable;
@@ -169,26 +163,19 @@ contract RMTLaunchPolicyRegistry is IRMTLaunchPolicyRegistry {
     }
 
     function _validatePolicy(LaunchPolicy calldata policy) private view {
-        bool fairStartDisabled = policy.fairStartMode == 0
-            && policy.fairStartDelayBlocks == 0
-            && policy.fairStartDurationBlocks == 0
-            && policy.fairStartMaxTxBps == 0
-            && policy.fairStartMaxWalletBps == 0;
-        bool fairStartEnabled = policy.fairStartMode == 1
-            && policy.fairStartDelayBlocks > 0
-            && policy.fairStartDurationBlocks > 0
-            && policy.fairStartMaxTxBps > 0
+        bool fairStartDisabled = policy.fairStartMode == 0 && policy.fairStartDelayBlocks == 0
+            && policy.fairStartDurationBlocks == 0 && policy.fairStartMaxTxBps == 0 && policy.fairStartMaxWalletBps == 0;
+        bool fairStartEnabled = policy.fairStartMode == 1 && policy.fairStartDelayBlocks > 0
+            && policy.fairStartDurationBlocks > 0 && policy.fairStartMaxTxBps > 0
             && policy.fairStartMaxWalletBps >= policy.fairStartMaxTxBps
             && policy.fairStartMaxWalletBps <= BPS_DENOMINATOR;
 
         if (
-            policy.policyId == bytes32(0) || policy.policyVersion == 0
-                || policy.curveFeeBps != CANONICAL_CURVE_FEE_BPS
+            policy.policyId == bytes32(0) || policy.policyVersion == 0 || policy.curveFeeBps != CANONICAL_CURVE_FEE_BPS
                 || policy.creatorFeeShareBps != CANONICAL_CREATOR_FEE_SHARE_BPS
                 || policy.protocolFeeShareBps != CANONICAL_PROTOCOL_FEE_SHARE_BPS
                 || policy.postGraduationFeeBps != CANONICAL_POST_GRADUATION_FEE_BPS
-                || policy.graduationTarget != CANONICAL_GRADUATION_TARGET
-                || !(fairStartDisabled || fairStartEnabled)
+                || policy.graduationTarget != CANONICAL_GRADUATION_TARGET || !(fairStartDisabled || fairStartEnabled)
                 || policy.marketImplementation != canonicalMarketImplementation
                 || policy.protocolTreasury != canonicalProtocolTreasury
                 || policy.graduationAdapter != canonicalGraduationAdapter

@@ -72,12 +72,8 @@ contract RMTV6Governance {
         uint256 nextThreshold,
         uint64 expiresAt
     );
-    event SignerRoleAcceptanceRevoked(
-        address indexed signer, uint64 indexed configurationEpoch, uint8 indexed action
-    );
-    event SignerRoleAcceptanceConsumed(
-        address indexed signer, uint64 indexed configurationEpoch, uint8 indexed action
-    );
+    event SignerRoleAcceptanceRevoked(address indexed signer, uint64 indexed configurationEpoch, uint8 indexed action);
+    event SignerRoleAcceptanceConsumed(address indexed signer, uint64 indexed configurationEpoch, uint8 indexed action);
     event SignerAdded(address indexed signer);
     event SignerRemoved(address indexed signer);
     event ThresholdChanged(uint256 threshold);
@@ -85,8 +81,8 @@ contract RMTV6Governance {
 
     constructor(address initialSigner, uint64 executionDelay_, uint64 executionWindow_) {
         if (
-            initialSigner == address(0) || executionDelay_ == 0 || executionDelay_ > 30 days
-                || executionWindow_ == 0 || executionWindow_ > 30 days
+            initialSigner == address(0) || executionDelay_ == 0 || executionDelay_ > 30 days || executionWindow_ == 0
+                || executionWindow_ > 30 days
         ) revert InvalidConfiguration();
 
         executionDelay = executionDelay_;
@@ -202,8 +198,7 @@ contract RMTV6Governance {
         uint64 expiresAt
     ) external {
         if (
-            isSigner[msg.sender] || expectedConfigurationEpoch != configurationEpoch
-                || expiresAt <= block.timestamp
+            isSigner[msg.sender] || expectedConfigurationEpoch != configurationEpoch || expiresAt <= block.timestamp
                 || expiresAt > block.timestamp + executionDelay + executionWindow
         ) revert InvalidConfiguration();
 
@@ -224,14 +219,7 @@ contract RMTV6Governance {
             currentSigner: currentSigner,
             nextThreshold: nextThreshold
         });
-        emit SignerRoleAccepted(
-            msg.sender,
-            expectedConfigurationEpoch,
-            action,
-            currentSigner,
-            nextThreshold,
-            expiresAt
-        );
+        emit SignerRoleAccepted(msg.sender, expectedConfigurationEpoch, action, currentSigner, nextThreshold, expiresAt);
     }
 
     /// @notice Withdraws a prospective signer's unconsumed consent, including consent made stale by an epoch change.
@@ -291,9 +279,7 @@ contract RMTV6Governance {
                 || currentSigner == replacementSigner
         ) revert InvalidConfiguration();
         _validateThreshold(nextThreshold, signerCount);
-        _consumeSignerAcceptance(
-            replacementSigner, SIGNER_ACTION_REPLACE, currentSigner, nextThreshold
-        );
+        _consumeSignerAcceptance(replacementSigner, SIGNER_ACTION_REPLACE, currentSigner, nextThreshold);
 
         isSigner[currentSigner] = false;
         isSigner[replacementSigner] = true;
@@ -315,18 +301,14 @@ contract RMTV6Governance {
     }
 
     function _validateThreshold(uint256 nextThreshold, uint256 nextSignerCount) private pure {
-        if (
-            nextThreshold == 0 || nextThreshold > nextSignerCount
-                || (nextSignerCount > 1 && nextThreshold == 1)
-        ) revert InvalidConfiguration();
+        if (nextThreshold == 0 || nextThreshold > nextSignerCount || (nextSignerCount > 1 && nextThreshold == 1)) {
+            revert InvalidConfiguration();
+        }
     }
 
-    function _consumeSignerAcceptance(
-        address signer,
-        uint8 action,
-        address currentSigner,
-        uint256 nextThreshold
-    ) private {
+    function _consumeSignerAcceptance(address signer, uint8 action, address currentSigner, uint256 nextThreshold)
+        private
+    {
         uint64 epoch = configurationEpoch;
         SignerRoleAcceptance memory acceptance = signerRoleAcceptances[signer];
         if (

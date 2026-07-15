@@ -81,8 +81,7 @@ contract DeployMainnetV6OfficialMigration {
         if (pendingFactory != address(0)) revert ConflictingPendingFactory(pendingFactory);
         if (
             !registryGovernance.isSigner(Config.DEVELOPER_OPERATOR) || registryGovernance.signerCount() != 1
-                || registryGovernance.threshold() != 1
-                || registryGovernance.executionDelay() != Config.GOVERNANCE_DELAY
+                || registryGovernance.threshold() != 1 || registryGovernance.executionDelay() != Config.GOVERNANCE_DELAY
                 || registryGovernance.transactionCount() != 0
                 || versionRegistry.governance() != Config.REGISTRY_GOVERNANCE
                 || versionRegistry.activationDelay() != Config.REGISTRY_ACTIVATION_DELAY
@@ -93,8 +92,7 @@ contract DeployMainnetV6OfficialMigration {
         if (!legacy.isNameUsed("Robinhood Meme Terminal") || !legacy.isSymbolUsed("RMT")) {
             revert OfficialIdentityNotReserved();
         }
-        ILiveOfficialRMTTokenV6 officialLegacyToken =
-            ILiveOfficialRMTTokenV6(Config.OFFICIAL_LEGACY_RMT_TOKEN);
+        ILiveOfficialRMTTokenV6 officialLegacyToken = ILiveOfficialRMTTokenV6(Config.OFFICIAL_LEGACY_RMT_TOKEN);
         if (
             officialLegacyToken.creator() != Config.DEVELOPER_OPERATOR
                 || keccak256(bytes(officialLegacyToken.name())) != keccak256(bytes("Robinhood Meme Terminal"))
@@ -113,9 +111,8 @@ contract DeployMainnetV6OfficialMigration {
             HookMiner.find(Config.CREATE2_DEPLOYER, flags, type(V5GraduationHook).creationCode, hookConstructorArgs);
 
         vm.startPrank(deployer);
-        RMTV6Governance governance = new RMTV6Governance(
-            Config.DEVELOPER_OPERATOR, Config.GOVERNANCE_DELAY, Config.GOVERNANCE_EXECUTION_WINDOW
-        );
+        RMTV6Governance governance =
+            new RMTV6Governance(Config.DEVELOPER_OPERATOR, Config.GOVERNANCE_DELAY, Config.GOVERNANCE_EXECUTION_WINDOW);
         (bool hookDeploymentSuccess,) = Config.CREATE2_DEPLOYER.call(abi.encodePacked(salt, hookInitCode));
         if (!hookDeploymentSuccess || expectedHook.code.length == 0) revert HookDeploymentFailed(expectedHook);
         V5GraduationHook hook = V5GraduationHook(expectedHook);
@@ -125,9 +122,8 @@ contract DeployMainnetV6OfficialMigration {
         );
         hook.bindAdapter(address(adapter));
 
-        RMTLaunchGate launchGate = new RMTLaunchGate(
-            address(governance), Config.INITIAL_GUARDIAN, Config.LAUNCH_UNPAUSE_DELAY
-        );
+        RMTLaunchGate launchGate =
+            new RMTLaunchGate(address(governance), Config.INITIAL_GUARDIAN, Config.LAUNCH_UNPAUSE_DELAY);
         CloneBondingCurveMarketV6 marketImplementation = new CloneBondingCurveMarketV6();
         RMTLaunchPolicyRegistry policyRegistry = new RMTLaunchPolicyRegistry(
             address(governance),
@@ -156,14 +152,13 @@ contract DeployMainnetV6OfficialMigration {
                 || hook.adapter() != address(adapter) || address(adapter.poolManager()) != Config.POOL_MANAGER
                 || address(adapter.hook()) != address(hook) || adapter.deployer() != Config.DEVELOPER_OPERATOR
                 || adapter.factory() != address(factory) || adapter.poolFee() != Config.V4_POOL_FEE
-                || adapter.tickSpacing() != Config.V4_TICK_SPACING
-                || !governance.isSigner(Config.DEVELOPER_OPERATOR) || governance.signerCount() != 1
-                || governance.threshold() != 1 || governance.executionDelay() != Config.GOVERNANCE_DELAY
+                || adapter.tickSpacing() != Config.V4_TICK_SPACING || !governance.isSigner(Config.DEVELOPER_OPERATOR)
+                || governance.signerCount() != 1 || governance.threshold() != 1
+                || governance.executionDelay() != Config.GOVERNANCE_DELAY
                 || governance.executionWindow() != Config.GOVERNANCE_EXECUTION_WINDOW
                 || governance.configurationEpoch() != 1 || governance.transactionCount() != 0
-                || launchGate.governance() != address(governance)
-                || launchGate.guardian() != Config.INITIAL_GUARDIAN || !launchGate.launchesPaused()
-                || launchGate.unpauseDelay() != Config.LAUNCH_UNPAUSE_DELAY
+                || launchGate.governance() != address(governance) || launchGate.guardian() != Config.INITIAL_GUARDIAN
+                || !launchGate.launchesPaused() || launchGate.unpauseDelay() != Config.LAUNCH_UNPAUSE_DELAY
                 || policyRegistry.governance() != address(governance)
                 || policyRegistry.guardian() != Config.INITIAL_GUARDIAN
                 || policyRegistry.governanceDelay() != Config.GOVERNANCE_DELAY
@@ -186,7 +181,8 @@ contract DeployMainnetV6OfficialMigration {
                 || factory.OFFICIAL_MIGRATION_POLICY_ID() != Config.SIMPLE_FAIR_V1_POLICY_ID
                 || factory.initialVirtualEthReserve() != Config.INITIAL_VIRTUAL_ETH_RESERVE
                 || factory.initialVirtualTokenReserve() != Config.INITIAL_VIRTUAL_TOKEN_RESERVE
-                || factory.tokenImplementation().code.length == 0 || factory.feeSplitterImplementation().code.length == 0
+                || factory.tokenImplementation().code.length == 0
+                || factory.feeSplitterImplementation().code.length == 0
                 || factory.officialIdentityMigration().officialLauncher() != Config.DEVELOPER_OPERATOR
                 || factory.officialIdentityMigration().authorizedFactory() != address(factory)
                 || factory.officialIdentityMigration().officialLegacyToken() != Config.OFFICIAL_LEGACY_RMT_TOKEN

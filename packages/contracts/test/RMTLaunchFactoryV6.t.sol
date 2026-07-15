@@ -97,8 +97,7 @@ contract MockV6GraduationAdapter {
         require(postGraduationFeeBps == 50, "wrong post graduation fee");
         require(DirectLaunchFeeSplitter(payable(feeSplitter)).launchToken() == token, "wrong splitter token");
         require(
-            DirectLaunchFeeSplitter(payable(feeSplitter)).graduationAdapter() == address(this),
-            "wrong splitter adapter"
+            DirectLaunchFeeSplitter(payable(feeSplitter)).graduationAdapter() == address(this), "wrong splitter adapter"
         );
         feeSplitters[token] = feeSplitter;
     }
@@ -157,474 +156,459 @@ contract MockV6PolicyRegistry is IRMTLaunchPolicyRegistry {
     }
 }
 
-contract RMTLaunchFactoryV6Test {
-    FactoryVm private constant vm = FactoryVm(address(uint160(uint256(keccak256("hevm cheat code")))));
-    address private constant OFFICIAL_LAUNCHER = address(0xA11CE);
-    address private constant ATTACKER = address(0xB0B);
-    bytes32 private constant FAIR_POLICY_ID = keccak256("RMT_SIMPLE_FAIR_V1");
-    bytes32 private constant OPEN_POLICY_ID = keccak256("RMT_SIMPLE_OPEN_V1");
+    contract RMTLaunchFactoryV6Test {
+        FactoryVm private constant vm = FactoryVm(address(uint160(uint256(keccak256("hevm cheat code")))));
+        address private constant OFFICIAL_LAUNCHER = address(0xA11CE);
+        address private constant ATTACKER = address(0xB0B);
+        bytes32 private constant FAIR_POLICY_ID = keccak256("RMT_SIMPLE_FAIR_V1");
+        bytes32 private constant OPEN_POLICY_ID = keccak256("RMT_SIMPLE_OPEN_V1");
 
-    receive() external payable {}
+        receive() external payable {}
 
-    function testFactoryBindsExactOfficialLegacyTokenProvenance() public {
-        (RMTLaunchFactoryV6 factory,,) = _deploy();
-        address legacyToken = factory.officialLegacyToken();
+        function testFactoryBindsExactOfficialLegacyTokenProvenance() public {
+            (RMTLaunchFactoryV6 factory,,) = _deploy();
+            address legacyToken = factory.officialLegacyToken();
 
-        require(legacyToken.code.length != 0, "official legacy token code");
-        require(factory.officialIdentityMigration().officialLegacyToken() == legacyToken, "migration token mismatch");
-        require(MockV6OfficialLegacyToken(legacyToken).creator() == OFFICIAL_LAUNCHER, "legacy creator");
-        require(
-            keccak256(bytes(MockV6OfficialLegacyToken(legacyToken).name()))
-                == keccak256(bytes("Robinhood Meme Terminal")),
-            "legacy name"
-        );
-        require(
-            keccak256(bytes(MockV6OfficialLegacyToken(legacyToken).symbol())) == keccak256(bytes("RMT")),
-            "legacy symbol"
-        );
+            require(legacyToken.code.length != 0, "official legacy token code");
+            require(
+                factory.officialIdentityMigration().officialLegacyToken() == legacyToken, "migration token mismatch"
+            );
+            require(MockV6OfficialLegacyToken(legacyToken).creator() == OFFICIAL_LAUNCHER, "legacy creator");
+            require(
+                keccak256(bytes(MockV6OfficialLegacyToken(legacyToken).name()))
+                    == keccak256(bytes("Robinhood Meme Terminal")),
+                "legacy name"
+            );
+            require(
+                keccak256(bytes(MockV6OfficialLegacyToken(legacyToken).symbol())) == keccak256(bytes("RMT")),
+                "legacy symbol"
+            );
+        }
+
+        function testFactoryRejectsOfficialLegacyAddressWithoutCode() public {
+            require(!_candidateDeploySucceeds(address(0x1234)), "no-code official token accepted");
+        }
+
+        function testFactoryRejectsOfficialLegacyTokenWithWrongCreator() public {
+            MockV6OfficialLegacyToken candidate = new MockV6OfficialLegacyToken(
+                "Robinhood Meme Terminal", "RMT", ATTACKER
+            );
+            require(!_candidateDeploySucceeds(address(candidate)), "wrong legacy creator accepted");
+        }
+
+        function testFactoryRejectsOfficialLegacyTokenWithWrongName() public {
+            MockV6OfficialLegacyToken candidate = new MockV6OfficialLegacyToken("Not RMT", "RMT", OFFICIAL_LAUNCHER);
+            require(!_candidateDeploySucceeds(address(candidate)), "wrong legacy name accepted");
+        }
+
+        function testFactoryRejectsOfficialLegacyTokenWithWrongSymbol() public {
+            MockV6OfficialLegacyToken candidate =
+                new MockV6OfficialLegacyToken("Robinhood Meme Terminal", "FAKE", OFFICIAL_LAUNCHER);
+            require(!_candidateDeploySucceeds(address(candidate)), "wrong legacy symbol accepted");
+        }
+
+        function testOfficialRMTMigrationUsesNormalPipelineExactlyOnce() public {
+            (RMTLaunchFactoryV6 factory, MockV6LaunchGate gate, MockV6LegacyIdentityFactory legacy) = _deploy();
+            gate.setPaused(true);
+            legacy.setUsed(true, true);
+
+            vm.prank(OFFICIAL_LAUNCHER);
+            (address token, address market, address splitterAddress) =
+                factory.launchOfficialWhilePaused("ipfs://official-rmt-v6");
+            DirectLaunchFeeSplitter splitter = DirectLaunchFeeSplitter(payable(splitterAddress));
+
+            IRMTLaunchFactoryV6.LaunchView memory launchRecord = factory.getLaunch(0);
+            require(launchRecord.token == token, "token record");
+            require(launchRecord.market == market, "market record");
+            require(launchRecord.creator == OFFICIAL_LAUNCHER, "official creator");
+            require(launchRecord.officialMigration, "migration not recorded");
+            require(factory.officialIdentityMigration().consumed(), "migration not consumed");
+            require(
+                CloneFixedSupplyMemeToken(token).balanceOf(market) == factory.TOKEN_SUPPLY(),
+                "inventory not transferred"
+            );
+            require(CloneFixedSupplyMemeToken(token).balanceOf(OFFICIAL_LAUNCHER) == 0, "creator token allocation");
+            require(splitter.authorizedMarket() == market, "splitter market source");
+            require(
+                splitter.graduationAdapter() == address(CloneBondingCurveMarketV6(payable(market)).graduationAdapter()),
+                "splitter adapter source"
+            );
+
+            vm.prank(OFFICIAL_LAUNCHER);
+            (bool secondSuccess,) =
+                address(factory).call(abi.encodeCall(factory.launchOfficialWhilePaused, ("ipfs://second")));
+            require(!secondSuccess, "official migration reused");
+        }
+
+        function testOfficialRMTCanLaunchOnceWhilePublicGateRemainsPaused() public {
+            (RMTLaunchFactoryV6 factory, MockV6LaunchGate gate, MockV6LegacyIdentityFactory legacy) = _deploy();
+            gate.setPaused(true);
+            legacy.setUsed(true, true);
+
+            vm.prank(ATTACKER);
+            (bool attackerSuccess,) =
+                address(factory).call(abi.encodeCall(factory.launchOfficialWhilePaused, ("ipfs://attacker")));
+            require(!attackerSuccess, "attacker used paused official migration");
+
+            vm.prank(OFFICIAL_LAUNCHER);
+            (address token, address market,) = factory.launchOfficialWhilePaused("ipfs://official-paused");
+            require(token != address(0) && market != address(0), "paused official launch missing");
+            require(gate.launchesPaused(), "official migration reopened public launches");
+            require(factory.officialIdentityMigration().consumed(), "paused migration not consumed");
+
+            (bool ordinarySuccess,) =
+                address(factory).call(abi.encodeCall(factory.launchSimple, ("Still Paused", "STOP", "ipfs://blocked")));
+            require(!ordinarySuccess, "ordinary launch bypassed paused gate");
+
+            vm.prank(OFFICIAL_LAUNCHER);
+            (bool repeatedSuccess,) =
+                address(factory).call(abi.encodeCall(factory.launchOfficialWhilePaused, ("ipfs://repeated")));
+            require(!repeatedSuccess, "paused official migration reused");
+        }
+
+        function testInactiveFactoryCannotLaunchOrConsumeOfficialMigration() public {
+            (RMTLaunchFactoryV6 factory, MockV6LaunchGate gate, MockV6LegacyIdentityFactory legacy) = _deploy();
+            gate.setPaused(true);
+            legacy.setUsed(true, true);
+            MockV6FactoryRegistry(address(factory.factoryRegistry())).setActiveFactory(address(0xDEAD));
+
+            (bool ordinarySuccess,) =
+                address(factory)
+                    .call(abi.encodeCall(factory.launchSimple, ("Inactive Factory", "OLD", "ipfs://inactive")));
+            vm.prank(OFFICIAL_LAUNCHER);
+            (bool officialSuccess,) =
+                address(factory).call(abi.encodeCall(factory.launchOfficialWhilePaused, ("ipfs://inactive-rmt")));
+
+            require(!ordinarySuccess && !officialSuccess, "inactive factory launched");
+            require(factory.launchCount() == 0, "inactive launch stored");
+            require(!factory.officialIdentityMigration().consumed(), "inactive factory consumed migration");
+        }
+
+        function testUnauthorizedWalletCannotConsumeOfficialMigration() public {
+            (RMTLaunchFactoryV6 factory, MockV6LaunchGate gate, MockV6LegacyIdentityFactory legacy) = _deploy();
+            gate.setPaused(true);
+            legacy.setUsed(true, true);
+
+            vm.prank(ATTACKER);
+            (bool success,) =
+                address(factory).call(abi.encodeCall(factory.launchOfficialWhilePaused, ("ipfs://impersonation")));
+
+            require(!success, "unauthorized migration launched");
+            require(!factory.officialIdentityMigration().consumed(), "unauthorized migration consumed");
+            require(factory.launchCount() == 0, "unauthorized launch stored");
+        }
+
+        function testOfficialRMTMigrationCannotConsumeIdentityThroughOpenPolicy() public {
+            (RMTLaunchFactoryV6 factory, MockV6LaunchGate gate, MockV6LegacyIdentityFactory legacy) = _deploy();
+            gate.setPaused(true);
+            legacy.setUsed(true, true);
+
+            require(
+                !factory.canMigrateOfficialIdentity(
+                    OFFICIAL_LAUNCHER, OPEN_POLICY_ID, "Robinhood Meme Terminal", "RMT"
+                ),
+                "open policy advertised official migration"
+            );
+            require(
+                factory.canMigrateOfficialIdentity(OFFICIAL_LAUNCHER, FAIR_POLICY_ID, "Robinhood Meme Terminal", "RMT"),
+                "fair policy migration unavailable"
+            );
+
+            vm.prank(OFFICIAL_LAUNCHER);
+            (bool openSuccess,) = address(factory)
+                .call(
+                    abi.encodeCall(
+                        factory.launch, (OPEN_POLICY_ID, "Robinhood Meme Terminal", "RMT", "ipfs://wrong-open-policy")
+                    )
+                );
+            require(!openSuccess, "official migration consumed through open policy");
+            require(!factory.officialIdentityMigration().consumed(), "open policy consumed migration");
+
+            vm.prank(OFFICIAL_LAUNCHER);
+            factory.launchOfficialWhilePaused("ipfs://reviewed-fair-policy");
+            require(factory.officialIdentityMigration().consumed(), "fair policy did not consume migration");
+        }
+
+        function testOfficialPausedRouteRequiresBothLegacyReservations() public {
+            (RMTLaunchFactoryV6 factory, MockV6LaunchGate gate, MockV6LegacyIdentityFactory legacy) = _deploy();
+            gate.setPaused(true);
+            legacy.setUsed(true, false);
+
+            vm.prank(OFFICIAL_LAUNCHER);
+            (bool success,) = address(factory)
+                .call(abi.encodeCall(factory.launchOfficialWhilePaused, ("ipfs://incomplete-legacy-reservation")));
+
+            require(!success, "incomplete legacy identity reservation accepted");
+            require(!factory.officialIdentityMigration().consumed(), "incomplete reservation consumed migration");
+            require(factory.launchCount() == 0, "incomplete reservation stored a launch");
+        }
+
+        function testOrdinaryLaunchesRemainBlockedUntilOfficialMigrationSucceeds() public {
+            (RMTLaunchFactoryV6 factory, MockV6LaunchGate gate, MockV6LegacyIdentityFactory legacy) = _deploy();
+            gate.setPaused(false);
+
+            (bool prematureSuccess,) = address(factory)
+                .call(abi.encodeCall(factory.launchSimple, ("Premature Launch", "EARLY", "ipfs://premature")));
+            require(!prematureSuccess, "ordinary launch opened before official migration");
+            require(factory.launchCount() == 0, "premature launch stored");
+
+            _completeOfficialMigration(factory, gate, legacy);
+            (address token,,) = factory.launchSimple("Public Launch", "PUBLIC", "ipfs://public");
+            require(token != address(0), "ordinary launch unavailable after official migration");
+        }
+
+        function testBothLaunchEntrypointsUseTheSharedPauseGate() public {
+            (RMTLaunchFactoryV6 factory, MockV6LaunchGate gate, MockV6LegacyIdentityFactory legacy) = _deploy();
+            _completeOfficialMigration(factory, gate, legacy);
+            gate.setPaused(true);
+
+            (bool simpleSuccess,) = address(factory)
+                .call(abi.encodeCall(factory.launchSimple, ("Paused Simple", "PAUS", "ipfs://paused-simple")));
+            (bool policySuccess,) = address(factory)
+                .call(abi.encodeCall(factory.launch, (OPEN_POLICY_ID, "Paused Policy", "PAUP", "ipfs://paused-policy")));
+
+            require(!simpleSuccess, "launchSimple bypassed pause");
+            require(!policySuccess, "launch bypassed pause");
+            require(factory.launchCount() == 1, "paused launch stored");
+        }
+
+        function testOrdinaryLaunchDoesNotRecordMigration() public {
+            (RMTLaunchFactoryV6 factory, MockV6LaunchGate gate, MockV6LegacyIdentityFactory legacy) = _deploy();
+            _completeOfficialMigration(factory, gate, legacy);
+
+            (address token,,) = factory.launchSimple("Ordinary Token", "ORD", "ipfs://ordinary");
+            IRMTLaunchFactoryV6.LaunchView memory launchRecord = factory.getLaunch(1);
+
+            require(token != address(0), "ordinary token missing");
+            require(!launchRecord.officialMigration, "ordinary launch marked migration");
+            require(factory.officialIdentityMigration().consumed(), "official migration was not preserved");
+        }
+
+        function testRejectsDuplicateV6CanonicalNameAcrossCaseAndSeparators() public {
+            (RMTLaunchFactoryV6 factory, MockV6LaunchGate gate, MockV6LegacyIdentityFactory legacy) = _deploy();
+            _completeOfficialMigration(factory, gate, legacy);
+            factory.launchSimple("Alpha Token", "ALPHA", "ipfs://alpha");
+
+            (bool success,) = address(factory)
+                .call(abi.encodeCall(factory.launchSimple, ("A.l_p'h-a Token", "BETA", "ipfs://duplicate-name")));
+
+            require(!success, "canonical duplicate name accepted");
+            require(factory.isNameUsed("a-l_p.h'a token"), "canonical name lookup missed reservation");
+            require(factory.launchCount() == 2, "duplicate name stored");
+        }
+
+        function testRejectsDuplicateV6CanonicalSymbolCaseInsensitive() public {
+            (RMTLaunchFactoryV6 factory, MockV6LaunchGate gate, MockV6LegacyIdentityFactory legacy) = _deploy();
+            _completeOfficialMigration(factory, gate, legacy);
+            factory.launchSimple("Alpha Token", "ALPHA", "ipfs://alpha");
+
+            (bool success,) = address(factory)
+                .call(abi.encodeCall(factory.launchSimple, ("Beta Token", "alpha", "ipfs://duplicate-symbol")));
+
+            require(!success, "canonical duplicate symbol accepted");
+            require(factory.isSymbolUsed("alpha"), "canonical symbol lookup missed reservation");
+            require(factory.launchCount() == 2, "duplicate symbol stored");
+        }
+
+        function testRejectsLegacyNameOnlyReservationForOrdinaryIdentity() public {
+            (RMTLaunchFactoryV6 factory, MockV6LaunchGate gate, MockV6LegacyIdentityFactory legacy) = _deploy();
+            _completeOfficialMigration(factory, gate, legacy);
+            legacy.setNameUsed("Reserved Legacy Name", true);
+
+            (bool success,) = address(factory)
+                .call(
+                    abi.encodeCall(
+                        factory.launchSimple, ("Reserved Legacy Name", "AVAILABLE", "ipfs://legacy-name-only")
+                    )
+                );
+
+            require(!success, "legacy name-only reservation bypassed");
+            require(factory.launchCount() == 1, "legacy name-only launch stored");
+        }
+
+        function testRejectsLegacySymbolOnlyReservationForOrdinaryIdentity() public {
+            (RMTLaunchFactoryV6 factory, MockV6LaunchGate gate, MockV6LegacyIdentityFactory legacy) = _deploy();
+            _completeOfficialMigration(factory, gate, legacy);
+            legacy.setSymbolUsed("LEGACY", true);
+
+            (bool success,) = address(factory)
+                .call(abi.encodeCall(factory.launchSimple, ("Available Name", "LEGACY", "ipfs://legacy-symbol-only")));
+
+            require(!success, "legacy symbol-only reservation bypassed");
+            require(factory.launchCount() == 1, "legacy symbol-only launch stored");
+        }
+
+        function testOfficialExceptionCannotMigrateDifferentLegacyIdentity() public {
+            (RMTLaunchFactoryV6 factory, MockV6LaunchGate gate, MockV6LegacyIdentityFactory legacy) = _deploy();
+            gate.setPaused(true);
+            legacy.setNameUsed("Fake Robinhood Terminal", true);
+            legacy.setSymbolUsed("FAKE", true);
+
+            require(
+                !factory.canMigrateOfficialIdentity(
+                    OFFICIAL_LAUNCHER, FAIR_POLICY_ID, "Fake Robinhood Terminal", "FAKE"
+                ),
+                "different identity advertised as official"
+            );
+            require(!factory.officialIdentityMigration().consumed(), "different identity consumed migration");
+            require(factory.launchCount() == 0, "different identity stored a launch");
+        }
+
+        function testOrdinaryLaunchTransfersFullSupplyToMarketAndNoneToCreator() public {
+            (RMTLaunchFactoryV6 factory, MockV6LaunchGate gate, MockV6LegacyIdentityFactory legacy) = _deploy();
+            _completeOfficialMigration(factory, gate, legacy);
+
+            (address token, address market,) =
+                factory.launchSimple("Full Market Inventory", "FULL", "ipfs://full-inventory");
+
+            require(CloneFixedSupplyMemeToken(token).totalSupply() == factory.TOKEN_SUPPLY(), "wrong fixed supply");
+            require(CloneFixedSupplyMemeToken(token).balanceOf(market) == factory.TOKEN_SUPPLY(), "market inventory");
+            require(CloneFixedSupplyMemeToken(token).balanceOf(address(this)) == 0, "creator allocation");
+            require(CloneFixedSupplyMemeToken(token).balanceOf(address(factory)) == 0, "factory residue");
+        }
+
+        function testCurveBuyAndSellRouteOnlyExactSeventyThirtyNativeFees() public {
+            (RMTLaunchFactoryV6 factory, MockV6LaunchGate gate, MockV6LegacyIdentityFactory legacy) = _deploy();
+            _completeOfficialMigration(factory, gate, legacy);
+
+            (address tokenAddress, address marketAddress, address splitterAddress) =
+                factory.launch(OPEN_POLICY_ID, "Exact Fee Split", "EFS", "ipfs://exact-fee-split");
+            CloneFixedSupplyMemeToken token = CloneFixedSupplyMemeToken(tokenAddress);
+            CloneBondingCurveMarketV6 market = CloneBondingCurveMarketV6(payable(marketAddress));
+            DirectLaunchFeeSplitter splitter = DirectLaunchFeeSplitter(payable(splitterAddress));
+            address protocolTreasury = address(0x7E8E);
+
+            vm.deal(address(this), 5 ether);
+            uint256 creatorBalanceBefore = address(this).balance;
+            uint256 treasuryBalanceBefore = protocolTreasury.balance;
+
+            uint256 grossBuy = 1 ether;
+            (uint256 tokensOut, uint256 acceptedEth, uint256 buyFee,) = market.quoteBuyExecution(grossBuy);
+            require(tokensOut != 0 && acceptedEth == grossBuy, "unexpected buy quote");
+            market.buy{value: grossBuy}(address(this), tokensOut, block.timestamp);
+
+            uint256 sellAmount = tokensOut / 2;
+            require(token.approve(marketAddress, sellAmount), "sell approval");
+            (uint256 ethOut, uint256 sellFee,) = market.quoteSell(sellAmount);
+            require(ethOut != 0 && sellFee != 0, "unexpected sell quote");
+            market.sell(sellAmount, ethOut, payable(address(this)), block.timestamp);
+
+            uint256 totalFees = buyFee + sellFee;
+            uint256 creatorFees = (totalFees * 7_000) / 10_000;
+            uint256 protocolFees = totalFees - creatorFees;
+            require(splitter.totalReceived() == totalFees, "native fees not fully accounted");
+            require(splitter.totalPaid() == totalFees, "native fees not fully paid");
+            require(
+                address(this).balance == creatorBalanceBefore - acceptedEth + ethOut + creatorFees, "creator not 70%"
+            );
+            require(protocolTreasury.balance == treasuryBalanceBefore + protocolFees, "protocol not 30%");
+            require(splitter.pending(address(this)) == 0, "creator payment unexpectedly deferred");
+            require(splitter.pending(protocolTreasury) == 0, "protocol payment unexpectedly deferred");
+            require(splitter.totalTokenReceived(tokenAddress) == 0, "curve invented token fees");
+            require(token.balanceOf(address(this)) == tokensOut - sellAmount, "creator received a token allocation");
+            require(
+                token.balanceOf(marketAddress) == factory.TOKEN_SUPPLY() - tokensOut + sellAmount, "market inventory"
+            );
+        }
+
+        function testCreatorCannotChangePayoutButFactoryConfiguredAuthorityCan() public {
+            (RMTLaunchFactoryV6 factory, MockV6LaunchGate gate, MockV6LegacyIdentityFactory legacy) = _deploy();
+            _completeOfficialMigration(factory, gate, legacy);
+            (,, address splitterAddress) =
+                factory.launchSimple("Governed Creator Wallet", "GCW", "ipfs://governed-creator");
+            DirectLaunchFeeSplitter splitter = DirectLaunchFeeSplitter(payable(splitterAddress));
+            address protocolTreasury = address(0x7E8E);
+            bytes32 evidenceHash = keccak256("documented-rug-evidence");
+
+            (bool creatorChanged,) = address(splitter)
+                .call(abi.encodeCall(splitter.setCreatorWallet, (payable(protocolTreasury), evidenceHash, 0)));
+            require(!creatorChanged, "creator changed payout recipient");
+
+            MockV6CreatorPayoutAuthority authority = MockV6CreatorPayoutAuthority(factory.creatorPayoutAuthority());
+            authority.setCreator(splitter, payable(protocolTreasury), evidenceHash, 0);
+            require(splitter.creator() == protocolTreasury, "authority did not redirect payout");
+            require(splitter.originalCreator() == address(this), "historical creator changed");
+        }
+
+        function _completeOfficialMigration(
+            RMTLaunchFactoryV6 factory,
+            MockV6LaunchGate gate,
+            MockV6LegacyIdentityFactory legacy
+        ) private {
+            gate.setPaused(true);
+            legacy.setUsed(true, true);
+            vm.prank(OFFICIAL_LAUNCHER);
+            factory.launchOfficialWhilePaused("ipfs://official-test-prerequisite");
+            legacy.setUsed(false, false);
+            gate.setPaused(false);
+        }
+
+        function deployCandidate(address officialLegacyToken) external returns (address factoryAddress) {
+            (RMTLaunchFactoryV6 factory,,) = _deployWithOfficialLegacyToken(officialLegacyToken);
+            return address(factory);
+        }
+
+        function _candidateDeploySucceeds(address officialLegacyToken) private returns (bool success) {
+            (success,) = address(this).call(abi.encodeWithSelector(this.deployCandidate.selector, officialLegacyToken));
+        }
+
+        function _deploy()
+            private
+            returns (RMTLaunchFactoryV6 factory, MockV6LaunchGate gate, MockV6LegacyIdentityFactory legacy)
+        {
+            MockV6OfficialLegacyToken officialLegacyToken =
+                new MockV6OfficialLegacyToken("Robinhood Meme Terminal", "RMT", OFFICIAL_LAUNCHER);
+            return _deployWithOfficialLegacyToken(address(officialLegacyToken));
+        }
+
+        function _deployWithOfficialLegacyToken(address officialLegacyToken)
+            private
+            returns (RMTLaunchFactoryV6 factory, MockV6LaunchGate gate, MockV6LegacyIdentityFactory legacy)
+        {
+            MockV6CreatorPayoutAuthority payoutAuthority = new MockV6CreatorPayoutAuthority();
+            gate = new MockV6LaunchGate(address(payoutAuthority));
+            legacy = new MockV6LegacyIdentityFactory();
+            legacy.setUsed(true, true);
+            MockV6GraduationAdapter adapter = new MockV6GraduationAdapter();
+            CloneBondingCurveMarketV6 marketImplementation = new CloneBondingCurveMarketV6();
+            IRMTLaunchPolicyRegistry.LaunchPolicy memory fairPolicy = IRMTLaunchPolicyRegistry.LaunchPolicy({
+                policyId: FAIR_POLICY_ID,
+                policyVersion: 1,
+                enabled: true,
+                publiclySelectable: true,
+                curveFeeBps: 100,
+                creatorFeeShareBps: 7_000,
+                protocolFeeShareBps: 3_000,
+                postGraduationFeeBps: 50,
+                graduationTarget: 2 ether,
+                fairStartMode: 1,
+                fairStartDelayBlocks: 1,
+                fairStartDurationBlocks: 10,
+                fairStartMaxTxBps: 100,
+                fairStartMaxWalletBps: 300,
+                marketImplementation: address(marketImplementation),
+                protocolTreasury: address(0x7E8E),
+                graduationAdapter: address(adapter)
+            });
+            IRMTLaunchPolicyRegistry.LaunchPolicy memory openPolicy = fairPolicy;
+            openPolicy.policyId = OPEN_POLICY_ID;
+            openPolicy.fairStartMode = 0;
+            openPolicy.fairStartDelayBlocks = 0;
+            openPolicy.fairStartDurationBlocks = 0;
+            openPolicy.fairStartMaxTxBps = 0;
+            openPolicy.fairStartMaxWalletBps = 0;
+            MockV6PolicyRegistry registry = new MockV6PolicyRegistry(fairPolicy, openPolicy, address(payoutAuthority));
+            MockV6FactoryRegistry factoryRegistry = new MockV6FactoryRegistry();
+            factory = new RMTLaunchFactoryV6(
+                address(gate),
+                address(registry),
+                address(factoryRegistry),
+                0.3 ether,
+                1_017_500_000 ether,
+                address(legacy),
+                officialLegacyToken,
+                OFFICIAL_LAUNCHER
+            );
+            factoryRegistry.setActiveFactory(address(factory));
+        }
     }
-
-    function testFactoryRejectsOfficialLegacyAddressWithoutCode() public {
-        require(!_candidateDeploySucceeds(address(0x1234)), "no-code official token accepted");
-    }
-
-    function testFactoryRejectsOfficialLegacyTokenWithWrongCreator() public {
-        MockV6OfficialLegacyToken candidate =
-            new MockV6OfficialLegacyToken("Robinhood Meme Terminal", "RMT", ATTACKER);
-        require(!_candidateDeploySucceeds(address(candidate)), "wrong legacy creator accepted");
-    }
-
-    function testFactoryRejectsOfficialLegacyTokenWithWrongName() public {
-        MockV6OfficialLegacyToken candidate = new MockV6OfficialLegacyToken("Not RMT", "RMT", OFFICIAL_LAUNCHER);
-        require(!_candidateDeploySucceeds(address(candidate)), "wrong legacy name accepted");
-    }
-
-    function testFactoryRejectsOfficialLegacyTokenWithWrongSymbol() public {
-        MockV6OfficialLegacyToken candidate =
-            new MockV6OfficialLegacyToken("Robinhood Meme Terminal", "FAKE", OFFICIAL_LAUNCHER);
-        require(!_candidateDeploySucceeds(address(candidate)), "wrong legacy symbol accepted");
-    }
-
-    function testOfficialRMTMigrationUsesNormalPipelineExactlyOnce() public {
-        (RMTLaunchFactoryV6 factory, MockV6LaunchGate gate, MockV6LegacyIdentityFactory legacy) = _deploy();
-        gate.setPaused(true);
-        legacy.setUsed(true, true);
-
-        vm.prank(OFFICIAL_LAUNCHER);
-        (address token, address market, address splitterAddress) =
-            factory.launchOfficialWhilePaused("ipfs://official-rmt-v6");
-        DirectLaunchFeeSplitter splitter = DirectLaunchFeeSplitter(payable(splitterAddress));
-
-        IRMTLaunchFactoryV6.LaunchView memory launchRecord = factory.getLaunch(0);
-        require(launchRecord.token == token, "token record");
-        require(launchRecord.market == market, "market record");
-        require(launchRecord.creator == OFFICIAL_LAUNCHER, "official creator");
-        require(launchRecord.officialMigration, "migration not recorded");
-        require(factory.officialIdentityMigration().consumed(), "migration not consumed");
-        require(CloneFixedSupplyMemeToken(token).balanceOf(market) == factory.TOKEN_SUPPLY(), "inventory not transferred");
-        require(CloneFixedSupplyMemeToken(token).balanceOf(OFFICIAL_LAUNCHER) == 0, "creator token allocation");
-        require(splitter.authorizedMarket() == market, "splitter market source");
-        require(
-            splitter.graduationAdapter()
-                == address(CloneBondingCurveMarketV6(payable(market)).graduationAdapter()),
-            "splitter adapter source"
-        );
-
-        vm.prank(OFFICIAL_LAUNCHER);
-        (bool secondSuccess,) = address(factory).call(
-            abi.encodeCall(factory.launchOfficialWhilePaused, ("ipfs://second"))
-        );
-        require(!secondSuccess, "official migration reused");
-    }
-
-    function testOfficialRMTCanLaunchOnceWhilePublicGateRemainsPaused() public {
-        (RMTLaunchFactoryV6 factory, MockV6LaunchGate gate, MockV6LegacyIdentityFactory legacy) = _deploy();
-        gate.setPaused(true);
-        legacy.setUsed(true, true);
-
-        vm.prank(ATTACKER);
-        (bool attackerSuccess,) = address(factory).call(
-            abi.encodeCall(factory.launchOfficialWhilePaused, ("ipfs://attacker"))
-        );
-        require(!attackerSuccess, "attacker used paused official migration");
-
-        vm.prank(OFFICIAL_LAUNCHER);
-        (address token, address market,) = factory.launchOfficialWhilePaused("ipfs://official-paused");
-        require(token != address(0) && market != address(0), "paused official launch missing");
-        require(gate.launchesPaused(), "official migration reopened public launches");
-        require(factory.officialIdentityMigration().consumed(), "paused migration not consumed");
-
-        (bool ordinarySuccess,) = address(factory).call(
-            abi.encodeCall(factory.launchSimple, ("Still Paused", "STOP", "ipfs://blocked"))
-        );
-        require(!ordinarySuccess, "ordinary launch bypassed paused gate");
-
-        vm.prank(OFFICIAL_LAUNCHER);
-        (bool repeatedSuccess,) = address(factory).call(
-            abi.encodeCall(factory.launchOfficialWhilePaused, ("ipfs://repeated"))
-        );
-        require(!repeatedSuccess, "paused official migration reused");
-    }
-
-    function testInactiveFactoryCannotLaunchOrConsumeOfficialMigration() public {
-        (RMTLaunchFactoryV6 factory, MockV6LaunchGate gate, MockV6LegacyIdentityFactory legacy) = _deploy();
-        gate.setPaused(true);
-        legacy.setUsed(true, true);
-        MockV6FactoryRegistry(address(factory.factoryRegistry())).setActiveFactory(address(0xDEAD));
-
-        (bool ordinarySuccess,) = address(factory).call(
-            abi.encodeCall(factory.launchSimple, ("Inactive Factory", "OLD", "ipfs://inactive"))
-        );
-        vm.prank(OFFICIAL_LAUNCHER);
-        (bool officialSuccess,) = address(factory).call(
-            abi.encodeCall(factory.launchOfficialWhilePaused, ("ipfs://inactive-rmt"))
-        );
-
-        require(!ordinarySuccess && !officialSuccess, "inactive factory launched");
-        require(factory.launchCount() == 0, "inactive launch stored");
-        require(!factory.officialIdentityMigration().consumed(), "inactive factory consumed migration");
-    }
-
-    function testUnauthorizedWalletCannotConsumeOfficialMigration() public {
-        (RMTLaunchFactoryV6 factory, MockV6LaunchGate gate, MockV6LegacyIdentityFactory legacy) = _deploy();
-        gate.setPaused(true);
-        legacy.setUsed(true, true);
-
-        vm.prank(ATTACKER);
-        (bool success,) = address(factory).call(
-            abi.encodeCall(factory.launchOfficialWhilePaused, ("ipfs://impersonation"))
-        );
-
-        require(!success, "unauthorized migration launched");
-        require(!factory.officialIdentityMigration().consumed(), "unauthorized migration consumed");
-        require(factory.launchCount() == 0, "unauthorized launch stored");
-    }
-
-    function testOfficialRMTMigrationCannotConsumeIdentityThroughOpenPolicy() public {
-        (RMTLaunchFactoryV6 factory, MockV6LaunchGate gate, MockV6LegacyIdentityFactory legacy) = _deploy();
-        gate.setPaused(true);
-        legacy.setUsed(true, true);
-
-        require(
-            !factory.canMigrateOfficialIdentity(
-                OFFICIAL_LAUNCHER, OPEN_POLICY_ID, "Robinhood Meme Terminal", "RMT"
-            ),
-            "open policy advertised official migration"
-        );
-        require(
-            factory.canMigrateOfficialIdentity(
-                OFFICIAL_LAUNCHER, FAIR_POLICY_ID, "Robinhood Meme Terminal", "RMT"
-            ),
-            "fair policy migration unavailable"
-        );
-
-        vm.prank(OFFICIAL_LAUNCHER);
-        (bool openSuccess,) = address(factory).call(
-            abi.encodeCall(
-                factory.launch,
-                (OPEN_POLICY_ID, "Robinhood Meme Terminal", "RMT", "ipfs://wrong-open-policy")
-            )
-        );
-        require(!openSuccess, "official migration consumed through open policy");
-        require(!factory.officialIdentityMigration().consumed(), "open policy consumed migration");
-
-        vm.prank(OFFICIAL_LAUNCHER);
-        factory.launchOfficialWhilePaused("ipfs://reviewed-fair-policy");
-        require(factory.officialIdentityMigration().consumed(), "fair policy did not consume migration");
-    }
-
-    function testOfficialPausedRouteRequiresBothLegacyReservations() public {
-        (RMTLaunchFactoryV6 factory, MockV6LaunchGate gate, MockV6LegacyIdentityFactory legacy) = _deploy();
-        gate.setPaused(true);
-        legacy.setUsed(true, false);
-
-        vm.prank(OFFICIAL_LAUNCHER);
-        (bool success,) = address(factory).call(
-            abi.encodeCall(factory.launchOfficialWhilePaused, ("ipfs://incomplete-legacy-reservation"))
-        );
-
-        require(!success, "incomplete legacy identity reservation accepted");
-        require(!factory.officialIdentityMigration().consumed(), "incomplete reservation consumed migration");
-        require(factory.launchCount() == 0, "incomplete reservation stored a launch");
-    }
-
-    function testOrdinaryLaunchesRemainBlockedUntilOfficialMigrationSucceeds() public {
-        (RMTLaunchFactoryV6 factory, MockV6LaunchGate gate, MockV6LegacyIdentityFactory legacy) = _deploy();
-        gate.setPaused(false);
-
-        (bool prematureSuccess,) = address(factory).call(
-            abi.encodeCall(factory.launchSimple, ("Premature Launch", "EARLY", "ipfs://premature"))
-        );
-        require(!prematureSuccess, "ordinary launch opened before official migration");
-        require(factory.launchCount() == 0, "premature launch stored");
-
-        _completeOfficialMigration(factory, gate, legacy);
-        (address token,,) = factory.launchSimple("Public Launch", "PUBLIC", "ipfs://public");
-        require(token != address(0), "ordinary launch unavailable after official migration");
-    }
-
-    function testBothLaunchEntrypointsUseTheSharedPauseGate() public {
-        (RMTLaunchFactoryV6 factory, MockV6LaunchGate gate, MockV6LegacyIdentityFactory legacy) = _deploy();
-        _completeOfficialMigration(factory, gate, legacy);
-        gate.setPaused(true);
-
-        (bool simpleSuccess,) = address(factory).call(
-            abi.encodeCall(factory.launchSimple, ("Paused Simple", "PAUS", "ipfs://paused-simple"))
-        );
-        (bool policySuccess,) = address(factory).call(
-            abi.encodeCall(factory.launch, (OPEN_POLICY_ID, "Paused Policy", "PAUP", "ipfs://paused-policy"))
-        );
-
-        require(!simpleSuccess, "launchSimple bypassed pause");
-        require(!policySuccess, "launch bypassed pause");
-        require(factory.launchCount() == 1, "paused launch stored");
-    }
-
-    function testOrdinaryLaunchDoesNotRecordMigration() public {
-        (RMTLaunchFactoryV6 factory, MockV6LaunchGate gate, MockV6LegacyIdentityFactory legacy) = _deploy();
-        _completeOfficialMigration(factory, gate, legacy);
-
-        (address token,,) = factory.launchSimple("Ordinary Token", "ORD", "ipfs://ordinary");
-        IRMTLaunchFactoryV6.LaunchView memory launchRecord = factory.getLaunch(1);
-
-        require(token != address(0), "ordinary token missing");
-        require(!launchRecord.officialMigration, "ordinary launch marked migration");
-        require(factory.officialIdentityMigration().consumed(), "official migration was not preserved");
-    }
-
-    function testRejectsDuplicateV6CanonicalNameAcrossCaseAndSeparators() public {
-        (RMTLaunchFactoryV6 factory, MockV6LaunchGate gate, MockV6LegacyIdentityFactory legacy) = _deploy();
-        _completeOfficialMigration(factory, gate, legacy);
-        factory.launchSimple("Alpha Token", "ALPHA", "ipfs://alpha");
-
-        (bool success,) = address(factory).call(
-            abi.encodeCall(factory.launchSimple, ("A.l_p'h-a Token", "BETA", "ipfs://duplicate-name"))
-        );
-
-        require(!success, "canonical duplicate name accepted");
-        require(factory.isNameUsed("a-l_p.h'a token"), "canonical name lookup missed reservation");
-        require(factory.launchCount() == 2, "duplicate name stored");
-    }
-
-    function testRejectsDuplicateV6CanonicalSymbolCaseInsensitive() public {
-        (RMTLaunchFactoryV6 factory, MockV6LaunchGate gate, MockV6LegacyIdentityFactory legacy) = _deploy();
-        _completeOfficialMigration(factory, gate, legacy);
-        factory.launchSimple("Alpha Token", "ALPHA", "ipfs://alpha");
-
-        (bool success,) = address(factory).call(
-            abi.encodeCall(factory.launchSimple, ("Beta Token", "alpha", "ipfs://duplicate-symbol"))
-        );
-
-        require(!success, "canonical duplicate symbol accepted");
-        require(factory.isSymbolUsed("alpha"), "canonical symbol lookup missed reservation");
-        require(factory.launchCount() == 2, "duplicate symbol stored");
-    }
-
-    function testRejectsLegacyNameOnlyReservationForOrdinaryIdentity() public {
-        (RMTLaunchFactoryV6 factory, MockV6LaunchGate gate, MockV6LegacyIdentityFactory legacy) = _deploy();
-        _completeOfficialMigration(factory, gate, legacy);
-        legacy.setNameUsed("Reserved Legacy Name", true);
-
-        (bool success,) = address(factory).call(
-            abi.encodeCall(
-                factory.launchSimple,
-                ("Reserved Legacy Name", "AVAILABLE", "ipfs://legacy-name-only")
-            )
-        );
-
-        require(!success, "legacy name-only reservation bypassed");
-        require(factory.launchCount() == 1, "legacy name-only launch stored");
-    }
-
-    function testRejectsLegacySymbolOnlyReservationForOrdinaryIdentity() public {
-        (RMTLaunchFactoryV6 factory, MockV6LaunchGate gate, MockV6LegacyIdentityFactory legacy) = _deploy();
-        _completeOfficialMigration(factory, gate, legacy);
-        legacy.setSymbolUsed("LEGACY", true);
-
-        (bool success,) = address(factory).call(
-            abi.encodeCall(
-                factory.launchSimple,
-                ("Available Name", "LEGACY", "ipfs://legacy-symbol-only")
-            )
-        );
-
-        require(!success, "legacy symbol-only reservation bypassed");
-        require(factory.launchCount() == 1, "legacy symbol-only launch stored");
-    }
-
-    function testOfficialExceptionCannotMigrateDifferentLegacyIdentity() public {
-        (RMTLaunchFactoryV6 factory, MockV6LaunchGate gate, MockV6LegacyIdentityFactory legacy) = _deploy();
-        gate.setPaused(true);
-        legacy.setNameUsed("Fake Robinhood Terminal", true);
-        legacy.setSymbolUsed("FAKE", true);
-
-        require(
-            !factory.canMigrateOfficialIdentity(
-                OFFICIAL_LAUNCHER, FAIR_POLICY_ID, "Fake Robinhood Terminal", "FAKE"
-            ),
-            "different identity advertised as official"
-        );
-        require(!factory.officialIdentityMigration().consumed(), "different identity consumed migration");
-        require(factory.launchCount() == 0, "different identity stored a launch");
-    }
-
-    function testOrdinaryLaunchTransfersFullSupplyToMarketAndNoneToCreator() public {
-        (RMTLaunchFactoryV6 factory, MockV6LaunchGate gate, MockV6LegacyIdentityFactory legacy) = _deploy();
-        _completeOfficialMigration(factory, gate, legacy);
-
-        (address token, address market,) =
-            factory.launchSimple("Full Market Inventory", "FULL", "ipfs://full-inventory");
-
-        require(CloneFixedSupplyMemeToken(token).totalSupply() == factory.TOKEN_SUPPLY(), "wrong fixed supply");
-        require(CloneFixedSupplyMemeToken(token).balanceOf(market) == factory.TOKEN_SUPPLY(), "market inventory");
-        require(CloneFixedSupplyMemeToken(token).balanceOf(address(this)) == 0, "creator allocation");
-        require(CloneFixedSupplyMemeToken(token).balanceOf(address(factory)) == 0, "factory residue");
-    }
-
-    function testCurveBuyAndSellRouteOnlyExactSeventyThirtyNativeFees() public {
-        (RMTLaunchFactoryV6 factory, MockV6LaunchGate gate, MockV6LegacyIdentityFactory legacy) = _deploy();
-        _completeOfficialMigration(factory, gate, legacy);
-
-        (address tokenAddress, address marketAddress, address splitterAddress) =
-            factory.launch(OPEN_POLICY_ID, "Exact Fee Split", "EFS", "ipfs://exact-fee-split");
-        CloneFixedSupplyMemeToken token = CloneFixedSupplyMemeToken(tokenAddress);
-        CloneBondingCurveMarketV6 market = CloneBondingCurveMarketV6(payable(marketAddress));
-        DirectLaunchFeeSplitter splitter = DirectLaunchFeeSplitter(payable(splitterAddress));
-        address protocolTreasury = address(0x7E8E);
-
-        vm.deal(address(this), 5 ether);
-        uint256 creatorBalanceBefore = address(this).balance;
-        uint256 treasuryBalanceBefore = protocolTreasury.balance;
-
-        uint256 grossBuy = 1 ether;
-        (uint256 tokensOut, uint256 acceptedEth, uint256 buyFee,) = market.quoteBuyExecution(grossBuy);
-        require(tokensOut != 0 && acceptedEth == grossBuy, "unexpected buy quote");
-        market.buy{value: grossBuy}(address(this), tokensOut, block.timestamp);
-
-        uint256 sellAmount = tokensOut / 2;
-        require(token.approve(marketAddress, sellAmount), "sell approval");
-        (uint256 ethOut, uint256 sellFee,) = market.quoteSell(sellAmount);
-        require(ethOut != 0 && sellFee != 0, "unexpected sell quote");
-        market.sell(sellAmount, ethOut, payable(address(this)), block.timestamp);
-
-        uint256 totalFees = buyFee + sellFee;
-        uint256 creatorFees = (totalFees * 7_000) / 10_000;
-        uint256 protocolFees = totalFees - creatorFees;
-        require(splitter.totalReceived() == totalFees, "native fees not fully accounted");
-        require(splitter.totalPaid() == totalFees, "native fees not fully paid");
-        require(address(this).balance == creatorBalanceBefore - acceptedEth + ethOut + creatorFees, "creator not 70%");
-        require(protocolTreasury.balance == treasuryBalanceBefore + protocolFees, "protocol not 30%");
-        require(splitter.pending(address(this)) == 0, "creator payment unexpectedly deferred");
-        require(splitter.pending(protocolTreasury) == 0, "protocol payment unexpectedly deferred");
-        require(splitter.totalTokenReceived(tokenAddress) == 0, "curve invented token fees");
-        require(token.balanceOf(address(this)) == tokensOut - sellAmount, "creator received a token allocation");
-        require(token.balanceOf(marketAddress) == factory.TOKEN_SUPPLY() - tokensOut + sellAmount, "market inventory");
-    }
-
-    function testCreatorCannotChangePayoutButFactoryConfiguredAuthorityCan() public {
-        (RMTLaunchFactoryV6 factory, MockV6LaunchGate gate, MockV6LegacyIdentityFactory legacy) = _deploy();
-        _completeOfficialMigration(factory, gate, legacy);
-        (,, address splitterAddress) = factory.launchSimple(
-            "Governed Creator Wallet", "GCW", "ipfs://governed-creator"
-        );
-        DirectLaunchFeeSplitter splitter = DirectLaunchFeeSplitter(payable(splitterAddress));
-        address protocolTreasury = address(0x7E8E);
-        bytes32 evidenceHash = keccak256("documented-rug-evidence");
-
-        (bool creatorChanged,) = address(splitter).call(
-            abi.encodeCall(splitter.setCreatorWallet, (payable(protocolTreasury), evidenceHash, 0))
-        );
-        require(!creatorChanged, "creator changed payout recipient");
-
-        MockV6CreatorPayoutAuthority authority =
-            MockV6CreatorPayoutAuthority(factory.creatorPayoutAuthority());
-        authority.setCreator(splitter, payable(protocolTreasury), evidenceHash, 0);
-        require(splitter.creator() == protocolTreasury, "authority did not redirect payout");
-        require(splitter.originalCreator() == address(this), "historical creator changed");
-    }
-
-    function _completeOfficialMigration(
-        RMTLaunchFactoryV6 factory,
-        MockV6LaunchGate gate,
-        MockV6LegacyIdentityFactory legacy
-    ) private {
-        gate.setPaused(true);
-        legacy.setUsed(true, true);
-        vm.prank(OFFICIAL_LAUNCHER);
-        factory.launchOfficialWhilePaused("ipfs://official-test-prerequisite");
-        legacy.setUsed(false, false);
-        gate.setPaused(false);
-    }
-
-    function deployCandidate(address officialLegacyToken) external returns (address factoryAddress) {
-        (RMTLaunchFactoryV6 factory,,) = _deployWithOfficialLegacyToken(officialLegacyToken);
-        return address(factory);
-    }
-
-    function _candidateDeploySucceeds(address officialLegacyToken) private returns (bool success) {
-        (success,) = address(this).call(
-            abi.encodeWithSelector(this.deployCandidate.selector, officialLegacyToken)
-        );
-    }
-
-    function _deploy()
-        private
-        returns (RMTLaunchFactoryV6 factory, MockV6LaunchGate gate, MockV6LegacyIdentityFactory legacy)
-    {
-        MockV6OfficialLegacyToken officialLegacyToken = new MockV6OfficialLegacyToken(
-            "Robinhood Meme Terminal", "RMT", OFFICIAL_LAUNCHER
-        );
-        return _deployWithOfficialLegacyToken(address(officialLegacyToken));
-    }
-
-    function _deployWithOfficialLegacyToken(address officialLegacyToken)
-        private
-        returns (RMTLaunchFactoryV6 factory, MockV6LaunchGate gate, MockV6LegacyIdentityFactory legacy)
-    {
-        MockV6CreatorPayoutAuthority payoutAuthority = new MockV6CreatorPayoutAuthority();
-        gate = new MockV6LaunchGate(address(payoutAuthority));
-        legacy = new MockV6LegacyIdentityFactory();
-        legacy.setUsed(true, true);
-        MockV6GraduationAdapter adapter = new MockV6GraduationAdapter();
-        CloneBondingCurveMarketV6 marketImplementation = new CloneBondingCurveMarketV6();
-        IRMTLaunchPolicyRegistry.LaunchPolicy memory fairPolicy = IRMTLaunchPolicyRegistry.LaunchPolicy({
-            policyId: FAIR_POLICY_ID,
-            policyVersion: 1,
-            enabled: true,
-            publiclySelectable: true,
-            curveFeeBps: 100,
-            creatorFeeShareBps: 7_000,
-            protocolFeeShareBps: 3_000,
-            postGraduationFeeBps: 50,
-            graduationTarget: 2 ether,
-            fairStartMode: 1,
-            fairStartDelayBlocks: 1,
-            fairStartDurationBlocks: 10,
-            fairStartMaxTxBps: 100,
-            fairStartMaxWalletBps: 300,
-            marketImplementation: address(marketImplementation),
-            protocolTreasury: address(0x7E8E),
-            graduationAdapter: address(adapter)
-        });
-        IRMTLaunchPolicyRegistry.LaunchPolicy memory openPolicy = fairPolicy;
-        openPolicy.policyId = OPEN_POLICY_ID;
-        openPolicy.fairStartMode = 0;
-        openPolicy.fairStartDelayBlocks = 0;
-        openPolicy.fairStartDurationBlocks = 0;
-        openPolicy.fairStartMaxTxBps = 0;
-        openPolicy.fairStartMaxWalletBps = 0;
-        MockV6PolicyRegistry registry = new MockV6PolicyRegistry(fairPolicy, openPolicy, address(payoutAuthority));
-        MockV6FactoryRegistry factoryRegistry = new MockV6FactoryRegistry();
-        factory = new RMTLaunchFactoryV6(
-            address(gate),
-            address(registry),
-            address(factoryRegistry),
-            0.3 ether,
-            1_017_500_000 ether,
-            address(legacy),
-            officialLegacyToken,
-            OFFICIAL_LAUNCHER
-        );
-        factoryRegistry.setActiveFactory(address(factory));
-    }
-}

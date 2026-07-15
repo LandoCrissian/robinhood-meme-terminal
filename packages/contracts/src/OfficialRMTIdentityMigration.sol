@@ -25,8 +25,8 @@ contract OfficialRMTIdentityMigration {
 
     constructor(address officialLauncher_, address authorizedFactory_, address officialLegacyToken_) {
         if (
-            officialLauncher_ == address(0) || authorizedFactory_ == address(0)
-                || officialLegacyToken_ == address(0) || officialLegacyToken_.code.length == 0
+            officialLauncher_ == address(0) || authorizedFactory_ == address(0) || officialLegacyToken_ == address(0)
+                || officialLegacyToken_.code.length == 0
         ) revert InvalidConfiguration();
         officialLauncher = officialLauncher_;
         authorizedFactory = authorizedFactory_;

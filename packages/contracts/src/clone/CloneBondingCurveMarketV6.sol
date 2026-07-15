@@ -77,7 +77,9 @@ contract CloneBondingCurveMarketV6 {
         uint256 realEthReserve
     );
     event Graduated(uint256 realEthReserve, uint256 tokenInventory);
-    event LiquidityMigrated(address indexed adapter, address indexed pool, uint256 ethAmount, uint256 tokenAmount, uint256 liquidity);
+    event LiquidityMigrated(
+        address indexed adapter, address indexed pool, uint256 ethAmount, uint256 tokenAmount, uint256 liquidity
+    );
     event ExcessPaymentRefunded(address indexed payer, uint256 amount);
     event ExcessPaymentRefundDeferred(address indexed payer, uint256 amount);
     event PendingRefundClaimed(address indexed payer, address indexed recipient, uint256 amount);
@@ -135,12 +137,18 @@ contract CloneBondingCurveMarketV6 {
         uint16 fairStartMaxWalletBps_
     ) external {
         if (_initialized) revert AlreadyInitialized();
-        if (token_ == address(0) || feeSplitter_ == address(0) || graduationAdapter_ == address(0)) revert ZeroAddress();
+        if (token_ == address(0) || feeSplitter_ == address(0) || graduationAdapter_ == address(0)) {
+            revert ZeroAddress();
+        }
         if (token_.code.length == 0 || feeSplitter_.code.length == 0 || graduationAdapter_.code.length == 0) {
             revert InvalidConfiguration();
         }
-        if (graduationPoolId_ == bytes32(0) || policyId_ == bytes32(0) || policyVersion_ == 0) revert InvalidConfiguration();
-        if (feeBps_ >= BPS_DENOMINATOR || virtualEthReserve_ == 0 || virtualTokenReserve_ == 0 || graduationTarget_ == 0) {
+        if (graduationPoolId_ == bytes32(0) || policyId_ == bytes32(0) || policyVersion_ == 0) {
+            revert InvalidConfiguration();
+        }
+        if (
+            feeBps_ >= BPS_DENOMINATOR || virtualEthReserve_ == 0 || virtualTokenReserve_ == 0 || graduationTarget_ == 0
+        ) {
             revert InvalidConfiguration();
         }
         if (fairStartEnabled_) {
@@ -151,17 +159,13 @@ contract CloneBondingCurveMarketV6 {
         } else if (
             fairStartDelayBlocks_ != 0 || fairStartDurationBlocks_ != 0 || fairStartMaxTxBps_ != 0
                 || fairStartMaxWalletBps_ != 0
-        ) revert InvalidConfiguration();
+        ) {
+            revert InvalidConfiguration();
+        }
 
         _initialized = true;
         uint256 supply = IERC20V6MarketToken(token_).totalSupply();
-        _validateGraduationConfiguration(
-            supply,
-            feeBps_,
-            virtualEthReserve_,
-            virtualTokenReserve_,
-            graduationTarget_
-        );
+        _validateGraduationConfiguration(supply, feeBps_, virtualEthReserve_, virtualTokenReserve_, graduationTarget_);
 
         token = IERC20V6MarketToken(token_);
         feeSplitter = feeSplitter_;
@@ -193,7 +197,9 @@ contract CloneBondingCurveMarketV6 {
         );
     }
 
-    receive() external payable { revert InvalidConfiguration(); }
+    receive() external payable {
+        revert InvalidConfiguration();
+    }
 
     function fairStartActive() public view returns (bool) {
         return fairStartEnabled && block.number >= tradingOpensAtBlock && block.number < fairStartEndsAtBlock;
@@ -240,7 +246,11 @@ contract CloneBondingCurveMarketV6 {
     }
 
     function buy(address recipient, uint256 minimumTokensOut, uint256 deadline)
-        external payable active nonReentrant returns (uint256 tokensOut)
+        external
+        payable
+        active
+        nonReentrant
+        returns (uint256 tokensOut)
     {
         if (recipient == address(0)) revert ZeroAddress();
         if (block.number < tradingOpensAtBlock) revert TradingNotOpen();
@@ -282,7 +292,10 @@ contract CloneBondingCurveMarketV6 {
     }
 
     function sell(uint256 tokensIn, uint256 minimumEthOut, address payable recipient, uint256 deadline)
-        external active nonReentrant returns (uint256 ethOut)
+        external
+        active
+        nonReentrant
+        returns (uint256 ethOut)
     {
         if (recipient == address(0)) revert ZeroAddress();
         if (block.number < tradingOpensAtBlock) revert TradingNotOpen();
@@ -302,7 +315,17 @@ contract CloneBondingCurveMarketV6 {
         if (!token.transferFrom(msg.sender, address(this), tokensIn)) revert TokenTransferFailed();
         _depositFee(fee);
         _sendEth(recipient, ethOut);
-        emit Trade(msg.sender, recipient, false, tokensIn, grossEth, fee, virtualEthReserve, virtualTokenReserve, realEthReserve);
+        emit Trade(
+            msg.sender,
+            recipient,
+            false,
+            tokensIn,
+            grossEth,
+            fee,
+            virtualEthReserve,
+            virtualTokenReserve,
+            realEthReserve
+        );
     }
 
     function progressBps() external view returns (uint256) {
@@ -418,11 +441,7 @@ contract CloneBondingCurveMarketV6 {
                 || virtualEthReserve_ > type(uint256).max / virtualTokenReserve_
         ) revert InvalidConfiguration();
 
-        uint256 feeGrossUp = FullMath.mulDiv(
-            graduationTarget_ - 1,
-            feeBps_,
-            BPS_DENOMINATOR - feeBps_
-        );
+        uint256 feeGrossUp = FullMath.mulDiv(graduationTarget_ - 1, feeBps_, BPS_DENOMINATOR - feeBps_);
         if (graduationTarget_ > type(uint256).max - feeGrossUp) revert InvalidConfiguration();
 
         uint256 invariant = virtualEthReserve_ * virtualTokenReserve_;

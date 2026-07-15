@@ -129,14 +129,12 @@ contract RMTLaunchFactoryV6 is IRMTLaunchFactoryV6 {
         ) revert InvalidConfiguration();
         address gateGovernance = IRMTLaunchGateView(launchGate_).governance();
         address policyGovernance = IRMTLaunchPolicyRegistry(policyRegistry_).governance();
-        if (
-            gateGovernance == address(0) || gateGovernance.code.length == 0
-                || policyGovernance != gateGovernance
-        ) revert InvalidConfiguration();
+        if (gateGovernance == address(0) || gateGovernance.code.length == 0 || policyGovernance != gateGovernance) {
+            revert InvalidConfiguration();
+        }
         IOfficialLegacyRMTTokenV6 legacyToken = IOfficialLegacyRMTTokenV6(officialLegacyToken_);
         if (
-            legacyToken.creator() != officialLauncher_
-                || _canonicalName(legacyToken.name()) != OFFICIAL_NAME_HASH
+            legacyToken.creator() != officialLauncher_ || _canonicalName(legacyToken.name()) != OFFICIAL_NAME_HASH
                 || _canonicalSymbol(legacyToken.symbol()) != OFFICIAL_SYMBOL_HASH
         ) revert InvalidOfficialLegacyToken();
         ILegacyIdentityFactoryV6 legacy = ILegacyIdentityFactoryV6(legacyIdentityFactory_);
@@ -158,9 +156,17 @@ contract RMTLaunchFactoryV6 is IRMTLaunchFactoryV6 {
         feeSplitterImplementation = address(new DirectLaunchFeeSplitter());
     }
 
-    function protocolVersion() external pure returns (uint32) { return 6; }
-    function launchesPaused() external view returns (bool) { return launchGate.launchesPaused(); }
-    function defaultPolicyId() public view returns (bytes32) { return policyRegistry.defaultPolicyId(); }
+    function protocolVersion() external pure returns (uint32) {
+        return 6;
+    }
+
+    function launchesPaused() external view returns (bool) {
+        return launchGate.launchesPaused();
+    }
+
+    function defaultPolicyId() public view returns (bytes32) {
+        return policyRegistry.defaultPolicyId();
+    }
 
     function getPolicy(bytes32 policyId) external view returns (LaunchPolicyView memory viewPolicy) {
         IRMTLaunchPolicyRegistry.LaunchPolicy memory policy = policyRegistry.getPolicy(policyId);
@@ -209,36 +215,30 @@ contract RMTLaunchFactoryV6 is IRMTLaunchFactoryV6 {
     {
         _requireActiveFactory();
         if (
-            !launchGate.launchesPaused()
-                || policyRegistry.defaultPolicyId() != OFFICIAL_MIGRATION_POLICY_ID
+            !launchGate.launchesPaused() || policyRegistry.defaultPolicyId() != OFFICIAL_MIGRATION_POLICY_ID
                 || !_officialLegacyIdentityReserved()
         ) revert OfficialPausedMigrationUnavailable();
-        if (
-            !officialIdentityMigration.canMigrate(
-                msg.sender,
-                _canonicalName("Robinhood Meme Terminal"),
-                _canonicalSymbol("RMT")
-            )
-        ) revert OfficialPausedMigrationUnavailable();
-        return _launch(
-            OFFICIAL_MIGRATION_POLICY_ID,
-            msg.sender,
-            "Robinhood Meme Terminal",
-            "RMT",
-            metadataURI,
-            true
-        );
+        if (!officialIdentityMigration.canMigrate(
+                msg.sender, _canonicalName("Robinhood Meme Terminal"), _canonicalSymbol("RMT")
+            )) revert OfficialPausedMigrationUnavailable();
+        return _launch(OFFICIAL_MIGRATION_POLICY_ID, msg.sender, "Robinhood Meme Terminal", "RMT", metadataURI, true);
     }
 
-    function launchCount() external view returns (uint256) { return _launches.length; }
-    function getLaunch(uint256 launchId) external view returns (LaunchView memory) { return _launches[launchId]; }
+    function launchCount() external view returns (uint256) {
+        return _launches.length;
+    }
+
+    function getLaunch(uint256 launchId) external view returns (LaunchView memory) {
+        return _launches[launchId];
+    }
 
     function isNameUsed(string calldata name) external view returns (bool) {
         return usedNameHashes[_canonicalName(name)] || ILegacyIdentityFactoryV6(legacyIdentityFactory).isNameUsed(name);
     }
 
     function isSymbolUsed(string calldata symbol) external view returns (bool) {
-        return usedSymbolHashes[_canonicalSymbol(symbol)] || ILegacyIdentityFactoryV6(legacyIdentityFactory).isSymbolUsed(symbol);
+        return usedSymbolHashes[_canonicalSymbol(symbol)]
+            || ILegacyIdentityFactoryV6(legacyIdentityFactory).isSymbolUsed(symbol);
     }
 
     function canMigrateOfficialIdentity(
@@ -246,13 +246,9 @@ contract RMTLaunchFactoryV6 is IRMTLaunchFactoryV6 {
         bytes32 policyId,
         string calldata name,
         string calldata symbol
-    )
-        external view returns (bool)
-    {
-        return policyId == OFFICIAL_MIGRATION_POLICY_ID
-            && factoryRegistry.activeFactory() == address(this)
-            && launchGate.launchesPaused()
-            && policyRegistry.defaultPolicyId() == OFFICIAL_MIGRATION_POLICY_ID
+    ) external view returns (bool) {
+        return policyId == OFFICIAL_MIGRATION_POLICY_ID && factoryRegistry.activeFactory() == address(this)
+            && launchGate.launchesPaused() && policyRegistry.defaultPolicyId() == OFFICIAL_MIGRATION_POLICY_ID
             && _officialLegacyIdentityReserved()
             && officialIdentityMigration.canMigrate(launcher, _canonicalName(name), _canonicalSymbol(symbol));
     }
@@ -296,54 +292,57 @@ contract RMTLaunchFactoryV6 is IRMTLaunchFactoryV6 {
         market = MinimalProxy.clone(policy.marketImplementation);
 
         CloneFixedSupplyMemeToken(token).initialize(name, symbol, TOKEN_SUPPLY, creator, address(this), metadataURI);
-        DirectLaunchFeeSplitter(payable(rewardVault)).initialize(
-            payable(creator),
-            payable(policy.protocolTreasury),
-            token,
-            policy.creatorFeeShareBps,
-            creatorPayoutAuthority,
-            market,
-            policy.graduationAdapter
-        );
+        DirectLaunchFeeSplitter(payable(rewardVault))
+            .initialize(
+                payable(creator),
+                payable(policy.protocolTreasury),
+                token,
+                policy.creatorFeeShareBps,
+                creatorPayoutAuthority,
+                market,
+                policy.graduationAdapter
+            );
 
         bytes32 poolId = IGraduationAdapter(policy.graduationAdapter).prepare(token);
         if (poolId == bytes32(0)) revert InvalidPoolReservation();
 
-        CloneBondingCurveMarketV6(payable(market)).initialize(
-            token,
-            payable(rewardVault),
-            policy.graduationAdapter,
-            poolId,
-            policy.policyId,
-            policy.policyVersion,
-            policy.curveFeeBps,
-            initialVirtualEthReserve,
-            initialVirtualTokenReserve,
-            policy.graduationTarget,
-            fairStartEnabled,
-            policy.fairStartDelayBlocks,
-            policy.fairStartDurationBlocks,
-            policy.fairStartMaxTxBps,
-            policy.fairStartMaxWalletBps
-        );
-        IV6GraduationAdapter(policy.graduationAdapter).configureFeeRouting(
-            token, rewardVault, policy.postGraduationFeeBps
-        );
+        CloneBondingCurveMarketV6(payable(market))
+            .initialize(
+                token,
+                payable(rewardVault),
+                policy.graduationAdapter,
+                poolId,
+                policy.policyId,
+                policy.policyVersion,
+                policy.curveFeeBps,
+                initialVirtualEthReserve,
+                initialVirtualTokenReserve,
+                policy.graduationTarget,
+                fairStartEnabled,
+                policy.fairStartDelayBlocks,
+                policy.fairStartDurationBlocks,
+                policy.fairStartMaxTxBps,
+                policy.fairStartMaxWalletBps
+            );
+        IV6GraduationAdapter(policy.graduationAdapter)
+            .configureFeeRouting(token, rewardVault, policy.postGraduationFeeBps);
         IGraduationAdapter(policy.graduationAdapter).bindMarket(token, market);
         if (!CloneFixedSupplyMemeToken(token).transfer(market, TOKEN_SUPPLY)) revert InventoryTransferFailed();
 
         uint256 launchId = _launches.length;
-        _launches.push(LaunchView({
-            token: token,
-            market: market,
-            rewardVault: rewardVault,
-            graduationPoolId: poolId,
-            creator: creator,
-            policyId: policy.policyId,
-            policyVersion: policy.policyVersion,
-            createdAt: uint64(block.timestamp),
-            officialMigration: officialMigration
-        }));
+        _launches.push(
+            LaunchView({
+                token: token,
+                market: market,
+                rewardVault: rewardVault,
+                graduationPoolId: poolId,
+                creator: creator,
+                policyId: policy.policyId,
+                policyVersion: policy.policyVersion,
+                createdAt: uint64(block.timestamp),
+                officialMigration: officialMigration
+            })
+        );
 
         emit TokenLaunchedV6(
             launchId,
@@ -417,7 +416,10 @@ contract RMTLaunchFactoryV6 is IRMTLaunchFactoryV6 {
 
     function _canonicalName(string memory value) private pure returns (bytes32) {
         bytes memory raw = bytes(value);
-        if (raw.length == 0 || raw.length > MAX_NAME_BYTES || raw[0] == bytes1(" ") || raw[raw.length - 1] == bytes1(" ")) {
+        if (
+            raw.length == 0 || raw.length > MAX_NAME_BYTES || raw[0] == bytes1(" ")
+                || raw[raw.length - 1] == bytes1(" ")
+        ) {
             revert InvalidName();
         }
         bytes memory canonical = new bytes(raw.length);

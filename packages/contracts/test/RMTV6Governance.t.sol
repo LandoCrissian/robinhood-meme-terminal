@@ -21,8 +21,7 @@ contract GovernanceCallTarget {
 }
 
 contract RMTV6GovernanceTest {
-    RMTV6GovernanceVm private constant vm =
-        RMTV6GovernanceVm(address(uint160(uint256(keccak256("hevm cheat code")))));
+    RMTV6GovernanceVm private constant vm = RMTV6GovernanceVm(address(uint160(uint256(keccak256("hevm cheat code")))));
 
     address private constant SECOND = address(0xBEEF);
     address private constant THIRD = address(0xCAFE);
@@ -174,16 +173,14 @@ contract RMTV6GovernanceTest {
         _acceptSignerAddition(governance, SECOND, 2);
 
         vm.prank(SECOND);
-        (bool wrongEpochRevoked,) = address(governance).call(
-            abi.encodeCall(governance.revokeSignerRoleAcceptance, (uint64(2)))
-        );
+        (bool wrongEpochRevoked,) =
+            address(governance).call(abi.encodeCall(governance.revokeSignerRoleAcceptance, (uint64(2))));
         require(!wrongEpochRevoked, "wrong acceptance epoch revoked");
         require(_acceptanceEpoch(governance, SECOND) == 1, "acceptance changed after wrong epoch");
 
         vm.prank(THIRD);
-        (bool missingAcceptanceRevoked,) = address(governance).call(
-            abi.encodeCall(governance.revokeSignerRoleAcceptance, (uint64(1)))
-        );
+        (bool missingAcceptanceRevoked,) =
+            address(governance).call(abi.encodeCall(governance.revokeSignerRoleAcceptance, (uint64(1))));
         require(!missingAcceptanceRevoked, "missing acceptance revoked");
     }
 
@@ -192,13 +189,10 @@ contract RMTV6GovernanceTest {
         _acceptSignerAddition(governance, SECOND, 2);
 
         uint256 replaceId = governance.propose(
-            address(governance),
-            0,
-            abi.encodeCall(governance.replaceSignerAndSetThreshold, (address(this), SECOND, 1))
+            address(governance), 0, abi.encodeCall(governance.replaceSignerAndSetThreshold, (address(this), SECOND, 1))
         );
         vm.warp(block.timestamp + DELAY);
-        (bool replacedWithAdditionConsent,) =
-            address(governance).call(abi.encodeCall(governance.execute, (replaceId)));
+        (bool replacedWithAdditionConsent,) = address(governance).call(abi.encodeCall(governance.execute, (replaceId)));
 
         require(!replacedWithAdditionConsent, "addition consent authorized replacement");
         require(governance.isSigner(address(this)), "original signer removed");
@@ -229,21 +223,20 @@ contract RMTV6GovernanceTest {
         uint64 futureEpoch = governance.configurationEpoch() + 1;
 
         vm.prank(SECOND);
-        (bool futureEpochAccepted,) = address(governance).call(
-            abi.encodeCall(
-                governance.acceptSignerRole,
-                (futureEpoch, ACTION_ADD, address(0), 2, uint64(block.timestamp + DELAY + WINDOW))
-            )
-        );
+        (bool futureEpochAccepted,) = address(governance)
+            .call(
+                abi.encodeCall(
+                    governance.acceptSignerRole,
+                    (futureEpoch, ACTION_ADD, address(0), 2, uint64(block.timestamp + DELAY + WINDOW))
+                )
+            );
         require(!futureEpochAccepted, "future epoch accepted");
         require(_acceptanceEpoch(governance, SECOND) == 0, "wrong epoch recorded");
 
         _acceptSignerAddition(governance, SECOND, 2);
         _acceptSignerReplacement(governance, THIRD, address(this), 1);
         uint256 replaceId = governance.propose(
-            address(governance),
-            0,
-            abi.encodeCall(governance.replaceSignerAndSetThreshold, (address(this), THIRD, 1))
+            address(governance), 0, abi.encodeCall(governance.replaceSignerAndSetThreshold, (address(this), THIRD, 1))
         );
         vm.warp(block.timestamp + DELAY);
         governance.execute(replaceId);
@@ -279,9 +272,8 @@ contract RMTV6GovernanceTest {
         require(governance.configurationEpoch() == 3, "removal did not advance epoch");
 
         vm.prank(SECOND);
-        (bool removedCanPropose,) = address(governance).call(
-            abi.encodeCall(governance.propose, (address(governance), 0, bytes("")))
-        );
+        (bool removedCanPropose,) =
+            address(governance).call(abi.encodeCall(governance.propose, (address(governance), 0, bytes(""))));
         require(!removedCanPropose, "removed signer retained authority");
     }
 
@@ -289,9 +281,7 @@ contract RMTV6GovernanceTest {
         RMTV6Governance governance = _newGovernance();
         _acceptSignerReplacement(governance, SECOND, address(this), 1);
         uint256 replaceId = governance.propose(
-            address(governance),
-            0,
-            abi.encodeCall(governance.replaceSignerAndSetThreshold, (address(this), SECOND, 1))
+            address(governance), 0, abi.encodeCall(governance.replaceSignerAndSetThreshold, (address(this), SECOND, 1))
         );
         vm.warp(block.timestamp + DELAY);
         governance.execute(replaceId);
@@ -302,9 +292,8 @@ contract RMTV6GovernanceTest {
         require(governance.configurationEpoch() == 2, "rotation did not advance epoch");
         require(_acceptanceEpoch(governance, SECOND) == 0, "replacement acceptance not consumed");
 
-        (bool oldCanPropose,) = address(governance).call(
-            abi.encodeCall(governance.propose, (address(governance), 0, bytes("")))
-        );
+        (bool oldCanPropose,) =
+            address(governance).call(abi.encodeCall(governance.propose, (address(governance), 0, bytes(""))));
         require(!oldCanPropose, "old signer can still propose");
         vm.prank(SECOND);
         governance.propose(address(governance), 0, "");
@@ -313,9 +302,7 @@ contract RMTV6GovernanceTest {
     function testReplacementRejectsMissingAcceptance() public {
         RMTV6Governance governance = _newGovernance();
         uint256 replaceId = governance.propose(
-            address(governance),
-            0,
-            abi.encodeCall(governance.replaceSignerAndSetThreshold, (address(this), SECOND, 1))
+            address(governance), 0, abi.encodeCall(governance.replaceSignerAndSetThreshold, (address(this), SECOND, 1))
         );
         vm.warp(block.timestamp + DELAY);
         (bool replacedWithoutAcceptance,) = address(governance).call(abi.encodeCall(governance.execute, (replaceId)));
@@ -471,11 +458,7 @@ contract RMTV6GovernanceTest {
         uint64 epoch = governance.configurationEpoch();
         vm.prank(signer);
         governance.acceptSignerRole(
-            epoch,
-            ACTION_ADD,
-            address(0),
-            nextThreshold,
-            uint64(block.timestamp + DELAY + WINDOW)
+            epoch, ACTION_ADD, address(0), nextThreshold, uint64(block.timestamp + DELAY + WINDOW)
         );
     }
 
@@ -488,11 +471,7 @@ contract RMTV6GovernanceTest {
         uint64 epoch = governance.configurationEpoch();
         vm.prank(signer);
         governance.acceptSignerRole(
-            epoch,
-            ACTION_REPLACE,
-            currentSigner,
-            nextThreshold,
-            uint64(block.timestamp + DELAY + WINDOW)
+            epoch, ACTION_REPLACE, currentSigner, nextThreshold, uint64(block.timestamp + DELAY + WINDOW)
         );
     }
 

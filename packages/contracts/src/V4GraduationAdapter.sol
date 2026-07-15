@@ -57,12 +57,8 @@ contract V4GraduationAdapter is IV6GraduationAdapter, IUnlockCallback {
     event LiquiditySeeded(
         address indexed token, PoolId indexed poolId, uint256 nativeAmount, uint256 tokenAmount, uint128 liquidity
     );
-    event LiquidityDustLocked(
-        address indexed token, PoolId indexed poolId, uint256 nativeAmount, uint256 tokenAmount
-    );
-    event FeeRoutingConfigured(
-        address indexed token, address indexed feeSplitter, uint16 postGraduationFeeBps
-    );
+    event LiquidityDustLocked(address indexed token, PoolId indexed poolId, uint256 nativeAmount, uint256 tokenAmount);
+    event FeeRoutingConfigured(address indexed token, address indexed feeSplitter, uint16 postGraduationFeeBps);
     event GraduationFeesCollected(
         address indexed token, address indexed feeSplitter, uint256 nativeAmount, uint256 tokenAmount
     );
@@ -135,10 +131,9 @@ contract V4GraduationAdapter is IV6GraduationAdapter, IUnlockCallback {
         if (market == address(0)) revert InvalidConfiguration();
         if (markets[token] != address(0)) revert MarketAlreadyBound();
         address feeSplitter = feeSplitters[token];
-        if (
-            feeSplitter != address(0)
-                && DirectLaunchFeeSplitter(payable(feeSplitter)).authorizedMarket() != market
-        ) revert InvalidConfiguration();
+        if (feeSplitter != address(0) && DirectLaunchFeeSplitter(payable(feeSplitter)).authorizedMarket() != market) {
+            revert InvalidConfiguration();
+        }
         markets[token] = market;
         emit MarketBound(token, market, poolId);
     }
@@ -160,7 +155,10 @@ contract V4GraduationAdapter is IV6GraduationAdapter, IUnlockCallback {
     }
 
     function graduate(address token, uint256 tokenAmount)
-        external payable nonReentrant returns (address pool, uint256 liquidity)
+        external
+        payable
+        nonReentrant
+        returns (address pool, uint256 liquidity)
     {
         if (msg.sender != markets[token]) revert OnlyBoundMarket();
         if (isGraduated[token]) revert AlreadyGraduated();
@@ -170,8 +168,6 @@ contract V4GraduationAdapter is IV6GraduationAdapter, IUnlockCallback {
         if (PoolId.unwrap(poolId) == bytes32(0)) revert PoolNotPrepared();
         isGraduated[token] = true;
 
-        uint256 nativeBalanceBefore = address(this).balance - msg.value;
-        uint256 tokenBalanceBefore = IERC20GraduationToken(token).balanceOf(address(this));
         if (!IERC20GraduationToken(token).transferFrom(msg.sender, address(this), tokenAmount)) {
             revert TokenTransferFailed();
         }
@@ -191,15 +187,16 @@ contract V4GraduationAdapter is IV6GraduationAdapter, IUnlockCallback {
         );
         if (liquidityAmount == 0) revert ZeroLiquidity();
 
-        poolManager.unlock(abi.encode(ACTION_SEED, key, tickLower, tickUpper, liquidityAmount));
+        bytes memory settlement =
+            poolManager.unlock(abi.encode(ACTION_SEED, key, tickLower, tickUpper, liquidityAmount));
+        (uint256 nativeAmountSettled, uint256 tokenAmountSettled) = abi.decode(settlement, (uint256, uint256));
+        if (nativeAmountSettled > msg.value || tokenAmountSettled > tokenAmount) revert InvalidSettlement();
 
-        uint256 nativeBalanceAfter = address(this).balance;
-        uint256 tokenBalanceAfter = IERC20GraduationToken(token).balanceOf(address(this));
-        if (nativeBalanceAfter < nativeBalanceBefore || tokenBalanceAfter < tokenBalanceBefore) {
-            revert InvalidSettlement();
-        }
-        uint256 nativeDust = nativeBalanceAfter - nativeBalanceBefore;
-        uint256 tokenDust = tokenBalanceAfter - tokenBalanceBefore;
+        // Dust is derived from this graduation's exact settlement deltas. The adapter never relies on a
+        // pre-call token balance across external calls, so previously forced or locked balances cannot be
+        // mistaken for this launch's contribution or consumed as graduation principal.
+        uint256 nativeDust = msg.value - nativeAmountSettled;
+        uint256 tokenDust = tokenAmount - tokenAmountSettled;
 
         hook.open(key);
         lockedLiquidity[token] = liquidityAmount;
@@ -212,9 +209,7 @@ contract V4GraduationAdapter is IV6GraduationAdapter, IUnlockCallback {
 
     /// @notice Permissionlessly realizes fees earned by the permanently locked full-range position.
     /// @dev Uses a zero-liquidity-delta poke; there is no code path that can decrease liquidity principal.
-    function collectFees(address token)
-        external nonReentrant returns (uint256 nativeAmount, uint256 tokenAmount)
-    {
+    function collectFees(address token) external nonReentrant returns (uint256 nativeAmount, uint256 tokenAmount) {
         if (!isGraduated[token]) revert PoolNotPrepared();
         address feeSplitter = feeSplitters[token];
         if (feeSplitter == address(0)) revert FeeRoutingNotConfigured();
@@ -270,18 +265,16 @@ contract V4GraduationAdapter is IV6GraduationAdapter, IUnlockCallback {
             tickLower: tickLower, tickUpper: tickUpper, liquidityDelta: int256(uint256(liquidity)), salt: bytes32(0)
         });
         (BalanceDelta delta,) = poolManager.modifyLiquidity(key, params, "");
-        _settleDebt(key.currency0, delta.amount0());
-        _settleDebt(key.currency1, delta.amount1());
+        uint256 amount0Settled = _settleDebt(key.currency0, delta.amount0());
+        uint256 amount1Settled = _settleDebt(key.currency1, delta.amount1());
 
-        return abi.encode(liquidity);
+        return abi.encode(amount0Settled, amount1Settled);
     }
 
     function _collectCallback(bytes calldata data) private returns (bytes memory) {
-        (, PoolKey memory key, int24 tickLower, int24 tickUpper) =
-            abi.decode(data, (uint8, PoolKey, int24, int24));
-        ModifyLiquidityParams memory params = ModifyLiquidityParams({
-            tickLower: tickLower, tickUpper: tickUpper, liquidityDelta: 0, salt: bytes32(0)
-        });
+        (, PoolKey memory key, int24 tickLower, int24 tickUpper) = abi.decode(data, (uint8, PoolKey, int24, int24));
+        ModifyLiquidityParams memory params =
+            ModifyLiquidityParams({tickLower: tickLower, tickUpper: tickUpper, liquidityDelta: 0, salt: bytes32(0)});
         (BalanceDelta delta,) = poolManager.modifyLiquidity(key, params, "");
         int128 amount0Delta = delta.amount0();
         int128 amount1Delta = delta.amount1();
@@ -304,10 +297,10 @@ contract V4GraduationAdapter is IV6GraduationAdapter, IUnlockCallback {
         });
     }
 
-    function _settleDebt(Currency currency, int128 delta) private {
+    function _settleDebt(Currency currency, int128 delta) private returns (uint256 amount) {
         if (delta > 0) revert InvalidSettlement();
-        if (delta == 0) return;
-        uint256 amount = uint256(-int256(delta));
+        if (delta == 0) return 0;
+        amount = uint256(-int256(delta));
         if (currency.isAddressZero()) {
             // Reset PoolManager's transaction-scoped synced-currency slot before native settlement.
             // A prior unlock in the same batched transaction may otherwise leave an ERC-20 selected

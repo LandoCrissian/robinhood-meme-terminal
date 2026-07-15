@@ -119,9 +119,7 @@ contract DirectLaunchFeeSplitterTest {
         (bool nativeGiftAccepted,) = address(splitter).call{value: 1 ether}("");
         require(!nativeGiftAccepted, "unauthorized native fee accounted");
         vm.prank(attacker);
-        (bool nativeDepositAccepted,) = address(splitter).call{value: 1 ether}(
-            abi.encodeCall(splitter.deposit, ())
-        );
+        (bool nativeDepositAccepted,) = address(splitter).call{value: 1 ether}(abi.encodeCall(splitter.deposit, ()));
         require(!nativeDepositAccepted, "unauthorized native deposit accounted");
         require(splitter.totalReceived() == 0, "native fee total inflated");
         vm.deal(address(splitter), 1 wei); // Simulate native currency forced in without either fee source.
@@ -129,16 +127,13 @@ contract DirectLaunchFeeSplitterTest {
 
         require(token.transfer(address(splitter), 1 ether), "direct token gift");
         vm.prank(attacker);
-        (bool tokenDepositAccepted,) = address(splitter).call(
-            abi.encodeCall(splitter.depositToken, (address(token), 1 ether))
-        );
+        (bool tokenDepositAccepted,) =
+            address(splitter).call(abi.encodeCall(splitter.depositToken, (address(token), 1 ether)));
         require(!tokenDepositAccepted, "unauthorized token fee accounted");
         require(splitter.totalTokenReceived(address(token)) == 0, "token fee total inflated");
 
         vm.deal(address(market), 1 ether);
-        (bool rawMarketTransferAccepted,) = address(market).call(
-            abi.encodeCall(market.sendNative, (splitter, 1 ether))
-        );
+        (bool rawMarketTransferAccepted,) = address(market).call(abi.encodeCall(market.sendNative, (splitter, 1 ether)));
         require(!rawMarketTransferAccepted, "market principal entered receive path");
         market.depositNative(splitter, 1 ether);
         require(splitter.totalReceived() == 1 ether, "market fee not accounted");
@@ -190,37 +185,39 @@ contract DirectLaunchFeeSplitterTest {
         SplitterFeeSource validSource = new SplitterFeeSource();
 
         DirectLaunchFeeSplitter badMarketSplitter = new DirectLaunchFeeSplitter();
-        (bool badMarketAccepted,) = address(badMarketSplitter).call(
-            abi.encodeCall(
-                badMarketSplitter.initialize,
-                (
-                    payable(address(creator)),
-                    payable(address(treasury)),
-                    address(token),
-                    7_000,
-                    address(this),
-                    address(0xCAFE),
-                    address(validSource)
+        (bool badMarketAccepted,) = address(badMarketSplitter)
+            .call(
+                abi.encodeCall(
+                    badMarketSplitter.initialize,
+                    (
+                        payable(address(creator)),
+                        payable(address(treasury)),
+                        address(token),
+                        7_000,
+                        address(this),
+                        address(0xCAFE),
+                        address(validSource)
+                    )
                 )
-            )
-        );
+            );
         require(!badMarketAccepted, "non-contract market source accepted");
 
         DirectLaunchFeeSplitter badAdapterSplitter = new DirectLaunchFeeSplitter();
-        (bool badAdapterAccepted,) = address(badAdapterSplitter).call(
-            abi.encodeCall(
-                badAdapterSplitter.initialize,
-                (
-                    payable(address(creator)),
-                    payable(address(treasury)),
-                    address(token),
-                    7_000,
-                    address(this),
-                    address(validSource),
-                    address(0xBEEF)
+        (bool badAdapterAccepted,) = address(badAdapterSplitter)
+            .call(
+                abi.encodeCall(
+                    badAdapterSplitter.initialize,
+                    (
+                        payable(address(creator)),
+                        payable(address(treasury)),
+                        address(token),
+                        7_000,
+                        address(this),
+                        address(validSource),
+                        address(0xBEEF)
+                    )
                 )
-            )
-        );
+            );
         require(!badAdapterAccepted, "non-contract adapter source accepted");
     }
 
@@ -295,7 +292,9 @@ contract DirectLaunchFeeSplitterTest {
         );
 
         vm.deal(address(market), 10 wei);
-        for (uint256 i; i < 10; ++i) market.depositNative(splitter, 1 wei);
+        for (uint256 i; i < 10; ++i) {
+            market.depositNative(splitter, 1 wei);
+        }
 
         require(address(creator).balance == 7 wei, "tiny native creator split");
         require(address(treasury).balance == 3 wei, "tiny native protocol split");
@@ -322,16 +321,15 @@ contract DirectLaunchFeeSplitterTest {
         );
 
         require(token.transfer(address(adapter), 10), "fund token fee source");
-        for (uint256 i; i < 10; ++i) adapter.depositToken(splitter, token, 1);
+        for (uint256 i; i < 10; ++i) {
+            adapter.depositToken(splitter, token, 1);
+        }
 
         require(token.balanceOf(address(creator)) == 7, "tiny token creator split");
         require(token.balanceOf(address(treasury)) == 3, "tiny token protocol split");
         require(splitter.totalTokenReceived(address(token)) == 10, "tiny token received");
         require(splitter.totalTokenPaid(address(token)) == 10, "tiny token paid");
-        require(
-            splitter.tokenCreatorShareRemainder(address(token), address(creator)) == 0,
-            "token carry not settled"
-        );
+        require(splitter.tokenCreatorShareRemainder(address(token), address(creator)) == 0, "token carry not settled");
     }
 
     function testRedirectKeepsNativeAndTokenRoundingCarryWithTheEarningRecipient() public {
@@ -365,10 +363,7 @@ contract DirectLaunchFeeSplitterTest {
         market.depositNative(splitter, 1 wei);
         adapter.depositToken(splitter, token, 1);
         require(splitter.nativeCreatorShareRemainder(address(treasury)) == 7_000, "treasury native carry");
-        require(
-            splitter.tokenCreatorShareRemainder(address(token), address(treasury)) == 7_000,
-            "treasury token carry"
-        );
+        require(splitter.tokenCreatorShareRemainder(address(token), address(treasury)) == 7_000, "treasury token carry");
 
         splitter.setCreatorWallet(payable(address(originalCreator)), keccak256("rounding-carry-restore"), 1);
         market.depositNative(splitter, 9 wei);
@@ -414,28 +409,26 @@ contract DirectLaunchFeeSplitterTest {
         require(splitter.creatorPayoutAuthority() == address(governance), "payout authority");
 
         vm.prank(address(originalCreator));
-        (bool creatorChange,) = address(splitter).call(
-            abi.encodeCall(
-                splitter.setCreatorWallet,
-                (payable(address(treasury)), keccak256("documented-rug-evidence"), 0)
-            )
-        );
+        (bool creatorChange,) = address(splitter)
+            .call(
+                abi.encodeCall(
+                    splitter.setCreatorWallet, (payable(address(treasury)), keccak256("documented-rug-evidence"), 0)
+                )
+            );
         require(!creatorChange, "creator changed payout recipient");
 
         vm.prank(address(0xBEEF));
-        (bool outsiderChange,) = address(splitter).call(
-            abi.encodeCall(
-                splitter.setCreatorWallet,
-                (payable(address(treasury)), keccak256("documented-rug-evidence"), 0)
-            )
-        );
+        (bool outsiderChange,) = address(splitter)
+            .call(
+                abi.encodeCall(
+                    splitter.setCreatorWallet, (payable(address(treasury)), keccak256("documented-rug-evidence"), 0)
+                )
+            );
         require(!outsiderChange, "outsider changed payout recipient");
 
         bytes32 evidenceHash = keccak256("documented-rug-evidence");
-        bytes memory changeCall = abi.encodeCall(
-            splitter.setCreatorWallet,
-            (payable(address(treasury)), evidenceHash, 0)
-        );
+        bytes memory changeCall =
+            abi.encodeCall(splitter.setCreatorWallet, (payable(address(treasury)), evidenceHash, 0));
         uint256 proposalId = governance.propose(address(splitter), 0, changeCall);
         (bool earlyExecution,) = address(governance).call(abi.encodeCall(governance.execute, (proposalId)));
         require(!earlyExecution, "governance delay bypassed");
@@ -446,12 +439,13 @@ contract DirectLaunchFeeSplitterTest {
         require(splitter.creatorPayoutNonce() == 1, "redirect nonce not consumed");
 
         vm.prank(address(originalCreator));
-        (bool creatorRestore,) = address(splitter).call(
-            abi.encodeCall(
-                splitter.setCreatorWallet,
-                (payable(address(originalCreator)), keccak256("unauthorized-creator-restoration"), 1)
-            )
-        );
+        (bool creatorRestore,) = address(splitter)
+            .call(
+                abi.encodeCall(
+                    splitter.setCreatorWallet,
+                    (payable(address(originalCreator)), keccak256("unauthorized-creator-restoration"), 1)
+                )
+            );
         require(!creatorRestore, "original creator restored its own payout");
 
         vm.deal(address(this), 1 ether);
@@ -494,17 +488,16 @@ contract DirectLaunchFeeSplitterTest {
             address(this)
         );
 
-        (bool unrelatedSuccess,) = address(splitter).call(
-            abi.encodeCall(
-                splitter.setCreatorWallet,
-                (payable(address(0xCAFE)), keccak256("not-an-allowed-destination"), 0)
-            )
-        );
+        (bool unrelatedSuccess,) = address(splitter)
+            .call(
+                abi.encodeCall(
+                    splitter.setCreatorWallet, (payable(address(0xCAFE)), keccak256("not-an-allowed-destination"), 0)
+                )
+            );
         require(!unrelatedSuccess, "governance redirected to unrelated wallet");
 
-        (bool noEvidenceSuccess,) = address(splitter).call(
-            abi.encodeCall(splitter.setCreatorWallet, (payable(address(treasury)), bytes32(0), 0))
-        );
+        (bool noEvidenceSuccess,) = address(splitter)
+            .call(abi.encodeCall(splitter.setCreatorWallet, (payable(address(treasury)), bytes32(0), 0)));
         require(!noEvidenceSuccess, "governance omitted public evidence hash");
     }
 
@@ -523,21 +516,19 @@ contract DirectLaunchFeeSplitterTest {
         );
 
         vm.prank(address(creator));
-        (bool creatorInvalidated,) = address(splitter).call(
-            abi.encodeCall(splitter.invalidateCreatorPayoutNonce, (0))
-        );
+        (bool creatorInvalidated,) = address(splitter).call(abi.encodeCall(splitter.invalidateCreatorPayoutNonce, (0)));
         require(!creatorInvalidated, "creator invalidated governance nonce");
 
         vm.prank(address(treasury));
         splitter.invalidateCreatorPayoutNonce(0);
         require(splitter.creatorPayoutNonce() == 1, "treasury invalidation missing");
 
-        (bool staleChangeExecuted,) = address(splitter).call(
-            abi.encodeCall(
-                splitter.setCreatorWallet,
-                (payable(address(treasury)), keccak256("cancelled-evidence"), 0)
-            )
-        );
+        (bool staleChangeExecuted,) = address(splitter)
+            .call(
+                abi.encodeCall(
+                    splitter.setCreatorWallet, (payable(address(treasury)), keccak256("cancelled-evidence"), 0)
+                )
+            );
         require(!staleChangeExecuted, "invalidated payout change executed");
         require(splitter.creator() == address(creator), "invalidation changed creator payout");
     }
@@ -590,13 +581,9 @@ contract DirectLaunchFeeSplitterTest {
 
         splitter.setCreatorWallet(payable(address(treasury)), keccak256("deferred-token-funds-test"), 0);
         require(
-            splitter.pendingToken(address(token), address(originalCreator)) == 70 ether,
-            "deferred token balance moved"
+            splitter.pendingToken(address(token), address(originalCreator)) == 70 ether, "deferred token balance moved"
         );
-        require(
-            splitter.pendingToken(address(token), address(treasury)) == 0,
-            "treasury inherited old deferred tokens"
-        );
+        require(splitter.pendingToken(address(token), address(treasury)) == 0, "treasury inherited old deferred tokens");
 
         require(token.transfer(address(splitter), 100 ether), "fund post-redirect token fees");
         splitter.depositToken(address(token), 100 ether);
@@ -734,9 +721,8 @@ contract DirectLaunchFeeSplitterTest {
 
         SplitterTestToken unrelatedToken = new SplitterTestToken(1 ether);
         require(unrelatedToken.transfer(address(splitter), 1 ether), "fund unrelated token");
-        (bool unrelatedSuccess,) = address(splitter).call(
-            abi.encodeCall(splitter.depositToken, (address(unrelatedToken), 1 ether))
-        );
+        (bool unrelatedSuccess,) =
+            address(splitter).call(abi.encodeCall(splitter.depositToken, (address(unrelatedToken), 1 ether)));
         require(!unrelatedSuccess, "unrelated token distributed");
     }
 
@@ -761,9 +747,8 @@ contract DirectLaunchFeeSplitterTest {
 
         require(splitter.pendingToken(address(token), address(creator)) == 70 ether, "creator token pending");
         require(token.balanceOf(address(treasury)) == 30 ether, "protocol token payment");
-        (bool duplicateSuccess,) = address(splitter).call(
-            abi.encodeCall(splitter.depositToken, (address(token), 70 ether))
-        );
+        (bool duplicateSuccess,) =
+            address(splitter).call(abi.encodeCall(splitter.depositToken, (address(token), 70 ether)));
         require(!duplicateSuccess, "pending tokens double accounted");
 
         token.setRejectedRecipient(address(0));

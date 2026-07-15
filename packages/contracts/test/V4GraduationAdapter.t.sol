@@ -44,7 +44,8 @@ contract UnauthorizedAdapterCaller {
     }
 
     function collect(V4GraduationAdapter adapter, address token)
-        external returns (uint256 nativeAmount, uint256 tokenAmount)
+        external
+        returns (uint256 nativeAmount, uint256 tokenAmount)
     {
         return adapter.collectFees(token);
     }
@@ -122,11 +123,11 @@ contract ExternalLiquidityRemover is IUnlockCallback {
     }
 
     function attempt(PoolKey calldata key, int24 tickLower, int24 tickUpper, uint128 liquidity)
-        external returns (bool success)
+        external
+        returns (bool success)
     {
-        (success,) = address(_manager).call(
-            abi.encodeCall(_manager.unlock, (abi.encode(key, tickLower, tickUpper, liquidity)))
-        );
+        (success,) = address(_manager)
+            .call(abi.encodeCall(_manager.unlock, (abi.encode(key, tickLower, tickUpper, liquidity))));
     }
 
     function unlockCallback(bytes calldata data) external returns (bytes memory) {
@@ -233,8 +234,7 @@ contract V4GraduationAdapterTest {
         require(token.balanceOf(address(adapter)) == adapter.lockedTokenDust(address(token)), "token dust record");
         require(address(manager).balance + address(adapter).balance == nativeAmount, "native conservation");
         require(
-            token.balanceOf(address(manager)) + token.balanceOf(address(adapter)) == tokenAmount,
-            "token conservation"
+            token.balanceOf(address(manager)) + token.balanceOf(address(adapter)) == tokenAmount, "token conservation"
         );
     }
 
@@ -343,8 +343,7 @@ contract V4GraduationAdapterTest {
     }
 
     function testFactoryBindingRejectsAnAddressWithoutCode() public {
-        V4GraduationAdapter unbound =
-            new V4GraduationAdapter(IPoolManager(address(manager)), hook, 5_000, 200);
+        V4GraduationAdapter unbound = new V4GraduationAdapter(IPoolManager(address(manager)), hook, 5_000, 200);
         (bool eoaBinding,) = address(unbound).call(abi.encodeCall(unbound.bindFactory, (address(0xBEEF))));
         require(!eoaBinding, "EOA factory binding accepted");
         require(unbound.factory() == address(0), "failed binding changed factory");
@@ -376,23 +375,20 @@ contract V4GraduationAdapterTest {
             address(this),
             address(this)
         );
-        (bool wrongAdapterSuccess,) = address(adapter).call(
-            abi.encodeCall(adapter.configureFeeRouting, (address(token), address(wrongAdapterSplitter), 50))
-        );
+        (bool wrongAdapterSuccess,) = address(adapter)
+            .call(abi.encodeCall(adapter.configureFeeRouting, (address(token), address(wrongAdapterSplitter), 50)));
         require(!wrongAdapterSuccess, "mismatched splitter adapter accepted");
 
-        (bool mismatchSuccess,) = address(adapter).call(
-            abi.encodeCall(adapter.configureFeeRouting, (address(token), address(splitter), 100))
-        );
+        (bool mismatchSuccess,) =
+            address(adapter).call(abi.encodeCall(adapter.configureFeeRouting, (address(token), address(splitter), 100)));
         require(!mismatchSuccess, "mismatched fee policy accepted");
 
         adapter.configureFeeRouting(address(token), address(splitter), 50);
         require(adapter.feeSplitters(address(token)) == address(splitter), "splitter not bound");
         require(adapter.postGraduationFeeBps(address(token)) == 50, "fee bps not recorded");
 
-        (bool reconfigureSuccess,) = address(adapter).call(
-            abi.encodeCall(adapter.configureFeeRouting, (address(token), address(splitter), 50))
-        );
+        (bool reconfigureSuccess,) =
+            address(adapter).call(abi.encodeCall(adapter.configureFeeRouting, (address(token), address(splitter), 50)));
         require(!reconfigureSuccess, "fee routing changed");
     }
 
@@ -411,9 +407,8 @@ contract V4GraduationAdapterTest {
         );
         adapter.configureFeeRouting(address(token), address(splitter), 50);
 
-        (bool wrongMarketSuccess,) = address(adapter).call(
-            abi.encodeCall(adapter.bindMarket, (address(token), address(this)))
-        );
+        (bool wrongMarketSuccess,) =
+            address(adapter).call(abi.encodeCall(adapter.bindMarket, (address(token), address(this))));
         require(!wrongMarketSuccess, "mismatched splitter market accepted");
         adapter.bindMarket(address(token), address(authorizedMarket));
         require(adapter.markets(address(token)) == address(authorizedMarket), "authorized market not bound");
@@ -433,9 +428,8 @@ contract V4GraduationAdapterTest {
             address(adapter)
         );
 
-        (bool success,) = address(adapter).call(
-            abi.encodeCall(adapter.configureFeeRouting, (address(token), address(splitter), 50))
-        );
+        (bool success,) =
+            address(adapter).call(abi.encodeCall(adapter.configureFeeRouting, (address(token), address(splitter), 50)));
         require(!success, "late fee routing accepted");
     }
 
@@ -491,9 +485,7 @@ contract V4GraduationAdapterTest {
         swapRouter.swap{value: 1 ether}(
             key,
             SwapParams({
-                zeroForOne: true,
-                amountSpecified: -int256(1 ether),
-                sqrtPriceLimitX96: TickMath.MIN_SQRT_PRICE + 1
+                zeroForOne: true, amountSpecified: -int256(1 ether), sqrtPriceLimitX96: TickMath.MIN_SQRT_PRICE + 1
             }),
             settings,
             ""
@@ -542,13 +534,7 @@ contract V4GraduationAdapterTest {
         address payable treasury = payable(address(0xBEEF));
         DirectLaunchFeeSplitter splitter = new DirectLaunchFeeSplitter();
         splitter.initialize(
-            originalCreator,
-            treasury,
-            address(token),
-            7_000,
-            address(this),
-            address(this),
-            address(adapter)
+            originalCreator, treasury, address(token), 7_000, address(this), address(this), address(adapter)
         );
         adapter.configureFeeRouting(address(token), address(splitter), 50);
         adapter.bindMarket(address(token), address(this));
@@ -575,8 +561,7 @@ contract V4GraduationAdapterTest {
             "first native treasury split"
         );
         require(
-            token.balanceOf(originalCreator) - creatorTokenBefore == expectedCreatorToken,
-            "first token creator split"
+            token.balanceOf(originalCreator) - creatorTokenBefore == expectedCreatorToken, "first token creator split"
         );
         require(
             token.balanceOf(treasury) - treasuryTokenBefore == firstTokenFees - expectedCreatorToken,
@@ -709,18 +694,12 @@ contract V4GraduationAdapterTest {
         uint128 liquidityBefore = adapter.lockedLiquidity(address(token));
         ExternalLiquidityRemover remover = new ExternalLiquidityRemover(IPoolManager(address(manager)));
 
-        (bool factoryRemoval,) = address(manager).call(
-            abi.encodeCall(manager.unlock, (abi.encode(key, tickLower, tickUpper, liquidityBefore)))
-        );
+        (bool factoryRemoval,) = address(manager)
+            .call(abi.encodeCall(manager.unlock, (abi.encode(key, tickLower, tickUpper, liquidityBefore))));
         require(!factoryRemoval, "factory operator removed principal");
         require(!remover.attempt(key, tickLower, tickUpper, liquidityBefore), "external principal removal succeeded");
         (uint128 liquidityAfter,,) = StateLibrary.getPositionInfo(
-            IPoolManager(address(manager)),
-            PoolId.wrap(poolIdValue),
-            address(adapter),
-            tickLower,
-            tickUpper,
-            bytes32(0)
+            IPoolManager(address(manager)), PoolId.wrap(poolIdValue), address(adapter), tickLower, tickUpper, bytes32(0)
         );
         require(liquidityAfter == liquidityBefore, "adapter principal changed");
     }
@@ -772,9 +751,7 @@ contract V4GraduationAdapterTest {
         swapRouter.swap{value: 1 ether}(
             key,
             SwapParams({
-                zeroForOne: true,
-                amountSpecified: -int256(1 ether),
-                sqrtPriceLimitX96: TickMath.MIN_SQRT_PRICE + 1
+                zeroForOne: true, amountSpecified: -int256(1 ether), sqrtPriceLimitX96: TickMath.MIN_SQRT_PRICE + 1
             }),
             settings,
             ""
@@ -800,12 +777,7 @@ contract V4GraduationAdapterTest {
         int24 tickLower = TickMath.minUsableTick(adapter.tickSpacing());
         int24 tickUpper = TickMath.maxUsableTick(adapter.tickSpacing());
         (uint128 liquidityAfter,,) = StateLibrary.getPositionInfo(
-            IPoolManager(address(manager)),
-            PoolId.wrap(poolIdValue),
-            address(adapter),
-            tickLower,
-            tickUpper,
-            bytes32(0)
+            IPoolManager(address(manager)), PoolId.wrap(poolIdValue), address(adapter), tickLower, tickUpper, bytes32(0)
         );
         require(liquidityAfter == expectedLiquidity, "adapter principal changed");
     }

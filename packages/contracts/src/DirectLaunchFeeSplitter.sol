@@ -91,11 +91,10 @@ contract DirectLaunchFeeSplitter {
         if (_initialized) revert AlreadyInitialized();
         if (
             creator_ == address(0) || protocolTreasury_ == address(0) || launchToken_ == address(0)
-                || launchToken_.code.length == 0
-                || creatorPayoutAuthority_ == address(0) || creatorPayoutAuthority_.code.length == 0
-                || authorizedMarket_ == address(0) || authorizedMarket_.code.length == 0
-                || graduationAdapter_ == address(0) || graduationAdapter_.code.length == 0
-                || creatorShareBps_ > BPS_DENOMINATOR
+                || launchToken_.code.length == 0 || creatorPayoutAuthority_ == address(0)
+                || creatorPayoutAuthority_.code.length == 0 || authorizedMarket_ == address(0)
+                || authorizedMarket_.code.length == 0 || graduationAdapter_ == address(0)
+                || graduationAdapter_.code.length == 0 || creatorShareBps_ > BPS_DENOMINATOR
         ) revert InvalidConfiguration();
 
         _initialized = true;
@@ -118,7 +117,9 @@ contract DirectLaunchFeeSplitter {
         );
     }
 
-    receive() external payable { revert UnauthorizedFeeSource(); }
+    receive() external payable {
+        revert UnauthorizedFeeSource();
+    }
 
     function deposit() external payable nonReentrant {
         _split(msg.sender, msg.value);
@@ -128,7 +129,8 @@ contract DirectLaunchFeeSplitter {
     /// @dev Only delayed RMT governance can execute this change. The expected nonce prevents stale or out-of-order
     ///      governance proposals from changing the live recipient after a later change or treasury invalidation.
     function setCreatorWallet(address payable nextCreator, bytes32 evidenceHash, uint256 expectedNonce)
-        external nonReentrant
+        external
+        nonReentrant
     {
         if (msg.sender != creatorPayoutAuthority) revert OnlyCreatorPayoutAuthority();
         if (expectedNonce != creatorPayoutNonce) revert InvalidCreatorPayoutNonce();
@@ -234,30 +236,32 @@ contract DirectLaunchFeeSplitter {
     /// @dev Splits using recipient-scoped carry. Across all deposits while a recipient is active, that recipient gets
     ///      floor(total fees * creatorShareBps / 10_000), independent of how permissionless collectors batch deposits.
     function _nativeCreatorAmount(address recipient, uint256 amount) private returns (uint256 creatorAmount) {
-        uint256 numerator = (amount % BPS_DENOMINATOR) * creatorShareBps
-            + nativeCreatorShareRemainder[recipient];
+        uint256 numerator = (amount % BPS_DENOMINATOR) * creatorShareBps + nativeCreatorShareRemainder[recipient];
         creatorAmount = (amount / BPS_DENOMINATOR) * creatorShareBps + numerator / BPS_DENOMINATOR;
         nativeCreatorShareRemainder[recipient] = numerator % BPS_DENOMINATOR;
     }
 
     /// @dev Token-fee carry is independent from native-fee carry because each asset has its own atomic unit.
     function _tokenCreatorAmount(address token, address recipient, uint256 amount)
-        private returns (uint256 creatorAmount)
+        private
+        returns (uint256 creatorAmount)
     {
-        uint256 numerator = (amount % BPS_DENOMINATOR) * creatorShareBps
-            + tokenCreatorShareRemainder[token][recipient];
+        uint256 numerator =
+            (amount % BPS_DENOMINATOR) * creatorShareBps + tokenCreatorShareRemainder[token][recipient];
         creatorAmount = (amount / BPS_DENOMINATOR) * creatorShareBps + numerator / BPS_DENOMINATOR;
         tokenCreatorShareRemainder[token][recipient] = numerator % BPS_DENOMINATOR;
     }
 
     function _tokenBalance(address token) private view returns (uint256 balance) {
-        (bool success, bytes memory data) = token.staticcall(abi.encodeWithSignature("balanceOf(address)", address(this)));
+        (bool success, bytes memory data) =
+            token.staticcall(abi.encodeWithSignature("balanceOf(address)", address(this)));
         if (!success || data.length < 32) revert InvalidConfiguration();
         balance = abi.decode(data, (uint256));
     }
 
     function _transferToken(address token, address recipient, uint256 amount) private returns (bool) {
-        (bool success, bytes memory data) = token.call(abi.encodeWithSignature("transfer(address,uint256)", recipient, amount));
+        (bool success, bytes memory data) =
+            token.call(abi.encodeWithSignature("transfer(address,uint256)", recipient, amount));
         return success && (data.length == 0 || (data.length >= 32 && abi.decode(data, (bool))));
     }
 }
