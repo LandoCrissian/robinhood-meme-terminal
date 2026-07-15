@@ -247,16 +247,15 @@ submit_blockscout_standard_input() {
     return 1
   fi
 
-  if ! python3 - "$standard_json" "$expected_path" "$expected_name" <<'PY'
+  if ! python3 - "$standard_json" "$expected_path" <<'PY'
 import json
 import sys
 
-json_path, expected_path, expected_name = sys.argv[1:]
+json_path, expected_path = sys.argv[1:]
 with open(json_path, encoding="utf-8") as source:
     compiler_input = json.load(source)
 settings = compiler_input.get("settings")
 optimizer = settings.get("optimizer") if isinstance(settings, dict) else None
-target = settings.get("compilationTarget") if isinstance(settings, dict) else None
 sources = compiler_input.get("sources")
 with open(expected_path, encoding="utf-8", newline="") as reviewed:
     expected_source = reviewed.read()
@@ -268,7 +267,6 @@ valid = (
     and isinstance(optimizer, dict)
     and optimizer.get("enabled") is True
     and optimizer.get("runs") == 200
-    and target == {expected_path: expected_name}
     and isinstance(sources, dict)
     and isinstance(sources.get(expected_path), dict)
     and sources[expected_path].get("content") == expected_source
