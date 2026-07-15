@@ -21,7 +21,7 @@ The RMT deployment consists of 14 protocol-owned contracts. The two canonical ex
 | Rewards governance (2-of-3, no delay) | [`0xE39CE3259d8E79628aFA537e83631b51F74f7416`](https://robinhoodchain.blockscout.com/address/0xE39CE3259d8E79628aFA537e83631b51F74f7416) | [`0x7977…328b`](https://robinhoodchain.blockscout.com/tx/0x7977b6f08a0c14f0aa93b98253f1bf0b22fec849f7ff39159588dc45ee3f328b) | `TwoOfThreeTimelock.sol` |
 | Protocol governance (2-of-3, 24-hour delay) | [`0xd3aAD8D7CF148f0134f2cb986E0bBa08647678af`](https://robinhoodchain.blockscout.com/address/0xd3aAD8D7CF148f0134f2cb986E0bBa08647678af) | [`0x1ac3…c821`](https://robinhoodchain.blockscout.com/tx/0x1ac3bf5ba3d89169e70672390ac6140abf2e93a9513bab4a752539b6a4b4c821) | `TwoOfThreeTimelock.sol` |
 
-The fixed signer set at deployment is RMTMain, Robinhood Wallet, and Phantom. Two distinct signers are required. Signer replacement is possible only through an ordinary 2-of-3 self-call.
+The fixed signer set at deployment comprised three historical wallet addresses. Two distinct signers are required. Signer replacement is possible only through an ordinary 2-of-3 self-call. This legacy manifest does not describe current wallet compatibility or V6 governance.
 
 ## Purpose vaults
 
