@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import { createServer } from "node:http";
 import { Pool, type PoolClient } from "pg";
 import {
@@ -72,7 +73,8 @@ const config = {
   confirmations: positiveInteger("RMT_CONFIRMATION_DEPTH", 20),
   chunkSize: positiveInteger("RMT_INDEXER_CHUNK_SIZE", 2_000),
   pollMs: positiveInteger("RMT_INDEXER_POLL_MS", 5_000),
-  port: positiveInteger("PORT", 3_001)
+  port: positiveInteger("PORT", 3_001),
+  readToken: process.env.RMT_INDEXER_READ_TOKEN?.trim() || null
 };
 
 const chain = {
@@ -1180,6 +1182,62 @@ async function launchRows(limit: number) {
   return result.rows;
 }
 
+async function marketTradeRows(market: string, limit: number) {
+  const launch = await pool.query(
+    `SELECT token FROM launches WHERE market = $1 AND protocol_version = 6 LIMIT 1`,
+    [market]
+  );
+  if (launch.rowCount !== 1) return null;
+
+  const result = await pool.query(
+    `SELECT
+      transaction_hash,
+      log_index,
+      trader,
+      recipient,
+      is_buy,
+      token_amount::TEXT AS token_amount,
+      eth_amount::TEXT AS eth_amount,
+      fee_amount::TEXT AS fee_amount,
+      virtual_eth_reserve::TEXT AS virtual_eth_reserve,
+      virtual_token_reserve::TEXT AS virtual_token_reserve,
+      real_eth_reserve::TEXT AS real_eth_reserve,
+      block_number::TEXT AS block_number
+    FROM trades
+    WHERE market = $1
+    ORDER BY block_number DESC, log_index DESC
+    LIMIT $2`,
+    [market, limit]
+  );
+
+  return {
+    token: launch.rows[0].token as string,
+    trades: result.rows.map((row) => ({
+      transactionHash: row.transaction_hash as string,
+      logIndex: Number(row.log_index),
+      trader: row.trader as string,
+      recipient: row.recipient as string,
+      isBuy: Boolean(row.is_buy),
+      tokenAmount: row.token_amount as string,
+      ethAmount: row.eth_amount as string,
+      feeAmount: row.fee_amount as string,
+      virtualEthReserve: row.virtual_eth_reserve as string,
+      virtualTokenReserve: row.virtual_token_reserve as string,
+      realEthReserve: row.real_eth_reserve as string,
+      blockNumber: row.block_number as string
+    }))
+  };
+}
+
+function hasReadAccess(request: import("node:http").IncomingMessage) {
+  if (!config.readToken) return true;
+  const authorization = request.headers.authorization;
+  if (!authorization) return false;
+  const actual = Buffer.from(authorization);
+  const expected = Buffer.from(`Bearer ${config.readToken}`);
+  return actual.length === expected.length && timingSafeEqual(actual, expected);
+}
+
 function json(response: import("node:http").ServerResponse, status: number, body: unknown) {
   response.writeHead(status, {
     "Content-Type": "application/json; charset=utf-8",
@@ -1194,7 +1252,11 @@ function startServer() {
   return createServer(async (request, response) => {
     try {
       const url = new URL(request.url ?? "/", "http://localhost");
-      if (request.method === "GET" && url.pathname === "/health") {
+      if (request.method !== "GET") {
+        json(response, 405, { error: "Method not allowed" });
+        return;
+      }
+      if (url.pathname === "/health") {
         const latest = await rpc.getBlockNumber();
         const healthy = initialSyncComplete && !lastError;
         json(response, healthy ? 200 : 503, {
@@ -1217,7 +1279,12 @@ function startServer() {
         });
         return;
       }
-      if (request.method === "GET" && url.pathname === "/launches") {
+      if (!hasReadAccess(request)) {
+        response.setHeader("WWW-Authenticate", "Bearer");
+        json(response, 401, { error: "Unauthorized" });
+        return;
+      }
+      if (url.pathname === "/launches") {
         if (!initialSyncComplete || lastError) {
           json(response, 503, {
             error: lastError ?? "Initial V6 backfill and invariants are still running"
@@ -1227,6 +1294,33 @@ function startServer() {
         const requested = Number.parseInt(url.searchParams.get("limit") ?? "25", 10);
         const limit = Number.isSafeInteger(requested) ? Math.min(100, Math.max(1, requested)) : 25;
         json(response, 200, { launches: await launchRows(limit), indexedThrough: indexedThrough.toString(), syncedAt: lastSyncAt });
+        return;
+      }
+
+      const tradeRoute = /^\/markets\/(0x[0-9a-fA-F]{40})\/trades$/.exec(url.pathname);
+      if (tradeRoute) {
+        if (!initialSyncComplete || lastError) {
+          json(response, 503, {
+            error: lastError ?? "Initial V6 backfill and invariants are still running"
+          });
+          return;
+        }
+        const requested = Number.parseInt(url.searchParams.get("limit") ?? "12", 10);
+        const limit = Number.isSafeInteger(requested) ? Math.min(50, Math.max(1, requested)) : 12;
+        const market = tradeRoute[1].toLowerCase();
+        const data = await marketTradeRows(market, limit);
+        if (!data) {
+          json(response, 404, { error: "V6 market not found" });
+          return;
+        }
+        json(response, 200, {
+          market,
+          token: data.token,
+          trades: data.trades,
+          indexedThrough: indexedThrough.toString(),
+          confirmationDepth: config.confirmations,
+          syncedAt: lastSyncAt
+        });
         return;
       }
       json(response, 404, { error: "Not found" });
