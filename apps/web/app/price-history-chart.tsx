@@ -1,18 +1,13 @@
 "use client";
 
 import { formatEther } from "viem";
+import { formatUsd } from "../lib/price-format";
 
 export type PricePoint = {
   blockNumber: bigint;
   priceWei: bigint;
   side: "buy" | "sell";
 };
-
-function formatUsd(value?: number) {
-  if (value === undefined || !Number.isFinite(value)) return "Unavailable";
-  if (value > 0 && value < 0.01) return `$${value.toExponential(2)}`;
-  return value.toLocaleString(undefined, { style: "currency", currency: "USD", maximumFractionDigits: 2 });
-}
 
 export function PriceHistoryChart({
   points,
