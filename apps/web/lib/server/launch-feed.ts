@@ -42,6 +42,16 @@ const marketSignalsAbi = [
   }
 ] as const;
 
+const tokenBalanceAbi = [
+  {
+    type: "function",
+    name: "balanceOf",
+    stateMutability: "view",
+    inputs: [{ name: "owner", type: "address" }],
+    outputs: [{ type: "uint256" }]
+  }
+] as const;
+
 const publicClient = createPublicClient({
   chain: activeChain,
   transport: http(
@@ -53,6 +63,7 @@ const publicClient = createPublicClient({
 });
 const V5_VERSION = keccak256(toHex("RMT_FACTORY_V5"));
 const V6_VERSION = keccak256(toHex("RMT_FACTORY_V6"));
+const FIXED_TOKEN_SUPPLY = 1_000_000_000n * 10n ** 18n;
 
 export async function resolveActiveFactory() {
   if (!isMainnetRelease) {
@@ -92,14 +103,22 @@ export async function resolveActiveFactory() {
   return null;
 }
 
-async function readMarketSignals(market: Address, launchBlock: bigint, latestBlock: bigint) {
+async function readMarketSignals(
+  market: Address,
+  token: Address,
+  creator: Address,
+  launchBlock: bigint,
+  latestBlock: bigint
+) {
   try {
     const windowStart = latestBlock > 19_999n ? latestBlock - 19_999n : 0n;
     const activityFromBlock = launchBlock > windowStart ? launchBlock : windowStart;
-    const [reserve, progress, graduated, trades] = await Promise.all([
+    const [reserve, progress, graduated, creatorBalanceRead, marketInventoryRead, tradesRead] = await Promise.all([
       publicClient.readContract({ address: market, abi: marketSignalsAbi, functionName: "realEthReserve" }),
       publicClient.readContract({ address: market, abi: marketSignalsAbi, functionName: "progressBps" }),
       publicClient.readContract({ address: market, abi: marketSignalsAbi, functionName: "graduated" }),
+      publicClient.readContract({ address: token, abi: tokenBalanceAbi, functionName: "balanceOf", args: [creator] }).catch(() => null),
+      publicClient.readContract({ address: token, abi: tokenBalanceAbi, functionName: "balanceOf", args: [market] }).catch(() => null),
       publicClient.getContractEvents({
         address: market,
         abi: marketSignalsAbi,
@@ -107,17 +126,49 @@ async function readMarketSignals(market: Address, launchBlock: bigint, latestBlo
         fromBlock: activityFromBlock,
         toBlock: latestBlock,
         strict: true
-      }).catch(() => [])
+      }).catch(() => null)
     ]);
 
+    const trades = tradesRead ?? [];
+    const creatorAddress = creator.toLowerCase();
     let volume = 0n;
     let buyCount = 0;
     let sellCount = 0;
+    let creatorBought = 0n;
+    let creatorSold = 0n;
+    let creatorTradeCount = 0;
     for (const trade of trades) {
       volume += trade.args.ethAmount;
       if (trade.args.isBuy) buyCount += 1;
       else sellCount += 1;
+      if (trade.args.trader.toLowerCase() !== creatorAddress) continue;
+      creatorTradeCount += 1;
+      if (trade.args.isBuy) creatorBought += trade.args.tokenAmount;
+      else creatorSold += trade.args.tokenAmount;
     }
+
+    const creatorBalance = creatorBalanceRead ?? null;
+    const marketInventory = marketInventoryRead ?? null;
+    const circulatingSupply = marketInventory !== null && FIXED_TOKEN_SUPPLY > marketInventory
+      ? FIXED_TOKEN_SUPPLY - marketInventory
+      : 0n;
+    const creatorOutsideCurveBps = creatorBalance === null || marketInventory === null
+      ? undefined
+      : creatorBalance === 0n
+        ? 0
+        : circulatingSupply > 0n
+          ? Math.min(10_000, Number(creatorBalance * 10_000n / circulatingSupply))
+          : undefined;
+    const creatorNet = creatorBought - creatorSold;
+    const creatorFlow: NonNullable<LaunchFeedItem["creatorFlow"]> = tradesRead === null
+      ? "unknown"
+      : creatorTradeCount === 0
+        ? "inactive"
+        : creatorNet > 0n
+          ? "buying"
+          : creatorNet < 0n
+            ? "selling"
+            : "balanced";
 
     return {
       reserveWei: reserve.toString(),
@@ -126,7 +177,10 @@ async function readMarketSignals(market: Address, launchBlock: bigint, latestBlo
       buyCount,
       sellCount,
       progressBps: Math.min(10_000, Number(progress)),
-      graduated
+      graduated,
+      creatorBalanceWei: creatorBalance === null ? undefined : creatorBalance.toString(),
+      creatorOutsideCurveBps,
+      creatorFlow
     };
   } catch {
     return {
@@ -136,11 +190,11 @@ async function readMarketSignals(market: Address, launchBlock: bigint, latestBlo
       buyCount: 0,
       sellCount: 0,
       progressBps: 0,
-      graduated: false
+      graduated: false,
+      creatorFlow: "unknown" as const
     };
   }
 }
-
 export async function readFreshLaunches(
   limit = 25,
   resolvedFactory?: Awaited<ReturnType<typeof resolveActiveFactory>>
@@ -256,7 +310,7 @@ export async function readFreshLaunches(
   return Promise.all(recent.map(async (launch) => {
     const [metadata, signals] = await Promise.all([
       resolveTokenMetadata(launch.metadataURI),
-      readMarketSignals(launch.market, BigInt(launch.blockNumber), latestBlock)
+      readMarketSignals(launch.market, launch.token, launch.creator, BigInt(launch.blockNumber), latestBlock)
     ]);
     return { ...launch, ...signals, image: metadata?.image };
   }));
