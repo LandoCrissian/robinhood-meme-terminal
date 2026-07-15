@@ -68,7 +68,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: foundry-rs/foundry-toolchain@v1
         with:
-          version: stable
+          # V6 browser deployment artifacts were compiled with this exact Foundry release.\n          # Pinning also makes the deployment-era formatter reproduction deterministic.\n          version: v1.7.1
       - name: Install pinned Uniswap V4 dependencies
         run: bash scripts/install-v4-deps.sh
       - name: Compile the selected release commit
