@@ -65,6 +65,7 @@ type RecentTrade = {
   virtualEthReserve: bigint;
   virtualTokenReserve: bigint;
   blockNumber: bigint;
+  logIndex: number;
 };
 
 type TradePreflight = {
@@ -132,6 +133,8 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply, creator, compac
   const tradeRailRef = useRef<HTMLElement>(null);
   const marketDetailRef = useRef<HTMLDivElement>(null);
   const creatorAnalyticsRef = useRef<HTMLElement>(null);
+  const recentTradesRef = useRef<RecentTrade[]>([]);
+  const lastScannedTradeBlockRef = useRef<bigint | undefined>(undefined);
   const seededQuickBuy = useRef(false);
   const { writeContract, data: hash, isPending, error: writeError, reset: resetWrite } = useWriteContract();
   const receipt = useWaitForTransactionReceipt({ hash, chainId: activeChain.id });
@@ -173,6 +176,12 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply, creator, compac
   }, []);
 
   useEffect(() => {
+    recentTradesRef.current = [];
+    lastScannedTradeBlockRef.current = undefined;
+    setRecentTrades([]);
+  }, [market]);
+
+  useEffect(() => {
     if (!market || !publicClient) return;
     const marketAddress = market;
     const client = publicClient;
@@ -180,20 +189,27 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply, creator, compac
     async function loadTrades() {
       try {
         const latestBlock = await client.getBlockNumber();
-        const recentStart = latestBlock > 19_999n ? latestBlock - 19_999n : 0n;
-        const fromBlock = launchBlock > recentStart ? launchBlock : recentStart;
-        const collected: RecentTrade[] = [];
+        const lastScanned = lastScannedTradeBlockRef.current;
+        const historicalStart = launchBlock > 0n ? launchBlock : latestBlock > 19_999n ? latestBlock - 19_999n : 0n;
+        const fromBlock = lastScanned !== undefined ? lastScanned + 1n : historicalStart;
+        if (fromBlock > latestBlock) return;
+
+        const collected: RecentTrade[] = [...recentTradesRef.current];
         let batchEnd = latestBlock;
-        while (batchEnd >= fromBlock && collected.length < 12) {
+        while (batchEnd >= fromBlock && (lastScanned !== undefined || collected.length < 12)) {
           const batchStart = batchEnd - fromBlock > 4_999n ? batchEnd - 4_999n : fromBlock;
           const batchLogs = await client.getContractEvents({ address: marketAddress, abi: marketAbi, eventName: "Trade", fromBlock: batchStart, toBlock: batchEnd, strict: true });
-          collected.push(...batchLogs.flatMap((log) => log.transactionHash ? [{ transactionHash: log.transactionHash, trader: log.args.trader, isBuy: log.args.isBuy, tokenAmount: log.args.tokenAmount, ethAmount: log.args.ethAmount, feeAmount: log.args.feeAmount, virtualEthReserve: log.args.virtualEthReserve, virtualTokenReserve: log.args.virtualTokenReserve, blockNumber: log.blockNumber }] : []));
+          collected.push(...batchLogs.flatMap((log) => log.transactionHash ? [{ transactionHash: log.transactionHash, trader: log.args.trader, isBuy: log.args.isBuy, tokenAmount: log.args.tokenAmount, ethAmount: log.args.ethAmount, feeAmount: log.args.feeAmount, virtualEthReserve: log.args.virtualEthReserve, virtualTokenReserve: log.args.virtualTokenReserve, blockNumber: log.blockNumber, logIndex: log.logIndex }] : []));
           if (batchStart === fromBlock) break;
           batchEnd = batchStart - 1n;
         }
-        const newestFirst = collected.sort((left, right) => left.blockNumber === right.blockNumber ? 0 : left.blockNumber > right.blockNumber ? -1 : 1);
+
+        const deduplicated = [...new Map(collected.map((trade) => [`${trade.transactionHash}-${trade.logIndex}`, trade])).values()];
+        const newestFirst = deduplicated.sort((left, right) => left.blockNumber === right.blockNumber ? right.logIndex - left.logIndex : left.blockNumber > right.blockNumber ? -1 : 1).slice(0, 12);
         if (cancelled) return;
-        setRecentTrades(newestFirst.slice(0, 12));
+        recentTradesRef.current = newestFirst;
+        lastScannedTradeBlockRef.current = latestBlock;
+        setRecentTrades(newestFirst);
         setTradeHistoryError(undefined);
       } catch (cause) {
         if (!cancelled) setTradeHistoryError(cause instanceof Error ? cause.message : "Trade history is temporarily unavailable.");
@@ -508,7 +524,7 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply, creator, compac
       {!compact && <div className="marketDetailTabs" ref={marketDetailRef} role="tablist" aria-label="Market details"><button type="button" role="tab" aria-selected={marketDetail === "activity"} className={marketDetail === "activity" ? "active" : ""} onClick={() => setMarketDetail("activity")}>Activity</button><button type="button" role="tab" aria-selected={marketDetail === "risk"} className={marketDetail === "risk" ? "active" : ""} onClick={() => setMarketDetail("risk")}>Creator analytics</button></div>}
       {!compact && marketDetail === "activity" ? <div className="tradeHistory">
         <div className="historyHeader"><div><p className="eyebrow">ONCHAIN ACTIVITY</p><h3>Recent trades</h3></div><span>{recentTrades.length} shown</span></div>
-        {recentTrades.length > 0 ? <div className="tradeList">{recentTrades.map((item) => { const effectiveEth = item.isBuy ? item.ethAmount : item.ethAmount - item.feeAmount; return <a key={`${item.transactionHash}-${item.blockNumber}`} href={`${activeChain.blockExplorers.default.url}/tx/${item.transactionHash}`} target="_blank" rel="noreferrer" className="tradeRow"><span className={item.isBuy ? "tradeSide buy" : "tradeSide sell"}>{item.isBuy ? "BUY" : "SELL"}</span><span><strong>{Number(formatUnits(item.tokenAmount, 18)).toLocaleString(undefined, { maximumFractionDigits: 2 })} {symbol}</strong><small>{compactAddress(item.trader)}</small></span><span><strong>{formatEth(effectiveEth)} ETH</strong><small>Block {item.blockNumber.toString()}</small></span></a>; })}</div> : <div className="emptyTrades"><strong>No trades yet</strong><span>The first confirmed buy or sell will appear here automatically.</span></div>}
+        {recentTrades.length > 0 ? <div className="tradeList">{recentTrades.map((item) => { const effectiveEth = item.isBuy ? item.ethAmount : item.ethAmount - item.feeAmount; return <a key={`${item.transactionHash}-${item.logIndex}`} href={`${activeChain.blockExplorers.default.url}/tx/${item.transactionHash}`} target="_blank" rel="noreferrer" className="tradeRow"><span className={item.isBuy ? "tradeSide buy" : "tradeSide sell"}>{item.isBuy ? "BUY" : "SELL"}</span><span><strong>{Number(formatUnits(item.tokenAmount, 18)).toLocaleString(undefined, { maximumFractionDigits: 2 })} {symbol}</strong><small>{compactAddress(item.trader)}</small></span><span><strong>{formatEth(effectiveEth)} ETH</strong><small>Block {item.blockNumber.toString()}</small></span></a>; })}</div> : <div className="emptyTrades"><strong>No trades yet</strong><span>The first confirmed buy or sell will appear here automatically.</span></div>}
         {tradeHistoryError && <small className="historyError">Trade history will retry automatically.</small>}
       </div> : (!compact || marketDetail === "risk") ? <section ref={creatorAnalyticsRef} className={`creatorIntelligence ${highCreatorConcentration ? "highRisk" : ""}`} aria-labelledby="creator-wallet-heading">
         <div className="creatorIntelligenceHeader"><div><p className="eyebrow">ORIGINAL LAUNCH CREATOR</p><h3 id="creator-wallet-heading">Wallet concentration check</h3></div><div className="creatorIntelligenceActions"><span className={`creatorFlowSignal ${creatorRecentNet > 0n ? "buying" : creatorRecentNet < 0n ? "selling" : ""}`}>{creatorRecentSignal}</span><a href={`${activeChain.blockExplorers.default.url}/address/${creator}`} target="_blank" rel="noreferrer">{compactAddress(creator)} ↗</a></div></div>
