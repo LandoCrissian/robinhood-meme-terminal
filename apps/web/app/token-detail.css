@@ -224,6 +224,7 @@ dl{grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr)}
 
 .creatorIntelligence{margin:18px 0 24px;padding:18px;border:1px solid #2a3a30;border-radius:16px;background:#0a120c}
 .creatorIntelligence.highRisk{border-color:#7b5126;background:linear-gradient(180deg,#1a140c,#0d110d)}
+.creatorIntelligence.notableRisk{border-color:#5d5131;background:linear-gradient(180deg,#15150d,#0d110d)}
 .creatorIntelligenceHeader{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}
 .creatorIntelligenceHeader h3{margin:3px 0 0;font-size:1.22rem}
 .creatorIntelligenceHeader a{color:#78e78a;font-size:.76rem;font-weight:850;text-decoration:none}
@@ -238,6 +239,9 @@ dl{grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr)}
 .creatorWarning{display:flex;flex-direction:column;gap:4px;margin-top:14px;padding:13px;border:1px solid #80582d;border-radius:12px;background:#251a0e}
 .creatorWarning strong{color:#ffc071}
 .creatorWarning span{color:#d5b890;font-size:.73rem;line-height:1.45}
+.creatorNotice{display:flex;flex-direction:column;gap:4px;margin-top:14px;padding:13px;border:1px solid #5d5131;border-radius:12px;background:#18170e}
+.creatorNotice strong{color:#e2ca87}
+.creatorNotice span{color:#bcb18c;font-size:.73rem;line-height:1.45}
 .creatorMethod{margin:12px 2px 0}
 .creatorRiskCheck{display:flex;align-items:flex-start;gap:11px;margin:14px 0;padding:14px;border:1px solid #80582d;border-radius:13px;background:#21170d;cursor:pointer}
 .creatorRiskCheck input{flex:0 0 auto;width:18px;height:18px;margin-top:1px;accent-color:#00c805}
@@ -420,6 +424,8 @@ dl{grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr)}
 .creatorRiskSummary>small{grid-column:1/-1;margin-top:3px;color:#6f7d73;font-size:.6rem}
 .creatorRiskSummary.highRisk{border-color:#80582d;background:#20160d}
 .creatorRiskSummary.highRisk>strong,.creatorRiskSummary.highRisk>small{color:#ffc071}
+.creatorRiskSummary.notableRisk{border-color:#625433;background:#18170e}
+.creatorRiskSummary.notableRisk>strong,.creatorRiskSummary.notableRisk>small{color:#e2ca87}
 .tradeRail .creatorRiskCheck{margin:0 0 10px;padding:11px}
 .tradeRail .preflightCard{margin:0 0 10px;padding:10px 11px}
 .tradeRail .tradeStage{margin:10px 0}
