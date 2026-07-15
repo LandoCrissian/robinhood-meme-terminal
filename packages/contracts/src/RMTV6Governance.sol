@@ -179,9 +179,11 @@ contract RMTV6Governance {
 
         _executing = true;
         transaction.executed = true;
+        // The transaction is consumed before this call and the mutex blocks this and cross-transaction reentry.
+        // slither-disable-next-line reentrancy-eth
         (bool success, bytes memory output) = transaction.target.call{value: transaction.value}(transaction.data);
-        if (!success) revert ExecutionFailed(output);
         _executing = false;
+        if (!success) revert ExecutionFailed(output);
 
         emit Executed(id, transaction.configurationEpoch, msg.sender);
         return output;
