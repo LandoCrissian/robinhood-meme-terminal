@@ -34,6 +34,7 @@ const adapterHealthAbi = [
 const marketHealthAbi = [
   { type: "function", name: "token", stateMutability: "view", inputs: [], outputs: [{ type: "address" }] },
   { type: "function", name: "graduationTarget", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] },
+  { type: "function", name: "graduationAdapter", stateMutability: "view", inputs: [], outputs: [{ type: "address" }] },
   { type: "function", name: "graduated", stateMutability: "view", inputs: [], outputs: [{ type: "bool" }] }
 ] as const;
 
@@ -200,6 +201,7 @@ export async function readSystemHealth(): Promise<SystemHealthReport> {
 
       let latestMarketHealthy = launchCount === 0n;
       let latestMarketDetail = "No V6 launches yet; factory is ready for the first market.";
+      let latestGraduationAdapter: Address | null = null;
       if (launchCount > 0n) {
         const latestLaunchId = launchCount - 1n;
         const latestLaunch = await client.readContract({
@@ -208,13 +210,15 @@ export async function readSystemHealth(): Promise<SystemHealthReport> {
           functionName: "getLaunch",
           args: [latestLaunchId]
         });
-        const [marketCode, tokenCode, marketToken, marketTarget, marketGraduated] = await Promise.all([
+        const [marketCode, tokenCode, marketToken, marketTarget, marketAdapter, marketGraduated] = await Promise.all([
           client.getBytecode({ address: latestLaunch.market }),
           client.getBytecode({ address: latestLaunch.token }),
           client.readContract({ address: latestLaunch.market, abi: marketHealthAbi, functionName: "token" }),
           client.readContract({ address: latestLaunch.market, abi: marketHealthAbi, functionName: "graduationTarget" }),
+          client.readContract({ address: latestLaunch.market, abi: marketHealthAbi, functionName: "graduationAdapter" }),
           client.readContract({ address: latestLaunch.market, abi: marketHealthAbi, functionName: "graduated" })
         ]);
+        latestGraduationAdapter = getAddress(marketAdapter);
         latestMarketHealthy = Boolean(marketCode && marketCode !== "0x" && tokenCode && tokenCode !== "0x")
           && getAddress(marketToken) === getAddress(latestLaunch.token)
           && marketTarget === policy.graduationTarget;
@@ -227,18 +231,23 @@ export async function readSystemHealth(): Promise<SystemHealthReport> {
         latestMarketDetail
       ));
 
-      const [adapterCode, boundFactory] = await Promise.all([
-        client.getBytecode({ address: policy.graduationAdapter }),
-        client.readContract({ address: policy.graduationAdapter, abi: adapterHealthAbi, functionName: "factory" })
-      ]);
-      const graduationHealthy = expectedEconomics
-        && Boolean(adapterCode && adapterCode !== "0x")
-        && getAddress(boundFactory) === factory;
+      let graduationHealthy = expectedEconomics && latestGraduationAdapter !== null;
+      let graduationDetail = "No live V6 market is available to verify the graduation adapter.";
+      if (latestGraduationAdapter) {
+        const [adapterCode, boundFactory] = await Promise.all([
+          client.getBytecode({ address: latestGraduationAdapter }),
+          client.readContract({ address: latestGraduationAdapter, abi: adapterHealthAbi, functionName: "factory" })
+        ]);
+        graduationHealthy = graduationHealthy
+          && Boolean(adapterCode && adapterCode !== "0x")
+          && getAddress(boundFactory) === factory;
+        graduationDetail = `${Number(policy.postGraduationFeeBps) / 100}% V4 pool fee · latest market adapter bound to active factory · ${latestGraduationAdapter.slice(0, 8)}…${latestGraduationAdapter.slice(-6)}`;
+      }
       checks.push(check(
         "graduation",
         "V4 graduation route",
         graduationHealthy,
-        `${Number(policy.postGraduationFeeBps) / 100}% V4 pool fee · adapter bound to active factory · ${policy.graduationAdapter.slice(0, 8)}…${policy.graduationAdapter.slice(-6)}`
+        graduationDetail
       ));
       return {
         ok: checks.every((item) => item.state === "operational"),
