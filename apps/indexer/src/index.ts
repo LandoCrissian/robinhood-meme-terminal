@@ -1307,7 +1307,7 @@ function startServer() {
         }
         const requested = Number.parseInt(url.searchParams.get("limit") ?? "12", 10);
         const limit = Number.isSafeInteger(requested) ? Math.min(50, Math.max(1, requested)) : 12;
-        const market = tradeRoute[1].toLowerCase();
+        const market = tradeRoute[1]!.toLowerCase();
         const data = await marketTradeRows(market, limit);
         if (!data) {
           json(response, 404, { error: "V6 market not found" });
