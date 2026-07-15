@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { encodeFunctionData, formatEther, formatUnits, maxUint256, parseEther, parseUnits, type Address } from "viem";
-import { useAccount, useBalance, useBlockNumber, useCapabilities, usePublicClient, useReadContract, useSendCalls, useWaitForCallsStatus, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
+import { useAccount, useBalance, useCapabilities, usePublicClient, useReadContract, useSendCalls, useWaitForCallsStatus, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { activeChain, isMainnetRelease } from "../lib/network";
 import { useLaunchRecord } from "../lib/use-launch-record";
 import { PriceHistoryChart, type PricePoint } from "./price-history-chart";
@@ -192,12 +192,9 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply, creator }: { to
   const graduationAdapterAddress = graduationAdapter.data ?? ZERO;
   const migrated = useReadContract({ address: graduationAdapterAddress, abi: graduationAdapterStateAbi, functionName: "isGraduated", args: [tokenAddress], chainId: activeChain.id, query: { enabled: isMainnetRelease && graduated.data === true && graduationAdapter.data !== undefined && graduationAdapter.data !== ZERO, retry: false, refetchInterval: 5_000 } });
   const fairStartActive = useReadContract({ address: target, abi: marketAbi, functionName: "fairStartActive", chainId: activeChain.id, query: { enabled, refetchInterval: 5_000 } });
-  const tradingOpensAt = useReadContract({ address: target, abi: marketAbi, functionName: "tradingOpensAtBlock", chainId: activeChain.id, query: { enabled, refetchInterval: 5_000 } });
-  const fairStartEndsAt = useReadContract({ address: target, abi: marketAbi, functionName: "fairStartEndsAtBlock", chainId: activeChain.id, query: { enabled, refetchInterval: 5_000 } });
   const fairStartMaxTxBps = useReadContract({ address: target, abi: marketAbi, functionName: "fairStartMaxTxBps", chainId: activeChain.id, query: { enabled, retry: false } });
   const fairStartMaxWalletBps = useReadContract({ address: target, abi: marketAbi, functionName: "fairStartMaxWalletBps", chainId: activeChain.id, query: { enabled, retry: false } });
   const fairStartPurchased = useReadContract({ address: target, abi: marketAbi, functionName: "fairStartPurchased", args: [account ?? ZERO], chainId: activeChain.id, query: { enabled: Boolean(account && market), refetchInterval: 5_000 } });
-  const currentBlock = useBlockNumber({ chainId: activeChain.id, watch: true });
   const balance = useReadContract({ address: tokenAddress, abi: tokenTradeAbi, functionName: "balanceOf", args: [account ?? ZERO], chainId: activeChain.id, query: { enabled: Boolean(account), refetchInterval: 5_000 } });
   const creatorBalance = useReadContract({ address: tokenAddress, abi: tokenTradeAbi, functionName: "balanceOf", args: [creator], chainId: activeChain.id, query: { enabled, refetchInterval: 5_000 } });
   const marketInventory = useReadContract({ address: tokenAddress, abi: tokenTradeAbi, functionName: "balanceOf", args: [target], chainId: activeChain.id, query: { enabled, refetchInterval: 5_000 } });
@@ -224,12 +221,7 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply, creator }: { to
   const fairStartBought = fairStartPurchased.data ?? 0n;
   const fairStartWalletRemaining = fairStartMaxWallet > fairStartBought ? fairStartMaxWallet - fairStartBought : 0n;
   const fairStartNextBuyLimit = fairStartMaxTx < fairStartWalletRemaining ? fairStartMaxTx : fairStartWalletRemaining;
-  const latestBlock = currentBlock.data ?? 0n;
-  const openBlock = tradingOpensAt.data ?? 0n;
-  const endBlock = fairStartEndsAt.data ?? 0n;
-  const blocksUntilOpen = currentBlock.data !== undefined && openBlock > latestBlock ? openBlock - latestBlock : 0n;
-  const protectedBlocksRemaining = currentBlock.data !== undefined && endBlock > latestBlock ? endBlock - latestBlock : 0n;
-  const fairStartVisible = blocksUntilOpen > 0n || Boolean(fairStartActive.data);
+  const fairStartVisible = Boolean(fairStartActive.data);
   const fairStartTxExceeded = Boolean(fairStartActive.data && mode === "buy" && buyOut > fairStartMaxTx);
   const fairStartWalletExceeded = Boolean(fairStartActive.data && mode === "buy" && fairStartBought + buyOut > fairStartMaxWallet);
   const circulatingSupply = totalSupply > (marketInventory.data ?? totalSupply) ? totalSupply - (marketInventory.data ?? totalSupply) : 0n;
@@ -407,8 +399,8 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply, creator }: { to
         <small>{isMainnetRelease ? graduated.data ? migratedToV4 ? "Graduated to the canonical Uniswap V4 pool. Curve trading is permanently closed; choose Buy or Sell below to continue in the official Uniswap app." : "The curve target is complete and curve trading is permanently closed. The permissionless V4 finalization transaction is available in Graduation & fees below." : `${Number(progress.data ?? 0n) / 100}% toward curve completion and V4 graduation readiness (${formatEth(graduationTarget.data ?? 0n, 4)} ETH target).` : "DEX migration is disabled in this testnet alpha. Launching, curve trading, and fee accounting remain live."}</small>
       </div>
       {fairStartVisible && <section className="fairStartCard" aria-labelledby="fair-start-heading">
-        <div className="fairStartHeader"><div><p className="eyebrow">FAIR START</p><h3 id="fair-start-heading">{blocksUntilOpen > 0n ? "Trading opens shortly" : "Protected launch is active"}</h3></div><strong>{blocksUntilOpen > 0n ? `${blocksUntilOpen} block${blocksUntilOpen === 1n ? "" : "s"}` : `${protectedBlocksRemaining} block${protectedBlocksRemaining === 1n ? "" : "s"} left`}</strong></div>
-        <p>Large early buys are briefly limited so more traders get a fair chance. Once trading opens, selling stays available, and normal buying begins automatically when this countdown ends.</p>
+        <div className="fairStartHeader"><div><p className="eyebrow">FAIR START</p><h3 id="fair-start-heading">Fair Start protection is active</h3></div><strong>ACTIVE</strong></div>
+        <p>Large early buys are temporarily limited so more traders get a fair chance. The contract removes these limits automatically when its protected window ends. Selling remains available.</p>
         <div className="fairStartMetrics">
           <div><small>Per buy</small><strong>Up to {Number(formatUnits(fairStartMaxTx, 18)).toLocaleString()} {symbol}</strong></div>
           <div><small>{account ? "Your remaining allowance" : "Per wallet"}</small><strong>{Number(formatUnits(account ? fairStartWalletRemaining : fairStartMaxWallet, 18)).toLocaleString()} {symbol}</strong></div>
