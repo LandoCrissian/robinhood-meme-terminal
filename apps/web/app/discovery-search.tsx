@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import type { LaunchFeedItem, LaunchFeedResponse } from "../lib/launch-feed";
+import { describeCreatorExposure } from "../lib/creator-signals";
 import { ipfsToHttp } from "../lib/token-metadata";
 
 function matches(value: string, query: string) {
@@ -92,7 +93,7 @@ export function DiscoverySearch() {
               <div className="searchResultGrid">{rmtResults.map((launch) => (
                 <Link className="searchResult" href={`/token/${launch.token}`} key={launch.token}>
                   <span className="coin searchArtwork">{launch.image ? <img src={ipfsToHttp(launch.image)} alt="" loading="lazy" /> : cleanSymbol(launch.symbol).slice(0, 2)}</span>
-                  <span><strong>{launch.name}</strong><small>${cleanSymbol(launch.symbol)} · RMT V6 · origin verified</small></span>
+                  <span><strong>{launch.name}</strong><small>${cleanSymbol(launch.symbol)} · RMT V6 · {describeCreatorExposure(launch).label}</small></span>
                   <em>Open →</em>
                 </Link>
               ))}</div>
