@@ -182,8 +182,16 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply, creator, compac
         const latestBlock = await client.getBlockNumber();
         const recentStart = latestBlock > 19_999n ? latestBlock - 19_999n : 0n;
         const fromBlock = launchBlock > recentStart ? launchBlock : recentStart;
-        const logs = await client.getContractEvents({ address: marketAddress, abi: marketAbi, eventName: "Trade", fromBlock, toBlock: latestBlock, strict: true });
-        const newestFirst: RecentTrade[] = logs.reverse().flatMap((log) => log.transactionHash ? [{ transactionHash: log.transactionHash, trader: log.args.trader, isBuy: log.args.isBuy, tokenAmount: log.args.tokenAmount, ethAmount: log.args.ethAmount, feeAmount: log.args.feeAmount, virtualEthReserve: log.args.virtualEthReserve, virtualTokenReserve: log.args.virtualTokenReserve, blockNumber: log.blockNumber }] : []);
+        const collected: RecentTrade[] = [];
+        let batchEnd = latestBlock;
+        while (batchEnd >= fromBlock && collected.length < 12) {
+          const batchStart = batchEnd - fromBlock > 4_999n ? batchEnd - 4_999n : fromBlock;
+          const batchLogs = await client.getContractEvents({ address: marketAddress, abi: marketAbi, eventName: "Trade", fromBlock: batchStart, toBlock: batchEnd, strict: true });
+          collected.push(...batchLogs.flatMap((log) => log.transactionHash ? [{ transactionHash: log.transactionHash, trader: log.args.trader, isBuy: log.args.isBuy, tokenAmount: log.args.tokenAmount, ethAmount: log.args.ethAmount, feeAmount: log.args.feeAmount, virtualEthReserve: log.args.virtualEthReserve, virtualTokenReserve: log.args.virtualTokenReserve, blockNumber: log.blockNumber }] : []));
+          if (batchStart === fromBlock) break;
+          batchEnd = batchStart - 1n;
+        }
+        const newestFirst = collected.sort((left, right) => left.blockNumber === right.blockNumber ? 0 : left.blockNumber > right.blockNumber ? -1 : 1);
         if (cancelled) return;
         setRecentTrades(newestFirst.slice(0, 12));
         setTradeHistoryError(undefined);
