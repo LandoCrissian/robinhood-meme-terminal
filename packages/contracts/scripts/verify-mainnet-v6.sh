@@ -125,6 +125,7 @@ require_code() {
 exact_blockscout_record() {
   local address="$1"
   local expected_name="$2"
+  local expected_path="$3"
   local payload
   if ! payload="$(curl --fail --silent --show-error --location --connect-timeout 10 --max-time 30 \
     --header 'Accept: application/json' "${BLOCKSCOUT_API_V2_URL%/}/$address" 2>/dev/null)"; then
@@ -135,20 +136,25 @@ exact_blockscout_record() {
 import json
 import sys
 
-expected_name, expected_compiler, expected_evm = sys.argv[1:]
+expected_name, expected_compiler, expected_evm, expected_path = sys.argv[1:]
 record = json.load(sys.stdin)
 settings = record.get("compiler_settings")
 optimizer = settings.get("optimizer") if isinstance(settings, dict) else None
 target = settings.get("compilationTarget") if isinstance(settings, dict) else None
 runs = record.get("optimizations_runs", record.get("optimization_runs"))
+with open(expected_path, "r", encoding="utf-8", newline="") as source_file:
+    expected_source = source_file.read()
 valid = (
     record.get("is_verified") is True
     and record.get("is_fully_verified") is True
-    and record.get("is_partially_verified") is not True
+    and record.get("is_partially_verified") is False
     and record.get("is_changed_bytecode") is False
     and record.get("name") == expected_name
     and str(record.get("language", "")).lower() == "solidity"
     and record.get("compiler_version") == expected_compiler
+    and record.get("evm_version") == expected_evm
+    and record.get("file_path") == expected_path
+    and record.get("source_code") == expected_source
     and record.get("optimization_enabled") is True
     and runs == 200
     and isinstance(settings, dict)
@@ -157,13 +163,56 @@ valid = (
     and optimizer.get("enabled") is True
     and optimizer.get("runs") == 200
     and settings.get("evmVersion") == expected_evm
-    and isinstance(target, dict)
-    and list(target.values()) == [expected_name]
+    and target == {expected_path: expected_name}
     and record.get("creation_status") == "success"
 )
 sys.exit(0 if valid else 1)
-' "$expected_name" "$EXPECTED_COMPILER_VERSION" "$EXPECTED_EVM_VERSION" \
+' "$expected_name" "$EXPECTED_COMPILER_VERSION" "$EXPECTED_EVM_VERSION" "$expected_path" \
     <<<"$payload" >/dev/null 2>&1
+}
+
+describe_blockscout_record() {
+  local address="$1"
+  local expected_name="$2"
+  local expected_path="$3"
+  local payload
+  if ! payload="$(curl --fail --silent --show-error --location --connect-timeout 10 --max-time 30 \
+    --header 'Accept: application/json' "${BLOCKSCOUT_API_V2_URL%/}/$address" 2>/dev/null)"; then
+    echo "Blockscout has no readable v2 source record for $address"
+    return
+  fi
+
+  python3 -c '
+import hashlib
+import json
+import sys
+
+expected_name, expected_path = sys.argv[1:]
+record = json.load(sys.stdin)
+settings = record.get("compiler_settings")
+target = settings.get("compilationTarget") if isinstance(settings, dict) else None
+source = record.get("source_code")
+summary = {
+    "is_verified": record.get("is_verified"),
+    "is_fully_verified": record.get("is_fully_verified"),
+    "is_partially_verified": record.get("is_partially_verified"),
+    "is_changed_bytecode": record.get("is_changed_bytecode"),
+    "name": record.get("name"),
+    "file_path": record.get("file_path"),
+    "language": record.get("language"),
+    "compiler_version": record.get("compiler_version"),
+    "evm_version": record.get("evm_version"),
+    "optimization_enabled": record.get("optimization_enabled"),
+    "optimization_runs": record.get("optimizations_runs", record.get("optimization_runs")),
+    "via_ir": settings.get("viaIR") if isinstance(settings, dict) else None,
+    "compilation_target": target,
+    "creation_status": record.get("creation_status"),
+    "source_sha256": hashlib.sha256(source.encode()).hexdigest() if isinstance(source, str) else None,
+    "expected_name": expected_name,
+    "expected_path": expected_path,
+}
+print("Blockscout v2 record: " + json.dumps(summary, sort_keys=True))
+' "$expected_name" "$expected_path" <<<"$payload"
 }
 
 verify_contract() {
@@ -172,13 +221,16 @@ verify_contract() {
   local contract="$3"
   local constructor_args="${4:-}"
   local expected_name="${contract##*:}"
+  local expected_path="${contract%%:*}"
   local output=""
   local command_status=0
 
-  if exact_blockscout_record "$address" "$expected_name"; then
+  if exact_blockscout_record "$address" "$expected_name" "$expected_path"; then
     echo "Exact Blockscout record already verified for $label at $address"
     return
   fi
+
+  describe_blockscout_record "$address" "$expected_name" "$expected_path"
 
   local command=(
     forge verify-contract
@@ -186,7 +238,7 @@ verify_contract() {
     --chain "$CHAIN_ID"
     --verifier blockscout
     --verifier-url "$VERIFIER_URL"
-    --compiler-version 0.8.26
+    --compiler-version "$EXPECTED_COMPILER_VERSION"
     --num-of-optimizations 200
     --via-ir
     --skip-is-verified-check
@@ -202,7 +254,7 @@ verify_contract() {
   printf '%s\n' "$output"
 
   for ((attempt = 1; attempt <= BLOCKSCOUT_POLL_ATTEMPTS; attempt += 1)); do
-    if exact_blockscout_record "$address" "$expected_name"; then
+    if exact_blockscout_record "$address" "$expected_name" "$expected_path"; then
       echo "Exact Blockscout record confirmed for $label at $address"
       return
     fi
