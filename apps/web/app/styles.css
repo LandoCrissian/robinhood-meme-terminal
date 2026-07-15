@@ -274,3 +274,46 @@ main{max-width:1180px}
   .panel{border-radius:16px}
 }
 @media(max-width:380px){.hero{padding-top:30px}.hero h1{font-size:2.25rem}}
+
+/* V6 compact terminal and dedicated launch flow */
+.terminalIntro{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:14px 28px;padding:30px 2px 18px}
+.terminalIntro h1{margin:6px 0 7px;font-size:clamp(1.85rem,4vw,3rem);line-height:1;letter-spacing:-.045em}
+.terminalIntro>div:first-child>p:last-child{max-width:680px;margin:0;color:#929f96;font-size:.88rem;line-height:1.55}
+.terminalIntroActions{display:flex;align-items:center;gap:8px}
+.terminalIntroActions a{display:inline-flex;min-height:44px;align-items:center;justify-content:center;padding:0 14px;border-radius:11px;font-size:.75rem;font-weight:900;text-decoration:none;white-space:nowrap}
+.terminalIntro .trustStrip{grid-column:1/-1;margin-top:0}
+
+.launchPage{max-width:1120px}
+.launchPageHeader{display:flex;align-items:flex-end;justify-content:space-between;gap:32px;padding:34px 0 20px}
+.launchPageHeader h1{max-width:720px;margin:7px 0 10px;font-size:clamp(2rem,4.6vw,3.75rem);line-height:.98;letter-spacing:-.05em}
+.launchPageHeader>div:first-child>p:last-child{max-width:690px;margin:0;color:#929f96;line-height:1.6}
+.launchAssurances{display:flex;max-width:280px;flex-wrap:wrap;justify-content:flex-end;gap:7px}
+.launchAssurances span{padding:7px 9px;border:1px solid #2b3b30;border-radius:999px;color:#849188;font-size:.64rem;font-weight:800;white-space:nowrap}
+.launchPageGrid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(300px,.68fr);align-items:start;gap:16px}
+.launchGuide{position:sticky;top:80px}
+.launchGuide h2{font-size:1.35rem}
+.launchPage .siteFooter{margin-top:28px}
+
+@media(max-width:880px){
+  .terminalIntro{grid-template-columns:1fr;padding-top:24px}
+  .terminalIntroActions{grid-row:2}
+  .terminalIntro .trustStrip{grid-column:auto}
+  .launchPageHeader{align-items:flex-start;flex-direction:column;gap:14px;padding-top:24px}
+  .launchAssurances{max-width:none;justify-content:flex-start}
+  .launchPageGrid{grid-template-columns:1fr}
+  .launchPage .launchGuide{position:relative;top:auto;order:0}
+}
+
+@media(max-width:640px){
+  .terminalIntro{gap:11px;padding:21px 0 12px}
+  .terminalIntro h1{font-size:clamp(1.65rem,8.5vw,2.25rem)}
+  .terminalIntro>div:first-child>p:last-child{font-size:.78rem}
+  .terminalIntroActions{display:grid;grid-template-columns:1fr 1fr}
+  .terminalIntroActions a{padding:0 10px}
+  .terminalIntro .trustStrip{gap:5px;margin-top:1px}
+  .terminalIntro .trustStrip span{padding:5px 7px;font-size:.58rem}
+  .launchPageHeader{padding-top:18px}
+  .launchPageHeader h1{font-size:2rem}
+  .launchPageHeader>div:first-child>p:last-child{font-size:.83rem}
+  .launchAssurances span{font-size:.59rem}
+}

@@ -7,10 +7,6 @@ import { activeReleaseBadge, isMainnetRelease } from "../lib/network";
 import type { LaunchFeedItem, LaunchFeedResponse } from "../lib/launch-feed";
 import { ipfsToHttp } from "../lib/token-metadata";
 
-function shortAddress(address: string) {
-  return `${address.slice(0, 6)}…${address.slice(-4)}`;
-}
-
 function displaySymbol(symbol: string) {
   return symbol.replace(/^\$+/, "");
 }
@@ -97,26 +93,28 @@ export function FreshLaunchFeed() {
       </div>
 
       {hot.length > 0 && <div className="hotGrid">{hot.map((launch, index) => (
-        <Link className="hotCard" href={`/token/${launch.token}`} key={`hot-${launch.transactionHash}-${launch.launchId}`}>
-          <div className="hotRank">0{index + 1}</div>
-          <TokenArtwork launch={launch} featured />
-          <div className="hotIdentity"><strong>{launch.name}</strong><span>{"$" + displaySymbol(launch.symbol)}</span></div>
-          <div className="hotSignal"><span><small>{launch.graduated ? "Curve phase complete" : "Recent curve volume"}</small><em>{activityLabel(launch)}</em></span><strong>{volumeLabel(launch.volumeWei)}</strong></div>
-          <div className="miniProgress" aria-label={`${launch.progressBps / 100}% graduation progress`}><span style={{ width: `${launch.progressBps / 100}%` }} /></div>
-        </Link>
+        <article className="hotCard" key={`hot-${launch.transactionHash}-${launch.launchId}`}>
+          <Link className="hotCardMain" href={`/token/${launch.token}`} aria-label={`Open ${launch.name}`}>
+            <div className="hotRank">0{index + 1}</div>
+            <TokenArtwork launch={launch} featured />
+            <div className="hotIdentity"><strong>{launch.name}</strong><span>{"$" + displaySymbol(launch.symbol)}</span></div>
+            <div className="hotSignal"><span><small>{launch.graduated ? "Curve complete" : "Recent volume"}</small><em>{activityLabel(launch)}</em></span><strong>{volumeLabel(launch.volumeWei)}</strong></div>
+            <div className="miniProgress" aria-label={`${launch.progressBps / 100}% graduation progress`}><span style={{ width: `${launch.progressBps / 100}%` }} /></div>
+          </Link>
+          <div className="tokenCardActions"><Link className="buyCardAction" href={`/token/${launch.token}?side=buy#trade`} aria-label={`Buy ${launch.name}`}>Buy</Link><Link className="sellCardAction" href={`/token/${launch.token}?side=sell#trade`} aria-label={`Sell ${launch.name}`}>Sell</Link></div>
+        </article>
       ))}</div>}
 
-      <div className="latestHeader"><div><p className="eyebrow">JUST LAUNCHED</p><h3>Latest tokens</h3></div><a href="#launch">Launch yours</a></div>
+      <div className="latestHeader"><div><p className="eyebrow">JUST LAUNCHED</p><h3>Latest tokens</h3></div><Link href="/launch">Launch yours</Link></div>
       {launches.length === 0 ? <div className="emptyFeed"><strong>{status === "loading" ? "Reading Robinhood Chain…" : "No launches to display"}</strong><span>{message}</span>{status === "error" && <button onClick={() => void refresh()}>Retry</button>}</div> : visibleLaunches.map((launch) => (
-        <Link className="launchRow" href={`/token/${launch.token}`} key={`${launch.transactionHash}-${launch.launchId}`}>
-          <article>
+        <article className="launchRowCard" key={`${launch.transactionHash}-${launch.launchId}`}>
+          <Link className="launchRowMain" href={`/token/${launch.token}`} aria-label={`Open ${launch.name}`}>
             <TokenArtwork launch={launch} />
             <div className="identity"><strong>{launch.name}</strong><span>{"$" + displaySymbol(launch.symbol) + " • #" + launch.launchId}</span></div>
-            <div><small>Curve reserve</small><strong>{reserveLabel(launch.reserveWei)}</strong></div>
-            <div><small>Graduation</small><strong>{launch.graduated ? "Complete" : `${launch.progressBps / 100}%`}</strong></div>
-            <div><small>Launch creator</small><strong title={launch.creator}>{shortAddress(launch.creator)}</strong></div>
-          </article>
-        </Link>
+            <div className="launchMetrics"><span><small>Reserve</small><strong>{reserveLabel(launch.reserveWei)}</strong></span><span><small>Volume</small><strong>{volumeLabel(launch.volumeWei)}</strong></span><span><small>Graduation</small><strong>{launch.graduated ? "Complete" : `${launch.progressBps / 100}%`}</strong></span></div>
+          </Link>
+          <div className="launchActions"><Link className="buyCardAction" href={`/token/${launch.token}?side=buy#trade`} aria-label={`Buy ${launch.name}`}>Buy</Link><Link className="sellCardAction" href={`/token/${launch.token}?side=sell#trade`} aria-label={`Sell ${launch.name}`}>Sell</Link></div>
+        </article>
       ))}
       {launches.length > 6 && <button className="showMore" type="button" onClick={() => setShowAll((value) => !value)}>{showAll ? "Show fewer" : `View all ${launches.length}`}</button>}
       {launches.length > 0 && <p className="feedStatus">{message} Refreshes every 10 seconds.</p>}

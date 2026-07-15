@@ -364,3 +364,129 @@ dl{grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr)}
   .largeCoin{width:54px;height:54px}
   .tokenDescription{font-size:.84rem}
 }
+
+/* V6 trade-first token workspace */
+.detailPage{max-width:1180px;padding-top:20px;padding-bottom:54px}
+.detailNav{min-height:52px}
+.tokenHero{display:grid;grid-template-columns:64px minmax(0,1fr);align-items:start;gap:16px;margin-top:12px;padding:19px 21px}
+.tokenHeroCopy{min-width:0}
+.tokenOriginLine{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.tokenOriginLine>span{flex:0 0 auto;color:#78857c;font-size:.66rem;font-weight:800}
+.tokenHero h1{max-width:none;margin:4px 0 2px;font-size:clamp(1.75rem,3.6vw,2.75rem);line-height:1;letter-spacing:-.04em}
+.tokenHero .tokenSymbol{font-size:.95rem}
+.tokenHero .tokenDescription{display:-webkit-box;max-width:760px;margin:9px 0 0;overflow:hidden;-webkit-box-orient:vertical;-webkit-line-clamp:2;font-size:.8rem;line-height:1.45}
+.tokenHeroActions{display:flex;flex-wrap:wrap;align-items:flex-start;gap:10px;margin-top:12px}
+.tokenHeroActions .watchTokenButton{width:auto;min-height:38px;margin:0;padding:0 11px}
+.tokenHeroActions .tokenShareArea{display:flex;flex:1;flex-wrap:wrap;align-items:center;gap:7px;margin:0}
+.tokenHeroActions .tokenContractQuick,.tokenHeroActions .tokenShareActions button{min-height:38px}
+.tokenHeroActions .tokenActionNotice{flex-basis:100%;min-height:0}
+
+.marketPanel{margin-top:14px;padding:20px}
+.marketTitle{align-items:center;margin-bottom:16px}
+.marketTitle h2{margin-bottom:0}
+.marketWorkspace{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(315px,.72fr);align-items:start;gap:16px}
+.marketOverview{min-width:0}
+.marketOverview .marketStats{margin:0 0 12px}
+.marketOverview .intelligenceStats{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.marketOverview .marketStats>div{min-height:102px;padding:14px;border-radius:13px;background:#0a110c}
+.marketOverview .buyingPowerBar{margin:0 0 12px}
+.marketOverview .graduationCard{margin:0 0 12px;padding:14px}
+.marketOverview .fairStartCard{margin:0 0 12px}
+.marketOverview .priceChart{margin:0;min-height:280px}
+
+.tradeRail{position:sticky;top:76px;min-width:0;padding:15px;border:1px solid #2b3b30;border-radius:17px;background:linear-gradient(180deg,#0c1510,#080e0a);box-shadow:0 18px 54px rgba(0,0,0,.3)}
+.tradeRailHeader{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px}
+.tradeRailHeader h3{margin:3px 0 0;font-size:1.2rem}
+.tradeRailHeader>span{padding:5px 8px;border-radius:999px;background:#12371a;color:#71ec82;font-size:.61rem;font-weight:900;text-transform:uppercase}
+.tradeRail .tradeTabs{margin-bottom:10px;padding:4px}
+.tradeRail .tradeTabs button{min-height:42px;padding:9px}
+.tradeRail.sell .tradeTabs button:nth-child(2).active{background:#e54848;color:#fff}
+.tradeRail .tradeAmountCard{padding:14px;border-radius:14px}
+.tradeRail .tradeInputRow{margin-top:7px}
+.tradeRail .tradeInputRow input{min-height:52px;font-size:clamp(1.8rem,4vw,2.5rem)}
+.tradeRail .quickAmounts{margin-top:10px}
+.tradeRail .quickAmounts button{min-height:38px}
+.tradeRail .orderPreview{margin-top:10px;padding-top:10px}
+.tradeRail .tradeDisclosure{gap:5px;margin:10px 0}
+.tradeRail .tradeDisclosure span{padding:5px 7px;font-size:.59rem}
+.creatorRiskSummary{display:grid;grid-template-columns:1fr auto;width:100%;margin:0 0 10px;padding:10px 11px;border:1px solid #28382e;border-radius:11px;background:#0a120d;color:#dce4de;text-align:left;cursor:pointer}
+.creatorRiskSummary>span{color:#849188;font-size:.65rem;font-weight:800}
+.creatorRiskSummary>strong{font-size:.69rem}
+.creatorRiskSummary>small{grid-column:1/-1;margin-top:3px;color:#6f7d73;font-size:.6rem}
+.creatorRiskSummary.highRisk{border-color:#80582d;background:#20160d}
+.creatorRiskSummary.highRisk>strong,.creatorRiskSummary.highRisk>small{color:#ffc071}
+.tradeRail .creatorRiskCheck{margin:0 0 10px;padding:11px}
+.tradeRail .preflightCard{margin:0 0 10px;padding:10px 11px}
+.tradeRail .tradeStage{margin:10px 0}
+.tradeRail .callout,.tradeRail .errors{margin:10px 0}
+.tradeRail .launch{min-height:48px}
+.tradeRail .launch.sellAction:not(:disabled){background:#e54848;color:#fff}
+.tradeExplorer{display:block;margin-top:10px;text-align:center;font-size:.68rem}
+.tradeRail .starterGuide{margin:11px 0 0;border-radius:12px}
+.tradeRail .starterGuide summary{min-height:42px;padding:0 11px}
+.tradeRail .starterSteps{grid-template-columns:1fr;padding:0 10px 9px}
+.tradeRail .starterLinks{padding:0 10px 10px}
+
+.marketDetailTabs,.tokenInfoTabs{display:flex;gap:6px;margin-top:18px;padding:5px;border:1px solid #243129;border-radius:13px;background:#080e0a}
+.marketDetailTabs{max-width:420px}
+.marketDetailTabs button,.tokenInfoTabs button{flex:1;min-height:42px;border:0;border-radius:9px;background:transparent;color:#819087;font:inherit;font-size:.73rem;font-weight:850;cursor:pointer}
+.marketDetailTabs button.active,.tokenInfoTabs button.active{background:#16231a;color:#75f184}
+.marketPanel>.tradeHistory{margin-top:12px;padding-top:0;border-top:0}
+.marketPanel>.creatorIntelligence{margin:12px 0 0}
+.mobileTradeBar{display:none}
+
+.tokenInfoPanel{margin-top:14px;padding:16px 20px}
+.tokenInfoTabs{max-width:560px;margin:0 0 16px}
+.tokenInfoPane{min-width:0}
+.overviewPane,.aboutPane{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px}
+.overviewPane h2,.aboutPane h2{margin:4px 0 16px;font-size:1.2rem}
+.compactSafetyList{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+.compactSafetyList span{padding:8px 10px;font-size:.76rem}
+.tokenInfoPane dl{font-size:.8rem}
+.rewardsPane .rewardDashboard{margin:0;padding:0;border:0;background:transparent;box-shadow:none}
+.aboutPane>section>p:not(.eyebrow){color:#9eaaa1;line-height:1.6}
+.aboutPane .metadataPanel{margin:0;padding:0;border:0;background:transparent;box-shadow:none}
+
+@media(max-width:900px){
+  .marketWorkspace{grid-template-columns:1fr}
+  .tradeRail{position:relative;top:auto;grid-row:1}
+  .marketOverview{grid-row:2}
+}
+
+@media(max-width:640px){
+  .detailPage{padding-top:8px;padding-bottom:104px}
+  .detailNav{min-height:46px}
+  .tokenHero{grid-template-columns:50px minmax(0,1fr);gap:11px;margin-top:8px;padding:14px}
+  .largeCoin{width:50px;height:50px}
+  .tokenHero h1{font-size:clamp(1.55rem,8vw,2.15rem)}
+  .tokenOriginLine{align-items:flex-start;flex-direction:column;gap:3px}
+  .tokenHero .tokenDescription{-webkit-line-clamp:2;font-size:.75rem}
+  .tokenHeroActions{grid-column:1/-1;display:grid;grid-template-columns:1fr;margin-top:9px}
+  .tokenHeroActions .watchTokenButton{width:100%}
+  .tokenHeroActions .tokenShareArea{display:grid;grid-template-columns:1fr;width:100%}
+  .tokenHeroActions .tokenShareActions{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .marketPanel{padding:13px}
+  .marketTitle{margin-bottom:11px}
+  .marketTitle h2{font-size:1.25rem}
+  .marketWorkspace{gap:12px}
+  .marketOverview .intelligenceStats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .marketOverview .marketStats>div{min-height:88px;padding:11px}
+  .marketOverview .marketStats strong{font-size:.85rem}
+  .tradeRail{padding:12px;border-radius:14px}
+  .tradeRail .tradeInputRow input{font-size:2rem}
+  .marketDetailTabs{max-width:none}
+  .marketPanel>.creatorIntelligence{padding:14px}
+  .overviewPane,.aboutPane{grid-template-columns:1fr;gap:18px}
+  .tokenInfoPanel{padding:12px}
+  .tokenInfoTabs button{font-size:.65rem}
+  .compactSafetyList{grid-template-columns:1fr 1fr}
+  .mobileTradeBar{position:fixed;z-index:90;right:12px;bottom:max(12px,env(safe-area-inset-bottom));left:12px;display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:7px;border:1px solid #314138;border-radius:15px;background:rgba(8,14,10,.96);box-shadow:0 18px 46px rgba(0,0,0,.55);backdrop-filter:blur(16px)}
+  .mobileTradeBar button{min-height:49px;border:0;border-radius:10px;background:#152119;color:#87948b;font:inherit;font-weight:900;cursor:pointer}
+  .mobileTradeBar button:first-child.active{background:#00c805;color:#021506}
+  .mobileTradeBar button:last-child.active{background:#e54848;color:#fff}
+}
+
+@media(max-width:390px){
+  .marketOverview .intelligenceStats{grid-template-columns:1fr}
+  .compactSafetyList{grid-template-columns:1fr}
+}
