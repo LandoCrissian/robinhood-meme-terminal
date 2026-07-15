@@ -140,10 +140,12 @@ expected_name, expected_compiler, expected_evm, expected_path = sys.argv[1:]
 record = json.load(sys.stdin)
 settings = record.get("compiler_settings")
 optimizer = settings.get("optimizer") if isinstance(settings, dict) else None
-target = settings.get("compilationTarget") if isinstance(settings, dict) else None
 runs = record.get("optimizations_runs", record.get("optimization_runs"))
 with open(expected_path, "r", encoding="utf-8", newline="") as source_file:
     expected_source = source_file.read()
+# Blockscout v2 currently omits compiler_settings.compilationTarget even for its
+# exact/full records. Exact path, name, source text, and unchanged bytecode bind
+# this record to the reviewed primary compilation source without that field.
 valid = (
     record.get("is_verified") is True
     and record.get("is_fully_verified") is True
@@ -163,7 +165,6 @@ valid = (
     and optimizer.get("enabled") is True
     and optimizer.get("runs") == 200
     and settings.get("evmVersion") == expected_evm
-    and target == {expected_path: expected_name}
     and record.get("creation_status") == "success"
 )
 sys.exit(0 if valid else 1)
