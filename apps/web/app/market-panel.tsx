@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { encodeFunctionData, formatEther, formatUnits, maxUint256, parseEther, parseUnits, type Address } from "viem";
 import { useAccount, useBalance, useCapabilities, usePublicClient, useReadContract, useSendCalls, useWaitForCallsStatus, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { activeChain, isMainnetRelease } from "../lib/network";
+import { formatTokenEthPrice, formatUsd } from "../lib/price-format";
 import { useLaunchRecord, type LaunchRecordHint } from "../lib/use-launch-record";
 import { PriceHistoryChart, type PricePoint } from "./price-history-chart";
 import { WalletButton } from "./wallet-button";
@@ -81,19 +82,6 @@ function compactAddress(address: Address) {
 
 function formatEth(value: bigint, maximumFractionDigits = 8) {
   return Number(formatEther(value)).toLocaleString(undefined, { maximumFractionDigits });
-}
-
-function formatPrice(value: bigint) {
-  const numeric = Number(formatEther(value));
-  if (numeric === 0) return "0";
-  if (numeric < 0.000001) return numeric.toExponential(4);
-  return numeric.toLocaleString(undefined, { maximumFractionDigits: 9 });
-}
-
-function formatUsd(value?: number) {
-  if (value === undefined || !Number.isFinite(value)) return "Unavailable";
-  if (value > 0 && value < 0.01) return `$${value.toExponential(2)}`;
-  return value.toLocaleString(undefined, { style: "currency", currency: "USD", maximumFractionDigits: 2 });
 }
 
 function cleanDecimal(value: string) {
@@ -469,7 +457,7 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply, creator, compac
       <div className="marketWorkspace">
         <div className="marketOverview">
           {!compact && <PriceHistoryChart points={chartPoints} symbol={symbol} ethUsd={ethUsd} marketCapUsd={marketCapUsd} />}
-          {compact ? <div className="quickMarketSnapshot"><div><small>Price</small><strong>{formatUsd(tokenPriceUsd)}</strong></div><div><small>Market cap</small><strong>{formatUsd(marketCapUsd)}</strong></div><div><small>Graduation</small><strong>{Number(progress.data ?? 0n) / 100}%</strong></div></div> : <><div className="marketStats intelligenceStats"><div><small>Token price</small><strong>{formatUsd(tokenPriceUsd)}</strong><span className="usdSub">{formatPrice(priceWei)} ETH</span></div><div><small>Market cap</small><strong>{formatUsd(marketCapUsd)}</strong><span className="usdSub">{formatEth(marketCapWei, 6)} ETH fully diluted</span></div><div><small>Curve reserve</small><strong>{ethUsd ? formatUsd(Number(formatEther(reserve.data ?? 0n)) * ethUsd) : "USD unavailable"}</strong><span className="usdSub">{formatEth(reserve.data ?? 0n, 7)} ETH</span></div><div><small>Your position</small><strong>{Number(formatUnits(balance.data ?? 0n, 18)).toLocaleString(undefined, { maximumFractionDigits: 2 })} {symbol}</strong><span className="usdSub">≈ {formatUsd(positionValueUsd)} · {formatEth(positionValueWei, 7)} ETH</span></div></div>
+          {compact ? <div className="quickMarketSnapshot"><div><small>Price</small><strong>{formatUsd(tokenPriceUsd)}</strong></div><div><small>Market cap</small><strong>{formatUsd(marketCapUsd)}</strong></div><div><small>Graduation</small><strong>{Number(progress.data ?? 0n) / 100}%</strong></div></div> : <><div className="marketStats intelligenceStats"><div><small>Token price</small><strong>{formatUsd(tokenPriceUsd)}</strong><span className="usdSub">≈ {formatTokenEthPrice(priceWei)} ETH per token</span></div><div><small>Market cap</small><strong>{formatUsd(marketCapUsd)}</strong><span className="usdSub">{formatEth(marketCapWei, 6)} ETH fully diluted</span></div><div><small>Curve reserve</small><strong>{ethUsd ? formatUsd(Number(formatEther(reserve.data ?? 0n)) * ethUsd) : "USD unavailable"}</strong><span className="usdSub">{formatEth(reserve.data ?? 0n, 7)} ETH</span></div><div><small>Your position</small><strong>{Number(formatUnits(balance.data ?? 0n, 18)).toLocaleString(undefined, { maximumFractionDigits: 2 })} {symbol}</strong><span className="usdSub">≈ {formatUsd(positionValueUsd)} · {formatEth(positionValueWei, 7)} ETH</span></div></div>
           {isConnected && <div className="buyingPowerBar"><div><small>Robinhood Chain buying power</small><strong>{walletBalance.isLoading ? "Reading wallet…" : `${formatEth(walletBalance.data?.value ?? 0n, 7)} ETH`}</strong><span>≈ {formatUsd(walletValueUsd)} available before network fees</span></div><a href="https://docs.robinhood.com/chain/bridging/" target="_blank" rel="noreferrer">Add ETH ↗</a></div>}
           <div className="graduationCard">
             <div><span>Market reserve</span><strong>{formatEth(reserve.data ?? 0n, 7)} ETH</strong></div>
