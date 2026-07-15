@@ -2,7 +2,6 @@
 pragma solidity ^0.8.26;
 
 import {CloneBondingCurveMarketV6} from "../src/clone/CloneBondingCurveMarketV6.sol";
-import {ExpandableGovernance} from "../src/ExpandableGovernance.sol";
 import {RMTV6Governance} from "../src/RMTV6Governance.sol";
 import {RMTLaunchFactoryV6} from "../src/RMTLaunchFactoryV6.sol";
 import {RMTLaunchGate} from "../src/RMTLaunchGate.sol";
@@ -41,9 +40,7 @@ contract DeployMainnetV6OfficialMigration {
     error WrongChain(uint256 actualChainId);
     error OperatorConsoleRequired();
     error MissingContract(address account);
-    error WrongActiveFactory(address activeFactory);
     error LiveDependencyVerificationFailed();
-    error ConflictingPendingFactory(address pendingFactory);
     error OfficialIdentityNotReserved();
     error HookDeploymentFailed(address expectedHook);
     error BindingVerificationFailed();
@@ -53,6 +50,7 @@ contract DeployMainnetV6OfficialMigration {
         address indexed factory,
         address indexed policyRegistry,
         address launchGate,
+        address versionRegistry,
         address adapter,
         address hook,
         address marketImplementation
@@ -61,11 +59,9 @@ contract DeployMainnetV6OfficialMigration {
     function run() external {
         if (block.chainid != Config.CHAIN_ID) revert WrongChain(block.chainid);
         if (!vm.envOr("RMT_FORK_REHEARSAL", false)) revert OperatorConsoleRequired();
-        address[6] memory requiredContracts = [
-            Config.REGISTRY_GOVERNANCE,
+        address[4] memory requiredContracts = [
             Config.LEGACY_IDENTITY_FACTORY,
             Config.OFFICIAL_LEGACY_RMT_TOKEN,
-            Config.VERSION_REGISTRY,
             Config.POOL_MANAGER,
             Config.CREATE2_DEPLOYER
         ];
@@ -73,21 +69,6 @@ contract DeployMainnetV6OfficialMigration {
             address required = requiredContracts[i];
             if (required.code.length == 0) revert MissingContract(required);
         }
-        ExpandableGovernance registryGovernance = ExpandableGovernance(payable(Config.REGISTRY_GOVERNANCE));
-        VersionedFactoryRegistry versionRegistry = VersionedFactoryRegistry(Config.VERSION_REGISTRY);
-        address activeFactory = versionRegistry.activeFactory();
-        if (activeFactory != Config.LEGACY_IDENTITY_FACTORY) revert WrongActiveFactory(activeFactory);
-        address pendingFactory = versionRegistry.pendingFactory();
-        if (pendingFactory != address(0)) revert ConflictingPendingFactory(pendingFactory);
-        if (
-            !registryGovernance.isSigner(Config.DEVELOPER_OPERATOR) || registryGovernance.signerCount() != 1
-                || registryGovernance.threshold() != 1 || registryGovernance.executionDelay() != Config.GOVERNANCE_DELAY
-                || registryGovernance.transactionCount() != 0
-                || versionRegistry.governance() != Config.REGISTRY_GOVERNANCE
-                || versionRegistry.activationDelay() != Config.REGISTRY_ACTIVATION_DELAY
-                || versionRegistry.activeVersion() != Config.LEGACY_FACTORY_VERSION
-                || versionRegistry.pendingVersion() != bytes32(0) || versionRegistry.pendingActivationTime() != 0
-        ) revert LiveDependencyVerificationFailed();
         ILiveLegacyIdentityFactoryV6 legacy = ILiveLegacyIdentityFactoryV6(Config.LEGACY_IDENTITY_FACTORY);
         if (!legacy.isNameUsed("Robinhood Meme Terminal") || !legacy.isSymbolUsed("RMT")) {
             revert OfficialIdentityNotReserved();
@@ -129,14 +110,20 @@ contract DeployMainnetV6OfficialMigration {
             address(governance),
             Config.INITIAL_GUARDIAN,
             Config.GOVERNANCE_DELAY,
-            Config.PROTOCOL_TREASURY,
+            address(governance),
             address(marketImplementation),
             address(adapter)
+        );
+        VersionedFactoryRegistry versionRegistry = new VersionedFactoryRegistry(
+            address(governance),
+            Config.REGISTRY_ACTIVATION_DELAY,
+            Config.LEGACY_IDENTITY_FACTORY,
+            Config.LEGACY_FACTORY_VERSION
         );
         RMTLaunchFactoryV6 factory = new RMTLaunchFactoryV6(
             address(launchGate),
             address(policyRegistry),
-            Config.VERSION_REGISTRY,
+            address(versionRegistry),
             Config.INITIAL_VIRTUAL_ETH_RESERVE,
             Config.INITIAL_VIRTUAL_TOKEN_RESERVE,
             Config.LEGACY_IDENTITY_FACTORY,
@@ -162,7 +149,7 @@ contract DeployMainnetV6OfficialMigration {
                 || policyRegistry.governance() != address(governance)
                 || policyRegistry.guardian() != Config.INITIAL_GUARDIAN
                 || policyRegistry.governanceDelay() != Config.GOVERNANCE_DELAY
-                || policyRegistry.canonicalProtocolTreasury() != Config.PROTOCOL_TREASURY
+                || policyRegistry.canonicalProtocolTreasury() != address(governance)
                 || address(marketImplementation).code.length == 0 || address(adapter).code.length == 0
                 || policyRegistry.canonicalMarketImplementation() != address(marketImplementation)
                 || policyRegistry.canonicalGraduationAdapter() != address(adapter)
@@ -174,11 +161,13 @@ contract DeployMainnetV6OfficialMigration {
                 || policyRegistry.defaultPolicyId() != bytes32(0) || factory.protocolVersion() != 6
                 || address(factory.launchGate()) != address(launchGate)
                 || address(factory.policyRegistry()) != address(policyRegistry)
-                || address(factory.factoryRegistry()) != Config.VERSION_REGISTRY
+                || address(factory.factoryRegistry()) != address(versionRegistry)
                 || factory.legacyIdentityFactory() != Config.LEGACY_IDENTITY_FACTORY
                 || factory.officialLegacyToken() != Config.OFFICIAL_LEGACY_RMT_TOKEN
                 || factory.creatorPayoutAuthority() != address(governance)
                 || factory.OFFICIAL_MIGRATION_POLICY_ID() != Config.SIMPLE_FAIR_V1_POLICY_ID
+                || factory.FACTORY_VERSION() != Config.FACTORY_VERSION
+                || factory.LEGACY_FACTORY_VERSION() != Config.LEGACY_FACTORY_VERSION
                 || factory.initialVirtualEthReserve() != Config.INITIAL_VIRTUAL_ETH_RESERVE
                 || factory.initialVirtualTokenReserve() != Config.INITIAL_VIRTUAL_TOKEN_RESERVE
                 || factory.tokenImplementation().code.length == 0
@@ -187,9 +176,12 @@ contract DeployMainnetV6OfficialMigration {
                 || factory.officialIdentityMigration().authorizedFactory() != address(factory)
                 || factory.officialIdentityMigration().officialLegacyToken() != Config.OFFICIAL_LEGACY_RMT_TOKEN
                 || factory.officialIdentityMigration().consumed()
+                || versionRegistry.governance() != address(governance)
+                || versionRegistry.activationDelay() != Config.REGISTRY_ACTIVATION_DELAY
                 || versionRegistry.activeFactory() != Config.LEGACY_IDENTITY_FACTORY
                 || versionRegistry.activeVersion() != Config.LEGACY_FACTORY_VERSION
-                || versionRegistry.pendingFactory() != address(0)
+                || versionRegistry.pendingFactory() != address(0) || versionRegistry.pendingVersion() != bytes32(0)
+                || versionRegistry.pendingActivationTime() != 0
         ) revert BindingVerificationFailed();
 
         emit V6FoundationDeployed(
@@ -197,6 +189,7 @@ contract DeployMainnetV6OfficialMigration {
             address(factory),
             address(policyRegistry),
             address(launchGate),
+            address(versionRegistry),
             address(adapter),
             address(hook),
             address(marketImplementation)

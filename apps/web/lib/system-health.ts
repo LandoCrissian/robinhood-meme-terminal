@@ -7,6 +7,18 @@ export type SystemHealthCheck = {
   detail: string;
 };
 
+export type SystemHealthReleaseEvidence = {
+  mode: "testnet" | "v5-compatible" | "v6-cutover";
+  registryAddress: string | null;
+  factoryAddress: string | null;
+  factoryVersion: string | null;
+  factoryStartBlock: string;
+  registryConfiguredExplicitly: boolean;
+  registryConfigurationValid: boolean;
+  factoryStartBlockConfiguredExplicitly: boolean;
+  factoryStartBlockConfigurationValid: boolean;
+};
+
 export type SystemHealthReport = {
   ok: boolean;
   network: string;
@@ -15,5 +27,6 @@ export type SystemHealthReport = {
   blockAgeSeconds: number | null;
   latencyMs: number;
   checkedAt: string;
+  releaseEvidence: SystemHealthReleaseEvidence;
   checks: SystemHealthCheck[];
 };

@@ -72,6 +72,11 @@ export function LaunchForm() {
     return () => URL.revokeObjectURL(url);
   }, [image]);
 
+  useEffect(() => {
+    // Switching into or out of the official path changes the acknowledgement text materially.
+    setAccepted(false);
+  }, [officialPausedLaunch]);
+
   const formattedSupply = useMemo(() => {
     try { return BigInt(supply || "0").toLocaleString(); } catch { return "Invalid"; }
   }, [supply]);
@@ -161,7 +166,8 @@ export function LaunchForm() {
   return (
     <section className="panel">
       <div className="sectionTitle"><div><p className="eyebrow">TOKEN LAUNCH</p><h2>Configure your token</h2></div><span className="badge">{isMainnetRelease ? "MAINNET · REAL ETH" : "TESTNET ALPHA"}</span></div>
-      {launchesPaused && <div className="callout mainnetWarning"><strong>{officialPausedLaunch ? "Public launches remain paused" : "New launches are temporarily paused"}</strong><span>{officialPausedLaunch ? "The verified RMT wallet may complete the one-time official V6 migration without opening creation to anyone else." : "V6 is being verified before public creation reopens. Trading and read-only terminal features remain available."}</span></div>}
+      {launchesPaused && <div className="callout mainnetWarning"><strong>{officialPausedLaunch ? "Public launches remain paused" : "New launches are temporarily paused"}</strong><span>{officialPausedLaunch ? "The verified RMT wallet may complete the one-time official V6 launch without opening creation to anyone else." : "V6 is being verified before public creation reopens. Trading and read-only terminal features remain available."}</span></div>}
+      {officialPausedLaunch && <div className="callout mainnetWarning"><strong>New token contract—no old-holder migration</strong><span>This action creates a new RMT contract with a new address and new fixed supply of 1,000,000,000 tokens. It does not copy, swap, credit, or migrate any old V5 holder balance. The old RMT contract is used only as the exact identity/provenance anchor. RMTMain receives the ordinary 70% creator fee share; the separate V6 governance treasury receives 30%.</span></div>}
       {capabilityRead.error && <div className="errors"><span>{capabilityRead.error} Launching is disabled safely.</span></div>}
       <label>Token name<input value={name} maxLength={32} placeholder="Name your token" aria-invalid={nameUnavailable} onChange={(e) => setName(e.target.value)} />{normalizedName && <span className={nameUnavailable ? "identityStatus unavailable" : nameUsedRead.data === false ? "identityStatus available" : "identityStatus"} aria-live="polite">{nameUnavailable ? "Already protected — choose a unique name" : nameUsedRead.data === false ? "Name available" : "Checking name…"}</span>}</label>
       <div className="two"><label>Ticker<input value={symbol} maxLength={10} placeholder="TICKER" aria-invalid={symbolUnavailable} onChange={(e) => setSymbol(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))} />{normalizedSymbol && <span className={symbolUnavailable ? "identityStatus unavailable" : symbolUsedRead.data === false ? "identityStatus available" : "identityStatus"} aria-live="polite">{symbolUnavailable ? "Already protected — choose a unique ticker" : symbolUsedRead.data === false ? "Ticker available" : "Checking ticker…"}</span>}</label><label>Platform supply<input inputMode="numeric" value={supply} readOnly aria-readonly="true" /></label></div>
@@ -192,11 +198,11 @@ export function LaunchForm() {
           <strong>Fixed fee percentages</strong>
           <span>{formatBasisPoints(selectedPolicy.curveFeeBps)} curve fee · {formatBasisPoints(selectedPolicy.creatorFeeShareBps)} creator-share bucket · {formatBasisPoints(selectedPolicy.protocolFeeShareBps)} to RMT · {formatEther(selectedPolicy.graduationTarget)} ETH graduation target.</span>
           <span>After graduation, the locked V4 position charges {formatBasisPoints(selectedPolicy.postGraduationFeeBps)} and can earn fees in ETH and ${normalizedSymbol || "TOKEN"}. Collected fees use the same split; liquidity principal is not distributed.</span>
-          <span>The token creator cannot initiate, accept, or execute a payout-address change. Only delayed RMT governance may move future fees between the original creator and RMT treasury, using a public evidence hash and replay-protection nonce. Previously paid or deferred fees stay with the wallet that earned them. For uncollected pool fees, the active recipient at collection time receives the creator share.</span>
+          <span>The token creator cannot authorize, propose, choose, or directly change the payout recipient. The RMT signer may propose only an evidence-linked move between the original creator and immutable V6 governance treasury. After 24 hours, any account may relay the exact approved call but cannot alter it or receive funds. Previously paid or deferred fees stay with the wallet that earned them. For uncollected pool fees, the active recipient at collection time receives the creator share.</span>
         </div>}
       </div>
       <div className="summary"><div><small>Token</small><strong>{name || "Unnamed"}</strong></div><div><small>Symbol</small><strong>${symbol || "—"}</strong></div><div><small>Supply</small><strong>{formattedSupply}</strong></div></div>
-      <label className="confirm"><input type="checkbox" checked={accepted} onChange={(e) => setAccepted(e.target.checked)} /><span>I understand the supply and fee percentages are permanent. Only delayed RMT governance can move future creator-share fees between the original creator and RMT treasury, with public evidence and replay protection; creators cannot perform the change, and earlier payments or deferred balances cannot be moved.</span></label>
+      <label className="confirm"><input type="checkbox" checked={accepted} onChange={(e) => setAccepted(e.target.checked)} /><span>{officialPausedLaunch ? "I understand this official V6 launch creates a new token address and new one-billion-token supply; no old V5 balance is copied, swapped, credited, or migrated. RMTMain receives 70% of fees and the separate V6 governance treasury receives 30%." : "I understand the supply and fee percentages are permanent. The creator cannot authorize or choose a payout change; the RMT signer can propose only the two fixed destinations with public evidence and replay protection, and any account may relay the exact approved call after 24 hours. Earlier payments or deferred balances cannot be moved."}</span></label>
       {isMainnetRelease && <div className="callout mainnetWarning"><strong>Mainnet uses real ETH</strong><span>Review the token details and wallet gas estimate before signing. Launch settings are permanent.</span></div>}
       {validationErrors.length > 0 && <div className="errors">{validationErrors.map((error) => <span key={error}>{error}</span>)}</div>}
       {(writeError || receiptError) && <div className="errors"><span>{writeError?.message || receiptError?.message}</span></div>}

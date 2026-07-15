@@ -7,6 +7,10 @@ on:
         description: V6 governance address
         required: true
         type: string
+      v6_version_registry_address:
+        description: V6 version registry address
+        required: true
+        type: string
       v6_hook_address:
         description: V6 graduation hook address
         required: true
@@ -48,6 +52,7 @@ jobs:
         working-directory: packages/contracts
     env:
       V6_GOVERNANCE_ADDRESS: ${{ inputs.v6_governance_address }}
+      V6_VERSION_REGISTRY_ADDRESS: ${{ inputs.v6_version_registry_address }}
       V6_HOOK_ADDRESS: ${{ inputs.v6_hook_address }}
       V6_ADAPTER_ADDRESS: ${{ inputs.v6_adapter_address }}
       V6_LAUNCH_GATE_ADDRESS: ${{ inputs.v6_launch_gate_address }}

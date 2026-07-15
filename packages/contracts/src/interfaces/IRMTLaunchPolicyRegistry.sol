@@ -30,6 +30,7 @@ interface IRMTLaunchPolicyRegistry {
     event DefaultPolicyChanged(bytes32 indexed previousPolicyId, bytes32 indexed newPolicyId);
 
     function governance() external view returns (address);
+    function canonicalProtocolTreasury() external view returns (address);
     function canonicalMarketImplementation() external view returns (address);
     function canonicalGraduationAdapter() external view returns (address);
     function defaultPolicyId() external view returns (bytes32);

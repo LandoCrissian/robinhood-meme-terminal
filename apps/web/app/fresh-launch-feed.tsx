@@ -62,6 +62,9 @@ export function FreshLaunchFeed() {
         ? isMainnetRelease ? "Factory connected. No mainnet launches yet." : "Factory connected. No testnet launches yet."
         : `${result.launches.length} verified factory launch${result.launches.length === 1 ? "" : "es"}.`);
     } catch (error) {
+      // Never leave launches from a previously active factory visible when the
+      // registry changes or the current factory cannot be verified.
+      setLaunches([]);
       setStatus("error");
       setMessage(error instanceof Error ? error.message : "Launch data is temporarily unavailable.");
     }

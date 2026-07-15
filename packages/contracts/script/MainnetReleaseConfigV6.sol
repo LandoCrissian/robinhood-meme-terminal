@@ -7,17 +7,13 @@ library MainnetReleaseConfigV6 {
     uint256 internal constant CHAIN_ID = 4663;
 
     address internal constant DEVELOPER_OPERATOR = 0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA;
-    // The already-deployed V5 governance remains the immutable authority of the existing
-    // VersionedFactoryRegistry. V6 deploys a separate RMTV6Governance and uses it for every
-    // new V6 protocol role; its address is therefore deployment output, not a source constant.
-    address internal constant REGISTRY_GOVERNANCE = 0x13C0A930516FB6bF0d467B38605d9D2a9c4C6953;
+    // V6 deploys one RMTV6Governance for protocol control, treasury custody, and the fresh
+    // V6 VersionedFactoryRegistry. Its address is deployment output, not a source constant.
     address internal constant INITIAL_GUARDIAN = DEVELOPER_OPERATOR;
-    address internal constant PROTOCOL_TREASURY = DEVELOPER_OPERATOR;
     address internal constant POOL_MANAGER = 0x8366a39CC670B4001A1121B8F6A443A643e40951;
     address internal constant CREATE2_DEPLOYER = 0x4e59b44847b379578588920cA78FbF26c0B4956C;
     address internal constant LEGACY_IDENTITY_FACTORY = 0x25A92D8C79c38D07B0d3eFd0ebe929D30e401cdD;
     address internal constant OFFICIAL_LEGACY_RMT_TOKEN = 0xaB374D24aFBD943a134AdB381D9646e71C6f6C0C;
-    address internal constant VERSION_REGISTRY = 0x4b8b222B5CAa7066c02A54E51eC1a674ADf5b3A1;
     bytes32 internal constant LEGACY_FACTORY_VERSION = keccak256("RMT_FACTORY_V5");
     bytes32 internal constant FACTORY_VERSION = keccak256("RMT_FACTORY_V6");
 

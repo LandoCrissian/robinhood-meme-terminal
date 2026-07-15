@@ -22,7 +22,7 @@ Community, verified, partner, and other future launch styles are not separate fa
 
 ## Upgrade model
 
-The active factory remains selected by the existing version registry. Each major protocol release is immutable after deployment and activated as a new version:
+The active V6 factory is selected by a fresh V6 version registry governed by the same V6 governance contract and initialized to the legacy V5 factory/version. V6 does not depend on the legacy V5 governance or old registry. Each major protocol release is immutable after deployment and activated as a new version:
 
 - V6 introduces the policy registry, on-chain launch pause, and perpetual post-graduation revenue.
 - V7 may add launch policies without changing the website's core launch transaction model.
@@ -45,7 +45,7 @@ Responsibilities:
 - require the shared on-chain launch gate from every ordinary public launch entry point
 - emit complete launch policy and economics metadata
 
-The pause blocks every ordinary public launch entry point. One narrow exception lets only the immutable RMT operator consume the exact, one-time official `Robinhood Meme Terminal` / `RMT` migration under the reviewed Fair policy after V6 is active, while the public gate remains paused. The V6 factory and migration helper are permanently bound to legacy token `0xaB374D24aFBD943a134AdB381D9646e71C6f6C0C`; construction fails unless that exact contract has code and reports the expected creator, name, and ticker, while the legacy factory reports both identity reservations. The migration event records the old token and new launch. That transaction does not unpause the gate and cannot launch any other identity. Existing markets, claims, graduation, and discovery continue operating.
+The pause blocks every ordinary public launch entry point. One narrow exception lets only the immutable RMT operator consume the exact, one-time official `Robinhood Meme Terminal` / `RMT` launch under the reviewed Fair policy after V6 is active, while the public gate remains paused. The V6 factory and migration helper are permanently bound to legacy token `0xaB374D24aFBD943a134AdB381D9646e71C6f6C0C`; construction fails unless that exact contract has code and reports the expected creator, name, and ticker, while the legacy factory reports both identity reservations. The event records the old provenance anchor and new launch. This creates a new token contract with a new address and a new one-billion-token supply. It does not copy, swap, credit, or migrate any old V5 holder balance. The old contract is only the identity/provenance anchor. That transaction does not unpause the gate and cannot launch any other identity. Existing markets, claims, graduation, and discovery continue operating.
 
 Identity protection is scoped to the active, origin-verified RMT launch pipeline. V6 canonicalizes new names across case and separators, canonicalizes tickers case-insensitively, and consults legacy reservations. No launchpad can prevent an unrelated ERC-20 contract elsewhere on the chain from copying display text, so the terminal must always label token origin and never advertise chain-wide exclusivity.
 
@@ -68,7 +68,8 @@ V6 enables only the reviewed Fair and Open variants. Future Community or Verifie
 
 ### 3. Governance and pause controller
 
-- V6 deploys a new `RMTV6Governance`; the already-deployed V5 `ExpandableGovernance` remains only the immutable authority of the existing version registry
+- V6 deploys one new `RMTV6Governance` as both protocol authority and protocol treasury
+- V6 deploys a fresh `VersionedFactoryRegistry` governed by that same contract and initialized to the legacy V5 factory/version; the legacy V5 governance and old registry have no V6 role
 - initial V6 signer set: RMTMain only, threshold 1
 - immutable proposal delay: 24 hours
 - immutable execution window: 7 days after the delay; pending proposals expire afterward
@@ -81,14 +82,14 @@ V6 enables only the reviewed Fair and Open variants. Future Community or Verifie
 - emergency pause: immediate, authorized guardian action
 - unpause: delayed governance action after health checks
 - policy registration: delayed governance action
-- version-registry activation: the existing V5 governance's delayed flow only
+- version-registry activation: delayed through the same V6 governance, followed by the fresh registry's separate activation delay
 - all actions emit public events
 
 `RMTV6Governance` is protocol-wide generic governance, not a creator-payout-only controller. A reviewed proposal may call the launch gate, policy registry, a fee splitter, or another explicit protocol target. Every call is subject to the same delay, approval, epoch, cancellation, expiry, and public-inspection rules. The creator-payout splitter independently limits its own governance-callable destination to the immutable original creator or immutable RMT treasury.
 
 A compromised guardian may pause launches but may not withdraw funds, change economics, activate a factory, or unpause instantly.
 
-A second signer is an active quorum member, not a recovery key. Once the initial 1-of-1 configuration becomes 2-of-2, both wallets must approve future proposals; loss or prolonged unavailability of either wallet can freeze governance.
+A second signer is an active quorum member, not a recovery key. Once the initial 1-of-1 configuration becomes 2-of-2, both wallets must approve future proposals; loss or prolonged unavailability of either wallet can freeze governance. Before that transition, losing the sole RMTMain signer freezes protocol control and treasury assets. Compromise of that signer can authorize governance and treasury calls after the delay.
 
 ### 4. Pre-graduation market
 
@@ -102,6 +103,13 @@ The market must:
 - keep curve-to-pool price continuity within the tested bound
 
 V6 Simple policy should favor a clear creator/protocol split without optional user-selected destinations.
+
+The 2 ETH graduation target is a net reserve threshold, not a fixed USD market-cap promise. With the reviewed
+0.3 ETH / 1,017,500,000-token virtual reserves and one-billion-token supply, the modeled endpoint is approximately
+17.33 ETH fully diluted value on the curve and 17.36 ETH when the remaining inventory seeds the pool—a roughly
+16.4-basis-point transition difference before integer rounding. The USD value therefore moves with ETH. The tests
+intentionally reject the otherwise-discussed 1 ETH target because it exceeds the allowed transition discontinuity
+under this reserve model.
 
 ### 5. Graduation adapter and permanent liquidity
 
@@ -129,11 +137,11 @@ Anyone may call the permissionless collection function. Collection is not automa
 
 The same 70/30 split applies to the 1% bonding-curve fee before graduation. Each splitter accepts explicit fee accounting only from its permanently bound market or graduation adapter; its empty-calldata receive path rejects, and arbitrary or forced asset transfers never increase the published fee totals. The V6 policy registry rejects every policy that differs from the canonical 1% curve fee, 70/30 split, 0.5% post-graduation fee, 2 ETH target, immutable RMT treasury, canonical market implementation, or canonical graduation adapter. If the canonical PoolManager enables a separate protocol fee, Uniswap removes that amount before LP fee growth; the RMT 70/30 splitter applies to the remaining LP fees actually collected. The collector cannot redirect proceeds, and neither creator nor protocol can remove the locked liquidity principal.
 
-The official V6 RMT launch is the single disclosed same-recipient case: its immutable original creator and protocol treasury are both the verified RMTMain wallet. That wallet receives the normal 70% creator payment plus the normal 30% protocol payment, totaling 100% of that launch's realized fees without creating an extra reward or counting any fee twice. All ordinary launches retain separate 70% creator and 30% RMT destinations.
+For the official V6 RMT launch, the verified RMTMain operator is the immutable original creator and receives the normal 70% creator payment. The separate V6 governance contract is the protocol treasury and receives the normal 30% protocol payment. The official launch is not a same-recipient 100% payout and receives no extra reward or duplicate fee accounting.
 
-The original launch creator remains part of the permanent historical launch record and can never be rewritten. Creators cannot change their fee wallet. The factory derives each splitter's payout authority from the same delayed governance shared by the launch gate and policy registry.
+The original launch creator remains part of the permanent historical launch record and can never be rewritten. Creators have no authority to choose or directly change their fee wallet. The factory derives each splitter's payout authority from the same delayed governance shared by the launch gate, policy registry, fresh version registry, and protocol treasury.
 
-Only delayed RMT governance may move future creator-share payments from the original creator to the splitter's immutable RMT treasury, or restore them to the original creator. It cannot nominate an unrelated wallet. The creator cannot initiate, accept, or execute any payout change. Each governance action must include a nonzero public evidence hash and the current replay-protection nonce. The immutable RMT treasury may increment that nonce to invalidate a stale unexecuted action, but it cannot select a recipient or move funds. Already paid rewards and previously deferred ETH or token balances remain owned by the wallet that earned them.
+The RMT signer may propose moving future creator-share payments from the original creator to the splitter's immutable V6 governance treasury, or restoring them to the original creator. It cannot nominate an unrelated wallet. The creator cannot authorize, propose, choose, or directly change the recipient. Each proposal must include a nonzero public evidence hash and the current replay-protection nonce. After the delay, any account may relay the exact approved governance call but cannot alter it or receive funds. Because the treasury is the governance contract, nonce invalidation also requires an approved governance call. Already paid rewards and previously deferred ETH or token balances remain owned by the wallet that earned them.
 
 The timing boundary is collection, not fee accrual: a collection completed before an accepted redirect uses the old recipient, while a collection completed afterward uses the new recipient even if some fees accrued earlier. The redirect cannot seize purchased tokens, modify token ownership or metadata, remove liquidity, or take holder funds. Governance compromise or misuse remains a material disclosed risk.
 
@@ -143,7 +151,7 @@ Post-graduation fee routing must not permit withdrawal of locked liquidity princ
 
 ### 7. Protocol treasury boundary
 
-V6 sends the disclosed 30% protocol share directly to the configured protocol treasury. V6 does not promise an automatic buyback, weekly contest, referral allocation, or multi-vault split. If the protocol later uses treasury funds for a disclosed bonus buy or buyback, that is an operational treasury action and must be reported separately from immutable token economics.
+V6 sends the disclosed 30% protocol share directly to the V6 governance contract acting as the immutable protocol treasury. Treasury assets move only through an approved delayed governance call; anyone may relay the exact approved call after the delay but cannot change its target, value, or data. V6 does not promise an automatic buyback, weekly contest, referral allocation, or multi-vault split. If the protocol later uses treasury funds for a disclosed bonus buy or buyback, that is an operational treasury action and must be reported separately from immutable token economics.
 
 ## Website alignment
 
@@ -163,6 +171,8 @@ Required factory views:
 The launch page renders one flow from `defaultPolicyId` and one Fair Start toggle that selects between the two reviewed V6 policies. When future styles are enabled, the same policy metadata powers the selection UI, disclosures, fee summaries, and transaction arguments.
 
 The website must fail closed: an unknown factory version, unavailable policy, unhealthy registry, or paused factory disables launch submission while keeping read-only terminal features online.
+
+Before V6 deployment, production may use the checked-in V5 registry and V5 factory start block for read-only continuity. The V6 cutover must explicitly set the fresh V6-governed registry address and exact confirmed V6 factory deployment block in the public production configuration. Health reports expose those non-secret values together with the registry's active factory/version. The final operator-console unpause is allowed only from the configured public HTTPS origin and only when that origin's uncached `/api/health` response is fresh, fully healthy, and exactly matches the recovery record, `RMT_FACTORY_V6`, and factory deployment receipt. A fallback legacy registry or inferred/default start block can never authorize V6 reopening.
 
 ## Indexer alignment
 
@@ -200,7 +210,7 @@ V6 cannot be activated until all gates pass:
 14. mainnet dry run and wallet-operated deployment
 15. registry activation while launches remain paused
 16. exact official RMT V6 migration and verification while ordinary launches remain paused
-17. final production health verification before proposing and executing delayed unpause
+17. exact fresh-registry, V6 factory/version, factory-start-block, and final production health verification before proposing and executing delayed unpause
 
 ## Non-negotiable security properties
 

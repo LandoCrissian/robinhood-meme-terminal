@@ -24,9 +24,9 @@ Public token creation remains paused until every required item is complete.
 - [x] Add delayed unpause and policy-governance controls.
 - [x] Add V6-only governance with a 24-hour delay, seven-day execution window, cancellation, expiry, public proposal inspection, and permissionless fully approved execution.
 - [x] Make signer add/remove/replace and threshold changes atomic; require expiring proof-of-control acceptance bound to the current epoch, exact add-or-replace action, affected signer, and next threshold from every prospective added or replacement signer; let the candidate revoke unconsumed consent before execution; prohibit multi-signer 1-of-N; and advance a configuration epoch that invalidates every older pending proposal, confirmation, and unused acceptance.
-- [x] Keep the already-deployed V5 governance limited to the existing version registry; use the new governance for the V6 gate, policy registry, factory payout authority, and splitters.
-- [x] Restrict creator-payout changes to delayed RMT governance, RMT treasury, and restoration to the original creator.
-- [x] Require governance-only execution, a public evidence hash, and a replay-protection nonce for creator-payout changes; creators have no payout-change action.
+- [x] Use one fresh V6 governance contract as protocol authority and protocol treasury; govern a fresh registry initialized to the legacy V5 factory/version, with no V6 dependency on legacy governance or the old registry.
+- [x] Restrict creator-payout destinations to the V6 governance treasury and restoration to the original creator.
+- [x] Require a signer-approved delayed governance proposal, public evidence hash, and replay-protection nonce for creator-payout changes; creators cannot authorize, propose, choose, or directly change a recipient, while any account may relay the exact approved call after the delay.
 - [x] Reject launches from a V6 factory that is no longer active in the version registry.
 - [x] Add the exact one-time official RMT migration while ordinary public launches remain paused, permanently bound to legacy token `0xaB374D24aFBD943a134AdB381D9646e71C6f6C0C` and its expected creator/name/ticker.
 - [x] Clamp graduation to the exact net reserve target and isolate refunds, forced assets, and seed dust from liquidity and fees.
@@ -53,7 +53,7 @@ Public token creation remains paused until every required item is complete.
 - [x] Fuzz and invariant tests implemented.
 - [ ] Re-run the complete compile, unit, fuzz, invariant, and static-analysis suite after the final payout-authority and hook changes.
 - [ ] Final V6 Robinhood mainnet-fork workflow passes on the final release commit.
-- [ ] Live fork preflight confirms the existing registry governance, registry, V5 factory, exact official legacy RMT token code/creator/name/ticker, official RMT reservations, PoolManager, and CREATE2 deployer; the foundation rehearsal separately verifies the newly deployed V6 governance.
+- [ ] Live fork preflight confirms the V5 identity factory, exact official legacy RMT token code/creator/name/ticker, official RMT reservations, PoolManager, and CREATE2 deployer; the foundation rehearsal separately verifies the newly deployed V6 governance/treasury and fresh V6-governed registry initialized to V5.
 - [ ] Resolve any PoolManager address/code disagreement; the production RPC must return nonempty bytecode at the address in the official Uniswap deployment list.
 
 ## Website and indexer
@@ -64,6 +64,8 @@ Public token creation remains paused until every required item is complete.
 - [x] Preserve read-only terminal, trading, and claims while launch is paused.
 - [x] Store policy ID, version, and launch economics per token.
 - [x] Display historical economics from launch records, not current defaults.
+- [x] Keep the known V5 registry/feed readable before cutover, then fail closed for V6 unless a fresh registry and exact V6 factory deployment block are explicitly configured.
+- [x] Publish registry, active factory/version, start block, and configuration-validity evidence from `/api/health`.
 - [ ] Configure and load-test restricted production RPC endpoints for browser wallet reads, server feeds/health checks, and the archive-capable indexer; verify provider rate and spend limits and failover behavior.
 
 ## Deployment
@@ -73,19 +75,20 @@ Public token creation remains paused until every required item is complete.
 - [x] Add wallet-operated phased V6 deployment console.
 - [x] Separate foundation deployment, live source verification, and governance proposal submission into distinct fail-closed phases.
 - [x] Restrict the Foundry foundation script to fork rehearsal only and ensure it creates zero governance proposals.
-- [x] Add fail-closed live dependency and pending-factory checks before the first deployment transaction.
+- [x] Add fail-closed legacy identity/dependency checks before deployment and fresh-registry owner/initial-state checks immediately after deployment.
 - [x] Read governance proposal IDs from confirmed receipt events.
-- [x] Add fail-closed Blockscout verification for all ten V6 contracts plus the existing V5 registry governance, the version registry, and the V5 identity factory.
-- [x] Add a seven-address, no-signing-key GitHub workflow that runs the exact source gate on the selected frozen commit and archives its log.
-- [x] Recheck all thirteen exact Blockscout records live before every proposal phase and final public reopening; never trust a recovery-file marker.
+- [x] Add fail-closed Blockscout verification for all eleven V6 contracts, including the fresh registry, plus the V5 identity factory.
+- [x] Add an eight-address, no-signing-key GitHub workflow that runs the exact source gate on the selected frozen commit and archives its log.
+- [x] Recheck all twelve exact Blockscout records live before every proposal phase and final public reopening; never trust a recovery-file marker.
 - [ ] Verify all immutable bindings and fee destinations in the final CI rehearsal, including the factory and migration helper's exact official legacy-token getter.
 - [ ] Verify the registry constructor arguments and live canonical-component getters match the exact reviewed market and adapter addresses.
 - [ ] Deploy V6 in paused state.
-- [ ] Run `scripts/verify-mainnet-v6.sh` after deployment and archive all thirteen successful Blockscout results.
-- [ ] Confirm both governance contracts have `transactionCount()` zero before the first proposal. Afterward, prove every ID in both contracts from exact receipts; also verify each V6 proposal through `getTransaction` as current-epoch, uncancelled, and unexpired while pending.
+- [ ] Run `scripts/verify-mainnet-v6.sh` after deployment and archive all twelve successful Blockscout results.
+- [ ] Confirm the one V6 governance contract has `transactionCount()` zero before the first proposal. Afterward, prove every ID—including fresh-registry activation—from exact receipts and verify each proposal through `getTransaction` as current-epoch, uncancelled, and unexpired while pending.
 - [ ] Complete independent security review.
 - [ ] Propose and activate V6 through the version registry.
-- [ ] Confirm production terminal reads V6 and remains paused.
-- [ ] Launch and verify the exact official RMT V6 migration while ordinary creation remains paused.
-- [ ] Run final health checks.
+- [ ] Set production `NEXT_PUBLIC_VERSION_REGISTRY_ADDRESS` to the fresh V6-governed registry, `NEXT_PUBLIC_FACTORY_START_BLOCK` to the exact confirmed V6 factory deployment block, and `NEXT_PUBLIC_APP_URL` to the exact public HTTPS origin; redeploy and confirm `/api/health` publishes those exact values.
+- [ ] Confirm production terminal reads V6 from that block and remains paused.
+- [ ] Before signing, disclose that the official V6 launch creates a new token contract/address and new one-billion-token supply and does not copy, swap, credit, or migrate old V5 balances; then launch and verify it while ordinary creation remains paused.
+- [ ] Run final health checks and confirm the operator console rejects local/preview, legacy-registry, stale-factory, wrong-version, wrong-start-block, unhealthy, and stale reports.
 - [ ] Unpause through delayed governance only after approval.

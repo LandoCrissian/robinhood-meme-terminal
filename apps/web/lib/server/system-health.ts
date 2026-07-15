@@ -1,14 +1,24 @@
 import { createPublicClient, getAddress, http, isAddress, keccak256, parseEther, toHex, type Address, type Hex } from "viem";
 import {
   getFactoryAddress,
-  publicMainnetFactoryAddress,
+  isFreshMainnetVersionRegistryConfigured,
+  isMainnetVersionRegistryConfigurationValid,
+  isMainnetVersionRegistryExplicitlyConfigured,
   publicMainnetOperatorAddress,
+  publicMainnetV5FactoryAddress,
   publicMainnetVersionRegistryAddress,
   rmtLaunchFactoryV6Abi,
   versionRegistryAbi
 } from "../contracts";
-import { activeChain, activeNetworkLabel, isMainnetRelease } from "../network";
-import type { SystemHealthCheck, SystemHealthReport } from "../system-health";
+import {
+  activeChain,
+  activeFactoryStartBlock,
+  activeNetworkLabel,
+  isFactoryStartBlockConfigurationValid,
+  isFactoryStartBlockExplicitlyConfigured,
+  isMainnetRelease
+} from "../network";
+import type { SystemHealthCheck, SystemHealthReleaseEvidence, SystemHealthReport } from "../system-health";
 
 const factoryHealthAbi = [
   { type: "function", name: "launchCount", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] },
@@ -52,6 +62,19 @@ export async function readSystemHealth(): Promise<SystemHealthReport> {
   const checkedAt = new Date(startedAt).toISOString();
   const checks: SystemHealthCheck[] = [];
   let blockAgeSeconds: number | null = null;
+  let factory: Address | null = getFactoryAddress();
+  let factoryVersion: Hex | null = null;
+  const releaseEvidence = (): SystemHealthReleaseEvidence => ({
+    mode: isMainnetRelease ? factoryVersion === V6_VERSION ? "v6-cutover" : "v5-compatible" : "testnet",
+    registryAddress: isMainnetRelease ? publicMainnetVersionRegistryAddress : null,
+    factoryAddress: factory,
+    factoryVersion,
+    factoryStartBlock: activeFactoryStartBlock.toString(),
+    registryConfiguredExplicitly: isMainnetRelease && isMainnetVersionRegistryExplicitlyConfigured,
+    registryConfigurationValid: !isMainnetRelease || isMainnetVersionRegistryConfigurationValid,
+    factoryStartBlockConfiguredExplicitly: isFactoryStartBlockExplicitlyConfigured,
+    factoryStartBlockConfigurationValid: isFactoryStartBlockConfigurationValid
+  });
 
   try {
     const [chainId, latestBlock] = await Promise.all([client.getChainId(), client.getBlockNumber()]);
@@ -64,8 +87,6 @@ export async function readSystemHealth(): Promise<SystemHealthReport> {
       `Block ${latestBlock.toString()} · ${blockAgeSeconds}s old · Chain ${chainId}`
     ));
 
-    let factory: Address | null = getFactoryAddress();
-    let factoryVersion: Hex | null = null;
     if (isMainnetRelease) {
       const [registryCode, registered, registeredVersion] = await Promise.all([
         client.getBytecode({ address: publicMainnetVersionRegistryAddress }),
@@ -82,14 +103,23 @@ export async function readSystemHealth(): Promise<SystemHealthReport> {
       ]);
       factory = isAddress(registered) ? getAddress(registered) : null;
       factoryVersion = registeredVersion;
+      const isKnownV5 = factoryVersion === V5_VERSION && factory === publicMainnetV5FactoryAddress;
+      const isV6 = factoryVersion === V6_VERSION;
+      const v6CutoverConfigured = isFreshMainnetVersionRegistryConfigured
+        && isFactoryStartBlockExplicitlyConfigured
+        && isFactoryStartBlockConfigurationValid;
+      const registryHealthy = Boolean(registryCode && registryCode !== "0x")
+        && isMainnetVersionRegistryConfigurationValid
+        && isFactoryStartBlockConfigurationValid
+        && activeFactoryStartBlock <= latestBlock
+        && (isKnownV5 || (isV6 && v6CutoverConfigured));
       checks.push(check(
         "registry",
         "Version registry",
-        Boolean(registryCode && registryCode !== "0x") && (
-          (factoryVersion === V5_VERSION && factory === publicMainnetFactoryAddress)
-            || factoryVersion === V6_VERSION
-        ),
-        factory ? `Active factory ${factory.slice(0, 8)}…${factory.slice(-6)}` : "No active factory returned"
+        registryHealthy,
+        factory
+          ? `Registry ${publicMainnetVersionRegistryAddress} · factory ${factory} · version ${factoryVersion} · scan start ${activeFactoryStartBlock.toString()}`
+          : `Registry ${publicMainnetVersionRegistryAddress} returned no active factory`
       ));
     } else {
       checks.push(check("registry", "Factory selection", Boolean(factory), factory ? "Verified testnet factory selected" : "Factory unavailable"));
@@ -175,6 +205,7 @@ export async function readSystemHealth(): Promise<SystemHealthReport> {
         blockAgeSeconds,
         latencyMs: Date.now() - startedAt,
         checkedAt,
+        releaseEvidence: releaseEvidence(),
         checks
       };
     }
@@ -224,6 +255,7 @@ export async function readSystemHealth(): Promise<SystemHealthReport> {
       blockAgeSeconds,
       latencyMs: Date.now() - startedAt,
       checkedAt,
+      releaseEvidence: releaseEvidence(),
       checks
     };
   } catch (error) {
@@ -247,6 +279,7 @@ export async function readSystemHealth(): Promise<SystemHealthReport> {
       blockAgeSeconds,
       latencyMs: Date.now() - startedAt,
       checkedAt,
+      releaseEvidence: releaseEvidence(),
       checks
     };
   }

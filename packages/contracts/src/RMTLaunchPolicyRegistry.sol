@@ -19,7 +19,7 @@ contract RMTLaunchPolicyRegistry is IRMTLaunchPolicyRegistry {
     address public immutable override governance;
     address public immutable guardian;
     uint64 public immutable governanceDelay;
-    address public immutable canonicalProtocolTreasury;
+    address public immutable override canonicalProtocolTreasury;
     address public immutable override canonicalMarketImplementation;
     address public immutable override canonicalGraduationAdapter;
 

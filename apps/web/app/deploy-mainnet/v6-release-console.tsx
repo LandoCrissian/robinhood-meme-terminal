@@ -20,14 +20,12 @@ import {
 import artifactsJson from "../../lib/generated/mainnet-stack.json";
 
 const OPERATOR = "0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA" as Address;
-const REGISTRY_GOVERNANCE = "0x13C0A930516FB6bF0d467B38605d9D2a9c4C6953" as Address;
 const V5_FACTORY = "0x25A92D8C79c38D07B0d3eFd0ebe929D30e401cdD" as Address;
 const OFFICIAL_LEGACY_RMT_TOKEN = "0xaB374D24aFBD943a134AdB381D9646e71C6f6C0C" as Address;
-const REGISTRY = "0x4b8b222B5CAa7066c02A54E51eC1a674ADf5b3A1" as Address;
 const POOL_MANAGER = "0x8366a39cc670b4001a1121b8f6a443a643e40951" as Address;
 const CREATE2_DEPLOYER = "0x4e59b44847b379578588920cA78FbF26c0B4956C" as Address;
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as Address;
-const STORAGE_KEY = "rmt:v6-release:official-token-bound-foundation";
+const STORAGE_KEY = "rmt:v6-release:fresh-governance-registry-foundation";
 const VERSION = keccak256(toHex("RMT_FACTORY_V6"));
 const V5_VERSION = keccak256(toHex("RMT_FACTORY_V5"));
 const FAIR_POLICY_ID = keccak256(toHex("RMT_SIMPLE_FAIR_V1"));
@@ -37,7 +35,7 @@ const GOVERNANCE_EXECUTION_WINDOW = 7n * DAY;
 const HOOK_FLAGS = 0x28a0n;
 const HOOK_MASK = 0x3fffn;
 const ZERO_BYTES32 = `0x${"00".repeat(32)}` as Hex;
-const RECOVERY_SCHEMA = "rmt-v6-release-recovery-v4";
+const RECOVERY_SCHEMA = "rmt-v6-release-recovery-v5";
 const ADDRESS_PATTERN = /^0x[0-9a-fA-F]{40}$/;
 const HASH_PATTERN = /^0x[0-9a-fA-F]{64}$/;
 const DECIMAL_PATTERN = /^\d+$/;
@@ -60,14 +58,13 @@ type ArtifactName =
   | "hook"
   | "adapter"
   | "factory"
-  | "governance"
   | "governanceV6"
   | "registry"
   | "launchGateV6"
   | "policyRegistryV6"
   | "rmtFactoryV6"
   | "marketV6";
-type AddressKey = "governance" | "hook" | "adapter" | "launchGate" | "policyRegistry" | "marketImplementation" | "factory";
+type AddressKey = "governance" | "registry" | "hook" | "adapter" | "launchGate" | "policyRegistry" | "marketImplementation" | "factory";
 type ProposalKey = "fairPolicy" | "openPolicy" | "factoryActivation" | "defaultPolicy" | "unpause";
 type ReadyKey = "initialGovernance" | "policyRegistration" | "defaultGovernance" | "defaultPolicy" | "unpauseGovernance" | "unpause";
 type ReleaseDeployment = {
@@ -82,7 +79,6 @@ type ReleaseDeployment = {
 };
 type SourceContractAddresses = {
   governance: Address;
-  registryGovernance: Address;
   versionRegistry: Address;
   legacyFactory: Address;
   hook: Address;
@@ -130,9 +126,11 @@ const factoryConstructor = artifacts.rmtFactoryV6?.abi?.find((item) => item.type
 const governanceConstructor = artifacts.governanceV6?.abi?.find((item) => item.type === "constructor") as
   | { inputs?: readonly unknown[] }
   | undefined;
+const registryConstructor = artifacts.registry?.abi?.find((item) => item.type === "constructor") as
+  | { inputs?: readonly unknown[] }
+  | undefined;
 const DEPLOYMENT_ARTIFACTS_READY = Boolean(
-  artifacts.governance?.bytecode && artifacts.governance.bytecode !== "0x"
-    && artifacts.governanceV6?.bytecode && artifacts.governanceV6.bytecode !== "0x"
+  artifacts.governanceV6?.bytecode && artifacts.governanceV6.bytecode !== "0x"
     && artifacts.hook?.bytecode && artifacts.hook.bytecode !== "0x"
     && artifacts.adapter?.bytecode && artifacts.adapter.bytecode !== "0x"
     && artifacts.launchGateV6?.bytecode && artifacts.launchGateV6.bytecode !== "0x"
@@ -142,6 +140,13 @@ const DEPLOYMENT_ARTIFACTS_READY = Boolean(
     && artifacts.registry?.bytecode && artifacts.registry.bytecode !== "0x"
     && factoryConstructor?.inputs?.length === 8
     && governanceConstructor?.inputs?.length === 3
+    && registryConstructor?.inputs?.length === 4
+    && artifacts.factory?.abi.some(
+      (item) => item.type === "function" && "name" in item && item.name === "isNameUsed"
+    )
+    && artifacts.factory?.abi.some(
+      (item) => item.type === "function" && "name" in item && item.name === "isSymbolUsed"
+    )
     && artifacts.rmtFactoryV6.abi.some(
       (item) => item.type === "function" && "name" in item && item.name === "officialLegacyToken"
     )
@@ -166,7 +171,7 @@ const DEPLOYMENT_ARTIFACTS_READY = Boolean(
     )
 );
 const EMPTY: ReleaseDeployment = { addresses: {}, transactions: {}, proposalIds: {}, readyAt: {} };
-const ADDRESS_KEYS: readonly AddressKey[] = ["governance", "hook", "adapter", "launchGate", "policyRegistry", "marketImplementation", "factory"];
+const ADDRESS_KEYS: readonly AddressKey[] = ["governance", "registry", "hook", "adapter", "launchGate", "policyRegistry", "marketImplementation", "factory"];
 const PROPOSAL_KEYS: readonly ProposalKey[] = ["fairPolicy", "openPolicy", "factoryActivation", "defaultPolicy", "unpause"];
 const READY_KEYS: readonly ReadyKey[] = ["initialGovernance", "policyRegistration", "defaultGovernance", "defaultPolicy", "unpauseGovernance", "unpause"];
 const PROPOSAL_TRANSACTION_KEYS: Record<ProposalKey, string> = {
@@ -178,6 +183,7 @@ const PROPOSAL_TRANSACTION_KEYS: Record<ProposalKey, string> = {
 };
 const FOUNDATION_TRANSACTION_KEYS = [
   "governance",
+  "registry",
   "hook",
   "adapter",
   "bindHookAdapter",
@@ -188,13 +194,16 @@ const FOUNDATION_TRANSACTION_KEYS = [
   "bindAdapterFactory"
 ] as const;
 
-function proposalGovernance(current: ReleaseDeployment, proposalKey: ProposalKey) {
-  if (proposalKey === "factoryActivation") {
-    return { address: REGISTRY_GOVERNANCE, artifact: artifacts.governance };
-  }
+function proposalGovernance(current: ReleaseDeployment, _proposalKey: ProposalKey) {
   const governance = current.addresses.governance;
   if (!governance) throw new Error("The V6 governance address is missing from the release record.");
   return { address: governance, artifact: artifacts.governanceV6 };
+}
+
+function releaseRegistry(current: ReleaseDeployment) {
+  const registry = current.addresses.registry;
+  if (!registry) throw new Error("The fresh V6 version registry is missing from the release record.");
+  return registry;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -352,10 +361,18 @@ export function V6ReleaseConsole() {
 
   async function refreshOnchain() {
     if (!publicClient) return;
+    const registry = deployment.addresses.registry;
+    if (!registry || !(await hasCode(registry))) {
+      setActiveFactory(undefined);
+      setPendingFactory(undefined);
+      setPendingActivationTime(undefined);
+      setOfficialMigrationConsumed(undefined);
+      return;
+    }
     const [active, pending, activation] = await Promise.all([
-      publicClient.readContract({ address: REGISTRY, abi: artifacts.registry.abi, functionName: "activeFactory" }),
-      publicClient.readContract({ address: REGISTRY, abi: artifacts.registry.abi, functionName: "pendingFactory" }),
-      publicClient.readContract({ address: REGISTRY, abi: artifacts.registry.abi, functionName: "pendingActivationTime" })
+      publicClient.readContract({ address: registry, abi: artifacts.registry.abi, functionName: "activeFactory" }),
+      publicClient.readContract({ address: registry, abi: artifacts.registry.abi, functionName: "pendingFactory" }),
+      publicClient.readContract({ address: registry, abi: artifacts.registry.abi, functionName: "pendingActivationTime" })
     ]);
     setActiveFactory(active as Address);
     setPendingFactory(pending as Address);
@@ -407,7 +424,7 @@ export function V6ReleaseConsole() {
       void refreshOnchain().catch(() => undefined);
     }, 15_000);
     return () => window.clearInterval(timer);
-  }, [publicClient, address, deployment.addresses.launchGate, deployment.addresses.factory]);
+  }, [publicClient, address, deployment.addresses.registry, deployment.addresses.launchGate, deployment.addresses.factory]);
 
   async function hasCode(value?: Address) {
     if (!value || !publicClient) return false;
@@ -466,6 +483,26 @@ export function V6ReleaseConsole() {
     );
   }
 
+  async function validateSavedDeploymentReceipts(current: ReleaseDeployment) {
+    if (!publicClient) throw new Error("Mainnet provider is unavailable.");
+    await Promise.all(ADDRESS_KEYS.map(async (key) => {
+      const addressToVerify = current.addresses[key];
+      const transactionHash = current.transactions[key];
+      if (!transactionHash) return;
+      if (!addressToVerify) {
+        throw new Error(`The recovery record has a ${key} deployment receipt without its contract address.`);
+      }
+      const receipt = await publicClient.getTransactionReceipt({ hash: transactionHash });
+      if (
+        receipt.status !== "success"
+          || !receipt.contractAddress
+          || receipt.contractAddress.toLowerCase() !== addressToVerify.toLowerCase()
+      ) {
+        throw new Error(`The recovery record's ${key} transaction did not create the recorded contract.`);
+      }
+    }));
+  }
+
   async function validateAdapterContract(adapter: Address, hook: Address) {
     if (!publicClient || !(await hasCode(adapter))) throw new Error("The hook's recorded adapter has no bytecode.");
     const [adapterPoolManager, adapterHook, adapterDeployer, adapterFee, adapterTickSpacing, boundFactory] = await Promise.all([
@@ -488,7 +525,8 @@ export function V6ReleaseConsole() {
   async function validateAndRecoverFactory(
     factory: Address,
     expectedAdapter?: Address,
-    expectedGovernance?: Address
+    expectedGovernance?: Address,
+    expectedRegistry?: Address
   ) {
     if (!publicClient || !(await hasCode(factory))) throw new Error("The adapter's recorded factory has no bytecode.");
     const [
@@ -567,14 +605,14 @@ export function V6ReleaseConsole() {
     ]);
     if (
       Number(protocolVersion) !== 6
-        || String(factoryRegistry).toLowerCase() !== REGISTRY.toLowerCase()
+        || (expectedRegistry !== undefined
+          && String(factoryRegistry).toLowerCase() !== expectedRegistry.toLowerCase())
         || String(legacyFactory).toLowerCase() !== V5_FACTORY.toLowerCase()
         || String(officialLegacyToken).toLowerCase() !== OFFICIAL_LEGACY_RMT_TOKEN.toLowerCase()
         || String(officialMigrationPolicyId).toLowerCase() !== FAIR_POLICY_ID.toLowerCase()
         || virtualEthReserve !== parseEther("0.3") || virtualTokenReserve !== parseEther("1017500000")
         || String(gateGuardian).toLowerCase() !== OPERATOR.toLowerCase() || gateDelay !== DAY
         || String(policyGuardian).toLowerCase() !== OPERATOR.toLowerCase() || policyDelay !== DAY
-        || String(canonicalTreasury).toLowerCase() !== OPERATOR.toLowerCase()
         || !(await hasCode(canonicalMarketImplementation as Address))
         || !(await hasCode(canonicalGraduationAdapter as Address))
         || (expectedAdapter !== undefined
@@ -590,12 +628,14 @@ export function V6ReleaseConsole() {
     if (
       String(policyGovernance).toLowerCase() !== recoveredGovernance.toLowerCase()
         || String(creatorPayoutAuthority).toLowerCase() !== recoveredGovernance.toLowerCase()
+        || String(canonicalTreasury).toLowerCase() !== recoveredGovernance.toLowerCase()
         || (expectedGovernance !== undefined
           && recoveredGovernance.toLowerCase() !== expectedGovernance.toLowerCase())
     ) throw new Error("The factory, gate, policy registry, and creator payout authority do not share V6 governance.");
     await validateV6Governance(recoveredGovernance);
     return {
       governance: recoveredGovernance,
+      versionRegistry: factoryRegistry as Address,
       launchGate: recoveredGate,
       policyRegistry: recoveredPolicyRegistry,
       marketImplementation: canonicalMarketImplementation as Address,
@@ -618,7 +658,7 @@ export function V6ReleaseConsole() {
     if (boundFactory.toLowerCase() !== ZERO_ADDRESS.toLowerCase()) {
       setStatus("Recovering the factory already bound to this adapter…");
       const recovered = await validateAndRecoverFactory(
-        boundFactory, boundAdapter, current.addresses.governance
+        boundFactory, boundAdapter, current.addresses.governance, releaseRegistry(current)
       );
       if (current.addresses.marketImplementation
         && current.addresses.marketImplementation.toLowerCase() !== recovered.marketImplementation.toLowerCase()) {
@@ -672,52 +712,18 @@ export function V6ReleaseConsole() {
     return BigInt(Object.values(current.proposalIds).filter((id) => id !== undefined).length);
   }
 
-  function reviewedV6GovernanceProposalCount(current: ReleaseDeployment) {
-    return BigInt(PROPOSAL_KEYS.filter(
-      (key) => key !== "factoryActivation" && current.proposalIds[key] !== undefined
-    ).length);
-  }
-
-  function reviewedRegistryGovernanceProposalCount(current: ReleaseDeployment) {
-    return current.proposalIds.factoryActivation === undefined ? 0n : 1n;
-  }
-
   async function verifyLiveDependencies(
-    expectedRegistryGovernanceTransactionCount = 0n,
+    current?: ReleaseDeployment,
     reviewedProgressFactory?: Address
   ) {
     if (!publicClient) throw new Error("Mainnet provider is unavailable.");
     const [
-      operatorIsSigner,
-      signerCount,
-      threshold,
-      executionDelay,
-      governanceTransactionCount,
-      registryGovernance,
-      activationDelay,
-      registeredFactory,
-      registeredVersion,
-      registeredPendingFactory,
-      registeredPendingVersion,
-      registeredPendingTime,
       officialNameReserved,
       officialSymbolReserved,
       officialLegacyCreator,
       officialLegacyName,
       officialLegacySymbol
     ] = await Promise.all([
-      publicClient.readContract({ address: REGISTRY_GOVERNANCE, abi: artifacts.governance.abi, functionName: "isSigner", args: [OPERATOR] }),
-      publicClient.readContract({ address: REGISTRY_GOVERNANCE, abi: artifacts.governance.abi, functionName: "signerCount" }),
-      publicClient.readContract({ address: REGISTRY_GOVERNANCE, abi: artifacts.governance.abi, functionName: "threshold" }),
-      publicClient.readContract({ address: REGISTRY_GOVERNANCE, abi: artifacts.governance.abi, functionName: "executionDelay" }),
-      publicClient.readContract({ address: REGISTRY_GOVERNANCE, abi: artifacts.governance.abi, functionName: "transactionCount" }),
-      publicClient.readContract({ address: REGISTRY, abi: artifacts.registry.abi, functionName: "governance" }),
-      publicClient.readContract({ address: REGISTRY, abi: artifacts.registry.abi, functionName: "activationDelay" }),
-      publicClient.readContract({ address: REGISTRY, abi: artifacts.registry.abi, functionName: "activeFactory" }),
-      publicClient.readContract({ address: REGISTRY, abi: artifacts.registry.abi, functionName: "activeVersion" }),
-      publicClient.readContract({ address: REGISTRY, abi: artifacts.registry.abi, functionName: "pendingFactory" }),
-      publicClient.readContract({ address: REGISTRY, abi: artifacts.registry.abi, functionName: "pendingVersion" }),
-      publicClient.readContract({ address: REGISTRY, abi: artifacts.registry.abi, functionName: "pendingActivationTime" }),
       publicClient.readContract({ address: V5_FACTORY, abi: artifacts.factory.abi, functionName: "isNameUsed", args: ["Robinhood Meme Terminal"] }),
       publicClient.readContract({ address: V5_FACTORY, abi: artifacts.factory.abi, functionName: "isSymbolUsed", args: ["RMT"] }),
       publicClient.readContract({ address: OFFICIAL_LEGACY_RMT_TOKEN, abi: officialLegacyTokenAbi, functionName: "creator" }),
@@ -725,12 +731,45 @@ export function V6ReleaseConsole() {
       publicClient.readContract({ address: OFFICIAL_LEGACY_RMT_TOKEN, abi: officialLegacyTokenAbi, functionName: "symbol" })
     ]);
 
+    if (officialNameReserved !== true || officialSymbolReserved !== true) {
+      throw new Error("The live V5 factory does not report the official RMT name and ticker as protected.");
+    }
     if (
-      operatorIsSigner !== true || signerCount !== 1n || threshold !== 1n || executionDelay !== DAY
-        || governanceTransactionCount !== expectedRegistryGovernanceTransactionCount
-        || String(registryGovernance).toLowerCase() !== REGISTRY_GOVERNANCE.toLowerCase()
-        || activationDelay !== 2n * DAY
-    ) throw new Error("The existing V5 registry governance does not match its reviewed one-wallet configuration or contains a proposal outside the exact recovered activation record. Stop and audit every governance event before V6.");
+      String(officialLegacyCreator).toLowerCase() !== OPERATOR.toLowerCase()
+        || officialLegacyName !== "Robinhood Meme Terminal" || officialLegacySymbol !== "RMT"
+    ) {
+      throw new Error("The protected V6 migration does not resolve to the exact reviewed legacy RMT token and creator.");
+    }
+
+    if (!current) return;
+    const governance = current.addresses.governance;
+    const registry = current.addresses.registry;
+    if (!governance || !registry || !(await hasCode(registry))) {
+      throw new Error("The fresh V6 governance and version registry are required.");
+    }
+    // Transaction IDs are reconciled from saved receipts later in recovery. Do not require the
+    // local record to be complete before it has had a chance to recover a just-confirmed proposal.
+    await validateV6Governance(governance);
+    const [
+      registryGovernance,
+      activationDelay,
+      registeredFactory,
+      registeredVersion,
+      registeredPendingFactory,
+      registeredPendingVersion,
+      registeredPendingTime
+    ] = await Promise.all([
+      publicClient.readContract({ address: registry, abi: artifacts.registry.abi, functionName: "governance" }),
+      publicClient.readContract({ address: registry, abi: artifacts.registry.abi, functionName: "activationDelay" }),
+      publicClient.readContract({ address: registry, abi: artifacts.registry.abi, functionName: "activeFactory" }),
+      publicClient.readContract({ address: registry, abi: artifacts.registry.abi, functionName: "activeVersion" }),
+      publicClient.readContract({ address: registry, abi: artifacts.registry.abi, functionName: "pendingFactory" }),
+      publicClient.readContract({ address: registry, abi: artifacts.registry.abi, functionName: "pendingVersion" }),
+      publicClient.readContract({ address: registry, abi: artifacts.registry.abi, functionName: "pendingActivationTime" })
+    ]);
+    if (String(registryGovernance).toLowerCase() !== governance.toLowerCase() || activationDelay !== 2n * DAY) {
+      throw new Error("The fresh version registry is not governed by the reviewed V6 governance with a 48-hour activation delay.");
+    }
     const activeAddress = String(registeredFactory).toLowerCase();
     const activeVersion = String(registeredVersion).toLowerCase();
     const pendingAddress = String(registeredPendingFactory).toLowerCase();
@@ -746,24 +785,12 @@ export function V6ReleaseConsole() {
         && pendingVersion === VERSION.toLowerCase() && pendingActivation > 0n;
       if (!((activeIsV5 && (noPendingFactory || pendingIsReviewedV6))
         || (activeIsReviewedV6 && noPendingFactory))) {
-        throw new Error("The registry contains a factory state outside the exact recovered V6 release progression.");
+        throw new Error("The fresh registry contains a factory state outside the exact recovered V6 release progression.");
       }
-    } else {
-      if (activeAddress !== V5_FACTORY.toLowerCase() || activeVersion !== V5_VERSION.toLowerCase()) {
-        throw new Error("The registry is not on the reviewed V5 starting point. Stop and reconcile mainnet state.");
-      }
-      if (!noPendingFactory) {
-        throw new Error("The registry already has a pending factory proposal. Stop and review it before deploying V6.");
-      }
-    }
-    if (officialNameReserved !== true || officialSymbolReserved !== true) {
-      throw new Error("The live V5 factory does not report the official RMT name and ticker as protected.");
-    }
-    if (
-      String(officialLegacyCreator).toLowerCase() !== OPERATOR.toLowerCase()
-        || officialLegacyName !== "Robinhood Meme Terminal" || officialLegacySymbol !== "RMT"
+    } else if (
+      activeAddress !== V5_FACTORY.toLowerCase() || activeVersion !== V5_VERSION.toLowerCase() || !noPendingFactory
     ) {
-      throw new Error("The protected V6 migration does not resolve to the exact reviewed legacy RMT token and creator.");
+      throw new Error("The fresh registry is not at its reviewed V5 starting point.");
     }
   }
 
@@ -846,11 +873,19 @@ export function V6ReleaseConsole() {
     const initCode = encodeDeployData({ abi: artifacts.hook.abi, bytecode: artifacts.hook.bytecode, args: [POOL_MANAGER, OPERATOR] });
     let salt = current.hookSalt;
     let expected = salt ? getCreate2Address({ from: CREATE2_DEPLOYER, salt, bytecode: initCode }) : undefined;
+    if (expected && await hasCode(expected) && !current.transactions.hook) {
+      // A hook not proven by this fresh recovery record may belong to an abandoned stack.
+      // Never adopt it implicitly because it could already be bound to the legacy topology.
+      salt = undefined;
+      expected = undefined;
+      delete current.hookSalt;
+    }
     if (!salt || !expected || (BigInt(expected) & HOOK_MASK) !== HOOK_FLAGS) {
       for (let nonce = 0n; nonce < 1_000_000n; nonce += 1n) {
         const candidateSalt = toHex(nonce, { size: 32 });
         const candidate = getCreate2Address({ from: CREATE2_DEPLOYER, salt: candidateSalt, bytecode: initCode });
         if ((BigInt(candidate) & HOOK_MASK) === HOOK_FLAGS) {
+          if (await hasCode(candidate)) continue;
           salt = candidateSalt;
           expected = candidate;
           current.hookSalt = salt;
@@ -880,7 +915,7 @@ export function V6ReleaseConsole() {
     return expected;
   }
 
-  function policies(marketImplementation: Address, adapter: Address) {
+  function policies(marketImplementation: Address, adapter: Address, governance: Address) {
     const shared = {
       policyVersion: 1,
       enabled: true,
@@ -891,7 +926,7 @@ export function V6ReleaseConsole() {
       postGraduationFeeBps: 50,
       graduationTarget: parseEther("2"),
       marketImplementation,
-      protocolTreasury: OPERATOR,
+      protocolTreasury: governance,
       graduationAdapter: adapter
     };
     const fair: LaunchPolicy = {
@@ -937,9 +972,9 @@ export function V6ReleaseConsole() {
 
   async function sourceContractAddresses(current: ReleaseDeployment): Promise<SourceContractAddresses> {
     if (!publicClient) throw new Error("Mainnet provider is unavailable.");
-    const { governance, hook, adapter, launchGate, policyRegistry, marketImplementation, factory } = current.addresses;
-    if (!governance || !hook || !adapter || !launchGate || !policyRegistry || !marketImplementation || !factory) {
-      throw new Error("All seven deployed V6 foundation addresses are required before source verification.");
+    const { governance, registry, hook, adapter, launchGate, policyRegistry, marketImplementation, factory } = current.addresses;
+    if (!governance || !registry || !hook || !adapter || !launchGate || !policyRegistry || !marketImplementation || !factory) {
+      throw new Error("All eight deployed V6 foundation addresses are required before source verification.");
     }
 
     const [tokenImplementation, feeSplitterImplementation, officialMigration] = await Promise.all([
@@ -950,8 +985,7 @@ export function V6ReleaseConsole() {
 
     const contracts: SourceContractAddresses = {
       governance,
-      registryGovernance: REGISTRY_GOVERNANCE,
-      versionRegistry: REGISTRY,
+      versionRegistry: registry,
       legacyFactory: V5_FACTORY,
       hook,
       adapter,
@@ -976,7 +1010,7 @@ export function V6ReleaseConsole() {
     current.sourceVerified = false;
     delete current.sourceVerifiedAt;
     persist(current);
-    setStatus("Checking all thirteen V6 contracts and critical RMT dependencies on Blockscout…");
+    setStatus("Checking all twelve V6 contracts and critical RMT dependencies on Blockscout…");
 
     const contracts = await sourceContractAddresses(current);
     const response = await fetch("/api/deploy-mainnet/v6-source-status", {
@@ -989,7 +1023,7 @@ export function V6ReleaseConsole() {
     if (!response.ok || !isRecord(payload)) {
       throw new Error("Blockscout source verification is unavailable. No governance proposal was submitted.");
     }
-    if (payload.verified !== true || !Array.isArray(payload.contracts) || payload.contracts.length !== 13
+    if (payload.verified !== true || !Array.isArray(payload.contracts) || payload.contracts.length !== 12
       || payload.contracts.some((entry) => !isRecord(entry) || entry.verified !== true)) {
       const failures = Array.isArray(payload.contracts)
         ? payload.contracts.flatMap((entry) => {
@@ -1013,13 +1047,85 @@ export function V6ReleaseConsole() {
     return contracts;
   }
 
+  async function verifyLiveProductionHealth(current: ReleaseDeployment) {
+    if (!publicClient || typeof window === "undefined") {
+      throw new Error("The live production health check is unavailable.");
+    }
+    const { registry, factory } = current.addresses;
+    const factoryTransaction = current.transactions.factory;
+    if (!registry || !factory || !factoryTransaction) {
+      throw new Error("The fresh registry, V6 factory, and confirmed factory deployment receipt are required.");
+    }
+
+    const configuredAppUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
+    let productionOrigin: string;
+    try {
+      if (!configuredAppUrl) throw new Error("missing");
+      const configured = new URL(configuredAppUrl);
+      if (configured.protocol !== "https:") throw new Error("not https");
+      productionOrigin = configured.origin;
+    } catch {
+      throw new Error("NEXT_PUBLIC_APP_URL must be the exact public HTTPS production origin before reopening.");
+    }
+    if (window.location.origin !== productionOrigin) {
+      throw new Error("Final reopening is allowed only from the configured live production site, not a preview or local build.");
+    }
+
+    const factoryReceipt = await publicClient.getTransactionReceipt({ hash: factoryTransaction });
+    if (
+      factoryReceipt.status !== "success"
+        || !factoryReceipt.contractAddress
+        || factoryReceipt.contractAddress.toLowerCase() !== factory.toLowerCase()
+    ) {
+      throw new Error("The saved V6 factory deployment transaction did not create the recorded V6 factory.");
+    }
+    const response = await fetch(`${productionOrigin}/api/health`, {
+      cache: "no-store",
+      headers: { Accept: "application/json" }
+    });
+    const payload: unknown = await response.json().catch(() => undefined);
+    if (!response.ok || !isRecord(payload) || payload.ok !== true || !isRecord(payload.releaseEvidence)) {
+      throw new Error("Live production /api/health is not healthy. Public launches remain paused.");
+    }
+    const evidence = payload.releaseEvidence;
+    const checkedAt = typeof payload.checkedAt === "string" ? Date.parse(payload.checkedAt) : Number.NaN;
+    const healthAge = Date.now() - checkedAt;
+    const latestBlock = typeof payload.latestBlock === "string" && DECIMAL_PATTERN.test(payload.latestBlock)
+      ? BigInt(payload.latestBlock)
+      : -1n;
+    const healthChecksOperational = Array.isArray(payload.checks)
+      && payload.checks.length > 0
+      && payload.checks.every((item) => isRecord(item) && item.state === "operational");
+    if (
+      payload.chainId !== robinhoodChain.id
+        || payload.network !== "Robinhood Chain Mainnet"
+        || !Number.isFinite(checkedAt) || healthAge < -30_000 || healthAge > 120_000
+        || !healthChecksOperational
+        || evidence.mode !== "v6-cutover"
+        || evidence.registryConfiguredExplicitly !== true
+        || evidence.registryConfigurationValid !== true
+        || evidence.factoryStartBlockConfiguredExplicitly !== true
+        || evidence.factoryStartBlockConfigurationValid !== true
+        || typeof evidence.registryAddress !== "string"
+        || evidence.registryAddress.toLowerCase() !== registry.toLowerCase()
+        || typeof evidence.factoryAddress !== "string"
+        || evidence.factoryAddress.toLowerCase() !== factory.toLowerCase()
+        || typeof evidence.factoryVersion !== "string"
+        || evidence.factoryVersion.toLowerCase() !== VERSION.toLowerCase()
+        || evidence.factoryStartBlock !== factoryReceipt.blockNumber.toString()
+        || latestBlock < factoryReceipt.blockNumber
+    ) {
+      throw new Error("Production health does not prove the exact fresh registry, active V6 factory/version, and V6 factory deployment block. Public launches remain paused.");
+    }
+  }
+
   async function validateFinalReopeningBoundary(current: ReleaseDeployment) {
     if (!publicClient) throw new Error("Mainnet provider is unavailable.");
     await validateImportedRecovery(current);
     await verifySourcesLive(current);
 
-    const { launchGate, policyRegistry, marketImplementation, adapter, factory } = current.addresses;
-    if (!launchGate || !policyRegistry || !marketImplementation || !adapter || !factory) {
+    const { governance, registry, launchGate, policyRegistry, marketImplementation, adapter, factory } = current.addresses;
+    if (!governance || !registry || !launchGate || !policyRegistry || !marketImplementation || !adapter || !factory) {
       throw new Error("The complete V6 foundation is required before reopening.");
     }
     const officialMigration = await publicClient.readContract({
@@ -1047,11 +1153,11 @@ export function V6ReleaseConsole() {
       migrationConsumed,
       latestBlock
     ] = await Promise.all([
-      publicClient.readContract({ address: REGISTRY, abi: artifacts.registry.abi, functionName: "activeFactory" }),
-      publicClient.readContract({ address: REGISTRY, abi: artifacts.registry.abi, functionName: "activeVersion" }),
-      publicClient.readContract({ address: REGISTRY, abi: artifacts.registry.abi, functionName: "pendingFactory" }),
-      publicClient.readContract({ address: REGISTRY, abi: artifacts.registry.abi, functionName: "pendingVersion" }),
-      publicClient.readContract({ address: REGISTRY, abi: artifacts.registry.abi, functionName: "pendingActivationTime" }),
+      publicClient.readContract({ address: registry, abi: artifacts.registry.abi, functionName: "activeFactory" }),
+      publicClient.readContract({ address: registry, abi: artifacts.registry.abi, functionName: "activeVersion" }),
+      publicClient.readContract({ address: registry, abi: artifacts.registry.abi, functionName: "pendingFactory" }),
+      publicClient.readContract({ address: registry, abi: artifacts.registry.abi, functionName: "pendingVersion" }),
+      publicClient.readContract({ address: registry, abi: artifacts.registry.abi, functionName: "pendingActivationTime" }),
       publicClient.readContract({ address: launchGate, abi: artifacts.launchGateV6.abi, functionName: "launchesPaused" }),
       publicClient.readContract({ address: launchGate, abi: artifacts.launchGateV6.abi, functionName: "unpauseExecutableAt" }),
       publicClient.readContract({ address: policyRegistry, abi: artifacts.policyRegistryV6.abi, functionName: "defaultPolicyId" }),
@@ -1066,7 +1172,7 @@ export function V6ReleaseConsole() {
       publicClient.readContract({ address: officialMigration, abi: officialMigrationAbi, functionName: "consumed" }),
       publicClient.getBlock({ blockTag: "latest" })
     ]);
-    const expected = policies(marketImplementation, adapter);
+    const expected = policies(marketImplementation, adapter, governance);
     if (
       String(registryFactory).toLowerCase() !== factory.toLowerCase()
         || String(registryVersion).toLowerCase() !== VERSION.toLowerCase()
@@ -1085,6 +1191,7 @@ export function V6ReleaseConsole() {
         || String(migrationOfficialLegacyToken).toLowerCase() !== OFFICIAL_LEGACY_RMT_TOKEN.toLowerCase()
         || migrationConsumed !== true
     ) throw new Error("Final V6 reopening checks failed. Public launches remain paused.");
+    await verifyLiveProductionHealth(current);
   }
 
   async function recoverProposalFromSavedTransaction(
@@ -1282,7 +1389,7 @@ export function V6ReleaseConsole() {
     const governance = current.addresses.governance;
     if (!governance) throw new Error("The V6 governance address is missing from the release record.");
 
-    const v6ProposalKeys = PROPOSAL_KEYS.filter((key) => key !== "factoryActivation");
+    const v6ProposalKeys = PROPOSAL_KEYS;
     const v6ProposalIds = v6ProposalKeys
       .map((key) => current.proposalIds[key])
       .filter((id): id is string => id !== undefined)
@@ -1295,22 +1402,6 @@ export function V6ReleaseConsole() {
     for (let id = 0n; id < v6TransactionCount; id += 1n) {
       if (!v6UniqueIds.has(id.toString())) {
         throw new Error(`V6 governance proposal ${id} is not part of the reviewed release record.`);
-      }
-    }
-
-    const registryTransactionCount = await publicClient.readContract({
-      address: REGISTRY_GOVERNANCE,
-      abi: artifacts.governance.abi,
-      functionName: "transactionCount"
-    }) as bigint;
-    const registryProposalIds = current.proposalIds.factoryActivation === undefined
-      ? [] : [BigInt(current.proposalIds.factoryActivation)];
-    if (registryTransactionCount !== BigInt(registryProposalIds.length)) {
-      throw new Error("The existing registry governance contains an unrecognized proposal. Stop and audit every event before continuing.");
-    }
-    for (let id = 0n; id < registryTransactionCount; id += 1n) {
-      if (!registryProposalIds.some((reviewedId) => reviewedId === id)) {
-        throw new Error(`Registry-governance proposal ${id} is not the reviewed V6 activation.`);
       }
     }
 
@@ -1343,7 +1434,9 @@ export function V6ReleaseConsole() {
     if (!publicClient) throw new Error("Mainnet provider is unavailable.");
     const governance = current.addresses.governance;
     if (!governance) throw new Error("The recovery record's V6 governance address is missing.");
-    await validateV6Governance(governance);
+    if (!current.addresses.registry) throw new Error("The recovery record's fresh V6 registry address is missing.");
+    await validateSavedDeploymentReceipts(current);
+    await verifyLiveDependencies(current, current.addresses.factory);
     const hook = current.addresses.hook;
     if (!hook || !(await hasCode(hook))) throw new Error("The recovery record's V6 hook is missing onchain.");
     const [hookPoolManager, hookDeployer, hookAdapter] = await Promise.all([
@@ -1378,7 +1471,9 @@ export function V6ReleaseConsole() {
       current.addresses.factory = factory;
     }
     if (factory) {
-      const recovered = await validateAndRecoverFactory(factory, adapter, current.addresses.governance);
+      const recovered = await validateAndRecoverFactory(
+        factory, adapter, current.addresses.governance, releaseRegistry(current)
+      );
       if (current.addresses.launchGate
         && current.addresses.launchGate.toLowerCase() !== recovered.launchGate.toLowerCase()) {
         throw new Error("The recovery record contains the wrong launch gate for its bound factory.");
@@ -1407,7 +1502,7 @@ export function V6ReleaseConsole() {
       marketImplementation = await recoverCanonicalMarketImplementation(current, policyRegistry, adapter);
     }
     if (adapter && policyRegistry && marketImplementation) {
-      const { fair, open } = policies(marketImplementation, adapter);
+      const { fair, open } = policies(marketImplementation, adapter, governance);
       await recoverProposalFromSavedTransaction(
         current,
         "fairPolicy",
@@ -1426,11 +1521,12 @@ export function V6ReleaseConsole() {
       throw new Error("The recovery record is missing contracts needed to verify its policy proposals.");
     }
     if (factory) {
+      const registry = releaseRegistry(current);
       await recoverProposalFromSavedTransaction(
         current,
         "factoryActivation",
         "proposeFactoryActivation",
-        REGISTRY,
+        registry,
         encodeFunctionData({ abi: artifacts.registry.abi, functionName: "proposeFactory", args: [factory, VERSION] })
       );
     } else if (current.transactions.proposeFactoryActivation) {
@@ -1497,7 +1593,7 @@ export function V6ReleaseConsole() {
     };
 
     if (adapter && policyRegistry && marketImplementation) {
-      const expected = policies(marketImplementation, adapter);
+      const expected = policies(marketImplementation, adapter, governance);
       const [fairHash, openHash, currentDefaultPolicy] = await Promise.all([
         publicClient.readContract({ address: policyRegistry, abi: artifacts.policyRegistryV6.abi, functionName: "policyHash", args: [FAIR_POLICY_ID] }),
         publicClient.readContract({ address: policyRegistry, abi: artifacts.policyRegistryV6.abi, functionName: "policyHash", args: [OPEN_POLICY_ID] }),
@@ -1566,9 +1662,10 @@ export function V6ReleaseConsole() {
     }
 
     if (factory) {
+      const registry = releaseRegistry(current);
       const [registryFactory, registryVersion] = await Promise.all([
-        publicClient.readContract({ address: REGISTRY, abi: artifacts.registry.abi, functionName: "activeFactory" }),
-        publicClient.readContract({ address: REGISTRY, abi: artifacts.registry.abi, functionName: "activeVersion" })
+        publicClient.readContract({ address: registry, abi: artifacts.registry.abi, functionName: "activeFactory" }),
+        publicClient.readContract({ address: registry, abi: artifacts.registry.abi, functionName: "activeVersion" })
       ]);
       const activeAddress = String(registryFactory).toLowerCase();
       const activeVersion = String(registryVersion).toLowerCase();
@@ -1576,7 +1673,7 @@ export function V6ReleaseConsole() {
         const recovered = await recoverReviewedEventTransaction(
           current,
           "activateFactory",
-          REGISTRY,
+          registry,
           artifacts.registry.abi,
           "FactoryActivated",
           await proposalBlock("factoryActivation"),
@@ -1615,9 +1712,9 @@ export function V6ReleaseConsole() {
       }
     }
 
-    // V6 proposals are inspected through the public getter and must be current-epoch, uncancelled,
-    // and unexpired while pending. The legacy governance is accepted only for the one registry activation,
-    // and both contracts must account for every proposal ID from zero through transactionCount - 1.
+    // Every release proposal, including registry activation, is inspected through the one V6 governance getter
+    // and must be current-epoch, uncancelled, and unexpired while pending. Every ID from zero through
+    // transactionCount - 1 must be present in this exact recovery record.
     await validateGovernanceProposalSet(current);
 
     const receipts = await Promise.all(Object.values(current.transactions).map((hash) =>
@@ -1695,7 +1792,7 @@ export function V6ReleaseConsole() {
       const recovered = await validateImportedRecovery(current);
       persist(recovered);
       await refreshOnchain();
-      setStatus("Confirmed V6 progress recovered — recheck all thirteen source records before continuing");
+      setStatus("Confirmed V6 progress recovered — recheck all twelve source records before continuing");
     } catch (cause) {
       setError(describeError(cause));
       setStatus("Mainnet recovery stopped safely");
@@ -1717,22 +1814,19 @@ export function V6ReleaseConsole() {
     };
     try {
       if (!DEPLOYMENT_ARTIFACTS_READY) {
-        throw new Error("The checked-in wallet artifact does not match the final V6 governance and eight-argument factory. Regenerate it from a green final compile before signing anything.");
+        throw new Error("The checked-in wallet artifact does not match the final V6 governance, fresh registry, and eight-argument factory. Regenerate it from a green final compile before signing anything.");
       }
       if (!isOperator) throw new Error("Connect the RMTMain operator wallet.");
       if (chainId !== robinhoodChain.id) await switchChainAsync({ chainId: robinhoodChain.id });
-      if (activeFactory?.toLowerCase() !== V5_FACTORY.toLowerCase()) throw new Error("V5 must remain active while V6 is prepared.");
       for (const required of [
-        REGISTRY_GOVERNANCE,
         V5_FACTORY,
         OFFICIAL_LEGACY_RMT_TOKEN,
-        REGISTRY,
         POOL_MANAGER,
         CREATE2_DEPLOYER
       ]) {
         if (!(await hasCode(required))) throw new Error(`Required contract is missing at ${required}.`);
       }
-      setStatus("Verifying live governance, registry, and RMT identity protection…");
+      setStatus("Verifying the legacy V5 identity anchor before creating the independent V6 foundation…");
       await verifyLiveDependencies();
 
       const governance = await deployContract(
@@ -1743,6 +1837,14 @@ export function V6ReleaseConsole() {
         "RMT V6 governance (24-hour delay, seven-day execution window)"
       );
       await validateV6Governance(governance, 0n);
+      const registry = await deployContract(
+        current,
+        "registry",
+        artifacts.registry,
+        [governance, 2n * DAY, V5_FACTORY, V5_VERSION],
+        "fresh V6-governed version registry initialized to V5"
+      );
+      await verifyLiveDependencies(current);
 
       const hook = await deployHook(current);
       const recoveredBinding = await adoptBoundStack(current, hook);
@@ -1764,7 +1866,7 @@ export function V6ReleaseConsole() {
       let marketImplementation = current.addresses.marketImplementation;
       if (nextFactory) {
         const recovered = await validateAndRecoverFactory(
-          nextFactory, adapter, current.addresses.governance
+          nextFactory, adapter, current.addresses.governance, releaseRegistry(current)
         );
         if (marketImplementation
           && marketImplementation.toLowerCase() !== recovered.marketImplementation.toLowerCase()) {
@@ -1788,7 +1890,7 @@ export function V6ReleaseConsole() {
           current,
           "policyRegistry",
           artifacts.policyRegistryV6,
-          [governance, OPERATOR, DAY, OPERATOR, marketImplementation, adapter],
+          [governance, OPERATOR, DAY, governance, marketImplementation, adapter],
           "component-locked V6 policy registry"
         );
       }
@@ -1805,7 +1907,7 @@ export function V6ReleaseConsole() {
           [
             launchGate,
             policyRegistry,
-            REGISTRY,
+            registry,
             parseEther("0.3"),
             parseEther("1017500000"),
             V5_FACTORY,
@@ -1911,7 +2013,7 @@ export function V6ReleaseConsole() {
         || String(policyGovernance).toLowerCase() !== governance.toLowerCase()
         || String(policyGuardian).toLowerCase() !== OPERATOR.toLowerCase()
         || policyDelay !== DAY || String(defaultPolicy).toLowerCase() !== ZERO_BYTES32.toLowerCase()
-        || String(canonicalTreasury).toLowerCase() !== OPERATOR.toLowerCase()
+        || String(canonicalTreasury).toLowerCase() !== governance.toLowerCase()
         || String(canonicalMarket).toLowerCase() !== marketImplementation.toLowerCase()
         || String(canonicalAdapter).toLowerCase() !== adapter.toLowerCase()
         || Number(canonicalCurveFee) !== 100 || Number(canonicalCreatorShare) !== 7_000
@@ -1920,7 +2022,7 @@ export function V6ReleaseConsole() {
         || protocolVersion !== 6
         || String(factoryGate).toLowerCase() !== launchGate.toLowerCase()
         || String(factoryPolicyRegistry).toLowerCase() !== policyRegistry.toLowerCase()
-        || String(factoryVersionRegistry).toLowerCase() !== REGISTRY.toLowerCase()
+        || String(factoryVersionRegistry).toLowerCase() !== registry.toLowerCase()
         || String(factoryLegacy).toLowerCase() !== V5_FACTORY.toLowerCase()
         || String(factoryOfficialLegacyToken).toLowerCase() !== OFFICIAL_LEGACY_RMT_TOKEN.toLowerCase()
         || String(creatorPayoutAuthority).toLowerCase() !== governance.toLowerCase()
@@ -1940,11 +2042,12 @@ export function V6ReleaseConsole() {
         || String(migrationOfficialLegacyToken).toLowerCase() !== OFFICIAL_LEGACY_RMT_TOKEN.toLowerCase()
         || migrationConsumed !== false
       ) throw new Error("V6 foundation verification failed. No governance proposals were submitted.");
+      await verifyLiveDependencies(current, nextFactory);
       current.verified = true;
       current.sourceVerified = false;
       delete current.sourceVerifiedAt;
       persist(current);
-      setStatus("V6 foundation deployed, bound, and paused — verify all thirteen sources before proposing anything");
+      setStatus("V6 foundation deployed, bound, and paused — verify all twelve sources before proposing anything");
       await refreshOnchain();
     } catch (cause) {
       setError(describeError(cause));
@@ -1970,13 +2073,13 @@ export function V6ReleaseConsole() {
       setStatus("Revalidating the paused V6 foundation against mainnet…");
       await validateImportedRecovery(current);
       const recoveredProposalCount = reviewedGovernanceProposalCount(current);
-      await verifyLiveDependencies(reviewedRegistryGovernanceProposalCount(current), current.addresses.factory);
+      await verifyLiveDependencies(current, current.addresses.factory);
       await verifySourcesLive(current);
       setStatus(recoveredProposalCount === 0n
-        ? "All thirteen V6 contracts and critical RMT dependencies have full Blockscout records — governance proposals remain unsent"
+        ? "All twelve V6 contracts and critical RMT dependencies have full Blockscout records — governance proposals remain unsent"
         : recoveredProposalCount <= 3n
-          ? `All thirteen source records passed — ${recoveredProposalCount.toString()} of 3 reviewed initial proposals recovered for safe resume`
-          : `All thirteen source records passed — all ${recoveredProposalCount.toString()} reviewed governance proposals recovered for safe resume`);
+          ? `All twelve source records passed — ${recoveredProposalCount.toString()} of 3 reviewed initial proposals recovered for safe resume`
+          : `All twelve source records passed — all ${recoveredProposalCount.toString()} reviewed governance proposals recovered for safe resume`);
     } catch (cause) {
       setError(describeError(cause));
       setStatus("Source-verification gate stopped safely");
@@ -2001,7 +2104,7 @@ export function V6ReleaseConsole() {
       if (chainId !== robinhoodChain.id) await switchChainAsync({ chainId: robinhoodChain.id });
       setStatus("Revalidating bindings, paused state, and exact sources before any proposal…");
       await validateImportedRecovery(current);
-      await verifyLiveDependencies(reviewedRegistryGovernanceProposalCount(current));
+      await verifyLiveDependencies(current, current.addresses.factory);
 
       const launchGate = current.addresses.launchGate;
       const policyRegistry = current.addresses.policyRegistry;
@@ -2030,7 +2133,9 @@ export function V6ReleaseConsole() {
       // This is intentionally a live explorer request at the proposal boundary. A saved
       // recovery flag is never sufficient to authorize an irreversible governance proposal.
       await verifySourcesLive(current);
-      const { fair, open } = policies(marketImplementation, adapter);
+      const governance = current.addresses.governance;
+      if (!governance) throw new Error("The V6 governance address is missing from the release record.");
+      const { fair, open } = policies(marketImplementation, adapter, governance);
       await proposeGovernance(
         current,
         "fairPolicy",
@@ -2051,7 +2156,7 @@ export function V6ReleaseConsole() {
         current,
         "factoryActivation",
         "proposeFactoryActivation",
-        REGISTRY,
+        releaseRegistry(current),
         encodeFunctionData({ abi: artifacts.registry.abi, functionName: "proposeFactory", args: [nextFactory, VERSION] }),
         "propose delayed V6 registry activation"
       );
@@ -2111,7 +2216,9 @@ export function V6ReleaseConsole() {
       setStatus("Revalidating the V6 release record and exact sources before policy registration…");
       await validateImportedRecovery(current);
       await verifySourcesLive(current);
-      const { fair, open } = policies(marketImplementation, adapter);
+      const governance = current.addresses.governance;
+      if (!governance) throw new Error("The V6 governance address is missing from the release record.");
+      const { fair, open } = policies(marketImplementation, adapter, governance);
       if (!current.transactions.registerFairPolicy) await sendCall(current, "registerFairPolicy", policyRegistry, artifacts.policyRegistryV6, "executePolicyRegistration", [fair], "register reviewed Fair Start policy");
       if (!current.transactions.registerOpenPolicy) await sendCall(current, "registerOpenPolicy", policyRegistry, artifacts.policyRegistryV6, "executePolicyRegistration", [open], "register reviewed open policy");
       if (!current.proposalIds.defaultPolicy) {
@@ -2173,7 +2280,7 @@ export function V6ReleaseConsole() {
       if (!current.transactions.activateFactory) {
         if (pendingFactory?.toLowerCase() !== nextFactory.toLowerCase()) throw new Error("The registry pending factory does not match this V6 deployment.");
         if (!pendingActivationTime || currentTime < pendingActivationTime) throw new Error("The registry activation delay is still running.");
-        await sendCall(current, "activateFactory", REGISTRY, artifacts.registry, "activateFactory", [], "activate verified V6 factory");
+        await sendCall(current, "activateFactory", releaseRegistry(current), artifacts.registry, "activateFactory", [], "activate verified V6 factory");
       }
       persist(current);
       setStatus("V6 is active and paused — launch and verify official RMT before proposing public reopening");
@@ -2194,9 +2301,10 @@ export function V6ReleaseConsole() {
       await verifySourcesLive(current);
       const factory = current.addresses.factory;
       if (!factory) throw new Error("The V6 factory is missing from the release record.");
+      const registry = releaseRegistry(current);
       const [liveFactory, liveVersion, gatePaused, migrationAddress] = await Promise.all([
-        publicClient.readContract({ address: REGISTRY, abi: artifacts.registry.abi, functionName: "activeFactory" }),
-        publicClient.readContract({ address: REGISTRY, abi: artifacts.registry.abi, functionName: "activeVersion" }),
+        publicClient.readContract({ address: registry, abi: artifacts.registry.abi, functionName: "activeFactory" }),
+        publicClient.readContract({ address: registry, abi: artifacts.registry.abi, functionName: "activeVersion" }),
         publicClient.readContract({ address: launchGate, abi: artifacts.launchGateV6.abi, functionName: "launchesPaused" }),
         publicClient.readContract({ address: factory, abi: artifacts.rmtFactoryV6.abi, functionName: "officialIdentityMigration" })
       ]);
@@ -2259,7 +2367,7 @@ export function V6ReleaseConsole() {
     setError(undefined);
     const current = { ...deployment, addresses: { ...deployment.addresses }, transactions: { ...deployment.transactions }, proposalIds: { ...deployment.proposalIds }, readyAt: { ...deployment.readyAt } };
     try {
-      setStatus("Running final live bindings, policy, official-launch, and source-verification checks…");
+      setStatus("Running final bindings, source, and live production health checks…");
       await validateFinalReopeningBoundary(current);
       await sendCall(current, "executeUnpause", launchGate, artifacts.launchGateV6, "executeUnpause", [], "reopen V6 public launches");
       setStatus("V6 public launches are open");
@@ -2296,18 +2404,22 @@ export function V6ReleaseConsole() {
       </div>
       <div className="deployment-rules">
         <p><strong>Economics:</strong> 1% curve fee and 0.5% post-graduation pool fee, both split 70% creator / 30% RMT; 2 ETH net graduation target. After graduation, the split applies only to genuine collected swap fees and may pay ETH or the launched token depending on trade direction—never initial supply or liquidity principal.</p>
-        <p><strong>Creator payout:</strong> creators cannot initiate, accept, or execute a change. Only delayed RMT governance may route future collections between the original creator and RMT treasury, with public evidence and a replay-protection nonce; RMT can invalidate a stale nonce.</p>
+        <p><strong>Official RMT fee recipients:</strong> RMTMain is the ordinary creator recipient and receives 70%. The separate V6 governance contract is the protocol treasury and receives 30%. The official launch is not a same-wallet 100% payout.</p>
+        <p><strong>Creator payout:</strong> creators cannot propose, authorize, choose, or directly change the payout recipient. The RMT signer may propose only an evidence-linked redirect to the immutable V6 governance treasury or restoration to the original creator. After the 24-hour delay, any account may relay the exact approved governance call but cannot alter its destination or receive funds.</p>
         <p><strong>Fair Start:</strong> optional 1-block delay, 10-block window, 1% per buy and 3% per wallet. The reviewed Fair Start policy becomes the default.</p>
-        <p><strong>Governance:</strong> V6 deploys fresh governance with RMTMain as its sole signer, a 24-hour delay, a seven-day execution window, signer cancellation, proposal expiry, and atomic signer/threshold rotation. A future signer must prove control and give expiring consent to the exact add-or-replace action, affected signer, threshold, and current configuration epoch, and can revoke unconsumed consent before execution. Adding the first extra wallet creates 2-of-2 governance—not a backup wallet—so both signers must approve future proposals. The existing V5 governance controls only the existing version registry activation.</p>
-        <p><strong>Safety:</strong> activation and reopening are separate. V6 stays paused through deployment, activation, the one-time official RMT launch, and verification.</p>
+        <p><strong>Governance and treasury:</strong> one fresh V6 governance contract is both the protocol treasury and protocol authority. It starts with RMTMain as its sole signer, a 24-hour delay, a seven-day execution window, signer cancellation, proposal expiry, and atomic signer/threshold rotation. A future signer must prove control and give expiring consent to the exact add-or-replace action, affected signer, threshold, and current configuration epoch, and can revoke unconsumed consent before execution. Adding the first extra wallet creates 2-of-2 governance—not a backup wallet—so both signers must approve future proposals. The fresh version registry is governed by this same contract and starts on the legacy V5 factory/version; V6 has no authority or registry dependency on the legacy V5 stack.</p>
+        <p><strong>Safety:</strong> activation and reopening are separate. V6 stays paused through deployment, activation, the one-time official RMT launch, and verification. The final action also requires this exact live production site&apos;s <code>/api/health</code> to prove the configured fresh registry, active V6 factory/version, and exact V6 factory deployment block.</p>
         <p><strong>Release evidence:</strong> generated deployment artifacts, CI, independent review, and operational checks are manual approvals. This console cannot prove them; do not proceed until the published checklist is complete.</p>
         <p><strong>Identity protection:</strong> the exact legacy RMT token at {OFFICIAL_LEGACY_RMT_TOKEN} is permanently bound to the one-time RMTMain migration. Inside the active, origin-verified V6 launch pipeline, prior V4/V5 names and tickers remain reserved and new identities are normalized against case and separator variations. Unrelated external contracts cannot be globally prevented from copying text, so the terminal labels origin instead of implying chain-wide exclusivity.</p>
+        <p><strong>New token—not a holder migration:</strong> the official V6 action creates a new token contract with a new address and new fixed supply of 1,000,000,000 tokens. It does not copy, swap, credit, or migrate any old V5 holder balance. The old contract above is used only as the exact identity/provenance anchor. Do not sign unless this is understood and publicly disclosed.</p>
       </div>
       <div className="deployment-addresses">
         <p><span>Connected wallet</span><code>{address ? short(address) : "Not connected"}</code></p>
         {balance !== undefined && <p><span>Mainnet ETH balance</span><code>{formatEther(balance)} ETH</code></p>}
         <p><span>Active factory</span><code>{activeFactory ? short(activeFactory) : "Reading…"}</code></p>
         {factory && <p><span>This V6 factory</span><code>{short(factory)}</code></p>}
+        {deployment.addresses.governance && <p><span>V6 governance + treasury</span><code>{short(deployment.addresses.governance)}</code></p>}
+        {deployment.addresses.registry && <p><span>Fresh V6 registry</span><code>{short(deployment.addresses.registry)}</code></p>}
         <p><span>Pending factory</span><code>{pendingFactory && pendingFactory !== ZERO_ADDRESS ? short(pendingFactory) : "None"}</code></p>
         <p><span>Registry activation</span><code>{timeLabel(pendingActivationTime)}</code></p>
         <p><span>Launch gate</span><code>{isOpen ? "Open" : "Paused"}</code></p>
@@ -2321,7 +2433,7 @@ export function V6ReleaseConsole() {
       {nextAction === "artifact" && <p className="deployment-error">Deployment is intentionally disabled: the checked-in wallet artifact predates the final V6 governance, prospective-signer opt-in/revocation ABI, or exact legacy-token binding. Use only the artifact regenerated and reviewed from the final green CI compile.</p>}
       {nextAction === "deploy" && <button className="deploy-stack-button" disabled={!isOperator || busy} onClick={deployFoundation}>{busy ? status : "Deploy paused V6 foundation only"}</button>}
       {nextAction === "verify-sources" && <p className="deployment-safety">First run and archive the repository's <code>packages/contracts/scripts/verify-mainnet-v6.sh</code> result. That script submits exact source-verification requests to Blockscout but never broadcasts a blockchain transaction. Then use the check below; the site only reads Blockscout and cannot publish source for you. <a href="https://github.com/LandoCrissian/robinhood-meme-terminal/blob/main/docs/V6_MAINNET_RELEASE.md" target="_blank" rel="noreferrer">Open the exact verification instructions ↗</a></p>}
-      {nextAction === "verify-sources" && <button className="deploy-stack-button" disabled={!isOperator || busy} onClick={verifySourcePhase}>{busy ? status : "Check all thirteen sources on Blockscout"}</button>}
+      {nextAction === "verify-sources" && <button className="deploy-stack-button" disabled={!isOperator || busy} onClick={verifySourcePhase}>{busy ? status : "Check all twelve sources on Blockscout"}</button>}
       {nextAction === "propose-initial" && <button className="deploy-stack-button" disabled={!isOperator || busy} onClick={proposeInitialGovernance}>{busy ? status : "Recheck sources and submit three governance proposals"}</button>}
       {nextAction === "initial-governance" && <button className="deploy-stack-button" disabled={!isOperator || busy || !ready("initialGovernance")} onClick={executeInitialGovernance}>{ready("initialGovernance") ? "Execute three reviewed governance proposals" : `Locked until ${timeLabel(deployment.readyAt.initialGovernance)}`}</button>}
       {nextAction === "register-policies" && <button className="deploy-stack-button" disabled={!isOperator || busy || !ready("policyRegistration")} onClick={registerPoliciesAndProposeDefault}>{ready("policyRegistration") ? "Register both policies and propose the default" : `Policy registration locked until ${timeLabel(deployment.readyAt.policyRegistration)}`}</button>}

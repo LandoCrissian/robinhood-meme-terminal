@@ -126,8 +126,9 @@ contract DirectLaunchFeeSplitter {
     }
 
     /// @notice Moves future creator-fee payments to RMT treasury, or restores the immutable original creator.
-    /// @dev Only delayed RMT governance can execute this change. The expected nonce prevents stale or out-of-order
-    ///      governance proposals from changing the live recipient after a later change or treasury invalidation.
+    /// @dev Only delayed RMT governance can authorize this change. Any account may relay the exact approved
+    ///      governance call after its delay, but cannot alter its destination, evidence, or nonce. The expected nonce
+    ///      prevents stale or out-of-order proposals from changing the live recipient after a later action.
     function setCreatorWallet(address payable nextCreator, bytes32 evidenceHash, uint256 expectedNonce)
         external
         nonReentrant
@@ -146,8 +147,8 @@ contract DirectLaunchFeeSplitter {
     }
 
     /// @notice Lets the immutable RMT treasury invalidate every unexecuted payout-change proposal at the current nonce.
-    /// @dev This cannot select a recipient or move funds. It lets the treasury invalidate a queued governance call
-    ///      immediately even when the treasury is not itself a governance signer able to cancel that proposal.
+    /// @dev This cannot select a recipient or move funds. In the V6 release topology, the treasury is the delayed
+    ///      governance contract, so invalidation itself also requires an approved governance call.
     function invalidateCreatorPayoutNonce(uint256 expectedNonce) external nonReentrant {
         if (msg.sender != protocolTreasury) revert OnlyProtocolTreasury();
         if (expectedNonce != creatorPayoutNonce) revert InvalidCreatorPayoutNonce();

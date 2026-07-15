@@ -18,7 +18,9 @@ interface IRMTLaunchGateView {
 }
 
 interface IFactoryVersionRegistryV6 {
+    function governance() external view returns (address);
     function activeFactory() external view returns (address);
+    function activeVersion() external view returns (bytes32);
 }
 
 interface ILegacyIdentityFactoryV6 {
@@ -40,6 +42,8 @@ contract RMTLaunchFactoryV6 is IRMTLaunchFactoryV6 {
     uint256 public constant MAX_SYMBOL_BYTES = 10;
     uint256 public constant MAX_METADATA_URI_BYTES = 512;
     bytes32 public constant OFFICIAL_MIGRATION_POLICY_ID = keccak256("RMT_SIMPLE_FAIR_V1");
+    bytes32 public constant FACTORY_VERSION = keccak256("RMT_FACTORY_V6");
+    bytes32 public constant LEGACY_FACTORY_VERSION = keccak256("RMT_FACTORY_V5");
     bytes32 public constant OFFICIAL_NAME_HASH = keccak256("robinhoodmemeterminal");
     bytes32 public constant OFFICIAL_SYMBOL_HASH = keccak256("rmt");
 
@@ -129,7 +133,14 @@ contract RMTLaunchFactoryV6 is IRMTLaunchFactoryV6 {
         ) revert InvalidConfiguration();
         address gateGovernance = IRMTLaunchGateView(launchGate_).governance();
         address policyGovernance = IRMTLaunchPolicyRegistry(policyRegistry_).governance();
-        if (gateGovernance == address(0) || gateGovernance.code.length == 0 || policyGovernance != gateGovernance) {
+        address registryGovernance = IFactoryVersionRegistryV6(factoryRegistry_).governance();
+        address protocolTreasury = IRMTLaunchPolicyRegistry(policyRegistry_).canonicalProtocolTreasury();
+        if (
+            gateGovernance == address(0) || gateGovernance.code.length == 0 || policyGovernance != gateGovernance
+                || registryGovernance != gateGovernance || protocolTreasury != gateGovernance
+                || IFactoryVersionRegistryV6(factoryRegistry_).activeFactory() != legacyIdentityFactory_
+                || IFactoryVersionRegistryV6(factoryRegistry_).activeVersion() != LEGACY_FACTORY_VERSION
+        ) {
             revert InvalidConfiguration();
         }
         IOfficialLegacyRMTTokenV6 legacyToken = IOfficialLegacyRMTTokenV6(officialLegacyToken_);
@@ -248,6 +259,7 @@ contract RMTLaunchFactoryV6 is IRMTLaunchFactoryV6 {
         string calldata symbol
     ) external view returns (bool) {
         return policyId == OFFICIAL_MIGRATION_POLICY_ID && factoryRegistry.activeFactory() == address(this)
+            && factoryRegistry.activeVersion() == FACTORY_VERSION
             && launchGate.launchesPaused() && policyRegistry.defaultPolicyId() == OFFICIAL_MIGRATION_POLICY_ID
             && _officialLegacyIdentityReserved()
             && officialIdentityMigration.canMigrate(launcher, _canonicalName(name), _canonicalSymbol(symbol));
@@ -456,6 +468,8 @@ contract RMTLaunchFactoryV6 is IRMTLaunchFactoryV6 {
     }
 
     function _requireActiveFactory() private view {
-        if (factoryRegistry.activeFactory() != address(this)) revert InactiveFactory();
+        if (factoryRegistry.activeFactory() != address(this) || factoryRegistry.activeVersion() != FACTORY_VERSION) {
+            revert InactiveFactory();
+        }
     }
 }

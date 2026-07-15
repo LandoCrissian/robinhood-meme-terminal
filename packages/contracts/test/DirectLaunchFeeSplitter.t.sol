@@ -2,7 +2,7 @@
 pragma solidity ^0.8.26;
 
 import {DirectLaunchFeeSplitter} from "../src/DirectLaunchFeeSplitter.sol";
-import {ExpandableGovernance} from "../src/ExpandableGovernance.sol";
+import {RMTV6Governance} from "../src/RMTV6Governance.sol";
 
 interface SplitterVm {
     function deal(address account, uint256 balance) external;
@@ -245,14 +245,85 @@ contract DirectLaunchFeeSplitterTest {
         require(splitter.totalPaid() == 1 ether, "paid accounting");
     }
 
-    function testSameCreatorAndTreasuryReceivesOneHundredPercentWithoutDoubleAccounting() public {
-        AcceptingRecipient rmt = new AcceptingRecipient();
+    function testZeroValueDepositsCannotChangeAccounting() public {
+        AcceptingRecipient creator = new AcceptingRecipient();
+        AcceptingRecipient treasury = new AcceptingRecipient();
+        SplitterTestToken token = new SplitterTestToken(1 ether);
+        DirectLaunchFeeSplitter splitter = new DirectLaunchFeeSplitter();
+        splitter.initialize(
+            payable(address(creator)),
+            payable(address(treasury)),
+            address(token),
+            7_000,
+            address(this),
+            address(this),
+            address(this)
+        );
+
+        (bool nativeSuccess,) = address(splitter).call(abi.encodeCall(splitter.deposit, ()));
+        (bool tokenSuccess,) = address(splitter).call(abi.encodeCall(splitter.depositToken, (address(token), 0)));
+
+        require(!nativeSuccess && !tokenSuccess, "zero fee deposit accepted");
+        require(splitter.totalReceived() == 0 && splitter.totalPaid() == 0, "zero native accounting changed");
+        require(
+            splitter.totalTokenReceived(address(token)) == 0 && splitter.totalTokenPaid(address(token)) == 0,
+            "zero token accounting changed"
+        );
+    }
+
+    function testFailedProtocolPaymentsRemainClaimableOnlyByTreasury() public {
+        AcceptingRecipient creator = new AcceptingRecipient();
+        RejectingRecipient treasury = new RejectingRecipient();
+        SplitterTestToken token = new SplitterTestToken(100 ether);
+        DirectLaunchFeeSplitter splitter = new DirectLaunchFeeSplitter();
+        splitter.initialize(
+            payable(address(creator)),
+            payable(address(treasury)),
+            address(token),
+            7_000,
+            address(this),
+            address(this),
+            address(this)
+        );
+        token.setRejectedRecipient(address(treasury));
+
+        vm.deal(address(this), 1 ether);
+        splitter.deposit{value: 1 ether}();
+        require(token.transfer(address(splitter), 100 ether), "fund protocol token test");
+        splitter.depositToken(address(token), 100 ether);
+
+        require(address(creator).balance == 0.7 ether, "creator native payment blocked");
+        require(token.balanceOf(address(creator)) == 70 ether, "creator token payment blocked");
+        require(splitter.pending(address(treasury)) == 0.3 ether, "protocol native not deferred");
+        require(
+            splitter.pendingToken(address(token), address(treasury)) == 30 ether, "protocol token not deferred"
+        );
+        (bool outsiderNativeClaim,) = address(splitter).call(abi.encodeCall(splitter.claimDeferred, ()));
+        (bool outsiderTokenClaim,) =
+            address(splitter).call(abi.encodeCall(splitter.claimDeferredToken, (address(token))));
+        require(!outsiderNativeClaim && !outsiderTokenClaim, "outsider claimed protocol fees");
+
+        treasury.setAccepts(true);
+        token.setRejectedRecipient(address(0));
+        treasury.claim(splitter);
+        treasury.claimToken(splitter, address(token));
+
+        require(address(treasury).balance == 0.3 ether, "protocol native recovery");
+        require(token.balanceOf(address(treasury)) == 30 ether, "protocol token recovery");
+        require(splitter.pending(address(treasury)) == 0, "protocol native pending not cleared");
+        require(
+            splitter.pendingToken(address(token), address(treasury)) == 0, "protocol token pending not cleared"
+        );
+    }
+
+    function testCoincidentRecipientsStillConserveAccounting() public {
+        AcceptingRecipient recipient = new AcceptingRecipient();
         SplitterTestToken token = new SplitterTestToken(100 ether);
         SplitterFeeSource adapter = new SplitterFeeSource();
         DirectLaunchFeeSplitter splitter = new DirectLaunchFeeSplitter();
         splitter.initialize(
-            payable(address(rmt)),
-            payable(address(rmt)),
+            payable(address(recipient)),
+            payable(address(recipient)),
             address(token),
             7_000,
             address(this),
@@ -265,8 +336,8 @@ contract DirectLaunchFeeSplitterTest {
         require(token.transfer(address(adapter), 100 ether), "fund official token fees");
         adapter.depositToken(splitter, token, 100 ether);
 
-        require(address(rmt).balance == 1 ether, "official native aggregate");
-        require(token.balanceOf(address(rmt)) == 100 ether, "official token aggregate");
+        require(address(recipient).balance == 1 ether, "native aggregate");
+        require(token.balanceOf(address(recipient)) == 100 ether, "token aggregate");
         require(splitter.totalReceived() == 1 ether && splitter.totalPaid() == 1 ether, "native double accounting");
         require(
             splitter.totalTokenReceived(address(token)) == 100 ether
@@ -390,29 +461,41 @@ contract DirectLaunchFeeSplitterTest {
         );
     }
 
-    function testOnlyDelayedGovernanceCanRedirectFutureRewardsToRMTTreasury() public {
+    function testV6GovernanceControlsTreasuryAndOnlyFutureCreatorFeeRouting() public {
         AcceptingRecipient originalCreator = new AcceptingRecipient();
-        AcceptingRecipient treasury = new AcceptingRecipient();
         SplitterTestToken token = new SplitterTestToken(1_000 ether);
-        ExpandableGovernance governance = new ExpandableGovernance(address(this), 1 days);
+        SplitterFeeSource market = new SplitterFeeSource();
+        SplitterFeeSource adapter = new SplitterFeeSource();
+        RMTV6Governance governance = new RMTV6Governance(address(this), 1 days, 7 days);
         DirectLaunchFeeSplitter splitter = new DirectLaunchFeeSplitter();
         splitter.initialize(
             payable(address(originalCreator)),
-            payable(address(treasury)),
+            payable(address(governance)),
             address(token),
             7_000,
             address(governance),
-            address(this),
-            address(this)
+            address(market),
+            address(adapter)
         );
         require(splitter.originalCreator() == address(originalCreator), "original creator");
         require(splitter.creatorPayoutAuthority() == address(governance), "payout authority");
+        require(splitter.protocolTreasury() == address(governance), "governance treasury");
+
+        vm.deal(address(market), 3 ether);
+        require(token.transfer(address(adapter), 300 ether), "fund token fee source");
+        market.depositNative(splitter, 1 ether);
+        adapter.depositToken(splitter, token, 100 ether);
+        require(address(originalCreator).balance == 0.7 ether, "initial creator native share");
+        require(token.balanceOf(address(originalCreator)) == 70 ether, "initial creator token share");
+        require(address(governance).balance == 0.3 ether, "initial protocol native share");
+        require(token.balanceOf(address(governance)) == 30 ether, "initial protocol token share");
 
         vm.prank(address(originalCreator));
         (bool creatorChange,) = address(splitter)
             .call(
                 abi.encodeCall(
-                    splitter.setCreatorWallet, (payable(address(treasury)), keccak256("documented-rug-evidence"), 0)
+                    splitter.setCreatorWallet,
+                    (payable(address(governance)), keccak256("documented-rug-evidence"), 0)
                 )
             );
         require(!creatorChange, "creator changed payout recipient");
@@ -421,20 +504,25 @@ contract DirectLaunchFeeSplitterTest {
         (bool outsiderChange,) = address(splitter)
             .call(
                 abi.encodeCall(
-                    splitter.setCreatorWallet, (payable(address(treasury)), keccak256("documented-rug-evidence"), 0)
+                    splitter.setCreatorWallet,
+                    (payable(address(governance)), keccak256("documented-rug-evidence"), 0)
                 )
             );
         require(!outsiderChange, "outsider changed payout recipient");
 
         bytes32 evidenceHash = keccak256("documented-rug-evidence");
         bytes memory changeCall =
-            abi.encodeCall(splitter.setCreatorWallet, (payable(address(treasury)), evidenceHash, 0));
+            abi.encodeCall(splitter.setCreatorWallet, (payable(address(governance)), evidenceHash, 0));
         uint256 proposalId = governance.propose(address(splitter), 0, changeCall);
         (bool earlyExecution,) = address(governance).call(abi.encodeCall(governance.execute, (proposalId)));
         require(!earlyExecution, "governance delay bypassed");
         vm.warp(block.timestamp + governance.executionDelay());
+        address executor = address(0xBEEF);
+        uint256 executorNativeBefore = executor.balance;
+        vm.prank(executor);
         governance.execute(proposalId);
-        require(splitter.creator() == address(treasury), "governance redirect not executed");
+        require(executor.balance == executorNativeBefore, "executor received redirect value");
+        require(splitter.creator() == address(governance), "governance redirect not executed");
         require(splitter.originalCreator() == address(originalCreator), "original creator changed");
         require(splitter.creatorPayoutNonce() == 1, "redirect nonce not consumed");
 
@@ -448,15 +536,29 @@ contract DirectLaunchFeeSplitterTest {
             );
         require(!creatorRestore, "original creator restored its own payout");
 
-        vm.deal(address(this), 1 ether);
-        splitter.deposit{value: 1 ether}();
-        require(address(originalCreator).balance == 0, "old creator received future native fees");
-        require(address(treasury).balance == 1 ether, "RMT did not receive redirected creator and protocol fees");
+        market.depositNative(splitter, 1 ether);
+        adapter.depositToken(splitter, token, 100 ether);
+        require(address(originalCreator).balance == 0.7 ether, "old creator received future native fees");
+        require(token.balanceOf(address(originalCreator)) == 70 ether, "old creator received future token fees");
+        require(address(governance).balance == 1.3 ether, "RMT did not receive redirected native fees");
+        require(token.balanceOf(address(governance)) == 130 ether, "RMT did not receive redirected token fees");
 
-        require(token.transfer(address(splitter), 100 ether), "fund token fees");
-        splitter.depositToken(address(token), 100 ether);
-        require(token.balanceOf(address(originalCreator)) == 0, "old creator received future token fees");
-        require(token.balanceOf(address(treasury)) == 100 ether, "RMT did not receive redirected token fees");
+        uint256 operatorNativeBefore = address(this).balance;
+        uint256 operatorTokenBefore = token.balanceOf(address(this));
+        uint256 nativeTransferId = governance.propose(address(this), address(governance).balance, "");
+        uint256 tokenTransferId = governance.propose(
+            address(token), 0, abi.encodeCall(token.transfer, (address(this), token.balanceOf(address(governance))))
+        );
+        vm.warp(block.timestamp + governance.executionDelay());
+        vm.prank(executor);
+        governance.execute(nativeTransferId);
+        vm.prank(executor);
+        governance.execute(tokenTransferId);
+        require(address(this).balance - operatorNativeBefore == 1.3 ether, "governance native treasury transfer");
+        require(token.balanceOf(address(this)) - operatorTokenBefore == 130 ether, "governance token treasury transfer");
+        require(executor.balance == executorNativeBefore, "executor received treasury funds");
+        require(address(governance).balance == 0, "governance native treasury not cleared");
+        require(token.balanceOf(address(governance)) == 0, "governance token treasury not cleared");
 
         bytes memory restoreCall = abi.encodeCall(
             splitter.setCreatorWallet,
@@ -464,14 +566,17 @@ contract DirectLaunchFeeSplitterTest {
         );
         uint256 restoreProposalId = governance.propose(address(splitter), 0, restoreCall);
         vm.warp(block.timestamp + governance.executionDelay());
+        vm.prank(executor);
         governance.execute(restoreProposalId);
         require(splitter.creator() == address(originalCreator), "original creator not restored");
         require(splitter.creatorPayoutNonce() == 2, "restore nonce not consumed");
 
-        vm.deal(address(this), 1 ether);
-        splitter.deposit{value: 1 ether}();
-        require(address(originalCreator).balance == 0.7 ether, "restored creator did not receive future fees");
-        require(address(treasury).balance == 1.3 ether, "treasury split after restoration");
+        market.depositNative(splitter, 1 ether);
+        adapter.depositToken(splitter, token, 100 ether);
+        require(address(originalCreator).balance == 1.4 ether, "restored creator native fee share");
+        require(token.balanceOf(address(originalCreator)) == 140 ether, "restored creator token fee share");
+        require(address(governance).balance == 0.3 ether, "treasury native split after restoration");
+        require(token.balanceOf(address(governance)) == 30 ether, "treasury token split after restoration");
     }
 
     function testGovernanceCannotRedirectCreatorShareToUnrelatedWallet() public {

@@ -6,7 +6,6 @@ const EXPECTED_COMPILER = "v0.8.26+commit.8a97fa7a";
 
 const EXPECTED_CONTRACTS = {
   governance: "RMTV6Governance",
-  registryGovernance: "ExpandableGovernance",
   versionRegistry: "VersionedFactoryRegistry",
   legacyFactory: "LowCostMemeLaunchFactoryV5",
   hook: "V5GraduationHook",
@@ -121,7 +120,7 @@ export async function POST(request: Request) {
     const contracts = parseAddresses(await request.json());
     if (!contracts) {
       return NextResponse.json(
-        { error: "All thirteen reviewed V6 contracts and critical RMT dependencies are required." },
+        { error: "All twelve reviewed V6 contracts and critical RMT dependencies are required." },
         { status: 400, headers: { "Cache-Control": "no-store" } }
       );
     }

@@ -2,9 +2,21 @@ import { getAddress, isAddress, type Address } from "viem";
 
 export const publicTestnetFactoryAddress = getAddress("0x2D075c7FC08508A027191A99f146EDD606966fF3");
 export const publicTestnetFactoryStartBlock = 89_775_000n;
-export const publicMainnetFactoryAddress = getAddress("0x25a92d8c79c38d07b0d3efd0ebe929d30e401cdd");
-export const publicMainnetVersionRegistryAddress = getAddress("0x4b8b222b5caa7066c02a54e51ec1a674adf5b3a1");
-export const publicMainnetRegistryGovernanceAddress = getAddress("0x13c0a930516fb6bf0d467b38605d9d2a9c4c6953");
+export const publicMainnetV5FactoryAddress = getAddress("0x25a92d8c79c38d07b0d3efd0ebe929d30e401cdd");
+export const publicMainnetFactoryAddress = publicMainnetV5FactoryAddress;
+export const publicMainnetV5VersionRegistryAddress = getAddress("0x4b8b222b5caa7066c02a54e51ec1a674adf5b3a1");
+const configuredMainnetVersionRegistry = process.env.NEXT_PUBLIC_VERSION_REGISTRY_ADDRESS?.trim();
+export const isMainnetVersionRegistryExplicitlyConfigured = Boolean(configuredMainnetVersionRegistry);
+export const isMainnetVersionRegistryConfigurationValid =
+  !configuredMainnetVersionRegistry || isAddress(configuredMainnetVersionRegistry);
+export const publicMainnetVersionRegistryAddress =
+  configuredMainnetVersionRegistry && isAddress(configuredMainnetVersionRegistry)
+    ? getAddress(configuredMainnetVersionRegistry)
+    : publicMainnetV5VersionRegistryAddress;
+export const isFreshMainnetVersionRegistryConfigured =
+  isMainnetVersionRegistryExplicitlyConfigured
+    && isMainnetVersionRegistryConfigurationValid
+    && publicMainnetVersionRegistryAddress !== publicMainnetV5VersionRegistryAddress;
 export const publicMainnetOperatorAddress = getAddress("0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA");
 
 export const versionRegistryAbi = [

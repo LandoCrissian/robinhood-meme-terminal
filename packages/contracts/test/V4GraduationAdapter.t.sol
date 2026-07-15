@@ -199,7 +199,7 @@ contract V4GraduationAdapterTest {
     }
 
     function setUp() public {
-        vm.deal(address(this), 100 ether);
+        vm.deal(address(this), 200 ether);
         manager = new PoolManager(address(this));
 
         TestableV4GraduationHook implementation = new TestableV4GraduationHook(IPoolManager(address(manager)));

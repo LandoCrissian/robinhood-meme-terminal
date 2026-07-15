@@ -15,9 +15,18 @@ export const activeReleaseBadge = isMainnetRelease
   ? "LIVE MAINNET"
   : "LIVE TESTNET";
 
-export const activeFactoryStartBlock = isMainnetRelease
-  ? 9_567_266n
-  : 89_775_000n;
+export const publicMainnetV5FactoryStartBlock = 9_567_266n;
+const configuredFactoryStartBlock = process.env.NEXT_PUBLIC_FACTORY_START_BLOCK?.trim();
+let parsedFactoryStartBlock: bigint | null = null;
+if (configuredFactoryStartBlock && /^\d+$/.test(configuredFactoryStartBlock)) {
+  const candidate = BigInt(configuredFactoryStartBlock);
+  if (candidate > 0n) parsedFactoryStartBlock = candidate;
+}
+export const isFactoryStartBlockExplicitlyConfigured = Boolean(configuredFactoryStartBlock);
+export const isFactoryStartBlockConfigurationValid =
+  !configuredFactoryStartBlock || parsedFactoryStartBlock !== null;
+export const activeFactoryStartBlock = parsedFactoryStartBlock
+  ?? (isMainnetRelease ? publicMainnetV5FactoryStartBlock : 89_775_000n);
 
 // V4 markets remain usable, but its community/protocol reward settlement path
 // cannot deliver allocations to purpose vaults. The launch form treats this

@@ -5,7 +5,6 @@ import { fileURLToPath } from "node:url";
 const contractsRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const output = resolve(contractsRoot, "../../apps/web/lib/generated/mainnet-stack.json");
 const artifacts = {
-  governance: "out/ExpandableGovernance.sol/ExpandableGovernance.json",
   governanceV6: "out/RMTV6Governance.sol/RMTV6Governance.json",
   purposeVault: "out/ProtocolPurposeVault.sol/ProtocolPurposeVault.json",
   hook: "out/V5GraduationHook.sol/V5GraduationHook.json",

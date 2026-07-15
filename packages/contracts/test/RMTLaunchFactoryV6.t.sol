@@ -70,9 +70,22 @@ contract MockV6OfficialLegacyToken {
 
 contract MockV6FactoryRegistry {
     address public activeFactory;
+    bytes32 public activeVersion;
+    address public governance;
 
-    function setActiveFactory(address factory) external {
+    constructor(address governance_, address initialFactory_, bytes32 initialVersion_) {
+        governance = governance_;
+        activeFactory = initialFactory_;
+        activeVersion = initialVersion_;
+    }
+
+    function setActiveFactory(address factory, bytes32 version) external {
         activeFactory = factory;
+        activeVersion = version;
+    }
+
+    function setGovernance(address governance_) external {
+        governance = governance_;
     }
 }
 
@@ -112,6 +125,8 @@ contract MockV6GraduationAdapter {
 }
 
 contract MockV6CreatorPayoutAuthority {
+    receive() external payable {}
+
     function setCreator(
         DirectLaunchFeeSplitter splitter,
         address payable nextCreator,
@@ -126,18 +141,25 @@ contract MockV6PolicyRegistry is IRMTLaunchPolicyRegistry {
     mapping(bytes32 policyId => LaunchPolicy policy) private _policies;
     bytes32 public override defaultPolicyId;
     address public override governance;
+    address public override canonicalProtocolTreasury;
     address public immutable override canonicalMarketImplementation;
     address public immutable override canonicalGraduationAdapter;
 
     constructor(LaunchPolicy memory fairPolicy, LaunchPolicy memory openPolicy, address governance_) {
         require(fairPolicy.marketImplementation == openPolicy.marketImplementation, "canonical market mismatch");
         require(fairPolicy.graduationAdapter == openPolicy.graduationAdapter, "canonical adapter mismatch");
+        require(fairPolicy.protocolTreasury == openPolicy.protocolTreasury, "canonical treasury mismatch");
         _policies[fairPolicy.policyId] = fairPolicy;
         _policies[openPolicy.policyId] = openPolicy;
         defaultPolicyId = fairPolicy.policyId;
         governance = governance_;
+        canonicalProtocolTreasury = fairPolicy.protocolTreasury;
         canonicalMarketImplementation = fairPolicy.marketImplementation;
         canonicalGraduationAdapter = fairPolicy.graduationAdapter;
+    }
+
+    function setCanonicalProtocolTreasury(address treasury) external {
+        canonicalProtocolTreasury = treasury;
     }
 
     function getPolicy(bytes32 policyId) external view returns (LaunchPolicy memory) {
@@ -183,6 +205,41 @@ contract MockV6PolicyRegistry is IRMTLaunchPolicyRegistry {
                 keccak256(bytes(MockV6OfficialLegacyToken(legacyToken).symbol())) == keccak256(bytes("RMT")),
                 "legacy symbol"
             );
+            address governance = factory.creatorPayoutAuthority();
+            require(factory.launchGate().governance() == governance, "gate governance");
+            require(factory.policyRegistry().governance() == governance, "policy governance");
+            require(factory.policyRegistry().canonicalProtocolTreasury() == governance, "protocol treasury");
+            require(factory.factoryRegistry().governance() == governance, "registry governance");
+        }
+
+        function testFactoryRejectsVersionRegistryGovernedByDifferentAuthority() public {
+            (RMTLaunchFactoryV6 factory,,) = _deploy();
+            MockV6FactoryRegistry registry = MockV6FactoryRegistry(address(factory.factoryRegistry()));
+            registry.setActiveFactory(factory.legacyIdentityFactory(), factory.LEGACY_FACTORY_VERSION());
+            registry.setGovernance(ATTACKER);
+            require(!_bindingCandidateDeploys(factory), "mismatched registry governance accepted");
+        }
+
+        function testFactoryRejectsProtocolTreasuryOutsideSharedGovernance() public {
+            (RMTLaunchFactoryV6 factory,,) = _deploy();
+            MockV6FactoryRegistry(address(factory.factoryRegistry()))
+                .setActiveFactory(factory.legacyIdentityFactory(), factory.LEGACY_FACTORY_VERSION());
+            MockV6PolicyRegistry(address(factory.policyRegistry())).setCanonicalProtocolTreasury(ATTACKER);
+            require(!_bindingCandidateDeploys(factory), "mismatched protocol treasury accepted");
+        }
+
+        function testFactoryRejectsRegistryStartingFromDifferentFactory() public {
+            (RMTLaunchFactoryV6 source,,) = _deploy();
+            MockV6FactoryRegistry(address(source.factoryRegistry()))
+                .setActiveFactory(ATTACKER, source.LEGACY_FACTORY_VERSION());
+            require(!_bindingCandidateDeploys(source), "wrong initial factory accepted");
+        }
+
+        function testFactoryRejectsRegistryStartingFromDifferentVersion() public {
+            (RMTLaunchFactoryV6 source,,) = _deploy();
+            MockV6FactoryRegistry(address(source.factoryRegistry()))
+                .setActiveFactory(source.legacyIdentityFactory(), keccak256("NOT_RMT_FACTORY_V5"));
+            require(!_bindingCandidateDeploys(source), "wrong initial version accepted");
         }
 
         function testFactoryRejectsOfficialLegacyAddressWithoutCode() public {
@@ -270,7 +327,8 @@ contract MockV6PolicyRegistry is IRMTLaunchPolicyRegistry {
             (RMTLaunchFactoryV6 factory, MockV6LaunchGate gate, MockV6LegacyIdentityFactory legacy) = _deploy();
             gate.setPaused(true);
             legacy.setUsed(true, true);
-            MockV6FactoryRegistry(address(factory.factoryRegistry())).setActiveFactory(address(0xDEAD));
+            MockV6FactoryRegistry(address(factory.factoryRegistry()))
+                .setActiveFactory(address(0xDEAD), factory.FACTORY_VERSION());
 
             (bool ordinarySuccess,) =
                 address(factory)
@@ -282,6 +340,22 @@ contract MockV6PolicyRegistry is IRMTLaunchPolicyRegistry {
             require(!ordinarySuccess && !officialSuccess, "inactive factory launched");
             require(factory.launchCount() == 0, "inactive launch stored");
             require(!factory.officialIdentityMigration().consumed(), "inactive factory consumed migration");
+        }
+
+        function testWrongActiveVersionCannotLaunchOrConsumeOfficialMigration() public {
+            (RMTLaunchFactoryV6 factory, MockV6LaunchGate gate, MockV6LegacyIdentityFactory legacy) = _deploy();
+            gate.setPaused(true);
+            legacy.setUsed(true, true);
+            MockV6FactoryRegistry(address(factory.factoryRegistry()))
+                .setActiveFactory(address(factory), keccak256("WRONG_VERSION"));
+
+            vm.prank(OFFICIAL_LAUNCHER);
+            (bool officialSuccess,) =
+                address(factory).call(abi.encodeCall(factory.launchOfficialWhilePaused, ("ipfs://wrong-version")));
+
+            require(!officialSuccess, "wrong version launched");
+            require(factory.launchCount() == 0, "wrong-version launch stored");
+            require(!factory.officialIdentityMigration().consumed(), "wrong version consumed migration");
         }
 
         function testUnauthorizedWalletCannotConsumeOfficialMigration() public {
@@ -476,7 +550,7 @@ contract MockV6PolicyRegistry is IRMTLaunchPolicyRegistry {
             CloneFixedSupplyMemeToken token = CloneFixedSupplyMemeToken(tokenAddress);
             CloneBondingCurveMarketV6 market = CloneBondingCurveMarketV6(payable(marketAddress));
             DirectLaunchFeeSplitter splitter = DirectLaunchFeeSplitter(payable(splitterAddress));
-            address protocolTreasury = address(0x7E8E);
+            address protocolTreasury = splitter.protocolTreasury();
 
             vm.deal(address(this), 5 ether);
             uint256 creatorBalanceBefore = address(this).balance;
@@ -517,7 +591,7 @@ contract MockV6PolicyRegistry is IRMTLaunchPolicyRegistry {
             (,, address splitterAddress) =
                 factory.launchSimple("Governed Creator Wallet", "GCW", "ipfs://governed-creator");
             DirectLaunchFeeSplitter splitter = DirectLaunchFeeSplitter(payable(splitterAddress));
-            address protocolTreasury = address(0x7E8E);
+            address protocolTreasury = splitter.protocolTreasury();
             bytes32 evidenceHash = keccak256("documented-rug-evidence");
 
             (bool creatorChanged,) = address(splitter)
@@ -550,6 +624,21 @@ contract MockV6PolicyRegistry is IRMTLaunchPolicyRegistry {
 
         function _candidateDeploySucceeds(address officialLegacyToken) private returns (bool success) {
             (success,) = address(this).call(abi.encodeWithSelector(this.deployCandidate.selector, officialLegacyToken));
+        }
+
+        function _bindingCandidateDeploys(RMTLaunchFactoryV6 source) private returns (bool deployed) {
+            try new RMTLaunchFactoryV6(
+                address(source.launchGate()),
+                address(source.policyRegistry()),
+                address(source.factoryRegistry()),
+                source.initialVirtualEthReserve(),
+                source.initialVirtualTokenReserve(),
+                source.legacyIdentityFactory(),
+                source.officialLegacyToken(),
+                OFFICIAL_LAUNCHER
+            ) returns (RMTLaunchFactoryV6 candidate) {
+                deployed = address(candidate) != address(0);
+            } catch {}
         }
 
         function _deploy()
@@ -587,18 +676,32 @@ contract MockV6PolicyRegistry is IRMTLaunchPolicyRegistry {
                 fairStartMaxTxBps: 100,
                 fairStartMaxWalletBps: 300,
                 marketImplementation: address(marketImplementation),
-                protocolTreasury: address(0x7E8E),
+                protocolTreasury: address(payoutAuthority),
                 graduationAdapter: address(adapter)
             });
-            IRMTLaunchPolicyRegistry.LaunchPolicy memory openPolicy = fairPolicy;
-            openPolicy.policyId = OPEN_POLICY_ID;
-            openPolicy.fairStartMode = 0;
-            openPolicy.fairStartDelayBlocks = 0;
-            openPolicy.fairStartDurationBlocks = 0;
-            openPolicy.fairStartMaxTxBps = 0;
-            openPolicy.fairStartMaxWalletBps = 0;
+            IRMTLaunchPolicyRegistry.LaunchPolicy memory openPolicy = IRMTLaunchPolicyRegistry.LaunchPolicy({
+                policyId: OPEN_POLICY_ID,
+                policyVersion: 1,
+                enabled: true,
+                publiclySelectable: true,
+                curveFeeBps: 100,
+                creatorFeeShareBps: 7_000,
+                protocolFeeShareBps: 3_000,
+                postGraduationFeeBps: 50,
+                graduationTarget: 2 ether,
+                fairStartMode: 0,
+                fairStartDelayBlocks: 0,
+                fairStartDurationBlocks: 0,
+                fairStartMaxTxBps: 0,
+                fairStartMaxWalletBps: 0,
+                marketImplementation: address(marketImplementation),
+                protocolTreasury: address(payoutAuthority),
+                graduationAdapter: address(adapter)
+            });
             MockV6PolicyRegistry registry = new MockV6PolicyRegistry(fairPolicy, openPolicy, address(payoutAuthority));
-            MockV6FactoryRegistry factoryRegistry = new MockV6FactoryRegistry();
+            MockV6FactoryRegistry factoryRegistry = new MockV6FactoryRegistry(
+                address(payoutAuthority), address(legacy), keccak256("RMT_FACTORY_V5")
+            );
             factory = new RMTLaunchFactoryV6(
                 address(gate),
                 address(registry),
@@ -609,6 +712,6 @@ contract MockV6PolicyRegistry is IRMTLaunchPolicyRegistry {
                 officialLegacyToken,
                 OFFICIAL_LAUNCHER
             );
-            factoryRegistry.setActiveFactory(address(factory));
+            factoryRegistry.setActiveFactory(address(factory), factory.FACTORY_VERSION());
         }
     }

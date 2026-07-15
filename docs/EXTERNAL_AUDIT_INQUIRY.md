@@ -8,7 +8,7 @@ RMT V6 pre-deployment review — policy-driven launches, bonding curve, Fair Sta
 
 Robinhood Meme Terminal (RMT) is seeking an independent security review of its V6 release candidate before deployment or activation on Robinhood Chain mainnet.
 
-V6 includes fixed-supply clone launches, policy-bound bonding-curve markets, optional Fair Start controls, exact-target graduation with nonblocking overpayment refunds, one-time migration into a permanently locked Uniswap V4 full-range position, permissionless V4 fee realization, fixed 70/30 creator/protocol percentages for both fee currencies, fee-source binding, donation rejection, a shared launch gate, active-factory enforcement, expandable delayed governance, and delayed factory-version activation. V6 governance starts 1-of-1; any added or replacement signer must prove control and give expiring consent bound to the current epoch, exact add-or-replace action, affected signer, and next threshold, may revoke unconsumed consent before execution, and the first added wallet creates 2-of-2 quorum rather than a backup key. The original creator and protocol treasury are immutable; only delayed governance may move future collected creator-share payments between those two addresses through an evidence-hash and replay-protected nonce. The RMT treasury can invalidate a stale nonce but cannot select a recipient. A narrow exact-identity/operator-only route launches the official RMT migration while ordinary launches remain paused and does not reopen the gate; the factory itself rejects all ordinary launches until that migration succeeds.
+V6 includes fixed-supply clone launches, policy-bound bonding-curve markets, optional Fair Start controls, exact-target graduation with nonblocking overpayment refunds, one-time migration into a permanently locked Uniswap V4 full-range position, permissionless V4 fee realization, fixed 70/30 creator/protocol percentages for both fee currencies, fee-source binding, donation rejection, a shared launch gate, active-factory enforcement, one fresh delayed governance contract that also holds protocol fees, and a fresh version registry governed by it and initialized to V5. V6 governance starts 1-of-1; any added or replacement signer must prove control and give expiring consent bound to the current epoch, exact add-or-replace action, affected signer, and next threshold, may revoke unconsumed consent before execution, and the first added wallet creates 2-of-2 quorum rather than a backup key. Creators cannot authorize, propose, choose, or directly change the fee recipient. The RMT signer may propose only an evidence-linked, replay-protected move between the immutable original creator and V6 governance treasury; any account may relay the exact approved call after the delay, and stale-nonce invalidation also requires governance approval. A narrow exact-identity/operator-only route launches a new official RMT token while ordinary launches remain paused and does not reopen the gate; it creates a new address and new one-billion-token supply and does not copy, swap, credit, or migrate old-holder balances.
 
 ### Exact target
 
@@ -16,8 +16,8 @@ V6 includes fixed-supply clone launches, policy-bound bonding-curve markets, opt
 - Candidate pull request: https://github.com/LandoCrissian/robinhood-meme-terminal/pull/112
 - Review commit: to be frozen before engagement
 - Chain: Robinhood Chain mainnet (`4663`)
-- Current V5 registry: `0x4b8b222B5CAa7066c02A54E51eC1a674ADf5b3A1`
-- Current expandable governance: `0x13C0A930516FB6bF0d467B38605d9D2a9c4C6953`
+- Legacy V5 identity factory: `0x25A92D8C79c38D07B0d3eFd0ebe929D30e401cdD`
+- Official legacy RMT identity/provenance anchor: `0xaB374D24aFBD943a134AdB381D9646e71C6f6C0C`
 - Canonical V4 PoolManager: `0x8366a39CC670B4001A1121B8F6A443A643e40951`
 - Public beta: https://www.rmtlaunch.fun
 - Full handoff: [EXTERNAL_AUDIT_HANDOFF.md](EXTERNAL_AUDIT_HANDOFF.md)

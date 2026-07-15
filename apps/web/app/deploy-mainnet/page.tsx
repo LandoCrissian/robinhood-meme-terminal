@@ -13,9 +13,10 @@ export default function DeployMainnetPage() {
         <p className="eyebrow">Operator-only V6 mainnet release</p>
         <h1>Deploy V6 without opening it early</h1>
         <p>
-          V5 remains active while this console deploys and verifies the policy-driven V6 foundation.
-          Policies, activation, and reopening each follow their onchain delays. The new launch gate stays
-          paused until the final, separate reopening step.
+          The legacy V5 factory remains the identity anchor while this console deploys an independent V6
+          governance-and-treasury contract plus a fresh registry initialized to V5. Policies, V6 activation,
+          and reopening each follow their onchain delays. The launch gate stays paused until the final,
+          separate reopening step.
         </p>
       </section>
       <V6ReleaseConsole />
