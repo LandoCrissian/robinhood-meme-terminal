@@ -84,6 +84,15 @@ function isTradeableAddress(address: string) {
   return /^0x[0-9a-fA-F]{40}$/.test(address);
 }
 
+function isUniswapVenue(market: ExternalMarket) {
+  const venue = (market.venue?.dexId ?? market.dexId).trim().toLowerCase();
+  return venue === "uniswap" || venue.startsWith("uniswap-");
+}
+
+function canHandoffToUniswap(market: ExternalMarket) {
+  return isTradeableAddress(market.address) && isUniswapVenue(market);
+}
+
 function uniswapSwapUrl(market: ExternalMarket, side: ExternalTradeSide) {
   const inputCurrency = side === "buy" ? "NATIVE" : market.address;
   const outputCurrency = side === "buy" ? market.address : "NATIVE";
@@ -272,7 +281,7 @@ export function ExternalMarketFeed() {
   }, []);
 
   const openQuickTrade = useCallback((market: ExternalMarket, side: ExternalTradeSide) => {
-    if (!isTradeableAddress(market.address)) return;
+    if (!canHandoffToUniswap(market)) return;
     returnFocusTo.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setQuickTrade({ market, side });
     syncQuickTradeUrl(market, side);
@@ -319,7 +328,7 @@ export function ExternalMarketFeed() {
     const side = params.get("side");
     if (!token || (side !== "buy" && side !== "sell")) return;
     const market = markets.find((item) => item.address.toLowerCase() === token);
-    if (market && isTradeableAddress(market.address)) setQuickTrade({ market, side });
+    if (market && canHandoffToUniswap(market)) setQuickTrade({ market, side });
   }, [markets]);
 
   const orderedMarkets = useMemo(() => stabilizeOrder(rankOrder, markets), [markets, rankOrder]);
@@ -420,10 +429,12 @@ export function ExternalMarketFeed() {
                     <span>{oneHourTrades > 0 ? Math.round(market.buyPressureBps / 100) + "% buys · 1h" : "No 1h trades"}</span>
                     {market.riskFlags.length > 0 && <em>{riskSummary(market.riskFlags)}</em>}
                   </div>
-                  <div className="rmtDiscoveryActions">
-                    <button className="buyCardAction" type="button" aria-haspopup="dialog" aria-label={"Buy " + market.name} onClick={() => openQuickTrade(market, "buy")}>Buy</button>
-                    <button className="sellCardAction" type="button" aria-haspopup="dialog" aria-label={"Sell " + market.name} onClick={() => openQuickTrade(market, "sell")}>Sell</button>
-                  </div>
+                  {canHandoffToUniswap(market) ? (
+                    <div className="rmtDiscoveryActions">
+                      <button className="buyCardAction" type="button" aria-haspopup="dialog" aria-label={"Buy " + market.name} onClick={() => openQuickTrade(market, "buy")}>Buy</button>
+                      <button className="sellCardAction" type="button" aria-haspopup="dialog" aria-label={"Sell " + market.name} onClick={() => openQuickTrade(market, "sell")}>Sell</button>
+                    </div>
+                  ) : <span className="externalBadge">VIEW ONLY · VENUE REVIEW</span>}
                   <a className="externalChartLink" href={market.url} target="_blank" rel="noreferrer" aria-label={"View " + market.name + " market on DEX Screener"}>Chart & pair ↗</a>
                 </article>
               );
@@ -432,7 +443,7 @@ export function ExternalMarketFeed() {
         )}
       </div>
 
-      <p className="externalDisclosure">Market data: DEX Screener. Confirmed RMT V6 launches are removed using RMT factory records. Token origin and market venue are labeled separately; external origin stays unknown until a creation adapter is contract-verified. Signals are automated filters, not endorsements or investment recommendations. Buy/Sell opens an RMT review, then Uniswap provides the fresh route and wallet transaction.</p>
+      <p className="externalDisclosure">Market data: DEX Screener. Confirmed RMT V6 launches are removed using RMT factory records. Token origin and market venue are labeled separately; external origin stays unknown until a creation adapter is contract-verified. Signals are automated filters, not endorsements or investment recommendations. For Uniswap-backed markets, Buy/Sell opens an RMT review, then Uniswap provides the fresh route and wallet transaction.</p>
 
       {quickTrade && (
         <ExternalTradeDialog
