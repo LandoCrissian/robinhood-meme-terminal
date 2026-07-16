@@ -57,7 +57,7 @@ async function getLaunchSnapshot() {
   refreshInFlight = refresh;
   try {
     const result = await refresh;
-    lastSuccessfulSnapshot = result;
+    if (!result.stale) lastSuccessfulSnapshot = result;
     processLaunchCache = { expiresAt: Date.now() + PROCESS_CACHE_MS, snapshot: result };
     return result;
   } finally {

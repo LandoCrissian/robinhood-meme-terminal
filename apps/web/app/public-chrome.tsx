@@ -7,6 +7,7 @@ import { isMainnetRelease } from "../lib/network";
 import { WalletButton } from "./wallet-button";
 
 const HIDDEN_PREFIXES = ["/admin", "/deploy-mainnet", "/deploy-testnet", "/mainnet-smoke"];
+const MORE_PREFIXES = ["/runners", "/portfolio", "/watchlist", "/sources", "/support", "/risks"];
 
 function currentPage(pathname: string, href: string) {
   if (href === "/") return pathname === "/";
@@ -22,6 +23,7 @@ function PublicLink({ href, children }: { href: string; children: React.ReactNod
 export function PublicChrome() {
   const pathname = usePathname();
   const menu = useRef<HTMLDetailsElement>(null);
+  const moreActive = MORE_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
 
   useEffect(() => {
     menu.current?.removeAttribute("open");
@@ -66,7 +68,7 @@ export function PublicChrome() {
           </div>
 
           <div className="publicNavActions">
-            <details ref={menu} className="publicMore">
+            <details ref={menu} className={`publicMore${moreActive ? " active" : ""}`}>
               <summary aria-label="Open more RMT pages"><span>More</span><b aria-hidden="true">···</b></summary>
               <div className="publicMenu">
                 <div>

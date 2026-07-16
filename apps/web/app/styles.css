@@ -357,8 +357,9 @@ main{max-width:1180px}
   .publicNavLinks{display:none}
   .publicNavActions{min-width:0}
   .publicMore{order:2}
-  .publicMore summary{width:44px;padding:0}
-  .publicMore summary span{display:none}
+  .publicMore summary{width:auto;min-width:44px;padding:0 8px}
+  .publicMore.active summary{border-color:#304038;background:#121913;color:#fff}
+  .publicMore.active summary b{color:#7af08a}
   .publicMenu{position:fixed;top:calc(68px + env(safe-area-inset-top));right:12px;left:12px;width:auto;max-height:calc(100dvh - 154px - env(safe-area-inset-top) - env(safe-area-inset-bottom));overflow-y:auto;grid-template-columns:1fr;padding:9px;overscroll-behavior:contain}
   .publicMenu a{min-height:52px}
   .directoryHero{align-items:flex-start;flex-direction:column;gap:14px;padding-top:25px}
@@ -372,9 +373,7 @@ main{max-width:1180px}
   .publicNav .brandLockup strong{font-size:.82rem}
   .publicNavActions{gap:5px}
   .publicNavActions .wallet{min-height:44px;padding:9px 10px;font-size:.68rem}
-  .terminalIntro{padding-bottom:8px}
-  .terminalIntroActions,.terminalIntro .trustStrip{display:none}
-  .terminalIntro h1{font-size:1.7rem}
+  .terminalIntro{display:none}
   .directoryHero{gap:11px;padding:21px 0 4px}
   .directoryHero h1{font-size:1.85rem}
   .directoryHero>div>p:last-child{font-size:.78rem}
@@ -387,5 +386,7 @@ main{max-width:1180px}
 
 @media(max-width:360px){
   .publicNav .brandLockup strong{display:none}
+  .publicMore summary{width:44px;padding:0}
+  .publicMore summary span{display:none}
   .publicNavActions .wallet{max-width:142px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 }

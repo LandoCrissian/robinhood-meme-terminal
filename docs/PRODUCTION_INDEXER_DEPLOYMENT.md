@@ -29,7 +29,7 @@ Create these as encrypted service variables:
 | `RMT_INDEXER_READ_TOKEN` | Long random bearer token shared only with the Vercel server |
 | `RMT_CONFIRMATION_DEPTH` | `20` |
 | `RMT_INDEXER_CHUNK_SIZE` | `2000` |
-| `RMT_INDEXER_POLL_MS` | `5000` |
+| `RMT_INDEXER_POLL_MS` | `10000` |
 | `RMT_DB_POOL_SIZE` | `10` |
 | `PGSSLMODE` | `require` |
 
@@ -46,9 +46,9 @@ Do not configure governance, creator-payout, or treasury addresses separately. A
 5. Add the encrypted variables above.
 6. Generate a public service domain only for the indexer API.
 7. Deploy one replica.
-8. Confirm `/health` stays unavailable during the initial backfill, then passes only after the first safe-head sync and accounting-invariant pass complete.
+8. Confirm `/ready` stays unavailable during the initial backfill, then passes only after the first safe-head sync and accounting-invariant pass complete. Confirm `/health` separately reports live RPC synchronization.
 
-The committed Railway configuration builds only the indexer, starts the long-running worker/API, checks `/health`, restarts after failure, and limits redeploy triggers to relevant files.
+The committed Railway configuration builds only the indexer, starts the long-running worker/API, checks RPC-independent `/ready` plus the local database dependency, restarts after a local worker/data failure, and limits redeploy triggers to relevant files. `/health` remains the external synchronization monitor; an upstream RPC timeout should alert without restarting a worker that still has a valid confirmed checkpoint.
 
 ## Historical reconciliation
 
