@@ -263,7 +263,7 @@
 .runnerDirectoryControls{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:9px;margin:18px 0 10px}
 .runnerMarketSearch{position:relative;display:flex;align-items:center;min-width:0}
 .runnerMarketSearch>span{position:absolute;left:14px;color:#718078;font-size:1.05rem;pointer-events:none}
-.runnerMarketSearch input{width:100%;min-height:46px;padding:0 42px;border:1px solid #2d3b32;border-radius:12px;outline:0;background:#080d0a;color:#e4ebe6;font:inherit;font-size:.75rem;font-weight:750}
+.runnerMarketSearch input{width:100%;min-height:46px;padding:0 42px;border:1px solid #2d3b32;border-radius:12px;outline:0;background:#080d0a;color:#e4ebe6;font:inherit;font-size:1rem;font-weight:750}
 .runnerMarketSearch input::placeholder{color:#69756d}
 .runnerMarketSearch input:focus{border-color:#4b8a56;box-shadow:0 0 0 3px rgba(78,213,96,.1)}
 .runnerMarketSearch button{position:absolute;right:6px;display:grid;width:34px;height:34px;place-items:center;border:0;border-radius:8px;background:#172019;color:#9ba79f;font:inherit;font-size:1rem;cursor:pointer}
