@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import type { ExternalMarketRiskFlag, ExternalMarketSignal } from "../lib/external-market-ranking";
 
 type ExternalMarket = {
   address: string;
@@ -11,19 +12,46 @@ type ExternalMarket = {
   dexId: string;
   priceUsd: number;
   liquidityUsd: number;
+  marketCapUsd: number;
+  fdvUsd: number;
+  volume5m: number;
+  volume1h: number;
   volume24h: number;
+  priceChange5m: number;
+  priceChange1h: number;
   priceChange24h: number;
+  buys5m: number;
+  sells5m: number;
+  buys1h: number;
+  sells1h: number;
   buys24h: number;
   sells24h: number;
   pairCreatedAt: number | null;
+  ageMinutes: number | null;
+  momentumScore: number;
+  buyPressureBps: number;
+  signal: ExternalMarketSignal;
+  riskFlags: ExternalMarketRiskFlag[];
 };
 
 type ExternalMarketResponse = {
   markets?: ExternalMarket[];
   source?: string;
+  rankingVersion?: string;
   updatedAt?: string;
   error?: string;
 };
+
+type RunnerView = "moving" | "early" | "active";
+
+const VIEWS: Array<{ id: RunnerView; label: string }> = [
+  { id: "moving", label: "Moving now" },
+  { id: "early", label: "Early signals" },
+  { id: "active", label: "All active" }
+];
+const DATA_REFRESH_MS = 30_000;
+const RANK_REFRESH_MS = 60_000;
+const MAX_VISIBLE_MARKETS = 4;
 
 function money(value: number, price = false) {
   if (!Number.isFinite(value) || value <= 0) return "—";
@@ -44,73 +72,163 @@ function initials(symbol: string) {
   return cleanSymbol(symbol).slice(0, 2).toUpperCase() || "↗";
 }
 
+function signalLabel(signal: ExternalMarketSignal) {
+  if (signal === "moving") return "Moving now";
+  if (signal === "early") return "Early signal";
+  return "Active";
+}
+
+function valuation(market: ExternalMarket) {
+  if (market.marketCapUsd > 0) return { label: "Market cap", value: market.marketCapUsd };
+  if (market.fdvUsd > 0) return { label: "FDV", value: market.fdvUsd };
+  return { label: "Valuation", value: 0 };
+}
+
+function stabilizeOrder(order: string[], markets: ExternalMarket[]) {
+  const byAddress = new Map(markets.map((market) => [market.address.toLowerCase(), market]));
+  const ordered = order.flatMap((address) => {
+    const market = byAddress.get(address);
+    return market ? [market] : [];
+  });
+  const known = new Set(ordered.map((market) => market.address.toLowerCase()));
+  ordered.push(...markets.filter((market) => !known.has(market.address.toLowerCase())));
+  return ordered;
+}
+
 export function ExternalMarketFeed() {
   const [markets, setMarkets] = useState<ExternalMarket[]>([]);
+  const [rankOrder, setRankOrder] = useState<string[]>([]);
+  const [view, setView] = useState<RunnerView>("moving");
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [rankingAnnouncement, setRankingAnnouncement] = useState("");
+  const nextRankRefresh = useRef(0);
 
   const refresh = useCallback(async () => {
     try {
       const response = await fetch("/api/markets/external", { cache: "no-store" });
       const payload = (await response.json()) as ExternalMarketResponse;
       if (!response.ok || !Array.isArray(payload.markets)) throw new Error(payload.error || "Market data unavailable.");
+
+      const now = Date.now();
       setMarkets(payload.markets);
+      if (nextRankRefresh.current <= now || rankOrder.length === 0) {
+        setRankOrder(payload.markets.map((market) => market.address.toLowerCase()));
+        nextRankRefresh.current = now + RANK_REFRESH_MS;
+        setRankingAnnouncement("Runner rankings updated.");
+      }
       setStatus("ready");
     } catch {
       setStatus("error");
     }
-  }, []);
+  }, [rankOrder.length]);
 
   useEffect(() => {
     void refresh();
-    const interval = window.setInterval(() => void refresh(), 60_000);
+    const interval = window.setInterval(() => void refresh(), DATA_REFRESH_MS);
     return () => window.clearInterval(interval);
   }, [refresh]);
 
+  const orderedMarkets = useMemo(() => stabilizeOrder(rankOrder, markets), [markets, rankOrder]);
+  const counts = useMemo(() => ({
+    moving: markets.filter((market) => market.signal === "moving").length,
+    early: markets.filter((market) => market.signal === "early").length,
+    active: markets.length
+  }), [markets]);
+  const filteredMarkets = orderedMarkets.filter((market) => view === "active" || market.signal === view);
+  const visibleMarkets = filteredMarkets.slice(0, MAX_VISIBLE_MARKETS);
+
+  const changeView = (nextView: RunnerView) => setView(nextView);
+  const handleTabKeyDown = (event: KeyboardEvent<HTMLButtonElement>, currentView: RunnerView) => {
+    const currentIndex = VIEWS.findIndex((item) => item.id === currentView);
+    let nextIndex = currentIndex;
+    if (event.key === "ArrowRight") nextIndex = (currentIndex + 1) % VIEWS.length;
+    else if (event.key === "ArrowLeft") nextIndex = (currentIndex - 1 + VIEWS.length) % VIEWS.length;
+    else if (event.key === "Home") nextIndex = 0;
+    else if (event.key === "End") nextIndex = VIEWS.length - 1;
+    else return;
+    event.preventDefault();
+    const nextView = VIEWS[nextIndex].id;
+    changeView(nextView);
+    document.getElementById("runner-tab-" + nextView)?.focus();
+  };
+
   return (
-    <section className="panel externalMarkets" aria-labelledby="external-markets-title">
+    <section className="panel externalMarkets runnerRadar" aria-labelledby="external-markets-title">
       <div className="feedHeading externalHeading">
         <div>
-          <p className="eyebrow">ROBINHOOD CHAIN · EXTERNAL DISCOVERY</p>
-          <h2 id="external-markets-title">Markets beyond RMT</h2>
-          <p>Active WETH- and USDG-paired markets discovered onchain. Launchpad origin stays unverified until a factory adapter proves it.</p>
+          <p className="eyebrow">ROBINHOOD CHAIN · RUNNER RADAR</p>
+          <h2 id="external-markets-title">Markets showing movement</h2>
+          <p>Every qualifying market is indexed. The board surfaces four risk-adjusted signals at a time instead of flooding the terminal with inactive tokens.</p>
         </div>
-        <span className="externalBadge">READ ONLY</span>
+        <span className="externalBadge">30S DATA · 60S RANKS</span>
       </div>
 
-      {status === "loading" ? (
-        <div className="emptyFeed" role="status"><strong>Loading external markets…</strong><span>Checking active Robinhood Chain liquidity and trading activity.</span></div>
-      ) : status === "error" ? (
-        <div className="emptyFeed"><strong>External markets are temporarily unavailable.</strong><span>RMT launches and trading are unaffected.</span><button type="button" onClick={() => void refresh()}>Try again</button></div>
-      ) : markets.length === 0 ? (
-        <div className="emptyFeed"><strong>No external markets passed the filter.</strong><span>Only markets with at least $1,000 liquidity and 24-hour activity are shown.</span></div>
-      ) : (
-        <div className="externalMarketGrid">
-          {markets.map((market) => {
-            const changeClass = market.priceChange24h > 0 ? "positive" : market.priceChange24h < 0 ? "negative" : "flat";
-            return (
-              <article className="externalMarketCard" key={market.address}>
-                <div className="externalIdentity">
-                  <span className="coin externalArtwork" aria-hidden="true">{initials(market.symbol)}</span>
-                  <span><strong>{market.name}</strong><small>{"$" + cleanSymbol(market.symbol)} · {market.dexId}</small></span>
-                  <em>Origin unverified</em>
-                </div>
-                <div className="externalPrice">
-                  <span><small>Price</small><strong>{money(market.priceUsd, true)}</strong></span>
-                  <span className={"externalChange " + changeClass}><small>24h</small><strong>{market.priceChange24h > 0 ? "+" : ""}{market.priceChange24h.toFixed(2)}%</strong></span>
-                </div>
-                <div className="externalStats">
-                  <span><small>Liquidity</small><strong>{money(market.liquidityUsd)}</strong></span>
-                  <span><small>24h volume</small><strong>{money(market.volume24h)}</strong></span>
-                  <span><small>Activity</small><strong>{market.buys24h} buys · {market.sells24h} sells</strong></span>
-                </div>
-                <a className="externalChartLink" href={market.url} target="_blank" rel="noreferrer" aria-label={"View " + market.name + " chart on DEX Screener"}>View market ↗</a>
-              </article>
-            );
-          })}
+      <p className="srOnly" aria-live="polite">{rankingAnnouncement}</p>
+      <div className="runnerToolbar">
+        <div className="runnerTabs" role="tablist" aria-label="External runner views">
+          {VIEWS.map((item) => (
+            <button
+              type="button"
+              role="tab"
+              id={"runner-tab-" + item.id}
+              aria-controls="runner-market-panel"
+              aria-selected={view === item.id}
+              tabIndex={view === item.id ? 0 : -1}
+              className={view === item.id ? "active" : ""}
+              onClick={() => changeView(item.id)}
+              onKeyDown={(event) => handleTabKeyDown(event, item.id)}
+              key={item.id}
+            >
+              {item.label}<span>{counts[item.id]}</span>
+            </button>
+          ))}
         </div>
-      )}
+        <small>Top {Math.min(MAX_VISIBLE_MARKETS, filteredMarkets.length)} of {filteredMarkets.length}</small>
+      </div>
 
-      <p className="externalDisclosure">Market data: DEX Screener. These tokens were not launched, scored, or verified by RMT. External origin, contracts, economics, and liquidity rules may differ.</p>
+      <div id="runner-market-panel" role="tabpanel" aria-labelledby={"runner-tab-" + view}>
+        {status === "loading" ? (
+          <div className="emptyFeed" role="status"><strong>Loading runner signals…</strong><span>Checking market cap, liquidity, volume acceleration, trade pressure, and price movement.</span></div>
+        ) : status === "error" ? (
+          <div className="emptyFeed"><strong>Runner radar is temporarily unavailable.</strong><span>RMT launches and trading are unaffected.</span><button type="button" onClick={() => void refresh()}>Try again</button></div>
+        ) : visibleMarkets.length === 0 ? (
+          <div className="emptyFeed"><strong>No markets meet this signal yet.</strong><span>The filter will update automatically when activity qualifies.</span>{view !== "active" && <button type="button" onClick={() => changeView("active")}>View active markets</button>}</div>
+        ) : (
+          <div className="externalMarketGrid runnerMarketGrid">
+            {visibleMarkets.map((market, index) => {
+              const value = valuation(market);
+              const changeClass = market.priceChange5m > 0 ? "positive" : market.priceChange5m < 0 ? "negative" : "flat";
+              const oneHourTrades = market.buys1h + market.sells1h;
+              return (
+                <article className="externalMarketCard runnerMarketCard" key={market.address}>
+                  <div className="runnerCardStatus">
+                    <span className={"marketSignal " + market.signal}>{signalLabel(market.signal)}</span>
+                    <span>#{String(index + 1).padStart(2, "0")} · Score {market.momentumScore}</span>
+                  </div>
+                  <div className="externalIdentity">
+                    <span className="coin externalArtwork" aria-hidden="true">{initials(market.symbol)}</span>
+                    <span><strong>{market.name}</strong><small>{"$" + cleanSymbol(market.symbol)} · {market.dexId}</small></span>
+                    <em>Origin unverified</em>
+                  </div>
+                  <div className="runnerStats">
+                    <span><small>{value.label}</small><strong>{money(value.value)}</strong></span>
+                    <span className={"externalChange " + changeClass}><small>5m change</small><strong>{market.priceChange5m > 0 ? "+" : ""}{market.priceChange5m.toFixed(2)}%</strong></span>
+                    <span><small>1h volume</small><strong>{money(market.volume1h)}</strong></span>
+                    <span><small>Liquidity</small><strong>{money(market.liquidityUsd)}</strong></span>
+                  </div>
+                  <div className="runnerActivity">
+                    <span>{oneHourTrades > 0 ? Math.round(market.buyPressureBps / 100) + "% buys · 1h" : "No 1h trades"}</span>
+                    {market.riskFlags.length > 0 && <em>Risk adjusted</em>}
+                  </div>
+                  <a className="externalChartLink" href={market.url} target="_blank" rel="noreferrer" aria-label={"View " + market.name + " market on DEX Screener"}>Open market ↗</a>
+                </article>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      <p className="externalDisclosure">Market data: DEX Screener. Signals are automated activity filters, not endorsements or investment recommendations. External buy and sell execution stays disabled until each launchpad adapter is contract-verified.</p>
     </section>
   );
 }
