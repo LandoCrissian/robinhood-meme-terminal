@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
+import type { OriginCoverage } from "@rmt/shared/market-origin";
+import type { ExternalMarket, ExternalMarketResponse } from "../../../../lib/external-market";
 import {
   RUNNER_THRESHOLDS,
   compareExternalMarketRank,
-  rankExternalMarket,
-  type ExternalMarketRiskFlag,
-  type ExternalMarketSignal
+  rankExternalMarket
 } from "../../../../lib/external-market-ranking";
 
 const CHAIN_SLUG = "robinhood";
@@ -14,8 +14,14 @@ const CANONICAL_MARKET_TOKENS = [
   "0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73",
   "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168"
 ] as const;
+const OFFICIAL_RMT_V6_TOKEN = "0xdBa33be56C89CC9fc014c4459028d7e5c7878671";
 const EXCLUDED_TOKENS = new Set(CANONICAL_MARKET_TOKENS.map((address) => address.toLowerCase()));
 const MAX_MARKETS = 32;
+const DEX_TIMEOUT_MS = 8_000;
+const INDEXER_TIMEOUT_MS = (() => {
+  const parsed = Number.parseInt(process.env.RMT_INDEXER_TIMEOUT_MS ?? "5000", 10);
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : 5_000;
+})();
 
 type RawToken = {
   address?: unknown;
@@ -42,36 +48,33 @@ type RawPair = {
   pairCreatedAt?: unknown;
 };
 
-type ExternalMarket = {
-  address: string;
-  name: string;
-  symbol: string;
-  pairAddress: string;
-  url: string;
-  dexId: string;
-  priceUsd: number;
-  liquidityUsd: number;
-  marketCapUsd: number;
-  fdvUsd: number;
-  volume5m: number;
-  volume1h: number;
-  volume24h: number;
-  priceChange5m: number;
-  priceChange1h: number;
-  priceChange24h: number;
-  buys5m: number;
-  sells5m: number;
-  buys1h: number;
-  sells1h: number;
-  buys24h: number;
-  sells24h: number;
-  pairCreatedAt: number | null;
-  ageMinutes: number | null;
-  momentumScore: number;
-  buyPressureBps: number;
-  signal: ExternalMarketSignal;
-  riskFlags: ExternalMarketRiskFlag[];
+type RmtOriginClaim = {
+  token?: unknown;
+  state?: unknown;
+  claimKind?: unknown;
+  protocolVersion?: unknown;
 };
+
+type RmtOriginPayload = {
+  coverage?: unknown;
+  claims?: unknown;
+};
+
+type RmtOriginResolution = {
+  coverage: OriginCoverage;
+  tokens: Set<string>;
+};
+
+type SuccessfulMarketSnapshot = Required<Pick<
+  ExternalMarketResponse,
+  "markets" | "source" | "rankingVersion" | "updatedAt"
+>> & {
+  originCoverage: OriginCoverage;
+  rmtOriginCoverage: OriginCoverage;
+  thresholds: typeof RUNNER_THRESHOLDS;
+};
+
+let lastSuccessfulSnapshot: SuccessfulMarketSnapshot | undefined;
 
 function asText(value: unknown, maximumLength = 80) {
   return typeof value === "string" ? value.trim().slice(0, maximumLength) : "";
@@ -80,6 +83,10 @@ function asText(value: unknown, maximumLength = 80) {
 function asNumber(value: unknown) {
   const number = typeof value === "number" ? value : typeof value === "string" ? Number(value) : Number.NaN;
   return Number.isFinite(number) ? number : 0;
+}
+
+function isAddress(value: string) {
+  return /^0x[0-9a-fA-F]{40}$/.test(value);
 }
 
 function transactionWindow(pair: RawPair, window: string) {
@@ -99,21 +106,105 @@ function tokenFromPair(pair: RawPair) {
 }
 
 async function fetchTokenPairs(tokenAddress: string) {
-  const response = await fetch(DEXSCREENER_API + "/" + CHAIN_SLUG + "/" + tokenAddress, {
-    headers: { Accept: "application/json" },
-    next: { revalidate: 30 }
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), DEX_TIMEOUT_MS);
+  try {
+    const response = await fetch(DEXSCREENER_API + "/" + CHAIN_SLUG + "/" + tokenAddress, {
+      headers: { Accept: "application/json" },
+      next: { revalidate: 30 },
+      signal: controller.signal
+    });
 
-  if (!response.ok) throw new Error("DEX market request failed with " + response.status);
-  const payload: unknown = await response.json();
-  return Array.isArray(payload) ? (payload as RawPair[]) : [];
+    if (!response.ok) throw new Error("DEX market request failed with " + response.status);
+    const payload: unknown = await response.json();
+    if (!Array.isArray(payload)) throw new Error("DEX market response was malformed.");
+    return payload as RawPair[];
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function fetchRmtOriginBatch(baseUrl: string, readToken: string | undefined, addresses: string[]) {
+  const url = new URL(baseUrl + "/origins");
+  url.searchParams.set("tokens", addresses.join(","));
+  const headers: Record<string, string> = { Accept: "application/json" };
+  if (readToken) headers.Authorization = "Bearer " + readToken;
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), INDEXER_TIMEOUT_MS);
+  try {
+    const response = await fetch(url, {
+      headers,
+      cache: "no-store",
+      signal: controller.signal
+    });
+    if (!response.ok) return null;
+
+    const payload = (await response.json()) as RmtOriginPayload;
+    return payload.coverage === "complete" && Array.isArray(payload.claims)
+      ? payload.claims as RmtOriginClaim[]
+      : null;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function resolveRmtOrigins(addresses: string[]): Promise<RmtOriginResolution> {
+  const known = new Set([OFFICIAL_RMT_V6_TOKEN.toLowerCase()]);
+  if (addresses.length === 0) return { coverage: "complete", tokens: known };
+
+  const baseUrl = process.env.RMT_INDEXER_URL?.trim().replace(/\/+$/, "");
+  if (!baseUrl) return { coverage: "unavailable", tokens: known };
+  const readToken = process.env.RMT_INDEXER_READ_TOKEN?.trim();
+
+  for (let index = 0; index < addresses.length; index += 100) {
+    const claims = await fetchRmtOriginBatch(baseUrl, readToken, addresses.slice(index, index + 100));
+    if (!claims) return { coverage: "unavailable", tokens: known };
+    for (const claim of claims) {
+      const token = asText(claim.token, 42);
+      if (
+        isAddress(token)
+        && claim.state === "rmt-verified"
+        && claim.claimKind === "token-created"
+        && claim.protocolVersion === 6
+      ) {
+        known.add(token.toLowerCase());
+      }
+    }
+  }
+  return { coverage: "complete", tokens: known };
+}
+
+function staleResponse() {
+  if (!lastSuccessfulSnapshot) return null;
+  return NextResponse.json(
+    {
+      ...lastSuccessfulSnapshot,
+      stale: true,
+      error: "Live external market refresh is delayed. Showing the last verified RMT-deduplicated snapshot."
+    },
+    { headers: { "Cache-Control": "no-store" } }
+  );
 }
 
 export async function GET() {
   try {
-    const results = await Promise.allSettled(CANONICAL_MARKET_TOKENS.map(fetchTokenPairs));
-    const pairs = results.flatMap((result) => (result.status === "fulfilled" ? result.value : []));
+    const results = await Promise.all(CANONICAL_MARKET_TOKENS.map(fetchTokenPairs));
+    const pairs = results.flat();
     if (pairs.length === 0) throw new Error("No external market source responded.");
+
+    const candidateAddresses = [...new Set(pairs.flatMap((pair) => {
+      const address = asText(tokenFromPair(pair)?.address, 42);
+      return isAddress(address) ? [address.toLowerCase()] : [];
+    }))];
+    const rmtOrigins = await resolveRmtOrigins(candidateAddresses);
+    if (rmtOrigins.coverage !== "complete") {
+      const stale = staleResponse();
+      if (stale) return stale;
+      throw new Error("Exact RMT V6 origin coverage is unavailable.");
+    }
 
     const marketsByToken = new Map<string, ExternalMarket>();
 
@@ -128,6 +219,7 @@ export async function GET() {
       const name = asText(token?.name);
       const symbol = asText(token?.symbol, 20);
       const pairAddress = asText(pair.pairAddress, 66);
+      const dexId = asText(pair.dexId, 30) || "DEX";
       const liquidityUsd = asNumber(pair.liquidity?.usd);
       const marketCapUsd = Math.max(0, asNumber(pair.marketCap));
       const fdvUsd = Math.max(0, asNumber(pair.fdv));
@@ -142,7 +234,8 @@ export async function GET() {
       const transactions24h = transactionWindow(pair, "h24");
       const pairCreatedAt = asNumber(pair.pairCreatedAt) || null;
 
-      if (!/^0x[0-9a-fA-F]{40}$/.test(address) || !name || !symbol || !pairAddress) continue;
+      if (!isAddress(address) || !name || !symbol || !pairAddress) continue;
+      if (rmtOrigins.tokens.has(address.toLowerCase())) continue;
       if (liquidityUsd < RUNNER_THRESHOLDS.minimumDisplayLiquidityUsd || volume24h <= 0) continue;
 
       const ranking = rankExternalMarket({
@@ -166,7 +259,19 @@ export async function GET() {
         symbol,
         pairAddress,
         url,
-        dexId: asText(pair.dexId, 30) || "DEX",
+        dexId,
+        origin: {
+          kind: "external",
+          state: "unknown",
+          coverage: "unavailable"
+        },
+        venue: {
+          kind: "dex",
+          dexId,
+          pairAddress,
+          url,
+          execution: "read-only"
+        },
         priceUsd: asNumber(pair.priceUsd),
         liquidityUsd,
         marketCapUsd,
@@ -210,18 +315,24 @@ export async function GET() {
     const markets = [...marketsByToken.values()]
       .sort(compareExternalMarketRank)
       .slice(0, MAX_MARKETS);
+    const snapshot: SuccessfulMarketSnapshot = {
+      markets,
+      source: "DEX Screener",
+      rankingVersion: "rmt-runner-v2",
+      thresholds: RUNNER_THRESHOLDS,
+      originCoverage: "unavailable",
+      rmtOriginCoverage: "complete",
+      updatedAt: new Date().toISOString()
+    };
+    lastSuccessfulSnapshot = snapshot;
 
     return NextResponse.json(
-      {
-        markets,
-        source: "DEX Screener",
-        rankingVersion: "rmt-runner-v2",
-        thresholds: RUNNER_THRESHOLDS,
-        updatedAt: new Date().toISOString()
-      },
+      snapshot,
       { headers: { "Cache-Control": "public, s-maxage=30, stale-while-revalidate=90" } }
     );
   } catch {
+    const stale = staleResponse();
+    if (stale) return stale;
     return NextResponse.json(
       { error: "External Robinhood Chain markets are temporarily unavailable." },
       { status: 503, headers: { "Cache-Control": "no-store" } }

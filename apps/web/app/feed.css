@@ -347,3 +347,11 @@
   .feed .rmtDiscoveryRow,.buyCardAction,.sellCardAction{transition:none}
   .buyCardAction:hover,.sellCardAction:hover{transform:none}
 }
+
+/* External market provenance and stale-data resilience */
+.runnerDataNotice{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:14px 0 0;padding:10px 12px;border:1px solid #6c5730;border-radius:12px;background:#201b0e;color:#e2c77d;font-size:.68rem;line-height:1.45}
+.runnerDataNotice span{min-width:0}
+.runnerDataNotice button{flex:0 0 auto;min-height:38px;padding:0 12px;border:1px solid #806a3c;border-radius:9px;background:#2a2312;color:#f0d68b;font:inherit;font-size:.66rem;font-weight:900;cursor:pointer}
+.runnerDataNotice button:hover{border-color:#b0924f;background:#332a15}
+.runnerMarketCard .externalIdentity em{max-width:100%;overflow-wrap:anywhere;white-space:normal}
+@media(max-width:560px){.runnerDataNotice{align-items:flex-start;flex-direction:column}.runnerDataNotice button{align-self:flex-end}}
