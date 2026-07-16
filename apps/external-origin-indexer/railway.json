@@ -1,0 +1,21 @@
+{
+  "$schema": "https://railway.com/railway.schema.json",
+  "build": {
+    "builder": "RAILPACK",
+    "buildCommand": "pnpm install --frozen-lockfile && pnpm --filter external-origin-indexer build",
+    "watchPatterns": [
+      "apps/external-origin-indexer/**",
+      "package.json",
+      "pnpm-lock.yaml",
+      "pnpm-workspace.yaml"
+    ]
+  },
+  "deploy": {
+    "startCommand": "pnpm --filter external-origin-indexer start",
+    "healthcheckPath": "/ready",
+    "healthcheckTimeout": 300,
+    "restartPolicyType": "ALWAYS",
+    "restartPolicyMaxRetries": 10,
+    "drainingSeconds": 15
+  }
+}
