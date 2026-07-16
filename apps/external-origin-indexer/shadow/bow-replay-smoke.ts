@@ -11,6 +11,7 @@ import {
   BOW_MAX_SHADOW_REPLAY_BLOCKS,
   validateBowShadowReplay,
   type BowReplayLog,
+  type BowReplayReceiptLog,
   type BowReplayTranscript
 } from "./bow-replay.js";
 
@@ -44,7 +45,8 @@ for (const invalidPlan of [
   { fromBlock: -1n, toBlock: 1n, maxBlocks: 1n },
   { fromBlock: 2n, toBlock: 1n, maxBlocks: 1n },
   { fromBlock: 1n, toBlock: 2n, maxBlocks: 0n },
-  { fromBlock: 1n, toBlock: 2n, maxBlocks: 5_001n }
+  { fromBlock: 1n, toBlock: 2n, maxBlocks: 2_001n },
+  { fromBlock: 0n, toBlock: 20_000_000n, maxBlocks: 1n }
 ]) {
   assert.throws(() => planInclusiveBlockRanges(invalidPlan));
 }
@@ -95,6 +97,22 @@ const secondLog: BowReplayLog = {
   logIndex: 15
 };
 
+function unrelatedReceiptLog(
+  launchLog: BowReplayLog,
+  logIndex: number
+): BowReplayReceiptLog {
+  return {
+    ...launchLog,
+    address: address("b"),
+    topics: [hash("c")],
+    data: "0x",
+    logIndex
+  };
+}
+
+const firstUnrelatedLog = unrelatedReceiptLog(firstLog, 13);
+const secondUnrelatedLog = unrelatedReceiptLog(secondLog, 16);
+
 const fromBlock = liveBlock - 1n;
 const parentCheckpoint = {
   blockNumber: fromBlock - 1n,
@@ -113,9 +131,12 @@ const finalHeader = {
 } as const;
 
 const transcript: BowReplayTranscript = {
+  schema: "rmt-bow-shadow-replay-transcript-v1",
+  candidateId: bowCandidate.candidateId,
   chainId: 4663,
+  factory: BOW_FACTORY,
   range: { fromBlock, toBlock: liveBlock },
-  finalizedHead: {
+  reportedFinalizedHead: {
     blockNumber: liveBlock + 20n,
     blockHash: hash("9")
   },
@@ -127,12 +148,14 @@ const transcript: BowReplayTranscript = {
   blocks: [firstHeader, finalHeader],
   factoryRuntimeChecks: [
     {
+      address: BOW_FACTORY,
       blockNumber: fromBlock,
       blockHash: firstHeader.blockHash,
       lengthBytes: bowCandidate.runtime.lengthBytes,
       reportedCodeHash: bowCandidate.runtime.codeHash
     },
     {
+      address: BOW_FACTORY,
       blockNumber: liveBlock,
       blockHash: liveBlockHash,
       lengthBytes: bowCandidate.runtime.lengthBytes,
@@ -140,11 +163,17 @@ const transcript: BowReplayTranscript = {
     }
   ],
   launchCountBefore: {
+    kind: "state-read",
+    target: BOW_FACTORY,
+    call: "launchCount()",
     sampledAtBlock: fromBlock - 1n,
     sampledAtBlockHash: parentCheckpoint.blockHash,
     value: 1_052n
   },
   launchCountAfter: {
+    kind: "state-read",
+    target: BOW_FACTORY,
+    call: "launchCount()",
     sampledAtBlock: liveBlock,
     sampledAtBlockHash: liveBlockHash,
     value: 1_054n
@@ -157,7 +186,7 @@ const transcript: BowReplayTranscript = {
       blockNumber: liveBlock,
       blockHash: liveBlockHash,
       transactionIndex: firstLog.transactionIndex,
-      logs: [firstLog]
+      logs: [firstUnrelatedLog, firstLog]
     },
     {
       transactionHash: secondLog.transactionHash,
@@ -165,11 +194,13 @@ const transcript: BowReplayTranscript = {
       blockNumber: liveBlock,
       blockHash: liveBlockHash,
       transactionIndex: secondLog.transactionIndex,
-      logs: [secondLog]
+      logs: [secondLog, secondUnrelatedLog]
     }
   ],
   launchState: [
     {
+      target: BOW_FACTORY,
+      call: "launches(uint256)",
       sampledAtBlock: liveBlock,
       sampledAtBlockHash: liveBlockHash,
       token: liveToken,
@@ -179,6 +210,8 @@ const transcript: BowReplayTranscript = {
       launchId: 1_052n
     },
     {
+      target: BOW_FACTORY,
+      call: "launches(uint256)",
       sampledAtBlock: liveBlock,
       sampledAtBlockHash: liveBlockHash,
       token: syntheticToken,
@@ -220,12 +253,17 @@ assert.equal(EXTERNAL_ORIGIN_ATTRIBUTION_ACTIVATION_LOCKED, true);
 assert.equal(externalOriginAdapters.length, 0);
 const result = validateBowShadowReplay(transcript);
 assert.equal(result.schema, "rmt-bow-shadow-replay-result-v1");
+assert.equal(result.chainId, 4663);
+assert.equal(result.factory, BOW_FACTORY);
 assert.equal(result.authoritative, false);
 assert.equal(result.sourceVerification, "unverified");
 assert.equal(result.activationEligible, false);
 assert.equal(result.independentProviderAgreement, false);
 assert.equal(result.finalizedAncestryProven, false);
+assert.equal(result.coverageFromDeploymentProven, false);
+assert.equal(result.counterSemanticsLiveProven, false);
 assert.equal(result.runtimeHashLocallyComputed, false);
+assert.equal(result.stateReadsLocallyDecoded, false);
 assert.equal(result.persistence, "none");
 assert.equal(result.adapterRegistered, false);
 assert.equal(result.observations.length, 2);
@@ -237,6 +275,7 @@ assert.equal(result.previousCheckpoint.blockHash, parentCheckpoint.blockHash);
 assert.equal(result.launchCountBefore, 1_052n);
 assert.equal(result.launchCountAfter, 1_054n);
 assert.equal(Object.isFrozen(result), true);
+assert.equal(Object.isFrozen(result.reportedFinalizedHead), true);
 assert.equal(Object.isFrozen(result.observations), true);
 assert.equal(Object.isFrozen(result.observations[0]), true);
 for (const forbidden of [
@@ -249,14 +288,38 @@ for (const forbidden of [
   assert.equal(forbidden in result, false);
   assert.equal(forbidden in result.observations[0]!, false);
 }
+function assertNoForbiddenKeys(value: unknown): void {
+  if (value === null || typeof value !== "object") return;
+  for (const [key, child] of Object.entries(value)) {
+    assert.equal(
+      ["adapterId", "manifestHash", "evidenceHash", "claimKind", "creator"].includes(
+        key
+      ),
+      false,
+      key
+    );
+    assertNoForbiddenKeys(child);
+  }
+}
+assertNoForbiddenKeys(result);
 assert.equal(
-  validateBowShadowReplay(transcript).transcriptHash,
-  result.transcriptHash
+  validateBowShadowReplay(transcript).resultHash,
+  result.resultHash
+);
+assert.equal(
+  validateBowShadowReplay({
+    ...transcript,
+    factoryRuntimeChecks: [...transcript.factoryRuntimeChecks].reverse(),
+    receipts: [...transcript.receipts].reverse(),
+    launchState: [...transcript.launchState].reverse(),
+    contractCode: [...transcript.contractCode].reverse()
+  }).resultHash,
+  result.resultHash
 );
 
 const emptyResult = validateBowShadowReplay({
   ...transcript,
-  finalizedHead: { blockNumber: liveBlock, blockHash: liveBlockHash },
+  reportedFinalizedHead: { blockNumber: liveBlock, blockHash: liveBlockHash },
   launchCountBefore: {
     ...transcript.launchCountBefore,
     value: 1_052n
@@ -287,11 +350,75 @@ const sameTransactionResult = validateBowShadowReplay({
       blockNumber: liveBlock,
       blockHash: liveBlockHash,
       transactionIndex: firstLog.transactionIndex,
-      logs: [firstLog, sameTransactionSecondLog]
+      logs: [firstUnrelatedLog, firstLog, sameTransactionSecondLog]
     }
   ]
 });
 assert.equal(sameTransactionResult.observations.length, 2);
+
+const deploymentParent = {
+  blockNumber: bowCandidate.deployment.blockNumber - 1n,
+  blockHash: hash("d"),
+  parentHash: hash("e")
+} as const;
+const deploymentHeader = {
+  blockNumber: bowCandidate.deployment.blockNumber,
+  blockHash: bowCandidate.deployment.blockHash,
+  parentHash: deploymentParent.blockHash
+} as const;
+const deploymentTranscript: BowReplayTranscript = {
+  schema: "rmt-bow-shadow-replay-transcript-v1",
+  candidateId: bowCandidate.candidateId,
+  chainId: 4663,
+  factory: BOW_FACTORY,
+  range: {
+    fromBlock: bowCandidate.deployment.blockNumber,
+    toBlock: bowCandidate.deployment.blockNumber
+  },
+  reportedFinalizedHead: {
+    blockNumber: bowCandidate.deployment.blockNumber,
+    blockHash: bowCandidate.deployment.blockHash
+  },
+  deploymentAnchor: {
+    blockNumber: bowCandidate.deployment.blockNumber,
+    blockHash: bowCandidate.deployment.blockHash
+  },
+  parentCheckpoint: deploymentParent,
+  blocks: [deploymentHeader],
+  factoryRuntimeChecks: [
+    {
+      address: BOW_FACTORY,
+      blockNumber: bowCandidate.deployment.blockNumber,
+      blockHash: bowCandidate.deployment.blockHash,
+      lengthBytes: bowCandidate.runtime.lengthBytes,
+      reportedCodeHash: bowCandidate.runtime.codeHash
+    }
+  ],
+  launchCountBefore: {
+    kind: "predeployment-zero-assumption",
+    target: BOW_FACTORY,
+    call: "launchCount()",
+    sampledAtBlock: bowCandidate.deployment.blockNumber - 1n,
+    sampledAtBlockHash: deploymentParent.blockHash,
+    value: 0n
+  },
+  launchCountAfter: {
+    kind: "state-read",
+    target: BOW_FACTORY,
+    call: "launchCount()",
+    sampledAtBlock: bowCandidate.deployment.blockNumber,
+    sampledAtBlockHash: bowCandidate.deployment.blockHash,
+    value: 0n
+  },
+  logs: [],
+  receipts: [],
+  launchState: [],
+  contractCode: []
+};
+assert.equal(
+  validateBowShadowReplay(deploymentTranscript).observations.length,
+  0
+);
 
 type TranscriptMutation = Readonly<{
   name: string;
@@ -299,8 +426,29 @@ type TranscriptMutation = Readonly<{
 }>;
 const mutations: readonly TranscriptMutation[] = [
   {
+    name: "wrong schema",
+    value: {
+      ...transcript,
+      schema: "wrong" as BowReplayTranscript["schema"]
+    }
+  },
+  {
+    name: "wrong candidate",
+    value: {
+      ...transcript,
+      candidateId: "wrong" as BowReplayTranscript["candidateId"]
+    }
+  },
+  {
     name: "wrong chain",
     value: { ...transcript, chainId: 1 as 4663 }
+  },
+  {
+    name: "wrong factory",
+    value: {
+      ...transcript,
+      factory: address("7") as typeof BOW_FACTORY
+    }
   },
   {
     name: "pre-deployment range",
@@ -326,14 +474,17 @@ const mutations: readonly TranscriptMutation[] = [
     name: "unfinalized range",
     value: {
       ...transcript,
-      finalizedHead: { blockNumber: liveBlock - 1n, blockHash: hash("9") }
+      reportedFinalizedHead: {
+        blockNumber: liveBlock - 1n,
+        blockHash: hash("9")
+      }
     }
   },
   {
     name: "finalized boundary hash mismatch",
     value: {
       ...transcript,
-      finalizedHead: { blockNumber: liveBlock, blockHash: hash("9") }
+      reportedFinalizedHead: { blockNumber: liveBlock, blockHash: hash("9") }
     }
   },
   {
@@ -365,6 +516,19 @@ const mutations: readonly TranscriptMutation[] = [
         {
           ...transcript.factoryRuntimeChecks[0]!,
           reportedCodeHash: hash("7")
+        },
+        transcript.factoryRuntimeChecks[1]!
+      ]
+    }
+  },
+  {
+    name: "wrong runtime target",
+    value: {
+      ...transcript,
+      factoryRuntimeChecks: [
+        {
+          ...transcript.factoryRuntimeChecks[0]!,
+          address: address("7") as typeof BOW_FACTORY
         },
         transcript.factoryRuntimeChecks[1]!
       ]
@@ -408,12 +572,66 @@ const mutations: readonly TranscriptMutation[] = [
     }
   },
   {
+    name: "count call target mismatch",
+    value: {
+      ...transcript,
+      launchCountBefore: {
+        ...transcript.launchCountBefore,
+        target: address("7") as typeof BOW_FACTORY
+      }
+    }
+  },
+  {
+    name: "count exceeds uint256",
+    value: {
+      ...transcript,
+      launchCountAfter: {
+        ...transcript.launchCountAfter,
+        value: 1n << 256n
+      }
+    }
+  },
+  {
+    name: "deployment count is not explicit zero",
+    value: {
+      ...deploymentTranscript,
+      launchCountBefore: {
+        ...deploymentTranscript.launchCountBefore,
+        value: 1n
+      }
+    }
+  },
+  {
     name: "reordered logs",
     value: { ...transcript, logs: [secondLog, firstLog] }
   },
   {
     name: "duplicate logs",
     value: { ...transcript, logs: [firstLog, firstLog] }
+  },
+  {
+    name: "global log index regression",
+    value: {
+      ...transcript,
+      logs: [firstLog, { ...secondLog, logIndex: 13 }]
+    }
+  },
+  {
+    name: "duplicate global log index",
+    value: {
+      ...transcript,
+      logs: [firstLog, { ...secondLog, logIndex: firstLog.logIndex }]
+    }
+  },
+  {
+    name: "conflicting transaction position",
+    value: {
+      ...transcript,
+      logs: [
+        firstLog,
+        { ...secondLog, transactionIndex: firstLog.transactionIndex }
+      ]
+    }
   },
   {
     name: "removed log",
@@ -470,6 +688,23 @@ const mutations: readonly TranscriptMutation[] = [
     }
   },
   {
+    name: "cross-role token and prior pool collision",
+    value: {
+      ...transcript,
+      logs: [
+        firstLog,
+        {
+          ...secondLog,
+          topics: [
+            secondLog.topics[0]!,
+            addressWord(livePool),
+            secondLog.topics[2]!
+          ]
+        }
+      ]
+    }
+  },
+  {
     name: "duplicate position",
     value: {
       ...transcript,
@@ -520,6 +755,37 @@ const mutations: readonly TranscriptMutation[] = [
     }
   },
   {
+    name: "receipt has no Bow launch",
+    value: {
+      ...transcript,
+      receipts: [
+        { ...transcript.receipts[0]!, logs: [firstUnrelatedLog] },
+        transcript.receipts[1]!
+      ]
+    }
+  },
+  {
+    name: "receipt contains an omitted Bow launch",
+    value: {
+      ...transcript,
+      receipts: [
+        {
+          ...transcript.receipts[0]!,
+          logs: [
+            firstUnrelatedLog,
+            firstLog,
+            {
+              ...firstLog,
+              data: launchData(livePool, 999n, 1_054n),
+              logIndex: 17
+            }
+          ]
+        },
+        transcript.receipts[1]!
+      ]
+    }
+  },
+  {
     name: "missing launch state",
     value: { ...transcript, launchState: [transcript.launchState[0]!] }
   },
@@ -529,6 +795,19 @@ const mutations: readonly TranscriptMutation[] = [
       ...transcript,
       launchState: [
         { ...transcript.launchState[0]!, deployer: address("8") },
+        transcript.launchState[1]!
+      ]
+    }
+  },
+  {
+    name: "launch-state call target mismatch",
+    value: {
+      ...transcript,
+      launchState: [
+        {
+          ...transcript.launchState[0]!,
+          target: address("7") as typeof BOW_FACTORY
+        },
         transcript.launchState[1]!
       ]
     }
