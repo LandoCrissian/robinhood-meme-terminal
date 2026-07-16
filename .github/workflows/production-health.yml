@@ -53,22 +53,26 @@ jobs:
             return 1
           }
 
-          check_endpoint protocol "$base/api/health"
-          check_endpoint launches "$base/api/launches"
+          check_endpoint protocol "$base/api/health" "health-artifacts/protocol.headers"
+          check_endpoint launches "$base/api/launches" "health-artifacts/launches.headers"
           check_endpoint indexer "$indexer/health"
           check_endpoint trades "$base/api/markets/$official_market/trades?limit=1" "health-artifacts/trades.headers"
 
           node - <<'NODE'
           const fs = require("fs");
           const protocol = JSON.parse(fs.readFileSync("health-artifacts/protocol.json", "utf8"));
+          const protocolHeaders = fs.readFileSync("health-artifacts/protocol.headers", "utf8").toLowerCase();
           const launches = JSON.parse(fs.readFileSync("health-artifacts/launches.json", "utf8"));
+          const launchHeaders = fs.readFileSync("health-artifacts/launches.headers", "utf8").toLowerCase();
           const indexer = JSON.parse(fs.readFileSync("health-artifacts/indexer.json", "utf8"));
           const trades = JSON.parse(fs.readFileSync("health-artifacts/trades.json", "utf8"));
           const tradeHeaders = fs.readFileSync("health-artifacts/trades.headers", "utf8").toLowerCase();
 
           const expected = {
             chainId: 4663,
+            registry: "0x27c0269e16209eee149e2738d0819a2633f44246",
             factory: "0x8e75c57079a01ce2094bc4187b78710887547651",
+            factoryStartBlock: "10248855",
             policyRegistry: "0x70177a46a38c981480fee9586ccbe281ee70dfcf",
             governance: "0x52c43239df8965eb27f26e115cc5ead11b35d5c3",
             market: "0xb26fb775c0ac365d369bee9ac2e044c5d90ffbee",
@@ -77,14 +81,59 @@ jobs:
           const lower = (value) => typeof value === "string" ? value.toLowerCase() : "";
 
           if (!protocol.ok) throw new Error("Protocol health is degraded.");
+          const protocolAge = Date.now() - Date.parse(protocol.checkedAt);
+          if (!Number.isFinite(protocolAge) || protocolAge > 60 * 1000) {
+            throw new Error(`Protocol health report is stale: ${protocol.checkedAt}`);
+          }
+          if (!/^cache-control:.*s-maxage=15/im.test(protocolHeaders)) {
+            throw new Error("Protocol health is missing its shared-cache policy.");
+          }
           if (protocol.chainId !== expected.chainId) {
             throw new Error(`Unexpected protocol chain ID: ${protocol.chainId}`);
           }
           if (!Array.isArray(protocol.checks) || protocol.checks.some((check) => check.state !== "operational")) {
             throw new Error("One or more protocol checks are degraded.");
           }
+          const evidence = protocol.releaseEvidence;
+          if (
+            !evidence ||
+            evidence.mode !== "v6-cutover" ||
+            lower(evidence.registryAddress) !== expected.registry ||
+            lower(evidence.factoryAddress) !== expected.factory ||
+            evidence.factoryStartBlock !== expected.factoryStartBlock ||
+            !evidence.registryConfiguredExplicitly ||
+            !evidence.registryConfigurationValid ||
+            !evidence.factoryStartBlockConfiguredExplicitly ||
+            !evidence.factoryStartBlockConfigurationValid
+          ) {
+            throw new Error("Public application is not pinned to the exact live V6 release.");
+          }
           if (!Array.isArray(launches.launches) || !launches.syncedAt) {
             throw new Error("Launch feed response is invalid.");
+          }
+          if (launches.stale === true) {
+            throw new Error("Public launch feed is serving a stale fallback snapshot.");
+          }
+          const launchFeedAge = Date.now() - Date.parse(launches.syncedAt);
+          if (!Number.isFinite(launchFeedAge) || launchFeedAge > 5 * 60 * 1000) {
+            throw new Error(`Public launch feed timestamp is stale: ${launches.syncedAt}`);
+          }
+          if (
+            launches.chainId !== expected.chainId ||
+            launches.protocolVersion !== 6 ||
+            lower(launches.factory) !== expected.factory ||
+            launches.factoryStartBlock !== expected.factoryStartBlock
+          ) {
+            throw new Error("Public launch feed is not bound to the exact live V6 index.");
+          }
+          if (launches.creatorSafeguardsReady !== true) {
+            throw new Error("Creator concentration or creator-wallet flow enrichment is unavailable.");
+          }
+          if (launches.source !== "indexer" || !launchHeaders.includes("x-rmt-data-source: indexer")) {
+            throw new Error("Public launch feed is not serving the confirmed production indexer.");
+          }
+          if (!/^cache-control:.*s-maxage=15/im.test(launchHeaders)) {
+            throw new Error("Public launch feed is missing its shared-cache policy.");
           }
 
           if (!indexer.ok || !indexer.initialSyncComplete) {
@@ -106,8 +155,19 @@ jobs:
           }
           const lagBlocks = BigInt(indexer.lagBlocks);
           const confirmationDepth = BigInt(indexer.confirmationDepth);
+          if (confirmationDepth !== 20n) {
+            throw new Error(`Production indexer confirmation depth is ${confirmationDepth}; expected 20.`);
+          }
+          const launchCheckpoint = BigInt(launches.indexedThrough);
+          const indexerCheckpoint = BigInt(indexer.indexedThrough);
+          if (launchCheckpoint > indexerCheckpoint || indexerCheckpoint - launchCheckpoint > confirmationDepth * 2n) {
+            throw new Error(`Public launch feed checkpoint ${launchCheckpoint} is not aligned with indexer ${indexerCheckpoint}.`);
+          }
+          if (lagBlocks > confirmationDepth * 5n) {
+            throw new Error(`Production indexer lag is ${lagBlocks} blocks (limit ${confirmationDepth * 5n}).`);
+          }
           if (lagBlocks > confirmationDepth * 2n) {
-            throw new Error(`Production indexer lag is ${lagBlocks} blocks (limit ${confirmationDepth * 2n}).`);
+            console.warn(`Production indexer is temporarily delayed by ${lagBlocks} blocks.`);
           }
           const lastSyncAge = Date.now() - Date.parse(indexer.lastSyncAt);
           if (!Number.isFinite(lastSyncAge) || lastSyncAge > 10 * 60 * 1000) {

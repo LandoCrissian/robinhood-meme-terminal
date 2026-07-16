@@ -2,7 +2,7 @@
 
 ## Objective
 
-Assess the policy-driven V6 release candidate before deployment and verify the final deployment before public token creation reopens. Existing V5 launches are immutable and are in scope only where V6 depends on legacy identity lookup or version activation.
+Assess the live policy-driven V6 deployment, reconstruct the release from repository source and receipts, verify deployed bytecode and immutable configuration, and review operational controls while public creation remains open. The canonical deployment record is [MAINNET_V6_DEPLOYMENT.md](MAINNET_V6_DEPLOYMENT.md). Existing V5 launches are immutable and are in scope only where V6 depends on legacy identity lookup.
 
 ## System boundaries
 
@@ -51,4 +51,4 @@ Independently simulate low activity, whales, repeated buy/sell cycles, target ap
 
 ## Deliverables and acceptance
 
-Use [EXTERNAL_AUDIT_HANDOFF.md](EXTERNAL_AUDIT_HANDOFF.md) for the exact target, configuration, questions, evidence, deliverables, and release-blocking rules. The final report must name the reviewed commit and, after deployment, every verified V6 address.
+Use [EXTERNAL_AUDIT_HANDOFF.md](EXTERNAL_AUDIT_HANDOFF.md) for the exact target, configuration, questions, evidence, and deliverables. The final report must name the reviewed commit and every canonical V6 address it actually reviewed; it must distinguish deployed addresses from exact source-publication status.

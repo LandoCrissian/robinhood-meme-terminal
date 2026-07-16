@@ -4,7 +4,7 @@ import {
   isFreshMainnetVersionRegistryConfigured,
   isMainnetVersionRegistryConfigurationValid,
   memeLaunchFactoryAbi,
-  publicMainnetV5FactoryAddress,
+  publicMainnetV6FactoryAddress,
   rmtLaunchFactoryV6Abi,
   publicMainnetVersionRegistryAddress,
   versionRegistryAbi
@@ -15,7 +15,7 @@ import {
   isFactoryStartBlockConfigurationValid,
   isFactoryStartBlockExplicitlyConfigured,
   isMainnetRelease,
-  publicMainnetV5FactoryStartBlock
+  publicMainnetV6FactoryStartBlock
 } from "../network";
 import type { LaunchFeedItem } from "../launch-feed";
 import { resolveTokenMetadata } from "../token-metadata";
@@ -61,9 +61,9 @@ const publicClient = createPublicClient({
     { retryCount: 3, timeout: 12_000 }
   )
 });
-const V5_VERSION = keccak256(toHex("RMT_FACTORY_V5"));
 const V6_VERSION = keccak256(toHex("RMT_FACTORY_V6"));
 const FIXED_TOKEN_SUPPLY = 1_000_000_000n * 10n ** 18n;
+const MINIMAL_PROXY_RUNTIME = /^0x363d3d373d3d3d363d73[0-9a-f]{40}5af43d82803e903d91602b57fd5bf3$/i;
 
 export async function resolveActiveFactory() {
   if (!isMainnetRelease) {
@@ -76,7 +76,7 @@ export async function resolveActiveFactory() {
     }).catch(() => null);
     return { address, version: Number(protocolVersion) === 6 ? 6 : 5 } as const;
   }
-  if (!isMainnetVersionRegistryConfigurationValid) return null;
+  if (!isFreshMainnetVersionRegistryConfigured || !isMainnetVersionRegistryConfigurationValid) return null;
   const [registered, registeredVersion] = await Promise.all([
     publicClient.readContract({
       address: publicMainnetVersionRegistryAddress,
@@ -91,15 +91,67 @@ export async function resolveActiveFactory() {
   ]);
   if (!isAddress(registered)) return null;
   const address = getAddress(registered);
-  if (registeredVersion === V5_VERSION && address === publicMainnetV5FactoryAddress) {
-    return { address, version: 5 } as const;
-  }
   if (
     registeredVersion === V6_VERSION
+      && address === publicMainnetV6FactoryAddress
       && isFreshMainnetVersionRegistryConfigured
       && isFactoryStartBlockExplicitlyConfigured
       && isFactoryStartBlockConfigurationValid
   ) return { address, version: 6 } as const;
+  return null;
+}
+
+export async function readV6LaunchOriginFromChain(token: Address, afterIndexedBlock?: bigint) {
+  const tokenCode = await publicClient.getBytecode({ address: token });
+  if (!tokenCode || !MINIMAL_PROXY_RUNTIME.test(tokenCode)) return null;
+
+  const activeFactory = await resolveActiveFactory();
+  if (
+    !activeFactory
+    || activeFactory.version !== 6
+    || getAddress(activeFactory.address) !== publicMainnetV6FactoryAddress
+  ) throw new Error("The exact live V6 factory is unavailable.");
+
+  const latestBlock = await publicClient.getBlockNumber();
+  const fromBlock = afterIndexedBlock && afterIndexedBlock > publicMainnetV6FactoryStartBlock
+    ? afterIndexedBlock
+    : publicMainnetV6FactoryStartBlock;
+  if (fromBlock > latestBlock) return null;
+
+  let cursor = latestBlock;
+  while (cursor >= fromBlock) {
+    const candidate = cursor > 19_999n ? cursor - 19_999n : 0n;
+    const chunkStart = candidate < fromBlock ? fromBlock : candidate;
+    const logs = await publicClient.getContractEvents({
+      address: publicMainnetV6FactoryAddress,
+      abi: rmtLaunchFactoryV6Abi,
+      eventName: "TokenLaunchedV6",
+      args: { token },
+      fromBlock: chunkStart,
+      toBlock: cursor,
+      strict: true
+    });
+    if (logs.length > 1) throw new Error("The V6 token has multiple launch-origin events.");
+    const log = logs[0];
+    if (log) {
+      if (
+        log.args.launchId === undefined
+        || log.args.token === undefined
+        || log.blockNumber === null
+        || log.transactionHash === null
+        || getAddress(log.args.token) !== token
+      ) throw new Error("The V6 launch-origin event is incomplete.");
+
+      return {
+        launchId: log.args.launchId.toString(),
+        token: getAddress(log.args.token),
+        blockNumber: log.blockNumber.toString(),
+        transactionHash: log.transactionHash
+      };
+    }
+    if (chunkStart === fromBlock) break;
+    cursor = chunkStart - 1n;
+  }
   return null;
 }
 
@@ -212,7 +264,7 @@ export async function readFreshLaunches(
   const latestBlock = await publicClient.getBlockNumber();
   const requestedStart = activeFactory.version === 6
     ? activeFactoryStartBlock
-    : isMainnetRelease ? publicMainnetV5FactoryStartBlock : activeFactoryStartBlock;
+    : isMainnetRelease ? publicMainnetV6FactoryStartBlock : activeFactoryStartBlock;
   if (latestBlock < requestedStart) return [];
   let cursor = latestBlock;
   const launches: LaunchFeedItem[] = [];

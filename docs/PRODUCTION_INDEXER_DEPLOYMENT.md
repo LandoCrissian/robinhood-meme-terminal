@@ -1,5 +1,7 @@
 # Production indexer deployment
 
+Current status: **the V6 Railway/PostgreSQL indexer is live and is the production Discovery source**. This document retains the deployment and recovery procedure; provider credentials and database details remain private.
+
 ## Recommended beta topology
 
 - **Primary RPC:** Alchemy Robinhood Chain mainnet archive-capable endpoint
@@ -22,7 +24,7 @@ Create these as encrypted service variables:
 | --- | --- |
 | `DATABASE_URL` | Managed PostgreSQL connection string |
 | `RMT_RPC_URL` | Primary Robinhood Chain mainnet RPC |
-| `RMT_FACTORY_ADDRESS` | Exact verified V6 factory address recorded after deployment; never use the V5 address with the V6 indexer |
+| `RMT_FACTORY_ADDRESS` | Exact canonical V6 factory address recorded after deployment; never use the V5 address with the V6 indexer |
 | `RMT_FACTORY_START_BLOCK` | Confirmed V6 factory deployment block recorded from its deployment receipt |
 | `RMT_INDEXER_READ_TOKEN` | Long random bearer token shared only with the Vercel server |
 | `RMT_CONFIRMATION_DEPTH` | `20` |
@@ -52,10 +54,10 @@ The committed Railway configuration builds only the indexer, starts the long-run
 
 Do not connect the public web app to the indexer until all checks pass:
 
-1. `/health` reports `ok: true`, chain ID `4663`, protocol version `6`, the exact verified V6 factory, and the derived policy-registry, governance, creator-payout-authority, and protocol-treasury addresses from the verified release record.
+1. `/health` reports `ok: true`, chain ID `4663`, protocol version `6`, the exact canonical V6 factory, and the derived policy-registry, governance, creator-payout-authority, and protocol-treasury addresses from the deployment record.
 2. The worker has indexed through the confirmed chain head.
 3. Indexed launch count equals the factory's onchain `launchCount()`.
-4. Every indexed token, market, reward vault, and creator matches its canonical launch event.
+4. Every indexed token, market, fee splitter, and creator matches its canonical launch event.
 5. Indexed buy/sell totals match canonical Trade logs.
 6. The latest reserve matches the latest canonical Trade event.
 7. No duplicate transaction-hash/log-index pairs exist.
@@ -63,7 +65,7 @@ Do not connect the public web app to the indexer until all checks pass:
 9. A database restore into a temporary project can resume indexing.
 10. The backup RPC can complete a reconciliation pass.
 
-Do not cut the indexer over before V6 is deployed and verified. The V6 deployment block is the intentional product boundary: the production indexer and V6 terminal do not ingest V4/V5 launches as V6. The V6 factory consults the active V5 factory only to preserve protected names and tickers.
+The V6 deployment block is the intentional product boundary: the production indexer and V6 terminal do not ingest V4/V5 launches as V6. The active V6 factory consults the retained legacy V5 identity factory only to preserve protected names and tickers. Production binding is established by the canonical registry, factory, and start-block values; it does not imply exact explorer source verification.
 
 ## Web cutover
 
@@ -72,12 +74,12 @@ After reconciliation:
 1. Store the indexer base URL as encrypted Vercel production variable `RMT_INDEXER_URL`.
 2. Store the same long random bearer token in Railway and Vercel as `RMT_INDEXER_READ_TOKEN`; never prefix either value with `NEXT_PUBLIC_`.
 3. Set `RMT_INDEXER_TIMEOUT_MS=5000` in Vercel.
-4. Serve `/api/markets/*/trades` through Vercel's edge cache and honor its committed five-second shared-cache headers with stale-while-revalidate enabled.
+4. Serve `/api/markets/*/trades` and `/api/launches` through Vercel's shared cache. Trades use the committed five-second policy; launch discovery uses a fifteen-second policy with stale-while-revalidate.
 5. Use a Vercel Firewall rule restricted to `www.rmtlaunch.fun`, request paths beginning with `/api/markets/`, and request paths ending in `/trades`. Observe the exact match in log-only mode before enabling a per-IP rate limit. Never include static assets, launch routes, wallet transaction RPC calls, or contract writes.
-6. Keep the existing verified-factory RPC feed available as an explicit degraded fallback.
-7. Display a delayed-data state when both the indexer and direct-chain fallback fail.
+6. Use the persistent indexer as the production launch-feed source. Do not let visitor traffic trigger repeated full-history factory scans when the configured indexer is delayed; keep the last confirmed launch snapshot visible instead. The direct-chain scanner remains available only for local/test operation when no indexer URL is configured.
+7. Display a delayed-data state without clearing the last confirmed launch snapshot. Pause polling in hidden tabs, prevent overlapping refreshes, and back off repeated failures.
 8. Keep `.github/workflows/production-health.yml` scheduled every five minutes. It checks the Railway `/health` endpoint and the public official-RMT trade route independently of the application deployment.
-9. Treat indexer lag above twice the confirmation depth, a stale sync, an incorrect V6 binding, a proxy fallback, or missing shared-cache headers as a failed production-health run.
+9. Warn when indexer lag exceeds twice the confirmation depth and fail when it exceeds five times the confirmation depth. An incorrect V6 binding, stale sync, wrong launch-feed source, or missing shared-cache headers remains a failed production-health run.
 
 Trading remains wallet-to-contract and must never depend on the indexer being available.
 
@@ -90,7 +92,7 @@ Trading remains wallet-to-contract and must never depend on the indexer being av
 - **Edge protection:** exact-host and exact-route-shape Vercel Firewall observation rule; wallet and contract traffic are outside the rule
 - **Independent monitoring:** GitHub Actions validates the canonical domain, protocol health, V6 launch feed, Railway health and lag, official-token trade data, indexer source header, and shared-cache policy every five minutes
 
-The public proxy can fall back to verified direct-chain reads when the indexer is unavailable. That degraded read path is intentional. Trading remains wallet-to-contract and does not pass through Railway, PostgreSQL, or the market-data proxy.
+The public trade proxy can fall back to bounded verified direct-chain reads when the indexer is unavailable. RMT launch discovery instead retains the last confirmed indexed snapshot so a service delay does not create a new full-history RPC scan per visitor. Trading remains wallet-to-contract and does not pass through Railway, PostgreSQL, or the market-data proxy.
 
 ## Cost boundary
 

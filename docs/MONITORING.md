@@ -11,7 +11,7 @@ The apex domain https://rmtlaunch.fun must permanently redirect to the canonical
 Endpoints:
 
 - `https://www.rmtlaunch.fun/api/health` — RPC chain ID, latest block freshness, registry bytecode and active factory, factory bytecode and launch count, immutable fee/target, adapter bytecode and factory binding
-- `https://www.rmtlaunch.fun/api/launches` — cached verified-factory launch data and synchronization timestamp
+- `https://www.rmtlaunch.fun/api/launches` — cached confirmed-indexer launch data, source header, block checkpoint, and synchronization timestamp
 - `https://www.rmtlaunch.fun/status` — user-facing version of the onchain health checks
 
 ## Alert ownership
@@ -24,9 +24,9 @@ GitHub Actions failure notifications are the temporary beta alert channel. Befor
 - establish a private security inbox
 - test the signer contact tree
 
-## Required next monitoring layer
+## Indexed monitoring layer
 
-The current checks detect availability and binding drift. They do not replace a persistent indexer. The production indexer must checkpoint blocks, wait for confirmation depth, detect reorgs, replay idempotently, and alert on:
+The persistent production indexer checkpoints blocks, waits for confirmation depth, detects reorgs, and replays idempotently. Monitoring should continue to alert on:
 
 - active or pending factory version changes
 - launch-event ingestion lag
@@ -34,7 +34,7 @@ The current checks detect availability and binding drift. They do not replace a 
 - graduation attempts and failures
 - adapter balances after settlement
 - reward claim failures
-- purpose-vault proposals/releases
+- creator-payout and governance events
 - unusual creator or wallet concentration
 - frontend and API error-rate spikes
 

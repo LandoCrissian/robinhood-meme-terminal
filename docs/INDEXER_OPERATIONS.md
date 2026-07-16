@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The public feed currently has an RPC fallback, but broad public traffic should read from the persistent indexer in `apps/indexer`. The indexer is a read-only chain consumer. It has no wallet, private key, governance role, or ability to move funds.
+Production discovery reads confirmed launch and trade data from the persistent indexer in `apps/indexer`. The public launch route keeps its last confirmed snapshot during indexer delays instead of making each visitor repeat a full-history RPC scan. The indexer is a read-only chain consumer. It has no wallet, private key, governance role, or ability to move funds.
 
 ## Correctness model
 
@@ -25,13 +25,13 @@ Use [PRODUCTION_INDEXER_DEPLOYMENT.md](PRODUCTION_INDEXER_DEPLOYMENT.md) for the
 5. Restrict the indexer API to the web tier or place it behind rate limiting.
 6. Set the web deployment's indexer URL only after a full historical backfill matches the onchain launch count.
 7. Add independent uptime checks for `/health`.
-8. Alert when lag exceeds twice the confirmation depth, a reorg rollback occurs, or the worker reports an error.
+8. Warn when lag exceeds twice the confirmation depth; alert when it exceeds five times the depth, a reorg rollback occurs, or the worker reports an error.
 9. Exercise database restore and full replay before broad launch.
 
 ## Required reconciliation before cutover
 
 - indexed launch count equals `MemeLaunchFactory.launchCount()`
-- every token, market, and reward-vault address matches the factory event
+- every token, market, and fee-splitter address matches the factory event
 - aggregated trade volume equals decoded canonical Trade logs
 - the latest reserve equals the latest canonical Trade event or zero before the first trade
 - graduation and liquidity migration state matches each market contract
@@ -39,4 +39,4 @@ Use [PRODUCTION_INDEXER_DEPLOYMENT.md](PRODUCTION_INDEXER_DEPLOYMENT.md) for the
 
 ## Incident handling
 
-If the indexer is unhealthy, the web tier must clearly mark analytics as delayed. Trading remains wallet-to-contract and does not depend on the indexer. Do not silently serve invented or stale activity. Follow [INCIDENT_RESPONSE.md](INCIDENT_RESPONSE.md).
+If the indexer is unhealthy, the web tier must clearly mark analytics as delayed and identify retained data as the last confirmed snapshot. Trading remains wallet-to-contract and does not depend on the indexer. Never invent activity or present delayed data as live. Follow [INCIDENT_RESPONSE.md](INCIDENT_RESPONSE.md).

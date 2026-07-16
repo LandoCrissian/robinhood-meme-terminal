@@ -1,6 +1,6 @@
 # Robinhood Meme Terminal V6 mainnet release checklist
 
-This checklist is the final go/no-go gate for V6. Passing CI does not authorize deployment, activation, or public launches, and it is not a guarantee that unaudited contracts are risk-free.
+Current production status: **V6 is live and public launches are open**. This is the historical go/no-go plan, not a completed attestation. Its unchecked items remain unchecked deliberately. Canonical live addresses and receipts are in [MAINNET_V6_DEPLOYMENT.md](MAINNET_V6_DEPLOYMENT.md); exact source publication and the independent audit remain open.
 
 ## Canonical live dependencies
 
@@ -9,7 +9,7 @@ This checklist is the final go/no-go gate for V6. Passing CI does not authorize 
 - Official public RPC: `https://rpc.mainnet.chain.robinhood.com`
 - Uniswap V4 PoolManager: `0x8366a39cC670b4001A1121b8F6A443A643E40951`
 - Canonical CREATE2 deployer: `0x4e59b44847b379578588920cA78FbF26c0B4956C`
-- Active V5 factory: `0x25A92D8C79c38D07B0d3eFd0ebe929D30e401cdD`
+- Legacy V5 identity factory: `0x25A92D8C79c38D07B0d3eFd0ebe929D30e401cdD`
 
 Primary references:
 
@@ -120,4 +120,4 @@ Any mismatch blocks deployment. Do not override it in the website or script.
 - [ ] Obtain explicit manual approval for CI, artifact review, independent audit, monitoring, and operator readiness; these cannot be proven by the console.
 - [ ] After the full reopening delay, require the console's fresh binding, policy, official-launch, single-governance history, twelve-source, and exact live production-health checks, then execute reopening and re-run production health checks.
 
-Public token creation remains closed until every required item above is complete.
+Historical gate: this plan required public creation to remain closed until completion. Public V6 creation is now open; the canonical deployment record documents what is confirmed and clearly identifies the unfinished source-publication and audit work.

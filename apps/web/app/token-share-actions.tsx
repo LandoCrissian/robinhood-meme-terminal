@@ -7,13 +7,14 @@ type TokenShareActionsProps = {
   address: Address;
   name: string;
   symbol: string;
+  launchId: string;
 };
 
 function shortAddress(address: string) {
   return `${address.slice(0, 6)}…${address.slice(-4)}`;
 }
 
-export function TokenShareActions({ address, name, symbol }: TokenShareActionsProps) {
+export function TokenShareActions({ address, name, symbol, launchId }: TokenShareActionsProps) {
   const [notice, setNotice] = useState("");
   const cleanSymbol = symbol.replace(/^\$+/, "");
   const shareText = useMemo(
@@ -31,7 +32,7 @@ export function TokenShareActions({ address, name, symbol }: TokenShareActionsPr
   }
 
   async function shareToken() {
-    const url = window.location.href;
+    const url = `${window.location.origin}/token/${address}?launch=${launchId}`;
     if (navigator.share) {
       try {
         await navigator.share({ title: `${name} on RMT`, text: shareText, url });
@@ -51,7 +52,8 @@ export function TokenShareActions({ address, name, symbol }: TokenShareActionsPr
   }
 
   function postOnX() {
-    const intent = `https://x.com/intent/post?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(window.location.href)}`;
+    const url = `${window.location.origin}/token/${address}?launch=${launchId}`;
+    const intent = `https://x.com/intent/post?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(url)}`;
     window.open(intent, "_blank", "noopener,noreferrer");
   }
 

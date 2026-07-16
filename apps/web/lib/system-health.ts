@@ -8,7 +8,7 @@ export type SystemHealthCheck = {
 };
 
 export type SystemHealthReleaseEvidence = {
-  mode: "testnet" | "v5-compatible" | "v6-cutover";
+  mode: "testnet" | "configuration-error" | "v6-cutover";
   registryAddress: string | null;
   factoryAddress: string | null;
   factoryVersion: string | null;

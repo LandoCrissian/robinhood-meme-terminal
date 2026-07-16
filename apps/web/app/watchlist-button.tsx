@@ -9,10 +9,11 @@ type WatchlistButtonProps = {
   name: string;
   symbol: string;
   image?: string;
+  launchId: string;
   compactLabel?: boolean;
 };
 
-export function WatchlistButton({ address, name, symbol, image, compactLabel = false }: WatchlistButtonProps) {
+export function WatchlistButton({ address, name, symbol, image, launchId, compactLabel = false }: WatchlistButtonProps) {
   const [watched, setWatched] = useState(false);
 
   useEffect(() => {
@@ -30,7 +31,7 @@ export function WatchlistButton({ address, name, symbol, image, compactLabel = f
     if (watched) {
       removeFromWatchlist(address);
     } else {
-      addToWatchlist({ address, name, symbol: symbol.replace(/^\$+/, ""), image, addedAt: Date.now() });
+      addToWatchlist({ address, name, symbol: symbol.replace(/^\$+/, ""), image, launchId, addedAt: Date.now() });
     }
   }
 

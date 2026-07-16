@@ -1,6 +1,6 @@
 # V6 Release Checklist
 
-Public token creation remains paused until the pre-opening deployment checks through the one-time controller action are complete. Items explicitly labeled post-launch—most importantly the independent human audit—remain tracked but do not impose a multi-day genesis wait.
+Current production status: **V6 is live and public launches are open**. This is the historical release plan, not proof that every planned gate was completed. Its unchecked deployment and verification items remain unchecked deliberately. Use [MAINNET_V6_DEPLOYMENT.md](MAINNET_V6_DEPLOYMENT.md) for confirmed addresses and receipts; exact source publication and the independent human audit remain open work.
 
 ## Architecture
 

@@ -38,4 +38,13 @@ export type LaunchFeedItem = {
 export type LaunchFeedResponse = {
   launches: LaunchFeedItem[];
   syncedAt: string;
+  chainId?: number;
+  protocolVersion?: number;
+  factory?: Address;
+  factoryStartBlock?: string;
+  indexedThrough?: string;
+  creatorSafeguardsReady?: boolean;
+  source?: "indexer" | "rpc";
+  stale?: boolean;
+  error?: string;
 };

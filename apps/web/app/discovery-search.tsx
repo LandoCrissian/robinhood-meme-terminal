@@ -91,7 +91,7 @@ export function DiscoverySearch() {
             <div className="searchGroup">
               <div className="searchGroupTitle"><strong>Origin-verified RMT V6 launches</strong><span>{rmtResults.length}</span></div>
               <div className="searchResultGrid">{rmtResults.map((launch) => (
-                <Link className="searchResult" href={`/token/${launch.token}`} key={launch.token}>
+                <Link className="searchResult" href={`/token/${launch.token}?launch=${launch.launchId}`} key={launch.token}>
                   <span className="coin searchArtwork">{launch.image ? <img src={ipfsToHttp(launch.image)} alt="" loading="lazy" /> : cleanSymbol(launch.symbol).slice(0, 2)}</span>
                   <span><strong>{launch.name}</strong><small>${cleanSymbol(launch.symbol)} · RMT V6 · {describeCreatorExposure(launch).label}</small></span>
                   <em>Open →</em>

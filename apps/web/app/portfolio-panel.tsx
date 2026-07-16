@@ -36,17 +36,21 @@ export function PortfolioPanel() {
   const publicClient = usePublicClient({ chainId: activeChain.id });
   const [holdings, setHoldings] = useState<Holding[]>([]);
   const [ready, setReady] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const requestId = useRef(0);
+  const snapshotAddress = useRef<string | null>(null);
 
   const refresh = useCallback(async () => {
     const currentRequest = ++requestId.current;
     if (!address || !publicClient) {
       setHoldings([]);
       setReady(false);
+      setError(address ? "Wallet data is temporarily unavailable." : null);
       return;
     }
 
     try {
+      setError(null);
       const response = await fetch("/api/launches", { cache: "no-store" });
       if (!response.ok) throw new Error("Launch feed unavailable.");
       const payload = (await response.json()) as LaunchFeedResponse;
@@ -54,6 +58,7 @@ export function PortfolioPanel() {
       if (launches.length === 0) {
         if (currentRequest === requestId.current) {
           setHoldings([]);
+          snapshotAddress.current = address.toLowerCase();
           setReady(true);
         }
         return;
@@ -66,10 +71,13 @@ export function PortfolioPanel() {
           functionName: "balanceOf",
           args: [address]
         })),
-        allowFailure: true
+        allowFailure: true,
+        batchSize: 0,
+        deployless: true
       });
 
       if (currentRequest !== requestId.current) return;
+      snapshotAddress.current = address.toLowerCase();
       setHoldings(launches.flatMap((launch, index) => {
         const result = balances[index];
         return result?.status === "success" && typeof result.result === "bigint" && result.result > 0n
@@ -79,8 +87,9 @@ export function PortfolioPanel() {
       setReady(true);
     } catch {
       if (currentRequest === requestId.current) {
-        setHoldings([]);
+        if (snapshotAddress.current !== address.toLowerCase()) setHoldings([]);
         setReady(true);
+        setError("Portfolio data is delayed. Your assets are unchanged.");
       }
     }
   }, [address, publicClient]);
@@ -90,15 +99,73 @@ export function PortfolioPanel() {
       requestId.current += 1;
       setHoldings([]);
       setReady(false);
+      setError(null);
+      snapshotAddress.current = null;
       return;
+    }
+
+    const connectedAddress = address?.toLowerCase() ?? null;
+    if (snapshotAddress.current !== connectedAddress) {
+      requestId.current += 1;
+      setHoldings([]);
+      setReady(false);
+      setError(null);
+      snapshotAddress.current = null;
     }
 
     void refresh();
     const interval = window.setInterval(() => void refresh(), 20_000);
     return () => window.clearInterval(interval);
-  }, [isConnected, refresh]);
+  }, [address, isConnected, refresh]);
 
-  if (!isConnected || !address || !ready || holdings.length === 0) return null;
+  const snapshotIsCurrent = Boolean(address && snapshotAddress.current === address.toLowerCase());
+  const visibleHoldings = snapshotIsCurrent ? holdings : [];
+
+  if (!isConnected || !address) {
+    return (
+      <section className="panel portfolioPanel" aria-labelledby="portfolio-title">
+        <div className="emptyFeed">
+          <strong id="portfolio-title">Connect a wallet to view positions</strong>
+          <span>Use Connect Wallet in the header. RMT reads public balances only and never moves assets.</span>
+        </div>
+      </section>
+    );
+  }
+
+  if (!ready && visibleHoldings.length === 0) {
+    return (
+      <section className="panel portfolioPanel" aria-labelledby="portfolio-title" aria-busy="true">
+        <div className="emptyFeed">
+          <strong id="portfolio-title">Loading verified RMT positions…</strong>
+          <span>Checking this wallet against the confirmed V6 launch set.</span>
+        </div>
+      </section>
+    );
+  }
+
+  if (error && visibleHoldings.length === 0) {
+    return (
+      <section className="panel portfolioPanel" aria-labelledby="portfolio-title">
+        <div className="emptyFeed">
+          <strong id="portfolio-title">Portfolio data is delayed</strong>
+          <span>{error}</span>
+          <button type="button" onClick={() => void refresh()}>Retry</button>
+        </div>
+      </section>
+    );
+  }
+
+  if (visibleHoldings.length === 0) {
+    return (
+      <section className="panel portfolioPanel" aria-labelledby="portfolio-title">
+        <div className="emptyFeed">
+          <strong id="portfolio-title">No verified RMT positions yet</strong>
+          <span>This connected wallet does not currently hold a token in the active V6 discovery set.</span>
+          <Link href="/">Explore RMT tokens</Link>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="panel portfolioPanel" aria-labelledby="portfolio-title">
@@ -108,11 +175,12 @@ export function PortfolioPanel() {
           <h2 id="portfolio-title">Onchain holdings</h2>
           <p>Live balances for verified RMT tokens held by the connected wallet.</p>
         </div>
-        <span className="portfolioCount">{holdings.length} POSITION{holdings.length === 1 ? "" : "S"}</span>
+        <span className="portfolioCount">{visibleHoldings.length} POSITION{visibleHoldings.length === 1 ? "" : "S"}</span>
       </div>
+      {error && <p className="portfolioDelay" role="status">{error} Showing the last confirmed balances. <button type="button" onClick={() => void refresh()}>Retry</button></p>}
       <div className="portfolioGrid">
-        {holdings.map(({ launch, balance }) => (
-          <Link className="portfolioCard" href={`/token/${launch.token}`} key={launch.token}>
+        {visibleHoldings.map(({ launch, balance }) => (
+          <Link className="portfolioCard" href={`/token/${launch.token}?launch=${launch.launchId}`} key={launch.token}>
             <span className="coin portfolioArtwork">
               {launch.image ? <img src={ipfsToHttp(launch.image)} alt="" loading="lazy" /> : displaySymbol(launch.symbol).slice(0, 2)}
             </span>

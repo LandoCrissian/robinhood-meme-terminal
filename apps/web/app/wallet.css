@@ -22,7 +22,7 @@
 .setup-link{color:#a8b2ab;text-decoration:none;font-size:.76rem;font-weight:800}
 .setup-link:hover{color:#00e506}
 @media(max-width:620px){.setup-link{display:none}
-.walletPopover{position:fixed;top:68px;right:12px;left:12px;width:auto;max-height:calc(100dvh - 84px - env(safe-area-inset-bottom));overflow-y:auto;overscroll-behavior:contain}
+.walletPopover{position:fixed;top:calc(68px + env(safe-area-inset-top));right:12px;left:12px;width:auto;max-height:calc(100dvh - 84px - env(safe-area-inset-top) - env(safe-area-inset-bottom));overflow-y:auto;overscroll-behavior:contain}
 .connectTrigger{white-space:nowrap}
 }
 
