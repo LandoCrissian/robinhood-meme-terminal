@@ -1182,6 +1182,49 @@ async function launchRows(limit: number) {
   return result.rows;
 }
 
+async function rmtOriginRows(tokens: readonly string[]) {
+  const result = await pool.query(
+    `SELECT
+      token,
+      launch_id::TEXT AS launch_id,
+      creator,
+      market,
+      transaction_hash,
+      block_number::TEXT AS block_number
+    FROM launches
+    WHERE protocol_version = 6
+      AND LOWER(token) = ANY($1::text[])
+    ORDER BY block_number DESC, log_index DESC`,
+    [tokens]
+  );
+
+  return result.rows.map((row) => ({
+    token: row.token as string,
+    state: "rmt-verified" as const,
+    claimKind: "token-created" as const,
+    platform: "RMT",
+    protocolVersion: 6,
+    factory: config.factory,
+    launchId: row.launch_id as string,
+    creator: row.creator as string,
+    market: row.market as string,
+    launchTransactionHash: row.transaction_hash as string,
+    launchBlock: row.block_number as string
+  }));
+}
+
+function parseOriginTokens(value: string | null) {
+  if (!value) return { error: "At least one token address is required." } as const;
+  const requested = value.split(",").map((token) => token.trim()).filter(Boolean);
+  if (requested.length === 0 || requested.length > 100) {
+    return { error: "Origin lookups require between 1 and 100 token addresses." } as const;
+  }
+  if (requested.some((token) => !/^0x[0-9a-fA-F]{40}$/.test(token))) {
+    return { error: "Every origin lookup value must be an EVM token address." } as const;
+  }
+  return { tokens: [...new Set(requested.map((token) => token.toLowerCase()))] } as const;
+}
+
 async function marketTradeRows(market: string, limit: number) {
   const launch = await pool.query(
     `SELECT token FROM launches WHERE market = $1 AND protocol_version = 6 LIMIT 1`,
@@ -1294,6 +1337,28 @@ function startServer() {
         const requested = Number.parseInt(url.searchParams.get("limit") ?? "25", 10);
         const limit = Number.isSafeInteger(requested) ? Math.min(100, Math.max(1, requested)) : 25;
         json(response, 200, { launches: await launchRows(limit), indexedThrough: indexedThrough.toString(), syncedAt: lastSyncAt });
+        return;
+      }
+      if (url.pathname === "/origins") {
+        if (!initialSyncComplete || lastError) {
+          json(response, 503, {
+            error: lastError ?? "Initial V6 backfill and invariants are still running"
+          });
+          return;
+        }
+        const query = parseOriginTokens(url.searchParams.get("tokens"));
+        if ("error" in query) {
+          json(response, 400, { error: query.error });
+          return;
+        }
+        json(response, 200, {
+          chainId: CHAIN_ID,
+          coverage: "complete",
+          claims: await rmtOriginRows(query.tokens),
+          factory: config.factory,
+          indexedThrough: indexedThrough.toString(),
+          syncedAt: lastSyncAt
+        });
         return;
       }
 
