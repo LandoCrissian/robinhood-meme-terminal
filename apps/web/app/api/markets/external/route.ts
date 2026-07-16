@@ -143,7 +143,7 @@ export async function GET() {
       const pairCreatedAt = asNumber(pair.pairCreatedAt) || null;
 
       if (!/^0x[0-9a-fA-F]{40}$/.test(address) || !name || !symbol || !pairAddress) continue;
-      if (liquidityUsd < RUNNER_THRESHOLDS.minimumLiquidityUsd || volume24h <= 0) continue;
+      if (liquidityUsd < RUNNER_THRESHOLDS.minimumDisplayLiquidityUsd || volume24h <= 0) continue;
 
       const ranking = rankExternalMarket({
         liquidityUsd,
@@ -191,8 +191,17 @@ export async function GET() {
       const existing = marketsByToken.get(key);
       if (
         !existing
-        || market.volume24h > existing.volume24h
-        || (market.volume24h === existing.volume24h && market.liquidityUsd > existing.liquidityUsd)
+        || market.liquidityUsd > existing.liquidityUsd
+        || (
+          market.liquidityUsd === existing.liquidityUsd
+          && (
+            market.momentumScore > existing.momentumScore
+            || (
+              market.momentumScore === existing.momentumScore
+              && market.pairAddress.toLowerCase().localeCompare(existing.pairAddress.toLowerCase()) < 0
+            )
+          )
+        )
       ) {
         marketsByToken.set(key, market);
       }
@@ -206,7 +215,7 @@ export async function GET() {
       {
         markets,
         source: "DEX Screener",
-        rankingVersion: "rmt-runner-v1",
+        rankingVersion: "rmt-runner-v2",
         thresholds: RUNNER_THRESHOLDS,
         updatedAt: new Date().toISOString()
       },
