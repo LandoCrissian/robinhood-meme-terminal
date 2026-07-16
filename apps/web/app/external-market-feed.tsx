@@ -181,7 +181,7 @@ function ExternalTradeDialog({
         <div className="quickTradeIdentity">
           <div className="coin externalArtwork" aria-hidden="true">{initials(market.symbol)}</div>
           <span>
-            <small>EXTERNAL MARKET · ORIGIN UNVERIFIED</small>
+            <small>EXTERNAL MARKET · UNISWAP REVIEW</small>
             <strong>{market.name}</strong>
             <em>{"$" + cleanSymbol(market.symbol) + " · " + sideLabel}</em>
           </span>
@@ -265,25 +265,30 @@ export function ExternalMarketFeed() {
   const hasSuccessfulData = useRef(false);
   const restoredQuickTrade = useRef(false);
   const returnFocusTo = useRef<HTMLElement | null>(null);
-  const [quickTrade, setQuickTrade] = useState<{ market: ExternalMarket; side: ExternalTradeSide }>();
+  const runnerHeading = useRef<HTMLHeadingElement>(null);
+  const [quickTrade, setQuickTrade] = useState<{ address: string; side: ExternalTradeSide }>();
+  const [tradeAnnouncement, setTradeAnnouncement] = useState("");
 
   const syncQuickTradeUrl = useCallback((market?: ExternalMarket, side?: ExternalTradeSide) => {
     const url = new URL(window.location.href);
     if (market && side) {
+      url.searchParams.delete("quickTrade");
+      url.searchParams.delete("side");
       url.searchParams.set("externalTrade", market.address);
-      url.searchParams.set("side", side);
+      url.searchParams.set("externalSide", side);
       url.hash = "runner-radar";
     } else {
       url.searchParams.delete("externalTrade");
-      url.searchParams.delete("side");
+      url.searchParams.delete("externalSide");
     }
     window.history.replaceState({}, "", url.pathname + url.search + url.hash);
   }, []);
 
   const openQuickTrade = useCallback((market: ExternalMarket, side: ExternalTradeSide) => {
     if (!canHandoffToUniswap(market)) return;
-    returnFocusTo.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    setQuickTrade({ market, side });
+    returnFocusTo.current = document.activeElement instanceof HTMLElement ? document.activeElement : runnerHeading.current;
+    setTradeAnnouncement("");
+    setQuickTrade({ address: market.address, side });
     syncQuickTradeUrl(market, side);
   }, [syncQuickTradeUrl]);
 
@@ -321,15 +326,47 @@ export function ExternalMarketFeed() {
   }, [refresh]);
 
   useEffect(() => {
-    if (restoredQuickTrade.current || markets.length === 0) return;
+    if (restoredQuickTrade.current || status === "loading") return;
     restoredQuickTrade.current = true;
     const params = new URLSearchParams(window.location.search);
     const token = params.get("externalTrade")?.toLowerCase();
-    const side = params.get("side");
-    if (!token || (side !== "buy" && side !== "sell")) return;
+    const side = params.get("externalSide");
+    if (!token && !side) return;
+    if (params.has("quickTrade")) {
+      syncQuickTradeUrl();
+      setTradeAnnouncement("The RMT launch trade was kept open; the conflicting external review was cleared.");
+      return;
+    }
+    if (!token || (side !== "buy" && side !== "sell")) {
+      syncQuickTradeUrl();
+      setTradeAnnouncement("The external trade review link was incomplete and was cleared.");
+      return;
+    }
     const market = markets.find((item) => item.address.toLowerCase() === token);
-    if (market && canHandoffToUniswap(market)) setQuickTrade({ market, side });
-  }, [markets]);
+    if (!market || !canHandoffToUniswap(market)) {
+      syncQuickTradeUrl();
+      setTradeAnnouncement("That external market is no longer available for Uniswap review.");
+      return;
+    }
+    returnFocusTo.current = runnerHeading.current;
+    setQuickTrade({ address: market.address, side });
+  }, [markets, status, syncQuickTradeUrl]);
+
+  const selectedQuickTradeMarket = useMemo(
+    () => quickTrade
+      ? markets.find((market) => market.address.toLowerCase() === quickTrade.address.toLowerCase())
+      : undefined,
+    [markets, quickTrade]
+  );
+
+  useEffect(() => {
+    if (!quickTrade) return;
+    if (selectedQuickTradeMarket && canHandoffToUniswap(selectedQuickTradeMarket)) return;
+    setQuickTrade(undefined);
+    syncQuickTradeUrl();
+    setTradeAnnouncement("The external market changed or left the eligible feed, so its trade review was closed.");
+    window.setTimeout(() => runnerHeading.current?.focus(), 0);
+  }, [quickTrade, selectedQuickTradeMarket, syncQuickTradeUrl]);
 
   const orderedMarkets = useMemo(() => stabilizeOrder(rankOrder, markets), [markets, rankOrder]);
   const counts = useMemo(() => ({
@@ -360,13 +397,14 @@ export function ExternalMarketFeed() {
       <div className="feedHeading externalHeading">
         <div>
           <p className="eyebrow">ROBINHOOD CHAIN · RUNNER RADAR</p>
-          <h2 id="external-markets-title">Markets showing movement</h2>
+          <h2 id="external-markets-title" ref={runnerHeading} tabIndex={-1}>Markets showing movement</h2>
           <p>Active Robinhood Chain markets discovered through WETH and USDG pairs. The board surfaces four risk-adjusted signals at a time instead of flooding the terminal with inactive tokens.</p>
         </div>
         <span className="externalBadge">{status === "stale" ? "DATA DELAYED" : "RECENT DATA · 60S RANKS"}</span>
       </div>
 
       <p className="srOnly" aria-live="polite">{rankingAnnouncement}</p>
+      <p className="srOnly" aria-live="polite">{tradeAnnouncement}</p>
       {status === "stale" && (
         <p className="runnerDataNotice" role="status">
           <span>Data delayed · showing the last successful snapshot{updatedAt ? " from " + snapshotTime(updatedAt) : ""}. RMT launches and trading are unaffected.</span>
@@ -445,13 +483,13 @@ export function ExternalMarketFeed() {
 
       <p className="externalDisclosure">Market data: DEX Screener. Confirmed RMT V6 launches are removed using RMT factory records. Token origin and market venue are labeled separately; external origin stays unknown until a creation adapter is contract-verified. Signals are automated filters, not endorsements or investment recommendations. For Uniswap-backed markets, Buy/Sell opens an RMT review, then Uniswap provides the fresh route and wallet transaction.</p>
 
-      {quickTrade && (
+      {quickTrade && selectedQuickTradeMarket && canHandoffToUniswap(selectedQuickTradeMarket) && (
         <ExternalTradeDialog
-          market={quickTrade.market}
+          market={selectedQuickTradeMarket}
           side={quickTrade.side}
           delayed={status === "stale"}
           onClose={closeQuickTrade}
-          returnFocusTo={returnFocusTo.current}
+          returnFocusTo={returnFocusTo.current ?? runnerHeading.current}
         />
       )}
     </section>
