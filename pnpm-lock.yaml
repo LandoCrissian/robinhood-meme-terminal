@@ -8,6 +8,25 @@ importers:
 
   .: {}
 
+  apps/external-origin-indexer:
+    dependencies:
+      pg:
+        specifier: ^8.13.3
+        version: 8.22.0
+    devDependencies:
+      '@types/node':
+        specifier: ^22.13.4
+        version: 22.20.1
+      '@types/pg':
+        specifier: ^8.11.11
+        version: 8.20.0
+      tsx:
+        specifier: ^4.19.3
+        version: 4.23.0
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+
   apps/indexer:
     dependencies:
       pg:
