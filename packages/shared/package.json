@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./chains": "./src/chains.ts"
+    "./chains": "./src/chains.ts",
+    "./market-origin": "./src/market-origin.ts"
   },
   "dependencies": {
     "viem": "^2.23.2"
