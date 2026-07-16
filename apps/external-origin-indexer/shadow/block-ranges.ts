@@ -9,7 +9,8 @@ export type InclusiveBlockRangePlan = Readonly<{
   maxBlocks: bigint;
 }>;
 
-export const MAX_INCLUSIVE_BLOCK_RANGE_SIZE = 5_000n;
+export const MAX_INCLUSIVE_BLOCK_RANGE_SIZE = 2_000n;
+export const MAX_INCLUSIVE_BLOCK_RANGE_COUNT = 10_000n;
 
 export function planInclusiveBlockRanges(
   plan: InclusiveBlockRangePlan
@@ -25,6 +26,12 @@ export function planInclusiveBlockRanges(
   }
   if (plan.maxBlocks > MAX_INCLUSIVE_BLOCK_RANGE_SIZE) {
     throw new Error("Block range size exceeds the safety bound");
+  }
+
+  const span = plan.toBlock - plan.fromBlock + 1n;
+  const rangeCount = (span + plan.maxBlocks - 1n) / plan.maxBlocks;
+  if (rangeCount > MAX_INCLUSIVE_BLOCK_RANGE_COUNT) {
+    throw new Error("Block range plan exceeds the allocation safety bound");
   }
 
   const ranges: InclusiveBlockRange[] = [];
