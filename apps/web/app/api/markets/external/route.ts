@@ -71,6 +71,7 @@ type SuccessfulMarketSnapshot = Required<Pick<
 >> & {
   originCoverage: OriginCoverage;
   rmtOriginCoverage: OriginCoverage;
+  thresholds: typeof RUNNER_THRESHOLDS;
 };
 
 let lastSuccessfulSnapshot: SuccessfulMarketSnapshot | undefined;
@@ -318,6 +319,7 @@ export async function GET() {
       markets,
       source: "DEX Screener",
       rankingVersion: "rmt-runner-v2",
+      thresholds: RUNNER_THRESHOLDS,
       originCoverage: "unavailable",
       rmtOriginCoverage: "complete",
       updatedAt: new Date().toISOString()
