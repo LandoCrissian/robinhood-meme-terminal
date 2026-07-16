@@ -29,6 +29,25 @@ The repository contains a proof-pinned Bow.fun candidate decoder. It is research
 
 The candidate is deliberately absent from `externalOriginAdapters`. The [factory's Blockscout record](https://robinhoodchain.blockscout.com/address/0xC70E510E14710Ea535CAB7b2414860aF63FEab79?tab=contract) still presents `Verify & publish`, so source verification is incomplete. RPC backfill, finality/reorg execution, and independent shadow comparison are also not implemented. CI asserts the registry stays empty and the activation lock continues to prevent readiness or claims.
 
+### Offline replay validator (CI-only)
+
+The `shadow/` directory now contains a pure transcript validator and bounded inclusive block-range planner. It is outside `src/`, excluded from the runtime build, and never imported by `index.ts`. It accepts caller-prepared data only: there is still no RPC client, worker, environment switch, database writer, adapter registration, API claim, web consumer, or deployment path.
+
+A replay window is accepted only when its supplied facts agree on the pinned chain, candidate, factory, and deployment anchor; bounded contiguous headers; exact block-hash tags; factory runtime boundaries; candidate-assumed zero-indexed `launchCount()` accounting; globally ordered `Launched` logs; complete successful receipt logs; `launches(id)` state; and nonempty token/pool runtime code. Call observations must name the exact Bow factory and function. Any gap, fork, omission, duplicate, coordinate conflict, reordering, failed receipt, counter mismatch, state mismatch, role collision, or missing code rejects the entire window. The output is frozen, deterministic, and explicitly marks itself unverified, nonauthoritative, activation-ineligible, unpersisted, and not an adapter claim. Bow's event field remains `deployer`; it is never converted to the RMT claim model's `creator`.
+
+This is a safety harness, not a completed backfill:
+
+- one provider can fabricate a self-consistent transcript
+- the supplied runtime hash is compared with the pin but is not yet recomputed locally from raw bytecode
+- count and `launches(id)` values are structured reported assertions, not locally decoded raw call returns
+- the zero-index counter relationship is a candidate assumption exercised with synthetic framing, not a live-proven invariant
+- a reported finalized-head anchor above the window does not prove ancestry by itself
+- the deployment window uses an explicit predeployment-zero assumption; coverage from deployment is not proven
+- independent archival-provider comparison, RPC collection, reorg execution, and persistence remain unimplemented
+- Bow source verification remains incomplete
+
+Every replay result reports those limits directly: independent-provider agreement, finalized ancestry, coverage from deployment, live counter semantics, local runtime hashing, and local state decoding are all `false`. They continue to block activation.
+
 ## Isolation boundary
 
 The service requires its own PostgreSQL database through `EXTERNAL_ORIGIN_DATABASE_URL`.
@@ -122,13 +141,15 @@ From the repository root:
 
 ```bash
 pnpm --filter external-origin-indexer typecheck
+pnpm --filter external-origin-indexer typecheck:shadow
 pnpm --filter external-origin-indexer build
 pnpm --filter external-origin-indexer test:schema
 pnpm --filter external-origin-indexer test:api
 pnpm --filter external-origin-indexer test:candidates
+pnpm --filter external-origin-indexer test:shadow-replay
 ```
 
-Tests cover concurrent/idempotent migration, database isolation, schema drift, manifest mutation, versioned factories, source-list exclusion, duplicate/conflicting origin evidence, checkpoint mismatches, reorg cleanup, block ranges, authentication, activation lock, and exact API responses.
+Tests cover concurrent/idempotent migration, database isolation, schema drift, manifest mutation, versioned factories, source-list exclusion, duplicate/conflicting origin evidence, checkpoint mismatches, reorg cleanup, block ranges, authentication, activation lock, exact API responses, candidate-assumed zero-index replay accounting, and adversarial whole-window rejection.
 
 ## First-adapter activation gate
 

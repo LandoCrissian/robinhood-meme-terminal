@@ -81,10 +81,12 @@ jobs:
           node-version: 22
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter external-origin-indexer typecheck
+      - run: pnpm --filter external-origin-indexer typecheck:shadow
       - run: pnpm --filter external-origin-indexer build
       - run: pnpm --filter external-origin-indexer test:schema
       - run: pnpm --filter external-origin-indexer test:api
       - run: pnpm --filter external-origin-indexer test:candidates
+      - run: pnpm --filter external-origin-indexer test:shadow-replay
 
   contracts:
     runs-on: ubuntu-latest
