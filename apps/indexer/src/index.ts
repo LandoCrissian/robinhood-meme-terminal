@@ -19,6 +19,7 @@ import {
   policyRegistryReadAbi,
   tokenLaunchedEvent
 } from "./abi.js";
+import { launchRowsQuery } from "./launch-rows-query.js";
 import { schemaSql } from "./schema.js";
 
 const CHAIN_ID = 4663;
@@ -99,6 +100,15 @@ let indexedThrough = config.startBlock - 1n;
 let lastSyncAt: string | null = null;
 let lastError: string | null = null;
 let initialSyncComplete = false;
+let healthHeadCache: { block: bigint; expiresAt: number } | null = null;
+
+async function currentHealthHead() {
+  const now = Date.now();
+  if (healthHeadCache && healthHeadCache.expiresAt > now) return healthHeadCache.block;
+  const block = await rpc.getBlockNumber();
+  healthHeadCache = { block, expiresAt: now + 5_000 };
+  return block;
+}
 
 type V6ProtocolBindings = {
   policyRegistry: Address;
@@ -471,6 +481,8 @@ async function reconcileReorg() {
     await db.query("BEGIN");
     await rollbackAfter(db, ancestor);
     await db.query("COMMIT");
+    indexedThrough = ancestor;
+    lastSyncAt = new Date().toISOString();
     console.warn(JSON.stringify({ event: "reorg_rollback", fromBlock: newest.toString(), ancestor: ancestor.toString() }));
   } catch (error) {
     await db.query("ROLLBACK");
@@ -1137,48 +1149,7 @@ async function syncOnce() {
 }
 
 async function launchRows(limit: number) {
-  const result = await pool.query(
-    `SELECT
-      l.*,
-      COALESCE(stats.volume_wei, 0)::TEXT AS volume_wei,
-      COALESCE(stats.trade_count, 0)::INTEGER AS trade_count,
-      COALESCE(stats.buy_count, 0)::INTEGER AS buy_count,
-      COALESCE(stats.sell_count, 0)::INTEGER AS sell_count,
-      COALESCE(last_trade.real_eth_reserve, 0)::TEXT AS reserve_wei,
-      (g.market IS NOT NULL) AS graduated,
-      m.pool AS dex_pool,
-      COALESCE(post_grad.native_fees, 0)::TEXT AS post_graduation_native_fees_collected,
-      COALESCE(post_grad.token_fees, 0)::TEXT AS post_graduation_token_fees_collected,
-      COALESCE(post_grad.collection_count, 0)::INTEGER AS post_graduation_collection_count
-    FROM launches l
-    LEFT JOIN LATERAL (
-      SELECT
-        SUM(eth_amount) AS volume_wei,
-        COUNT(*) AS trade_count,
-        COUNT(*) FILTER (WHERE is_buy) AS buy_count,
-        COUNT(*) FILTER (WHERE NOT is_buy) AS sell_count
-      FROM trades t WHERE t.market = l.market
-    ) stats ON TRUE
-    LEFT JOIN LATERAL (
-      SELECT real_eth_reserve FROM trades t
-      WHERE t.market = l.market
-      ORDER BY block_number DESC, log_index DESC LIMIT 1
-    ) last_trade ON TRUE
-    LEFT JOIN graduations g ON g.market = l.market
-    LEFT JOIN liquidity_migrations m ON m.market = l.market
-    LEFT JOIN LATERAL (
-      SELECT
-        SUM(native_amount) AS native_fees,
-        SUM(token_amount) AS token_fees,
-        COUNT(*) AS collection_count
-      FROM graduation_fee_collections f
-      WHERE f.token = l.token
-    ) post_grad ON TRUE
-    WHERE l.protocol_version = 6
-    ORDER BY l.block_number DESC, l.log_index DESC
-    LIMIT $1`,
-    [limit]
-  );
+  const result = await pool.query(launchRowsQuery(indexedThrough, limit));
   return result.rows;
 }
 
@@ -1193,7 +1164,7 @@ async function rmtOriginRows(tokens: readonly string[]) {
       block_number::TEXT AS block_number
     FROM launches
     WHERE protocol_version = 6
-      AND LOWER(token) = ANY($1::text[])
+      AND token = ANY($1::text[])
     ORDER BY block_number DESC, log_index DESC`,
     [tokens]
   );
@@ -1300,7 +1271,7 @@ function startServer() {
         return;
       }
       if (url.pathname === "/health") {
-        const latest = await rpc.getBlockNumber();
+        const latest = await currentHealthHead();
         const healthy = initialSyncComplete && !lastError;
         json(response, healthy ? 200 : 503, {
           ok: healthy,
@@ -1336,7 +1307,15 @@ function startServer() {
         }
         const requested = Number.parseInt(url.searchParams.get("limit") ?? "25", 10);
         const limit = Number.isSafeInteger(requested) ? Math.min(100, Math.max(1, requested)) : 25;
-        json(response, 200, { launches: await launchRows(limit), indexedThrough: indexedThrough.toString(), syncedAt: lastSyncAt });
+        json(response, 200, {
+          chainId: CHAIN_ID,
+          protocolVersion: 6,
+          factory: config.factory,
+          factoryStartBlock: config.startBlock.toString(),
+          launches: await launchRows(limit),
+          indexedThrough: indexedThrough.toString(),
+          syncedAt: lastSyncAt
+        });
         return;
       }
       if (url.pathname === "/origins") {

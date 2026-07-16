@@ -1,10 +1,10 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { type Address, type Hash } from "viem";
+import { getAddress, isAddress, type Address, type Hash } from "viem";
 import { usePublicClient } from "wagmi";
 import { rmtLaunchFactoryV6Abi } from "./contracts";
-import { activeChain, activeFactoryStartBlock } from "./network";
+import { activeChain, activeFactoryStartBlock, isMainnetRelease } from "./network";
 import { useFactoryAddress } from "./use-factory-address";
 
 const tokenIdentityAbi = [
@@ -71,7 +71,28 @@ export function useLaunchRecord(tokenAddress: Address, hint?: LaunchRecordHint) 
       });
       if (protocolVersion !== 6) return null;
 
-      let launchId: bigint | null = hint ? BigInt(hint.launchId) : null;
+      let resolvedHint = hint;
+      if (!resolvedHint && isMainnetRelease) {
+        const response = await fetch(`/api/launch-origin/${tokenAddress}`, { cache: "force-cache" });
+        if (response.status === 404) return null;
+        if (!response.ok) throw new Error("Confirmed V6 launch origin is temporarily unavailable.");
+        const origin = await response.json() as Partial<LaunchRecordHint>;
+        if (
+          typeof origin.launchId !== "string" || !/^\d+$/.test(origin.launchId)
+          || typeof origin.token !== "string" || !isAddress(origin.token)
+          || getAddress(origin.token) !== tokenAddress
+          || (origin.blockNumber !== undefined && !/^\d+$/.test(origin.blockNumber))
+          || (origin.transactionHash !== undefined && !/^0x[0-9a-fA-F]{64}$/.test(origin.transactionHash))
+        ) throw new Error("Confirmed V6 launch origin failed validation.");
+        resolvedHint = {
+          launchId: origin.launchId,
+          token: getAddress(origin.token),
+          blockNumber: origin.blockNumber,
+          transactionHash: origin.transactionHash
+        };
+      }
+
+      let launchId: bigint | null = resolvedHint ? BigInt(resolvedHint.launchId) : null;
       let storedLaunch = launchId === null ? null : await publicClient.readContract({
         address: factoryAddress,
         abi: rmtLaunchFactoryV6Abi,
@@ -84,7 +105,7 @@ export function useLaunchRecord(tokenAddress: Address, hint?: LaunchRecordHint) 
         launchId = null;
       }
 
-      if (!storedLaunch) {
+      if (!storedLaunch && !isMainnetRelease) {
         const launchCount = await publicClient.readContract({
           address: factoryAddress,
           abi: rmtLaunchFactoryV6Abi,
@@ -152,8 +173,8 @@ export function useLaunchRecord(tokenAddress: Address, hint?: LaunchRecordHint) 
         fairStartMaxTxBps: Number(policy.fairStartMaxTxBps),
         fairStartMaxWalletBps: Number(policy.fairStartMaxWalletBps),
         officialMigration: storedLaunch.officialMigration,
-        blockNumber: hint?.blockNumber && BigInt(hint.launchId) === launchId ? BigInt(hint.blockNumber) : activeFactoryStartBlock,
-        transactionHash: hint && BigInt(hint.launchId) === launchId ? hint.transactionHash ?? null : null
+        blockNumber: resolvedHint?.blockNumber && BigInt(resolvedHint.launchId) === launchId ? BigInt(resolvedHint.blockNumber) : activeFactoryStartBlock,
+        transactionHash: resolvedHint && BigInt(resolvedHint.launchId) === launchId ? resolvedHint.transactionHash ?? null : null
       };
     }
   });

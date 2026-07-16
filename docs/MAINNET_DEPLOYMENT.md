@@ -1,6 +1,6 @@
 # Robinhood Chain legacy V4 deployment record
 
-> Superseded for new launches by the [canonical V5 deployment](./MAINNET_V5_DEPLOYMENT.md). This record is retained as historical evidence and as the protected identity source for names and tickers used before V5.
+> Superseded for new launches first by the [V5 deployment](./MAINNET_V5_DEPLOYMENT.md) and now by the [current V6 deployment](./MAINNET_V6_DEPLOYMENT.md). This record is retained as historical evidence and as part of the protected identity history for names and tickers used before V5.
 
 Status: **deployed, application-verified, launch-loop smoke-tested, and published as a mainnet beta**
 

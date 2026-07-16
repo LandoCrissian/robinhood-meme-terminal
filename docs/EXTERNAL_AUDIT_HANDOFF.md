@@ -2,21 +2,26 @@
 
 ## Engagement objective
 
-Independently assess the V6 release candidate before deployment, review remediations, and verify the exact deployed bytecode and immutable configuration before public V6 launches reopen.
+Independently assess the live V6 deployment, review remediations, and verify the exact deployed bytecode, source build, receipts, governance history, and immutable configuration while public launches remain open.
 
 Automated tests, Slither, fuzzing, fork rehearsals, and internal review are evidence inputs—not substitutes for independent judgment.
 
 ## Review target
 
 - Repository: `LandoCrissian/robinhood-meme-terminal`
-- Candidate PR: https://github.com/LandoCrissian/robinhood-meme-terminal/pull/112
-- Frozen candidate commit: record at engagement start
+- Foundation PR: https://github.com/LandoCrissian/robinhood-meme-terminal/pull/112
+- Deployed-source mapping: unresolved until the exact source revision, compiler inputs, and generated artifacts reproduce the live bytecode; freeze that proven mapping at engagement start
 - Chain: Robinhood Chain mainnet (`4663`)
-- Existing V5 factory: `0x25A92D8C79c38D07B0d3eFd0ebe929D30e401cdD`
+- Legacy V5 identity factory: `0x25A92D8C79c38D07B0d3eFd0ebe929D30e401cdD`
 - Official legacy RMT token and V6 migration provenance anchor: `0xaB374D24aFBD943a134AdB381D9646e71C6f6C0C`
 - Canonical V4 PoolManager: `0x8366a39CC670B4001A1121B8F6A443A643e40951`
+- V6 governance/treasury: `0x52c43239df8965eb27f26e115cc5ead11b35d5c3`
+- V6 registry: `0x27c0269e16209eee149e2738d0819a2633f44246`
+- V6 factory: `0x8e75c57079a01ce2094bc4187b78710887547651`
+- Official V6 RMT token: `0xdBa33be56C89CC9fc014c4459028d7e5c7878671`
+- Deployment record: [MAINNET_V6_DEPLOYMENT.md](MAINNET_V6_DEPLOYMENT.md)
 
-V6 addresses do not exist yet. Add them only after deployment receipts and bytecode are independently verified.
+The deployment is live but not independently audited. Exact Blockscout source publication is incomplete and must be verified from the canonical compiler settings and deployed bytecode rather than inferred from an explorer label.
 
 ## Contracts in scope
 
@@ -26,7 +31,7 @@ V6 addresses do not exist yet. Add them only after deployment receipts and bytec
 - `OfficialRMTIdentityMigration`
 - `CloneFixedSupplyMemeToken`
 - `MinimalProxy`
-- legacy `isNameUsed` and `isSymbolUsed` traversal through the active V5 factory
+- legacy `isNameUsed` and `isSymbolUsed` traversal through the retained V5 identity factory
 
 ### Policy, market, and fees
 
@@ -51,7 +56,7 @@ V6 addresses do not exist yet. Add them only after deployment receipts and bytec
 - `MainnetReleaseConfigV6`
 - phased wallet console, fork-rehearsal-only Foundry script, generated artifacts, and source-verification process
 
-## Immutable candidate configuration
+## Deployed configuration to verify
 
 - supply: 1,000,000,000 tokens
 - curve fee: 1%
@@ -62,8 +67,8 @@ V6 addresses do not exist yet. Add them only after deployment receipts and bytec
 - final-buy behavior: accepted gross is clamped to the exact net target; excess is immediately refunded or credited to the payer without blocking graduation
 - virtual reserves: 0.3 ETH and 1,017,500,000 tokens
 - Fair Start: one-block delay, ten blocks, 1% per buy, 3% per wallet, one buy per wallet per block
-- V6 governance/treasury: to be newly deployed; RMTMain is the sole initial signer with threshold 1, immutable 24-hour delay, immutable seven-day execution window, signer cancellation, proposal expiry and public getter, expiring proof-of-control acceptance bound to the current epoch, exact add-or-replace action, affected signer, and threshold required from every prospective added/replacement signer, candidate-controlled revocation of unconsumed consent before execution, atomic signer/threshold add-remove-replace operations, no multi-signer 1-of-N configuration, and configuration-epoch invalidation of every older pending proposal/confirmation/unused acceptance; adding the first extra wallet is 2-of-2 quorum, not a backup key. The same contract holds the protocol's 30% fee share. Loss of the sole signer freezes protocol/treasury control and compromise can authorize calls after the delay; in 2-of-2 mode, loss of either signer freezes governance.
-- V6 registry: to be freshly deployed, governed only by V6 governance, initialized to the legacy V5 factory/version, and activated through the same governance plus its separate 48-hour delay; legacy governance and the old registry are not V6 dependencies
+- V6 governance/treasury: deployed at `0x52c43239df8965eb27f26e115cc5ead11b35d5c3`; RMTMain is the sole initial signer with threshold 1, immutable 24-hour delay, immutable seven-day execution window, signer cancellation, proposal expiry and public getter, expiring proof-of-control acceptance bound to the current epoch, exact add-or-replace action, affected signer, and threshold required from every prospective added/replacement signer, candidate-controlled revocation of unconsumed consent before execution, atomic signer/threshold add-remove-replace operations, no multi-signer 1-of-N configuration, and configuration-epoch invalidation of every older pending proposal/confirmation/unused acceptance; adding the first extra wallet is 2-of-2 quorum, not a backup key. The same contract holds the protocol's 30% fee share. Loss of the sole signer freezes protocol/treasury control and compromise can authorize calls after the delay; in 2-of-2 mode, loss of either signer freezes governance.
+- V6 registry: deployed at `0x27c0269e16209eee149e2738d0819a2633f44246`, governed only by V6 governance, initialized to the legacy V5 factory/version, and now reporting the active V6 factory; legacy governance and the old registry are not V6 dependencies
 - creator-payout authority: the new V6 governance shared by the gate and policy registry
 - creator-payout destinations: immutable original creator or immutable V6 governance treasury only; creators cannot authorize, propose, choose, or directly change the recipient; the RMT signer proposes an evidence-linked, replay-protected call and any account may relay the exact approved call after the delay; stale-nonce invalidation itself requires governance approval
 - payout timing boundary: recipient at collection time receives the creator share, including position fees accrued but not yet collected
@@ -101,17 +106,17 @@ V6 addresses do not exist yet. Add them only after deployment receipts and bytec
 - economic and MEV assessment
 - assumptions, exclusions, and unresolved risks
 - remediation verification against the final commit
-- post-deployment source/bytecode, constructor, binding, policy-hash, governance, and paused-state confirmation
+- source/bytecode, constructor, binding, policy-hash, governance, current launch-gate/public-opening state, and historical activation/opening receipt confirmation
 - final publishable report
 
 ## Acceptance rules
 
-- Unresolved critical/high findings block deployment or reopening.
+- An unresolved critical/high finding requires immediate incident assessment, pausing affected functionality when technically available and warranted, and independently reviewed remediation before that functionality reopens.
 - Critical/high fixes require independent fix review.
 - Medium findings require a written disposition.
 - Any contract change after sign-off requires scoped follow-up review.
 - No report or RMT copy may claim guaranteed safety.
-- V6 stays paused after activation until deployment verification and production health checks are complete.
+- Public creation is currently open. The reviewer must treat the live system as an active deployment and document any functionality that should be paused during review or remediation.
 
 ## Evidence package
 
@@ -125,11 +130,11 @@ V6 addresses do not exist yet. Add them only after deployment receipts and bytec
 
 ## Engagement sequence
 
-1. Freeze candidate commit and compiler/dependency versions.
-2. Complete independent source and economic review.
-3. Remediate and add reproductions/regression tests.
-4. Reviewer signs off on the final commit and generated artifacts.
-5. Deploy the foundation in paused state.
-6. Reviewer verifies bytecode, bindings, policy hashes, governance, and delays.
-7. Publish the report and deployed inventory.
-8. Reopen only after the remaining release checklist is explicitly approved.
+1. Reconstruct the exact source revision, compiler inputs, and generated artifacts that reproduce the deployed bytecode, then freeze that proven mapping; treat the mapping as unresolved until it reproduces exactly.
+2. Reconstruct the complete deployed inventory, receipts, constructor inputs, bindings, governance history, and exact bytecode build.
+3. Complete independent source, bytecode, and economic review against the live deployment.
+4. Triage findings and pause affected functionality when severity and available controls warrant it.
+5. Remediate, add reproductions/regression tests, and obtain independent fix review.
+6. Reviewer verifies the final source, deployed bytecode, bindings, policy hashes, governance, and delays.
+7. Publish the report, reviewed commits, deployed inventory, assumptions, and unresolved risks.
+8. Reopen any paused functionality only after the corresponding critical/high remediation is independently accepted.

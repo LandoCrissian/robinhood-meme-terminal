@@ -2,7 +2,7 @@
 
 ## Status
 
-V6 is the required launch foundation before public token creation reopens. The production terminal may remain online, but the public launch path stays paused until V6 is deployed, source-verified, activated, the official RMT launch and real fee-producing smoke buy are confirmed, and the final production checks pass. V6 launches as an explicitly disclosed unaudited mainnet beta; an independent human audit remains the first funded post-launch security priority.
+V6 is deployed, active, and open for public token creation. The official V6 RMT token is `0xdBa33be56C89CC9fc014c4459028d7e5c7878671`; the canonical live addresses and receipts are recorded in [MAINNET_V6_DEPLOYMENT.md](MAINNET_V6_DEPLOYMENT.md). V6 remains an explicitly disclosed unaudited mainnet beta. Exact Blockscout source publication and an independent human audit remain post-launch security priorities.
 
 ## Product contract
 
@@ -176,7 +176,7 @@ The launch page renders one flow from `defaultPolicyId` and one Fair Start toggl
 
 The website must fail closed: an unknown factory version, unavailable policy, unhealthy registry, or paused factory disables launch submission while keeping read-only terminal features online.
 
-Before V6 deployment, production may use the checked-in V5 registry and V5 factory start block for read-only continuity. The V6 cutover must explicitly set the fresh V6-governed registry address and exact confirmed V6 factory deployment block in the public production configuration. Health reports expose those non-secret values together with the registry's active factory/version. The final operator-console unpause is allowed only from the configured public HTTPS origin and only when that origin's uncached `/api/health` response is fresh, fully healthy, and exactly matches the recovery record, `RMT_FACTORY_V6`, and factory deployment receipt. A fallback legacy registry or inferred/default start block can never authorize V6 reopening.
+Before V6 deployment, production may use the checked-in V5 registry and V5 factory start block for read-only continuity. The V6 cutover must explicitly set the fresh V6-governed registry address and exact confirmed V6 factory deployment block in the public production configuration. Health reports expose those non-secret values together with the registry's active factory/version. The final operator-console unpause is allowed only from the configured public HTTPS origin and only when that origin's timestamp-bounded `/api/health` response is fresh, fully healthy, and exactly matches the recovery record, `RMT_FACTORY_V6`, and factory deployment receipt. A fallback legacy registry or inferred/default start block can never authorize V6 reopening.
 
 ## Indexer alignment
 
@@ -194,9 +194,9 @@ The indexer must preserve append-only payout-change, nonce-invalidation, and pos
 
 The indexer stores these values per launch. It must never display current global economics as though they applied to historical tokens.
 
-## Release gates
+## Historical release gates
 
-V6 cannot be activated until all gates pass:
+The prelaunch plan required all of the following gates before activation:
 
 1. contract build and unit tests
 2. buy/sell fee-accounting tests
@@ -216,6 +216,8 @@ V6 cannot be activated until all gates pass:
 16. exact official RMT V6 migration as launch zero plus a genuine pre-graduation settled 70/30 curve-fee smoke buy while ordinary launches remain paused
 17. exact fresh-registry, V6 factory/version, factory-start-block, and final production health verification before permanently consuming the genesis controller and opening public creation
 
+V6 is now deployed and public creation is open. The canonical deployment record does not yet reconstruct every planned receipt, and exact Blockscout source publication remains incomplete. This list is retained as the intended release standard, not as an attestation that every gate passed.
+
 ## Non-negotiable security properties
 
 - No hidden mint authority.
@@ -228,4 +230,4 @@ V6 cannot be activated until all gates pass:
 - No website-only pause as the final safety control.
 - No ordinary public launch entry point that bypasses the pause, active-factory check, or policy registry.
 - The one-time paused official migration is exact-identity, exact-wallet, Fair-policy, active-factory, and non-reopening only.
-- No activation before the exact compile, test, source, topology, and deployment-artifact gates; the independent audit remains explicitly disclosed as the first funded post-launch security priority.
+- Never describe the current deployment as independently audited or exact-source verified. Reconstructing the complete deployment evidence, publishing canonical sources, and obtaining an independent audit remain explicit post-launch security priorities.

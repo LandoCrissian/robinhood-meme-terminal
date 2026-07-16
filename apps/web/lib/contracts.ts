@@ -2,21 +2,23 @@ import { getAddress, isAddress, type Address } from "viem";
 
 export const publicTestnetFactoryAddress = getAddress("0x2D075c7FC08508A027191A99f146EDD606966fF3");
 export const publicTestnetFactoryStartBlock = 89_775_000n;
-export const publicMainnetV5FactoryAddress = getAddress("0x25a92d8c79c38d07b0d3efd0ebe929d30e401cdd");
-export const publicMainnetFactoryAddress = publicMainnetV5FactoryAddress;
-export const publicMainnetV5VersionRegistryAddress = getAddress("0x4b8b222b5caa7066c02a54e51ec1a674adf5b3a1");
+export const publicMainnetV6FactoryAddress = getAddress("0x8e75c57079a01ce2094bc4187b78710887547651");
+export const publicMainnetV6VersionRegistryAddress = getAddress("0x27c0269e16209eee149e2738d0819a2633f44246");
 const configuredMainnetVersionRegistry = process.env.NEXT_PUBLIC_VERSION_REGISTRY_ADDRESS?.trim();
 export const isMainnetVersionRegistryExplicitlyConfigured = Boolean(configuredMainnetVersionRegistry);
 export const isMainnetVersionRegistryConfigurationValid =
-  !configuredMainnetVersionRegistry || isAddress(configuredMainnetVersionRegistry);
+  !configuredMainnetVersionRegistry
+    || (isAddress(configuredMainnetVersionRegistry)
+      && (process.env.NEXT_PUBLIC_RMT_NETWORK !== "mainnet"
+        || getAddress(configuredMainnetVersionRegistry) === publicMainnetV6VersionRegistryAddress));
 export const publicMainnetVersionRegistryAddress =
   configuredMainnetVersionRegistry && isAddress(configuredMainnetVersionRegistry)
     ? getAddress(configuredMainnetVersionRegistry)
-    : publicMainnetV5VersionRegistryAddress;
+    : publicMainnetV6VersionRegistryAddress;
 export const isFreshMainnetVersionRegistryConfigured =
   isMainnetVersionRegistryExplicitlyConfigured
     && isMainnetVersionRegistryConfigurationValid
-    && publicMainnetVersionRegistryAddress !== publicMainnetV5VersionRegistryAddress;
+    && publicMainnetVersionRegistryAddress === publicMainnetV6VersionRegistryAddress;
 export const publicMainnetOperatorAddress = getAddress("0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA");
 
 export const versionRegistryAbi = [
@@ -203,7 +205,9 @@ export const rmtLaunchFactoryV6Abi = [
 ] as const;
 
 export function getFactoryAddress(): Address | null {
-  if (process.env.NEXT_PUBLIC_RMT_NETWORK === "mainnet") return publicMainnetFactoryAddress;
+  // Mainnet factory selection is registry-only. Returning a checked-in legacy
+  // address here could silently reopen V5 if the V6 release configuration is lost.
+  if (process.env.NEXT_PUBLIC_RMT_NETWORK === "mainnet") return null;
   const configured = process.env.NEXT_PUBLIC_FACTORY_ADDRESS;
   if (configured && isAddress(configured)) return getAddress(configured);
   if (typeof window === "undefined") return publicTestnetFactoryAddress;

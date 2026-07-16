@@ -11,7 +11,7 @@ import {
 } from "../lib/contracts";
 import { activeChain, activeNetworkLabel } from "../lib/network";
 import { useFactoryAddress } from "../lib/use-factory-address";
-import { useLaunchRecord } from "../lib/use-launch-record";
+import { useLaunchRecord, type LaunchRecordHint } from "../lib/use-launch-record";
 
 const fallbackAddress = "0x0000000000000000000000000000000000000000" as const;
 const canonicalCurveFeeBps = 100;
@@ -55,9 +55,9 @@ function panelMessage(title: string, message: string) {
   return <section className="panel rewardDashboard"><p className="eyebrow">FEE SPLITTER</p><h2>{title}</h2><p>{message}</p></section>;
 }
 
-export function RewardVaultPanel({ tokenAddress, symbol }: { tokenAddress: Address; symbol: string }) {
+export function RewardVaultPanel({ tokenAddress, symbol, launchHint }: { tokenAddress: Address; symbol: string; launchHint: LaunchRecordHint }) {
   const factoryAddress = useFactoryAddress();
-  const launchRecord = useLaunchRecord(tokenAddress);
+  const launchRecord = useLaunchRecord(tokenAddress, launchHint);
   const feeSplitter = launchRecord.data?.rewardVault ?? null;
   const market = launchRecord.data?.market ?? fallbackAddress;
   const { address: account } = useAccount();

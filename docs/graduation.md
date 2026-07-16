@@ -47,7 +47,7 @@ Uniswap V4 supports pool lifecycle hooks for initialization, adding liquidity, a
 
 The factory, market, hook, and `V4GraduationAdapter` now implement this lifecycle. `prepare` reserves the exact native/token V4 pool ID atomically during launch. Initialization intentionally waits until graduation so the actual terminal ETH and remaining-token amounts determine the opening square-root price instead of relying on a guessed price.
 
-Uniswap's Liquidity Launcher is a useful reference implementation because it coordinates price discovery and V4 liquidity migration. Robinhood-specific Liquidity Launcher strategy factories are not currently listed as deployed, so RMT's separate integration requires its own deployment verification and independent review before public V6 launches reopen.
+Uniswap's Liquidity Launcher is a useful reference implementation because it coordinates price discovery and V4 liquidity migration. RMT uses its own deployed V6 hook and adapter rather than an external Robinhood-specific Liquidity Launcher strategy factory. The integration remains in scope for exact source publication and independent review during the live mainnet beta.
 
 Sources:
 
@@ -57,7 +57,7 @@ Sources:
 
 The V6 adapter initializes the reserved pool, mints one permanently locked full-range position, settles the exact V4 currency deltas, records unavoidable seed remainders as non-collectible locked dust, verifies conservation, and only then opens public swaps. Tests execute this flow against Uniswap's actual V4 `PoolManager`, including the complete bonding-curve migration path.
 
-The position has no removal path. V6 realizes earned LP fees permissionlessly with a zero-liquidity-delta poke and routes ETH and/or launched-token swap fees through the immutable 70% current creator-share recipient / 30% RMT splitter. Collection cannot remove principal and the collector receives nothing. V6 remains a release candidate until its CREATE2 hook deployment, Robinhood-specific configuration, final fork rehearsal, generated artifacts, and independent review are complete.
+The position has no removal path. V6 realizes earned LP fees permissionlessly with a zero-liquidity-delta poke and routes ETH and/or launched-token swap fees through the immutable 70% current creator-share recipient / 30% RMT splitter. Collection cannot remove principal and the collector receives nothing. V6 is live; exact source publication and independent review remain outstanding mainnet-beta work.
 
 ## V4 reservation hook prototype
 

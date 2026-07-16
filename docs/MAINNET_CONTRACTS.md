@@ -1,8 +1,8 @@
 # Robinhood Chain legacy V4 contract manifest
 
-> Superseded for new launches by the [canonical V5 deployment](./MAINNET_V5_DEPLOYMENT.md). These addresses remain documented for historical verification and legacy identity protection.
+> Historical V4 record. Superseded for new launches by the [canonical V6 deployment](./MAINNET_V6_DEPLOYMENT.md); V5 is the intermediate legacy identity layer. These addresses remain documented only for historical verification and legacy identity protection.
 
-Status: **deployed, release-console verified, and source-verified as exact matches on Blockscout**
+Historical V4 status: **deployed and recorded; this statement does not describe V6 verification or audit status**
 
 - Chain: Robinhood Chain mainnet
 - Chain ID: `4663`

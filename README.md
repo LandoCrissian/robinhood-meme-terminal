@@ -1,57 +1,95 @@
 # Robinhood Meme Terminal
 
-Robinhood Meme Terminal (RMT) is a mobile-first meme-token launchpad, bonding-curve market, reward system, and discovery terminal for Robinhood Chain.
+Robinhood Meme Terminal (RMT) is a mobile-first launch, discovery, and trading terminal for meme tokens on Robinhood Chain.
 
-**Public mainnet beta:** https://www.rmtlaunch.fun
+- **Live app:** [www.rmtlaunch.fun](https://www.rmtlaunch.fun)
+- **Protocol status:** [www.rmtlaunch.fun/status](https://www.rmtlaunch.fun/status)
+- **Official RMT V6 token:** [`0xdBa33be56C89CC9fc014c4459028d7e5c7878671`](https://www.rmtlaunch.fun/token/0xdBa33be56C89CC9fc014c4459028d7e5c7878671?launch=0)
+- **Chain:** Robinhood Chain mainnet (`4663`)
 
-## Current status
+## Live V6 status
 
-RMT currently has a **V5 mainnet beta stack** on Robinhood Chain. The frozen V6 release candidate is merged into `main` but is not deployed or active. The public application reads the active factory through the onchain version registry. A bounded disposable V5 mainnet launch has exercised:
+RMT V6 is deployed, active, and open for public token creation. The production application resolves the active factory through the V6 version registry and displays only origin-verified V6 launches in RMT Discovery.
 
-- wallet connection and one-signature token creation
-- fixed-supply market custody
-- bonding-curve buying and selling
-- disclosed fee accrual
-- creator reward claims
-- live discovery, token pages, search, watchlists, and connected-wallet holdings
+| Component | Mainnet address |
+| --- | --- |
+| V6 governance and protocol treasury | [`0x52c43239df8965eb27f26e115cc5ead11b35d5c3`](https://robinhoodchain.blockscout.com/address/0x52c43239df8965eb27f26e115cc5ead11b35d5c3) |
+| Version registry | [`0x27c0269e16209eee149e2738d0819a2633f44246`](https://robinhoodchain.blockscout.com/address/0x27c0269e16209eee149e2738d0819a2633f44246) |
+| V6 launch factory | [`0x8e75c57079a01ce2094bc4187b78710887547651`](https://robinhoodchain.blockscout.com/address/0x8e75c57079a01ce2094bc4187b78710887547651) |
+| Policy registry | [`0x70177a46a38c981480fee9586ccbe281ee70dfcf`](https://robinhoodchain.blockscout.com/address/0x70177a46a38c981480fee9586ccbe281ee70dfcf) |
+| V4 graduation adapter | [`0x680a227794b1204a57aab6bac56a84d3280e40a6`](https://robinhoodchain.blockscout.com/address/0x680a227794b1204a57aab6bac56a84d3280e40a6) |
 
-The merged V6 foundation passed its exact-commit build, 218-test suite, static-analysis gate, generated-artifact check, and Robinhood mainnet-fork deployment rehearsal. The same-session genesis controller added afterward must pass a new exact compile, expanded test suite, bytecode-size gate, static analysis, generated-artifact check, and mainnet-fork rehearsal before deployment. No live public token has completed the full DEX migration yet. The contracts have not received an independent security audit and must not be described as audited or risk-free.
+The V6 factory was deployed at block `10248855`. See the [canonical V6 deployment record](docs/MAINNET_V6_DEPLOYMENT.md) for the top-level foundation addresses and creation receipts currently reconstructed. V4 and V5 records remain in this repository as labeled historical evidence; their launches are not mixed into the V6 terminal.
 
-See [MAINNET_V5_DEPLOYMENT.md](docs/MAINNET_V5_DEPLOYMENT.md) for current deployed addresses, [V6_MAINNET_RELEASE.md](docs/V6_MAINNET_RELEASE.md) for the paused-first V6 process, [V6_RELEASE_CHECKLIST.md](docs/V6_RELEASE_CHECKLIST.md) for remaining gates, and [INCIDENT_RESPONSE.md](docs/INCIDENT_RESPONSE.md) for operational procedures.
+## What RMT offers
 
-## Product principles
+- One-transaction fixed-supply token creation
+- Unique RMT launch names and tickers, including legacy RMT reservation checks
+- Optional Fair Start protection for the opening blocks
+- Live bonding-curve buy and sell quotes
+- Immediate Buy and Sell actions from RMT Discovery
+- Creator concentration and creator-wallet activity signals
+- Transparent progress toward permissionless Uniswap V4 graduation
+- Creator rewards before and after graduation
+- Connected-wallet balances for the active discovery set and a local-device watchlist page
+- Clearly labeled external Robinhood Chain market discovery in Runner Radar
 
-- Three-field default launch flow with optional media and socials
-- Fixed one-billion-token supply controlled by the launch market
-- V6 gives creators no initial token allocation or liquidity ownership; the full supply enters the market
-- No mint authority, blacklist, transfer tax, or token upgrade proxy
-- Wallet-signed transactions only; RMT never requests private keys
-- Transparent creator and protocol fee destinations
-- V6 splits genuine curve and canonical post-graduation swap fees 70% to the current creator-share recipient and 30% to RMT. Post-graduation fees may arrive as ETH or the launched token according to swap direction; they are not supply or liquidity principal.
-- Creators cannot authorize, propose, choose, or directly change the payout address. The RMT signer may propose only a delayed, evidence-linked redirect to the immutable V6 governance treasury or restoration to the immutable original creator. After the delay, any account may relay the exact approved governance call but cannot alter it or receive funds.
-- The one-time official V6 RMT migration is permanently bound to legacy token `0xaB374D24aFBD943a134AdB381D9646e71C6f6C0C`; that address is only an identity/provenance anchor. The V6 launch creates a new token contract with a new address and new one-billion-token supply. Old V5 holder balances are not copied, swapped, or migrated. Name/ticker protection is scoped to origin-verified RMT launches, not arbitrary external ERC-20 contracts.
-- The official V6 RMT launch uses the operator as its ordinary creator recipient (70%) and the separate V6 governance treasury as protocol recipient (30%); it is not a same-wallet 100% payout.
-- Market reserves remain separate from fee splitters and treasury actions
-- V6 deploys one fresh protocol-wide governance contract that is also the protocol treasury, plus a fresh registry governed by that same contract and initialized to the legacy V5 factory/version. V6 does not depend on the legacy V5 governance or old registry. RMTMain is the sole initial signer, with a 24-hour delay, seven-day execution window, cancellable/expiring proposals, public transaction inspection, atomic signer/threshold rotation, and configuration-epoch invalidation of stale proposals and downstream schedules. Registry, gate, and policy schedules also expire seven days after their own delay. Any future signer must prove control and give expiring consent to the exact add-or-replace action, affected signer, threshold, and current epoch, and may revoke unconsumed consent before execution. Adding the first extra wallet creates 2-of-2 governance, not a backup key. Loss of the sole initial signer freezes treasury and protocol control; compromise can authorize treasury/control calls after the delay. In 2-of-2 mode, loss of either signer freezes governance.
-- The launch and policy guardians begin as RMTMain for immediate pause/disable response, but delayed governance can rotate both roles so a replaced wallet does not retain permanent emergency power. Signer rotation does not rotate either guardian automatically.
-- Genesis uses a chain-4663-only, RMTMain-only, 12-hour one-use controller with two immutable read-only verifier children: it may activate only the exact pristine V6 topology and may open public creation only after official RMT is launch zero and a genuine pre-graduation curve fee has fully settled 70/30. It has no generic-call, treasury, policy, payout, signer, upgrade, or reusable admin authority. After completion, every later factory change and later reopening uses the permanent delays.
-- Public claims must match deployed behavior
+Wallet ownership remains the authority for launches and trades. The application never receives a private key, seed phrase, or permission to move assets on a user&apos;s behalf.
 
-## Architecture
+## V6 economics
 
-- `apps/web` — Next.js launch, discovery, trading, portfolio, rewards, and public disclosures
+| Parameter | V6 value |
+| --- | --- |
+| Token supply | Fixed `1,000,000,000` |
+| Creator launch allocation | None; the full supply enters the market |
+| Bonding-curve fee | `1%` |
+| Graduation target | `2 ETH` net real reserve |
+| Creator share of trading fees | `70%` |
+| RMT protocol share of trading fees | `30%` |
+| Post-graduation V4 pool fee | `0.5%` |
+| Graduation liquidity | Full range and permanently locked |
+
+The 70/30 split applies to curve fees and to collected fees from the canonical V4 position after graduation. Post-graduation fees can be received in ETH or the launched token according to swap direction; they are fees, not an additional token allocation or ownership of liquidity principal.
+
+The original creator is permanently recorded. A creator cannot self-change the creator-share recipient. Delayed V6 governance can redirect only future creator-share payments to the immutable protocol treasury or restore the immutable original creator; previously paid rewards and purchased tokens cannot be clawed back.
+
+The legacy token [`0xaB374D24aFBD943a134AdB381D9646e71C6f6C0C`](https://robinhoodchain.blockscout.com/address/0xaB374D24aFBD943a134AdB381D9646e71C6f6C0C) is the official V6 launch&apos;s identity and provenance anchor only. The live official V6 token has its own address and fixed one-billion-token supply; legacy balances were not copied, swapped, or migrated.
+
+## Fair Start
+
+Fair Start is the default launch policy, not a permanent trading restriction:
+
+- one-block opening delay
+- ten protected blocks
+- maximum `1%` of supply per opening buy
+- maximum `3%` per wallet during the protected window
+- one buy per wallet per block
+
+The Open policy uses the same supply, fee split, curve, and graduation economics without the temporary opening limits.
+
+## Data and reliability
+
+Trading and launches remain wallet-to-contract transactions. They do not depend on the database or indexer.
+
+The public discovery feed uses the read-only Railway/PostgreSQL indexer for confirmed launch and trade data, with a same-origin shared cache and a last-confirmed-data state during delays. This avoids making every visitor rescan the complete factory history through an RPC provider. Creator concentration is enriched with a single batched balance read per shared refresh.
+
+Production monitoring checks the canonical domain, V6 registry and factory bindings, immutable economics, latest market, graduation adapter, indexer health, launch-feed source, and official-market trade data every five minutes.
+
+## Repository map
+
+- `apps/web` — Next.js terminal, launch flow, trading, discovery, portfolio, and disclosures
+- `apps/indexer` — persistent V6 event indexer and protected read API
+- `apps/external-origin-indexer` — activation-locked external-origin research/indexer scaffold; no external adapters are active yet
 - `packages/contracts` — Foundry contracts, deployment scripts, fork tests, fuzz tests, and invariants
-- `packages/shared` — shared chain configuration
-- `docs` — deployment, security-review, incident-response, and launch-readiness records
-
-The repository includes a persistent indexer with schema checks. Production health, reorg handling, monitoring, and V6 event ingestion must still be verified against the final deployed addresses before public V6 launches reopen.
+- `packages/shared` — shared Robinhood Chain and market-origin types
+- `docs` — deployment, operations, monitoring, incident response, and security-review records
 
 ## Development
 
-The project targets Node 22, pnpm 10.12.1, and Foundry.
+The project targets Node 22, pnpm 10.12.1, Solidity 0.8.26, and Foundry.
 
 ```bash
-pnpm install
+pnpm install --frozen-lockfile
 pnpm typecheck
 pnpm build
 
@@ -61,10 +99,12 @@ forge build
 forge test -vvv
 ```
 
-## Security boundary
+Use `.env.example` files as the configuration reference. Never commit RPC keys, database credentials, indexer bearer tokens, wallet keys, seed phrases, or signed production transactions.
 
-- Never commit or transmit a private key, seed phrase, API secret, or signed production transaction.
-- Governance signers are public address inputs only.
-- Automated tests and smoke transactions do not replace an independent audit.
-- Existing tokens, markets, fee splitters, and liquidity cannot be rewritten by a future factory version.
-- Report suspected incidents using the public Support page and the private security channel once published.
+## Security status
+
+RMT V6 is an explicitly disclosed mainnet beta. Automated tests, mainnet-fork rehearsals, invariant checks, static analysis, and live state verification reduce risk but do not replace an independent security audit.
+
+Exact Blockscout source publication is also incomplete: key V6 explorer records currently do not show the canonical Solidity 0.8.26, optimizer-200, via-IR source match. Explorer pages are useful for address, bytecode, transaction, and event inspection, but RMT must not describe the V6 contracts as exactly source-verified or independently audited until those separate tasks are completed.
+
+Read the [risk disclosures](https://www.rmtlaunch.fun/risks), [incident response plan](docs/INCIDENT_RESPONSE.md), [security review scope](docs/SECURITY_REVIEW_SCOPE.md), and [V6 protocol foundation](docs/V6_PROTOCOL_FOUNDATION.md) before operating or reviewing the protocol.

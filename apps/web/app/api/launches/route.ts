@@ -1,63 +1,91 @@
 import type { LaunchFeedResponse } from "../../../lib/launch-feed";
+import {
+  hasConfiguredLaunchIndexer,
+  readIndexedLaunches
+} from "../../../lib/server/indexed-launch-feed";
 import { readFreshLaunches, resolveActiveFactory } from "../../../lib/server/launch-feed";
-import { activeChain, activeFactoryStartBlock } from "../../../lib/network";
+import { isMainnetRelease } from "../../../lib/network";
 
 export const dynamic = "force-dynamic";
 
+const PROCESS_CACHE_MS = 15_000;
+const SHARED_CACHE_CONTROL = "public, s-maxage=15, stale-while-revalidate=180, stale-if-error=600";
+
+type FeedSnapshot = LaunchFeedResponse & { source: "indexer" | "rpc" };
 type ProcessLaunchCache = {
-  key: string;
   expiresAt: number;
-  launches: Promise<LaunchFeedResponse["launches"]>;
+  snapshot: FeedSnapshot;
 };
 
 let processLaunchCache: ProcessLaunchCache | undefined;
+let refreshInFlight: Promise<FeedSnapshot> | undefined;
+let lastSuccessfulSnapshot: FeedSnapshot | undefined;
 
-function factoryCacheKey(activeFactory: Awaited<ReturnType<typeof resolveActiveFactory>>) {
-  return [
-    activeChain.id,
-    activeFactory?.address.toLowerCase() ?? "unavailable",
-    activeFactory?.version ?? "unknown",
-    activeFactoryStartBlock.toString()
-  ].join("-");
+async function readCurrentLaunches(): Promise<FeedSnapshot> {
+  if (hasConfiguredLaunchIndexer()) {
+    const indexed = await readIndexedLaunches(25);
+    return { ...indexed, source: "indexer" };
+  }
+
+  if (isMainnetRelease) {
+    throw new Error("The production launch indexer is not configured.");
+  }
+
+  // Local and test deployments can still operate without the production
+  // indexer. Production uses the confirmed index so visitors never trigger a
+  // full factory-history RPC scan.
+  const activeFactory = await resolveActiveFactory();
+  const launches = await readFreshLaunches(25, activeFactory);
+  const confirmedFactory = await resolveActiveFactory();
+  if (
+    activeFactory?.address.toLowerCase() !== confirmedFactory?.address.toLowerCase()
+      || activeFactory?.version !== confirmedFactory?.version
+  ) {
+    throw new Error("The active launch factory changed during synchronization.");
+  }
+  return { launches, syncedAt: new Date().toISOString(), source: "rpc" };
 }
 
-async function getCurrentFactoryLaunches() {
-  // Resolve the registry on every request so a V5 -> V6 activation changes the
-  // cache identity immediately. Only the expensive event scan is cached.
-  const activeFactory = await resolveActiveFactory();
-  const key = factoryCacheKey(activeFactory);
+async function getLaunchSnapshot() {
   const now = Date.now();
-  if (processLaunchCache?.key === key && processLaunchCache.expiresAt > now) {
-    return processLaunchCache.launches;
+  if (processLaunchCache && processLaunchCache.expiresAt > now) {
+    return processLaunchCache.snapshot;
   }
-  const launches = (async () => {
-    const result = await readFreshLaunches(25, activeFactory);
-    const confirmedFactory = await resolveActiveFactory();
-    if (factoryCacheKey(confirmedFactory) !== key) {
-      throw new Error("The active launch factory changed during synchronization.");
-    }
-    return result;
-  })();
-  processLaunchCache = { key, expiresAt: now + 10_000, launches };
+  if (refreshInFlight) return refreshInFlight;
+
+  const refresh = readCurrentLaunches();
+  refreshInFlight = refresh;
   try {
-    return await launches;
-  } catch (error) {
-    if (processLaunchCache?.launches === launches) processLaunchCache = undefined;
-    throw error;
+    const result = await refresh;
+    lastSuccessfulSnapshot = result;
+    processLaunchCache = { expiresAt: Date.now() + PROCESS_CACHE_MS, snapshot: result };
+    return result;
+  } finally {
+    if (refreshInFlight === refresh) refreshInFlight = undefined;
   }
+}
+
+function responseHeaders(source: FeedSnapshot["source"]) {
+  return {
+    "Cache-Control": SHARED_CACHE_CONTROL,
+    "X-RMT-Data-Source": source
+  };
 }
 
 export async function GET() {
   try {
-    const response: LaunchFeedResponse = {
-      launches: await getCurrentFactoryLaunches(),
-      syncedAt: new Date().toISOString()
-    };
-    return Response.json(response, {
-      headers: { "Cache-Control": "no-store" }
-    });
+    const response = await getLaunchSnapshot();
+    return Response.json(response, { headers: responseHeaders(response.source) });
   } catch (error) {
     console.error("Fresh launch synchronization failed", error);
+    if (lastSuccessfulSnapshot) {
+      const response: FeedSnapshot = {
+        ...lastSuccessfulSnapshot,
+        stale: true,
+        error: "Live launch refresh is delayed. Showing the last confirmed snapshot."
+      };
+      return Response.json(response, { headers: responseHeaders(response.source) });
+    }
     return Response.json(
       { error: "Launch data is temporarily unavailable." },
       { status: 503, headers: { "Cache-Control": "no-store" } }

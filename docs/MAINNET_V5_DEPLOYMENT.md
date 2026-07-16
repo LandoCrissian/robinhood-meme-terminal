@@ -1,6 +1,8 @@
-# Robinhood Chain canonical V5 deployment
+# Robinhood Chain legacy V5 deployment
 
-Status: **deployed and application-verified by the wallet-signed release console; Blockscout source publication is required before V6 governance proposals**
+> Superseded for public launches by the [canonical V6 deployment](MAINNET_V6_DEPLOYMENT.md). V5 remains the immutable legacy identity source used to protect earlier RMT names and tickers.
+
+Status: **historical, deployed, and application-verified**
 
 - Chain: Robinhood Chain mainnet
 - Chain ID: `4663`
@@ -9,7 +11,7 @@ Status: **deployed and application-verified by the wallet-signed release console
 - Factory creation block: `9567266`
 - Terminal/indexer start block: `9567266`
 
-The public terminal and production indexer intentionally start at the V5 factory creation block and read only the V5 factory. Legacy V4 coins do not appear in the terminal. The V5 factory still consults the legacy V4 factory when reserving identities, so names and tickers already used on RMT cannot be reused.
+The current public terminal and production indexer start at the V6 factory boundary and do not display V4 or V5 launches as V6. V6 consults this V5 factory, and V5 consults the legacy V4 factory, when reserving identities so names and tickers already used through RMT cannot be reused in the current RMT launch flow.
 
 ## Canonical addresses
 

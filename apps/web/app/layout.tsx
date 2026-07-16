@@ -7,6 +7,7 @@ import "./wallet.css";
 import "./brand.css";
 import "./legal.css";
 import { Providers } from "./providers";
+import { PublicChrome } from "./public-chrome";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -31,7 +32,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <body><Providers>{children}</Providers></body>
+      <body><Providers><PublicChrome />{children}</Providers></body>
     </html>
   );
 }

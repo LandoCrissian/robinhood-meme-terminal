@@ -3,6 +3,8 @@
 Status date: 2026-07-13  
 Scope: deployed Robinhood Chain mainnet beta and repository `main`
 
+> Historical snapshot: this audit predates the live V6 deployment. Use [MAINNET_V6_DEPLOYMENT.md](MAINNET_V6_DEPLOYMENT.md), the live `/status` page, and current production-health runs for present state.
+
 ## Executive assessment
 
 RMT has a real mainnet vertical slice: launch, discover, buy, sell, accrue fees, claim rewards, and manage factory versions through delayed governance. Production graduation passes a mainnet-fork test against the deployed stack, but no live public token has graduated. The release is suitable only for a controlled low-value beta until an independent review, live graduation evidence, production indexer deployment, independent monitoring/RPC redundancy, and operational/legal contacts are complete.

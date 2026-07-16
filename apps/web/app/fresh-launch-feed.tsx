@@ -22,7 +22,8 @@ import { ipfsToHttp } from "../lib/token-metadata";
 import { MarketPanel } from "./market-panel";
 
 const FIXED_SUPPLY = 1_000_000_000n * 10n ** 18n;
-const DATA_REFRESH_MS = 10_000;
+const DATA_REFRESH_MS = 30_000;
+const MAX_REFRESH_BACKOFF_MS = 120_000;
 const RANK_REFRESH_MS = 60_000;
 const MAX_VISIBLE_LAUNCHES = 4;
 
@@ -220,10 +221,11 @@ function QuickTradeDialog({
 export function FreshLaunchFeed() {
   const [launches, setLaunches] = useState<LaunchFeedItem[]>([]);
   const [rankingOrders, setRankingOrders] = useState<Record<RmtDiscoveryView, string[]>>(EMPTY_RANKING_ORDERS);
-  const [status, setStatus] = useState<"loading" | "live" | "error">("loading");
+  const [status, setStatus] = useState<"loading" | "live" | "stale" | "error">("loading");
   const [message, setMessage] = useState("Synchronizing verified launches.");
   const [showAll, setShowAll] = useState(false);
   const [view, setView] = useState<RmtDiscoveryView>("moving");
+  const [searchQuery, setSearchQuery] = useState("");
   const [quickTrade, setQuickTrade] = useState<{ launch: LaunchFeedItem; side: "buy" | "sell" }>();
   const [rankingAnnouncement, setRankingAnnouncement] = useState("");
   const restoredQuickTrade = useRef(false);
@@ -231,6 +233,9 @@ export function FreshLaunchFeed() {
   const rankInitialized = useRef(false);
   const nextRankRefresh = useRef(0);
   const returnFocusTo = useRef<HTMLElement | null>(null);
+  const hasConfirmedSnapshot = useRef(false);
+  const consecutiveFailures = useRef(0);
+  const refreshInFlight = useRef<Promise<boolean> | null>(null);
 
   const syncQuickTradeUrl = useCallback((launch?: LaunchFeedItem, side?: "buy" | "sell") => {
     const url = new URL(window.location.href);
@@ -256,41 +261,96 @@ export function FreshLaunchFeed() {
     syncQuickTradeUrl();
   }, [syncQuickTradeUrl]);
 
-  const refresh = useCallback(async () => {
-    setStatus((current) => current === "live" ? "live" : "loading");
-    try {
-      const response = await fetch("/api/launches", { cache: "no-store" });
-      const result = (await response.json()) as LaunchFeedResponse | { error?: string };
-      if (!response.ok || !("launches" in result)) {
-        throw new Error("error" in result && result.error ? result.error : "Launch data is temporarily unavailable.");
-      }
+  const refresh = useCallback(() => {
+    if (refreshInFlight.current) return refreshInFlight.current;
 
-      const now = Date.now();
-      setLaunches(result.launches);
-      if (!rankInitialized.current || now >= nextRankRefresh.current) {
-        setRankingOrders(buildRmtRankingOrders(result.launches));
-        rankInitialized.current = true;
-        nextRankRefresh.current = now + RANK_REFRESH_MS;
-        setRankingAnnouncement("RMT discovery rankings updated.");
+    const operation = (async () => {
+      setStatus((current) => current === "live" || current === "stale" ? current : "loading");
+      try {
+        const response = await fetch("/api/launches", { headers: { Accept: "application/json" } });
+        const result = (await response.json()) as LaunchFeedResponse | { error?: string };
+        if (!response.ok || !("launches" in result)) {
+          throw new Error("error" in result && result.error ? result.error : "Launch data is temporarily unavailable.");
+        }
+
+        const now = Date.now();
+        hasConfirmedSnapshot.current = true;
+        setLaunches(result.launches);
+        if (!rankInitialized.current || now >= nextRankRefresh.current) {
+          setRankingOrders(buildRmtRankingOrders(result.launches));
+          rankInitialized.current = true;
+          nextRankRefresh.current = now + RANK_REFRESH_MS;
+          setRankingAnnouncement("RMT discovery rankings updated.");
+        }
+
+        const launchCount = result.launches.length === 0
+          ? isMainnetRelease ? "Factory connected. No mainnet launches yet." : "Factory connected. No testnet launches yet."
+          : result.launches.length + " verified factory launch" + (result.launches.length === 1 ? "" : "es") + ".";
+        if (result.stale) {
+          consecutiveFailures.current += 1;
+          setStatus("stale");
+          setMessage((result.error ?? "Live refresh is delayed.") + " " + launchCount);
+          return false;
+        }
+
+        consecutiveFailures.current = 0;
+        setStatus("live");
+        setMessage(launchCount);
+        return true;
+      } catch (error) {
+        consecutiveFailures.current += 1;
+        const reason = error instanceof Error ? error.message : "Launch data is temporarily unavailable.";
+        if (hasConfirmedSnapshot.current) {
+          setStatus("stale");
+          setMessage(reason + " Keeping the last confirmed snapshot on screen.");
+        } else {
+          setStatus("error");
+          setMessage(reason);
+        }
+        return false;
       }
-      setStatus("live");
-      setMessage(result.launches.length === 0
-        ? isMainnetRelease ? "Factory connected. No mainnet launches yet." : "Factory connected. No testnet launches yet."
-        : result.launches.length + " verified factory launch" + (result.launches.length === 1 ? "" : "es") + ".");
-    } catch (error) {
-      setLaunches([]);
-      setRankingOrders(EMPTY_RANKING_ORDERS);
-      rankInitialized.current = false;
-      nextRankRefresh.current = 0;
-      setStatus("error");
-      setMessage(error instanceof Error ? error.message : "Launch data is temporarily unavailable.");
-    }
+    })();
+
+    refreshInFlight.current = operation;
+    void operation.finally(() => {
+      if (refreshInFlight.current === operation) refreshInFlight.current = null;
+    });
+    return operation;
   }, []);
 
   useEffect(() => {
-    void refresh();
-    const interval = window.setInterval(() => void refresh(), DATA_REFRESH_MS);
-    return () => window.clearInterval(interval);
+    let timer: number | undefined;
+    let disposed = false;
+    let cycle = 0;
+
+    const run = async (currentCycle: number) => {
+      if (disposed || document.hidden) return;
+      const current = await refresh();
+      if (disposed || document.hidden || currentCycle !== cycle) return;
+      const delay = current
+        ? DATA_REFRESH_MS
+        : Math.min(
+            MAX_REFRESH_BACKOFF_MS,
+            DATA_REFRESH_MS * 2 ** Math.min(consecutiveFailures.current, 2)
+          );
+      timer = window.setTimeout(() => void run(currentCycle), delay);
+    };
+
+    const handleVisibility = () => {
+      cycle += 1;
+      if (timer !== undefined) window.clearTimeout(timer);
+      timer = undefined;
+      if (!document.hidden) void run(cycle);
+    };
+
+    void run(cycle);
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => {
+      disposed = true;
+      cycle += 1;
+      if (timer !== undefined) window.clearTimeout(timer);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
   }, [refresh]);
 
   useEffect(() => {
@@ -311,19 +371,30 @@ export function FreshLaunchFeed() {
     new: currentLaunchesForView(launches, rankingOrders.new, "new")
   }), [launches, rankingOrders]);
 
+  const normalizedSearch = searchQuery.trim().toLowerCase();
+  const searchResults = useMemo(() => normalizedSearch
+    ? launches.filter((launch) =>
+        launch.name.toLowerCase().includes(normalizedSearch)
+          || launch.symbol.toLowerCase().replace(/^\$+/, "").includes(normalizedSearch.replace(/^\$+/, ""))
+          || launch.token.toLowerCase().includes(normalizedSearch)
+          || launch.launchId === normalizedSearch
+      )
+    : [], [launches, normalizedSearch]);
+
   useEffect(() => {
-    if (didSelectInitialView.current || status !== "live" || launches.length === 0) return;
+    if (didSelectInitialView.current || (status !== "live" && status !== "stale") || launches.length === 0) return;
     didSelectInitialView.current = true;
     if (launchesByView.moving.length === 0 && launchesByView.new.length > 0) setView("new");
   }, [launches.length, launchesByView.moving.length, launchesByView.new.length, status]);
 
-  const orderedLaunches = launchesByView[view];
+  const orderedLaunches = normalizedSearch ? searchResults : launchesByView[view];
   const visibleLaunches = showAll ? orderedLaunches : orderedLaunches.slice(0, MAX_VISIBLE_LAUNCHES);
   const viewCopy = VIEW_COPY[view];
 
   const changeView = (nextView: RmtDiscoveryView) => {
     didSelectInitialView.current = true;
     setView(nextView);
+    setSearchQuery("");
     setShowAll(false);
   };
 
@@ -351,9 +422,24 @@ export function FreshLaunchFeed() {
           <p className="sectionCopy">{viewCopy.description}</p>
         </div>
         <span className={"badge " + (status === "live" ? "liveBadge" : status === "error" ? "errorBadge" : "warning")}>
-          {status === "live" ? "RECENT DATA · 60S RANKS" : status === "error" ? "DATA DELAYED" : "SYNCING"}
+          {status === "live" ? "CONFIRMED · 60S RANKS" : status === "stale" ? "LAST CONFIRMED" : status === "error" ? "DATA DELAYED" : "SYNCING"}
         </span>
       </div>
+
+      <label className="rmtDiscoverySearch">
+        <span className="srOnly">Search RMT launches</span>
+        <input
+          type="search"
+          value={searchQuery}
+          onChange={(event) => {
+            setSearchQuery(event.target.value);
+            setShowAll(false);
+          }}
+          placeholder="Search name, ticker, address or launch #"
+          autoComplete="off"
+        />
+        {searchQuery && <button type="button" onClick={() => setSearchQuery("")} aria-label="Clear RMT launch search">Clear</button>}
+      </label>
 
       <p className="srOnly" aria-live="polite">{rankingAnnouncement}</p>
       <div className="discoveryToolbar">
@@ -378,7 +464,12 @@ export function FreshLaunchFeed() {
         <Link className="discoveryLaunchLink" href="/launch">Launch yours ↗</Link>
       </div>
 
-      <div id="rmt-discovery-panel" role="tabpanel" aria-labelledby={"discovery-tab-" + view}>
+      <div
+        id="rmt-discovery-panel"
+        role={normalizedSearch ? "region" : "tabpanel"}
+        aria-label={normalizedSearch ? "RMT launch search results" : undefined}
+        aria-labelledby={normalizedSearch ? undefined : "discovery-tab-" + view}
+      >
         {launches.length === 0 ? (
           <div className="emptyFeed">
             <strong>{status === "loading" ? "Reading Robinhood Chain…" : "No launches to display"}</strong>
@@ -387,9 +478,9 @@ export function FreshLaunchFeed() {
           </div>
         ) : visibleLaunches.length === 0 ? (
           <div className="emptyFeed compactEmpty">
-            <strong>{viewCopy.empty}</strong>
-            <span>The board updates automatically as verified onchain activity changes.</span>
-            {view !== "new" && <button type="button" onClick={() => changeView("new")}>View new launches</button>}
+            <strong>{normalizedSearch ? "No RMT launch matches that search." : viewCopy.empty}</strong>
+            <span>{normalizedSearch ? "Try a token name, ticker, contract address, or launch number." : "The board updates automatically as verified onchain activity changes."}</span>
+            {!normalizedSearch && view !== "new" && <button type="button" onClick={() => changeView("new")}>View new launches</button>}
           </div>
         ) : (
           <div className="rmtDiscoveryRows">
@@ -411,7 +502,7 @@ export function FreshLaunchFeed() {
                       <CreatorExposure launch={launch} />
                     </span>
                     <span className="rmtDiscoveryMetrics">
-                      <span><small>{view === "moving" || view === "early" ? "Momentum" : "Activity"}</small><strong>{view === "moving" || view === "early" ? ranking.momentumScore + "/100" : activityLabel(launch)}</strong></span>
+                      <span><small>{!normalizedSearch && (view === "moving" || view === "early") ? "Momentum" : "Activity"}</small><strong>{!normalizedSearch && (view === "moving" || view === "early") ? ranking.momentumScore + "/100" : activityLabel(launch)}</strong></span>
                       <span><small>Volume</small><strong>{volumeLabel(launch.volumeWei)}</strong></span>
                       <span><small>Reserve</small><strong>{reserveLabel(launch.reserveWei)}</strong></span>
                       <span><small>Graduation</small><strong>{launch.graduated ? "Complete" : progress.toLocaleString(undefined, { maximumFractionDigits: 1 }) + "%"}</strong></span>
@@ -443,7 +534,7 @@ export function FreshLaunchFeed() {
           {showAll ? "Show top 4" : "View all " + orderedLaunches.length}
         </button>
       )}
-      <p className="feedStatus">{message} Data refreshes every 10 seconds; rank positions settle every 60 seconds.</p>
+      <p className="feedStatus" role="status" aria-live="polite">{message} Confirmed data checks every 30 seconds; delayed refreshes back off automatically.</p>
       <p className="rmtRankingDisclosure">Momentum is a discovery signal, not an endorsement and not a basis for fee rewards. Creator concentration and selling can reduce or block promotion.</p>
 
       {quickTrade && (

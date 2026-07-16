@@ -1,20 +1,12 @@
-"use client";
-
 import Link from "next/link";
 import { isMainnetRelease } from "../../lib/network";
 import { LaunchForm } from "../launch-form";
-import { WalletButton } from "../wallet-button";
+import { SiteFooter } from "../site-footer";
 import "../launch-presets.css";
 
 export default function LaunchPage() {
   return (
     <main className="launchPage">
-      <nav className="appNav launchPageNav">
-        <Link className="brandLockup" href="/" aria-label="Robinhood Meme Terminal home"><img className="brandLogo" src="/brand/rmt-master-logo.png" alt="" /><strong>RMT</strong></Link>
-        <div className="primaryNav" aria-label="Primary navigation"><Link href="/">Terminal</Link><Link href="/launch">Launch</Link><Link href="/status">Status</Link><Link href="/support">Support</Link></div>
-        <WalletButton target={isMainnetRelease ? "mainnet" : "testnet"} />
-      </nav>
-
       <header className="launchPageHeader">
         <div><p className="eyebrow">CREATE ON RMT V6</p><h1>Launch a meme in one transaction.</h1><p>Name it, add the artwork, choose Fair Start protection, and approve the complete launch in your wallet.</p></div>
         <div className="launchAssurances"><span>Fixed 1B supply</span><span>Unique name + ticker</span><span>No mint or transfer tax</span></div>
@@ -34,8 +26,7 @@ export default function LaunchPage() {
         </aside>
       </div>
 
-      <footer className="siteFooter"><Link href="/terms">Terms</Link><Link href="/risks">Risks</Link><Link href="/support">Support</Link><Link href="/status">Status</Link><span>RMT is independent software and is not Robinhood Markets, Inc.</span></footer>
-      <nav className="mobileDock" aria-label="Mobile navigation"><Link href="/"><span>◉</span>Terminal</Link><Link href="/launch"><span>＋</span>Launch</Link><Link href="/status"><span>●</span>Status</Link></nav>
+      <SiteFooter />
     </main>
   );
 }

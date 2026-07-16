@@ -3264,13 +3264,13 @@ export function V6ReleaseConsole() {
       {nextAction === "bootstrap-activate" && <button className="deploy-stack-button" disabled={!isOperator || busy} onClick={activateBootstrapFoundation}>{busy ? status : "Activate verified V6 while launches stay paused"}</button>}
       {nextAction === "cutover" && <div className="deployment-safety"><p>Update production and redeploy it with these public values before launching RMT:</p><p><code>NEXT_PUBLIC_VERSION_REGISTRY_ADDRESS={deployment.addresses.registry}</code><br /><code>NEXT_PUBLIC_FACTORY_START_BLOCK={deployment.factoryStartBlock ?? "read confirmed factory receipt"}</code></p></div>}
       {nextAction === "cutover" && <button className="deploy-stack-button" disabled={!isOperator || busy} onClick={verifyProductionCutover}>{busy ? status : "Verify live V6 production cutover"}</button>}
-      {nextAction === "official" && <a className="deploy-stack-button" href="/?official=v6#launch">Open the prefilled official RMT launch →</a>}
+      {nextAction === "official" && <a className="deploy-stack-button" href="/launch?official=v6">Open the prefilled official RMT launch →</a>}
       {nextAction === "smoke" && officialToken && <p className="deployment-safety">RMT launched at <code>{officialToken}</code>. Wait one block for Fair Start, make one small buy on its token page, and return here. The controller requires a real fully settled curve fee; sending ETH directly cannot satisfy it.</p>}
-      {nextAction === "smoke" && officialToken && <a className="deploy-stack-button" href={`/token/${officialToken}`}>Open official RMT and make the smoke buy →</a>}
+      {nextAction === "smoke" && officialToken && <a className="deploy-stack-button" href={`/token/${officialToken}?launch=0`}>Open official RMT and make the smoke buy →</a>}
       {nextAction === "bootstrap-open" && <button className="deploy-stack-button" disabled={!isOperator || busy} onClick={openAfterOfficialSmoke}>{busy ? status : "Recheck everything and open public token creation"}</button>}
       {nextAction === "reading" && <p className="deployment-safety">Reading the exact V6 bootstrap state from mainnet…</p>}
       {nextAction === "aborted" && <p className="deployment-error">The expedited bootstrap is permanently aborted or expired. Public launches remain paused; only the normal delayed governance path can continue this deployment.</p>}
-      {nextAction === "complete" && <a className="deploy-stack-button" href="/#launch">V6 public creation is open →</a>}
+      {nextAction === "complete" && <a className="deploy-stack-button" href="/launch">V6 public creation is open →</a>}
       <div className="deployment-recovery">
         <div>
           <strong>Release recovery</strong>

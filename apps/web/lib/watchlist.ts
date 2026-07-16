@@ -5,6 +5,7 @@ export type WatchlistEntry = {
   name: string;
   symbol: string;
   image?: string;
+  launchId?: string;
   addedAt: number;
 };
 
@@ -19,6 +20,7 @@ function validEntry(value: unknown): value is WatchlistEntry {
     && /^0x[0-9a-fA-F]{40}$/.test(entry.address)
     && typeof entry.name === "string"
     && typeof entry.symbol === "string"
+    && (entry.launchId === undefined || /^\d+$/.test(entry.launchId))
     && typeof entry.addedAt === "number";
 }
 

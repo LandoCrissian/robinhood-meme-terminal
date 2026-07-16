@@ -129,6 +129,8 @@
 .portfolioStatus{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:10px}
 .portfolioStatus b{color:#69e97a;font-size:.68rem}
 .portfolioFootnote{margin:14px 0 0;color:#6d7971;font-size:.65rem;line-height:1.5}
+.portfolioDelay{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:14px 0 0;padding:10px 12px;border:1px solid #5b4923;border-radius:10px;background:#1a150a;color:#d6bd7e;font-size:.68rem;line-height:1.4}
+.portfolioDelay button{min-height:44px;padding:0 12px;border:1px solid #755f2d;border-radius:9px;background:#251d0c;color:#f0d89d;font:inherit;font-weight:850;cursor:pointer}
 @media(max-width:900px){.portfolioGrid{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 @media(max-width:760px){.portfolioPanel{margin-top:12px;padding:20px 16px}
@@ -212,7 +214,7 @@
   .launchMetrics{gap:5px}
   .launchMetrics>span{padding:7px;border-radius:8px;background:#0e1611}
   .launchActions{padding:7px;border-top:1px solid #243029;border-left:0}
-  .quickTradeDialog{top:8px;right:8px;bottom:8px;left:8px;width:auto;max-height:none;transform:none;border-radius:18px}
+  .quickTradeDialog{top:calc(8px + env(safe-area-inset-top));right:8px;bottom:calc(8px + env(safe-area-inset-bottom));left:8px;width:auto;max-height:none;transform:none;border-radius:18px}
   .quickTradeHeader{padding:10px}
   .quickTradeHeaderActions a{display:none}
   .quickTradeBody{padding:9px}
@@ -300,6 +302,13 @@
 @media(max-width:360px){.runnerTabs button{flex-direction:column;gap:2px;padding:5px 3px;font-size:.64rem}.runnerTabs button span{height:17px;min-width:17px}}
 
 /* Protected RMT runner discovery */
+.rmtDiscoverySearch{position:relative;display:flex;align-items:center;margin:15px 0 2px}
+.rmtDiscoverySearch input{width:100%;min-height:46px;padding:0 72px 0 14px;border:1px solid #2d3b32;border-radius:12px;outline:0;background:#080d0a;color:#e4ebe6;font:inherit;font-size:.82rem;font-weight:750}
+.rmtDiscoverySearch input::placeholder{color:#69756d}
+.rmtDiscoverySearch input:focus{border-color:#4b8a56;box-shadow:0 0 0 3px rgba(78,213,96,.1)}
+.rmtDiscoverySearch button{position:absolute;right:2px;min-width:58px;min-height:44px;border:0;border-radius:10px;background:#172019;color:#9ba79f;font:inherit;font-size:.64rem;font-weight:850;cursor:pointer}
+.rmtDiscoverySearch button:hover{background:#213026;color:#e4ebe6}
+.rmtDiscoverySearch button:focus-visible{outline:2px solid #76ed86;outline-offset:2px}
 .discoveryTabs button{display:flex;min-height:44px;align-items:center;justify-content:center;gap:7px}
 .discoveryTabs button span{display:grid;min-width:20px;height:20px;place-items:center;border-radius:99px;background:#171f1a;color:#a4afa7;font-size:.57rem}
 .discoveryTabs button.active span{background:#285831;color:#d0fbd5}
@@ -343,9 +352,13 @@
   .rmtDiscoveryMetrics strong{font-size:.65rem}
 }
 @media(max-width:560px){
+  .rmtDiscovery .feedHeading{align-items:flex-start;flex-direction:column;gap:10px}
+  .rmtDiscoverySearch{margin-top:12px}
+  .rmtDiscoverySearch input{min-height:44px;font-size:.78rem}
   .feed .rmtDiscoveryRow{grid-template-columns:1fr}
   .rmtDiscoveryMain{grid-template-columns:30px 42px minmax(0,1fr);padding:10px}
   .rmtDiscoveryMetrics{grid-column:2/-1;grid-template-columns:repeat(2,minmax(0,1fr))}
+  .rmtDiscoveryMetrics>span:nth-child(1),.rmtDiscoveryMetrics>span:nth-child(3){display:none}
   .rmtDiscoveryProgress{grid-column:2/-1}
   .rmtDiscoveryActions{border-top:1px solid #253129;border-left:0}
   .rmtDiscoveryActions .buyCardAction,.rmtDiscoveryActions .sellCardAction{min-height:46px}

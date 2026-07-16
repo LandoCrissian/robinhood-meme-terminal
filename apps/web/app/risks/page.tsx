@@ -2,14 +2,14 @@ import { LegalShell } from "../legal-shell";
 
 export default function RisksPage() {
   return (
-    <LegalShell eyebrow="READ BEFORE SIGNING" title="Risk Disclosures" updated="July 14, 2026">
+    <LegalShell eyebrow="READ BEFORE SIGNING" title="Risk Disclosures" updated="July 16, 2026">
       <div className="legalNotice danger"><strong>Mainnet beta:</strong> RMT contracts have extensive automated tests but have not yet received an independent security audit. A successful smoke test is not proof that the system is risk-free.</div>
       <h2>Loss of funds</h2>
       <p>You can lose all ETH or tokens used through RMT. Meme tokens can become illiquid, fall rapidly, fail to graduate, or trade at prices materially different from estimates.</p>
       <h2>Smart-contract risk</h2>
       <p>Contracts can contain unknown defects, economic weaknesses, rounding issues, integration failures, or exploitable assumptions. Immutability can make some failures difficult or impossible to reverse.</p>
       <h2>Graduation and liquidity risk</h2>
-      <p>The deployed V5 path has historical automated and mainnet-fork evidence. The final V6 candidate must pass its own complete fork rehearsal and release gates before activation. No live public token has completed the full production V6 migration. Network congestion, DEX behavior, hook or adapter failure, price movement, or liquidity conditions may affect migration and post-graduation trading.</p>
+      <p>RMT V6 is deployed and public launches are open, but successful deployment and smoke checks do not guarantee that every launch will graduate successfully. Network congestion, DEX behavior, hook or adapter failure, price movement, or liquidity conditions may affect migration and post-graduation trading.</p>
       <p>V6 clamps the final curve buy to the exact net graduation target. If an excess-payment refund cannot be delivered, it remains a payer-owned onchain claim. Forced ETH, unsolicited tokens, and pool-seeding dust are intentionally excluded from liquidity and fee distribution and may remain permanently locked.</p>
       <h2>Market and execution risk</h2>
       <p>Quotes can change before confirmation. Slippage, price impact, frontrunning, sandwiching, failed transactions, gas spikes, and wallet delays may produce a different outcome than expected.</p>

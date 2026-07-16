@@ -1,11 +1,12 @@
 import { createPublicClient, getAddress, http, isAddress, keccak256, parseEther, toHex, type Address, type Hex } from "viem";
+import { unstable_cache } from "next/cache";
 import {
   getFactoryAddress,
   isFreshMainnetVersionRegistryConfigured,
   isMainnetVersionRegistryConfigurationValid,
   isMainnetVersionRegistryExplicitlyConfigured,
   publicMainnetOperatorAddress,
-  publicMainnetV5FactoryAddress,
+  publicMainnetV6FactoryAddress,
   publicMainnetVersionRegistryAddress,
   rmtLaunchFactoryV6Abi,
   versionRegistryAbi
@@ -56,7 +57,6 @@ const client = createPublicClient({
     { retryCount: 3, timeout: 12_000 }
   )
 });
-const V5_VERSION = keccak256(toHex("RMT_FACTORY_V5"));
 const V6_VERSION = keccak256(toHex("RMT_FACTORY_V6"));
 const FAIR_POLICY_ID = keccak256(toHex("RMT_SIMPLE_FAIR_V1"));
 
@@ -64,7 +64,7 @@ function check(key: SystemHealthCheck["key"], label: string, healthy: boolean, d
   return { key, label, state: healthy ? "operational" : "degraded", detail };
 }
 
-export async function readSystemHealth(): Promise<SystemHealthReport> {
+async function readSystemHealthFresh(): Promise<SystemHealthReport> {
   const startedAt = Date.now();
   const checkedAt = new Date(startedAt).toISOString();
   const checks: SystemHealthCheck[] = [];
@@ -72,7 +72,14 @@ export async function readSystemHealth(): Promise<SystemHealthReport> {
   let factory: Address | null = getFactoryAddress();
   let factoryVersion: Hex | null = null;
   const releaseEvidence = (): SystemHealthReleaseEvidence => ({
-    mode: isMainnetRelease ? factoryVersion === V6_VERSION ? "v6-cutover" : "v5-compatible" : "testnet",
+    mode: isMainnetRelease
+      ? factoryVersion === V6_VERSION
+        && isFreshMainnetVersionRegistryConfigured
+        && isFactoryStartBlockExplicitlyConfigured
+        && isFactoryStartBlockConfigurationValid
+          ? "v6-cutover"
+          : "configuration-error"
+      : "testnet",
     registryAddress: isMainnetRelease ? publicMainnetVersionRegistryAddress : null,
     factoryAddress: factory,
     factoryVersion,
@@ -110,8 +117,7 @@ export async function readSystemHealth(): Promise<SystemHealthReport> {
       ]);
       factory = isAddress(registered) ? getAddress(registered) : null;
       factoryVersion = registeredVersion;
-      const isKnownV5 = factoryVersion === V5_VERSION && factory === publicMainnetV5FactoryAddress;
-      const isV6 = factoryVersion === V6_VERSION;
+      const isV6 = factoryVersion === V6_VERSION && factory === publicMainnetV6FactoryAddress;
       const v6CutoverConfigured = isFreshMainnetVersionRegistryConfigured
         && isFactoryStartBlockExplicitlyConfigured
         && isFactoryStartBlockConfigurationValid;
@@ -119,7 +125,8 @@ export async function readSystemHealth(): Promise<SystemHealthReport> {
         && isMainnetVersionRegistryConfigurationValid
         && isFactoryStartBlockConfigurationValid
         && activeFactoryStartBlock <= latestBlock
-        && (isKnownV5 || (isV6 && v6CutoverConfigured));
+        && isV6
+        && v6CutoverConfigured;
       checks.push(check(
         "registry",
         "Version registry",
@@ -128,6 +135,7 @@ export async function readSystemHealth(): Promise<SystemHealthReport> {
           ? `Registry ${publicMainnetVersionRegistryAddress} · factory ${factory} · version ${factoryVersion} · scan start ${activeFactoryStartBlock.toString()}`
           : `Registry ${publicMainnetVersionRegistryAddress} returned no active factory`
       ));
+      if (!registryHealthy) factory = null;
     } else {
       checks.push(check("registry", "Factory selection", Boolean(factory), factory ? "Verified testnet factory selected" : "Factory unavailable"));
     }
@@ -277,7 +285,7 @@ export async function readSystemHealth(): Promise<SystemHealthReport> {
       `${launchCount.toString()} verified launch${launchCount === 1n ? "" : "es"} recorded`
     ));
 
-    const expectedGraduationTarget = factoryVersion === V5_VERSION ? parseEther("2") : parseEther("1");
+    const expectedGraduationTarget = parseEther("1");
     const expectedEconomics = isMainnetRelease
       ? feeBps === 100 && graduationTarget === expectedGraduationTarget
       : feeBps < 10_000 && graduationTarget > 0n;
@@ -336,6 +344,16 @@ export async function readSystemHealth(): Promise<SystemHealthReport> {
       checks
     };
   }
+}
+
+const readSystemHealthCached = unstable_cache(
+  readSystemHealthFresh,
+  ["rmt-v6-system-health"],
+  { revalidate: 15 }
+);
+
+export async function readSystemHealth(): Promise<SystemHealthReport> {
+  return readSystemHealthCached();
 }
 
 function formatEth(value: bigint) {

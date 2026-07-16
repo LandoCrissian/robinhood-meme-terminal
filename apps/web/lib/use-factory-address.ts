@@ -7,7 +7,7 @@ import {
   getFactoryAddress,
   isFreshMainnetVersionRegistryConfigured,
   isMainnetVersionRegistryConfigurationValid,
-  publicMainnetV5FactoryAddress,
+  publicMainnetV6FactoryAddress,
   publicMainnetVersionRegistryAddress,
   versionRegistryAbi
 } from "./contracts";
@@ -19,7 +19,6 @@ import {
 } from "./network";
 
 export const FACTORY_UPDATED_EVENT = "rmt:factory-updated";
-const V5_VERSION = keccak256(toHex("RMT_FACTORY_V5"));
 const V6_VERSION = keccak256(toHex("RMT_FACTORY_V6"));
 
 export function useFactoryAddress(): Address | null {
@@ -30,7 +29,9 @@ export function useFactoryAddress(): Address | null {
     functionName: "activeFactory",
     chainId: activeChain.id,
     query: {
-      enabled: isMainnetRelease && isMainnetVersionRegistryConfigurationValid,
+      enabled: isMainnetRelease
+        && isFreshMainnetVersionRegistryConfigured
+        && isMainnetVersionRegistryConfigurationValid,
       retry: false,
       refetchInterval: 30_000
     }
@@ -41,7 +42,9 @@ export function useFactoryAddress(): Address | null {
     functionName: "activeVersion",
     chainId: activeChain.id,
     query: {
-      enabled: isMainnetRelease && isMainnetVersionRegistryConfigurationValid,
+      enabled: isMainnetRelease
+        && isFreshMainnetVersionRegistryConfigured
+        && isMainnetVersionRegistryConfigurationValid,
       retry: false,
       refetchInterval: 30_000
     }
@@ -60,14 +63,14 @@ export function useFactoryAddress(): Address | null {
   }, []);
 
   if (isMainnetRelease) {
-    if (!isMainnetVersionRegistryConfigurationValid) return null;
+    if (!isFreshMainnetVersionRegistryConfigured || !isMainnetVersionRegistryConfigurationValid) return null;
     const registered = registryFactoryRead.data;
     const registeredVersion = registryVersionRead.data;
     if (!registered || !isAddress(registered) || !registeredVersion) return null;
     const address = getAddress(registered);
-    if (registeredVersion === V5_VERSION && address === publicMainnetV5FactoryAddress) return address;
     if (
       registeredVersion === V6_VERSION
+        && address === publicMainnetV6FactoryAddress
         && isFreshMainnetVersionRegistryConfigured
         && isFactoryStartBlockExplicitlyConfigured
         && isFactoryStartBlockConfigurationValid

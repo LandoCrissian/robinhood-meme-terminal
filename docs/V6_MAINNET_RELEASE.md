@@ -1,16 +1,18 @@
 # RMT V6 mainnet release
 
-Status: **same-session release candidate — not deployed, active, or open**
+Current production status: **V6 is deployed, active, and open for public launches**
+
+The live addresses and transaction receipts are recorded in [MAINNET_V6_DEPLOYMENT.md](MAINNET_V6_DEPLOYMENT.md). The remainder of this document is the historical release and recovery plan, not proof that every planned gate was completed; future operators must not read its pre-deployment language or source-verification requirements as the current production state.
 
 This is the operator handoff for the policy-driven V6 release. Deployment, activation, the official RMT launch, and public reopening remain separate wallet-confirmed boundaries.
 
 ## Current mainnet dependencies
 
-- [Active V5 factory](https://robinhoodchain.blockscout.com/address/0x25a92d8c79c38d07b0d3efd0ebe929d30e401cdd) — retained only as the legacy identity source and the initial factory recorded in the fresh V6 registry
+- [Legacy V5 identity factory](https://robinhoodchain.blockscout.com/address/0x25a92d8c79c38d07b0d3efd0ebe929d30e401cdd) — retained only as the legacy identity source and the initial factory recorded in the fresh V6 registry
 - [Official legacy RMT token](https://robinhoodchain.blockscout.com/token/0xaB374D24aFBD943a134AdB381D9646e71C6f6C0C) — unchanged and used only as the immutable provenance anchor for the one-time V6 launch. The V6 factory constructor requires bytecode at this exact address and verifies its creator, name, and ticker before deployment can succeed.
 - [Canonical Uniswap V4 PoolManager](https://robinhoodchain.blockscout.com/address/0x8366a39cc670b4001a1121b8f6a443a643e40951)
 
-The final V6 addresses and transaction hashes must be added here only after receipts and deployed bytecode are independently verified.
+The reconstructed top-level V6 foundation addresses and creation/binding receipts are published in the canonical deployment record linked above. That record also identifies the derived-contract, activation, opening, official-launch, and splitter evidence still missing from the public inventory.
 
 V6 deploys a fresh `RMTV6Governance` that is both protocol authority and protocol treasury, plus a fresh `VersionedFactoryRegistry` governed by it and initialized to the legacy V5 factory and `RMT_FACTORY_V5`. V6 has no governance or registry dependency on the legacy V5 stack. RMTMain is the sole initial signer with threshold 1, an immutable 24-hour delay, and an immutable seven-day execution window. Any current signer may cancel a pending proposal. Pending proposals expire, every proposal is fully inspectable, and atomic add/remove/replace-and-threshold operations advance a configuration epoch that invalidates every older pending proposal, confirmation, and downstream registry/gate/policy schedule. Each downstream schedule is bound to the live epoch and expires seven days after its own delay matures. A prospective added or replacement signer must first prove control and call `acceptSignerRole` with the current configuration epoch, exact add-or-replace action, affected signer, next threshold, and an expiration no later than one full governance cycle. The candidate can revoke that consent before execution, execution consumes it, expiration makes it unusable, and an epoch change makes it stale. Generic execution is permissionless only for current-epoch, fully approved, uncancelled, unexpired proposals; a relayer cannot alter any approved call field and receives no role or reward. Cancellation is guaranteed before the execution delay matures; once both cancellation and execution are valid, transaction ordering decides which is mined first and a completed call cannot be undone. A multi-signer configuration cannot be 1-of-N. Adding the first extra wallet therefore creates 2-of-2 governance, not a backup wallet, and both signers must remain available. The launch and policy guardians begin as RMTMain but may be rotated only by this delayed governance; signer rotation does not rotate either guardian automatically. Losing the sole initial key freezes treasury and protocol control; compromise can authorize treasury/control calls after the delay. In 2-of-2 mode, losing either signer freezes governance.
 
@@ -70,9 +72,9 @@ The 12-hour bootstrap window is a completion deadline, not a waiting period. Gen
 
 Every browser phase is resumable. A rejected wallet request leaves completed receipts recorded. Recovery files contain public addresses and transaction hashes only, and every continuation rechecks those receipts and the current onchain topology. The final opening repeats live source and production health checks instead of trusting a prior browser flag.
 
-V6 is an explicitly disclosed unaudited mainnet beta. Automated tests, Slither, source verification, and the controller's onchain checks materially reduce risk but do not replace an independent human audit. The audit remains a post-launch priority once protocol funds permit it.
+V6 is an explicitly disclosed unaudited mainnet beta. Automated tests, Slither, and the controller's onchain checks reduce some classes of risk but do not replace an independent human audit. The historical release plan required exact source publication, but current Blockscout records do not establish that requirement; canonical source/bytecode reconstruction and an independent audit remain post-launch priorities once protocol funds permit them.
 
-### Production-site registry cutover
+### Historical production-site registry cutover
 
 The current production site may keep reading the checked-in V5 registry and V5 deployment history while the V6 foundation does not exist. After the fresh V6 registry and V6 factory are deployed, do not activate or reopen against that fallback. Set the following production environment values and redeploy the site:
 

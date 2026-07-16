@@ -5,14 +5,13 @@ import { useParams, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { formatUnits, getAddress, isAddress, type Address } from "viem";
 import { useReadContract } from "wagmi";
-import { activeChain, activeNetworkLabel, isMainnetRelease } from "../../../lib/network";
+import { activeChain, activeNetworkLabel } from "../../../lib/network";
 import { RewardVaultPanel } from "../../reward-vault-panel";
 import { MarketPanel } from "../../market-panel";
 import { TokenShareActions } from "../../token-share-actions";
-import { WalletButton } from "../../wallet-button";
 import { WatchlistButton } from "../../watchlist-button";
 import { ipfsToHttp, resolveTokenMetadata, type TokenMetadata } from "../../../lib/token-metadata";
-import { useLaunchRecord } from "../../../lib/use-launch-record";
+import { useLaunchRecord, type LaunchRecordHint } from "../../../lib/use-launch-record";
 
 const tokenAbi = [
   { type: "function", name: "name", stateMutability: "view", inputs: [], outputs: [{ type: "string" }] },
@@ -56,6 +55,14 @@ export default function TokenDetailPage() {
     return () => { active = false; };
   }, [verifiedMetadataURI]);
 
+  useEffect(() => {
+    const resolvedLaunchId = launchRecord.data?.launchId.toString();
+    if (!resolvedLaunchId || launchIdParam === resolvedLaunchId) return;
+    const url = new URL(window.location.href);
+    url.searchParams.set("launch", resolvedLaunchId);
+    window.history.replaceState(window.history.state, "", url);
+  }, [launchIdParam, launchRecord.data?.launchId]);
+
   if (!tokenAddress) return <main className="detailPage"><Link href="/">← Terminal</Link><section className="panel"><h1>Invalid token address</h1><p>This route requires a valid EVM contract address.</p></section></main>;
 
   const reads = [nameRead, symbolRead, supplyRead, creatorRead, metadataRead];
@@ -75,19 +82,25 @@ export default function TokenDetailPage() {
   if (!identityMatches) return <main className="detailPage"><Link href="/">← Terminal</Link><section className="panel"><p className="eyebrow">IDENTITY MISMATCH</p><h1>V6 launch identity could not be verified</h1><p>The token contract does not match its active-factory launch record. No verified badge or trading controls are shown.</p></section></main>;
 
   const explorer = `${activeChain.blockExplorers.default.url}/address/${tokenAddress}`;
+  const verifiedLaunchHint: LaunchRecordHint = {
+    launchId: launch.launchId.toString(),
+    token: tokenAddress,
+    blockNumber: launch.blockNumber.toString(),
+    transactionHash: launch.transactionHash ?? undefined
+  };
 
   return (
     <main className="detailPage">
-      <div className="detailNav"><Link href="/">← Back to terminal</Link><WalletButton target={isMainnetRelease ? "mainnet" : "testnet"} /></div>
+      <div className="detailNav"><Link href="/">← Back to terminal</Link></div>
       <section className="tokenHero panel">
         <div className="coin largeCoin tokenArtwork">{metadata?.image ? <img src={ipfsToHttp(metadata.image)} alt={`${nameRead.data} artwork`} /> : symbolRead.data.slice(0, 2)}</div>
-        <div className="tokenHeroCopy"><div className="tokenOriginLine"><p className="eyebrow">RMT V6 · ORIGIN VERIFIED</p><span>Live on {activeNetworkLabel}</span></div><h1>{nameRead.data}</h1><p className="tokenSymbol">${symbolRead.data}</p>{metadata?.description && <p className="tokenDescription">{metadata.description}</p>}<div className="tokenHeroActions"><WatchlistButton address={tokenAddress} name={nameRead.data} symbol={symbolRead.data} image={metadata?.image} compactLabel /><TokenShareActions address={tokenAddress} name={nameRead.data} symbol={symbolRead.data} /></div></div>
+        <div className="tokenHeroCopy"><div className="tokenOriginLine"><p className="eyebrow">RMT V6 · ORIGIN VERIFIED</p><span>Live on {activeNetworkLabel}</span></div><h1>{nameRead.data}</h1><p className="tokenSymbol">${symbolRead.data}</p>{metadata?.description && <p className="tokenDescription">{metadata.description}</p>}<div className="tokenHeroActions"><WatchlistButton address={tokenAddress} name={nameRead.data} symbol={symbolRead.data} image={metadata?.image} launchId={launch.launchId.toString()} compactLabel /><TokenShareActions address={tokenAddress} name={nameRead.data} symbol={symbolRead.data} launchId={launch.launchId.toString()} /></div></div>
       </section>
-      <MarketPanel tokenAddress={tokenAddress} symbol={symbolRead.data} totalSupply={supplyRead.data} creator={creatorRead.data} launchHint={launchHint} />
+      <MarketPanel tokenAddress={tokenAddress} symbol={symbolRead.data} totalSupply={supplyRead.data} creator={creatorRead.data} launchHint={verifiedLaunchHint} />
       <section className="panel tokenInfoPanel">
         <div className="tokenInfoTabs" role="tablist" aria-label="Token information"><button type="button" role="tab" aria-selected={infoTab === "overview"} className={infoTab === "overview" ? "active" : ""} onClick={() => setInfoTab("overview")}>Overview</button><button type="button" role="tab" aria-selected={infoTab === "rewards"} className={infoTab === "rewards" ? "active" : ""} onClick={() => setInfoTab("rewards")}>Graduation & rewards</button><button type="button" role="tab" aria-selected={infoTab === "about"} className={infoTab === "about" ? "active" : ""} onClick={() => setInfoTab("about")}>About</button></div>
         {infoTab === "overview" && <div className="tokenInfoPane overviewPane"><section><p className="eyebrow">TOKEN RULES</p><h2>Fixed and transparent</h2><div className="safetyList compactSafetyList"><span>✓ Fixed supply</span><span>✓ No mint</span><span>✓ No blacklist</span><span>✓ No transfer tax</span><span>✓ No upgrade proxy</span></div></section><section><p className="eyebrow">ONCHAIN DATA</p><h2>Contract details</h2><dl><dt>Protocol origin</dt><dd>RMT V6 launch #{launch.launchId.toString()}</dd><dt>Total supply</dt><dd>{Number(formatUnits(supplyRead.data, 18)).toLocaleString(undefined, { maximumFractionDigits: 0 })}</dd><dt>Original launch creator</dt><dd title={creatorRead.data}>{shortAddress(creatorRead.data)}</dd><dt>Token contract</dt><dd title={tokenAddress}>{shortAddress(tokenAddress)}</dd></dl><a className="explorerLink" href={explorer} target="_blank" rel="noreferrer">Open verified token ↗</a></section></div>}
-        {infoTab === "rewards" && <div className="tokenInfoPane rewardsPane"><RewardVaultPanel tokenAddress={tokenAddress} symbol={symbolRead.data} /></div>}
+        {infoTab === "rewards" && <div className="tokenInfoPane rewardsPane"><RewardVaultPanel tokenAddress={tokenAddress} symbol={symbolRead.data} launchHint={verifiedLaunchHint} /></div>}
         {infoTab === "about" && <div className="tokenInfoPane aboutPane"><section><p className="eyebrow">PROJECT</p><h2>{nameRead.data}</h2><p>{metadata?.description || "No project description was included in this token’s permanent launch metadata."}</p>{metadata && (metadata.website || metadata.x || metadata.telegram) && <div className="socialLinks">{metadata.website && <a href={metadata.website} target="_blank" rel="noopener noreferrer">Website ↗</a>}{metadata.x && <a href={metadata.x} target="_blank" rel="noopener noreferrer">X ↗</a>}{metadata.telegram && <a href={metadata.telegram} target="_blank" rel="noopener noreferrer">Telegram ↗</a>}</div>}</section><section className="metadataPanel"><p className="eyebrow">METADATA</p><h2>Permanent launch record</h2><div className="metadataStatus"><span>{metadataRead.data.startsWith("ipfs://") ? "IPFS content address" : "Onchain launch record"}</span><code>{metadataRead.data}</code></div></section></div>}
       </section>
     </main>
