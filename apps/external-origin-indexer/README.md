@@ -18,6 +18,17 @@ This commit is a source-only, zero-adapter scaffold with a compile-time activati
 
 The Railway definition checks `/ready`. That endpoint always returns `503` in this version, even if someone adds a manifest, because `EXTERNAL_ORIGIN_ATTRIBUTION_ACTIVATION_LOCKED` is compiled as `true`. Removing the lock requires a separate implementation and review.
 
+## Bow candidate research (not enabled)
+
+The repository contains a proof-pinned Bow.fun candidate decoder. It is research code, not an adapter:
+
+- Bow's [official documentation](https://bow.fun/docs.html) binds the current factory, exact `Launched` ABI, and canonical event signature.
+- The factory is pinned to `0xc70e510e14710ea535cab7b2414860af63feab79`, deployment block `7158095`, deployment block hash `0xfe25444d15866ce7fcb22a009148836eb98b45670908d8144b5c5fb38d1a8409`, and deployed runtime code hash `0x8d56cbcdf72dbf04ed8170d55878cc894997ccc54c2ab0aec782274eb7fe7a14`.
+- Two independent successful factory receipts are committed as decoder fixtures with exact emitter, topics, data, transaction hash, log index, block, and block hash.
+- The decoder rejects removed logs, pre-deployment logs, the wrong emitter or topic, non-canonical ABI address padding, malformed data, invalid hashes, and invalid log indexes.
+
+The candidate is deliberately absent from `externalOriginAdapters`. The [factory's Blockscout record](https://robinhoodchain.blockscout.com/address/0xC70E510E14710Ea535CAB7b2414860aF63FEab79?tab=contract) still presents `Verify & publish`, so source verification is incomplete. RPC backfill, finality/reorg execution, and independent shadow comparison are also not implemented. CI asserts the registry stays empty and the activation lock continues to prevent readiness or claims.
+
 ## Isolation boundary
 
 The service requires its own PostgreSQL database through `EXTERNAL_ORIGIN_DATABASE_URL`.
@@ -114,6 +125,7 @@ pnpm --filter external-origin-indexer typecheck
 pnpm --filter external-origin-indexer build
 pnpm --filter external-origin-indexer test:schema
 pnpm --filter external-origin-indexer test:api
+pnpm --filter external-origin-indexer test:candidates
 ```
 
 Tests cover concurrent/idempotent migration, database isolation, schema drift, manifest mutation, versioned factories, source-list exclusion, duplicate/conflicting origin evidence, checkpoint mismatches, reorg cleanup, block ranges, authentication, activation lock, and exact API responses.
