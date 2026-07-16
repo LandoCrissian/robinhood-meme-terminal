@@ -11,26 +11,21 @@ import {
   type ExternalOriginAdapterManifest
 } from "./adapter-registry.js";
 import {
-  EXTERNAL_ORIGIN_CHAIN_ID,
-  EXTERNAL_ORIGIN_SCHEMA_VERSION
+  EXTERNAL_ORIGIN_ATTRIBUTION_ACTIVATION_LOCKED,
+  EXTERNAL_ORIGIN_CHAIN_ID
 } from "./config.js";
-import type {
-  ExternalAdapterState,
-  ExternalOriginStoreLike
-} from "./origin-store.js";
+import type { ExternalOriginStoreLike } from "./origin-store.js";
 
 const ADDRESS_PATTERN = /^0x[0-9a-fA-F]{40}$/;
 const MAX_TOKENS = 100;
 
 type ServiceReadiness = {
   ok: boolean;
-  attributionReady: boolean;
-  coverage: "complete" | "unavailable";
+  attributionReady: false;
+  coverage: "unavailable";
   configuredAdapters: number;
-  enabledAdapters: number;
-  readyAdapters: number;
-  readyManifests: readonly ExternalOriginAdapterManifest[];
-  readyStates: readonly ExternalAdapterState[];
+  enabledAdapters: 0;
+  readyAdapters: 0;
   error: string | null;
 };
 
@@ -94,74 +89,29 @@ function parseTokens(url: URL) {
   return [...new Set(tokens.map((token) => token.toLowerCase()))];
 }
 
-function stateMatchesManifest(
-  state: ExternalAdapterState | undefined,
-  manifest: ExternalOriginAdapterManifest
-) {
-  return Boolean(
-    state &&
-      state.status === "ready" &&
-      state.nextBlock !== manifest.startBlock.toString() &&
-      state.lastSyncAt !== null &&
-      state.lastError === null &&
-      state.sourceId === manifest.sourceId &&
-      state.sourceName === manifest.sourceName &&
-      state.factory === manifest.factory.toLowerCase() &&
-      state.startBlock === manifest.startBlock.toString() &&
-      state.manifestHash === manifest.manifestHash.toLowerCase() &&
-      state.schemaVersion === manifest.schemaVersion
-  );
-}
-
 async function serviceReadiness(
   store: ExternalOriginStoreLike,
   adapters: readonly ExternalOriginAdapterManifest[]
 ): Promise<ServiceReadiness> {
-  const configuredAdapters = adapters.length;
-  const enabledAdapters = adapters.length;
-
   try {
     await store.ping();
-    const states = await store.adapterStates(
-      adapters.map((adapter) => adapter.adapterId)
-    );
-    const statesById = new Map(
-      states.map((state) => [state.adapterId, state])
-    );
-    const readyManifests = adapters.filter((manifest) =>
-      stateMatchesManifest(statesById.get(manifest.adapterId), manifest)
-    );
-    const readyStates = readyManifests.flatMap((manifest) => {
-      const state = statesById.get(manifest.adapterId);
-      return state ? [state] : [];
-    });
-    const attributionReady =
-      enabledAdapters > 0 && readyManifests.length === enabledAdapters;
-
     return {
       ok: true,
-      attributionReady,
-      coverage: attributionReady ? "complete" : "unavailable",
-      configuredAdapters,
-      enabledAdapters,
-      readyAdapters: readyManifests.length,
-      readyManifests,
-      readyStates,
-      error:
-        enabledAdapters > 0 && !attributionReady
-          ? "attribution_not_ready"
-          : null
+      attributionReady: false,
+      coverage: "unavailable",
+      configuredAdapters: adapters.length,
+      enabledAdapters: 0,
+      readyAdapters: 0,
+      error: adapters.length > 0 ? "activation_locked" : null
     };
   } catch {
     return {
       ok: false,
       attributionReady: false,
       coverage: "unavailable",
-      configuredAdapters,
-      enabledAdapters,
+      configuredAdapters: adapters.length,
+      enabledAdapters: 0,
       readyAdapters: 0,
-      readyManifests: [],
-      readyStates: [],
       error: "database_unavailable"
     };
   }
@@ -173,39 +123,13 @@ function publicHealth(readiness: ServiceReadiness) {
     mode: "shadow",
     chainId: EXTERNAL_ORIGIN_CHAIN_ID,
     servingProductionTraffic: false,
-    attributionReady: readiness.attributionReady,
-    coverage: readiness.coverage,
+    attributionReady: false,
+    coverage: "unavailable",
     configuredAdapters: readiness.configuredAdapters,
-    enabledAdapters: readiness.enabledAdapters,
-    readyAdapters: readiness.readyAdapters,
+    enabledAdapters: 0,
+    readyAdapters: 0,
     error: readiness.error
   };
-}
-
-function adapterSummaries(
-  manifests: readonly ExternalOriginAdapterManifest[]
-) {
-  return manifests.map((manifest) => ({
-    adapterId: manifest.adapterId,
-    sourceId: manifest.sourceId,
-    sourceName: manifest.sourceName,
-    sourceUrl: manifest.sourceUrl,
-    evidenceUrl: manifest.evidenceUrl,
-    factory: manifest.factory.toLowerCase(),
-    manifestHash: manifest.manifestHash.toLowerCase(),
-    schemaVersion: manifest.schemaVersion
-  }));
-}
-
-function indexedThrough(states: readonly ExternalAdapterState[]) {
-  if (states.length === 0) return null;
-
-  let minimum: bigint | null = null;
-  for (const state of states) {
-    const value = BigInt(state.nextBlock) - 1n;
-    if (minimum === null || value < minimum) minimum = value;
-  }
-  return minimum?.toString() ?? null;
 }
 
 async function handleRequest(
@@ -215,9 +139,12 @@ async function handleRequest(
 ) {
   const url = new URL(request.url ?? "/", "http://external-origin.local");
   if (request.method !== "GET") {
-    sendJson(response, 405, { error: "method_not_allowed" }, {
-      Allow: "GET"
-    });
+    sendJson(
+      response,
+      405,
+      { error: "method_not_allowed" },
+      { Allow: "GET" }
+    );
     return;
   }
 
@@ -235,13 +162,14 @@ async function handleRequest(
       options.store,
       options.adapters
     );
-    const ready = readiness.ok && readiness.attributionReady;
-    sendJson(response, ready ? 200 : 503, {
+    sendJson(response, 503, {
       ...publicHealth(readiness),
-      ready,
-      reason: ready
-        ? null
-        : readiness.error ?? "no_verified_adapters"
+      ready: false,
+      reason:
+        readiness.error ??
+        (options.adapters.length > 0
+          ? "activation_locked"
+          : "no_verified_adapters")
     });
     return;
   }
@@ -261,9 +189,8 @@ async function handleRequest(
     return;
   }
 
-  let tokens: string[];
   try {
-    tokens = parseTokens(url);
+    parseTokens(url);
   } catch (error) {
     sendJson(response, 400, {
       error: "invalid_tokens",
@@ -290,30 +217,29 @@ async function handleRequest(
     return;
   }
 
-  const activeManifests = readiness.attributionReady
-    ? readiness.readyManifests
-    : [];
-  const activeAdapterIds = activeManifests.map(
-    (manifest) => manifest.adapterId
-  );
-  const claims = await options.store.originClaims(tokens, activeAdapterIds);
-
+  // This release intentionally has no path that can serve origin claims.
+  // Activation requires a separate reviewed implementation that atomically
+  // proves finalized coverage, freshness, manifest identity, and checkpoints.
   sendJson(response, 200, {
     chainId: EXTERNAL_ORIGIN_CHAIN_ID,
     mode: "shadow",
-    authoritative: readiness.attributionReady,
-    coverage: readiness.coverage,
-    enabledAdapters: adapterSummaries(activeManifests),
-    claims: readiness.attributionReady ? claims : [],
-    indexedThrough: readiness.attributionReady
-      ? indexedThrough(readiness.readyStates)
-      : null
+    authoritative: false,
+    coverage: "unavailable",
+    enabledAdapters: [],
+    claims: [],
+    indexedThrough: null
   });
 }
 
 export function createExternalOriginServer(
   options: CreateExternalOriginServerOptions
 ): Server {
+  if (!EXTERNAL_ORIGIN_ATTRIBUTION_ACTIVATION_LOCKED) {
+    throw new Error(
+      "Attribution activation requires a reviewed server implementation"
+    );
+  }
+
   const tokenBytes = Buffer.byteLength(options.readToken, "utf8");
   if (tokenBytes < 32 || tokenBytes > 512) {
     throw new Error("readToken must contain 32 to 512 bytes");
