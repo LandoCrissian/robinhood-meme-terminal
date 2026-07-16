@@ -449,10 +449,22 @@ export async function assertExternalOriginSchema(
     constraint_name: string;
     constraint_type: string;
   }>(
-    `SELECT constraint_name, constraint_type
-     FROM information_schema.table_constraints
-     WHERE constraint_schema = $1
-       AND table_name = ANY($2::text[])`,
+    `SELECT constraint.conname AS constraint_name,
+            CASE constraint.contype
+              WHEN 'p' THEN 'PRIMARY KEY'
+              WHEN 'u' THEN 'UNIQUE'
+              WHEN 'f' THEN 'FOREIGN KEY'
+              WHEN 'c' THEN 'CHECK'
+              ELSE constraint.contype::TEXT
+            END AS constraint_type
+     FROM pg_constraint AS constraint
+     JOIN pg_class AS relation
+       ON relation.oid = constraint.conrelid
+     JOIN pg_namespace AS namespace
+       ON namespace.oid = relation.relnamespace
+     WHERE namespace.nspname = $1
+       AND relation.relname = ANY($2::text[])
+       AND constraint.contype IN ('p', 'u', 'f', 'c')`,
     [schemaName, EXPECTED_TABLES]
   );
   assertExactSet(
