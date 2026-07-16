@@ -221,3 +221,77 @@ try {
     server.closeIdleConnections();
   });
 }
+
+
+const lockedAdapterServer = createExternalOriginServer({
+  store,
+  readToken,
+  adapters: [manifest]
+});
+await new Promise<void>((resolve, reject) => {
+  lockedAdapterServer.once("error", reject);
+  lockedAdapterServer.listen(0, "127.0.0.1", resolve);
+});
+const lockedAddress = lockedAdapterServer.address();
+if (!lockedAddress || typeof lockedAddress === "string") {
+  throw new Error("Locked-adapter API smoke server did not bind");
+}
+const lockedBaseUrl =
+  `http://127.0.0.1:${(lockedAddress as AddressInfo).port}`;
+
+try {
+  const health = await fetch(lockedBaseUrl + "/health");
+  assert.equal(health.status, 200);
+  assert.deepEqual(await json(health), {
+    ok: true,
+    mode: "shadow",
+    chainId: 4663,
+    servingProductionTraffic: false,
+    attributionReady: false,
+    coverage: "unavailable",
+    configuredAdapters: 1,
+    enabledAdapters: 0,
+    readyAdapters: 0,
+    error: "activation_locked"
+  });
+
+  const ready = await fetch(lockedBaseUrl + "/ready");
+  assert.equal(ready.status, 503);
+  assert.deepEqual(await json(ready), {
+    ok: true,
+    mode: "shadow",
+    chainId: 4663,
+    servingProductionTraffic: false,
+    attributionReady: false,
+    coverage: "unavailable",
+    configuredAdapters: 1,
+    enabledAdapters: 0,
+    readyAdapters: 0,
+    error: "activation_locked",
+    ready: false,
+    reason: "activation_locked"
+  });
+
+  const origin = await fetch(
+    lockedBaseUrl + "/v1/origins?tokens=" + address,
+    { headers: authorization }
+  );
+  assert.equal(origin.status, 200);
+  assert.deepEqual(await json(origin), {
+    chainId: 4663,
+    mode: "shadow",
+    authoritative: false,
+    coverage: "unavailable",
+    enabledAdapters: [],
+    claims: [],
+    indexedThrough: null
+  });
+
+  assert.equal(pingCalls, 6);
+  console.info("Activation lock synthetic-adapter test passed.");
+} finally {
+  await new Promise<void>((resolve) => {
+    lockedAdapterServer.close(() => resolve());
+    lockedAdapterServer.closeIdleConnections();
+  });
+}

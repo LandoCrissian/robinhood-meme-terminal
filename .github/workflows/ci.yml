@@ -84,6 +84,7 @@ jobs:
       - run: pnpm --filter external-origin-indexer build
       - run: pnpm --filter external-origin-indexer test:schema
       - run: pnpm --filter external-origin-indexer test:api
+      - run: pnpm --filter external-origin-indexer test:candidates
 
   contracts:
     runs-on: ubuntu-latest
