@@ -9,6 +9,8 @@ import {
 export const BOW_MAX_SHADOW_REPLAY_BLOCKS = 2_000n;
 export const BOW_MAX_SHADOW_REPLAY_LOGS = 10_000;
 export const BOW_MAX_SHADOW_RECEIPT_LOGS = 50_000;
+export const BOW_MAX_RECEIPT_LOG_DATA_BYTES = 128 * 1_024;
+export const BOW_MAX_SHADOW_RECEIPT_DATA_BYTES = 16 * 1_024 * 1_024;
 
 const ADDRESS_PATTERN = /^0x[0-9a-f]{40}$/;
 const HASH_PATTERN = /^0x[0-9a-f]{64}$/;
@@ -199,7 +201,12 @@ function canonicalReceiptLog(log: BowReplayReceiptLog) {
   for (const [index, topic] of log.topics.entries()) {
     requireWord(topic, `log topic ${index}`);
   }
-  if (!DATA_PATTERN.test(log.data) || log.data.length % 2 !== 0) {
+  if (
+    typeof log.data !== "string" ||
+    log.data.length > BOW_MAX_RECEIPT_LOG_DATA_BYTES * 2 + 2 ||
+    !DATA_PATTERN.test(log.data) ||
+    log.data.length % 2 !== 0
+  ) {
     reject("receipt log data must be canonical lowercase hex bytes");
   }
   return JSON.stringify({
@@ -295,12 +302,21 @@ export function validateBowShadowReplay(
     transcript.parentCheckpoint.parentHash,
     "parent checkpoint parentHash"
   );
+  if (
+    transcript.parentCheckpoint.blockHash ===
+    transcript.parentCheckpoint.parentHash
+  ) {
+    reject("parent checkpoint cannot reference itself");
+  }
 
   if (BigInt(transcript.blocks.length) !== blockCount) {
     reject("canonical header coverage is incomplete");
   }
   let previous = transcript.parentCheckpoint;
   const blockByNumber = new Map<bigint, BowReplayBlockHeader>();
+  const seenBlockHashes = new Set<string>([
+    transcript.parentCheckpoint.blockHash
+  ]);
   for (let index = 0; index < transcript.blocks.length; index += 1) {
     const block = transcript.blocks[index]!;
     const expectedNumber = fromBlock + BigInt(index);
@@ -309,6 +325,9 @@ export function validateBowShadowReplay(
     }
     const blockHash = requireHash(block.blockHash, "block hash");
     const parentHash = requireHash(block.parentHash, "block parentHash");
+    if (blockHash === parentHash || seenBlockHashes.has(blockHash)) {
+      reject("canonical headers contain a repeated or self-parent block hash");
+    }
     if (parentHash !== previous.blockHash) {
       reject("canonical header parent linkage is broken");
     }
@@ -319,6 +338,7 @@ export function validateBowShadowReplay(
       reject("deployment block hash conflicts with the pinned candidate");
     }
     blockByNumber.set(block.blockNumber, block);
+    seenBlockHashes.add(blockHash);
     previous = block;
   }
 
@@ -556,7 +576,15 @@ export function validateBowShadowReplay(
   }
   const receiptLogs = new Map<string, string>();
   const receiptTransactions = new Set<string>();
+  const rawReceiptLogCoordinates = new Set<string>();
+  const receiptLogBounds: Array<{
+    blockNumber: bigint;
+    transactionIndex: number;
+    minimumLogIndex: number;
+    maximumLogIndex: number;
+  }> = [];
   let totalReceiptLogs = 0;
+  let totalReceiptDataBytes = 0;
   for (const receipt of transcript.receipts) {
     const transactionHash = requireHash(
       receipt.transactionHash,
@@ -590,8 +618,14 @@ export function validateBowShadowReplay(
     }
     let priorReceiptLog: BowReplayReceiptLog | undefined;
     let launchedLogsInReceipt = 0;
+    let minimumLogIndex = Number.POSITIVE_INFINITY;
+    let maximumLogIndex = -1;
     for (const log of receipt.logs) {
       canonicalReceiptLog(log);
+      totalReceiptDataBytes += Math.max(0, (log.data.length - 2) / 2);
+      if (totalReceiptDataBytes > BOW_MAX_SHADOW_RECEIPT_DATA_BYTES) {
+        reject("receipt data exceeds the replay safety bound");
+      }
       if (log.transactionHash !== transactionHash) {
         reject("receipt contains a log from another transaction");
       }
@@ -606,6 +640,13 @@ export function validateBowShadowReplay(
         reject("full receipt logs are duplicated or reordered");
       }
       priorReceiptLog = log;
+      const rawCoordinate = `${log.blockNumber}:${log.logIndex}`;
+      if (rawReceiptLogCoordinates.has(rawCoordinate)) {
+        reject("duplicate global raw-receipt log coordinate");
+      }
+      rawReceiptLogCoordinates.add(rawCoordinate);
+      minimumLogIndex = Math.min(minimumLogIndex, log.logIndex);
+      maximumLogIndex = Math.max(maximumLogIndex, log.logIndex);
       if (!isBowLaunchedReceiptLog(log)) continue;
       launchedLogsInReceipt += 1;
       const identity = logIdentity(log);
@@ -614,6 +655,28 @@ export function validateBowShadowReplay(
     }
     if (launchedLogsInReceipt < 1) {
       reject("receipt omits its expected Bow launch log");
+    }
+    receiptLogBounds.push({
+      blockNumber: receipt.blockNumber,
+      transactionIndex: receipt.transactionIndex,
+      minimumLogIndex,
+      maximumLogIndex
+    });
+  }
+  receiptLogBounds.sort((left, right) => {
+    if (left.blockNumber !== right.blockNumber) {
+      return left.blockNumber < right.blockNumber ? -1 : 1;
+    }
+    return left.transactionIndex - right.transactionIndex;
+  });
+  for (let index = 1; index < receiptLogBounds.length; index += 1) {
+    const prior = receiptLogBounds[index - 1]!;
+    const current = receiptLogBounds[index]!;
+    if (
+      prior.blockNumber === current.blockNumber &&
+      prior.maximumLogIndex >= current.minimumLogIndex
+    ) {
+      reject("raw receipt logIndex regresses across transactions");
     }
   }
   if (receiptLogs.size !== transcript.logs.length) {
