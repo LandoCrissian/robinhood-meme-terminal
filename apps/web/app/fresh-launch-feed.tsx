@@ -322,6 +322,7 @@ export function FreshLaunchFeed() {
   const viewCopy = VIEW_COPY[view];
 
   const changeView = (nextView: RmtDiscoveryView) => {
+    didSelectInitialView.current = true;
     setView(nextView);
     setShowAll(false);
   };
