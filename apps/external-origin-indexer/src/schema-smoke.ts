@@ -52,7 +52,9 @@ async function expectPgFailure(
 const pool = new Pool({
   connectionString: databaseUrl,
   ssl:
-    process.env.PGSSLMODE?.trim().toLowerCase() === "disable",
+    process.env.PGSSLMODE?.trim().toLowerCase() === "disable"
+      ? false
+      : true,
   max: 4
 });
 
