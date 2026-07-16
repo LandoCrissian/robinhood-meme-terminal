@@ -46,14 +46,14 @@ assert.equal(externalOriginAdapters.length, 0);
 
 assert.deepEqual(decodeBowLaunchedLog(firstLog), {
   token: "0x384f2d52ca2eced3f9ed3555b63601327115fb03",
-  creator: "0x0a5f25a3dd2d707abe9b43393f01fc80655a733f",
+  deployer: "0x0a5f25a3dd2d707abe9b43393f01fc80655a733f",
   pool: "0xaa0d101b6fb82d81de481a97399d309e9afad07e",
   positionId: 156_882n,
   launchId: 1_053n
 });
 assert.deepEqual(decodeBowLaunchedLog(secondLog), {
   token: "0x956526231231872760f4e9b47f97b52593e77b03",
-  creator: "0x188646a38ebca3011833bc52abacb58efa5e340e",
+  deployer: "0x188646a38ebca3011833bc52abacb58efa5e340e",
   pool: "0x30215daa5629660505cf62cc9c3a952f51c995fc",
   positionId: 154_188n,
   launchId: 1_052n
@@ -77,6 +77,7 @@ const rejectedLogs: readonly BowRawLaunchedLog[] = [
   { ...firstLog, blockHash: "0x1234" },
   { ...firstLog, blockHash: `0x${"0".repeat(64)}` },
   { ...firstLog, transactionHash: `0x${"4".repeat(63)}` },
+  { ...firstLog, transactionHash: `0x${"0".repeat(64)}` },
   { ...firstLog, logIndex: -1 }
 ];
 for (const log of rejectedLogs) {
