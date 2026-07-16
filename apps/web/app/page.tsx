@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { DiscoverySearch } from "./discovery-search";
+import { ExternalMarketFeed } from "./external-market-feed";
 import { FreshLaunchFeed } from "./fresh-launch-feed";
+import { LaunchpadNetwork } from "./launchpad-network";
 import { PortfolioPanel } from "./portfolio-panel";
 import { WalletButton } from "./wallet-button";
 import { WatchlistPanel } from "./watchlist-panel";
@@ -18,13 +20,15 @@ export default function Home() {
       </nav>
 
       <section className="terminalIntro">
-        <div><p className="eyebrow">ROBINHOOD CHAIN · {isMainnetRelease ? "V6 MAINNET" : "V6 TESTNET"}</p><h1>Discover. Trade. Launch.</h1><p>Verified RMT V6 markets, live onchain activity, and transparent creator rewards in one terminal.</p></div>
+        <div><p className="eyebrow">ROBINHOOD CHAIN · {isMainnetRelease ? "V6 MAINNET" : "V6 TESTNET"}</p><h1>Discover. Trade. Launch.</h1><p>Verified RMT V6 launches plus clearly labeled external Robinhood Chain market discovery in one terminal.</p></div>
         <div className="terminalIntroActions"><a className="primaryAction" href="#explore">View live tokens</a><Link className="secondaryAction" href="/launch">Launch yours</Link></div>
         <div className="trustStrip"><span>Fixed supply</span><span>No transfer tax</span><span>Permissionless graduation</span></div>
       </section>
 
       <DiscoverySearch />
       <FreshLaunchFeed />
+      <LaunchpadNetwork />
+      <ExternalMarketFeed />
       <PortfolioPanel />
       <WatchlistPanel />
 
