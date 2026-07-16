@@ -149,7 +149,7 @@ pnpm --filter external-origin-indexer test:candidates
 pnpm --filter external-origin-indexer test:shadow-replay
 ```
 
-Tests cover concurrent/idempotent migration, database isolation, schema drift, manifest mutation, versioned factories, source-list exclusion, duplicate/conflicting origin evidence, checkpoint mismatches, reorg cleanup, block ranges, authentication, activation lock, exact API responses, zero-indexed Bow replay accounting, and adversarial whole-window rejection.
+Tests cover concurrent/idempotent migration, database isolation, schema drift, manifest mutation, versioned factories, source-list exclusion, duplicate/conflicting origin evidence, checkpoint mismatches, reorg cleanup, block ranges, authentication, activation lock, exact API responses, candidate-assumed zero-index replay accounting, and adversarial whole-window rejection.
 
 ## First-adapter activation gate
 
