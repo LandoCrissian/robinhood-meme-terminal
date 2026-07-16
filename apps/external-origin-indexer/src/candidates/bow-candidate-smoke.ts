@@ -75,6 +75,7 @@ const rejectedLogs: readonly BowRawLaunchedLog[] = [
   },
   { ...firstLog, data: firstLog.data.slice(0, -2) },
   { ...firstLog, blockHash: "0x1234" },
+  { ...firstLog, blockHash: `0x${"0".repeat(64)}` },
   { ...firstLog, transactionHash: `0x${"4".repeat(63)}` },
   { ...firstLog, logIndex: -1 }
 ];
