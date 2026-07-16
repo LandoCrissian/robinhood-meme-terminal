@@ -1,4 +1,4 @@
-import { timingSafeEqual } from "node:crypto";
+import { createHash, timingSafeEqual } from "node:crypto";
 import {
   createServer,
   type IncomingMessage,
@@ -7,6 +7,7 @@ import {
 } from "node:http";
 import {
   externalOriginAdapters,
+  validateExternalOriginAdapters,
   type ExternalOriginAdapterManifest
 } from "./adapter-registry.js";
 import {
@@ -58,17 +59,25 @@ function sendJson(
 
 function hasValidBearer(request: IncomingMessage, expectedToken: string) {
   const header = request.headers.authorization;
-  if (!header?.startsWith("Bearer ")) return false;
+  if (!header || header.length > 1_024) return false;
 
-  const received = Buffer.from(header.slice("Bearer ".length), "utf8");
-  const expected = Buffer.from(expectedToken, "utf8");
-  return (
-    received.length === expected.length &&
-    timingSafeEqual(received, expected)
-  );
+  const match = /^Bearer ([A-Za-z0-9._~+/=-]+)$/i.exec(header);
+  if (!match?.[1]) return false;
+
+  const received = createHash("sha256")
+    .update(match[1], "utf8")
+    .digest();
+  const expected = createHash("sha256")
+    .update(expectedToken, "utf8")
+    .digest();
+  return timingSafeEqual(received, expected);
 }
 
 function parseTokens(url: URL) {
+  if ([...url.searchParams.keys()].some((name) => name !== "tokens")) {
+    throw new Error("tokens is the only supported query parameter");
+  }
+
   const values = url.searchParams.getAll("tokens");
   if (values.length !== 1 || values[0] === undefined) {
     throw new Error("tokens must be supplied exactly once");
@@ -92,6 +101,7 @@ function stateMatchesManifest(
   return Boolean(
     state &&
       state.status === "ready" &&
+      state.nextBlock !== manifest.startBlock.toString() &&
       state.lastSyncAt !== null &&
       state.lastError === null &&
       state.sourceId === manifest.sourceId &&
@@ -179,9 +189,11 @@ function adapterSummaries(
     adapterId: manifest.adapterId,
     sourceId: manifest.sourceId,
     sourceName: manifest.sourceName,
+    sourceUrl: manifest.sourceUrl,
+    evidenceUrl: manifest.evidenceUrl,
     factory: manifest.factory.toLowerCase(),
     manifestHash: manifest.manifestHash.toLowerCase(),
-    schemaVersion: EXTERNAL_ORIGIN_SCHEMA_VERSION
+    schemaVersion: manifest.schemaVersion
   }));
 }
 
@@ -278,20 +290,20 @@ async function handleRequest(
     return;
   }
 
-  const activeAdapterIds = readiness.attributionReady
-    ? readiness.readyManifests.map((manifest) => manifest.adapterId)
+  const activeManifests = readiness.attributionReady
+    ? readiness.readyManifests
     : [];
-  const claims = await options.store.originClaims(
-    tokens,
-    activeAdapterIds
+  const activeAdapterIds = activeManifests.map(
+    (manifest) => manifest.adapterId
   );
+  const claims = await options.store.originClaims(tokens, activeAdapterIds);
 
   sendJson(response, 200, {
     chainId: EXTERNAL_ORIGIN_CHAIN_ID,
     mode: "shadow",
     authoritative: readiness.attributionReady,
     coverage: readiness.coverage,
-    enabledAdapters: adapterSummaries(readiness.readyManifests),
+    enabledAdapters: adapterSummaries(activeManifests),
     claims: readiness.attributionReady ? claims : [],
     indexedThrough: readiness.attributionReady
       ? indexedThrough(readiness.readyStates)
@@ -302,27 +314,22 @@ async function handleRequest(
 export function createExternalOriginServer(
   options: CreateExternalOriginServerOptions
 ): Server {
-  if (options.readToken.length < 32) {
-    throw new Error("readToken must contain at least 32 characters");
+  const tokenBytes = Buffer.byteLength(options.readToken, "utf8");
+  if (tokenBytes < 32 || tokenBytes > 512) {
+    throw new Error("readToken must contain 32 to 512 bytes");
   }
 
-  const adapters =
+  const adapters = validateExternalOriginAdapters(
     options.adapters ?? (
       externalOriginAdapters as readonly ExternalOriginAdapterManifest[]
-    );
-  if (
-    new Set(adapters.map((adapter) => adapter.adapterId)).size !==
-    adapters.length
-  ) {
-    throw new Error("External-origin adapter IDs must be unique");
-  }
-
+    )
+  );
   const completeOptions: Required<CreateExternalOriginServerOptions> = {
     ...options,
     adapters
   };
 
-  return createServer((request, response) => {
+  const server = createServer((request, response) => {
     void handleRequest(request, response, completeOptions).catch(() => {
       if (!response.headersSent) {
         sendJson(response, 500, { error: "internal_error" });
@@ -331,4 +338,9 @@ export function createExternalOriginServer(
       }
     });
   });
+  server.requestTimeout = 15_000;
+  server.headersTimeout = 10_000;
+  server.keepAliveTimeout = 5_000;
+  server.maxHeadersCount = 64;
+  return server;
 }
