@@ -227,6 +227,7 @@ export function FreshLaunchFeed() {
   const [quickTrade, setQuickTrade] = useState<{ launch: LaunchFeedItem; side: "buy" | "sell" }>();
   const [rankingAnnouncement, setRankingAnnouncement] = useState("");
   const restoredQuickTrade = useRef(false);
+  const didSelectInitialView = useRef(false);
   const rankInitialized = useRef(false);
   const nextRankRefresh = useRef(0);
   const returnFocusTo = useRef<HTMLElement | null>(null);
@@ -310,11 +311,18 @@ export function FreshLaunchFeed() {
     new: currentLaunchesForView(launches, rankingOrders.new, "new")
   }), [launches, rankingOrders]);
 
+  useEffect(() => {
+    if (didSelectInitialView.current || status !== "live" || launches.length === 0) return;
+    didSelectInitialView.current = true;
+    if (launchesByView.moving.length === 0 && launchesByView.new.length > 0) setView("new");
+  }, [launches.length, launchesByView.moving.length, launchesByView.new.length, status]);
+
   const orderedLaunches = launchesByView[view];
   const visibleLaunches = showAll ? orderedLaunches : orderedLaunches.slice(0, MAX_VISIBLE_LAUNCHES);
   const viewCopy = VIEW_COPY[view];
 
   const changeView = (nextView: RmtDiscoveryView) => {
+    didSelectInitialView.current = true;
     setView(nextView);
     setShowAll(false);
   };
