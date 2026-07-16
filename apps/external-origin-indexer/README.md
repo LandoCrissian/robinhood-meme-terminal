@@ -33,17 +33,20 @@ The candidate is deliberately absent from `externalOriginAdapters`. The [factory
 
 The `shadow/` directory now contains a pure transcript validator and bounded inclusive block-range planner. It is outside `src/`, excluded from the runtime build, and never imported by `index.ts`. It accepts caller-prepared data only: there is still no RPC client, worker, environment switch, database writer, adapter registration, API claim, web consumer, or deployment path.
 
-A replay window is accepted only when its supplied facts agree on the pinned chain and deployment anchor, contiguous canonical headers, exact block-hash tags, factory runtime boundaries, zero-indexed `launchCount()` accounting, ordered `Launched` logs, successful receipts, `launches(id)` state, and nonempty token/pool runtime code. Any gap, fork, omission, duplicate, reordering, failed receipt, counter mismatch, state mismatch, or missing code rejects the entire window. The output is frozen, deterministic, and explicitly marks itself unverified, nonauthoritative, activation-ineligible, unpersisted, and not an adapter claim. Bow's event field remains `deployer`; it is never converted to the RMT claim model's `creator`.
+A replay window is accepted only when its supplied facts agree on the pinned chain, candidate, factory, and deployment anchor; bounded contiguous headers; exact block-hash tags; factory runtime boundaries; candidate-assumed zero-indexed `launchCount()` accounting; globally ordered `Launched` logs; complete successful receipt logs; `launches(id)` state; and nonempty token/pool runtime code. Call observations must name the exact Bow factory and function. Any gap, fork, omission, duplicate, coordinate conflict, reordering, failed receipt, counter mismatch, state mismatch, role collision, or missing code rejects the entire window. The output is frozen, deterministic, and explicitly marks itself unverified, nonauthoritative, activation-ineligible, unpersisted, and not an adapter claim. Bow's event field remains `deployer`; it is never converted to the RMT claim model's `creator`.
 
 This is a safety harness, not a completed backfill:
 
 - one provider can fabricate a self-consistent transcript
 - the supplied runtime hash is compared with the pin but is not yet recomputed locally from raw bytecode
-- a finalized-head anchor above the window does not prove ancestry by itself
-- deployment-boundary bootstrap, independent archival-provider comparison, RPC collection, reorg execution, and persistence remain unimplemented
+- count and `launches(id)` values are structured reported assertions, not locally decoded raw call returns
+- the zero-index counter relationship is a candidate assumption exercised with synthetic framing, not a live-proven invariant
+- a reported finalized-head anchor above the window does not prove ancestry by itself
+- the deployment window uses an explicit predeployment-zero assumption; coverage from deployment is not proven
+- independent archival-provider comparison, RPC collection, reorg execution, and persistence remain unimplemented
 - Bow source verification remains incomplete
 
-Those limitations are encoded in every replay result and continue to block activation.
+Every replay result reports those limits directly: independent-provider agreement, finalized ancestry, coverage from deployment, live counter semantics, local runtime hashing, and local state decoding are all `false`. They continue to block activation.
 
 ## Isolation boundary
 
