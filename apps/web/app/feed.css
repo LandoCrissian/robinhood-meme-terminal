@@ -260,7 +260,19 @@
 
 /* Runner radar */
 .srOnly{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
-.runnerToolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:18px 0 12px}
+.runnerDirectoryControls{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:9px;margin:18px 0 10px}
+.runnerMarketSearch{position:relative;display:flex;align-items:center;min-width:0}
+.runnerMarketSearch>span{position:absolute;left:14px;color:#718078;font-size:1.05rem;pointer-events:none}
+.runnerMarketSearch input{width:100%;min-height:46px;padding:0 42px;border:1px solid #2d3b32;border-radius:12px;outline:0;background:#080d0a;color:#e4ebe6;font:inherit;font-size:.75rem;font-weight:750}
+.runnerMarketSearch input::placeholder{color:#69756d}
+.runnerMarketSearch input:focus{border-color:#4b8a56;box-shadow:0 0 0 3px rgba(78,213,96,.1)}
+.runnerMarketSearch button{position:absolute;right:6px;display:grid;width:34px;height:34px;place-items:center;border:0;border-radius:8px;background:#172019;color:#9ba79f;font:inherit;font-size:1rem;cursor:pointer}
+.runnerMarketSearch button:hover{background:#213026;color:#e4ebe6}
+.runnerDirectoryButton{min-height:46px;padding:0 16px;border:1px solid #315c39;border-radius:12px;background:#102016;color:#72eb82;font:inherit;font-size:.68rem;font-weight:950;letter-spacing:.02em;cursor:pointer;white-space:nowrap}
+.runnerDirectoryButton:hover:not(:disabled){border-color:#4c8b57;background:#16301d}
+.runnerDirectoryButton:disabled{cursor:not-allowed;opacity:.45}
+.runnerDirectoryButton:focus-visible,.runnerMarketSearch button:focus-visible{outline:2px solid #76ed86;outline-offset:2px}
+.runnerToolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 12px}
 .runnerToolbar>small{color:#819087;font-size:.64rem;font-weight:800}
 .runnerTabs{display:flex;gap:5px;padding:4px;border:1px solid #29362e;border-radius:12px;background:#080d0a}
 .runnerTabs button{display:flex;min-height:44px;align-items:center;gap:7px;padding:0 14px;border:0;border-radius:9px;background:transparent;color:#87938b;font:inherit;font-size:.7rem;font-weight:900;cursor:pointer}
@@ -284,7 +296,7 @@
 .runnerStats strong{overflow:hidden;color:#dce4de;font-size:.76rem;text-overflow:ellipsis;white-space:nowrap}
 .runnerActivity{display:flex;min-height:20px;align-items:center;justify-content:space-between;gap:8px;color:#89958d;font-size:.62rem;font-weight:800}
 .runnerActivity em{color:#d4b86e;font-size:.56rem;font-style:normal;text-transform:uppercase}
-@media(max-width:760px){.runnerToolbar{align-items:stretch;flex-direction:column}.runnerToolbar>small{align-self:flex-end}.runnerTabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));width:100%}.runnerTabs button{justify-content:center;min-width:0;padding:0 7px}.runnerMarketGrid{grid-template-columns:1fr}.runnerMarketCard{min-height:0}}
+@media(max-width:760px){.runnerDirectoryControls{grid-template-columns:1fr}.runnerDirectoryButton{width:100%}.runnerToolbar{align-items:stretch;flex-direction:column}.runnerToolbar>small{align-self:flex-end}.runnerTabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));width:100%}.runnerTabs button{justify-content:center;min-width:0;padding:0 7px}.runnerMarketGrid{grid-template-columns:1fr}.runnerMarketCard{min-height:0}}
 @media(max-width:360px){.runnerTabs button{flex-direction:column;gap:2px;padding:5px 3px;font-size:.64rem}.runnerTabs button span{height:17px;min-width:17px}}
 
 /* Protected RMT runner discovery */
