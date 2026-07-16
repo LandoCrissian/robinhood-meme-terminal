@@ -509,6 +509,30 @@ const mutations: readonly TranscriptMutation[] = [
     }
   },
   {
+    name: "repeated self-parent block hash",
+    value: {
+      ...transcript,
+      blocks: [
+        firstHeader,
+        {
+          ...finalHeader,
+          blockHash: firstHeader.blockHash,
+          parentHash: firstHeader.blockHash
+        }
+      ]
+    }
+  },
+  {
+    name: "self-parent checkpoint",
+    value: {
+      ...transcript,
+      parentCheckpoint: {
+        ...parentCheckpoint,
+        parentHash: parentCheckpoint.blockHash
+      }
+    }
+  },
+  {
     name: "wrong runtime hash",
     value: {
       ...transcript,
@@ -782,6 +806,35 @@ const mutations: readonly TranscriptMutation[] = [
           ]
         },
         transcript.receipts[1]!
+      ]
+    }
+  },
+  {
+    name: "duplicate raw receipt log coordinate across transactions",
+    value: {
+      ...transcript,
+      receipts: [
+        transcript.receipts[0]!,
+        {
+          ...transcript.receipts[1]!,
+          logs: [
+            { ...secondUnrelatedLog, logIndex: firstUnrelatedLog.logIndex },
+            secondLog
+          ]
+        }
+      ]
+    }
+  },
+  {
+    name: "raw receipt log index regresses across transactions",
+    value: {
+      ...transcript,
+      receipts: [
+        transcript.receipts[0]!,
+        {
+          ...transcript.receipts[1]!,
+          logs: [{ ...secondUnrelatedLog, logIndex: 12 }, secondLog]
+        }
       ]
     }
   },
