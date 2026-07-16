@@ -1182,7 +1182,7 @@ async function launchRows(limit: number) {
   return result.rows;
 }
 
-async function rmtOriginRows(tokens: string[]) {
+async function rmtOriginRows(tokens: readonly string[]) {
   const result = await pool.query(
     `SELECT
       token,
