@@ -449,22 +449,22 @@ export async function assertExternalOriginSchema(
     constraint_name: string;
     constraint_type: string;
   }>(
-    `SELECT constraint.conname AS constraint_name,
-            CASE constraint.contype
+    `SELECT con.conname AS constraint_name,
+            CASE con.contype
               WHEN 'p' THEN 'PRIMARY KEY'
               WHEN 'u' THEN 'UNIQUE'
               WHEN 'f' THEN 'FOREIGN KEY'
               WHEN 'c' THEN 'CHECK'
-              ELSE constraint.contype::TEXT
+              ELSE con.contype::TEXT
             END AS constraint_type
-     FROM pg_constraint AS constraint
+     FROM pg_constraint AS con
      JOIN pg_class AS relation
-       ON relation.oid = constraint.conrelid
+       ON relation.oid = con.conrelid
      JOIN pg_namespace AS namespace
        ON namespace.oid = relation.relnamespace
      WHERE namespace.nspname = $1
        AND relation.relname = ANY($2::text[])
-       AND constraint.contype IN ('p', 'u', 'f', 'c')`,
+       AND con.contype IN ('p', 'u', 'f', 'c')`,
     [schemaName, EXPECTED_TABLES]
   );
   assertExactSet(
@@ -479,11 +479,11 @@ export async function assertExternalOriginSchema(
     constraint_name: string;
     definition: string;
   }>(
-    `SELECT constraint.conname AS constraint_name,
-            pg_get_constraintdef(constraint.oid, true) AS definition
-     FROM pg_constraint AS constraint
+    `SELECT con.conname AS constraint_name,
+            pg_get_constraintdef(con.oid, true) AS definition
+     FROM pg_constraint AS con
      JOIN pg_class AS relation
-       ON relation.oid = constraint.conrelid
+       ON relation.oid = con.conrelid
      JOIN pg_namespace AS namespace
        ON namespace.oid = relation.relnamespace
      WHERE namespace.nspname = $1
