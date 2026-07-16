@@ -266,6 +266,7 @@ export function ExternalMarketFeed() {
   const restoredQuickTrade = useRef(false);
   const returnFocusTo = useRef<HTMLElement | null>(null);
   const runnerHeading = useRef<HTMLHeadingElement>(null);
+  const marketSearchInput = useRef<HTMLInputElement>(null);
   const [quickTrade, setQuickTrade] = useState<{ address: string; side: ExternalTradeSide }>();
   const [tradeAnnouncement, setTradeAnnouncement] = useState("");
   const [marketQuery, setMarketQuery] = useState("");
@@ -421,6 +422,10 @@ export function ExternalMarketFeed() {
       setShowAllMarkets(false);
     }
   };
+  const clearMarketQuery = () => {
+    setMarketQuery("");
+    window.requestAnimationFrame(() => marketSearchInput.current?.focus());
+  };
   const handleDirectoryAction = () => {
     if (normalizedMarketQuery) {
       setMarketQuery("");
@@ -472,6 +477,7 @@ export function ExternalMarketFeed() {
           <label className="srOnly" htmlFor="external-market-search">Search external markets by name, ticker, or contract</label>
           <input
             id="external-market-search"
+            ref={marketSearchInput}
             type="search"
             value={marketQuery}
             onChange={(event) => handleMarketQueryChange(event.target.value)}
@@ -482,7 +488,7 @@ export function ExternalMarketFeed() {
             aria-describedby="runner-market-count"
           />
           {marketQuery && (
-            <button type="button" aria-label="Clear external market search" onClick={() => setMarketQuery("")}>×</button>
+            <button type="button" aria-label="Clear external market search" onClick={clearMarketQuery}>×</button>
           )}
         </div>
         <button
@@ -532,7 +538,7 @@ export function ExternalMarketFeed() {
             <strong>{normalizedMarketQuery ? "No external markets match that search." : "No markets meet this signal yet."}</strong>
             <span>{normalizedMarketQuery ? "Try a token name, ticker, or complete contract address." : "The filter will update automatically when activity qualifies."}</span>
             {normalizedMarketQuery
-              ? <button type="button" onClick={() => setMarketQuery("")}>Clear search</button>
+              ? <button type="button" onClick={clearMarketQuery}>Clear search</button>
               : view !== "active" && <button type="button" onClick={() => changeView("active")}>View active markets</button>}
           </div>
         ) : (
