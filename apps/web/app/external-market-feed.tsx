@@ -102,6 +102,7 @@ export function ExternalMarketFeed() {
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [rankingAnnouncement, setRankingAnnouncement] = useState("");
   const nextRankRefresh = useRef(0);
+  const rankInitialized = useRef(false);
 
   const refresh = useCallback(async () => {
     try {
@@ -111,8 +112,9 @@ export function ExternalMarketFeed() {
 
       const now = Date.now();
       setMarkets(payload.markets);
-      if (nextRankRefresh.current <= now || rankOrder.length === 0) {
+      if (nextRankRefresh.current <= now || !rankInitialized.current) {
         setRankOrder(payload.markets.map((market) => market.address.toLowerCase()));
+        rankInitialized.current = true;
         nextRankRefresh.current = now + RANK_REFRESH_MS;
         setRankingAnnouncement("Runner rankings updated.");
       }
@@ -120,7 +122,7 @@ export function ExternalMarketFeed() {
     } catch {
       setStatus("error");
     }
-  }, [rankOrder.length]);
+  }, []);
 
   useEffect(() => {
     void refresh();
@@ -160,7 +162,7 @@ export function ExternalMarketFeed() {
           <h2 id="external-markets-title">Markets showing movement</h2>
           <p>Every qualifying market is indexed. The board surfaces four risk-adjusted signals at a time instead of flooding the terminal with inactive tokens.</p>
         </div>
-        <span className="externalBadge">30S DATA · 60S RANKS</span>
+        <span className="externalBadge">RECENT DATA · 60S RANKS</span>
       </div>
 
       <p className="srOnly" aria-live="polite">{rankingAnnouncement}</p>
@@ -188,7 +190,7 @@ export function ExternalMarketFeed() {
 
       <div id="runner-market-panel" role="tabpanel" aria-labelledby={"runner-tab-" + view}>
         {status === "loading" ? (
-          <div className="emptyFeed" role="status"><strong>Loading runner signals…</strong><span>Checking market cap, liquidity, volume acceleration, trade pressure, and price movement.</span></div>
+          <div className="emptyFeed" role="status"><strong>Loading runner signals…</strong><span>Checking liquidity, verified activity, volume pace, trade balance, and price movement.</span></div>
         ) : status === "error" ? (
           <div className="emptyFeed"><strong>Runner radar is temporarily unavailable.</strong><span>RMT launches and trading are unaffected.</span><button type="button" onClick={() => void refresh()}>Try again</button></div>
         ) : visibleMarkets.length === 0 ? (
