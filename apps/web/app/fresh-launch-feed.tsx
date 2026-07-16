@@ -155,17 +155,22 @@ export function FreshLaunchFeed() {
     if (a.tradeCount !== b.tradeCount) return b.tradeCount - a.tradeCount;
     const reserveDifference = BigInt(b.reserveWei) - BigInt(a.reserveWei);
     if (reserveDifference !== 0n) return reserveDifference > 0n ? 1 : -1;
-    return BigInt(b.blockNumber) > BigInt(a.blockNumber) ? 1 : -1;
+    const blockDifference = BigInt(b.blockNumber) - BigInt(a.blockNumber);
+    return blockDifference === 0n ? 0 : blockDifference > 0n ? 1 : -1;
   }), [launches]);
   const newestLaunches = useMemo(() => [...launches].sort((a, b) => {
     const blockDifference = BigInt(b.blockNumber) - BigInt(a.blockNumber);
     if (blockDifference !== 0n) return blockDifference > 0n ? 1 : -1;
-    return BigInt(b.launchId) > BigInt(a.launchId) ? 1 : -1;
+    const launchDifference = BigInt(b.launchId) - BigInt(a.launchId);
+    return launchDifference === 0n ? 0 : launchDifference > 0n ? 1 : -1;
   }), [launches]);
   const graduationLaunches = useMemo(() => [...launches].sort((a, b) => {
     if (a.graduated !== b.graduated) return a.graduated ? -1 : 1;
     if (a.progressBps !== b.progressBps) return b.progressBps - a.progressBps;
-    return BigInt(b.reserveWei) > BigInt(a.reserveWei) ? 1 : -1;
+    const reserveDifference = BigInt(b.reserveWei) - BigInt(a.reserveWei);
+    if (reserveDifference !== 0n) return reserveDifference > 0n ? 1 : -1;
+    const blockDifference = BigInt(b.blockNumber) - BigInt(a.blockNumber);
+    return blockDifference === 0n ? 0 : blockDifference > 0n ? 1 : -1;
   }), [launches]);
   const orderedLaunches = view === "trending" ? trendingLaunches : view === "new" ? newestLaunches : graduationLaunches;
   const visibleLaunches = showAll ? orderedLaunches : orderedLaunches.slice(0, 6);
