@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import type { ExternalMarket, ExternalMarketResponse } from "../lib/external-market";
 import type { ExternalMarketRiskFlag, ExternalMarketSignal } from "../lib/external-market-ranking";
 
@@ -77,6 +77,162 @@ function snapshotTime(value: string) {
   return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 }
 
+
+type ExternalTradeSide = "buy" | "sell";
+
+function isTradeableAddress(address: string) {
+  return /^0x[0-9a-fA-F]{40}$/.test(address);
+}
+
+function uniswapSwapUrl(market: ExternalMarket, side: ExternalTradeSide) {
+  const inputCurrency = side === "buy" ? "NATIVE" : market.address;
+  const outputCurrency = side === "buy" ? market.address : "NATIVE";
+  return "https://app.uniswap.org/swap?chain=robinhood&inputCurrency="
+    + encodeURIComponent(inputCurrency)
+    + "&outputCurrency="
+    + encodeURIComponent(outputCurrency);
+}
+
+function shortAddress(address: string) {
+  return address.slice(0, 6) + "…" + address.slice(-4);
+}
+
+function ExternalTradeDialog({
+  market,
+  side,
+  delayed,
+  onClose,
+  returnFocusTo
+}: {
+  market: ExternalMarket;
+  side: ExternalTradeSide;
+  delayed: boolean;
+  onClose: () => void;
+  returnFocusTo: HTMLElement | null;
+}) {
+  const dialog = useRef<HTMLElement>(null);
+  const closeButton = useRef<HTMLButtonElement>(null);
+  const value = valuation(market);
+  const venue = market.venue?.dexId ?? market.dexId;
+  const reviewUrl = uniswapSwapUrl(market, side);
+  const sideLabel = side === "buy" ? "Buy" : "Sell";
+
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onClose();
+        return;
+      }
+      if (event.key !== "Tab" || !dialog.current) return;
+
+      const focusable = Array.from(dialog.current.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      )).filter((element) => element.getAttribute("aria-hidden") !== "true");
+      if (focusable.length === 0) {
+        event.preventDefault();
+        dialog.current.focus();
+        return;
+      }
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", handleKeyDown);
+    closeButton.current?.focus();
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+      window.setTimeout(() => returnFocusTo?.focus(), 0);
+    };
+  }, [onClose, returnFocusTo]);
+
+  return <>
+    <button className="quickTradeBackdrop" type="button" aria-label="Close external trade review" onClick={onClose} />
+    <section
+      ref={dialog}
+      className="quickTradeDialog"
+      role="dialog"
+      aria-modal="true"
+      aria-label={sideLabel + " " + market.name}
+      tabIndex={-1}
+    >
+      <header className="quickTradeHeader">
+        <div className="quickTradeIdentity">
+          <span className="coin externalArtwork" aria-hidden="true">{initials(market.symbol)}</span>
+          <span>
+            <small>EXTERNAL MARKET · ORIGIN UNVERIFIED</small>
+            <strong>{market.name}</strong>
+            <em>{"$" + cleanSymbol(market.symbol) + " · " + sideLabel}</em>
+          </span>
+        </div>
+        <div className="quickTradeHeaderActions">
+          <a href={market.url} target="_blank" rel="noopener noreferrer">Chart ↗</a>
+          <button ref={closeButton} type="button" aria-label="Close external trade review" onClick={onClose}>×</button>
+        </div>
+      </header>
+
+      <div className="quickTradeBody">
+        <article className="externalMarketCard runnerMarketCard">
+          <div className="runnerCardStatus">
+            <span className={"marketSignal " + market.signal}>{signalLabel(market.signal)}</span>
+            <span>Venue: {venue}</span>
+          </div>
+          <div className="externalIdentity">
+            <span className="coin externalArtwork" aria-hidden="true">{initials(market.symbol)}</span>
+            <span>
+              <strong>{market.name}</strong>
+              <small>{"$" + cleanSymbol(market.symbol)}</small>
+            </span>
+            <em>{originLabel(market)}</em>
+          </div>
+          <div className="runnerStats">
+            <span><small>{value.label}</small><strong>{money(value.value)}</strong></span>
+            <span><small>Live price</small><strong>{money(market.priceUsd, true)}</strong></span>
+            <span><small>1h volume</small><strong>{money(market.volume1h)}</strong></span>
+            <span><small>Liquidity</small><strong>{money(market.liquidityUsd)}</strong></span>
+          </div>
+          <div className="runnerActivity">
+            <span>{"Token " + shortAddress(market.address) + " · Pool " + shortAddress(market.pairAddress)}</span>
+            {market.riskFlags.length > 0 && <em>{riskSummary(market.riskFlags)}</em>}
+          </div>
+          {delayed && <p className="runnerDataNotice">Runner data is delayed. Uniswap will calculate a fresh route and quote before any wallet confirmation.</p>}
+          <p className="externalDisclosure">
+            This token is external and its launchpad origin is not yet verified by RMT. Uniswap provides the final route, quote, price impact, and transaction review. RMT does not custody funds or construct external swap calldata in this release.
+          </p>
+          <div className="rmtDiscoveryActions">
+            <a
+              className={side === "buy" ? "buyCardAction" : "sellCardAction"}
+              href={reviewUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {"Review " + sideLabel + " on Uniswap ↗"}
+            </a>
+          </div>
+        </article>
+      </div>
+
+      <footer className="quickTradeFooter">
+        <span>Fresh Uniswap quote required</span>
+        <span>Wallet confirmation required</span>
+        <span>RMT never controls your funds</span>
+      </footer>
+    </section>
+  </>;
+}
+
 function stabilizeOrder(order: string[], markets: ExternalMarket[]) {
   const byAddress = new Map(markets.map((market) => [market.address.toLowerCase(), market]));
   const ordered = order.flatMap((address) => {
@@ -98,6 +254,34 @@ export function ExternalMarketFeed() {
   const nextRankRefresh = useRef(0);
   const rankInitialized = useRef(false);
   const hasSuccessfulData = useRef(false);
+  const restoredQuickTrade = useRef(false);
+  const returnFocusTo = useRef<HTMLElement | null>(null);
+  const [quickTrade, setQuickTrade] = useState<{ market: ExternalMarket; side: ExternalTradeSide }>();
+
+  const syncQuickTradeUrl = useCallback((market?: ExternalMarket, side?: ExternalTradeSide) => {
+    const url = new URL(window.location.href);
+    if (market && side) {
+      url.searchParams.set("externalTrade", market.address);
+      url.searchParams.set("side", side);
+      url.hash = "runner-radar";
+    } else {
+      url.searchParams.delete("externalTrade");
+      url.searchParams.delete("side");
+    }
+    window.history.replaceState({}, "", url.pathname + url.search + url.hash);
+  }, []);
+
+  const openQuickTrade = useCallback((market: ExternalMarket, side: ExternalTradeSide) => {
+    if (!isTradeableAddress(market.address)) return;
+    returnFocusTo.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setQuickTrade({ market, side });
+    syncQuickTradeUrl(market, side);
+  }, [syncQuickTradeUrl]);
+
+  const closeQuickTrade = useCallback(() => {
+    setQuickTrade(undefined);
+    syncQuickTradeUrl();
+  }, [syncQuickTradeUrl]);
 
   const refresh = useCallback(async () => {
     try {
@@ -127,6 +311,17 @@ export function ExternalMarketFeed() {
     return () => window.clearInterval(interval);
   }, [refresh]);
 
+  useEffect(() => {
+    if (restoredQuickTrade.current || markets.length === 0) return;
+    restoredQuickTrade.current = true;
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get("externalTrade")?.toLowerCase();
+    const side = params.get("side");
+    if (!token || (side !== "buy" && side !== "sell")) return;
+    const market = markets.find((item) => item.address.toLowerCase() === token);
+    if (market && isTradeableAddress(market.address)) setQuickTrade({ market, side });
+  }, [markets]);
+
   const orderedMarkets = useMemo(() => stabilizeOrder(rankOrder, markets), [markets, rankOrder]);
   const counts = useMemo(() => ({
     moving: markets.filter((market) => market.signal === "moving").length,
@@ -137,7 +332,7 @@ export function ExternalMarketFeed() {
   const visibleMarkets = filteredMarkets.slice(0, MAX_VISIBLE_MARKETS);
 
   const changeView = (nextView: RunnerView) => setView(nextView);
-  const handleTabKeyDown = (event: KeyboardEvent<HTMLButtonElement>, currentView: RunnerView) => {
+  const handleTabKeyDown = (event: ReactKeyboardEvent<HTMLButtonElement>, currentView: RunnerView) => {
     const currentIndex = VIEWS.findIndex((item) => item.id === currentView);
     let nextIndex = currentIndex;
     if (event.key === "ArrowRight") nextIndex = (currentIndex + 1) % VIEWS.length;
@@ -152,7 +347,7 @@ export function ExternalMarketFeed() {
   };
 
   return (
-    <section className="panel externalMarkets runnerRadar" aria-labelledby="external-markets-title">
+    <section className="panel externalMarkets runnerRadar" id="runner-radar" aria-labelledby="external-markets-title">
       <div className="feedHeading externalHeading">
         <div>
           <p className="eyebrow">ROBINHOOD CHAIN · RUNNER RADAR</p>
@@ -225,7 +420,11 @@ export function ExternalMarketFeed() {
                     <span>{oneHourTrades > 0 ? Math.round(market.buyPressureBps / 100) + "% buys · 1h" : "No 1h trades"}</span>
                     {market.riskFlags.length > 0 && <em>{riskSummary(market.riskFlags)}</em>}
                   </div>
-                  <a className="externalChartLink" href={market.url} target="_blank" rel="noreferrer" aria-label={"View " + market.name + " market on DEX Screener"}>Open market ↗</a>
+                  <div className="rmtDiscoveryActions">
+                    <button className="buyCardAction" type="button" aria-haspopup="dialog" aria-label={"Buy " + market.name} onClick={() => openQuickTrade(market, "buy")}>Buy</button>
+                    <button className="sellCardAction" type="button" aria-haspopup="dialog" aria-label={"Sell " + market.name} onClick={() => openQuickTrade(market, "sell")}>Sell</button>
+                  </div>
+                  <a className="externalChartLink" href={market.url} target="_blank" rel="noreferrer" aria-label={"View " + market.name + " market on DEX Screener"}>Chart & pair ↗</a>
                 </article>
               );
             })}
@@ -233,7 +432,17 @@ export function ExternalMarketFeed() {
         )}
       </div>
 
-      <p className="externalDisclosure">Market data: DEX Screener. Confirmed RMT V6 launches are removed using RMT factory records. Token origin and market venue are labeled separately; external origin stays unknown until a creation adapter is contract-verified. Signals are automated filters, not endorsements or investment recommendations. External execution remains disabled.</p>
+      <p className="externalDisclosure">Market data: DEX Screener. Confirmed RMT V6 launches are removed using RMT factory records. Token origin and market venue are labeled separately; external origin stays unknown until a creation adapter is contract-verified. Signals are automated filters, not endorsements or investment recommendations. Buy/Sell opens an RMT review, then Uniswap provides the fresh route and wallet transaction.</p>
+
+      {quickTrade && (
+        <ExternalTradeDialog
+          market={quickTrade.market}
+          side={quickTrade.side}
+          delayed={status === "stale"}
+          onClose={closeQuickTrade}
+          returnFocusTo={returnFocusTo.current}
+        />
+      )}
     </section>
   );
 }
