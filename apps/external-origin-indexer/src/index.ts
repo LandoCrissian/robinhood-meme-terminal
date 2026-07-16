@@ -10,10 +10,7 @@ async function main() {
   const config = loadExternalOriginConfig();
   const pool = new Pool({
     connectionString: config.databaseUrl,
-    ssl:
-      process.env.PGSSLMODE?.trim().toLowerCase() === "disable"
-        ? false
-        : { rejectUnauthorized: false },
+    ssl: config.databaseSsl,
     max: config.databasePoolSize,
     application_name: "rmt-external-origin-indexer"
   });
