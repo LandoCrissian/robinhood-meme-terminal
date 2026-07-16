@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import {
   EXTERNAL_ORIGIN_CHAIN_ID,
   EXTERNAL_ORIGIN_SCHEMA_VERSION
@@ -18,6 +19,11 @@ export type ExternalOriginAdapterManifest = Readonly<{
   schemaVersion: typeof EXTERNAL_ORIGIN_SCHEMA_VERSION;
   claimKinds: readonly ("token-created" | "source-listed")[];
 }>;
+
+export type ExternalOriginAdapterManifestInput = Omit<
+  ExternalOriginAdapterManifest,
+  "manifestHash"
+>;
 
 const SLUG_PATTERN = /^[a-z0-9]+(?:[._-][a-z0-9]+)*$/;
 const ADDRESS_PATTERN = /^0x[0-9a-f]{40}$/;
@@ -41,6 +47,35 @@ function requireHash(name: string, value: string) {
   if (!HASH_PATTERN.test(value) || value === ZERO_HASH) {
     throw new Error(name + " must be a nonzero lowercase hash");
   }
+}
+
+export function canonicalExternalOriginManifest(
+  manifest: ExternalOriginAdapterManifestInput
+) {
+  return JSON.stringify({
+    schema: "rmt-external-origin-adapter-v1",
+    chainId: manifest.chainId,
+    adapterId: manifest.adapterId,
+    sourceId: manifest.sourceId,
+    sourceName: manifest.sourceName,
+    sourceUrl: manifest.sourceUrl,
+    evidenceUrl: manifest.evidenceUrl,
+    factory: manifest.factory,
+    startBlock: manifest.startBlock.toString(),
+    runtimeCodeHash: manifest.runtimeCodeHash,
+    creationEventTopic0: manifest.creationEventTopic0,
+    claimKinds: [...manifest.claimKinds].sort(),
+    schemaVersion: manifest.schemaVersion
+  });
+}
+
+export function deriveExternalOriginManifestHash(
+  manifest: ExternalOriginAdapterManifestInput
+): `0x${string}` {
+  const digest = createHash("sha256")
+    .update(canonicalExternalOriginManifest(manifest), "utf8")
+    .digest("hex");
+  return `0x${digest}`;
 }
 
 export function validateExternalOriginAdapters(
@@ -94,18 +129,33 @@ export function validateExternalOriginAdapters(
     }
     if (
       adapter.claimKinds.length < 1 ||
-      new Set(adapter.claimKinds).size !== adapter.claimKinds.length
+      new Set(adapter.claimKinds).size !== adapter.claimKinds.length ||
+      adapter.claimKinds.some(
+        (kind) => kind !== "token-created" && kind !== "source-listed"
+      )
     ) {
       throw new Error(adapter.adapterId + " has invalid claimKinds");
     }
     requireHttps(adapter.adapterId + " sourceUrl", adapter.sourceUrl);
     requireHttps(adapter.adapterId + " evidenceUrl", adapter.evidenceUrl);
 
+    const {
+      manifestHash: _manifestHash,
+      ...manifestInput
+    } = adapter;
+    if (
+      adapter.manifestHash !==
+      deriveExternalOriginManifestHash(manifestInput)
+    ) {
+      throw new Error(
+        adapter.adapterId + " manifestHash does not match its manifest"
+      );
+    }
     if (adapterIds.has(adapter.adapterId)) {
       throw new Error("Duplicate external-origin adapterId");
     }
     if (factories.has(adapter.factory)) {
-      throw new Error("Duplicate external-origin factory");
+      throw new Error("Duplicate active external-origin factory");
     }
     adapterIds.add(adapter.adapterId);
     factories.add(adapter.factory);
