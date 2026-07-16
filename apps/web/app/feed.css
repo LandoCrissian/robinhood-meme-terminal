@@ -289,8 +289,8 @@
 .discoveryTabs button span{display:grid;min-width:20px;height:20px;place-items:center;border-radius:99px;background:#171f1a;color:#a4afa7;font-size:.57rem}
 .discoveryTabs button.active span{background:#285831;color:#d0fbd5}
 .rmtDiscoveryRows{display:flex;flex-direction:column;gap:8px}
-.rmtDiscoveryRow{display:grid;grid-template-columns:minmax(0,1fr) 176px;min-height:94px;overflow:hidden;border:1px solid #2a382f;border-radius:15px;background:#090e0b;transition:border-color .15s,background .15s}
-.rmtDiscoveryRow:hover{border-color:#415b49;background:#0c130e}
+.feed .rmtDiscoveryRow{display:grid;grid-template-columns:minmax(0,1fr) 176px;min-height:94px;overflow:hidden;border:1px solid #2a382f;border-radius:15px;background:#090e0b;transition:border-color .15s,background .15s}
+.feed .rmtDiscoveryRow:hover{border-color:#415b49;background:#0c130e}
 .rmtDiscoveryMain{display:grid;grid-template-columns:34px 44px minmax(145px,1fr) minmax(390px,1.55fr);grid-template-rows:auto 5px;align-items:center;gap:10px;min-width:0;padding:11px 13px;color:inherit;text-decoration:none}
 .rmtDiscoveryRank{color:#7e8b82;font-size:.62rem;font-weight:950;letter-spacing:.08em}
 .rmtDiscoveryMain .launchArtwork{width:44px;height:44px}
@@ -310,7 +310,7 @@
 .compactEmpty{min-height:124px}
 .rmtRankingDisclosure{margin:5px 0 0;color:#7d8981;font-size:.66rem;line-height:1.5}
 @media(max-width:980px){
-  .rmtDiscoveryRow{grid-template-columns:minmax(0,1fr) 154px}
+  .feed .rmtDiscoveryRow{grid-template-columns:minmax(0,1fr) 154px}
   .rmtDiscoveryMain{grid-template-columns:34px 42px minmax(130px,.8fr) minmax(250px,1.2fr)}
   .rmtDiscoveryMetrics{grid-template-columns:repeat(2,minmax(0,1fr));row-gap:7px}
   .rmtDiscoveryActions{padding:7px}
@@ -320,7 +320,7 @@
   .rmtDiscovery .discoveryTabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:100%}
   .rmtDiscovery .discoveryTabs button{min-width:0;padding:4px 8px}
   .rmtDiscovery .discoveryLaunchLink{align-self:flex-end}
-  .rmtDiscoveryRow{grid-template-columns:minmax(0,1fr) 142px}
+  .feed .rmtDiscoveryRow{grid-template-columns:minmax(0,1fr) 142px}
   .rmtDiscoveryMain{grid-template-columns:31px 42px minmax(0,1fr);grid-template-rows:auto auto 5px;padding:10px}
   .rmtDiscoveryMetrics{grid-column:2/-1;grid-template-columns:repeat(4,minmax(0,1fr))}
   .rmtDiscoveryProgress{grid-column:2/-1}
@@ -328,7 +328,7 @@
   .rmtDiscoveryMetrics strong{font-size:.65rem}
 }
 @media(max-width:560px){
-  .rmtDiscoveryRow{grid-template-columns:1fr}
+  .feed .rmtDiscoveryRow{grid-template-columns:1fr}
   .rmtDiscoveryMain{grid-template-columns:30px 42px minmax(0,1fr);padding:10px}
   .rmtDiscoveryMetrics{grid-column:2/-1;grid-template-columns:repeat(2,minmax(0,1fr))}
   .rmtDiscoveryProgress{grid-column:2/-1}
@@ -344,6 +344,6 @@
   .rmtDiscovery .discoveryTabs button{font-size:.65rem}
 }
 @media(prefers-reduced-motion:reduce){
-  .rmtDiscoveryRow,.buyCardAction,.sellCardAction{transition:none}
+  .feed .rmtDiscoveryRow,.buyCardAction,.sellCardAction{transition:none}
   .buyCardAction:hover,.sellCardAction:hover{transform:none}
 }
