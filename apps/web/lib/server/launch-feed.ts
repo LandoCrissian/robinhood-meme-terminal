@@ -305,7 +305,13 @@ export async function readFreshLaunches(
     }
   }
 
-  launches.sort((a, b) => BigInt(a.blockNumber) > BigInt(b.blockNumber) ? -1 : 1);
+  launches.sort((a, b) => {
+    const blockDifference = BigInt(b.blockNumber) - BigInt(a.blockNumber);
+    if (blockDifference !== 0n) return blockDifference > 0n ? 1 : -1;
+    const launchDifference = BigInt(b.launchId) - BigInt(a.launchId);
+    if (launchDifference !== 0n) return launchDifference > 0n ? 1 : -1;
+    return a.token.toLowerCase().localeCompare(b.token.toLowerCase());
+  });
   const recent = launches.slice(0, limit);
   return Promise.all(recent.map(async (launch) => {
     const [metadata, signals] = await Promise.all([
