@@ -179,7 +179,7 @@ function ExternalTradeDialog({
     >
       <header className="quickTradeHeader">
         <div className="quickTradeIdentity">
-          <span className="coin externalArtwork" aria-hidden="true">{initials(market.symbol)}</span>
+          <div className="coin externalArtwork" aria-hidden="true">{initials(market.symbol)}</div>
           <span>
             <small>EXTERNAL MARKET · ORIGIN UNVERIFIED</small>
             <strong>{market.name}</strong>
@@ -216,11 +216,11 @@ function ExternalTradeDialog({
             <span>{"Token " + shortAddress(market.address) + " · Pool " + shortAddress(market.pairAddress)}</span>
             {market.riskFlags.length > 0 && <em>{riskSummary(market.riskFlags)}</em>}
           </div>
-          {delayed && <p className="runnerDataNotice">Runner data is delayed. Uniswap will calculate a fresh route and quote before any wallet confirmation.</p>}
+          {delayed && <p className="runnerDataNotice"><span>Runner data is delayed. Uniswap will calculate a fresh route and quote before any wallet confirmation.</span></p>}
           <p className="externalDisclosure">
             This token is external and its launchpad origin is not yet verified by RMT. Uniswap provides the final route, quote, price impact, and transaction review. RMT does not custody funds or construct external swap calldata in this release.
           </p>
-          <div className="rmtDiscoveryActions">
+          <div className="externalMarketActions externalTradeReviewAction">
             <a
               className={side === "buy" ? "buyCardAction" : "sellCardAction"}
               href={reviewUrl}
@@ -430,7 +430,7 @@ export function ExternalMarketFeed() {
                     {market.riskFlags.length > 0 && <em>{riskSummary(market.riskFlags)}</em>}
                   </div>
                   {canHandoffToUniswap(market) ? (
-                    <div className="rmtDiscoveryActions">
+                    <div className="externalMarketActions">
                       <button className="buyCardAction" type="button" aria-haspopup="dialog" aria-label={"Buy " + market.name} onClick={() => openQuickTrade(market, "buy")}>Buy</button>
                       <button className="sellCardAction" type="button" aria-haspopup="dialog" aria-label={"Sell " + market.name} onClick={() => openQuickTrade(market, "sell")}>Sell</button>
                     </div>
