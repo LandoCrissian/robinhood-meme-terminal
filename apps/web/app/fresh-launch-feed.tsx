@@ -11,6 +11,8 @@ import { MarketPanel } from "./market-panel";
 
 const FIXED_SUPPLY = 1_000_000_000n * 10n ** 18n;
 
+type DiscoveryView = "trending" | "new" | "graduation";
+
 function displaySymbol(symbol: string) {
   return symbol.replace(/^\$+/, "");
 }
@@ -84,6 +86,7 @@ export function FreshLaunchFeed() {
   const [status, setStatus] = useState<"loading" | "live" | "error">("loading");
   const [message, setMessage] = useState("Synchronizing verified launches.");
   const [showAll, setShowAll] = useState(false);
+  const [view, setView] = useState<DiscoveryView>("trending");
   const [quickTrade, setQuickTrade] = useState<{ launch: LaunchFeedItem; side: "buy" | "sell" }>();
   const restoredQuickTrade = useRef(false);
   const syncQuickTradeUrl = useCallback((launch?: LaunchFeedItem, side?: "buy" | "sell") => {
@@ -146,52 +149,84 @@ export function FreshLaunchFeed() {
     if (launch) setQuickTrade({ launch, side });
   }, [launches]);
 
-  const hot = useMemo(() => [...launches].sort((a, b) => {
+  const trendingLaunches = useMemo(() => [...launches].sort((a, b) => {
     const volumeDifference = BigInt(b.volumeWei) - BigInt(a.volumeWei);
     if (volumeDifference !== 0n) return volumeDifference > 0n ? 1 : -1;
     if (a.tradeCount !== b.tradeCount) return b.tradeCount - a.tradeCount;
     const reserveDifference = BigInt(b.reserveWei) - BigInt(a.reserveWei);
     if (reserveDifference !== 0n) return reserveDifference > 0n ? 1 : -1;
-    return BigInt(b.blockNumber) > BigInt(a.blockNumber) ? 1 : -1;
-  }).slice(0, 3), [launches]);
-  const moving = hot.some((launch) => launch.tradeCount > 0 || BigInt(launch.reserveWei) > 0n);
-  const visibleLaunches = showAll ? launches : launches.slice(0, 6);
+    const blockDifference = BigInt(b.blockNumber) - BigInt(a.blockNumber);
+    return blockDifference === 0n ? 0 : blockDifference > 0n ? 1 : -1;
+  }), [launches]);
+  const newestLaunches = useMemo(() => [...launches].sort((a, b) => {
+    const blockDifference = BigInt(b.blockNumber) - BigInt(a.blockNumber);
+    if (blockDifference !== 0n) return blockDifference > 0n ? 1 : -1;
+    const launchDifference = BigInt(b.launchId) - BigInt(a.launchId);
+    return launchDifference === 0n ? 0 : launchDifference > 0n ? 1 : -1;
+  }), [launches]);
+  const graduationLaunches = useMemo(() => [...launches].sort((a, b) => {
+    if (a.graduated !== b.graduated) return a.graduated ? -1 : 1;
+    if (a.progressBps !== b.progressBps) return b.progressBps - a.progressBps;
+    const reserveDifference = BigInt(b.reserveWei) - BigInt(a.reserveWei);
+    if (reserveDifference !== 0n) return reserveDifference > 0n ? 1 : -1;
+    const blockDifference = BigInt(b.blockNumber) - BigInt(a.blockNumber);
+    return blockDifference === 0n ? 0 : blockDifference > 0n ? 1 : -1;
+  }), [launches]);
+  const orderedLaunches = view === "trending" ? trendingLaunches : view === "new" ? newestLaunches : graduationLaunches;
+  const visibleLaunches = showAll ? orderedLaunches : orderedLaunches.slice(0, 6);
+  const viewCopy = view === "trending"
+    ? { title: "Trending tokens", description: "Ranked by recent onchain volume, trade count, and curve reserve—never paid placement." }
+    : view === "new"
+      ? { title: "Newest launches", description: "The latest origin-verified tokens created through the active RMT V6 factory." }
+      : { title: "Graduation watch", description: "Projects closest to the verified 2 ETH curve target, ordered by live onchain progress." };
+  const changeView = (nextView: DiscoveryView) => {
+    setView(nextView);
+    setShowAll(false);
+  };
 
   return (
     <section className="feed panel" id="explore">
       <div className="sectionTitle feedHeading">
-        <div><p className="eyebrow">LIVE DISCOVERY</p><h2>{moving ? "Hot now" : "New now"}</h2><p className="sectionCopy">{moving ? "Ranked by recent onchain volume, trade count, and curve reserve—never paid placement." : "The newest verified launches from the RMT factory."}</p></div>
+        <div><p className="eyebrow">LIVE DISCOVERY</p><h2>{viewCopy.title}</h2><p className="sectionCopy">{viewCopy.description}</p></div>
         <span className={`badge ${status === "live" ? "liveBadge" : status === "error" ? "errorBadge" : "warning"}`}>
           {status === "live" ? activeReleaseBadge : status === "error" ? "DATA DELAYED" : "SYNCING"}
         </span>
       </div>
 
-      {hot.length > 0 && <div className="hotGrid">{hot.map((launch, index) => (
-        <article className="hotCard" key={`hot-${launch.transactionHash}-${launch.launchId}`}>
-          <Link className="hotCardMain" href={`/token/${launch.token}?launch=${launch.launchId}`} aria-label={`Open ${launch.name}`}>
-            <div className="hotRank">0{index + 1}</div>
-            <TokenArtwork launch={launch} featured />
-            <div className="hotIdentity"><strong>{launch.name}</strong><span>{"$" + displaySymbol(launch.symbol)}</span><CreatorExposure launch={launch} /></div>
-            <div className="hotSignal"><span><small>{launch.graduated ? "Curve complete" : "Recent volume"}</small><em>{activityLabel(launch)}</em></span><strong>{volumeLabel(launch.volumeWei)}</strong></div>
-            <div className="miniProgress" aria-label={`${launch.progressBps / 100}% graduation progress`}><span style={{ width: `${launch.progressBps / 100}%` }} /></div>
-          </Link>
-          <div className="tokenCardActions"><button className="buyCardAction" type="button" aria-haspopup="dialog" aria-label={`Quick buy ${launch.name}`} onClick={() => openQuickTrade(launch, "buy")}>Buy</button><button className="sellCardAction" type="button" aria-haspopup="dialog" aria-label={`Quick sell ${launch.name}`} onClick={() => openQuickTrade(launch, "sell")}>Sell</button></div>
-        </article>
-      ))}</div>}
+      <div className="discoveryToolbar">
+        <div className="discoveryTabs" role="tablist" aria-label="Token discovery views">
+          <button type="button" role="tab" aria-selected={view === "trending"} className={view === "trending" ? "active" : ""} onClick={() => changeView("trending")}>Trending</button>
+          <button type="button" role="tab" aria-selected={view === "new"} className={view === "new" ? "active" : ""} onClick={() => changeView("new")}>New</button>
+          <button type="button" role="tab" aria-selected={view === "graduation"} className={view === "graduation" ? "active" : ""} onClick={() => changeView("graduation")}>Graduation</button>
+        </div>
+        <Link className="discoveryLaunchLink" href="/launch">Launch yours ↗</Link>
+      </div>
 
-      <div className="latestHeader"><div><p className="eyebrow">JUST LAUNCHED</p><h3>Latest tokens</h3></div><Link href="/launch">Launch yours</Link></div>
-      {launches.length === 0 ? <div className="emptyFeed"><strong>{status === "loading" ? "Reading Robinhood Chain…" : "No launches to display"}</strong><span>{message}</span>{status === "error" && <button onClick={() => void refresh()}>Retry</button>}</div> : visibleLaunches.map((launch) => (
-        <article className="launchRowCard" key={`${launch.transactionHash}-${launch.launchId}`}>
-          <Link className="launchRowMain" href={`/token/${launch.token}?launch=${launch.launchId}`} aria-label={`Open ${launch.name}`}>
-            <TokenArtwork launch={launch} />
-            <div className="identity"><strong>{launch.name}</strong><span>{"$" + displaySymbol(launch.symbol) + " • #" + launch.launchId}</span><CreatorExposure launch={launch} /></div>
-            <div className="launchMetrics"><span><small>Reserve</small><strong>{reserveLabel(launch.reserveWei)}</strong></span><span><small>Volume</small><strong>{volumeLabel(launch.volumeWei)}</strong></span><span><small>Graduation</small><strong>{launch.graduated ? "Complete" : `${launch.progressBps / 100}%`}</strong></span></div>
-          </Link>
-          <div className="launchActions"><button className="buyCardAction" type="button" aria-haspopup="dialog" aria-label={`Quick buy ${launch.name}`} onClick={() => openQuickTrade(launch, "buy")}>Buy</button><button className="sellCardAction" type="button" aria-haspopup="dialog" aria-label={`Quick sell ${launch.name}`} onClick={() => openQuickTrade(launch, "sell")}>Sell</button></div>
-        </article>
-      ))}
-      {launches.length > 6 && <button className="showMore" type="button" onClick={() => setShowAll((value) => !value)}>{showAll ? "Show fewer" : `View all ${launches.length}`}</button>}
-      {launches.length > 0 && <p className="feedStatus">{message} Refreshes every 10 seconds.</p>}
+      {launches.length === 0 ? <div className="emptyFeed"><strong>{status === "loading" ? "Reading Robinhood Chain…" : "No launches to display"}</strong><span>{message}</span>{status === "error" && <button onClick={() => void refresh()}>Retry</button>}</div> : <>
+        {view === "trending" ? <div className="hotGrid">{visibleLaunches.map((launch, index) => (
+          <article className="hotCard" key={`trending-${launch.transactionHash}-${launch.launchId}`}>
+            <Link className="hotCardMain" href={`/token/${launch.token}?launch=${launch.launchId}`} aria-label={`Open ${launch.name}`}>
+              <div className="hotRank">{String(index + 1).padStart(2, "0")}</div>
+              <TokenArtwork launch={launch} featured />
+              <div className="hotIdentity"><strong>{launch.name}</strong><span>{"$" + displaySymbol(launch.symbol)}</span><CreatorExposure launch={launch} /></div>
+              <div className="hotSignal"><span><small>{launch.graduated ? "Curve complete" : "Recent volume"}</small><em>{activityLabel(launch)}</em></span><strong>{volumeLabel(launch.volumeWei)}</strong></div>
+              <div className="miniProgress" aria-label={`${launch.progressBps / 100}% graduation progress`}><span style={{ width: `${launch.progressBps / 100}%` }} /></div>
+            </Link>
+            <div className="tokenCardActions"><button className="buyCardAction" type="button" aria-haspopup="dialog" aria-label={`Quick buy ${launch.name}`} onClick={() => openQuickTrade(launch, "buy")}>Buy</button><button className="sellCardAction" type="button" aria-haspopup="dialog" aria-label={`Quick sell ${launch.name}`} onClick={() => openQuickTrade(launch, "sell")}>Sell</button></div>
+          </article>
+        ))}</div> : <div className="discoveryRows">{visibleLaunches.map((launch) => (
+          <article className="launchRowCard" key={`${view}-${launch.transactionHash}-${launch.launchId}`}>
+            <Link className="launchRowMain" href={`/token/${launch.token}?launch=${launch.launchId}`} aria-label={`Open ${launch.name}`}>
+              <TokenArtwork launch={launch} />
+              <div className="identity"><strong>{launch.name}</strong><span>{"$" + displaySymbol(launch.symbol) + " • #" + launch.launchId}</span><CreatorExposure launch={launch} /></div>
+              <div className="launchMetrics"><span><small>Reserve</small><strong>{reserveLabel(launch.reserveWei)}</strong></span><span><small>Volume</small><strong>{volumeLabel(launch.volumeWei)}</strong></span><span><small>Graduation</small><strong>{launch.graduated ? "Complete" : `${launch.progressBps / 100}%`}</strong></span></div>
+            </Link>
+            <div className="launchActions"><button className="buyCardAction" type="button" aria-haspopup="dialog" aria-label={`Quick buy ${launch.name}`} onClick={() => openQuickTrade(launch, "buy")}>Buy</button><button className="sellCardAction" type="button" aria-haspopup="dialog" aria-label={`Quick sell ${launch.name}`} onClick={() => openQuickTrade(launch, "sell")}>Sell</button></div>
+          </article>
+        ))}</div>}
+        {orderedLaunches.length > 6 && <button className="showMore" type="button" onClick={() => setShowAll((value) => !value)}>{showAll ? "Show fewer" : `View all ${orderedLaunches.length}`}</button>}
+        <p className="feedStatus">{message} Refreshes every 10 seconds.</p>
+      </>}
       {quickTrade && <QuickTradeDialog launch={quickTrade.launch} side={quickTrade.side} onClose={closeQuickTrade} />}
     </section>
   );
