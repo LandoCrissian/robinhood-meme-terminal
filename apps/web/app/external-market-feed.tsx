@@ -1,46 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import type { ExternalMarket, ExternalMarketResponse } from "../lib/external-market";
 import type { ExternalMarketRiskFlag, ExternalMarketSignal } from "../lib/external-market-ranking";
 
-type ExternalMarket = {
-  address: string;
-  name: string;
-  symbol: string;
-  pairAddress: string;
-  url: string;
-  dexId: string;
-  priceUsd: number;
-  liquidityUsd: number;
-  marketCapUsd: number;
-  fdvUsd: number;
-  volume5m: number;
-  volume1h: number;
-  volume24h: number;
-  priceChange5m: number;
-  priceChange1h: number;
-  priceChange24h: number;
-  buys5m: number;
-  sells5m: number;
-  buys1h: number;
-  sells1h: number;
-  buys24h: number;
-  sells24h: number;
-  pairCreatedAt: number | null;
-  ageMinutes: number | null;
-  momentumScore: number;
-  buyPressureBps: number;
-  signal: ExternalMarketSignal;
-  riskFlags: ExternalMarketRiskFlag[];
-};
-
-type ExternalMarketResponse = {
-  markets?: ExternalMarket[];
-  source?: string;
-  rankingVersion?: string;
-  updatedAt?: string;
-  error?: string;
-};
+type FeedStatus = "loading" | "ready" | "stale" | "error";
 
 type RunnerView = "moving" | "early" | "active";
 
@@ -84,6 +48,35 @@ function valuation(market: ExternalMarket) {
   return { label: "Valuation", value: 0 };
 }
 
+const RISK_LABELS: Record<ExternalMarketRiskFlag, string> = {
+  "thin-liquidity": "Thin liquidity",
+  "extreme-price-spike": "Price spike",
+  "high-volume-low-trades": "Volume anomaly",
+  "very-new-low-activity": "Very new",
+  "one-sided-activity": "One-sided flow"
+};
+
+function riskSummary(flags: ExternalMarketRiskFlag[]) {
+  const first = RISK_LABELS[flags[0] ?? "thin-liquidity"];
+  return flags.length > 1 ? first + " +" + (flags.length - 1) : first;
+}
+
+function originLabel(market: ExternalMarket) {
+  const origin = market.origin;
+  if (!origin) return "External · Origin unknown";
+  if (origin.kind === "rmt-v6") return "RMT V6 · Protocol verified";
+  if (origin.state === "attributed") return origin.sourceName + " · Origin verified";
+  if (origin.state === "disputed") return "Origin conflict";
+  if (origin.state === "unattributed") return "External · No verified origin";
+  return "External · Origin unknown";
+}
+
+function snapshotTime(value: string) {
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return "an earlier update";
+  return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+}
+
 function stabilizeOrder(order: string[], markets: ExternalMarket[]) {
   const byAddress = new Map(markets.map((market) => [market.address.toLowerCase(), market]));
   const ordered = order.flatMap((address) => {
@@ -99,10 +92,12 @@ export function ExternalMarketFeed() {
   const [markets, setMarkets] = useState<ExternalMarket[]>([]);
   const [rankOrder, setRankOrder] = useState<string[]>([]);
   const [view, setView] = useState<RunnerView>("moving");
-  const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [status, setStatus] = useState<FeedStatus>("loading");
+  const [updatedAt, setUpdatedAt] = useState<string | null>(null);
   const [rankingAnnouncement, setRankingAnnouncement] = useState("");
   const nextRankRefresh = useRef(0);
   const rankInitialized = useRef(false);
+  const hasSuccessfulData = useRef(false);
 
   const refresh = useCallback(async () => {
     try {
@@ -112,15 +107,17 @@ export function ExternalMarketFeed() {
 
       const now = Date.now();
       setMarkets(payload.markets);
+      setUpdatedAt(typeof payload.updatedAt === "string" ? payload.updatedAt : new Date(now).toISOString());
+      hasSuccessfulData.current = true;
       if (nextRankRefresh.current <= now || !rankInitialized.current) {
         setRankOrder(payload.markets.map((market) => market.address.toLowerCase()));
         rankInitialized.current = true;
         nextRankRefresh.current = now + RANK_REFRESH_MS;
-        setRankingAnnouncement("Runner rankings updated.");
+        setRankingAnnouncement(payload.stale ? "Runner data is delayed." : "Runner rankings updated.");
       }
-      setStatus("ready");
+      setStatus(payload.stale ? "stale" : "ready");
     } catch {
-      setStatus("error");
+      setStatus(hasSuccessfulData.current ? "stale" : "error");
     }
   }, []);
 
@@ -160,12 +157,18 @@ export function ExternalMarketFeed() {
         <div>
           <p className="eyebrow">ROBINHOOD CHAIN · RUNNER RADAR</p>
           <h2 id="external-markets-title">Markets showing movement</h2>
-          <p>Every qualifying market is indexed. The board surfaces four risk-adjusted signals at a time instead of flooding the terminal with inactive tokens.</p>
+          <p>Active Robinhood Chain markets discovered through WETH and USDG pairs. The board surfaces four risk-adjusted signals at a time instead of flooding the terminal with inactive tokens.</p>
         </div>
-        <span className="externalBadge">RECENT DATA · 60S RANKS</span>
+        <span className="externalBadge">{status === "stale" ? "DATA DELAYED" : "RECENT DATA · 60S RANKS"}</span>
       </div>
 
       <p className="srOnly" aria-live="polite">{rankingAnnouncement}</p>
+      {status === "stale" && (
+        <p className="runnerDataNotice" role="status">
+          <span>Data delayed · showing the last successful snapshot{updatedAt ? " from " + snapshotTime(updatedAt) : ""}. RMT launches and trading are unaffected.</span>
+          <button type="button" onClick={() => void refresh()}>Refresh</button>
+        </p>
+      )}
       <div className="runnerToolbar">
         <div className="runnerTabs" role="tablist" aria-label="External runner views">
           {VIEWS.map((item) => (
@@ -209,8 +212,8 @@ export function ExternalMarketFeed() {
                   </div>
                   <div className="externalIdentity">
                     <span className="coin externalArtwork" aria-hidden="true">{initials(market.symbol)}</span>
-                    <span><strong>{market.name}</strong><small>{"$" + cleanSymbol(market.symbol)} · {market.dexId}</small></span>
-                    <em>Origin unverified</em>
+                    <span><strong>{market.name}</strong><small>{"$" + cleanSymbol(market.symbol)} · Venue: {market.venue?.dexId ?? market.dexId}</small></span>
+                    <em>{originLabel(market)}</em>
                   </div>
                   <div className="runnerStats">
                     <span><small>{value.label}</small><strong>{money(value.value)}</strong></span>
@@ -220,7 +223,7 @@ export function ExternalMarketFeed() {
                   </div>
                   <div className="runnerActivity">
                     <span>{oneHourTrades > 0 ? Math.round(market.buyPressureBps / 100) + "% buys · 1h" : "No 1h trades"}</span>
-                    {market.riskFlags.length > 0 && <em>Risk adjusted</em>}
+                    {market.riskFlags.length > 0 && <em>{riskSummary(market.riskFlags)}</em>}
                   </div>
                   <a className="externalChartLink" href={market.url} target="_blank" rel="noreferrer" aria-label={"View " + market.name + " market on DEX Screener"}>Open market ↗</a>
                 </article>
@@ -230,7 +233,7 @@ export function ExternalMarketFeed() {
         )}
       </div>
 
-      <p className="externalDisclosure">Market data: DEX Screener. Signals are automated activity filters, not endorsements or investment recommendations. External buy and sell execution stays disabled until each launchpad adapter is contract-verified.</p>
+      <p className="externalDisclosure">Market data: DEX Screener. Confirmed RMT V6 launches are removed using RMT factory records. Token origin and market venue are labeled separately; external origin stays unknown until a creation adapter is contract-verified. Signals are automated filters, not endorsements or investment recommendations. External execution remains disabled.</p>
     </section>
   );
 }
