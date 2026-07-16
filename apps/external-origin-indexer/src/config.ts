@@ -1,11 +1,17 @@
 export const EXTERNAL_ORIGIN_CHAIN_ID = 4663 as const;
 export const EXTERNAL_ORIGIN_SCHEMA_VERSION = 1 as const;
 
+// Source-only safety lock. The first verified adapter must add finalized-head,
+// freshness, reorg, and atomic-read logic in a separate reviewed change before
+// this can be removed.
+export const EXTERNAL_ORIGIN_ATTRIBUTION_ACTIVATION_LOCKED = true as const;
+
 export type ExternalOriginConfig = Readonly<{
   databaseUrl: string;
   readToken: string;
   port: number;
   databasePoolSize: number;
+  databaseSsl: boolean;
 }>;
 
 function required(name: string, env: NodeJS.ProcessEnv) {
@@ -40,15 +46,12 @@ function integer(
   return parsed;
 }
 
-function databaseUrl(env: NodeJS.ProcessEnv) {
-  const value = required("EXTERNAL_ORIGIN_DATABASE_URL", env);
+function parsePostgresUrl(name: string, value: string) {
   let parsed: URL;
   try {
     parsed = new URL(value);
   } catch {
-    throw new Error(
-      "EXTERNAL_ORIGIN_DATABASE_URL must be a valid PostgreSQL URL"
-    );
+    throw new Error(name + " must be a valid PostgreSQL URL");
   }
   if (
     (parsed.protocol !== "postgres:" &&
@@ -58,10 +61,48 @@ function databaseUrl(env: NodeJS.ProcessEnv) {
     parsed.pathname === "/"
   ) {
     throw new Error(
-      "EXTERNAL_ORIGIN_DATABASE_URL must include a PostgreSQL host and database"
+      name + " must include a PostgreSQL host and database"
     );
   }
+  const sslMode = parsed.searchParams.get("sslmode");
+  if (
+    sslMode !== null &&
+    sslMode !== "verify-full" &&
+    sslMode !== "disable"
+  ) {
+    throw new Error(
+      name + " may only use sslmode=verify-full or sslmode=disable"
+    );
+  }
+  return parsed;
+}
+
+function databaseUrl(env: NodeJS.ProcessEnv) {
+  const value = required("EXTERNAL_ORIGIN_DATABASE_URL", env);
+  const parsed = parsePostgresUrl(
+    "EXTERNAL_ORIGIN_DATABASE_URL",
+    value
+  );
+
+  const canonicalValue = env.DATABASE_URL?.trim();
+  if (canonicalValue) {
+    const canonical = parsePostgresUrl("DATABASE_URL", canonicalValue);
+    if (parsed.href === canonical.href) {
+      throw new Error(
+        "EXTERNAL_ORIGIN_DATABASE_URL must not equal DATABASE_URL"
+      );
+    }
+  }
   return value;
+}
+
+function databaseSsl(env: NodeJS.ProcessEnv) {
+  const mode = env.PGSSLMODE?.trim().toLowerCase();
+  if (mode === "disable") return false;
+  if (mode !== undefined && mode !== "" && mode !== "verify-full") {
+    throw new Error("PGSSLMODE must be verify-full or disable");
+  }
+  return true;
 }
 
 function readToken(env: NodeJS.ProcessEnv) {
@@ -93,6 +134,7 @@ export function loadExternalOriginConfig(
       1,
       50,
       env
-    )
+    ),
+    databaseSsl: databaseSsl(env)
   });
 }
