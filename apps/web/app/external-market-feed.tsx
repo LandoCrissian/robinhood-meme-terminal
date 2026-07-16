@@ -266,8 +266,11 @@ export function ExternalMarketFeed() {
   const restoredQuickTrade = useRef(false);
   const returnFocusTo = useRef<HTMLElement | null>(null);
   const runnerHeading = useRef<HTMLHeadingElement>(null);
+  const marketSearchInput = useRef<HTMLInputElement>(null);
   const [quickTrade, setQuickTrade] = useState<{ address: string; side: ExternalTradeSide }>();
   const [tradeAnnouncement, setTradeAnnouncement] = useState("");
+  const [marketQuery, setMarketQuery] = useState("");
+  const [showAllMarkets, setShowAllMarkets] = useState(false);
 
   const syncQuickTradeUrl = useCallback((market?: ExternalMarket, side?: ExternalTradeSide) => {
     const url = new URL(window.location.href);
@@ -374,10 +377,67 @@ export function ExternalMarketFeed() {
     early: markets.filter((market) => market.signal === "early").length,
     active: markets.length
   }), [markets]);
-  const filteredMarkets = orderedMarkets.filter((market) => view === "active" || market.signal === view);
-  const visibleMarkets = filteredMarkets.slice(0, MAX_VISIBLE_MARKETS);
+  const normalizedMarketQuery = marketQuery.trim().toLowerCase();
+  const rankByAddress = useMemo(
+    () => new Map(
+      orderedMarkets.map((market, index) => [
+        market.address.toLowerCase(),
+        index + 1
+      ])
+    ),
+    [orderedMarkets]
+  );
+  const viewMarkets = orderedMarkets.filter(
+    (market) => view === "active" || market.signal === view
+  );
+  const filteredMarkets = normalizedMarketQuery
+    ? orderedMarkets.filter((market) => [
+        market.name,
+        market.symbol,
+        market.address,
+        market.pairAddress
+      ].some((value) => value.toLowerCase().includes(normalizedMarketQuery)))
+    : viewMarkets;
+  const expandedDirectory =
+    showAllMarkets || normalizedMarketQuery.length > 0;
+  const visibleMarkets = expandedDirectory
+    ? filteredMarkets
+    : filteredMarkets.slice(0, MAX_VISIBLE_MARKETS);
+  const marketCountLabel = normalizedMarketQuery
+    ? filteredMarkets.length + " match" + (filteredMarkets.length === 1 ? "" : "es")
+    : showAllMarkets
+      ? "Showing all " + filteredMarkets.length
+      : "Top " + Math.min(MAX_VISIBLE_MARKETS, filteredMarkets.length) +
+        " of " + filteredMarkets.length;
 
-  const changeView = (nextView: RunnerView) => setView(nextView);
+  const changeView = (nextView: RunnerView) => {
+    setView(nextView);
+    setMarketQuery("");
+    setShowAllMarkets(false);
+  };
+  const handleMarketQueryChange = (value: string) => {
+    setMarketQuery(value);
+    if (value.trim()) {
+      setView("active");
+      setShowAllMarkets(false);
+    }
+  };
+  const clearMarketQuery = () => {
+    setMarketQuery("");
+    window.requestAnimationFrame(() => marketSearchInput.current?.focus());
+  };
+  const handleDirectoryAction = () => {
+    if (normalizedMarketQuery) {
+      setMarketQuery("");
+      return;
+    }
+    if (showAllMarkets) {
+      setShowAllMarkets(false);
+      return;
+    }
+    setView("active");
+    setShowAllMarkets(true);
+  };
   const handleTabKeyDown = (event: ReactKeyboardEvent<HTMLButtonElement>, currentView: RunnerView) => {
     const currentIndex = VIEWS.findIndex((item) => item.id === currentView);
     let nextIndex = currentIndex;
@@ -398,7 +458,7 @@ export function ExternalMarketFeed() {
         <div>
           <p className="eyebrow">ROBINHOOD CHAIN · RUNNER RADAR</p>
           <h2 id="external-markets-title" ref={runnerHeading} tabIndex={-1}>Markets showing movement</h2>
-          <p>Active Robinhood Chain markets discovered through WETH and USDG pairs. The board surfaces four risk-adjusted signals at a time instead of flooding the terminal with inactive tokens.</p>
+          <p>Active Robinhood Chain markets discovered through WETH and USDG pairs. Top signals stay focused by default; search or browse every qualified market without losing the live ranking.</p>
         </div>
         <span className="externalBadge">{status === "stale" ? "DATA DELAYED" : "RECENT DATA · 60S RANKS"}</span>
       </div>
@@ -411,6 +471,41 @@ export function ExternalMarketFeed() {
           <button type="button" onClick={() => void refresh()}>Refresh</button>
         </p>
       )}
+      <div className="runnerDirectoryControls" role="search" aria-label="Search external markets">
+        <div className="runnerMarketSearch">
+          <span aria-hidden="true">⌕</span>
+          <label className="srOnly" htmlFor="external-market-search">Search external markets by name, ticker, or contract</label>
+          <input
+            id="external-market-search"
+            ref={marketSearchInput}
+            type="search"
+            value={marketQuery}
+            onChange={(event) => handleMarketQueryChange(event.target.value)}
+            placeholder="Search name, ticker, or contract"
+            autoComplete="off"
+            spellCheck={false}
+            maxLength={96}
+            aria-describedby="runner-market-count"
+          />
+          {marketQuery && (
+            <button type="button" aria-label="Clear external market search" onClick={clearMarketQuery}>×</button>
+          )}
+        </div>
+        <button
+          className="runnerDirectoryButton"
+          type="button"
+          aria-controls="runner-market-panel"
+          aria-expanded={expandedDirectory}
+          disabled={markets.length === 0}
+          onClick={handleDirectoryAction}
+        >
+          {normalizedMarketQuery
+            ? "Clear search"
+            : showAllMarkets
+              ? "Show top four"
+              : "Browse all " + markets.length}
+        </button>
+      </div>
       <div className="runnerToolbar">
         <div className="runnerTabs" role="tablist" aria-label="External runner views">
           {VIEWS.map((item) => (
@@ -430,7 +525,7 @@ export function ExternalMarketFeed() {
             </button>
           ))}
         </div>
-        <small>Top {Math.min(MAX_VISIBLE_MARKETS, filteredMarkets.length)} of {filteredMarkets.length}</small>
+        <small id="runner-market-count" aria-live="polite">{marketCountLabel}</small>
       </div>
 
       <div id="runner-market-panel" role="tabpanel" aria-labelledby={"runner-tab-" + view}>
@@ -439,7 +534,13 @@ export function ExternalMarketFeed() {
         ) : status === "error" ? (
           <div className="emptyFeed"><strong>Runner radar is temporarily unavailable.</strong><span>RMT launches and trading are unaffected.</span><button type="button" onClick={() => void refresh()}>Try again</button></div>
         ) : visibleMarkets.length === 0 ? (
-          <div className="emptyFeed"><strong>No markets meet this signal yet.</strong><span>The filter will update automatically when activity qualifies.</span>{view !== "active" && <button type="button" onClick={() => changeView("active")}>View active markets</button>}</div>
+          <div className="emptyFeed">
+            <strong>{normalizedMarketQuery ? "No external markets match that search." : "No markets meet this signal yet."}</strong>
+            <span>{normalizedMarketQuery ? "Try a token name, ticker, or complete contract address." : "The filter will update automatically when activity qualifies."}</span>
+            {normalizedMarketQuery
+              ? <button type="button" onClick={clearMarketQuery}>Clear search</button>
+              : view !== "active" && <button type="button" onClick={() => changeView("active")}>View active markets</button>}
+          </div>
         ) : (
           <div className="externalMarketGrid runnerMarketGrid">
             {visibleMarkets.map((market, index) => {
@@ -450,7 +551,7 @@ export function ExternalMarketFeed() {
                 <article className="externalMarketCard runnerMarketCard" key={market.address}>
                   <div className="runnerCardStatus">
                     <span className={"marketSignal " + market.signal}>{signalLabel(market.signal)}</span>
-                    <span>#{String(index + 1).padStart(2, "0")} · Score {market.momentumScore}</span>
+                    <span>#{String(rankByAddress.get(market.address.toLowerCase()) ?? index + 1).padStart(2, "0")} · Score {market.momentumScore}</span>
                   </div>
                   <div className="externalIdentity">
                     <span className="coin externalArtwork" aria-hidden="true">{initials(market.symbol)}</span>
