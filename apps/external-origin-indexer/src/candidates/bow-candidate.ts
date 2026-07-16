@@ -7,6 +7,7 @@ const ADDRESS_PATTERN = /^0x[0-9a-fA-F]{40}$/;
 const HASH_PATTERN = /^0x[0-9a-fA-F]{64}$/;
 const WORD_PATTERN = /^0x[0-9a-fA-F]{64}$/;
 const ZERO_ADDRESS = `0x${"0".repeat(40)}`;
+const ZERO_HASH = `0x${"0".repeat(64)}`;
 
 export type BowRawLaunchedLog = Readonly<{
   address: string;
@@ -42,7 +43,11 @@ function requireHash(value: string, name: string): `0x${string}` {
   if (!HASH_PATTERN.test(value)) {
     throw new Error(name + " must be a 32-byte hash");
   }
-  return value.toLowerCase() as `0x${string}`;
+  const normalized = value.toLowerCase() as `0x${string}`;
+  if (normalized === ZERO_HASH) {
+    throw new Error(name + " must be nonzero");
+  }
+  return normalized;
 }
 
 function decodeAddressWord(value: string, name: string): `0x${string}` {
