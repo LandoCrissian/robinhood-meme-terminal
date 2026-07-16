@@ -22,7 +22,7 @@ export type BowRawLaunchedLog = Readonly<{
 
 export type DecodedBowLaunch = Readonly<{
   token: `0x${string}`;
-  creator: `0x${string}`;
+  deployer: `0x${string}`;
   pool: `0x${string}`;
   positionId: bigint;
   launchId: bigint;
@@ -96,11 +96,11 @@ export function decodeBowLaunchedLog(
     throw new Error("Bow log topic0 does not match Launched");
   }
   const token = decodeAddressWord(log.topics[1] ?? "", "token");
-  const creator = decodeAddressWord(log.topics[2] ?? "", "creator");
+  const deployer = decodeAddressWord(log.topics[2] ?? "", "deployer");
   const [poolWord, positionWord, launchWord] = splitDataWords(log.data);
   return Object.freeze({
     token,
-    creator,
+    deployer,
     pool: decodeAddressWord(poolWord, "pool"),
     positionId: BigInt(positionWord),
     launchId: BigInt(launchWord)
