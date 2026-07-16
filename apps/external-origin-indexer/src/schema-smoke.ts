@@ -88,13 +88,13 @@ try {
   const adapterId = "example-v1";
   const sourceId = "example";
   const sourceName = "Example Launchpad";
-  const factory = `0x${"1".repeat(40)}`;
-  const token = `0x${"3".repeat(40)}`;
-  const creator = `0x${"4".repeat(40)}`;
-  const market = `0x${"5".repeat(40)}`;
-  const manifestHash = `0x${"a".repeat(64)}`;
-  const transactionHash = `0x${"b".repeat(64)}`;
-  const blockHash = `0x${"d".repeat(64)}`;
+  const factory = `0x${"1".repeat(40)}` as `0x${string}`;
+  const token = `0x${"3".repeat(40)}` as `0x${string}`;
+  const creator = `0x${"4".repeat(40)}` as `0x${string}`;
+  const market = `0x${"5".repeat(40)}` as `0x${string}`;
+  const manifestHash = `0x${"a".repeat(64)}` as `0x${string}`;
+  const transactionHash = `0x${"b".repeat(64)}` as `0x${string}`;
+  const blockHash = `0x${"d".repeat(64)}` as `0x${string}`;
   const parentHash = `0x${"e".repeat(64)}`;
 
   const evidence: ExternalOriginEvidence = {
