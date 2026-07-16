@@ -19,9 +19,12 @@ export type StoredExternalOriginClaim = {
   adapterId: string;
   sourceId: string;
   sourceName: string;
-  claimKind: "token-created" | "source-listed";
+  claimKind: "token-created";
   token: string;
   factory: string;
+  startBlock: string;
+  manifestHash: string;
+  schemaVersion: number;
   transactionHash: string;
   logIndex: number;
   transactionIndex: number;
@@ -107,6 +110,9 @@ export class ExternalOriginStore implements ExternalOriginStoreLike {
          claim_kind,
          token,
          factory,
+         start_block::TEXT AS start_block,
+         manifest_hash,
+         schema_version,
          transaction_hash,
          log_index,
          transaction_index,
@@ -118,6 +124,7 @@ export class ExternalOriginStore implements ExternalOriginStoreLike {
          observed_at
        FROM external_origin_claims
        WHERE chain_id = $1
+         AND claim_kind = 'token-created'
          AND token = ANY($2::text[])
          AND adapter_id = ANY($3::text[])
        ORDER BY token ASC, block_number DESC, log_index DESC`,
@@ -128,9 +135,12 @@ export class ExternalOriginStore implements ExternalOriginStoreLike {
       adapterId: row.adapter_id as string,
       sourceId: row.source_id as string,
       sourceName: row.source_name as string,
-      claimKind: row.claim_kind as StoredExternalOriginClaim["claimKind"],
+      claimKind: "token-created" as const,
       token: row.token as string,
       factory: row.factory as string,
+      startBlock: row.start_block as string,
+      manifestHash: row.manifest_hash as string,
+      schemaVersion: Number(row.schema_version),
       transactionHash: row.transaction_hash as string,
       logIndex: Number(row.log_index),
       transactionIndex: Number(row.transaction_index),
