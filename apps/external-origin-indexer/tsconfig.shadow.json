@@ -1,0 +1,13 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "rootDir": "."
+  },
+  "include": [
+    "shadow/**/*.ts",
+    "src/adapter-registry.ts",
+    "src/candidates/bow-candidate.ts",
+    "src/config.ts"
+  ]
+}
