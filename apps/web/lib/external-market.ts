@@ -40,6 +40,7 @@ export type ExternalMarketResponse = {
   markets?: ExternalMarket[];
   source?: string;
   rankingVersion?: string;
+  thresholds?: Record<string, number>;
   originCoverage?: OriginCoverage;
   rmtOriginCoverage?: OriginCoverage;
   updatedAt?: string;
