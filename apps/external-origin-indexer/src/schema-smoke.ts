@@ -1,30 +1,22 @@
+import assert from "node:assert/strict";
 import { Pool } from "pg";
 import { EXTERNAL_ORIGIN_SCHEMA_VERSION } from "./config.js";
-import { externalOriginSchemaSql } from "./schema.js";
+import {
+  deriveExternalOriginEvidenceHash,
+  type ExternalOriginEvidence
+} from "./evidence.js";
+import { ExternalOriginStore } from "./origin-store.js";
+import {
+  applyExternalOriginSchema,
+  assertExternalOriginSchema,
+  externalOriginSchemaSql
+} from "./schema.js";
 
 const databaseUrl = process.env.EXTERNAL_ORIGIN_DATABASE_URL?.trim();
 if (!databaseUrl) {
   throw new Error(
     "EXTERNAL_ORIGIN_DATABASE_URL is required for the schema smoke test"
   );
-}
-
-function assertExactSet(
-  label: string,
-  actualValues: readonly string[],
-  expectedValues: readonly string[]
-) {
-  const actual = [...actualValues].sort();
-  const expected = [...expectedValues].sort();
-  if (
-    actual.length !== expected.length ||
-    actual.some((value, index) => value !== expected[index])
-  ) {
-    throw new Error(
-      label + " mismatch. Expected " + expected.join(", ") +
-      "; received " + actual.join(", ")
-    );
-  }
 }
 
 async function expectPgFailure(
@@ -60,103 +52,34 @@ async function expectPgFailure(
 const pool = new Pool({
   connectionString: databaseUrl,
   ssl:
-    process.env.PGSSLMODE?.trim().toLowerCase() === "disable"
-      ? false
-      : { rejectUnauthorized: false },
-  max: 1
+    process.env.PGSSLMODE?.trim().toLowerCase() === "disable",
+  max: 4
 });
+
+await Promise.all([
+  applyExternalOriginSchema(pool),
+  applyExternalOriginSchema(pool)
+]);
+
+await pool.query("CREATE TABLE isolation_sentinel (id INTEGER)");
+await assert.rejects(
+  () => applyExternalOriginSchema(pool),
+  /not a dedicated database/
+);
+await pool.query("DROP TABLE isolation_sentinel");
+
 const client = await pool.connect();
-const schemaName =
-  "external_origin_smoke_" + process.pid + "_" + Date.now();
-const quotedSchema = '"' + schemaName + '"';
-let schemaCreated = false;
-
 try {
-  await client.query("CREATE SCHEMA " + quotedSchema);
-  schemaCreated = true;
-  await client.query("SET search_path TO " + quotedSchema);
-
-  await client.query(externalOriginSchemaSql);
-  await client.query(externalOriginSchemaSql);
-
   const expectedTables = [
     "external_origin_adapter_state",
     "external_origin_claims",
     "external_origin_sync_points"
   ];
-  const tables = await client.query<{ table_name: string }>(
-    `SELECT table_name
-     FROM information_schema.tables
-     WHERE table_schema = $1
-       AND table_type = 'BASE TABLE'
-     ORDER BY table_name`,
-    [schemaName]
-  );
-  assertExactSet(
-    "External-origin table set",
-    tables.rows.map((row) => row.table_name),
-    expectedTables
-  );
-
   for (const table of expectedTables) {
     const result = await client.query<{ count: number }>(
       "SELECT COUNT(*)::integer AS count FROM " + table
     );
-    if (result.rows[0]?.count !== 0) {
-      throw new Error(table + " was not empty after migration");
-    }
-  }
-
-  const constraints = await client.query<{
-    constraint_name: string;
-    constraint_type: string;
-  }>(
-    `SELECT constraint_name, constraint_type
-     FROM information_schema.table_constraints
-     WHERE constraint_schema = $1
-       AND table_name = ANY($2::text[])`,
-    [schemaName, expectedTables]
-  );
-  const constraintTypes = new Map(
-    constraints.rows.map((row) => [
-      row.constraint_name,
-      row.constraint_type
-    ])
-  );
-  const requiredConstraints = new Map([
-    ["external_origin_adapter_state_pkey", "PRIMARY KEY"],
-    ["external_origin_adapter_state_factory_key", "UNIQUE"],
-    ["external_origin_adapter_state_claim_parent_key", "UNIQUE"],
-    ["external_origin_adapter_state_status_check", "CHECK"],
-    ["external_origin_sync_points_pkey", "PRIMARY KEY"],
-    ["external_origin_sync_points_adapter_fkey", "FOREIGN KEY"],
-    ["external_origin_claims_pkey", "PRIMARY KEY"],
-    ["external_origin_claims_evidence_key", "UNIQUE"],
-    ["external_origin_claims_adapter_source_fkey", "FOREIGN KEY"],
-    ["external_origin_claims_claim_kind_check", "CHECK"],
-    ["external_origin_claims_token_check", "CHECK"]
-  ]);
-  for (const [name, type] of requiredConstraints) {
-    if (constraintTypes.get(name) !== type) {
-      throw new Error("Missing " + type + " constraint " + name);
-    }
-  }
-
-  const indexes = await client.query<{ indexname: string }>(
-    `SELECT indexname
-     FROM pg_indexes
-     WHERE schemaname = $1
-       AND tablename = 'external_origin_claims'`,
-    [schemaName]
-  );
-  const indexNames = new Set(indexes.rows.map((row) => row.indexname));
-  for (const name of [
-    "external_origin_claims_pkey",
-    "external_origin_claims_evidence_key",
-    "external_origin_claims_token_block_log_idx",
-    "external_origin_claims_adapter_block_log_idx"
-  ]) {
-    if (!indexNames.has(name)) throw new Error("Missing index " + name);
+    assert.equal(result.rows[0]?.count, 0, table + " must start empty");
   }
 
   const chainId = 4663;
@@ -171,7 +94,23 @@ try {
   const transactionHash = `0x${"b".repeat(64)}`;
   const blockHash = `0x${"d".repeat(64)}`;
   const parentHash = `0x${"e".repeat(64)}`;
-  const evidenceHash = `0x${"f".repeat(64)}`;
+
+  const evidence: ExternalOriginEvidence = {
+    chainId,
+    adapterId,
+    manifestHash,
+    claimKind: "token-created",
+    token,
+    factory,
+    transactionHash,
+    logIndex: 7,
+    transactionIndex: 2,
+    blockNumber: 100n,
+    blockHash,
+    creator,
+    market
+  };
+  const evidenceHash = deriveExternalOriginEvidenceHash(evidence);
 
   await client.query(
     `INSERT INTO external_origin_adapter_state (
@@ -192,6 +131,46 @@ try {
   );
 
   await client.query(
+    `INSERT INTO external_origin_adapter_state (
+       chain_id, adapter_id, source_id, source_name, factory,
+       start_block, next_block, manifest_hash, schema_version, status
+     )
+     VALUES (
+       $1, 'example-v2', $2, $3, $4, 100, 100, $5, $6, 'backfilling'
+     )`,
+    [
+      chainId,
+      sourceId,
+      sourceName,
+      factory,
+      `0x${"6".repeat(64)}`,
+      EXTERNAL_ORIGIN_SCHEMA_VERSION
+    ]
+  );
+
+  await expectPgFailure(
+    "Ready state without a completed checkpoint",
+    "23514",
+    "external_origin_adapter_state_ready_check",
+    () => client.query(
+      `INSERT INTO external_origin_adapter_state (
+         chain_id, adapter_id, source_id, source_name, factory,
+         start_block, next_block, manifest_hash, schema_version, status
+       )
+       VALUES (
+         $1, 'bad-ready-v1', 'bad-ready', 'Bad Ready',
+         $2, 100, 100, $3, $4, 'ready'
+       )`,
+      [
+        chainId,
+        `0x${"2".repeat(40)}`,
+        `0x${"7".repeat(64)}`,
+        EXTERNAL_ORIGIN_SCHEMA_VERSION
+      ]
+    )
+  );
+
+  await client.query(
     `INSERT INTO external_origin_sync_points (
        chain_id, adapter_id, block_number, block_hash, parent_hash
      )
@@ -200,35 +179,45 @@ try {
   );
 
   type ClaimOverrides = {
+    claimKind?: "token-created" | "source-listed";
     adapterId?: string;
     factory?: string;
+    startBlock?: string;
+    manifestHash?: string;
     token?: string;
     transactionHash?: string;
     logIndex?: number;
+    blockNumber?: string;
+    blockHash?: string;
     evidenceHash?: string;
   };
   const insertClaim = (overrides: ClaimOverrides = {}) =>
     client.query(
       `INSERT INTO external_origin_claims (
          chain_id, adapter_id, source_id, source_name, claim_kind,
-         token, factory, transaction_hash, log_index,
-         transaction_index, block_number, block_hash,
-         creator, market, evidence_hash
+         token, factory, start_block, manifest_hash, schema_version,
+         transaction_hash, log_index, transaction_index,
+         block_number, block_hash, creator, market, evidence_hash
        )
        VALUES (
-         $1, $2, $3, $4, 'token-created', $5, $6, $7,
-         $8, 2, 100, $9, $10, $11, $12
+         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
+         $11, $12, 2, $13, $14, $15, $16, $17
        )`,
       [
         chainId,
         overrides.adapterId ?? adapterId,
         sourceId,
         sourceName,
+        overrides.claimKind ?? "token-created",
         overrides.token ?? token,
         overrides.factory ?? factory,
+        overrides.startBlock ?? "100",
+        overrides.manifestHash ?? manifestHash,
+        EXTERNAL_ORIGIN_SCHEMA_VERSION,
         overrides.transactionHash ?? transactionHash,
         overrides.logIndex ?? 7,
-        blockHash,
+        overrides.blockNumber ?? "100",
+        overrides.blockHash ?? blockHash,
         creator,
         market,
         overrides.evidenceHash ?? evidenceHash
@@ -242,7 +231,7 @@ try {
     "23505",
     "external_origin_claims_pkey",
     () => insertClaim({
-      evidenceHash: `0x${"6".repeat(64)}`
+      evidenceHash: `0x${"8".repeat(64)}`
     })
   );
 
@@ -253,6 +242,71 @@ try {
     () => insertClaim({
       transactionHash: `0x${"7".repeat(64)}`,
       logIndex: 8
+    })
+  );
+
+  await expectPgFailure(
+    "Conflicting token creation origin",
+    "23505",
+    "external_origin_claims_created_token_key",
+    () => insertClaim({
+      transactionHash: `0x${"8".repeat(64)}`,
+      logIndex: 9,
+      evidenceHash: `0x${"9".repeat(64)}`
+    })
+  );
+
+  await insertClaim({
+    claimKind: "source-listed",
+    transactionHash: `0x${"9".repeat(64)}`,
+    logIndex: 10,
+    evidenceHash: `0x${"b".repeat(64)}`
+  });
+
+  const store = new ExternalOriginStore(pool);
+  const creationClaims = await store.originClaims(
+    [token],
+    [adapterId]
+  );
+  assert.equal(creationClaims.length, 1);
+  assert.equal(creationClaims[0]?.claimKind, "token-created");
+  assert.equal(creationClaims[0]?.manifestHash, manifestHash);
+
+  await expectPgFailure(
+    "Retroactive manifest mutation",
+    "23503",
+    "external_origin_claims_adapter_source_fkey",
+    () => client.query(
+      `UPDATE external_origin_adapter_state
+       SET manifest_hash = $1
+       WHERE chain_id = $2 AND adapter_id = $3`,
+      [`0x${"c".repeat(64)}`, chainId, adapterId]
+    )
+  );
+
+  await expectPgFailure(
+    "Mismatched claim manifest",
+    "23503",
+    "external_origin_claims_adapter_source_fkey",
+    () => insertClaim({
+      claimKind: "source-listed",
+      manifestHash: `0x${"c".repeat(64)}`,
+      transactionHash: `0x${"c".repeat(64)}`,
+      logIndex: 11,
+      evidenceHash: `0x${"d".repeat(64)}`
+    })
+  );
+
+  await expectPgFailure(
+    "Mismatched checkpoint hash",
+    "23503",
+    "external_origin_claims_checkpoint_fkey",
+    () => insertClaim({
+      claimKind: "source-listed",
+      blockHash: `0x${"f".repeat(64)}`,
+      transactionHash: `0x${"e".repeat(64)}`,
+      logIndex: 12,
+      evidenceHash: `0x${"e".repeat(64)}`
     })
   );
 
@@ -269,86 +323,90 @@ try {
     )
   );
 
-  await expectPgFailure(
-    "Missing claim adapter",
-    "23503",
-    "external_origin_claims_adapter_source_fkey",
-    () => insertClaim({
-      adapterId: "missing-v1",
-      transactionHash: `0x${"8".repeat(64)}`,
-      logIndex: 9,
-      evidenceHash: `0x${"8".repeat(64)}`
-    })
+  await client.query(
+    `INSERT INTO external_origin_sync_points (
+       chain_id, adapter_id, block_number, block_hash, parent_hash
+     )
+     VALUES ($1, $2, 99, $3, $4)`,
+    [
+      chainId,
+      adapterId,
+      `0x${"1".repeat(64)}`,
+      `0x${"2".repeat(64)}`
+    ]
   );
-
   await expectPgFailure(
-    "Mismatched immutable provenance",
-    "23503",
-    "external_origin_claims_adapter_source_fkey",
-    () => insertClaim({
-      factory: `0x${"2".repeat(40)}`,
-      transactionHash: `0x${"9".repeat(64)}`,
-      logIndex: 10,
-      evidenceHash: `0x${"9".repeat(64)}`
-    })
-  );
-
-  await expectPgFailure(
-    "Uppercase address",
+    "Claim before adapter deployment",
     "23514",
-    "external_origin_claims_token_check",
+    "external_origin_claims_block_range_check",
     () => insertClaim({
-      token: `0x${"A".repeat(40)}`,
-      transactionHash: `0x${"c".repeat(64)}`,
-      logIndex: 11,
-      evidenceHash: `0x${"c".repeat(64)}`
+      claimKind: "source-listed",
+      blockNumber: "99",
+      blockHash: `0x${"1".repeat(64)}`,
+      transactionHash: `0x${"1".repeat(64)}`,
+      logIndex: 13,
+      evidenceHash: `0x${"2".repeat(64)}`
     })
   );
 
-  await expectPgFailure(
-    "Deleting retained provenance",
-    "23503",
-    "external_origin_claims_adapter_source_fkey",
-    () => client.query(
-      `DELETE FROM external_origin_adapter_state
-       WHERE chain_id = $1 AND adapter_id = $2`,
-      [chainId, adapterId]
-    )
-  );
-
   await client.query(
-    `DELETE FROM external_origin_claims
+    `DELETE FROM external_origin_sync_points
      WHERE chain_id = $1
-       AND transaction_hash = $2
-       AND log_index = 7`,
-    [chainId, transactionHash]
+       AND adapter_id = $2
+       AND block_number = 100`,
+    [chainId, adapterId]
   );
-  await client.query(
-    `DELETE FROM external_origin_adapter_state
+  const reorgClaims = await client.query<{ count: number }>(
+    `SELECT COUNT(*)::integer AS count
+     FROM external_origin_claims
      WHERE chain_id = $1 AND adapter_id = $2`,
     [chainId, adapterId]
+  );
+  assert.equal(
+    reorgClaims.rows[0]?.count,
+    0,
+    "Deleting a checkpoint must remove its claims"
+  );
+
+  await client.query(
+    `DELETE FROM external_origin_adapter_state
+     WHERE chain_id = $1`,
+    [chainId]
   );
 
   for (const table of expectedTables) {
     const result = await client.query<{ count: number }>(
       "SELECT COUNT(*)::integer AS count FROM " + table
     );
-    if (result.rows[0]?.count !== 0) {
-      throw new Error(table + " did not return to zero rows");
-    }
+    assert.equal(result.rows[0]?.count, 0, table + " must return to zero");
+  }
+
+  const driftSchema =
+    "external_origin_drift_" + process.pid + "_" + Date.now();
+  const quotedDriftSchema = '"' + driftSchema + '"';
+  await client.query("CREATE SCHEMA " + quotedDriftSchema);
+  try {
+    await client.query("SET search_path TO " + quotedDriftSchema);
+    await client.query(externalOriginSchemaSql);
+    await client.query(externalOriginSchemaSql);
+    await assertExternalOriginSchema(client, driftSchema);
+    await client.query(
+      "ALTER TABLE external_origin_claims " +
+      "DROP CONSTRAINT external_origin_claims_evidence_key"
+    );
+    await assert.rejects(
+      () => assertExternalOriginSchema(client, driftSchema),
+      /constraints mismatch/
+    );
+  } finally {
+    await client.query("SET search_path TO public");
+    await client.query(
+      "DROP SCHEMA IF EXISTS " + quotedDriftSchema + " CASCADE"
+    );
   }
 
   console.info("External-origin schema smoke test passed.");
 } finally {
-  try {
-    if (schemaCreated) {
-      await client.query("SET search_path TO public");
-      await client.query(
-        "DROP SCHEMA IF EXISTS " + quotedSchema + " CASCADE"
-      );
-    }
-  } finally {
-    client.release();
-    await pool.end();
-  }
+  client.release();
+  await pool.end();
 }
