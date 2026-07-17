@@ -1,0 +1,1144 @@
+/* Mobile V8: the calm, personal Profile-page language applied across RMT. */
+@media (max-width: 760px) {
+  :root {
+    --mobile-gutter: 10px;
+    --mobile-radius-lg: 22px;
+    --mobile-radius-md: 16px;
+    --mobile-card: linear-gradient(180deg, rgba(13, 19, 15, .98), rgba(7, 11, 8, .98));
+    --mobile-card-line: #26372c;
+  }
+
+  body {
+    background:
+      radial-gradient(circle at 12% -4%, rgba(49, 161, 73, .18), transparent 28%),
+      #050705;
+  }
+
+  main {
+    padding-bottom: calc(96px + env(safe-area-inset-bottom));
+  }
+
+  /* A quieter header with three clear targets: brand, wallet, menu. */
+  .publicHeader {
+    border-bottom-color: rgba(48, 67, 55, .8);
+    background: rgba(5, 8, 6, .94);
+    backdrop-filter: blur(22px);
+    -webkit-backdrop-filter: blur(22px);
+  }
+
+  .publicNav {
+    height: 64px;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 8px;
+    padding: 0 var(--mobile-gutter);
+  }
+
+  .publicNav .brandLockup {
+    padding-right: 0;
+    border-right: 0;
+  }
+
+  .publicNav .brandLogo {
+    width: 40px;
+    height: 40px;
+    border: 1px solid #26382c;
+    border-radius: 12px;
+    background: #071008;
+  }
+
+  .publicNav .brandLockup strong {
+    display: none;
+  }
+
+  .publicNavActions {
+    width: 100%;
+    gap: 8px;
+  }
+
+  .publicMore {
+    order: 2;
+  }
+
+  .publicMore summary {
+    width: 48px;
+    min-width: 48px;
+    min-height: 44px;
+    padding: 0;
+    border: 1px solid #2c3b32;
+    border-radius: 14px;
+    background: #0a100c;
+  }
+
+  .publicMore summary span {
+    display: none;
+  }
+
+  .publicMore summary b {
+    color: #70ed83;
+    font-size: .92rem;
+  }
+
+  .publicMore[open] summary,
+  .publicMore.active summary {
+    border-color: #3b6845;
+    border-radius: 14px;
+    background: #112017;
+  }
+
+  .publicNavActions .wallet,
+  .publicNavActions .fundWalletTrigger {
+    min-height: 44px;
+    padding: 9px 14px;
+    border-radius: 14px;
+    font-size: .75rem;
+    white-space: nowrap;
+  }
+
+  .publicMenu {
+    top: calc(70px + env(safe-area-inset-top));
+    right: 8px;
+    left: 8px;
+    width: auto;
+    gap: 5px;
+    padding: 10px;
+    border-color: #314239;
+    border-radius: 20px;
+    background: rgba(8, 13, 9, .99);
+    box-shadow: 0 28px 90px rgba(0, 0, 0, .72);
+  }
+
+  .publicMore:not([open]) > .publicMenu {
+    display: none;
+  }
+
+  .publicMore[open] > .publicMenu {
+    display: grid;
+  }
+
+  .publicMenu > div > span {
+    padding: 9px 10px 4px;
+    font-size: .63rem;
+  }
+
+  .publicMenu a {
+    min-height: 58px;
+    padding: 10px 12px;
+    border-radius: 14px;
+    font-size: .82rem;
+  }
+
+  .publicMenu a small {
+    font-size: .7rem;
+    line-height: 1.4;
+  }
+
+  /* Mobile dock remains persistent without squeezing its labels. */
+  .mobileDock {
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    max-width: none;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 4px;
+    padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
+    border: 0;
+    border-top: 1px solid rgba(56, 79, 64, .88);
+    border-radius: 0;
+    background: rgba(6, 10, 7, .97);
+    box-shadow: 0 -16px 46px rgba(0, 0, 0, .42);
+  }
+
+  .mobileDock a {
+    min-height: 50px;
+    gap: 6px;
+    padding: 0 6px;
+    border-radius: 14px;
+    font-size: .76rem;
+    line-height: 1;
+    white-space: nowrap;
+  }
+
+  .mobileDock span {
+    flex: 0 0 auto;
+    font-size: .98rem;
+  }
+
+  .mobileDock a[aria-current="page"] {
+    background: linear-gradient(145deg, #17301d, #102116);
+    box-shadow: inset 0 0 0 1px rgba(92, 238, 119, .1);
+  }
+
+  /* Profile stays the source of truth, with consistent page gutters. */
+  .profilePage {
+    padding: var(--mobile-gutter) var(--mobile-gutter) calc(98px + env(safe-area-inset-bottom));
+  }
+
+  .profileHero {
+    padding: 20px 16px;
+    border: 1px solid var(--mobile-card-line);
+    border-radius: var(--mobile-radius-lg);
+  }
+
+  .profilePulse {
+    border-right: 1px solid #223027;
+    border-left: 1px solid #223027;
+    border-radius: var(--mobile-radius-md);
+  }
+
+  .profileWorkspace {
+    gap: 10px;
+    margin-top: 10px;
+  }
+
+  .profileEditor,
+  .profileRail > section,
+  .profileQuickLinks {
+    border-right: 1px solid #243229;
+    border-left: 1px solid #243229;
+    border-radius: 20px;
+  }
+
+  .profileEditor,
+  .profileRail > section,
+  .profileQuickLinks {
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+
+  /* Home: a personal command surface instead of stacked square ledgers. */
+  main:has(.rmtDiscovery) {
+    padding: var(--mobile-gutter) var(--mobile-gutter) calc(98px + env(safe-area-inset-bottom));
+  }
+
+  .terminalIntro {
+    gap: 12px;
+    padding: 20px 16px;
+    overflow: hidden;
+    border: 1px solid var(--mobile-card-line);
+    border-radius: var(--mobile-radius-lg);
+    background:
+      radial-gradient(circle at 8% 0, rgba(73, 237, 107, .15), transparent 38%),
+      var(--mobile-card);
+  }
+
+  .terminalIntro h1 {
+    font-size: 1.55rem;
+    letter-spacing: -.035em;
+  }
+
+  .terminalIntro > div:first-child > p:last-child {
+    color: #8d9a91;
+    font-size: .82rem;
+  }
+
+  .terminalIntroActions a {
+    min-height: 50px;
+    border-radius: 14px;
+    font-size: .78rem;
+  }
+
+  .terminalIntro .trustStrip {
+    overflow: hidden;
+    border-color: #27372d;
+    border-radius: 16px;
+    background: rgba(5, 9, 6, .72);
+  }
+
+  .terminalIntro .trustStrip span {
+    min-height: 48px;
+    padding: 10px 11px;
+    font-size: .66rem;
+  }
+
+  .feed.panel.rmtDiscovery {
+    margin-top: 10px;
+    border: 1px solid var(--mobile-card-line);
+    border-radius: 20px;
+    background: var(--mobile-card);
+  }
+
+  .rmtDiscovery .feedHeading {
+    padding: 18px 16px;
+    background: radial-gradient(circle at 0 0, rgba(69, 226, 101, .09), transparent 48%);
+  }
+
+  .rmtDiscovery .feedHeading h2 {
+    font-size: 1.28rem;
+    letter-spacing: -.025em;
+  }
+
+  .rmtDiscovery .feedHeading .sectionCopy {
+    color: #87948c;
+    font-size: .78rem;
+  }
+
+  .rmtDiscovery .badge {
+    border-radius: 999px;
+  }
+
+  .terminalTape {
+    background: #070b08;
+  }
+
+  .rmtControlDeck {
+    gap: 10px;
+    padding: 12px;
+    background: #080d0a;
+  }
+
+  .rmtDiscovery .rmtDiscoverySearch input {
+    border-radius: 14px;
+    background: #050806;
+  }
+
+  .rmtDiscovery .rmtDiscoverySearch button {
+    right: 4px;
+    border-radius: 11px;
+  }
+
+  .rmtDiscovery .discoveryTabs {
+    gap: 5px;
+    padding: 5px;
+    border-radius: 16px;
+    background: #060a07;
+  }
+
+  .rmtDiscovery .discoveryTabs button {
+    border: 0 !important;
+    border-radius: 11px;
+  }
+
+  .rmtDiscovery .discoveryTabs button.active {
+    background: #15301b;
+    box-shadow: inset 0 0 0 1px #2a5733;
+  }
+
+  .rmtDiscoveryRows {
+    gap: 10px;
+    padding: 10px;
+  }
+
+  .feed .rmtDiscoveryRow {
+    overflow: hidden;
+    border: 1px solid #26352c;
+    border-radius: 17px;
+    background: #090e0b;
+  }
+
+  .rmtDiscoveryMetrics {
+    overflow: hidden;
+    border-radius: 12px;
+  }
+
+  .rmtDiscoveryActions {
+    border-top-color: #27352c;
+    background: #070b08;
+  }
+
+  .rmtDiscovery .feedStatus,
+  .rmtDiscovery .rmtRankingDisclosure {
+    padding: 12px 14px;
+    font-family: inherit;
+    font-size: .7rem;
+    line-height: 1.5;
+  }
+
+  .rmtDiscovery .emptyFeed {
+    min-height: 180px;
+    padding: 28px 18px;
+  }
+
+  /* Shared discovery, portfolio, and watchlist page framing. */
+  .directoryPage,
+  .launchPage,
+  .statusPage {
+    padding: var(--mobile-gutter) var(--mobile-gutter) calc(98px + env(safe-area-inset-bottom));
+  }
+
+  .directoryHero,
+  .launchPageHeader,
+  .statusHero.panel {
+    padding: 20px 16px;
+    overflow: hidden;
+    border: 1px solid var(--mobile-card-line);
+    border-radius: var(--mobile-radius-lg);
+    background:
+      radial-gradient(circle at 8% 0, rgba(72, 236, 107, .14), transparent 40%),
+      var(--mobile-card);
+  }
+
+  .directoryHero h1,
+  .launchPageHeader h1,
+  .statusHero h1 {
+    margin-top: 5px;
+    font-size: 1.55rem;
+    letter-spacing: -.035em;
+  }
+
+  .directoryHero > div > p:last-child,
+  .launchPageHeader > div:first-child > p:last-child,
+  .statusHero p:not(.eyebrow),
+  .statusHero small {
+    color: #8a978f;
+    font-family: inherit;
+    font-size: .8rem;
+    line-height: 1.55;
+  }
+
+  .directoryHero > .secondaryAction {
+    width: 100%;
+    min-height: 50px;
+    border-radius: 14px;
+    font-size: .76rem;
+  }
+
+  .personalPageHint.panel,
+  .portfolioPanel.panel,
+  .watchlistPanel.panel {
+    margin-top: 10px;
+    border: 1px solid var(--mobile-card-line);
+    border-radius: 20px;
+    background: var(--mobile-card);
+  }
+
+  .personalPageHint.panel {
+    padding: 16px;
+    border-left: 2px solid #55ee72;
+  }
+
+  .personalPageHint strong {
+    font-family: inherit;
+    font-size: .78rem;
+    text-transform: none;
+  }
+
+  .personalPageHint span {
+    font-size: .74rem;
+  }
+
+  .portfolioPanel .emptyFeed,
+  .watchlistPanel .emptyFeed {
+    min-height: 190px;
+    padding: 26px 18px;
+    border-top: 0;
+  }
+
+  .portfolioPanel .emptyFeed strong,
+  .watchlistPanel .emptyFeed strong {
+    font-size: 1rem;
+  }
+
+  .portfolioPanel .emptyFeed span,
+  .watchlistPanel .emptyFeed span {
+    color: #849188;
+    font-size: .76rem;
+  }
+
+  .portfolioPanel .emptyFeed a,
+  .watchlistPanel .emptyFeed a {
+    display: inline-flex;
+    min-height: 46px;
+    align-items: center;
+    justify-content: center;
+    padding: 0 15px;
+    border: 1px solid #35503b;
+    border-radius: 12px;
+    background: #102516;
+    color: #72ea80;
+    font-size: .74rem;
+    font-weight: 900;
+    text-decoration: none;
+  }
+
+  .portfolioHeading,
+  .watchlistHeading {
+    padding: 17px 16px;
+    background: radial-gradient(circle at 0 0, rgba(69, 226, 101, .08), transparent 46%);
+  }
+
+  .portfolioGrid,
+  .watchlistGrid {
+    display: grid;
+    gap: 9px;
+    padding: 10px;
+  }
+
+  .portfolioCard,
+  .watchlistCard {
+    overflow: hidden;
+    border: 1px solid #26352c;
+    border-radius: 16px;
+    background: #090e0b;
+  }
+
+  .watchlistCard > button {
+    border-left-color: #26352c;
+    border-radius: 0;
+  }
+
+  /* Runner Radar cards become readable, self-contained mobile objects. */
+  .runnerRadar.panel {
+    margin: 0;
+    overflow: hidden;
+    border: 1px solid var(--mobile-card-line);
+    border-radius: var(--mobile-radius-lg);
+    background: var(--mobile-card);
+  }
+
+  .runnerRadar .feedHeading {
+    padding: 20px 16px;
+    background: radial-gradient(circle at 0 0, rgba(72, 236, 107, .12), transparent 48%);
+  }
+
+  .runnerRadar .feedHeading h2 {
+    font-size: 1.38rem;
+    letter-spacing: -.03em;
+  }
+
+  .runnerRadar .externalHeading > div > p:last-child {
+    color: #87948c;
+    font-size: .78rem;
+  }
+
+  .runnerRadar .externalBadge {
+    border-radius: 999px;
+  }
+
+  .runnerDirectoryControls {
+    gap: 9px;
+    padding: 12px;
+    border-bottom: 0;
+    background: transparent;
+  }
+
+  .runnerMarketSearch input,
+  .runnerDirectoryButton {
+    border-radius: 14px;
+  }
+
+  .runnerToolbar {
+    gap: 9px;
+    padding: 0 12px 12px;
+    border-bottom: 0;
+    background: transparent;
+  }
+
+  .runnerToolbar > small {
+    align-self: flex-start;
+    font-size: .68rem;
+  }
+
+  .runnerTabs {
+    gap: 5px;
+    padding: 5px;
+    border-radius: 16px;
+  }
+
+  .runnerTabs button {
+    border: 0;
+    border-radius: 11px;
+  }
+
+  .runnerTabs button.active {
+    background: #15301b;
+    box-shadow: inset 0 0 0 1px #2a5733;
+  }
+
+  .runnerMarketGrid {
+    display: grid;
+    gap: 10px;
+    padding: 0 10px 10px;
+  }
+
+  .runnerMarketCard.externalMarketCard {
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-template-rows: auto;
+    min-height: 0;
+    overflow: hidden;
+    border: 1px solid #27372d;
+    border-radius: 18px;
+    background: #090e0b;
+  }
+
+  .runnerMarketCard > * {
+    grid-column: 1 !important;
+    grid-row: auto !important;
+    padding: 12px 14px;
+    border-right: 0;
+  }
+
+  .runnerMarketCard .runnerCardStatus {
+    min-height: 46px;
+    align-items: center;
+    flex-direction: row;
+    justify-content: space-between;
+    border-bottom: 1px solid #243229;
+  }
+
+  .runnerMarketCard .externalIdentity {
+    grid-template-columns: 44px minmax(0, 1fr);
+    gap: 11px;
+    border-bottom: 1px solid #243229;
+  }
+
+  .runnerMarketCard .externalArtwork {
+    width: 42px;
+    height: 42px;
+    border-radius: 13px;
+  }
+
+  .runnerMarketCard .externalIdentity strong {
+    font-size: .96rem;
+  }
+
+  .runnerMarketCard .externalIdentity small {
+    font-size: .7rem;
+  }
+
+  .runnerMarketCard .externalIdentity em {
+    color: #77857c;
+    font-size: .64rem;
+  }
+
+  .runnerMarketCard .runnerStats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    border-top: 0;
+    border-bottom: 1px solid #243229;
+  }
+
+  .runnerMarketCard .runnerStats span {
+    min-height: 58px;
+    padding: 11px 14px;
+    border-right: 1px solid #243229;
+    border-bottom: 1px solid #243229;
+  }
+
+  .runnerMarketCard .runnerStats span:nth-child(2n) {
+    border-right: 0;
+  }
+
+  .runnerMarketCard .runnerStats span:nth-last-child(-n + 2) {
+    border-bottom: 0;
+  }
+
+  .runnerMarketCard .runnerStats small {
+    font-size: .66rem;
+  }
+
+  .runnerMarketCard .runnerStats strong {
+    font-size: .8rem;
+  }
+
+  .runnerMarketCard .runnerActivity {
+    min-height: 48px;
+    align-items: flex-start;
+    justify-content: center;
+    font-size: .7rem;
+    line-height: 1.45;
+    border-bottom: 1px solid #243229;
+  }
+
+  .runnerMarketCard .runnerActivity span {
+    overflow-wrap: anywhere;
+  }
+
+  .runnerMarketCard .externalMarketActions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding: 7px;
+    gap: 7px;
+    border-bottom: 1px solid #243229;
+  }
+
+  .runnerMarketCard .externalMarketActions button,
+  .runnerMarketCard .externalMarketActions a {
+    min-height: 48px;
+    border: 1px solid #2b3a31;
+    border-radius: 12px;
+    font-size: .78rem;
+  }
+
+  .runnerMarketCard .externalMarketActions .buyCardAction {
+    border-color: #315d39;
+    background: #102417;
+  }
+
+  .runnerMarketCard .externalMarketActions .sellCardAction {
+    border-color: #573534;
+    background: #211010;
+  }
+
+  .runnerMarketCard .externalChartLink {
+    min-height: 48px;
+    margin: 0;
+    border: 0;
+    background: #080d09;
+    font-size: .75rem;
+  }
+
+  .runnerRadar .externalDisclosure {
+    padding: 14px 16px;
+    background: #070b08;
+    font-size: .71rem;
+    line-height: 1.55;
+  }
+
+  /* External trade review: no collapsed columns or overlapping stage labels. */
+  .quickTradeDialog {
+    top: calc(8px + env(safe-area-inset-top));
+    right: 8px;
+    bottom: calc(8px + env(safe-area-inset-bottom));
+    left: 8px;
+    width: auto;
+    max-height: none;
+    transform: none;
+    border-color: #35503d;
+    border-radius: 24px;
+    background: #080d0a;
+  }
+
+  .quickTradeHeader {
+    gap: 10px;
+    padding: 12px;
+    background: radial-gradient(circle at 0 0, rgba(74, 235, 107, .12), transparent 56%), #0a100c;
+  }
+
+  .quickTradeIdentity {
+    gap: 9px;
+  }
+
+  .quickTradeIdentity .externalArtwork {
+    width: 42px;
+    height: 42px;
+    border-radius: 13px;
+  }
+
+  .quickTradeIdentity > span {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+
+  .quickTradeIdentity small {
+    font-size: .58rem;
+    line-height: 1.25;
+  }
+
+  .quickTradeIdentity strong {
+    max-width: 190px;
+    font-size: .92rem;
+  }
+
+  .quickTradeIdentity em {
+    font-size: .68rem;
+  }
+
+  .quickTradeHeaderActions button {
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
+  }
+
+  .quickTradeBody {
+    padding: 10px;
+  }
+
+  .quickTradeDialog .runnerMarketCard.externalMarketCard {
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .quickTradeDialog .runnerMarketCard > * {
+    margin-bottom: 9px;
+    overflow: hidden;
+    border: 1px solid #26362c;
+    border-radius: 16px;
+    background: #090e0b;
+  }
+
+  .quickTradeDialog .runnerMarketCard .runnerStats {
+    padding: 0;
+  }
+
+  .quickTradeDialog .runnerMarketCard .runnerStats span {
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .quickTradeDialog .runnerMarketCard .externalDisclosure {
+    margin: 0 0 9px;
+    padding: 14px;
+    color: #89968d;
+    font-size: .74rem;
+    line-height: 1.55;
+  }
+
+  .quickTradeDialog .externalTradeReviewAction {
+    display: block;
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+
+  .quickTradeDialog .externalTradeReviewAction a {
+    display: flex;
+    width: 100%;
+    min-height: 52px;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: 14px;
+    background: #55ee72;
+    color: #031207;
+    font-size: .78rem;
+    font-weight: 950;
+    text-decoration: none;
+  }
+
+  .quickTradeFooter {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0;
+    padding: 8px 12px 10px;
+    overflow: visible;
+    white-space: normal;
+  }
+
+  .quickTradeFooter span {
+    min-height: 30px;
+    font-size: .66rem;
+    line-height: 1.35;
+  }
+
+  /* Launch form uses the same rounded section rhythm as Profile. */
+  .launchAssurances {
+    gap: 6px;
+  }
+
+  .launchAssurances span,
+  .launchAssurances span:last-child {
+    padding: 7px 9px;
+    border: 1px solid #304137;
+    border-radius: 999px;
+    font-family: inherit;
+    font-size: .64rem;
+  }
+
+  .launchTerminalTape,
+  .statusTerminalTape {
+    margin-top: 10px;
+    overflow: hidden;
+    border: 1px solid var(--mobile-card-line);
+    border-radius: 16px;
+    background: #080c09;
+  }
+
+  .launchPageGrid {
+    gap: 10px;
+    margin-top: 10px;
+  }
+
+  .launchConfigPanel.panel,
+  .launchGuide.panel {
+    padding: 18px 16px;
+    border: 1px solid var(--mobile-card-line);
+    border-radius: 20px;
+    background: var(--mobile-card);
+  }
+
+  .launchGuide.panel {
+    border-top: 1px solid var(--mobile-card-line);
+  }
+
+  .launchConfigPanel .sectionTitle {
+    min-height: 0;
+    margin: 0 0 14px;
+    padding: 0 0 14px;
+    background: transparent;
+  }
+
+  .launchConfigPanel .sectionTitle h2,
+  .launchGuide h2 {
+    font-size: 1.2rem;
+  }
+
+  .launchConfigPanel .badge {
+    border-radius: 999px;
+  }
+
+  .launchConfigPanel input,
+  .launchConfigPanel textarea,
+  .launchConfigPanel .socialFields,
+  .launchConfigPanel .imagePicker,
+  .launchConfigPanel .preset,
+  .launchConfigPanel .graduationNote,
+  .launchConfigPanel .summary,
+  .launchConfigPanel .confirm,
+  .launchConfigPanel .callout,
+  .launchConfigPanel .errors {
+    border-radius: 14px;
+  }
+
+  .launchConfigPanel .summary {
+    overflow: hidden;
+  }
+
+  .launchConfigPanel .confirm input[type="checkbox"] {
+    flex: 0 0 20px;
+    width: 20px;
+    min-width: 20px;
+    height: 20px;
+  }
+
+  .launchConfigPanel .launch {
+    border-radius: 14px;
+  }
+
+  .launchGuide .howSteps {
+    gap: 8px;
+    border: 0;
+  }
+
+  .launchGuide .howSteps > div {
+    border: 1px solid #26352c;
+    border-radius: 14px;
+  }
+
+  .launchGuide .statusLink {
+    min-height: 44px;
+    padding: 8px 0;
+  }
+
+  .siteFooter a {
+    display: inline-flex;
+    min-height: 36px;
+    align-items: center;
+  }
+
+  /* Status communicates state without exposing raw RPC payloads. */
+  .statusHero.panel {
+    align-items: flex-start;
+  }
+
+  .statusPulse {
+    flex: 0 0 auto;
+    width: 10px;
+    height: 10px;
+    margin-top: 6px;
+  }
+
+  .statusHero small {
+    margin-top: 5px;
+  }
+
+  .statusGrid {
+    display: grid;
+    gap: 10px;
+    margin-top: 10px;
+    border: 0;
+  }
+
+  .statusCard.panel {
+    grid-template-columns: minmax(0, 1fr) auto;
+    overflow: hidden;
+    border: 1px solid var(--mobile-card-line);
+    border-radius: 18px;
+    background: var(--mobile-card);
+  }
+
+  .statusCard.panel:last-child {
+    border-bottom: 1px solid var(--mobile-card-line);
+  }
+
+  .statusCard > div {
+    min-height: 56px;
+    padding: 12px 14px;
+    border-right: 0;
+  }
+
+  .statusCard > span {
+    grid-column: 2;
+    min-height: 32px;
+    align-self: center;
+    margin-right: 12px;
+    padding: 0 10px;
+    border: 1px solid #584a2b;
+    border-radius: 999px;
+    background: #1a150b;
+    color: #e7c973;
+    font-size: .65rem;
+  }
+
+  .statusCard > p {
+    grid-column: 1 / -1;
+    min-height: 0;
+    padding: 13px 14px;
+    border-top: 1px solid #243229;
+    color: #87948c;
+    font-size: .76rem;
+    line-height: 1.55;
+    overflow-wrap: anywhere;
+  }
+
+  .statusCard strong {
+    font-size: .86rem;
+  }
+
+  .safeguardPanel.panel {
+    margin-top: 10px;
+    padding: 18px 16px;
+    border: 1px solid var(--mobile-card-line);
+    border-radius: 20px;
+    background: var(--mobile-card);
+  }
+
+  .safeguardPanel > .eyebrow,
+  .safeguardPanel > h2,
+  .safeguardLead,
+  .statusFineprint {
+    margin-right: 0;
+    margin-left: 0;
+  }
+
+  .safeguardPanel > .eyebrow {
+    margin-top: 0;
+  }
+
+  .safeguardGrid {
+    gap: 8px;
+    border: 0;
+  }
+
+  .safeguardGrid > div,
+  .safeguardGrid > div:nth-child(2n),
+  .safeguardGrid > div:nth-child(3n),
+  .safeguardGrid > div:nth-last-child(-n + 3),
+  .safeguardGrid > div:nth-last-child(-n + 2) {
+    padding: 13px;
+    border: 1px solid #26352c;
+    border-radius: 14px;
+    background: #090e0b;
+  }
+
+  .safeguardGrid > div:last-child {
+    border-bottom: 1px solid #26352c;
+  }
+
+  /* Token workspace inherits the same card system on mobile. */
+  .detailPage {
+    padding: 0 var(--mobile-gutter) calc(150px + env(safe-area-inset-bottom));
+  }
+
+  .tokenHero.panel,
+  .marketPanel.panel,
+  .tokenInfoPanel.panel {
+    border: 1px solid var(--mobile-card-line);
+    border-radius: 20px;
+    background: var(--mobile-card);
+  }
+
+  .tokenHero.panel {
+    margin-top: 6px;
+    padding: 16px;
+  }
+
+  .marketPanel.panel,
+  .tokenInfoPanel.panel {
+    margin-top: 10px;
+    overflow: hidden;
+  }
+
+  .marketTitle {
+    padding: 14px;
+    background: radial-gradient(circle at 0 0, rgba(69, 226, 101, .08), transparent 48%);
+  }
+
+  .tradeRail,
+  .marketOverview {
+    background: transparent;
+  }
+
+  .tradeRail .tradeTabs,
+  .tradeRail .tradeAmountCard,
+  .marketOverview .priceChart,
+  .marketOverview .marketStats,
+  .marketOverview .graduationCard {
+    border-radius: 14px;
+  }
+
+  .marketOverview .marketStats {
+    overflow: hidden;
+  }
+
+  .marketDetailTabs,
+  .tokenInfoTabs {
+    padding: 5px;
+    border-radius: 14px;
+  }
+}
+
+@media (max-width: 420px) {
+  .profileIdentity h1 {
+    font-size: 1.62rem;
+  }
+
+  .profileSaveRow {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .profileSave {
+    width: 100%;
+  }
+
+  .quickTradeIdentity strong {
+    max-width: 150px;
+  }
+}
+
+@media (max-width: 360px) {
+  .publicNavActions .wallet,
+  .publicNavActions .fundWalletTrigger {
+    padding-right: 11px;
+    padding-left: 11px;
+    font-size: .7rem;
+  }
+
+  .mobileDock a {
+    min-height: 54px;
+    flex-direction: column;
+    gap: 3px;
+    padding: 5px 2px;
+    font-size: .66rem;
+  }
+
+  .mobileDock span {
+    font-size: .9rem;
+  }
+
+  .profileIdentity {
+    gap: 10px;
+  }
+
+  .profileAvatar {
+    width: 54px;
+    height: 54px;
+    border-radius: 16px;
+  }
+
+  .profileIdentity h1 {
+    font-size: 1.45rem;
+  }
+
+  .quickTradeIdentity strong {
+    max-width: 118px;
+  }
+
+  .quickTradeIdentity small {
+    max-width: 135px;
+  }
+}

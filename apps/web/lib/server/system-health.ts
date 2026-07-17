@@ -64,6 +64,17 @@ function check(key: SystemHealthCheck["key"], label: string, healthy: boolean, d
   return { key, label, state: healthy ? "operational" : "degraded", detail };
 }
 
+function publicHealthError(error: unknown) {
+  const message = error instanceof Error ? error.message.toLowerCase() : "";
+  if (message.includes("timeout") || message.includes("timed out") || message.includes("too long")) {
+    return "Live verification timed out. RMT will check again automatically.";
+  }
+  if (message.includes("active factory is unavailable")) {
+    return "The active launch factory could not be verified. RMT will check again automatically.";
+  }
+  return "Live onchain verification could not finish. RMT will check again automatically.";
+}
+
 export async function readFreshSystemHealth(): Promise<SystemHealthReport> {
   const startedAt = Date.now();
   const checkedAt = new Date(startedAt).toISOString();
@@ -323,7 +334,7 @@ export async function readFreshSystemHealth(): Promise<SystemHealthReport> {
       checks
     };
   } catch (error) {
-    const detail = error instanceof Error ? error.message : "Onchain verification failed.";
+    const detail = publicHealthError(error);
     const seen = new Set(checks.map((item) => item.key));
     const remaining: Array<[SystemHealthCheck["key"], string]> = [
       ["rpc", "Robinhood Chain connection"],

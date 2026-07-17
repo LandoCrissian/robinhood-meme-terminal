@@ -23,7 +23,17 @@ export function WatchlistPanel() {
     };
   }, []);
 
-  if (entries.length === 0) return null;
+  if (entries.length === 0) {
+    return (
+      <section className="panel watchlistPanel" aria-labelledby="watchlist-title">
+        <div className="emptyFeed">
+          <strong id="watchlist-title">Your watchlist is ready</strong>
+          <span>Save a verified RMT token to keep it close on this device.</span>
+          <Link href="/">Find a token</Link>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="panel watchlistPanel" aria-labelledby="watchlist-title">
