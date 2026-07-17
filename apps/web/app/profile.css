@@ -48,7 +48,11 @@
 .profileRail>section,.profileQuickLinks{padding:20px}
 .profileCloudCard p:not(.eyebrow){color:#86938b;font-size:.75rem;line-height:1.55}
 .profileCloudCard button{width:100%;min-height:44px;margin-top:8px;border:1px solid #334138;border-radius:11px;background:#101612;color:#b8c3ba;font-size:.73rem;font-weight:900;cursor:pointer}
+.profileCloudCard button:disabled{opacity:.58;cursor:wait}
 .profileCloudCard .googleProfileButton{border:0;background:#eaf0eb;color:#111713}
+.profileCloudActions{display:grid;grid-template-columns:1fr;gap:8px;margin-top:12px}
+.profileCloudActions button{margin-top:0}
+.profileCloudActions .profileRetryButton{border-color:#50df6b;background:#51ec70;color:#061309}
 .profileSetupNotice{display:flex;flex-direction:column;gap:4px;margin-top:12px;padding:12px;border:1px solid #39452c;border-radius:12px;background:#12160b}
 .profileSetupNotice strong{color:#d8c779;font-size:.73rem}
 .profileSetupNotice span{color:#90885f;font-size:.67rem;line-height:1.4}

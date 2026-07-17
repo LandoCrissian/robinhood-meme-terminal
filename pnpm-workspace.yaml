@@ -7,9 +7,11 @@ onlyBuiltDependencies:
   - sharp
 
 ignoredBuiltDependencies:
+  - "@firebase/util"
   - "@reown/appkit"
   - bufferutil
   - keccak
+  - protobufjs
   - utf-8-validate
 
 overrides:

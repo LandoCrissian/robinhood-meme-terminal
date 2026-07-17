@@ -25,7 +25,17 @@ function shortAddress(address?: string) {
 
 export default function ProfilePage() {
   const { address, isConnected } = useAccount();
-  const { configured, loading, profile, user, syncState, saveProfile, signInWithGoogle, signOutProfile } = useProfile();
+  const {
+    configured,
+    loading,
+    profile,
+    retrySync,
+    user,
+    syncState,
+    saveProfile,
+    signInWithGoogle,
+    signOutProfile
+  } = useProfile();
   const [draft, setDraft] = useState<RmtProfile>(profile);
   const [watchCount, setWatchCount] = useState(0);
   const [message, setMessage] = useState("");
@@ -70,8 +80,35 @@ export default function ProfilePage() {
     setMessage("");
     try {
       await signInWithGoogle();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Google sign-in did not finish. Your local profile is unchanged.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const endProfileSession = async () => {
+    setBusy(true);
+    setMessage("");
+    try {
+      await signOutProfile();
+      setMessage("Signed out. This device keeps its local profile copy.");
     } catch {
-      setMessage("Google sign-in did not finish. Your local profile is unchanged.");
+      setMessage("RMT could not sign out of the cloud profile. Try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const retryCloudSync = async () => {
+    setBusy(true);
+    setMessage("");
+    try {
+      await retrySync();
+      setMessage("Profile and watchlist synced.");
+    } catch {
+      setMessage("Cloud sync is still unavailable. Your local profile is safe on this device.");
+    } finally {
       setBusy(false);
     }
   };
@@ -125,7 +162,7 @@ export default function ProfilePage() {
           </fieldset>
 
           <div className="profileSaveRow">
-            <button className="profileSave" type="submit" disabled={busy}>{busy ? "Saving…" : "Save profile"}</button>
+            <button className="profileSave" type="submit" disabled={busy || loading}>{busy ? "Saving…" : loading ? "Loading…" : "Save profile"}</button>
             {message && <p role="status">{message}</p>}
           </div>
         </form>
@@ -134,8 +171,17 @@ export default function ProfilePage() {
           <section className="profileCloudCard">
             <p className="eyebrow">CROSS-DEVICE PROFILE</p>
             <h2>{user ? "Your desk follows you" : "Take your desk anywhere"}</h2>
-            <p>{user ? "Profile preferences and watched RMT tokens sync through your private Firebase account document." : "Sign in to carry your profile and watchlist between desktop and mobile. Wallet connection stays separate."}</p>
-            {user ? <button type="button" onClick={() => void signOutProfile()}>Sign out of profile</button> : configured ? <button className="googleProfileButton" type="button" disabled={busy} onClick={() => void beginGoogleSignIn()}>Continue with Google</button> : <div className="profileSetupNotice"><strong>Firebase connection prepared</strong><span>Add the project configuration to enable Google profile sync.</span></div>}
+            <p>{user ? "Profile preferences and watched RMT tokens sync through your private Firebase workspace." : "Sign in to carry your profile and watchlist between desktop and mobile. Wallet connection stays separate."}</p>
+            {user ? (
+              <div className="profileCloudActions">
+                {syncState === "error" && <button className="profileRetryButton" type="button" disabled={busy} onClick={() => void retryCloudSync()}>Retry sync</button>}
+                <button type="button" disabled={busy} onClick={() => void endProfileSession()}>Sign out of profile</button>
+              </div>
+            ) : configured ? (
+              <button className="googleProfileButton" type="button" disabled={busy} onClick={() => void beginGoogleSignIn()}>Continue with Google</button>
+            ) : (
+              <div className="profileSetupNotice"><strong>Firebase connection prepared</strong><span>Add the project configuration to enable Google profile sync.</span></div>
+            )}
           </section>
 
           <nav className="profileQuickLinks" aria-label="Your RMT workspace">

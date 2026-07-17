@@ -9,6 +9,11 @@ export type RmtProfile = {
   density: TerminalDensity;
 };
 
+export type LocalProfileSnapshot = {
+  profile: RmtProfile;
+  updatedAt: number;
+};
+
 export const DEFAULT_PROFILE: RmtProfile = {
   displayName: "RMT Trader",
   handle: "",
@@ -19,9 +24,18 @@ export const DEFAULT_PROFILE: RmtProfile = {
 
 export const PROFILE_EVENT = "rmt:profile-changed";
 const STORAGE_KEY = "rmt-profile-v1";
+const STORAGE_VERSION = 2;
 
 function cleanText(value: unknown, maximum: number) {
   return typeof value === "string" ? value.trim().slice(0, maximum) : "";
+}
+
+function cleanTimestamp(value: unknown) {
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0 ? value : 0;
+}
+
+export function nextProfileTimestamp(previous = 0) {
+  return Math.max(Date.now(), cleanTimestamp(previous) + 1);
 }
 
 export function normalizeProfile(value: unknown): RmtProfile {
@@ -36,18 +50,43 @@ export function normalizeProfile(value: unknown): RmtProfile {
   };
 }
 
-export function readLocalProfile() {
-  if (typeof window === "undefined") return DEFAULT_PROFILE;
+export function isDefaultProfile(profile: RmtProfile) {
+  return profile.displayName === DEFAULT_PROFILE.displayName
+    && profile.handle === DEFAULT_PROFILE.handle
+    && profile.bio === DEFAULT_PROFILE.bio
+    && profile.traderMode === DEFAULT_PROFILE.traderMode
+    && profile.density === DEFAULT_PROFILE.density;
+}
+
+export function readLocalProfileSnapshot(): LocalProfileSnapshot {
+  if (typeof window === "undefined") return { profile: DEFAULT_PROFILE, updatedAt: 0 };
   try {
-    return normalizeProfile(JSON.parse(window.localStorage.getItem(STORAGE_KEY) || "null"));
+    const parsed: unknown = JSON.parse(window.localStorage.getItem(STORAGE_KEY) || "null");
+    if (parsed && typeof parsed === "object" && "profile" in parsed) {
+      const stored = parsed as { profile?: unknown; updatedAt?: unknown };
+      return {
+        profile: normalizeProfile(stored.profile),
+        updatedAt: cleanTimestamp(stored.updatedAt)
+      };
+    }
+    return { profile: normalizeProfile(parsed), updatedAt: 0 };
   } catch {
-    return DEFAULT_PROFILE;
+    return { profile: DEFAULT_PROFILE, updatedAt: 0 };
   }
 }
 
-export function writeLocalProfile(profile: RmtProfile) {
+export function readLocalProfile() {
+  return readLocalProfileSnapshot().profile;
+}
+
+export function writeLocalProfile(profile: RmtProfile, updatedAt?: number) {
   if (typeof window === "undefined") return;
   const normalized = normalizeProfile(profile);
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
+  const previous = readLocalProfileSnapshot();
+  window.localStorage.setItem(STORAGE_KEY, JSON.stringify({
+    version: STORAGE_VERSION,
+    profile: normalized,
+    updatedAt: updatedAt === undefined ? nextProfileTimestamp(previous.updatedAt) : cleanTimestamp(updatedAt)
+  }));
   window.dispatchEvent(new Event(PROFILE_EVENT));
 }

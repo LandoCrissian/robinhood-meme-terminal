@@ -33,6 +33,7 @@ The V6 factory was deployed at block `10248855`. See the [canonical V6 deploymen
 - Transparent progress toward permissionless Uniswap V4 graduation
 - Creator rewards before and after graduation
 - Connected-wallet balances for the active discovery set and a local-device watchlist page
+- Optional private Firebase profiles with Google sign-in and live profile/watchlist sync across devices; local mode remains the automatic fallback
 - Clearly labeled external Robinhood Chain market discovery in Runner Radar
 - A continuous edge-to-edge operator interface across discovery, trading, runners, portfolio, watchlist, launch, and live status, with responsive terminal layouts instead of nested card grids
 
@@ -79,6 +80,8 @@ The Open policy uses the same supply, fee split, curve, and graduation economics
 
 Trading and launches remain wallet-to-contract transactions. They do not depend on the database or indexer.
 
+Firebase Authentication and Firestore are optional offchain profile conveniences. If they are unconfigured or unavailable, profiles and watchlists remain local and every wallet, launch, discovery, and trading path continues operating. See [Firebase profile setup](docs/FIREBASE_PROFILES.md) for the isolated data model, rules, test suite, and activation order.
+
 The public discovery feed uses the read-only Railway/PostgreSQL indexer for confirmed launch and trade data, with a same-origin shared cache and a last-confirmed-data state during delays. This avoids making every visitor rescan the complete factory history through an RPC provider. Creator concentration is enriched with a single batched balance read per shared refresh.
 
 Production monitoring requests checks of the canonical domain, V6 registry and factory bindings, immutable economics, latest market, graduation adapter, indexer health, launch-feed source, and official-market trade data every five minutes. GitHub Actions scheduling is best-effort, so an independent uptime service remains required for dependable 1–5 minute alerting.
@@ -99,6 +102,8 @@ The project targets Node 22, pnpm 10.12.1, Solidity 0.8.26, and Foundry 1.7.1. K
 ```bash
 pnpm install --frozen-lockfile
 pnpm audit:production
+pnpm test:firebase-rules
+pnpm --filter web test:profile
 pnpm --filter web test:reliability
 pnpm --filter web test:v4-trade
 pnpm typecheck

@@ -7,9 +7,11 @@ RMT installs production dependencies from the committed `pnpm-lock.yaml` with pn
 - `postcss` is overridden to `8.5.10` and `ws` to `8.21.0` across the workspace.
 - Only `esbuild` and `sharp` may run dependency build scripts.
 - Optional native builds from `@reown/appkit`, `bufferutil`, `keccak`, and `utf-8-validate` are intentionally ignored because RMT does not require them for its browser or server release paths.
+- `@firebase/util` and `protobufjs` install scripts are also denied. The Firebase script only rewrites packaged defaults from an optional installation-time environment value, which RMT does not use, and the protobuf script only emits dependency-version guidance. Their shipped runtime files remain sufficient for RMT and the emulator tests.
 - CI runs `pnpm audit --prod --audit-level high` before typechecking or building the web application.
 - Release verification must use `pnpm install --frozen-lockfile`; dependency upgrades require a reviewed lockfile change.
 - The web app pins the modular Firebase SDK to `12.16.0`. Firebase is loaded only when the complete public web configuration is present; Firestore access remains restricted by the committed per-user rules.
+- Firebase rules are exercised against the local Firestore emulator with pinned `firebase-tools@15.24.0` and `@firebase/rules-unit-testing@5.0.1`. CI supplies Temurin Java 21 for the emulator; these tools are development-only and are not included in the production web bundle.
 
 ## Accepted moderate wallet-connector advisory
 
