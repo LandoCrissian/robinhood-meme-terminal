@@ -11,6 +11,7 @@
     "test:reliability": "tsx lib/server/cache-headers-smoke.ts",
     "test:profile": "tsx lib/profile-smoke.ts",
     "test:v4-trade": "NEXT_PUBLIC_RMT_NETWORK=mainnet tsx lib/server/rmt-v4-trade-smoke.ts",
+    "test:sushi-trade": "NEXT_PUBLIC_RMT_NETWORK=mainnet tsx lib/server/sushi-trade-smoke.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

@@ -496,6 +496,11 @@ dl{grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr)}
 .graduatedTradePanel{display:flex;flex-direction:column;gap:10px}
 .graduatedTradePanel .tradeAmountCard{border-color:#31543b;background:linear-gradient(180deg,#0c1910,#08100a)}
 .dexNativeDisclosure{margin:12px 0 0;color:#7f8d83;font-size:.63rem;line-height:1.45}
+.sushiRoutePreview{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-top:10px;padding:10px 11px;border:1px solid #49324f;border-radius:10px;background:linear-gradient(135deg,rgba(126,67,136,.14),rgba(239,74,154,.08))}
+.sushiRoutePreview>div{display:flex;flex-direction:column;gap:3px;min-width:0}
+.sushiRoutePreview span,.sushiRoutePreview small{color:#a993ae;font-size:.61rem}
+.sushiRoutePreview strong{font-size:.75rem;overflow-wrap:anywhere}
+.sushiRoutePreview small{text-align:right;line-height:1.35}
 .quickTradeConnect{display:flex;flex-direction:column;gap:7px}
 .quickTradeConnect .walletMenu,.quickTradeConnect .wallet{width:100%}
 .quickTradeConnect .walletMenu{position:static}

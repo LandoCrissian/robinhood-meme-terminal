@@ -5,6 +5,7 @@ import { formatEther, formatUnits, parseEther, parseUnits, type Address } from "
 import { useAccount, useBalance, useReadContract, useSendTransaction, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { activeChain } from "../lib/network";
 import { MAX_UINT160, PERMIT2_ADDRESS, permit2Abi, ROBINHOOD_UNIVERSAL_ROUTER, type RmtV4Quote } from "../lib/uniswap-v4";
+import { SushiRoutePreview } from "./sushi-route-preview";
 import { WalletButton } from "./wallet-button";
 
 const tokenAbi = [
@@ -157,6 +158,7 @@ export function GraduatedMarketTrade({ tokenAddress, symbol, launchId, mode }: {
         <div className="quickAmounts">{[25, 50, 75, 100].map((percent) => <button type="button" key={percent} onClick={() => chooseSellPercent(percent)}>{percent === 100 ? "Max" : `${percent}%`}</button>)}</div>
       </>}
       <div className="orderPreview"><div><span>Estimated receive</span><strong>{quoteLoading && !verifiedQuote ? "Reading…" : verifiedQuote ? mode === "buy" ? `${displayToken(quoteOut)} ${symbol}` : `${displayEth(quoteOut)} ETH` : "—"}</strong></div><div><span>Minimum received</span><strong>{verifiedQuote ? mode === "buy" ? `${displayToken(minimumOut)} ${symbol}` : `${displayEth(minimumOut)} ETH` : "1% slippage limit"}</strong></div></div>
+      <SushiRoutePreview launchId={launchId} token={tokenAddress} recipient={account} side={mode} amountIn={amountIn} symbol={symbol} />
       <p className="dexNativeDisclosure">RMT verifies the active V6 launch, immutable graduation adapter, hook, pool settings, official Quoter, and official Universal Router before building the transaction. Your wallet still controls every approval and swap.</p>
       {mode === "sell" && <p className="approvalNote">For safety, RMT approves only this sell amount. The router allowance expires after 20 minutes; RMT does not request unlimited token access.</p>}
       {quoteError && <p className="walletError" role="alert">{quoteError}</p>}
