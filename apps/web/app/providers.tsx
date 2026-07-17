@@ -5,6 +5,7 @@ import { robinhoodChain, robinhoodChainTestnet } from "@rmt/shared/chains";
 import { useState, type ReactNode } from "react";
 import { WagmiProvider, createConfig, http } from "wagmi";
 import { coinbaseWallet, injected, metaMask, walletConnect } from "wagmi/connectors";
+import { ProfileProvider } from "./profile-provider";
 
 const walletConnectProjectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID;
 const mainnetRpcUrl = process.env.NEXT_PUBLIC_RMT_RPC_URL ?? robinhoodChain.rpcUrls.default.http[0];
@@ -59,7 +60,9 @@ export function Providers({ children }: { children: ReactNode }) {
 
   return (
     <WagmiProvider config={config}>
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+      <QueryClientProvider client={queryClient}>
+        <ProfileProvider>{children}</ProfileProvider>
+      </QueryClientProvider>
     </WagmiProvider>
   );
 }

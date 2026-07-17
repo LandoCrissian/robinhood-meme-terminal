@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "test:reliability": "tsx lib/server/cache-headers-smoke.ts",
+    "test:profile": "tsx lib/profile-smoke.ts",
     "test:v4-trade": "NEXT_PUBLIC_RMT_NETWORK=mainnet tsx lib/server/rmt-v4-trade-smoke.ts",
     "typecheck": "tsc --noEmit"
   },
@@ -15,6 +16,7 @@
     "@rmt/shared": "file:../../packages/shared",
     "@tanstack/react-query": "^5.66.0",
     "@walletconnect/ethereum-provider": "^2.17.0",
+    "firebase": "12.16.0",
     "next": "15.5.20",
     "react": "19.0.0",
     "react-dom": "19.0.0",
