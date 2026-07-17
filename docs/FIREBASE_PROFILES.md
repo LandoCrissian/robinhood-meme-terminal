@@ -44,6 +44,8 @@ Production sets `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=www.rmtlaunch.fun`. The Vercel
 
 Keep `www.rmtlaunch.fun` in Firebase Authentication's authorized domains and keep the exact handler URL registered on the Firebase-generated Google OAuth client. Do not use a redirect response in place of the rewrite: the auth helper must be reverse-proxied without changing the browser URL. The original `robinhood-meme-terminal.firebaseapp.com` domain remains the upstream and rollback path.
 
+Google Search Console ownership for `https://www.rmtlaunch.fun` is maintained by the `verification.google` metadata entry in `apps/web/app/layout.tsx`. Keep that tag in the deployed homepage so the OAuth branding verification remains valid.
+
 The Firebase Web API key identifies the project; it is not the Firestore authorization boundary. Restrict the key to the required Firebase APIs and approved RMT origins in Google Cloud. Authorization is enforced by `firestore.rules`, which requires a verified signed-in owner and denies every unrelated collection.
 
 ## App Check
