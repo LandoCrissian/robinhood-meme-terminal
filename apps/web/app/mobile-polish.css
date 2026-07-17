@@ -661,13 +661,15 @@
   }
 
   .runnerMarketCard .externalMarketActions .buyCardAction {
-    border-color: #315d39;
-    background: #102417;
+    border-color: #55ee72;
+    background: #55ee72;
+    color: #031507;
   }
 
   .runnerMarketCard .externalMarketActions .sellCardAction {
-    border-color: #573534;
-    background: #211010;
+    border-color: #9e3c45;
+    background: #7d2d34;
+    color: #fff;
   }
 
   .runnerMarketCard .externalChartLink {
