@@ -8,6 +8,7 @@ import "./brand.css";
 import "./legal.css";
 import "./terminal-v7.css";
 import "./profile.css";
+import "./mobile-polish.css";
 import { Providers } from "./providers";
 import { PublicChrome } from "./public-chrome";
 
