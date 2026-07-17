@@ -8,6 +8,7 @@ import "./brand.css";
 import "./legal.css";
 import "./terminal-v7.css";
 import "./profile.css";
+import "./sushi-lab.css";
 import "./mobile-polish.css";
 import "./desktop-polish.css";
 import { Providers } from "./providers";
