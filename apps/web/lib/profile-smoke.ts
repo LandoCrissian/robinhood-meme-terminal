@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import {
   parseCloudUserState,
   parseCloudWatchlist,
@@ -8,6 +9,14 @@ import {
 } from "./profile-cloud";
 import { DEFAULT_PROFILE, normalizeProfile } from "./profile";
 import { normalizeWatchlist, normalizeWatchlistEntry } from "./watchlist";
+
+const vercelConfig = JSON.parse(readFileSync(new URL("../vercel.json", import.meta.url), "utf8")) as {
+  rewrites?: Array<{ source?: string; destination?: string }>;
+};
+assert.ok(vercelConfig.rewrites?.some((rewrite) => (
+  rewrite.source === "/__/auth/:path*"
+  && rewrite.destination === "https://robinhood-meme-terminal.firebaseapp.com/__/auth/:path*"
+)), "Vercel must transparently proxy Firebase auth helpers for the branded auth domain");
 
 assert.deepEqual(normalizeProfile(null), DEFAULT_PROFILE);
 

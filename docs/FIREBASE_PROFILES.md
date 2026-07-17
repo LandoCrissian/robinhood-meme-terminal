@@ -38,6 +38,12 @@ Local profile and watchlist records carry independent update versions. On sign-i
 6. Copy the registered Web app values into the matching `NEXT_PUBLIC_FIREBASE_*` deployment variables documented in `apps/web/.env.example`. Set the variables only after the production rules are deployed.
 7. Redeploy RMT. On `/profile`, sign in, save a profile, add and remove a watched token, then confirm the same state appears on a second device. Also confirm signed-out and different-user reads fail.
 
+## Branded authentication domain
+
+Production sets `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=www.rmtlaunch.fun`. The Vercel rewrite in `apps/web/vercel.json` transparently proxies only `/__/auth/*` to the project's Firebase Hosting origin, so Google can return through `https://www.rmtlaunch.fun/__/auth/handler` while the browser remains on the RMT domain.
+
+Keep `www.rmtlaunch.fun` in Firebase Authentication's authorized domains and keep the exact handler URL registered on the Firebase-generated Google OAuth client. Do not use a redirect response in place of the rewrite: the auth helper must be reverse-proxied without changing the browser URL. The original `robinhood-meme-terminal.firebaseapp.com` domain remains the upstream and rollback path.
+
 The Firebase Web API key identifies the project; it is not the Firestore authorization boundary. Restrict the key to the required Firebase APIs and approved RMT origins in Google Cloud. Authorization is enforced by `firestore.rules`, which requires a verified signed-in owner and denies every unrelated collection.
 
 ## App Check
