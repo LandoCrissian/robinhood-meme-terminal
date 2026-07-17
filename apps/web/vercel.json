@@ -8,5 +8,11 @@
   },
   "github": {
     "silent": true
-  }
+  },
+  "rewrites": [
+    {
+      "source": "/__/auth/:path*",
+      "destination": "https://robinhood-meme-terminal.firebaseapp.com/__/auth/:path*"
+    }
+  ]
 }

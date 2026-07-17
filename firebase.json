@@ -3,7 +3,11 @@
     "providers": {
       "googleSignIn": {
         "oAuthBrandDisplayName": "Robinhood Meme Terminal",
-        "supportEmail": "launchrmt@gmail.com"
+        "supportEmail": "launchrmt@gmail.com",
+        "authorizedRedirectUris": [
+          "https://robinhood-meme-terminal.firebaseapp.com/__/auth/handler",
+          "https://www.rmtlaunch.fun/__/auth/handler"
+        ]
       }
     }
   },
