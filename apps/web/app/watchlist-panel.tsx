@@ -35,6 +35,9 @@ export function WatchlistPanel() {
         </div>
         <span className="watchlistCount">{entries.length} WATCHED</span>
       </div>
+      <div className="terminalListHeader watchlistListHeader" aria-hidden="true">
+        <span>Asset</span><span>Contract</span><span>Market</span><span>Manage</span>
+      </div>
       <div className="watchlistGrid">
         {entries.slice(0, 8).map((entry) => (
           <article className="watchlistCard" key={entry.address.toLowerCase()}>
@@ -44,8 +47,9 @@ export function WatchlistPanel() {
               </span>
               <span className="watchlistIdentity">
                 <strong>{entry.name}</strong>
-                <small>${entry.symbol} · {shortAddress(entry.address)}</small>
+                <small>${entry.symbol}</small>
               </span>
+              <span className="watchlistContract">{shortAddress(entry.address)}</span>
               <span className="watchlistOpen">Open →</span>
             </Link>
             <button type="button" onClick={() => removeFromWatchlist(entry.address)} aria-label={`Remove ${entry.name} from watchlist`}>Remove</button>

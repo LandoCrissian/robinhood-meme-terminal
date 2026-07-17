@@ -178,6 +178,9 @@ export function PortfolioPanel() {
         <span className="portfolioCount">{visibleHoldings.length} POSITION{visibleHoldings.length === 1 ? "" : "S"}</span>
       </div>
       {error && <p className="portfolioDelay" role="status">{error} Showing the last confirmed balances. <button type="button" onClick={() => void refresh()}>Retry</button></p>}
+      <div className="terminalListHeader portfolioListHeader" aria-hidden="true">
+        <span>Asset</span><span>Wallet balance</span><span>Market state</span><span>Open</span>
+      </div>
       <div className="portfolioGrid">
         {visibleHoldings.map(({ launch, balance }) => (
           <Link className="portfolioCard" href={`/token/${launch.token}?launch=${launch.launchId}`} key={launch.token}>

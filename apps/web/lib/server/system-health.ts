@@ -69,6 +69,8 @@ export async function readFreshSystemHealth(): Promise<SystemHealthReport> {
   const checkedAt = new Date(startedAt).toISOString();
   const checks: SystemHealthCheck[] = [];
   let blockAgeSeconds: number | null = null;
+  let observedChainId: number = activeChain.id;
+  let observedLatestBlock: bigint | null = null;
   let factory: Address | null = getFactoryAddress();
   let factoryVersion: Hex | null = null;
   const releaseEvidence = (): SystemHealthReleaseEvidence => ({
@@ -92,6 +94,8 @@ export async function readFreshSystemHealth(): Promise<SystemHealthReport> {
 
   try {
     const [chainId, latestBlock] = await Promise.all([client.getChainId(), client.getBlockNumber()]);
+    observedChainId = chainId;
+    observedLatestBlock = latestBlock;
     const block = await client.getBlock({ blockNumber: latestBlock });
     blockAgeSeconds = Math.max(0, Math.floor(Date.now() / 1_000 - Number(block.timestamp)));
     checks.push(check(
@@ -335,8 +339,8 @@ export async function readFreshSystemHealth(): Promise<SystemHealthReport> {
     return {
       ok: false,
       network: activeNetworkLabel,
-      chainId: activeChain.id,
-      latestBlock: "unavailable",
+      chainId: observedChainId,
+      latestBlock: observedLatestBlock?.toString() ?? "unavailable",
       blockAgeSeconds,
       latencyMs: Date.now() - startedAt,
       checkedAt,

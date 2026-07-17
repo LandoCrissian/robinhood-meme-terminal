@@ -17,7 +17,9 @@ jobs:
         with:
           node-version: 22
       - run: pnpm install --frozen-lockfile
+      - run: pnpm audit:production
       - run: pnpm --filter web test:reliability
+      - run: pnpm --filter web test:v4-trade
       - run: pnpm test:production-health
       - run: pnpm typecheck
       - run: pnpm build
@@ -134,6 +136,7 @@ jobs:
             test/DirectLaunchFeeSplitter.t.sol \
             test/V4GraduationAdapter.t.sol \
             test/V6MainnetFork.t.sol \
+            test/V6UniversalRouterFork.t.sol \
             test/VersionedFactoryRegistry.t.sol
       - name: Build the exact checked-in contract sources
         run: |

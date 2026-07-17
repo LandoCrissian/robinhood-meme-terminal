@@ -12,6 +12,13 @@ export default function LaunchPage() {
         <div className="launchAssurances"><span>Fixed 1B supply</span><span>Unique name + ticker</span><span>No mint or transfer tax</span></div>
       </header>
 
+      <div className="launchTerminalTape" aria-label="Launch configuration summary">
+        <span><b>NETWORK</b>{isMainnetRelease ? "RHC MAINNET" : "RHC TESTNET"}</span>
+        <span><b>SUPPLY</b>1.00B FIXED</span>
+        <span><b>AUTHORITY</b>NO MINT</span>
+        <span><b>SETTLEMENT</b>ONE TRANSACTION</span>
+      </div>
+
       <div className="launchPageGrid">
         <LaunchForm />
         <aside className="panel rewards launchGuide">

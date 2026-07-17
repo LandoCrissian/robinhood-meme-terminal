@@ -7,16 +7,22 @@ on:
       - ".github/workflows/v6-graduation-rehearsal.yml"
       - "packages/contracts/src/**"
       - "packages/contracts/test/V6MainnetFork.t.sol"
+      - "packages/contracts/test/V6UniversalRouterFork.t.sol"
       - "packages/contracts/script/MainnetReleaseConfigV6.sol"
       - "packages/contracts/scripts/install-v4-deps.sh"
+      - "apps/web/lib/server/rmt-v4-trade.ts"
+      - "apps/web/lib/uniswap-v4.ts"
   push:
     branches: [main]
     paths:
       - ".github/workflows/v6-graduation-rehearsal.yml"
       - "packages/contracts/src/**"
       - "packages/contracts/test/V6MainnetFork.t.sol"
+      - "packages/contracts/test/V6UniversalRouterFork.t.sol"
       - "packages/contracts/script/MainnetReleaseConfigV6.sol"
       - "packages/contracts/scripts/install-v4-deps.sh"
+      - "apps/web/lib/server/rmt-v4-trade.ts"
+      - "apps/web/lib/uniswap-v4.ts"
 
 permissions:
   contents: read
@@ -44,4 +50,6 @@ jobs:
       - name: Install reviewed Uniswap V4 dependencies
         run: bash scripts/install-v4-deps.sh
       - name: Rehearse the complete V6 lifecycle on a mainnet fork
-        run: forge test --match-contract V6MainnetForkTest -vvv
+        run: |
+          forge test --match-contract V6MainnetForkTest -vvv
+          forge test --match-contract V6UniversalRouterForkTest -vvv

@@ -1,3 +1,17 @@
 packages:
   - apps/*
   - packages/*
+
+onlyBuiltDependencies:
+  - esbuild
+  - sharp
+
+ignoredBuiltDependencies:
+  - "@reown/appkit"
+  - bufferutil
+  - keccak
+  - utf-8-validate
+
+overrides:
+  postcss: 8.5.10
+  ws: 8.21.0

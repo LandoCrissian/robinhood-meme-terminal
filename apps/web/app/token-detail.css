@@ -322,14 +322,19 @@ dl{grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr)}
 
 .buyingPowerBar span{color:#7f8d83;font-size:.68rem}
 
-.buyingPowerBar a{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;min-height:40px;padding:0 13px;border:1px solid #2f5c39;border-radius:10px;color:#76ef87;text-decoration:none;font-size:.7rem;font-weight:900}
+.buyingPowerBar .fundWalletMenu{flex:0 0 auto}
 
-.buyingPowerBar a:hover,.buyingPowerBar a:focus-visible{background:#13331b}
+.lowBalancePrompt{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px;padding:11px 12px;border:1px solid #624a2b;border-radius:12px;background:#1a1309}
+.lowBalancePrompt>div{display:flex;flex-direction:column;gap:3px}
+.lowBalancePrompt strong{color:#f4d493;font-size:.72rem}
+.lowBalancePrompt span{color:#9c8a6c;font-size:.63rem;line-height:1.35}
 
 @media(max-width:560px){.buyingPowerBar{align-items:stretch;flex-direction:column;gap:11px}
 .buyingPowerBar>div{grid-template-columns:1fr}
 .buyingPowerBar small{grid-column:auto}
-.buyingPowerBar a{width:100%}
+.buyingPowerBar .fundWalletMenu,.buyingPowerBar .fundWalletTrigger{width:100%}
+.lowBalancePrompt{align-items:stretch;flex-direction:column}
+.lowBalancePrompt .fundWalletTrigger{width:100%}
 }
 
 
@@ -488,6 +493,9 @@ dl{grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr)}
 .walletQuickAmounts button span{font-size:.7rem;font-weight:900}
 .walletQuickAmounts button small{max-width:100%;overflow:hidden;color:#718078;font-size:.5rem;text-overflow:ellipsis;white-space:nowrap}
 .walletPresetNote{display:block;margin-top:6px;color:#69766e;font-size:.57rem;line-height:1.35}
+.graduatedTradePanel{display:flex;flex-direction:column;gap:10px}
+.graduatedTradePanel .tradeAmountCard{border-color:#31543b;background:linear-gradient(180deg,#0c1910,#08100a)}
+.dexNativeDisclosure{margin:12px 0 0;color:#7f8d83;font-size:.63rem;line-height:1.45}
 .quickTradeConnect{display:flex;flex-direction:column;gap:7px}
 .quickTradeConnect .walletMenu,.quickTradeConnect .wallet{width:100%}
 .quickTradeConnect .walletMenu{position:static}
