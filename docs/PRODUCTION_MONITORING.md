@@ -26,4 +26,4 @@ every 1–5 minutes and alert on:
 - timeout after 15 seconds
 - two consecutive failures to reduce false alarms
 
-The endpoint contains no secrets and performs read-only contract calls. The repository also runs `.github/workflows/production-health.yml` every five minutes to check the canonical redirect, protocol state, confirmed launch feed, Railway indexer, and official-market trade proxy. An external uptime provider remains a recommended independent alert path.
+The endpoint contains no secrets and performs read-only contract calls. The repository asks GitHub to run `.github/workflows/production-health.yml` every five minutes to check the canonical redirect, protocol state, confirmed launch feed, Railway indexer, and official-market trade proxy. GitHub scheduling is best-effort and may be delayed, so the external uptime provider is the required independent 1–5 minute alert path rather than an optional duplicate.

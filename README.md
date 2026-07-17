@@ -73,7 +73,7 @@ Trading and launches remain wallet-to-contract transactions. They do not depend 
 
 The public discovery feed uses the read-only Railway/PostgreSQL indexer for confirmed launch and trade data, with a same-origin shared cache and a last-confirmed-data state during delays. This avoids making every visitor rescan the complete factory history through an RPC provider. Creator concentration is enriched with a single batched balance read per shared refresh.
 
-Production monitoring checks the canonical domain, V6 registry and factory bindings, immutable economics, latest market, graduation adapter, indexer health, launch-feed source, and official-market trade data every five minutes.
+Production monitoring requests checks of the canonical domain, V6 registry and factory bindings, immutable economics, latest market, graduation adapter, indexer health, launch-feed source, and official-market trade data every five minutes. GitHub Actions scheduling is best-effort, so an independent uptime service remains required for dependable 1–5 minute alerting.
 
 ## Repository map
 

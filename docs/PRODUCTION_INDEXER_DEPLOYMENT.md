@@ -78,8 +78,8 @@ After reconciliation:
 5. Use a Vercel Firewall rule restricted to `www.rmtlaunch.fun`, request paths beginning with `/api/markets/`, and request paths ending in `/trades`. Observe the exact match in log-only mode before enabling a per-IP rate limit. Never include static assets, launch routes, wallet transaction RPC calls, or contract writes.
 6. Use the persistent indexer as the production launch-feed source. Do not let visitor traffic trigger repeated full-history factory scans when the configured indexer is delayed; keep the last confirmed launch snapshot visible instead. The direct-chain scanner remains available only for local/test operation when no indexer URL is configured.
 7. Display a delayed-data state without clearing the last confirmed launch snapshot. Pause polling in hidden tabs, prevent overlapping refreshes, and back off repeated failures.
-8. Keep `.github/workflows/production-health.yml` scheduled every five minutes. It checks the Railway `/health` endpoint and the public official-RMT trade route independently of the application deployment.
-9. Warn when indexer lag exceeds twice the confirmation depth and fail when it exceeds five times the confirmation depth. An incorrect V6 binding, stale sync, wrong launch-feed source, or missing shared-cache headers remains a failed production-health run.
+8. Keep `.github/workflows/production-health.yml` scheduled every five minutes. It checks the Railway `/health` endpoint and the public official-RMT trade route independently of the application deployment. GitHub scheduling is best-effort, so use an external uptime provider for dependable 1–5 minute alert delivery.
+9. Warn when the last completed indexer sync is older than one minute and fail when it is older than ten minutes. Bound block lag and launch-feed checkpoint drift against their synchronization timestamps using a conservative fast-chain block-rate allowance instead of treating confirmation depth as a wall-clock interval. An incorrect V6 binding, stale sync, wrong launch-feed source, or missing shared-cache headers remains a failed production-health run.
 
 Trading remains wallet-to-contract and must never depend on the indexer being available.
 
@@ -90,7 +90,7 @@ Trading remains wallet-to-contract and must never depend on the indexer being av
 - **Official RMT V6 token:** `0xdBa33be56C89CC9fc014c4459028d7e5c7878671`
 - **Official RMT V6 market:** `0xb26Fb775c0ac365d369BEe9ac2E044C5D90FfBee`
 - **Edge protection:** exact-host and exact-route-shape Vercel Firewall observation rule; wallet and contract traffic are outside the rule
-- **Independent monitoring:** GitHub Actions validates the canonical domain, protocol health, V6 launch feed, Railway health and lag, official-token trade data, indexer source header, and shared-cache policy every five minutes
+- **Independent monitoring:** GitHub Actions requests validation of the canonical domain, protocol health, V6 launch feed, Railway health and lag, official-token trade data, indexer source header, and shared-cache policy every five minutes; an external uptime provider supplies dependable 1–5 minute alerting
 
 The public trade proxy can fall back to bounded verified direct-chain reads when the indexer is unavailable. RMT launch discovery instead retains the last confirmed indexed snapshot so a service delay does not create a new full-history RPC scan per visitor. Trading remains wallet-to-contract and does not pass through Railway, PostgreSQL, or the market-data proxy.
 
