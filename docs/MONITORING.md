@@ -2,7 +2,7 @@
 
 ## Automated checks
 
-The `Production health` GitHub Actions workflow runs every five minutes and can be triggered manually. It retries transient failures, validates the machine-readable protocol health report, validates the cached launch feed, and preserves response evidence for seven days.
+The `Production health` GitHub Actions workflow requests a run every five minutes and can be triggered manually. GitHub schedules are best-effort and may be delayed, so this workflow is a release and diagnostic check rather than the sole 1–5 minute alert channel. It retries transient failures, validates the machine-readable protocol health report, validates the cached launch feed, and preserves response evidence for seven days.
 
 Canonical production origin: https://www.rmtlaunch.fun
 

@@ -1,5 +1,6 @@
 import { getAddress, isAddress } from "viem";
 import { z } from "zod";
+import { sharedCacheHeaders } from "../../../../../lib/server/cache-headers";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -98,9 +99,10 @@ export async function GET(
 
     return Response.json(parsed.data, {
       headers: {
-        "Cache-Control": "public, max-age=2, s-maxage=5, stale-while-revalidate=30",
-        "CDN-Cache-Control": "public, s-maxage=5, stale-while-revalidate=30",
-        "Vercel-CDN-Cache-Control": "public, s-maxage=5, stale-while-revalidate=30",
+        ...sharedCacheHeaders({
+          sharedMaxAgeSeconds: 5,
+          staleWhileRevalidateSeconds: 30
+        }),
         "X-RMT-Data-Source": "indexer",
         "X-Content-Type-Options": "nosniff"
       }

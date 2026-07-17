@@ -5,11 +5,16 @@ import {
 } from "../../../lib/server/indexed-launch-feed";
 import { readFreshLaunches, resolveActiveFactory } from "../../../lib/server/launch-feed";
 import { isMainnetRelease } from "../../../lib/network";
+import { sharedCacheHeaders } from "../../../lib/server/cache-headers";
 
 export const dynamic = "force-dynamic";
 
 const PROCESS_CACHE_MS = 15_000;
-const SHARED_CACHE_CONTROL = "public, s-maxage=15, stale-while-revalidate=180, stale-if-error=600";
+const SHARED_CACHE_HEADERS = sharedCacheHeaders({
+  sharedMaxAgeSeconds: 15,
+  staleIfErrorSeconds: 600,
+  staleWhileRevalidateSeconds: 180
+});
 
 type FeedSnapshot = LaunchFeedResponse & { source: "indexer" | "rpc" };
 type ProcessLaunchCache = {
@@ -67,7 +72,7 @@ async function getLaunchSnapshot() {
 
 function responseHeaders(source: FeedSnapshot["source"]) {
   return {
-    "Cache-Control": SHARED_CACHE_CONTROL,
+    ...SHARED_CACHE_HEADERS,
     "X-RMT-Data-Source": source
   };
 }
