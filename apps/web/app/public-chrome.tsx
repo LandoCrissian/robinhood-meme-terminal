@@ -65,6 +65,7 @@ export function PublicChrome() {
             <PublicLink href="/runners">Runners</PublicLink>
             <PublicLink href="/launch">Launch</PublicLink>
             <PublicLink href="/status">Status</PublicLink>
+            <PublicLink href="/profile">Profile</PublicLink>
             <span className="networkPulse" aria-label={`${isMainnetRelease ? "Robinhood Chain Mainnet" : "Robinhood Chain Testnet"} live`}><i aria-hidden="true" />RHC <b>{isMainnetRelease ? "MAINNET" : "TESTNET"}</b></span>
           </div>
 
@@ -95,6 +96,7 @@ export function PublicChrome() {
         <PublicLink href="/"><span aria-hidden="true">◉</span>Terminal</PublicLink>
         <PublicLink href="/launch"><span aria-hidden="true">＋</span>Launch</PublicLink>
         <PublicLink href="/status"><span aria-hidden="true">●</span>Status</PublicLink>
+        <PublicLink href="/profile"><span aria-hidden="true">◎</span>Profile</PublicLink>
       </nav>
     </>
   );

@@ -9,6 +9,7 @@ RMT installs production dependencies from the committed `pnpm-lock.yaml` with pn
 - Optional native builds from `@reown/appkit`, `bufferutil`, `keccak`, and `utf-8-validate` are intentionally ignored because RMT does not require them for its browser or server release paths.
 - CI runs `pnpm audit --prod --audit-level high` before typechecking or building the web application.
 - Release verification must use `pnpm install --frozen-lockfile`; dependency upgrades require a reviewed lockfile change.
+- The web app pins the modular Firebase SDK to `12.16.0`. Firebase is loaded only when the complete public web configuration is present; Firestore access remains restricted by the committed per-user rules.
 
 ## Accepted moderate wallet-connector advisory
 

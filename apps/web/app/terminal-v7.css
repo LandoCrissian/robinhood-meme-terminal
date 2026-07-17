@@ -748,3 +748,122 @@ main:has(.rmtDiscovery){max-width:none;padding:0 10px 36px}
   .siteFooter a{font-size:.78rem}
   .siteFooter span{font-size:.7rem;line-height:1.55}
 }
+
+/* Desktop focus mode: a readable command center instead of a compressed data strip. */
+@media(min-width:761px){
+  .publicNav{height:60px;padding:0 18px;gap:18px}
+  .publicNav .brandLogo{width:34px;height:34px;border-radius:9px}
+  .publicNav .brandLockup{gap:10px;padding-right:18px}
+  .publicNav .brandLockup strong{font-size:.86rem}
+  .publicNavLinks a,.publicMore summary{min-height:60px;padding:0 17px;font-size:.75rem}
+  .networkPulse{font-size:.63rem}
+  .publicNavActions .wallet,.publicNavActions .fundWalletTrigger{min-height:42px;padding:10px 15px;border-radius:10px;font-size:.72rem}
+
+  main:has(.rmtDiscovery){padding:16px 18px 56px}
+  .terminalIntro{position:relative;min-height:160px;align-items:center;gap:18px 28px;padding:26px 28px 20px;overflow:hidden;border:1px solid #24332a;border-radius:20px;background:radial-gradient(circle at 10% 0,rgba(76,239,111,.15),transparent 33%),linear-gradient(135deg,#0c130f,#070a08 68%)}
+  .terminalIntro:after{content:"";position:absolute;right:-90px;bottom:-175px;width:480px;height:280px;border:1px solid rgba(85,238,114,.14);border-radius:50%;transform:rotate(-10deg);box-shadow:0 0 100px rgba(70,235,103,.07)}
+  .terminalIntro>div{position:relative;z-index:1}
+  .terminalIntro h1{display:block;margin:4px 0 7px;font-size:clamp(2rem,3.1vw,3.15rem);line-height:.98;letter-spacing:-.045em}
+  .terminalIntro>div:first-child{display:block}
+  .terminalIntro>div:first-child>.eyebrow{font-size:.67rem}
+  .terminalIntro>div:first-child>p:last-child{display:block;max-width:760px;font-size:.86rem;line-height:1.55}
+  .terminalIntroActions{display:grid;grid-template-columns:1.3fr 1fr;min-width:290px}
+  .terminalIntroActions a{min-height:46px;border-radius:12px;font-size:.75rem}
+  .terminalIntro .trustStrip{margin:0;border-color:#26372c;border-radius:12px;background:rgba(5,9,6,.7)}
+  .terminalIntro .trustStrip span{flex:1;min-height:44px;padding:9px 14px;font-size:.63rem}
+  .terminalIntro .trustStrip b{font-size:.55rem}
+
+  .feed.panel.rmtDiscovery{margin-top:10px;border-color:#24332a;border-radius:16px;box-shadow:0 24px 80px rgba(0,0,0,.24)}
+  .rmtDiscovery .feedHeading{min-height:82px;padding:14px 16px}
+  .rmtDiscovery .feedHeading .eyebrow{font-size:.61rem}
+  .rmtDiscovery .feedHeading h2{font-size:1.34rem}
+  .rmtDiscovery .feedHeading .sectionCopy{font-size:.73rem;line-height:1.45}
+  .rmtDiscovery .badge{padding:7px 10px;border-radius:7px;font-size:.59rem}
+  .terminalTape{min-height:36px;font-size:.58rem}
+  .terminalTape span{padding:0 16px}
+  .terminalTape b{font-size:.64rem}
+  .rmtControlDeck{min-height:58px;padding:10px 12px}
+  .rmtDiscovery .rmtDiscoverySearch input{min-height:42px;border-radius:9px;font-size:.73rem}
+  .rmtDiscovery .discoveryTabs{border-radius:9px}
+  .rmtDiscovery .discoveryTabs button{min-height:40px;padding:0 14px;font-size:.67rem}
+  .rmtDiscovery .discoveryTabs button span{min-width:19px;height:19px;font-size:.54rem}
+  .rmtDiscovery .discoveryLaunchLink{font-size:.66rem}
+  .rmtColumnHeader{min-height:34px;font-size:.54rem}
+  .feed .rmtDiscoveryRow{min-height:88px}
+  .rmtDiscoveryMain{grid-template-columns:36px 48px minmax(190px,1fr) minmax(430px,1.55fr);gap:11px;padding:12px 14px}
+  .rmtDiscoveryRank{font-size:.61rem}
+  .rmtDiscoveryMain .launchArtwork{width:44px;height:44px;border-radius:11px;font-size:.72rem}
+  .rmtDiscoveryIdentity strong{font-size:.86rem}
+  .rmtDiscoveryIdentity em{font-size:.64rem}
+  .rmtDiscoveryIdentity .creatorExposure{font-size:.57rem}
+  .rmtDiscoveryMetrics>span{min-height:44px;padding:0 13px}
+  .rmtDiscoveryMetrics strong{font-size:.72rem}
+  .rmtDiscoveryActions .buyCardAction,.rmtDiscoveryActions .sellCardAction{min-height:87px;font-size:.72rem}
+  .rmtDiscovery .feedStatus,.rmtDiscovery .rmtRankingDisclosure{padding:9px 13px;font-size:.59rem}
+
+  .directoryPage,.launchPage,.statusPage{padding:12px 18px 56px}
+  .runnerRadar.panel{max-width:none;margin-top:0;border-color:#24332a;border-radius:16px}
+  .runnerRadar .feedHeading{min-height:94px;padding:16px 18px}
+  .runnerRadar .feedHeading .eyebrow{font-size:.61rem}
+  .runnerRadar .feedHeading h2{font-size:1.42rem}
+  .runnerRadar .externalHeading>div>p:last-child{font-size:.74rem;line-height:1.5}
+  .runnerRadar .externalBadge{padding:7px 10px;border-radius:7px;font-size:.57rem}
+  .runnerDirectoryControls{min-height:62px;padding:10px 12px}
+  .runnerMarketSearch input{min-height:42px;border-radius:9px;font-size:.74rem}
+  .runnerDirectoryButton{min-height:42px;border-radius:9px;font-size:.65rem}
+  .runnerToolbar{min-height:50px;padding:8px 12px}
+  .runnerToolbar>small{font-size:.58rem}
+  .runnerTabs{border-radius:9px}
+  .runnerTabs button{min-height:38px;padding:0 14px;font-size:.65rem}
+  .runnerColumnHeader{min-height:34px;font-size:.53rem}
+  .runnerMarketCard.externalMarketCard{min-height:84px}
+  .runnerMarketCard>*{padding:10px 11px}
+  .runnerMarketCard .runnerCardStatus>span:last-child,.runnerMarketCard .marketSignal{font-size:.56rem}
+  .runnerMarketCard .externalArtwork{width:40px;height:40px;border-radius:10px}
+  .runnerMarketCard .externalIdentity{grid-template-columns:42px minmax(0,1fr);gap:9px}
+  .runnerMarketCard .externalIdentity strong{font-size:.82rem}
+  .runnerMarketCard .externalIdentity small{font-size:.59rem}
+  .runnerMarketCard .externalIdentity em{font-size:.54rem}
+  .runnerMarketCard .runnerStats small{font-size:.55rem}
+  .runnerMarketCard .runnerStats strong{font-size:.69rem}
+  .runnerMarketCard .runnerActivity{font-size:.6rem}
+  .runnerMarketCard .runnerActivity em{font-size:.52rem}
+  .runnerMarketCard .externalMarketActions button{min-height:83px;font-size:.66rem}
+  .runnerMarketCard .externalChartLink{font-size:.61rem}
+  .runnerRadar .externalDisclosure{padding:10px 12px;font-size:.6rem;line-height:1.5}
+
+  .detailPage{padding:0 18px 56px}
+  .detailNav{min-height:44px}
+  .detailNav>a{font-size:.67rem}
+  .tokenHero.panel{margin-top:8px;padding:14px 16px;border:1px solid #24332a;border-radius:14px}
+  .tokenHero .largeCoin{width:50px;height:50px;border-radius:12px}
+  .tokenHero h1{font-size:1.42rem}
+  .tokenHero .tokenDescription{font-size:.72rem}
+  .tokenHeroActions{top:72px;right:30px}
+  .tokenHeroActions .watchTokenButton,.tokenHeroActions .tokenContractQuick,.tokenHeroActions .tokenShareActions button{min-height:36px;border-radius:8px;font-size:.62rem}
+  .marketPanel.panel{margin-top:10px;border-color:#24332a;border-radius:14px}
+  .marketTitle{min-height:52px;padding:9px 13px}
+  .marketTitle h2{font-size:1.02rem}
+  .marketWorkspace{grid-template-columns:minmax(0,1fr) 380px}
+  .marketOverview{padding:12px}
+  .marketOverview .priceChart{min-height:330px;padding:14px 10px}
+  .priceChartHeader h3{font-size:1.4rem}
+  .marketOverview .marketStats>div{min-height:72px;padding:10px 12px}
+  .marketOverview .marketStats small{font-size:.58rem}
+  .marketOverview .marketStats strong{font-size:.8rem}
+  .tradeRail{top:60px;padding:14px}
+  .tradeRailHeader h3{font-size:1.05rem}
+  .tradeRail .tradeTabs button{min-height:40px;font-size:.72rem}
+  .tradeRail .tradeAmountCard{padding:13px;border-radius:10px}
+  .tradeRail .quickAmounts button{min-height:38px;border-radius:8px;font-size:.65rem}
+  .tradeRail .launch{min-height:48px;border-radius:10px;font-size:.75rem}
+  .tokenInfoPanel.panel{border-color:#24332a;border-radius:14px}
+
+  body[data-terminal-density="compact"] .terminalIntro{min-height:132px;padding-top:20px;padding-bottom:16px}
+  body[data-terminal-density="compact"] .terminalIntro h1{font-size:2rem}
+  body[data-terminal-density="compact"] .rmtDiscovery .feedHeading{min-height:66px;padding:10px 13px}
+  body[data-terminal-density="compact"] .feed .rmtDiscoveryRow{min-height:72px}
+  body[data-terminal-density="compact"] .rmtDiscoveryActions .buyCardAction,
+  body[data-terminal-density="compact"] .rmtDiscoveryActions .sellCardAction{min-height:71px}
+  body[data-terminal-density="compact"] .runnerMarketCard.externalMarketCard{min-height:70px}
+}

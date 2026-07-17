@@ -36,7 +36,7 @@ export function readWatchlist() {
   }
 }
 
-function writeWatchlist(entries: WatchlistEntry[]) {
+export function replaceWatchlist(entries: WatchlistEntry[]) {
   if (typeof window === "undefined") return false;
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(entries.slice(0, MAXIMUM_ENTRIES)));
@@ -55,10 +55,10 @@ export function isWatched(address: string) {
 export function addToWatchlist(entry: WatchlistEntry) {
   const key = entry.address.toLowerCase();
   const remaining = readWatchlist().filter((current) => current.address.toLowerCase() !== key);
-  writeWatchlist([{ ...entry, address: entry.address }, ...remaining]);
+  replaceWatchlist([{ ...entry, address: entry.address }, ...remaining]);
 }
 
 export function removeFromWatchlist(address: string) {
   const key = address.toLowerCase();
-  writeWatchlist(readWatchlist().filter((entry) => entry.address.toLowerCase() !== key));
+  replaceWatchlist(readWatchlist().filter((entry) => entry.address.toLowerCase() !== key));
 }
