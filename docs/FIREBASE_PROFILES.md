@@ -18,12 +18,12 @@ Local profile and watchlist records carry independent update versions. On sign-i
 ## Safe activation order
 
 1. Create or choose the Firebase project and register a Web app.
-2. In Authentication, enable the Google provider. Add only the exact RMT domains that need sign-in, including the canonical production domain. Do not authorize wildcard or disposable preview domains.
+2. Add only the exact RMT domains that need sign-in, including the canonical production domain. Do not authorize wildcard or disposable preview domains. Google sign-in, the OAuth display name, and the public support email are committed in `firebase.json` and deployed in step 4.
 3. Create Cloud Firestore in production mode. Never start with permissive test rules.
-4. From a reviewed local checkout, authenticate the Firebase CLI and deploy the committed rules:
+4. From a reviewed local checkout, authenticate the Firebase CLI and deploy the committed Authentication provider configuration and rules:
 
    ```bash
-   pnpm exec firebase deploy --only firestore:rules --project <firebase-project-id>
+   pnpm exec firebase deploy --only auth,firestore:rules --project <firebase-project-id>
    ```
 
 5. Run the rules emulator suite and the web checks:

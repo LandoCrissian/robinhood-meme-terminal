@@ -1,4 +1,12 @@
 {
+  "auth": {
+    "providers": {
+      "googleSignIn": {
+        "oAuthBrandDisplayName": "Robinhood Meme Terminal",
+        "supportEmail": "launchrmt@gmail.com"
+      }
+    }
+  },
   "firestore": {
     "rules": "firestore.rules"
   },
