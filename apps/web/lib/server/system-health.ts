@@ -64,7 +64,7 @@ function check(key: SystemHealthCheck["key"], label: string, healthy: boolean, d
   return { key, label, state: healthy ? "operational" : "degraded", detail };
 }
 
-async function readSystemHealthFresh(): Promise<SystemHealthReport> {
+export async function readFreshSystemHealth(): Promise<SystemHealthReport> {
   const startedAt = Date.now();
   const checkedAt = new Date(startedAt).toISOString();
   const checks: SystemHealthCheck[] = [];
@@ -347,7 +347,7 @@ async function readSystemHealthFresh(): Promise<SystemHealthReport> {
 }
 
 const readSystemHealthCached = unstable_cache(
-  readSystemHealthFresh,
+  readFreshSystemHealth,
   ["rmt-v6-system-health"],
   { revalidate: 15 }
 );
