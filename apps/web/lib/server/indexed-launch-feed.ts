@@ -62,7 +62,9 @@ const indexedLaunchResponseSchema = z.object({
   factoryStartBlock: decimalString.optional(),
   launches: z.array(indexedLaunchSchema),
   indexedThrough: decimalString,
-  syncedAt: z.string()
+  syncedAt: z.string(),
+  stale: z.boolean().optional(),
+  error: z.string().optional()
 });
 
 const indexedBindingSchema = z.object({
@@ -266,6 +268,9 @@ export async function readIndexedLaunches(limit = 25) {
     const creatorSafeguardsReady = launches.length > 0 && launches.every((launch) =>
       typeof launch.creatorOutsideCurveBps === "number" && launch.creatorFlow !== "unknown"
     );
+    if (payload.stale && !creatorSafeguardsReady) {
+      throw new Error("The delayed launch checkpoint could not be safely enriched.");
+    }
     return {
       chainId: binding.chainId,
       protocolVersion: binding.protocolVersion,
@@ -274,7 +279,9 @@ export async function readIndexedLaunches(limit = 25) {
       launches,
       syncedAt: payload.syncedAt,
       indexedThrough: payload.indexedThrough,
-      creatorSafeguardsReady
+      creatorSafeguardsReady,
+      stale: payload.stale,
+      error: payload.error
     };
   } finally {
     clearTimeout(timeout);

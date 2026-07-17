@@ -20,6 +20,14 @@ import {
   tokenLaunchedEvent
 } from "./abi.js";
 import { launchRowsQuery } from "./launch-rows-query.js";
+import {
+  classifySyncFailure,
+  failureBackoffMs,
+  LOCAL_SYNC_FAILURE_MESSAGE,
+  partitionMarketEventLogs,
+  publicSyncState,
+  type SyncFailureKind
+} from "./rpc-resilience.js";
 import { schemaSql } from "./schema.js";
 
 const CHAIN_ID = 4663;
@@ -73,7 +81,7 @@ const config = {
   startBlock: requiredPositiveBigInt("RMT_FACTORY_START_BLOCK"),
   confirmations: positiveInteger("RMT_CONFIRMATION_DEPTH", 20),
   chunkSize: positiveInteger("RMT_INDEXER_CHUNK_SIZE", 2_000),
-  pollMs: positiveInteger("RMT_INDEXER_POLL_MS", 5_000),
+  pollMs: positiveInteger("RMT_INDEXER_POLL_MS", 10_000),
   port: positiveInteger("PORT", 3_001),
   readToken: process.env.RMT_INDEXER_READ_TOKEN?.trim() || null
 };
@@ -87,7 +95,7 @@ const chain = {
 
 const rpc = createPublicClient({
   chain,
-  transport: http(config.rpcUrl, { retryCount: 3, timeout: 12_000 })
+  transport: http(config.rpcUrl, { retryCount: 3, retryDelay: 1_000, timeout: 12_000 })
 });
 
 const pool = new Pool({
@@ -99,6 +107,7 @@ const pool = new Pool({
 let indexedThrough = config.startBlock - 1n;
 let lastSyncAt: string | null = null;
 let lastError: string | null = null;
+let lastFailureKind: SyncFailureKind | null = null;
 let initialSyncComplete = false;
 let healthHeadCache: { block: bigint; expiresAt: number } | null = null;
 
@@ -493,20 +502,17 @@ async function reconcileReorg() {
 }
 
 async function readMarketLogs(markets: Address[], fromBlock: bigint, toBlock: bigint) {
-  const trades: Awaited<ReturnType<typeof rpc.getLogs>> = [];
-  const graduations: Awaited<ReturnType<typeof rpc.getLogs>> = [];
-  const migrations: Awaited<ReturnType<typeof rpc.getLogs>> = [];
+  const trades: unknown[] = [];
+  const graduations: unknown[] = [];
+  const migrations: unknown[] = [];
 
   for (let offset = 0; offset < markets.length; offset += 100) {
     const addresses = markets.slice(offset, offset + 100);
-    const [tradeBatch, graduationBatch, migrationBatch] = await Promise.all([
-      rpc.getLogs({ address: addresses, event: marketEvents[0], fromBlock, toBlock }),
-      rpc.getLogs({ address: addresses, event: marketEvents[1], fromBlock, toBlock }),
-      rpc.getLogs({ address: addresses, event: marketEvents[2], fromBlock, toBlock })
-    ]);
-    trades.push(...tradeBatch);
-    graduations.push(...graduationBatch);
-    migrations.push(...migrationBatch);
+    const batch = await rpc.getLogs({ address: addresses, events: marketEvents, fromBlock, toBlock });
+    const partitioned = partitionMarketEventLogs(batch);
+    trades.push(...partitioned.trades);
+    graduations.push(...partitioned.graduations);
+    migrations.push(...partitioned.migrations);
   }
 
   return { trades, graduations, migrations };
@@ -1271,8 +1277,30 @@ function startServer() {
         return;
       }
       if (url.pathname === "/health") {
-        const latest = await currentHealthHead();
-        const healthy = initialSyncComplete && !lastError;
+        let latest: bigint;
+        try {
+          latest = await currentHealthHead();
+        } catch (error) {
+          console.error(JSON.stringify({
+            event: "indexer_health_error",
+            error: error instanceof Error ? error.message : String(error)
+          }));
+          json(response, 503, {
+            ok: false,
+            chainId: CHAIN_ID,
+            protocolVersion: 6,
+            factory: config.factory,
+            factoryStartBlock: config.startBlock.toString(),
+            indexedThrough: indexedThrough.toString(),
+            confirmationDepth: config.confirmations,
+            initialSyncComplete,
+            lastSyncAt,
+            error: "RPC health check is temporarily unavailable."
+          });
+          return;
+        }
+        const syncState = publicSyncState(initialSyncComplete, lastFailureKind);
+        const healthy = syncState.available && !syncState.stale;
         json(response, healthy ? 200 : 503, {
           ok: healthy,
           chainId: CHAIN_ID,
@@ -1289,7 +1317,30 @@ function startServer() {
           lagBlocks: latest > indexedThrough ? (latest - indexedThrough).toString() : "0",
           initialSyncComplete,
           lastSyncAt,
-          error: lastError ?? (initialSyncComplete ? null : "Initial V6 backfill and invariants are still running")
+          error: syncState.publicError
+            ?? (lastFailureKind === "local" ? LOCAL_SYNC_FAILURE_MESSAGE : null)
+            ?? (initialSyncComplete ? null : "Initial V6 backfill and invariants are still running")
+        });
+        return;
+      }
+      if (url.pathname === "/ready") {
+        let databaseReady = false;
+        try {
+          await pool.query("SELECT 1");
+          databaseReady = true;
+        } catch (error) {
+          console.error(JSON.stringify({
+            event: "indexer_readiness_error",
+            error: error instanceof Error ? error.message : String(error)
+          }));
+        }
+        const ready = initialSyncComplete && lastFailureKind !== "local" && databaseReady;
+        json(response, ready ? 200 : 503, {
+          ok: ready,
+          initialSyncComplete,
+          indexedThrough: indexedThrough.toString(),
+          lastSyncAt,
+          error: ready ? null : "Indexer data service is temporarily unavailable."
         });
         return;
       }
@@ -1299,9 +1350,12 @@ function startServer() {
         return;
       }
       if (url.pathname === "/launches") {
-        if (!initialSyncComplete || lastError) {
+        const syncState = publicSyncState(initialSyncComplete, lastFailureKind);
+        if (!syncState.available) {
           json(response, 503, {
-            error: lastError ?? "Initial V6 backfill and invariants are still running"
+            error: initialSyncComplete
+              ? "Confirmed launch data is temporarily unavailable."
+              : "Initial V6 backfill and invariants are still running"
           });
           return;
         }
@@ -1314,14 +1368,18 @@ function startServer() {
           factoryStartBlock: config.startBlock.toString(),
           launches: await launchRows(limit),
           indexedThrough: indexedThrough.toString(),
-          syncedAt: lastSyncAt
+          syncedAt: lastSyncAt,
+          stale: syncState.stale || undefined,
+          error: syncState.publicError ?? undefined
         });
         return;
       }
       if (url.pathname === "/origins") {
         if (!initialSyncComplete || lastError) {
           json(response, 503, {
-            error: lastError ?? "Initial V6 backfill and invariants are still running"
+            error: initialSyncComplete
+              ? "Exact token-origin coverage is temporarily unavailable."
+              : "Initial V6 backfill and invariants are still running"
           });
           return;
         }
@@ -1345,7 +1403,9 @@ function startServer() {
       if (tradeRoute) {
         if (!initialSyncComplete || lastError) {
           json(response, 503, {
-            error: lastError ?? "Initial V6 backfill and invariants are still running"
+            error: initialSyncComplete
+              ? "Indexed market data is temporarily unavailable."
+              : "Initial V6 backfill and invariants are still running"
           });
           return;
         }
@@ -1369,7 +1429,12 @@ function startServer() {
       }
       json(response, 404, { error: "Not found" });
     } catch (error) {
-      json(response, 500, { error: error instanceof Error ? error.message : "Unknown server error" });
+      console.error(JSON.stringify({
+        event: "indexer_api_error",
+        path: request.url ?? "/",
+        error: error instanceof Error ? error.message : String(error)
+      }));
+      json(response, 500, { error: "Internal server error" });
     }
   }).listen(config.port, () => {
     console.info(JSON.stringify({ event: "indexer_listening", port: config.port }));
@@ -1393,16 +1458,29 @@ async function run() {
   process.on("SIGTERM", stop);
   process.on("SIGINT", stop);
 
+  let consecutiveFailures = 0;
   while (!stopping) {
+    let delayMs = config.pollMs;
     try {
       await syncOnce();
       initialSyncComplete = true;
       lastError = null;
+      lastFailureKind = null;
+      consecutiveFailures = 0;
     } catch (error) {
+      consecutiveFailures += 1;
       lastError = error instanceof Error ? error.message : String(error);
-      console.error(JSON.stringify({ event: "indexer_error", error: lastError }));
+      lastFailureKind = classifySyncFailure(error);
+      delayMs = failureBackoffMs(config.pollMs, consecutiveFailures);
+      console.error(JSON.stringify({
+        event: "indexer_error",
+        error: lastError,
+        failureKind: lastFailureKind,
+        consecutiveFailures,
+        retryInMs: delayMs
+      }));
     }
-    await new Promise((resolve) => setTimeout(resolve, config.pollMs));
+    await new Promise((resolve) => setTimeout(resolve, delayMs));
   }
 }
 

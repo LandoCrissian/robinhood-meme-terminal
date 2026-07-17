@@ -24,7 +24,7 @@ Use [PRODUCTION_INDEXER_DEPLOYMENT.md](PRODUCTION_INDEXER_DEPLOYMENT.md) for the
 4. Deploy one continuously running writer with automatic restart.
 5. Restrict the indexer API to the web tier or place it behind rate limiting.
 6. Set the web deployment's indexer URL only after a full historical backfill matches the onchain launch count.
-7. Add independent uptime checks for `/health`.
+7. Use `/ready` for Railway process readiness and add an independent synchronization monitor for `/health`.
 8. Warn when lag exceeds twice the confirmation depth; alert when it exceeds five times the depth, a reorg rollback occurs, or the worker reports an error.
 9. Exercise database restore and full replay before broad launch.
 

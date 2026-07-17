@@ -49,6 +49,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter indexer typecheck
       - run: pnpm --filter indexer build
+      - run: pnpm --filter indexer test:resilience
       - run: pnpm --filter indexer test:schema
 
   external-origin-indexer:
