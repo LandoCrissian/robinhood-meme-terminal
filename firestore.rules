@@ -3,31 +3,101 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     function ownsProfile(userId) {
-      return request.auth != null && request.auth.uid == userId;
+      return request.auth != null
+        && request.auth.uid == userId
+        && request.auth.token.email_verified == true;
     }
 
     function validProfile(data) {
       return data is map
+        && data.keys().hasAll(['displayName', 'handle', 'bio', 'traderMode', 'density'])
         && data.keys().hasOnly(['displayName', 'handle', 'bio', 'traderMode', 'density'])
         && data.displayName is string && data.displayName.size() > 0 && data.displayName.size() <= 40
-        && data.handle is string && data.handle.size() <= 24
+        && data.handle is string && data.handle.matches('^[a-zA-Z0-9_]{0,24}$')
         && data.bio is string && data.bio.size() <= 180
         && data.traderMode in ['scout', 'momentum', 'builder']
         && data.density in ['focused', 'compact'];
     }
 
-    function validUserDocument() {
-      return request.resource.data.keys().hasOnly(['profile', 'watchlist', 'email', 'updatedAt'])
-        && validProfile(request.resource.data.profile)
-        && request.resource.data.watchlist is list
-        && request.resource.data.watchlist.size() <= 50
-        && (request.resource.data.email == null || request.resource.data.email is string)
-        && request.resource.data.updatedAt is timestamp;
+    function validUserDocument(data) {
+      return data.keys().hasAll([
+          'schemaVersion',
+          'profile',
+          'profileUpdatedAt',
+          'watchlistCount',
+          'watchlistUpdatedAt',
+          'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'schemaVersion',
+          'profile',
+          'profileUpdatedAt',
+          'watchlistCount',
+          'watchlistUpdatedAt',
+          'updatedAt'
+        ])
+        && data.schemaVersion == 1
+        && validProfile(data.profile)
+        && data.profileUpdatedAt is int && data.profileUpdatedAt > 0
+        && data.watchlistCount is int && data.watchlistCount >= 0 && data.watchlistCount <= 50
+        && data.watchlistUpdatedAt is int && data.watchlistUpdatedAt > 0
+        && data.updatedAt is timestamp && data.updatedAt == request.time;
+    }
+
+    function validUserUpdate() {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      return request.resource.data.profileUpdatedAt >= resource.data.get('profileUpdatedAt', 0)
+        && request.resource.data.watchlistUpdatedAt >= resource.data.get('watchlistUpdatedAt', 0)
+        && (!changed.hasAny(['profile'])
+          || changed.hasAny(['profileUpdatedAt']))
+        && (!changed.hasAny(['watchlistCount'])
+          || changed.hasAny(['watchlistUpdatedAt']));
+    }
+
+    function validWatchlistEntry(slotId, data) {
+      let image = data.get('image', '');
+      let launchId = data.get('launchId', '');
+      return slotId.matches('^(0[0-9]|[1-4][0-9])$')
+        && data.keys().hasAll(['address', 'name', 'symbol', 'addedAt', 'listUpdatedAt'])
+        && data.keys().hasOnly(['address', 'name', 'symbol', 'image', 'launchId', 'addedAt', 'listUpdatedAt'])
+        && data.address is string && data.address.matches('^0x[0-9a-f]{40}$')
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 80
+        && data.symbol is string && data.symbol.size() > 0 && data.symbol.size() <= 20
+        && image is string && image.size() <= 512
+        && (image == '' || image.matches('^(https://|ipfs://).+$'))
+        && launchId is string && launchId.size() <= 78
+        && (launchId == '' || launchId.matches('^[0-9]+$'))
+        && data.addedAt is int && data.addedAt > 0
+        && data.listUpdatedAt is int && data.listUpdatedAt > 0;
+    }
+
+    function watchlistMatchesParent(userId, data) {
+      return getAfter(/databases/$(database)/documents/users/$(userId)).data.watchlistUpdatedAt
+        == data.listUpdatedAt;
     }
 
     match /users/{userId} {
       allow read, delete: if ownsProfile(userId);
-      allow create, update: if ownsProfile(userId) && validUserDocument();
+      allow create: if ownsProfile(userId) && validUserDocument(request.resource.data);
+      allow update: if ownsProfile(userId)
+        && validUserDocument(request.resource.data)
+        && validUserUpdate();
+
+      match /watchlist/{slotId} {
+        allow read: if ownsProfile(userId);
+        allow create: if ownsProfile(userId)
+          && validWatchlistEntry(slotId, request.resource.data)
+          && watchlistMatchesParent(userId, request.resource.data);
+        allow update: if ownsProfile(userId)
+          && validWatchlistEntry(slotId, request.resource.data)
+          && (request.resource.data == resource.data
+            || request.resource.data.listUpdatedAt > resource.data.listUpdatedAt)
+          && watchlistMatchesParent(userId, request.resource.data);
+        allow delete: if ownsProfile(userId)
+          && (!existsAfter(/databases/$(database)/documents/users/$(userId))
+            || getAfter(/databases/$(database)/documents/users/$(userId)).data.watchlistUpdatedAt
+              > resource.data.listUpdatedAt);
+      }
     }
   }
 }

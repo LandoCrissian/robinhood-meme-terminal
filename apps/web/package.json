@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "test:firebase-rules:unit": "tsx --test lib/firebase-rules.test.ts",
     "test:reliability": "tsx lib/server/cache-headers-smoke.ts",
     "test:profile": "tsx lib/profile-smoke.ts",
     "test:v4-trade": "NEXT_PUBLIC_RMT_NETWORK=mainnet tsx lib/server/rmt-v4-trade-smoke.ts",
@@ -25,6 +26,7 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@firebase/rules-unit-testing": "5.0.1",
     "@types/node": "^22.13.4",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",

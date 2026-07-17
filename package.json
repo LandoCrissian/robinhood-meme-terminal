@@ -11,7 +11,11 @@
     "build": "pnpm --filter web build",
     "audit:production": "pnpm audit --prod --audit-level high",
     "lint": "pnpm --filter web lint",
+    "test:firebase-rules": "firebase emulators:exec --project rmt-rules-test --only firestore \"pnpm --filter web test:firebase-rules:unit\"",
     "test:production-health": "node scripts/production-health-smoke.mjs",
     "typecheck": "pnpm --filter web typecheck"
+  },
+  "devDependencies": {
+    "firebase-tools": "15.24.0"
   }
 }

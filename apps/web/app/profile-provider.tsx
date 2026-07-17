@@ -1,12 +1,46 @@
 "use client";
 
 import type { User } from "firebase/auth";
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode
+} from "react";
 import { firebaseConfigured, getFirebaseClient } from "../lib/firebase-client";
-import { DEFAULT_PROFILE, normalizeProfile, readLocalProfile, writeLocalProfile, type RmtProfile } from "../lib/profile";
-import { readWatchlist, replaceWatchlist, WATCHLIST_EVENT, type WatchlistEntry } from "../lib/watchlist";
+import {
+  PROFILE_SCHEMA_VERSION,
+  parseCloudUserState,
+  parseCloudWatchlist,
+  resolveProfileSnapshot,
+  resolveWatchlistSnapshot,
+  watchlistSlots,
+  type CloudUserState,
+  type CloudWatchlistSlot
+} from "../lib/profile-cloud";
+import {
+  DEFAULT_PROFILE,
+  nextProfileTimestamp,
+  normalizeProfile,
+  readLocalProfileSnapshot,
+  writeLocalProfile,
+  type LocalProfileSnapshot,
+  type RmtProfile
+} from "../lib/profile";
+import {
+  nextWatchlistTimestamp,
+  readWatchlistSnapshot,
+  replaceWatchlist,
+  WATCHLIST_EVENT,
+  type WatchlistSnapshot
+} from "../lib/watchlist";
 
 type SyncState = "local" | "syncing" | "synced" | "error";
+type FirebaseClient = NonNullable<Awaited<ReturnType<typeof getFirebaseClient>>>;
 
 type ProfileContextValue = {
   configured: boolean;
@@ -14,32 +48,99 @@ type ProfileContextValue = {
   profile: RmtProfile;
   user: User | null;
   syncState: SyncState;
+  retrySync: () => Promise<void>;
   saveProfile: (profile: RmtProfile) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   signOutProfile: () => Promise<void>;
 };
 
+type CloudWrite = {
+  cleanupLegacy?: boolean;
+  completeDocument?: boolean;
+  existingSlotIds?: Set<string>;
+  profile: LocalProfileSnapshot;
+  rewriteWatchlist: boolean;
+  userId: string;
+  watchlist: WatchlistSnapshot;
+};
+
 const ProfileContext = createContext<ProfileContextValue | null>(null);
 
-function mergeWatchlists(local: WatchlistEntry[], remote: WatchlistEntry[]) {
-  const unique = new Map<string, WatchlistEntry>();
-  for (const entry of [...local, ...remote]) {
-    if (!entry || typeof entry.address !== "string" || !/^0x[0-9a-fA-F]{40}$/.test(entry.address)) continue;
-    const key = entry.address.toLowerCase();
-    const current = unique.get(key);
-    if (!current || entry.addedAt > current.addedAt) unique.set(key, entry);
-  }
-  return [...unique.values()].sort((a, b) => b.addedAt - a.addedAt).slice(0, 50);
+function userDocumentData(client: FirebaseClient, profile: LocalProfileSnapshot, watchlist: WatchlistSnapshot) {
+  return {
+    schemaVersion: PROFILE_SCHEMA_VERSION,
+    profile: profile.profile,
+    profileUpdatedAt: profile.updatedAt,
+    watchlistCount: watchlist.entries.length,
+    watchlistUpdatedAt: watchlist.updatedAt,
+    updatedAt: client.firestoreApi.serverTimestamp()
+  };
 }
 
-function firestoreWatchlist(entries: WatchlistEntry[]) {
-  return entries.map((entry) => ({
-    address: entry.address,
-    name: entry.name,
-    symbol: entry.symbol,
-    addedAt: entry.addedAt,
-    ...(entry.image ? { image: entry.image } : {}),
-    ...(entry.launchId ? { launchId: entry.launchId } : {})
+async function writeCloudState(client: FirebaseClient, write: CloudWrite) {
+  const batch = client.firestoreApi.writeBatch(client.db);
+  const userReference = client.firestoreApi.doc(client.db, "users", write.userId);
+  const data: Record<string, unknown> = write.completeDocument
+    ? userDocumentData(client, write.profile, write.watchlist)
+    : write.rewriteWatchlist
+      ? {
+          schemaVersion: PROFILE_SCHEMA_VERSION,
+          watchlistCount: write.watchlist.entries.length,
+          watchlistUpdatedAt: write.watchlist.updatedAt,
+          updatedAt: client.firestoreApi.serverTimestamp()
+        }
+      : {
+          schemaVersion: PROFILE_SCHEMA_VERSION,
+          profile: write.profile.profile,
+          profileUpdatedAt: write.profile.updatedAt,
+          updatedAt: client.firestoreApi.serverTimestamp()
+        };
+  if (write.cleanupLegacy) {
+    data.email = client.firestoreApi.deleteField();
+    data.watchlist = client.firestoreApi.deleteField();
+  }
+  batch.set(userReference, data, { merge: true });
+
+  if (write.rewriteWatchlist) {
+    const slots = watchlistSlots(write.watchlist.entries, write.watchlist.updatedAt);
+    const desiredIds = new Set(slots.map((slot) => slot.id));
+    for (const slot of slots) {
+      batch.set(client.firestoreApi.doc(userReference, "watchlist", slot.id), slot.data);
+    }
+    for (const slotId of write.existingSlotIds ?? []) {
+      if (!desiredIds.has(slotId)) batch.delete(client.firestoreApi.doc(userReference, "watchlist", slotId));
+    }
+  }
+
+  await batch.commit();
+}
+
+function friendlyAuthError(error: unknown) {
+  const code = error && typeof error === "object" && "code" in error
+    ? String((error as { code?: unknown }).code)
+    : "";
+  if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") {
+    return "Google sign-in was closed. Your local profile is unchanged.";
+  }
+  if (code === "auth/popup-blocked") {
+    return "Your browser blocked Google sign-in. Allow popups for RMT and try again.";
+  }
+  if (code === "auth/network-request-failed") {
+    return "Google sign-in could not reach Firebase. Check your connection and try again.";
+  }
+  if (code === "auth/unauthorized-domain") {
+    return "This RMT domain is not authorized for profile sign-in yet.";
+  }
+  if (code === "auth/operation-not-allowed") {
+    return "Google sign-in is not enabled in the RMT Firebase project yet.";
+  }
+  return "Google sign-in did not finish. Your local profile is unchanged.";
+}
+
+function slotDocuments(snapshot: { docs: Array<{ data: () => unknown; id: string }> }) {
+  return snapshot.docs.map((document) => ({
+    id: document.id,
+    data: document.data() as Record<string, unknown>
   }));
 }
 
@@ -48,29 +149,95 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [syncState, setSyncState] = useState<SyncState>(firebaseConfigured ? "syncing" : "local");
+  const [cloudReady, setCloudReady] = useState(false);
+  const activeUserRef = useRef<User | null>(null);
+  const cleanupLegacyRef = useRef(false);
+  const generationRef = useRef(0);
+  const remoteSlotIdsRef = useRef(new Set<string>());
+  const suppressWatchlistSyncRef = useRef(false);
+  const writeQueueRef = useRef<Promise<void>>(Promise.resolve());
+
+  const applyProfile = useCallback((snapshot: LocalProfileSnapshot) => {
+    setProfile(snapshot.profile);
+    writeLocalProfile(snapshot.profile, snapshot.updatedAt);
+    document.body.dataset.terminalDensity = snapshot.profile.density;
+  }, []);
+
+  const applyWatchlist = useCallback((snapshot: WatchlistSnapshot) => {
+    suppressWatchlistSyncRef.current = true;
+    replaceWatchlist(snapshot.entries, { updatedAt: snapshot.updatedAt });
+    suppressWatchlistSyncRef.current = false;
+  }, []);
+
+  const queueWrite = useCallback((task: () => Promise<void>) => {
+    const queued = writeQueueRef.current.catch(() => undefined).then(task);
+    writeQueueRef.current = queued;
+    return queued;
+  }, []);
+
+  const syncCurrentState = useCallback(async (rewriteWatchlist: boolean, completeDocument = false) => {
+    const currentUser = activeUserRef.current;
+    if (!currentUser) return;
+    const generation = generationRef.current;
+    setSyncState("syncing");
+    await queueWrite(async () => {
+      const client = await getFirebaseClient();
+      if (!client || generationRef.current !== generation || activeUserRef.current?.uid !== currentUser.uid) return;
+      const currentProfile = readLocalProfileSnapshot();
+      const currentWatchlist = readWatchlistSnapshot();
+      await writeCloudState(client, {
+        cleanupLegacy: cleanupLegacyRef.current,
+        completeDocument: completeDocument || cleanupLegacyRef.current,
+        existingSlotIds: remoteSlotIdsRef.current,
+        profile: currentProfile,
+        rewriteWatchlist,
+        userId: currentUser.uid,
+        watchlist: currentWatchlist
+      });
+      cleanupLegacyRef.current = false;
+      if (rewriteWatchlist) {
+        remoteSlotIdsRef.current = new Set(watchlistSlots(currentWatchlist.entries, currentWatchlist.updatedAt).map((slot) => slot.id));
+      }
+      if (generationRef.current === generation && activeUserRef.current?.uid === currentUser.uid) setSyncState("synced");
+    });
+  }, [queueWrite]);
 
   useEffect(() => {
-    const local = readLocalProfile();
-    setProfile(local);
-    document.body.dataset.terminalDensity = local.density;
+    const local = readLocalProfileSnapshot();
+    setProfile(local.profile);
+    document.body.dataset.terminalDensity = local.profile.density;
 
     if (!firebaseConfigured) {
       setLoading(false);
       return;
     }
 
-    let unsubscribe: (() => void) | undefined;
+    let unsubscribeAuth: (() => void) | undefined;
+    let unsubscribeProfile: (() => void) | undefined;
+    let unsubscribeWatchlist: (() => void) | undefined;
     let cancelled = false;
+
     void getFirebaseClient().then((client) => {
-      if (cancelled) return;
-      if (!client) {
-        setSyncState("local");
-        setLoading(false);
+      if (cancelled || !client) {
+        if (!cancelled) {
+          setSyncState("local");
+          setLoading(false);
+        }
         return;
       }
-      void client.authApi.getRedirectResult(client.auth).catch(() => setSyncState("error"));
-      unsubscribe = client.authApi.onAuthStateChanged(client.auth, async (nextUser) => {
+
+      unsubscribeAuth = client.authApi.onAuthStateChanged(client.auth, async (nextUser) => {
+        const generation = generationRef.current + 1;
+        generationRef.current = generation;
+        unsubscribeProfile?.();
+        unsubscribeWatchlist?.();
+        unsubscribeProfile = undefined;
+        unsubscribeWatchlist = undefined;
+        remoteSlotIdsRef.current = new Set();
+        activeUserRef.current = nextUser;
         setUser(nextUser);
+        setCloudReady(false);
+
         if (!nextUser) {
           setSyncState("local");
           setLoading(false);
@@ -78,126 +245,166 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
         }
 
         setSyncState("syncing");
+        setLoading(true);
         try {
-          const reference = client.firestoreApi.doc(client.db, "users", nextUser.uid);
-          const snapshot = await client.firestoreApi.getDoc(reference);
-          const data = snapshot.data();
-          const remoteProfile = data?.profile ? normalizeProfile(data.profile) : null;
-          const nextProfile = remoteProfile ?? normalizeProfile({
-            ...local,
-            displayName: local.displayName === DEFAULT_PROFILE.displayName && nextUser.displayName
-              ? nextUser.displayName
-              : local.displayName
-          });
-          const remoteWatchlist = Array.isArray(data?.watchlist) ? data.watchlist as WatchlistEntry[] : [];
-          const mergedWatchlist = mergeWatchlists(readWatchlist(), remoteWatchlist);
+          const userReference = client.firestoreApi.doc(client.db, "users", nextUser.uid);
+          const watchlistReference = client.firestoreApi.collection(userReference, "watchlist");
+          const [userSnapshot, watchlistSnapshot] = await Promise.all([
+            client.firestoreApi.getDoc(userReference),
+            client.firestoreApi.getDocs(watchlistReference)
+          ]);
+          if (cancelled || generationRef.current !== generation) return;
 
-          setProfile(nextProfile);
-          writeLocalProfile(nextProfile);
-          document.body.dataset.terminalDensity = nextProfile.density;
-          replaceWatchlist(mergedWatchlist);
-          await client.firestoreApi.setDoc(reference, {
+          const rawUserData = userSnapshot.data() as Record<string, unknown> | undefined;
+          const remoteState = parseCloudUserState(rawUserData);
+          const initialSlots = slotDocuments(watchlistSnapshot);
+          remoteSlotIdsRef.current = new Set(initialSlots.map((slot) => slot.id));
+          cleanupLegacyRef.current = Boolean(rawUserData && ("email" in rawUserData || "watchlist" in rawUserData));
+          const remoteWatchlist = userSnapshot.exists()
+            ? parseCloudWatchlist(initialSlots, remoteState)
+            : null;
+          if (userSnapshot.exists() && !remoteWatchlist) throw new Error("Cloud watchlist state is incomplete.");
+
+          const nextProfile = resolveProfileSnapshot(readLocalProfileSnapshot(), remoteState, nextUser.displayName);
+          const nextWatchlist = resolveWatchlistSnapshot(readWatchlistSnapshot(), remoteWatchlist);
+          applyProfile(nextProfile);
+          applyWatchlist(nextWatchlist);
+
+          await writeCloudState(client, {
+            cleanupLegacy: cleanupLegacyRef.current,
+            completeDocument: true,
+            existingSlotIds: remoteSlotIdsRef.current,
             profile: nextProfile,
-            watchlist: firestoreWatchlist(mergedWatchlist),
-            email: nextUser.email ?? null,
-            updatedAt: client.firestoreApi.serverTimestamp()
-          }, { merge: true });
+            rewriteWatchlist: true,
+            userId: nextUser.uid,
+            watchlist: nextWatchlist
+          });
+          if (cancelled || generationRef.current !== generation) return;
+          cleanupLegacyRef.current = false;
+          remoteSlotIdsRef.current = new Set(watchlistSlots(nextWatchlist.entries, nextWatchlist.updatedAt).map((slot) => slot.id));
+
+          let liveUserState: CloudUserState | null = null;
+          let liveSlots: CloudWatchlistSlot[] | null = null;
+          const applyLiveState = () => {
+            if (!liveUserState || !liveSlots || generationRef.current !== generation) return;
+            const remoteProfile = resolveProfileSnapshot(readLocalProfileSnapshot(), liveUserState);
+            const localProfile = readLocalProfileSnapshot();
+            if (liveUserState.profile && liveUserState.profileUpdatedAt > localProfile.updatedAt) applyProfile(remoteProfile);
+
+            const remoteList = parseCloudWatchlist(liveSlots, liveUserState);
+            const localList = readWatchlistSnapshot();
+            if (remoteList && remoteList.updatedAt > localList.updatedAt) applyWatchlist(remoteList);
+          };
+
+          unsubscribeProfile = client.firestoreApi.onSnapshot(userReference, (snapshot) => {
+            if (!snapshot.exists()) return;
+            liveUserState = parseCloudUserState(snapshot.data());
+            applyLiveState();
+          }, () => setSyncState("error"));
+          unsubscribeWatchlist = client.firestoreApi.onSnapshot(watchlistReference, (snapshot) => {
+            liveSlots = slotDocuments(snapshot);
+            remoteSlotIdsRef.current = new Set(liveSlots.map((slot) => slot.id));
+            applyLiveState();
+          }, () => setSyncState("error"));
+
+          setCloudReady(true);
           setSyncState("synced");
         } catch {
-          setSyncState("error");
+          if (generationRef.current === generation) setSyncState("error");
         } finally {
-          setLoading(false);
+          if (generationRef.current === generation) setLoading(false);
         }
       });
     }).catch(() => {
       setSyncState("error");
       setLoading(false);
     });
+
     return () => {
       cancelled = true;
-      unsubscribe?.();
+      generationRef.current += 1;
+      unsubscribeAuth?.();
+      unsubscribeProfile?.();
+      unsubscribeWatchlist?.();
     };
-  }, []);
+  }, [applyProfile, applyWatchlist]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !cloudReady) return;
     let timer: number | undefined;
     const sync = () => {
+      if (suppressWatchlistSyncRef.current) return;
       window.clearTimeout(timer);
       timer = window.setTimeout(() => {
-        setSyncState("syncing");
-        void getFirebaseClient().then((client) => {
-          if (!client) throw new Error("Firebase is not configured.");
-          return client.firestoreApi.setDoc(client.firestoreApi.doc(client.db, "users", user.uid), {
-            watchlist: firestoreWatchlist(readWatchlist()),
-            updatedAt: client.firestoreApi.serverTimestamp()
-          }, { merge: true });
-        }).then(() => setSyncState("synced")).catch(() => setSyncState("error"));
-      }, 250);
+        void syncCurrentState(true).catch(() => setSyncState("error"));
+      }, 350);
     };
     window.addEventListener(WATCHLIST_EVENT, sync);
     return () => {
       window.clearTimeout(timer);
       window.removeEventListener(WATCHLIST_EVENT, sync);
     };
-  }, [user]);
+  }, [cloudReady, syncCurrentState, user]);
 
   const saveProfile = useCallback(async (next: RmtProfile) => {
     const normalized = normalizeProfile(next);
+    const updatedAt = nextProfileTimestamp(readLocalProfileSnapshot().updatedAt);
     setProfile(normalized);
-    writeLocalProfile(normalized);
+    writeLocalProfile(normalized, updatedAt);
     document.body.dataset.terminalDensity = normalized.density;
 
-    if (!firebaseConfigured || !user) {
+    if (!firebaseConfigured || !activeUserRef.current || !cloudReady) {
       setSyncState("local");
       return;
     }
-    setSyncState("syncing");
     try {
-      const client = await getFirebaseClient();
-      if (!client) {
-        setSyncState("local");
-        return;
-      }
-      await client.firestoreApi.setDoc(client.firestoreApi.doc(client.db, "users", user.uid), {
-        profile: normalized,
-        updatedAt: client.firestoreApi.serverTimestamp()
-      }, { merge: true });
-      setSyncState("synced");
+      await syncCurrentState(false);
     } catch {
       setSyncState("error");
       throw new Error("Profile sync failed. Your changes are still saved on this device.");
     }
-  }, [user]);
+  }, [cloudReady, syncCurrentState]);
+
+  const retrySync = useCallback(async () => {
+    if (!activeUserRef.current) return;
+    const currentWatchlist = readWatchlistSnapshot();
+    if (currentWatchlist.updatedAt === 0) {
+      replaceWatchlist(currentWatchlist.entries, { emit: false, updatedAt: nextWatchlistTimestamp() });
+    }
+    await syncCurrentState(true, true);
+  }, [syncCurrentState]);
 
   const signInWithGoogle = useCallback(async () => {
     const client = await getFirebaseClient();
-    if (!client) return;
+    if (!client) throw new Error("Firebase profile sync is not configured yet.");
     const provider = new client.authApi.GoogleAuthProvider();
     provider.setCustomParameters({ prompt: "select_account" });
     setSyncState("syncing");
-    if (window.matchMedia("(max-width: 760px)").matches) {
-      await client.authApi.signInWithRedirect(client.auth, provider);
-      return;
+    try {
+      await client.authApi.signInWithPopup(client.auth, provider);
+    } catch (error) {
+      setSyncState("local");
+      throw new Error(friendlyAuthError(error));
     }
-    await client.authApi.signInWithPopup(client.auth, provider);
   }, []);
 
   const signOutProfile = useCallback(async () => {
     const client = await getFirebaseClient();
-    if (client) await client.authApi.signOut(client.auth);
+    if (!client) return;
+    await client.authApi.signOut(client.auth);
   }, []);
 
   const value = useMemo<ProfileContextValue>(() => ({
     configured: firebaseConfigured,
     loading,
     profile,
+    retrySync,
     user,
     syncState,
     saveProfile,
     signInWithGoogle,
     signOutProfile
-  }), [loading, profile, saveProfile, signInWithGoogle, signOutProfile, syncState, user]);
+  }), [loading, profile, retrySync, saveProfile, signInWithGoogle, signOutProfile, syncState, user]);
 
   return <ProfileContext.Provider value={value}>{children}</ProfileContext.Provider>;
 }
