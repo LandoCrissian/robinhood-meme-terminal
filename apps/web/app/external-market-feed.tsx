@@ -15,7 +15,7 @@ const VIEWS: Array<{ id: RunnerView; label: string }> = [
 ];
 const DATA_REFRESH_MS = 30_000;
 const RANK_REFRESH_MS = 60_000;
-const MAX_VISIBLE_MARKETS = 4;
+const MAX_VISIBLE_MARKETS = 12;
 
 function money(value: number, price = false) {
   if (!Number.isFinite(value) || value <= 0) return "—";
@@ -502,7 +502,7 @@ export function ExternalMarketFeed() {
           {normalizedMarketQuery
             ? "Clear search"
             : showAllMarkets
-              ? "Show top four"
+              ? "Show top twelve"
               : "Browse all " + markets.length}
         </button>
       </div>
@@ -526,6 +526,10 @@ export function ExternalMarketFeed() {
           ))}
         </div>
         <small id="runner-market-count" aria-live="polite">{marketCountLabel}</small>
+      </div>
+
+      <div className="runnerColumnHeader" aria-hidden="true">
+        <span>Rank / signal</span><span>Market / origin</span><span>Valuation / 5m</span><span>1h flow / liquidity</span><span>Activity / risk</span><span>Execute</span>
       </div>
 
       <div id="runner-market-panel" role="tabpanel" aria-labelledby={"runner-tab-" + view}>

@@ -39,6 +39,13 @@ export function SystemStatus({ initialReport }: { initialReport: SystemHealthRep
         </div>
       </section>
 
+      <div className="statusTerminalTape" aria-label="Status refresh information">
+        <span><b>NETWORK</b>{report.network}</span>
+        <span><b>HEAD</b>{report.latestBlock}</span>
+        <span><b>VERIFY</b>{report.latencyMs}MS</span>
+        <span><b>REFRESH</b>15S</span>
+      </div>
+
       <section className="statusGrid" aria-label="Live protocol checks">
         {report.checks.map((item) => (
           <article className="panel statusCard" key={item.key}>

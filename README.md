@@ -28,13 +28,21 @@ The V6 factory was deployed at block `10248855`. See the [canonical V6 deploymen
 - Optional Fair Start protection for the opening blocks
 - Live bonding-curve buy and sell quotes
 - Immediate Buy and Sell actions from RMT Discovery
+- Native in-RMT buy and sell review for canonical graduated RMT V4 pools, using Uniswap's official Quoter, Universal Router, and amount-limited Permit2 approvals
 - Creator concentration and creator-wallet activity signals
 - Transparent progress toward permissionless Uniswap V4 graduation
 - Creator rewards before and after graduation
 - Connected-wallet balances for the active discovery set and a local-device watchlist page
 - Clearly labeled external Robinhood Chain market discovery in Runner Radar
+- A continuous edge-to-edge operator interface across discovery, trading, runners, portfolio, watchlist, launch, and live status, with responsive terminal layouts instead of nested card grids
 
 Wallet ownership remains the authority for launches and trades. The application never receives a private key, seed phrase, or permission to move assets on a user&apos;s behalf.
+
+## Wallet funding
+
+RMT includes an environment-gated Add funds experience for Robinhood Connect. It remains in a clearly labeled pending state until Robinhood approves RMT and issues the exact partner checkout or SDK configuration. After approval, set `NEXT_PUBLIC_ROBINHOOD_CONNECT_ENABLED=true` and use the official Robinhood-hosted HTTPS URL in `NEXT_PUBLIC_ROBINHOOD_CONNECT_URL`.
+
+Payment, identity-verification, Google Pay, card, and bank details must remain inside the provider-hosted flow. RMT must never collect or proxy that information. Google Pay must be described as an eligible payment option, not a guarantee, because Robinhood controls availability by user, account, device, transaction, and region. Adding Robinhood cards to Google Wallet remains a Robinhood/Google Wallet account action outside RMT.
 
 ## V6 economics
 
@@ -86,10 +94,13 @@ Production monitoring requests checks of the canonical domain, V6 registry and f
 
 ## Development
 
-The project targets Node 22, pnpm 10.12.1, Solidity 0.8.26, and Foundry.
+The project targets Node 22, pnpm 10.12.1, Solidity 0.8.26, and Foundry 1.7.1. Keep Foundry pinned when reproducing the mainnet-fork execution suite.
 
 ```bash
 pnpm install --frozen-lockfile
+pnpm audit:production
+pnpm --filter web test:reliability
+pnpm --filter web test:v4-trade
 pnpm typecheck
 pnpm build
 
@@ -100,6 +111,10 @@ forge test -vvv
 ```
 
 Use `.env.example` files as the configuration reference. Never commit RPC keys, database credentials, indexer bearer tokens, wallet keys, seed phrases, or signed production transactions.
+
+The web application encodes the reviewed Universal Router 2.1.1 command and V4 action ABI with the existing pinned `viem` dependency. RMT independently pins and verifies the Robinhood Chain deployment addresses and its immutable V6 pool configuration before returning calldata. Update these ABIs or addresses only with matching official deployment evidence, exact calldata regression tests, and the mainnet-fork Buy/Sell execution test.
+
+See the [dependency security policy](docs/DEPENDENCY_SECURITY.md) for the enforced pnpm build allowlist, workspace overrides, audit gate, and the reviewed moderate wallet-connector advisory.
 
 ## Security status
 

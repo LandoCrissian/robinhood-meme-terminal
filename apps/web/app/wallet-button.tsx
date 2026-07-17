@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { robinhoodChain, robinhoodChainTestnet } from "@rmt/shared/chains";
 import { useAccount, useConnect, useDisconnect, useSwitchChain } from "wagmi";
+import { FundWalletButton } from "./fund-wallet-button";
 
 function shortAddress(address: string) {
   return `${address.slice(0, 6)}…${address.slice(-4)}`;
@@ -118,8 +119,11 @@ export function WalletButton({ target = "testnet", returnTo }: { target?: "testn
   }
 
   return (
-    <button className="wallet live" title="Disconnect wallet" onClick={() => disconnect()}>
-      {address ? shortAddress(address) : "Connected"}
-    </button>
+    <div className="walletConnectedActions">
+      <FundWalletButton />
+      <button className="wallet live" title="Disconnect wallet" onClick={() => disconnect()}>
+        {address ? shortAddress(address) : "Connected"}
+      </button>
+    </div>
   );
 }

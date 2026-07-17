@@ -174,7 +174,7 @@ export function LaunchForm() {
   }
 
   return (
-    <section className="panel">
+    <section className="panel launchConfigPanel">
       <div className="sectionTitle"><div><p className="eyebrow">TOKEN LAUNCH</p><h2>Configure your token</h2></div><span className="badge">{isMainnetRelease ? "MAINNET · REAL ETH" : "TESTNET ALPHA"}</span></div>
       {launchesPaused && <div className="callout mainnetWarning"><strong>{officialPausedLaunch ? "Public launches remain paused" : "New launches are temporarily paused"}</strong><span>{officialPausedLaunch ? "The verified RMT wallet may complete the one-time official V6 launch without opening creation to anyone else." : "V6 is being verified before public creation reopens. Trading and read-only terminal features remain available."}</span></div>}
       {lockOfficialFields && !officialPausedLaunch && <div className="callout mainnetWarning"><strong>Official RMT launch is prefilled</strong><span>Connect the RMTMain wallet on the active V6 network. The site will verify the one-time migration permission before enabling the launch.</span></div>}

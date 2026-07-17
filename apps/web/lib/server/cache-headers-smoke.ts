@@ -27,4 +27,8 @@ const healthRoute = fs.readFileSync(new URL("../../app/api/health/route.ts", imp
 assert.match(healthRoute, /await readFreshSystemHealth\(\)/);
 assert.doesNotMatch(healthRoute, /await readSystemHealth\(\)/);
 
+const systemHealth = fs.readFileSync(new URL("./system-health.ts", import.meta.url), "utf8");
+assert.match(systemHealth, /observedLatestBlock = latestBlock/);
+assert.match(systemHealth, /latestBlock: observedLatestBlock\?\.toString\(\) \?\? "unavailable"/);
+
 console.info("Web cache header smoke test passed");

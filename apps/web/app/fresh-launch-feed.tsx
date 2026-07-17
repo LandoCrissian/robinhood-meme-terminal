@@ -25,7 +25,7 @@ const FIXED_SUPPLY = 1_000_000_000n * 10n ** 18n;
 const DATA_REFRESH_MS = 30_000;
 const MAX_REFRESH_BACKOFF_MS = 120_000;
 const RANK_REFRESH_MS = 60_000;
-const MAX_VISIBLE_LAUNCHES = 4;
+const MAX_VISIBLE_LAUNCHES = 12;
 
 const DISCOVERY_VIEWS: Array<{ id: RmtDiscoveryView; label: string }> = [
   { id: "moving", label: "Moving now" },
@@ -426,43 +426,54 @@ export function FreshLaunchFeed() {
         </span>
       </div>
 
-      <label className="rmtDiscoverySearch">
-        <span className="srOnly">Search RMT launches</span>
-        <input
-          type="search"
-          value={searchQuery}
-          onChange={(event) => {
-            setSearchQuery(event.target.value);
-            setShowAll(false);
-          }}
-          placeholder="Search name, ticker, address or launch #"
-          autoComplete="off"
-        />
-        {searchQuery && <button type="button" onClick={() => setSearchQuery("")} aria-label="Clear RMT launch search">Clear</button>}
-      </label>
-
-      <p className="srOnly" aria-live="polite">{rankingAnnouncement}</p>
-      <div className="discoveryToolbar">
-        <div className="discoveryTabs" role="tablist" aria-label="RMT token discovery views">
-          {DISCOVERY_VIEWS.map((item) => (
-            <button
-              type="button"
-              role="tab"
-              id={"discovery-tab-" + item.id}
-              aria-controls="rmt-discovery-panel"
-              aria-selected={view === item.id}
-              tabIndex={view === item.id ? 0 : -1}
-              className={view === item.id ? "active" : ""}
-              onClick={() => changeView(item.id)}
-              onKeyDown={(event) => handleTabKeyDown(event, item.id)}
-              key={item.id}
-            >
-              {item.label}<span>{launchesByView[item.id].length}</span>
-            </button>
-          ))}
-        </div>
-        <Link className="discoveryLaunchLink" href="/launch">Launch yours ↗</Link>
+      <div className="terminalTape" aria-label="Terminal data controls">
+        <span><b>{launches.length}</b> VERIFIED LAUNCH{launches.length === 1 ? "" : "ES"}</span>
+        <span><b>30S</b> CHAIN REFRESH</span>
+        <span><b>60S</b> RANK WINDOW</span>
+        <span><b>V6</b> ORIGIN FILTER</span>
       </div>
+
+      <div className="rmtControlDeck">
+        <label className="rmtDiscoverySearch">
+          <span className="srOnly">Search RMT launches</span>
+          <input
+            type="search"
+            value={searchQuery}
+            onChange={(event) => {
+              setSearchQuery(event.target.value);
+              setShowAll(false);
+            }}
+            placeholder="Search token / ticker / contract / launch #"
+            autoComplete="off"
+          />
+          {searchQuery && <button type="button" onClick={() => setSearchQuery("")} aria-label="Clear RMT launch search">Clear</button>}
+        </label>
+
+        <p className="srOnly" aria-live="polite">{rankingAnnouncement}</p>
+        <div className="discoveryToolbar">
+          <div className="discoveryTabs" role="tablist" aria-label="RMT token discovery views">
+            {DISCOVERY_VIEWS.map((item) => (
+              <button
+                type="button"
+                role="tab"
+                id={"discovery-tab-" + item.id}
+                aria-controls="rmt-discovery-panel"
+                aria-selected={view === item.id}
+                tabIndex={view === item.id ? 0 : -1}
+                className={view === item.id ? "active" : ""}
+                onClick={() => changeView(item.id)}
+                onKeyDown={(event) => handleTabKeyDown(event, item.id)}
+                key={item.id}
+              >
+                {item.label}<span>{launchesByView[item.id].length}</span>
+              </button>
+            ))}
+          </div>
+          <Link className="discoveryLaunchLink" href="/launch">+ Launch token</Link>
+        </div>
+      </div>
+
+      <div className="rmtColumnHeader" aria-hidden="true"><span>Rank / market</span><span>Signal</span><span>Volume</span><span>Liquidity</span><span>Graduation</span><span>Execute</span></div>
 
       <div
         id="rmt-discovery-panel"
@@ -531,7 +542,7 @@ export function FreshLaunchFeed() {
 
       {orderedLaunches.length > MAX_VISIBLE_LAUNCHES && (
         <button className="showMore" type="button" onClick={() => setShowAll((value) => !value)}>
-          {showAll ? "Show top 4" : "View all " + orderedLaunches.length}
+          {showAll ? "Show top 12" : "View all " + orderedLaunches.length}
         </button>
       )}
       <p className="feedStatus" role="status" aria-live="polite">{message} Confirmed data checks every 30 seconds; delayed refreshes back off automatically.</p>
