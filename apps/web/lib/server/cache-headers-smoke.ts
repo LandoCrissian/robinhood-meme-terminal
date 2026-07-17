@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
 import { sharedCacheHeaders } from "./cache-headers";
 
 assert.deepEqual(
@@ -21,5 +22,9 @@ assert.deepEqual(sharedCacheHeaders({ browserMaxAgeSeconds: 0, sharedMaxAgeSecon
 });
 
 assert.throws(() => sharedCacheHeaders({ sharedMaxAgeSeconds: -1 }), /nonnegative integer/);
+
+const healthRoute = fs.readFileSync(new URL("../../app/api/health/route.ts", import.meta.url), "utf8");
+assert.match(healthRoute, /await readFreshSystemHealth\(\)/);
+assert.doesNotMatch(healthRoute, /await readSystemHealth\(\)/);
 
 console.info("Web cache header smoke test passed");
