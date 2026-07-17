@@ -1,5 +1,4 @@
 import { createPublicClient, encodeAbiParameters, encodeFunctionData, getAddress, http, zeroAddress, type Address, type Hex } from "viem";
-import { rmtLaunchFactoryV6Abi } from "../contracts";
 import { activeChain, isMainnetRelease } from "../network";
 import {
   RMT_V6_GRADUATION_ADAPTER,
@@ -10,7 +9,7 @@ import {
   ROBINHOOD_V4_QUOTER,
   ROUTER_AS_RECIPIENT
 } from "../uniswap-v4";
-import { resolveActiveFactory } from "./launch-feed";
+import { verifyActiveV6LaunchIdentity } from "./rmt-trade-identity";
 
 const marketAbi = [
   { type: "function", name: "graduated", stateMutability: "view", inputs: [], outputs: [{ type: "bool" }] },
@@ -134,10 +133,7 @@ export async function quoteAndBuildRmtV4Swap(params: { launchId: bigint; token: 
   if (params.amountIn <= 0n || params.amountIn > MAX_UINT128) throw new Error("Trade amount is outside the supported range.");
   if (sameAddress(params.recipient, zeroAddress)) throw new Error("A valid wallet recipient is required.");
 
-  const activeFactory = await resolveActiveFactory();
-  if (!activeFactory || activeFactory.version !== 6) throw new Error("The active V6 factory could not be verified.");
-  const launch = await client.readContract({ address: activeFactory.address, abi: rmtLaunchFactoryV6Abi, functionName: "getLaunch", args: [params.launchId] });
-  if (!sameAddress(launch.token, params.token)) throw new Error("This token is not the requested active V6 launch.");
+  const launch = await verifyActiveV6LaunchIdentity({ launchId: params.launchId, token: params.token });
 
   const [marketGraduated, graduationAdapter, adapterGraduated, preparedPoolId, poolFee, tickSpacing, hook, routerCode, quoterCode] = await Promise.all([
     client.readContract({ address: launch.market, abi: marketAbi, functionName: "graduated" }),
