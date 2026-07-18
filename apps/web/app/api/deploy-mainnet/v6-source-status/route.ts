@@ -382,7 +382,29 @@ async function sourceStatus(contracts: Record<ContractKey, string>) {
   }
 }
 
+function operatorConsoleUnavailable() {
+  return process.env.NODE_ENV === "production"
+    || process.env.VERCEL === "1"
+    || process.env.RMT_OPERATOR_CONSOLES_ENABLED !== "true";
+}
+
+function operatorNotFound() {
+  return new NextResponse(null, {
+    status: 404,
+    headers: { "Cache-Control": "private, no-store" }
+  });
+}
+
+export function GET() {
+  return operatorNotFound();
+}
+
+export const HEAD = GET;
+export const OPTIONS = GET;
+
 export async function POST(request: Request) {
+  if (operatorConsoleUnavailable()) return operatorNotFound();
+
   try {
     const contracts = parseAddresses(await request.json());
     if (!contracts) {

@@ -1,8 +1,16 @@
+import { notFound } from "next/navigation";
 import { WalletButton } from "../wallet-button";
 import { V6ReleaseConsole } from "./v6-release-console";
 import "../deploy-testnet/deployment.css";
 
+export const metadata = { robots: { index: false, follow: false } };
+export const dynamic = "force-dynamic";
+
 export default function DeployMainnetPage() {
+  if (process.env.NODE_ENV === "production"
+    || process.env.VERCEL === "1"
+    || process.env.RMT_OPERATOR_CONSOLES_ENABLED !== "true") notFound();
+
   return (
     <main className="deployment-shell">
       <nav className="deployment-header">

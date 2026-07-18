@@ -8,7 +8,9 @@ export const metadata = { robots: { index: false, follow: false } };
 export const dynamic = "force-dynamic";
 
 export default function DeployConsentTestnetPage() {
-  if (process.env.VERCEL === "1" || process.env.RMT_CONSENT_TESTNET_DEPLOYMENT_ENABLED !== "true") notFound();
+  if (process.env.NODE_ENV === "production"
+    || process.env.VERCEL === "1"
+    || process.env.RMT_CONSENT_TESTNET_DEPLOYMENT_ENABLED !== "true") notFound();
 
   return (
     <main className="deployment-shell">
