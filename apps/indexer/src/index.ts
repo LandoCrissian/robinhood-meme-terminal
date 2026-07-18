@@ -74,6 +74,12 @@ function requiredFactoryAddress() {
   return address;
 }
 
+function errorType(error: unknown) {
+  return error instanceof Error && /^[A-Za-z][A-Za-z0-9]*$/.test(error.name)
+    ? error.name
+    : "UnknownError";
+}
+
 const config = {
   databaseUrl: required("DATABASE_URL"),
   rpcUrl: required("RMT_RPC_URL"),
@@ -106,7 +112,7 @@ const pool = new Pool({
 
 let indexedThrough = config.startBlock - 1n;
 let lastSyncAt: string | null = null;
-let lastError: string | null = null;
+let lastSyncFailed = false;
 let lastFailureKind: SyncFailureKind | null = null;
 let initialSyncComplete = false;
 let healthHeadCache: { block: bigint; expiresAt: number } | null = null;
@@ -1283,7 +1289,7 @@ function startServer() {
         } catch (error) {
           console.error(JSON.stringify({
             event: "indexer_health_error",
-            error: error instanceof Error ? error.message : String(error)
+            errorType: errorType(error)
           }));
           json(response, 503, {
             ok: false,
@@ -1331,7 +1337,7 @@ function startServer() {
         } catch (error) {
           console.error(JSON.stringify({
             event: "indexer_readiness_error",
-            error: error instanceof Error ? error.message : String(error)
+            errorType: errorType(error)
           }));
         }
         const ready = initialSyncComplete && lastFailureKind !== "local" && databaseReady;
@@ -1375,7 +1381,7 @@ function startServer() {
         return;
       }
       if (url.pathname === "/origins") {
-        if (!initialSyncComplete || lastError) {
+        if (!initialSyncComplete || lastSyncFailed) {
           json(response, 503, {
             error: initialSyncComplete
               ? "Exact token-origin coverage is temporarily unavailable."
@@ -1401,7 +1407,7 @@ function startServer() {
 
       const tradeRoute = /^\/markets\/(0x[0-9a-fA-F]{40})\/trades$/.exec(url.pathname);
       if (tradeRoute) {
-        if (!initialSyncComplete || lastError) {
+        if (!initialSyncComplete || lastSyncFailed) {
           json(response, 503, {
             error: initialSyncComplete
               ? "Indexed market data is temporarily unavailable."
@@ -1431,8 +1437,7 @@ function startServer() {
     } catch (error) {
       console.error(JSON.stringify({
         event: "indexer_api_error",
-        path: request.url ?? "/",
-        error: error instanceof Error ? error.message : String(error)
+        errorType: errorType(error)
       }));
       json(response, 500, { error: "Internal server error" });
     }
@@ -1464,17 +1469,17 @@ async function run() {
     try {
       await syncOnce();
       initialSyncComplete = true;
-      lastError = null;
+      lastSyncFailed = false;
       lastFailureKind = null;
       consecutiveFailures = 0;
     } catch (error) {
       consecutiveFailures += 1;
-      lastError = error instanceof Error ? error.message : String(error);
+      lastSyncFailed = true;
       lastFailureKind = classifySyncFailure(error);
       delayMs = failureBackoffMs(config.pollMs, consecutiveFailures);
       console.error(JSON.stringify({
         event: "indexer_error",
-        error: lastError,
+        errorType: errorType(error),
         failureKind: lastFailureKind,
         consecutiveFailures,
         retryInMs: delayMs
@@ -1485,6 +1490,6 @@ async function run() {
 }
 
 run().catch((error) => {
-  console.error(error);
+  console.error(JSON.stringify({ event: "indexer_fatal_error", errorType: errorType(error) }));
   process.exit(1);
 });

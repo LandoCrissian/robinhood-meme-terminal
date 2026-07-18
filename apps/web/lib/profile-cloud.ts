@@ -1,6 +1,5 @@
 import {
   DEFAULT_PROFILE,
-  isDefaultProfile,
   nextProfileTimestamp,
   normalizeProfile,
   type LocalProfileSnapshot,
@@ -67,17 +66,11 @@ export function parseCloudUserState(value: unknown): CloudUserState {
 
 export function resolveProfileSnapshot(
   local: LocalProfileSnapshot,
-  remote: Pick<CloudUserState, "profile" | "profileUpdatedAt">,
-  googleDisplayName?: string | null
+  remote: Pick<CloudUserState, "profile" | "profileUpdatedAt">
 ): LocalProfileSnapshot {
   const remoteWins = Boolean(remote.profile) && remote.profileUpdatedAt >= local.updatedAt;
-  let profile = remoteWins ? remote.profile ?? DEFAULT_PROFILE : local.profile;
+  const profile = remoteWins ? remote.profile ?? DEFAULT_PROFILE : local.profile;
   let updatedAt = remoteWins ? remote.profileUpdatedAt : local.updatedAt;
-
-  if (!remote.profile && isDefaultProfile(profile) && googleDisplayName?.trim()) {
-    profile = normalizeProfile({ ...profile, displayName: googleDisplayName });
-    updatedAt = nextProfileTimestamp(updatedAt);
-  }
 
   if (updatedAt === 0) updatedAt = nextProfileTimestamp();
   return { profile, updatedAt };

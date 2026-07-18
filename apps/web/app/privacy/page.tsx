@@ -2,20 +2,25 @@ import { LegalShell } from "../legal-shell";
 
 export default function PrivacyPage() {
   return (
-    <LegalShell eyebrow="DATA TRANSPARENCY" title="Privacy Notice" updated="July 13, 2026">
+    <LegalShell eyebrow="DATA TRANSPARENCY" title="Privacy Notice" updated="July 18, 2026">
       <div className="legalNotice"><strong>Core principle:</strong> RMT never asks for or stores private keys or recovery phrases.</div>
       <h2>Information visible onchain</h2>
       <p>Wallet addresses, token launches, trades, balances, approvals, reward claims, contract interactions, and transaction hashes are public blockchain data. That information may be permanent and can be analyzed by anyone.</p>
       <h2>Information handled by the interface</h2>
       <p>When you connect a wallet, the interface reads its public address, network, balances, positions, and claimable rewards. This information is used to render the requested experience and is not treated as a secret.</p>
+      <h2>Profiles and Google sign-in</h2>
+      <p>RMT offers optional profile sign-in through Google and Firebase Authentication. Google and Firebase may process account, device, network, and diagnostic information under their own privacy terms. RMT uses the Firebase user identifier to keep each cloud profile separate. RMT does not write your Google email address or profile photo into its Firestore profile document.</p>
+      <p>If you sign in, the display name, handle, desk note, terminal preferences, and watched token addresses you choose in RMT are synchronized to a Firebase workspace accessible only to that signed-in account under RMT’s database rules. Wallet connection and profile sign-in are separate; signing in does not grant transaction authority.</p>
       <h2>Device-local information</h2>
-      <p>Watchlists are stored in your browser’s local storage. They are not synchronized to an RMT account. Clearing browser data removes them. Wallet applications may separately retain connection permissions under their own privacy policies.</p>
+      <p>Profile preferences and watchlists are also stored in your browser so the terminal can work before or without sign-in. Signing out stops cloud access but leaves that local copy on the device. Clearing this site’s browser data removes the local copy. Wallet applications may separately retain connection permissions under their own privacy policies.</p>
       <h2>Uploads and permanent metadata</h2>
       <p>Token artwork, descriptions, and social links may be uploaded to IPFS through an external pinning provider. IPFS content may be public, copied, and difficult or impossible to remove. Do not upload personal, confidential, or unlawful information.</p>
       <h2>Infrastructure data</h2>
-      <p>Hosting, RPC, wallet-connection, security, and content-delivery providers may process IP address, device, request, and diagnostic information to deliver and protect their services. RMT does not currently operate user accounts or sell personal information.</p>
+      <p>Hosting, database, authentication, RPC, wallet-connection, security, and content-delivery providers may process IP address, device, request, and diagnostic information to deliver and protect their services. RMT does not sell personal information.</p>
       <h2>External market data and links</h2>
       <p>External market results are supplied by DEX Screener and link to third-party websites. Block explorers, wallets, DEXs, and social links have their own privacy practices. Review them before continuing.</p>
+      <h2>Access and deletion requests</h2>
+      <p>You can edit the profile information shown in RMT at any time. To request deletion of the associated cloud profile, use the private project contact on the Support page from the same email account used to sign in. Public blockchain and IPFS records cannot be deleted by RMT.</p>
       <h2>Children and restricted users</h2>
       <p>RMT is not intended for anyone under 18. Do not use the service if local law prohibits access to blockchain trading or token-creation tools.</p>
       <h2>Questions</h2>

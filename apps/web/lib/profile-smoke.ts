@@ -11,12 +11,44 @@ import { DEFAULT_PROFILE, normalizeProfile } from "./profile";
 import { normalizeWatchlist, normalizeWatchlistEntry } from "./watchlist";
 
 const vercelConfig = JSON.parse(readFileSync(new URL("../vercel.json", import.meta.url), "utf8")) as {
+  headers?: Array<{
+    source?: string;
+    headers?: Array<{ key?: string; value?: string }>;
+  }>;
   rewrites?: Array<{ source?: string; destination?: string }>;
 };
 assert.ok(vercelConfig.rewrites?.some((rewrite) => (
   rewrite.source === "/__/auth/:path*"
   && rewrite.destination === "https://robinhood-meme-terminal.firebaseapp.com/__/auth/:path*"
 )), "Vercel must transparently proxy Firebase auth helpers for the branded auth domain");
+
+const globalSecurityHeaders = new Map(
+  vercelConfig.headers?.find((entry) => entry.source === "/(.*)")?.headers?.map((header) => (
+    [header.key?.toLowerCase(), header.value]
+  )) ?? []
+);
+const antiFramingHeaders = new Map(
+  vercelConfig.headers?.find((entry) => entry.source === "/((?!__/auth/).*)")?.headers?.map((header) => (
+    [header.key?.toLowerCase(), header.value]
+  )) ?? []
+);
+assert.match(
+  antiFramingHeaders.get("content-security-policy") ?? "",
+  /frame-ancestors 'none'/,
+  "Production must reject framing through CSP"
+);
+assert.equal(antiFramingHeaders.get("x-frame-options"), "DENY");
+assert.equal(
+  vercelConfig.headers?.some((entry) => (
+    entry.source === "/__/auth/:path*"
+    && entry.headers?.some((header) => ["content-security-policy", "x-frame-options"].includes(header.key?.toLowerCase() ?? ""))
+  )),
+  false,
+  "Firebase auth helpers must remain frameable by the same-origin Firebase SDK"
+);
+assert.equal(globalSecurityHeaders.get("x-content-type-options"), "nosniff");
+assert.equal(globalSecurityHeaders.get("referrer-policy"), "strict-origin-when-cross-origin");
+assert.match(globalSecurityHeaders.get("permissions-policy") ?? "", /camera=\(\)/);
 
 assert.deepEqual(normalizeProfile(null), DEFAULT_PROFILE);
 
@@ -77,9 +109,8 @@ assert.equal(resolveProfileSnapshot(
 ).profile.displayName, "Newer Local Desk");
 assert.equal(resolveProfileSnapshot(
   { profile: DEFAULT_PROFILE, updatedAt: 0 },
-  parseCloudUserState(null),
-  "Google Trader"
-).profile.displayName, "Google Trader");
+  parseCloudUserState(null)
+).profile.displayName, DEFAULT_PROFILE.displayName);
 
 const normalizedEntry = normalizeWatchlistEntry(watchedToken)!;
 const slots = watchlistSlots([normalizedEntry], 400);

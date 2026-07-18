@@ -265,7 +265,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
             : null;
           if (userSnapshot.exists() && !remoteWatchlist) throw new Error("Cloud watchlist state is incomplete.");
 
-          const nextProfile = resolveProfileSnapshot(readLocalProfileSnapshot(), remoteState, nextUser.displayName);
+          const nextProfile = resolveProfileSnapshot(readLocalProfileSnapshot(), remoteState);
           const nextWatchlist = resolveWatchlistSnapshot(readWatchlistSnapshot(), remoteWatchlist);
           applyProfile(nextProfile);
           applyWatchlist(nextWatchlist);

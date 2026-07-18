@@ -120,7 +120,7 @@ export default function ProfilePage() {
       <header className="profileHero">
         <div className="profileIdentity">
           <span className="profileAvatar" aria-hidden="true">
-            {user?.photoURL ? <img src={user.photoURL} alt="" /> : initials}
+            {initials}
           </span>
           <div>
             <p className="eyebrow">YOUR RMT DESK</p>
@@ -132,7 +132,7 @@ export default function ProfilePage() {
       </header>
 
       <section className="profilePulse" aria-label="Profile overview">
-        <div><small>PROFILE</small><strong>{user ? "CLOUD" : "LOCAL"}</strong><span>{user?.email ?? "Private by default"}</span></div>
+        <div><small>PROFILE</small><strong>{user ? "CLOUD" : "LOCAL"}</strong><span>{user ? "Identity hidden" : "Private by default"}</span></div>
         <div><small>WALLET</small><strong>{isConnected ? "LIVE" : "OFFLINE"}</strong><span>{shortAddress(address)}</span></div>
         <div><small>WATCHLIST</small><strong>{watchCount}</strong><span>{user ? "Synced assets" : "Saved assets"}</span></div>
         <div><small>WORKSPACE</small><strong>{draft.density.toUpperCase()}</strong><span>{draft.traderMode} mode</span></div>
@@ -171,7 +171,7 @@ export default function ProfilePage() {
           <section className="profileCloudCard">
             <p className="eyebrow">CROSS-DEVICE PROFILE</p>
             <h2>{user ? "Your desk follows you" : "Take your desk anywhere"}</h2>
-            <p>{user ? "Profile preferences and watched RMT tokens sync through your private Firebase workspace." : "Sign in to carry your profile and watchlist between desktop and mobile. Wallet connection stays separate."}</p>
+            <p>{user ? "Profile preferences and watched RMT tokens sync through your private Firebase workspace. RMT does not display your Google email or photo." : "Sign in to carry your profile and watchlist between desktop and mobile. Wallet connection stays separate."}</p>
             {user ? (
               <div className="profileCloudActions">
                 {syncState === "error" && <button className="profileRetryButton" type="button" disabled={busy} onClick={() => void retryCloudSync()}>Retry sync</button>}
