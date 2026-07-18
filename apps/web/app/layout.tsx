@@ -26,11 +26,9 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://www.rmtlaunch.fun"),
   title: "Robinhood Meme Terminal",
   description: "Launch, discover, and track meme tokens on Robinhood Chain.",
-  alternates: { canonical: "/" },
   icons: { icon: "/brand/rmt-master-logo.png", apple: "/brand/rmt-master-logo.png" },
   verification: { google: "UrsJaSclzhxhpbsaoELArmJs8HRqAy3yzKMxKZAJsxo" },
   openGraph: {
-    url: "https://www.rmtlaunch.fun",
     images: ["/brand/rmt-master-logo.png"]
   },
   twitter: { card: "summary", images: ["/brand/rmt-master-logo.png"] }

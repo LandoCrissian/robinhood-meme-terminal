@@ -7,7 +7,7 @@ import { isMainnetRelease } from "../lib/network";
 import { WalletButton } from "./wallet-button";
 
 const HIDDEN_PREFIXES = ["/admin", "/deploy-consent-testnet", "/deploy-mainnet", "/deploy-testnet", "/mainnet-smoke"];
-const MORE_PREFIXES = ["/runners", "/portfolio", "/watchlist", "/sources", "/sushi", "/rescue", "/support", "/risks"];
+const MORE_PREFIXES = ["/portfolio", "/watchlist", "/sources", "/sushi", "/rescue", "/support", "/risks"];
 
 function currentPage(pathname: string, href: string) {
   if (href === "/") return pathname === "/";
@@ -84,6 +84,7 @@ export function PublicChrome() {
                 </div>
                 <div>
                   <span>Help &amp; safety</span>
+                  <PublicLink href="/status">Status<small>Live network and protocol checks</small></PublicLink>
                   <PublicLink href="/support">Support<small>Transaction help and incident steps</small></PublicLink>
                   <PublicLink href="/risks">Risks<small>Read before signing</small></PublicLink>
                 </div>
@@ -96,8 +97,8 @@ export function PublicChrome() {
 
       <nav className={`mobileDock${pathname.startsWith("/token/") ? " tokenRouteDock" : ""}`} aria-label="Mobile navigation">
         <PublicLink href="/"><span aria-hidden="true">◉</span>Terminal</PublicLink>
+        <PublicLink href="/runners"><span aria-hidden="true">↗</span>Runners</PublicLink>
         <PublicLink href="/launch"><span aria-hidden="true">＋</span>Launch</PublicLink>
-        <PublicLink href="/status"><span aria-hidden="true">●</span>Status</PublicLink>
         <PublicLink href="/profile"><span aria-hidden="true">◎</span>Profile</PublicLink>
       </nav>
     </>
