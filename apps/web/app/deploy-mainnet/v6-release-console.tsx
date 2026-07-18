@@ -1663,8 +1663,11 @@ export function V6ReleaseConsole() {
     } catch {
       throw new Error("NEXT_PUBLIC_APP_URL must be the exact public HTTPS production origin before reopening.");
     }
-    if (window.location.origin !== productionOrigin) {
-      throw new Error("Final reopening is allowed only from the configured live production site, not a preview or local build.");
+    const operatorOrigin = new URL(window.location.origin);
+    const isLoopbackOperator = operatorOrigin.protocol === "http:"
+      && ["localhost", "127.0.0.1", "[::1]"].includes(operatorOrigin.hostname);
+    if (!isLoopbackOperator) {
+      throw new Error("Final reopening is allowed only from the explicitly enabled loopback operator console.");
     }
 
     const factoryReceipt = await publicClient.getTransactionReceipt({ hash: factoryTransaction });
