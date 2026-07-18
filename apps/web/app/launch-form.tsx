@@ -6,7 +6,7 @@ import { formatEther, parseEventLogs } from "viem";
 import { useAccount, useChainId, useReadContract, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { activeChain, activeNetworkLabel, isMainnetRelease } from "../lib/network";
 import { rmtLaunchFactoryV6Abi } from "../lib/contracts";
-import { useFactoryAddress } from "../lib/use-factory-address";
+import { useFactoryAddressState } from "../lib/use-factory-address";
 import { launchSchema } from "../lib/launch-schema";
 import { fairStartDisclosure, formatBasisPoints } from "../lib/launch-capabilities";
 import {
@@ -21,7 +21,8 @@ const maxImageBytes = 5_000_000;
 export function LaunchForm() {
   const { isConnected, address: account } = useAccount();
   const chainId = useChainId();
-  const factoryAddress = useFactoryAddress();
+  const factoryState = useFactoryAddressState();
+  const factoryAddress = factoryState.address;
   const capabilityRead = useLaunchCapabilities(factoryAddress);
   const capabilities = capabilityRead.capabilities;
   const { writeContract, isPending, data: transactionHash, error: writeError } = useWriteContract();
@@ -59,6 +60,7 @@ export function LaunchForm() {
     query: { enabled: Boolean(capabilities && account && isOfficialIdentity), retry: false }
   });
   const officialMigrationAvailable = officialMigrationRead.data === true;
+  const launchConfigLoading = factoryState.loading || capabilityRead.loading;
   const launchesPaused = !capabilities || capabilities.launchesPaused;
   const officialPausedLaunch = launchesPaused && officialMigrationAvailable;
   const selectedPolicyReady = Boolean(selectedPolicy?.enabled && selectedPolicy.publiclySelectable);
@@ -98,7 +100,7 @@ export function LaunchForm() {
     return event ? { token: event.args.token, feeSplitter: event.args.feeSplitter, launchId: event.args.launchId } : null;
   }, [receipt]);
 
-  const readiness = capabilityRead.loading ? "Verifying V6 launch configuration…" : officialPausedLaunch ? "Review and launch official RMT" : launchesPaused ? "New launches temporarily paused" : !selectedPolicyReady ? "Selected policy unavailable" : nameUnavailable ? "Token name already protected" : symbolUnavailable ? "Ticker already protected" : !isConnected ? "Connect wallet" : chainId !== activeChain.id ? `Switch to ${activeNetworkLabel}` : "Review and launch";
+  const readiness = launchConfigLoading ? "Verifying V6 launch configuration…" : officialPausedLaunch ? "Review and launch official RMT" : launchesPaused ? "New launches temporarily paused" : !selectedPolicyReady ? "Selected policy unavailable" : nameUnavailable ? "Token name already protected" : symbolUnavailable ? "Ticker already protected" : !isConnected ? "Connect wallet" : chainId !== activeChain.id ? `Switch to ${activeNetworkLabel}` : "Review and launch";
 
   function selectImage(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0] ?? null;
@@ -176,10 +178,11 @@ export function LaunchForm() {
   return (
     <section className="panel launchConfigPanel">
       <div className="sectionTitle"><div><p className="eyebrow">TOKEN LAUNCH</p><h2>Configure your token</h2></div><span className="badge">{isMainnetRelease ? "MAINNET · REAL ETH" : "TESTNET ALPHA"}</span></div>
-      {launchesPaused && <div className="callout mainnetWarning"><strong>{officialPausedLaunch ? "Public launches remain paused" : "New launches are temporarily paused"}</strong><span>{officialPausedLaunch ? "The verified RMT wallet may complete the one-time official V6 launch without opening creation to anyone else." : "V6 is being verified before public creation reopens. Trading and read-only terminal features remain available."}</span></div>}
+      {launchConfigLoading && <div className="callout"><strong>Verifying the live V6 factory…</strong><span>RMT is confirming the active registry, launch policy, and network before enabling a wallet transaction.</span></div>}
+      {!launchConfigLoading && launchesPaused && <div className="callout mainnetWarning"><strong>{officialPausedLaunch ? "Public launches remain paused" : "New launches are temporarily paused"}</strong><span>{officialPausedLaunch ? "The verified RMT wallet may complete the one-time official V6 launch without opening creation to anyone else." : "V6 is being verified before public creation reopens. Trading and read-only terminal features remain available."}</span></div>}
       {lockOfficialFields && !officialPausedLaunch && <div className="callout mainnetWarning"><strong>Official RMT launch is prefilled</strong><span>Connect the RMTMain wallet on the active V6 network. The site will verify the one-time migration permission before enabling the launch.</span></div>}
       {officialPausedLaunch && <div className="callout mainnetWarning"><strong>New token contract—no old-holder migration</strong><span>This action creates a new RMT contract with a new address and new fixed supply of 1,000,000,000 tokens. It does not copy, swap, credit, or migrate any old V5 holder balance. The old RMT contract is used only as the exact identity/provenance anchor. RMTMain receives the ordinary 70% creator fee share; the separate V6 governance treasury receives 30%.</span></div>}
-      {capabilityRead.error && <div className="errors"><span>{capabilityRead.error} Launching is disabled safely.</span></div>}
+      {!launchConfigLoading && (factoryState.error || capabilityRead.error) && <div className="errors"><span>{factoryState.error || capabilityRead.error} Launching is disabled safely.</span></div>}
       <label>Token name<input value={name} maxLength={32} placeholder="Name your token" readOnly={lockOfficialFields} aria-readonly={lockOfficialFields} aria-invalid={nameUnavailable} onChange={(e) => setName(e.target.value)} />{normalizedName && <span className={nameUnavailable ? "identityStatus unavailable" : nameUsedRead.data === false ? "identityStatus available" : "identityStatus"} aria-live="polite">{nameUnavailable ? "Already protected — choose a unique name" : nameUsedRead.data === false ? "Name available" : "Checking name…"}</span>}</label>
       <div className="two"><label>Ticker<input value={symbol} maxLength={10} placeholder="TICKER" readOnly={lockOfficialFields} aria-readonly={lockOfficialFields} aria-invalid={symbolUnavailable} onChange={(e) => setSymbol(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))} />{normalizedSymbol && <span className={symbolUnavailable ? "identityStatus unavailable" : symbolUsedRead.data === false ? "identityStatus available" : "identityStatus"} aria-live="polite">{symbolUnavailable ? "Already protected — choose a unique ticker" : symbolUsedRead.data === false ? "Ticker available" : "Checking ticker…"}</span>}</label><label>Platform supply<input inputMode="numeric" value={supply} readOnly aria-readonly="true" /></label></div>
       <label>Description<textarea value={description} maxLength={500} placeholder="Tell traders what this token is about" onChange={(e) => setDescription(e.target.value)} /></label>
