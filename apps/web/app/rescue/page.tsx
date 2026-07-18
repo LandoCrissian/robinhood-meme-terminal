@@ -28,6 +28,7 @@ export default function LiquidityRescuePage() {
           <div className="rescueActions">
             <a className="rescuePrimary" href="#proposed-flow">Review the safety model ↓</a>
             <Link href="/sushi">Open Sushi lab</Link>
+            <a href="https://explorer.testnet.chain.robinhood.com/address/0x01Cdc5FA002F0dEee4B153D31763392EC81e8f05" target="_blank" rel="noreferrer">Inspect verified testnet code ↗</a>
           </div>
         </div>
         <div className="rescueOrbit" role="img" aria-label="Proposed flow from owner wallets to directly held positions in one Robinhood Chain market">
@@ -67,8 +68,8 @@ export default function LiquidityRescuePage() {
       <section className="rescueStatement">
         <p className="eyebrow">WHY THIS MODEL</p>
         <h2>Concentrate market liquidity while every owner keeps their own position.</h2>
-        <p>The deployed testnet router remains paused and public execution is disabled. Its code-bound session records exact wallet and session balances onchain, calls one bound rehearsal manager, requires a fresh test position NFT owned by that caller, verifies pool and position state, returns computed unused amounts, requires exact final balances, and clears session-to-manager approvals. Any verified mismatch reverts the entire transaction. Users must never transfer tokens directly to either contract. The testnet-only terms and deployment-specific hashes are published in the verified deployment record; no acceptance or migration UI is enabled.</p>
-        <div><Link href="/terms">Read general RMT terms</Link><Link href="/risks">Read RMT risks</Link></div>
+        <p>The deployed testnet router remains paused and public execution is disabled. Its code-bound session records exact wallet and session balances onchain, calls one bound rehearsal manager, requires a fresh test position NFT owned by that caller, verifies pool and position state, returns computed unused amounts, requires exact final balances, and clears session-to-manager approvals. Any verified mismatch reverts the entire transaction. Users must never transfer tokens directly to either contract. The testnet-only terms hash is pinned onchain, and the exact source and configuration are publicly inspectable on the testnet explorer; no acceptance or migration UI is enabled.</p>
+        <div><Link href="/terms">Read general RMT terms</Link><Link href="/risks">Read RMT risks</Link><a href="https://explorer.testnet.chain.robinhood.com/address/0x01Cdc5FA002F0dEee4B153D31763392EC81e8f05" target="_blank" rel="noreferrer">View paused migrator ↗</a></div>
       </section>
 
       <p className="rescueDisclosure">This module is a verified, paused and valueless Robinhood Chain testnet rehearsal; it is unaudited and unavailable for public execution. Runtime hashes do not by themselves establish production safety. Self-custody does not resolve money-transmission, sanctions, securities, commodities, tax, privacy or consumer-protection obligations; qualified counsel must review any completed real-value product before release. RMT does not promise recovery, profit, automatic value generation, safety, or endorsement by Sushi or Robinhood.</p>
