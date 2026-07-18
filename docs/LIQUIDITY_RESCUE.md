@@ -2,14 +2,14 @@
 
 RMT's migration research is limited to helping an owner use tokens already controlled by that owner's wallet to create a new, directly owned Sushi V3 position on Robinhood Chain. It does not search for exploitable contracts, claim abandoned-looking assets, withdraw third-party liquidity, or move assets without the owner's transaction.
 
-The implementation is isolated from the live V6 launch factory, markets, governance bootstrap, and permanently locked graduation position. Its bytecode is hard-gated to Robinhood Chain testnet (`46630`), it is undeployed, and the deployment script is intentionally disabled. No real-value assets may be used. This is not an official Sushi or Robinhood product, endorsement, or partnership.
+The implementation is isolated from the live V6 launch factory, markets, governance bootstrap, and permanently locked graduation position. Its bytecode is hard-gated to Robinhood Chain testnet (`46630`). One source-verified, paused, no-value rehearsal is deployed there using an RMT-operated Sushi V3 ABI-compatible test fixture. No real-value assets may be used. This is not an official Sushi or Robinhood product, endorsement, or partnership.
 
 ## Current release state
 
 | Surface | State |
 | --- | --- |
-| Consent router and accounting-session logic | Implemented and tested locally |
-| Robinhood Chain testnet deployment | Blocked pending verified Sushi addresses and runtime code hashes |
+| Consent router and accounting-session logic | Implemented, adversarially tested, and deployed in a no-value rehearsal |
+| Robinhood Chain testnet deployment | Source verified and paused; public execution disabled |
 | Migration transaction UI | Disabled |
 | Mainnet | Prohibited by contract bytecode |
 | Security audit | Not completed |
@@ -77,32 +77,13 @@ RMT never touches the old position. The owner must withdraw and bridge externall
 
 Any future delegated or one-click bridge path would need a bridge-specific proof of source ownership, a signed instruction binding the destination owner and amounts, finality and replay protection, retry and refund handling, and separate legal and security review. It is outside this prototype.
 
-## Testnet deployment is intentionally disabled
+## Verified paused testnet rehearsal
 
-The script requires all of the following only after independent verification:
+On July 18, 2026, RMT deployed the isolated rehearsal on Robinhood Chain Testnet through two deterministic CREATE2 transactions, each with value `0`. The RMT-operated rehearsal venue is at [`0x10af03B200b2487815dfBE4922810a7b9640A884`](https://explorer.testnet.chain.robinhood.com/address/0x10af03B200b2487815dfBE4922810a7b9640A884), the atomic consent stack is at [`0x662F4dC5fE4115BE317BeFc0D77f4C1d6adeE576`](https://explorer.testnet.chain.robinhood.com/address/0x662F4dC5fE4115BE317BeFc0D77f4C1d6adeE576), and the paused migrator is at [`0x01Cdc5FA002F0dEee4B153D31763392EC81e8f05`](https://explorer.testnet.chain.robinhood.com/address/0x01Cdc5FA002F0dEee4B153D31763392EC81e8f05).
 
-```text
-DEPLOYER_PRIVATE_KEY
-MIGRATION_GOVERNANCE
-MIGRATION_GUARDIAN
-MIGRATION_WETH
-MIGRATION_PAIRED_TOKEN
-MIGRATION_SUSHI_V3_POSITION_MANAGER
-MIGRATION_SUSHI_V3_FACTORY
-MIGRATION_SUSHI_V3_POOL
-MIGRATION_SUSHI_V3_POOL_FEE
-MIGRATION_POSITION_MANAGER_CODE_HASH
-MIGRATION_FACTORY_CODE_HASH
-MIGRATION_POOL_CODE_HASH
-MIGRATION_SESSION_CODE_HASH
-MIGRATION_WETH_CODE_HASH
-MIGRATION_PAIRED_TOKEN_CODE_HASH
-MIGRATION_TERMS_DOCUMENT_HASH
-```
+All ten exact contract instances are source verified with Solidity `0.8.26`, Cancun EVM, optimizer 200, and via-IR. The canonical evidence is the [durable deployment record](../packages/contracts/deployments/robinhood-testnet-consent-rehearsal-2026-07-18.json) and the [testnet rehearsal runbook](CONSENT_TESTNET_REHEARSAL_DEPLOYMENT.md). The migrator remains paused, no activation or migration transaction was sent, and the hosted application exposes no deployment or execution route.
 
-Even correct environment values cannot deploy the contracts today. `APPROVED_CONFIGURATION_MANIFEST_HASH` is deliberately zero, so the script reverts until a reviewed source change pins an independently reproduced manifest. That manifest binds the chain, deployer, predicted atomic-deployment bundle, session and router addresses, exact init/creation code hashes, the instance-specific session runtime hash, complete configuration hash, and resulting deployment-specific terms hash. The bundle would create the session and router in one transaction so a binding failure leaves neither deployed. The script does not guess Sushi or token addresses, runtime hashes, terms, or price policy.
-
-A future testnet deployment must remain paused after creation. Explorer/source verification and a second configuration check must happen before governance enables it. A testnet rehearsal is not permission to accept real-value assets.
+The deployed venue is a valueless RMT test fixture that matches the reviewed Sushi V3 ABI boundary. It is not an official Sushi deployment or production AMM. The separately configured integration deployment script remains locked behind a zero approved-manifest hash, so environment variables cannot turn this rehearsal into an official or mainnet deployment. Any activation, official Sushi integration, or real-value use requires a separate reviewed release.
 
 ## Legal and compliance release gates
 
@@ -127,8 +108,8 @@ Primary U.S. references include [FinCEN's CVC guidance](https://www.fincen.gov/r
 - Sanctions, AML, tax, privacy, consumer, custody, money-transmission, securities, and commodities review.
 - Independent audits of the router, deployment configuration, web transaction builder, and operational controls.
 - Representative smart-wallet mint, management, withdrawal, and recovery tests; unsupported contract-wallet flows must fail closed.
-- Robinhood Chain testnet rehearsals covering price movement, failed execution, refunds, pausing, RPC disagreement, reorgs, and incident response.
-- Explorer source verification, a signed public deployment manifest, and reproducible bytecode.
+- Expanded Robinhood Chain testnet activation rehearsals covering price movement, failed execution, refunds, pausing, RPC disagreement, reorgs, and incident response.
+- Explorer source verification, a signed public deployment manifest, and reproducible bytecode for any production stack.
 - No unresolved high-severity static-analysis, dependency, test, review, or CI findings.
 
-Until every blocker is closed, this is undeployed testnet research—not a production migration service, yield product, bounty hunter, asset-recovery tool, or promise that any position can be profitably redeployed.
+Until every blocker is closed, this remains a verified, paused, no-value testnet rehearsal—not a production migration service, yield product, bounty hunter, asset-recovery tool, or promise that any position can be profitably redeployed.

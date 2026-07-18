@@ -131,4 +131,4 @@ Read the [risk disclosures](https://www.rmtlaunch.fun/risks), [incident response
 
 See [third-party notices](docs/THIRD_PARTY_NOTICES.md) for the Sushi V3 ABI compatibility reference and upstream licensing boundary.
 
-The testnet-first [RMT consent-based Sushi V3 migration design](docs/LIQUIDITY_RESCUE.md) explores a direct, self-custodial mint into one code-bound Robinhood Chain WETH market. It cannot access source pools or pool customer funds, is isolated from the live V6 contracts, starts paused, and remains undeployed behind an intentionally disabled deployment script.
+The testnet-first [RMT consent-based Sushi V3 migration design](docs/LIQUIDITY_RESCUE.md) explores a direct, self-custodial mint into one code-bound Robinhood Chain WETH market. A valueless Sushi V3 ABI-compatible rehearsal stack is source verified on Robinhood Chain Testnet and remains paused with no public execution path. It cannot access source pools or pool customer funds, is isolated from the live V6 contracts, and is not an official Sushi deployment or production AMM.

@@ -12,8 +12,8 @@ const flow = [
   ["01", "Move only what you own", "Exit or convert the old LP position yourself. This router never calls or withdraws from a source pool; any market discovery is read-only."],
   ["02", "Bridge to yourself", "Use a canonical route to deliver supported assets to your own Robinhood Chain wallet."],
   ["03", "Review exact bounds", "Confirm the code-bound pool, fee tier, tick range, desired amounts, minimum use, minimum liquidity, deadline and deployment-specific terms hash."],
-  ["04", "Mint through one manager", "A bound accounting session snapshots exact balances onchain, then calls one verified Sushi V3 manager. There is no generic executor or third-party seeder."],
-  ["05", "Keep direct custody", "A brand-new verified LP NFT and every unused token from a successful migration must end with the same wallet in that transaction."]
+  ["04", "Mint through one manager", "A bound accounting session snapshots exact balances onchain, then calls one code-bound V3-compatible rehearsal manager. There is no generic executor or third-party seeder."],
+  ["05", "Keep direct custody", "A brand-new test LP NFT and every unused test token from a successful rehearsal must end with the same wallet in that transaction."]
 ] as const;
 
 export default function LiquidityRescuePage() {
@@ -23,8 +23,8 @@ export default function LiquidityRescuePage() {
         <div>
           <p className="eyebrow">RMT RESEARCH LAB · TESTNET ONLY · NO REAL FUNDS</p>
           <h1>Liquidity you own.<br /><span>One destination market.</span></h1>
-          <p>RMT is designing a consent-based path for owners to use their own tokens to mint a directly held position in one verified WETH market on Robinhood Chain.</p>
-          <p className="rescueScope"><strong>What exists now:</strong> undeployed, testnet-only consent-router and accounting-session logic with adversarial tests. Sushi's exact Robinhood Chain addresses and runtime hashes are not yet confirmed, the deployment script is deliberately disabled, and no deposit, bridge or migration UI is enabled.</p>
+          <p>RMT is designing a consent-based path for owners to use their own tokens to mint a directly held position in one code-bound WETH market on Robinhood Chain.</p>
+          <p className="rescueScope"><strong>What exists now:</strong> a source-verified, paused, no-value rehearsal on Robinhood Chain Testnet with adversarial tests. It uses an RMT-operated Sushi V3 ABI-compatible test fixture—not an official Sushi deployment—and no public deposit, bridge or migration execution UI is enabled.</p>
           <div className="rescueActions">
             <a className="rescuePrimary" href="#proposed-flow">Review the safety model ↓</a>
             <Link href="/sushi">Open Sushi lab</Link>
@@ -42,7 +42,7 @@ export default function LiquidityRescuePage() {
         <div><small>CONTRACT</small><strong>TESTNET ONLY</strong><span>Starts paused; bytecode blocks mainnet</span></div>
         <div><small>CUSTODY</small><strong>OWNER DIRECT</strong><span>No pooled customer funds</span></div>
         <div><small>EXECUTION</small><strong>ATOMIC</strong><span>Failure reverts all movement</span></div>
-        <div><small>DEPLOYMENT</small><strong className="rescueHeld">BLOCKED</strong><span>Official Sushi addresses + hashes required</span></div>
+        <div><small>DEPLOYMENT</small><strong className="rescueHeld">VERIFIED · PAUSED</strong><span>No-value fixture; public execution disabled</span></div>
       </section>
 
       <section id="proposed-flow" className="rescueBody">
@@ -67,11 +67,11 @@ export default function LiquidityRescuePage() {
       <section className="rescueStatement">
         <p className="eyebrow">WHY THIS MODEL</p>
         <h2>Concentrate market liquidity while every owner keeps their own position.</h2>
-        <p>The testnet router can move only the caller's approved tokens and has no generic seeder. A code-bound session records exact wallet and session balances onchain, calls one bound Sushi V3 manager, requires a fresh position NFT owned by that caller, verifies pool and position state, returns computed unused amounts, requires exact final balances, and clears session-to-manager approvals. Any verified mismatch reverts the entire transaction. Users must never transfer tokens directly to either contract and must revoke any remaining wallet-to-router allowance. None of this is enabled for real funds. Deployment-specific migration terms have not been published.</p>
+        <p>The deployed testnet router remains paused and public execution is disabled. Its code-bound session records exact wallet and session balances onchain, calls one bound rehearsal manager, requires a fresh test position NFT owned by that caller, verifies pool and position state, returns computed unused amounts, requires exact final balances, and clears session-to-manager approvals. Any verified mismatch reverts the entire transaction. Users must never transfer tokens directly to either contract. The testnet-only terms and deployment-specific hashes are published in the verified deployment record; no acceptance or migration UI is enabled.</p>
         <div><Link href="/terms">Read general RMT terms</Link><Link href="/risks">Read RMT risks</Link></div>
       </section>
 
-      <p className="rescueDisclosure">This module is undeployed, unaudited, deliberately deployment-disabled Robinhood Chain testnet research. Runtime hashes do not by themselves rule out an upgradeable proxy. Self-custody does not resolve money-transmission, sanctions, securities, commodities, tax, privacy or consumer-protection obligations; qualified counsel must review the completed product before release. RMT does not promise recovery, profit, automatic value generation, safety, or endorsement by Sushi or Robinhood.</p>
+      <p className="rescueDisclosure">This module is a verified, paused and valueless Robinhood Chain testnet rehearsal; it is unaudited and unavailable for public execution. Runtime hashes do not by themselves establish production safety. Self-custody does not resolve money-transmission, sanctions, securities, commodities, tax, privacy or consumer-protection obligations; qualified counsel must review any completed real-value product before release. RMT does not promise recovery, profit, automatic value generation, safety, or endorsement by Sushi or Robinhood.</p>
       <SiteFooter />
     </main>
   );
