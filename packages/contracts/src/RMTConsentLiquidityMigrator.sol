@@ -4,6 +4,7 @@ pragma solidity ^0.8.26;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {RMTConsentLiquiditySession} from "./RMTConsentLiquiditySession.sol";
 import {ISushiV3Factory} from "./interfaces/ISushiV3Factory.sol";
 import {ISushiV3Pool} from "./interfaces/ISushiV3Pool.sol";
 import {ISushiV3PositionManager} from "./interfaces/ISushiV3PositionManager.sol";
@@ -21,7 +22,7 @@ contract RMTConsentLiquidityMigrator is ReentrancyGuard {
     int24 public constant MAX_TICK = 887_272;
 
     bytes32 public constant CONFIGURATION_TYPEHASH = keccak256(
-        "RMTConsentLiquidityConfiguration(address migrator,uint256 chainId,address governance,address guardian,address weth,address pairedToken,address positionManager,address factory,address pool,uint24 poolFee,bytes32 positionManagerCodeHash,bytes32 factoryCodeHash,bytes32 poolCodeHash,bytes32 wethCodeHash,bytes32 pairedTokenCodeHash)"
+        "RMTConsentLiquidityConfiguration(address migrator,uint256 chainId,address governance,address guardian,address weth,address pairedToken,address positionManager,address factory,address pool,address session,uint24 poolFee,bytes32 positionManagerCodeHash,bytes32 factoryCodeHash,bytes32 poolCodeHash,bytes32 sessionCodeHash,bytes32 wethCodeHash,bytes32 pairedTokenCodeHash)"
     );
     bytes32 public constant TERMS_DOMAIN_TYPEHASH =
         keccak256("RMTConsentLiquidityTerms(bytes32 configurationHash,bytes32 termsDocumentHash)");
@@ -38,10 +39,12 @@ contract RMTConsentLiquidityMigrator is ReentrancyGuard {
         ISushiV3PositionManager positionManager;
         ISushiV3Factory factory;
         ISushiV3Pool pool;
+        RMTConsentLiquiditySession session;
         uint24 poolFee;
         bytes32 positionManagerCodeHash;
         bytes32 factoryCodeHash;
         bytes32 poolCodeHash;
+        bytes32 sessionCodeHash;
         bytes32 wethCodeHash;
         bytes32 pairedTokenCodeHash;
         bytes32 termsDocumentHash;
@@ -70,12 +73,14 @@ contract RMTConsentLiquidityMigrator is ReentrancyGuard {
     ISushiV3PositionManager public immutable positionManager;
     ISushiV3Factory public immutable sushiFactory;
     ISushiV3Pool public immutable sushiPool;
+    RMTConsentLiquiditySession public immutable liquiditySession;
     uint24 public immutable poolFee;
     int24 public immutable poolTickSpacing;
 
     bytes32 public immutable positionManagerCodeHash;
     bytes32 public immutable factoryCodeHash;
     bytes32 public immutable poolCodeHash;
+    bytes32 public immutable sessionCodeHash;
     bytes32 public immutable wethCodeHash;
     bytes32 public immutable pairedTokenCodeHash;
     bytes32 public immutable configurationHash;
@@ -90,6 +95,7 @@ contract RMTConsentLiquidityMigrator is ReentrancyGuard {
         bytes32 indexed migrationId,
         address indexed owner,
         uint256 indexed positionId,
+        address session,
         uint256 pairedTokenUsed,
         uint256 wethUsed,
         uint256 pairedTokenRefunded,
@@ -106,9 +112,6 @@ contract RMTConsentLiquidityMigrator is ReentrancyGuard {
     error InvalidState();
     error InvalidMigration();
     error TermsNotAccepted();
-    error InexactTokenTransfer();
-    error ApprovalNotCleared();
-    error SlippageExceeded();
     error PositionVerificationFailed();
 
     modifier onlyGovernance() {
@@ -132,6 +135,19 @@ contract RMTConsentLiquidityMigrator is ReentrancyGuard {
                 || config.factory.feeAmountTickSpacing(config.poolFee) != tickSpacing || tickSpacing <= 0
                 || config.pool.factory() != address(config.factory) || config.pool.token0() != token0Address
                 || config.pool.token1() != token1Address || config.pool.fee() != config.poolFee
+                || config.session.ROBINHOOD_TESTNET_CHAIN_ID() != config.destinationChainId
+                || config.session.router() != address(this)
+                || address(config.session.pairedToken()) != address(config.pairedToken)
+                || address(config.session.weth()) != address(config.weth)
+                || address(config.session.token0()) != token0Address
+                || address(config.session.token1()) != token1Address
+                || address(config.session.positionManager()) != address(config.positionManager)
+                || config.session.poolFee() != config.poolFee
+                || config.session.pairedTokenIsToken0() != (token0Address == address(config.pairedToken))
+                || config.session.activeMigrationId() != bytes32(0) || config.session.activeOwner() != address(0)
+                || config.session.pairedTokenSessionBalanceBefore() != 0
+                || config.session.wethSessionBalanceBefore() != 0 || config.session.pairedTokenOwnerBalanceBefore() != 0
+                || config.session.wethOwnerBalanceBefore() != 0
         ) revert InvalidConfiguration();
 
         destinationChainId = config.destinationChainId;
@@ -145,11 +161,13 @@ contract RMTConsentLiquidityMigrator is ReentrancyGuard {
         positionManager = config.positionManager;
         sushiFactory = config.factory;
         sushiPool = config.pool;
+        liquiditySession = config.session;
         poolFee = config.poolFee;
         poolTickSpacing = tickSpacing;
         positionManagerCodeHash = config.positionManagerCodeHash;
         factoryCodeHash = config.factoryCodeHash;
         poolCodeHash = config.poolCodeHash;
+        sessionCodeHash = config.sessionCodeHash;
         wethCodeHash = config.wethCodeHash;
         pairedTokenCodeHash = config.pairedTokenCodeHash;
         termsDocumentHash = config.termsDocumentHash;
@@ -166,10 +184,12 @@ contract RMTConsentLiquidityMigrator is ReentrancyGuard {
                 address(config.positionManager),
                 address(config.factory),
                 address(config.pool),
+                address(config.session),
                 config.poolFee,
                 config.positionManagerCodeHash,
                 config.factoryCodeHash,
                 config.poolCodeHash,
+                config.sessionCodeHash,
                 config.wethCodeHash,
                 config.pairedTokenCodeHash
             )
@@ -202,7 +222,7 @@ contract RMTConsentLiquidityMigrator is ReentrancyGuard {
         emit PauseChanged(false, msg.sender);
     }
 
-    /// @notice Mints one fresh position through the immutable manager directly to the caller.
+    /// @notice Mints one fresh position through the bound accounting session directly to the caller.
     function migrate(MigrationRequest calldata request)
         external
         nonReentrant
@@ -233,60 +253,29 @@ contract RMTConsentLiquidityMigrator is ReentrancyGuard {
             )
         );
 
-        uint256 pairedOwnerBalanceBefore = pairedToken.balanceOf(msg.sender);
-        uint256 wethOwnerBalanceBefore = weth.balanceOf(msg.sender);
-        uint256 pairedRouterBalanceBefore = pairedToken.balanceOf(address(this));
-        uint256 wethRouterBalanceBefore = weth.balanceOf(address(this));
         uint256 positionSupplyBefore = positionManager.totalSupply();
+        liquiditySession.begin(msg.sender, migrationId);
+        pairedToken.safeTransferFrom(msg.sender, address(liquiditySession), request.pairedTokenDesired);
+        weth.safeTransferFrom(msg.sender, address(liquiditySession), request.wethDesired);
 
-        _pullExact(pairedToken, msg.sender, request.pairedTokenDesired, pairedRouterBalanceBefore);
-        _pullExact(weth, msg.sender, request.wethDesired, wethRouterBalanceBefore);
-
-        pairedToken.forceApprove(address(positionManager), request.pairedTokenDesired);
-        weth.forceApprove(address(positionManager), request.wethDesired);
-
-        uint256 amount0Used;
-        uint256 amount1Used;
-        (positionId, mintedLiquidity, amount0Used, amount1Used) = positionManager.mint(_mintParams(request));
-
-        pairedToken.forceApprove(address(positionManager), 0);
-        weth.forceApprove(address(positionManager), 0);
-        if (
-            pairedToken.allowance(address(this), address(positionManager)) != 0
-                || weth.allowance(address(this), address(positionManager)) != 0
-        ) revert ApprovalNotCleared();
-
-        uint256 pairedTokenUsed = pairedTokenIsToken0 ? amount0Used : amount1Used;
-        uint256 wethUsed = pairedTokenIsToken0 ? amount1Used : amount0Used;
-        if (
-            positionId == 0 || mintedLiquidity < request.minimumLiquidity
-                || pairedTokenUsed < request.pairedTokenMinimum || pairedTokenUsed > request.pairedTokenDesired
-                || wethUsed < request.wethMinimum || wethUsed > request.wethDesired
-                || pairedToken.balanceOf(address(this))
-                    != pairedRouterBalanceBefore + request.pairedTokenDesired - pairedTokenUsed
-                || weth.balanceOf(address(this)) != wethRouterBalanceBefore + request.wethDesired - wethUsed
-        ) revert SlippageExceeded();
-
-        if (
-            positionManager.totalSupply() != positionSupplyBefore + 1
-                || positionManager.tokenByIndex(positionSupplyBefore) != positionId
-                || positionManager.ownerOf(positionId) != msg.sender
-        ) {
-            revert PositionVerificationFailed();
-        }
-        _verifyPosition(positionId, request, mintedLiquidity);
-
-        uint256 pairedTokenRefunded = request.pairedTokenDesired - pairedTokenUsed;
-        uint256 wethRefunded = request.wethDesired - wethUsed;
-        if (pairedTokenRefunded != 0) pairedToken.safeTransfer(msg.sender, pairedTokenRefunded);
-        if (wethRefunded != 0) weth.safeTransfer(msg.sender, wethRefunded);
-
-        if (
-            pairedToken.balanceOf(address(this)) != pairedRouterBalanceBefore
-                || weth.balanceOf(address(this)) != wethRouterBalanceBefore
-                || pairedToken.balanceOf(msg.sender) != pairedOwnerBalanceBefore - pairedTokenUsed
-                || weth.balanceOf(msg.sender) != wethOwnerBalanceBefore - wethUsed
-        ) revert InexactTokenTransfer();
+        uint256 pairedTokenUsed;
+        uint256 wethUsed;
+        uint256 pairedTokenRefunded;
+        uint256 wethRefunded;
+        (positionId, mintedLiquidity, pairedTokenUsed, wethUsed, pairedTokenRefunded, wethRefunded) =
+            liquiditySession.execute(
+                migrationId,
+                RMTConsentLiquiditySession.SessionRequest({
+                    pairedTokenDesired: request.pairedTokenDesired,
+                    wethDesired: request.wethDesired,
+                    pairedTokenMinimum: request.pairedTokenMinimum,
+                    wethMinimum: request.wethMinimum,
+                    minimumLiquidity: request.minimumLiquidity,
+                    tickLower: request.tickLower,
+                    tickUpper: request.tickUpper,
+                    deadline: request.deadline
+                })
+            );
 
         if (
             positionManager.totalSupply() != positionSupplyBefore + 1
@@ -301,6 +290,7 @@ contract RMTConsentLiquidityMigrator is ReentrancyGuard {
             migrationId,
             msg.sender,
             positionId,
+            address(liquiditySession),
             pairedTokenUsed,
             wethUsed,
             pairedTokenRefunded,
@@ -321,18 +311,20 @@ contract RMTConsentLiquidityMigrator is ReentrancyGuard {
                 || address(config.pairedToken) == address(0) || address(config.pairedToken).code.length == 0
                 || address(config.weth) == address(config.pairedToken)
                 || address(config.positionManager).code.length == 0 || address(config.factory).code.length == 0
-                || address(config.pool).code.length == 0 || config.poolFee == 0
-                || config.termsDocumentHash == bytes32(0) || config.positionManagerCodeHash == bytes32(0)
-                || config.factoryCodeHash == bytes32(0) || config.poolCodeHash == bytes32(0)
+                || address(config.pool).code.length == 0 || address(config.session).code.length == 0
+                || config.poolFee == 0 || config.termsDocumentHash == bytes32(0)
+                || config.positionManagerCodeHash == bytes32(0) || config.factoryCodeHash == bytes32(0)
+                || config.poolCodeHash == bytes32(0) || config.sessionCodeHash == bytes32(0)
                 || config.wethCodeHash == bytes32(0) || config.pairedTokenCodeHash == bytes32(0)
                 || address(config.positionManager).codehash != config.positionManagerCodeHash
                 || address(config.factory).codehash != config.factoryCodeHash
                 || address(config.pool).codehash != config.poolCodeHash
+                || address(config.session).codehash != config.sessionCodeHash
                 || address(config.weth).codehash != config.wethCodeHash
                 || address(config.pairedToken).codehash != config.pairedTokenCodeHash
         ) revert InvalidConfiguration();
 
-        address[8] memory roles = [
+        address[9] memory roles = [
             config.governance,
             config.guardian,
             address(config.weth),
@@ -340,6 +332,7 @@ contract RMTConsentLiquidityMigrator is ReentrancyGuard {
             address(config.positionManager),
             address(config.factory),
             address(config.pool),
+            address(config.session),
             address(this)
         ];
         for (uint256 i; i < roles.length; ++i) {
@@ -360,26 +353,6 @@ contract RMTConsentLiquidityMigrator is ReentrancyGuard {
                 || request.tickLower >= request.tickUpper || request.tickLower % poolTickSpacing != 0
                 || request.tickUpper % poolTickSpacing != 0
         ) revert InvalidMigration();
-    }
-
-    function _mintParams(MigrationRequest calldata request)
-        private
-        view
-        returns (ISushiV3PositionManager.MintParams memory params)
-    {
-        params = ISushiV3PositionManager.MintParams({
-            token0: address(token0),
-            token1: address(token1),
-            fee: poolFee,
-            tickLower: request.tickLower,
-            tickUpper: request.tickUpper,
-            amount0Desired: pairedTokenIsToken0 ? request.pairedTokenDesired : request.wethDesired,
-            amount1Desired: pairedTokenIsToken0 ? request.wethDesired : request.pairedTokenDesired,
-            amount0Min: pairedTokenIsToken0 ? request.pairedTokenMinimum : request.wethMinimum,
-            amount1Min: pairedTokenIsToken0 ? request.wethMinimum : request.pairedTokenMinimum,
-            recipient: msg.sender,
-            deadline: request.deadline
-        });
     }
 
     function _verifyPosition(uint256 positionId, MigrationRequest calldata request, uint128 mintedLiquidity)
@@ -406,18 +379,28 @@ contract RMTConsentLiquidityMigrator is ReentrancyGuard {
         if (
             block.chainid != destinationChainId || address(positionManager).codehash != positionManagerCodeHash
                 || address(sushiFactory).codehash != factoryCodeHash || address(sushiPool).codehash != poolCodeHash
-                || address(weth).codehash != wethCodeHash || address(pairedToken).codehash != pairedTokenCodeHash
+                || address(liquiditySession).codehash != sessionCodeHash || address(weth).codehash != wethCodeHash
+                || address(pairedToken).codehash != pairedTokenCodeHash
                 || positionManager.factory() != address(sushiFactory) || positionManager.WETH9() != address(weth)
                 || sushiFactory.getPool(address(token0), address(token1), poolFee) != address(sushiPool)
                 || sushiFactory.feeAmountTickSpacing(poolFee) != poolTickSpacing
                 || sushiPool.factory() != address(sushiFactory) || sushiPool.token0() != address(token0)
                 || sushiPool.token1() != address(token1) || sushiPool.fee() != poolFee
                 || sushiPool.tickSpacing() != poolTickSpacing
+                || liquiditySession.ROBINHOOD_TESTNET_CHAIN_ID() != destinationChainId
+                || liquiditySession.router() != address(this)
+                || address(liquiditySession.pairedToken()) != address(pairedToken)
+                || address(liquiditySession.weth()) != address(weth)
+                || address(liquiditySession.token0()) != address(token0)
+                || address(liquiditySession.token1()) != address(token1)
+                || address(liquiditySession.positionManager()) != address(positionManager)
+                || liquiditySession.poolFee() != poolFee
+                || liquiditySession.pairedTokenIsToken0() != pairedTokenIsToken0
+                || liquiditySession.activeMigrationId() != bytes32(0) || liquiditySession.activeOwner() != address(0)
+                || liquiditySession.pairedTokenSessionBalanceBefore() != 0
+                || liquiditySession.wethSessionBalanceBefore() != 0
+                || liquiditySession.pairedTokenOwnerBalanceBefore() != 0
+                || liquiditySession.wethOwnerBalanceBefore() != 0
         ) revert ConfigurationIntegrityFailed();
-    }
-
-    function _pullExact(IERC20 token, address owner, uint256 amount, uint256 balanceBefore) private {
-        token.safeTransferFrom(owner, address(this), amount);
-        if (token.balanceOf(address(this)) != balanceBefore + amount) revert InexactTokenTransfer();
     }
 }

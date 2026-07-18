@@ -12,7 +12,7 @@ const flow = [
   ["01", "Move only what you own", "Exit or convert the old LP position yourself. This router never calls or withdraws from a source pool; any market discovery is read-only."],
   ["02", "Bridge to yourself", "Use a canonical route to deliver supported assets to your own Robinhood Chain wallet."],
   ["03", "Review exact bounds", "Confirm the code-bound pool, fee tier, tick range, desired amounts, minimum use, minimum liquidity, deadline and deployment-specific terms hash."],
-  ["04", "Mint through one manager", "The testnet router is designed to call one verified Sushi V3 manager directly. It has no generic executor or third-party seeder."],
+  ["04", "Mint through one manager", "A bound accounting session snapshots exact balances onchain, then calls one verified Sushi V3 manager. There is no generic executor or third-party seeder."],
   ["05", "Keep direct custody", "A brand-new verified LP NFT and every unused token from a successful migration must end with the same wallet in that transaction."]
 ] as const;
 
@@ -24,7 +24,7 @@ export default function LiquidityRescuePage() {
           <p className="eyebrow">RMT RESEARCH LAB · TESTNET ONLY · NO REAL FUNDS</p>
           <h1>Liquidity you own.<br /><span>One destination market.</span></h1>
           <p>RMT is designing a consent-based path for owners to use their own tokens to mint a directly held position in one verified WETH market on Robinhood Chain.</p>
-          <p className="rescueScope"><strong>What exists now:</strong> undeployed, testnet-only direct-manager contract logic and adversarial tests. Sushi's exact Robinhood Chain addresses and runtime hashes are not yet confirmed, the deployment script is deliberately disabled, and no deposit, bridge or migration UI is enabled.</p>
+          <p className="rescueScope"><strong>What exists now:</strong> undeployed, testnet-only consent-router and accounting-session logic with adversarial tests. Sushi's exact Robinhood Chain addresses and runtime hashes are not yet confirmed, the deployment script is deliberately disabled, and no deposit, bridge or migration UI is enabled.</p>
           <div className="rescueActions">
             <a className="rescuePrimary" href="#proposed-flow">Review the safety model ↓</a>
             <Link href="/sushi">Open Sushi lab</Link>
@@ -67,7 +67,7 @@ export default function LiquidityRescuePage() {
       <section className="rescueStatement">
         <p className="eyebrow">WHY THIS MODEL</p>
         <h2>Concentrate market liquidity while every owner keeps their own position.</h2>
-        <p>The testnet router can move only the caller's approved tokens and has no generic seeder. It is designed to call one code-bound Sushi V3 manager, require a fresh position NFT owned by that caller, verify the pool, fee, ticks and liquidity from manager state, return exact unused amounts from a successful migration, and clear router-to-manager approvals. Users must never transfer tokens directly to the router and must revoke any remaining wallet-to-router allowance. None of this is enabled for real funds. Deployment-specific migration terms have not been published.</p>
+        <p>The testnet router can move only the caller's approved tokens and has no generic seeder. A code-bound session records exact wallet and session balances onchain, calls one bound Sushi V3 manager, requires a fresh position NFT owned by that caller, verifies pool and position state, returns computed unused amounts, requires exact final balances, and clears session-to-manager approvals. Any verified mismatch reverts the entire transaction. Users must never transfer tokens directly to either contract and must revoke any remaining wallet-to-router allowance. None of this is enabled for real funds. Deployment-specific migration terms have not been published.</p>
         <div><Link href="/terms">Read general RMT terms</Link><Link href="/risks">Read RMT risks</Link></div>
       </section>
 
