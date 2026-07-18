@@ -56,7 +56,7 @@ export default function SushiIntegrationPage() {
             <p className="eyebrow">READY FOR SUSHI REVIEW</p>
             <h2>The final mile is specific.</h2>
             <p>RMT is asking Sushi to confirm the canonical executor, its source or deployment registry, and the supported onchain expiry pattern for Robinhood Chain.</p>
-            <a href="https://github.com/LandoCrissian/robinhood-meme-terminal/pull/163" target="_blank" rel="noreferrer">Inspect the merged safety gate ↗</a>
+            <Link href="/rescue">Inspect the verified testnet rehearsal →</Link>
           </section>
           <section className="sushiLabBoundary">
             <p className="eyebrow">LIVE BOUNDARY</p>

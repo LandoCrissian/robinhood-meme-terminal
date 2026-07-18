@@ -6,8 +6,8 @@ import { useEffect, useRef } from "react";
 import { isMainnetRelease } from "../lib/network";
 import { WalletButton } from "./wallet-button";
 
-const HIDDEN_PREFIXES = ["/admin", "/deploy-mainnet", "/deploy-testnet", "/mainnet-smoke"];
-const MORE_PREFIXES = ["/runners", "/portfolio", "/watchlist", "/sources", "/sushi", "/support", "/risks"];
+const HIDDEN_PREFIXES = ["/admin", "/deploy-consent-testnet", "/deploy-mainnet", "/deploy-testnet", "/mainnet-smoke"];
+const MORE_PREFIXES = ["/runners", "/portfolio", "/watchlist", "/sources", "/sushi", "/rescue", "/support", "/risks"];
 
 function currentPage(pathname: string, href: string) {
   if (href === "/") return pathname === "/";
@@ -80,6 +80,7 @@ export function PublicChrome() {
                   <PublicLink href="/watchlist">Watchlist<small>Tokens saved on this device</small></PublicLink>
                   <PublicLink href="/sources">Sources<small>Launchpad coverage and origin labels</small></PublicLink>
                   <PublicLink href="/sushi">Sushi integration<small>Routing boundary and launch readiness</small></PublicLink>
+                  <PublicLink href="/rescue">Migration lab<small>Paused, direct-to-wallet testnet research</small></PublicLink>
                 </div>
                 <div>
                   <span>Help &amp; safety</span>

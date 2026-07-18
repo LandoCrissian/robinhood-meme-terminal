@@ -1,0 +1,84 @@
+{
+  "schemaVersion": 1,
+  "release": {
+    "name": "RMT consent migration no-value rehearsal",
+    "status": "verified-paused",
+    "sourceRepository": "https://github.com/LandoCrissian/robinhood-meme-terminal",
+    "sourceCommit": "b21a28276a4ff62253c36988167d613eb44fbb3c",
+    "contractSourceSha256": "0781f4f534d33b0ecdb773a8ccc4da3f283772432203f11c5af8394d53eb0f1e",
+    "deployedAtUtc": "2026-07-18T17:29:17Z",
+    "compiler": {
+      "version": "v0.8.26+commit.8a97fa7a",
+      "evmVersion": "cancun",
+      "optimizer": true,
+      "optimizerRuns": 200,
+      "viaIR": true
+    }
+  },
+  "network": {
+    "name": "Robinhood Chain Testnet",
+    "chainId": 46630,
+    "rpcUrl": "https://rpc.testnet.chain.robinhood.com/",
+    "explorerUrl": "https://explorer.testnet.chain.robinhood.com"
+  },
+  "operator": "0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA",
+  "create2": {
+    "deployer": "0x4e59b44847b379578588920cA78FbF26c0B4956C",
+    "deployerRuntimeCodeHash": "0x2fa86add0aed31f33a762c9d88e807c475bd51d0f52bd0955754b2608f7e4989",
+    "venue": {
+      "transactionHash": "0xde9b9d547f2eaa497d4cc778243c5b2b09fb12a2efff774efc1f869418ded382",
+      "blockNumber": 91297664,
+      "salt": "0xe84dace1a6c61edf6d65bcd829a806792f1904b0321cbccd38e3d034aed74371",
+      "initCodeHash": "0x39cc855a57681a8ec8caff9d82b3f1a02f245afe44a00db48eff537d4c480c64",
+      "deployedAddress": "0x10af03B200b2487815dfBE4922810a7b9640A884"
+    },
+    "consentStack": {
+      "transactionHash": "0x14bcc332eccfe075302def33ed129571e666f9fcf1373a2e5fad50eb01984ffc",
+      "blockNumber": 91297687,
+      "salt": "0x4b0e64f68910de47e578ef889c63cbaf92ebcbc19c8429314a8cd261800fe511",
+      "initCodeHash": "0x8b57bc879bd39cdaa6e3dab8bae01da68962d448b01b42370997e531f4678f4a",
+      "deployedAddress": "0x662F4dC5fE4115BE317BeFc0D77f4C1d6adeE576"
+    }
+  },
+  "contracts": {
+    "venue": { "address": "0x10af03B200b2487815dfBE4922810a7b9640A884", "runtimeCodeHash": "0x259fff664ce8fb811c0081d320a75a6b7f3b3f3d40e425a2e0d76950ee4bfe39", "sourceVerification": "verified" },
+    "governance": { "address": "0xA7892f1D730132834493C5DC361e289430D3d3c0", "runtimeCodeHash": "0x85bc5b5b878054e5c6aafa667f896e29a91e4748d762a569d27d706886252dc0", "sourceVerification": "verified" },
+    "pairedToken": { "address": "0x2E80c3a5F732c0510765714DEEA48b7037212358", "runtimeCodeHash": "0x3e5c4979831b2d68a060fccb8d7c519f69737af2bce18e5dfd734c4d25fac846", "sourceVerification": "verified" },
+    "weth": { "address": "0xe89D3DAD1c3f70abA5233E7AeB9802913AC3B82e", "runtimeCodeHash": "0x3e5c4979831b2d68a060fccb8d7c519f69737af2bce18e5dfd734c4d25fac846", "sourceVerification": "verified" },
+    "factory": { "address": "0xA898d6dd64FD6c00bec75c4AAb4b6221684bE65b", "runtimeCodeHash": "0x32b39b7df76c7677518e480289c13cfcfc188eaa656d78e05e1380f0ca4d285f", "sourceVerification": "verified" },
+    "pool": { "address": "0x780dAE2D43B2B6815feA8183FCdEc2Df052ecE95", "runtimeCodeHash": "0x7d7e7f5550b205cf3db4fb41eec22088d5ea02eb7f784487c57b97beff2964db", "sourceVerification": "verified" },
+    "positionManager": { "address": "0x7fC068016e499ca7C04BebF027a8086Cc2ceF786", "runtimeCodeHash": "0x8c27106af2ebe71989d70d2e7d2714ca526586f59b02a95e19ced6b245ef37e6", "sourceVerification": "verified" },
+    "consentStack": { "address": "0x662F4dC5fE4115BE317BeFc0D77f4C1d6adeE576", "runtimeCodeHash": "0x17673272061c95a8eef6e27c769fd1c45a1ea1542113a112ef68fc737d0994b6", "sourceVerification": "verified" },
+    "session": { "address": "0x4B2bD99Bef87C58a08F93766c35e591985289c85", "runtimeCodeHash": "0x6d5b42c3d471d72c148bbaf4a3709d65e31f79614c8e82451325e4f811f6162d", "sourceVerification": "verified" },
+    "migrator": { "address": "0x01Cdc5FA002F0dEee4B153D31763392EC81e8f05", "runtimeCodeHash": "0x287f1dbf61ef8b3b5ee309b47fcdf81e11dda25aab19ca51ee092f254a4a1239", "sourceVerification": "verified" }
+  },
+  "configuration": {
+    "destinationChainId": 46630,
+    "governanceSigner": "0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA",
+    "guardian": "0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA",
+    "poolFee": 3000,
+    "tickSpacing": 60,
+    "governanceDelaySeconds": 86400,
+    "governanceWindowSeconds": 604800,
+    "pairedTokenFixedSupply": "1000000000000000000000000000",
+    "wethFixedSupply": "1000000000000000000000000",
+    "configurationHash": "0x1e626fe6109321b4363aef67f3a66ff3af92abeda98441d6809df19b702b4a09",
+    "termsDocumentHash": "0x236ed1f849548c61a923152a92dc91593f22a6e2ff3d176a4b0db38b3b2d2b57",
+    "migrationTermsHash": "0xeb32892f8c20fbd279e13e05ea9a7a63667196a77198b43b5001a7a94647e93f",
+    "paused": true
+  },
+  "verification": {
+    "snapshotBlockNumber": 91298061,
+    "verifiedAtUtc": "2026-07-18T17:53:04Z",
+    "result": "passed",
+    "verifier": "packages/contracts/scripts/verify-consent-testnet-deployment.sh",
+    "sourceVerifier": "packages/contracts/scripts/verify-consent-testnet-sources.sh"
+  },
+  "classification": {
+    "officialSushiDeployment": false,
+    "productionAmm": false,
+    "realAssetsPermitted": false,
+    "publicExecutionEnabled": false,
+    "notes": "Isolated, valueless, initially paused Sushi V3 ABI-compatible test fixture on Robinhood Chain Testnet."
+  }
+}

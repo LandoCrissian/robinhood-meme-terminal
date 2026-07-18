@@ -128,3 +128,7 @@ RMT V6 is an explicitly disclosed mainnet beta. Automated tests, mainnet-fork re
 Exact Blockscout source publication is also incomplete: key V6 explorer records currently do not show the canonical Solidity 0.8.26, optimizer-200, via-IR source match. Explorer pages are useful for address, bytecode, transaction, and event inspection, but RMT must not describe the V6 contracts as exactly source-verified or independently audited until those separate tasks are completed.
 
 Read the [risk disclosures](https://www.rmtlaunch.fun/risks), [incident response plan](docs/INCIDENT_RESPONSE.md), [security review scope](docs/SECURITY_REVIEW_SCOPE.md), and [V6 protocol foundation](docs/V6_PROTOCOL_FOUNDATION.md) before operating or reviewing the protocol.
+
+See [third-party notices](docs/THIRD_PARTY_NOTICES.md) for the Sushi V3 ABI compatibility reference and upstream licensing boundary.
+
+The testnet-first [RMT consent-based Sushi V3 migration design](docs/LIQUIDITY_RESCUE.md) explores a direct, self-custodial mint into one code-bound Robinhood Chain WETH market. A valueless Sushi V3 ABI-compatible rehearsal stack is source verified on Robinhood Chain Testnet and remains paused with no public execution path. It cannot access source pools or pool customer funds, is isolated from the live V6 contracts, and is not an official Sushi deployment or production AMM.
