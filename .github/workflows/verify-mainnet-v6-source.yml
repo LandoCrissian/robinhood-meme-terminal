@@ -65,8 +65,8 @@ jobs:
       V6_MARKET_IMPLEMENTATION_ADDRESS: ${{ inputs.v6_market_implementation_address }}
       V6_FACTORY_ADDRESS: ${{ inputs.v6_factory_address }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: foundry-rs/foundry-toolchain@v1
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: foundry-rs/foundry-toolchain@b00af27efadbc7b4ca8b82abbd903b17cc874d2a # v1
         with:
           # V6 browser deployment artifacts were compiled with this exact Foundry release.
           # Pinning also makes the deployment-era formatter reproduction deterministic.
@@ -85,7 +85,7 @@ jobs:
           } 2>&1 | tee v6-source-verification.log
       - name: Archive source-verification evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: v6-source-verification-${{ github.sha }}
           path: packages/contracts/v6-source-verification.log
