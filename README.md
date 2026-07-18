@@ -128,3 +128,5 @@ RMT V6 is an explicitly disclosed mainnet beta. Automated tests, mainnet-fork re
 Exact Blockscout source publication is also incomplete: key V6 explorer records currently do not show the canonical Solidity 0.8.26, optimizer-200, via-IR source match. Explorer pages are useful for address, bytecode, transaction, and event inspection, but RMT must not describe the V6 contracts as exactly source-verified or independently audited until those separate tasks are completed.
 
 Read the [risk disclosures](https://www.rmtlaunch.fun/risks), [incident response plan](docs/INCIDENT_RESPONSE.md), [security review scope](docs/SECURITY_REVIEW_SCOPE.md), and [V6 protocol foundation](docs/V6_PROTOCOL_FOUNDATION.md) before operating or reviewing the protocol.
+
+The testnet-first [RMT Liquidity Rescue design](docs/LIQUIDITY_RESCUE.md) explores owner-authorized multichain liquidity consolidation into one Robinhood Chain WETH market. It is isolated from the live V6 contracts and is not deployed to mainnet.
