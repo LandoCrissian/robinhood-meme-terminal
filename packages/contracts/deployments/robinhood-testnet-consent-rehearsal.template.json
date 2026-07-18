@@ -1,0 +1,84 @@
+{
+  "schemaVersion": 1,
+  "release": {
+    "name": "RMT consent migration no-value rehearsal",
+    "status": "template-not-deployed",
+    "sourceRepository": "https://github.com/LandoCrissian/robinhood-meme-terminal",
+    "sourceCommit": null,
+    "contractSourceSha256": null,
+    "deployedAtUtc": null,
+    "compiler": {
+      "version": "v0.8.26+commit.8a97fa7a",
+      "evmVersion": "cancun",
+      "optimizer": true,
+      "optimizerRuns": 200,
+      "viaIR": true
+    }
+  },
+  "network": {
+    "name": "Robinhood Chain Testnet",
+    "chainId": 46630,
+    "rpcUrl": "https://rpc.testnet.chain.robinhood.com/",
+    "explorerUrl": "https://explorer.testnet.chain.robinhood.com"
+  },
+  "operator": "0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA",
+  "create2": {
+    "deployer": "0x4e59b44847b379578588920cA78FbF26c0B4956C",
+    "deployerRuntimeCodeHash": "0x2fa86add0aed31f33a762c9d88e807c475bd51d0f52bd0955754b2608f7e4989",
+    "venue": {
+      "transactionHash": null,
+      "blockNumber": null,
+      "salt": null,
+      "initCodeHash": null,
+      "deployedAddress": null
+    },
+    "consentStack": {
+      "transactionHash": null,
+      "blockNumber": null,
+      "salt": null,
+      "initCodeHash": null,
+      "deployedAddress": null
+    }
+  },
+  "contracts": {
+    "venue": { "address": null, "runtimeCodeHash": null, "sourceVerification": "pending" },
+    "governance": { "address": null, "runtimeCodeHash": null, "sourceVerification": "pending" },
+    "pairedToken": { "address": null, "runtimeCodeHash": null, "sourceVerification": "pending" },
+    "weth": { "address": null, "runtimeCodeHash": null, "sourceVerification": "pending" },
+    "factory": { "address": null, "runtimeCodeHash": null, "sourceVerification": "pending" },
+    "pool": { "address": null, "runtimeCodeHash": null, "sourceVerification": "pending" },
+    "positionManager": { "address": null, "runtimeCodeHash": null, "sourceVerification": "pending" },
+    "consentStack": { "address": null, "runtimeCodeHash": null, "sourceVerification": "pending" },
+    "session": { "address": null, "runtimeCodeHash": null, "sourceVerification": "pending" },
+    "migrator": { "address": null, "runtimeCodeHash": null, "sourceVerification": "pending" }
+  },
+  "configuration": {
+    "destinationChainId": 46630,
+    "governanceSigner": "0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA",
+    "guardian": "0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA",
+    "poolFee": 3000,
+    "tickSpacing": 60,
+    "governanceDelaySeconds": 86400,
+    "governanceWindowSeconds": 604800,
+    "pairedTokenFixedSupply": "1000000000000000000000000000",
+    "wethFixedSupply": "1000000000000000000000000",
+    "configurationHash": null,
+    "termsDocumentHash": "0x236ed1f849548c61a923152a92dc91593f22a6e2ff3d176a4b0db38b3b2d2b57",
+    "migrationTermsHash": null,
+    "paused": true
+  },
+  "verification": {
+    "snapshotBlockNumber": null,
+    "verifiedAtUtc": null,
+    "result": "pending",
+    "verifier": "packages/contracts/scripts/verify-consent-testnet-deployment.sh",
+    "sourceVerifier": "packages/contracts/scripts/verify-consent-testnet-sources.sh"
+  },
+  "classification": {
+    "officialSushiDeployment": false,
+    "productionAmm": false,
+    "realAssetsPermitted": false,
+    "publicExecutionEnabled": false,
+    "notes": "Isolated, valueless, initially paused Sushi V3 ABI-compatible test fixture on Robinhood Chain Testnet."
+  }
+}

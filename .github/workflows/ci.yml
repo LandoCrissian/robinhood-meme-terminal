@@ -129,6 +129,7 @@ jobs:
             src/VersionedFactoryRegistry.sol \
             src/OfficialRMTIdentityMigration.sol \
             src/DirectLaunchFeeSplitter.sol \
+            src/RMTTestnetSushiV3RehearsalStack.sol \
             src/clone/CloneBondingCurveMarketV6.sol \
             src/V5GraduationHook.sol \
             src/V4GraduationAdapter.sol \
@@ -141,6 +142,7 @@ jobs:
             test/RMTLaunchPolicyRegistry.t.sol \
             test/RMTLaunchFactoryV6.t.sol \
             test/DirectLaunchFeeSplitter.t.sol \
+            test/RMTTestnetSushiV3RehearsalStack.t.sol \
             test/V4GraduationAdapter.t.sol \
             test/V6MainnetFork.t.sol \
             test/V6UniversalRouterFork.t.sol \
@@ -163,9 +165,11 @@ jobs:
       - name: Verify wallet deployment artifacts
         run: |
           node scripts/export-testnet-web-artifacts.mjs
+          node scripts/export-consent-testnet-web-artifacts.mjs
           node scripts/export-mainnet-web-artifacts.mjs
           git diff --exit-code -- \
             ../../apps/web/lib/generated/testnet-stack.json \
+            ../../apps/web/lib/generated/consent-testnet-stack.json \
             ../../apps/web/lib/generated/mainnet-stack.json
       - name: Upload wallet deployment artifacts
         if: always()
@@ -174,11 +178,17 @@ jobs:
           name: wallet-deployment-artifacts
           path: |
             apps/web/lib/generated/testnet-stack.json
+            apps/web/lib/generated/consent-testnet-stack.json
             apps/web/lib/generated/mainnet-stack.json
           retention-days: 3
       - name: Validate deployment scripts
         run: |
           bash -n scripts/deploy-testnet.sh
+          bash -n scripts/verify-consent-testnet-deployment.sh
+          bash -n scripts/verify-consent-testnet-sources.sh
+          bash -n scripts/verify-consent-testnet-terms.sh
+          bash scripts/verify-consent-testnet-terms.sh
+          python3 -m json.tool deployments/robinhood-testnet-consent-rehearsal.template.json >/dev/null
           bash -n scripts/smoke-test-factory.sh
           bash -n scripts/deploy-mainnet.sh
           bash -n scripts/smoke-test-mainnet.sh

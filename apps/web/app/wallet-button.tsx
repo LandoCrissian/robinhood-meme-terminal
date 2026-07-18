@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { robinhoodChain, robinhoodChainTestnet } from "@rmt/shared/chains";
+import { usePathname } from "next/navigation";
 import { useAccount, useConnect, useDisconnect, useSwitchChain } from "wagmi";
 import { FundWalletButton } from "./fund-wallet-button";
 
@@ -30,10 +31,19 @@ function walletErrorMessage(message: string) {
   return "The wallet did not connect. Close any stale wallet prompt and try again.";
 }
 
-export function WalletButton({ target = "testnet", returnTo }: { target?: "testnet" | "mainnet"; returnTo?: string }) {
+export function WalletButton({
+  target = "testnet",
+  returnTo,
+  showFunding = true
+}: {
+  target?: "testnet" | "mainnet";
+  returnTo?: string;
+  showFunding?: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const [pendingConnectorUid, setPendingConnectorUid] = useState<string>();
   const [currentUrl, setCurrentUrl] = useState("https://www.rmtlaunch.fun");
+  const pathname = usePathname();
   const { address, chainId, isConnected } = useAccount();
   const targetChain = target === "mainnet" ? robinhoodChain : robinhoodChainTestnet;
   const { connectors, connect, error, isPending, reset } = useConnect();
@@ -120,7 +130,7 @@ export function WalletButton({ target = "testnet", returnTo }: { target?: "testn
 
   return (
     <div className="walletConnectedActions">
-      <FundWalletButton />
+      {showFunding && pathname !== "/deploy-consent-testnet" && <FundWalletButton />}
       <button className="wallet live" title="Disconnect wallet" onClick={() => disconnect()}>
         {address ? shortAddress(address) : "Connected"}
       </button>
