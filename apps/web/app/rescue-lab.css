@@ -2,3 +2,5 @@
 .rescueHero>div,.rescueFlow{min-width:0}.rescueHero h1{max-width:760px;font-size:clamp(3.2rem,5.5vw,5.7rem)}.rescueHero h1 span{display:block}
 @media(prefers-reduced-motion:reduce){.rescueNodes{animation:none}}
 .rescueHero>div:first-child>p.rescueScope:not(.eyebrow){max-width:720px;margin:18px 0 0;padding:14px 16px;border:1px solid #2c3c31;border-left:3px solid #f1bd62;border-radius:10px;background:#0b110d;color:#9daa9f;font-size:.72rem;line-height:1.55}.rescueHero .rescueScope strong{color:#f1bd62}.rescueBody{scroll-margin-top:92px}
+.rescueHero>div:first-child>p.rescueScope:not(.eyebrow){color:#aeb9b1;font-size:.82rem}.rescueFlow li p,.rescueBoundaries li{color:#aab6ae;font-size:.8rem}.rescueDisclosure{color:#8e9b92;font-size:.78rem}.rescueStrip span{overflow:visible;color:#9eaaa2;font-size:.72rem;line-height:1.35;text-overflow:clip;white-space:normal}.rescuePair strong{font-size:.72rem}
+@media(max-width:520px){.rescueHero h1{font-size:3.2rem}.rescueHero>div:first-child>p.rescueScope:not(.eyebrow){font-size:.86rem}.rescueFlow li p,.rescueBoundaries li,.rescueDisclosure{font-size:.82rem}.rescueStrip span{font-size:.7rem}}

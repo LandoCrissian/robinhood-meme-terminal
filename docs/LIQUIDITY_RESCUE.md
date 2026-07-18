@@ -1,115 +1,127 @@
-# RMT Liquidity Rescue
+# RMT Consent-Based Sushi V3 Liquidity Migration
 
-RMT Liquidity Rescue is a research prototype for consolidating voluntarily migrated, fragmented liquidity into one Robinhood Chain WETH market. It does not search for or seize assets. A token holder, LP owner, or project must exit an old position externally and voluntarily transfer the resulting approved settlement asset through a separately reviewed route.
+RMT's migration research is limited to helping an owner use tokens already controlled by that owner's wallet to create a new, directly owned Sushi V3 position on Robinhood Chain. It does not search for exploitable contracts, claim abandoned-looking assets, withdraw third-party liquidity, or move assets without the owner's transaction.
 
-The first implementation is intentionally isolated from the live V6 launch factory, markets, governance bootstrap, and permanent graduation position. The vault bytecode is hard-gated to Robinhood Chain testnet (`46630`), is not deployed, must not receive real-value assets, and is not an official Sushi or Robinhood product or partnership.
+The implementation is isolated from the live V6 launch factory, markets, governance bootstrap, and permanently locked graduation position. Its bytecode is hard-gated to Robinhood Chain testnet (`46630`), it is undeployed, and the deployment script is intentionally disabled. No real-value assets may be used. This is not an official Sushi or Robinhood product, endorsement, or partnership.
 
-## Product objective
+## Current release state
 
-Many launchpads produce separate tokens or shallow pools with the same ticker. Repeating that pattern across chains divides liquidity further. Liquidity Rescue uses a hub-and-spoke model instead:
+| Surface | State |
+| --- | --- |
+| Direct Sushi V3 router logic | Implemented and tested locally |
+| Robinhood Chain testnet deployment | Blocked pending verified Sushi addresses and runtime code hashes |
+| Migration transaction UI | Disabled |
+| Mainnet | Prohibited by contract bytecode |
+| Security audit | Not completed |
+| Legal/compliance review | Not completed |
 
-1. An owner exits or converts an old position outside RMT on its source chain.
-2. A proposed, independently reviewed bridge route moves an approved settlement asset directly to Robinhood Chain.
-3. A future bridge-specific intake adapter verifies the source message and contributes canonical Robinhood Chain WETH to the destination vault.
-4. The vault credits the beneficiary and records the source chain, source pool, and unique migration identifier.
-5. Once the campaign meets its minimum and receives the governance-funded paired token, deposits are paused and governance must commit the exact credited balances before invoking the fixed seeder.
-6. A future concrete seeder must prove the canonical pool, bounded execution price, minted position, and actual custodian ownership. The generic prototype interface cannot prove those facts by itself.
+## Safety-first product model
 
-No design should daisy-chain funds through multiple bridges. Every additional bridge adds cost, latency, and another failure domain.
+The earlier pooled-vault and generic-executor designs were removed. The current design has no shared customer vault and no third-party seeder or verifier:
 
-## Implemented contracts
+1. The owner exits or converts an old position outside RMT.
+2. The owner uses a reviewed bridge to deliver supported tokens to their own Robinhood Chain wallet.
+3. The owner reviews the exact pool, fee tier, tick range, amount limits, deadline, and deployment-bound terms hash.
+4. That wallet calls the testnet router and supplies only its own approved tokens.
+5. The router calls one immutable Sushi V3 non-fungible position manager directly.
+6. The manager must mint a brand-new position NFT to the same caller.
+7. Every unused token from a successful migration returns to the caller and manager allowances must be zero before completion.
+8. Any configuration, accounting, approval, ownership, position, liquidity, tick, amount, or deadline failure reverts the entire transaction.
 
-### `RMTLiquidityRescueVault`
+There is no beneficiary override, pooled campaign, custody period, delayed claim, bridge adapter, source-pool call, generic executor, arbitrary call, upgrade path, liquidity withdrawal, or administrative token sweep.
 
-The destination vault provides:
+## Implemented contract
 
-- native ETH on Robinhood Chain wrapping into the configured canonical WETH;
-- direct WETH contribution with beneficiary attribution;
-- capped bridge-adapter intake with each adapter bound to one configured source chain;
-- source-chain and global WETH caps;
-- replay keys domain-separated by destination chain, vault, adapter, source chain, source pool, and migration identifier;
-- exact-balance checks that reject fee-on-transfer or malformed token behavior;
-- separate accounting for WETH contributors and paired-token funders;
-- governance-only paired-token funding;
-- an immediate guardian pause and one-way guardian cancellation;
-- governance-only reactivation, source admission, adapter admission, and finalization;
-- finalization only while paused and only for an exact credited-balance snapshot;
-- exclusion of unsolicited ERC-20 balances from the seeded amounts;
-- permissionless cancellation after the funding deadline;
-- claim-based contributor refunds if the campaign is cancelled or expires;
-- all-or-nothing credited-amount transfer through one fixed liquidity seeder and custodian address;
-- a constructor-enforced Robinhood Chain testnet-only gate;
-- no proxy, upgrade, arbitrary call, generic token sweep, bridge call, or liquidity withdrawal method.
+### `RMTConsentLiquidityMigrator`
 
-### `ILiquidityRescueSeeder`
+The testnet-only router enforces:
 
-The vault depends on a narrow fixed interface rather than embedding a guessed DEX integration. No concrete Sushi seeder is implemented. A reviewed Sushi implementation can be added only after the canonical Robinhood Chain pool contracts and supported initialization path are confirmed.
+- one immutable paired-token/WETH market and one immutable Sushi V3 manager, factory, and pool;
+- exact runtime code-hash checks at construction, enablement, and every migration;
+- manager-to-factory, manager-to-WETH, factory-to-pool, and pool-to-token/fee/tick-spacing bindings;
+- an initially paused deployment that only the configured governance contract can enable;
+- caller-funded migration with the caller hard-coded as the new position recipient;
+- a direct `mint` call using Sushi V3's official position-manager ABI rather than a generic executor;
+- a one-position increase in manager supply, the returned ID at the newly appended enumerable index, direct caller ownership, and exact token, fee, tick, and liquidity reads before and after refunds;
+- user-selected desired amounts, minimum token use, minimum liquidity, aligned tick range, and a maximum one-hour deadline;
+- exact router outflow, caller refund receipt, preserved pre-existing router balances, and zero manager allowance after success;
+- rejection of inbound-fee, outbound-fee, malformed-approval, usage-misreporting, redirected-position, reused-position, callback-reentry, and broken-binding behavior;
+- a consent hash bound to the terms document and exact chain, router, governance, guardian, tokens, integrations, fee tier, and runtime hashes;
+- a migration identifier bound to every amount limit, liquidity limit, tick, deadline, caller nonce, and accepted terms hash;
+- OpenZeppelin's reentrancy guard and immediate guardian/governance pause;
+- rejection of native currency and a constructor-enforced Robinhood Chain testnet-only gate.
 
-The prototype checks exact credited-amount consumption plus nonzero self-reported position and liquidity values. A malicious or misconfigured seeder could still misdirect every approved token or fabricate those return values. A production seeder must bind known DEX contracts and code, enforce pool and price bounds, verify the real position onchain, and prove its owner is the configured custodian. This is a mainnet blocker, not a completed guarantee.
+The minimal ABI matches Sushi's official [`INonfungiblePositionManager`](https://github.com/sushiswap/v3-periphery/blob/master/contracts/interfaces/INonfungiblePositionManager.sol), where `mint` returns a new position ID, liquidity, and actual token amounts, and `positions` exposes the position's pair, fee, ticks, and liquidity.
 
-## Contributor rights are not designed yet
+## Important limits
 
-The current credits are refund liabilities before finalization; they are not LP shares, receipt tokens, redemption rights, or fee claims. After prototype finalization, the configured custodian controls whatever position the future seeder actually creates. RMT must define and implement enforceable ownership, redemption, revenue, and governance rights before accepting any real-value contribution. Until then, the module is testnet research only.
+Runtime code hashes are necessary deployment evidence, but a proxy can keep the same outer code while changing its implementation. Before any deployment, each manager, factory, pool, WETH, and paired token must be proven to use the reviewed non-upgradeable implementation or have its complete upgrade authority and implementation binding separately controlled and reviewed. Environment variables alone are not trusted deployment evidence.
 
-## Trust and safety boundary
+Matching an onchain hash proves that the transaction contained that hash. It does not by itself prove that a person read or understood the document. A production flow would also need the exact published terms, clear UI presentation, versioning and retention of the user's acceptance record, and qualified legal review.
 
-The destination vault does **not** prove owner authorization or activity on another chain. Each admitted bridge adapter asserts the beneficiary and must independently prove all of the following:
+User-selected minimum token amounts are execution bounds, not an independent oracle or time-weighted price guarantee. Any public release would need a reviewed quote and price-deviation policy appropriate to the fixed pool, plus clear price-impact disclosures.
 
-- the source chain and bridge route are supported;
-- the source transaction is final under that chain's security model;
-- the represented assets were controlled and voluntarily migrated by the beneficiary or project;
-- the source pool identifier and migration identifier are canonical;
-- the destination WETH was actually received;
-- the message cannot be replayed, reordered into a different campaign, or redirected to another beneficiary.
+ERC-20 tokens can be transferred directly to any contract address. Because this router intentionally has no sweep or recovery authority, tokens sent directly to it can be permanently stuck. Users must never transfer tokens to the router; a migration must begin through the reviewed transaction flow. The balance-preservation guarantee applies to a successful `migrate` call, not unsolicited transfers.
 
-Adapters must be reviewed independently and enabled through the configured governance contract. The intended production governance must be a separately verified timelock; the vault only verifies that the immutable governance address contains code and does not enforce a delay itself. A generic adapter that trusts arbitrary calldata is forbidden.
+Sushi V3 mints the LP NFT with `_mint`, not ERC-721 receiver negotiation. A contract wallet will own the position at its own address and must be able to call the position manager later. Representative Safe and account-abstraction wallets must be tested deliberately before public support; unsupported contract callers must be blocked in the UI.
 
-## Pairing with ETH on Robinhood Chain
+## Consent and source-chain boundary
 
-Robinhood Chain uses ETH as its native gas asset. The mainnet canonical WETH address published by Robinhood is `0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73`. Testnet deployments must use the independently verified testnet WETH address supplied through the deployment environment; the script deliberately does not guess it.
+RMT never touches the old position. The owner must withdraw and bridge externally, and the destination transaction must be sent by the wallet that receives the new LP NFT. Read-only market discovery may identify fragmented liquidity, but discovery creates no authority to access or move any asset.
 
-The proposed destination pool is one paired-token/WETH market. RMT and any future Sushi route should use that same liquidity instead of deploying duplicate tokens or competing pools.
+Any future delegated or one-click bridge path would need a bridge-specific proof of source ownership, a signed instruction binding the destination owner and amounts, finality and replay protection, retry and refund handling, and separate legal and security review. It is outside this prototype.
 
-## Testnet deployment
+## Testnet deployment is intentionally disabled
 
-The deployment script requires existing, reviewed components:
+The script requires all of the following only after independent verification:
 
 ```text
 DEPLOYER_PRIVATE_KEY
-RESCUE_GOVERNANCE
-RESCUE_GUARDIAN
-RESCUE_WETH
-RESCUE_PAIRED_TOKEN
-RESCUE_LIQUIDITY_SEEDER
-RESCUE_LIQUIDITY_CUSTODIAN
-RESCUE_GLOBAL_WETH_CAP
-RESCUE_MINIMUM_WETH
-RESCUE_FUNDING_DURATION
+MIGRATION_GOVERNANCE
+MIGRATION_GUARDIAN
+MIGRATION_WETH
+MIGRATION_PAIRED_TOKEN
+MIGRATION_SUSHI_V3_POSITION_MANAGER
+MIGRATION_SUSHI_V3_FACTORY
+MIGRATION_SUSHI_V3_POOL
+MIGRATION_SUSHI_V3_POOL_FEE
+MIGRATION_POSITION_MANAGER_CODE_HASH
+MIGRATION_FACTORY_CODE_HASH
+MIGRATION_POOL_CODE_HASH
+MIGRATION_WETH_CODE_HASH
+MIGRATION_PAIRED_TOKEN_CODE_HASH
+MIGRATION_TERMS_DOCUMENT_HASH
 ```
 
-Run only on Robinhood Chain testnet (`46630`):
+Even correct environment values cannot deploy the contract today. `APPROVED_CONFIGURATION_MANIFEST_HASH` is deliberately zero, so the script reverts until a reviewed source change pins an independently reproduced manifest. That manifest binds the chain, deployer, expected CREATE address, exact migrator creation-code hash, complete configuration hash, and resulting deployment-specific terms hash. The script does not guess Sushi or token addresses, runtime hashes, terms, or price policy.
 
-```bash
-forge script script/DeployLiquidityRescueTestnet.s.sol:DeployLiquidityRescueTestnet \
-  --rpc-url robinhood_testnet \
-  --broadcast
-```
+A future testnet deployment must remain paused after creation. Explorer/source verification and a second configuration check must happen before governance enables it. A testnet rehearsal is not permission to accept real-value assets.
 
-Do not deploy even on testnet until the seeder, WETH address, fixed-balance paired token, governance, guardian, and contract-based custodian have been separately verified. Testnet deployment is a rehearsal, not permission to accept real-value assets.
+## Legal and compliance release gates
+
+Self-custody, explicit wallet authorization, and the absence of contract-exploitation features reduce risk; they do not establish that operating the completed product is lawful in every jurisdiction. Before any public execution path, qualified counsel must review the actual entities, jurisdictions, software control, fees, incentives, marketing, and user flow, including:
+
+- federal and state money-transmission and custody rules;
+- securities and commodities treatment of each token, matching incentive, fee, and expected-return claim;
+- OFAC sanctions screening, blocked-property procedures, and geographic controls;
+- AML, recordkeeping, tax, privacy, and consumer-protection obligations;
+- Sushi, bridge, token, wallet, and Robinhood terms and integration permissions;
+- accurate disclosures with no promise of profit, recovery, automatic value generation, safety, or endorsement.
+
+Primary U.S. references include [FinCEN's CVC guidance](https://www.fincen.gov/resources/statutes-regulations/guidance/application-fincens-regulations-certain-business-models), [OFAC's virtual-currency guidance](https://ofac.treasury.gov/system/files/126/virtual_currency_guidance_brochure.pdf), and [FTC advertising guidance](https://www.ftc.gov/business-guidance/advertising-marketing). These references are not legal advice and do not replace advice from RMT's own counsel.
 
 ## Mainnet blockers
 
-- Sushi confirmation of the canonical pool creation and position-management contracts.
-- Concrete seeder verification of canonical pool identity, price bounds, position ownership, and actual liquidity.
-- One bridge-specific adapter and adversarial tests for each admitted route.
-- Source-chain finality, reorg, replay, and refund handling.
-- Reliable asset valuation and slippage policy for converting old LP assets to WETH.
-- Enforceable contributor ownership, receipt, redemption, fee, and governance rights after finalization.
-- Verified timelocked governance and a reviewed contract-based liquidity custodian.
-- Campaign eligibility, per-participant limits, and source-cap reservation policy.
-- Fixed-balance, non-rebasing, non-blacklisting token requirements and solvency invariants.
-- Economic and legal review of contributor rights, incentives, fees, and disclosures.
-- Independent audit of the vault, every adapter, the seeder, and the complete deployment configuration.
-- Robinhood Chain testnet rehearsal with failure recovery and explorer-verified source.
+- Officially confirmed Sushi Robinhood Chain manager, factory, pool, and WETH addresses.
+- Independently reproduced runtime hashes and proof that every bound component is non-upgradeable or fully implementation-bound.
+- Verified pool initialization, token ordering, fee tier, tick spacing, price state, and transaction-encoding policy.
+- Fixed-behavior paired-token review, including upgrade authority and transfer semantics.
+- Public, immutable, counsel-approved terms plus a reviewed UI consent record.
+- Sanctions, AML, tax, privacy, consumer, custody, money-transmission, securities, and commodities review.
+- Independent audits of the router, deployment configuration, web transaction builder, and operational controls.
+- Representative smart-wallet mint, management, withdrawal, and recovery tests; unsupported contract-wallet flows must fail closed.
+- Robinhood Chain testnet rehearsals covering price movement, failed execution, refunds, pausing, RPC disagreement, reorgs, and incident response.
+- Explorer source verification, a signed public deployment manifest, and reproducible bytecode.
+- No unresolved high-severity static-analysis, dependency, test, review, or CI findings.
 
-Until those blockers are complete, the module is a testnet-only research prototype, not a reviewed production protocol or a promise that fragmented liquidity can be recovered or profitably redeployed.
+Until every blocker is closed, this is undeployed testnet research—not a production migration service, yield product, bounty hunter, asset-recovery tool, or promise that any position can be profitably redeployed.

@@ -80,7 +80,7 @@ export function PublicChrome() {
                   <PublicLink href="/watchlist">Watchlist<small>Tokens saved on this device</small></PublicLink>
                   <PublicLink href="/sources">Sources<small>Launchpad coverage and origin labels</small></PublicLink>
                   <PublicLink href="/sushi">Sushi integration<small>Routing boundary and launch readiness</small></PublicLink>
-                  <PublicLink href="/rescue">Liquidity Rescue<small>Testnet-only multichain research</small></PublicLink>
+                  <PublicLink href="/rescue">Migration lab<small>Paused, direct-to-wallet testnet research</small></PublicLink>
                 </div>
                 <div>
                   <span>Help &amp; safety</span>

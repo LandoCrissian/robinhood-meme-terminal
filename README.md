@@ -129,4 +129,6 @@ Exact Blockscout source publication is also incomplete: key V6 explorer records 
 
 Read the [risk disclosures](https://www.rmtlaunch.fun/risks), [incident response plan](docs/INCIDENT_RESPONSE.md), [security review scope](docs/SECURITY_REVIEW_SCOPE.md), and [V6 protocol foundation](docs/V6_PROTOCOL_FOUNDATION.md) before operating or reviewing the protocol.
 
-The testnet-first [RMT Liquidity Rescue design](docs/LIQUIDITY_RESCUE.md) explores owner-authorized multichain liquidity consolidation into one Robinhood Chain WETH market. It is isolated from the live V6 contracts and is not deployed to mainnet.
+See [third-party notices](docs/THIRD_PARTY_NOTICES.md) for the Sushi V3 ABI compatibility reference and upstream licensing boundary.
+
+The testnet-first [RMT consent-based Sushi V3 migration design](docs/LIQUIDITY_RESCUE.md) explores a direct, self-custodial mint into one code-bound Robinhood Chain WETH market. It cannot access source pools or pool customer funds, is isolated from the live V6 contracts, starts paused, and remains undeployed behind an intentionally disabled deployment script.
