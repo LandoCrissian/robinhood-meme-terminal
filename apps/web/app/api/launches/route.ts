@@ -82,7 +82,10 @@ export async function GET() {
     const response = await getLaunchSnapshot();
     return Response.json(response, { headers: responseHeaders(response.source) });
   } catch (error) {
-    console.error("Fresh launch synchronization failed", error);
+    console.error(JSON.stringify({
+      event: "launch_feed_refresh_error",
+      errorType: error instanceof Error ? error.name : "UnknownError"
+    }));
     if (lastSuccessfulSnapshot) {
       const response: FeedSnapshot = {
         ...lastSuccessfulSnapshot,

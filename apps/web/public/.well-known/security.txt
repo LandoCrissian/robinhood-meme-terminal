@@ -1,0 +1,5 @@
+Contact: mailto:launchrmt@gmail.com
+Expires: 2027-07-18T23:59:59Z
+Preferred-Languages: en
+Canonical: https://www.rmtlaunch.fun/.well-known/security.txt
+Policy: https://www.rmtlaunch.fun/support
