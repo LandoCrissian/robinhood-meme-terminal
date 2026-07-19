@@ -84,6 +84,8 @@ Firebase Authentication and Firestore are optional offchain profile conveniences
 
 The public discovery feed uses the read-only Railway/PostgreSQL indexer for confirmed launch and trade data, with a same-origin shared cache and a last-confirmed-data state during delays. This avoids making every visitor rescan the complete factory history through an RPC provider. Creator concentration is enriched with a single batched balance read per shared refresh.
 
+Runner Radar ranks only eligible external base tokens quoted against canonical WETH/USDG assets, then rejects invalid or zero-address identities and confirmed RMT V6 launches. DEX Screener price and valuation fields therefore cannot be reassigned to the opposite side of a pair, and a native-asset sentinel or malformed token record can never become an external Buy/Sell target.
+
 Production monitoring requests checks of the canonical domain, V6 registry and factory bindings, immutable economics, latest market, graduation adapter, indexer health, launch-feed source, and official-market trade data every five minutes. GitHub Actions scheduling is best-effort, so an independent uptime service remains required for dependable 1–5 minute alerting.
 
 ## Repository map

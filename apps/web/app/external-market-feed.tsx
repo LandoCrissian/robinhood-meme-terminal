@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import type { ExternalMarket, ExternalMarketResponse } from "../lib/external-market";
+import { isNonzeroEvmAddress } from "../lib/external-market-identity";
 import type { ExternalMarketRiskFlag, ExternalMarketSignal } from "../lib/external-market-ranking";
 
 type FeedStatus = "loading" | "ready" | "stale" | "error";
@@ -81,7 +82,7 @@ function snapshotTime(value: string) {
 type ExternalTradeSide = "buy" | "sell";
 
 function isTradeableAddress(address: string) {
-  return /^0x[0-9a-fA-F]{40}$/.test(address);
+  return isNonzeroEvmAddress(address);
 }
 
 function isUniswapVenue(market: ExternalMarket) {

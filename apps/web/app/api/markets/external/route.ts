@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { OriginCoverage } from "@rmt/shared/market-origin";
 import type { ExternalMarket, ExternalMarketResponse } from "../../../../lib/external-market";
+import { isNonzeroEvmAddress, selectExternalPairBaseToken } from "../../../../lib/external-market-identity";
 import {
   RUNNER_THRESHOLDS,
   compareExternalMarketRank,
@@ -85,10 +86,6 @@ function asNumber(value: unknown) {
   return Number.isFinite(number) ? number : 0;
 }
 
-function isAddress(value: string) {
-  return /^0x[0-9a-fA-F]{40}$/.test(value);
-}
-
 function transactionWindow(pair: RawPair, window: string) {
   return {
     buys: Math.max(0, Math.trunc(asNumber(pair.txns?.[window]?.buys))),
@@ -97,12 +94,7 @@ function transactionWindow(pair: RawPair, window: string) {
 }
 
 function tokenFromPair(pair: RawPair) {
-  const baseAddress = asText(pair.baseToken?.address, 42).toLowerCase();
-  const quoteAddress = asText(pair.quoteToken?.address, 42).toLowerCase();
-
-  if (!EXCLUDED_TOKENS.has(baseAddress)) return pair.baseToken;
-  if (!EXCLUDED_TOKENS.has(quoteAddress)) return pair.quoteToken;
-  return undefined;
+  return selectExternalPairBaseToken(pair.baseToken, pair.quoteToken, EXCLUDED_TOKENS);
 }
 
 async function fetchTokenPairs(tokenAddress: string) {
@@ -165,7 +157,7 @@ async function resolveRmtOrigins(addresses: string[]): Promise<RmtOriginResoluti
     for (const claim of claims) {
       const token = asText(claim.token, 42);
       if (
-        isAddress(token)
+        isNonzeroEvmAddress(token)
         && claim.state === "rmt-verified"
         && claim.claimKind === "token-created"
         && claim.protocolVersion === 6
@@ -197,7 +189,7 @@ export async function GET() {
 
     const candidateAddresses = [...new Set(pairs.flatMap((pair) => {
       const address = asText(tokenFromPair(pair)?.address, 42);
-      return isAddress(address) ? [address.toLowerCase()] : [];
+      return isNonzeroEvmAddress(address) ? [address.toLowerCase()] : [];
     }))];
     const rmtOrigins = await resolveRmtOrigins(candidateAddresses);
     if (rmtOrigins.coverage !== "complete") {
@@ -234,7 +226,7 @@ export async function GET() {
       const transactions24h = transactionWindow(pair, "h24");
       const pairCreatedAt = asNumber(pair.pairCreatedAt) || null;
 
-      if (!isAddress(address) || !name || !symbol || !pairAddress) continue;
+      if (!isNonzeroEvmAddress(address) || !name || !symbol || !pairAddress) continue;
       if (rmtOrigins.tokens.has(address.toLowerCase())) continue;
       if (liquidityUsd < RUNNER_THRESHOLDS.minimumDisplayLiquidityUsd || volume24h <= 0) continue;
 
