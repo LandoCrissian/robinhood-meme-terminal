@@ -1,8 +1,27 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { FreshLaunchFeed } from "./fresh-launch-feed";
 import { isMainnetRelease } from "../lib/network";
 import { SiteFooter } from "./site-footer";
 import { LegacyHomeRedirect } from "./legacy-home-redirect";
+
+export const metadata: Metadata = {
+  title: "Robinhood Meme Terminal",
+  description: "Find momentum, inspect origin, and launch fixed-supply meme tokens on Robinhood Chain.",
+  alternates: { canonical: "/" },
+  openGraph: {
+    title: "Robinhood Meme Terminal",
+    description: "Find momentum, inspect origin, and launch fixed-supply meme tokens on Robinhood Chain.",
+    url: "/",
+    images: ["/brand/rmt-master-logo.png"]
+  },
+  twitter: {
+    card: "summary",
+    title: "Robinhood Meme Terminal",
+    description: "Find momentum, inspect origin, and launch fixed-supply meme tokens on Robinhood Chain.",
+    images: ["/brand/rmt-master-logo.png"]
+  }
+};
 
 export default function Home() {
   return (

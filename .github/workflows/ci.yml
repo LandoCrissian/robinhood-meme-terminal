@@ -26,6 +26,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm audit:production
       - run: pnpm --filter web test:profile
+      - run: pnpm --filter web test:public-discovery
       - run: pnpm --filter web test:media-guard
       - run: pnpm test:firebase-rules
       - run: pnpm --filter web test:reliability

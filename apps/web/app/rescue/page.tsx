@@ -5,7 +5,19 @@ import { SiteFooter } from "../site-footer";
 export const metadata: Metadata = {
   title: "Consent-Based Migration Lab · RMT",
   description: "Testnet-only research into atomic, self-custodial liquidity migration on Robinhood Chain.",
-  alternates: { canonical: "/rescue" }
+  alternates: { canonical: "/rescue" },
+  openGraph: {
+    title: "Consent-Based Migration Lab · RMT",
+    description: "Testnet-only research into atomic, self-custodial liquidity migration on Robinhood Chain.",
+    url: "/rescue",
+    images: ["/brand/rmt-master-logo.png"]
+  },
+  twitter: {
+    card: "summary",
+    title: "Consent-Based Migration Lab · RMT",
+    description: "Testnet-only research into atomic, self-custodial liquidity migration on Robinhood Chain.",
+    images: ["/brand/rmt-master-logo.png"]
+  }
 };
 
 const flow = [

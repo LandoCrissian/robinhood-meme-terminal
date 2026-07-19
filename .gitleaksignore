@@ -45,3 +45,4 @@ e581c39313eb45c556ae21a4bc62b968d698720a:packages/contracts/scripts/verify-mainn
 e7d37f580426dabac42e780c53d47ee23105bee3:scripts/verify-production-health-smoke.mjs:generic-api-key:68
 e7d37f580426dabac42e780c53d47ee23105bee3:scripts/verify-production-health.mjs:generic-api-key:30
 ef1003286f5689dc1df5160dbf8a38a70d78d091:apps/external-origin-indexer/shadow/bow-replay-smoke.ts:generic-api-key:57
+7af0458b3d94a53c598cb45d43ac213baf31fc3e:apps/web/app/sitemap.ts:generic-api-key:4
