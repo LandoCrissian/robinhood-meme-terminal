@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent a
 import type { ExternalMarket, ExternalMarketResponse } from "../lib/external-market";
 import { isNonzeroEvmAddress } from "../lib/external-market-identity";
 import type { ExternalMarketRiskFlag, ExternalMarketSignal } from "../lib/external-market-ranking";
+import { ipfsToHttp } from "../lib/token-metadata";
 
 type FeedStatus = "loading" | "ready" | "stale" | "error";
 
@@ -37,6 +38,18 @@ function initials(symbol: string) {
   return cleanSymbol(symbol).slice(0, 2).toUpperCase() || "↗";
 }
 
+function ExternalArtwork({ market }: { market: ExternalMarket }) {
+  const [failed, setFailed] = useState(false);
+  const image = market.project?.imageUri;
+  return (
+    <span className="coin externalArtwork" aria-hidden="true">
+      {image && !failed
+        ? <img src={ipfsToHttp(image)} alt="" loading="lazy" referrerPolicy="no-referrer" onError={() => setFailed(true)} />
+        : initials(market.symbol)}
+    </span>
+  );
+}
+
 function signalLabel(signal: ExternalMarketSignal) {
   if (signal === "moving") return "Moving now";
   if (signal === "early") return "Early signal";
@@ -63,6 +76,9 @@ function riskSummary(flags: ExternalMarketRiskFlag[]) {
 }
 
 function originLabel(market: ExternalMarket) {
+  if (market.project) {
+    return market.project.sourceName + (market.curve ? " · Launchpad-matched curve" : " · Factory-matched metadata");
+  }
   const origin = market.origin;
   if (!origin) return "External · Origin unknown";
   if (origin.kind === "rmt-v6") return "RMT V6 · Protocol verified";
@@ -86,8 +102,13 @@ function isTradeableAddress(address: string) {
 }
 
 function isUniswapVenue(market: ExternalMarket) {
-  const venue = (market.venue?.dexId ?? market.dexId).trim().toLowerCase();
+  if (market.venue.kind !== "dex") return false;
+  const venue = market.venue.dexId.trim().toLowerCase();
   return venue === "uniswap" || venue.startsWith("uniswap-");
+}
+
+function venueLabel(market: ExternalMarket) {
+  return market.venue.kind === "dex" ? market.venue.dexId : "Circus curve";
 }
 
 function canHandoffToUniswap(market: ExternalMarket) {
@@ -123,7 +144,7 @@ function ExternalTradeDialog({
   const dialog = useRef<HTMLElement>(null);
   const closeButton = useRef<HTMLButtonElement>(null);
   const value = valuation(market);
-  const venue = market.venue?.dexId ?? market.dexId;
+  const venue = venueLabel(market);
   const reviewUrl = uniswapSwapUrl(market, side);
   const sideLabel = side === "buy" ? "Buy" : "Sell";
 
@@ -180,7 +201,7 @@ function ExternalTradeDialog({
     >
       <header className="quickTradeHeader">
         <div className="quickTradeIdentity">
-          <div className="coin externalArtwork" aria-hidden="true">{initials(market.symbol)}</div>
+          <ExternalArtwork market={market} />
           <span>
             <small>EXTERNAL MARKET · UNISWAP REVIEW</small>
             <strong>{market.name}</strong>
@@ -200,7 +221,7 @@ function ExternalTradeDialog({
             <span>Venue: {venue}</span>
           </div>
           <div className="externalIdentity">
-            <span className="coin externalArtwork" aria-hidden="true">{initials(market.symbol)}</span>
+            <ExternalArtwork market={market} />
             <span>
               <strong>{market.name}</strong>
               <small>{"$" + cleanSymbol(market.symbol)}</small>
@@ -219,7 +240,10 @@ function ExternalTradeDialog({
           </div>
           {delayed && <p className="runnerDataNotice"><span>Runner data is delayed. Uniswap will calculate a fresh route and quote before any wallet confirmation.</span></p>}
           <p className="externalDisclosure">
-            This token is external and its launchpad origin is not yet verified by RMT. Uniswap provides the final route, quote, price impact, and transaction review. RMT does not custody funds or construct external swap calldata in this release.
+            {market.project
+              ? market.project.sourceName + " project metadata is read onchain and cross-checked against its factory record. This is provenance, not an endorsement. "
+              : "This token is external and its launchpad origin is not yet verified by RMT. "}
+            Uniswap provides the final route, quote, price impact, and transaction review. RMT does not custody funds or construct external swap calldata in this release.
           </p>
           <div className="externalMarketActions externalTradeReviewAction">
             <a
@@ -559,18 +583,30 @@ export function ExternalMarketFeed() {
                     <span>#{String(rankByAddress.get(market.address.toLowerCase()) ?? index + 1).padStart(2, "0")} · Score {market.momentumScore}</span>
                   </div>
                   <div className="externalIdentity">
-                    <span className="coin externalArtwork" aria-hidden="true">{initials(market.symbol)}</span>
-                    <span><strong>{market.name}</strong><small>{"$" + cleanSymbol(market.symbol)} · Venue: {market.venue?.dexId ?? market.dexId}</small></span>
+                    <ExternalArtwork market={market} />
+                    <span>
+                      <strong>{market.name}</strong>
+                      <small>{"$" + cleanSymbol(market.symbol)} · Venue: {venueLabel(market)}</small>
+                      {market.project?.creator && (
+                        <small className="runnerCreator" title={market.project.creator}>Creator {shortAddress(market.project.creator)}</small>
+                      )}
+                    </span>
                     <em>{originLabel(market)}</em>
                   </div>
                   <div className="runnerStats">
                     <span><small>{value.label}</small><strong>{money(value.value)}</strong></span>
-                    <span className={"externalChange " + changeClass}><small>5m change</small><strong>{market.priceChange5m > 0 ? "+" : ""}{market.priceChange5m.toFixed(2)}%</strong></span>
-                    <span><small>1h volume</small><strong>{money(market.volume1h)}</strong></span>
-                    <span><small>Liquidity</small><strong>{money(market.liquidityUsd)}</strong></span>
+                    {market.curve
+                      ? <span className="externalChange positive"><small>Curve progress</small><strong>{(market.curve.progressBps / 100).toFixed(2)}%</strong></span>
+                      : <span className={"externalChange " + changeClass}><small>5m change</small><strong>{market.priceChange5m > 0 ? "+" : ""}{market.priceChange5m.toFixed(2)}%</strong></span>}
+                    {market.curve
+                      ? <span><small>ETH raised</small><strong>{market.curve.ethRaised.toFixed(4)} ETH</strong></span>
+                      : <span><small>1h volume</small><strong>{money(market.volume1h)}</strong></span>}
+                    <span><small>{market.curve ? "Curve liquidity" : "Liquidity"}</small><strong>{money(market.liquidityUsd)}</strong></span>
                   </div>
                   <div className="runnerActivity">
-                    <span>{oneHourTrades > 0 ? Math.round(market.buyPressureBps / 100) + "% buys · 1h" : "No 1h trades"}</span>
+                    <span>{market.curve
+                      ? market.curve.uniqueTraders + " traders · " + market.curve.volumeQuoteEth.toFixed(3) + " ETH curve volume"
+                      : oneHourTrades > 0 ? Math.round(market.buyPressureBps / 100) + "% buys · 1h" : "No 1h trades"}</span>
                     {market.riskFlags.length > 0 && <em>{riskSummary(market.riskFlags)}</em>}
                   </div>
                   {canHandoffToUniswap(market) ? (
@@ -579,7 +615,7 @@ export function ExternalMarketFeed() {
                       <button className="sellCardAction" type="button" aria-haspopup="dialog" aria-label={"Sell " + market.name} onClick={() => openQuickTrade(market, "sell")}>Sell</button>
                     </div>
                   ) : <span className="externalBadge">VIEW ONLY · VENUE REVIEW</span>}
-                  <a className="externalChartLink" href={market.url} target="_blank" rel="noreferrer" aria-label={"View " + market.name + " market on DEX Screener"}>Chart & pair ↗</a>
+                  <a className="externalChartLink" href={market.url} target="_blank" rel="noreferrer" aria-label={"View " + market.name + " market source"}>{market.curve ? "Open verified curve ↗" : "Chart & pair ↗"}</a>
                 </article>
               );
             })}
@@ -587,7 +623,7 @@ export function ExternalMarketFeed() {
         )}
       </div>
 
-      <p className="externalDisclosure">Market data: DEX Screener. Confirmed RMT V6 launches are removed using RMT factory records. Token origin and market venue are labeled separately; external origin stays unknown until a creation adapter is contract-verified. Signals are automated filters, not endorsements or investment recommendations. For Uniswap-backed markets, Buy/Sell opens an RMT review, then Uniswap provides the fresh route and wallet transaction.</p>
+      <p className="externalDisclosure">Market data: DEX Screener plus Circus&apos;s public curve feed. Circus entries are displayed only after creator, token identity, metadata URI and live curve state agree with the pinned onchain launchpad; Pons and Noxa metadata require matching factory records. Curve volume is not labeled as 1h volume. Token origin and venue remain separate. Signals are automated filters, not endorsements or investment recommendations. Uniswap Buy/Sell requires a fresh external quote and wallet review; Circus curves remain view-only in this release.</p>
 
       {quickTrade && selectedQuickTradeMarket && canHandoffToUniswap(selectedQuickTradeMarket) && (
         <ExternalTradeDialog

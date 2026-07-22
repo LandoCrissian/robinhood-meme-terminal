@@ -328,6 +328,7 @@ main:has(.rmtDiscovery){max-width:none;padding:0 10px 36px}
 .runnerMarketCard .externalArtwork{width:30px;height:30px;border-radius:3px;font-size:.57rem}
 .runnerMarketCard .externalIdentity strong{font-size:.7rem}
 .runnerMarketCard .externalIdentity small{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.51rem}
+.runnerMarketCard .externalIdentity .runnerCreator{color:#78a984}
 .runnerMarketCard .externalIdentity em{grid-column:2;width:auto;padding:0;border:0;border-radius:0;color:#66736b;font-size:.47rem;letter-spacing:.03em}
 .runnerMarketCard .runnerStats{grid-template-columns:repeat(4,minmax(0,1fr));align-items:center;gap:0;padding:0;border-top:0}
 .runnerMarketCard .runnerStats span{height:100%;justify-content:center;padding:7px 8px;border-right:1px solid var(--terminal-line)}
@@ -681,7 +682,7 @@ main:has(.rmtDiscovery){max-width:none;padding:0 10px 36px}
   .rmtDiscoveryMetrics>span:nth-child(2n){border-right:0}
   .rmtDiscoveryMetrics>span:nth-last-child(-n+2){border-bottom:0}
   .rmtDiscoveryMetrics small{font-size:.62rem;line-height:1.3}
-  .rmtDiscoveryMetrics strong{font-size:.75rem;line-height:1.35}
+  .rmtDiscoveryMetrics strong{overflow-wrap:anywhere;white-space:normal;text-overflow:clip;font-size:.75rem;line-height:1.35}
   .rmtDiscoveryProgress{grid-column:2/-1;height:3px}
   .rmtDiscoveryActions{min-height:50px}
   .rmtDiscoveryActions .buyCardAction,.rmtDiscoveryActions .sellCardAction{min-height:50px;font-size:.78rem}

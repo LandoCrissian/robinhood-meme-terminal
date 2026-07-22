@@ -1,12 +1,20 @@
 import { NextResponse } from "next/server";
+import { createPublicClient, http } from "viem";
 import type { OriginCoverage } from "@rmt/shared/market-origin";
-import type { ExternalMarket, ExternalMarketResponse } from "../../../../lib/external-market";
+import { robinhoodChain } from "@rmt/shared/chains";
+import {
+  selectPreferredLifecycleMarket,
+  type ExternalMarket,
+  type ExternalMarketResponse
+} from "../../../../lib/external-market";
 import { isNonzeroEvmAddress, selectExternalPairBaseToken } from "../../../../lib/external-market-identity";
 import {
   RUNNER_THRESHOLDS,
   compareExternalMarketRank,
   rankExternalMarket
 } from "../../../../lib/external-market-ranking";
+import { enrichExternalProjectMetadata } from "../../../../lib/server/external-project-metadata";
+import { fetchCircusCurveMarkets } from "../../../../lib/server/circus-curve-feed";
 
 const CHAIN_SLUG = "robinhood";
 const DEXSCREENER_API = "https://api.dexscreener.com/token-pairs/v1";
@@ -19,6 +27,7 @@ const OFFICIAL_RMT_V6_TOKEN = "0xdBa33be56C89CC9fc014c4459028d7e5c7878671";
 const EXCLUDED_TOKENS = new Set(CANONICAL_MARKET_TOKENS.map((address) => address.toLowerCase()));
 const MAX_MARKETS = 32;
 const DEX_TIMEOUT_MS = 8_000;
+const CIRCUS_FALLBACK_MAX_AGE_MS = 2 * 60_000;
 const INDEXER_TIMEOUT_MS = (() => {
   const parsed = Number.parseInt(process.env.RMT_INDEXER_TIMEOUT_MS ?? "5000", 10);
   return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : 5_000;
@@ -76,6 +85,18 @@ type SuccessfulMarketSnapshot = Required<Pick<
 };
 
 let lastSuccessfulSnapshot: SuccessfulMarketSnapshot | undefined;
+let lastCircusSnapshot: { markets: ExternalMarket[]; observedAt: number } | undefined;
+
+const projectMetadataClient = createPublicClient({
+  chain: robinhoodChain,
+  transport: http(
+    process.env.RMT_MAINNET_RPC_URL
+      ?? process.env.ROBINHOOD_MAINNET_RPC_URL
+      ?? process.env.NEXT_PUBLIC_RMT_RPC_URL
+      ?? robinhoodChain.rpcUrls.default.http[0],
+    { retryCount: 1, timeout: 6_000 }
+  )
+});
 
 function asText(value: unknown, maximumLength = 80) {
   return typeof value === "string" ? value.trim().slice(0, maximumLength) : "";
@@ -181,16 +202,38 @@ function staleResponse() {
   );
 }
 
+async function fetchCircusSnapshot() {
+  try {
+    const markets = await fetchCircusCurveMarkets(projectMetadataClient);
+    lastCircusSnapshot = { markets, observedAt: Date.now() };
+    return { markets, delayed: false };
+  } catch {
+    const fallback = lastCircusSnapshot;
+    const withinFallbackWindow = fallback
+      && Date.now() - fallback.observedAt <= CIRCUS_FALLBACK_MAX_AGE_MS;
+    return {
+      markets: withinFallbackWindow ? fallback.markets : [],
+      delayed: true
+    };
+  }
+}
+
 export async function GET() {
   try {
-    const results = await Promise.all(CANONICAL_MARKET_TOKENS.map(fetchTokenPairs));
+    const [results, circusSnapshot] = await Promise.all([
+      Promise.all(CANONICAL_MARKET_TOKENS.map(fetchTokenPairs)),
+      fetchCircusSnapshot()
+    ]);
+    const circusMarkets = circusSnapshot.markets;
     const pairs = results.flat();
-    if (pairs.length === 0) throw new Error("No external market source responded.");
+    if (pairs.length === 0 && circusMarkets.length === 0) {
+      throw new Error("No external market source responded.");
+    }
 
-    const candidateAddresses = [...new Set(pairs.flatMap((pair) => {
+    const candidateAddresses = [...new Set([...pairs.flatMap((pair) => {
       const address = asText(tokenFromPair(pair)?.address, 42);
       return isNonzeroEvmAddress(address) ? [address.toLowerCase()] : [];
-    }))];
+    }), ...circusMarkets.map((market) => market.address.toLowerCase())])];
     const rmtOrigins = await resolveRmtOrigins(candidateAddresses);
     if (rmtOrigins.coverage !== "complete") {
       const stale = staleResponse();
@@ -286,40 +329,42 @@ export async function GET() {
 
       const key = address.toLowerCase();
       const existing = marketsByToken.get(key);
-      if (
-        !existing
-        || market.liquidityUsd > existing.liquidityUsd
-        || (
-          market.liquidityUsd === existing.liquidityUsd
-          && (
-            market.momentumScore > existing.momentumScore
-            || (
-              market.momentumScore === existing.momentumScore
-              && market.pairAddress.toLowerCase().localeCompare(existing.pairAddress.toLowerCase()) < 0
-            )
-          )
-        )
-      ) {
-        marketsByToken.set(key, market);
+      marketsByToken.set(key, selectPreferredLifecycleMarket(existing, market));
+    }
+
+    for (const market of circusMarkets) {
+      const key = market.address.toLowerCase();
+      if (!rmtOrigins.tokens.has(key)) {
+        marketsByToken.set(key, selectPreferredLifecycleMarket(marketsByToken.get(key), market));
       }
     }
 
-    const markets = [...marketsByToken.values()]
+    const rankedMarkets = [...marketsByToken.values()]
       .sort(compareExternalMarketRank)
       .slice(0, MAX_MARKETS);
+    const markets = await enrichExternalProjectMetadata(projectMetadataClient, rankedMarkets)
+      .catch(() => rankedMarkets);
     const snapshot: SuccessfulMarketSnapshot = {
       markets,
-      source: "DEX Screener",
+      source: circusMarkets.length > 0 ? "DEX Screener + Circus" : "DEX Screener",
       rankingVersion: "rmt-runner-v2",
       thresholds: RUNNER_THRESHOLDS,
       originCoverage: "unavailable",
       rmtOriginCoverage: "complete",
       updatedAt: new Date().toISOString()
     };
-    lastSuccessfulSnapshot = snapshot;
+    if (!circusSnapshot.delayed) lastSuccessfulSnapshot = snapshot;
 
     return NextResponse.json(
-      snapshot,
+      circusSnapshot.delayed
+        ? {
+            ...snapshot,
+            stale: true,
+            error: circusMarkets.length > 0
+              ? "Circus refresh is delayed. Showing the last onchain-verified curve snapshot."
+              : "Circus refresh is delayed. DEX markets remain current."
+          }
+        : snapshot,
       { headers: { "Cache-Control": "public, s-maxage=30, stale-while-revalidate=90" } }
     );
   } catch {
