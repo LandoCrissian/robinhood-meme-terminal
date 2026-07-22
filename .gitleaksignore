@@ -1,4 +1,4 @@
-# Reviewed 2026-07-18 with Gitleaks 8.30.1. These fingerprints are public
+# Reviewed 2026-07-22 with Gitleaks 8.30.1. These fingerprints are public
 # onchain addresses, public source hashes, or the standard Anvil test fixture.
 1465ca0ff1e4fe3ea12fa62641ffeadab7e825e9:.github/workflows/production-health.yml:generic-api-key:75
 1bfedb45bf3440508af994efc24829813c93f1ee:scripts/verify-production-health-smoke.mjs:generic-api-key:68
@@ -14,6 +14,8 @@
 2e68cf5472eba171dc6a291f9982998d20403960:packages/contracts/script/DeployMainnetV6OfficialMigration.s.sol:generic-api-key:31
 3861275c182d318c9d4efc075dc7be87b72e7509:packages/contracts/scripts/test-mainnet-fork.sh:generic-api-key:7
 5933e0a7cff540df7cb4f661252d230c3493e7aa:apps/web/app/api/deploy-mainnet/v6-source-status/route.ts:generic-api-key:64
+6026bb6b4cc509f9fb8a15c4d72c7d47ce8e9190:apps/web/lib/consent-testnet-activation.ts:generic-api-key:36
+6026bb6b4cc509f9fb8a15c4d72c7d47ce8e9190:apps/web/lib/consent-testnet-activation.ts:generic-api-key:51
 62254463cc730a59b57d6a05dbc693c1d571952d:apps/web/app/api/deploy-mainnet/v6-source-status/route.ts:generic-api-key:64
 6cdfb5941672566b4be1cd995c050cfcda0d628b:apps/external-origin-indexer/src/candidates/bow-candidate-smoke.ts:generic-api-key:48
 6cdfb5941672566b4be1cd995c050cfcda0d628b:apps/external-origin-indexer/src/candidates/bow-candidate-smoke.ts:generic-api-key:55
