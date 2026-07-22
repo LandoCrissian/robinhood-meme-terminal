@@ -2,14 +2,14 @@
 
 RMT's migration research is limited to helping an owner use tokens already controlled by that owner's wallet to create a new, directly owned Sushi V3 position on Robinhood Chain. It does not search for exploitable contracts, claim abandoned-looking assets, withdraw third-party liquidity, or move assets without the owner's transaction.
 
-The implementation is isolated from the live V6 launch factory, markets, governance bootstrap, and permanently locked graduation position. Its bytecode is hard-gated to Robinhood Chain testnet (`46630`). One source-verified, paused, no-value rehearsal is deployed there using an RMT-operated Sushi V3 ABI-compatible test fixture. No real-value assets may be used. This is not an official Sushi or Robinhood product, endorsement, or partnership.
+The implementation is isolated from the live V6 launch factory, markets, governance bootstrap, and permanently locked graduation position. Its bytecode is hard-gated to Robinhood Chain testnet (`46630`). One source-verified, initially paused, no-value rehearsal is deployed there using an RMT-operated Sushi V3 ABI-compatible test fixture. No real-value assets may be used. This is not an official Sushi or Robinhood product, endorsement, or partnership.
 
 ## Current release state
 
 | Surface | State |
 | --- | --- |
 | Consent router and accounting-session logic | Implemented, adversarially tested, and deployed in a no-value rehearsal |
-| Robinhood Chain testnet deployment | Source verified and paused; public execution disabled |
+| Robinhood Chain testnet deployment | Source verified; current state reproduced by a fail-closed, read-only public proof panel |
 | Migration transaction UI | Disabled |
 | Mainnet | Prohibited by contract bytecode |
 | Security audit | Not completed |
@@ -29,6 +29,8 @@ The earlier pooled-vault and generic-executor designs were removed. The current 
 8. Any configuration, accounting, approval, ownership, position, liquidity, tick, amount, or deadline failure reverts the entire transaction.
 
 There is no beneficiary override, pooled campaign, custody period, delayed claim, bridge adapter, source-pool call, generic executor, arbitrary call, upgrade path, liquidity withdrawal, or administrative token sweep.
+
+A normal wallet flow includes two exact-amount ERC-20 approvals before the atomic `migrate` call. “Atomic” describes the token movement, accounting, test-position mint, verification, and refunds inside that final call; it does not collapse prerequisite approvals into one transaction.
 
 ## Implemented contracts
 
@@ -77,13 +79,15 @@ RMT never touches the old position. The owner must withdraw and bridge externall
 
 Any future delegated or one-click bridge path would need a bridge-specific proof of source ownership, a signed instruction binding the destination owner and amounts, finality and replay protection, retry and refund handling, and separate legal and security review. It is outside this prototype.
 
-## Verified paused testnet rehearsal
+## Verified testnet rehearsal
 
-On July 18, 2026, RMT deployed the isolated rehearsal on Robinhood Chain Testnet through two deterministic CREATE2 transactions, each with value `0`. The RMT-operated rehearsal venue is at [`0x10af03B200b2487815dfBE4922810a7b9640A884`](https://explorer.testnet.chain.robinhood.com/address/0x10af03B200b2487815dfBE4922810a7b9640A884), the atomic consent stack is at [`0x662F4dC5fE4115BE317BeFc0D77f4C1d6adeE576`](https://explorer.testnet.chain.robinhood.com/address/0x662F4dC5fE4115BE317BeFc0D77f4C1d6adeE576), and the paused migrator is at [`0x01Cdc5FA002F0dEee4B153D31763392EC81e8f05`](https://explorer.testnet.chain.robinhood.com/address/0x01Cdc5FA002F0dEee4B153D31763392EC81e8f05).
+On July 18, 2026, RMT deployed the isolated rehearsal on Robinhood Chain Testnet through two deterministic CREATE2 transactions, each with value `0`. The RMT-operated rehearsal venue is at [`0x10af03B200b2487815dfBE4922810a7b9640A884`](https://explorer.testnet.chain.robinhood.com/address/0x10af03B200b2487815dfBE4922810a7b9640A884), the atomic consent stack is at [`0x662F4dC5fE4115BE317BeFc0D77f4C1d6adeE576`](https://explorer.testnet.chain.robinhood.com/address/0x662F4dC5fE4115BE317BeFc0D77f4C1d6adeE576), and the initially paused migrator is at [`0x01Cdc5FA002F0dEee4B153D31763392EC81e8f05`](https://explorer.testnet.chain.robinhood.com/address/0x01Cdc5FA002F0dEee4B153D31763392EC81e8f05). Its current state is reproduced by the public proof panel rather than asserted by static copy.
 
-All ten exact contract instances are source verified with Solidity `0.8.26`, Cancun EVM, optimizer 200, and via-IR. The canonical evidence is the [durable deployment record](../packages/contracts/deployments/robinhood-testnet-consent-rehearsal-2026-07-18.json) and the [testnet rehearsal runbook](CONSENT_TESTNET_REHEARSAL_DEPLOYMENT.md). The migrator remains paused, no activation or migration transaction was sent, and the hosted application exposes no deployment or execution route.
+All ten exact contract instances are source verified with Solidity `0.8.26`, Cancun EVM, optimizer 200, and via-IR. The canonical evidence is the [durable deployment record](../packages/contracts/deployments/robinhood-testnet-consent-rehearsal-2026-07-18.json) and the [testnet rehearsal runbook](CONSENT_TESTNET_REHEARSAL_DEPLOYMENT.md). The hosted application exposes no deployment or execution route.
 
-The deployed venue is a valueless RMT test fixture that matches the reviewed Sushi V3 ABI boundary. It is not an official Sushi deployment or production AMM. The separately configured integration deployment script remains locked behind a zero approved-manifest hash, so environment variables cannot turn this rehearsal into an official or mainnet deployment. Any activation, official Sushi integration, or real-value use requires a separate reviewed release.
+The public `/rescue` surface includes a read-only proof panel backed by a short-lived status endpoint. It reproduces the current chain ID, block freshness, all ten runtime hashes, immutable configuration and terms hashes, governance policy/history, pause state, position supply, session state, and router/session token balances. The endpoint accepts no input and contains no wallet or write path. A failed refresh immediately removes the green live status; RPC unavailability is shown as unavailable, while any chain, hash, binding, or pause-boundary mismatch is shown as requiring attention. The durable deployment facts remain visible, but they are never presented as a successful current-chain check after a failed read.
+
+The deployed venue is a valueless RMT test fixture that matches the reviewed Sushi V3 ABI boundary. It is not an official Sushi deployment or production AMM: it performs no price discovery or swaps, generates no fees, and its deliberately minimal sink fixture has no liquidity-withdrawal or collection path. It can demonstrate bounded consent, accounting, and direct test-NFT ownership only. The separately configured integration deployment script remains locked behind a zero approved-manifest hash, so environment variables cannot turn this rehearsal into an official or mainnet deployment. Any activation, official Sushi integration, or real-value use requires a separate reviewed release.
 
 ## Legal and compliance release gates
 
@@ -112,4 +116,4 @@ Primary U.S. references include [FinCEN's CVC guidance](https://www.fincen.gov/r
 - Explorer source verification, a signed public deployment manifest, and reproducible bytecode for any production stack.
 - No unresolved high-severity static-analysis, dependency, test, review, or CI findings.
 
-Until every blocker is closed, this remains a verified, paused, no-value testnet rehearsal—not a production migration service, yield product, bounty hunter, asset-recovery tool, or promise that any position can be profitably redeployed.
+Until every blocker is closed, this remains a verified, no-value testnet rehearsal—not a production migration service, yield product, bounty hunter, asset-recovery tool, or promise that any position can be profitably redeployed. The current pause state does not change those release boundaries.
