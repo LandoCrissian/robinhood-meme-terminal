@@ -6,7 +6,7 @@ import { useEffect, useRef } from "react";
 import { isMainnetRelease } from "../lib/network";
 import { WalletButton } from "./wallet-button";
 
-const HIDDEN_PREFIXES = ["/admin", "/deploy-consent-testnet", "/deploy-mainnet", "/deploy-testnet", "/mainnet-smoke"];
+const HIDDEN_PREFIXES = ["/activate-consent-testnet", "/admin", "/deploy-consent-testnet", "/deploy-mainnet", "/deploy-testnet", "/mainnet-smoke"];
 const MORE_PREFIXES = ["/portfolio", "/watchlist", "/sources", "/sushi", "/rescue", "/support", "/risks"];
 
 function currentPage(pathname: string, href: string) {
