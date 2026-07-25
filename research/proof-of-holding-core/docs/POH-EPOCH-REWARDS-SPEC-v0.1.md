@@ -109,8 +109,9 @@ totalAllocation = externalFunding + rolloverFunding
 ```
 
 `externalFunding` is transferred from the publisher during proposal. The distributor verifies the
-exact increase in its reward-token balance. Fee-on-transfer, rebasing, or otherwise non-exact
-reward assets are outside v0.1 conformance.
+exact increase in its reward-token balance. Claims and cancellation refunds also verify both the
+exact distributor debit and the exact recipient credit. Fee-on-transfer, rebasing, reflective, or
+otherwise non-exact reward assets are outside v0.1 conformance.
 
 `rolloverFunding` comes from the distributor's non-withdrawable rollover balance.
 
@@ -276,7 +277,9 @@ The contract verifies:
 6. cumulative claims do not exceed the funded allocation.
 
 State is updated before the ERC-20 transfer. OpenZeppelin `SafeERC20` and a reentrancy guard are
-used on transfer-bearing entry points.
+used on transfer-bearing entry points. The distributor then verifies that its balance decreased by
+exactly the claim amount and that the beneficiary's balance increased by exactly that amount. Any
+non-exact payout reverts the complete claim, including bitmap and reserve changes.
 
 ## 12. Batch claims
 
