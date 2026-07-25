@@ -36,6 +36,7 @@ contract EpochRewardsHandler {
     }
 
     function acceptPublisher() external {
+        if (distributor.pendingPublisher() != address(this)) return;
         distributor.acceptPublisher();
     }
 
@@ -93,13 +94,7 @@ contract EpochRewardsHandler {
         }
 
         bytes32[] memory proof = new bytes32[](0);
-        distributor.claim(
-            epochId,
-            0,
-            accountByEpoch[epochId],
-            allocationByEpoch[epochId],
-            proof
-        );
+        distributor.claim(epochId, 0, accountByEpoch[epochId], allocationByEpoch[epochId], proof);
     }
 
     function expire(uint8 epochSeed) external {
@@ -183,8 +178,7 @@ contract EpochRewardsInvariantTest is TestBase {
         uint256 accounted = distributor.accountedBalance();
         assertEq(
             accounted,
-            distributor.pendingReserved()
-                + distributor.finalizedReserved()
+            distributor.pendingReserved() + distributor.finalizedReserved()
                 + distributor.rolloverBalance()
         );
         assertGe(token.balanceOf(address(distributor)), accounted);
