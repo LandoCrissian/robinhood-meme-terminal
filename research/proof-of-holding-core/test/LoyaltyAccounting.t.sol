@@ -7,6 +7,8 @@ import { PoHPolicyV1 } from "../src/PoHPolicyV1.sol";
 import { ProofOfHoldingToken } from "../src/ProofOfHoldingToken.sol";
 import { TestBase } from "./TestBase.sol";
 
+contract MockSystem {}
+
 contract LoyaltyAccountingTest is TestBase {
     address internal constant ALICE = address(0xA11CE);
     address internal constant BOB = address(0xB0B);
@@ -122,6 +124,61 @@ contract LoyaltyAccountingTest is TestBase {
         assertEq(position.eligibleBalance, 10_000e18);
         assertEq(position.weightedAcquisitionTime, block.timestamp);
         assertEq(position.positionId, 1);
+    }
+
+    function testExcludingSystemAddressResetsLoyaltyWithoutMovingTokens() public {
+        MockSystem system = new MockSystem();
+
+        vm.prank(ALICE);
+        token.transfer(address(system), 100e18);
+        vm.warp(block.timestamp + 7 days);
+
+        accounting.setExcluded(address(system), true, keccak256("TEST_SYSTEM_EXCLUSION"));
+
+        IProofOfHoldingCore.Position memory position = accounting.positionOf(address(system));
+        assertTrue(accounting.isExcluded(address(system)));
+        assertEq(position.eligibleBalance, 0);
+        assertEq(position.weightedAcquisitionTime, 0);
+        assertEq(position.activeSince, 0);
+        assertEq(position.lifetimeBalanceSeconds, 100e18 * 7 days);
+        assertEq(position.lastPositionReset, block.timestamp);
+        assertEq(token.balanceOf(address(system)), 100e18);
+    }
+
+    function testNonGovernanceCannotChangeEligibility() public {
+        MockSystem system = new MockSystem();
+
+        vm.expectRevert(LoyaltyAccounting.OnlyGovernance.selector);
+        vm.prank(ALICE);
+        accounting.setExcluded(address(system), true, keccak256("UNAUTHORIZED"));
+    }
+
+    function testGovernanceTransferIsTwoStep() public {
+        accounting.transferGovernance(BOB);
+        assertEq(accounting.governance(), address(this));
+        assertEq(accounting.pendingGovernance(), BOB);
+
+        vm.expectRevert(LoyaltyAccounting.OnlyPendingGovernance.selector);
+        vm.prank(ALICE);
+        accounting.acceptGovernance();
+
+        vm.prank(BOB);
+        accounting.acceptGovernance();
+        assertEq(accounting.governance(), BOB);
+        assertEq(accounting.pendingGovernance(), address(0));
+
+        MockSystem system = new MockSystem();
+        vm.expectRevert(LoyaltyAccounting.OnlyGovernance.selector);
+        accounting.setExcluded(address(system), true, keccak256("OLD_GOVERNANCE"));
+
+        vm.prank(BOB);
+        accounting.setExcluded(address(system), true, keccak256("NEW_GOVERNANCE"));
+        assertTrue(accounting.isExcluded(address(system)));
+    }
+
+    function testPermanentExclusionCannotBeRemoved() public {
+        vm.expectRevert(LoyaltyAccounting.PermanentExclusion.selector);
+        accounting.setExcluded(address(token), false, keccak256("INVALID_UNEXCLUDE"));
     }
 
     function testBalanceSecondsAccrueWithoutInteraction() public {
