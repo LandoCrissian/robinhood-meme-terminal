@@ -97,7 +97,7 @@ contract LoyaltyAccountingTest is TestBase {
         vm.warp(block.timestamp + 365 days);
 
         vm.prank(ALICE);
-        token.transfer(BOB, 1_000e18);
+        token.transfer(BOB, 1000e18);
 
         assertEq(accounting.holdingAge(BOB), 0);
         assertEq(accounting.continuousHoldingDuration(BOB), 0);
@@ -156,10 +156,9 @@ contract LoyaltyAccountingTest is TestBase {
         accounting.onTokenTransfer(ALICE, BOB, 1e18);
     }
 
-    function testFuzzTrackedBalancesMatchTokenBalances(
-        uint128 aliceToBob,
-        uint128 bobToAlice
-    ) public {
+    function testFuzzTrackedBalancesMatchTokenBalances(uint128 aliceToBob, uint128 bobToAlice)
+        public
+    {
         uint256 amountAB = uint256(aliceToBob) % token.balanceOf(ALICE);
         vm.prank(ALICE);
         token.transfer(BOB, amountAB);

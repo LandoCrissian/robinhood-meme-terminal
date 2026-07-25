@@ -12,7 +12,7 @@ import { IProofOfHoldingCore } from "./interfaces/IProofOfHoldingCore.sol";
 /// @notice Transfer-aware, non-custodial holding-state accounting for one ERC-20 token.
 /// @dev Only the immutable token may mutate positions through `onTokenTransfer`.
 contract LoyaltyAccounting is IProofOfHoldingCore, IERC165 {
-    uint32 internal constant VERSION = 1_000; // semantic version 0.1.0
+    uint32 internal constant VERSION = 1000; // semantic version 0.1.0
 
     bytes32 public constant RESET_FULL_EXIT = keccak256("POH_RESET_FULL_EXIT");
     bytes32 public constant RESET_EXCLUDED = keccak256("POH_RESET_EXCLUDED");
@@ -40,13 +40,9 @@ contract LoyaltyAccounting is IProofOfHoldingCore, IERC165 {
     error TimestampExceedsUint64(uint256 timestamp);
 
     event GovernanceTransferStarted(
-        address indexed currentGovernance,
-        address indexed pendingGovernance
+        address indexed currentGovernance, address indexed pendingGovernance
     );
-    event GovernanceTransferred(
-        address indexed previousGovernance,
-        address indexed newGovernance
-    );
+    event GovernanceTransferred(address indexed previousGovernance, address indexed newGovernance);
 
     modifier onlyToken() {
         if (msg.sender != token) revert OnlyToken();
@@ -64,7 +60,9 @@ contract LoyaltyAccounting is IProofOfHoldingCore, IERC165 {
         address policy_,
         address[] memory initialExcluded
     ) {
-        if (token_ == address(0) || governance_ == address(0)) revert ZeroAddress();
+        if (token_ == address(0) || governance_ == address(0)) {
+            revert ZeroAddress();
+        }
         if (policy_ == address(0) || policy_.code.length == 0) revert InvalidPolicy();
 
         token = token_;
@@ -173,11 +171,10 @@ contract LoyaltyAccounting is IProofOfHoldingCore, IERC165 {
     /// @notice Adds or removes a system-address exclusion.
     /// @dev Unexcluding an account starts a new position at the current timestamp using its
     /// current token balance. No historical age is restored.
-    function setExcluded(
-        address account,
-        bool excluded,
-        bytes32 reasonHash
-    ) external onlyGovernance {
+    function setExcluded(address account, bool excluded, bytes32 reasonHash)
+        external
+        onlyGovernance
+    {
         if (account == address(0)) revert ZeroAddress();
         if (_excluded[account] == excluded) revert NoEligibilityChange();
         if (!excluded && permanentExcluded[account]) revert PermanentExclusion();
@@ -220,11 +217,7 @@ contract LoyaltyAccounting is IProofOfHoldingCore, IERC165 {
             // Algebraically equivalent to:
             // (previousBalance * previousTimestamp + amount * checkpointTime) / newBalance
             // but avoids overflowing the timestamp products.
-            uint256 timestampShift = Math.mulDiv(
-                amount,
-                elapsedFromWeightedTime,
-                newBalance
-            );
+            uint256 timestampShift = Math.mulDiv(amount, elapsedFromWeightedTime, newBalance);
 
             position.weightedAcquisitionTime = uint64(previousTimestamp + timestampShift);
             position.eligibleBalance = uint192(newBalance);

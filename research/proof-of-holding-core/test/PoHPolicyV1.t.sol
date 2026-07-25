@@ -21,8 +21,8 @@ contract PoHPolicyV1Test is TestBase {
     }
 
     function testMultiplierIsMonotonic(uint32 first, uint32 second) public view {
-        uint256 a = uint256(first) % (3_650 days);
-        uint256 b = uint256(second) % (3_650 days);
+        uint256 a = uint256(first) % (3650 days);
+        uint256 b = uint256(second) % (3650 days);
         if (a > b) (a, b) = (b, a);
 
         assertLe(policy.multiplierWad(a), policy.multiplierWad(b));

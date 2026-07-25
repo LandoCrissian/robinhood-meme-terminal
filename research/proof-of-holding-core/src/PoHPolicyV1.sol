@@ -43,10 +43,12 @@ contract PoHPolicyV1 is IPoHPolicy {
     }
 
     /// @inheritdoc IPoHPolicy
-    function rewardWeight(
-        uint256 averageEligibleBalance,
-        uint256 ageSeconds
-    ) external pure override returns (uint256) {
+    function rewardWeight(uint256 averageEligibleBalance, uint256 ageSeconds)
+        external
+        pure
+        override
+        returns (uint256)
+    {
         return Math.mulDiv(averageEligibleBalance, multiplierWad(ageSeconds), WAD);
     }
 }

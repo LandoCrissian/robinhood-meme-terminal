@@ -15,8 +15,8 @@ interface IPoHPolicy {
     function loyaltyTier(uint256 ageSeconds) external pure returns (uint8);
 
     /// @notice Converts an average eligible balance and holding age into reward weight.
-    function rewardWeight(
-        uint256 averageEligibleBalance,
-        uint256 ageSeconds
-    ) external pure returns (uint256);
+    function rewardWeight(uint256 averageEligibleBalance, uint256 ageSeconds)
+        external
+        pure
+        returns (uint256);
 }

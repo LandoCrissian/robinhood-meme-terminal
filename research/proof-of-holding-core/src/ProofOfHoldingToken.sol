@@ -34,12 +34,7 @@ contract ProofOfHoldingToken is ERC20, ERC20Burnable, ERC20Permit {
             revert SupplyExceedsAccountingBound(initialSupply_, MAX_SUPPLY);
         }
 
-        accounting = new LoyaltyAccounting(
-            address(this),
-            governance_,
-            policy_,
-            initialExcluded_
-        );
+        accounting = new LoyaltyAccounting(address(this), governance_, policy_, initialExcluded_);
 
         _mint(initialHolder_, initialSupply_);
     }

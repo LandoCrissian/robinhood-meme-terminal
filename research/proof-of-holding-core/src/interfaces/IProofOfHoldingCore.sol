@@ -38,10 +38,7 @@ interface IProofOfHoldingCore {
     );
 
     event EligibilityUpdated(
-        address indexed account,
-        bool excluded,
-        bytes32 indexed reasonHash,
-        uint64 effectiveAt
+        address indexed account, bool excluded, bytes32 indexed reasonHash, uint64 effectiveAt
     );
 
     function token() external view returns (address);
