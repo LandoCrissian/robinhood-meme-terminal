@@ -12,7 +12,8 @@ path.
 - Solidity sources compile with Solidity `0.8.36` under Foundry `v1.7.1`.
 - Forty-six Solidity test functions pass, including 2,000-run fuzz tests, two stateful invariant
   suites configured for 512 runs at depth 128, and Python-to-Solidity Merkle vectors.
-- Thirty Python tests pass across the holding model, reward model, and deterministic epoch builder.
+- Thirty-two Python tests pass across the holding model, reward model, and deterministic epoch
+  builder, including nineteen builder-specific tests.
 - The holding and reward models each include a deterministic 50,000-operation state simulation.
 - Builder tests include 10,000 randomized allocation datasets and 250 randomized Merkle datasets.
 - Fixture roots, leaves, and proofs are cross-checked with `@openzeppelin/merkle-tree@1.0.8` and
@@ -60,7 +61,10 @@ path.
 - dependency-free Ethereum Keccak-256;
 - strict fixed-width ABI encoding;
 - exact PoHPolicyV1 integer multiplier and reward-weight math;
+- mandatory binding to the exact PoHPolicyV1 `policyHash`;
 - duplicate-wallet normalization and conflict rejection;
+- semantically equivalent split and merged rows producing identical artifacts;
+- `uint192`-bounded balance-seconds validation matching PoH Core;
 - automatic system-address exclusions;
 - deterministic largest-remainder allocation;
 - exact allocation conservation down to the smallest reward-token unit;
@@ -68,6 +72,7 @@ path.
 - sorted leaves, sorted-pair nodes, roots, tree indices, and proofs;
 - canonical normalized-input, calculation, dataset, claims, and manifest files;
 - builder-source and artifact commitments;
+- semantic verification that rebuilds the complete artifact stack rather than checking only hashes;
 - build and independent verify CLI commands;
 - official OpenZeppelin JavaScript and Solidity cross-checks.
 
@@ -196,11 +201,14 @@ python epoch_builder.py verify \
 - Unclaimed expired value becomes rollover; it never becomes publisher revenue.
 - The contract rejects reward-token behavior that underfunds the distributor or underpays a
   beneficiary relative to the recorded amount.
-- The builder uses epoch-average balance, PoHPolicyV1 age at epoch close, and integer reward weight.
+- The builder requires the exact PoHPolicyV1 hash and uses epoch-average balance, age at epoch close,
+  and integer reward weight.
 - Largest-remainder allocation distributes every funded base unit with deterministic address
   tie-breaking.
 - Positive allocations receive contiguous address-ordered leaf indices before leaf hashes are
   sorted into the OpenZeppelin complete-tree layout.
+- Artifact verification reconstructs normalized input, calculation semantics, allocations, leaves,
+  proofs, root, and manifest before accepting the files.
 
 ## Trust boundary
 
