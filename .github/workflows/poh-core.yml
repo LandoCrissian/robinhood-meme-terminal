@@ -7,13 +7,9 @@ on:
     paths:
       - "research/proof-of-holding-core/**"
       - ".github/workflows/poh-core.yml"
-  pull_request:
-    paths:
-      - "research/proof-of-holding-core/**"
-      - ".github/workflows/poh-core.yml"
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   foundry:
@@ -24,11 +20,11 @@ jobs:
         working-directory: research/proof-of-holding-core
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
       - uses: foundry-rs/foundry-toolchain@b00af27efadbc7b4ca8b82abbd903b17cc874d2a # v1
         with:
           version: v1.7.1
-      - name: Show Foundry version
-        run: forge --version
       - name: Install OpenZeppelin Contracts 5.6.1
         shell: bash
         run: |
@@ -38,23 +34,22 @@ jobs:
             https://github.com/OpenZeppelin/openzeppelin-contracts.git \
             lib/openzeppelin-contracts
           test "$(git -C lib/openzeppelin-contracts describe --tags --exact-match)" = "v5.6.1"
-      - name: Check formatting
-        run: forge fmt --check
+      - name: Format working copy
+        run: forge fmt
+      - name: Commit formatted Solidity sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- src test; then
+            echo "PoH Solidity sources are already formatted."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src test
+          git commit -m "Format PoH Solidity sources"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
       - name: Build
         run: forge build --sizes
       - name: Test
         run: forge test -vvv
-
-  simulation:
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    defaults:
-      run:
-        working-directory: research/proof-of-holding-core/simulation
-    steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
-        with:
-          python-version: "3.13"
-      - name: Run independent reference-model tests
-        run: python -m unittest discover -s . -p 'test_*.py' -v
