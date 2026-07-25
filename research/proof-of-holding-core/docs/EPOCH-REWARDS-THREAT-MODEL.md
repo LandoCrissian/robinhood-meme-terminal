@@ -102,12 +102,18 @@ Control: cumulative claims cannot exceed `totalAllocation`, regardless of Merkle
 Residual risk: later valid leaves may become unclaimable. The dataset sum must be independently
 reproduced before finalization.
 
-### Fee-on-transfer or rebasing reward token
+### Fee-on-transfer, reflective, or rebasing reward token
 
-Control: proposal and rollover funding verify the exact contract-balance increase.
+Controls:
 
-Residual risk: negative rebases or nonstandard outbound transfers remain unsupported. V0.1 is
-intended for WETH or another exact-transfer ERC-20.
+- proposal and rollover funding verify the exact distributor-balance increase;
+- claims and cancellation refunds verify the exact distributor debit;
+- claims and cancellation refunds verify the exact recipient credit;
+- a non-exact transfer reverts the complete state transition.
+
+Residual risk: negative rebases, proxy-upgraded token behavior, or balance changes outside a
+transfer can still make the distributor insolvent. V0.1 is intended for canonical WETH or another
+reviewed exact-transfer ERC-20.
 
 ### Reentrancy through reward token
 
