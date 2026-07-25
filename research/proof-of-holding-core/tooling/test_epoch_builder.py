@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import json
 import random
 import tempfile
 import unittest
@@ -18,6 +19,7 @@ BASE_INPUT = {
     "pohToken": "0x2222222222222222222222222222222222222222",
     "pohAccounting": "0x3333333333333333333333333333333333333333",
     "pohPolicy": "0x4444444444444444444444444444444444444444",
+    "policyHash": "0x9199827b32332fc31a20d3c88fef4a602275345bd7c6e0f2d18859c5d86042c4",
     "rewardToken": "0x5555555555555555555555555555555555555555",
     "epochId": 7,
     "rewardAmount": "100000000000000000003",
@@ -51,7 +53,7 @@ BASE_INPUT = {
 }
 
 EXPECTED_SAMPLE_ROOT = "0x514e0688ad973ec95f197e4c9e814bd1e4f5d71ea6d319668dbefacc14bfbe8a"
-EXPECTED_SAMPLE_DATASET_HASH = "0x5c1578fc9e381d9baf153a7030637ca35642de35b210d902114dec9402d85de5"
+EXPECTED_SAMPLE_DATASET_HASH = "0x4d1ca9ec7f1fa84e127a9acef8659187001f5b19b034391e20ed488a08ea00ea"
 
 
 def address(index: int) -> str:
@@ -144,7 +146,14 @@ class EpochBuilderTest(unittest.TestCase):
                 "epochBalanceSeconds": str(amount - amount // 2),
             }
         )
-        expected = builder.build_epoch(raw, builder_source_sha256=FIXED_SOURCE_SHA256)
+        expected = builder.build_epoch(
+            copy.deepcopy(BASE_INPUT),
+            builder_source_sha256=FIXED_SOURCE_SHA256,
+        )
+        split = builder.build_epoch(raw, builder_source_sha256=FIXED_SOURCE_SHA256)
+        self.assertEqual(split.manifest, expected.manifest)
+        self.assertEqual(split.dataset, expected.dataset)
+        self.assertEqual(split.claims, expected.claims)
 
         rng = random.Random(0x504F48)
         for _ in range(25):
@@ -165,6 +174,21 @@ class EpochBuilderTest(unittest.TestCase):
         duplicate["weightedAcquisitionTimestamp"] += 1
         raw["positions"].append(duplicate)
         with self.assertRaisesRegex(builder.EpochBuilderError, "conflicting weighted"):
+            builder.build_epoch(raw, builder_source_sha256=FIXED_SOURCE_SHA256)
+
+    def test_wrong_policy_hash_is_rejected(self) -> None:
+        raw = copy.deepcopy(BASE_INPUT)
+        raw["policyHash"] = "0x" + "11" * 32
+        with self.assertRaisesRegex(builder.EpochBuilderError, "PoHPolicyV1 hash"):
+            builder.build_epoch(raw, builder_source_sha256=FIXED_SOURCE_SHA256)
+
+    def test_impossible_balance_seconds_are_rejected(self) -> None:
+        raw = copy.deepcopy(BASE_INPUT)
+        duration = raw["epochEndTimestamp"] - raw["epochStartTimestamp"]
+        raw["positions"][0]["epochBalanceSeconds"] = str(
+            (builder.UINT192_MAX + 1) * duration
+        )
+        with self.assertRaisesRegex(builder.EpochBuilderError, "uint192 balance capacity"):
             builder.build_epoch(raw, builder_source_sha256=FIXED_SOURCE_SHA256)
 
     def test_unknown_fields_and_floats_are_rejected(self) -> None:
@@ -198,7 +222,9 @@ class EpochBuilderTest(unittest.TestCase):
         )
         artifacts = builder.build_epoch(raw, builder_source_sha256=FIXED_SOURCE_SHA256)
         row = next(
-            item for item in artifacts.dataset["rows"] if item["account"] == raw["distributor"]
+            item
+            for item in artifacts.dataset["rows"]
+            if item["account"] == raw["distributor"]
         )
         self.assertTrue(row["excluded"])
         self.assertEqual(row["rewardWeight"], "0")
@@ -250,7 +276,7 @@ class EpochBuilderTest(unittest.TestCase):
             builder_source_sha256=FIXED_SOURCE_SHA256,
         )
         artifacts.claims["claims"][0]["amount"] = "1"
-        with self.assertRaisesRegex(builder.EpochBuilderError, "claims hash mismatch"):
+        with self.assertRaisesRegex(builder.EpochBuilderError, "claims do not match"):
             builder.verify_artifacts(artifacts)
 
     def test_write_load_and_verify_roundtrip(self) -> None:
