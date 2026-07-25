@@ -35,8 +35,8 @@ contract EpochRewardsDistributor is IPoHEpochRewards, IERC165, ReentrancyGuard {
     uint256 public rolloverBalance;
 
     mapping(uint256 epochId => Epoch epochData) private _epochs;
-    mapping(uint256 epochId => mapping(uint256 wordIndex => uint256 claimedWord))
-        private _claimedBitMap;
+    mapping(uint256 epochId => mapping(uint256 wordIndex => uint256 claimedWord)) private
+        _claimedBitMap;
 
     error OnlyPublisher();
     error OnlyPendingPublisher();
@@ -48,6 +48,9 @@ contract EpochRewardsDistributor is IPoHEpochRewards, IERC165, ReentrancyGuard {
     error FundingMismatch(uint256 allocation, uint256 externalFunding, uint256 rolloverFunding);
     error InsufficientRollover(uint256 requested, uint256 available);
     error UnsupportedRewardTokenTransfer(uint256 requested, uint256 received);
+    error UnsupportedRewardTokenPayout(
+        address recipient, uint256 requested, uint256 debited, uint256 credited
+    );
     error InvalidSourceRange(uint64 sourceStartBlock, uint64 sourceEndBlock);
     error MissingCommitment();
     error InvalidEpochStatus(uint256 epochId, EpochStatus expected, EpochStatus actual);
@@ -63,8 +66,7 @@ contract EpochRewardsDistributor is IPoHEpochRewards, IERC165, ReentrancyGuard {
     error TimestampExceedsUint64(uint256 timestamp);
 
     event PublisherTransferStarted(
-        address indexed currentPublisher,
-        address indexed pendingPublisher
+        address indexed currentPublisher, address indexed pendingPublisher
     );
     event PublisherTransferred(address indexed previousPublisher, address indexed newPublisher);
 
@@ -141,7 +143,8 @@ contract EpochRewardsDistributor is IPoHEpochRewards, IERC165, ReentrancyGuard {
         if (sourceStartBlock > sourceEndBlock) {
             revert InvalidSourceRange(sourceStartBlock, sourceEndBlock);
         }
-        if (policyHash == bytes32(0) || datasetHash == bytes32(0) || calculationHash == bytes32(0)) {
+        if (policyHash == bytes32(0) || datasetHash == bytes32(0) || calculationHash == bytes32(0))
+        {
             revert MissingCommitment();
         }
 
@@ -201,17 +204,12 @@ contract EpochRewardsDistributor is IPoHEpochRewards, IERC165, ReentrancyGuard {
 
         uint256 externalRefund = epochData.externalFunding;
         if (externalRefund != 0) {
-            rewardToken.safeTransfer(epochData.funder, externalRefund);
+            _pushExact(epochData.funder, externalRefund);
         }
 
         _assertSolvent();
 
-        emit EpochCancelled(
-            epochId,
-            epochData.funder,
-            externalRefund,
-            epochData.rolloverFunding
-        );
+        emit EpochCancelled(epochId, epochData.funder, externalRefund, epochData.rolloverFunding);
     }
 
     /// @notice Finalizes a reviewed epoch. Anyone may call after the immutable delay.
@@ -234,10 +232,7 @@ contract EpochRewardsDistributor is IPoHEpochRewards, IERC165, ReentrancyGuard {
         _assertSolvent();
 
         emit EpochFinalized(
-            epochId,
-            epochData.merkleRoot,
-            epochData.totalAllocation,
-            epochData.claimDeadline
+            epochId, epochData.merkleRoot, epochData.totalAllocation, epochData.claimDeadline
         );
     }
 
@@ -324,22 +319,14 @@ contract EpochRewardsDistributor is IPoHEpochRewards, IERC165, ReentrancyGuard {
     }
 
     /// @inheritdoc IPoHEpochRewards
-    function leafHash(
-        uint256 epochId,
-        uint256 index,
-        address account,
-        uint256 amount
-    ) public view override returns (bytes32) {
+    function leafHash(uint256 epochId, uint256 index, address account, uint256 amount)
+        public
+        view
+        override
+        returns (bytes32)
+    {
         bytes32 innerHash = keccak256(
-            abi.encode(
-                LEAF_DOMAIN,
-                block.chainid,
-                address(this),
-                epochId,
-                index,
-                account,
-                amount
-            )
+            abi.encode(LEAF_DOMAIN, block.chainid, address(this), epochId, index, account, amount)
         );
         return keccak256(bytes.concat(innerHash));
     }
@@ -358,9 +345,7 @@ contract EpochRewardsDistributor is IPoHEpochRewards, IERC165, ReentrancyGuard {
         if (account == address(0) || amount == 0 || isClaimed(epochId, index)) return false;
 
         return MerkleProof.verifyCalldata(
-            proof,
-            epochData.merkleRoot,
-            leafHash(epochId, index, account, amount)
+            proof, epochData.merkleRoot, leafHash(epochId, index, account, amount)
         );
     }
 
@@ -412,7 +397,7 @@ contract EpochRewardsDistributor is IPoHEpochRewards, IERC165, ReentrancyGuard {
         epochData.totalClaimed = newTotalClaimed;
         finalizedReserved -= amount;
 
-        rewardToken.safeTransfer(account, amount);
+        _pushExact(account, amount);
         _assertSolvent();
 
         emit RewardClaimed(epochId, index, account, amount, msg.sender);
@@ -432,17 +417,36 @@ contract EpochRewardsDistributor is IPoHEpochRewards, IERC165, ReentrancyGuard {
         if (received != amount) revert UnsupportedRewardTokenTransfer(amount, received);
     }
 
+    function _pushExact(address recipient, uint256 amount) internal {
+        uint256 senderBalanceBefore = rewardToken.balanceOf(address(this));
+        uint256 recipientBalanceBefore = rewardToken.balanceOf(recipient);
+
+        rewardToken.safeTransfer(recipient, amount);
+
+        uint256 senderBalanceAfter = rewardToken.balanceOf(address(this));
+        uint256 recipientBalanceAfter = rewardToken.balanceOf(recipient);
+        uint256 debited = senderBalanceBefore >= senderBalanceAfter
+            ? senderBalanceBefore - senderBalanceAfter
+            : 0;
+        uint256 credited = recipientBalanceAfter >= recipientBalanceBefore
+            ? recipientBalanceAfter - recipientBalanceBefore
+            : 0;
+
+        if (debited != amount || credited != amount) {
+            revert UnsupportedRewardTokenPayout(recipient, amount, debited, credited);
+        }
+    }
+
     function _assertSolvent() internal view {
         uint256 tokenBalance = rewardToken.balanceOf(address(this));
         uint256 accounted = accountedBalance();
         if (tokenBalance < accounted) revert RewardAccountingInsolvent(tokenBalance, accounted);
     }
 
-    function _requireStatus(
-        uint256 epochId,
-        EpochStatus actual,
-        EpochStatus expected
-    ) internal pure {
+    function _requireStatus(uint256 epochId, EpochStatus actual, EpochStatus expected)
+        internal
+        pure
+    {
         if (actual != expected) revert InvalidEpochStatus(epochId, expected, actual);
     }
 
