@@ -7,10 +7,13 @@ on:
     paths:
       - "research/proof-of-holding-core/**"
       - ".github/workflows/poh-core.yml"
-      - ".gitleaksignore"
+  pull_request:
+    paths:
+      - "research/proof-of-holding-core/**"
+      - ".github/workflows/poh-core.yml"
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   foundry:
@@ -21,8 +24,6 @@ jobs:
         working-directory: research/proof-of-holding-core
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-        with:
-          fetch-depth: 0
       - uses: foundry-rs/foundry-toolchain@b00af27efadbc7b4ca8b82abbd903b17cc874d2a # v1
         with:
           version: v1.7.1
@@ -37,21 +38,8 @@ jobs:
             https://github.com/OpenZeppelin/openzeppelin-contracts.git \
             lib/openzeppelin-contracts
           test "$(git -C lib/openzeppelin-contracts describe --tags --exact-match)" = "v5.6.1"
-      - name: Format working copy
-        run: forge fmt
-      - name: Commit formatted Solidity sources
-        shell: bash
-        run: |
-          set -euo pipefail
-          if git diff --quiet -- src test; then
-            echo "PoH Solidity sources are already formatted."
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src test
-          git commit -m "Format PoH Solidity sources"
-          git push origin "HEAD:${GITHUB_REF_NAME}"
+      - name: Check formatting
+        run: forge fmt --check
       - name: Build
         run: forge build --sizes
       - name: Test
