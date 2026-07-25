@@ -226,24 +226,14 @@ contract EpochRewardsDistributorTest is TestBase {
 
     function testOutboundFeeRewardTokenCannotUnderpayBeneficiary() public {
         MockOutboundFeeToken feeToken = new MockOutboundFeeToken();
-        EpochRewardsDistributor feeDistributor = new EpochRewardsDistributor(
-            feeToken, address(this)
-        );
+        EpochRewardsDistributor feeDistributor =
+            new EpochRewardsDistributor(feeToken, address(this));
         feeToken.mint(address(this), 100e18);
         feeToken.approve(address(feeDistributor), type(uint256).max);
 
         bytes32 root = feeDistributor.leafHash(1, 0, ALICE, 100e18);
         feeDistributor.proposeEpoch(
-            1,
-            root,
-            100e18,
-            100e18,
-            0,
-            1,
-            100,
-            POLICY_HASH,
-            DATASET_HASH,
-            CALCULATION_HASH
+            1, root, 100e18, 100e18, 0, 1, 100, POLICY_HASH, DATASET_HASH, CALCULATION_HASH
         );
         feeToken.setTaxedSender(address(feeDistributor));
         vm.warp(block.timestamp + feeDistributor.REVIEW_DELAY());
@@ -291,16 +281,7 @@ contract EpochRewardsDistributorTest is TestBase {
         bytes32 root = distributor.leafHash(1, 0, ALICE, 1e18);
         vm.expectRevert(EpochRewardsDistributor.OnlyPublisher.selector);
         distributor.proposeEpoch(
-            1,
-            root,
-            1e18,
-            1e18,
-            0,
-            1,
-            100,
-            POLICY_HASH,
-            DATASET_HASH,
-            CALCULATION_HASH
+            1, root, 1e18, 1e18, 0, 1, 100, POLICY_HASH, DATASET_HASH, CALCULATION_HASH
         );
     }
 
@@ -312,16 +293,7 @@ contract EpochRewardsDistributorTest is TestBase {
             abi.encodeWithSelector(EpochRewardsDistributor.InvalidEpochOrder.selector, 1, 2)
         );
         distributor.proposeEpoch(
-            1,
-            root,
-            1e18,
-            1e18,
-            0,
-            1,
-            100,
-            POLICY_HASH,
-            DATASET_HASH,
-            CALCULATION_HASH
+            1, root, 1e18, 1e18, 0, 1, 100, POLICY_HASH, DATASET_HASH, CALCULATION_HASH
         );
     }
 
