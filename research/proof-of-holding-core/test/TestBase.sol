@@ -7,6 +7,7 @@ interface Vm {
     function startPrank(address msgSender) external;
     function stopPrank() external;
     function expectRevert(bytes4 revertData) external;
+    function expectRevert(bytes calldata revertData) external;
 }
 
 abstract contract TestBase {
