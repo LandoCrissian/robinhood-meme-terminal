@@ -4,6 +4,7 @@ pragma solidity 0.8.36;
 import { IPoHEpochRewards } from "../src/interfaces/IPoHEpochRewards.sol";
 import { EpochRewardsDistributor } from "../src/rewards/EpochRewardsDistributor.sol";
 import { TestBase } from "./TestBase.sol";
+import { MockOutboundFeeToken } from "./mocks/MockOutboundFeeToken.sol";
 import { MockRewardToken } from "./mocks/MockRewardToken.sol";
 
 contract EpochRewardsDistributorTest is TestBase {
@@ -48,7 +49,12 @@ contract EpochRewardsDistributorTest is TestBase {
     function testFinalizationRequiresImmutableReviewDelayAndIsPermissionless() public {
         _proposeSingle(1, ALICE, 100e18, 100e18, 0);
 
-        vm.expectRevert(EpochRewardsDistributor.ReviewPeriodActive.selector);
+        uint64 finalizableAt = distributor.epoch(1).finalizableAt;
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                EpochRewardsDistributor.ReviewPeriodActive.selector, 1, finalizableAt
+            )
+        );
         distributor.finalizeEpoch(1);
 
         vm.warp(block.timestamp + distributor.REVIEW_DELAY());
@@ -86,7 +92,9 @@ contract EpochRewardsDistributorTest is TestBase {
         bytes32[] memory proof = new bytes32[](0);
         distributor.claim(1, 0, ALICE, 100e18, proof);
 
-        vm.expectRevert(EpochRewardsDistributor.AlreadyClaimed.selector);
+        vm.expectRevert(
+            abi.encodeWithSelector(EpochRewardsDistributor.AlreadyClaimed.selector, 1, 0)
+        );
         distributor.claim(1, 0, ALICE, 100e18, proof);
     }
 
@@ -102,21 +110,16 @@ contract EpochRewardsDistributorTest is TestBase {
     function testRootCannotPayMoreThanReservedAllocation() public {
         bytes32 oversizedLeaf = distributor.leafHash(1, 0, ALICE, 101e18);
         distributor.proposeEpoch(
-            1,
-            oversizedLeaf,
-            100e18,
-            100e18,
-            0,
-            1,
-            100,
-            POLICY_HASH,
-            DATASET_HASH,
-            CALCULATION_HASH
+            1, oversizedLeaf, 100e18, 100e18, 0, 1, 100, POLICY_HASH, DATASET_HASH, CALCULATION_HASH
         );
         _finalize(1);
 
         bytes32[] memory proof = new bytes32[](0);
-        vm.expectRevert(EpochRewardsDistributor.AllocationExceeded.selector);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                EpochRewardsDistributor.AllocationExceeded.selector, 100e18, 101e18
+            )
+        );
         distributor.claim(1, 0, ALICE, 101e18, proof);
 
         assertEq(distributor.epoch(1).totalClaimed, 0);
@@ -151,18 +154,10 @@ contract EpochRewardsDistributorTest is TestBase {
 
         IPoHEpochRewards.Claim[] memory claims = new IPoHEpochRewards.Claim[](2);
         claims[0] = IPoHEpochRewards.Claim({
-            epochId: 1,
-            index: 0,
-            account: ALICE,
-            amount: aliceAmount,
-            proof: aliceProof
+            epochId: 1, index: 0, account: ALICE, amount: aliceAmount, proof: aliceProof
         });
         claims[1] = IPoHEpochRewards.Claim({
-            epochId: 1,
-            index: 1,
-            account: BOB,
-            amount: bobAmount,
-            proof: bobProof
+            epochId: 1, index: 1, account: BOB, amount: bobAmount, proof: bobProof
         });
 
         vm.prank(RELAYER);
@@ -197,16 +192,7 @@ contract EpochRewardsDistributorTest is TestBase {
         bytes32 root = _hashPair(aliceLeaf, bobLeaf);
 
         distributor.proposeEpoch(
-            1,
-            root,
-            100e18,
-            100e18,
-            0,
-            1,
-            100,
-            POLICY_HASH,
-            DATASET_HASH,
-            CALCULATION_HASH
+            1, root, 100e18, 100e18, 0, 1, 100, POLICY_HASH, DATASET_HASH, CALCULATION_HASH
         );
         _finalize(1);
 
@@ -238,8 +224,51 @@ contract EpochRewardsDistributorTest is TestBase {
         assertEq(distributor.accountedBalance(), 5e18);
     }
 
+    function testOutboundFeeRewardTokenCannotUnderpayBeneficiary() public {
+        MockOutboundFeeToken feeToken = new MockOutboundFeeToken();
+        EpochRewardsDistributor feeDistributor = new EpochRewardsDistributor(
+            feeToken, address(this)
+        );
+        feeToken.mint(address(this), 100e18);
+        feeToken.approve(address(feeDistributor), type(uint256).max);
+
+        bytes32 root = feeDistributor.leafHash(1, 0, ALICE, 100e18);
+        feeDistributor.proposeEpoch(
+            1,
+            root,
+            100e18,
+            100e18,
+            0,
+            1,
+            100,
+            POLICY_HASH,
+            DATASET_HASH,
+            CALCULATION_HASH
+        );
+        feeToken.setTaxedSender(address(feeDistributor));
+        vm.warp(block.timestamp + feeDistributor.REVIEW_DELAY());
+        feeDistributor.finalizeEpoch(1);
+
+        bytes32[] memory proof = new bytes32[](0);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                EpochRewardsDistributor.UnsupportedRewardTokenPayout.selector,
+                ALICE,
+                100e18,
+                100e18,
+                90e18
+            )
+        );
+        feeDistributor.claim(1, 0, ALICE, 100e18, proof);
+
+        assertTrue(!feeDistributor.isClaimed(1, 0));
+        assertEq(feeDistributor.finalizedReserved(), 100e18);
+        assertEq(feeToken.balanceOf(ALICE), 0);
+    }
+
     function testLeafIsDomainSeparatedByDistributorAddress() public {
-        EpochRewardsDistributor secondDistributor = new EpochRewardsDistributor(token, address(this));
+        EpochRewardsDistributor secondDistributor =
+            new EpochRewardsDistributor(token, address(this));
         bytes32 firstLeaf = distributor.leafHash(1, 0, ALICE, 100e18);
         bytes32 secondLeaf = secondDistributor.leafHash(1, 0, ALICE, 100e18);
         assertTrue(firstLeaf != secondLeaf);
@@ -259,15 +288,41 @@ contract EpochRewardsDistributorTest is TestBase {
         assertEq(distributor.publisher(), BOB);
         assertEq(distributor.pendingPublisher(), address(0));
 
+        bytes32 root = distributor.leafHash(1, 0, ALICE, 1e18);
         vm.expectRevert(EpochRewardsDistributor.OnlyPublisher.selector);
-        _proposeSingle(1, ALICE, 1e18, 1e18, 0);
+        distributor.proposeEpoch(
+            1,
+            root,
+            1e18,
+            1e18,
+            0,
+            1,
+            100,
+            POLICY_HASH,
+            DATASET_HASH,
+            CALCULATION_HASH
+        );
     }
 
     function testEpochIdentifiersMustIncreaseMonotonically() public {
         _proposeSingle(2, ALICE, 1e18, 1e18, 0);
 
-        vm.expectRevert(EpochRewardsDistributor.InvalidEpochOrder.selector);
-        _proposeSingle(1, ALICE, 1e18, 1e18, 0);
+        bytes32 root = distributor.leafHash(1, 0, ALICE, 1e18);
+        vm.expectRevert(
+            abi.encodeWithSelector(EpochRewardsDistributor.InvalidEpochOrder.selector, 1, 2)
+        );
+        distributor.proposeEpoch(
+            1,
+            root,
+            1e18,
+            1e18,
+            0,
+            1,
+            100,
+            POLICY_HASH,
+            DATASET_HASH,
+            CALCULATION_HASH
+        );
     }
 
     function testClaimsCloseOnlyAfterDeadline() public {
