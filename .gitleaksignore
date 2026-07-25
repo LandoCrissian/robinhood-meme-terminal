@@ -55,3 +55,9 @@ e6886f6fcad7cba637fdae81f714f99bf3f749f1:apps/web/app/sitemap.ts:generic-api-key
 8ee7fbea0ee8df442a14219fe9ee34cc01fdb899:apps/web/lib/server/external-project-metadata-smoke.ts:generic-api-key:81
 a462d3d161800210536d0296c808b11bceda9495:apps/web/lib/consent-testnet-activation.ts:generic-api-key:36
 a462d3d161800210536d0296c808b11bceda9495:apps/web/lib/consent-testnet-activation.ts:generic-api-key:51
+# Reviewed 2026-07-25: public Robinhood Chain addresses used as smoke-test fixtures.
+9e1b5afab133e10dd2d76bb89d92558f221f705b:apps/web/lib/server/circus-curve-feed-smoke.ts:generic-api-key:14
+9e1b5afab133e10dd2d76bb89d92558f221f705b:apps/web/lib/server/circus-curve-feed-smoke.ts:generic-api-key:37
+9e1b5afab133e10dd2d76bb89d92558f221f705b:apps/web/lib/server/external-project-metadata-smoke.ts:generic-api-key:7
+9e1b5afab133e10dd2d76bb89d92558f221f705b:apps/web/lib/server/external-project-metadata-smoke.ts:generic-api-key:56
+9e1b5afab133e10dd2d76bb89d92558f221f705b:apps/web/lib/server/external-project-metadata-smoke.ts:generic-api-key:81
