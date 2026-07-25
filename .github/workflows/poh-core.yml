@@ -68,6 +68,21 @@ jobs:
           path: ${{ runner.temp }}/forge-test.log
           if-no-files-found: warn
           retention-days: 3
+      - name: Upload formatted source snapshot
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: poh-formatted-source
+          path: |
+            research/proof-of-holding-core/src
+            research/proof-of-holding-core/test
+            research/proof-of-holding-core/README.md
+            research/proof-of-holding-core/LICENSE
+            research/proof-of-holding-core/foundry.toml
+            research/proof-of-holding-core/remappings.txt
+            research/proof-of-holding-core/.gitignore
+          if-no-files-found: error
+          retention-days: 3
 
   gitleaks-diagnostic:
     runs-on: ubuntu-latest
