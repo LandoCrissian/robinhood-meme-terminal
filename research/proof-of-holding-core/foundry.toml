@@ -1,0 +1,29 @@
+[profile.default]
+src = "src"
+test = "test"
+out = "out"
+libs = ["lib"]
+solc = "0.8.36"
+evm_version = "cancun"
+optimizer = true
+optimizer_runs = 10_000
+via_ir = false
+bytecode_hash = "ipfs"
+cbor_metadata = true
+
+[fuzz]
+runs = 2_000
+max_test_rejects = 100_000
+
+[invariant]
+runs = 512
+depth = 128
+fail_on_revert = true
+
+[fmt]
+line_length = 100
+tab_width = 4
+bracket_spacing = true
+int_types = "long"
+quote_style = "double"
+number_underscore = "thousands"

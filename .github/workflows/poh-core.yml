@@ -1,0 +1,36 @@
+name: PoH Core V0.1
+
+on:
+  push:
+    branches:
+      - research/poh-core-v0.1
+    paths:
+      - "research/proof-of-holding-core/**"
+      - ".github/workflows/poh-core.yml"
+  pull_request:
+    paths:
+      - "research/proof-of-holding-core/**"
+      - ".github/workflows/poh-core.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  foundry:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: research/proof-of-holding-core
+    steps:
+      - uses: actions/checkout@v4
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+      - name: Install OpenZeppelin Contracts 5.6.1
+        run: forge install OpenZeppelin/openzeppelin-contracts@v5.6.1 --no-commit
+      - name: Format
+        run: forge fmt --check
+      - name: Build
+        run: forge build --sizes
+      - name: Test
+        run: forge test -vvv
