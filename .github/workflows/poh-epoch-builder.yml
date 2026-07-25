@@ -1,0 +1,78 @@
+name: PoH Epoch Builder V0.1
+
+on:
+  push:
+    branches:
+      - research/poh-epoch-builder-v0.1
+    paths:
+      - "research/proof-of-holding-core/tooling/**"
+      - "research/proof-of-holding-core/test/EpochBuilderVector.t.sol"
+      - "research/proof-of-holding-core/test/TestBase.sol"
+      - ".github/workflows/poh-epoch-builder.yml"
+  pull_request:
+    paths:
+      - "research/proof-of-holding-core/tooling/**"
+      - "research/proof-of-holding-core/test/EpochBuilderVector.t.sol"
+      - "research/proof-of-holding-core/test/TestBase.sol"
+      - ".github/workflows/poh-epoch-builder.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  deterministic-builder:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.13"
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "22"
+      - name: Compile dependency-free builder
+        working-directory: research/proof-of-holding-core/tooling
+        run: python -m py_compile epoch_builder.py
+      - name: Run deterministic builder tests
+        working-directory: research/proof-of-holding-core/tooling
+        run: python -m unittest -v test_epoch_builder.py
+      - name: Build and independently verify fixture artifacts
+        working-directory: research/proof-of-holding-core/tooling
+        shell: bash
+        run: |
+          set -euo pipefail
+          output="$RUNNER_TEMP/poh-epoch-builder"
+          mkdir -p "$output"
+          python epoch_builder.py build \
+            --input fixtures/epoch-input-v0.1.json \
+            --output-directory "$output" \
+            --prefix epoch-7
+          python epoch_builder.py verify \
+            --directory "$output" \
+            --prefix epoch-7
+      - name: Cross-check root, leaves, and proofs with OpenZeppelin 1.0.8
+        shell: bash
+        run: |
+          set -euo pipefail
+          verifier="$RUNNER_TEMP/openzeppelin-merkle-verifier"
+          mkdir -p "$verifier"
+          cd "$verifier"
+          npm init --yes >/dev/null
+          npm install \
+            --ignore-scripts \
+            --no-audit \
+            --no-fund \
+            --save-exact \
+            @openzeppelin/merkle-tree@1.0.8
+          test "$(node -e 'const fs=require("fs"); const p=JSON.parse(fs.readFileSync("node_modules/@openzeppelin/merkle-tree/package.json", "utf8")); process.stdout.write(p.version)')" = "1.0.8"
+          cp "$GITHUB_WORKSPACE/research/proof-of-holding-core/tooling/verify_openzeppelin.mjs" .
+          node verify_openzeppelin.mjs \
+            "$RUNNER_TEMP/poh-epoch-builder/epoch-7.claims.json"
+      - name: Upload reproducible fixture artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: poh-epoch-builder-fixture
+          path: ${{ runner.temp }}/poh-epoch-builder/*.json
+          if-no-files-found: error
+          retention-days: 3
