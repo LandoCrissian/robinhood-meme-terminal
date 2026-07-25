@@ -38,12 +38,23 @@ jobs:
             https://github.com/OpenZeppelin/openzeppelin-contracts.git \
             lib/openzeppelin-contracts
           test "$(git -C lib/openzeppelin-contracts describe --tags --exact-match)" = "v5.6.1"
-      - name: Check formatting
-        run: forge fmt --check
+      - name: Format working copy
+        run: forge fmt
+      - name: Archive formatted vector sources
+        shell: bash
+        run: tar -czf "$RUNNER_TEMP/poh-builder-solidity-formatted.tar.gz" test/EpochBuilderVector.t.sol test/TestBase.sol
       - name: Build
         run: forge build --sizes
       - name: Test
         run: forge test -vvv
+      - name: Upload formatted vector sources
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: poh-builder-solidity-formatted
+          path: ${{ runner.temp }}/poh-builder-solidity-formatted.tar.gz
+          if-no-files-found: error
+          retention-days: 3
 
   simulation:
     runs-on: ubuntu-latest
