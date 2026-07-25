@@ -76,17 +76,13 @@ interface IPoHEpochRewards {
     );
 
     event EpochExpired(
-        uint256 indexed epochId,
-        uint256 unclaimedAmount,
-        uint256 newRolloverBalance
+        uint256 indexed epochId, uint256 unclaimedAmount, uint256 newRolloverBalance
     );
 
     event RolloverFunded(address indexed funder, uint256 amount, uint256 newRolloverBalance);
 
     event UnaccountedRewardsSynced(
-        address indexed caller,
-        uint256 amount,
-        uint256 newRolloverBalance
+        address indexed caller, uint256 amount, uint256 newRolloverBalance
     );
 
     function rewardToken() external view returns (IERC20);
@@ -97,12 +93,10 @@ interface IPoHEpochRewards {
 
     function isClaimed(uint256 epochId, uint256 index) external view returns (bool);
 
-    function leafHash(
-        uint256 epochId,
-        uint256 index,
-        address account,
-        uint256 amount
-    ) external view returns (bytes32);
+    function leafHash(uint256 epochId, uint256 index, address account, uint256 amount)
+        external
+        view
+        returns (bytes32);
 
     function verifyClaim(
         uint256 epochId,
