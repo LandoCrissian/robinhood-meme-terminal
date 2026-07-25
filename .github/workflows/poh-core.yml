@@ -18,16 +18,26 @@ permissions:
 jobs:
   foundry:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: research/proof-of-holding-core
     steps:
-      - uses: actions/checkout@v4
-      - uses: foundry-rs/foundry-toolchain@v1
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: foundry-rs/foundry-toolchain@b00af27efadbc7b4ca8b82abbd903b17cc874d2a # v1
         with:
-          version: stable
+          version: v1.7.1
+      - name: Show Foundry version
+        run: forge --version
       - name: Install OpenZeppelin Contracts 5.6.1
-        run: forge install OpenZeppelin/openzeppelin-contracts@v5.6.1 --no-commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p lib
+          git clone --depth 1 --branch v5.6.1 \
+            https://github.com/OpenZeppelin/openzeppelin-contracts.git \
+            lib/openzeppelin-contracts
+          test "$(git -C lib/openzeppelin-contracts describe --tags --exact-match)" = "v5.6.1"
       - name: Format
         run: forge fmt --check
       - name: Build
