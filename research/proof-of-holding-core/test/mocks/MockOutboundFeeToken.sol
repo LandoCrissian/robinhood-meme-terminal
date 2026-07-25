@@ -17,7 +17,7 @@ contract MockOutboundFeeToken is ERC20 {
     }
 
     function _update(address from, address to, uint256 value) internal override {
-        if (from == taxedSender && to != address(0) && value >= 10) {
+        if (from != address(0) && from == taxedSender && to != address(0) && value >= 10) {
             uint256 fee = value / 10;
             super._update(from, address(0), fee);
             super._update(from, to, value - fee);
