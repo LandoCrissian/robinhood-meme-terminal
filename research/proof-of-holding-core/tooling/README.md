@@ -20,6 +20,10 @@ python epoch_builder.py verify \
   --prefix epoch-7
 ```
 
+Verification reconstructs the allowed calculation manifest, canonical normalized input, allocations,
+dataset, leaves, proofs, root, claims, and final manifest. It rejects self-consistent hashes when the
+underlying v0.1 calculation semantics have been altered.
+
 ## Run tests
 
 ```bash
@@ -27,10 +31,11 @@ python -m py_compile epoch_builder.py
 python -m unittest -v test_epoch_builder.py
 ```
 
-The test suite covers Ethereum Keccak vectors, PoHPolicyV1 integer math, ABI leaf vectors,
-OpenZeppelin complete-tree construction, proof generation, deterministic normalization, exact
-largest-remainder allocation, 10,000 randomized allocation datasets, 250 randomized Merkle
-datasets, artifact tamper detection, and write/load verification.
+The nineteen-test suite covers Ethereum Keccak vectors, exact PoHPolicyV1 policy-hash binding,
+`uint192` balance-seconds capacity, integer policy math, ABI leaf vectors, OpenZeppelin complete-tree
+construction, proof generation, deterministic normalization, split-versus-merged row equivalence,
+exact largest-remainder allocation, 10,000 randomized allocation datasets, 250 randomized Merkle
+datasets, semantic artifact tamper detection, and write/load verification.
 
 GitHub Actions also rebuilds the fixture and cross-checks its root, leaves, and proofs with
 `@openzeppelin/merkle-tree@1.0.8`. Foundry independently verifies the same fixture with OpenZeppelin
