@@ -30,8 +30,7 @@ contract EpochBuilderVectorTest is TestBase {
     function testPythonClaimZeroVectorVerifiesInOpenZeppelin() public pure {
         address account = 0xaAaAaAaaAaAaAaaAaAAAAAAAAaaaAaAaAaaAaaAa;
         uint256 amount = 21_285_289_747_399_702_824;
-        bytes32 expectedLeaf =
-            0x9c59d446ff1bb7ed62c5e8e814c4bd298eaf1078add80442356c6b9f3d4cc0ff;
+        bytes32 expectedLeaf = 0x9c59d446ff1bb7ed62c5e8e814c4bd298eaf1078add80442356c6b9f3d4cc0ff;
 
         bytes32[] memory proof = new bytes32[](2);
         proof[0] = 0x8e0bcb0901929156d6f3a7b51da9742c604679ffa9db4c8ffa2cbd89262ac235;
@@ -45,8 +44,7 @@ contract EpochBuilderVectorTest is TestBase {
     function testPythonClaimOneVectorVerifiesInOpenZeppelin() public pure {
         address account = 0xbBbBBBBbbBBBbbbBbbBbbbbBBbBbbbbBbBbbBBbB;
         uint256 amount = 22_994_056_463_595_839_525;
-        bytes32 expectedLeaf =
-            0xcb40f39b7e60a14f02fab32cd030b358ce9eef0cd28e4bec50a693675abb68af;
+        bytes32 expectedLeaf = 0xcb40f39b7e60a14f02fab32cd030b358ce9eef0cd28e4bec50a693675abb68af;
 
         bytes32[] memory proof = new bytes32[](1);
         proof[0] = 0xbd4bad9c020af643212ce9e0179ebef883401ed7356852b13ac81c40bb195d24;
@@ -59,8 +57,7 @@ contract EpochBuilderVectorTest is TestBase {
     function testPythonClaimTwoVectorVerifiesInOpenZeppelin() public pure {
         address account = 0xCcCCccccCCCCcCCCCCCcCcCccCcCCCcCcccccccC;
         uint256 amount = 55_720_653_789_004_457_654;
-        bytes32 expectedLeaf =
-            0x8e0bcb0901929156d6f3a7b51da9742c604679ffa9db4c8ffa2cbd89262ac235;
+        bytes32 expectedLeaf = 0x8e0bcb0901929156d6f3a7b51da9742c604679ffa9db4c8ffa2cbd89262ac235;
 
         bytes32[] memory proof = new bytes32[](2);
         proof[0] = 0x9c59d446ff1bb7ed62c5e8e814c4bd298eaf1078add80442356c6b9f3d4cc0ff;
@@ -71,21 +68,9 @@ contract EpochBuilderVectorTest is TestBase {
         assertTrue(MerkleProof.verify(proof, ROOT, leaf));
     }
 
-    function _leaf(uint256 index, address account, uint256 amount)
-        internal
-        pure
-        returns (bytes32)
-    {
+    function _leaf(uint256 index, address account, uint256 amount) internal pure returns (bytes32) {
         bytes32 innerHash = keccak256(
-            abi.encode(
-                LEAF_DOMAIN,
-                CHAIN_ID,
-                DISTRIBUTOR,
-                EPOCH_ID,
-                index,
-                account,
-                amount
-            )
+            abi.encode(LEAF_DOMAIN, CHAIN_ID, DISTRIBUTOR, EPOCH_ID, index, account, amount)
         );
         return keccak256(bytes.concat(innerHash));
     }
