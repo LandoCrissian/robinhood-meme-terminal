@@ -78,7 +78,11 @@ contract LoyaltyAccountingInvariantTest is TestBase {
         address[3] memory configuredActors = [ALICE, BOB, CAROL];
         actors = configuredActors;
         handler = new LoyaltyAccountingHandler(token, configuredActors);
-        vm.targetContract(address(handler));
+    }
+
+    function targetContracts() public view returns (address[] memory targets) {
+        targets = new address[](1);
+        targets[0] = address(handler);
     }
 
     function invariantTrackedBalancesEqualTokenBalances() public view {

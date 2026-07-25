@@ -74,8 +74,9 @@ contract LoyaltyAccountingTest is TestBase {
     function testFullExitResetsActivePosition() public {
         vm.warp(block.timestamp + 30 days);
 
+        uint256 aliceBalance = token.balanceOf(ALICE);
         vm.prank(ALICE);
-        token.transfer(BOB, token.balanceOf(ALICE));
+        token.transfer(BOB, aliceBalance);
 
         IProofOfHoldingCore.Position memory closed = accounting.positionOf(ALICE);
         assertEq(closed.eligibleBalance, 0);
