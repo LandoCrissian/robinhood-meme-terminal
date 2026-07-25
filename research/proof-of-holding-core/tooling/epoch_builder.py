@@ -26,6 +26,7 @@ CLAIMS_SCHEMA = "poh-epoch-claims-v0.1"
 MANIFEST_SCHEMA = "poh-epoch-manifest-v0.1"
 
 UINT64_MAX = (1 << 64) - 1
+UINT192_MAX = (1 << 192) - 1
 UINT256_MAX = (1 << 256) - 1
 MASK64 = (1 << 64) - 1
 
@@ -397,6 +398,7 @@ def _normalize_input(raw: Any) -> dict[str, Any]:
             "pohToken",
             "pohAccounting",
             "pohPolicy",
+            "policyHash",
             "rewardToken",
             "epochId",
             "rewardAmount",
@@ -434,11 +436,19 @@ def _normalize_input(raw: Any) -> dict[str, Any]:
     )
     if epoch_end <= epoch_start:
         raise EpochBuilderError("epochEndTimestamp must be greater than epochStartTimestamp")
+    epoch_duration = epoch_end - epoch_start
+    maximum_balance_seconds = UINT192_MAX * epoch_duration
 
     distributor = normalize_address(source["distributor"], "distributor")
     poh_token = normalize_address(source["pohToken"], "pohToken")
     poh_accounting = normalize_address(source["pohAccounting"], "pohAccounting")
     poh_policy = normalize_address(source["pohPolicy"], "pohPolicy")
+    provided_policy_hash = normalize_bytes32(source["policyHash"], "policyHash")
+    expected_policy_hash = to_hex(policy_hash())
+    if provided_policy_hash != expected_policy_hash:
+        raise EpochBuilderError(
+            f"policyHash must equal the PoHPolicyV1 hash {expected_policy_hash}"
+        )
     reward_token = normalize_address(source["rewardToken"], "rewardToken")
 
     excluded_raw = source["excludedAccounts"]
@@ -467,6 +477,10 @@ def _normalize_input(raw: Any) -> dict[str, Any]:
             row["epochBalanceSeconds"],
             f"positions[{row_index}].epochBalanceSeconds",
         )
+        if balance_seconds > maximum_balance_seconds:
+            raise EpochBuilderError(
+                f"positions[{row_index}].epochBalanceSeconds exceeds uint192 balance capacity"
+            )
         weighted_timestamp = parse_integer(
             row["weightedAcquisitionTimestamp"],
             f"positions[{row_index}].weightedAcquisitionTimestamp",
@@ -482,7 +496,6 @@ def _normalize_input(raw: Any) -> dict[str, Any]:
             merged[account] = {
                 "epochBalanceSeconds": balance_seconds,
                 "weightedAcquisitionTimestamp": weighted_timestamp,
-                "sourceRows": 1,
             }
         else:
             if existing["weightedAcquisitionTimestamp"] != weighted_timestamp:
@@ -490,17 +503,17 @@ def _normalize_input(raw: Any) -> dict[str, Any]:
                     f"duplicate position rows for {account} have conflicting weighted timestamps"
                 )
             combined = existing["epochBalanceSeconds"] + balance_seconds
-            if combined > UINT256_MAX:
-                raise EpochBuilderError(f"merged epochBalanceSeconds for {account} exceeds uint256")
+            if combined > maximum_balance_seconds:
+                raise EpochBuilderError(
+                    f"merged epochBalanceSeconds for {account} exceeds uint192 balance capacity"
+                )
             existing["epochBalanceSeconds"] = combined
-            existing["sourceRows"] += 1
 
     positions = [
         {
             "account": account,
             "epochBalanceSeconds": str(values["epochBalanceSeconds"]),
             "weightedAcquisitionTimestamp": values["weightedAcquisitionTimestamp"],
-            "sourceRows": values["sourceRows"],
         }
         for account, values in sorted(merged.items())
     ]
@@ -512,7 +525,7 @@ def _normalize_input(raw: Any) -> dict[str, Any]:
         "pohToken": poh_token,
         "pohAccounting": poh_accounting,
         "pohPolicy": poh_policy,
-        "policyHash": to_hex(policy_hash()),
+        "policyHash": provided_policy_hash,
         "rewardToken": reward_token,
         "epochId": epoch_id,
         "rewardAmount": str(reward_amount),
@@ -520,7 +533,7 @@ def _normalize_input(raw: Any) -> dict[str, Any]:
         "sourceEndBlock": source_end_block,
         "epochStartTimestamp": epoch_start,
         "epochEndTimestamp": epoch_end,
-        "epochDurationSeconds": epoch_end - epoch_start,
+        "epochDurationSeconds": epoch_duration,
         "explicitlyExcludedAccounts": sorted(explicitly_excluded),
         "systemExcludedAccounts": sorted(system_excluded),
         "effectiveExcludedAccounts": sorted(effective_excluded),
@@ -608,16 +621,10 @@ def _allocate(rows: list[dict[str, Any]], reward_amount: int) -> int:
     return total_weight
 
 
-def build_epoch(
-    raw_input: Any,
-    *,
-    builder_source_sha256: str | None = None,
+def _derive_artifacts(
+    normalized: dict[str, Any],
+    calculation: dict[str, Any],
 ) -> BuildArtifacts:
-    normalized = _normalize_input(raw_input)
-    if builder_source_sha256 is None:
-        builder_source_sha256 = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
-
-    calculation = _calculation_manifest(builder_source_sha256)
     calculation_hash = canonical_keccak(calculation)
     normalized_input_hash = canonical_keccak(normalized)
 
@@ -647,7 +654,6 @@ def build_epoch(
                 "rewardWeight": str(weight),
                 "allocation": "0",
                 "leafIndex": None,
-                "sourceRows": position["sourceRows"],
             }
         )
 
@@ -751,9 +757,45 @@ def build_epoch(
         "canonicalHashRule": "keccak256(poh-json-v0.1 canonical object bytes)",
     }
 
-    artifacts = BuildArtifacts(normalized, calculation, dataset, claims, manifest)
+    return BuildArtifacts(normalized, calculation, dataset, claims, manifest)
+
+
+def build_epoch(
+    raw_input: Any,
+    *,
+    builder_source_sha256: str | None = None,
+) -> BuildArtifacts:
+    normalized = _normalize_input(raw_input)
+    if builder_source_sha256 is None:
+        builder_source_sha256 = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
+
+    artifacts = _derive_artifacts(
+        normalized,
+        _calculation_manifest(builder_source_sha256),
+    )
     verify_artifacts(artifacts)
     return artifacts
+
+
+def _raw_input_from_normalized(normalized: Mapping[str, Any]) -> dict[str, Any]:
+    return {
+        "schema": INPUT_SCHEMA,
+        "chainId": normalized["chainId"],
+        "distributor": normalized["distributor"],
+        "pohToken": normalized["pohToken"],
+        "pohAccounting": normalized["pohAccounting"],
+        "pohPolicy": normalized["pohPolicy"],
+        "policyHash": normalized["policyHash"],
+        "rewardToken": normalized["rewardToken"],
+        "epochId": normalized["epochId"],
+        "rewardAmount": normalized["rewardAmount"],
+        "sourceStartBlock": normalized["sourceStartBlock"],
+        "sourceEndBlock": normalized["sourceEndBlock"],
+        "epochStartTimestamp": normalized["epochStartTimestamp"],
+        "epochEndTimestamp": normalized["epochEndTimestamp"],
+        "excludedAccounts": normalized["explicitlyExcludedAccounts"],
+        "positions": normalized["positions"],
+    }
 
 
 def verify_artifacts(artifacts: BuildArtifacts) -> None:
@@ -768,6 +810,30 @@ def verify_artifacts(artifacts: BuildArtifacts) -> None:
         raise EpochBuilderError("dataset schema is invalid")
     if artifacts.claims.get("schema") != CLAIMS_SCHEMA:
         raise EpochBuilderError("claims schema is invalid")
+
+    source_digest = artifacts.calculation.get("builderSourceSha256")
+    if not isinstance(source_digest, str):
+        raise EpochBuilderError("calculation builderSourceSha256 is invalid")
+    expected_calculation = _calculation_manifest(source_digest)
+    if artifacts.calculation != expected_calculation:
+        raise EpochBuilderError("calculation semantics do not match PoH Epoch Builder v0.1")
+
+    try:
+        expected_normalized = _normalize_input(
+            _raw_input_from_normalized(artifacts.normalized_input)
+        )
+    except (KeyError, TypeError) as exc:
+        raise EpochBuilderError("normalized input structure is invalid") from exc
+    if artifacts.normalized_input != expected_normalized:
+        raise EpochBuilderError("normalized input is not canonical")
+
+    expected = _derive_artifacts(expected_normalized, expected_calculation)
+    if artifacts.dataset != expected.dataset:
+        raise EpochBuilderError("dataset does not match deterministic epoch calculation")
+    if artifacts.claims != expected.claims:
+        raise EpochBuilderError("claims do not match deterministic epoch calculation")
+    if artifacts.manifest != expected.manifest:
+        raise EpochBuilderError("manifest does not match deterministic epoch calculation")
 
     if canonical_keccak(artifacts.normalized_input) != manifest["normalizedInputHash"]:
         raise EpochBuilderError("normalized input hash mismatch")
@@ -846,8 +912,7 @@ def _write_json(path: Path, value: Any) -> None:
 
 
 def write_artifacts(artifacts: BuildArtifacts, output_directory: Path, prefix: str) -> list[Path]:
-    allowed = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_"
-    if not prefix or any(character not in allowed for character in prefix):
+    if not prefix or any(character not in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_" for character in prefix):
         raise EpochBuilderError("prefix must contain only letters, digits, hyphen, or underscore")
     output_directory.mkdir(parents=True, exist_ok=True)
     written: list[Path] = []
