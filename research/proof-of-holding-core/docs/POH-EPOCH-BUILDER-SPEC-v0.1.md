@@ -27,6 +27,7 @@ A v0.1 input contains exactly:
   "pohToken": "0x...",
   "pohAccounting": "0x...",
   "pohPolicy": "0x...",
+  "policyHash": "0x9199827b32332fc31a20d3c88fef4a602275345bd7c6e0f2d18859c5d86042c4",
   "rewardToken": "0x...",
   "epochId": 1,
   "rewardAmount": "100000000000000000000",
@@ -47,6 +48,9 @@ A v0.1 input contains exactly:
 
 Unknown fields are rejected. Token amounts and balance-seconds are canonical unsigned decimal
 strings. Floating-point values are forbidden.
+
+`policyHash` is mandatory. Version 0.1 accepts only the exact `PoHPolicyV1` hash defined in section
+6. A policy address alone is not treated as evidence that the expected formula was used.
 
 `sourceStartBlock` and `sourceEndBlock` are inclusive commitments to the event range used by the
 upstream data producer. They are not used as a substitute for an explicit finality policy.
@@ -74,6 +78,8 @@ Rows with the same normalized wallet are merged by summing `epochBalanceSeconds`
 Duplicate rows must report the same `weightedAcquisitionTimestamp`. A conflict is rejected instead
 of being guessed or silently averaged.
 
+The normalized output contains the merged economic position rather than the number of source rows.
+Therefore a single row and a semantically equivalent split set of rows produce identical artifacts.
 Input row order and exclusion order do not affect output.
 
 ## 5. Time-weighted metrics
@@ -88,6 +94,13 @@ The average eligible balance is:
 
 ```text
 averageEligibleBalance = floor(epochBalanceSeconds / epochDuration)
+```
+
+Because PoH Core bounds eligible balances to `uint192`, the builder rejects any row or merged row
+that violates:
+
+```text
+epochBalanceSeconds <= type(uint192).max * epochDuration
 ```
 
 The age used for PoHPolicyV1 is:
@@ -126,7 +139,14 @@ keccak256(
 )
 ```
 
-No binary floating-point arithmetic is used.
+Its v0.1 value is:
+
+```text
+0x9199827b32332fc31a20d3c88fef4a602275345bd7c6e0f2d18859c5d86042c4
+```
+
+The builder recomputes this value and rejects a different input commitment. No binary
+floating-point arithmetic is used.
 
 ## 7. Reward allocation
 
@@ -254,14 +274,23 @@ claim count, Merkle root, and hashes of all other artifact layers.
 
 ## 13. Verification
 
-The `verify` command:
+The `verify` command does not merely check whether the supplied files are internally
+self-consistent. It:
 
+- reconstructs the allowed v0.1 calculation manifest from the committed builder-source digest;
+- rejects altered formulas, policy constants, tree rules, or allocation semantics;
+- reconstructs and canonicalizes normalized input;
+- deterministically rebuilds the complete dataset, claims, proofs, root, and manifest;
+- compares rebuilt objects with every supplied artifact;
 - recalculates every artifact hash;
 - checks contiguous claim indices;
 - recomputes each ABI-encoded double-hashed leaf;
 - verifies every proof against the manifest root;
 - verifies the sum of claim amounts equals total allocation;
 - verifies claims and manifest commit to the same dataset and root.
+
+This prevents a mathematically altered artifact set from passing merely because an attacker also
+recalculated its hashes.
 
 The included CI additionally cross-checks the fixture root, leaves, and proofs against the official
 `@openzeppelin/merkle-tree` package and against OpenZeppelin Contracts `MerkleProof` in Solidity.
@@ -290,6 +319,7 @@ python epoch_builder.py verify \
 The upstream producer must independently establish:
 
 - canonical token and accounting deployment addresses;
+- canonical policy address and matching `policyHash`;
 - canonical block range and finality threshold;
 - complete transfer and exclusion-event ingestion;
 - deterministic balance-seconds at both epoch boundaries;
