@@ -7,7 +7,7 @@ import { PoHPolicyV1 } from "../src/PoHPolicyV1.sol";
 import { ProofOfHoldingToken } from "../src/ProofOfHoldingToken.sol";
 import { TestBase } from "./TestBase.sol";
 
-contract MockSystem {}
+contract MockSystem { }
 
 contract LoyaltyAccountingTest is TestBase {
     address internal constant ALICE = address(0xA11CE);
