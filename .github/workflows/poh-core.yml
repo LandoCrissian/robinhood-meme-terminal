@@ -46,7 +46,10 @@ jobs:
       - name: Build
         run: forge build --sizes
       - name: Test
-        run: forge test -vvv
+        shell: bash
+        run: |
+          set -o pipefail
+          forge test -vvv 2>&1 | tee "$RUNNER_TEMP/forge-test.log"
       - name: Upload formatted PoH sources
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -54,6 +57,14 @@ jobs:
           name: poh-rewards-formatted-source
           path: ${{ runner.temp }}/poh-formatted.tar.gz
           if-no-files-found: error
+          retention-days: 3
+      - name: Upload PoH reward test log
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: poh-rewards-forge-test-log
+          path: ${{ runner.temp }}/forge-test.log
+          if-no-files-found: warn
           retention-days: 3
 
   simulation:
