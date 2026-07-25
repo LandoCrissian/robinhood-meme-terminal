@@ -17,16 +17,25 @@
 - `test/PoHPolicyV1.t.sol` — policy bounds and monotonicity.
 - `test/EpochRewardsDistributor.t.sol` — epoch lifecycle, proof, funding, payout, and replay tests.
 - `test/EpochRewardsInvariant.t.sol` — stateful collateralization, allocation, and epoch-order invariants.
+- `test/EpochBuilderVector.t.sol` — Python-to-Solidity policy, leaf, root, and proof vectors.
 - `test/mocks/MockRewardToken.sol` — exact-transfer reward-token fixture.
 - `test/mocks/MockOutboundFeeToken.sol` — adversarial underpayment fixture.
 - `test/TestBase.sol` — minimal Foundry test and cheatcode harness.
 
-## Independent models
+## Independent state models
 
 - `simulation/poh_model.py` — independent integer holding-state machine.
 - `simulation/test_poh_model.py` — seven holding-model tests, including 50,000 operations.
 - `simulation/rewards_model.py` — independent reserve and epoch-lifecycle model.
 - `simulation/test_rewards_model.py` — six reward-model tests, including 50,000 operations.
+
+## Deterministic epoch tooling
+
+- `tooling/epoch_builder.py` — dependency-free allocation, Keccak, ABI, Merkle, artifact, and CLI implementation.
+- `tooling/test_epoch_builder.py` — seventeen deterministic and randomized builder tests.
+- `tooling/verify_openzeppelin.mjs` — official OpenZeppelin package cross-check.
+- `tooling/fixtures/epoch-input-v0.1.json` — fixed reproducibility fixture.
+- `tooling/README.md` — operator commands and safety boundary.
 
 ## Engineering documents
 
@@ -34,28 +43,38 @@
 - `docs/THREAT-MODEL.md` — PoH Core assets, trust boundaries, threats, and controls.
 - `docs/POH-EPOCH-REWARDS-SPEC-v0.1.md` — funded epoch, leaf, claim, and rollover rules.
 - `docs/EPOCH-REWARDS-THREAT-MODEL.md` — reward assets, trust boundaries, threats, and controls.
+- `docs/POH-EPOCH-BUILDER-SPEC-v0.1.md` — deterministic input, math, allocation, tree, and artifact rules.
 
 ## Reproducibility
 
 - `foundry.toml` pins Solidity `0.8.36`, fuzzing, invariant, and formatting parameters.
 - `remappings.txt` pins the import path expected for OpenZeppelin Contracts `v5.6.1`.
-- `.github/workflows/poh-core.yml` pins GitHub action revisions and runs read-only verification.
+- `.github/workflows/poh-core.yml` pins actions and runs read-only Solidity and state-model checks.
+- `.github/workflows/poh-epoch-builder.yml` pins actions and runs builder and OpenZeppelin cross-checks.
+- the builder calculation artifact commits to the SHA-256 of the exact Python source.
+- normalized input, calculation, dataset, claims, and manifest objects have canonical Keccak commitments.
 - `LICENSE` is MIT.
 
 ## Verified automated scope
 
 - `forge fmt --check`;
 - `forge build --sizes`;
-- forty-two Solidity test functions;
+- forty-six Solidity test functions;
 - 2,000-run fuzz configuration;
 - two stateful invariant suites configured for 512 runs at depth 128;
-- thirteen Python model tests;
+- thirteen independent state-model tests;
 - two deterministic 50,000-operation state simulations;
+- seventeen deterministic epoch-builder tests;
+- 10,000 seeded randomized largest-remainder datasets;
+- 250 randomized Merkle datasets with every proof verified;
+- official `@openzeppelin/merkle-tree@1.0.8` fixture cross-check;
+- OpenZeppelin Contracts `MerkleProof` fixture cross-check;
 - repository secret scan.
 
 ## Security status
 
 The implementation has passed its included automated suites but has not received an external
 security audit. The package is an engineering prototype, not a mainnet release artifact. The
-Merkle review delay mitigates operational mistakes but does not cryptographically prove that a
-publisher's dataset or root is correct.
+builder makes supplied data reproducible but cannot prove that upstream chain-event ingestion was
+complete. The Merkle review delay mitigates operational mistakes but does not cryptographically
+prove that a publisher's dataset or root is correct.
