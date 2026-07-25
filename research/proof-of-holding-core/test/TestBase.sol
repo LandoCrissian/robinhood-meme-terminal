@@ -25,6 +25,10 @@ abstract contract TestBase {
         require(actual == expected, "ASSERT_EQ_ADDRESS_FAILED");
     }
 
+    function assertEq(bytes32 actual, bytes32 expected) internal pure {
+        require(actual == expected, "ASSERT_EQ_BYTES32_FAILED");
+    }
+
     function assertLe(uint256 actual, uint256 maximum) internal pure {
         require(actual <= maximum, "ASSERT_LE_FAILED");
     }
