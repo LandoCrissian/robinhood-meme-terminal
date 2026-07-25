@@ -8,14 +8,9 @@ on:
       - "research/proof-of-holding-core/**"
       - ".github/workflows/poh-core.yml"
       - ".gitleaksignore"
-  pull_request:
-    paths:
-      - "research/proof-of-holding-core/**"
-      - ".github/workflows/poh-core.yml"
-      - ".gitleaksignore"
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   foundry:
@@ -26,6 +21,8 @@ jobs:
         working-directory: research/proof-of-holding-core
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
       - uses: foundry-rs/foundry-toolchain@b00af27efadbc7b4ca8b82abbd903b17cc874d2a # v1
         with:
           version: v1.7.1
@@ -42,86 +39,20 @@ jobs:
           test "$(git -C lib/openzeppelin-contracts describe --tags --exact-match)" = "v5.6.1"
       - name: Format working copy
         run: forge fmt
-      - name: Capture formatting patch
-        shell: bash
-        run: git diff -- . > "$RUNNER_TEMP/poh-format.patch"
-      - name: Build
-        run: forge build --sizes
-      - name: Test
-        shell: bash
-        run: |
-          set -o pipefail
-          forge test -vvv 2>&1 | tee "$RUNNER_TEMP/forge-test.log"
-      - name: Upload formatting patch
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: poh-format-patch
-          path: ${{ runner.temp }}/poh-format.patch
-          if-no-files-found: warn
-          retention-days: 3
-      - name: Upload Forge test log
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: poh-forge-test-log
-          path: ${{ runner.temp }}/forge-test.log
-          if-no-files-found: warn
-          retention-days: 3
-      - name: Upload formatted source snapshot
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: poh-formatted-source
-          path: |
-            research/proof-of-holding-core/src
-            research/proof-of-holding-core/test
-            research/proof-of-holding-core/README.md
-            research/proof-of-holding-core/LICENSE
-            research/proof-of-holding-core/foundry.toml
-            research/proof-of-holding-core/remappings.txt
-            research/proof-of-holding-core/.gitignore
-          if-no-files-found: error
-          retention-days: 3
-
-  gitleaks-diagnostic:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-        with:
-          fetch-depth: 0
-      - name: Install pinned Gitleaks
+      - name: Commit formatted Solidity sources
         shell: bash
         run: |
           set -euo pipefail
-          version="8.30.1"
-          archive="gitleaks_${version}_linux_x64.tar.gz"
-          curl --fail --location --proto '=https' --tlsv1.2 \
-            --output "$RUNNER_TEMP/$archive" \
-            "https://github.com/gitleaks/gitleaks/releases/download/v${version}/${archive}"
-          echo "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb  $RUNNER_TEMP/$archive" | sha256sum --check --strict
-          tar -xzf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP" gitleaks
-      - name: Capture redacted Gitleaks report
-        shell: bash
-        run: |
-          set +e
-          "$RUNNER_TEMP/gitleaks" git . \
-            --redact=100 \
-            --no-banner \
-            --report-format json \
-            --report-path "$RUNNER_TEMP/gitleaks.json"
-          status=$?
-          set -e
-          if [[ ! -s "$RUNNER_TEMP/gitleaks.json" ]]; then
-            printf '[]\n' > "$RUNNER_TEMP/gitleaks.json"
+          if git diff --quiet -- src test; then
+            echo "PoH Solidity sources are already formatted."
+            exit 0
           fi
-          printf 'Gitleaks diagnostic exit status: %s\n' "$status"
-      - name: Upload redacted Gitleaks report
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: poh-gitleaks-diagnostic
-          path: ${{ runner.temp }}/gitleaks.json
-          if-no-files-found: error
-          retention-days: 3
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src test
+          git commit -m "Format PoH Solidity sources"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+      - name: Build
+        run: forge build --sizes
+      - name: Test
+        run: forge test -vvv
