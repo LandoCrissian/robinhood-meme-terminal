@@ -1,0 +1,40 @@
+{
+  "chainId": 4663,
+  "distributor": "0x1111111111111111111111111111111111111111",
+  "epochEndTimestamp": 1800604800,
+  "epochId": 7,
+  "epochStartTimestamp": 1800000000,
+  "excludedAccounts": [
+    "0x9999999999999999999999999999999999999999"
+  ],
+  "pohAccounting": "0x3333333333333333333333333333333333333333",
+  "pohPolicy": "0x4444444444444444444444444444444444444444",
+  "pohToken": "0x2222222222222222222222222222222222222222",
+  "positions": [
+    {
+      "account": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "epochBalanceSeconds": "604800000",
+      "weightedAcquisitionTimestamp": 1799395200
+    },
+    {
+      "account": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "epochBalanceSeconds": "604800000",
+      "weightedAcquisitionTimestamp": 1797408000
+    },
+    {
+      "account": "0x9999999999999999999999999999999999999999",
+      "epochBalanceSeconds": "3024000000",
+      "weightedAcquisitionTimestamp": 1790000000
+    },
+    {
+      "account": "0xcccccccccccccccccccccccccccccccccccccccc",
+      "epochBalanceSeconds": "1814400000",
+      "weightedAcquisitionTimestamp": 0
+    }
+  ],
+  "rewardAmount": "100000000000000000003",
+  "rewardToken": "0x5555555555555555555555555555555555555555",
+  "schema": "poh-epoch-input-v0.1",
+  "sourceEndBlock": 200,
+  "sourceStartBlock": 100
+}
