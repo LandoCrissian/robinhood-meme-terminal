@@ -1,0 +1,136 @@
+import {
+  getAddress,
+  keccak256,
+  parseAbiItem,
+  stringToHex,
+  type AbiEvent,
+  type Address,
+  type Hex
+} from "viem";
+
+export const MARKET_INDEXER_CHAIN_ID = 4663 as const;
+export const MARKET_INDEXER_SCHEMA_VERSION = 1 as const;
+export const MARKET_INDEXER_ACTIVATION_LOCKED = true as const;
+
+export type MarketSourceKind = "v2-factory" | "v3-factory" | "v4-manager";
+
+export type MarketSource = Readonly<{
+  id: string;
+  protocol: "sushiswap" | "uniswap";
+  version: 2 | 3 | 4;
+  kind: MarketSourceKind;
+  contract: Address;
+  startBlock: bigint;
+  deploymentTransaction: Hex;
+  runtimeCodeHash: Hex;
+  upstream: string;
+  event: AbiEvent;
+}>;
+
+export const pairCreatedEvent = parseAbiItem(
+  "event PairCreated(address indexed token0, address indexed token1, address pair, uint256 pairIndex)"
+);
+export const poolCreatedEvent = parseAbiItem(
+  "event PoolCreated(address indexed token0, address indexed token1, uint24 indexed fee, int24 tickSpacing, address pool)"
+);
+export const poolInitializedEvent = parseAbiItem(
+  "event Initialize(bytes32 indexed id, address indexed currency0, address indexed currency1, uint24 fee, int24 tickSpacing, address hooks, uint160 sqrtPriceX96, int24 tick)"
+);
+
+export const marketSources: readonly MarketSource[] = Object.freeze([
+  {
+    id: "sushiswap-v2",
+    protocol: "sushiswap",
+    version: 2,
+    kind: "v2-factory",
+    contract: getAddress("0xE52abd50ad151ecDf56427effD715E703696a6B1"),
+    startBlock: 6_269_958n,
+    deploymentTransaction:
+      "0xe6f9be49a97ffe17cbbe2af9cf85f0f36d5d000666b7064facf16528d670a623",
+    runtimeCodeHash:
+      "0xeba2e349904f5b2c1f6086ffb00d5c7efb4a2c8ea8af2efccfd1c812c7869b6c",
+    upstream:
+      "https://github.com/sushi-labs/sushi/blob/c74a93dcbbcdd4ad9d4b86669880f182dcaeb680/src/evm/config/features/sushiswap-v2.ts",
+    event: pairCreatedEvent
+  },
+  {
+    id: "sushiswap-v3",
+    protocol: "sushiswap",
+    version: 3,
+    kind: "v3-factory",
+    contract: getAddress("0xE51960f1B45f1C9FB6D166E6a884F866fC70433B"),
+    startBlock: 6_292_626n,
+    deploymentTransaction:
+      "0xe930991f25f4ccad299638819eef7e3d3888606752991013bad68bafee2343a0",
+    runtimeCodeHash:
+      "0x1d515a200d61f60a4075b5895f5f282b05e0772ca0749f9fa1589e981165d5f0",
+    upstream:
+      "https://github.com/sushi-labs/sushi/blob/c74a93dcbbcdd4ad9d4b86669880f182dcaeb680/src/evm/config/features/sushiswap-v3.ts",
+    event: poolCreatedEvent
+  },
+  {
+    id: "uniswap-v2",
+    protocol: "uniswap",
+    version: 2,
+    kind: "v2-factory",
+    contract: getAddress("0x8bcEaA40B9AcdfAedF85AdF4FF01F5Ad6517937f"),
+    startBlock: 8_928n,
+    deploymentTransaction:
+      "0x2fc08b6c72d5f2120cec9f3be8ed0b45c210d51adbc87f33b2135886681edaf7",
+    runtimeCodeHash:
+      "0xbab145d02e7005f0d84c6c1639d39b799b0ea16df99ebbdaf5a14d9da820b4e0",
+    upstream:
+      "https://github.com/Uniswap/contracts/blob/37936185dee7decf681360ec799c124e0e034672/deployments/json/4663.json",
+    event: pairCreatedEvent
+  },
+  {
+    id: "uniswap-v3",
+    protocol: "uniswap",
+    version: 3,
+    kind: "v3-factory",
+    contract: getAddress("0x1f7d7550B1b028f7571e69A784071F0205FD2EfA"),
+    startBlock: 8_930n,
+    deploymentTransaction:
+      "0x8add72fbcad4bf7732336de35dcd06b582c1501d0832c4710a30850a7cff8977",
+    runtimeCodeHash:
+      "0xec72b1abd1f2faee020cfea9c646bd8994f9fb389054f6e574f103a895091739",
+    upstream:
+      "https://github.com/Uniswap/contracts/blob/37936185dee7decf681360ec799c124e0e034672/deployments/json/4663.json",
+    event: poolCreatedEvent
+  },
+  {
+    id: "uniswap-v4",
+    protocol: "uniswap",
+    version: 4,
+    kind: "v4-manager",
+    contract: getAddress("0x8366a39CC670B4001A1121B8F6A443A643E40951"),
+    startBlock: 9_070n,
+    deploymentTransaction:
+      "0x4fb28d4935866f462582c6c931c6f2705e55f5be5eb178c7d8d9329a95c44c41",
+    runtimeCodeHash:
+      "0xbd3881180b547f5fe817545743cfb4343e96b1bc6640dcd70c106b0066e95626",
+    upstream:
+      "https://github.com/Uniswap/contracts/blob/37936185dee7decf681360ec799c124e0e034672/deployments/json/4663.json",
+    event: poolInitializedEvent
+  }
+]);
+
+const manifestMaterial = marketSources
+  .map((source) =>
+    [
+      source.id,
+      source.protocol,
+      source.version,
+      source.kind,
+      source.contract.toLowerCase(),
+      source.startBlock.toString(),
+      source.deploymentTransaction,
+      source.runtimeCodeHash,
+      source.upstream
+    ].join("|")
+  )
+  .join("\n");
+
+export const MARKET_SOURCE_MANIFEST_HASH = keccak256(
+  stringToHex(manifestMaterial)
+);

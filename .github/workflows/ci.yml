@@ -109,6 +109,43 @@ jobs:
       - run: pnpm --filter external-origin-indexer test:candidates
       - run: pnpm --filter external-origin-indexer test:shadow-replay
 
+  market-indexer:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: rmt_market_indexer
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d rmt_market_indexer"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      MARKET_INDEXER_DATABASE_URL: postgres://postgres:postgres@localhost:5432/rmt_market_indexer
+      MARKET_INDEXER_RPC_URL: https://rpc.mainnet.chain.robinhood.com/
+      MARKET_INDEXER_READ_TOKEN: ci-market-indexer-read-token-000000000001
+      PGSSLMODE: disable
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a # v4.4.0
+        with:
+          version: 10.12.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter market-indexer typecheck
+      - run: pnpm --filter market-indexer build
+      - run: pnpm --filter market-indexer test:config
+      - run: pnpm --filter market-indexer test:decoder
+      - run: pnpm --filter market-indexer test:replay
+      - run: pnpm --filter market-indexer test:schema
+
   contracts:
     runs-on: ubuntu-latest
     defaults:
