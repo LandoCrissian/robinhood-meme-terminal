@@ -14,7 +14,7 @@ import {
   rankExternalMarket
 } from "../../../../lib/external-market-ranking";
 import { enrichExternalProjectMetadata } from "../../../../lib/server/external-project-metadata";
-import { fetchCircusCurveMarkets } from "../../../../lib/server/circus-curve-feed";
+import { fetchLemonProjectSnapshot } from "../../../../lib/server/lemon-project-feed";
 
 const CHAIN_SLUG = "robinhood";
 const DEXSCREENER_API = "https://api.dexscreener.com/token-pairs/v1";
@@ -25,9 +25,8 @@ const CANONICAL_MARKET_TOKENS = [
 ] as const;
 const OFFICIAL_RMT_V6_TOKEN = "0xdBa33be56C89CC9fc014c4459028d7e5c7878671";
 const EXCLUDED_TOKENS = new Set(CANONICAL_MARKET_TOKENS.map((address) => address.toLowerCase()));
-const MAX_MARKETS = 32;
+const MAX_MARKETS = 48;
 const DEX_TIMEOUT_MS = 8_000;
-const CIRCUS_FALLBACK_MAX_AGE_MS = 2 * 60_000;
 const INDEXER_TIMEOUT_MS = (() => {
   const parsed = Number.parseInt(process.env.RMT_INDEXER_TIMEOUT_MS ?? "5000", 10);
   return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : 5_000;
@@ -85,7 +84,6 @@ type SuccessfulMarketSnapshot = Required<Pick<
 };
 
 let lastSuccessfulSnapshot: SuccessfulMarketSnapshot | undefined;
-let lastCircusSnapshot: { markets: ExternalMarket[]; observedAt: number } | undefined;
 
 const projectMetadataClient = createPublicClient({
   chain: robinhoodChain,
@@ -202,38 +200,25 @@ function staleResponse() {
   );
 }
 
-async function fetchCircusSnapshot() {
-  try {
-    const markets = await fetchCircusCurveMarkets(projectMetadataClient);
-    lastCircusSnapshot = { markets, observedAt: Date.now() };
-    return { markets, delayed: false };
-  } catch {
-    const fallback = lastCircusSnapshot;
-    const withinFallbackWindow = fallback
-      && Date.now() - fallback.observedAt <= CIRCUS_FALLBACK_MAX_AGE_MS;
-    return {
-      markets: withinFallbackWindow ? fallback.markets : [],
-      delayed: true
-    };
-  }
-}
-
 export async function GET() {
   try {
-    const [results, circusSnapshot] = await Promise.all([
-      Promise.all(CANONICAL_MARKET_TOKENS.map(fetchTokenPairs)),
-      fetchCircusSnapshot()
-    ]);
-    const circusMarkets = circusSnapshot.markets;
+    const lemonSnapshot = await fetchLemonProjectSnapshot();
+    const requestedTokens = [...new Set([
+      ...CANONICAL_MARKET_TOKENS.map((address) => address.toLowerCase()),
+      ...lemonSnapshot.candidateAddresses.map((address) => address.toLowerCase())
+    ])];
+    const results = await Promise.all(
+      requestedTokens.map((address) => fetchTokenPairs(address).catch(() => []))
+    );
     const pairs = results.flat();
-    if (pairs.length === 0 && circusMarkets.length === 0) {
+    if (pairs.length === 0) {
       throw new Error("No external market source responded.");
     }
 
-    const candidateAddresses = [...new Set([...pairs.flatMap((pair) => {
+    const candidateAddresses = [...new Set(pairs.flatMap((pair) => {
       const address = asText(tokenFromPair(pair)?.address, 42);
       return isNonzeroEvmAddress(address) ? [address.toLowerCase()] : [];
-    }), ...circusMarkets.map((market) => market.address.toLowerCase())])];
+    }))];
     const rmtOrigins = await resolveRmtOrigins(candidateAddresses);
     if (rmtOrigins.coverage !== "complete") {
       const stale = staleResponse();
@@ -326,17 +311,20 @@ export async function GET() {
         pairCreatedAt,
         ...ranking
       };
+      const lemonProject = lemonSnapshot.projects.get(address.toLowerCase());
+      const attributedMarket = lemonProject
+        && lemonProject.launchPool.toLowerCase() === pairAddress.toLowerCase()
+        ? {
+            ...market,
+            name: lemonProject.name,
+            symbol: lemonProject.symbol,
+            project: lemonProject
+          }
+        : market;
 
       const key = address.toLowerCase();
       const existing = marketsByToken.get(key);
-      marketsByToken.set(key, selectPreferredLifecycleMarket(existing, market));
-    }
-
-    for (const market of circusMarkets) {
-      const key = market.address.toLowerCase();
-      if (!rmtOrigins.tokens.has(key)) {
-        marketsByToken.set(key, selectPreferredLifecycleMarket(marketsByToken.get(key), market));
-      }
+      marketsByToken.set(key, selectPreferredLifecycleMarket(existing, attributedMarket));
     }
 
     const rankedMarkets = [...marketsByToken.values()]
@@ -346,23 +334,21 @@ export async function GET() {
       .catch(() => rankedMarkets);
     const snapshot: SuccessfulMarketSnapshot = {
       markets,
-      source: circusMarkets.length > 0 ? "DEX Screener + Circus" : "DEX Screener",
-      rankingVersion: "rmt-runner-v2",
+      source: lemonSnapshot.projects.size > 0 ? "DEX Screener + Lemon public API" : "DEX Screener",
+      rankingVersion: "rmt-discovery-v3",
       thresholds: RUNNER_THRESHOLDS,
       originCoverage: "unavailable",
       rmtOriginCoverage: "complete",
       updatedAt: new Date().toISOString()
     };
-    if (!circusSnapshot.delayed) lastSuccessfulSnapshot = snapshot;
+    lastSuccessfulSnapshot = snapshot;
 
     return NextResponse.json(
-      circusSnapshot.delayed
+      lemonSnapshot.delayed
         ? {
             ...snapshot,
             stale: true,
-            error: circusMarkets.length > 0
-              ? "Circus refresh is delayed. Showing the last onchain-verified curve snapshot."
-              : "Circus refresh is delayed. DEX markets remain current."
+            error: "Lemon metadata refresh is delayed. DEX markets and cached project identity remain available."
           }
         : snapshot,
       { headers: { "Cache-Control": "public, s-maxage=30, stale-while-revalidate=90" } }

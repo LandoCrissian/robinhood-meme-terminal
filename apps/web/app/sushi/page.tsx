@@ -79,7 +79,7 @@ export default function SushiIntegrationPage() {
           <div><span>04</span><strong>Wallet authority</strong><p>Users retain their keys and confirm transactions; protocol contracts hold disclosed market assets.</p></div>
         </div>
         <p className="sushiFairCaveat">These controls cannot prove fair distribution or prevent every bundle, Sybil strategy or manipulation attempt. No Sushi reward, eligibility, selection or distribution is promised; users should not trade or launch to qualify for an unconfirmed reward.</p>
-        <div className="sushiFairActions"><Link href="/runners">Inspect Runner Radar</Link><a href="https://x.com/alexmccurryo/status/2078524547435770102" target="_blank" rel="noreferrer">Read Alex McCurry&apos;s fair-launch post ↗</a><a href="https://x.com/alexmccurryo/status/2078520305836781981" target="_blank" rel="noreferrer">Read the July incentive announcement ↗</a></div>
+        <div className="sushiFairActions"><Link href="/explore">Explore live markets</Link><a href="https://x.com/alexmccurryo/status/2078524547435770102" target="_blank" rel="noreferrer">Read Alex McCurry&apos;s fair-launch post ↗</a><a href="https://x.com/alexmccurryo/status/2078520305836781981" target="_blank" rel="noreferrer">Read the July incentive announcement ↗</a></div>
       </section>
 
       <section className="sushiLabWorkspace">

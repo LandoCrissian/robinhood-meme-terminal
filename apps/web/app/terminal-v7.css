@@ -483,7 +483,7 @@ main:has(.rmtDiscovery){max-width:none;padding:0 10px 36px}
   .runnerDirectoryButton{width:100%}
   .runnerToolbar{align-items:stretch;flex-direction:column;padding:6px}
   .runnerToolbar>small{align-self:flex-end}
-  .runnerTabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
+  .runnerTabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}
   .runnerMarketCard.externalMarketCard{grid-template-columns:78px minmax(0,1fr) 118px;grid-template-rows:auto auto auto;min-height:0}
   .runnerMarketCard .runnerCardStatus{grid-column:1;grid-row:1}
   .runnerMarketCard .externalIdentity{grid-column:2/-1;grid-row:1;border-right:0}

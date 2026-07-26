@@ -8,12 +8,13 @@ import { ipfsToHttp } from "../lib/token-metadata";
 
 type FeedStatus = "loading" | "ready" | "stale" | "error";
 
-type RunnerView = "moving" | "early" | "active";
+type DiscoveryView = "trending" | "new" | "top" | "explore";
 
-const VIEWS: Array<{ id: RunnerView; label: string }> = [
-  { id: "moving", label: "Moving now" },
-  { id: "early", label: "Early signals" },
-  { id: "active", label: "All active" }
+const VIEWS: Array<{ id: DiscoveryView; label: string }> = [
+  { id: "trending", label: "Trending" },
+  { id: "new", label: "New" },
+  { id: "top", label: "Top" },
+  { id: "explore", label: "Explore" }
 ];
 const DATA_REFRESH_MS = 30_000;
 const RANK_REFRESH_MS = 60_000;
@@ -107,17 +108,34 @@ function isUniswapVenue(market: ExternalMarket) {
   return venue === "uniswap" || venue.startsWith("uniswap-");
 }
 
+function isSushiVenue(market: ExternalMarket) {
+  if (market.venue.kind !== "dex") return false;
+  return market.venue.dexId.trim().toLowerCase().includes("sushi");
+}
+
 function venueLabel(market: ExternalMarket) {
   return market.venue.kind === "dex" ? market.venue.dexId : "Circus curve";
 }
 
-function canHandoffToUniswap(market: ExternalMarket) {
-  return isTradeableAddress(market.address) && isUniswapVenue(market);
+function executionProvider(market: ExternalMarket) {
+  if (isSushiVenue(market)) return "Sushi";
+  if (isUniswapVenue(market)) return "Uniswap";
+  return null;
 }
 
-function uniswapSwapUrl(market: ExternalMarket, side: ExternalTradeSide) {
+function canHandoffToVenue(market: ExternalMarket) {
+  return isTradeableAddress(market.address) && executionProvider(market) !== null;
+}
+
+function venueSwapUrl(market: ExternalMarket, side: ExternalTradeSide) {
   const inputCurrency = side === "buy" ? "NATIVE" : market.address;
   const outputCurrency = side === "buy" ? market.address : "NATIVE";
+  if (isSushiVenue(market)) {
+    return "https://www.sushi.com/robinhood/swap?token0="
+      + encodeURIComponent(inputCurrency)
+      + "&token1="
+      + encodeURIComponent(outputCurrency);
+  }
   return "https://app.uniswap.org/swap?chain=robinhood&inputCurrency="
     + encodeURIComponent(inputCurrency)
     + "&outputCurrency="
@@ -145,7 +163,8 @@ function ExternalTradeDialog({
   const closeButton = useRef<HTMLButtonElement>(null);
   const value = valuation(market);
   const venue = venueLabel(market);
-  const reviewUrl = uniswapSwapUrl(market, side);
+  const provider = executionProvider(market) ?? "DEX";
+  const reviewUrl = venueSwapUrl(market, side);
   const sideLabel = side === "buy" ? "Buy" : "Sell";
 
   useEffect(() => {
@@ -203,7 +222,7 @@ function ExternalTradeDialog({
         <div className="quickTradeIdentity">
           <ExternalArtwork market={market} />
           <span>
-            <small>EXTERNAL MARKET · UNISWAP REVIEW</small>
+            <small>EXTERNAL MARKET · {provider.toUpperCase()} REVIEW</small>
             <strong>{market.name}</strong>
             <em>{"$" + cleanSymbol(market.symbol) + " · " + sideLabel}</em>
           </span>
@@ -238,12 +257,12 @@ function ExternalTradeDialog({
             <span>{"Token " + shortAddress(market.address) + " · Pool " + shortAddress(market.pairAddress)}</span>
             {market.riskFlags.length > 0 && <em>{riskSummary(market.riskFlags)}</em>}
           </div>
-          {delayed && <p className="runnerDataNotice"><span>Runner data is delayed. Uniswap will calculate a fresh route and quote before any wallet confirmation.</span></p>}
+          {delayed && <p className="runnerDataNotice"><span>Market data is delayed. {provider} will calculate a fresh route and quote before any wallet confirmation.</span></p>}
           <p className="externalDisclosure">
             {market.project
               ? market.project.sourceName + " project metadata is read onchain and cross-checked against its factory record. This is provenance, not an endorsement. "
               : "This token is external and its launchpad origin is not yet verified by RMT. "}
-            Uniswap provides the final route, quote, price impact, and transaction review. RMT does not custody funds or construct external swap calldata in this release.
+            {provider} provides the final route, quote, price impact, and transaction review. RMT does not custody funds or construct external swap calldata in this release.
           </p>
           <div className="externalMarketActions externalTradeReviewAction">
             <a
@@ -252,14 +271,14 @@ function ExternalTradeDialog({
               target="_blank"
               rel="noopener noreferrer"
             >
-              {"Review " + sideLabel + " on Uniswap ↗"}
+              {"Review " + sideLabel + " on " + provider + " ↗"}
             </a>
           </div>
         </article>
       </div>
 
       <footer className="quickTradeFooter">
-        <span>Fresh Uniswap quote required</span>
+        <span>Fresh {provider} quote required</span>
         <span>Wallet confirmation required</span>
         <span>RMT never controls your funds</span>
       </footer>
@@ -281,7 +300,7 @@ function stabilizeOrder(order: string[], markets: ExternalMarket[]) {
 export function ExternalMarketFeed() {
   const [markets, setMarkets] = useState<ExternalMarket[]>([]);
   const [rankOrder, setRankOrder] = useState<string[]>([]);
-  const [view, setView] = useState<RunnerView>("moving");
+  const [view, setView] = useState<DiscoveryView>("trending");
   const [status, setStatus] = useState<FeedStatus>("loading");
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
   const [rankingAnnouncement, setRankingAnnouncement] = useState("");
@@ -304,7 +323,7 @@ export function ExternalMarketFeed() {
       url.searchParams.delete("side");
       url.searchParams.set("externalTrade", market.address);
       url.searchParams.set("externalSide", side);
-      url.hash = "runner-radar";
+      url.hash = "market-explorer";
     } else {
       url.searchParams.delete("externalTrade");
       url.searchParams.delete("externalSide");
@@ -313,7 +332,7 @@ export function ExternalMarketFeed() {
   }, []);
 
   const openQuickTrade = useCallback((market: ExternalMarket, side: ExternalTradeSide) => {
-    if (!canHandoffToUniswap(market)) return;
+    if (!canHandoffToVenue(market)) return;
     returnFocusTo.current = document.activeElement instanceof HTMLElement ? document.activeElement : runnerHeading.current;
     setTradeAnnouncement("");
     setQuickTrade({ address: market.address, side });
@@ -339,7 +358,7 @@ export function ExternalMarketFeed() {
         setRankOrder(payload.markets.map((market) => market.address.toLowerCase()));
         rankInitialized.current = true;
         nextRankRefresh.current = now + RANK_REFRESH_MS;
-        setRankingAnnouncement(payload.stale ? "Runner data is delayed." : "Runner rankings updated.");
+        setRankingAnnouncement(payload.stale ? "Market data is delayed." : "Market rankings updated.");
       }
       setStatus(payload.stale ? "stale" : "ready");
     } catch {
@@ -371,9 +390,9 @@ export function ExternalMarketFeed() {
       return;
     }
     const market = markets.find((item) => item.address.toLowerCase() === token);
-    if (!market || !canHandoffToUniswap(market)) {
+    if (!market || !canHandoffToVenue(market)) {
       syncQuickTradeUrl();
-      setTradeAnnouncement("That external market is no longer available for Uniswap review.");
+      setTradeAnnouncement("That market is no longer available for venue review.");
       return;
     }
     returnFocusTo.current = runnerHeading.current;
@@ -389,7 +408,7 @@ export function ExternalMarketFeed() {
 
   useEffect(() => {
     if (!quickTrade) return;
-    if (selectedQuickTradeMarket && canHandoffToUniswap(selectedQuickTradeMarket)) return;
+    if (selectedQuickTradeMarket && canHandoffToVenue(selectedQuickTradeMarket)) return;
     setQuickTrade(undefined);
     syncQuickTradeUrl();
     setTradeAnnouncement("The external market changed or left the eligible feed, so its trade review was closed.");
@@ -398,9 +417,10 @@ export function ExternalMarketFeed() {
 
   const orderedMarkets = useMemo(() => stabilizeOrder(rankOrder, markets), [markets, rankOrder]);
   const counts = useMemo(() => ({
-    moving: markets.filter((market) => market.signal === "moving").length,
-    early: markets.filter((market) => market.signal === "early").length,
-    active: markets.length
+    trending: markets.filter((market) => market.signal !== "active").length || markets.length,
+    new: markets.filter((market) => market.ageMinutes !== null && market.ageMinutes <= 24 * 60).length,
+    top: markets.filter((market) => market.marketCapUsd > 0 || market.fdvUsd > 0).length,
+    explore: markets.length
   }), [markets]);
   const normalizedMarketQuery = marketQuery.trim().toLowerCase();
   const rankByAddress = useMemo(
@@ -412,9 +432,25 @@ export function ExternalMarketFeed() {
     ),
     [orderedMarkets]
   );
-  const viewMarkets = orderedMarkets.filter(
-    (market) => view === "active" || market.signal === view
-  );
+  const viewMarkets = useMemo(() => {
+    if (view === "new") {
+      return [...orderedMarkets].sort((a, b) =>
+        (b.pairCreatedAt ?? 0) - (a.pairCreatedAt ?? 0)
+        || b.momentumScore - a.momentumScore
+      );
+    }
+    if (view === "top") {
+      return [...orderedMarkets].sort((a, b) =>
+        Math.max(b.marketCapUsd, b.fdvUsd) - Math.max(a.marketCapUsd, a.fdvUsd)
+        || b.volume24h - a.volume24h
+      );
+    }
+    if (view === "trending") {
+      const signaled = orderedMarkets.filter((market) => market.signal !== "active");
+      return signaled.length > 0 ? signaled : orderedMarkets;
+    }
+    return orderedMarkets;
+  }, [orderedMarkets, view]);
   const filteredMarkets = normalizedMarketQuery
     ? orderedMarkets.filter((market) => [
         market.name,
@@ -435,7 +471,7 @@ export function ExternalMarketFeed() {
       : "Top " + Math.min(MAX_VISIBLE_MARKETS, filteredMarkets.length) +
         " of " + filteredMarkets.length;
 
-  const changeView = (nextView: RunnerView) => {
+  const changeView = (nextView: DiscoveryView) => {
     setView(nextView);
     setMarketQuery("");
     setShowAllMarkets(false);
@@ -443,7 +479,7 @@ export function ExternalMarketFeed() {
   const handleMarketQueryChange = (value: string) => {
     setMarketQuery(value);
     if (value.trim()) {
-      setView("active");
+      setView("explore");
       setShowAllMarkets(false);
     }
   };
@@ -460,10 +496,10 @@ export function ExternalMarketFeed() {
       setShowAllMarkets(false);
       return;
     }
-    setView("active");
+    setView("explore");
     setShowAllMarkets(true);
   };
-  const handleTabKeyDown = (event: ReactKeyboardEvent<HTMLButtonElement>, currentView: RunnerView) => {
+  const handleTabKeyDown = (event: ReactKeyboardEvent<HTMLButtonElement>, currentView: DiscoveryView) => {
     const currentIndex = VIEWS.findIndex((item) => item.id === currentView);
     let nextIndex = currentIndex;
     if (event.key === "ArrowRight") nextIndex = (currentIndex + 1) % VIEWS.length;
@@ -478,12 +514,12 @@ export function ExternalMarketFeed() {
   };
 
   return (
-    <section className="panel externalMarkets runnerRadar" id="runner-radar" aria-labelledby="external-markets-title">
+    <section className="panel externalMarkets runnerRadar" id="market-explorer" aria-labelledby="external-markets-title">
       <div className="feedHeading externalHeading">
         <div>
-          <p className="eyebrow">ROBINHOOD CHAIN · RUNNER RADAR</p>
-          <h2 id="external-markets-title" ref={runnerHeading} tabIndex={-1}>Markets showing movement</h2>
-          <p>Active Robinhood Chain markets discovered through WETH and USDG pairs. Top signals stay focused by default; search or browse every qualified market without losing the live ranking.</p>
+          <p className="eyebrow">ROBINHOOD CHAIN · UNIVERSAL MARKET INDEX</p>
+          <h2 id="external-markets-title" ref={runnerHeading} tabIndex={-1}>Explore what is trading now</h2>
+          <p>One clean view across Pons, Lemon, Sushi, Uniswap, and qualified Robinhood Chain markets—with project images, verified source context, liquidity, activity, and direct venue review.</p>
         </div>
         <span className="externalBadge">{status === "stale" ? "DATA DELAYED" : "RECENT DATA · 60S RANKS"}</span>
       </div>
@@ -492,7 +528,7 @@ export function ExternalMarketFeed() {
       <p className="srOnly" aria-live="polite">{tradeAnnouncement}</p>
       {status === "stale" && (
         <p className="runnerDataNotice" role="status">
-          <span>Data delayed · showing the last successful snapshot{updatedAt ? " from " + snapshotTime(updatedAt) : ""}. RMT launches and trading are unaffected.</span>
+          <span>Data delayed · showing the last successful snapshot{updatedAt ? " from " + snapshotTime(updatedAt) : ""}. Direct venue trading remains available.</span>
           <button type="button" onClick={() => void refresh()}>Refresh</button>
         </p>
       )}
@@ -532,7 +568,7 @@ export function ExternalMarketFeed() {
         </button>
       </div>
       <div className="runnerToolbar">
-        <div className="runnerTabs" role="tablist" aria-label="External runner views">
+        <div className="runnerTabs" role="tablist" aria-label="Market discovery views">
           {VIEWS.map((item) => (
             <button
               type="button"
@@ -559,16 +595,16 @@ export function ExternalMarketFeed() {
 
       <div id="runner-market-panel" role="tabpanel" aria-labelledby={"runner-tab-" + view}>
         {status === "loading" ? (
-          <div className="emptyFeed" role="status"><strong>Loading runner signals…</strong><span>Checking liquidity, verified activity, volume pace, trade balance, and price movement.</span></div>
+          <div className="emptyFeed" role="status"><strong>Loading live markets…</strong><span>Indexing Pons, Lemon, Sushi, Uniswap, liquidity, activity, and verified project metadata.</span></div>
         ) : status === "error" ? (
-          <div className="emptyFeed"><strong>Runner radar is temporarily unavailable.</strong><span>RMT launches and trading are unaffected.</span><button type="button" onClick={() => void refresh()}>Try again</button></div>
+          <div className="emptyFeed"><strong>Market discovery is temporarily unavailable.</strong><span>Direct venue trading remains available.</span><button type="button" onClick={() => void refresh()}>Try again</button></div>
         ) : visibleMarkets.length === 0 ? (
           <div className="emptyFeed">
             <strong>{normalizedMarketQuery ? "No external markets match that search." : "No markets meet this signal yet."}</strong>
             <span>{normalizedMarketQuery ? "Try a token name, ticker, or complete contract address." : "The filter will update automatically when activity qualifies."}</span>
             {normalizedMarketQuery
               ? <button type="button" onClick={clearMarketQuery}>Clear search</button>
-              : view !== "active" && <button type="button" onClick={() => changeView("active")}>View active markets</button>}
+              : view !== "explore" && <button type="button" onClick={() => changeView("explore")}>Explore all markets</button>}
           </div>
         ) : (
           <div className="externalMarketGrid runnerMarketGrid">
@@ -609,7 +645,7 @@ export function ExternalMarketFeed() {
                       : oneHourTrades > 0 ? Math.round(market.buyPressureBps / 100) + "% buys · 1h" : "No 1h trades"}</span>
                     {market.riskFlags.length > 0 && <em>{riskSummary(market.riskFlags)}</em>}
                   </div>
-                  {canHandoffToUniswap(market) ? (
+                  {canHandoffToVenue(market) ? (
                     <div className="externalMarketActions">
                       <button className="buyCardAction" type="button" aria-haspopup="dialog" aria-label={"Buy " + market.name} onClick={() => openQuickTrade(market, "buy")}>Buy</button>
                       <button className="sellCardAction" type="button" aria-haspopup="dialog" aria-label={"Sell " + market.name} onClick={() => openQuickTrade(market, "sell")}>Sell</button>
@@ -623,9 +659,9 @@ export function ExternalMarketFeed() {
         )}
       </div>
 
-      <p className="externalDisclosure">Market data: DEX Screener plus Circus&apos;s public curve feed. Circus entries are displayed only after creator, token identity, metadata URI and live curve state agree with the pinned onchain launchpad; Pons and Noxa metadata require matching factory records. Curve volume is not labeled as 1h volume. Token origin and venue remain separate. Signals are automated filters, not endorsements or investment recommendations. Uniswap Buy/Sell requires a fresh external quote and wallet review; Circus curves remain view-only in this release.</p>
+      <p className="externalDisclosure">Market data combines DEX Screener with Lemon&apos;s documented public API. Lemon identity is attached only when its token and pool match the discovered DEX pair; Pons identity requires matching factory and token records. Other qualified markets remain discoverable without implied endorsement. Token origin and execution venue are kept separate. Rankings are automated signals, not investment recommendations. Buy and Sell always require a fresh Sushi or Uniswap quote and wallet review.</p>
 
-      {quickTrade && selectedQuickTradeMarket && canHandoffToUniswap(selectedQuickTradeMarket) && (
+      {quickTrade && selectedQuickTradeMarket && canHandoffToVenue(selectedQuickTradeMarket) && (
         <ExternalTradeDialog
           market={selectedQuickTradeMarket}
           side={quickTrade.side}

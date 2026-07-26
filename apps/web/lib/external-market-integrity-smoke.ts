@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import "./server/lemon-project-feed-smoke";
 import { selectPreferredLifecycleMarket } from "./external-market";
 import { isNonzeroEvmAddress, selectExternalPairBaseToken } from "./external-market-identity";
 
