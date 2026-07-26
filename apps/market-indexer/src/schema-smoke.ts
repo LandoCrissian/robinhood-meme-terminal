@@ -14,6 +14,24 @@ try {
   await pool.query("DROP TABLE IF EXISTS market_pools CASCADE");
   await pool.query("DROP TABLE IF EXISTS market_indexer_sync_points CASCADE");
   await pool.query("DROP TABLE IF EXISTS market_indexer_source_state CASCADE");
+  await pool.query("DROP TABLE IF EXISTS canonical_launches CASCADE");
+  await pool.query("CREATE TABLE canonical_launches (id BIGINT PRIMARY KEY)");
+  await assert.rejects(
+    migrateMarketIndexer(pool),
+    /not a dedicated database; unexpected public tables: canonical_launches/
+  );
+  const refusedDdl = await pool.query<{ count: string }>(
+    `SELECT COUNT(*) FROM pg_tables
+     WHERE schemaname = 'public'
+       AND tablename = ANY($1::text[])`,
+    [[
+      "market_indexer_source_state",
+      "market_indexer_sync_points",
+      "market_pools"
+    ]]
+  );
+  assert.equal(refusedDdl.rows[0]?.count, "0");
+  await pool.query("DROP TABLE canonical_launches");
   await migrateMarketIndexer(pool);
 
   const source = marketSources.find((candidate) => candidate.id === "uniswap-v3")!;

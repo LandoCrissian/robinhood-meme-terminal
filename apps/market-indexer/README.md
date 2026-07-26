@@ -58,6 +58,10 @@ exists, the service stops instead of guessing.
 
 - It requires its own `MARKET_INDEXER_DATABASE_URL` and rejects the canonical
   indexer or external-origin database URL.
+- Before any DDL, a transaction-scoped migration lock is acquired and every
+  existing public table must match the market indexer's exact table allowlist.
+  A canonical, external-origin, or otherwise unrelated populated database is
+  rejected without creating a market-indexer table.
 - It has no wallet, signer, transaction submission, key, or contract-write
   path.
 - `GET /ready` always returns HTTP 503 while the source-level activation lock is
@@ -99,3 +103,15 @@ Before this data can influence the public product:
 
 No cutover should silently change the live feed. RMT should publish measured
 coverage and limitations first.
+
+## Railway shadow deployment
+
+The checked-in `railway.json` builds only this workspace. Configure it as a
+separate Railway service with a separate PostgreSQL database and the variables
+in `.env.example`. Its provider health check uses `/health` only to prove the
+shadow process is alive. `/ready` remains permanently unavailable while the
+activation lock is compiled in.
+
+Do not add `DATABASE_URL`, `RMT_INDEXER_URL`, a public production-domain route,
+or any Vercel variable for this service. The first deployment is for private
+backfill and coverage measurement only.
