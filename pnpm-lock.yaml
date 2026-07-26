@@ -5,12 +5,15 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
-  '@hono/node-server@<2.0.5': 2.0.5
+  '@hono/node-server@<2.0.10': 2.0.10
+  '@opentelemetry/core@<2.8.0': 2.8.0
   axios@>=1.0.0 <1.18.0: 1.18.0
+  brace-expansion@<=5.0.7: 5.0.8
   fast-uri@>=3.0.0 <=3.1.3: 3.1.4
   postcss@<=8.5.17: 8.5.18
   sharp@<0.35.0: 0.35.0
   tar@<=7.5.20: 7.5.21
+  uuid@<11.1.1: 11.1.1
   ws@>=8.0.0 <8.21.0: 8.21.0
 
 importers:
@@ -623,8 +626,8 @@ packages:
     engines: {node: '>=6'}
     hasBin: true
 
-  '@hono/node-server@2.0.5':
-    resolution: {integrity: sha512-yQFvDmyDo3y6rEOJZDUYPJ49DIKTPpIk4kGvm40xx4Ejne0Pu9a1+exxPN+C1UppWK/WGZX9F++/Xs231tE86g==}
+  '@hono/node-server@2.0.10':
+    resolution: {integrity: sha512-ZcnNVhKTmyDJeg0UlnZjvM73JBsTAuhrH/J4fjwGOw59PwOW51r4J+p6CsKZWXdKSme4MFqU62CZMOsdDrU4CA==}
     engines: {node: '>=20'}
     peerDependencies:
       hono: ^4
@@ -1127,15 +1130,11 @@ packages:
     resolution: {integrity: sha512-gLyJlPHPZYdAk1JENA9LeHejZe1Ti77/pTeFm/nMXmQH/HFZlcS/O2XJB+L8fkbrNSqhdtlvjBVjxwUYanNH5Q==}
     engines: {node: '>=8.0.0'}
 
-  '@opentelemetry/core@1.30.1':
-    resolution: {integrity: sha512-OOCM2C/QIURhJMuKaekP3TRBxBKxG/TWWA0TL2J6nXUtDnuCtccy49LUJF8xPFXMX+0LMcxFpCo8M9cGY1W6rQ==}
-    engines: {node: '>=14'}
+  '@opentelemetry/core@2.8.0':
+    resolution: {integrity: sha512-hd1Lfh8p545nNz+jq1Ejfz+Mn1hyLuxYn1YzTfFNrxr8urEWMNQLPf1Th8kjOH+HxwawCrtgBp8JpBUR4ZSgww==}
+    engines: {node: ^18.19.0 || >=20.6.0}
     peerDependencies:
       '@opentelemetry/api': '>=1.0.0 <1.10.0'
-
-  '@opentelemetry/semantic-conventions@1.28.0':
-    resolution: {integrity: sha512-lp4qAiMTD4sNWW4DbKLBkfiMZ4jbAboJIGOQr5DvciMRI494OapieI9qiODpOt0XBr1LjIDy1xAGAnVs5supTA==}
-    engines: {node: '>=14'}
 
   '@opentelemetry/semantic-conventions@1.39.0':
     resolution: {integrity: sha512-R5R9tb2AXs2IRLNKLBJDynhkfmx7mX0vi8NkhZb3gUkPWHn6HXk5J8iQ/dql0U3ApfWym4kXXmBDRGO+oeOfjg==}
@@ -2189,8 +2188,9 @@ packages:
       react-native-b4a:
         optional: true
 
-  balanced-match@1.0.2:
-    resolution: {integrity: sha512-3oSeUO0TMV67hN1AmbXsK4yaqU7tjiHlbxRDZOpH0KW9+CeX4bRAaX0Anxt0tx2MrpRpWwQaPwIlISEJhYU5Pw==}
+  balanced-match@4.0.4:
+    resolution: {integrity: sha512-BLrgEcRTwX2o6gGxGOCNyMvGSp35YofuYzw9h1IMTRmKqttAZZVU67bdb9Pr2vUHA8+j3i2tJfjO6C6+4myGTA==}
+    engines: {node: 18 || 20 || >=22}
 
   bare-events@2.9.1:
     resolution: {integrity: sha512-Z0oHEHAFDZkffN8Qc39zNZjQlMDkPJRyyyZieU1VH7u8c5S+qHZ2S8ixdKIAxEjfHO7FJxXmJWgteOghVanIsg==}
@@ -2277,11 +2277,9 @@ packages:
     resolution: {integrity: sha512-9gYgQKXx+1nP8mP7CzFyaUARhg7D3n1dF/FnErWmu9l6JvGpNUN278h0aSb+QjoiKSWG+iZ3uHrcqk0qrY9RQQ==}
     engines: {node: '>=10'}
 
-  brace-expansion@1.1.16:
-    resolution: {integrity: sha512-IDw48K2/2kRkg9LdJxurvq3lV3aBgq0REY89duEqFRthjlPdXHKMj7EnQOXVckxzgisinf3nHfrcE2FufFLXMw==}
-
-  brace-expansion@2.1.2:
-    resolution: {integrity: sha512-w5JZcKgdhDOgOwm8H+KgbosopHMuGcl6qbulwjtz3SM7I7P3yW1eAjzMPLrIE+NQ9vjgANKHWeMHnrT0OXW1oA==}
+  brace-expansion@5.0.8:
+    resolution: {integrity: sha512-JZyDyq3D4AUifKTPOB7DELf6XsB3WdPuNxCtob1vFXPsSXhdAiHBWJ/tJ8HAc9aH84BK+5JFZLNkJKx3G9kzQg==}
+    engines: {node: 20 || >=22}
 
   braces@3.0.3:
     resolution: {integrity: sha512-yQbXgO/OSZVD2IsiLlro+7Hf6Q18EJrKSEsdoMzKePKXct3gvD8oLcOQdIzGupr5Fj+EDe8gO/lxc1BzfMpxvA==}
@@ -2476,9 +2474,6 @@ packages:
   compression@1.8.1:
     resolution: {integrity: sha512-9mAqGPHLakhCLeNyxPkK4xVo746zQ/czLH1Ky+vkitMnWfWZps8r0qXuwhwizagCRttsL4lfG4pIOvaWLpAP0w==}
     engines: {node: '>= 0.8.0'}
-
-  concat-map@0.0.1:
-    resolution: {integrity: sha512-/Srv4dswyQNBfohGpz9o6Yb3Gz3SrUDqBH5rTuhGR7ahtlbYKnVxw2bCFMRljaA7EXHaXZ8wsHdodFvbkhKmqg==}
 
   config-chain@1.1.13:
     resolution: {integrity: sha512-qj+f8APARXHrM0hraqXYb2/bOVSV4PvJQlNZ/DVj0QrmNM2q2euizkeuVckQ57J+W0mRH6Hvi+k50M4Jul2VRQ==}
@@ -4765,18 +4760,12 @@ packages:
     resolution: {integrity: sha512-pMZTvIkT1d+TFGvDOqodOclx0QWkkgi6Tdoa8gC8ffGAAqz9pzPTZWAybbsHHoED/ztMtkv/VoYTYyShUn81hA==}
     engines: {node: '>= 0.4.0'}
 
+  uuid@11.1.1:
+    resolution: {integrity: sha512-vIYxrBCC/N/K+Js3qSN88go7kIfNPssr/hHCesKCQNAjmgvYS2oqr69kIufEG+O4+PfezOH4EbIeHCfFov8ZgQ==}
+    hasBin: true
+
   uuid@14.0.1:
     resolution: {integrity: sha512-6ZxzVpzDXDa3bJWaHilVayA+BH/1zmxCJoVgvmqJnid/gPoKHxUrS/aC/T6LGQtNHT+XHG9fXPJB4d+IrU30Ew==}
-    hasBin: true
-
-  uuid@8.3.2:
-    resolution: {integrity: sha512-+NYs2QeMWy+GWFOEm9xnn6HCDp0l7QBD7ml8zLUmJ+93Q5NF0NocErnwkTkXVFNiX3/fpC6afS8Dhb/gz7R7eg==}
-    deprecated: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).
-    hasBin: true
-
-  uuid@9.0.1:
-    resolution: {integrity: sha512-b+1eJOlsR9K8HJpow9Ok3fiWOWSIcIzXodvv0rQjVoOVNpWMpxf1wZNpt4y9h10odCNrqnYp1OBzRktckBe3sA==}
-    deprecated: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).
     hasBin: true
 
   valid-url@1.0.9:
@@ -5650,7 +5639,7 @@ snapshots:
       '@google-cloud/projectify': 5.1.0
       '@google-cloud/promisify': 5.1.0
       '@opentelemetry/api': 1.9.1
-      '@opentelemetry/core': 1.30.1(@opentelemetry/api@1.9.1)
+      '@opentelemetry/core': 2.8.0(@opentelemetry/api@1.9.1)
       '@opentelemetry/semantic-conventions': 1.39.0
       arrify: 2.0.1
       extend: 3.0.2
@@ -5695,7 +5684,7 @@ snapshots:
       protobufjs: 7.6.5
       yargs: 17.7.3
 
-  '@hono/node-server@2.0.5(hono@4.12.30)':
+  '@hono/node-server@2.0.10(hono@4.12.30)':
     dependencies:
       hono: 4.12.30
 
@@ -6047,7 +6036,7 @@ snapshots:
       readable-stream: 3.6.2
       socket.io-client: 4.8.3(bufferutil@4.1.0)(utf-8-validate@5.0.10)
       utf-8-validate: 5.0.10
-      uuid: 8.3.2
+      uuid: 11.1.1
     transitivePeerDependencies:
       - supports-color
 
@@ -6076,7 +6065,7 @@ snapshots:
       socket.io-client: 4.8.3(bufferutil@4.1.0)(utf-8-validate@5.0.10)
       tslib: 2.8.1
       util: 0.12.5
-      uuid: 8.3.2
+      uuid: 11.1.1
     transitivePeerDependencies:
       - bufferutil
       - encoding
@@ -6097,7 +6086,7 @@ snapshots:
       lodash: 4.18.1
       pony-cause: 2.1.11
       semver: 7.8.5
-      uuid: 9.0.1
+      uuid: 11.1.1
     transitivePeerDependencies:
       - supports-color
 
@@ -6121,7 +6110,7 @@ snapshots:
       debug: 4.4.3
       pony-cause: 2.1.11
       semver: 7.8.5
-      uuid: 9.0.1
+      uuid: 11.1.1
     transitivePeerDependencies:
       - supports-color
 
@@ -6135,13 +6124,13 @@ snapshots:
       debug: 4.4.3
       pony-cause: 2.1.11
       semver: 7.8.5
-      uuid: 9.0.1
+      uuid: 11.1.1
     transitivePeerDependencies:
       - supports-color
 
   '@modelcontextprotocol/sdk@1.29.0(zod@4.4.3)':
     dependencies:
-      '@hono/node-server': 2.0.5(hono@4.12.30)
+      '@hono/node-server': 2.0.10(hono@4.12.30)
       ajv: 8.20.0
       ajv-formats: 3.0.1(ajv@8.20.0)
       content-type: 1.0.5
@@ -6228,12 +6217,10 @@ snapshots:
 
   '@opentelemetry/api@1.9.1': {}
 
-  '@opentelemetry/core@1.30.1(@opentelemetry/api@1.9.1)':
+  '@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1)':
     dependencies:
       '@opentelemetry/api': 1.9.1
-      '@opentelemetry/semantic-conventions': 1.28.0
-
-  '@opentelemetry/semantic-conventions@1.28.0': {}
+      '@opentelemetry/semantic-conventions': 1.39.0
 
   '@opentelemetry/semantic-conventions@1.39.0': {}
 
@@ -7996,7 +7983,7 @@ snapshots:
 
   b4a@1.8.1: {}
 
-  balanced-match@1.0.2: {}
+  balanced-match@4.0.4: {}
 
   bare-events@2.9.1: {}
 
@@ -8099,14 +8086,9 @@ snapshots:
       widest-line: 3.1.0
       wrap-ansi: 7.0.0
 
-  brace-expansion@1.1.16:
+  brace-expansion@5.0.8:
     dependencies:
-      balanced-match: 1.0.2
-      concat-map: 0.0.1
-
-  brace-expansion@2.1.2:
-    dependencies:
-      balanced-match: 1.0.2
+      balanced-match: 4.0.4
 
   braces@3.0.3:
     dependencies:
@@ -8305,8 +8287,6 @@ snapshots:
       vary: 1.1.2
     transitivePeerDependencies:
       - supports-color
-
-  concat-map@0.0.1: {}
 
   config-chain@1.1.13:
     dependencies:
@@ -9027,7 +9007,7 @@ snapshots:
       https-proxy-agent: 7.0.6
       is-stream: 2.0.1
       node-fetch: 2.7.0
-      uuid: 9.0.1
+      uuid: 11.1.1
     transitivePeerDependencies:
       - encoding
       - supports-color
@@ -9673,19 +9653,19 @@ snapshots:
 
   minimatch@3.1.5:
     dependencies:
-      brace-expansion: 1.1.16
+      brace-expansion: 5.0.8
 
   minimatch@5.1.9:
     dependencies:
-      brace-expansion: 2.1.2
+      brace-expansion: 5.0.8
 
   minimatch@6.2.3:
     dependencies:
-      brace-expansion: 2.1.2
+      brace-expansion: 5.0.8
 
   minimatch@9.0.9:
     dependencies:
-      brace-expansion: 2.1.2
+      brace-expansion: 5.0.8
 
   minimist@1.2.8: {}
 
@@ -10980,11 +10960,9 @@ snapshots:
 
   utils-merge@1.0.1: {}
 
+  uuid@11.1.1: {}
+
   uuid@14.0.1: {}
-
-  uuid@8.3.2: {}
-
-  uuid@9.0.1: {}
 
   valid-url@1.0.9: {}
 
