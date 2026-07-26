@@ -313,6 +313,15 @@ main:has(.rmtDiscovery){max-width:none;padding:0 10px 36px}
 .runnerTabs button:last-child{border-right:0}
 .runnerTabs button span{min-width:16px;height:16px;border-radius:2px;font-size:.48rem}
 .runnerTabs button.active{background:#102116;box-shadow:inset 0 -2px #39d65a}
+.runnerSourceFilters{display:flex;min-height:34px;align-items:center;gap:0;padding:0 8px;border-bottom:1px solid var(--terminal-line);background:#050806;overflow-x:auto;scrollbar-width:thin}
+.runnerSourceFilters>span{flex:0 0 auto;margin-right:8px;color:#536159;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.47rem;font-weight:850;letter-spacing:.06em;text-transform:uppercase}
+.runnerSourceFilters button{display:flex;min-height:25px;flex:0 0 auto;align-items:center;gap:5px;padding:0 8px;border:1px solid var(--terminal-line);border-right:0;background:#080c09;color:#77837b;font:inherit;font-size:.52rem;font-weight:850;cursor:pointer}
+.runnerSourceFilters button:last-child{border-right:1px solid var(--terminal-line)}
+.runnerSourceFilters button b{color:#59665e;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.47rem}
+.runnerSourceFilters button.active{border-color:#32633b;background:#102116;color:#72e582}
+.runnerSourceFilters button.active+button{border-left-color:#32633b}
+.runnerSourceFilters button.active b{color:#b8edc0}
+.runnerSourceFilters button:focus-visible{position:relative;z-index:1;outline:2px solid #76ed86;outline-offset:-2px}
 .runnerColumnHeader{display:grid;grid-template-columns:96px minmax(210px,1.2fr) minmax(300px,1.6fr) 125px 126px 82px;min-height:27px;align-items:center;border-bottom:1px solid var(--terminal-line);background:#050806;color:#536159;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.47rem;font-weight:850;letter-spacing:.06em;text-transform:uppercase}
 .runnerColumnHeader span{height:100%;display:flex;align-items:center;padding:0 8px;border-right:1px solid var(--terminal-line)}
 .runnerColumnHeader span:last-child{justify-content:center;border-right:0}
@@ -484,6 +493,10 @@ main:has(.rmtDiscovery){max-width:none;padding:0 10px 36px}
   .runnerToolbar{align-items:stretch;flex-direction:column;padding:6px}
   .runnerToolbar>small{align-self:flex-end}
   .runnerTabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}
+  .runnerSourceFilters{min-height:48px;padding:7px 10px}
+  .runnerSourceFilters>span{display:none}
+  .runnerSourceFilters button{min-height:34px;padding:0 11px;font-size:.64rem}
+  .runnerSourceFilters button b{font-size:.57rem}
   .runnerMarketCard.externalMarketCard{grid-template-columns:78px minmax(0,1fr) 118px;grid-template-rows:auto auto auto;min-height:0}
   .runnerMarketCard .runnerCardStatus{grid-column:1;grid-row:1}
   .runnerMarketCard .externalIdentity{grid-column:2/-1;grid-row:1;border-right:0}

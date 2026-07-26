@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import "./server/lemon-project-feed-smoke";
-import { selectPreferredLifecycleMarket } from "./external-market";
+import {
+  externalProjectProvenanceDescription,
+  externalProjectProvenanceLabel,
+  selectPreferredLifecycleMarket
+} from "./external-market";
 import { isNonzeroEvmAddress, selectExternalPairBaseToken } from "./external-market-identity";
 
 const syntheticAddress = (character: string) => ("0x" + character.repeat(40)) as `0x${string}`;
@@ -72,6 +76,29 @@ assert.equal(
   selectPreferredLifecycleMarket(dexMarket, curveMarket),
   dexMarket,
   "A delayed curve snapshot must never replace a discovered DEX market"
+);
+
+const lemonProject = {
+  sourceId: "lemon",
+  sourceName: "Lemon",
+  provenance: "public-api-and-dex-pool-cross-checked",
+  creator: syntheticAddress("d"),
+  launchPool: syntheticAddress("e"),
+  name: "Lemon project",
+  symbol: "LEMON",
+  description: "",
+  imageUri: null,
+  socials: { x: null, telegram: null, discord: null, website: null, farcaster: null }
+} as const;
+assert.equal(
+  externalProjectProvenanceLabel(lemonProject),
+  "Lemon · API + DEX pool matched",
+  "Lemon identity must not be described as factory-derived"
+);
+assert.match(
+  externalProjectProvenanceDescription(lemonProject),
+  /documented public API.*token and launch pool match the live DEX pair/,
+  "Lemon provenance disclosure must state the actual cross-check boundary"
 );
 
 console.info("External market address integrity validation passed");

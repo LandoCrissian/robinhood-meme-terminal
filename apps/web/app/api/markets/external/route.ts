@@ -17,7 +17,8 @@ import { enrichExternalProjectMetadata } from "../../../../lib/server/external-p
 import { fetchLemonProjectSnapshot } from "../../../../lib/server/lemon-project-feed";
 
 const CHAIN_SLUG = "robinhood";
-const DEXSCREENER_API = "https://api.dexscreener.com/token-pairs/v1";
+const DEXSCREENER_TOKEN_PAIRS_API = "https://api.dexscreener.com/token-pairs/v1";
+const DEXSCREENER_TOKENS_API = "https://api.dexscreener.com/tokens/v1";
 const DEXSCREENER_PAGE = "https://dexscreener.com/robinhood/";
 const CANONICAL_MARKET_TOKENS = [
   "0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73",
@@ -26,6 +27,7 @@ const CANONICAL_MARKET_TOKENS = [
 const OFFICIAL_RMT_V6_TOKEN = "0xdBa33be56C89CC9fc014c4459028d7e5c7878671";
 const EXCLUDED_TOKENS = new Set(CANONICAL_MARKET_TOKENS.map((address) => address.toLowerCase()));
 const MAX_MARKETS = 48;
+const DEX_BATCH_SIZE = 30;
 const DEX_TIMEOUT_MS = 8_000;
 const INDEXER_TIMEOUT_MS = (() => {
   const parsed = Number.parseInt(process.env.RMT_INDEXER_TIMEOUT_MS ?? "5000", 10);
@@ -116,11 +118,14 @@ function tokenFromPair(pair: RawPair) {
   return selectExternalPairBaseToken(pair.baseToken, pair.quoteToken, EXCLUDED_TOKENS);
 }
 
-async function fetchTokenPairs(tokenAddress: string) {
+async function fetchTokenBatch(tokenAddresses: string[]) {
+  if (tokenAddresses.length === 0 || tokenAddresses.length > DEX_BATCH_SIZE) {
+    throw new Error("DEX market batch size is invalid.");
+  }
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), DEX_TIMEOUT_MS);
   try {
-    const response = await fetch(DEXSCREENER_API + "/" + CHAIN_SLUG + "/" + tokenAddress, {
+    const response = await fetch(DEXSCREENER_TOKENS_API + "/" + CHAIN_SLUG + "/" + tokenAddresses.join(","), {
       headers: { Accept: "application/json" },
       next: { revalidate: 30 },
       signal: controller.signal
@@ -129,6 +134,24 @@ async function fetchTokenPairs(tokenAddress: string) {
     if (!response.ok) throw new Error("DEX market request failed with " + response.status);
     const payload: unknown = await response.json();
     if (!Array.isArray(payload)) throw new Error("DEX market response was malformed.");
+    return payload as RawPair[];
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function fetchCanonicalTokenPairs(tokenAddress: string) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), DEX_TIMEOUT_MS);
+  try {
+    const response = await fetch(DEXSCREENER_TOKEN_PAIRS_API + "/" + CHAIN_SLUG + "/" + tokenAddress, {
+      headers: { Accept: "application/json" },
+      next: { revalidate: 30 },
+      signal: controller.signal
+    });
+    if (!response.ok) throw new Error("DEX canonical market request failed with " + response.status);
+    const payload: unknown = await response.json();
+    if (!Array.isArray(payload)) throw new Error("DEX canonical market response was malformed.");
     return payload as RawPair[];
   } finally {
     clearTimeout(timeout);
@@ -203,12 +226,18 @@ function staleResponse() {
 export async function GET() {
   try {
     const lemonSnapshot = await fetchLemonProjectSnapshot();
-    const requestedTokens = [...new Set([
-      ...CANONICAL_MARKET_TOKENS.map((address) => address.toLowerCase()),
-      ...lemonSnapshot.candidateAddresses.map((address) => address.toLowerCase())
-    ])];
+    const requestedTokens = [...new Set(
+      lemonSnapshot.candidateAddresses.map((address) => address.toLowerCase())
+    )];
+    const tokenBatches = Array.from(
+      { length: Math.ceil(requestedTokens.length / DEX_BATCH_SIZE) },
+      (_, index) => requestedTokens.slice(index * DEX_BATCH_SIZE, (index + 1) * DEX_BATCH_SIZE)
+    );
     const results = await Promise.all(
-      requestedTokens.map((address) => fetchTokenPairs(address).catch(() => []))
+      [
+        ...CANONICAL_MARKET_TOKENS.map((address) => fetchCanonicalTokenPairs(address).catch(() => [])),
+        ...tokenBatches.map((addresses) => fetchTokenBatch(addresses).catch(() => []))
+      ]
     );
     const pairs = results.flat();
     if (pairs.length === 0) {

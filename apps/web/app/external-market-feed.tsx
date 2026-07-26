@@ -1,7 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
-import type { ExternalMarket, ExternalMarketResponse } from "../lib/external-market";
+import {
+  externalProjectProvenanceDescription,
+  externalProjectProvenanceLabel,
+  type ExternalMarket,
+  type ExternalMarketResponse
+} from "../lib/external-market";
 import { isNonzeroEvmAddress } from "../lib/external-market-identity";
 import type { ExternalMarketRiskFlag, ExternalMarketSignal } from "../lib/external-market-ranking";
 import { ipfsToHttp } from "../lib/token-metadata";
@@ -9,12 +14,18 @@ import { ipfsToHttp } from "../lib/token-metadata";
 type FeedStatus = "loading" | "ready" | "stale" | "error";
 
 type DiscoveryView = "trending" | "new" | "top" | "explore";
+type SourceFilter = "all" | "pons" | "lemon";
 
 const VIEWS: Array<{ id: DiscoveryView; label: string }> = [
   { id: "trending", label: "Trending" },
   { id: "new", label: "New" },
   { id: "top", label: "Top" },
   { id: "explore", label: "Explore" }
+];
+const SOURCE_FILTERS: Array<{ id: SourceFilter; label: string }> = [
+  { id: "all", label: "All markets" },
+  { id: "pons", label: "Pons" },
+  { id: "lemon", label: "Lemon" }
 ];
 const DATA_REFRESH_MS = 30_000;
 const RANK_REFRESH_MS = 60_000;
@@ -78,7 +89,7 @@ function riskSummary(flags: ExternalMarketRiskFlag[]) {
 
 function originLabel(market: ExternalMarket) {
   if (market.project) {
-    return market.project.sourceName + (market.curve ? " · Launchpad-matched curve" : " · Factory-matched metadata");
+    return externalProjectProvenanceLabel(market.project);
   }
   const origin = market.origin;
   if (!origin) return "External · Origin unknown";
@@ -260,7 +271,7 @@ function ExternalTradeDialog({
           {delayed && <p className="runnerDataNotice"><span>Market data is delayed. {provider} will calculate a fresh route and quote before any wallet confirmation.</span></p>}
           <p className="externalDisclosure">
             {market.project
-              ? market.project.sourceName + " project metadata is read onchain and cross-checked against its factory record. This is provenance, not an endorsement. "
+              ? externalProjectProvenanceDescription(market.project) + " This is provenance, not an endorsement. "
               : "This token is external and its launchpad origin is not yet verified by RMT. "}
             {provider} provides the final route, quote, price impact, and transaction review. RMT does not custody funds or construct external swap calldata in this release.
           </p>
@@ -315,6 +326,7 @@ export function ExternalMarketFeed() {
   const [tradeAnnouncement, setTradeAnnouncement] = useState("");
   const [marketQuery, setMarketQuery] = useState("");
   const [showAllMarkets, setShowAllMarkets] = useState(false);
+  const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
 
   const syncQuickTradeUrl = useCallback((market?: ExternalMarket, side?: ExternalTradeSide) => {
     const url = new URL(window.location.href);
@@ -416,12 +428,23 @@ export function ExternalMarketFeed() {
   }, [quickTrade, selectedQuickTradeMarket, syncQuickTradeUrl]);
 
   const orderedMarkets = useMemo(() => stabilizeOrder(rankOrder, markets), [markets, rankOrder]);
-  const counts = useMemo(() => ({
-    trending: markets.filter((market) => market.signal !== "active").length || markets.length,
-    new: markets.filter((market) => market.ageMinutes !== null && market.ageMinutes <= 24 * 60).length,
-    top: markets.filter((market) => market.marketCapUsd > 0 || market.fdvUsd > 0).length,
-    explore: markets.length
+  const sourceCounts = useMemo(() => ({
+    all: markets.length,
+    pons: markets.filter((market) => market.project?.sourceId === "pons").length,
+    lemon: markets.filter((market) => market.project?.sourceId === "lemon").length
   }), [markets]);
+  const sourceScopedMarkets = useMemo(
+    () => sourceFilter === "all"
+      ? markets
+      : markets.filter((market) => market.project?.sourceId === sourceFilter),
+    [markets, sourceFilter]
+  );
+  const counts = useMemo(() => ({
+    trending: sourceScopedMarkets.filter((market) => market.signal !== "active").length || sourceScopedMarkets.length,
+    new: sourceScopedMarkets.filter((market) => market.ageMinutes !== null && market.ageMinutes <= 24 * 60).length,
+    top: sourceScopedMarkets.filter((market) => market.marketCapUsd > 0 || market.fdvUsd > 0).length,
+    explore: sourceScopedMarkets.length
+  }), [sourceScopedMarkets]);
   const normalizedMarketQuery = marketQuery.trim().toLowerCase();
   const rankByAddress = useMemo(
     () => new Map(
@@ -451,7 +474,7 @@ export function ExternalMarketFeed() {
     }
     return orderedMarkets;
   }, [orderedMarkets, view]);
-  const filteredMarkets = normalizedMarketQuery
+  const searchedMarkets = normalizedMarketQuery
     ? orderedMarkets.filter((market) => [
         market.name,
         market.symbol,
@@ -459,6 +482,9 @@ export function ExternalMarketFeed() {
         market.pairAddress
       ].some((value) => value.toLowerCase().includes(normalizedMarketQuery)))
     : viewMarkets;
+  const filteredMarkets = sourceFilter === "all"
+    ? searchedMarkets
+    : searchedMarkets.filter((market) => market.project?.sourceId === sourceFilter);
   const expandedDirectory =
     showAllMarkets || normalizedMarketQuery.length > 0;
   const visibleMarkets = expandedDirectory
@@ -557,14 +583,14 @@ export function ExternalMarketFeed() {
           type="button"
           aria-controls="runner-market-panel"
           aria-expanded={expandedDirectory}
-          disabled={markets.length === 0}
+          disabled={filteredMarkets.length === 0}
           onClick={handleDirectoryAction}
         >
           {normalizedMarketQuery
             ? "Clear search"
             : showAllMarkets
               ? "Show top twelve"
-              : "Browse all " + markets.length}
+              : "Browse all " + filteredMarkets.length}
         </button>
       </div>
       <div className="runnerToolbar">
@@ -588,6 +614,23 @@ export function ExternalMarketFeed() {
         </div>
         <small id="runner-market-count" aria-live="polite">{marketCountLabel}</small>
       </div>
+      <div className="runnerSourceFilters" role="group" aria-label="Filter markets by project source">
+        <span>Project source</span>
+        {SOURCE_FILTERS.map((item) => (
+          <button
+            type="button"
+            aria-pressed={sourceFilter === item.id}
+            className={sourceFilter === item.id ? "active" : ""}
+            onClick={() => {
+              setSourceFilter(item.id);
+              setShowAllMarkets(false);
+            }}
+            key={item.id}
+          >
+            {item.label}<b>{sourceCounts[item.id]}</b>
+          </button>
+        ))}
+      </div>
 
       <div className="runnerColumnHeader" aria-hidden="true">
         <span>Rank / signal</span><span>Market / origin</span><span>Valuation / 5m</span><span>1h flow / liquidity</span><span>Activity / risk</span><span>Execute</span>
@@ -601,7 +644,11 @@ export function ExternalMarketFeed() {
         ) : visibleMarkets.length === 0 ? (
           <div className="emptyFeed">
             <strong>{normalizedMarketQuery ? "No external markets match that search." : "No markets meet this signal yet."}</strong>
-            <span>{normalizedMarketQuery ? "Try a token name, ticker, or complete contract address." : "The filter will update automatically when activity qualifies."}</span>
+            <span>{normalizedMarketQuery
+              ? "Try a token name, ticker, or complete contract address, or change the project-source filter."
+              : sourceFilter !== "all"
+                ? "No " + SOURCE_FILTERS.find((item) => item.id === sourceFilter)?.label + " markets meet this view yet."
+                : "The filter will update automatically when activity qualifies."}</span>
             {normalizedMarketQuery
               ? <button type="button" onClick={clearMarketQuery}>Clear search</button>
               : view !== "explore" && <button type="button" onClick={() => changeView("explore")}>Explore all markets</button>}
