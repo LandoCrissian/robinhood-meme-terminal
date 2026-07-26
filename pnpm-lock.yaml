@@ -68,6 +68,28 @@ importers:
         specifier: ^5.7.3
         version: 5.9.3
 
+  apps/market-indexer:
+    dependencies:
+      pg:
+        specifier: 8.22.0
+        version: 8.22.0
+      viem:
+        specifier: 2.55.1
+        version: 2.55.1(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.4.3)
+    devDependencies:
+      '@types/node':
+        specifier: 22.20.1
+        version: 22.20.1
+      '@types/pg':
+        specifier: 8.20.0
+        version: 8.20.0
+      tsx:
+        specifier: 4.23.0
+        version: 4.23.0
+      typescript:
+        specifier: 5.9.3
+        version: 5.9.3
+
   apps/web:
     dependencies:
       '@rmt/shared':
