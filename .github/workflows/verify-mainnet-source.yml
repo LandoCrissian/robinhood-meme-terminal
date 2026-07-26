@@ -60,7 +60,7 @@ jobs:
       POOL_MANAGER: "0x8366a39cc670b4001a1121b8f6a443a643e40951"
       OPERATOR: "0x7e8e7d3af28584a8b9eeddbe16cd3308bd1e76ca"
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: foundry-rs/foundry-toolchain@b00af27efadbc7b4ca8b82abbd903b17cc874d2a # v1
         with:
           version: stable
