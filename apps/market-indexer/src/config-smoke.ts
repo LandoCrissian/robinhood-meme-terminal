@@ -13,6 +13,23 @@ const config = loadMarketIndexerConfig(base);
 assert.equal(config.confirmations, 20);
 assert.equal(config.batchSize, 5_000);
 assert.equal(config.databaseSsl, false);
+assert.equal(config.storageMode, "durable");
+assert.equal(config.databaseSizeLimitBytes, null);
+
+assert.equal(
+  loadMarketIndexerConfig({
+    ...base,
+    MARKET_INDEXER_STORAGE_MODE: "rebuildable"
+  }).storageMode,
+  "rebuildable"
+);
+assert.equal(
+  loadMarketIndexerConfig({
+    ...base,
+    MARKET_INDEXER_MAX_DATABASE_MB: "350"
+  }).databaseSizeLimitBytes,
+  350 * 1024 * 1024
+);
 
 assert.throws(
   () =>
@@ -45,6 +62,22 @@ assert.throws(
       MARKET_INDEXER_READ_TOKEN: "short"
     }),
   /32 to 512/
+);
+assert.throws(
+  () =>
+    loadMarketIndexerConfig({
+      ...base,
+      MARKET_INDEXER_STORAGE_MODE: "temporary"
+    }),
+  /must be durable or rebuildable/
+);
+assert.throws(
+  () =>
+    loadMarketIndexerConfig({
+      ...base,
+      MARKET_INDEXER_MAX_DATABASE_MB: "63"
+    }),
+  /between 64 and 1000000/
 );
 
 console.info("market indexer config smoke passed");

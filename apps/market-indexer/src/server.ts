@@ -39,6 +39,11 @@ export function createMarketIndexerServer(
         json(response, 200, {
           ok: worker.status.lastError === null,
           mode: "shadow",
+          storageMode: config.storageMode,
+          databaseSizeLimitMb:
+            config.databaseSizeLimitBytes === null
+              ? null
+              : config.databaseSizeLimitBytes / (1024 * 1024),
           chainId: MARKET_INDEXER_CHAIN_ID,
           authoritative: false,
           servingProductionTraffic: false,

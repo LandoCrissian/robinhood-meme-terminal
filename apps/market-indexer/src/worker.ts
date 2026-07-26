@@ -10,7 +10,7 @@ import {
 import type { MarketIndexerConfig } from "./config.js";
 import type { RawMarketLog } from "./decoder.js";
 import { findReorgAncestor, replayMarketLogs, type SyncPoint } from "./replay.js";
-import { rollbackSourceAfter } from "./schema.js";
+import { migrateMarketIndexer, rollbackSourceAfter } from "./schema.js";
 import {
   MARKET_INDEXER_CHAIN_ID,
   marketSources,
@@ -316,10 +316,47 @@ export class MarketIndexerWorker {
     }
   }
 
+  private async restoreRebuildableStateIfNeeded() {
+    if (this.config.storageMode !== "rebuildable") return;
+    const result = await this.pool.query<{ count: string }>(
+      `SELECT COUNT(*) AS count
+       FROM market_indexer_source_state
+       WHERE chain_id = $1`,
+      [MARKET_INDEXER_CHAIN_ID]
+    );
+    if (Number(result.rows[0]?.count ?? 0) === marketSources.length) return;
+    console.warn(
+      JSON.stringify({
+        event: "market_indexer_rebuildable_state_reset",
+        reason: "source state missing after database recovery"
+      })
+    );
+    await migrateMarketIndexer(this.pool, "rebuildable");
+  }
+
+  private async assertDatabaseWithinLimit() {
+    if (this.config.databaseSizeLimitBytes === null) return;
+    const result = await this.pool.query<{ bytes: string }>(
+      "SELECT pg_database_size(current_database()) AS bytes"
+    );
+    const bytes = Number(result.rows[0]?.bytes);
+    if (!Number.isSafeInteger(bytes)) {
+      throw new Error("PostgreSQL returned an invalid database size");
+    }
+    if (bytes >= this.config.databaseSizeLimitBytes) {
+      throw new Error(
+        `market indexer database size limit reached: ${bytes} >= ` +
+          this.config.databaseSizeLimitBytes
+      );
+    }
+  }
+
   async tick() {
     if (this.status.running || this.stopped) return;
     this.status.running = true;
     try {
+      await this.assertDatabaseWithinLimit();
+      await this.restoreRebuildableStateIfNeeded();
       const head = await this.rpc.getBlockNumber();
       const confirmations = BigInt(this.config.confirmations);
       if (head <= confirmations) throw new Error("chain head is below confirmation depth");

@@ -67,7 +67,8 @@ exists, the service stops instead of guessing.
 - `GET /ready` always returns HTTP 503 while the source-level activation lock is
   compiled in, preventing a hosting platform from routing production traffic.
 - `GET /health` is public and labels every response `mode: shadow`,
-  `authoritative: false`, and `servingProductionTraffic: false`.
+  `authoritative: false`, `servingProductionTraffic: false`, and reports the
+  configured storage mode.
 - `GET /v1/pools` requires the internal bearer token and carries the same
   non-authoritative label.
 
@@ -115,3 +116,26 @@ activation lock is compiled in.
 Do not add `DATABASE_URL`, `RMT_INDEXER_URL`, a public production-domain route,
 or any Vercel variable for this service. The first deployment is for private
 backfill and coverage measurement only.
+
+### Storage modes
+
+`MARKET_INDEXER_STORAGE_MODE` defaults to `durable`, which creates ordinary
+PostgreSQL tables and is required for any production candidate. A disposable
+shadow backfill may instead use `rebuildable`, which creates all three indexer
+tables as PostgreSQL `UNLOGGED` tables. This sharply reduces write-ahead-log
+pressure on constrained rehearsal databases because every stored row can be
+reconstructed from the pinned chain history.
+
+The mode is fail-closed: startup rejects existing indexer tables whose
+persistence does not match the configured mode. Use a fresh dedicated database
+when changing modes. A PostgreSQL crash automatically truncates unlogged tables,
+so the worker detects missing source state after recovery, transactionally
+reseeds it, and replays from the pinned start blocks. Never use `rebuildable`
+for authoritative or production data.
+
+Constrained rehearsals should also set `MARKET_INDEXER_MAX_DATABASE_MB` below
+the provider volume limit (for example, `350` on a disposable 500 MB database).
+Before every indexing cycle, the worker checks `pg_database_size` and fails
+closed before derived table growth can consume the reserved recovery space.
+This is a rehearsal guardrail, not a substitute for correctly sized production
+storage and monitoring.
