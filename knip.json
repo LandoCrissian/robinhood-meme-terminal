@@ -1,0 +1,28 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "ignore": [
+    "packages/contracts/scripts/export-consent-testnet-web-artifacts.mjs",
+    "packages/contracts/scripts/export-mainnet-web-artifacts.mjs",
+    "packages/contracts/scripts/export-testnet-web-artifacts.mjs"
+  ],
+  "workspaces": {
+    "apps/web": {
+      "entry": [
+        "app/**/*.{ts,tsx}",
+        "lib/**/*-smoke.ts",
+        "lib/**/*.test.ts"
+      ]
+    },
+    "apps/indexer": {
+      "entry": [
+        "src/**/*-smoke.ts"
+      ]
+    },
+    "apps/external-origin-indexer": {
+      "entry": [
+        "src/**/*-smoke.ts",
+        "shadow/**/*-smoke.ts"
+      ]
+    }
+  }
+}

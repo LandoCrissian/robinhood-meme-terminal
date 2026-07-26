@@ -22,9 +22,8 @@
   "dependencies": {
     "@rmt/shared": "file:../../packages/shared",
     "@tanstack/react-query": "^5.66.0",
-    "@walletconnect/ethereum-provider": "^2.17.0",
     "firebase": "12.16.0",
-    "next": "15.5.20",
+    "next": "15.5.22",
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "viem": "^2.23.2",
