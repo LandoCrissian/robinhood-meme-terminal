@@ -5,8 +5,8 @@ const officialToken = "0xdBa33be56C89CC9fc014c4459028d7e5c7878671";
 
 const publicRoutes = [
   ["/", "hourly", 1],
-  ["/runners", "hourly", 0.9],
-  ["/launch", "weekly", 0.9],
+  ["/explore", "hourly", 0.9],
+  ["/launch", "weekly", 0.6],
   [`/token/${officialToken}`, "hourly", 0.9],
   ["/status", "hourly", 0.8],
   ["/sources", "daily", 0.7],

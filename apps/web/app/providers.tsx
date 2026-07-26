@@ -37,7 +37,7 @@ const connectors = [
         showQrModal: true,
         metadata: {
           name: "Robinhood Meme Terminal",
-          description: "Robinhood Chain meme launchpad and discovery terminal",
+          description: "Robinhood Chain market intelligence and trading terminal",
           url: appUrl,
           icons: [`${appUrl}/brand/rmt-master-logo.png`]
         }

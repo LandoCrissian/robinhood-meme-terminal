@@ -16,7 +16,7 @@ assert.ok(publicRule?.disallow?.includes("/profile"));
 assert.ok(!publicRule?.disallow?.includes("/deploy-mainnet"), "robots.txt must not advertise hidden operator routes");
 
 const sitemapUrls = sitemap().map((entry) => entry.url);
-for (const route of ["/", "/runners", "/launch", "/status", "/sources", "/sushi", "/rescue"]) {
+for (const route of ["/", "/explore", "/launch", "/status", "/sources", "/sushi", "/rescue"]) {
   assert.ok(sitemapUrls.includes(`${appUrl}${route}`), `Sitemap must include ${route}`);
 }
 for (const route of ["/api/health", "/deploy-mainnet", "/profile", "/portfolio", "/watchlist"]) {
@@ -37,9 +37,10 @@ assert.match(rescueSource, /openGraph:[\s\S]*?url:\s*"\/rescue"/);
 const chromeSource = readFileSync(new URL("../app/public-chrome.tsx", import.meta.url), "utf8");
 const mobileDock = chromeSource.match(/<nav className=\{`mobileDock[\s\S]*?<\/nav>/)?.[0];
 assert.ok(mobileDock, "Mobile navigation must remain present");
-assert.match(mobileDock, /href="\/runners"/);
+assert.match(mobileDock, /href="\/explore"/);
+assert.match(mobileDock, /href="\/watchlist"/);
 assert.doesNotMatch(mobileDock, /href="\/status"/);
 assert.match(chromeSource, /Help &amp; safety[\s\S]*?href="\/status"/);
-assert.doesNotMatch(chromeSource, /const MORE_PREFIXES = \[[^\]]*"\/runners"/);
+assert.doesNotMatch(chromeSource, /const MORE_PREFIXES = \[[^\]]*"\/explore"/);
 
 console.info("Public discovery smoke test passed");

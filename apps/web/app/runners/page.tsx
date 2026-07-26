@@ -1,11 +1,5 @@
-import { ExternalMarketFeed } from "../external-market-feed";
-import { SiteFooter } from "../site-footer";
+import { redirect } from "next/navigation";
 
 export default function RunnersPage() {
-  return (
-    <main className="directoryPage focusedDirectory">
-      <ExternalMarketFeed />
-      <SiteFooter />
-    </main>
-  );
+  redirect("/explore");
 }

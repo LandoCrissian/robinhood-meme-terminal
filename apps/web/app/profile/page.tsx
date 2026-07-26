@@ -188,7 +188,7 @@ export default function ProfilePage() {
             <p className="eyebrow">YOUR WORKSPACE</p>
             <Link href="/watchlist"><span>Watchlist</span><b>{watchCount} saved →</b></Link>
             <Link href="/portfolio"><span>Portfolio</span><b>Onchain holdings →</b></Link>
-            <Link href="/runners"><span>Runner Radar</span><b>Find movement →</b></Link>
+            <Link href="/explore"><span>Explore markets</span><b>Find movement →</b></Link>
           </nav>
 
           <section className="profilePrivacy">

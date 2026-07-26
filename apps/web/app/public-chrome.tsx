@@ -7,7 +7,7 @@ import { isMainnetRelease } from "../lib/network";
 import { WalletButton } from "./wallet-button";
 
 const HIDDEN_PREFIXES = ["/activate-consent-testnet", "/admin", "/deploy-consent-testnet", "/deploy-mainnet", "/deploy-testnet", "/mainnet-smoke"];
-const MORE_PREFIXES = ["/portfolio", "/watchlist", "/sources", "/sushi", "/rescue", "/support", "/risks"];
+const MORE_PREFIXES = ["/portfolio", "/launch", "/sources", "/sushi", "/rescue", "/support", "/risks"];
 
 function currentPage(pathname: string, href: string) {
   if (href === "/") return pathname === "/";
@@ -62,8 +62,8 @@ export function PublicChrome() {
 
           <div className="publicNavLinks">
             <PublicLink href="/">Terminal</PublicLink>
-            <PublicLink href="/runners">Runners</PublicLink>
-            <PublicLink href="/launch">Launch</PublicLink>
+            <PublicLink href="/explore">Explore</PublicLink>
+            <PublicLink href="/watchlist">Watchlist</PublicLink>
             <PublicLink href="/status">Status</PublicLink>
             <PublicLink href="/profile">Profile</PublicLink>
             <span className="networkPulse" aria-label={`${isMainnetRelease ? "Robinhood Chain Mainnet" : "Robinhood Chain Testnet"} live`}><i aria-hidden="true" />RHC <b>{isMainnetRelease ? "MAINNET" : "TESTNET"}</b></span>
@@ -75,11 +75,15 @@ export function PublicChrome() {
               <div className="publicMenu">
                 <div>
                   <span>Discover</span>
-                  <PublicLink href="/runners">Runner Radar<small>External Robinhood Chain markets</small></PublicLink>
+                  <PublicLink href="/explore">Explore markets<small>Trending, new, and active Robinhood Chain markets</small></PublicLink>
                   <PublicLink href="/portfolio">Portfolio<small>Your connected-wallet holdings</small></PublicLink>
                   <PublicLink href="/watchlist">Watchlist<small>Tokens saved on this device</small></PublicLink>
                   <PublicLink href="/sources">Sources<small>Launchpad coverage and origin labels</small></PublicLink>
+                </div>
+                <div>
+                  <span>Protocol &amp; research</span>
                   <PublicLink href="/sushi">Sushi integration<small>Routing boundary and launch readiness</small></PublicLink>
+                  <PublicLink href="/launch">RMT V6 launch beta<small>Existing fixed-supply launch contracts</small></PublicLink>
                   <PublicLink href="/rescue">Migration lab<small>Paused, direct-to-wallet testnet research</small></PublicLink>
                 </div>
                 <div>
@@ -97,8 +101,8 @@ export function PublicChrome() {
 
       <nav className={`mobileDock${pathname.startsWith("/token/") ? " tokenRouteDock" : ""}`} aria-label="Mobile navigation">
         <PublicLink href="/"><span aria-hidden="true">◉</span>Terminal</PublicLink>
-        <PublicLink href="/runners"><span aria-hidden="true">↗</span>Runners</PublicLink>
-        <PublicLink href="/launch"><span aria-hidden="true">＋</span>Launch</PublicLink>
+        <PublicLink href="/explore"><span aria-hidden="true">⌕</span>Explore</PublicLink>
+        <PublicLink href="/watchlist"><span aria-hidden="true">☆</span>Watchlist</PublicLink>
         <PublicLink href="/profile"><span aria-hidden="true">◎</span>Profile</PublicLink>
       </nav>
     </>

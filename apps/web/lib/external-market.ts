@@ -4,9 +4,12 @@ import type { ExternalMarketRiskFlag, ExternalMarketSignal } from "./external-ma
 export type ExternalMarketVenue = Extract<MarketVenue, { kind: "dex" | "external-launchpad" }>;
 
 export type ExternalProjectMetadata = {
-  sourceId: "pons" | "noxa" | "circus";
-  sourceName: "Pons" | "Noxa" | "Circus";
-  provenance: "factory-and-token-cross-checked" | "launchpad-and-token-cross-checked";
+  sourceId: "pons" | "lemon" | "noxa" | "circus";
+  sourceName: "Pons" | "Lemon" | "Noxa" | "Circus";
+  provenance:
+    | "factory-and-token-cross-checked"
+    | "launchpad-and-token-cross-checked"
+    | "public-api-and-dex-pool-cross-checked";
   creator: string;
   launchPool: string;
   name: string;
@@ -21,6 +24,29 @@ export type ExternalProjectMetadata = {
     farcaster: string | null;
   };
 };
+
+export function externalProjectProvenanceLabel(project: ExternalProjectMetadata) {
+  if (project.provenance === "public-api-and-dex-pool-cross-checked") {
+    return project.sourceName + " · API + DEX pool matched";
+  }
+  if (project.provenance === "launchpad-and-token-cross-checked") {
+    return project.sourceName + " · Launchpad + token matched";
+  }
+  return project.sourceName + " · Factory + token matched";
+}
+
+export function externalProjectProvenanceDescription(project: ExternalProjectMetadata) {
+  if (project.provenance === "public-api-and-dex-pool-cross-checked") {
+    return project.sourceName
+      + " project identity comes from its documented public API and is attached only after the token and launch pool match the live DEX pair.";
+  }
+  if (project.provenance === "launchpad-and-token-cross-checked") {
+    return project.sourceName
+      + " project identity is attached only after its launchpad and token records agree.";
+  }
+  return project.sourceName
+    + " project metadata is read onchain and attached only after its factory and token records agree.";
+}
 
 export type ExternalMarket = {
   address: string;
