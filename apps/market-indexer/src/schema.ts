@@ -109,11 +109,45 @@ CREATE INDEX IF NOT EXISTS market_pools_block_idx
   ON market_pools (chain_id, source_id, block_number DESC, transaction_index DESC, log_index DESC);
 `;
 
+const EXPECTED_TABLES = [
+  "market_indexer_source_state",
+  "market_indexer_sync_points",
+  "market_pools"
+] as const;
+
+async function assertDedicatedDatabaseBeforeDdl(client: PoolClient) {
+  const result = await client.query<{ tablename: string }>(
+    `SELECT tablename
+     FROM pg_tables
+     WHERE schemaname = 'public'
+     ORDER BY tablename`
+  );
+  const unexpected = result.rows
+    .map((row) => row.tablename)
+    .filter(
+      (table) =>
+        !EXPECTED_TABLES.includes(
+          table as (typeof EXPECTED_TABLES)[number]
+        )
+    );
+  if (unexpected.length > 0) {
+    throw new Error(
+      "MARKET_INDEXER_DATABASE_URL is not a dedicated database; " +
+      "unexpected public tables: " + unexpected.join(", ")
+    );
+  }
+}
+
 export async function migrateMarketIndexer(pool: Pool) {
-  await pool.query(marketIndexerSchemaSql);
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
+    await client.query(
+      "SELECT pg_advisory_xact_lock($1, $2)",
+      [MARKET_INDEXER_CHAIN_ID, MARKET_INDEXER_SCHEMA_VERSION]
+    );
+    await assertDedicatedDatabaseBeforeDdl(client);
+    await client.query(marketIndexerSchemaSql);
     for (const source of marketSources) {
       const existing = await client.query<{
         contract_address: string;
