@@ -10,12 +10,25 @@
     "dev": "pnpm --filter web dev",
     "build": "pnpm --filter web build",
     "audit:production": "pnpm audit --prod --audit-level high",
+    "check:repo": "knip --include files,dependencies",
     "lint": "pnpm --filter web lint",
     "test:firebase-rules": "firebase emulators:exec --project rmt-rules-test --only firestore \"pnpm --filter web test:firebase-rules:unit\"",
     "test:production-health": "node scripts/production-health-smoke.mjs",
     "typecheck": "pnpm --filter web typecheck"
   },
   "devDependencies": {
-    "firebase-tools": "15.24.0"
+    "firebase-tools": "15.24.0",
+    "knip": "6.29.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "@hono/node-server@<2.0.5": "2.0.5",
+      "axios@>=1.0.0 <1.18.0": "1.18.0",
+      "fast-uri@>=3.0.0 <=3.1.3": "3.1.4",
+      "postcss@<=8.5.17": "8.5.18",
+      "sharp@<0.35.0": "0.35.0",
+      "tar@<=7.5.20": "7.5.21",
+      "ws@>=8.0.0 <8.21.0": "8.21.0"
+    }
   }
 }

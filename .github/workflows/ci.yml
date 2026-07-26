@@ -25,6 +25,7 @@ jobs:
           java-version: 21
       - run: pnpm install --frozen-lockfile
       - run: pnpm audit:production
+      - run: pnpm check:repo
       - run: pnpm --filter web test:profile
       - run: pnpm --filter web test:public-discovery
       - run: pnpm --filter web test:external-market-integrity

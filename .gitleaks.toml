@@ -1,0 +1,12 @@
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Public EVM token addresses in external-market smoke fixtures"
+condition = "AND"
+targetRules = ["generic-api-key"]
+regexes = ['''^0x[0-9A-Fa-f]{40}$''']
+paths = [
+  '''^apps/web/lib/server/circus-curve-feed-smoke\.ts$''',
+  '''^apps/web/lib/server/external-project-metadata-smoke\.ts$''',
+]
