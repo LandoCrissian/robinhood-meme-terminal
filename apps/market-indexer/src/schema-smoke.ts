@@ -34,6 +34,17 @@ try {
   await pool.query("DROP TABLE canonical_launches");
   await migrateMarketIndexer(pool);
 
+  const durablePersistence = await pool.query<{ relpersistence: string }>(
+    `SELECT relpersistence
+     FROM pg_class
+     WHERE relname = 'market_pools'`
+  );
+  assert.equal(durablePersistence.rows[0]?.relpersistence, "p");
+  await assert.rejects(
+    migrateMarketIndexer(pool, "rebuildable"),
+    /storage mode drift/
+  );
+
   const source = marketSources.find((candidate) => candidate.id === "uniswap-v3")!;
   await pool.query(
     `INSERT INTO market_pools (
@@ -83,6 +94,41 @@ try {
     [source.id]
   );
   assert.equal(cascaded.rows[0]?.count, "0");
+
+  await pool.query("DROP TABLE market_pools CASCADE");
+  await pool.query("DROP TABLE market_indexer_sync_points CASCADE");
+  await pool.query("DROP TABLE market_indexer_source_state CASCADE");
+  await migrateMarketIndexer(pool, "rebuildable");
+  const rebuildablePersistence = await pool.query<{
+    relname: string;
+    relpersistence: string;
+  }>(
+    `SELECT relname, relpersistence
+     FROM pg_class
+     WHERE relname = ANY($1::text[])
+     ORDER BY relname`,
+    [[
+      "market_indexer_source_state",
+      "market_indexer_sync_points",
+      "market_pools"
+    ]]
+  );
+  assert.deepEqual(
+    rebuildablePersistence.rows,
+    [
+      { relname: "market_indexer_source_state", relpersistence: "u" },
+      { relname: "market_indexer_sync_points", relpersistence: "u" },
+      { relname: "market_pools", relpersistence: "u" }
+    ]
+  );
+  await pool.query(
+    "TRUNCATE market_pools, market_indexer_sync_points, market_indexer_source_state"
+  );
+  await migrateMarketIndexer(pool, "rebuildable");
+  const rebuiltSources = await pool.query<{ count: string }>(
+    "SELECT COUNT(*) FROM market_indexer_source_state"
+  );
+  assert.equal(rebuiltSources.rows[0]?.count, String(marketSources.length));
   console.info("market indexer schema smoke passed");
 } finally {
   await pool.end();

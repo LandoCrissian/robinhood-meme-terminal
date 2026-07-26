@@ -6,8 +6,12 @@ import {
   marketSources
 } from "./sources.js";
 
-export const marketIndexerSchemaSql = `
-CREATE TABLE IF NOT EXISTS market_indexer_source_state (
+export type MarketIndexerStorageMode = "durable" | "rebuildable";
+
+export function marketIndexerSchemaSql(storageMode: MarketIndexerStorageMode) {
+  const persistence = storageMode === "rebuildable" ? "UNLOGGED " : "";
+  return `
+CREATE ${persistence}TABLE IF NOT EXISTS market_indexer_source_state (
   chain_id BIGINT NOT NULL,
   source_id TEXT NOT NULL,
   protocol TEXT NOT NULL,
@@ -42,7 +46,7 @@ CREATE TABLE IF NOT EXISTS market_indexer_source_state (
   CHECK (last_error IS NULL OR (last_error = BTRIM(last_error) AND CHAR_LENGTH(last_error) BETWEEN 1 AND 4096))
 );
 
-CREATE TABLE IF NOT EXISTS market_indexer_sync_points (
+CREATE ${persistence}TABLE IF NOT EXISTS market_indexer_sync_points (
   chain_id BIGINT NOT NULL,
   source_id TEXT NOT NULL,
   block_number BIGINT NOT NULL,
@@ -58,7 +62,7 @@ CREATE TABLE IF NOT EXISTS market_indexer_sync_points (
   CHECK (parent_hash ~ '^0x[0-9a-f]{64}$')
 );
 
-CREATE TABLE IF NOT EXISTS market_pools (
+CREATE ${persistence}TABLE IF NOT EXISTS market_pools (
   chain_id BIGINT NOT NULL,
   source_id TEXT NOT NULL,
   protocol TEXT NOT NULL,
@@ -108,6 +112,7 @@ CREATE INDEX IF NOT EXISTS market_pools_tokens_idx
 CREATE INDEX IF NOT EXISTS market_pools_block_idx
   ON market_pools (chain_id, source_id, block_number DESC, transaction_index DESC, log_index DESC);
 `;
+}
 
 const EXPECTED_TABLES = [
   "market_indexer_source_state",
@@ -138,7 +143,39 @@ async function assertDedicatedDatabaseBeforeDdl(client: PoolClient) {
   }
 }
 
-export async function migrateMarketIndexer(pool: Pool) {
+async function assertStorageMode(
+  client: PoolClient,
+  storageMode: MarketIndexerStorageMode
+) {
+  const result = await client.query<{
+    relname: string;
+    relpersistence: "p" | "u";
+  }>(
+    `SELECT c.relname, c.relpersistence
+     FROM pg_class c
+     JOIN pg_namespace n ON n.oid = c.relnamespace
+     WHERE n.nspname = 'public'
+       AND c.relkind = 'r'
+       AND c.relname = ANY($1::text[])
+     ORDER BY c.relname`,
+    [EXPECTED_TABLES]
+  );
+  const expectedPersistence = storageMode === "rebuildable" ? "u" : "p";
+  const mismatched = result.rows
+    .filter((row) => row.relpersistence !== expectedPersistence)
+    .map((row) => row.relname);
+  if (mismatched.length > 0) {
+    throw new Error(
+      `market indexer storage mode drift for ${mismatched.join(", ")}; ` +
+        "use a fresh dedicated database or an explicit reviewed migration"
+    );
+  }
+}
+
+export async function migrateMarketIndexer(
+  pool: Pool,
+  storageMode: MarketIndexerStorageMode = "durable"
+) {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -147,7 +184,8 @@ export async function migrateMarketIndexer(pool: Pool) {
       [MARKET_INDEXER_CHAIN_ID, MARKET_INDEXER_SCHEMA_VERSION]
     );
     await assertDedicatedDatabaseBeforeDdl(client);
-    await client.query(marketIndexerSchemaSql);
+    await client.query(marketIndexerSchemaSql(storageMode));
+    await assertStorageMode(client, storageMode);
     for (const source of marketSources) {
       const existing = await client.query<{
         contract_address: string;

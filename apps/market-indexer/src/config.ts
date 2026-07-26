@@ -4,13 +4,45 @@ export type MarketIndexerConfig = Readonly<{
   databaseUrl: string;
   rpcUrl: string;
   readToken: string;
+  storageMode: "durable" | "rebuildable";
   confirmations: number;
   batchSize: number;
   pollIntervalMs: number;
   databasePoolSize: number;
+  databaseSizeLimitBytes: number | null;
   databaseSsl: boolean;
   port: number;
 }>;
+
+function storageMode(env: NodeJS.ProcessEnv): MarketIndexerConfig["storageMode"] {
+  const value = env.MARKET_INDEXER_STORAGE_MODE?.trim().toLowerCase();
+  if (value === undefined || value === "") return "durable";
+  if (value !== "durable" && value !== "rebuildable") {
+    throw new Error(
+      "MARKET_INDEXER_STORAGE_MODE must be durable or rebuildable"
+    );
+  }
+  return value;
+}
+
+function databaseSizeLimit(env: NodeJS.ProcessEnv) {
+  const value = env.MARKET_INDEXER_MAX_DATABASE_MB?.trim();
+  if (value === undefined || value === "") return null;
+  if (!/^[0-9]+$/.test(value)) {
+    throw new Error("MARKET_INDEXER_MAX_DATABASE_MB must be an integer");
+  }
+  const megabytes = Number(value);
+  if (
+    !Number.isSafeInteger(megabytes) ||
+    megabytes < 64 ||
+    megabytes > 1_000_000
+  ) {
+    throw new Error(
+      "MARKET_INDEXER_MAX_DATABASE_MB must be between 64 and 1000000"
+    );
+  }
+  return megabytes * 1024 * 1024;
+}
 
 function required(name: string, env: NodeJS.ProcessEnv) {
   const value = env[name]?.trim();
@@ -113,6 +145,7 @@ export function loadMarketIndexerConfig(
     databaseUrl: isolatedDatabaseUrl(env),
     rpcUrl: rpcUrl(env),
     readToken: readToken(env),
+    storageMode: storageMode(env),
     confirmations: integer("MARKET_INDEXER_CONFIRMATIONS", 20, 12, 10_000, env),
     batchSize: integer("MARKET_INDEXER_BATCH_SIZE", 5_000, 1, 5_000, env),
     pollIntervalMs: integer(
@@ -123,6 +156,7 @@ export function loadMarketIndexerConfig(
       env
     ),
     databasePoolSize: integer("MARKET_INDEXER_DB_POOL_SIZE", 5, 1, 50, env),
+    databaseSizeLimitBytes: databaseSizeLimit(env),
     databaseSsl: databaseSsl(env),
     port: integer("PORT", 3_003, 1, 65_535, env)
   });

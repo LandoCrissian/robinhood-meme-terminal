@@ -11,7 +11,7 @@ const pool = new Pool({
   ssl: config.databaseSsl ? { rejectUnauthorized: true } : false
 });
 
-await migrateMarketIndexer(pool);
+await migrateMarketIndexer(pool, config.storageMode);
 const worker = new MarketIndexerWorker(pool, config);
 await worker.verifySources();
 const server = createMarketIndexerServer(pool, config, worker);
