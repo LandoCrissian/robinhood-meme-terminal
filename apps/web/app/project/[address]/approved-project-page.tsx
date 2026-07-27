@@ -73,6 +73,11 @@ export function ApprovedProjectPage({ slug }: { slug: string }) {
 
   const initials = project.name.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase();
   const gameEnabled = project.projectType === "gaming" || project.availableModules.includes("game");
+  const mobilePrimaryAction = project.gameUrl
+    ? { href: project.gameUrl, label: "Play" }
+    : project.website
+      ? { href: project.website, label: "Website" }
+      : undefined;
 
   return (
     <main className="detailPage approvedProjectPage">
@@ -106,13 +111,15 @@ export function ApprovedProjectPage({ slug }: { slug: string }) {
             {project.website && <a href={project.website} target="_blank" rel="noreferrer">Website ↗</a>}
             {project.xProfile && <a href={project.xProfile} target="_blank" rel="noreferrer">X ↗</a>}
           </div>
-          <ProjectAudienceControls projectSlug={project.slug} />
+          <div id="project-follow">
+            <ProjectAudienceControls projectSlug={project.slug} mobilePrimaryAction={mobilePrimaryAction} />
+          </div>
         </div>
       </section>
 
       {gameEnabled && (
         <>
-        <section className="panel approvedGameShowcase" aria-labelledby="game-showcase-title">
+        <section className="panel approvedGameShowcase" id="project-game" aria-labelledby="game-showcase-title">
           <header>
             <div><p className="eyebrow">GAME CREATOR SHOWCASE</p><h2 id="game-showcase-title">{project.name}</h2><p>A dedicated home for the game, its current development state and where players can experience it.</p></div>
             <span>{(project.gameStatus || "development").toUpperCase()}</span>
@@ -163,7 +170,7 @@ export function ApprovedProjectPage({ slug }: { slug: string }) {
         </section>
       )}
 
-      <section className="panel projectModulePanel" aria-labelledby="approved-project-modules">
+      <section className="panel projectModulePanel" id="project-modules" aria-labelledby="approved-project-modules">
         <header>
           <div><p className="eyebrow">PROJECT ECOSYSTEM</p><h2 id="approved-project-modules">Creator-selected capabilities</h2><p>These modules were selected during review. Approval creates the page only; activation remains separate.</p></div>
           <span>NO MODULE FEES CHARGED</span>
