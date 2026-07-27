@@ -1040,10 +1040,60 @@
 
   .externalTradeSnapshot,
   .externalTradePulse,
-  .externalTradeProvenance {
+  .externalTradeProvenance,
+  .externalSushiQuote {
     margin-bottom: 8px;
     padding: 12px;
     border-radius: 15px;
+  }
+
+  .externalSushiQuote > header {
+    align-items: flex-start;
+  }
+
+  .externalSushiConnect {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .externalSushiConnect .walletMenu,
+  .externalSushiConnect .wallet {
+    width: 100%;
+  }
+
+  .externalSushiAmount input {
+    font-size: 1.18rem;
+  }
+
+  .externalSushiPresets button {
+    min-height: 40px;
+  }
+
+  .externalSushiResult > div:first-child {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .externalSushiResult > div:first-child strong {
+    width: 100%;
+    text-align: left;
+  }
+
+  .externalSushiResult dl {
+    grid-template-columns: 1fr;
+  }
+
+  .externalSushiResult dl > div,
+  .externalSushiResult dl > div:first-child,
+  .externalSushiResult dl > div:last-child {
+    padding: 8px 0;
+    border-right: 0;
+    border-bottom: 1px solid #26352c;
+  }
+
+  .externalSushiResult dl > div:last-child {
+    border-bottom: 0;
   }
 
   .externalTradeSnapshot > header {

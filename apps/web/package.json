@@ -17,6 +17,7 @@
     "test:consent-activation": "tsx lib/consent-testnet-activation-smoke.ts",
     "test:v4-trade": "NEXT_PUBLIC_RMT_NETWORK=mainnet tsx lib/server/rmt-v4-trade-smoke.ts",
     "test:sushi-trade": "NEXT_PUBLIC_RMT_NETWORK=mainnet tsx lib/server/sushi-trade-smoke.ts",
+    "test:external-sushi": "tsx lib/server/external-sushi-market-smoke.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
