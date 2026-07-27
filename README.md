@@ -4,7 +4,7 @@ Robinhood Meme Terminal (RMT) is a mobile-first launch, discovery, and trading t
 
 - **Live app:** [www.rmtlaunch.fun](https://www.rmtlaunch.fun)
 - **Protocol status:** [www.rmtlaunch.fun/status](https://www.rmtlaunch.fun/status)
-- **Official RMT V6 token:** [`0xdBa33be56C89CC9fc014c4459028d7e5c7878671`](https://www.rmtlaunch.fun/token/0xdBa33be56C89CC9fc014c4459028d7e5c7878671?launch=0)
+- **Official RMT V6 project:** [`0xdBa33be56C89CC9fc014c4459028d7e5c7878671`](https://www.rmtlaunch.fun/project/0xdBa33be56C89CC9fc014c4459028d7e5c7878671?launch=0)
 - **Chain:** Robinhood Chain mainnet (`4663`)
 
 ## Live V6 status

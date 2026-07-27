@@ -194,7 +194,7 @@ function QuickTradeDialog({
           </span>
         </div>
         <div className="quickTradeHeaderActions">
-          <Link href={"/token/" + launch.token + "?side=" + side + "&launch=" + launch.launchId + "#trade"}>Full page ↗</Link>
+          <Link href={"/project/" + launch.token + "?side=" + side + "&launch=" + launch.launchId + "#trade"}>Full project page ↗</Link>
           <button ref={closeButton} type="button" aria-label="Close quick trade" onClick={onClose}>×</button>
         </div>
       </header>
@@ -505,7 +505,7 @@ export function FreshLaunchFeed() {
                 <article className="rmtDiscoveryRow" key={view + "-" + launch.transactionHash + "-" + launch.launchId}>
                   <Link
                     className="rmtDiscoveryMain"
-                    href={"/token/" + launch.token + "?launch=" + launch.launchId}
+                    href={"/project/" + launch.token + "?launch=" + launch.launchId}
                     aria-label={"Open " + launch.name}
                   >
                     <span className="rmtDiscoveryRank">#{String(index + 1).padStart(2, "0")}</span>

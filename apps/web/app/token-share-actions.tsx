@@ -32,7 +32,7 @@ export function TokenShareActions({ address, name, symbol, launchId }: TokenShar
   }
 
   async function shareToken() {
-    const url = `${window.location.origin}/token/${address}?launch=${launchId}`;
+    const url = `${window.location.origin}/project/${address}?launch=${launchId}`;
     if (navigator.share) {
       try {
         await navigator.share({ title: `${name} on RMT`, text: shareText, url });
@@ -52,7 +52,7 @@ export function TokenShareActions({ address, name, symbol, launchId }: TokenShar
   }
 
   function postOnX() {
-    const url = `${window.location.origin}/token/${address}?launch=${launchId}`;
+    const url = `${window.location.origin}/project/${address}?launch=${launchId}`;
     const intent = `https://x.com/intent/post?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(url)}`;
     window.open(intent, "_blank", "noopener,noreferrer");
   }

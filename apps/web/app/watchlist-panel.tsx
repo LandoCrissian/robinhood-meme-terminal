@@ -51,7 +51,7 @@ export function WatchlistPanel() {
       <div className="watchlistGrid">
         {entries.slice(0, 8).map((entry) => (
           <article className="watchlistCard" key={entry.address.toLowerCase()}>
-            <Link href={`/token/${entry.address}${entry.launchId ? `?launch=${entry.launchId}` : ""}`}>
+            <Link href={`/project/${entry.address}${entry.launchId ? `?launch=${entry.launchId}` : ""}`}>
               <span className="coin watchlistArtwork">
                 {entry.image ? <img src={ipfsToHttp(entry.image)} alt="" loading="lazy" /> : entry.symbol.slice(0, 2)}
               </span>
