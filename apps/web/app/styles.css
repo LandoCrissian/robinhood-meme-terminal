@@ -250,6 +250,10 @@ main{max-width:1180px}
 .launchAssurances{display:flex;max-width:280px;flex-wrap:wrap;justify-content:flex-end;gap:7px}
 .launchAssurances span{padding:7px 9px;border:1px solid #2b3b30;border-radius:999px;color:#849188;font-size:.64rem;font-weight:800;white-space:nowrap}
 .launchPageGrid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(300px,.68fr);align-items:start;gap:16px}
+.launchPausePanel{max-width:900px;margin:18px auto 0}
+.launchPausePanel h2{margin:8px 0 10px;font-size:clamp(1.5rem,3vw,2.25rem)}
+.launchPausePanel>p:not(.eyebrow){max-width:720px;color:#929f96;line-height:1.6}
+.launchPausePanel .terminalIntroActions{margin-top:22px}
 .launchGuide{position:sticky;top:80px}
 .launchGuide h2{font-size:1.35rem}
 .launchPage .siteFooter{margin-top:28px}

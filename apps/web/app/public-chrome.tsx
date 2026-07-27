@@ -75,7 +75,7 @@ export function PublicChrome() {
               <div className="publicMenu">
                 <div>
                   <span>Discover</span>
-                  <PublicLink href="/explore">Explore markets<small>Trending, new, and active Robinhood Chain markets</small></PublicLink>
+                  <PublicLink href="/explore">Explore RMT launches<small>Verified projects created through RMT</small></PublicLink>
                   <PublicLink href="/portfolio">Portfolio<small>Your connected-wallet holdings</small></PublicLink>
                   <PublicLink href="/watchlist">Watchlist<small>Tokens saved on this device</small></PublicLink>
                   <PublicLink href="/sources">Sources<small>Launchpad coverage and origin labels</small></PublicLink>
@@ -83,7 +83,7 @@ export function PublicChrome() {
                 <div>
                   <span>Protocol &amp; research</span>
                   <PublicLink href="/sushi">Sushi integration<small>Routing boundary and launch readiness</small></PublicLink>
-                  <PublicLink href="/launch">RMT V6 launch beta<small>Existing fixed-supply launch contracts</small></PublicLink>
+                  <PublicLink href="/launch">RMT V7 launch preparation<small>New token creation is currently paused</small></PublicLink>
                   <PublicLink href="/rescue">Migration lab<small>Paused, direct-to-wallet testnet research</small></PublicLink>
                 </div>
                 <div>

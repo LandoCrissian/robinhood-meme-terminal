@@ -125,6 +125,9 @@ export function launchMatchesView(launch: LaunchFeedItem, view: RmtDiscoveryView
 }
 
 export function compareRmtLaunches(view: RmtDiscoveryView, a: LaunchFeedItem, b: LaunchFeedItem) {
+  if (view === "new" && a.officialMigration !== b.officialMigration) {
+    return a.officialMigration ? -1 : 1;
+  }
   if (view === "moving" || view === "early") {
     return rankRmtMomentum(b).momentumScore - rankRmtMomentum(a).momentumScore
       || deterministicTieBreak(a, b);
