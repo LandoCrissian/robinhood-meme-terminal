@@ -320,7 +320,7 @@ service cloud.firestore {
         && reviewNote is string && reviewNote.size() <= 600;
     }
 
-    function validAdminModuleReview(module) {
+    function validAdminModuleReview() {
       let changed = request.resource.data.diff(resource.data).affectedKeys();
       let note = request.resource.data.get('reviewNote', '');
       return isRmtAdmin()
@@ -405,7 +405,7 @@ service cloud.firestore {
           && request.resource.data.requestedAt == request.time
           && request.resource.data.updatedAt == request.time
           && !request.resource.data.keys().hasAny(['reviewedAt', 'reviewNote']);
-        allow update: if validAdminModuleReview(module)
+        allow update: if validAdminModuleReview()
           && validModuleActivationRequest(module, request.resource.data)
           && request.resource.data.requestedAt == resource.data.requestedAt;
       }
