@@ -42,12 +42,19 @@ export type PublicProjectRecord = {
   projectType: ProjectType;
   website: string;
   xProfile: string;
+  logoUri: string;
+  bannerUri: string;
   tokenAddress: string;
   availableModules: RequestedProjectModule[];
   status: "live";
   publishedAt?: unknown;
   updatedAt?: unknown;
 };
+
+export type ProjectIdentityDraft = Pick<
+  PublicProjectRecord,
+  "name" | "summary" | "website" | "xProfile" | "logoUri" | "bannerUri"
+>;
 
 export const EMPTY_CREATOR_APPLICATION: CreatorApplicationDraft = {
   projectName: "",
@@ -74,6 +81,47 @@ function cleanUrl(value: unknown) {
   } catch {
     return "";
   }
+}
+
+export function cleanProjectMediaUri(value: unknown) {
+  const candidate = cleanText(value, 512);
+  if (!candidate) return "";
+  if (/^ipfs:\/\/[a-zA-Z0-9]+(?:\/[a-zA-Z0-9._~-]+)*$/.test(candidate)) return candidate;
+  try {
+    const url = new URL(candidate);
+    if (
+      url.protocol !== "https:"
+      || url.username
+      || url.password
+      || url.pathname.toLowerCase().endsWith(".svg")
+    ) return "";
+    return url.toString().slice(0, 512);
+  } catch {
+    return "";
+  }
+}
+
+export function normalizeProjectIdentity(value: unknown): ProjectIdentityDraft {
+  const draft = value && typeof value === "object" ? value as Partial<ProjectIdentityDraft> : {};
+  return {
+    name: cleanText(draft.name, 80),
+    summary: cleanText(draft.summary, 600),
+    website: cleanUrl(draft.website),
+    xProfile: cleanUrl(draft.xProfile),
+    logoUri: cleanProjectMediaUri(draft.logoUri),
+    bannerUri: cleanProjectMediaUri(draft.bannerUri)
+  };
+}
+
+export function validateProjectIdentity(value: ProjectIdentityDraft) {
+  const draft = normalizeProjectIdentity(value);
+  if (draft.name.length < 2) return "Project name must be at least 2 characters.";
+  if (draft.summary.length < 40) return "Project description must be at least 40 characters.";
+  if (value.website.trim() && !draft.website) return "Website must be a valid HTTPS URL.";
+  if (value.xProfile.trim() && !draft.xProfile) return "X profile must be a valid HTTPS URL.";
+  if (value.logoUri.trim() && !draft.logoUri) return "Logo must be a valid HTTPS or IPFS image URL. SVG files are not accepted.";
+  if (value.bannerUri.trim() && !draft.bannerUri) return "Banner must be a valid HTTPS or IPFS image URL. SVG files are not accepted.";
+  return null;
 }
 
 export function normalizeProjectSlug(value: unknown) {
@@ -188,6 +236,8 @@ export function parsePublicProject(value: unknown): PublicProjectRecord | null {
     projectType,
     website: cleanUrl(data.website),
     xProfile: cleanUrl(data.xProfile),
+    logoUri: cleanProjectMediaUri(data.logoUri),
+    bannerUri: cleanProjectMediaUri(data.bannerUri),
     tokenAddress,
     availableModules,
     status: "live",

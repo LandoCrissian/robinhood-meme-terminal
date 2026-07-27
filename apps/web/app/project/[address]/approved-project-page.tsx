@@ -9,6 +9,7 @@ import {
   type RequestedProjectModule
 } from "../../../lib/creator-application";
 import { getFirebaseClient } from "../../../lib/firebase-client";
+import { ipfsToHttp } from "../../../lib/token-metadata";
 import { ProjectCreatorControls } from "../../project-creator-controls";
 
 const MODULE_COPY: Record<RequestedProjectModule, { label: string; description: string }> = {
@@ -22,6 +23,8 @@ export function ApprovedProjectPage({ slug }: { slug: string }) {
   const [project, setProject] = useState<PublicProjectRecord | null>(null);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
+  const [failedLogo, setFailedLogo] = useState("");
+  const [failedBanner, setFailedBanner] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -59,8 +62,27 @@ export function ApprovedProjectPage({ slug }: { slug: string }) {
   return (
     <main className="detailPage approvedProjectPage">
       <div className="detailNav"><Link href="/explore">← Back to Explore</Link><span>APPROVED PROJECT · V{project.schemaVersion}</span></div>
+      {project.bannerUri && failedBanner !== project.bannerUri && (
+        <div className="approvedProjectBanner">
+          <img
+            src={ipfsToHttp(project.bannerUri)}
+            alt={`${project.name} banner`}
+            referrerPolicy="no-referrer"
+            onError={() => setFailedBanner(project.bannerUri)}
+          />
+        </div>
+      )}
       <section className="panel approvedProjectHero">
-        <div className="approvedProjectMark" aria-hidden="true">{initials}</div>
+        <div className="approvedProjectMark" aria-hidden="true">
+          {project.logoUri && failedLogo !== project.logoUri
+            ? <img
+                src={ipfsToHttp(project.logoUri)}
+                alt=""
+                referrerPolicy="no-referrer"
+                onError={() => setFailedLogo(project.logoUri)}
+              />
+            : initials}
+        </div>
         <div>
           <div className="tokenOriginLine"><p className="eyebrow">RMT PAGE · REVIEW APPROVED</p><span>{project.projectType} project</span></div>
           <h1>{project.name}</h1>
@@ -93,7 +115,7 @@ export function ApprovedProjectPage({ slug }: { slug: string }) {
         </div>
         <p className="projectControlBoundary">No module is activated by page approval. Future activation will require the assigned creator, a disclosed one-time fee, and an explicit transaction where applicable.</p>
       </section>
-      <ProjectCreatorControls slug={project.slug} />
+      <ProjectCreatorControls project={project} />
     </main>
   );
 }

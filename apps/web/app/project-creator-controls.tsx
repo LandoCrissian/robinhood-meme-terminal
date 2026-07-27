@@ -1,15 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 import {
   PROJECT_MODULES,
+  normalizeProjectIdentity,
+  validateProjectIdentity,
+  type ProjectIdentityDraft,
+  type PublicProjectRecord,
   type RequestedProjectModule
 } from "../lib/creator-application";
 import {
   requestModuleActivation,
   subscribeToModuleActivationRequests,
-  subscribeToProjectAssignment
+  subscribeToProjectAssignment,
+  updateProjectIdentity
 } from "../lib/creator-application-cloud";
 import type {
   ModuleActivationRequest,
@@ -32,13 +37,20 @@ function requestLabel(request: ModuleActivationRequest | undefined) {
   return "Request declined";
 }
 
-export function ProjectCreatorControls({ slug }: { slug: string }) {
+export function ProjectCreatorControls({ project }: { project: PublicProjectRecord }) {
+  const slug = project.slug;
   const { loading: profileLoading, user } = useProfile();
   const [assignment, setAssignment] = useState<ProjectAssignment | null>(null);
   const [requests, setRequests] = useState<Partial<Record<RequestedProjectModule, ModuleActivationRequest>>>({});
   const [ownershipChecked, setOwnershipChecked] = useState(false);
   const [busyModule, setBusyModule] = useState<RequestedProjectModule | null>(null);
+  const [savingIdentity, setSavingIdentity] = useState(false);
   const [message, setMessage] = useState("");
+  const [identity, setIdentity] = useState<ProjectIdentityDraft>(() => normalizeProjectIdentity(project));
+
+  useEffect(() => {
+    setIdentity(normalizeProjectIdentity(project));
+  }, [project]);
 
   useEffect(() => {
     setAssignment(null);
@@ -104,6 +116,26 @@ export function ProjectCreatorControls({ slug }: { slug: string }) {
     }
   };
 
+  const saveIdentity = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!user || !assignment) return;
+    const validationError = validateProjectIdentity(identity);
+    if (validationError) {
+      setMessage(validationError);
+      return;
+    }
+    setSavingIdentity(true);
+    setMessage("");
+    try {
+      await updateProjectIdentity(user, project, identity);
+      setMessage("Project identity saved. The public directory and project page update automatically.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "The project identity could not be saved.");
+    } finally {
+      setSavingIdentity(false);
+    }
+  };
+
   if (profileLoading) return null;
   if (!user) {
     return (
@@ -118,9 +150,22 @@ export function ProjectCreatorControls({ slug }: { slug: string }) {
   return (
     <section className="panel creatorControlPanel" aria-labelledby="creator-control-title">
       <header>
-        <div><p className="eyebrow">PRIVATE CREATOR WORKSPACE</p><h2 id="creator-control-title">Manage project capabilities</h2><p>This profile is assigned to the project. Requests begin an RMT review only; they do not deploy contracts, charge fees or grant wallet authority.</p></div>
+        <div><p className="eyebrow">PRIVATE CREATOR WORKSPACE</p><h2 id="creator-control-title">Manage project identity and capabilities</h2><p>This profile is assigned to the project. Presentation updates are public; module requests begin a separate RMT review and do not deploy contracts, charge fees or grant wallet authority.</p></div>
         <span>OWNER VERIFIED</span>
       </header>
+      <form className="creatorIdentityEditor" onSubmit={saveIdentity}>
+        <div className="creatorIdentityHeading"><div><strong>Public project identity</strong><p>Use HTTPS or IPFS images. Logos and banners are displayed with no-referrer protection; SVG files are rejected.</p></div><span>LIVE PREVIEW DATA</span></div>
+        <div className="creatorIdentityFields">
+          <label>Project name<input maxLength={80} value={identity.name} onChange={(event) => setIdentity((current) => ({ ...current, name: event.target.value }))} /></label>
+          <label>Website<input maxLength={256} inputMode="url" placeholder="https://" value={identity.website} onChange={(event) => setIdentity((current) => ({ ...current, website: event.target.value }))} /></label>
+          <label className="creatorIdentityWide">Description<textarea maxLength={600} value={identity.summary} onChange={(event) => setIdentity((current) => ({ ...current, summary: event.target.value }))} /></label>
+          <label>X profile<input maxLength={256} inputMode="url" placeholder="https://x.com/" value={identity.xProfile} onChange={(event) => setIdentity((current) => ({ ...current, xProfile: event.target.value }))} /></label>
+          <label>Logo image<input maxLength={512} inputMode="url" placeholder="https:// or ipfs://" value={identity.logoUri} onChange={(event) => setIdentity((current) => ({ ...current, logoUri: event.target.value }))} /></label>
+          <label className="creatorIdentityWide">Banner image<input maxLength={512} inputMode="url" placeholder="https:// or ipfs://" value={identity.bannerUri} onChange={(event) => setIdentity((current) => ({ ...current, bannerUri: event.target.value }))} /></label>
+        </div>
+        <button type="submit" disabled={savingIdentity}>{savingIdentity ? "Saving identity…" : "Save public identity"}</button>
+      </form>
+      <div className="creatorCapabilityHeading"><strong>Optional project modules</strong><span>SEPARATE REVIEW</span></div>
       <div className="creatorControlGrid">
         {PROJECT_MODULES.filter((module) => assignment.allowedModules.includes(module)).map((module) => {
           const request = requests[module];
