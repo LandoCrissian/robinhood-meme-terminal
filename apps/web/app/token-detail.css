@@ -57,6 +57,7 @@ dd{margin:0;text-align:right;overflow-wrap:anywhere}
 .approvedProjectLinks{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
 .approvedProjectLinks a{padding:8px 11px;border:1px solid #31523a;border-radius:999px;color:#71e982;font-size:.66rem;font-weight:900;text-decoration:none}
 .projectAudienceControls{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:14px}.projectAudienceControls>div{display:flex;align-items:baseline;gap:6px;padding:8px 10px;border:1px solid #304238;border-radius:10px;background:#080d0a}.projectAudienceControls>div strong{color:#dce5de;font-size:.78rem}.projectAudienceControls>div span{color:#78867c;font-size:.49rem;font-weight:950;letter-spacing:.06em}.projectAudienceControls>button,.projectAudienceControls>a{min-height:34px;padding:0 11px;border:1px solid #3f7049;border-radius:10px;background:#68ed7c;color:#041108;font-size:.56rem;font-weight:950;text-decoration:none}.projectAudienceControls>a{display:flex;align-items:center}.projectAudienceControls>button[aria-pressed=true]{background:#112016;color:#8ee99b}.projectAudienceControls>button:disabled{opacity:.55}.projectAudienceControls>small{width:100%;color:#8ce999;font-size:.54rem;font-weight:800}.projectAudienceControls>p{width:100%;margin:0;color:#657269;font-size:.51rem}
+.approvedProjectMobileDock{display:none}
 .approvedProjectToken{display:grid;grid-template-columns:minmax(180px,.45fr) minmax(0,1fr);gap:12px;margin-top:10px;padding:18px}
 .approvedProjectToken h2{margin:4px 0 0;font-size:1rem}.approvedProjectToken code{align-self:center;overflow-wrap:anywhere;color:#cbd4cd;font-size:.75rem}
 .approvedProjectToken>p{grid-column:1/-1;margin:0;color:#77847b;font-size:.64rem;line-height:1.5}
@@ -146,8 +147,64 @@ dd{margin:0;text-align:right;overflow-wrap:anywhere}
  .gameReleaseLog{padding:16px 14px}.gameReleaseLog>header{flex-direction:column}.gameReleaseLogList article:has(>img){grid-template-columns:1fr}.gameReleaseLogList img{height:170px;min-height:0}.gameReleaseLogMeta time{width:100%;margin:2px 0 0}
 }
 
+@media (max-width: 640px) {
+ .approvedProjectPage{padding-bottom:158px}
+ .approvedProjectPage .detailNav{padding-right:10px;padding-left:10px}
+ .approvedProjectBanner{height:112px;margin-top:5px;border:1px solid #293b30;border-radius:16px}
+ .approvedProjectHero{grid-template-columns:46px minmax(0,1fr);gap:9px;margin-top:7px;padding:12px}
+ .approvedProjectMark{width:46px;height:46px;border-radius:14px;font-size:.78rem}
+ .approvedProjectHero h1{margin:3px 0 5px;font-size:1.38rem;line-height:1.08}
+ .approvedProjectHero>div>p:not(.eyebrow){display:-webkit-box;overflow:hidden;font-size:.7rem;line-height:1.4;-webkit-box-orient:vertical;-webkit-line-clamp:2}
+ .approvedProjectLinks{gap:5px;margin-top:9px}
+ .approvedProjectLinks a{display:inline-flex;min-height:38px;align-items:center;padding:0 9px;font-size:.59rem}
+ #project-follow{scroll-margin-top:70px}
+ .projectAudienceControls{gap:6px;margin-top:9px}
+ .projectAudienceControls>div{min-height:38px;padding:6px 8px}
+ .projectAudienceControls>button,.projectAudienceControls>a{min-height:38px}
+ .projectAudienceControls>p{display:none}
+ .projectAudienceControls>small{font-size:.58rem}
+ .approvedProjectMobileDock{position:fixed;z-index:39;right:10px;bottom:calc(67px + env(safe-area-inset-bottom));left:10px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;padding:5px;border:1px solid #35493c;border-radius:14px;background:rgba(8,14,10,.97);box-shadow:0 14px 40px rgba(0,0,0,.58);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+ .approvedProjectMobileDock.twoActions{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .approvedProjectMobileDock>a,.approvedProjectMobileDock>button{display:flex;min-width:0;min-height:44px;align-items:center;justify-content:center;padding:0 5px;border:1px solid #33463a;border-radius:10px;background:#111a14;color:#aab6ad;font:inherit;font-size:.62rem;font-weight:950;text-align:center;text-decoration:none}
+ .approvedProjectMobileDock>a:nth-last-child(2),.approvedProjectMobileDock.twoActions>a:last-child{border-color:#61dc75;background:#66e97a;color:#041108}
+ .approvedProjectMobileDock>button[aria-pressed=true]{border-color:#45654c;background:#132219;color:#8eeb9a}
+ .approvedProjectMobileDock>button:disabled{opacity:.55}
+ .approvedGameShowcase{padding:13px 12px}
+ .approvedGameShowcase>header{align-items:flex-start;flex-direction:row;gap:8px}
+ .approvedGameShowcase h2{margin-top:2px;font-size:1.08rem}
+ .approvedGameShowcase header p:not(.eyebrow){display:-webkit-box;overflow:hidden;font-size:.62rem;-webkit-box-orient:vertical;-webkit-line-clamp:2}
+ .approvedGameShowcase>header>span{padding:6px 8px;font-size:.49rem;white-space:nowrap}
+ .approvedGamePlatforms{gap:4px;margin-top:10px}
+ .approvedGamePlatforms span{padding:4px 6px;font-size:.48rem}
+ .approvedGameDetails{grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;margin-top:9px}
+ .approvedGameDetails>div{padding:8px 6px}
+ .approvedGameDetails dt{font-size:.45rem}
+ .approvedGameDetails dd{font-size:.54rem;line-height:1.3;text-align:left}
+ .approvedGameActions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;margin-top:9px}
+ .approvedGameActions a{display:grid;min-height:42px;place-items:center;padding:0 6px;font-size:.56rem;text-align:center}
+ .approvedGameGallery{margin-top:12px;padding-top:11px}
+ .approvedGameGallery>div:last-child{display:grid;grid-auto-columns:82%;grid-auto-flow:column;grid-template-columns:none;gap:7px;overflow-x:auto;overscroll-behavior-inline:contain;scroll-snap-type:inline mandatory}
+ .approvedGameGallery img{height:132px;scroll-snap-align:start}
+ .approvedGameShowcase>small{margin-top:10px}
+ .gameReleaseLog{padding:13px 12px}
+ .gameReleaseLog>header{align-items:flex-start;flex-direction:row;gap:8px}
+ .gameReleaseLog header p:not(.eyebrow){display:-webkit-box;overflow:hidden;-webkit-box-orient:vertical;-webkit-line-clamp:2}
+ .projectModulePanel{scroll-margin-top:70px;padding:12px}
+ .projectModulePanel>header p:not(.eyebrow){display:-webkit-box;overflow:hidden;-webkit-box-orient:vertical;-webkit-line-clamp:2}
+ .projectModulePanel>header>span{padding:6px 8px;font-size:.48rem}
+ .projectModuleGrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:9px}
+ .projectModuleCard{min-height:118px;padding:9px}
+ .projectModuleCard.planned{display:none}
+ .projectModuleCard>div{align-items:flex-start;flex-direction:column;gap:3px}
+ .projectModuleCard>p{display:-webkit-box;overflow:hidden;margin:7px 0;font-size:.58rem;line-height:1.4;-webkit-box-orient:vertical;-webkit-line-clamp:2}
+ .projectModuleCard>small{font-size:.52rem}
+ .approvedProjectToken{padding:12px}
+ .approvedProjectToken code{font-size:.65rem}
+ .creatorControlPrompt{padding:13px 12px}
+}
+
 @media (max-width: 460px) {
- .projectModuleGrid{grid-template-columns:1fr}
+ .projectModuleGrid{grid-template-columns:repeat(2,minmax(0,1fr))}
  .projectModuleCard{min-height:112px}
 }
 

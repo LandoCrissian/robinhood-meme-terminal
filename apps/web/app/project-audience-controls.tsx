@@ -9,7 +9,13 @@ import {
 } from "../lib/project-follows";
 import { useProfile } from "./profile-provider";
 
-export function ProjectAudienceControls({ projectSlug }: { projectSlug: string }) {
+export function ProjectAudienceControls({
+  projectSlug,
+  mobilePrimaryAction
+}: {
+  projectSlug: string;
+  mobilePrimaryAction?: { href: string; label: string };
+}) {
   const { loading: profileLoading, user } = useProfile();
   const [followerCount, setFollowerCount] = useState<number | null>(null);
   const [following, setFollowing] = useState(false);
@@ -76,16 +82,36 @@ export function ProjectAudienceControls({ projectSlug }: { projectSlug: string }
     }
   };
 
-  return <ProjectAudienceView
-    followerCount={followerCount}
-    profileLoading={profileLoading}
-    userPresent={Boolean(user)}
-    following={following}
-    followChecked={followChecked}
-    busy={busy}
-    message={message}
-    onToggle={() => void toggleFollow()}
-  />;
+  return (
+    <>
+      <ProjectAudienceView
+        followerCount={followerCount}
+        profileLoading={profileLoading}
+        userPresent={Boolean(user)}
+        following={following}
+        followChecked={followChecked}
+        busy={busy}
+        message={message}
+        onToggle={() => void toggleFollow()}
+      />
+      <nav className={`approvedProjectMobileDock ${mobilePrimaryAction ? "" : "twoActions"}`} aria-label="Project quick actions">
+        {!profileLoading && (
+          user
+            ? <button
+                type="button"
+                aria-pressed={following}
+                disabled={!followChecked || busy}
+                onClick={() => void toggleFollow()}
+              >
+                {busy ? "Updating…" : following ? "Following ✓" : "Follow"}
+              </button>
+            : <Link href="/profile">Sign in</Link>
+        )}
+        {mobilePrimaryAction && <a href={mobilePrimaryAction.href} target="_blank" rel="noopener noreferrer">{mobilePrimaryAction.label} ↗</a>}
+        <a href="#project-modules">Modules</a>
+      </nav>
+    </>
+  );
 }
 
 export function ProjectAudienceView({
