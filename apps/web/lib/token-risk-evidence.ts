@@ -46,6 +46,13 @@ export type TokenRiskEvidence = {
     creator: string | null;
     creatorShareBps: number | null;
   };
+  sellSimulation: {
+    status: "passed" | "blocked" | "unavailable" | "not-run";
+    method: "holder-to-pool-transfer";
+    holder: string | null;
+    amount: string | null;
+    returnStyle: "boolean-true" | "no-return-data" | null;
+  };
   warnings: string[];
   checkedAt: string;
 };

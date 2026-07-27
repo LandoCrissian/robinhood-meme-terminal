@@ -1,5 +1,9 @@
 import {
+  BaseError,
+  ExecutionRevertedError,
   createPublicClient,
+  decodeFunctionResult,
+  encodeFunctionData,
   erc20Abi,
   getAddress,
   http,
@@ -50,7 +54,8 @@ const tokenSchema = z.object({
 const holderSchema = z.object({
   address: z.object({
     hash: z.string(),
-    is_scam: z.boolean().optional()
+    is_scam: z.boolean().optional(),
+    is_contract: z.boolean().optional()
   }).passthrough(),
   value: z.string().regex(/^\d+$/)
 }).passthrough();
@@ -72,6 +77,13 @@ type ReadControlState = (
   token: Address,
   functions: z.infer<typeof abiFunctionSchema>[]
 ) => Promise<ControlState>;
+type SellSimulation = TokenRiskEvidence["sellSimulation"];
+type SimulateSellTransfer = (
+  token: Address,
+  holder: Address,
+  pair: Address,
+  amount: bigint
+) => Promise<SellSimulation>;
 
 const STANDARD_TOKEN_WRITES = new Set([
   "approve",
@@ -109,6 +121,63 @@ async function readCreatorBalance(token: Address, creator: Address) {
     functionName: "balanceOf",
     args: [creator]
   });
+}
+
+export async function simulateSellDirectionTransfer(
+  token: Address,
+  holder: Address,
+  pair: Address,
+  amount: bigint,
+  dependencies: {
+    call?: (request: {
+      account: Address;
+      to: Address;
+      data: `0x${string}`;
+      gas: bigint;
+    }) => Promise<{ data?: `0x${string}` }>;
+  } = {}
+): Promise<SellSimulation> {
+  const base = {
+    method: "holder-to-pool-transfer" as const,
+    holder,
+    amount: amount.toString()
+  };
+  const data = encodeFunctionData({
+    abi: erc20Abi,
+    functionName: "transfer",
+    args: [pair, amount]
+  });
+  try {
+    const result = await (dependencies.call ?? ((request) => client.call(request)))({
+      account: holder,
+      to: token,
+      data,
+      gas: 500_000n
+    });
+    if (!result.data || result.data === "0x") {
+      return { ...base, status: "passed", returnStyle: "no-return-data" };
+    }
+    try {
+      const transferred = decodeFunctionResult({
+        abi: erc20Abi,
+        functionName: "transfer",
+        data: result.data
+      });
+      return transferred === true
+        ? { ...base, status: "passed", returnStyle: "boolean-true" }
+        : { ...base, status: "blocked", returnStyle: null };
+    } catch {
+      return { ...base, status: "blocked", returnStyle: null };
+    }
+  } catch (cause) {
+    const reverted = cause instanceof BaseError
+      && cause.walk((entry) => entry instanceof ExecutionRevertedError);
+    return {
+      ...base,
+      status: reverted ? "blocked" : "unavailable",
+      returnStyle: null
+    };
+  }
 }
 
 export function scanPublishedTokenControls(rawAbi: unknown[] | undefined) {
@@ -267,6 +336,15 @@ function evidenceWarnings(evidence: Omit<TokenRiskEvidence, "warnings">) {
   if (evidence.liquidity.approvedOperator) {
     warnings.push("The verified liquidity-position NFT has an approved transfer operator.");
   }
+  if (evidence.sellSimulation.status === "blocked") {
+    warnings.push("A read-only holder-to-pool transfer simulation failed. RMT has blocked buys for this market.");
+  } else if (evidence.sellSimulation.status === "unavailable") {
+    warnings.push("Sell-direction transfer simulation is temporarily unavailable. Treat sellability as unknown.");
+  } else if (evidence.sellSimulation.status === "not-run") {
+    warnings.push("No eligible non-contract holder was available for sell-direction simulation. Treat sellability as unknown.");
+  } else {
+    warnings.push("A read-only holder-to-pool transfer passed now; this does not guarantee a future sale, output amount, tax, or unchanged token behavior.");
+  }
   const largest = evidence.holders.largestNonPoolHolder?.shareBps;
   if (largest !== undefined && largest >= 2_000) {
     warnings.push("One non-pool address controls at least 20% of the token supply.");
@@ -296,6 +374,7 @@ export async function fetchTokenRiskEvidence(
     readCreatorBalance?: ReadCreatorBalance;
     readControlState?: ReadControlState;
     readLiquidityPosition?: typeof resolveRegisteredLiquidityPosition;
+    simulateSellTransfer?: SimulateSellTransfer;
   } = {}
 ): Promise<TokenRiskEvidence> {
   const tokenPath = `/api/v2/tokens/${params.token}`;
@@ -338,6 +417,7 @@ export async function fetchTokenRiskEvidence(
   ]);
   let poolShareBps: number | null = null;
   let largestNonPoolHolder: TokenRiskEvidence["holders"]["largestNonPoolHolder"] = null;
+  let sellProbeCandidate: { address: Address; value: bigint } | null = null;
   const creatorShareBps = rawCreatorBalance === null
     ? null
     : shareBps(rawCreatorBalance, totalSupply);
@@ -352,8 +432,34 @@ export async function fetchTokenRiskEvidence(
       if (!largestNonPoolHolder || candidate.shareBps > largestNonPoolHolder.shareBps) {
         largestNonPoolHolder = candidate;
       }
+      if (
+        holder.address.is_contract === false
+        && holder.address.is_scam !== true
+        && value > 0n
+        && (!sellProbeCandidate || value > sellProbeCandidate.value)
+      ) {
+        sellProbeCandidate = { address, value };
+      }
     }
   }
+  const probeAmount = sellProbeCandidate
+    ? [sellProbeCandidate.value, totalSupply / 1_000_000n || 1n]
+        .reduce((smallest, value) => value < smallest ? value : smallest)
+    : null;
+  const sellSimulation = sellProbeCandidate && probeAmount
+    ? await (dependencies.simulateSellTransfer ?? simulateSellDirectionTransfer)(
+        params.token,
+        sellProbeCandidate.address,
+        params.pair,
+        probeAmount
+      )
+    : {
+        status: "not-run" as const,
+        method: "holder-to-pool-transfer" as const,
+        holder: null,
+        amount: null,
+        returnStyle: null
+      };
 
   let publishedAbi: unknown[] | undefined;
   if (abiEnvelope.data?.status === "1") {
@@ -420,7 +526,9 @@ export async function fetchTokenRiskEvidence(
     || token.data.holders_count === null
     || token.data.holders_count === undefined
     || contractDetailsUnavailable
-    || abiUnavailable;
+    || abiUnavailable
+    || sellSimulation.status === "unavailable"
+    || sellSimulation.status === "not-run";
   const base = {
     token: getAddress(params.token),
     pair: getAddress(params.pair),
@@ -435,6 +543,7 @@ export async function fetchTokenRiskEvidence(
       creator: params.creator ? getAddress(params.creator) : null,
       creatorShareBps
     },
+    sellSimulation,
     checkedAt: new Date(dependencies.now?.() ?? Date.now()).toISOString()
   };
   return { ...base, warnings: evidenceWarnings(base) };

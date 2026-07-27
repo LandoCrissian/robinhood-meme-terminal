@@ -13,7 +13,11 @@ import {
 import type { ExternalMarket } from "../lib/external-market";
 import { ROBINHOOD_SWAP_ROUTER_02 } from "../lib/uniswap-v4";
 import { useTokenRiskEvidence } from "../lib/use-token-risk-evidence";
-import { TradeConfidence, tradeRequiresAcknowledgement } from "./trade-confidence";
+import {
+  TradeConfidence,
+  tradeIsBlockedByEvidence,
+  tradeRequiresAcknowledgement
+} from "./trade-confidence";
 import { WalletButton } from "./wallet-button";
 
 const ROBINHOOD_CHAIN_ID = 4663;
@@ -223,12 +227,13 @@ export function ExternalUniswapTradePanel({
   const requiresAcknowledgement = tradeRequiresAcknowledgement(market, side);
   const confidenceEvidenceReady = side === "sell" || tokenRisk.status !== "loading";
   const confidenceReady = confidenceEvidenceReady && (!requiresAcknowledgement || acknowledged);
+  const evidenceBlocked = tradeIsBlockedByEvidence(tokenRisk, side);
   const outputDecimals = quote?.outputToken.decimals;
   const outputSymbol = quote?.outputToken.symbol ?? (side === "buy" ? market.symbol : "ETH");
 
   const submit = () => {
     setMessage("");
-    if (!address || chainId !== ROBINHOOD_CHAIN_ID || !quoteIsFresh || !quote || insufficient || busy || !confidenceReady) return;
+    if (!address || chainId !== ROBINHOOD_CHAIN_ID || !quoteIsFresh || !quote || insufficient || busy || !confidenceReady || evidenceBlocked) return;
     if (needsApproval) {
       approval.writeContract({
         address: token,
@@ -252,7 +257,8 @@ export function ExternalUniswapTradePanel({
     ? approval.isPending || approvalReceipt.isLoading ? "Confirming exact approval…" : "Confirming swap…"
     : insufficient ? "Insufficient balance"
       : !confidenceEvidenceReady ? "Checking contract and holders…"
-      : !confidenceReady ? "Review and acknowledge warnings"
+      : evidenceBlocked ? "Buy blocked: sell transfer failed"
+        : !confidenceReady ? "Review and acknowledge warnings"
         : needsApproval ? `Approve exact ${market.symbol} amount`
           : side === "buy" ? `Buy ${market.symbol} inside RMT` : `Sell ${market.symbol} inside RMT`;
 
@@ -343,7 +349,7 @@ export function ExternalUniswapTradePanel({
             <button
               className={`externalUniswapSubmit ${side}`}
               type="button"
-              disabled={!quoteIsFresh || insufficient || busy || !confidenceReady}
+              disabled={!quoteIsFresh || insufficient || busy || !confidenceReady || evidenceBlocked}
               onClick={submit}
             >
               {buttonLabel}

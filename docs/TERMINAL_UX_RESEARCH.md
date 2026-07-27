@@ -66,6 +66,14 @@ other-wallet, contract-held, burn-address, and unavailable custody evidence. Lem
 unregistered markets remain explicitly unproven because pool balances alone cannot
 establish LP ownership or locking.
 
+The fifth layer performs a read-only sell-direction probe before enabling an external buy.
+RMT selects an observed non-contract holder, simulates a deliberately small ERC-20 transfer
+from that holder into the exact verified pool, and blocks the buy when the call reverts,
+returns `false`, or produces router-incompatible return data. RPC uncertainty and the absence
+of an eligible holder remain explicitly unknown. A passing transfer is current evidence only:
+it does not prove future sellability, the amount ultimately received, transfer tax, router
+compatibility beyond the transfer, or that privileged token behavior will remain unchanged.
+
 This specifically addresses the recurring terminal complaints behind the research: users
 could not predict the real outcome, risk context was separated from the action, generated
 wallet and custody boundaries were unclear, or interfaces moved too quickly for a beginner

@@ -1,10 +1,14 @@
 import assert from "node:assert/strict";
-import { getAddress } from "viem";
+import { encodeAbiParameters, ExecutionRevertedError, getAddress } from "viem";
 import {
   classifyRegisteredLiquidityPosition,
   resolveRegisteredLiquidityPosition
 } from "./registered-liquidity-position";
-import { fetchTokenRiskEvidence, scanPublishedTokenControls } from "./token-risk-evidence";
+import {
+  fetchTokenRiskEvidence,
+  scanPublishedTokenControls,
+  simulateSellDirectionTransfer
+} from "./token-risk-evidence";
 
 const token = getAddress("0xcC333d246c75C14B087561F39F8c6FEf958CE54f");
 const pair = getAddress("0x247bC73e70EBDecf6221B1A6E0564580938C5FFE");
@@ -39,10 +43,10 @@ function mockFetch(options: {
     if (url.endsWith("/holders")) {
       return Response.json({
         items: options.holders ?? [
-          { address: { hash: whale }, value: "80" },
-          { address: { hash: pair }, value: "700" },
-          { address: { hash: zero }, value: "100" },
-          { address: { hash: creator }, value: "120" }
+          { address: { hash: whale, is_contract: false }, value: "80" },
+          { address: { hash: pair, is_contract: true }, value: "700" },
+          { address: { hash: zero, is_contract: false }, value: "100" },
+          { address: { hash: creator, is_contract: false }, value: "120" }
         ]
       });
     }
@@ -55,6 +59,18 @@ function mockFetch(options: {
 }
 
 async function main() {
+  const passedSellSimulation = async (
+    _token: typeof token,
+    holder: typeof token,
+    _pair: typeof token,
+    amount: bigint
+  ) => ({
+    status: "passed" as const,
+    method: "holder-to-pool-transfer" as const,
+    holder,
+    amount: amount.toString(),
+    returnStyle: "boolean-true" as const
+  });
   const scanned = scanPublishedTokenControls([
     {
       type: "function",
@@ -96,6 +112,7 @@ async function main() {
     {
       fetch: mockFetch(),
       readCreatorBalance: async () => 120n,
+      simulateSellTransfer: passedSellSimulation,
       now: () => Date.parse("2026-07-27T12:00:00.000Z")
     }
   );
@@ -113,6 +130,9 @@ async function main() {
   assert.equal(evidence.holders.largestNonPoolHolder?.address, creator);
   assert.equal(evidence.holders.largestNonPoolHolder?.shareBps, 1_200);
   assert.equal(evidence.holders.creatorShareBps, 1_200);
+  assert.equal(evidence.sellSimulation.status, "passed");
+  assert.equal(evidence.sellSimulation.holder, creator);
+  assert.equal(evidence.sellSimulation.amount, "1");
   assert.match(evidence.warnings.join(" "), /non-pool address controls at least 10%/);
   assert.match(evidence.warnings.join(" "), /reported creator controls at least 10%/);
   assert.match(evidence.warnings.join(" "), /does not prove the liquidity position is locked/);
@@ -122,6 +142,7 @@ async function main() {
     { token, pair },
     {
       fetch: mockFetch({ contractStatus: 404 }),
+      simulateSellTransfer: passedSellSimulation,
       now: () => 0
     }
   );
@@ -133,6 +154,7 @@ async function main() {
     { token, pair },
     {
       fetch: mockFetch({ contractStatus: 503 }),
+      simulateSellTransfer: passedSellSimulation,
       now: () => 0
     }
   );
@@ -151,7 +173,8 @@ async function main() {
           implementations: [{}],
           is_changed_bytecode: true
         }
-      })
+      }),
+      simulateSellTransfer: passedSellSimulation
     }
   );
   assert.equal(proxy.contract.isProxy, true);
@@ -192,7 +215,8 @@ async function main() {
         restrictionEndBlock: 200n,
         maxTransactionBps: 500,
         maxWalletBps: 550
-      })
+      }),
+      simulateSellTransfer: passedSellSimulation
     }
   );
   assert.equal(restricted.contract.controls.assessment, "review-required");
@@ -204,6 +228,57 @@ async function main() {
   assert.equal(restricted.contract.controls.maxTransactionBps, 500);
   assert.equal(restricted.contract.controls.maxWalletBps, 550);
   assert.match(restricted.warnings.join(" "), /launch restrictions are currently active/);
+
+  const blockedEvidence = await fetchTokenRiskEvidence(
+    { token, pair },
+    {
+      fetch: mockFetch(),
+      simulateSellTransfer: async (_token, holder, _pair, amount) => ({
+        status: "blocked",
+        method: "holder-to-pool-transfer",
+        holder,
+        amount: amount.toString(),
+        returnStyle: null
+      })
+    }
+  );
+  assert.equal(blockedEvidence.sellSimulation.status, "blocked");
+  assert.match(blockedEvidence.warnings.join(" "), /blocked buys/);
+
+  const passedBoolean = await simulateSellDirectionTransfer(token, whale, pair, 1n, {
+    call: async () => ({
+      data: encodeAbiParameters([{ type: "bool" }], [true])
+    })
+  });
+  assert.equal(passedBoolean.status, "passed");
+  assert.equal(passedBoolean.returnStyle, "boolean-true");
+
+  const passedLegacy = await simulateSellDirectionTransfer(token, whale, pair, 1n, {
+    call: async () => ({ data: "0x" })
+  });
+  assert.equal(passedLegacy.status, "passed");
+  assert.equal(passedLegacy.returnStyle, "no-return-data");
+
+  const falseReturn = await simulateSellDirectionTransfer(token, whale, pair, 1n, {
+    call: async () => ({
+      data: encodeAbiParameters([{ type: "bool" }], [false])
+    })
+  });
+  assert.equal(falseReturn.status, "blocked");
+
+  const reverted = await simulateSellDirectionTransfer(token, whale, pair, 1n, {
+    call: async () => {
+      throw new ExecutionRevertedError({ message: "transfer blocked" });
+    }
+  });
+  assert.equal(reverted.status, "blocked");
+
+  const unavailable = await simulateSellDirectionTransfer(token, whale, pair, 1n, {
+    call: async () => {
+      throw new Error("RPC unavailable");
+    }
+  });
+  assert.equal(unavailable.status, "unavailable");
 
   const registeredPosition = await resolveRegisteredLiquidityPosition(
     { token, pair, creator, sourceId: "pons" },
