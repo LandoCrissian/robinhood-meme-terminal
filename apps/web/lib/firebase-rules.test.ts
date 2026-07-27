@@ -9,10 +9,12 @@ import {
   type RulesTestEnvironment
 } from "@firebase/rules-unit-testing";
 import {
+  collection,
   deleteField,
   deleteDoc,
   doc,
   getDoc,
+  getDocs,
   serverTimestamp,
   setDoc,
   Timestamp,
@@ -22,6 +24,7 @@ import {
 const PROJECT_ID = "rmt-rules-test";
 const OWNER_ID = "owner-user";
 const OTHER_ID = "other-user";
+const ADMIN_ID = "rmt-admin";
 const PROFILE = {
   displayName: "RMT Trader",
   handle: "runner_one",
@@ -48,6 +51,13 @@ function authenticatedDb(userId = OWNER_ID, verified = true) {
   }).firestore();
 }
 
+function adminDb() {
+  return testEnvironment.authenticatedContext(ADMIN_ID, {
+    email: "launchrmt@gmail.com",
+    email_verified: true
+  }).firestore();
+}
+
 function userDocument(overrides: Record<string, unknown> = {}) {
   return {
     schemaVersion: 1,
@@ -69,6 +79,44 @@ function watchlistDocument(overrides: Record<string, unknown> = {}) {
     launchId: "42",
     addedAt: 1_000,
     listUpdatedAt: 200,
+    ...overrides
+  };
+}
+
+function creatorApplication(overrides: Record<string, unknown> = {}) {
+  return {
+    schemaVersion: 1,
+    projectName: "Runner Studio",
+    summary: "A community studio creating transparent art, music, and token experiences for Robinhood Chain.",
+    projectType: "community",
+    website: "https://runner.example/",
+    xProfile: "https://x.com/runner",
+    tokenAddress: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    requestedModules: ["token", "nft"],
+    ownershipConfirmed: true,
+    termsAccepted: true,
+    contactEmail: `${OWNER_ID}@example.com`,
+    status: "pending",
+    submittedAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+    ...overrides
+  };
+}
+
+function publicProject(overrides: Record<string, unknown> = {}) {
+  return {
+    schemaVersion: 1,
+    slug: "runner-studio",
+    name: "Runner Studio",
+    summary: "A community studio creating transparent art, music, and token experiences for Robinhood Chain.",
+    projectType: "community",
+    website: "https://runner.example/",
+    xProfile: "https://x.com/runner",
+    tokenAddress: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    availableModules: ["token", "nft"],
+    status: "live",
+    publishedAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
     ...overrides
   };
 }
@@ -264,4 +312,108 @@ test("watchlist records cannot change without advancing the parent list version"
 test("unrelated collections remain closed", async () => {
   const db = authenticatedDb();
   await assertFails(setDoc(doc(db, "publicProfiles", OWNER_ID), { displayName: "Public" }));
+});
+
+test("verified owners can submit one private creator application", async () => {
+  const owner = authenticatedDb();
+  await seedOwner(owner);
+  const reference = doc(owner, "creatorApplications", OWNER_ID);
+  await assertSucceeds(setDoc(reference, creatorApplication()));
+  assert.equal((await assertSucceeds(getDoc(reference))).data()?.status, "pending");
+  await assertFails(getDoc(doc(authenticatedDb(OTHER_ID), "creatorApplications", OWNER_ID)));
+  await assertFails(getDoc(doc(testEnvironment.unauthenticatedContext().firestore(), "creatorApplications", OWNER_ID)));
+  await assertFails(setDoc(reference, creatorApplication({ projectName: "Silent pending edit" })));
+});
+
+test("a creator application requires an initialized private profile", async () => {
+  const owner = authenticatedDb();
+  await assertFails(setDoc(doc(owner, "creatorApplications", OWNER_ID), creatorApplication()));
+});
+
+test("creator application identity and questionnaire fields are strictly validated", async () => {
+  const owner = authenticatedDb();
+  await seedOwner(owner);
+  const reference = doc(owner, "creatorApplications", OWNER_ID);
+  await assertFails(setDoc(reference, creatorApplication({ contactEmail: "someone-else@example.com" })));
+  await assertFails(setDoc(reference, creatorApplication({ status: "approved", projectSlug: "self-approved" })));
+  await assertFails(setDoc(reference, creatorApplication({ requestedModules: [] })));
+  await assertFails(setDoc(reference, creatorApplication({ requestedModules: ["token"], tokenAddress: "" })));
+  await assertFails(setDoc(reference, creatorApplication({ website: "javascript:alert(1)" })));
+  await assertFails(setDoc(reference, creatorApplication({ internalAdminNote: "leak" })));
+  await assertFails(setDoc(
+    doc(authenticatedDb(OWNER_ID, false), "creatorApplications", OWNER_ID),
+    creatorApplication()
+  ));
+});
+
+test("only the verified RMT account can review and owners may resubmit only after changes are requested", async () => {
+  const owner = authenticatedDb();
+  await seedOwner(owner);
+  const ownerReference = doc(owner, "creatorApplications", OWNER_ID);
+  await assertSucceeds(setDoc(ownerReference, creatorApplication()));
+
+  const admin = adminDb();
+  const adminReference = doc(admin, "creatorApplications", OWNER_ID);
+  await assertSucceeds(getDoc(adminReference));
+  await assertSucceeds(getDocs(collection(admin, "creatorApplications")));
+  await assertSucceeds(setDoc(adminReference, {
+    status: "needs_changes",
+    reviewNote: "Please clarify the rights attached to the proposed NFT collection.",
+    reviewedAt: serverTimestamp(),
+    updatedAt: serverTimestamp()
+  }, { merge: true }));
+  await assertFails(setDoc(adminReference, {
+    status: "approved",
+    reviewNote: "Attempted approval before the creator resubmitted requested changes.",
+    projectSlug: "runner-studio",
+    reviewedAt: serverTimestamp(),
+    updatedAt: serverTimestamp()
+  }, { merge: true }));
+
+  const reviewed = (await getDoc(ownerReference)).data();
+  await assertSucceeds(setDoc(ownerReference, creatorApplication({
+    summary: "A community studio creating transparent art, music, and token experiences with clarified NFT rights.",
+    submittedAt: reviewed?.submittedAt
+  })));
+  await assertFails(setDoc(ownerReference, creatorApplication({
+    projectName: "Second silent edit",
+    submittedAt: reviewed?.submittedAt
+  })));
+});
+
+test("approval atomically publishes a public record without exposing the private application", async () => {
+  const owner = authenticatedDb();
+  await seedOwner(owner);
+  await assertSucceeds(setDoc(doc(owner, "creatorApplications", OWNER_ID), creatorApplication()));
+
+  const admin = adminDb();
+  const batch = writeBatch(admin);
+  batch.set(doc(admin, "projects", "runner-studio"), publicProject());
+  batch.set(doc(admin, "creatorApplications", OWNER_ID), {
+    status: "approved",
+    reviewNote: "Project page approved after identity and public information review.",
+    projectSlug: "runner-studio",
+    reviewedAt: serverTimestamp(),
+    updatedAt: serverTimestamp()
+  }, { merge: true });
+  await assertSucceeds(batch.commit());
+
+  const anonymous = testEnvironment.unauthenticatedContext().firestore();
+  assert.equal((await assertSucceeds(getDoc(doc(anonymous, "projects", "runner-studio")))).data()?.name, "Runner Studio");
+  await assertFails(getDoc(doc(anonymous, "creatorApplications", OWNER_ID)));
+});
+
+test("non-admin users cannot publish, alter, or remove public projects", async () => {
+  const owner = authenticatedDb();
+  await assertFails(setDoc(doc(owner, "projects", "runner-studio"), publicProject()));
+
+  await testEnvironment.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(context.firestore(), "projects", "runner-studio"), {
+      ...publicProject(),
+      publishedAt: Timestamp.now(),
+      updatedAt: Timestamp.now()
+    });
+  });
+  await assertFails(setDoc(doc(owner, "projects", "runner-studio"), publicProject({ name: "Hijacked" })));
+  await assertFails(deleteDoc(doc(owner, "projects", "runner-studio")));
 });

@@ -17,6 +17,7 @@ assert.equal(robotsConfig.host, appUrl);
 assert.equal(robotsConfig.sitemap, `${appUrl}/sitemap.xml`);
 assert.equal(publicRule?.allow, "/");
 assert.ok(publicRule?.disallow?.includes("/api/"));
+assert.ok(publicRule?.disallow?.includes("/admin/"));
 assert.ok(publicRule?.disallow?.includes("/profile"));
 assert.ok(!publicRule?.disallow?.includes("/deploy-mainnet"), "robots.txt must not advertise hidden operator routes");
 
@@ -43,9 +44,15 @@ assert.match(exploreSource, /<FreshLaunchFeed \/>/);
 assert.doesNotMatch(exploreSource, /<ExternalMarketFeed \/>/);
 
 const projectPageSource = readFileSync(new URL("../app/project/[address]/project-detail-page.tsx", import.meta.url), "utf8");
+const approvedProjectPageSource = readFileSync(new URL("../app/project/[address]/approved-project-page.tsx", import.meta.url), "utf8");
+const projectRouteSource = readFileSync(new URL("../app/project/[address]/page.tsx", import.meta.url), "utf8");
 const tokenPageSource = readFileSync(new URL("../app/token/[address]/page.tsx", import.meta.url), "utf8");
 assert.match(projectPageSource, /ProjectModuleGrid/);
 assert.match(projectPageSource, /OFFICIAL RMT · PROJECT VERIFIED/);
+assert.match(projectRouteSource, /isAddress/);
+assert.match(projectRouteSource, /ApprovedProjectPage/);
+assert.match(approvedProjectPageSource, /RMT PAGE · REVIEW APPROVED/);
+assert.match(approvedProjectPageSource, /No module is activated by page approval/);
 assert.match(tokenPageSource, /ProjectDetailPage/);
 
 const officialProject = buildVerifiedTokenProject({
