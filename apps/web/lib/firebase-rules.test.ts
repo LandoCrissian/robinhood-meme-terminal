@@ -162,6 +162,23 @@ function gameUpdate(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function projectFollow(projectSlug = "runner-studio") {
+  return {
+    schemaVersion: 1,
+    projectSlug,
+    followedAt: serverTimestamp()
+  };
+}
+
+function projectStats(projectSlug = "runner-studio", followerCount = 1) {
+  return {
+    schemaVersion: 1,
+    projectSlug,
+    followerCount,
+    updatedAt: serverTimestamp()
+  };
+}
+
 async function seedOwner(db = authenticatedDb()) {
   await assertSucceeds(setDoc(doc(db, "users", OWNER_ID), userDocument()));
 }
@@ -625,6 +642,52 @@ test("assigned game creators can publish bounded public development updates", as
     doc(owner, "projects", "runner-game", "gameUpdates", "extra-field"),
     gameUpdate({ treasuryAddress: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" })
   ));
+});
+
+test("project follows stay private while atomic public audience counts resist tampering", async () => {
+  const owner = authenticatedDb();
+  await seedOwner(owner);
+  await assertSucceeds(setDoc(
+    doc(adminDb(), "projects", "runner-studio"),
+    publicProject()
+  ));
+  const follow = doc(owner, "users", OWNER_ID, "projectFollows", "runner-studio");
+  const stats = doc(owner, "projectStats", "runner-studio");
+  const add = writeBatch(owner);
+  add.set(follow, projectFollow());
+  add.set(stats, projectStats());
+  await assertSucceeds(add.commit());
+
+  assert.equal((await assertSucceeds(getDoc(stats))).data()?.followerCount, 1);
+  assert.equal((await assertSucceeds(getDoc(doc(
+    testEnvironment.unauthenticatedContext().firestore(),
+    "projectStats",
+    "runner-studio"
+  )))).data()?.followerCount, 1);
+  await assertFails(getDoc(doc(
+    authenticatedDb(OTHER_ID),
+    "users",
+    OWNER_ID,
+    "projectFollows",
+    "runner-studio"
+  )));
+  await assertFails(setDoc(stats, {
+    followerCount: 2,
+    updatedAt: serverTimestamp()
+  }, { merge: true }));
+  await assertFails(setDoc(
+    doc(owner, "users", OWNER_ID, "projectFollows", "runner-studio-copy"),
+    projectFollow("runner-studio-copy")
+  ));
+
+  const remove = writeBatch(owner);
+  remove.delete(follow);
+  remove.update(stats, {
+    followerCount: 0,
+    updatedAt: serverTimestamp()
+  });
+  await assertSucceeds(remove.commit());
+  assert.equal((await assertSucceeds(getDoc(stats))).data()?.followerCount, 0);
 });
 
 test("only the assigned creator and RMT admin can read a private project assignment", async () => {

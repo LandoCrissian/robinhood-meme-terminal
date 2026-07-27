@@ -11,6 +11,7 @@ import {
 import { getFirebaseClient } from "../../../lib/firebase-client";
 import { ipfsToHttp } from "../../../lib/token-metadata";
 import { GameReleaseUpdates } from "../../game-release-updates";
+import { ProjectAudienceControls } from "../../project-audience-controls";
 import { ProjectCreatorControls } from "../../project-creator-controls";
 
 const MODULE_COPY: Record<RequestedProjectModule, { label: string; description: string }> = {
@@ -105,6 +106,7 @@ export function ApprovedProjectPage({ slug }: { slug: string }) {
             {project.website && <a href={project.website} target="_blank" rel="noreferrer">Website ↗</a>}
             {project.xProfile && <a href={project.xProfile} target="_blank" rel="noreferrer">X ↗</a>}
           </div>
+          <ProjectAudienceControls projectSlug={project.slug} />
         </div>
       </section>
 

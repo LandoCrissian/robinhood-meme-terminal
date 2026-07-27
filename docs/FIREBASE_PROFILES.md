@@ -15,6 +15,8 @@ Wallet connection and profile authentication are deliberately separate. Firebase
 - `projects/{slug}` stores the approved public page. The assigned creator may update bounded presentation fields but cannot change the token address, enabled modules, publication state, or ownership.
 - `projectAssignments/{slug}` privately maps an approved page to its verified Firebase owner and permitted modules.
 - `projects/{slug}/gameUpdates/{updateId}` stores bounded creator-authored milestones, playtests and releases for approved game pages. Visitors may read updates only while the parent page is live; only the verified assigned creator may write them.
+- `users/{uid}/projectFollows/{slug}` privately records the approved pages a user follows. Follower identities and lists are never public.
+- `projectStats/{slug}` exposes only the aggregate follower count. Firestore rules require the private follow and aggregate count to change together in one atomic write, preventing direct count edits.
 - Google account email and photo are read from the active Firebase Authentication session for the signed-in UI. RMT does not duplicate either value in Firestore.
 
 Local profile and watchlist records carry independent update versions. On sign-in, the latest profile and latest complete watchlist win separately. Newer deletions therefore stay deleted instead of being reintroduced by an older device. Firestore listeners deliver later changes to other open, signed-in RMT sessions.
