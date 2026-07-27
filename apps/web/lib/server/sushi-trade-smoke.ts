@@ -1,15 +1,14 @@
 import assert from "node:assert/strict";
 import { encodeFunctionData, getAddress, type Address, type Hex } from "viem";
 import {
-  assertSushiSwapExecutable,
   auditSushiSwapCandidate,
-  SUSHI_RED_SNWAPPER,
   SUSHI_RED_SNWAPPER_CODE_HASH,
   SUSHI_ROUTE_EXECUTOR,
   SUSHI_ROUTE_EXECUTOR_CODE_HASH,
   sushiRedSnwapperAbi
 } from "./sushi-swap-validation";
-import { quoteSushiRoute, sushiQuotesEnabled } from "./sushi-trade";
+import { SUSHI_RED_SNWAPPER } from "../sushi";
+import { quoteAndBuildSushiSwap, quoteSushiRoute, sushiQuotesEnabled } from "./sushi-trade";
 
 const token = getAddress("0xdBa33be56C89CC9fc014c4459028d7e5c7878671");
 const recipient = getAddress("0x1111111111111111111111111111111111111111");
@@ -49,6 +48,13 @@ function swapCandidate(overrides: Partial<{
     status: "Success",
     amountIn: (overrides.responseAmountIn ?? amountIn).toString(),
     assumedAmountOut: (overrides.assumedAmountOut ?? routeAmountOut).toString(),
+    priceImpact: 0.004,
+    tokenFrom: 0,
+    tokenTo: 1,
+    tokens: [
+      { address: overrides.tokenIn ?? nativeToken, symbol: "ETH", name: "Ether", decimals: 18 },
+      { address: overrides.tokenOut ?? token, symbol: "RMT", name: "Robinhood Meme Terminal", decimals: 18 }
+    ],
     tx: {
       from: overrides.sender ?? recipient,
       to: overrides.router ?? SUSHI_RED_SNWAPPER,
@@ -178,9 +184,35 @@ async function main() {
   assert.equal(auditedSwap.router, SUSHI_RED_SNWAPPER);
   assert.equal(auditedSwap.executor, SUSHI_ROUTE_EXECUTOR);
   assert.equal(auditedSwap.minimumOut, routeMinimumOut);
-  assert.equal(auditedSwap.executable, false);
+  assert.equal(auditedSwap.executable, true);
   assert.equal(auditedSwap.onchainDeadline, false);
-  assert.throws(() => assertSushiSwapExecutable(auditedSwap), /onchain deadline/);
+
+  let executableUrl = "";
+  const executable = await quoteAndBuildSushiSwap(
+    { token, recipient, side: "buy", amountIn },
+    {
+      enabled: true,
+      chainId: 4663,
+      now: () => 1_000_000,
+      codeHash: approvedCodeHash,
+      fetch: async (input) => {
+        executableUrl = input.toString();
+        return Response.json(swapCandidate());
+      }
+    }
+  );
+  const executableRequest = new URL(executableUrl);
+  assert.equal(executableRequest.pathname, "/swap/v7/4663");
+  assert.equal(executableRequest.searchParams.get("sender"), recipient);
+  assert.equal(executableRequest.searchParams.get("recipient"), recipient);
+  assert.equal(executableRequest.searchParams.get("simulate"), "true");
+  assert.equal(executableRequest.searchParams.get("validate"), "true");
+  assert.equal(executableRequest.searchParams.get("maxPriceImpact"), "0.1");
+  assert.equal(executable.executable, true);
+  assert.equal(executable.onchainDeadline, false);
+  assert.equal(executable.quoteExpiresAt, "1090");
+  assert.equal(executable.router, SUSHI_RED_SNWAPPER);
+  assert.equal(executable.minimumOut, routeMinimumOut.toString());
 
   const auditedSell = await auditSushiSwapCandidate(
     { token, recipient, side: "sell", amountIn },
@@ -190,7 +222,7 @@ async function main() {
   assert.equal(auditedSell.tokenIn, token);
   assert.equal(auditedSell.tokenOut, nativeToken);
   assert.equal(auditedSell.value, 0n);
-  assert.equal(auditedSell.executable, false);
+  assert.equal(auditedSell.executable, true);
 
   const badAddress = getAddress("0x2222222222222222222222222222222222222222");
   await assert.rejects(auditSushiSwapCandidate({ token, recipient, side: "buy", amountIn }, swapCandidate({ sender: badAddress }), { codeHash: approvedCodeHash }), /transaction sender/);
@@ -206,7 +238,7 @@ async function main() {
   await assert.rejects(auditSushiSwapCandidate({ token, recipient, side: "buy", amountIn }, swapCandidate({ responseAmountIn: 2n }), { codeHash: approvedCodeHash }), /executable input amount/);
   await assert.rejects(auditSushiSwapCandidate({ token, recipient, side: "buy", amountIn }, swapCandidate(), { codeHash: async () => "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" }), /router bytecode/);
 
-  console.log("Sushi Robinhood Chain quote and fail-closed execution gate validation passed.");
+  console.log("Sushi Robinhood Chain quote, execution, and fail-closed validation passed.");
 }
 
 void main().catch((cause) => {

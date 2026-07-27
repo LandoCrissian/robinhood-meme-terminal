@@ -12,6 +12,7 @@ import {
 } from "wagmi";
 import type { ExternalMarket } from "../lib/external-market";
 import { ROBINHOOD_SWAP_ROUTER_02 } from "../lib/uniswap-v4";
+import { TradeConfidence, tradeRequiresAcknowledgement } from "./trade-confidence";
 import { WalletButton } from "./wallet-button";
 
 const ROBINHOOD_CHAIN_ID = 4663;
@@ -67,6 +68,7 @@ export function ExternalUniswapTradePanel({
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [acknowledged, setAcknowledged] = useState(false);
   const [refresh, setRefresh] = useState(0);
   const token = market.address as Address;
   const pair = market.pairAddress as Address;
@@ -121,6 +123,7 @@ export function ExternalUniswapTradePanel({
     setQuote(undefined);
     setError("");
     setMessage("");
+    setAcknowledged(false);
     setStatus("idle");
     approval.reset();
     swap.reset();
@@ -215,12 +218,14 @@ export function ExternalUniswapTradePanel({
     ? amountIn > 0n && amountIn + NETWORK_FEE_RESERVE > (nativeBalance.data?.value ?? 0n)
     : amountIn > 0n && amountIn > (tokenBalance.data ?? 0n);
   const busy = approval.isPending || approvalReceipt.isLoading || swap.isPending || swapReceipt.isLoading;
+  const requiresAcknowledgement = tradeRequiresAcknowledgement(market, side);
+  const confidenceReady = !requiresAcknowledgement || acknowledged;
   const outputDecimals = quote?.outputToken.decimals;
   const outputSymbol = quote?.outputToken.symbol ?? (side === "buy" ? market.symbol : "ETH");
 
   const submit = () => {
     setMessage("");
-    if (!address || chainId !== ROBINHOOD_CHAIN_ID || !quoteIsFresh || !quote || insufficient || busy) return;
+    if (!address || chainId !== ROBINHOOD_CHAIN_ID || !quoteIsFresh || !quote || insufficient || busy || !confidenceReady) return;
     if (needsApproval) {
       approval.writeContract({
         address: token,
@@ -243,8 +248,9 @@ export function ExternalUniswapTradePanel({
   const buttonLabel = busy
     ? approval.isPending || approvalReceipt.isLoading ? "Confirming exact approval…" : "Confirming swap…"
     : insufficient ? "Insufficient balance"
-      : needsApproval ? `Approve exact ${market.symbol} amount`
-        : side === "buy" ? `Buy ${market.symbol} inside RMT` : `Sell ${market.symbol} inside RMT`;
+      : !confidenceReady ? "Review and acknowledge warnings"
+        : needsApproval ? `Approve exact ${market.symbol} amount`
+          : side === "buy" ? `Buy ${market.symbol} inside RMT` : `Sell ${market.symbol} inside RMT`;
 
   return (
     <section className="externalSushiQuote externalUniswapTrade" aria-labelledby="external-uniswap-trade-heading">
@@ -333,7 +339,7 @@ export function ExternalUniswapTradePanel({
             <button
               className={`externalUniswapSubmit ${side}`}
               type="button"
-              disabled={!quoteIsFresh || insufficient || busy}
+              disabled={!quoteIsFresh || insufficient || busy || !confidenceReady}
               onClick={submit}
             >
               {buttonLabel}
@@ -354,6 +360,13 @@ export function ExternalUniswapTradePanel({
           )}
         </>
       )}
+
+      <TradeConfidence
+        market={market}
+        side={side}
+        acknowledged={acknowledged}
+        onAcknowledgedChange={setAcknowledged}
+      />
 
       <p className="externalSushiSafety">
         RMT rechecks the exact token, pool, official V3 factory, WETH pair, QuoterV2 and SwapRouter02 before every trade.

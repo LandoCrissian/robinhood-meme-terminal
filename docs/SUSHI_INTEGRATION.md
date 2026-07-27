@@ -2,27 +2,20 @@
 
 RMT integrates Sushi in stages so a new venue cannot weaken the verified V6 execution path.
 
-## Current stage: verified in-terminal quote discovery
+## Current stage: verified in-terminal execution
 
-- `apps/web/lib/server/sushi-trade.ts` calls Sushi's official v7 Quote API for Robinhood Chain (`4663`).
+- `apps/web/lib/server/sushi-trade.ts` calls Sushi's official v7 Swap API for Robinhood Chain (`4663`) with server-side validation and simulation enabled.
 - The same-origin `/api/trade/sushi-quote` route accepts only an origin-verified active V6 launch ID and matching token address.
 - The same-origin `/api/trade/external-sushi-quote` route supports external Sushi markets in Terminal only after RMT independently re-verifies the exact token, pair, Sushi venue, Robinhood Chain identity, DEX Screener URL, and minimum live liquidity.
-- Terminal displays Sushi's token metadata, exact estimated output, RMT's 1% minimum output, and price impact. The response must match the requested token, pair, wallet, side, amount, and chain or the client rejects it.
-- Responses are explicitly marked `executable: false`. RMT does not forward opaque aggregator calldata to a wallet.
+- Terminal displays Sushi's token metadata, estimated output, exact 1% minimum output, and price impact. The response must match the requested token, pair, wallet, side, amount, chain, router, executor, bytecode hashes, and supported function or the client rejects it.
+- RMT decodes RedSnwapper calldata before returning it, pins the current official router and executor runtime bytecode, requires Sushi's successful simulation, rejects price impact above 10%, and expires the client quote after 90 seconds.
+- Token sells request only the exact allowance needed for the entered trade. RMT never asks for an unlimited Sushi approval and never takes custody.
 - `NoWay`, partial fills, changed input amounts, invalid output amounts, excessive/invalid price impact values, upstream failures, and timeouts fail closed.
 - V6 launch previews remain off unless both `NEXT_PUBLIC_RMT_SUSHI_QUOTES_ENABLED=true` and `RMT_SUSHI_QUOTES_ENABLED=true` are intentionally deployed. External Terminal quotes require the server-only `RMT_SUSHI_QUOTES_ENABLED=true` flag.
 
 The current production Uniswap V4 graduation and execution path remains unchanged.
 
-## Execution gate
-
-Do not enable Sushi execution until Sushi confirms the canonical Robinhood Chain deployment addresses and recommended integration surface. Before execution can ship, RMT must:
-
-1. Pin and verify the exact router/factory/quoter bytecode and deployment boundaries.
-2. Decode and validate minimum output, recipient, token path, deadline, and native-token handling instead of trusting opaque calldata.
-3. Use exact, expiring approvals where supported and never request an unlimited allowance by default.
-4. Simulate buys and sells against a Robinhood Chain fork, including zero-liquidity, partial-fill, high-price-impact, taxed-token, and malformed-response cases.
-5. Keep the canonical V6 Uniswap path available as a rollback and avoid splitting launch liquidity across venues by default.
+The canonical V6 Uniswap path remains available independently. Sushi execution applies to external Sushi markets and does not split or migrate RMT launch liquidity.
 
 ### Verified Robinhood Chain boundary
 
@@ -46,21 +39,17 @@ the current route executor does not.
 
 `apps/web/lib/server/sushi-swap-validation.ts` pins this boundary and rejects any changed
 router, executor, entrypoint, bytecode hash, token, amount, recipient, minimum output, or
-native value. It deliberately returns `executable: false`.
+native value.
 
-### Remaining blocker
+### Disclosed router limitation
 
 RedSnwapper's `snwap` function has no onchain deadline. A client-side quote timestamp is
-not an equivalent protection because a wallet can submit a signed transaction later. The
-current executor is also not source-verified on Robinhood Chain. Therefore RMT will not
-forward Sushi Swap API calldata to a wallet yet. The safe next implementation is either:
-
-1. a Sushi-supported execution surface with an enforceable onchain deadline and verified
-   executor source; or
-2. a separately reviewed RMT deadline guard that pins RedSnwapper and the allowed executor
-   bytecode, uses exact approvals, and is exercised on a Robinhood Chain fork.
-
-Production Sushi execution remains disabled.
+not an equivalent protection because a submitted transaction can remain pending and execute
+later if its minimum output becomes available again. The current executor is also not
+source-verified on Robinhood Chain. RMT discloses both facts beside the trade action, expires
+the local quote after 90 seconds, enforces minimum output, uses exact sell approvals, and
+requires successful upstream simulation. A future reviewed deadline guard or Sushi-supported
+deadline surface should replace this bounded compromise.
 
 ## External market adversarial checks
 

@@ -1,7 +1,13 @@
 import { getAddress, isAddress } from "viem";
 import { z } from "zod";
 import { verifyExternalSushiMarket } from "../../../../lib/server/external-sushi-market";
-import { quoteSushiRoute, sushiQuotesEnabled } from "../../../../lib/server/sushi-trade";
+import { SUSHI_RED_SNWAPPER } from "../../../../lib/sushi";
+import {
+  quoteAndBuildSushiSwap,
+  quoteSushiRoute,
+  sushiExecutionAllowance,
+  sushiQuotesEnabled
+} from "../../../../lib/server/sushi-trade";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -33,7 +39,28 @@ const publicTradeErrors = new Set([
   "Sushi does not have a route for this trade yet.",
   "Sushi cannot fill the complete trade amount.",
   "Sushi returned a quote for a different input amount.",
-  "Sushi returned an invalid quote amount."
+  "Sushi returned an invalid quote amount.",
+  "Sushi execution is available only on Robinhood Chain mainnet.",
+  "Sushi swap simulation timed out.",
+  "Sushi could not simulate this trade.",
+  "Sushi returned an invalid executable swap response.",
+  "Sushi returned undecodable execution calldata.",
+  "Sushi returned an unsupported execution function.",
+  "Sushi changed the transaction sender.",
+  "Sushi returned an unapproved execution router.",
+  "Sushi changed the executable input amount.",
+  "Sushi changed the input token.",
+  "Sushi calldata changed the input amount.",
+  "Sushi changed the output recipient.",
+  "Sushi changed the output token.",
+  "Sushi returned an unapproved route executor.",
+  "Sushi returned an unsupported executor entrypoint.",
+  "Sushi calldata changed the minimum received amount.",
+  "Sushi returned an invalid native transaction value.",
+  "Sushi contract bytecode is unavailable.",
+  "Sushi router bytecode is not approved.",
+  "Sushi executor bytecode is not approved.",
+  "Sushi blocked this trade because price impact is too high."
 ]);
 
 export async function POST(request: Request) {
@@ -55,20 +82,37 @@ export async function POST(request: Request) {
     const pair = getAddress(parsed.data.pair);
     const recipient = getAddress(parsed.data.recipient);
     const market = await verifyExternalSushiMarket({ token, pair });
-    const quote = await quoteSushiRoute({
-      token,
-      recipient,
-      side: parsed.data.side,
-      amountIn: BigInt(parsed.data.amountIn)
-    }, {
-      chainId: 4663,
-      requireTokenMetadata: true
-    });
+    const amountIn = BigInt(parsed.data.amountIn);
+    const approvalRequired = parsed.data.side === "sell"
+      && await sushiExecutionAllowance(token, recipient) < amountIn;
+    const quote = approvalRequired
+      ? await quoteSushiRoute({
+          token,
+          recipient,
+          side: parsed.data.side,
+          amountIn
+        }, {
+          chainId: 4663,
+          requireTokenMetadata: true
+        })
+      : await quoteAndBuildSushiSwap({
+          token,
+          recipient,
+          side: parsed.data.side,
+          amountIn
+        }, {
+          chainId: 4663
+        });
 
     return Response.json({
       ...quote,
       marketPair: market.pair,
-      marketVerified: true
+      marketVerified: true,
+      approvalRequired,
+      approvalSpender: SUSHI_RED_SNWAPPER,
+      quoteExpiresAt: "quoteExpiresAt" in quote
+        ? quote.quoteExpiresAt
+        : String(Math.floor(Date.now() / 1000) + 90)
     }, { headers: { "Cache-Control": "no-store" } });
   } catch (cause) {
     const message = cause instanceof Error && publicTradeErrors.has(cause.message)

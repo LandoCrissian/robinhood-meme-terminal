@@ -31,6 +31,22 @@ The review covered the leading web and hybrid onchain terminals most relevant to
 - **One personal desk:** profile, watchlist, portfolio, runner mode, and future presets share one durable identity layer.
 - **No custody shortcuts:** profile sign-in never substitutes for wallet confirmation or controls user funds.
 - **Origin before hype:** RMT's verified factory origin remains its strongest differentiation from generic market scanners.
+- **Evidence, not safety theater:** show each check and unknown in plain language instead of a generic score that could be mistaken for a guarantee.
+- **Deliberate risky buys:** when origin, age, liquidity, or activity is uncertain, a buy requires an explicit warning acknowledgement; sells are never obstructed by that acknowledgement.
+- **Hard execution limits:** malformed routes, changed recipients, excessive Sushi price impact, stale client quotes, insufficient balances, and unverifiable execution contracts fail closed.
+
+## July 27 implementation decision
+
+RMT now places a Trade Confidence review directly between the quote and the wallet action.
+It identifies the matched token and pool, verified or unknown origin, observed two-sided
+activity, liquidity/age anomalies, and quote price impact where the venue supplies it. The
+panel never says a token is “safe.” Material warnings require an explicit acknowledgement
+before a buy button becomes available.
+
+This specifically addresses the recurring terminal complaints behind the research: users
+could not predict the real outcome, risk context was separated from the action, generated
+wallet and custody boundaries were unclear, or interfaces moved too quickly for a beginner
+to understand what they were signing.
 
 ## Representative sources
 
