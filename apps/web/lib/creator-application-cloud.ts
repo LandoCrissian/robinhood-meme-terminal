@@ -358,6 +358,13 @@ export async function reviewCreatorApplication(input: {
       xProfile: currentApplication.xProfile,
       logoUri: "",
       bannerUri: "",
+      gameUrl: "",
+      trailerUrl: "",
+      gameStatus: currentApplication.projectType === "gaming"
+        || currentApplication.requestedModules.includes("game")
+        ? "development"
+        : "",
+      gamePlatforms: [],
       tokenAddress: currentApplication.tokenAddress,
       availableModules: currentApplication.requestedModules,
       status: "live",

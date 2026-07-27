@@ -16,7 +16,8 @@ const MODULE_COPY: Record<RequestedProjectModule, { label: string; description: 
   token: { label: "Token", description: "Project token identity and a future connection to RMT market discovery and trading." },
   nft: { label: "NFT collection", description: "Creator-controlled collections, AI-art provenance, editions, licenses and collaborator splits." },
   marketplace: { label: "Marketplace", description: "Optional listings, offers and settlement after reviewed creator activation." },
-  music: { label: "Music", description: "Optional releases for artists and AI-music creators with explicit rights and splits." }
+  music: { label: "Music", description: "Optional releases for artists and AI-music creators with explicit rights and splits." },
+  game: { label: "Game showcase", description: "Playable demos, trailers, platform discovery and transparent development milestones." }
 };
 
 export function ApprovedProjectPage({ slug }: { slug: string }) {
@@ -58,6 +59,7 @@ export function ApprovedProjectPage({ slug }: { slug: string }) {
   if (failed || !project) return <main className="detailPage"><Link href="/explore">← Explore</Link><section className="panel projectProfileState"><p className="eyebrow">NOT PUBLISHED</p><h1>Project page unavailable</h1><p>This page is not approved, is no longer public, or could not be verified.</p></section></main>;
 
   const initials = project.name.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase();
+  const gameEnabled = project.projectType === "gaming" || project.availableModules.includes("game");
 
   return (
     <main className="detailPage approvedProjectPage">
@@ -93,6 +95,26 @@ export function ApprovedProjectPage({ slug }: { slug: string }) {
           </div>
         </div>
       </section>
+
+      {gameEnabled && (
+        <section className="panel approvedGameShowcase" aria-labelledby="game-showcase-title">
+          <header>
+            <div><p className="eyebrow">GAME CREATOR SHOWCASE</p><h2 id="game-showcase-title">{project.name}</h2><p>A dedicated home for the game, its current development state and where players can experience it.</p></div>
+            <span>{(project.gameStatus || "development").toUpperCase()}</span>
+          </header>
+          <div className="approvedGamePlatforms">
+            {project.gamePlatforms.length
+              ? project.gamePlatforms.map((platform) => <span key={platform}>{platform.toUpperCase()}</span>)
+              : <span>PLATFORMS COMING SOON</span>}
+          </div>
+          <div className="approvedGameActions">
+            {project.gameUrl && <a href={project.gameUrl} target="_blank" rel="noopener noreferrer">Play or view game ↗</a>}
+            {project.trailerUrl && <a href={project.trailerUrl} target="_blank" rel="noopener noreferrer">Watch trailer ↗</a>}
+            {!project.gameUrl && !project.trailerUrl && <p>The creator has not published a playable build or trailer yet.</p>}
+          </div>
+          <small>External builds and stores are creator-supplied. RMT page approval is not a security review of downloadable software.</small>
+        </section>
+      )}
 
       {project.tokenAddress && (
         <section className="panel approvedProjectToken">

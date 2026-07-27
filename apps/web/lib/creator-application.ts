@@ -4,11 +4,15 @@ export const CREATOR_APPLICATION_SCHEMA_VERSION = 1 as const;
 export const PROJECT_RECORD_SCHEMA_VERSION = 1 as const;
 export const RMT_ADMIN_EMAIL = "launchrmt@gmail.com";
 
-export const PROJECT_TYPES = ["token", "art", "music", "community", "other"] as const;
-export const PROJECT_MODULES = ["token", "nft", "marketplace", "music"] as const;
+export const PROJECT_TYPES = ["token", "art", "music", "gaming", "community", "other"] as const;
+export const PROJECT_MODULES = ["token", "nft", "marketplace", "music", "game"] as const;
+export const GAME_STATUSES = ["concept", "development", "playable", "live"] as const;
+export const GAME_PLATFORMS = ["web", "windows", "macos", "ios", "android", "console", "vr"] as const;
 
 export type ProjectType = typeof PROJECT_TYPES[number];
 export type RequestedProjectModule = typeof PROJECT_MODULES[number];
+export type GameStatus = typeof GAME_STATUSES[number];
+export type GamePlatform = typeof GAME_PLATFORMS[number];
 export type CreatorApplicationStatus = "pending" | "needs_changes" | "approved" | "rejected";
 
 export type CreatorApplicationDraft = {
@@ -44,6 +48,10 @@ export type PublicProjectRecord = {
   xProfile: string;
   logoUri: string;
   bannerUri: string;
+  gameUrl: string;
+  trailerUrl: string;
+  gameStatus: GameStatus | "";
+  gamePlatforms: GamePlatform[];
   tokenAddress: string;
   availableModules: RequestedProjectModule[];
   status: "live";
@@ -53,7 +61,16 @@ export type PublicProjectRecord = {
 
 export type ProjectIdentityDraft = Pick<
   PublicProjectRecord,
-  "name" | "summary" | "website" | "xProfile" | "logoUri" | "bannerUri"
+  | "name"
+  | "summary"
+  | "website"
+  | "xProfile"
+  | "logoUri"
+  | "bannerUri"
+  | "gameUrl"
+  | "trailerUrl"
+  | "gameStatus"
+  | "gamePlatforms"
 >;
 
 export const EMPTY_CREATOR_APPLICATION: CreatorApplicationDraft = {
@@ -103,13 +120,27 @@ export function cleanProjectMediaUri(value: unknown) {
 
 export function normalizeProjectIdentity(value: unknown): ProjectIdentityDraft {
   const draft = value && typeof value === "object" ? value as Partial<ProjectIdentityDraft> : {};
+  const gameStatus = GAME_STATUSES.includes(draft.gameStatus as GameStatus)
+    ? draft.gameStatus as GameStatus
+    : "";
+  const gamePlatforms = Array.from(new Set(
+    Array.isArray(draft.gamePlatforms)
+      ? draft.gamePlatforms.filter((platform): platform is GamePlatform => (
+          GAME_PLATFORMS.includes(platform as GamePlatform)
+        ))
+      : []
+  )).slice(0, GAME_PLATFORMS.length);
   return {
     name: cleanText(draft.name, 80),
     summary: cleanText(draft.summary, 600),
     website: cleanUrl(draft.website),
     xProfile: cleanUrl(draft.xProfile),
     logoUri: cleanProjectMediaUri(draft.logoUri),
-    bannerUri: cleanProjectMediaUri(draft.bannerUri)
+    bannerUri: cleanProjectMediaUri(draft.bannerUri),
+    gameUrl: cleanUrl(draft.gameUrl),
+    trailerUrl: cleanUrl(draft.trailerUrl),
+    gameStatus,
+    gamePlatforms
   };
 }
 
@@ -121,6 +152,8 @@ export function validateProjectIdentity(value: ProjectIdentityDraft) {
   if (value.xProfile.trim() && !draft.xProfile) return "X profile must be a valid HTTPS URL.";
   if (value.logoUri.trim() && !draft.logoUri) return "Logo must be a valid HTTPS or IPFS image URL. SVG files are not accepted.";
   if (value.bannerUri.trim() && !draft.bannerUri) return "Banner must be a valid HTTPS or IPFS image URL. SVG files are not accepted.";
+  if (value.gameUrl.trim() && !draft.gameUrl) return "Playable game or store link must be a valid HTTPS URL.";
+  if (value.trailerUrl.trim() && !draft.trailerUrl) return "Game trailer must be a valid HTTPS URL.";
   return null;
 }
 
@@ -216,6 +249,8 @@ export function parsePublicProject(value: unknown): PublicProjectRecord | null {
   const tokenAddress = typeof data.tokenAddress === "string" && isAddress(data.tokenAddress, { strict: false })
     ? data.tokenAddress.toLowerCase()
     : "";
+  const gameEnabled = projectType === "gaming" || availableModules.includes("game");
+  const gameIdentity = normalizeProjectIdentity(data);
   if (
     data.schemaVersion !== PROJECT_RECORD_SCHEMA_VERSION
     || data.status !== "live"
@@ -238,6 +273,10 @@ export function parsePublicProject(value: unknown): PublicProjectRecord | null {
     xProfile: cleanUrl(data.xProfile),
     logoUri: cleanProjectMediaUri(data.logoUri),
     bannerUri: cleanProjectMediaUri(data.bannerUri),
+    gameUrl: gameEnabled ? gameIdentity.gameUrl : "",
+    trailerUrl: gameEnabled ? gameIdentity.trailerUrl : "",
+    gameStatus: gameEnabled ? gameIdentity.gameStatus || "development" : "",
+    gamePlatforms: gameEnabled ? gameIdentity.gamePlatforms : [],
     tokenAddress,
     availableModules,
     status: "live",

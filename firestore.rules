@@ -87,13 +87,13 @@ service cloud.firestore {
     }
 
     function validProjectType(value) {
-      return value in ['token', 'art', 'music', 'community', 'other'];
+      return value in ['token', 'art', 'music', 'gaming', 'community', 'other'];
     }
 
     function validProjectModules(value) {
       return value is list
-        && value.size() > 0 && value.size() <= 4
-        && value.hasOnly(['token', 'nft', 'marketplace', 'music']);
+        && value.size() > 0 && value.size() <= 5
+        && value.hasOnly(['token', 'nft', 'marketplace', 'music', 'game']);
     }
 
     function validCreatorApplication(data) {
@@ -215,6 +215,11 @@ service cloud.firestore {
     function validPublicProject(projectId, data) {
       let logoUri = data.get('logoUri', '');
       let bannerUri = data.get('bannerUri', '');
+      let gameUrl = data.get('gameUrl', '');
+      let trailerUrl = data.get('trailerUrl', '');
+      let gameStatus = data.get('gameStatus', '');
+      let gamePlatforms = data.get('gamePlatforms', []);
+      let gameEnabled = data.projectType == 'gaming' || data.availableModules.hasAny(['game']);
       return data.keys().hasAll([
           'schemaVersion',
           'slug',
@@ -239,6 +244,10 @@ service cloud.firestore {
           'xProfile',
           'logoUri',
           'bannerUri',
+          'gameUrl',
+          'trailerUrl',
+          'gameStatus',
+          'gamePlatforms',
           'tokenAddress',
           'availableModules',
           'status',
@@ -259,6 +268,16 @@ service cloud.firestore {
         && (logoUri == '' || logoUri.matches('^(https://|ipfs://).+$'))
         && bannerUri is string && bannerUri.size() <= 512
         && (bannerUri == '' || bannerUri.matches('^(https://|ipfs://).+$'))
+        && gameUrl is string && gameUrl.size() <= 256
+        && (gameUrl == '' || gameUrl.matches('^https://.+$'))
+        && trailerUrl is string && trailerUrl.size() <= 256
+        && (trailerUrl == '' || trailerUrl.matches('^https://.+$'))
+        && gameStatus is string
+        && gamePlatforms is list && gamePlatforms.size() <= 7
+        && gamePlatforms.hasOnly(['web', 'windows', 'macos', 'ios', 'android', 'console', 'vr'])
+        && (gameEnabled
+          ? gameStatus in ['concept', 'development', 'playable', 'live']
+          : gameUrl == '' && trailerUrl == '' && gameStatus == '' && gamePlatforms.size() == 0)
         && data.tokenAddress is string
         && (data.tokenAddress == '' || data.tokenAddress.matches('^0x[0-9a-f]{40}$'))
         && validProjectModules(data.availableModules)
@@ -286,6 +305,10 @@ service cloud.firestore {
           'xProfile',
           'logoUri',
           'bannerUri',
+          'gameUrl',
+          'trailerUrl',
+          'gameStatus',
+          'gamePlatforms',
           'updatedAt'
         ]);
     }
@@ -325,7 +348,7 @@ service cloud.firestore {
 
     function validModuleActivationRequest(module, data) {
       let reviewNote = data.get('reviewNote', '');
-      return module in ['token', 'nft', 'marketplace', 'music']
+      return module in ['token', 'nft', 'marketplace', 'music', 'game']
         && data.keys().hasAll([
           'schemaVersion',
           'module',
