@@ -7,6 +7,8 @@ import {
   OFFICIAL_RMT_V6_TOKEN,
   PROJECT_PAGE_SCHEMA_VERSION
 } from "./project-page";
+import { parsePublicProject } from "./creator-application";
+import { filterGameProjects, sortGameProjects } from "./game-discovery";
 
 const appUrl = "https://www.rmtlaunch.fun";
 
@@ -50,7 +52,52 @@ assert.match(approvedDirectorySource, /RMT GAMES/);
 assert.match(approvedDirectorySource, /A token is optional/);
 assert.match(approvedDirectorySource, /Play or view/);
 assert.match(approvedDirectorySource, /project\.gamePlatforms/);
+assert.match(approvedDirectorySource, /Filter approved games/);
+assert.match(approvedDirectorySource, /Reset filters/);
 assert.match(exploreSource, /Projects, games and verified markets/);
+
+const discoveryGames = [
+  {
+    slug: "neon-skies",
+    name: "Neon Skies",
+    summary: "A cooperative adventure game with playable web and Windows builds for community explorers.",
+    gameStatus: "playable",
+    gamePlatforms: ["web", "windows"],
+    gameGenre: "adventure",
+    gameModes: ["co-op"]
+  },
+  {
+    slug: "pocket-racer",
+    name: "Pocket Racer",
+    summary: "A competitive mobile racing game currently progressing through public development milestones.",
+    gameStatus: "development",
+    gamePlatforms: ["ios", "android"],
+    gameGenre: "racing",
+    gameModes: ["competitive"]
+  }
+].map((game, index) => parsePublicProject({
+  schemaVersion: 1,
+  projectType: "gaming",
+  website: "",
+  xProfile: "",
+  tokenAddress: "",
+  availableModules: ["game"],
+  status: "live",
+  publishedAt: { toMillis: () => index + 1 },
+  ...game
+})).filter((game): game is NonNullable<typeof game> => Boolean(game));
+const sortedDiscoveryGames = sortGameProjects(discoveryGames);
+assert.deepEqual(sortedDiscoveryGames.map((game) => game.name), ["Neon Skies", "Pocket Racer"]);
+assert.deepEqual(filterGameProjects(sortedDiscoveryGames, {
+  query: "co-op",
+  status: "all",
+  platform: "all"
+}).map((game) => game.name), ["Neon Skies"]);
+assert.deepEqual(filterGameProjects(sortedDiscoveryGames, {
+  query: "",
+  status: "development",
+  platform: "ios"
+}).map((game) => game.name), ["Pocket Racer"]);
 
 const projectPageSource = readFileSync(new URL("../app/project/[address]/project-detail-page.tsx", import.meta.url), "utf8");
 const approvedProjectPageSource = readFileSync(new URL("../app/project/[address]/approved-project-page.tsx", import.meta.url), "utf8");
