@@ -3269,7 +3269,7 @@ export function V6ReleaseConsole() {
       {nextAction === "cutover" && <button className="deploy-stack-button" disabled={!isOperator || busy} onClick={verifyProductionCutover}>{busy ? status : "Verify live V6 production cutover"}</button>}
       {nextAction === "official" && <a className="deploy-stack-button" href="/launch?official=v6">Open the prefilled official RMT launch →</a>}
       {nextAction === "smoke" && officialToken && <p className="deployment-safety">RMT launched at <code>{officialToken}</code>. Wait one block for Fair Start, make one small buy on its token page, and return here. The controller requires a real fully settled curve fee; sending ETH directly cannot satisfy it.</p>}
-      {nextAction === "smoke" && officialToken && <a className="deploy-stack-button" href={`/token/${officialToken}?launch=0`}>Open official RMT and make the smoke buy →</a>}
+      {nextAction === "smoke" && officialToken && <a className="deploy-stack-button" href={`/project/${officialToken}?launch=0`}>Open official RMT and make the smoke buy →</a>}
       {nextAction === "bootstrap-open" && <button className="deploy-stack-button" disabled={!isOperator || busy} onClick={openAfterOfficialSmoke}>{busy ? status : "Recheck everything and open public token creation"}</button>}
       {nextAction === "reading" && <p className="deployment-safety">Reading the exact V6 bootstrap state from mainnet…</p>}
       {nextAction === "aborted" && <p className="deployment-error">The expedited bootstrap is permanently aborted or expired. Public launches remain paused; only the normal delayed governance path can continue this deployment.</p>}

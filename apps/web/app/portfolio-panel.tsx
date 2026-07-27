@@ -183,7 +183,7 @@ export function PortfolioPanel() {
       </div>
       <div className="portfolioGrid">
         {visibleHoldings.map(({ launch, balance }) => (
-          <Link className="portfolioCard" href={`/token/${launch.token}?launch=${launch.launchId}`} key={launch.token}>
+          <Link className="portfolioCard" href={`/project/${launch.token}?launch=${launch.launchId}`} key={launch.token}>
             <span className="coin portfolioArtwork">
               {launch.image ? <img src={ipfsToHttp(launch.image)} alt="" loading="lazy" /> : displaySymbol(launch.symbol).slice(0, 2)}
             </span>

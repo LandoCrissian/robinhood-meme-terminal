@@ -46,7 +46,7 @@ export default function SushiIntegrationPage() {
           <h1>A live Robinhood Chain launchpad, ready for Sushi&apos;s review.</h1>
           <p>RMT V6 is live for fixed-supply launches and wallet-confirmed curve trades. We are seeking Sushi&apos;s technical guidance on a separate production V3 liquidity path and a safe RedSnwapper execution boundary.</p>
           <div className="sushiLabActions">
-            <Link className="sushiLabPrimary" href={`/token/${officialToken}?launch=0#trade`}>Inspect live RMT market</Link>
+            <Link className="sushiLabPrimary" href={`/project/${officialToken}?launch=0#trade`}>Inspect live RMT project</Link>
             <Link href="/status">Verify system health</Link>
             <a href="https://github.com/sushi-labs/sushi/issues/501" target="_blank" rel="noreferrer">Open engineering questions ↗</a>
           </div>
@@ -123,7 +123,7 @@ export default function SushiIntegrationPage() {
         <p className="eyebrow">WHY THIS MATTERS</p>
         <h2>RMT is live. Sushi remains a proposal.</h2>
         <p>RMT markets use their own curve trading and canonical V4 graduation path today. A future Sushi path would require a defined architecture, contract and app changes, security review, liquidity and a separate deployment.</p>
-        <div><Link href={`/token/${officialToken}?launch=0#trade`}>Inspect live RMT</Link><Link href="/status">Verify production</Link><a href={`${sushiSource}/red-snwapper.ts`} target="_blank" rel="noreferrer">Inspect pinned Sushi source ↗</a></div>
+        <div><Link href={`/project/${officialToken}?launch=0#trade`}>Inspect live RMT</Link><Link href="/status">Verify production</Link><a href={`${sushiSource}/red-snwapper.ts`} target="_blank" rel="noreferrer">Inspect pinned Sushi source ↗</a></div>
       </section>
 
       <p className="sushiLabDisclosure">Robinhood Meme Terminal is independent, unaffiliated software and does not claim sponsorship, endorsement or an approved partnership with Sushi or Robinhood. RMT V6 is an unaudited mainnet beta. No production Sushi routing or liquidity is enabled, and no incentive eligibility or token value is promised. Launching and trading can result in loss.</p>

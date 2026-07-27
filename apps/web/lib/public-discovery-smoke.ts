@@ -2,6 +2,11 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import robots from "../app/robots";
 import sitemap from "../app/sitemap";
+import {
+  buildVerifiedTokenProject,
+  OFFICIAL_RMT_V6_TOKEN,
+  PROJECT_PAGE_SCHEMA_VERSION
+} from "./project-page";
 
 const appUrl = "https://www.rmtlaunch.fun";
 
@@ -16,7 +21,7 @@ assert.ok(publicRule?.disallow?.includes("/profile"));
 assert.ok(!publicRule?.disallow?.includes("/deploy-mainnet"), "robots.txt must not advertise hidden operator routes");
 
 const sitemapUrls = sitemap().map((entry) => entry.url);
-for (const route of ["/", "/explore", "/launch", "/status", "/sources", "/sushi", "/rescue"]) {
+for (const route of ["/", "/explore", "/launch", `/project/${OFFICIAL_RMT_V6_TOKEN}`, "/status", "/sources", "/sushi", "/rescue"]) {
   assert.ok(sitemapUrls.includes(`${appUrl}${route}`), `Sitemap must include ${route}`);
 }
 for (const route of ["/api/health", "/deploy-mainnet", "/profile", "/portfolio", "/watchlist"]) {
@@ -36,6 +41,32 @@ assert.doesNotMatch(homeSource, /<FreshLaunchFeed \/>/);
 const exploreSource = readFileSync(new URL("../app/explore/page.tsx", import.meta.url), "utf8");
 assert.match(exploreSource, /<FreshLaunchFeed \/>/);
 assert.doesNotMatch(exploreSource, /<ExternalMarketFeed \/>/);
+
+const projectPageSource = readFileSync(new URL("../app/project/[address]/project-detail-page.tsx", import.meta.url), "utf8");
+const tokenPageSource = readFileSync(new URL("../app/token/[address]/page.tsx", import.meta.url), "utf8");
+assert.match(projectPageSource, /ProjectModuleGrid/);
+assert.match(projectPageSource, /OFFICIAL RMT · PROJECT VERIFIED/);
+assert.match(tokenPageSource, /ProjectDetailPage/);
+
+const officialProject = buildVerifiedTokenProject({
+  chainId: 4663,
+  token: OFFICIAL_RMT_V6_TOKEN,
+  creator: "0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA",
+  officialMigration: true
+});
+assert.equal(officialProject.schemaVersion, PROJECT_PAGE_SCHEMA_VERSION);
+assert.equal(officialProject.official, true);
+assert.equal(officialProject.controllerStatus, "review-required");
+assert.equal(officialProject.modules.find((module) => module.id === "token")?.status, "live");
+for (const moduleId of ["nft", "marketplace", "music"] as const) {
+  assert.equal(officialProject.modules.find((module) => module.id === moduleId)?.status, "planned");
+}
+assert.equal(buildVerifiedTokenProject({
+  chainId: officialProject.chainId,
+  token: officialProject.token,
+  creator: officialProject.onchainCreator,
+  officialMigration: false
+}).official, false);
 
 const launchSource = readFileSync(new URL("../app/launch/page.tsx", import.meta.url), "utf8");
 assert.match(launchSource, /Launching reopens with V7—not before/);
