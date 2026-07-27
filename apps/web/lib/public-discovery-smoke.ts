@@ -40,8 +40,12 @@ assert.match(homeSource, /<ExternalMarketFeed \/>/);
 assert.doesNotMatch(homeSource, /<FreshLaunchFeed \/>/);
 
 const exploreSource = readFileSync(new URL("../app/explore/page.tsx", import.meta.url), "utf8");
+const approvedDirectorySource = readFileSync(new URL("../app/approved-project-directory.tsx", import.meta.url), "utf8");
 assert.match(exploreSource, /<FreshLaunchFeed \/>/);
+assert.match(exploreSource, /<ApprovedProjectDirectory \/>/);
 assert.doesNotMatch(exploreSource, /<ExternalMarketFeed \/>/);
+assert.match(approvedDirectorySource, /OFFICIAL RMT · FACTORY VERIFIED/);
+assert.match(approvedDirectorySource, /Review approval is identity and page access—not a contract audit or endorsement/);
 
 const projectPageSource = readFileSync(new URL("../app/project/[address]/project-detail-page.tsx", import.meta.url), "utf8");
 const approvedProjectPageSource = readFileSync(new URL("../app/project/[address]/approved-project-page.tsx", import.meta.url), "utf8");
@@ -53,6 +57,7 @@ assert.match(projectRouteSource, /isAddress/);
 assert.match(projectRouteSource, /ApprovedProjectPage/);
 assert.match(approvedProjectPageSource, /RMT PAGE · REVIEW APPROVED/);
 assert.match(approvedProjectPageSource, /No module is activated by page approval/);
+assert.match(approvedProjectPageSource, /ProjectCreatorControls/);
 assert.match(tokenPageSource, /ProjectDetailPage/);
 
 const officialProject = buildVerifiedTokenProject({
