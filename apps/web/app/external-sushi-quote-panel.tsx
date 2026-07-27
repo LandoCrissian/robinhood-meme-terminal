@@ -16,6 +16,7 @@ import {
   type SushiExecutableQuote,
   type SushiIndicativeQuote
 } from "../lib/sushi";
+import { useTokenRiskEvidence } from "../lib/use-token-risk-evidence";
 import { TradeConfidence, tradeRequiresAcknowledgement } from "./trade-confidence";
 import { WalletButton } from "./wallet-button";
 
@@ -53,6 +54,7 @@ export function ExternalSushiQuotePanel({
   side: "buy" | "sell";
 }) {
   const { address, chainId, isConnected } = useAccount();
+  const tokenRisk = useTokenRiskEvidence(market);
   const [amount, setAmount] = useState(side === "buy" ? "0.0001" : "");
   const [quote, setQuote] = useState<ExternalSushiQuote>();
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
@@ -220,7 +222,8 @@ export function ExternalSushiQuotePanel({
     : amountIn > 0n && amountIn > (tokenBalance.data ?? 0n);
   const busy = approval.isPending || approvalReceipt.isLoading || swap.isPending || swapReceipt.isLoading;
   const requiresAcknowledgement = tradeRequiresAcknowledgement(market, side);
-  const confidenceReady = !requiresAcknowledgement || acknowledged;
+  const confidenceEvidenceReady = side === "sell" || tokenRisk.status !== "loading";
+  const confidenceReady = confidenceEvidenceReady && (!requiresAcknowledgement || acknowledged);
   const impactBlocked = Boolean(quote && quote.priceImpact > 0.1);
 
   const submit = () => {
@@ -249,6 +252,7 @@ export function ExternalSushiQuotePanel({
   const buttonLabel = busy
     ? approval.isPending || approvalReceipt.isLoading ? "Confirming exact approval…" : "Confirming Sushi swap…"
     : insufficient ? "Insufficient balance"
+      : !confidenceEvidenceReady ? "Checking contract and holders…"
       : !confidenceReady ? "Review and acknowledge warnings"
         : impactBlocked ? "Price impact too high"
           : needsApproval ? `Approve exact ${market.symbol} amount`
@@ -367,6 +371,7 @@ export function ExternalSushiQuotePanel({
         market={market}
         side={side}
         priceImpact={quote?.priceImpact}
+        evidenceState={tokenRisk}
         acknowledged={acknowledged}
         onAcknowledgedChange={setAcknowledged}
       />

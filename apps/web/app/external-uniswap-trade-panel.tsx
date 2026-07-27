@@ -12,6 +12,7 @@ import {
 } from "wagmi";
 import type { ExternalMarket } from "../lib/external-market";
 import { ROBINHOOD_SWAP_ROUTER_02 } from "../lib/uniswap-v4";
+import { useTokenRiskEvidence } from "../lib/use-token-risk-evidence";
 import { TradeConfidence, tradeRequiresAcknowledgement } from "./trade-confidence";
 import { WalletButton } from "./wallet-button";
 
@@ -63,6 +64,7 @@ export function ExternalUniswapTradePanel({
   side: "buy" | "sell";
 }) {
   const { address, chainId, isConnected } = useAccount();
+  const tokenRisk = useTokenRiskEvidence(market);
   const [amount, setAmount] = useState(side === "buy" ? "0.0001" : "");
   const [quote, setQuote] = useState<ExternalUniswapQuote>();
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
@@ -219,7 +221,8 @@ export function ExternalUniswapTradePanel({
     : amountIn > 0n && amountIn > (tokenBalance.data ?? 0n);
   const busy = approval.isPending || approvalReceipt.isLoading || swap.isPending || swapReceipt.isLoading;
   const requiresAcknowledgement = tradeRequiresAcknowledgement(market, side);
-  const confidenceReady = !requiresAcknowledgement || acknowledged;
+  const confidenceEvidenceReady = side === "sell" || tokenRisk.status !== "loading";
+  const confidenceReady = confidenceEvidenceReady && (!requiresAcknowledgement || acknowledged);
   const outputDecimals = quote?.outputToken.decimals;
   const outputSymbol = quote?.outputToken.symbol ?? (side === "buy" ? market.symbol : "ETH");
 
@@ -248,6 +251,7 @@ export function ExternalUniswapTradePanel({
   const buttonLabel = busy
     ? approval.isPending || approvalReceipt.isLoading ? "Confirming exact approval…" : "Confirming swap…"
     : insufficient ? "Insufficient balance"
+      : !confidenceEvidenceReady ? "Checking contract and holders…"
       : !confidenceReady ? "Review and acknowledge warnings"
         : needsApproval ? `Approve exact ${market.symbol} amount`
           : side === "buy" ? `Buy ${market.symbol} inside RMT` : `Sell ${market.symbol} inside RMT`;
@@ -364,6 +368,7 @@ export function ExternalUniswapTradePanel({
       <TradeConfidence
         market={market}
         side={side}
+        evidenceState={tokenRisk}
         acknowledged={acknowledged}
         onAcknowledgedChange={setAcknowledged}
       />
