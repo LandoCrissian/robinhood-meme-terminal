@@ -334,7 +334,7 @@ function ExternalTradeDialog({
 
       <div className={`externalTradeActionDock ${side}`}>
         <a href={reviewUrl} target="_blank" rel="noopener noreferrer">
-          {isSushiVenue(market) ? "Open Sushi as fallback ↗" : "Open Uniswap as fallback ↗"}
+          {isSushiVenue(market) ? "Sushi fallback ↗" : "Uniswap fallback ↗"}
         </a>
         <small>
           {isSushiVenue(market)
