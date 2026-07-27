@@ -274,6 +274,12 @@
 .externalSushiResult dd{overflow:hidden;margin:0;color:#aab6ad;font-size:.61rem;font-weight:850;text-overflow:ellipsis;white-space:nowrap}
 .externalSushiResult>p{margin:0;color:#e7a578;font-size:.62rem;line-height:1.45}
 .externalSushiSafety{margin:10px 0 0;color:#718078;font-size:.57rem;line-height:1.5}
+.externalUniswapSubmit{width:100%;min-height:46px;margin-top:10px;border:0;border-radius:10px;background:#55ed71;color:#031507;font:inherit;font-size:.7rem;font-weight:950;cursor:pointer}
+.externalUniswapSubmit.sell{background:#8b3139;color:#fff}
+.externalUniswapSubmit:disabled{cursor:not-allowed;filter:saturate(.4);opacity:.55}
+.externalUniswapError,.externalUniswapMessage{margin:9px 0 0;padding:9px 10px;border:1px solid #49302d;border-radius:9px;background:#1a0d0b;color:#e9a899;font-size:.6rem;line-height:1.45}
+.externalUniswapMessage{border-color:#294932;background:#0b180f;color:#8ee79e}
+.externalUniswapMessage a{color:#b8f5c3;font-weight:850}
 .externalTradeActionDock{display:grid;flex:0 0 auto;grid-template-columns:minmax(0,1fr) minmax(210px,.5fr);align-items:center;gap:10px;padding:10px 14px;border-top:1px solid #29382f;background:#090e0b}
 .externalTradeActionDock a{display:flex;min-height:48px;align-items:center;justify-content:center;border-radius:11px;background:#55ed71;color:#031507;font-size:.74rem;font-weight:950;text-decoration:none}
 .externalTradeActionDock.sell a{background:#8b3139;color:#fff}
