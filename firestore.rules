@@ -8,6 +8,16 @@ service cloud.firestore {
         && request.auth.token.email_verified == true;
     }
 
+    function hasProfile(userId) {
+      return exists(/databases/$(database)/documents/users/$(userId));
+    }
+
+    function isRmtAdmin() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email == 'launchrmt@gmail.com';
+    }
+
     function validProfile(data) {
       return data is map
         && data.keys().hasAll(['displayName', 'handle', 'bio', 'traderMode', 'density'])
@@ -76,6 +86,180 @@ service cloud.firestore {
         == data.listUpdatedAt;
     }
 
+    function validProjectType(value) {
+      return value in ['token', 'art', 'music', 'community', 'other'];
+    }
+
+    function validProjectModules(value) {
+      return value is list
+        && value.size() > 0 && value.size() <= 4
+        && value.hasOnly(['token', 'nft', 'marketplace', 'music']);
+    }
+
+    function validCreatorApplication(data) {
+      let reviewNote = data.get('reviewNote', '');
+      let projectSlug = data.get('projectSlug', '');
+      return data.keys().hasAll([
+          'schemaVersion',
+          'projectName',
+          'summary',
+          'projectType',
+          'website',
+          'xProfile',
+          'tokenAddress',
+          'requestedModules',
+          'ownershipConfirmed',
+          'termsAccepted',
+          'contactEmail',
+          'status',
+          'submittedAt',
+          'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'schemaVersion',
+          'projectName',
+          'summary',
+          'projectType',
+          'website',
+          'xProfile',
+          'tokenAddress',
+          'requestedModules',
+          'ownershipConfirmed',
+          'termsAccepted',
+          'contactEmail',
+          'status',
+          'submittedAt',
+          'updatedAt',
+          'reviewedAt',
+          'reviewNote',
+          'projectSlug'
+        ])
+        && data.schemaVersion == 1
+        && data.projectName is string && data.projectName.size() >= 2 && data.projectName.size() <= 80
+        && data.summary is string && data.summary.size() >= 40 && data.summary.size() <= 600
+        && validProjectType(data.projectType)
+        && data.website is string && data.website.size() <= 256
+        && (data.website == '' || data.website.matches('^https://.+$'))
+        && data.xProfile is string && data.xProfile.size() <= 256
+        && (data.xProfile == '' || data.xProfile.matches('^https://.+$'))
+        && data.tokenAddress is string
+        && (data.tokenAddress == '' || data.tokenAddress.matches('^0x[0-9a-f]{40}$'))
+        && validProjectModules(data.requestedModules)
+        && (!data.requestedModules.hasAny(['token']) || data.tokenAddress != '')
+        && data.ownershipConfirmed == true
+        && data.termsAccepted == true
+        && data.contactEmail is string && data.contactEmail.size() >= 3 && data.contactEmail.size() <= 254
+        && data.status in ['pending', 'needs_changes', 'approved', 'rejected']
+        && data.submittedAt is timestamp
+        && data.updatedAt is timestamp
+        && reviewNote is string && reviewNote.size() <= 600
+        && projectSlug is string && projectSlug.size() <= 48
+        && (projectSlug == '' || projectSlug.matches('^[a-z0-9][a-z0-9-]{1,46}[a-z0-9]$'));
+    }
+
+    function validApplicationCreate(userId) {
+      return ownsProfile(userId)
+        && hasProfile(userId)
+        && request.resource.data.contactEmail == request.auth.token.email
+        && request.resource.data.status == 'pending'
+        && request.resource.data.submittedAt == request.time
+        && request.resource.data.updatedAt == request.time
+        && !request.resource.data.keys().hasAny(['reviewedAt', 'reviewNote', 'projectSlug']);
+    }
+
+    function validApplicationResubmission(userId) {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      return ownsProfile(userId)
+        && hasProfile(userId)
+        && resource.data.status == 'needs_changes'
+        && request.resource.data.status == 'pending'
+        && request.resource.data.contactEmail == resource.data.contactEmail
+        && request.resource.data.submittedAt == resource.data.submittedAt
+        && request.resource.data.updatedAt == request.time
+        && !request.resource.data.keys().hasAny(['reviewedAt', 'reviewNote', 'projectSlug'])
+        && changed.hasOnly([
+          'projectName',
+          'summary',
+          'projectType',
+          'website',
+          'xProfile',
+          'tokenAddress',
+          'requestedModules',
+          'ownershipConfirmed',
+          'termsAccepted',
+          'status',
+          'updatedAt',
+          'reviewedAt',
+          'reviewNote',
+          'projectSlug'
+        ]);
+    }
+
+    function validAdminReview() {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      let note = request.resource.data.get('reviewNote', '');
+      let slug = request.resource.data.get('projectSlug', '');
+      return isRmtAdmin()
+        && resource.data.status in ['pending', 'needs_changes']
+        && request.resource.data.status in ['needs_changes', 'approved', 'rejected']
+        && (request.resource.data.status != 'approved' || resource.data.status == 'pending')
+        && request.resource.data.submittedAt == resource.data.submittedAt
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.reviewedAt == request.time
+        && changed.hasOnly(['status', 'reviewNote', 'reviewedAt', 'updatedAt', 'projectSlug'])
+        && (request.resource.data.status == 'approved'
+          ? slug.size() >= 3
+          : note.size() >= 10 && slug == '');
+    }
+
+    function validPublicProject(projectId, data) {
+      return data.keys().hasAll([
+          'schemaVersion',
+          'slug',
+          'name',
+          'summary',
+          'projectType',
+          'website',
+          'xProfile',
+          'tokenAddress',
+          'availableModules',
+          'status',
+          'publishedAt',
+          'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'schemaVersion',
+          'slug',
+          'name',
+          'summary',
+          'projectType',
+          'website',
+          'xProfile',
+          'tokenAddress',
+          'availableModules',
+          'status',
+          'publishedAt',
+          'updatedAt'
+        ])
+        && data.schemaVersion == 1
+        && data.slug == projectId
+        && data.slug.matches('^[a-z0-9][a-z0-9-]{1,46}[a-z0-9]$')
+        && data.name is string && data.name.size() >= 2 && data.name.size() <= 80
+        && data.summary is string && data.summary.size() >= 40 && data.summary.size() <= 600
+        && validProjectType(data.projectType)
+        && data.website is string && data.website.size() <= 256
+        && (data.website == '' || data.website.matches('^https://.+$'))
+        && data.xProfile is string && data.xProfile.size() <= 256
+        && (data.xProfile == '' || data.xProfile.matches('^https://.+$'))
+        && data.tokenAddress is string
+        && (data.tokenAddress == '' || data.tokenAddress.matches('^0x[0-9a-f]{40}$'))
+        && validProjectModules(data.availableModules)
+        && (!data.availableModules.hasAny(['token']) || data.tokenAddress != '')
+        && data.status == 'live'
+        && data.publishedAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
     match /users/{userId} {
       allow read, delete: if ownsProfile(userId);
       allow create: if ownsProfile(userId) && validUserDocument(request.resource.data);
@@ -98,6 +282,27 @@ service cloud.firestore {
             || getAfter(/databases/$(database)/documents/users/$(userId)).data.watchlistUpdatedAt
               > resource.data.listUpdatedAt);
       }
+    }
+
+    match /creatorApplications/{userId} {
+      allow read: if ownsProfile(userId) || isRmtAdmin();
+      allow create: if validCreatorApplication(request.resource.data)
+        && validApplicationCreate(userId);
+      allow update: if validCreatorApplication(request.resource.data)
+        && (validApplicationResubmission(userId) || validAdminReview());
+    }
+
+    match /projects/{projectId} {
+      allow read: if resource.data.status == 'live';
+      allow create: if isRmtAdmin()
+        && validPublicProject(projectId, request.resource.data)
+        && request.resource.data.publishedAt == request.time
+        && request.resource.data.updatedAt == request.time;
+      allow update: if isRmtAdmin()
+        && validPublicProject(projectId, request.resource.data)
+        && request.resource.data.publishedAt == resource.data.publishedAt
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if isRmtAdmin();
     }
   }
 }

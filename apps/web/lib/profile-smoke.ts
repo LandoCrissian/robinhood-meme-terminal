@@ -9,6 +9,12 @@ import {
 } from "./profile-cloud";
 import { DEFAULT_PROFILE, normalizeProfile } from "./profile";
 import { normalizeWatchlist, normalizeWatchlistEntry } from "./watchlist";
+import {
+  normalizeCreatorApplication,
+  normalizeProjectSlug,
+  parsePublicProject,
+  validateCreatorApplication
+} from "./creator-application";
 
 const vercelConfig = JSON.parse(readFileSync(new URL("../vercel.json", import.meta.url), "utf8")) as {
   headers?: Array<{
@@ -124,5 +130,47 @@ assert.deepEqual(resolveWatchlistSnapshot(
   { entries: [], updatedAt: 500 },
   { entries: [normalizedEntry], updatedAt: 400 }
 ), { entries: [], updatedAt: 500 });
+
+const creatorApplication = normalizeCreatorApplication({
+  projectName: "  Runner Studio  ",
+  summary: "  A community studio building transparent art and music experiences for Robinhood Chain.  ",
+  projectType: "music",
+  website: "https://runner.example",
+  xProfile: "https://x.com/runner",
+  tokenAddress: "0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+  requestedModules: ["token", "music", "music", "unsupported"],
+  ownershipConfirmed: true,
+  termsAccepted: true
+});
+assert.deepEqual(creatorApplication, {
+  projectName: "Runner Studio",
+  summary: "A community studio building transparent art and music experiences for Robinhood Chain.",
+  projectType: "music",
+  website: "https://runner.example/",
+  xProfile: "https://x.com/runner",
+  tokenAddress: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  requestedModules: ["token", "music"],
+  ownershipConfirmed: true,
+  termsAccepted: true
+});
+assert.equal(validateCreatorApplication(creatorApplication), null);
+assert.match(validateCreatorApplication({ ...creatorApplication, tokenAddress: "" }) ?? "", /Token module/);
+assert.equal(normalizeProjectSlug("  Runner Studio!!!  "), "runner-studio");
+
+const publicProject = parsePublicProject({
+  schemaVersion: 1,
+  slug: "runner-studio",
+  name: "Runner Studio",
+  summary: creatorApplication.summary,
+  projectType: "music",
+  website: creatorApplication.website,
+  xProfile: creatorApplication.xProfile,
+  tokenAddress: creatorApplication.tokenAddress,
+  availableModules: ["token", "music"],
+  status: "live"
+});
+assert.equal(publicProject?.slug, "runner-studio");
+assert.deepEqual(publicProject?.availableModules, ["token", "music"]);
+assert.equal(parsePublicProject({ ...publicProject, status: "pending" }), null);
 
 console.log("Profile and Firebase sync smoke tests passed.");

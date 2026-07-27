@@ -42,8 +42,20 @@ dd{margin:0;text-align:right;overflow-wrap:anywhere}
 .projectModuleCard>a,.projectModuleCard>small{margin-top:auto;color:#6fe680;font-size:.58rem;font-weight:850;text-decoration:none}
 .projectModuleCard.live{border-color:#31553a;background:linear-gradient(150deg,#0c1a10,#080d0a)}
 .projectModuleCard.live>div span{color:#75ee86}
+.projectModuleCard.available{border-color:#49613d;background:linear-gradient(150deg,#111a0e,#080d0a)}
+.projectModuleCard.available>div span,.projectModuleCard.available>small{color:#c3df73}
 .projectModuleCard.planned>small{color:#6d7971}
 .projectControlBoundary{margin:10px 0 0;color:#657269;font-size:.58rem;line-height:1.45}
+.projectProfileState{margin-top:10px;padding:24px}.projectProfileState h1{margin:5px 0}.projectProfileState p:not(.eyebrow){color:#849188}
+.approvedProjectHero{display:grid;grid-template-columns:76px minmax(0,1fr);gap:18px;margin-top:10px;padding:24px}
+.approvedProjectMark{display:grid;place-items:center;width:76px;height:76px;border:1px solid #42644a;border-radius:22px;background:linear-gradient(145deg,#1b3c23,#0c1510);color:#74ed87;font-size:1.3rem;font-weight:950}
+.approvedProjectHero h1{margin:5px 0 8px;font-size:clamp(2rem,5vw,3.5rem);letter-spacing:-.05em}
+.approvedProjectHero>div>p:not(.eyebrow){max-width:820px;margin:0;color:#95a198;font-size:.82rem;line-height:1.65}
+.approvedProjectLinks{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.approvedProjectLinks a{padding:8px 11px;border:1px solid #31523a;border-radius:999px;color:#71e982;font-size:.66rem;font-weight:900;text-decoration:none}
+.approvedProjectToken{display:grid;grid-template-columns:minmax(180px,.45fr) minmax(0,1fr);gap:12px;margin-top:10px;padding:18px}
+.approvedProjectToken h2{margin:4px 0 0;font-size:1rem}.approvedProjectToken code{align-self:center;overflow-wrap:anywhere;color:#cbd4cd;font-size:.75rem}
+.approvedProjectToken>p{grid-column:1/-1;margin:0;color:#77847b;font-size:.64rem;line-height:1.5}
 
 .marketPanel { margin-top:24px; }
 
@@ -68,6 +80,12 @@ dd{margin:0;text-align:right;overflow-wrap:anywhere}
  .projectModulePanel{padding:12px}
  .projectModulePanel>header{flex-direction:column;gap:8px}
  .projectModuleGrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .approvedProjectHero{grid-template-columns:52px minmax(0,1fr);gap:11px;padding:14px}
+ .approvedProjectMark{width:52px;height:52px;border-radius:16px;font-size:.9rem}
+ .approvedProjectHero h1{font-size:1.65rem}
+ .approvedProjectHero>div>p:not(.eyebrow){grid-column:1/-1;font-size:.74rem}
+ .approvedProjectToken{grid-template-columns:1fr;padding:14px}
+ .approvedProjectToken>p{grid-column:auto}
 }
 
 @media (max-width: 460px) {

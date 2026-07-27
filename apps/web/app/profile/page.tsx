@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useAccount } from "wagmi";
 import { PROFILE_EVENT, type RmtProfile, type TerminalDensity, type TraderMode } from "../../lib/profile";
 import { readWatchlist, WATCHLIST_EVENT } from "../../lib/watchlist";
+import { CreatorApplicationPanel } from "../creator-application-panel";
 import { SiteFooter } from "../site-footer";
 import { useProfile } from "../profile-provider";
 
@@ -197,6 +198,7 @@ export default function ProfilePage() {
           </section>
         </aside>
       </div>
+      <CreatorApplicationPanel />
       <SiteFooter />
     </main>
   );

@@ -63,6 +63,77 @@
 .profilePrivacy{border-left:2px solid #55ee72!important}
 .profilePrivacy strong{font-size:.78rem}
 .profilePrivacy p{margin:6px 0 0;color:#7e8b82;font-size:.7rem;line-height:1.5}
+.creatorApplicationSection{margin-top:10px;padding:24px;border:1px solid #26372b;border-radius:20px;background:radial-gradient(circle at 90% 0,rgba(80,238,111,.08),transparent 35%),linear-gradient(180deg,#0b100d,#070a08)}
+.creatorApplicationHeader{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;padding-bottom:18px;border-bottom:1px solid #222d26}
+.creatorApplicationHeader h2{margin:4px 0 6px;font-size:1.45rem;letter-spacing:-.03em}
+.creatorApplicationHeader p:not(.eyebrow){max-width:720px;margin:0;color:#859188;font-size:.75rem;line-height:1.55}
+.creatorApplicationHeader>span{flex:0 0 auto;padding:7px 10px;border:1px solid #3b6244;border-radius:999px;background:#0e1b12;color:#71eb83;font-size:.56rem;font-weight:950;letter-spacing:.08em}
+.creatorApplicationState{margin-top:16px;padding:18px;border:1px solid #29372e;border-radius:14px;background:#080d0a}
+.creatorApplicationState>strong,.creatorApplicationState>div strong{display:block;margin-top:3px;color:#e6ede7;font-size:1rem}
+.creatorApplicationState>div span{color:#6fe580;font-size:.58rem;font-weight:950;letter-spacing:.08em;text-transform:uppercase}
+.creatorApplicationState p{margin:8px 0 0;color:#87938b;font-size:.72rem;line-height:1.55}
+.creatorApplicationState a{display:inline-flex;margin-top:13px;color:#6fed82;font-size:.72rem;font-weight:900;text-decoration:none}
+.application-needs_changes{border-color:#665831;background:#151208}
+.application-needs_changes>div span{color:#f0cd6b}
+.application-approved{border-color:#3f7149;background:#0b1710}
+.application-rejected{border-color:#633b3b;background:#160b0b}
+.application-rejected>div span{color:#ef8585}
+.creatorApplicationForm{margin-top:18px}
+.applicationReviewNote{margin-bottom:14px;padding:14px;border:1px solid #675a33;border-radius:12px;background:#151208}
+.applicationReviewNote strong{color:#f0cf70;font-size:.75rem}
+.applicationReviewNote p{margin:5px 0 0;color:#a29672;font-size:.7rem;line-height:1.5}
+.creatorApplicationFields{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.creatorApplicationForm label{display:flex;flex-direction:column;gap:7px;color:#acb7af;font-size:.7rem;font-weight:850}
+.creatorApplicationForm input,.creatorApplicationForm textarea,.creatorApplicationForm select{width:100%;border:1px solid #2d3a31;border-radius:11px;background:#060907;color:#e6ece7;font:inherit;font-weight:600;outline:0}
+.creatorApplicationForm input,.creatorApplicationForm select{min-height:46px;padding:0 12px}
+.creatorApplicationForm textarea{min-height:122px;padding:12px;resize:vertical}
+.creatorApplicationForm input:focus,.creatorApplicationForm textarea:focus,.creatorApplicationForm select:focus{border-color:#38ed67;box-shadow:0 0 0 3px rgba(56,237,103,.1)}
+.applicationWideField{grid-column:1/-1}
+.applicationModuleChoices{margin:18px 0 0;padding:0;border:0}
+.applicationModuleChoices legend{margin-bottom:9px;color:#acb7af;font-size:.7rem;font-weight:900}
+.applicationModuleChoices>div{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.applicationModuleChoices label{position:relative;min-height:96px;padding:13px;border:1px solid #29362d;border-radius:12px;background:#080d0a;cursor:pointer}
+.applicationModuleChoices label.selected{border-color:#3f7449;background:#0d1b12}
+.applicationModuleChoices input{position:absolute;width:1px;height:1px;opacity:0}
+.applicationModuleChoices strong{color:#e2e9e3;font-size:.76rem}
+.applicationModuleChoices span{color:#78857c;font-size:.65rem;font-weight:500;line-height:1.45}
+.applicationConfirmations{display:flex;flex-direction:column;gap:9px;margin-top:18px;padding:14px;border:1px solid #29362d;border-radius:12px;background:#080c09}
+.applicationConfirmations label{display:grid;grid-template-columns:18px 1fr;align-items:flex-start;gap:9px}
+.applicationConfirmations input{width:16px;height:16px;min-height:0;margin-top:1px;accent-color:#55ee72}
+.applicationConfirmations span{color:#87938b;font-size:.68rem;font-weight:600;line-height:1.45}
+.creatorApplicationSubmit{display:flex;align-items:center;gap:14px;margin-top:16px}
+.creatorApplicationSubmit button{min-height:46px;padding:0 18px;border:0;border-radius:11px;background:#55ee72;color:#031207;font-weight:950;cursor:pointer}
+.creatorApplicationSubmit button:disabled{opacity:.6;cursor:wait}
+.creatorApplicationSubmit p,.creatorApplicationMessage{margin:0;color:#7f8b83;font-size:.68rem;line-height:1.45}
+.creatorApplicationMessage{margin-top:12px;color:#a9b4ac}
+.adminReviewPage{width:100%;max-width:1180px;margin:auto;padding:24px 24px 100px}
+.adminReviewHeader{display:flex;align-items:flex-start;justify-content:space-between;gap:24px;padding:24px;border:1px solid #2b3a30;border-radius:20px;background:linear-gradient(145deg,#0e1711,#070a08)}
+.adminReviewHeader h1{margin:4px 0 7px;font-size:clamp(2rem,5vw,3.4rem);letter-spacing:-.05em}
+.adminReviewHeader p:not(.eyebrow){max-width:720px;margin:0;color:#87938b;font-size:.76rem;line-height:1.55}
+.adminReviewHeader>span{padding:8px 11px;border:1px solid #42634a;border-radius:999px;color:#72eb83;font-size:.59rem;font-weight:950;letter-spacing:.08em}
+.adminApplicationList{display:flex;flex-direction:column;gap:10px;margin-top:10px}
+.adminApplicationCard{padding:20px;border:1px solid #29372e;border-radius:17px;background:#090e0b}
+.adminApplicationCard>header{display:flex;align-items:flex-start;justify-content:space-between;gap:18px}
+.adminApplicationCard>header span{color:#74e985;font-size:.56rem;font-weight:950;letter-spacing:.08em;text-transform:uppercase}
+.adminApplicationCard h2{margin:4px 0 3px;font-size:1.3rem}
+.adminApplicationCard>header p{margin:0;color:#7d8981;font-size:.68rem}
+.adminApplicationCard>header a{color:#72e884;font-size:.7rem;font-weight:900;text-decoration:none}
+.adminApplicationSummary{margin:15px 0;color:#a1aca4;font-size:.75rem;line-height:1.6}
+.adminApplicationCard dl{display:grid;grid-template-columns:100px minmax(0,1fr);gap:7px;margin:0;padding:13px;border:1px solid #253129;border-radius:11px;background:#070b08;font-size:.68rem}
+.adminApplicationCard dt{color:#69756d}.adminApplicationCard dd{color:#c1cbc3;text-align:left}.adminApplicationCard dd a{color:#75e988}
+.adminReviewControls{display:grid;grid-template-columns:240px minmax(0,1fr);gap:10px;margin-top:12px}
+.adminReviewControls label{display:flex;flex-direction:column;gap:6px;color:#8d9991;font-size:.66rem;font-weight:850}
+.adminReviewControls input,.adminReviewControls textarea{width:100%;border:1px solid #2e3b32;border-radius:10px;background:#060907;color:#e6ece7;font:inherit;outline:0}
+.adminReviewControls input{min-height:44px;padding:0 11px}.adminReviewControls textarea{min-height:76px;padding:10px;resize:vertical}
+.adminReviewControls>div{grid-column:1/-1;display:flex;gap:8px}
+.adminReviewControls button{min-height:42px;padding:0 14px;border:1px solid #344139;border-radius:10px;background:#101612;color:#b5c0b8;font-weight:900;cursor:pointer}
+.adminReviewControls .adminApproveButton{border:0;background:#55ee72;color:#031207}
+.adminReviewControls .adminRejectButton{border-color:#673c3c;color:#ec8b8b}
+.adminReviewControls button:disabled{opacity:.55;cursor:wait}
+.adminAccessState{margin-top:10px;padding:24px}.adminAccessState h1,.adminAccessState h2{margin:5px 0 8px}.adminAccessState p{color:#849087}.adminAccessState a{color:#72eb84;font-weight:900;text-decoration:none}
+.adminReviewMessage{position:sticky;bottom:18px;margin:14px 0 0;padding:12px 14px;border:1px solid #3c6546;border-radius:11px;background:#0e1b12;color:#b7c3b9;font-size:.72rem}
+.status-needs_changes{border-color:#665832}.status-rejected{border-color:#603939}.status-approved{border-color:#3a6844}
 
 @media(max-width:900px){.profilePage{padding:12px 16px 104px}.profileHero{align-items:flex-start;flex-direction:column}.profilePulse{grid-template-columns:repeat(2,minmax(0,1fr))}.profilePulse>div:nth-child(2){border-right:0}.profilePulse>div:nth-child(-n+2){border-bottom:1px solid #223027}.profileWorkspace{grid-template-columns:1fr}.profileRail{display:grid;grid-template-columns:1fr 1fr}.profilePrivacy{grid-column:1/-1}}
-@media(max-width:640px){.profilePage{padding:8px 0 96px}.profileHero{min-height:0;padding:20px 14px;border-right:0;border-left:0;border-radius:0}.profileAvatar{width:60px;height:60px;border-radius:18px}.profileIdentity{align-items:flex-start;gap:12px}.profileIdentity h1{font-size:1.75rem}.profileSyncState{align-self:flex-start}.profilePulse{margin-top:8px;border-right:0;border-left:0;border-radius:0}.profilePulse>div{min-height:74px;padding:12px}.profileWorkspace{gap:8px}.profileEditor,.profileRail>section,.profileQuickLinks{border-right:0;border-left:0;border-radius:0}.profileEditor{padding:18px 14px}.profileSectionHeading{flex-direction:column}.profileFieldGrid{grid-template-columns:1fr}.profileChoiceGroup>div,.densityChoices>div{grid-template-columns:1fr}.profileChoiceGroup label{min-height:88px}.profileRail{display:flex}.profileRail>section,.profileQuickLinks{padding:18px 14px}}
+@media(max-width:900px){.applicationModuleChoices>div{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:640px){.profilePage{padding:8px 0 96px}.profileHero{min-height:0;padding:20px 14px;border-right:0;border-left:0;border-radius:0}.profileAvatar{width:60px;height:60px;border-radius:18px}.profileIdentity{align-items:flex-start;gap:12px}.profileIdentity h1{font-size:1.75rem}.profileSyncState{align-self:flex-start}.profilePulse{margin-top:8px;border-right:0;border-left:0;border-radius:0}.profilePulse>div{min-height:74px;padding:12px}.profileWorkspace{gap:8px}.profileEditor,.profileRail>section,.profileQuickLinks,.creatorApplicationSection{border-right:0;border-left:0;border-radius:0}.profileEditor{padding:18px 14px}.profileSectionHeading{flex-direction:column}.profileFieldGrid{grid-template-columns:1fr}.profileChoiceGroup>div,.densityChoices>div{grid-template-columns:1fr}.profileChoiceGroup label{min-height:88px}.profileRail{display:flex}.profileRail>section,.profileQuickLinks{padding:18px 14px}.creatorApplicationSection{padding:18px 14px}.creatorApplicationHeader{flex-direction:column;gap:10px}.creatorApplicationFields,.applicationModuleChoices>div{grid-template-columns:1fr}.applicationWideField{grid-column:auto}.applicationModuleChoices label{min-height:82px}.creatorApplicationSubmit{align-items:stretch;flex-direction:column}.creatorApplicationSubmit button{width:100%}.adminReviewPage{padding:8px 0 96px}.adminReviewHeader,.adminApplicationCard,.adminAccessState{border-right:0;border-left:0;border-radius:0}.adminReviewHeader{flex-direction:column;padding:18px 14px}.adminApplicationCard{padding:16px 14px}.adminApplicationCard>header{flex-direction:column}.adminReviewControls{grid-template-columns:1fr}.adminReviewControls>div{flex-direction:column}.adminReviewControls button{width:100%}}
