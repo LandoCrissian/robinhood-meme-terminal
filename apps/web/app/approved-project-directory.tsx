@@ -156,7 +156,6 @@ export function ApprovedProjectDirectory() {
 
   return (
     <>
-    <GameDirectorySection projects={gamingProjects} />
     <section className="panel approvedDirectory" aria-labelledby="approved-directory-title">
       <header className="approvedDirectoryHeader">
         <div>
@@ -213,6 +212,7 @@ export function ApprovedProjectDirectory() {
         )}
       </div>
     </section>
+    <GameDirectorySection projects={gamingProjects} />
     </>
   );
 }
