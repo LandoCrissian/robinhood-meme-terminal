@@ -664,12 +664,30 @@ test("project follows stay private while atomic public audience counts resist ta
     "projectStats",
     "runner-studio"
   )))).data()?.followerCount, 1);
+  assert.equal((await assertSucceeds(getDocs(collection(
+    owner,
+    "users",
+    OWNER_ID,
+    "projectFollows"
+  )))).size, 1);
   await assertFails(getDoc(doc(
     authenticatedDb(OTHER_ID),
     "users",
     OWNER_ID,
     "projectFollows",
     "runner-studio"
+  )));
+  await assertFails(getDocs(collection(
+    authenticatedDb(OTHER_ID),
+    "users",
+    OWNER_ID,
+    "projectFollows"
+  )));
+  await assertFails(getDocs(collection(
+    testEnvironment.unauthenticatedContext().firestore(),
+    "users",
+    OWNER_ID,
+    "projectFollows"
   )));
   await assertFails(setDoc(stats, {
     followerCount: 2,

@@ -1,9 +1,14 @@
 import type { User } from "firebase/auth";
-import { normalizeProjectSlug, parsePublicProject } from "./creator-application";
+import {
+  normalizeProjectSlug,
+  parsePublicProject,
+  type PublicProjectRecord
+} from "./creator-application";
 import { getFirebaseClient } from "./firebase-client";
 
 export const PROJECT_FOLLOW_SCHEMA_VERSION = 1 as const;
 export const PROJECT_AUDIENCE_SCHEMA_VERSION = 1 as const;
+export const PRIVATE_FOLLOWING_LIMIT = 50;
 
 function requireVerifiedUser(user: User | null): User {
   if (!user || !user.emailVerified) {
@@ -21,6 +26,54 @@ function parseFollowerCount(value: unknown) {
     && data.followerCount >= 0
       ? data.followerCount
       : 0;
+}
+
+function parseFollowSlug(documentId: string, value: unknown) {
+  if (!value || typeof value !== "object") return "";
+  const data = value as Record<string, unknown>;
+  const projectSlug = normalizeProjectSlug(data.projectSlug);
+  return data.schemaVersion === PROJECT_FOLLOW_SCHEMA_VERSION
+    && projectSlug === normalizeProjectSlug(documentId)
+      ? projectSlug
+      : "";
+}
+
+export async function subscribeToFollowedProjects(
+  user: User,
+  listener: (projects: PublicProjectRecord[]) => void,
+  onError: () => void
+) {
+  const verified = requireVerifiedUser(user);
+  const client = await getFirebaseClient();
+  if (!client) throw new Error("Firebase profile sync is not configured.");
+  const reference = client.firestoreApi.query(
+    client.firestoreApi.collection(client.db, "users", verified.uid, "projectFollows"),
+    client.firestoreApi.limit(PRIVATE_FOLLOWING_LIMIT)
+  );
+  let snapshotVersion = 0;
+  return client.firestoreApi.onSnapshot(reference, (snapshot) => {
+    const currentVersion = ++snapshotVersion;
+    const slugs = snapshot.docs
+      .map((document) => parseFollowSlug(document.id, document.data()))
+      .filter(Boolean);
+    if (slugs.length === 0) {
+      listener([]);
+      return;
+    }
+    void Promise.all(slugs.map(async (slug) => {
+      const projectSnapshot = await client.firestoreApi.getDoc(
+        client.firestoreApi.doc(client.db, "projects", slug)
+      );
+      return projectSnapshot.exists() ? parsePublicProject(projectSnapshot.data()) : null;
+    })).then((projects) => {
+      if (currentVersion !== snapshotVersion) return;
+      listener(
+        projects
+          .filter((project): project is PublicProjectRecord => Boolean(project))
+          .sort((left, right) => left.name.localeCompare(right.name))
+      );
+    }).catch(onError);
+  }, onError);
 }
 
 export async function subscribeToProjectFollowerCount(

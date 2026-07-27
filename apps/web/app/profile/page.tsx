@@ -6,6 +6,7 @@ import { useAccount } from "wagmi";
 import { PROFILE_EVENT, type RmtProfile, type TerminalDensity, type TraderMode } from "../../lib/profile";
 import { readWatchlist, WATCHLIST_EVENT } from "../../lib/watchlist";
 import { CreatorApplicationPanel } from "../creator-application-panel";
+import { FollowedProjectsHub } from "../followed-projects-hub";
 import { SiteFooter } from "../site-footer";
 import { useProfile } from "../profile-provider";
 
@@ -198,6 +199,7 @@ export default function ProfilePage() {
           </section>
         </aside>
       </div>
+      <FollowedProjectsHub />
       <CreatorApplicationPanel />
       <SiteFooter />
     </main>
