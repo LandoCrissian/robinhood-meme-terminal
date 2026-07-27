@@ -63,6 +63,13 @@ const holderSchema = z.object({
 const holdersSchema = z.object({
   items: z.array(holderSchema).max(100)
 }).passthrough();
+const chainBlockSchema = z.object({
+  number: z.union([z.bigint(), z.string().regex(/^0x[0-9a-fA-F]+$/)]),
+  l1BlockNumber: z.union([
+    z.bigint(),
+    z.string().regex(/^0x[0-9a-fA-F]+$/)
+  ]).optional()
+}).passthrough();
 
 type RiskFetch = (input: string | URL, init?: RequestInit) => Promise<Response>;
 type ReadCreatorBalance = (token: Address, creator: Address) => Promise<bigint>;
@@ -201,6 +208,12 @@ export function scanPublishedTokenControls(rawAbi: unknown[] | undefined) {
   return { functions, customWriteFunctions, detected };
 }
 
+export function solidityBlockNumber(block: unknown) {
+  const parsed = chainBlockSchema.safeParse(block);
+  if (!parsed.success) return null;
+  return BigInt(parsed.data.l1BlockNumber ?? parsed.data.number);
+}
+
 async function readControlState(
   token: Address,
   functions: z.infer<typeof abiFunctionSchema>[]
@@ -235,7 +248,11 @@ async function readControlState(
     read(restrictionFunction),
     read(maxTransactionFunction),
     read(maxWalletFunction),
-    restrictionFunction ? client.getBlockNumber().catch(() => null) : Promise.resolve(null)
+    restrictionFunction
+      ? client.getBlock()
+          .then((block) => solidityBlockNumber(block))
+          .catch(() => null)
+      : Promise.resolve(null)
   ]);
   const safeBps = (value: unknown) => {
     if (typeof value === "bigint" && value >= 0n && value <= 10_000n) return Number(value);
@@ -309,7 +326,9 @@ function evidenceWarnings(evidence: Omit<TokenRiskEvidence, "warnings">) {
   if (controls.assessment === "unknown") {
     warnings.push("Privileged token controls cannot be assessed without a published contract ABI.");
   }
-  if (controls.detected.length > 0) {
+  if (controls.assessment === "known-launch-controls") {
+    warnings.push("Known Pons factory-only launch protection is documented and its two-block restriction window has expired.");
+  } else if (controls.detected.length > 0) {
     const categories = Array.from(new Set(controls.detected.map((control) => control.category))).join(", ");
     warnings.push(`Published ABI exposes privileged control surfaces requiring review: ${categories}.`);
   }
@@ -487,9 +506,19 @@ export async function fetchTokenRiskEvidence(
     || controlState.currentBlock === null
     ? null
     : controlState.restrictionEndBlock > controlState.currentBlock;
+  const knownExpiredPonsLaunchControl = params.sourceId === "pons"
+    && liquidity.evidenceSource === "launchpad-registry"
+    && activeLaunchRestrictions === false
+    && controlScan.customWriteFunctions.length === 1
+    && controlScan.customWriteFunctions[0] === "setInitialBuyRecipient"
+    && controlScan.detected.length === 1
+    && controlScan.detected[0]?.category === "launch"
+    && controlScan.detected[0]?.functionName === "setInitialBuyRecipient";
   const controlsEvidence = {
     assessment: !publishedAbiAvailable
       ? "unknown" as const
+      : knownExpiredPonsLaunchControl
+        ? "known-launch-controls" as const
       : controlScan.customWriteFunctions.length > 0
         ? "review-required" as const
         : "no-common-controls-found" as const,

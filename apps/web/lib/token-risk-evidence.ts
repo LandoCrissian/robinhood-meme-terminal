@@ -8,7 +8,11 @@ export type TokenRiskEvidence = {
     isProxy: boolean | null;
     bytecodeChanged: boolean | null;
     controls: {
-      assessment: "unknown" | "no-common-controls-found" | "review-required";
+      assessment:
+        | "unknown"
+        | "no-common-controls-found"
+        | "known-launch-controls"
+        | "review-required";
       detected: Array<{
         category: "supply" | "transfer" | "fees" | "upgrade" | "access" | "launch";
         functionName: string;
