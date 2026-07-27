@@ -204,6 +204,14 @@ const projectIdentity = normalizeProjectIdentity({
   bannerUri: "ipfs://bafybeigdyrzt/banner.png"
 });
 assert.equal(validateProjectIdentity(projectIdentity), null);
+const gamingApplication = normalizeCreatorApplication({
+  ...creatorApplication,
+  projectType: "gaming",
+  requestedModules: ["game"],
+  tokenAddress: ""
+});
+assert.equal(gamingApplication.projectType, "gaming");
+assert.deepEqual(gamingApplication.requestedModules, ["game"]);
 
 const publicProject = parsePublicProject({
   schemaVersion: 1,
@@ -223,10 +231,31 @@ assert.equal(publicProject?.slug, "runner-studio");
 assert.deepEqual(publicProject?.availableModules, ["token", "music"]);
 assert.equal(publicProject?.logoUri, "https://runner.example/logo.webp");
 assert.equal(parsePublicProject({ ...publicProject, status: "pending" }), null);
+const gamingProject = parsePublicProject({
+  schemaVersion: 1,
+  slug: "runner-game",
+  name: "Runner Game",
+  summary: "A creator-owned game universe with a public development page, playable builds and community updates.",
+  projectType: "gaming",
+  website: "https://game.runner.example/",
+  xProfile: "",
+  tokenAddress: "",
+  availableModules: ["game"],
+  gameUrl: "https://play.runner.example/",
+  trailerUrl: "https://video.runner.example/trailer",
+  gameStatus: "playable",
+  gamePlatforms: ["web", "windows"],
+  status: "live"
+});
+assert.equal(gamingProject?.gameStatus, "playable");
+assert.deepEqual(gamingProject?.gamePlatforms, ["web", "windows"]);
 
 const creatorControlSource = readFileSync(new URL("../app/project-creator-controls.tsx", import.meta.url), "utf8");
 assert.match(creatorControlSource, /Save public identity/);
 assert.match(creatorControlSource, /Logo image/);
 assert.match(creatorControlSource, /Banner image/);
+assert.match(creatorControlSource, /Playable game or store link/);
+const approvedProjectSource = readFileSync(new URL("../app/project/[address]/approved-project-page.tsx", import.meta.url), "utf8");
+assert.match(approvedProjectSource, /GAME CREATOR SHOWCASE/);
 
 console.log("Profile and Firebase sync smoke tests passed.");

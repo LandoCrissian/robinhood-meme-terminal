@@ -21,6 +21,7 @@ const TYPE_LABELS = {
   token: "Token project",
   art: "Art creator",
   music: "Music creator",
+  gaming: "Game creator",
   community: "Community project",
   other: "Other"
 } as const;
@@ -29,7 +30,8 @@ const MODULE_LABELS = {
   token: "Token",
   nft: "NFT collection",
   marketplace: "Marketplace",
-  music: "Music"
+  music: "Music",
+  game: "Game showcase"
 } as const;
 
 function applicationDraft(application: CreatorApplication): CreatorApplicationDraft {
@@ -135,7 +137,7 @@ export function CreatorApplicationPanel() {
         <div>
           <p className="eyebrow">PROJECT ACCESS</p>
           <h2 id="creator-application-title">Apply for an RMT project page</h2>
-          <p>Projects, artists, musicians and communities can apply. A token is optional unless you request the Token module.</p>
+          <p>Projects, artists, musicians, game developers and communities can apply. A token is optional unless you request the Token module.</p>
         </div>
         <span>REVIEW REQUIRED</span>
       </header>
@@ -172,7 +174,7 @@ export function CreatorApplicationPanel() {
 
           <fieldset className="applicationModuleChoices">
             <legend>Requested project modules</legend>
-            <div>{PROJECT_MODULES.map((module) => <label className={draft.requestedModules.includes(module) ? "selected" : ""} key={module}><input type="checkbox" checked={draft.requestedModules.includes(module)} onChange={() => toggleModule(module)} /><strong>{MODULE_LABELS[module]}</strong><span>{module === "token" ? "Verified market identity and trading" : "Optional creator-controlled activation"}</span></label>)}</div>
+            <div>{PROJECT_MODULES.map((module) => <label className={draft.requestedModules.includes(module) ? "selected" : ""} key={module}><input type="checkbox" checked={draft.requestedModules.includes(module)} onChange={() => toggleModule(module)} /><strong>{MODULE_LABELS[module]}</strong><span>{module === "token" ? "Verified market identity and trading" : module === "game" ? "Playable links, trailers and platform discovery" : "Optional creator-controlled activation"}</span></label>)}</div>
           </fieldset>
 
           <div className="applicationConfirmations">

@@ -3,11 +3,15 @@
 import Link from "next/link";
 import { type FormEvent, useEffect, useState } from "react";
 import {
+  GAME_PLATFORMS,
+  GAME_STATUSES,
   PROJECT_MODULES,
   normalizeProjectIdentity,
   validateProjectIdentity,
   type ProjectIdentityDraft,
   type PublicProjectRecord,
+  type GamePlatform,
+  type GameStatus,
   type RequestedProjectModule
 } from "../lib/creator-application";
 import {
@@ -26,7 +30,18 @@ const MODULE_COPY: Record<RequestedProjectModule, { label: string; description: 
   token: { label: "Token", description: "Prepare verified token identity, market connections and trading surfaces." },
   nft: { label: "NFT collection", description: "Plan collection contracts, artwork provenance, rights and creator splits." },
   marketplace: { label: "Marketplace", description: "Plan listings, offers, settlement rules and creator-controlled market access." },
-  music: { label: "Music", description: "Plan releases, licenses, collaborator splits and collectible media." }
+  music: { label: "Music", description: "Plan releases, licenses, collaborator splits and collectible media." },
+  game: { label: "Game showcase", description: "Publish playable demos, trailers, platform availability and development progress." }
+};
+
+const PLATFORM_LABELS: Record<GamePlatform, string> = {
+  web: "Web",
+  windows: "Windows",
+  macos: "macOS",
+  ios: "iOS",
+  android: "Android",
+  console: "Console",
+  vr: "VR"
 };
 
 function requestLabel(request: ModuleActivationRequest | undefined) {
@@ -47,6 +62,7 @@ export function ProjectCreatorControls({ project }: { project: PublicProjectReco
   const [savingIdentity, setSavingIdentity] = useState(false);
   const [message, setMessage] = useState("");
   const [identity, setIdentity] = useState<ProjectIdentityDraft>(() => normalizeProjectIdentity(project));
+  const isGaming = project.projectType === "gaming" || project.availableModules.includes("game");
 
   useEffect(() => {
     setIdentity(normalizeProjectIdentity(project));
@@ -136,6 +152,15 @@ export function ProjectCreatorControls({ project }: { project: PublicProjectReco
     }
   };
 
+  const toggleGamePlatform = (platform: GamePlatform) => {
+    setIdentity((current) => ({
+      ...current,
+      gamePlatforms: current.gamePlatforms.includes(platform)
+        ? current.gamePlatforms.filter((candidate) => candidate !== platform)
+        : [...current.gamePlatforms, platform]
+    }));
+  };
+
   if (profileLoading) return null;
   if (!user) {
     return (
@@ -162,6 +187,14 @@ export function ProjectCreatorControls({ project }: { project: PublicProjectReco
           <label>X profile<input maxLength={256} inputMode="url" placeholder="https://x.com/" value={identity.xProfile} onChange={(event) => setIdentity((current) => ({ ...current, xProfile: event.target.value }))} /></label>
           <label>Logo image<input maxLength={512} inputMode="url" placeholder="https:// or ipfs://" value={identity.logoUri} onChange={(event) => setIdentity((current) => ({ ...current, logoUri: event.target.value }))} /></label>
           <label className="creatorIdentityWide">Banner image<input maxLength={512} inputMode="url" placeholder="https:// or ipfs://" value={identity.bannerUri} onChange={(event) => setIdentity((current) => ({ ...current, bannerUri: event.target.value }))} /></label>
+          {isGaming && (
+            <>
+              <label>Game status<select value={identity.gameStatus || "development"} onChange={(event) => setIdentity((current) => ({ ...current, gameStatus: event.target.value as GameStatus }))}>{GAME_STATUSES.map((status) => <option value={status} key={status}>{status.replace("_", " ")}</option>)}</select></label>
+              <label>Playable game or store link<input maxLength={256} inputMode="url" placeholder="https://" value={identity.gameUrl} onChange={(event) => setIdentity((current) => ({ ...current, gameUrl: event.target.value }))} /></label>
+              <label className="creatorIdentityWide">Trailer or gameplay link<input maxLength={256} inputMode="url" placeholder="https://" value={identity.trailerUrl} onChange={(event) => setIdentity((current) => ({ ...current, trailerUrl: event.target.value }))} /></label>
+              <fieldset className="creatorGamePlatforms creatorIdentityWide"><legend>Available platforms</legend><div>{GAME_PLATFORMS.map((platform) => <label className={identity.gamePlatforms.includes(platform) ? "selected" : ""} key={platform}><input type="checkbox" checked={identity.gamePlatforms.includes(platform)} onChange={() => toggleGamePlatform(platform)} /><span>{PLATFORM_LABELS[platform]}</span></label>)}</div></fieldset>
+            </>
+          )}
         </div>
         <button type="submit" disabled={savingIdentity}>{savingIdentity ? "Saving identity…" : "Save public identity"}</button>
       </form>

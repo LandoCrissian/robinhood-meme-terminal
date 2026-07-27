@@ -496,6 +496,50 @@ test("an assigned creator can update public identity but not project authority",
   ));
 });
 
+test("gaming creators can publish a bounded game showcase", async () => {
+  const admin = adminDb();
+  const seed = writeBatch(admin);
+  seed.set(doc(admin, "projects", "runner-game"), publicProject({
+    slug: "runner-game",
+    projectType: "gaming",
+    tokenAddress: "",
+    availableModules: ["game"],
+    gameUrl: "",
+    trailerUrl: "",
+    gameStatus: "development",
+    gamePlatforms: []
+  }));
+  seed.set(doc(admin, "projectAssignments", "runner-game"), projectAssignment({
+    projectSlug: "runner-game",
+    allowedModules: ["game"]
+  }));
+  await assertSucceeds(seed.commit());
+
+  const owner = authenticatedDb();
+  const project = doc(owner, "projects", "runner-game");
+  await assertSucceeds(setDoc(project, {
+    gameUrl: "https://play.runner.example/",
+    trailerUrl: "https://video.runner.example/trailer",
+    gameStatus: "playable",
+    gamePlatforms: ["web", "windows", "macos"],
+    updatedAt: serverTimestamp()
+  }, { merge: true }));
+  assert.equal((await assertSucceeds(getDoc(project))).data()?.gameStatus, "playable");
+  await assertFails(setDoc(project, {
+    gamePlatforms: ["web", "unknown-device"],
+    updatedAt: serverTimestamp()
+  }, { merge: true }));
+  await assertFails(setDoc(project, {
+    gameUrl: "javascript:alert(1)",
+    updatedAt: serverTimestamp()
+  }, { merge: true }));
+
+  await assertSucceeds(setDoc(
+    doc(owner, "projectAssignments", "runner-game", "moduleRequests", "game"),
+    moduleActivationRequest("game")
+  ));
+});
+
 test("only the assigned creator and RMT admin can read a private project assignment", async () => {
   const admin = adminDb();
   await assertSucceeds(setDoc(doc(admin, "projectAssignments", "runner-studio"), projectAssignment()));

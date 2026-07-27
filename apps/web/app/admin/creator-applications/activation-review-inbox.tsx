@@ -14,7 +14,8 @@ const MODULE_LABELS = {
   token: "Token",
   nft: "NFT collection",
   marketplace: "Marketplace",
-  music: "Music"
+  music: "Music",
+  game: "Game showcase"
 } as const;
 
 function requestKey(request: AdminModuleActivationRequest) {

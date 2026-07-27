@@ -72,8 +72,12 @@ dd{margin:0;text-align:right;overflow-wrap:anywhere}
 .creatorIdentityHeading>span,.creatorCapabilityHeading>span{color:#6ee780;font-size:.5rem;font-weight:950;letter-spacing:.07em}
 .creatorIdentityFields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:13px}
 .creatorIdentityFields label{display:flex;min-width:0;flex-direction:column;gap:6px;color:#87938b;font-size:.58rem;font-weight:850}
-.creatorIdentityFields input,.creatorIdentityFields textarea{width:100%;min-width:0;padding:9px 10px;border:1px solid #2b3a30;border-radius:9px;background:#050806;color:#e5ece7;font:inherit;outline:0}
+.creatorIdentityFields input,.creatorIdentityFields textarea,.creatorIdentityFields select{width:100%;min-width:0;padding:9px 10px;border:1px solid #2b3a30;border-radius:9px;background:#050806;color:#e5ece7;font:inherit;outline:0}
 .creatorIdentityFields textarea{min-height:82px;resize:vertical}.creatorIdentityWide{grid-column:1/-1}
+.creatorGamePlatforms{margin:0;padding:0;border:0}.creatorGamePlatforms legend{margin-bottom:7px;color:#87938b;font-size:.58rem;font-weight:850}
+.creatorGamePlatforms>div{display:flex;flex-wrap:wrap;gap:6px}
+.creatorGamePlatforms label{display:flex;min-height:34px;align-items:center;flex-direction:row;gap:6px;padding:0 9px;border:1px solid #2c3b31;border-radius:9px;background:#090e0b;color:#829087}
+.creatorGamePlatforms label.selected{border-color:#4f7c58;background:#102016;color:#9af0a5}.creatorGamePlatforms input{width:auto}
 .creatorIdentityEditor>button{min-height:40px;margin-top:11px;padding:0 14px;border:0;border-radius:9px;background:#68ed7c;color:#041108;font-size:.62rem;font-weight:950}
 .creatorIdentityEditor>button:disabled{opacity:.55;cursor:wait}.creatorCapabilityHeading{margin-top:18px}
 .creatorControlGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:14px}
@@ -87,6 +91,13 @@ dd{margin:0;text-align:right;overflow-wrap:anywhere}
 .creatorControlGrid .request-requested{border-color:#505738}.creatorControlGrid .request-ready{border-color:#397047}
 .creatorControlBoundary,.creatorControlMessage{margin:12px 0 0;color:#738078;font-size:.61rem;line-height:1.5}
 .creatorControlMessage{color:#8ce999;font-weight:800}
+.approvedGameShowcase{margin-top:10px;padding:20px;background:radial-gradient(circle at 90% 0,rgba(95,235,117,.13),transparent 40%),linear-gradient(145deg,#0d1710,#080c09)}
+.approvedGameShowcase>header{display:flex;align-items:flex-start;justify-content:space-between;gap:18px}
+.approvedGameShowcase h2{margin:4px 0 6px;font-size:clamp(1.25rem,3vw,2rem)}.approvedGameShowcase header p:not(.eyebrow){max-width:720px;margin:0;color:#7f8d83;font-size:.68rem;line-height:1.5}
+.approvedGameShowcase>header>span{flex:0 0 auto;padding:7px 10px;border:1px solid #48704f;border-radius:999px;color:#80ee8e;font-size:.55rem;font-weight:950;letter-spacing:.08em}
+.approvedGamePlatforms{display:flex;flex-wrap:wrap;gap:6px;margin-top:16px}.approvedGamePlatforms span{padding:5px 8px;border:1px solid #314238;border-radius:999px;color:#a3afa6;font-size:.55rem;font-weight:850}
+.approvedGameActions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}.approvedGameActions a{padding:10px 13px;border-radius:10px;background:#68ed7c;color:#041108;font-size:.65rem;font-weight:950;text-decoration:none}.approvedGameActions a+ a{border:1px solid #3b5942;background:#111a14;color:#a8b5ab}
+.approvedGameActions p{margin:0;color:#7c8980;font-size:.65rem}.approvedGameShowcase>small{display:block;margin-top:14px;color:#68756d;font-size:.55rem;line-height:1.45}
 
 .marketPanel { margin-top:24px; }
 
@@ -123,6 +134,7 @@ dd{margin:0;text-align:right;overflow-wrap:anywhere}
  .creatorIdentityFields{grid-template-columns:1fr}.creatorIdentityWide{grid-column:auto}
  .creatorIdentityEditor>button{width:100%}
  .creatorControlGrid{grid-template-columns:1fr}
+ .approvedGameShowcase{padding:16px 14px}.approvedGameShowcase>header{flex-direction:column}.approvedGameActions{flex-direction:column}.approvedGameActions a{text-align:center}
 }
 
 @media (max-width: 460px) {

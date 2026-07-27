@@ -15,7 +15,8 @@ const MODULE_LABELS: Record<RequestedProjectModule, string> = {
   token: "Token",
   nft: "NFT",
   marketplace: "Market",
-  music: "Music"
+  music: "Music",
+  game: "Game"
 };
 
 function initials(name: string) {
