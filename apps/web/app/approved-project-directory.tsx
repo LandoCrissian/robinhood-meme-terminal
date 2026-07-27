@@ -34,6 +34,34 @@ function ProjectDirectoryMark({ project }: { project: PublicProjectRecord }) {
   );
 }
 
+function GameDirectoryCard({ project }: { project: PublicProjectRecord }) {
+  const [failedBanner, setFailedBanner] = useState(false);
+  const status = project.gameStatus || "development";
+  return (
+    <article className="gameDirectoryCard">
+      <div className="gameDirectoryArtwork">
+        {project.bannerUri && !failedBanner
+          ? <img src={ipfsToHttp(project.bannerUri)} alt="" referrerPolicy="no-referrer" onError={() => setFailedBanner(true)} />
+          : <div className="gameDirectoryFallback" aria-hidden="true">{initials(project.name)}</div>}
+        <span>{status.toUpperCase()}</span>
+      </div>
+      <div className="gameDirectoryBody">
+        <div className="gameDirectoryIdentity"><ProjectDirectoryMark project={project} /><div><p>REVIEW-APPROVED GAME</p><h3>{project.name}</h3></div></div>
+        <p className="gameDirectorySummary">{project.summary}</p>
+        <div className="gameDirectoryPlatforms">
+          {project.gamePlatforms.length
+            ? project.gamePlatforms.slice(0, 5).map((platform) => <span key={platform}>{platform.toUpperCase()}</span>)
+            : <span>PLATFORMS COMING SOON</span>}
+        </div>
+        <div className={`gameDirectoryActions ${project.gameUrl ? "" : "single"}`}>
+          <Link href={`/project/${project.slug}`}>Game page →</Link>
+          {project.gameUrl && <a href={project.gameUrl} target="_blank" rel="noopener noreferrer">Play or view ↗</a>}
+        </div>
+      </div>
+    </article>
+  );
+}
+
 function publishedTime(value: unknown) {
   return value && typeof value === "object" && "toMillis" in value
     && typeof (value as { toMillis?: unknown }).toMillis === "function"
@@ -72,8 +100,34 @@ export function ApprovedProjectDirectory() {
     .filter((project) => project.tokenAddress.toLowerCase() !== OFFICIAL_RMT_V6_TOKEN.toLowerCase())
     .sort((left, right) => publishedTime(right.publishedAt) - publishedTime(left.publishedAt)
       || left.name.localeCompare(right.name)), [projects]);
+  const gamingProjects = useMemo(() => visibleProjects
+    .filter((project) => project.projectType === "gaming" || project.availableModules.includes("game"))
+    .sort((left, right) => {
+      const statusOrder = { live: 0, playable: 1, development: 2, concept: 3, "": 4 };
+      return statusOrder[left.gameStatus] - statusOrder[right.gameStatus]
+        || publishedTime(right.publishedAt) - publishedTime(left.publishedAt)
+        || left.name.localeCompare(right.name);
+    }), [visibleProjects]);
 
   return (
+    <>
+    <section className="panel gameDirectory" aria-labelledby="game-directory-title">
+      <header className="approvedDirectoryHeader gameDirectoryHeader">
+        <div>
+          <p className="eyebrow">RMT GAMES</p>
+          <h2 id="game-directory-title">Play, follow and discover creator-built worlds</h2>
+          <p>Approved game pages bring playable builds, trailers, platforms and development progress into one place. A token is optional.</p>
+        </div>
+        <span>{gamingProjects.length} GAME{gamingProjects.length === 1 ? "" : "S"}</span>
+      </header>
+      {gamingProjects.length > 0
+        ? <div className="gameDirectoryGrid">{gamingProjects.map((project) => <GameDirectoryCard project={project} key={project.slug} />)}</div>
+        : <div className="gameDirectoryEmpty">
+            <div><strong>The showcase is open for its first reviewed games.</strong><p>Independent studios and gaming creators can apply without launching a token.</p></div>
+            <Link href="/profile">Apply through Profile →</Link>
+          </div>}
+      <p className="gameDirectoryDisclosure">External games and stores are creator-supplied. RMT page approval verifies page access, not downloadable software or game economics.</p>
+    </section>
     <section className="panel approvedDirectory" aria-labelledby="approved-directory-title">
       <header className="approvedDirectoryHeader">
         <div>
@@ -130,5 +184,6 @@ export function ApprovedProjectDirectory() {
         )}
       </div>
     </section>
+    </>
   );
 }

@@ -46,6 +46,11 @@ assert.match(exploreSource, /<ApprovedProjectDirectory \/>/);
 assert.doesNotMatch(exploreSource, /<ExternalMarketFeed \/>/);
 assert.match(approvedDirectorySource, /OFFICIAL RMT · FACTORY VERIFIED/);
 assert.match(approvedDirectorySource, /Review approval is identity and page access—not a contract audit or endorsement/);
+assert.match(approvedDirectorySource, /RMT GAMES/);
+assert.match(approvedDirectorySource, /A token is optional/);
+assert.match(approvedDirectorySource, /Play or view/);
+assert.match(approvedDirectorySource, /project\.gamePlatforms/);
+assert.match(exploreSource, /Projects, games and verified markets/);
 
 const projectPageSource = readFileSync(new URL("../app/project/[address]/project-detail-page.tsx", import.meta.url), "utf8");
 const approvedProjectPageSource = readFileSync(new URL("../app/project/[address]/approved-project-page.tsx", import.meta.url), "utf8");
