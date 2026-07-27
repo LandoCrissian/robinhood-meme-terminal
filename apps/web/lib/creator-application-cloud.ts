@@ -27,6 +27,14 @@ import {
   type ModuleActivationRequestStatus,
   type ProjectAssignment
 } from "./project-ownership";
+import {
+  GAME_UPDATE_SCHEMA_VERSION,
+  normalizeGameUpdate,
+  parseGameUpdate,
+  validateGameUpdate,
+  type GameUpdate,
+  type GameUpdateDraft
+} from "./game-updates";
 
 export type AdminCreatorApplication = CreatorApplication & { userId: string };
 export type AdminModuleActivationRequest = ModuleActivationRequest & { projectSlug: string };
@@ -47,6 +55,27 @@ export async function subscribeToPublicProjects(
       .map((document) => parsePublicProject(document.data()))
       .filter((project): project is PublicProjectRecord => Boolean(project));
     listener(projects);
+  }, onError);
+}
+
+export async function subscribeToGameUpdates(
+  projectSlug: string,
+  listener: (updates: GameUpdate[]) => void,
+  onError: () => void
+) {
+  const client = await getFirebaseClient();
+  if (!client) throw new Error("Firebase project discovery is not configured.");
+  const slug = normalizeProjectSlug(projectSlug);
+  const reference = client.firestoreApi.query(
+    client.firestoreApi.collection(client.db, "projects", slug, "gameUpdates"),
+    client.firestoreApi.orderBy("createdAt", "desc"),
+    client.firestoreApi.limit(12)
+  );
+  return client.firestoreApi.onSnapshot(reference, (snapshot) => {
+    const updates = snapshot.docs
+      .map((document) => parseGameUpdate(document.id, document.data()))
+      .filter((update): update is GameUpdate => Boolean(update));
+    listener(updates);
   }, onError);
 }
 
@@ -225,6 +254,45 @@ export async function updateProjectIdentity(
     transaction.update(projectReference, {
       ...identity,
       updatedAt: client.firestoreApi.serverTimestamp()
+    });
+  });
+}
+
+export async function publishGameUpdate(
+  user: User,
+  project: PublicProjectRecord,
+  value: GameUpdateDraft
+) {
+  const verified = requireVerifiedUser(user);
+  const client = await getFirebaseClient();
+  if (!client) throw new Error("Firebase project ownership is not configured.");
+  const validationError = validateGameUpdate(value);
+  if (validationError) throw new Error(validationError);
+  const update = normalizeGameUpdate(value);
+  const projectReference = client.firestoreApi.doc(client.db, "projects", project.slug);
+  const assignmentReference = client.firestoreApi.doc(client.db, "projectAssignments", project.slug);
+  const updateReference = client.firestoreApi.doc(
+    client.firestoreApi.collection(projectReference, "gameUpdates")
+  );
+  await client.firestoreApi.runTransaction(client.db, async (transaction) => {
+    const [projectSnapshot, assignmentSnapshot] = await Promise.all([
+      transaction.get(projectReference),
+      transaction.get(assignmentReference)
+    ]);
+    const currentProject = projectSnapshot.exists() ? parsePublicProject(projectSnapshot.data()) : null;
+    const assignment = assignmentSnapshot.exists() ? parseProjectAssignment(assignmentSnapshot.data()) : null;
+    if (!currentProject || !assignment || assignment.ownerId !== verified.uid) {
+      throw new Error("This profile is not assigned to manage the project.");
+    }
+    if (currentProject.projectType !== "gaming" && !currentProject.availableModules.includes("game")) {
+      throw new Error("Game updates are available only for approved game pages.");
+    }
+    const now = client.firestoreApi.serverTimestamp();
+    transaction.set(updateReference, {
+      schemaVersion: GAME_UPDATE_SCHEMA_VERSION,
+      ...update,
+      createdAt: now,
+      updatedAt: now
     });
   });
 }

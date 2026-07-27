@@ -81,6 +81,8 @@ dd{margin:0;text-align:right;overflow-wrap:anywhere}
 .creatorGamePlatforms label.selected{border-color:#4f7c58;background:#102016;color:#9af0a5}.creatorGamePlatforms input{width:auto}
 .creatorIdentityEditor>button{min-height:40px;margin-top:11px;padding:0 14px;border:0;border-radius:9px;background:#68ed7c;color:#041108;font-size:.62rem;font-weight:950}
 .creatorIdentityEditor>button:disabled{opacity:.55;cursor:wait}.creatorCapabilityHeading{margin-top:18px}
+.creatorGameUpdateEditor{margin-top:10px;padding:14px;border:1px solid #33483a;border-radius:14px;background:linear-gradient(145deg,#0a120d,#070b08)}
+.creatorGameUpdateFields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:13px}.creatorGameUpdateFields label{display:flex;min-width:0;flex-direction:column;gap:6px;color:#87938b;font-size:.58rem;font-weight:850}.creatorGameUpdateFields input,.creatorGameUpdateFields textarea,.creatorGameUpdateFields select{width:100%;min-width:0;padding:9px 10px;border:1px solid #2b3a30;border-radius:9px;background:#050806;color:#e5ece7;font:inherit;outline:0}.creatorGameUpdateFields textarea{min-height:94px;resize:vertical}.creatorGameUpdateEditor>button{min-height:40px;margin-top:11px;padding:0 14px;border:0;border-radius:9px;background:#68ed7c;color:#041108;font-size:.62rem;font-weight:950}.creatorGameUpdateEditor>button:disabled{opacity:.55;cursor:wait}.creatorGameUpdateEditor>p:not(.creatorControlMessage){margin:9px 0 0;color:#66736a;font-size:.54rem;line-height:1.45}
 .creatorControlGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:14px}
 .creatorControlGrid article{display:flex;min-height:142px;flex-direction:column;padding:12px;border:1px solid #2b3930;border-radius:12px;background:#080d0a}
 .creatorControlGrid article>div{display:flex;align-items:center;justify-content:space-between;gap:8px}
@@ -101,6 +103,7 @@ dd{margin:0;text-align:right;overflow-wrap:anywhere}
 .approvedGameActions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}.approvedGameActions a{padding:10px 13px;border-radius:10px;background:#68ed7c;color:#041108;font-size:.65rem;font-weight:950;text-decoration:none}.approvedGameActions a+ a{border:1px solid #3b5942;background:#111a14;color:#a8b5ab}
 .approvedGameActions p{margin:0;color:#7c8980;font-size:.65rem}.approvedGameShowcase>small{display:block;margin-top:14px;color:#68756d;font-size:.55rem;line-height:1.45}
 .approvedGameGallery{margin-top:18px;padding-top:16px;border-top:1px solid #26372d}.approvedGameGallery h3{margin:3px 0 10px;font-size:.9rem}.approvedGameGallery>div:last-child{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}.approvedGameGallery img{width:100%;height:clamp(120px,18vw,220px);object-fit:cover;border:1px solid #304338;border-radius:11px;background:#080c09}
+.gameReleaseLog{margin-top:10px;padding:20px}.gameReleaseLog>header{display:flex;align-items:flex-start;justify-content:space-between;gap:18px}.gameReleaseLog h2{margin:4px 0 6px;font-size:1.05rem}.gameReleaseLog header p:not(.eyebrow){margin:0;color:#78857c;font-size:.65rem}.gameReleaseLog>header>span{flex:0 0 auto;padding:6px 9px;border:1px solid #334a3a;border-radius:999px;color:#79e989;font-size:.52rem;font-weight:950}.gameReleaseLogState{margin-top:14px;padding:16px;border:1px dashed #304037;border-radius:11px;color:#7b887f;font-size:.63rem}.gameReleaseLogList{display:grid;gap:8px;margin-top:14px}.gameReleaseLogList article{display:grid;grid-template-columns:minmax(0,1fr);overflow:hidden;border:1px solid #293a30;border-radius:13px;background:#080d0a}.gameReleaseLogList article:has(>img){grid-template-columns:minmax(140px,.32fr) minmax(0,1fr)}.gameReleaseLogList img{width:100%;height:100%;min-height:170px;max-height:230px;object-fit:cover;background:#0b120d}.gameReleaseLogList article>div{min-width:0;padding:14px}.gameReleaseLogMeta{display:flex;flex-wrap:wrap;align-items:center;gap:6px}.gameReleaseLogMeta span{padding:4px 6px;border:1px solid #33493a;border-radius:999px;color:#83e990;font-size:.48rem;font-weight:950;text-transform:uppercase}.gameReleaseLogMeta time{margin-left:auto;color:#6d7971;font-size:.52rem}.gameReleaseLogList h3{margin:9px 0 6px;font-size:.86rem}.gameReleaseLogList p{margin:0;color:#89958d;font-size:.63rem;line-height:1.55;white-space:pre-wrap}.gameReleaseLogList a{display:inline-block;margin-top:10px;color:#75e885;font-size:.58rem;font-weight:900;text-decoration:none}.gameReleaseLog>small{display:block;margin-top:12px;color:#68756d;font-size:.53rem;line-height:1.45}
 
 .marketPanel { margin-top:24px; }
 
@@ -135,9 +138,11 @@ dd{margin:0;text-align:right;overflow-wrap:anywhere}
  .creatorControlPrompt,.creatorControlPanel>header{align-items:flex-start;flex-direction:column}
  .creatorIdentityHeading,.creatorCapabilityHeading{align-items:flex-start;flex-direction:column}
  .creatorIdentityFields{grid-template-columns:1fr}.creatorIdentityWide{grid-column:auto}
- .creatorIdentityEditor>button{width:100%}
+ .creatorIdentityEditor>button,.creatorGameUpdateEditor>button{width:100%}
+ .creatorGameUpdateFields{grid-template-columns:1fr}
  .creatorControlGrid{grid-template-columns:1fr}
  .approvedGameShowcase{padding:16px 14px}.approvedGameShowcase>header{flex-direction:column}.approvedGameDetails{grid-template-columns:1fr}.approvedGameActions{flex-direction:column}.approvedGameActions a{text-align:center}.approvedGameGallery>div:last-child{grid-template-columns:repeat(2,minmax(0,1fr))}.approvedGameGallery img{height:120px}
+ .gameReleaseLog{padding:16px 14px}.gameReleaseLog>header{flex-direction:column}.gameReleaseLogList article:has(>img){grid-template-columns:1fr}.gameReleaseLogList img{height:170px;min-height:0}.gameReleaseLogMeta time{width:100%;margin:2px 0 0}
 }
 
 @media (max-width: 460px) {

@@ -147,6 +147,21 @@ function moduleActivationRequest(module = "nft", overrides: Record<string, unkno
   };
 }
 
+function gameUpdate(overrides: Record<string, unknown> = {}) {
+  return {
+    schemaVersion: 1,
+    type: "milestone",
+    title: "Public alpha is ready",
+    body: "The first public alpha adds cooperative matchmaking and a new tutorial.",
+    version: "v0.3.0",
+    link: "https://runner.example/alpha",
+    imageUri: "https://media.runner.example/alpha.webp",
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+    ...overrides
+  };
+}
+
 async function seedOwner(db = authenticatedDb()) {
   await assertSucceeds(setDoc(doc(db, "users", OWNER_ID), userDocument()));
 }
@@ -565,6 +580,50 @@ test("gaming creators can publish a bounded game showcase", async () => {
   await assertSucceeds(setDoc(
     doc(owner, "projectAssignments", "runner-game", "moduleRequests", "game"),
     moduleActivationRequest("game")
+  ));
+});
+
+test("assigned game creators can publish bounded public development updates", async () => {
+  const admin = adminDb();
+  const seed = writeBatch(admin);
+  seed.set(doc(admin, "projects", "runner-game"), publicProject({
+    slug: "runner-game",
+    projectType: "gaming",
+    tokenAddress: "",
+    availableModules: ["game"],
+    gameStatus: "development"
+  }));
+  seed.set(doc(admin, "projectAssignments", "runner-game"), projectAssignment({
+    projectSlug: "runner-game",
+    allowedModules: ["game"]
+  }));
+  await assertSucceeds(seed.commit());
+
+  const owner = authenticatedDb();
+  const update = doc(owner, "projects", "runner-game", "gameUpdates", "alpha-release");
+  await assertSucceeds(setDoc(update, gameUpdate()));
+  await assertSucceeds(getDoc(doc(
+    testEnvironment.unauthenticatedContext().firestore(),
+    "projects",
+    "runner-game",
+    "gameUpdates",
+    "alpha-release"
+  )));
+  await assertFails(setDoc(
+    doc(authenticatedDb(OTHER_ID), "projects", "runner-game", "gameUpdates", "impostor-update"),
+    gameUpdate()
+  ));
+  await assertFails(setDoc(
+    doc(owner, "projects", "runner-game", "gameUpdates", "unsafe-link"),
+    gameUpdate({ link: "javascript:alert(1)" })
+  ));
+  await assertFails(setDoc(
+    doc(owner, "projects", "runner-game", "gameUpdates", "short-body"),
+    gameUpdate({ body: "Too short" })
+  ));
+  await assertFails(setDoc(
+    doc(owner, "projects", "runner-game", "gameUpdates", "extra-field"),
+    gameUpdate({ treasuryAddress: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" })
   ));
 });
 

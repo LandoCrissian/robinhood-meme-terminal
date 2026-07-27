@@ -10,6 +10,7 @@ import {
 } from "../../../lib/creator-application";
 import { getFirebaseClient } from "../../../lib/firebase-client";
 import { ipfsToHttp } from "../../../lib/token-metadata";
+import { GameReleaseUpdates } from "../../game-release-updates";
 import { ProjectCreatorControls } from "../../project-creator-controls";
 
 const MODULE_COPY: Record<RequestedProjectModule, { label: string; description: string }> = {
@@ -108,6 +109,7 @@ export function ApprovedProjectPage({ slug }: { slug: string }) {
       </section>
 
       {gameEnabled && (
+        <>
         <section className="panel approvedGameShowcase" aria-labelledby="game-showcase-title">
           <header>
             <div><p className="eyebrow">GAME CREATOR SHOWCASE</p><h2 id="game-showcase-title">{project.name}</h2><p>A dedicated home for the game, its current development state and where players can experience it.</p></div>
@@ -147,6 +149,8 @@ export function ApprovedProjectPage({ slug }: { slug: string }) {
           )}
           <small>External builds and stores are creator-supplied. RMT page approval is not a security review of downloadable software.</small>
         </section>
+        <GameReleaseUpdates projectSlug={project.slug} projectName={project.name} />
+        </>
       )}
 
       {project.tokenAddress && (

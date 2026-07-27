@@ -11,6 +11,10 @@ Wallet connection and profile authentication are deliberately separate. Firebase
 
 - `users/{uid}` stores schema version 1, the normalized profile, independent profile/watchlist update versions, the watchlist count, and a server timestamp.
 - `users/{uid}/watchlist/00` through `49` store at most 50 validated token records. Fixed slot IDs make the maximum enforceable in Firestore rules, while per-record rules validate addresses, text lengths, image schemes, launch IDs, and timestamps.
+- `creatorApplications/{uid}` stores the private, review-gated project application. Only the applicant and the RMT administrator can read it.
+- `projects/{slug}` stores the approved public page. The assigned creator may update bounded presentation fields but cannot change the token address, enabled modules, publication state, or ownership.
+- `projectAssignments/{slug}` privately maps an approved page to its verified Firebase owner and permitted modules.
+- `projects/{slug}/gameUpdates/{updateId}` stores bounded creator-authored milestones, playtests and releases for approved game pages. Visitors may read updates only while the parent page is live; only the verified assigned creator may write them.
 - Google account email and photo are read from the active Firebase Authentication session for the signed-in UI. RMT does not duplicate either value in Firestore.
 
 Local profile and watchlist records carry independent update versions. On sign-in, the latest profile and latest complete watchlist win separately. Newer deletions therefore stay deleted instead of being reintroduced by an older device. Firestore listeners deliver later changes to other open, signed-in RMT sessions.

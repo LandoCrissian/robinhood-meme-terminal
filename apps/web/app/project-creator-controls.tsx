@@ -20,10 +20,18 @@ import {
 } from "../lib/creator-application";
 import {
   requestModuleActivation,
+  publishGameUpdate,
   subscribeToModuleActivationRequests,
   subscribeToProjectAssignment,
   updateProjectIdentity
 } from "../lib/creator-application-cloud";
+import {
+  EMPTY_GAME_UPDATE,
+  GAME_UPDATE_TYPES,
+  validateGameUpdate,
+  type GameUpdateDraft,
+  type GameUpdateType
+} from "../lib/game-updates";
 import type {
   ModuleActivationRequest,
   ProjectAssignment
@@ -72,6 +80,13 @@ const MODE_LABELS: Record<GameMode, string> = {
   mmo: "MMO"
 };
 
+const UPDATE_TYPE_LABELS: Record<GameUpdateType, string> = {
+  development: "Development update",
+  milestone: "Milestone",
+  playtest: "Playtest",
+  release: "Release"
+};
+
 function requestLabel(request: ModuleActivationRequest | undefined) {
   if (!request) return "Request activation review";
   if (request.status === "requested") return "Review requested";
@@ -88,6 +103,9 @@ export function ProjectCreatorControls({ project }: { project: PublicProjectReco
   const [ownershipChecked, setOwnershipChecked] = useState(false);
   const [busyModule, setBusyModule] = useState<RequestedProjectModule | null>(null);
   const [savingIdentity, setSavingIdentity] = useState(false);
+  const [publishingUpdate, setPublishingUpdate] = useState(false);
+  const [gameUpdate, setGameUpdate] = useState<GameUpdateDraft>(EMPTY_GAME_UPDATE);
+  const [updateMessage, setUpdateMessage] = useState("");
   const [message, setMessage] = useState("");
   const [identity, setIdentity] = useState<ProjectIdentityDraft>(() => normalizeProjectIdentity(project));
   const isGaming = project.projectType === "gaming" || project.availableModules.includes("game");
@@ -198,6 +216,27 @@ export function ProjectCreatorControls({ project }: { project: PublicProjectReco
     }));
   };
 
+  const submitGameUpdate = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!user || !assignment || !isGaming) return;
+    const validationError = validateGameUpdate(gameUpdate);
+    if (validationError) {
+      setUpdateMessage(validationError);
+      return;
+    }
+    setPublishingUpdate(true);
+    setUpdateMessage("");
+    try {
+      await publishGameUpdate(user, project, gameUpdate);
+      setGameUpdate(EMPTY_GAME_UPDATE);
+      setUpdateMessage("Development update published to the public game page.");
+    } catch (error) {
+      setUpdateMessage(error instanceof Error ? error.message : "The development update could not be published.");
+    } finally {
+      setPublishingUpdate(false);
+    }
+  };
+
   if (profileLoading) return null;
   if (!user) {
     return (
@@ -239,6 +278,25 @@ export function ProjectCreatorControls({ project }: { project: PublicProjectReco
         </div>
         <button type="submit" disabled={savingIdentity}>{savingIdentity ? "Saving identity…" : "Save public identity"}</button>
       </form>
+      {isGaming && (
+        <form className="creatorGameUpdateEditor" onSubmit={submitGameUpdate}>
+          <div className="creatorIdentityHeading">
+            <div><strong>Publish a development update</strong><p>Share a milestone, playtest or release with players following the public game page.</p></div>
+            <span>CREATOR AUTHORED</span>
+          </div>
+          <div className="creatorGameUpdateFields">
+            <label>Update type<select value={gameUpdate.type} onChange={(event) => setGameUpdate((current) => ({ ...current, type: event.target.value as GameUpdateType }))}>{GAME_UPDATE_TYPES.map((type) => <option value={type} key={type}>{UPDATE_TYPE_LABELS[type]}</option>)}</select></label>
+            <label>Version or build<input maxLength={24} placeholder="Optional · v0.4.2" value={gameUpdate.version} onChange={(event) => setGameUpdate((current) => ({ ...current, version: event.target.value }))} /></label>
+            <label className="creatorIdentityWide">Title<input maxLength={80} placeholder="What changed?" value={gameUpdate.title} onChange={(event) => setGameUpdate((current) => ({ ...current, title: event.target.value }))} /></label>
+            <label className="creatorIdentityWide">Details<textarea maxLength={600} placeholder="Explain the milestone, playtest or release in plain language." value={gameUpdate.body} onChange={(event) => setGameUpdate((current) => ({ ...current, body: event.target.value }))} /></label>
+            <label>Update link<input maxLength={256} inputMode="url" placeholder="Optional · https://" value={gameUpdate.link} onChange={(event) => setGameUpdate((current) => ({ ...current, link: event.target.value }))} /></label>
+            <label>Artwork or screenshot<input maxLength={512} inputMode="url" placeholder="Optional · https:// or ipfs://" value={gameUpdate.imageUri} onChange={(event) => setGameUpdate((current) => ({ ...current, imageUri: event.target.value }))} /></label>
+          </div>
+          <button type="submit" disabled={publishingUpdate}>{publishingUpdate ? "Publishing update…" : "Publish development update"}</button>
+          <p>Updates become public immediately under the assigned creator identity. External links and files remain creator-supplied.</p>
+          {updateMessage && <p className="creatorControlMessage" role="status">{updateMessage}</p>}
+        </form>
+      )}
       <div className="creatorCapabilityHeading"><strong>Optional project modules</strong><span>SEPARATE REVIEW</span></div>
       <div className="creatorControlGrid">
         {PROJECT_MODULES.filter((module) => assignment.allowedModules.includes(module)).map((module) => {
