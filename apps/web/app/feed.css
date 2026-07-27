@@ -298,9 +298,9 @@
 .externalUniswapError,.externalUniswapMessage{margin:9px 0 0;padding:9px 10px;border:1px solid #49302d;border-radius:9px;background:#1a0d0b;color:#e9a899;font-size:.6rem;line-height:1.45}
 .externalUniswapMessage{border-color:#294932;background:#0b180f;color:#8ee79e}
 .externalUniswapMessage a{color:#b8f5c3;font-weight:850}
-.externalTradeActionDock{display:grid;flex:0 0 auto;grid-template-columns:minmax(0,1fr) minmax(210px,.5fr);align-items:center;gap:10px;padding:10px 14px;border-top:1px solid #29382f;background:#090e0b}
-.externalTradeActionDock a{display:flex;min-height:48px;align-items:center;justify-content:center;border-radius:11px;background:#55ed71;color:#031507;font-size:.74rem;font-weight:950;text-decoration:none}
-.externalTradeActionDock.sell a{background:#8b3139;color:#fff}
+.externalTradeActionDock{display:flex;flex:0 0 auto;align-items:center;justify-content:center;gap:12px;padding:8px 14px;border-top:1px solid #29382f;background:#090e0b}
+.externalTradeActionDock a{display:flex;min-height:34px;align-items:center;justify-content:center;padding:0 13px;border:1px solid #32443a;border-radius:8px;background:#101712;color:#93a89a;font-size:.61rem;font-weight:900;text-decoration:none}
+.externalTradeActionDock.sell a{background:#101712;color:#93a89a}
 .externalTradeActionDock small{color:#77847b;font-size:.61rem;line-height:1.45}
 
 @media(max-width:820px){
@@ -337,7 +337,7 @@
   .externalSushiResult dl>div:last-child{border-bottom:0}
   .tradeConfidenceChecks{grid-template-columns:1fr}
   .tradeConfidenceChecks>span{min-height:38px;align-items:center}
-  .externalTradeActionDock{grid-template-columns:1fr}
+  .externalTradeActionDock{align-items:stretch;flex-direction:column;gap:6px}
   .externalTradeActionDock small{text-align:center}
 }
 
