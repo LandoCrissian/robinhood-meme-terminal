@@ -5,11 +5,11 @@ import { SiteFooter } from "../site-footer";
 
 export const metadata: Metadata = {
   title: "Explore RMT Projects | RMT",
-  description: "Discover approved RMT project pages and trade factory-verified RMT-native tokens.",
+  description: "Discover approved RMT projects, creator-built games and factory-verified RMT-native tokens.",
   alternates: { canonical: "/explore" },
   openGraph: {
     title: "Explore RMT Projects | RMT",
-    description: "The home for approved RMT ecosystem pages and factory-verified RMT-native projects.",
+    description: "The home for approved RMT projects, creator-built games and factory-verified RMT-native markets.",
     url: "/explore",
     images: ["/brand/rmt-master-logo.png"]
   }
@@ -19,7 +19,7 @@ export default function ExplorePage() {
   return (
     <main className="directoryPage focusedDirectory">
       <section className="terminalIntro">
-        <div><p className="eyebrow">EXPLORE · RMT PROJECT ECOSYSTEM</p><h1>Projects first. Markets verified.</h1><p>Discover approved ecosystem pages, then trade only where RMT can verify the active factory and market origin.</p></div>
+        <div><p className="eyebrow">EXPLORE · RMT CREATOR ECOSYSTEM</p><h1>Projects, games and verified markets.</h1><p>Discover approved creator worlds—including projects without tokens—then trade only where RMT can verify the active factory and market origin.</p></div>
       </section>
       <ApprovedProjectDirectory />
       <FreshLaunchFeed />
