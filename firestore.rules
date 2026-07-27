@@ -432,14 +432,14 @@ service cloud.firestore {
         && data.updatedAt is timestamp;
     }
 
-    function followAddsOneToStats(userId, projectId) {
+    function followAddsOneToStats(projectId) {
       let statsPath = /databases/$(database)/documents/projectStats/$(projectId);
       return existsAfter(statsPath)
         && getAfter(statsPath).data.followerCount
           == (exists(statsPath) ? get(statsPath).data.followerCount + 1 : 1);
     }
 
-    function followRemovesOneFromStats(userId, projectId) {
+    function followRemovesOneFromStats(projectId) {
       let statsPath = /databases/$(database)/documents/projectStats/$(projectId);
       return exists(statsPath)
         && existsAfter(statsPath)
@@ -552,9 +552,9 @@ service cloud.firestore {
           && get(/databases/$(database)/documents/projects/$(projectId)).data.status == 'live'
           && validProjectFollow(projectId, request.resource.data)
           && request.resource.data.followedAt == request.time
-          && followAddsOneToStats(userId, projectId);
+          && followAddsOneToStats(projectId);
         allow delete: if ownsProfile(userId)
-          && followRemovesOneFromStats(userId, projectId);
+          && followRemovesOneFromStats(projectId);
       }
     }
 
