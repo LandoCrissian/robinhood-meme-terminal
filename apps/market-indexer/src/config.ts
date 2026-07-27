@@ -8,6 +8,7 @@ export type MarketIndexerConfig = Readonly<{
   confirmations: number;
   batchSize: number;
   pollIntervalMs: number;
+  heartbeatIntervalMs: number;
   databasePoolSize: number;
   databaseSizeLimitBytes: number | null;
   databaseSsl: boolean;
@@ -153,6 +154,13 @@ export function loadMarketIndexerConfig(
       5_000,
       1_000,
       300_000,
+      env
+    ),
+    heartbeatIntervalMs: integer(
+      "MARKET_INDEXER_HEARTBEAT_INTERVAL_MS",
+      60_000,
+      10_000,
+      3_600_000,
       env
     ),
     databasePoolSize: integer("MARKET_INDEXER_DB_POOL_SIZE", 5, 1, 50, env),

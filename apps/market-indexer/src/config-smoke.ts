@@ -12,6 +12,7 @@ const base = {
 const config = loadMarketIndexerConfig(base);
 assert.equal(config.confirmations, 20);
 assert.equal(config.batchSize, 5_000);
+assert.equal(config.heartbeatIntervalMs, 60_000);
 assert.equal(config.databaseSsl, false);
 assert.equal(config.storageMode, "durable");
 assert.equal(config.databaseSizeLimitBytes, null);
@@ -78,6 +79,14 @@ assert.throws(
       MARKET_INDEXER_MAX_DATABASE_MB: "63"
     }),
   /between 64 and 1000000/
+);
+assert.throws(
+  () =>
+    loadMarketIndexerConfig({
+      ...base,
+      MARKET_INDEXER_HEARTBEAT_INTERVAL_MS: "9999"
+    }),
+  /between 10000 and 3600000/
 );
 
 console.info("market indexer config smoke passed");

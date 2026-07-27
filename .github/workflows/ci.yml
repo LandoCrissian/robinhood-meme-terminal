@@ -145,6 +145,8 @@ jobs:
       - run: pnpm --filter market-indexer test:decoder
       - run: pnpm --filter market-indexer test:replay
       - run: pnpm --filter market-indexer test:schema
+      - run: pnpm --filter market-indexer test:telemetry
+      - run: pnpm --filter market-indexer test:server
 
   contracts:
     runs-on: ubuntu-latest

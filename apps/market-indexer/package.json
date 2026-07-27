@@ -11,7 +11,9 @@
     "test:config": "tsx src/config-smoke.ts",
     "test:decoder": "tsx src/decoder-smoke.ts",
     "test:replay": "tsx src/replay-smoke.ts",
-    "test:schema": "tsx src/schema-smoke.ts"
+    "test:schema": "tsx src/schema-smoke.ts",
+    "test:telemetry": "tsx src/telemetry-smoke.ts",
+    "test:server": "tsx src/server-smoke.ts"
   },
   "dependencies": {
     "pg": "8.22.0",

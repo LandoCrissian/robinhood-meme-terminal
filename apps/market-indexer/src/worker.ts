@@ -16,13 +16,23 @@ import {
   marketSources,
   type MarketSource
 } from "./sources.js";
+import {
+  readMarketIndexerTelemetry,
+  type MarketIndexerTelemetry
+} from "./telemetry.js";
 
 export type WorkerStatus = {
   running: boolean;
+  cycleSequence: number;
   verifiedSources: string[];
   indexedThrough: Record<string, string | null>;
   lastSyncAt: string | null;
   lastError: string | null;
+  lastCycleStartedAt: string | null;
+  lastCycleCompletedAt: string | null;
+  lastCycleDurationMs: number | null;
+  lastFinalizedHead: string | null;
+  telemetry: MarketIndexerTelemetry | null;
 };
 
 const robinhoodChain = defineChain({
@@ -113,15 +123,23 @@ async function insertPool(
 export class MarketIndexerWorker {
   readonly status: WorkerStatus = {
     running: false,
+    cycleSequence: 0,
     verifiedSources: [],
     indexedThrough: Object.fromEntries(marketSources.map((source) => [source.id, null])),
     lastSyncAt: null,
-    lastError: null
+    lastError: null,
+    lastCycleStartedAt: null,
+    lastCycleCompletedAt: null,
+    lastCycleDurationMs: null,
+    lastFinalizedHead: null,
+    telemetry: null
   };
 
   private readonly rpc: PublicClient;
   private timer: NodeJS.Timeout | null = null;
   private stopped = false;
+  private lastHeartbeatLogAt = 0;
+  private lastHeartbeatError: string | null = null;
 
   constructor(
     private readonly pool: Pool,
@@ -351,16 +369,74 @@ export class MarketIndexerWorker {
     }
   }
 
+  private async refreshTelemetry(finalizedHead: bigint | null) {
+    const telemetry = await readMarketIndexerTelemetry(
+      this.pool,
+      finalizedHead,
+      this.config.databaseSizeLimitBytes
+    );
+    this.status.telemetry = telemetry;
+    this.status.lastFinalizedHead = telemetry.finalizedHead;
+    for (const source of telemetry.sources) {
+      this.status.indexedThrough[source.sourceId] = source.indexedThrough;
+    }
+  }
+
+  private logHeartbeat() {
+    const now = Date.now();
+    const errorChanged = this.status.lastError !== this.lastHeartbeatError;
+    if (
+      this.lastHeartbeatLogAt !== 0 &&
+      now - this.lastHeartbeatLogAt < this.config.heartbeatIntervalMs &&
+      !errorChanged
+    ) {
+      return;
+    }
+    this.lastHeartbeatLogAt = now;
+    this.lastHeartbeatError = this.status.lastError;
+    const telemetry = this.status.telemetry;
+    console.info(
+      JSON.stringify({
+        event: "market_indexer_heartbeat",
+        mode: "shadow",
+        authoritative: false,
+        servingProductionTraffic: false,
+        cycleSequence: this.status.cycleSequence,
+        lastCycleCompletedAt: this.status.lastCycleCompletedAt,
+        lastCycleDurationMs: this.status.lastCycleDurationMs,
+        finalizedHead: this.status.lastFinalizedHead,
+        totalPools: telemetry?.totalPools ?? null,
+        database: telemetry?.database ?? null,
+        sources:
+          telemetry?.sources.map((source) => ({
+            sourceId: source.sourceId,
+            status: source.status,
+            indexedThrough: source.indexedThrough,
+            lagBlocks: source.lagBlocks,
+            poolCount: source.poolCount,
+            lastSyncAt: source.lastSyncAt,
+            error: source.error
+          })) ?? [],
+        error: this.status.lastError
+      })
+    );
+  }
+
   async tick() {
     if (this.status.running || this.stopped) return;
     this.status.running = true;
+    this.status.cycleSequence += 1;
+    const startedAt = Date.now();
+    this.status.lastCycleStartedAt = new Date(startedAt).toISOString();
+    let finalizedHead: bigint | null = null;
+    let thrown: unknown = null;
     try {
       await this.assertDatabaseWithinLimit();
       await this.restoreRebuildableStateIfNeeded();
       const head = await this.rpc.getBlockNumber();
       const confirmations = BigInt(this.config.confirmations);
       if (head <= confirmations) throw new Error("chain head is below confirmation depth");
-      const finalizedHead = head - confirmations;
+      finalizedHead = head - confirmations;
       let failure: Error | null = null;
       for (const source of marketSources) {
         try {
@@ -377,9 +453,25 @@ export class MarketIndexerWorker {
         }
       }
       this.status.lastError = failure?.message ?? null;
+    } catch (error) {
+      thrown = error;
+      this.status.lastError = errorText(error);
     } finally {
+      try {
+        await this.refreshTelemetry(finalizedHead);
+      } catch (error) {
+        const message = `telemetry: ${errorText(error)}`;
+        this.status.lastError = this.status.lastError
+          ? `${this.status.lastError}; ${message}`.slice(0, 4_096)
+          : message;
+      }
+      const completedAt = Date.now();
+      this.status.lastCycleCompletedAt = new Date(completedAt).toISOString();
+      this.status.lastCycleDurationMs = completedAt - startedAt;
       this.status.running = false;
+      this.logHeartbeat();
     }
+    if (thrown) throw thrown;
   }
 
   start() {

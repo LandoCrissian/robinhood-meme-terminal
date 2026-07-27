@@ -68,7 +68,10 @@ exists, the service stops instead of guessing.
   compiled in, preventing a hosting platform from routing production traffic.
 - `GET /health` is public and labels every response `mode: shadow`,
   `authoritative: false`, `servingProductionTraffic: false`, and reports the
-  configured storage mode.
+  configured storage mode. It exposes only operational summaries: heartbeat
+  age, logical database pressure, aggregate pool count, source state, and lag.
+- `GET /v1/status` requires the internal bearer token and returns the detailed
+  per-source telemetry snapshot used for private shadow verification.
 - `GET /v1/pools` requires the internal bearer token and carries the same
   non-authoritative label.
 
@@ -86,6 +89,8 @@ pnpm --filter market-indexer test:config
 pnpm --filter market-indexer test:decoder
 pnpm --filter market-indexer test:replay
 pnpm --filter market-indexer test:schema
+pnpm --filter market-indexer test:telemetry
+pnpm --filter market-indexer test:server
 ```
 
 ## Cutover blockers
@@ -139,3 +144,20 @@ Before every indexing cycle, the worker checks `pg_database_size` and fails
 closed before derived table growth can consume the reserved recovery space.
 This is a rehearsal guardrail, not a substitute for correctly sized production
 storage and monitoring.
+
+### Observability and storage scope
+
+The worker emits a structured `market_indexer_heartbeat` log at most once per
+`MARKET_INDEXER_HEARTBEAT_INTERVAL_MS` (60 seconds by default), plus an immediate
+heartbeat whenever the error state changes. Each heartbeat includes the
+finalized head, cycle duration, aggregate pool count, per-source progress and
+lag, and logical database pressure. This is operational telemetry only and does
+not unlock readiness or make the feed authoritative.
+
+Database telemetry deliberately reports
+`scope: logical-database-only` and `providerVolumeIncluded: false`.
+`pg_database_size` measures the PostgreSQL logical database; it does not measure
+the hosting volume's operating files, write-ahead logs, backups, snapshots, or
+other provider overhead. Railway volume usage must therefore be monitored
+separately. The logical cap cannot guarantee that a small provider volume will
+not fill.
