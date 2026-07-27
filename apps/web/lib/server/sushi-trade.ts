@@ -1,17 +1,31 @@
 import { getAddress, zeroAddress, type Address } from "viem";
 import { z } from "zod";
-import { activeChain, isMainnetRelease } from "../network";
-import { SUSHI_NATIVE_TOKEN, SUSHI_QUOTE_SLIPPAGE_BPS, type SushiIndicativeQuote } from "../sushi";
+import { activeChain } from "../network";
+import {
+  SUSHI_NATIVE_TOKEN,
+  SUSHI_QUOTE_SLIPPAGE_BPS,
+  type SushiIndicativeQuote,
+  type SushiTokenMetadata
+} from "../sushi";
 
 const SUSHI_QUOTE_API = "https://api.sushi.com/quote/v7";
 const MAX_UINT256 = (1n << 256n) - 1n;
 const decimalString = z.string().regex(/^\d+$/);
+const tokenMetadataSchema = z.object({
+  address: z.string(),
+  symbol: z.string().min(1).max(40),
+  name: z.string().min(1).max(120),
+  decimals: z.number().int().min(0).max(255)
+});
 const quoteResponseSchema = z.object({
   status: z.enum(["Success", "Partial", "NoWay"]),
   amountIn: decimalString.optional(),
   assumedAmountOut: decimalString.optional(),
   amountOut: decimalString.optional(),
-  priceImpact: z.union([z.number(), z.string()]).optional()
+  priceImpact: z.union([z.number(), z.string()]).optional(),
+  tokenFrom: z.number().int().nonnegative().optional(),
+  tokenTo: z.number().int().nonnegative().optional(),
+  tokens: z.array(tokenMetadataSchema).max(64).optional()
 }).passthrough();
 
 type SushiFetch = (input: string | URL, init?: RequestInit) => Promise<Response>;
@@ -28,18 +42,45 @@ function parsePriceImpact(value: number | string | undefined) {
   return parsed;
 }
 
+function quoteTokenMetadata(
+  tokens: z.infer<typeof tokenMetadataSchema>[] | undefined,
+  index: number | undefined,
+  expectedAddress: Address
+): SushiTokenMetadata | undefined {
+  if (!tokens || index === undefined) return undefined;
+  const token = tokens[index];
+  if (!token) throw new Error("Sushi returned invalid token metadata.");
+  let address: Address;
+  try {
+    address = getAddress(token.address);
+  } catch {
+    throw new Error("Sushi returned invalid token metadata.");
+  }
+  if (address.toLowerCase() !== expectedAddress.toLowerCase()) {
+    throw new Error("Sushi returned token metadata for a different route.");
+  }
+  return { ...token, address };
+}
+
 export async function quoteSushiRoute(
   params: { token: Address; recipient: Address; side: "buy" | "sell"; amountIn: bigint },
-  dependencies: { fetch?: SushiFetch; enabled?: boolean; timeoutMs?: number } = {}
+  dependencies: {
+    fetch?: SushiFetch;
+    enabled?: boolean;
+    timeoutMs?: number;
+    chainId?: number;
+    requireTokenMetadata?: boolean;
+  } = {}
 ): Promise<SushiIndicativeQuote> {
-  if (!isMainnetRelease || activeChain.id !== 4663) throw new Error("Sushi quotes are available only on Robinhood Chain mainnet.");
+  const chainId = dependencies.chainId ?? activeChain.id;
+  if (chainId !== 4663) throw new Error("Sushi quotes are available only on Robinhood Chain mainnet.");
   if (!(dependencies.enabled ?? sushiQuotesEnabled())) throw new Error("Sushi quote discovery is not enabled.");
   if (params.amountIn <= 0n || params.amountIn > MAX_UINT256) throw new Error("Trade amount is outside the supported range.");
   if (params.recipient.toLowerCase() === zeroAddress) throw new Error("A valid wallet recipient is required.");
 
   const tokenIn = params.side === "buy" ? SUSHI_NATIVE_TOKEN : params.token;
   const tokenOut = params.side === "buy" ? params.token : SUSHI_NATIVE_TOKEN;
-  const url = new URL(`${SUSHI_QUOTE_API}/${activeChain.id}`);
+  const url = new URL(`${SUSHI_QUOTE_API}/${chainId}`);
   url.searchParams.set("tokenIn", tokenIn);
   url.searchParams.set("tokenOut", tokenOut);
   url.searchParams.set("amount", params.amountIn.toString());
@@ -73,9 +114,14 @@ export async function quoteSushiRoute(
   const quoteOut = BigInt(rawQuoteOut);
   const minimumOut = quoteOut * BigInt(10_000 - SUSHI_QUOTE_SLIPPAGE_BPS) / 10_000n;
   if (quoteOut <= 0n || minimumOut <= 0n) throw new Error("Sushi returned an invalid quote amount.");
+  const inputToken = quoteTokenMetadata(parsed.data.tokens, parsed.data.tokenFrom, tokenIn);
+  const outputToken = quoteTokenMetadata(parsed.data.tokens, parsed.data.tokenTo, tokenOut);
+  if (dependencies.requireTokenMetadata && (!inputToken || !outputToken)) {
+    throw new Error("Sushi returned incomplete token metadata.");
+  }
 
   return {
-    chainId: activeChain.id,
+    chainId,
     venue: "sushi-aggregator",
     protocol: "SUSHI",
     token: getAddress(params.token),
@@ -85,6 +131,8 @@ export async function quoteSushiRoute(
     quoteOut: quoteOut.toString(),
     minimumOut: minimumOut.toString(),
     priceImpact: parsePriceImpact(parsed.data.priceImpact),
+    inputToken,
+    outputToken,
     executable: false,
     verifiedInput: true
   };

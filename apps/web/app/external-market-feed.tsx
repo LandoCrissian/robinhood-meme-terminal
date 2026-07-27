@@ -10,6 +10,7 @@ import {
 import { isNonzeroEvmAddress } from "../lib/external-market-identity";
 import type { ExternalMarketRiskFlag, ExternalMarketSignal } from "../lib/external-market-ranking";
 import { ipfsToHttp } from "../lib/token-metadata";
+import { ExternalSushiQuotePanel } from "./external-sushi-quote-panel";
 
 type FeedStatus = "loading" | "ready" | "stale" | "error";
 
@@ -292,6 +293,8 @@ function ExternalTradeDialog({
           </div>
         </section>
 
+        {isSushiVenue(market) && <ExternalSushiQuotePanel market={market} side={side} />}
+
         <section className="externalTradePulse" aria-labelledby="external-market-pulse">
           <header><div><small>MARKET PULSE</small><strong id="external-market-pulse">Momentum and flow</strong></div><a href={market.url} target="_blank" rel="noopener noreferrer">Full chart ↗</a></header>
           <div className="externalTradeChanges">
@@ -326,8 +329,14 @@ function ExternalTradeDialog({
       </div>
 
       <div className={`externalTradeActionDock ${side}`}>
-        <a href={reviewUrl} target="_blank" rel="noopener noreferrer">{"Review " + sideLabel + " on " + provider + " ↗"}</a>
-        <small>{provider} calculates the final route, price impact, and minimum received.</small>
+        <a href={reviewUrl} target="_blank" rel="noopener noreferrer">
+          {isSushiVenue(market) ? "Continue to Sushi to execute ↗" : "Review " + sideLabel + " on " + provider + " ↗"}
+        </a>
+        <small>
+          {isSushiVenue(market)
+            ? "RMT verifies the market and quote; Sushi prepares the final wallet transaction."
+            : provider + " calculates the final route, price impact, and minimum received."}
+        </small>
       </div>
       <footer className="quickTradeFooter">
         <span>Fresh {provider} quote required</span>

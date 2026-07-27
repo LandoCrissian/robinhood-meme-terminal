@@ -2,13 +2,15 @@
 
 RMT integrates Sushi in stages so a new venue cannot weaken the verified V6 execution path.
 
-## Current stage: indicative quote discovery
+## Current stage: verified in-terminal quote discovery
 
 - `apps/web/lib/server/sushi-trade.ts` calls Sushi's official v7 Quote API for Robinhood Chain (`4663`).
 - The same-origin `/api/trade/sushi-quote` route accepts only an origin-verified active V6 launch ID and matching token address.
+- The same-origin `/api/trade/external-sushi-quote` route supports external Sushi markets in Terminal only after RMT independently re-verifies the exact token, pair, Sushi venue, Robinhood Chain identity, DEX Screener URL, and minimum live liquidity.
+- Terminal displays Sushi's token metadata, exact estimated output, RMT's 1% minimum output, and price impact. The response must match the requested token, pair, wallet, side, amount, and chain or the client rejects it.
 - Responses are explicitly marked `executable: false`. RMT does not forward opaque aggregator calldata to a wallet.
 - `NoWay`, partial fills, changed input amounts, invalid output amounts, excessive/invalid price impact values, upstream failures, and timeouts fail closed.
-- The integration is off unless both `NEXT_PUBLIC_RMT_SUSHI_QUOTES_ENABLED=true` and `RMT_SUSHI_QUOTES_ENABLED=true` are intentionally deployed.
+- V6 launch previews remain off unless both `NEXT_PUBLIC_RMT_SUSHI_QUOTES_ENABLED=true` and `RMT_SUSHI_QUOTES_ENABLED=true` are intentionally deployed. External Terminal quotes require the server-only `RMT_SUSHI_QUOTES_ENABLED=true` flag.
 
 The current production Uniswap V4 graduation and execution path remains unchanged.
 
@@ -24,8 +26,8 @@ Do not enable Sushi execution until Sushi confirms the canonical Robinhood Chain
 
 ### Verified Robinhood Chain boundary
 
-Read-only verification performed on 2026-07-17 against Sushi's official SDK at commit
-`585b3d75f201df3e7f45c015c4136b0299f07074` and live Robinhood Chain bytecode:
+Read-only verification was refreshed on 2026-07-27 against Sushi's official SDK at commit
+`f3be96d13f5cca54589b0509c46bb8bdb2583f03` and live Robinhood Chain bytecode:
 
 | Contract | Address | Runtime bytecode hash |
 | --- | --- | --- |
@@ -59,6 +61,20 @@ forward Sushi Swap API calldata to a wallet yet. The safe next implementation is
    bytecode, uses exact approvals, and is exercised on a Robinhood Chain fork.
 
 Production Sushi execution remains disabled.
+
+## External market adversarial checks
+
+`pnpm --filter web test:external-sushi` proves that external quotes fail closed when:
+
+- the requested pair disappears or a different pair is returned;
+- the chain or venue changes;
+- the token is absent from the pair;
+- the market URL is outside DEX Screener's Robinhood Chain namespace;
+- liquidity drops below RMT's display threshold;
+- the upstream response is malformed or unavailable.
+
+`pnpm --filter web test:sushi-trade` separately verifies quote token metadata and rejects
+changed route tokens in addition to the pinned execution-boundary tests.
 
 Official references:
 

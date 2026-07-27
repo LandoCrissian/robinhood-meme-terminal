@@ -74,13 +74,21 @@ async function main() {
     { token, recipient, side: "buy", amountIn },
     {
       enabled: true,
+      chainId: 4663,
+      requireTokenMetadata: true,
       fetch: async (input) => {
         requestedUrl = input.toString();
         return Response.json({
           status: "Success",
           amountIn: amountIn.toString(),
           assumedAmountOut: "2500000000000000000",
-          priceImpact: 0.004
+          priceImpact: 0.004,
+          tokenFrom: 0,
+          tokenTo: 1,
+          tokens: [
+            { address: nativeToken, symbol: "ETH", name: "Ether", decimals: 18 },
+            { address: token, symbol: "RMT", name: "Robinhood Meme Terminal", decimals: 18 }
+          ]
         });
       }
     }
@@ -100,6 +108,8 @@ async function main() {
   assert.equal(success.priceImpact, 0.004);
   assert.equal(success.executable, false);
   assert.equal(success.verifiedInput, true);
+  assert.equal(success.inputToken?.symbol, "ETH");
+  assert.equal(success.outputToken?.symbol, "RMT");
 
   await assert.rejects(
     quoteSushiRoute({ token, recipient, side: "buy", amountIn }, { enabled: false }),
@@ -124,6 +134,40 @@ async function main() {
   await assert.rejects(
     quoteSushiRoute({ token, recipient, side: "buy", amountIn }, { enabled: true, fetch: async () => Response.json({ status: "Success", amountIn: amountIn.toString(), amountOut: "10", priceImpact: "" }) }),
     /invalid price impact/
+  );
+  await assert.rejects(
+    quoteSushiRoute(
+      { token, recipient, side: "buy", amountIn },
+      {
+        enabled: true,
+        chainId: 4663,
+        requireTokenMetadata: true,
+        fetch: async () => Response.json({
+          status: "Success",
+          amountIn: amountIn.toString(),
+          amountOut: "10",
+          tokenFrom: 0,
+          tokenTo: 1,
+          tokens: [
+            { address: nativeToken, symbol: "ETH", name: "Ether", decimals: 18 },
+            { address: recipient, symbol: "BAD", name: "Wrong token", decimals: 18 }
+          ]
+        })
+      }
+    ),
+    /different route/
+  );
+  await assert.rejects(
+    quoteSushiRoute(
+      { token, recipient, side: "buy", amountIn },
+      {
+        enabled: true,
+        chainId: 4663,
+        requireTokenMetadata: true,
+        fetch: async () => Response.json({ status: "Success", amountIn: amountIn.toString(), amountOut: "10" })
+      }
+    ),
+    /incomplete token metadata/
   );
 
   const auditedSwap = await auditSushiSwapCandidate(
