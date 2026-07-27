@@ -3,19 +3,19 @@ import Link from "next/link";
 import { SiteFooter } from "../site-footer";
 
 export const metadata: Metadata = {
-  title: "Sushi Integration Proposal · RMT",
-  description: "Review RMT's live Robinhood Chain launchpad and its research proposal for a future safety-reviewed Sushi integration.",
+  title: "Sushi Trading on Robinhood Chain · RMT",
+  description: "Trade qualified Robinhood Chain Sushi markets inside RMT with verified pool matching, decoded calldata, exact approvals, simulation and plain-language risk review.",
   alternates: { canonical: "/sushi" },
   openGraph: {
-    title: "RMT Sushi integration proposal",
-    description: "RMT V6 is live on Robinhood Chain. No Sushi execution or liquidity is active in production; this page documents the proposed research path.",
+    title: "Sushi trading is live inside RMT",
+    description: "RMT now supports guarded, non-custodial Sushi execution for qualified external Robinhood Chain markets.",
     url: "/sushi",
     images: ["/brand/rmt-master-logo.png"]
   },
   twitter: {
     card: "summary",
-    title: "RMT Sushi integration proposal",
-    description: "RMT V6 is live on Robinhood Chain. Sushi execution and liquidity are not enabled in production.",
+    title: "Sushi trading is live inside RMT",
+    description: "Guarded, non-custodial Sushi execution for qualified external Robinhood Chain markets.",
     images: ["/brand/rmt-master-logo.png"]
   }
 };
@@ -24,8 +24,8 @@ const checks = [
   ["01", "Live RMT origin", "Native RMT V6 controls require an active launch recorded by the canonical factory.", "LIVE"],
   ["02", "Native RMT trade", "Curve buy and sell execution is live; graduation uses RMT's canonical V4 adapter path.", "LIVE"],
   ["03", "Sushi deployments", "Pinned Sushi source publishes Robinhood V3 and RedSnwapper addresses.", "SOURCE PINNED"],
-  ["04", "Production architecture", "A separate V3 liquidity and execution design still needs to be defined and reviewed.", "RESEARCH"],
-  ["05", "Review + deployment", "Contract and app work, security review, liquidity and a production release are not complete.", "NOT ENABLED"]
+  ["04", "Guarded Sushi execution", "RMT validates Sushi calldata, contract bytecode, minimum output and simulation before wallet submission.", "LIVE"],
+  ["05", "V7 launch liquidity", "Sushi liquidity for future RMT-native launches remains a separate architecture and security-review track.", "RESEARCH"]
 ] as const;
 
 const officialToken = "0xdBa33be56C89CC9fc014c4459028d7e5c7878671";
@@ -42,9 +42,9 @@ export default function SushiIntegrationPage() {
     <main className="sushiLabPage">
       <section className="sushiLabHero">
         <div className="sushiLabHeroCopy">
-          <p className="eyebrow">LIVE RMT V6 · SUSHI INTEGRATION PROPOSAL · NO PRODUCTION SUSHI EXECUTION</p>
-          <h1>A live Robinhood Chain launchpad, ready for Sushi&apos;s review.</h1>
-          <p>RMT V6 is live for fixed-supply launches and wallet-confirmed curve trades. We are seeking Sushi&apos;s technical guidance on a separate production V3 liquidity path and a safe RedSnwapper execution boundary.</p>
+          <p className="eyebrow">ROBINHOOD CHAIN · GUARDED SUSHI EXECUTION · LIVE</p>
+          <h1>Sushi trading is live inside RMT.</h1>
+          <p>Users can now trade qualified external Sushi markets without leaving Terminal. RMT re-verifies the displayed pool, decodes and validates the route, requires simulation, uses exact sell approvals and keeps final authority in the user&apos;s wallet.</p>
           <div className="sushiLabActions">
             <Link className="sushiLabPrimary" href={`/project/${officialToken}?launch=0#trade`}>Inspect live RMT project</Link>
             <Link href="/status">Verify system health</Link>
@@ -55,15 +55,15 @@ export default function SushiIntegrationPage() {
           <div className="sushiLabPulseTop"><span><i aria-hidden="true" />MAINNET PRODUCT LIVE</span><b>RHC 4663</b></div>
           <strong>LIVE</strong>
           <p>RMT V6 product status</p>
-          <small>Sushi integration is a proposal, not a production feature.</small>
+          <small>External Sushi trading is live; V7 launch liquidity remains a separate research track.</small>
         </div>
       </section>
 
       <section className="sushiLabStatus" aria-label="Integration status">
         <div><small>RMT MAINNET</small><strong>LIVE</strong><span>Origin-verified V6</span></div>
-        <div><small>PUBLIC LAUNCHES</small><strong>OPEN</strong><span>Fair Start available</span></div>
-        <div><small>SUSHI QUOTE PREVIEW</small><strong className="held">OFF</strong><span>Production-disabled</span></div>
-        <div><small>SUSHI SWAPS / LIQUIDITY</small><strong className="held">NONE</strong><span>Not enabled</span></div>
+        <div><small>NEW RMT LAUNCHES</small><strong className="held">PAUSED</strong><span>V7 preparation</span></div>
+        <div><small>SUSHI ROUTES</small><strong>LIVE</strong><span>Validated + simulated</span></div>
+        <div><small>V7 SUSHI LIQUIDITY</small><strong className="held">RESEARCH</strong><span>Not deployed</span></div>
       </section>
 
       <section className="sushiFairLaunch">
@@ -85,14 +85,14 @@ export default function SushiIntegrationPage() {
       <section className="sushiLabWorkspace">
         <div className="sushiLabFlow">
           <header><div><p className="eyebrow">RMT RESEARCH TRACK</p><h2>What is live, sourced and still missing</h2></div><span>RMT&apos;s status, not Sushi approval</span></header>
-          <ol>{checks.map(([number, title, detail, status], index) => <li className={index >= 3 ? "pending" : "complete"} key={number}><span>{number}</span><div><strong>{title}</strong><p>{detail}</p></div><b>{status}</b></li>)}</ol>
+          <ol>{checks.map(([number, title, detail, status], index) => <li className={index >= 4 ? "pending" : "complete"} key={number}><span>{number}</span><div><strong>{title}</strong><p>{detail}</p></div><b>{status}</b></li>)}</ol>
         </div>
 
         <aside className="sushiLabRail">
           <section className="sushiLabAsk">
             <p className="eyebrow">READY FOR SUSHI REVIEW</p>
             <h2>The ask is specific, but not small.</h2>
-            <p>Confirm executor and rotation provenance, the supported expiry guard, and a production V3 architecture for launchpad tokens. We also need written July eligibility and submission rules. Any Sushi integration would be a separate reviewed release.</p>
+            <p>External execution is live with pinned runtime bytecode and disclosed limitations. The remaining ask is executor provenance, a supported onchain expiry guard, and a reviewed V7 liquidity architecture for future RMT-native launches.</p>
             <Link href="/rescue">Inspect the isolated, valueless testnet rehearsal →</Link>
             <small>ABI-compatible research fixture; not an official Sushi deployment.</small>
           </section>
@@ -104,7 +104,7 @@ export default function SushiIntegrationPage() {
               <div><dt>V3 factory</dt><dd><a aria-label={`Inspect V3 factory ${sushiFactory} in pinned Sushi source`} href={`${sushiSource}/sushiswap-v3.ts`} target="_blank" rel="noreferrer">0xE519…433B ↗</a></dd></div>
               <div><dt>Position manager</dt><dd><a aria-label={`Inspect position manager ${sushiPositionManager} in pinned Sushi source`} href={`${sushiSource}/sushiswap-v3.ts`} target="_blank" rel="noreferrer">0x51D0…6107 ↗</a></dd></div>
               <div><dt>RedSnwapper</dt><dd><a aria-label={`Inspect RedSnwapper ${sushiRedSnwapper} in pinned Sushi source`} href={`${sushiSource}/red-snwapper.ts`} target="_blank" rel="noreferrer">0x8E6f…E98A ↗</a></dd></div>
-              <div><dt>Execution</dt><dd className="held">Disabled</dd></div>
+              <div><dt>External execution</dt><dd>Live · guarded</dd></div>
             </dl>
           </section>
         </aside>
@@ -121,12 +121,12 @@ export default function SushiIntegrationPage() {
 
       <section className="sushiLabPromise">
         <p className="eyebrow">WHY THIS MATTERS</p>
-        <h2>RMT is live. Sushi remains a proposal.</h2>
-        <p>RMT markets use their own curve trading and canonical V4 graduation path today. A future Sushi path would require a defined architecture, contract and app changes, security review, liquidity and a separate deployment.</p>
+        <h2>One Terminal. More verified routes.</h2>
+        <p>External Sushi markets can now execute inside RMT with visible evidence and wallet control. RMT-native V6 markets still use their own curve and canonical V4 graduation path; future V7 Sushi liquidity remains separate and undeployed.</p>
         <div><Link href={`/project/${officialToken}?launch=0#trade`}>Inspect live RMT</Link><Link href="/status">Verify production</Link><a href={`${sushiSource}/red-snwapper.ts`} target="_blank" rel="noreferrer">Inspect pinned Sushi source ↗</a></div>
       </section>
 
-      <p className="sushiLabDisclosure">Robinhood Meme Terminal is independent, unaffiliated software and does not claim sponsorship, endorsement or an approved partnership with Sushi or Robinhood. RMT V6 is an unaudited mainnet beta. No production Sushi routing or liquidity is enabled, and no incentive eligibility or token value is promised. Launching and trading can result in loss.</p>
+      <p className="sushiLabDisclosure">Robinhood Meme Terminal is independent, unaffiliated software and does not claim sponsorship, endorsement or an approved partnership with Sushi or Robinhood. External Sushi execution is live through Sushi&apos;s public Robinhood Chain contracts and API; RMT does not custody funds or guarantee token safety. RedSnwapper has no onchain deadline, the current executor is not source-verified on Robinhood Chain, and V7 Sushi liquidity is not deployed. Trading can result in loss.</p>
       <SiteFooter />
     </main>
   );
