@@ -11,6 +11,7 @@ RMT integrates Sushi in stages so a new venue cannot weaken the verified V6 exec
 - RMT decodes RedSnwapper calldata before returning it, pins the current official router and executor runtime bytecode, requires Sushi's successful simulation, rejects price impact above 10%, and expires the client quote after 90 seconds.
 - Token sells request only the exact allowance needed for the entered trade. RMT never asks for an unlimited Sushi approval and never takes custody.
 - Before an external buy is enabled, RMT also rechecks Blockscout contract transparency and holder concentration, excludes the verified pool and burn addresses from the whale calculation, and reads the reported creator balance directly from the token contract. Missing evidence is shown as unknown rather than passing.
+- Published token ABIs are scanned for common supply, transfer, fee, upgrade, access, and launch controls. Active launch-block restrictions are read onchain when exposed. Pool-held supply is never presented as proof that a V3 position is locked.
 - `NoWay`, partial fills, changed input amounts, invalid output amounts, excessive/invalid price impact values, upstream failures, and timeouts fail closed.
 - V6 launch previews remain off unless both `NEXT_PUBLIC_RMT_SUSHI_QUOTES_ENABLED=true` and `RMT_SUSHI_QUOTES_ENABLED=true` are intentionally deployed. External Terminal quotes require the server-only `RMT_SUSHI_QUOTES_ENABLED=true` flag.
 

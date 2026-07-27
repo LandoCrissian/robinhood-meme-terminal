@@ -115,6 +115,31 @@ export function TradeConfidence({
             <dt>Recent exit evidence</dt>
             <dd>{market.sells1h > 0 ? `${market.sells1h.toLocaleString()} sells · 1h` : "No sells observed · 1h"}</dd>
           </div>
+          <div>
+            <dt>Token controls</dt>
+            <dd>{
+              evidence.contract.controls.assessment === "no-common-controls-found"
+                ? "No common controls found"
+                : evidence.contract.controls.assessment === "review-required"
+                  ? "Review required"
+                  : "Unknown"
+            }</dd>
+          </div>
+          <div><dt>LP position control</dt><dd>Not proven locked</dd></div>
+          {evidence.contract.controls.activeLaunchRestrictions && (
+            <div>
+              <dt>Active launch limits</dt>
+              <dd>{
+                evidence.contract.controls.maxTransactionBps !== null
+                  ? `${formatOwnershipBps(evidence.contract.controls.maxTransactionBps)} tx`
+                  : "Restrictions active"
+              }{
+                evidence.contract.controls.maxWalletBps !== null
+                  ? ` · ${formatOwnershipBps(evidence.contract.controls.maxWalletBps)} wallet`
+                  : ""
+              }</dd>
+            </div>
+          )}
         </dl>
       )}
 
