@@ -11,6 +11,7 @@ import { isNonzeroEvmAddress } from "../lib/external-market-identity";
 import type { ExternalMarketRiskFlag, ExternalMarketSignal } from "../lib/external-market-ranking";
 import { ipfsToHttp } from "../lib/token-metadata";
 import { ExternalSushiQuotePanel } from "./external-sushi-quote-panel";
+import { ExternalUniswapTradePanel } from "./external-uniswap-trade-panel";
 
 type FeedStatus = "loading" | "ready" | "stale" | "error";
 
@@ -294,6 +295,7 @@ function ExternalTradeDialog({
         </section>
 
         {isSushiVenue(market) && <ExternalSushiQuotePanel market={market} side={side} />}
+        {isUniswapVenue(market) && <ExternalUniswapTradePanel market={market} side={side} />}
 
         <section className="externalTradePulse" aria-labelledby="external-market-pulse">
           <header><div><small>MARKET PULSE</small><strong id="external-market-pulse">Momentum and flow</strong></div><a href={market.url} target="_blank" rel="noopener noreferrer">Full chart ↗</a></header>
@@ -322,7 +324,9 @@ function ExternalTradeDialog({
             {market.project
               ? externalProjectProvenanceDescription(market.project) + " This is provenance, not an endorsement. "
               : "This token is external and its launchpad origin is not yet verified by RMT. "}
-            {provider} provides the final route, quote, price impact, and transaction review. RMT does not custody funds or construct external swap calldata in this release.
+            {isUniswapVenue(market)
+              ? "RMT re-verifies the canonical V3 pool and constructs deadline- and slippage-bounded calldata for your wallet. RMT never takes custody."
+              : provider + " provides the final route, quote, price impact, and transaction review. RMT does not custody funds or construct Sushi swap calldata in this release."}
             </p>
           </details>
         </section>
@@ -330,12 +334,12 @@ function ExternalTradeDialog({
 
       <div className={`externalTradeActionDock ${side}`}>
         <a href={reviewUrl} target="_blank" rel="noopener noreferrer">
-          {isSushiVenue(market) ? "Continue to Sushi to execute ↗" : "Review " + sideLabel + " on " + provider + " ↗"}
+          {isSushiVenue(market) ? "Continue to Sushi to execute ↗" : "Open Uniswap as fallback ↗"}
         </a>
         <small>
           {isSushiVenue(market)
             ? "RMT verifies the market and quote; Sushi prepares the final wallet transaction."
-            : provider + " calculates the final route, price impact, and minimum received."}
+            : "Verified Uniswap V3 trading is available above without leaving RMT."}
         </small>
       </div>
       <footer className="quickTradeFooter">
