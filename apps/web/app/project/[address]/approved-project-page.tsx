@@ -20,12 +20,23 @@ const MODULE_COPY: Record<RequestedProjectModule, { label: string; description: 
   game: { label: "Game showcase", description: "Playable demos, trailers, platform discovery and transparent development milestones." }
 };
 
+function releaseDateLabel(value: string) {
+  if (!value) return "To be announced";
+  return new Intl.DateTimeFormat("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC"
+  }).format(new Date(`${value}T00:00:00Z`));
+}
+
 export function ApprovedProjectPage({ slug }: { slug: string }) {
   const [project, setProject] = useState<PublicProjectRecord | null>(null);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
   const [failedLogo, setFailedLogo] = useState("");
   const [failedBanner, setFailedBanner] = useState("");
+  const [failedGameMedia, setFailedGameMedia] = useState<string[]>([]);
 
   useEffect(() => {
     let active = true;
@@ -107,11 +118,33 @@ export function ApprovedProjectPage({ slug }: { slug: string }) {
               ? project.gamePlatforms.map((platform) => <span key={platform}>{platform.toUpperCase()}</span>)
               : <span>PLATFORMS COMING SOON</span>}
           </div>
+          <dl className="approvedGameDetails">
+            <div><dt>Genre</dt><dd>{project.gameGenre ? project.gameGenre.toUpperCase() : "NOT SPECIFIED"}</dd></div>
+            <div><dt>Release</dt><dd>{releaseDateLabel(project.gameReleaseDate)}</dd></div>
+            <div><dt>Play modes</dt><dd>{project.gameModes.length ? project.gameModes.map((mode) => mode.toUpperCase()).join(" · ") : "NOT SPECIFIED"}</dd></div>
+          </dl>
           <div className="approvedGameActions">
             {project.gameUrl && <a href={project.gameUrl} target="_blank" rel="noopener noreferrer">Play or view game ↗</a>}
             {project.trailerUrl && <a href={project.trailerUrl} target="_blank" rel="noopener noreferrer">Watch trailer ↗</a>}
             {!project.gameUrl && !project.trailerUrl && <p>The creator has not published a playable build or trailer yet.</p>}
           </div>
+          {project.gameMediaUris.length > 0 && (
+            <div className="approvedGameGallery">
+              <div><p className="eyebrow">GAMEPLAY GALLERY</p><h3>Inside {project.name}</h3></div>
+              <div>
+                {project.gameMediaUris.filter((uri) => !failedGameMedia.includes(uri)).map((uri, index) => (
+                  <img
+                    src={ipfsToHttp(uri)}
+                    alt={`${project.name} gameplay screenshot ${index + 1}`}
+                    referrerPolicy="no-referrer"
+                    loading="lazy"
+                    onError={() => setFailedGameMedia((current) => [...current, uri])}
+                    key={uri}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
           <small>External builds and stores are creator-supplied. RMT page approval is not a security review of downloadable software.</small>
         </section>
       )}

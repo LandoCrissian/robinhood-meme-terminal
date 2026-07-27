@@ -46,7 +46,7 @@ function GameDirectoryCard({ project }: { project: PublicProjectRecord }) {
         <span>{status.toUpperCase()}</span>
       </div>
       <div className="gameDirectoryBody">
-        <div className="gameDirectoryIdentity"><ProjectDirectoryMark project={project} /><div><p>REVIEW-APPROVED GAME</p><h3>{project.name}</h3></div></div>
+        <div className="gameDirectoryIdentity"><ProjectDirectoryMark project={project} /><div><p>REVIEW-APPROVED GAME{project.gameGenre ? ` · ${project.gameGenre.toUpperCase()}` : ""}</p><h3>{project.name}</h3></div></div>
         <p className="gameDirectorySummary">{project.summary}</p>
         <div className="gameDirectoryPlatforms">
           {project.gamePlatforms.length

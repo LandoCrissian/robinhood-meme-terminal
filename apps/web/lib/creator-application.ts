@@ -8,11 +8,15 @@ export const PROJECT_TYPES = ["token", "art", "music", "gaming", "community", "o
 export const PROJECT_MODULES = ["token", "nft", "marketplace", "music", "game"] as const;
 export const GAME_STATUSES = ["concept", "development", "playable", "live"] as const;
 export const GAME_PLATFORMS = ["web", "windows", "macos", "ios", "android", "console", "vr"] as const;
+export const GAME_GENRES = ["action", "adventure", "arcade", "card", "casual", "fighting", "puzzle", "racing", "rpg", "simulation", "sports", "strategy", "other"] as const;
+export const GAME_MODES = ["single-player", "multiplayer", "co-op", "competitive", "mmo"] as const;
 
 export type ProjectType = typeof PROJECT_TYPES[number];
 export type RequestedProjectModule = typeof PROJECT_MODULES[number];
 export type GameStatus = typeof GAME_STATUSES[number];
 export type GamePlatform = typeof GAME_PLATFORMS[number];
+export type GameGenre = typeof GAME_GENRES[number];
+export type GameMode = typeof GAME_MODES[number];
 export type CreatorApplicationStatus = "pending" | "needs_changes" | "approved" | "rejected";
 
 export type CreatorApplicationDraft = {
@@ -52,6 +56,10 @@ export type PublicProjectRecord = {
   trailerUrl: string;
   gameStatus: GameStatus | "";
   gamePlatforms: GamePlatform[];
+  gameGenre: GameGenre | "";
+  gameModes: GameMode[];
+  gameReleaseDate: string;
+  gameMediaUris: string[];
   tokenAddress: string;
   availableModules: RequestedProjectModule[];
   status: "live";
@@ -71,6 +79,10 @@ export type ProjectIdentityDraft = Pick<
   | "trailerUrl"
   | "gameStatus"
   | "gamePlatforms"
+  | "gameGenre"
+  | "gameModes"
+  | "gameReleaseDate"
+  | "gameMediaUris"
 >;
 
 export const EMPTY_CREATOR_APPLICATION: CreatorApplicationDraft = {
@@ -118,6 +130,22 @@ export function cleanProjectMediaUri(value: unknown) {
   }
 }
 
+function cleanGameReleaseDate(value: unknown) {
+  const candidate = cleanText(value, 10);
+  const match = candidate.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return "";
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return year >= 2000 && year <= 2100
+    && date.getUTCFullYear() === year
+    && date.getUTCMonth() === month - 1
+    && date.getUTCDate() === day
+    ? candidate
+    : "";
+}
+
 export function normalizeProjectIdentity(value: unknown): ProjectIdentityDraft {
   const draft = value && typeof value === "object" ? value as Partial<ProjectIdentityDraft> : {};
   const gameStatus = GAME_STATUSES.includes(draft.gameStatus as GameStatus)
@@ -130,6 +158,19 @@ export function normalizeProjectIdentity(value: unknown): ProjectIdentityDraft {
         ))
       : []
   )).slice(0, GAME_PLATFORMS.length);
+  const gameGenre = GAME_GENRES.includes(draft.gameGenre as GameGenre)
+    ? draft.gameGenre as GameGenre
+    : "";
+  const gameModes = Array.from(new Set(
+    Array.isArray(draft.gameModes)
+      ? draft.gameModes.filter((mode): mode is GameMode => GAME_MODES.includes(mode as GameMode))
+      : []
+  )).slice(0, GAME_MODES.length);
+  const gameMediaUris = Array.from(new Set(
+    Array.isArray(draft.gameMediaUris)
+      ? draft.gameMediaUris.map(cleanProjectMediaUri).filter(Boolean)
+      : []
+  )).slice(0, 6);
   return {
     name: cleanText(draft.name, 80),
     summary: cleanText(draft.summary, 600),
@@ -140,7 +181,11 @@ export function normalizeProjectIdentity(value: unknown): ProjectIdentityDraft {
     gameUrl: cleanUrl(draft.gameUrl),
     trailerUrl: cleanUrl(draft.trailerUrl),
     gameStatus,
-    gamePlatforms
+    gamePlatforms,
+    gameGenre,
+    gameModes,
+    gameReleaseDate: cleanGameReleaseDate(draft.gameReleaseDate),
+    gameMediaUris
   };
 }
 
@@ -154,6 +199,11 @@ export function validateProjectIdentity(value: ProjectIdentityDraft) {
   if (value.bannerUri.trim() && !draft.bannerUri) return "Banner must be a valid HTTPS or IPFS image URL. SVG files are not accepted.";
   if (value.gameUrl.trim() && !draft.gameUrl) return "Playable game or store link must be a valid HTTPS URL.";
   if (value.trailerUrl.trim() && !draft.trailerUrl) return "Game trailer must be a valid HTTPS URL.";
+  if (value.gameReleaseDate.trim() && !draft.gameReleaseDate) return "Release date must be a valid date between 2000 and 2100.";
+  if (value.gameMediaUris.length > 6) return "Game galleries can include up to 6 screenshots.";
+  if (value.gameMediaUris.some((uri) => uri.trim() && !cleanProjectMediaUri(uri))) {
+    return "Each screenshot must be a valid HTTPS or IPFS image URL. SVG files are not accepted.";
+  }
   return null;
 }
 
@@ -277,6 +327,10 @@ export function parsePublicProject(value: unknown): PublicProjectRecord | null {
     trailerUrl: gameEnabled ? gameIdentity.trailerUrl : "",
     gameStatus: gameEnabled ? gameIdentity.gameStatus || "development" : "",
     gamePlatforms: gameEnabled ? gameIdentity.gamePlatforms : [],
+    gameGenre: gameEnabled ? gameIdentity.gameGenre : "",
+    gameModes: gameEnabled ? gameIdentity.gameModes : [],
+    gameReleaseDate: gameEnabled ? gameIdentity.gameReleaseDate : "",
+    gameMediaUris: gameEnabled ? gameIdentity.gameMediaUris : [],
     tokenAddress,
     availableModules,
     status: "live",

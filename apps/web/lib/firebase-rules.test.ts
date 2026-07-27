@@ -522,15 +522,43 @@ test("gaming creators can publish a bounded game showcase", async () => {
     trailerUrl: "https://video.runner.example/trailer",
     gameStatus: "playable",
     gamePlatforms: ["web", "windows", "macos"],
+    gameGenre: "adventure",
+    gameModes: ["single-player", "co-op"],
+    gameReleaseDate: "2026-11-14",
+    gameMediaUris: [
+      "https://media.runner.example/gameplay-one.webp",
+      "ipfs://bafybeigameplaytwo/screenshot.png"
+    ],
     updatedAt: serverTimestamp()
   }, { merge: true }));
   assert.equal((await assertSucceeds(getDoc(project))).data()?.gameStatus, "playable");
+  assert.equal((await assertSucceeds(getDoc(project))).data()?.gameGenre, "adventure");
   await assertFails(setDoc(project, {
     gamePlatforms: ["web", "unknown-device"],
     updatedAt: serverTimestamp()
   }, { merge: true }));
   await assertFails(setDoc(project, {
     gameUrl: "javascript:alert(1)",
+    updatedAt: serverTimestamp()
+  }, { merge: true }));
+  await assertFails(setDoc(project, {
+    gameGenre: "casino-extraction",
+    updatedAt: serverTimestamp()
+  }, { merge: true }));
+  await assertFails(setDoc(project, {
+    gameModes: ["single-player", "unauthorized-mode"],
+    updatedAt: serverTimestamp()
+  }, { merge: true }));
+  await assertFails(setDoc(project, {
+    gameReleaseDate: "2026-13-45",
+    updatedAt: serverTimestamp()
+  }, { merge: true }));
+  await assertFails(setDoc(project, {
+    gameMediaUris: ["javascript:alert(1)"],
+    updatedAt: serverTimestamp()
+  }, { merge: true }));
+  await assertFails(setDoc(project, {
+    gameMediaUris: Array.from({ length: 7 }, (_, index) => `https://media.runner.example/${index}.webp`),
     updatedAt: serverTimestamp()
   }, { merge: true }));
 
