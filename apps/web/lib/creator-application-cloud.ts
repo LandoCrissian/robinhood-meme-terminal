@@ -365,6 +365,10 @@ export async function reviewCreatorApplication(input: {
         ? "development"
         : "",
       gamePlatforms: [],
+      gameGenre: "",
+      gameModes: [],
+      gameReleaseDate: "",
+      gameMediaUris: [],
       tokenAddress: currentApplication.tokenAddress,
       availableModules: currentApplication.requestedModules,
       status: "live",

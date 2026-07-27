@@ -245,17 +245,35 @@ const gamingProject = parsePublicProject({
   trailerUrl: "https://video.runner.example/trailer",
   gameStatus: "playable",
   gamePlatforms: ["web", "windows"],
+  gameGenre: "adventure",
+  gameModes: ["single-player", "co-op"],
+  gameReleaseDate: "2026-11-14",
+  gameMediaUris: [
+    "https://media.runner.example/gameplay.webp",
+    "ipfs://bafybeirunnergame/screenshot.png",
+    "javascript:alert(1)"
+  ],
   status: "live"
 });
 assert.equal(gamingProject?.gameStatus, "playable");
 assert.deepEqual(gamingProject?.gamePlatforms, ["web", "windows"]);
+assert.equal(gamingProject?.gameGenre, "adventure");
+assert.deepEqual(gamingProject?.gameModes, ["single-player", "co-op"]);
+assert.equal(gamingProject?.gameReleaseDate, "2026-11-14");
+assert.deepEqual(gamingProject?.gameMediaUris, [
+  "https://media.runner.example/gameplay.webp",
+  "ipfs://bafybeirunnergame/screenshot.png"
+]);
 
 const creatorControlSource = readFileSync(new URL("../app/project-creator-controls.tsx", import.meta.url), "utf8");
 assert.match(creatorControlSource, /Save public identity/);
 assert.match(creatorControlSource, /Logo image/);
 assert.match(creatorControlSource, /Banner image/);
 assert.match(creatorControlSource, /Playable game or store link/);
+assert.match(creatorControlSource, /Screenshot gallery/);
+assert.match(creatorControlSource, /Play modes/);
 const approvedProjectSource = readFileSync(new URL("../app/project/[address]/approved-project-page.tsx", import.meta.url), "utf8");
 assert.match(approvedProjectSource, /GAME CREATOR SHOWCASE/);
+assert.match(approvedProjectSource, /GAMEPLAY GALLERY/);
 
 console.log("Profile and Firebase sync smoke tests passed.");

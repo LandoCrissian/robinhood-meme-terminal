@@ -212,6 +212,24 @@ service cloud.firestore {
           : note.size() >= 10 && slug == '');
     }
 
+    function validGameMediaUri(value) {
+      return value is string
+        && value.size() > 0
+        && value.size() <= 512
+        && value.matches('^(https://|ipfs://).+$');
+    }
+
+    function validGameMediaUris(value) {
+      return value is list
+        && value.size() <= 6
+        && (value.size() < 1 || validGameMediaUri(value[0]))
+        && (value.size() < 2 || validGameMediaUri(value[1]))
+        && (value.size() < 3 || validGameMediaUri(value[2]))
+        && (value.size() < 4 || validGameMediaUri(value[3]))
+        && (value.size() < 5 || validGameMediaUri(value[4]))
+        && (value.size() < 6 || validGameMediaUri(value[5]));
+    }
+
     function validPublicProject(projectId, data) {
       let logoUri = data.get('logoUri', '');
       let bannerUri = data.get('bannerUri', '');
@@ -219,6 +237,10 @@ service cloud.firestore {
       let trailerUrl = data.get('trailerUrl', '');
       let gameStatus = data.get('gameStatus', '');
       let gamePlatforms = data.get('gamePlatforms', []);
+      let gameGenre = data.get('gameGenre', '');
+      let gameModes = data.get('gameModes', []);
+      let gameReleaseDate = data.get('gameReleaseDate', '');
+      let gameMediaUris = data.get('gameMediaUris', []);
       let gameEnabled = data.projectType == 'gaming' || data.availableModules.hasAny(['game']);
       return data.keys().hasAll([
           'schemaVersion',
@@ -248,6 +270,10 @@ service cloud.firestore {
           'trailerUrl',
           'gameStatus',
           'gamePlatforms',
+          'gameGenre',
+          'gameModes',
+          'gameReleaseDate',
+          'gameMediaUris',
           'tokenAddress',
           'availableModules',
           'status',
@@ -275,9 +301,23 @@ service cloud.firestore {
         && gameStatus is string
         && gamePlatforms is list && gamePlatforms.size() <= 7
         && gamePlatforms.hasOnly(['web', 'windows', 'macos', 'ios', 'android', 'console', 'vr'])
+        && gameGenre is string
+        && gameModes is list && gameModes.size() <= 5
+        && gameModes.hasOnly(['single-player', 'multiplayer', 'co-op', 'competitive', 'mmo'])
+        && gameReleaseDate is string && gameReleaseDate.size() <= 10
+        && (gameReleaseDate == '' || gameReleaseDate.matches('^[0-9]{4}-(0[1-9]|1[0-2])-([0-2][0-9]|3[0-1])$'))
+        && validGameMediaUris(gameMediaUris)
         && (gameEnabled
           ? gameStatus in ['concept', 'development', 'playable', 'live']
-          : gameUrl == '' && trailerUrl == '' && gameStatus == '' && gamePlatforms.size() == 0)
+            && (gameGenre == '' || gameGenre in ['action', 'adventure', 'arcade', 'card', 'casual', 'fighting', 'puzzle', 'racing', 'rpg', 'simulation', 'sports', 'strategy', 'other'])
+          : gameUrl == ''
+            && trailerUrl == ''
+            && gameStatus == ''
+            && gamePlatforms.size() == 0
+            && gameGenre == ''
+            && gameModes.size() == 0
+            && gameReleaseDate == ''
+            && gameMediaUris.size() == 0)
         && data.tokenAddress is string
         && (data.tokenAddress == '' || data.tokenAddress.matches('^0x[0-9a-f]{40}$'))
         && validProjectModules(data.availableModules)
@@ -309,6 +349,10 @@ service cloud.firestore {
           'trailerUrl',
           'gameStatus',
           'gamePlatforms',
+          'gameGenre',
+          'gameModes',
+          'gameReleaseDate',
+          'gameMediaUris',
           'updatedAt'
         ]);
     }

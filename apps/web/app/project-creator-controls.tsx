@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { type FormEvent, useEffect, useState } from "react";
 import {
+  GAME_GENRES,
+  GAME_MODES,
   GAME_PLATFORMS,
   GAME_STATUSES,
   PROJECT_MODULES,
@@ -10,6 +12,8 @@ import {
   validateProjectIdentity,
   type ProjectIdentityDraft,
   type PublicProjectRecord,
+  type GameGenre,
+  type GameMode,
   type GamePlatform,
   type GameStatus,
   type RequestedProjectModule
@@ -42,6 +46,30 @@ const PLATFORM_LABELS: Record<GamePlatform, string> = {
   android: "Android",
   console: "Console",
   vr: "VR"
+};
+
+const GENRE_LABELS: Record<GameGenre, string> = {
+  action: "Action",
+  adventure: "Adventure",
+  arcade: "Arcade",
+  card: "Card",
+  casual: "Casual",
+  fighting: "Fighting",
+  puzzle: "Puzzle",
+  racing: "Racing",
+  rpg: "RPG",
+  simulation: "Simulation",
+  sports: "Sports",
+  strategy: "Strategy",
+  other: "Other"
+};
+
+const MODE_LABELS: Record<GameMode, string> = {
+  "single-player": "Single player",
+  multiplayer: "Multiplayer",
+  "co-op": "Co-op",
+  competitive: "Competitive",
+  mmo: "MMO"
 };
 
 function requestLabel(request: ModuleActivationRequest | undefined) {
@@ -161,6 +189,15 @@ export function ProjectCreatorControls({ project }: { project: PublicProjectReco
     }));
   };
 
+  const toggleGameMode = (mode: GameMode) => {
+    setIdentity((current) => ({
+      ...current,
+      gameModes: current.gameModes.includes(mode)
+        ? current.gameModes.filter((candidate) => candidate !== mode)
+        : [...current.gameModes, mode]
+    }));
+  };
+
   if (profileLoading) return null;
   if (!user) {
     return (
@@ -190,9 +227,13 @@ export function ProjectCreatorControls({ project }: { project: PublicProjectReco
           {isGaming && (
             <>
               <label>Game status<select value={identity.gameStatus || "development"} onChange={(event) => setIdentity((current) => ({ ...current, gameStatus: event.target.value as GameStatus }))}>{GAME_STATUSES.map((status) => <option value={status} key={status}>{status.replace("_", " ")}</option>)}</select></label>
+              <label>Primary genre<select value={identity.gameGenre} onChange={(event) => setIdentity((current) => ({ ...current, gameGenre: event.target.value as GameGenre | "" }))}><option value="">Not specified</option>{GAME_GENRES.map((genre) => <option value={genre} key={genre}>{GENRE_LABELS[genre]}</option>)}</select></label>
+              <label>Release date<input type="date" min="2000-01-01" max="2100-12-31" value={identity.gameReleaseDate} onChange={(event) => setIdentity((current) => ({ ...current, gameReleaseDate: event.target.value }))} /></label>
               <label>Playable game or store link<input maxLength={256} inputMode="url" placeholder="https://" value={identity.gameUrl} onChange={(event) => setIdentity((current) => ({ ...current, gameUrl: event.target.value }))} /></label>
               <label className="creatorIdentityWide">Trailer or gameplay link<input maxLength={256} inputMode="url" placeholder="https://" value={identity.trailerUrl} onChange={(event) => setIdentity((current) => ({ ...current, trailerUrl: event.target.value }))} /></label>
               <fieldset className="creatorGamePlatforms creatorIdentityWide"><legend>Available platforms</legend><div>{GAME_PLATFORMS.map((platform) => <label className={identity.gamePlatforms.includes(platform) ? "selected" : ""} key={platform}><input type="checkbox" checked={identity.gamePlatforms.includes(platform)} onChange={() => toggleGamePlatform(platform)} /><span>{PLATFORM_LABELS[platform]}</span></label>)}</div></fieldset>
+              <fieldset className="creatorGamePlatforms creatorIdentityWide"><legend>Play modes</legend><div>{GAME_MODES.map((mode) => <label className={identity.gameModes.includes(mode) ? "selected" : ""} key={mode}><input type="checkbox" checked={identity.gameModes.includes(mode)} onChange={() => toggleGameMode(mode)} /><span>{MODE_LABELS[mode]}</span></label>)}</div></fieldset>
+              <label className="creatorIdentityWide">Screenshot gallery<textarea maxLength={3077} placeholder={"One HTTPS or IPFS image URL per line\nUp to 6 images"} value={identity.gameMediaUris.join("\n")} onChange={(event) => setIdentity((current) => ({ ...current, gameMediaUris: event.target.value.split(/\r?\n/).slice(0, 7) }))} /><small>Up to six JPG, PNG, WebP or GIF images. SVG files are not accepted.</small></label>
             </>
           )}
         </div>
