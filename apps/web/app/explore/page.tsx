@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
-import { ExternalMarketFeed } from "../external-market-feed";
+import { FreshLaunchFeed } from "../fresh-launch-feed";
 import { SiteFooter } from "../site-footer";
 
 export const metadata: Metadata = {
-  title: "Explore Robinhood Chain Markets | RMT",
-  description: "Explore trending, new, and active Robinhood Chain markets across Pons, Lemon, Sushi, Uniswap, and the wider ecosystem.",
+  title: "Explore RMT Launches | RMT",
+  description: "Discover, verify, and trade tokens launched through Robinhood Meme Terminal.",
   alternates: { canonical: "/explore" },
   openGraph: {
-    title: "Explore Robinhood Chain Markets | RMT",
-    description: "One clean, origin-aware view of Robinhood Chain markets.",
+    title: "Explore RMT Launches | RMT",
+    description: "The verified home for projects launched through Robinhood Meme Terminal.",
     url: "/explore",
     images: ["/brand/rmt-master-logo.png"]
   }
@@ -17,7 +17,10 @@ export const metadata: Metadata = {
 export default function ExplorePage() {
   return (
     <main className="directoryPage focusedDirectory">
-      <ExternalMarketFeed />
+      <section className="terminalIntro">
+        <div><p className="eyebrow">EXPLORE · VERIFIED RMT-NATIVE PROJECTS</p><h1>Born on RMT. Traded on RMT.</h1><p>Every project below is matched to its active factory record before discovery or trading controls appear.</p></div>
+      </section>
+      <FreshLaunchFeed />
       <SiteFooter />
     </main>
   );

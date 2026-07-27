@@ -30,6 +30,17 @@ assert.doesNotMatch(layoutSource, /openGraph:\s*\{\s*url:/);
 const homeSource = readFileSync(new URL("../app/page.tsx", import.meta.url), "utf8");
 assert.match(homeSource, /alternates:\s*\{\s*canonical:\s*"\/"/);
 assert.match(homeSource, /openGraph:[\s\S]*?url:\s*"\/"/);
+assert.match(homeSource, /<ExternalMarketFeed \/>/);
+assert.doesNotMatch(homeSource, /<FreshLaunchFeed \/>/);
+
+const exploreSource = readFileSync(new URL("../app/explore/page.tsx", import.meta.url), "utf8");
+assert.match(exploreSource, /<FreshLaunchFeed \/>/);
+assert.doesNotMatch(exploreSource, /<ExternalMarketFeed \/>/);
+
+const launchSource = readFileSync(new URL("../app/launch/page.tsx", import.meta.url), "utf8");
+assert.match(launchSource, /Launching reopens with V7—not before/);
+assert.doesNotMatch(launchSource, /LaunchForm/);
+assert.doesNotMatch(launchSource, /CREATE ON RMT V6/);
 
 const rescueSource = readFileSync(new URL("../app/rescue/page.tsx", import.meta.url), "utf8");
 assert.match(rescueSource, /openGraph:[\s\S]*?url:\s*"\/rescue"/);

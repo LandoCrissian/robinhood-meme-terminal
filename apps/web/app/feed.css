@@ -231,6 +231,7 @@
 .discoveryTabs button:focus-visible{outline:2px solid #71e981;outline-offset:2px}
 .discoveryLaunchLink{flex:0 0 auto;color:#71e981;font-size:.72rem;font-weight:900;text-decoration:none}
 .discoveryLaunchLink:hover{text-decoration:underline}
+.discoveryLaunchLink.paused{color:#8f9a92;cursor:default;text-decoration:none}
 .feed .hotGrid{margin-top:0}
 .discoveryRows{display:flex;flex-direction:column}
 @media(max-width:560px){

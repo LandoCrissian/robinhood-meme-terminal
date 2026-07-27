@@ -11,6 +11,7 @@ import {
   type KeyboardEvent as ReactKeyboardEvent
 } from "react";
 import { activeReleaseBadge, isMainnetRelease } from "../lib/network";
+import { publicRmtLaunchingEnabled } from "../lib/public-launch-release";
 import { describeCreatorExposure } from "../lib/creator-signals";
 import type { LaunchFeedItem, LaunchFeedResponse } from "../lib/launch-feed";
 import {
@@ -224,7 +225,7 @@ export function FreshLaunchFeed() {
   const [status, setStatus] = useState<"loading" | "live" | "stale" | "error">("loading");
   const [message, setMessage] = useState("Synchronizing verified launches.");
   const [showAll, setShowAll] = useState(false);
-  const [view, setView] = useState<RmtDiscoveryView>("moving");
+  const [view, setView] = useState<RmtDiscoveryView>("new");
   const [searchQuery, setSearchQuery] = useState("");
   const [quickTrade, setQuickTrade] = useState<{ launch: LaunchFeedItem; side: "buy" | "sell" }>();
   const [rankingAnnouncement, setRankingAnnouncement] = useState("");
@@ -469,7 +470,9 @@ export function FreshLaunchFeed() {
               </button>
             ))}
           </div>
-          <Link className="discoveryLaunchLink" href="/launch">+ Launch token</Link>
+          {publicRmtLaunchingEnabled
+            ? <Link className="discoveryLaunchLink" href="/launch">+ Launch token</Link>
+            : <span className="discoveryLaunchLink paused">V7 launching in preparation</span>}
         </div>
       </div>
 
@@ -546,7 +549,7 @@ export function FreshLaunchFeed() {
         </button>
       )}
       <p className="feedStatus" role="status" aria-live="polite">{message} Confirmed data checks every 30 seconds; delayed refreshes back off automatically.</p>
-      <p className="rmtRankingDisclosure">Momentum is a discovery signal, not an endorsement and not a basis for fee rewards. Creator concentration and selling can reduce or block promotion.</p>
+      <p className="rmtRankingDisclosure">The official RMT migration is pinned first in the New view. Momentum is a discovery signal, not an endorsement and not a basis for fee rewards. Creator concentration and selling can reduce or block promotion.</p>
 
       {quickTrade && (
         <QuickTradeDialog
