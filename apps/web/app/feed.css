@@ -405,6 +405,7 @@
 .approvedDirectoryModules span{padding:4px 6px;border:1px solid #293b2f;border-radius:999px;color:#9eaba1;font-size:.52rem;font-weight:800}
 .approvedDirectoryCard>strong{margin-top:auto;padding-top:14px;color:#71e983;font-size:.62rem}
 .gameDirectory{margin-bottom:10px;padding:16px;overflow:hidden;background:radial-gradient(circle at 88% 0,rgba(52,151,72,.16) 0,transparent 38%),linear-gradient(145deg,#0b120d,#070a08)}
+.gameDirectoryFilters{display:grid;grid-template-columns:minmax(180px,1.5fr) repeat(2,minmax(130px,.65fr)) auto;gap:7px;margin-top:13px;padding:10px;border:1px solid #2b3f31;border-radius:12px;background:#080d0a}.gameDirectoryFilters label{display:flex;min-width:0;flex-direction:column;gap:5px}.gameDirectoryFilters label>span{color:#718077;font-size:.5rem;font-weight:900;text-transform:uppercase}.gameDirectoryFilters input,.gameDirectoryFilters select{width:100%;min-width:0;height:38px;padding:0 10px;border:1px solid #2e4134;border-radius:8px;background:#050806;color:#dfe7e1;font-size:.61rem;font-weight:750;outline:0}.gameDirectoryFilters input:focus,.gameDirectoryFilters select:focus{border-color:#65cf74}.gameDirectoryFilters>button,.gameDirectoryNoResults>button{align-self:end;min-height:38px;padding:0 11px;border:1px solid #45634c;border-radius:8px;background:#111a14;color:#8ee99a;font-size:.57rem;font-weight:950;cursor:pointer}
 .gameDirectoryGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:13px}
 .gameDirectoryCard{min-width:0;overflow:hidden;border:1px solid #304438;border-radius:16px;background:#080c09}
 .gameDirectoryArtwork{position:relative;height:148px;overflow:hidden;background:linear-gradient(135deg,#173020,#09100b)}
@@ -424,6 +425,7 @@
 
 @media(max-width:860px){
   .approvedProjectGrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .gameDirectoryFilters{grid-template-columns:repeat(3,minmax(0,1fr))}.gameDirectoryFilters>button{grid-column:1/-1}
 }
 @media(max-width:620px){
   .approvedDirectory,.gameDirectory{padding:13px}
@@ -431,9 +433,10 @@
   .approvedProjectGrid{grid-template-columns:1fr}
   .approvedDirectoryCard{min-height:190px}
   .gameDirectoryGrid{grid-template-columns:1fr}
+  .gameDirectoryFilters{grid-template-columns:1fr}.gameDirectoryFilters>button{grid-column:auto;width:100%}
   .gameDirectoryArtwork{height:132px}
   .gameDirectoryActions{grid-template-columns:1fr}
   .gameDirectoryActions a{min-height:42px}
   .gameDirectoryEmpty{align-items:flex-start;flex-direction:column}
-  .gameDirectoryEmpty>a{width:100%;text-align:center}
+  .gameDirectoryEmpty>a,.gameDirectoryNoResults>button{width:100%;text-align:center}
 }

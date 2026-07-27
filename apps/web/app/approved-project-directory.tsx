@@ -3,11 +3,16 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
+  GAME_PLATFORMS,
+  GAME_STATUSES,
   PROJECT_MODULES,
+  type GamePlatform,
+  type GameStatus,
   type PublicProjectRecord,
   type RequestedProjectModule
 } from "../lib/creator-application";
 import { subscribeToPublicProjects } from "../lib/creator-application-cloud";
+import { filterGameProjects, sortGameProjects } from "../lib/game-discovery";
 import { OFFICIAL_RMT_V6_TOKEN } from "../lib/project-page";
 import { ipfsToHttp } from "../lib/token-metadata";
 
@@ -69,6 +74,53 @@ function publishedTime(value: unknown) {
     : 0;
 }
 
+export function GameDirectorySection({ projects }: { projects: PublicProjectRecord[] }) {
+  const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<GameStatus | "all">("all");
+  const [platformFilter, setPlatformFilter] = useState<GamePlatform | "all">("all");
+  const filteredProjects = useMemo(() => filterGameProjects(projects, {
+    query,
+    status: statusFilter,
+    platform: platformFilter
+  }), [platformFilter, projects, query, statusFilter]);
+  const filtersActive = Boolean(query.trim()) || statusFilter !== "all" || platformFilter !== "all";
+  const resetFilters = () => {
+    setQuery("");
+    setStatusFilter("all");
+    setPlatformFilter("all");
+  };
+
+  return (
+    <section className="panel gameDirectory" aria-labelledby="game-directory-title">
+      <header className="approvedDirectoryHeader gameDirectoryHeader">
+        <div>
+          <p className="eyebrow">RMT GAMES</p>
+          <h2 id="game-directory-title">Play, follow and discover creator-built worlds</h2>
+          <p>Approved game pages bring playable builds, trailers, platforms and development progress into one place. A token is optional.</p>
+        </div>
+        <span>{filtersActive ? `${filteredProjects.length} / ` : ""}{projects.length} GAME{projects.length === 1 ? "" : "S"}</span>
+      </header>
+      {projects.length > 0 && (
+        <div className="gameDirectoryFilters" role="search" aria-label="Filter approved games">
+          <label><span>Search games</span><input type="search" placeholder="Title, genre or mode" value={query} onChange={(event) => setQuery(event.target.value)} /></label>
+          <label><span>Status</span><select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as GameStatus | "all")}><option value="all">All statuses</option>{GAME_STATUSES.map((gameStatus) => <option value={gameStatus} key={gameStatus}>{gameStatus === "development" ? "In development" : gameStatus[0].toUpperCase() + gameStatus.slice(1)}</option>)}</select></label>
+          <label><span>Platform</span><select value={platformFilter} onChange={(event) => setPlatformFilter(event.target.value as GamePlatform | "all")}><option value="all">All platforms</option>{GAME_PLATFORMS.map((platform) => <option value={platform} key={platform}>{platform === "macos" ? "macOS" : platform === "ios" ? "iOS" : platform[0].toUpperCase() + platform.slice(1)}</option>)}</select></label>
+          {filtersActive && <button type="button" onClick={resetFilters}>Reset filters</button>}
+        </div>
+      )}
+      {projects.length > 0 && filteredProjects.length > 0
+        ? <div className="gameDirectoryGrid">{filteredProjects.map((project) => <GameDirectoryCard project={project} key={project.slug} />)}</div>
+        : projects.length > 0
+          ? <div className="gameDirectoryEmpty gameDirectoryNoResults"><div><strong>No approved games match those filters.</strong><p>Try another title, status or platform.</p></div><button type="button" onClick={resetFilters}>Show all games</button></div>
+          : <div className="gameDirectoryEmpty">
+              <div><strong>The showcase is open for its first reviewed games.</strong><p>Independent studios and gaming creators can apply without launching a token.</p></div>
+              <Link href="/profile">Apply through Profile →</Link>
+            </div>}
+      <p className="gameDirectoryDisclosure">External games and stores are creator-supplied. RMT page approval verifies page access, not downloadable software or game economics.</p>
+    </section>
+  );
+}
+
 export function ApprovedProjectDirectory() {
   const [projects, setProjects] = useState<PublicProjectRecord[]>([]);
   const [status, setStatus] = useState<"loading" | "live" | "unavailable">("loading");
@@ -100,34 +152,11 @@ export function ApprovedProjectDirectory() {
     .filter((project) => project.tokenAddress.toLowerCase() !== OFFICIAL_RMT_V6_TOKEN.toLowerCase())
     .sort((left, right) => publishedTime(right.publishedAt) - publishedTime(left.publishedAt)
       || left.name.localeCompare(right.name)), [projects]);
-  const gamingProjects = useMemo(() => visibleProjects
-    .filter((project) => project.projectType === "gaming" || project.availableModules.includes("game"))
-    .sort((left, right) => {
-      const statusOrder = { live: 0, playable: 1, development: 2, concept: 3, "": 4 };
-      return statusOrder[left.gameStatus] - statusOrder[right.gameStatus]
-        || publishedTime(right.publishedAt) - publishedTime(left.publishedAt)
-        || left.name.localeCompare(right.name);
-    }), [visibleProjects]);
+  const gamingProjects = useMemo(() => sortGameProjects([...visibleProjects]), [visibleProjects]);
 
   return (
     <>
-    <section className="panel gameDirectory" aria-labelledby="game-directory-title">
-      <header className="approvedDirectoryHeader gameDirectoryHeader">
-        <div>
-          <p className="eyebrow">RMT GAMES</p>
-          <h2 id="game-directory-title">Play, follow and discover creator-built worlds</h2>
-          <p>Approved game pages bring playable builds, trailers, platforms and development progress into one place. A token is optional.</p>
-        </div>
-        <span>{gamingProjects.length} GAME{gamingProjects.length === 1 ? "" : "S"}</span>
-      </header>
-      {gamingProjects.length > 0
-        ? <div className="gameDirectoryGrid">{gamingProjects.map((project) => <GameDirectoryCard project={project} key={project.slug} />)}</div>
-        : <div className="gameDirectoryEmpty">
-            <div><strong>The showcase is open for its first reviewed games.</strong><p>Independent studios and gaming creators can apply without launching a token.</p></div>
-            <Link href="/profile">Apply through Profile →</Link>
-          </div>}
-      <p className="gameDirectoryDisclosure">External games and stores are creator-supplied. RMT page approval verifies page access, not downloadable software or game economics.</p>
-    </section>
+    <GameDirectorySection projects={gamingProjects} />
     <section className="panel approvedDirectory" aria-labelledby="approved-directory-title">
       <header className="approvedDirectoryHeader">
         <div>
