@@ -22,6 +22,11 @@ import {
   parseModuleActivationRequest,
   parseProjectAssignment
 } from "./project-ownership";
+import {
+  normalizeGameUpdate,
+  parseGameUpdate,
+  validateGameUpdate
+} from "./game-updates";
 
 const vercelConfig = JSON.parse(readFileSync(new URL("../vercel.json", import.meta.url), "utf8")) as {
   headers?: Array<{
@@ -264,6 +269,23 @@ assert.deepEqual(gamingProject?.gameMediaUris, [
   "https://media.runner.example/gameplay.webp",
   "ipfs://bafybeirunnergame/screenshot.png"
 ]);
+const gameUpdate = normalizeGameUpdate({
+  type: "release",
+  title: "  Public alpha is live  ",
+  body: "  Players can now test cooperative matchmaking and the rebuilt tutorial.  ",
+  version: " v0.3.0 ",
+  link: "https://runner.example/alpha",
+  imageUri: "ipfs://bafybeigameupdate/alpha.webp"
+});
+assert.equal(gameUpdate.title, "Public alpha is live");
+assert.equal(gameUpdate.version, "v0.3.0");
+assert.equal(validateGameUpdate(gameUpdate), null);
+assert.equal(validateGameUpdate({ ...gameUpdate, link: "javascript:alert(1)" }), "Update link must be a valid HTTPS URL.");
+assert.equal(parseGameUpdate("alpha", {
+  schemaVersion: 1,
+  ...gameUpdate,
+  createdAt: { toMillis: () => 1 }
+})?.type, "release");
 
 const creatorControlSource = readFileSync(new URL("../app/project-creator-controls.tsx", import.meta.url), "utf8");
 assert.match(creatorControlSource, /Save public identity/);
@@ -272,8 +294,10 @@ assert.match(creatorControlSource, /Banner image/);
 assert.match(creatorControlSource, /Playable game or store link/);
 assert.match(creatorControlSource, /Screenshot gallery/);
 assert.match(creatorControlSource, /Play modes/);
+assert.match(creatorControlSource, /Publish development update/);
 const approvedProjectSource = readFileSync(new URL("../app/project/[address]/approved-project-page.tsx", import.meta.url), "utf8");
 assert.match(approvedProjectSource, /GAME CREATOR SHOWCASE/);
 assert.match(approvedProjectSource, /GAMEPLAY GALLERY/);
+assert.match(approvedProjectSource, /GameReleaseUpdates/);
 
 console.log("Profile and Firebase sync smoke tests passed.");

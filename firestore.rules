@@ -357,6 +357,51 @@ service cloud.firestore {
         ]);
     }
 
+    function validGameUpdate(data) {
+      let version = data.get('version', '');
+      let link = data.get('link', '');
+      let imageUri = data.get('imageUri', '');
+      return data.keys().hasAll([
+          'schemaVersion',
+          'type',
+          'title',
+          'body',
+          'version',
+          'link',
+          'imageUri',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'schemaVersion',
+          'type',
+          'title',
+          'body',
+          'version',
+          'link',
+          'imageUri',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.schemaVersion == 1
+        && data.type in ['development', 'milestone', 'playtest', 'release']
+        && data.title is string && data.title.size() >= 4 && data.title.size() <= 80
+        && data.body is string && data.body.size() >= 20 && data.body.size() <= 600
+        && version is string && version.size() <= 24
+        && link is string && link.size() <= 256
+        && (link == '' || link.matches('^https://.+$'))
+        && imageUri is string && imageUri.size() <= 512
+        && (imageUri == '' || imageUri.matches('^(https://|ipfs://).+$'))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function projectHasGameModule(projectId) {
+      let project = get(/databases/$(database)/documents/projects/$(projectId)).data;
+      return project.status == 'live'
+        && (project.projectType == 'gaming' || project.availableModules.hasAny(['game']));
+    }
+
     function validProjectAssignment(projectId, data) {
       return data.keys().hasAll([
           'schemaVersion',
@@ -478,6 +523,21 @@ service cloud.firestore {
           || validCreatorProjectIdentityUpdate(projectId)
         );
       allow delete: if isRmtAdmin();
+
+      match /gameUpdates/{updateId} {
+        allow read: if get(/databases/$(database)/documents/projects/$(projectId)).data.status == 'live';
+        allow create: if ownsProjectAssignment(projectId)
+          && projectHasGameModule(projectId)
+          && validGameUpdate(request.resource.data)
+          && request.resource.data.createdAt == request.time
+          && request.resource.data.updatedAt == request.time;
+        allow update: if ownsProjectAssignment(projectId)
+          && projectHasGameModule(projectId)
+          && validGameUpdate(request.resource.data)
+          && request.resource.data.createdAt == resource.data.createdAt
+          && request.resource.data.updatedAt == request.time;
+        allow delete: if ownsProjectAssignment(projectId);
+      }
     }
 
     match /projectAssignments/{projectId} {
