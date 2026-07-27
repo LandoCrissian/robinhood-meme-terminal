@@ -51,6 +51,14 @@ balances directly against the token contract, and treats unavailable evidence as
 Published source means transparent code—not an audit, endorsement, or proof that the code is
 safe. External buys wait for this check to finish; sells remain unobstructed.
 
+The third layer inspects the published ABI for common mint, transfer restriction, tax,
+upgrade, access-control, and launch-control write surfaces. It also reads active launch
+restriction blocks and percentage limits when a published contract exposes them. The UI
+uses “not found in the published ABI,” never “impossible,” because unpublished or
+misleading code cannot receive a clean control assessment. Pool-held token supply is
+reported separately from LP-position custody; RMT does not label liquidity locked until
+the controlling V2 LP tokens or V3 position NFT can be proven.
+
 This specifically addresses the recurring terminal complaints behind the research: users
 could not predict the real outcome, risk context was separated from the action, generated
 wallet and custody boundaries were unclear, or interfaces moved too quickly for a beginner

@@ -7,6 +7,22 @@ export type TokenRiskEvidence = {
     sourcePublished: boolean | null;
     isProxy: boolean | null;
     bytecodeChanged: boolean | null;
+    controls: {
+      assessment: "unknown" | "no-common-controls-found" | "review-required";
+      detected: Array<{
+        category: "supply" | "transfer" | "fees" | "upgrade" | "access" | "launch";
+        functionName: string;
+      }>;
+      customWriteFunctions: string[];
+      administrator: string | null;
+      activeLaunchRestrictions: boolean | null;
+      restrictionEndBlock: string | null;
+      maxTransactionBps: number | null;
+      maxWalletBps: number | null;
+    };
+  };
+  liquidity: {
+    controlStatus: "not-proven";
   };
   holders: {
     count: number | null;
