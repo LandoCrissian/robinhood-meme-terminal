@@ -59,6 +59,14 @@ misleading code cannot receive a clean control assessment. Pool-held token suppl
 reported separately from LP-position custody; RMT does not label liquidity locked until
 the controlling V2 LP tokens or V3 position NFT can be proven.
 
+Robinhood Chain's Arbitrum block response includes separate L2 `number` and L1
+`l1BlockNumber` counters. Solidity `block.number`-based launch restrictions are compared
+against the L1 counter, not the RPC's L2 counter. When an exact Pons factory record and
+position match the displayed pool, the published ABI exposes only
+`setInitialBuyRecipient`, and its documented two-block window has expired, RMT labels the
+surface `Known Pons protection · expired`. Active restrictions, additional custom writes,
+or unverified factory claims remain review-required.
+
 The fourth layer now verifies exact Pons and Noxa V3 position NFTs when their pinned
 launch factory publishes a position ID. RMT matches the NFT's tokens and fee through the
 manager's live factory to the displayed pool, then distinguishes creator-controlled,

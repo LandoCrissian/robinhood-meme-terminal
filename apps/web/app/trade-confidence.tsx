@@ -159,6 +159,8 @@ export function TradeConfidence({
             <dd>{
               evidence.contract.controls.assessment === "no-common-controls-found"
                 ? "No common controls found"
+                : evidence.contract.controls.assessment === "known-launch-controls"
+                  ? "Known Pons protection · expired"
                 : evidence.contract.controls.assessment === "review-required"
                   ? "Review required"
                   : "Unknown"

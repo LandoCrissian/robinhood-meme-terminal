@@ -7,7 +7,8 @@ import {
 import {
   fetchTokenRiskEvidence,
   scanPublishedTokenControls,
-  simulateSellDirectionTransfer
+  simulateSellDirectionTransfer,
+  solidityBlockNumber
 } from "./token-risk-evidence";
 
 const token = getAddress("0xcC333d246c75C14B087561F39F8c6FEf958CE54f");
@@ -59,6 +60,13 @@ function mockFetch(options: {
 }
 
 async function main() {
+  assert.equal(
+    solidityBlockNumber({ number: 16n, l1BlockNumber: "0x20" }),
+    32n
+  );
+  assert.equal(solidityBlockNumber({ number: "0x10" }), 16n);
+  assert.equal(solidityBlockNumber({ number: "invalid" }), null);
+
   const passedSellSimulation = async (
     _token: typeof token,
     holder: typeof token,
@@ -228,6 +236,112 @@ async function main() {
   assert.equal(restricted.contract.controls.maxTransactionBps, 500);
   assert.equal(restricted.contract.controls.maxWalletBps, 550);
   assert.match(restricted.warnings.join(" "), /launch restrictions are currently active/);
+
+  const knownPonsProtection = await fetchTokenRiskEvidence(
+    { token, pair, creator, sourceId: "pons" },
+    {
+      fetch: mockFetch({
+        contract: {
+          is_verified: true,
+          proxy_type: null,
+          implementations: [],
+          is_changed_bytecode: false,
+          abi: [
+            {
+              type: "function",
+              name: "setInitialBuyRecipient",
+              stateMutability: "nonpayable",
+              inputs: [{ type: "address" }],
+              outputs: []
+            },
+            {
+              type: "function",
+              name: "restrictionEndBlock",
+              stateMutability: "view",
+              inputs: [],
+              outputs: [{ type: "uint256" }]
+            }
+          ]
+        }
+      }),
+      readControlState: async () => ({
+        administrator: null,
+        currentBlock: 300n,
+        restrictionEndBlock: 200n,
+        maxTransactionBps: 550,
+        maxWalletBps: 500
+      }),
+      readLiquidityPosition: async () => ({
+        controlStatus: "contract-held",
+        evidenceSource: "launchpad-registry",
+        positionManager: whale,
+        positionId: "393642",
+        owner: whale,
+        approvedOperator: null,
+        creatorCanTransfer: null,
+        positionLiquidity: "123"
+      }),
+      simulateSellTransfer: passedSellSimulation
+    }
+  );
+  assert.equal(
+    knownPonsProtection.contract.controls.assessment,
+    "known-launch-controls"
+  );
+  assert.equal(
+    knownPonsProtection.contract.controls.activeLaunchRestrictions,
+    false
+  );
+  assert.match(
+    knownPonsProtection.warnings.join(" "),
+    /factory-only launch protection is documented/
+  );
+  assert.doesNotMatch(
+    knownPonsProtection.warnings.join(" "),
+    /privileged control surfaces requiring review/
+  );
+
+  const unverifiedPonsClaim = await fetchTokenRiskEvidence(
+    { token, pair, creator, sourceId: "pons" },
+    {
+      fetch: mockFetch({
+        contract: {
+          is_verified: true,
+          proxy_type: null,
+          implementations: [],
+          is_changed_bytecode: false,
+          abi: [
+            {
+              type: "function",
+              name: "setInitialBuyRecipient",
+              stateMutability: "nonpayable",
+              inputs: [{ type: "address" }],
+              outputs: []
+            },
+            {
+              type: "function",
+              name: "restrictionEndBlock",
+              stateMutability: "view",
+              inputs: [],
+              outputs: [{ type: "uint256" }]
+            }
+          ]
+        }
+      }),
+      readControlState: async () => ({
+        administrator: null,
+        currentBlock: 300n,
+        restrictionEndBlock: 200n,
+        maxTransactionBps: 550,
+        maxWalletBps: 500
+      }),
+      simulateSellTransfer: passedSellSimulation
+    }
+  );
+  assert.equal(
+    unverifiedPonsClaim.contract.controls.assessment,
+    "review-required"
+  );
 
   const blockedEvidence = await fetchTokenRiskEvidence(
     { token, pair },

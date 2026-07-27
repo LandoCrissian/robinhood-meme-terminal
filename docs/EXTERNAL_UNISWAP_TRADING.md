@@ -68,6 +68,11 @@ Before an external buy is enabled, RMT performs the same read-only holder-to-poo
 probe used by its Sushi path. A deterministic transfer failure blocks the buy; an unavailable
 probe is shown as unknown and still requires the user to review the evidence.
 
+For factory-verified Pons tokens, RMT interprets the documented factory-only initial-buy
+control only after comparing its expiry against Robinhood Chain's L1 block counter. This
+prevents the Arbitrum L2 RPC height from making an expired two-block window appear active.
+Unknown origins and additional write controls are not exempted.
+
 ## Limitations
 
 - Only direct canonical Uniswap V3 token/WETH pools are supported.
