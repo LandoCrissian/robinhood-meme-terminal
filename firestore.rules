@@ -294,6 +294,7 @@ service cloud.firestore {
     }
 
     function validModuleActivationRequest(module, data) {
+      let reviewNote = data.get('reviewNote', '');
       return module in ['token', 'nft', 'marketplace', 'music']
         && data.keys().hasAll([
           'schemaVersion',
@@ -307,13 +308,31 @@ service cloud.firestore {
           'module',
           'status',
           'requestedAt',
-          'updatedAt'
+          'updatedAt',
+          'reviewedAt',
+          'reviewNote'
         ])
         && data.schemaVersion == 1
         && data.module == module
         && data.status in ['requested', 'reviewing', 'ready', 'declined']
         && data.requestedAt is timestamp
-        && data.updatedAt is timestamp;
+        && data.updatedAt is timestamp
+        && reviewNote is string && reviewNote.size() <= 600;
+    }
+
+    function validAdminModuleReview(module) {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      let note = request.resource.data.get('reviewNote', '');
+      return isRmtAdmin()
+        && resource.data.status in ['requested', 'reviewing']
+        && request.resource.data.status in ['reviewing', 'ready', 'declined']
+        && (request.resource.data.status == 'reviewing'
+          ? resource.data.status == 'requested'
+          : resource.data.status == 'reviewing' && note.size() >= 10)
+        && request.resource.data.requestedAt == resource.data.requestedAt
+        && request.resource.data.reviewedAt == request.time
+        && request.resource.data.updatedAt == request.time
+        && changed.hasOnly(['status', 'reviewNote', 'reviewedAt', 'updatedAt']);
     }
 
     match /users/{userId} {
@@ -384,12 +403,16 @@ service cloud.firestore {
           && validModuleActivationRequest(module, request.resource.data)
           && request.resource.data.status == 'requested'
           && request.resource.data.requestedAt == request.time
-          && request.resource.data.updatedAt == request.time;
-        allow update: if isRmtAdmin()
+          && request.resource.data.updatedAt == request.time
+          && !request.resource.data.keys().hasAny(['reviewedAt', 'reviewNote']);
+        allow update: if validAdminModuleReview(module)
           && validModuleActivationRequest(module, request.resource.data)
-          && request.resource.data.requestedAt == resource.data.requestedAt
-          && request.resource.data.updatedAt == request.time;
+          && request.resource.data.requestedAt == resource.data.requestedAt;
       }
+    }
+
+    match /{path=**}/moduleRequests/{module} {
+      allow read: if isRmtAdmin();
     }
   }
 }

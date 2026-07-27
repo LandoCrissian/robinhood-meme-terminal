@@ -68,6 +68,7 @@ dd{margin:0;text-align:right;overflow-wrap:anywhere}
 .creatorControlGrid article>div{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .creatorControlGrid article strong{font-size:.75rem}.creatorControlGrid article span{color:#74e986;font-size:.5rem;font-weight:950;letter-spacing:.07em}
 .creatorControlGrid article p{margin:10px 0;color:#77847b;font-size:.62rem;line-height:1.45}
+.creatorModuleReviewNote{display:block;margin:0 0 10px;padding:8px;border-left:2px solid #53633c;color:#aab5ad;font-size:.58rem;line-height:1.45}
 .creatorControlGrid button{margin-top:auto;padding:8px 10px;border:1px solid #3f7049;border-radius:9px;background:#6fe77f;color:#061008;font-size:.6rem;font-weight:950}
 .creatorControlGrid button:disabled{border-color:#303b33;background:#121813;color:#7e8b82}
 .creatorControlGrid .request-requested{border-color:#505738}.creatorControlGrid .request-ready{border-color:#397047}
