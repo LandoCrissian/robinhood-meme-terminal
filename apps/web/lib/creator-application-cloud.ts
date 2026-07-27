@@ -2,17 +2,48 @@ import type { User } from "firebase/auth";
 import { getFirebaseClient } from "./firebase-client";
 import {
   CREATOR_APPLICATION_SCHEMA_VERSION,
+  PROJECT_MODULES,
   PROJECT_RECORD_SCHEMA_VERSION,
   RMT_ADMIN_EMAIL,
   normalizeCreatorApplication,
   normalizeProjectSlug,
   parseCreatorApplication,
+  parsePublicProject,
   type CreatorApplication,
   type CreatorApplicationDraft,
-  type CreatorApplicationStatus
+  type CreatorApplicationStatus,
+  type PublicProjectRecord,
+  type RequestedProjectModule
 } from "./creator-application";
+import {
+  MODULE_ACTIVATION_REQUEST_SCHEMA_VERSION,
+  PROJECT_ASSIGNMENT_SCHEMA_VERSION,
+  parseModuleActivationRequest,
+  parseProjectAssignment,
+  type ModuleActivationRequest,
+  type ProjectAssignment
+} from "./project-ownership";
 
 export type AdminCreatorApplication = CreatorApplication & { userId: string };
+
+export async function subscribeToPublicProjects(
+  listener: (projects: PublicProjectRecord[]) => void,
+  onError: () => void
+) {
+  const client = await getFirebaseClient();
+  if (!client) throw new Error("Firebase project discovery is not configured.");
+  const reference = client.firestoreApi.query(
+    client.firestoreApi.collection(client.db, "projects"),
+    client.firestoreApi.where("status", "==", "live"),
+    client.firestoreApi.limit(50)
+  );
+  return client.firestoreApi.onSnapshot(reference, (snapshot) => {
+    const projects = snapshot.docs
+      .map((document) => parsePublicProject(document.data()))
+      .filter((project): project is PublicProjectRecord => Boolean(project));
+    listener(projects);
+  }, onError);
+}
 
 function requireVerifiedUser(user: User | null): User & { email: string } {
   if (!user || !user.email || !user.emailVerified) {
@@ -86,6 +117,83 @@ export async function subscribeToAdminApplications(
   }, onError);
 }
 
+export async function subscribeToProjectAssignment(
+  user: User,
+  projectSlug: string,
+  listener: (assignment: ProjectAssignment | null) => void,
+  onError: () => void
+) {
+  const verified = requireVerifiedUser(user);
+  const client = await getFirebaseClient();
+  if (!client) throw new Error("Firebase project ownership is not configured.");
+  const slug = normalizeProjectSlug(projectSlug);
+  const reference = client.firestoreApi.doc(client.db, "projectAssignments", slug);
+  return client.firestoreApi.onSnapshot(reference, (snapshot) => {
+    const assignment = snapshot.exists() ? parseProjectAssignment(snapshot.data()) : null;
+    listener(assignment?.ownerId === verified.uid ? assignment : null);
+  }, onError);
+}
+
+export async function subscribeToModuleActivationRequests(
+  user: User,
+  projectSlug: string,
+  listener: (requests: Partial<Record<RequestedProjectModule, ModuleActivationRequest>>) => void,
+  onError: () => void
+) {
+  requireVerifiedUser(user);
+  const client = await getFirebaseClient();
+  if (!client) throw new Error("Firebase project ownership is not configured.");
+  const slug = normalizeProjectSlug(projectSlug);
+  const reference = client.firestoreApi.collection(
+    client.db,
+    "projectAssignments",
+    slug,
+    "moduleRequests"
+  );
+  return client.firestoreApi.onSnapshot(reference, (snapshot) => {
+    const requests: Partial<Record<RequestedProjectModule, ModuleActivationRequest>> = {};
+    for (const document of snapshot.docs) {
+      const module = PROJECT_MODULES.includes(document.id as RequestedProjectModule)
+        ? document.id as RequestedProjectModule
+        : null;
+      if (!module) continue;
+      const request = parseModuleActivationRequest(module, document.data());
+      if (request) requests[module] = request;
+    }
+    listener(requests);
+  }, onError);
+}
+
+export async function requestModuleActivation(
+  user: User,
+  projectSlug: string,
+  module: RequestedProjectModule
+) {
+  const verified = requireVerifiedUser(user);
+  const client = await getFirebaseClient();
+  if (!client) throw new Error("Firebase project ownership is not configured.");
+  const slug = normalizeProjectSlug(projectSlug);
+  const assignmentReference = client.firestoreApi.doc(client.db, "projectAssignments", slug);
+  const assignmentSnapshot = await client.firestoreApi.getDoc(assignmentReference);
+  const assignment = assignmentSnapshot.exists()
+    ? parseProjectAssignment(assignmentSnapshot.data())
+    : null;
+  if (!assignment || assignment.ownerId !== verified.uid) {
+    throw new Error("This profile is not assigned to manage the project.");
+  }
+  if (!assignment.allowedModules.includes(module)) {
+    throw new Error("That module was not included in the approved project application.");
+  }
+  const requestReference = client.firestoreApi.doc(assignmentReference, "moduleRequests", module);
+  await client.firestoreApi.setDoc(requestReference, {
+    schemaVersion: MODULE_ACTIVATION_REQUEST_SCHEMA_VERSION,
+    module,
+    status: "requested",
+    requestedAt: client.firestoreApi.serverTimestamp(),
+    updatedAt: client.firestoreApi.serverTimestamp()
+  });
+}
+
 export async function reviewCreatorApplication(input: {
   admin: User;
   application: AdminCreatorApplication;
@@ -114,10 +222,12 @@ export async function reviewCreatorApplication(input: {
   const slug = normalizeProjectSlug(input.projectSlug);
   if (slug.length < 3) throw new Error("Approved projects need a unique slug of at least 3 characters.");
   const projectReference = client.firestoreApi.doc(client.db, "projects", slug);
+  const assignmentReference = client.firestoreApi.doc(client.db, "projectAssignments", slug);
   await client.firestoreApi.runTransaction(client.db, async (transaction) => {
-    const [currentApplicationSnapshot, existingProjectSnapshot] = await Promise.all([
+    const [currentApplicationSnapshot, existingProjectSnapshot, existingAssignmentSnapshot] = await Promise.all([
       transaction.get(applicationReference),
-      transaction.get(projectReference)
+      transaction.get(projectReference),
+      transaction.get(assignmentReference)
     ]);
     const currentApplication = currentApplicationSnapshot.exists()
       ? parseCreatorApplication(currentApplicationSnapshot.data())
@@ -125,7 +235,7 @@ export async function reviewCreatorApplication(input: {
     if (!currentApplication || currentApplication.status !== "pending") {
       throw new Error("Only a currently pending application can be approved.");
     }
-    if (existingProjectSnapshot.exists()) {
+    if (existingProjectSnapshot.exists() || existingAssignmentSnapshot.exists()) {
       throw new Error("That public page slug is already assigned. Choose another.");
     }
     transaction.set(projectReference, {
@@ -140,6 +250,14 @@ export async function reviewCreatorApplication(input: {
       availableModules: currentApplication.requestedModules,
       status: "live",
       publishedAt: now,
+      updatedAt: now
+    });
+    transaction.set(assignmentReference, {
+      schemaVersion: PROJECT_ASSIGNMENT_SCHEMA_VERSION,
+      projectSlug: slug,
+      ownerId: input.application.userId,
+      allowedModules: currentApplication.requestedModules,
+      createdAt: now,
       updatedAt: now
     });
     transaction.update(applicationReference, {

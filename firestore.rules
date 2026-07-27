@@ -260,6 +260,62 @@ service cloud.firestore {
         && data.updatedAt is timestamp;
     }
 
+    function validProjectAssignment(projectId, data) {
+      return data.keys().hasAll([
+          'schemaVersion',
+          'projectSlug',
+          'ownerId',
+          'allowedModules',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'schemaVersion',
+          'projectSlug',
+          'ownerId',
+          'allowedModules',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.schemaVersion == 1
+        && data.projectSlug == projectId
+        && data.projectSlug.matches('^[a-z0-9][a-z0-9-]{1,46}[a-z0-9]$')
+        && data.ownerId is string && data.ownerId.size() > 0 && data.ownerId.size() <= 128
+        && validProjectModules(data.allowedModules)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function ownsProjectAssignment(projectId) {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && get(/databases/$(database)/documents/projectAssignments/$(projectId)).data.ownerId
+          == request.auth.uid;
+    }
+
+    function validModuleActivationRequest(module, data) {
+      return module in ['token', 'nft', 'marketplace', 'music']
+        && data.keys().hasAll([
+          'schemaVersion',
+          'module',
+          'status',
+          'requestedAt',
+          'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'schemaVersion',
+          'module',
+          'status',
+          'requestedAt',
+          'updatedAt'
+        ])
+        && data.schemaVersion == 1
+        && data.module == module
+        && data.status in ['requested', 'reviewing', 'ready', 'declined']
+        && data.requestedAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
     match /users/{userId} {
       allow read, delete: if ownsProfile(userId);
       allow create: if ownsProfile(userId) && validUserDocument(request.resource.data);
@@ -303,6 +359,37 @@ service cloud.firestore {
         && request.resource.data.publishedAt == resource.data.publishedAt
         && request.resource.data.updatedAt == request.time;
       allow delete: if isRmtAdmin();
+    }
+
+    match /projectAssignments/{projectId} {
+      allow read: if isRmtAdmin()
+        || (request.auth != null
+          && request.auth.token.email_verified == true
+          && resource.data.ownerId == request.auth.uid);
+      allow create: if isRmtAdmin()
+        && validProjectAssignment(projectId, request.resource.data)
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+      allow update: if isRmtAdmin()
+        && validProjectAssignment(projectId, request.resource.data)
+        && request.resource.data.ownerId == resource.data.ownerId
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if isRmtAdmin();
+
+      match /moduleRequests/{module} {
+        allow read: if isRmtAdmin() || ownsProjectAssignment(projectId);
+        allow create: if ownsProjectAssignment(projectId)
+          && module in get(/databases/$(database)/documents/projectAssignments/$(projectId)).data.allowedModules
+          && validModuleActivationRequest(module, request.resource.data)
+          && request.resource.data.status == 'requested'
+          && request.resource.data.requestedAt == request.time
+          && request.resource.data.updatedAt == request.time;
+        allow update: if isRmtAdmin()
+          && validModuleActivationRequest(module, request.resource.data)
+          && request.resource.data.requestedAt == resource.data.requestedAt
+          && request.resource.data.updatedAt == request.time;
+      }
     }
   }
 }

@@ -9,6 +9,7 @@ import {
   type RequestedProjectModule
 } from "../../../lib/creator-application";
 import { getFirebaseClient } from "../../../lib/firebase-client";
+import { ProjectCreatorControls } from "../../project-creator-controls";
 
 const MODULE_COPY: Record<RequestedProjectModule, { label: string; description: string }> = {
   token: { label: "Token", description: "Project token identity and a future connection to RMT market discovery and trading." },
@@ -92,6 +93,7 @@ export function ApprovedProjectPage({ slug }: { slug: string }) {
         </div>
         <p className="projectControlBoundary">No module is activated by page approval. Future activation will require the assigned creator, a disclosed one-time fee, and an explicit transaction where applicable.</p>
       </section>
+      <ProjectCreatorControls slug={project.slug} />
     </main>
   );
 }

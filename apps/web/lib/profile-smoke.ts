@@ -15,6 +15,10 @@ import {
   parsePublicProject,
   validateCreatorApplication
 } from "./creator-application";
+import {
+  parseModuleActivationRequest,
+  parseProjectAssignment
+} from "./project-ownership";
 
 const vercelConfig = JSON.parse(readFileSync(new URL("../vercel.json", import.meta.url), "utf8")) as {
   headers?: Array<{
@@ -155,6 +159,29 @@ assert.deepEqual(creatorApplication, {
 });
 assert.equal(validateCreatorApplication(creatorApplication), null);
 assert.match(validateCreatorApplication({ ...creatorApplication, tokenAddress: "" }) ?? "", /Token module/);
+
+assert.deepEqual(parseProjectAssignment({
+  schemaVersion: 1,
+  projectSlug: "runner-studio",
+  ownerId: "creator-user",
+  allowedModules: ["nft", "music"]
+})?.allowedModules, ["nft", "music"]);
+assert.equal(parseProjectAssignment({
+  schemaVersion: 1,
+  projectSlug: "runner-studio",
+  ownerId: "",
+  allowedModules: ["nft"]
+}), null);
+assert.equal(parseModuleActivationRequest("nft", {
+  schemaVersion: 1,
+  module: "nft",
+  status: "requested"
+})?.status, "requested");
+assert.equal(parseModuleActivationRequest("nft", {
+  schemaVersion: 1,
+  module: "music",
+  status: "requested"
+}), null);
 assert.equal(normalizeProjectSlug("  Runner Studio!!!  "), "runner-studio");
 
 const publicProject = parsePublicProject({

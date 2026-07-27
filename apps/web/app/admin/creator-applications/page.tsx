@@ -112,7 +112,7 @@ export default function CreatorApplicationAdminPage() {
   return (
     <main className="adminReviewPage">
       <header className="adminReviewHeader">
-        <div><p className="eyebrow">PRIVATE RMT OPERATIONS</p><h1>Creator applications</h1><p>Review private submissions. Approval publishes only the project record shown here; it does not deploy contracts, charge fees, or grant wallet authority.</p></div>
+        <div><p className="eyebrow">PRIVATE RMT OPERATIONS</p><h1>Creator applications</h1><p>Review private submissions. Approval publishes the project page and privately assigns its creator workspace; it does not deploy contracts, charge fees, or grant wallet authority.</p></div>
         <span>{pendingCount} PENDING</span>
       </header>
 

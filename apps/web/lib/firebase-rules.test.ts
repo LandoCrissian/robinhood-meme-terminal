@@ -15,9 +15,11 @@ import {
   doc,
   getDoc,
   getDocs,
+  query,
   serverTimestamp,
   setDoc,
   Timestamp,
+  where,
   writeBatch
 } from "firebase/firestore";
 
@@ -116,6 +118,29 @@ function publicProject(overrides: Record<string, unknown> = {}) {
     availableModules: ["token", "nft"],
     status: "live",
     publishedAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+    ...overrides
+  };
+}
+
+function projectAssignment(overrides: Record<string, unknown> = {}) {
+  return {
+    schemaVersion: 1,
+    projectSlug: "runner-studio",
+    ownerId: OWNER_ID,
+    allowedModules: ["token", "nft"],
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+    ...overrides
+  };
+}
+
+function moduleActivationRequest(module = "nft", overrides: Record<string, unknown> = {}) {
+  return {
+    schemaVersion: 1,
+    module,
+    status: "requested",
+    requestedAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
     ...overrides
   };
@@ -389,6 +414,7 @@ test("approval atomically publishes a public record without exposing the private
   const admin = adminDb();
   const batch = writeBatch(admin);
   batch.set(doc(admin, "projects", "runner-studio"), publicProject());
+  batch.set(doc(admin, "projectAssignments", "runner-studio"), projectAssignment());
   batch.set(doc(admin, "creatorApplications", OWNER_ID), {
     status: "approved",
     reviewNote: "Project page approved after identity and public information review.",
@@ -400,7 +426,13 @@ test("approval atomically publishes a public record without exposing the private
 
   const anonymous = testEnvironment.unauthenticatedContext().firestore();
   assert.equal((await assertSucceeds(getDoc(doc(anonymous, "projects", "runner-studio")))).data()?.name, "Runner Studio");
+  assert.equal((await assertSucceeds(getDocs(query(
+    collection(anonymous, "projects"),
+    where("status", "==", "live")
+  )))).size, 1);
+  await assertFails(getDocs(collection(anonymous, "projects")));
   await assertFails(getDoc(doc(anonymous, "creatorApplications", OWNER_ID)));
+  await assertFails(getDoc(doc(anonymous, "projectAssignments", "runner-studio")));
 });
 
 test("non-admin users cannot publish, alter, or remove public projects", async () => {
@@ -416,4 +448,43 @@ test("non-admin users cannot publish, alter, or remove public projects", async (
   });
   await assertFails(setDoc(doc(owner, "projects", "runner-studio"), publicProject({ name: "Hijacked" })));
   await assertFails(deleteDoc(doc(owner, "projects", "runner-studio")));
+});
+
+test("only the assigned creator and RMT admin can read a private project assignment", async () => {
+  const admin = adminDb();
+  await assertSucceeds(setDoc(doc(admin, "projectAssignments", "runner-studio"), projectAssignment()));
+
+  const owner = authenticatedDb();
+  assert.equal(
+    (await assertSucceeds(getDoc(doc(owner, "projectAssignments", "runner-studio")))).data()?.ownerId,
+    OWNER_ID
+  );
+  await assertFails(getDoc(doc(authenticatedDb(OTHER_ID), "projectAssignments", "runner-studio")));
+  await assertFails(getDoc(doc(testEnvironment.unauthenticatedContext().firestore(), "projectAssignments", "runner-studio")));
+  await assertFails(setDoc(
+    doc(owner, "projectAssignments", "runner-studio"),
+    projectAssignment({ allowedModules: ["token", "nft", "music"] })
+  ));
+});
+
+test("an assigned creator can request only approved modules and cannot self-approve them", async () => {
+  const admin = adminDb();
+  await assertSucceeds(setDoc(doc(admin, "projectAssignments", "runner-studio"), projectAssignment()));
+
+  const owner = authenticatedDb();
+  const nftRequest = doc(owner, "projectAssignments", "runner-studio", "moduleRequests", "nft");
+  await assertSucceeds(setDoc(nftRequest, moduleActivationRequest()));
+  await assertFails(setDoc(
+    doc(owner, "projectAssignments", "runner-studio", "moduleRequests", "music"),
+    moduleActivationRequest("music")
+  ));
+  await assertFails(setDoc(
+    doc(owner, "projectAssignments", "runner-studio", "moduleRequests", "token"),
+    moduleActivationRequest("token", { status: "ready" })
+  ));
+  await assertFails(setDoc(nftRequest, moduleActivationRequest("nft", { status: "ready" })));
+  await assertFails(setDoc(
+    doc(authenticatedDb(OTHER_ID), "projectAssignments", "runner-studio", "moduleRequests", "nft"),
+    moduleActivationRequest()
+  ));
 });

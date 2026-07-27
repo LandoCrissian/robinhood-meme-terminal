@@ -56,6 +56,23 @@ dd{margin:0;text-align:right;overflow-wrap:anywhere}
 .approvedProjectToken{display:grid;grid-template-columns:minmax(180px,.45fr) minmax(0,1fr);gap:12px;margin-top:10px;padding:18px}
 .approvedProjectToken h2{margin:4px 0 0;font-size:1rem}.approvedProjectToken code{align-self:center;overflow-wrap:anywhere;color:#cbd4cd;font-size:.75rem}
 .approvedProjectToken>p{grid-column:1/-1;margin:0;color:#77847b;font-size:.64rem;line-height:1.5}
+.creatorControlPrompt,.creatorControlPanel{margin-top:10px;padding:18px}
+.creatorControlPrompt{display:flex;align-items:center;justify-content:space-between;gap:18px}
+.creatorControlPrompt h2,.creatorControlPanel h2{margin:4px 0 5px;font-size:1rem}
+.creatorControlPrompt p:not(.eyebrow),.creatorControlPanel header p:not(.eyebrow){max-width:760px;margin:0;color:#7c8980;font-size:.66rem;line-height:1.5}
+.creatorControlPrompt>a{flex:0 0 auto;color:#71e983;font-size:.66rem;font-weight:900;text-decoration:none}
+.creatorControlPanel>header{display:flex;align-items:flex-start;justify-content:space-between;gap:18px}
+.creatorControlPanel>header>span{padding:6px 9px;border:1px solid #376043;border-radius:999px;background:#0b1910;color:#73eb84;font-size:.54rem;font-weight:950;letter-spacing:.07em}
+.creatorControlGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:14px}
+.creatorControlGrid article{display:flex;min-height:142px;flex-direction:column;padding:12px;border:1px solid #2b3930;border-radius:12px;background:#080d0a}
+.creatorControlGrid article>div{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.creatorControlGrid article strong{font-size:.75rem}.creatorControlGrid article span{color:#74e986;font-size:.5rem;font-weight:950;letter-spacing:.07em}
+.creatorControlGrid article p{margin:10px 0;color:#77847b;font-size:.62rem;line-height:1.45}
+.creatorControlGrid button{margin-top:auto;padding:8px 10px;border:1px solid #3f7049;border-radius:9px;background:#6fe77f;color:#061008;font-size:.6rem;font-weight:950}
+.creatorControlGrid button:disabled{border-color:#303b33;background:#121813;color:#7e8b82}
+.creatorControlGrid .request-requested{border-color:#505738}.creatorControlGrid .request-ready{border-color:#397047}
+.creatorControlBoundary,.creatorControlMessage{margin:12px 0 0;color:#738078;font-size:.61rem;line-height:1.5}
+.creatorControlMessage{color:#8ce999;font-weight:800}
 
 .marketPanel { margin-top:24px; }
 
@@ -86,6 +103,8 @@ dd{margin:0;text-align:right;overflow-wrap:anywhere}
  .approvedProjectHero>div>p:not(.eyebrow){grid-column:1/-1;font-size:.74rem}
  .approvedProjectToken{grid-template-columns:1fr;padding:14px}
  .approvedProjectToken>p{grid-column:auto}
+ .creatorControlPrompt,.creatorControlPanel>header{align-items:flex-start;flex-direction:column}
+ .creatorControlGrid{grid-template-columns:1fr}
 }
 
 @media (max-width: 460px) {
