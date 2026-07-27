@@ -287,6 +287,10 @@
 .tradeConfidenceChecks>span{display:flex;min-width:0;align-items:flex-start;gap:6px;padding:7px;border:1px solid #26362c;border-radius:8px;color:#91a097;font-size:.55rem;line-height:1.35}
 .tradeConfidenceChecks i{flex:0 0 auto;width:6px;height:6px;margin-top:2px;border-radius:50%;background:#61df73}
 .tradeConfidenceChecks .warn i{background:#e6ac61}
+.tradeConfidenceEvidence{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;margin:8px 0 0;overflow:hidden;border:1px solid #29362e;border-radius:8px;background:#29362e}
+.tradeConfidenceEvidence>div{min-width:0;padding:7px;background:#0c130e}
+.tradeConfidenceEvidence dt{color:#718078;font-size:.48rem;font-weight:850;letter-spacing:.04em;text-transform:uppercase}
+.tradeConfidenceEvidence dd{margin:3px 0 0;color:#d9e0db;font-size:.58rem;font-weight:850;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tradeConfidence ul{margin:9px 0 0;padding:8px 8px 8px 24px;border-radius:8px;background:rgba(0,0,0,.18);color:#d8b27e;font-size:.58rem;line-height:1.45}
 .tradeConfidenceConsent{display:flex;align-items:flex-start;gap:9px;margin-top:9px;padding:10px;border:1px solid #6c4e2f;border-radius:9px;background:#21170c;color:#e8d5b8;font-size:.61rem;font-weight:800;line-height:1.4;cursor:pointer}
 .tradeConfidenceConsent input{width:18px;height:18px;margin:0;accent-color:#00c805}
@@ -337,6 +341,7 @@
   .externalSushiResult dl>div:last-child{border-bottom:0}
   .tradeConfidenceChecks{grid-template-columns:1fr}
   .tradeConfidenceChecks>span{min-height:38px;align-items:center}
+  .tradeConfidenceEvidence{grid-template-columns:repeat(2,minmax(0,1fr))}
   .externalTradeActionDock{align-items:stretch;flex-direction:column;gap:6px}
   .externalTradeActionDock small{text-align:center}
 }

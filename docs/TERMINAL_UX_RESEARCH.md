@@ -43,6 +43,14 @@ activity, liquidity/age anomalies, and quote price impact where the venue suppli
 panel never says a token is “safe.” Material warnings require an explicit acknowledgement
 before a buy button becomes available.
 
+The second safety layer adds live Robinhood Chain evidence beside that same buy action:
+published-source status, proxy or changed-bytecode signals, total holder count, pool-held
+supply, largest non-pool holder, reported creator balance, and observed sells. RMT excludes
+the displayed liquidity pool and burn addresses from whale concentration, verifies creator
+balances directly against the token contract, and treats unavailable evidence as unknown.
+Published source means transparent code—not an audit, endorsement, or proof that the code is
+safe. External buys wait for this check to finish; sells remain unobstructed.
+
 This specifically addresses the recurring terminal complaints behind the research: users
 could not predict the real outcome, risk context was separated from the action, generated
 wallet and custody boundaries were unclear, or interfaces moved too quickly for a beginner
@@ -63,3 +71,4 @@ to understand what they were signing.
 - [BullX and Photon chart discussion](https://www.reddit.com/r/solana/comments/1fidwtq/love_hate_for_bullx_and_photon/)
 - [GMGN copy-trading user discussion](https://www.reddit.com/r/solana/comments/1h07gy1/copy_trading_on_gmgnai_doesnt_actually_work/)
 - [BullX Neo reliability discussion](https://www.reddit.com/r/solana/comments/1gdy4ri/bullx_neo_new_bullx_trading_bot_features/)
+- [Robinhood Chain Blockscout API](https://robinhoodchain.blockscout.com/api-docs)
