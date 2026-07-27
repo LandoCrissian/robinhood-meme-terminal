@@ -7,9 +7,8 @@ import {
   type Hex
 } from "viem";
 import { z } from "zod";
-import { SUSHI_NATIVE_TOKEN, SUSHI_QUOTE_SLIPPAGE_BPS } from "../sushi";
+import { SUSHI_NATIVE_TOKEN, SUSHI_QUOTE_SLIPPAGE_BPS, SUSHI_RED_SNWAPPER } from "../sushi";
 
-export const SUSHI_RED_SNWAPPER = getAddress("0x8e6fd69a77e88ee20ba4b4fbd59dfcda3ec0e98a");
 export const SUSHI_RED_SNWAPPER_CODE_HASH = "0x4b299d0674c86f701924420b3c90e4eb8efcc49f7865cc9680ee631ec7048b97" as Hex;
 export const SUSHI_ROUTE_EXECUTOR = getAddress("0x0e867974275cd31c25015c2753c9d75f9f355379");
 export const SUSHI_ROUTE_EXECUTOR_CODE_HASH = "0x57d45a1dce631a859bd1780826e0fbb9a7489650453406e0dc593724eca6cb6b" as Hex;
@@ -61,9 +60,9 @@ export type SushiSwapAudit = {
   assumedAmountOut: bigint;
   minimumOut: bigint;
   value: bigint;
-  executable: false;
+  calldata: Hex;
+  executable: true;
   onchainDeadline: false;
-  blocker: "Sushi RedSnwapper calldata does not enforce an onchain deadline.";
 };
 
 export async function auditSushiSwapCandidate(
@@ -134,14 +133,10 @@ export async function auditSushiSwapCandidate(
     assumedAmountOut,
     minimumOut,
     value,
-    executable: false,
-    onchainDeadline: false,
-    blocker: "Sushi RedSnwapper calldata does not enforce an onchain deadline."
+    calldata: payload.tx.data as Hex,
+    executable: true,
+    onchainDeadline: false
   };
-}
-
-export function assertSushiSwapExecutable(audit: SushiSwapAudit): never {
-  throw new Error(audit.blocker);
 }
 
 export function hashSushiContractCode(code: Hex) {

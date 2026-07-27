@@ -1,15 +1,32 @@
-import { getAddress, zeroAddress, type Address } from "viem";
+import {
+  createPublicClient,
+  erc20Abi,
+  getAddress,
+  http,
+  zeroAddress,
+  type Address
+} from "viem";
 import { z } from "zod";
+import { robinhoodChain } from "@rmt/shared/chains";
 import { activeChain } from "../network";
 import {
   SUSHI_NATIVE_TOKEN,
   SUSHI_QUOTE_SLIPPAGE_BPS,
+  SUSHI_RED_SNWAPPER,
+  type SushiExecutableQuote,
   type SushiIndicativeQuote,
   type SushiTokenMetadata
 } from "../sushi";
+import {
+  auditSushiSwapCandidate,
+  hashSushiContractCode
+} from "./sushi-swap-validation";
 
 const SUSHI_QUOTE_API = "https://api.sushi.com/quote/v7";
+const SUSHI_SWAP_API = "https://api.sushi.com/swap/v7";
 const MAX_UINT256 = (1n << 256n) - 1n;
+const MAX_PRICE_IMPACT = 0.1;
+const QUOTE_LIFETIME_SECONDS = 90;
 const decimalString = z.string().regex(/^\d+$/);
 const tokenMetadataSchema = z.object({
   address: z.string(),
@@ -30,8 +47,25 @@ const quoteResponseSchema = z.object({
 
 type SushiFetch = (input: string | URL, init?: RequestInit) => Promise<Response>;
 
+const client = createPublicClient({
+  chain: robinhoodChain,
+  transport: http(
+    process.env.RMT_RPC_URL ?? process.env.NEXT_PUBLIC_RMT_RPC_URL ?? robinhoodChain.rpcUrls.default.http[0],
+    { retryCount: 3, timeout: 12_000 }
+  )
+});
+
 export function sushiQuotesEnabled(environment: Readonly<Record<string, string | undefined>> = process.env) {
   return environment.RMT_SUSHI_QUOTES_ENABLED === "true";
+}
+
+export async function sushiExecutionAllowance(token: Address, owner: Address) {
+  return client.readContract({
+    address: token,
+    abi: erc20Abi,
+    functionName: "allowance",
+    args: [owner, SUSHI_RED_SNWAPPER]
+  });
 }
 
 function parsePriceImpact(value: number | string | undefined) {
@@ -134,6 +168,95 @@ export async function quoteSushiRoute(
     inputToken,
     outputToken,
     executable: false,
+    verifiedInput: true
+  };
+}
+
+export async function quoteAndBuildSushiSwap(
+  params: { token: Address; recipient: Address; side: "buy" | "sell"; amountIn: bigint },
+  dependencies: {
+    fetch?: SushiFetch;
+    enabled?: boolean;
+    timeoutMs?: number;
+    chainId?: number;
+    now?: () => number;
+    codeHash?: (address: Address) => Promise<`0x${string}`>;
+  } = {}
+): Promise<SushiExecutableQuote> {
+  const chainId = dependencies.chainId ?? activeChain.id;
+  if (chainId !== 4663) throw new Error("Sushi execution is available only on Robinhood Chain mainnet.");
+  if (!(dependencies.enabled ?? sushiQuotesEnabled())) throw new Error("Sushi quote discovery is not enabled.");
+  if (params.amountIn <= 0n || params.amountIn > MAX_UINT256) throw new Error("Trade amount is outside the supported range.");
+  if (params.recipient.toLowerCase() === zeroAddress) throw new Error("A valid wallet recipient is required.");
+
+  const tokenIn = params.side === "buy" ? SUSHI_NATIVE_TOKEN : params.token;
+  const tokenOut = params.side === "buy" ? params.token : SUSHI_NATIVE_TOKEN;
+  const url = new URL(`${SUSHI_SWAP_API}/${chainId}`);
+  url.searchParams.set("tokenIn", tokenIn);
+  url.searchParams.set("tokenOut", tokenOut);
+  url.searchParams.set("amount", params.amountIn.toString());
+  url.searchParams.set("maxSlippage", (SUSHI_QUOTE_SLIPPAGE_BPS / 10_000).toString());
+  url.searchParams.set("maxPriceImpact", MAX_PRICE_IMPACT.toString());
+  url.searchParams.set("sender", params.recipient);
+  url.searchParams.set("recipient", params.recipient);
+  url.searchParams.set("simulate", "true");
+  url.searchParams.set("validate", "true");
+  url.searchParams.set("referrer", "rmt");
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), dependencies.timeoutMs ?? 10_000);
+  let response: Response;
+  try {
+    response = await (dependencies.fetch ?? fetch)(url, {
+      headers: { Accept: "application/json" },
+      cache: "no-store",
+      signal: controller.signal
+    });
+  } catch (cause) {
+    if (controller.signal.aborted) throw new Error("Sushi swap simulation timed out.");
+    throw cause;
+  } finally {
+    clearTimeout(timeout);
+  }
+  if (!response.ok) throw new Error("Sushi could not simulate this trade.");
+  const payload = await response.json();
+  const audit = await auditSushiSwapCandidate(params, payload, {
+    codeHash: dependencies.codeHash ?? (async (address) => {
+      const code = await client.getBytecode({ address });
+      if (!code) throw new Error("Sushi contract bytecode is unavailable.");
+      return hashSushiContractCode(code);
+    })
+  });
+
+  const parsed = quoteResponseSchema.safeParse(payload);
+  if (!parsed.success || parsed.data.status !== "Success") throw new Error("Sushi returned an invalid executable swap response.");
+  const priceImpact = parsePriceImpact(parsed.data.priceImpact);
+  if (priceImpact > MAX_PRICE_IMPACT) throw new Error("Sushi blocked this trade because price impact is too high.");
+  const inputToken = quoteTokenMetadata(parsed.data.tokens, parsed.data.tokenFrom, tokenIn);
+  const outputToken = quoteTokenMetadata(parsed.data.tokens, parsed.data.tokenTo, tokenOut);
+  if (!inputToken || !outputToken) throw new Error("Sushi returned incomplete token metadata.");
+  const now = dependencies.now?.() ?? Date.now();
+
+  return {
+    chainId,
+    venue: "sushi-aggregator",
+    protocol: "SUSHI",
+    token: getAddress(params.token),
+    recipient: getAddress(params.recipient),
+    side: params.side,
+    amountIn: audit.amountIn.toString(),
+    quoteOut: audit.assumedAmountOut.toString(),
+    minimumOut: audit.minimumOut.toString(),
+    priceImpact,
+    inputToken,
+    outputToken,
+    router: audit.router,
+    executor: audit.executor,
+    calldata: audit.calldata,
+    value: audit.value.toString(),
+    quoteExpiresAt: String(Math.floor(now / 1000) + QUOTE_LIFETIME_SECONDS),
+    executable: true,
+    onchainDeadline: false,
     verifiedInput: true
   };
 }

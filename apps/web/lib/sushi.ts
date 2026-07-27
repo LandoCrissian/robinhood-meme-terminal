@@ -1,6 +1,7 @@
-import type { Address } from "viem";
+import type { Address, Hex } from "viem";
 
 export const SUSHI_NATIVE_TOKEN = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE" as Address;
+export const SUSHI_RED_SNWAPPER = "0x8E6fD69A77e88ee20Ba4B4fBd59DfCDA3EC0E98A" as Address;
 export const SUSHI_QUOTE_SLIPPAGE_BPS = 100;
 
 export type SushiTokenMetadata = {
@@ -25,4 +26,14 @@ export type SushiIndicativeQuote = {
   outputToken?: SushiTokenMetadata;
   executable: false;
   verifiedInput: true;
+};
+
+export type SushiExecutableQuote = Omit<SushiIndicativeQuote, "executable"> & {
+  router: Address;
+  executor: Address;
+  calldata: Hex;
+  value: string;
+  quoteExpiresAt: string;
+  executable: true;
+  onchainDeadline: false;
 };

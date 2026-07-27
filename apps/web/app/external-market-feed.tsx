@@ -326,7 +326,7 @@ function ExternalTradeDialog({
               : "This token is external and its launchpad origin is not yet verified by RMT. "}
             {isUniswapVenue(market)
               ? "RMT re-verifies the canonical V3 pool and constructs deadline- and slippage-bounded calldata for your wallet. RMT never takes custody."
-              : provider + " provides the final route, quote, price impact, and transaction review. RMT does not custody funds or construct Sushi swap calldata in this release."}
+              : "RMT re-verifies the displayed Sushi pool, audits Sushi’s simulated transaction, and checks its sender, recipient, tokens, amount, minimum output, router and executor before your wallet can submit it. RMT never takes custody."}
             </p>
           </details>
         </section>
@@ -334,11 +334,11 @@ function ExternalTradeDialog({
 
       <div className={`externalTradeActionDock ${side}`}>
         <a href={reviewUrl} target="_blank" rel="noopener noreferrer">
-          {isSushiVenue(market) ? "Continue to Sushi to execute ↗" : "Open Uniswap as fallback ↗"}
+          {isSushiVenue(market) ? "Open Sushi as fallback ↗" : "Open Uniswap as fallback ↗"}
         </a>
         <small>
           {isSushiVenue(market)
-            ? "RMT verifies the market and quote; Sushi prepares the final wallet transaction."
+            ? "Verified Sushi trading is available above without leaving RMT."
             : "Verified Uniswap V3 trading is available above without leaving RMT."}
         </small>
       </div>
