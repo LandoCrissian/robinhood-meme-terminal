@@ -12,6 +12,8 @@ RMT integrates Sushi in stages so a new venue cannot weaken the verified V6 exec
 - Token sells request only the exact allowance needed for the entered trade. RMT never asks for an unlimited Sushi approval and never takes custody.
 - Before an external buy is enabled, RMT also rechecks Blockscout contract transparency and holder concentration, excludes the verified pool and burn addresses from the whale calculation, and reads the reported creator balance directly from the token contract. Missing evidence is shown as unknown rather than passing.
 - Published token ABIs are scanned for common supply, transfer, fee, upgrade, access, and launch controls. Active launch-block restrictions are read onchain when exposed. Pool-held supply is never presented as proof that a V3 position is locked.
+- For Pons or Noxa projects whose pinned factory publishes a V3 position ID, RMT reads the exact NFT from its published position manager, matches the position tokens and fee back through that manager's factory to the displayed pool, then discloses the current NFT owner and transfer approval state. Creator-held, third-party-wallet, contract-held, and burn-address states are reported separately. Contract custody is never described as a lock without a separate withdrawal-path review.
+- Lemon's current public feed does not publish a position ID. Lemon markets therefore remain `not proven locked`; RMT does not infer LP custody from pool balances or metadata.
 - `NoWay`, partial fills, changed input amounts, invalid output amounts, excessive/invalid price impact values, upstream failures, and timeouts fail closed.
 - V6 launch previews remain off unless both `NEXT_PUBLIC_RMT_SUSHI_QUOTES_ENABLED=true` and `RMT_SUSHI_QUOTES_ENABLED=true` are intentionally deployed. External Terminal quotes require the server-only `RMT_SUSHI_QUOTES_ENABLED=true` flag.
 
@@ -29,6 +31,7 @@ Read-only verification was refreshed on 2026-07-27 against Sushi's official SDK 
 | Sushi RedSnwapper | `0x8E6fD69A77e88ee20Ba4B4fBd59DfCDA3EC0E98A` | `0x4b299d0674c86f701924420b3c90e4eb8efcc49f7865cc9680ee631ec7048b97` |
 | Current route executor | `0x0e867974275Cd31C25015C2753C9d75F9f355379` | `0x57d45a1dce631a859bd1780826e0fbb9a7489650453406e0dc593724eca6cb6b` |
 | Sushi V3 factory | `0xE51960f1B45f1C9FB6D166E6a884F866fC70433B` | `0x1d515a200d61f60a4075b5895f5f282b05e0772ca0749f9fa1589e981165d5f0` |
+| Sushi V3 position manager | `0x51d0e5188afe12d502e29d982d20c190e7816107` | live code required before position evidence is accepted |
 | Sushi V3 quoter | `0x3E290E5e01818002A0b672148bdC7514d861C7B3` | `0x5223dff6d08c3d6fe0b2c409295f3c3bdeb2f64f46771f2c923f405e716da668` |
 | Sushi V2 router | `0x9A55D3d0c0f09859c7869510f53eD0a30B340766` | `0x77ab57d1f5d72bd6e600776f80718670a1c901e839ed4794378135c530f4c2d0` |
 

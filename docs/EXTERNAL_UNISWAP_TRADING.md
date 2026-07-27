@@ -26,6 +26,7 @@ Verified against the official Uniswap deployment registry for chain ID `4663`:
 | --- | --- |
 | WETH | `0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73` |
 | Uniswap V3 factory | `0x1f7d7550B1b028f7571e69a784071F0205FD2EfA` |
+| Uniswap V3 NonfungiblePositionManager | `0x73991a25c818bf1f1128deaab1492d45638de0d3` |
 | QuoterV2 | `0x33e885ed0ec9bf04ecfb19341582aadcb4c8a9e7` |
 | SwapRouter02 | `0xcaf681a66d020601342297493863e78c959e5cb2` |
 
@@ -69,4 +70,13 @@ The tests prove that spoofed pair data, wrong chains, wrong venues, non-DEX URLs
 - Multi-hop routing and UniswapX are not part of this release.
 - Tokens with transfer taxes, rebases, hooks or other nonstandard transfer behavior may fail at wallet simulation and are not specially supported.
 - RMT does not claim that a verified pool or successful quote makes a token safe.
+
+## Launchpad position evidence
+
+For Pons and Noxa projects, the pinned launch factory publishes an exact position manager
+and position ID. RMT accepts that evidence only after the NFT's token pair and fee resolve
+through the manager's live factory to the exact displayed pool. RMT then reports the current
+owner, direct approval, creator operator status, and nonzero position liquidity. A contract-held
+position remains labeled `lock unproven`; custody by a contract is not proof that its withdrawal
+paths are disabled.
 - The independent external contract review noted elsewhere in RMT documentation remains outstanding.

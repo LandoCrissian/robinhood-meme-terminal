@@ -59,6 +59,13 @@ misleading code cannot receive a clean control assessment. Pool-held token suppl
 reported separately from LP-position custody; RMT does not label liquidity locked until
 the controlling V2 LP tokens or V3 position NFT can be proven.
 
+The fourth layer now verifies exact Pons and Noxa V3 position NFTs when their pinned
+launch factory publishes a position ID. RMT matches the NFT's tokens and fee through the
+manager's live factory to the displayed pool, then distinguishes creator-controlled,
+other-wallet, contract-held, burn-address, and unavailable custody evidence. Lemon and
+unregistered markets remain explicitly unproven because pool balances alone cannot
+establish LP ownership or locking.
+
 This specifically addresses the recurring terminal complaints behind the research: users
 could not predict the real outcome, risk context was separated from the action, generated
 wallet and custody boundaries were unclear, or interfaces moved too quickly for a beginner

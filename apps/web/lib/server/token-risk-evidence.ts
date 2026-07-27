@@ -11,6 +11,10 @@ import {
 import { robinhoodChain } from "@rmt/shared/chains";
 import { z } from "zod";
 import type { TokenRiskEvidence } from "../token-risk-evidence";
+import {
+  resolveRegisteredLiquidityPosition,
+  type RegisteredLiquiditySource
+} from "./registered-liquidity-position";
 
 const BLOCKSCOUT = "https://robinhoodchain.blockscout.com";
 const DEAD_ADDRESS = "0x000000000000000000000000000000000000dead";
@@ -249,7 +253,20 @@ function evidenceWarnings(evidence: Omit<TokenRiskEvidence, "warnings">) {
   if (controls.activeLaunchRestrictions) {
     warnings.push("Onchain launch restrictions are currently active and may limit buys or wallet balances.");
   }
-  warnings.push("Pool-held token supply does not prove the liquidity position is locked or outside creator control.");
+  if (evidence.liquidity.controlStatus === "not-proven") {
+    warnings.push("Pool-held token supply does not prove the liquidity position is locked or outside creator control.");
+  } else if (evidence.liquidity.controlStatus === "creator-controlled") {
+    warnings.push("The reported creator can currently transfer the verified liquidity-position NFT.");
+  } else if (evidence.liquidity.controlStatus === "contract-held") {
+    warnings.push("The verified liquidity-position NFT is contract-held, but RMT has not proven that contract prevents withdrawal.");
+  } else if (evidence.liquidity.controlStatus === "third-party-wallet") {
+    warnings.push("The verified liquidity-position NFT is held by another wallet; this does not prove a time lock or permanent lock.");
+  } else if (evidence.liquidity.controlStatus === "burn-address") {
+    warnings.push("The verified liquidity-position NFT is currently held by the standard burn address.");
+  }
+  if (evidence.liquidity.approvedOperator) {
+    warnings.push("The verified liquidity-position NFT has an approved transfer operator.");
+  }
   const largest = evidence.holders.largestNonPoolHolder?.shareBps;
   if (largest !== undefined && largest >= 2_000) {
     warnings.push("One non-pool address controls at least 20% of the token supply.");
@@ -266,24 +283,36 @@ function evidenceWarnings(evidence: Omit<TokenRiskEvidence, "warnings">) {
 }
 
 export async function fetchTokenRiskEvidence(
-  params: { token: Address; pair: Address; creator?: Address },
+  params: {
+    token: Address;
+    pair: Address;
+    creator?: Address;
+    sourceId?: RegisteredLiquiditySource;
+  },
   dependencies: {
     fetch?: RiskFetch;
     timeoutMs?: number;
     now?: () => number;
     readCreatorBalance?: ReadCreatorBalance;
     readControlState?: ReadControlState;
+    readLiquidityPosition?: typeof resolveRegisteredLiquidityPosition;
   } = {}
 ): Promise<TokenRiskEvidence> {
   const tokenPath = `/api/v2/tokens/${params.token}`;
-  const [rawToken, rawHolders, rawContract, rawContractAbi, rawCreatorBalance] = await Promise.all([
+  const [rawToken, rawHolders, rawContract, rawContractAbi, rawCreatorBalance, liquidity] = await Promise.all([
     fetchJson(tokenPath, dependencies),
     fetchJson(`${tokenPath}/holders`, dependencies),
     fetchJson(`/api/v2/smart-contracts/${params.token}`, dependencies, true, 3_000),
     fetchJson(`/api?module=contract&action=getabi&address=${params.token}`, dependencies, true, 12_000),
     params.creator
       ? (dependencies.readCreatorBalance ?? readCreatorBalance)(params.token, params.creator)
-      : Promise.resolve(null)
+      : Promise.resolve(null),
+    (dependencies.readLiquidityPosition ?? resolveRegisteredLiquidityPosition)({
+      token: params.token,
+      pair: params.pair,
+      creator: params.creator,
+      sourceId: params.sourceId
+    })
   ]);
   const token = tokenSchema.safeParse(rawToken);
   const holders = holdersSchema.safeParse(rawHolders);
@@ -398,9 +427,7 @@ export async function fetchTokenRiskEvidence(
     marketVerified: true as const,
     coverage: partial ? "partial" as const : "complete" as const,
     contract: contractEvidence,
-    liquidity: {
-      controlStatus: "not-proven" as const
-    },
+    liquidity,
     holders: {
       count: token.data.holders_count ? Number(token.data.holders_count) : null,
       poolShareBps,

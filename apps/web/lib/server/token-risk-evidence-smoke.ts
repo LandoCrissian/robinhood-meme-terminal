@@ -1,5 +1,9 @@
 import assert from "node:assert/strict";
 import { getAddress } from "viem";
+import {
+  classifyRegisteredLiquidityPosition,
+  resolveRegisteredLiquidityPosition
+} from "./registered-liquidity-position";
 import { fetchTokenRiskEvidence, scanPublishedTokenControls } from "./token-risk-evidence";
 
 const token = getAddress("0xcC333d246c75C14B087561F39F8c6FEf958CE54f");
@@ -102,6 +106,8 @@ async function main() {
   assert.equal(evidence.contract.bytecodeChanged, false);
   assert.equal(evidence.contract.controls.assessment, "unknown");
   assert.equal(evidence.liquidity.controlStatus, "not-proven");
+  assert.equal(evidence.liquidity.evidenceSource, "none");
+  assert.equal(evidence.liquidity.positionId, null);
   assert.equal(evidence.holders.count, 92);
   assert.equal(evidence.holders.poolShareBps, 7_000);
   assert.equal(evidence.holders.largestNonPoolHolder?.address, creator);
@@ -198,6 +204,63 @@ async function main() {
   assert.equal(restricted.contract.controls.maxTransactionBps, 500);
   assert.equal(restricted.contract.controls.maxWalletBps, 550);
   assert.match(restricted.warnings.join(" "), /launch restrictions are currently active/);
+
+  const registeredPosition = await resolveRegisteredLiquidityPosition(
+    { token, pair, creator, sourceId: "pons" },
+    {
+      readPosition: async () => ({
+        manager: getAddress("0x51d0e5188afe12d502e29d982d20c190e7816107"),
+        positionId: 1199n,
+        owner: creator,
+        approvedOperator: getAddress(zero),
+        creatorApprovedForAll: false,
+        token0: token,
+        token1: getAddress("0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73"),
+        fee: 10_000,
+        liquidity: 123n,
+        canonicalPair: pair,
+        managerCode: "0x1234",
+        ownerCode: undefined
+      })
+    }
+  );
+  assert.equal(registeredPosition.evidenceSource, "launchpad-registry");
+  assert.equal(registeredPosition.controlStatus, "creator-controlled");
+  assert.equal(registeredPosition.creatorCanTransfer, true);
+  assert.equal(registeredPosition.positionId, "1199");
+  assert.equal(registeredPosition.approvedOperator, null);
+
+  const contractHeld = classifyRegisteredLiquidityPosition({
+    creator,
+    owner: whale,
+    approvedOperator: getAddress(zero),
+    creatorApprovedForAll: false,
+    ownerHasCode: true
+  });
+  assert.equal(contractHeld.controlStatus, "contract-held");
+  assert.equal(contractHeld.creatorCanTransfer, null);
+
+  const mismatchedPosition = await resolveRegisteredLiquidityPosition(
+    { token, pair, creator, sourceId: "pons" },
+    {
+      readPosition: async () => ({
+        manager: getAddress("0x51d0e5188afe12d502e29d982d20c190e7816107"),
+        positionId: 1199n,
+        owner: creator,
+        approvedOperator: getAddress(zero),
+        creatorApprovedForAll: false,
+        token0: token,
+        token1: getAddress("0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73"),
+        fee: 10_000,
+        liquidity: 123n,
+        canonicalPair: whale,
+        managerCode: "0x1234",
+        ownerCode: undefined
+      })
+    }
+  );
+  assert.equal(mismatchedPosition.controlStatus, "not-proven");
+  assert.equal(mismatchedPosition.positionId, null);
 
   await assert.rejects(
     fetchTokenRiskEvidence(

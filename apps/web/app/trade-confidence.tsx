@@ -70,6 +70,18 @@ export function TradeConfidence({
       ? [`This quote has ${Math.min(priceImpact * 100, 999).toFixed(2)}% price impact.`]
       : [])
   ];
+  const liquidityControlLabel = evidence?.liquidity.controlStatus === "creator-controlled"
+    ? "Creator can transfer"
+    : evidence?.liquidity.controlStatus === "contract-held"
+      ? "Contract-held · lock unproven"
+      : evidence?.liquidity.controlStatus === "third-party-wallet"
+        ? "Other wallet · lock unproven"
+        : evidence?.liquidity.controlStatus === "burn-address"
+          ? "Burn address"
+          : "Not proven locked";
+  const positionLabel = evidence?.liquidity.positionId
+    ? `${liquidityControlLabel} · #${evidence.liquidity.positionId}`
+    : liquidityControlLabel;
 
   return (
     <section className={`tradeConfidence ${excessivePriceImpact ? "blocked" : requiresAcknowledgement ? "caution" : "clear"}`} aria-labelledby="trade-confidence-heading">
@@ -125,7 +137,7 @@ export function TradeConfidence({
                   : "Unknown"
             }</dd>
           </div>
-          <div><dt>LP position control</dt><dd>Not proven locked</dd></div>
+          <div><dt>LP position control</dt><dd>{positionLabel}</dd></div>
           {evidence.contract.controls.activeLaunchRestrictions && (
             <div>
               <dt>Active launch limits</dt>
