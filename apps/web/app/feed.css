@@ -193,6 +193,60 @@
 .quickTradeFooter{display:flex;flex:0 0 auto;align-items:center;justify-content:center;gap:18px;padding:9px 14px;border-top:1px solid #222f27;background:#070b08;color:#718078;font-size:.58rem;font-weight:800}
 .quickTradeFooter span{display:flex;align-items:center;gap:5px}
 .quickTradeFooter span:before{content:"";width:5px;height:5px;border-radius:50%;background:#46dd62}
+.externalTradeSideTabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;margin-bottom:10px;padding:5px;border:1px solid #2b3a31;border-radius:13px;background:#060a07}
+.externalTradeSideTabs button{min-height:42px;border:0;border-radius:9px;background:transparent;color:#839087;font:inherit;font-size:.72rem;font-weight:950;cursor:pointer}
+.externalTradeSideTabs button.active.buy{background:#55ed71;color:#031507}
+.externalTradeSideTabs button.active.sell{background:#8b3139;color:#fff}
+.externalTradeSnapshot,.externalTradePulse,.externalTradeProvenance{margin-bottom:10px;padding:14px;border:1px solid #28382e;border-radius:15px;background:#090e0b}
+.externalTradeSnapshot>header,.externalTradePulse>header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.externalTradeSnapshot>header>div{display:flex;align-items:center;gap:8px}
+.externalTradeSnapshot>header small{color:#748178;font-size:.61rem}
+.externalTradeRisk{padding:5px 7px;border:1px solid #6c4630;border-radius:7px;background:#1d130c;color:#efb37c;font-size:.55rem}
+.externalTradeRisk.clear{border-color:#31513a;background:#0d1b11;color:#74e785}
+.externalTradePrice{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;margin-top:15px}
+.externalTradePrice>span{display:flex;flex-direction:column;gap:4px}
+.externalTradePrice small,.externalTradeMetrics small,.externalTradeChanges small,.externalTradeProvenance small{color:#748178;font-size:.59rem;font-weight:800}
+.externalTradePrice strong{font-size:clamp(1.5rem,4vw,2.35rem);letter-spacing:-.04em}
+.externalTradePrice em{padding:6px 8px;border-radius:8px;font-size:.68rem;font-style:normal;font-weight:950}
+.externalTradePrice em.positive,.externalTradeChanges .positive strong{color:#72eb82}
+.externalTradePrice em.positive{background:#102818}
+.externalTradePrice em.negative,.externalTradeChanges .negative strong{color:#ff8c8c}
+.externalTradePrice em.negative{background:#2a1212}
+.externalTradePrice em.neutral,.externalTradeChanges .neutral strong{color:#a3afa6}
+.externalTradePrice em.neutral{background:#141a16}
+.externalTradeMetrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;margin-top:14px;border:1px solid #26352c;border-radius:11px}
+.externalTradeMetrics>span{display:flex;min-width:0;min-height:64px;justify-content:center;flex-direction:column;gap:5px;padding:9px 10px;border-right:1px solid #26352c}
+.externalTradeMetrics>span:last-child{border-right:0}
+.externalTradeMetrics strong{overflow:hidden;font-size:.76rem;text-overflow:ellipsis;white-space:nowrap}
+.externalTradePulse>header small{display:block;color:#65e078;font-size:.53rem;font-weight:950;letter-spacing:.08em}
+.externalTradePulse>header strong{display:block;margin-top:3px;font-size:.83rem}
+.externalTradePulse>header a{color:#70e481;font-size:.62rem;font-weight:900;text-decoration:none}
+.externalTradeChanges{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));margin-top:12px;border:1px solid #26352c;border-radius:10px}
+.externalTradeChanges>span{display:flex;min-height:54px;justify-content:center;flex-direction:column;gap:4px;padding:8px 10px;border-right:1px solid #26352c}
+.externalTradeChanges>span:last-child{border-right:0}
+.externalTradeChanges strong{font-size:.73rem}
+.externalTradeFlow{margin-top:12px}
+.externalTradeFlow>div{display:flex;align-items:center;justify-content:space-between;gap:12px;color:#89968d;font-size:.63rem}
+.externalTradeFlow>div strong{color:#c9d2cb}
+.externalTradeFlowTrack{display:block;height:7px;margin-top:7px;overflow:hidden;border-radius:999px;background:#34191a}
+.externalTradeFlowTrack i{display:block;height:100%;border-radius:inherit;background:#58e875}
+.externalTradeFlow>small{display:block;margin-top:6px;color:#718078;font-size:.57rem}
+.externalTradeProvenance>div:first-child{display:flex;justify-content:space-between;gap:12px}
+.externalTradeProvenance>div:first-child strong{font-size:.72rem;text-align:right}
+.externalTradeProvenance dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin:12px 0 0}
+.externalTradeProvenance dl>div{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px;border:1px solid #25332a;border-radius:8px}
+.externalTradeProvenance dt{color:#728077;font-size:.59rem}
+.externalTradeProvenance dd{margin:0;color:#bdc8c0;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.61rem}
+.externalTradeProvenance .runnerDataNotice{margin:10px 0 0}
+.externalTradeProvenance details{margin-top:10px;border-top:1px solid #26352c}
+.externalTradeProvenance summary{display:flex;min-height:42px;align-items:center;justify-content:space-between;color:#92a097;font-size:.63rem;font-weight:900;cursor:pointer}
+.externalTradeProvenance summary:after{content:"+";font-size:.9rem}
+.externalTradeProvenance details[open] summary:after{content:"−"}
+.externalTradeProvenance details p{margin:0 0 3px;color:#829087;font-size:.63rem;line-height:1.55}
+.externalTradeActionDock{display:grid;flex:0 0 auto;grid-template-columns:minmax(0,1fr) minmax(210px,.5fr);align-items:center;gap:10px;padding:10px 14px;border-top:1px solid #29382f;background:#090e0b}
+.externalTradeActionDock a{display:flex;min-height:48px;align-items:center;justify-content:center;border-radius:11px;background:#55ed71;color:#031507;font-size:.74rem;font-weight:950;text-decoration:none}
+.externalTradeActionDock.sell a{background:#8b3139;color:#fff}
+.externalTradeActionDock small{color:#77847b;font-size:.61rem;line-height:1.45}
 
 @media(max-width:820px){
   .feed .hotGrid{grid-template-columns:1fr}
@@ -220,6 +274,11 @@
   .quickTradeHeaderActions a{display:none}
   .quickTradeBody{padding:9px}
   .quickTradeFooter{justify-content:flex-start;gap:10px;overflow-x:auto;white-space:nowrap}
+  .externalTradeMetrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .externalTradeMetrics>span:nth-child(2){border-right:0}
+  .externalTradeMetrics>span:nth-child(-n+2){border-bottom:1px solid #26352c}
+  .externalTradeActionDock{grid-template-columns:1fr}
+  .externalTradeActionDock small{text-align:center}
 }
 
 /* Ranked discovery views */

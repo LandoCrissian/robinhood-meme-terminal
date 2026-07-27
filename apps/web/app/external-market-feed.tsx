@@ -106,6 +106,22 @@ function snapshotTime(value: string) {
   return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 }
 
+function signedPercent(value: number) {
+  if (!Number.isFinite(value)) return "—";
+  return `${value > 0 ? "+" : ""}${value.toLocaleString(undefined, { maximumFractionDigits: 2 })}%`;
+}
+
+function changeTone(value: number) {
+  return value > 0 ? "positive" : value < 0 ? "negative" : "neutral";
+}
+
+function marketAge(minutes: number | null) {
+  if (minutes === null || !Number.isFinite(minutes)) return "Age unavailable";
+  if (minutes < 60) return `${Math.max(1, Math.round(minutes))}m old`;
+  if (minutes < 1_440) return `${Math.round(minutes / 60)}h old`;
+  return `${Math.round(minutes / 1_440)}d old`;
+}
+
 
 type ExternalTradeSide = "buy" | "sell";
 
@@ -161,12 +177,14 @@ function ExternalTradeDialog({
   market,
   side,
   delayed,
+  onSideChange,
   onClose,
   returnFocusTo
 }: {
   market: ExternalMarket;
   side: ExternalTradeSide;
   delayed: boolean;
+  onSideChange: (side: ExternalTradeSide) => void;
   onClose: () => void;
   returnFocusTo: HTMLElement | null;
 }) {
@@ -177,6 +195,8 @@ function ExternalTradeDialog({
   const provider = executionProvider(market) ?? "DEX";
   const reviewUrl = venueSwapUrl(market, side);
   const sideLabel = side === "buy" ? "Buy" : "Sell";
+  const oneHourTrades = market.buys1h + market.sells1h;
+  const buyPressure = Math.max(0, Math.min(100, market.buyPressureBps / 100));
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
@@ -245,49 +265,70 @@ function ExternalTradeDialog({
       </header>
 
       <div className="quickTradeBody">
-        <article className="externalMarketCard runnerMarketCard">
-          <div className="runnerCardStatus">
-            <span className={"marketSignal " + market.signal}>{signalLabel(market.signal)}</span>
-            <span>Venue: {venue}</span>
+        <div className="externalTradeSideTabs" role="tablist" aria-label={`Trade side for ${market.name}`}>
+          <button type="button" role="tab" aria-selected={side === "buy"} className={side === "buy" ? "active buy" : ""} onClick={() => onSideChange("buy")}>Buy</button>
+          <button type="button" role="tab" aria-selected={side === "sell"} className={side === "sell" ? "active sell" : ""} onClick={() => onSideChange("sell")}>Sell</button>
+        </div>
+
+        <section className="externalTradeSnapshot" aria-labelledby="external-market-snapshot">
+          <header>
+            <div>
+              <span className={`marketSignal ${market.signal}`}>{signalLabel(market.signal)}</span>
+              <small>{venue} · {marketAge(market.ageMinutes)}</small>
+            </div>
+            {market.riskFlags.length > 0
+              ? <strong className="externalTradeRisk">{riskSummary(market.riskFlags)}</strong>
+              : <strong className="externalTradeRisk clear">No ranking flags</strong>}
+          </header>
+          <div className="externalTradePrice">
+            <span><small id="external-market-snapshot">Live price</small><strong>{money(market.priceUsd, true)}</strong></span>
+            <em className={changeTone(market.priceChange1h)}>{signedPercent(market.priceChange1h)} · 1h</em>
           </div>
-          <div className="externalIdentity">
-            <ExternalArtwork market={market} />
-            <span>
-              <strong>{market.name}</strong>
-              <small>{"$" + cleanSymbol(market.symbol)}</small>
-            </span>
-            <em>{originLabel(market)}</em>
-          </div>
-          <div className="runnerStats">
+          <div className="externalTradeMetrics">
             <span><small>{value.label}</small><strong>{money(value.value)}</strong></span>
-            <span><small>Live price</small><strong>{money(market.priceUsd, true)}</strong></span>
-            <span><small>1h volume</small><strong>{money(market.volume1h)}</strong></span>
             <span><small>Liquidity</small><strong>{money(market.liquidityUsd)}</strong></span>
+            <span><small>1h volume</small><strong>{money(market.volume1h)}</strong></span>
+            <span><small>1h trades</small><strong>{oneHourTrades.toLocaleString()}</strong></span>
           </div>
-          <div className="runnerActivity">
-            <span>{"Token " + shortAddress(market.address) + " · Pool " + shortAddress(market.pairAddress)}</span>
-            {market.riskFlags.length > 0 && <em>{riskSummary(market.riskFlags)}</em>}
+        </section>
+
+        <section className="externalTradePulse" aria-labelledby="external-market-pulse">
+          <header><div><small>MARKET PULSE</small><strong id="external-market-pulse">Momentum and flow</strong></div><a href={market.url} target="_blank" rel="noopener noreferrer">Full chart ↗</a></header>
+          <div className="externalTradeChanges">
+            <span className={changeTone(market.priceChange5m)}><small>5m</small><strong>{signedPercent(market.priceChange5m)}</strong></span>
+            <span className={changeTone(market.priceChange1h)}><small>1h</small><strong>{signedPercent(market.priceChange1h)}</strong></span>
+            <span className={changeTone(market.priceChange24h)}><small>24h</small><strong>{signedPercent(market.priceChange24h)}</strong></span>
           </div>
-          {delayed && <p className="runnerDataNotice"><span>Market data is delayed. {provider} will calculate a fresh route and quote before any wallet confirmation.</span></p>}
-          <p className="externalDisclosure">
+          <div className="externalTradeFlow">
+            <div><span>Buy pressure</span><strong>{oneHourTrades > 0 ? `${Math.round(buyPressure)}% buys` : "No 1h trades"}</strong></div>
+            <span className="externalTradeFlowTrack" aria-hidden="true"><i style={{ width: `${oneHourTrades > 0 ? buyPressure : 0}%` }} /></span>
+            <small>{market.buys1h.toLocaleString()} buys · {market.sells1h.toLocaleString()} sells in 1h</small>
+          </div>
+        </section>
+
+        <section className="externalTradeProvenance" aria-labelledby="external-market-origin">
+          <div><small id="external-market-origin">PROJECT ORIGIN</small><strong>{originLabel(market)}</strong></div>
+          <dl>
+            <div><dt>Token</dt><dd title={market.address}>{shortAddress(market.address)}</dd></div>
+            <div><dt>Pool</dt><dd title={market.pairAddress}>{shortAddress(market.pairAddress)}</dd></div>
+          </dl>
+          {delayed && <p className="runnerDataNotice"><span>RMT’s snapshot is delayed. {provider} will still calculate a fresh route and quote before any wallet confirmation.</span></p>}
+          <details>
+            <summary>How this market is verified</summary>
+            <p>
             {market.project
               ? externalProjectProvenanceDescription(market.project) + " This is provenance, not an endorsement. "
               : "This token is external and its launchpad origin is not yet verified by RMT. "}
             {provider} provides the final route, quote, price impact, and transaction review. RMT does not custody funds or construct external swap calldata in this release.
-          </p>
-          <div className="externalMarketActions externalTradeReviewAction">
-            <a
-              className={side === "buy" ? "buyCardAction" : "sellCardAction"}
-              href={reviewUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              {"Review " + sideLabel + " on " + provider + " ↗"}
-            </a>
-          </div>
-        </article>
+            </p>
+          </details>
+        </section>
       </div>
 
+      <div className={`externalTradeActionDock ${side}`}>
+        <a href={reviewUrl} target="_blank" rel="noopener noreferrer">{"Review " + sideLabel + " on " + provider + " ↗"}</a>
+        <small>{provider} calculates the final route, price impact, and minimum received.</small>
+      </div>
       <footer className="quickTradeFooter">
         <span>Fresh {provider} quote required</span>
         <span>Wallet confirmation required</span>
@@ -354,6 +395,11 @@ export function ExternalMarketFeed() {
   const closeQuickTrade = useCallback(() => {
     setQuickTrade(undefined);
     syncQuickTradeUrl();
+  }, [syncQuickTradeUrl]);
+
+  const changeQuickTradeSide = useCallback((market: ExternalMarket, side: ExternalTradeSide) => {
+    setQuickTrade({ address: market.address, side });
+    syncQuickTradeUrl(market, side);
   }, [syncQuickTradeUrl]);
 
   const refresh = useCallback(async () => {
@@ -713,6 +759,7 @@ export function ExternalMarketFeed() {
           market={selectedQuickTradeMarket}
           side={quickTrade.side}
           delayed={status === "stale"}
+          onSideChange={(side) => changeQuickTradeSide(selectedQuickTradeMarket, side)}
           onClose={closeQuickTrade}
           returnFocusTo={returnFocusTo.current ?? runnerHeading.current}
         />
