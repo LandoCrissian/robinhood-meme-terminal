@@ -22,7 +22,19 @@ export type TokenRiskEvidence = {
     };
   };
   liquidity: {
-    controlStatus: "not-proven";
+    controlStatus:
+      | "not-proven"
+      | "creator-controlled"
+      | "third-party-wallet"
+      | "contract-held"
+      | "burn-address";
+    evidenceSource: "none" | "launchpad-registry";
+    positionManager: string | null;
+    positionId: string | null;
+    owner: string | null;
+    approvedOperator: string | null;
+    creatorCanTransfer: boolean | null;
+    positionLiquidity: string | null;
   };
   holders: {
     count: number | null;

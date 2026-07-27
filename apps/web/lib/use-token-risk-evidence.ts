@@ -19,8 +19,11 @@ export function useTokenRiskEvidence(market: ExternalMarket): TokenRiskEvidenceS
       venue
     });
     if (market.project?.creator) params.set("creator", market.project.creator);
+    if (market.project?.sourceId === "pons" || market.project?.sourceId === "noxa") {
+      params.set("sourceId", market.project.sourceId);
+    }
     return `/api/markets/token-risk?${params}`;
-  }, [market.address, market.pairAddress, market.project?.creator, venue]);
+  }, [market.address, market.pairAddress, market.project?.creator, market.project?.sourceId, venue]);
 
   useEffect(() => {
     if (!url) {
