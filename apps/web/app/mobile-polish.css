@@ -1020,6 +1020,101 @@
     padding: 10px;
   }
 
+  .externalTradeSideTabs {
+    position: sticky;
+    z-index: 2;
+    top: -10px;
+    gap: 6px;
+    margin: -1px 0 8px;
+    padding: 5px;
+    border-radius: 13px;
+    background: rgba(7, 11, 8, .97);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+  }
+
+  .externalTradeSideTabs button {
+    min-height: 44px;
+    font-size: .74rem;
+  }
+
+  .externalTradeSnapshot,
+  .externalTradePulse,
+  .externalTradeProvenance {
+    margin-bottom: 8px;
+    padding: 12px;
+    border-radius: 15px;
+  }
+
+  .externalTradeSnapshot > header {
+    align-items: flex-start;
+  }
+
+  .externalTradeSnapshot > header > div {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .externalTradePrice {
+    margin-top: 12px;
+  }
+
+  .externalTradePrice strong {
+    font-size: 1.8rem;
+  }
+
+  .externalTradeMetrics {
+    margin-top: 11px;
+  }
+
+  .externalTradeMetrics > span {
+    min-height: 55px;
+    padding: 8px 9px;
+  }
+
+  .externalTradeMetrics strong {
+    font-size: .72rem;
+  }
+
+  .externalTradeChanges {
+    margin-top: 10px;
+  }
+
+  .externalTradeChanges > span {
+    min-height: 50px;
+    padding: 7px 8px;
+  }
+
+  .externalTradeFlow {
+    margin-top: 10px;
+  }
+
+  .externalTradeProvenance dl {
+    margin-top: 10px;
+  }
+
+  .externalTradeProvenance summary {
+    min-height: 44px;
+    font-size: .67rem;
+  }
+
+  .externalTradeActionDock {
+    grid-template-columns: 1fr;
+    gap: 0;
+    padding: 7px 10px;
+  }
+
+  .externalTradeActionDock a {
+    min-height: 52px;
+    border-radius: 13px;
+    font-size: .77rem;
+  }
+
+  .externalTradeActionDock small {
+    display: none;
+  }
+
   .quickTradeDialog .runnerMarketCard.externalMarketCard {
     border: 0;
     border-radius: 0;
@@ -1087,17 +1182,23 @@
 
   .quickTradeFooter {
     display: grid;
-    grid-template-columns: 1fr;
-    gap: 0;
-    padding: 8px 12px 10px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 4px;
+    padding: 7px 10px calc(7px + env(safe-area-inset-bottom));
     overflow: visible;
     white-space: normal;
   }
 
   .quickTradeFooter span {
-    min-height: 30px;
-    font-size: .66rem;
-    line-height: 1.35;
+    min-height: 28px;
+    justify-content: center;
+    font-size: .55rem;
+    line-height: 1.25;
+    text-align: center;
+  }
+
+  .quickTradeFooter span:before {
+    display: none;
   }
 
   /* Launch form uses the same rounded section rhythm as Profile. */
