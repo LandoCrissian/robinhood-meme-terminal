@@ -9,6 +9,7 @@ import {
   type AdminCreatorApplication
 } from "../../../lib/creator-application-cloud";
 import { useProfile } from "../../profile-provider";
+import { ActivationReviewInbox } from "./activation-review-inbox";
 
 type ReviewDraft = { note: string; slug: string };
 
@@ -107,7 +108,7 @@ export default function CreatorApplicationAdminPage() {
 
   if (!configured) return <main className="adminReviewPage"><section className="panel adminAccessState"><h1>Firebase is not configured</h1><p>The creator review queue remains closed.</p></section></main>;
   if (profileLoading) return <main className="adminReviewPage"><section className="panel adminAccessState"><h1>Checking administrator access…</h1></section></main>;
-  if (!isAdmin) return <main className="adminReviewPage"><section className="panel adminAccessState"><p className="eyebrow">PRIVATE RMT OPERATIONS</p><h1>Administrator access required</h1><p>Sign in through Profile with the verified RMT review account.</p><Link href="/profile">Open Profile →</Link></section></main>;
+  if (!user || !isAdmin) return <main className="adminReviewPage"><section className="panel adminAccessState"><p className="eyebrow">PRIVATE RMT OPERATIONS</p><h1>Administrator access required</h1><p>Sign in through Profile with the verified RMT review account.</p><Link href="/profile">Open Profile →</Link></section></main>;
 
   return (
     <main className="adminReviewPage">
@@ -156,6 +157,7 @@ export default function CreatorApplicationAdminPage() {
         </div>
       )}
       {message && <p className="adminReviewMessage" role="status">{message}</p>}
+      <ActivationReviewInbox admin={user} />
     </main>
   );
 }

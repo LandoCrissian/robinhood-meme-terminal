@@ -128,6 +128,7 @@ export function ProjectCreatorControls({ slug }: { slug: string }) {
             <article className={request ? `request-${request.status}` : ""} key={module}>
               <div><strong>{MODULE_COPY[module].label}</strong><span>{request ? request.status.toUpperCase() : "AVAILABLE"}</span></div>
               <p>{MODULE_COPY[module].description}</p>
+              {request?.reviewNote && <small className="creatorModuleReviewNote">{request.reviewNote}</small>}
               <button
                 type="button"
                 disabled={Boolean(request) || busyModule === module}

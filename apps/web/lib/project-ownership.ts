@@ -24,6 +24,8 @@ export type ModuleActivationRequest = {
   status: ModuleActivationRequestStatus;
   requestedAt?: unknown;
   updatedAt?: unknown;
+  reviewedAt?: unknown;
+  reviewNote?: string;
 };
 
 function validModules(value: unknown) {
@@ -75,6 +77,8 @@ export function parseModuleActivationRequest(
     module,
     status: data.status as ModuleActivationRequestStatus,
     requestedAt: data.requestedAt,
-    updatedAt: data.updatedAt
+    updatedAt: data.updatedAt,
+    reviewedAt: data.reviewedAt,
+    reviewNote: typeof data.reviewNote === "string" ? data.reviewNote.trim().slice(0, 600) : ""
   };
 }

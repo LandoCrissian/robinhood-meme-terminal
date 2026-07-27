@@ -21,10 +21,12 @@ import {
   parseModuleActivationRequest,
   parseProjectAssignment,
   type ModuleActivationRequest,
+  type ModuleActivationRequestStatus,
   type ProjectAssignment
 } from "./project-ownership";
 
 export type AdminCreatorApplication = CreatorApplication & { userId: string };
+export type AdminModuleActivationRequest = ModuleActivationRequest & { projectSlug: string };
 
 export async function subscribeToPublicProjects(
   listener: (projects: PublicProjectRecord[]) => void,
@@ -191,6 +193,81 @@ export async function requestModuleActivation(
     status: "requested",
     requestedAt: client.firestoreApi.serverTimestamp(),
     updatedAt: client.firestoreApi.serverTimestamp()
+  });
+}
+
+export async function subscribeToAdminModuleActivationRequests(
+  user: User,
+  listener: (requests: AdminModuleActivationRequest[]) => void,
+  onError: () => void
+) {
+  requireAdmin(user);
+  const client = await getFirebaseClient();
+  if (!client) throw new Error("Firebase project ownership is not configured.");
+  const reference = client.firestoreApi.query(
+    client.firestoreApi.collectionGroup(client.db, "moduleRequests"),
+    client.firestoreApi.limit(100)
+  );
+  return client.firestoreApi.onSnapshot(reference, (snapshot) => {
+    const requests = snapshot.docs.flatMap((document) => {
+      const projectSlug = document.ref.parent.parent?.id ?? "";
+      const module = PROJECT_MODULES.includes(document.id as RequestedProjectModule)
+        ? document.id as RequestedProjectModule
+        : null;
+      if (!projectSlug || !module) return [];
+      const request = parseModuleActivationRequest(module, document.data());
+      return request ? [{ ...request, projectSlug }] : [];
+    });
+    const rank: Record<ModuleActivationRequestStatus, number> = {
+      requested: 0,
+      reviewing: 1,
+      ready: 2,
+      declined: 3
+    };
+    requests.sort((left, right) => rank[left.status] - rank[right.status]
+      || left.projectSlug.localeCompare(right.projectSlug)
+      || left.module.localeCompare(right.module));
+    listener(requests);
+  }, onError);
+}
+
+export async function reviewModuleActivationRequest(input: {
+  admin: User;
+  request: AdminModuleActivationRequest;
+  status: Exclude<ModuleActivationRequestStatus, "requested">;
+  reviewNote: string;
+}) {
+  requireAdmin(input.admin);
+  const client = await getFirebaseClient();
+  if (!client) throw new Error("Firebase project ownership is not configured.");
+  const reviewNote = input.reviewNote.trim().slice(0, 600);
+  if (input.status !== "reviewing" && reviewNote.length < 10) {
+    throw new Error("Ready and declined decisions require a clear private review note.");
+  }
+  const reference = client.firestoreApi.doc(
+    client.db,
+    "projectAssignments",
+    input.request.projectSlug,
+    "moduleRequests",
+    input.request.module
+  );
+  await client.firestoreApi.runTransaction(client.db, async (transaction) => {
+    const snapshot = await transaction.get(reference);
+    const current = snapshot.exists()
+      ? parseModuleActivationRequest(input.request.module, snapshot.data())
+      : null;
+    if (!current) throw new Error("The module request is no longer available.");
+    const validTransition = input.status === "reviewing"
+      ? current.status === "requested"
+      : current.status === "reviewing";
+    if (!validTransition) throw new Error("The module request changed. Refresh the review queue.");
+    const now = client.firestoreApi.serverTimestamp();
+    transaction.update(reference, {
+      status: input.status,
+      reviewNote,
+      reviewedAt: now,
+      updatedAt: now
+    });
   });
 }
 

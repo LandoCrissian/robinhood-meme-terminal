@@ -10,6 +10,7 @@ import {
 } from "@firebase/rules-unit-testing";
 import {
   collection,
+  collectionGroup,
   deleteField,
   deleteDoc,
   doc,
@@ -487,4 +488,45 @@ test("an assigned creator can request only approved modules and cannot self-appr
     doc(authenticatedDb(OTHER_ID), "projectAssignments", "runner-studio", "moduleRequests", "nft"),
     moduleActivationRequest()
   ));
+});
+
+test("RMT admin must review a module request before marking it ready", async () => {
+  const admin = adminDb();
+  await assertSucceeds(setDoc(doc(admin, "projectAssignments", "runner-studio"), projectAssignment()));
+  const owner = authenticatedDb();
+  await assertSucceeds(setDoc(
+    doc(owner, "projectAssignments", "runner-studio", "moduleRequests", "nft"),
+    moduleActivationRequest()
+  ));
+
+  assert.equal((await assertSucceeds(getDocs(collectionGroup(admin, "moduleRequests")))).size, 1);
+  const adminRequest = doc(admin, "projectAssignments", "runner-studio", "moduleRequests", "nft");
+  await assertSucceeds(setDoc(adminRequest, {
+    status: "reviewing",
+    reviewNote: "",
+    reviewedAt: serverTimestamp(),
+    updatedAt: serverTimestamp()
+  }, { merge: true }));
+  await assertFails(setDoc(adminRequest, {
+    status: "ready",
+    reviewNote: "Too short",
+    reviewedAt: serverTimestamp(),
+    updatedAt: serverTimestamp()
+  }, { merge: true }));
+  await assertSucceeds(setDoc(adminRequest, {
+    status: "ready",
+    reviewNote: "Rights and configuration review completed; explicit setup is still required.",
+    reviewedAt: serverTimestamp(),
+    updatedAt: serverTimestamp()
+  }, { merge: true }));
+  assert.match(
+    (await assertSucceeds(getDoc(doc(owner, "projectAssignments", "runner-studio", "moduleRequests", "nft")))).data()?.reviewNote,
+    /explicit setup/
+  );
+  await assertFails(setDoc(adminRequest, {
+    status: "reviewing",
+    reviewNote: "",
+    reviewedAt: serverTimestamp(),
+    updatedAt: serverTimestamp()
+  }, { merge: true }));
 });

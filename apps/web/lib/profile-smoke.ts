@@ -175,13 +175,19 @@ assert.equal(parseProjectAssignment({
 assert.equal(parseModuleActivationRequest("nft", {
   schemaVersion: 1,
   module: "nft",
-  status: "requested"
-})?.status, "requested");
+  status: "ready",
+  reviewNote: "Configuration review completed."
+})?.reviewNote, "Configuration review completed.");
 assert.equal(parseModuleActivationRequest("nft", {
   schemaVersion: 1,
   module: "music",
   status: "requested"
 }), null);
+
+const adminActivationSource = readFileSync(new URL("../app/admin/creator-applications/activation-review-inbox.tsx", import.meta.url), "utf8");
+assert.match(adminActivationSource, /requested → reviewing → ready\/declined|Process creator requests/);
+assert.match(adminActivationSource, /does not deploy|without deploying contracts/);
+assert.match(adminActivationSource, /Mark ready/);
 assert.equal(normalizeProjectSlug("  Runner Studio!!!  "), "runner-studio");
 
 const publicProject = parsePublicProject({
