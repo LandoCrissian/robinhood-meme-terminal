@@ -9,6 +9,7 @@ import {
 } from "../lib/creator-application";
 import { subscribeToPublicProjects } from "../lib/creator-application-cloud";
 import { OFFICIAL_RMT_V6_TOKEN } from "../lib/project-page";
+import { ipfsToHttp } from "../lib/token-metadata";
 
 const MODULE_LABELS: Record<RequestedProjectModule, string> = {
   token: "Token",
@@ -19,6 +20,17 @@ const MODULE_LABELS: Record<RequestedProjectModule, string> = {
 
 function initials(name: string) {
   return name.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase();
+}
+
+function ProjectDirectoryMark({ project }: { project: PublicProjectRecord }) {
+  const [failed, setFailed] = useState(false);
+  return (
+    <div className="approvedDirectoryMark">
+      {project.logoUri && !failed
+        ? <img src={ipfsToHttp(project.logoUri)} alt="" referrerPolicy="no-referrer" onError={() => setFailed(true)} />
+        : initials(project.name)}
+    </div>
+  );
 }
 
 function publishedTime(value: unknown) {
@@ -85,7 +97,7 @@ export function ApprovedProjectDirectory() {
 
         {visibleProjects.map((project) => (
           <Link className="approvedDirectoryCard" href={`/project/${project.slug}`} key={project.slug}>
-            <div className="approvedDirectoryMark">{initials(project.name)}</div>
+            <ProjectDirectoryMark project={project} />
             <div className="approvedDirectoryIdentity">
               <span>REVIEW APPROVED · {project.projectType.toUpperCase()}</span>
               <h3>{project.name}</h3>

@@ -213,6 +213,8 @@ service cloud.firestore {
     }
 
     function validPublicProject(projectId, data) {
+      let logoUri = data.get('logoUri', '');
+      let bannerUri = data.get('bannerUri', '');
       return data.keys().hasAll([
           'schemaVersion',
           'slug',
@@ -235,6 +237,8 @@ service cloud.firestore {
           'projectType',
           'website',
           'xProfile',
+          'logoUri',
+          'bannerUri',
           'tokenAddress',
           'availableModules',
           'status',
@@ -251,6 +255,10 @@ service cloud.firestore {
         && (data.website == '' || data.website.matches('^https://.+$'))
         && data.xProfile is string && data.xProfile.size() <= 256
         && (data.xProfile == '' || data.xProfile.matches('^https://.+$'))
+        && logoUri is string && logoUri.size() <= 512
+        && (logoUri == '' || logoUri.matches('^(https://|ipfs://).+$'))
+        && bannerUri is string && bannerUri.size() <= 512
+        && (bannerUri == '' || bannerUri.matches('^(https://|ipfs://).+$'))
         && data.tokenAddress is string
         && (data.tokenAddress == '' || data.tokenAddress.matches('^0x[0-9a-f]{40}$'))
         && validProjectModules(data.availableModules)
@@ -258,6 +266,28 @@ service cloud.firestore {
         && data.status == 'live'
         && data.publishedAt is timestamp
         && data.updatedAt is timestamp;
+    }
+
+    function validCreatorProjectIdentityUpdate(projectId) {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      return ownsProjectAssignment(projectId)
+        && request.resource.data.schemaVersion == resource.data.schemaVersion
+        && request.resource.data.slug == resource.data.slug
+        && request.resource.data.projectType == resource.data.projectType
+        && request.resource.data.tokenAddress == resource.data.tokenAddress
+        && request.resource.data.availableModules == resource.data.availableModules
+        && request.resource.data.status == resource.data.status
+        && request.resource.data.publishedAt == resource.data.publishedAt
+        && request.resource.data.updatedAt == request.time
+        && changed.hasOnly([
+          'name',
+          'summary',
+          'website',
+          'xProfile',
+          'logoUri',
+          'bannerUri',
+          'updatedAt'
+        ]);
     }
 
     function validProjectAssignment(projectId, data) {
@@ -373,10 +403,13 @@ service cloud.firestore {
         && validPublicProject(projectId, request.resource.data)
         && request.resource.data.publishedAt == request.time
         && request.resource.data.updatedAt == request.time;
-      allow update: if isRmtAdmin()
-        && validPublicProject(projectId, request.resource.data)
-        && request.resource.data.publishedAt == resource.data.publishedAt
-        && request.resource.data.updatedAt == request.time;
+      allow update: if validPublicProject(projectId, request.resource.data)
+        && (
+          (isRmtAdmin()
+            && request.resource.data.publishedAt == resource.data.publishedAt
+            && request.resource.data.updatedAt == request.time)
+          || validCreatorProjectIdentityUpdate(projectId)
+        );
       allow delete: if isRmtAdmin();
     }
 

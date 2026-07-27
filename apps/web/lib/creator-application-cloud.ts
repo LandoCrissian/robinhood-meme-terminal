@@ -6,12 +6,15 @@ import {
   PROJECT_RECORD_SCHEMA_VERSION,
   RMT_ADMIN_EMAIL,
   normalizeCreatorApplication,
+  normalizeProjectIdentity,
   normalizeProjectSlug,
   parseCreatorApplication,
   parsePublicProject,
+  validateProjectIdentity,
   type CreatorApplication,
   type CreatorApplicationDraft,
   type CreatorApplicationStatus,
+  type ProjectIdentityDraft,
   type PublicProjectRecord,
   type RequestedProjectModule
 } from "./creator-application";
@@ -196,6 +199,36 @@ export async function requestModuleActivation(
   });
 }
 
+export async function updateProjectIdentity(
+  user: User,
+  project: PublicProjectRecord,
+  value: ProjectIdentityDraft
+) {
+  const verified = requireVerifiedUser(user);
+  const client = await getFirebaseClient();
+  if (!client) throw new Error("Firebase project ownership is not configured.");
+  const validationError = validateProjectIdentity(value);
+  if (validationError) throw new Error(validationError);
+  const identity = normalizeProjectIdentity(value);
+  const projectReference = client.firestoreApi.doc(client.db, "projects", project.slug);
+  const assignmentReference = client.firestoreApi.doc(client.db, "projectAssignments", project.slug);
+  await client.firestoreApi.runTransaction(client.db, async (transaction) => {
+    const [projectSnapshot, assignmentSnapshot] = await Promise.all([
+      transaction.get(projectReference),
+      transaction.get(assignmentReference)
+    ]);
+    const currentProject = projectSnapshot.exists() ? parsePublicProject(projectSnapshot.data()) : null;
+    const assignment = assignmentSnapshot.exists() ? parseProjectAssignment(assignmentSnapshot.data()) : null;
+    if (!currentProject || !assignment || assignment.ownerId !== verified.uid) {
+      throw new Error("This profile is not assigned to manage the project.");
+    }
+    transaction.update(projectReference, {
+      ...identity,
+      updatedAt: client.firestoreApi.serverTimestamp()
+    });
+  });
+}
+
 export async function subscribeToAdminModuleActivationRequests(
   user: User,
   listener: (requests: AdminModuleActivationRequest[]) => void,
@@ -323,6 +356,8 @@ export async function reviewCreatorApplication(input: {
       projectType: currentApplication.projectType,
       website: currentApplication.website,
       xProfile: currentApplication.xProfile,
+      logoUri: "",
+      bannerUri: "",
       tokenAddress: currentApplication.tokenAddress,
       availableModules: currentApplication.requestedModules,
       status: "live",

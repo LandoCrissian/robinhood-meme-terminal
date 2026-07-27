@@ -10,10 +10,13 @@ import {
 import { DEFAULT_PROFILE, normalizeProfile } from "./profile";
 import { normalizeWatchlist, normalizeWatchlistEntry } from "./watchlist";
 import {
+  cleanProjectMediaUri,
   normalizeCreatorApplication,
+  normalizeProjectIdentity,
   normalizeProjectSlug,
   parsePublicProject,
-  validateCreatorApplication
+  validateCreatorApplication,
+  validateProjectIdentity
 } from "./creator-application";
 import {
   parseModuleActivationRequest,
@@ -189,6 +192,18 @@ assert.match(adminActivationSource, /requested → reviewing → ready\/declined
 assert.match(adminActivationSource, /does not deploy|without deploying contracts/);
 assert.match(adminActivationSource, /Mark ready/);
 assert.equal(normalizeProjectSlug("  Runner Studio!!!  "), "runner-studio");
+assert.equal(cleanProjectMediaUri("ipfs://bafybeigdyrzt/logo.png"), "ipfs://bafybeigdyrzt/logo.png");
+assert.equal(cleanProjectMediaUri("javascript:alert(1)"), "");
+assert.equal(cleanProjectMediaUri("https://runner.example/logo.svg"), "");
+const projectIdentity = normalizeProjectIdentity({
+  name: "Runner Studio",
+  summary: creatorApplication.summary,
+  website: creatorApplication.website,
+  xProfile: creatorApplication.xProfile,
+  logoUri: "https://runner.example/logo.webp",
+  bannerUri: "ipfs://bafybeigdyrzt/banner.png"
+});
+assert.equal(validateProjectIdentity(projectIdentity), null);
 
 const publicProject = parsePublicProject({
   schemaVersion: 1,
@@ -198,12 +213,20 @@ const publicProject = parsePublicProject({
   projectType: "music",
   website: creatorApplication.website,
   xProfile: creatorApplication.xProfile,
+  logoUri: projectIdentity.logoUri,
+  bannerUri: projectIdentity.bannerUri,
   tokenAddress: creatorApplication.tokenAddress,
   availableModules: ["token", "music"],
   status: "live"
 });
 assert.equal(publicProject?.slug, "runner-studio");
 assert.deepEqual(publicProject?.availableModules, ["token", "music"]);
+assert.equal(publicProject?.logoUri, "https://runner.example/logo.webp");
 assert.equal(parsePublicProject({ ...publicProject, status: "pending" }), null);
+
+const creatorControlSource = readFileSync(new URL("../app/project-creator-controls.tsx", import.meta.url), "utf8");
+assert.match(creatorControlSource, /Save public identity/);
+assert.match(creatorControlSource, /Logo image/);
+assert.match(creatorControlSource, /Banner image/);
 
 console.log("Profile and Firebase sync smoke tests passed.");

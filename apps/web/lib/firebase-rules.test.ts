@@ -451,6 +451,51 @@ test("non-admin users cannot publish, alter, or remove public projects", async (
   await assertFails(deleteDoc(doc(owner, "projects", "runner-studio")));
 });
 
+test("an assigned creator can update public identity but not project authority", async () => {
+  const admin = adminDb();
+  const seed = writeBatch(admin);
+  seed.set(doc(admin, "projects", "runner-studio"), publicProject());
+  seed.set(doc(admin, "projectAssignments", "runner-studio"), projectAssignment());
+  await assertSucceeds(seed.commit());
+
+  const owner = authenticatedDb();
+  const project = doc(owner, "projects", "runner-studio");
+  await assertSucceeds(setDoc(project, {
+    name: "Runner Studio Labs",
+    summary: "A creator-managed project home for transparent art, music, market tools, and community experiments.",
+    website: "https://runner.example/studio",
+    xProfile: "https://x.com/runnerstudio",
+    logoUri: "ipfs://bafybeigdyrzt/logo.png",
+    bannerUri: "https://cdn.example/runner-banner.webp",
+    updatedAt: serverTimestamp()
+  }, { merge: true }));
+  const saved = (await assertSucceeds(getDoc(project))).data();
+  assert.equal(saved?.name, "Runner Studio Labs");
+  assert.equal(saved?.logoUri, "ipfs://bafybeigdyrzt/logo.png");
+
+  await assertFails(setDoc(project, {
+    logoUri: "javascript:alert(1)",
+    updatedAt: serverTimestamp()
+  }, { merge: true }));
+  await assertFails(setDoc(project, {
+    tokenAddress: "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    updatedAt: serverTimestamp()
+  }, { merge: true }));
+  await assertFails(setDoc(project, {
+    availableModules: ["token", "nft", "music"],
+    updatedAt: serverTimestamp()
+  }, { merge: true }));
+  await assertFails(setDoc(project, {
+    status: "paused",
+    updatedAt: serverTimestamp()
+  }, { merge: true }));
+  await assertFails(setDoc(
+    doc(authenticatedDb(OTHER_ID), "projects", "runner-studio"),
+    { name: "Impostor project", updatedAt: serverTimestamp() },
+    { merge: true }
+  ));
+});
+
 test("only the assigned creator and RMT admin can read a private project assignment", async () => {
   const admin = adminDb();
   await assertSucceeds(setDoc(doc(admin, "projectAssignments", "runner-studio"), projectAssignment()));
