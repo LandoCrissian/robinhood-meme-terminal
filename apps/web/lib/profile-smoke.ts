@@ -299,5 +299,10 @@ const approvedProjectSource = readFileSync(new URL("../app/project/[address]/app
 assert.match(approvedProjectSource, /GAME CREATOR SHOWCASE/);
 assert.match(approvedProjectSource, /GAMEPLAY GALLERY/);
 assert.match(approvedProjectSource, /GameReleaseUpdates/);
+assert.match(approvedProjectSource, /ProjectAudienceControls/);
+const projectAudienceSource = readFileSync(new URL("../app/project-audience-controls.tsx", import.meta.url), "utf8");
+assert.match(projectAudienceSource, /PEOPLE WATCHING/);
+assert.match(projectAudienceSource, /Follower identities stay private/);
+assert.match(projectAudienceSource, /aria-pressed/);
 
 console.log("Profile and Firebase sync smoke tests passed.");

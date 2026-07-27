@@ -402,6 +402,51 @@ service cloud.firestore {
         && (project.projectType == 'gaming' || project.availableModules.hasAny(['game']));
     }
 
+    function validProjectFollow(projectId, data) {
+      return data.keys().hasAll(['schemaVersion', 'projectSlug', 'followedAt'])
+        && data.keys().hasOnly(['schemaVersion', 'projectSlug', 'followedAt'])
+        && data.schemaVersion == 1
+        && data.projectSlug == projectId
+        && data.projectSlug.matches('^[a-z0-9][a-z0-9-]{1,46}[a-z0-9]$')
+        && data.followedAt is timestamp;
+    }
+
+    function validProjectStats(projectId, data) {
+      return data.keys().hasAll([
+          'schemaVersion',
+          'projectSlug',
+          'followerCount',
+          'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'schemaVersion',
+          'projectSlug',
+          'followerCount',
+          'updatedAt'
+        ])
+        && data.schemaVersion == 1
+        && data.projectSlug == projectId
+        && data.projectSlug.matches('^[a-z0-9][a-z0-9-]{1,46}[a-z0-9]$')
+        && data.followerCount is int
+        && data.followerCount >= 0
+        && data.updatedAt is timestamp;
+    }
+
+    function followAddsOneToStats(userId, projectId) {
+      let statsPath = /databases/$(database)/documents/projectStats/$(projectId);
+      return existsAfter(statsPath)
+        && getAfter(statsPath).data.followerCount
+          == (exists(statsPath) ? get(statsPath).data.followerCount + 1 : 1);
+    }
+
+    function followRemovesOneFromStats(userId, projectId) {
+      let statsPath = /databases/$(database)/documents/projectStats/$(projectId);
+      return exists(statsPath)
+        && existsAfter(statsPath)
+        && get(statsPath).data.followerCount > 0
+        && getAfter(statsPath).data.followerCount == get(statsPath).data.followerCount - 1;
+    }
+
     function validProjectAssignment(projectId, data) {
       return data.keys().hasAll([
           'schemaVersion',
@@ -499,6 +544,18 @@ service cloud.firestore {
             || getAfter(/databases/$(database)/documents/users/$(userId)).data.watchlistUpdatedAt
               > resource.data.listUpdatedAt);
       }
+
+      match /projectFollows/{projectId} {
+        allow read: if ownsProfile(userId);
+        allow create: if ownsProfile(userId)
+          && hasProfile(userId)
+          && get(/databases/$(database)/documents/projects/$(projectId)).data.status == 'live'
+          && validProjectFollow(projectId, request.resource.data)
+          && request.resource.data.followedAt == request.time
+          && followAddsOneToStats(userId, projectId);
+        allow delete: if ownsProfile(userId)
+          && followRemovesOneFromStats(userId, projectId);
+      }
     }
 
     match /creatorApplications/{userId} {
@@ -573,6 +630,37 @@ service cloud.firestore {
 
     match /{path=**}/moduleRequests/{module} {
       allow read: if isRmtAdmin();
+    }
+
+    match /projectStats/{projectId} {
+      allow read: if get(/databases/$(database)/documents/projects/$(projectId)).data.status == 'live';
+      allow create: if request.auth != null
+        && request.auth.token.email_verified == true
+        && hasProfile(request.auth.uid)
+        && get(/databases/$(database)/documents/projects/$(projectId)).data.status == 'live'
+        && validProjectStats(projectId, request.resource.data)
+        && request.resource.data.followerCount == 1
+        && request.resource.data.updatedAt == request.time
+        && !exists(/databases/$(database)/documents/users/$(request.auth.uid)/projectFollows/$(projectId))
+        && existsAfter(/databases/$(database)/documents/users/$(request.auth.uid)/projectFollows/$(projectId));
+      allow update: if request.auth != null
+        && request.auth.token.email_verified == true
+        && hasProfile(request.auth.uid)
+        && get(/databases/$(database)/documents/projects/$(projectId)).data.status == 'live'
+        && validProjectStats(projectId, request.resource.data)
+        && request.resource.data.schemaVersion == resource.data.schemaVersion
+        && request.resource.data.projectSlug == resource.data.projectSlug
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['followerCount', 'updatedAt'])
+        && (
+          (!exists(/databases/$(database)/documents/users/$(request.auth.uid)/projectFollows/$(projectId))
+            && existsAfter(/databases/$(database)/documents/users/$(request.auth.uid)/projectFollows/$(projectId))
+            && request.resource.data.followerCount == resource.data.followerCount + 1)
+          || (exists(/databases/$(database)/documents/users/$(request.auth.uid)/projectFollows/$(projectId))
+            && !existsAfter(/databases/$(database)/documents/users/$(request.auth.uid)/projectFollows/$(projectId))
+            && resource.data.followerCount > 0
+            && request.resource.data.followerCount == resource.data.followerCount - 1)
+        );
     }
   }
 }
