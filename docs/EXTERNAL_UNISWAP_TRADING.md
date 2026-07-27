@@ -64,11 +64,16 @@ pnpm --filter web test:external-uniswap
 
 The tests prove that spoofed pair data, wrong chains, wrong venues, non-DEX URLs, substituted tokens, thin liquidity, wrong factories, non-WETH pools, invalid fees and missing pool code all fail closed. They also decode the complete buy and sell calldata to verify the router recipient, amount, minimum received, WETH unwrap recipient and route deadline.
 
+Before an external buy is enabled, RMT performs the same read-only holder-to-pool transfer
+probe used by its Sushi path. A deterministic transfer failure blocks the buy; an unavailable
+probe is shown as unknown and still requires the user to review the evidence.
+
 ## Limitations
 
 - Only direct canonical Uniswap V3 token/WETH pools are supported.
 - Multi-hop routing and UniswapX are not part of this release.
 - Tokens with transfer taxes, rebases, hooks or other nonstandard transfer behavior may fail at wallet simulation and are not specially supported.
+- A passing sell-direction transfer is not a full swap guarantee and cannot predict future blacklist, fee, liquidity, or administrator changes.
 - RMT does not claim that a verified pool or successful quote makes a token safe.
 
 ## Launchpad position evidence

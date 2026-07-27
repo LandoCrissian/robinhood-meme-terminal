@@ -29,6 +29,15 @@ export function tradeRequiresAcknowledgement(market: ExternalMarket, side: "buy"
   );
 }
 
+export function tradeIsBlockedByEvidence(
+  evidenceState: TokenRiskEvidenceState,
+  side: "buy" | "sell"
+) {
+  return side === "buy"
+    && evidenceState.status === "ready"
+    && evidenceState.evidence.sellSimulation.status === "blocked";
+}
+
 export function TradeConfidence({
   market,
   side,
@@ -50,6 +59,8 @@ export function TradeConfidence({
     && market.venue.dexId.toLowerCase().includes("sushi");
   const requiresAcknowledgement = tradeRequiresAcknowledgement(market, side);
   const excessivePriceImpact = priceImpact !== undefined && priceImpact > 0.1;
+  const evidenceBlocked = tradeIsBlockedByEvidence(evidenceState, side);
+  const tradeBlocked = excessivePriceImpact || evidenceBlocked;
   const evidence = evidenceState.evidence;
   const sourceTransparent = evidence?.contract.sourcePublished === true
     && evidence.contract.bytecodeChanged === false
@@ -84,13 +95,19 @@ export function TradeConfidence({
     : liquidityControlLabel;
 
   return (
-    <section className={`tradeConfidence ${excessivePriceImpact ? "blocked" : requiresAcknowledgement ? "caution" : "clear"}`} aria-labelledby="trade-confidence-heading">
+    <section className={`tradeConfidence ${tradeBlocked ? "blocked" : requiresAcknowledgement ? "caution" : "clear"}`} aria-labelledby="trade-confidence-heading">
       <header>
-        <span aria-hidden="true">{excessivePriceImpact ? "!" : requiresAcknowledgement ? "?" : "✓"}</span>
+        <span aria-hidden="true">{tradeBlocked ? "!" : requiresAcknowledgement ? "?" : "✓"}</span>
         <div>
           <small>RMT TRADE CONFIDENCE</small>
           <strong id="trade-confidence-heading">
-            {excessivePriceImpact ? "Trade blocked: extreme price impact" : requiresAcknowledgement ? "Review before buying" : "Verified checks passed"}
+            {evidenceBlocked
+              ? "Buy blocked: sell transfer failed"
+              : excessivePriceImpact
+                ? "Trade blocked: extreme price impact"
+                : requiresAcknowledgement
+                  ? "Review before buying"
+                  : "Verified checks passed"}
           </strong>
         </div>
       </header>
@@ -128,6 +145,16 @@ export function TradeConfidence({
             <dd>{market.sells1h > 0 ? `${market.sells1h.toLocaleString()} sells · 1h` : "No sells observed · 1h"}</dd>
           </div>
           <div>
+            <dt>Sell-direction simulation</dt>
+            <dd>{
+              evidence.sellSimulation.status === "passed"
+                ? "Holder → pool passed"
+                : evidence.sellSimulation.status === "blocked"
+                  ? "Blocked"
+                  : "Unknown"
+            }</dd>
+          </div>
+          <div>
             <dt>Token controls</dt>
             <dd>{
               evidence.contract.controls.assessment === "no-common-controls-found"
@@ -161,7 +188,7 @@ export function TradeConfidence({
         </ul>
       )}
 
-      {requiresAcknowledgement && !excessivePriceImpact && (
+      {requiresAcknowledgement && !tradeBlocked && (
         <label className="tradeConfidenceConsent">
           <input
             type="checkbox"

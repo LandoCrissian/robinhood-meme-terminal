@@ -17,7 +17,11 @@ import {
   type SushiIndicativeQuote
 } from "../lib/sushi";
 import { useTokenRiskEvidence } from "../lib/use-token-risk-evidence";
-import { TradeConfidence, tradeRequiresAcknowledgement } from "./trade-confidence";
+import {
+  TradeConfidence,
+  tradeIsBlockedByEvidence,
+  tradeRequiresAcknowledgement
+} from "./trade-confidence";
 import { WalletButton } from "./wallet-button";
 
 const ROBINHOOD_CHAIN_ID = 4663;
@@ -224,11 +228,12 @@ export function ExternalSushiQuotePanel({
   const requiresAcknowledgement = tradeRequiresAcknowledgement(market, side);
   const confidenceEvidenceReady = side === "sell" || tokenRisk.status !== "loading";
   const confidenceReady = confidenceEvidenceReady && (!requiresAcknowledgement || acknowledged);
+  const evidenceBlocked = tradeIsBlockedByEvidence(tokenRisk, side);
   const impactBlocked = Boolean(quote && quote.priceImpact > 0.1);
 
   const submit = () => {
     setMessage("");
-    if (!address || chainId !== ROBINHOOD_CHAIN_ID || !quoteIsFresh || !quote || insufficient || busy || !confidenceReady || impactBlocked) return;
+    if (!address || chainId !== ROBINHOOD_CHAIN_ID || !quoteIsFresh || !quote || insufficient || busy || !confidenceReady || evidenceBlocked || impactBlocked) return;
     if (needsApproval) {
       approval.writeContract({
         address: token,
@@ -253,7 +258,8 @@ export function ExternalSushiQuotePanel({
     ? approval.isPending || approvalReceipt.isLoading ? "Confirming exact approval…" : "Confirming Sushi swap…"
     : insufficient ? "Insufficient balance"
       : !confidenceEvidenceReady ? "Checking contract and holders…"
-      : !confidenceReady ? "Review and acknowledge warnings"
+      : evidenceBlocked ? "Buy blocked: sell transfer failed"
+        : !confidenceReady ? "Review and acknowledge warnings"
         : impactBlocked ? "Price impact too high"
           : needsApproval ? `Approve exact ${market.symbol} amount`
             : side === "buy" ? `Buy ${market.symbol} with Sushi` : `Sell ${market.symbol} with Sushi`;
@@ -345,7 +351,7 @@ export function ExternalSushiQuotePanel({
             <button
               className={`externalUniswapSubmit ${side}`}
               type="button"
-              disabled={!quoteIsFresh || insufficient || busy || !confidenceReady || impactBlocked}
+              disabled={!quoteIsFresh || insufficient || busy || !confidenceReady || evidenceBlocked || impactBlocked}
               onClick={submit}
             >
               {buttonLabel}
