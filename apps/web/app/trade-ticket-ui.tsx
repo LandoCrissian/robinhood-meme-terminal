@@ -1,32 +1,112 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { formatUnits } from "viem";
+import { formatUnits, parseUnits } from "viem";
 import {
   fractionalTradeAmount,
   priceImpactTone,
   quoteSecondsRemaining
 } from "../lib/trade-ticket";
+import { normalizeTradePreferences } from "../lib/trade-preferences";
+import { useTradePreferences } from "../lib/use-trade-preferences";
 
 export function TradeAmountPresets({
+  side,
   balance,
   decimals,
   onAmount
 }: {
+  side: "buy" | "sell";
   balance: bigint | undefined;
   decimals: number | undefined;
   onAmount: (value: string) => void;
 }) {
+  const { preferences, save, reset } = useTradePreferences();
+  const [editing, setEditing] = useState(false);
+  const [drafts, setDrafts] = useState<string[]>(preferences.buyAmounts);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!editing) setDrafts(preferences.buyAmounts);
+  }, [editing, preferences.buyAmounts]);
+
   const setFraction = (basisPoints: bigint) => {
     if (balance === undefined || decimals === undefined) return;
     onAmount(formatUnits(fractionalTradeAmount(balance, basisPoints), decimals));
   };
   const unavailable = balance === undefined || balance <= 0n || decimals === undefined;
+
+  if (side === "buy") {
+    const fitsBalance = (value: string) => {
+      if (unavailable || balance === undefined || decimals === undefined) return false;
+      try {
+        return parseUnits(value, decimals) <= balance;
+      } catch {
+        return false;
+      }
+    };
+    const storeDrafts = () => {
+      const normalized = normalizeTradePreferences({ buyAmounts: drafts });
+      if (normalized.buyAmounts.some((amount, index) => amount !== drafts[index]?.replace(/0+$/, "").replace(/\.$/, ""))) {
+        setError("Enter three different positive ETH amounts, each below 1,000.");
+        return;
+      }
+      if (!save(normalized)) {
+        setError("This browser could not save the presets.");
+        return;
+      }
+      setError("");
+      setEditing(false);
+    };
+    return (
+      <div className="tradePresetControl">
+        <div className="tradePresetHeader">
+          <span>QUICK BUY · SAVED ON THIS DEVICE</span>
+          <button type="button" onClick={() => { setEditing((value) => !value); setError(""); }}>{editing ? "Cancel" : "Customize"}</button>
+        </div>
+        <div className="externalSushiPresets" aria-label="Saved quick buy amounts">
+          {preferences.buyAmounts.map((value) => (
+            <button type="button" disabled={!fitsBalance(value)} onClick={() => onAmount(value)} key={value}>{value} ETH</button>
+          ))}
+        </div>
+        {editing && (
+          <div className="tradePresetEditor">
+            <div>
+              {drafts.map((value, index) => (
+                <label key={index}>
+                  <span>Preset {index + 1}</span>
+                  <input
+                    inputMode="decimal"
+                    autoComplete="off"
+                    aria-label={`Quick buy preset ${index + 1}`}
+                    value={value}
+                    onChange={(event) => {
+                      setDrafts((current) => current.map((amount, amountIndex) => amountIndex === index ? event.target.value.replace(/[^\d.]/g, "") : amount));
+                      setError("");
+                    }}
+                  />
+                </label>
+              ))}
+            </div>
+            {error && <p role="alert">{error}</p>}
+            <footer>
+              <button type="button" onClick={() => { reset(); setDrafts(normalizeTradePreferences(null).buyAmounts); setError(""); }}>Reset</button>
+              <button type="button" onClick={storeDrafts}>Save presets</button>
+            </footer>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
-    <div className="externalSushiPresets" aria-label="Wallet balance shortcuts">
-      <button type="button" disabled={unavailable} onClick={() => setFraction(2_500n)}>25%</button>
-      <button type="button" disabled={unavailable} onClick={() => setFraction(5_000n)}>50%</button>
-      <button type="button" disabled={unavailable} onClick={() => setFraction(10_000n)}>Max</button>
+    <div className="tradePresetControl">
+      <div className="tradePresetHeader"><span>SELL FROM WALLET BALANCE</span></div>
+      <div className="externalSushiPresets" aria-label="Wallet balance shortcuts">
+        <button type="button" disabled={unavailable} onClick={() => setFraction(2_500n)}>25%</button>
+        <button type="button" disabled={unavailable} onClick={() => setFraction(5_000n)}>50%</button>
+        <button type="button" disabled={unavailable} onClick={() => setFraction(10_000n)}>Max</button>
+      </div>
     </div>
   );
 }

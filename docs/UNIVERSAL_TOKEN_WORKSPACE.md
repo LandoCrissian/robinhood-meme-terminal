@@ -39,6 +39,18 @@ retaining separate venue verification and transaction construction:
 The interface does not expose a cosmetic slippage setting. The displayed
 protection is the value enforced in the server-verified transaction.
 
+### Persistent trade presets
+
+Buy tickets expose three fixed ETH quick-buy amounts shared by Sushi and
+canonical Uniswap markets. Users can edit the values inline; RMT validates three
+different positive decimal amounts and stores them only in that browser. The
+buttons fill the order ticket but never submit, approve, sign, or bypass a
+fresh quote and evidence review.
+
+Sell tickets retain 25%, 50%, and maximum shortcuts calculated from the current
+token balance. Native-token maximum calculations continue to reserve ETH for
+network fees. Saved presets do not change the enforced 1% slippage limit.
+
 ## One-time trading terms
 
 The trading surfaces require acceptance of the current version of RMT's trading
