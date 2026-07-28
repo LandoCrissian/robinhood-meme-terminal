@@ -14,6 +14,7 @@ import type { ExternalMarket } from "../lib/external-market";
 import { spendableTradeBalance } from "../lib/trade-ticket";
 import { ROBINHOOD_SWAP_ROUTER_02 } from "../lib/uniswap-v4";
 import { useTokenRiskEvidence } from "../lib/use-token-risk-evidence";
+import { useTradingTermsAcceptance } from "../lib/use-trading-terms";
 import {
   TradeConfidence,
   tradeIsBlockedByEvidence,
@@ -76,12 +77,12 @@ export function ExternalUniswapTradePanel({
 }) {
   const { address, chainId, isConnected } = useAccount();
   const tokenRisk = useTokenRiskEvidence(market);
+  const tradingTerms = useTradingTermsAcceptance();
   const [amount, setAmount] = useState(side === "buy" ? "0.0001" : "");
   const [quote, setQuote] = useState<ExternalUniswapQuote>();
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
-  const [acknowledged, setAcknowledged] = useState(false);
   const [refresh, setRefresh] = useState(0);
   const token = market.address as Address;
   const pair = market.pairAddress as Address;
@@ -136,7 +137,6 @@ export function ExternalUniswapTradePanel({
     setQuote(undefined);
     setError("");
     setMessage("");
-    setAcknowledged(false);
     setStatus("idle");
     approval.reset();
     swap.reset();
@@ -232,7 +232,7 @@ export function ExternalUniswapTradePanel({
   const busy = approval.isPending || approvalReceipt.isLoading || swap.isPending || swapReceipt.isLoading;
   const requiresAcknowledgement = tradeRequiresAcknowledgement(market, side);
   const confidenceEvidenceReady = side === "sell" || tokenRisk.status !== "loading";
-  const confidenceReady = confidenceEvidenceReady && (!requiresAcknowledgement || acknowledged);
+  const confidenceReady = confidenceEvidenceReady && (!requiresAcknowledgement || tradingTerms.accepted);
   const evidenceBlocked = tradeIsBlockedByEvidence(tokenRisk, side);
   const impactBlocked = Boolean(quote && quote.priceImpact > 0.1);
   const outputDecimals = quote?.outputToken.decimals;
@@ -269,7 +269,7 @@ export function ExternalUniswapTradePanel({
     : insufficient ? "Insufficient balance"
       : !confidenceEvidenceReady ? "Checking contract and holders…"
       : evidenceBlocked ? "Buy blocked: sell transfer failed"
-        : !confidenceReady ? "Review and acknowledge warnings"
+        : !confidenceReady ? "Accept RMT trading terms"
         : impactBlocked ? "Price impact too high"
         : needsApproval ? `Approve exact ${market.symbol} amount`
           : side === "buy" ? `Buy ${market.symbol} inside RMT` : `Sell ${market.symbol} inside RMT`;
@@ -388,8 +388,6 @@ export function ExternalUniswapTradePanel({
         side={side}
         priceImpact={quote?.priceImpact}
         evidenceState={tokenRisk}
-        acknowledged={acknowledged}
-        onAcknowledgedChange={setAcknowledged}
       />
 
       <p className="externalSushiSafety">

@@ -39,6 +39,36 @@ retaining separate venue verification and transaction construction:
 The interface does not expose a cosmetic slippage setting. The displayed
 protection is the value enforced in the server-verified transaction.
 
+## One-time trading terms
+
+The trading surfaces require acceptance of the current version of RMT's trading
+terms before interaction. Acceptance is stored in the user's browser and shared
+across Terminal, Explore, external markets, and project pages. It appears again
+only when the version changes or browser site data is cleared.
+
+This removes repeated token-by-token consent checkboxes. It does not hide
+token-specific evidence or weaken automatic execution blocks. A failed
+sell-direction simulation, invalid route, stale quote, insufficient balance, or
+excessive price impact still prevents transaction preparation or submission.
+
+## Live activity and wallet positions
+
+External market workspaces use GeckoTerminal's public pool-trades endpoint for a
+read-only, server-validated live tape:
+
+```text
+https://api.geckoterminal.com/api/v2/networks/robinhood/pools/{pool}/trades
+```
+
+RMT fixes the upstream host and network, validates the token and pool addresses,
+rejects malformed trades, and refreshes the visible tape every ten seconds.
+Each row links to the corresponding Robinhood Chain transaction.
+
+Connected-wallet position cards read the token balance directly onchain and
+estimate current value using the displayed market price. RMT intentionally
+withholds cost basis and unrealized P&L until complete wallet history can be
+proven; current value is not presented as profit.
+
 ## Market-history dependency
 
 RMT uses CoinGecko's public GeckoTerminal API for read-only OHLCV history:
@@ -78,6 +108,8 @@ data.
 ```bash
 pnpm --filter web test:external-ohlcv
 pnpm --filter web test:trade-ticket
+pnpm --filter web test:trading-terms
+pnpm --filter web test:external-trades
 pnpm --filter web test:external-uniswap
 pnpm --filter web test:token-risk
 pnpm --filter web typecheck

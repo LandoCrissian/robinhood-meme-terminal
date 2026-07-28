@@ -16,6 +16,7 @@ import {
 } from "../lib/external-ohlcv";
 import { ipfsToHttp } from "../lib/token-metadata";
 import { ExternalMarketChart } from "./external-market-chart";
+import { ExternalTradeTape, ExternalWalletPosition } from "./external-market-live";
 import { ExternalSushiQuotePanel } from "./external-sushi-quote-panel";
 import { ExternalUniswapTradePanel } from "./external-uniswap-trade-panel";
 import { SiteFooter } from "./site-footer";
@@ -249,20 +250,28 @@ export function ExternalMarketWorkspace() {
           </div>
 
           {tab === "activity" && (
-            <section className="universalInsightPanel" aria-labelledby="workspace-activity">
-              <header><div><small>MARKET FLOW</small><h2 id="workspace-activity">Buyers and sellers</h2></div><span>{buyPressure}% buys · 1h</span></header>
-              <div className="universalFlowTrack" aria-hidden="true"><i style={{ width: `${buyPressure}%` }} /></div>
-              <div className="universalActivityGrid">
-                {activity.map((item) => (
-                  <article key={item.label}>
-                    <strong>{item.label}</strong>
-                    <span><b>{item.buys.toLocaleString()}</b> buys</span>
-                    <span><b>{item.sells.toLocaleString()}</b> sells</span>
-                    <span><b>{money(item.volume)}</b> volume</span>
-                  </article>
-                ))}
-              </div>
-            </section>
+            <>
+              <ExternalWalletPosition
+                market={market}
+                onBuy={() => setTradeSide("buy", true)}
+                onSell={() => setTradeSide("sell", true)}
+              />
+              <section className="universalInsightPanel" aria-labelledby="workspace-activity">
+                <header><div><small>MARKET FLOW</small><h2 id="workspace-activity">Buyers and sellers</h2></div><span>{buyPressure}% buys · 1h</span></header>
+                <div className="universalFlowTrack" aria-hidden="true"><i style={{ width: `${buyPressure}%` }} /></div>
+                <div className="universalActivityGrid">
+                  {activity.map((item) => (
+                    <article key={item.label}>
+                      <strong>{item.label}</strong>
+                      <span><b>{item.buys.toLocaleString()}</b> buys</span>
+                      <span><b>{item.sells.toLocaleString()}</b> sells</span>
+                      <span><b>{money(item.volume)}</b> volume</span>
+                    </article>
+                  ))}
+                </div>
+              </section>
+              <ExternalTradeTape market={market} />
+            </>
           )}
 
           {tab === "safety" && (

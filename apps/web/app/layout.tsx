@@ -13,8 +13,10 @@ import "./rescue-lab.css";
 import "./mobile-polish.css";
 import "./desktop-polish.css";
 import "./external-workspace.css";
+import "./trading-terms.css";
 import { Providers } from "./providers";
 import { PublicChrome } from "./public-chrome";
+import { TradingTermsGate } from "./trading-terms-gate";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -38,7 +40,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <body><Providers><PublicChrome />{children}</Providers></body>
+      <body><Providers><PublicChrome /><TradingTermsGate />{children}</Providers></body>
     </html>
   );
 }

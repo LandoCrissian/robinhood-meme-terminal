@@ -1,0 +1,11 @@
+.tradingTermsBackdrop{position:fixed;z-index:120;inset:0;display:grid;place-items:center;padding:18px;background:rgba(2,5,3,.88);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+.tradingTermsGate{width:min(480px,100%);padding:28px;border:1px solid #344b3b;border-radius:22px;background:linear-gradient(160deg,#0c160f,#060a07 64%);box-shadow:0 28px 90px rgba(0,0,0,.72)}
+.tradingTermsMark{display:grid;width:50px;height:50px;place-items:center;border:1px solid #3e6b49;border-radius:15px;background:#102017;color:#6dec7e;font-size:.72rem;font-weight:950;letter-spacing:.08em}
+.tradingTermsGate>.eyebrow{margin:22px 0 0;color:#69de7a}
+.tradingTermsGate h1{margin:7px 0 0;font-size:1.65rem;letter-spacing:-.04em}
+.tradingTermsGate>p:not(.eyebrow){margin:12px 0 0;color:#9aa69e;font-size:.76rem;line-height:1.65}
+.tradingTermsGate ul{display:grid;gap:8px;margin:16px 0 0;padding:14px 14px 14px 30px;border:1px solid #27382e;border-radius:13px;background:#080e0a;color:#c2ccc5;font-size:.68rem;line-height:1.45}
+.tradingTermsLinks{display:flex;flex-wrap:wrap;gap:7px;margin-top:13px}.tradingTermsLinks a{padding:7px 9px;border:1px solid #2e4035;border-radius:8px;color:#8fa499;font-size:.59rem;font-weight:850;text-decoration:none}
+.tradingTermsGate>button{width:100%;min-height:50px;margin-top:18px;border:0;border-radius:12px;background:#63e978;color:#031107;font:inherit;font-size:.75rem;font-weight:950;cursor:pointer}
+.tradingTermsGate>small{display:block;margin-top:10px;color:#69756e;font-size:.55rem;line-height:1.45;text-align:center}
+@media(max-width:560px){.tradingTermsBackdrop{align-items:end;padding:10px 10px calc(10px + env(safe-area-inset-bottom))}.tradingTermsGate{padding:22px 18px;border-radius:20px}.tradingTermsGate h1{font-size:1.38rem}.tradingTermsGate>p:not(.eyebrow){font-size:.72rem}.tradingTermsGate ul{font-size:.64rem}.tradingTermsGate>button{min-height:54px}}
