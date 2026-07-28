@@ -1,6 +1,6 @@
 # Robinhood Meme Terminal
 
-Robinhood Meme Terminal (RMT) is a mobile-first launch, discovery, and trading terminal for meme tokens on Robinhood Chain.
+Robinhood Meme Terminal (RMT) is a mobile-first discovery and trading terminal for tokens on Robinhood Chain.
 
 - **Live app:** [www.rmtlaunch.fun](https://www.rmtlaunch.fun)
 - **Protocol status:** [www.rmtlaunch.fun/status](https://www.rmtlaunch.fun/status)
@@ -9,7 +9,7 @@ Robinhood Meme Terminal (RMT) is a mobile-first launch, discovery, and trading t
 
 ## Live V6 status
 
-RMT V6 is deployed, active, and open for public token creation. The production application resolves the active factory through the V6 version registry and displays only origin-verified V6 launches in RMT Discovery.
+RMT V6 is deployed and active for existing-market trading. New V6 token creation is intentionally paused while the V7 launch system is designed. The production application resolves the active factory through the V6 version registry and displays only origin-verified V6 launches in RMT Discovery.
 
 | Component | Mainnet address |
 | --- | --- |
@@ -23,7 +23,7 @@ The V6 factory was deployed at block `10248855`. See the [canonical V6 deploymen
 
 ## What RMT offers
 
-- One-transaction fixed-supply token creation
+- One-transaction fixed-supply token creation when the launch gate is enabled
 - Unique RMT launch names and tickers, including legacy RMT reservation checks
 - Optional Fair Start protection for the opening blocks
 - Live bonding-curve buy and sell quotes

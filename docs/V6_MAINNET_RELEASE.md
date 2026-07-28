@@ -1,6 +1,6 @@
 # RMT V6 mainnet release
 
-Current production status: **V6 is deployed, active, and open for public launches**
+Current production status: **V6 is deployed and active for existing-market trading; new launches are intentionally paused while V7 is designed**
 
 The live addresses and transaction receipts are recorded in [MAINNET_V6_DEPLOYMENT.md](MAINNET_V6_DEPLOYMENT.md). The remainder of this document is the historical release and recovery plan, not proof that every planned gate was completed; future operators must not read its pre-deployment language or source-verification requirements as the current production state.
 
