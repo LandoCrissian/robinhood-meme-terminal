@@ -60,7 +60,7 @@ const publicTradeErrors = new Set([
   "Sushi contract bytecode is unavailable.",
   "Sushi router bytecode is not approved.",
   "Sushi executor bytecode is not approved.",
-  "Sushi blocked this trade because price impact is too high."
+  "RMT blocked this Sushi trade because price impact exceeds 5%."
 ]);
 
 export async function POST(request: Request) {

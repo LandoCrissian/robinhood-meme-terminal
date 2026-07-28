@@ -31,6 +31,7 @@ assert.equal(priceImpactTone(0.02), "caution");
 assert.equal(priceImpactTone(0.08), "danger");
 assert.equal(saferTradeAmount(1_000n, 0.08), 450n);
 assert.equal(saferTradeAmount(1_000n, 0.04), 1_000n);
+assert.equal(saferTradeAmount(1_000n, 0.02, 0.01), 450n);
 assert.equal(saferTradeAmount(1_000n, undefined), 0n);
 assert.throws(() => saferTradeAmount(1_000n, 0.08, 0.05), /blocking threshold/);
 assert.equal(curvePriceImpact("buy", 1_000n, 1_050n, 1_000_000_000_000_000_000n), 0.05);
