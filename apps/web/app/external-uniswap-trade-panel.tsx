@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { erc20Abi, formatEther, formatUnits, parseEther, parseUnits, type Address, type Hex } from "viem";
+import { encodeFunctionData, erc20Abi, formatEther, formatUnits, parseEther, parseUnits, type Address, type Hex } from "viem";
 import {
   useAccount,
   useBalance,
@@ -11,8 +11,9 @@ import {
   useWriteContract
 } from "wagmi";
 import type { ExternalMarket } from "../lib/external-market";
-import { spendableTradeBalance } from "../lib/trade-ticket";
+import { conservativeNetworkFeeReserve, spendableTradeBalance } from "../lib/trade-ticket";
 import { ROBINHOOD_SWAP_ROUTER_02 } from "../lib/uniswap-v4";
+import { useTradeFeeEstimate } from "../lib/use-trade-fee-estimate";
 import { useTokenRiskEvidence } from "../lib/use-token-risk-evidence";
 import { useTradingTermsAcceptance } from "../lib/use-trading-terms";
 import {
@@ -22,6 +23,7 @@ import {
 } from "./trade-confidence";
 import {
   QuoteProtection,
+  TradeCostSummary,
   TradeAmountPresets,
   TradeExecutionPath
 } from "./trade-ticket-ui";
@@ -226,8 +228,28 @@ export function ExternalUniswapTradePanel({
     && quote.amountIn === amountIn.toString()
   );
   const needsApproval = side === "sell" && amountIn > 0n && (allowance.data ?? 0n) < amountIn;
+  const approvalCalldata = useMemo(() => needsApproval
+    ? encodeFunctionData({
+        abi: erc20Abi,
+        functionName: "approve",
+        args: [ROBINHOOD_SWAP_ROUTER_02, amountIn]
+      })
+    : undefined, [amountIn, needsApproval]);
+  const feeEstimate = useTradeFeeEstimate({
+    account: address,
+    to: needsApproval ? token : quote?.router,
+    data: needsApproval ? approvalCalldata : quote?.calldata,
+    value: needsApproval ? 0n : quote ? BigInt(quote.value) : 0n,
+    enabled: Boolean(
+      address
+      && chainId === ROBINHOOD_CHAIN_ID
+      && amountIn > 0n
+      && (needsApproval || quoteIsFresh)
+    )
+  });
+  const networkFeeReserve = conservativeNetworkFeeReserve(feeEstimate.feeWei, NETWORK_FEE_RESERVE);
   const insufficient = side === "buy"
-    ? amountIn > 0n && amountIn + NETWORK_FEE_RESERVE > (nativeBalance.data?.value ?? 0n)
+    ? amountIn > 0n && amountIn + networkFeeReserve > (nativeBalance.data?.value ?? 0n)
     : amountIn > 0n && amountIn > (tokenBalance.data ?? 0n);
   const busy = approval.isPending || approvalReceipt.isLoading || swap.isPending || swapReceipt.isLoading;
   const requiresAcknowledgement = tradeRequiresAcknowledgement(market, side);
@@ -238,7 +260,7 @@ export function ExternalUniswapTradePanel({
   const outputDecimals = quote?.outputToken.decimals;
   const outputSymbol = quote?.outputToken.symbol ?? (side === "buy" ? market.symbol : "ETH");
   const sizingBalance = side === "buy"
-    ? nativeBalance.data ? spendableTradeBalance(nativeBalance.data.value, NETWORK_FEE_RESERVE) : undefined
+    ? nativeBalance.data ? spendableTradeBalance(nativeBalance.data.value, networkFeeReserve) : undefined
     : tokenBalance.data;
   const sizingDecimals = side === "buy" ? 18 : decimals;
 
@@ -346,6 +368,12 @@ export function ExternalUniswapTradePanel({
             deadline={quote?.deadline}
             priceImpact={quote?.priceImpact}
             slippageLabel="1% maximum"
+          />
+          <TradeCostSummary
+            side={side}
+            amountIn={amountIn}
+            estimate={feeEstimate}
+            venueLabel="Pool fee reflected above"
           />
 
           {isConnected && chainId === ROBINHOOD_CHAIN_ID && (
