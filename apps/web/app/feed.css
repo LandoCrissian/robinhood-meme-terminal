@@ -260,6 +260,7 @@
 .externalSushiPresets{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:7px}
 .externalSushiPresets button{min-height:34px;border:1px solid #29382f;border-radius:8px;background:#101711;color:#8d9a91;font:inherit;font-size:.58rem;font-weight:850;cursor:pointer}
 .externalSushiPresets button:hover{border-color:#45604d;color:#d8e1da}
+.externalSushiPresets button:disabled{cursor:not-allowed;opacity:.38}
 .externalSushiNetwork{margin-top:8px}
 .externalSushiNetwork .networkSwitchGroup,.externalSushiNetwork .walletConnectedActions{width:100%}
 .externalSushiNetwork .wallet{width:100%}
@@ -274,6 +275,30 @@
 .externalSushiResult dt{color:#6f7d74;font-size:.55rem}
 .externalSushiResult dd{overflow:hidden;margin:0;color:#aab6ad;font-size:.61rem;font-weight:850;text-overflow:ellipsis;white-space:nowrap}
 .externalSushiResult>p{margin:0;color:#e7a578;font-size:.62rem;line-height:1.45}
+.tradeQuoteProtection{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;margin-top:8px;overflow:hidden;border:1px solid #294034;border-radius:10px;background:#294034}
+.tradeQuoteProtection>span{display:flex;min-width:0;flex-direction:column;gap:3px;padding:8px 9px;background:#09110c}
+.tradeQuoteProtection small{color:#697970;font-size:.47rem;font-weight:900;letter-spacing:.05em}
+.tradeQuoteProtection strong{overflow:hidden;color:#bcd3c2;font-size:.59rem;text-overflow:ellipsis;white-space:nowrap}
+.tradeQuoteProtection.caution{border-color:#594729;background:#594729}
+.tradeQuoteProtection.caution>span{background:#151108}
+.tradeQuoteProtection.caution strong{color:#e6c07d}
+.tradeQuoteProtection.danger{border-color:#65343a;background:#65343a}
+.tradeQuoteProtection.danger>span{background:#190b0d}
+.tradeQuoteProtection.danger strong{color:#f09ba2}
+.tradeExecutionPath{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;margin:10px 0 0;padding:0;overflow:hidden;border:1px solid #28372e;border-radius:10px;list-style:none;background:#28372e}
+.tradeExecutionPath li{position:relative;display:flex;min-width:0;align-items:center;gap:7px;padding:8px;background:#090f0b}
+.tradeExecutionPath li+li:before{position:absolute;top:50%;left:-1px;width:1px;height:22px;background:#28372e;content:"";transform:translateY(-50%)}
+.tradeExecutionPath i{display:grid;flex:0 0 auto;width:19px;height:19px;place-items:center;border:1px solid #36483d;border-radius:50%;color:#65746a;font-size:.49rem;font-style:normal;font-weight:950}
+.tradeExecutionPath span{min-width:0}
+.tradeExecutionPath small{display:block;color:#65746a;font-size:.43rem;font-weight:900;letter-spacing:.05em}
+.tradeExecutionPath strong{display:block;overflow:hidden;margin-top:2px;color:#87958c;font-size:.53rem;text-overflow:ellipsis;white-space:nowrap}
+.tradeExecutionPath .current{background:#101a13}
+.tradeExecutionPath .current i{border-color:#63db77;background:#183b20;color:#7cf18e;box-shadow:0 0 0 3px rgba(82,220,106,.08)}
+.tradeExecutionPath .current strong{color:#d7e6da}
+.tradeExecutionPath .done i{border-color:#3f9e50;background:#1b4324;color:#80ee91}
+.tradeExecutionPath .done i:after{content:"✓"}
+.tradeExecutionPath .done i{font-size:0}
+.tradeExecutionPath .done strong{color:#85c990}
 .tradeConfidence{margin-top:10px;padding:11px 12px;border:1px solid #31513a;border-radius:11px;background:#09140d}
 .tradeConfidence.caution{border-color:#6c4e2f;background:#171109}
 .tradeConfidence.blocked{border-color:#71363a;background:#1a0c0e}
@@ -340,6 +365,12 @@
   .externalSushiResult dl{grid-template-columns:1fr}
   .externalSushiResult dl>div,.externalSushiResult dl>div:first-child,.externalSushiResult dl>div:last-child{padding:8px 0;border-right:0;border-bottom:1px solid #26352c}
   .externalSushiResult dl>div:last-child{border-bottom:0}
+  .tradeQuoteProtection>span{padding:8px 7px}
+  .tradeQuoteProtection small{font-size:.43rem}
+  .tradeExecutionPath li{gap:5px;padding:8px 6px}
+  .tradeExecutionPath i{width:18px;height:18px}
+  .tradeExecutionPath small{font-size:.4rem}
+  .tradeExecutionPath strong{font-size:.49rem}
   .tradeConfidenceChecks{grid-template-columns:1fr}
   .tradeConfidenceChecks>span{min-height:38px;align-items:center}
   .tradeConfidenceEvidence{grid-template-columns:repeat(2,minmax(0,1fr))}

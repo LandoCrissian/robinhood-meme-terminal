@@ -16,12 +16,18 @@ import {
   type SushiExecutableQuote,
   type SushiIndicativeQuote
 } from "../lib/sushi";
+import { spendableTradeBalance } from "../lib/trade-ticket";
 import { useTokenRiskEvidence } from "../lib/use-token-risk-evidence";
 import {
   TradeConfidence,
   tradeIsBlockedByEvidence,
   tradeRequiresAcknowledgement
 } from "./trade-confidence";
+import {
+  QuoteProtection,
+  TradeAmountPresets,
+  TradeExecutionPath
+} from "./trade-ticket-ui";
 import { WalletButton } from "./wallet-button";
 
 const ROBINHOOD_CHAIN_ID = 4663;
@@ -208,11 +214,6 @@ export function ExternalSushiQuotePanel({
     void Promise.all([tokenBalance.refetch(), nativeBalance.refetch(), allowance.refetch()]);
   }, [swapReceipt.isSuccess]);
 
-  const setSellFraction = (basisPoints: bigint) => {
-    if (tokenBalance.data === undefined || decimals === undefined) return;
-    const selected = tokenBalance.data * basisPoints / 10_000n;
-    setAmount(formatUnits(selected, decimals));
-  };
   const outputDecimals = quote?.outputToken?.decimals;
   const outputSymbol = quote?.outputToken?.symbol ?? (side === "buy" ? market.symbol : "ETH");
   const quoteIsFresh = Boolean(
@@ -230,6 +231,10 @@ export function ExternalSushiQuotePanel({
   const confidenceReady = confidenceEvidenceReady && (!requiresAcknowledgement || acknowledged);
   const evidenceBlocked = tradeIsBlockedByEvidence(tokenRisk, side);
   const impactBlocked = Boolean(quote && quote.priceImpact > 0.1);
+  const sizingBalance = side === "buy"
+    ? nativeBalance.data ? spendableTradeBalance(nativeBalance.data.value, NETWORK_FEE_RESERVE) : undefined
+    : tokenBalance.data;
+  const sizingDecimals = side === "buy" ? 18 : decimals;
 
   const submit = () => {
     setMessage("");
@@ -304,21 +309,7 @@ export function ExternalSushiQuotePanel({
               <strong>{side === "buy" ? "ETH" : market.symbol}</strong>
             </div>
           </label>
-          <div className="externalSushiPresets" aria-label="Amount shortcuts">
-            {side === "buy" ? (
-              <>
-                <button type="button" onClick={() => setAmount("0.0001")}>0.0001 ETH</button>
-                <button type="button" onClick={() => setAmount("0.0005")}>0.0005 ETH</button>
-                <button type="button" onClick={() => setAmount("0.001")}>0.001 ETH</button>
-              </>
-            ) : (
-              <>
-                <button type="button" onClick={() => setSellFraction(2_500n)}>25%</button>
-                <button type="button" onClick={() => setSellFraction(5_000n)}>50%</button>
-                <button type="button" onClick={() => setSellFraction(10_000n)}>Max</button>
-              </>
-            )}
-          </div>
+          <TradeAmountPresets balance={sizingBalance} decimals={sizingDecimals} onAmount={setAmount} />
 
           {chainId !== ROBINHOOD_CHAIN_ID && (
             <div className="externalSushiNetwork">
@@ -346,6 +337,11 @@ export function ExternalSushiQuotePanel({
             )}
             {status === "error" && <p role="alert">{error}</p>}
           </div>
+          <QuoteProtection
+            deadline={quote?.quoteExpiresAt}
+            priceImpact={quote?.priceImpact}
+            slippageLabel="1% maximum"
+          />
 
           {isConnected && chainId === ROBINHOOD_CHAIN_ID && (
             <button
@@ -372,6 +368,15 @@ export function ExternalSushiQuotePanel({
           )}
         </>
       )}
+
+      <TradeExecutionPath
+        connected={Boolean(address && chainId === ROBINHOOD_CHAIN_ID)}
+        quoteReady={quoteIsFresh}
+        evidenceReady={confidenceReady && !evidenceBlocked && !impactBlocked}
+        busy={busy}
+        success={swapReceipt.isSuccess}
+        needsApproval={needsApproval}
+      />
 
       <TradeConfidence
         market={market}

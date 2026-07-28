@@ -11,6 +11,7 @@ import {
   useWriteContract
 } from "wagmi";
 import type { ExternalMarket } from "../lib/external-market";
+import { spendableTradeBalance } from "../lib/trade-ticket";
 import { ROBINHOOD_SWAP_ROUTER_02 } from "../lib/uniswap-v4";
 import { useTokenRiskEvidence } from "../lib/use-token-risk-evidence";
 import {
@@ -18,6 +19,11 @@ import {
   tradeIsBlockedByEvidence,
   tradeRequiresAcknowledgement
 } from "./trade-confidence";
+import {
+  QuoteProtection,
+  TradeAmountPresets,
+  TradeExecutionPath
+} from "./trade-ticket-ui";
 import { WalletButton } from "./wallet-button";
 
 const ROBINHOOD_CHAIN_ID = 4663;
@@ -214,10 +220,6 @@ export function ExternalUniswapTradePanel({
     void Promise.all([tokenBalance.refetch(), nativeBalance.refetch(), allowance.refetch()]);
   }, [swapReceipt.isSuccess]);
 
-  const setSellFraction = (basisPoints: bigint) => {
-    if (tokenBalance.data === undefined || decimals === undefined) return;
-    setAmount(formatUnits(tokenBalance.data * basisPoints / 10_000n, decimals));
-  };
   const quoteIsFresh = Boolean(
     quote
     && BigInt(quote.deadline) > BigInt(Math.floor(Date.now() / 1000) + 30)
@@ -235,6 +237,10 @@ export function ExternalUniswapTradePanel({
   const impactBlocked = Boolean(quote && quote.priceImpact > 0.1);
   const outputDecimals = quote?.outputToken.decimals;
   const outputSymbol = quote?.outputToken.symbol ?? (side === "buy" ? market.symbol : "ETH");
+  const sizingBalance = side === "buy"
+    ? nativeBalance.data ? spendableTradeBalance(nativeBalance.data.value, NETWORK_FEE_RESERVE) : undefined
+    : tokenBalance.data;
+  const sizingDecimals = side === "buy" ? 18 : decimals;
 
   const submit = () => {
     setMessage("");
@@ -308,21 +314,7 @@ export function ExternalUniswapTradePanel({
               <strong>{side === "buy" ? "ETH" : market.symbol}</strong>
             </div>
           </label>
-          <div className="externalSushiPresets" aria-label="Amount shortcuts">
-            {side === "buy" ? (
-              <>
-                <button type="button" onClick={() => setAmount("0.0001")}>0.0001 ETH</button>
-                <button type="button" onClick={() => setAmount("0.0005")}>0.0005 ETH</button>
-                <button type="button" onClick={() => setAmount("0.001")}>0.001 ETH</button>
-              </>
-            ) : (
-              <>
-                <button type="button" onClick={() => setSellFraction(2_500n)}>25%</button>
-                <button type="button" onClick={() => setSellFraction(5_000n)}>50%</button>
-                <button type="button" onClick={() => setSellFraction(10_000n)}>Max</button>
-              </>
-            )}
-          </div>
+          <TradeAmountPresets balance={sizingBalance} decimals={sizingDecimals} onAmount={setAmount} />
 
           {chainId !== ROBINHOOD_CHAIN_ID && (
             <div className="externalSushiNetwork">
@@ -350,6 +342,11 @@ export function ExternalUniswapTradePanel({
             )}
             {status === "error" && <p role="alert">{error}</p>}
           </div>
+          <QuoteProtection
+            deadline={quote?.deadline}
+            priceImpact={quote?.priceImpact}
+            slippageLabel="1% maximum"
+          />
 
           {isConnected && chainId === ROBINHOOD_CHAIN_ID && (
             <button
@@ -376,6 +373,15 @@ export function ExternalUniswapTradePanel({
           )}
         </>
       )}
+
+      <TradeExecutionPath
+        connected={Boolean(address && chainId === ROBINHOOD_CHAIN_ID)}
+        quoteReady={quoteIsFresh}
+        evidenceReady={confidenceReady && !evidenceBlocked && !impactBlocked}
+        busy={busy}
+        success={swapReceipt.isSuccess}
+        needsApproval={needsApproval}
+      />
 
       <TradeConfidence
         market={market}
