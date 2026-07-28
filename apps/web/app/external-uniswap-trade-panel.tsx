@@ -72,15 +72,19 @@ function displayUnits(value: string, decimals: number, maximumFractionDigits = 6
 
 export function ExternalUniswapTradePanel({
   market,
-  side
+  side,
+  amount: controlledAmount,
+  onAmountChange
 }: {
   market: ExternalMarket;
   side: "buy" | "sell";
+  amount?: string;
+  onAmountChange?: (value: string) => void;
 }) {
   const { address, chainId, isConnected } = useAccount();
   const tokenRisk = useTokenRiskEvidence(market);
   const tradingTerms = useTradingTermsAcceptance();
-  const [amount, setAmount] = useState(side === "buy" ? "0.0001" : "");
+  const [internalAmount, setInternalAmount] = useState(side === "buy" ? "0.0001" : "");
   const [quote, setQuote] = useState<ExternalUniswapQuote>();
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
   const [error, setError] = useState("");
@@ -122,6 +126,11 @@ export function ExternalUniswapTradePanel({
   const swap = useSendTransaction();
   const swapReceipt = useWaitForTransactionReceipt({ hash: swap.data, chainId: ROBINHOOD_CHAIN_ID });
   const decimals = tokenDecimals.data;
+  const amount = controlledAmount ?? internalAmount;
+  const setAmount = (value: string) => {
+    if (controlledAmount === undefined) setInternalAmount(value);
+    onAmountChange?.(value);
+  };
 
   const amountIn = useMemo(() => {
     if (!amount || !address) return 0n;
@@ -135,7 +144,7 @@ export function ExternalUniswapTradePanel({
   }, [address, amount, decimals, side]);
 
   useEffect(() => {
-    setAmount(side === "buy" ? "0.0001" : "");
+    if (controlledAmount === undefined) setInternalAmount(side === "buy" ? "0.0001" : "");
     setQuote(undefined);
     setError("");
     setMessage("");
