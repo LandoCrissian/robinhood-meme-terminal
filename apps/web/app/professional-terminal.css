@@ -439,6 +439,26 @@
   font-size: .51rem;
 }
 
+@media (min-width: 761px) {
+  .terminalPage .runnerMarketCard > * {
+    min-height: 64px;
+  }
+
+  .terminalPage .runnerMarketCard .externalMarketActions {
+    padding: 0;
+  }
+
+  .terminalPage .runnerMarketCard .externalMarketActions button,
+  .terminalPage .runnerMarketCard .externalChartLink {
+    min-height: 64px;
+  }
+
+  .terminalPage .runnerMarketCard .externalChartLink {
+    margin: 0;
+    border-radius: 0;
+  }
+}
+
 .terminalPage .terminalMarketShell .externalDisclosure {
   padding: 8px 10px;
   color: #58655d;
@@ -719,6 +739,7 @@
   }
 
   .terminalPage .runnerMarketCard > * {
+    min-height: 0;
     padding: 6px 7px;
     border-right: 1px solid var(--terminal-rule);
   }
