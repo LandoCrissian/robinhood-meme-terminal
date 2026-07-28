@@ -34,7 +34,9 @@ import {
   TradeCostSummary,
   TradeAmountPresets,
   TradeExecutionPath,
-  TradeOrderDetails
+  TradeOrderDetails,
+  TradePreSignReadiness,
+  type TradeQuoteState
 } from "./trade-ticket-ui";
 import { WalletButton } from "./wallet-button";
 
@@ -65,10 +67,13 @@ type ExternalUniswapQuote = {
   outputToken: { address: Address; symbol: string; name: string; decimals: number };
 };
 
-function cleanDecimal(value: string) {
+function cleanDecimal(value: string, maximumDecimals = 18) {
   const normalized = value.replace(/[^\d.]/g, "");
-  const [whole = "", ...fraction] = normalized.split(".");
-  return fraction.length > 0 ? `${whole}.${fraction.join("")}` : whole;
+  const [rawWhole = "", ...fractionParts] = normalized.split(".");
+  const hasDecimal = fractionParts.length > 0;
+  const whole = rawWhole.replace(/^0+(?=\d)/, "").slice(0, 78) || (hasDecimal ? "0" : "");
+  if (!hasDecimal) return whole;
+  return `${whole}.${fractionParts.join("").slice(0, maximumDecimals)}`;
 }
 
 function displayUnits(value: string, decimals: number, maximumFractionDigits = 6) {
@@ -288,12 +293,13 @@ export function ExternalUniswapTradePanel({
     ? nativeBalance.data ? spendableTradeBalance(nativeBalance.data.value, networkFeeReserve) : undefined
     : tokenBalance.data;
   const sizingDecimals = side === "buy" ? 18 : decimals;
+  const maximumInputDecimals = sizingDecimals ?? 18;
   const saferAmountIn = saferTradeAmount(amountIn, quote?.priceImpact, PRICE_IMPACT_CAUTION);
   const canReduceImpact = saferAmountIn > 0n && saferAmountIn < amountIn && sizingDecimals !== undefined;
   const chooseSaferAmount = () => {
     if (!canReduceImpact || sizingDecimals === undefined) return;
     setSaferOrderOriginal(amountIn);
-    setAmount(cleanDecimal(formatUnits(saferAmountIn, sizingDecimals)), true);
+    setAmount(cleanDecimal(formatUnits(saferAmountIn, sizingDecimals), sizingDecimals), true);
   };
 
   const submit = () => {
@@ -318,9 +324,21 @@ export function ExternalUniswapTradePanel({
     });
   };
 
+  const quoteState: TradeQuoteState = amountIn <= 0n
+    ? "enter"
+    : status === "error" && !quote
+      ? "error"
+      : status === "loading" && quoteIsFresh
+        ? "refreshing"
+        : status === "loading" || !quoteIsFresh
+          ? "checking"
+          : "ready";
   const buttonLabel = busy
     ? approval.isPending || approvalReceipt.isLoading ? "Confirming exact approval…" : "Confirming swap…"
-    : insufficient ? "Insufficient balance"
+    : amountIn <= 0n ? "Enter an amount"
+      : status === "error" && !quote ? "Quote unavailable"
+      : !quoteIsFresh ? "Verifying route…"
+      : insufficient ? "Insufficient balance"
       : !confidenceEvidenceReady ? "Checking contract and holders…"
       : evidenceBlocked ? "Buy blocked: sell transfer failed"
         : !confidenceReady ? "Accept RMT trading terms"
@@ -360,10 +378,12 @@ export function ExternalUniswapTradePanel({
               <input
                 inputMode="decimal"
                 autoComplete="off"
+                enterKeyHint="done"
+                spellCheck={false}
                 value={amount}
                 placeholder="0.0"
                 aria-label={`${side === "buy" ? "ETH" : market.symbol} amount`}
-                onChange={(event) => setAmount(cleanDecimal(event.target.value))}
+                onChange={(event) => setAmount(cleanDecimal(event.target.value, maximumInputDecimals))}
               />
               <strong>{side === "buy" ? "ETH" : market.symbol}</strong>
             </div>
@@ -410,14 +430,22 @@ export function ExternalUniswapTradePanel({
       />
 
       {isConnected && chainId === ROBINHOOD_CHAIN_ID && (
-        <button
-          className={`externalUniswapSubmit ${side}`}
-          type="button"
-          disabled={!quoteIsFresh || insufficient || busy || !confidenceReady || evidenceBlocked || impactBlocked}
-          onClick={submit}
-        >
-          {buttonLabel}
-        </button>
+        <>
+          <TradePreSignReadiness
+            quoteState={quoteState}
+            estimate={feeEstimate}
+            needsApproval={needsApproval}
+          />
+          <button
+            className={`externalUniswapSubmit ${side}`}
+            type="button"
+            aria-busy={busy || status === "loading"}
+            disabled={!quoteIsFresh || insufficient || busy || !confidenceReady || evidenceBlocked || impactBlocked}
+            onClick={submit}
+          >
+            {buttonLabel}
+          </button>
+        </>
       )}
       {(approval.error || approvalReceipt.error || swap.error || swapReceipt.error) && (
         <p className="externalUniswapError" role="alert">

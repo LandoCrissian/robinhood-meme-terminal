@@ -273,6 +273,56 @@ function feeUsd(value: number | undefined) {
   });
 }
 
+export type TradeQuoteState = "enter" | "checking" | "refreshing" | "ready" | "error";
+
+export function TradePreSignReadiness({
+  quoteState,
+  estimate,
+  needsApproval
+}: {
+  quoteState: TradeQuoteState;
+  estimate: TradeFeeEstimateState;
+  needsApproval: boolean;
+}) {
+  const quoteLabel = quoteState === "ready"
+    ? "Fresh"
+    : quoteState === "refreshing"
+      ? "Refreshing"
+      : quoteState === "checking"
+        ? "Verifying"
+        : quoteState === "error"
+          ? "Unavailable"
+          : "Enter amount";
+  const headline = quoteState === "ready"
+    ? "Ready for wallet review"
+    : quoteState === "refreshing"
+      ? "Fresh quote remains available"
+      : quoteState === "error"
+        ? "Route needs attention"
+        : quoteState === "checking"
+          ? "Verifying this order"
+          : "Waiting for an amount";
+  const networkFee = estimate.status === "ready"
+    ? `${feeEth(estimate.feeWei)} ETH`
+    : estimate.status === "loading"
+      ? "Calculating"
+      : "Wallet confirms";
+
+  return (
+    <section className={`tradePreSignReadiness ${quoteState}`} aria-live="polite">
+      <header>
+        <small>PRE-SIGN READINESS</small>
+        <strong>{headline}</strong>
+      </header>
+      <div>
+        <span><small>QUOTE</small><strong>{quoteLabel}</strong></span>
+        <span><small>NETWORK FEE</small><strong>{networkFee}</strong></span>
+        <span><small>CONTROL</small><strong>{needsApproval ? "Approval next" : "You sign"}</strong></span>
+      </div>
+    </section>
+  );
+}
+
 export function TradeCostSummary({
   side,
   amountIn,
