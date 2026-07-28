@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import { decodeFunctionData, getAddress, type Hex } from "viem";
 import { ROBINHOOD_SWAP_ROUTER_02, ROBINHOOD_WETH } from "../uniswap-v4";
-import { buildExternalUniswapSwap } from "./external-uniswap-trade";
+import {
+  buildExternalUniswapSwap,
+  calculateUniswapPriceImpact
+} from "./external-uniswap-trade";
 
 const token = getAddress("0x232CDFc415D10b673845D83Dc02ba2eaBe7e30d1");
 const recipient = getAddress("0x1111111111111111111111111111111111111111");
@@ -9,6 +12,7 @@ const amountIn = 100_000_000_000_000n;
 const quoteOut = 26_834_480_817_139_353_188n;
 const deadline = 2_000_000_000n;
 const fee = 10_000;
+const q96 = 1n << 96n;
 
 const routerAbi = [
   {
@@ -54,6 +58,61 @@ function inspect(calldata: Hex) {
 assert.throws(
   () => buildExternalUniswapSwap({ token, recipient, side: "buy", fee, amountIn: 1n, quoteOut: 1n, deadline }),
   /too small to enforce a safe minimum received/
+);
+
+assert.equal(
+  calculateUniswapPriceImpact({
+    sqrtPriceX96: q96,
+    tokenInIsToken0: true,
+    amountIn: 1_000n,
+    quoteOut: 990n
+  }),
+  0.01
+);
+assert.equal(
+  calculateUniswapPriceImpact({
+    sqrtPriceX96: q96,
+    tokenInIsToken0: false,
+    amountIn: 1_000n,
+    quoteOut: 900n
+  }),
+  0.1
+);
+assert.equal(
+  calculateUniswapPriceImpact({
+    sqrtPriceX96: q96 * 2n,
+    tokenInIsToken0: true,
+    amountIn: 1_000n,
+    quoteOut: 3_960n
+  }),
+  0.01
+);
+assert.equal(
+  calculateUniswapPriceImpact({
+    sqrtPriceX96: q96 * 2n,
+    tokenInIsToken0: false,
+    amountIn: 4_000n,
+    quoteOut: 990n
+  }),
+  0.01
+);
+assert.equal(
+  calculateUniswapPriceImpact({
+    sqrtPriceX96: q96,
+    tokenInIsToken0: true,
+    amountIn: 1_000n,
+    quoteOut: 1_001n
+  }),
+  0
+);
+assert.throws(
+  () => calculateUniswapPriceImpact({
+    sqrtPriceX96: 0n,
+    tokenInIsToken0: true,
+    amountIn: 1_000n,
+    quoteOut: 990n
+  }),
+  /invalid pool or quote values/
 );
 
 const buy = buildExternalUniswapSwap({ token, recipient, side: "buy", fee, amountIn, quoteOut, deadline });

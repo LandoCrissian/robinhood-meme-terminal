@@ -16,8 +16,11 @@ import {
 import { verifyExternalUniswapMarket } from "./external-uniswap-market";
 
 const MAX_UINT128 = (1n << 128n) - 1n;
+const Q192 = 1n << 192n;
 const SLIPPAGE_BPS = 100n;
 const BPS = 10_000n;
+const IMPACT_SCALE = 1_000_000n;
+const MAX_PRICE_IMPACT = 0.1;
 
 const quoterAbi = [{
   type: "function",
@@ -93,6 +96,7 @@ export type ExternalUniswapQuote = {
   amountIn: string;
   quoteOut: string;
   minimumOut: string;
+  priceImpact: number;
   deadline: string;
   fee: number;
   marketPair: Address;
@@ -105,6 +109,28 @@ export type ExternalUniswapQuote = {
 function safeText(value: string, fallback: string) {
   const clean = value.trim().slice(0, 80);
   return clean || fallback;
+}
+
+export function calculateUniswapPriceImpact(params: {
+  sqrtPriceX96: bigint;
+  tokenInIsToken0: boolean;
+  amountIn: bigint;
+  quoteOut: bigint;
+}) {
+  if (params.sqrtPriceX96 <= 0n || params.amountIn <= 0n || params.quoteOut <= 0n) {
+    throw new Error("Cannot calculate Uniswap price impact from invalid pool or quote values.");
+  }
+  const squaredPrice = params.sqrtPriceX96 * params.sqrtPriceX96;
+  const executionToSpotNumerator = params.tokenInIsToken0
+    ? params.quoteOut * Q192
+    : params.quoteOut * squaredPrice;
+  const executionToSpotDenominator = params.tokenInIsToken0
+    ? params.amountIn * squaredPrice
+    : params.amountIn * Q192;
+  if (executionToSpotNumerator >= executionToSpotDenominator) return 0;
+  const impact = (executionToSpotDenominator - executionToSpotNumerator) * IMPACT_SCALE
+    / executionToSpotDenominator;
+  return Number(impact) / Number(IMPACT_SCALE);
 }
 
 async function tokenMetadata(token: Address) {
@@ -199,6 +225,16 @@ export async function quoteAndBuildExternalUniswapSwap(params: {
   });
   const quoteOut = quote.result[0];
   if (quoteOut <= 0n || quoteOut > MAX_UINT128) throw new Error("The Uniswap pool returned an invalid quote.");
+  const tokenIn = isBuy ? ROBINHOOD_WETH : params.token;
+  const priceImpact = calculateUniswapPriceImpact({
+    sqrtPriceX96: market.sqrtPriceX96,
+    tokenInIsToken0: tokenIn.toLowerCase() === market.token0.toLowerCase(),
+    amountIn: params.amountIn,
+    quoteOut
+  });
+  if (priceImpact > MAX_PRICE_IMPACT) {
+    throw new Error("RMT blocked this Uniswap trade because price impact is too high.");
+  }
   const deadline = BigInt(Math.floor(Date.now() / 1000) + 600);
   const built = buildExternalUniswapSwap({
     token: params.token,
@@ -228,6 +264,7 @@ export async function quoteAndBuildExternalUniswapSwap(params: {
     amountIn: params.amountIn.toString(),
     quoteOut: quoteOut.toString(),
     minimumOut: built.minimumOut.toString(),
+    priceImpact,
     deadline: deadline.toString(),
     fee: market.fee,
     marketPair: market.pair,
