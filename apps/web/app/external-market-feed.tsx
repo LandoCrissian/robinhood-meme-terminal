@@ -722,10 +722,12 @@ export function ExternalMarketFeed() {
               const mobileMoveLabel = market.curve
                 ? (market.curve.progressBps / 100).toFixed(1) + "%"
                 : (market.priceChange5m > 0 ? "+" : "") + market.priceChange5m.toFixed(2) + "%";
+              const mobileReviewRequired = market.riskFlags.length > 0 || !canHandoffToVenue(market);
+              const mobileWorkspaceHref = `/market/${market.address}${mobileReviewRequired ? "?tab=safety" : ""}`;
               return (
                 <article className="externalMarketCard runnerMarketCard" data-signal={market.signal} key={market.address}>
                   <div className="mobileRunnerMarketRow">
-                    <a className="mobileRunnerIdentity" href={`/market/${market.address}`} aria-label={`Open ${market.name} trading workspace`}>
+                    <a className="mobileRunnerIdentity" href={mobileWorkspaceHref} aria-label={`Open ${market.name} ${mobileReviewRequired ? "safety review" : "trading workspace"}`}>
                       <span className="mobileRunnerRank">#{String(marketRank).padStart(2, "0")}</span>
                       <ExternalArtwork market={market} />
                       <span className="mobileRunnerCopy">
@@ -733,8 +735,8 @@ export function ExternalMarketFeed() {
                         <small>{"$" + cleanSymbol(market.symbol)} · {venueLabel(market)}</small>
                       </span>
                     </a>
-                    <a className="mobileRunnerTrade" href={`/market/${market.address}`} aria-label={`${canHandoffToVenue(market) ? "Trade" : "Review"} ${market.name}`}>
-                      {canHandoffToVenue(market) ? "Trade" : "Review"}
+                    <a className={`mobileRunnerTrade ${mobileReviewRequired ? "review" : ""}`} href={mobileWorkspaceHref} aria-label={`${mobileReviewRequired ? "Review" : "Trade"} ${market.name}`}>
+                      {mobileReviewRequired ? "Review" : "Trade"}
                     </a>
                     <div className="mobileRunnerMetrics" aria-label={`${market.name} market snapshot`}>
                       <span><small>{value.label}</small><strong>{money(value.value)}</strong></span>

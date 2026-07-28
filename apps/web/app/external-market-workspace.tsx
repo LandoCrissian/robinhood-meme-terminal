@@ -97,11 +97,16 @@ export function ExternalMarketWorkspace() {
   const searchParams = useSearchParams();
   const tokenAddress = params.address && isAddress(params.address) ? getAddress(params.address) : null;
   const initialSide = searchParams.get("side") === "sell" ? "sell" : "buy";
+  const initialWorkspaceTab: WorkspaceTab = searchParams.get("tab") === "safety"
+    ? "safety"
+    : searchParams.get("tab") === "origin"
+      ? "origin"
+      : "activity";
   const [market, setMarket] = useState<ExternalMarket>();
   const [status, setStatus] = useState<"loading" | "ready" | "stale" | "error">("loading");
   const [side, setSide] = useState<TradeSide>(initialSide);
   const [tradeAmount, setTradeAmount] = useState(initialSide === "buy" ? "0.0001" : "");
-  const [tab, setTab] = useState<WorkspaceTab>("activity");
+  const [tab, setTab] = useState<WorkspaceTab>(initialWorkspaceTab);
   const [range, setRange] = useState<ExternalChartRange>("24H");
   const [chart, setChart] = useState<ExternalOhlcvPayload>();
   const [chartStatus, setChartStatus] = useState<"loading" | "ready" | "error">("loading");
