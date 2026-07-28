@@ -37,7 +37,8 @@ import {
   SmartOrderGuard,
   TradeCostSummary,
   TradeAmountPresets,
-  TradeExecutionPath
+  TradeExecutionPath,
+  TradeOrderDetails
 } from "./trade-ticket-ui";
 import { WalletButton } from "./wallet-button";
 
@@ -386,20 +387,56 @@ export function ExternalSushiQuotePanel({
               <dl>
                 <div><dt>Minimum received</dt><dd>{displayUnits(quote.minimumOut, outputDecimals)} {outputSymbol}</dd></div>
                 <div><dt>Price impact</dt><dd>{(quote.priceImpact * 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}%</dd></div>
-                <div><dt>Market check</dt><dd>Pool + token matched</dd></div>
+                <div><dt>Execution route</dt><dd>Sushi · RedSnwapper</dd></div>
               </dl>
             )}
             {status === "error" && <p role="alert">{error}</p>}
           </div>
-          <QuoteProtection
-            deadline={quote?.quoteExpiresAt}
-            priceImpact={quote?.priceImpact}
-            slippageLabel="1% maximum"
-          />
           <SmartOrderGuard
             priceImpact={quote?.priceImpact}
             disabled={busy || !canReduceImpact}
             onReduce={chooseSaferAmount}
+          />
+        </>
+      )}
+
+      <TradeConfidence
+        market={market}
+        side={side}
+        priceImpact={quote?.priceImpact}
+        evidenceState={tokenRisk}
+      />
+
+      {isConnected && chainId === ROBINHOOD_CHAIN_ID && (
+        <button
+          className={`externalUniswapSubmit ${side}`}
+          type="button"
+          disabled={!quoteIsFresh || insufficient || busy || !confidenceReady || evidenceBlocked || impactBlocked}
+          onClick={submit}
+        >
+          {buttonLabel}
+        </button>
+      )}
+      {(approval.error || approvalReceipt.error || swap.error || swapReceipt.error) && (
+        <p className="externalUniswapError" role="alert">
+          {approval.error?.message || approvalReceipt.error?.message || swap.error?.message || swapReceipt.error?.message}
+        </p>
+      )}
+      {message && (
+        <p className="externalUniswapMessage" role="status">
+          {message}
+          {swapReceipt.isSuccess && swap.data && (
+            <> <a href={`${EXPLORER}/tx/${swap.data}`} target="_blank" rel="noopener noreferrer">View transaction ↗</a></>
+          )}
+        </p>
+      )}
+
+      {address && (
+        <TradeOrderDetails priceImpact={quote?.priceImpact} routeLabel="Sushi">
+          <QuoteProtection
+            deadline={quote?.quoteExpiresAt}
+            priceImpact={quote?.priceImpact}
+            slippageLabel="1% maximum"
           />
           <FinalOrderReview
             originalAmount={saferOrderOriginal}
@@ -419,31 +456,12 @@ export function ExternalSushiQuotePanel({
             estimate={feeEstimate}
             venueLabel="Costs reflected in quote"
           />
-
-          {isConnected && chainId === ROBINHOOD_CHAIN_ID && (
-            <button
-              className={`externalUniswapSubmit ${side}`}
-              type="button"
-              disabled={!quoteIsFresh || insufficient || busy || !confidenceReady || evidenceBlocked || impactBlocked}
-              onClick={submit}
-            >
-              {buttonLabel}
-            </button>
-          )}
-          {(approval.error || approvalReceipt.error || swap.error || swapReceipt.error) && (
-            <p className="externalUniswapError" role="alert">
-              {approval.error?.message || approvalReceipt.error?.message || swap.error?.message || swapReceipt.error?.message}
-            </p>
-          )}
-          {message && (
-            <p className="externalUniswapMessage" role="status">
-              {message}
-              {swapReceipt.isSuccess && swap.data && (
-                <> <a href={`${EXPLORER}/tx/${swap.data}`} target="_blank" rel="noopener noreferrer">View transaction ↗</a></>
-              )}
-            </p>
-          )}
-        </>
+          <p className="externalSushiSafety">
+            RMT verifies the displayed pool, sender, recipient, tokens, exact amount, minimum received, Sushi router and executor bytecode,
+            then requires Sushi&apos;s successful simulation before enabling the wallet. Sell approval is exact, not unlimited.
+            Sushi&apos;s current RedSnwapper has no onchain deadline; RMT therefore expires its quote after 90 seconds, but a submitted pending transaction remains subject to that disclosed router limitation.
+          </p>
+        </TradeOrderDetails>
       )}
 
       <TradeExecutionPath
@@ -454,19 +472,6 @@ export function ExternalSushiQuotePanel({
         success={swapReceipt.isSuccess}
         needsApproval={needsApproval}
       />
-
-      <TradeConfidence
-        market={market}
-        side={side}
-        priceImpact={quote?.priceImpact}
-        evidenceState={tokenRisk}
-      />
-
-      <p className="externalSushiSafety">
-        RMT verifies the displayed pool, sender, recipient, tokens, exact amount, minimum received, Sushi router and executor bytecode,
-        then requires Sushi&apos;s successful simulation before enabling the wallet. Sell approval is exact, not unlimited.
-        Sushi&apos;s current RedSnwapper has no onchain deadline; RMT therefore expires its quote after 90 seconds, but a submitted pending transaction remains subject to that disclosed router limitation.
-      </p>
     </section>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import type { ExternalMarket } from "../lib/external-market";
 import type { ExternalMarketRiskFlag } from "../lib/external-market-ranking";
 import { formatOwnershipBps, type TokenRiskEvidenceState } from "../lib/token-risk-evidence";
@@ -90,104 +91,125 @@ export function TradeConfidence({
   const positionLabel = evidence?.liquidity.positionId
     ? `${liquidityControlLabel} · #${evidence.liquidity.positionId}`
     : liquidityControlLabel;
+  const [expanded, setExpanded] = useState(false);
+
+  useEffect(() => {
+    if (tradeBlocked) setExpanded(true);
+  }, [tradeBlocked]);
+
+  const confidenceHeading = evidenceBlocked
+    ? "Buy blocked: sell transfer failed"
+    : excessivePriceImpact
+      ? "Trade blocked: extreme price impact"
+      : requiresAcknowledgement
+        ? "Review before buying"
+        : "Verified checks passed";
+  const reviewLabel = tradeBlocked
+    ? "Required review"
+    : expanded
+      ? "Hide evidence"
+      : `${warnings.length > 0 ? warnings.length : 3} ${warnings.length === 1 ? "notice" : "checks"}`;
 
   return (
     <section className={`tradeConfidence ${tradeBlocked ? "blocked" : requiresAcknowledgement ? "caution" : "clear"}`} aria-labelledby="trade-confidence-heading">
-      <header>
-        <span aria-hidden="true">{tradeBlocked ? "!" : requiresAcknowledgement ? "?" : "✓"}</span>
-        <div>
-          <small>RMT TRADE CONFIDENCE</small>
-          <strong id="trade-confidence-heading">
-            {evidenceBlocked
-              ? "Buy blocked: sell transfer failed"
-              : excessivePriceImpact
-                ? "Trade blocked: extreme price impact"
-                : requiresAcknowledgement
-                  ? "Review before buying"
-                  : "Verified checks passed"}
-          </strong>
-        </div>
-      </header>
+      <button
+        type="button"
+        className="tradeConfidenceToggle"
+        aria-expanded={expanded}
+        aria-controls="trade-confidence-details"
+        onClick={() => setExpanded((value) => !value)}
+      >
+        <span className="tradeConfidenceIcon" aria-hidden="true">{tradeBlocked ? "!" : requiresAcknowledgement ? "?" : "✓"}</span>
+        <span>
+          <small>RMT PRE-TRADE EVIDENCE</small>
+          <strong id="trade-confidence-heading">{confidenceHeading}</strong>
+        </span>
+        <em>{reviewLabel}<i aria-hidden="true">{expanded ? "−" : "+"}</i></em>
+      </button>
 
-      <div className="tradeConfidenceChecks">
-        <span className="pass"><i />Token and displayed pool matched</span>
-        <span className={sourceTransparent ? "pass" : "warn"}><i />{
-          evidenceState.status === "loading"
-            ? "Checking published contract source"
-            : sourceTransparent
-              ? "Published source matches bytecode"
-              : evidenceState.status === "unavailable"
-                ? "Contract transparency unavailable"
-                : "Contract transparency needs review"
-        }</span>
-        <span className={concentrated || evidenceState.status !== "ready" ? "warn" : "pass"}><i />{
-          evidenceState.status === "loading"
-            ? "Checking non-pool concentration"
-            : largestHolderBps === undefined
-              ? "Holder concentration unavailable"
-              : `${formatOwnershipBps(largestHolderBps)} largest non-pool holder`
-        }</span>
-      </div>
+      {expanded && (
+        <div className="tradeConfidenceDetails" id="trade-confidence-details">
+          <div className="tradeConfidenceChecks">
+            <span className="pass"><i />Token and displayed pool matched</span>
+            <span className={sourceTransparent ? "pass" : "warn"}><i />{
+              evidenceState.status === "loading"
+                ? "Checking published contract source"
+                : sourceTransparent
+                  ? "Published source matches bytecode"
+                  : evidenceState.status === "unavailable"
+                    ? "Contract transparency unavailable"
+                    : "Contract transparency needs review"
+            }</span>
+            <span className={concentrated || evidenceState.status !== "ready" ? "warn" : "pass"}><i />{
+              evidenceState.status === "loading"
+                ? "Checking non-pool concentration"
+                : largestHolderBps === undefined
+                  ? "Holder concentration unavailable"
+                  : `${formatOwnershipBps(largestHolderBps)} largest non-pool holder`
+            }</span>
+          </div>
 
-      {evidence && (
-        <dl className="tradeConfidenceEvidence">
-          <div><dt>Known holders</dt><dd>{evidence.holders.count?.toLocaleString() ?? "Unavailable"}</dd></div>
-          <div><dt>Pool-held supply</dt><dd>{formatOwnershipBps(evidence.holders.poolShareBps)}</dd></div>
-          <div>
-            <dt>Reported creator balance</dt>
-            <dd>{evidence.holders.creator ? formatOwnershipBps(evidence.holders.creatorShareBps) : "No verified creator"}</dd>
-          </div>
-          <div>
-            <dt>Recent exit evidence</dt>
-            <dd>{market.sells1h > 0 ? `${market.sells1h.toLocaleString()} sells · 1h` : "No sells observed · 1h"}</dd>
-          </div>
-          <div>
-            <dt>Sell-direction simulation</dt>
-            <dd>{
-              evidence.sellSimulation.status === "passed"
-                ? "Holder → pool passed"
-                : evidence.sellSimulation.status === "blocked"
-                  ? "Blocked"
-                  : "Unknown"
-            }</dd>
-          </div>
-          <div>
-            <dt>Token controls</dt>
-            <dd>{
-              evidence.contract.controls.assessment === "no-common-controls-found"
-                ? "No common controls found"
-                : evidence.contract.controls.assessment === "known-launch-controls"
-                  ? "Known Pons protection · expired"
-                : evidence.contract.controls.assessment === "review-required"
-                  ? "Review required"
-                  : "Unknown"
-            }</dd>
-          </div>
-          <div><dt>LP position control</dt><dd>{positionLabel}</dd></div>
-          {evidence.contract.controls.activeLaunchRestrictions && (
-            <div>
-              <dt>Active launch limits</dt>
-              <dd>{
-                evidence.contract.controls.maxTransactionBps !== null
-                  ? `${formatOwnershipBps(evidence.contract.controls.maxTransactionBps)} tx`
-                  : "Restrictions active"
-              }{
-                evidence.contract.controls.maxWalletBps !== null
-                  ? ` · ${formatOwnershipBps(evidence.contract.controls.maxWalletBps)} wallet`
-                  : ""
-              }</dd>
-            </div>
+          {evidence && (
+            <dl className="tradeConfidenceEvidence">
+              <div><dt>Known holders</dt><dd>{evidence.holders.count?.toLocaleString() ?? "Unavailable"}</dd></div>
+              <div><dt>Pool-held supply</dt><dd>{formatOwnershipBps(evidence.holders.poolShareBps)}</dd></div>
+              <div>
+                <dt>Reported creator balance</dt>
+                <dd>{evidence.holders.creator ? formatOwnershipBps(evidence.holders.creatorShareBps) : "No verified creator"}</dd>
+              </div>
+              <div>
+                <dt>Recent exit evidence</dt>
+                <dd>{market.sells1h > 0 ? `${market.sells1h.toLocaleString()} sells · 1h` : "No sells observed · 1h"}</dd>
+              </div>
+              <div>
+                <dt>Sell-direction simulation</dt>
+                <dd>{
+                  evidence.sellSimulation.status === "passed"
+                    ? "Holder → pool passed"
+                    : evidence.sellSimulation.status === "blocked"
+                      ? "Blocked"
+                      : "Unknown"
+                }</dd>
+              </div>
+              <div>
+                <dt>Token controls</dt>
+                <dd>{
+                  evidence.contract.controls.assessment === "no-common-controls-found"
+                    ? "No common controls found"
+                    : evidence.contract.controls.assessment === "known-launch-controls"
+                      ? "Known Pons protection · expired"
+                    : evidence.contract.controls.assessment === "review-required"
+                      ? "Review required"
+                      : "Unknown"
+                }</dd>
+              </div>
+              <div><dt>LP position control</dt><dd>{positionLabel}</dd></div>
+              {evidence.contract.controls.activeLaunchRestrictions && (
+                <div>
+                  <dt>Active launch limits</dt>
+                  <dd>{
+                    evidence.contract.controls.maxTransactionBps !== null
+                      ? `${formatOwnershipBps(evidence.contract.controls.maxTransactionBps)} tx`
+                      : "Restrictions active"
+                  }{
+                    evidence.contract.controls.maxWalletBps !== null
+                      ? ` · ${formatOwnershipBps(evidence.contract.controls.maxWalletBps)} wallet`
+                      : ""
+                  }</dd>
+                </div>
+              )}
+            </dl>
           )}
-        </dl>
-      )}
 
-      {warnings.length > 0 && (
-        <ul>
-          {Array.from(new Set(warnings)).map((warning) => <li key={warning}>{warning}</li>)}
-        </ul>
-      )}
+          {warnings.length > 0 && (
+            <ul>
+              {Array.from(new Set(warnings)).map((warning) => <li key={warning}>{warning}</li>)}
+            </ul>
+          )}
 
-      <p>These are evidence-based checks, not a safety rating or endorsement. Trading terms are accepted once per version; token evidence continues to update. Your wallet remains the final authority.</p>
+          <p>These are evidence-based checks, not a safety rating or endorsement. Trading terms are accepted once per version; token evidence continues to update. Your wallet remains the final authority.</p>
+        </div>
+      )}
     </section>
   );
 }

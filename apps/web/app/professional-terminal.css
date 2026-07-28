@@ -1525,6 +1525,50 @@
     max-height: calc(100dvh - 90px - env(safe-area-inset-bottom));
   }
 
+  .professionalTradeWorkspace .externalSushiResult dl {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .professionalTradeWorkspace .externalSushiResult dl > div,
+  .professionalTradeWorkspace .externalSushiResult dl > div:first-child,
+  .professionalTradeWorkspace .externalSushiResult dl > div:last-child {
+    min-height: 48px;
+    padding: 8px 7px 0;
+    border-right: 1px solid #26352c;
+    border-bottom: 0;
+  }
+
+  .professionalTradeWorkspace .externalSushiResult dl > div:first-child {
+    padding-left: 0;
+  }
+
+  .professionalTradeWorkspace .externalSushiResult dl > div:last-child {
+    padding-right: 0;
+    border-right: 0;
+  }
+
+  .professionalTradeWorkspace .tradeConfidenceToggle {
+    min-height: 56px;
+    grid-template-columns: 28px minmax(0, 1fr) auto;
+    padding: 8px;
+  }
+
+  .professionalTradeWorkspace .tradeConfidenceToggle > em {
+    font-size: 0;
+  }
+
+  .professionalTradeWorkspace .tradeConfidenceToggle > em i {
+    font-size: .72rem;
+  }
+
+  .professionalTradeWorkspace .tradeOrderDetails > summary {
+    min-height: 48px;
+  }
+
+  .professionalTradeWorkspace .tradeOrderDetails > summary em {
+    max-width: 112px;
+  }
+
   .professionalTradeWorkspace .universalChart {
     min-height: 274px;
     padding: 9px;
