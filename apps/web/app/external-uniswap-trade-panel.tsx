@@ -11,7 +11,11 @@ import {
   useWriteContract
 } from "wagmi";
 import type { ExternalMarket } from "../lib/external-market";
-import { conservativeNetworkFeeReserve, spendableTradeBalance } from "../lib/trade-ticket";
+import {
+  PRICE_IMPACT_BLOCK,
+  conservativeNetworkFeeReserve,
+  spendableTradeBalance
+} from "../lib/trade-ticket";
 import { ROBINHOOD_SWAP_ROUTER_02 } from "../lib/uniswap-v4";
 import { useTradeFeeEstimate } from "../lib/use-trade-fee-estimate";
 import { useTokenRiskEvidence } from "../lib/use-token-risk-evidence";
@@ -265,7 +269,7 @@ export function ExternalUniswapTradePanel({
   const confidenceEvidenceReady = side === "sell" || tokenRisk.status !== "loading";
   const confidenceReady = confidenceEvidenceReady && (!requiresAcknowledgement || tradingTerms.accepted);
   const evidenceBlocked = tradeIsBlockedByEvidence(tokenRisk, side);
-  const impactBlocked = Boolean(quote && quote.priceImpact > 0.1);
+  const impactBlocked = Boolean(quote && quote.priceImpact > PRICE_IMPACT_BLOCK);
   const outputDecimals = quote?.outputToken.decimals;
   const outputSymbol = quote?.outputToken.symbol ?? (side === "buy" ? market.symbol : "ETH");
   const sizingBalance = side === "buy"

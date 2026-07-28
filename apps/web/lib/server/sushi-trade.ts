@@ -17,6 +17,7 @@ import {
   type SushiIndicativeQuote,
   type SushiTokenMetadata
 } from "../sushi";
+import { PRICE_IMPACT_BLOCK } from "../trade-ticket";
 import {
   auditSushiSwapCandidate,
   hashSushiContractCode
@@ -25,7 +26,6 @@ import {
 const SUSHI_QUOTE_API = "https://api.sushi.com/quote/v7";
 const SUSHI_SWAP_API = "https://api.sushi.com/swap/v7";
 const MAX_UINT256 = (1n << 256n) - 1n;
-const MAX_PRICE_IMPACT = 0.1;
 const QUOTE_LIFETIME_SECONDS = 90;
 const decimalString = z.string().regex(/^\d+$/);
 const tokenMetadataSchema = z.object({
@@ -196,7 +196,7 @@ export async function quoteAndBuildSushiSwap(
   url.searchParams.set("tokenOut", tokenOut);
   url.searchParams.set("amount", params.amountIn.toString());
   url.searchParams.set("maxSlippage", (SUSHI_QUOTE_SLIPPAGE_BPS / 10_000).toString());
-  url.searchParams.set("maxPriceImpact", MAX_PRICE_IMPACT.toString());
+  url.searchParams.set("maxPriceImpact", PRICE_IMPACT_BLOCK.toString());
   url.searchParams.set("sender", params.recipient);
   url.searchParams.set("recipient", params.recipient);
   url.searchParams.set("simulate", "true");
@@ -231,7 +231,7 @@ export async function quoteAndBuildSushiSwap(
   const parsed = quoteResponseSchema.safeParse(payload);
   if (!parsed.success || parsed.data.status !== "Success") throw new Error("Sushi returned an invalid executable swap response.");
   const priceImpact = parsePriceImpact(parsed.data.priceImpact);
-  if (priceImpact > MAX_PRICE_IMPACT) throw new Error("Sushi blocked this trade because price impact is too high.");
+  if (priceImpact > PRICE_IMPACT_BLOCK) throw new Error("RMT blocked this Sushi trade because price impact exceeds 5%.");
   const inputToken = quoteTokenMetadata(parsed.data.tokens, parsed.data.tokenFrom, tokenIn);
   const outputToken = quoteTokenMetadata(parsed.data.tokens, parsed.data.tokenTo, tokenOut);
   if (!inputToken || !outputToken) throw new Error("Sushi returned incomplete token metadata.");

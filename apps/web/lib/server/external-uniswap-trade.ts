@@ -13,6 +13,7 @@ import {
   ROBINHOOD_V3_QUOTER,
   ROBINHOOD_WETH
 } from "../uniswap-v4";
+import { PRICE_IMPACT_BLOCK } from "../trade-ticket";
 import { verifyExternalUniswapMarket } from "./external-uniswap-market";
 
 const MAX_UINT128 = (1n << 128n) - 1n;
@@ -20,7 +21,6 @@ const Q192 = 1n << 192n;
 const SLIPPAGE_BPS = 100n;
 const BPS = 10_000n;
 const IMPACT_SCALE = 1_000_000n;
-const MAX_PRICE_IMPACT = 0.1;
 
 const quoterAbi = [{
   type: "function",
@@ -232,8 +232,8 @@ export async function quoteAndBuildExternalUniswapSwap(params: {
     amountIn: params.amountIn,
     quoteOut
   });
-  if (priceImpact > MAX_PRICE_IMPACT) {
-    throw new Error("RMT blocked this Uniswap trade because price impact is too high.");
+  if (priceImpact > PRICE_IMPACT_BLOCK) {
+    throw new Error("RMT blocked this Uniswap trade because price impact exceeds 5%.");
   }
   const deadline = BigInt(Math.floor(Date.now() / 1000) + 600);
   const built = buildExternalUniswapSwap({

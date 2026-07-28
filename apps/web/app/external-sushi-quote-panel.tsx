@@ -16,7 +16,11 @@ import {
   type SushiExecutableQuote,
   type SushiIndicativeQuote
 } from "../lib/sushi";
-import { conservativeNetworkFeeReserve, spendableTradeBalance } from "../lib/trade-ticket";
+import {
+  PRICE_IMPACT_BLOCK,
+  conservativeNetworkFeeReserve,
+  spendableTradeBalance
+} from "../lib/trade-ticket";
 import { useTradeFeeEstimate } from "../lib/use-trade-fee-estimate";
 import { useTokenRiskEvidence } from "../lib/use-token-risk-evidence";
 import { useTradingTermsAcceptance } from "../lib/use-trading-terms";
@@ -264,7 +268,7 @@ export function ExternalSushiQuotePanel({
   const confidenceEvidenceReady = side === "sell" || tokenRisk.status !== "loading";
   const confidenceReady = confidenceEvidenceReady && (!requiresAcknowledgement || tradingTerms.accepted);
   const evidenceBlocked = tradeIsBlockedByEvidence(tokenRisk, side);
-  const impactBlocked = Boolean(quote && quote.priceImpact > 0.1);
+  const impactBlocked = Boolean(quote && quote.priceImpact > PRICE_IMPACT_BLOCK);
   const sizingBalance = side === "buy"
     ? nativeBalance.data ? spendableTradeBalance(nativeBalance.data.value, networkFeeReserve) : undefined
     : tokenBalance.data;
