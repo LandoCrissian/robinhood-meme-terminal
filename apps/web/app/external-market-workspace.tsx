@@ -105,6 +105,9 @@ export function ExternalMarketWorkspace() {
   const [tradeVenueStatus, setTradeVenueStatus] = useState<"loading" | "ready" | "error">("loading");
   const [selectedTradeVenue, setSelectedTradeVenue] = useState<"sushi" | "uniswap" | null>(null);
   const tradeRef = useRef<HTMLElement>(null);
+  const marketAddress = market?.address;
+  const marketPair = market?.pairAddress;
+  const preferredVenue = market ? venueKind(market) : null;
 
   const refreshMarket = useCallback(async () => {
     if (!tokenAddress) {
@@ -135,13 +138,13 @@ export function ExternalMarketWorkspace() {
   }, [market?.address, side]);
 
   useEffect(() => {
-    if (!market) return;
+    if (!marketAddress || !marketPair) return;
     const controller = new AbortController();
     setChartStatus("loading");
     setChartError(undefined);
     const query = new URLSearchParams({
-      token: market.address,
-      pair: market.pairAddress,
+      token: marketAddress,
+      pair: marketPair,
       range
     });
     void fetch(`/api/markets/ohlcv?${query}`, { signal: controller.signal })
@@ -151,8 +154,8 @@ export function ExternalMarketWorkspace() {
           throw new Error("error" in payload ? payload.error : "Price history unavailable.");
         }
         if (
-          payload.token.toLowerCase() !== market.address.toLowerCase()
-          || payload.pair.toLowerCase() !== market.pairAddress.toLowerCase()
+          payload.token.toLowerCase() !== marketAddress.toLowerCase()
+          || payload.pair.toLowerCase() !== marketPair.toLowerCase()
           || payload.range !== range
           || !Array.isArray(payload.candles)
         ) throw new Error("RMT rejected mismatched chart data.");
@@ -166,15 +169,15 @@ export function ExternalMarketWorkspace() {
         setChartError(cause instanceof Error ? cause.message : "Price history unavailable.");
       });
     return () => controller.abort();
-  }, [market, range]);
+  }, [marketAddress, marketPair, range]);
 
   useEffect(() => {
-    if (!market) return;
+    if (!marketAddress || !marketPair) return;
     const controller = new AbortController();
     setTradeVenueStatus("loading");
     setTradeVenues([]);
     setSelectedTradeVenue(null);
-    const query = new URLSearchParams({ token: market.address });
+    const query = new URLSearchParams({ token: marketAddress });
     void fetch(`/api/trade/external-venues?${query}`, {
       cache: "no-store",
       signal: controller.signal
@@ -194,11 +197,10 @@ export function ExternalMarketWorkspace() {
         && candidate.liquidityUsd > 0
         && (candidate.verification === "dex-and-route" || candidate.verification === "dex-and-onchain")
       ));
-      const preferred = venueKind(market);
       setTradeVenues(verified);
       setSelectedTradeVenue(
-        preferred && verified.some((candidate) => candidate.venue === preferred)
-          ? preferred
+        preferredVenue && verified.some((candidate) => candidate.venue === preferredVenue)
+          ? preferredVenue
           : verified[0]?.venue ?? null
       );
       setTradeVenueStatus("ready");
@@ -209,7 +211,7 @@ export function ExternalMarketWorkspace() {
       setSelectedTradeVenue(null);
     });
     return () => controller.abort();
-  }, [market]);
+  }, [marketAddress, marketPair, preferredVenue]);
 
   const setTradeSide = (next: TradeSide, focus = false) => {
     setSide(next);
