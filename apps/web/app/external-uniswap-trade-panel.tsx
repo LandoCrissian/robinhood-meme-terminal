@@ -314,7 +314,7 @@ export function ExternalUniswapTradePanel({
               <strong>{side === "buy" ? "ETH" : market.symbol}</strong>
             </div>
           </label>
-          <TradeAmountPresets balance={sizingBalance} decimals={sizingDecimals} onAmount={setAmount} />
+          <TradeAmountPresets side={side} balance={sizingBalance} decimals={sizingDecimals} onAmount={setAmount} />
 
           {chainId !== ROBINHOOD_CHAIN_ID && (
             <div className="externalSushiNetwork">
