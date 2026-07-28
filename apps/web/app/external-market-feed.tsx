@@ -10,6 +10,7 @@ import {
 import { isNonzeroEvmAddress } from "../lib/external-market-identity";
 import type { ExternalMarketRiskFlag, ExternalMarketSignal } from "../lib/external-market-ranking";
 import { ipfsToHttp } from "../lib/token-metadata";
+import { routeLiquidityDepthLabel } from "../lib/trade-route-selection";
 import { ExternalSushiQuotePanel } from "./external-sushi-quote-panel";
 import { ExternalUniswapTradePanel } from "./external-uniswap-trade-panel";
 
@@ -289,7 +290,7 @@ function ExternalTradeDialog({
           </div>
           <div className="externalTradeMetrics">
             <span><small>{value.label}</small><strong>{money(value.value)}</strong></span>
-            <span><small>Liquidity</small><strong>{money(market.liquidityUsd)}</strong></span>
+            <span><small>Liquidity · {routeLiquidityDepthLabel(market.liquidityUsd)} depth</small><strong>{money(market.liquidityUsd)}</strong></span>
             <span><small>1h volume</small><strong>{money(market.volume1h)}</strong></span>
             <span><small>1h trades</small><strong>{oneHourTrades.toLocaleString()}</strong></span>
           </div>
@@ -860,6 +861,9 @@ export function ExternalMarketFeed() {
               const executionState: ExecutionAvailability = canHandoffToVenue(market)
                 ? executionAvailability[addressKey] ?? (index < MAX_VISIBLE_MARKETS ? "checking" : "unavailable")
                 : "view-only";
+              const executionDepth = executionState === "ready"
+                ? routeLiquidityDepthLabel(market.liquidityUsd)
+                : null;
               const mobileReviewRequired = market.riskFlags.length > 0;
               const mobileActionLabel = mobileReviewRequired
                 ? "Review"
@@ -894,7 +898,7 @@ export function ExternalMarketFeed() {
                       <span className={"mobileRunnerMove " + (market.curve ? "positive" : changeClass)}>
                         <small>{market.curve ? "Progress" : "5m"}</small><strong>{mobileMoveLabel}</strong>
                       </span>
-                      <span><small>Liquidity</small><strong>{money(market.liquidityUsd)}</strong></span>
+                      <span><small>{executionDepth ? executionDepth + " depth" : "Liquidity"}</small><strong>{money(market.liquidityUsd)}</strong></span>
                     </div>
                   </div>
                   <div className="runnerCardStatus">
@@ -925,7 +929,8 @@ export function ExternalMarketFeed() {
                   <div className="runnerActivity">
                     <span>{market.curve
                       ? market.curve.uniqueTraders + " traders · " + market.curve.volumeQuoteEth.toFixed(3) + " ETH curve volume"
-                      : oneHourTrades > 0 ? Math.round(market.buyPressureBps / 100) + "% buys · 1h" : "No 1h trades"}</span>
+                      : (oneHourTrades > 0 ? Math.round(market.buyPressureBps / 100) + "% buys · 1h" : "No 1h trades")
+                        + (executionDepth ? " · " + executionDepth + " depth" : "")}</span>
                     {market.riskFlags.length > 0 && <em>{riskSummary(market.riskFlags)}</em>}
                   </div>
                   {executionState === "ready" ? (
@@ -950,7 +955,7 @@ export function ExternalMarketFeed() {
         )}
       </div>
 
-      <p className="externalDisclosure">Market data combines DEX Screener with Lemon&apos;s documented public API. Lemon identity is attached only when its token and pool match the discovered DEX pair; Pons identity requires matching factory and token records. Other qualified markets remain discoverable without implied endorsement. Token origin and execution venue are kept separate. Rankings are automated signals, not investment recommendations. Buy and Sell always require a fresh Sushi or Uniswap quote and wallet review.</p>
+      <p className="externalDisclosure">Market data combines DEX Screener with Lemon&apos;s documented public API. Lemon identity is attached only when its token and pool match the discovered DEX pair; Pons identity requires matching factory and token records. Other qualified markets remain discoverable without implied endorsement. Token origin and execution venue are kept separate. Rankings are automated signals, not investment recommendations. Depth labels describe displayed-pool liquidity for independently verified routes, not token safety or guaranteed execution. Buy and Sell always require a fresh Sushi or Uniswap quote and wallet review.</p>
 
       {quickTrade
         && selectedQuickTradeMarket
