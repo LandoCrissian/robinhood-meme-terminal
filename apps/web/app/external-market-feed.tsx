@@ -559,13 +559,13 @@ export function ExternalMarketFeed() {
   const changeView = (nextView: DiscoveryView) => {
     setView(nextView);
     setMarketQuery("");
-    setShowAllMarkets(false);
+    setShowAllMarkets(nextView === "explore");
   };
   const handleMarketQueryChange = (value: string) => {
     setMarketQuery(value);
     if (value.trim()) {
       setView("explore");
-      setShowAllMarkets(false);
+      setShowAllMarkets(true);
     }
   };
   const clearMarketQuery = () => {
@@ -682,7 +682,7 @@ export function ExternalMarketFeed() {
             className={sourceFilter === item.id ? "active" : ""}
             onClick={() => {
               setSourceFilter(item.id);
-              setShowAllMarkets(false);
+              setShowAllMarkets(view === "explore");
             }}
             key={item.id}
           >
