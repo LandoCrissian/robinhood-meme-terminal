@@ -25,11 +25,23 @@ export const metadata: Metadata = {
 
 export default function Home() {
   return (
-    <main>
+    <main className="terminalPage">
       <section className="terminalIntro">
-        <div><p className="eyebrow">TERMINAL · EXTERNAL ROBINHOOD CHAIN MARKETS</p><h1>Trade beyond RMT.</h1><p>Discover tokens launched across Pons, Lemon, Sushi, Uniswap, and the wider Robinhood Chain ecosystem in one origin-aware terminal.</p></div>
-        <div className="terminalIntroActions"><Link className="primaryAction" href="/explore">View RMT launches</Link><Link className="secondaryAction" href="/watchlist">Open watchlist</Link></div>
-        <div className="trustStrip"><span><b>NETWORK</b>{isMainnetRelease ? "RHC MAINNET · 4663" : "RHC TESTNET · 46630"}</span><span><b>REFRESH</b>30S MARKET DATA</span><span><b>EXECUTION</b>NON-CUSTODIAL</span><span><b>SOURCES</b>PONS · LEMON · DEX</span></div>
+        <div className="terminalIntroCopy">
+          <p className="eyebrow">RMT MARKET TERMINAL</p>
+          <h1>Robinhood Chain, in one view.</h1>
+          <p>Scan live markets, verify project origin, compare activity, and review non-custodial execution without leaving RMT.</p>
+        </div>
+        <div className="terminalIntroActions">
+          <Link className="primaryAction" href="/watchlist">Open watchlist</Link>
+          <Link className="secondaryAction" href="/explore">RMT projects</Link>
+        </div>
+        <div className="trustStrip" aria-label="Terminal operating status">
+          <span><b>NETWORK</b><i aria-hidden="true" />{isMainnetRelease ? "RHC MAINNET · 4663" : "RHC TESTNET · 46630"}</span>
+          <span><b>MARKETS</b>PONS · LEMON · SUSHI · UNISWAP</span>
+          <span><b>DATA</b>30S SNAPSHOTS</span>
+          <span><b>EXECUTION</b>SELF-CUSTODY</span>
+        </div>
       </section>
 
       <OfficialRmtMarket />
