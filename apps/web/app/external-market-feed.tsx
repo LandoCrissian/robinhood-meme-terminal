@@ -382,6 +382,7 @@ export function ExternalMarketFeed() {
   const [marketQuery, setMarketQuery] = useState("");
   const [showAllMarkets, setShowAllMarkets] = useState(false);
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
+  const [tradeableOnly, setTradeableOnly] = useState(false);
   const [executionAvailability, setExecutionAvailability] = useState<Record<string, ExecutionAvailability>>({});
 
   const syncQuickTradeUrl = useCallback((market?: ExternalMarket, side?: ExternalTradeSide) => {
@@ -561,19 +562,39 @@ export function ExternalMarketFeed() {
         market.pairAddress
       ].some((value) => value.toLowerCase().includes(normalizedMarketQuery)))
     : viewMarkets;
-  const filteredMarkets = sourceFilter === "all"
+  const sourceFilteredMarkets = sourceFilter === "all"
     ? searchedMarkets
     : searchedMarkets.filter((market) => market.project?.sourceId === sourceFilter);
+  const filteredMarkets = tradeableOnly
+    ? sourceFilteredMarkets.filter((market) => executionAvailability[market.address.toLowerCase()] === "ready")
+    : sourceFilteredMarkets;
   const expandedDirectory =
     showAllMarkets || normalizedMarketQuery.length > 0;
   const visibleMarkets = expandedDirectory
     ? filteredMarkets
     : filteredMarkets.slice(0, MAX_VISIBLE_MARKETS);
-  const availabilityAddresses = visibleMarkets
-    .slice(0, MAX_VISIBLE_MARKETS)
+  const availabilityCandidates = (tradeableOnly ? sourceFilteredMarkets : visibleMarkets.slice(0, MAX_VISIBLE_MARKETS))
     .filter(canHandoffToVenue)
     .map((market) => market.address.toLowerCase());
+  const checkingAvailability = availabilityCandidates.filter(
+    (address) => executionAvailability[address] === "checking"
+  );
+  const unknownAvailability = availabilityCandidates.filter(
+    (address) => executionAvailability[address] === undefined
+  );
+  const availabilityAddresses = tradeableOnly
+    ? (checkingAvailability.length > 0 ? checkingAvailability : unknownAvailability).slice(0, MAX_VISIBLE_MARKETS)
+    : availabilityCandidates;
   const availabilityKey = availabilityAddresses.join(",");
+  const tradeableCount = sourceFilteredMarkets.filter(
+    (market) => executionAvailability[market.address.toLowerCase()] === "ready"
+  ).length;
+  const routeResolvedCount = sourceFilteredMarkets.filter((market) => {
+    const executionState = executionAvailability[market.address.toLowerCase()];
+    return !canHandoffToVenue(market)
+      || (executionState !== undefined && executionState !== "checking");
+  }).length;
+  const tradeableVerificationPending = tradeableOnly && routeResolvedCount < sourceFilteredMarkets.length;
 
   useEffect(() => {
     const tokens = availabilityAddresses.filter((address) => executionAvailability[address] === undefined);
@@ -584,6 +605,7 @@ export function ExternalMarketFeed() {
       ...Object.fromEntries(tokens.map((address) => [address, "checking" as const]))
     }));
     const controller = new AbortController();
+    let settled = false;
     const query = new URLSearchParams({ tokens: tokens.join(",") });
     void fetch(`/api/trade/external-availability?${query}`, {
       cache: "no-store",
@@ -611,21 +633,37 @@ export function ExternalMarketFeed() {
         ) continue;
         resolved[address] = item.status;
       }
+      settled = true;
       setExecutionAvailability((current) => ({ ...current, ...resolved }));
     }).catch(() => {
       if (controller.signal.aborted) return;
+      settled = true;
       setExecutionAvailability((current) => ({
         ...current,
         ...Object.fromEntries(tokens.map((address) => [address, "unavailable" as const]))
       }));
     });
-    return () => controller.abort();
+    return () => {
+      controller.abort();
+      if (!settled) {
+        setExecutionAvailability((current) => {
+          const next = { ...current };
+          for (const address of tokens) {
+            if (next[address] === "checking") delete next[address];
+          }
+          return next;
+        });
+      }
+    };
     // availabilityKey changes only when the prioritized market set changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [availabilityKey]);
 
   const marketCountLabel = normalizedMarketQuery
     ? filteredMarkets.length + " match" + (filteredMarkets.length === 1 ? "" : "es")
+    : tradeableVerificationPending
+      ? "Verifying routes · " + routeResolvedCount + " of " + sourceFilteredMarkets.length +
+        " checked · " + tradeableCount + " tradeable"
     : showAllMarkets
       ? "Showing all " + filteredMarkets.length
       : "Top " + Math.min(MAX_VISIBLE_MARKETS, filteredMarkets.length) +
@@ -634,7 +672,7 @@ export function ExternalMarketFeed() {
   const changeView = (nextView: DiscoveryView) => {
     setView(nextView);
     setMarketQuery("");
-    setShowAllMarkets(nextView === "explore");
+    setShowAllMarkets(tradeableOnly || nextView === "explore");
   };
   const handleMarketQueryChange = (value: string) => {
     setMarketQuery(value);
@@ -748,8 +786,8 @@ export function ExternalMarketFeed() {
         </div>
         <small id="runner-market-count" aria-live="polite">{marketCountLabel}</small>
       </div>
-      <div className="runnerSourceFilters" role="group" aria-label="Filter markets by project source">
-        <span>Project source</span>
+      <div className="runnerSourceFilters" role="group" aria-label="Filter markets by project source or execution availability">
+        <span>Filters</span>
         {SOURCE_FILTERS.map((item) => (
           <button
             type="button"
@@ -757,13 +795,24 @@ export function ExternalMarketFeed() {
             className={sourceFilter === item.id ? "active" : ""}
             onClick={() => {
               setSourceFilter(item.id);
-              setShowAllMarkets(view === "explore");
+              setShowAllMarkets(tradeableOnly || view === "explore");
             }}
             key={item.id}
           >
             {item.label}<b>{sourceCounts[item.id]}</b>
           </button>
         ))}
+        <button
+          type="button"
+          aria-pressed={tradeableOnly}
+          className={tradeableOnly ? "active executionFilter" : "executionFilter"}
+          onClick={() => {
+            setTradeableOnly((current) => !current);
+            setShowAllMarkets(!tradeableOnly || view === "explore");
+          }}
+        >
+          {tradeableVerificationPending ? "Verifying…" : "Tradeable"}<b>{tradeableCount}</b>
+        </button>
       </div>
 
       <div className="runnerColumnHeader" aria-hidden="true">
@@ -777,15 +826,25 @@ export function ExternalMarketFeed() {
           <div className="emptyFeed"><strong>Market discovery is temporarily unavailable.</strong><span>Direct venue trading remains available.</span><button type="button" onClick={() => void refresh()}>Try again</button></div>
         ) : visibleMarkets.length === 0 ? (
           <div className="emptyFeed">
-            <strong>{normalizedMarketQuery ? "No external markets match that search." : "No markets meet this signal yet."}</strong>
-            <span>{normalizedMarketQuery
+            <strong>{tradeableVerificationPending
+              ? "Verifying in-site execution routes…"
+              : normalizedMarketQuery
+                ? "No external markets match that search."
+                : tradeableOnly
+                  ? "No verified in-site routes match these filters."
+                  : "No markets meet this signal yet."}</strong>
+            <span>{tradeableVerificationPending
+              ? "RMT is checking prioritized markets in bounded batches. Tradeable results appear as each route is independently verified."
+              : normalizedMarketQuery
               ? "Try a token name, ticker, or complete contract address, or change the project-source filter."
+              : tradeableOnly
+                ? "Change the project source or turn off Tradeable to inspect view-only markets."
               : sourceFilter !== "all"
                 ? "No " + SOURCE_FILTERS.find((item) => item.id === sourceFilter)?.label + " markets meet this view yet."
                 : "The filter will update automatically when activity qualifies."}</span>
-            {normalizedMarketQuery
+            {!tradeableVerificationPending && normalizedMarketQuery
               ? <button type="button" onClick={clearMarketQuery}>Clear search</button>
-              : view !== "explore" && <button type="button" onClick={() => changeView("explore")}>Explore all markets</button>}
+              : !tradeableVerificationPending && !tradeableOnly && view !== "explore" && <button type="button" onClick={() => changeView("explore")}>Explore all markets</button>}
           </div>
         ) : (
           <div className="externalMarketGrid runnerMarketGrid">
