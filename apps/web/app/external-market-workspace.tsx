@@ -17,6 +17,7 @@ import {
 import { ipfsToHttp } from "../lib/token-metadata";
 import { ExternalMarketChart } from "./external-market-chart";
 import { ExternalHolderIntelligence, ExternalTradeTape, ExternalWalletPosition } from "./external-market-live";
+import { ExternalRouteComparison } from "./external-route-comparison";
 import { ExternalSushiQuotePanel } from "./external-sushi-quote-panel";
 import { ExternalUniswapTradePanel } from "./external-uniswap-trade-panel";
 import { SiteFooter } from "./site-footer";
@@ -93,6 +94,7 @@ export function ExternalMarketWorkspace() {
   const [market, setMarket] = useState<ExternalMarket>();
   const [status, setStatus] = useState<"loading" | "ready" | "stale" | "error">("loading");
   const [side, setSide] = useState<TradeSide>(initialSide);
+  const [tradeAmount, setTradeAmount] = useState(initialSide === "buy" ? "0.0001" : "");
   const [tab, setTab] = useState<WorkspaceTab>("activity");
   const [range, setRange] = useState<ExternalChartRange>("24H");
   const [chart, setChart] = useState<ExternalOhlcvPayload>();
@@ -127,6 +129,10 @@ export function ExternalMarketWorkspace() {
     const interval = window.setInterval(() => void refreshMarket(), 30_000);
     return () => window.clearInterval(interval);
   }, [refreshMarket]);
+
+  useEffect(() => {
+    setTradeAmount(side === "buy" ? "0.0001" : "");
+  }, [market?.address, side]);
 
   useEffect(() => {
     if (!market) return;
@@ -393,28 +399,18 @@ export function ExternalMarketWorkspace() {
             <button type="button" role="tab" aria-selected={side === "sell"} className={side === "sell" ? "active" : ""} onClick={() => setTradeSide("sell")}>Sell</button>
           </div>
           {tradeVenueOptions.length > 1 && (
-            <div className="universalVenueSelector" aria-label="Execution venue">
-              <small>EXECUTION VENUE</small>
-              <div>
-                {tradeVenueOptions.map((candidate) => (
-                  <button
-                    type="button"
-                    className={selectedTradeVenue === candidate.venue ? "active" : ""}
-                    aria-pressed={selectedTradeVenue === candidate.venue}
-                    onClick={() => setSelectedTradeVenue(candidate.venue)}
-                    key={candidate.venue}
-                  >
-                    <strong>{candidate.venue === "sushi" ? "Sushi" : "Uniswap"}</strong>
-                    <span>{money(candidate.liquidityUsd)} verified liquidity</span>
-                  </button>
-                ))}
-              </div>
-              <p>RMT re-verifies the selected pool and route before every quote. Venue choice is not a best-price guarantee.</p>
-            </div>
+            <ExternalRouteComparison
+              market={market}
+              venues={tradeVenueOptions}
+              side={side}
+              amount={tradeAmount}
+              selectedVenue={selectedTradeVenue}
+              onSelectVenue={setSelectedTradeVenue}
+            />
           )}
           {tradeVenueStatus === "loading" && <div className="universalTradeUnavailable"><strong>Verifying execution venues…</strong><p>Matching independent pool and onchain evidence for this token.</p></div>}
-          {tradingMarket && activeTradeVenue?.venue === "sushi" && <ExternalSushiQuotePanel market={tradingMarket} side={side} />}
-          {tradingMarket && activeTradeVenue?.venue === "uniswap" && <ExternalUniswapTradePanel market={tradingMarket} side={side} />}
+          {tradingMarket && activeTradeVenue?.venue === "sushi" && <ExternalSushiQuotePanel market={tradingMarket} side={side} amount={tradeAmount} onAmountChange={setTradeAmount} />}
+          {tradingMarket && activeTradeVenue?.venue === "uniswap" && <ExternalUniswapTradePanel market={tradingMarket} side={side} amount={tradeAmount} onAmountChange={setTradeAmount} />}
           {tradeVenueStatus !== "loading" && !tradingMarket && <div className="universalTradeUnavailable"><strong>Read-only market</strong><p>RMT did not find a currently verified in-site execution route for this token.</p></div>}
           <footer><span>Non-custodial</span><span>Fresh quote</span><span>Wallet signs</span></footer>
         </aside>
