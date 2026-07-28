@@ -25,10 +25,10 @@ import {
 } from "../lib/trade-ticket";
 import { useTradeFeeEstimate } from "../lib/use-trade-fee-estimate";
 import { useTokenRiskEvidence } from "../lib/use-token-risk-evidence";
+import { tokenRiskDecision } from "../lib/token-risk-policy";
 import { useTradingTermsAcceptance } from "../lib/use-trading-terms";
 import {
   TradeConfidence,
-  tradeIsBlockedByEvidence,
   tradeRequiresAcknowledgement
 } from "./trade-confidence";
 import {
@@ -282,9 +282,10 @@ export function ExternalSushiQuotePanel({
     : amountIn > 0n && amountIn > (tokenBalance.data ?? 0n);
   const busy = approval.isPending || approvalReceipt.isLoading || swap.isPending || swapReceipt.isLoading;
   const requiresAcknowledgement = tradeRequiresAcknowledgement(market, side);
+  const evidenceDecision = tokenRiskDecision(tokenRisk, side);
   const confidenceEvidenceReady = side === "sell" || tokenRisk.status !== "loading";
   const confidenceReady = confidenceEvidenceReady && (!requiresAcknowledgement || tradingTerms.accepted);
-  const evidenceBlocked = tradeIsBlockedByEvidence(tokenRisk, side);
+  const evidenceBlocked = evidenceDecision.state === "blocked";
   const impactBlocked = Boolean(quote && quote.priceImpact > PRICE_IMPACT_BLOCK);
   const sizingBalance = side === "buy"
     ? nativeBalance.data ? spendableTradeBalance(nativeBalance.data.value, networkFeeReserve) : undefined
@@ -338,7 +339,7 @@ export function ExternalSushiQuotePanel({
       : !quoteIsFresh ? "Verifying route…"
       : insufficient ? "Insufficient balance"
       : !confidenceEvidenceReady ? "Checking contract and holders…"
-      : evidenceBlocked ? "Buy blocked: sell transfer failed"
+      : evidenceBlocked ? `Buy blocked: ${evidenceDecision.primaryFinding?.label ?? "evidence failed"}`
         : !confidenceReady ? "Accept RMT trading terms"
         : impactBlocked ? "Price impact too high"
           : needsApproval ? `Approve exact ${market.symbol} amount`
@@ -436,7 +437,7 @@ export function ExternalSushiQuotePanel({
                 ? "blocked"
                 : !confidenceEvidenceReady
                   ? "checking"
-                  : !confidenceReady
+                  : !confidenceReady || evidenceDecision.state === "review"
                     ? "review"
                     : "clear"
             }

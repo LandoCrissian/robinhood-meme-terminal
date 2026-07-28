@@ -22,6 +22,8 @@ import {
   routeLiquidityDepthLabel
 } from "./trade-route-selection";
 import { tradeReadinessStatus } from "./trade-readiness";
+import { tokenRiskDecision } from "./token-risk-policy";
+import type { TokenRiskEvidence } from "./token-risk-evidence";
 
 assert.equal(spendableTradeBalance(100n, 20n), 80n);
 assert.equal(spendableTradeBalance(20n, 20n), 0n);
@@ -164,5 +166,84 @@ assert.equal(protectedOutputRecommendation({
     { venue: "uniswap", minimumOut: "101000", priceImpact: 0.008, outputToken: quoteToken }
   ]
 }), undefined);
+
+const clearEvidence: TokenRiskEvidence = {
+  token: "0x1111111111111111111111111111111111111111",
+  pair: "0x2222222222222222222222222222222222222222",
+  marketVerified: true,
+  coverage: "complete",
+  contract: {
+    sourcePublished: true,
+    isProxy: false,
+    bytecodeChanged: false,
+    controls: {
+      assessment: "no-common-controls-found",
+      detected: [],
+      customWriteFunctions: [],
+      administrator: null,
+      activeLaunchRestrictions: false,
+      restrictionEndBlock: null,
+      maxTransactionBps: null,
+      maxWalletBps: null
+    }
+  },
+  liquidity: {
+    controlStatus: "burn-address",
+    evidenceSource: "launchpad-registry",
+    positionManager: "0x3333333333333333333333333333333333333333",
+    positionId: "1",
+    owner: "0x000000000000000000000000000000000000dEaD",
+    approvedOperator: null,
+    creatorCanTransfer: false,
+    positionLiquidity: "1"
+  },
+  holders: {
+    count: 100,
+    poolShareBps: 5_000,
+    topNonPoolShareBps: 900,
+    topNonPoolHolders: [],
+    largestNonPoolHolder: {
+      address: "0x4444444444444444444444444444444444444444",
+      shareBps: 900
+    },
+    creator: null,
+    creatorShareBps: null
+  },
+  sellSimulation: {
+    status: "passed",
+    method: "holder-to-pool-transfer",
+    holder: "0x4444444444444444444444444444444444444444",
+    amount: "1",
+    returnStyle: "boolean-true"
+  },
+  warnings: [],
+  checkedAt: "2026-07-28T00:00:00.000Z"
+};
+assert.equal(tokenRiskDecision({ status: "ready", evidence: clearEvidence }, "buy").state, "clear");
+assert.equal(tokenRiskDecision({
+  status: "ready",
+  evidence: {
+    ...clearEvidence,
+    contract: { ...clearEvidence.contract, bytecodeChanged: true }
+  }
+}, "buy").primaryFinding?.code, "published-bytecode-changed");
+assert.equal(tokenRiskDecision({
+  status: "ready",
+  evidence: {
+    ...clearEvidence,
+    contract: {
+      ...clearEvidence.contract,
+      controls: { ...clearEvidence.contract.controls, activeLaunchRestrictions: true }
+    }
+  }
+}, "buy").state, "blocked");
+assert.equal(tokenRiskDecision({
+  status: "ready",
+  evidence: {
+    ...clearEvidence,
+    sellSimulation: { ...clearEvidence.sellSimulation, status: "blocked", returnStyle: null }
+  }
+}, "sell").state, "clear");
+assert.equal(tokenRiskDecision({ status: "unavailable" }, "buy").state, "review");
 
 console.log("Trade ticket sizing, freshness, and impact classifications passed.");
