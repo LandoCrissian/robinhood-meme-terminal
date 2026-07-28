@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   encodeFunctionData,
   erc20Abi,
@@ -13,6 +13,7 @@ import {
 } from "viem";
 import { useAccount, useReadContract } from "wagmi";
 import type { ExternalMarket } from "../lib/external-market";
+import type { TradeVenueHealth, TradeVenueId } from "../lib/trade-route-selection";
 import { estimatedNetworkFeeUsd } from "../lib/trade-ticket";
 import { SUSHI_RED_SNWAPPER } from "../lib/sushi";
 import { ROBINHOOD_SWAP_ROUTER_02 } from "../lib/uniswap-v4";
@@ -136,7 +137,8 @@ export function ExternalRouteComparison({
   side,
   amount,
   selectedVenue,
-  onSelectVenue
+  onSelectVenue,
+  onHealthChange
 }: {
   market: ExternalMarket;
   venues: TradeVenue[];
@@ -144,10 +146,12 @@ export function ExternalRouteComparison({
   amount: string;
   selectedVenue: "sushi" | "uniswap" | null;
   onSelectVenue: (venue: "sushi" | "uniswap") => void;
+  onHealthChange?: (health: Partial<Record<TradeVenueId, TradeVenueHealth>>) => void;
 }) {
   const { address } = useAccount();
   const [states, setStates] = useState<Partial<Record<TradeVenue["venue"], VenueState>>>({});
   const [refresh, setRefresh] = useState(0);
+  const requestKey = useRef("");
   const token = market.address as Address;
   const decimalsRead = useReadContract({
     address: token,
@@ -174,12 +178,25 @@ export function ExternalRouteComparison({
 
   useEffect(() => {
     if (!address || amountIn <= 0n || venues.length < 2) {
+      requestKey.current = "";
       setStates({});
       return;
     }
+    const nextRequestKey = `${address}:${amountIn}:${side}:${token}:${venues.map((venue) => `${venue.venue}:${venue.pair}`).join("|")}`;
+    const requestChanged = requestKey.current !== nextRequestKey;
+    requestKey.current = nextRequestKey;
     const controller = new AbortController();
-    const initial = Object.fromEntries(venues.map((venue) => [venue.venue, { status: "loading" }]));
-    setStates(initial);
+    if (requestChanged) {
+      setStates(Object.fromEntries(venues.map((venue) => [venue.venue, { status: "loading" }])));
+    } else {
+      setStates((current) => {
+        const next = { ...current };
+        venues.forEach((venue) => {
+          if (!next[venue.venue]) next[venue.venue] = { status: "loading" };
+        });
+        return next;
+      });
+    }
     const timer = window.setTimeout(() => {
       void Promise.all(venues.map(async (candidate) => {
         const endpoint = candidate.venue === "sushi"
@@ -265,13 +282,19 @@ export function ExternalRouteComparison({
           setStates((current) => ({ ...current, [candidate.venue]: { status: "ready", quote } }));
         } catch (cause) {
           if (controller.signal.aborted) return;
-          setStates((current) => ({
-            ...current,
-            [candidate.venue]: {
-              status: "unavailable",
-              error: cause instanceof Error ? cause.message : "Quote unavailable."
-            }
-          }));
+          setStates((current) => {
+            const existing = current[candidate.venue];
+            const existingStillFresh = existing?.quote
+              && BigInt(existing.quote.deadline) > BigInt(Math.floor(Date.now() / 1000) + 15);
+            if (existingStillFresh) return current;
+            return {
+              ...current,
+              [candidate.venue]: {
+                status: "unavailable",
+                error: cause instanceof Error ? cause.message : "Quote unavailable."
+              }
+            };
+          });
         }
       }));
     }, 400);
@@ -280,6 +303,13 @@ export function ExternalRouteComparison({
       window.clearTimeout(timer);
     };
   }, [address, amountIn, refresh, side, token, venues]);
+
+  useEffect(() => {
+    onHealthChange?.(Object.fromEntries(venues.map((venue) => [
+      venue.venue,
+      states[venue.venue]?.status ?? "loading"
+    ])));
+  }, [onHealthChange, states, venues]);
 
   const ready = venues.flatMap((venue) => {
     const quote = states[venue.venue]?.quote;
