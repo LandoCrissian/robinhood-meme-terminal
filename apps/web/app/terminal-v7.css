@@ -211,7 +211,9 @@ main:has(.rmtDiscovery){max-width:none;padding:0 10px 36px}
 .tradeRail .impactValue.caution{color:#f1c95d}
 .tradeRail .impactValue.danger{color:#ff7777}
 .tradeRail .tradeDisclosure span{border-radius:2px}
-.tradeRail .creatorRiskSummary,.tradeRail .creatorRiskCheck,.tradeRail .preflightCard,.tradeRail .tradeStage,.tradeRail .callout,.tradeRail .errors{border-radius:2px}
+.tradeRail .creatorRiskSummary,.tradeRail .creatorRiskCheck,.tradeRail .preflightCard,.tradeRail .smartOrderGuard,.tradeRail .tradeStage,.tradeRail .callout,.tradeRail .errors{border-radius:2px}
+.tradeRail .smartOrderGuard{margin-bottom:7px;padding:9px 10px}
+.tradeRail .smartOrderGuard button{min-height:34px;border-radius:2px}
 .tradeRail .launch{min-height:42px;border-radius:2px;font-size:.7rem}
 .tradeRail .tradeExplorer{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.54rem}
 .marketDetailTabs,.tokenInfoTabs{gap:0;margin:0;padding:0;border:0;border-bottom:1px solid var(--terminal-line);border-radius:0;background:#060907}
@@ -810,7 +812,7 @@ main:has(.rmtDiscovery){max-width:none;padding:0 10px 36px}
   .tradeAmountTop,.usdEstimate{font-size:.78rem}
   .orderPreview span{font-size:.67rem}
   .orderPreview strong{font-size:.8rem}
-  .tradeRail .tradeDisclosure,.tradeRail .creatorRiskSummary,.tradeRail .creatorRiskCheck,.tradeRail .preflightCard,.tradeRail .tradeStage,.tradeRail .callout,.tradeRail .errors{font-size:.69rem;line-height:1.5}
+  .tradeRail .tradeDisclosure,.tradeRail .creatorRiskSummary,.tradeRail .creatorRiskCheck,.tradeRail .preflightCard,.tradeRail .smartOrderGuard,.tradeRail .tradeStage,.tradeRail .callout,.tradeRail .errors{font-size:.69rem;line-height:1.5}
   .tradeRail .launch{min-height:50px;font-size:.79rem}
   .tradeRail .tradeExplorer{font-size:.67rem}
   .marketOverview{padding:10px}

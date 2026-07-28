@@ -436,6 +436,24 @@ dl{grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr)}
 
 .preflightCard.error small{color:#d69a96}
 
+.smartOrderGuard{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 12px;padding:12px 13px;border:1px solid #5d5131;border-radius:13px;background:#18170e}
+
+.smartOrderGuard>div{display:flex;flex-direction:column;gap:3px;min-width:0}
+
+.smartOrderGuard strong{color:#e2ca87;font-size:.74rem}
+
+.smartOrderGuard small{color:#bcb18c;font-size:.66rem;line-height:1.4}
+
+.smartOrderGuard.danger{border-color:#713734;background:#1c0e0d}
+
+.smartOrderGuard.danger strong{color:#ff9691}
+
+.smartOrderGuard.danger small{color:#d4a09c}
+
+.smartOrderGuard button{flex:0 0 auto;min-height:38px;padding:0 12px;border:1px solid #8b4641;border-radius:9px;background:#3a1715;color:#ffb1ac;font:inherit;font-size:.66rem;font-weight:900;cursor:pointer}
+
+.smartOrderGuard button:disabled{cursor:not-allowed;opacity:.55}
+
 
 .starterGuide{margin:0 0 18px;border:1px solid #2d4935;border-radius:16px;background:linear-gradient(180deg,#0d1a11,#0a120c);overflow:hidden}
 
@@ -468,6 +486,8 @@ dl{grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr)}
 @media(max-width:700px){.starterSteps{grid-template-columns:1fr}
 .starterGuide summary{min-height:56px}
 .starterLinks a{flex:1;justify-content:center}
+.smartOrderGuard{align-items:stretch;flex-direction:column}
+.smartOrderGuard button{width:100%}
 }
 
 

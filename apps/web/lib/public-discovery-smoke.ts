@@ -123,6 +123,10 @@ assert.match(marketPanelSource, /cannot guarantee price performance or prevent e
 assert.match(marketPanelSource, /approve exactly this sell amount/);
 assert.match(marketPanelSource, /args: \[market, tokensIn\]/);
 assert.match(marketPanelSource, /pendingSellOrderRef/);
+assert.match(marketPanelSource, /Order blocked · impact above 5%/);
+assert.match(marketPanelSource, /Reduce to safer size/);
+assert.match(marketPanelSource, /Refreshing the quote and re-checking this exact order onchain/);
+assert.match(marketPanelSource, /await publicClient\.estimateContractGas/);
 assert.doesNotMatch(marketPanelSource, /maxUint256/);
 assert.match(projectRouteSource, /isAddress/);
 assert.match(projectRouteSource, /ApprovedProjectPage/);
