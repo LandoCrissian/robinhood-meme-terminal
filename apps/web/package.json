@@ -11,6 +11,7 @@
     "test:media-guard": "tsx lib/server/media-request-guard-smoke.ts",
     "test:reliability": "tsx lib/server/cache-headers-smoke.ts",
     "test:profile": "tsx lib/profile-smoke.ts",
+    "test:watchlist-alerts": "tsx lib/watchlist-alerts-smoke.ts",
     "test:public-discovery": "tsx lib/public-discovery-smoke.ts",
     "test:external-market-integrity": "tsx lib/external-market-integrity-smoke.ts",
     "test:consent-rehearsal": "tsx lib/server/consent-rehearsal-status-smoke.ts",
