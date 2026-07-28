@@ -5,6 +5,8 @@ import { erc20Abi, formatUnits, type Address } from "viem";
 import { useAccount, useReadContract } from "wagmi";
 import type { ExternalMarket } from "../lib/external-market";
 import type { ExternalPoolTradesPayload } from "../lib/external-trades";
+import { formatOwnershipBps } from "../lib/token-risk-evidence";
+import { useTokenRiskEvidence } from "../lib/use-token-risk-evidence";
 
 const EXPLORER = "https://robinhoodchain.blockscout.com";
 
@@ -133,6 +135,78 @@ export function ExternalTradeTape({ market }: { market: ExternalMarket }) {
         </div>
       )}
       <footer>Read-only activity from the exact displayed pool · source: GeckoTerminal</footer>
+    </section>
+  );
+}
+
+export function ExternalHolderIntelligence({ market }: { market: ExternalMarket }) {
+  const state = useTokenRiskEvidence(market);
+  const evidence = state.evidence;
+  const topHolders = evidence?.holders.topNonPoolHolders ?? [];
+  const creator = evidence?.holders.creator?.toLowerCase();
+
+  return (
+    <section className="universalHolderIntelligence" aria-labelledby="universal-holder-intelligence-heading">
+      <header>
+        <div><small>HOLDER INTELLIGENCE</small><h3 id="universal-holder-intelligence-heading">Who can move this market?</h3></div>
+        <span>{state.status === "loading" ? "Checking…" : evidence ? `${evidence.coverage} coverage` : "Unavailable"}</span>
+      </header>
+
+      {evidence ? (
+        <>
+          <div className="universalHolderSummary">
+            <span><small>KNOWN HOLDERS</small><strong>{evidence.holders.count?.toLocaleString() ?? "—"}</strong></span>
+            <span><small>TOP 10 · EXCLUDING POOL</small><strong>{formatOwnershipBps(evidence.holders.topNonPoolShareBps)}</strong></span>
+            <span><small>LARGEST WALLET</small><strong>{formatOwnershipBps(evidence.holders.largestNonPoolHolder?.shareBps ?? null)}</strong></span>
+            <span><small>REPORTED CREATOR</small><strong>{formatOwnershipBps(evidence.holders.creatorShareBps)}</strong></span>
+          </div>
+
+          {topHolders.length > 0 ? (
+            <>
+              <div className="universalConcentrationTrack" aria-label={`Top visible non-pool holders control ${formatOwnershipBps(evidence.holders.topNonPoolShareBps)}`}>
+                {topHolders.slice(0, 6).map((holder, index) => (
+                  <i
+                    className={holder.isScam ? "flagged" : holder.isContract ? "contract" : ""}
+                    style={{ width: `${holder.shareBps / 100}%` }}
+                    title={`${shortAddress(holder.address)} · ${formatOwnershipBps(holder.shareBps)}`}
+                    key={holder.address}
+                    data-rank={index + 1}
+                  />
+                ))}
+              </div>
+              <div className="universalHolderList">
+                {topHolders.slice(0, 8).map((holder, index) => {
+                  const isCreator = holder.address.toLowerCase() === creator;
+                  const label = isCreator
+                    ? "Reported creator"
+                    : holder.isScam
+                      ? "Explorer flagged"
+                      : holder.isContract
+                        ? "Contract"
+                        : "Wallet";
+                  return (
+                    <a href={`${EXPLORER}/address/${holder.address}`} target="_blank" rel="noopener noreferrer" key={holder.address}>
+                      <span>{index + 1}</span>
+                      <span><strong>{shortAddress(holder.address)}</strong><small className={holder.isScam ? "flagged" : ""}>{label}</small></span>
+                      <strong>{formatOwnershipBps(holder.shareBps)}</strong>
+                      <span aria-hidden="true">↗</span>
+                    </a>
+                  );
+                })}
+              </div>
+            </>
+          ) : (
+            <div className="universalHolderState"><strong>No holder rows available</strong><span>Treat missing concentration data as unknown, not safe.</span></div>
+          )}
+        </>
+      ) : (
+        <div className="universalHolderState">
+          <strong>{state.status === "loading" ? "Reading Blockscout holder evidence…" : "Holder evidence unavailable"}</strong>
+          <span>{state.status === "loading" ? "Pool, zero, and dead addresses will be excluded." : "RMT will keep retrying from the order ticket."}</span>
+        </div>
+      )}
+
+      <footer>Read-only Blockscout evidence · displayed pool, zero address, and standard dead address excluded · not a complete ownership identity map</footer>
     </section>
   );
 }

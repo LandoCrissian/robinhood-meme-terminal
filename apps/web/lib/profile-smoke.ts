@@ -8,7 +8,7 @@ import {
   watchlistSlots
 } from "./profile-cloud";
 import { DEFAULT_PROFILE, normalizeProfile } from "./profile";
-import { normalizeWatchlist, normalizeWatchlistEntry } from "./watchlist";
+import { normalizeWatchlist, normalizeWatchlistEntry, watchlistEntryHref } from "./watchlist";
 import {
   cleanProjectMediaUri,
   normalizeCreatorApplication,
@@ -109,6 +109,14 @@ assert.deepEqual(normalizeWatchlistEntry(watchedToken), {
 });
 assert.equal(normalizeWatchlistEntry({ ...watchedToken, address: "not-an-address" }), null);
 assert.equal(normalizeWatchlist([{ ...watchedToken }, { ...watchedToken, addedAt: 900 }]).length, 1);
+assert.equal(
+  watchlistEntryHref(normalizeWatchlistEntry(watchedToken)!),
+  "/project/0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa?launch=42"
+);
+assert.equal(
+  watchlistEntryHref(normalizeWatchlistEntry({ ...watchedToken, launchId: undefined })!),
+  "/market/0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+);
 
 const cloudState = parseCloudUserState({
   profile: { ...DEFAULT_PROFILE, displayName: "Cloud Desk" },

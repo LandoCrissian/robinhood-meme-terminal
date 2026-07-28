@@ -9,7 +9,7 @@ type WatchlistButtonProps = {
   name: string;
   symbol: string;
   image?: string;
-  launchId: string;
+  launchId?: string;
   compactLabel?: boolean;
 };
 
@@ -31,7 +31,14 @@ export function WatchlistButton({ address, name, symbol, image, launchId, compac
     if (watched) {
       removeFromWatchlist(address);
     } else {
-      addToWatchlist({ address, name, symbol: symbol.replace(/^\$+/, ""), image, launchId, addedAt: Date.now() });
+      addToWatchlist({
+        address,
+        name,
+        symbol: symbol.replace(/^\$+/, ""),
+        image,
+        ...(launchId ? { launchId } : {}),
+        addedAt: Date.now()
+      });
     }
   }
 

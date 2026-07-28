@@ -135,6 +135,11 @@ async function main() {
   assert.equal(evidence.liquidity.positionId, null);
   assert.equal(evidence.holders.count, 92);
   assert.equal(evidence.holders.poolShareBps, 7_000);
+  assert.equal(evidence.holders.topNonPoolShareBps, 2_000);
+  assert.deepEqual(evidence.holders.topNonPoolHolders, [
+    { address: creator, shareBps: 1_200, isContract: false, isScam: false },
+    { address: whale, shareBps: 800, isContract: false, isScam: false }
+  ]);
   assert.equal(evidence.holders.largestNonPoolHolder?.address, creator);
   assert.equal(evidence.holders.largestNonPoolHolder?.shareBps, 1_200);
   assert.equal(evidence.holders.creatorShareBps, 1_200);
@@ -271,6 +276,7 @@ async function main() {
         maxTransactionBps: 550,
         maxWalletBps: 500
       }),
+      readCreatorBalance: async () => 120n,
       readLiquidityPosition: async () => ({
         controlStatus: "contract-held",
         evidenceSource: "launchpad-registry",
@@ -335,6 +341,7 @@ async function main() {
         maxTransactionBps: 550,
         maxWalletBps: 500
       }),
+      readCreatorBalance: async () => 120n,
       simulateSellTransfer: passedSellSimulation
     }
   );

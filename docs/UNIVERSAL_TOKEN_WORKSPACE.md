@@ -69,6 +69,28 @@ estimate current value using the displayed market price. RMT intentionally
 withholds cost basis and unrealized P&L until complete wallet history can be
 proven; current value is not presented as profit.
 
+## Holder intelligence
+
+The Safety tab converts the same server-validated Blockscout evidence used by
+the order ticket into a readable holder view. It shows:
+
+- the reported holder count;
+- the combined share of the ten largest visible non-pool holders;
+- the largest visible non-pool wallet;
+- the reported creator balance when origin evidence supplies a creator;
+- wallet-versus-contract labels; and
+- direct Blockscout links for independent review.
+
+The displayed pool, zero address, and standard dead address are excluded from
+the concentration list. The list is a snapshot of Blockscout's visible top
+holder page, not a complete identity map: one person can control multiple
+wallets and contract ownership may be indirect. Missing data is shown as
+unknown, never safe.
+
+External markets can also be saved directly from their workspace. RMT-native
+watchlist entries continue to open project pages; external entries return to
+their qualified `/market/{tokenAddress}` workspace.
+
 ## Market-history dependency
 
 RMT uses CoinGecko's public GeckoTerminal API for read-only OHLCV history:
