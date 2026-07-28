@@ -32,6 +32,7 @@ import {
   tradeRequiresAcknowledgement
 } from "./trade-confidence";
 import {
+  FinalOrderReview,
   QuoteProtection,
   SmartOrderGuard,
   TradeCostSummary,
@@ -86,6 +87,7 @@ export function ExternalSushiQuotePanel({
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [refresh, setRefresh] = useState(0);
+  const [saferOrderOriginal, setSaferOrderOriginal] = useState<bigint>();
   const token = market.address as Address;
   const pair = market.pairAddress as Address;
   const tokenDecimals = useReadContract({
@@ -122,7 +124,8 @@ export function ExternalSushiQuotePanel({
   const swapReceipt = useWaitForTransactionReceipt({ hash: swap.data, chainId: ROBINHOOD_CHAIN_ID });
   const decimals = tokenDecimals.data;
   const amount = controlledAmount ?? internalAmount;
-  const setAmount = (value: string) => {
+  const setAmount = (value: string, preserveSaferOrder = false) => {
+    if (!preserveSaferOrder) setSaferOrderOriginal(undefined);
     if (controlledAmount === undefined) setInternalAmount(value);
     onAmountChange?.(value);
   };
@@ -144,6 +147,7 @@ export function ExternalSushiQuotePanel({
     setError("");
     setMessage("");
     setStatus("idle");
+    setSaferOrderOriginal(undefined);
     approval.reset();
     swap.reset();
   }, [market.address, side]);
@@ -280,7 +284,8 @@ export function ExternalSushiQuotePanel({
   const canReduceImpact = saferAmountIn > 0n && saferAmountIn < amountIn && sizingDecimals !== undefined;
   const chooseSaferAmount = () => {
     if (!canReduceImpact || sizingDecimals === undefined) return;
-    setAmount(cleanDecimal(formatUnits(saferAmountIn, sizingDecimals)));
+    setSaferOrderOriginal(amountIn);
+    setAmount(cleanDecimal(formatUnits(saferAmountIn, sizingDecimals)), true);
   };
 
   const submit = () => {
@@ -393,6 +398,18 @@ export function ExternalSushiQuotePanel({
             priceImpact={quote?.priceImpact}
             disabled={busy || !canReduceImpact}
             onReduce={chooseSaferAmount}
+          />
+          <FinalOrderReview
+            originalAmount={saferOrderOriginal}
+            saferAmount={amountIn}
+            inputDecimals={sizingDecimals}
+            inputSymbol={side === "buy" ? "ETH" : market.symbol}
+            expectedReceive={quote && outputDecimals !== undefined ? `${displayUnits(quote.quoteOut, outputDecimals)} ${outputSymbol}` : undefined}
+            minimumReceive={quote && outputDecimals !== undefined ? `${displayUnits(quote.minimumOut, outputDecimals)} ${outputSymbol}` : undefined}
+            priceImpact={quote?.priceImpact}
+            estimate={feeEstimate}
+            venueFee="Included in quote"
+            routeLabel="Sushi · RedSnwapper"
           />
           <TradeCostSummary
             side={side}

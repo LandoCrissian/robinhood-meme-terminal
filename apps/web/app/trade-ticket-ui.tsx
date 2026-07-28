@@ -165,6 +165,69 @@ export function SmartOrderGuard({
   );
 }
 
+export function FinalOrderReview({
+  originalAmount,
+  saferAmount,
+  inputDecimals,
+  inputSymbol,
+  expectedReceive,
+  minimumReceive,
+  priceImpact,
+  estimate,
+  venueFee,
+  routeLabel
+}: {
+  originalAmount: bigint | undefined;
+  saferAmount: bigint;
+  inputDecimals: number | undefined;
+  inputSymbol: string;
+  expectedReceive: string | undefined;
+  minimumReceive: string | undefined;
+  priceImpact: number | undefined;
+  estimate: TradeFeeEstimateState;
+  venueFee: string;
+  routeLabel: string;
+}) {
+  if (
+    originalAmount === undefined
+    || originalAmount <= 0n
+    || saferAmount <= 0n
+    || saferAmount >= originalAmount
+    || inputDecimals === undefined
+    || expectedReceive === undefined
+    || minimumReceive === undefined
+  ) return null;
+  const displayInput = (value: bigint) => {
+    const formatted = formatUnits(value, inputDecimals);
+    const numeric = Number(formatted);
+    return Number.isFinite(numeric)
+      ? numeric.toLocaleString(undefined, { maximumFractionDigits: 8 })
+      : formatted;
+  };
+  return (
+    <section className="tradeFinalReview" aria-label="Final safer order review">
+      <header>
+        <span>FINAL PRE-SIGN REVIEW</span>
+        <strong>SAFER SIZE APPLIED</strong>
+      </header>
+      <div>
+        <span><small>ORIGINAL</small><strong>{displayInput(originalAmount)} {inputSymbol}</strong></span>
+        <span><small>SAFER ORDER</small><strong>{displayInput(saferAmount)} {inputSymbol}</strong></span>
+        <span><small>ESTIMATED RECEIVE</small><strong>{expectedReceive}</strong></span>
+        <span><small>PROTECTED MINIMUM</small><strong>{minimumReceive}</strong></span>
+        <span><small>REFRESHED IMPACT</small><strong>{priceImpact === undefined ? "Checking…" : `${(priceImpact * 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}%`}</strong></span>
+        <span><small>EXECUTION ROUTE</small><strong>{routeLabel}</strong></span>
+      </div>
+      <footer>
+        <span>RMT fee <strong>$0</strong></span>
+        <span>Network <strong>{estimate.status === "ready" ? `${feeEth(estimate.feeWei)} ETH` : estimate.status === "loading" ? "Calculating…" : "Wallet confirms"}</strong></span>
+        <span>Venue <strong>{venueFee}</strong></span>
+      </footer>
+      <p>The safer amount has a fresh quote. Your wallet still shows the final network fee before you sign.</p>
+    </section>
+  );
+}
+
 function feeEth(value: bigint | undefined) {
   if (value === undefined || value <= 0n) return "—";
   return Number(formatEther(value)).toLocaleString(undefined, {
