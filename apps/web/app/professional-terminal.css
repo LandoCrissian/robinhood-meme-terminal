@@ -862,6 +862,24 @@
     color: #f0c65b;
   }
 
+  .terminalPage .mobileRunnerTrade.checking {
+    border-color: #39443d;
+    background: #111713;
+    color: #909b93;
+  }
+
+  .terminalPage .mobileRunnerTrade.view-only {
+    border-color: #343c37;
+    background: #0d120f;
+    color: #747f77;
+  }
+
+  .terminalPage .mobileRunnerTrade.unavailable {
+    border-color: #65552e;
+    background: #17140c;
+    color: #d2b85e;
+  }
+
   .terminalPage .mobileRunnerMetrics {
     display: grid;
     grid-column: 1 / -1;

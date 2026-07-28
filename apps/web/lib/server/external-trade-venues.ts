@@ -6,6 +6,8 @@ import { verifyExternalUniswapMarket } from "./external-uniswap-market";
 const DEXSCREENER_TOKEN_PAIRS_API = "https://api.dexscreener.com/token-pairs/v1/robinhood";
 const TIMEOUT_MS = 8_000;
 const MAX_CANDIDATES_PER_VENUE = 3;
+const VENUE_CACHE_TTL_MS = 5 * 60_000;
+const MAX_VENUE_CACHE_ENTRIES = 256;
 
 const rawPairSchema = z.object({
   chainId: z.string(),
@@ -38,6 +40,14 @@ type DiscoveryDependencies = {
   verifySushi?: VenueVerifier;
   verifyUniswap?: VenueVerifier;
 };
+
+type VenueCacheEntry = {
+  expiresAt: number;
+  venues: ExternalTradeVenue[];
+};
+
+const venueCache = new Map<string, VenueCacheEntry>();
+const venueRequests = new Map<string, Promise<ExternalTradeVenue[]>>();
 
 function venueKind(dexId: string) {
   const normalized = dexId.toLowerCase();
@@ -130,4 +140,38 @@ export async function discoverExternalTradeVenues(
   return verified
     .filter((venue): venue is ExternalTradeVenue => venue !== undefined)
     .sort((left, right) => right.liquidityUsd - left.liquidityUsd);
+}
+
+export async function getCachedExternalTradeVenues(
+  token: Address,
+  options: { force?: boolean } = {}
+): Promise<ExternalTradeVenue[]> {
+  const key = token.toLowerCase();
+  const now = Date.now();
+  const cached = venueCache.get(key);
+  if (!options.force && cached && cached.expiresAt > now) return cached.venues;
+
+  const pending = venueRequests.get(key);
+  if (pending) return pending;
+
+  const request = discoverExternalTradeVenues(token)
+    .then((venues) => {
+      if (venueCache.size >= MAX_VENUE_CACHE_ENTRIES) {
+        for (const [address, entry] of venueCache) {
+          if (entry.expiresAt <= now || venueCache.size >= MAX_VENUE_CACHE_ENTRIES) {
+            venueCache.delete(address);
+          }
+          if (venueCache.size < MAX_VENUE_CACHE_ENTRIES) break;
+        }
+      }
+      venueCache.set(key, {
+        expiresAt: Date.now() + VENUE_CACHE_TTL_MS,
+        venues
+      });
+      return venues;
+    })
+    .finally(() => venueRequests.delete(key));
+
+  venueRequests.set(key, request);
+  return request;
 }

@@ -1,11 +1,12 @@
 import { getAddress, isAddress } from "viem";
-import { discoverExternalTradeVenues } from "../../../../lib/server/external-trade-venues";
+import { getCachedExternalTradeVenues } from "../../../../lib/server/external-trade-venues";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function GET(request: Request) {
-  const token = new URL(request.url).searchParams.get("token");
+  const searchParams = new URL(request.url).searchParams;
+  const token = searchParams.get("token");
   if (!token || !isAddress(token)) {
     return Response.json(
       { error: "A valid token address is required." },
@@ -13,7 +14,9 @@ export async function GET(request: Request) {
     );
   }
   try {
-    const venues = await discoverExternalTradeVenues(getAddress(token));
+    const venues = await getCachedExternalTradeVenues(getAddress(token), {
+      force: searchParams.get("refresh") === "1"
+    });
     return Response.json(
       { token: getAddress(token), venues },
       { headers: { "Cache-Control": "no-store" } }

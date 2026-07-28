@@ -14,6 +14,7 @@ import { ExternalSushiQuotePanel } from "./external-sushi-quote-panel";
 import { ExternalUniswapTradePanel } from "./external-uniswap-trade-panel";
 
 type FeedStatus = "loading" | "ready" | "stale" | "error";
+type ExecutionAvailability = "checking" | "ready" | "view-only" | "unavailable";
 
 type DiscoveryView = "trending" | "new" | "top" | "explore";
 type SourceFilter = "all" | "pons" | "lemon";
@@ -381,6 +382,7 @@ export function ExternalMarketFeed() {
   const [marketQuery, setMarketQuery] = useState("");
   const [showAllMarkets, setShowAllMarkets] = useState(false);
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
+  const [executionAvailability, setExecutionAvailability] = useState<Record<string, ExecutionAvailability>>({});
 
   const syncQuickTradeUrl = useCallback((market?: ExternalMarket, side?: ExternalTradeSide) => {
     const url = new URL(window.location.href);
@@ -398,12 +400,15 @@ export function ExternalMarketFeed() {
   }, []);
 
   const openQuickTrade = useCallback((market: ExternalMarket, side: ExternalTradeSide) => {
-    if (!canHandoffToVenue(market)) return;
+    if (
+      !canHandoffToVenue(market)
+      || executionAvailability[market.address.toLowerCase()] !== "ready"
+    ) return;
     returnFocusTo.current = document.activeElement instanceof HTMLElement ? document.activeElement : runnerHeading.current;
     setTradeAnnouncement("");
     setQuickTrade({ address: market.address, side });
     syncQuickTradeUrl(market, side);
-  }, [syncQuickTradeUrl]);
+  }, [executionAvailability, syncQuickTradeUrl]);
 
   const closeQuickTrade = useCallback(() => {
     setQuickTrade(undefined);
@@ -466,9 +471,16 @@ export function ExternalMarketFeed() {
       setTradeAnnouncement("That market is no longer available for venue review.");
       return;
     }
+    const executionState = executionAvailability[market.address.toLowerCase()];
+    if (executionState === undefined || executionState === "checking") return;
+    if (executionState !== "ready") {
+      syncQuickTradeUrl();
+      setTradeAnnouncement("That market does not currently have a verified in-site execution route.");
+      return;
+    }
     returnFocusTo.current = runnerHeading.current;
     setQuickTrade({ address: market.address, side });
-  }, [markets, status, syncQuickTradeUrl]);
+  }, [executionAvailability, markets, status, syncQuickTradeUrl]);
 
   const selectedQuickTradeMarket = useMemo(
     () => quickTrade
@@ -479,12 +491,20 @@ export function ExternalMarketFeed() {
 
   useEffect(() => {
     if (!quickTrade) return;
-    if (selectedQuickTradeMarket && canHandoffToVenue(selectedQuickTradeMarket)) return;
+    if (
+      selectedQuickTradeMarket
+      && canHandoffToVenue(selectedQuickTradeMarket)
+      && executionAvailability[selectedQuickTradeMarket.address.toLowerCase()] === "ready"
+    ) return;
+    if (
+      selectedQuickTradeMarket
+      && executionAvailability[selectedQuickTradeMarket.address.toLowerCase()] === undefined
+    ) return;
     setQuickTrade(undefined);
     syncQuickTradeUrl();
     setTradeAnnouncement("The external market changed or left the eligible feed, so its trade review was closed.");
     window.setTimeout(() => runnerHeading.current?.focus(), 0);
-  }, [quickTrade, selectedQuickTradeMarket, syncQuickTradeUrl]);
+  }, [executionAvailability, quickTrade, selectedQuickTradeMarket, syncQuickTradeUrl]);
 
   const orderedMarkets = useMemo(() => stabilizeOrder(rankOrder, markets), [markets, rankOrder]);
   const sourceCounts = useMemo(() => ({
@@ -549,6 +569,61 @@ export function ExternalMarketFeed() {
   const visibleMarkets = expandedDirectory
     ? filteredMarkets
     : filteredMarkets.slice(0, MAX_VISIBLE_MARKETS);
+  const availabilityAddresses = visibleMarkets
+    .slice(0, MAX_VISIBLE_MARKETS)
+    .filter(canHandoffToVenue)
+    .map((market) => market.address.toLowerCase());
+  const availabilityKey = availabilityAddresses.join(",");
+
+  useEffect(() => {
+    const tokens = availabilityAddresses.filter((address) => executionAvailability[address] === undefined);
+    if (tokens.length === 0) return;
+
+    setExecutionAvailability((current) => ({
+      ...current,
+      ...Object.fromEntries(tokens.map((address) => [address, "checking" as const]))
+    }));
+    const controller = new AbortController();
+    const query = new URLSearchParams({ tokens: tokens.join(",") });
+    void fetch(`/api/trade/external-availability?${query}`, {
+      cache: "no-store",
+      signal: controller.signal
+    }).then(async (response) => {
+      const payload = await response.json() as {
+        availability?: Array<{
+          token?: string;
+          status?: Exclude<ExecutionAvailability, "checking">;
+        }>;
+      };
+      if (!response.ok || !Array.isArray(payload.availability)) {
+        throw new Error("Execution availability is unavailable.");
+      }
+      const requested = new Set(tokens);
+      const resolved: Record<string, Exclude<ExecutionAvailability, "checking">> = Object.fromEntries(
+        tokens.map((address) => [address, "unavailable" as const])
+      );
+      for (const item of payload.availability) {
+        const address = item.token?.toLowerCase();
+        if (
+          !address
+          || !requested.has(address)
+          || (item.status !== "ready" && item.status !== "view-only" && item.status !== "unavailable")
+        ) continue;
+        resolved[address] = item.status;
+      }
+      setExecutionAvailability((current) => ({ ...current, ...resolved }));
+    }).catch(() => {
+      if (controller.signal.aborted) return;
+      setExecutionAvailability((current) => ({
+        ...current,
+        ...Object.fromEntries(tokens.map((address) => [address, "unavailable" as const]))
+      }));
+    });
+    return () => controller.abort();
+    // availabilityKey changes only when the prioritized market set changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [availabilityKey]);
+
   const marketCountLabel = normalizedMarketQuery
     ? filteredMarkets.length + " match" + (filteredMarkets.length === 1 ? "" : "es")
     : showAllMarkets
@@ -722,7 +797,20 @@ export function ExternalMarketFeed() {
               const mobileMoveLabel = market.curve
                 ? (market.curve.progressBps / 100).toFixed(1) + "%"
                 : (market.priceChange5m > 0 ? "+" : "") + market.priceChange5m.toFixed(2) + "%";
-              const mobileReviewRequired = market.riskFlags.length > 0 || !canHandoffToVenue(market);
+              const addressKey = market.address.toLowerCase();
+              const executionState: ExecutionAvailability = canHandoffToVenue(market)
+                ? executionAvailability[addressKey] ?? (index < MAX_VISIBLE_MARKETS ? "checking" : "unavailable")
+                : "view-only";
+              const mobileReviewRequired = market.riskFlags.length > 0;
+              const mobileActionLabel = mobileReviewRequired
+                ? "Review"
+                : executionState === "ready"
+                  ? "Trade"
+                  : executionState === "checking"
+                    ? "Checking"
+                    : executionState === "view-only"
+                      ? "View only"
+                      : "Check route";
               const mobileWorkspaceHref = `/market/${market.address}${mobileReviewRequired ? "?tab=safety" : ""}`;
               return (
                 <article className="externalMarketCard runnerMarketCard" data-signal={market.signal} key={market.address}>
@@ -735,8 +823,12 @@ export function ExternalMarketFeed() {
                         <small>{"$" + cleanSymbol(market.symbol)} · {venueLabel(market)}</small>
                       </span>
                     </a>
-                    <a className={`mobileRunnerTrade ${mobileReviewRequired ? "review" : ""}`} href={mobileWorkspaceHref} aria-label={`${mobileReviewRequired ? "Review" : "Trade"} ${market.name}`}>
-                      {mobileReviewRequired ? "Review" : "Trade"}
+                    <a
+                      className={`mobileRunnerTrade ${mobileReviewRequired ? "review" : executionState}`}
+                      href={mobileWorkspaceHref}
+                      aria-label={`${mobileActionLabel} ${market.name}`}
+                    >
+                      {mobileActionLabel}
                     </a>
                     <div className="mobileRunnerMetrics" aria-label={`${market.name} market snapshot`}>
                       <span><small>{value.label}</small><strong>{money(value.value)}</strong></span>
@@ -777,12 +869,20 @@ export function ExternalMarketFeed() {
                       : oneHourTrades > 0 ? Math.round(market.buyPressureBps / 100) + "% buys · 1h" : "No 1h trades"}</span>
                     {market.riskFlags.length > 0 && <em>{riskSummary(market.riskFlags)}</em>}
                   </div>
-                  {canHandoffToVenue(market) ? (
+                  {executionState === "ready" ? (
                     <div className="externalMarketActions">
                       <button className="buyCardAction" type="button" aria-haspopup="dialog" aria-label={"Buy " + market.name} onClick={() => openQuickTrade(market, "buy")}>Buy</button>
                       <button className="sellCardAction" type="button" aria-haspopup="dialog" aria-label={"Sell " + market.name} onClick={() => openQuickTrade(market, "sell")}>Sell</button>
                     </div>
-                  ) : <span className="externalBadge">VIEW ONLY · VENUE REVIEW</span>}
+                  ) : (
+                    <span className="externalBadge">
+                      {executionState === "checking"
+                        ? "CHECKING IN-SITE ROUTE"
+                        : executionState === "view-only"
+                          ? "VIEW ONLY · NO VERIFIED ROUTE"
+                          : "CHECK ROUTE IN WORKSPACE"}
+                    </span>
+                  )}
                   <a className="externalChartLink" href={market.url} target="_blank" rel="noreferrer" aria-label={"View " + market.name + " market source"}>{market.curve ? "Open verified curve ↗" : "Chart & pair ↗"}</a>
                 </article>
               );
@@ -793,7 +893,10 @@ export function ExternalMarketFeed() {
 
       <p className="externalDisclosure">Market data combines DEX Screener with Lemon&apos;s documented public API. Lemon identity is attached only when its token and pool match the discovered DEX pair; Pons identity requires matching factory and token records. Other qualified markets remain discoverable without implied endorsement. Token origin and execution venue are kept separate. Rankings are automated signals, not investment recommendations. Buy and Sell always require a fresh Sushi or Uniswap quote and wallet review.</p>
 
-      {quickTrade && selectedQuickTradeMarket && canHandoffToVenue(selectedQuickTradeMarket) && (
+      {quickTrade
+        && selectedQuickTradeMarket
+        && executionAvailability[selectedQuickTradeMarket.address.toLowerCase()] === "ready"
+        && (
         <ExternalTradeDialog
           market={selectedQuickTradeMarket}
           side={quickTrade.side}
