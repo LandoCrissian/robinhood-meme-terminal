@@ -13,7 +13,12 @@ import {
 } from "viem";
 import { useAccount, useReadContract } from "wagmi";
 import type { ExternalMarket } from "../lib/external-market";
-import type { TradeVenueHealth, TradeVenueId } from "../lib/trade-route-selection";
+import {
+  protectedOutputRecommendation,
+  type TradeVenueHealth,
+  type TradeVenueId,
+  type TradeVenueSelectionMode
+} from "../lib/trade-route-selection";
 import { estimatedNetworkFeeUsd } from "../lib/trade-ticket";
 import { SUSHI_RED_SNWAPPER } from "../lib/sushi";
 import { ROBINHOOD_SWAP_ROUTER_02 } from "../lib/uniswap-v4";
@@ -137,7 +142,9 @@ export function ExternalRouteComparison({
   side,
   amount,
   selectedVenue,
+  selectionMode,
   onSelectVenue,
+  onRecommendedVenue,
   onHealthChange
 }: {
   market: ExternalMarket;
@@ -145,7 +152,12 @@ export function ExternalRouteComparison({
   side: "buy" | "sell";
   amount: string;
   selectedVenue: "sushi" | "uniswap" | null;
+  selectionMode: TradeVenueSelectionMode;
   onSelectVenue: (venue: "sushi" | "uniswap") => void;
+  onRecommendedVenue?: (recommendation: {
+    venue: TradeVenueId;
+    improvementBps: number;
+  }) => void;
   onHealthChange?: (health: Partial<Record<TradeVenueId, TradeVenueHealth>>) => void;
 }) {
   const { address } = useAccount();
@@ -311,19 +323,34 @@ export function ExternalRouteComparison({
     ])));
   }, [onHealthChange, states, venues]);
 
-  const ready = venues.flatMap((venue) => {
+  const ready = useMemo(() => venues.flatMap((venue) => {
     const quote = states[venue.venue]?.quote;
     return quote ? [quote] : [];
-  });
-  const comparable = ready.length === venues.length
-    && ready.every((quote) => (
-      quote.outputToken.address.toLowerCase() === ready[0]?.outputToken.address.toLowerCase()
-      && quote.outputToken.decimals === ready[0]?.outputToken.decimals
-    ));
-  const higherProtectedOutput = comparable
-    ? ready.reduce((best, quote) => BigInt(quote.minimumOut) > BigInt(best.minimumOut) ? quote : best)
+  }), [states, venues]);
+  const recommendation = useMemo(() => protectedOutputRecommendation({
+    selected: selectedVenue,
+    quotes: ready
+  }), [ready, selectedVenue]);
+  const higherProtectedOutput = recommendation
+    ? ready.find((quote) => quote.venue === recommendation.leader)
     : undefined;
-  const tied = comparable && ready.every((quote) => quote.minimumOut === ready[0]?.minimumOut);
+
+  useEffect(() => {
+    if (
+      selectionMode !== "automatic"
+      || !recommendation
+      || recommendation.automaticVenue === selectedVenue
+    ) return;
+    onRecommendedVenue?.({
+      venue: recommendation.automaticVenue,
+      improvementBps: recommendation.automaticImprovementBps
+    });
+  }, [
+    onRecommendedVenue,
+    recommendation,
+    selectedVenue,
+    selectionMode
+  ]);
 
   return (
     <section className="universalVenueSelector" aria-labelledby="route-comparison-heading">
@@ -335,7 +362,7 @@ export function ExternalRouteComparison({
         {venues.map((candidate) => {
           const state = states[candidate.venue];
           const quote = state?.quote;
-          const leads = higherProtectedOutput?.venue === candidate.venue && !tied;
+          const leads = higherProtectedOutput?.venue === candidate.venue;
           return (
             <button
               type="button"
@@ -346,7 +373,11 @@ export function ExternalRouteComparison({
             >
               <span className="universalVenueName">
                 <strong>{candidate.venue === "sushi" ? "Sushi" : "Uniswap"}</strong>
-                {leads && <em>Higher protected output</em>}
+                {leads && <em>
+                  {recommendation && recommendation.leaderAdvantageBps > 0
+                    ? `Best output +${(recommendation.leaderAdvantageBps / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}%`
+                    : "Best protected output"}
+                </em>}
               </span>
               <span>{liquidity(candidate.liquidityUsd)} verified liquidity</span>
               <span className="universalVenueQuote">
@@ -371,8 +402,8 @@ export function ExternalRouteComparison({
         })}
       </div>
       <p>
-        Recommendation compares protected minimum output for the same amount—not guaranteed net value.
-        Each fee is the next wallet action only; the selected ticket rebuilds and rechecks the final transaction before signing.
+        Automatic mode changes routes only when protected output improves by at least 0.25%.
+        Network fees remain separate; the selected ticket rebuilds and rechecks the final transaction before signing.
       </p>
     </section>
   );
