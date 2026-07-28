@@ -251,13 +251,13 @@ export function ExternalMarketWorkspace() {
     : undefined;
 
   if (!tokenAddress) {
-    return <main className="universalMarketPage"><Link href="/">← Terminal</Link><section className="universalWorkspaceState"><h1>Invalid market address</h1><p>Open a qualified market from RMT Terminal.</p></section></main>;
+    return <main className="universalMarketPage professionalTradeWorkspace"><Link href="/">← Terminal</Link><section className="universalWorkspaceState"><h1>Invalid market address</h1><p>Open a qualified market from RMT Terminal.</p></section></main>;
   }
   if (!market && status === "loading") {
-    return <main className="universalMarketPage"><Link href="/">← Terminal</Link><section className="universalWorkspaceState"><p className="eyebrow">UNIVERSAL TOKEN WORKSPACE</p><h1>Opening live market…</h1><p>Matching token, pool, venue, and origin evidence.</p></section></main>;
+    return <main className="universalMarketPage professionalTradeWorkspace"><Link href="/">← Terminal</Link><section className="universalWorkspaceState"><p className="eyebrow">UNIVERSAL TOKEN WORKSPACE</p><h1>Opening live market…</h1><p>Matching token, pool, venue, and origin evidence.</p></section></main>;
   }
   if (!market) {
-    return <main className="universalMarketPage"><Link href="/">← Terminal</Link><section className="universalWorkspaceState"><p className="eyebrow">MARKET UNAVAILABLE</p><h1>This market is not in RMT’s qualified index</h1><p>RMT hides execution when the current token and pool cannot be matched to a live indexed market.</p><button type="button" onClick={() => void refreshMarket()}>Retry verification</button></section></main>;
+    return <main className="universalMarketPage professionalTradeWorkspace"><Link href="/">← Terminal</Link><section className="universalWorkspaceState"><p className="eyebrow">MARKET UNAVAILABLE</p><h1>This market is not in RMT’s qualified index</h1><p>RMT hides execution when the current token and pool cannot be matched to a live indexed market.</p><button type="button" onClick={() => void refreshMarket()}>Retry verification</button></section></main>;
   }
 
   const valuation = market.marketCapUsd > 0 ? market.marketCapUsd : market.fdvUsd;
@@ -265,7 +265,7 @@ export function ExternalMarketWorkspace() {
   const buyPressure = oneHourTrades > 0 ? Math.round(market.buyPressureBps / 100) : 0;
 
   return (
-    <main className="universalMarketPage">
+    <main className="universalMarketPage professionalTradeWorkspace">
       <div className="universalWorkspaceNav">
         <Link href="/">← Back to Terminal</Link>
         <span>UNIVERSAL TOKEN WORKSPACE · MAINNET</span>
@@ -307,6 +307,22 @@ export function ExternalMarketWorkspace() {
         <span><small>24h trades</small><strong>{(market.buys24h + market.sells24h).toLocaleString()}</strong></span>
         <span><small>Age</small><strong>{age(market.ageMinutes)}</strong></span>
         <span><small>Signal</small><strong>{market.signal === "moving" ? "Moving" : market.signal === "early" ? "Early" : "Active"}</strong></span>
+      </section>
+
+      <section className="workspaceEvidenceBar" aria-label="Pre-trade market evidence">
+        <header>
+          <span><i aria-hidden="true" />PRE-TRADE EVIDENCE</span>
+          <small>Evidence, not a safety guarantee</small>
+        </header>
+        <div>
+          <span className="verified"><small>Market identity</small><strong>Token + pool matched</strong></span>
+          <span className={market.sells1h > 0 ? "verified" : "caution"}><small>Recent exits</small><strong>{market.sells1h > 0 ? `${market.sells1h.toLocaleString()} sells · 1h` : "No sells observed · 1h"}</strong></span>
+          <span className={market.liquidityUsd >= 25_000 ? "verified" : "caution"}><small>Liquidity</small><strong>{money(market.liquidityUsd)}</strong></span>
+          <button type="button" className={market.riskFlags.length ? "caution" : "verified"} onClick={() => setTab("safety")}>
+            <small>Ranking flags</small>
+            <strong>{market.riskFlags.length ? `${market.riskFlags.length} review needed` : "None detected"}</strong>
+          </button>
+        </div>
       </section>
 
       <div className="universalWorkspaceGrid">

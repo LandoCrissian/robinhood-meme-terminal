@@ -599,14 +599,14 @@ export function ExternalMarketFeed() {
   };
 
   return (
-    <section className="panel externalMarkets runnerRadar" id="market-explorer" aria-labelledby="external-markets-title">
+    <section className="panel externalMarkets runnerRadar terminalMarketShell" id="market-explorer" aria-labelledby="external-markets-title">
       <div className="feedHeading externalHeading">
         <div>
-          <p className="eyebrow">ROBINHOOD CHAIN · UNIVERSAL MARKET INDEX</p>
-          <h2 id="external-markets-title" ref={runnerHeading} tabIndex={-1}>Explore what is trading now</h2>
-          <p>One clean view across Pons, Lemon, Sushi, Uniswap, and qualified Robinhood Chain markets—with project images, verified source context, liquidity, activity, and direct venue review.</p>
+          <p className="eyebrow">UNIVERSAL MARKET INDEX</p>
+          <h2 id="external-markets-title" ref={runnerHeading} tabIndex={-1}>Live markets</h2>
+          <p>Origin-aware discovery across Robinhood Chain launchpads and DEX venues.</p>
         </div>
-        <span className="externalBadge">{status === "stale" ? "DATA DELAYED" : "RECENT DATA · 60S RANKS"}</span>
+        <span className="externalBadge"><i aria-hidden="true" />{status === "stale" ? "DATA DELAYED" : "LIVE · 60S RANKS"}</span>
       </div>
 
       <p className="srOnly" aria-live="polite">{rankingAnnouncement}</p>
@@ -719,7 +719,7 @@ export function ExternalMarketFeed() {
               const changeClass = market.priceChange5m > 0 ? "positive" : market.priceChange5m < 0 ? "negative" : "flat";
               const oneHourTrades = market.buys1h + market.sells1h;
               return (
-                <article className="externalMarketCard runnerMarketCard" key={market.address}>
+                <article className="externalMarketCard runnerMarketCard" data-signal={market.signal} key={market.address}>
                   <div className="runnerCardStatus">
                     <span className={"marketSignal " + market.signal}>{signalLabel(market.signal)}</span>
                     <span>#{String(rankByAddress.get(market.address.toLowerCase()) ?? index + 1).padStart(2, "0")} · Score {market.momentumScore}</span>
