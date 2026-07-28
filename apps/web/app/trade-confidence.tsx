@@ -42,16 +42,12 @@ export function TradeConfidence({
   market,
   side,
   priceImpact,
-  evidenceState,
-  acknowledged,
-  onAcknowledgedChange
+  evidenceState
 }: {
   market: ExternalMarket;
   side: "buy" | "sell";
   priceImpact?: number;
   evidenceState: TokenRiskEvidenceState;
-  acknowledged: boolean;
-  onAcknowledgedChange: (value: boolean) => void;
 }) {
   const verifiedOrigin = hasVerifiedOrigin(market);
   const externalToken = market.origin?.kind !== "rmt-v6";
@@ -190,21 +186,7 @@ export function TradeConfidence({
         </ul>
       )}
 
-      {requiresAcknowledgement && !tradeBlocked && (
-        <label className="tradeConfidenceConsent">
-          <input
-            type="checkbox"
-            checked={acknowledged}
-            disabled={evidenceState.status === "loading"}
-            onChange={(event) => onAcknowledgedChange(event.target.checked)}
-          />
-          <span>{evidenceState.status === "loading"
-            ? "Wait while RMT checks contract and holder evidence."
-            : "I reviewed these warnings and understand RMT cannot guarantee this token or prevent every rug."}</span>
-        </label>
-      )}
-
-      <p>These are evidence-based checks, not a safety rating or endorsement. Your wallet remains the final authority.</p>
+      <p>These are evidence-based checks, not a safety rating or endorsement. Trading terms are accepted once per version; token evidence continues to update. Your wallet remains the final authority.</p>
     </section>
   );
 }

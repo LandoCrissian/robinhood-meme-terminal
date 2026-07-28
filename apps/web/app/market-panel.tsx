@@ -6,6 +6,7 @@ import { useAccount, useBalance, useCapabilities, usePublicClient, useReadContra
 import { activeChain, isMainnetRelease } from "../lib/network";
 import { formatTokenEthPrice, formatUsd } from "../lib/price-format";
 import { useLaunchRecord, type LaunchRecordHint } from "../lib/use-launch-record";
+import { useTradingTermsAcceptance } from "../lib/use-trading-terms";
 import { PriceHistoryChart, type PricePoint } from "./price-history-chart";
 import { FundWalletButton } from "./fund-wallet-button";
 import { GraduatedMarketTrade } from "./graduated-market-trade";
@@ -189,6 +190,7 @@ type MarketPanelProps = {
 export function MarketPanel({ tokenAddress, symbol, totalSupply, creator, compact = false, initialMode, launchHint }: MarketPanelProps) {
   const publicClient = usePublicClient({ chainId: activeChain.id });
   const { address: account, isConnected } = useAccount();
+  const tradingTerms = useTradingTermsAcceptance();
   const [recentTrades, setRecentTrades] = useState<RecentTrade[]>([]);
   const [tradeHistoryError, setTradeHistoryError] = useState<string>();
   const [mode, setMode] = useState<"buy" | "sell">(initialMode ?? "buy");
@@ -199,7 +201,6 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply, creator, compac
   const [ethUsd, setEthUsd] = useState<number>();
   const [priceUpdatedAt, setPriceUpdatedAt] = useState<string>();
   const [preflight, setPreflight] = useState<TradePreflight>({ status: "idle" });
-  const [creatorRiskAccepted, setCreatorRiskAccepted] = useState(false);
   const [atomicBatchUnavailable, setAtomicBatchUnavailable] = useState(false);
   const [marketDetail, setMarketDetail] = useState<"activity" | "risk">("activity");
   const tradeRailRef = useRef<HTMLElement>(null);
@@ -385,7 +386,6 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply, creator, compac
   const chartPoints = useMemo<PricePoint[]>(() => [...recentTrades].reverse().flatMap((trade) => trade.virtualTokenReserve > 0n ? [{ blockNumber: trade.blockNumber, priceWei: trade.virtualEthReserve * 10n ** 18n / trade.virtualTokenReserve, side: trade.isBuy ? "buy" : "sell" }] : []), [recentTrades]);
 
   useEffect(() => {
-    setCreatorRiskAccepted(false);
     setAtomicBatchUnavailable(false);
     resetCalls();
   }, [tokenAddress]);
@@ -455,7 +455,6 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply, creator, compac
   useEffect(() => {
     if (!receipt.isSuccess) return;
     if (lastAction !== "approve") setTradeMessage(undefined);
-    if (lastAction === "buy") setCreatorRiskAccepted(false);
     void Promise.all([buyQuote.refetch(), sellQuote.refetch(), reserve.refetch(), virtualEth.refetch(), virtualTokens.refetch(), graduationTarget.refetch(), progress.refetch(), graduated.refetch(), fairStartActive.refetch(), fairStartPurchased.refetch(), balance.refetch(), walletBalance.refetch(), allowance.refetch()]);
   }, [receipt.isSuccess]);
 
@@ -594,13 +593,13 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply, creator, compac
           </div>}
           {!graduated.data && !compact && <div className="tradeDisclosure"><span>Live quote</span><span>1% slippage</span><span>10-minute deadline</span></div>}
           {!creatorRiskRequired && <button type="button" className={`creatorRiskSummary ${highCreatorConcentration ? "highRisk" : notableCreatorConcentration ? "notableRisk" : ""}`} onClick={showCreatorAnalytics}><span>Creator wallet</span><strong>{creatorBalance.isLoading ? "Reading…" : creatorConcentrationKnown ? `${formatPercent(creatorCirculatingBps)} outside curve` : "Position syncing"}</strong><small>{formatPercent(creatorSupplyBps)} of supply · {creatorRecentSignal} ↓</small></button>}
-          {!graduated.data && creatorRiskRequired && <label className="creatorRiskCheck"><input type="checkbox" checked={creatorRiskAccepted} onChange={(event) => setCreatorRiskAccepted(event.target.checked)} /><span><strong>I reviewed the creator concentration</strong><small>Original creator currently holds {formatPercent(creatorCirculatingBps)} of tokens outside the curve · {creatorRecentSignal.toLowerCase()}. Required before buying.</small></span></label>}
+          {!graduated.data && creatorRiskRequired && <div className="creatorRiskCheck"><span><strong>High creator concentration</strong><small>Original creator currently holds {formatPercent(creatorCirculatingBps)} of tokens outside the curve · {creatorRecentSignal.toLowerCase()}. This evidence remains visible without another consent checkbox.</small></span></div>}
           {!graduated.data && isConnected && <div className={`preflightCard ${preflight.status}`} role="status"><span className="preflightIcon">{preflight.status === "ready" ? "✓" : preflight.status === "error" ? "!" : "•"}</span><div><strong>{preflight.status === "checking" ? "Checking this order onchain…" : preflight.status === "ready" ? "Order check passed" : preflight.status === "error" ? "Order needs attention" : "Enter an amount to continue"}</strong><small>{preflight.status === "ready" && estimatedNetworkFeeWei !== undefined ? `Network fee ${formatEth(estimatedNetworkFeeWei, 7)} ETH · ≈ ${formatUsd(estimatedNetworkFeeUsd)}` : preflight.message ?? "Quotes and network fees refresh automatically."}</small></div></div>}
           {(isPending || receipt.isLoading || callsPending || callsReceipt.isLoading) && <div className="tradeStage" role="status"><span className="tradeStageDot" /><div><strong>{isPending || callsPending ? "Review in your wallet" : "Order submitted"}</strong><small>{isPending || callsPending ? "On a phone, switch to the wallet app if needed, confirm, then return to RMT." : "Waiting for Robinhood Chain confirmation."}</small>{receipt.isLoading && hash && <a href={`${activeChain.blockExplorers.default.url}/tx/${hash}`} target="_blank" rel="noreferrer">Track transaction ↗</a>}</div></div>}
           {(writeError || receipt.error || callsReceipt.error) && <div className="errors"><span>{writeError?.message || receipt.error?.message || callsReceipt.error?.message}</span></div>}
           {tradeMessage && <div className="callout"><strong>{tradeMessage}</strong></div>}
           {receipt.isSuccess && lastAction !== "approve" && <div className="callout"><strong>{lastAction === "sell" ? "Sell confirmed" : "Buy confirmed"}</strong><a href={`${activeChain.blockExplorers.default.url}/tx/${hash}`} target="_blank" rel="noreferrer">View transaction ↗</a></div>}
-          {graduated.data && migratedToV4 ? null : compact && !isConnected ? <div className="quickTradeConnect"><WalletButton target={isMainnetRelease ? "mainnet" : "testnet"} returnTo={`/?quickTrade=${tokenAddress}&side=${mode}#explore`} /><small>Connect once. Your wallet will still confirm every onchain trade.</small></div> : <button className={`launch ${mode === "sell" ? "sellAction" : ""}`} disabled={!isConnected || busy || Boolean(graduated.data) || preflight.status !== "ready" || (creatorRiskRequired && !creatorRiskAccepted) || (mode === "buy" ? buyOut === 0n : sellOut === 0n)} onClick={trade}>{graduated.data ? "Curve complete — finalize V4 graduation below" : !isConnected ? "Connect wallet to trade" : busy ? lastAction === "approve" ? "Approving…" : lastAction === "sell" ? "Confirm sell in wallet…" : "Confirming…" : creatorRiskRequired && !creatorRiskAccepted ? "Review creator concentration" : preflight.status === "checking" ? "Checking order…" : preflight.status === "error" ? "Review order details" : preflight.status === "idle" ? "Preparing quote…" : mode === "buy" ? `Buy ${symbol}` : atomicSellAvailable ? `Approve + sell ${symbol}` : needsApproval ? `Enable and sell ${symbol}` : `Sell ${symbol}`}</button>}
+          {graduated.data && migratedToV4 ? null : compact && !isConnected ? <div className="quickTradeConnect"><WalletButton target={isMainnetRelease ? "mainnet" : "testnet"} returnTo={`/?quickTrade=${tokenAddress}&side=${mode}#explore`} /><small>Connect once. Your wallet will still confirm every onchain trade.</small></div> : <button className={`launch ${mode === "sell" ? "sellAction" : ""}`} disabled={!isConnected || !tradingTerms.accepted || busy || Boolean(graduated.data) || preflight.status !== "ready" || (mode === "buy" ? buyOut === 0n : sellOut === 0n)} onClick={trade}>{graduated.data ? "Curve complete — finalize V4 graduation below" : !isConnected ? "Connect wallet to trade" : !tradingTerms.accepted ? "Accept RMT trading terms" : busy ? lastAction === "approve" ? "Approving…" : lastAction === "sell" ? "Confirm sell in wallet…" : "Confirming…" : preflight.status === "checking" ? "Checking order…" : preflight.status === "error" ? "Review order details" : preflight.status === "idle" ? "Preparing quote…" : mode === "buy" ? `Buy ${symbol}` : atomicSellAvailable ? `Approve + sell ${symbol}` : needsApproval ? `Enable and sell ${symbol}` : `Sell ${symbol}`}</button>}
           {!compact && <a className="explorerLink tradeExplorer" href={`${activeChain.blockExplorers.default.url}/address/${market}`} target="_blank" rel="noreferrer">Verified market contract ↗</a>}
           {!isConnected && <details className="starterGuide"><summary><span>New to Robinhood Chain?</span><small>3 steps</small></summary><div className="starterSteps"><div><b>1</b><span><strong>Connect a wallet</strong><small>Use Robinhood Wallet or another EVM wallet.</small></span></div><div><b>2</b><span><strong>Fund it with Chain ETH</strong><small>Gas and purchases use ETH on Robinhood Chain.</small></span></div><div><b>3</b><span><strong>Review and confirm</strong><small>RMT simulates the order before your wallet asks you to confirm.</small></span></div></div><div className="starterLinks"><a href="https://docs.robinhood.com/chain/add-network-to-wallet/" target="_blank" rel="noreferrer">Wallet setup ↗</a><a href="https://docs.robinhood.com/chain/bridging/" target="_blank" rel="noreferrer">Funding options ↗</a></div></details>}
         </aside>

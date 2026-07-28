@@ -31,6 +31,8 @@ jobs:
       - run: pnpm --filter web test:external-market-integrity
       - run: pnpm --filter web test:external-ohlcv
       - run: pnpm --filter web test:trade-ticket
+      - run: pnpm --filter web test:trading-terms
+      - run: pnpm --filter web test:external-trades
       - run: pnpm --filter web test:consent-rehearsal
       - run: pnpm --filter web test:consent-activation
       - run: pnpm --filter web test:media-guard
