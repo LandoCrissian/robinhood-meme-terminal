@@ -26,6 +26,7 @@
     "test:trading-terms": "tsx lib/trading-terms-smoke.ts",
     "test:external-trades": "tsx lib/external-trades-smoke.ts",
     "test:token-risk": "tsx lib/server/token-risk-evidence-smoke.ts",
+    "test:wallet-constellation": "tsx lib/server/wallet-constellation-smoke.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
