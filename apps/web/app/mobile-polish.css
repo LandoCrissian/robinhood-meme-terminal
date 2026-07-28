@@ -835,8 +835,8 @@
   }
 
   .runnerMarketCard > * {
-    grid-column: 1 !important;
-    grid-row: auto !important;
+    grid-column: 1;
+    grid-row: auto;
     padding: 12px 14px;
     border-right: 0;
   }
