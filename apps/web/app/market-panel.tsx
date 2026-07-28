@@ -551,6 +551,16 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply, creator, compac
   return (
     <section className={compact ? "quickMarketPanel" : "panel marketPanel"} id={compact ? undefined : "trade"}>
       {!compact && <div className="sectionTitle marketTitle"><div><p className="eyebrow">LIVE BONDING CURVE</p><h2>Trade ${symbol}</h2></div><span className="badge liveBadge">{isMainnetRelease ? "MAINNET" : "TESTNET"}</span></div>}
+      {!compact && <section className={`nativeMarketConfidence ${highCreatorConcentration ? "highRisk" : notableCreatorConcentration ? "notableRisk" : ""}`} aria-labelledby="native-market-confidence-heading">
+        <header><div><p className="eyebrow">TRADE EVIDENCE</p><h3 id="native-market-confidence-heading">Native market confidence</h3></div><span>LIVE · ONCHAIN</span></header>
+        <div className="nativeConfidenceGrid">
+          <div className="verified"><small>Origin</small><strong>Factory verified</strong><em>Active V6 launch and market match</em></div>
+          <div className="verified"><small>Token controls</small><strong>No mint, tax or blacklist</strong><em>Fixed-supply RMT template</em></div>
+          <div><small>Curve liquidity</small><strong>{reserve.isLoading ? "Reading reserve…" : `${formatEth(reserve.data ?? 0n, 7)} ETH retained`}</strong><em>{progress.data === undefined ? "Progress syncing" : `${Number(progress.data) / 100}% toward graduation`}</em></div>
+          <button type="button" className={highCreatorConcentration ? "highRisk" : notableCreatorConcentration ? "notableRisk" : ""} onClick={showCreatorAnalytics}><small>Creator wallet</small><strong>{creatorBalance.isLoading ? "Reading position…" : creatorConcentrationKnown ? `${formatPercent(creatorCirculatingBps)} outside curve` : "Position syncing"}</strong><em>{creatorRecentSignal} · inspect evidence ↓</em></button>
+        </div>
+        <p>{tradeHistoryError ? "Recent activity is retrying; contract and creator evidence remain live." : `${recentTrades.length} recent trade${recentTrades.length === 1 ? "" : "s"} loaded.`} These checks reduce hidden contract risk but cannot guarantee price performance or prevent every loss.</p>
+      </section>}
       <div className="marketWorkspace">
         <div className="marketOverview">
           {!compact && <PriceHistoryChart points={chartPoints} symbol={symbol} ethUsd={ethUsd} marketCapUsd={marketCapUsd} />}

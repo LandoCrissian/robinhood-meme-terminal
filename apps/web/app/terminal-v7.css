@@ -156,6 +156,23 @@ main:has(.rmtDiscovery){max-width:none;padding:0 10px 36px}
 .marketTitle .eyebrow{font-size:.49rem}
 .marketTitle h2{font-size:.9rem}
 .marketTitle .badge{border-radius:2px;font-size:.5rem}
+.nativeMarketConfidence{border-bottom:1px solid var(--terminal-line);background:linear-gradient(90deg,#08110b,#070a08)}
+.nativeMarketConfidence>header{display:flex;min-height:34px;align-items:center;justify-content:space-between;padding:6px 10px;border-bottom:1px solid var(--terminal-line)}
+.nativeMarketConfidence>header .eyebrow{margin:0;font-size:.45rem}
+.nativeMarketConfidence>header h3{margin:1px 0 0;font-size:.72rem}
+.nativeMarketConfidence>header>span{color:#69e67d;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.47rem;font-weight:850;letter-spacing:.07em}
+.nativeConfidenceGrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}
+.nativeConfidenceGrid>div,.nativeConfidenceGrid>button{display:flex;min-width:0;min-height:56px;align-items:flex-start;flex-direction:column;justify-content:center;padding:7px 10px;border:0;border-right:1px solid var(--terminal-line);border-radius:0;background:transparent;color:var(--terminal-text);text-align:left}
+.nativeConfidenceGrid>button{cursor:pointer}
+.nativeConfidenceGrid>button:hover{background:#0d1710}
+.nativeConfidenceGrid>*:last-child{border-right:0}
+.nativeConfidenceGrid small{color:#59675e;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.43rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
+.nativeConfidenceGrid strong{margin-top:3px;overflow:hidden;max-width:100%;font-size:.61rem;text-overflow:ellipsis;white-space:nowrap}
+.nativeConfidenceGrid em{margin-top:2px;overflow:hidden;max-width:100%;color:#6d7a72;font-size:.48rem;font-style:normal;text-overflow:ellipsis;white-space:nowrap}
+.nativeConfidenceGrid .verified strong{color:#72ed85}
+.nativeConfidenceGrid .notableRisk strong{color:#e2ca87}
+.nativeConfidenceGrid .highRisk strong{color:#ffc071}
+.nativeMarketConfidence>p{margin:0;padding:5px 10px;border-top:1px solid var(--terminal-line);color:#59665e;font-size:.48rem;line-height:1.4}
 .marketWorkspace{grid-template-columns:minmax(0,1fr) 344px;gap:0}
 .marketOverview{padding:8px;border-right:1px solid var(--terminal-line)}
 .marketOverview .priceChart{min-height:252px;margin:0 0 7px;padding:10px 8px;border:0;border-bottom:1px solid var(--terminal-line);border-radius:0;background:#070a08}
@@ -305,6 +322,17 @@ main:has(.rmtDiscovery){max-width:none;padding:0 10px 36px}
   .marketPanel.panel,.tokenInfoPanel.panel{border-right:0;border-left:0}
   .marketPanel{margin-top:5px}
   .marketTitle{padding:6px 8px}
+  .nativeMarketConfidence>header{min-height:40px;padding:7px 8px}
+  .nativeMarketConfidence>header .eyebrow{font-size:.5rem}
+  .nativeMarketConfidence>header h3{font-size:.78rem}
+  .nativeConfidenceGrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .nativeConfidenceGrid>div,.nativeConfidenceGrid>button{min-height:58px;padding:7px 8px;border-bottom:1px solid var(--terminal-line)}
+  .nativeConfidenceGrid>*:nth-child(2n){border-right:0}
+  .nativeConfidenceGrid>*:nth-last-child(-n+2){border-bottom:0}
+  .nativeConfidenceGrid small{font-size:.46rem}
+  .nativeConfidenceGrid strong{font-size:.62rem}
+  .nativeConfidenceGrid em{font-size:.5rem}
+  .nativeMarketConfidence>p{padding:6px 8px;font-size:.53rem}
   .marketWorkspace{gap:0}
   .tradeRail{padding:8px}
   .marketOverview{padding:6px}
@@ -914,6 +942,14 @@ main:has(.rmtDiscovery){max-width:none;padding:0 10px 36px}
   .marketPanel.panel{margin-top:10px;border-color:#24332a;border-radius:14px}
   .marketTitle{min-height:52px;padding:9px 13px}
   .marketTitle h2{font-size:1.02rem}
+  .nativeMarketConfidence>header{min-height:42px;padding:8px 13px}
+  .nativeMarketConfidence>header .eyebrow{font-size:.53rem}
+  .nativeMarketConfidence>header h3{font-size:.86rem}
+  .nativeConfidenceGrid>div,.nativeConfidenceGrid>button{min-height:68px;padding:9px 13px}
+  .nativeConfidenceGrid small{font-size:.49rem}
+  .nativeConfidenceGrid strong{font-size:.69rem}
+  .nativeConfidenceGrid em{font-size:.54rem}
+  .nativeMarketConfidence>p{padding:7px 13px;font-size:.54rem}
   .marketWorkspace{grid-template-columns:minmax(0,1fr) 380px}
   .marketOverview{padding:12px}
   .marketOverview .priceChart{min-height:330px;padding:14px 10px}
