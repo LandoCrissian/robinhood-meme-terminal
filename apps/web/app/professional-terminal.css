@@ -736,9 +736,9 @@
 
   .terminalPage .runnerMarketCard.externalMarketCard {
     display: grid;
-    grid-template-columns: 48px minmax(0, 1fr) 116px;
-    grid-template-rows: 48px 38px;
-    min-height: 86px;
+    grid-template-columns: 64px minmax(0, 1fr) 112px;
+    grid-template-rows: 56px 42px;
+    min-height: 98px;
     overflow: hidden;
     border: 0;
     border-bottom: 1px solid var(--terminal-rule);
@@ -756,7 +756,9 @@
     grid-column: 1;
     grid-row: 1;
     align-items: center;
-    gap: 2px;
+    flex-direction: column;
+    justify-content: center;
+    gap: 3px;
     text-align: center;
   }
 
@@ -772,13 +774,13 @@
   .terminalPage .runnerMarketCard .externalIdentity {
     grid-column: 2;
     grid-row: 1;
-    grid-template-columns: 34px minmax(0, 1fr);
-    gap: 7px;
+    grid-template-columns: 36px minmax(0, 1fr);
+    gap: 8px;
   }
 
   .terminalPage .runnerMarketCard .externalArtwork {
-    width: 32px;
-    height: 32px;
+    width: 34px;
+    height: 34px;
   }
 
   .terminalPage .runnerMarketCard .externalIdentity strong {
@@ -805,7 +807,7 @@
   }
 
   .terminalPage .runnerMarketCard .runnerStats span {
-    min-height: 24px;
+    min-height: 28px;
     justify-content: center;
     padding: 3px 5px;
     border-right: 1px solid var(--terminal-rule);
@@ -837,14 +839,14 @@
     grid-row: 2;
     display: grid;
     grid-template-columns: 1fr 1fr;
-    min-height: 38px;
+    min-height: 42px;
     padding: 0;
     border-top: 1px solid var(--terminal-rule);
   }
 
   .terminalPage .runnerMarketCard .externalMarketActions button {
-    min-height: 37px;
-    font-size: .59rem;
+    min-height: 41px;
+    font-size: .62rem;
   }
 
   .terminalPage .runnerMarketCard .externalMarketActions .buyCardAction {
@@ -858,7 +860,7 @@
   .terminalPage .runnerMarketCard .externalChartLink {
     grid-column: 3;
     grid-row: 2;
-    min-height: 38px;
+    min-height: 42px;
     padding: 4px;
     border-top: 1px solid var(--terminal-rule);
     font-size: .48rem;
