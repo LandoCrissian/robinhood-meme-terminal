@@ -1,5 +1,8 @@
 export type PriceImpactTone = "calm" | "caution" | "danger";
 
+export const PRICE_IMPACT_CAUTION = 0.01;
+export const PRICE_IMPACT_BLOCK = 0.05;
+
 export function spendableTradeBalance(balance: bigint, reserve = 0n) {
   return balance > reserve ? balance - reserve : 0n;
 }
@@ -21,9 +24,19 @@ export function quoteSecondsRemaining(deadline: string | undefined, nowSeconds: 
 
 export function priceImpactTone(priceImpact: number | undefined): PriceImpactTone {
   if (priceImpact === undefined || !Number.isFinite(priceImpact) || priceImpact < 0) return "calm";
-  if (priceImpact > 0.05) return "danger";
-  if (priceImpact > 0.01) return "caution";
+  if (priceImpact > PRICE_IMPACT_BLOCK) return "danger";
+  if (priceImpact > PRICE_IMPACT_CAUTION) return "caution";
   return "calm";
+}
+
+export function saferTradeAmount(inputAmount: bigint, priceImpact: number | undefined, targetImpact = 0.04) {
+  if (inputAmount <= 0n || priceImpact === undefined || !Number.isFinite(priceImpact) || priceImpact <= 0) return 0n;
+  if (!Number.isFinite(targetImpact) || targetImpact <= 0 || targetImpact >= PRICE_IMPACT_BLOCK) {
+    throw new Error("Safe trade target must be above zero and below the blocking threshold.");
+  }
+  if (priceImpact <= targetImpact) return inputAmount;
+  const conservativeScalePpm = Math.max(1, Math.floor(targetImpact / priceImpact * 900_000));
+  return inputAmount * BigInt(conservativeScalePpm) / 1_000_000n;
 }
 
 export function curvePriceImpact(

@@ -5,7 +5,7 @@ import { encodeFunctionData, formatEther, formatUnits, parseEther, parseUnits, t
 import { useAccount, useBalance, useCapabilities, usePublicClient, useReadContract, useSendCalls, useWaitForCallsStatus, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { activeChain, isMainnetRelease } from "../lib/network";
 import { formatTokenEthPrice, formatUsd } from "../lib/price-format";
-import { curvePriceImpact, priceImpactTone } from "../lib/trade-ticket";
+import { PRICE_IMPACT_BLOCK, curvePriceImpact, priceImpactTone, saferTradeAmount } from "../lib/trade-ticket";
 import { useLaunchRecord, type LaunchRecordHint } from "../lib/use-launch-record";
 import { useTradingTermsAcceptance } from "../lib/use-trading-terms";
 import { PriceHistoryChart, type PricePoint } from "./price-history-chart";
@@ -207,6 +207,7 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply, creator, compac
   const [ethUsd, setEthUsd] = useState<number>();
   const [priceUpdatedAt, setPriceUpdatedAt] = useState<string>();
   const [preflight, setPreflight] = useState<TradePreflight>({ status: "idle" });
+  const [guardChecking, setGuardChecking] = useState(false);
   const [atomicBatchUnavailable, setAtomicBatchUnavailable] = useState(false);
   const [marketDetail, setMarketDetail] = useState<"activity" | "risk">("activity");
   const tradeRailRef = useRef<HTMLElement>(null);
@@ -344,7 +345,7 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply, creator, compac
   const sellOut = sellQuote.data?.[0] ?? 0n;
   const needsApproval = tokensIn > 0n && (allowance.data ?? 0n) < tokensIn;
   const atomicSellAvailable = needsApproval && !atomicBatchUnavailable && capabilities.data?.atomic?.status === "supported";
-  const busy = isPending || receipt.isLoading || callsPending || callsReceipt.isLoading;
+  const busy = guardChecking || isPending || receipt.isLoading || callsPending || callsReceipt.isLoading;
   const priceWei = virtualTokens.data && virtualTokens.data > 0n ? (virtualEth.data ?? 0n) * 10n ** 18n / virtualTokens.data : 0n;
   const marketCapWei = virtualTokens.data && virtualTokens.data > 0n ? (virtualEth.data ?? 0n) * totalSupply / virtualTokens.data : 0n;
   const positionValueWei = (balance.data ?? 0n) * priceWei / 10n ** 18n;
@@ -362,6 +363,7 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply, creator, compac
     ? curvePriceImpact("buy", priceWei, ethIn > buyFee ? ethIn - buyFee : 0n, buyOut)
     : curvePriceImpact("sell", priceWei, tokensIn, sellQuote.data?.[2] ?? 0n);
   const curveImpactTone = priceImpactTone(curveImpact);
+  const impactBlocked = curveImpact !== undefined && curveImpact > PRICE_IMPACT_BLOCK;
   const curveImpactLabel = curveImpact === undefined
     ? "Calculating…"
     : curveImpact > 0 && curveImpact < 0.0001
@@ -428,6 +430,10 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply, creator, compac
       setPreflight({ status: "error", message: fairStartMessage });
       return;
     }
+    if (impactBlocked) {
+      setPreflight({ status: "error", message: "RMT blocked this order because estimated curve price impact is above 5%. Reduce the order size to continue." });
+      return;
+    }
     let cancelled = false;
     setPreflight({ status: "checking" });
     const timer = window.setTimeout(() => {
@@ -468,7 +474,7 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply, creator, compac
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [account, buyOut, ethIn, fairStartMaxTx, fairStartMaxWallet, fairStartMessage, graduated.data, market, mode, needsApproval, publicClient, sellOut, symbol, tokenAddress, tokensIn]);
+  }, [account, buyOut, ethIn, fairStartMaxTx, fairStartMaxWallet, fairStartMessage, graduated.data, impactBlocked, market, mode, needsApproval, publicClient, sellOut, symbol, tokenAddress, tokensIn]);
 
   useEffect(() => {
     if (!receipt.isSuccess) return;
@@ -527,36 +533,95 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply, creator, compac
     if (protectedEthAmount > 0n) setBuyAmount(cleanDecimal(formatEther(protectedEthAmount)));
   }
 
-  function trade() {
-    if (!market || !account || preflight.status !== "ready") return;
+  function chooseSaferAmount() {
+    const currentAmount = mode === "buy" ? ethIn : tokensIn;
+    const saferAmount = saferTradeAmount(currentAmount, curveImpact);
+    if (saferAmount <= 0n || saferAmount >= currentAmount) return;
+    if (mode === "buy") setBuyAmount(cleanDecimal(formatEther(saferAmount)));
+    else setSellAmount(cleanDecimal(formatUnits(saferAmount, 18)));
+  }
+
+  async function trade() {
+    if (!market || !account || !publicClient || preflight.status !== "ready" || impactBlocked) return;
+    setGuardChecking(true);
+    setTradeMessage("Refreshing the quote and re-checking this exact order onchain…");
     resetWrite();
     resetCalls();
-    const deadline = BigInt(Math.floor(Date.now() / 1000) + 600);
-    if (mode === "buy") {
-      setLastAction("buy");
-      setTradeMessage("Review the ETH amount and network fee in your wallet.");
-      writeContract({ address: market, abi: marketAbi, functionName: "buy", args: [account, buyOut * 99n / 100n, deadline], value: ethIn, chainId: activeChain.id });
-    } else if (atomicSellAvailable) {
-      setLastAction("sell");
-      setTradeMessage("Review one combined approval-and-sell action in your wallet.");
-      sendCalls({
-        account,
-        chainId: activeChain.id,
-        forceAtomic: true,
-        calls: [
-          { to: tokenAddress, data: encodeFunctionData({ abi: tokenTradeAbi, functionName: "approve", args: [market, tokensIn] }) },
-          { to: market, data: encodeFunctionData({ abi: marketAbi, functionName: "sell", args: [tokensIn, sellOut * 99n / 100n, account, deadline] }) }
-        ]
-      });
-    } else if (needsApproval) {
-      setLastAction("approve");
-      pendingSellOrderRef.current = { tokensIn, minimumOut: sellMinimum };
-      setTradeMessage("Exact-amount market approval. Your sell confirmation follows automatically.");
-      writeContract({ address: tokenAddress, abi: tokenTradeAbi, functionName: "approve", args: [market, tokensIn], chainId: activeChain.id });
-    } else {
-      setLastAction("sell");
-      setTradeMessage("Review the token amount and minimum ETH received in your wallet.");
-      writeContract({ address: market, abi: marketAbi, functionName: "sell", args: [tokensIn, sellOut * 99n / 100n, account, deadline], chainId: activeChain.id });
+    try {
+      const deadline = BigInt(Math.floor(Date.now() / 1000) + 600);
+      const [freshVirtualEth, freshVirtualTokens] = await Promise.all([virtualEth.refetch(), virtualTokens.refetch()]);
+      const freshSpotPrice = freshVirtualTokens.data && freshVirtualTokens.data > 0n
+        ? (freshVirtualEth.data ?? 0n) * 10n ** 18n / freshVirtualTokens.data
+        : 0n;
+
+      if (mode === "buy") {
+        const freshQuote = await buyQuote.refetch();
+        const freshOut = freshQuote.data?.[0] ?? 0n;
+        const freshFee = freshQuote.data?.[1] ?? 0n;
+        const freshImpact = curvePriceImpact("buy", freshSpotPrice, ethIn > freshFee ? ethIn - freshFee : 0n, freshOut);
+        if (freshOut <= 0n) throw new Error("The refreshed quote returned no tokens.");
+        if (freshImpact !== undefined && freshImpact > PRICE_IMPACT_BLOCK) {
+          setPreflight({ status: "error", message: "RMT blocked the refreshed order because curve price impact is above 5%. Reduce the order size to continue." });
+          setTradeMessage("Order blocked safely. The market moved or this amount is too large for the curve.");
+          return;
+        }
+        const freshMinimum = freshOut * 99n / 100n;
+        await publicClient.estimateContractGas({ account, address: market, abi: marketAbi, functionName: "buy", args: [account, freshMinimum, deadline], value: ethIn });
+        setLastAction("buy");
+        setTradeMessage("Fresh quote verified. Review the ETH amount and protected minimum in your wallet.");
+        writeContract({ address: market, abi: marketAbi, functionName: "buy", args: [account, freshMinimum, deadline], value: ethIn, chainId: activeChain.id });
+        return;
+      }
+
+      const [freshQuote, freshAllowance] = await Promise.all([sellQuote.refetch(), allowance.refetch()]);
+      const freshOut = freshQuote.data?.[0] ?? 0n;
+      const freshGross = freshQuote.data?.[2] ?? 0n;
+      const freshImpact = curvePriceImpact("sell", freshSpotPrice, tokensIn, freshGross);
+      if (freshOut <= 0n) throw new Error("The refreshed quote returned no ETH.");
+      if (freshImpact !== undefined && freshImpact > PRICE_IMPACT_BLOCK) {
+        setPreflight({ status: "error", message: "RMT blocked the refreshed order because curve price impact is above 5%. Reduce the order size to continue." });
+        setTradeMessage("Order blocked safely. The market moved or this amount is too large for the curve.");
+        return;
+      }
+      const freshMinimum = freshOut * 99n / 100n;
+      const freshNeedsApproval = (freshAllowance.data ?? 0n) < tokensIn;
+      const freshAtomicSellAvailable = freshNeedsApproval && !atomicBatchUnavailable && capabilities.data?.atomic?.status === "supported";
+      if (freshNeedsApproval) {
+        await publicClient.estimateContractGas({ account, address: tokenAddress, abi: tokenTradeAbi, functionName: "approve", args: [market, tokensIn] });
+      } else {
+        await publicClient.estimateContractGas({ account, address: market, abi: marketAbi, functionName: "sell", args: [tokensIn, freshMinimum, account, deadline] });
+      }
+
+      if (freshAtomicSellAvailable) {
+        setLastAction("sell");
+        setTradeMessage("Fresh quote verified. Review the exact approval and sell in your wallet.");
+        sendCalls({
+          account,
+          chainId: activeChain.id,
+          forceAtomic: true,
+          calls: [
+            { to: tokenAddress, data: encodeFunctionData({ abi: tokenTradeAbi, functionName: "approve", args: [market, tokensIn] }) },
+            { to: market, data: encodeFunctionData({ abi: marketAbi, functionName: "sell", args: [tokensIn, freshMinimum, account, deadline] }) }
+          ]
+        });
+      } else if (freshNeedsApproval) {
+        setLastAction("approve");
+        pendingSellOrderRef.current = { tokensIn, minimumOut: freshMinimum };
+        setTradeMessage("Fresh quote verified. Approve exactly this sell amount; your sell confirmation follows.");
+        writeContract({ address: tokenAddress, abi: tokenTradeAbi, functionName: "approve", args: [market, tokensIn], chainId: activeChain.id });
+      } else {
+        setLastAction("sell");
+        setTradeMessage("Fresh quote verified. Review the token amount and protected minimum in your wallet.");
+        writeContract({ address: market, abi: marketAbi, functionName: "sell", args: [tokensIn, freshMinimum, account, deadline], chainId: activeChain.id });
+      }
+    } catch (cause) {
+      const detail = cause instanceof Error ? cause.message : "";
+      setPreflight({ status: "error", message: /insufficient funds/i.test(detail)
+        ? "This wallet needs enough ETH for the order and its network fee."
+        : "The final onchain check did not pass. Refresh the market or reduce the order size, then try again." });
+      setTradeMessage("No transaction was sent. RMT stopped before opening your wallet.");
+    } finally {
+      setGuardChecking(false);
     }
   }
 
@@ -626,7 +691,8 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply, creator, compac
             <div className="orderPreview executionPreview"><div><span>Estimated receive</span><strong>{Number(formatEther(sellOut)).toLocaleString(undefined, { maximumFractionDigits: 8 })} ETH</strong></div><div><span>Protected minimum</span><strong>{Number(formatEther(sellMinimum)).toLocaleString(undefined, { maximumFractionDigits: 8 })} ETH</strong></div><div><span>Curve price impact</span><strong className={`impactValue ${curveImpactTone}`}>{curveImpactLabel}</strong></div><div><span>Platform fee</span><strong>{formatEth(sellFee)} ETH</strong></div></div>
             {needsApproval && isConnected && <p className="approvalNote">{atomicSellAvailable ? "Your wallet can approve exactly this sell amount and execute it in one combined confirmation." : "Your wallet first approves exactly this sell amount for the immutable market, then asks you to confirm the sell. Each transaction has its own network fee."}</p>}
           </div>}
-          {!graduated.data && !compact && <div className="tradeDisclosure"><span>Live quote</span><span>1% slippage</span><span>10-minute deadline</span></div>}
+          {!graduated.data && curveImpactTone !== "calm" && <div className={`smartOrderGuard ${curveImpactTone}`} role="alert"><div><strong>{impactBlocked ? "Order blocked · impact above 5%" : "Price-impact caution"}</strong><small>{impactBlocked ? "This amount would move the curve too sharply. RMT will not open your wallet until the order is reduced." : "Estimated impact is above 1%. Review the protected minimum carefully before continuing."}</small></div>{impactBlocked && <button type="button" disabled={busy} onClick={chooseSaferAmount}>Reduce to safer size</button>}</div>}
+          {!graduated.data && !compact && <div className="tradeDisclosure"><span>Live quote</span><span>1% slippage</span><span>10-minute deadline</span><span>Final onchain refresh</span></div>}
           {!creatorRiskRequired && <button type="button" className={`creatorRiskSummary ${highCreatorConcentration ? "highRisk" : notableCreatorConcentration ? "notableRisk" : ""}`} onClick={showCreatorAnalytics}><span>Creator wallet</span><strong>{creatorBalance.isLoading ? "Reading…" : creatorConcentrationKnown ? `${formatPercent(creatorCirculatingBps)} outside curve` : "Position syncing"}</strong><small>{formatPercent(creatorSupplyBps)} of supply · {creatorRecentSignal} ↓</small></button>}
           {!graduated.data && creatorRiskRequired && <div className="creatorRiskCheck"><span><strong>High creator concentration</strong><small>Original creator currently holds {formatPercent(creatorCirculatingBps)} of tokens outside the curve · {creatorRecentSignal.toLowerCase()}. This evidence remains visible without another consent checkbox.</small></span></div>}
           {!graduated.data && isConnected && <div className={`preflightCard ${preflight.status}`} role="status"><span className="preflightIcon">{preflight.status === "ready" ? "✓" : preflight.status === "error" ? "!" : "•"}</span><div><strong>{preflight.status === "checking" ? "Checking this order onchain…" : preflight.status === "ready" ? "Order check passed" : preflight.status === "error" ? "Order needs attention" : "Enter an amount to continue"}</strong><small>{preflight.status === "ready" && estimatedNetworkFeeWei !== undefined ? needsApproval ? `Approval fee estimate ${formatEth(estimatedNetworkFeeWei, 7)} ETH · ${atomicSellAvailable ? "your wallet shows the complete batch fee" : "the sell fee follows separately"}` : `Network fee ${formatEth(estimatedNetworkFeeWei, 7)} ETH · ≈ ${formatUsd(estimatedNetworkFeeUsd)}` : preflight.message ?? "Quotes and network fees refresh automatically."}</small></div></div>}
@@ -634,7 +700,7 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply, creator, compac
           {(writeError || receipt.error || callsReceipt.error) && <div className="errors"><span>{writeError?.message || receipt.error?.message || callsReceipt.error?.message}</span></div>}
           {tradeMessage && <div className="callout"><strong>{tradeMessage}</strong></div>}
           {receipt.isSuccess && lastAction !== "approve" && <div className="callout"><strong>{lastAction === "sell" ? "Sell confirmed" : "Buy confirmed"}</strong><a href={`${activeChain.blockExplorers.default.url}/tx/${hash}`} target="_blank" rel="noreferrer">View transaction ↗</a></div>}
-          {graduated.data && migratedToV4 ? null : compact && !isConnected ? <div className="quickTradeConnect"><WalletButton target={isMainnetRelease ? "mainnet" : "testnet"} returnTo={`/?quickTrade=${tokenAddress}&side=${mode}#explore`} /><small>Connect once. Your wallet will still confirm every onchain trade.</small></div> : <button className={`launch ${mode === "sell" ? "sellAction" : ""}`} disabled={!isConnected || !tradingTerms.accepted || busy || Boolean(graduated.data) || preflight.status !== "ready" || (mode === "buy" ? buyOut === 0n : sellOut === 0n)} onClick={trade}>{graduated.data ? "Curve complete — finalize V4 graduation below" : !isConnected ? "Connect wallet to trade" : !tradingTerms.accepted ? "Accept RMT trading terms" : busy ? lastAction === "approve" ? "Approving…" : lastAction === "sell" ? "Confirm sell in wallet…" : "Confirming…" : preflight.status === "checking" ? "Checking order…" : preflight.status === "error" ? "Review order details" : preflight.status === "idle" ? "Preparing quote…" : mode === "buy" ? `Buy ${symbol}` : atomicSellAvailable ? `Approve + sell ${symbol}` : needsApproval ? `Enable and sell ${symbol}` : `Sell ${symbol}`}</button>}
+          {graduated.data && migratedToV4 ? null : compact && !isConnected ? <div className="quickTradeConnect"><WalletButton target={isMainnetRelease ? "mainnet" : "testnet"} returnTo={`/?quickTrade=${tokenAddress}&side=${mode}#explore`} /><small>Connect once. Your wallet will still confirm every onchain trade.</small></div> : <button className={`launch ${mode === "sell" ? "sellAction" : ""}`} disabled={!isConnected || !tradingTerms.accepted || busy || impactBlocked || Boolean(graduated.data) || preflight.status !== "ready" || (mode === "buy" ? buyOut === 0n : sellOut === 0n)} onClick={() => void trade()}>{graduated.data ? "Curve complete — finalize V4 graduation below" : !isConnected ? "Connect wallet to trade" : !tradingTerms.accepted ? "Accept RMT trading terms" : guardChecking ? "Refreshing quote…" : busy ? lastAction === "approve" ? "Approving…" : lastAction === "sell" ? "Confirm sell in wallet…" : "Confirming…" : impactBlocked ? "Reduce order to continue" : preflight.status === "checking" ? "Checking order…" : preflight.status === "error" ? "Review order details" : preflight.status === "idle" ? "Preparing quote…" : mode === "buy" ? `Buy ${symbol}` : atomicSellAvailable ? `Approve + sell ${symbol}` : needsApproval ? `Enable and sell ${symbol}` : `Sell ${symbol}`}</button>}
           {!compact && <a className="explorerLink tradeExplorer" href={`${activeChain.blockExplorers.default.url}/address/${market}`} target="_blank" rel="noreferrer">Verified market contract ↗</a>}
           {!isConnected && <details className="starterGuide"><summary><span>New to Robinhood Chain?</span><small>3 steps</small></summary><div className="starterSteps"><div><b>1</b><span><strong>Connect a wallet</strong><small>Use Robinhood Wallet or another EVM wallet.</small></span></div><div><b>2</b><span><strong>Fund it with Chain ETH</strong><small>Gas and purchases use ETH on Robinhood Chain.</small></span></div><div><b>3</b><span><strong>Review and confirm</strong><small>RMT simulates the order before your wallet asks you to confirm.</small></span></div></div><div className="starterLinks"><a href="https://docs.robinhood.com/chain/add-network-to-wallet/" target="_blank" rel="noreferrer">Wallet setup ↗</a><a href="https://docs.robinhood.com/chain/bridging/" target="_blank" rel="noreferrer">Funding options ↗</a></div></details>}
         </aside>

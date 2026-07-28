@@ -7,6 +7,7 @@ import {
   fractionalTradeAmount,
   priceImpactTone,
   quoteSecondsRemaining,
+  saferTradeAmount,
   spendableTradeBalance
 } from "./trade-ticket";
 import {
@@ -28,6 +29,10 @@ assert.equal(quoteSecondsRemaining("not-a-deadline", 100), 0);
 assert.equal(priceImpactTone(0.005), "calm");
 assert.equal(priceImpactTone(0.02), "caution");
 assert.equal(priceImpactTone(0.08), "danger");
+assert.equal(saferTradeAmount(1_000n, 0.08), 450n);
+assert.equal(saferTradeAmount(1_000n, 0.04), 1_000n);
+assert.equal(saferTradeAmount(1_000n, undefined), 0n);
+assert.throws(() => saferTradeAmount(1_000n, 0.08, 0.05), /blocking threshold/);
 assert.equal(curvePriceImpact("buy", 1_000n, 1_050n, 1_000_000_000_000_000_000n), 0.05);
 assert.equal(curvePriceImpact("sell", 1_000n, 1_000_000_000_000_000_000n, 970n), 0.03);
 assert.equal(curvePriceImpact("buy", 1_000n, 0n, 1n), undefined);
