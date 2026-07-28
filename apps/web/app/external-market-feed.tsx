@@ -290,7 +290,7 @@ function ExternalTradeDialog({
           </div>
           <div className="externalTradeMetrics">
             <span><small>{value.label}</small><strong>{money(value.value)}</strong></span>
-            <span><small>Liquidity · {routeLiquidityDepthLabel(market.liquidityUsd)} depth</small><strong>{money(market.liquidityUsd)}</strong></span>
+            <span><small>Liquidity · {routeLiquidityDepthLabel(market.liquidityUsd)}</small><strong>{money(market.liquidityUsd)}</strong></span>
             <span><small>1h volume</small><strong>{money(market.volume1h)}</strong></span>
             <span><small>1h trades</small><strong>{oneHourTrades.toLocaleString()}</strong></span>
           </div>
@@ -898,7 +898,7 @@ export function ExternalMarketFeed() {
                       <span className={"mobileRunnerMove " + (market.curve ? "positive" : changeClass)}>
                         <small>{market.curve ? "Progress" : "5m"}</small><strong>{mobileMoveLabel}</strong>
                       </span>
-                      <span><small>{executionDepth ? executionDepth + " depth" : "Liquidity"}</small><strong>{money(market.liquidityUsd)}</strong></span>
+                      <span><small>{executionDepth ? "Depth · " + executionDepth : "Liquidity"}</small><strong>{money(market.liquidityUsd)}</strong></span>
                     </div>
                   </div>
                   <div className="runnerCardStatus">
@@ -930,7 +930,7 @@ export function ExternalMarketFeed() {
                     <span>{market.curve
                       ? market.curve.uniqueTraders + " traders · " + market.curve.volumeQuoteEth.toFixed(3) + " ETH curve volume"
                       : (oneHourTrades > 0 ? Math.round(market.buyPressureBps / 100) + "% buys · 1h" : "No 1h trades")
-                        + (executionDepth ? " · " + executionDepth + " depth" : "")}</span>
+                        + (executionDepth ? " · " + executionDepth + " liquidity" : "")}</span>
                     {market.riskFlags.length > 0 && <em>{riskSummary(market.riskFlags)}</em>}
                   </div>
                   {executionState === "ready" ? (
