@@ -207,6 +207,9 @@ main:has(.rmtDiscovery){max-width:none;padding:0 10px 36px}
 .tradeRail .quickAmounts{gap:3px}
 .tradeRail .quickAmounts button{min-height:32px;border-radius:2px;background:#0b110d;font-size:.6rem}
 .tradeRail .orderPreview{gap:5px}
+.tradeRail .executionPreview>div:nth-child(even){text-align:right}
+.tradeRail .impactValue.caution{color:#f1c95d}
+.tradeRail .impactValue.danger{color:#ff7777}
 .tradeRail .tradeDisclosure span{border-radius:2px}
 .tradeRail .creatorRiskSummary,.tradeRail .creatorRiskCheck,.tradeRail .preflightCard,.tradeRail .tradeStage,.tradeRail .callout,.tradeRail .errors{border-radius:2px}
 .tradeRail .launch{min-height:42px;border-radius:2px;font-size:.7rem}
