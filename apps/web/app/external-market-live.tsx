@@ -271,6 +271,31 @@ export function ExternalHolderIntelligence({ market }: { market: ExternalMarket 
             <span><small>TRANSFER SAMPLE</small><strong>{graph.coverage.sampledTransfers}</strong></span>
           </div>
 
+          {graph.signals.length > 0 && (
+            <div className="universalConstellationSignals" aria-label="Wallet relationship signals">
+              <header>
+                <span><small>EXPLAINABLE RELATIONSHIP SIGNALS</small><strong>What deserves attention</strong></span>
+                <em>{graph.signals.filter((signal) => signal.severity === "review").length} review</em>
+              </header>
+              {graph.signals.slice(0, 4).map((signal) => {
+                const href = signal.transactionHashes[0]
+                  ? `${EXPLORER}/tx/${signal.transactionHashes[0]}`
+                  : `${EXPLORER}/address/${signal.relatedAddresses[0]}`;
+                return (
+                  <a href={href} target="_blank" rel="noopener noreferrer" className={signal.severity} key={`${signal.code}:${signal.relatedAddresses.join(":")}`}>
+                    <b>{signal.severity === "review" ? "REVIEW" : "OBSERVE"}</b>
+                    <span>
+                      <strong>{signal.label}</strong>
+                      <small className="signalAddresses">{signal.relatedAddresses.map(shortAddress).join(" ↔ ")}</small>
+                      <small>{signal.description}</small>
+                    </span>
+                    <i aria-hidden="true">↗</i>
+                  </a>
+                );
+              })}
+            </div>
+          )}
+
           {graph.edges.length > 0 && (
             <details className="universalRelationshipDetails">
               <summary>

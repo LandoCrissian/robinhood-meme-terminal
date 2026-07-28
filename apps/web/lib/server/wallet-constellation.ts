@@ -6,7 +6,8 @@ import type {
   WalletConstellationEdge,
   WalletConstellationGraph,
   WalletConstellationNode,
-  WalletConstellationNodeRole
+  WalletConstellationNodeRole,
+  WalletConstellationSignal
 } from "../wallet-constellation";
 
 const BLOCKSCOUT = "https://robinhoodchain.blockscout.com";
@@ -97,6 +98,104 @@ function edgeRelation(from: Address, to: Address) {
   if (from.toLowerCase() === zeroAddress.toLowerCase()) return "mint" as const;
   if (to.toLowerCase() === DEAD_ADDRESS) return "burn" as const;
   return "token-transfer" as const;
+}
+
+function buildSignals(
+  nodes: WalletConstellationNode[],
+  edges: WalletConstellationEdge[]
+): WalletConstellationSignal[] {
+  const nodeByAddress = new Map(
+    nodes.map((node) => [node.address.toLowerCase(), node])
+  );
+  const signals: WalletConstellationSignal[] = [];
+  const add = (signal: WalletConstellationSignal) => {
+    const key = `${signal.code}:${signal.relatedAddresses
+      .map((address) => address.toLowerCase())
+      .sort()
+      .join(":")}`;
+    if (!signals.some((current) =>
+      `${current.code}:${current.relatedAddresses
+        .map((address) => address.toLowerCase())
+        .sort()
+        .join(":")}` === key
+    )) {
+      signals.push(signal);
+    }
+  };
+
+  for (const node of nodes) {
+    if (!node.isFlagged) continue;
+    add({
+      code: "provider-flagged-participant",
+      severity: "review",
+      label: "Evidence provider flags a tracked participant",
+      description: `${node.label ?? node.address} is flagged by the public evidence provider. Verify the provider record before acting.`,
+      relatedAddresses: [node.address],
+      transactionHashes: [],
+      confidence: "confirmed",
+      interpretation: "evidence-only"
+    });
+  }
+
+  for (const edge of edges) {
+    if (edge.relation !== "token-transfer") continue;
+    const from = nodeByAddress.get(edge.from.toLowerCase());
+    const to = nodeByAddress.get(edge.to.toLowerCase());
+    if (!from || !to) continue;
+    const creator = from.role === "creator" ? from : to.role === "creator" ? to : null;
+    const other = creator === from ? to : creator === to ? from : null;
+    const creatorHolderLink = creator && other?.holderRank !== null;
+    const topHolderLink = !creator
+      && from.holderRank !== null
+      && to.holderRank !== null;
+
+    if (creatorHolderLink && other) {
+      add({
+        code: "creator-holder-direct-link",
+        severity: "review",
+        label: "Creator has a direct transfer link to a current top holder",
+        description: `Confirmed token transfers connect the reported creator and current holder #${other.holderRank}. This is interaction evidence, not proof of common control.`,
+        relatedAddresses: [creator.address, other.address],
+        transactionHashes: edge.transactionHashes,
+        confidence: "confirmed",
+        interpretation: "evidence-only"
+      });
+      continue;
+    }
+    if (topHolderLink) {
+      add({
+        code: "top-holders-direct-link",
+        severity: "review",
+        label: "Current top holders transferred tokens directly",
+        description: `Confirmed token transfers connect current holders #${from.holderRank} and #${to.holderRank}. Review the transactions before trading.`,
+        relatedAddresses: [from.address, to.address],
+        transactionHashes: edge.transactionHashes,
+        confidence: "confirmed",
+        interpretation: "evidence-only"
+      });
+      continue;
+    }
+    if (edge.transferCount >= 2 && from.role !== "pool" && to.role !== "pool") {
+      add({
+        code: "repeated-direct-transfer",
+        severity: "observe",
+        label: "Repeated direct transfers observed",
+        description: `${edge.transferCount} confirmed token transfers connect these tracked addresses in the sampled history.`,
+        relatedAddresses: [from.address, to.address],
+        transactionHashes: edge.transactionHashes,
+        confidence: "confirmed",
+        interpretation: "evidence-only"
+      });
+    }
+  }
+
+  return signals
+    .sort((left, right) =>
+      (left.severity === "review" ? 0 : 1) - (right.severity === "review" ? 0 : 1)
+      || left.code.localeCompare(right.code)
+      || left.relatedAddresses[0].localeCompare(right.relatedAddresses[0])
+    )
+    .slice(0, 6);
 }
 
 export function buildWalletConstellationGraph(input: {
@@ -220,18 +319,21 @@ export function buildWalletConstellationGraph(input: {
   }
 
   const decision = tokenRiskDecision({ status: "ready", evidence: input.evidence }, "buy");
+  const sortedNodes = Array.from(nodes.values()).sort((left, right) =>
+    rolePriority(right.role) - rolePriority(left.role)
+    || (right.supplyShareBps ?? -1) - (left.supplyShareBps ?? -1)
+    || left.address.localeCompare(right.address)
+  );
+  const sortedEdges = Array.from(edges.values()).sort((left, right) =>
+    right.lastSeenAt.localeCompare(left.lastSeenAt) || left.id.localeCompare(right.id)
+  );
   return {
     schemaVersion: 1,
     token,
     pair,
-    nodes: Array.from(nodes.values()).sort((left, right) =>
-      rolePriority(right.role) - rolePriority(left.role)
-      || (right.supplyShareBps ?? -1) - (left.supplyShareBps ?? -1)
-      || left.address.localeCompare(right.address)
-    ),
-    edges: Array.from(edges.values()).sort((left, right) =>
-      right.lastSeenAt.localeCompare(left.lastSeenAt) || left.id.localeCompare(right.id)
-    ),
+    nodes: sortedNodes,
+    edges: sortedEdges,
+    signals: buildSignals(sortedNodes, sortedEdges),
     decision: {
       state: decision.state,
       findingCodes: decision.findings.map((finding) => finding.code)
