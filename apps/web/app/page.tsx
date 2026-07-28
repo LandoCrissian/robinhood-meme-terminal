@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ExternalMarketFeed } from "./external-market-feed";
+import { OfficialRmtMarket } from "./official-rmt-market";
 import { isMainnetRelease } from "../lib/network";
 import { SiteFooter } from "./site-footer";
 
@@ -31,6 +32,7 @@ export default function Home() {
         <div className="trustStrip"><span><b>NETWORK</b>{isMainnetRelease ? "RHC MAINNET · 4663" : "RHC TESTNET · 46630"}</span><span><b>REFRESH</b>30S MARKET DATA</span><span><b>EXECUTION</b>NON-CUSTODIAL</span><span><b>SOURCES</b>PONS · LEMON · DEX</span></div>
       </section>
 
+      <OfficialRmtMarket />
       <ExternalMarketFeed />
       <SiteFooter />
     </main>

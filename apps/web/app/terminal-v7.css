@@ -54,6 +54,30 @@ main:has(.rmtDiscovery){max-width:none;padding:0 10px 36px}
 .terminalIntro .trustStrip span:last-child{border-right:0}
 .terminalIntro .trustStrip b{color:#536159;font-size:.5rem;letter-spacing:.08em}
 
+/* Canonical RMT access stays distinct from the external DEX market universe. */
+.officialRmtMarket{display:grid;grid-template-columns:minmax(300px,1.4fr) auto minmax(420px,1fr) auto;align-items:center;gap:14px;margin:8px 0 0;padding:10px 12px;border:1px solid #21402a;border-radius:4px;background:linear-gradient(100deg,rgba(20,58,29,.34),rgba(7,11,8,.96) 42%,rgba(7,10,8,.98));box-shadow:inset 3px 0 #55ee72}
+.officialRmtIdentity{display:grid;grid-template-columns:42px minmax(0,1fr);align-items:center;gap:10px;min-width:0}
+.officialRmtArtwork{width:42px;height:42px;overflow:hidden;border:1px solid #2a5334;border-radius:9px;background:#0b160e}
+.officialRmtArtwork img{width:100%;height:100%;object-fit:cover}
+.officialRmtIdentity .eyebrow{margin:0;color:#62df77;font-size:.51rem;letter-spacing:.11em}
+.officialRmtIdentity h2{margin:2px 0;color:#edf4ee;font-size:.82rem;line-height:1.2}
+.officialRmtIdentity h2 span{margin-left:5px;color:#6ee881;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.65rem}
+.officialRmtIdentity>div>p:last-child{margin:0;color:#748178;font-size:.56rem;line-height:1.4}
+.officialRmtStatus{display:flex;align-items:flex-start;flex-direction:column;gap:4px;padding:0 14px;border-right:1px solid var(--terminal-line);border-left:1px solid var(--terminal-line)}
+.officialRmtStatus>span{padding:5px 7px;border:1px solid #6b5421;border-radius:4px;background:#181307;color:#f1c95d;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.53rem;font-weight:850;letter-spacing:.05em;text-transform:uppercase}
+.officialRmtStatus>span.graduated{border-color:#285b33;background:#0a1a0e;color:#72ed85}
+.officialRmtStatus small{max-width:180px;color:#637068;font-size:.5rem;line-height:1.35}
+.officialRmtMetrics{display:grid;grid-template-columns:repeat(4,minmax(78px,1fr));margin:0}
+.officialRmtMetrics>div{min-width:0;padding:0 10px;border-right:1px solid var(--terminal-line)}
+.officialRmtMetrics>div:last-child{border-right:0}
+.officialRmtMetrics dt{color:#536159;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.47rem;font-weight:800;letter-spacing:.05em;text-transform:uppercase}
+.officialRmtMetrics dd{margin:4px 0 0;overflow:hidden;color:#dce5de;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.61rem;font-weight:800;text-overflow:ellipsis;white-space:nowrap}
+.officialRmtProgress{display:none}
+.officialRmtActions{display:grid;grid-template-columns:1fr;gap:5px;min-width:146px}
+.officialRmtActions a{display:flex;min-height:34px;align-items:center;justify-content:center;padding:0 10px;border:1px solid #2a6536;border-radius:5px;background:#102717;color:#74ed87;font-size:.57rem;font-weight:900;text-align:center;text-decoration:none}
+.officialRmtActions a:last-child{border-color:var(--terminal-line-strong);background:#0a0e0b;color:#8b978f}
+.officialRmtActions a:hover{border-color:#55ee72;background:#16351f;color:#e9f8ec}
+
 /* Discovery terminal */
 .feed.panel.rmtDiscovery{margin-top:8px;padding:0;overflow:hidden;border:1px solid var(--terminal-line);border-radius:2px;background:rgba(7,10,8,.97);box-shadow:0 22px 70px rgba(0,0,0,.2)}
 .rmtDiscovery .feedHeading{align-items:center;min-height:58px;padding:9px 12px;border-bottom:1px solid var(--terminal-line);background:linear-gradient(90deg,#0a100c,#070a08 46%)}
@@ -197,6 +221,8 @@ main:has(.rmtDiscovery){max-width:none;padding:0 10px 36px}
 
 @media(max-width:1040px){
   .networkPulse{display:none}
+  .officialRmtMarket{grid-template-columns:minmax(280px,1fr) minmax(340px,1fr) auto}
+  .officialRmtStatus{display:none}
   .rmtColumnHeader{grid-template-columns:minmax(270px,1.2fr) repeat(4,minmax(78px,.5fr)) 132px}
   .feed .rmtDiscoveryRow{grid-template-columns:minmax(0,1fr) 132px}
   .rmtDiscoveryMain{grid-template-columns:30px 36px minmax(145px,.8fr) minmax(300px,1.35fr)}
@@ -236,6 +262,20 @@ main:has(.rmtDiscovery){max-width:none;padding:0 10px 36px}
   .terminalIntro .trustStrip{grid-column:1/-1;overflow-x:auto;white-space:nowrap}
   .terminalIntro .trustStrip span{padding:6px 9px;font-size:.5rem}
   .terminalIntro .trustStrip b{display:none}
+  .officialRmtMarket{grid-template-columns:1fr auto;gap:9px;margin-top:6px;padding:10px 8px;border-right:0;border-left:0;border-radius:0;box-shadow:inset 3px 0 #55ee72}
+  .officialRmtIdentity{grid-template-columns:38px minmax(0,1fr);gap:8px}
+  .officialRmtArtwork{width:38px;height:38px;border-radius:8px}
+  .officialRmtIdentity h2{font-size:.72rem}
+  .officialRmtIdentity>div>p:last-child{display:none}
+  .officialRmtMetrics{grid-column:1/-1;grid-template-columns:repeat(4,minmax(0,1fr));order:3;padding-top:8px;border-top:1px solid var(--terminal-line)}
+  .officialRmtMetrics>div{padding:0 6px}
+  .officialRmtMetrics dt{font-size:.42rem}
+  .officialRmtMetrics dd{font-size:.54rem}
+  .officialRmtProgress{display:block;grid-column:1/-1;order:4;height:3px;overflow:hidden;background:#17221b}
+  .officialRmtProgress span{display:block;height:100%;background:#55ee72;box-shadow:0 0 10px rgba(85,238,114,.35)}
+  .officialRmtActions{grid-row:1;grid-column:2;min-width:84px}
+  .officialRmtActions a{min-height:38px;padding:0 7px;font-size:.5rem}
+  .officialRmtActions a:last-child{display:none}
   .feed.panel.rmtDiscovery{margin-top:6px;border-right:0;border-left:0}
   .rmtDiscovery .feedHeading{align-items:flex-start;min-height:0;padding:8px;gap:7px}
   .rmtDiscovery .feedHeading h2{font-size:.86rem}
@@ -662,6 +702,16 @@ main:has(.rmtDiscovery){max-width:none;padding:0 10px 36px}
   .terminalIntro .trustStrip span:nth-child(2n){border-right:0}
   .terminalIntro .trustStrip span:nth-child(-n+2){border-bottom:1px solid var(--terminal-line)}
   .terminalIntro .trustStrip b{display:inline;font-size:.58rem}
+  .officialRmtMarket{gap:11px;padding:13px 10px}
+  .officialRmtIdentity{grid-template-columns:44px minmax(0,1fr)}
+  .officialRmtArtwork{width:44px;height:44px;border-radius:11px}
+  .officialRmtIdentity .eyebrow{font-size:.57rem}
+  .officialRmtIdentity h2{font-size:.84rem}
+  .officialRmtActions{min-width:104px}
+  .officialRmtActions a{min-height:44px;font-size:.57rem}
+  .officialRmtMetrics{padding-top:10px}
+  .officialRmtMetrics dt{font-size:.47rem}
+  .officialRmtMetrics dd{font-size:.61rem}
 
   .feed.panel.rmtDiscovery{margin-top:8px}
   .rmtDiscovery .feedHeading{gap:9px;padding:13px 10px}
@@ -786,6 +836,12 @@ main:has(.rmtDiscovery){max-width:none;padding:0 10px 36px}
   .terminalIntro .trustStrip{margin:0;border-color:#26372c;border-radius:12px;background:rgba(5,9,6,.7)}
   .terminalIntro .trustStrip span{flex:1;min-height:44px;padding:9px 14px;font-size:.63rem}
   .terminalIntro .trustStrip b{font-size:.55rem}
+  .officialRmtMarket{margin-top:10px;padding:13px 15px;border-color:#295235;border-radius:14px}
+  .officialRmtArtwork{width:46px;height:46px;border-radius:11px}
+  .officialRmtIdentity{grid-template-columns:46px minmax(0,1fr)}
+  .officialRmtIdentity h2{font-size:.9rem}
+  .officialRmtIdentity>div>p:last-child{font-size:.61rem}
+  .officialRmtActions a{min-height:38px;border-radius:8px;font-size:.61rem}
 
   .feed.panel.rmtDiscovery{margin-top:10px;border-color:#24332a;border-radius:16px;box-shadow:0 24px 80px rgba(0,0,0,.24)}
   .rmtDiscovery .feedHeading{min-height:82px;padding:14px 16px}
