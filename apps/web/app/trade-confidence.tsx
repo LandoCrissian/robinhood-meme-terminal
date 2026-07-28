@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import type { ExternalMarket } from "../lib/external-market";
 import type { ExternalMarketRiskFlag } from "../lib/external-market-ranking";
 import { formatOwnershipBps, type TokenRiskEvidenceState } from "../lib/token-risk-evidence";
+import { tokenRiskDecision } from "../lib/token-risk-policy";
 import { PRICE_IMPACT_BLOCK, PRICE_IMPACT_CAUTION } from "../lib/trade-ticket";
 
 const WARNING_COPY: Record<ExternalMarketRiskFlag, string> = {
@@ -35,9 +36,7 @@ export function tradeIsBlockedByEvidence(
   evidenceState: TokenRiskEvidenceState,
   side: "buy" | "sell"
 ) {
-  return side === "buy"
-    && evidenceState.status === "ready"
-    && evidenceState.evidence.sellSimulation.status === "blocked";
+  return tokenRiskDecision(evidenceState, side).state === "blocked";
 }
 
 export function TradeConfidence({
@@ -57,7 +56,8 @@ export function TradeConfidence({
     && market.venue.dexId.toLowerCase().includes("sushi");
   const requiresAcknowledgement = tradeRequiresAcknowledgement(market, side);
   const excessivePriceImpact = priceImpact !== undefined && priceImpact > PRICE_IMPACT_BLOCK;
-  const evidenceBlocked = tradeIsBlockedByEvidence(evidenceState, side);
+  const evidenceDecision = tokenRiskDecision(evidenceState, side);
+  const evidenceBlocked = evidenceDecision.state === "blocked";
   const tradeBlocked = excessivePriceImpact || evidenceBlocked;
   const evidence = evidenceState.evidence;
   const sourceTransparent = evidence?.contract.sourcePublished === true
@@ -98,7 +98,7 @@ export function TradeConfidence({
   }, [tradeBlocked]);
 
   const confidenceHeading = evidenceBlocked
-    ? "Buy blocked: sell transfer failed"
+    ? `Buy blocked: ${evidenceDecision.primaryFinding?.label.toLowerCase() ?? "evidence failed"}`
     : excessivePriceImpact
       ? "Trade blocked: extreme price impact"
       : requiresAcknowledgement
@@ -148,6 +148,16 @@ export function TradeConfidence({
                   : `${formatOwnershipBps(largestHolderBps)} largest non-pool holder`
             }</span>
           </div>
+
+          {evidenceDecision.findings.length > 0 && (
+            <div className="tradeConfidenceChecks" aria-label="Deterministic evidence decision">
+              {evidenceDecision.findings.map((finding) => (
+                <span className="warn" key={finding.code}>
+                  <i />{finding.label}
+                </span>
+              ))}
+            </div>
+          )}
 
           {evidence && (
             <dl className="tradeConfidenceEvidence">
