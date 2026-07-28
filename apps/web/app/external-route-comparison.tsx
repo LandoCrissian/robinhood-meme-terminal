@@ -1,10 +1,22 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { formatUnits, parseEther, parseUnits, type Address } from "viem";
+import {
+  encodeFunctionData,
+  erc20Abi,
+  formatEther,
+  formatUnits,
+  parseEther,
+  parseUnits,
+  type Address,
+  type Hex
+} from "viem";
 import { useAccount, useReadContract } from "wagmi";
-import { erc20Abi } from "viem";
 import type { ExternalMarket } from "../lib/external-market";
+import { estimatedNetworkFeeUsd } from "../lib/trade-ticket";
+import { SUSHI_RED_SNWAPPER } from "../lib/sushi";
+import { ROBINHOOD_SWAP_ROUTER_02 } from "../lib/uniswap-v4";
+import { useTradeFeeEstimate } from "../lib/use-trade-fee-estimate";
 
 type TradeVenue = {
   venue: "sushi" | "uniswap";
@@ -19,6 +31,13 @@ type QuoteSummary = {
   quoteOut: string;
   minimumOut: string;
   priceImpact: number;
+  deadline: string;
+  executable: boolean;
+  router?: Address;
+  calldata?: Hex;
+  value?: string;
+  approvalRequired: boolean;
+  approvalSpender: Address;
   outputToken: {
     address: Address;
     symbol: string;
@@ -47,6 +66,68 @@ function liquidity(value: number) {
     notation: value >= 1_000_000 ? "compact" : "standard",
     maximumFractionDigits: 0
   });
+}
+
+function feeEth(value: bigint | undefined) {
+  if (value === undefined || value <= 0n) return "Unavailable";
+  return `${Number(formatEther(value)).toLocaleString(undefined, {
+    maximumFractionDigits: 8,
+    minimumSignificantDigits: 2
+  })} ETH`;
+}
+
+function RouteNextCost({
+  quote,
+  token,
+  side,
+  amountIn,
+  account
+}: {
+  quote: QuoteSummary;
+  token: Address;
+  side: "buy" | "sell";
+  amountIn: bigint;
+  account: Address;
+}) {
+  const allowance = useReadContract({
+    address: token,
+    abi: erc20Abi,
+    functionName: "allowance",
+    args: [account, quote.approvalSpender],
+    chainId: ROBINHOOD_CHAIN_ID,
+    query: { enabled: side === "sell", retry: false }
+  });
+  const needsApproval = side === "sell" && (
+    quote.approvalRequired
+    || (allowance.data !== undefined && allowance.data < amountIn)
+  );
+  const approvalData = needsApproval
+    ? encodeFunctionData({
+        abi: erc20Abi,
+        functionName: "approve",
+        args: [quote.approvalSpender, amountIn]
+      })
+    : undefined;
+  const fee = useTradeFeeEstimate({
+    account,
+    to: needsApproval ? token : quote.router,
+    data: needsApproval ? approvalData : quote.calldata,
+    value: needsApproval ? 0n : quote.value ? BigInt(quote.value) : 0n,
+    enabled: amountIn > 0n && (
+      needsApproval
+      || (quote.executable && Boolean(quote.router && quote.calldata))
+    )
+  });
+  const usd = estimatedNetworkFeeUsd(fee.feeWei, fee.ethUsd);
+  return (
+    <span className="universalVenueFee">
+      {fee.status === "loading"
+        ? "Next network fee: checking…"
+        : fee.status === "ready"
+          ? `Next ${needsApproval ? "approval" : "swap"}: ${feeEth(fee.feeWei)}${usd !== undefined ? ` · ${usd < 0.01 ? "<$0.01" : `$${usd.toFixed(2)}`}` : ""}`
+          : needsApproval || quote.executable ? "Next network fee: wallet confirms" : "Approve first to price swap gas"}
+    </span>
+  );
 }
 
 export function ExternalRouteComparison({
@@ -121,6 +202,8 @@ export function ExternalRouteComparison({
           if (!response.ok) throw new Error(typeof payload.error === "string" ? payload.error : "Quote unavailable.");
           const expectedVenue = candidate.venue === "sushi" ? "sushi-aggregator" : "uniswap-v3";
           const output = payload.outputToken as Record<string, unknown> | undefined;
+          const executable = payload.executable === true;
+          const deadline = candidate.venue === "sushi" ? payload.quoteExpiresAt : payload.deadline;
           if (
             payload.marketVerified !== true
             || payload.venue !== expectedVenue
@@ -138,6 +221,16 @@ export function ExternalRouteComparison({
             || !Number.isFinite(payload.priceImpact)
             || payload.priceImpact < 0
             || payload.priceImpact > 1
+            || typeof deadline !== "string"
+            || !/^\d+$/.test(deadline)
+            || BigInt(deadline) <= BigInt(Math.floor(Date.now() / 1000) + 15)
+            || (candidate.venue === "uniswap" && !executable)
+            || (executable && (
+              typeof payload.router !== "string"
+              || typeof payload.calldata !== "string"
+              || !payload.calldata.startsWith("0x")
+              || typeof payload.value !== "string"
+            ))
             || !output
             || typeof output.address !== "string"
             || typeof output.symbol !== "string"
@@ -154,6 +247,15 @@ export function ExternalRouteComparison({
             quoteOut: payload.quoteOut,
             minimumOut: payload.minimumOut,
             priceImpact: payload.priceImpact,
+            deadline,
+            executable,
+            router: executable ? payload.router as Address : undefined,
+            calldata: executable ? payload.calldata as Hex : undefined,
+            value: executable ? payload.value as string : undefined,
+            approvalRequired: payload.approvalRequired === true,
+            approvalSpender: candidate.venue === "sushi"
+              ? SUSHI_RED_SNWAPPER
+              : ROBINHOOD_SWAP_ROUTER_02,
             outputToken: {
               address: output.address as Address,
               symbol: output.symbol.slice(0, 20),
@@ -225,13 +327,22 @@ export function ExternalRouteComparison({
                     : address && amountIn > 0n ? "Route unavailable" : "Select venue"}
               </span>
               {quote && <span>{(quote.priceImpact * 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}% impact</span>}
+              {quote && address && (
+                <RouteNextCost
+                  quote={quote}
+                  token={token}
+                  side={side}
+                  amountIn={amountIn}
+                  account={address}
+                />
+              )}
             </button>
           );
         })}
       </div>
       <p>
-        Recommendation compares protected minimum output for the same amount—not guaranteed final value.
-        The selected ticket separately estimates network cost and rebuilds the transaction before signing.
+        Recommendation compares protected minimum output for the same amount—not guaranteed net value.
+        Each fee is the next wallet action only; the selected ticket rebuilds and rechecks the final transaction before signing.
       </p>
     </section>
   );
