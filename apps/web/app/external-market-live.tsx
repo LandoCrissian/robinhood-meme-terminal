@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { erc20Abi, formatUnits, type Address } from "viem";
 import { useAccount, useReadContract } from "wagmi";
 import type { ExternalMarket } from "../lib/external-market";
-import type { ExternalPoolTradesPayload } from "../lib/external-trades";
+import { summarizeExternalTradeActors, type ExternalPoolTradesPayload } from "../lib/external-trades";
 import { formatOwnershipBps } from "../lib/token-risk-evidence";
 import { useTokenRiskEvidence } from "../lib/use-token-risk-evidence";
 
@@ -112,6 +112,15 @@ export function ExternalTradeTape({ market }: { market: ExternalMarket }) {
     };
   }, [market.address, market.pairAddress]);
 
+  const actorSummary = useMemo(
+    () => summarizeExternalTradeActors(payload?.trades ?? []),
+    [payload?.trades]
+  );
+  const largestNetActor = (
+    Math.abs(actorSummary.largestNetBuyer?.netVolumeUsd ?? 0)
+    >= Math.abs(actorSummary.largestNetSeller?.netVolumeUsd ?? 0)
+  ) ? actorSummary.largestNetBuyer : actorSummary.largestNetSeller;
+
   return (
     <section className="universalTradeTape" aria-labelledby="universal-trade-tape-heading">
       <header>
@@ -119,22 +128,53 @@ export function ExternalTradeTape({ market }: { market: ExternalMarket }) {
         <span>{status === "loading" ? "Syncing…" : status === "error" ? "Retrying" : `${payload?.trades.length ?? 0} shown · 10s`}</span>
       </header>
       {payload?.trades.length ? (
-        <div className="universalTradeTapeList">
-          {payload.trades.map((trade) => (
-            <a href={`${EXPLORER}/tx/${trade.transactionHash}`} target="_blank" rel="noopener noreferrer" key={trade.id}>
-              <span className={trade.side}>{trade.side.toUpperCase()}</span>
-              <span><strong>{compact(trade.tokenAmount)} {market.symbol}</strong><small>{shortAddress(trade.trader)}</small></span>
-              <span><strong>${compact(trade.volumeUsd)}</strong><small>{relativeTime(trade.timestamp)} ago ↗</small></span>
-            </a>
-          ))}
-        </div>
+        <>
+          <div className="universalActorSummary" aria-label="Recent pool actor summary">
+            <span><small>ACTIVE WALLETS</small><strong>{actorSummary.uniqueActors}</strong></span>
+            <span><small>REPEAT WALLETS</small><strong>{actorSummary.repeatActors}</strong></span>
+            <span>
+              <small>LARGEST VISIBLE FLOW</small>
+              <strong className={largestNetActor?.netVolumeUsd && largestNetActor.netVolumeUsd < 0 ? "sell" : "buy"}>
+                {largestNetActor
+                  ? `${largestNetActor.netVolumeUsd < 0 ? "−" : "+"}$${compact(Math.abs(largestNetActor.netVolumeUsd))}`
+                  : "—"}
+              </strong>
+            </span>
+          </div>
+          <div className="universalActorList" aria-label="Most active recent pool wallets">
+            <div className="universalActorListHeading">
+              <span>RECENT ACTORS</span><span>BUYS / SELLS</span><span>VISIBLE NET FLOW</span>
+            </div>
+            {actorSummary.actors.slice(0, 5).map((actor) => (
+              <a href={`${EXPLORER}/address/${actor.trader}`} target="_blank" rel="noopener noreferrer" key={actor.trader}>
+                <span><strong>{shortAddress(actor.trader)}</strong><small>{relativeTime(actor.lastTimestamp)} ago ↗</small></span>
+                <span><b className="buy">{actor.buyCount}</b> / <b className="sell">{actor.sellCount}</b></span>
+                <strong className={actor.netVolumeUsd < 0 ? "sell" : "buy"}>
+                  {actor.netVolumeUsd < 0 ? "−" : "+"}${compact(Math.abs(actor.netVolumeUsd))}
+                </strong>
+              </a>
+            ))}
+          </div>
+          <details className="universalTradeTapeDetails">
+            <summary>View latest confirmed swaps</summary>
+            <div className="universalTradeTapeList">
+              {payload.trades.map((trade) => (
+                <a href={`${EXPLORER}/tx/${trade.transactionHash}`} target="_blank" rel="noopener noreferrer" key={trade.id}>
+                  <span className={trade.side}>{trade.side.toUpperCase()}</span>
+                  <span><strong>{compact(trade.tokenAmount)} {market.symbol}</strong><small>{shortAddress(trade.trader)}</small></span>
+                  <span><strong>${compact(trade.volumeUsd)}</strong><small>{relativeTime(trade.timestamp)} ago ↗</small></span>
+                </a>
+              ))}
+            </div>
+          </details>
+        </>
       ) : (
         <div className="universalTradeTapeEmpty">
           <strong>{status === "error" ? "Trade tape delayed" : status === "loading" ? "Loading confirmed swaps…" : "No recent swaps"}</strong>
           <span>{status === "error" ? "The workspace will retry automatically." : "New pool activity will appear here automatically."}</span>
         </div>
       )}
-      <footer>Read-only activity from the exact displayed pool · source: GeckoTerminal</footer>
+      <footer>Latest {payload?.trades.length ?? 0} swaps from the exact pool only · visible flow is not P&amp;L, identity, or a copy signal · source: GeckoTerminal</footer>
     </section>
   );
 }

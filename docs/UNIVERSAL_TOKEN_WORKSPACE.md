@@ -69,6 +69,24 @@ estimate current value using the displayed market price. RMT intentionally
 withholds cost basis and unrealized P&L until complete wallet history can be
 proven; current value is not presented as profit.
 
+### Recent actor intelligence
+
+RMT groups the latest confirmed pool swaps by visible sending wallet so users
+can distinguish one-off activity from repeat participation. The compact view
+shows:
+
+- unique and repeat wallets in the displayed sample;
+- each wallet's observed buy and sell count;
+- gross activity ranked by visible dollar volume;
+- signed net buy or sell flow inside the sample; and
+- direct Blockscout address links for independent review.
+
+This is deliberately not called smart money, wallet identity, copy trading, or
+profit. The public feed supplies only the latest pool swaps, a router or bot can
+appear as a trader, and a wallet's activity elsewhere is not included. RMT
+labels the result as visible flow and keeps the underlying transaction tape
+available for verification.
+
 ## Holder intelligence
 
 The Safety tab converts the same server-validated Blockscout evidence used by
