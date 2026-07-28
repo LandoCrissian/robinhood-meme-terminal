@@ -146,6 +146,9 @@ assert.ok(mobileDock, "Mobile navigation must remain present");
 assert.match(mobileDock, /href="\/explore"/);
 assert.match(mobileDock, /href="\/watchlist"/);
 assert.doesNotMatch(mobileDock, /href="\/status"/);
+assert.doesNotMatch(mobileDock, /github\.com\/sponsors/);
+
+assert.match(chromeSource, /https:\/\/github\.com\/sponsors\/LandoCrissian/);
 assert.match(chromeSource, /Help &amp; safety[\s\S]*?href="\/status"/);
 assert.doesNotMatch(chromeSource, /const MORE_PREFIXES = \[[^\]]*"\/explore"/);
 
