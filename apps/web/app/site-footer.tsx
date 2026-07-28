@@ -9,6 +9,7 @@ export function SiteFooter() {
       <Link href="/risks">Risks</Link>
       <Link href="/support">Support</Link>
       <Link href="/status">Status</Link>
+      <a href="https://github.com/sponsors/LandoCrissian" target="_blank" rel="noreferrer">Support RMT ↗</a>
       {isMainnetRelease && <span className="betaDisclosure">Mainnet beta · Contracts are not independently audited</span>}
       <span>Robinhood Meme Terminal is independent software and is not Robinhood Markets, Inc. or an endorsement by Robinhood.</span>
     </footer>
