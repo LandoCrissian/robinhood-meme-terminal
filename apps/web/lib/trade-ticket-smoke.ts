@@ -15,6 +15,7 @@ import {
   normalizeBuyPreset,
   normalizeTradePreferences
 } from "./trade-preferences";
+import { resilientTradeVenue } from "./trade-route-selection";
 
 assert.equal(spendableTradeBalance(100n, 20n), 80n);
 assert.equal(spendableTradeBalance(20n, 20n), 0n);
@@ -55,5 +56,29 @@ assert.deepEqual(normalizeTradePreferences({ buyAmounts: ["0.0002", "0.002", "0.
 });
 assert.deepEqual(normalizeTradePreferences({ buyAmounts: ["0.01", "0.01", "0.02"] }), DEFAULT_TRADE_PREFERENCES);
 assert.deepEqual(normalizeTradePreferences({ buyAmounts: ["bad"] }), DEFAULT_TRADE_PREFERENCES);
+assert.equal(resilientTradeVenue({
+  selected: "sushi",
+  mode: "automatic",
+  venues: ["sushi", "uniswap"],
+  health: { sushi: "unavailable", uniswap: "ready" }
+}), "uniswap");
+assert.equal(resilientTradeVenue({
+  selected: "sushi",
+  mode: "manual",
+  venues: ["sushi", "uniswap"],
+  health: { sushi: "unavailable", uniswap: "ready" }
+}), "sushi");
+assert.equal(resilientTradeVenue({
+  selected: "sushi",
+  mode: "automatic",
+  venues: ["sushi", "uniswap"],
+  health: { sushi: "loading", uniswap: "ready" }
+}), "sushi");
+assert.equal(resilientTradeVenue({
+  selected: "sushi",
+  mode: "automatic",
+  venues: ["sushi", "uniswap"],
+  health: { sushi: "unavailable", uniswap: "unavailable" }
+}), "sushi");
 
 console.log("Trade ticket sizing, freshness, and impact classifications passed.");

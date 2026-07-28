@@ -15,6 +15,12 @@ import {
   type ExternalOhlcvPayload
 } from "../lib/external-ohlcv";
 import { ipfsToHttp } from "../lib/token-metadata";
+import {
+  resilientTradeVenue,
+  type TradeVenueHealth,
+  type TradeVenueId,
+  type TradeVenueSelectionMode
+} from "../lib/trade-route-selection";
 import { ExternalMarketChart } from "./external-market-chart";
 import { ExternalHolderIntelligence, ExternalTradeTape, ExternalWalletPosition } from "./external-market-live";
 import { ExternalRouteComparison } from "./external-route-comparison";
@@ -104,6 +110,9 @@ export function ExternalMarketWorkspace() {
   const [tradeVenues, setTradeVenues] = useState<TradeVenue[]>([]);
   const [tradeVenueStatus, setTradeVenueStatus] = useState<"loading" | "ready" | "error">("loading");
   const [selectedTradeVenue, setSelectedTradeVenue] = useState<"sushi" | "uniswap" | null>(null);
+  const [tradeVenueHealth, setTradeVenueHealth] = useState<Partial<Record<TradeVenueId, TradeVenueHealth>>>({});
+  const [tradeVenueSelectionMode, setTradeVenueSelectionMode] = useState<TradeVenueSelectionMode>("automatic");
+  const [tradeVenueNotice, setTradeVenueNotice] = useState("");
   const [mobileTradeOpen, setMobileTradeOpen] = useState(false);
   const tradeRef = useRef<HTMLElement>(null);
   const tradeReturnFocus = useRef<HTMLElement>(null);
@@ -226,6 +235,9 @@ export function ExternalMarketWorkspace() {
     setTradeVenueStatus("loading");
     setTradeVenues([]);
     setSelectedTradeVenue(null);
+    setTradeVenueHealth({});
+    setTradeVenueSelectionMode("automatic");
+    setTradeVenueNotice("");
     const query = new URLSearchParams({ token: marketAddress });
     void fetch(`/api/trade/external-venues?${query}`, {
       cache: "no-store",
@@ -298,6 +310,32 @@ export function ExternalMarketWorkspace() {
       all.findIndex((item) => item.venue === candidate.venue) === index
     ))
   ), [tradeVenues]);
+  const tradeVenueIds = useMemo(() => tradeVenueOptions.map((candidate) => candidate.venue), [tradeVenueOptions]);
+
+  useEffect(() => {
+    const resilientVenue = resilientTradeVenue({
+      selected: selectedTradeVenue,
+      mode: tradeVenueSelectionMode,
+      venues: tradeVenueIds,
+      health: tradeVenueHealth
+    });
+    if (resilientVenue !== selectedTradeVenue) {
+      const previous = selectedTradeVenue === "sushi" ? "Sushi" : "Uniswap";
+      const next = resilientVenue === "sushi" ? "Sushi" : "Uniswap";
+      setSelectedTradeVenue(resilientVenue);
+      setTradeVenueNotice(`${previous} became unavailable. RMT moved this order to the verified ${next} route.`);
+      return;
+    }
+    if (
+      tradeVenueSelectionMode === "manual"
+      && selectedTradeVenue
+      && tradeVenueHealth[selectedTradeVenue] === "unavailable"
+      && tradeVenueIds.some((venue) => venue !== selectedTradeVenue && tradeVenueHealth[venue] === "ready")
+    ) {
+      setTradeVenueNotice("Your selected route is unavailable. Choose the verified alternative or resume automatic routing.");
+    }
+  }, [selectedTradeVenue, tradeVenueHealth, tradeVenueIds, tradeVenueSelectionMode]);
+
   const activeTradeVenue = tradeVenueOptions.find((candidate) => candidate.venue === selectedTradeVenue);
   const tradingMarket = market && activeTradeVenue
     ? {
@@ -307,6 +345,29 @@ export function ExternalMarketWorkspace() {
         liquidityUsd: activeTradeVenue.liquidityUsd
       }
     : undefined;
+  const selectTradeVenue = (venue: TradeVenueId) => {
+    setSelectedTradeVenue(venue);
+    setTradeVenueSelectionMode("manual");
+    setTradeVenueNotice(`${venue === "sushi" ? "Sushi" : "Uniswap"} selected by you. RMT will not replace a manual route.`);
+  };
+  const resumeAutomaticRouting = () => {
+    const resilientVenue = resilientTradeVenue({
+      selected: selectedTradeVenue,
+      mode: "automatic",
+      venues: tradeVenueIds,
+      health: tradeVenueHealth
+    });
+    setTradeVenueSelectionMode("automatic");
+    setSelectedTradeVenue(resilientVenue);
+    setTradeVenueNotice("Automatic fallback restored. RMT changes venues only when the selected route is unavailable.");
+  };
+  const routeDecision = tradeVenueNotice || (
+    tradeVenueOptions.length === 1
+      ? "This is the only independently verified in-site route currently available."
+      : selectedTradeVenue === preferredVenue
+        ? "Matches this market’s verified venue. Protected output from alternatives is compared below."
+        : "Selected from the independently verified routes discovered for this token."
+  );
 
   if (!tokenAddress) {
     return <main className="universalMarketPage professionalTradeWorkspace"><Link href="/">← Terminal</Link><section className="universalWorkspaceState"><h1>Invalid market address</h1><p>Open a qualified market from RMT Terminal.</p></section></main>;
@@ -491,6 +552,16 @@ export function ExternalMarketWorkspace() {
             <button type="button" role="tab" aria-selected={side === "buy"} className={side === "buy" ? "active" : ""} onClick={() => setTradeSide("buy")}>Buy</button>
             <button type="button" role="tab" aria-selected={side === "sell"} className={side === "sell" ? "active" : ""} onClick={() => setTradeSide("sell")}>Sell</button>
           </div>
+          {activeTradeVenue && (
+            <div className={`universalRouteDecision ${tradeVenueSelectionMode}`} role="status">
+              <span>
+                <small>{tradeVenueSelectionMode === "automatic" ? "AUTOMATIC ROUTE" : "MANUAL ROUTE"}</small>
+                <strong>{activeTradeVenue.venue === "sushi" ? "Sushi" : "Uniswap"}</strong>
+              </span>
+              <p>{routeDecision}</p>
+              {tradeVenueSelectionMode === "manual" && <button type="button" onClick={resumeAutomaticRouting}>Use automatic</button>}
+            </div>
+          )}
           {tradeVenueOptions.length > 1 && (
             <ExternalRouteComparison
               market={market}
@@ -498,7 +569,8 @@ export function ExternalMarketWorkspace() {
               side={side}
               amount={tradeAmount}
               selectedVenue={selectedTradeVenue}
-              onSelectVenue={setSelectedTradeVenue}
+              onSelectVenue={selectTradeVenue}
+              onHealthChange={setTradeVenueHealth}
             />
           )}
           {tradeVenueStatus === "loading" && <div className="universalTradeUnavailable"><strong>Verifying execution venues…</strong><p>Matching independent pool and onchain evidence for this token.</p></div>}
