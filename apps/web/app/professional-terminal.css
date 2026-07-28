@@ -883,7 +883,7 @@
   }
 
   .terminalPage .runnerMarketCard.externalMarketCard {
-    grid-template-columns: 44px minmax(0, 1fr) 104px;
+    grid-template-columns: 58px minmax(0, 1fr) 102px;
   }
 }
 
