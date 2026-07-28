@@ -245,6 +245,7 @@ export function ExternalMarketWorkspace() {
     setTradeVenueSelectionMode("automatic");
     setTradeVenueNotice("");
     const query = new URLSearchParams({ token: marketAddress });
+    if (tradeVenueRefresh > 0) query.set("refresh", "1");
     void fetch(`/api/trade/external-venues?${query}`, {
       cache: "no-store",
       signal: controller.signal
