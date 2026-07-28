@@ -24,6 +24,13 @@ import { WatchlistButton } from "./watchlist-button";
 
 type WorkspaceTab = "activity" | "safety" | "origin";
 type TradeSide = "buy" | "sell";
+type TradeVenue = {
+  venue: "sushi" | "uniswap";
+  pair: Address;
+  dexId: string;
+  liquidityUsd: number;
+  verification: "dex-and-route" | "dex-and-onchain";
+};
 
 function money(value: number, price = false) {
   if (!Number.isFinite(value) || value <= 0) return "—";
@@ -92,6 +99,9 @@ export function ExternalMarketWorkspace() {
   const [chartStatus, setChartStatus] = useState<"loading" | "ready" | "error">("loading");
   const [chartError, setChartError] = useState<string>();
   const [copied, setCopied] = useState(false);
+  const [tradeVenues, setTradeVenues] = useState<TradeVenue[]>([]);
+  const [tradeVenueStatus, setTradeVenueStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [selectedTradeVenue, setSelectedTradeVenue] = useState<"sushi" | "uniswap" | null>(null);
   const tradeRef = useRef<HTMLElement>(null);
 
   const refreshMarket = useCallback(async () => {
@@ -152,6 +162,49 @@ export function ExternalMarketWorkspace() {
     return () => controller.abort();
   }, [market, range]);
 
+  useEffect(() => {
+    if (!market) return;
+    const controller = new AbortController();
+    setTradeVenueStatus("loading");
+    setTradeVenues([]);
+    setSelectedTradeVenue(null);
+    const query = new URLSearchParams({ token: market.address });
+    void fetch(`/api/trade/external-venues?${query}`, {
+      cache: "no-store",
+      signal: controller.signal
+    }).then(async (response) => {
+      const payload = await response.json() as { token?: string; venues?: TradeVenue[]; error?: string };
+      if (
+        !response.ok
+        || !payload.token
+        || payload.token.toLowerCase() !== market.address.toLowerCase()
+        || !Array.isArray(payload.venues)
+      ) throw new Error(payload.error ?? "Execution venues unavailable.");
+      const verified = payload.venues.filter((candidate) => (
+        (candidate.venue === "sushi" || candidate.venue === "uniswap")
+        && isAddress(candidate.pair)
+        && typeof candidate.dexId === "string"
+        && Number.isFinite(candidate.liquidityUsd)
+        && candidate.liquidityUsd > 0
+        && (candidate.verification === "dex-and-route" || candidate.verification === "dex-and-onchain")
+      ));
+      const preferred = venueKind(market);
+      setTradeVenues(verified);
+      setSelectedTradeVenue(
+        preferred && verified.some((candidate) => candidate.venue === preferred)
+          ? preferred
+          : verified[0]?.venue ?? null
+      );
+      setTradeVenueStatus("ready");
+    }).catch(() => {
+      if (controller.signal.aborted) return;
+      setTradeVenueStatus("error");
+      setTradeVenues([]);
+      setSelectedTradeVenue(null);
+    });
+    return () => controller.abort();
+  }, [market]);
+
   const setTradeSide = (next: TradeSide, focus = false) => {
     setSide(next);
     const url = new URL(window.location.href);
@@ -176,6 +229,20 @@ export function ExternalMarketWorkspace() {
     { label: "1h", buys: market.buys1h, sells: market.sells1h, volume: market.volume1h },
     { label: "24h", buys: market.buys24h, sells: market.sells24h, volume: market.volume24h }
   ] : [], [market]);
+  const tradeVenueOptions = useMemo(() => (
+    tradeVenues.filter((candidate, index, all) => (
+      all.findIndex((item) => item.venue === candidate.venue) === index
+    ))
+  ), [tradeVenues]);
+  const activeTradeVenue = tradeVenueOptions.find((candidate) => candidate.venue === selectedTradeVenue);
+  const tradingMarket = market && activeTradeVenue
+    ? {
+        ...market,
+        pairAddress: activeTradeVenue.pair,
+        dexId: activeTradeVenue.dexId,
+        liquidityUsd: activeTradeVenue.liquidityUsd
+      }
+    : undefined;
 
   if (!tokenAddress) {
     return <main className="universalMarketPage"><Link href="/">← Terminal</Link><section className="universalWorkspaceState"><h1>Invalid market address</h1><p>Open a qualified market from RMT Terminal.</p></section></main>;
@@ -187,7 +254,6 @@ export function ExternalMarketWorkspace() {
     return <main className="universalMarketPage"><Link href="/">← Terminal</Link><section className="universalWorkspaceState"><p className="eyebrow">MARKET UNAVAILABLE</p><h1>This market is not in RMT’s qualified index</h1><p>RMT hides execution when the current token and pool cannot be matched to a live indexed market.</p><button type="button" onClick={() => void refreshMarket()}>Retry verification</button></section></main>;
   }
 
-  const venue = venueKind(market);
   const valuation = market.marketCapUsd > 0 ? market.marketCapUsd : market.fdvUsd;
   const oneHourTrades = market.buys1h + market.sells1h;
   const buyPressure = oneHourTrades > 0 ? Math.round(market.buyPressureBps / 100) : 0;
@@ -326,9 +392,30 @@ export function ExternalMarketWorkspace() {
             <button type="button" role="tab" aria-selected={side === "buy"} className={side === "buy" ? "active" : ""} onClick={() => setTradeSide("buy")}>Buy</button>
             <button type="button" role="tab" aria-selected={side === "sell"} className={side === "sell" ? "active" : ""} onClick={() => setTradeSide("sell")}>Sell</button>
           </div>
-          {venue === "sushi" && <ExternalSushiQuotePanel market={market} side={side} />}
-          {venue === "uniswap" && <ExternalUniswapTradePanel market={market} side={side} />}
-          {!venue && <div className="universalTradeUnavailable"><strong>Read-only market</strong><p>RMT does not have a verified in-site execution route for this venue.</p></div>}
+          {tradeVenueOptions.length > 1 && (
+            <div className="universalVenueSelector" aria-label="Execution venue">
+              <small>EXECUTION VENUE</small>
+              <div>
+                {tradeVenueOptions.map((candidate) => (
+                  <button
+                    type="button"
+                    className={selectedTradeVenue === candidate.venue ? "active" : ""}
+                    aria-pressed={selectedTradeVenue === candidate.venue}
+                    onClick={() => setSelectedTradeVenue(candidate.venue)}
+                    key={candidate.venue}
+                  >
+                    <strong>{candidate.venue === "sushi" ? "Sushi" : "Uniswap"}</strong>
+                    <span>{money(candidate.liquidityUsd)} verified liquidity</span>
+                  </button>
+                ))}
+              </div>
+              <p>RMT re-verifies the selected pool and route before every quote. Venue choice is not a best-price guarantee.</p>
+            </div>
+          )}
+          {tradeVenueStatus === "loading" && <div className="universalTradeUnavailable"><strong>Verifying execution venues…</strong><p>Matching independent pool and onchain evidence for this token.</p></div>}
+          {tradingMarket && activeTradeVenue?.venue === "sushi" && <ExternalSushiQuotePanel market={tradingMarket} side={side} />}
+          {tradingMarket && activeTradeVenue?.venue === "uniswap" && <ExternalUniswapTradePanel market={tradingMarket} side={side} />}
+          {tradeVenueStatus !== "loading" && !tradingMarket && <div className="universalTradeUnavailable"><strong>Read-only market</strong><p>RMT did not find a currently verified in-site execution route for this token.</p></div>}
           <footer><span>Non-custodial</span><span>Fresh quote</span><span>Wallet signs</span></footer>
         </aside>
       </div>
