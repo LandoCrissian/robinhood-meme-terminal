@@ -5,6 +5,7 @@ import { encodeFunctionData, formatEther, formatUnits, maxUint256, parseEther, p
 import { useAccount, useBalance, useCapabilities, usePublicClient, useReadContract, useSendCalls, useWaitForCallsStatus, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { activeChain, isMainnetRelease } from "../lib/network";
 import { formatTokenEthPrice, formatUsd } from "../lib/price-format";
+import { curvePriceImpact, priceImpactTone } from "../lib/trade-ticket";
 import { useLaunchRecord, type LaunchRecordHint } from "../lib/use-launch-record";
 import { useTradingTermsAcceptance } from "../lib/use-trading-terms";
 import { PriceHistoryChart, type PricePoint } from "./price-history-chart";
@@ -349,6 +350,17 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply, creator, compac
   const sellValueUsd = ethUsd === undefined ? undefined : Number(formatEther(sellOut)) * ethUsd;
   const buyFee = buyQuote.data?.[1] ?? 0n;
   const sellFee = sellQuote.data?.[1] ?? 0n;
+  const buyMinimum = buyOut * 99n / 100n;
+  const sellMinimum = sellOut * 99n / 100n;
+  const curveImpact = mode === "buy"
+    ? curvePriceImpact("buy", priceWei, ethIn > buyFee ? ethIn - buyFee : 0n, buyOut)
+    : curvePriceImpact("sell", priceWei, tokensIn, sellQuote.data?.[2] ?? 0n);
+  const curveImpactTone = priceImpactTone(curveImpact);
+  const curveImpactLabel = curveImpact === undefined
+    ? "Calculating…"
+    : curveImpact > 0 && curveImpact < 0.0001
+      ? "<0.01%"
+      : `${(curveImpact * 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}%`;
   const fairStartMaxTx = totalSupply * BigInt(fairStartMaxTxBps.data ?? 100) / 10_000n;
   const fairStartMaxWallet = totalSupply * BigInt(fairStartMaxWalletBps.data ?? 300) / 10_000n;
   const fairStartBought = fairStartPurchased.data ?? 0n;
@@ -592,13 +604,13 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply, creator, compac
             <div className="usdEstimate">≈ {formatUsd(buyValueUsd)} <span>reference value</span></div>
             {isConnected && walletBalance.data ? <><div className="quickAmounts walletQuickAmounts" aria-label="Quick wallet balance amounts">{[5, 10, 25, 100].map((percent) => { const amount = percent === 100 ? walletSpendableWei : walletSpendableWei * BigInt(percent) / 100n; return <button type="button" key={percent} disabled={amount === 0n} onClick={() => chooseBuyPercent(percent)}><span>{percent === 100 ? "Max" : `${percent}%`}</span><small>{formatEth(amount, 5)} ETH</small></button>; })}</div><small className="walletPresetNote">Based on your Robinhood Chain ETH. Max leaves room for the estimated network fee.</small></> : <div className="quickAmounts" aria-label="Quick dollar amounts">{[1, 5, 10, 25].map((amount) => <button type="button" key={amount} disabled={!ethUsd} onClick={() => chooseBuyUsd(amount)}>${amount}</button>)}</div>}
             {isConnected && walletBalance.data && (walletSpendableWei === 0n || ethIn > walletSpendableWei) && <div className="lowBalancePrompt"><div><strong>{walletSpendableWei === 0n ? "Add ETH before buying" : "This order is above your spendable ETH"}</strong><span>Keep enough ETH for both the purchase and Robinhood Chain network fee.</span></div><FundWalletButton variant="inline" label="Funding options" /></div>}
-            <div className="orderPreview"><div><span>Estimated receive</span><strong>{Number(formatUnits(buyOut, 18)).toLocaleString(undefined, { maximumFractionDigits: 2 })} {symbol}</strong></div><div><span>Platform fee</span><strong>{formatEth(buyFee)} ETH</strong></div></div>
+            <div className="orderPreview executionPreview"><div><span>Estimated receive</span><strong>{Number(formatUnits(buyOut, 18)).toLocaleString(undefined, { maximumFractionDigits: 2 })} {symbol}</strong></div><div><span>Protected minimum</span><strong>{Number(formatUnits(buyMinimum, 18)).toLocaleString(undefined, { maximumFractionDigits: 2 })} {symbol}</strong></div><div><span>Curve price impact</span><strong className={`impactValue ${curveImpactTone}`}>{curveImpactLabel}</strong></div><div><span>Platform fee</span><strong>{formatEth(buyFee)} ETH</strong></div></div>
           </div> : <div className="tradeAmountCard">
             <div className="tradeAmountTop"><span>You sell</span><small>Balance {Number(formatUnits(balance.data ?? 0n, 18)).toLocaleString(undefined, { maximumFractionDigits: 2 })} {symbol}</small></div>
             <div className="tradeInputRow"><input aria-label={`${symbol} amount to sell`} inputMode="decimal" value={sellAmount} onFocus={(event) => event.currentTarget.select()} onChange={(event) => setSellAmount(event.target.value)} /><span>{symbol}</span></div>
             <div className="usdEstimate">≈ {formatUsd(sellValueUsd)} <span>estimated proceeds</span></div>
             <div className="quickAmounts" aria-label="Quick sell percentages">{[25, 50, 75, 100].map((percent) => <button type="button" key={percent} disabled={(balance.data ?? 0n) === 0n} onClick={() => chooseSellPercent(percent)}>{percent === 100 ? "Max" : `${percent}%`}</button>)}</div>
-            <div className="orderPreview"><div><span>Estimated receive</span><strong>{Number(formatEther(sellOut)).toLocaleString(undefined, { maximumFractionDigits: 8 })} ETH</strong></div><div><span>Platform fee</span><strong>{formatEth(sellFee)} ETH</strong></div></div>
+            <div className="orderPreview executionPreview"><div><span>Estimated receive</span><strong>{Number(formatEther(sellOut)).toLocaleString(undefined, { maximumFractionDigits: 8 })} ETH</strong></div><div><span>Protected minimum</span><strong>{Number(formatEther(sellMinimum)).toLocaleString(undefined, { maximumFractionDigits: 8 })} ETH</strong></div><div><span>Curve price impact</span><strong className={`impactValue ${curveImpactTone}`}>{curveImpactLabel}</strong></div><div><span>Platform fee</span><strong>{formatEth(sellFee)} ETH</strong></div></div>
             {needsApproval && isConnected && <p className="approvalNote">{atomicSellAvailable ? "Your wallet supports a one-confirmation approval-and-sell batch." : "Your first sell creates a reusable allowance for this token’s immutable market. Later sells need only the normal transaction confirmation, and you can revoke access at any time."}</p>}
           </div>}
           {!graduated.data && !compact && <div className="tradeDisclosure"><span>Live quote</span><span>1% slippage</span><span>10-minute deadline</span></div>}

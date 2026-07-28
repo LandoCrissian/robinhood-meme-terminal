@@ -26,6 +26,23 @@ export function priceImpactTone(priceImpact: number | undefined): PriceImpactTon
   return "calm";
 }
 
+export function curvePriceImpact(
+  side: "buy" | "sell",
+  spotPriceWei: bigint,
+  inputAmount: bigint,
+  outputAmount: bigint
+) {
+  if (spotPriceWei <= 0n || inputAmount <= 0n || outputAmount <= 0n) return undefined;
+  const executionPriceWei = side === "buy"
+    ? inputAmount * 1_000_000_000_000_000_000n / outputAmount
+    : outputAmount * 1_000_000_000_000_000_000n / inputAmount;
+  const adverseDelta = side === "buy"
+    ? executionPriceWei > spotPriceWei ? executionPriceWei - spotPriceWei : 0n
+    : executionPriceWei < spotPriceWei ? spotPriceWei - executionPriceWei : 0n;
+  const partsPerMillion = adverseDelta * 1_000_000n / spotPriceWei;
+  return Number(partsPerMillion > 10_000_000n ? 10_000_000n : partsPerMillion) / 1_000_000;
+}
+
 export function estimatedNetworkFeeWei(gas: bigint, gasPrice: bigint) {
   if (gas <= 0n || gasPrice <= 0n) return 0n;
   return gas * gasPrice;

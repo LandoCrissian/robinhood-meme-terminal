@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import {
   conservativeNetworkFeeReserve,
+  curvePriceImpact,
   estimatedNetworkFeeUsd,
   estimatedNetworkFeeWei,
   fractionalTradeAmount,
@@ -27,6 +28,10 @@ assert.equal(quoteSecondsRemaining("not-a-deadline", 100), 0);
 assert.equal(priceImpactTone(0.005), "calm");
 assert.equal(priceImpactTone(0.02), "caution");
 assert.equal(priceImpactTone(0.08), "danger");
+assert.equal(curvePriceImpact("buy", 1_000n, 1_050n, 1_000_000_000_000_000_000n), 0.05);
+assert.equal(curvePriceImpact("sell", 1_000n, 1_000_000_000_000_000_000n, 970n), 0.03);
+assert.equal(curvePriceImpact("buy", 1_000n, 0n, 1n), undefined);
+assert.equal(curvePriceImpact("sell", 0n, 1n, 1n), undefined);
 assert.equal(estimatedNetworkFeeWei(100_000n, 75_000_000n), 7_500_000_000_000n);
 assert.equal(estimatedNetworkFeeWei(0n, 75_000_000n), 0n);
 assert.equal(conservativeNetworkFeeReserve(8n, 10n), 16n);
