@@ -20,6 +20,25 @@ Each external workspace combines:
 Opening a workspace does not make a token safe. Execution remains unavailable
 unless the existing venue-specific verification and fresh-quote checks pass.
 
+## Order ticket
+
+The Sushi and canonical Uniswap paths share one order-entry language while
+retaining separate venue verification and transaction construction:
+
+- 25%, 50%, and maximum wallet-balance shortcuts;
+- a network-fee reserve that prevents a native-token maximum from consuming the
+  entire ETH balance;
+- exact wallet and token balance validation;
+- expected and minimum received values;
+- the enforced 1% maximum slippage boundary;
+- a live quote-expiry countdown;
+- price-impact severity that never weakens the existing 10% execution block;
+- a Quote → Evidence → Wallet progress path; and
+- explicit approval, submission, confirmation, and explorer states.
+
+The interface does not expose a cosmetic slippage setting. The displayed
+protection is the value enforced in the server-verified transaction.
+
 ## Market-history dependency
 
 RMT uses CoinGecko's public GeckoTerminal API for read-only OHLCV history:
@@ -58,6 +77,7 @@ data.
 
 ```bash
 pnpm --filter web test:external-ohlcv
+pnpm --filter web test:trade-ticket
 pnpm --filter web test:external-uniswap
 pnpm --filter web test:token-risk
 pnpm --filter web typecheck
