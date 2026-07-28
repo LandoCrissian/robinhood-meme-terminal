@@ -25,3 +25,22 @@ export function priceImpactTone(priceImpact: number | undefined): PriceImpactTon
   if (priceImpact > 0.01) return "caution";
   return "calm";
 }
+
+export function estimatedNetworkFeeWei(gas: bigint, gasPrice: bigint) {
+  if (gas <= 0n || gasPrice <= 0n) return 0n;
+  return gas * gasPrice;
+}
+
+export function conservativeNetworkFeeReserve(estimate: bigint | undefined, fallback: bigint) {
+  if (estimate === undefined || estimate <= 0n) return fallback;
+  return estimate * 2n > fallback ? estimate * 2n : fallback;
+}
+
+export function estimatedNetworkFeeUsd(feeWei: bigint | undefined, ethUsd: number | undefined) {
+  if (feeWei === undefined || feeWei <= 0n || ethUsd === undefined || !Number.isFinite(ethUsd) || ethUsd <= 0) {
+    return undefined;
+  }
+  const whole = feeWei / 1_000_000_000_000_000_000n;
+  const remainder = feeWei % 1_000_000_000_000_000_000n;
+  return (Number(whole) + Number(remainder) / 1e18) * ethUsd;
+}

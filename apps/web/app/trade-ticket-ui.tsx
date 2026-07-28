@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { formatUnits, parseUnits } from "viem";
+import { formatEther, formatUnits, parseUnits } from "viem";
 import {
+  estimatedNetworkFeeUsd,
   fractionalTradeAmount,
   priceImpactTone,
   quoteSecondsRemaining
 } from "../lib/trade-ticket";
+import type { TradeFeeEstimateState } from "../lib/use-trade-fee-estimate";
 import { normalizeTradePreferences } from "../lib/trade-preferences";
 import { useTradePreferences } from "../lib/use-trade-preferences";
 
@@ -133,6 +135,52 @@ export function QuoteProtection({
       <span><small>QUOTE FRESHNESS</small><strong>{deadline ? remaining > 0 ? `${remaining}s` : "Refreshing…" : "Waiting"}</strong></span>
       <span><small>PRICE IMPACT</small><strong>{priceImpact === undefined ? "Waiting" : `${(priceImpact * 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}%`}</strong></span>
     </div>
+  );
+}
+
+function feeEth(value: bigint | undefined) {
+  if (value === undefined || value <= 0n) return "—";
+  return Number(formatEther(value)).toLocaleString(undefined, {
+    maximumFractionDigits: 8,
+    minimumSignificantDigits: 2
+  });
+}
+
+function feeUsd(value: number | undefined) {
+  if (value === undefined) return "";
+  if (value < 0.01) return "<$0.01";
+  return value.toLocaleString(undefined, {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 2
+  });
+}
+
+export function TradeCostSummary({
+  side,
+  amountIn,
+  estimate,
+  venueLabel
+}: {
+  side: "buy" | "sell";
+  amountIn: bigint;
+  estimate: TradeFeeEstimateState;
+  venueLabel: string;
+}) {
+  const networkUsd = estimatedNetworkFeeUsd(estimate.feeWei, estimate.ethUsd);
+  const total = side === "buy" && estimate.feeWei !== undefined && amountIn > 0n
+    ? amountIn + estimate.feeWei
+    : undefined;
+  return (
+    <section className={`tradeCostSummary ${estimate.status}`} aria-label="Pre-sign cost estimate">
+      <header><span>PRE-SIGN COST CHECK</span><strong>{estimate.status === "ready" ? "Estimated" : estimate.status === "loading" ? "Calculating…" : "Wallet confirms final fee"}</strong></header>
+      <div>
+        <span><small>RMT PLATFORM FEE</small><strong>$0</strong></span>
+        <span><small>NETWORK FEE</small><strong>{estimate.status === "ready" ? `${feeEth(estimate.feeWei)} ETH` : estimate.status === "loading" ? "Checking…" : "Unavailable"}</strong><em>{feeUsd(networkUsd)}</em></span>
+        <span><small>{side === "buy" ? "ORDER + NETWORK" : "VENUE COSTS"}</small><strong>{total !== undefined ? `${feeEth(total)} ETH` : venueLabel}</strong></span>
+      </div>
+      <p>Gas and venue conditions can change before confirmation. Your wallet shows the final network fee before you sign.</p>
+    </section>
   );
 }
 

@@ -82,6 +82,13 @@ of an eligible holder remain explicitly unknown. A passing transfer is current e
 it does not prove future sellability, the amount ultimately received, transfer tax, router
 compatibility beyond the transfer, or that privileged token behavior will remain unchanged.
 
+The sixth layer estimates the next exact wallet transaction before submission. RMT shows
+the estimated Robinhood Chain network fee in ETH and USD, states the RMT platform fee as
+zero, and adds the estimate to the displayed buy total. Approval-first sells show the
+approval estimate before the swap estimate. The wallet remains the final fee authority,
+and an unavailable estimate never weakens route verification or suppresses wallet review.
+Maximum-buy sizing reserves twice the current estimate when available.
+
 This specifically addresses the recurring terminal complaints behind the research: users
 could not predict the real outcome, risk context was separated from the action, generated
 wallet and custody boundaries were unclear, or interfaces moved too quickly for a beginner

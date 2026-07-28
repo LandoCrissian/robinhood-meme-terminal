@@ -36,6 +36,22 @@ retaining separate venue verification and transaction construction:
 - a Quote → Evidence → Wallet progress path; and
 - explicit approval, submission, confirmation, and explorer states.
 
+### Pre-sign fee transparency
+
+Executable Sushi and Uniswap tickets estimate the next wallet transaction against
+Robinhood Chain before submission. The ticket shows the network-fee estimate in
+ETH and USD, states the RMT platform fee as zero, and includes the estimated
+network fee in the displayed buy total. When a sell needs approval, the estimate
+describes that exact approval first; after approval, the refreshed quote describes
+the swap.
+
+The estimate is read-only and never authorizes a transaction. Gas price, route
+conditions, and wallet behavior can change before confirmation, so the connected
+wallet remains the final fee authority. RMT uses twice the current estimate—or
+the existing fixed fallback when estimation is unavailable—as the buy-sizing
+reserve. A missing estimate does not weaken route validation or bypass the
+wallet's own fee review.
+
 The interface does not expose a cosmetic slippage setting. The displayed
 protection is the value enforced in the server-verified transaction.
 
