@@ -7,6 +7,7 @@ condition = "AND"
 targetRules = ["generic-api-key"]
 regexes = ['''^0x[0-9A-Fa-f]{40}$''']
 paths = [
+  '''^apps/web/lib/external-trades-smoke\.ts$''',
   '''^apps/web/lib/server/circus-curve-feed-smoke\.ts$''',
   '''^apps/web/lib/server/external-project-metadata-smoke\.ts$''',
 ]

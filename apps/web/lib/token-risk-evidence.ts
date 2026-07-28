@@ -43,6 +43,13 @@ export type TokenRiskEvidence = {
   holders: {
     count: number | null;
     poolShareBps: number | null;
+    topNonPoolShareBps: number | null;
+    topNonPoolHolders: Array<{
+      address: string;
+      shareBps: number;
+      isContract: boolean;
+      isScam: boolean;
+    }>;
     largestNonPoolHolder: {
       address: string;
       shareBps: number;

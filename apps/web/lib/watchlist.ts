@@ -118,6 +118,12 @@ export function isWatched(address: string) {
   return readWatchlist().some((entry) => entry.address === key);
 }
 
+export function watchlistEntryHref(entry: WatchlistEntry) {
+  return entry.launchId
+    ? `/project/${entry.address}?launch=${entry.launchId}`
+    : `/market/${entry.address}`;
+}
+
 export function addToWatchlist(entry: WatchlistEntry) {
   const normalized = normalizeWatchlistEntry(entry);
   if (!normalized) return false;

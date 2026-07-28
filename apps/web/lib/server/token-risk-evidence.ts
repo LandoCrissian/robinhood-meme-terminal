@@ -436,6 +436,7 @@ export async function fetchTokenRiskEvidence(
   ]);
   let poolShareBps: number | null = null;
   let largestNonPoolHolder: TokenRiskEvidence["holders"]["largestNonPoolHolder"] = null;
+  const topNonPoolHolders: TokenRiskEvidence["holders"]["topNonPoolHolders"] = [];
   let sellProbeCandidate: { address: Address; value: bigint } | null = null;
   const creatorShareBps = rawCreatorBalance === null
     ? null
@@ -448,6 +449,11 @@ export async function fetchTokenRiskEvidence(
     if (normalized === params.pair.toLowerCase()) poolShareBps = shareBps(value, totalSupply);
     if (!ignored.has(normalized)) {
       const candidate = { address, shareBps: shareBps(value, totalSupply) };
+      topNonPoolHolders.push({
+        ...candidate,
+        isContract: holder.address.is_contract === true,
+        isScam: holder.address.is_scam === true
+      });
       if (!largestNonPoolHolder || candidate.shareBps > largestNonPoolHolder.shareBps) {
         largestNonPoolHolder = candidate;
       }
@@ -461,6 +467,13 @@ export async function fetchTokenRiskEvidence(
       }
     }
   }
+  topNonPoolHolders.sort((left, right) =>
+    right.shareBps - left.shareBps || left.address.localeCompare(right.address)
+  );
+  const visibleTopNonPoolHolders = topNonPoolHolders.slice(0, 10);
+  const topNonPoolShareBps = visibleTopNonPoolHolders.length
+    ? Math.min(10_000, visibleTopNonPoolHolders.reduce((total, holder) => total + holder.shareBps, 0))
+    : null;
   const probeAmount = sellProbeCandidate
     ? [sellProbeCandidate.value, totalSupply / 1_000_000n || 1n]
         .reduce((smallest, value) => value < smallest ? value : smallest)
@@ -568,6 +581,8 @@ export async function fetchTokenRiskEvidence(
     holders: {
       count: token.data.holders_count ? Number(token.data.holders_count) : null,
       poolShareBps,
+      topNonPoolShareBps,
+      topNonPoolHolders: visibleTopNonPoolHolders,
       largestNonPoolHolder,
       creator: params.creator ? getAddress(params.creator) : null,
       creatorShareBps

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ipfsToHttp } from "../lib/token-metadata";
-import { readWatchlist, removeFromWatchlist, WATCHLIST_EVENT, type WatchlistEntry } from "../lib/watchlist";
+import { readWatchlist, removeFromWatchlist, watchlistEntryHref, WATCHLIST_EVENT, type WatchlistEntry } from "../lib/watchlist";
 
 function shortAddress(address: string) {
   return `${address.slice(0, 6)}…${address.slice(-4)}`;
@@ -51,7 +51,7 @@ export function WatchlistPanel() {
       <div className="watchlistGrid">
         {entries.slice(0, 8).map((entry) => (
           <article className="watchlistCard" key={entry.address.toLowerCase()}>
-            <Link href={`/project/${entry.address}${entry.launchId ? `?launch=${entry.launchId}` : ""}`}>
+            <Link href={watchlistEntryHref(entry)}>
               <span className="coin watchlistArtwork">
                 {entry.image ? <img src={ipfsToHttp(entry.image)} alt="" loading="lazy" /> : entry.symbol.slice(0, 2)}
               </span>

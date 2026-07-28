@@ -16,10 +16,11 @@ import {
 } from "../lib/external-ohlcv";
 import { ipfsToHttp } from "../lib/token-metadata";
 import { ExternalMarketChart } from "./external-market-chart";
-import { ExternalTradeTape, ExternalWalletPosition } from "./external-market-live";
+import { ExternalHolderIntelligence, ExternalTradeTape, ExternalWalletPosition } from "./external-market-live";
 import { ExternalSushiQuotePanel } from "./external-sushi-quote-panel";
 import { ExternalUniswapTradePanel } from "./external-uniswap-trade-panel";
 import { SiteFooter } from "./site-footer";
+import { WatchlistButton } from "./watchlist-button";
 
 type WorkspaceTab = "activity" | "safety" | "origin";
 type TradeSide = "buy" | "sell";
@@ -215,6 +216,13 @@ export function ExternalMarketWorkspace() {
           <span className={market.priceChange1h >= 0 ? "positive" : "negative"}>{signedPercent(market.priceChange1h)} · 1h</span>
         </div>
         <div className="universalHeroActions">
+          <WatchlistButton
+            address={market.address as Address}
+            name={market.name}
+            symbol={market.symbol}
+            image={market.project?.imageUri ?? undefined}
+            compactLabel
+          />
           <button type="button" onClick={() => void copyContract()}>{copied ? "Copied" : "Copy contract"}</button>
           <a href={market.url} target="_blank" rel="noopener noreferrer">Market source ↗</a>
         </div>
@@ -275,15 +283,18 @@ export function ExternalMarketWorkspace() {
           )}
 
           {tab === "safety" && (
-            <section className="universalInsightPanel" aria-labelledby="workspace-safety">
-              <header><div><small>PRE-TRADE EVIDENCE</small><h2 id="workspace-safety">Know what RMT can—and cannot—prove</h2></div><span>{market.riskFlags.length} ranking flags</span></header>
-              <div className="universalSafetyGrid">
-                <article><small>Pool match</small><strong>Rechecked before every quote</strong><p>The exact token, displayed pool, venue contracts, and wallet recipient must match.</p></article>
-                <article><small>Exit evidence</small><strong>{market.sells1h > 0 ? `${market.sells1h} sells observed · 1h` : "No sells observed · 1h"}</strong><p>The trade panel runs separate contract, holder, and sell-direction checks.</p></article>
-                <article><small>Liquidity</small><strong>{money(market.liquidityUsd)}</strong><p>Liquidity and price can change before wallet confirmation.</p></article>
-                <article><small>Current flags</small><strong>{market.riskFlags.length ? market.riskFlags.join(" · ") : "No ranking flags"}</strong><p>No flag is a safety guarantee. Your wallet remains the final authority.</p></article>
-              </div>
-            </section>
+            <>
+              <section className="universalInsightPanel" aria-labelledby="workspace-safety">
+                <header><div><small>PRE-TRADE EVIDENCE</small><h2 id="workspace-safety">Know what RMT can—and cannot—prove</h2></div><span>{market.riskFlags.length} ranking flags</span></header>
+                <div className="universalSafetyGrid">
+                  <article><small>Pool match</small><strong>Rechecked before every quote</strong><p>The exact token, displayed pool, venue contracts, and wallet recipient must match.</p></article>
+                  <article><small>Exit evidence</small><strong>{market.sells1h > 0 ? `${market.sells1h} sells observed · 1h` : "No sells observed · 1h"}</strong><p>The trade panel runs separate contract, holder, and sell-direction checks.</p></article>
+                  <article><small>Liquidity</small><strong>{money(market.liquidityUsd)}</strong><p>Liquidity and price can change before wallet confirmation.</p></article>
+                  <article><small>Current flags</small><strong>{market.riskFlags.length ? market.riskFlags.join(" · ") : "No ranking flags"}</strong><p>No flag is a safety guarantee. Your wallet remains the final authority.</p></article>
+                </div>
+              </section>
+              <ExternalHolderIntelligence market={market} />
+            </>
           )}
 
           {tab === "origin" && (
