@@ -29,6 +29,7 @@ jobs:
       - run: pnpm --filter web test:profile
       - run: pnpm --filter web test:public-discovery
       - run: pnpm --filter web test:external-market-integrity
+      - run: pnpm --filter web test:external-ohlcv
       - run: pnpm --filter web test:consent-rehearsal
       - run: pnpm --filter web test:consent-activation
       - run: pnpm --filter web test:media-guard

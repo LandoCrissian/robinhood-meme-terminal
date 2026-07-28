@@ -727,7 +727,7 @@ export function ExternalMarketFeed() {
                   <div className="externalIdentity">
                     <ExternalArtwork market={market} />
                     <span>
-                      <strong>{market.name}</strong>
+                      <a className="externalIdentityLink" href={`/market/${market.address}`} aria-label={`Open ${market.name} trading workspace`}><strong>{market.name}</strong></a>
                       <small>{"$" + cleanSymbol(market.symbol)} · Venue: {venueLabel(market)}</small>
                       {market.project?.creator && (
                         <small className="runnerCreator" title={market.project.creator}>Creator {shortAddress(market.project.creator)}</small>

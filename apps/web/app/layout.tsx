@@ -12,6 +12,7 @@ import "./sushi-lab.css";
 import "./rescue-lab.css";
 import "./mobile-polish.css";
 import "./desktop-polish.css";
+import "./external-workspace.css";
 import { Providers } from "./providers";
 import { PublicChrome } from "./public-chrome";
 
