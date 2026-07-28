@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import type { ReactNode } from "react";
 import { formatEther, formatUnits, parseUnits } from "viem";
 import {
   estimatedNetworkFeeUsd,
@@ -162,6 +163,32 @@ export function SmartOrderGuard({
       </div>
       <button type="button" disabled={disabled} onClick={onReduce}>Reduce below 1%</button>
     </div>
+  );
+}
+
+export function TradeOrderDetails({
+  priceImpact,
+  routeLabel,
+  children
+}: {
+  priceImpact: number | undefined;
+  routeLabel: string;
+  children: ReactNode;
+}) {
+  const impactLabel = priceImpact === undefined
+    ? "Impact pending"
+    : `${(priceImpact * 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}% impact`;
+  return (
+    <details className="tradeOrderDetails">
+      <summary>
+        <span>
+          <small>ORDER DETAILS</small>
+          <strong>Protection, costs &amp; route</strong>
+        </span>
+        <em>{impactLabel} · {routeLabel}</em>
+      </summary>
+      <div>{children}</div>
+    </details>
   );
 }
 

@@ -33,7 +33,8 @@ import {
   SmartOrderGuard,
   TradeCostSummary,
   TradeAmountPresets,
-  TradeExecutionPath
+  TradeExecutionPath,
+  TradeOrderDetails
 } from "./trade-ticket-ui";
 import { WalletButton } from "./wallet-button";
 
@@ -388,20 +389,56 @@ export function ExternalUniswapTradePanel({
               <dl>
                 <div><dt>Minimum received</dt><dd>{displayUnits(quote.minimumOut, outputDecimals)} {outputSymbol}</dd></div>
                 <div><dt>Price impact</dt><dd>{(quote.priceImpact * 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}%</dd></div>
-                <div><dt>Pool fee</dt><dd>{(quote.fee / 10_000).toLocaleString()}%</dd></div>
+                <div><dt>Execution route</dt><dd>Uniswap V3 · Router02</dd></div>
               </dl>
             )}
             {status === "error" && <p role="alert">{error}</p>}
           </div>
-          <QuoteProtection
-            deadline={quote?.deadline}
-            priceImpact={quote?.priceImpact}
-            slippageLabel="1% maximum"
-          />
           <SmartOrderGuard
             priceImpact={quote?.priceImpact}
             disabled={busy || !canReduceImpact}
             onReduce={chooseSaferAmount}
+          />
+        </>
+      )}
+
+      <TradeConfidence
+        market={market}
+        side={side}
+        priceImpact={quote?.priceImpact}
+        evidenceState={tokenRisk}
+      />
+
+      {isConnected && chainId === ROBINHOOD_CHAIN_ID && (
+        <button
+          className={`externalUniswapSubmit ${side}`}
+          type="button"
+          disabled={!quoteIsFresh || insufficient || busy || !confidenceReady || evidenceBlocked || impactBlocked}
+          onClick={submit}
+        >
+          {buttonLabel}
+        </button>
+      )}
+      {(approval.error || approvalReceipt.error || swap.error || swapReceipt.error) && (
+        <p className="externalUniswapError" role="alert">
+          {approval.error?.message || approvalReceipt.error?.message || swap.error?.message || swapReceipt.error?.message}
+        </p>
+      )}
+      {message && (
+        <p className="externalUniswapMessage" role="status">
+          {message}
+          {swapReceipt.isSuccess && swap.data && (
+            <> <a href={`${EXPLORER}/tx/${swap.data}`} target="_blank" rel="noopener noreferrer">View transaction ↗</a></>
+          )}
+        </p>
+      )}
+
+      {address && (
+        <TradeOrderDetails priceImpact={quote?.priceImpact} routeLabel="Uniswap V3">
+          <QuoteProtection
+            deadline={quote?.deadline}
+            priceImpact={quote?.priceImpact}
+            slippageLabel="1% maximum"
           />
           <FinalOrderReview
             originalAmount={saferOrderOriginal}
@@ -419,33 +456,13 @@ export function ExternalUniswapTradePanel({
             side={side}
             amountIn={amountIn}
             estimate={feeEstimate}
-            venueLabel="Pool fee reflected above"
+            venueLabel="Pool fee reflected in quote"
           />
-
-          {isConnected && chainId === ROBINHOOD_CHAIN_ID && (
-            <button
-              className={`externalUniswapSubmit ${side}`}
-              type="button"
-              disabled={!quoteIsFresh || insufficient || busy || !confidenceReady || evidenceBlocked || impactBlocked}
-              onClick={submit}
-            >
-              {buttonLabel}
-            </button>
-          )}
-          {(approval.error || approvalReceipt.error || swap.error || swapReceipt.error) && (
-            <p className="externalUniswapError" role="alert">
-              {approval.error?.message || approvalReceipt.error?.message || swap.error?.message || swapReceipt.error?.message}
-            </p>
-          )}
-          {message && (
-            <p className="externalUniswapMessage" role="status">
-              {message}
-              {swapReceipt.isSuccess && swap.data && (
-                <> <a href={`${EXPLORER}/tx/${swap.data}`} target="_blank" rel="noopener noreferrer">View transaction ↗</a></>
-              )}
-            </p>
-          )}
-        </>
+          <p className="externalSushiSafety">
+            RMT rechecks the exact token, pool, official V3 factory, WETH pair, QuoterV2 and SwapRouter02 before every trade.
+            Sell approval is limited to the amount entered; every approval and swap remains under your wallet control.
+          </p>
+        </TradeOrderDetails>
       )}
 
       <TradeExecutionPath
@@ -456,18 +473,6 @@ export function ExternalUniswapTradePanel({
         success={swapReceipt.isSuccess}
         needsApproval={needsApproval}
       />
-
-      <TradeConfidence
-        market={market}
-        side={side}
-        priceImpact={quote?.priceImpact}
-        evidenceState={tokenRisk}
-      />
-
-      <p className="externalSushiSafety">
-        RMT rechecks the exact token, pool, official V3 factory, WETH pair, QuoterV2 and SwapRouter02 before every trade.
-        Sell approval is limited to the amount entered; every approval and swap remains under your wallet control.
-      </p>
     </section>
   );
 }
