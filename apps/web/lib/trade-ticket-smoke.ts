@@ -15,7 +15,10 @@ import {
   normalizeBuyPreset,
   normalizeTradePreferences
 } from "./trade-preferences";
-import { resilientTradeVenue } from "./trade-route-selection";
+import {
+  protectedOutputRecommendation,
+  resilientTradeVenue
+} from "./trade-route-selection";
 
 assert.equal(spendableTradeBalance(100n, 20n), 80n);
 assert.equal(spendableTradeBalance(20n, 20n), 0n);
@@ -80,5 +83,54 @@ assert.equal(resilientTradeVenue({
   venues: ["sushi", "uniswap"],
   health: { sushi: "unavailable", uniswap: "unavailable" }
 }), "sushi");
+const quoteToken = {
+  address: "0x1111111111111111111111111111111111111111",
+  decimals: 18
+};
+assert.deepEqual(protectedOutputRecommendation({
+  selected: "sushi",
+  quotes: [
+    { venue: "sushi", minimumOut: "100000", priceImpact: 0.01, outputToken: quoteToken },
+    { venue: "uniswap", minimumOut: "101000", priceImpact: 0.008, outputToken: quoteToken }
+  ]
+}), {
+  leader: "uniswap",
+  leaderAdvantageBps: 100,
+  automaticVenue: "uniswap",
+  automaticImprovementBps: 100
+});
+assert.equal(protectedOutputRecommendation({
+  selected: "sushi",
+  quotes: [
+    { venue: "sushi", minimumOut: "100000", priceImpact: 0.01, outputToken: quoteToken },
+    { venue: "uniswap", minimumOut: "100200", priceImpact: 0.008, outputToken: quoteToken }
+  ]
+})?.automaticVenue, "sushi");
+assert.equal(protectedOutputRecommendation({
+  selected: "uniswap",
+  quotes: [
+    { venue: "sushi", minimumOut: "100000", priceImpact: 0.009, outputToken: quoteToken },
+    { venue: "uniswap", minimumOut: "100000", priceImpact: 0.01, outputToken: quoteToken }
+  ]
+})?.automaticVenue, "uniswap");
+assert.equal(protectedOutputRecommendation({
+  selected: "sushi",
+  quotes: [
+    { venue: "sushi", minimumOut: "100000", priceImpact: 0.01, outputToken: quoteToken },
+    {
+      venue: "uniswap",
+      minimumOut: "101000",
+      priceImpact: 0.008,
+      outputToken: { ...quoteToken, address: "0x2222222222222222222222222222222222222222" }
+    }
+  ]
+}), undefined);
+assert.equal(protectedOutputRecommendation({
+  selected: "sushi",
+  quotes: [
+    { venue: "sushi", minimumOut: "0", priceImpact: 0.01, outputToken: quoteToken },
+    { venue: "uniswap", minimumOut: "101000", priceImpact: 0.008, outputToken: quoteToken }
+  ]
+}), undefined);
 
 console.log("Trade ticket sizing, freshness, and impact classifications passed.");

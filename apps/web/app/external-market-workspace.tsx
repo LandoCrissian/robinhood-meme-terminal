@@ -358,6 +358,17 @@ export function ExternalMarketWorkspace() {
     setTradeVenueSelectionMode("manual");
     setTradeVenueNotice(`${venue === "sushi" ? "Sushi" : "Uniswap"} selected by you. RMT will not replace a manual route.`);
   };
+  const applyRecommendedTradeVenue = useCallback((recommendation: {
+    venue: TradeVenueId;
+    improvementBps: number;
+  }) => {
+    if (tradeVenueSelectionMode !== "automatic") return;
+    setSelectedTradeVenue((current) => current === recommendation.venue ? current : recommendation.venue);
+    setTradeVenueNotice(
+      `Automatic routing selected ${recommendation.venue === "sushi" ? "Sushi" : "Uniswap"} for `
+      + `${(recommendation.improvementBps / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}% more protected output.`
+    );
+  }, [tradeVenueSelectionMode]);
   const resumeAutomaticRouting = () => {
     const resilientVenue = resilientTradeVenue({
       selected: selectedTradeVenue,
@@ -580,7 +591,9 @@ export function ExternalMarketWorkspace() {
               side={side}
               amount={tradeAmount}
               selectedVenue={selectedTradeVenue}
+              selectionMode={tradeVenueSelectionMode}
               onSelectVenue={selectTradeVenue}
+              onRecommendedVenue={applyRecommendedTradeVenue}
               onHealthChange={setTradeVenueHealth}
             />
           )}
