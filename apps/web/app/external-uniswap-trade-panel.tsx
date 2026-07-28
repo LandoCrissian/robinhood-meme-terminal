@@ -37,6 +37,7 @@ type ExternalUniswapQuote = {
   amountIn: string;
   quoteOut: string;
   minimumOut: string;
+  priceImpact: number;
   deadline: string;
   fee: number;
   marketPair: Address;
@@ -177,6 +178,9 @@ export function ExternalUniswapTradePanel({
           || payload.router.toLowerCase() !== ROBINHOOD_SWAP_ROUTER_02.toLowerCase()
           || payload.side !== side
           || payload.amountIn !== amountIn.toString()
+          || !Number.isFinite(payload.priceImpact)
+          || payload.priceImpact < 0
+          || payload.priceImpact > 1
           || BigInt(payload.deadline) <= BigInt(Math.floor(Date.now() / 1000) + 30)
           || !payload.calldata.startsWith("0x")
           || !payload.inputToken
@@ -228,12 +232,13 @@ export function ExternalUniswapTradePanel({
   const confidenceEvidenceReady = side === "sell" || tokenRisk.status !== "loading";
   const confidenceReady = confidenceEvidenceReady && (!requiresAcknowledgement || acknowledged);
   const evidenceBlocked = tradeIsBlockedByEvidence(tokenRisk, side);
+  const impactBlocked = Boolean(quote && quote.priceImpact > 0.1);
   const outputDecimals = quote?.outputToken.decimals;
   const outputSymbol = quote?.outputToken.symbol ?? (side === "buy" ? market.symbol : "ETH");
 
   const submit = () => {
     setMessage("");
-    if (!address || chainId !== ROBINHOOD_CHAIN_ID || !quoteIsFresh || !quote || insufficient || busy || !confidenceReady || evidenceBlocked) return;
+    if (!address || chainId !== ROBINHOOD_CHAIN_ID || !quoteIsFresh || !quote || insufficient || busy || !confidenceReady || evidenceBlocked || impactBlocked) return;
     if (needsApproval) {
       approval.writeContract({
         address: token,
@@ -259,6 +264,7 @@ export function ExternalUniswapTradePanel({
       : !confidenceEvidenceReady ? "Checking contract and holders…"
       : evidenceBlocked ? "Buy blocked: sell transfer failed"
         : !confidenceReady ? "Review and acknowledge warnings"
+        : impactBlocked ? "Price impact too high"
         : needsApproval ? `Approve exact ${market.symbol} amount`
           : side === "buy" ? `Buy ${market.symbol} inside RMT` : `Sell ${market.symbol} inside RMT`;
 
@@ -338,8 +344,8 @@ export function ExternalUniswapTradePanel({
             {quote && outputDecimals !== undefined && (
               <dl>
                 <div><dt>Minimum received</dt><dd>{displayUnits(quote.minimumOut, outputDecimals)} {outputSymbol}</dd></div>
+                <div><dt>Price impact</dt><dd>{(quote.priceImpact * 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}%</dd></div>
                 <div><dt>Pool fee</dt><dd>{(quote.fee / 10_000).toLocaleString()}%</dd></div>
-                <div><dt>Market check</dt><dd>Factory + pool matched</dd></div>
               </dl>
             )}
             {status === "error" && <p role="alert">{error}</p>}
@@ -349,7 +355,7 @@ export function ExternalUniswapTradePanel({
             <button
               className={`externalUniswapSubmit ${side}`}
               type="button"
-              disabled={!quoteIsFresh || insufficient || busy || !confidenceReady || evidenceBlocked}
+              disabled={!quoteIsFresh || insufficient || busy || !confidenceReady || evidenceBlocked || impactBlocked}
               onClick={submit}
             >
               {buttonLabel}
@@ -374,6 +380,7 @@ export function ExternalUniswapTradePanel({
       <TradeConfidence
         market={market}
         side={side}
+        priceImpact={quote?.priceImpact}
         evidenceState={tokenRisk}
         acknowledged={acknowledged}
         onAcknowledgedChange={setAcknowledged}

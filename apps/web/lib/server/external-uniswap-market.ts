@@ -23,7 +23,22 @@ const v3PoolAbi = [
   { type: "function", name: "factory", stateMutability: "view", inputs: [], outputs: [{ type: "address" }] },
   { type: "function", name: "token0", stateMutability: "view", inputs: [], outputs: [{ type: "address" }] },
   { type: "function", name: "token1", stateMutability: "view", inputs: [], outputs: [{ type: "address" }] },
-  { type: "function", name: "fee", stateMutability: "view", inputs: [], outputs: [{ type: "uint24" }] }
+  { type: "function", name: "fee", stateMutability: "view", inputs: [], outputs: [{ type: "uint24" }] },
+  {
+    type: "function",
+    name: "slot0",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [
+      { name: "sqrtPriceX96", type: "uint160" },
+      { name: "tick", type: "int24" },
+      { name: "observationIndex", type: "uint16" },
+      { name: "observationCardinality", type: "uint16" },
+      { name: "observationCardinalityNext", type: "uint16" },
+      { name: "feeProtocol", type: "uint8" },
+      { name: "unlocked", type: "bool" }
+    ]
+  }
 ] as const;
 const v3FactoryAbi = [{
   type: "function",
@@ -39,6 +54,7 @@ type ReadPool = (pair: Address) => Promise<{
   token0: Address;
   token1: Address;
   fee: number;
+  sqrtPriceX96: bigint;
   canonicalPair: Address;
   code: `0x${string}` | undefined;
 }>;
@@ -47,6 +63,9 @@ export type VerifiedExternalUniswapMarket = {
   token: Address;
   pair: Address;
   fee: number;
+  token0: Address;
+  token1: Address;
+  sqrtPriceX96: bigint;
   liquidityUsd: number;
   url: string;
 };
@@ -68,11 +87,12 @@ function safeAddress(value: string) {
 }
 
 async function readPool(pair: Address) {
-  const [factory, token0, token1, fee, code] = await Promise.all([
+  const [factory, token0, token1, fee, slot0, code] = await Promise.all([
     client.readContract({ address: pair, abi: v3PoolAbi, functionName: "factory" }),
     client.readContract({ address: pair, abi: v3PoolAbi, functionName: "token0" }),
     client.readContract({ address: pair, abi: v3PoolAbi, functionName: "token1" }),
     client.readContract({ address: pair, abi: v3PoolAbi, functionName: "fee" }),
+    client.readContract({ address: pair, abi: v3PoolAbi, functionName: "slot0" }),
     client.getBytecode({ address: pair })
   ]);
   const canonicalPair = await client.readContract({
@@ -86,6 +106,7 @@ async function readPool(pair: Address) {
     token0: getAddress(token0),
     token1: getAddress(token1),
     fee: Number(fee),
+    sqrtPriceX96: slot0[0],
     canonicalPair: getAddress(canonicalPair),
     code
   };
@@ -148,6 +169,7 @@ export async function verifyExternalUniswapMarket(
     || !Number.isInteger(pool.fee)
     || pool.fee <= 0
     || pool.fee >= 1_000_000
+    || pool.sqrtPriceX96 <= 0n
   ) {
     throw new Error("This market is not a verified canonical Uniswap V3 token/WETH pool.");
   }
@@ -156,6 +178,9 @@ export async function verifyExternalUniswapMarket(
     token: getAddress(params.token),
     pair,
     fee: pool.fee,
+    token0: pool.token0,
+    token1: pool.token1,
+    sqrtPriceX96: pool.sqrtPriceX96,
     liquidityUsd,
     url: candidate.url.slice(0, 300)
   };

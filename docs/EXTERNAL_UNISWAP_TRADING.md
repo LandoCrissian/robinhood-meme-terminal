@@ -13,6 +13,7 @@ The first release supports exact-input buys and sells when all of the following 
 - the official factory maps the pair's token0, token1 and fee back to that exact pair address;
 - the pair contains exactly the requested token and canonical Robinhood WETH;
 - its fee is a valid Uniswap V3 fee value;
+- its live `slot0` price is initialized and readable;
 - the official QuoterV2 and SwapRouter02 both have deployed bytecode;
 - the user receives a fresh quote for the exact amount, token, side, pair and wallet.
 
@@ -38,6 +39,8 @@ Primary source:
 
 - Exact-input only.
 - Minimum received is fixed at 99% of the fresh onchain quote.
+- Price impact is calculated from the executable output versus the pool's live pre-trade spot price in the correct token direction, including the pool fee.
+- RMT refuses to return executable calldata when calculated price impact exceeds 10%.
 - SwapRouter02 `multicall(uint256,bytes[])` enforces a ten-minute deadline.
 - Buys send only the entered ETH amount.
 - Sells request an ERC-20 approval for only the entered token amount.
@@ -62,7 +65,7 @@ When it is absent or not exactly `true`, the transaction endpoint returns `503` 
 pnpm --filter web test:external-uniswap
 ```
 
-The tests prove that spoofed pair data, wrong chains, wrong venues, non-DEX URLs, substituted tokens, thin liquidity, wrong factories, non-WETH pools, invalid fees and missing pool code all fail closed. They also decode the complete buy and sell calldata to verify the router recipient, amount, minimum received, WETH unwrap recipient and route deadline.
+The tests prove that spoofed pair data, wrong chains, wrong venues, non-DEX URLs, substituted tokens, thin liquidity, wrong factories, non-WETH pools, invalid fees, uninitialized prices and missing pool code all fail closed. They verify price-impact arithmetic for both token directions and decode the complete buy and sell calldata to check the router recipient, amount, minimum received, WETH unwrap recipient and route deadline.
 
 Before an external buy is enabled, RMT performs the same read-only holder-to-pool transfer
 probe used by its Sushi path. A deterministic transfer failure blocks the buy; an unavailable
@@ -78,6 +81,7 @@ Unknown origins and additional write controls are not exempted.
 - Only direct canonical Uniswap V3 token/WETH pools are supported.
 - Multi-hop routing and UniswapX are not part of this release.
 - Tokens with transfer taxes, rebases, hooks or other nonstandard transfer behavior may fail at wallet simulation and are not specially supported.
+- Price impact is a point-in-time comparison against the pool's current spot price. It cannot prevent the market from moving before confirmation.
 - A passing sell-direction transfer is not a full swap guarantee and cannot predict future blacklist, fee, liquidity, or administrator changes.
 - RMT does not claim that a verified pool or successful quote makes a token safe.
 

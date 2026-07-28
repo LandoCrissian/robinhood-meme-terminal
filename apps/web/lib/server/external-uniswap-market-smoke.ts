@@ -25,6 +25,7 @@ function pool(overrides: Partial<{
   token0: Address;
   token1: Address;
   fee: number;
+  sqrtPriceX96: bigint;
   canonicalPair: Address;
   code: `0x${string}` | undefined;
 }> = {}) {
@@ -33,6 +34,7 @@ function pool(overrides: Partial<{
     token0: overrides.token0 ?? ROBINHOOD_WETH,
     token1: overrides.token1 ?? token,
     fee: overrides.fee ?? 10_000,
+    sqrtPriceX96: overrides.sqrtPriceX96 ?? (1n << 96n),
     canonicalPair: overrides.canonicalPair ?? pair,
     code: overrides.code ?? "0x6000" as `0x${string}`
   };
@@ -67,6 +69,9 @@ async function main() {
   assert.equal(verified.token, token);
   assert.equal(verified.pair, pair);
   assert.equal(verified.fee, 10_000);
+  assert.equal(verified.token0, ROBINHOOD_WETH);
+  assert.equal(verified.token1, token);
+  assert.equal(verified.sqrtPriceX96, 1n << 96n);
   assert.equal(verified.liquidityUsd, 25_000);
 
   await assert.rejects(verify([market({ pairAddress: other })]), /no longer verified/);
@@ -84,6 +89,7 @@ async function main() {
   await assert.rejects(verify([market()], { token0: other }), /not a verified canonical/);
   await assert.rejects(verify([market()], { token1: other }), /not a verified canonical/);
   await assert.rejects(verify([market()], { fee: 0 }), /not a verified canonical/);
+  await assert.rejects(verify([market()], { sqrtPriceX96: 0n }), /not a verified canonical/);
   await assert.rejects(verify([market()], { code: "0x" }), /not a verified canonical/);
 
   console.log("External Uniswap pool verification fails closed against spoofed DEX and onchain data.");
