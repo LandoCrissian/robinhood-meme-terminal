@@ -453,6 +453,14 @@
     min-height: 64px;
   }
 
+  .terminalPage .runnerMarketCard .externalMarketActions .buyCardAction {
+    color: #031507;
+  }
+
+  .terminalPage .runnerMarketCard .externalMarketActions .sellCardAction {
+    color: #fff;
+  }
+
   .terminalPage .runnerMarketCard .externalChartLink {
     margin: 0;
     border-radius: 0;
