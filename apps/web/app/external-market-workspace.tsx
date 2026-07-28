@@ -118,6 +118,7 @@ export function ExternalMarketWorkspace() {
   const [tradeVenueHealth, setTradeVenueHealth] = useState<Partial<Record<TradeVenueId, TradeVenueHealth>>>({});
   const [tradeVenueSelectionMode, setTradeVenueSelectionMode] = useState<TradeVenueSelectionMode>("automatic");
   const [tradeVenueNotice, setTradeVenueNotice] = useState("");
+  const [tradeVenueRefresh, setTradeVenueRefresh] = useState(0);
   const [mobileTradeOpen, setMobileTradeOpen] = useState(false);
   const tradeRef = useRef<HTMLElement>(null);
   const tradeReturnFocus = useRef<HTMLElement>(null);
@@ -277,9 +278,10 @@ export function ExternalMarketWorkspace() {
       setSelectedTradeVenue(null);
     });
     return () => controller.abort();
-  }, [marketAddress, marketPair, preferredVenue]);
+  }, [marketAddress, marketPair, preferredVenue, tradeVenueRefresh]);
 
   const setTradeSide = (next: TradeSide, focus = false) => {
+    if (focus && (tradeVenueStatus !== "ready" || tradeVenues.length === 0)) return;
     setSide(next);
     const url = new URL(window.location.href);
     url.searchParams.set("side", next);
@@ -365,6 +367,9 @@ export function ExternalMarketWorkspace() {
     setTradeVenueSelectionMode("automatic");
     setSelectedTradeVenue(resilientVenue);
     setTradeVenueNotice("Automatic fallback restored. RMT changes venues only when the selected route is unavailable.");
+  };
+  const retryTradeVenueDiscovery = () => {
+    setTradeVenueRefresh((value) => value + 1);
   };
   const routeDecision = tradeVenueNotice || (
     tradeVenueOptions.length === 1
@@ -549,7 +554,7 @@ export function ExternalMarketWorkspace() {
           <header>
             <div><small>PLACE ORDER</small><h2 id="universal-trade-panel-title">{side === "buy" ? "Buy" : "Sell"} ${market.symbol.replaceAll("$", "")}</h2></div>
             <div className="universalTradeRailHeaderActions">
-              <span>Fresh quote</span>
+              <span>{tradeVenueStatus === "loading" ? "Checking route" : tradingMarket ? "Fresh quote" : "View only"}</span>
               <button type="button" className="universalTradeRailClose" aria-label="Close trade panel" onClick={closeMobileTrade}>×</button>
             </div>
           </header>
@@ -581,14 +586,40 @@ export function ExternalMarketWorkspace() {
           {tradeVenueStatus === "loading" && <div className="universalTradeUnavailable"><strong>Verifying execution venues…</strong><p>Matching independent pool and onchain evidence for this token.</p></div>}
           {tradingMarket && activeTradeVenue?.venue === "sushi" && <ExternalSushiQuotePanel market={tradingMarket} side={side} amount={tradeAmount} onAmountChange={setTradeAmount} />}
           {tradingMarket && activeTradeVenue?.venue === "uniswap" && <ExternalUniswapTradePanel market={tradingMarket} side={side} amount={tradeAmount} onAmountChange={setTradeAmount} />}
-          {tradeVenueStatus !== "loading" && !tradingMarket && <div className="universalTradeUnavailable"><strong>Read-only market</strong><p>RMT did not find a currently verified in-site execution route for this token.</p></div>}
-          <footer><span>Non-custodial</span><span>Fresh quote</span><span>Wallet signs</span></footer>
+          {tradeVenueStatus === "error" && !tradingMarket && (
+            <div className="universalTradeUnavailable">
+              <strong>Execution check unavailable</strong>
+              <p>RMT could not complete route verification. No transaction can be prepared until the check succeeds.</p>
+              <button type="button" onClick={retryTradeVenueDiscovery}>Retry route check</button>
+            </div>
+          )}
+          {tradeVenueStatus === "ready" && !tradingMarket && (
+            <div className="universalTradeUnavailable">
+              <strong>View-only market</strong>
+              <p>RMT found no independently verified in-site execution route for this token.</p>
+              <button type="button" onClick={retryTradeVenueDiscovery}>Recheck routes</button>
+            </div>
+          )}
+          <footer>
+            <span>Non-custodial</span>
+            {tradingMarket ? <><span>Fresh quote</span><span>Wallet signs</span></> : <span>Verification required</span>}
+          </footer>
         </aside>
       </div>
 
       <nav className={`universalMobileTradeDock ${mobileTradeOpen ? "tradeOpen" : ""}`} aria-label="Mobile trade actions">
-        <button type="button" className="buy" onClick={() => setTradeSide("buy", true)}>Buy</button>
-        <button type="button" className="sell" onClick={() => setTradeSide("sell", true)}>Sell</button>
+        {tradeVenueStatus === "loading" ? (
+          <button type="button" className="routeStatus" disabled>Checking in-site routes…</button>
+        ) : tradingMarket ? (
+          <>
+            <button type="button" className="buy" onClick={() => setTradeSide("buy", true)}>Buy</button>
+            <button type="button" className="sell" onClick={() => setTradeSide("sell", true)}>Sell</button>
+          </>
+        ) : (
+          <button type="button" className="routeStatus unavailable" onClick={retryTradeVenueDiscovery}>
+            {tradeVenueStatus === "error" ? "Retry execution check" : "View only · recheck routes"}
+          </button>
+        )}
       </nav>
       <SiteFooter />
     </main>
