@@ -104,7 +104,9 @@ export function ExternalMarketWorkspace() {
   const [tradeVenues, setTradeVenues] = useState<TradeVenue[]>([]);
   const [tradeVenueStatus, setTradeVenueStatus] = useState<"loading" | "ready" | "error">("loading");
   const [selectedTradeVenue, setSelectedTradeVenue] = useState<"sushi" | "uniswap" | null>(null);
+  const [mobileTradeOpen, setMobileTradeOpen] = useState(false);
   const tradeRef = useRef<HTMLElement>(null);
+  const tradeReturnFocus = useRef<HTMLElement>(null);
   const marketAddress = market?.address;
   const marketPair = market?.pairAddress;
   const preferredVenue = market ? venueKind(market) : null;
@@ -136,6 +138,53 @@ export function ExternalMarketWorkspace() {
   useEffect(() => {
     setTradeAmount(side === "buy" ? "0.0001" : "");
   }, [market?.address, side]);
+
+  const closeMobileTrade = useCallback(() => {
+    setMobileTradeOpen(false);
+    window.requestAnimationFrame(() => tradeReturnFocus.current?.focus());
+  }, []);
+
+  useEffect(() => {
+    if (!mobileTradeOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    const mobileViewport = window.matchMedia("(max-width: 760px)");
+    const syncScrollLock = () => {
+      document.body.style.overflow = mobileViewport.matches ? "hidden" : previousOverflow;
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        closeMobileTrade();
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const focusable = Array.from(
+        tradeRef.current?.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ) ?? [],
+      ).filter((element) => !element.hidden);
+      if (focusable.length === 0) {
+        event.preventDefault();
+        return;
+      }
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && (document.activeElement === first || !tradeRef.current?.contains(document.activeElement))) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && (document.activeElement === last || !tradeRef.current?.contains(document.activeElement))) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    syncScrollLock();
+    mobileViewport.addEventListener("change", syncScrollLock);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      mobileViewport.removeEventListener("change", syncScrollLock);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [closeMobileTrade, mobileTradeOpen]);
 
   useEffect(() => {
     if (!marketAddress || !marketPair) return;
@@ -218,7 +267,14 @@ export function ExternalMarketWorkspace() {
     const url = new URL(window.location.href);
     url.searchParams.set("side", next);
     window.history.replaceState(window.history.state, "", url);
-    if (focus) window.requestAnimationFrame(() => tradeRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+    if (!focus) return;
+    if (window.matchMedia("(max-width: 760px)").matches) {
+      tradeReturnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      setMobileTradeOpen(true);
+      window.requestAnimationFrame(() => tradeRef.current?.querySelector<HTMLElement>(".universalTradeRailClose")?.focus());
+      return;
+    }
+    window.requestAnimationFrame(() => tradeRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
   };
 
   const copyContract = async () => {
@@ -410,8 +466,27 @@ export function ExternalMarketWorkspace() {
           )}
         </section>
 
-        <aside className={`universalTradeRail ${side}`} ref={tradeRef} aria-label={`Trade ${market.name}`}>
-          <header><div><small>PLACE ORDER</small><h2>{side === "buy" ? "Buy" : "Sell"} ${market.symbol.replaceAll("$", "")}</h2></div><span>Fresh quote</span></header>
+        <button
+          type="button"
+          className={`universalTradeSheetBackdrop ${mobileTradeOpen ? "visible" : ""}`}
+          aria-label="Close trade panel"
+          tabIndex={mobileTradeOpen ? 0 : -1}
+          onClick={closeMobileTrade}
+        />
+        <aside
+          className={`universalTradeRail ${side} ${mobileTradeOpen ? "mobileOpen" : ""}`}
+          ref={tradeRef}
+          role={mobileTradeOpen ? "dialog" : undefined}
+          aria-modal={mobileTradeOpen ? "true" : undefined}
+          aria-labelledby="universal-trade-panel-title"
+        >
+          <header>
+            <div><small>PLACE ORDER</small><h2 id="universal-trade-panel-title">{side === "buy" ? "Buy" : "Sell"} ${market.symbol.replaceAll("$", "")}</h2></div>
+            <div className="universalTradeRailHeaderActions">
+              <span>Fresh quote</span>
+              <button type="button" className="universalTradeRailClose" aria-label="Close trade panel" onClick={closeMobileTrade}>×</button>
+            </div>
+          </header>
           <div className="universalTradeTabs" role="tablist" aria-label={`Trade side for ${market.name}`}>
             <button type="button" role="tab" aria-selected={side === "buy"} className={side === "buy" ? "active" : ""} onClick={() => setTradeSide("buy")}>Buy</button>
             <button type="button" role="tab" aria-selected={side === "sell"} className={side === "sell" ? "active" : ""} onClick={() => setTradeSide("sell")}>Sell</button>
@@ -434,7 +509,7 @@ export function ExternalMarketWorkspace() {
         </aside>
       </div>
 
-      <nav className="universalMobileTradeDock" aria-label="Mobile trade actions">
+      <nav className={`universalMobileTradeDock ${mobileTradeOpen ? "tradeOpen" : ""}`} aria-label="Mobile trade actions">
         <button type="button" className="buy" onClick={() => setTradeSide("buy", true)}>Buy</button>
         <button type="button" className="sell" onClick={() => setTradeSide("sell", true)}>Sell</button>
       </nav>
