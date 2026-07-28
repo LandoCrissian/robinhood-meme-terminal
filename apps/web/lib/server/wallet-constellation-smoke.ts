@@ -14,6 +14,7 @@ const holder = getAddress("0x4444444444444444444444444444444444444444");
 const intermediary = getAddress("0x5555555555555555555555555555555555555555");
 const unrelatedA = getAddress("0x6666666666666666666666666666666666666666");
 const unrelatedB = getAddress("0x7777777777777777777777777777777777777777");
+const flagged = getAddress("0x8888888888888888888888888888888888888888");
 
 const evidence: TokenRiskEvidence = {
   token,
@@ -76,18 +77,20 @@ function transfer(input: {
   timestamp: string;
   fromContract?: boolean;
   toContract?: boolean;
+  fromScam?: boolean;
+  toScam?: boolean;
 }): TransferRow {
   return {
     from: {
       hash: input.from,
       is_contract: input.fromContract ?? false,
-      is_scam: false,
+      is_scam: input.fromScam ?? false,
       name: null
     },
     to: {
       hash: input.to,
       is_contract: input.toContract ?? false,
-      is_scam: false,
+      is_scam: input.toScam ?? false,
       name: null
     },
     total: { value: input.value },
@@ -120,6 +123,21 @@ const transfers = [
     fromContract: true
   }),
   transfer({
+    from: holder,
+    to: creator,
+    value: "5",
+    hash: `0x${"5".repeat(64)}`,
+    timestamp: "2026-07-28T02:30:00.000Z"
+  }),
+  transfer({
+    from: creator,
+    to: flagged,
+    value: "2",
+    hash: `0x${"6".repeat(64)}`,
+    timestamp: "2026-07-28T02:45:00.000Z",
+    toScam: true
+  }),
+  transfer({
     from: unrelatedA,
     to: unrelatedB,
     value: "99",
@@ -139,18 +157,64 @@ assert.equal(graph.nodes.some((node) => node.address === unrelatedA), false);
 assert.equal(graph.nodes.find((node) => node.address === creator)?.role, "creator");
 assert.equal(graph.nodes.find((node) => node.address === pair)?.role, "pool");
 assert.equal(graph.nodes.find((node) => node.address === intermediary)?.role, "intermediary");
-assert.equal(graph.edges.length, 2);
-const creatorEdge = graph.edges.find((edge) => edge.from === creator);
+assert.equal(graph.edges.length, 4);
+const creatorEdge = graph.edges.find(
+  (edge) => edge.from === creator && edge.to === intermediary
+);
 assert.equal(creatorEdge?.transferCount, 2);
 assert.equal(creatorEdge?.rawAmount, "25");
 assert.equal(creatorEdge?.confidence, "confirmed");
 assert.equal(creatorEdge?.interpretation, "transfer-only");
-assert.equal(graph.coverage.sampledTransfers, 4);
+assert.equal(graph.coverage.sampledTransfers, 6);
 assert.equal(graph.coverage.hasMoreTransfers, true);
 assert.equal(graph.holderSnapshot.count, 20);
 assert.equal(graph.holderSnapshot.topNonPoolShareBps, 1_500);
 assert.equal(graph.holderSnapshot.creatorShareBps, 900);
+assert.equal(graph.signals[0]?.severity, "review");
+assert.equal(
+  graph.signals.some((signal) => signal.code === "creator-holder-direct-link"),
+  true
+);
+assert.equal(
+  graph.signals.some((signal) => signal.code === "provider-flagged-participant"),
+  true
+);
+assert.equal(
+  graph.signals.some((signal) => signal.code === "repeated-direct-transfer"),
+  true
+);
+assert.equal(
+  graph.signals.every((signal) => signal.interpretation === "evidence-only"),
+  true
+);
+assert.equal(
+  graph.signals.some((signal) =>
+    signal.relatedAddresses.some((address) => address === pair)
+  ),
+  false
+);
 assert.match(graph.limitations.join(" "), /not common ownership/);
+
+const normalPoolActivityGraph = buildWalletConstellationGraph({
+  evidence,
+  transfers: [
+    transfer({
+      from: pair,
+      to: holder,
+      value: "4",
+      hash: `0x${"7".repeat(64)}`,
+      timestamp: "2026-07-28T04:00:00.000Z",
+      fromContract: true
+    })
+  ],
+  hasMoreTransfers: false,
+  now: 0
+});
+assert.deepEqual(
+  normalPoolActivityGraph.signals,
+  [],
+  "Ordinary verified-pool activity must not be presented as a relationship warning."
+);
 
 async function main() {
   const page = await fetchWalletConstellationTransfers(token, {
@@ -159,7 +223,7 @@ async function main() {
       next_page_params: { block_number: 1 }
     })
   });
-  assert.equal(page.transfers.length, 4);
+  assert.equal(page.transfers.length, 6);
   assert.equal(page.hasMoreTransfers, true);
 
   await assert.rejects(
