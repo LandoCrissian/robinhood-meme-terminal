@@ -39,7 +39,16 @@ const homeSource = readFileSync(new URL("../app/page.tsx", import.meta.url), "ut
 assert.match(homeSource, /alternates:\s*\{\s*canonical:\s*"\/"/);
 assert.match(homeSource, /openGraph:[\s\S]*?url:\s*"\/"/);
 assert.match(homeSource, /<ExternalMarketFeed \/>/);
+assert.match(homeSource, /<OfficialRmtMarket \/>/);
 assert.doesNotMatch(homeSource, /<FreshLaunchFeed \/>/);
+
+const officialRmtMarketSource = readFileSync(new URL("../app/official-rmt-market.tsx", import.meta.url), "utf8");
+assert.match(officialRmtMarketSource, /OFFICIAL_RMT_V6_TOKEN/);
+assert.match(officialRmtMarketSource, /candidate\.launchId === "0"/);
+assert.match(officialRmtMarketSource, /candidate\.officialMigration === true/);
+assert.match(officialRmtMarketSource, /It has not graduated into a Sushi or Uniswap pool/);
+assert.match(officialRmtMarketSource, /New V6 launches paused · existing market remains open/);
+assert.match(officialRmtMarketSource, /Open native RMT market/);
 
 const exploreSource = readFileSync(new URL("../app/explore/page.tsx", import.meta.url), "utf8");
 const approvedDirectorySource = readFileSync(new URL("../app/approved-project-directory.tsx", import.meta.url), "utf8");
