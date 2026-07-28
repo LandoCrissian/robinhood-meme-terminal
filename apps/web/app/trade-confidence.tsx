@@ -3,6 +3,7 @@
 import type { ExternalMarket } from "../lib/external-market";
 import type { ExternalMarketRiskFlag } from "../lib/external-market-ranking";
 import { formatOwnershipBps, type TokenRiskEvidenceState } from "../lib/token-risk-evidence";
+import { PRICE_IMPACT_BLOCK, PRICE_IMPACT_CAUTION } from "../lib/trade-ticket";
 
 const WARNING_COPY: Record<ExternalMarketRiskFlag, string> = {
   "thin-liquidity": "Liquidity is thin, so a modest trade can move the price sharply.",
@@ -54,7 +55,7 @@ export function TradeConfidence({
   const sushiRoute = market.venue.kind === "dex"
     && market.venue.dexId.toLowerCase().includes("sushi");
   const requiresAcknowledgement = tradeRequiresAcknowledgement(market, side);
-  const excessivePriceImpact = priceImpact !== undefined && priceImpact > 0.1;
+  const excessivePriceImpact = priceImpact !== undefined && priceImpact > PRICE_IMPACT_BLOCK;
   const evidenceBlocked = tradeIsBlockedByEvidence(evidenceState, side);
   const tradeBlocked = excessivePriceImpact || evidenceBlocked;
   const evidence = evidenceState.evidence;
@@ -73,7 +74,7 @@ export function TradeConfidence({
     ...(!verifiedOrigin ? ["RMT has not verified this token’s launch origin or creator."] : []),
     ...(sushiRoute ? ["Sushi’s current Robinhood Chain route enforces minimum received but has no onchain deadline."] : []),
     ...(market.ageMinutes === null ? ["The market’s creation time is unavailable."] : []),
-    ...(priceImpact !== undefined && priceImpact > 0.03
+    ...(priceImpact !== undefined && priceImpact > PRICE_IMPACT_CAUTION
       ? [`This quote has ${Math.min(priceImpact * 100, 999).toFixed(2)}% price impact.`]
       : [])
   ];

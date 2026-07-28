@@ -30,6 +30,7 @@ function swapCandidate(overrides: Partial<{
   value: bigint;
   responseAmountIn: bigint;
   assumedAmountOut: bigint;
+  priceImpact: number;
 }> = {}) {
   const data = encodeFunctionData({
     abi: sushiRedSnwapperAbi,
@@ -48,7 +49,7 @@ function swapCandidate(overrides: Partial<{
     status: "Success",
     amountIn: (overrides.responseAmountIn ?? amountIn).toString(),
     assumedAmountOut: (overrides.assumedAmountOut ?? routeAmountOut).toString(),
-    priceImpact: 0.004,
+    priceImpact: overrides.priceImpact ?? 0.004,
     tokenFrom: 0,
     tokenTo: 1,
     tokens: [
@@ -207,12 +208,24 @@ async function main() {
   assert.equal(executableRequest.searchParams.get("recipient"), recipient);
   assert.equal(executableRequest.searchParams.get("simulate"), "true");
   assert.equal(executableRequest.searchParams.get("validate"), "true");
-  assert.equal(executableRequest.searchParams.get("maxPriceImpact"), "0.1");
+  assert.equal(executableRequest.searchParams.get("maxPriceImpact"), "0.05");
   assert.equal(executable.executable, true);
   assert.equal(executable.onchainDeadline, false);
   assert.equal(executable.quoteExpiresAt, "1090");
   assert.equal(executable.router, SUSHI_RED_SNWAPPER);
   assert.equal(executable.minimumOut, routeMinimumOut.toString());
+  await assert.rejects(
+    quoteAndBuildSushiSwap(
+      { token, recipient, side: "buy", amountIn },
+      {
+        enabled: true,
+        chainId: 4663,
+        codeHash: approvedCodeHash,
+        fetch: async () => Response.json(swapCandidate({ priceImpact: 0.051 }))
+      }
+    ),
+    /exceeds 5%/
+  );
 
   const auditedSell = await auditSushiSwapCandidate(
     { token, recipient, side: "sell", amountIn },
