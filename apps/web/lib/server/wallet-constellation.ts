@@ -236,6 +236,14 @@ export function buildWalletConstellationGraph(input: {
       state: decision.state,
       findingCodes: decision.findings.map((finding) => finding.code)
     },
+    holderSnapshot: {
+      count: input.evidence.holders.count,
+      poolShareBps: input.evidence.holders.poolShareBps,
+      topNonPoolShareBps: input.evidence.holders.topNonPoolShareBps,
+      largestNonPoolShareBps:
+        input.evidence.holders.largestNonPoolHolder?.shareBps ?? null,
+      creatorShareBps: input.evidence.holders.creatorShareBps
+    },
     coverage: {
       holderLimit: input.evidence.holders.topNonPoolHolders.length,
       sampledTransfers: input.transfers.length,

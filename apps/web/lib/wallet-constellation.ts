@@ -44,6 +44,13 @@ export type WalletConstellationGraph = {
     state: TradeEvidenceState;
     findingCodes: string[];
   };
+  holderSnapshot: {
+    count: number | null;
+    poolShareBps: number | null;
+    topNonPoolShareBps: number | null;
+    largestNonPoolShareBps: number | null;
+    creatorShareBps: number | null;
+  };
   coverage: {
     holderLimit: number;
     sampledTransfers: number;

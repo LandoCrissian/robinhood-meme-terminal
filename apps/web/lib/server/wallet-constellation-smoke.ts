@@ -147,6 +147,9 @@ assert.equal(creatorEdge?.confidence, "confirmed");
 assert.equal(creatorEdge?.interpretation, "transfer-only");
 assert.equal(graph.coverage.sampledTransfers, 4);
 assert.equal(graph.coverage.hasMoreTransfers, true);
+assert.equal(graph.holderSnapshot.count, 20);
+assert.equal(graph.holderSnapshot.topNonPoolShareBps, 1_500);
+assert.equal(graph.holderSnapshot.creatorShareBps, 900);
 assert.match(graph.limitations.join(" "), /not common ownership/);
 
 async function main() {
