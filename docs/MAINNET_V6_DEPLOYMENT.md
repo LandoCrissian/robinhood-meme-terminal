@@ -1,6 +1,6 @@
 # Robinhood Chain canonical V6 deployment
 
-Status: **live mainnet beta, active factory, public launches open**
+Status: **live mainnet beta, active factory, new launches paused for V7 preparation**
 
 - Public application: https://www.rmtlaunch.fun
 - Live status: https://www.rmtlaunch.fun/status
@@ -54,7 +54,7 @@ The same 70/30 splitter receives curve fees and collected fees from the canonica
 
 ## Production boundary
 
-The public V6 terminal starts at factory block `10248855` and indexes `TokenLaunchedV6` events from the active V6 factory. V4 and V5 launches remain historical and do not appear as V6 launches. The V6 factory still consults the legacy identity source so protected RMT names and tickers cannot be reused through the current RMT launch flow.
+The public V6 terminal starts at factory block `10248855` and indexes `TokenLaunchedV6` events from the active V6 factory. V4 and V5 launches remain historical and do not appear as V6 launches. The V6 factory still consults the legacy identity source so protected RMT names and tickers cannot be reused through the current RMT launch flow. New launches are intentionally paused while V7 is designed; existing deployed markets remain available for trading.
 
 The live `/status` page verifies the chain connection, active registry/factory/version, public launch gate, immutable economics, latest V6 market, and graduation adapter. The persistent production indexer derives its factory, policy-registry, governance, creator-payout-authority, and treasury bindings from live contracts and refuses to start when they do not match V6.
 

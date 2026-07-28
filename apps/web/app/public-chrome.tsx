@@ -91,6 +91,7 @@ export function PublicChrome() {
                   <PublicLink href="/status">Status<small>Live network and protocol checks</small></PublicLink>
                   <PublicLink href="/support">Support<small>Transaction help and incident steps</small></PublicLink>
                   <PublicLink href="/risks">Risks<small>Read before signing</small></PublicLink>
+                  <a href="https://github.com/LandoCrissian/rmt-transparency" target="_blank" rel="noreferrer">Public evidence<small>Contracts, deployments and independent checks</small></a>
                   <a href="https://github.com/sponsors/LandoCrissian" target="_blank" rel="noreferrer">Support RMT<small>Voluntary sponsorship through GitHub</small></a>
                 </div>
               </div>
