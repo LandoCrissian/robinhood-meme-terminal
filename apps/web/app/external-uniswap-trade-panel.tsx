@@ -405,13 +405,6 @@ export function ExternalUniswapTradePanel({
                     : status === "loading" ? "Verifying pool and quote…" : "Enter an amount"}
               </strong>
             </div>
-            {quote && outputDecimals !== undefined && (
-              <dl>
-                <div><dt>Minimum received</dt><dd>{displayUnits(quote.minimumOut, outputDecimals)} {outputSymbol}</dd></div>
-                <div><dt>Price impact</dt><dd>{(quote.priceImpact * 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}%</dd></div>
-                <div><dt>Execution route</dt><dd>Uniswap V3 · Router02</dd></div>
-              </dl>
-            )}
             {status === "error" && <p role="alert">{error}</p>}
           </div>
           <SmartOrderGuard
@@ -435,6 +428,20 @@ export function ExternalUniswapTradePanel({
             quoteState={quoteState}
             estimate={feeEstimate}
             needsApproval={needsApproval}
+            routeLabel="Uniswap V3 · Router02"
+            minimumReceive={quote && outputDecimals !== undefined ? `${displayUnits(quote.minimumOut, outputDecimals)} ${outputSymbol}` : undefined}
+            priceImpact={quote?.priceImpact}
+            liquidityUsd={market.liquidityUsd}
+            slippageLabel="1% max"
+            evidenceState={
+              evidenceBlocked || impactBlocked
+                ? "blocked"
+                : !confidenceEvidenceReady
+                  ? "checking"
+                  : !confidenceReady
+                    ? "review"
+                    : "clear"
+            }
           />
           <button
             className={`externalUniswapSubmit ${side}`}

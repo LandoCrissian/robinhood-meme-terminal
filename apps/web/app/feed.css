@@ -357,6 +357,10 @@
 .tradePreSignReadiness.ready,.tradePreSignReadiness.refreshing{border-color:#32613d}
 .tradePreSignReadiness.ready>header strong,.tradePreSignReadiness.ready>div strong{color:#a6dfaf}
 .tradePreSignReadiness.refreshing>header strong{color:#d0b574}
+.tradePreSignReadiness.review{border-color:#6c4e2f}
+.tradePreSignReadiness.review>header small,.tradePreSignReadiness.review>header strong{color:#ddb273}
+.tradePreSignReadiness.blocked{border-color:#71363a}
+.tradePreSignReadiness.blocked>header small,.tradePreSignReadiness.blocked>header strong{color:#ef9298}
 .tradePreSignReadiness.error{border-color:#654047}
 .tradePreSignReadiness.error>header small,.tradePreSignReadiness.error>header strong{color:#ec9ba2}
 .externalUniswapSubmit{width:100%;min-height:46px;margin-top:10px;border:0;border-radius:10px;background:#55ed71;color:#031507;font:inherit;font-size:.7rem;font-weight:950;cursor:pointer}

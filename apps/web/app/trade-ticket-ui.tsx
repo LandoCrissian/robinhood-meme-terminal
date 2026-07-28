@@ -9,6 +9,12 @@ import {
   priceImpactTone,
   quoteSecondsRemaining
 } from "../lib/trade-ticket";
+import {
+  tradeReadinessStatus,
+  type TradeEvidenceState,
+  type TradeQuoteState
+} from "../lib/trade-readiness";
+import { routeLiquidityDepthLabel } from "../lib/trade-route-selection";
 import type { TradeFeeEstimateState } from "../lib/use-trade-fee-estimate";
 import { normalizeTradePreferences } from "../lib/trade-preferences";
 import { useTradePreferences } from "../lib/use-trade-preferences";
@@ -273,19 +279,31 @@ function feeUsd(value: number | undefined) {
   });
 }
 
-export type TradeQuoteState = "enter" | "checking" | "refreshing" | "ready" | "error";
+export type { TradeQuoteState } from "../lib/trade-readiness";
 
 export function TradePreSignReadiness({
   quoteState,
   estimate,
-  needsApproval
+  needsApproval,
+  routeLabel,
+  minimumReceive,
+  priceImpact,
+  liquidityUsd,
+  slippageLabel,
+  evidenceState
 }: {
   quoteState: TradeQuoteState;
   estimate: TradeFeeEstimateState;
   needsApproval: boolean;
+  routeLabel: string;
+  minimumReceive: string | undefined;
+  priceImpact: number | undefined;
+  liquidityUsd: number;
+  slippageLabel: string;
+  evidenceState: TradeEvidenceState;
 }) {
   const quoteLabel = quoteState === "ready"
-    ? "Fresh"
+    ? `Fresh · ${slippageLabel}`
     : quoteState === "refreshing"
       ? "Refreshing"
       : quoteState === "checking"
@@ -293,31 +311,32 @@ export function TradePreSignReadiness({
         : quoteState === "error"
           ? "Unavailable"
           : "Enter amount";
-  const headline = quoteState === "ready"
-    ? "Ready for wallet review"
-    : quoteState === "refreshing"
-      ? "Fresh quote remains available"
-      : quoteState === "error"
-        ? "Route needs attention"
-        : quoteState === "checking"
-          ? "Verifying this order"
-          : "Waiting for an amount";
+  const readiness = tradeReadinessStatus(quoteState, evidenceState);
   const networkFee = estimate.status === "ready"
     ? `${feeEth(estimate.feeWei)} ETH`
     : estimate.status === "loading"
       ? "Calculating"
       : "Wallet confirms";
-
+  const evidenceLabel = evidenceState === "blocked"
+    ? "Blocked"
+    : evidenceState === "review"
+      ? "Review required"
+      : evidenceState === "checking"
+        ? "Checking"
+        : "Reviewed";
   return (
-    <section className={`tradePreSignReadiness ${quoteState}`} aria-live="polite">
+    <section className={`tradePreSignReadiness ${readiness.tone}`} aria-live="polite">
       <header>
-        <small>PRE-SIGN READINESS</small>
-        <strong>{headline}</strong>
+        <small>EXECUTION CHECK · {routeLabel}</small>
+        <strong>{readiness.headline}</strong>
       </header>
       <div>
-        <span><small>QUOTE</small><strong>{quoteLabel}</strong></span>
+        <span><small>QUOTE / SLIPPAGE</small><strong>{quoteLabel}</strong></span>
+        <span title={minimumReceive}><small>PROTECTED MINIMUM</small><strong>{minimumReceive ?? "Waiting"}</strong></span>
+        <span><small>PRICE IMPACT</small><strong>{priceImpact === undefined ? "Waiting" : `${(priceImpact * 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}%`}</strong></span>
+        <span><small>LIQUIDITY DEPTH</small><strong>{routeLiquidityDepthLabel(liquidityUsd)}</strong></span>
         <span><small>NETWORK FEE</small><strong>{networkFee}</strong></span>
-        <span><small>CONTROL</small><strong>{needsApproval ? "Approval next" : "You sign"}</strong></span>
+        <span><small>EVIDENCE / CONTROL</small><strong>{evidenceLabel} · {needsApproval ? "Exact approval" : "You sign"}</strong></span>
       </div>
     </section>
   );

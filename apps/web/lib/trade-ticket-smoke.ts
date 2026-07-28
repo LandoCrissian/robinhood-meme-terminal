@@ -21,6 +21,7 @@ import {
   routeLiquidityDepth,
   routeLiquidityDepthLabel
 } from "./trade-route-selection";
+import { tradeReadinessStatus } from "./trade-readiness";
 
 assert.equal(spendableTradeBalance(100n, 20n), 80n);
 assert.equal(spendableTradeBalance(20n, 20n), 0n);
@@ -70,6 +71,26 @@ assert.equal(routeLiquidityDepth(50_000), "strong");
 assert.equal(routeLiquidityDepth(249_999.99), "strong");
 assert.equal(routeLiquidityDepth(250_000), "deep");
 assert.equal(routeLiquidityDepthLabel(250_000), "Deep");
+assert.deepEqual(tradeReadinessStatus("ready", "blocked"), {
+  tone: "blocked",
+  headline: "Order blocked · review required"
+});
+assert.deepEqual(tradeReadinessStatus("ready", "review"), {
+  tone: "review",
+  headline: "Review required before wallet"
+});
+assert.deepEqual(tradeReadinessStatus("ready", "checking"), {
+  tone: "checking",
+  headline: "Reviewing contract evidence"
+});
+assert.deepEqual(tradeReadinessStatus("ready", "clear"), {
+  tone: "ready",
+  headline: "Ready for wallet review"
+});
+assert.deepEqual(tradeReadinessStatus("error", "clear"), {
+  tone: "error",
+  headline: "Route needs attention"
+});
 assert.equal(resilientTradeVenue({
   selected: "sushi",
   mode: "automatic",
