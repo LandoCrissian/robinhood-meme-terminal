@@ -9,7 +9,7 @@ The review covered the leading web and hybrid onchain terminals most relevant to
 1. **Signal and execution in one place.** Axiom's strongest pattern is a continuous workflow from discovery through wallet intelligence to trade execution. Users do not want to lose context by opening several tools.
 2. **Fast, trustworthy charts.** Photon and BullX are repeatedly praised for fast charts, even by users who criticize their bugs or fees.
 3. **Persistent presets and automation.** Quick-buy amounts, limit orders, DCA, take-profit/stop-loss, and retry behavior reduce repetitive setup and missed orders.
-4. **Wallet intelligence with context.** GMGN and Axiom win attention with wallet labels, realized PnL, holding time, insider/sniper indicators, and alerts. Raw wallet lists without behavior context create noise.
+4. **Wallet intelligence with context.** GMGN and Axiom win attention with wallet labels, realized PnL, holding time, insider/sniper indicators, and alerts. Raw wallet lists without behavior context create noise. RMT's first bounded increment groups the exact pool's latest confirmed swaps into repeat-wallet counts and visible net flow while explicitly withholding identity and profit claims.
 5. **Risk visible before the click.** Holder concentration, developer holdings, insiders, snipers, bundles, liquidity, and origin need to be adjacent to the trade action—not buried in a secondary page.
 6. **A profile that follows the trader.** Users expect watchlists, tracked wallets, notifications, layout density, and trade presets to persist across desktop and mobile.
 7. **Mobile parity.** Mobile users want the same core watch, quote, and execution loop, with fewer simultaneous columns and no loss of critical safety context.

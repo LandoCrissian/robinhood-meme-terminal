@@ -19,6 +19,25 @@ export type ExternalPoolTradesPayload = {
   trades: ExternalPoolTrade[];
 };
 
+export type ExternalTradeActor = {
+  trader: `0x${string}`;
+  buyCount: number;
+  sellCount: number;
+  buyVolumeUsd: number;
+  sellVolumeUsd: number;
+  totalVolumeUsd: number;
+  netVolumeUsd: number;
+  lastTimestamp: string;
+};
+
+export type ExternalTradeActorSummary = {
+  uniqueActors: number;
+  repeatActors: number;
+  largestNetBuyer: ExternalTradeActor | null;
+  largestNetSeller: ExternalTradeActor | null;
+  actors: ExternalTradeActor[];
+};
+
 type RawTrade = {
   id?: unknown;
   attributes?: {
@@ -102,4 +121,49 @@ export function parseExternalPoolTrades(payload: unknown, token: string, limit =
   return trades
     .sort((left, right) => Date.parse(right.timestamp) - Date.parse(left.timestamp))
     .slice(0, limit);
+}
+
+export function summarizeExternalTradeActors(trades: ExternalPoolTrade[]): ExternalTradeActorSummary {
+  const actors = new Map<string, ExternalTradeActor>();
+  for (const trade of trades) {
+    const key = trade.trader.toLowerCase();
+    const current = actors.get(key) ?? {
+      trader: trade.trader,
+      buyCount: 0,
+      sellCount: 0,
+      buyVolumeUsd: 0,
+      sellVolumeUsd: 0,
+      totalVolumeUsd: 0,
+      netVolumeUsd: 0,
+      lastTimestamp: trade.timestamp
+    };
+    if (trade.side === "buy") {
+      current.buyCount += 1;
+      current.buyVolumeUsd += trade.volumeUsd;
+      current.netVolumeUsd += trade.volumeUsd;
+    } else {
+      current.sellCount += 1;
+      current.sellVolumeUsd += trade.volumeUsd;
+      current.netVolumeUsd -= trade.volumeUsd;
+    }
+    current.totalVolumeUsd += trade.volumeUsd;
+    if (Date.parse(trade.timestamp) > Date.parse(current.lastTimestamp)) current.lastTimestamp = trade.timestamp;
+    actors.set(key, current);
+  }
+
+  const ranked = [...actors.values()].sort((left, right) =>
+    right.totalVolumeUsd - left.totalVolumeUsd
+    || Date.parse(right.lastTimestamp) - Date.parse(left.lastTimestamp)
+    || left.trader.localeCompare(right.trader)
+  );
+  const netBuyers = ranked.filter((actor) => actor.netVolumeUsd > 0);
+  const netSellers = ranked.filter((actor) => actor.netVolumeUsd < 0);
+
+  return {
+    uniqueActors: ranked.length,
+    repeatActors: ranked.filter((actor) => actor.buyCount + actor.sellCount > 1).length,
+    largestNetBuyer: netBuyers.sort((left, right) => right.netVolumeUsd - left.netVolumeUsd)[0] ?? null,
+    largestNetSeller: netSellers.sort((left, right) => left.netVolumeUsd - right.netVolumeUsd)[0] ?? null,
+    actors: ranked
+  };
 }
