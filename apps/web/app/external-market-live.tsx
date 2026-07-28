@@ -6,7 +6,11 @@ import { useAccount, useReadContract } from "wagmi";
 import type { ExternalMarket } from "../lib/external-market";
 import { summarizeExternalTradeActors, type ExternalPoolTradesPayload } from "../lib/external-trades";
 import { formatOwnershipBps } from "../lib/token-risk-evidence";
-import { useTokenRiskEvidence } from "../lib/use-token-risk-evidence";
+import { useWalletConstellation } from "../lib/use-wallet-constellation";
+import type {
+  WalletConstellationNode,
+  WalletConstellationNodeRole
+} from "../lib/wallet-constellation";
 
 const EXPLORER = "https://robinhoodchain.blockscout.com";
 
@@ -180,35 +184,57 @@ export function ExternalTradeTape({ market }: { market: ExternalMarket }) {
 }
 
 export function ExternalHolderIntelligence({ market }: { market: ExternalMarket }) {
-  const state = useTokenRiskEvidence(market);
-  const evidence = state.evidence;
-  const topHolders = evidence?.holders.topNonPoolHolders ?? [];
-  const creator = evidence?.holders.creator?.toLowerCase();
+  const state = useWalletConstellation(market);
+  const graph = state.graph;
+  const topHolders = graph?.nodes
+    .filter((node) => node.holderRank !== null)
+    .sort((left, right) => (left.holderRank ?? 999) - (right.holderRank ?? 999))
+    ?? [];
+  const nodeByAddress = new Map(
+    graph?.nodes.map((node) => [node.address.toLowerCase(), node]) ?? []
+  );
+  const creatorEdges = graph?.edges.filter((edge) =>
+    nodeByAddress.get(edge.from.toLowerCase())?.role === "creator"
+    || nodeByAddress.get(edge.to.toLowerCase())?.role === "creator"
+  ) ?? [];
+  const roleLabel = (role: WalletConstellationNodeRole) => {
+    if (role === "creator") return "Creator";
+    if (role === "pool") return "Pool";
+    if (role === "contract") return "Contract";
+    if (role === "mint-source") return "Mint source";
+    if (role === "burn-address") return "Burn";
+    if (role === "holder") return "Holder";
+    return "Counterparty";
+  };
+  const displayNode = (
+    node: WalletConstellationNode | undefined,
+    address: string
+  ) => node?.label || `${roleLabel(node?.role ?? "intermediary")} ${shortAddress(address)}`;
 
   return (
     <section className="universalHolderIntelligence" aria-labelledby="universal-holder-intelligence-heading">
       <header>
-        <div><small>HOLDER INTELLIGENCE</small><h3 id="universal-holder-intelligence-heading">Who can move this market?</h3></div>
-        <span>{state.status === "loading" ? "Checking…" : evidence ? `${evidence.coverage} coverage` : "Unavailable"}</span>
+        <div><small>WALLET CONSTELLATION · READ ONLY</small><h3 id="universal-holder-intelligence-heading">Ownership and observed relationships</h3></div>
+        <span>{state.status === "loading" ? "Checking…" : graph ? `${graph.edges.length} confirmed links` : "Unavailable"}</span>
       </header>
 
-      {evidence ? (
+      {graph ? (
         <>
           <div className="universalHolderSummary">
-            <span><small>KNOWN HOLDERS</small><strong>{evidence.holders.count?.toLocaleString() ?? "—"}</strong></span>
-            <span><small>TOP 10 · EXCLUDING POOL</small><strong>{formatOwnershipBps(evidence.holders.topNonPoolShareBps)}</strong></span>
-            <span><small>LARGEST WALLET</small><strong>{formatOwnershipBps(evidence.holders.largestNonPoolHolder?.shareBps ?? null)}</strong></span>
-            <span><small>REPORTED CREATOR</small><strong>{formatOwnershipBps(evidence.holders.creatorShareBps)}</strong></span>
+            <span><small>KNOWN HOLDERS</small><strong>{graph.holderSnapshot.count?.toLocaleString() ?? "—"}</strong></span>
+            <span><small>TOP 10 · EXCLUDING POOL</small><strong>{formatOwnershipBps(graph.holderSnapshot.topNonPoolShareBps)}</strong></span>
+            <span><small>LARGEST WALLET</small><strong>{formatOwnershipBps(graph.holderSnapshot.largestNonPoolShareBps)}</strong></span>
+            <span><small>REPORTED CREATOR</small><strong>{formatOwnershipBps(graph.holderSnapshot.creatorShareBps)}</strong></span>
           </div>
 
           {topHolders.length > 0 ? (
             <>
-              <div className="universalConcentrationTrack" aria-label={`Top visible non-pool holders control ${formatOwnershipBps(evidence.holders.topNonPoolShareBps)}`}>
+              <div className="universalConcentrationTrack" aria-label={`Top visible non-pool holders control ${formatOwnershipBps(graph.holderSnapshot.topNonPoolShareBps)}`}>
                 {topHolders.slice(0, 6).map((holder, index) => (
                   <i
-                    className={holder.isScam ? "flagged" : holder.isContract ? "contract" : ""}
-                    style={{ width: `${holder.shareBps / 100}%` }}
-                    title={`${shortAddress(holder.address)} · ${formatOwnershipBps(holder.shareBps)}`}
+                    className={holder.isFlagged ? "flagged" : holder.isContract ? "contract" : ""}
+                    style={{ width: `${(holder.supplyShareBps ?? 0) / 100}%` }}
+                    title={`${shortAddress(holder.address)} · ${formatOwnershipBps(holder.supplyShareBps)}`}
                     key={holder.address}
                     data-rank={index + 1}
                   />
@@ -216,10 +242,9 @@ export function ExternalHolderIntelligence({ market }: { market: ExternalMarket 
               </div>
               <div className="universalHolderList">
                 {topHolders.slice(0, 8).map((holder, index) => {
-                  const isCreator = holder.address.toLowerCase() === creator;
-                  const label = isCreator
+                  const label = holder.role === "creator"
                     ? "Reported creator"
-                    : holder.isScam
+                    : holder.isFlagged
                       ? "Explorer flagged"
                       : holder.isContract
                         ? "Contract"
@@ -227,8 +252,8 @@ export function ExternalHolderIntelligence({ market }: { market: ExternalMarket 
                   return (
                     <a href={`${EXPLORER}/address/${holder.address}`} target="_blank" rel="noopener noreferrer" key={holder.address}>
                       <span>{index + 1}</span>
-                      <span><strong>{shortAddress(holder.address)}</strong><small className={holder.isScam ? "flagged" : ""}>{label}</small></span>
-                      <strong>{formatOwnershipBps(holder.shareBps)}</strong>
+                      <span><strong>{shortAddress(holder.address)}</strong><small className={holder.isFlagged ? "flagged" : ""}>{label}</small></span>
+                      <strong>{formatOwnershipBps(holder.supplyShareBps)}</strong>
                       <span aria-hidden="true">↗</span>
                     </a>
                   );
@@ -238,15 +263,46 @@ export function ExternalHolderIntelligence({ market }: { market: ExternalMarket 
           ) : (
             <div className="universalHolderState"><strong>No holder rows available</strong><span>Treat missing concentration data as unknown, not safe.</span></div>
           )}
+
+          <div className="universalRelationshipStrip" aria-label="Observed wallet relationship summary">
+            <span><small>TRACKED NODES</small><strong>{graph.nodes.length}</strong></span>
+            <span><small>CONFIRMED LINKS</small><strong>{graph.edges.length}</strong></span>
+            <span><small>CREATOR-LINKED</small><strong>{creatorEdges.length}</strong></span>
+            <span><small>TRANSFER SAMPLE</small><strong>{graph.coverage.sampledTransfers}</strong></span>
+          </div>
+
+          {graph.edges.length > 0 && (
+            <details className="universalRelationshipDetails">
+              <summary>
+                <span><small>OBSERVED TOKEN TRANSFERS</small><strong>Review relationship evidence</strong></span>
+                <em>{graph.coverage.hasMoreTransfers ? "Recent sample" : "Available sample"} +</em>
+              </summary>
+              <div className="universalRelationshipList">
+                {graph.edges.slice(0, 6).map((edge) => {
+                  const from = nodeByAddress.get(edge.from.toLowerCase());
+                  const to = nodeByAddress.get(edge.to.toLowerCase());
+                  return (
+                    <a href={`${EXPLORER}/tx/${edge.transactionHashes[0]}`} target="_blank" rel="noopener noreferrer" key={edge.id}>
+                      <span><small>{roleLabel(from?.role ?? "intermediary")}</small><strong>{displayNode(from, edge.from)}</strong></span>
+                      <i aria-hidden="true">→</i>
+                      <span><small>{roleLabel(to?.role ?? "intermediary")}</small><strong>{displayNode(to, edge.to)}</strong></span>
+                      <em>{edge.transferCount} {edge.transferCount === 1 ? "transfer" : "transfers"} ↗</em>
+                    </a>
+                  );
+                })}
+              </div>
+              <p>{graph.coverage.description}</p>
+            </details>
+          )}
         </>
       ) : (
         <div className="universalHolderState">
-          <strong>{state.status === "loading" ? "Reading Blockscout holder evidence…" : "Holder evidence unavailable"}</strong>
-          <span>{state.status === "loading" ? "Pool, zero, and dead addresses will be excluded." : "RMT will keep retrying from the order ticket."}</span>
+          <strong>{state.status === "loading" ? "Reading holder and relationship evidence…" : "Wallet relationship evidence unavailable"}</strong>
+          <span>{state.status === "loading" ? "Matching current holders to confirmed token transfers." : "Treat unavailable relationships as unknown, not safe."}</span>
         </div>
       )}
 
-      <footer>Read-only Blockscout evidence · displayed pool, zero address, and standard dead address excluded · not a complete ownership identity map</footer>
+      <footer>Read-only public evidence · a transfer proves interaction, not common ownership, coordination, or malicious intent · coverage limits remain visible</footer>
     </section>
   );
 }
