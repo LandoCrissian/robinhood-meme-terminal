@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { encodeFunctionData, erc20Abi, formatEther, formatUnits, parseEther, parseUnits, type Address, type Hex } from "viem";
 import {
   useAccount,
@@ -99,6 +99,7 @@ export function ExternalUniswapTradePanel({
   const [message, setMessage] = useState("");
   const [refresh, setRefresh] = useState(0);
   const [saferOrderOriginal, setSaferOrderOriginal] = useState<bigint>();
+  const quoteRequestKey = useRef("");
   const token = market.address as Address;
   const pair = market.pairAddress as Address;
 
@@ -170,7 +171,10 @@ export function ExternalUniswapTradePanel({
   }, []);
 
   useEffect(() => {
-    setQuote(undefined);
+    const nextRequestKey = `${address ?? ""}:${amountIn}:${side}:${token}:${pair}`;
+    const requestChanged = quoteRequestKey.current !== nextRequestKey;
+    quoteRequestKey.current = nextRequestKey;
+    if (requestChanged) setQuote(undefined);
     setError("");
     if (!address || amountIn <= 0n || (side === "sell" && decimals === undefined)) {
       setStatus("idle");
@@ -375,11 +379,9 @@ export function ExternalUniswapTradePanel({
             <div>
               <span>Estimated receive</span>
               <strong>
-                {status === "loading"
-                  ? "Verifying pool and quote…"
-                  : quote && outputDecimals !== undefined
+                {quote && outputDecimals !== undefined
                     ? `${displayUnits(quote.quoteOut, outputDecimals)} ${outputSymbol}`
-                    : "Enter an amount"}
+                    : status === "loading" ? "Verifying pool and quote…" : "Enter an amount"}
               </strong>
             </div>
             {quote && outputDecimals !== undefined && (

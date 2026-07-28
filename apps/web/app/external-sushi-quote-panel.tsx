@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { encodeFunctionData, erc20Abi, formatEther, formatUnits, parseEther, parseUnits, type Address } from "viem";
 import {
   useAccount,
@@ -88,6 +88,7 @@ export function ExternalSushiQuotePanel({
   const [message, setMessage] = useState("");
   const [refresh, setRefresh] = useState(0);
   const [saferOrderOriginal, setSaferOrderOriginal] = useState<bigint>();
+  const quoteRequestKey = useRef("");
   const token = market.address as Address;
   const pair = market.pairAddress as Address;
   const tokenDecimals = useReadContract({
@@ -158,7 +159,10 @@ export function ExternalSushiQuotePanel({
   }, []);
 
   useEffect(() => {
-    setQuote(undefined);
+    const nextRequestKey = `${address ?? ""}:${amountIn}:${side}:${token}:${pair}`;
+    const requestChanged = quoteRequestKey.current !== nextRequestKey;
+    quoteRequestKey.current = nextRequestKey;
+    if (requestChanged) setQuote(undefined);
     setError("");
     if (!address || amountIn <= 0n || (side === "sell" && decimals === undefined)) {
       setStatus("idle");
@@ -373,11 +377,9 @@ export function ExternalSushiQuotePanel({
             <div>
               <span>Estimated receive</span>
               <strong>
-                {status === "loading"
-                  ? "Checking route…"
-                  : quote && outputDecimals !== undefined
+                {quote && outputDecimals !== undefined
                     ? `${displayUnits(quote.quoteOut, outputDecimals)} ${outputSymbol}`
-                    : "Enter an amount"}
+                    : status === "loading" ? "Checking route…" : "Enter an amount"}
               </strong>
             </div>
             {quote && outputDecimals !== undefined && (
