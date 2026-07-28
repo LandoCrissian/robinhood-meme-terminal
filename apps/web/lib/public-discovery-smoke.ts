@@ -114,6 +114,12 @@ const projectRouteSource = readFileSync(new URL("../app/project/[address]/page.t
 const tokenPageSource = readFileSync(new URL("../app/token/[address]/page.tsx", import.meta.url), "utf8");
 assert.match(projectPageSource, /ProjectModuleGrid/);
 assert.match(projectPageSource, /OFFICIAL RMT · PROJECT VERIFIED/);
+assert.match(projectPageSource, /MarketPanel/);
+const marketPanelSource = readFileSync(new URL("../app/market-panel.tsx", import.meta.url), "utf8");
+assert.match(marketPanelSource, /Native market confidence/);
+assert.match(marketPanelSource, /Factory verified/);
+assert.match(marketPanelSource, /No mint, tax or blacklist/);
+assert.match(marketPanelSource, /cannot guarantee price performance or prevent every loss/);
 assert.match(projectRouteSource, /isAddress/);
 assert.match(projectRouteSource, /ApprovedProjectPage/);
 assert.match(approvedProjectPageSource, /RMT PAGE · REVIEW APPROVED/);
