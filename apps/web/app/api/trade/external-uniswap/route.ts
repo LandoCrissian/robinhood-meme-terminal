@@ -25,7 +25,7 @@ const publicErrors = new Set([
   "The token decimals are outside the supported range.",
   "The Uniswap pool returned an invalid quote.",
   "The Uniswap quote is too small to enforce a safe minimum received.",
-  "RMT blocked this Uniswap trade because price impact is too high."
+  "RMT blocked this Uniswap trade because price impact exceeds 5%."
 ]);
 
 export async function POST(request: Request) {

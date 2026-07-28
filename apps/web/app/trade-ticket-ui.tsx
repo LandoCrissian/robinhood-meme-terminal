@@ -138,6 +138,33 @@ export function QuoteProtection({
   );
 }
 
+export function SmartOrderGuard({
+  priceImpact,
+  disabled = false,
+  onReduce
+}: {
+  priceImpact: number | undefined;
+  disabled?: boolean;
+  onReduce: () => void;
+}) {
+  const tone = priceImpactTone(priceImpact);
+  if (tone === "calm") return null;
+  const blocked = tone === "danger";
+  return (
+    <div className={`smartOrderGuard ${tone}`} role="alert">
+      <div>
+        <strong>{blocked ? "Order blocked · impact above 5%" : "Price-impact caution"}</strong>
+        <small>
+          {blocked
+            ? "RMT will not open your wallet for this amount. Reduce it and RMT will verify a fresh route."
+            : "This quote is above 1% impact. RMT can reduce the amount and automatically request a safer quote."}
+        </small>
+      </div>
+      <button type="button" disabled={disabled} onClick={onReduce}>Reduce below 1%</button>
+    </div>
+  );
+}
+
 function feeEth(value: bigint | undefined) {
   if (value === undefined || value <= 0n) return "—";
   return Number(formatEther(value)).toLocaleString(undefined, {

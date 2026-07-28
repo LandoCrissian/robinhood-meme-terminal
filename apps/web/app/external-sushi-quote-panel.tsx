@@ -17,8 +17,10 @@ import {
   type SushiIndicativeQuote
 } from "../lib/sushi";
 import {
+  PRICE_IMPACT_CAUTION,
   PRICE_IMPACT_BLOCK,
   conservativeNetworkFeeReserve,
+  saferTradeAmount,
   spendableTradeBalance
 } from "../lib/trade-ticket";
 import { useTradeFeeEstimate } from "../lib/use-trade-fee-estimate";
@@ -31,6 +33,7 @@ import {
 } from "./trade-confidence";
 import {
   QuoteProtection,
+  SmartOrderGuard,
   TradeCostSummary,
   TradeAmountPresets,
   TradeExecutionPath
@@ -273,6 +276,12 @@ export function ExternalSushiQuotePanel({
     ? nativeBalance.data ? spendableTradeBalance(nativeBalance.data.value, networkFeeReserve) : undefined
     : tokenBalance.data;
   const sizingDecimals = side === "buy" ? 18 : decimals;
+  const saferAmountIn = saferTradeAmount(amountIn, quote?.priceImpact, PRICE_IMPACT_CAUTION);
+  const canReduceImpact = saferAmountIn > 0n && saferAmountIn < amountIn && sizingDecimals !== undefined;
+  const chooseSaferAmount = () => {
+    if (!canReduceImpact || sizingDecimals === undefined) return;
+    setAmount(cleanDecimal(formatUnits(saferAmountIn, sizingDecimals)));
+  };
 
   const submit = () => {
     setMessage("");
@@ -379,6 +388,11 @@ export function ExternalSushiQuotePanel({
             deadline={quote?.quoteExpiresAt}
             priceImpact={quote?.priceImpact}
             slippageLabel="1% maximum"
+          />
+          <SmartOrderGuard
+            priceImpact={quote?.priceImpact}
+            disabled={busy || !canReduceImpact}
+            onReduce={chooseSaferAmount}
           />
           <TradeCostSummary
             side={side}
