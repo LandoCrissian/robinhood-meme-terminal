@@ -17,7 +17,9 @@ import {
 } from "./trade-preferences";
 import {
   protectedOutputRecommendation,
-  resilientTradeVenue
+  resilientTradeVenue,
+  routeLiquidityDepth,
+  routeLiquidityDepthLabel
 } from "./trade-route-selection";
 
 assert.equal(spendableTradeBalance(100n, 20n), 80n);
@@ -59,6 +61,15 @@ assert.deepEqual(normalizeTradePreferences({ buyAmounts: ["0.0002", "0.002", "0.
 });
 assert.deepEqual(normalizeTradePreferences({ buyAmounts: ["0.01", "0.01", "0.02"] }), DEFAULT_TRADE_PREFERENCES);
 assert.deepEqual(normalizeTradePreferences({ buyAmounts: ["bad"] }), DEFAULT_TRADE_PREFERENCES);
+assert.equal(routeLiquidityDepth(Number.NaN), "unknown");
+assert.equal(routeLiquidityDepth(0), "unknown");
+assert.equal(routeLiquidityDepth(9_999.99), "thin");
+assert.equal(routeLiquidityDepth(10_000), "moderate");
+assert.equal(routeLiquidityDepth(49_999.99), "moderate");
+assert.equal(routeLiquidityDepth(50_000), "strong");
+assert.equal(routeLiquidityDepth(249_999.99), "strong");
+assert.equal(routeLiquidityDepth(250_000), "deep");
+assert.equal(routeLiquidityDepthLabel(250_000), "Deep");
 assert.equal(resilientTradeVenue({
   selected: "sushi",
   mode: "automatic",

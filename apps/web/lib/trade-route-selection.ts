@@ -1,8 +1,22 @@
 export type TradeVenueId = "sushi" | "uniswap";
 export type TradeVenueHealth = "loading" | "ready" | "unavailable";
 export type TradeVenueSelectionMode = "automatic" | "manual";
+export type RouteLiquidityDepth = "deep" | "strong" | "moderate" | "thin" | "unknown";
 
 export const MIN_AUTO_ROUTE_IMPROVEMENT_BPS = 25;
+
+export function routeLiquidityDepth(liquidityUsd: number): RouteLiquidityDepth {
+  if (!Number.isFinite(liquidityUsd) || liquidityUsd <= 0) return "unknown";
+  if (liquidityUsd < 10_000) return "thin";
+  if (liquidityUsd < 50_000) return "moderate";
+  if (liquidityUsd < 250_000) return "strong";
+  return "deep";
+}
+
+export function routeLiquidityDepthLabel(liquidityUsd: number) {
+  const depth = routeLiquidityDepth(liquidityUsd);
+  return depth === "unknown" ? "Unknown" : depth[0].toUpperCase() + depth.slice(1);
+}
 
 export type ComparableTradeQuote = {
   venue: TradeVenueId;
