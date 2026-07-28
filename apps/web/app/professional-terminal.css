@@ -856,6 +856,12 @@
     text-decoration: none;
   }
 
+  .terminalPage .mobileRunnerTrade.review {
+    border-color: #80652b;
+    background: #1c160a;
+    color: #f0c65b;
+  }
+
   .terminalPage .mobileRunnerMetrics {
     display: grid;
     grid-column: 1 / -1;
