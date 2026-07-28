@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { encodeFunctionData, formatEther, formatUnits, maxUint256, parseEther, parseUnits, type Address } from "viem";
+import { encodeFunctionData, formatEther, formatUnits, parseEther, parseUnits, type Address } from "viem";
 import { useAccount, useBalance, useCapabilities, usePublicClient, useReadContract, useSendCalls, useWaitForCallsStatus, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { activeChain, isMainnetRelease } from "../lib/network";
 import { formatTokenEthPrice, formatUsd } from "../lib/price-format";
@@ -96,6 +96,11 @@ type TradePreflight = {
   gas?: bigint;
   gasPrice?: bigint;
   message?: string;
+};
+
+type PendingSellOrder = {
+  tokensIn: bigint;
+  minimumOut: bigint;
 };
 
 function compactAddress(address: Address) {
@@ -209,6 +214,7 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply, creator, compac
   const creatorAnalyticsRef = useRef<HTMLElement>(null);
   const recentTradesRef = useRef<RecentTrade[]>([]);
   const lastScannedTradeBlockRef = useRef<bigint | undefined>(undefined);
+  const pendingSellOrderRef = useRef<PendingSellOrder | undefined>(undefined);
   const seededQuickBuy = useRef(false);
   const { writeContract, data: hash, isPending, error: writeError, reset: resetWrite } = useWriteContract();
   const receipt = useWaitForTransactionReceipt({ hash, chainId: activeChain.id });
@@ -432,7 +438,7 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply, creator, compac
           if (mode === "buy") {
             gas = await publicClient.estimateContractGas({ account, address: market, abi: marketAbi, functionName: "buy", args: [account, buyOut * 99n / 100n, deadline], value: ethIn });
           } else if (needsApproval) {
-            gas = await publicClient.estimateContractGas({ account, address: tokenAddress, abi: tokenTradeAbi, functionName: "approve", args: [market, maxUint256] });
+            gas = await publicClient.estimateContractGas({ account, address: tokenAddress, abi: tokenTradeAbi, functionName: "approve", args: [market, tokensIn] });
           } else {
             gas = await publicClient.estimateContractGas({ account, address: market, abi: marketAbi, functionName: "sell", args: [tokensIn, sellOut * 99n / 100n, account, deadline] });
           }
@@ -472,11 +478,17 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply, creator, compac
 
   useEffect(() => {
     if (!receipt.isSuccess || lastAction !== "approve" || !market || !account) return;
+    const pendingSellOrder = pendingSellOrderRef.current;
+    if (!pendingSellOrder) {
+      setTradeMessage("Approval confirmed, but the original sell order is no longer available. Review the current quote and submit again.");
+      return;
+    }
+    pendingSellOrderRef.current = undefined;
     setLastAction("sell");
     setTradeMessage("Approval confirmed. Confirm the sell in your wallet.");
     const deadline = BigInt(Math.floor(Date.now() / 1000) + 600);
-    writeContract({ address: market, abi: marketAbi, functionName: "sell", args: [tokensIn, sellOut * 99n / 100n, account, deadline], chainId: activeChain.id });
-  }, [receipt.isSuccess, lastAction, market, account, tokensIn, sellOut, writeContract]);
+    writeContract({ address: market, abi: marketAbi, functionName: "sell", args: [pendingSellOrder.tokensIn, pendingSellOrder.minimumOut, account, deadline], chainId: activeChain.id });
+  }, [receipt.isSuccess, lastAction, market, account, writeContract]);
 
   useEffect(() => {
     if (callsReceipt.data?.status !== "success") return;
@@ -532,14 +544,15 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply, creator, compac
         chainId: activeChain.id,
         forceAtomic: true,
         calls: [
-          { to: tokenAddress, data: encodeFunctionData({ abi: tokenTradeAbi, functionName: "approve", args: [market, maxUint256] }) },
+          { to: tokenAddress, data: encodeFunctionData({ abi: tokenTradeAbi, functionName: "approve", args: [market, tokensIn] }) },
           { to: market, data: encodeFunctionData({ abi: marketAbi, functionName: "sell", args: [tokensIn, sellOut * 99n / 100n, account, deadline] }) }
         ]
       });
     } else if (needsApproval) {
       setLastAction("approve");
-      setTradeMessage("One-time market approval. Your sell confirmation follows automatically.");
-      writeContract({ address: tokenAddress, abi: tokenTradeAbi, functionName: "approve", args: [market, maxUint256], chainId: activeChain.id });
+      pendingSellOrderRef.current = { tokensIn, minimumOut: sellMinimum };
+      setTradeMessage("Exact-amount market approval. Your sell confirmation follows automatically.");
+      writeContract({ address: tokenAddress, abi: tokenTradeAbi, functionName: "approve", args: [market, tokensIn], chainId: activeChain.id });
     } else {
       setLastAction("sell");
       setTradeMessage("Review the token amount and minimum ETH received in your wallet.");
@@ -594,29 +607,29 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply, creator, compac
 
         <aside className={`tradeRail ${mode}`} ref={tradeRailRef} aria-label={`Trade ${symbol}`}>
           <div className="tradeRailHeader"><div><p className="eyebrow">PLACE ORDER</p><h3>{mode === "buy" ? `Buy ${symbol}` : `Sell ${symbol}`}</h3></div><span>Live quote</span></div>
-          <div className="tradeTabs"><button type="button" className={mode === "buy" ? "active" : ""} aria-pressed={mode === "buy"} onClick={() => setMode("buy")}>Buy</button><button type="button" className={mode === "sell" ? "active" : ""} aria-pressed={mode === "sell"} onClick={() => setMode("sell")}>Sell</button></div>
+          <div className="tradeTabs"><button type="button" disabled={busy} className={mode === "buy" ? "active" : ""} aria-pressed={mode === "buy"} onClick={() => setMode("buy")}>Buy</button><button type="button" disabled={busy} className={mode === "sell" ? "active" : ""} aria-pressed={mode === "sell"} onClick={() => setMode("sell")}>Sell</button></div>
           {graduated.data ? migratedToV4 ? <GraduatedMarketTrade tokenAddress={tokenAddress} symbol={symbol} launchId={launchRecord.data?.launchId ?? 0n} mode={mode} /> : <div className="tradeAmountCard dexHandoffCard">
             <div className="tradeAmountTop"><span>V4 pool finalization required</span><small>One permissionless transaction</small></div>
             <p>The curve can no longer accept orders. Finalize V4 graduation in the verified Graduation &amp; fees panel; the caller pays gas but receives no funds, tokens, liquidity, or reward.</p>
           </div> : mode === "buy" ? <div className="tradeAmountCard">
             <div className="tradeAmountTop"><span>You pay</span><small>{ethUsd ? `1 ETH ≈ ${formatUsd(ethUsd)}` : "Loading ETH/USD…"}</small></div>
-            <div className="tradeInputRow"><input aria-label="ETH amount to buy" inputMode="decimal" value={buyAmount} onFocus={(event) => event.currentTarget.select()} onChange={(event) => setBuyAmount(event.target.value)} /><span>ETH</span></div>
+            <div className="tradeInputRow"><input aria-label="ETH amount to buy" inputMode="decimal" disabled={busy} value={buyAmount} onFocus={(event) => event.currentTarget.select()} onChange={(event) => setBuyAmount(event.target.value)} /><span>ETH</span></div>
             <div className="usdEstimate">≈ {formatUsd(buyValueUsd)} <span>reference value</span></div>
-            {isConnected && walletBalance.data ? <><div className="quickAmounts walletQuickAmounts" aria-label="Quick wallet balance amounts">{[5, 10, 25, 100].map((percent) => { const amount = percent === 100 ? walletSpendableWei : walletSpendableWei * BigInt(percent) / 100n; return <button type="button" key={percent} disabled={amount === 0n} onClick={() => chooseBuyPercent(percent)}><span>{percent === 100 ? "Max" : `${percent}%`}</span><small>{formatEth(amount, 5)} ETH</small></button>; })}</div><small className="walletPresetNote">Based on your Robinhood Chain ETH. Max leaves room for the estimated network fee.</small></> : <div className="quickAmounts" aria-label="Quick dollar amounts">{[1, 5, 10, 25].map((amount) => <button type="button" key={amount} disabled={!ethUsd} onClick={() => chooseBuyUsd(amount)}>${amount}</button>)}</div>}
+            {isConnected && walletBalance.data ? <><div className="quickAmounts walletQuickAmounts" aria-label="Quick wallet balance amounts">{[5, 10, 25, 100].map((percent) => { const amount = percent === 100 ? walletSpendableWei : walletSpendableWei * BigInt(percent) / 100n; return <button type="button" key={percent} disabled={busy || amount === 0n} onClick={() => chooseBuyPercent(percent)}><span>{percent === 100 ? "Max" : `${percent}%`}</span><small>{formatEth(amount, 5)} ETH</small></button>; })}</div><small className="walletPresetNote">Based on your Robinhood Chain ETH. Max leaves room for the estimated network fee.</small></> : <div className="quickAmounts" aria-label="Quick dollar amounts">{[1, 5, 10, 25].map((amount) => <button type="button" key={amount} disabled={busy || !ethUsd} onClick={() => chooseBuyUsd(amount)}>${amount}</button>)}</div>}
             {isConnected && walletBalance.data && (walletSpendableWei === 0n || ethIn > walletSpendableWei) && <div className="lowBalancePrompt"><div><strong>{walletSpendableWei === 0n ? "Add ETH before buying" : "This order is above your spendable ETH"}</strong><span>Keep enough ETH for both the purchase and Robinhood Chain network fee.</span></div><FundWalletButton variant="inline" label="Funding options" /></div>}
             <div className="orderPreview executionPreview"><div><span>Estimated receive</span><strong>{Number(formatUnits(buyOut, 18)).toLocaleString(undefined, { maximumFractionDigits: 2 })} {symbol}</strong></div><div><span>Protected minimum</span><strong>{Number(formatUnits(buyMinimum, 18)).toLocaleString(undefined, { maximumFractionDigits: 2 })} {symbol}</strong></div><div><span>Curve price impact</span><strong className={`impactValue ${curveImpactTone}`}>{curveImpactLabel}</strong></div><div><span>Platform fee</span><strong>{formatEth(buyFee)} ETH</strong></div></div>
           </div> : <div className="tradeAmountCard">
             <div className="tradeAmountTop"><span>You sell</span><small>Balance {Number(formatUnits(balance.data ?? 0n, 18)).toLocaleString(undefined, { maximumFractionDigits: 2 })} {symbol}</small></div>
-            <div className="tradeInputRow"><input aria-label={`${symbol} amount to sell`} inputMode="decimal" value={sellAmount} onFocus={(event) => event.currentTarget.select()} onChange={(event) => setSellAmount(event.target.value)} /><span>{symbol}</span></div>
+            <div className="tradeInputRow"><input aria-label={`${symbol} amount to sell`} inputMode="decimal" disabled={busy} value={sellAmount} onFocus={(event) => event.currentTarget.select()} onChange={(event) => setSellAmount(event.target.value)} /><span>{symbol}</span></div>
             <div className="usdEstimate">≈ {formatUsd(sellValueUsd)} <span>estimated proceeds</span></div>
-            <div className="quickAmounts" aria-label="Quick sell percentages">{[25, 50, 75, 100].map((percent) => <button type="button" key={percent} disabled={(balance.data ?? 0n) === 0n} onClick={() => chooseSellPercent(percent)}>{percent === 100 ? "Max" : `${percent}%`}</button>)}</div>
+            <div className="quickAmounts" aria-label="Quick sell percentages">{[25, 50, 75, 100].map((percent) => <button type="button" key={percent} disabled={busy || (balance.data ?? 0n) === 0n} onClick={() => chooseSellPercent(percent)}>{percent === 100 ? "Max" : `${percent}%`}</button>)}</div>
             <div className="orderPreview executionPreview"><div><span>Estimated receive</span><strong>{Number(formatEther(sellOut)).toLocaleString(undefined, { maximumFractionDigits: 8 })} ETH</strong></div><div><span>Protected minimum</span><strong>{Number(formatEther(sellMinimum)).toLocaleString(undefined, { maximumFractionDigits: 8 })} ETH</strong></div><div><span>Curve price impact</span><strong className={`impactValue ${curveImpactTone}`}>{curveImpactLabel}</strong></div><div><span>Platform fee</span><strong>{formatEth(sellFee)} ETH</strong></div></div>
-            {needsApproval && isConnected && <p className="approvalNote">{atomicSellAvailable ? "Your wallet supports a one-confirmation approval-and-sell batch." : "Your first sell creates a reusable allowance for this token’s immutable market. Later sells need only the normal transaction confirmation, and you can revoke access at any time."}</p>}
+            {needsApproval && isConnected && <p className="approvalNote">{atomicSellAvailable ? "Your wallet can approve exactly this sell amount and execute it in one combined confirmation." : "Your wallet first approves exactly this sell amount for the immutable market, then asks you to confirm the sell. Each transaction has its own network fee."}</p>}
           </div>}
           {!graduated.data && !compact && <div className="tradeDisclosure"><span>Live quote</span><span>1% slippage</span><span>10-minute deadline</span></div>}
           {!creatorRiskRequired && <button type="button" className={`creatorRiskSummary ${highCreatorConcentration ? "highRisk" : notableCreatorConcentration ? "notableRisk" : ""}`} onClick={showCreatorAnalytics}><span>Creator wallet</span><strong>{creatorBalance.isLoading ? "Reading…" : creatorConcentrationKnown ? `${formatPercent(creatorCirculatingBps)} outside curve` : "Position syncing"}</strong><small>{formatPercent(creatorSupplyBps)} of supply · {creatorRecentSignal} ↓</small></button>}
           {!graduated.data && creatorRiskRequired && <div className="creatorRiskCheck"><span><strong>High creator concentration</strong><small>Original creator currently holds {formatPercent(creatorCirculatingBps)} of tokens outside the curve · {creatorRecentSignal.toLowerCase()}. This evidence remains visible without another consent checkbox.</small></span></div>}
-          {!graduated.data && isConnected && <div className={`preflightCard ${preflight.status}`} role="status"><span className="preflightIcon">{preflight.status === "ready" ? "✓" : preflight.status === "error" ? "!" : "•"}</span><div><strong>{preflight.status === "checking" ? "Checking this order onchain…" : preflight.status === "ready" ? "Order check passed" : preflight.status === "error" ? "Order needs attention" : "Enter an amount to continue"}</strong><small>{preflight.status === "ready" && estimatedNetworkFeeWei !== undefined ? `Network fee ${formatEth(estimatedNetworkFeeWei, 7)} ETH · ≈ ${formatUsd(estimatedNetworkFeeUsd)}` : preflight.message ?? "Quotes and network fees refresh automatically."}</small></div></div>}
+          {!graduated.data && isConnected && <div className={`preflightCard ${preflight.status}`} role="status"><span className="preflightIcon">{preflight.status === "ready" ? "✓" : preflight.status === "error" ? "!" : "•"}</span><div><strong>{preflight.status === "checking" ? "Checking this order onchain…" : preflight.status === "ready" ? "Order check passed" : preflight.status === "error" ? "Order needs attention" : "Enter an amount to continue"}</strong><small>{preflight.status === "ready" && estimatedNetworkFeeWei !== undefined ? needsApproval ? `Approval fee estimate ${formatEth(estimatedNetworkFeeWei, 7)} ETH · ${atomicSellAvailable ? "your wallet shows the complete batch fee" : "the sell fee follows separately"}` : `Network fee ${formatEth(estimatedNetworkFeeWei, 7)} ETH · ≈ ${formatUsd(estimatedNetworkFeeUsd)}` : preflight.message ?? "Quotes and network fees refresh automatically."}</small></div></div>}
           {(isPending || receipt.isLoading || callsPending || callsReceipt.isLoading) && <div className="tradeStage" role="status"><span className="tradeStageDot" /><div><strong>{isPending || callsPending ? "Review in your wallet" : "Order submitted"}</strong><small>{isPending || callsPending ? "On a phone, switch to the wallet app if needed, confirm, then return to RMT." : "Waiting for Robinhood Chain confirmation."}</small>{receipt.isLoading && hash && <a href={`${activeChain.blockExplorers.default.url}/tx/${hash}`} target="_blank" rel="noreferrer">Track transaction ↗</a>}</div></div>}
           {(writeError || receipt.error || callsReceipt.error) && <div className="errors"><span>{writeError?.message || receipt.error?.message || callsReceipt.error?.message}</span></div>}
           {tradeMessage && <div className="callout"><strong>{tradeMessage}</strong></div>}
@@ -637,7 +650,7 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply, creator, compac
         <div className="creatorStats"><div><small>Current balance</small><strong>{creatorBalance.isLoading ? "Reading…" : `${Number(formatUnits(creatorBalanceValue, 18)).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${symbol}`}</strong><span>{formatPercent(creatorSupplyBps)} of total supply</span></div><div><small>Share outside curve</small><strong>{creatorConcentrationKnown && circulatingSupply > 0n ? formatPercent(creatorCirculatingBps) : "Not available yet"}</strong><span>Creator balance ÷ tokens outside the curve</span></div><div><small>Recent creator flow</small><strong>{creatorRecentTrades.length > 0 ? `${creatorRecentNet >= 0n ? "+" : "−"}${Number(formatUnits(creatorRecentNet >= 0n ? creatorRecentNet : -creatorRecentNet, 18)).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${symbol} net` : "No creator trades shown"}</strong><span>{creatorRecentTrades.length > 0 ? `${creatorRecentBuys.length} buys · ${creatorRecentSells.length} sells · bought ${Number(formatUnits(creatorRecentBought, 18)).toLocaleString(undefined, { maximumFractionDigits: 2 })} · sold ${Number(formatUnits(creatorRecentSold, 18)).toLocaleString(undefined, { maximumFractionDigits: 2 })}` : `Across ${recentTrades.length} recent market trades`}</span></div></div>
         {highCreatorConcentration ? <div className="creatorWarning"><strong>High launch-creator concentration</strong><span>The original launch wallet controls {formatPercent(creatorCirculatingBps)} of tokens currently outside the bonding curve. A large sale can materially move price. This is separate from the current fee recipient and is an onchain heuristic, not a safety rating.</span></div> : notableCreatorConcentration ? <div className="creatorNotice"><strong>Visible creator position</strong><span>The original creator holds {formatPercent(creatorCirculatingBps)} of tokens outside the curve. RMT shows this for context without blocking the trade; it is not a safety rating.</span></div> : <p className="creatorMethod">Balances follow the permanent launch-creator address recorded by the token. “Outside curve” excludes inventory still held by the immutable market and does not identify the current fee recipient.</p>}
       </section> : null}
-      {!compact && <div className="mobileTradeBar" aria-label="Quick trade actions"><button type="button" className={mode === "buy" ? "active" : ""} onClick={() => focusTradeMode("buy")}>Buy</button><button type="button" className={mode === "sell" ? "active" : ""} onClick={() => focusTradeMode("sell")}>Sell</button></div>}
+      {!compact && <div className="mobileTradeBar" aria-label="Quick trade actions"><button type="button" disabled={busy} className={mode === "buy" ? "active" : ""} onClick={() => focusTradeMode("buy")}>Buy</button><button type="button" disabled={busy} className={mode === "sell" ? "active" : ""} onClick={() => focusTradeMode("sell")}>Sell</button></div>}
     </section>
   );
 }
