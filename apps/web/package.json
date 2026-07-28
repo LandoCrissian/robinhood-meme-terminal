@@ -19,6 +19,7 @@
     "test:sushi-trade": "NEXT_PUBLIC_RMT_NETWORK=mainnet tsx lib/server/sushi-trade-smoke.ts",
     "test:external-sushi": "tsx lib/server/external-sushi-market-smoke.ts",
     "test:external-uniswap": "tsx lib/server/external-uniswap-market-smoke.ts && tsx lib/server/external-uniswap-trade-smoke.ts",
+    "test:external-ohlcv": "tsx lib/server/external-ohlcv-smoke.ts",
     "test:token-risk": "tsx lib/server/token-risk-evidence-smoke.ts",
     "typecheck": "tsc --noEmit"
   },
