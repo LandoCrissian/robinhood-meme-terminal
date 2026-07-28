@@ -718,11 +718,35 @@ export function ExternalMarketFeed() {
               const value = valuation(market);
               const changeClass = market.priceChange5m > 0 ? "positive" : market.priceChange5m < 0 ? "negative" : "flat";
               const oneHourTrades = market.buys1h + market.sells1h;
+              const marketRank = rankByAddress.get(market.address.toLowerCase()) ?? index + 1;
+              const mobileMoveLabel = market.curve
+                ? (market.curve.progressBps / 100).toFixed(1) + "%"
+                : (market.priceChange5m > 0 ? "+" : "") + market.priceChange5m.toFixed(2) + "%";
               return (
                 <article className="externalMarketCard runnerMarketCard" data-signal={market.signal} key={market.address}>
+                  <div className="mobileRunnerMarketRow">
+                    <a className="mobileRunnerIdentity" href={`/market/${market.address}`} aria-label={`Open ${market.name} trading workspace`}>
+                      <span className="mobileRunnerRank">#{String(marketRank).padStart(2, "0")}</span>
+                      <ExternalArtwork market={market} />
+                      <span className="mobileRunnerCopy">
+                        <strong>{market.name}</strong>
+                        <small>{"$" + cleanSymbol(market.symbol)} · {venueLabel(market)}</small>
+                      </span>
+                    </a>
+                    <a className="mobileRunnerTrade" href={`/market/${market.address}`} aria-label={`${canHandoffToVenue(market) ? "Trade" : "Review"} ${market.name}`}>
+                      {canHandoffToVenue(market) ? "Trade" : "Review"}
+                    </a>
+                    <div className="mobileRunnerMetrics" aria-label={`${market.name} market snapshot`}>
+                      <span><small>{value.label}</small><strong>{money(value.value)}</strong></span>
+                      <span className={"mobileRunnerMove " + (market.curve ? "positive" : changeClass)}>
+                        <small>{market.curve ? "Progress" : "5m"}</small><strong>{mobileMoveLabel}</strong>
+                      </span>
+                      <span><small>Liquidity</small><strong>{money(market.liquidityUsd)}</strong></span>
+                    </div>
+                  </div>
                   <div className="runnerCardStatus">
                     <span className={"marketSignal " + market.signal}>{signalLabel(market.signal)}</span>
-                    <span>#{String(rankByAddress.get(market.address.toLowerCase()) ?? index + 1).padStart(2, "0")} · Score {market.momentumScore}</span>
+                    <span>#{String(marketRank).padStart(2, "0")} · Score {market.momentumScore}</span>
                   </div>
                   <div className="externalIdentity">
                     <ExternalArtwork market={market} />
