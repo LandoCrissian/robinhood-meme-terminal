@@ -70,7 +70,7 @@ The browser uses Firestore's memory cache rather than persistent IndexedDB cachi
 
 ## Operational behavior
 
-- Google sign-in uses a user-initiated popup on desktop and mobile. This avoids the cross-origin storage requirements of redirect sign-in on modern browsers.
+- Google sign-in uses a user-initiated full-page redirect. Approved RMT and Vercel hosts proxy Firebase's `/__/auth/*` helper on the same origin, avoiding fragile popups and the third-party storage dependency that otherwise affects redirect sign-in on modern browsers.
 - If Firebase is absent or temporarily unavailable, profile edits remain saved locally and trading remains operational.
 - A failed cloud write displays a retry action. Writes are serialized, schema-versioned, and protected from older profile/watchlist versions overwriting newer ones.
 - Deploy rules before enabling the client configuration. Rolling the variables back disables new Firebase initialization without affecting wallets, launches, market data, or trading.
