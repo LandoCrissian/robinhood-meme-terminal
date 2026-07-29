@@ -26,6 +26,7 @@
     "test:external-venues": "tsx lib/server/external-trade-venues-smoke.ts",
     "test:external-ohlcv": "tsx lib/server/external-ohlcv-smoke.ts",
     "test:trade-ticket": "tsx lib/trade-ticket-smoke.ts",
+    "test:wallet-bundle": "tsx lib/wallet-bundle-smoke.ts",
     "test:trading-terms": "tsx lib/trading-terms-smoke.ts",
     "test:external-trades": "tsx lib/external-trades-smoke.ts",
     "test:token-risk": "tsx lib/server/token-risk-evidence-smoke.ts",
