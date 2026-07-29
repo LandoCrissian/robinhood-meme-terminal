@@ -13,6 +13,13 @@ import {
   normalizeCommunityReportReason,
   parseAdminCommunityReport
 } from "./community-moderation";
+import {
+  normalizeCommunityFeedbackCategory,
+  normalizeCommunityFeedbackDescription,
+  normalizeCommunityFeedbackTitle,
+  parseAdminCommunityFeedback,
+  validateCommunityFeedbackContent
+} from "./community-feedback";
 
 assert.equal(normalizeCommunityRoomId("global"), "global");
 assert.equal(normalizeCommunityRoomId("project--rmt-studio"), "project--rmt-studio");
@@ -66,6 +73,23 @@ assert.ok(parseAdminCommunityReport({
   messageBody: "Watching the RMT curve markets today.",
   createdAt: "2026-07-29T12:00:00.000Z"
 }));
+assert.equal(normalizeCommunityFeedbackCategory("mobile"), "mobile");
+assert.equal(normalizeCommunityFeedbackCategory("investment_advice"), null);
+assert.equal(normalizeCommunityFeedbackTitle("  Better   charts  "), "Better charts");
+assert.equal(normalizeCommunityFeedbackDescription("  Expected\n\none tap  "), "Expected one tap");
+assert.match(validateCommunityFeedbackContent("Wallet issue", "my recovery phrase is", false) ?? "", /Never share/);
+assert.match(validateCommunityFeedbackContent("Bug", "See https://unsafe.example", true) ?? "", /cannot include external links/);
+assert.equal(validateCommunityFeedbackContent("Mobile spacing", "Buttons are too close together.", true), null);
+assert.ok(parseAdminCommunityFeedback({
+  feedbackId: "LmNoPqRsTuVwXyZaBcDe",
+  category: "mobile",
+  title: "Improve mobile spacing",
+  description: "The trade ticket needs more thumb spacing.",
+  identityKind: "guest",
+  status: "submitted",
+  reviewNote: "",
+  createdAt: "2026-07-29T12:00:00.000Z"
+}));
 assert.equal(parseCommunityPresence({
   online: 1_001,
   approximate: true,
@@ -106,6 +130,23 @@ assert.match(moderationRouteSource, /email_verified !== true/);
 assert.match(moderationRouteSource, /communityModerationAudit/);
 assert.match(moderationRouteSource, /bannedUntil/);
 assert.match(moderationRouteSource, /status: "moderated"/);
+
+const feedbackRouteSource = readFileSync(new URL("../app/api/community/feedback/route.ts", import.meta.url), "utf8");
+assert.match(feedbackRouteSource, /verifyIdToken\(token, true\)/);
+assert.match(feedbackRouteSource, /communityAuthorKey/);
+assert.match(feedbackRouteSource, /communityFeedbackStatus/);
+assert.match(feedbackRouteSource, /feedbackWindowCount/);
+assert.match(feedbackRouteSource, /validateCommunityFeedbackContent/);
+assert.doesNotMatch(feedbackRouteSource, /firebaseUid|authorUid|email:/);
+const publicStatusWrite = feedbackRouteSource.match(/transaction\.create\(statusReference,\s*\{([\s\S]*?)\}\);/)?.[1] ?? "";
+assert.ok(publicStatusWrite);
+assert.doesNotMatch(publicStatusWrite, /authorKey|identityKind|title|description|reviewNote/);
+
+const feedbackAdminSource = readFileSync(new URL("../app/api/admin/community/feedback/route.ts", import.meta.url), "utf8");
+assert.match(feedbackAdminSource, /RMT_ADMIN_EMAIL/);
+assert.match(feedbackAdminSource, /TRANSITIONS/);
+assert.match(feedbackAdminSource, /communityFeedbackAudit/);
+assert.match(feedbackAdminSource, /communityFeedbackStatus/);
 
 const profileProviderSource = readFileSync(new URL("../app/profile-provider.tsx", import.meta.url), "utf8");
 assert.match(profileProviderSource, /nextUser\?\.isAnonymous \? null : nextUser/);

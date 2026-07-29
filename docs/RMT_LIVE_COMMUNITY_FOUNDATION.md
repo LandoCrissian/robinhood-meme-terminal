@@ -26,6 +26,10 @@ All message creation is server mediated. Firestore permits public reads of visib
 - Reports, reviewer identifiers, restriction state, and moderation audit records are server-only.
 - The verified RMT administrator may dismiss a report, hide a message, or apply a one-hour or 24-hour posting restriction with a required review note.
 - Hiding a message removes it from public Firestore queries; moderation never changes wallets, profiles, token ranking, verification, or trading state.
+- Structured product feedback supports bug, feature, mobile, trading, market-data, creator-tool, and other categories.
+- Full feedback and administrator notes remain server-private. A separate public marker contains only its identifier, category, and progress status.
+- Guests may submit three feedback items per day and verified members ten, with a two-minute cooldown.
+- Feedback status follows an audited forward-only path: submitted, under review, planned, shipped or closed.
 - Direct messages, media uploads, link previews, wallet tips, trading calls, and ranking influence are not part of this release.
 - Community engagement does not alter Runner ranking, token risk, or verification.
 
