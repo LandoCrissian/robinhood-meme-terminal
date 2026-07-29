@@ -318,6 +318,9 @@ for (const route of ["messages", "reports", "presence", "feedback"]) {
 const communityLiveSource = readFileSync(new URL("../app/community-live.tsx", import.meta.url), "utf8");
 assert.match(communityLiveSource, /COMMUNITY_TERMS_STORAGE_KEY/);
 assert.match(communityLiveSource, /I agree — enter RMT Live/);
+assert.match(communityLiveSource, /RMT Live is ready/);
+assert.match(communityLiveSource, /identityReady \? "Access ready" : "Start guest access"/);
+assert.doesNotMatch(communityLiveSource, /will open after secure Firebase activation/);
 assert.match(communityLiveSource, /view !== "updates"/);
 
 const termsSource = readFileSync(new URL("../app/terms/page.tsx", import.meta.url), "utf8");
