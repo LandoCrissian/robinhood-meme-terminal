@@ -8,7 +8,11 @@ import {
   type CommunityMessage
 } from "./community";
 import type { CommunityReportReason } from "./community-moderation";
-import type { CommunityFeedbackCategory } from "./community-feedback";
+import {
+  parsePublicCommunityFeedbackStatus,
+  type CommunityFeedbackCategory,
+  type PublicCommunityFeedbackStatus
+} from "./community-feedback";
 
 export async function ensureCommunityIdentity() {
   const client = await getFirebaseClient();
@@ -159,4 +163,40 @@ export async function submitCommunityFeedback(input: {
     throw new Error(typeof result?.error === "string" ? result.error : "Feedback could not be submitted.");
   }
   return result.feedbackId;
+}
+
+export async function subscribeToCommunityFeedbackStatuses(
+  feedbackIds: string[],
+  listener: (statuses: PublicCommunityFeedbackStatus[]) => void,
+  onError: () => void
+) {
+  const ids = [...new Set(feedbackIds)].filter((item) => /^[A-Za-z0-9]{20}$/.test(item)).slice(0, 12);
+  if (ids.length === 0) {
+    listener([]);
+    return () => {};
+  }
+  const client = await getFirebaseClient();
+  if (!client) throw new Error("RMT Live is not configured yet.");
+  const records = new Map<string, PublicCommunityFeedbackStatus>();
+  let failed = false;
+  const publish = () => listener(ids.flatMap((id) => {
+    const record = records.get(id);
+    return record ? [record] : [];
+  }));
+  const unsubscribes = ids.map((feedbackId) => client.firestoreApi.onSnapshot(
+    client.firestoreApi.doc(client.db, "communityFeedbackStatus", feedbackId),
+    (snapshot) => {
+      const parsed = snapshot.exists() ? parsePublicCommunityFeedbackStatus(snapshot.id, snapshot.data()) : null;
+      if (parsed) records.set(feedbackId, parsed);
+      else records.delete(feedbackId);
+      publish();
+    },
+    () => {
+      if (!failed) {
+        failed = true;
+        onError();
+      }
+    }
+  ));
+  return () => unsubscribes.forEach((unsubscribe) => unsubscribe());
 }

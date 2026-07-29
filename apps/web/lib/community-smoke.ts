@@ -18,8 +18,15 @@ import {
   normalizeCommunityFeedbackDescription,
   normalizeCommunityFeedbackTitle,
   parseAdminCommunityFeedback,
+  parsePublicCommunityFeedbackStatus,
   validateCommunityFeedbackContent
 } from "./community-feedback";
+import {
+  forgetCommunityFeedbackReceipt,
+  normalizeCommunityFeedbackReceiptIds,
+  readCommunityFeedbackReceiptIds,
+  rememberCommunityFeedbackReceipt
+} from "./community-feedback-receipts";
 
 assert.equal(normalizeCommunityRoomId("global"), "global");
 assert.equal(normalizeCommunityRoomId("project--rmt-studio"), "project--rmt-studio");
@@ -90,6 +97,43 @@ assert.ok(parseAdminCommunityFeedback({
   reviewNote: "",
   createdAt: "2026-07-29T12:00:00.000Z"
 }));
+assert.deepEqual(parsePublicCommunityFeedbackStatus("LmNoPqRsTuVwXyZaBcDe", {
+  schemaVersion: 1,
+  feedbackId: "LmNoPqRsTuVwXyZaBcDe",
+  category: "mobile",
+  status: "planned",
+  createdAt: { toMillis: () => 1_000 },
+  updatedAt: { seconds: 2 }
+}), {
+  feedbackId: "LmNoPqRsTuVwXyZaBcDe",
+  category: "mobile",
+  status: "planned",
+  createdAt: 1_000,
+  updatedAt: 2_000
+});
+assert.equal(parsePublicCommunityFeedbackStatus("LmNoPqRsTuVwXyZaBcDe", {
+  schemaVersion: 1,
+  feedbackId: "DifferentReceipt1234",
+  category: "mobile",
+  status: "planned",
+  createdAt: { seconds: 1 },
+  updatedAt: { seconds: 2 }
+}), null);
+assert.deepEqual(normalizeCommunityFeedbackReceiptIds([
+  "LmNoPqRsTuVwXyZaBcDe",
+  "invalid",
+  "LmNoPqRsTuVwXyZaBcDe",
+  "AbCdEfGhIjKlMnOpQrSt"
+]), ["LmNoPqRsTuVwXyZaBcDe", "AbCdEfGhIjKlMnOpQrSt"]);
+const receiptMemory = new Map<string, string>();
+const receiptStorage = {
+  getItem: (key: string) => receiptMemory.get(key) ?? null,
+  setItem: (key: string, value: string) => { receiptMemory.set(key, value); }
+};
+assert.deepEqual(rememberCommunityFeedbackReceipt("LmNoPqRsTuVwXyZaBcDe", receiptStorage), ["LmNoPqRsTuVwXyZaBcDe"]);
+assert.deepEqual(rememberCommunityFeedbackReceipt("AbCdEfGhIjKlMnOpQrSt", receiptStorage), ["AbCdEfGhIjKlMnOpQrSt", "LmNoPqRsTuVwXyZaBcDe"]);
+assert.deepEqual(readCommunityFeedbackReceiptIds(receiptStorage), ["AbCdEfGhIjKlMnOpQrSt", "LmNoPqRsTuVwXyZaBcDe"]);
+assert.deepEqual(forgetCommunityFeedbackReceipt("AbCdEfGhIjKlMnOpQrSt", receiptStorage), ["LmNoPqRsTuVwXyZaBcDe"]);
 assert.equal(parseCommunityPresence({
   online: 1_001,
   approximate: true,
@@ -147,6 +191,11 @@ assert.match(feedbackAdminSource, /RMT_ADMIN_EMAIL/);
 assert.match(feedbackAdminSource, /TRANSITIONS/);
 assert.match(feedbackAdminSource, /communityFeedbackAudit/);
 assert.match(feedbackAdminSource, /communityFeedbackStatus/);
+
+const communityCloudSource = readFileSync(new URL("./community-cloud.ts", import.meta.url), "utf8");
+assert.match(communityCloudSource, /communityFeedbackStatus/);
+assert.match(communityCloudSource, /parsePublicCommunityFeedbackStatus/);
+assert.doesNotMatch(communityCloudSource, /communityFeedback", feedbackId/);
 
 const profileProviderSource = readFileSync(new URL("../app/profile-provider.tsx", import.meta.url), "utf8");
 assert.match(profileProviderSource, /nextUser\?\.isAnonymous \? null : nextUser/);
