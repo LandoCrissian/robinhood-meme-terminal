@@ -24,6 +24,7 @@ import {
   where,
   writeBatch
 } from "firebase/firestore";
+import { hashCreatorAssetDraft, type CreatorAssetDraft } from "./creator-assets";
 
 const PROJECT_ID = "rmt-rules-test";
 const OWNER_ID = "owner-user";
@@ -207,12 +208,10 @@ function creatorAsset(overrides: Record<string, unknown> = {}) {
     updatedAt: serverTimestamp(),
     ...overrides
   };
-  return {
-    ...data,
-    revenueSplitTotalBps: "revenueSplitTotalBps" in overrides
-      ? overrides.revenueSplitTotalBps
-      : Array.isArray(data.revenueSplits)
-        ? data.revenueSplits.reduce((total, split) => (
+  const revenueSplitTotalBps = "revenueSplitTotalBps" in overrides
+    ? overrides.revenueSplitTotalBps
+    : Array.isArray(data.revenueSplits)
+      ? data.revenueSplits.reduce((total, split) => (
           total + (
             typeof split === "object"
             && split
@@ -221,8 +220,14 @@ function creatorAsset(overrides: Record<string, unknown> = {}) {
               ? split.shareBps
               : 0
           )
-        ), 0)
-        : 0
+      ), 0)
+      : 0;
+  return {
+    ...data,
+    revenueSplitTotalBps,
+    draftRevisionHash: "draftRevisionHash" in overrides
+      ? overrides.draftRevisionHash
+      : hashCreatorAssetDraft(data as unknown as CreatorAssetDraft)
   };
 }
 
@@ -1110,6 +1115,10 @@ test("asset drafts fail closed on rights, consent, edition, and split violations
         shareBps: 3000
       }
     ]
+  })));
+  await assertFails(setDoc(reference("eeeeeeeeeeeeeeeeeeee"), creatorAsset({
+    assetId: "eeeeeeeeeeeeeeeeeeee",
+    draftRevisionHash: "not-a-revision-hash"
   })));
   await assertFails(setDoc(reference("ffffffffffffffffffff"), creatorAsset({
     assetId: "ffffffffffffffffffff",

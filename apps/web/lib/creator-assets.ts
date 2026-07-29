@@ -1,4 +1,4 @@
-import { getAddress, isAddress } from "viem";
+import { getAddress, isAddress, keccak256, toHex, type Hex } from "viem";
 import { cleanProjectMediaUri, normalizeProjectSlug } from "./creator-application";
 
 export const CREATOR_ASSET_SCHEMA_VERSION = 1 as const;
@@ -79,10 +79,44 @@ export type CreatorAsset = CreatorAssetDraft & {
   projectSlug: string;
   collaboratorConsentStatus: "unverified";
   revenueSplitTotalBps: number;
+  draftRevisionHash: Hex;
   status: "draft";
   createdAt?: unknown;
   updatedAt?: unknown;
 };
+
+export function hashCreatorAssetDraft(value: CreatorAssetDraft): Hex {
+  const draft = normalizeCreatorAsset(value);
+  return keccak256(toHex(JSON.stringify({
+    schemaVersion: CREATOR_ASSET_SCHEMA_VERSION,
+    assetType: draft.assetType,
+    title: draft.title,
+    description: draft.description,
+    primaryMediaUri: draft.primaryMediaUri,
+    previewMediaUri: draft.previewMediaUri,
+    creationMethod: draft.creationMethod,
+    aiTools: draft.aiTools,
+    aiDisclosure: draft.aiDisclosure,
+    rightsBasis: draft.rightsBasis,
+    rightsStatement: draft.rightsStatement,
+    rightsConfirmed: draft.rightsConfirmed,
+    containsThirdPartyMaterial: draft.containsThirdPartyMaterial,
+    thirdPartyRightsConfirmed: draft.thirdPartyRightsConfirmed,
+    license: draft.license,
+    licenseUri: draft.licenseUri,
+    editionMode: draft.editionMode,
+    editionSupply: draft.editionSupply,
+    musicReleaseType: draft.musicReleaseType,
+    explicitContent: draft.explicitContent,
+    masterRightsConfirmed: draft.masterRightsConfirmed,
+    compositionRightsConfirmed: draft.compositionRightsConfirmed,
+    collaborators: draft.collaborators,
+    collaboratorConsentStatus: "unverified",
+    revenueSplits: draft.revenueSplits,
+    revenueSplitTotalBps: draft.revenueSplits.reduce((total, split) => total + split.shareBps, 0),
+    status: "draft"
+  })));
+}
 
 export const EMPTY_CREATOR_ASSET: CreatorAssetDraft = {
   assetType: "artwork",
@@ -260,6 +294,7 @@ export function parseCreatorAsset(assetId: string, value: unknown): CreatorAsset
     || !projectSlug
     || data.collaboratorConsentStatus !== "unverified"
     || data.revenueSplitTotalBps !== draft.revenueSplits.reduce((total, split) => total + split.shareBps, 0)
+    || data.draftRevisionHash !== hashCreatorAssetDraft(draft)
     || data.status !== "draft"
     || validateCreatorAsset(draft)
   ) return null;
@@ -270,6 +305,7 @@ export function parseCreatorAsset(assetId: string, value: unknown): CreatorAsset
     projectSlug,
     collaboratorConsentStatus: "unverified",
     revenueSplitTotalBps: data.revenueSplitTotalBps,
+    draftRevisionHash: data.draftRevisionHash,
     status: "draft",
     createdAt: data.createdAt,
     updatedAt: data.updatedAt

@@ -11,6 +11,7 @@ import {
   EMPTY_CREATOR_ASSET,
   MUSIC_RELEASE_TYPES,
   RIGHTS_BASES,
+  hashCreatorAssetDraft,
   normalizeCreatorAsset,
   validateCreatorAsset,
   type AssetCollaborator,
@@ -202,6 +203,7 @@ export function CreatorAssetStudio({
   };
 
   const totalBps = splitTotal(draft.revenueSplits);
+  const draftRevisionHash = hashCreatorAssetDraft(draft);
   const aiUsed = draft.creationMethod !== "human";
   const isMusic = draft.assetType === "music_release";
 
@@ -219,6 +221,7 @@ export function CreatorAssetStudio({
       <div className="creatorAssetBoundary">
         <strong>No minting. No marketplace. No payouts.</strong>
         <span>Collaborator consent remains unverified until each person accepts through a future signed flow. A saved split is a proposal—not an executable payment instruction.</span>
+        <small title={draftRevisionHash}>DRAFT REVISION · {draftRevisionHash.slice(0, 10)}…{draftRevisionHash.slice(-8)}</small>
       </div>
 
       <div className="creatorAssetWorkspace">
@@ -324,4 +327,3 @@ export function CreatorAssetStudio({
     </section>
   );
 }
-

@@ -1,6 +1,7 @@
 import type { User } from "firebase/auth";
 import {
   CREATOR_ASSET_SCHEMA_VERSION,
+  hashCreatorAssetDraft,
   normalizeCreatorAsset,
   parseCreatorAsset,
   validateCreatorAsset,
@@ -91,6 +92,7 @@ export async function saveCreatorAsset(
       ...draft,
       collaboratorConsentStatus: "unverified",
       revenueSplitTotalBps: draft.revenueSplits.reduce((total, split) => total + split.shareBps, 0),
+      draftRevisionHash: hashCreatorAssetDraft(draft),
       status: "draft",
       createdAt: assetSnapshot.exists() ? assetSnapshot.data().createdAt : now,
       updatedAt: now

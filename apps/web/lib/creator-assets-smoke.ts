@@ -2,10 +2,20 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
   EMPTY_CREATOR_ASSET,
+  hashCreatorAssetDraft,
   normalizeCreatorAsset,
   parseCreatorAsset,
   validateCreatorAsset
 } from "./creator-assets";
+import {
+  createMarketplaceEconomicsPolicy,
+  validateMarketplaceEconomicsPolicy
+} from "./creator-economics";
+import {
+  hashCreatorConsentInvitation,
+  validateCreatorConsentInvitation,
+  type CreatorConsentInvitation
+} from "./creator-consent";
 
 const validArtwork = {
   ...EMPTY_CREATOR_ASSET,
@@ -95,12 +105,74 @@ const parsed = parseCreatorAsset("abcdefghijklmnopqrst", {
   projectSlug: "runner-studio",
   collaboratorConsentStatus: "unverified",
   revenueSplitTotalBps: 10_000,
+  draftRevisionHash: hashCreatorAssetDraft(validArtwork),
   status: "draft"
 });
 assert.equal(parsed?.title, "Neon Robin");
 assert.equal(parseCreatorAsset("abcdefghijklmnopqrst", {
   ...parsed,
   revenueSplitTotalBps: 9_999
+}), null);
+
+const economicsPolicy = createMarketplaceEconomicsPolicy({
+  policyName: "RMT marketplace economics draft",
+  marketplaceFeeBps: 250,
+  allocation: {
+    platformOperationsBps: 4_000,
+    tokenFlywheelBps: 2_500,
+    creatorEcosystemBps: 2_500,
+    safetyReserveBps: 1_000
+  },
+  tokenFlywheelMode: "governance_proposal",
+  disclosure: "A disclosed 2.50% platform fee is allocated by this draft policy; token-directed actions require governance and do not guarantee returns."
+});
+assert.match(economicsPolicy.policyHash, /^0x[0-9a-f]{64}$/);
+assert.equal(economicsPolicy.status, "draft");
+assert.match(validateMarketplaceEconomicsPolicy({
+  ...economicsPolicy,
+  allocation: {
+    ...economicsPolicy.allocation,
+    safetyReserveBps: 999
+  }
+}) ?? "", /exactly 100%/);
+assert.match(validateMarketplaceEconomicsPolicy({
+  ...economicsPolicy,
+  tokenFlywheelMode: "none"
+}) ?? "", /governance proposal/);
+
+const nowSeconds = 2_000_000_000;
+const consentInvitation: CreatorConsentInvitation = {
+  schemaVersion: 1,
+  projectSlug: "runner-studio",
+  assetId: "abcdefghijklmnopqrst",
+  draftRevisionHash: hashCreatorAssetDraft(validArtwork),
+  collaboratorName: "RMT Studio",
+  collaboratorRole: "artist",
+  collaboratorWallet: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  shareBps: 2_500,
+  chainId: 46_663,
+  expiresAt: nowSeconds + 86_400,
+  termsHash: `0x${"1".repeat(64)}`,
+  nonce: `0x${"2".repeat(64)}`
+};
+assert.equal(validateCreatorConsentInvitation(consentInvitation, nowSeconds), null);
+const consentDigest = hashCreatorConsentInvitation(consentInvitation);
+assert.match(consentDigest, /^0x[0-9a-f]{64}$/);
+assert.notEqual(hashCreatorConsentInvitation({
+  ...consentInvitation,
+  shareBps: 2_501
+}), consentDigest);
+assert.notEqual(hashCreatorConsentInvitation({
+  ...consentInvitation,
+  draftRevisionHash: `0x${"3".repeat(64)}`
+}), consentDigest);
+assert.match(validateCreatorConsentInvitation({
+  ...consentInvitation,
+  expiresAt: nowSeconds - 1
+}, nowSeconds) ?? "", /expired/);
+assert.equal(parseCreatorAsset("abcdefghijklmnopqrst", {
+  ...parsed,
+  title: "Changed without a new revision hash"
 }), null);
 assert.equal(parseCreatorAsset("abcdefghijklmnopqrst", {
   ...parsed,

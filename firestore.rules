@@ -625,6 +625,7 @@ service cloud.firestore {
           'collaboratorConsentStatus',
           'revenueSplits',
           'revenueSplitTotalBps',
+          'draftRevisionHash',
           'status',
           'createdAt',
           'updatedAt'
@@ -674,6 +675,7 @@ service cloud.firestore {
         && (data.revenueSplits.size() == 0
           ? data.revenueSplitTotalBps == 0
           : data.revenueSplitTotalBps == 10000)
+        && data.draftRevisionHash.matches('^0x[0-9a-f]{64}$')
         && data.status == 'draft'
         && data.createdAt is timestamp
         && data.updatedAt is timestamp;
