@@ -27,7 +27,10 @@ section("reviewed repository controls", repository.ok, [
   ...repository.missingFiles.map((file) => `missing file: ${file}`),
   ...(repository.configValid === false ? ["firebase.json does not bind the reviewed rules and indexes"] : []),
   ...repository.missingRuleMarkers.map((marker) => `missing rules boundary: ${marker}`),
-  ...repository.missingIndexes.map((index) => `missing index declaration: ${indexLabel(index)}`)
+  ...repository.missingIndexes.map((index) => `missing index declaration: ${indexLabel(index)}`),
+  ...(repository.messageRetentionIndexReady === false
+    ? ["missing messages.expiresAt collection-group retention index"]
+    : [])
 ]);
 
 if (!repositoryOnly) {
@@ -67,14 +70,17 @@ if (!repositoryOnly) {
       } else {
         try {
           const deployed = inspectDeployedIndexes(JSON.parse(command.stdout));
-          section("deployed Firestore indexes and retention", deployed.ok, [
+          section("deployed Firestore indexes", deployed.indexesReady, [
             ...deployed.missingIndexes.map(
               (index) => `not deployed: ${indexLabel(index)}`
             ),
-            ...deployed.missingTtlPolicies.map(
-              (collectionGroup) => `TTL on expiresAt is not enabled: ${collectionGroup}`
-            )
+            ...(deployed.messageRetentionIndexReady
+              ? []
+              : ["messages.expiresAt collection-group retention index is not deployed"])
           ]);
+          if (!deployed.ttlReady) {
+            console.info("INFO    managed Firestore TTL is disabled; use the bounded application retention sweep");
+          }
         } catch {
           section("deployed Firestore indexes and retention", false, [
             "Firebase returned an unreadable index specification"
@@ -93,6 +99,9 @@ if (!repositoryOnly) {
   ]);
   section("deployed Firestore ruleset identity", false, [
     "operator verification is required; the CLI cannot prove the active ruleset matches this commit"
+  ]);
+  section("bounded application retention deployment", false, [
+    "operator verification is required after deploying the server retention sweep"
   ]);
   section("controlled abuse and accessibility rehearsal", false, [
     "run the documented mobile, desktop, report, restriction, withdrawal, and load checks"

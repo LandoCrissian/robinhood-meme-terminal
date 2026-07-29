@@ -12,6 +12,7 @@ import {
 } from "../../../../lib/server/community-identity";
 import { getRmtAdminAuth, getRmtAdminFirestore } from "../../../../lib/server/firebase-admin";
 import { consumeCommunityRateLimit } from "../../../../lib/server/community-rate-limit";
+import { runCommunityRetentionSweep } from "../../../../lib/server/community-retention";
 import { guardMediaRequest, readBoundedJsonRequest } from "../../../../lib/server/media-request-guard";
 
 export const dynamic = "force-dynamic";
@@ -78,6 +79,7 @@ export async function POST(request: Request) {
       lastSeenAt: FieldValue.serverTimestamp(),
       expiresAt: Timestamp.fromMillis(now + COMMUNITY_PRESENCE_TTL_MS)
     }, { merge: true });
+    await runCommunityRetentionSweep(db, now);
 
     const activeQuery = db.collection("communityPresence")
       .where("roomId", "==", roomId)

@@ -56,19 +56,37 @@ New records carry these maximum TTL targets:
 | Presence | 4 minutes |
 | Distributed request bucket | Until its fixed window resets |
 
-Firestore TTL deletion is asynchronous, so these values are deletion targets rather than a guarantee that removal occurs at an exact second. Author withdrawal deletes private feedback immediately through an authenticated transaction. Configure TTL on `expiresAt` for the `messages` collection group and the `communityReports`, `communityFeedback`, `communityFeedbackStatus`, `communityModerationAudit`, `communityFeedbackAudit`, `communityActors`, `communityPresence`, and `communityRateLimits` collections before activation.
+Firestore TTL deletion is asynchronous, so these values are deletion targets rather than a guarantee that removal occurs at an exact second. Author withdrawal deletes private feedback immediately through an authenticated transaction. Managed Firestore TTL requires billing on the current Firebase project, so RMT does not enable it while operating on the no-cost plan. The server instead uses a private distributed six-hour lease and bounded deletion batches for expired `messages`, `communityReports`, `communityFeedback`, `communityFeedbackStatus`, `communityModerationAudit`, `communityFeedbackAudit`, `communityActors`, `communityPresence`, and `communityRateLimits` records. This application cleanup must be monitored and managed TTL should replace it if measured traffic justifies enabling billing.
 
 ## Presence and traffic
 
 The visible drawer reports only an approximate count of community identities active in RMT Live during the last few minutes. Opening the drawer creates or reuses an authenticated Firebase identity and sends a low-frequency, server-mediated heartbeat. The server stores a keyed, short-lived record without the raw Firebase identifier and returns a Firestore aggregate count rather than downloading presence documents.
 
-Browser clients cannot list, read, create, or alter presence records. Expired records are excluded from every count even before storage cleanup occurs. Configure Firestore TTL cleanup on the `expiresAt` field for both the `communityPresence` and `communityRateLimits` collections before public activation. The count is intentionally not an exact roster, site-wide visitor count, wallet count, or trading-activity metric. A future named roster must be explicit opt-in for protected profiles; guest identities remain aggregate-only.
+Browser clients cannot list, read, create, or alter presence records. Expired records are excluded from every count even before storage cleanup occurs. The bounded server retention sweep removes expired presence and rate-limit records while billing remains disabled. The count is intentionally not an exact roster, site-wide visitor count, wallet count, or trading-activity metric. A future named roster must be explicit opt-in for protected profiles; guest identities remain aggregate-only.
 
 Presence heartbeats occur only while the RMT Live panel is open, currently once every 90 seconds with a four-minute activity window. This is suitable for a small rollout. Before a broad campaign, compare the measured write rate against Firebase capacity and move presence to infrastructure designed for sustained concurrent sessions if needed.
 
 Traffic measurements should include active sessions, concurrent sessions, messages per minute, moderation events, database reads/writes, stored bytes, and error rates. Service upgrades should be triggered by measured capacity or reliability needs, not by an automatic spending promise.
 
 ## Activation blockers
+
+### Production readiness record — 2026-07-29
+
+- Reviewed Firestore rules compiled and were released to the
+  `robinhood-meme-terminal` project.
+- The reports, presence, visible-message, and message-retention indexes were
+  deployed and confirmed through a read-only live query.
+- Firebase Anonymous Authentication is enabled.
+- Firebase automatic cleanup for anonymous accounts older than 30 days is
+  enabled.
+- Firebase billing remains disabled. Managed TTL was not enabled and no paid
+  upgrade was accepted.
+- The bounded application retention sweep is implemented and tested locally,
+  but is not production evidence until the corresponding web release is
+  deployed and verified.
+- The current public site returns `404` for `/api/community/presence`, proving
+  the community server routes are not live yet. Existing terminal production
+  remained unchanged during this Firebase preparation.
 
 Run the repository-only gate after every community change:
 
@@ -95,6 +113,6 @@ files alone.
 2. Add a random production-only `COMMUNITY_IDENTITY_SECRET` of at least 32 characters.
 3. Deploy the reviewed Firestore rules and composite index.
 4. Deploy and load-test the prepared distributed limiter; add an edge limiter before a large public campaign.
-5. Configure TTL cleanup for private presence records.
-6. Deploy and verify the prepared retention fields, TTL policies, moderation terms, and versioned community acknowledgement.
+5. Deploy and verify the bounded application retention sweep; use managed TTL instead if billing is later enabled.
+6. Verify the prepared retention fields, moderation terms, and versioned community acknowledgement.
 7. Run mobile and desktop accessibility and abuse testing.

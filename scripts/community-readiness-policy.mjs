@@ -21,7 +21,8 @@ export const REQUIRED_RULE_MARKERS = Object.freeze([
   "match /communityFeedback/{feedbackId}",
   "match /communityFeedbackStatus/{feedbackId}",
   "match /communityFeedbackAudit/{auditId}",
-  "match /communityRateLimits/{bucketId}"
+  "match /communityRateLimits/{bucketId}",
+  "match /communityMaintenance/{documentId}"
 ]);
 
 export const REQUIRED_INDEXES = Object.freeze([
@@ -54,9 +55,9 @@ export const REQUIRED_TTL_COLLECTION_GROUPS = Object.freeze([
 function normalizedIndex(index) {
   return {
     collectionGroup: index?.collectionGroup ?? "",
-    fields: (index?.fields ?? []).map((field) => (
-      `${field.fieldPath}:${field.order ?? field.arrayConfig ?? ""}`
-    ))
+    fields: (index?.fields ?? [])
+      .filter((field) => field.fieldPath !== "__name__")
+      .map((field) => `${field.fieldPath}:${field.order ?? field.arrayConfig ?? ""}`)
   };
 }
 
@@ -98,15 +99,26 @@ export function inspectRepository(rootDirectory) {
   const missingIndexes = REQUIRED_INDEXES.filter(
     (expected) => !actualIndexes.some((actual) => indexMatches(actual, expected))
   );
+  const messageRetentionIndexReady = (indexes.fieldOverrides ?? []).some(
+    (field) => field.collectionGroup === "messages"
+      && field.fieldPath === "expiresAt"
+      && (field.indexes ?? []).some(
+        (index) => index.order === "ASCENDING" && index.queryScope === "COLLECTION_GROUP"
+      )
+  );
   const configValid = firebase?.firestore?.rules === "firestore.rules"
     && firebase?.firestore?.indexes === "firestore.indexes.json";
 
   return {
-    ok: configValid && missingRuleMarkers.length === 0 && missingIndexes.length === 0,
+    ok: configValid
+      && missingRuleMarkers.length === 0
+      && missingIndexes.length === 0
+      && messageRetentionIndexReady,
     missingFiles,
     configValid,
     missingRuleMarkers,
-    missingIndexes
+    missingIndexes,
+    messageRetentionIndexReady
   };
 }
 
@@ -155,11 +167,21 @@ export function inspectDeployedIndexes(indexSpecification) {
   const missingTtlPolicies = REQUIRED_TTL_COLLECTION_GROUPS.filter(
     (collectionGroup) => !ttlCollectionGroups.has(collectionGroup)
   );
+  const messageRetentionIndexReady = (indexSpecification?.fieldOverrides ?? []).some(
+    (field) => field.collectionGroup === "messages"
+      && field.fieldPath === "expiresAt"
+      && (field.indexes ?? []).some(
+        (index) => index.order === "ASCENDING" && index.queryScope === "COLLECTION_GROUP"
+      )
+  );
 
   return {
-    ok: missingIndexes.length === 0 && missingTtlPolicies.length === 0,
+    ok: missingIndexes.length === 0 && messageRetentionIndexReady,
+    indexesReady: missingIndexes.length === 0 && messageRetentionIndexReady,
+    ttlReady: missingTtlPolicies.length === 0,
     missingIndexes,
-    missingTtlPolicies
+    missingTtlPolicies,
+    messageRetentionIndexReady
   };
 }
 

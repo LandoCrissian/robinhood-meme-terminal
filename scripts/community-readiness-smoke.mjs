@@ -35,15 +35,21 @@ const deployed = {
   indexes: REQUIRED_INDEXES.map((index) => ({
     collectionGroup: index.collectionGroup,
     queryScope: "COLLECTION",
-    fields: index.fields.map((field) => {
-      const [fieldPath, order] = field.split(":");
-      return { fieldPath, order };
-    })
+    fields: [
+      ...index.fields.map((field) => {
+        const [fieldPath, order] = field.split(":");
+        return { fieldPath, order };
+      }),
+      { fieldPath: "__name__", order: "DESCENDING" }
+    ]
   })),
   fieldOverrides: REQUIRED_TTL_COLLECTION_GROUPS.map((collectionGroup) => ({
     collectionGroup,
     fieldPath: "expiresAt",
-    ttl: true
+    ttl: true,
+    indexes: collectionGroup === "messages"
+      ? [{ order: "ASCENDING", queryScope: "COLLECTION_GROUP" }]
+      : []
   }))
 };
 assert.equal(inspectDeployedIndexes(deployed).ok, true);
@@ -65,7 +71,7 @@ fs.writeFileSync(
 );
 fs.writeFileSync(
   path.join(fixture, "firestore.indexes.json"),
-  JSON.stringify({ indexes: deployed.indexes })
+  JSON.stringify({ indexes: deployed.indexes, fieldOverrides: deployed.fieldOverrides })
 );
 assert.equal(inspectRepository(fixture).ok, true);
 fs.rmSync(fixture, { recursive: true, force: true });
