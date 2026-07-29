@@ -3,6 +3,11 @@ export const GLOBAL_COMMUNITY_ROOM = "global" as const;
 export const COMMUNITY_MESSAGE_LIMIT = 500;
 export const COMMUNITY_PRESENCE_HEARTBEAT_MS = 90_000;
 export const COMMUNITY_PRESENCE_TTL_MS = 4 * 60_000;
+export const COMMUNITY_MESSAGE_RETENTION_MS = 90 * 24 * 60 * 60_000;
+export const COMMUNITY_PRIVATE_RETENTION_MS = 180 * 24 * 60 * 60_000;
+export const COMMUNITY_PUBLIC_STATUS_RETENTION_MS = 365 * 24 * 60 * 60_000;
+export const COMMUNITY_AUDIT_RETENTION_MS = 365 * 24 * 60 * 60_000;
+export const COMMUNITY_ACTOR_RETENTION_MS = 365 * 24 * 60 * 60_000;
 
 export type CommunityAuthorKind = "guest" | "member" | "creator" | "rmt";
 

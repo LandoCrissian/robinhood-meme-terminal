@@ -1,5 +1,6 @@
-import { FieldValue } from "firebase-admin/firestore";
+import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
+import { COMMUNITY_AUDIT_RETENTION_MS } from "../../../../../lib/community";
 import {
   normalizeCommunityFeedbackStatus,
   type CommunityFeedbackStatus
@@ -100,7 +101,8 @@ export async function POST(request: Request) {
         status: nextStatus,
         reviewNote,
         reviewerKey: admin.reviewerKey,
-        createdAt: FieldValue.serverTimestamp()
+        createdAt: FieldValue.serverTimestamp(),
+        expiresAt: Timestamp.fromMillis(Date.now() + COMMUNITY_AUDIT_RETENTION_MS)
       });
     });
     return NextResponse.json({ feedbackId, status: nextStatus }, { headers: HEADERS });

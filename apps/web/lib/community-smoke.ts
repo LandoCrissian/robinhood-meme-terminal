@@ -1,8 +1,13 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
+  COMMUNITY_ACTOR_RETENTION_MS,
+  COMMUNITY_AUDIT_RETENTION_MS,
+  COMMUNITY_MESSAGE_RETENTION_MS,
   COMMUNITY_PRESENCE_HEARTBEAT_MS,
   COMMUNITY_PRESENCE_TTL_MS,
+  COMMUNITY_PRIVATE_RETENTION_MS,
+  COMMUNITY_PUBLIC_STATUS_RETENTION_MS,
   normalizeCommunityBody,
   normalizeCommunityRoomId,
   parseCommunityMessage,
@@ -27,6 +32,11 @@ import {
   readCommunityFeedbackReceiptIds,
   rememberCommunityFeedbackReceipt
 } from "./community-feedback-receipts";
+import {
+  COMMUNITY_TERMS_VERSION,
+  communityTermsAcceptanceRecord,
+  parseCommunityTermsAcceptance
+} from "./community-terms";
 import { decideCommunityRateLimit } from "./server/community-rate-limit";
 
 assert.equal(normalizeCommunityRoomId("global"), "global");
@@ -36,6 +46,22 @@ assert.equal(normalizeCommunityBody("  Hello\n\nRMT  "), "Hello RMT");
 assert.match(validateCommunityBody("https://malicious.example", true) ?? "", /cannot include external links/);
 assert.match(validateCommunityBody("my private key is abc", false) ?? "", /Never share/);
 assert.equal(validateCommunityBody("Watching the RMT curve markets today.", true), null);
+assert.ok(COMMUNITY_MESSAGE_RETENTION_MS < COMMUNITY_PRIVATE_RETENTION_MS);
+assert.ok(COMMUNITY_PRIVATE_RETENTION_MS < COMMUNITY_PUBLIC_STATUS_RETENTION_MS);
+assert.equal(COMMUNITY_PUBLIC_STATUS_RETENTION_MS, COMMUNITY_AUDIT_RETENTION_MS);
+assert.equal(COMMUNITY_ACTOR_RETENTION_MS, COMMUNITY_AUDIT_RETENTION_MS);
+assert.equal(parseCommunityTermsAcceptance(null), false);
+assert.equal(parseCommunityTermsAcceptance(JSON.stringify({
+  version: "old",
+  acceptedAt: "2026-07-29T00:00:00.000Z"
+})), false);
+assert.equal(parseCommunityTermsAcceptance(JSON.stringify({
+  version: COMMUNITY_TERMS_VERSION,
+  acceptedAt: "invalid"
+})), false);
+assert.equal(parseCommunityTermsAcceptance(
+  communityTermsAcceptanceRecord(new Date("2026-07-29T00:00:00.000Z"))
+), true);
 
 const message = {
   schemaVersion: 1,
@@ -192,6 +218,11 @@ assert.match(routeSource, /communityIdentitySecret/);
 assert.match(routeSource, /communityAuthorKey/);
 assert.match(routeSource, /communityActors/);
 assert.match(routeSource, /runTransaction/);
+assert.match(routeSource, /COMMUNITY_MESSAGE_RETENTION_MS/);
+assert.match(routeSource, /COMMUNITY_ACTOR_RETENTION_MS/);
+assert.match(routeSource, /expiresAt/);
+assert.match(routeSource, /COMMUNITY_TERMS_VERSION/);
+assert.match(routeSource, /status: 428/);
 assert.doesNotMatch(routeSource, /authorLabel:\s*input|authorKind:\s*input|firebaseUid:\s*.*messageReference/);
 
 const identitySource = readFileSync(new URL("./server/community-identity.ts", import.meta.url), "utf8");
@@ -211,6 +242,8 @@ assert.match(reportRouteSource, /verifyIdToken\(token, true\)/);
 assert.match(reportRouteSource, /communityAuthorKey/);
 assert.match(reportRouteSource, /message\.authorKey === reporterKey/);
 assert.match(reportRouteSource, /communityReports/);
+assert.match(reportRouteSource, /COMMUNITY_PRIVATE_RETENTION_MS/);
+assert.match(reportRouteSource, /expiresAt/);
 assert.doesNotMatch(reportRouteSource, /firebaseUid|reporterUid|email:/);
 
 const moderationRouteSource = readFileSync(new URL("../app/api/admin/community/moderation/route.ts", import.meta.url), "utf8");
@@ -219,6 +252,8 @@ assert.match(moderationRouteSource, /email_verified !== true/);
 assert.match(moderationRouteSource, /communityModerationAudit/);
 assert.match(moderationRouteSource, /bannedUntil/);
 assert.match(moderationRouteSource, /status: "moderated"/);
+assert.match(moderationRouteSource, /COMMUNITY_AUDIT_RETENTION_MS/);
+assert.match(moderationRouteSource, /COMMUNITY_ACTOR_RETENTION_MS/);
 
 const feedbackRouteSource = readFileSync(new URL("../app/api/community/feedback/route.ts", import.meta.url), "utf8");
 assert.match(feedbackRouteSource, /verifyIdToken\(token, true\)/);
@@ -230,6 +265,11 @@ assert.match(feedbackRouteSource, /export async function DELETE/);
 assert.match(feedbackRouteSource, /record\?\.authorKey !== authorKey/);
 assert.match(feedbackRouteSource, /transaction\.delete\(feedbackReference\)/);
 assert.match(feedbackRouteSource, /action: "author_withdrawn"/);
+assert.match(feedbackRouteSource, /COMMUNITY_PRIVATE_RETENTION_MS/);
+assert.match(feedbackRouteSource, /COMMUNITY_PUBLIC_STATUS_RETENTION_MS/);
+assert.match(feedbackRouteSource, /COMMUNITY_AUDIT_RETENTION_MS/);
+assert.match(feedbackRouteSource, /COMMUNITY_TERMS_VERSION/);
+assert.match(feedbackRouteSource, /status: 428/);
 assert.doesNotMatch(feedbackRouteSource, /firebaseUid|authorUid|email:/);
 const publicStatusWrite = feedbackRouteSource.match(/transaction\.create\(statusReference,\s*\{([\s\S]*?)\}\);/)?.[1] ?? "";
 assert.ok(publicStatusWrite);
@@ -243,12 +283,14 @@ assert.match(feedbackAdminSource, /RMT_ADMIN_EMAIL/);
 assert.match(feedbackAdminSource, /TRANSITIONS/);
 assert.match(feedbackAdminSource, /communityFeedbackAudit/);
 assert.match(feedbackAdminSource, /communityFeedbackStatus/);
+assert.match(feedbackAdminSource, /COMMUNITY_AUDIT_RETENTION_MS/);
 
 const communityCloudSource = readFileSync(new URL("./community-cloud.ts", import.meta.url), "utf8");
 assert.match(communityCloudSource, /communityFeedbackStatus/);
 assert.match(communityCloudSource, /parsePublicCommunityFeedbackStatus/);
 assert.match(communityCloudSource, /withdrawCommunityFeedback/);
 assert.match(communityCloudSource, /method: "DELETE"/);
+assert.match(communityCloudSource, /communityTermsVersion: COMMUNITY_TERMS_VERSION/);
 assert.doesNotMatch(communityCloudSource, /communityFeedback", feedbackId/);
 
 const distributedRateSource = readFileSync(new URL("./server/community-rate-limit.ts", import.meta.url), "utf8");
@@ -265,6 +307,16 @@ for (const route of ["messages", "reports", "presence", "feedback"]) {
   assert.match(source, /consumeCommunityRateLimit/);
   assert.match(source, /Retry-After/);
 }
+
+const communityLiveSource = readFileSync(new URL("../app/community-live.tsx", import.meta.url), "utf8");
+assert.match(communityLiveSource, /COMMUNITY_TERMS_STORAGE_KEY/);
+assert.match(communityLiveSource, /I agree — enter RMT Live/);
+assert.match(communityLiveSource, /view !== "updates"/);
+
+const termsSource = readFileSync(new URL("../app/terms/page.tsx", import.meta.url), "utf8");
+assert.match(termsSource, /RMT Live community/);
+assert.match(termsSource, /market manipulation/);
+assert.match(termsSource, /recovery words/);
 
 const profileProviderSource = readFileSync(new URL("../app/profile-provider.tsx", import.meta.url), "utf8");
 assert.match(profileProviderSource, /nextUser\?\.isAnonymous \? null : nextUser/);

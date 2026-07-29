@@ -1,6 +1,10 @@
 import { FieldValue, Timestamp, type Firestore } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
-import { normalizeCommunityRoomId } from "../../../../../lib/community";
+import {
+  COMMUNITY_ACTOR_RETENTION_MS,
+  COMMUNITY_AUDIT_RETENTION_MS,
+  normalizeCommunityRoomId
+} from "../../../../../lib/community";
 import { normalizeCommunityReportReason } from "../../../../../lib/community-moderation";
 import { RMT_ADMIN_EMAIL } from "../../../../../lib/creator-application";
 import {
@@ -132,6 +136,7 @@ export async function POST(request: Request) {
         if (restrictionMinutes > 0) {
           transaction.set(admin.db.collection("communityActors").doc(report.messageAuthorKey), {
             bannedUntil: Timestamp.fromMillis(Date.now() + restrictionMinutes * 60_000),
+            expiresAt: Timestamp.fromMillis(Date.now() + COMMUNITY_ACTOR_RETENTION_MS),
             updatedAt: FieldValue.serverTimestamp()
           }, { merge: true });
         }
@@ -145,7 +150,8 @@ export async function POST(request: Request) {
         restrictionMinutes,
         reviewNote,
         reviewerKey: admin.reviewerKey,
-        createdAt: FieldValue.serverTimestamp()
+        createdAt: FieldValue.serverTimestamp(),
+        expiresAt: Timestamp.fromMillis(Date.now() + COMMUNITY_AUDIT_RETENTION_MS)
       });
     });
     return NextResponse.json({ reportId, action, restrictionMinutes }, { headers: HEADERS });

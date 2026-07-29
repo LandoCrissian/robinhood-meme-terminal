@@ -40,6 +40,24 @@ Every community write retains the fast in-memory request guard and also consumes
 
 The Firestore limiter is appropriate for a measured initial rollout, not unlimited adversarial traffic. It adds one read and, for accepted attempts, one write. Monitor usage and place a reputable edge limiter in front of the application before a large public campaign or if rejected traffic itself becomes material.
 
+## Retention and acknowledgement
+
+RMT Live requires one versioned browser acknowledgement before posting a message or submitting feedback. The rules prohibit scams, impersonation, harassment, unlawful or infringing material, spam, personal or confidential information, market manipulation, malicious links, and wallet-compromise content. Updates remain readable without accepting the posting rules. A materially changed rules version requires a new acknowledgement.
+
+New records carry these maximum TTL targets:
+
+| Record | Retention target |
+| --- | ---: |
+| Public messages | 90 days |
+| Private reports and feedback | 180 days |
+| Limited public feedback status | 365 days |
+| Private moderation/feedback audit | 365 days |
+| Private community actor state | 365 days after activity |
+| Presence | 4 minutes |
+| Distributed request bucket | Until its fixed window resets |
+
+Firestore TTL deletion is asynchronous, so these values are deletion targets rather than a guarantee that removal occurs at an exact second. Author withdrawal deletes private feedback immediately through an authenticated transaction. Configure TTL on `expiresAt` for the `messages` collection group and the `communityReports`, `communityFeedback`, `communityFeedbackStatus`, `communityModerationAudit`, `communityFeedbackAudit`, `communityActors`, `communityPresence`, and `communityRateLimits` collections before activation.
+
 ## Presence and traffic
 
 The visible drawer reports only an approximate count of community identities active in RMT Live during the last few minutes. Opening the drawer creates or reuses an authenticated Firebase identity and sends a low-frequency, server-mediated heartbeat. The server stores a keyed, short-lived record without the raw Firebase identifier and returns a Firestore aggregate count rather than downloading presence documents.
@@ -57,5 +75,5 @@ Traffic measurements should include active sessions, concurrent sessions, messag
 3. Deploy the reviewed Firestore rules and composite index.
 4. Deploy and load-test the prepared distributed limiter; add an edge limiter before a large public campaign.
 5. Configure TTL cleanup for private presence records.
-6. Add retention, deletion, moderation, and acceptable-use terms.
+6. Deploy and verify the prepared retention fields, TTL policies, moderation terms, and versioned community acknowledgement.
 7. Run mobile and desktop accessibility and abuse testing.
