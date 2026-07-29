@@ -110,6 +110,31 @@ Traffic measurements should include active sessions, concurrent sessions, messag
 - The current public site returns `404` for `/api/community/presence`, proving
   the community server routes are not live yet. Existing terminal production
   remained unchanged during the credential transfer and preview rehearsal.
+- The current PR head passed every required GitHub check: web, contracts, all
+  three indexer suites, secret scanning, and Vercel.
+- A controlled `390 × 844` viewport rehearsal confirmed that RMT Live switches
+  to its mobile navigation and fits the viewport without widening the page.
+- The protected preview completed the private feedback create, limited public
+  status, and same-author withdrawal lifecycle. Private feedback content and
+  author state were removed while the bounded audit/status behavior remained
+  intact.
+- A clearly marked public rehearsal message was created, located by its exact
+  body and identifier, permanently removed, and confirmed absent from the
+  live room. No unrelated message was changed.
+- A live self-report attempt was rejected with `You cannot report your own
+  message.`, confirming that the server fails closed for that path.
+- A live cooldown rehearsal accepted the first marked message and rejected the
+  immediate second attempt with `Please wait a few seconds before posting
+  again.` The accepted record was then permanently removed and both rehearsal
+  bodies were confirmed absent from public message articles.
+- A true second-identity report and administrator moderation-route rehearsal
+  remains outstanding. A separate clean browser reaches Vercel's
+  protected-preview login, so it cannot obtain the preview session without an
+  additional sign-in. Self-report rejection is not a substitute for that
+  cross-identity test.
+- The preview may display a WalletConnect/Reown origin-allowlist warning. That
+  preview-only wallet configuration warning did not affect the community
+  identity, presence, feedback, message, or cooldown paths tested above.
 
 Run the repository-only gate after every community change:
 
@@ -132,9 +157,10 @@ controlled abuse/accessibility rehearsal remain explicit operator
 verifications because the Firebase CLI cannot prove them from the checked-in
 files alone.
 
-1. Run controlled mobile and desktop accessibility, malformed-payload,
-   cooldown, quota, report, moderation, and feedback-withdrawal rehearsals
-   against preview.
+1. Complete controlled desktop accessibility, malformed-payload, quota, and
+   true second-identity report/administrator moderation rehearsals against the
+   protected preview. Mobile layout, cooldown, self-report rejection, and
+   feedback withdrawal have current preview evidence.
 2. Review preview runtime logs and Firebase usage after the controlled
    rehearsal window.
 3. Keep PR #265 unmerged until the preview evidence is accepted and production
