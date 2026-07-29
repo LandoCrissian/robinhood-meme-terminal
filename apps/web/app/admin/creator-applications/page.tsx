@@ -10,6 +10,7 @@ import {
 } from "../../../lib/creator-application-cloud";
 import { useProfile } from "../../profile-provider";
 import { ActivationReviewInbox } from "./activation-review-inbox";
+import { CommunityFeedbackInbox } from "./community-feedback-inbox";
 import { CommunityModerationInbox } from "./community-moderation-inbox";
 import { ReleaseReviewInbox } from "./release-review-inbox";
 
@@ -162,6 +163,7 @@ export default function CreatorApplicationAdminPage() {
       <ActivationReviewInbox admin={user} />
       <ReleaseReviewInbox admin={user} />
       <CommunityModerationInbox admin={user} />
+      <CommunityFeedbackInbox admin={user} />
     </main>
   );
 }

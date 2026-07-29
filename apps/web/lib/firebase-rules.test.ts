@@ -1468,6 +1468,31 @@ test("community records are publicly readable only when visible and remain serve
       action: "dismiss",
       createdAt: Timestamp.now()
     });
+    await setDoc(doc(server, "communityFeedback", "LmNoPqRsTuVwXyZaBcDe"), {
+      feedbackId: "LmNoPqRsTuVwXyZaBcDe",
+      authorKey: "1234567890abcdef1234567890abcdef",
+      category: "mobile",
+      title: "Improve mobile spacing",
+      description: "The trade ticket needs more thumb spacing.",
+      identityKind: "guest",
+      status: "submitted",
+      reviewNote: "",
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now()
+    });
+    await setDoc(doc(server, "communityFeedbackStatus", "LmNoPqRsTuVwXyZaBcDe"), {
+      feedbackId: "LmNoPqRsTuVwXyZaBcDe",
+      category: "mobile",
+      status: "submitted",
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now()
+    });
+    await setDoc(doc(server, "communityFeedbackAudit", "FgHiJkLmNoPqRsTuVwXy"), {
+      feedbackId: "LmNoPqRsTuVwXyZaBcDe",
+      previousStatus: "submitted",
+      status: "under_review",
+      createdAt: Timestamp.now()
+    });
   });
 
   const visitor = testEnvironment.unauthenticatedContext().firestore();
@@ -1503,6 +1528,12 @@ test("community records are publicly readable only when visible and remain serve
   await assertFails(setDoc(doc(guest, "communityFeedback", "AaBbCcDdEeFfGgHhIiJj"), {
     status: "submitted"
   }));
+  await assertFails(getDoc(doc(visitor, "communityFeedback", "LmNoPqRsTuVwXyZaBcDe")));
+  await assertSucceeds(getDoc(doc(visitor, "communityFeedbackStatus", "LmNoPqRsTuVwXyZaBcDe")));
+  await assertFails(setDoc(doc(guest, "communityFeedbackStatus", "LmNoPqRsTuVwXyZaBcDe"), {
+    status: "planned"
+  }));
+  await assertFails(getDocs(collection(adminDb(), "communityFeedbackAudit")));
   await assertFails(setDoc(doc(guest, "users", "anonymous-guest"), {
     profile: {}
   }));

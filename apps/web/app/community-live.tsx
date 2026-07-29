@@ -7,15 +7,21 @@ import {
   type CommunityReportReason
 } from "../lib/community-moderation";
 import {
+  COMMUNITY_FEEDBACK_CATEGORIES,
+  type CommunityFeedbackCategory
+} from "../lib/community-feedback";
+import {
   ensureCommunityIdentity,
   postCommunityMessage,
   reportCommunityMessage,
   startCommunityPresence,
+  submitCommunityFeedback,
   subscribeToCommunityMessages
 } from "../lib/community-cloud";
 
 export function CommunityLive() {
   const [open, setOpen] = useState(false);
+  const [view, setView] = useState<"chat" | "feedback">("chat");
   const [messages, setMessages] = useState<CommunityMessage[]>([]);
   const [body, setBody] = useState("");
   const [message, setMessage] = useState("");
@@ -24,10 +30,13 @@ export function CommunityLive() {
   const [presenceCapped, setPresenceCapped] = useState(false);
   const [reportingId, setReportingId] = useState("");
   const [reportBusy, setReportBusy] = useState(false);
+  const [feedbackCategory, setFeedbackCategory] = useState<CommunityFeedbackCategory>("bug");
+  const [feedbackTitle, setFeedbackTitle] = useState("");
+  const [feedbackDescription, setFeedbackDescription] = useState("");
   const stream = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || view !== "chat") return;
     let active = true;
     let unsubscribe: (() => void) | undefined;
     void subscribeToCommunityMessages(GLOBAL_COMMUNITY_ROOM, (next) => {
@@ -44,7 +53,7 @@ export function CommunityLive() {
       active = false;
       unsubscribe?.();
     };
-  }, [open]);
+  }, [open, view]);
 
   useEffect(() => {
     if (!open) {
@@ -108,6 +117,26 @@ export function CommunityLive() {
     }
   };
 
+  const submitFeedback = async () => {
+    if (busy) return;
+    setBusy(true);
+    setMessage("");
+    try {
+      const feedbackId = await submitCommunityFeedback({
+        category: feedbackCategory,
+        title: feedbackTitle,
+        description: feedbackDescription
+      });
+      setFeedbackTitle("");
+      setFeedbackDescription("");
+      setMessage(`Feedback received · ${feedbackId.slice(0, 8).toUpperCase()}`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Feedback could not be submitted.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <aside className={`communityLive${open ? " open" : ""}`} aria-label="RMT Live community">
       <button className="communityLiveLauncher" type="button" onClick={() => setOpen((current) => !current)} aria-expanded={open}>
@@ -122,7 +151,11 @@ export function CommunityLive() {
           <button type="button" onClick={() => setOpen(false)} aria-label="Close RMT Live">×</button>
         </header>
         <div className="communityLiveNotice">Public room · guests are labeled · never share recovery words, private keys, or untrusted links.</div>
-        <div className="communityLiveStream" ref={stream}>
+        <nav className="communityLiveViews" aria-label="RMT Live views">
+          <button type="button" aria-current={view === "chat" ? "page" : undefined} onClick={() => { setView("chat"); setMessage(""); }}>Chat</button>
+          <button type="button" aria-current={view === "feedback" ? "page" : undefined} onClick={() => { setView("feedback"); setMessage(""); }}>Feedback</button>
+        </nav>
+        {view === "chat" && <><div className="communityLiveStream" ref={stream}>
           {messages.length === 0 && <div className="communityLiveEmpty"><strong>Start the conversation</strong><span>RMT Live is prepared locally and will open after secure Firebase activation.</span></div>}
           {messages.map((item) => <article key={item.messageId}>
             <header><strong>{item.authorLabel}</strong><span className={`kind-${item.authorKind}`}>{item.authorKind}</span>{item.authorHandle && <small>@{item.authorHandle}</small>}<button type="button" onClick={() => setReportingId((current) => current === item.messageId ? "" : item.messageId)}>Report</button></header>
@@ -134,9 +167,17 @@ export function CommunityLive() {
           </article>)}
         </div>
         <form onSubmit={(event) => { event.preventDefault(); void send(); }}>
-          <textarea value={body} maxLength={500} placeholder="Share feedback or join the conversation…" onChange={(event) => setBody(event.target.value)} />
+          <textarea value={body} maxLength={500} placeholder="Join the conversation…" onChange={(event) => setBody(event.target.value)} />
           <div><button type="button" disabled={busy} onClick={() => void join()}>Join as guest</button><span>{body.length}/500</span><button type="submit" disabled={busy || body.trim().length < 2}>Send</button></div>
-        </form>
+        </form></>}
+        {view === "feedback" && <form className="communityFeedbackForm" onSubmit={(event) => { event.preventDefault(); void submitFeedback(); }}>
+          <div className="communityFeedbackIntro"><strong>Help shape RMT</strong><span>Send a focused issue or idea directly to the private RMT review queue.</span></div>
+          <label>Category<select value={feedbackCategory} onChange={(event) => setFeedbackCategory(event.target.value as CommunityFeedbackCategory)}>{COMMUNITY_FEEDBACK_CATEGORIES.map((category) => <option value={category} key={category}>{category.replace("_", " ")}</option>)}</select></label>
+          <label>Title<input value={feedbackTitle} maxLength={80} placeholder="What should we fix or improve?" onChange={(event) => setFeedbackTitle(event.target.value)} /></label>
+          <label>Details<textarea value={feedbackDescription} maxLength={1_000} placeholder="What happened, what did you expect, and which device or screen were you using?" onChange={(event) => setFeedbackDescription(event.target.value)} /></label>
+          <div><span>{feedbackDescription.length}/1000</span><button type="submit" disabled={busy || feedbackTitle.trim().length < 4 || feedbackDescription.trim().length < 10}>Send privately</button></div>
+          <small>Feedback cannot move funds, change rankings, or authorize transactions.</small>
+        </form>}
         {message && <p role="status">{message}</p>}
       </section>}
     </aside>

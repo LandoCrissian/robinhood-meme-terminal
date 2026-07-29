@@ -8,6 +8,7 @@ import {
   type CommunityMessage
 } from "./community";
 import type { CommunityReportReason } from "./community-moderation";
+import type { CommunityFeedbackCategory } from "./community-feedback";
 
 export async function ensureCommunityIdentity() {
   const client = await getFirebaseClient();
@@ -139,4 +140,23 @@ export async function reportCommunityMessage(
     throw new Error(typeof result?.error === "string" ? result.error : "The report could not be recorded.");
   }
   return result.reportId;
+}
+
+export async function submitCommunityFeedback(input: {
+  category: CommunityFeedbackCategory;
+  title: string;
+  description: string;
+}) {
+  const user = await ensureCommunityIdentity();
+  const token = await user.getIdToken();
+  const response = await fetch("/api/community/feedback", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify(input)
+  });
+  const result = await response.json().catch(() => null) as { error?: unknown; feedbackId?: unknown } | null;
+  if (!response.ok || typeof result?.feedbackId !== "string") {
+    throw new Error(typeof result?.error === "string" ? result.error : "Feedback could not be submitted.");
+  }
+  return result.feedbackId;
 }

@@ -866,8 +866,16 @@ service cloud.firestore {
     }
 
     match /communityFeedback/{feedbackId} {
-      allow read: if resource.data.status in ['submitted', 'under_review', 'planned', 'shipped'];
+      allow read, create, update, delete: if false;
+    }
+
+    match /communityFeedbackStatus/{feedbackId} {
+      allow read: if resource.data.status in ['submitted', 'under_review', 'planned', 'shipped', 'closed'];
       allow create, update, delete: if false;
+    }
+
+    match /communityFeedbackAudit/{auditId} {
+      allow read, create, update, delete: if false;
     }
 
     match /creatorApplications/{userId} {
