@@ -1416,3 +1416,61 @@ test("release-review snapshots are private and server-immutable", async () => {
   await assertFails(setDoc(ownerDecisionReference, { outcome: "preparation_ready" }, { merge: true }));
   await assertFails(deleteDoc(ownerDecisionReference));
 });
+
+test("community records are publicly readable only when visible and remain server-write-only", async () => {
+  const visibleId = "AbCdEfGhIjKlMnOpQrSt";
+  const hiddenId = "ZyXwVuTsRqPoNmLkJiHg";
+  await testEnvironment.withSecurityRulesDisabled(async (context) => {
+    const server = context.firestore();
+    await setDoc(doc(server, "communityRooms", "global", "messages", visibleId), {
+      schemaVersion: 1,
+      messageId: visibleId,
+      roomId: "global",
+      authorKey: "1234567890abcdef1234567890abcdef",
+      authorKind: "guest",
+      authorLabel: "Guest-CDEF",
+      authorHandle: "",
+      body: "Visible community message.",
+      replyTo: "",
+      status: "visible",
+      createdAt: Timestamp.now()
+    });
+    await setDoc(doc(server, "communityRooms", "global", "messages", hiddenId), {
+      schemaVersion: 1,
+      messageId: hiddenId,
+      roomId: "global",
+      authorKey: "abcdef1234567890abcdef1234567890",
+      authorKind: "member",
+      authorLabel: "Restricted member",
+      authorHandle: "",
+      body: "Moderated community message.",
+      replyTo: "",
+      status: "moderated",
+      createdAt: Timestamp.now()
+    });
+  });
+
+  const visitor = testEnvironment.unauthenticatedContext().firestore();
+  await assertSucceeds(getDoc(doc(visitor, "communityRooms", "global", "messages", visibleId)));
+  await assertFails(getDoc(doc(visitor, "communityRooms", "global", "messages", hiddenId)));
+  await assertSucceeds(getDocs(query(
+    collection(visitor, "communityRooms", "global", "messages"),
+    where("status", "==", "visible")
+  )));
+
+  const guest = testEnvironment.authenticatedContext("anonymous-guest", {
+    firebase: { sign_in_provider: "anonymous" }
+  }).firestore();
+  await assertFails(setDoc(doc(guest, "communityRooms", "global", "messages", "AaBbCcDdEeFfGgHhIiJj"), {
+    status: "visible"
+  }));
+  await assertFails(setDoc(doc(guest, "communityActors", "1234567890abcdef1234567890abcdef"), {
+    firebaseUid: "anonymous-guest"
+  }));
+  await assertFails(setDoc(doc(guest, "communityFeedback", "AaBbCcDdEeFfGgHhIiJj"), {
+    status: "submitted"
+  }));
+  await assertFails(setDoc(doc(guest, "users", "anonymous-guest"), {
+    profile: {}
+  }));
+});
