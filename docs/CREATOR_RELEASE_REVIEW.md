@@ -35,6 +35,8 @@ The only snapshot status is:
 
 There is no client-writable `approved`, `published`, `minted`, `listed`, or `executable` transition. Repeating preparation for the exact same candidate is idempotent. Any material change produces a different review hash and a new immutable snapshot.
 
+RMT may attach one separate immutable preparation decision without mutating the snapshot. That decision can mark preparation evidence ready, request changes, or decline the candidate, but it cannot enable contract execution. See `docs/CREATOR_RELEASE_DECISIONS.md`.
+
 The currently attached marketplace economics policy is explicitly a simulation used to validate integrity and UI disclosure. Its hypothetical 2.50% fee is not approved, charged, or promised. No future contract may consume a snapshot whose economics mode is `simulation_only` or whose contract execution mode is `disabled`.
 
 ## Security properties

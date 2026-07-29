@@ -977,6 +977,12 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    match /creatorReleaseDecisions/{reviewId} {
+      allow read: if isRmtAdmin()
+        || ownsProjectAssignment(resource.data.projectSlug);
+      allow create, update, delete: if false;
+    }
+
     match /{path=**}/moduleRequests/{module} {
       allow read: if isRmtAdmin();
     }

@@ -65,6 +65,8 @@ Creators can save private, seven-day invitation records and prepare shareable re
 
 When every blocking passport check is resolved, the assigned creator can prepare a deterministic private release-review snapshot. It binds the complete rights revision, accepted consent manifest, proposed payout manifest, and preparation-only economics policy into an immutable server-created record. The record remains `prepared`, `simulation_only`, and `contract execution disabled`; it is not approval or publication. See `docs/CREATOR_RELEASE_REVIEW.md`.
 
+The private RMT review inbox can add one immutable, reason-coded preparation decision above a snapshot. It can mark evidence preparation-ready, request a new revision, or decline the snapshot. It still cannot enable minting, listing, payment, or contract execution. See `docs/CREATOR_RELEASE_DECISIONS.md`.
+
 ## Future contract boundary
 
 Marketplace and collection contracts must consume a versioned, reviewed rights snapshot rather than mutable draft fields. Before any contract work:

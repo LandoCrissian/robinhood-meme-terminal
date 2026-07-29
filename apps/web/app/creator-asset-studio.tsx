@@ -30,9 +30,11 @@ import type { CreatorConsentInvitationRecord } from "../lib/creator-consent";
 import { RMT_MARKETPLACE_SIMULATION_POLICY } from "../lib/creator-economics";
 import {
   prepareCreatorReleaseReview,
+  subscribeToCreatorReleaseDecisions,
   subscribeToCreatorReleaseReviews
 } from "../lib/creator-release-review-cloud";
 import type { CreatorReleaseReview } from "../lib/creator-release-review";
+import type { CreatorReleaseDecision } from "../lib/creator-release-decision";
 import type { ProjectAssignment } from "../lib/project-ownership";
 import { CreatorConsentLinkBuilder } from "./creator-consent-link-builder";
 import { CreatorImageField } from "./creator-media-upload";
@@ -84,6 +86,7 @@ export function CreatorAssetStudio({
   const [consentRecords, setConsentRecords] = useState<CreatorConsentInvitationRecord[]>([]);
   const [releaseReviews, setReleaseReviews] = useState<CreatorReleaseReview[]>([]);
   const [reviewBusy, setReviewBusy] = useState(false);
+  const [releaseDecisions, setReleaseDecisions] = useState<CreatorReleaseDecision[]>([]);
 
   useEffect(() => {
     let active = true;
@@ -135,6 +138,25 @@ export function CreatorAssetStudio({
       unsubscribe?.();
     };
   }, [projectSlug, selectedId, user]);
+
+  useEffect(() => {
+    let active = true;
+    let unsubscribe: (() => void) | undefined;
+    void subscribeToCreatorReleaseDecisions(user, projectSlug, (next) => {
+      if (active) setReleaseDecisions(next);
+    }, () => {
+      if (active) setMessage("Release-review decisions are temporarily unavailable.");
+    }).then((cleanup) => {
+      if (active) unsubscribe = cleanup;
+      else cleanup();
+    }).catch(() => {
+      if (active) setMessage("Release-review decisions are temporarily unavailable.");
+    });
+    return () => {
+      active = false;
+      unsubscribe?.();
+    };
+  }, [projectSlug, user]);
 
   if (allowedTypes.length === 0) return null;
 
@@ -322,11 +344,14 @@ export function CreatorAssetStudio({
         {readiness.status === "blocked" && <small>Resolve every blocked Release Passport check before preparing a snapshot.</small>}
         {releaseReviews.length > 0 && <div className="creatorReleaseFreezeHistory">
           <strong>Immutable snapshot history</strong>
-          {releaseReviews.map((review) => <div key={review.reviewId}>
-            <span>PREPARED</span>
+          {releaseReviews.map((review) => {
+            const decision = releaseDecisions.find((candidate) => candidate.reviewId === review.reviewId);
+            return <div key={review.reviewId}>
+            <span>{decision?.outcome.replaceAll("_", " ").toUpperCase() ?? "PREPARED"}</span>
             <code title={review.reviewHash}>{review.reviewHash.slice(0, 12)}…{review.reviewHash.slice(-8)}</code>
-            <small>{review.acceptedConsentManifest.length} accepted receipt{review.acceptedConsentManifest.length === 1 ? "" : "s"} · execution disabled</small>
-          </div>)}
+            <small>{decision?.reviewNote ?? `${review.acceptedConsentManifest.length} accepted receipt${review.acceptedConsentManifest.length === 1 ? "" : "s"} · execution disabled`}</small>
+          </div>;
+          })}
         </div>}
       </section>
 

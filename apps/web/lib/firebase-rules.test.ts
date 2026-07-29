@@ -1398,4 +1398,21 @@ test("release-review snapshots are private and server-immutable", async () => {
   )));
   await assertFails(setDoc(ownerReviewReference, { status: "approved" }, { merge: true }));
   await assertFails(deleteDoc(ownerReviewReference));
+
+  await testEnvironment.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(context.firestore(), "creatorReleaseDecisions", reviewId), {
+      reviewId,
+      projectSlug: "runner-studio",
+      outcome: "changes_requested"
+    });
+  });
+  const ownerDecisionReference = doc(owner, "creatorReleaseDecisions", reviewId);
+  await assertSucceeds(getDoc(ownerDecisionReference));
+  await assertSucceeds(getDocs(query(
+    collection(owner, "creatorReleaseDecisions"),
+    where("projectSlug", "==", "runner-studio")
+  )));
+  await assertFails(getDoc(doc(authenticatedDb(OTHER_ID), "creatorReleaseDecisions", reviewId)));
+  await assertFails(setDoc(ownerDecisionReference, { outcome: "preparation_ready" }, { merge: true }));
+  await assertFails(deleteDoc(ownerDecisionReference));
 });

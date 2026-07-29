@@ -35,6 +35,16 @@ import {
   createCreatorReleaseReview,
   parseCreatorReleaseReview
 } from "./creator-release-review";
+import {
+  createCreatorReleaseDecision,
+  parseCreatorReleaseDecision
+} from "./creator-release-decision";
+import {
+  TOKEN_MARKET_CREATOR_SHARE_BPS,
+  TOKEN_MARKET_PROTOCOL_SHARE_BPS,
+  createProtocolTreasuryAllocation,
+  validateProtocolTreasuryAllocation
+} from "./token-fee-economics";
 
 const validArtwork = {
   ...EMPTY_CREATOR_ASSET,
@@ -440,7 +450,49 @@ async function testSignedConsentResponse() {
     economicsPolicy: RMT_MARKETPLACE_SIMULATION_POLICY,
     preparedBy: "creator-user-id"
   }), /revision fingerprint/);
+
+  const decision = createCreatorReleaseDecision({
+    reviewId: review.reviewId,
+    reviewHash: review.reviewHash,
+    projectSlug: review.projectSlug,
+    assetId: review.assetId,
+    outcome: "preparation_ready",
+    reasonCode: "preparation_complete",
+    reviewNote: "Preparation evidence is internally complete; execution remains disabled.",
+    reviewerId: "rmt-reviewer"
+  });
+  assert.deepEqual(parseCreatorReleaseDecision(review.reviewId, decision), decision);
+  assert.equal(parseCreatorReleaseDecision(review.reviewId, {
+    ...decision,
+    contractExecution: "enabled"
+  }), null);
+  assert.throws(() => createCreatorReleaseDecision({
+    ...decision,
+    outcome: "preparation_ready",
+    reasonCode: "other"
+  }), /preparation-complete/);
 }
+
+assert.equal(TOKEN_MARKET_CREATOR_SHARE_BPS, 7_000);
+assert.equal(TOKEN_MARKET_PROTOCOL_SHARE_BPS, 3_000);
+const treasuryAllocation = createProtocolTreasuryAllocation({
+  policyName: "Treasury allocation test only",
+  allocation: {
+    platformGrowthBps: 3_000,
+    projectSupportBps: 2_500,
+    holderIncentivesBps: 2_000,
+    governedTokenActionsBps: 1_500,
+    safetyReserveBps: 1_000
+  },
+  disclosure: "Test-only allocation of RMT's protocol-owned 30% share. Governance remains required, eligibility is not yet defined, and no holder return is promised or guaranteed.",
+  governanceRequired: true,
+  status: "draft"
+});
+assert.match(treasuryAllocation.policyHash, /^0x[0-9a-f]{64}$/);
+assert.match(validateProtocolTreasuryAllocation({
+  ...treasuryAllocation,
+  allocation: { ...treasuryAllocation.allocation, safetyReserveBps: 999 }
+}) ?? "", /must total exactly 100%/);
 assert.equal(parseCreatorAsset("abcdefghijklmnopqrst", {
   ...parsed,
   title: "Changed without a new revision hash"
@@ -494,6 +546,16 @@ assert.match(releaseReviewRouteSource, /transaction\.create/);
 assert.match(releaseReviewRouteSource, /RMT_MARKETPLACE_SIMULATION_POLICY/);
 assert.match(releaseReviewRouteSource, /contractExecution/);
 assert.doesNotMatch(releaseReviewRouteSource, /mintNFT|createListing|executeSplit/);
+
+const releaseDecisionRouteSource = readFileSync(
+  new URL("../app/api/admin/creator-release/decision/route.ts", import.meta.url),
+  "utf8"
+);
+assert.match(releaseDecisionRouteSource, /RMT_ADMIN_EMAIL/);
+assert.match(releaseDecisionRouteSource, /verifyIdToken\(token, true\)/);
+assert.match(releaseDecisionRouteSource, /transaction\.create/);
+assert.match(releaseDecisionRouteSource, /contractExecution/);
+assert.doesNotMatch(releaseDecisionRouteSource, /mintNFT|createListing|executeSplit/);
 
 void testSignedConsentResponse().then(() => {
   console.info("Creator asset and rights foundation smoke test passed");
