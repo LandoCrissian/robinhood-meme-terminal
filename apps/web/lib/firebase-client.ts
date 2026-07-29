@@ -4,9 +4,10 @@ import type { Firestore } from "firebase/firestore";
 
 const FIREBASE_APP_NAME = "rmt-profile";
 const appCheckSiteKey = process.env.NEXT_PUBLIC_FIREBASE_APP_CHECK_SITE_KEY?.trim();
+const configuredAuthDomain = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN?.trim();
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY?.trim(),
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN?.trim(),
+  authDomain: configuredAuthDomain,
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID?.trim(),
   storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET?.trim(),
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID?.trim(),
@@ -19,6 +20,18 @@ export const firebaseConfigured = Boolean(
   && firebaseConfig.projectId
   && firebaseConfig.appId
 );
+
+export function firebaseAuthDomainForHost(authDomain: string | undefined, hostname: string) {
+  const normalizedHost = hostname.trim().toLowerCase();
+  if (
+    normalizedHost === "rmtlaunch.fun"
+    || normalizedHost === "www.rmtlaunch.fun"
+    || normalizedHost.endsWith(".vercel.app")
+  ) {
+    return normalizedHost;
+  }
+  return authDomain;
+}
 
 type FirebaseClient = {
   app: FirebaseApp;
@@ -40,8 +53,12 @@ export function getFirebaseClient() {
       import("firebase/auth"),
       import("firebase/firestore")
     ]);
+    const runtimeConfig = {
+      ...firebaseConfig,
+      authDomain: firebaseAuthDomainForHost(configuredAuthDomain, window.location.hostname)
+    };
     const app = appApi.getApps().find((candidate) => candidate.name === FIREBASE_APP_NAME)
-      ?? appApi.initializeApp(firebaseConfig, FIREBASE_APP_NAME);
+      ?? appApi.initializeApp(runtimeConfig, FIREBASE_APP_NAME);
 
     if (appCheckSiteKey) {
       const appCheckApi = await import("firebase/app-check");
