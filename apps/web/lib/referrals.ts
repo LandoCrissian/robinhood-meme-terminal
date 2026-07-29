@@ -3,7 +3,7 @@ import { getFirebaseClient } from "./firebase-client";
 
 export const REFERRAL_CODE_PATTERN = /^RMT-[A-HJ-NP-Z2-9]{8}$/;
 const REFERRAL_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-const PENDING_REFERRAL_KEY = "rmt-pending-referral-v1";
+const PENDING_REFERRAL_STORAGE_NAME = "rmt-pending-referral-v1";
 const PENDING_REFERRAL_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1_000;
 
 export type ReferralSummary = {
@@ -30,32 +30,32 @@ export function capturePendingReferral(value: unknown) {
   if (typeof window === "undefined") return false;
   const code = normalizeReferralCode(value);
   if (!code) return false;
-  window.localStorage.setItem(PENDING_REFERRAL_KEY, JSON.stringify({ code, capturedAt: Date.now() }));
+  window.localStorage.setItem(PENDING_REFERRAL_STORAGE_NAME, JSON.stringify({ code, capturedAt: Date.now() }));
   return true;
 }
 
 export function readPendingReferral() {
   if (typeof window === "undefined") return "";
   try {
-    const parsed = JSON.parse(window.localStorage.getItem(PENDING_REFERRAL_KEY) || "null") as {
+    const parsed = JSON.parse(window.localStorage.getItem(PENDING_REFERRAL_STORAGE_NAME) || "null") as {
       code?: unknown;
       capturedAt?: unknown;
     } | null;
     const code = normalizeReferralCode(parsed?.code);
     const capturedAt = typeof parsed?.capturedAt === "number" ? parsed.capturedAt : 0;
     if (!code || capturedAt <= 0 || Date.now() - capturedAt > PENDING_REFERRAL_MAX_AGE_MS) {
-      window.localStorage.removeItem(PENDING_REFERRAL_KEY);
+      window.localStorage.removeItem(PENDING_REFERRAL_STORAGE_NAME);
       return "";
     }
     return code;
   } catch {
-    window.localStorage.removeItem(PENDING_REFERRAL_KEY);
+    window.localStorage.removeItem(PENDING_REFERRAL_STORAGE_NAME);
     return "";
   }
 }
 
 export function clearPendingReferral() {
-  if (typeof window !== "undefined") window.localStorage.removeItem(PENDING_REFERRAL_KEY);
+  if (typeof window !== "undefined") window.localStorage.removeItem(PENDING_REFERRAL_STORAGE_NAME);
 }
 
 function parseReferralSummary(value: unknown, fallbackCode = ""): ReferralSummary | null {
