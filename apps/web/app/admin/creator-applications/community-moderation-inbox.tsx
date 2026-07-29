@@ -23,6 +23,7 @@ export function CommunityModerationInbox({ admin }: { admin: User }) {
   const [reports, setReports] = useState<AdminCommunityReport[]>([]);
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState("");
+  const [busyAction, setBusyAction] = useState("");
   const [message, setMessage] = useState("");
 
   const load = async () => {
@@ -53,6 +54,7 @@ export function CommunityModerationInbox({ admin }: { admin: User }) {
       return;
     }
     setBusy(report.reportId);
+    setBusyAction(`${action}:${restrictionMinutes}`);
     setMessage("");
     try {
       await moderationRequest(admin, {
@@ -68,6 +70,7 @@ export function CommunityModerationInbox({ admin }: { admin: User }) {
       setMessage(error instanceof Error ? error.message : "The moderation action could not be recorded.");
     } finally {
       setBusy("");
+      setBusyAction("");
     }
   };
 
@@ -76,6 +79,7 @@ export function CommunityModerationInbox({ admin }: { admin: User }) {
       <div><p className="eyebrow">RMT LIVE SAFETY</p><h2 id="community-moderation-title">Community reports</h2><p>Review private reports. Hiding removes the message from public queries; restrictions affect posting only and never wallets, profiles, rankings, or trading.</p></div>
       <span>{reports.length} PENDING</span>
     </header>
+    {message && <p className="adminReviewMessage" role="status" aria-live="polite">{message}</p>}
     <div className="adminApplicationList">
       {reports.length === 0 && <section className="panel adminAccessState"><h2>No pending reports</h2><p>The private moderation queue is clear.</p></section>}
       {reports.map((report) => <article className="adminApplicationCard" key={report.reportId}>
@@ -84,14 +88,13 @@ export function CommunityModerationInbox({ admin }: { admin: User }) {
         <div className="adminReviewControls">
           <label>Private review note<textarea maxLength={240} value={notes[report.reportId] ?? ""} onChange={(event) => setNotes((current) => ({ ...current, [report.reportId]: event.target.value }))} /></label>
           <div>
-            <button type="button" disabled={busy === report.reportId} onClick={() => void review(report, "dismiss", 0)}>Dismiss report</button>
-            <button className="adminRejectButton" type="button" disabled={busy === report.reportId} onClick={() => void review(report, "hide", 0)}>Hide message</button>
-            <button className="adminRejectButton" type="button" disabled={busy === report.reportId} onClick={() => void review(report, "hide", 60)}>Hide + restrict 1h</button>
-            <button className="adminRejectButton" type="button" disabled={busy === report.reportId} onClick={() => void review(report, "hide", 1_440)}>Hide + restrict 24h</button>
+            <button type="button" disabled={busy === report.reportId} onClick={() => void review(report, "dismiss", 0)}>{busy === report.reportId && busyAction === "dismiss:0" ? "Dismissing…" : "Dismiss report"}</button>
+            <button className="adminRejectButton" type="button" disabled={busy === report.reportId} onClick={() => void review(report, "hide", 0)}>{busy === report.reportId && busyAction === "hide:0" ? "Hiding…" : "Hide message"}</button>
+            <button className="adminRejectButton" type="button" disabled={busy === report.reportId} onClick={() => void review(report, "hide", 60)}>{busy === report.reportId && busyAction === "hide:60" ? "Recording restriction…" : "Hide + restrict 1h"}</button>
+            <button className="adminRejectButton" type="button" disabled={busy === report.reportId} onClick={() => void review(report, "hide", 1_440)}>{busy === report.reportId && busyAction === "hide:1440" ? "Recording restriction…" : "Hide + restrict 24h"}</button>
           </div>
         </div>
       </article>)}
     </div>
-    {message && <p className="adminReviewMessage" role="status">{message}</p>}
   </section>;
 }
