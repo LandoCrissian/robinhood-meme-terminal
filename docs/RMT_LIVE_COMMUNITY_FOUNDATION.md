@@ -127,6 +127,12 @@ Traffic measurements should include active sessions, concurrent sessions, messag
   immediate second attempt with `Please wait a few seconds before posting
   again.` The accepted record was then permanently removed and both rehearsal
   bodies were confirmed absent from public message articles.
+- The message restriction, cooldown, guest quota, member quota, exact expiry,
+  and hourly-window reset decisions are isolated in a deterministic policy and
+  covered at their boundary conditions. The live drawer exposes its controlled
+  region and report controls to assistive technology, labels its message
+  composer and status updates, closes with Escape, and returns focus to its
+  launcher.
 - A true second-identity report and administrator moderation-route rehearsal
   remains outstanding. A separate clean browser reaches Vercel's
   protected-preview login, so it cannot obtain the preview session without an

@@ -55,6 +55,7 @@ export function CommunityLive() {
   const [communityTermsReady, setCommunityTermsReady] = useState(false);
   const [communityTermsAccepted, setCommunityTermsAccepted] = useState(false);
   const stream = useRef<HTMLDivElement>(null);
+  const launcher = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     setFeedbackIds(readCommunityFeedbackReceiptIds());
@@ -130,6 +131,17 @@ export function CommunityLive() {
   useEffect(() => {
     if (open) stream.current?.scrollTo({ top: stream.current.scrollHeight });
   }, [messages, open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      setOpen(false);
+      launcher.current?.focus();
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [open]);
 
   const send = async () => {
     if (busy) return;
@@ -221,16 +233,16 @@ export function CommunityLive() {
 
   return (
     <aside className={`communityLive${open ? " open" : ""}`} aria-label="RMT Live community">
-      <button className="communityLiveLauncher" type="button" onClick={() => setOpen((current) => !current)} aria-expanded={open}>
+      <button ref={launcher} className="communityLiveLauncher" type="button" onClick={() => setOpen((current) => !current)} aria-expanded={open} aria-controls="rmt-live-panel">
         <span aria-hidden="true">◌</span><b>Live</b>
       </button>
-      {open && <section className="communityLivePanel">
+      {open && <section className="communityLivePanel" id="rmt-live-panel" aria-labelledby="rmt-live-heading">
         <header>
-          <div><small>RMT COMMUNITY</small><strong>Live lounge</strong></div>
+          <div><small>RMT COMMUNITY</small><strong id="rmt-live-heading">Live lounge</strong></div>
           <span title="Approximate number active in RMT Live during the last few minutes">
             {online === null ? "Presence unavailable" : `${presenceCapped ? "1K+" : `~${online}`} online`}
           </span>
-          <button type="button" onClick={() => setOpen(false)} aria-label="Close RMT Live">×</button>
+          <button type="button" onClick={() => { setOpen(false); launcher.current?.focus(); }} aria-label="Close RMT Live">×</button>
         </header>
         <div className="communityLiveNotice">Public room · guests are labeled · never share recovery words, private keys, or untrusted links.</div>
         <nav className="communityLiveViews" aria-label="RMT Live views">
@@ -252,16 +264,16 @@ export function CommunityLive() {
         {view === "chat" && communityTermsReady && communityTermsAccepted && <><div className="communityLiveStream" ref={stream}>
           {messages.length === 0 && <div className="communityLiveEmpty"><strong>No messages yet</strong><span>RMT Live is ready. Start the conversation without sharing private information or recovery words.</span></div>}
           {messages.map((item) => <article key={item.messageId}>
-            <header><strong>{item.authorLabel}</strong><span className={`kind-${item.authorKind}`}>{item.authorKind}</span>{item.authorHandle && <small>@{item.authorHandle}</small>}<button type="button" onClick={() => setReportingId((current) => current === item.messageId ? "" : item.messageId)}>Report</button></header>
+            <header><strong>{item.authorLabel}</strong><span className={`kind-${item.authorKind}`}>{item.authorKind}</span>{item.authorHandle && <small>@{item.authorHandle}</small>}<button type="button" aria-expanded={reportingId === item.messageId} aria-controls={`report-${item.messageId}`} onClick={() => setReportingId((current) => current === item.messageId ? "" : item.messageId)}>Report</button></header>
             <p>{item.body}</p>
-            {reportingId === item.messageId && <div className="communityReportReasons" aria-label="Report reason">
+            {reportingId === item.messageId && <div className="communityReportReasons" id={`report-${item.messageId}`} role="group" aria-label="Report reason">
               <span>Why are you reporting this?</span>
               {COMMUNITY_REPORT_REASONS.map((reason) => <button type="button" disabled={reportBusy} key={reason} onClick={() => void report(item.messageId, reason)}>{reason.replace("_", " ")}</button>)}
             </div>}
           </article>)}
         </div>
         <form onSubmit={(event) => { event.preventDefault(); void send(); }}>
-          <textarea value={body} maxLength={500} placeholder="Join the conversation…" onChange={(event) => setBody(event.target.value)} />
+          <textarea value={body} maxLength={500} aria-label="Message RMT Live" placeholder="Join the conversation…" onChange={(event) => setBody(event.target.value)} />
           <div><button type="button" disabled={busy || identityReady} onClick={() => void join()}>{identityReady ? "Access ready" : "Start guest access"}</button><span>{body.length}/500</span><button type="submit" disabled={busy || body.trim().length < 2}>Send</button></div>
         </form></>}
         {view === "feedback" && communityTermsReady && communityTermsAccepted && <form className="communityFeedbackForm" onSubmit={(event) => { event.preventDefault(); void submitFeedback(); }}>
@@ -290,7 +302,7 @@ export function CommunityLive() {
           })}
           {feedbackIds.length > 0 && <small>Removing a receipt only clears it from this browser. It does not delete the private submission from RMT’s review queue.</small>}
         </div>}
-        {message && <p role="status">{message}</p>}
+        {message && <p role="status" aria-live="polite">{message}</p>}
       </section>}
     </aside>
   );
