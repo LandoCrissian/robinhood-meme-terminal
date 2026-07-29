@@ -324,7 +324,13 @@ assert.equal(parseGameUpdate("alpha", {
 })?.type, "release");
 
 const creatorControlSource = readFileSync(new URL("../app/project-creator-controls.tsx", import.meta.url), "utf8");
+const creatorApplicationSource = readFileSync(new URL("../app/creator-application-panel.tsx", import.meta.url), "utf8");
+assert.match(creatorApplicationSource, /RMT CREATOR STUDIO/);
+assert.match(creatorApplicationSource, /Open Creator Studio/);
+assert.match(creatorApplicationSource, /does not deploy a contract, charge a fee or activate a marketplace automatically/);
 assert.match(creatorControlSource, /Save public identity/);
+assert.match(creatorControlSource, /id="creator-studio"/);
+assert.match(creatorControlSource, /RMT CREATOR STUDIO/);
 assert.match(creatorControlSource, /Logo image/);
 assert.match(creatorControlSource, /Banner image/);
 assert.match(creatorControlSource, /Playable game or store link/);

@@ -249,9 +249,9 @@ export function ProjectCreatorControls({ project }: { project: PublicProjectReco
   if (!ownershipChecked || !assignment) return null;
 
   return (
-    <section className="panel creatorControlPanel" aria-labelledby="creator-control-title">
+    <section className="panel creatorControlPanel" id="creator-studio" aria-labelledby="creator-control-title">
       <header>
-        <div><p className="eyebrow">PRIVATE CREATOR WORKSPACE</p><h2 id="creator-control-title">Manage project identity and capabilities</h2><p>This profile is assigned to the project. Presentation updates are public; module requests begin a separate RMT review and do not deploy contracts, charge fees or grant wallet authority.</p></div>
+        <div><p className="eyebrow">RMT CREATOR STUDIO</p><h2 id="creator-control-title">Manage project identity and capabilities</h2><p>This profile is assigned to the project. Presentation updates are public; module requests begin a separate RMT review and do not deploy contracts, charge fees or grant wallet authority.</p></div>
         <span>OWNER VERIFIED</span>
       </header>
       <form className="creatorIdentityEditor" onSubmit={saveIdentity}>

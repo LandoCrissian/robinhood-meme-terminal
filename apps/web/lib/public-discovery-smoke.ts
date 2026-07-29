@@ -153,6 +153,7 @@ assert.match(projectRouteSource, /isAddress/);
 assert.match(projectRouteSource, /ApprovedProjectPage/);
 assert.match(approvedProjectPageSource, /RMT PAGE · REVIEW APPROVED/);
 assert.match(approvedProjectPageSource, /No module is activated by page approval/);
+assert.match(approvedProjectPageSource, /Eligible for assigned-creator review · inactive by default/);
 assert.match(approvedProjectPageSource, /ProjectCreatorControls/);
 assert.match(tokenPageSource, /ProjectDetailPage/);
 
