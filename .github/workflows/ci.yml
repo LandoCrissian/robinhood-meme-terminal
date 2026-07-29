@@ -38,6 +38,7 @@ jobs:
       - run: pnpm --filter web test:consent-rehearsal
       - run: pnpm --filter web test:consent-activation
       - run: pnpm --filter web test:media-guard
+      - run: pnpm --filter web test:creator-assets
       - run: pnpm test:firebase-rules
       - run: pnpm --filter web test:reliability
       - run: pnpm --filter web test:v4-trade

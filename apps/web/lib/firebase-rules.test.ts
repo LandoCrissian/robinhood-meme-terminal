@@ -164,6 +164,68 @@ function gameUpdate(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function creatorAsset(overrides: Record<string, unknown> = {}) {
+  const data = {
+    schemaVersion: 1,
+    assetId: "abcdefghijklmnopqrst",
+    projectSlug: "runner-studio",
+    assetType: "artwork",
+    title: "Neon Robin",
+    description: "An original AI-assisted artwork prepared for the RMT creator ecosystem.",
+    primaryMediaUri: "ipfs://bafy-neon-robin",
+    previewMediaUri: "https://media.runner.example/neon-robin.webp",
+    creationMethod: "ai_assisted",
+    aiTools: ["OpenAI"],
+    aiDisclosure: "AI assisted with early composition studies; the creator selected and finished the final work.",
+    rightsBasis: "original",
+    rightsStatement: "The project creator produced the final work and controls the rights required for this draft.",
+    rightsConfirmed: true,
+    containsThirdPartyMaterial: false,
+    thirdPartyRightsConfirmed: false,
+    license: "all_rights_reserved",
+    licenseUri: "",
+    editionMode: "limited",
+    editionSupply: 100,
+    musicReleaseType: "single",
+    explicitContent: false,
+    masterRightsConfirmed: false,
+    compositionRightsConfirmed: false,
+    collaborators: [{
+      name: "RMT Studio",
+      role: "artist",
+      walletAddress: "",
+      consentStatus: "unverified"
+    }],
+    revenueSplits: [{
+      label: "RMT Studio",
+      walletAddress: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      shareBps: 10000
+    }],
+    collaboratorConsentStatus: "unverified",
+    status: "draft",
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+    ...overrides
+  };
+  return {
+    ...data,
+    revenueSplitTotalBps: "revenueSplitTotalBps" in overrides
+      ? overrides.revenueSplitTotalBps
+      : Array.isArray(data.revenueSplits)
+        ? data.revenueSplits.reduce((total, split) => (
+          total + (
+            typeof split === "object"
+            && split
+            && "shareBps" in split
+            && typeof split.shareBps === "number"
+              ? split.shareBps
+              : 0
+          )
+        ), 0)
+        : 0
+  };
+}
+
 function projectFollow(projectSlug = "runner-studio") {
   return {
     schemaVersion: 1,
@@ -942,4 +1004,157 @@ test("RMT admin must review a module request before marking it ready", async () 
     reviewedAt: serverTimestamp(),
     updatedAt: serverTimestamp()
   }, { merge: true }));
+});
+
+test("assigned creators can privately manage valid asset and rights drafts", async () => {
+  const admin = adminDb();
+  await assertSucceeds(setDoc(doc(admin, "projectAssignments", "runner-studio"), projectAssignment()));
+  const owner = authenticatedDb();
+  const reference = doc(owner, "projectAssignments", "runner-studio", "assets", "abcdefghijklmnopqrst");
+  await assertSucceeds(setDoc(reference, creatorAsset()));
+  const stored = (await assertSucceeds(getDoc(reference))).data();
+  assert.equal(stored?.status, "draft");
+  assert.equal(stored?.revenueSplits[0].shareBps, 10000);
+
+  await assertFails(getDoc(doc(
+    authenticatedDb(OTHER_ID),
+    "projectAssignments",
+    "runner-studio",
+    "assets",
+    "abcdefghijklmnopqrst"
+  )));
+  await assertFails(getDoc(doc(
+    testEnvironment.unauthenticatedContext().firestore(),
+    "projectAssignments",
+    "runner-studio",
+    "assets",
+    "abcdefghijklmnopqrst"
+  )));
+  await assertSucceeds(getDoc(doc(
+    admin,
+    "projectAssignments",
+    "runner-studio",
+    "assets",
+    "abcdefghijklmnopqrst"
+  )));
+  await assertSucceeds(setDoc(
+    doc(owner, "projectAssignments", "runner-studio", "assets", "maximumassetdraft123"),
+    creatorAsset({
+      assetId: "maximumassetdraft123",
+      collaborators: [
+        { name: "Artist One", role: "artist", walletAddress: "", consentStatus: "unverified" },
+        { name: "Artist Two", role: "producer", walletAddress: "", consentStatus: "unverified" },
+        { name: "Artist Three", role: "songwriter", walletAddress: "", consentStatus: "unverified" },
+        { name: "Artist Four", role: "performer", walletAddress: "", consentStatus: "unverified" }
+      ],
+      revenueSplits: [
+        { label: "Recipient One", walletAddress: "0x1111111111111111111111111111111111111111", shareBps: 2500 },
+        { label: "Recipient Two", walletAddress: "0x2222222222222222222222222222222222222222", shareBps: 2500 },
+        { label: "Recipient Three", walletAddress: "0x3333333333333333333333333333333333333333", shareBps: 2500 },
+        { label: "Recipient Four", walletAddress: "0x4444444444444444444444444444444444444444", shareBps: 2500 }
+      ]
+    })
+  ));
+
+  await assertSucceeds(setDoc(reference, creatorAsset({
+    description: "An updated private rights draft that remains unavailable to public marketplace discovery.",
+    createdAt: stored?.createdAt,
+    updatedAt: serverTimestamp()
+  })));
+  await assertFails(deleteDoc(doc(
+    authenticatedDb(OTHER_ID),
+    "projectAssignments",
+    "runner-studio",
+    "assets",
+    "abcdefghijklmnopqrst"
+  )));
+  await assertSucceeds(deleteDoc(reference));
+});
+
+test("asset drafts fail closed on rights, consent, edition, and split violations", async () => {
+  const admin = adminDb();
+  await assertSucceeds(setDoc(doc(admin, "projectAssignments", "runner-studio"), projectAssignment()));
+  const owner = authenticatedDb();
+  const reference = (id: string) => doc(owner, "projectAssignments", "runner-studio", "assets", id);
+
+  await assertFails(setDoc(reference("aaaaaaaaaaaaaaaaaaaa"), creatorAsset({
+    assetId: "aaaaaaaaaaaaaaaaaaaa",
+    rightsConfirmed: false
+  })));
+  await assertFails(setDoc(reference("bbbbbbbbbbbbbbbbbbbb"), creatorAsset({
+    assetId: "bbbbbbbbbbbbbbbbbbbb",
+    collaboratorConsentStatus: "accepted",
+    collaborators: [{
+      name: "Unverified Artist",
+      role: "artist",
+      walletAddress: "",
+      consentStatus: "accepted"
+    }]
+  })));
+  await assertFails(setDoc(reference("cccccccccccccccccccc"), creatorAsset({
+    assetId: "cccccccccccccccccccc",
+    editionMode: "one_of_one",
+    editionSupply: 2
+  })));
+  await assertFails(setDoc(reference("dddddddddddddddddddd"), creatorAsset({
+    assetId: "dddddddddddddddddddd",
+    revenueSplits: [
+      {
+        label: "Artist",
+        walletAddress: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        shareBps: 6000
+      },
+      {
+        label: "Producer",
+        walletAddress: "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        shareBps: 3000
+      }
+    ]
+  })));
+  await assertFails(setDoc(reference("ffffffffffffffffffff"), creatorAsset({
+    assetId: "ffffffffffffffffffff",
+    status: "published"
+  })));
+});
+
+test("music rights drafts require an approved music module and both music rights confirmations", async () => {
+  const admin = adminDb();
+  const assignmentReference = doc(admin, "projectAssignments", "runner-studio");
+  await assertSucceeds(setDoc(assignmentReference, projectAssignment()));
+  const assignmentCreatedAt = (await assertSucceeds(getDoc(assignmentReference))).data()?.createdAt;
+  const owner = authenticatedDb();
+  const reference = doc(owner, "projectAssignments", "runner-studio", "assets", "musicmusicmusicmusic");
+  const music = creatorAsset({
+    assetId: "musicmusicmusicmusic",
+    assetType: "music_release",
+    title: "Chain Signals",
+    description: "An original music single prepared for a future creator-controlled release.",
+    primaryMediaUri: "ipfs://bafy-chain-signals",
+    creationMethod: "human",
+    aiTools: [],
+    aiDisclosure: "",
+    masterRightsConfirmed: true,
+    compositionRightsConfirmed: true
+  });
+  await assertFails(setDoc(reference, music));
+  await assertSucceeds(setDoc(assignmentReference, projectAssignment({
+    allowedModules: ["token", "nft", "music"],
+    createdAt: assignmentCreatedAt,
+    updatedAt: serverTimestamp()
+  })));
+  await assertSucceeds(setDoc(reference, music));
+  await assertFails(setDoc(
+    doc(owner, "projectAssignments", "runner-studio", "assets", "musicnomasterrights1"),
+    creatorAsset({
+      assetId: "musicnomasterrights1",
+      assetType: "music_release",
+      title: "Missing rights",
+      primaryMediaUri: "ipfs://bafy-missing-rights",
+      creationMethod: "human",
+      aiTools: [],
+      aiDisclosure: "",
+      masterRightsConfirmed: false,
+      compositionRightsConfirmed: true
+    })
+  ));
 });

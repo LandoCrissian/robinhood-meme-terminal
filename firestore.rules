@@ -586,6 +586,106 @@ service cloud.firestore {
         && reviewNote is string && reviewNote.size() <= 600;
     }
 
+    function validCreatorAssetMedia(value, optional) {
+      return value is string
+        && value.size() <= 512
+        && ((optional && value == '') || value.matches('^(https://|ipfs://).+$'));
+    }
+
+    function validCreatorAsset(assetId, projectId, data) {
+      let aiDisclosure = data.get('aiDisclosure', '');
+      let licenseUri = data.get('licenseUri', '');
+      return assetId.matches('^[A-Za-z0-9]{20}$')
+        && data.keys().hasOnly([
+          'schemaVersion',
+          'assetId',
+          'projectSlug',
+          'assetType',
+          'title',
+          'description',
+          'primaryMediaUri',
+          'previewMediaUri',
+          'creationMethod',
+          'aiTools',
+          'aiDisclosure',
+          'rightsBasis',
+          'rightsStatement',
+          'rightsConfirmed',
+          'containsThirdPartyMaterial',
+          'thirdPartyRightsConfirmed',
+          'license',
+          'licenseUri',
+          'editionMode',
+          'editionSupply',
+          'musicReleaseType',
+          'explicitContent',
+          'masterRightsConfirmed',
+          'compositionRightsConfirmed',
+          'collaborators',
+          'collaboratorConsentStatus',
+          'revenueSplits',
+          'revenueSplitTotalBps',
+          'status',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.schemaVersion == 1
+        && data.assetId == assetId
+        && data.projectSlug == projectId
+        && data.assetType in ['artwork', 'music_release', 'nft_collection']
+        && data.title is string && data.title.size() >= 2 && data.title.size() <= 100
+        && data.description is string && data.description.size() >= 20 && data.description.size() <= 1200
+        && validCreatorAssetMedia(data.primaryMediaUri, false)
+        && validCreatorAssetMedia(data.previewMediaUri, true)
+        && data.creationMethod in ['human', 'ai_assisted', 'ai_generated']
+        && data.aiTools is list && data.aiTools.size() <= 8
+        && aiDisclosure is string && aiDisclosure.size() <= 600
+        && (data.creationMethod == 'human'
+          ? data.aiTools.size() == 0 && aiDisclosure == ''
+          : data.aiTools.size() > 0 && aiDisclosure.size() >= 20)
+        && data.rightsBasis in ['original', 'commissioned', 'licensed', 'public_domain']
+        && data.rightsStatement is string
+        && data.rightsStatement.size() >= 20 && data.rightsStatement.size() <= 1000
+        && data.rightsConfirmed == true
+        && data.containsThirdPartyMaterial is bool
+        && data.thirdPartyRightsConfirmed is bool
+        && (!data.containsThirdPartyMaterial || data.thirdPartyRightsConfirmed)
+        && data.license in ['all_rights_reserved', 'personal_use', 'commercial_use', 'cc0', 'cc_by', 'custom']
+        && licenseUri is string && licenseUri.size() <= 512
+        && (data.license == 'custom' ? licenseUri.matches('^https://.+$') : licenseUri == '')
+        && data.editionMode in ['one_of_one', 'limited', 'open']
+        && data.editionSupply is int
+        && (data.editionMode == 'one_of_one'
+          ? data.editionSupply == 1
+          : data.editionMode == 'open'
+            ? data.editionSupply == 0
+            : data.editionSupply >= 1 && data.editionSupply <= 1000000)
+        && data.musicReleaseType in ['single', 'ep', 'album']
+        && data.explicitContent is bool
+        && data.masterRightsConfirmed is bool
+        && data.compositionRightsConfirmed is bool
+        && (data.assetType == 'music_release'
+          ? data.masterRightsConfirmed && data.compositionRightsConfirmed
+          : !data.explicitContent && !data.masterRightsConfirmed && !data.compositionRightsConfirmed)
+        && data.collaborators is list && data.collaborators.size() <= 6
+        && data.collaboratorConsentStatus == 'unverified'
+        && data.revenueSplits is list && data.revenueSplits.size() <= 5
+        && data.revenueSplitTotalBps is int
+        && (data.revenueSplits.size() == 0
+          ? data.revenueSplitTotalBps == 0
+          : data.revenueSplitTotalBps == 10000)
+        && data.status == 'draft'
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function projectAssignmentAllowsAsset(projectId, assetType) {
+      let modules = get(/databases/$(database)/documents/projectAssignments/$(projectId)).data.allowedModules;
+      return assetType == 'music_release'
+        ? modules.hasAny(['music'])
+        : modules.hasAny(['nft']);
+    }
+
     function validAdminModuleReview() {
       let changed = request.resource.data.diff(resource.data).affectedKeys();
       let note = request.resource.data.get('reviewNote', '');
@@ -723,6 +823,26 @@ service cloud.firestore {
         allow update: if validAdminModuleReview()
           && validModuleActivationRequest(module, request.resource.data)
           && request.resource.data.requestedAt == resource.data.requestedAt;
+      }
+
+      match /assets/{assetId} {
+        allow read: if isRmtAdmin() || ownsProjectAssignment(projectId);
+        allow create: if ownsProjectAssignment(projectId)
+          && projectAssignmentAllowsAsset(projectId, request.resource.data.assetType)
+          && validCreatorAsset(assetId, projectId, request.resource.data)
+          && request.resource.data.createdAt == request.time
+          && request.resource.data.updatedAt == request.time;
+        allow update: if ownsProjectAssignment(projectId)
+          && projectAssignmentAllowsAsset(projectId, request.resource.data.assetType)
+          && validCreatorAsset(assetId, projectId, request.resource.data)
+          && request.resource.data.schemaVersion == resource.data.schemaVersion
+          && request.resource.data.assetId == resource.data.assetId
+          && request.resource.data.projectSlug == resource.data.projectSlug
+          && request.resource.data.status == resource.data.status
+          && request.resource.data.createdAt == resource.data.createdAt
+          && request.resource.data.updatedAt == request.time;
+        allow delete: if ownsProjectAssignment(projectId)
+          && resource.data.status == 'draft';
       }
     }
 
