@@ -1,12 +1,15 @@
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
 import {
+  COMMUNITY_ACTOR_RETENTION_MS,
+  COMMUNITY_MESSAGE_RETENTION_MS,
   COMMUNITY_SCHEMA_VERSION,
   normalizeCommunityBody,
   normalizeCommunityRoomId,
   validateCommunityBody
 } from "../../../../lib/community";
 import { RMT_ADMIN_EMAIL } from "../../../../lib/creator-application";
+import { COMMUNITY_TERMS_VERSION } from "../../../../lib/community-terms";
 import {
   communityAuthorKey,
   communityBearerToken,
@@ -58,6 +61,9 @@ export async function POST(request: Request) {
     ? input.replyTo
     : "";
   if (!roomId) return NextResponse.json({ error: "Community room is invalid." }, { status: 400, headers: HEADERS });
+  if (input.communityTermsVersion !== COMMUNITY_TERMS_VERSION) {
+    return NextResponse.json({ error: "Review and accept the current RMT Live community rules." }, { status: 428, headers: HEADERS });
+  }
 
   const auth = getRmtAdminAuth();
   const db = getRmtAdminFirestore();
@@ -136,6 +142,7 @@ export async function POST(request: Request) {
         lastMessageAt: FieldValue.serverTimestamp(),
         windowStartedAt: sameWindow ? actor!.windowStartedAt : FieldValue.serverTimestamp(),
         windowCount: windowCount + 1,
+        expiresAt: Timestamp.fromMillis(now + COMMUNITY_ACTOR_RETENTION_MS),
         updatedAt: FieldValue.serverTimestamp()
       }, { merge: true });
       transaction.create(messageReference, {
@@ -149,7 +156,8 @@ export async function POST(request: Request) {
         body: messageBody,
         replyTo,
         status: "visible",
-        createdAt: FieldValue.serverTimestamp()
+        createdAt: FieldValue.serverTimestamp(),
+        expiresAt: Timestamp.fromMillis(now + COMMUNITY_MESSAGE_RETENTION_MS)
       });
     });
 

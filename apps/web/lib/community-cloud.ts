@@ -8,6 +8,7 @@ import {
   type CommunityMessage
 } from "./community";
 import type { CommunityReportReason } from "./community-moderation";
+import { COMMUNITY_TERMS_VERSION } from "./community-terms";
 import {
   parsePublicCommunityFeedbackStatus,
   type CommunityFeedbackCategory,
@@ -60,7 +61,7 @@ export async function postCommunityMessage(body: string, replyTo = "", roomId = 
   const response = await fetch("/api/community/messages", {
     method: "POST",
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ roomId, body, replyTo })
+    body: JSON.stringify({ roomId, body, replyTo, communityTermsVersion: COMMUNITY_TERMS_VERSION })
   });
   const result = await response.json().catch(() => null) as { error?: unknown; messageId?: unknown } | null;
   if (!response.ok || typeof result?.messageId !== "string") {
@@ -156,7 +157,7 @@ export async function submitCommunityFeedback(input: {
   const response = await fetch("/api/community/feedback", {
     method: "POST",
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    body: JSON.stringify(input)
+    body: JSON.stringify({ ...input, communityTermsVersion: COMMUNITY_TERMS_VERSION })
   });
   const result = await response.json().catch(() => null) as { error?: unknown; feedbackId?: unknown } | null;
   if (!response.ok || typeof result?.feedbackId !== "string") {

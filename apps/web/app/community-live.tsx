@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { GLOBAL_COMMUNITY_ROOM, type CommunityMessage } from "../lib/community";
 import {
@@ -16,6 +17,11 @@ import {
   readCommunityFeedbackReceiptIds,
   rememberCommunityFeedbackReceipt
 } from "../lib/community-feedback-receipts";
+import {
+  COMMUNITY_TERMS_STORAGE_KEY,
+  communityTermsAcceptanceRecord,
+  parseCommunityTermsAcceptance
+} from "../lib/community-terms";
 import {
   ensureCommunityIdentity,
   postCommunityMessage,
@@ -45,10 +51,19 @@ export function CommunityLive() {
   const [feedbackStatuses, setFeedbackStatuses] = useState<PublicCommunityFeedbackStatus[]>([]);
   const [withdrawConfirmId, setWithdrawConfirmId] = useState("");
   const [withdrawingId, setWithdrawingId] = useState("");
+  const [communityTermsReady, setCommunityTermsReady] = useState(false);
+  const [communityTermsAccepted, setCommunityTermsAccepted] = useState(false);
   const stream = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setFeedbackIds(readCommunityFeedbackReceiptIds());
+    try {
+      setCommunityTermsAccepted(parseCommunityTermsAcceptance(window.localStorage.getItem(COMMUNITY_TERMS_STORAGE_KEY)));
+    } catch {
+      setCommunityTermsAccepted(false);
+    } finally {
+      setCommunityTermsReady(true);
+    }
   }, []);
 
   useEffect(() => {
@@ -192,6 +207,15 @@ export function CommunityLive() {
     }
   };
 
+  const acceptCommunityTerms = () => {
+    setCommunityTermsAccepted(true);
+    try {
+      window.localStorage.setItem(COMMUNITY_TERMS_STORAGE_KEY, communityTermsAcceptanceRecord());
+    } catch {
+      setMessage("Community rules accepted for this session. Browser storage is unavailable.");
+    }
+  };
+
   return (
     <aside className={`communityLive${open ? " open" : ""}`} aria-label="RMT Live community">
       <button className="communityLiveLauncher" type="button" onClick={() => setOpen((current) => !current)} aria-expanded={open}>
@@ -211,7 +235,18 @@ export function CommunityLive() {
           <button type="button" aria-current={view === "feedback" ? "page" : undefined} onClick={() => { setView("feedback"); setMessage(""); }}>Feedback</button>
           <button type="button" aria-current={view === "updates" ? "page" : undefined} onClick={() => { setView("updates"); setMessage(""); }}>Updates</button>
         </nav>
-        {view === "chat" && <><div className="communityLiveStream" ref={stream}>
+        {view !== "updates" && (!communityTermsReady || !communityTermsAccepted) && <div className="communityRulesGate">
+          <div><small>ONE-TIME ACKNOWLEDGEMENT</small><strong>Keep RMT Live useful</strong><span>RMT Live is public and moderated. Before posting or sending feedback:</span></div>
+          <ul>
+            <li>No scams, impersonation, harassment, illegal material, spam, or market manipulation.</li>
+            <li>Never share recovery words, private keys, confidential information, or someone else’s personal data.</li>
+            <li>Messages may be reported, hidden, rate-limited, retained temporarily, and reviewed for safety.</li>
+          </ul>
+          <div><Link href="/terms" target="_blank">Community terms ↗</Link><Link href="/privacy" target="_blank">Privacy ↗</Link></div>
+          <button type="button" disabled={!communityTermsReady} onClick={acceptCommunityTerms}>I agree — enter RMT Live</button>
+          <small>You will be asked again only if these rules materially change or this browser’s site data is cleared.</small>
+        </div>}
+        {view === "chat" && communityTermsReady && communityTermsAccepted && <><div className="communityLiveStream" ref={stream}>
           {messages.length === 0 && <div className="communityLiveEmpty"><strong>Start the conversation</strong><span>RMT Live is prepared locally and will open after secure Firebase activation.</span></div>}
           {messages.map((item) => <article key={item.messageId}>
             <header><strong>{item.authorLabel}</strong><span className={`kind-${item.authorKind}`}>{item.authorKind}</span>{item.authorHandle && <small>@{item.authorHandle}</small>}<button type="button" onClick={() => setReportingId((current) => current === item.messageId ? "" : item.messageId)}>Report</button></header>
@@ -226,7 +261,7 @@ export function CommunityLive() {
           <textarea value={body} maxLength={500} placeholder="Join the conversation…" onChange={(event) => setBody(event.target.value)} />
           <div><button type="button" disabled={busy} onClick={() => void join()}>Join as guest</button><span>{body.length}/500</span><button type="submit" disabled={busy || body.trim().length < 2}>Send</button></div>
         </form></>}
-        {view === "feedback" && <form className="communityFeedbackForm" onSubmit={(event) => { event.preventDefault(); void submitFeedback(); }}>
+        {view === "feedback" && communityTermsReady && communityTermsAccepted && <form className="communityFeedbackForm" onSubmit={(event) => { event.preventDefault(); void submitFeedback(); }}>
           <div className="communityFeedbackIntro"><strong>Help shape RMT</strong><span>Send a focused issue or idea directly to the private RMT review queue.</span></div>
           <label>Category<select value={feedbackCategory} onChange={(event) => setFeedbackCategory(event.target.value as CommunityFeedbackCategory)}>{COMMUNITY_FEEDBACK_CATEGORIES.map((category) => <option value={category} key={category}>{category.replace("_", " ")}</option>)}</select></label>
           <label>Title<input value={feedbackTitle} maxLength={80} placeholder="What should we fix or improve?" onChange={(event) => setFeedbackTitle(event.target.value)} /></label>

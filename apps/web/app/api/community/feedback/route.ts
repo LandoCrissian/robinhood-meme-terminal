@@ -1,6 +1,12 @@
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
-import { COMMUNITY_SCHEMA_VERSION } from "../../../../lib/community";
+import {
+  COMMUNITY_ACTOR_RETENTION_MS,
+  COMMUNITY_AUDIT_RETENTION_MS,
+  COMMUNITY_PRIVATE_RETENTION_MS,
+  COMMUNITY_PUBLIC_STATUS_RETENTION_MS,
+  COMMUNITY_SCHEMA_VERSION
+} from "../../../../lib/community";
 import {
   normalizeCommunityFeedbackCategory,
   normalizeCommunityFeedbackDescription,
@@ -8,6 +14,7 @@ import {
   normalizeCommunityFeedbackTitle,
   validateCommunityFeedbackContent
 } from "../../../../lib/community-feedback";
+import { COMMUNITY_TERMS_VERSION } from "../../../../lib/community-terms";
 import {
   communityAuthorKey,
   communityBearerToken,
@@ -39,6 +46,9 @@ export async function POST(request: Request) {
   const description = normalizeCommunityFeedbackDescription(input.description);
   if (!category || title.length < 4 || description.length < 10) {
     return NextResponse.json({ error: "Add a category, a clear title, and at least 10 characters of detail." }, { status: 400, headers: HEADERS });
+  }
+  if (input.communityTermsVersion !== COMMUNITY_TERMS_VERSION) {
+    return NextResponse.json({ error: "Review and accept the current RMT Live community rules." }, { status: 428, headers: HEADERS });
   }
 
   const auth = getRmtAdminAuth();
@@ -87,6 +97,7 @@ export async function POST(request: Request) {
         lastFeedbackAt: FieldValue.serverTimestamp(),
         feedbackWindowStartedAt: sameWindow ? actor!.feedbackWindowStartedAt : FieldValue.serverTimestamp(),
         feedbackWindowCount: count + 1,
+        expiresAt: Timestamp.fromMillis(now + COMMUNITY_ACTOR_RETENTION_MS),
         updatedAt: FieldValue.serverTimestamp()
       }, { merge: true });
       transaction.create(feedbackReference, {
@@ -100,7 +111,8 @@ export async function POST(request: Request) {
         status: "submitted",
         reviewNote: "",
         createdAt: FieldValue.serverTimestamp(),
-        updatedAt: FieldValue.serverTimestamp()
+        updatedAt: FieldValue.serverTimestamp(),
+        expiresAt: Timestamp.fromMillis(now + COMMUNITY_PRIVATE_RETENTION_MS)
       });
       transaction.create(statusReference, {
         schemaVersion: COMMUNITY_SCHEMA_VERSION,
@@ -108,7 +120,8 @@ export async function POST(request: Request) {
         category,
         status: "submitted",
         createdAt: FieldValue.serverTimestamp(),
-        updatedAt: FieldValue.serverTimestamp()
+        updatedAt: FieldValue.serverTimestamp(),
+        expiresAt: Timestamp.fromMillis(now + COMMUNITY_PUBLIC_STATUS_RETENTION_MS)
       });
     });
     return NextResponse.json({ feedbackId: feedbackReference.id, status: "submitted" }, { headers: HEADERS });
@@ -163,6 +176,7 @@ export async function DELETE(request: Request) {
       });
     }
     const authorKey = communityAuthorKey(secret, identity.uid);
+    const now = Date.now();
     const feedbackReference = db.collection("communityFeedback").doc(feedbackId);
     const statusReference = db.collection("communityFeedbackStatus").doc(feedbackId);
     const auditReference = db.collection("communityFeedbackAudit").doc();
@@ -183,7 +197,8 @@ export async function DELETE(request: Request) {
         previousStatus,
         status: "closed",
         action: "author_withdrawn",
-        createdAt: FieldValue.serverTimestamp()
+        createdAt: FieldValue.serverTimestamp(),
+        expiresAt: Timestamp.fromMillis(now + COMMUNITY_AUDIT_RETENTION_MS)
       });
     });
     return NextResponse.json({ feedbackId, status: "closed", withdrawn: true }, { headers: HEADERS });

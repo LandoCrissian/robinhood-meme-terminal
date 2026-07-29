@@ -1,6 +1,7 @@
-import { FieldValue } from "firebase-admin/firestore";
+import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
 import {
+  COMMUNITY_PRIVATE_RETENTION_MS,
   COMMUNITY_SCHEMA_VERSION,
   normalizeCommunityRoomId
 } from "../../../../lib/community";
@@ -63,6 +64,7 @@ export async function POST(request: Request) {
       });
     }
     const reporterKey = communityAuthorKey(secret, identity.uid);
+    const now = Date.now();
     const messageReference = db.collection("communityRooms").doc(roomId).collection("messages").doc(messageId);
     const reportId = `${messageId}--${reporterKey}`;
     const reportReference = db.collection("communityReports").doc(reportId);
@@ -87,7 +89,8 @@ export async function POST(request: Request) {
         authorLabelSnapshot: String(message.authorLabel ?? "").slice(0, 40),
         messageBodySnapshot: String(message.body ?? "").slice(0, 500),
         status: "pending",
-        createdAt: FieldValue.serverTimestamp()
+        createdAt: FieldValue.serverTimestamp(),
+        expiresAt: Timestamp.fromMillis(now + COMMUNITY_PRIVATE_RETENTION_MS)
       });
       return { idempotent: false };
     });
