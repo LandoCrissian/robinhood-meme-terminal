@@ -41,6 +41,7 @@ import {
   validateGameUpdate
 } from "./game-updates";
 import { validateCreatorImage } from "./creator-media";
+import { firebaseAuthDomainForHost } from "./firebase-client";
 
 const vercelConfig = JSON.parse(readFileSync(new URL("../vercel.json", import.meta.url), "utf8")) as {
   headers?: Array<{
@@ -81,6 +82,21 @@ assert.equal(
 assert.equal(globalSecurityHeaders.get("x-content-type-options"), "nosniff");
 assert.equal(globalSecurityHeaders.get("referrer-policy"), "strict-origin-when-cross-origin");
 assert.match(globalSecurityHeaders.get("permissions-policy") ?? "", /camera=\(\)/);
+
+assert.equal(
+  firebaseAuthDomainForHost("www.rmtlaunch.fun", "robinhood-meme-terminal-git-code-437b4e.vercel.app"),
+  "robinhood-meme-terminal-git-code-437b4e.vercel.app",
+  "Vercel previews must keep Firebase auth helpers on the current authorized preview origin"
+);
+assert.equal(
+  firebaseAuthDomainForHost("www.rmtlaunch.fun", "www.rmtlaunch.fun"),
+  "www.rmtlaunch.fun"
+);
+assert.equal(
+  firebaseAuthDomainForHost("robinhood-meme-terminal.firebaseapp.com", "localhost"),
+  "robinhood-meme-terminal.firebaseapp.com",
+  "Local development should retain the configured Firebase auth helper"
+);
 
 assert.deepEqual(normalizeProfile(null), DEFAULT_PROFILE);
 

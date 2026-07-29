@@ -423,7 +423,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     provider.setCustomParameters({ prompt: "select_account" });
     setSyncState("syncing");
     try {
-      await client.authApi.signInWithPopup(client.auth, provider);
+      await client.authApi.signInWithRedirect(client.auth, provider);
     } catch (error) {
       setSyncState("local");
       throw new Error(friendlyAuthError(error));
