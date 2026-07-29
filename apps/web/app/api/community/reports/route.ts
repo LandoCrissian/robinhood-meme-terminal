@@ -11,6 +11,7 @@ import {
   communityIdentitySecret
 } from "../../../../lib/server/community-identity";
 import { getRmtAdminAuth, getRmtAdminFirestore } from "../../../../lib/server/firebase-admin";
+import { consumeCommunityRateLimit } from "../../../../lib/server/community-rate-limit";
 import { guardMediaRequest, readBoundedJsonRequest } from "../../../../lib/server/media-request-guard";
 
 export const dynamic = "force-dynamic";
@@ -19,7 +20,7 @@ export const runtime = "nodejs";
 const HEADERS = { "Cache-Control": "no-store" };
 
 export async function POST(request: Request) {
-  const guard = guardMediaRequest(request, { namespace: "community-report", limit: 12, windowMs: 60 * 60_000 });
+  const guard = guardMediaRequest(request, { namespace: "community-report", limit: 30, windowMs: 60 * 60_000 });
   if (!guard.ok) return NextResponse.json({ error: guard.error }, { status: guard.status, headers: HEADERS });
   const token = communityBearerToken(request);
   if (!token) return NextResponse.json({ error: "Community identity required." }, { status: 401, headers: HEADERS });
@@ -49,6 +50,17 @@ export async function POST(request: Request) {
     const guest = identity.firebase?.sign_in_provider === "anonymous";
     if (!guest && identity.email_verified !== true) {
       return NextResponse.json({ error: "Verified member or guest identity required." }, { status: 403, headers: HEADERS });
+    }
+    const distributedLimit = await consumeCommunityRateLimit(db, secret, request, {
+      namespace: "report",
+      limit: 30,
+      windowMs: 60 * 60_000
+    });
+    if (!distributedLimit.allowed) {
+      return NextResponse.json({ error: "Too many community reports from this network. Please wait and try again." }, {
+        status: 429,
+        headers: { ...HEADERS, "Retry-After": String(distributedLimit.retryAfterSeconds) }
+      });
     }
     const reporterKey = communityAuthorKey(secret, identity.uid);
     const messageReference = db.collection("communityRooms").doc(roomId).collection("messages").doc(messageId);

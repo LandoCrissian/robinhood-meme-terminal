@@ -27,6 +27,7 @@ import {
   readCommunityFeedbackReceiptIds,
   rememberCommunityFeedbackReceipt
 } from "./community-feedback-receipts";
+import { decideCommunityRateLimit } from "./server/community-rate-limit";
 
 assert.equal(normalizeCommunityRoomId("global"), "global");
 assert.equal(normalizeCommunityRoomId("project--rmt-studio"), "project--rmt-studio");
@@ -134,6 +135,50 @@ assert.deepEqual(rememberCommunityFeedbackReceipt("LmNoPqRsTuVwXyZaBcDe", receip
 assert.deepEqual(rememberCommunityFeedbackReceipt("AbCdEfGhIjKlMnOpQrSt", receiptStorage), ["AbCdEfGhIjKlMnOpQrSt", "LmNoPqRsTuVwXyZaBcDe"]);
 assert.deepEqual(readCommunityFeedbackReceiptIds(receiptStorage), ["AbCdEfGhIjKlMnOpQrSt", "LmNoPqRsTuVwXyZaBcDe"]);
 assert.deepEqual(forgetCommunityFeedbackReceipt("AbCdEfGhIjKlMnOpQrSt", receiptStorage), ["LmNoPqRsTuVwXyZaBcDe"]);
+assert.deepEqual(decideCommunityRateLimit(undefined, {
+  limit: 2,
+  windowMs: 60_000,
+  now: 1_000
+}), {
+  allowed: true,
+  count: 1,
+  resetAt: 61_000,
+  retryAfterSeconds: 0
+});
+assert.deepEqual(decideCommunityRateLimit({
+  count: 1,
+  resetAt: { toMillis: () => 61_000 }
+}, {
+  limit: 2,
+  windowMs: 60_000,
+  now: 2_000
+}), {
+  allowed: true,
+  count: 2,
+  resetAt: 61_000,
+  retryAfterSeconds: 0
+});
+assert.deepEqual(decideCommunityRateLimit({
+  count: 2,
+  resetAt: { toMillis: () => 61_000 }
+}, {
+  limit: 2,
+  windowMs: 60_000,
+  now: 31_000
+}), {
+  allowed: false,
+  count: 2,
+  resetAt: 61_000,
+  retryAfterSeconds: 30
+});
+assert.equal(decideCommunityRateLimit({
+  count: 999,
+  resetAt: { toMillis: () => 1_000 }
+}, {
+  limit: 2,
+  windowMs: 60_000,
+  now: 2_000
+}).count, 1);
 assert.equal(parseCommunityPresence({
   online: 1_001,
   approximate: true,
@@ -205,6 +250,21 @@ assert.match(communityCloudSource, /parsePublicCommunityFeedbackStatus/);
 assert.match(communityCloudSource, /withdrawCommunityFeedback/);
 assert.match(communityCloudSource, /method: "DELETE"/);
 assert.doesNotMatch(communityCloudSource, /communityFeedback", feedbackId/);
+
+const distributedRateSource = readFileSync(new URL("./server/community-rate-limit.ts", import.meta.url), "utf8");
+assert.match(distributedRateSource, /createHmac\("sha256"/);
+assert.match(distributedRateSource, /communityRateLimits/);
+assert.match(distributedRateSource, /runTransaction/);
+assert.match(distributedRateSource, /expiresAt/);
+const distributedBucketWrite = distributedRateSource.match(/transaction\.set\(reference,\s*\{([\s\S]*?)\}\);/)?.[1] ?? "";
+assert.ok(distributedBucketWrite);
+assert.doesNotMatch(distributedBucketWrite, /address|ip|authorKey|firebaseUid|email/);
+
+for (const route of ["messages", "reports", "presence", "feedback"]) {
+  const source = readFileSync(new URL(`../app/api/community/${route}/route.ts`, import.meta.url), "utf8");
+  assert.match(source, /consumeCommunityRateLimit/);
+  assert.match(source, /Retry-After/);
+}
 
 const profileProviderSource = readFileSync(new URL("../app/profile-provider.tsx", import.meta.url), "utf8");
 assert.match(profileProviderSource, /nextUser\?\.isAnonymous \? null : nextUser/);

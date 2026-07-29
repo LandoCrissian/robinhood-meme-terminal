@@ -36,13 +36,15 @@ All message creation is server mediated. Firestore permits public reads of visib
 - Direct messages, media uploads, link previews, wallet tips, trading calls, and ranking influence are not part of this release.
 - Community engagement does not alter Runner ranking, token risk, or verification.
 
-The in-memory IP limiter is defense in depth, not a distributed production limiter. Sustained public traffic requires a durable edge limiter and moderation queue before broader rollout.
+Every community write retains the fast in-memory request guard and also consumes a transactional Firestore bucket shared by all server instances. The durable bucket identifier is an HMAC of the validated forwarding address and operation namespace; RMT does not persist the raw network address. Records contain only the operation namespace, bounded count, reset time, expiration time, and update time. Identity-specific cooldowns and quotas still apply separately, so changing server instances does not bypass either layer.
+
+The Firestore limiter is appropriate for a measured initial rollout, not unlimited adversarial traffic. It adds one read and, for accepted attempts, one write. Monitor usage and place a reputable edge limiter in front of the application before a large public campaign or if rejected traffic itself becomes material.
 
 ## Presence and traffic
 
 The visible drawer reports only an approximate count of community identities active in RMT Live during the last few minutes. Opening the drawer creates or reuses an authenticated Firebase identity and sends a low-frequency, server-mediated heartbeat. The server stores a keyed, short-lived record without the raw Firebase identifier and returns a Firestore aggregate count rather than downloading presence documents.
 
-Browser clients cannot list, read, create, or alter presence records. Expired records are excluded from every count even before storage cleanup occurs. Configure Firestore TTL cleanup on the `expiresAt` field for the `communityPresence` collection before public activation. The count is intentionally not an exact roster, site-wide visitor count, wallet count, or trading-activity metric. A future named roster must be explicit opt-in for protected profiles; guest identities remain aggregate-only.
+Browser clients cannot list, read, create, or alter presence records. Expired records are excluded from every count even before storage cleanup occurs. Configure Firestore TTL cleanup on the `expiresAt` field for both the `communityPresence` and `communityRateLimits` collections before public activation. The count is intentionally not an exact roster, site-wide visitor count, wallet count, or trading-activity metric. A future named roster must be explicit opt-in for protected profiles; guest identities remain aggregate-only.
 
 Presence heartbeats occur only while the RMT Live panel is open, currently once every 90 seconds with a four-minute activity window. This is suitable for a small rollout. Before a broad campaign, compare the measured write rate against Firebase capacity and move presence to infrastructure designed for sustained concurrent sessions if needed.
 
@@ -53,7 +55,7 @@ Traffic measurements should include active sessions, concurrent sessions, messag
 1. Enable Firebase Anonymous Authentication.
 2. Add a random production-only `COMMUNITY_IDENTITY_SECRET` of at least 32 characters.
 3. Deploy the reviewed Firestore rules and composite index.
-4. Add durable distributed rate limiting before an open public campaign.
+4. Deploy and load-test the prepared distributed limiter; add an edge limiter before a large public campaign.
 5. Configure TTL cleanup for private presence records.
 6. Add retention, deletion, moderation, and acceptable-use terms.
 7. Run mobile and desktop accessibility and abuse testing.
