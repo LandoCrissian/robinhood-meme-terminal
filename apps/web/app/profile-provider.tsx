@@ -256,6 +256,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
       }
 
       unsubscribeAuth = client.authApi.onAuthStateChanged(client.auth, async (nextUser) => {
+        const profileUser = nextUser?.isAnonymous ? null : nextUser;
         const generation = generationRef.current + 1;
         generationRef.current = generation;
         unsubscribeProfile?.();
@@ -263,11 +264,11 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
         unsubscribeProfile = undefined;
         unsubscribeWatchlist = undefined;
         remoteSlotIdsRef.current = new Set();
-        activeUserRef.current = nextUser;
-        setUser(nextUser);
+        activeUserRef.current = profileUser;
+        setUser(profileUser);
         setCloudReady(false);
 
-        if (!nextUser) {
+        if (!profileUser) {
           setSyncState("local");
           setLoading(false);
           return;
@@ -276,7 +277,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
         setSyncState("syncing");
         setLoading(true);
         try {
-          const userReference = client.firestoreApi.doc(client.db, "users", nextUser.uid);
+          const userReference = client.firestoreApi.doc(client.db, "users", profileUser.uid);
           const watchlistReference = client.firestoreApi.collection(userReference, "watchlist");
           const [userSnapshot, watchlistSnapshot] = await Promise.all([
             client.firestoreApi.getDoc(userReference),
@@ -309,7 +310,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
               remoteState.profile
               && profileIdentityChanged(remoteState.profile, nextProfile.profile)
             ),
-            userId: nextUser.uid,
+            userId: profileUser.uid,
             watchlist: nextWatchlist
           });
           if (cancelled || generationRef.current !== generation) return;
