@@ -16,6 +16,7 @@ import {
   communityIdentitySecret
 } from "../../../../lib/server/community-identity";
 import { getRmtAdminAuth, getRmtAdminFirestore } from "../../../../lib/server/firebase-admin";
+import { decideCommunityMessagePolicy } from "../../../../lib/server/community-message-policy";
 import { consumeCommunityRateLimit } from "../../../../lib/server/community-rate-limit";
 import { guardMediaRequest, readBoundedJsonRequest } from "../../../../lib/server/media-request-guard";
 
@@ -23,10 +24,6 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 const HEADERS = { "Cache-Control": "no-store" };
-const GUEST_WINDOW_LIMIT = 60;
-const MEMBER_WINDOW_LIMIT = 200;
-const WINDOW_MS = 60 * 60 * 1_000;
-const COOLDOWN_MS = 5_000;
 
 function cleanProfile(value: unknown) {
   if (!value || typeof value !== "object") return { displayName: "RMT Member", handle: "" };
@@ -128,11 +125,8 @@ export async function POST(request: Request) {
         windowStartedAt?: Timestamp;
         windowCount?: number;
       } | undefined;
-      if (actor?.bannedUntil && actor.bannedUntil.toMillis() > now) throw new Error("banned");
-      if (actor?.lastMessageAt && now - actor.lastMessageAt.toMillis() < COOLDOWN_MS) throw new Error("cooldown");
-      const sameWindow = Boolean(actor?.windowStartedAt && now - actor.windowStartedAt.toMillis() < WINDOW_MS);
-      const windowCount = sameWindow ? actor?.windowCount ?? 0 : 0;
-      if (windowCount >= (guest ? GUEST_WINDOW_LIMIT : MEMBER_WINDOW_LIMIT)) throw new Error("quota");
+      const policy = decideCommunityMessagePolicy(actor, { guest, now });
+      if (!policy.allowed) throw new Error(policy.reason);
 
       transaction.set(actorReference, {
         schemaVersion: COMMUNITY_SCHEMA_VERSION,
@@ -140,8 +134,8 @@ export async function POST(request: Request) {
         authorKey: key,
         identityKind: guest ? "guest" : "member",
         lastMessageAt: FieldValue.serverTimestamp(),
-        windowStartedAt: sameWindow ? actor!.windowStartedAt : FieldValue.serverTimestamp(),
-        windowCount: windowCount + 1,
+        windowStartedAt: policy.sameWindow ? actor!.windowStartedAt : FieldValue.serverTimestamp(),
+        windowCount: policy.nextWindowCount,
         expiresAt: Timestamp.fromMillis(now + COMMUNITY_ACTOR_RETENTION_MS),
         updatedAt: FieldValue.serverTimestamp()
       }, { merge: true });

@@ -37,6 +37,13 @@ import {
   communityTermsAcceptanceRecord,
   parseCommunityTermsAcceptance
 } from "./community-terms";
+import {
+  COMMUNITY_GUEST_MESSAGE_LIMIT,
+  COMMUNITY_MEMBER_MESSAGE_LIMIT,
+  COMMUNITY_MESSAGE_COOLDOWN_MS,
+  COMMUNITY_MESSAGE_WINDOW_MS,
+  decideCommunityMessagePolicy
+} from "./server/community-message-policy";
 import { decideCommunityRateLimit } from "./server/community-rate-limit";
 
 assert.equal(normalizeCommunityRoomId("global"), "global");
@@ -205,6 +212,84 @@ assert.equal(decideCommunityRateLimit({
   windowMs: 60_000,
   now: 2_000
 }).count, 1);
+const timestamp = (milliseconds: number) => ({ toMillis: () => milliseconds });
+assert.deepEqual(decideCommunityMessagePolicy(undefined, {
+  guest: true,
+  now: 10_000
+}), {
+  allowed: true,
+  sameWindow: false,
+  windowCount: 0,
+  nextWindowCount: 1
+});
+assert.deepEqual(decideCommunityMessagePolicy({
+  bannedUntil: timestamp(10_001)
+}, {
+  guest: true,
+  now: 10_000
+}), { allowed: false, reason: "banned" });
+assert.deepEqual(decideCommunityMessagePolicy({
+  bannedUntil: timestamp(10_000),
+  lastMessageAt: timestamp(10_000 - COMMUNITY_MESSAGE_COOLDOWN_MS)
+}, {
+  guest: true,
+  now: 10_000
+}), {
+  allowed: true,
+  sameWindow: false,
+  windowCount: 0,
+  nextWindowCount: 1
+});
+assert.deepEqual(decideCommunityMessagePolicy({
+  lastMessageAt: timestamp(10_000 - COMMUNITY_MESSAGE_COOLDOWN_MS + 1)
+}, {
+  guest: true,
+  now: 10_000
+}), { allowed: false, reason: "cooldown" });
+assert.deepEqual(decideCommunityMessagePolicy({
+  lastMessageAt: timestamp(10_001)
+}, {
+  guest: true,
+  now: 10_000
+}), { allowed: false, reason: "cooldown" });
+assert.deepEqual(decideCommunityMessagePolicy({
+  windowStartedAt: timestamp(10_000 - COMMUNITY_MESSAGE_WINDOW_MS + 1),
+  windowCount: COMMUNITY_GUEST_MESSAGE_LIMIT
+}, {
+  guest: true,
+  now: 10_000
+}), { allowed: false, reason: "quota" });
+assert.deepEqual(decideCommunityMessagePolicy({
+  windowStartedAt: timestamp(10_000 - COMMUNITY_MESSAGE_WINDOW_MS + 1),
+  windowCount: COMMUNITY_GUEST_MESSAGE_LIMIT
+}, {
+  guest: false,
+  now: 10_000
+}), {
+  allowed: true,
+  sameWindow: true,
+  windowCount: COMMUNITY_GUEST_MESSAGE_LIMIT,
+  nextWindowCount: COMMUNITY_GUEST_MESSAGE_LIMIT + 1
+});
+assert.deepEqual(decideCommunityMessagePolicy({
+  windowStartedAt: timestamp(10_000 - COMMUNITY_MESSAGE_WINDOW_MS + 1),
+  windowCount: COMMUNITY_MEMBER_MESSAGE_LIMIT
+}, {
+  guest: false,
+  now: 10_000
+}), { allowed: false, reason: "quota" });
+assert.deepEqual(decideCommunityMessagePolicy({
+  windowStartedAt: timestamp(10_000 - COMMUNITY_MESSAGE_WINDOW_MS),
+  windowCount: COMMUNITY_MEMBER_MESSAGE_LIMIT
+}, {
+  guest: false,
+  now: 10_000
+}), {
+  allowed: true,
+  sameWindow: false,
+  windowCount: 0,
+  nextWindowCount: 1
+});
 assert.equal(parseCommunityPresence({
   online: 1_001,
   approximate: true,
@@ -322,6 +407,11 @@ assert.match(communityLiveSource, /RMT Live is ready/);
 assert.match(communityLiveSource, /identityReady \? "Access ready" : "Start guest access"/);
 assert.doesNotMatch(communityLiveSource, /will open after secure Firebase activation/);
 assert.match(communityLiveSource, /view !== "updates"/);
+assert.match(communityLiveSource, /aria-controls="rmt-live-panel"/);
+assert.match(communityLiveSource, /aria-labelledby="rmt-live-heading"/);
+assert.match(communityLiveSource, /aria-label="Message RMT Live"/);
+assert.match(communityLiveSource, /role="group" aria-label="Report reason"/);
+assert.match(communityLiveSource, /event\.key !== "Escape"/);
 
 const termsSource = readFileSync(new URL("../app/terms/page.tsx", import.meta.url), "utf8");
 assert.match(termsSource, /RMT Live community/);
