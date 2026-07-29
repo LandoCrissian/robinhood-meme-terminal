@@ -2,7 +2,7 @@ import { LegalShell } from "../legal-shell";
 
 export default function PrivacyPage() {
   return (
-    <LegalShell eyebrow="DATA TRANSPARENCY" title="Privacy Notice" updated="July 18, 2026">
+    <LegalShell eyebrow="DATA TRANSPARENCY" title="Privacy Notice" updated="July 28, 2026">
       <div className="legalNotice"><strong>Core principle:</strong> RMT never asks for or stores private keys or recovery phrases.</div>
       <h2>Information visible onchain</h2>
       <p>Wallet addresses, token launches, trades, balances, approvals, reward claims, contract interactions, and transaction hashes are public blockchain data. That information may be permanent and can be analyzed by anyone.</p>
@@ -20,7 +20,7 @@ export default function PrivacyPage() {
       <h2>External market data and links</h2>
       <p>External market results are supplied by DEX Screener and link to third-party websites. Block explorers, wallets, DEXs, and social links have their own privacy practices. Review them before continuing.</p>
       <h2>Access and deletion requests</h2>
-      <p>You can edit the profile information shown in RMT at any time. To request deletion of the associated cloud profile, use the private project contact on the Support page from the same email account used to sign in. Public blockchain and IPFS records cannot be deleted by RMT.</p>
+      <p>You can edit terminal preferences at any time. To reduce impersonation and rapid identity switching, changes to display name, handle, and desk note receive a 10-minute correction window and then a 24-hour protection period. To request deletion of the associated cloud profile, use the private project contact on the Support page from the same email account used to sign in. Public blockchain and IPFS records cannot be deleted by RMT.</p>
       <h2>Children and restricted users</h2>
       <p>RMT is not intended for anyone under 18. Do not use the service if local law prohibits access to blockchain trading or token-creation tools.</p>
       <h2>Questions</h2>

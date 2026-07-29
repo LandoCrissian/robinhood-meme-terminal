@@ -9,7 +9,7 @@ Wallet connection and profile authentication are deliberately separate. Firebase
 
 ## Data model
 
-- `users/{uid}` stores schema version 1, the normalized profile, independent profile/watchlist update versions, the watchlist count, and a server timestamp.
+- `users/{uid}` stores schema version 1, the normalized profile, independent profile/watchlist update versions, the watchlist count, the last identity-change timestamp, and a server timestamp.
 - `users/{uid}/watchlist/00` through `49` store at most 50 validated token records. Fixed slot IDs make the maximum enforceable in Firestore rules, while per-record rules validate addresses, text lengths, image schemes, launch IDs, and timestamps.
 - `creatorApplications/{uid}` stores the private, review-gated project application. Only the applicant and the RMT administrator can read it.
 - `projects/{slug}` stores the approved public page. The assigned creator may update bounded presentation fields but cannot change the token address, enabled modules, publication state, or ownership.
@@ -20,6 +20,8 @@ Wallet connection and profile authentication are deliberately separate. Firebase
 - Google account email and photo are read from the active Firebase Authentication session for the signed-in UI. RMT does not duplicate either value in Firestore.
 
 Local profile and watchlist records carry independent update versions. On sign-in, the latest profile and latest complete watchlist win separately. Newer deletions therefore stay deleted instead of being reintroduced by an older device. Firestore listeners deliver later changes to other open, signed-in RMT sessions.
+
+Display name, handle, and desk note use a deliberate identity lifecycle. The user reviews those fields before the first save, may make corrections for 10 minutes, and then waits 24 hours from the latest identity change before editing them again. Firestore rules enforce the same window across signed-in devices using server time. Operating mode and information density are terminal preferences and remain editable during the identity protection period. Local-only profiles apply the same experience in that browser, but browser storage is not an authentication boundary.
 
 ## Safe activation order
 
@@ -42,7 +44,7 @@ Local profile and watchlist records carry independent update versions. On sign-i
    ```
 
 6. Copy the registered Web app values into the matching `NEXT_PUBLIC_FIREBASE_*` deployment variables documented in `apps/web/.env.example`. Set the variables only after the production rules are deployed.
-7. Redeploy RMT. On `/profile`, sign in, save a profile, add and remove a watched token, then confirm the same state appears on a second device. Also confirm signed-out and different-user reads fail.
+7. Redeploy RMT. On `/profile`, sign in, review and save an identity, confirm the correction window appears on a second device, and verify preferences remain editable. Add and remove a watched token, then confirm the same state appears on the second device. Also confirm signed-out and different-user reads fail.
 
 ## Branded authentication domain
 

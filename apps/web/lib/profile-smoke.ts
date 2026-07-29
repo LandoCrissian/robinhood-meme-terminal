@@ -7,7 +7,13 @@ import {
   resolveWatchlistSnapshot,
   watchlistSlots
 } from "./profile-cloud";
-import { DEFAULT_PROFILE, normalizeProfile } from "./profile";
+import {
+  DEFAULT_PROFILE,
+  normalizeProfile,
+  profileIdentityEditState,
+  PROFILE_IDENTITY_COOLDOWN_MS,
+  PROFILE_IDENTITY_GRACE_MS
+} from "./profile";
 import { normalizeWatchlist, normalizeWatchlistEntry, watchlistEntryHref } from "./watchlist";
 import {
   cleanProjectMediaUri,
@@ -121,22 +127,28 @@ assert.equal(
 const cloudState = parseCloudUserState({
   profile: { ...DEFAULT_PROFILE, displayName: "Cloud Desk" },
   profileUpdatedAt: 300,
+  identityUpdatedAt: { toMillis: () => 250 },
   watchlistCount: 1,
   watchlistUpdatedAt: 400
 });
 assert.equal(cloudState.profile?.displayName, "Cloud Desk");
+assert.equal(cloudState.identityUpdatedAt, 250);
 assert.equal(resolveProfileSnapshot(
-  { profile: { ...DEFAULT_PROFILE, displayName: "Local Desk" }, updatedAt: 200 },
+  { profile: { ...DEFAULT_PROFILE, displayName: "Local Desk" }, updatedAt: 200, identityUpdatedAt: 150 },
   cloudState
 ).profile.displayName, "Cloud Desk");
 assert.equal(resolveProfileSnapshot(
-  { profile: { ...DEFAULT_PROFILE, displayName: "Newer Local Desk" }, updatedAt: 500 },
+  { profile: { ...DEFAULT_PROFILE, displayName: "Newer Local Desk" }, updatedAt: 500, identityUpdatedAt: 450 },
   cloudState
 ).profile.displayName, "Newer Local Desk");
 assert.equal(resolveProfileSnapshot(
-  { profile: DEFAULT_PROFILE, updatedAt: 0 },
+  { profile: DEFAULT_PROFILE, updatedAt: 0, identityUpdatedAt: 0 },
   parseCloudUserState(null)
 ).profile.displayName, DEFAULT_PROFILE.displayName);
+assert.equal(profileIdentityEditState(0, 1_000).phase, "setup");
+assert.equal(profileIdentityEditState(1_000, 1_000 + PROFILE_IDENTITY_GRACE_MS).phase, "grace");
+assert.equal(profileIdentityEditState(1_000, 1_000 + PROFILE_IDENTITY_GRACE_MS + 1).phase, "locked");
+assert.equal(profileIdentityEditState(1_000, 1_000 + PROFILE_IDENTITY_COOLDOWN_MS).phase, "unlocked");
 
 const normalizedEntry = normalizeWatchlistEntry(watchedToken)!;
 const slots = watchlistSlots([normalizedEntry], 400);

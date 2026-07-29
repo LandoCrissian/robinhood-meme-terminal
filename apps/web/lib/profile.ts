@@ -12,7 +12,11 @@ export type RmtProfile = {
 export type LocalProfileSnapshot = {
   profile: RmtProfile;
   updatedAt: number;
+  identityUpdatedAt: number;
 };
+
+export const PROFILE_IDENTITY_GRACE_MS = 10 * 60 * 1_000;
+export const PROFILE_IDENTITY_COOLDOWN_MS = 24 * 60 * 60 * 1_000;
 
 export const DEFAULT_PROFILE: RmtProfile = {
   displayName: "RMT Trader",
@@ -24,7 +28,7 @@ export const DEFAULT_PROFILE: RmtProfile = {
 
 export const PROFILE_EVENT = "rmt:profile-changed";
 const STORAGE_KEY = "rmt-profile-v1";
-const STORAGE_VERSION = 2;
+const STORAGE_VERSION = 3;
 
 function cleanText(value: unknown, maximum: number) {
   return typeof value === "string" ? value.trim().slice(0, maximum) : "";
@@ -50,6 +54,28 @@ export function normalizeProfile(value: unknown): RmtProfile {
   };
 }
 
+export function profileIdentityChanged(left: RmtProfile, right: RmtProfile) {
+  return left.displayName !== right.displayName
+    || left.handle !== right.handle
+    || left.bio !== right.bio;
+}
+
+export type ProfileIdentityEditState = {
+  phase: "setup" | "grace" | "locked" | "unlocked";
+  canEdit: boolean;
+  nextEditAt: number;
+};
+
+export function profileIdentityEditState(identityUpdatedAt: number, now = Date.now()): ProfileIdentityEditState {
+  const savedAt = cleanTimestamp(identityUpdatedAt);
+  if (savedAt === 0) return { phase: "setup", canEdit: true, nextEditAt: 0 };
+  const graceEndsAt = savedAt + PROFILE_IDENTITY_GRACE_MS;
+  if (now <= graceEndsAt) return { phase: "grace", canEdit: true, nextEditAt: graceEndsAt };
+  const cooldownEndsAt = savedAt + PROFILE_IDENTITY_COOLDOWN_MS;
+  if (now < cooldownEndsAt) return { phase: "locked", canEdit: false, nextEditAt: cooldownEndsAt };
+  return { phase: "unlocked", canEdit: true, nextEditAt: 0 };
+}
+
 export function isDefaultProfile(profile: RmtProfile) {
   return profile.displayName === DEFAULT_PROFILE.displayName
     && profile.handle === DEFAULT_PROFILE.handle
@@ -59,19 +85,20 @@ export function isDefaultProfile(profile: RmtProfile) {
 }
 
 export function readLocalProfileSnapshot(): LocalProfileSnapshot {
-  if (typeof window === "undefined") return { profile: DEFAULT_PROFILE, updatedAt: 0 };
+  if (typeof window === "undefined") return { profile: DEFAULT_PROFILE, updatedAt: 0, identityUpdatedAt: 0 };
   try {
     const parsed: unknown = JSON.parse(window.localStorage.getItem(STORAGE_KEY) || "null");
     if (parsed && typeof parsed === "object" && "profile" in parsed) {
-      const stored = parsed as { profile?: unknown; updatedAt?: unknown };
+      const stored = parsed as { profile?: unknown; updatedAt?: unknown; identityUpdatedAt?: unknown };
       return {
         profile: normalizeProfile(stored.profile),
-        updatedAt: cleanTimestamp(stored.updatedAt)
+        updatedAt: cleanTimestamp(stored.updatedAt),
+        identityUpdatedAt: cleanTimestamp(stored.identityUpdatedAt)
       };
     }
-    return { profile: normalizeProfile(parsed), updatedAt: 0 };
+    return { profile: normalizeProfile(parsed), updatedAt: 0, identityUpdatedAt: 0 };
   } catch {
-    return { profile: DEFAULT_PROFILE, updatedAt: 0 };
+    return { profile: DEFAULT_PROFILE, updatedAt: 0, identityUpdatedAt: 0 };
   }
 }
 
@@ -79,14 +106,17 @@ export function readLocalProfile() {
   return readLocalProfileSnapshot().profile;
 }
 
-export function writeLocalProfile(profile: RmtProfile, updatedAt?: number) {
+export function writeLocalProfile(profile: RmtProfile, updatedAt?: number, identityUpdatedAt?: number) {
   if (typeof window === "undefined") return;
   const normalized = normalizeProfile(profile);
   const previous = readLocalProfileSnapshot();
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify({
     version: STORAGE_VERSION,
     profile: normalized,
-    updatedAt: updatedAt === undefined ? nextProfileTimestamp(previous.updatedAt) : cleanTimestamp(updatedAt)
+    updatedAt: updatedAt === undefined ? nextProfileTimestamp(previous.updatedAt) : cleanTimestamp(updatedAt),
+    identityUpdatedAt: identityUpdatedAt === undefined
+      ? previous.identityUpdatedAt
+      : cleanTimestamp(identityUpdatedAt)
   }));
   window.dispatchEvent(new Event(PROFILE_EVENT));
 }

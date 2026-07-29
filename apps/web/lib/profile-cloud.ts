@@ -19,6 +19,7 @@ export const PROFILE_SCHEMA_VERSION = 1;
 export type CloudUserState = {
   profile: RmtProfile | null;
   profileUpdatedAt: number;
+  identityUpdatedAt: number;
   watchlistCount: number;
   watchlistUpdatedAt: number;
   legacyWatchlist: WatchlistEntry[];
@@ -46,7 +47,7 @@ function legacyTimestamp(value: unknown) {
 
 export function parseCloudUserState(value: unknown): CloudUserState {
   if (!value || typeof value !== "object") {
-    return { profile: null, profileUpdatedAt: 0, watchlistCount: 0, watchlistUpdatedAt: 0, legacyWatchlist: [] };
+    return { profile: null, profileUpdatedAt: 0, identityUpdatedAt: 0, watchlistCount: 0, watchlistUpdatedAt: 0, legacyWatchlist: [] };
   }
   const data = value as Record<string, unknown>;
   const fallbackTimestamp = legacyTimestamp(data.updatedAt);
@@ -55,6 +56,7 @@ export function parseCloudUserState(value: unknown): CloudUserState {
   return {
     profile,
     profileUpdatedAt: cleanInteger(data.profileUpdatedAt) || fallbackTimestamp,
+    identityUpdatedAt: legacyTimestamp(data.identityUpdatedAt),
     watchlistCount: Math.min(
       MAXIMUM_WATCHLIST_ENTRIES,
       cleanInteger(data.watchlistCount) || legacyWatchlist.length
@@ -66,14 +68,18 @@ export function parseCloudUserState(value: unknown): CloudUserState {
 
 export function resolveProfileSnapshot(
   local: LocalProfileSnapshot,
-  remote: Pick<CloudUserState, "profile" | "profileUpdatedAt">
+  remote: Pick<CloudUserState, "profile" | "profileUpdatedAt" | "identityUpdatedAt">
 ): LocalProfileSnapshot {
   const remoteWins = Boolean(remote.profile) && remote.profileUpdatedAt >= local.updatedAt;
   const profile = remoteWins ? remote.profile ?? DEFAULT_PROFILE : local.profile;
   let updatedAt = remoteWins ? remote.profileUpdatedAt : local.updatedAt;
 
   if (updatedAt === 0) updatedAt = nextProfileTimestamp();
-  return { profile, updatedAt };
+  return {
+    profile,
+    updatedAt,
+    identityUpdatedAt: remoteWins ? remote.identityUpdatedAt : local.identityUpdatedAt
+  };
 }
 
 export function mergeWatchlists(left: WatchlistEntry[], right: WatchlistEntry[]) {

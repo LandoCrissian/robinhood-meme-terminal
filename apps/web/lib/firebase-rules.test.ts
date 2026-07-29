@@ -211,6 +211,7 @@ test("verified owners can create, read, update, and delete their profile", async
   await assertSucceeds(setDoc(reference, {
     profile: { ...PROFILE, displayName: "Momentum Desk" },
     profileUpdatedAt: 200,
+    identityUpdatedAt: serverTimestamp(),
     updatedAt: serverTimestamp()
   }, { merge: true }));
   await assertSucceeds(deleteDoc(reference));
@@ -250,6 +251,54 @@ test("changing profile content requires a monotonic profile timestamp", async ()
   await assertFails(setDoc(reference, {
     profile: { ...PROFILE, displayName: "Older write" },
     profileUpdatedAt: 99,
+    updatedAt: serverTimestamp()
+  }, { merge: true }));
+});
+
+test("identity edits allow setup and correction, then enforce the 24 hour protection period", async () => {
+  const db = authenticatedDb();
+  const reference = doc(db, "users", OWNER_ID);
+
+  await assertSucceeds(setDoc(reference, userDocument({ identityUpdatedAt: 0 })));
+  await assertSucceeds(setDoc(reference, {
+    profile: { ...PROFILE, displayName: "First Identity" },
+    profileUpdatedAt: 200,
+    identityUpdatedAt: serverTimestamp(),
+    updatedAt: serverTimestamp()
+  }, { merge: true }));
+  await assertSucceeds(setDoc(reference, {
+    profile: { ...PROFILE, displayName: "Correction Window" },
+    profileUpdatedAt: 300,
+    identityUpdatedAt: serverTimestamp(),
+    updatedAt: serverTimestamp()
+  }, { merge: true }));
+
+  await testEnvironment.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(context.firestore(), "users", OWNER_ID), userDocument({
+      identityUpdatedAt: Timestamp.fromMillis(Date.now() - 11 * 60 * 1_000)
+    }));
+  });
+  await assertFails(setDoc(reference, {
+    profile: { ...PROFILE, displayName: "Too Soon" },
+    profileUpdatedAt: 400,
+    identityUpdatedAt: serverTimestamp(),
+    updatedAt: serverTimestamp()
+  }, { merge: true }));
+  await assertSucceeds(setDoc(reference, {
+    profile: { ...PROFILE, traderMode: "momentum" },
+    profileUpdatedAt: 400,
+    updatedAt: serverTimestamp()
+  }, { merge: true }));
+
+  await testEnvironment.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(context.firestore(), "users", OWNER_ID), userDocument({
+      identityUpdatedAt: Timestamp.fromMillis(Date.now() - 25 * 60 * 60 * 1_000)
+    }));
+  });
+  await assertSucceeds(setDoc(reference, {
+    profile: { ...PROFILE, displayName: "Unlocked Again" },
+    profileUpdatedAt: 500,
+    identityUpdatedAt: serverTimestamp(),
     updatedAt: serverTimestamp()
   }, { merge: true }));
 });
