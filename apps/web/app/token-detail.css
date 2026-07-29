@@ -865,3 +865,28 @@ dl{grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr)}
 
 .creatorConsentSaved>div>span.rejected{border-color:#5b3337;color:#e98b94}
 .creatorConsentSaved>div>span.accepted{border-color:#397045;color:#71e983}
+
+.creatorReleaseFreeze{margin-top:10px;padding:13px;border:1px solid #35513b;border-radius:11px;background:linear-gradient(145deg,#09110b,#070a08)}
+.creatorReleaseFreeze>header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.creatorReleaseFreeze h4{margin:3px 0 0;font-size:.68rem}
+.creatorReleaseFreeze>header>span{flex:0 0 auto;padding:6px 8px;border:1px solid #66552d;border-radius:999px;color:#ebc766;font:900 .45rem/1 var(--mono);letter-spacing:.05em}
+.creatorReleaseFreeze>p{margin:10px 0;color:#7c8980;font-size:.55rem;line-height:1.5}
+.creatorReleaseFreezePolicy{display:grid;grid-template-columns:.5fr 1.2fr .7fr;gap:6px}
+.creatorReleaseFreezePolicy>div{display:flex;min-width:0;flex-direction:column;gap:5px;padding:9px;border:1px solid #29372f;border-radius:8px;background:#060907}
+.creatorReleaseFreezePolicy small{color:#6f7c73;font-size:.46rem;font-weight:850;text-transform:uppercase}
+.creatorReleaseFreezePolicy strong,.creatorReleaseFreezePolicy code{overflow:hidden;color:#cdd8d0;font-size:.52rem;text-overflow:ellipsis;white-space:nowrap}
+.creatorReleaseFreeze>button{min-height:38px;margin-top:9px;padding:0 12px;border:1px solid #3d7147;border-radius:8px;background:#112017;color:#75e786;font-size:.54rem;font-weight:950}
+.creatorReleaseFreeze>button:disabled{border-color:#313b34;background:#0b0f0c;color:#68736b}
+.creatorReleaseFreeze>button+small{display:block;margin-top:7px;color:#a49165;font-size:.49rem}
+.creatorReleaseFreezeHistory{display:flex;flex-direction:column;gap:6px;margin-top:11px;padding-top:10px;border-top:1px solid #26342b}
+.creatorReleaseFreezeHistory>strong{color:#89968d;font-size:.53rem}
+.creatorReleaseFreezeHistory>div{display:grid;grid-template-columns:auto minmax(150px,.7fr) minmax(180px,1fr);gap:8px;align-items:center;padding:8px;border:1px solid #29372f;border-radius:8px}
+.creatorReleaseFreezeHistory span{color:#72e783;font:900 .44rem/1 var(--mono)}
+.creatorReleaseFreezeHistory code{overflow:hidden;color:#aeb9b1;font-size:.48rem;text-overflow:ellipsis;white-space:nowrap}
+.creatorReleaseFreezeHistory small{color:#6d7a71;font-size:.47rem}
+
+@media(max-width:700px){
+  .creatorReleaseFreeze>header{flex-direction:column}
+  .creatorReleaseFreezePolicy{grid-template-columns:1fr}
+  .creatorReleaseFreezeHistory>div{grid-template-columns:1fr}
+}

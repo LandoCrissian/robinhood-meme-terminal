@@ -109,3 +109,18 @@ export function createMarketplaceEconomicsPolicy(
     status: "draft"
   };
 }
+
+// Preparation-only policy used to exercise release-review integrity before RMT
+// approves marketplace economics. Contracts must never treat this as executable.
+export const RMT_MARKETPLACE_SIMULATION_POLICY = createMarketplaceEconomicsPolicy({
+  policyName: "RMT marketplace simulation policy v1",
+  marketplaceFeeBps: 250,
+  allocation: {
+    platformOperationsBps: 4_000,
+    tokenFlywheelBps: 2_500,
+    creatorEcosystemBps: 2_500,
+    safetyReserveBps: 1_000
+  },
+  tokenFlywheelMode: "governance_proposal",
+  disclosure: "Simulation only: a hypothetical 2.50% platform fee is allocated for release-review testing. No fee is approved or collected, and token-directed actions require separate governance with no guaranteed return."
+});

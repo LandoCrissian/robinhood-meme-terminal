@@ -27,6 +27,12 @@ import {
 } from "../lib/creator-assets-cloud";
 import { evaluateCreatorReleaseReadiness } from "../lib/creator-release-readiness";
 import type { CreatorConsentInvitationRecord } from "../lib/creator-consent";
+import { RMT_MARKETPLACE_SIMULATION_POLICY } from "../lib/creator-economics";
+import {
+  prepareCreatorReleaseReview,
+  subscribeToCreatorReleaseReviews
+} from "../lib/creator-release-review-cloud";
+import type { CreatorReleaseReview } from "../lib/creator-release-review";
 import type { ProjectAssignment } from "../lib/project-ownership";
 import { CreatorConsentLinkBuilder } from "./creator-consent-link-builder";
 import { CreatorImageField } from "./creator-media-upload";
@@ -76,6 +82,8 @@ export function CreatorAssetStudio({
   const [deleteArmed, setDeleteArmed] = useState(false);
   const [message, setMessage] = useState("");
   const [consentRecords, setConsentRecords] = useState<CreatorConsentInvitationRecord[]>([]);
+  const [releaseReviews, setReleaseReviews] = useState<CreatorReleaseReview[]>([]);
+  const [reviewBusy, setReviewBusy] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -104,6 +112,29 @@ export function CreatorAssetStudio({
       setDraft(freshAsset(allowedTypes[0] ?? "artwork"));
     }
   }, [allowedTypes, assets, selectedId]);
+
+  useEffect(() => {
+    if (!selectedId) {
+      setReleaseReviews([]);
+      return;
+    }
+    let active = true;
+    let unsubscribe: (() => void) | undefined;
+    void subscribeToCreatorReleaseReviews(user, projectSlug, selectedId, (next) => {
+      if (active) setReleaseReviews(next);
+    }, () => {
+      if (active) setMessage("Release-review history is temporarily unavailable.");
+    }).then((cleanup) => {
+      if (active) unsubscribe = cleanup;
+      else cleanup();
+    }).catch(() => {
+      if (active) setMessage("Release-review history is temporarily unavailable.");
+    });
+    return () => {
+      active = false;
+      unsubscribe?.();
+    };
+  }, [projectSlug, selectedId, user]);
 
   if (allowedTypes.length === 0) return null;
 
@@ -211,10 +242,30 @@ export function CreatorAssetStudio({
   const savedRevisionHash = assets.find((asset) => asset.assetId === selectedId)?.draftRevisionHash;
   const readiness = evaluateCreatorReleaseReadiness(draft, {
     savedRevisionHash,
-    consentRecords
+    consentRecords,
+    economicsPolicy: RMT_MARKETPLACE_SIMULATION_POLICY
   });
   const aiUsed = draft.creationMethod !== "human";
   const isMusic = draft.assetType === "music_release";
+
+  const prepareReview = async () => {
+    if (!selectedId || savedRevisionHash !== draftRevisionHash || readiness.status === "blocked") return;
+    setReviewBusy(true);
+    setMessage("");
+    try {
+      const result = await prepareCreatorReleaseReview(
+        user,
+        projectSlug,
+        selectedId,
+        draftRevisionHash
+      );
+      setMessage(`Immutable preparation snapshot recorded: ${result.reviewHash.slice(0, 12)}… Nothing was published or made executable.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "The release-review snapshot could not be prepared.");
+    } finally {
+      setReviewBusy(false);
+    }
+  };
 
   return (
     <section className="creatorAssetStudio" aria-labelledby="creator-assets-title">
@@ -249,6 +300,34 @@ export function CreatorAssetStudio({
             </div>
           ))}
         </div>
+      </section>
+
+      <section className="creatorReleaseFreeze" aria-labelledby="creator-release-freeze-title">
+        <header>
+          <div>
+            <p className="eyebrow">IMMUTABLE PREPARATION SNAPSHOT</p>
+            <h4 id="creator-release-freeze-title">Freeze one exact release candidate for review</h4>
+          </div>
+          <span>CONTRACT EXECUTION DISABLED</span>
+        </header>
+        <p>This copies the saved rights revision, accepted wallet receipts, edition settings, proposed payout manifest, and the preparation-only economics policy into a new immutable private record. It is not RMT approval and cannot mint, list, charge, pay, or deploy anything.</p>
+        <div className="creatorReleaseFreezePolicy">
+          <div><small>Simulation fee</small><strong>{(RMT_MARKETPLACE_SIMULATION_POLICY.marketplaceFeeBps / 100).toFixed(2)}%</strong></div>
+          <div><small>Policy fingerprint</small><code>{RMT_MARKETPLACE_SIMULATION_POLICY.policyHash.slice(0, 12)}…{RMT_MARKETPLACE_SIMULATION_POLICY.policyHash.slice(-8)}</code></div>
+          <div><small>Mode</small><strong>SIMULATION ONLY</strong></div>
+        </div>
+        <button type="button" disabled={reviewBusy || !selectedId || savedRevisionHash !== draftRevisionHash || readiness.status === "blocked"} onClick={() => void prepareReview()}>
+          {reviewBusy ? "Preparing immutable snapshot…" : "Prepare immutable review snapshot"}
+        </button>
+        {readiness.status === "blocked" && <small>Resolve every blocked Release Passport check before preparing a snapshot.</small>}
+        {releaseReviews.length > 0 && <div className="creatorReleaseFreezeHistory">
+          <strong>Immutable snapshot history</strong>
+          {releaseReviews.map((review) => <div key={review.reviewId}>
+            <span>PREPARED</span>
+            <code title={review.reviewHash}>{review.reviewHash.slice(0, 12)}…{review.reviewHash.slice(-8)}</code>
+            <small>{review.acceptedConsentManifest.length} accepted receipt{review.acceptedConsentManifest.length === 1 ? "" : "s"} · execution disabled</small>
+          </div>)}
+        </div>}
       </section>
 
       <div className="creatorAssetWorkspace">

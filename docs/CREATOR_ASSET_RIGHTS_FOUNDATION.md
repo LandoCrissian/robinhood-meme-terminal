@@ -63,11 +63,13 @@ Editing any covered field produces a different revision hash. The hash is a stab
 
 Creators can save private, seven-day invitation records and prepare shareable review links. The collaborator review page verifies the packet, current public status marker, exact wallet, chain, expiration, terms hash, and typed signature. A server-only Firebase Admin receipt endpoint atomically records accepted or rejected responses, and the private release passport recognizes only exact accepted receipts. The endpoint remains disabled in any environment without its dedicated server credential. See `docs/CREATOR_COLLABORATOR_CONSENT.md`.
 
+When every blocking passport check is resolved, the assigned creator can prepare a deterministic private release-review snapshot. It binds the complete rights revision, accepted consent manifest, proposed payout manifest, and preparation-only economics policy into an immutable server-created record. The record remains `prepared`, `simulation_only`, and `contract execution disabled`; it is not approval or publication. See `docs/CREATOR_RELEASE_REVIEW.md`.
+
 ## Future contract boundary
 
 Marketplace and collection contracts must consume a versioned, reviewed rights snapshot rather than mutable draft fields. Before any contract work:
 
-1. add an RMT review state with immutable revision hashes;
+1. add an RMT reviewer decision state above the immutable creator-prepared snapshot;
 2. define collaborator-initiated revocation and correction behavior before release freeze;
 3. define jurisdiction-specific license presentation;
 4. map accepted payout wallets into an immutable split manifest;

@@ -1354,3 +1354,48 @@ test("creator consent invitation rules reject stale revisions, self-acceptance, 
   );
   await assertFails(unauthorizedBatch.commit());
 });
+
+test("release-review snapshots are private and server-immutable", async () => {
+  const admin = adminDb();
+  await assertSucceeds(setDoc(doc(admin, "projectAssignments", "runner-studio"), projectAssignment()));
+  const owner = authenticatedDb();
+  const assetReference = doc(owner, "projectAssignments", "runner-studio", "assets", "abcdefghijklmnopqrst");
+  await assertSucceeds(setDoc(assetReference, creatorAsset()));
+  const reviewId = "d".repeat(64);
+  await testEnvironment.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(
+      context.firestore(),
+      "projectAssignments",
+      "runner-studio",
+      "assets",
+      "abcdefghijklmnopqrst",
+      "releaseReviews",
+      reviewId
+    ), {
+      reviewId,
+      status: "prepared",
+      createdAt: serverTimestamp()
+    });
+  });
+  const ownerReviewReference = doc(
+    owner,
+    "projectAssignments",
+    "runner-studio",
+    "assets",
+    "abcdefghijklmnopqrst",
+    "releaseReviews",
+    reviewId
+  );
+  await assertSucceeds(getDoc(ownerReviewReference));
+  await assertFails(getDoc(doc(
+    authenticatedDb(OTHER_ID),
+    "projectAssignments",
+    "runner-studio",
+    "assets",
+    "abcdefghijklmnopqrst",
+    "releaseReviews",
+    reviewId
+  )));
+  await assertFails(setDoc(ownerReviewReference, { status: "approved" }, { merge: true }));
+  await assertFails(deleteDoc(ownerReviewReference));
+});

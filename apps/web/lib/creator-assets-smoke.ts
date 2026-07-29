@@ -10,6 +10,7 @@ import {
 } from "./creator-assets";
 import {
   createMarketplaceEconomicsPolicy,
+  RMT_MARKETPLACE_SIMULATION_POLICY,
   validateMarketplaceEconomicsPolicy
 } from "./creator-economics";
 import { evaluateCreatorReleaseReadiness } from "./creator-release-readiness";
@@ -30,6 +31,10 @@ import {
   CreatorConsentReceiptError,
   evaluateCreatorConsentReceipt
 } from "./server/creator-consent-receipt";
+import {
+  createCreatorReleaseReview,
+  parseCreatorReleaseReview
+} from "./creator-release-review";
 
 const validArtwork = {
   ...EMPTY_CREATOR_ASSET,
@@ -398,6 +403,43 @@ async function testSignedConsentResponse() {
     }).checks.find((candidate) => candidate.id === "consent")?.status,
     "ready"
   );
+
+  const reviewAsset = {
+    ...consentReadyDraft,
+    schemaVersion: 1 as const,
+    assetId: signedInvitation.assetId,
+    projectSlug: signedInvitation.projectSlug,
+    collaboratorConsentStatus: "unverified" as const,
+    revenueSplitTotalBps: 10_000,
+    draftRevisionHash: consentReadyRevision,
+    status: "draft" as const
+  };
+  const review = createCreatorReleaseReview({
+    asset: reviewAsset,
+    consentRecords: [matchingReceipt],
+    economicsPolicy: RMT_MARKETPLACE_SIMULATION_POLICY,
+    preparedBy: "creator-user-id"
+  });
+  assert.match(review.reviewId, /^[0-9a-f]{64}$/);
+  assert.equal(review.reviewHash, `0x${review.reviewId}`);
+  assert.equal(review.economicsMode, "simulation_only");
+  assert.equal(review.contractExecution, "disabled");
+  assert.equal(review.acceptedConsentManifest.length, 1);
+  assert.deepEqual(parseCreatorReleaseReview(review.reviewId, review), review);
+  assert.equal(parseCreatorReleaseReview(review.reviewId, {
+    ...review,
+    payoutManifest: [{ ...review.payoutManifest[0], shareBps: 9_999 }]
+  }), null);
+  assert.equal(parseCreatorReleaseReview(review.reviewId, {
+    ...review,
+    contractExecution: "enabled"
+  }), null);
+  assert.throws(() => createCreatorReleaseReview({
+    asset: { ...reviewAsset, draftRevisionHash: `0x${"8".repeat(64)}` },
+    consentRecords: [matchingReceipt],
+    economicsPolicy: RMT_MARKETPLACE_SIMULATION_POLICY,
+    preparedBy: "creator-user-id"
+  }), /revision fingerprint/);
 }
 assert.equal(parseCreatorAsset("abcdefghijklmnopqrst", {
   ...parsed,
@@ -442,6 +484,16 @@ assert.match(consentReceiptSource, /runTransaction/);
 assert.match(consentReceiptSource, /FieldValue\.serverTimestamp/);
 assert.match(consentReceiptSource, /evaluateCreatorConsentReceipt/);
 assert.doesNotMatch(consentReceiptSource, /console\.(log|info|debug)/);
+
+const releaseReviewRouteSource = readFileSync(
+  new URL("../app/api/creator-release/review/route.ts", import.meta.url),
+  "utf8"
+);
+assert.match(releaseReviewRouteSource, /verifyIdToken\(token, true\)/);
+assert.match(releaseReviewRouteSource, /transaction\.create/);
+assert.match(releaseReviewRouteSource, /RMT_MARKETPLACE_SIMULATION_POLICY/);
+assert.match(releaseReviewRouteSource, /contractExecution/);
+assert.doesNotMatch(releaseReviewRouteSource, /mintNFT|createListing|executeSplit/);
 
 void testSignedConsentResponse().then(() => {
   console.info("Creator asset and rights foundation smoke test passed");

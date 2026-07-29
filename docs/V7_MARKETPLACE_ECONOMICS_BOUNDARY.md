@@ -28,6 +28,8 @@ The foundational policy model separates:
 
 `apps/web/lib/creator-economics.ts` provides a non-executable policy model, normalization, validation, and a deterministic Keccak-256 policy hash. It intentionally does not select RMT’s final fee, store a live policy, collect funds, perform a swap, buy RMT, burn tokens, add liquidity, purchase NFTs, or promise rewards.
 
+Private release-review snapshots currently attach `RMT marketplace simulation policy v1`: a hypothetical 2.50% fee with disclosed allocation fields. This exists only to prove that one complete policy can be fingerprinted and bound to a release candidate. Its mode is `simulation_only`, contract execution is `disabled`, and it is not RMT's approved production fee.
+
 The current model caps a configured marketplace fee at 10% as a defensive software boundary. The actual launch policy should be materially lower unless a specific service, user disclosure, legal review, and market comparison justify otherwise.
 
 ## Required work before contracts

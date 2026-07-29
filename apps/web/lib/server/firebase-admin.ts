@@ -1,4 +1,5 @@
 import { cert, getApps, initializeApp } from "firebase-admin/app";
+import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 
 const FIREBASE_ADMIN_APP_NAME = "rmt-server";
@@ -29,4 +30,15 @@ export function getRmtAdminFirestore() {
     projectId: credential.projectId
   }, FIREBASE_ADMIN_APP_NAME);
   return getFirestore(app);
+}
+
+export function getRmtAdminAuth() {
+  const credential = serverCredential();
+  if (!credential) return null;
+  const existing = getApps().find((app) => app.name === FIREBASE_ADMIN_APP_NAME);
+  const app = existing ?? initializeApp({
+    credential: cert(credential),
+    projectId: credential.projectId
+  }, FIREBASE_ADMIN_APP_NAME);
+  return getAuth(app);
 }
