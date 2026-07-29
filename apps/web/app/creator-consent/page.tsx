@@ -33,7 +33,7 @@ export default function CreatorConsentPage() {
   const [busy, setBusy] = useState(false);
   const [responseCode, setResponseCode] = useState("");
   const [message, setMessage] = useState("");
-  const [registryStatus, setRegistryStatus] = useState<"loading" | "pending" | "revoked" | "unavailable">("loading");
+  const [registryStatus, setRegistryStatus] = useState<"loading" | "pending" | "revoked" | "accepted" | "rejected" | "unavailable">("loading");
 
   useEffect(() => {
     const read = () => {
@@ -103,13 +103,14 @@ export default function CreatorConsentPage() {
     if (!packet || !address || !walletClient || !correctWallet || !correctChain || expired || !recognizedTerms || registryStatus !== "pending") return;
     setBusy(true);
     setMessage("");
+    let signedResponseCode = "";
     try {
       const respondedAt = Math.floor(Date.now() / 1_000);
       const signature = await walletClient.signTypedData({
         account: address,
         ...creatorConsentResponseTypedData(packet.invitation, action, respondedAt)
       });
-      setResponseCode(encodeCreatorConsentPacket({
+      const encodedResponse = encodeCreatorConsentPacket({
         kind: "rmt_creator_consent_response",
         response: {
           schemaVersion: CREATOR_CONSENT_SCHEMA_VERSION,
@@ -119,11 +120,28 @@ export default function CreatorConsentPage() {
           respondedAt,
           signature
         }
-      }));
-      setMessage(`${action === "accept" ? "Acceptance" : "Rejection"} signed. Return the response code to the project creator. RMT has not recorded a final consent receipt.`);
+      });
+      signedResponseCode = encodedResponse;
+      setResponseCode(encodedResponse);
+      const receipt = await fetch("/api/creator-consent/receipt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ responseCode: encodedResponse })
+      });
+      const receiptBody = await receipt.json().catch(() => null) as { error?: unknown; status?: unknown } | null;
+      if (receipt.ok && (receiptBody?.status === "accepted" || receiptBody?.status === "rejected")) {
+        setMessage(`${receiptBody.status === "accepted" ? "Acceptance" : "Rejection"} recorded by RMT’s trusted receipt service.`);
+      } else {
+        const detail = typeof receiptBody?.error === "string"
+          ? receiptBody.error
+          : "The trusted receipt service is temporarily unavailable.";
+        setMessage(`${action === "accept" ? "Acceptance" : "Rejection"} signed, but not recorded: ${detail} Keep the response code and try again.`);
+      }
     } catch (error) {
       const detail = error instanceof Error ? error.message : "";
-      setMessage(/rejected|denied|cancelled|canceled/i.test(detail)
+      setMessage(signedResponseCode
+        ? "The wallet response was signed, but the receipt service could not be reached. Keep the response code and try again."
+        : /rejected|denied|cancelled|canceled/i.test(detail)
         ? "The wallet signature was cancelled. Nothing changed."
         : "The wallet could not sign this response. Nothing changed.");
     } finally {
@@ -151,7 +169,7 @@ export default function CreatorConsentPage() {
       <section className="creatorConsentCard">
         <header>
           <div><p className="eyebrow">REVISION-BOUND CONSENT</p><h1>Review collaborator invitation</h1></div>
-          <span>{expired ? "EXPIRED" : "PRIVATE REVIEW"}</span>
+          <span>{expired ? "EXPIRED" : registryStatus === "accepted" ? "ACCEPTED" : registryStatus === "rejected" ? "REJECTED" : "PRIVATE REVIEW"}</span>
         </header>
 
         <div className="creatorConsentNotice">
@@ -180,6 +198,8 @@ export default function CreatorConsentPage() {
         {expired && <p className="creatorConsentError">This invitation expired. A wallet signature cannot reactivate it.</p>}
         {registryStatus === "loading" && <p className="creatorConsentRegistry">Checking current invitation status…</p>}
         {registryStatus === "revoked" && <p className="creatorConsentError">The project creator revoked this invitation. Signing is disabled.</p>}
+        {registryStatus === "accepted" && <p className="creatorConsentFinal">RMT recorded this wallet’s acceptance before expiration.</p>}
+        {registryStatus === "rejected" && <p className="creatorConsentFinal rejected">RMT recorded this wallet’s rejection before expiration.</p>}
         {registryStatus === "unavailable" && <p className="creatorConsentError">RMT cannot verify the invitation’s current revocation status. Signing is disabled; request a new link.</p>}
         {!supportedChain && <p className="creatorConsentError">This RMT interface does not support the invitation’s network.</p>}
         {!isConnected && !expired && supportedChain && <div className="creatorConsentConnect"><WalletButton target={target} /><small>Connect the exact invited wallet. Connection alone grants no authority.</small></div>}
@@ -191,7 +211,7 @@ export default function CreatorConsentPage() {
           <button type="button" className="reject" disabled={busy || expired || registryStatus !== "pending" || !recognizedTerms || !supportedChain || !correctWallet || !correctChain} onClick={() => void respond("reject")}>Sign rejection</button>
         </div>
 
-        {responseCode && <div className="creatorConsentResponse"><label>Signed response code<textarea readOnly value={responseCode} onFocus={(event) => event.currentTarget.select()} /></label><button type="button" onClick={() => void copyResponse()}>Copy response code</button><small>A signature proves the invited wallet’s answer. Final acceptance still requires a trusted receipt before expiration and revalidation against the unchanged asset revision.</small></div>}
+        {responseCode && <div className="creatorConsentResponse"><label>Signed response code<textarea readOnly value={responseCode} onFocus={(event) => event.currentTarget.select()} /></label><button type="button" onClick={() => void copyResponse()}>Copy response code</button><small>Keep this signed code as evidence. RMT marks the answer final only after its receipt service verifies the signer, deadline, revocation state, and unchanged asset revision.</small></div>}
         {message && <p className="creatorControlMessage" role="status">{message}</p>}
 
         <footer>No minting · No listing · No transfer · No wallet approval · No payment</footer>

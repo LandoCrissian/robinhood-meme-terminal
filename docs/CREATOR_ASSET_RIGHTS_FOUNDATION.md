@@ -11,7 +11,7 @@ RMT stores private creator drafts for:
 - collaborator credits;
 - proposed wallet revenue splits.
 
-This foundation deliberately does **not** publish an asset, mint a token, deploy a collection, create a marketplace listing, verify collaborator consent, execute a split, collect a fee, or move funds.
+This foundation deliberately does **not** publish an asset, mint a token, deploy a collection, create a marketplace listing, verify underlying ownership claims, execute a split, collect a fee, or move funds.
 
 ## Ownership boundary
 
@@ -39,7 +39,7 @@ Every saved draft records:
 - a creator-selected secondary royalty preference from 0% to 10%, presented as a preference rather than guaranteed payment;
 - edition model and maximum supply;
 - music master-recording and composition-rights confirmations;
-- creator-proposed collaborator credits whose consent remains `unverified`;
+- creator-proposed collaborator credits with separate revision-bound wallet consent receipts;
 - optional unique-wallet revenue shares totaling exactly 10,000 basis points.
 - a deterministic Keccak-256 draft revision hash covering the normalized rights, media, edition, collaborator, and split fields.
 
@@ -59,20 +59,19 @@ There is intentionally no client-writable `published`, `approved`, `minted`, `li
 
 Editing any covered field produces a different revision hash. The hash is a stable fingerprint for future invitations and review, not proof that the creator-supplied statements are true. A future acceptance must bind the collaborator to the exact project, asset, role, wallet, share, revision hash, chain, expiration, and consent terms.
 
-`apps/web/lib/creator-consent.ts` now defines that versioned EIP-712 consent envelope and digest. It binds all of those fields, includes a one-time nonce, expires within 30 days, and changes its digest when the revision or proposed share changes. No returned signature is treated as final acceptance in this release.
+`apps/web/lib/creator-consent.ts` defines that versioned EIP-712 consent envelope and digest. It binds all of those fields, includes a one-time nonce, expires within 30 days, and changes its digest when the revision or proposed share changes. The server records a final response only while the invitation is pending, before expiration, from the invited signer, and against the unchanged asset revision.
 
-Creators can now save private, seven-day invitation records and prepare shareable review links. The collaborator review page verifies the packet, current public revocation marker, exact wallet, chain, expiration, terms hash, and typed signature. Returned response codes can be verified locally as signed evidence, but they remain unreceipted and do not change collaborator consent to accepted. See `docs/CREATOR_COLLABORATOR_CONSENT.md`.
+Creators can save private, seven-day invitation records and prepare shareable review links. The collaborator review page verifies the packet, current public status marker, exact wallet, chain, expiration, terms hash, and typed signature. A server-only Firebase Admin receipt endpoint atomically records accepted or rejected responses, and the private release passport recognizes only exact accepted receipts. The endpoint remains disabled in any environment without its dedicated server credential. See `docs/CREATOR_COLLABORATOR_CONSENT.md`.
 
 ## Future contract boundary
 
 Marketplace and collection contracts must consume a versioned, reviewed rights snapshot rather than mutable draft fields. Before any contract work:
 
-1. add a trusted server receipt for signed collaborator responses and final acceptance;
-2. add an RMT review state with immutable revision hashes;
-3. define revocation and correction behavior;
-4. define jurisdiction-specific license presentation;
-5. map accepted payout wallets into an immutable split manifest;
-6. require the creator to review the exact contract configuration and transaction.
+1. add an RMT review state with immutable revision hashes;
+2. define collaborator-initiated revocation and correction behavior before release freeze;
+3. define jurisdiction-specific license presentation;
+4. map accepted payout wallets into an immutable split manifest;
+5. require the creator to review the exact contract configuration and transaction.
 
 Draft data is preparation evidence, not legal advice, copyright registration, an audit, or proof that a third party owns no conflicting rights.
 

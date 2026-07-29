@@ -26,6 +26,7 @@ import {
   subscribeToCreatorAssets
 } from "../lib/creator-assets-cloud";
 import { evaluateCreatorReleaseReadiness } from "../lib/creator-release-readiness";
+import type { CreatorConsentInvitationRecord } from "../lib/creator-consent";
 import type { ProjectAssignment } from "../lib/project-ownership";
 import { CreatorConsentLinkBuilder } from "./creator-consent-link-builder";
 import { CreatorImageField } from "./creator-media-upload";
@@ -74,6 +75,7 @@ export function CreatorAssetStudio({
   const [saving, setSaving] = useState(false);
   const [deleteArmed, setDeleteArmed] = useState(false);
   const [message, setMessage] = useState("");
+  const [consentRecords, setConsentRecords] = useState<CreatorConsentInvitationRecord[]>([]);
 
   useEffect(() => {
     let active = true;
@@ -207,7 +209,10 @@ export function CreatorAssetStudio({
   const totalBps = splitTotal(draft.revenueSplits);
   const draftRevisionHash = hashCreatorAssetDraft(draft);
   const savedRevisionHash = assets.find((asset) => asset.assetId === selectedId)?.draftRevisionHash;
-  const readiness = evaluateCreatorReleaseReadiness(draft, { savedRevisionHash });
+  const readiness = evaluateCreatorReleaseReadiness(draft, {
+    savedRevisionHash,
+    consentRecords
+  });
   const aiUsed = draft.creationMethod !== "human";
   const isMusic = draft.assetType === "music_release";
 
@@ -224,7 +229,7 @@ export function CreatorAssetStudio({
 
       <div className="creatorAssetBoundary">
         <strong>No minting. No marketplace. No payouts.</strong>
-        <span>Collaborator consent remains unverified until each person accepts through a future signed flow. A saved split is a proposal—not an executable payment instruction.</span>
+        <span>Collaborator consent is revision-bound and becomes release-ready only after RMT records each invited wallet’s signed acceptance. A saved split is a proposal—not an executable payment instruction.</span>
         <small title={draftRevisionHash}>DRAFT REVISION · {draftRevisionHash.slice(0, 10)}…{draftRevisionHash.slice(-8)}</small>
       </div>
 
@@ -314,7 +319,7 @@ export function CreatorAssetStudio({
 
           <fieldset className="creatorAssetSection">
             <legend>Collaborator credits</legend>
-            <p>Credits are creator-proposed. RMT does not call a collaborator “verified” or “accepted” until that person signs a future consent flow.</p>
+            <p>Credits are creator-proposed. RMT calls a collaborator accepted only after the invited wallet signs this exact revision and RMT records the receipt.</p>
             <div className="creatorAssetRows">
               {draft.collaborators.map((collaborator, index) => <div className="creatorAssetRow" key={`collaborator-${index}`}>
                 <input aria-label={`Collaborator ${index + 1} name`} maxLength={60} placeholder="Display name" value={collaborator.name} onChange={(event) => updateCollaborator(index, { name: event.target.value })} />
@@ -333,6 +338,7 @@ export function CreatorAssetStudio({
             projectSlug={projectSlug}
             savedRevisionHash={savedRevisionHash}
             user={user}
+            onRecordsChange={setConsentRecords}
           />
 
           <fieldset className="creatorAssetSection">

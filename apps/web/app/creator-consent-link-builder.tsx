@@ -41,7 +41,8 @@ export function CreatorConsentLinkBuilder({
   draftRevisionHash,
   projectSlug,
   savedRevisionHash,
-  user
+  user,
+  onRecordsChange
 }: {
   assetId: string;
   draft: CreatorAssetDraft;
@@ -49,6 +50,7 @@ export function CreatorConsentLinkBuilder({
   projectSlug: string;
   savedRevisionHash?: `0x${string}`;
   user: User;
+  onRecordsChange?: (records: CreatorConsentInvitationRecord[]) => void;
 }) {
   const [prepared, setPrepared] = useState<Record<number, PreparedInvitation>>({});
   const [records, setRecords] = useState<CreatorConsentInvitationRecord[]>([]);
@@ -60,12 +62,16 @@ export function CreatorConsentLinkBuilder({
   useEffect(() => {
     if (!assetId) {
       setRecords([]);
+      onRecordsChange?.([]);
       return;
     }
     let active = true;
     let unsubscribe: (() => void) | undefined;
     void subscribeToCreatorConsentInvitations(user, projectSlug, assetId, (next) => {
-      if (active) setRecords(next);
+      if (active) {
+        setRecords(next);
+        onRecordsChange?.(next);
+      }
     }, () => {
       if (active) setMessage("Saved consent invitations are temporarily unavailable.");
     }).then((cleanup) => {
@@ -78,7 +84,7 @@ export function CreatorConsentLinkBuilder({
       active = false;
       unsubscribe?.();
     };
-  }, [assetId, projectSlug, user]);
+  }, [assetId, onRecordsChange, projectSlug, user]);
 
   const proposedShare = (wallet: string) => draft.revenueSplits.find(
     (split) => split.walletAddress.toLowerCase() === wallet.toLowerCase()
@@ -162,6 +168,10 @@ export function CreatorConsentLinkBuilder({
         setMessage("The signature is linked to a revoked invitation and cannot become a final receipt.");
         return;
       }
+      if (savedRecord?.status === "accepted" || savedRecord?.status === "rejected") {
+        setMessage(`RMT already recorded this invitation as ${savedRecord.status}. Final receipts cannot be replaced.`);
+        return;
+      }
       if (savedRecord && savedRecord.expiresAt <= Math.floor(Date.now() / 1_000)) {
         setMessage("The signature is linked to an expired invitation and cannot become a final receipt.");
         return;
@@ -212,7 +222,7 @@ export function CreatorConsentLinkBuilder({
   return (
     <fieldset className="creatorAssetSection creatorConsentBuilder">
       <legend>Collaborator consent links</legend>
-      <p>Prepare a seven-day, wallet-specific link for the exact saved revision. Links are created only in this browser and include the collaborator name, wallet, role and proposed share. Do not treat a returned code as final consent until RMT adds a trusted receipt service.</p>
+      <p>Prepare a seven-day, wallet-specific link for the exact saved revision. Links include the collaborator name, wallet, role and proposed share. Release readiness changes only after RMT validates and records the invited wallet’s signed response.</p>
       {!revisionSaved && <p className="creatorConsentBuilderWarning">Save the current revision to enable consent links. Any later edit changes the fingerprint and invalidates these links for release readiness.</p>}
       <div className="creatorConsentBuilderRows">
         {draft.collaborators.map((collaborator, index) => {
@@ -230,7 +240,7 @@ export function CreatorConsentLinkBuilder({
         {records.map((record) => {
           const expired = record.expiresAt <= Math.floor(Date.now() / 1_000);
           return <div key={record.invitationId}>
-            <span className={record.status}>{record.status === "revoked" ? "REVOKED" : expired ? "EXPIRED" : "PENDING"}</span>
+            <span className={record.status}>{record.status === "pending" && expired ? "EXPIRED" : record.status.toUpperCase()}</span>
             <div><b>{record.collaboratorName}</b><small>{record.collaboratorRole} · {short(record.collaboratorWallet)} · revision {short(record.draftRevisionHash)}</small></div>
             <button type="button" disabled={record.status !== "pending" || expired} onClick={() => void copyRecord(record)}>Copy</button>
             <button type="button" className="revoke" disabled={Boolean(busyId) || record.status !== "pending"} onClick={() => void revoke(record)}>{busyId === record.invitationId ? "Revoking…" : "Revoke"}</button>

@@ -7,6 +7,7 @@ import {
   validateMarketplaceEconomicsPolicy,
   type MarketplaceEconomicsPolicyDraft
 } from "./creator-economics";
+import type { CreatorConsentInvitationRecord } from "./creator-consent";
 
 export type ReleaseReadinessStatus = "ready" | "attention" | "blocked";
 
@@ -38,6 +39,7 @@ export function evaluateCreatorReleaseReadiness(
   options: {
     savedRevisionHash?: string;
     economicsPolicy?: MarketplaceEconomicsPolicyDraft | null;
+    consentRecords?: CreatorConsentInvitationRecord[];
   } = {}
 ): CreatorReleaseReadiness {
   const checks: ReleaseReadinessCheck[] = [];
@@ -91,10 +93,41 @@ export function evaluateCreatorReleaseReadiness(
     collaborator.name.trim().length >= 2
     && isAddress(collaborator.walletAddress, { strict: false })
   ));
+  const currentRevisionHash = hashCreatorAssetDraft(draft);
+  const consentRecords = options.consentRecords ?? [];
+  const acceptedCollaborators = collaboratorWalletsReady
+    ? draft.collaborators.filter((collaborator) => {
+      const wallet = collaborator.walletAddress.toLowerCase();
+      const proposedShare = draft.revenueSplits.find(
+        (split) => split.walletAddress.toLowerCase() === wallet
+      )?.shareBps ?? 0;
+      return consentRecords.some((record) => (
+        record.status === "accepted"
+        && record.draftRevisionHash === currentRevisionHash
+        && record.collaboratorName === collaborator.name
+        && record.collaboratorRole === collaborator.role
+        && record.collaboratorWallet === wallet
+        && record.shareBps === proposedShare
+      ));
+    }).length
+    : 0;
+  const rejectedCollaborator = consentRecords.some((record) => (
+    record.status === "rejected"
+    && record.draftRevisionHash === currentRevisionHash
+  ));
   checks.push(draft.collaborators.length === 0
     ? check("consent", "Collaborator consent", "No collaborators are proposed.", "ready")
-    : collaboratorWalletsReady
-      ? check("consent", "Collaborator consent", "Wallets are present, but every collaborator must still sign this exact revision.", "blocked")
+    : acceptedCollaborators === draft.collaborators.length
+      ? check("consent", "Collaborator consent", `All ${acceptedCollaborators} collaborators accepted this exact revision and proposed share.`, "ready")
+      : collaboratorWalletsReady
+        ? check(
+          "consent",
+          "Collaborator consent",
+          rejectedCollaborator
+            ? "A collaborator rejected this revision. Revise the proposal before preparing a new invitation."
+            : `${acceptedCollaborators}/${draft.collaborators.length} collaborators accepted this exact revision and proposed share.`,
+          "blocked"
+        )
       : check("consent", "Collaborator consent", "Each collaborator needs a wallet before a signed invitation can be prepared.", "blocked"));
 
   const splitTotal = draft.revenueSplits.reduce((total, split) => total + split.shareBps, 0);
@@ -113,7 +146,6 @@ export function evaluateCreatorReleaseReadiness(
     )
     : check("splits", "Revenue split", "Recipients need unique valid wallets and shares totaling exactly 100%.", "blocked"));
 
-  const currentRevisionHash = hashCreatorAssetDraft(draft);
   checks.push(options.savedRevisionHash === currentRevisionHash
     ? check("revision", "Revision integrity", "The saved revision matches the current form.", "ready")
     : options.savedRevisionHash

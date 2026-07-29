@@ -1313,6 +1313,22 @@ test("creator consent invitation rules reject stale revisions, self-acceptance, 
     creatorConsentPublicStatus(validId)
   );
   await assertSucceeds(validBatch.commit());
+  const selfAcceptBatch = writeBatch(owner);
+  selfAcceptBatch.set(validReference, {
+    status: "accepted",
+    responseAction: "accept",
+    responseSignature: `0x${"c".repeat(130)}`,
+    respondedAt: 1_999_999_000,
+    signerWallet: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    receivedAt: serverTimestamp(),
+    updatedAt: serverTimestamp()
+  }, { merge: true });
+  selfAcceptBatch.set(
+    doc(owner, "creatorConsentStatuses", validId),
+    { status: "accepted", updatedAt: serverTimestamp() },
+    { merge: true }
+  );
+  await assertFails(selfAcceptBatch.commit());
   await assertFails(setDoc(validReference, {
     collaboratorName: "Changed collaborator",
     updatedAt: serverTimestamp()

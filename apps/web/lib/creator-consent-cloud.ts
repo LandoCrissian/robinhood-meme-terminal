@@ -114,6 +114,11 @@ export async function saveCreatorConsentInvitation(
       invitationDigest: digest,
       status: "pending",
       revokedAt: null,
+      responseAction: null,
+      responseSignature: null,
+      respondedAt: null,
+      signerWallet: null,
+      receivedAt: null,
       createdAt: now,
       updatedAt: now
     });

@@ -60,8 +60,13 @@ export type CreatorConsentResponsePacket = {
 export type CreatorConsentInvitationRecord = CreatorConsentInvitation & {
   invitationId: string;
   invitationDigest: Hex;
-  status: "pending" | "revoked";
+  status: "pending" | "revoked" | "accepted" | "rejected";
   revokedAt: unknown | null;
+  responseAction: CreatorConsentAction | null;
+  responseSignature: Hex | null;
+  respondedAt: number | null;
+  signerWallet: Address | null;
+  receivedAt: unknown | null;
   createdAt?: unknown;
   updatedAt?: unknown;
 };
@@ -72,7 +77,7 @@ export type CreatorConsentPublicStatus = {
   invitationDigest: Hex;
   projectSlug: string;
   assetId: string;
-  status: "pending" | "revoked";
+  status: "pending" | "revoked" | "accepted" | "rejected";
   expiresAt: number;
   createdAt?: unknown;
   updatedAt?: unknown;
@@ -339,22 +344,57 @@ export function parseCreatorConsentInvitationRecord(
   if (!value || typeof value !== "object") return null;
   const candidate = value as Partial<CreatorConsentInvitationRecord>;
   const invitation = normalizeCreatorConsentInvitation(candidate);
+  const status = candidate.status;
+  const pendingOrRevoked = status === "pending" || status === "revoked";
+  const finalized = status === "accepted" || status === "rejected";
+  const responseAction = candidate.responseAction === "accept" || candidate.responseAction === "reject"
+    ? candidate.responseAction
+    : null;
+  const responseSignature = typeof candidate.responseSignature === "string"
+    && /^0x[0-9a-fA-F]{130}$/.test(candidate.responseSignature)
+    ? candidate.responseSignature as Hex
+    : null;
+  const signerWallet = typeof candidate.signerWallet === "string"
+    && isAddress(candidate.signerWallet, { strict: false })
+    ? getAddress(candidate.signerWallet).toLowerCase() as Address
+    : null;
   if (
     !invitation
     || !/^[0-9a-f]{64}$/.test(invitationId)
     || candidate.invitationId !== invitationId
     || candidate.invitationDigest !== `0x${invitationId}`
     || candidate.invitationDigest !== hashCreatorConsentInvitation(invitation)
-    || (candidate.status !== "pending" && candidate.status !== "revoked")
-    || (candidate.status === "pending" && candidate.revokedAt != null)
-    || (candidate.status === "revoked" && candidate.revokedAt == null)
+    || (!pendingOrRevoked && !finalized)
+    || (status === "pending" && candidate.revokedAt != null)
+    || (status === "revoked" && candidate.revokedAt == null)
+    || (pendingOrRevoked && (
+      candidate.responseAction != null
+      || candidate.responseSignature != null
+      || candidate.respondedAt != null
+      || candidate.signerWallet != null
+      || candidate.receivedAt != null
+    ))
+    || (finalized && (
+      candidate.revokedAt != null
+      || responseAction !== (status === "accepted" ? "accept" : "reject")
+      || !responseSignature
+      || !Number.isSafeInteger(candidate.respondedAt)
+      || Number(candidate.respondedAt) < 1
+      || signerWallet !== invitation.collaboratorWallet
+      || candidate.receivedAt == null
+    ))
   ) return null;
   return {
     ...invitation,
     invitationId,
     invitationDigest: candidate.invitationDigest,
-    status: candidate.status,
+    status,
     revokedAt: candidate.revokedAt,
+    responseAction,
+    responseSignature,
+    respondedAt: candidate.respondedAt == null ? null : Number(candidate.respondedAt),
+    signerWallet,
+    receivedAt: candidate.receivedAt,
     createdAt: candidate.createdAt,
     updatedAt: candidate.updatedAt
   };
@@ -367,6 +407,7 @@ export function parseCreatorConsentPublicStatus(
   if (!value || typeof value !== "object") return null;
   const candidate = value as Partial<CreatorConsentPublicStatus>;
   const projectSlug = normalizeProjectSlug(candidate.projectSlug);
+  const status = candidate.status;
   if (
     candidate.schemaVersion !== CREATOR_CONSENT_SCHEMA_VERSION
     || !/^[0-9a-f]{64}$/.test(invitationId)
@@ -375,7 +416,8 @@ export function parseCreatorConsentPublicStatus(
     || !projectSlug
     || typeof candidate.assetId !== "string"
     || !/^[A-Za-z0-9]{20}$/.test(candidate.assetId)
-    || (candidate.status !== "pending" && candidate.status !== "revoked")
+    || !status
+    || !["pending", "revoked", "accepted", "rejected"].includes(status)
     || !Number.isSafeInteger(candidate.expiresAt)
     || Number(candidate.expiresAt) < 1
   ) return null;
@@ -385,7 +427,7 @@ export function parseCreatorConsentPublicStatus(
     invitationDigest: candidate.invitationDigest,
     projectSlug,
     assetId: candidate.assetId,
-    status: candidate.status,
+    status,
     expiresAt: Number(candidate.expiresAt),
     createdAt: candidate.createdAt,
     updatedAt: candidate.updatedAt

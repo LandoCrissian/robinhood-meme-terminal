@@ -34,7 +34,7 @@ A separate public marker at:
 
 `creatorConsentStatuses/{invitationId}`
 
-contains only the fingerprint, project, asset, expiration, and `pending` or `revoked` status. It excludes collaborator name, wallet, role, share, signature, and private rights information. The signing page fails closed when this marker is missing, mismatched, unavailable, or revoked.
+contains only the fingerprint, project, asset, expiration, and `pending`, `revoked`, `accepted`, or `rejected` status. It excludes collaborator name, wallet, role, share, signature, and private rights information. The signing page fails closed when this marker is missing, mismatched, unavailable, or revoked.
 
 Private invitation and public marker creation/revocation are atomic. Firestore rules reject one-sided state changes.
 
@@ -45,17 +45,17 @@ Current states:
 1. `pending`: the creator saved an invitation and RMT can verify its public revocation marker.
 2. `revoked`: the creator atomically revoked the private invitation and public marker.
 3. `expired`: derived from the signed expiration; it cannot be reversed by a browser or wallet.
-4. `signed acceptance, unreceipted`: the invited wallet signed `accept` for the exact invitation.
-5. `signed rejection, unreceipted`: the invited wallet signed `reject` for the exact invitation.
+4. `accepted`: RMT received and verified the invited wallet's signed acceptance while the invitation was pending and the revision was unchanged.
+5. `rejected`: RMT received and verified the invited wallet's signed rejection under the same conditions.
 
-The final `accepted` or `rejected` state is deliberately not implemented. It requires a trusted server receipt that:
+The trusted server receipt:
 
 - receives the response before expiration;
 - verifies the signer against the invited wallet;
 - rejects a revoked invitation;
-- rejects a response used more than once;
+- makes an exact retry idempotent and rejects a different response after finalization;
 - rechecks the unchanged asset revision;
-- stores the signature and server receipt time immutably.
+- stores the action, signature, signer, signed response time, and server receipt time in the private invitation record.
 
 An offline `respondedAt` value is signed but is not trustworthy proof of when RMT received the response. It cannot be used to backdate an expired response.
 
@@ -67,17 +67,16 @@ An offline `respondedAt` value is signed but is not trustworthy proof of when RM
 4. RMT stores the private invitation and public status atomically.
 5. Send the link directly to the invited wallet owner.
 6. The collaborator connects the exact wallet and signs acceptance or rejection.
-7. The collaborator returns the encoded response.
-8. The creator can verify the signature locally.
-
-The creator UI may display valid cryptographic evidence, but release readiness stays blocked until the trusted receipt service exists.
+7. The browser submits the encoded response to RMT's same-origin receipt endpoint.
+8. RMT records an accepted or rejected final state after every server check passes.
+9. The creator can inspect the saved receipt state. Release readiness recognizes only accepted receipts for the exact current revision, wallet, role, name, and proposed share.
 
 ## Threat model
 
 - A modified packet fails its digest check.
 - A different wallet fails signer recovery.
 - A response for another nonce, asset revision, action, share, role, or chain fails.
-- A creator cannot write `accepted` through Firestore.
+- A creator cannot write `accepted` or `rejected` through Firestore; only the Admin-backed receipt endpoint can finalize.
 - A creator cannot mutate an invitation after creation.
 - A creator can revoke only a pending invitation, and cannot restore it.
 - Invitation records and status markers cannot be deleted through the client.
@@ -86,9 +85,8 @@ The creator UI may display valid cryptographic evidence, but release readiness s
 
 ## Remaining production work
 
-- Trusted response receipt endpoint with Firebase and wallet-signature verification.
-- Abuse controls and rate limits.
-- Idempotent response storage.
+- Configure a dedicated least-privilege Firebase Admin credential in the production host; without it the endpoint fails closed with `503`.
+- Replace the single-instance request limiter with a durable distributed limiter if abuse or traffic warrants it.
 - Creator and collaborator notifications.
 - Signed collaborator-initiated revocation policy before release freeze.
 - Immutable accepted-consent manifest consumed by future collection and split contracts.

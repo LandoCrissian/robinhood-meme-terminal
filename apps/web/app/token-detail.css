@@ -862,3 +862,6 @@ dl{grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr)}
   .marketOverview .intelligenceStats{grid-template-columns:repeat(2,minmax(0,1fr))}
   .compactSafetyList{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
+
+.creatorConsentSaved>div>span.rejected{border-color:#5b3337;color:#e98b94}
+.creatorConsentSaved>div>span.accepted{border-color:#397045;color:#71e983}

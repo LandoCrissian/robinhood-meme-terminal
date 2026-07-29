@@ -710,6 +710,11 @@ service cloud.firestore {
           'nonce',
           'status',
           'revokedAt',
+          'responseAction',
+          'responseSignature',
+          'respondedAt',
+          'signerWallet',
+          'receivedAt',
           'createdAt',
           'updatedAt'
         ])
@@ -731,6 +736,11 @@ service cloud.firestore {
         && data.status in ['pending', 'revoked']
         && ((data.status == 'pending' && data.revokedAt == null)
           || (data.status == 'revoked' && data.revokedAt is timestamp))
+        && data.get('responseAction', null) == null
+        && data.get('responseSignature', null) == null
+        && data.get('respondedAt', null) == null
+        && data.get('signerWallet', null) == null
+        && data.get('receivedAt', null) == null
         && data.createdAt is timestamp
         && data.updatedAt is timestamp;
     }
