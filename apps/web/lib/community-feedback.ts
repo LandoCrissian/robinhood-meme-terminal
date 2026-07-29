@@ -30,6 +30,26 @@ export type AdminCommunityFeedback = {
   createdAt: string;
 };
 
+export type PublicCommunityFeedbackStatus = {
+  feedbackId: string;
+  category: CommunityFeedbackCategory;
+  status: CommunityFeedbackStatus;
+  createdAt: number;
+  updatedAt: number;
+};
+
+function timestampMillis(value: unknown) {
+  if (!value || typeof value !== "object") return 0;
+  const candidate = value as { toMillis?: unknown; seconds?: unknown };
+  if (typeof candidate.toMillis === "function") {
+    const result = candidate.toMillis();
+    return typeof result === "number" && Number.isFinite(result) && result > 0 ? result : 0;
+  }
+  return typeof candidate.seconds === "number" && Number.isFinite(candidate.seconds) && candidate.seconds > 0
+    ? candidate.seconds * 1_000
+    : 0;
+}
+
 export function normalizeCommunityFeedbackCategory(value: unknown): CommunityFeedbackCategory | null {
   return typeof value === "string" && COMMUNITY_FEEDBACK_CATEGORIES.includes(value as CommunityFeedbackCategory)
     ? value as CommunityFeedbackCategory
@@ -54,6 +74,28 @@ export function normalizeCommunityFeedbackStatus(value: unknown): CommunityFeedb
   return typeof value === "string" && COMMUNITY_FEEDBACK_STATUSES.includes(value as CommunityFeedbackStatus)
     ? value as CommunityFeedbackStatus
     : null;
+}
+
+export function parsePublicCommunityFeedbackStatus(
+  feedbackId: string,
+  value: unknown
+): PublicCommunityFeedbackStatus | null {
+  if (!/^[A-Za-z0-9]{20}$/.test(feedbackId) || !value || typeof value !== "object") return null;
+  const candidate = value as Record<string, unknown>;
+  const category = normalizeCommunityFeedbackCategory(candidate.category);
+  const status = normalizeCommunityFeedbackStatus(candidate.status);
+  const createdAt = timestampMillis(candidate.createdAt);
+  const updatedAt = timestampMillis(candidate.updatedAt);
+  if (
+    candidate.schemaVersion !== 1
+    || candidate.feedbackId !== feedbackId
+    || !category
+    || !status
+    || !createdAt
+    || !updatedAt
+    || updatedAt < createdAt
+  ) return null;
+  return { feedbackId, category, status, createdAt, updatedAt };
 }
 
 export function validateCommunityFeedbackContent(title: string, description: string, guest: boolean) {

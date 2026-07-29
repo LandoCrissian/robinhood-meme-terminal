@@ -8,20 +8,27 @@ import {
 } from "../lib/community-moderation";
 import {
   COMMUNITY_FEEDBACK_CATEGORIES,
+  type PublicCommunityFeedbackStatus,
   type CommunityFeedbackCategory
 } from "../lib/community-feedback";
+import {
+  forgetCommunityFeedbackReceipt,
+  readCommunityFeedbackReceiptIds,
+  rememberCommunityFeedbackReceipt
+} from "../lib/community-feedback-receipts";
 import {
   ensureCommunityIdentity,
   postCommunityMessage,
   reportCommunityMessage,
   startCommunityPresence,
   submitCommunityFeedback,
+  subscribeToCommunityFeedbackStatuses,
   subscribeToCommunityMessages
 } from "../lib/community-cloud";
 
 export function CommunityLive() {
   const [open, setOpen] = useState(false);
-  const [view, setView] = useState<"chat" | "feedback">("chat");
+  const [view, setView] = useState<"chat" | "feedback" | "updates">("chat");
   const [messages, setMessages] = useState<CommunityMessage[]>([]);
   const [body, setBody] = useState("");
   const [message, setMessage] = useState("");
@@ -33,7 +40,36 @@ export function CommunityLive() {
   const [feedbackCategory, setFeedbackCategory] = useState<CommunityFeedbackCategory>("bug");
   const [feedbackTitle, setFeedbackTitle] = useState("");
   const [feedbackDescription, setFeedbackDescription] = useState("");
+  const [feedbackIds, setFeedbackIds] = useState<string[]>([]);
+  const [feedbackStatuses, setFeedbackStatuses] = useState<PublicCommunityFeedbackStatus[]>([]);
   const stream = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setFeedbackIds(readCommunityFeedbackReceiptIds());
+  }, []);
+
+  useEffect(() => {
+    if (!open || view !== "updates" || feedbackIds.length === 0) {
+      setFeedbackStatuses([]);
+      return;
+    }
+    let active = true;
+    let unsubscribe: (() => void) | undefined;
+    void subscribeToCommunityFeedbackStatuses(feedbackIds, (next) => {
+      if (active) setFeedbackStatuses(next);
+    }, () => {
+      if (active) setMessage("Feedback updates are temporarily unavailable.");
+    }).then((cleanup) => {
+      if (active) unsubscribe = cleanup;
+      else cleanup();
+    }).catch((error) => {
+      if (active) setMessage(error instanceof Error ? error.message : "Feedback updates are unavailable.");
+    });
+    return () => {
+      active = false;
+      unsubscribe?.();
+    };
+  }, [feedbackIds, open, view]);
 
   useEffect(() => {
     if (!open || view !== "chat") return;
@@ -127,9 +163,10 @@ export function CommunityLive() {
         title: feedbackTitle,
         description: feedbackDescription
       });
+      setFeedbackIds(rememberCommunityFeedbackReceipt(feedbackId));
       setFeedbackTitle("");
       setFeedbackDescription("");
-      setMessage(`Feedback received · ${feedbackId.slice(0, 8).toUpperCase()}`);
+      setMessage(`Feedback received · ${feedbackId.slice(0, 8).toUpperCase()} · track it in Updates`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Feedback could not be submitted.");
     } finally {
@@ -154,6 +191,7 @@ export function CommunityLive() {
         <nav className="communityLiveViews" aria-label="RMT Live views">
           <button type="button" aria-current={view === "chat" ? "page" : undefined} onClick={() => { setView("chat"); setMessage(""); }}>Chat</button>
           <button type="button" aria-current={view === "feedback" ? "page" : undefined} onClick={() => { setView("feedback"); setMessage(""); }}>Feedback</button>
+          <button type="button" aria-current={view === "updates" ? "page" : undefined} onClick={() => { setView("updates"); setMessage(""); }}>Updates</button>
         </nav>
         {view === "chat" && <><div className="communityLiveStream" ref={stream}>
           {messages.length === 0 && <div className="communityLiveEmpty"><strong>Start the conversation</strong><span>RMT Live is prepared locally and will open after secure Firebase activation.</span></div>}
@@ -178,6 +216,18 @@ export function CommunityLive() {
           <div><span>{feedbackDescription.length}/1000</span><button type="submit" disabled={busy || feedbackTitle.trim().length < 4 || feedbackDescription.trim().length < 10}>Send privately</button></div>
           <small>Feedback cannot move funds, change rankings, or authorize transactions.</small>
         </form>}
+        {view === "updates" && <div className="communityFeedbackUpdates">
+          <div className="communityFeedbackIntro"><strong>Your feedback updates</strong><span>Receipts stay only in this browser. Public progress never includes your message, identity, or private reviewer notes.</span></div>
+          {feedbackIds.length === 0 && <div className="communityLiveEmpty"><strong>No saved receipts</strong><span>Submit feedback from this device and its privacy-safe progress will appear here.</span></div>}
+          {feedbackIds.map((feedbackId) => {
+            const item = feedbackStatuses.find((status) => status.feedbackId === feedbackId);
+            return <article key={feedbackId}>
+              <div><strong>{item ? item.category.replace("_", " ") : "Feedback received"}</strong><span>{feedbackId.slice(0, 8).toUpperCase()}</span></div>
+              <div><b className={`status-${item?.status ?? "checking"}`}>{(item?.status ?? "checking").replace("_", " ")}</b><button type="button" onClick={() => setFeedbackIds(forgetCommunityFeedbackReceipt(feedbackId))}>Remove</button></div>
+            </article>;
+          })}
+          {feedbackIds.length > 0 && <small>Removing a receipt only clears it from this browser. It does not delete the private submission from RMT’s review queue.</small>}
+        </div>}
         {message && <p role="status">{message}</p>}
       </section>}
     </aside>
