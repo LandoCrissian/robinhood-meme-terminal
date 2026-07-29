@@ -975,6 +975,14 @@ test("community records are publicly readable only when visible and remain serve
       status: "moderated",
       createdAt: Timestamp.now()
     });
+    await setDoc(doc(server, "communityPresence", "1234567890abcdef1234567890abcdef"), {
+      schemaVersion: 1,
+      authorKey: "1234567890abcdef1234567890abcdef",
+      identityKind: "guest",
+      roomId: "global",
+      lastSeenAt: Timestamp.now(),
+      expiresAt: Timestamp.fromMillis(Date.now() + 240_000)
+    });
   });
 
   const visitor = testEnvironment.unauthenticatedContext().firestore();
@@ -993,6 +1001,11 @@ test("community records are publicly readable only when visible and remain serve
   }));
   await assertFails(setDoc(doc(guest, "communityActors", "1234567890abcdef1234567890abcdef"), {
     firebaseUid: "anonymous-guest"
+  }));
+  await assertFails(getDoc(doc(guest, "communityPresence", "1234567890abcdef1234567890abcdef")));
+  await assertFails(getDocs(collection(visitor, "communityPresence")));
+  await assertFails(setDoc(doc(guest, "communityPresence", "1234567890abcdef1234567890abcdef"), {
+    roomId: "global"
   }));
   await assertFails(setDoc(doc(guest, "communityFeedback", "AaBbCcDdEeFfGgHhIiJj"), {
     status: "submitted"

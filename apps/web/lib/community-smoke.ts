@@ -1,9 +1,12 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
+  COMMUNITY_PRESENCE_HEARTBEAT_MS,
+  COMMUNITY_PRESENCE_TTL_MS,
   normalizeCommunityBody,
   normalizeCommunityRoomId,
   parseCommunityMessage,
+  parseCommunityPresence,
   validateCommunityBody
 } from "./community";
 
@@ -30,14 +33,50 @@ const message = {
 assert.deepEqual(parseCommunityMessage(message.messageId, message), message);
 assert.equal(parseCommunityMessage(message.messageId, { ...message, authorKind: "rmt", authorLabel: "" }), null);
 assert.equal(parseCommunityMessage(message.messageId, { ...message, status: "moderated" }), null);
+assert.ok(COMMUNITY_PRESENCE_TTL_MS > COMMUNITY_PRESENCE_HEARTBEAT_MS * 2);
+assert.deepEqual(parseCommunityPresence({
+  online: 12,
+  approximate: true,
+  capped: false,
+  observedAt: "2026-07-29T12:00:00.000Z"
+}), {
+  online: 12,
+  approximate: true,
+  capped: false,
+  observedAt: "2026-07-29T12:00:00.000Z"
+});
+assert.equal(parseCommunityPresence({
+  online: 12,
+  approximate: false,
+  capped: false,
+  observedAt: "2026-07-29T12:00:00.000Z"
+}), null);
+assert.equal(parseCommunityPresence({
+  online: 1_001,
+  approximate: true,
+  capped: true,
+  observedAt: "2026-07-29T12:00:00.000Z"
+}), null);
 
 const routeSource = readFileSync(new URL("../app/api/community/messages/route.ts", import.meta.url), "utf8");
 assert.match(routeSource, /verifyIdToken\(token, true\)/);
-assert.match(routeSource, /COMMUNITY_IDENTITY_SECRET/);
-assert.match(routeSource, /createHmac/);
+assert.match(routeSource, /communityIdentitySecret/);
+assert.match(routeSource, /communityAuthorKey/);
 assert.match(routeSource, /communityActors/);
 assert.match(routeSource, /runTransaction/);
 assert.doesNotMatch(routeSource, /authorLabel:\s*input|authorKind:\s*input|firebaseUid:\s*.*messageReference/);
+
+const identitySource = readFileSync(new URL("./server/community-identity.ts", import.meta.url), "utf8");
+assert.match(identitySource, /COMMUNITY_IDENTITY_SECRET/);
+assert.match(identitySource, /createHmac/);
+
+const presenceRouteSource = readFileSync(new URL("../app/api/community/presence/route.ts", import.meta.url), "utf8");
+assert.match(presenceRouteSource, /verifyIdToken\(token, true\)/);
+assert.match(presenceRouteSource, /communityAuthorKey/);
+assert.match(presenceRouteSource, /communityPresence/);
+assert.match(presenceRouteSource, /\.where\("expiresAt", ">",/);
+assert.match(presenceRouteSource, /\.count\(\)\.get\(\)/);
+assert.doesNotMatch(presenceRouteSource, /firebaseUid|uid:\s*identity\.uid/);
 
 const profileProviderSource = readFileSync(new URL("../app/profile-provider.tsx", import.meta.url), "utf8");
 assert.match(profileProviderSource, /nextUser\?\.isAnonymous \? null : nextUser/);

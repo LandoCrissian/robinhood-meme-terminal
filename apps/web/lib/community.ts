@@ -1,6 +1,8 @@
 export const COMMUNITY_SCHEMA_VERSION = 1 as const;
 export const GLOBAL_COMMUNITY_ROOM = "global" as const;
 export const COMMUNITY_MESSAGE_LIMIT = 500;
+export const COMMUNITY_PRESENCE_HEARTBEAT_MS = 90_000;
+export const COMMUNITY_PRESENCE_TTL_MS = 4 * 60_000;
 
 export type CommunityAuthorKind = "guest" | "member" | "creator" | "rmt";
 
@@ -17,6 +19,29 @@ export type CommunityMessage = {
   status: "visible";
   createdAt?: unknown;
 };
+
+export type CommunityPresence = {
+  online: number;
+  approximate: true;
+  capped: boolean;
+  observedAt: string;
+};
+
+export function parseCommunityPresence(value: unknown): CommunityPresence | null {
+  if (!value || typeof value !== "object") return null;
+  const candidate = value as Partial<CommunityPresence>;
+  if (
+    typeof candidate.online !== "number"
+    || !Number.isSafeInteger(candidate.online)
+    || candidate.online < 0
+    || candidate.online > 1_000
+    || candidate.approximate !== true
+    || typeof candidate.capped !== "boolean"
+    || typeof candidate.observedAt !== "string"
+    || !Number.isFinite(Date.parse(candidate.observedAt))
+  ) return null;
+  return candidate as CommunityPresence;
+}
 
 export function normalizeCommunityRoomId(value: unknown) {
   if (value === GLOBAL_COMMUNITY_ROOM) return GLOBAL_COMMUNITY_ROOM;
