@@ -12,6 +12,12 @@ service cloud.firestore {
       return exists(/databases/$(database)/documents/users/$(userId));
     }
 
+    function hasProtectedProfile(userId) {
+      return hasProfile(userId)
+        && get(/databases/$(database)/documents/users/$(userId)).data.get('identityUpdatedAt', 0)
+          is timestamp;
+    }
+
     function isRmtAdmin() {
       return request.auth != null
         && request.auth.token.email_verified == true
@@ -447,6 +453,64 @@ service cloud.firestore {
         && data.updatedAt is timestamp;
     }
 
+    function validReferralCode(code, data) {
+      return code.matches('^RMT-[A-HJ-NP-Z2-9]{8}$')
+        && data.keys().hasAll([
+          'schemaVersion',
+          'code',
+          'ownerId',
+          'verifiedActivations',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'schemaVersion',
+          'code',
+          'ownerId',
+          'verifiedActivations',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.schemaVersion == 1
+        && data.code == code
+        && data.ownerId is string && data.ownerId.size() > 0 && data.ownerId.size() <= 128
+        && data.verifiedActivations is int && data.verifiedActivations >= 0
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function validReferralProfile(data) {
+      return data.keys().hasAll(['schemaVersion', 'code', 'createdAt'])
+        && data.keys().hasOnly(['schemaVersion', 'code', 'createdAt'])
+        && data.schemaVersion == 1
+        && data.code is string && data.code.matches('^RMT-[A-HJ-NP-Z2-9]{8}$')
+        && data.createdAt is timestamp;
+    }
+
+    function validReferralClaim(data) {
+      return data.keys().hasAll(['schemaVersion', 'code', 'claimedAt'])
+        && data.keys().hasOnly(['schemaVersion', 'code', 'claimedAt'])
+        && data.schemaVersion == 1
+        && data.code is string && data.code.matches('^RMT-[A-HJ-NP-Z2-9]{8}$')
+        && data.claimedAt is timestamp;
+    }
+
+    function referralProfileCreatesCode(userId, code) {
+      let codePath = /databases/$(database)/documents/referralCodes/$(code);
+      return existsAfter(codePath)
+        && getAfter(codePath).data.ownerId == userId
+        && getAfter(codePath).data.verifiedActivations == 0;
+    }
+
+    function referralClaimAddsActivation(userId, code) {
+      let codePath = /databases/$(database)/documents/referralCodes/$(code);
+      return exists(codePath)
+        && get(codePath).data.ownerId != userId
+        && existsAfter(codePath)
+        && getAfter(codePath).data.verifiedActivations
+          == get(codePath).data.verifiedActivations + 1;
+    }
+
     function followAddsOneToStats(projectId) {
       let statsPath = /databases/$(database)/documents/projectStats/$(projectId);
       return existsAfter(statsPath)
@@ -571,6 +635,25 @@ service cloud.firestore {
         allow delete: if ownsProfile(userId)
           && followRemovesOneFromStats(projectId);
       }
+
+      match /referralProfile/{documentId} {
+        allow read: if ownsProfile(userId);
+        allow create: if documentId == 'current'
+          && ownsProfile(userId)
+          && validReferralProfile(request.resource.data)
+          && request.resource.data.createdAt == request.time
+          && referralProfileCreatesCode(userId, request.resource.data.code);
+      }
+
+      match /referralClaim/{documentId} {
+        allow read: if ownsProfile(userId);
+        allow create: if documentId == 'current'
+          && ownsProfile(userId)
+          && hasProtectedProfile(userId)
+          && validReferralClaim(request.resource.data)
+          && request.resource.data.claimedAt == request.time
+          && referralClaimAddsActivation(userId, request.resource.data.code);
+      }
     }
 
     match /creatorApplications/{userId} {
@@ -676,6 +759,35 @@ service cloud.firestore {
             && resource.data.followerCount > 0
             && request.resource.data.followerCount == resource.data.followerCount - 1)
         );
+    }
+
+    match /referralCodes/{code} {
+      allow read: if request.auth != null
+        && request.auth.token.email_verified == true
+        && resource.data.ownerId == request.auth.uid;
+      allow create: if request.auth != null
+        && request.auth.token.email_verified == true
+        && hasProfile(request.auth.uid)
+        && validReferralCode(code, request.resource.data)
+        && request.resource.data.ownerId == request.auth.uid
+        && request.resource.data.verifiedActivations == 0
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time
+        && existsAfter(/databases/$(database)/documents/users/$(request.auth.uid)/referralProfile/current)
+        && getAfter(/databases/$(database)/documents/users/$(request.auth.uid)/referralProfile/current).data.code == code;
+      allow update: if request.auth != null
+        && request.auth.token.email_verified == true
+        && hasProtectedProfile(request.auth.uid)
+        && validReferralCode(code, request.resource.data)
+        && request.resource.data.ownerId == resource.data.ownerId
+        && request.resource.data.code == resource.data.code
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.verifiedActivations == resource.data.verifiedActivations + 1
+        && request.resource.data.updatedAt == request.time
+        && request.auth.uid != resource.data.ownerId
+        && !exists(/databases/$(database)/documents/users/$(request.auth.uid)/referralClaim/current)
+        && existsAfter(/databases/$(database)/documents/users/$(request.auth.uid)/referralClaim/current)
+        && getAfter(/databases/$(database)/documents/users/$(request.auth.uid)/referralClaim/current).data.code == code;
     }
   }
 }

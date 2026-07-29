@@ -29,6 +29,13 @@ import {
   parseProjectAssignment
 } from "./project-ownership";
 import {
+  generateReferralCode,
+  normalizeReferralCode,
+  referralUrl,
+  referralXIntent,
+  REFERRAL_CODE_PATTERN
+} from "./referrals";
+import {
   normalizeGameUpdate,
   parseGameUpdate,
   validateGameUpdate
@@ -149,6 +156,15 @@ assert.equal(profileIdentityEditState(0, 1_000).phase, "setup");
 assert.equal(profileIdentityEditState(1_000, 1_000 + PROFILE_IDENTITY_GRACE_MS).phase, "grace");
 assert.equal(profileIdentityEditState(1_000, 1_000 + PROFILE_IDENTITY_GRACE_MS + 1).phase, "locked");
 assert.equal(profileIdentityEditState(1_000, 1_000 + PROFILE_IDENTITY_COOLDOWN_MS).phase, "unlocked");
+assert.equal(normalizeReferralCode("  rmt-abcdefgh  "), "RMT-ABCDEFGH");
+assert.equal(normalizeReferralCode("RMT-ABCDI234"), "");
+assert.equal(normalizeReferralCode("RMT-TOO-SHORT"), "");
+assert.match(generateReferralCode(), REFERRAL_CODE_PATTERN);
+assert.equal(referralUrl("RMT-ABCDEFGH"), "https://www.rmtlaunch.fun/r/RMT-ABCDEFGH");
+assert.match(
+  referralXIntent("RMT-ABCDEFGH"),
+  /https:\/\/x\.com\/intent\/post\?.*www\.rmtlaunch\.fun%2Fr%2FRMT-ABCDEFGH/
+);
 
 const normalizedEntry = normalizeWatchlistEntry(watchedToken)!;
 const slots = watchlistSlots([normalizedEntry], 400);
