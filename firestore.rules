@@ -30,6 +30,7 @@ service cloud.firestore {
     }
 
     function validUserDocument(data) {
+      let identityUpdatedAt = data.get('identityUpdatedAt', 0);
       return data.keys().hasAll([
           'schemaVersion',
           'profile',
@@ -42,6 +43,7 @@ service cloud.firestore {
           'schemaVersion',
           'profile',
           'profileUpdatedAt',
+          'identityUpdatedAt',
           'watchlistCount',
           'watchlistUpdatedAt',
           'updatedAt'
@@ -49,6 +51,7 @@ service cloud.firestore {
         && data.schemaVersion == 1
         && validProfile(data.profile)
         && data.profileUpdatedAt is int && data.profileUpdatedAt > 0
+        && (identityUpdatedAt == 0 || identityUpdatedAt is timestamp)
         && data.watchlistCount is int && data.watchlistCount >= 0 && data.watchlistCount <= 50
         && data.watchlistUpdatedAt is int && data.watchlistUpdatedAt > 0
         && data.updatedAt is timestamp && data.updatedAt == request.time;
@@ -56,12 +59,24 @@ service cloud.firestore {
 
     function validUserUpdate() {
       let changed = request.resource.data.diff(resource.data).affectedKeys();
+      let identityChanged = request.resource.data.profile.displayName != resource.data.profile.displayName
+        || request.resource.data.profile.handle != resource.data.profile.handle
+        || request.resource.data.profile.bio != resource.data.profile.bio;
+      let previousIdentityUpdate = resource.data.get('identityUpdatedAt', 0);
+      let nextIdentityUpdate = request.resource.data.get('identityUpdatedAt', 0);
       return request.resource.data.profileUpdatedAt >= resource.data.get('profileUpdatedAt', 0)
         && request.resource.data.watchlistUpdatedAt >= resource.data.get('watchlistUpdatedAt', 0)
         && (!changed.hasAny(['profile'])
           || changed.hasAny(['profileUpdatedAt']))
         && (!changed.hasAny(['watchlistCount'])
-          || changed.hasAny(['watchlistUpdatedAt']));
+          || changed.hasAny(['watchlistUpdatedAt']))
+        && (identityChanged
+          ? nextIdentityUpdate == request.time
+            && (previousIdentityUpdate == 0
+              || (previousIdentityUpdate is timestamp
+                && (request.time <= previousIdentityUpdate + duration.value(10, 'm')
+                  || request.time >= previousIdentityUpdate + duration.value(24, 'h'))))
+          : nextIdentityUpdate == previousIdentityUpdate);
     }
 
     function validWatchlistEntry(slotId, data) {

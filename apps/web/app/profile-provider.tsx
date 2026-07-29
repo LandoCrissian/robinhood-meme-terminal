@@ -26,6 +26,8 @@ import {
   DEFAULT_PROFILE,
   nextProfileTimestamp,
   normalizeProfile,
+  profileIdentityChanged,
+  profileIdentityEditState,
   readLocalProfileSnapshot,
   writeLocalProfile,
   type LocalProfileSnapshot,
@@ -46,6 +48,7 @@ type ProfileContextValue = {
   configured: boolean;
   loading: boolean;
   profile: RmtProfile;
+  identityUpdatedAt: number;
   user: User | null;
   syncState: SyncState;
   retrySync: () => Promise<void>;
@@ -60,17 +63,28 @@ type CloudWrite = {
   existingSlotIds?: Set<string>;
   profile: LocalProfileSnapshot;
   rewriteWatchlist: boolean;
+  identityChanged?: boolean;
   userId: string;
   watchlist: WatchlistSnapshot;
 };
 
 const ProfileContext = createContext<ProfileContextValue | null>(null);
 
-function userDocumentData(client: FirebaseClient, profile: LocalProfileSnapshot, watchlist: WatchlistSnapshot) {
+function userDocumentData(
+  client: FirebaseClient,
+  profile: LocalProfileSnapshot,
+  watchlist: WatchlistSnapshot,
+  identityChanged = false
+) {
   return {
     schemaVersion: PROFILE_SCHEMA_VERSION,
     profile: profile.profile,
     profileUpdatedAt: profile.updatedAt,
+    identityUpdatedAt: identityChanged
+      ? client.firestoreApi.serverTimestamp()
+      : profile.identityUpdatedAt > 0
+      ? client.firestoreApi.Timestamp.fromMillis(profile.identityUpdatedAt)
+      : 0,
     watchlistCount: watchlist.entries.length,
     watchlistUpdatedAt: watchlist.updatedAt,
     updatedAt: client.firestoreApi.serverTimestamp()
@@ -81,7 +95,7 @@ async function writeCloudState(client: FirebaseClient, write: CloudWrite) {
   const batch = client.firestoreApi.writeBatch(client.db);
   const userReference = client.firestoreApi.doc(client.db, "users", write.userId);
   const data: Record<string, unknown> = write.completeDocument
-    ? userDocumentData(client, write.profile, write.watchlist)
+    ? userDocumentData(client, write.profile, write.watchlist, write.identityChanged)
     : write.rewriteWatchlist
       ? {
           schemaVersion: PROFILE_SCHEMA_VERSION,
@@ -93,6 +107,11 @@ async function writeCloudState(client: FirebaseClient, write: CloudWrite) {
           schemaVersion: PROFILE_SCHEMA_VERSION,
           profile: write.profile.profile,
           profileUpdatedAt: write.profile.updatedAt,
+          ...(write.identityChanged
+            ? { identityUpdatedAt: client.firestoreApi.serverTimestamp() }
+            : { identityUpdatedAt: write.profile.identityUpdatedAt > 0
+                ? client.firestoreApi.Timestamp.fromMillis(write.profile.identityUpdatedAt)
+                : 0 }),
           updatedAt: client.firestoreApi.serverTimestamp()
         };
   if (write.cleanupLegacy) {
@@ -146,6 +165,7 @@ function slotDocuments(snapshot: { docs: Array<{ data: () => unknown; id: string
 
 export function ProfileProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<RmtProfile>(DEFAULT_PROFILE);
+  const [identityUpdatedAt, setIdentityUpdatedAt] = useState(0);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [syncState, setSyncState] = useState<SyncState>(firebaseConfigured ? "syncing" : "local");
@@ -156,10 +176,12 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   const remoteSlotIdsRef = useRef(new Set<string>());
   const suppressWatchlistSyncRef = useRef(false);
   const writeQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const pendingIdentityWriteRef = useRef(false);
 
   const applyProfile = useCallback((snapshot: LocalProfileSnapshot) => {
     setProfile(snapshot.profile);
-    writeLocalProfile(snapshot.profile, snapshot.updatedAt);
+    setIdentityUpdatedAt(snapshot.identityUpdatedAt);
+    writeLocalProfile(snapshot.profile, snapshot.updatedAt, snapshot.identityUpdatedAt);
     document.body.dataset.terminalDensity = snapshot.profile.density;
   }, []);
 
@@ -175,7 +197,11 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     return queued;
   }, []);
 
-  const syncCurrentState = useCallback(async (rewriteWatchlist: boolean, completeDocument = false) => {
+  const syncCurrentState = useCallback(async (
+    rewriteWatchlist: boolean,
+    completeDocument = false,
+    identityChanged = false
+  ) => {
     const currentUser = activeUserRef.current;
     if (!currentUser) return;
     const generation = generationRef.current;
@@ -191,9 +217,11 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
         existingSlotIds: remoteSlotIdsRef.current,
         profile: currentProfile,
         rewriteWatchlist,
+        identityChanged,
         userId: currentUser.uid,
         watchlist: currentWatchlist
       });
+      if (identityChanged) pendingIdentityWriteRef.current = false;
       cleanupLegacyRef.current = false;
       if (rewriteWatchlist) {
         remoteSlotIdsRef.current = new Set(watchlistSlots(currentWatchlist.entries, currentWatchlist.updatedAt).map((slot) => slot.id));
@@ -205,6 +233,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const local = readLocalProfileSnapshot();
     setProfile(local.profile);
+    setIdentityUpdatedAt(local.identityUpdatedAt);
     document.body.dataset.terminalDensity = local.profile.density;
 
     if (!firebaseConfigured) {
@@ -276,6 +305,10 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
             existingSlotIds: remoteSlotIdsRef.current,
             profile: nextProfile,
             rewriteWatchlist: true,
+            identityChanged: Boolean(
+              remoteState.profile
+              && profileIdentityChanged(remoteState.profile, nextProfile.profile)
+            ),
             userId: nextUser.uid,
             watchlist: nextWatchlist
           });
@@ -347,10 +380,17 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   }, [cloudReady, syncCurrentState, user]);
 
   const saveProfile = useCallback(async (next: RmtProfile) => {
+    const previous = readLocalProfileSnapshot();
     const normalized = normalizeProfile(next);
-    const updatedAt = nextProfileTimestamp(readLocalProfileSnapshot().updatedAt);
+    const identityChanged = profileIdentityChanged(previous.profile, normalized);
+    if (identityChanged && !profileIdentityEditState(previous.identityUpdatedAt).canEdit) {
+      throw new Error("Identity details are in their protection period. Terminal preferences can still be changed.");
+    }
+    const updatedAt = nextProfileTimestamp(previous.updatedAt);
+    const nextIdentityUpdatedAt = identityChanged ? Date.now() : previous.identityUpdatedAt;
     setProfile(normalized);
-    writeLocalProfile(normalized, updatedAt);
+    setIdentityUpdatedAt(nextIdentityUpdatedAt);
+    writeLocalProfile(normalized, updatedAt, nextIdentityUpdatedAt);
     document.body.dataset.terminalDensity = normalized.density;
 
     if (!firebaseConfigured || !activeUserRef.current || !cloudReady) {
@@ -358,10 +398,11 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
       return;
     }
     try {
-      await syncCurrentState(false);
+      if (identityChanged) pendingIdentityWriteRef.current = true;
+      await syncCurrentState(false, false, identityChanged);
     } catch {
       setSyncState("error");
-      throw new Error("Profile sync failed. Your changes are still saved on this device.");
+      throw new Error("Profile is saved here, but cloud confirmation is pending. Use Retry sync before changing it again.");
     }
   }, [cloudReady, syncCurrentState]);
 
@@ -371,7 +412,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     if (currentWatchlist.updatedAt === 0) {
       replaceWatchlist(currentWatchlist.entries, { emit: false, updatedAt: nextWatchlistTimestamp() });
     }
-    await syncCurrentState(true, true);
+    await syncCurrentState(true, true, pendingIdentityWriteRef.current);
   }, [syncCurrentState]);
 
   const signInWithGoogle = useCallback(async () => {
@@ -398,13 +439,14 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     configured: firebaseConfigured,
     loading,
     profile,
+    identityUpdatedAt,
     retrySync,
     user,
     syncState,
     saveProfile,
     signInWithGoogle,
     signOutProfile
-  }), [loading, profile, retrySync, saveProfile, signInWithGoogle, signOutProfile, syncState, user]);
+  }), [identityUpdatedAt, loading, profile, retrySync, saveProfile, signInWithGoogle, signOutProfile, syncState, user]);
 
   return <ProfileContext.Provider value={value}>{children}</ProfileContext.Provider>;
 }

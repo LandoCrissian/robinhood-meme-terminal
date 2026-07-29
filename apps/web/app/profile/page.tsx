@@ -3,7 +3,14 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useAccount } from "wagmi";
-import { PROFILE_EVENT, type RmtProfile, type TerminalDensity, type TraderMode } from "../../lib/profile";
+import {
+  PROFILE_EVENT,
+  profileIdentityChanged,
+  profileIdentityEditState,
+  type RmtProfile,
+  type TerminalDensity,
+  type TraderMode
+} from "../../lib/profile";
 import { readWatchlist, WATCHLIST_EVENT } from "../../lib/watchlist";
 import { CreatorApplicationPanel } from "../creator-application-panel";
 import { FollowedProjectsHub } from "../followed-projects-hub";
@@ -25,12 +32,21 @@ function shortAddress(address?: string) {
   return address ? `${address.slice(0, 6)}…${address.slice(-4)}` : "Not connected";
 }
 
+function editTimeLabel(timestamp: number) {
+  if (!timestamp) return "";
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short"
+  }).format(timestamp);
+}
+
 export default function ProfilePage() {
   const { address, isConnected } = useAccount();
   const {
     configured,
     loading,
     profile,
+    identityUpdatedAt,
     retrySync,
     user,
     syncState,
@@ -42,8 +58,17 @@ export default function ProfilePage() {
   const [watchCount, setWatchCount] = useState(0);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [reviewing, setReviewing] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
 
-  useEffect(() => setDraft(profile), [profile]);
+  useEffect(() => {
+    setDraft(profile);
+    setReviewing(false);
+  }, [profile]);
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
   useEffect(() => {
     const refresh = () => setWatchCount(readWatchlist().length);
     refresh();
@@ -62,14 +87,24 @@ export default function ProfilePage() {
     if (syncState === "error") return "Saved here · sync needs attention";
     return configured ? "Saved on this device" : "Local profile ready";
   }, [configured, loading, syncState]);
+  const identityState = profileIdentityEditState(identityUpdatedAt, now);
+  const identityChanged = profileIdentityChanged(profile, draft);
+  const preferencesChanged = profile.traderMode !== draft.traderMode || profile.density !== draft.density;
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
+    if (identityChanged && !reviewing) {
+      setReviewing(true);
+      setMessage("");
+      return;
+    }
     setBusy(true);
     setMessage("");
     try {
       await saveProfile(draft);
-      setMessage(user ? "Profile saved and synced." : "Profile saved on this device.");
+      setMessage(identityChanged
+        ? `Identity saved. Corrections remain open for 10 minutes, then editing pauses for 24 hours.${user ? " Synced across devices." : ""}`
+        : user ? "Terminal preferences saved and synced." : "Terminal preferences saved on this device.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Profile could not be saved.");
     } finally {
@@ -144,14 +179,32 @@ export default function ProfilePage() {
         <form className="profileEditor" onSubmit={submit}>
           <div className="profileSectionHeading">
             <div><p className="eyebrow">IDENTITY</p><h2>Make the desk yours</h2></div>
-            <span>Never tied to transaction signing</span>
+            <span>{identityState.phase === "locked" ? "Protected across devices" : "Never tied to transaction signing"}</span>
+          </div>
+
+          <div className={`profileIdentityPolicy ${identityState.phase}`}>
+            <div>
+              <strong>
+                {identityState.phase === "setup" && "Set up your public-facing identity"}
+                {identityState.phase === "grace" && "Correction window is open"}
+                {identityState.phase === "locked" && "Identity details are protected"}
+                {identityState.phase === "unlocked" && "Identity editing is available"}
+              </strong>
+              <span>
+                {identityState.phase === "setup" && "You will review these details before saving. After a 10-minute correction window, identity changes pause for 24 hours."}
+                {identityState.phase === "grace" && `Check everything carefully. The protection period begins at ${editTimeLabel(identityState.nextEditAt)}.`}
+                {identityState.phase === "locked" && `Editing reopens ${editTimeLabel(identityState.nextEditAt)}. Your operating mode and density remain editable now.`}
+                {identityState.phase === "unlocked" && "Your previous protection period has ended. New identity changes will start another review cycle."}
+              </span>
+            </div>
+            <b>{identityState.phase === "locked" ? "LOCKED" : identityState.phase === "grace" ? "10 MIN WINDOW" : "REVIEW FIRST"}</b>
           </div>
 
           <div className="profileFieldGrid">
-            <label>Display name<input maxLength={40} value={draft.displayName} onChange={(event) => setDraft({ ...draft, displayName: event.target.value })} /></label>
-            <label>Handle<span className="profileHandleField"><b>@</b><input maxLength={24} value={draft.handle} onChange={(event) => setDraft({ ...draft, handle: event.target.value.replace(/[^a-zA-Z0-9_]/g, "") })} /></span></label>
+            <label>Display name<input disabled={!identityState.canEdit} maxLength={40} value={draft.displayName} onChange={(event) => setDraft({ ...draft, displayName: event.target.value })} /></label>
+            <label>Handle<span className="profileHandleField"><b>@</b><input disabled={!identityState.canEdit} maxLength={24} value={draft.handle} onChange={(event) => setDraft({ ...draft, handle: event.target.value.replace(/[^a-zA-Z0-9_]/g, "") })} /></span></label>
           </div>
-          <label>Desk note<textarea maxLength={180} placeholder="What are you watching for?" value={draft.bio} onChange={(event) => setDraft({ ...draft, bio: event.target.value })} /></label>
+          <label>Desk note<textarea disabled={!identityState.canEdit} maxLength={180} placeholder="What are you watching for?" value={draft.bio} onChange={(event) => setDraft({ ...draft, bio: event.target.value })} /></label>
 
           <fieldset className="profileChoiceGroup">
             <legend>Default operating mode</legend>
@@ -163,8 +216,26 @@ export default function ProfilePage() {
             <div>{DENSITIES.map((density) => <label className={draft.density === density.id ? "selected" : ""} key={density.id}><input type="radio" name="density" value={density.id} checked={draft.density === density.id} onChange={() => setDraft({ ...draft, density: density.id })} /><strong>{density.label}</strong><span>{density.copy}</span></label>)}</div>
           </fieldset>
 
+          {reviewing && identityChanged && (
+            <section className="profileReview" aria-label="Review identity before saving">
+              <p className="eyebrow">FINAL REVIEW</p>
+              <h3>Confirm what other RMT users may see</h3>
+              <dl>
+                <div><dt>Display name</dt><dd>{draft.displayName}</dd></div>
+                <div><dt>Handle</dt><dd>{draft.handle ? `@${draft.handle}` : "No handle"}</dd></div>
+                <div><dt>Desk note</dt><dd>{draft.bio || "No desk note"}</dd></div>
+              </dl>
+              <p>You can correct identity details for 10 minutes after saving. After that, they remain unchanged for 24 hours. Wallet permissions are never included.</p>
+              <button type="button" onClick={() => setReviewing(false)}>Go back and edit</button>
+            </section>
+          )}
+
           <div className="profileSaveRow">
-            <button className="profileSave" type="submit" disabled={busy || loading}>{busy ? "Saving…" : loading ? "Loading…" : "Save profile"}</button>
+            <button className="profileSave" type="submit" disabled={busy || loading || (!identityChanged && !preferencesChanged)}>
+              {busy ? "Saving…" : loading ? "Loading…" : reviewing && identityChanged
+                ? "Confirm and protect profile"
+                : identityChanged ? "Review changes" : preferencesChanged ? "Save preferences" : "Profile up to date"}
+            </button>
             {message && <p role="status">{message}</p>}
           </div>
         </form>
