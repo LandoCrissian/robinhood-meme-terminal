@@ -5,6 +5,7 @@ import { GLOBAL_COMMUNITY_ROOM, type CommunityMessage } from "../lib/community";
 import {
   ensureCommunityIdentity,
   postCommunityMessage,
+  startCommunityPresence,
   subscribeToCommunityMessages
 } from "../lib/community-cloud";
 
@@ -14,6 +15,8 @@ export function CommunityLive() {
   const [body, setBody] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [online, setOnline] = useState<number | null>(null);
+  const [presenceCapped, setPresenceCapped] = useState(false);
   const stream = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -34,6 +37,22 @@ export function CommunityLive() {
       active = false;
       unsubscribe?.();
     };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) {
+      setOnline(null);
+      setPresenceCapped(false);
+      return;
+    }
+    return startCommunityPresence(
+      GLOBAL_COMMUNITY_ROOM,
+      (count, capped) => {
+        setOnline(count);
+        setPresenceCapped(capped);
+      },
+      () => setOnline(null)
+    );
   }, [open]);
 
   useEffect(() => {
@@ -75,7 +94,9 @@ export function CommunityLive() {
       {open && <section className="communityLivePanel">
         <header>
           <div><small>RMT COMMUNITY</small><strong>Live lounge</strong></div>
-          <span>Presence coming next</span>
+          <span title="Approximate number active in RMT Live during the last few minutes">
+            {online === null ? "Presence unavailable" : `${presenceCapped ? "1K+" : `~${online}`} online`}
+          </span>
           <button type="button" onClick={() => setOpen(false)} aria-label="Close RMT Live">×</button>
         </header>
         <div className="communityLiveNotice">Public room · guests are labeled · never share recovery words, private keys, or untrusted links.</div>

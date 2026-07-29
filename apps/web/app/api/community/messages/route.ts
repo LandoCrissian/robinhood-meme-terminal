@@ -1,4 +1,3 @@
-import { createHmac } from "node:crypto";
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
 import {
@@ -8,6 +7,11 @@ import {
   validateCommunityBody
 } from "../../../../lib/community";
 import { RMT_ADMIN_EMAIL } from "../../../../lib/creator-application";
+import {
+  communityAuthorKey,
+  communityBearerToken,
+  communityIdentitySecret
+} from "../../../../lib/server/community-identity";
 import { getRmtAdminAuth, getRmtAdminFirestore } from "../../../../lib/server/firebase-admin";
 import { guardMediaRequest, readBoundedJsonRequest } from "../../../../lib/server/media-request-guard";
 
@@ -19,19 +23,6 @@ const GUEST_WINDOW_LIMIT = 60;
 const MEMBER_WINDOW_LIMIT = 200;
 const WINDOW_MS = 60 * 60 * 1_000;
 const COOLDOWN_MS = 5_000;
-
-function bearerToken(request: Request) {
-  return request.headers.get("authorization")?.match(/^Bearer ([A-Za-z0-9._~-]{100,4096})$/)?.[1] ?? "";
-}
-
-function communitySecret() {
-  const value = (process.env.COMMUNITY_IDENTITY_SECRET ?? "").trim();
-  return value.length >= 32 ? value : "";
-}
-
-function authorKey(secret: string, uid: string) {
-  return createHmac("sha256", secret).update(uid).digest("hex").slice(0, 32);
-}
 
 function cleanProfile(value: unknown) {
   if (!value || typeof value !== "object") return { displayName: "RMT Member", handle: "" };
@@ -53,7 +44,7 @@ export async function POST(request: Request) {
       headers: { ...HEADERS, ...(guard.retryAfterSeconds ? { "Retry-After": String(guard.retryAfterSeconds) } : {}) }
     });
   }
-  const token = bearerToken(request);
+  const token = communityBearerToken(request);
   if (!token) return NextResponse.json({ error: "Community identity required." }, { status: 401, headers: HEADERS });
   const body = await readBoundedJsonRequest(request, 2_048);
   if (!body.ok) return NextResponse.json({ error: body.error }, { status: body.status, headers: HEADERS });
@@ -69,7 +60,7 @@ export async function POST(request: Request) {
 
   const auth = getRmtAdminAuth();
   const db = getRmtAdminFirestore();
-  const secret = communitySecret();
+  const secret = communityIdentitySecret();
   if (!auth || !db || !secret) {
     return NextResponse.json(
       { error: "RMT Live is awaiting secure production configuration." },
@@ -86,7 +77,7 @@ export async function POST(request: Request) {
     const validationError = validateCommunityBody(messageBody, guest);
     if (validationError) return NextResponse.json({ error: validationError }, { status: 400, headers: HEADERS });
 
-    const key = authorKey(secret, identity.uid);
+    const key = communityAuthorKey(secret, identity.uid);
     const actorReference = db.collection("communityActors").doc(key);
     const roomReference = db.collection("communityRooms").doc(roomId);
     const messageReference = roomReference.collection("messages").doc();

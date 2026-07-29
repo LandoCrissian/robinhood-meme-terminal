@@ -1,8 +1,10 @@
 import { getFirebaseClient } from "./firebase-client";
 import {
+  COMMUNITY_PRESENCE_HEARTBEAT_MS,
   GLOBAL_COMMUNITY_ROOM,
   normalizeCommunityRoomId,
   parseCommunityMessage,
+  parseCommunityPresence,
   type CommunityMessage
 } from "./community";
 
@@ -59,4 +61,62 @@ export async function postCommunityMessage(body: string, replyTo = "", roomId = 
     throw new Error(typeof result?.error === "string" ? result.error : "Message could not be posted.");
   }
   return result.messageId;
+}
+
+async function heartbeatCommunityPresence(roomId: string) {
+  const normalizedRoom = normalizeCommunityRoomId(roomId);
+  if (!normalizedRoom) throw new Error("Community room is invalid.");
+  const user = await ensureCommunityIdentity();
+  const token = await user.getIdToken();
+  const response = await fetch("/api/community/presence", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ roomId: normalizedRoom })
+  });
+  const result = await response.json().catch(() => null);
+  const presence = parseCommunityPresence(result);
+  if (!response.ok || !presence) {
+    const error = result && typeof result === "object" && "error" in result
+      ? (result as { error?: unknown }).error
+      : null;
+    throw new Error(typeof error === "string" ? error : "Community presence is unavailable.");
+  }
+  return presence;
+}
+
+export function startCommunityPresence(
+  roomId: string,
+  listener: (online: number, capped: boolean) => void,
+  onError: (message: string) => void
+) {
+  let active = true;
+  let running = false;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+
+  const run = async () => {
+    if (running) return;
+    running = true;
+    try {
+      const presence = await heartbeatCommunityPresence(roomId);
+      if (active) listener(presence.online, presence.capped);
+    } catch (error) {
+      if (active) onError(error instanceof Error ? error.message : "Community presence is unavailable.");
+    } finally {
+      running = false;
+      if (active) timer = setTimeout(run, COMMUNITY_PRESENCE_HEARTBEAT_MS);
+    }
+  };
+  const onVisibility = () => {
+    if (document.visibilityState !== "visible") return;
+    if (timer) clearTimeout(timer);
+    void run();
+  };
+
+  document.addEventListener("visibilitychange", onVisibility);
+  void run();
+  return () => {
+    active = false;
+    if (timer) clearTimeout(timer);
+    document.removeEventListener("visibilitychange", onVisibility);
+  };
 }

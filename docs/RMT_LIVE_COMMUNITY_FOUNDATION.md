@@ -29,7 +29,11 @@ The in-memory IP limiter is defense in depth, not a distributed production limit
 
 ## Presence and traffic
 
-The visible drawer deliberately does not invent an online count. Aggregate presence requires a private Realtime Database presence tree plus trusted aggregation so guest identifiers never become public. The UI will display only an approximate total and an opt-in roster of profiled members after that trusted aggregation exists.
+The visible drawer reports only an approximate count of community identities active in RMT Live during the last few minutes. Opening the drawer creates or reuses an authenticated Firebase identity and sends a low-frequency, server-mediated heartbeat. The server stores a keyed, short-lived record without the raw Firebase identifier and returns a Firestore aggregate count rather than downloading presence documents.
+
+Browser clients cannot list, read, create, or alter presence records. Expired records are excluded from every count even before storage cleanup occurs. Configure Firestore TTL cleanup on the `expiresAt` field for the `communityPresence` collection before public activation. The count is intentionally not an exact roster, site-wide visitor count, wallet count, or trading-activity metric. A future named roster must be explicit opt-in for protected profiles; guest identities remain aggregate-only.
+
+Presence heartbeats occur only while the RMT Live panel is open, currently once every 90 seconds with a four-minute activity window. This is suitable for a small rollout. Before a broad campaign, compare the measured write rate against Firebase capacity and move presence to infrastructure designed for sustained concurrent sessions if needed.
 
 Traffic measurements should include active sessions, concurrent sessions, messages per minute, moderation events, database reads/writes, stored bytes, and error rates. Service upgrades should be triggered by measured capacity or reliability needs, not by an automatic spending promise.
 
@@ -40,6 +44,6 @@ Traffic measurements should include active sessions, concurrent sessions, messag
 3. Deploy the reviewed Firestore rules and composite index.
 4. Build admin report, hide, restriction, and audit controls.
 5. Add durable distributed rate limiting before an open public campaign.
-6. Add private presence storage and trusted aggregate counts.
+6. Configure TTL cleanup for private presence records.
 7. Add retention, deletion, moderation, and acceptable-use terms.
 8. Run mobile and desktop accessibility and abuse testing.
