@@ -341,4 +341,13 @@ assert.match(projectAudienceSource, /PEOPLE WATCHING/);
 assert.match(projectAudienceSource, /Follower identities stay private/);
 assert.match(projectAudienceSource, /aria-pressed/);
 
+const referralRouteSource = readFileSync(new URL("../app/r/[code]/route.ts", import.meta.url), "utf8");
+const referralCaptureSource = readFileSync(new URL("../app/referral-capture.tsx", import.meta.url), "utf8");
+const inviteSource = readFileSync(new URL("../app/invite/[code]/invite-acceptance.tsx", import.meta.url), "utf8");
+assert.match(referralRouteSource, /`\/invite\/\$\{normalized\}`/);
+assert.doesNotMatch(referralCaptureSource, /window\.location\.search|capturePendingReferral/);
+assert.match(inviteSource, /Accept &amp; set up my profile/);
+assert.match(inviteSource, /Continue without this invite/);
+assert.match(inviteSource, /clearPendingReferral/);
+
 console.log("Profile and Firebase sync smoke tests passed.");
