@@ -133,11 +133,23 @@ Traffic measurements should include active sessions, concurrent sessions, messag
   region and report controls to assistive technology, labels its message
   composer and status updates, closes with Escape, and returns focus to its
   launcher.
-- A true second-identity report and administrator moderation-route rehearsal
-  remains outstanding. A separate clean browser reaches Vercel's
-  protected-preview login, so it cannot obtain the preview session without an
-  additional sign-in. Self-report rejection is not a substitute for that
-  cross-identity test.
+- The exact protected preview hostname was added to Firebase Authentication's
+  authorized domains and to the Firebase-generated Google OAuth client's
+  redirect URI list. No wildcard, unrelated preview, or production OAuth
+  setting was added. RMT now selects the current approved RMT/Vercel hostname
+  as its same-origin Firebase auth helper and uses the full-page redirect flow
+  recommended for mobile browsers.
+- A second isolated identity, `Guest-2110`, reported `Guest-3D1F`'s visible
+  `hello` message as `spam`. The report appeared only in the private
+  administrator queue, proving the true cross-identity report path rather than
+  substituting the self-report rejection test.
+- The verified `launchrmt@gmail.com` administrator dismissed that controlled
+  report with the private note `Controlled cross-identity preview rehearsal;
+  no policy violation.` Firestore confirmed the report is `dismissed`, the
+  private moderation audit references the exact report and message, and the
+  restriction duration is zero. The original message remains `visible`, and
+  the author's private actor record has no `bannedUntil` field. No message was
+  hidden and neither identity was restricted.
 - The preview may display a WalletConnect/Reown origin-allowlist warning. That
   preview-only wallet configuration warning did not affect the community
   identity, presence, feedback, message, or cooldown paths tested above.
@@ -163,10 +175,10 @@ controlled abuse/accessibility rehearsal remain explicit operator
 verifications because the Firebase CLI cannot prove them from the checked-in
 files alone.
 
-1. Complete controlled desktop accessibility, malformed-payload, quota, and
-   true second-identity report/administrator moderation rehearsals against the
-   protected preview. Mobile layout, cooldown, self-report rejection, and
-   feedback withdrawal have current preview evidence.
+1. Complete controlled desktop accessibility, malformed-payload, and live
+   quota rehearsals against the protected preview. Mobile layout, cooldown,
+   self-report rejection, feedback withdrawal, cross-identity reporting, and
+   administrator dismissal now have current preview evidence.
 2. Review preview runtime logs and Firebase usage after the controlled
    rehearsal window.
 3. Keep PR #265 unmerged until the preview evidence is accepted and production
