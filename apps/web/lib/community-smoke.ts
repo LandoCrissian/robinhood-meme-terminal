@@ -181,10 +181,17 @@ assert.match(feedbackRouteSource, /communityAuthorKey/);
 assert.match(feedbackRouteSource, /communityFeedbackStatus/);
 assert.match(feedbackRouteSource, /feedbackWindowCount/);
 assert.match(feedbackRouteSource, /validateCommunityFeedbackContent/);
+assert.match(feedbackRouteSource, /export async function DELETE/);
+assert.match(feedbackRouteSource, /record\?\.authorKey !== authorKey/);
+assert.match(feedbackRouteSource, /transaction\.delete\(feedbackReference\)/);
+assert.match(feedbackRouteSource, /action: "author_withdrawn"/);
 assert.doesNotMatch(feedbackRouteSource, /firebaseUid|authorUid|email:/);
 const publicStatusWrite = feedbackRouteSource.match(/transaction\.create\(statusReference,\s*\{([\s\S]*?)\}\);/)?.[1] ?? "";
 assert.ok(publicStatusWrite);
 assert.doesNotMatch(publicStatusWrite, /authorKey|identityKind|title|description|reviewNote/);
+const withdrawalAuditWrite = feedbackRouteSource.match(/transaction\.create\(auditReference,\s*\{([\s\S]*?)\}\);/)?.[1] ?? "";
+assert.ok(withdrawalAuditWrite);
+assert.doesNotMatch(withdrawalAuditWrite, /authorKey|identityKind|title|description|reviewNote|reviewerKey/);
 
 const feedbackAdminSource = readFileSync(new URL("../app/api/admin/community/feedback/route.ts", import.meta.url), "utf8");
 assert.match(feedbackAdminSource, /RMT_ADMIN_EMAIL/);
@@ -195,6 +202,8 @@ assert.match(feedbackAdminSource, /communityFeedbackStatus/);
 const communityCloudSource = readFileSync(new URL("./community-cloud.ts", import.meta.url), "utf8");
 assert.match(communityCloudSource, /communityFeedbackStatus/);
 assert.match(communityCloudSource, /parsePublicCommunityFeedbackStatus/);
+assert.match(communityCloudSource, /withdrawCommunityFeedback/);
+assert.match(communityCloudSource, /method: "DELETE"/);
 assert.doesNotMatch(communityCloudSource, /communityFeedback", feedbackId/);
 
 const profileProviderSource = readFileSync(new URL("../app/profile-provider.tsx", import.meta.url), "utf8");

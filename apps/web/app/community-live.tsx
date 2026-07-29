@@ -23,7 +23,8 @@ import {
   startCommunityPresence,
   submitCommunityFeedback,
   subscribeToCommunityFeedbackStatuses,
-  subscribeToCommunityMessages
+  subscribeToCommunityMessages,
+  withdrawCommunityFeedback
 } from "../lib/community-cloud";
 
 export function CommunityLive() {
@@ -42,6 +43,8 @@ export function CommunityLive() {
   const [feedbackDescription, setFeedbackDescription] = useState("");
   const [feedbackIds, setFeedbackIds] = useState<string[]>([]);
   const [feedbackStatuses, setFeedbackStatuses] = useState<PublicCommunityFeedbackStatus[]>([]);
+  const [withdrawConfirmId, setWithdrawConfirmId] = useState("");
+  const [withdrawingId, setWithdrawingId] = useState("");
   const stream = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -174,6 +177,21 @@ export function CommunityLive() {
     }
   };
 
+  const withdrawFeedback = async (feedbackId: string) => {
+    if (withdrawingId) return;
+    setWithdrawingId(feedbackId);
+    setMessage("");
+    try {
+      await withdrawCommunityFeedback(feedbackId);
+      setWithdrawConfirmId("");
+      setMessage("Feedback withdrawn. Its private title, details, and identity key were deleted.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Feedback could not be withdrawn.");
+    } finally {
+      setWithdrawingId("");
+    }
+  };
+
   return (
     <aside className={`communityLive${open ? " open" : ""}`} aria-label="RMT Live community">
       <button className="communityLiveLauncher" type="button" onClick={() => setOpen((current) => !current)} aria-expanded={open}>
@@ -223,7 +241,13 @@ export function CommunityLive() {
             const item = feedbackStatuses.find((status) => status.feedbackId === feedbackId);
             return <article key={feedbackId}>
               <div><strong>{item ? item.category.replace("_", " ") : "Feedback received"}</strong><span>{feedbackId.slice(0, 8).toUpperCase()}</span></div>
-              <div><b className={`status-${item?.status ?? "checking"}`}>{(item?.status ?? "checking").replace("_", " ")}</b><button type="button" onClick={() => setFeedbackIds(forgetCommunityFeedbackReceipt(feedbackId))}>Remove</button></div>
+              <div><b className={`status-${item?.status ?? "checking"}`}>{(item?.status ?? "checking").replace("_", " ")}</b>
+                <span className="communityFeedbackReceiptActions">
+                  {withdrawConfirmId === feedbackId
+                    ? <><button type="button" disabled={Boolean(withdrawingId)} onClick={() => void withdrawFeedback(feedbackId)}>{withdrawingId === feedbackId ? "Withdrawing…" : "Confirm withdraw"}</button><button type="button" disabled={Boolean(withdrawingId)} onClick={() => setWithdrawConfirmId("")}>Cancel</button></>
+                    : <><button type="button" disabled={item?.status === "closed"} onClick={() => setWithdrawConfirmId(feedbackId)}>Withdraw</button><button type="button" onClick={() => setFeedbackIds(forgetCommunityFeedbackReceipt(feedbackId))}>Remove</button></>}
+                </span>
+              </div>
             </article>;
           })}
           {feedbackIds.length > 0 && <small>Removing a receipt only clears it from this browser. It does not delete the private submission from RMT’s review queue.</small>}

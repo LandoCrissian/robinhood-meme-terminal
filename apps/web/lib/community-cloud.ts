@@ -165,6 +165,31 @@ export async function submitCommunityFeedback(input: {
   return result.feedbackId;
 }
 
+export async function withdrawCommunityFeedback(feedbackId: string) {
+  if (!/^[A-Za-z0-9]{20}$/.test(feedbackId)) throw new Error("Feedback receipt is invalid.");
+  const user = await ensureCommunityIdentity();
+  const token = await user.getIdToken();
+  const response = await fetch("/api/community/feedback", {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ feedbackId })
+  });
+  const result = await response.json().catch(() => null) as {
+    error?: unknown;
+    feedbackId?: unknown;
+    status?: unknown;
+    withdrawn?: unknown;
+  } | null;
+  if (
+    !response.ok
+    || result?.feedbackId !== feedbackId
+    || result.status !== "closed"
+    || result.withdrawn !== true
+  ) {
+    throw new Error(typeof result?.error === "string" ? result.error : "Feedback could not be withdrawn.");
+  }
+}
+
 export async function subscribeToCommunityFeedbackStatuses(
   feedbackIds: string[],
   listener: (statuses: PublicCommunityFeedbackStatus[]) => void,
