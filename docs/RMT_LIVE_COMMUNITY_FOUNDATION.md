@@ -82,18 +82,34 @@ Traffic measurements should include active sessions, concurrent sessions, messag
 - Firebase billing remains disabled. Managed TTL was not enabled and no paid
   upgrade was accepted.
 - Vercel contains all six browser-side Firebase configuration names for
-  production and preview. Their values were not opened or copied during this
-  review.
-- Vercel does not yet contain `FIREBASE_ADMIN_PROJECT_ID`,
-  `FIREBASE_ADMIN_CLIENT_EMAIL`, `FIREBASE_ADMIN_PRIVATE_KEY`, or
-  `COMMUNITY_IDENTITY_SECRET`. RMT Live therefore remains server-disabled even
-  after Anonymous Authentication was enabled.
-- The bounded application retention sweep is implemented and tested locally,
-  but is not production evidence until the corresponding web release is
-  deployed and verified.
+  production and preview.
+- A dedicated `rmt-live-server` service account was created with only Cloud
+  Datastore User and Firebase Authentication Viewer roles. It does not have an
+  Editor, Owner, Firebase Admin, or IAM administration role.
+- `FIREBASE_ADMIN_PROJECT_ID`, `FIREBASE_ADMIN_CLIENT_EMAIL`,
+  `FIREBASE_ADMIN_PRIVATE_KEY`, and a newly generated
+  `COMMUNITY_IDENTITY_SECRET` are stored as sensitive Vercel variables scoped
+  to production and preview. No credential value was committed, printed in
+  logs, or retained in the local checkout; the downloaded key file was removed
+  after the encrypted Vercel transfer.
+- Draft PR #265 deployed commit `4d777bc` to a Vercel preview. The first
+  rehearsal exposed a Node module compatibility failure between
+  `firebase-admin` 14.2.0, `jwks-rsa` 4.1.0, and ESM-only `jose` 6.2.3 in the
+  Vercel function runtime. RMT pinned `firebase-admin` 13.6.0, which resolves
+  to `jwks-rsa` 3.2.2 and `jose` 4.15.9 for the Admin SDK path.
+- The repaired preview completed anonymous Firebase sign-in, server-side ID
+  token verification, a bounded Firestore presence write, and aggregate
+  presence read. The interface returned approximately one online identity.
+  No public chat message or feedback record was created during verification.
+- The preview site returned `200`; an unauthenticated request to
+  `/api/community/presence` returned `401`. All GitHub checks passed, including
+  web, contracts, three indexer suites, secret scanning, and Vercel.
+- The bounded application retention sweep is implemented and exercised by the
+  successful authenticated presence path, but it remains preview evidence
+  until a separately authorized production release is deployed and monitored.
 - The current public site returns `404` for `/api/community/presence`, proving
   the community server routes are not live yet. Existing terminal production
-  remained unchanged during this Firebase preparation.
+  remained unchanged during the credential transfer and preview rehearsal.
 
 Run the repository-only gate after every community change:
 
@@ -116,10 +132,16 @@ controlled abuse/accessibility rehearsal remain explicit operator
 verifications because the Firebase CLI cannot prove them from the checked-in
 files alone.
 
-1. Enable Firebase Anonymous Authentication.
-2. Add a random production-only `COMMUNITY_IDENTITY_SECRET` of at least 32 characters.
-3. Deploy the reviewed Firestore rules and composite index.
-4. Deploy and load-test the prepared distributed limiter; add an edge limiter before a large public campaign.
-5. Deploy and verify the bounded application retention sweep; use managed TTL instead if billing is later enabled.
-6. Verify the prepared retention fields, moderation terms, and versioned community acknowledgement.
-7. Run mobile and desktop accessibility and abuse testing.
+1. Run controlled mobile and desktop accessibility, malformed-payload,
+   cooldown, quota, report, moderation, and feedback-withdrawal rehearsals
+   against preview.
+2. Review preview runtime logs and Firebase usage after the controlled
+   rehearsal window.
+3. Keep PR #265 unmerged until the preview evidence is accepted and production
+   is separately authorized.
+4. After separate production approval, merge and verify the public route,
+   anonymous identity, presence, moderation, and bounded retention paths.
+5. Add a reputable edge limiter before a large public campaign or when
+   measured rejected traffic becomes material.
+6. Replace application retention with managed Firestore TTL only if measured
+   traffic justifies enabling billing.
