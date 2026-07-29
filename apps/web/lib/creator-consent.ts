@@ -3,6 +3,7 @@ import {
   hashTypedData,
   isAddress,
   keccak256,
+  recoverTypedDataAddress,
   toHex,
   type Address,
   type Hex
@@ -16,6 +17,8 @@ import { normalizeProjectSlug } from "./creator-application";
 export const CREATOR_CONSENT_SCHEMA_VERSION = 1 as const;
 export const CREATOR_CONSENT_DOMAIN_SALT = keccak256(toHex("rmt:creator-consent:v1"));
 export const MAX_CREATOR_CONSENT_LIFETIME_SECONDS = 30 * 24 * 60 * 60;
+export const CREATOR_CONSENT_TERMS = "I confirm the displayed credit, role, wallet, proposed revenue share, rights revision, chain, and expiration. This signature does not mint, list, transfer, license, or guarantee payment.";
+export const CREATOR_CONSENT_TERMS_HASH = keccak256(toHex(CREATOR_CONSENT_TERMS));
 
 export type CreatorConsentInvitation = {
   schemaVersion: typeof CREATOR_CONSENT_SCHEMA_VERSION;
@@ -30,6 +33,49 @@ export type CreatorConsentInvitation = {
   expiresAt: number;
   termsHash: Hex;
   nonce: Hex;
+};
+
+export type CreatorConsentAction = "accept" | "reject";
+
+export type CreatorConsentResponse = {
+  schemaVersion: typeof CREATOR_CONSENT_SCHEMA_VERSION;
+  invitationDigest: Hex;
+  action: CreatorConsentAction;
+  collaboratorWallet: Address;
+  respondedAt: number;
+  signature: Hex;
+};
+
+export type CreatorConsentInvitationPacket = {
+  kind: "rmt_creator_consent_invitation";
+  invitation: CreatorConsentInvitation;
+  invitationDigest: Hex;
+};
+
+export type CreatorConsentResponsePacket = {
+  kind: "rmt_creator_consent_response";
+  response: CreatorConsentResponse;
+};
+
+export type CreatorConsentInvitationRecord = CreatorConsentInvitation & {
+  invitationId: string;
+  invitationDigest: Hex;
+  status: "pending" | "revoked";
+  revokedAt: unknown | null;
+  createdAt?: unknown;
+  updatedAt?: unknown;
+};
+
+export type CreatorConsentPublicStatus = {
+  schemaVersion: typeof CREATOR_CONSENT_SCHEMA_VERSION;
+  invitationId: string;
+  invitationDigest: Hex;
+  projectSlug: string;
+  assetId: string;
+  status: "pending" | "revoked";
+  expiresAt: number;
+  createdAt?: unknown;
+  updatedAt?: unknown;
 };
 
 function cleanText(value: unknown, maximum: number) {
@@ -111,6 +157,17 @@ const creatorConsentTypes = {
   ]
 } as const;
 
+const creatorConsentResponseTypes = {
+  CreatorConsentResponse: [
+    { name: "schemaVersion", type: "uint256" },
+    { name: "invitationDigest", type: "bytes32" },
+    { name: "action", type: "string" },
+    { name: "collaboratorWallet", type: "address" },
+    { name: "respondedAt", type: "uint256" },
+    { name: "nonce", type: "bytes32" }
+  ]
+} as const;
+
 export function creatorConsentTypedData(invitation: CreatorConsentInvitation) {
   return {
     domain: {
@@ -141,4 +198,196 @@ export function hashCreatorConsentInvitation(invitation: CreatorConsentInvitatio
   const validationError = validateCreatorConsentInvitation(invitation, invitation.expiresAt - 1);
   if (validationError) throw new Error(validationError);
   return hashTypedData(creatorConsentTypedData(invitation));
+}
+
+export function creatorConsentResponseTypedData(
+  invitation: CreatorConsentInvitation,
+  action: CreatorConsentAction,
+  respondedAt: number
+) {
+  return {
+    domain: {
+      name: "RMT Creator Consent",
+      version: "1",
+      chainId: invitation.chainId,
+      salt: CREATOR_CONSENT_DOMAIN_SALT
+    },
+    types: creatorConsentResponseTypes,
+    primaryType: "CreatorConsentResponse" as const,
+    message: {
+      schemaVersion: BigInt(CREATOR_CONSENT_SCHEMA_VERSION),
+      invitationDigest: hashCreatorConsentInvitation(invitation),
+      action,
+      collaboratorWallet: invitation.collaboratorWallet,
+      respondedAt: BigInt(respondedAt),
+      nonce: invitation.nonce
+    }
+  };
+}
+
+export function validateCreatorConsentResponse(
+  invitation: CreatorConsentInvitation,
+  response: CreatorConsentResponse
+) {
+  const invitationDigest = hashCreatorConsentInvitation(invitation);
+  if (response.schemaVersion !== CREATOR_CONSENT_SCHEMA_VERSION) return "Consent response version is unsupported.";
+  if (response.invitationDigest !== invitationDigest) return "Consent response belongs to a different invitation.";
+  if (response.action !== "accept" && response.action !== "reject") return "Consent response action is invalid.";
+  if (
+    !isAddress(response.collaboratorWallet, { strict: false })
+    || getAddress(response.collaboratorWallet).toLowerCase() !== invitation.collaboratorWallet
+  ) return "Consent response wallet does not match the invited collaborator.";
+  if (!Number.isSafeInteger(response.respondedAt) || response.respondedAt < 1) {
+    return "Consent response time is invalid.";
+  }
+  if (!/^0x[0-9a-fA-F]{130}$/.test(response.signature)) return "Consent response signature is invalid.";
+  return null;
+}
+
+export async function recoverCreatorConsentResponseSigner(
+  invitation: CreatorConsentInvitation,
+  response: CreatorConsentResponse
+) {
+  const validationError = validateCreatorConsentResponse(invitation, response);
+  if (validationError) throw new Error(validationError);
+  return (await recoverTypedDataAddress({
+    ...creatorConsentResponseTypedData(invitation, response.action, response.respondedAt),
+    signature: response.signature
+  })).toLowerCase() as Address;
+}
+
+export async function verifyCreatorConsentResponse(
+  invitation: CreatorConsentInvitation,
+  response: CreatorConsentResponse
+) {
+  return (await recoverCreatorConsentResponseSigner(invitation, response)) === invitation.collaboratorWallet;
+}
+
+function bytesToBase64Url(bytes: Uint8Array) {
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/, "");
+}
+
+function base64UrlToBytes(value: string) {
+  const padded = value.replaceAll("-", "+").replaceAll("_", "/").padEnd(Math.ceil(value.length / 4) * 4, "=");
+  const binary = atob(padded);
+  return Uint8Array.from(binary, (character) => character.charCodeAt(0));
+}
+
+export function encodeCreatorConsentPacket(
+  packet: CreatorConsentInvitationPacket | CreatorConsentResponsePacket
+) {
+  return bytesToBase64Url(new TextEncoder().encode(JSON.stringify(packet)));
+}
+
+export function decodeCreatorConsentInvitationPacket(value: string): CreatorConsentInvitationPacket | null {
+  if (!value || value.length > 12_000) return null;
+  try {
+    const packet = JSON.parse(new TextDecoder().decode(base64UrlToBytes(value))) as Partial<CreatorConsentInvitationPacket>;
+    const invitation = normalizeCreatorConsentInvitation(packet.invitation);
+    if (
+      packet.kind !== "rmt_creator_consent_invitation"
+      || !invitation
+      || packet.invitationDigest !== hashCreatorConsentInvitation(invitation)
+    ) return null;
+    return {
+      kind: "rmt_creator_consent_invitation",
+      invitation,
+      invitationDigest: packet.invitationDigest
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function decodeCreatorConsentResponsePacket(value: string): CreatorConsentResponsePacket | null {
+  if (!value || value.length > 8_000) return null;
+  try {
+    const packet = JSON.parse(new TextDecoder().decode(base64UrlToBytes(value))) as Partial<CreatorConsentResponsePacket>;
+    const response = packet.response;
+    if (
+      packet.kind !== "rmt_creator_consent_response"
+      || !response
+      || response.schemaVersion !== CREATOR_CONSENT_SCHEMA_VERSION
+      || !/^0x[0-9a-fA-F]{64}$/.test(response.invitationDigest ?? "")
+      || (response.action !== "accept" && response.action !== "reject")
+      || !isAddress(response.collaboratorWallet ?? "", { strict: false })
+      || !Number.isSafeInteger(response.respondedAt)
+      || !/^0x[0-9a-fA-F]{130}$/.test(response.signature ?? "")
+    ) return null;
+    return {
+      kind: "rmt_creator_consent_response",
+      response: {
+        schemaVersion: CREATOR_CONSENT_SCHEMA_VERSION,
+        invitationDigest: response.invitationDigest.toLowerCase() as Hex,
+        action: response.action,
+        collaboratorWallet: getAddress(response.collaboratorWallet).toLowerCase() as Address,
+        respondedAt: Number(response.respondedAt),
+        signature: response.signature as Hex
+      }
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function parseCreatorConsentInvitationRecord(
+  invitationId: string,
+  value: unknown
+): CreatorConsentInvitationRecord | null {
+  if (!value || typeof value !== "object") return null;
+  const candidate = value as Partial<CreatorConsentInvitationRecord>;
+  const invitation = normalizeCreatorConsentInvitation(candidate);
+  if (
+    !invitation
+    || !/^[0-9a-f]{64}$/.test(invitationId)
+    || candidate.invitationId !== invitationId
+    || candidate.invitationDigest !== `0x${invitationId}`
+    || candidate.invitationDigest !== hashCreatorConsentInvitation(invitation)
+    || (candidate.status !== "pending" && candidate.status !== "revoked")
+    || (candidate.status === "pending" && candidate.revokedAt != null)
+    || (candidate.status === "revoked" && candidate.revokedAt == null)
+  ) return null;
+  return {
+    ...invitation,
+    invitationId,
+    invitationDigest: candidate.invitationDigest,
+    status: candidate.status,
+    revokedAt: candidate.revokedAt,
+    createdAt: candidate.createdAt,
+    updatedAt: candidate.updatedAt
+  };
+}
+
+export function parseCreatorConsentPublicStatus(
+  invitationId: string,
+  value: unknown
+): CreatorConsentPublicStatus | null {
+  if (!value || typeof value !== "object") return null;
+  const candidate = value as Partial<CreatorConsentPublicStatus>;
+  const projectSlug = normalizeProjectSlug(candidate.projectSlug);
+  if (
+    candidate.schemaVersion !== CREATOR_CONSENT_SCHEMA_VERSION
+    || !/^[0-9a-f]{64}$/.test(invitationId)
+    || candidate.invitationId !== invitationId
+    || candidate.invitationDigest !== `0x${invitationId}`
+    || !projectSlug
+    || typeof candidate.assetId !== "string"
+    || !/^[A-Za-z0-9]{20}$/.test(candidate.assetId)
+    || (candidate.status !== "pending" && candidate.status !== "revoked")
+    || !Number.isSafeInteger(candidate.expiresAt)
+    || Number(candidate.expiresAt) < 1
+  ) return null;
+  return {
+    schemaVersion: CREATOR_CONSENT_SCHEMA_VERSION,
+    invitationId,
+    invitationDigest: candidate.invitationDigest,
+    projectSlug,
+    assetId: candidate.assetId,
+    status: candidate.status,
+    expiresAt: Number(candidate.expiresAt),
+    createdAt: candidate.createdAt,
+    updatedAt: candidate.updatedAt
+  };
 }

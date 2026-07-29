@@ -232,6 +232,52 @@ function creatorAsset(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function creatorConsentInvitation(
+  invitationId: string,
+  draftRevisionHash: unknown,
+  overrides: Record<string, unknown> = {}
+) {
+  return {
+    schemaVersion: 1,
+    invitationId,
+    invitationDigest: `0x${invitationId}`,
+    projectSlug: "runner-studio",
+    assetId: "abcdefghijklmnopqrst",
+    draftRevisionHash,
+    collaboratorName: "RMT Studio",
+    collaboratorRole: "artist",
+    collaboratorWallet: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    shareBps: 10000,
+    chainId: 4663,
+    expiresAt: 2_000_000_000,
+    termsHash: `0x${"1".repeat(64)}`,
+    nonce: `0x${"2".repeat(64)}`,
+    status: "pending",
+    revokedAt: null,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+    ...overrides
+  };
+}
+
+function creatorConsentPublicStatus(
+  invitationId: string,
+  overrides: Record<string, unknown> = {}
+) {
+  return {
+    schemaVersion: 1,
+    invitationId,
+    invitationDigest: `0x${invitationId}`,
+    projectSlug: "runner-studio",
+    assetId: "abcdefghijklmnopqrst",
+    status: "pending",
+    expiresAt: 2_000_000_000,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+    ...overrides
+  };
+}
+
 function projectFollow(projectSlug = "runner-studio") {
   return {
     schemaVersion: 1,
@@ -1175,4 +1221,120 @@ test("music rights drafts require an approved music module and both music rights
       compositionRightsConfirmed: true
     })
   ));
+});
+
+test("creator consent invitations remain private, revision-bound, and creator-revocable", async () => {
+  const admin = adminDb();
+  await assertSucceeds(setDoc(doc(admin, "projectAssignments", "runner-studio"), projectAssignment()));
+  const owner = authenticatedDb();
+  const assetReference = doc(owner, "projectAssignments", "runner-studio", "assets", "abcdefghijklmnopqrst");
+  const asset = creatorAsset();
+  await assertSucceeds(setDoc(assetReference, asset));
+  const invitationId = "6".repeat(64);
+  const invitationReference = doc(assetReference, "consentInvitations", invitationId);
+  const statusReference = doc(owner, "creatorConsentStatuses", invitationId);
+  const createBatch = writeBatch(owner);
+  createBatch.set(invitationReference, creatorConsentInvitation(invitationId, asset.draftRevisionHash));
+  createBatch.set(statusReference, creatorConsentPublicStatus(invitationId));
+  await assertSucceeds(createBatch.commit());
+  await assertSucceeds(getDoc(invitationReference));
+  await assertSucceeds(getDoc(doc(
+    testEnvironment.unauthenticatedContext().firestore(),
+    "creatorConsentStatuses",
+    invitationId
+  )));
+  await assertFails(getDoc(doc(
+    authenticatedDb(OTHER_ID),
+    "projectAssignments",
+    "runner-studio",
+    "assets",
+    "abcdefghijklmnopqrst",
+    "consentInvitations",
+    invitationId
+  )));
+  const revokeBatch = writeBatch(owner);
+  revokeBatch.set(invitationReference, {
+    status: "revoked",
+    revokedAt: serverTimestamp(),
+    updatedAt: serverTimestamp()
+  }, { merge: true });
+  revokeBatch.set(statusReference, {
+    status: "revoked",
+    updatedAt: serverTimestamp()
+  }, { merge: true });
+  await assertSucceeds(revokeBatch.commit());
+  await assertFails(setDoc(invitationReference, {
+    status: "pending",
+    revokedAt: null,
+    updatedAt: serverTimestamp()
+  }, { merge: true }));
+  await assertFails(deleteDoc(invitationReference));
+});
+
+test("creator consent invitation rules reject stale revisions, self-acceptance, and mutation", async () => {
+  const admin = adminDb();
+  await assertSucceeds(setDoc(doc(admin, "projectAssignments", "runner-studio"), projectAssignment()));
+  const owner = authenticatedDb();
+  const assetReference = doc(owner, "projectAssignments", "runner-studio", "assets", "abcdefghijklmnopqrst");
+  const asset = creatorAsset();
+  await assertSucceeds(setDoc(assetReference, asset));
+
+  const staleId = "7".repeat(64);
+  const staleBatch = writeBatch(owner);
+  staleBatch.set(
+    doc(assetReference, "consentInvitations", staleId),
+    creatorConsentInvitation(staleId, `0x${"9".repeat(64)}`)
+  );
+  staleBatch.set(
+    doc(owner, "creatorConsentStatuses", staleId),
+    creatorConsentPublicStatus(staleId)
+  );
+  await assertFails(staleBatch.commit());
+  const acceptedId = "8".repeat(64);
+  const acceptedBatch = writeBatch(owner);
+  acceptedBatch.set(
+    doc(assetReference, "consentInvitations", acceptedId),
+    creatorConsentInvitation(acceptedId, asset.draftRevisionHash, {
+      status: "accepted",
+      revokedAt: null
+    })
+  );
+  acceptedBatch.set(
+    doc(owner, "creatorConsentStatuses", acceptedId),
+    creatorConsentPublicStatus(acceptedId)
+  );
+  await assertFails(acceptedBatch.commit());
+  const validId = "a".repeat(64);
+  const validReference = doc(assetReference, "consentInvitations", validId);
+  const validBatch = writeBatch(owner);
+  validBatch.set(validReference, creatorConsentInvitation(validId, asset.draftRevisionHash));
+  validBatch.set(
+    doc(owner, "creatorConsentStatuses", validId),
+    creatorConsentPublicStatus(validId)
+  );
+  await assertSucceeds(validBatch.commit());
+  await assertFails(setDoc(validReference, {
+    collaboratorName: "Changed collaborator",
+    updatedAt: serverTimestamp()
+  }, { merge: true }));
+  const other = authenticatedDb(OTHER_ID);
+  const unauthorizedId = "b".repeat(64);
+  const unauthorizedBatch = writeBatch(other);
+  unauthorizedBatch.set(
+    doc(
+      other,
+      "projectAssignments",
+      "runner-studio",
+      "assets",
+      "abcdefghijklmnopqrst",
+      "consentInvitations",
+      unauthorizedId
+    ),
+    creatorConsentInvitation(unauthorizedId, asset.draftRevisionHash)
+  );
+  unauthorizedBatch.set(
+    doc(other, "creatorConsentStatuses", unauthorizedId),
+    creatorConsentPublicStatus(unauthorizedId)
+  );
+  await assertFails(unauthorizedBatch.commit());
 });

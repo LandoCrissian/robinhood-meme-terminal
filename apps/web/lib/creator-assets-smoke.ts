@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { privateKeyToAccount } from "viem/accounts";
 import {
   EMPTY_CREATOR_ASSET,
   hashCreatorAssetDraft,
@@ -13,7 +14,13 @@ import {
 } from "./creator-economics";
 import { evaluateCreatorReleaseReadiness } from "./creator-release-readiness";
 import {
+  CREATOR_CONSENT_TERMS_HASH,
+  creatorConsentResponseTypedData,
+  decodeCreatorConsentInvitationPacket,
+  decodeCreatorConsentResponsePacket,
+  encodeCreatorConsentPacket,
   hashCreatorConsentInvitation,
+  verifyCreatorConsentResponse,
   validateCreatorConsentInvitation,
   type CreatorConsentInvitation
 } from "./creator-consent";
@@ -217,6 +224,50 @@ assert.match(validateCreatorConsentInvitation({
   ...consentInvitation,
   expiresAt: nowSeconds - 1
 }, nowSeconds) ?? "", /expired/);
+
+const collaboratorAccount = privateKeyToAccount(`0x${"4".repeat(64)}`);
+const signedInvitation: CreatorConsentInvitation = {
+  ...consentInvitation,
+  collaboratorWallet: collaboratorAccount.address.toLowerCase() as `0x${string}`,
+  termsHash: CREATOR_CONSENT_TERMS_HASH
+};
+const invitationPacket = {
+  kind: "rmt_creator_consent_invitation" as const,
+  invitation: signedInvitation,
+  invitationDigest: hashCreatorConsentInvitation(signedInvitation)
+};
+const invitationCode = encodeCreatorConsentPacket(invitationPacket);
+assert.deepEqual(decodeCreatorConsentInvitationPacket(invitationCode), invitationPacket);
+assert.equal(decodeCreatorConsentInvitationPacket(`${invitationCode}tampered`), null);
+
+async function testSignedConsentResponse() {
+  const respondedAt = nowSeconds + 60;
+  const signature = await collaboratorAccount.signTypedData(
+    creatorConsentResponseTypedData(signedInvitation, "accept", respondedAt)
+  );
+  const responsePacket = {
+    kind: "rmt_creator_consent_response" as const,
+    response: {
+      schemaVersion: 1 as const,
+      invitationDigest: invitationPacket.invitationDigest,
+      action: "accept" as const,
+      collaboratorWallet: signedInvitation.collaboratorWallet,
+      respondedAt,
+      signature
+    }
+  };
+  const responseCode = encodeCreatorConsentPacket(responsePacket);
+  assert.deepEqual(decodeCreatorConsentResponsePacket(responseCode), responsePacket);
+  assert.equal(await verifyCreatorConsentResponse(signedInvitation, responsePacket.response), true);
+  assert.equal(await verifyCreatorConsentResponse({
+    ...signedInvitation,
+    nonce: `0x${"5".repeat(64)}`
+  }, responsePacket.response).catch(() => false), false);
+  assert.equal(decodeCreatorConsentResponsePacket(encodeCreatorConsentPacket({
+    ...responsePacket,
+    response: { ...responsePacket.response, signature: "0x1234" }
+  } as never)), null);
+}
 assert.equal(parseCreatorAsset("abcdefghijklmnopqrst", {
   ...parsed,
   title: "Changed without a new revision hash"
@@ -235,9 +286,26 @@ assert.match(studioSource, /RELEASE PASSPORT · PRIVATE/);
 assert.match(studioSource, /ERC-2981 can signal this preference/);
 assert.doesNotMatch(studioSource, /mintNFT|createListing|executeSplit/);
 
+const consentPageSource = readFileSync(new URL("../app/creator-consent/page.tsx", import.meta.url), "utf8");
+assert.match(consentPageSource, /Creator-supplied information/);
+assert.match(consentPageSource, /RMT has not recorded a final consent receipt/);
+assert.match(consentPageSource, /No minting · No listing · No transfer/);
+assert.match(consentPageSource, /current revocation status/);
+
 const cloudSource = readFileSync(new URL("./creator-assets-cloud.ts", import.meta.url), "utf8");
 assert.match(cloudSource, /projectAssignments/);
 assert.match(cloudSource, /assignment\.ownerId !== verified\.uid/);
 assert.match(cloudSource, /status: "draft"/);
 
-console.info("Creator asset and rights foundation smoke test passed");
+const consentCloudSource = readFileSync(new URL("./creator-consent-cloud.ts", import.meta.url), "utf8");
+assert.match(consentCloudSource, /creatorConsentStatuses/);
+assert.match(consentCloudSource, /status: "pending"/);
+assert.match(consentCloudSource, /status: "revoked"/);
+assert.doesNotMatch(consentCloudSource, /status: "accepted"/);
+
+void testSignedConsentResponse().then(() => {
+  console.info("Creator asset and rights foundation smoke test passed");
+}).catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});

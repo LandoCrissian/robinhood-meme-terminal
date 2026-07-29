@@ -2,7 +2,7 @@ import { LegalShell } from "../legal-shell";
 
 export default function PrivacyPage() {
   return (
-    <LegalShell eyebrow="DATA TRANSPARENCY" title="Privacy Notice" updated="July 28, 2026">
+    <LegalShell eyebrow="DATA TRANSPARENCY" title="Privacy Notice" updated="July 29, 2026">
       <div className="legalNotice"><strong>Core principle:</strong> RMT never asks for or stores private keys or recovery phrases.</div>
       <h2>Information visible onchain</h2>
       <p>Wallet addresses, token launches, trades, balances, approvals, reward claims, contract interactions, and transaction hashes are public blockchain data. That information may be permanent and can be analyzed by anyone.</p>
@@ -17,6 +17,7 @@ export default function PrivacyPage() {
       <h2>Uploads and permanent metadata</h2>
       <p>Token artwork, creator-project logos, banners, galleries, update images, descriptions, and social links may be uploaded to IPFS through an external pinning provider. Creator media uploads require a verified profile assigned to that project. IPFS content may be public, copied, and difficult or impossible to remove. Do not upload personal, confidential, or unlawful information.</p>
       <p>Asset-and-rights drafts are stored privately for the verified profile assigned to the project and RMT administrators. Draft records may describe AI involvement, claimed rights, licenses, collaborators, editions, and intended revenue splits, but RMT does not independently verify those claims or treat an unverified collaborator as having consented. A private draft does not mint, publish, license, sell, or distribute revenue. Any media uploaded to IPFS is public even while the associated draft record remains private.</p>
+      <p>Creator consent invitations are stored privately for the assigned creator and RMT administrators. A shareable consent link contains creator-supplied collaborator name, wallet, role, proposed share, project, asset revision, terms fingerprint, and expiration in the link fragment. Anyone who receives or copies the link can read those fields. A separate public marker exposes only the invitation fingerprint, project and asset identifiers, expiration, and pending or revoked status so the signing page can fail closed on revoked links. Signed response codes contain the wallet address, action, response time, invitation fingerprint, and public wallet signature.</p>
       <h2>Infrastructure data</h2>
       <p>Hosting, database, authentication, RPC, wallet-connection, security, and content-delivery providers may process IP address, device, request, and diagnostic information to deliver and protect their services. RMT does not sell personal information.</p>
       <h2>External market data and links</h2>

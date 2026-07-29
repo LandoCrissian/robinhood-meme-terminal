@@ -59,13 +59,15 @@ There is intentionally no client-writable `published`, `approved`, `minted`, `li
 
 Editing any covered field produces a different revision hash. The hash is a stable fingerprint for future invitations and review, not proof that the creator-supplied statements are true. A future acceptance must bind the collaborator to the exact project, asset, role, wallet, share, revision hash, chain, expiration, and consent terms.
 
-`apps/web/lib/creator-consent.ts` now defines that versioned EIP-712 consent envelope and digest. It binds all of those fields, includes a one-time nonce, expires within 30 days, and changes its digest when the revision or proposed share changes. No invitation is sent and no signature is collected or treated as accepted in this release.
+`apps/web/lib/creator-consent.ts` now defines that versioned EIP-712 consent envelope and digest. It binds all of those fields, includes a one-time nonce, expires within 30 days, and changes its digest when the revision or proposed share changes. No returned signature is treated as final acceptance in this release.
+
+Creators can now save private, seven-day invitation records and prepare shareable review links. The collaborator review page verifies the packet, current public revocation marker, exact wallet, chain, expiration, terms hash, and typed signature. Returned response codes can be verified locally as signed evidence, but they remain unreceipted and do not change collaborator consent to accepted. See `docs/CREATOR_COLLABORATOR_CONSENT.md`.
 
 ## Future contract boundary
 
 Marketplace and collection contracts must consume a versioned, reviewed rights snapshot rather than mutable draft fields. Before any contract work:
 
-1. add signed collaborator invitations and acceptance;
+1. add a trusted server receipt for signed collaborator responses and final acceptance;
 2. add an RMT review state with immutable revision hashes;
 3. define revocation and correction behavior;
 4. define jurisdiction-specific license presentation;

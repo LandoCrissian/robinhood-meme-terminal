@@ -691,6 +691,74 @@ service cloud.firestore {
         : modules.hasAny(['nft']);
     }
 
+    function validCreatorConsentInvitation(invitationId, projectId, assetId, data) {
+      return invitationId.matches('^[0-9a-f]{64}$')
+        && data.keys().hasOnly([
+          'schemaVersion',
+          'invitationId',
+          'invitationDigest',
+          'projectSlug',
+          'assetId',
+          'draftRevisionHash',
+          'collaboratorName',
+          'collaboratorRole',
+          'collaboratorWallet',
+          'shareBps',
+          'chainId',
+          'expiresAt',
+          'termsHash',
+          'nonce',
+          'status',
+          'revokedAt',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.schemaVersion == 1
+        && data.invitationId == invitationId
+        && data.invitationDigest == '0x' + invitationId
+        && data.projectSlug == projectId
+        && data.assetId == assetId
+        && data.draftRevisionHash.matches('^0x[0-9a-f]{64}$')
+        && data.collaboratorName is string
+        && data.collaboratorName.size() >= 2 && data.collaboratorName.size() <= 60
+        && data.collaboratorRole in ['artist', 'producer', 'songwriter', 'performer', 'developer', 'label', 'publisher', 'other']
+        && data.collaboratorWallet.matches('^0x[0-9a-f]{40}$')
+        && data.shareBps is int && data.shareBps >= 0 && data.shareBps <= 10000
+        && data.chainId is int && data.chainId > 0
+        && data.expiresAt is int && data.expiresAt > 0
+        && data.termsHash.matches('^0x[0-9a-f]{64}$')
+        && data.nonce.matches('^0x[0-9a-f]{64}$')
+        && data.status in ['pending', 'revoked']
+        && ((data.status == 'pending' && data.revokedAt == null)
+          || (data.status == 'revoked' && data.revokedAt is timestamp))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function validCreatorConsentPublicStatus(invitationId, data) {
+      return invitationId.matches('^[0-9a-f]{64}$')
+        && data.keys().hasOnly([
+          'schemaVersion',
+          'invitationId',
+          'invitationDigest',
+          'projectSlug',
+          'assetId',
+          'status',
+          'expiresAt',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.schemaVersion == 1
+        && data.invitationId == invitationId
+        && data.invitationDigest == '0x' + invitationId
+        && data.projectSlug.matches('^[a-z0-9]+(?:-[a-z0-9]+)*$')
+        && data.assetId.matches('^[A-Za-z0-9]{20}$')
+        && data.status in ['pending', 'revoked']
+        && data.expiresAt is int && data.expiresAt > 0
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
     function validAdminModuleReview() {
       let changed = request.resource.data.diff(resource.data).affectedKeys();
       let note = request.resource.data.get('reviewNote', '');
@@ -848,7 +916,50 @@ service cloud.firestore {
           && request.resource.data.updatedAt == request.time;
         allow delete: if ownsProjectAssignment(projectId)
           && resource.data.status == 'draft';
+
+        match /consentInvitations/{invitationId} {
+          allow read: if isRmtAdmin() || ownsProjectAssignment(projectId);
+          allow create: if ownsProjectAssignment(projectId)
+            && validCreatorConsentInvitation(invitationId, projectId, assetId, request.resource.data)
+            && request.resource.data.status == 'pending'
+            && request.resource.data.revokedAt == null
+            && request.resource.data.draftRevisionHash
+              == get(/databases/$(database)/documents/projectAssignments/$(projectId)/assets/$(assetId)).data.draftRevisionHash
+            && getAfter(/databases/$(database)/documents/creatorConsentStatuses/$(invitationId)).data.status == 'pending'
+            && getAfter(/databases/$(database)/documents/creatorConsentStatuses/$(invitationId)).data.projectSlug == projectId
+            && getAfter(/databases/$(database)/documents/creatorConsentStatuses/$(invitationId)).data.assetId == assetId
+            && request.resource.data.createdAt == request.time
+            && request.resource.data.updatedAt == request.time;
+          allow update: if ownsProjectAssignment(projectId)
+            && validCreatorConsentInvitation(invitationId, projectId, assetId, request.resource.data)
+            && resource.data.status == 'pending'
+            && request.resource.data.status == 'revoked'
+            && request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['status', 'revokedAt', 'updatedAt'])
+            && request.resource.data.revokedAt == request.time
+            && getAfter(/databases/$(database)/documents/creatorConsentStatuses/$(invitationId)).data.status == 'revoked'
+            && request.resource.data.updatedAt == request.time;
+          allow delete: if false;
+        }
       }
+    }
+
+    match /creatorConsentStatuses/{invitationId} {
+      allow read: if true;
+      allow create: if validCreatorConsentPublicStatus(invitationId, request.resource.data)
+        && ownsProjectAssignment(request.resource.data.projectSlug)
+        && request.resource.data.status == 'pending'
+        && getAfter(/databases/$(database)/documents/projectAssignments/$(request.resource.data.projectSlug)/assets/$(request.resource.data.assetId)/consentInvitations/$(invitationId)).data.status == 'pending'
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+      allow update: if validCreatorConsentPublicStatus(invitationId, request.resource.data)
+        && ownsProjectAssignment(request.resource.data.projectSlug)
+        && resource.data.status == 'pending'
+        && request.resource.data.status == 'revoked'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt'])
+        && getAfter(/databases/$(database)/documents/projectAssignments/$(request.resource.data.projectSlug)/assets/$(request.resource.data.assetId)/consentInvitations/$(invitationId)).data.status == 'revoked'
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if false;
     }
 
     match /{path=**}/moduleRequests/{module} {

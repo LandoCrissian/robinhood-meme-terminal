@@ -69,13 +69,14 @@ RMT should not convert individual comments into universal claims. It should use 
 - Proposed collaborators and revenue splits.
 - Deterministic revision hashes.
 - Versioned EIP-712 collaborator invitation envelope.
+- Private, revision-bound collaborator invitation records, public revocation-only markers, wallet acceptance/rejection signing, and local signature verification.
 - Secondary royalty preference with an explicit non-enforcement warning.
 - Non-executable marketplace fee and RMT flywheel policy model.
 - Private release-passport readiness evaluation.
 
 ### Required before marketplace contracts
 
-- Collaborator invitation delivery, wallet acceptance, revocation and expiration state machine.
+- Trusted, idempotent server receipts that convert valid unexpired wallet responses into final collaborator acceptance or rejection.
 - Frozen metadata manifest and media pinning verification.
 - Creator and collection identity review with appeals and report status.
 - Versioned economics policy selected for a release.

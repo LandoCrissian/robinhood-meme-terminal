@@ -27,6 +27,7 @@ import {
 } from "../lib/creator-assets-cloud";
 import { evaluateCreatorReleaseReadiness } from "../lib/creator-release-readiness";
 import type { ProjectAssignment } from "../lib/project-ownership";
+import { CreatorConsentLinkBuilder } from "./creator-consent-link-builder";
 import { CreatorImageField } from "./creator-media-upload";
 
 const TYPE_LABELS: Record<CreatorAssetType, string> = {
@@ -324,6 +325,15 @@ export function CreatorAssetStudio({
             </div>
             <button type="button" disabled={draft.collaborators.length >= 6} onClick={addCollaborator}>+ Add collaborator</button>
           </fieldset>
+
+          <CreatorConsentLinkBuilder
+            assetId={selectedId}
+            draft={draft}
+            draftRevisionHash={draftRevisionHash}
+            projectSlug={projectSlug}
+            savedRevisionHash={savedRevisionHash}
+            user={user}
+          />
 
           <fieldset className="creatorAssetSection">
             <legend>Proposed revenue split</legend>
