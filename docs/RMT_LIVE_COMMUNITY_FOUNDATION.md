@@ -70,6 +70,27 @@ Traffic measurements should include active sessions, concurrent sessions, messag
 
 ## Activation blockers
 
+Run the repository-only gate after every community change:
+
+```sh
+pnpm check:community-readiness -- --repository-only
+```
+
+Run the read-only live index and retention check against the intended Firebase
+project before activation:
+
+```sh
+pnpm check:community-readiness -- --project <firebase-project-id>
+```
+
+The live check prints configuration names and collection groups only. It never
+prints credential values and never deploys, enables, deletes, or mutates
+Firebase resources. A blocked result is an activation stop, not a warning.
+Anonymous Authentication, the exact active Firestore ruleset, and the
+controlled abuse/accessibility rehearsal remain explicit operator
+verifications because the Firebase CLI cannot prove them from the checked-in
+files alone.
+
 1. Enable Firebase Anonymous Authentication.
 2. Add a random production-only `COMMUNITY_IDENTITY_SECRET` of at least 32 characters.
 3. Deploy the reviewed Firestore rules and composite index.
