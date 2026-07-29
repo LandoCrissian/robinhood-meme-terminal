@@ -983,6 +983,18 @@ test("community records are publicly readable only when visible and remain serve
       lastSeenAt: Timestamp.now(),
       expiresAt: Timestamp.fromMillis(Date.now() + 240_000)
     });
+    await setDoc(doc(server, "communityReports", `${visibleId}--1234567890abcdef1234567890abcdef`), {
+      reportId: `${visibleId}--1234567890abcdef1234567890abcdef`,
+      roomId: "global",
+      messageId: visibleId,
+      status: "pending",
+      createdAt: Timestamp.now()
+    });
+    await setDoc(doc(server, "communityModerationAudit", "AaBbCcDdEeFfGgHhIiJj"), {
+      reportId: `${visibleId}--1234567890abcdef1234567890abcdef`,
+      action: "dismiss",
+      createdAt: Timestamp.now()
+    });
   });
 
   const visitor = testEnvironment.unauthenticatedContext().firestore();
@@ -1006,6 +1018,14 @@ test("community records are publicly readable only when visible and remain serve
   await assertFails(getDocs(collection(visitor, "communityPresence")));
   await assertFails(setDoc(doc(guest, "communityPresence", "1234567890abcdef1234567890abcdef"), {
     roomId: "global"
+  }));
+  await assertFails(getDocs(collection(visitor, "communityReports")));
+  await assertFails(setDoc(doc(guest, "communityReports", `${visibleId}--1234567890abcdef1234567890abcdef`), {
+    status: "pending"
+  }));
+  await assertFails(getDocs(collection(adminDb(), "communityModerationAudit")));
+  await assertFails(setDoc(doc(adminDb(), "communityModerationAudit", "ZyXwVuTsRqPoNmLkJiHg"), {
+    action: "hide"
   }));
   await assertFails(setDoc(doc(guest, "communityFeedback", "AaBbCcDdEeFfGgHhIiJj"), {
     status: "submitted"

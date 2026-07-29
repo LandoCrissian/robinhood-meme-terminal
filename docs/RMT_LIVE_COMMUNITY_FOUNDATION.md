@@ -22,6 +22,10 @@ All message creation is server mediated. Firestore permits public reads of visib
 - Recovery-phrase and private-key sharing prompts are blocked.
 - Message length is capped at 500 characters.
 - Raw community actor records are private and cannot be read or written by clients.
+- Every visible message can be reported using a bounded reason. Duplicate reports from the same identity are idempotent and self-reporting is rejected.
+- Reports, reviewer identifiers, restriction state, and moderation audit records are server-only.
+- The verified RMT administrator may dismiss a report, hide a message, or apply a one-hour or 24-hour posting restriction with a required review note.
+- Hiding a message removes it from public Firestore queries; moderation never changes wallets, profiles, token ranking, verification, or trading state.
 - Direct messages, media uploads, link previews, wallet tips, trading calls, and ranking influence are not part of this release.
 - Community engagement does not alter Runner ranking, token risk, or verification.
 
@@ -42,8 +46,7 @@ Traffic measurements should include active sessions, concurrent sessions, messag
 1. Enable Firebase Anonymous Authentication.
 2. Add a random production-only `COMMUNITY_IDENTITY_SECRET` of at least 32 characters.
 3. Deploy the reviewed Firestore rules and composite index.
-4. Build admin report, hide, restriction, and audit controls.
-5. Add durable distributed rate limiting before an open public campaign.
-6. Configure TTL cleanup for private presence records.
-7. Add retention, deletion, moderation, and acceptable-use terms.
-8. Run mobile and desktop accessibility and abuse testing.
+4. Add durable distributed rate limiting before an open public campaign.
+5. Configure TTL cleanup for private presence records.
+6. Add retention, deletion, moderation, and acceptable-use terms.
+7. Run mobile and desktop accessibility and abuse testing.

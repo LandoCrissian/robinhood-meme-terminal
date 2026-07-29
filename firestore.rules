@@ -674,6 +674,14 @@ service cloud.firestore {
       allow read, create, update, delete: if false;
     }
 
+    match /communityReports/{reportId} {
+      allow read, create, update, delete: if false;
+    }
+
+    match /communityModerationAudit/{auditId} {
+      allow read, create, update, delete: if false;
+    }
+
     match /communityFeedback/{feedbackId} {
       allow read: if resource.data.status in ['submitted', 'under_review', 'planned', 'shipped'];
       allow create, update, delete: if false;
