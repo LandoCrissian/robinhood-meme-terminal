@@ -15,6 +15,7 @@ import { subscribeToPublicProjects } from "../lib/creator-application-cloud";
 import { filterGameProjects, sortGameProjects } from "../lib/game-discovery";
 import { OFFICIAL_RMT_V6_TOKEN } from "../lib/project-page";
 import { ipfsToHttp } from "../lib/token-metadata";
+import { publicCommunityProjectPagesEnabled } from "../lib/public-project-visibility";
 
 const MODULE_LABELS: Record<RequestedProjectModule, string> = {
   token: "Token",
@@ -149,6 +150,7 @@ export function ApprovedProjectDirectory() {
   }, []);
 
   const visibleProjects = useMemo(() => projects
+    .filter(() => publicCommunityProjectPagesEnabled)
     .filter((project) => project.tokenAddress.toLowerCase() !== OFFICIAL_RMT_V6_TOKEN.toLowerCase())
     .sort((left, right) => publishedTime(right.publishedAt) - publishedTime(left.publishedAt)
       || left.name.localeCompare(right.name)), [projects]);
@@ -160,8 +162,8 @@ export function ApprovedProjectDirectory() {
       <header className="approvedDirectoryHeader">
         <div>
           <p className="eyebrow">RMT PROJECT DIRECTORY</p>
-          <h2 id="approved-directory-title">Projects building with RMT</h2>
-          <p>Official RMT infrastructure and review-approved community pages. Review approval is identity and page access—not a contract audit or endorsement.</p>
+          <h2 id="approved-directory-title">The RMT ecosystem</h2>
+          <p>Official RMT infrastructure is live. Community project publishing returns with the reviewed V7 creator system.</p>
         </div>
         <span>{1 + visibleProjects.length} PROJECT{visibleProjects.length === 0 ? "" : "S"}</span>
       </header>
@@ -205,14 +207,13 @@ export function ApprovedProjectDirectory() {
           </div>
         )}
         {status === "live" && visibleProjects.length === 0 && (
-          <Link className="approvedDirectoryCard directoryPlaceholder" href="/profile">
-            <div className="approvedDirectoryIdentity"><span>CREATOR ACCESS</span><h3>Build your project home on RMT</h3><p>Projects, artists, musicians and communities can apply for a reviewed page from their private profile.</p></div>
-            <strong>Apply through Profile →</strong>
-          </Link>
+          <div className="approvedDirectoryCard directoryPlaceholder">
+            <div className="approvedDirectoryIdentity"><span>V7 RELEASE GATE</span><h3>Community publishing is being prepared</h3><p>Applications and historical records remain preserved privately. Only official RMT is public until V7 opens.</p></div>
+          </div>
         )}
       </div>
     </section>
-    <GameDirectorySection projects={gamingProjects} />
+    {publicCommunityProjectPagesEnabled && <GameDirectorySection projects={gamingProjects} />}
     </>
   );
 }
