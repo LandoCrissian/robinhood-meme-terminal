@@ -9,6 +9,11 @@ import {
 } from "./project-page";
 import { parsePublicProject } from "./creator-application";
 import { filterGameProjects, sortGameProjects } from "./game-discovery";
+import {
+  publicCommunityProjectPagesEnabled,
+  publicRmtNativeLaunches,
+  publicRmtProjectVisibility
+} from "./public-project-visibility";
 
 const appUrl = "https://www.rmtlaunch.fun";
 
@@ -56,7 +61,9 @@ assert.match(exploreSource, /<FreshLaunchFeed \/>/);
 assert.match(exploreSource, /<ApprovedProjectDirectory \/>/);
 assert.doesNotMatch(exploreSource, /<ExternalMarketFeed \/>/);
 assert.match(approvedDirectorySource, /OFFICIAL RMT · FACTORY VERIFIED/);
-assert.match(approvedDirectorySource, /Review approval is identity and page access—not a contract audit or endorsement/);
+assert.match(approvedDirectorySource, /Only official RMT is public until V7 opens/);
+assert.match(approvedDirectorySource, /publicCommunityProjectPagesEnabled/);
+assert.match(approvedDirectorySource, /publicCommunityProjectPagesEnabled && <GameDirectorySection/);
 assert.match(approvedDirectorySource, /RMT GAMES/);
 assert.match(approvedDirectorySource, /A token is optional/);
 assert.match(approvedDirectorySource, /Play or view/);
@@ -64,6 +71,15 @@ assert.match(approvedDirectorySource, /project\.gamePlatforms/);
 assert.match(approvedDirectorySource, /Filter approved games/);
 assert.match(approvedDirectorySource, /Reset filters/);
 assert.match(exploreSource, /Projects, games and verified markets/);
+assert.equal(publicRmtProjectVisibility, "official-only");
+assert.equal(publicCommunityProjectPagesEnabled, false);
+assert.deepEqual(publicRmtNativeLaunches([
+  { token: OFFICIAL_RMT_V6_TOKEN },
+  { token: "0x0000000000000000000000000000000000000001" }
+] as Parameters<typeof publicRmtNativeLaunches>[0]).map((launch) => launch.token), [OFFICIAL_RMT_V6_TOKEN]);
+const freshLaunchFeedSource = readFileSync(new URL("../app/fresh-launch-feed.tsx", import.meta.url), "utf8");
+assert.match(freshLaunchFeedSource, /publicRmtNativeLaunches\(result\.launches\)/);
+assert.match(freshLaunchFeedSource, /<b>V7<\/b> RELEASE GATE/);
 
 const discoveryGames = [
   {
@@ -115,7 +131,12 @@ const tokenPageSource = readFileSync(new URL("../app/token/[address]/page.tsx", 
 assert.match(projectPageSource, /ProjectModuleGrid/);
 assert.match(projectPageSource, /OFFICIAL RMT · PROJECT VERIFIED/);
 assert.match(projectPageSource, /MarketPanel/);
+assert.match(projectPageSource, /RMT-NATIVE TOOLKIT/);
+assert.match(projectPageSource, /Creator risk/);
+assert.match(projectPageSource, /initialDetail=\{initialDetail\}/);
 const marketPanelSource = readFileSync(new URL("../app/market-panel.tsx", import.meta.url), "utf8");
+assert.match(marketPanelSource, /id="market-chart"/);
+assert.match(marketPanelSource, /id="market-evidence"/);
 assert.match(marketPanelSource, /Native market confidence/);
 assert.match(marketPanelSource, /Factory verified/);
 assert.match(marketPanelSource, /No mint, tax or blacklist/);
@@ -148,6 +169,7 @@ assert.match(projectRouteSource, /isAddress/);
 assert.match(projectRouteSource, /ApprovedProjectPage/);
 assert.match(approvedProjectPageSource, /RMT PAGE · REVIEW APPROVED/);
 assert.match(approvedProjectPageSource, /No module is activated by page approval/);
+assert.match(approvedProjectPageSource, /Eligible for assigned-creator review · inactive by default/);
 assert.match(approvedProjectPageSource, /ProjectCreatorControls/);
 assert.match(tokenPageSource, /ProjectDetailPage/);
 

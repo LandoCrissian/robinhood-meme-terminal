@@ -40,6 +40,7 @@ import {
   parseGameUpdate,
   validateGameUpdate
 } from "./game-updates";
+import { validateCreatorImage } from "./creator-media";
 
 const vercelConfig = JSON.parse(readFileSync(new URL("../vercel.json", import.meta.url), "utf8")) as {
   headers?: Array<{
@@ -324,13 +325,25 @@ assert.equal(parseGameUpdate("alpha", {
 })?.type, "release");
 
 const creatorControlSource = readFileSync(new URL("../app/project-creator-controls.tsx", import.meta.url), "utf8");
+const creatorApplicationSource = readFileSync(new URL("../app/creator-application-panel.tsx", import.meta.url), "utf8");
+const creatorMediaSource = readFileSync(new URL("../app/creator-media-upload.tsx", import.meta.url), "utf8");
+assert.match(creatorApplicationSource, /RMT CREATOR STUDIO/);
+assert.match(creatorApplicationSource, /Open Creator Studio/);
+assert.match(creatorApplicationSource, /does not deploy a contract, charge a fee or activate a marketplace automatically/);
 assert.match(creatorControlSource, /Save public identity/);
-assert.match(creatorControlSource, /Logo image/);
-assert.match(creatorControlSource, /Banner image/);
+assert.match(creatorControlSource, /id="creator-studio"/);
+assert.match(creatorControlSource, /RMT CREATOR STUDIO/);
+assert.match(creatorControlSource, /label="Project logo"/);
+assert.match(creatorControlSource, /label="Project banner"/);
 assert.match(creatorControlSource, /Playable game or store link/);
-assert.match(creatorControlSource, /Screenshot gallery/);
 assert.match(creatorControlSource, /Play modes/);
 assert.match(creatorControlSource, /Publish development update/);
+assert.match(creatorControlSource, /CreatorImageField/);
+assert.match(creatorControlSource, /CreatorGalleryField/);
+assert.match(creatorMediaSource, /uploads are public and may be permanent/);
+assert.equal(validateCreatorImage({ type: "image/png", size: 5_000_000 }), null);
+assert.match(validateCreatorImage({ type: "image/gif", size: 1_000 }) ?? "", /JPG, PNG, or WebP/);
+assert.match(validateCreatorImage({ type: "image/webp", size: 5_000_001 }) ?? "", /5 MB/);
 const approvedProjectSource = readFileSync(new URL("../app/project/[address]/approved-project-page.tsx", import.meta.url), "utf8");
 assert.match(approvedProjectSource, /GAME CREATOR SHOWCASE/);
 assert.match(approvedProjectSource, /GAMEPLAY GALLERY/);

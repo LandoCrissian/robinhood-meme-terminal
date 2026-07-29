@@ -77,6 +77,13 @@ dd{margin:0;text-align:right;overflow-wrap:anywhere}
 .creatorIdentityFields input,.creatorIdentityFields textarea,.creatorIdentityFields select{width:100%;min-width:0;padding:9px 10px;border:1px solid #2b3a30;border-radius:9px;background:#050806;color:#e5ece7;font:inherit;outline:0}
 .creatorIdentityFields textarea{min-height:82px;resize:vertical}.creatorIdentityWide{grid-column:1/-1}
 .creatorIdentityFields label>small{color:#657269;font-size:.53rem;font-weight:650;line-height:1.45}
+.creatorMediaField{display:flex;min-width:0;height:100%;flex-direction:column;padding:11px;border:1px solid #2b3a30;border-radius:11px;background:#060a07}
+.creatorMediaHeading{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.creatorMediaHeading>div{display:flex;min-width:0;flex-direction:column;gap:3px}.creatorMediaHeading strong{color:#dfe7e1;font-size:.66rem}.creatorMediaHeading span{color:#718077;font-size:.55rem;line-height:1.4}.creatorMediaHeading>button{flex:0 0 auto;border:0;background:transparent;color:#e48585;font-size:.55rem;font-weight:900;cursor:pointer}.creatorMediaHeading>b{color:#70e982;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.59rem}
+.creatorMediaField>img{width:100%;height:118px;margin-top:9px;border:1px solid #2b3930;border-radius:8px;background:#030604;object-fit:cover}.creatorMediaField.square>img{width:112px;height:112px}.creatorMediaField.banner>img{height:160px;aspect-ratio:3/1}
+.creatorMediaActions{display:flex;align-items:center;gap:8px;margin-top:9px}.creatorMediaActions>label{display:flex!important;min-height:36px!important;align-items:center;justify-content:center;padding:0 11px;border:1px solid #4c7455;border-radius:8px;background:#102017;color:#79ec89!important;font-size:.58rem!important;font-weight:950!important;cursor:pointer}.creatorMediaActions>label.disabled{opacity:.55;cursor:wait}.creatorMediaActions>input{position:absolute;width:1px!important;height:1px!important;overflow:hidden;padding:0!important;border:0!important;clip:rect(0 0 0 0);white-space:nowrap}
+.creatorMediaUrl{margin-top:9px}.creatorMediaUrl input,.creatorMediaUrl textarea{min-height:38px!important;padding:8px 9px!important;font-family:ui-monospace,SFMono-Regular,Menlo,monospace!important;font-size:.56rem!important}.creatorMediaUrl textarea{min-height:76px!important}
+.creatorMediaField>small{margin-top:7px;color:#5f6c64;font-size:.51rem;line-height:1.4}.creatorMediaField>p{margin:7px 0 0;color:#87e794;font-size:.55rem;line-height:1.4}
+.creatorGalleryField{height:auto}.creatorGalleryPreview{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:9px}.creatorGalleryPreview>div{position:relative;overflow:hidden;aspect-ratio:16/9;border:1px solid #2b3930;border-radius:8px;background:#030604}.creatorGalleryPreview img{width:100%;height:100%;object-fit:cover}.creatorGalleryPreview button{position:absolute;top:5px;right:5px;display:grid;width:26px;height:26px;place-items:center;border:1px solid rgba(255,255,255,.2);border-radius:50%;background:rgba(3,6,4,.82);color:#fff;font-size:.8rem;cursor:pointer}
 .creatorGamePlatforms{margin:0;padding:0;border:0}.creatorGamePlatforms legend{margin-bottom:7px;color:#87938b;font-size:.58rem;font-weight:850}
 .creatorGamePlatforms>div{display:flex;flex-wrap:wrap;gap:6px}
 .creatorGamePlatforms label{display:flex;min-height:34px;align-items:center;flex-direction:row;gap:6px;padding:0 9px;border:1px solid #2c3b31;border-radius:9px;background:#090e0b;color:#829087}
@@ -140,6 +147,8 @@ dd{margin:0;text-align:right;overflow-wrap:anywhere}
  .creatorControlPrompt,.creatorControlPanel>header{align-items:flex-start;flex-direction:column}
  .creatorIdentityHeading,.creatorCapabilityHeading{align-items:flex-start;flex-direction:column}
  .creatorIdentityFields{grid-template-columns:1fr}.creatorIdentityWide{grid-column:auto}
+ .creatorMediaField.banner>img{height:120px}
+ .creatorGalleryPreview{grid-template-columns:repeat(2,minmax(0,1fr))}
  .creatorIdentityEditor>button,.creatorGameUpdateEditor>button{width:100%}
  .creatorGameUpdateFields{grid-template-columns:1fr}
  .creatorControlGrid{grid-template-columns:1fr}

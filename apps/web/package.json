@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "test:firebase-rules:unit": "tsx --test lib/firebase-rules.test.ts",
-    "test:media-guard": "tsx lib/server/media-request-guard-smoke.ts",
+    "test:media-guard": "tsx lib/server/media-request-guard-smoke.ts && tsx lib/server/creator-media-route-smoke.ts",
     "test:reliability": "tsx lib/server/cache-headers-smoke.ts",
     "test:profile": "tsx lib/profile-smoke.ts",
     "test:watchlist-alerts": "tsx lib/watchlist-alerts-smoke.ts",

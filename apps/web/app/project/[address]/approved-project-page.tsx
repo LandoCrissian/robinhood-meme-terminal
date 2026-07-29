@@ -178,7 +178,7 @@ export function ApprovedProjectPage({ slug }: { slug: string }) {
         <div className="projectModuleGrid">
           {PROJECT_MODULES.map((module) => {
             const available = project.availableModules.includes(module);
-            return <article className={`projectModuleCard ${available ? "available" : "planned"}`} key={module}><div><span>{available ? "AVAILABLE" : "NOT REQUESTED"}</span><strong>{MODULE_COPY[module].label}</strong></div><p>{MODULE_COPY[module].description}</p><small>{available ? "Creator activation not live yet" : "Can be requested in a later review"}</small></article>;
+            return <article className={`projectModuleCard ${available ? "available" : "planned"}`} key={module}><div><span>{available ? "AVAILABLE" : "NOT REQUESTED"}</span><strong>{MODULE_COPY[module].label}</strong></div><p>{MODULE_COPY[module].description}</p><small>{available ? "Eligible for assigned-creator review · inactive by default" : "Can be requested in a later review"}</small></article>;
           })}
         </div>
         <p className="projectControlBoundary">No module is activated by page approval. Future activation will require the assigned creator, a disclosed one-time fee, and an explicit transaction where applicable.</p>

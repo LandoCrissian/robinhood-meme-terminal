@@ -36,6 +36,7 @@ import type {
   ModuleActivationRequest,
   ProjectAssignment
 } from "../lib/project-ownership";
+import { CreatorGalleryField, CreatorImageField } from "./creator-media-upload";
 import { useProfile } from "./profile-provider";
 
 const MODULE_COPY: Record<RequestedProjectModule, { label: string; description: string }> = {
@@ -249,9 +250,9 @@ export function ProjectCreatorControls({ project }: { project: PublicProjectReco
   if (!ownershipChecked || !assignment) return null;
 
   return (
-    <section className="panel creatorControlPanel" aria-labelledby="creator-control-title">
+    <section className="panel creatorControlPanel" id="creator-studio" aria-labelledby="creator-control-title">
       <header>
-        <div><p className="eyebrow">PRIVATE CREATOR WORKSPACE</p><h2 id="creator-control-title">Manage project identity and capabilities</h2><p>This profile is assigned to the project. Presentation updates are public; module requests begin a separate RMT review and do not deploy contracts, charge fees or grant wallet authority.</p></div>
+        <div><p className="eyebrow">RMT CREATOR STUDIO</p><h2 id="creator-control-title">Manage project identity and capabilities</h2><p>This profile is assigned to the project. Presentation updates are public; module requests begin a separate RMT review and do not deploy contracts, charge fees or grant wallet authority.</p></div>
         <span>OWNER VERIFIED</span>
       </header>
       <form className="creatorIdentityEditor" onSubmit={saveIdentity}>
@@ -261,8 +262,8 @@ export function ProjectCreatorControls({ project }: { project: PublicProjectReco
           <label>Website<input maxLength={256} inputMode="url" placeholder="https://" value={identity.website} onChange={(event) => setIdentity((current) => ({ ...current, website: event.target.value }))} /></label>
           <label className="creatorIdentityWide">Description<textarea maxLength={600} value={identity.summary} onChange={(event) => setIdentity((current) => ({ ...current, summary: event.target.value }))} /></label>
           <label>X profile<input maxLength={256} inputMode="url" placeholder="https://x.com/" value={identity.xProfile} onChange={(event) => setIdentity((current) => ({ ...current, xProfile: event.target.value }))} /></label>
-          <label>Logo image<input maxLength={512} inputMode="url" placeholder="https:// or ipfs://" value={identity.logoUri} onChange={(event) => setIdentity((current) => ({ ...current, logoUri: event.target.value }))} /></label>
-          <label className="creatorIdentityWide">Banner image<input maxLength={512} inputMode="url" placeholder="https:// or ipfs://" value={identity.bannerUri} onChange={(event) => setIdentity((current) => ({ ...current, bannerUri: event.target.value }))} /></label>
+          <CreatorImageField label="Project logo" description="Square identity used in Explore, follows and your public page." shape="square" projectSlug={slug} user={user} value={identity.logoUri} onChange={(logoUri) => setIdentity((current) => ({ ...current, logoUri }))} optional />
+          <div className="creatorIdentityWide"><CreatorImageField label="Project banner" description="Wide artwork shown above the approved public project page." shape="banner" projectSlug={slug} user={user} value={identity.bannerUri} onChange={(bannerUri) => setIdentity((current) => ({ ...current, bannerUri }))} optional /></div>
           {isGaming && (
             <>
               <label>Game status<select value={identity.gameStatus || "development"} onChange={(event) => setIdentity((current) => ({ ...current, gameStatus: event.target.value as GameStatus }))}>{GAME_STATUSES.map((status) => <option value={status} key={status}>{status.replace("_", " ")}</option>)}</select></label>
@@ -272,7 +273,7 @@ export function ProjectCreatorControls({ project }: { project: PublicProjectReco
               <label className="creatorIdentityWide">Trailer or gameplay link<input maxLength={256} inputMode="url" placeholder="https://" value={identity.trailerUrl} onChange={(event) => setIdentity((current) => ({ ...current, trailerUrl: event.target.value }))} /></label>
               <fieldset className="creatorGamePlatforms creatorIdentityWide"><legend>Available platforms</legend><div>{GAME_PLATFORMS.map((platform) => <label className={identity.gamePlatforms.includes(platform) ? "selected" : ""} key={platform}><input type="checkbox" checked={identity.gamePlatforms.includes(platform)} onChange={() => toggleGamePlatform(platform)} /><span>{PLATFORM_LABELS[platform]}</span></label>)}</div></fieldset>
               <fieldset className="creatorGamePlatforms creatorIdentityWide"><legend>Play modes</legend><div>{GAME_MODES.map((mode) => <label className={identity.gameModes.includes(mode) ? "selected" : ""} key={mode}><input type="checkbox" checked={identity.gameModes.includes(mode)} onChange={() => toggleGameMode(mode)} /><span>{MODE_LABELS[mode]}</span></label>)}</div></fieldset>
-              <label className="creatorIdentityWide">Screenshot gallery<textarea maxLength={3077} placeholder={"One HTTPS or IPFS image URL per line\nUp to 6 images"} value={identity.gameMediaUris.join("\n")} onChange={(event) => setIdentity((current) => ({ ...current, gameMediaUris: event.target.value.split(/\r?\n/).slice(0, 7) }))} /><small>Up to six JPG, PNG, WebP or GIF images. SVG files are not accepted.</small></label>
+              <div className="creatorIdentityWide"><CreatorGalleryField projectSlug={slug} user={user} values={identity.gameMediaUris} onChange={(gameMediaUris) => setIdentity((current) => ({ ...current, gameMediaUris }))} /></div>
             </>
           )}
         </div>
@@ -290,10 +291,10 @@ export function ProjectCreatorControls({ project }: { project: PublicProjectReco
             <label className="creatorIdentityWide">Title<input maxLength={80} placeholder="What changed?" value={gameUpdate.title} onChange={(event) => setGameUpdate((current) => ({ ...current, title: event.target.value }))} /></label>
             <label className="creatorIdentityWide">Details<textarea maxLength={600} placeholder="Explain the milestone, playtest or release in plain language." value={gameUpdate.body} onChange={(event) => setGameUpdate((current) => ({ ...current, body: event.target.value }))} /></label>
             <label>Update link<input maxLength={256} inputMode="url" placeholder="Optional · https://" value={gameUpdate.link} onChange={(event) => setGameUpdate((current) => ({ ...current, link: event.target.value }))} /></label>
-            <label>Artwork or screenshot<input maxLength={512} inputMode="url" placeholder="Optional · https:// or ipfs://" value={gameUpdate.imageUri} onChange={(event) => setGameUpdate((current) => ({ ...current, imageUri: event.target.value }))} /></label>
+            <CreatorImageField label="Update artwork" description="Optional screenshot or artwork shown with this public update." projectSlug={slug} user={user} value={gameUpdate.imageUri} onChange={(imageUri) => setGameUpdate((current) => ({ ...current, imageUri }))} optional />
           </div>
           <button type="submit" disabled={publishingUpdate}>{publishingUpdate ? "Publishing update…" : "Publish development update"}</button>
-          <p>Updates become public immediately under the assigned creator identity. External links and files remain creator-supplied.</p>
+          <p>Updates become public immediately under the assigned creator identity. Uploaded media is public IPFS content and remains creator-supplied.</p>
           {updateMessage && <p className="creatorControlMessage" role="status">{updateMessage}</p>}
         </form>
       )}

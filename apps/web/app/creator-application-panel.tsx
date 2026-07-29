@@ -148,15 +148,33 @@ export function CreatorApplicationPanel() {
         <div className="creatorApplicationState"><strong>Sign in to apply</strong><p>Use the Google profile control above. Applications are private and never grant wallet or transaction access.</p></div>
       ) : loading ? (
         <div className="creatorApplicationState"><strong>Loading application status…</strong></div>
+      ) : application?.status === "approved" && application.projectSlug ? (
+        <div className="creatorStudioDashboard">
+          <header>
+            <div><p className="eyebrow">RMT CREATOR STUDIO</p><h3>{application.projectName}</h3><p>Your approved page, public identity editor, audience tools and module requests now live in one owner workspace.</p></div>
+            <span>PAGE LIVE</span>
+          </header>
+          <div className="creatorStudioPulse" aria-label="Creator Studio overview">
+            <div><small>PAGE</small><strong>APPROVED</strong><span>Public and discoverable</span></div>
+            <div><small>MODULE LANES</small><strong>{application.requestedModules.length}</strong><span>Review-gated capabilities</span></div>
+            <div><small>TOKEN</small><strong>{application.tokenAddress ? "LINKED" : "OPTIONAL"}</strong><span>{application.tokenAddress ? "Declared during review" : "No token required"}</span></div>
+          </div>
+          <div className="creatorStudioModules" aria-label="Approved project module lanes">
+            {application.requestedModules.map((module) => <span key={module}>{MODULE_LABELS[module]}</span>)}
+          </div>
+          <nav aria-label={`${application.projectName} creator actions`}>
+            <Link className="creatorStudioPrimary" href={`/project/${application.projectSlug}#creator-studio`}>Open Creator Studio →</Link>
+            <Link href={`/project/${application.projectSlug}`}>View public page</Link>
+          </nav>
+          <p className="creatorStudioBoundary">Page editing never grants wallet authority. Module review does not deploy a contract, charge a fee or activate a marketplace automatically.</p>
+        </div>
       ) : locked ? (
         <div className={`creatorApplicationState application-${application.status}`}>
           <div><span>{statusCopy(application)}</span><strong>{application.projectName}</strong></div>
           {application.reviewNote && <p>{application.reviewNote}</p>}
-          {application.status === "approved" && application.projectSlug
-            ? <Link href={`/project/${application.projectSlug}`}>Open public project page →</Link>
-            : <p>{application.status === "pending"
-                ? "Only you and the RMT review account can see this application."
-                : "This submission is closed. Contact RMT if material information has changed."}</p>}
+          <p>{application.status === "pending"
+              ? "Only you and the RMT review account can see this application."
+              : "This submission is closed. Contact RMT if material information has changed."}</p>
         </div>
       ) : (
         <form className="creatorApplicationForm" onSubmit={submit}>

@@ -190,10 +190,11 @@ type MarketPanelProps = {
   creator: Address;
   compact?: boolean;
   initialMode?: "buy" | "sell";
+  initialDetail?: "activity" | "risk";
   launchHint?: LaunchRecordHint;
 };
 
-export function MarketPanel({ tokenAddress, symbol, totalSupply, creator, compact = false, initialMode, launchHint }: MarketPanelProps) {
+export function MarketPanel({ tokenAddress, symbol, totalSupply, creator, compact = false, initialMode, initialDetail, launchHint }: MarketPanelProps) {
   const publicClient = usePublicClient({ chainId: activeChain.id });
   const { address: account, isConnected } = useAccount();
   const tradingTerms = useTradingTermsAcceptance();
@@ -235,6 +236,10 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply, creator, compac
     const requestedSide = new URLSearchParams(window.location.search).get("side");
     if (requestedSide === "buy" || requestedSide === "sell") setMode(requestedSide);
   }, [initialMode]);
+
+  useEffect(() => {
+    if (initialDetail) setMarketDetail(initialDetail);
+  }, [initialDetail]);
 
   useEffect(() => {
     let active = true;
@@ -653,7 +658,7 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply, creator, compac
       </section>}
       <div className="marketWorkspace">
         <div className="marketOverview">
-          {!compact && <PriceHistoryChart points={chartPoints} symbol={symbol} ethUsd={ethUsd} marketCapUsd={marketCapUsd} />}
+          {!compact && <div id="market-chart" className="marketChartAnchor"><PriceHistoryChart points={chartPoints} symbol={symbol} ethUsd={ethUsd} marketCapUsd={marketCapUsd} /></div>}
           {compact ? <div className="quickMarketSnapshot"><div><small>Price</small><strong>{formatUsd(tokenPriceUsd)}</strong></div><div><small>Market cap</small><strong>{formatUsd(marketCapUsd)}</strong></div><div><small>Graduation</small><strong>{Number(progress.data ?? 0n) / 100}%</strong></div></div> : <><div className="marketStats intelligenceStats"><div><small>Token price</small><strong>{formatUsd(tokenPriceUsd)}</strong><span className="usdSub">≈ {formatTokenEthPrice(priceWei)} ETH per token</span></div><div><small>Market cap</small><strong>{formatUsd(marketCapUsd)}</strong><span className="usdSub">{formatEth(marketCapWei, 6)} ETH fully diluted</span></div><div><small>Curve reserve</small><strong>{ethUsd ? formatUsd(Number(formatEther(reserve.data ?? 0n)) * ethUsd) : "USD unavailable"}</strong><span className="usdSub">{formatEth(reserve.data ?? 0n, 7)} ETH</span></div><div><small>Your position</small><strong>{Number(formatUnits(balance.data ?? 0n, 18)).toLocaleString(undefined, { maximumFractionDigits: 2 })} {symbol}</strong><span className="usdSub">≈ {formatUsd(positionValueUsd)} · {formatEth(positionValueWei, 7)} ETH</span></div></div>
           {isConnected && <div className="buyingPowerBar"><div><small>Robinhood Chain buying power</small><strong>{walletBalance.isLoading ? "Reading wallet…" : `${formatEth(walletBalance.data?.value ?? 0n, 7)} ETH`}</strong><span>≈ {formatUsd(walletValueUsd)} available before network fees</span></div><FundWalletButton variant="inline" label="Add ETH" /></div>}
           <div className="graduationCard">
@@ -706,7 +711,7 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply, creator, compac
         </aside>
       </div>
 
-      {!compact && <div className="marketDetailTabs" ref={marketDetailRef} role="tablist" aria-label="Market details"><button type="button" role="tab" aria-selected={marketDetail === "activity"} className={marketDetail === "activity" ? "active" : ""} onClick={() => setMarketDetail("activity")}>Activity</button><button type="button" role="tab" aria-selected={marketDetail === "risk"} className={marketDetail === "risk" ? "active" : ""} onClick={() => setMarketDetail("risk")}>Creator analytics</button></div>}
+      {!compact && <div className="marketDetailTabs" id="market-evidence" ref={marketDetailRef} role="tablist" aria-label="Market details"><button type="button" role="tab" aria-selected={marketDetail === "activity"} className={marketDetail === "activity" ? "active" : ""} onClick={() => setMarketDetail("activity")}>Activity</button><button type="button" role="tab" aria-selected={marketDetail === "risk"} className={marketDetail === "risk" ? "active" : ""} onClick={() => setMarketDetail("risk")}>Creator analytics</button></div>}
       {!compact && marketDetail === "activity" ? <div className="tradeHistory">
         <div className="historyHeader"><div><p className="eyebrow">ONCHAIN ACTIVITY</p><h3>Recent trades</h3></div><span>{recentTrades.length} shown</span></div>
         {recentTrades.length > 0 ? <div className="tradeList">{recentTrades.map((item) => { const effectiveEth = item.isBuy ? item.ethAmount : item.ethAmount - item.feeAmount; return <a key={`${item.transactionHash}-${item.logIndex}`} href={`${activeChain.blockExplorers.default.url}/tx/${item.transactionHash}`} target="_blank" rel="noreferrer" className="tradeRow"><span className={item.isBuy ? "tradeSide buy" : "tradeSide sell"}>{item.isBuy ? "BUY" : "SELL"}</span><span><strong>{Number(formatUnits(item.tokenAmount, 18)).toLocaleString(undefined, { maximumFractionDigits: 2 })} {symbol}</strong><small>{compactAddress(item.trader)}</small></span><span><strong>{formatEth(effectiveEth)} ETH</strong><small>Block {item.blockNumber.toString()}</small></span></a>; })}</div> : <div className="emptyTrades"><strong>No trades yet</strong><span>The first confirmed buy or sell will appear here automatically.</span></div>}

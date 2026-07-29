@@ -21,6 +21,7 @@ import {
 } from "../lib/rmt-runner-ranking";
 import { ipfsToHttp } from "../lib/token-metadata";
 import { MarketPanel } from "./market-panel";
+import { publicRmtNativeLaunches } from "../lib/public-project-visibility";
 
 const FIXED_SUPPLY = 1_000_000_000n * 10n ** 18n;
 const DATA_REFRESH_MS = 30_000;
@@ -274,19 +275,20 @@ export function FreshLaunchFeed() {
           throw new Error("error" in result && result.error ? result.error : "Launch data is temporarily unavailable.");
         }
 
+        const publicLaunches = publicRmtNativeLaunches(result.launches);
         const now = Date.now();
         hasConfirmedSnapshot.current = true;
-        setLaunches(result.launches);
+        setLaunches(publicLaunches);
         if (!rankInitialized.current || now >= nextRankRefresh.current) {
-          setRankingOrders(buildRmtRankingOrders(result.launches));
+          setRankingOrders(buildRmtRankingOrders(publicLaunches));
           rankInitialized.current = true;
           nextRankRefresh.current = now + RANK_REFRESH_MS;
           setRankingAnnouncement("RMT discovery rankings updated.");
         }
 
-        const launchCount = result.launches.length === 0
+        const launchCount = publicLaunches.length === 0
           ? isMainnetRelease ? "Factory connected. No mainnet launches yet." : "Factory connected. No testnet launches yet."
-          : result.launches.length + " verified factory launch" + (result.launches.length === 1 ? "" : "es") + ".";
+          : publicLaunches.length + " public RMT project" + (publicLaunches.length === 1 ? "" : "s") + ".";
         if (result.stale) {
           consecutiveFailures.current += 1;
           setStatus("stale");
@@ -418,7 +420,7 @@ export function FreshLaunchFeed() {
     <section className="feed panel rmtDiscovery" id="explore" aria-labelledby="rmt-discovery-title">
       <div className="sectionTitle feedHeading">
         <div>
-          <p className="eyebrow">LIVE RMT V6 DISCOVERY</p>
+          <p className="eyebrow">OFFICIAL RMT PROJECT</p>
           <h2 id="rmt-discovery-title">{viewCopy.title}</h2>
           <p className="sectionCopy">{viewCopy.description}</p>
         </div>
@@ -428,10 +430,10 @@ export function FreshLaunchFeed() {
       </div>
 
       <div className="terminalTape" aria-label="Terminal data controls">
-        <span><b>{launches.length}</b> VERIFIED LAUNCH{launches.length === 1 ? "" : "ES"}</span>
+        <span><b>{launches.length}</b> PUBLIC RMT PROJECT{launches.length === 1 ? "" : "S"}</span>
         <span><b>30S</b> CHAIN REFRESH</span>
         <span><b>60S</b> RANK WINDOW</span>
-        <span><b>V6</b> ORIGIN FILTER</span>
+        <span><b>V7</b> RELEASE GATE</span>
       </div>
 
       <div className="rmtControlDeck">
