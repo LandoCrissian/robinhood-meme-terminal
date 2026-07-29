@@ -8,7 +8,6 @@ export const TREASURY_ACCOUNTING_SCHEMA_VERSION = 1 as const;
 
 export const TREASURY_REVENUE_SOURCES = [
   "token_curve_protocol_fee",
-  "token_v4_protocol_fee",
   "creator_marketplace_platform_fee",
   "listing_or_advertising_revenue",
   "project_subscription",
@@ -28,6 +27,11 @@ export const TREASURY_ALLOCATION_CATEGORIES = [
 
 export type TreasuryRevenueSource = typeof TREASURY_REVENUE_SOURCES[number];
 export type TreasuryAllocationCategory = typeof TREASURY_ALLOCATION_CATEGORIES[number];
+export type TreasuryAccountingDomain =
+  | "v6_token_market"
+  | "creator_marketplace"
+  | "commercial_services"
+  | "ecosystem_funding";
 
 export type TreasuryAsset = {
   chainId: number;
@@ -62,6 +66,7 @@ export type TreasuryLedgerEntryInput = {
 
 export type TreasuryLedgerEntry = TreasuryLedgerEntryInput & {
   schemaVersion: typeof TREASURY_ACCOUNTING_SCHEMA_VERSION;
+  accountingDomain: TreasuryAccountingDomain;
   evidenceKey: Hex;
   entryHash: Hex;
   accountingMode: "evidence_only";
@@ -82,6 +87,7 @@ export type TreasuryAllocationProposal = {
   schemaVersion: typeof TREASURY_ACCOUNTING_SCHEMA_VERSION;
   proposalHash: Hex;
   policyHash: Hex;
+  accountingDomain: TreasuryAccountingDomain;
   title: string;
   rationale: string;
   asset: TreasuryAsset;
@@ -182,6 +188,23 @@ function canonicalDisclosure(value: string, minimum: number) {
   return disclosure;
 }
 
+export function treasuryAccountingDomain(source: TreasuryRevenueSource): TreasuryAccountingDomain {
+  switch (source) {
+    case "token_curve_protocol_fee":
+      return "v6_token_market";
+    case "creator_marketplace_platform_fee":
+      return "creator_marketplace";
+    case "listing_or_advertising_revenue":
+    case "project_subscription":
+    case "referral_revenue":
+      return "commercial_services";
+    case "sponsorship":
+    case "grant":
+    case "other_disclosed":
+      return "ecosystem_funding";
+  }
+}
+
 export function createTreasuryLedgerEntry(input: TreasuryLedgerEntryInput): TreasuryLedgerEntry {
   if (!TREASURY_REVENUE_SOURCES.includes(input.source)) throw new Error("Treasury revenue source is invalid.");
   const asset = canonicalAsset(input.asset);
@@ -195,7 +218,6 @@ export function createTreasuryLedgerEntry(input: TreasuryLedgerEntryInput): Trea
   if (
     (
       input.source === "token_curve_protocol_fee"
-      || input.source === "token_v4_protocol_fee"
       || input.source === "creator_marketplace_platform_fee"
     )
     && sourcePolicyHash === undefined
@@ -205,6 +227,7 @@ export function createTreasuryLedgerEntry(input: TreasuryLedgerEntryInput): Trea
   const payload = {
     schemaVersion: TREASURY_ACCOUNTING_SCHEMA_VERSION,
     source: input.source,
+    accountingDomain: treasuryAccountingDomain(input.source),
     asset,
     amountAtomic: canonicalAtomic(input.amountAtomic),
     evidence,
@@ -325,6 +348,7 @@ export function createTreasuryAllocationProposal(input: TreasuryAllocationInput)
   }
 
   const seen = new Set<string>();
+  let accountingDomain: TreasuryAccountingDomain | undefined;
   const reservations = input.reservations.map((reservation) => {
     const entryHash = canonicalHex(reservation.entryHash, 32);
     if (seen.has(entryHash)) throw new Error("A proposal cannot repeat a source entry.");
@@ -334,6 +358,10 @@ export function createTreasuryAllocationProposal(input: TreasuryAllocationInput)
     if (assetKey(entry.asset) !== assetKey(asset)) {
       throw new Error("Treasury proposals cannot combine different assets.");
     }
+    if (accountingDomain !== undefined && entry.accountingDomain !== accountingDomain) {
+      throw new Error("Treasury proposals cannot silently combine accounting domains.");
+    }
+    accountingDomain = entry.accountingDomain;
     const amount = BigInt(canonicalAtomic(reservation.amountAtomic));
     const alreadyReserved = reservedByEntry.get(entryHash) ?? 0n;
     if (amount + alreadyReserved > BigInt(entry.amountAtomic)) {
@@ -346,6 +374,7 @@ export function createTreasuryAllocationProposal(input: TreasuryAllocationInput)
   const payload = {
     schemaVersion: TREASURY_ACCOUNTING_SCHEMA_VERSION,
     policyHash: input.policy.policyHash,
+    accountingDomain: accountingDomain!,
     title,
     rationale,
     asset,

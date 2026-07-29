@@ -37,8 +37,8 @@ const curveEntry = createTreasuryLedgerEntry({
   disclosure: "Confirmed V6 curve protocol-fee receipt attributed only to RMT's protocol-owned share.",
   sourcePolicyHash
 });
-const v4Entry = createTreasuryLedgerEntry({
-  source: "token_v4_protocol_fee",
+const secondCurveEntry = createTreasuryLedgerEntry({
+  source: "token_curve_protocol_fee",
   asset: { chainId: 4_663, address: "native", symbol: "ETH", decimals: 18 },
   amountAtomic: "999",
   evidence: {
@@ -49,18 +49,17 @@ const v4Entry = createTreasuryLedgerEntry({
     blockNumber: "124"
   },
   receivedAt: "2026-07-28T12:01:00.000Z",
-  disclosure: "Confirmed V6 post-graduation protocol-fee receipt kept separate from curve receipts.",
+  disclosure: "Second confirmed V6 curve protocol-fee receipt used to test aggregation and reservations.",
   sourcePolicyHash
 });
 
-assert.equal(validateTreasuryLedger([curveEntry, v4Entry]), true);
-assert.deepEqual(summarizeTreasuryLedger([curveEntry, v4Entry]), [{
+assert.equal(validateTreasuryLedger([curveEntry, secondCurveEntry]), true);
+assert.equal(curveEntry.accountingDomain, "v6_token_market");
+assert.equal(secondCurveEntry.accountingDomain, "v6_token_market");
+assert.deepEqual(summarizeTreasuryLedger([curveEntry, secondCurveEntry]), [{
   asset: { chainId: 4_663, address: "native", symbol: "ETH", decimals: 18 },
   totalAmountAtomic: "2000",
-  sources: [
-    { source: "token_curve_protocol_fee", amountAtomic: "1001" },
-    { source: "token_v4_protocol_fee", amountAtomic: "999" }
-  ]
+  sources: [{ source: "token_curve_protocol_fee", amountAtomic: "2000" }]
 }]);
 
 assert.throws(() => validateTreasuryLedger([
@@ -87,16 +86,43 @@ const firstProposal = createTreasuryAllocationProposal({
   title: "Test ecosystem allocation",
   rationale: "Reserve a test-only portion of separately evidenced protocol receipts for policy allocation without creating transaction data or execution authority.",
   asset: curveEntry.asset,
-  ledger: [curveEntry, v4Entry],
+  ledger: [curveEntry, secondCurveEntry],
   reservations: [
     { entryHash: curveEntry.entryHash, amountAtomic: "501" },
-    { entryHash: v4Entry.entryHash, amountAtomic: "499" }
+    { entryHash: secondCurveEntry.entryHash, amountAtomic: "499" }
   ]
 });
 assert.equal(firstProposal.totalAmountAtomic, "1000");
 assert.deepEqual(firstProposal.allocations.map((line) => line.amountAtomic), ["300", "250", "200", "150", "100"]);
 assert.equal(firstProposal.transactionPayload, null);
 assert.equal(firstProposal.contractExecution, "disabled");
+assert.equal(firstProposal.accountingDomain, "v6_token_market");
+
+const marketplaceEntry = createTreasuryLedgerEntry({
+  source: "creator_marketplace_platform_fee",
+  asset: curveEntry.asset,
+  amountAtomic: "50",
+  evidence: {
+    kind: "offchain_receipt",
+    evidenceHash: "0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+    reference: "test-only-marketplace-receipt"
+  },
+  receivedAt: "2026-07-28T12:02:00.000Z",
+  disclosure: "Test-only marketplace receipt that must remain outside the V6 token-market accounting domain.",
+  sourcePolicyHash: policy.policyHash
+});
+assert.equal(marketplaceEntry.accountingDomain, "creator_marketplace");
+assert.throws(() => createTreasuryAllocationProposal({
+  policy,
+  title: "Mixed domain allocation",
+  rationale: "Attempt to combine V6 token-market revenue with marketplace revenue in one allocation draft must fail before governance preparation.",
+  asset: curveEntry.asset,
+  ledger: [curveEntry, marketplaceEntry],
+  reservations: [
+    { entryHash: curveEntry.entryHash, amountAtomic: "1" },
+    { entryHash: marketplaceEntry.entryHash, amountAtomic: "1" }
+  ]
+}), /cannot silently combine accounting domains/);
 
 assert.throws(() => createTreasuryAllocationProposal({
   policy: {
@@ -106,7 +132,7 @@ assert.throws(() => createTreasuryAllocationProposal({
   title: "Tampered policy allocation",
   rationale: "Attempt to use changed policy percentages while retaining the earlier fingerprint must fail before an accounting proposal can be prepared.",
   asset: curveEntry.asset,
-  ledger: [curveEntry, v4Entry],
+  ledger: [curveEntry, secondCurveEntry],
   reservations: [{ entryHash: curveEntry.entryHash, amountAtomic: "1" }]
 }), /fingerprint mismatch/);
 assert.throws(() => createTreasuryAllocationProposal({
@@ -114,7 +140,7 @@ assert.throws(() => createTreasuryAllocationProposal({
   title: "Conflicting allocation",
   rationale: "Attempt to reserve more than remains in the same immutable source evidence after accounting for a prior draft reservation.",
   asset: curveEntry.asset,
-  ledger: [curveEntry, v4Entry],
+  ledger: [curveEntry, secondCurveEntry],
   existingProposals: [firstProposal],
   reservations: [{ entryHash: curveEntry.entryHash, amountAtomic: "501" }]
 }), /exceeds the unreserved/);
@@ -123,7 +149,7 @@ assert.throws(() => createTreasuryAllocationProposal({
   title: "Unknown source allocation",
   rationale: "Attempt to reference a source that does not exist in the verified ledger and must therefore be rejected before proposal preparation.",
   asset: curveEntry.asset,
-  ledger: [curveEntry, v4Entry],
+  ledger: [curveEntry, secondCurveEntry],
   reservations: [{
     entryHash: "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
     amountAtomic: "1"

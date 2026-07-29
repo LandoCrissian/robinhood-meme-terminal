@@ -7,7 +7,7 @@ RMT V6 token markets route realized fees through the launch-specific 70/30 split
 - 70% to the current creator-share recipient;
 - 30% to the RMT V6 governance contract acting as protocol treasury.
 
-This applies to the disclosed bonding-curve fee and collected fees from the canonical permanently locked V4 position. The creator's 70% is not platform revenue and cannot be repurposed for advertising, listings, incentives, grants, buybacks, or operations.
+This allocation model admits only the confirmed protocol leg of the disclosed V6 bonding-curve fee. The creator's 70% is not platform revenue and cannot be repurposed for advertising, listings, incentives, grants, buybacks, or operations.
 
 ## Intended use of RMT's 30%
 
@@ -29,10 +29,12 @@ These are intended categories, not approved percentages or payment promises. “
 
 Token-market fees and future creator-marketplace fees are different revenue sources:
 
-1. Token-market fees use the immutable V6 70/30 creator/protocol split.
+1. Eligible V6 curve fees use the immutable 70/30 creator/protocol split.
 2. Creator-marketplace fees require their own approved policy, buyer disclosure, creator-net calculation, refund handling, and settlement contracts.
 
 Neither source may be double counted. Marketplace revenue cannot be described as token-market revenue, and the creator's token-market share cannot be presented as RMT treasury income.
+
+V6 curve revenue remains its own accounting domain, and allocation drafts cannot silently pool it with marketplace, commercial-service, sponsorship, or grant revenue. V4/post-graduation revenue is excluded from the V7 treasury and flywheel model. Existing immutable V6 contract capability remains historical infrastructure, not an eligible accounting source.
 
 ## Required before treasury execution
 

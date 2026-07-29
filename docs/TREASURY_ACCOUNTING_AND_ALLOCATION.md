@@ -18,9 +18,20 @@ Every ledger entry records:
 - the applicable source-policy hash where required;
 - deterministic evidence and entry fingerprints.
 
-Curve protocol fees, post-graduation V4 protocol fees, future marketplace fees, listings or advertising, subscriptions, referrals, sponsorships, grants, and other disclosed revenue remain separate. The same evidence key cannot be recorded twice under different labels.
+V6 curve protocol fees, marketplace fees, listings or advertising, subscriptions, referrals, sponsorships, grants, and other disclosed revenue remain separate. The same evidence key cannot be recorded twice under different labels.
 
 V6 token-fee entries require a source-policy hash and represent only the RMT-owned protocol receipt. The creator's 70% is not a treasury source and is never accepted as an allocation input.
+
+Revenue is also locked into one of four accounting domains:
+
+- `v6_token_market` for confirmed V6 curve protocol receipts only;
+- `creator_marketplace` for a future separately approved marketplace fee;
+- `commercial_services` for paid listings, advertising, subscriptions, and referrals;
+- `ecosystem_funding` for sponsorships, grants, and other disclosed funding.
+
+One allocation draft cannot combine domains. V6 therefore remains independently reportable even when another RMT product receives the same asset. A future proposal to use multiple domains for one program must present separate source allocations and governance evidence rather than hiding them in one pooled number.
+
+V4 and post-graduation fees are excluded from this accounting model and the V7 flywheel roadmap. Existing immutable V6 contract capability remains part of the historical protocol record, but it is not an eligible revenue source or future dependency here.
 
 ## Allocation drafts
 
@@ -56,10 +67,10 @@ Project support likewise requires published criteria, conflict disclosures, reci
 
 ## Next production blockers
 
-- Reconstruct confirmed V6 splitter distributions into source-specific receipt records. The indexer already stores `FeeReceived`, `TokenFeeReceived`, direct-payment, and deferred-payment events, but ingestion must validate their order and recompute recipient-scoped rounding carry.
+- Reconstruct confirmed V6 curve splitter distributions into source-specific receipt records. Stored event capability is not evidence that a fee has occurred.
 - Count only the protocol leg of each 70/30 distribution. If delayed governance redirects the creator's future 70% to the treasury address, the creator and protocol legs can share one recipient; address matching alone would overstate protocol revenue.
 - Treat `PaymentDeferred` and `TokenPaymentDeferred` as receipt ownership outcomes, while later deferred claims are settlement events—not new revenue.
-- Distinguish native curve receipts by the bound market payer and post-graduation receipts by the bound adapter payer. Launched-token fees originate only from the adapter.
+- Accept only native curve receipts from the bound V6 market payer. Adapter and launched-token fee events are outside this V7 treasury-accounting path.
 - Reconcile indexed receipts against actual treasury asset balances.
 - Define how unsolicited transfers, refunds, unsupported assets, and pricing are reported.
 - Approve exact allocation percentages and program rules.
