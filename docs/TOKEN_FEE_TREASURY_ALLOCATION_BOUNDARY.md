@@ -23,6 +23,8 @@ These are intended categories, not approved percentages or payment promises. “
 
 `apps/web/lib/token-fee-economics.ts` fixes the source split at 7,000/3,000 basis points and defines a non-executable allocation-policy model for the protocol-owned 30%. Any future allocation must total 100% of that protocol share, carry a versioned fingerprint, and remain subject to V6 delayed governance.
 
+`apps/web/lib/treasury-accounting.ts` adds source-separated evidence records and non-executable allocation drafts. It rejects duplicate evidence, unknown receipts, cross-asset aggregation, and over-reservation. See `docs/TREASURY_ACCOUNTING_AND_ALLOCATION.md`.
+
 ## Separate marketplace economics
 
 Token-market fees and future creator-marketplace fees are different revenue sources:
