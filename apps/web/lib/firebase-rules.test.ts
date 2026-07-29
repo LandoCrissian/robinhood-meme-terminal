@@ -185,6 +185,7 @@ function creatorAsset(overrides: Record<string, unknown> = {}) {
     thirdPartyRightsConfirmed: false,
     license: "all_rights_reserved",
     licenseUri: "",
+    secondaryRoyaltyBps: 500,
     editionMode: "limited",
     editionSupply: 100,
     musicReleaseType: "single",
@@ -1123,6 +1124,14 @@ test("asset drafts fail closed on rights, consent, edition, and split violations
   await assertFails(setDoc(reference("ffffffffffffffffffff"), creatorAsset({
     assetId: "ffffffffffffffffffff",
     status: "published"
+  })));
+  await assertFails(setDoc(reference("royaltyabovemaximum1"), creatorAsset({
+    assetId: "royaltyabovemaximum1",
+    secondaryRoyaltyBps: 1001
+  })));
+  await assertFails(setDoc(reference("royaltybelowminimum1"), creatorAsset({
+    assetId: "royaltybelowminimum1",
+    secondaryRoyaltyBps: -1
   })));
 });
 

@@ -36,11 +36,16 @@ Every saved draft records:
 - a creator rights statement and explicit control confirmation;
 - third-party material disclosure and permission confirmation;
 - an intended standard or custom license;
+- a creator-selected secondary royalty preference from 0% to 10%, presented as a preference rather than guaranteed payment;
 - edition model and maximum supply;
 - music master-recording and composition-rights confirmations;
 - creator-proposed collaborator credits whose consent remains `unverified`;
 - optional unique-wallet revenue shares totaling exactly 10,000 basis points.
 - a deterministic Keccak-256 draft revision hash covering the normalized rights, media, edition, collaborator, and split fields.
+
+The private release passport evaluates ten independent preparation areas: media permanence, creation provenance, rights declarations, license terms, edition design, royalty preference, collaborator consent, revenue splits, revision integrity, and fee disclosure. Its labels are preparation status—not verification, approval, copyright validation, an audit, or a safety guarantee.
+
+ERC-2981 can communicate royalty information to compatible marketplaces, but the standard does not compel a marketplace or buyer to pay it. RMT therefore stores a royalty preference separately from license terms and must disclose actual settlement behavior before a creator signs.
 
 Firestore enforces the private owner boundary, draft-only state, the unverified collaborator status, and a declared zero-or-10,000-basis-point split total. The draft arrays remain untrusted input. The application validates each name, role, wallet, and share before saving, and any future publishing service or contract builder must independently parse and revalidate every field before preparing an executable transaction.
 
@@ -68,3 +73,5 @@ Marketplace and collection contracts must consume a versioned, reviewed rights s
 6. require the creator to review the exact contract configuration and transaction.
 
 Draft data is preparation evidence, not legal advice, copyright registration, an audit, or proof that a third party owns no conflicting rights.
+
+The research basis and competitive product boundary are recorded in `docs/NFT_CREATOR_PLATFORM_RESEARCH_2026.md`.

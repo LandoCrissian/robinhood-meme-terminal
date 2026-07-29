@@ -11,6 +11,7 @@ import {
   createMarketplaceEconomicsPolicy,
   validateMarketplaceEconomicsPolicy
 } from "./creator-economics";
+import { evaluateCreatorReleaseReadiness } from "./creator-release-readiness";
 import {
   hashCreatorConsentInvitation,
   validateCreatorConsentInvitation,
@@ -53,6 +54,18 @@ assert.equal(normalizeCreatorAsset({
   editionMode: "open",
   editionSupply: 999
 }).editionSupply, 0);
+assert.equal(normalizeCreatorAsset({
+  ...validArtwork,
+  secondaryRoyaltyBps: 1_500
+}).secondaryRoyaltyBps, 1_000);
+assert.match(validateCreatorAsset({
+  ...validArtwork,
+  secondaryRoyaltyBps: 1_001
+}) ?? "", /between 0% and 10%/);
+assert.notEqual(
+  hashCreatorAssetDraft(validArtwork),
+  hashCreatorAssetDraft({ ...validArtwork, secondaryRoyaltyBps: 500 })
+);
 assert.deepEqual(normalizeCreatorAsset({
   ...validArtwork,
   creationMethod: "human",
@@ -109,6 +122,17 @@ const parsed = parseCreatorAsset("abcdefghijklmnopqrst", {
   status: "draft"
 });
 assert.equal(parsed?.title, "Neon Robin");
+const { secondaryRoyaltyBps: _legacyRoyaltyPreference, ...legacyArtwork } = validArtwork;
+assert.equal(parseCreatorAsset("legacyassetdraft1234", {
+  ...legacyArtwork,
+  schemaVersion: 1,
+  assetId: "legacyassetdraft1234",
+  projectSlug: "runner-studio",
+  collaboratorConsentStatus: "unverified",
+  revenueSplitTotalBps: 10_000,
+  draftRevisionHash: hashCreatorAssetDraft(validArtwork),
+  status: "draft"
+})?.secondaryRoyaltyBps, 0);
 assert.equal(parseCreatorAsset("abcdefghijklmnopqrst", {
   ...parsed,
   revenueSplitTotalBps: 9_999
@@ -139,6 +163,29 @@ assert.match(validateMarketplaceEconomicsPolicy({
   ...economicsPolicy,
   tokenFlywheelMode: "none"
 }) ?? "", /governance proposal/);
+
+const releaseCandidate = {
+  ...validArtwork,
+  collaborators: [],
+  secondaryRoyaltyBps: 500
+};
+const releaseReadiness = evaluateCreatorReleaseReadiness(releaseCandidate, {
+  savedRevisionHash: hashCreatorAssetDraft(releaseCandidate),
+  economicsPolicy
+});
+assert.equal(releaseReadiness.status, "attention");
+assert.equal(releaseReadiness.checks.find((candidate) => candidate.id === "revision")?.status, "ready");
+assert.equal(releaseReadiness.checks.find((candidate) => candidate.id === "royalty")?.status, "attention");
+assert.match(
+  releaseReadiness.checks.find((candidate) => candidate.id === "royalty")?.detail ?? "",
+  /cannot force external marketplaces/
+);
+assert.equal(evaluateCreatorReleaseReadiness({
+  ...releaseCandidate,
+  rightsConfirmed: false
+}, {
+  economicsPolicy
+}).status, "blocked");
 
 const nowSeconds = 2_000_000_000;
 const consentInvitation: CreatorConsentInvitation = {
@@ -184,6 +231,8 @@ assert.match(studioSource, /No minting\. No marketplace\. No payouts\./);
 assert.match(studioSource, /consent remains unverified/i);
 assert.match(studioSource, /Proposed revenue split/);
 assert.match(studioSource, /Save private draft/);
+assert.match(studioSource, /RELEASE PASSPORT · PRIVATE/);
+assert.match(studioSource, /ERC-2981 can signal this preference/);
 assert.doesNotMatch(studioSource, /mintNFT|createListing|executeSplit/);
 
 const cloudSource = readFileSync(new URL("./creator-assets-cloud.ts", import.meta.url), "utf8");

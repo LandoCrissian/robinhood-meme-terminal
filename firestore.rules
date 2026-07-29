@@ -615,6 +615,7 @@ service cloud.firestore {
           'thirdPartyRightsConfirmed',
           'license',
           'licenseUri',
+          'secondaryRoyaltyBps',
           'editionMode',
           'editionSupply',
           'musicReleaseType',
@@ -654,6 +655,8 @@ service cloud.firestore {
         && data.license in ['all_rights_reserved', 'personal_use', 'commercial_use', 'cc0', 'cc_by', 'custom']
         && licenseUri is string && licenseUri.size() <= 512
         && (data.license == 'custom' ? licenseUri.matches('^https://.+$') : licenseUri == '')
+        && data.secondaryRoyaltyBps is int
+        && data.secondaryRoyaltyBps >= 0 && data.secondaryRoyaltyBps <= 1000
         && data.editionMode in ['one_of_one', 'limited', 'open']
         && data.editionSupply is int
         && (data.editionMode == 'one_of_one'

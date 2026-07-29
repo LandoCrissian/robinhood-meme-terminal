@@ -63,6 +63,7 @@ export type CreatorAssetDraft = {
   thirdPartyRightsConfirmed: boolean;
   license: AssetLicense;
   licenseUri: string;
+  secondaryRoyaltyBps: number;
   editionMode: EditionMode;
   editionSupply: number;
   musicReleaseType: MusicReleaseType;
@@ -104,6 +105,7 @@ export function hashCreatorAssetDraft(value: CreatorAssetDraft): Hex {
     thirdPartyRightsConfirmed: draft.thirdPartyRightsConfirmed,
     license: draft.license,
     licenseUri: draft.licenseUri,
+    ...(draft.secondaryRoyaltyBps > 0 ? { secondaryRoyaltyBps: draft.secondaryRoyaltyBps } : {}),
     editionMode: draft.editionMode,
     editionSupply: draft.editionSupply,
     musicReleaseType: draft.musicReleaseType,
@@ -134,6 +136,7 @@ export const EMPTY_CREATOR_ASSET: CreatorAssetDraft = {
   thirdPartyRightsConfirmed: false,
   license: "all_rights_reserved",
   licenseUri: "",
+  secondaryRoyaltyBps: 0,
   editionMode: "one_of_one",
   editionSupply: 1,
   musicReleaseType: "single",
@@ -185,6 +188,9 @@ export function normalizeCreatorAsset(value: unknown): CreatorAssetDraft {
   const license = cleanEnum(draft.license, ASSET_LICENSES, "all_rights_reserved");
   const editionMode = cleanEnum(draft.editionMode, EDITION_MODES, "one_of_one");
   const musicReleaseType = cleanEnum(draft.musicReleaseType, MUSIC_RELEASE_TYPES, "single");
+  const secondaryRoyaltyBps = Number.isInteger(draft.secondaryRoyaltyBps)
+    ? Math.max(0, Math.min(1_000, Number(draft.secondaryRoyaltyBps)))
+    : 0;
   const editionSupplyValue = Number.isInteger(draft.editionSupply) ? Number(draft.editionSupply) : 0;
   const editionSupply = editionMode === "one_of_one"
     ? 1
@@ -230,6 +236,7 @@ export function normalizeCreatorAsset(value: unknown): CreatorAssetDraft {
     thirdPartyRightsConfirmed: draft.thirdPartyRightsConfirmed === true,
     license,
     licenseUri: license === "custom" ? cleanHttpsUrl(draft.licenseUri, 512) : "",
+    secondaryRoyaltyBps,
     editionMode,
     editionSupply,
     musicReleaseType,
@@ -243,6 +250,11 @@ export function normalizeCreatorAsset(value: unknown): CreatorAssetDraft {
 
 export function validateCreatorAsset(value: CreatorAssetDraft) {
   const draft = normalizeCreatorAsset(value);
+  if (
+    !Number.isInteger(value.secondaryRoyaltyBps)
+    || value.secondaryRoyaltyBps < 0
+    || value.secondaryRoyaltyBps > 1_000
+  ) return "Secondary royalty preference must be between 0% and 10%.";
   if (draft.title.length < 2) return "Asset title must be at least 2 characters.";
   if (draft.description.length < 20) return "Describe the asset in at least 20 characters.";
   if (!draft.primaryMediaUri) return "Primary media must use a valid HTTPS or IPFS URL.";

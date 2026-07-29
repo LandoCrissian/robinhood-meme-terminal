@@ -25,6 +25,7 @@ import {
   saveCreatorAsset,
   subscribeToCreatorAssets
 } from "../lib/creator-assets-cloud";
+import { evaluateCreatorReleaseReadiness } from "../lib/creator-release-readiness";
 import type { ProjectAssignment } from "../lib/project-ownership";
 import { CreatorImageField } from "./creator-media-upload";
 
@@ -204,6 +205,8 @@ export function CreatorAssetStudio({
 
   const totalBps = splitTotal(draft.revenueSplits);
   const draftRevisionHash = hashCreatorAssetDraft(draft);
+  const savedRevisionHash = assets.find((asset) => asset.assetId === selectedId)?.draftRevisionHash;
+  const readiness = evaluateCreatorReleaseReadiness(draft, { savedRevisionHash });
   const aiUsed = draft.creationMethod !== "human";
   const isMusic = draft.assetType === "music_release";
 
@@ -223,6 +226,24 @@ export function CreatorAssetStudio({
         <span>Collaborator consent remains unverified until each person accepts through a future signed flow. A saved split is a proposal—not an executable payment instruction.</span>
         <small title={draftRevisionHash}>DRAFT REVISION · {draftRevisionHash.slice(0, 10)}…{draftRevisionHash.slice(-8)}</small>
       </div>
+
+      <section className={`creatorReleasePassport ${readiness.status}`} aria-labelledby="creator-release-passport-title">
+        <header>
+          <div>
+            <p className="eyebrow">RELEASE PASSPORT · PRIVATE</p>
+            <h4 id="creator-release-passport-title">Preparation status, not verification or approval</h4>
+          </div>
+          <span>{readiness.status.toUpperCase()} · {readiness.readyCount}/{readiness.totalCount} READY</span>
+        </header>
+        <div className="creatorReleaseChecks">
+          {readiness.checks.map((item) => (
+            <div className={item.status} key={item.id}>
+              <span>{item.status === "ready" ? "✓" : item.status === "attention" ? "!" : "×"}</span>
+              <div><strong>{item.label}</strong><small>{item.detail}</small></div>
+            </div>
+          ))}
+        </div>
+      </section>
 
       <div className="creatorAssetWorkspace">
         <aside className="creatorAssetList">
@@ -267,6 +288,7 @@ export function CreatorAssetStudio({
             <div className="creatorAssetFields">
               <label>Rights basis<select value={draft.rightsBasis} onChange={(event) => setDraft((current) => ({ ...current, rightsBasis: event.target.value as CreatorAssetDraft["rightsBasis"] }))}>{RIGHTS_BASES.map((basis) => <option value={basis} key={basis}>{basis.replaceAll("_", " ")}</option>)}</select></label>
               <label>Intended license<select value={draft.license} onChange={(event) => setDraft((current) => normalizeCreatorAsset({ ...current, license: event.target.value }))}>{ASSET_LICENSES.map((license) => <option value={license} key={license}>{license.replaceAll("_", " ")}</option>)}</select></label>
+              <label>Secondary royalty preference<input type="number" min="0" max="10" step="0.01" value={draft.secondaryRoyaltyBps / 100} onChange={(event) => setDraft((current) => ({ ...current, secondaryRoyaltyBps: Math.round(Number(event.target.value) * 100) }))} /><small>0–10%. ERC-2981 can signal this preference; other marketplaces may not honor it.</small></label>
               <label className="creatorAssetWide">Rights statement<textarea maxLength={1000} placeholder="Explain who created the work and the basis for using every included element." value={draft.rightsStatement} onChange={(event) => setDraft((current) => ({ ...current, rightsStatement: event.target.value }))} /></label>
               {draft.license === "custom" && <label className="creatorAssetWide">Custom license URL<input maxLength={512} inputMode="url" placeholder="https://" value={draft.licenseUri} onChange={(event) => setDraft((current) => ({ ...current, licenseUri: event.target.value }))} /></label>}
               <label className="creatorAssetCheck creatorAssetWide"><input type="checkbox" checked={draft.rightsConfirmed} onChange={(event) => setDraft((current) => ({ ...current, rightsConfirmed: event.target.checked }))} /><span>I confirm I control the rights necessary to prepare this asset.</span></label>
