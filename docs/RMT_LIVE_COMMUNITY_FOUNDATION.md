@@ -81,6 +81,13 @@ Traffic measurements should include active sessions, concurrent sessions, messag
   enabled.
 - Firebase billing remains disabled. Managed TTL was not enabled and no paid
   upgrade was accepted.
+- Vercel contains all six browser-side Firebase configuration names for
+  production and preview. Their values were not opened or copied during this
+  review.
+- Vercel does not yet contain `FIREBASE_ADMIN_PROJECT_ID`,
+  `FIREBASE_ADMIN_CLIENT_EMAIL`, `FIREBASE_ADMIN_PRIVATE_KEY`, or
+  `COMMUNITY_IDENTITY_SECRET`. RMT Live therefore remains server-disabled even
+  after Anonymous Authentication was enabled.
 - The bounded application retention sweep is implemented and tested locally,
   but is not production evidence until the corresponding web release is
   deployed and verified.
