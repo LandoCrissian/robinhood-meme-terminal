@@ -32,6 +32,7 @@ All message creation is server mediated. Firestore permits public reads of visib
 - Feedback status follows an audited forward-only path: submitted, under review, planned, shipped or closed.
 - A submitting browser retains at most 12 random feedback receipt identifiers locally and can follow their limited public progress markers under Updates.
 - Receipt identifiers are locators, not authentication secrets. They never grant access to the private submission, identity key, or administrator note.
+- Withdrawal requires the same authenticated Firebase identity that submitted the feedback. It deletes the private content and keyed author record, closes the public marker, and leaves only a minimal private audit event with no message text or identity key.
 - Direct messages, media uploads, link previews, wallet tips, trading calls, and ranking influence are not part of this release.
 - Community engagement does not alter Runner ranking, token risk, or verification.
 
