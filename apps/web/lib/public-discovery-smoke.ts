@@ -115,7 +115,12 @@ const tokenPageSource = readFileSync(new URL("../app/token/[address]/page.tsx", 
 assert.match(projectPageSource, /ProjectModuleGrid/);
 assert.match(projectPageSource, /OFFICIAL RMT · PROJECT VERIFIED/);
 assert.match(projectPageSource, /MarketPanel/);
+assert.match(projectPageSource, /RMT-NATIVE TOOLKIT/);
+assert.match(projectPageSource, /Creator risk/);
+assert.match(projectPageSource, /initialDetail=\{initialDetail\}/);
 const marketPanelSource = readFileSync(new URL("../app/market-panel.tsx", import.meta.url), "utf8");
+assert.match(marketPanelSource, /id="market-chart"/);
+assert.match(marketPanelSource, /id="market-evidence"/);
 assert.match(marketPanelSource, /Native market confidence/);
 assert.match(marketPanelSource, /Factory verified/);
 assert.match(marketPanelSource, /No mint, tax or blacklist/);

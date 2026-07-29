@@ -150,6 +150,19 @@ main:has(.rmtDiscovery){max-width:none;padding:0 10px 36px}
 .tokenHeroActions{position:absolute;right:22px;top:62px;gap:4px;margin:0}
 .tokenHeroActions .watchTokenButton,.tokenHeroActions .tokenContractQuick,.tokenHeroActions .tokenShareActions button{min-height:30px;border-radius:3px;font-size:.57rem}
 .tokenHeroActions .tokenContractQuick{background:#060907}
+.projectTerminalTools{margin-top:7px;border:1px solid var(--terminal-line);background:#070a08}
+.projectTerminalTools>header{display:flex;min-height:40px;align-items:center;justify-content:space-between;gap:12px;padding:7px 10px;border-bottom:1px solid var(--terminal-line)}
+.projectTerminalTools>header .eyebrow{margin:0;font-size:.48rem}
+.projectTerminalTools>header h2{margin:2px 0 0;font-size:.86rem}
+.projectTerminalTools>header>span{color:#647169;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.48rem;font-weight:850;letter-spacing:.07em}
+.projectTerminalTools nav{display:grid;grid-template-columns:repeat(6,minmax(0,1fr))}
+.projectTerminalTools nav a{display:flex;min-width:0;min-height:38px;align-items:center;justify-content:center;padding:0 8px;border-right:1px solid var(--terminal-line);color:#99a69d;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.57rem;font-weight:850;text-align:center;text-decoration:none}
+.projectTerminalTools nav a:last-child{border-right:0}
+.projectTerminalTools nav a:hover,.projectTerminalTools nav a:focus-visible{background:#0d1710;color:#dce5de}
+.projectTerminalTools nav .tradeTool.buy{color:#70ec82}
+.projectTerminalTools nav .tradeTool.sell{color:#ff8585}
+.marketChartAnchor{scroll-margin-top:64px}
+#market-evidence,#trade,#project-terminal{scroll-margin-top:64px}
 
 .marketPanel.panel{margin-top:7px;padding:0;overflow:visible;border:1px solid var(--terminal-line);border-radius:0;background:#070a08;box-shadow:none}
 .marketTitle{min-height:42px;margin:0;padding:7px 10px;border-bottom:1px solid var(--terminal-line);background:#080c09}
@@ -324,6 +337,12 @@ main:has(.rmtDiscovery){max-width:none;padding:0 10px 36px}
   .tokenHero .tokenDescription{display:none}
   .tokenHeroActions{grid-column:1/-1;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:3px}
   .tokenHeroActions .watchTokenButton,.tokenHeroActions .tokenShareActions button{min-height:32px}
+  .projectTerminalTools{margin-top:5px;border-right:0;border-left:0}
+  .projectTerminalTools>header{padding:7px 8px}
+  .projectTerminalTools nav{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .projectTerminalTools nav a{min-height:40px;padding:0 4px;border-bottom:1px solid var(--terminal-line);font-size:.56rem}
+  .projectTerminalTools nav a:nth-child(3n){border-right:0}
+  .projectTerminalTools nav a:nth-last-child(-n+3){border-bottom:0}
   .marketPanel.panel,.tokenInfoPanel.panel{border-right:0;border-left:0}
   .marketPanel{margin-top:5px}
   .marketTitle{padding:6px 8px}
@@ -796,6 +815,11 @@ main:has(.rmtDiscovery){max-width:none;padding:0 10px 36px}
   .tokenHero .tokenDescription{display:block;margin:5px 0 0;font-size:.77rem;line-height:1.45}
   .tokenHeroActions{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:10px}
   .tokenHeroActions .watchTokenButton,.tokenHeroActions .tokenContractQuick,.tokenHeroActions .tokenShareActions button{min-height:44px;font-size:.68rem}
+  .projectTerminalTools>header{min-height:48px;padding:9px 10px}
+  .projectTerminalTools>header .eyebrow{font-size:.58rem}
+  .projectTerminalTools>header h2{font-size:1rem}
+  .projectTerminalTools>header>span{font-size:.56rem}
+  .projectTerminalTools nav a{min-height:46px;font-size:.68rem}
   .marketTitle{min-height:52px;padding:10px}
   .marketTitle .eyebrow{font-size:.62rem}
   .marketTitle h2{font-size:1.08rem}
@@ -944,6 +968,7 @@ main:has(.rmtDiscovery){max-width:none;padding:0 10px 36px}
   .tokenHero .tokenDescription{font-size:.72rem}
   .tokenHeroActions{top:72px;right:30px}
   .tokenHeroActions .watchTokenButton,.tokenHeroActions .tokenContractQuick,.tokenHeroActions .tokenShareActions button{min-height:36px;border-radius:8px;font-size:.62rem}
+  .projectTerminalTools{margin-top:10px;overflow:hidden;border-color:#24332a;border-radius:14px}
   .marketPanel.panel{margin-top:10px;border-color:#24332a;border-radius:14px}
   .marketTitle{min-height:52px;padding:9px 13px}
   .marketTitle h2{font-size:1.02rem}

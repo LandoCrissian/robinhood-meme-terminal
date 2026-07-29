@@ -36,8 +36,8 @@
 .profileEditor input:disabled,.profileEditor textarea:disabled{border-color:#202923;background:#090c0a;color:#7c8780;cursor:not-allowed;opacity:.76}
 .profileHandleField{display:grid;grid-template-columns:auto 1fr;align-items:center;overflow:hidden;border:1px solid #2d3a31;border-radius:12px;background:#060907}
 .profileHandleField:focus-within{border-color:#38ed67;box-shadow:0 0 0 3px rgba(56,237,103,.1)}
-.profileHandleField b{padding-left:13px;color:#5fee7a}
-.profileHandleField input{border:0;box-shadow:none!important}
+.profileHandleField b{display:grid;min-width:42px;align-self:stretch;place-items:center;padding:0 0 0 4px;border-right:1px solid #202b24;color:#5fee7a}
+.profileHandleField input,.profileHandleField input:focus,.profileHandleField input:focus-visible{min-width:0;width:100%;border:0!important;border-radius:0;outline:0!important;box-shadow:none!important;background:transparent}
 .profileChoiceGroup{margin:22px 0 0;padding:0;border:0}
 .profileChoiceGroup legend{margin-bottom:10px;color:#b5c0b7;font-size:.72rem;font-weight:900}
 .profileChoiceGroup>div{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
