@@ -9,6 +9,10 @@ import {
   parseCommunityPresence,
   validateCommunityBody
 } from "./community";
+import {
+  normalizeCommunityReportReason,
+  parseAdminCommunityReport
+} from "./community-moderation";
 
 assert.equal(normalizeCommunityRoomId("global"), "global");
 assert.equal(normalizeCommunityRoomId("project--rmt-studio"), "project--rmt-studio");
@@ -51,6 +55,17 @@ assert.equal(parseCommunityPresence({
   capped: false,
   observedAt: "2026-07-29T12:00:00.000Z"
 }), null);
+assert.equal(normalizeCommunityReportReason("scam"), "scam");
+assert.equal(normalizeCommunityReportReason("disagreement"), null);
+assert.ok(parseAdminCommunityReport({
+  reportId: "AbCdEfGhIjKlMnOpQrSt--1234567890abcdef1234567890abcdef",
+  roomId: "global",
+  messageId: "AbCdEfGhIjKlMnOpQrSt",
+  reason: "scam",
+  authorLabel: "Guest-CDEF",
+  messageBody: "Watching the RMT curve markets today.",
+  createdAt: "2026-07-29T12:00:00.000Z"
+}));
 assert.equal(parseCommunityPresence({
   online: 1_001,
   approximate: true,
@@ -77,6 +92,20 @@ assert.match(presenceRouteSource, /communityPresence/);
 assert.match(presenceRouteSource, /\.where\("expiresAt", ">",/);
 assert.match(presenceRouteSource, /\.count\(\)\.get\(\)/);
 assert.doesNotMatch(presenceRouteSource, /firebaseUid|uid:\s*identity\.uid/);
+
+const reportRouteSource = readFileSync(new URL("../app/api/community/reports/route.ts", import.meta.url), "utf8");
+assert.match(reportRouteSource, /verifyIdToken\(token, true\)/);
+assert.match(reportRouteSource, /communityAuthorKey/);
+assert.match(reportRouteSource, /message\.authorKey === reporterKey/);
+assert.match(reportRouteSource, /communityReports/);
+assert.doesNotMatch(reportRouteSource, /firebaseUid|reporterUid|email:/);
+
+const moderationRouteSource = readFileSync(new URL("../app/api/admin/community/moderation/route.ts", import.meta.url), "utf8");
+assert.match(moderationRouteSource, /RMT_ADMIN_EMAIL/);
+assert.match(moderationRouteSource, /email_verified !== true/);
+assert.match(moderationRouteSource, /communityModerationAudit/);
+assert.match(moderationRouteSource, /bannedUntil/);
+assert.match(moderationRouteSource, /status: "moderated"/);
 
 const profileProviderSource = readFileSync(new URL("../app/profile-provider.tsx", import.meta.url), "utf8");
 assert.match(profileProviderSource, /nextUser\?\.isAnonymous \? null : nextUser/);

@@ -3,8 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 import { GLOBAL_COMMUNITY_ROOM, type CommunityMessage } from "../lib/community";
 import {
+  COMMUNITY_REPORT_REASONS,
+  type CommunityReportReason
+} from "../lib/community-moderation";
+import {
   ensureCommunityIdentity,
   postCommunityMessage,
+  reportCommunityMessage,
   startCommunityPresence,
   subscribeToCommunityMessages
 } from "../lib/community-cloud";
@@ -17,6 +22,8 @@ export function CommunityLive() {
   const [busy, setBusy] = useState(false);
   const [online, setOnline] = useState<number | null>(null);
   const [presenceCapped, setPresenceCapped] = useState(false);
+  const [reportingId, setReportingId] = useState("");
+  const [reportBusy, setReportBusy] = useState(false);
   const stream = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -86,6 +93,21 @@ export function CommunityLive() {
     }
   };
 
+  const report = async (messageId: string, reason: CommunityReportReason) => {
+    if (reportBusy) return;
+    setReportBusy(true);
+    setMessage("");
+    try {
+      await reportCommunityMessage(messageId, reason);
+      setReportingId("");
+      setMessage("Report received. RMT will review it privately.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "The report could not be recorded.");
+    } finally {
+      setReportBusy(false);
+    }
+  };
+
   return (
     <aside className={`communityLive${open ? " open" : ""}`} aria-label="RMT Live community">
       <button className="communityLiveLauncher" type="button" onClick={() => setOpen((current) => !current)} aria-expanded={open}>
@@ -103,8 +125,12 @@ export function CommunityLive() {
         <div className="communityLiveStream" ref={stream}>
           {messages.length === 0 && <div className="communityLiveEmpty"><strong>Start the conversation</strong><span>RMT Live is prepared locally and will open after secure Firebase activation.</span></div>}
           {messages.map((item) => <article key={item.messageId}>
-            <header><strong>{item.authorLabel}</strong><span className={`kind-${item.authorKind}`}>{item.authorKind}</span>{item.authorHandle && <small>@{item.authorHandle}</small>}</header>
+            <header><strong>{item.authorLabel}</strong><span className={`kind-${item.authorKind}`}>{item.authorKind}</span>{item.authorHandle && <small>@{item.authorHandle}</small>}<button type="button" onClick={() => setReportingId((current) => current === item.messageId ? "" : item.messageId)}>Report</button></header>
             <p>{item.body}</p>
+            {reportingId === item.messageId && <div className="communityReportReasons" aria-label="Report reason">
+              <span>Why are you reporting this?</span>
+              {COMMUNITY_REPORT_REASONS.map((reason) => <button type="button" disabled={reportBusy} key={reason} onClick={() => void report(item.messageId, reason)}>{reason.replace("_", " ")}</button>)}
+            </div>}
           </article>)}
         </div>
         <form onSubmit={(event) => { event.preventDefault(); void send(); }}>

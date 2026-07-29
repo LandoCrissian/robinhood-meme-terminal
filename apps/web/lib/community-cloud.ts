@@ -7,6 +7,7 @@ import {
   parseCommunityPresence,
   type CommunityMessage
 } from "./community";
+import type { CommunityReportReason } from "./community-moderation";
 
 export async function ensureCommunityIdentity() {
   const client = await getFirebaseClient();
@@ -119,4 +120,23 @@ export function startCommunityPresence(
     if (timer) clearTimeout(timer);
     document.removeEventListener("visibilitychange", onVisibility);
   };
+}
+
+export async function reportCommunityMessage(
+  messageId: string,
+  reason: CommunityReportReason,
+  roomId = GLOBAL_COMMUNITY_ROOM
+) {
+  const user = await ensureCommunityIdentity();
+  const token = await user.getIdToken();
+  const response = await fetch("/api/community/reports", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ roomId, messageId, reason })
+  });
+  const result = await response.json().catch(() => null) as { error?: unknown; reportId?: unknown } | null;
+  if (!response.ok || typeof result?.reportId !== "string") {
+    throw new Error(typeof result?.error === "string" ? result.error : "The report could not be recorded.");
+  }
+  return result.reportId;
 }
