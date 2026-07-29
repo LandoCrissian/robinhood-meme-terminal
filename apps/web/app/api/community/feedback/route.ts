@@ -14,6 +14,7 @@ import {
   communityIdentitySecret
 } from "../../../../lib/server/community-identity";
 import { getRmtAdminAuth, getRmtAdminFirestore } from "../../../../lib/server/firebase-admin";
+import { consumeCommunityRateLimit } from "../../../../lib/server/community-rate-limit";
 import { guardMediaRequest, readBoundedJsonRequest } from "../../../../lib/server/media-request-guard";
 
 export const dynamic = "force-dynamic";
@@ -24,7 +25,7 @@ const WINDOW_MS = 24 * 60 * 60_000;
 const COOLDOWN_MS = 2 * 60_000;
 
 export async function POST(request: Request) {
-  const guard = guardMediaRequest(request, { namespace: "community-feedback", limit: 8, windowMs: 24 * 60 * 60_000 });
+  const guard = guardMediaRequest(request, { namespace: "community-feedback", limit: 40, windowMs: 24 * 60 * 60_000 });
   if (!guard.ok) return NextResponse.json({ error: guard.error }, { status: guard.status, headers: HEADERS });
   const token = communityBearerToken(request);
   if (!token) return NextResponse.json({ error: "Community identity required." }, { status: 401, headers: HEADERS });
@@ -55,6 +56,17 @@ export async function POST(request: Request) {
     }
     const contentError = validateCommunityFeedbackContent(title, description, guest);
     if (contentError) return NextResponse.json({ error: contentError }, { status: 400, headers: HEADERS });
+    const distributedLimit = await consumeCommunityRateLimit(db, secret, request, {
+      namespace: "feedback",
+      limit: 40,
+      windowMs: 24 * 60 * 60_000
+    });
+    if (!distributedLimit.allowed) {
+      return NextResponse.json({ error: "Too much feedback arrived from this network today. Please try again later." }, {
+        status: 429,
+        headers: { ...HEADERS, "Retry-After": String(distributedLimit.retryAfterSeconds) }
+      });
+    }
     const authorKey = communityAuthorKey(secret, identity.uid);
     const actorReference = db.collection("communityActors").doc(authorKey);
     const feedbackReference = db.collection("communityFeedback").doc();
@@ -113,7 +125,7 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const guard = guardMediaRequest(request, { namespace: "community-feedback-withdraw", limit: 12, windowMs: 60 * 60_000 });
+  const guard = guardMediaRequest(request, { namespace: "community-feedback-withdraw", limit: 30, windowMs: 60 * 60_000 });
   if (!guard.ok) return NextResponse.json({ error: guard.error }, { status: guard.status, headers: HEADERS });
   const token = communityBearerToken(request);
   if (!token) return NextResponse.json({ error: "Community identity required." }, { status: 401, headers: HEADERS });
@@ -138,6 +150,17 @@ export async function DELETE(request: Request) {
     const guest = identity.firebase?.sign_in_provider === "anonymous";
     if (!guest && identity.email_verified !== true) {
       return NextResponse.json({ error: "Verified member or guest identity required." }, { status: 403, headers: HEADERS });
+    }
+    const distributedLimit = await consumeCommunityRateLimit(db, secret, request, {
+      namespace: "feedback-withdraw",
+      limit: 30,
+      windowMs: 60 * 60_000
+    });
+    if (!distributedLimit.allowed) {
+      return NextResponse.json({ error: "Too many feedback changes came from this network. Please wait and try again." }, {
+        status: 429,
+        headers: { ...HEADERS, "Retry-After": String(distributedLimit.retryAfterSeconds) }
+      });
     }
     const authorKey = communityAuthorKey(secret, identity.uid);
     const feedbackReference = db.collection("communityFeedback").doc(feedbackId);

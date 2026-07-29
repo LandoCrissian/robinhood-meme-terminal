@@ -44,7 +44,7 @@ export function isSameOriginMediaRequest(request: Request) {
   return !fetchSite || fetchSite === "same-origin";
 }
 
-function clientAddress(request: Request) {
+export function mediaClientAddress(request: Request) {
   const candidates = [
     request.headers.get("x-vercel-forwarded-for")?.split(",")[0],
     request.headers.get("x-forwarded-for")?.split(",")[0],
@@ -74,7 +74,7 @@ export function guardMediaRequest(
   }
 
   const now = options.now ?? Date.now();
-  const key = `${options.namespace}:${clientAddress(request)}`;
+  const key = `${options.namespace}:${mediaClientAddress(request)}`;
   let bucket = rateLimitBuckets.get(key);
 
   if (!bucket || bucket.resetAt <= now) {

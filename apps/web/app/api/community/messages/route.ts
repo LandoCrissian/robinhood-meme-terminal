@@ -13,6 +13,7 @@ import {
   communityIdentitySecret
 } from "../../../../lib/server/community-identity";
 import { getRmtAdminAuth, getRmtAdminFirestore } from "../../../../lib/server/firebase-admin";
+import { consumeCommunityRateLimit } from "../../../../lib/server/community-rate-limit";
 import { guardMediaRequest, readBoundedJsonRequest } from "../../../../lib/server/media-request-guard";
 
 export const dynamic = "force-dynamic";
@@ -37,7 +38,7 @@ function cleanProfile(value: unknown) {
 }
 
 export async function POST(request: Request) {
-  const guard = guardMediaRequest(request, { namespace: "community-message", limit: 20, windowMs: 60_000 });
+  const guard = guardMediaRequest(request, { namespace: "community-message", limit: 60, windowMs: 60_000 });
   if (!guard.ok) {
     return NextResponse.json({ error: guard.error }, {
       status: guard.status,
@@ -76,6 +77,17 @@ export async function POST(request: Request) {
     }
     const validationError = validateCommunityBody(messageBody, guest);
     if (validationError) return NextResponse.json({ error: validationError }, { status: 400, headers: HEADERS });
+    const distributedLimit = await consumeCommunityRateLimit(db, secret, request, {
+      namespace: "message",
+      limit: 60,
+      windowMs: 60_000
+    });
+    if (!distributedLimit.allowed) {
+      return NextResponse.json({ error: "Too many community messages from this network. Please wait and try again." }, {
+        status: 429,
+        headers: { ...HEADERS, "Retry-After": String(distributedLimit.retryAfterSeconds) }
+      });
+    }
 
     const key = communityAuthorKey(secret, identity.uid);
     const actorReference = db.collection("communityActors").doc(key);

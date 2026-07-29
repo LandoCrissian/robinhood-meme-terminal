@@ -695,6 +695,10 @@ service cloud.firestore {
       allow read, create, update, delete: if false;
     }
 
+    match /communityRateLimits/{bucketId} {
+      allow read, create, update, delete: if false;
+    }
+
     match /creatorApplications/{userId} {
       allow read: if ownsProfile(userId) || isRmtAdmin();
       allow create: if validCreatorApplication(request.resource.data)

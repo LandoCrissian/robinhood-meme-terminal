@@ -22,7 +22,7 @@ export default function PrivacyPage() {
       <h2>Uploads and permanent metadata</h2>
       <p>Token artwork, creator-project logos, banners, galleries, update images, descriptions, and social links may be uploaded to IPFS through an external pinning provider. Creator media uploads require a verified profile assigned to that project. IPFS content may be public, copied, and difficult or impossible to remove. Do not upload personal, confidential, or unlawful information.</p>
       <h2>Infrastructure data</h2>
-      <p>Hosting, database, authentication, RPC, wallet-connection, security, and content-delivery providers may process IP address, device, request, and diagnostic information to deliver and protect their services. RMT does not sell personal information.</p>
+      <p>Hosting, database, authentication, RPC, wallet-connection, security, and content-delivery providers may process IP address, device, request, and diagnostic information to deliver and protect their services. To enforce shared community request limits, RMT derives a secret-keyed HMAC from the validated network address and operation type. Firestore stores that non-reversible bucket identifier with a bounded count and expiration time, not the raw network address. RMT does not sell personal information.</p>
       <h2>External market data and links</h2>
       <p>External market results are supplied by DEX Screener and link to third-party websites. Block explorers, wallets, DEXs, and social links have their own privacy practices. Review them before continuing.</p>
       <h2>Access and deletion requests</h2>

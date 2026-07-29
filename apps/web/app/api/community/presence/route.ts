@@ -11,6 +11,7 @@ import {
   communityIdentitySecret
 } from "../../../../lib/server/community-identity";
 import { getRmtAdminAuth, getRmtAdminFirestore } from "../../../../lib/server/firebase-admin";
+import { consumeCommunityRateLimit } from "../../../../lib/server/community-rate-limit";
 import { guardMediaRequest, readBoundedJsonRequest } from "../../../../lib/server/media-request-guard";
 
 export const dynamic = "force-dynamic";
@@ -20,7 +21,7 @@ const HEADERS = { "Cache-Control": "no-store" };
 const COUNT_CAP = 1_000;
 
 export async function POST(request: Request) {
-  const guard = guardMediaRequest(request, { namespace: "community-presence", limit: 20, windowMs: 10 * 60_000 });
+  const guard = guardMediaRequest(request, { namespace: "community-presence", limit: 240, windowMs: 10 * 60_000 });
   if (!guard.ok) {
     return NextResponse.json({ error: guard.error }, {
       status: guard.status,
@@ -53,6 +54,17 @@ export async function POST(request: Request) {
     const guest = identity.firebase?.sign_in_provider === "anonymous";
     if (!guest && identity.email_verified !== true) {
       return NextResponse.json({ error: "Verified member or guest identity required." }, { status: 403, headers: HEADERS });
+    }
+    const distributedLimit = await consumeCommunityRateLimit(db, secret, request, {
+      namespace: "presence",
+      limit: 240,
+      windowMs: 10 * 60_000
+    });
+    if (!distributedLimit.allowed) {
+      return NextResponse.json({ error: "Community presence is busy for this network. Please wait and try again." }, {
+        status: 429,
+        headers: { ...HEADERS, "Retry-After": String(distributedLimit.retryAfterSeconds) }
+      });
     }
 
     const now = Date.now();

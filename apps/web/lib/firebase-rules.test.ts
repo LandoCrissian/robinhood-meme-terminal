@@ -1020,6 +1020,14 @@ test("community records are publicly readable only when visible and remain serve
       status: "under_review",
       createdAt: Timestamp.now()
     });
+    await setDoc(doc(server, "communityRateLimits", "message--1234567890abcdef1234567890abcdef12345678"), {
+      schemaVersion: 1,
+      namespace: "message",
+      count: 1,
+      resetAt: Timestamp.fromMillis(Date.now() + 60_000),
+      expiresAt: Timestamp.fromMillis(Date.now() + 60_000),
+      updatedAt: Timestamp.now()
+    });
   });
 
   const visitor = testEnvironment.unauthenticatedContext().firestore();
@@ -1061,6 +1069,10 @@ test("community records are publicly readable only when visible and remain serve
     status: "planned"
   }));
   await assertFails(getDocs(collection(adminDb(), "communityFeedbackAudit")));
+  await assertFails(getDoc(doc(visitor, "communityRateLimits", "message--1234567890abcdef1234567890abcdef12345678")));
+  await assertFails(setDoc(doc(guest, "communityRateLimits", "message--1234567890abcdef1234567890abcdef12345678"), {
+    count: 0
+  }));
   await assertFails(setDoc(doc(guest, "users", "anonymous-guest"), {
     profile: {}
   }));
