@@ -302,6 +302,13 @@ const distributedBucketWrite = distributedRateSource.match(/transaction\.set\(re
 assert.ok(distributedBucketWrite);
 assert.doesNotMatch(distributedBucketWrite, /address|ip|authorKey|firebaseUid|email/);
 
+const retentionSource = readFileSync(new URL("./server/community-retention.ts", import.meta.url), "utf8");
+assert.match(retentionSource, /communityMaintenance/);
+assert.match(retentionSource, /collectionGroup\("messages"\)/);
+assert.match(retentionSource, /DELETE_LIMIT_PER_COLLECTION = 20/);
+assert.match(retentionSource, /RETENTION_SWEEP_INTERVAL_MS = 6 \* 60 \* 60_000/);
+assert.match(presenceRouteSource, /runCommunityRetentionSweep/);
+
 for (const route of ["messages", "reports", "presence", "feedback"]) {
   const source = readFileSync(new URL(`../app/api/community/${route}/route.ts`, import.meta.url), "utf8");
   assert.match(source, /consumeCommunityRateLimit/);
