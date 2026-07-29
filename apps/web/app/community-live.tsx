@@ -42,6 +42,7 @@ export function CommunityLive() {
   const [busy, setBusy] = useState(false);
   const [online, setOnline] = useState<number | null>(null);
   const [presenceCapped, setPresenceCapped] = useState(false);
+  const [identityReady, setIdentityReady] = useState(false);
   const [reportingId, setReportingId] = useState("");
   const [reportBusy, setReportBusy] = useState(false);
   const [feedbackCategory, setFeedbackCategory] = useState<CommunityFeedbackCategory>("bug");
@@ -120,6 +121,7 @@ export function CommunityLive() {
       (count, capped) => {
         setOnline(count);
         setPresenceCapped(capped);
+        setIdentityReady(true);
       },
       () => setOnline(null)
     );
@@ -148,6 +150,7 @@ export function CommunityLive() {
     setMessage("");
     try {
       const user = await ensureCommunityIdentity();
+      setIdentityReady(true);
       setMessage(user.isAnonymous ? "Guest identity ready." : "Member identity ready.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Community identity is unavailable.");
@@ -247,7 +250,7 @@ export function CommunityLive() {
           <small>You will be asked again only if these rules materially change or this browser’s site data is cleared.</small>
         </div>}
         {view === "chat" && communityTermsReady && communityTermsAccepted && <><div className="communityLiveStream" ref={stream}>
-          {messages.length === 0 && <div className="communityLiveEmpty"><strong>Start the conversation</strong><span>RMT Live is prepared locally and will open after secure Firebase activation.</span></div>}
+          {messages.length === 0 && <div className="communityLiveEmpty"><strong>No messages yet</strong><span>RMT Live is ready. Start the conversation without sharing private information or recovery words.</span></div>}
           {messages.map((item) => <article key={item.messageId}>
             <header><strong>{item.authorLabel}</strong><span className={`kind-${item.authorKind}`}>{item.authorKind}</span>{item.authorHandle && <small>@{item.authorHandle}</small>}<button type="button" onClick={() => setReportingId((current) => current === item.messageId ? "" : item.messageId)}>Report</button></header>
             <p>{item.body}</p>
@@ -259,7 +262,7 @@ export function CommunityLive() {
         </div>
         <form onSubmit={(event) => { event.preventDefault(); void send(); }}>
           <textarea value={body} maxLength={500} placeholder="Join the conversation…" onChange={(event) => setBody(event.target.value)} />
-          <div><button type="button" disabled={busy} onClick={() => void join()}>Join as guest</button><span>{body.length}/500</span><button type="submit" disabled={busy || body.trim().length < 2}>Send</button></div>
+          <div><button type="button" disabled={busy || identityReady} onClick={() => void join()}>{identityReady ? "Access ready" : "Start guest access"}</button><span>{body.length}/500</span><button type="submit" disabled={busy || body.trim().length < 2}>Send</button></div>
         </form></>}
         {view === "feedback" && communityTermsReady && communityTermsAccepted && <form className="communityFeedbackForm" onSubmit={(event) => { event.preventDefault(); void submitFeedback(); }}>
           <div className="communityFeedbackIntro"><strong>Help shape RMT</strong><span>Send a focused issue or idea directly to the private RMT review queue.</span></div>
