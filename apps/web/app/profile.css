@@ -70,6 +70,22 @@
 .profileCloudActions{display:grid;grid-template-columns:1fr;gap:8px;margin-top:12px}
 .profileCloudActions button{margin-top:0}
 .profileCloudActions .profileRetryButton{border-color:#50df6b;background:#51ec70;color:#061309}
+.profileReferralCard>p:not(.eyebrow){margin:8px 0 0;color:#86938b;font-size:.72rem;line-height:1.5}
+.profileReferralCard h2{margin:4px 0 0;font-size:1.35rem;letter-spacing:-.03em}
+.referralAvailability{display:inline-flex;margin-top:13px;padding:6px 8px;border:1px solid #3a463d;border-radius:7px;color:#77857c;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.52rem;font-weight:950;letter-spacing:.08em}
+.referralCodeLine{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:14px;padding:12px;border:1px solid #3b6845;border-radius:11px;background:#0c1710}
+.referralCodeLine strong{color:#79ef8d;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.84rem;letter-spacing:.05em}
+.referralCodeLine span{color:#728078;font-size:.5rem;font-weight:950;letter-spacing:.08em}
+.referralMetric{display:flex;align-items:end;justify-content:space-between;gap:10px;margin-top:9px;padding:11px 12px;border:1px solid #28342c;border-radius:11px;background:#080c09}
+.referralMetric small{color:#718078;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.52rem;font-weight:900;letter-spacing:.08em}
+.referralMetric strong{color:#eef4ef;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:1.15rem}
+.referralActions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:9px}
+.profileReferralCard .referralActions button,.profileReferralCard .referralActivateButton{min-height:42px;margin:0;border:1px solid #344239;border-radius:10px;background:#101612;color:#c3cdc5;font-size:.66rem;font-weight:900;cursor:pointer}
+.profileReferralCard .referralActions .referralXButton{border-color:#dce5de;background:#e6ece7;color:#0c120e}
+.profileReferralCard .referralActivateButton{width:100%;margin-top:13px;border-color:#52e96e;background:#55ed72;color:#07150a}
+.profileReferralCard button:disabled{opacity:.58;cursor:wait}
+.profileReferralCard .referralFinePrint{color:#69766e!important;font-size:.61rem!important}
+.profileReferralCard .referralMessage{color:#72e987!important;font-size:.64rem!important;font-weight:800}
 .profileSetupNotice{display:flex;flex-direction:column;gap:4px;margin-top:12px;padding:12px;border:1px solid #39452c;border-radius:12px;background:#12160b}
 .profileSetupNotice strong{color:#d8c779;font-size:.73rem}
 .profileSetupNotice span{color:#90885f;font-size:.67rem;line-height:1.4}

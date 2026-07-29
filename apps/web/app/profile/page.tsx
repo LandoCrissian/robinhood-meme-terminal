@@ -14,6 +14,7 @@ import {
 import { readWatchlist, WATCHLIST_EVENT } from "../../lib/watchlist";
 import { CreatorApplicationPanel } from "../creator-application-panel";
 import { FollowedProjectsHub } from "../followed-projects-hub";
+import { ReferralCard } from "../referral-card";
 import { SiteFooter } from "../site-footer";
 import { useProfile } from "../profile-provider";
 
@@ -256,6 +257,7 @@ export default function ProfilePage() {
               <div className="profileSetupNotice"><strong>Firebase connection prepared</strong><span>Add the project configuration to enable Google profile sync.</span></div>
             )}
           </section>
+          <ReferralCard />
 
           <nav className="profileQuickLinks" aria-label="Your RMT workspace">
             <p className="eyebrow">YOUR WORKSPACE</p>

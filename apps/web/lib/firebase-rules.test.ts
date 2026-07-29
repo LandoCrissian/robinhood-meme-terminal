@@ -16,6 +16,7 @@ import {
   doc,
   getDoc,
   getDocs,
+  increment,
   query,
   serverTimestamp,
   setDoc,
@@ -27,6 +28,7 @@ import {
 const PROJECT_ID = "rmt-rules-test";
 const OWNER_ID = "owner-user";
 const OTHER_ID = "other-user";
+const THIRD_ID = "third-user";
 const ADMIN_ID = "rmt-admin";
 const PROFILE = {
   displayName: "RMT Trader",
@@ -179,6 +181,33 @@ function projectStats(projectSlug = "runner-studio", followerCount = 1) {
   };
 }
 
+function referralCode(code = "RMT-ABCDEFGH", ownerId = OWNER_ID, verifiedActivations = 0) {
+  return {
+    schemaVersion: 1,
+    code,
+    ownerId,
+    verifiedActivations,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp()
+  };
+}
+
+function referralProfile(code = "RMT-ABCDEFGH") {
+  return {
+    schemaVersion: 1,
+    code,
+    createdAt: serverTimestamp()
+  };
+}
+
+function referralClaim(code = "RMT-ABCDEFGH") {
+  return {
+    schemaVersion: 1,
+    code,
+    claimedAt: serverTimestamp()
+  };
+}
+
 async function seedOwner(db = authenticatedDb()) {
   await assertSucceeds(setDoc(doc(db, "users", OWNER_ID), userDocument()));
 }
@@ -301,6 +330,84 @@ test("identity edits allow setup and correction, then enforce the 24 hour protec
     identityUpdatedAt: serverTimestamp(),
     updatedAt: serverTimestamp()
   }, { merge: true }));
+});
+
+test("referral codes are permanent, private to their owner, and created atomically", async () => {
+  const owner = authenticatedDb();
+  await seedOwner(owner);
+  const code = "RMT-ABCDEFGH";
+  const codeReference = doc(owner, "referralCodes", code);
+  const profileReference = doc(owner, "users", OWNER_ID, "referralProfile", "current");
+
+  await assertFails(setDoc(codeReference, referralCode(code)));
+  const batch = writeBatch(owner);
+  batch.set(profileReference, referralProfile(code));
+  batch.set(codeReference, referralCode(code));
+  await assertSucceeds(batch.commit());
+  assert.equal((await assertSucceeds(getDoc(codeReference))).data()?.verifiedActivations, 0);
+  await assertFails(getDoc(doc(authenticatedDb(OTHER_ID), "referralCodes", code)));
+  await assertFails(deleteDoc(profileReference));
+  await assertFails(setDoc(profileReference, referralProfile("RMT-JKLMNPQR")));
+});
+
+test("a verified referred profile can activate one code exactly once", async () => {
+  const owner = authenticatedDb();
+  const referred = authenticatedDb(OTHER_ID);
+  await seedOwner(owner);
+  await assertSucceeds(setDoc(doc(referred, "users", OTHER_ID), userDocument({
+    identityUpdatedAt: serverTimestamp()
+  })));
+  const code = "RMT-ABCDEFGH";
+  const codeReference = doc(owner, "referralCodes", code);
+  const ownerBatch = writeBatch(owner);
+  ownerBatch.set(doc(owner, "users", OWNER_ID, "referralProfile", "current"), referralProfile(code));
+  ownerBatch.set(codeReference, referralCode(code));
+  await assertSucceeds(ownerBatch.commit());
+
+  const directIncrement = writeBatch(referred);
+  directIncrement.update(doc(referred, "referralCodes", code), {
+    verifiedActivations: increment(1),
+    updatedAt: serverTimestamp()
+  });
+  await assertFails(directIncrement.commit());
+
+  const activation = writeBatch(referred);
+  activation.set(doc(referred, "users", OTHER_ID, "referralClaim", "current"), referralClaim(code));
+  activation.update(doc(referred, "referralCodes", code), {
+    verifiedActivations: increment(1),
+    updatedAt: serverTimestamp()
+  });
+  await assertSucceeds(activation.commit());
+  assert.equal((await assertSucceeds(getDoc(codeReference))).data()?.verifiedActivations, 1);
+
+  const duplicate = writeBatch(referred);
+  duplicate.set(doc(referred, "users", OTHER_ID, "referralClaim", "current"), referralClaim(code));
+  duplicate.update(doc(referred, "referralCodes", code), {
+    verifiedActivations: increment(1),
+    updatedAt: serverTimestamp()
+  });
+  await assertFails(duplicate.commit());
+
+  const selfClaim = writeBatch(owner);
+  selfClaim.set(doc(owner, "users", OWNER_ID, "referralClaim", "current"), referralClaim(code));
+  selfClaim.update(codeReference, {
+    verifiedActivations: increment(1),
+    updatedAt: serverTimestamp()
+  });
+  await assertFails(selfClaim.commit());
+
+  const unprotected = authenticatedDb(THIRD_ID);
+  await assertSucceeds(setDoc(doc(unprotected, "users", THIRD_ID), userDocument()));
+  const unprotectedClaim = writeBatch(unprotected);
+  unprotectedClaim.set(doc(unprotected, "users", THIRD_ID, "referralClaim", "current"), referralClaim(code));
+  unprotectedClaim.update(doc(unprotected, "referralCodes", code), {
+    verifiedActivations: increment(1),
+    updatedAt: serverTimestamp()
+  });
+  await assertFails(unprotectedClaim.commit());
+
+  const unverified = authenticatedDb(THIRD_ID, false);
+  await assertFails(setDoc(doc(unverified, "users", THIRD_ID, "referralClaim", "current"), referralClaim(code)));
 });
 
 test("a valid watchlist batch is private and can be removed with a newer list version", async () => {

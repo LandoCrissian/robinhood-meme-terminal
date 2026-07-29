@@ -17,11 +17,15 @@ Wallet connection and profile authentication are deliberately separate. Firebase
 - `projects/{slug}/gameUpdates/{updateId}` stores bounded creator-authored milestones, playtests and releases for approved game pages. Visitors may read updates only while the parent page is live; only the verified assigned creator may write them.
 - `users/{uid}/projectFollows/{slug}` privately records the approved pages a user follows. Follower identities and lists are never public.
 - `projectStats/{slug}` exposes only the aggregate follower count. Firestore rules require the private follow and aggregate count to change together in one atomic write, preventing direct count edits.
+- `users/{uid}/referralProfile/current` privately records one permanent invite code for the owner. `referralCodes/{code}` stores the private owner ID and aggregate verified activation count; only the owner may read it.
+- `users/{uid}/referralClaim/current` privately records the single code an account activated. Rules prevent self-referrals and require the claim and aggregate `+1` to occur in one atomic write.
 - Google account email and photo are read from the active Firebase Authentication session for the signed-in UI. RMT does not duplicate either value in Firestore.
 
 Local profile and watchlist records carry independent update versions. On sign-in, the latest profile and latest complete watchlist win separately. Newer deletions therefore stay deleted instead of being reintroduced by an older device. Firestore listeners deliver later changes to other open, signed-in RMT sessions.
 
 Display name, handle, and desk note use a deliberate identity lifecycle. The user reviews those fields before the first save, may make corrections for 10 minutes, and then waits 24 hours from the latest identity change before editing them again. Firestore rules enforce the same window across signed-in devices using server time. Operating mode and information density are terminal preferences and remain editable during the identity protection period. Local-only profiles apply the same experience in that browser, but browser storage is not an authentication boundary.
+
+Invite links use `/r/RMT-XXXXXXXX` and retain a valid pending code in that browser for at most 30 days. An activation is recorded only after the referred user has verified sign-in and saved a protected profile. Codes are randomly generated, permanent, non-editable, and restricted to one claim per account. The first release measures verified profile activations only: it does not count clicks, create financial rewards, or connect an X account. Sharing on X uses a public Web Intent and does not require or expose X API credentials.
 
 ## Safe activation order
 
