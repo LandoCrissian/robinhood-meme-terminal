@@ -156,7 +156,7 @@ function friendlyAuthError(error: unknown) {
   if (code === "auth/operation-not-allowed") {
     return "Google sign-in is not enabled in the RMT Firebase project yet.";
   }
-  return "Google sign-in did not finish. Your local profile is unchanged.";
+  return "Google sign-in did not finish. Your local profile is unchanged. If this is an in-app browser, open RMT in Safari, Chrome, Firefox, or Edge and try again.";
 }
 
 function slotDocuments(snapshot: { docs: Array<{ data: () => unknown; id: string }> }) {
