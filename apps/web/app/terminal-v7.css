@@ -415,6 +415,15 @@ main:has(.rmtDiscovery){max-width:none;padding:0 10px 36px}
 .runnerSourceFilters button.active+button{border-left-color:#32633b}
 .runnerSourceFilters button.active b{color:#b8edc0}
 .runnerSourceFilters button:focus-visible{position:relative;z-index:1;outline:2px solid #76ed86;outline-offset:-2px}
+.runnerOriginFilters{position:relative;flex:0 0 auto;margin-left:auto}
+.runnerOriginFilters summary{min-height:25px;display:flex;align-items:center;padding:0 9px;border:1px solid var(--terminal-line);background:#080c09;color:#77837b;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.5rem;font-weight:850;list-style:none;cursor:pointer}
+.runnerOriginFilters summary::-webkit-details-marker{display:none}
+.runnerOriginFilters summary::after{content:"⌄";margin-left:7px;color:#72e582}
+.runnerOriginFilters[open] summary{border-color:#32633b;color:#b8edc0}
+.runnerOriginFilters>div{position:absolute;z-index:25;right:0;top:calc(100% + 5px);display:flex;min-width:max-content;padding:5px;border:1px solid #32633b;background:#080c09;box-shadow:0 12px 30px rgba(0,0,0,.45)}
+.runnerEdgeBrief{display:flex;min-height:34px;align-items:center;gap:10px;padding:7px 9px;border-bottom:1px solid var(--terminal-line);background:#08110b;color:#77837b;font-size:.56rem}
+.runnerEdgeBrief strong{flex:0 0 auto;color:#6fe780;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.49rem;letter-spacing:.1em}
+.runnerMarketCard .runnerCardStatus small{color:#738078;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.45rem;font-style:normal}
 .runnerColumnHeader{display:grid;grid-template-columns:96px minmax(210px,1.2fr) minmax(300px,1.6fr) 125px 126px 82px;min-height:27px;align-items:center;border-bottom:1px solid var(--terminal-line);background:#050806;color:#536159;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.47rem;font-weight:850;letter-spacing:.06em;text-transform:uppercase}
 .runnerColumnHeader span{height:100%;display:flex;align-items:center;padding:0 8px;border-right:1px solid var(--terminal-line)}
 .runnerColumnHeader span:last-child{justify-content:center;border-right:0}
@@ -593,6 +602,10 @@ main:has(.rmtDiscovery){max-width:none;padding:0 10px 36px}
   .runnerSourceFilters>span{display:none}
   .runnerSourceFilters button{min-height:34px;padding:0 11px;font-size:.64rem}
   .runnerSourceFilters button b{font-size:.57rem}
+  .runnerOriginFilters{margin-left:0}
+  .runnerOriginFilters summary{min-height:34px;padding:0 11px;font-size:.62rem}
+  .runnerOriginFilters>div{right:0;max-width:calc(100vw - 20px);overflow-x:auto}
+  .runnerEdgeBrief{align-items:flex-start;flex-direction:column;gap:3px;padding:10px 12px;font-size:.68rem;line-height:1.45}
   .runnerMarketCard.externalMarketCard{grid-template-columns:78px minmax(0,1fr) 118px;grid-template-rows:auto auto auto;min-height:0}
   .runnerMarketCard .runnerCardStatus{grid-column:1;grid-row:1}
   .runnerMarketCard .externalIdentity{grid-column:2/-1;grid-row:1;border-right:0}
@@ -678,6 +691,7 @@ main:has(.rmtDiscovery){max-width:none;padding:0 10px 36px}
   .runnerMarketCard .externalIdentity strong{font-size:.9rem}
   .runnerMarketCard .externalIdentity small{font-size:.68rem}
   .runnerMarketCard .externalIdentity em{font-size:.61rem;line-height:1.35}
+  .mobileRunnerCopy em{display:block;color:#718077;font-size:.58rem;font-style:normal;line-height:1.35}
   .runnerMarketCard .runnerStats{grid-column:1/-1;grid-row:2;grid-template-columns:repeat(2,minmax(0,1fr))}
   .runnerMarketCard .runnerStats span{min-height:52px;padding:9px 12px;border-bottom:1px solid var(--terminal-line)}
   .runnerMarketCard .runnerStats span:nth-child(2n){border-right:0}

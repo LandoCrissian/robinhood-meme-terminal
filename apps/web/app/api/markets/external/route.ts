@@ -14,11 +14,14 @@ import {
   rankExternalMarket
 } from "../../../../lib/external-market-ranking";
 import { enrichExternalProjectMetadata } from "../../../../lib/server/external-project-metadata";
+import { safeDexImageUri } from "../../../../lib/server/external-market-media";
 import { fetchLemonProjectSnapshot } from "../../../../lib/server/lemon-project-feed";
 
 const CHAIN_SLUG = "robinhood";
 const DEXSCREENER_TOKEN_PAIRS_API = "https://api.dexscreener.com/token-pairs/v1";
 const DEXSCREENER_TOKENS_API = "https://api.dexscreener.com/tokens/v1";
+const DEXSCREENER_PROFILES_API = "https://api.dexscreener.com/token-profiles/latest/v1";
+const DEXSCREENER_BOOSTS_API = "https://api.dexscreener.com/token-boosts/top/v1";
 const DEXSCREENER_PAGE = "https://dexscreener.com/robinhood/";
 const CANONICAL_MARKET_TOKENS = [
   "0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73",
@@ -57,6 +60,14 @@ type RawPair = {
   fdv?: unknown;
   marketCap?: unknown;
   pairCreatedAt?: unknown;
+  info?: {
+    imageUrl?: unknown;
+  };
+};
+
+type RawDiscoveryToken = {
+  chainId?: unknown;
+  tokenAddress?: unknown;
 };
 
 type RmtOriginClaim = {
@@ -116,6 +127,33 @@ function transactionWindow(pair: RawPair, window: string) {
 
 function tokenFromPair(pair: RawPair) {
   return selectExternalPairBaseToken(pair.baseToken, pair.quoteToken, EXCLUDED_TOKENS);
+}
+
+async function fetchPublicDiscoveryTokens() {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), DEX_TIMEOUT_MS);
+  try {
+    const payloads = await Promise.all(
+      [DEXSCREENER_PROFILES_API, DEXSCREENER_BOOSTS_API].map(async (url) => {
+        const response = await fetch(url, {
+          headers: { Accept: "application/json" },
+          next: { revalidate: 60 },
+          signal: controller.signal
+        });
+        if (!response.ok) return [];
+        const payload: unknown = await response.json();
+        return Array.isArray(payload) ? payload as RawDiscoveryToken[] : [];
+      })
+    );
+    return [...new Set(payloads.flat().flatMap((item) => {
+      const address = asText(item.tokenAddress, 42);
+      return item.chainId === CHAIN_SLUG && isNonzeroEvmAddress(address)
+        ? [address.toLowerCase()]
+        : [];
+    }))];
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 async function fetchTokenBatch(tokenAddresses: string[]) {
@@ -225,9 +263,15 @@ function staleResponse() {
 
 export async function GET() {
   try {
-    const lemonSnapshot = await fetchLemonProjectSnapshot();
+    const [lemonSnapshot, publicDiscoveryTokens] = await Promise.all([
+      fetchLemonProjectSnapshot(),
+      fetchPublicDiscoveryTokens().catch(() => [])
+    ]);
     const requestedTokens = [...new Set(
-      lemonSnapshot.candidateAddresses.map((address) => address.toLowerCase())
+      [
+        ...lemonSnapshot.candidateAddresses.map((address) => address.toLowerCase()),
+        ...publicDiscoveryTokens
+      ]
     )];
     const tokenBatches = Array.from(
       { length: Math.ceil(requestedTokens.length / DEX_BATCH_SIZE) },
@@ -306,6 +350,7 @@ export async function GET() {
         address,
         name,
         symbol,
+        imageUri: safeDexImageUri(pair.info?.imageUrl),
         pairAddress,
         url,
         dexId,
@@ -363,8 +408,10 @@ export async function GET() {
       .catch(() => rankedMarkets);
     const snapshot: SuccessfulMarketSnapshot = {
       markets,
-      source: lemonSnapshot.projects.size > 0 ? "DEX Screener + Lemon public API" : "DEX Screener",
-      rankingVersion: "rmt-discovery-v3",
+      source: lemonSnapshot.projects.size > 0
+        ? "DEX Screener markets + public discovery + Lemon metadata"
+        : "DEX Screener markets + public discovery",
+      rankingVersion: "rmt-discovery-v4",
       thresholds: RUNNER_THRESHOLDS,
       originCoverage: "unavailable",
       rmtOriginCoverage: "complete",

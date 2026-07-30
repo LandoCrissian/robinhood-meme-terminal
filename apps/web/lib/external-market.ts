@@ -52,6 +52,7 @@ export type ExternalMarket = {
   address: string;
   name: string;
   symbol: string;
+  imageUri?: string;
   pairAddress: string;
   url: string;
   dexId: string;
