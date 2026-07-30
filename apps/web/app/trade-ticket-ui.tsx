@@ -19,6 +19,75 @@ import type { TradeFeeEstimateState } from "../lib/use-trade-fee-estimate";
 import { normalizeTradePreferences } from "../lib/trade-preferences";
 import { useTradePreferences } from "../lib/use-trade-preferences";
 
+export function TradeExecutionControls() {
+  const { preferences, save } = useTradePreferences();
+  const [message, setMessage] = useState("");
+  const store = (next: typeof preferences) => {
+    setMessage(save(next) ? "Saved on this device." : "This browser could not save that preference.");
+  };
+
+  return (
+    <details className="tradeExecutionControls">
+      <summary>
+        <span>
+          <small>YOUR EXECUTION RULES</small>
+          <strong id="trade-execution-controls-heading">Control how RMT prepares trades</strong>
+        </span>
+        <em>
+          {preferences.routePreference === "automatic"
+            ? "BEST OUTPUT"
+            : preferences.routePreference.toUpperCase()}
+          {" · "}
+          {preferences.maxPriceImpactBps / 100}% MAX
+        </em>
+      </summary>
+      <div className="tradeExecutionControlGroup">
+        <span>
+          <strong>Route preference</strong>
+          <small>Automatic compares protected output. A venue preference is never silently replaced.</small>
+        </span>
+        <div role="group" aria-label="Default execution route">
+          {([
+            ["automatic", "Best output"],
+            ["sushi", "Sushi"],
+            ["uniswap", "Uniswap"]
+          ] as const).map(([value, label]) => (
+            <button
+              type="button"
+              aria-pressed={preferences.routePreference === value}
+              className={preferences.routePreference === value ? "active" : ""}
+              onClick={() => store({ ...preferences, routePreference: value })}
+              key={value}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="tradeExecutionControlGroup">
+        <span>
+          <strong>Maximum price impact</strong>
+          <small>RMT blocks wallet preparation above your limit. The protocol ceiling remains 5%.</small>
+        </span>
+        <div role="group" aria-label="Maximum price impact">
+          {([100, 200, 500] as const).map((value) => (
+            <button
+              type="button"
+              aria-pressed={preferences.maxPriceImpactBps === value}
+              className={preferences.maxPriceImpactBps === value ? "active" : ""}
+              onClick={() => store({ ...preferences, maxPriceImpactBps: value })}
+              key={value}
+            >
+              {value / 100}%
+            </button>
+          ))}
+        </div>
+      </div>
+      {message && <p role="status">{message}</p>}
+    </details>
+  );
+}
+
 export function TradeAmountPresets({
   side,
   balance,
@@ -147,23 +216,26 @@ export function QuoteProtection({
 
 export function SmartOrderGuard({
   priceImpact,
+  maxPriceImpact = 0.05,
   disabled = false,
   onReduce
 }: {
   priceImpact: number | undefined;
+  maxPriceImpact?: number;
   disabled?: boolean;
   onReduce: () => void;
 }) {
-  const tone = priceImpactTone(priceImpact);
+  const blocked = priceImpact !== undefined && priceImpact > maxPriceImpact;
+  const tone = blocked ? "danger" : priceImpactTone(priceImpact);
   if (tone === "calm") return null;
-  const blocked = tone === "danger";
+  const limitLabel = `${(maxPriceImpact * 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}%`;
   return (
     <div className={`smartOrderGuard ${tone}`} role="alert">
       <div>
-        <strong>{blocked ? "Order blocked · impact above 5%" : "Price-impact caution"}</strong>
+        <strong>{blocked ? `Order blocked · above your ${limitLabel} limit` : "Price-impact caution"}</strong>
         <small>
           {blocked
-            ? "RMT will not open your wallet for this amount. Reduce it and RMT will verify a fresh route."
+            ? "RMT will not open your wallet for this amount. Reduce it or deliberately choose a different limit, then RMT will verify a fresh route."
             : "This quote is above 1% impact. RMT can reduce the amount and automatically request a safer quote."}
         </small>
       </div>

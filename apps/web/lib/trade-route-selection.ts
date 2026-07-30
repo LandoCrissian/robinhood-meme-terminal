@@ -53,23 +53,30 @@ function improvementBps(better: bigint, baseline: bigint) {
 export function protectedOutputRecommendation({
   selected,
   quotes,
-  minimumImprovementBps = MIN_AUTO_ROUTE_IMPROVEMENT_BPS
+  minimumImprovementBps = MIN_AUTO_ROUTE_IMPROVEMENT_BPS,
+  maxPriceImpact = 0.05
 }: {
   selected: TradeVenueId | null;
   quotes: ComparableTradeQuote[];
   minimumImprovementBps?: number;
+  maxPriceImpact?: number;
 }): ProtectedOutputRecommendation | undefined {
   if (
     quotes.length < 2
     || !Number.isInteger(minimumImprovementBps)
     || minimumImprovementBps < 0
     || minimumImprovementBps > 10_000
+    || !Number.isFinite(maxPriceImpact)
+    || maxPriceImpact <= 0
+    || maxPriceImpact > 0.05
   ) return undefined;
 
-  const outputAddress = quotes[0]?.outputToken.address.toLowerCase();
-  const outputDecimals = quotes[0]?.outputToken.decimals;
-  const uniqueVenues = new Set(quotes.map((quote) => quote.venue));
-  const comparable = quotes.every((quote) => (
+  const eligibleQuotes = quotes.filter((quote) => quote.priceImpact <= maxPriceImpact);
+  if (eligibleQuotes.length < 2) return undefined;
+  const outputAddress = eligibleQuotes[0]?.outputToken.address.toLowerCase();
+  const outputDecimals = eligibleQuotes[0]?.outputToken.decimals;
+  const uniqueVenues = new Set(eligibleQuotes.map((quote) => quote.venue));
+  const comparable = eligibleQuotes.every((quote) => (
     /^0x[a-f0-9]{40}$/.test(quote.outputToken.address.toLowerCase())
     && quote.outputToken.address.toLowerCase() === outputAddress
     && quote.outputToken.decimals === outputDecimals
@@ -81,9 +88,9 @@ export function protectedOutputRecommendation({
     && quote.priceImpact <= 1
     && positiveAmount(quote.minimumOut) !== undefined
   ));
-  if (!comparable || uniqueVenues.size !== quotes.length) return undefined;
+  if (!comparable || uniqueVenues.size !== eligibleQuotes.length) return undefined;
 
-  const ranked = [...quotes].sort((left, right) => {
+  const ranked = [...eligibleQuotes].sort((left, right) => {
     const leftOutput = positiveAmount(left.minimumOut) ?? 0n;
     const rightOutput = positiveAmount(right.minimumOut) ?? 0n;
     if (leftOutput !== rightOutput) return leftOutput > rightOutput ? -1 : 1;
@@ -99,7 +106,7 @@ export function protectedOutputRecommendation({
   const leaderOutput = positiveAmount(leader.minimumOut) ?? 0n;
   const runnerUpOutput = positiveAmount(runnerUp.minimumOut) ?? 0n;
   const leaderAdvantageBps = improvementBps(leaderOutput, runnerUpOutput);
-  const selectedQuote = quotes.find((quote) => quote.venue === selected);
+  const selectedQuote = eligibleQuotes.find((quote) => quote.venue === selected);
   if (!selectedQuote) {
     return {
       leader: leader.venue,

@@ -27,8 +27,10 @@ import { ExternalRouteComparison } from "./external-route-comparison";
 import { ExternalSushiQuotePanel } from "./external-sushi-quote-panel";
 import { ExternalUniswapTradePanel } from "./external-uniswap-trade-panel";
 import { SiteFooter } from "./site-footer";
+import { TradeExecutionControls } from "./trade-ticket-ui";
 import { WatchlistButton } from "./watchlist-button";
 import { recordExperienceStage } from "../lib/experience-funnel";
+import { useTradePreferences } from "../lib/use-trade-preferences";
 
 type WorkspaceTab = "activity" | "safety" | "origin";
 type TradeSide = "buy" | "sell";
@@ -129,6 +131,7 @@ export function ExternalMarketWorkspace({ initialMarket }: { initialMarket?: Ext
   const [tradeVenueNotice, setTradeVenueNotice] = useState("");
   const [tradeVenueRefresh, setTradeVenueRefresh] = useState(0);
   const [mobileTradeOpen, setMobileTradeOpen] = useState(false);
+  const { preferences: tradePreferences } = useTradePreferences();
   const tradeRef = useRef<HTMLElement>(null);
   const tradeReturnFocus = useRef<HTMLElement>(null);
   const marketAddress = market?.address;
@@ -275,11 +278,27 @@ export function ExternalMarketWorkspace({ initialMarket }: { initialMarket?: Ext
         && (candidate.verification === "dex-and-route" || candidate.verification === "dex-and-onchain")
       ));
       setTradeVenues(verified);
+      const requestedVenue = tradePreferences.routePreference === "automatic"
+        ? preferredVenue
+        : tradePreferences.routePreference;
       setSelectedTradeVenue(
-        preferredVenue && verified.some((candidate) => candidate.venue === preferredVenue)
-          ? preferredVenue
-          : verified[0]?.venue ?? null
+        requestedVenue && verified.some((candidate) => candidate.venue === requestedVenue)
+          ? requestedVenue
+          : tradePreferences.routePreference === "automatic"
+            ? verified[0]?.venue ?? null
+            : null
       );
+      setTradeVenueSelectionMode(
+        tradePreferences.routePreference === "automatic" ? "automatic" : "manual"
+      );
+      if (
+        tradePreferences.routePreference !== "automatic"
+        && !verified.some((candidate) => candidate.venue === tradePreferences.routePreference)
+      ) {
+        setTradeVenueNotice(
+          `${tradePreferences.routePreference === "sushi" ? "Sushi" : "Uniswap"} is your saved preference, but it is not currently verified for this token. Choose an available route or change your rule.`
+        );
+      }
       setTradeVenueStatus("ready");
     }).catch(() => {
       if (controller.signal.aborted) return;
@@ -288,7 +307,13 @@ export function ExternalMarketWorkspace({ initialMarket }: { initialMarket?: Ext
       setSelectedTradeVenue(null);
     });
     return () => controller.abort();
-  }, [marketAddress, marketPair, preferredVenue, tradeVenueRefresh]);
+  }, [
+    marketAddress,
+    marketPair,
+    preferredVenue,
+    tradePreferences.routePreference,
+    tradeVenueRefresh
+  ]);
 
   const setTradeSide = (next: TradeSide, focus = false) => {
     if (focus && (tradeVenueStatus !== "ready" || tradeVenues.length === 0)) return;
@@ -605,6 +630,7 @@ export function ExternalMarketWorkspace({ initialMarket }: { initialMarket?: Ext
             <button type="button" role="tab" aria-selected={side === "buy"} className={side === "buy" ? "active" : ""} onClick={() => setTradeSide("buy")}>Buy</button>
             <button type="button" role="tab" aria-selected={side === "sell"} className={side === "sell" ? "active" : ""} onClick={() => setTradeSide("sell")}>Sell</button>
           </div>
+          <TradeExecutionControls />
           {activeTradeVenue && (
             <div className={`universalRouteDecision ${tradeVenueSelectionMode}`} role="status">
               <span>
@@ -623,6 +649,7 @@ export function ExternalMarketWorkspace({ initialMarket }: { initialMarket?: Ext
               amount={tradeAmount}
               selectedVenue={selectedTradeVenue}
               selectionMode={tradeVenueSelectionMode}
+              maxPriceImpact={tradePreferences.maxPriceImpactBps / 10_000}
               onSelectVenue={selectTradeVenue}
               onRecommendedVenue={applyRecommendedTradeVenue}
               onHealthChange={setTradeVenueHealth}
@@ -640,9 +667,15 @@ export function ExternalMarketWorkspace({ initialMarket }: { initialMarket?: Ext
           )}
           {tradeVenueStatus === "ready" && !tradingMarket && (
             <div className="universalTradeUnavailable">
-              <strong>View-only market</strong>
-              <p>RMT found no independently verified in-site execution route for this token.</p>
-              <button type="button" onClick={retryTradeVenueDiscovery}>Recheck routes</button>
+              <strong>{tradeVenueOptions.length > 0 ? "Your saved route is unavailable" : "View-only market"}</strong>
+              <p>{tradeVenueOptions.length > 0
+                ? `RMT verified ${tradeVenueOptions[0]?.venue === "sushi" ? "Sushi" : "Uniswap"} as an alternative, but it will not replace your saved venue without your decision.`
+                : "RMT found no independently verified in-site execution route for this token."}</p>
+              {tradeVenueOptions[0]
+                ? <button type="button" onClick={() => selectTradeVenue(tradeVenueOptions[0].venue)}>
+                    Use {tradeVenueOptions[0].venue === "sushi" ? "Sushi" : "Uniswap"} for this order
+                  </button>
+                : <button type="button" onClick={retryTradeVenueDiscovery}>Recheck routes</button>}
             </div>
           )}
           <footer>

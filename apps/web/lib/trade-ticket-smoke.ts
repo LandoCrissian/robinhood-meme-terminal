@@ -60,7 +60,27 @@ assert.equal(normalizeBuyPreset("1000"), null);
 assert.equal(normalizeBuyPreset("0"), null);
 assert.equal(normalizeBuyPreset("1e-3"), null);
 assert.deepEqual(normalizeTradePreferences({ buyAmounts: ["0.0002", "0.002", "0.02"] }), {
-  buyAmounts: ["0.0002", "0.002", "0.02"]
+  buyAmounts: ["0.0002", "0.002", "0.02"],
+  routePreference: "automatic",
+  maxPriceImpactBps: 500
+});
+assert.deepEqual(normalizeTradePreferences({
+  buyAmounts: ["0.0002", "0.002", "0.02"],
+  routePreference: "sushi",
+  maxPriceImpactBps: 100
+}), {
+  buyAmounts: ["0.0002", "0.002", "0.02"],
+  routePreference: "sushi",
+  maxPriceImpactBps: 100
+});
+assert.deepEqual(normalizeTradePreferences({
+  buyAmounts: ["0.0002", "0.002", "0.02"],
+  routePreference: "unknown",
+  maxPriceImpactBps: 10_000
+}), {
+  buyAmounts: ["0.0002", "0.002", "0.02"],
+  routePreference: "automatic",
+  maxPriceImpactBps: 500
 });
 assert.deepEqual(normalizeTradePreferences({ buyAmounts: ["0.01", "0.01", "0.02"] }), DEFAULT_TRADE_PREFERENCES);
 assert.deepEqual(normalizeTradePreferences({ buyAmounts: ["bad"] }), DEFAULT_TRADE_PREFERENCES);
@@ -147,6 +167,30 @@ assert.equal(protectedOutputRecommendation({
     { venue: "uniswap", minimumOut: "100000", priceImpact: 0.01, outputToken: quoteToken }
   ]
 })?.automaticVenue, "uniswap");
+assert.equal(protectedOutputRecommendation({
+  selected: "sushi",
+  maxPriceImpact: 0.01,
+  quotes: [
+    { venue: "sushi", minimumOut: "100000", priceImpact: 0.009, outputToken: quoteToken },
+    { venue: "uniswap", minimumOut: "110000", priceImpact: 0.02, outputToken: quoteToken }
+  ]
+}), undefined);
+assert.equal(protectedOutputRecommendation({
+  selected: "sushi",
+  maxPriceImpact: 0.02,
+  quotes: [
+    { venue: "sushi", minimumOut: "100000", priceImpact: 0.009, outputToken: quoteToken },
+    { venue: "uniswap", minimumOut: "110000", priceImpact: 0.02, outputToken: quoteToken }
+  ]
+})?.automaticVenue, "uniswap");
+assert.equal(protectedOutputRecommendation({
+  selected: "sushi",
+  maxPriceImpact: 0.051,
+  quotes: [
+    { venue: "sushi", minimumOut: "100000", priceImpact: 0.009, outputToken: quoteToken },
+    { venue: "uniswap", minimumOut: "110000", priceImpact: 0.02, outputToken: quoteToken }
+  ]
+}), undefined);
 assert.equal(protectedOutputRecommendation({
   selected: "sushi",
   quotes: [

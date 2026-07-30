@@ -598,6 +598,7 @@ export function ExternalMarketFeed() {
     return !canHandoffToVenue(market)
       || (executionState !== undefined && executionState !== "checking");
   }).length;
+  const routeSyncPending = routeResolvedCount < sourceFilteredMarkets.length;
   const tradeableVerificationPending = tradeableOnly && routeResolvedCount < sourceFilteredMarkets.length;
 
   useEffect(() => {
@@ -815,7 +816,8 @@ export function ExternalMarketFeed() {
             setShowAllMarkets(!tradeableOnly || view === "explore");
           }}
         >
-          {tradeableVerificationPending ? "Verifying…" : "Tradeable"}<b>{tradeableCount}</b>
+          {routeSyncPending ? "Routes syncing" : "Tradeable"}
+          <b>{routeSyncPending ? `${routeResolvedCount}/${sourceFilteredMarkets.length}` : tradeableCount}</b>
         </button>
       </div>
 
@@ -873,7 +875,7 @@ export function ExternalMarketFeed() {
                 : executionState === "ready"
                   ? "Trade"
                   : executionState === "checking"
-                    ? "Checking"
+                    ? "Verifying"
                     : executionState === "view-only"
                       ? "View only"
                       : "Check route";
@@ -944,7 +946,7 @@ export function ExternalMarketFeed() {
                   ) : (
                     <span className="externalBadge">
                       {executionState === "checking"
-                        ? "CHECKING IN-SITE ROUTE"
+                        ? "VERIFYING IN-SITE ROUTE"
                         : executionState === "view-only"
                           ? "VIEW ONLY · NO VERIFIED ROUTE"
                           : "CHECK ROUTE IN WORKSPACE"}

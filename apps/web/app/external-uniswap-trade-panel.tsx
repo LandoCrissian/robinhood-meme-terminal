@@ -13,7 +13,6 @@ import {
 import type { ExternalMarket } from "../lib/external-market";
 import {
   PRICE_IMPACT_CAUTION,
-  PRICE_IMPACT_BLOCK,
   conservativeNetworkFeeReserve,
   saferTradeAmount,
   spendableTradeBalance
@@ -23,6 +22,7 @@ import { useTradeFeeEstimate } from "../lib/use-trade-fee-estimate";
 import { useTokenRiskEvidence } from "../lib/use-token-risk-evidence";
 import { tokenRiskDecision } from "../lib/token-risk-policy";
 import { useTradingTermsAcceptance } from "../lib/use-trading-terms";
+import { useTradePreferences } from "../lib/use-trade-preferences";
 import {
   TradeConfidence,
   tradeRequiresAcknowledgement
@@ -96,6 +96,8 @@ export function ExternalUniswapTradePanel({
   amount?: string;
   onAmountChange?: (value: string) => void;
 }) {
+  const { preferences } = useTradePreferences();
+  const maxPriceImpact = preferences.maxPriceImpactBps / 10_000;
   const { address, chainId, isConnected } = useAccount();
   const tokenRisk = useTokenRiskEvidence(market);
   const tradingTerms = useTradingTermsAcceptance();
@@ -291,7 +293,7 @@ export function ExternalUniswapTradePanel({
   const confidenceEvidenceReady = side === "sell" || tokenRisk.status !== "loading";
   const confidenceReady = confidenceEvidenceReady && (!requiresAcknowledgement || tradingTerms.accepted);
   const evidenceBlocked = evidenceDecision.state === "blocked";
-  const impactBlocked = Boolean(quote && quote.priceImpact > PRICE_IMPACT_BLOCK);
+  const impactBlocked = Boolean(quote && quote.priceImpact > maxPriceImpact);
   const outputDecimals = quote?.outputToken.decimals;
   const outputSymbol = quote?.outputToken.symbol ?? (side === "buy" ? market.symbol : "ETH");
   const sizingBalance = side === "buy"
@@ -348,7 +350,7 @@ export function ExternalUniswapTradePanel({
       : !confidenceEvidenceReady ? "Checking contract and holders…"
       : evidenceBlocked ? `Buy blocked: ${evidenceDecision.primaryFinding?.label ?? "evidence failed"}`
         : !confidenceReady ? "Accept RMT trading terms"
-        : impactBlocked ? "Price impact too high"
+        : impactBlocked ? `Above your ${preferences.maxPriceImpactBps / 100}% impact limit`
         : needsApproval ? `Approve exact ${market.symbol} amount`
           : side === "buy" ? `Buy ${market.symbol} inside RMT` : `Sell ${market.symbol} inside RMT`;
 
@@ -416,6 +418,7 @@ export function ExternalUniswapTradePanel({
           </div>
           <SmartOrderGuard
             priceImpact={quote?.priceImpact}
+            maxPriceImpact={maxPriceImpact}
             disabled={busy || !canReduceImpact}
             onReduce={chooseSaferAmount}
           />
