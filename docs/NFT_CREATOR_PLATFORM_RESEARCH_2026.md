@@ -76,6 +76,7 @@ RMT should not convert individual comments into universal claims. It should use 
 - Private release-passport readiness evaluation.
 - Deterministic marketplace metadata and media-manifest generation, IPFS-versus-HTTPS integrity labeling, revision-bound fingerprints, and a downloadable JSON preview. Metadata remains explicitly unpinned.
 - Source-level V7 release and module registries that can bind an immutable creator release revision, payout manifest, fee-policy fingerprint, media manifest and complete module plan without minting, custody or execution. These contracts are tested but not deployed or audited.
+- A source-level creator-controlled ERC-721 module that deploys one deterministic collection for an exact frozen release. Sequential token IDs and URI hashes must be proven against the frozen media manifest; supply and royalty signaling are bounded; no marketplace settlement or platform custody exists. The contracts are tested but not deployed or audited.
 
 ### Required before marketplace contracts
 
@@ -88,11 +89,10 @@ RMT should not convert individual comments into universal claims. It should use 
 
 ### Later contract layer
 
-- Creator-controlled ERC-721 and ERC-1155 collections.
-- ERC-2981 royalty signaling without an enforcement guarantee.
+- Creator-controlled ERC-1155 editions.
 - Consent-bound split receiver.
 - Marketplace settlement for fixed-price listings and offers.
 - Auctions only after the simpler settlement path is proven.
 - Governance-controlled platform fee routing and RMT token actions.
 
-No contract in the current foundation mints, lists, transfers, charges, pays, buys back, burns or sweeps assets.
+The source-level ERC-721 collection can mint manifest-bound assets under the immutable creator's control. No current V7 contract lists, charges, pays, buys back, burns, sweeps assets or settles a marketplace transaction.

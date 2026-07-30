@@ -10,12 +10,13 @@ Audit: none
 
 ## Outcome
 
-The first V7 contract increment establishes two narrow registries:
+The V7 source foundation now establishes two narrow registries and one creator-collection module:
 
 1. `RMTV7ModuleRegistry` is an append-only catalog of exact implementation, interface, code, metadata and policy fingerprints admitted by RMT's delayed governance.
 2. `RMTV7ReleaseRegistry` lets a creator commit an immutable release revision and atomically freeze the complete set of future modules and configurations associated with it.
+3. `RMTV7ERC721CollectionModule` deploys one deterministic, creator-controlled `RMTV7CreatorCollection` for an exact frozen release intent.
 
-Neither registry mints, lists, transfers, approves, charges, settles, routes fees, calls an implementation module, holds funds, buys RMT, burns RMT, purchases NFTs or claims that RMT approved a creator.
+The collection module can mint only the sequential token IDs and exact token-URI hashes committed in the release's immutable Merkle manifest. It does not list, approve, sell, charge, settle, route fees, hold funds, buy RMT, burn RMT, purchase NFTs or claim that RMT approved a creator.
 
 ## Why this comes before marketplace settlement
 
@@ -94,6 +95,23 @@ The module key includes the chain ID and registry address so it cannot be replay
 
 The release ID includes the chain ID and registry address. An identical payload committed on another chain or deployment produces a different ID.
 
+## Creator collection module
+
+The ERC-721 increment deliberately separates creation from marketplace execution:
+
+- anyone may call the module, but deployment succeeds only when the caller is the frozen release creator;
+- the module must still be the active, code-hash-pinned implementation for collection kind/version `1/1`;
+- the release must contain the exact configuration hash for that module;
+- one `CREATE2` collection is permitted per release ID;
+- name, symbol, collection URI, token-manifest root, maximum supply, royalty receiver and royalty basis points are frozen together;
+- the immutable original creator is the only wallet allowed to mint;
+- token IDs are sequential and every ID/URI pair requires a valid proof against the frozen manifest;
+- minting uses ERC-721 safe-receiver behavior and rolls the entire mint back when a receiver rejects it;
+- maximum collection supply is 100,000, royalty signaling is capped at 10%, and metadata URI lengths are bounded;
+- neither the module nor the collection accepts native funds or exposes an RMT withdrawal or override path.
+
+The collection implements ERC-2981 only as a royalty signal. It cannot force a marketplace to pay royalties. The original creator authority is intentionally non-transferable in this increment; delegated minting, mutable metadata, reveal mechanics, burns, operator filtering and upgradeability are not present.
+
 ## Governance boundary
 
 The module registry requires its governance address to contain contract code. Production deployment is intended to use the existing delayed `RMTV6Governance`, not an EOA and not a new privileged owner.
@@ -140,6 +158,10 @@ See `V7_MARKETPLACE_ECONOMICS_BOUNDARY.md` for the accounting requirements that 
 | Duplicate module creates ambiguous behavior | Duplicate module keys in one release plan are rejected | Module-specific configuration validation belongs in reviewed module contracts |
 | Registry accidentally holds user assets | No payable receive/fallback or withdrawal function; tests reject native transfers | Future token transfer mistakes require analysis because arbitrary ERC-20 transfers cannot be universally prevented |
 | Registered module executes during release freeze | Release registry calls only the catalog's read-only `isModuleActive`; it never calls an implementation | Future factory/settlement contracts need reentrancy and execution tests |
+| Caller deploys a collection for another creator | Deployment verifies caller, module key and exact configuration against the frozen release | Product must clearly explain which wallet will own mint authority before signing |
+| Creator mints metadata outside the reviewed release | Every sequential token ID and URI hash requires a Merkle proof from the frozen manifest | Pinning receipts and ongoing media availability still need to be wired into release review |
+| Malicious receiver reenters during safe mint | Collection uses a mint guard and rolls back rejected receiver callbacks | Independent review and fuzzing remain required before deployment |
+| Royalty percentage is misrepresented as guaranteed income | ERC-2981 is documented as signaling only and capped at 10% | UI and settlement must show actual marketplace behavior separately |
 | Fake registry deployment | Release registry requires a code-bearing module registry with code-bearing governance | Publish canonical addresses and deployment verification |
 | “Registered” is misrepresented as “RMT approved” | Contract and docs explicitly separate admission, creator review and curation | UI language and public proof page must preserve the distinction |
 
@@ -159,12 +181,24 @@ See `V7_MARKETPLACE_ECONOMICS_BOUNDARY.md` for the accounting requirements that 
 - both registries reject native-asset custody;
 - constructor dependencies must contain code.
 
+`RMTV7ERC721CollectionModule.t.sol` verifies:
+
+- only the exact frozen creator and configuration can deploy;
+- only one deterministic collection can be recorded for a release;
+- inactive or substituted modules cannot deploy new collections;
+- frozen release history survives module deactivation;
+- creator minting is limited to the exact token-ID and URI manifest;
+- wrong proofs, other creators and unsafe receivers cannot change supply;
+- collection supply, metadata and royalty boundaries are enforced;
+- both the module and deployed collection reject native-asset custody;
+- the module advertises the reviewed interface and remains pinned to the registry entry.
+
 ## Next contract increments
 
 The following order keeps risk bounded:
 
 1. define module interfaces and human-readable transaction simulation schemas;
-2. implement a creator-controlled ERC-721 collection module with no marketplace settlement;
+2. wire trusted metadata pinning receipts and availability evidence into release preparation;
 3. implement an ERC-1155 edition module with explicit supply invariants;
 4. implement consent-bound pull-payment splits with failed-recipient recovery;
 5. select and approve a real V7 fee policy;

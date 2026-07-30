@@ -33,4 +33,5 @@ interface IRMTV7ModuleRegistry {
     function governance() external view returns (address);
     function getModule(bytes32 moduleKey) external view returns (Module memory);
     function isModuleActive(bytes32 moduleKey) external view returns (bool);
+    function moduleKeyByKindAndVersion(bytes32 versionKey) external view returns (bytes32 moduleKey);
 }

@@ -37,6 +37,8 @@ contract RMTV7ReleaseRegistry {
     mapping(address creator => uint256 nextNonce) public creatorNonces;
     mapping(bytes32 releaseId => ReleaseCommitment release) private _releases;
     mapping(bytes32 releaseId => ModuleIntent[] intents) private _moduleIntents;
+    mapping(bytes32 releaseId => mapping(bytes32 moduleKey => bytes32 configurationHash)) private
+        _moduleConfigurationHashes;
 
     error InvalidConfiguration();
     error UnknownRelease();
@@ -153,6 +155,7 @@ contract RMTV7ReleaseRegistry {
                 if (moduleIntents[j].moduleKey == intent.moduleKey) revert InvalidModulePlan();
             }
             _moduleIntents[releaseId].push(intent);
+            _moduleConfigurationHashes[releaseId][intent.moduleKey] = intent.configurationHash;
         }
 
         moduleManifestHash = keccak256(abi.encode(moduleIntents));
@@ -180,6 +183,17 @@ contract RMTV7ReleaseRegistry {
     function getModuleIntents(bytes32 releaseId) external view returns (ModuleIntent[] memory) {
         if (_releases[releaseId].creator == address(0)) revert UnknownRelease();
         return _moduleIntents[releaseId];
+    }
+
+    /// @notice Verifies one exact creator, module, and configuration against a terminal frozen release.
+    function isFrozenModuleIntent(bytes32 releaseId, address creator, bytes32 moduleKey, bytes32 configurationHash)
+        external
+        view
+        returns (bool)
+    {
+        ReleaseCommitment storage release = _releases[releaseId];
+        return release.state == RELEASE_STATE_FROZEN && release.creator == creator && moduleKey != bytes32(0)
+            && configurationHash != bytes32(0) && _moduleConfigurationHashes[releaseId][moduleKey] == configurationHash;
     }
 
     function _requireCreatorRelease(bytes32 releaseId) private view returns (ReleaseCommitment storage release) {
