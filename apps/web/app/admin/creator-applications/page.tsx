@@ -13,6 +13,7 @@ import { ActivationReviewInbox } from "./activation-review-inbox";
 import { CommunityFeedbackInbox } from "./community-feedback-inbox";
 import { CommunityMessageManager } from "./community-message-manager";
 import { CommunityModerationInbox } from "./community-moderation-inbox";
+import { ExperienceFunnelInsights } from "./experience-funnel-insights";
 
 type ReviewDraft = { note: string; slug: string };
 
@@ -126,6 +127,7 @@ export default function CreatorApplicationAdminPage() {
         <a href="#activation-reviews">Activations</a>
         <a href="#community-moderation-title">Reports</a>
         <a href="#community-feedback-title">Feedback</a>
+        <a href="#experience-funnel">Visitor journey</a>
       </nav>
 
       <CommunityMessageManager admin={user} />
@@ -179,6 +181,7 @@ export default function CreatorApplicationAdminPage() {
       <ActivationReviewInbox admin={user} />
       <CommunityModerationInbox admin={user} />
       <CommunityFeedbackInbox admin={user} />
+      <ExperienceFunnelInsights admin={user} />
     </main>
   );
 }

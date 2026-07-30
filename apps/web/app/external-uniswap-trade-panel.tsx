@@ -39,6 +39,7 @@ import {
   type TradeQuoteState
 } from "./trade-ticket-ui";
 import { WalletButton } from "./wallet-button";
+import { recordExperienceStage } from "../lib/experience-funnel";
 
 const ROBINHOOD_CHAIN_ID = 4663;
 const EXPLORER = "https://robinhoodchain.blockscout.com";
@@ -257,6 +258,9 @@ export function ExternalUniswapTradePanel({
     && BigInt(quote.deadline) > BigInt(Math.floor(Date.now() / 1000) + 30)
     && quote.amountIn === amountIn.toString()
   );
+  useEffect(() => {
+    if (quoteIsFresh) recordExperienceStage("quote_ready");
+  }, [quoteIsFresh]);
   const needsApproval = side === "sell" && amountIn > 0n && (allowance.data ?? 0n) < amountIn;
   const approvalCalldata = useMemo(() => needsApproval
     ? encodeFunctionData({
@@ -306,6 +310,7 @@ export function ExternalUniswapTradePanel({
   const submit = () => {
     setMessage("");
     if (!address || chainId !== ROBINHOOD_CHAIN_ID || !quoteIsFresh || !quote || insufficient || busy || !confidenceReady || evidenceBlocked || impactBlocked) return;
+    recordExperienceStage("wallet_review_started");
     if (needsApproval) {
       approval.writeContract({
         address: token,
@@ -384,6 +389,7 @@ export function ExternalUniswapTradePanel({
                 value={amount}
                 placeholder="0.0"
                 aria-label={`${side === "buy" ? "ETH" : market.symbol} amount`}
+                onFocus={() => recordExperienceStage("trade_preparation_opened")}
                 onChange={(event) => setAmount(cleanDecimal(event.target.value, maximumInputDecimals))}
               />
               <strong>{side === "buy" ? "ETH" : market.symbol}</strong>

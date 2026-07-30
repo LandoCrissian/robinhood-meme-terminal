@@ -28,6 +28,7 @@ import { ExternalSushiQuotePanel } from "./external-sushi-quote-panel";
 import { ExternalUniswapTradePanel } from "./external-uniswap-trade-panel";
 import { SiteFooter } from "./site-footer";
 import { WatchlistButton } from "./watchlist-button";
+import { recordExperienceStage } from "../lib/experience-funnel";
 
 type WorkspaceTab = "activity" | "safety" | "origin";
 type TradeSide = "buy" | "sell";
@@ -291,6 +292,7 @@ export function ExternalMarketWorkspace({ initialMarket }: { initialMarket?: Ext
 
   const setTradeSide = (next: TradeSide, focus = false) => {
     if (focus && (tradeVenueStatus !== "ready" || tradeVenues.length === 0)) return;
+    if (focus) recordExperienceStage("trade_preparation_opened");
     setSide(next);
     const url = new URL(window.location.href);
     url.searchParams.set("side", next);

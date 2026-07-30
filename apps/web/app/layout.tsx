@@ -17,9 +17,11 @@ import "./trading-terms.css";
 import "./watchlist-alerts.css";
 import "./professional-terminal.css";
 import "./community.css";
+import "./experience.css";
 import { Providers } from "./providers";
 import { PublicChrome } from "./public-chrome";
 import { TradingTermsGate } from "./trading-terms-gate";
+import { FirstVisitGuide } from "./first-visit-guide";
 import {
   RMT_SITE_ALTERNATE_NAME,
   RMT_SITE_DESCRIPTION,
@@ -72,7 +74,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <body><Providers><PublicChrome /><TradingTermsGate />{children}</Providers></body>
+      <body><Providers><PublicChrome /><TradingTermsGate /><FirstVisitGuide />{children}</Providers></body>
     </html>
   );
 }

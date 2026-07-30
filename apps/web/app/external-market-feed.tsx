@@ -11,6 +11,7 @@ import { isNonzeroEvmAddress } from "../lib/external-market-identity";
 import type { ExternalMarketRiskFlag, ExternalMarketSignal } from "../lib/external-market-ranking";
 import { ipfsToHttp } from "../lib/token-metadata";
 import { routeLiquidityDepthLabel } from "../lib/trade-route-selection";
+import { recordExperienceStage } from "../lib/experience-funnel";
 import { ExternalSushiQuotePanel } from "./external-sushi-quote-panel";
 import { ExternalUniswapTradePanel } from "./external-uniswap-trade-panel";
 
@@ -406,6 +407,8 @@ export function ExternalMarketFeed() {
       !canHandoffToVenue(market)
       || executionAvailability[market.address.toLowerCase()] !== "ready"
     ) return;
+    recordExperienceStage("discovery_used");
+    recordExperienceStage("trade_preparation_opened");
     returnFocusTo.current = document.activeElement instanceof HTMLElement ? document.activeElement : runnerHeading.current;
     setTradeAnnouncement("");
     setQuickTrade({ address: market.address, side });
@@ -908,7 +911,7 @@ export function ExternalMarketFeed() {
                   <div className="externalIdentity">
                     <ExternalArtwork market={market} />
                     <span>
-                      <a className="externalIdentityLink" href={`/market/${market.address}`} aria-label={`Open ${market.name} trading workspace`}><strong>{market.name}</strong></a>
+                      <a className="externalIdentityLink" href={`/market/${market.address}`} aria-label={`Open ${market.name} trading workspace`} onClick={() => recordExperienceStage("discovery_used")}><strong>{market.name}</strong></a>
                       <small>{"$" + cleanSymbol(market.symbol)} · Venue: {venueLabel(market)}</small>
                       {market.project?.creator && (
                         <small className="runnerCreator" title={market.project.creator}>Creator {shortAddress(market.project.creator)}</small>

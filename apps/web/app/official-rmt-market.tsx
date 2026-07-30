@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import type { LaunchFeedItem, LaunchFeedResponse } from "../lib/launch-feed";
 import { OFFICIAL_RMT_V6_TOKEN } from "../lib/project-page";
 import { ipfsToHttp } from "../lib/token-metadata";
+import { recordExperienceStage } from "../lib/experience-funnel";
 
 const REFRESH_MS = 30_000;
 
@@ -93,8 +94,8 @@ export function OfficialRmtMarket() {
       </div>
 
       <div className="officialRmtActions">
-        <Link href={marketHref}>Open native RMT market</Link>
-        <Link href={`/project/${OFFICIAL_RMT_V6_TOKEN}?launch=0`}>View project</Link>
+        <Link href={marketHref} onClick={() => recordExperienceStage("discovery_used")}>Open native RMT market</Link>
+        <Link href={`/project/${OFFICIAL_RMT_V6_TOKEN}?launch=0`} onClick={() => recordExperienceStage("discovery_used")}>View project</Link>
       </div>
     </section>
   );

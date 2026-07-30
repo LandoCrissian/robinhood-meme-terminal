@@ -22,6 +22,7 @@ import {
 import { ipfsToHttp } from "../lib/token-metadata";
 import { MarketPanel } from "./market-panel";
 import { publicRmtNativeLaunches } from "../lib/public-project-visibility";
+import { recordExperienceStage } from "../lib/experience-funnel";
 
 const FIXED_SUPPLY = 1_000_000_000n * 10n ** 18n;
 const DATA_REFRESH_MS = 30_000;
@@ -253,6 +254,8 @@ export function FreshLaunchFeed() {
   }, []);
 
   const openQuickTrade = useCallback((launch: LaunchFeedItem, side: "buy" | "sell") => {
+    recordExperienceStage("discovery_used");
+    recordExperienceStage("trade_preparation_opened");
     returnFocusTo.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setQuickTrade({ launch, side });
     syncQuickTradeUrl(launch, side);
@@ -509,6 +512,7 @@ export function FreshLaunchFeed() {
                     className="rmtDiscoveryMain"
                     href={"/project/" + launch.token + "?launch=" + launch.launchId}
                     aria-label={"Open " + launch.name}
+                    onClick={() => recordExperienceStage("discovery_used")}
                   >
                     <span className="rmtDiscoveryRank">#{String(index + 1).padStart(2, "0")}</span>
                     <TokenArtwork launch={launch} />

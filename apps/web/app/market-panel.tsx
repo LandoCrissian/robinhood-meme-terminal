@@ -12,6 +12,7 @@ import { PriceHistoryChart, type PricePoint } from "./price-history-chart";
 import { FundWalletButton } from "./fund-wallet-button";
 import { GraduatedMarketTrade } from "./graduated-market-trade";
 import { WalletButton } from "./wallet-button";
+import { recordExperienceStage } from "../lib/experience-funnel";
 
 const marketAbi = [
   { type: "function", name: "quoteBuy", stateMutability: "view", inputs: [{ name: "ethIn", type: "uint256" }], outputs: [{ name: "tokensOut", type: "uint256" }, { name: "fee", type: "uint256" }] },
@@ -404,6 +405,11 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply, creator, compac
       ? "This wallet has reached its temporary protected-launch allowance. Normal buying unlocks automatically when the countdown ends."
       : undefined;
   const estimatedNetworkFeeWei = preflight.status === "ready" && preflight.gas && preflight.gasPrice ? preflight.gas * preflight.gasPrice : undefined;
+  useEffect(() => {
+    if (preflight.status === "ready" && (mode === "buy" ? buyOut > 0n : sellOut > 0n)) {
+      recordExperienceStage("quote_ready");
+    }
+  }, [buyOut, mode, preflight.status, sellOut]);
   const estimatedNetworkFeeUsd = estimatedNetworkFeeWei !== undefined && ethUsd !== undefined ? Number(formatEther(estimatedNetworkFeeWei)) * ethUsd : undefined;
   const gasReserveWei = estimatedNetworkFeeWei !== undefined ? estimatedNetworkFeeWei * 2n : parseEther("0.00002");
   const walletBalanceWei = walletBalance.data?.value ?? 0n;
@@ -574,6 +580,7 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply, creator, compac
         await publicClient.estimateContractGas({ account, address: market, abi: marketAbi, functionName: "buy", args: [account, freshMinimum, deadline], value: ethIn });
         setLastAction("buy");
         setTradeMessage("Fresh quote verified. Review the ETH amount and protected minimum in your wallet.");
+        recordExperienceStage("wallet_review_started");
         writeContract({ address: market, abi: marketAbi, functionName: "buy", args: [account, freshMinimum, deadline], value: ethIn, chainId: activeChain.id });
         return;
       }
@@ -600,6 +607,7 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply, creator, compac
       if (freshAtomicSellAvailable) {
         setLastAction("sell");
         setTradeMessage("Fresh quote verified. Review the exact approval and sell in your wallet.");
+        recordExperienceStage("wallet_review_started");
         sendCalls({
           account,
           chainId: activeChain.id,
@@ -613,10 +621,12 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply, creator, compac
         setLastAction("approve");
         pendingSellOrderRef.current = { tokensIn, minimumOut: freshMinimum };
         setTradeMessage("Fresh quote verified. Approve exactly this sell amount; your sell confirmation follows.");
+        recordExperienceStage("wallet_review_started");
         writeContract({ address: tokenAddress, abi: tokenTradeAbi, functionName: "approve", args: [market, tokensIn], chainId: activeChain.id });
       } else {
         setLastAction("sell");
         setTradeMessage("Fresh quote verified. Review the token amount and protected minimum in your wallet.");
+        recordExperienceStage("wallet_review_started");
         writeContract({ address: market, abi: marketAbi, functionName: "sell", args: [tokensIn, freshMinimum, account, deadline], chainId: activeChain.id });
       }
     } catch (cause) {
@@ -631,6 +641,7 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply, creator, compac
   }
 
   function focusTradeMode(nextMode: "buy" | "sell") {
+    recordExperienceStage("trade_preparation_opened");
     setMode(nextMode);
     window.requestAnimationFrame(() => tradeRailRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
   }
@@ -683,14 +694,14 @@ export function MarketPanel({ tokenAddress, symbol, totalSupply, creator, compac
             <p>The curve can no longer accept orders. Finalize V4 graduation in the verified Graduation &amp; fees panel; the caller pays gas but receives no funds, tokens, liquidity, or reward.</p>
           </div> : mode === "buy" ? <div className="tradeAmountCard">
             <div className="tradeAmountTop"><span>You pay</span><small>{ethUsd ? `1 ETH ≈ ${formatUsd(ethUsd)}` : "Loading ETH/USD…"}</small></div>
-            <div className="tradeInputRow"><input aria-label="ETH amount to buy" inputMode="decimal" disabled={busy} value={buyAmount} onFocus={(event) => event.currentTarget.select()} onChange={(event) => setBuyAmount(event.target.value)} /><span>ETH</span></div>
+            <div className="tradeInputRow"><input aria-label="ETH amount to buy" inputMode="decimal" disabled={busy} value={buyAmount} onFocus={(event) => { recordExperienceStage("trade_preparation_opened"); event.currentTarget.select(); }} onChange={(event) => setBuyAmount(event.target.value)} /><span>ETH</span></div>
             <div className="usdEstimate">≈ {formatUsd(buyValueUsd)} <span>reference value</span></div>
             {isConnected && walletBalance.data ? <><div className="quickAmounts walletQuickAmounts" aria-label="Quick wallet balance amounts">{[5, 10, 25, 100].map((percent) => { const amount = percent === 100 ? walletSpendableWei : walletSpendableWei * BigInt(percent) / 100n; return <button type="button" key={percent} disabled={busy || amount === 0n} onClick={() => chooseBuyPercent(percent)}><span>{percent === 100 ? "Max" : `${percent}%`}</span><small>{formatEth(amount, 5)} ETH</small></button>; })}</div><small className="walletPresetNote">Based on your Robinhood Chain ETH. Max leaves room for the estimated network fee.</small></> : <div className="quickAmounts" aria-label="Quick dollar amounts">{[1, 5, 10, 25].map((amount) => <button type="button" key={amount} disabled={busy || !ethUsd} onClick={() => chooseBuyUsd(amount)}>${amount}</button>)}</div>}
             {isConnected && walletBalance.data && (walletSpendableWei === 0n || ethIn > walletSpendableWei) && <div className="lowBalancePrompt"><div><strong>{walletSpendableWei === 0n ? "Add ETH before buying" : "This order is above your spendable ETH"}</strong><span>Keep enough ETH for both the purchase and Robinhood Chain network fee.</span></div><FundWalletButton variant="inline" label="Funding options" /></div>}
             <div className="orderPreview executionPreview"><div><span>Estimated receive</span><strong>{Number(formatUnits(buyOut, 18)).toLocaleString(undefined, { maximumFractionDigits: 2 })} {symbol}</strong></div><div><span>Protected minimum</span><strong>{Number(formatUnits(buyMinimum, 18)).toLocaleString(undefined, { maximumFractionDigits: 2 })} {symbol}</strong></div><div><span>Curve price impact</span><strong className={`impactValue ${curveImpactTone}`}>{curveImpactLabel}</strong></div><div><span>Platform fee</span><strong>{formatEth(buyFee)} ETH</strong></div></div>
           </div> : <div className="tradeAmountCard">
             <div className="tradeAmountTop"><span>You sell</span><small>Balance {Number(formatUnits(balance.data ?? 0n, 18)).toLocaleString(undefined, { maximumFractionDigits: 2 })} {symbol}</small></div>
-            <div className="tradeInputRow"><input aria-label={`${symbol} amount to sell`} inputMode="decimal" disabled={busy} value={sellAmount} onFocus={(event) => event.currentTarget.select()} onChange={(event) => setSellAmount(event.target.value)} /><span>{symbol}</span></div>
+            <div className="tradeInputRow"><input aria-label={`${symbol} amount to sell`} inputMode="decimal" disabled={busy} value={sellAmount} onFocus={(event) => { recordExperienceStage("trade_preparation_opened"); event.currentTarget.select(); }} onChange={(event) => setSellAmount(event.target.value)} /><span>{symbol}</span></div>
             <div className="usdEstimate">≈ {formatUsd(sellValueUsd)} <span>estimated proceeds</span></div>
             <div className="quickAmounts" aria-label="Quick sell percentages">{[25, 50, 75, 100].map((percent) => <button type="button" key={percent} disabled={busy || (balance.data ?? 0n) === 0n} onClick={() => chooseSellPercent(percent)}>{percent === 100 ? "Max" : `${percent}%`}</button>)}</div>
             <div className="orderPreview executionPreview"><div><span>Estimated receive</span><strong>{Number(formatEther(sellOut)).toLocaleString(undefined, { maximumFractionDigits: 8 })} ETH</strong></div><div><span>Protected minimum</span><strong>{Number(formatEther(sellMinimum)).toLocaleString(undefined, { maximumFractionDigits: 8 })} ETH</strong></div><div><span>Curve price impact</span><strong className={`impactValue ${curveImpactTone}`}>{curveImpactLabel}</strong></div><div><span>Platform fee</span><strong>{formatEth(sellFee)} ETH</strong></div></div>
