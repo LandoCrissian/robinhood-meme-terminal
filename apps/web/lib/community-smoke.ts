@@ -16,6 +16,7 @@ import {
 } from "./community";
 import {
   normalizeCommunityReportReason,
+  parseAdminCommunityMessage,
   parseAdminCommunityReport
 } from "./community-moderation";
 import {
@@ -114,6 +115,24 @@ assert.ok(parseAdminCommunityReport({
   messageBody: "Watching the RMT curve markets today.",
   createdAt: "2026-07-29T12:00:00.000Z"
 }));
+assert.ok(parseAdminCommunityMessage({
+  messageId: "AbCdEfGhIjKlMnOpQrSt",
+  roomId: "global",
+  authorKind: "rmt",
+  authorLabel: "RMT-Dev",
+  authorHandle: "RMTLaunch",
+  messageBody: "Testing the RMT Live moderation controls.",
+  createdAt: "2026-07-29T12:00:00.000Z"
+}));
+assert.equal(parseAdminCommunityMessage({
+  messageId: "AbCdEfGhIjKlMnOpQrSt",
+  roomId: "global",
+  authorKind: "rmt",
+  authorLabel: "RMT-Dev",
+  authorHandle: "RMTLaunch",
+  messageBody: "Testing the RMT Live moderation controls.",
+  createdAt: "invalid"
+}), null);
 assert.equal(normalizeCommunityFeedbackCategory("mobile"), "mobile");
 assert.equal(normalizeCommunityFeedbackCategory("investment_advice"), null);
 assert.equal(normalizeCommunityFeedbackTitle("  Better   charts  "), "Better charts");
@@ -339,6 +358,31 @@ assert.match(moderationRouteSource, /bannedUntil/);
 assert.match(moderationRouteSource, /status: "moderated"/);
 assert.match(moderationRouteSource, /COMMUNITY_AUDIT_RETENTION_MS/);
 assert.match(moderationRouteSource, /COMMUNITY_ACTOR_RETENTION_MS/);
+assert.match(moderationRouteSource, /input\.operation === "list_messages"/);
+assert.match(moderationRouteSource, /input\.operation === "hide_message"/);
+assert.match(moderationRouteSource, /source: "admin_direct"/);
+assert.match(moderationRouteSource, /Direct admin action:/);
+const recentVisibleMessagesSource = moderationRouteSource.match(/async function recentVisibleMessages[\s\S]*?\n}/)?.[0] ?? "";
+assert.ok(recentVisibleMessagesSource);
+assert.doesNotMatch(recentVisibleMessagesSource, /authorKey|firebaseUid|email/);
+
+const communityMessageManagerSource = readFileSync(new URL("../app/admin/creator-applications/community-message-manager.tsx", import.meta.url), "utf8");
+assert.match(communityMessageManagerSource, /Choose a removal reason/);
+assert.match(communityMessageManagerSource, /Hide from RMT Live/);
+assert.match(communityMessageManagerSource, /private moderation record/);
+
+const adminPageSource = readFileSync(new URL("../app/admin/creator-applications/page.tsx", import.meta.url), "utf8");
+assert.match(adminPageSource, /<h1>RMT Admin<\/h1>/);
+assert.match(adminPageSource, /<CommunityMessageManager admin=\{user\}/);
+
+const profilePageSource = readFileSync(new URL("../app/profile/page.tsx", import.meta.url), "utf8");
+assert.match(profilePageSource, /Open Admin Dashboard/);
+assert.match(profilePageSource, /href="\/admin"/);
+
+const publicChromeSource = readFileSync(new URL("../app/public-chrome.tsx", import.meta.url), "utf8");
+assert.match(publicChromeSource, /Private operations/);
+assert.match(publicChromeSource, /RMT Admin/);
+assert.match(publicChromeSource, /href="\/admin"/);
 
 const feedbackRouteSource = readFileSync(new URL("../app/api/community/feedback/route.ts", import.meta.url), "utf8");
 assert.match(feedbackRouteSource, /verifyIdToken\(token, true\)/);

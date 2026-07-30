@@ -11,6 +11,7 @@ import {
 import { useProfile } from "../../profile-provider";
 import { ActivationReviewInbox } from "./activation-review-inbox";
 import { CommunityFeedbackInbox } from "./community-feedback-inbox";
+import { CommunityMessageManager } from "./community-message-manager";
 import { CommunityModerationInbox } from "./community-moderation-inbox";
 
 type ReviewDraft = { note: string; slug: string };
@@ -115,50 +116,66 @@ export default function CreatorApplicationAdminPage() {
   return (
     <main className="adminReviewPage">
       <header className="adminReviewHeader">
-        <div><p className="eyebrow">PRIVATE RMT OPERATIONS</p><h1>Creator applications</h1><p>Review private submissions. Approval publishes the project page and privately assigns its creator workspace; it does not deploy contracts, charge fees, or grant wallet authority.</p></div>
-        <span>{pendingCount} PENDING</span>
+        <div><p className="eyebrow">PRIVATE RMT OPERATIONS</p><h1>RMT Admin</h1><p>Manage RMT Live, creator applications, module activation requests, community reports, and product feedback from one verified workspace.</p></div>
+        <span>ADMIN VERIFIED</span>
       </header>
 
-      {loading ? <section className="panel adminAccessState"><h2>Loading private queue…</h2></section> : (
-        <div className="adminApplicationList">
-          {applications.length === 0 && <section className="panel adminAccessState"><h2>No applications yet</h2><p>New verified-profile submissions will appear here.</p></section>}
-          {applications.map((application) => {
-            const draft = drafts[application.userId] ?? { note: "", slug: "" };
-            const busy = busyId === application.userId;
-            return (
-              <article className={`adminApplicationCard status-${application.status}`} key={application.userId}>
-                <header>
-                  <div><span>{application.status.replace("_", " ")}</span><h2>{application.projectName}</h2><p>{application.projectType} · {application.contactEmail}</p></div>
-                  {application.projectSlug && <Link href={`/project/${application.projectSlug}`}>Public page ↗</Link>}
-                </header>
-                <p className="adminApplicationSummary">{application.summary}</p>
-                <dl>
-                  <dt>Modules</dt><dd>{application.requestedModules.join(", ")}</dd>
-                  <dt>Token</dt><dd>{application.tokenAddress || "Not requested"}</dd>
-                  <dt>Website</dt><dd>{application.website ? <a href={application.website} target="_blank" rel="noreferrer">Open ↗</a> : "Not supplied"}</dd>
-                  <dt>X</dt><dd>{application.xProfile ? <a href={application.xProfile} target="_blank" rel="noreferrer">Open ↗</a> : "Not supplied"}</dd>
-                </dl>
+      <nav className="adminJumpNav" aria-label="RMT admin sections">
+        <a href="#live-messages">Live messages</a>
+        <a href="#creator-applications">Applications</a>
+        <a href="#activation-reviews">Activations</a>
+        <a href="#community-moderation-title">Reports</a>
+        <a href="#community-feedback-title">Feedback</a>
+      </nav>
 
-                {application.status === "pending" && (
-                  <div className="adminReviewControls">
-                    <label>Public page slug<input value={draft.slug} maxLength={48} onChange={(event) => updateDraft(application.userId, { slug: normalizeProjectSlug(event.target.value) })} /></label>
-                    <label>Review note<textarea maxLength={600} placeholder="Decision context or requested changes" value={draft.note} onChange={(event) => updateDraft(application.userId, { note: event.target.value })} /></label>
-                    <div>
-                      <button className="adminApproveButton" type="button" disabled={busy} onClick={() => void review(application, "approved")}>Approve & publish</button>
-                      <button type="button" disabled={busy} onClick={() => void review(application, "needs_changes")}>Request changes</button>
-                      <button className="adminRejectButton" type="button" disabled={busy} onClick={() => void review(application, "rejected")}>Reject</button>
+      <CommunityMessageManager admin={user} />
+
+      <section className="adminActivationSection" id="creator-applications" aria-labelledby="creator-applications-title">
+        <header className="adminReviewHeader">
+          <div><p className="eyebrow">PROJECT ACCESS</p><h2 id="creator-applications-title">Creator applications</h2><p>Review private submissions. Approval publishes a project page and privately assigns its creator workspace; it does not deploy contracts, charge fees, or grant wallet authority.</p></div>
+          <span>{pendingCount} PENDING</span>
+        </header>
+        {loading ? <section className="panel adminAccessState"><h2>Loading private queue…</h2></section> : (
+          <div className="adminApplicationList">
+            {applications.length === 0 && <section className="panel adminAccessState"><h2>No applications yet</h2><p>New verified-profile submissions will appear here.</p></section>}
+            {applications.map((application) => {
+              const draft = drafts[application.userId] ?? { note: "", slug: "" };
+              const busy = busyId === application.userId;
+              return (
+                <article className={`adminApplicationCard status-${application.status}`} key={application.userId}>
+                  <header>
+                    <div><span>{application.status.replace("_", " ")}</span><h2>{application.projectName}</h2><p>{application.projectType} · {application.contactEmail}</p></div>
+                    {application.projectSlug && <Link href={`/project/${application.projectSlug}`}>Public page ↗</Link>}
+                  </header>
+                  <p className="adminApplicationSummary">{application.summary}</p>
+                  <dl>
+                    <dt>Modules</dt><dd>{application.requestedModules.join(", ")}</dd>
+                    <dt>Token</dt><dd>{application.tokenAddress || "Not requested"}</dd>
+                    <dt>Website</dt><dd>{application.website ? <a href={application.website} target="_blank" rel="noreferrer">Open ↗</a> : "Not supplied"}</dd>
+                    <dt>X</dt><dd>{application.xProfile ? <a href={application.xProfile} target="_blank" rel="noreferrer">Open ↗</a> : "Not supplied"}</dd>
+                  </dl>
+
+                  {application.status === "pending" && (
+                    <div className="adminReviewControls">
+                      <label>Public page slug<input value={draft.slug} maxLength={48} onChange={(event) => updateDraft(application.userId, { slug: normalizeProjectSlug(event.target.value) })} /></label>
+                      <label>Review note<textarea maxLength={600} placeholder="Decision context or requested changes" value={draft.note} onChange={(event) => updateDraft(application.userId, { note: event.target.value })} /></label>
+                      <div>
+                        <button className="adminApproveButton" type="button" disabled={busy} onClick={() => void review(application, "approved")}>Approve & publish</button>
+                        <button type="button" disabled={busy} onClick={() => void review(application, "needs_changes")}>Request changes</button>
+                        <button className="adminRejectButton" type="button" disabled={busy} onClick={() => void review(application, "rejected")}>Reject</button>
+                      </div>
                     </div>
-                  </div>
-                )}
-                {application.status === "needs_changes" && (
-                  <p className="adminReviewMessage">Waiting for the creator to resubmit the requested changes.</p>
-                )}
-              </article>
-            );
-          })}
-        </div>
-      )}
-      {message && <p className="adminReviewMessage" role="status">{message}</p>}
+                  )}
+                  {application.status === "needs_changes" && (
+                    <p className="adminReviewMessage">Waiting for the creator to resubmit the requested changes.</p>
+                  )}
+                </article>
+              );
+            })}
+          </div>
+        )}
+        {message && <p className="adminReviewMessage" role="status">{message}</p>}
+      </section>
       <ActivationReviewInbox admin={user} />
       <CommunityModerationInbox admin={user} />
       <CommunityFeedbackInbox admin={user} />

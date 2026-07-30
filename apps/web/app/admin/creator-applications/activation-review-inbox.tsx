@@ -88,7 +88,7 @@ export function ActivationReviewInbox({ admin }: { admin: User }) {
   };
 
   return (
-    <section className="adminActivationSection" aria-labelledby="activation-review-title">
+    <section className="adminActivationSection" id="activation-reviews" aria-labelledby="activation-review-title">
       <header className="adminReviewHeader">
         <div><p className="eyebrow">PRIVATE MODULE OPERATIONS</p><h2 id="activation-review-title">Activation reviews</h2><p>Process creator requests without deploying contracts or collecting fees. “Ready” means the request may proceed to explicit configuration—not that a module is live.</p></div>
         <span>{activeCount} ACTIVE</span>
