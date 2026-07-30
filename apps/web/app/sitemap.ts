@@ -20,7 +20,8 @@ const publicRoutes = [
   ["/support", "monthly", 0.5],
   ["/risks", "monthly", 0.6],
   ["/terms", "monthly", 0.4],
-  ["/privacy", "monthly", 0.4]
+  ["/privacy", "monthly", 0.4],
+  ["/experience", "monthly", 0.5]
 ] as const;
 
 export function staticPublicSitemap(): MetadataRoute.Sitemap {

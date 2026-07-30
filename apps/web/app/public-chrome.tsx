@@ -9,7 +9,7 @@ import { useProfile } from "./profile-provider";
 import { WalletButton } from "./wallet-button";
 
 const HIDDEN_PREFIXES = ["/activate-consent-testnet", "/admin", "/deploy-consent-testnet", "/deploy-mainnet", "/deploy-testnet", "/mainnet-smoke"];
-const MORE_PREFIXES = ["/portfolio", "/launch", "/sources", "/sushi", "/rescue", "/support", "/risks"];
+const MORE_PREFIXES = ["/portfolio", "/launch", "/sources", "/sushi", "/rescue", "/support", "/experience", "/risks"];
 
 function currentPage(pathname: string, href: string) {
   if (href === "/") return pathname === "/";
@@ -98,6 +98,7 @@ export function PublicChrome() {
                   <span>Help &amp; safety</span>
                   <PublicLink href="/status">Status<small>Live network and protocol checks</small></PublicLink>
                   <PublicLink href="/support">Support<small>Transaction help and incident steps</small></PublicLink>
+                  <PublicLink href="/experience">Experience &amp; privacy<small>Replay the guide or control anonymous diagnostics</small></PublicLink>
                   <PublicLink href="/risks">Risks<small>Read before signing</small></PublicLink>
                   <a href="https://github.com/LandoCrissian/rmt-transparency" target="_blank" rel="noreferrer">Public evidence<small>Contracts, deployments and independent checks</small></a>
                   <a href="https://github.com/sponsors/LandoCrissian" target="_blank" rel="noreferrer">Support RMT<small>Voluntary sponsorship through GitHub</small></a>

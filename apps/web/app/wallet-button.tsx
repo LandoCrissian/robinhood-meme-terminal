@@ -5,6 +5,7 @@ import { robinhoodChain, robinhoodChainTestnet } from "@rmt/shared/chains";
 import { usePathname } from "next/navigation";
 import { useAccount, useConnect, useDisconnect, useSwitchChain } from "wagmi";
 import { FundWalletButton } from "./fund-wallet-button";
+import { recordExperienceStage } from "../lib/experience-funnel";
 
 function shortAddress(address: string) {
   return `${address.slice(0, 6)}…${address.slice(-4)}`;
@@ -93,7 +94,12 @@ export function WalletButton({
         {open && <><button className="walletBackdrop" type="button" aria-label="Close wallet menu" onClick={closeMenu} /><div className="walletPopover" id="wallet-connect-dialog" role="dialog" aria-modal="true" aria-label="Connect a wallet">
           <div className="walletPopoverHeader"><div><strong>Choose your wallet</strong><span>RMT never sees your recovery phrase.</span></div><button type="button" aria-label="Close wallet menu" onClick={closeMenu}>×</button></div>
           <div className="connectorList">{connectors.map((connector) => (
-            <button className="connectorOption" key={connector.uid} disabled={isPending} onClick={() => { reset(); setPendingConnectorUid(connector.uid); connect({ connector }); }}>
+            <button className="connectorOption" key={connector.uid} disabled={isPending} onClick={() => {
+              recordExperienceStage("wallet_connect_started");
+              reset();
+              setPendingConnectorUid(connector.uid);
+              connect({ connector });
+            }}>
               <span>{isPending && pendingConnectorUid === connector.uid ? `Opening ${walletLabel(connector.name)}…` : walletLabel(connector.name)}</span>
               <small>{walletDescription(connector.name)}</small>
             </button>

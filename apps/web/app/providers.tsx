@@ -8,6 +8,7 @@ import { coinbaseWallet, injected, metaMask, walletConnect } from "wagmi/connect
 import { ProfileProvider } from "./profile-provider";
 import { ReferralCapture } from "./referral-capture";
 import { CommunityLive } from "./community-live";
+import { ExperienceTelemetry } from "./experience-telemetry";
 
 const walletConnectProjectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID;
 const mainnetRpcUrl = process.env.NEXT_PUBLIC_RMT_RPC_URL ?? robinhoodChain.rpcUrls.default.http[0];
@@ -63,7 +64,7 @@ export function Providers({ children }: { children: ReactNode }) {
   return (
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
-        <ProfileProvider><ReferralCapture />{children}<CommunityLive /></ProfileProvider>
+        <ProfileProvider><ReferralCapture /><ExperienceTelemetry />{children}<CommunityLive /></ProfileProvider>
       </QueryClientProvider>
     </WagmiProvider>
   );
