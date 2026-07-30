@@ -20,6 +20,12 @@ import {
   hashCreatorEditionConfig
 } from "./creator-edition-manifest";
 import {
+  CREATOR_SPLIT_BPS_DENOMINATOR,
+  MAXIMUM_CREATOR_SPLIT_CONSENT_LIFETIME_SECONDS,
+  MAXIMUM_CREATOR_SPLIT_RECIPIENTS,
+  hashCreatorSplitConfig
+} from "./creator-split-manifest";
+import {
   MAXIMUM_FREEZE_EVIDENCE_LIFETIME_SECONDS,
   MAXIMUM_FREEZE_OBSERVATION_AGE_SECONDS,
   type CreatorReleaseFreezeEvidence
@@ -32,6 +38,7 @@ export const MAXIMUM_CREATOR_COLLECTION_NAME_BYTES = 100;
 export const MAXIMUM_CREATOR_COLLECTION_SYMBOL_BYTES = 20;
 export const MAXIMUM_CREATOR_COLLECTION_URI_BYTES = 2_048;
 export const MAXIMUM_RELEASE_MODULE_INTENTS = 8;
+export const MAXIMUM_CREATOR_SPLIT_SIGNATURE_BYTES = 4_096;
 
 const ZERO_BYTES32 = `0x${"00".repeat(32)}` as Hex;
 
@@ -43,6 +50,9 @@ const erc721ModuleAbi = parseAbi([
 ]);
 const erc1155ModuleAbi = parseAbi([
   "function deployEditions(bytes32 releaseId, (string name, string symbol, string collectionURI, bytes32 editionManifestRoot, uint32 maximumEditionTypes, uint64 maximumTotalSupply, address royaltyReceiver, uint16 royaltyBps) config) returns (address editions)"
+]);
+const consentBoundSplitModuleAbi = parseAbi([
+  "function deploySplit(bytes32 releaseId, (address[] recipients, uint16[] sharesBps, address[] recoveryAddresses, uint64 consentDeadline) config, bytes[] consentSignatures) returns (address split)"
 ]);
 
 export type CreatorV7ModuleIntent = {
@@ -72,6 +82,13 @@ export type CreatorEditionConfig = {
   royaltyBps: number;
 };
 
+export type CreatorConsentBoundSplitConfig = {
+  recipients: Address[];
+  sharesBps: number[];
+  recoveryAddresses: Address[];
+  consentDeadline: number;
+};
+
 type RequiredLiveCheck = {
   id: string;
   description: string;
@@ -80,7 +97,11 @@ type RequiredLiveCheck = {
 
 type SimulationPayload = {
   schemaVersion: typeof CREATOR_V7_TRANSACTION_SIMULATION_SCHEMA_VERSION;
-  action: "freeze_release" | "deploy_erc721_collection" | "deploy_erc1155_editions";
+  action:
+    | "freeze_release"
+    | "deploy_erc721_collection"
+    | "deploy_erc1155_editions"
+    | "deploy_consent_bound_split";
   chainId: number;
   actor: Address;
   riskLevel: "medium" | "high";
@@ -88,7 +109,7 @@ type SimulationPayload = {
   reviewSummary: string;
   transaction: {
     to: Address;
-    functionName: "freezeRelease" | "deployCollection" | "deployEditions";
+    functionName: "freezeRelease" | "deployCollection" | "deployEditions" | "deploySplit";
     selector: Hex;
     data: Hex;
     valueWei: "0";
@@ -155,6 +176,15 @@ function cleanUnsignedInteger(value: unknown, field: string, maximum: number) {
     throw new Error(`${field} is invalid.`);
   }
   return value as number;
+}
+
+function cleanConsentSignature(value: unknown, index: number): Hex {
+  if (
+    typeof value !== "string"
+    || !/^0x(?:[0-9a-fA-F]{2})+$/.test(value)
+    || (value.length - 2) / 2 > MAXIMUM_CREATOR_SPLIT_SIGNATURE_BYTES
+  ) throw new Error(`Split consent signature ${index + 1} is invalid.`);
+  return value.toLowerCase() as Hex;
 }
 
 function cleanRoyalty(receiver: unknown, bps: unknown, maximumBps: number) {
@@ -294,6 +324,56 @@ function cleanEditionConfig(input: CreatorEditionConfig): CreatorEditionConfig {
       MAXIMUM_CREATOR_EDITION_SUPPLY
     ),
     ...royalty
+  };
+}
+
+function cleanConsentBoundSplitConfig(
+  input: CreatorConsentBoundSplitConfig,
+  currentTimestamp: number
+): CreatorConsentBoundSplitConfig {
+  if (
+    !Number.isSafeInteger(currentTimestamp)
+    || currentTimestamp < 1
+    || !Number.isSafeInteger(input.consentDeadline)
+    || input.consentDeadline <= currentTimestamp
+    || input.consentDeadline > currentTimestamp + MAXIMUM_CREATOR_SPLIT_CONSENT_LIFETIME_SECONDS
+  ) throw new Error("Split consent deadline must be within the next 30 days.");
+  if (
+    input.recipients.length === 0
+    || input.recipients.length > MAXIMUM_CREATOR_SPLIT_RECIPIENTS
+    || input.sharesBps.length !== input.recipients.length
+    || input.recoveryAddresses.length !== input.recipients.length
+  ) throw new Error("Split configuration arrays are invalid.");
+
+  let totalShareBps = 0;
+  const seen = new Set<string>();
+  const recipients = input.recipients.map((recipient, index) => {
+    const cleaned = cleanAddress(recipient, `Split recipient ${index + 1}`);
+    const key = cleaned.toLowerCase();
+    if (seen.has(key)) throw new Error("Split recipients must be unique.");
+    seen.add(key);
+    return cleaned;
+  });
+  const sharesBps = input.sharesBps.map((shareBps, index) => {
+    if (
+      !Number.isSafeInteger(shareBps)
+      || shareBps < 1
+      || shareBps > CREATOR_SPLIT_BPS_DENOMINATOR
+    ) throw new Error(`Split share ${index + 1} is invalid.`);
+    totalShareBps += shareBps;
+    return shareBps;
+  });
+  if (totalShareBps !== CREATOR_SPLIT_BPS_DENOMINATOR) {
+    throw new Error("Split shares must total exactly 100%.");
+  }
+
+  return {
+    recipients,
+    sharesBps,
+    recoveryAddresses: input.recoveryAddresses.map((recoveryAddress, index) => (
+      cleanAddress(recoveryAddress, `Recovery address ${index + 1}`, true)
+    )),
+    consentDeadline: input.consentDeadline
   };
 }
 
@@ -609,6 +689,142 @@ export function createERC1155DeploymentSimulation(input: {
       "A terms hash records provenance only; it does not prove ownership or grant legal rights by itself."
     ],
     evidenceValidUntil: null,
+    contractExecution: "disabled"
+  });
+}
+
+export function createConsentBoundSplitDeploymentSimulation(input: {
+  chainId: number;
+  module: Address;
+  moduleKey: Hex;
+  releaseId: Hex;
+  creator: Address;
+  config: CreatorConsentBoundSplitConfig;
+  consentSignatures: Hex[];
+  currentTimestamp?: number;
+}): CreatorV7TransactionSimulation {
+  const chainId = cleanChainId(input.chainId);
+  const module = cleanAddress(input.module, "Split module");
+  const moduleKey = cleanBytes32(input.moduleKey, "Split module key");
+  const releaseId = cleanBytes32(input.releaseId, "Release ID");
+  const creator = cleanAddress(input.creator, "Release creator");
+  const currentTimestamp = input.currentTimestamp ?? Math.floor(Date.now() / 1_000);
+  const config = cleanConsentBoundSplitConfig(input.config, currentTimestamp);
+  if (input.consentSignatures.length !== config.recipients.length) {
+    throw new Error("Every split recipient must have one consent signature.");
+  }
+  const consentSignatures = input.consentSignatures.map(cleanConsentSignature);
+  const hashes = hashCreatorSplitConfig(config);
+  const data = encodeFunctionData({
+    abi: consentBoundSplitModuleAbi,
+    functionName: "deploySplit",
+    args: [releaseId, {
+      ...config,
+      consentDeadline: BigInt(config.consentDeadline)
+    }, consentSignatures]
+  });
+
+  return createSimulation({
+    schemaVersion: CREATOR_V7_TRANSACTION_SIMULATION_SCHEMA_VERSION,
+    action: "deploy_consent_bound_split",
+    chainId,
+    actor: creator,
+    riskLevel: "high",
+    reviewTitle: "Deploy this consent-bound V7 split",
+    reviewSummary: `Create one immutable payout contract for ${config.recipients.length} signed recipient${config.recipients.length === 1 ? "" : "s"}.`,
+    transaction: transactionDetails(module, "deploySplit", data),
+    commitments: [
+      { label: "Release ID", value: releaseId },
+      { label: "Module key", value: moduleKey },
+      { label: "Configuration", value: hashes.configurationHash },
+      { label: "Payout manifest", value: hashes.payoutManifestHash },
+      { label: "Consent manifest", value: hashes.consentManifestHash },
+      { label: "Consent deadline", value: config.consentDeadline.toString() },
+      { label: "Total shares", value: `${CREATOR_SPLIT_BPS_DENOMINATOR} bps` },
+      ...config.recipients.flatMap((recipient, index) => [
+        {
+          label: `Recipient ${index + 1}`,
+          value: `${recipient} · ${config.sharesBps[index]} bps`
+        },
+        {
+          label: `Recipient ${index + 1} recovery`,
+          value: config.recoveryAddresses[index]
+        },
+        {
+          label: `Recipient ${index + 1} consent signature`,
+          value: keccak256(consentSignatures[index])
+        }
+      ])
+    ],
+    stateChanges: [{
+      label: "Consent-bound split for release",
+      from: "not deployed",
+      to: "deterministically deployed",
+      reversible: false
+    }],
+    assetMovements: [],
+    tokenApprovals: [],
+    platformFees: [],
+    irreversibleChanges: [
+      "Only one split can be recorded for this release through this module.",
+      "Recipients, shares, recovery wallets, consent deadline and manifest hashes are immutable.",
+      "Future native currency and supported ERC-20 deposits become claimable under the signed lifetime-share formula."
+    ],
+    requiredLiveChecks: [
+      {
+        id: "connected_chain",
+        description: "The wallet is still connected to the reviewed chain.",
+        status: "required_unverified"
+      },
+      {
+        id: "creator_wallet",
+        description: "The connected wallet still matches the immutable release creator.",
+        status: "required_unverified"
+      },
+      {
+        id: "module_identity",
+        description: "The active split module address, interface and runtime code hash match the reviewed registry entry.",
+        status: "required_unverified"
+      },
+      {
+        id: "frozen_intent",
+        description: "The release is frozen with this exact split module key and configuration hash.",
+        status: "required_unverified"
+      },
+      {
+        id: "frozen_payout_manifest",
+        description: "The release is frozen with this exact payout-manifest hash.",
+        status: "required_unverified"
+      },
+      {
+        id: "recipient_consent",
+        description: "Every EOA or ERC-1271 recipient signature remains valid for the exact reviewed consent digest.",
+        status: "required_unverified"
+      },
+      {
+        id: "consent_deadline",
+        description: "The consent deadline has not expired and remains within the module's allowed window.",
+        status: "required_unverified"
+      },
+      {
+        id: "not_deployed",
+        description: "No split has already been deployed for this release through this module.",
+        status: "required_unverified"
+      },
+      {
+        id: "calldata_match",
+        description: "The wallet calldata exactly matches this simulation.",
+        status: "required_unverified"
+      }
+    ],
+    warnings: [
+      "This simulation does not read the chain and cannot prove that its required live checks pass.",
+      "The included signatures are fingerprinted but are not verified offline; ERC-1271 consent requires a live contract call.",
+      "Deployment moves no assets, grants no approval and charges no platform fee, but later deposits follow the immutable signed shares.",
+      "Recovery can pay only the recovery wallet each recipient signed; it is not an RMT or creator override.",
+      "Fee-on-transfer, rebasing, callback-heavy and otherwise non-standard ERC-20 tokens are not supported."
+    ],
+    evidenceValidUntil: config.consentDeadline,
     contractExecution: "disabled"
   });
 }

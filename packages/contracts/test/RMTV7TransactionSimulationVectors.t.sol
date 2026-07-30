@@ -5,6 +5,7 @@ import {RMTV7ReleaseRegistry} from "../src/RMTV7ReleaseRegistry.sol";
 import {IRMTV7MediaEvidenceVerifier} from "../src/interfaces/IRMTV7MediaEvidenceVerifier.sol";
 import {IRMTV7ERC721CollectionModule} from "../src/interfaces/IRMTV7ERC721CollectionModule.sol";
 import {IRMTV7ERC1155EditionModule} from "../src/interfaces/IRMTV7ERC1155EditionModule.sol";
+import {IRMTV7ConsentBoundSplitModule} from "../src/interfaces/IRMTV7ConsentBoundSplitModule.sol";
 
 /// @notice Pins the exact Solidity calldata used by the non-executable TypeScript simulations.
 contract RMTV7TransactionSimulationVectorsTest {
@@ -108,6 +109,57 @@ contract RMTV7TransactionSimulationVectorsTest {
         require(
             keccak256(transactionData) == 0x04c43376d20f7a49bfbdd56990b2b3f64bd12a0dccb0558702268427830441ac,
             "1155 calldata drifted"
+        );
+    }
+
+    function testConsentBoundSplitDeploymentCalldataMatchesWebSimulation() public pure {
+        address[] memory recipients = new address[](2);
+        recipients[0] = 0x6666666666666666666666666666666666666666;
+        recipients[1] = 0x7777777777777777777777777777777777777777;
+        uint16[] memory sharesBps = new uint16[](2);
+        sharesBps[0] = 7_000;
+        sharesBps[1] = 3_000;
+        address[] memory recoveryAddresses = new address[](2);
+        recoveryAddresses[0] = 0x8888888888888888888888888888888888888888;
+        recoveryAddresses[1] = address(0);
+        IRMTV7ConsentBoundSplitModule.SplitConfig memory config = IRMTV7ConsentBoundSplitModule.SplitConfig({
+            recipients: recipients,
+            sharesBps: sharesBps,
+            recoveryAddresses: recoveryAddresses,
+            consentDeadline: 1_785_456_000
+        });
+        bytes[] memory consentSignatures = new bytes[](2);
+        consentSignatures[0] =
+            hex"111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111b";
+        consentSignatures[1] =
+            hex"222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222221c";
+        bytes memory transactionData =
+            abi.encodeCall(IRMTV7ConsentBoundSplitModule.deploySplit, (RELEASE_ID, config, consentSignatures));
+        bytes32 payoutManifestHash = keccak256(abi.encode(recipients, sharesBps));
+        bytes32 consentManifestHash =
+            keccak256(abi.encode(recipients, sharesBps, recoveryAddresses, config.consentDeadline));
+        bytes32 configurationHash =
+            keccak256(abi.encode(payoutManifestHash, consentManifestHash, config.consentDeadline, recipients.length));
+
+        require(
+            IRMTV7ConsentBoundSplitModule.deploySplit.selector == bytes4(0xeff78744),
+            "split selector drifted"
+        );
+        require(
+            payoutManifestHash == 0x1d00b23ba62c530839eb0c21e93f17471fb87015592429f53be547e2898ad499,
+            "split payout manifest drifted"
+        );
+        require(
+            consentManifestHash == 0x210741b1724054dbbf276101b5d6395d3ae1a7968cc64f220ef1462ffaebe346,
+            "split consent manifest drifted"
+        );
+        require(
+            configurationHash == 0xb45defca079ac16eb7dba2b7faf652df938ed08159603efe048aed76a42c08bf,
+            "split configuration drifted"
+        );
+        require(
+            keccak256(transactionData) == 0x4df7f598d44f775d5480cae628bc1964aa2e99cc4503b0ebe6583f85eb033514,
+            "split calldata drifted"
         );
     }
 }

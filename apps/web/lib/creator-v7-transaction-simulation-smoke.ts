@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { decodeFunctionData, keccak256, parseAbi, zeroAddress, type Address } from "viem";
 import { buildCreatorEditionManifest } from "./creator-edition-manifest";
 import {
+  createConsentBoundSplitDeploymentSimulation,
   createERC1155DeploymentSimulation,
   createERC721DeploymentSimulation,
   createReleaseFreezeSimulation,
@@ -17,11 +18,15 @@ const erc721ModuleAbi = parseAbi([
 const erc1155ModuleAbi = parseAbi([
   "function deployEditions(bytes32 releaseId, (string name, string symbol, string collectionURI, bytes32 editionManifestRoot, uint32 maximumEditionTypes, uint64 maximumTotalSupply, address royaltyReceiver, uint16 royaltyBps) config) returns (address editions)"
 ]);
+const consentBoundSplitModuleAbi = parseAbi([
+  "function deploySplit(bytes32 releaseId, (address[] recipients, uint16[] sharesBps, address[] recoveryAddresses, uint64 consentDeadline) config, bytes[] consentSignatures) returns (address split)"
+]);
 
 const releaseRegistry = "0x1111111111111111111111111111111111111111";
 const erc721Module = "0x2222222222222222222222222222222222222222";
 const erc1155Module = "0x3333333333333333333333333333333333333333";
 const creator = "0x4444444444444444444444444444444444444444";
+const splitModule = "0x5555555555555555555555555555555555555555";
 const releaseId = `0x${"55".repeat(32)}` as const;
 const erc721ModuleKey = `0x${"66".repeat(32)}` as const;
 const erc1155ModuleKey = `0x${"77".repeat(32)}` as const;
@@ -274,5 +279,147 @@ assert.notEqual(
     config: editionManifest.config
   }).simulationId
 );
+
+const splitModuleKey = `0x${"aa".repeat(32)}` as const;
+const firstConsentSignature = `0x${"11".repeat(64)}1b` as const;
+const secondConsentSignature = `0x${"22".repeat(64)}1c` as const;
+const splitConfig = {
+  recipients: [
+    "0x6666666666666666666666666666666666666666",
+    "0x7777777777777777777777777777777777777777"
+  ] as Address[],
+  sharesBps: [7_000, 3_000],
+  recoveryAddresses: [
+    "0x8888888888888888888888888888888888888888",
+    zeroAddress
+  ] as Address[],
+  consentDeadline: 1_785_456_000
+};
+const split = createConsentBoundSplitDeploymentSimulation({
+  chainId: 46_630,
+  module: splitModule,
+  moduleKey: splitModuleKey,
+  releaseId,
+  creator,
+  config: splitConfig,
+  consentSignatures: [firstConsentSignature, secondConsentSignature],
+  currentTimestamp: nowSeconds
+});
+assert.equal(split.action, "deploy_consent_bound_split");
+assert.equal(split.riskLevel, "high");
+assert.equal(split.transaction.valueWei, "0");
+assert.equal(split.contractExecution, "disabled");
+assert.equal(split.assetMovements.length, 0);
+assert.equal(split.tokenApprovals.length, 0);
+assert.equal(split.platformFees.length, 0);
+assert.equal(split.evidenceValidUntil, splitConfig.consentDeadline);
+assert.equal(split.transaction.selector, "0xeff78744");
+assert.equal(
+  keccak256(split.transaction.data),
+  "0x4df7f598d44f775d5480cae628bc1964aa2e99cc4503b0ebe6583f85eb033514"
+);
+assert.equal(
+  split.simulationId,
+  "0x6480707afa1ee4422b79fc9fc8004adf6f02a26bdf80d99068b717be48494930"
+);
+assert.ok(split.commitments.some((item) => (
+  item.label === "Configuration"
+  && item.value === "0xb45defca079ac16eb7dba2b7faf652df938ed08159603efe048aed76a42c08bf"
+)));
+assert.ok(split.commitments.some((item) => (
+  item.label === "Payout manifest"
+  && item.value === "0x1d00b23ba62c530839eb0c21e93f17471fb87015592429f53be547e2898ad499"
+)));
+assert.ok(split.commitments.some((item) => (
+  item.label === "Consent manifest"
+  && item.value === "0x210741b1724054dbbf276101b5d6395d3ae1a7968cc64f220ef1462ffaebe346"
+)));
+assert.ok(split.requiredLiveChecks.every((check) => check.status === "required_unverified"));
+const decodedSplit = decodeFunctionData({
+  abi: consentBoundSplitModuleAbi,
+  data: split.transaction.data
+});
+assert.equal(decodedSplit.functionName, "deploySplit");
+assert.equal(decodedSplit.args[0], releaseId);
+assert.deepEqual(decodedSplit.args[1].recipients, splitConfig.recipients);
+assert.deepEqual(decodedSplit.args[1].sharesBps, splitConfig.sharesBps);
+assert.deepEqual(decodedSplit.args[1].recoveryAddresses, splitConfig.recoveryAddresses);
+assert.equal(decodedSplit.args[1].consentDeadline, BigInt(splitConfig.consentDeadline));
+assert.deepEqual(decodedSplit.args[2], [firstConsentSignature, secondConsentSignature]);
+assert.notEqual(
+  split.simulationId,
+  createConsentBoundSplitDeploymentSimulation({
+    chainId: 46_630,
+    module: splitModule,
+    moduleKey: splitModuleKey,
+    releaseId,
+    creator,
+    config: splitConfig,
+    consentSignatures: [
+      `0x${"33".repeat(64)}1b`,
+      secondConsentSignature
+    ],
+    currentTimestamp: nowSeconds
+  }).simulationId
+);
+assert.throws(() => createConsentBoundSplitDeploymentSimulation({
+  chainId: 46_630,
+  module: splitModule,
+  moduleKey: splitModuleKey,
+  releaseId,
+  creator,
+  config: splitConfig,
+  consentSignatures: [firstConsentSignature],
+  currentTimestamp: nowSeconds
+}), /one consent signature/);
+assert.throws(() => createConsentBoundSplitDeploymentSimulation({
+  chainId: 46_630,
+  module: splitModule,
+  moduleKey: splitModuleKey,
+  releaseId,
+  creator,
+  config: {
+    ...splitConfig,
+    sharesBps: [6_999, 3_000]
+  },
+  consentSignatures: [firstConsentSignature, secondConsentSignature],
+  currentTimestamp: nowSeconds
+}), /exactly 100%/);
+assert.throws(() => createConsentBoundSplitDeploymentSimulation({
+  chainId: 46_630,
+  module: splitModule,
+  moduleKey: splitModuleKey,
+  releaseId,
+  creator,
+  config: {
+    ...splitConfig,
+    recipients: [splitConfig.recipients[0], splitConfig.recipients[0]]
+  },
+  consentSignatures: [firstConsentSignature, secondConsentSignature],
+  currentTimestamp: nowSeconds
+}), /must be unique/);
+assert.throws(() => createConsentBoundSplitDeploymentSimulation({
+  chainId: 46_630,
+  module: splitModule,
+  moduleKey: splitModuleKey,
+  releaseId,
+  creator,
+  config: {
+    ...splitConfig,
+    consentDeadline: nowSeconds
+  },
+  consentSignatures: [firstConsentSignature, secondConsentSignature],
+  currentTimestamp: nowSeconds
+}), /within the next 30 days/);
+assert.throws(() => createConsentBoundSplitDeploymentSimulation({
+  chainId: 46_630,
+  module: splitModule,
+  moduleKey: splitModuleKey,
+  releaseId,
+  creator,
+  config: splitConfig,
+  consentSignatures: ["0x", secondConsentSignature],
+  currentTimestamp: nowSeconds
+}), /signature 1 is invalid/);
 
 console.log("V7 creator transaction simulation smoke test passed");

@@ -31,7 +31,18 @@ The earlier creator-collaboration invitation proves that a collaborator accepted
 
 Changing any recipient, order, share, recovery address, deadline, release, creator, registry, module or chain invalidates the signature. Both EOA signatures and ERC-1271 contract-wallet signatures are supported.
 
-The web builder canonically orders recipients, rejects duplicates, requires one to 32 recipients and requires shares to total exactly 10,000 basis points. It creates unsigned review packets and never signs or broadcasts.
+The web manifest builder canonically orders recipients, rejects duplicates, requires one to 32 recipients and requires shares to total exactly 10,000 basis points. It creates unsigned review packets and never signs or broadcasts.
+
+After signatures are supplied, the separate transaction-simulation builder validates their one-to-one positional relationship with the frozen configuration and produces:
+
+- exact `deploySplit` calldata;
+- configuration, payout and consent manifest hashes;
+- a fingerprint of every included signature;
+- plain-language immutable commitments and future payout behavior;
+- explicit empty asset-movement, token-approval and platform-fee lists; and
+- every live-chain condition that remains unverified.
+
+The builder does not verify EOA or ERC-1271 signatures and cannot prove current chain state. It keeps wallet signing, broadcasting and contract execution disabled.
 
 ## Deployment conditions
 
@@ -98,7 +109,7 @@ V6 token-market 70/30 fees remain a separate accounting domain.
 - independent smart-contract security review;
 - property/invariant fuzzing beyond the current adversarial unit suite;
 - a production fee policy and separately reviewed settlement contract;
-- read-only live-chain simulation against canonical addresses and code hashes;
+- read-only live-chain verification against canonical addresses, code hashes, release state and recipient signatures;
 - product disclosure for recipient, recovery, supported-token and rounding behavior;
 - deployment scripts, verification artifacts, monitoring and incident response;
 - explicit authorization for testnet deployment; and

@@ -18,7 +18,7 @@ The V7 source foundation now establishes two narrow registries, one evidence ver
 4. `RMTV7ERC721CollectionModule` deploys one deterministic, creator-controlled `RMTV7CreatorCollection` for an exact frozen release intent.
 5. `RMTV7ERC1155EditionModule` deploys one deterministic, creator-controlled `RMTV7CreatorEditions` contract for an exact frozen release intent.
 6. `RMTV7ConsentBoundSplitModule` deploys one immutable pull-payment `RMTV7ConsentBoundSplit` only after every recipient signs their exact share and recovery wallet.
-7. `creator-v7-transaction-simulation.ts` produces deterministic plain-language receipts and exact calldata for release freeze and both collection deployment modules without reading the chain, signing or broadcasting.
+7. `creator-v7-transaction-simulation.ts` produces deterministic plain-language receipts and exact calldata for release freeze, both collection deployment modules and the consent-bound split module without reading the chain, signing or broadcasting.
 
 The ERC-721 module can mint only the sequential token IDs and exact token-URI hashes committed in the release's immutable Merkle manifest. The ERC-1155 module can mint only IDs, URI hashes, terms hashes and lifetime supplies committed in its immutable edition manifest. The split module can receive and distribute native currency or standard non-rebasing ERC-20 creator proceeds only if it is later deployed and funded; it has no platform fee or treasury route. No current module lists, approves, sells, charges a platform fee, settles a purchase, buys RMT, burns RMT, purchases NFTs or claims that RMT approved a creator.
 
@@ -174,9 +174,9 @@ The web builder canonically orders recipients and produces the exact unsigned EI
 
 ## Human-readable transaction simulations
 
-The simulation schema makes irreversible V7 actions reviewable before wallet integration. Every receipt identifies the chain, actor, target, selector, calldata, zero native value, immutable commitments, expected state transition, risks and still-unverified live checks. Asset movements, token approvals and platform fees are explicit empty lists for these three calls.
+The simulation schema makes irreversible V7 actions reviewable before wallet integration. Every receipt identifies the chain, actor, target, selector, calldata, zero native value, immutable commitments, expected state transition, risks and still-unverified live checks. Asset movements, token approvals and platform fees are explicit empty lists for these four calls.
 
-Module intents are canonically ordered before release-freeze calldata is generated, preventing presentation order from silently changing the frozen module-manifest hash. TypeScript ABI decoding and independent Solidity calldata vectors pin all three calls.
+Module intents are canonically ordered before release-freeze calldata is generated, preventing presentation order from silently changing the frozen module-manifest hash. Split recipients are canonically ordered before consent packets are created, while the deployment simulator preserves that signed positional order. TypeScript ABI decoding and independent Solidity calldata vectors pin all four calls.
 
 The simulator does not read the chain and therefore cannot mark module activity, code identity, release state, creator identity, evidence validity or prior deployment as verified. Those checks remain fail-closed production blockers. See `V7_TRANSACTION_SIMULATIONS.md`.
 
