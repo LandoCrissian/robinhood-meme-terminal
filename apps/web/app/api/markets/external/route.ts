@@ -23,6 +23,7 @@ const DEXSCREENER_TOKENS_API = "https://api.dexscreener.com/tokens/v1";
 const DEXSCREENER_PROFILES_API = "https://api.dexscreener.com/token-profiles/latest/v1";
 const DEXSCREENER_BOOSTS_API = "https://api.dexscreener.com/token-boosts/top/v1";
 const DEXSCREENER_PAGE = "https://dexscreener.com/robinhood/";
+const PREVIEW_MARKET_UPSTREAM = "https://www.rmtlaunch.fun/api/markets/external";
 const CANONICAL_MARKET_TOKENS = [
   "0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73",
   "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168"
@@ -223,17 +224,58 @@ async function fetchRmtOriginBatch(baseUrl: string, readToken: string | undefine
   }
 }
 
+async function resolvePreviewRmtOrigins(addresses: string[]): Promise<RmtOriginResolution | null> {
+  if (process.env.VERCEL_ENV !== "preview") return null;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), INDEXER_TIMEOUT_MS);
+  try {
+    const response = await fetch(PREVIEW_MARKET_UPSTREAM, {
+      headers: { Accept: "application/json" },
+      cache: "no-store",
+      signal: controller.signal
+    });
+    if (!response.ok) return null;
+    const payload = (await response.json()) as ExternalMarketResponse;
+    if (payload.rmtOriginCoverage !== "complete" || !Array.isArray(payload.markets)) return null;
+
+    const allowedExternalTokens = new Set(payload.markets.flatMap((market) =>
+      isNonzeroEvmAddress(market.address) ? [market.address.toLowerCase()] : []
+    ));
+    if (allowedExternalTokens.size === 0) return null;
+
+    return {
+      coverage: "complete",
+      tokens: new Set([
+        OFFICIAL_RMT_V6_TOKEN.toLowerCase(),
+        ...addresses
+          .map((address) => address.toLowerCase())
+          .filter((address) => !allowedExternalTokens.has(address))
+      ])
+    };
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 async function resolveRmtOrigins(addresses: string[]): Promise<RmtOriginResolution> {
   const known = new Set([OFFICIAL_RMT_V6_TOKEN.toLowerCase()]);
   if (addresses.length === 0) return { coverage: "complete", tokens: known };
 
   const baseUrl = process.env.RMT_INDEXER_URL?.trim().replace(/\/+$/, "");
-  if (!baseUrl) return { coverage: "unavailable", tokens: known };
+  if (!baseUrl) {
+    return await resolvePreviewRmtOrigins(addresses)
+      ?? { coverage: "unavailable", tokens: known };
+  }
   const readToken = process.env.RMT_INDEXER_READ_TOKEN?.trim();
 
   for (let index = 0; index < addresses.length; index += 100) {
     const claims = await fetchRmtOriginBatch(baseUrl, readToken, addresses.slice(index, index + 100));
-    if (!claims) return { coverage: "unavailable", tokens: known };
+    if (!claims) {
+      return await resolvePreviewRmtOrigins(addresses)
+        ?? { coverage: "unavailable", tokens: known };
+    }
     for (const claim of claims) {
       const token = asText(claim.token, 42);
       if (
@@ -429,7 +471,11 @@ export async function GET() {
         : snapshot,
       { headers: { "Cache-Control": "public, s-maxage=30, stale-while-revalidate=90" } }
     );
-  } catch {
+  } catch (error) {
+    console.error(JSON.stringify({
+      event: "external_market_refresh_failed",
+      error: error instanceof Error ? error.message.slice(0, 1_000) : "unknown"
+    }));
     const stale = staleResponse();
     if (stale) return stale;
     return NextResponse.json(
