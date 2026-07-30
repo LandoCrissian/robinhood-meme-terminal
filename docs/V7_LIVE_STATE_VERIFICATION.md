@@ -2,7 +2,7 @@
 
 Status: source-level read-only verifier
 
-Scope: consent-bound split deployment only
+Scope: release freeze, ERC-721 deployment, ERC-1155 deployment and consent-bound split deployment
 
 Signing: disabled
 
@@ -12,7 +12,7 @@ Production anchors: none
 
 ## Purpose
 
-`creator-v7-live-state-verifier.ts` closes the gap between deterministic review calldata and caller-supplied chain claims. It verifies one prepared consent-bound split deployment against one pinned block without changing state.
+`creator-v7-live-state-verifier.ts` closes the gap between deterministic review calldata and caller-supplied chain claims. It verifies one prepared V7 release action against one pinned block without changing state.
 
 A successful result is evidence about that exact block. It is not a wallet authorization, audit, safety guarantee, gas estimate, finality guarantee or promise that the transaction will still succeed later.
 
@@ -27,17 +27,23 @@ These fields remain disabled even when all checks pass.
 
 ## Reviewed anchors
 
-The verifier accepts no default contract address or runtime hash. Its caller must supply separately reviewed anchors for:
+The verifier accepts no default contract address or runtime hash. Its caller must supply separately reviewed anchors for the action being checked:
 
 - chain ID;
 - V7 module-registry address and runtime code hash;
 - V7 release-registry address and runtime code hash;
-- consent-bound split-module address and runtime code hash;
-- exact module key;
-- reviewed split policy and metadata hashes; and
-- the fixed version-1 split interface ID, `0xe161dd4b`.
+- media-evidence-verifier address and runtime code hash for a release freeze;
+- every module included in a release freeze;
+- the exact collection or split module for a deployment;
+- every exact module key, kind, version, interface ID, policy hash and metadata hash.
 
-The three contract addresses must be distinct and every address, bytes4 value and bytes32 fingerprint must be nonzero and well formed.
+The version-1 interface IDs are pinned in both TypeScript and Solidity:
+
+- ERC-721 collection: `0x6c2ba9ae`;
+- ERC-1155 editions: `0xb96f46b7`; and
+- consent-bound split: `0xe161dd4b`.
+
+Core, verifier and module addresses must be distinct and every address, bytes4 value and bytes32 fingerprint must be nonzero and well formed.
 
 No production anchors are defined in this increment.
 
@@ -49,11 +55,10 @@ The verifier stops at the first failed requirement and returns a deterministic f
 2. verifies the connected chain against both the reviewed anchor and simulation;
 3. pins the latest block number, hash and timestamp;
 4. reads every contract at that exact block;
-5. hashes the module-registry, release-registry and split-module runtime bytecode and compares each to its reviewed anchor;
-6. verifies the release registry and split module point to the reviewed topology;
-7. reads the append-only module record and verifies:
-   - kind `3`;
-   - version `1`;
+5. hashes every required registry, evidence verifier and module runtime and compares it to its reviewed anchor;
+6. verifies every release registry and module points to the reviewed topology;
+7. reads each append-only module record and verifies:
+   - action-specific kind and version;
    - implementation address;
    - interface ID;
    - implementation runtime hash;
@@ -63,19 +68,19 @@ The verifier stops at the first failed requirement and returns a deterministic f
    - zero deactivation timestamp;
    - kind/version lookup; and
    - locally recomputed module key;
-8. decodes the exact `deploySplit` calldata and recomputes its configuration, payout and consent manifests;
-9. verifies the consent deadline is strictly later than the pinned timestamp;
-10. verifies the release is frozen, owned by the expected creator and bound to the exact payout manifest;
-11. verifies the exact module configuration and payout manifest through the release registry;
-12. verifies that no split is already recorded;
+8. decodes the exact calldata and recomputes the relevant configuration or module manifest;
+9. verifies the action-specific release state and exact creator;
+10. verifies every exact frozen module intent for deployments;
+11. verifies current signer epoch, evidence lifetime and signature for a freeze;
+12. verifies that no collection or split is already recorded for a deployment;
 13. executes the exact calldata from the creator through `eth_call` at the pinned block; and
 14. rereads the pinned block and rejects a changed hash.
 
-The read-only call exercises the actual module logic, including every EOA or ERC-1271 recipient consent, the current deadline, active-module checks, frozen intent, payout manifest and deterministic deployment path. The returned split address is recorded as evidence but no contract is persisted.
+For a freeze, the read-only call exercises the current media evidence, module admission and irreversible manifest path. For a collection, it exercises the frozen intent and deterministic deployment path. For a split, it additionally exercises every EOA or ERC-1271 recipient consent, the current deadline and payout manifest. Returned addresses or manifest hashes are recorded as evidence, but no state is persisted.
 
 ## Failure behavior
 
-RPC errors, absent code, malformed receipts, runtime drift, registry drift, inactive modules, altered policy, wrong creators, unfrozen releases, changed manifests, expired consent, prior deployment, invalid signatures, call reverts and immediate block replacement all fail closed.
+RPC errors, absent code, malformed receipts, runtime drift, registry drift, inactive modules, altered policy, wrong creators, wrong release state, changed manifests, stale evidence, expired consent, prior deployment, invalid signatures, call reverts and immediate block replacement all fail closed.
 
 The result includes:
 
@@ -91,19 +96,24 @@ The verifier does not fall back to an unpinned read and does not silently skip a
 
 ## Adversarial coverage
 
-`creator-v7-live-state-verifier-smoke.ts` covers:
+`creator-v7-live-state-verifier-smoke.ts` and `creator-v7-live-state-actions-smoke.ts` cover:
 
-- the complete successful pinned-block path;
+- successful pinned-block paths for all four actions;
 - deterministic verification receipts;
 - wrong chain;
 - runtime-code drift;
 - topology drift;
 - inactive or policy-mismatched modules;
+- ERC-721 and ERC-1155 interface drift through Solidity vectors;
+- non-committed freeze attempts;
+- non-frozen collection deployment attempts;
+- stale signer epochs and invalid media evidence;
 - expired consent;
 - wrong creator or payout manifest;
 - missing frozen intent;
-- prior split deployment;
+- prior collection or split deployment;
 - exact-call failure, including invalid recipient consent;
+- altered read-only return values;
 - block-hash replacement;
 - altered simulation receipts; and
 - wrong interface anchors.

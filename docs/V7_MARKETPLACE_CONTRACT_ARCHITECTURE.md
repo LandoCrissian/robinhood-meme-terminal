@@ -19,7 +19,7 @@ The V7 source foundation now establishes two narrow registries, one evidence ver
 5. `RMTV7ERC1155EditionModule` deploys one deterministic, creator-controlled `RMTV7CreatorEditions` contract for an exact frozen release intent.
 6. `RMTV7ConsentBoundSplitModule` deploys one immutable pull-payment `RMTV7ConsentBoundSplit` only after every recipient signs their exact share and recovery wallet.
 7. `creator-v7-transaction-simulation.ts` produces deterministic plain-language receipts and exact calldata for release freeze, both collection deployment modules and the consent-bound split module without reading the chain, signing or broadcasting.
-8. `creator-v7-live-state-verifier.ts` verifies one split simulation against reviewed runtime anchors and one pinned block, then executes the exact calldata through read-only `eth_call`; it cannot sign or broadcast.
+8. `creator-v7-live-state-verifier.ts` verifies release-freeze, ERC-721, ERC-1155 and split simulations against reviewed runtime anchors and one pinned block, then executes the exact calldata through read-only `eth_call`; it cannot sign or broadcast.
 
 The ERC-721 module can mint only the sequential token IDs and exact token-URI hashes committed in the release's immutable Merkle manifest. The ERC-1155 module can mint only IDs, URI hashes, terms hashes and lifetime supplies committed in its immutable edition manifest. The split module can receive and distribute native currency or standard non-rebasing ERC-20 creator proceeds only if it is later deployed and funded; it has no platform fee or treasury route. No current module lists, approves, sells, charges a platform fee, settles a purchase, buys RMT, burns RMT, purchases NFTs or claims that RMT approved a creator.
 

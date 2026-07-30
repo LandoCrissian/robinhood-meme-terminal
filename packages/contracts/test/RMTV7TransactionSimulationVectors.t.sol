@@ -16,6 +16,14 @@ contract RMTV7TransactionSimulationVectorsTest {
         require(type(IRMTV7ConsentBoundSplitModule).interfaceId == bytes4(0xe161dd4b), "split interface drifted");
     }
 
+    function testERC721InterfaceMatchesWebVerifier() public pure {
+        require(type(IRMTV7ERC721CollectionModule).interfaceId == bytes4(0x6c2ba9ae), "721 interface drifted");
+    }
+
+    function testERC1155InterfaceMatchesWebVerifier() public pure {
+        require(type(IRMTV7ERC1155EditionModule).interfaceId == bytes4(0xb96f46b7), "1155 interface drifted");
+    }
+
     function testReleaseFreezeCalldataMatchesWebSimulation() public pure {
         RMTV7ReleaseRegistry.ModuleIntent[] memory intents = new RMTV7ReleaseRegistry.ModuleIntent[](2);
         intents[0] = RMTV7ReleaseRegistry.ModuleIntent({
