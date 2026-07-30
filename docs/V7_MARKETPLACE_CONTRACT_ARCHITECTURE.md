@@ -19,6 +19,7 @@ The V7 source foundation now establishes two narrow registries, one evidence ver
 5. `RMTV7ERC1155EditionModule` deploys one deterministic, creator-controlled `RMTV7CreatorEditions` contract for an exact frozen release intent.
 6. `RMTV7ConsentBoundSplitModule` deploys one immutable pull-payment `RMTV7ConsentBoundSplit` only after every recipient signs their exact share and recovery wallet.
 7. `creator-v7-transaction-simulation.ts` produces deterministic plain-language receipts and exact calldata for release freeze, both collection deployment modules and the consent-bound split module without reading the chain, signing or broadcasting.
+8. `creator-v7-live-state-verifier.ts` verifies one split simulation against reviewed runtime anchors and one pinned block, then executes the exact calldata through read-only `eth_call`; it cannot sign or broadcast.
 
 The ERC-721 module can mint only the sequential token IDs and exact token-URI hashes committed in the release's immutable Merkle manifest. The ERC-1155 module can mint only IDs, URI hashes, terms hashes and lifetime supplies committed in its immutable edition manifest. The split module can receive and distribute native currency or standard non-rebasing ERC-20 creator proceeds only if it is later deployed and funded; it has no platform fee or treasury route. No current module lists, approves, sells, charges a platform fee, settles a purchase, buys RMT, burns RMT, purchases NFTs or claims that RMT approved a creator.
 
@@ -179,6 +180,8 @@ The simulation schema makes irreversible V7 actions reviewable before wallet int
 Module intents are canonically ordered before release-freeze calldata is generated, preventing presentation order from silently changing the frozen module-manifest hash. Split recipients are canonically ordered before consent packets are created, while the deployment simulator preserves that signed positional order. TypeScript ABI decoding and independent Solidity calldata vectors pin all four calls.
 
 The simulator does not read the chain and therefore cannot mark module activity, code identity, release state, creator identity, evidence validity or prior deployment as verified. Those checks remain fail-closed production blockers. See `V7_TRANSACTION_SIMULATIONS.md`.
+
+The split-specific live verifier now performs those reads against a single block, rejects runtime or registry drift, recomputes the module key and manifests, checks prior deployment and requires the exact call—including recipient consent—to succeed through `eth_call`. Its successful receipt is still explicitly invalid for signing. Production anchors, finality policy, pre-wallet reverification, gas and balance checks remain blockers. See `V7_LIVE_STATE_VERIFICATION.md`.
 
 ## Governance boundary
 

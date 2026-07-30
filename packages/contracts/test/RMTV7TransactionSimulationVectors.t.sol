@@ -12,6 +12,10 @@ contract RMTV7TransactionSimulationVectorsTest {
     bytes32 private constant RELEASE_ID = 0x5555555555555555555555555555555555555555555555555555555555555555;
     address private constant CREATOR = 0x4444444444444444444444444444444444444444;
 
+    function testConsentBoundSplitInterfaceMatchesWebVerifier() public pure {
+        require(type(IRMTV7ConsentBoundSplitModule).interfaceId == bytes4(0xe161dd4b), "split interface drifted");
+    }
+
     function testReleaseFreezeCalldataMatchesWebSimulation() public pure {
         RMTV7ReleaseRegistry.ModuleIntent[] memory intents = new RMTV7ReleaseRegistry.ModuleIntent[](2);
         intents[0] = RMTV7ReleaseRegistry.ModuleIntent({

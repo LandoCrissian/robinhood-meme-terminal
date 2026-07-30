@@ -126,6 +126,8 @@ The tests also reject duplicate modules or recipients, expired evidence or conse
 
 The builder intentionally performs no RPC call. A deterministic receipt must not misrepresent caller-supplied context as verified chain state.
 
-Before any wallet integration, RMT still needs a separate read-only verifier that pins the chain block, contract addresses, runtime hashes, active module entries, release creator and state, existing deployment status, evidence epoch, frozen payout manifest, recipient signatures and exact calldata. The wallet action must fail closed if any result changes between simulation and signing.
+The source-level split verifier now pins one block and verifies reviewed runtime anchors, the active module record, release creator and state, existing deployment status, frozen payout manifest, recipient signatures and exact calldata through `eth_call`. It always returns `validForSigning: false`; it is not yet a wallet gate. Freeze, ERC-721 and ERC-1155 actions do not yet have equivalent live verifiers.
+
+Before wallet integration, RMT still needs reviewed production anchors, a finality policy, gas and balance checks, an expiring verification cache and a second identical verification immediately before the wallet request. The wallet action must fail closed if any target, calldata, value, chain, actor, runtime or state result changes.
 
 No production V7 address, signer, executor, gas estimate or transaction route is enabled by this increment.

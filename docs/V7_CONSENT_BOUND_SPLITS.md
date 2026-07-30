@@ -109,7 +109,7 @@ V6 token-market 70/30 fees remain a separate accounting domain.
 - independent smart-contract security review;
 - property/invariant fuzzing beyond the current adversarial unit suite;
 - a production fee policy and separately reviewed settlement contract;
-- read-only live-chain verification against canonical addresses, code hashes, release state and recipient signatures;
+- independently reviewed production anchors, RPC finality policy and a second live verification immediately before any wallet request;
 - product disclosure for recipient, recovery, supported-token and rounding behavior;
 - deployment scripts, verification artifacts, monitoring and incident response;
 - explicit authorization for testnet deployment; and
