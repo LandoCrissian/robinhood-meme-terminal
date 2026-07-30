@@ -9,6 +9,12 @@
   "github": {
     "silent": true
   },
+  "crons": [
+    {
+      "path": "/api/cron/creator-media-availability",
+      "schedule": "17 9 * * *"
+    }
+  ],
   "headers": [
     {
       "source": "/(.*)",

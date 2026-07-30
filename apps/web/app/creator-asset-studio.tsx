@@ -41,6 +41,8 @@ import {
 } from "../lib/creator-media-manifest";
 import {
   pinCreatorMediaManifest,
+  requestCreatorMediaTakedown,
+  subscribeToCreatorMediaLifecycle,
   subscribeToCreatorMediaReceipts,
   subscribeToCreatorMediaSupersessions,
   supersedeCreatorMediaReceipt
@@ -50,6 +52,13 @@ import {
   type CreatorMediaReceipt
 } from "../lib/creator-media-receipt";
 import type { CreatorMediaSupersession } from "../lib/creator-media-supersession";
+import type { CreatorMediaAvailabilityStatus } from "../lib/creator-media-availability";
+import {
+  CREATOR_MEDIA_TAKEDOWN_REASONS,
+  type CreatorMediaTakedownDecision,
+  type CreatorMediaTakedownReason,
+  type CreatorMediaTakedownRequest
+} from "../lib/creator-media-takedown";
 import type { ProjectAssignment } from "../lib/project-ownership";
 import { CreatorConsentLinkBuilder } from "./creator-consent-link-builder";
 import { CreatorImageField } from "./creator-media-upload";
@@ -106,6 +115,12 @@ export function CreatorAssetStudio({
   const [mediaPinBusy, setMediaPinBusy] = useState(false);
   const [mediaSupersessions, setMediaSupersessions] = useState<CreatorMediaSupersession[]>([]);
   const [supersessionBusyId, setSupersessionBusyId] = useState("");
+  const [mediaTakedownRequests, setMediaTakedownRequests] = useState<CreatorMediaTakedownRequest[]>([]);
+  const [mediaTakedownDecisions, setMediaTakedownDecisions] = useState<CreatorMediaTakedownDecision[]>([]);
+  const [mediaAvailability, setMediaAvailability] = useState<CreatorMediaAvailabilityStatus[]>([]);
+  const [takedownReason, setTakedownReason] = useState<CreatorMediaTakedownReason>("creator_withdrawal");
+  const [takedownNote, setTakedownNote] = useState("");
+  const [takedownBusy, setTakedownBusy] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -197,6 +212,34 @@ export function CreatorAssetStudio({
       else cleanup();
     }).catch(() => {
       if (active) setMessage("Metadata-storage receipts are temporarily unavailable.");
+    });
+    return () => {
+      active = false;
+      unsubscribe?.();
+    };
+  }, [projectSlug, selectedId, user]);
+
+  useEffect(() => {
+    if (!selectedId) {
+      setMediaTakedownRequests([]);
+      setMediaTakedownDecisions([]);
+      setMediaAvailability([]);
+      return;
+    }
+    let active = true;
+    let unsubscribe: (() => void) | undefined;
+    void subscribeToCreatorMediaLifecycle(user, projectSlug, selectedId, (next) => {
+      if (!active) return;
+      setMediaTakedownRequests(next.requests);
+      setMediaTakedownDecisions(next.decisions);
+      setMediaAvailability(next.availability);
+    }, () => {
+      if (active) setMessage("Provider lifecycle status is temporarily unavailable.");
+    }).then((cleanup) => {
+      if (active) unsubscribe = cleanup;
+      else cleanup();
+    }).catch(() => {
+      if (active) setMessage("Provider lifecycle status is temporarily unavailable.");
     });
     return () => {
       active = false;
@@ -423,6 +466,31 @@ export function CreatorAssetStudio({
     }
   };
 
+  const requestTakedown = async (receiptId: string) => {
+    if (!selectedId || takedownNote.trim().length < 20) {
+      setMessage("Explain the provider-takedown request in at least 20 characters.");
+      return;
+    }
+    setTakedownBusy(true);
+    setMessage("");
+    try {
+      const result = await requestCreatorMediaTakedown({
+        user,
+        projectSlug,
+        assetId: selectedId,
+        receiptId,
+        reasonCode: takedownReason,
+        requestNote: takedownNote
+      });
+      setTakedownNote("");
+      setMessage(`Immutable provider-takedown request recorded: ${result.requestHash.slice(0, 12)}… No file was unpinned or erased.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "The provider-takedown request could not be recorded.");
+    } finally {
+      setTakedownBusy(false);
+    }
+  };
+
   return (
     <section className="creatorAssetStudio" aria-labelledby="creator-assets-title">
       <header className="creatorAssetHeader">
@@ -504,6 +572,30 @@ export function CreatorAssetStudio({
                   {check.role.toUpperCase()} · {check.exactBytesVerified ? "EXACT BYTES" : `${check.bytesRead} BYTE SAMPLE`} · {check.contentType}
                 </span>)}
               </div>
+              {(() => {
+                const availability = mediaAvailability.find((item) => item.receiptId === activeMediaReceipt.receiptId);
+                const takedown = mediaTakedownRequests.find((item) => item.receiptId === activeMediaReceipt.receiptId);
+                const decision = mediaTakedownDecisions.find((item) => item.receiptId === activeMediaReceipt.receiptId);
+                return <div className="creatorMediaLifecycle">
+                  <strong>Provider lifecycle</strong>
+                  <small>{availability
+                    ? `${availability.overallState.toUpperCase()} · PROVIDER ${availability.providerState.toUpperCase()} · GATEWAY ${availability.gatewayState.toUpperCase()} · ${availability.consecutiveFailures} CONSECUTIVE ATTENTION CHECKS`
+                    : "AWAITING FIRST SCHEDULED AVAILABILITY CHECK"}</small>
+                  {takedown
+                    ? <small>TAKEDOWN REQUEST RECORDED · {decision?.outcome.replaceAll("_", " ").toUpperCase() ?? "AWAITING PRIVATE REVIEW"} · PROVIDER EXECUTION DISABLED</small>
+                    : <details>
+                      <summary>Request RMT provider unpin review</summary>
+                      <p>Unpinning would remove only RMT&apos;s Pinata copy. It cannot erase content already available through IPFS or another provider.</p>
+                      <select value={takedownReason} onChange={(event) => setTakedownReason(event.target.value as CreatorMediaTakedownReason)}>
+                        {CREATOR_MEDIA_TAKEDOWN_REASONS.map((reason) => <option value={reason} key={reason}>{reason.replaceAll("_", " ")}</option>)}
+                      </select>
+                      <textarea maxLength={1_000} value={takedownNote} onChange={(event) => setTakedownNote(event.target.value)} placeholder="Explain why RMT should review removal of its provider copy." />
+                      <button type="button" disabled={takedownBusy} onClick={() => void requestTakedown(activeMediaReceipt.receiptId)}>
+                        {takedownBusy ? "Recording request…" : "Record immutable request"}
+                      </button>
+                    </details>}
+                </div>;
+              })()}
             </div>
             : <small>{mediaManifest.mediaIntegrity === "content_addressed"
               ? "Metadata storage: NOT PINNED · Contract execution: DISABLED"

@@ -1046,6 +1046,33 @@ service cloud.firestore {
       allow create, update, delete: if false;
     }
 
+    match /creatorMediaTakedownRequests/{requestId} {
+      allow read: if isRmtAdmin()
+        || ownsProjectAssignment(resource.data.projectSlug);
+      allow create, update, delete: if false;
+    }
+
+    match /creatorMediaTakedownDecisions/{decisionId} {
+      allow read: if isRmtAdmin()
+        || ownsProjectAssignment(resource.data.projectSlug);
+      allow create, update, delete: if false;
+    }
+
+    match /creatorMediaAvailability/{receiptId} {
+      allow read: if isRmtAdmin()
+        || ownsProjectAssignment(resource.data.projectSlug);
+      allow create, update, delete: if false;
+    }
+
+    match /creatorMediaAvailabilityObservations/{observationId} {
+      allow read: if isRmtAdmin();
+      allow create, update, delete: if false;
+    }
+
+    match /creatorMediaMaintenance/{documentId} {
+      allow read, create, update, delete: if false;
+    }
+
     match /{path=**}/moduleRequests/{module} {
       allow read: if isRmtAdmin();
     }

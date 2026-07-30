@@ -95,10 +95,15 @@ export async function POST(request: Request) {
           throw new Error("release_changed");
         }
         if (review.mediaReceipt) {
-          const supersessionSnapshot = await transaction.get(
-            assetReference.collection("mediaReceiptSupersessions").doc(review.mediaReceipt.receiptId)
-          );
-          if (supersessionSnapshot.exists) throw new Error("release_changed");
+          const [supersessionSnapshot, takedownSnapshot] = await Promise.all([
+            transaction.get(
+              assetReference.collection("mediaReceiptSupersessions").doc(review.mediaReceipt.receiptId)
+            ),
+            transaction.get(
+              db.collection("creatorMediaTakedownRequests").doc(review.mediaReceipt.receiptId)
+            )
+          ]);
+          if (supersessionSnapshot.exists || takedownSnapshot.exists) throw new Error("release_changed");
         }
         const statusSnapshots = await Promise.all(review.acceptedConsentManifest.map((receipt) => (
           transaction.get(db.collection("creatorConsentStatuses").doc(receipt.invitationDigest.slice(2)))

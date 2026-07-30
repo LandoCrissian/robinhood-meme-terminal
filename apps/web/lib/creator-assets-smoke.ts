@@ -69,6 +69,18 @@ import {
   createCreatorMediaSupersession,
   parseCreatorMediaSupersession
 } from "./creator-media-supersession";
+import {
+  availabilityStatusFromObservation,
+  createCreatorMediaAvailabilityObservation,
+  parseCreatorMediaAvailabilityObservation,
+  parseCreatorMediaAvailabilityStatus
+} from "./creator-media-availability";
+import {
+  createCreatorMediaTakedownDecision,
+  createCreatorMediaTakedownRequest,
+  parseCreatorMediaTakedownDecision,
+  parseCreatorMediaTakedownRequest
+} from "./creator-media-takedown";
 
 const validArtwork = {
   ...EMPTY_CREATOR_ASSET,
@@ -192,6 +204,76 @@ assert.equal(parseCreatorMediaSupersession(mediaSupersession.supersessionId, {
   ...mediaSupersession,
   replacementDraftRevisionHash: `0x${"8".repeat(64)}`
 }), null);
+const mediaTakedownRequest = createCreatorMediaTakedownRequest({
+  projectSlug: mediaReceipt.projectSlug,
+  assetId: mediaReceipt.assetId,
+  receiptId: mediaReceipt.receiptId,
+  metadataCid: mediaReceipt.metadataCid,
+  providerFileId: mediaReceipt.providerFileId,
+  reasonCode: "creator_withdrawal",
+  requestNote: "The creator requests review of RMT's provider copy after withdrawing this draft.",
+  requestedBy: "creator-user-id"
+});
+assert.equal(mediaTakedownRequest.providerExecution, "disabled");
+assert.equal(mediaTakedownRequest.contentErasureGuarantee, "none");
+assert.deepEqual(
+  parseCreatorMediaTakedownRequest(mediaTakedownRequest.requestId, mediaTakedownRequest),
+  mediaTakedownRequest
+);
+const mediaTakedownDecision = createCreatorMediaTakedownDecision({
+  request: mediaTakedownRequest,
+  outcome: "approved_for_future_execution",
+  reviewNote: "Policy request accepted; provider execution remains separately disabled.",
+  reviewedBy: "rmt-reviewer"
+});
+assert.equal(mediaTakedownDecision.providerExecution, "disabled");
+assert.deepEqual(
+  parseCreatorMediaTakedownDecision(mediaTakedownDecision.decisionId, mediaTakedownDecision),
+  mediaTakedownDecision
+);
+assert.equal(parseCreatorMediaTakedownDecision(mediaTakedownDecision.decisionId, {
+  ...mediaTakedownDecision,
+  providerExecution: "enabled"
+}), null);
+const availabilityObservation = createCreatorMediaAvailabilityObservation({
+  schemaVersion: 1,
+  receiptId: mediaReceipt.receiptId,
+  projectSlug: mediaReceipt.projectSlug,
+  assetId: mediaReceipt.assetId,
+  metadataCid: mediaReceipt.metadataCid,
+  providerState: "verified",
+  gatewayState: "available",
+  overallState: "healthy",
+  checksAttempted: 3,
+  checksPassed: 3,
+  failureCode: "",
+  observedAtMs: 1_785_283_200_000,
+  providerExecution: "disabled"
+});
+assert.deepEqual(
+  parseCreatorMediaAvailabilityObservation(availabilityObservation.observationId, availabilityObservation),
+  availabilityObservation
+);
+const availabilityStatus = availabilityStatusFromObservation(availabilityObservation, null);
+assert.equal(availabilityStatus.consecutiveFailures, 0);
+assert.equal(availabilityStatus.lastHealthyAtMs, availabilityObservation.observedAtMs);
+assert.deepEqual(
+  parseCreatorMediaAvailabilityStatus(mediaReceipt.receiptId, availabilityStatus),
+  availabilityStatus
+);
+const unavailableObservation = createCreatorMediaAvailabilityObservation({
+  ...availabilityObservation,
+  providerState: "unknown",
+  gatewayState: "unavailable",
+  overallState: "unavailable",
+  checksPassed: 0,
+  failureCode: "provider_unavailable",
+  observedAtMs: availabilityObservation.observedAtMs + 86_400_000
+});
+assert.equal(
+  availabilityStatusFromObservation(unavailableObservation, availabilityStatus).consecutiveFailures,
+  1
+);
 assert.throws(() => createCreatorMediaReceipt({
   manifest: createCreatorMediaManifest({
     projectSlug: "runner-studio",
@@ -858,6 +940,7 @@ assert.match(releaseReviewRouteSource, /verifyIdToken\(token, true\)/);
 assert.match(releaseReviewRouteSource, /transaction\.create/);
 assert.match(releaseReviewRouteSource, /RMT_MARKETPLACE_SIMULATION_POLICY/);
 assert.match(releaseReviewRouteSource, /contractExecution/);
+assert.match(releaseReviewRouteSource, /creatorMediaTakedownRequests/);
 assert.doesNotMatch(releaseReviewRouteSource, /mintNFT|createListing|executeSplit/);
 
 const mediaPinRouteSource = readFileSync(
@@ -889,6 +972,35 @@ assert.match(mediaSupersessionRouteSource, /transaction\.create/);
 assert.match(mediaSupersessionRouteSource, /draftRevisionHash === asset\.draftRevisionHash/);
 assert.doesNotMatch(mediaSupersessionRouteSource, /mintNFT|createListing|executeSplit|transferFrom/);
 
+const mediaTakedownRouteSource = readFileSync(
+  new URL("../app/api/creator-media/takedown/route.ts", import.meta.url),
+  "utf8"
+);
+assert.match(mediaTakedownRouteSource, /verifyIdToken\(token, true\)/);
+assert.match(mediaTakedownRouteSource, /transaction\.create/);
+assert.match(mediaTakedownRouteSource, /providerExecution/);
+assert.doesNotMatch(mediaTakedownRouteSource, /DELETE|files\/public\/delete|pinning\/unpin/);
+
+const mediaTakedownDecisionRouteSource = readFileSync(
+  new URL("../app/api/admin/creator-media/takedown/decision/route.ts", import.meta.url),
+  "utf8"
+);
+assert.match(mediaTakedownDecisionRouteSource, /RMT_ADMIN_EMAIL/);
+assert.match(mediaTakedownDecisionRouteSource, /verifyIdToken\(token, true\)/);
+assert.match(mediaTakedownDecisionRouteSource, /providerExecution/);
+assert.doesNotMatch(mediaTakedownDecisionRouteSource, /DELETE|files\/public\/delete|pinning\/unpin/);
+
+const mediaMonitorRouteSource = readFileSync(
+  new URL("../app/api/cron/creator-media-availability/route.ts", import.meta.url),
+  "utf8"
+);
+assert.match(mediaMonitorRouteSource, /CRON_SECRET/);
+assert.match(mediaMonitorRouteSource, /CREATOR_MEDIA_MONITOR_ENABLED/);
+assert.match(mediaMonitorRouteSource, /collectionGroup\("mediaReceipts"\)\.limit/);
+assert.match(mediaMonitorRouteSource, /creatorMediaAvailabilityObservations/);
+assert.match(mediaMonitorRouteSource, /providerExecution: "disabled"/);
+assert.doesNotMatch(mediaMonitorRouteSource, /DELETE|files\/public\/delete|pinning\/unpin/);
+
 const releaseDecisionRouteSource = readFileSync(
   new URL("../app/api/admin/creator-release/decision/route.ts", import.meta.url),
   "utf8"
@@ -900,6 +1012,7 @@ assert.match(releaseDecisionRouteSource, /contractExecution/);
 assert.match(releaseDecisionRouteSource, /parseCreatorConsentPublicStatus/);
 assert.match(releaseDecisionRouteSource, /status\.status === "accepted"/);
 assert.match(releaseDecisionRouteSource, /mediaReceiptSupersessions/);
+assert.match(releaseDecisionRouteSource, /creatorMediaTakedownRequests/);
 assert.match(releaseDecisionRouteSource, /release_changed/);
 assert.doesNotMatch(releaseDecisionRouteSource, /mintNFT|createListing|executeSplit/);
 

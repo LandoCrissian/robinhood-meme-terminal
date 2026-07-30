@@ -61,6 +61,12 @@ No provider call occurs merely by opening or saving a draft. A creator must expl
 
 The retrieval gateway defaults to `https://ipfs.io/ipfs/` and can be replaced with the server-only `CREATOR_IPFS_VERIFICATION_GATEWAY` setting. The configured URL must use HTTPS, contain no credentials, and end in `/ipfs/`. RMT rejects redirects, HTML error bodies, empty bodies, metadata larger than 64 KiB, and metadata whose returned bytes differ. Media responses are sampled and cancelled at 4 KiB even when a gateway ignores the HTTP range request. A successful check proves bounded retrievability at that moment—not permanent availability.
 
+Ongoing provider health and removal requests are governed separately by
+[CREATOR_MEDIA_PROVIDER_LIFECYCLE.md](./CREATOR_MEDIA_PROVIDER_LIFECYCLE.md).
+The prepared daily monitor cannot rewrite receipts or automatically delete
+provider files. An RMT approval records policy intent only; provider execution
+remains disabled.
+
 ## Correction trail
 
 IPFS content is content-addressed, so RMT never presents a correction as editing or erasing an old CID. Saving a changed creator-rights draft produces a new revision and immediately makes every previous receipt ineligible for new release review. The assigned creator can then record one immutable `mediaReceiptSupersessions/{receiptId}` document that links the replaced revision to the current saved revision. The original receipt remains preserved as history.
@@ -69,4 +75,7 @@ An RMT administrator cannot mark an older review preparation-ready after its ass
 
 ## Remaining boundary
 
-Before a release can become executable, RMT still needs a documented provider unpin and public takedown policy, ongoing availability monitoring, an approved production economics policy, contract-template review, testnet execution, independent security review, and explicit production authorization.
+Before a release can become executable, RMT still needs monitored production
+operation of the prepared lifecycle policy, an approved production economics
+policy, contract-template review, testnet execution, independent security
+review, and explicit production authorization.

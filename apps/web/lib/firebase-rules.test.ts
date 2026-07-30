@@ -1475,6 +1475,49 @@ test("release-review snapshots are private and server-immutable", async () => {
   await assertFails(deleteDoc(ownerSupersessionReference));
 
   await testEnvironment.withSecurityRulesDisabled(async (context) => {
+    const server = context.firestore();
+    await setDoc(doc(server, "creatorMediaTakedownRequests", mediaReceiptId), {
+      requestId: mediaReceiptId,
+      projectSlug: "runner-studio",
+      assetId: "abcdefghijklmnopqrst",
+      providerExecution: "disabled"
+    });
+    await setDoc(doc(server, "creatorMediaTakedownDecisions", mediaReceiptId), {
+      decisionId: mediaReceiptId,
+      projectSlug: "runner-studio",
+      assetId: "abcdefghijklmnopqrst",
+      providerExecution: "disabled"
+    });
+    await setDoc(doc(server, "creatorMediaAvailability", mediaReceiptId), {
+      receiptId: mediaReceiptId,
+      projectSlug: "runner-studio",
+      assetId: "abcdefghijklmnopqrst",
+      overallState: "healthy"
+    });
+    await setDoc(doc(server, "creatorMediaAvailabilityObservations", "f".repeat(64)), {
+      receiptId: mediaReceiptId,
+      projectSlug: "runner-studio",
+      overallState: "healthy"
+    });
+    await setDoc(doc(server, "creatorMediaMaintenance", "availability"), {
+      leaseUntilMs: 0
+    });
+  });
+  for (const collectionName of [
+    "creatorMediaTakedownRequests",
+    "creatorMediaTakedownDecisions",
+    "creatorMediaAvailability"
+  ]) {
+    const ownerReference = doc(owner, collectionName, mediaReceiptId);
+    await assertSucceeds(getDoc(ownerReference));
+    await assertFails(getDoc(doc(authenticatedDb(OTHER_ID), collectionName, mediaReceiptId)));
+    await assertFails(setDoc(ownerReference, { providerExecution: "enabled" }, { merge: true }));
+    await assertFails(deleteDoc(ownerReference));
+  }
+  await assertFails(getDoc(doc(owner, "creatorMediaAvailabilityObservations", "f".repeat(64))));
+  await assertFails(getDoc(doc(owner, "creatorMediaMaintenance", "availability")));
+
+  await testEnvironment.withSecurityRulesDisabled(async (context) => {
     await setDoc(doc(context.firestore(), "creatorReleaseDecisions", reviewId), {
       reviewId,
       projectSlug: "runner-studio",

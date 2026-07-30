@@ -129,6 +129,10 @@ export async function POST(request: Request) {
           && receiptMatchesManifest(receipt, mediaManifest)
         ));
       if (!mediaReceipt) throw new Error("media_receipt");
+      const takedownSnapshot = await transaction.get(
+        db.collection("creatorMediaTakedownRequests").doc(mediaReceipt.receiptId)
+      );
+      if (takedownSnapshot.exists) throw new Error("media_takedown");
       const consentRecords = consentSnapshot.docs
         .map((document) => parseCreatorConsentInvitationRecord(document.id, document.data()))
         .filter((record) => record !== null);
@@ -181,6 +185,12 @@ export async function POST(request: Request) {
     if (message === "media_receipt" || /metadata receipt/i.test(message)) {
       return NextResponse.json(
         { error: "Pin and verify the exact metadata for this revision before preparing its immutable review snapshot." },
+        { status: 409, headers: RESPONSE_HEADERS }
+      );
+    }
+    if (message === "media_takedown") {
+      return NextResponse.json(
+        { error: "This metadata receipt has an active provider-takedown request and cannot enter release review." },
         { status: 409, headers: RESPONSE_HEADERS }
       );
     }

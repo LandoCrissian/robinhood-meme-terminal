@@ -11,6 +11,17 @@ import {
   parseCreatorMediaSupersession,
   type CreatorMediaSupersession
 } from "./creator-media-supersession";
+import {
+  parseCreatorMediaAvailabilityStatus,
+  type CreatorMediaAvailabilityStatus
+} from "./creator-media-availability";
+import {
+  parseCreatorMediaTakedownDecision,
+  parseCreatorMediaTakedownRequest,
+  type CreatorMediaTakedownDecision,
+  type CreatorMediaTakedownReason,
+  type CreatorMediaTakedownRequest
+} from "./creator-media-takedown";
 
 export async function subscribeToCreatorMediaReceipts(
   user: User,
@@ -149,4 +160,97 @@ export async function supersedeCreatorMediaReceipt(
     supersessionId: result.supersessionId,
     supersessionHash: result.supersessionHash
   };
+}
+
+export async function subscribeToCreatorMediaLifecycle(
+  user: User,
+  projectSlug: string,
+  assetId: string,
+  listener: (value: {
+    requests: CreatorMediaTakedownRequest[];
+    decisions: CreatorMediaTakedownDecision[];
+    availability: CreatorMediaAvailabilityStatus[];
+  }) => void,
+  onError: () => void
+) {
+  if (!user.email || !user.emailVerified) throw new Error("Verified creator sign-in required.");
+  const client = await getFirebaseClient();
+  if (!client) throw new Error("Firebase provider lifecycle is not configured.");
+  const slug = normalizeProjectSlug(projectSlug);
+  const state = {
+    requests: [] as CreatorMediaTakedownRequest[],
+    decisions: [] as CreatorMediaTakedownDecision[],
+    availability: [] as CreatorMediaAvailabilityStatus[]
+  };
+  const emit = () => listener({
+    requests: state.requests.filter((item) => item.assetId === assetId),
+    decisions: state.decisions.filter((item) => item.assetId === assetId),
+    availability: state.availability.filter((item) => item.assetId === assetId)
+  });
+  const scoped = (collectionName: string) => client.firestoreApi.query(
+    client.firestoreApi.collection(client.db, collectionName),
+    client.firestoreApi.where("projectSlug", "==", slug),
+    client.firestoreApi.limit(50)
+  );
+  const cleanups = [
+    client.firestoreApi.onSnapshot(scoped("creatorMediaTakedownRequests"), (snapshot) => {
+      state.requests = snapshot.docs
+        .map((document) => parseCreatorMediaTakedownRequest(document.id, document.data()))
+        .filter((item): item is CreatorMediaTakedownRequest => Boolean(item));
+      emit();
+    }, onError),
+    client.firestoreApi.onSnapshot(scoped("creatorMediaTakedownDecisions"), (snapshot) => {
+      state.decisions = snapshot.docs
+        .map((document) => parseCreatorMediaTakedownDecision(document.id, document.data()))
+        .filter((item): item is CreatorMediaTakedownDecision => Boolean(item));
+      emit();
+    }, onError),
+    client.firestoreApi.onSnapshot(scoped("creatorMediaAvailability"), (snapshot) => {
+      state.availability = snapshot.docs
+        .map((document) => parseCreatorMediaAvailabilityStatus(document.id, document.data()))
+        .filter((item): item is CreatorMediaAvailabilityStatus => Boolean(item));
+      emit();
+    }, onError)
+  ];
+  return () => cleanups.forEach((cleanup) => cleanup());
+}
+
+export async function requestCreatorMediaTakedown(input: {
+  user: User;
+  projectSlug: string;
+  assetId: string;
+  receiptId: string;
+  reasonCode: CreatorMediaTakedownReason;
+  requestNote: string;
+}) {
+  const token = await input.user.getIdToken();
+  const response = await fetch("/api/creator-media/takedown", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      projectSlug: input.projectSlug,
+      assetId: input.assetId,
+      receiptId: input.receiptId,
+      reasonCode: input.reasonCode,
+      requestNote: input.requestNote
+    })
+  });
+  const result = await response.json().catch(() => null) as {
+    error?: unknown;
+    requestId?: unknown;
+    requestHash?: unknown;
+  } | null;
+  if (
+    !response.ok
+    || typeof result?.requestId !== "string"
+    || typeof result.requestHash !== "string"
+  ) {
+    throw new Error(typeof result?.error === "string"
+      ? result.error
+      : "The provider-takedown request could not be recorded.");
+  }
+  return { requestId: result.requestId, requestHash: result.requestHash };
 }

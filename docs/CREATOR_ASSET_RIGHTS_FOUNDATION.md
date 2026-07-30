@@ -45,6 +45,12 @@ Every saved draft records:
 
 For a valid saved revision, the studio also derives a local `rmt_creator_metadata_v1` document and media manifest. Artwork and collection drafts map primary media to `image`; music maps primary media to `animation_url` and optional cover art to `image`. The manifest records each reference as content-addressed IPFS or mutable HTTPS, binds the project, asset, and rights revision, and fingerprints both the metadata and complete manifest. Creators can download the exact JSON for review. When all media is content-addressed, the assigned creator can explicitly pin the exact metadata bytes through RMT's trusted server. The server verifies the returned provider record and stores an immutable private receipt at `mediaReceipts/{receiptId}`. This does not prove gateway availability, verify copyright, mint, list, charge, or authorize a contract.
 
+The provider lifecycle is a separate append-only system. A bounded daily monitor
+can record current provider and gateway availability, while assigned creators
+can request review of RMT's provider copy. Neither a request nor an approval
+unpins content in this rollout, and neither can guarantee erasure from IPFS.
+See [CREATOR_MEDIA_PROVIDER_LIFECYCLE.md](./CREATOR_MEDIA_PROVIDER_LIFECYCLE.md).
+
 The private release passport evaluates ten independent preparation areas: media permanence, creation provenance, rights declarations, license terms, edition design, royalty preference, collaborator consent, revenue splits, revision integrity, and fee disclosure. Its labels are preparation status—not verification, approval, copyright validation, an audit, or a safety guarantee.
 
 ERC-2981 can communicate royalty information to compatible marketplaces, but the standard does not compel a marketplace or buyer to pay it. RMT therefore stores a royalty preference separately from license terms and must disclose actual settlement behavior before a creator signs.

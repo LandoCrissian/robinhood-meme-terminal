@@ -1,6 +1,8 @@
+import { keccak256, toHex } from "viem";
 import {
   creatorMetadataBytes,
   isPublicIpfsCid,
+  type CreatorMediaReceipt,
   type CreatorMediaRetrievalCheck
 } from "../creator-media-receipt";
 import type { CreatorMediaManifest } from "../creator-media-manifest";
@@ -232,5 +234,92 @@ export async function pinAndVerifyCreatorMetadata(manifest: CreatorMediaManifest
     providerFileId: uploaded.id,
     storedSize: file.size,
     ...retrieval
+  };
+}
+
+function retrievalTarget(base: string, uri: string) {
+  if (!uri.startsWith("ipfs://")) throw new Error("availability_uri_invalid");
+  const [cid, ...path] = uri.slice(7).split("/");
+  if (!isPublicIpfsCid(cid)) throw new Error("availability_uri_invalid");
+  return gatewayUrl(base, cid, path.length ? path.join("/") : null);
+}
+
+function availabilityFailure(error: unknown) {
+  const message = error instanceof Error ? error.message : "availability_failed";
+  return /^[a-z0-9_]{3,80}$/.test(message) ? message : "availability_failed";
+}
+
+export async function checkCreatorMediaAvailability(receipt: CreatorMediaReceipt) {
+  const gateway = verificationGateway();
+  const jwt = pinataJwt();
+  const providerCheck = (async () => {
+    const query = new URL("https://api.pinata.cloud/v3/files/public");
+    query.searchParams.set("cid", receipt.metadataCid);
+    query.searchParams.set("limit", "10");
+    try {
+      const response = await fetch(query, {
+        headers: { Authorization: `Bearer ${jwt}` },
+        cache: "no-store",
+        redirect: "error",
+        signal: AbortSignal.timeout(8_000)
+      });
+      if (!response.ok) return { passed: false, state: "unknown" as const, failure: "provider_unavailable" };
+      const body = await readJson(response) as { data?: { files?: PinataFile[] } } | null;
+      const verified = body?.data?.files?.some((file) => (
+        file.id === receipt.providerFileId
+        && file.cid === receipt.metadataCid
+        && file.size === receipt.storedSize
+      ));
+      return verified
+        ? { passed: true, state: "verified" as const, failure: "" }
+        : { passed: false, state: "missing" as const, failure: "provider_record_missing" };
+    } catch {
+      return { passed: false, state: "unknown" as const, failure: "provider_unavailable" };
+    }
+  })();
+  const retrievalChecks = receipt.retrievalChecks.map(async (check) => {
+    try {
+      const metadata = check.role === "metadata";
+      const result = await retrieve(
+        retrievalTarget(gateway.base, check.uri),
+        metadata ? receipt.storedSize : 4_096,
+        !metadata
+      );
+      if (metadata) {
+        const text = new TextDecoder("utf-8", { fatal: true }).decode(result.bytes);
+        if (
+          result.bytes.byteLength !== receipt.storedSize
+          || keccak256(toHex(text)) !== receipt.metadataHash
+        ) throw new Error("metadata_hash_mismatch");
+      }
+      return { passed: true, role: check.role, failure: "" };
+    } catch (error) {
+      return { passed: false, role: check.role, failure: availabilityFailure(error) };
+    }
+  });
+  const [provider, ...retrieval] = await Promise.all([providerCheck, ...retrievalChecks]);
+  const passedRetrieval = retrieval.filter((check) => check.passed).length;
+  const metadataAvailable = retrieval.find((check) => check.role === "metadata")?.passed === true;
+  const gatewayState = passedRetrieval === retrieval.length
+    ? "available" as const
+    : passedRetrieval > 0
+      ? "partial" as const
+      : "unavailable" as const;
+  const overallState = provider.passed && gatewayState === "available"
+    ? "healthy" as const
+    : provider.state === "missing" || !metadataAvailable
+      ? "unavailable" as const
+      : "degraded" as const;
+  const failureCode = [
+    provider.failure,
+    ...retrieval.filter((check) => !check.passed).map((check) => `${check.role}_${check.failure}`)
+  ].filter(Boolean).join(",").slice(0, 80);
+  return {
+    providerState: provider.state,
+    gatewayState,
+    overallState,
+    checksAttempted: 1 + retrieval.length,
+    checksPassed: Number(provider.passed) + passedRetrieval,
+    failureCode
   };
 }
