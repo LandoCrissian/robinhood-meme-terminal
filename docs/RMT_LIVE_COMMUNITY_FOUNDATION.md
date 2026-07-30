@@ -92,8 +92,8 @@ Traffic measurements should include active sessions, concurrent sessions, messag
   to production and preview. No credential value was committed, printed in
   logs, or retained in the local checkout; the downloaded key file was removed
   after the encrypted Vercel transfer.
-- Draft PR #265 deployed commit `4d777bc` to a Vercel preview. The first
-  rehearsal exposed a Node module compatibility failure between
+- An earlier protected preview of this extracted RMT Live code exposed a Node
+  module compatibility failure between
   `firebase-admin` 14.2.0, `jwks-rsa` 4.1.0, and ESM-only `jose` 6.2.3 in the
   Vercel function runtime. RMT pinned `firebase-admin` 13.6.0, which resolves
   to `jwks-rsa` 3.2.2 and `jose` 4.15.9 for the Admin SDK path.
@@ -181,8 +181,8 @@ files alone.
    administrator dismissal now have current preview evidence.
 2. Review preview runtime logs and Firebase usage after the controlled
    rehearsal window.
-3. Keep PR #265 unmerged until the preview evidence is accepted and production
-   is separately authorized.
+3. Keep the focused RMT Live rollout PR unmerged until its fresh preview
+   evidence is accepted and production is separately authorized.
 4. After separate production approval, merge and verify the public route,
    anonymous identity, presence, moderation, and bounded retention paths.
 5. Add a reputable edge limiter before a large public campaign or when
