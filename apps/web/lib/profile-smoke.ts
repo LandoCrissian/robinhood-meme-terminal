@@ -50,6 +50,17 @@ const vercelConfig = JSON.parse(readFileSync(new URL("../vercel.json", import.me
   }>;
   rewrites?: Array<{ source?: string; destination?: string }>;
 };
+const profileProviderSource = readFileSync(new URL("../app/profile-provider.tsx", import.meta.url), "utf8");
+assert.match(
+  profileProviderSource,
+  /signInWithPopup\(client\.auth, provider\)/,
+  "Google profile sign-in must use the storage-partition-safe popup flow"
+);
+assert.doesNotMatch(
+  profileProviderSource,
+  /signInWithRedirect\(/,
+  "Google profile sign-in must not restore the sessionStorage-dependent redirect flow"
+);
 assert.ok(vercelConfig.rewrites?.some((rewrite) => (
   rewrite.source === "/__/auth/:path*"
   && rewrite.destination === "https://robinhood-meme-terminal.firebaseapp.com/__/auth/:path*"
