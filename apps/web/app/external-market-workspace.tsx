@@ -92,18 +92,25 @@ function ImageMark({ market }: { market: ExternalMarket }) {
   );
 }
 
-export function ExternalMarketWorkspace() {
+export function ExternalMarketWorkspace({ initialMarket }: { initialMarket?: ExternalMarket }) {
   const params = useParams<{ address: string }>();
   const searchParams = useSearchParams();
   const tokenAddress = params.address && isAddress(params.address) ? getAddress(params.address) : null;
+  const verifiedInitialMarket = initialMarket
+    && tokenAddress
+    && initialMarket.address.toLowerCase() === tokenAddress.toLowerCase()
+      ? initialMarket
+      : undefined;
   const initialSide = searchParams.get("side") === "sell" ? "sell" : "buy";
   const initialWorkspaceTab: WorkspaceTab = searchParams.get("tab") === "safety"
     ? "safety"
     : searchParams.get("tab") === "origin"
       ? "origin"
       : "activity";
-  const [market, setMarket] = useState<ExternalMarket>();
-  const [status, setStatus] = useState<"loading" | "ready" | "stale" | "error">("loading");
+  const [market, setMarket] = useState<ExternalMarket | undefined>(verifiedInitialMarket);
+  const [status, setStatus] = useState<"loading" | "ready" | "stale" | "error">(
+    verifiedInitialMarket ? "ready" : "loading"
+  );
   const [side, setSide] = useState<TradeSide>(initialSide);
   const [tradeAmount, setTradeAmount] = useState(initialSide === "buy" ? "0.0001" : "");
   const [tab, setTab] = useState<WorkspaceTab>(initialWorkspaceTab);
@@ -112,6 +119,7 @@ export function ExternalMarketWorkspace() {
   const [chartStatus, setChartStatus] = useState<"loading" | "ready" | "error">("loading");
   const [chartError, setChartError] = useState<string>();
   const [copied, setCopied] = useState(false);
+  const [shared, setShared] = useState(false);
   const [tradeVenues, setTradeVenues] = useState<TradeVenue[]>([]);
   const [tradeVenueStatus, setTradeVenueStatus] = useState<"loading" | "ready" | "error">("loading");
   const [selectedTradeVenue, setSelectedTradeVenue] = useState<"sushi" | "uniswap" | null>(null);
@@ -308,6 +316,26 @@ export function ExternalMarketWorkspace() {
     }
   };
 
+  const shareMarket = async () => {
+    if (!market) return;
+    const url = new URL(`/market/${getAddress(market.address)}`, window.location.origin).toString();
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: `${market.name} ($${market.symbol.replaceAll("$", "")}) on RMT`,
+          text: `Review ${market.name} market origin, activity, and risk evidence on RMT.`,
+          url
+        });
+      } else {
+        await navigator.clipboard.writeText(url);
+      }
+      setShared(true);
+      window.setTimeout(() => setShared(false), 1_500);
+    } catch (cause) {
+      if (!(cause instanceof DOMException && cause.name === "AbortError")) setShared(false);
+    }
+  };
+
   const activity = useMemo(() => market ? [
     { label: "5m", buys: market.buys5m, sells: market.sells5m, volume: market.volume5m },
     { label: "1h", buys: market.buys1h, sells: market.sells1h, volume: market.volume1h },
@@ -437,6 +465,7 @@ export function ExternalMarketWorkspace() {
             compactLabel
           />
           <button type="button" onClick={() => void copyContract()}>{copied ? "Copied" : "Copy contract"}</button>
+          <button type="button" onClick={() => void shareMarket()}>{shared ? "Link copied" : "Share market"}</button>
           <a href={market.url} target="_blank" rel="noopener noreferrer">Market source ↗</a>
         </div>
       </header>

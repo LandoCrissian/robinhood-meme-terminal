@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import robots from "../app/robots";
-import sitemap from "../app/sitemap";
+import { staticPublicSitemap } from "../app/sitemap";
 import {
   buildVerifiedTokenProject,
   OFFICIAL_RMT_V6_TOKEN,
@@ -34,13 +34,14 @@ assert.ok(publicRule?.disallow?.includes("/admin/"));
 assert.ok(publicRule?.disallow?.includes("/profile"));
 assert.ok(!publicRule?.disallow?.includes("/deploy-mainnet"), "robots.txt must not advertise hidden operator routes");
 
-const sitemapUrls = sitemap().map((entry) => entry.url);
+const sitemapUrls = staticPublicSitemap().map((entry) => entry.url);
 for (const route of ["/", "/explore", "/launch", `/project/${OFFICIAL_RMT_V6_TOKEN}`, "/status", "/sources", "/sushi", "/rescue"]) {
   assert.ok(sitemapUrls.includes(`${appUrl}${route}`), `Sitemap must include ${route}`);
 }
 for (const route of ["/api/health", "/deploy-mainnet", "/profile", "/portfolio", "/watchlist"]) {
   assert.ok(!sitemapUrls.includes(`${appUrl}${route}`), `Sitemap must not publish ${route}`);
 }
+assert.ok(!sitemapUrls.includes(`${appUrl}/token/${OFFICIAL_RMT_V6_TOKEN}`), "Legacy token URL must defer to the canonical Project URL");
 
 const layoutSource = readFileSync(new URL("../app/layout.tsx", import.meta.url), "utf8");
 assert.doesNotMatch(layoutSource, /alternates:\s*\{\s*canonical:\s*"\/"/);
