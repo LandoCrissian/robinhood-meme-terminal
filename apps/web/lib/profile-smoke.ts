@@ -42,6 +42,7 @@ import {
 } from "./game-updates";
 import { validateCreatorImage } from "./creator-media";
 import { firebaseAuthDomainForHost } from "./firebase-client";
+import { isEmbeddedAuthBrowser } from "./auth-environment";
 
 const vercelConfig = JSON.parse(readFileSync(new URL("../vercel.json", import.meta.url), "utf8")) as {
   headers?: Array<{
@@ -61,6 +62,21 @@ assert.doesNotMatch(
   /signInWithRedirect\(/,
   "Google profile sign-in must not restore the sessionStorage-dependent redirect flow"
 );
+assert.equal(isEmbeddedAuthBrowser(
+  "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 Version/18.5 Mobile/15E148 Safari/604.1"
+), false);
+assert.equal(isEmbeddedAuthBrowser(
+  "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 CriOS/138.0 Mobile/15E148 Safari/604.1"
+), false);
+assert.equal(isEmbeddedAuthBrowser(
+  "Mozilla/5.0 (Linux; Android 15; Pixel 9 Build/AP3A) AppleWebKit/537.36 Version/4.0 Chrome/138.0 Mobile Safari/537.36 wv"
+), true);
+assert.equal(isEmbeddedAuthBrowser(
+  "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 ChatGPT/1.2026.196"
+), true);
+assert.equal(isEmbeddedAuthBrowser(
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/138.0 Safari/537.36"
+), false);
 assert.ok(vercelConfig.rewrites?.some((rewrite) => (
   rewrite.source === "/__/auth/:path*"
   && rewrite.destination === "https://robinhood-meme-terminal.firebaseapp.com/__/auth/:path*"

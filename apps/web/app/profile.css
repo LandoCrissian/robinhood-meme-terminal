@@ -67,6 +67,12 @@
 .profileCloudCard button{width:100%;min-height:44px;margin-top:8px;border:1px solid #334138;border-radius:11px;background:#101612;color:#b8c3ba;font-size:.73rem;font-weight:900;cursor:pointer}
 .profileCloudCard button:disabled{opacity:.58;cursor:wait}
 .profileCloudCard .googleProfileButton{border:0;background:#eaf0eb;color:#111713}
+.profileAuthBrowserNotice{display:flex;flex-direction:column;gap:8px;margin-top:12px;padding:12px;border:1px solid #3d493f;border-radius:12px;background:#0b100d}
+.profileAuthBrowserNotice strong{color:#e8eee9;font-size:.76rem}
+.profileAuthBrowserNotice span{color:#8d9990;font-size:.68rem;line-height:1.5}
+.profileAuthBrowserNotice div{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.profileAuthBrowserNotice a,.profileAuthBrowserNotice button{display:flex;align-items:center;justify-content:center;min-height:42px;margin:0;padding:8px;border:1px solid #405046;border-radius:10px;background:#111914;color:#c7d2ca;font-size:.67rem;font-weight:900;text-align:center;text-decoration:none}
+.profileAuthBrowserNotice a{border-color:#5cda73;color:#7bea8d}
 .profileCloudActions{display:grid;grid-template-columns:1fr;gap:8px;margin-top:12px}
 .profileCloudActions button{margin-top:0}
 .profileCloudActions .profileRetryButton{border-color:#50df6b;background:#51ec70;color:#061309}
