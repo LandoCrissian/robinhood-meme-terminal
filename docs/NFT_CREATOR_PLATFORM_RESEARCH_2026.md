@@ -80,6 +80,7 @@ RMT should not convert individual comments into universal claims. It should use 
 - A source-level creator-controlled ERC-1155 editions module for art, music, game assets and license-linked records. Each token ID permanently binds a manifest-proven URI, terms hash and lifetime supply ceiling; collection-wide type and lifetime supply caps are independently enforced. The module collects no fee and is neither deployed nor audited.
 - A non-executable web manifest builder that deterministically derives ERC-1155 leaves, proofs, exact type and total-supply limits, and the Solidity-compatible configuration hash.
 - A source-level EIP-712 media-evidence verifier and web preparation guard that bind an exact verified receipt and fresh healthy availability observation to the release freeze. The evidence signer cannot freeze, mint, settle or hold assets; no production signer or signing endpoint is enabled.
+- A non-executable transaction-simulation schema that converts release freeze and ERC-721/ERC-1155 deployment calldata into deterministic plain-language receipts with explicit irreversible changes, zero-value facts, warnings and still-unverified live checks.
 
 ### Required before marketplace contracts
 
@@ -87,7 +88,7 @@ RMT should not convert individual comments into universal claims. It should use 
 - Protected production evidence-signing service with signer rotation, atomic revocation checks and incident response.
 - Creator and collection identity review with appeals and report status.
 - Versioned economics policy selected for a release.
-- Human-readable transaction simulation showing assets, payments, approvals, fees, expiry and cancel path.
+- A read-only chain verifier that binds the human-readable simulation to a fresh block, exact runtime hashes, active module records, release state, evidence epoch and prior-deployment state.
 - Contract architecture, threat model, adversarial tests and independent specialist review.
 
 ### Later contract layer

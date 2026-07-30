@@ -10,6 +10,7 @@
     "test:firebase-rules:unit": "tsx --test lib/firebase-rules.test.ts",
     "test:media-guard": "tsx lib/server/media-request-guard-smoke.ts && tsx lib/server/creator-media-route-smoke.ts",
     "test:creator-assets": "tsx lib/creator-assets-smoke.ts",
+    "test:creator-v7-simulation": "tsx lib/creator-v7-transaction-simulation-smoke.ts",
     "test:community": "tsx lib/community-smoke.ts",
     "test:treasury-accounting": "tsx lib/treasury-accounting-smoke.ts",
     "test:reliability": "tsx lib/server/cache-headers-smoke.ts",

@@ -10,13 +10,14 @@ Audit: none
 
 ## Outcome
 
-The V7 source foundation now establishes two narrow registries, one evidence verifier and two creator-collection modules:
+The V7 source foundation now establishes two narrow registries, one evidence verifier, two creator-collection modules and a non-executable transaction-simulation boundary:
 
 1. `RMTV7ModuleRegistry` is an append-only catalog of exact implementation, interface, code, metadata and policy fingerprints admitted by RMT's delayed governance.
 2. `RMTV7MediaEvidenceVerifier` validates short-lived EIP-712 attestations that bind an exact verified provider receipt and healthy availability observation to one release.
 3. `RMTV7ReleaseRegistry` lets a creator commit an immutable release revision and atomically freeze its evidence, future modules and configurations.
 4. `RMTV7ERC721CollectionModule` deploys one deterministic, creator-controlled `RMTV7CreatorCollection` for an exact frozen release intent.
 5. `RMTV7ERC1155EditionModule` deploys one deterministic, creator-controlled `RMTV7CreatorEditions` contract for an exact frozen release intent.
+6. `creator-v7-transaction-simulation.ts` produces deterministic plain-language receipts and exact calldata for release freeze and both deployment modules without reading the chain, signing or broadcasting.
 
 The ERC-721 module can mint only the sequential token IDs and exact token-URI hashes committed in the release's immutable Merkle manifest. The ERC-1155 module can mint only IDs, URI hashes, terms hashes and lifetime supplies committed in its immutable edition manifest. Neither module lists, approves, sells, charges, settles, routes fees, holds funds, buys RMT, burns RMT, purchases NFTs or claims that RMT approved a creator.
 
@@ -153,6 +154,14 @@ The source limits are 10,000 edition types, 1,000,000,000 lifetime minted units 
 
 An edition terms hash is a provenance commitment only. It does not prove copyright, grant rights by itself or make offchain license terms enforceable. See `V7_CREATOR_EDITIONS.md`.
 
+## Human-readable transaction simulations
+
+The simulation schema makes irreversible V7 actions reviewable before wallet integration. Every receipt identifies the chain, actor, target, selector, calldata, zero native value, immutable commitments, expected state transition, risks and still-unverified live checks. Asset movements, token approvals and platform fees are explicit empty lists for these three calls.
+
+Module intents are canonically ordered before release-freeze calldata is generated, preventing presentation order from silently changing the frozen module-manifest hash. TypeScript ABI decoding and independent Solidity calldata vectors pin all three calls.
+
+The simulator does not read the chain and therefore cannot mark module activity, code identity, release state, creator identity, evidence validity or prior deployment as verified. Those checks remain fail-closed production blockers. See `V7_TRANSACTION_SIMULATIONS.md`.
+
 ## Governance boundary
 
 The module registry requires its governance address to contain contract code. Production deployment is intended to use the existing delayed `RMTV6Governance`, not an EOA and not a new privileged owner.
@@ -265,11 +274,10 @@ See `V7_MARKETPLACE_ECONOMICS_BOUNDARY.md` for the accounting requirements that 
 
 The following order keeps risk bounded:
 
-1. add human-readable transaction simulation schemas for release freeze and both deployment modules;
-2. implement consent-bound pull-payment splits with failed-recipient recovery;
-3. select and approve a real V7 fee policy;
-4. implement fixed-price settlement with expiry, cancellation, narrow approvals and adversarial asset/payment tests;
-5. add offers only after fixed-price settlement is proven;
-6. consider auctions last.
+1. implement consent-bound pull-payment splits with failed-recipient recovery;
+2. select and approve a real V7 fee policy;
+3. implement fixed-price settlement with expiry, cancellation, narrow approvals and adversarial asset/payment tests;
+4. add offers only after fixed-price settlement is proven;
+5. consider auctions last.
 
 Every executable increment still requires specialist review, public deployment artifacts and explicit authorization before a testnet or mainnet transaction.

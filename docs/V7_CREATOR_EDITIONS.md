@@ -99,7 +99,7 @@ This module collects no platform fee and has no sale or payout path.
 
 1. wire the builder to an authenticated creator review surface;
 2. bind each terms hash to a displayed, retrievable and versioned document;
-3. add a human-readable transaction simulation for release freeze and deployment;
+3. connect the source-level human-readable simulations to an authenticated read-only chain verifier;
 4. obtain independent smart-contract and specialist rights review;
 5. choose canonical chain addresses and verify deployment artifacts;
 6. complete a testnet rehearsal with public receipts;
