@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { keccak256, toHex } from "viem";
+import { keccak256, recoverTypedDataAddress, toHex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import {
   EMPTY_CREATOR_ASSET,
@@ -81,6 +81,10 @@ import {
   parseCreatorMediaTakedownDecision,
   parseCreatorMediaTakedownRequest
 } from "./creator-media-takedown";
+import {
+  createCreatorReleaseFreezeEvidence,
+  hashCreatorReleaseFreezeEvidence
+} from "./creator-release-freeze-evidence";
 
 const validArtwork = {
   ...EMPTY_CREATOR_ASSET,
@@ -106,6 +110,17 @@ const validArtwork = {
     shareBps: 10_000
   }]
 };
+
+assert.equal(
+  hashCreatorReleaseFreezeEvidence({
+    receiptHash: `0x${"11".repeat(32)}`,
+    availabilityObservationHash: `0x${"22".repeat(32)}`,
+    observedAt: 1_785_283_200,
+    validUntil: 1_785_286_800,
+    signerEpoch: 1
+  }),
+  "0x8c97155382c77e182384b824fd6bace122b48e6f9b25178dba90612249bc18ef"
+);
 
 assert.equal(validateCreatorAsset(validArtwork), null);
 assert.equal(normalizeCreatorAsset({
@@ -741,6 +756,106 @@ async function testSignedConsentResponse() {
   assert.equal(review.acceptedConsentManifest.length, 1);
   assert.equal(review.mediaReceipt?.receiptId, reviewMediaReceipt.receiptId);
   assert.deepEqual(parseCreatorReleaseReview(review.reviewId, review), review);
+  const preparationDecision = createCreatorReleaseDecision({
+    reviewId: review.reviewId,
+    reviewHash: review.reviewHash,
+    projectSlug: review.projectSlug,
+    assetId: review.assetId,
+    outcome: "preparation_ready",
+    reasonCode: "preparation_complete",
+    reviewNote: "Preparation evidence is internally complete; execution remains disabled.",
+    reviewerId: "rmt-reviewer"
+  });
+  const freezeObservedAtMs = 1_785_283_200_000;
+  const freezeAvailability = availabilityStatusFromObservation(
+    createCreatorMediaAvailabilityObservation({
+      schemaVersion: 1,
+      receiptId: reviewMediaReceipt.receiptId,
+      projectSlug: reviewMediaReceipt.projectSlug,
+      assetId: reviewMediaReceipt.assetId,
+      metadataCid: reviewMediaReceipt.metadataCid,
+      providerState: "verified",
+      gatewayState: "available",
+      overallState: "healthy",
+      checksAttempted: 3,
+      checksPassed: 3,
+      failureCode: "",
+      observedAtMs: freezeObservedAtMs,
+      providerExecution: "disabled"
+    }),
+    null
+  );
+  const freezeEvidence = createCreatorReleaseFreezeEvidence({
+    review,
+    decision: preparationDecision,
+    availability: freezeAvailability,
+    chainId: 4663,
+    verifier: "0x1111111111111111111111111111111111111111",
+    releaseRegistry: "0x2222222222222222222222222222222222222222",
+    releaseId: `0x${"3".repeat(64)}`,
+    creator: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    signerEpoch: 1,
+    validUntil: freezeObservedAtMs / 1_000 + 3_600,
+    nowSeconds: freezeObservedAtMs / 1_000 + 60
+  });
+  assert.equal(freezeEvidence.evidence.receiptHash, `0x${reviewMediaReceipt.receiptId}`);
+  assert.equal(freezeEvidence.message.metadataHash, reviewMediaReceipt.metadataHash);
+  assert.equal(freezeEvidence.message.mediaManifestHash, reviewMediaReceipt.manifestHash);
+  assert.match(freezeEvidence.evidenceHash, /^0x[0-9a-f]{64}$/);
+  assert.match(freezeEvidence.digest, /^0x[0-9a-f]{64}$/);
+  assert.equal(freezeEvidence.contractExecution, "disabled");
+  const evidenceSigner = privateKeyToAccount(`0x${"4".repeat(64)}`);
+  const evidenceSignature = await evidenceSigner.signTypedData(freezeEvidence.typedData);
+  assert.equal(
+    await recoverTypedDataAddress({ ...freezeEvidence.typedData, signature: evidenceSignature }),
+    evidenceSigner.address
+  );
+  const degradedFreezeAvailability = availabilityStatusFromObservation(
+    createCreatorMediaAvailabilityObservation({
+      schemaVersion: 1,
+      receiptId: reviewMediaReceipt.receiptId,
+      projectSlug: reviewMediaReceipt.projectSlug,
+      assetId: reviewMediaReceipt.assetId,
+      metadataCid: reviewMediaReceipt.metadataCid,
+      providerState: "unknown",
+      gatewayState: "partial",
+      overallState: "degraded",
+      checksAttempted: 3,
+      checksPassed: 2,
+      failureCode: "provider_unknown",
+      observedAtMs: freezeObservedAtMs,
+      providerExecution: "disabled"
+    }),
+    null
+  );
+  assert.throws(() => createCreatorReleaseFreezeEvidence({
+    ...{
+      review,
+      decision: preparationDecision,
+      chainId: 4663,
+      verifier: "0x1111111111111111111111111111111111111111" as const,
+      releaseRegistry: "0x2222222222222222222222222222222222222222" as const,
+      releaseId: `0x${"3".repeat(64)}` as const,
+      creator: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" as const,
+      signerEpoch: 1,
+      validUntil: freezeObservedAtMs / 1_000 + 3_600,
+      nowSeconds: freezeObservedAtMs / 1_000 + 60
+    },
+    availability: degradedFreezeAvailability
+  }), /must be healthy/);
+  assert.throws(() => createCreatorReleaseFreezeEvidence({
+    review,
+    decision: preparationDecision,
+    availability: freezeAvailability,
+    chainId: 4663,
+    verifier: "0x1111111111111111111111111111111111111111",
+    releaseRegistry: "0x2222222222222222222222222222222222222222",
+    releaseId: `0x${"3".repeat(64)}`,
+    creator: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    signerEpoch: 1,
+    validUntil: freezeObservedAtMs / 1_000 + 3_600,
+    nowSeconds: freezeObservedAtMs / 1_000 + 24 * 60 * 60 + 1
+  }), /not current/);
   const legacyReviewPayload = {
     schemaVersion: 1 as const,
     projectSlug: review.projectSlug,
@@ -831,16 +946,7 @@ async function testSignedConsentResponse() {
     preparedBy: "creator-user-id"
   }), /revision fingerprint/);
 
-  const decision = createCreatorReleaseDecision({
-    reviewId: review.reviewId,
-    reviewHash: review.reviewHash,
-    projectSlug: review.projectSlug,
-    assetId: review.assetId,
-    outcome: "preparation_ready",
-    reasonCode: "preparation_complete",
-    reviewNote: "Preparation evidence is internally complete; execution remains disabled.",
-    reviewerId: "rmt-reviewer"
-  });
+  const decision = preparationDecision;
   assert.deepEqual(parseCreatorReleaseDecision(review.reviewId, decision), decision);
   assert.equal(parseCreatorReleaseDecision(review.reviewId, {
     ...decision,

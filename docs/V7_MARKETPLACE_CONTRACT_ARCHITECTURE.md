@@ -10,11 +10,12 @@ Audit: none
 
 ## Outcome
 
-The V7 source foundation now establishes two narrow registries and one creator-collection module:
+The V7 source foundation now establishes two narrow registries, one evidence verifier and one creator-collection module:
 
 1. `RMTV7ModuleRegistry` is an append-only catalog of exact implementation, interface, code, metadata and policy fingerprints admitted by RMT's delayed governance.
-2. `RMTV7ReleaseRegistry` lets a creator commit an immutable release revision and atomically freeze the complete set of future modules and configurations associated with it.
-3. `RMTV7ERC721CollectionModule` deploys one deterministic, creator-controlled `RMTV7CreatorCollection` for an exact frozen release intent.
+2. `RMTV7MediaEvidenceVerifier` validates short-lived EIP-712 attestations that bind an exact verified provider receipt and healthy availability observation to one release.
+3. `RMTV7ReleaseRegistry` lets a creator commit an immutable release revision and atomically freeze its evidence, future modules and configurations.
+4. `RMTV7ERC721CollectionModule` deploys one deterministic, creator-controlled `RMTV7CreatorCollection` for an exact frozen release intent.
 
 The collection module can mint only the sequential token IDs and exact token-URI hashes committed in the release's immutable Merkle manifest. It does not list, approve, sell, charge, settle, route fees, hold funds, buy RMT, burn RMT, purchase NFTs or claim that RMT approved a creator.
 
@@ -57,7 +58,8 @@ creator commits immutable fingerprints
     v
 COMMITTED -----------------------> CANCELLED
     |
-    | creator atomically supplies 1-8 active module intents
+    | creator supplies 1-8 active module intents plus a current,
+    | correctly signed receipt + availability attestation
     v
 FROZEN
 ```
@@ -90,10 +92,29 @@ The module key includes the chain ID and registry address so it cannot be replay
 - fee-policy hash;
 - collaborator payout-manifest hash;
 - complete module-manifest hash;
+- media-evidence, provider-receipt and availability-observation hashes;
+- evidence observation, expiry and signer-epoch values;
 - creation, freeze and cancellation timestamps;
 - creator-scoped nonce and state.
 
 The release ID includes the chain ID and registry address. An identical payload committed on another chain or deployment produces a different ID.
+
+## Media evidence boundary
+
+`RMTV7MediaEvidenceVerifier` closes the gap between an offchain review record and a release freeze without making the provider or RMT a custodian:
+
+- the EIP-712 domain binds the chain ID and exact verifier contract;
+- the signed message binds the release registry, release ID, creator, metadata hash, media-manifest hash, provider-receipt hash, availability-observation hash, observation time, expiry and signer epoch;
+- an observation may be no more than 24 hours old at freeze time;
+- evidence may remain valid for no more than 48 hours after its observation;
+- future, stale, expired, empty, wrong-release, wrong-chain, wrong-verifier, wrong-signer and old-epoch attestations fail closed;
+- the release registry stores the exact evidence fingerprints and times when a freeze succeeds;
+- signer rotation is available only through delayed governance and immediately invalidates every older epoch;
+- the signer can attest to evidence only. It cannot freeze a creator release, select modules, mint, transfer, list, settle, withdraw or execute governance.
+
+The web-side evidence builder independently requires a schema-v3 verified-retrieval receipt, an immutable `preparation_ready` decision for that exact review, and a healthy matching availability status before it constructs the typed message. A future signing service must recheck current collaborator consent, media supersession and takedown state atomically before signing. No signing endpoint or production signer is enabled in this increment.
+
+A successful attestation proves that the configured reviewer observed the bounded provider and gateway checks at a stated time. It does not prove copyright, provider permanence, global IPFS availability or future retrievability.
 
 ## Creator collection module
 
@@ -120,6 +141,7 @@ Governance may:
 
 - register a new exact module kind and version;
 - permanently deactivate a module for future release freezes.
+- rotate the media-evidence signer and advance its epoch.
 
 Governance may not:
 
@@ -127,7 +149,8 @@ Governance may not:
 - reactivate an old version;
 - edit, cancel or freeze a creator release;
 - execute a registered module through either registry;
-- withdraw assets because neither registry accepts or holds them.
+- create or alter evidence signed by the independent evidence signer;
+- withdraw assets because the registries and verifier accept or hold none.
 
 Registration means admitted to the RMT catalog. It is not an audit, safety guarantee, partnership claim or endorsement of a creator.
 
@@ -153,11 +176,15 @@ See `V7_MARKETPLACE_ECONOMICS_BOUNDARY.md` for the accounting requirements that 
 | False interface claim | Registration requires ERC-165 support for ERC-165 and the declared interface | Independently test semantics; ERC-165 is not an audit |
 | Governance rewrites a trusted version | Kind and version are append-only | Public monitoring and governance proposal simulation |
 | Known-bad module remains selectable | Governance can permanently deactivate it | Define incident response timing and a narrowly scoped emergency policy if settlement requires it |
-| Creator changes terms after collaborator approval | Rights, payout, fee, metadata and media hashes are immutable; full module plan freezes atomically | Wire collaborator acceptance and provider receipts to the same hashes |
+| Creator changes terms after collaborator approval | Rights, payout, fee, metadata and media hashes are immutable; the full module plan and short-lived media evidence freeze atomically | The future signing service must atomically recheck consent, decision, supersession and takedown state |
 | Creator appends a dangerous module after freeze | Frozen plan cannot be changed | Corrections require a new release and new review |
 | Duplicate module creates ambiguous behavior | Duplicate module keys in one release plan are rejected | Module-specific configuration validation belongs in reviewed module contracts |
 | Registry accidentally holds user assets | No payable receive/fallback or withdrawal function; tests reject native transfers | Future token transfer mistakes require analysis because arbitrary ERC-20 transfers cannot be universally prevented |
 | Registered module executes during release freeze | Release registry calls only the catalog's read-only `isModuleActive`; it never calls an implementation | Future factory/settlement contracts need reentrancy and execution tests |
+| Creator freezes with an invented or unrelated receipt | Evidence signature binds exact release, creator, metadata, manifest, receipt and availability hashes | Protect and monitor the narrow evidence signer; publish signer epoch and rotation history |
+| Old healthy observation is replayed | Maximum observation age is 24 hours and maximum validity is 48 hours from observation | Choose a stricter production policy if provider reliability requires it |
+| Compromised evidence signer moves assets or mints | Signer has no contract authority beyond evidence validation; the creator still controls freeze and mint | Incident response must rotate the signer through delayed governance |
+| Old signer remains trusted after rotation | Every message binds the current signer epoch; rotation invalidates old signatures | Ensure creators can request replacement evidence without rewriting commitments |
 | Caller deploys a collection for another creator | Deployment verifies caller, module key and exact configuration against the frozen release | Product must clearly explain which wallet will own mint authority before signing |
 | Creator mints metadata outside the reviewed release | Every sequential token ID and URI hash requires a Merkle proof from the frozen manifest | Pinning receipts and ongoing media availability still need to be wired into release review |
 | Malicious receiver reenters during safe mint | Collection uses a mint guard and rolls back rejected receiver callbacks | Independent review and fuzzing remain required before deployment |
@@ -178,8 +205,11 @@ See `V7_MARKETPLACE_ECONOMICS_BOUNDARY.md` for the accounting requirements that 
 - empty, duplicate, inactive and oversized module plans fail;
 - freezing stores the expected manifest and never calls the implementation;
 - frozen and cancelled releases cannot transition again;
-- both registries reject native-asset custody;
+- both registries and the evidence verifier reject native-asset custody;
 - constructor dependencies must contain code.
+- a freeze stores the exact evidence hashes, observation, expiry and signer epoch;
+- invalid signer, stale, expired and future observations fail;
+- only governance can rotate the evidence signer and old epochs fail immediately.
 
 `RMTV7ERC721CollectionModule.t.sol` verifies:
 
@@ -198,12 +228,11 @@ See `V7_MARKETPLACE_ECONOMICS_BOUNDARY.md` for the accounting requirements that 
 The following order keeps risk bounded:
 
 1. define module interfaces and human-readable transaction simulation schemas;
-2. wire trusted metadata pinning receipts and availability evidence into release preparation;
-3. implement an ERC-1155 edition module with explicit supply invariants;
-4. implement consent-bound pull-payment splits with failed-recipient recovery;
-5. select and approve a real V7 fee policy;
-6. implement fixed-price settlement with expiry, cancellation, narrow approvals and adversarial asset/payment tests;
-7. add offers only after fixed-price settlement is proven;
-8. consider auctions last.
+2. implement an ERC-1155 edition module with explicit supply invariants;
+3. implement consent-bound pull-payment splits with failed-recipient recovery;
+4. select and approve a real V7 fee policy;
+5. implement fixed-price settlement with expiry, cancellation, narrow approvals and adversarial asset/payment tests;
+6. add offers only after fixed-price settlement is proven;
+7. consider auctions last.
 
 Every executable increment still requires specialist review, public deployment artifacts and explicit authorization before a testnet or mainnet transaction.

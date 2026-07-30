@@ -77,11 +77,12 @@ RMT should not convert individual comments into universal claims. It should use 
 - Deterministic marketplace metadata and media-manifest generation, IPFS-versus-HTTPS integrity labeling, revision-bound fingerprints, and a downloadable JSON preview. Metadata remains explicitly unpinned.
 - Source-level V7 release and module registries that can bind an immutable creator release revision, payout manifest, fee-policy fingerprint, media manifest and complete module plan without minting, custody or execution. These contracts are tested but not deployed or audited.
 - A source-level creator-controlled ERC-721 module that deploys one deterministic collection for an exact frozen release. Sequential token IDs and URI hashes must be proven against the frozen media manifest; supply and royalty signaling are bounded; no marketplace settlement or platform custody exists. The contracts are tested but not deployed or audited.
+- A source-level EIP-712 media-evidence verifier and web preparation guard that bind an exact verified receipt and fresh healthy availability observation to the release freeze. The evidence signer cannot freeze, mint, settle or hold assets; no production signer or signing endpoint is enabled.
 
 ### Required before marketplace contracts
 
 - Product wiring for the source-level onchain release-freeze boundary and a post-freeze correction or dispute process. A correction must create a new commitment; the original history cannot be rewritten.
-- Trusted upload/pinning receipt for the generated metadata manifest and bounded availability verification for every referenced IPFS object.
+- Protected production evidence-signing service with signer rotation, atomic revocation checks and incident response.
 - Creator and collection identity review with appeals and report status.
 - Versioned economics policy selected for a release.
 - Human-readable transaction simulation showing assets, payments, approvals, fees, expiry and cancel path.

@@ -2,6 +2,7 @@
 pragma solidity ^0.8.26;
 
 import {IRMTV7ModuleRegistry} from "./interfaces/IRMTV7ModuleRegistry.sol";
+import {IRMTV7MediaEvidenceVerifier} from "./interfaces/IRMTV7MediaEvidenceVerifier.sol";
 
 /// @notice Creator-owned, immutable commitments for future V7 releases.
 /// @dev This registry does not approve creators, mint assets, call modules, accept payments, or
@@ -22,9 +23,15 @@ contract RMTV7ReleaseRegistry {
         bytes32 feePolicyHash;
         bytes32 payoutManifestHash;
         bytes32 moduleManifestHash;
+        bytes32 mediaEvidenceHash;
+        bytes32 mediaReceiptHash;
+        bytes32 availabilityObservationHash;
         uint64 createdAt;
         uint64 frozenAt;
         uint64 cancelledAt;
+        uint64 evidenceObservedAt;
+        uint64 evidenceValidUntil;
+        uint64 evidenceSignerEpoch;
         uint8 state;
     }
 
@@ -34,6 +41,7 @@ contract RMTV7ReleaseRegistry {
     }
 
     IRMTV7ModuleRegistry public immutable moduleRegistry;
+    IRMTV7MediaEvidenceVerifier public immutable mediaEvidenceVerifier;
     mapping(address creator => uint256 nextNonce) public creatorNonces;
     mapping(bytes32 releaseId => ReleaseCommitment release) private _releases;
     mapping(bytes32 releaseId => ModuleIntent[] intents) private _moduleIntents;
@@ -59,15 +67,33 @@ contract RMTV7ReleaseRegistry {
         bytes32 feePolicyHash,
         bytes32 payoutManifestHash
     );
-    event ReleaseFrozen(bytes32 indexed releaseId, bytes32 indexed moduleManifestHash, uint256 moduleCount);
+    event ReleaseFrozen(
+        bytes32 indexed releaseId,
+        bytes32 indexed moduleManifestHash,
+        bytes32 indexed mediaEvidenceHash,
+        bytes32 mediaReceiptHash,
+        bytes32 availabilityObservationHash,
+        uint64 evidenceObservedAt,
+        uint64 evidenceValidUntil,
+        uint64 evidenceSignerEpoch,
+        uint256 moduleCount
+    );
     event ReleaseCancelled(bytes32 indexed releaseId);
 
-    constructor(address moduleRegistry_) {
-        if (moduleRegistry_ == address(0) || moduleRegistry_.code.length == 0) revert InvalidConfiguration();
+    constructor(address moduleRegistry_, address mediaEvidenceVerifier_) {
+        if (
+            moduleRegistry_ == address(0) || moduleRegistry_.code.length == 0 || mediaEvidenceVerifier_ == address(0)
+                || mediaEvidenceVerifier_.code.length == 0
+        ) revert InvalidConfiguration();
         IRMTV7ModuleRegistry candidate = IRMTV7ModuleRegistry(moduleRegistry_);
         address registryGovernance = candidate.governance();
         if (registryGovernance == address(0) || registryGovernance.code.length == 0) revert InvalidConfiguration();
+        IRMTV7MediaEvidenceVerifier verifier = IRMTV7MediaEvidenceVerifier(mediaEvidenceVerifier_);
+        if (verifier.governance() != registryGovernance || verifier.evidenceSigner() == address(0)) {
+            revert InvalidConfiguration();
+        }
         moduleRegistry = candidate;
+        mediaEvidenceVerifier = verifier;
     }
 
     /// @notice Records a creator's exact reviewed release fingerprints.
@@ -114,9 +140,15 @@ contract RMTV7ReleaseRegistry {
             feePolicyHash: feePolicyHash,
             payoutManifestHash: payoutManifestHash,
             moduleManifestHash: bytes32(0),
+            mediaEvidenceHash: bytes32(0),
+            mediaReceiptHash: bytes32(0),
+            availabilityObservationHash: bytes32(0),
             createdAt: uint64(block.timestamp),
             frozenAt: 0,
             cancelledAt: 0,
+            evidenceObservedAt: 0,
+            evidenceValidUntil: 0,
+            evidenceSignerEpoch: 0,
             state: RELEASE_STATE_COMMITTED
         });
 
@@ -136,12 +168,23 @@ contract RMTV7ReleaseRegistry {
 
     /// @notice Atomically binds the complete future execution plan to a committed release.
     /// @dev No registered implementation is called. This is a fingerprint-only state transition.
-    function freezeRelease(bytes32 releaseId, ModuleIntent[] calldata moduleIntents)
-        external
-        returns (bytes32 moduleManifestHash)
-    {
+    function freezeRelease(
+        bytes32 releaseId,
+        ModuleIntent[] calldata moduleIntents,
+        IRMTV7MediaEvidenceVerifier.MediaEvidence calldata mediaEvidence,
+        bytes calldata mediaEvidenceSignature
+    ) external returns (bytes32 moduleManifestHash) {
         ReleaseCommitment storage release = _requireCreatorRelease(releaseId);
         if (release.state != RELEASE_STATE_COMMITTED) revert InvalidReleaseState(release.state);
+        bytes32 mediaEvidenceHash = mediaEvidenceVerifier.verifyEvidence(
+            address(this),
+            releaseId,
+            release.creator,
+            release.metadataHash,
+            release.mediaManifestHash,
+            mediaEvidence,
+            mediaEvidenceSignature
+        );
         uint256 moduleCount = moduleIntents.length;
         if (moduleCount == 0 || moduleCount > MAXIMUM_MODULES_PER_RELEASE) revert InvalidModulePlan();
 
@@ -160,9 +203,25 @@ contract RMTV7ReleaseRegistry {
 
         moduleManifestHash = keccak256(abi.encode(moduleIntents));
         release.moduleManifestHash = moduleManifestHash;
+        release.mediaEvidenceHash = mediaEvidenceHash;
+        release.mediaReceiptHash = mediaEvidence.receiptHash;
+        release.availabilityObservationHash = mediaEvidence.availabilityObservationHash;
         release.frozenAt = uint64(block.timestamp);
+        release.evidenceObservedAt = mediaEvidence.observedAt;
+        release.evidenceValidUntil = mediaEvidence.validUntil;
+        release.evidenceSignerEpoch = mediaEvidence.signerEpoch;
         release.state = RELEASE_STATE_FROZEN;
-        emit ReleaseFrozen(releaseId, moduleManifestHash, moduleCount);
+        emit ReleaseFrozen(
+            releaseId,
+            moduleManifestHash,
+            mediaEvidenceHash,
+            mediaEvidence.receiptHash,
+            mediaEvidence.availabilityObservationHash,
+            mediaEvidence.observedAt,
+            mediaEvidence.validUntil,
+            mediaEvidence.signerEpoch,
+            moduleCount
+        );
     }
 
     /// @notice Cancels an unfrozen commitment while preserving its public history.

@@ -67,6 +67,25 @@ The prepared daily monitor cannot rewrite receipts or automatically delete
 provider files. An RMT approval records policy intent only; provider execution
 remains disabled.
 
+## V7 freeze evidence
+
+The source-level V7 evidence bridge can now construct and verify a short-lived
+EIP-712 attestation for the exact schema-v3 receipt and a healthy matching
+availability observation. The message also binds the release ID, creator,
+release registry, metadata and manifest hashes, chain, verifier, expiry, and
+current signer epoch.
+
+The web builder refuses degraded, unavailable, mismatched, tampered, future, or
+older-than-24-hour observations. The onchain verifier independently enforces
+the time window and signature. A successful release freeze preserves the exact
+receipt and observation fingerprints; it does not rewrite either offchain
+record or guarantee future availability.
+
+No production evidence signer or signing endpoint is enabled. Before one can
+exist, the server must atomically recheck current review decision, collaborator
+consent, supersession, takedown and availability state, and the narrow signer
+must have documented rotation and incident procedures.
+
 ## Correction trail
 
 IPFS content is content-addressed, so RMT never presents a correction as editing or erasing an old CID. Saving a changed creator-rights draft produces a new revision and immediately makes every previous receipt ineligible for new release review. The assigned creator can then record one immutable `mediaReceiptSupersessions/{receiptId}` document that links the replaced revision to the current saved revision. The original receipt remains preserved as history.
@@ -76,6 +95,6 @@ An RMT administrator cannot mark an older review preparation-ready after its ass
 ## Remaining boundary
 
 Before a release can become executable, RMT still needs monitored production
-operation of the prepared lifecycle policy, an approved production economics
-policy, contract-template review, testnet execution, independent security
-review, and explicit production authorization.
+operation of the lifecycle policy, a protected evidence-signing service, an
+approved production economics policy, contract-template review, testnet
+execution, independent security review, and explicit production authorization.

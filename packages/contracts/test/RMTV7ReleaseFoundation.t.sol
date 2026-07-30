@@ -2,12 +2,17 @@
 pragma solidity ^0.8.26;
 
 import {IRMTV7ModuleRegistry} from "../src/interfaces/IRMTV7ModuleRegistry.sol";
+import {IRMTV7MediaEvidenceVerifier} from "../src/interfaces/IRMTV7MediaEvidenceVerifier.sol";
+import {RMTV7MediaEvidenceVerifier} from "../src/RMTV7MediaEvidenceVerifier.sol";
 import {RMTV7ModuleRegistry} from "../src/RMTV7ModuleRegistry.sol";
 import {RMTV7ReleaseRegistry} from "../src/RMTV7ReleaseRegistry.sol";
 
 interface V7ReleaseFoundationVm {
+    function addr(uint256 privateKey) external returns (address);
     function deal(address account, uint256 balance) external;
     function prank(address sender) external;
+    function sign(uint256 privateKey, bytes32 digest) external returns (uint8 v, bytes32 r, bytes32 s);
+    function warp(uint256 timestamp) external;
 }
 
 contract V7GovernanceCaller {
@@ -50,16 +55,20 @@ contract RMTV7ReleaseFoundationTest {
         V7ReleaseFoundationVm(address(uint160(uint256(keccak256("hevm cheat code")))));
     bytes4 private constant COLLECTION_INTERFACE_ID = 0x80ac58cd;
     bytes4 private constant EDITION_INTERFACE_ID = 0xd9b67a26;
+    uint256 private constant EVIDENCE_SIGNER_KEY = 0xA11CE;
+    uint256 private constant NEXT_EVIDENCE_SIGNER_KEY = 0xB0B;
     address private constant OTHER_CREATOR = address(0xB0B);
 
     V7GovernanceCaller private governance;
     RMTV7ModuleRegistry private moduleRegistry;
+    RMTV7MediaEvidenceVerifier private mediaEvidenceVerifier;
     RMTV7ReleaseRegistry private releaseRegistry;
 
     function setUp() public {
         governance = new V7GovernanceCaller();
         moduleRegistry = new RMTV7ModuleRegistry(address(governance));
-        releaseRegistry = new RMTV7ReleaseRegistry(address(moduleRegistry));
+        mediaEvidenceVerifier = new RMTV7MediaEvidenceVerifier(address(governance), vm.addr(EVIDENCE_SIGNER_KEY));
+        releaseRegistry = new RMTV7ReleaseRegistry(address(moduleRegistry), address(mediaEvidenceVerifier));
     }
 
     function testModuleRegistrationIsGovernedVersionedAndCodePinned() public {
@@ -210,13 +219,26 @@ contract RMTV7ReleaseFoundationTest {
         RMTV7ReleaseRegistry.ModuleIntent[] memory intents = _singleIntent(moduleKey);
         bytes32 expectedManifestHash = keccak256(abi.encode(intents));
 
-        bytes32 manifestHash = releaseRegistry.freezeRelease(releaseId, intents);
+        (IRMTV7MediaEvidenceVerifier.MediaEvidence memory evidence, bytes memory evidenceSignature) =
+            _signedEvidence(releaseId, EVIDENCE_SIGNER_KEY);
+        bytes32 manifestHash = releaseRegistry.freezeRelease(releaseId, intents, evidence, evidenceSignature);
         require(manifestHash == expectedManifestHash, "wrong module manifest hash");
         require(!implementation.touched(), "registered implementation was called");
 
         RMTV7ReleaseRegistry.ReleaseCommitment memory release = releaseRegistry.getRelease(releaseId);
         require(release.state == releaseRegistry.RELEASE_STATE_FROZEN(), "release not frozen");
         require(release.moduleManifestHash == expectedManifestHash, "manifest not stored");
+        require(release.mediaReceiptHash == evidence.receiptHash, "receipt evidence not stored");
+        require(
+            release.availabilityObservationHash == evidence.availabilityObservationHash,
+            "availability evidence not stored"
+        );
+        require(
+            release.mediaEvidenceHash == mediaEvidenceVerifier.hashEvidence(evidence), "evidence fingerprint not stored"
+        );
+        require(release.evidenceObservedAt == evidence.observedAt, "observation time not stored");
+        require(release.evidenceValidUntil == evidence.validUntil, "evidence expiry not stored");
+        require(release.evidenceSignerEpoch == evidence.signerEpoch, "evidence epoch not stored");
         require(release.frozenAt != 0, "freeze time missing");
 
         RMTV7ReleaseRegistry.ModuleIntent[] memory stored = releaseRegistry.getModuleIntents(releaseId);
@@ -227,9 +249,7 @@ contract RMTV7ReleaseFoundationTest {
         (bool cancelledAfterFreeze,) =
             address(releaseRegistry).call(abi.encodeCall(releaseRegistry.cancelRelease, (releaseId)));
         require(!cancelledAfterFreeze, "frozen release cancelled");
-        (bool frozenTwice,) =
-            address(releaseRegistry).call(abi.encodeCall(releaseRegistry.freezeRelease, (releaseId, intents)));
-        require(!frozenTwice, "release frozen twice");
+        require(!_tryFreeze(releaseId, intents), "release frozen twice");
     }
 
     function testFreezeRejectsInactiveDuplicateEmptyAndOversizedPlans() public {
@@ -244,30 +264,22 @@ contract RMTV7ReleaseFoundationTest {
         );
 
         RMTV7ReleaseRegistry.ModuleIntent[] memory empty = new RMTV7ReleaseRegistry.ModuleIntent[](0);
-        (bool emptyAccepted,) =
-            address(releaseRegistry).call(abi.encodeCall(releaseRegistry.freezeRelease, (_commitRelease(), empty)));
-        require(!emptyAccepted, "empty module plan accepted");
+        require(!_tryFreeze(_commitRelease(), empty), "empty module plan accepted");
 
         RMTV7ReleaseRegistry.ModuleIntent[] memory duplicate = new RMTV7ReleaseRegistry.ModuleIntent[](2);
         duplicate[0] = RMTV7ReleaseRegistry.ModuleIntent(moduleKey, keccak256("ONE"));
         duplicate[1] = RMTV7ReleaseRegistry.ModuleIntent(moduleKey, keccak256("TWO"));
-        (bool duplicateAccepted,) =
-            address(releaseRegistry).call(abi.encodeCall(releaseRegistry.freezeRelease, (_commitRelease(), duplicate)));
-        require(!duplicateAccepted, "duplicate module plan accepted");
+        require(!_tryFreeze(_commitRelease(), duplicate), "duplicate module plan accepted");
 
         governance.execute(address(moduleRegistry), abi.encodeCall(moduleRegistry.deactivateModule, (moduleKey)));
-        (bool inactiveAccepted,) = address(releaseRegistry)
-            .call(abi.encodeCall(releaseRegistry.freezeRelease, (_commitRelease(), _singleIntent(moduleKey))));
-        require(!inactiveAccepted, "inactive module accepted");
+        require(!_tryFreeze(_commitRelease(), _singleIntent(moduleKey)), "inactive module accepted");
 
         RMTV7ReleaseRegistry.ModuleIntent[] memory oversized =
             new RMTV7ReleaseRegistry.ModuleIntent[](releaseRegistry.MAXIMUM_MODULES_PER_RELEASE() + 1);
         for (uint256 i; i < oversized.length; ++i) {
             oversized[i] = RMTV7ReleaseRegistry.ModuleIntent(bytes32(i + 1), bytes32(i + 100));
         }
-        (bool oversizedAccepted,) =
-            address(releaseRegistry).call(abi.encodeCall(releaseRegistry.freezeRelease, (_commitRelease(), oversized)));
-        require(!oversizedAccepted, "oversized module plan accepted");
+        require(!_tryFreeze(_commitRelease(), oversized), "oversized module plan accepted");
     }
 
     function testCancelledReleasePreservesHistoryAndCannotFreeze() public {
@@ -279,18 +291,120 @@ contract RMTV7ReleaseFoundationTest {
 
         RMTV7ReleaseRegistry.ModuleIntent[] memory plan = new RMTV7ReleaseRegistry.ModuleIntent[](1);
         plan[0] = RMTV7ReleaseRegistry.ModuleIntent(keccak256("UNKNOWN"), keccak256("CONFIGURATION"));
-        (bool frozenAfterCancel,) =
-            address(releaseRegistry).call(abi.encodeCall(releaseRegistry.freezeRelease, (releaseId, plan)));
-        require(!frozenAfterCancel, "cancelled release frozen");
+        require(!_tryFreeze(releaseId, plan), "cancelled release frozen");
+    }
+
+    function testFreezeRejectsInvalidStaleExpiredAndFutureEvidence() public {
+        vm.warp(10 days);
+        V7ReviewedModuleMock implementation = new V7ReviewedModuleMock(COLLECTION_INTERFACE_ID);
+        bytes32 moduleKey = _registerModule(
+            moduleRegistry.MODULE_KIND_ERC721_COLLECTION(),
+            1,
+            address(implementation),
+            COLLECTION_INTERFACE_ID,
+            keccak256("POLICY"),
+            keccak256("METADATA")
+        );
+        RMTV7ReleaseRegistry.ModuleIntent[] memory intents = _singleIntent(moduleKey);
+
+        bytes32 releaseId = _commitRelease();
+        (IRMTV7MediaEvidenceVerifier.MediaEvidence memory evidence, bytes memory wrongSignature) =
+            _signedEvidence(releaseId, NEXT_EVIDENCE_SIGNER_KEY);
+        (bool wrongSignerAccepted,) = address(releaseRegistry)
+            .call(abi.encodeCall(releaseRegistry.freezeRelease, (releaseId, intents, evidence, wrongSignature)));
+        require(!wrongSignerAccepted, "wrong evidence signer accepted");
+
+        bytes32 staleReleaseId = _commitRelease();
+        evidence = _evidence();
+        evidence.observedAt = uint64(block.timestamp - mediaEvidenceVerifier.MAXIMUM_OBSERVATION_AGE() - 1);
+        evidence.validUntil = evidence.observedAt + mediaEvidenceVerifier.MAXIMUM_EVIDENCE_LIFETIME();
+        bytes memory staleSignature = _signEvidence(staleReleaseId, evidence, EVIDENCE_SIGNER_KEY);
+        (bool staleAccepted,) = address(releaseRegistry)
+            .call(abi.encodeCall(releaseRegistry.freezeRelease, (staleReleaseId, intents, evidence, staleSignature)));
+        require(!staleAccepted, "stale observation accepted");
+
+        bytes32 expiredReleaseId = _commitRelease();
+        evidence = _evidence();
+        evidence.observedAt = uint64(block.timestamp - 2 hours);
+        evidence.validUntil = uint64(block.timestamp - 1);
+        bytes memory expiredSignature = _signEvidence(expiredReleaseId, evidence, EVIDENCE_SIGNER_KEY);
+        (bool expiredAccepted,) = address(releaseRegistry)
+            .call(
+                abi.encodeCall(releaseRegistry.freezeRelease, (expiredReleaseId, intents, evidence, expiredSignature))
+            );
+        require(!expiredAccepted, "expired evidence accepted");
+
+        bytes32 futureReleaseId = _commitRelease();
+        evidence = _evidence();
+        evidence.observedAt = uint64(block.timestamp + 1);
+        bytes memory futureSignature = _signEvidence(futureReleaseId, evidence, EVIDENCE_SIGNER_KEY);
+        (bool futureAccepted,) = address(releaseRegistry)
+            .call(abi.encodeCall(releaseRegistry.freezeRelease, (futureReleaseId, intents, evidence, futureSignature)));
+        require(!futureAccepted, "future observation accepted");
+    }
+
+    function testGovernedEvidenceSignerRotationInvalidatesOldEpoch() public {
+        V7ReviewedModuleMock implementation = new V7ReviewedModuleMock(COLLECTION_INTERFACE_ID);
+        bytes32 moduleKey = _registerModule(
+            moduleRegistry.MODULE_KIND_ERC721_COLLECTION(),
+            1,
+            address(implementation),
+            COLLECTION_INTERFACE_ID,
+            keccak256("POLICY"),
+            keccak256("METADATA")
+        );
+        bytes32 releaseId = _commitRelease();
+        RMTV7ReleaseRegistry.ModuleIntent[] memory intents = _singleIntent(moduleKey);
+        (IRMTV7MediaEvidenceVerifier.MediaEvidence memory oldEvidence, bytes memory oldSignature) =
+            _signedEvidence(releaseId, EVIDENCE_SIGNER_KEY);
+
+        (bool outsiderRotated,) = address(mediaEvidenceVerifier)
+            .call(abi.encodeCall(mediaEvidenceVerifier.rotateEvidenceSigner, (vm.addr(NEXT_EVIDENCE_SIGNER_KEY))));
+        require(!outsiderRotated, "outsider rotated signer");
+        governance.execute(
+            address(mediaEvidenceVerifier),
+            abi.encodeCall(mediaEvidenceVerifier.rotateEvidenceSigner, (vm.addr(NEXT_EVIDENCE_SIGNER_KEY)))
+        );
+
+        (bool oldAccepted,) = address(releaseRegistry)
+            .call(abi.encodeCall(releaseRegistry.freezeRelease, (releaseId, intents, oldEvidence, oldSignature)));
+        require(!oldAccepted, "old evidence epoch survived rotation");
+
+        IRMTV7MediaEvidenceVerifier.MediaEvidence memory currentEvidence = _evidence();
+        currentEvidence.signerEpoch = mediaEvidenceVerifier.signerEpoch();
+        bytes memory currentSignature = _signEvidence(releaseId, currentEvidence, NEXT_EVIDENCE_SIGNER_KEY);
+        releaseRegistry.freezeRelease(releaseId, intents, currentEvidence, currentSignature);
+        require(
+            releaseRegistry.getRelease(releaseId).evidenceSignerEpoch == currentEvidence.signerEpoch,
+            "current evidence epoch not bound"
+        );
+    }
+
+    function testMediaEvidenceHashMatchesPublicEncodingVector() public view {
+        IRMTV7MediaEvidenceVerifier.MediaEvidence memory evidence = IRMTV7MediaEvidenceVerifier.MediaEvidence({
+            receiptHash: bytes32(uint256(type(uint256).max) / 0xff * 0x11),
+            availabilityObservationHash: bytes32(uint256(type(uint256).max) / 0xff * 0x22),
+            observedAt: 1_785_283_200,
+            validUntil: 1_785_286_800,
+            signerEpoch: 1
+        });
+        require(
+            mediaEvidenceVerifier.hashEvidence(evidence)
+                == 0x8c97155382c77e182384b824fd6bace122b48e6f9b25178dba90612249bc18ef,
+            "cross-layer evidence hash changed"
+        );
     }
 
     function testContractsRejectNativeAssetCustody() public {
         vm.deal(address(this), 2 wei);
         (bool moduleReceived,) = address(moduleRegistry).call{value: 1 wei}("");
+        (bool verifierReceived,) = address(mediaEvidenceVerifier).call{value: 1 wei}("");
         (bool releaseReceived,) = address(releaseRegistry).call{value: 1 wei}("");
-        require(!moduleReceived && !releaseReceived, "registry accepted native assets");
+        require(!moduleReceived && !verifierReceived && !releaseReceived, "registry accepted native assets");
         require(
-            address(moduleRegistry).balance == 0 && address(releaseRegistry).balance == 0, "registry retained funds"
+            address(moduleRegistry).balance == 0 && address(mediaEvidenceVerifier).balance == 0
+                && address(releaseRegistry).balance == 0,
+            "registry retained funds"
         );
     }
 
@@ -304,15 +418,16 @@ contract RMTV7ReleaseFoundationTest {
         require(deployed == address(0), "EOA governance accepted");
 
         bytes memory releaseCreationCode =
-            abi.encodePacked(type(RMTV7ReleaseRegistry).creationCode, abi.encode(address(2)));
+            abi.encodePacked(type(RMTV7ReleaseRegistry).creationCode, abi.encode(address(2), address(3)));
         assembly ("memory-safe") {
             deployed := create(0, add(releaseCreationCode, 0x20), mload(releaseCreationCode))
         }
         require(deployed == address(0), "module registry without code accepted");
 
         V7FakeModuleRegistry fakeRegistry = new V7FakeModuleRegistry();
-        releaseCreationCode =
-            abi.encodePacked(type(RMTV7ReleaseRegistry).creationCode, abi.encode(address(fakeRegistry)));
+        releaseCreationCode = abi.encodePacked(
+            type(RMTV7ReleaseRegistry).creationCode, abi.encode(address(fakeRegistry), address(fakeRegistry))
+        );
         assembly ("memory-safe") {
             deployed := create(0, add(releaseCreationCode, 0x20), mload(releaseCreationCode))
         }
@@ -346,6 +461,52 @@ contract RMTV7ReleaseFoundationTest {
             keccak256("FEE_POLICY"),
             keccak256("PAYOUT_MANIFEST")
         );
+    }
+
+    function _tryFreeze(bytes32 releaseId, RMTV7ReleaseRegistry.ModuleIntent[] memory intents)
+        private
+        returns (bool success)
+    {
+        (IRMTV7MediaEvidenceVerifier.MediaEvidence memory evidence, bytes memory evidenceSignature) =
+            _signedEvidence(releaseId, EVIDENCE_SIGNER_KEY);
+        (success,) = address(releaseRegistry)
+            .call(abi.encodeCall(releaseRegistry.freezeRelease, (releaseId, intents, evidence, evidenceSignature)));
+    }
+
+    function _signedEvidence(bytes32 releaseId, uint256 privateKey)
+        private
+        returns (IRMTV7MediaEvidenceVerifier.MediaEvidence memory evidence, bytes memory signature)
+    {
+        evidence = _evidence();
+        signature = _signEvidence(releaseId, evidence, privateKey);
+    }
+
+    function _evidence() private view returns (IRMTV7MediaEvidenceVerifier.MediaEvidence memory evidence) {
+        evidence = IRMTV7MediaEvidenceVerifier.MediaEvidence({
+            receiptHash: keccak256("VERIFIED_MEDIA_RECEIPT"),
+            availabilityObservationHash: keccak256("HEALTHY_AVAILABILITY_OBSERVATION"),
+            observedAt: uint64(block.timestamp),
+            validUntil: uint64(block.timestamp + 1 days),
+            signerEpoch: mediaEvidenceVerifier.signerEpoch()
+        });
+    }
+
+    function _signEvidence(
+        bytes32 releaseId,
+        IRMTV7MediaEvidenceVerifier.MediaEvidence memory evidence,
+        uint256 privateKey
+    ) private returns (bytes memory signature) {
+        RMTV7ReleaseRegistry.ReleaseCommitment memory release = releaseRegistry.getRelease(releaseId);
+        bytes32 digest = mediaEvidenceVerifier.evidenceDigest(
+            address(releaseRegistry),
+            releaseId,
+            release.creator,
+            release.metadataHash,
+            release.mediaManifestHash,
+            evidence
+        );
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, digest);
+        signature = abi.encodePacked(r, s, v);
     }
 
     function _singleIntent(bytes32 moduleKey)

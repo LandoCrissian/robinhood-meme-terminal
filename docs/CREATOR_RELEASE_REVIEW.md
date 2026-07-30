@@ -54,11 +54,28 @@ The currently attached marketplace economics policy is explicitly a simulation u
 - A modified stored field fails parser and hash validation.
 - Snapshot creation does not request a wallet approval or blockchain transaction.
 
+## Source-level V7 evidence bridge
+
+`creator-release-freeze-evidence.ts` now prepares the same EIP-712 evidence
+message enforced by `RMTV7MediaEvidenceVerifier`. Preparation requires:
+
+- a valid schema-v3 review with verified retrieval;
+- an immutable `preparation_ready` decision for that exact review;
+- a healthy provider and gateway observation for the same receipt;
+- all bounded checks passing with no failure code;
+- an observation no more than 24 hours old;
+- a validity window no longer than 48 hours from observation; and
+- the exact V7 chain, verifier, release registry, release ID, creator and signer epoch.
+
+The builder returns `contractExecution: disabled` and never signs or broadcasts.
+The source verifier and release registry are tested but not deployed or audited.
+A production signing route still requires atomic current-state rechecks and
+explicit authorization.
+
 ## Required before contracts
 
-1. RMT review workflow with reviewer identity, reason codes, correction handling, and an immutable decision record.
+1. Production evidence-signing service with protected keys, signer rotation, atomic revocation checks and incident response.
 2. Approved production economics policy replacing the simulation policy.
-3. Immutable contract-consumable manifest format with chain ID, contract template/version, payment assets, settlement behavior, and policy allowlist.
-4. Collaborator-initiated withdrawal and dispute policy before a release freeze.
-5. Legal, privacy, and independent security review.
-6. Contract invariants, failure simulations, testnet execution, and explicit mainnet authorization.
+3. Human-readable transaction simulation for exact modules, approvals, payments, fees and cancellation.
+4. Legal, privacy, and independent security review.
+5. Testnet execution and explicit mainnet authorization.

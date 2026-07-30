@@ -3,14 +3,18 @@ pragma solidity ^0.8.26;
 
 import {IERC721Receiver} from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import {IRMTV7ERC721CollectionModule} from "../src/interfaces/IRMTV7ERC721CollectionModule.sol";
+import {IRMTV7MediaEvidenceVerifier} from "../src/interfaces/IRMTV7MediaEvidenceVerifier.sol";
 import {RMTV7CreatorCollection} from "../src/RMTV7CreatorCollection.sol";
 import {RMTV7ERC721CollectionModule} from "../src/RMTV7ERC721CollectionModule.sol";
+import {RMTV7MediaEvidenceVerifier} from "../src/RMTV7MediaEvidenceVerifier.sol";
 import {RMTV7ModuleRegistry} from "../src/RMTV7ModuleRegistry.sol";
 import {RMTV7ReleaseRegistry} from "../src/RMTV7ReleaseRegistry.sol";
 
 interface V7CollectionVm {
+    function addr(uint256 privateKey) external returns (address);
     function deal(address account, uint256 balance) external;
     function prank(address sender) external;
+    function sign(uint256 privateKey, bytes32 digest) external returns (uint8 v, bytes32 r, bytes32 s);
 }
 
 contract V7CollectionGovernance {
@@ -29,6 +33,7 @@ contract V7RejectingCollectionReceiver {
 
 contract RMTV7ERC721CollectionModuleTest {
     V7CollectionVm private constant vm = V7CollectionVm(address(uint160(uint256(keccak256("hevm cheat code")))));
+    uint256 private constant EVIDENCE_SIGNER_KEY = 0xA11CE;
     address private constant OTHER_CREATOR = address(0xB0B);
     address private constant COLLECTOR = address(0xCAFE);
     string private constant TOKEN_ONE_URI = "ipfs://bafy-token-one/metadata.json";
@@ -36,6 +41,7 @@ contract RMTV7ERC721CollectionModuleTest {
 
     V7CollectionGovernance private governance;
     RMTV7ModuleRegistry private moduleRegistry;
+    RMTV7MediaEvidenceVerifier private mediaEvidenceVerifier;
     RMTV7ReleaseRegistry private releaseRegistry;
     RMTV7ERC721CollectionModule private collectionModule;
     bytes32 private moduleKey;
@@ -43,7 +49,8 @@ contract RMTV7ERC721CollectionModuleTest {
     function setUp() public {
         governance = new V7CollectionGovernance();
         moduleRegistry = new RMTV7ModuleRegistry(address(governance));
-        releaseRegistry = new RMTV7ReleaseRegistry(address(moduleRegistry));
+        mediaEvidenceVerifier = new RMTV7MediaEvidenceVerifier(address(governance), vm.addr(EVIDENCE_SIGNER_KEY));
+        releaseRegistry = new RMTV7ReleaseRegistry(address(moduleRegistry), address(mediaEvidenceVerifier));
         collectionModule = new RMTV7ERC721CollectionModule(address(moduleRegistry), address(releaseRegistry));
         moduleKey = _registerCollectionModule();
     }
@@ -213,7 +220,24 @@ contract RMTV7ERC721CollectionModuleTest {
         bytes32 configurationHash = collectionModule.hashCollectionConfig(config);
         RMTV7ReleaseRegistry.ModuleIntent[] memory intents = new RMTV7ReleaseRegistry.ModuleIntent[](1);
         intents[0] = RMTV7ReleaseRegistry.ModuleIntent(moduleKey, configurationHash);
-        releaseRegistry.freezeRelease(releaseId, intents);
+        IRMTV7MediaEvidenceVerifier.MediaEvidence memory evidence = IRMTV7MediaEvidenceVerifier.MediaEvidence({
+            receiptHash: keccak256("VERIFIED_MEDIA_RECEIPT"),
+            availabilityObservationHash: keccak256("HEALTHY_AVAILABILITY_OBSERVATION"),
+            observedAt: uint64(block.timestamp),
+            validUntil: uint64(block.timestamp + 1 days),
+            signerEpoch: mediaEvidenceVerifier.signerEpoch()
+        });
+        RMTV7ReleaseRegistry.ReleaseCommitment memory release = releaseRegistry.getRelease(releaseId);
+        bytes32 digest = mediaEvidenceVerifier.evidenceDigest(
+            address(releaseRegistry),
+            releaseId,
+            release.creator,
+            release.metadataHash,
+            release.mediaManifestHash,
+            evidence
+        );
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(EVIDENCE_SIGNER_KEY, digest);
+        releaseRegistry.freezeRelease(releaseId, intents, evidence, abi.encodePacked(r, s, v));
         require(
             releaseRegistry.isFrozenModuleIntent(releaseId, address(this), moduleKey, configurationHash),
             "frozen intent unavailable"
