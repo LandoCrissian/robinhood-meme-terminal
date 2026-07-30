@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
+import { RMT_ADMIN_EMAIL } from "../lib/creator-application";
 import { isMainnetRelease } from "../lib/network";
+import { useProfile } from "./profile-provider";
 import { WalletButton } from "./wallet-button";
 
 const HIDDEN_PREFIXES = ["/activate-consent-testnet", "/admin", "/deploy-consent-testnet", "/deploy-mainnet", "/deploy-testnet", "/mainnet-smoke"];
@@ -22,8 +24,10 @@ function PublicLink({ href, children }: { href: string; children: React.ReactNod
 
 export function PublicChrome() {
   const pathname = usePathname();
+  const { user } = useProfile();
   const menu = useRef<HTMLDetailsElement>(null);
   const moreActive = MORE_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+  const isAdmin = Boolean(user?.emailVerified && user.email?.toLowerCase() === RMT_ADMIN_EMAIL);
 
   useEffect(() => {
     menu.current?.removeAttribute("open");
@@ -73,6 +77,10 @@ export function PublicChrome() {
             <details ref={menu} className={`publicMore${moreActive ? " active" : ""}`}>
               <summary aria-label="Open more RMT pages"><span>More</span><b aria-hidden="true">···</b></summary>
               <div className="publicMenu">
+                {isAdmin && <div>
+                  <span>Private operations</span>
+                  <PublicLink href="/admin">RMT Admin<small>Live messages, applications, reports, and feedback</small></PublicLink>
+                </div>}
                 <div>
                   <span>Discover</span>
                   <PublicLink href="/explore">Explore RMT launches<small>Verified projects created through RMT</small></PublicLink>

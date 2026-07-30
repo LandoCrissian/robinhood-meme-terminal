@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useAccount } from "wagmi";
 import { isEmbeddedAuthBrowser } from "../../lib/auth-environment";
+import { RMT_ADMIN_EMAIL } from "../../lib/creator-application";
 import {
   PROFILE_EVENT,
   profileIdentityChanged,
@@ -63,6 +64,7 @@ export default function ProfilePage() {
   const [reviewing, setReviewing] = useState(false);
   const [embeddedAuthBrowser, setEmbeddedAuthBrowser] = useState(false);
   const [now, setNow] = useState(() => Date.now());
+  const isAdmin = Boolean(user?.emailVerified && user.email?.toLowerCase() === RMT_ADMIN_EMAIL);
 
   useEffect(() => {
     setDraft(profile);
@@ -257,6 +259,12 @@ export default function ProfilePage() {
         </form>
 
         <aside className="profileRail">
+          {isAdmin && <section className="profileAdminCard">
+            <p className="eyebrow">PRIVATE RMT OPERATIONS</p>
+            <h2>RMT Admin</h2>
+            <p>Moderate live messages, review applications, and manage creator requests.</p>
+            <Link href="/admin">Open Admin Dashboard →</Link>
+          </section>}
           <section className="profileCloudCard">
             <p className="eyebrow">CROSS-DEVICE PROFILE</p>
             <h2>{user ? "Your desk follows you" : "Take your desk anywhere"}</h2>
