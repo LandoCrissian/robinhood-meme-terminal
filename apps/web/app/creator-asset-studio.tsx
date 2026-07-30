@@ -35,6 +35,10 @@ import {
 } from "../lib/creator-release-review-cloud";
 import type { CreatorReleaseReview } from "../lib/creator-release-review";
 import type { CreatorReleaseDecision } from "../lib/creator-release-decision";
+import {
+  createCreatorMediaManifest,
+  type CreatorMediaManifest
+} from "../lib/creator-media-manifest";
 import type { ProjectAssignment } from "../lib/project-ownership";
 import { CreatorConsentLinkBuilder } from "./creator-consent-link-builder";
 import { CreatorImageField } from "./creator-media-upload";
@@ -262,6 +266,19 @@ export function CreatorAssetStudio({
   const totalBps = splitTotal(draft.revenueSplits);
   const draftRevisionHash = hashCreatorAssetDraft(draft);
   const savedRevisionHash = assets.find((asset) => asset.assetId === selectedId)?.draftRevisionHash;
+  let mediaManifest: CreatorMediaManifest | null = null;
+  let mediaManifestError = "";
+  if (selectedId && savedRevisionHash === draftRevisionHash) {
+    try {
+      mediaManifest = createCreatorMediaManifest({
+        projectSlug,
+        assetId: selectedId,
+        draft
+      });
+    } catch (error) {
+      mediaManifestError = error instanceof Error ? error.message : "The media manifest could not be prepared.";
+    }
+  }
   const readiness = evaluateCreatorReleaseReadiness(draft, {
     savedRevisionHash,
     consentRecords,
@@ -287,6 +304,22 @@ export function CreatorAssetStudio({
     } finally {
       setReviewBusy(false);
     }
+  };
+
+  const downloadMetadata = () => {
+    if (!mediaManifest) return;
+    const url = URL.createObjectURL(new Blob(
+      [`${JSON.stringify(mediaManifest.metadata, null, 2)}\n`],
+      { type: "application/json" }
+    ));
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `${projectSlug}-${selectedId}-metadata.json`;
+    document.body.append(anchor);
+    anchor.click();
+    anchor.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
+    setMessage("Marketplace metadata downloaded. It is not pinned or published.");
   };
 
   return (
@@ -322,6 +355,34 @@ export function CreatorAssetStudio({
             </div>
           ))}
         </div>
+      </section>
+
+      <section className="creatorReleaseFreeze creatorMediaManifest" aria-labelledby="creator-media-manifest-title">
+        <header>
+          <div>
+            <p className="eyebrow">MEDIA + METADATA MANIFEST</p>
+            <h4 id="creator-media-manifest-title">Fingerprint the exact marketplace metadata</h4>
+          </div>
+          <span>{mediaManifest ? "LOCAL MANIFEST READY" : "SAVE VALID REVISION"}</span>
+        </header>
+        <p>RMT generates deterministic, human-readable metadata from the saved rights revision and identifies whether every media reference is content-addressed. This local manifest is not uploaded, pinned, published, minted, or executable.</p>
+        {mediaManifest && <>
+          <div className="creatorReleaseFreezePolicy">
+            <div><small>Media integrity</small><strong>{mediaManifest.mediaIntegrity.replaceAll("_", " ").toUpperCase()}</strong></div>
+            <div><small>Metadata fingerprint</small><code title={mediaManifest.metadataHash}>{mediaManifest.metadataHash.slice(0, 12)}…{mediaManifest.metadataHash.slice(-8)}</code></div>
+            <div><small>Manifest fingerprint</small><code title={mediaManifest.manifestHash}>{mediaManifest.manifestHash.slice(0, 12)}…{mediaManifest.manifestHash.slice(-8)}</code></div>
+          </div>
+          <div className="creatorMediaManifestRows">
+            {mediaManifest.media.map((reference) => <div key={reference.role}>
+              <span>{reference.role.toUpperCase()}</span>
+              <code title={reference.uri}>{reference.cid ?? reference.uri}</code>
+              <small>{reference.contentAddressed ? "CONTENT ADDRESSED" : "MUTABLE HTTPS REFERENCE"}</small>
+            </div>)}
+          </div>
+          <button type="button" onClick={downloadMetadata}>Download metadata JSON</button>
+          <small>Metadata storage: NOT PINNED · Contract execution: DISABLED</small>
+        </>}
+        {!mediaManifest && <small>{mediaManifestError || "Save the current valid asset revision to generate its deterministic manifest."}</small>}
       </section>
 
       <section className="creatorReleaseFreeze" aria-labelledby="creator-release-freeze-title">

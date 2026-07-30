@@ -43,6 +43,8 @@ Every saved draft records:
 - optional unique-wallet revenue shares totaling exactly 10,000 basis points.
 - a deterministic Keccak-256 draft revision hash covering the normalized rights, media, edition, collaborator, and split fields.
 
+For a valid saved revision, the studio also derives a local `rmt_creator_metadata_v1` document and media manifest. Artwork and collection drafts map primary media to `image`; music maps primary media to `animation_url` and optional cover art to `image`. The manifest records each reference as content-addressed IPFS or mutable HTTPS, binds the project, asset, and rights revision, and fingerprints both the metadata and complete manifest. Creators can download the exact JSON for review. This does not upload or pin the metadata, prove gateway availability, verify copyright, or authorize a contract.
+
 The private release passport evaluates ten independent preparation areas: media permanence, creation provenance, rights declarations, license terms, edition design, royalty preference, collaborator consent, revenue splits, revision integrity, and fee disclosure. Its labels are preparation status—not verification, approval, copyright validation, an audit, or a safety guarantee.
 
 ERC-2981 can communicate royalty information to compatible marketplaces, but the standard does not compel a marketplace or buyer to pay it. RMT therefore stores a royalty preference separately from license terms and must disclose actual settlement behavior before a creator signs.

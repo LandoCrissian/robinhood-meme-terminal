@@ -74,11 +74,12 @@ RMT should not convert individual comments into universal claims. It should use 
 - Secondary royalty preference with an explicit non-enforcement warning.
 - Non-executable marketplace fee and RMT flywheel policy model.
 - Private release-passport readiness evaluation.
+- Deterministic marketplace metadata and media-manifest generation, IPFS-versus-HTTPS integrity labeling, revision-bound fingerprints, and a downloadable JSON preview. Metadata remains explicitly unpinned.
 
 ### Required before marketplace contracts
 
 - A defined executable release-freeze boundary and post-freeze correction or dispute process. The current server receipts finalize acceptance, rejection, and pre-freeze withdrawal, but cannot freeze a release.
-- Frozen metadata manifest and media pinning verification.
+- Trusted upload/pinning receipt for the generated metadata manifest and bounded availability verification for every referenced IPFS object.
 - Creator and collection identity review with appeals and report status.
 - Versioned economics policy selected for a release.
 - Human-readable transaction simulation showing assets, payments, approvals, fees, expiry and cancel path.

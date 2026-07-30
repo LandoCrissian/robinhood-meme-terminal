@@ -53,6 +53,11 @@ import {
   createProtocolTreasuryAllocation,
   validateProtocolTreasuryAllocation
 } from "./token-fee-economics";
+import {
+  buildCreatorMarketplaceMetadata,
+  createCreatorMediaManifest,
+  creatorMediaReference
+} from "./creator-media-manifest";
 
 const validArtwork = {
   ...EMPTY_CREATOR_ASSET,
@@ -102,6 +107,42 @@ assert.notEqual(
   hashCreatorAssetDraft(validArtwork),
   hashCreatorAssetDraft({ ...validArtwork, secondaryRoyaltyBps: 500 })
 );
+const immutableMediaDraft = {
+  ...validArtwork,
+  primaryMediaUri: "ipfs://QmYwAPJzv5CZsnAzt8auVZRnGiRAeQ8HtgT8t3HKxZKdkb",
+  previewMediaUri: "ipfs://bafybeigdyrzt5sfp7udm7hu76xgg5h2r74kqwy5kp6et6zv7b3r5zjdhai/preview.webp"
+};
+const immutableMediaManifest = createCreatorMediaManifest({
+  projectSlug: "runner-studio",
+  assetId: "abcdefghijklmnopqrst",
+  draft: immutableMediaDraft
+});
+assert.equal(immutableMediaManifest.mediaIntegrity, "content_addressed");
+assert.equal(immutableMediaManifest.metadataStorage, "not_pinned");
+assert.equal(immutableMediaManifest.contractExecution, "disabled");
+assert.match(immutableMediaManifest.metadataHash, /^0x[0-9a-f]{64}$/);
+assert.match(immutableMediaManifest.manifestHash, /^0x[0-9a-f]{64}$/);
+assert.notEqual(createCreatorMediaManifest({
+  projectSlug: "runner-studio",
+  assetId: "abcdefghijklmnopqrst",
+  draft: { ...immutableMediaDraft, title: "Changed title" }
+}).manifestHash, immutableMediaManifest.manifestHash);
+assert.equal(creatorMediaReference("primary", "ipfs://not-a-cid"), null);
+assert.equal(creatorMediaReference("primary", "https://example.com/art.png")?.contentAddressed, false);
+assert.equal(createCreatorMediaManifest({
+  projectSlug: "runner-studio",
+  assetId: "abcdefghijklmnopqrst",
+  draft: { ...immutableMediaDraft, previewMediaUri: "https://example.com/preview.png" }
+}).mediaIntegrity, "contains_mutable_reference");
+const musicMetadata = buildCreatorMarketplaceMetadata({
+  ...immutableMediaDraft,
+  assetType: "music_release",
+  primaryMediaUri: "ipfs://bafybeigdyrzt5sfp7udm7hu76xgg5h2r74kqwy5kp6et6zv7b3r5zjdhai/audio.wav",
+  masterRightsConfirmed: true,
+  compositionRightsConfirmed: true
+});
+assert.equal(musicMetadata.animation_url?.startsWith("ipfs://"), true);
+assert.equal(musicMetadata.image?.startsWith("ipfs://"), true);
 assert.deepEqual(normalizeCreatorAsset({
   ...validArtwork,
   creationMethod: "human",
@@ -583,6 +624,9 @@ assert.match(studioSource, /revision-bound/i);
 assert.match(studioSource, /Proposed revenue split/);
 assert.match(studioSource, /Save private draft/);
 assert.match(studioSource, /RELEASE PASSPORT · PRIVATE/);
+assert.match(studioSource, /MEDIA \+ METADATA MANIFEST/);
+assert.match(studioSource, /Download metadata JSON/);
+assert.match(studioSource, /NOT PINNED/);
 assert.match(studioSource, /ERC-2981 can signal this preference/);
 assert.doesNotMatch(studioSource, /mintNFT|createListing|executeSplit/);
 
