@@ -21,6 +21,7 @@ import {
   type TradeVenueId,
   type TradeVenueSelectionMode
 } from "../lib/trade-route-selection";
+import { marketDistributionPassport } from "../lib/launch-distribution";
 import { ExternalMarketChart } from "./external-market-chart";
 import { ExternalHolderIntelligence, ExternalTradeTape, ExternalWalletPosition } from "./external-market-live";
 import { ExternalRouteComparison } from "./external-route-comparison";
@@ -459,6 +460,7 @@ export function ExternalMarketWorkspace({ initialMarket }: { initialMarket?: Ext
   const valuation = market.marketCapUsd > 0 ? market.marketCapUsd : market.fdvUsd;
   const oneHourTrades = market.buys1h + market.sells1h;
   const buyPressure = oneHourTrades > 0 ? Math.round(market.buyPressureBps / 100) : 0;
+  const distributionPassport = marketDistributionPassport(market);
 
   return (
     <main className="universalMarketPage professionalTradeWorkspace">
@@ -536,7 +538,7 @@ export function ExternalMarketWorkspace({ initialMarket }: { initialMarket?: Ext
             {([
               ["activity", "Activity"],
               ["safety", "Safety"],
-              ["origin", "Origin"]
+              ["origin", "Passport"]
             ] as const).map(([id, label]) => (
               <button type="button" role="tab" aria-selected={tab === id} className={tab === id ? "active" : ""} onClick={() => setTab(id)} key={id}>{label}</button>
             ))}
@@ -584,8 +586,28 @@ export function ExternalMarketWorkspace({ initialMarket }: { initialMarket?: Ext
 
           {tab === "origin" && (
             <section className="universalInsightPanel" aria-labelledby="workspace-origin">
-              <header><div><small>PROJECT PROVENANCE</small><h2 id="workspace-origin">{originLabel(market)}</h2></div><span>Not an endorsement</span></header>
-              <p className="universalOriginDescription">{market.project ? externalProjectProvenanceDescription(market.project) : "RMT has not attributed this external token to a verified launchpad creator record."}</p>
+              <header><div><small>MARKET PASSPORT</small><h2 id="workspace-origin">Origin, market and distribution</h2></div><span>Evidence · not endorsement</span></header>
+              <p className="universalOriginDescription">
+                {market.project
+                  ? externalProjectProvenanceDescription(market.project)
+                  : "RMT has not attributed this external token to a verified launchpad creator record."}
+                {" "}{distributionPassport.summary}
+              </p>
+              <div className="universalPassportFlow" aria-label="Market passport evidence chain">
+                {distributionPassport.steps.map((step, index) => (
+                  <article className={step.tone} key={step.id}>
+                    <span>{String(index + 1).padStart(2, "0")}</span>
+                    <div>
+                      <small>{step.label}</small>
+                      <strong>{step.value}</strong>
+                      <p>{step.detail}</p>
+                      {step.evidenceUrl && step.evidenceLabel && (
+                        <a href={step.evidenceUrl} target="_blank" rel="noopener noreferrer">{step.evidenceLabel} ↗</a>
+                      )}
+                    </div>
+                  </article>
+                ))}
+              </div>
               <dl className="universalOriginGrid">
                 <div><dt>Token</dt><dd title={market.address}>{shortAddress(market.address)}</dd></div>
                 <div><dt>Pool</dt><dd title={market.pairAddress}>{shortAddress(market.pairAddress)}</dd></div>

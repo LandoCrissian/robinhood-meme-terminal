@@ -9,6 +9,11 @@ import {
 } from "../lib/external-market";
 import { isNonzeroEvmAddress } from "../lib/external-market-identity";
 import type { ExternalMarketRiskFlag, ExternalMarketSignal } from "../lib/external-market-ranking";
+import {
+  launchDistributionVenue,
+  marketDistributionPassport,
+  type LaunchDistributionVenue
+} from "../lib/launch-distribution";
 import { ipfsToHttp } from "../lib/token-metadata";
 import { routeLiquidityDepthLabel } from "../lib/trade-route-selection";
 import { recordExperienceStage } from "../lib/experience-funnel";
@@ -19,7 +24,8 @@ type FeedStatus = "loading" | "ready" | "stale" | "error";
 type ExecutionAvailability = "checking" | "ready" | "view-only" | "unavailable";
 
 type DiscoveryView = "trending" | "new" | "top" | "explore";
-type SourceFilter = "all" | "pons" | "lemon";
+type SourceFilter = "all" | "attributed" | "pons" | "lemon";
+type VenueFilter = "all" | LaunchDistributionVenue;
 
 const VIEWS: Array<{ id: DiscoveryView; label: string }> = [
   { id: "trending", label: "Trending" },
@@ -28,9 +34,15 @@ const VIEWS: Array<{ id: DiscoveryView; label: string }> = [
   { id: "explore", label: "Explore" }
 ];
 const SOURCE_FILTERS: Array<{ id: SourceFilter; label: string }> = [
-  { id: "all", label: "All markets" },
+  { id: "all", label: "All origins" },
+  { id: "attributed", label: "Launch sources" },
   { id: "pons", label: "Pons" },
   { id: "lemon", label: "Lemon" }
+];
+const VENUE_FILTERS: Array<{ id: VenueFilter; label: string }> = [
+  { id: "all", label: "Any venue" },
+  { id: "uniswap", label: "Uniswap" },
+  { id: "sushi", label: "Sushi" }
 ];
 const DATA_REFRESH_MS = 30_000;
 const RANK_REFRESH_MS = 60_000;
@@ -384,6 +396,7 @@ export function ExternalMarketFeed() {
   const [marketQuery, setMarketQuery] = useState("");
   const [showAllMarkets, setShowAllMarkets] = useState(false);
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
+  const [venueFilter, setVenueFilter] = useState<VenueFilter>("all");
   const [tradeableOnly, setTradeableOnly] = useState(false);
   const [executionAvailability, setExecutionAvailability] = useState<Record<string, ExecutionAvailability>>({});
 
@@ -514,21 +527,36 @@ export function ExternalMarketFeed() {
   const orderedMarkets = useMemo(() => stabilizeOrder(rankOrder, markets), [markets, rankOrder]);
   const sourceCounts = useMemo(() => ({
     all: markets.length,
+    attributed: markets.filter((market) => marketDistributionPassport(market).isAttributedLaunch).length,
     pons: markets.filter((market) => market.project?.sourceId === "pons").length,
     lemon: markets.filter((market) => market.project?.sourceId === "lemon").length
   }), [markets]);
   const sourceScopedMarkets = useMemo(
     () => sourceFilter === "all"
       ? markets
+      : sourceFilter === "attributed"
+        ? markets.filter((market) => marketDistributionPassport(market).isAttributedLaunch)
       : markets.filter((market) => market.project?.sourceId === sourceFilter),
     [markets, sourceFilter]
   );
-  const counts = useMemo(() => ({
-    trending: sourceScopedMarkets.filter((market) => market.signal !== "active").length || sourceScopedMarkets.length,
-    new: sourceScopedMarkets.filter((market) => market.ageMinutes !== null && market.ageMinutes <= 24 * 60).length,
-    top: sourceScopedMarkets.filter((market) => market.marketCapUsd > 0 || market.fdvUsd > 0).length,
-    explore: sourceScopedMarkets.length
+  const venueCounts = useMemo(() => ({
+    all: sourceScopedMarkets.length,
+    uniswap: sourceScopedMarkets.filter((market) => launchDistributionVenue(market) === "uniswap").length,
+    sushi: sourceScopedMarkets.filter((market) => launchDistributionVenue(market) === "sushi").length,
+    other: sourceScopedMarkets.filter((market) => launchDistributionVenue(market) === "other").length
   }), [sourceScopedMarkets]);
+  const scopedMarkets = useMemo(
+    () => venueFilter === "all"
+      ? sourceScopedMarkets
+      : sourceScopedMarkets.filter((market) => launchDistributionVenue(market) === venueFilter),
+    [sourceScopedMarkets, venueFilter]
+  );
+  const counts = useMemo(() => ({
+    trending: scopedMarkets.filter((market) => market.signal !== "active").length || scopedMarkets.length,
+    new: scopedMarkets.filter((market) => market.ageMinutes !== null && market.ageMinutes <= 24 * 60).length,
+    top: scopedMarkets.filter((market) => market.marketCapUsd > 0 || market.fdvUsd > 0).length,
+    explore: scopedMarkets.length
+  }), [scopedMarkets]);
   const normalizedMarketQuery = marketQuery.trim().toLowerCase();
   const rankByAddress = useMemo(
     () => new Map(
@@ -566,9 +594,15 @@ export function ExternalMarketFeed() {
         market.pairAddress
       ].some((value) => value.toLowerCase().includes(normalizedMarketQuery)))
     : viewMarkets;
-  const sourceFilteredMarkets = sourceFilter === "all"
-    ? searchedMarkets
-    : searchedMarkets.filter((market) => market.project?.sourceId === sourceFilter);
+  const sourceFilteredMarkets = searchedMarkets.filter((market) => {
+    if (sourceFilter === "attributed" && !marketDistributionPassport(market).isAttributedLaunch) return false;
+    if (
+      sourceFilter !== "all"
+      && sourceFilter !== "attributed"
+      && market.project?.sourceId !== sourceFilter
+    ) return false;
+    return venueFilter === "all" || launchDistributionVenue(market) === venueFilter;
+  });
   const filteredMarkets = tradeableOnly
     ? sourceFilteredMarkets.filter((market) => executionAvailability[market.address.toLowerCase()] === "ready")
     : sourceFilteredMarkets;
@@ -791,8 +825,8 @@ export function ExternalMarketFeed() {
         </div>
         <small id="runner-market-count" aria-live="polite">{marketCountLabel}</small>
       </div>
-      <div className="runnerSourceFilters" role="group" aria-label="Filter markets by project source or execution availability">
-        <span>Filters</span>
+      <div className="runnerSourceFilters" role="group" aria-label="Filter markets by launch origin, liquidity venue, or execution availability">
+        <span>Origin</span>
         {SOURCE_FILTERS.map((item) => (
           <button
             type="button"
@@ -807,6 +841,22 @@ export function ExternalMarketFeed() {
             {item.label}<b>{sourceCounts[item.id]}</b>
           </button>
         ))}
+        <span className="runnerFilterDivider">Venue</span>
+        {VENUE_FILTERS.map((item) => (
+          <button
+            type="button"
+            aria-pressed={venueFilter === item.id}
+            className={venueFilter === item.id ? "active" : ""}
+            onClick={() => {
+              setVenueFilter(item.id);
+              setShowAllMarkets(tradeableOnly || view === "explore");
+            }}
+            key={item.id}
+          >
+            {item.label}<b>{venueCounts[item.id]}</b>
+          </button>
+        ))}
+        <span className="runnerFilterDivider">Execute</span>
         <button
           type="button"
           aria-pressed={tradeableOnly}
@@ -845,8 +895,8 @@ export function ExternalMarketFeed() {
               ? "Try a token name, ticker, or complete contract address, or change the project-source filter."
               : tradeableOnly
                 ? "Change the project source or turn off Tradeable to inspect view-only markets."
-              : sourceFilter !== "all"
-                ? "No " + SOURCE_FILTERS.find((item) => item.id === sourceFilter)?.label + " markets meet this view yet."
+              : sourceFilter !== "all" || venueFilter !== "all"
+                ? "No markets meet the selected origin and venue evidence filters."
                 : "The filter will update automatically when activity qualifies."}</span>
             {!tradeableVerificationPending && normalizedMarketQuery
               ? <button type="button" onClick={clearMarketQuery}>Clear search</button>
@@ -880,6 +930,7 @@ export function ExternalMarketFeed() {
                       ? "View only"
                       : "Check route";
               const mobileWorkspaceHref = `/market/${market.address}${mobileReviewRequired ? "?tab=safety" : ""}`;
+              const distribution = marketDistributionPassport(market);
               return (
                 <article className="externalMarketCard runnerMarketCard" data-signal={market.signal} key={market.address}>
                   <div className="mobileRunnerMarketRow">
@@ -888,7 +939,7 @@ export function ExternalMarketFeed() {
                       <ExternalArtwork market={market} />
                       <span className="mobileRunnerCopy">
                         <strong>{market.name}</strong>
-                        <small>{"$" + cleanSymbol(market.symbol)} · {venueLabel(market)}</small>
+                        <small>{"$" + cleanSymbol(market.symbol)} · {distribution.shortLabel}</small>
                       </span>
                     </a>
                     <a
@@ -918,6 +969,7 @@ export function ExternalMarketFeed() {
                       {market.project?.creator && (
                         <small className="runnerCreator" title={market.project.creator}>Creator {shortAddress(market.project.creator)}</small>
                       )}
+                      <small className={`runnerDistribution ${distribution.state}`}>{distribution.shortLabel}</small>
                     </span>
                     <em>{originLabel(market)}</em>
                   </div>
