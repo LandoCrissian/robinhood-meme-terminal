@@ -4,7 +4,7 @@
 
 RMT generates one deterministic metadata preview for a valid saved creator-rights revision. This gives creators and reviewers an exact document to inspect before any collection contract, listing, payment, or publication exists.
 
-The current manifest is local preparation evidence. It is not an IPFS pin, an availability guarantee, a copyright verification, an NFT, or approval to deploy.
+The manifest begins as local preparation evidence. For a saved revision whose media references are all content-addressed, the assigned creator can ask RMT's authenticated server to pin the exact compact JSON bytes and create a private storage receipt. Neither state is a copyright verification, NFT, listing, approval, or availability guarantee.
 
 ## Metadata mapping
 
@@ -35,13 +35,28 @@ The manifest contains:
 
 Changing any covered metadata or rights field changes the rights revision, metadata hash, or manifest hash.
 
-## Next trusted transition
+## Trusted storage receipt
 
-Before a release can become executable, RMT still needs:
+The server:
 
-1. an authenticated server receipt that pins the exact generated metadata bytes;
-2. a returned CID parsed and compared with those exact bytes;
-3. bounded availability checks for every referenced IPFS object;
-4. immutable storage of the pinning and verification receipt;
-5. release review that binds that receipt rather than a mutable browser state;
-6. cancellation and correction rules before an explicit release freeze.
+1. verifies a non-revoked Firebase identity and current project assignment;
+2. rebuilds the manifest from the saved asset instead of accepting metadata from the browser;
+3. rejects HTTPS media references;
+4. checks the requested revision, metadata hash, and manifest hash;
+5. uploads the exact compact metadata bytes to Pinata's public IPFS network;
+6. validates the returned CID, file identifier, and byte length;
+7. queries Pinata's public file index by CID and requires the same identifier, CID, and byte length;
+8. rechecks the current saved revision after upload;
+9. creates an immutable, owner-private Firestore receipt; and
+10. binds that receipt into every new schema-v2 release-review hash.
+
+The Pinata calls use the current V3 upload and list endpoints documented in July 2026:
+
+- https://docs.pinata.cloud/api-reference/endpoint/upload-a-file
+- https://docs.pinata.cloud/api-reference/endpoint/list-files
+
+No provider call occurs merely by opening or saving a draft. A creator must explicitly choose **Pin exact metadata to IPFS**. The operation consumes only the project's existing Pinata allowance; RMT adds no paid dependency or recurring job here.
+
+## Remaining boundary
+
+Before a release can become executable, RMT still needs bounded retrieval/availability checks for every referenced object, a documented correction/unpin policy, an approved production economics policy, contract-template review, testnet execution, independent security review, and explicit production authorization.

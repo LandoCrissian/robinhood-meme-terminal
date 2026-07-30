@@ -13,8 +13,15 @@ import {
   createMarketplaceEconomicsPolicy,
   type MarketplaceEconomicsPolicy
 } from "./creator-economics";
+import { createCreatorMediaManifest } from "./creator-media-manifest";
+import {
+  parseCreatorMediaReceipt,
+  receiptMatchesManifest,
+  type CreatorMediaReceipt
+} from "./creator-media-receipt";
 
-export const CREATOR_RELEASE_REVIEW_SCHEMA_VERSION = 1 as const;
+export const CREATOR_RELEASE_REVIEW_SCHEMA_VERSION = 2 as const;
+export const LEGACY_CREATOR_RELEASE_REVIEW_SCHEMA_VERSION = 1 as const;
 
 export type AcceptedConsentManifestItem = {
   invitationDigest: Hex;
@@ -27,7 +34,9 @@ export type AcceptedConsentManifestItem = {
 };
 
 export type CreatorReleaseReview = {
-  schemaVersion: typeof CREATOR_RELEASE_REVIEW_SCHEMA_VERSION;
+  schemaVersion:
+    | typeof LEGACY_CREATOR_RELEASE_REVIEW_SCHEMA_VERSION
+    | typeof CREATOR_RELEASE_REVIEW_SCHEMA_VERSION;
   reviewId: string;
   reviewHash: Hex;
   projectSlug: string;
@@ -37,6 +46,7 @@ export type CreatorReleaseReview = {
   assetSnapshot: CreatorAssetDraft;
   acceptedConsentManifest: AcceptedConsentManifestItem[];
   payoutManifest: AssetRevenueSplit[];
+  mediaReceipt: Omit<CreatorMediaReceipt, "createdAt"> | null;
   economicsPolicy: MarketplaceEconomicsPolicy;
   economicsMode: "simulation_only";
   contractExecution: "disabled";
@@ -45,6 +55,9 @@ export type CreatorReleaseReview = {
 };
 
 type ReviewHashPayload = Omit<CreatorReleaseReview, "reviewId" | "reviewHash" | "createdAt">;
+type LegacyReviewHashPayload = Omit<ReviewHashPayload, "mediaReceipt"> & {
+  schemaVersion: typeof LEGACY_CREATOR_RELEASE_REVIEW_SCHEMA_VERSION;
+};
 
 function consentForCollaborator(
   asset: CreatorAsset,
@@ -73,11 +86,13 @@ export function buildCreatorReleaseReviewPayload({
   asset,
   consentRecords,
   economicsPolicy,
+  mediaReceipt,
   preparedBy
 }: {
   asset: CreatorAsset;
   consentRecords: CreatorConsentInvitationRecord[];
   economicsPolicy: MarketplaceEconomicsPolicy;
+  mediaReceipt: CreatorMediaReceipt;
   preparedBy: string;
 }): ReviewHashPayload {
   if (validateCreatorAsset(asset)) throw new Error("The creator asset is invalid.");
@@ -91,6 +106,33 @@ export function buildCreatorReleaseReviewPayload({
   if (preparedBy.length < 1 || preparedBy.length > 128) throw new Error("The release-review owner is invalid.");
   const policy = createMarketplaceEconomicsPolicy(economicsPolicy);
   if (policy.policyHash !== economicsPolicy.policyHash) throw new Error("The economics policy fingerprint is invalid.");
+  const mediaManifest = createCreatorMediaManifest({
+    projectSlug: asset.projectSlug,
+    assetId: asset.assetId,
+    draft: asset
+  });
+  if (!receiptMatchesManifest(mediaReceipt, mediaManifest)) {
+    throw new Error("A verified metadata receipt for the current revision is required.");
+  }
+  const parsedMediaReceipt = parseCreatorMediaReceipt(mediaReceipt.receiptId, mediaReceipt);
+  if (!parsedMediaReceipt) throw new Error("The metadata receipt is invalid.");
+  const releaseMediaReceipt = {
+    schemaVersion: parsedMediaReceipt.schemaVersion,
+    receiptId: parsedMediaReceipt.receiptId,
+    projectSlug: parsedMediaReceipt.projectSlug,
+    assetId: parsedMediaReceipt.assetId,
+    draftRevisionHash: parsedMediaReceipt.draftRevisionHash,
+    metadataHash: parsedMediaReceipt.metadataHash,
+    manifestHash: parsedMediaReceipt.manifestHash,
+    metadataCid: parsedMediaReceipt.metadataCid,
+    metadataUri: parsedMediaReceipt.metadataUri,
+    storageProvider: parsedMediaReceipt.storageProvider,
+    storageNetwork: parsedMediaReceipt.storageNetwork,
+    providerFileId: parsedMediaReceipt.providerFileId,
+    storedSize: parsedMediaReceipt.storedSize,
+    providerRecordVerified: parsedMediaReceipt.providerRecordVerified,
+    contractExecution: parsedMediaReceipt.contractExecution
+  };
 
   const acceptedConsentManifest = asset.collaborators.map((collaborator) => {
     const receipt = consentForCollaborator(asset, consentRecords, collaborator);
@@ -127,6 +169,7 @@ export function buildCreatorReleaseReviewPayload({
     assetSnapshot: normalizeCreatorAsset(asset),
     acceptedConsentManifest,
     payoutManifest: normalizeCreatorAsset(asset).revenueSplits,
+    mediaReceipt: releaseMediaReceipt,
     economicsPolicy: policy,
     economicsMode: "simulation_only",
     contractExecution: "disabled",
@@ -186,39 +229,101 @@ export function parseCreatorReleaseReview(reviewId: string, value: unknown): Cre
       createdAt: null,
       updatedAt: null
     }));
-    const payload = buildCreatorReleaseReviewPayload({
-      asset,
-      consentRecords,
-      economicsPolicy: candidate.economicsPolicy,
-      preparedBy: candidate.preparedBy
-    });
-    const reviewHash = hashCreatorReleaseReviewPayload(payload);
-    const candidatePayload: ReviewHashPayload = {
-      schemaVersion: candidate.schemaVersion,
-      projectSlug: candidate.projectSlug,
-      assetId: candidate.assetId,
-      draftRevisionHash: candidate.draftRevisionHash,
-      preparedBy: candidate.preparedBy,
-      assetSnapshot: candidate.assetSnapshot,
-      acceptedConsentManifest: candidate.acceptedConsentManifest,
-      payoutManifest: candidate.payoutManifest,
-      economicsPolicy: candidate.economicsPolicy,
-      economicsMode: candidate.economicsMode,
-      contractExecution: candidate.contractExecution,
-      status: candidate.status
-    };
+    const legacy = candidate.schemaVersion === LEGACY_CREATOR_RELEASE_REVIEW_SCHEMA_VERSION;
+    const candidatePayload = legacy
+      ? {
+        schemaVersion: LEGACY_CREATOR_RELEASE_REVIEW_SCHEMA_VERSION,
+        projectSlug: candidate.projectSlug,
+        assetId: candidate.assetId,
+        draftRevisionHash: candidate.draftRevisionHash,
+        preparedBy: candidate.preparedBy,
+        assetSnapshot: candidate.assetSnapshot,
+        acceptedConsentManifest: candidate.acceptedConsentManifest,
+        payoutManifest: candidate.payoutManifest,
+        economicsPolicy: candidate.economicsPolicy,
+        economicsMode: candidate.economicsMode,
+        contractExecution: candidate.contractExecution,
+        status: candidate.status
+      } satisfies LegacyReviewHashPayload
+      : {
+        schemaVersion: CREATOR_RELEASE_REVIEW_SCHEMA_VERSION,
+        projectSlug: candidate.projectSlug,
+        assetId: candidate.assetId,
+        draftRevisionHash: candidate.draftRevisionHash,
+        preparedBy: candidate.preparedBy,
+        assetSnapshot: candidate.assetSnapshot,
+        acceptedConsentManifest: candidate.acceptedConsentManifest,
+        payoutManifest: candidate.payoutManifest,
+        mediaReceipt: candidate.mediaReceipt,
+        economicsPolicy: candidate.economicsPolicy,
+        economicsMode: candidate.economicsMode,
+        contractExecution: candidate.contractExecution,
+        status: candidate.status
+      } satisfies ReviewHashPayload;
+    let payload: ReviewHashPayload | LegacyReviewHashPayload;
+    if (legacy) {
+      const policy = createMarketplaceEconomicsPolicy(candidate.economicsPolicy);
+      if (
+        validateCreatorAsset(asset)
+        || hashCreatorAssetDraft(asset) !== asset.draftRevisionHash
+        || policy.policyHash !== candidate.economicsPolicy.policyHash
+      ) return null;
+      // Rebuild the consent manifest through the same validation path using a
+      // structurally valid placeholder receipt that is not retained.
+      const acceptedConsentManifest = asset.collaborators.map((collaborator) => {
+        const receipt = consentForCollaborator(asset, consentRecords, collaborator);
+        if (!receipt?.responseSignature || !receipt.respondedAt) throw new Error("invalid");
+        return {
+          invitationDigest: receipt.invitationDigest,
+          collaboratorName: receipt.collaboratorName,
+          collaboratorRole: receipt.collaboratorRole,
+          collaboratorWallet: receipt.collaboratorWallet,
+          shareBps: receipt.shareBps,
+          respondedAt: receipt.respondedAt,
+          responseSignature: receipt.responseSignature
+        };
+      }).sort((left, right) => left.invitationDigest.localeCompare(right.invitationDigest));
+      payload = {
+        schemaVersion: LEGACY_CREATOR_RELEASE_REVIEW_SCHEMA_VERSION,
+        projectSlug: asset.projectSlug,
+        assetId: asset.assetId,
+        draftRevisionHash: asset.draftRevisionHash,
+        preparedBy: candidate.preparedBy,
+        assetSnapshot: normalizeCreatorAsset(asset),
+        acceptedConsentManifest,
+        payoutManifest: normalizeCreatorAsset(asset).revenueSplits,
+        economicsPolicy: policy,
+        economicsMode: "simulation_only",
+        contractExecution: "disabled",
+        status: "prepared"
+      };
+    } else {
+      const receipt = candidate.mediaReceipt
+        ? parseCreatorMediaReceipt(candidate.mediaReceipt.receiptId, candidate.mediaReceipt)
+        : null;
+      if (!receipt) return null;
+      payload = buildCreatorReleaseReviewPayload({
+        asset,
+        consentRecords,
+        mediaReceipt: receipt,
+        economicsPolicy: candidate.economicsPolicy,
+        preparedBy: candidate.preparedBy
+      });
+    }
+    const reviewHash = keccak256(toHex(JSON.stringify(payload)));
     if (
-      candidate.schemaVersion !== CREATOR_RELEASE_REVIEW_SCHEMA_VERSION
+      (!legacy && candidate.schemaVersion !== CREATOR_RELEASE_REVIEW_SCHEMA_VERSION)
       || candidate.reviewId !== reviewId
       || candidate.reviewHash !== `0x${reviewId}`
       || reviewHash !== candidate.reviewHash
-      || hashCreatorReleaseReviewPayload(candidatePayload) !== candidate.reviewHash
+      || keccak256(toHex(JSON.stringify(candidatePayload))) !== candidate.reviewHash
       || candidate.economicsMode !== "simulation_only"
       || candidate.contractExecution !== "disabled"
       || candidate.status !== "prepared"
     ) return null;
     return {
       ...payload,
+      mediaReceipt: legacy ? null : candidate.mediaReceipt,
       reviewId,
       reviewHash,
       ...(candidate.createdAt === undefined ? {} : { createdAt: candidate.createdAt })

@@ -1009,6 +1009,11 @@ service cloud.firestore {
           allow read: if isRmtAdmin() || ownsProjectAssignment(projectId);
           allow create, update, delete: if false;
         }
+
+        match /mediaReceipts/{receiptId} {
+          allow read: if isRmtAdmin() || ownsProjectAssignment(projectId);
+          allow create, update, delete: if false;
+        }
       }
     }
 

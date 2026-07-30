@@ -19,6 +19,7 @@ The deterministic review hash covers:
 - the saved draft revision hash;
 - the assigned creator's Firebase identifier;
 - every exact accepted collaborator receipt needed by the revision;
+- the exact verified public-IPFS storage receipt for the current metadata manifest;
 - the proposed payout manifest;
 - the complete economics-policy draft and policy hash;
 - `simulation_only` economics mode;
@@ -26,6 +27,8 @@ The deterministic review hash covers:
 - `prepared` status.
 
 Server receipt timestamps are preserved inside the private consent records, but are not used to make an expired response appear timely. Snapshot creation requires already-final accepted receipts.
+
+New snapshots use schema version 2 and require the storage receipt. Existing schema-version-1 snapshots remain parseable as legacy preparation evidence, but they have no metadata receipt and are not upgraded in place.
 
 ## State boundary
 
@@ -43,6 +46,7 @@ The currently attached marketplace economics policy is explicitly a simulation u
 
 - Creator identity is verified with a revoked-token check.
 - The server rechecks project ownership and the current stored asset revision.
+- The server requires a provider-verified metadata receipt whose project, asset, revision, metadata hash, and manifest hash match the rebuilt current manifest.
 - Accepted collaborator receipts must match the exact revision, name, role, wallet, and proposed share.
 - A creator cannot self-write or alter a snapshot through Firestore.
 - The review identifier is the Keccak-256 hash of the normalized payload.

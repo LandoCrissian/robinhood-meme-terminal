@@ -1399,6 +1399,44 @@ test("release-review snapshots are private and server-immutable", async () => {
   await assertFails(setDoc(ownerReviewReference, { status: "approved" }, { merge: true }));
   await assertFails(deleteDoc(ownerReviewReference));
 
+  const mediaReceiptId = "e".repeat(64);
+  await testEnvironment.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(
+      context.firestore(),
+      "projectAssignments",
+      "runner-studio",
+      "assets",
+      "abcdefghijklmnopqrst",
+      "mediaReceipts",
+      mediaReceiptId
+    ), {
+      receiptId: mediaReceiptId,
+      metadataCid: "bafkreicnu2aqjkoglrlrd65giwo4l64pdajxffk6jtq2vb7yaiopc3yu7m",
+      createdAt: serverTimestamp()
+    });
+  });
+  const ownerMediaReceiptReference = doc(
+    owner,
+    "projectAssignments",
+    "runner-studio",
+    "assets",
+    "abcdefghijklmnopqrst",
+    "mediaReceipts",
+    mediaReceiptId
+  );
+  await assertSucceeds(getDoc(ownerMediaReceiptReference));
+  await assertFails(getDoc(doc(
+    authenticatedDb(OTHER_ID),
+    "projectAssignments",
+    "runner-studio",
+    "assets",
+    "abcdefghijklmnopqrst",
+    "mediaReceipts",
+    mediaReceiptId
+  )));
+  await assertFails(setDoc(ownerMediaReceiptReference, { metadataCid: "changed" }, { merge: true }));
+  await assertFails(deleteDoc(ownerMediaReceiptReference));
+
   await testEnvironment.withSecurityRulesDisabled(async (context) => {
     await setDoc(doc(context.firestore(), "creatorReleaseDecisions", reviewId), {
       reviewId,

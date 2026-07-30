@@ -4,6 +4,11 @@ import { normalizeProjectSlug } from "../../../../lib/creator-application";
 import { parseCreatorAsset } from "../../../../lib/creator-assets";
 import { parseCreatorConsentInvitationRecord } from "../../../../lib/creator-consent";
 import { RMT_MARKETPLACE_SIMULATION_POLICY } from "../../../../lib/creator-economics";
+import { createCreatorMediaManifest } from "../../../../lib/creator-media-manifest";
+import {
+  parseCreatorMediaReceipt,
+  receiptMatchesManifest
+} from "../../../../lib/creator-media-receipt";
 import {
   createCreatorReleaseReview,
   parseCreatorReleaseReview
@@ -108,12 +113,23 @@ export async function POST(request: Request) {
       if (asset.draftRevisionHash !== draftRevisionHash) {
         throw new Error("stale");
       }
+      const mediaManifest = createCreatorMediaManifest({ projectSlug, assetId, draft: asset });
+      const mediaReceiptQuery = assetReference
+        .collection("mediaReceipts")
+        .where("manifestHash", "==", mediaManifest.manifestHash)
+        .limit(1);
+      const mediaReceiptSnapshot = await transaction.get(mediaReceiptQuery);
+      const mediaReceipt = mediaReceiptSnapshot.docs
+        .map((document) => parseCreatorMediaReceipt(document.id, document.data()))
+        .find((receipt) => receipt && receiptMatchesManifest(receipt, mediaManifest));
+      if (!mediaReceipt) throw new Error("media_receipt");
       const consentRecords = consentSnapshot.docs
         .map((document) => parseCreatorConsentInvitationRecord(document.id, document.data()))
         .filter((record) => record !== null);
       const review = createCreatorReleaseReview({
         asset,
         consentRecords,
+        mediaReceipt,
         economicsPolicy: RMT_MARKETPLACE_SIMULATION_POLICY,
         preparedBy: identity.uid
       });
@@ -155,6 +171,12 @@ export async function POST(request: Request) {
     }
     if (/Accepted consent is missing/.test(message)) {
       return NextResponse.json({ error: message }, { status: 409, headers: RESPONSE_HEADERS });
+    }
+    if (message === "media_receipt" || /metadata receipt/i.test(message)) {
+      return NextResponse.json(
+        { error: "Pin and verify the exact metadata for this revision before preparing its immutable review snapshot." },
+        { status: 409, headers: RESPONSE_HEADERS }
+      );
     }
     return NextResponse.json(
       { error: "The immutable release-review snapshot could not be prepared." },

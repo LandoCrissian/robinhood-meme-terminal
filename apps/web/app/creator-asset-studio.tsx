@@ -39,6 +39,14 @@ import {
   createCreatorMediaManifest,
   type CreatorMediaManifest
 } from "../lib/creator-media-manifest";
+import {
+  pinCreatorMediaManifest,
+  subscribeToCreatorMediaReceipts
+} from "../lib/creator-media-receipt-cloud";
+import {
+  receiptMatchesManifest,
+  type CreatorMediaReceipt
+} from "../lib/creator-media-receipt";
 import type { ProjectAssignment } from "../lib/project-ownership";
 import { CreatorConsentLinkBuilder } from "./creator-consent-link-builder";
 import { CreatorImageField } from "./creator-media-upload";
@@ -91,6 +99,8 @@ export function CreatorAssetStudio({
   const [releaseReviews, setReleaseReviews] = useState<CreatorReleaseReview[]>([]);
   const [reviewBusy, setReviewBusy] = useState(false);
   const [releaseDecisions, setReleaseDecisions] = useState<CreatorReleaseDecision[]>([]);
+  const [mediaReceipts, setMediaReceipts] = useState<CreatorMediaReceipt[]>([]);
+  const [mediaPinBusy, setMediaPinBusy] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -136,6 +146,29 @@ export function CreatorAssetStudio({
       else cleanup();
     }).catch(() => {
       if (active) setMessage("Release-review history is temporarily unavailable.");
+    });
+    return () => {
+      active = false;
+      unsubscribe?.();
+    };
+  }, [projectSlug, selectedId, user]);
+
+  useEffect(() => {
+    if (!selectedId) {
+      setMediaReceipts([]);
+      return;
+    }
+    let active = true;
+    let unsubscribe: (() => void) | undefined;
+    void subscribeToCreatorMediaReceipts(user, projectSlug, selectedId, (next) => {
+      if (active) setMediaReceipts(next);
+    }, () => {
+      if (active) setMessage("Metadata-storage receipts are temporarily unavailable.");
+    }).then((cleanup) => {
+      if (active) unsubscribe = cleanup;
+      else cleanup();
+    }).catch(() => {
+      if (active) setMessage("Metadata-storage receipts are temporarily unavailable.");
     });
     return () => {
       active = false;
@@ -279,6 +312,9 @@ export function CreatorAssetStudio({
       mediaManifestError = error instanceof Error ? error.message : "The media manifest could not be prepared.";
     }
   }
+  const activeMediaReceipt = mediaManifest
+    ? mediaReceipts.find((receipt) => receiptMatchesManifest(receipt, mediaManifest)) ?? null
+    : null;
   const readiness = evaluateCreatorReleaseReadiness(draft, {
     savedRevisionHash,
     consentRecords,
@@ -288,7 +324,12 @@ export function CreatorAssetStudio({
   const isMusic = draft.assetType === "music_release";
 
   const prepareReview = async () => {
-    if (!selectedId || savedRevisionHash !== draftRevisionHash || readiness.status === "blocked") return;
+    if (
+      !selectedId
+      || savedRevisionHash !== draftRevisionHash
+      || readiness.status === "blocked"
+      || !activeMediaReceipt
+    ) return;
     setReviewBusy(true);
     setMessage("");
     try {
@@ -320,6 +361,20 @@ export function CreatorAssetStudio({
     anchor.remove();
     window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
     setMessage("Marketplace metadata downloaded. It is not pinned or published.");
+  };
+
+  const pinMetadata = async () => {
+    if (!mediaManifest || mediaManifest.mediaIntegrity !== "content_addressed") return;
+    setMediaPinBusy(true);
+    setMessage("");
+    try {
+      const result = await pinCreatorMediaManifest(user, mediaManifest);
+      setMessage(`Verified metadata receipt recorded: ${result.metadataCid.slice(0, 14)}… Nothing was minted, listed, or made executable.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "The metadata could not be pinned and verified.");
+    } finally {
+      setMediaPinBusy(false);
+    }
   };
 
   return (
@@ -379,8 +434,29 @@ export function CreatorAssetStudio({
               <small>{reference.contentAddressed ? "CONTENT ADDRESSED" : "MUTABLE HTTPS REFERENCE"}</small>
             </div>)}
           </div>
-          <button type="button" onClick={downloadMetadata}>Download metadata JSON</button>
-          <small>Metadata storage: NOT PINNED · Contract execution: DISABLED</small>
+          <div className="creatorMediaManifestActions">
+            <button type="button" onClick={downloadMetadata}>Download metadata JSON</button>
+            <button
+              type="button"
+              disabled={mediaPinBusy || mediaManifest.mediaIntegrity !== "content_addressed" || Boolean(activeMediaReceipt)}
+              onClick={() => void pinMetadata()}
+            >
+              {mediaPinBusy
+                ? "Pinning + verifying exact bytes…"
+                : activeMediaReceipt
+                  ? "Verified storage receipt recorded"
+                  : "Pin exact metadata to IPFS"}
+            </button>
+          </div>
+          {activeMediaReceipt
+            ? <div className="creatorMediaReceipt">
+              <span>VERIFIED PUBLIC IPFS RECEIPT</span>
+              <code title={activeMediaReceipt.metadataUri}>{activeMediaReceipt.metadataCid}</code>
+              <small>{activeMediaReceipt.storedSize} BYTES · PINATA RECORD VERIFIED · REVISION BOUND · EXECUTION DISABLED</small>
+            </div>
+            : <small>{mediaManifest.mediaIntegrity === "content_addressed"
+              ? "Metadata storage: NOT PINNED · Contract execution: DISABLED"
+              : "Replace mutable HTTPS media references with IPFS before trusted metadata storage is allowed."}</small>}
         </>}
         {!mediaManifest && <small>{mediaManifestError || "Save the current valid asset revision to generate its deterministic manifest."}</small>}
       </section>
@@ -393,16 +469,17 @@ export function CreatorAssetStudio({
           </div>
           <span>CONTRACT EXECUTION DISABLED</span>
         </header>
-        <p>This copies the saved rights revision, accepted wallet receipts, edition settings, proposed payout manifest, and the preparation-only economics policy into a new immutable private record. It is not RMT approval and cannot mint, list, charge, pay, or deploy anything.</p>
+        <p>This copies the saved rights revision, verified metadata-storage receipt, accepted wallet receipts, edition settings, proposed payout manifest, and the preparation-only economics policy into a new immutable private record. It is not RMT approval and cannot mint, list, charge, pay, or deploy anything.</p>
         <div className="creatorReleaseFreezePolicy">
           <div><small>Simulation fee</small><strong>{(RMT_MARKETPLACE_SIMULATION_POLICY.marketplaceFeeBps / 100).toFixed(2)}%</strong></div>
           <div><small>Policy fingerprint</small><code>{RMT_MARKETPLACE_SIMULATION_POLICY.policyHash.slice(0, 12)}…{RMT_MARKETPLACE_SIMULATION_POLICY.policyHash.slice(-8)}</code></div>
           <div><small>Mode</small><strong>SIMULATION ONLY</strong></div>
         </div>
-        <button type="button" disabled={reviewBusy || !selectedId || savedRevisionHash !== draftRevisionHash || readiness.status === "blocked"} onClick={() => void prepareReview()}>
+        <button type="button" disabled={reviewBusy || !selectedId || savedRevisionHash !== draftRevisionHash || readiness.status === "blocked" || !activeMediaReceipt} onClick={() => void prepareReview()}>
           {reviewBusy ? "Preparing immutable snapshot…" : "Prepare immutable review snapshot"}
         </button>
         {readiness.status === "blocked" && <small>Resolve every blocked Release Passport check before preparing a snapshot.</small>}
+        {readiness.status !== "blocked" && !activeMediaReceipt && <small>Pin and verify the exact metadata for this saved revision before preparing a snapshot.</small>}
         {releaseReviews.length > 0 && <div className="creatorReleaseFreezeHistory">
           <strong>Immutable snapshot history</strong>
           {releaseReviews.map((review) => {

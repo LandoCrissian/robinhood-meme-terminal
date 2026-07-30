@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { keccak256, toHex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import {
   EMPTY_CREATOR_ASSET,
@@ -58,6 +59,12 @@ import {
   createCreatorMediaManifest,
   creatorMediaReference
 } from "./creator-media-manifest";
+import {
+  createCreatorMediaReceipt,
+  creatorMetadataBytes,
+  parseCreatorMediaReceipt,
+  receiptMatchesManifest
+} from "./creator-media-receipt";
 
 const validArtwork = {
   ...EMPTY_CREATOR_ASSET,
@@ -122,6 +129,31 @@ assert.equal(immutableMediaManifest.metadataStorage, "not_pinned");
 assert.equal(immutableMediaManifest.contractExecution, "disabled");
 assert.match(immutableMediaManifest.metadataHash, /^0x[0-9a-f]{64}$/);
 assert.match(immutableMediaManifest.manifestHash, /^0x[0-9a-f]{64}$/);
+const mediaReceipt = createCreatorMediaReceipt({
+  manifest: immutableMediaManifest,
+  metadataCid: "bafkreicnu2aqjkoglrlrd65giwo4l64pdajxffk6jtq2vb7yaiopc3yu7m",
+  providerFileId: "e5323ea7-8a02-4486-9b6f-63c788810aeb",
+  storedSize: new TextEncoder().encode(creatorMetadataBytes(immutableMediaManifest)).byteLength
+});
+assert.equal(mediaReceipt.metadataUri, `ipfs://${mediaReceipt.metadataCid}`);
+assert.equal(mediaReceipt.providerRecordVerified, true);
+assert.equal(mediaReceipt.contractExecution, "disabled");
+assert.equal(receiptMatchesManifest(mediaReceipt, immutableMediaManifest), true);
+assert.deepEqual(parseCreatorMediaReceipt(mediaReceipt.receiptId, mediaReceipt), mediaReceipt);
+assert.equal(parseCreatorMediaReceipt(mediaReceipt.receiptId, {
+  ...mediaReceipt,
+  storedSize: mediaReceipt.storedSize + 1
+}), null);
+assert.throws(() => createCreatorMediaReceipt({
+  manifest: createCreatorMediaManifest({
+    projectSlug: "runner-studio",
+    assetId: "abcdefghijklmnopqrst",
+    draft: { ...immutableMediaDraft, previewMediaUri: "https://example.com/preview.png" }
+  }),
+  metadataCid: mediaReceipt.metadataCid,
+  providerFileId: mediaReceipt.providerFileId,
+  storedSize: mediaReceipt.storedSize
+}), /content-addressed/);
 assert.notEqual(createCreatorMediaManifest({
   projectSlug: "runner-studio",
   assetId: "abcdefghijklmnopqrst",
@@ -500,6 +532,8 @@ async function testSignedConsentResponse() {
 
   const consentReadyDraft = {
     ...validArtwork,
+    primaryMediaUri: immutableMediaDraft.primaryMediaUri,
+    previewMediaUri: immutableMediaDraft.previewMediaUri,
     collaborators: [{
       name: signedInvitation.collaboratorName,
       role: signedInvitation.collaboratorRole,
@@ -540,9 +574,21 @@ async function testSignedConsentResponse() {
     draftRevisionHash: consentReadyRevision,
     status: "draft" as const
   };
+  const reviewMediaManifest = createCreatorMediaManifest({
+    projectSlug: reviewAsset.projectSlug,
+    assetId: reviewAsset.assetId,
+    draft: reviewAsset
+  });
+  const reviewMediaReceipt = createCreatorMediaReceipt({
+    manifest: reviewMediaManifest,
+    metadataCid: "bafkreiffsgtnic7uebaeuaixgph3pmmq2ywglpylzwrswv5so7m23hyuny",
+    providerFileId: "f6424fb8-9b13-4486-9b6f-63c788810aeb",
+    storedSize: new TextEncoder().encode(creatorMetadataBytes(reviewMediaManifest)).byteLength
+  });
   const review = createCreatorReleaseReview({
     asset: reviewAsset,
     consentRecords: [matchingReceipt],
+    mediaReceipt: reviewMediaReceipt,
     economicsPolicy: RMT_MARKETPLACE_SIMULATION_POLICY,
     preparedBy: "creator-user-id"
   });
@@ -551,7 +597,32 @@ async function testSignedConsentResponse() {
   assert.equal(review.economicsMode, "simulation_only");
   assert.equal(review.contractExecution, "disabled");
   assert.equal(review.acceptedConsentManifest.length, 1);
+  assert.equal(review.mediaReceipt?.receiptId, reviewMediaReceipt.receiptId);
   assert.deepEqual(parseCreatorReleaseReview(review.reviewId, review), review);
+  const legacyReviewPayload = {
+    schemaVersion: 1 as const,
+    projectSlug: review.projectSlug,
+    assetId: review.assetId,
+    draftRevisionHash: review.draftRevisionHash,
+    preparedBy: review.preparedBy,
+    assetSnapshot: review.assetSnapshot,
+    acceptedConsentManifest: review.acceptedConsentManifest,
+    payoutManifest: review.payoutManifest,
+    economicsPolicy: review.economicsPolicy,
+    economicsMode: review.economicsMode,
+    contractExecution: review.contractExecution,
+    status: review.status
+  };
+  const legacyReviewHash = keccak256(toHex(JSON.stringify(legacyReviewPayload)));
+  const legacyReview = {
+    ...legacyReviewPayload,
+    reviewId: legacyReviewHash.slice(2),
+    reviewHash: legacyReviewHash
+  };
+  assert.deepEqual(parseCreatorReleaseReview(legacyReview.reviewId, legacyReview), {
+    ...legacyReview,
+    mediaReceipt: null
+  });
   assert.equal(parseCreatorReleaseReview(review.reviewId, {
     ...review,
     payoutManifest: [{ ...review.payoutManifest[0], shareBps: 9_999 }]
@@ -563,6 +634,7 @@ async function testSignedConsentResponse() {
   assert.throws(() => createCreatorReleaseReview({
     asset: { ...reviewAsset, draftRevisionHash: `0x${"8".repeat(64)}` },
     consentRecords: [matchingReceipt],
+    mediaReceipt: reviewMediaReceipt,
     economicsPolicy: RMT_MARKETPLACE_SIMULATION_POLICY,
     preparedBy: "creator-user-id"
   }), /revision fingerprint/);
@@ -627,6 +699,8 @@ assert.match(studioSource, /RELEASE PASSPORT · PRIVATE/);
 assert.match(studioSource, /MEDIA \+ METADATA MANIFEST/);
 assert.match(studioSource, /Download metadata JSON/);
 assert.match(studioSource, /NOT PINNED/);
+assert.match(studioSource, /Pin exact metadata to IPFS/);
+assert.match(studioSource, /VERIFIED PUBLIC IPFS RECEIPT/);
 assert.match(studioSource, /ERC-2981 can signal this preference/);
 assert.doesNotMatch(studioSource, /mintNFT|createListing|executeSplit/);
 
@@ -675,6 +749,16 @@ assert.match(releaseReviewRouteSource, /transaction\.create/);
 assert.match(releaseReviewRouteSource, /RMT_MARKETPLACE_SIMULATION_POLICY/);
 assert.match(releaseReviewRouteSource, /contractExecution/);
 assert.doesNotMatch(releaseReviewRouteSource, /mintNFT|createListing|executeSplit/);
+
+const mediaPinRouteSource = readFileSync(
+  new URL("../app/api/creator-media/pin/route.ts", import.meta.url),
+  "utf8"
+);
+assert.match(mediaPinRouteSource, /verifyIdToken\(token, true\)/);
+assert.match(mediaPinRouteSource, /pinAndVerifyCreatorMetadata/);
+assert.match(mediaPinRouteSource, /transaction\.create/);
+assert.match(mediaPinRouteSource, /mediaIntegrity/);
+assert.doesNotMatch(mediaPinRouteSource, /mintNFT|createListing|executeSplit|transferFrom/);
 
 const releaseDecisionRouteSource = readFileSync(
   new URL("../app/api/admin/creator-release/decision/route.ts", import.meta.url),
