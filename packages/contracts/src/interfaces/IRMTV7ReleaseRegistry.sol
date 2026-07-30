@@ -7,4 +7,8 @@ interface IRMTV7ReleaseRegistry {
         external
         view
         returns (bool);
+    function isFrozenPayoutManifest(bytes32 releaseId, address creator, bytes32 payoutManifestHash)
+        external
+        view
+        returns (bool);
 }

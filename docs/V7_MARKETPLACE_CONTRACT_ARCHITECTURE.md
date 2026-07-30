@@ -2,7 +2,7 @@
 
 Status: source-level foundation only
 
-Date: July 29, 2026
+Date: July 30, 2026
 
 Deployment: none
 
@@ -10,16 +10,17 @@ Audit: none
 
 ## Outcome
 
-The V7 source foundation now establishes two narrow registries, one evidence verifier, two creator-collection modules and a non-executable transaction-simulation boundary:
+The V7 source foundation now establishes two narrow registries, one evidence verifier, two creator-collection modules, one consent-bound split module and a non-executable transaction-simulation boundary:
 
 1. `RMTV7ModuleRegistry` is an append-only catalog of exact implementation, interface, code, metadata and policy fingerprints admitted by RMT's delayed governance.
 2. `RMTV7MediaEvidenceVerifier` validates short-lived EIP-712 attestations that bind an exact verified provider receipt and healthy availability observation to one release.
 3. `RMTV7ReleaseRegistry` lets a creator commit an immutable release revision and atomically freeze its evidence, future modules and configurations.
 4. `RMTV7ERC721CollectionModule` deploys one deterministic, creator-controlled `RMTV7CreatorCollection` for an exact frozen release intent.
 5. `RMTV7ERC1155EditionModule` deploys one deterministic, creator-controlled `RMTV7CreatorEditions` contract for an exact frozen release intent.
-6. `creator-v7-transaction-simulation.ts` produces deterministic plain-language receipts and exact calldata for release freeze and both deployment modules without reading the chain, signing or broadcasting.
+6. `RMTV7ConsentBoundSplitModule` deploys one immutable pull-payment `RMTV7ConsentBoundSplit` only after every recipient signs their exact share and recovery wallet.
+7. `creator-v7-transaction-simulation.ts` produces deterministic plain-language receipts and exact calldata for release freeze and both collection deployment modules without reading the chain, signing or broadcasting.
 
-The ERC-721 module can mint only the sequential token IDs and exact token-URI hashes committed in the release's immutable Merkle manifest. The ERC-1155 module can mint only IDs, URI hashes, terms hashes and lifetime supplies committed in its immutable edition manifest. Neither module lists, approves, sells, charges, settles, routes fees, holds funds, buys RMT, burns RMT, purchases NFTs or claims that RMT approved a creator.
+The ERC-721 module can mint only the sequential token IDs and exact token-URI hashes committed in the release's immutable Merkle manifest. The ERC-1155 module can mint only IDs, URI hashes, terms hashes and lifetime supplies committed in its immutable edition manifest. The split module can receive and distribute native currency or standard non-rebasing ERC-20 creator proceeds only if it is later deployed and funded; it has no platform fee or treasury route. No current module lists, approves, sells, charges a platform fee, settles a purchase, buys RMT, burns RMT, purchases NFTs or claims that RMT approved a creator.
 
 ## Why this comes before marketplace settlement
 
@@ -154,6 +155,23 @@ The source limits are 10,000 edition types, 1,000,000,000 lifetime minted units 
 
 An edition terms hash is a provenance commitment only. It does not prove copyright, grant rights by itself or make offchain license terms enforceable. See `V7_CREATOR_EDITIONS.md`.
 
+## Consent-bound split module
+
+The split increment converts a frozen payout-manifest commitment into an immutable pull-payment destination without giving the creator or RMT a redirect key:
+
+- one to 32 unique recipients must total exactly 10,000 basis points;
+- every recipient signs their exact share, optional recovery wallet, release, creator, module, configuration, payout manifest and deadline;
+- EOA and ERC-1271 contract-wallet signatures are supported;
+- consent expires within 30 days and cannot replay across a release, module, registry or chain;
+- deployment requires both the frozen module configuration and the release's exact payout-manifest hash;
+- the deployed split independently recomputes every immutable hash;
+- anyone may trigger a normal payment, but it can pay only the recipient;
+- only the recipient or their signed recovery wallet may trigger recovery, and it can pay only that recovery wallet;
+- a failed transfer reverts its accounting and does not block other recipients;
+- there is no creator, governance or RMT sweep, arbitrary redirect, fee, proxy or upgrade path.
+
+The web builder canonically orders recipients and produces the exact unsigned EIP-712 review packet and Solidity-compatible hashes. Signing and broadcast remain disabled. Standard non-rebasing ERC-20s are the only token model contemplated by this version. See `V7_CONSENT_BOUND_SPLITS.md`.
+
 ## Human-readable transaction simulations
 
 The simulation schema makes irreversible V7 actions reviewable before wallet integration. Every receipt identifies the chain, actor, target, selector, calldata, zero native value, immutable commitments, expected state transition, risks and still-unverified live checks. Asset movements, token approvals and platform fees are explicit empty lists for these three calls.
@@ -222,6 +240,12 @@ See `V7_MARKETPLACE_ECONOMICS_BOUNDARY.md` for the accounting requirements that 
 | Edition supply expands through repeated or alternate proofs | Per-ID and collection-wide lifetime counters never decrease and every mint is manifest-proven | Independent fuzzing and review remain required before deployment |
 | Receiver callback leaves a partially registered edition | Minting is guarded; rejected callbacks revert URI registration and every supply counter | Include malicious receiver tests in every module version |
 | A terms hash is presented as copyright ownership | Contracts and docs identify it only as a fingerprint of presented terms | Specialist review and plain-language collector presentation remain required |
+| Creator assigns a collaborator without consent | Every split recipient signs the exact release, share, recovery and complete configuration | Production must atomically verify earlier collaborator consent has not been withdrawn before freeze |
+| Creator swaps a recipient or recovery wallet after signing | Every field changes the EIP-712 digest; release freeze binds the exact configuration and payout hash | UI must render those fields plainly before wallet signing |
+| Recipient contract rejects payment and blocks everyone | Pull payments isolate recipients; failed calls revert only that release attempt | Product should expose individual pending balances and recovery status |
+| RMT or creator redirects collaborator proceeds | Split has no owner, administrator, arbitrary destination, sweep or upgrade function | Independent review must confirm no indirect redirect exists |
+| Consent replays on another release or chain | Message and EIP-712 domain bind registry, release, creator, module and chain | Canonical address publication and live-chain verification remain required |
+| Non-standard token breaks proportional accounting | Source explicitly limits compatibility to standard non-rebasing ERC-20s | Settlement must use an allowlist or exact received-amount verification |
 | Fake registry deployment | Release registry requires a code-bearing module registry with code-bearing governance | Publish canonical addresses and deployment verification |
 | “Registered” is misrepresented as “RMT approved” | Contract and docs explicitly separate admission, creator review and curation | UI language and public proof page must preserve the distinction |
 
@@ -270,12 +294,23 @@ See `V7_MARKETPLACE_ECONOMICS_BOUNDARY.md` for the accounting requirements that 
 - the interface and implementation remain pinned to the registry entry;
 - Solidity and TypeScript share fixed leaf, root and configuration-hash vectors.
 
+`RMTV7ConsentBoundSplitModule.t.sol` verifies:
+
+- exact EOA and ERC-1271 consent for every recipient;
+- one immutable split per exact frozen release, configuration and payout manifest;
+- native and ERC-20 lifetime pull-payment accounting;
+- failed-recipient rollback and recipient-authorized recovery;
+- creator, signer, expiry, replay, duplicate-recipient and share-total failures;
+- inactive module and dishonest direct-deployment failures;
+- absence of module custody or an invalid advertised interface;
+- shared Solidity and TypeScript configuration vectors.
+
 ## Next contract increments
 
 The following order keeps risk bounded:
 
-1. implement consent-bound pull-payment splits with failed-recipient recovery;
-2. select and approve a real V7 fee policy;
+1. select and approve a real V7 fee policy;
+2. extend the human-readable simulator and live read-only verifier to split deployment;
 3. implement fixed-price settlement with expiry, cancellation, narrow approvals and adversarial asset/payment tests;
 4. add offers only after fixed-price settlement is proven;
 5. consider auctions last.

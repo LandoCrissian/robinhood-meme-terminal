@@ -60,7 +60,7 @@ The trusted server receipt:
 
 An offline `respondedAt` value is signed but is not trustworthy proof of when RMT received the response. It cannot be used to backdate an expired response.
 
-The withdrawal typed data binds the invitation digest, invited wallet, signed withdrawal time, withdrawal-terms hash, chain, and original invitation nonce. The trusted withdrawal endpoint accepts only an exact recorded acceptance, verifies the invited signer, rejects conflicting retries, and atomically changes the private invitation and public marker to `withdrawn`. A new preparation-ready administrator decision rechecks every snapshot receipt against current public consent state and fails if any receipt was withdrawn or otherwise changed. Historical snapshots and decisions remain immutable evidence, but cannot restore withdrawn consent. The current foundation has no executable release-freeze state, so every accepted invitation remains withdrawable. A future freeze must be a separately reviewed, explicit state transition; RMT must not silently infer it from an administrator preparation decision.
+The withdrawal typed data binds the invitation digest, invited wallet, signed withdrawal time, withdrawal-terms hash, chain, and original invitation nonce. The trusted withdrawal endpoint accepts only an exact recorded acceptance, verifies the invited signer, rejects conflicting retries, and atomically changes the private invitation and public marker to `withdrawn`. A new preparation-ready administrator decision rechecks every snapshot receipt against current public consent state and fails if any receipt was withdrawn or otherwise changed. Historical snapshots and decisions remain immutable evidence, but cannot restore withdrawn consent. The source-level release registry and split module now model an executable freeze and a second, narrower payout-consent signature, but neither is deployed or product-enabled. Every accepted invitation therefore remains withdrawable in the current product. A future product freeze must be a separately reviewed, explicit state transition; RMT must not silently infer it from an administrator preparation decision.
 
 ## Creator flow
 
@@ -93,6 +93,6 @@ The withdrawal typed data binds the invitation digest, invited wallet, signed wi
 - Configure a dedicated least-privilege Firebase Admin credential in the production host; without it the endpoint fails closed with `503`.
 - Replace the single-instance request limiter with a durable distributed limiter if abuse or traffic warrants it.
 - Creator and collaborator notifications.
-- Define the executable release-freeze boundary, collaborator disclosures at freeze, and post-freeze correction/dispute policy.
-- Immutable accepted-consent manifest consumed by future collection and split contracts.
+- Wire the source-level release-freeze boundary only after defining collaborator disclosures and a post-freeze correction/dispute policy.
+- Atomically prove that each earlier invitation acceptance remains current when the separate split consent is signed and when a release is frozen.
 - Privacy, legal, and independent security review before marketplace execution.

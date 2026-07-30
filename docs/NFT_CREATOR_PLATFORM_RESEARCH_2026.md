@@ -81,6 +81,8 @@ RMT should not convert individual comments into universal claims. It should use 
 - A non-executable web manifest builder that deterministically derives ERC-1155 leaves, proofs, exact type and total-supply limits, and the Solidity-compatible configuration hash.
 - A source-level EIP-712 media-evidence verifier and web preparation guard that bind an exact verified receipt and fresh healthy availability observation to the release freeze. The evidence signer cannot freeze, mint, settle or hold assets; no production signer or signing endpoint is enabled.
 - A non-executable transaction-simulation schema that converts release freeze and ERC-721/ERC-1155 deployment calldata into deterministic plain-language receipts with explicit irreversible changes, zero-value facts, warnings and still-unverified live checks.
+- A source-level consent-bound pull-payment split for native currency and standard non-rebasing ERC-20 creator proceeds. Every recipient signs the exact release, share and recovery wallet; failed transfers preserve accounting; no creator or RMT redirect exists. The contracts are tested but not deployed or audited.
+- A non-executable web split builder that canonically orders recipients and derives Solidity-compatible payout, consent and configuration hashes plus one unsigned EIP-712 request per recipient.
 
 ### Required before marketplace contracts
 
@@ -93,9 +95,8 @@ RMT should not convert individual comments into universal claims. It should use 
 
 ### Later contract layer
 
-- Consent-bound split receiver.
 - Marketplace settlement for fixed-price listings and offers.
 - Auctions only after the simpler settlement path is proven.
 - Governance-controlled platform fee routing and RMT token actions.
 
-The source-level ERC-721 and ERC-1155 collections can mint manifest-bound assets under the immutable creator's control. No current V7 contract lists, charges, pays, buys back, burns, sweeps assets or settles a marketplace transaction.
+The source-level ERC-721 and ERC-1155 collections can mint manifest-bound assets under the immutable creator's control. The source-level split can distribute funds sent to it, but no split is deployed or enabled. No current V7 contract lists, charges a platform fee, buys back, burns, sweeps assets or settles a marketplace transaction.

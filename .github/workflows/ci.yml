@@ -39,6 +39,7 @@ jobs:
       - run: pnpm --filter web test:consent-activation
       - run: pnpm --filter web test:media-guard
       - run: pnpm --filter web test:creator-assets
+      - run: pnpm --filter web test:creator-split
       - run: pnpm --filter web test:creator-v7-simulation
       - run: pnpm test:firebase-rules
       - run: pnpm --filter web test:reliability

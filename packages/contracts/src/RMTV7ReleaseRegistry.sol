@@ -255,6 +255,16 @@ contract RMTV7ReleaseRegistry {
             && configurationHash != bytes32(0) && _moduleConfigurationHashes[releaseId][moduleKey] == configurationHash;
     }
 
+    function isFrozenPayoutManifest(bytes32 releaseId, address creator, bytes32 payoutManifestHash)
+        external
+        view
+        returns (bool)
+    {
+        ReleaseCommitment storage release = _releases[releaseId];
+        return release.state == RELEASE_STATE_FROZEN && release.creator == creator && payoutManifestHash != bytes32(0)
+            && release.payoutManifestHash == payoutManifestHash;
+    }
+
     function _requireCreatorRelease(bytes32 releaseId) private view returns (ReleaseCommitment storage release) {
         release = _releases[releaseId];
         if (release.creator == address(0)) revert UnknownRelease();

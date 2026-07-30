@@ -2,7 +2,7 @@
 
 ## Purpose
 
-RMT marketplace economics must be explicit, versioned, inspectable, and separate from creator ownership. No asset draft, collaborator credit, or proposed revenue split currently charges a fee or moves funds.
+RMT marketplace economics must be explicit, versioned, inspectable, and separate from creator ownership. No deployed V7 asset, collaborator or marketplace path currently charges a fee or moves funds. The source-level consent-bound split can distribute funds sent to a future deployed instance, but it defines no marketplace fee and is not deployed or product-enabled.
 
 The foundational policy model separates:
 
@@ -27,6 +27,8 @@ The foundational policy model separates:
 ## Current implementation boundary
 
 `apps/web/lib/creator-economics.ts` provides a non-executable policy model, normalization, validation, and a deterministic Keccak-256 policy hash. It intentionally does not select RMT’s final fee, store a live policy, collect funds, perform a swap, buy RMT, burn tokens, add liquidity, purchase NFTs, or promise rewards.
+
+`RMTV7ConsentBoundSplit` is deliberately downstream of that unresolved fee policy. It allocates only the creator/collaborator proceeds sent to it according to a unanimously signed payout manifest. It cannot calculate, collect or route a platform fee and cannot execute a token-directed action.
 
 Private release-review snapshots currently attach `RMT marketplace simulation policy v1`: a hypothetical 2.50% fee with disclosed allocation fields. This exists only to prove that one complete policy can be fingerprinted and bound to a release candidate. Its mode is `simulation_only`, contract execution is `disabled`, and it is not RMT's approved production fee.
 
