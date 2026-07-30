@@ -74,6 +74,7 @@ assert.equal(isEmbeddedAuthBrowser(
 assert.equal(isEmbeddedAuthBrowser(
   "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 ChatGPT/1.2026.196"
 ), true);
+assert.equal(isEmbeddedAuthBrowser("custom mobile shell chatgpt/1.2026.196"), true);
 assert.equal(isEmbeddedAuthBrowser(
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/138.0 Safari/537.36"
 ), false);

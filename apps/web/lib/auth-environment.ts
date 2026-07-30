@@ -18,7 +18,8 @@ const EMBEDDED_BROWSER_TOKENS = [
 export function isEmbeddedAuthBrowser(userAgent: string) {
   const normalized = userAgent.trim();
   if (!normalized) return false;
-  if (EMBEDDED_BROWSER_TOKENS.some((token) => normalized.includes(token))) return true;
+  const lowercase = normalized.toLowerCase();
+  if (EMBEDDED_BROWSER_TOKENS.some((token) => lowercase.includes(token.toLowerCase()))) return true;
 
   const androidWebView = /\bwv\b/i.test(normalized)
     || (/Android/i.test(normalized) && /Version\/[\d.]+.*Chrome\//i.test(normalized));
