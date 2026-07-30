@@ -142,7 +142,10 @@ function friendlyAuthError(error: unknown) {
     return "Google sign-in was closed. Your local profile is unchanged.";
   }
   if (code === "auth/popup-blocked") {
-    return "Your browser blocked Google sign-in. Allow popups for RMT and try again.";
+    return "Your browser blocked Google sign-in. Allow popups for RMT or open RMT in Safari or Chrome, then try again.";
+  }
+  if (code === "auth/operation-not-supported-in-this-environment" || code === "auth/web-storage-unsupported") {
+    return "This in-app browser cannot complete Google sign-in. Open RMT in Safari or Chrome and try again.";
   }
   if (code === "auth/network-request-failed") {
     return "Google sign-in could not reach Firebase. Check your connection and try again.";
@@ -153,7 +156,7 @@ function friendlyAuthError(error: unknown) {
   if (code === "auth/operation-not-allowed") {
     return "Google sign-in is not enabled in the RMT Firebase project yet.";
   }
-  return "Google sign-in did not finish. Your local profile is unchanged.";
+  return "Google sign-in did not finish. Your local profile is unchanged. If this is an in-app browser, open RMT in Safari, Chrome, Firefox, or Edge and try again.";
 }
 
 function slotDocuments(snapshot: { docs: Array<{ data: () => unknown; id: string }> }) {
@@ -172,6 +175,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   const [cloudReady, setCloudReady] = useState(false);
   const activeUserRef = useRef<User | null>(null);
   const cleanupLegacyRef = useRef(false);
+  const firebaseClientRef = useRef<FirebaseClient | null>(null);
   const generationRef = useRef(0);
   const remoteSlotIdsRef = useRef(new Set<string>());
   const suppressWatchlistSyncRef = useRef(false);
@@ -254,6 +258,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
         }
         return;
       }
+      firebaseClientRef.current = client;
 
       unsubscribeAuth = client.authApi.onAuthStateChanged(client.auth, async (nextUser) => {
         const profileUser = nextUser?.isAnonymous ? null : nextUser;
@@ -360,6 +365,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
       unsubscribeAuth?.();
       unsubscribeProfile?.();
       unsubscribeWatchlist?.();
+      firebaseClientRef.current = null;
     };
   }, [applyProfile, applyWatchlist]);
 
@@ -417,13 +423,14 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   }, [syncCurrentState]);
 
   const signInWithGoogle = useCallback(async () => {
-    const client = await getFirebaseClient();
+    const client = firebaseClientRef.current ?? await getFirebaseClient();
     if (!client) throw new Error("Firebase profile sync is not configured yet.");
+    firebaseClientRef.current = client;
     const provider = new client.authApi.GoogleAuthProvider();
     provider.setCustomParameters({ prompt: "select_account" });
     setSyncState("syncing");
     try {
-      await client.authApi.signInWithRedirect(client.auth, provider);
+      await client.authApi.signInWithPopup(client.auth, provider);
     } catch (error) {
       setSyncState("local");
       throw new Error(friendlyAuthError(error));

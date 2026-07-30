@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useAccount } from "wagmi";
+import { isEmbeddedAuthBrowser } from "../../lib/auth-environment";
 import {
   PROFILE_EVENT,
   profileIdentityChanged,
@@ -60,12 +61,16 @@ export default function ProfilePage() {
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [reviewing, setReviewing] = useState(false);
+  const [embeddedAuthBrowser, setEmbeddedAuthBrowser] = useState(false);
   const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
     setDraft(profile);
     setReviewing(false);
   }, [profile]);
+  useEffect(() => {
+    setEmbeddedAuthBrowser(isEmbeddedAuthBrowser(window.navigator.userAgent));
+  }, []);
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 30_000);
     return () => window.clearInterval(timer);
@@ -122,6 +127,16 @@ export default function ProfilePage() {
       setMessage(error instanceof Error ? error.message : "Google sign-in did not finish. Your local profile is unchanged.");
     } finally {
       setBusy(false);
+    }
+  };
+
+  const copySecureProfileLink = async () => {
+    setMessage("");
+    try {
+      await window.navigator.clipboard.writeText(`${window.location.origin}/profile`);
+      setMessage("Secure RMT profile link copied. Open it in Safari, Chrome, Firefox, or Edge to sign in.");
+    } catch {
+      setMessage(`Open ${window.location.origin}/profile in Safari, Chrome, Firefox, or Edge to sign in.`);
     }
   };
 
@@ -251,8 +266,19 @@ export default function ProfilePage() {
                 {syncState === "error" && <button className="profileRetryButton" type="button" disabled={busy} onClick={() => void retryCloudSync()}>Retry sync</button>}
                 <button type="button" disabled={busy} onClick={() => void endProfileSession()}>Sign out of profile</button>
               </div>
+            ) : configured && embeddedAuthBrowser ? (
+              <div className="profileAuthBrowserNotice">
+                <strong>Open RMT in your browser to sign in</strong>
+                <span>Google protects accounts by blocking sign-in inside some in-app browsers. Open this profile page in Safari, Chrome, Firefox, or Edge; your local desk stays on this device until you sign in.</span>
+                <div>
+                  <a href="/profile" target="_blank" rel="noreferrer">Open secure sign-in ↗</a>
+                  <button type="button" disabled={busy} onClick={() => void copySecureProfileLink()}>Copy profile link</button>
+                </div>
+              </div>
             ) : configured ? (
-              <button className="googleProfileButton" type="button" disabled={busy} onClick={() => void beginGoogleSignIn()}>Continue with Google</button>
+              <button className="googleProfileButton" type="button" disabled={busy || loading} onClick={() => void beginGoogleSignIn()}>
+                {loading ? "Preparing secure sign-in…" : "Continue with Google"}
+              </button>
             ) : (
               <div className="profileSetupNotice"><strong>Firebase connection prepared</strong><span>Add the project configuration to enable Google profile sync.</span></div>
             )}
