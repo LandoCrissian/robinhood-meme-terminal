@@ -14,6 +14,12 @@ import {
   publicRmtNativeLaunches,
   publicRmtProjectVisibility
 } from "./public-project-visibility";
+import {
+  RMT_SITE_ALTERNATE_NAME,
+  RMT_SITE_NAME,
+  RMT_SITE_URL,
+  rmtWebsiteStructuredData
+} from "./site-identity";
 
 const appUrl = "https://www.rmtlaunch.fun";
 
@@ -39,10 +45,30 @@ for (const route of ["/api/health", "/deploy-mainnet", "/profile", "/portfolio",
 const layoutSource = readFileSync(new URL("../app/layout.tsx", import.meta.url), "utf8");
 assert.doesNotMatch(layoutSource, /alternates:\s*\{\s*canonical:\s*"\/"/);
 assert.doesNotMatch(layoutSource, /openGraph:\s*\{\s*url:/);
+assert.match(layoutSource, /applicationName:\s*RMT_SITE_NAME/);
+assert.match(layoutSource, /siteName:\s*RMT_SITE_NAME/);
+assert.match(layoutSource, /manifest:\s*"\/manifest\.webmanifest"/);
+assert.match(layoutSource, /googleBot:[\s\S]*?"max-image-preview":\s*"large"/);
+assert.equal(RMT_SITE_URL, appUrl);
+assert.equal(RMT_SITE_NAME, "RMT Launch");
+assert.equal(RMT_SITE_ALTERNATE_NAME, "Robinhood Meme Terminal");
+assert.deepEqual(rmtWebsiteStructuredData, {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "@id": `${appUrl}/#website`,
+  url: `${appUrl}/`,
+  name: "RMT Launch",
+  alternateName: "Robinhood Meme Terminal",
+  description: rmtWebsiteStructuredData.description,
+  inLanguage: "en-US"
+});
 
 const homeSource = readFileSync(new URL("../app/page.tsx", import.meta.url), "utf8");
 assert.match(homeSource, /alternates:\s*\{\s*canonical:\s*"\/"/);
 assert.match(homeSource, /openGraph:[\s\S]*?url:\s*"\/"/);
+assert.match(homeSource, /type="application\/ld\+json"/);
+assert.match(homeSource, /JSON\.stringify\(rmtWebsiteStructuredData\)/);
+assert.match(homeSource, /RMT LAUNCH · MARKET TERMINAL/);
 assert.match(homeSource, /<ExternalMarketFeed \/>/);
 assert.match(homeSource, /<OfficialRmtMarket \/>/);
 assert.doesNotMatch(homeSource, /<FreshLaunchFeed \/>/);

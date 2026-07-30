@@ -3,21 +3,29 @@ import Link from "next/link";
 import { ExternalMarketFeed } from "./external-market-feed";
 import { OfficialRmtMarket } from "./official-rmt-market";
 import { isMainnetRelease } from "../lib/network";
+import {
+  RMT_SITE_ALTERNATE_NAME,
+  RMT_SITE_NAME,
+  rmtWebsiteStructuredData
+} from "../lib/site-identity";
 import { SiteFooter } from "./site-footer";
 
 export const metadata: Metadata = {
-  title: "Robinhood Meme Terminal",
+  title: `${RMT_SITE_NAME} | ${RMT_SITE_ALTERNATE_NAME}`,
   description: "Discover and trade Robinhood Chain tokens launched outside RMT across Pons, Lemon, Sushi, Uniswap, and the wider ecosystem.",
   alternates: { canonical: "/" },
   openGraph: {
-    title: "Robinhood Meme Terminal",
+    type: "website",
+    locale: "en_US",
+    siteName: RMT_SITE_NAME,
+    title: `${RMT_SITE_NAME} | ${RMT_SITE_ALTERNATE_NAME}`,
     description: "Discover and trade Robinhood Chain tokens launched outside RMT across Pons, Lemon, Sushi, Uniswap, and the wider ecosystem.",
     url: "/",
     images: ["/brand/rmt-master-logo.png"]
   },
   twitter: {
     card: "summary",
-    title: "Robinhood Meme Terminal",
+    title: `${RMT_SITE_NAME} | ${RMT_SITE_ALTERNATE_NAME}`,
     description: "Discover and trade Robinhood Chain tokens launched outside RMT across Pons, Lemon, Sushi, Uniswap, and the wider ecosystem.",
     images: ["/brand/rmt-master-logo.png"]
   }
@@ -26,9 +34,15 @@ export const metadata: Metadata = {
 export default function Home() {
   return (
     <main className="terminalPage">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(rmtWebsiteStructuredData).replace(/</g, "\\u003c")
+        }}
+      />
       <section className="terminalIntro">
         <div className="terminalIntroCopy">
-          <p className="eyebrow">RMT MARKET TERMINAL</p>
+          <p className="eyebrow">RMT LAUNCH · MARKET TERMINAL</p>
           <h1>Robinhood Chain, in one view.</h1>
           <p>Scan live markets, verify project origin, compare activity, and review non-custodial execution without leaving RMT.</p>
         </div>

@@ -20,6 +20,12 @@ import "./community.css";
 import { Providers } from "./providers";
 import { PublicChrome } from "./public-chrome";
 import { TradingTermsGate } from "./trading-terms-gate";
+import {
+  RMT_SITE_ALTERNATE_NAME,
+  RMT_SITE_DESCRIPTION,
+  RMT_SITE_NAME,
+  RMT_SITE_URL
+} from "../lib/site-identity";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -29,15 +35,38 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://www.rmtlaunch.fun"),
-  title: "Robinhood Meme Terminal",
-  description: "Watch, compare, and trade markets across the Robinhood Chain ecosystem.",
+  metadataBase: new URL(RMT_SITE_URL),
+  applicationName: RMT_SITE_NAME,
+  title: `${RMT_SITE_NAME} | ${RMT_SITE_ALTERNATE_NAME}`,
+  description: RMT_SITE_DESCRIPTION,
+  manifest: "/manifest.webmanifest",
   icons: { icon: "/brand/rmt-master-logo.png", apple: "/brand/rmt-master-logo.png" },
   verification: { google: "UrsJaSclzhxhpbsaoELArmJs8HRqAy3yzKMxKZAJsxo" },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1
+    }
+  },
   openGraph: {
+    type: "website",
+    locale: "en_US",
+    siteName: RMT_SITE_NAME,
+    title: `${RMT_SITE_NAME} | ${RMT_SITE_ALTERNATE_NAME}`,
+    description: RMT_SITE_DESCRIPTION,
     images: ["/brand/rmt-master-logo.png"]
   },
-  twitter: { card: "summary", images: ["/brand/rmt-master-logo.png"] }
+  twitter: {
+    card: "summary",
+    title: `${RMT_SITE_NAME} | ${RMT_SITE_ALTERNATE_NAME}`,
+    description: RMT_SITE_DESCRIPTION,
+    images: ["/brand/rmt-master-logo.png"]
+  }
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

@@ -2,7 +2,7 @@
 
 ## Automated checks
 
-The `Production health` GitHub Actions workflow requests a run every five minutes and can be triggered manually. GitHub schedules are best-effort and may be delayed, so this workflow is a release and diagnostic check rather than the sole 1–5 minute alert channel. It retries transient failures, validates the machine-readable protocol health report, validates the cached launch feed, and preserves response evidence for seven days.
+The `Production health` GitHub Actions workflow requests a run every five minutes and can be triggered manually. GitHub schedules are best-effort and may be delayed, so this workflow is a release and diagnostic check rather than the sole 1–5 minute alert channel. It retries transient failures, validates the machine-readable protocol health report, validates the cached launch feed, verifies that a standard Windows browser can load the public home page, checks crawler access plus canonical search identity, and preserves response evidence for seven days.
 
 Canonical production origin: https://www.rmtlaunch.fun
 
@@ -13,6 +13,7 @@ Endpoints:
 - `https://www.rmtlaunch.fun/api/health` — RPC chain ID, latest block freshness, registry bytecode and active factory, factory bytecode and launch count, immutable fee/target, adapter bytecode and factory binding
 - `https://www.rmtlaunch.fun/api/launches` — cached confirmed-indexer launch data, source header, block checkpoint, and synchronization timestamp
 - `https://www.rmtlaunch.fun/status` — user-facing version of the onchain health checks
+- `https://www.rmtlaunch.fun/robots.txt` and `https://www.rmtlaunch.fun/sitemap.xml` — public crawler policy and canonical discovery map
 
 ## Alert ownership
 
