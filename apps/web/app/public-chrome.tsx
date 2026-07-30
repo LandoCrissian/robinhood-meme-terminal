@@ -59,7 +59,7 @@ export function PublicChrome() {
     <>
       <header className="publicHeader">
         <nav className="publicNav" aria-label="Main navigation">
-          <Link className="brandLockup" href="/" aria-label="Robinhood Meme Terminal home">
+          <Link className="brandLockup" href="/" aria-label="RMT Launch — Robinhood Meme Terminal home">
             <img className="brandLogo" src="/brand/rmt-master-logo.png" alt="" />
             <strong>RMT</strong>
           </Link>
