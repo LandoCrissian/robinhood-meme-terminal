@@ -943,3 +943,137 @@ test("RMT admin must review a module request before marking it ready", async () 
     updatedAt: serverTimestamp()
   }, { merge: true }));
 });
+
+test("community records are publicly readable only when visible and remain server-write-only", async () => {
+  const visibleId = "AbCdEfGhIjKlMnOpQrSt";
+  const hiddenId = "ZyXwVuTsRqPoNmLkJiHg";
+  await testEnvironment.withSecurityRulesDisabled(async (context) => {
+    const server = context.firestore();
+    await setDoc(doc(server, "communityRooms", "global", "messages", visibleId), {
+      schemaVersion: 1,
+      messageId: visibleId,
+      roomId: "global",
+      authorKey: "1234567890abcdef1234567890abcdef",
+      authorKind: "guest",
+      authorLabel: "Guest-CDEF",
+      authorHandle: "",
+      body: "Visible community message.",
+      replyTo: "",
+      status: "visible",
+      createdAt: Timestamp.now()
+    });
+    await setDoc(doc(server, "communityRooms", "global", "messages", hiddenId), {
+      schemaVersion: 1,
+      messageId: hiddenId,
+      roomId: "global",
+      authorKey: "abcdef1234567890abcdef1234567890",
+      authorKind: "member",
+      authorLabel: "Restricted member",
+      authorHandle: "",
+      body: "Moderated community message.",
+      replyTo: "",
+      status: "moderated",
+      createdAt: Timestamp.now()
+    });
+    await setDoc(doc(server, "communityPresence", "1234567890abcdef1234567890abcdef"), {
+      schemaVersion: 1,
+      authorKey: "1234567890abcdef1234567890abcdef",
+      identityKind: "guest",
+      roomId: "global",
+      lastSeenAt: Timestamp.now(),
+      expiresAt: Timestamp.fromMillis(Date.now() + 240_000)
+    });
+    await setDoc(doc(server, "communityReports", `${visibleId}--1234567890abcdef1234567890abcdef`), {
+      reportId: `${visibleId}--1234567890abcdef1234567890abcdef`,
+      roomId: "global",
+      messageId: visibleId,
+      status: "pending",
+      createdAt: Timestamp.now()
+    });
+    await setDoc(doc(server, "communityModerationAudit", "AaBbCcDdEeFfGgHhIiJj"), {
+      reportId: `${visibleId}--1234567890abcdef1234567890abcdef`,
+      action: "dismiss",
+      createdAt: Timestamp.now()
+    });
+    await setDoc(doc(server, "communityFeedback", "LmNoPqRsTuVwXyZaBcDe"), {
+      feedbackId: "LmNoPqRsTuVwXyZaBcDe",
+      authorKey: "1234567890abcdef1234567890abcdef",
+      category: "mobile",
+      title: "Improve mobile spacing",
+      description: "The trade ticket needs more thumb spacing.",
+      identityKind: "guest",
+      status: "submitted",
+      reviewNote: "",
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now()
+    });
+    await setDoc(doc(server, "communityFeedbackStatus", "LmNoPqRsTuVwXyZaBcDe"), {
+      feedbackId: "LmNoPqRsTuVwXyZaBcDe",
+      category: "mobile",
+      status: "submitted",
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now()
+    });
+    await setDoc(doc(server, "communityFeedbackAudit", "FgHiJkLmNoPqRsTuVwXy"), {
+      feedbackId: "LmNoPqRsTuVwXyZaBcDe",
+      previousStatus: "submitted",
+      status: "under_review",
+      createdAt: Timestamp.now()
+    });
+    await setDoc(doc(server, "communityRateLimits", "message--1234567890abcdef1234567890abcdef12345678"), {
+      schemaVersion: 1,
+      namespace: "message",
+      count: 1,
+      resetAt: Timestamp.fromMillis(Date.now() + 60_000),
+      expiresAt: Timestamp.fromMillis(Date.now() + 60_000),
+      updatedAt: Timestamp.now()
+    });
+  });
+
+  const visitor = testEnvironment.unauthenticatedContext().firestore();
+  await assertSucceeds(getDoc(doc(visitor, "communityRooms", "global", "messages", visibleId)));
+  await assertFails(getDoc(doc(visitor, "communityRooms", "global", "messages", hiddenId)));
+  await assertSucceeds(getDocs(query(
+    collection(visitor, "communityRooms", "global", "messages"),
+    where("status", "==", "visible")
+  )));
+
+  const guest = testEnvironment.authenticatedContext("anonymous-guest", {
+    firebase: { sign_in_provider: "anonymous" }
+  }).firestore();
+  await assertFails(setDoc(doc(guest, "communityRooms", "global", "messages", "AaBbCcDdEeFfGgHhIiJj"), {
+    status: "visible"
+  }));
+  await assertFails(setDoc(doc(guest, "communityActors", "1234567890abcdef1234567890abcdef"), {
+    firebaseUid: "anonymous-guest"
+  }));
+  await assertFails(getDoc(doc(guest, "communityPresence", "1234567890abcdef1234567890abcdef")));
+  await assertFails(getDocs(collection(visitor, "communityPresence")));
+  await assertFails(setDoc(doc(guest, "communityPresence", "1234567890abcdef1234567890abcdef"), {
+    roomId: "global"
+  }));
+  await assertFails(getDocs(collection(visitor, "communityReports")));
+  await assertFails(setDoc(doc(guest, "communityReports", `${visibleId}--1234567890abcdef1234567890abcdef`), {
+    status: "pending"
+  }));
+  await assertFails(getDocs(collection(adminDb(), "communityModerationAudit")));
+  await assertFails(setDoc(doc(adminDb(), "communityModerationAudit", "ZyXwVuTsRqPoNmLkJiHg"), {
+    action: "hide"
+  }));
+  await assertFails(setDoc(doc(guest, "communityFeedback", "AaBbCcDdEeFfGgHhIiJj"), {
+    status: "submitted"
+  }));
+  await assertFails(getDoc(doc(visitor, "communityFeedback", "LmNoPqRsTuVwXyZaBcDe")));
+  await assertSucceeds(getDoc(doc(visitor, "communityFeedbackStatus", "LmNoPqRsTuVwXyZaBcDe")));
+  await assertFails(setDoc(doc(guest, "communityFeedbackStatus", "LmNoPqRsTuVwXyZaBcDe"), {
+    status: "planned"
+  }));
+  await assertFails(getDocs(collection(adminDb(), "communityFeedbackAudit")));
+  await assertFails(getDoc(doc(visitor, "communityRateLimits", "message--1234567890abcdef1234567890abcdef12345678")));
+  await assertFails(setDoc(doc(guest, "communityRateLimits", "message--1234567890abcdef1234567890abcdef12345678"), {
+    count: 0
+  }));
+  await assertFails(setDoc(doc(guest, "users", "anonymous-guest"), {
+    profile: {}
+  }));
+});

@@ -16,6 +16,7 @@ import "./external-workspace.css";
 import "./trading-terms.css";
 import "./watchlist-alerts.css";
 import "./professional-terminal.css";
+import "./community.css";
 import { Providers } from "./providers";
 import { PublicChrome } from "./public-chrome";
 import { TradingTermsGate } from "./trading-terms-gate";

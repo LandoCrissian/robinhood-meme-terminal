@@ -10,6 +10,8 @@ import {
 } from "../../../lib/creator-application-cloud";
 import { useProfile } from "../../profile-provider";
 import { ActivationReviewInbox } from "./activation-review-inbox";
+import { CommunityFeedbackInbox } from "./community-feedback-inbox";
+import { CommunityModerationInbox } from "./community-moderation-inbox";
 
 type ReviewDraft = { note: string; slug: string };
 
@@ -158,6 +160,8 @@ export default function CreatorApplicationAdminPage() {
       )}
       {message && <p className="adminReviewMessage" role="status">{message}</p>}
       <ActivationReviewInbox admin={user} />
+      <CommunityModerationInbox admin={user} />
+      <CommunityFeedbackInbox admin={user} />
     </main>
   );
 }

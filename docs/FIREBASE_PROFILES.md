@@ -52,7 +52,9 @@ Invite links use `/r/RMT-XXXXXXXX` and open a dedicated consent page. Only after
 
 ## Branded authentication domain
 
-Production sets `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=www.rmtlaunch.fun`. The Vercel rewrite in `apps/web/vercel.json` transparently proxies only `/__/auth/*` to the project's Firebase Hosting origin, so Google can return through `https://www.rmtlaunch.fun/__/auth/handler` while the browser remains on the RMT domain.
+Production sets `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=www.rmtlaunch.fun`. In the browser, RMT uses the current approved RMT or Vercel deployment hostname as the Firebase `authDomain`. The Vercel rewrite in `apps/web/vercel.json` transparently proxies only `/__/auth/*` to the project's Firebase Hosting origin, so Google returns through the same RMT origin instead of depending on third-party browser storage. Local development retains the configured Firebase helper domain.
+
+Google profile sign-in uses Firebase's full-page redirect flow. This is deliberate: Firebase recommends redirects on mobile, and it avoids popup windows that embedded or mobile browsers may close before authentication completes.
 
 Keep `www.rmtlaunch.fun` in Firebase Authentication's authorized domains and keep the exact handler URL registered on the Firebase-generated Google OAuth client. Do not use a redirect response in place of the rewrite: the auth helper must be reverse-proxied without changing the browser URL. The original `robinhood-meme-terminal.firebaseapp.com` domain remains the upstream and rollback path.
 
@@ -68,7 +70,7 @@ The browser uses Firestore's memory cache rather than persistent IndexedDB cachi
 
 ## Operational behavior
 
-- Google sign-in uses a user-initiated popup on desktop and mobile. This avoids the cross-origin storage requirements of redirect sign-in on modern browsers.
+- Google sign-in uses a user-initiated full-page redirect. Approved RMT and Vercel hosts proxy Firebase's `/__/auth/*` helper on the same origin, avoiding fragile popups and the third-party storage dependency that otherwise affects redirect sign-in on modern browsers.
 - If Firebase is absent or temporarily unavailable, profile edits remain saved locally and trading remains operational.
 - A failed cloud write displays a retry action. Writes are serialized, schema-versioned, and protected from older profile/watchlist versions overwriting newer ones.
 - Deploy rules before enabling the client configuration. Rolling the variables back disables new Firebase initialization without affecting wallets, launches, market data, or trading.
