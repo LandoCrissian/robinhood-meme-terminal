@@ -41,12 +41,15 @@ import {
 } from "../lib/creator-media-manifest";
 import {
   pinCreatorMediaManifest,
-  subscribeToCreatorMediaReceipts
+  subscribeToCreatorMediaReceipts,
+  subscribeToCreatorMediaSupersessions,
+  supersedeCreatorMediaReceipt
 } from "../lib/creator-media-receipt-cloud";
 import {
   receiptMatchesManifest,
   type CreatorMediaReceipt
 } from "../lib/creator-media-receipt";
+import type { CreatorMediaSupersession } from "../lib/creator-media-supersession";
 import type { ProjectAssignment } from "../lib/project-ownership";
 import { CreatorConsentLinkBuilder } from "./creator-consent-link-builder";
 import { CreatorImageField } from "./creator-media-upload";
@@ -101,6 +104,8 @@ export function CreatorAssetStudio({
   const [releaseDecisions, setReleaseDecisions] = useState<CreatorReleaseDecision[]>([]);
   const [mediaReceipts, setMediaReceipts] = useState<CreatorMediaReceipt[]>([]);
   const [mediaPinBusy, setMediaPinBusy] = useState(false);
+  const [mediaSupersessions, setMediaSupersessions] = useState<CreatorMediaSupersession[]>([]);
+  const [supersessionBusyId, setSupersessionBusyId] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -146,6 +151,29 @@ export function CreatorAssetStudio({
       else cleanup();
     }).catch(() => {
       if (active) setMessage("Release-review history is temporarily unavailable.");
+    });
+    return () => {
+      active = false;
+      unsubscribe?.();
+    };
+  }, [projectSlug, selectedId, user]);
+
+  useEffect(() => {
+    if (!selectedId) {
+      setMediaSupersessions([]);
+      return;
+    }
+    let active = true;
+    let unsubscribe: (() => void) | undefined;
+    void subscribeToCreatorMediaSupersessions(user, projectSlug, selectedId, (next) => {
+      if (active) setMediaSupersessions(next);
+    }, () => {
+      if (active) setMessage("Metadata-correction history is temporarily unavailable.");
+    }).then((cleanup) => {
+      if (active) unsubscribe = cleanup;
+      else cleanup();
+    }).catch(() => {
+      if (active) setMessage("Metadata-correction history is temporarily unavailable.");
     });
     return () => {
       active = false;
@@ -315,6 +343,10 @@ export function CreatorAssetStudio({
   const activeMediaReceipt = mediaManifest
     ? mediaReceipts.find((receipt) => receiptMatchesManifest(receipt, mediaManifest)) ?? null
     : null;
+  const staleMediaReceipts = mediaReceipts.filter((receipt) => (
+    receipt.draftRevisionHash !== savedRevisionHash
+    && !mediaSupersessions.some((item) => item.receiptId === receipt.receiptId)
+  ));
   const readiness = evaluateCreatorReleaseReadiness(draft, {
     savedRevisionHash,
     consentRecords,
@@ -374,6 +406,20 @@ export function CreatorAssetStudio({
       setMessage(error instanceof Error ? error.message : "The metadata could not be pinned and verified.");
     } finally {
       setMediaPinBusy(false);
+    }
+  };
+
+  const supersedeMetadata = async (receiptId: string) => {
+    if (!selectedId || !savedRevisionHash) return;
+    setSupersessionBusyId(receiptId);
+    setMessage("");
+    try {
+      const result = await supersedeCreatorMediaReceipt(user, projectSlug, selectedId, receiptId);
+      setMessage(`Immutable correction recorded: ${result.supersessionHash.slice(0, 12)}… The previous receipt remains preserved as superseded history.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "The metadata correction could not be recorded.");
+    } finally {
+      setSupersessionBusyId("");
     }
   };
 
@@ -452,11 +498,33 @@ export function CreatorAssetStudio({
             ? <div className="creatorMediaReceipt">
               <span>VERIFIED PUBLIC IPFS RECEIPT</span>
               <code title={activeMediaReceipt.metadataUri}>{activeMediaReceipt.metadataCid}</code>
-              <small>{activeMediaReceipt.storedSize} BYTES · PINATA RECORD VERIFIED · REVISION BOUND · EXECUTION DISABLED</small>
+              <small>{activeMediaReceipt.storedSize} METADATA BYTES · PINATA RECORD VERIFIED · {activeMediaReceipt.retrievalChecks.length} BOUNDED RETRIEVAL CHECKS · REVISION BOUND · EXECUTION DISABLED</small>
+              <div>
+                {activeMediaReceipt.retrievalChecks.map((check) => <span key={check.role}>
+                  {check.role.toUpperCase()} · {check.exactBytesVerified ? "EXACT BYTES" : `${check.bytesRead} BYTE SAMPLE`} · {check.contentType}
+                </span>)}
+              </div>
             </div>
             : <small>{mediaManifest.mediaIntegrity === "content_addressed"
               ? "Metadata storage: NOT PINNED · Contract execution: DISABLED"
               : "Replace mutable HTTPS media references with IPFS before trusted metadata storage is allowed."}</small>}
+          {staleMediaReceipts.length > 0 && <div className="creatorMediaCorrections">
+            <strong>Previous metadata receipts</strong>
+            <p>A changed rights revision makes these receipts ineligible automatically. Record the replacement to preserve an explicit correction trail.</p>
+            {staleMediaReceipts.map((receipt) => <div key={receipt.receiptId}>
+              <code title={receipt.metadataCid}>{receipt.metadataCid}</code>
+              <small>REVISION {receipt.draftRevisionHash.slice(0, 10)}…{receipt.draftRevisionHash.slice(-8)}</small>
+              <button
+                type="button"
+                disabled={Boolean(supersessionBusyId)}
+                onClick={() => void supersedeMetadata(receipt.receiptId)}
+              >
+                {supersessionBusyId === receipt.receiptId
+                  ? "Recording correction…"
+                  : "Mark superseded by current revision"}
+              </button>
+            </div>)}
+          </div>}
         </>}
         {!mediaManifest && <small>{mediaManifestError || "Save the current valid asset revision to generate its deterministic manifest."}</small>}
       </section>

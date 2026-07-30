@@ -6,7 +6,9 @@ import { createCreatorMediaManifest } from "../../../../lib/creator-media-manife
 import {
   createCreatorMediaReceipt,
   parseCreatorMediaReceipt,
-  receiptMatchesManifest
+  receiptHasVerifiedRetrieval,
+  receiptMatchesManifest,
+  type CreatorMediaReceipt
 } from "../../../../lib/creator-media-receipt";
 import { parseProjectAssignment } from "../../../../lib/project-ownership";
 import {
@@ -120,17 +122,23 @@ export async function POST(request: Request) {
 
     const existingSnapshot = await receiptsReference
       .where("manifestHash", "==", preflight.manifestHash)
-      .limit(1)
+      .limit(10)
       .get();
     const existing = existingSnapshot.docs
       .map((document) => parseCreatorMediaReceipt(document.id, document.data()))
-      .find((receipt) => receipt && receiptMatchesManifest(receipt, preflight));
+      .find((receipt): receipt is CreatorMediaReceipt => (
+        receipt !== null
+        && receiptHasVerifiedRetrieval(receipt)
+        && receiptMatchesManifest(receipt, preflight)
+      ));
     if (existing) {
       return NextResponse.json({
         receiptId: existing.receiptId,
         metadataCid: existing.metadataCid,
         metadataUri: existing.metadataUri,
         providerRecordVerified: existing.providerRecordVerified,
+        retrievalVerified: existing.retrievalVerified,
+        retrievalChecks: existing.retrievalChecks,
         contractExecution: existing.contractExecution,
         idempotent: true
       }, { headers: RESPONSE_HEADERS });
@@ -157,7 +165,11 @@ export async function POST(request: Request) {
       const receiptSnapshot = await transaction.get(receiptReference);
       if (receiptSnapshot.exists) {
         const saved = parseCreatorMediaReceipt(receiptSnapshot.id, receiptSnapshot.data());
-        if (!saved || !receiptMatchesManifest(saved, currentManifest)) throw new Error("conflict");
+        if (
+          !saved
+          || !receiptHasVerifiedRetrieval(saved)
+          || !receiptMatchesManifest(saved, currentManifest)
+        ) throw new Error("conflict");
         return { receipt: saved, idempotent: true };
       }
       transaction.create(receiptReference, {
@@ -172,6 +184,8 @@ export async function POST(request: Request) {
       metadataCid: result.receipt.metadataCid,
       metadataUri: result.receipt.metadataUri,
       providerRecordVerified: result.receipt.providerRecordVerified,
+      retrievalVerified: result.receipt.retrievalVerified,
+      retrievalChecks: result.receipt.retrievalChecks,
       contractExecution: result.receipt.contractExecution,
       idempotent: result.idempotent
     }, { headers: RESPONSE_HEADERS });

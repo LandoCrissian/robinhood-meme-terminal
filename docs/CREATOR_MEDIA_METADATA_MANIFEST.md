@@ -46,9 +46,11 @@ The server:
 5. uploads the exact compact metadata bytes to Pinata's public IPFS network;
 6. validates the returned CID, file identifier, and byte length;
 7. queries Pinata's public file index by CID and requires the same identifier, CID, and byte length;
-8. rechecks the current saved revision after upload;
-9. creates an immutable, owner-private Firestore receipt; and
-10. binds that receipt into every new schema-v2 release-review hash.
+8. retrieves the metadata through a fixed HTTPS IPFS gateway and requires byte-for-byte equality;
+9. performs a bounded 4 KiB retrieval check for each referenced media object without downloading an unbounded asset;
+10. rechecks the current saved revision after upload;
+11. creates an immutable, owner-private Firestore receipt; and
+12. binds that receipt into every new schema-v3 release-review hash.
 
 The Pinata calls use the current V3 upload and list endpoints documented in July 2026:
 
@@ -57,6 +59,14 @@ The Pinata calls use the current V3 upload and list endpoints documented in July
 
 No provider call occurs merely by opening or saving a draft. A creator must explicitly choose **Pin exact metadata to IPFS**. The operation consumes only the project's existing Pinata allowance; RMT adds no paid dependency or recurring job here.
 
+The retrieval gateway defaults to `https://ipfs.io/ipfs/` and can be replaced with the server-only `CREATOR_IPFS_VERIFICATION_GATEWAY` setting. The configured URL must use HTTPS, contain no credentials, and end in `/ipfs/`. RMT rejects redirects, HTML error bodies, empty bodies, metadata larger than 64 KiB, and metadata whose returned bytes differ. Media responses are sampled and cancelled at 4 KiB even when a gateway ignores the HTTP range request. A successful check proves bounded retrievability at that moment—not permanent availability.
+
+## Correction trail
+
+IPFS content is content-addressed, so RMT never presents a correction as editing or erasing an old CID. Saving a changed creator-rights draft produces a new revision and immediately makes every previous receipt ineligible for new release review. The assigned creator can then record one immutable `mediaReceiptSupersessions/{receiptId}` document that links the replaced revision to the current saved revision. The original receipt remains preserved as history.
+
+An RMT administrator cannot mark an older review preparation-ready after its asset revision changes or its metadata receipt receives a supersession record. A correction does not unpin content, revoke third-party copies, resolve a rights dispute, or make any contract executable.
+
 ## Remaining boundary
 
-Before a release can become executable, RMT still needs bounded retrieval/availability checks for every referenced object, a documented correction/unpin policy, an approved production economics policy, contract-template review, testnet execution, independent security review, and explicit production authorization.
+Before a release can become executable, RMT still needs a documented provider unpin and public takedown policy, ongoing availability monitoring, an approved production economics policy, contract-template review, testnet execution, independent security review, and explicit production authorization.

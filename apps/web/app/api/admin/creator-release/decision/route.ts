@@ -8,6 +8,7 @@ import {
 } from "../../../../../lib/creator-release-decision";
 import { parseCreatorConsentPublicStatus } from "../../../../../lib/creator-consent";
 import { parseCreatorReleaseReview } from "../../../../../lib/creator-release-review";
+import { parseCreatorAsset } from "../../../../../lib/creator-assets";
 import { RMT_ADMIN_EMAIL, normalizeProjectSlug } from "../../../../../lib/creator-application";
 import {
   getRmtAdminAuth,
@@ -60,6 +61,8 @@ export async function POST(request: Request) {
     }
     const reviewReference = db.collection("projectAssignments").doc(projectSlug)
       .collection("assets").doc(assetId).collection("releaseReviews").doc(reviewId);
+    const assetReference = db.collection("projectAssignments").doc(projectSlug)
+      .collection("assets").doc(assetId);
     const decisionReference = db.collection("creatorReleaseDecisions").doc(reviewId);
     const result = await db.runTransaction(async (transaction) => {
       const [reviewSnapshot, decisionSnapshot] = await Promise.all([
@@ -84,6 +87,19 @@ export async function POST(request: Request) {
         return { decision: existing, idempotent: true };
       }
       if (outcome === "preparation_ready") {
+        const assetSnapshot = await transaction.get(assetReference);
+        const currentAsset = assetSnapshot.exists
+          ? parseCreatorAsset(assetSnapshot.id, assetSnapshot.data())
+          : null;
+        if (!currentAsset || currentAsset.draftRevisionHash !== review.draftRevisionHash) {
+          throw new Error("release_changed");
+        }
+        if (review.mediaReceipt) {
+          const supersessionSnapshot = await transaction.get(
+            assetReference.collection("mediaReceiptSupersessions").doc(review.mediaReceipt.receiptId)
+          );
+          if (supersessionSnapshot.exists) throw new Error("release_changed");
+        }
         const statusSnapshots = await Promise.all(review.acceptedConsentManifest.map((receipt) => (
           transaction.get(db.collection("creatorConsentStatuses").doc(receipt.invitationDigest.slice(2)))
         )));
@@ -118,6 +134,7 @@ export async function POST(request: Request) {
     if (message === "missing") return NextResponse.json({ error: "The immutable release snapshot is unavailable." }, { status: 404, headers: HEADERS });
     if (message === "decided") return NextResponse.json({ error: "This snapshot already has a different immutable decision." }, { status: 409, headers: HEADERS });
     if (message === "consent_changed") return NextResponse.json({ error: "A collaborator consent receipt is no longer accepted. Prepare a new release revision before marking it ready." }, { status: 409, headers: HEADERS });
+    if (message === "release_changed") return NextResponse.json({ error: "The asset revision or metadata receipt was replaced. Prepare a new immutable snapshot before marking it ready." }, { status: 409, headers: HEADERS });
     if (/decision is invalid|Preparation-ready/.test(message)) return NextResponse.json({ error: message }, { status: 400, headers: HEADERS });
     return NextResponse.json({ error: "The review decision could not be recorded." }, { status: 503, headers: HEADERS });
   }

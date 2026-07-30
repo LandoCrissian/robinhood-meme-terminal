@@ -1438,6 +1438,43 @@ test("release-review snapshots are private and server-immutable", async () => {
   await assertFails(deleteDoc(ownerMediaReceiptReference));
 
   await testEnvironment.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(
+      context.firestore(),
+      "projectAssignments",
+      "runner-studio",
+      "assets",
+      "abcdefghijklmnopqrst",
+      "mediaReceiptSupersessions",
+      mediaReceiptId
+    ), {
+      supersessionId: mediaReceiptId,
+      reasonCode: "creator_correction",
+      createdAt: serverTimestamp()
+    });
+  });
+  const ownerSupersessionReference = doc(
+    owner,
+    "projectAssignments",
+    "runner-studio",
+    "assets",
+    "abcdefghijklmnopqrst",
+    "mediaReceiptSupersessions",
+    mediaReceiptId
+  );
+  await assertSucceeds(getDoc(ownerSupersessionReference));
+  await assertFails(getDoc(doc(
+    authenticatedDb(OTHER_ID),
+    "projectAssignments",
+    "runner-studio",
+    "assets",
+    "abcdefghijklmnopqrst",
+    "mediaReceiptSupersessions",
+    mediaReceiptId
+  )));
+  await assertFails(setDoc(ownerSupersessionReference, { reasonCode: "other" }, { merge: true }));
+  await assertFails(deleteDoc(ownerSupersessionReference));
+
+  await testEnvironment.withSecurityRulesDisabled(async (context) => {
     await setDoc(doc(context.firestore(), "creatorReleaseDecisions", reviewId), {
       reviewId,
       projectSlug: "runner-studio",

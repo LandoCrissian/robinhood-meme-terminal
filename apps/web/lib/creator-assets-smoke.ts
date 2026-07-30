@@ -65,6 +65,10 @@ import {
   parseCreatorMediaReceipt,
   receiptMatchesManifest
 } from "./creator-media-receipt";
+import {
+  createCreatorMediaSupersession,
+  parseCreatorMediaSupersession
+} from "./creator-media-supersession";
 
 const validArtwork = {
   ...EMPTY_CREATOR_ASSET,
@@ -124,6 +128,27 @@ const immutableMediaManifest = createCreatorMediaManifest({
   assetId: "abcdefghijklmnopqrst",
   draft: immutableMediaDraft
 });
+const retrievalEvidence = (
+  manifest: typeof immutableMediaManifest,
+  metadataCid: string
+) => ({
+  retrievalGatewayOrigin: "https://ipfs.io",
+  retrievalChecks: [{
+    role: "metadata" as const,
+    uri: `ipfs://${metadataCid}`,
+    contentType: "application/json",
+    bytesRead: new TextEncoder().encode(creatorMetadataBytes(manifest)).byteLength,
+    exactBytesVerified: true,
+    status: "retrieved" as const
+  }, ...manifest.media.map((reference) => ({
+    role: reference.role,
+    uri: reference.uri,
+    contentType: reference.role === "primary" ? "image/png" : "image/webp",
+    bytesRead: 4_096,
+    exactBytesVerified: false,
+    status: "retrieved" as const
+  }))]
+});
 assert.equal(immutableMediaManifest.mediaIntegrity, "content_addressed");
 assert.equal(immutableMediaManifest.metadataStorage, "not_pinned");
 assert.equal(immutableMediaManifest.contractExecution, "disabled");
@@ -133,16 +158,39 @@ const mediaReceipt = createCreatorMediaReceipt({
   manifest: immutableMediaManifest,
   metadataCid: "bafkreicnu2aqjkoglrlrd65giwo4l64pdajxffk6jtq2vb7yaiopc3yu7m",
   providerFileId: "e5323ea7-8a02-4486-9b6f-63c788810aeb",
-  storedSize: new TextEncoder().encode(creatorMetadataBytes(immutableMediaManifest)).byteLength
+  storedSize: new TextEncoder().encode(creatorMetadataBytes(immutableMediaManifest)).byteLength,
+  ...retrievalEvidence(
+    immutableMediaManifest,
+    "bafkreicnu2aqjkoglrlrd65giwo4l64pdajxffk6jtq2vb7yaiopc3yu7m"
+  )
 });
 assert.equal(mediaReceipt.metadataUri, `ipfs://${mediaReceipt.metadataCid}`);
 assert.equal(mediaReceipt.providerRecordVerified, true);
+assert.equal(mediaReceipt.retrievalVerified, true);
+assert.equal(mediaReceipt.retrievalChecks[0]?.exactBytesVerified, true);
 assert.equal(mediaReceipt.contractExecution, "disabled");
 assert.equal(receiptMatchesManifest(mediaReceipt, immutableMediaManifest), true);
 assert.deepEqual(parseCreatorMediaReceipt(mediaReceipt.receiptId, mediaReceipt), mediaReceipt);
 assert.equal(parseCreatorMediaReceipt(mediaReceipt.receiptId, {
   ...mediaReceipt,
   storedSize: mediaReceipt.storedSize + 1
+}), null);
+const mediaSupersession = createCreatorMediaSupersession({
+  projectSlug: mediaReceipt.projectSlug,
+  assetId: mediaReceipt.assetId,
+  receiptId: mediaReceipt.receiptId,
+  replacedDraftRevisionHash: mediaReceipt.draftRevisionHash,
+  replacementDraftRevisionHash: `0x${"9".repeat(64)}`,
+  recordedBy: "creator-user-id"
+});
+assert.equal(mediaSupersession.contractExecution, "disabled");
+assert.deepEqual(
+  parseCreatorMediaSupersession(mediaSupersession.supersessionId, mediaSupersession),
+  mediaSupersession
+);
+assert.equal(parseCreatorMediaSupersession(mediaSupersession.supersessionId, {
+  ...mediaSupersession,
+  replacementDraftRevisionHash: `0x${"8".repeat(64)}`
 }), null);
 assert.throws(() => createCreatorMediaReceipt({
   manifest: createCreatorMediaManifest({
@@ -152,7 +200,15 @@ assert.throws(() => createCreatorMediaReceipt({
   }),
   metadataCid: mediaReceipt.metadataCid,
   providerFileId: mediaReceipt.providerFileId,
-  storedSize: mediaReceipt.storedSize
+  storedSize: mediaReceipt.storedSize,
+  ...retrievalEvidence(
+    createCreatorMediaManifest({
+      projectSlug: "runner-studio",
+      assetId: "abcdefghijklmnopqrst",
+      draft: { ...immutableMediaDraft, previewMediaUri: "https://example.com/preview.png" }
+    }),
+    mediaReceipt.metadataCid
+  )
 }), /content-addressed/);
 assert.notEqual(createCreatorMediaManifest({
   projectSlug: "runner-studio",
@@ -583,7 +639,11 @@ async function testSignedConsentResponse() {
     manifest: reviewMediaManifest,
     metadataCid: "bafkreiffsgtnic7uebaeuaixgph3pmmq2ywglpylzwrswv5so7m23hyuny",
     providerFileId: "f6424fb8-9b13-4486-9b6f-63c788810aeb",
-    storedSize: new TextEncoder().encode(creatorMetadataBytes(reviewMediaManifest)).byteLength
+    storedSize: new TextEncoder().encode(creatorMetadataBytes(reviewMediaManifest)).byteLength,
+    ...retrievalEvidence(
+      reviewMediaManifest,
+      "bafkreiffsgtnic7uebaeuaixgph3pmmq2ywglpylzwrswv5so7m23hyuny"
+    )
   });
   const review = createCreatorReleaseReview({
     asset: reviewAsset,
@@ -623,6 +683,56 @@ async function testSignedConsentResponse() {
     ...legacyReview,
     mediaReceipt: null
   });
+  const legacyMediaReceiptPayload = {
+    schemaVersion: 1 as const,
+    projectSlug: reviewMediaReceipt.projectSlug,
+    assetId: reviewMediaReceipt.assetId,
+    draftRevisionHash: reviewMediaReceipt.draftRevisionHash,
+    metadataHash: reviewMediaReceipt.metadataHash,
+    manifestHash: reviewMediaReceipt.manifestHash,
+    metadataCid: reviewMediaReceipt.metadataCid,
+    metadataUri: reviewMediaReceipt.metadataUri,
+    storageProvider: reviewMediaReceipt.storageProvider,
+    storageNetwork: reviewMediaReceipt.storageNetwork,
+    providerFileId: reviewMediaReceipt.providerFileId,
+    storedSize: reviewMediaReceipt.storedSize,
+    providerRecordVerified: reviewMediaReceipt.providerRecordVerified,
+    contractExecution: reviewMediaReceipt.contractExecution
+  };
+  const legacyMediaReceiptHash = keccak256(toHex(JSON.stringify(legacyMediaReceiptPayload)));
+  const legacyMediaReceipt = {
+    ...legacyMediaReceiptPayload,
+    receiptId: legacyMediaReceiptHash.slice(2)
+  };
+  assert.deepEqual(
+    parseCreatorMediaReceipt(legacyMediaReceipt.receiptId, legacyMediaReceipt),
+    legacyMediaReceipt
+  );
+  const storedMediaReviewPayload = {
+    schemaVersion: 2 as const,
+    projectSlug: review.projectSlug,
+    assetId: review.assetId,
+    draftRevisionHash: review.draftRevisionHash,
+    preparedBy: review.preparedBy,
+    assetSnapshot: review.assetSnapshot,
+    acceptedConsentManifest: review.acceptedConsentManifest,
+    payoutManifest: review.payoutManifest,
+    mediaReceipt: legacyMediaReceipt,
+    economicsPolicy: review.economicsPolicy,
+    economicsMode: review.economicsMode,
+    contractExecution: review.contractExecution,
+    status: review.status
+  };
+  const storedMediaReviewHash = keccak256(toHex(JSON.stringify(storedMediaReviewPayload)));
+  const storedMediaReview = {
+    ...storedMediaReviewPayload,
+    reviewId: storedMediaReviewHash.slice(2),
+    reviewHash: storedMediaReviewHash
+  };
+  assert.deepEqual(
+    parseCreatorReleaseReview(storedMediaReview.reviewId, storedMediaReview),
+    storedMediaReview
+  );
   assert.equal(parseCreatorReleaseReview(review.reviewId, {
     ...review,
     payoutManifest: [{ ...review.payoutManifest[0], shareBps: 9_999 }]
@@ -758,7 +868,26 @@ assert.match(mediaPinRouteSource, /verifyIdToken\(token, true\)/);
 assert.match(mediaPinRouteSource, /pinAndVerifyCreatorMetadata/);
 assert.match(mediaPinRouteSource, /transaction\.create/);
 assert.match(mediaPinRouteSource, /mediaIntegrity/);
+assert.match(mediaPinRouteSource, /retrievalVerified/);
 assert.doesNotMatch(mediaPinRouteSource, /mintNFT|createListing|executeSplit|transferFrom/);
+const pinataStorageSource = readFileSync(
+  new URL("./server/pinata-public-file.ts", import.meta.url),
+  "utf8"
+);
+assert.match(pinataStorageSource, /Range: `bytes=0-\$\{maxBytes - 1\}`/);
+assert.match(pinataStorageSource, /redirect: "error"/);
+assert.match(pinataStorageSource, /retrieval_metadata_mismatch/);
+assert.match(pinataStorageSource, /reader\.cancel/);
+assert.doesNotMatch(pinataStorageSource, /console\.(log|info|debug)/);
+
+const mediaSupersessionRouteSource = readFileSync(
+  new URL("../app/api/creator-media/supersede/route.ts", import.meta.url),
+  "utf8"
+);
+assert.match(mediaSupersessionRouteSource, /verifyIdToken\(token, true\)/);
+assert.match(mediaSupersessionRouteSource, /transaction\.create/);
+assert.match(mediaSupersessionRouteSource, /draftRevisionHash === asset\.draftRevisionHash/);
+assert.doesNotMatch(mediaSupersessionRouteSource, /mintNFT|createListing|executeSplit|transferFrom/);
 
 const releaseDecisionRouteSource = readFileSync(
   new URL("../app/api/admin/creator-release/decision/route.ts", import.meta.url),
@@ -770,6 +899,8 @@ assert.match(releaseDecisionRouteSource, /transaction\.create/);
 assert.match(releaseDecisionRouteSource, /contractExecution/);
 assert.match(releaseDecisionRouteSource, /parseCreatorConsentPublicStatus/);
 assert.match(releaseDecisionRouteSource, /status\.status === "accepted"/);
+assert.match(releaseDecisionRouteSource, /mediaReceiptSupersessions/);
+assert.match(releaseDecisionRouteSource, /release_changed/);
 assert.doesNotMatch(releaseDecisionRouteSource, /mintNFT|createListing|executeSplit/);
 
 void testSignedConsentResponse().then(() => {

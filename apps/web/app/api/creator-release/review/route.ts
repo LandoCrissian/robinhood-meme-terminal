@@ -7,7 +7,9 @@ import { RMT_MARKETPLACE_SIMULATION_POLICY } from "../../../../lib/creator-econo
 import { createCreatorMediaManifest } from "../../../../lib/creator-media-manifest";
 import {
   parseCreatorMediaReceipt,
-  receiptMatchesManifest
+  receiptHasVerifiedRetrieval,
+  receiptMatchesManifest,
+  type CreatorMediaReceipt
 } from "../../../../lib/creator-media-receipt";
 import {
   createCreatorReleaseReview,
@@ -117,11 +119,15 @@ export async function POST(request: Request) {
       const mediaReceiptQuery = assetReference
         .collection("mediaReceipts")
         .where("manifestHash", "==", mediaManifest.manifestHash)
-        .limit(1);
+        .limit(10);
       const mediaReceiptSnapshot = await transaction.get(mediaReceiptQuery);
       const mediaReceipt = mediaReceiptSnapshot.docs
         .map((document) => parseCreatorMediaReceipt(document.id, document.data()))
-        .find((receipt) => receipt && receiptMatchesManifest(receipt, mediaManifest));
+        .find((receipt): receipt is CreatorMediaReceipt => (
+          receipt !== null
+          && receiptHasVerifiedRetrieval(receipt)
+          && receiptMatchesManifest(receipt, mediaManifest)
+        ));
       if (!mediaReceipt) throw new Error("media_receipt");
       const consentRecords = consentSnapshot.docs
         .map((document) => parseCreatorConsentInvitationRecord(document.id, document.data()))
