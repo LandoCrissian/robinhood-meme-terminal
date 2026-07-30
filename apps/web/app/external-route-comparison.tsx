@@ -143,6 +143,7 @@ export function ExternalRouteComparison({
   amount,
   selectedVenue,
   selectionMode,
+  maxPriceImpact,
   onSelectVenue,
   onRecommendedVenue,
   onHealthChange
@@ -153,6 +154,7 @@ export function ExternalRouteComparison({
   amount: string;
   selectedVenue: "sushi" | "uniswap" | null;
   selectionMode: TradeVenueSelectionMode;
+  maxPriceImpact: number;
   onSelectVenue: (venue: "sushi" | "uniswap") => void;
   onRecommendedVenue?: (recommendation: {
     venue: TradeVenueId;
@@ -329,8 +331,9 @@ export function ExternalRouteComparison({
   }), [states, venues]);
   const recommendation = useMemo(() => protectedOutputRecommendation({
     selected: selectedVenue,
-    quotes: ready
-  }), [ready, selectedVenue]);
+    quotes: ready,
+    maxPriceImpact
+  }), [maxPriceImpact, ready, selectedVenue]);
   const higherProtectedOutput = recommendation
     ? ready.find((quote) => quote.venue === recommendation.leader)
     : undefined;
@@ -363,10 +366,11 @@ export function ExternalRouteComparison({
           const state = states[candidate.venue];
           const quote = state?.quote;
           const leads = higherProtectedOutput?.venue === candidate.venue;
+          const outsideImpactLimit = Boolean(quote && quote.priceImpact > maxPriceImpact);
           return (
             <button
               type="button"
-              className={`${selectedVenue === candidate.venue ? "active" : ""} ${leads ? "leading" : ""}`}
+              className={`${selectedVenue === candidate.venue ? "active" : ""} ${leads ? "leading" : ""} ${outsideImpactLimit ? "outsideLimit" : ""}`}
               aria-pressed={selectedVenue === candidate.venue}
               onClick={() => onSelectVenue(candidate.venue)}
               key={candidate.venue}
@@ -388,6 +392,7 @@ export function ExternalRouteComparison({
                     : address && amountIn > 0n ? "Route unavailable" : "Select venue"}
               </span>
               {quote && <span>{(quote.priceImpact * 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}% impact</span>}
+              {outsideImpactLimit && <span className="universalVenueLimit">Above your {(maxPriceImpact * 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}% limit</span>}
               {quote && address && (
                 <RouteNextCost
                   quote={quote}
@@ -402,7 +407,7 @@ export function ExternalRouteComparison({
         })}
       </div>
       <p>
-        Automatic mode changes routes only when protected output improves by at least 0.25%.
+        Automatic mode considers only routes within your price-impact limit and changes routes only when protected output improves by at least 0.25%.
         Network fees remain separate; the selected ticket rebuilds and rechecks the final transaction before signing.
       </p>
     </section>
