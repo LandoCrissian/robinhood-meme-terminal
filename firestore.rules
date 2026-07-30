@@ -715,6 +715,9 @@ service cloud.firestore {
           'respondedAt',
           'signerWallet',
           'receivedAt',
+          'withdrawalSignature',
+          'withdrawalSignedAt',
+          'withdrawalReceivedAt',
           'createdAt',
           'updatedAt'
         ])
@@ -741,6 +744,9 @@ service cloud.firestore {
         && data.get('respondedAt', null) == null
         && data.get('signerWallet', null) == null
         && data.get('receivedAt', null) == null
+        && data.get('withdrawalSignature', null) == null
+        && data.get('withdrawalSignedAt', null) == null
+        && data.get('withdrawalReceivedAt', null) == null
         && data.createdAt is timestamp
         && data.updatedAt is timestamp;
     }

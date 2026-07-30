@@ -16,12 +16,16 @@ import {
 import { evaluateCreatorReleaseReadiness } from "./creator-release-readiness";
 import {
   CREATOR_CONSENT_TERMS_HASH,
+  CREATOR_CONSENT_WITHDRAWAL_TERMS_HASH,
   creatorConsentResponseTypedData,
+  creatorConsentWithdrawalTypedData,
   decodeCreatorConsentInvitationPacket,
   decodeCreatorConsentResponsePacket,
+  decodeCreatorConsentWithdrawalPacket,
   encodeCreatorConsentPacket,
   hashCreatorConsentInvitation,
   verifyCreatorConsentResponse,
+  verifyCreatorConsentWithdrawal,
   validateCreatorConsentInvitation,
   type CreatorConsentInvitation,
   type CreatorConsentInvitationRecord,
@@ -31,6 +35,10 @@ import {
   CreatorConsentReceiptError,
   evaluateCreatorConsentReceipt
 } from "./server/creator-consent-receipt";
+import {
+  CreatorConsentWithdrawalError,
+  evaluateCreatorConsentWithdrawal
+} from "./server/creator-consent-withdrawal";
 import {
   createCreatorReleaseReview,
   parseCreatorReleaseReview
@@ -299,7 +307,10 @@ async function testSignedConsentResponse() {
     responseSignature: null,
     respondedAt: null,
     signerWallet: null,
-    receivedAt: null
+    receivedAt: null,
+    withdrawalSignature: null,
+    withdrawalSignedAt: null,
+    withdrawalReceivedAt: null
   };
   const publicStatus: CreatorConsentPublicStatus = {
     schemaVersion: 1,
@@ -335,6 +346,70 @@ async function testSignedConsentResponse() {
     publicStatus: { ...publicStatus, status: "accepted" },
     response: responsePacket.response
   }), { status: "accepted", action: "accept", idempotent: true });
+
+  const withdrawnAt = respondedAt + 120;
+  const withdrawalSignature = await collaboratorAccount.signTypedData(
+    creatorConsentWithdrawalTypedData(signedInvitation, withdrawnAt)
+  );
+  const withdrawalPacket = {
+    kind: "rmt_creator_consent_withdrawal" as const,
+    withdrawal: {
+      schemaVersion: 1 as const,
+      invitationDigest: invitationPacket.invitationDigest,
+      collaboratorWallet: signedInvitation.collaboratorWallet,
+      withdrawnAt,
+      termsHash: CREATOR_CONSENT_WITHDRAWAL_TERMS_HASH,
+      signature: withdrawalSignature
+    }
+  };
+  const withdrawalCode = encodeCreatorConsentPacket(withdrawalPacket);
+  assert.deepEqual(decodeCreatorConsentWithdrawalPacket(withdrawalCode), withdrawalPacket);
+  assert.equal(
+    await verifyCreatorConsentWithdrawal(signedInvitation, withdrawalPacket.withdrawal),
+    true
+  );
+  assert.deepEqual(await evaluateCreatorConsentWithdrawal({
+    invitation: finalRecord,
+    nowSeconds: withdrawnAt,
+    publicStatus: { ...publicStatus, status: "accepted" },
+    withdrawal: withdrawalPacket.withdrawal
+  }), { status: "withdrawn", idempotent: false });
+  const withdrawnRecord: CreatorConsentInvitationRecord = {
+    ...finalRecord,
+    status: "withdrawn",
+    withdrawalSignature,
+    withdrawalSignedAt: withdrawnAt,
+    withdrawalReceivedAt: {}
+  };
+  assert.deepEqual(await evaluateCreatorConsentWithdrawal({
+    invitation: withdrawnRecord,
+    nowSeconds: withdrawnAt + 1,
+    publicStatus: { ...publicStatus, status: "withdrawn" },
+    withdrawal: withdrawalPacket.withdrawal
+  }), { status: "withdrawn", idempotent: true });
+  await assert.rejects(
+    evaluateCreatorConsentWithdrawal({
+      invitation: invitationRecord,
+      nowSeconds: withdrawnAt,
+      publicStatus,
+      withdrawal: withdrawalPacket.withdrawal
+    }),
+    (error: unknown) => error instanceof CreatorConsentWithdrawalError
+      && error.code === "not_accepted"
+  );
+  await assert.rejects(
+    evaluateCreatorConsentWithdrawal({
+      invitation: finalRecord,
+      nowSeconds: withdrawnAt,
+      publicStatus: { ...publicStatus, status: "accepted" },
+      withdrawal: {
+        ...withdrawalPacket.withdrawal,
+        collaboratorWallet: "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }),
+    (error: unknown) => error instanceof CreatorConsentWithdrawalError
+      && error.code === "invalid"
+  );
 
   async function expectReceiptFailure(
     code: CreatorConsentReceiptError["code"],
@@ -516,6 +591,7 @@ assert.match(consentPageSource, /Creator-supplied information/);
 assert.match(consentPageSource, /trusted receipt service/);
 assert.match(consentPageSource, /No minting · No listing · No transfer/);
 assert.match(consentPageSource, /current revocation status/);
+assert.match(consentPageSource, /Withdraw acceptance/);
 
 const cloudSource = readFileSync(new URL("./creator-assets-cloud.ts", import.meta.url), "utf8");
 assert.match(cloudSource, /projectAssignments/);
@@ -537,6 +613,15 @@ assert.match(consentReceiptSource, /FieldValue\.serverTimestamp/);
 assert.match(consentReceiptSource, /evaluateCreatorConsentReceipt/);
 assert.doesNotMatch(consentReceiptSource, /console\.(log|info|debug)/);
 
+const consentWithdrawalSource = readFileSync(
+  new URL("../app/api/creator-consent/withdrawal/route.ts", import.meta.url),
+  "utf8"
+);
+assert.match(consentWithdrawalSource, /runTransaction/);
+assert.match(consentWithdrawalSource, /evaluateCreatorConsentWithdrawal/);
+assert.match(consentWithdrawalSource, /status: "withdrawn"/);
+assert.doesNotMatch(consentWithdrawalSource, /mintNFT|createListing|executeSplit|transferFrom/);
+
 const releaseReviewRouteSource = readFileSync(
   new URL("../app/api/creator-release/review/route.ts", import.meta.url),
   "utf8"
@@ -555,6 +640,8 @@ assert.match(releaseDecisionRouteSource, /RMT_ADMIN_EMAIL/);
 assert.match(releaseDecisionRouteSource, /verifyIdToken\(token, true\)/);
 assert.match(releaseDecisionRouteSource, /transaction\.create/);
 assert.match(releaseDecisionRouteSource, /contractExecution/);
+assert.match(releaseDecisionRouteSource, /parseCreatorConsentPublicStatus/);
+assert.match(releaseDecisionRouteSource, /status\.status === "accepted"/);
 assert.doesNotMatch(releaseDecisionRouteSource, /mintNFT|createListing|executeSplit/);
 
 void testSignedConsentResponse().then(() => {

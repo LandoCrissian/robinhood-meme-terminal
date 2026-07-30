@@ -6,6 +6,7 @@ import {
   createCreatorReleaseDecision,
   parseCreatorReleaseDecision
 } from "../../../../../lib/creator-release-decision";
+import { parseCreatorConsentPublicStatus } from "../../../../../lib/creator-consent";
 import { parseCreatorReleaseReview } from "../../../../../lib/creator-release-review";
 import { RMT_ADMIN_EMAIL, normalizeProjectSlug } from "../../../../../lib/creator-application";
 import {
@@ -82,6 +83,25 @@ export async function POST(request: Request) {
         if (!existing || existing.decisionHash !== decision.decisionHash) throw new Error("decided");
         return { decision: existing, idempotent: true };
       }
+      if (outcome === "preparation_ready") {
+        const statusSnapshots = await Promise.all(review.acceptedConsentManifest.map((receipt) => (
+          transaction.get(db.collection("creatorConsentStatuses").doc(receipt.invitationDigest.slice(2)))
+        )));
+        const consentStillAccepted = review.acceptedConsentManifest.every((receipt, index) => {
+          const snapshot = statusSnapshots[index];
+          const status = snapshot?.exists
+            ? parseCreatorConsentPublicStatus(snapshot.id, snapshot.data())
+            : null;
+          return Boolean(
+            status
+            && status.invitationDigest === receipt.invitationDigest
+            && status.projectSlug === projectSlug
+            && status.assetId === assetId
+            && status.status === "accepted"
+          );
+        });
+        if (!consentStillAccepted) throw new Error("consent_changed");
+      }
       transaction.create(decisionReference, { ...decision, decidedAt: FieldValue.serverTimestamp() });
       return { decision, idempotent: false };
     });
@@ -97,6 +117,7 @@ export async function POST(request: Request) {
     if (code.startsWith("auth/")) return NextResponse.json({ error: "Administrator sign-in expired." }, { status: 401, headers: HEADERS });
     if (message === "missing") return NextResponse.json({ error: "The immutable release snapshot is unavailable." }, { status: 404, headers: HEADERS });
     if (message === "decided") return NextResponse.json({ error: "This snapshot already has a different immutable decision." }, { status: 409, headers: HEADERS });
+    if (message === "consent_changed") return NextResponse.json({ error: "A collaborator consent receipt is no longer accepted. Prepare a new release revision before marking it ready." }, { status: 409, headers: HEADERS });
     if (/decision is invalid|Preparation-ready/.test(message)) return NextResponse.json({ error: message }, { status: 400, headers: HEADERS });
     return NextResponse.json({ error: "The review decision could not be recorded." }, { status: 503, headers: HEADERS });
   }

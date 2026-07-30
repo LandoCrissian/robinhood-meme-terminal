@@ -61,7 +61,7 @@ Editing any covered field produces a different revision hash. The hash is a stab
 
 `apps/web/lib/creator-consent.ts` defines that versioned EIP-712 consent envelope and digest. It binds all of those fields, includes a one-time nonce, expires within 30 days, and changes its digest when the revision or proposed share changes. The server records a final response only while the invitation is pending, before expiration, from the invited signer, and against the unchanged asset revision.
 
-Creators can save private, seven-day invitation records and prepare shareable review links. The collaborator review page verifies the packet, current public status marker, exact wallet, chain, expiration, terms hash, and typed signature. A server-only Firebase Admin receipt endpoint atomically records accepted or rejected responses, and the private release passport recognizes only exact accepted receipts. The endpoint remains disabled in any environment without its dedicated server credential. See `docs/CREATOR_COLLABORATOR_CONSENT.md`.
+Creators can save private, seven-day invitation records and prepare shareable review links. The collaborator review page verifies the packet, current public status marker, exact wallet, chain, expiration, terms hash, and typed signature. A server-only Firebase Admin receipt endpoint atomically records accepted or rejected responses, and the private release passport recognizes only exact accepted receipts. An invited wallet can later sign a separate, invitation-bound withdrawal. The trusted withdrawal endpoint changes both private and public state to `withdrawn`; that receipt immediately stops satisfying release readiness. RMT has no executable release-freeze state yet, so withdrawal remains available for every recorded acceptance in this foundation. Both endpoints remain disabled in any environment without the dedicated server credential. See `docs/CREATOR_COLLABORATOR_CONSENT.md`.
 
 When every blocking passport check is resolved, the assigned creator can prepare a deterministic private release-review snapshot. It binds the complete rights revision, accepted consent manifest, proposed payout manifest, and preparation-only economics policy into an immutable server-created record. The record remains `prepared`, `simulation_only`, and `contract execution disabled`; it is not approval or publication. See `docs/CREATOR_RELEASE_REVIEW.md`.
 
@@ -72,7 +72,7 @@ The private RMT review inbox can add one immutable, reason-coded preparation dec
 Marketplace and collection contracts must consume a versioned, reviewed rights snapshot rather than mutable draft fields. Before any contract work:
 
 1. add an RMT reviewer decision state above the immutable creator-prepared snapshot;
-2. define collaborator-initiated revocation and correction behavior before release freeze;
+2. define the eventual onchain release-freeze boundary and post-freeze correction process; pre-freeze collaborator withdrawal is implemented;
 3. define jurisdiction-specific license presentation;
 4. map accepted payout wallets into an immutable split manifest;
 5. require the creator to review the exact contract configuration and transaction.

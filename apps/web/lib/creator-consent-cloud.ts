@@ -119,6 +119,9 @@ export async function saveCreatorConsentInvitation(
       respondedAt: null,
       signerWallet: null,
       receivedAt: null,
+      withdrawalSignature: null,
+      withdrawalSignedAt: null,
+      withdrawalReceivedAt: null,
       createdAt: now,
       updatedAt: now
     });

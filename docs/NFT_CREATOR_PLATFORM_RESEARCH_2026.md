@@ -70,13 +70,14 @@ RMT should not convert individual comments into universal claims. It should use 
 - Deterministic revision hashes.
 - Versioned EIP-712 collaborator invitation envelope.
 - Private, revision-bound collaborator invitation records, public revocation-only markers, wallet acceptance/rejection signing, and local signature verification.
+- Collaborator-controlled withdrawal of a recorded acceptance before any future executable release freeze, with a separate typed signature and trusted atomic receipt.
 - Secondary royalty preference with an explicit non-enforcement warning.
 - Non-executable marketplace fee and RMT flywheel policy model.
 - Private release-passport readiness evaluation.
 
 ### Required before marketplace contracts
 
-- Trusted, idempotent server receipts that convert valid unexpired wallet responses into final collaborator acceptance or rejection.
+- A defined executable release-freeze boundary and post-freeze correction or dispute process. The current server receipts finalize acceptance, rejection, and pre-freeze withdrawal, but cannot freeze a release.
 - Frozen metadata manifest and media pinning verification.
 - Creator and collection identity review with appeals and report status.
 - Versioned economics policy selected for a release.

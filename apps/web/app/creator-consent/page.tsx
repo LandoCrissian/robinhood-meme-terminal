@@ -7,7 +7,10 @@ import {
   CREATOR_CONSENT_SCHEMA_VERSION,
   CREATOR_CONSENT_TERMS,
   CREATOR_CONSENT_TERMS_HASH,
+  CREATOR_CONSENT_WITHDRAWAL_TERMS,
+  CREATOR_CONSENT_WITHDRAWAL_TERMS_HASH,
   creatorConsentResponseTypedData,
+  creatorConsentWithdrawalTypedData,
   decodeCreatorConsentInvitationPacket,
   encodeCreatorConsentPacket,
   type CreatorConsentAction,
@@ -33,7 +36,7 @@ export default function CreatorConsentPage() {
   const [busy, setBusy] = useState(false);
   const [responseCode, setResponseCode] = useState("");
   const [message, setMessage] = useState("");
-  const [registryStatus, setRegistryStatus] = useState<"loading" | "pending" | "revoked" | "accepted" | "rejected" | "unavailable">("loading");
+  const [registryStatus, setRegistryStatus] = useState<"loading" | "pending" | "revoked" | "accepted" | "rejected" | "withdrawn" | "unavailable">("loading");
 
   useEffect(() => {
     const read = () => {
@@ -149,6 +152,52 @@ export default function CreatorConsentPage() {
     }
   };
 
+  const withdraw = async () => {
+    if (!packet || !address || !walletClient || !correctWallet || !correctChain || registryStatus !== "accepted") return;
+    setBusy(true);
+    setMessage("");
+    try {
+      const withdrawnAt = Math.floor(Date.now() / 1_000);
+      const signature = await walletClient.signTypedData({
+        account: address,
+        ...creatorConsentWithdrawalTypedData(packet.invitation, withdrawnAt)
+      });
+      const withdrawalCode = encodeCreatorConsentPacket({
+        kind: "rmt_creator_consent_withdrawal",
+        withdrawal: {
+          schemaVersion: CREATOR_CONSENT_SCHEMA_VERSION,
+          invitationDigest: packet.invitationDigest,
+          collaboratorWallet: packet.invitation.collaboratorWallet,
+          withdrawnAt,
+          termsHash: CREATOR_CONSENT_WITHDRAWAL_TERMS_HASH,
+          signature
+        }
+      });
+      setResponseCode(withdrawalCode);
+      const receipt = await fetch("/api/creator-consent/withdrawal", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ withdrawalCode })
+      });
+      const receiptBody = await receipt.json().catch(() => null) as { error?: unknown; status?: unknown } | null;
+      if (receipt.ok && receiptBody?.status === "withdrawn") {
+        setMessage("Consent withdrawal recorded. This receipt no longer satisfies release readiness.");
+      } else {
+        const detail = typeof receiptBody?.error === "string"
+          ? receiptBody.error
+          : "The trusted withdrawal service is temporarily unavailable.";
+        setMessage(`Withdrawal signed, but not recorded: ${detail} Keep the response code and try again.`);
+      }
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : "";
+      setMessage(/rejected|denied|cancelled|canceled/i.test(detail)
+        ? "The wallet signature was cancelled. The recorded acceptance remains unchanged."
+        : "The wallet could not sign this withdrawal. The recorded acceptance remains unchanged.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const copyResponse = async () => {
     if (!responseCode) return;
     try {
@@ -169,7 +218,7 @@ export default function CreatorConsentPage() {
       <section className="creatorConsentCard">
         <header>
           <div><p className="eyebrow">REVISION-BOUND CONSENT</p><h1>Review collaborator invitation</h1></div>
-          <span>{expired ? "EXPIRED" : registryStatus === "accepted" ? "ACCEPTED" : registryStatus === "rejected" ? "REJECTED" : "PRIVATE REVIEW"}</span>
+          <span>{registryStatus === "withdrawn" ? "WITHDRAWN" : expired && registryStatus === "pending" ? "EXPIRED" : registryStatus === "accepted" ? "ACCEPTED" : registryStatus === "rejected" ? "REJECTED" : "PRIVATE REVIEW"}</span>
         </header>
 
         <div className="creatorConsentNotice">
@@ -200,6 +249,7 @@ export default function CreatorConsentPage() {
         {registryStatus === "revoked" && <p className="creatorConsentError">The project creator revoked this invitation. Signing is disabled.</p>}
         {registryStatus === "accepted" && <p className="creatorConsentFinal">RMT recorded this wallet’s acceptance before expiration.</p>}
         {registryStatus === "rejected" && <p className="creatorConsentFinal rejected">RMT recorded this wallet’s rejection before expiration.</p>}
+        {registryStatus === "withdrawn" && <p className="creatorConsentFinal rejected">The invited wallet withdrew its recorded acceptance. This invitation no longer satisfies release readiness.</p>}
         {registryStatus === "unavailable" && <p className="creatorConsentError">RMT cannot verify the invitation’s current revocation status. Signing is disabled; request a new link.</p>}
         {!supportedChain && <p className="creatorConsentError">This RMT interface does not support the invitation’s network.</p>}
         {!isConnected && !expired && supportedChain && <div className="creatorConsentConnect"><WalletButton target={target} /><small>Connect the exact invited wallet. Connection alone grants no authority.</small></div>}
@@ -209,9 +259,12 @@ export default function CreatorConsentPage() {
         <div className="creatorConsentActions">
           <button type="button" disabled={busy || expired || registryStatus !== "pending" || !recognizedTerms || !supportedChain || !correctWallet || !correctChain} onClick={() => void respond("accept")}>{busy ? "Waiting for wallet…" : "Sign acceptance"}</button>
           <button type="button" className="reject" disabled={busy || expired || registryStatus !== "pending" || !recognizedTerms || !supportedChain || !correctWallet || !correctChain} onClick={() => void respond("reject")}>Sign rejection</button>
+          {registryStatus === "accepted" && <button type="button" className="reject" disabled={busy || !supportedChain || !correctWallet || !correctChain} onClick={() => void withdraw()}>{busy ? "Waiting for wallet…" : "Withdraw acceptance"}</button>}
         </div>
 
-        {responseCode && <div className="creatorConsentResponse"><label>Signed response code<textarea readOnly value={responseCode} onFocus={(event) => event.currentTarget.select()} /></label><button type="button" onClick={() => void copyResponse()}>Copy response code</button><small>Keep this signed code as evidence. RMT marks the answer final only after its receipt service verifies the signer, deadline, revocation state, and unchanged asset revision.</small></div>}
+        {registryStatus === "accepted" && <div className="creatorConsentTerms"><strong>Withdrawal meaning</strong><p>{CREATOR_CONSENT_WITHDRAWAL_TERMS}</p></div>}
+
+        {responseCode && <div className="creatorConsentResponse"><label>Signed response code<textarea readOnly value={responseCode} onFocus={(event) => event.currentTarget.select()} /></label><button type="button" onClick={() => void copyResponse()}>Copy response code</button><small>Keep this signed code as evidence. RMT changes consent state only after its receipt service verifies the exact invitation and invited wallet.</small></div>}
         {message && <p className="creatorControlMessage" role="status">{message}</p>}
 
         <footer>No minting · No listing · No transfer · No wallet approval · No payment</footer>

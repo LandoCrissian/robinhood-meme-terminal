@@ -180,6 +180,9 @@ export function parseCreatorReleaseReview(reviewId: string, value: unknown): Cre
       responseAction: "accept" as const,
       signerWallet: item.collaboratorWallet,
       receivedAt: {},
+      withdrawalSignature: null,
+      withdrawalSignedAt: null,
+      withdrawalReceivedAt: null,
       createdAt: null,
       updatedAt: null
     }));

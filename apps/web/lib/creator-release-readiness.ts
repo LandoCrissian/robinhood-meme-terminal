@@ -115,6 +115,10 @@ export function evaluateCreatorReleaseReadiness(
     record.status === "rejected"
     && record.draftRevisionHash === currentRevisionHash
   ));
+  const withdrawnCollaborator = consentRecords.some((record) => (
+    record.status === "withdrawn"
+    && record.draftRevisionHash === currentRevisionHash
+  ));
   checks.push(draft.collaborators.length === 0
     ? check("consent", "Collaborator consent", "No collaborators are proposed.", "ready")
     : acceptedCollaborators === draft.collaborators.length
@@ -123,7 +127,9 @@ export function evaluateCreatorReleaseReadiness(
         ? check(
           "consent",
           "Collaborator consent",
-          rejectedCollaborator
+          withdrawnCollaborator
+            ? "A collaborator withdrew acceptance for this revision. Revise the proposal or prepare a new invitation."
+            : rejectedCollaborator
             ? "A collaborator rejected this revision. Revise the proposal before preparing a new invitation."
             : `${acceptedCollaborators}/${draft.collaborators.length} collaborators accepted this exact revision and proposed share.`,
           "blocked"
