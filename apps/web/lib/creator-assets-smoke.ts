@@ -85,6 +85,10 @@ import {
   createCreatorReleaseFreezeEvidence,
   hashCreatorReleaseFreezeEvidence
 } from "./creator-release-freeze-evidence";
+import {
+  buildCreatorEditionManifest,
+  verifyCreatorEditionProof
+} from "./creator-edition-manifest";
 
 const validArtwork = {
   ...EMPTY_CREATOR_ASSET,
@@ -121,6 +125,106 @@ assert.equal(
   }),
   "0x8c97155382c77e182384b824fd6bace122b48e6f9b25178dba90612249bc18ef"
 );
+
+const creatorEditionManifest = buildCreatorEditionManifest({
+  name: "RMT Creator Editions",
+  symbol: "RMTED",
+  collectionURI: "ipfs://bafy-editions/contract.json",
+  royaltyReceiver: "0x1111111111111111111111111111111111111111",
+  royaltyBps: 500,
+  editions: [
+    {
+      tokenId: 1n,
+      tokenURI: "ipfs://bafy-edition-one/metadata.json",
+      termsHash: `0x${"11".repeat(32)}`,
+      maximumSupply: 3
+    },
+    {
+      tokenId: 2n,
+      tokenURI: "ipfs://bafy-edition-two/metadata.json",
+      termsHash: `0x${"22".repeat(32)}`,
+      maximumSupply: 2
+    }
+  ]
+});
+assert.equal(
+  creatorEditionManifest.config.editionManifestRoot,
+  "0x04a260ca9b2a885161ecf1df5dd28da708b5d2b753081462fc5ccde70690ca00"
+);
+assert.equal(
+  creatorEditionManifest.configurationHash,
+  "0x67cf2e32f092b4cf0bb1e4c6accab8759c07fbf96e623b9088179e3c917bfea1"
+);
+assert.equal(creatorEditionManifest.config.maximumEditionTypes, 2);
+assert.equal(creatorEditionManifest.config.maximumTotalSupply, 5);
+assert.equal(creatorEditionManifest.contractExecution, "disabled");
+for (const edition of creatorEditionManifest.items) {
+  assert.equal(
+    verifyCreatorEditionProof(
+      edition.leaf,
+      edition.proof,
+      creatorEditionManifest.config.editionManifestRoot
+    ),
+    true
+  );
+}
+assert.throws(() => buildCreatorEditionManifest({
+  name: "Duplicate IDs",
+  symbol: "DUP",
+  collectionURI: "ipfs://bafy-duplicate/contract.json",
+  royaltyReceiver: "0x0000000000000000000000000000000000000000",
+  royaltyBps: 0,
+  editions: [
+    {
+      tokenId: 1n,
+      tokenURI: "ipfs://bafy-one/metadata.json",
+      termsHash: `0x${"11".repeat(32)}`,
+      maximumSupply: 1
+    },
+    {
+      tokenId: 1n,
+      tokenURI: "ipfs://bafy-two/metadata.json",
+      termsHash: `0x${"22".repeat(32)}`,
+      maximumSupply: 1
+    }
+  ]
+}), /unique positive/);
+const threeEditionManifest = buildCreatorEditionManifest({
+  name: "Three Editions",
+  symbol: "THREE",
+  collectionURI: "ipfs://bafy-three/contract.json",
+  royaltyReceiver: "0x0000000000000000000000000000000000000000",
+  royaltyBps: 0,
+  editions: [1n, 2n, 3n].map((tokenId) => ({
+    tokenId,
+    tokenURI: `ipfs://bafy-${tokenId}/metadata.json`,
+    termsHash: `0x${tokenId.toString(16).padStart(64, "0")}`,
+    maximumSupply: 1
+  }))
+});
+for (const edition of threeEditionManifest.items) {
+  assert.equal(
+    verifyCreatorEditionProof(
+      edition.leaf,
+      edition.proof,
+      threeEditionManifest.config.editionManifestRoot
+    ),
+    true
+  );
+}
+assert.throws(() => buildCreatorEditionManifest({
+  name: "Zero Terms",
+  symbol: "ZERO",
+  collectionURI: "ipfs://bafy-zero/contract.json",
+  royaltyReceiver: "0x0000000000000000000000000000000000000000",
+  royaltyBps: 0,
+  editions: [{
+    tokenId: 1n,
+    tokenURI: "ipfs://bafy-zero/metadata.json",
+    termsHash: `0x${"00".repeat(32)}`,
+    maximumSupply: 1
+  }]
+}), /cannot be zero/);
 
 assert.equal(validateCreatorAsset(validArtwork), null);
 assert.equal(normalizeCreatorAsset({

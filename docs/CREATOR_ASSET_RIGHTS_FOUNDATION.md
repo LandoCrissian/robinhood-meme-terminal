@@ -11,7 +11,7 @@ RMT stores private creator drafts for:
 - collaborator credits;
 - proposed wallet revenue splits.
 
-This foundation deliberately does **not** publish an asset, mint a token, deploy a collection, create a marketplace listing, verify underlying ownership claims, execute a split, collect a fee, or move funds.
+The live foundation deliberately does **not** publish an asset, mint a token, deploy a collection, create a marketplace listing, verify underlying ownership claims, execute a split, collect a fee, or move funds. Separate V7 source contracts can mint only after an exact release is frozen, but they are not deployed, audited or connected to this live draft surface.
 
 ## Ownership boundary
 
@@ -69,7 +69,7 @@ Editing any covered field produces a different revision hash. The hash is a stab
 
 `apps/web/lib/creator-consent.ts` defines that versioned EIP-712 consent envelope and digest. It binds all of those fields, includes a one-time nonce, expires within 30 days, and changes its digest when the revision or proposed share changes. The server records a final response only while the invitation is pending, before expiration, from the invited signer, and against the unchanged asset revision.
 
-Creators can save private, seven-day invitation records and prepare shareable review links. The collaborator review page verifies the packet, current public status marker, exact wallet, chain, expiration, terms hash, and typed signature. A server-only Firebase Admin receipt endpoint atomically records accepted or rejected responses, and the private release passport recognizes only exact accepted receipts. An invited wallet can later sign a separate, invitation-bound withdrawal. The trusted withdrawal endpoint changes both private and public state to `withdrawn`; that receipt immediately stops satisfying release readiness. RMT has no executable release-freeze state yet, so withdrawal remains available for every recorded acceptance in this foundation. Both endpoints remain disabled in any environment without the dedicated server credential. See `docs/CREATOR_COLLABORATOR_CONSENT.md`.
+Creators can save private, seven-day invitation records and prepare shareable review links. The collaborator review page verifies the packet, current public status marker, exact wallet, chain, expiration, terms hash, and typed signature. A server-only Firebase Admin receipt endpoint atomically records accepted or rejected responses, and the private release passport recognizes only exact accepted receipts. An invited wallet can later sign a separate, invitation-bound withdrawal. The trusted withdrawal endpoint changes both private and public state to `withdrawn`; that receipt immediately stops satisfying release readiness. RMT has no deployed executable release-freeze state, so withdrawal remains available for every recorded acceptance in this live foundation. Both endpoints remain disabled in any environment without the dedicated server credential. See `docs/CREATOR_COLLABORATOR_CONSENT.md`.
 
 When every blocking passport check is resolved and a current storage-and-retrieval-verified metadata receipt exists, the assigned creator can prepare a deterministic private release-review snapshot. Schema-v3 snapshots bind the complete rights revision, exact metadata receipt, bounded retrieval evidence, accepted consent manifest, proposed payout manifest, and preparation-only economics policy into an immutable server-created record. Legacy schema-v1 and storage-only schema-v2 snapshots remain readable. Every record remains `prepared`, `simulation_only`, and `contract execution disabled`; it is not approval or publication. See `docs/CREATOR_RELEASE_REVIEW.md`.
 
@@ -77,15 +77,17 @@ The private RMT review inbox can add one immutable, reason-coded preparation dec
 
 If a creator changes the saved revision after metadata was pinned, the previous receipt no longer matches and cannot support a new snapshot. The creator can record an immutable supersession linking that receipt to the current revision. RMT preserves both records, and the administrator cannot mark an older snapshot preparation-ready after its revision or receipt has been replaced.
 
-## Future contract boundary
+## Source-level contract boundary
 
-Marketplace and collection contracts must consume a versioned, reviewed rights snapshot rather than mutable draft fields. Before any contract work:
+Marketplace and collection contracts must consume a versioned, reviewed rights snapshot rather than mutable draft fields. Before production contract execution:
 
-1. add an RMT reviewer decision state above the immutable creator-prepared snapshot;
-2. define the eventual onchain release-freeze boundary and post-freeze correction process; pre-freeze collaborator withdrawal is implemented;
-3. define jurisdiction-specific license presentation;
-4. map accepted payout wallets into an immutable split manifest;
-5. require the creator to review the exact contract configuration and transaction.
+1. bind the existing reviewer decision and release evidence into an authenticated transaction-preparation surface;
+2. define the post-freeze correction and dispute process; corrections cannot rewrite the original commitment;
+3. define jurisdiction-specific license and edition-terms presentation;
+4. map accepted payout wallets into a consent-bound split contract;
+5. require the creator to review the exact release, ERC-721 or ERC-1155 configuration and transaction.
+
+The source-level V7 ERC-721 and ERC-1155 modules now prove bounded creator-controlled issuance. ERC-1155 edition IDs bind a metadata URI hash, terms hash and lifetime supply ceiling from the frozen manifest. These contracts do not list, settle, charge fees, execute collaborator splits or grant legal rights merely by recording a terms hash. See `docs/V7_CREATOR_EDITIONS.md`.
 
 Draft data is preparation evidence, not legal advice, copyright registration, an audit, or proof that a third party owns no conflicting rights.
 

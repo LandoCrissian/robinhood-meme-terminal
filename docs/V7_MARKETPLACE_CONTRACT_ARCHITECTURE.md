@@ -10,14 +10,15 @@ Audit: none
 
 ## Outcome
 
-The V7 source foundation now establishes two narrow registries, one evidence verifier and one creator-collection module:
+The V7 source foundation now establishes two narrow registries, one evidence verifier and two creator-collection modules:
 
 1. `RMTV7ModuleRegistry` is an append-only catalog of exact implementation, interface, code, metadata and policy fingerprints admitted by RMT's delayed governance.
 2. `RMTV7MediaEvidenceVerifier` validates short-lived EIP-712 attestations that bind an exact verified provider receipt and healthy availability observation to one release.
 3. `RMTV7ReleaseRegistry` lets a creator commit an immutable release revision and atomically freeze its evidence, future modules and configurations.
 4. `RMTV7ERC721CollectionModule` deploys one deterministic, creator-controlled `RMTV7CreatorCollection` for an exact frozen release intent.
+5. `RMTV7ERC1155EditionModule` deploys one deterministic, creator-controlled `RMTV7CreatorEditions` contract for an exact frozen release intent.
 
-The collection module can mint only the sequential token IDs and exact token-URI hashes committed in the release's immutable Merkle manifest. It does not list, approve, sell, charge, settle, route fees, hold funds, buy RMT, burn RMT, purchase NFTs or claim that RMT approved a creator.
+The ERC-721 module can mint only the sequential token IDs and exact token-URI hashes committed in the release's immutable Merkle manifest. The ERC-1155 module can mint only IDs, URI hashes, terms hashes and lifetime supplies committed in its immutable edition manifest. Neither module lists, approves, sells, charges, settles, routes fees, holds funds, buys RMT, burns RMT, purchases NFTs or claims that RMT approved a creator.
 
 ## Why this comes before marketplace settlement
 
@@ -133,6 +134,25 @@ The ERC-721 increment deliberately separates creation from marketplace execution
 
 The collection implements ERC-2981 only as a royalty signal. It cannot force a marketplace to pay royalties. The original creator authority is intentionally non-transferable in this increment; delegated minting, mutable metadata, reveal mechanics, burns, operator filtering and upgradeability are not present.
 
+## Creator editions module
+
+The ERC-1155 increment applies the same creator and frozen-release boundaries to limited editions:
+
+- only the exact frozen creator and configuration can deploy;
+- the module must remain the active code-hash-pinned implementation for edition kind/version `2/1`;
+- one deterministic editions contract is permitted per release ID;
+- name, symbol, collection URI, edition-manifest root, maximum type count, maximum lifetime total supply and royalty signal are frozen together;
+- every edition leaf binds token ID, metadata URI hash, terms hash and that ID's lifetime supply ceiling;
+- the first successful mint permanently registers an ID's exact configuration;
+- alternate valid leaves for the same token ID cannot change its URI, terms or supply ceiling;
+- per-ID supply, total lifetime supply and registered type count are independently capped;
+- rejected ERC-1155 receiver callbacks roll back the complete registration and mint;
+- neither module nor editions contract accepts native funds or exposes an RMT withdrawal or override path.
+
+The source limits are 10,000 edition types, 1,000,000,000 lifetime minted units per collection and a 10% ERC-2981 royalty signal. The web preparation builder derives the exact type and total-supply caps, Solidity-compatible Merkle proofs and configuration hash from the creator's manifest. No signing or broadcast path is enabled.
+
+An edition terms hash is a provenance commitment only. It does not prove copyright, grant rights by itself or make offchain license terms enforceable. See `V7_CREATOR_EDITIONS.md`.
+
 ## Governance boundary
 
 The module registry requires its governance address to contain contract code. Production deployment is intended to use the existing delayed `RMTV6Governance`, not an EOA and not a new privileged owner.
@@ -189,6 +209,10 @@ See `V7_MARKETPLACE_ECONOMICS_BOUNDARY.md` for the accounting requirements that 
 | Creator mints metadata outside the reviewed release | Every sequential token ID and URI hash requires a Merkle proof from the frozen manifest | Pinning receipts and ongoing media availability still need to be wired into release review |
 | Malicious receiver reenters during safe mint | Collection uses a mint guard and rolls back rejected receiver callbacks | Independent review and fuzzing remain required before deployment |
 | Royalty percentage is misrepresented as guaranteed income | ERC-2981 is documented as signaling only and capped at 10% | UI and settlement must show actual marketplace behavior separately |
+| Creator uses two valid leaves to expand one ERC-1155 ID | The first mint permanently binds the ID's URI, terms hash and supply ceiling; later mints must match | Review the complete manifest for duplicate IDs before freeze |
+| Edition supply expands through repeated or alternate proofs | Per-ID and collection-wide lifetime counters never decrease and every mint is manifest-proven | Independent fuzzing and review remain required before deployment |
+| Receiver callback leaves a partially registered edition | Minting is guarded; rejected callbacks revert URI registration and every supply counter | Include malicious receiver tests in every module version |
+| A terms hash is presented as copyright ownership | Contracts and docs identify it only as a fingerprint of presented terms | Specialist review and plain-language collector presentation remain required |
 | Fake registry deployment | Release registry requires a code-bearing module registry with code-bearing governance | Publish canonical addresses and deployment verification |
 | “Registered” is misrepresented as “RMT approved” | Contract and docs explicitly separate admission, creator review and curation | UI language and public proof page must preserve the distinction |
 
@@ -223,16 +247,29 @@ See `V7_MARKETPLACE_ECONOMICS_BOUNDARY.md` for the accounting requirements that 
 - both the module and deployed collection reject native-asset custody;
 - the module advertises the reviewed interface and remains pinned to the registry entry.
 
+`RMTV7ERC1155EditionModule.t.sol` verifies:
+
+- only the exact frozen creator and configuration can deploy;
+- one deterministic editions contract can be recorded for a release;
+- module deactivation blocks deployment without rewriting frozen history;
+- every ID, URI, terms hash and supply ceiling requires the frozen manifest proof;
+- a second valid leaf cannot change a previously registered ID;
+- per-ID, total and type-count limits cannot be exceeded;
+- wrong proofs, other creators and unsafe receivers cannot change registration or supply;
+- metadata, royalty and source-wide supply boundaries are enforced;
+- module and editions contracts reject native-asset custody;
+- the interface and implementation remain pinned to the registry entry;
+- Solidity and TypeScript share fixed leaf, root and configuration-hash vectors.
+
 ## Next contract increments
 
 The following order keeps risk bounded:
 
-1. define module interfaces and human-readable transaction simulation schemas;
-2. implement an ERC-1155 edition module with explicit supply invariants;
-3. implement consent-bound pull-payment splits with failed-recipient recovery;
-4. select and approve a real V7 fee policy;
-5. implement fixed-price settlement with expiry, cancellation, narrow approvals and adversarial asset/payment tests;
-6. add offers only after fixed-price settlement is proven;
-7. consider auctions last.
+1. add human-readable transaction simulation schemas for release freeze and both deployment modules;
+2. implement consent-bound pull-payment splits with failed-recipient recovery;
+3. select and approve a real V7 fee policy;
+4. implement fixed-price settlement with expiry, cancellation, narrow approvals and adversarial asset/payment tests;
+5. add offers only after fixed-price settlement is proven;
+6. consider auctions last.
 
 Every executable increment still requires specialist review, public deployment artifacts and explicit authorization before a testnet or mainnet transaction.
