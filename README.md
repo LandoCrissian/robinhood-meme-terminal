@@ -1,51 +1,59 @@
 # Robinhood Meme Terminal
 
-Robinhood Meme Terminal (RMT) is a mobile-first discovery and trading terminal for tokens on Robinhood Chain.
+Robinhood Meme Terminal (RMT) is a mobile-first, non-custodial market terminal and creator ecosystem for Robinhood Chain.
 
-- **Live app:** [www.rmtlaunch.fun](https://www.rmtlaunch.fun)
-- **Protocol status:** [www.rmtlaunch.fun/status](https://www.rmtlaunch.fun/status)
-- **Official RMT V6 project:** [`0xdBa33be56C89CC9fc014c4459028d7e5c7878671`](https://www.rmtlaunch.fun/project/0xdBa33be56C89CC9fc014c4459028d7e5c7878671?launch=0)
-- **Chain:** Robinhood Chain mainnet (`4663`)
+- **Live application:** [www.rmtlaunch.fun](https://www.rmtlaunch.fun)
+- **Live status:** [www.rmtlaunch.fun/status](https://www.rmtlaunch.fun/status)
+- **Risk disclosures:** [www.rmtlaunch.fun/risks](https://www.rmtlaunch.fun/risks)
+- **Official RMT market:** [`0xdBa33be56C89CC9fc014c4459028d7e5c7878671`](https://www.rmtlaunch.fun/project/0xdBa33be56C89CC9fc014c4459028d7e5c7878671?launch=0)
+- **Network:** Robinhood Chain mainnet (`4663`)
 
-## Live V6 status
+RMT is independent software. It is not Robinhood Markets, Inc., an official Robinhood product, or evidence of an endorsement by any integrated protocol or data provider.
 
-RMT V6 is deployed and active for existing-market trading. New V6 token creation is intentionally paused while the V7 launch system is designed. The production application resolves the active factory through the V6 version registry and displays only origin-verified V6 launches in RMT Discovery.
+## What is live
 
-| Component | Mainnet address |
+### Terminal
+
+Terminal is the primary trading and discovery surface for markets launched outside RMT.
+
+- aggregated Robinhood Chain market discovery across Pons, Lemon, Sushi, Uniswap, and the wider ecosystem;
+- current age, liquidity, volume, market-cap, activity, origin, and movement signals;
+- token and pool identity checks, observed exit evidence, holder and creator signals, route constraints, and explicit limitations;
+- in-RMT, self-custodial buy and sell preparation;
+- automatic comparison of eligible Sushi, Uniswap v3, and Passport-gated Uniswap v4 routes;
+- wallet review and confirmation for every transaction;
+- no trading fee added by RMT. Venue fees, price impact, slippage, approvals, and network gas still apply and remain visible.
+
+RMT never receives a private key, recovery phrase, or authority to move funds without the connected wallet’s explicit approval.
+
+### RMT ecosystem
+
+Explore is the home for reviewed RMT projects, creator pages, games, and RMT-native markets. Projects do not need a token to apply.
+
+- reviewed project applications and owner assignments;
+- dedicated project identity and audience tools;
+- optional token, game, art, music, NFT, marketplace, and community module preparation for V7;
+- private creator controls and bounded media publishing;
+- project follows, referrals, watchlists, and cross-device profiles;
+- RMT Live for public chat, feedback, bug reports, updates, moderation, and approximate privacy-preserving presence.
+
+Creator and marketplace contracts are not represented as production-ready until their separate architecture, tests, security review, and release gates are complete.
+
+## RMT-native protocol status
+
+RMT V6 is a live mainnet beta for its existing official market. New V6 token creation is intentionally paused while V7 is designed and reviewed. The public site cannot reopen V6 launches through an environment-variable change.
+
+| Current V6 component | Mainnet address |
 | --- | --- |
-| V6 governance and protocol treasury | [`0x52c43239df8965eb27f26e115cc5ead11b35d5c3`](https://robinhoodchain.blockscout.com/address/0x52c43239df8965eb27f26e115cc5ead11b35d5c3) |
+| Governance and protocol treasury | [`0x52c43239df8965eb27f26e115cc5ead11b35d5c3`](https://robinhoodchain.blockscout.com/address/0x52c43239df8965eb27f26e115cc5ead11b35d5c3) |
 | Version registry | [`0x27c0269e16209eee149e2738d0819a2633f44246`](https://robinhoodchain.blockscout.com/address/0x27c0269e16209eee149e2738d0819a2633f44246) |
 | V6 launch factory | [`0x8e75c57079a01ce2094bc4187b78710887547651`](https://robinhoodchain.blockscout.com/address/0x8e75c57079a01ce2094bc4187b78710887547651) |
-| Policy registry | [`0x70177a46a38c981480fee9586ccbe281ee70dfcf`](https://robinhoodchain.blockscout.com/address/0x70177a46a38c981480fee9586ccbe281ee70dfcf) |
-| V4 graduation adapter | [`0x680a227794b1204a57aab6bac56a84d3280e40a6`](https://robinhoodchain.blockscout.com/address/0x680a227794b1204a57aab6bac56a84d3280e40a6) |
+| V6 policy registry | [`0x70177a46a38c981480fee9586ccbe281ee70dfcf`](https://robinhoodchain.blockscout.com/address/0x70177a46a38c981480fee9586ccbe281ee70dfcf) |
+| Uniswap v4 graduation adapter | [`0x680a227794b1204a57aab6bac56a84d3280e40a6`](https://robinhoodchain.blockscout.com/address/0x680a227794b1204a57aab6bac56a84d3280e40a6) |
 
-The V6 factory was deployed at block `10248855`. See the [canonical V6 deployment record](docs/MAINNET_V6_DEPLOYMENT.md) for the top-level foundation addresses and creation receipts currently reconstructed. V4 and V5 records remain in this repository as labeled historical evidence; their launches are not mixed into the V6 terminal.
+The V6 factory was deployed at block `10248855`. The [canonical V6 deployment record](docs/MAINNET_V6_DEPLOYMENT.md) contains the currently reconstructed foundation addresses and receipts.
 
-## What RMT offers
-
-- One-transaction fixed-supply token creation when the launch gate is enabled
-- Unique RMT launch names and tickers, including legacy RMT reservation checks
-- Optional Fair Start protection for the opening blocks
-- Live bonding-curve buy and sell quotes
-- Immediate Buy and Sell actions from RMT Discovery
-- Native in-RMT buy and sell review for canonical graduated RMT V4 pools, using Uniswap's official Quoter, Universal Router, and amount-limited Permit2 approvals
-- Creator concentration and creator-wallet activity signals
-- Transparent progress toward permissionless Uniswap V4 graduation
-- Creator rewards before and after graduation
-- Connected-wallet balances for the active discovery set and a local-device watchlist page
-- Optional private Firebase profiles with Google sign-in and live profile/watchlist sync across devices; local mode remains the automatic fallback
-- Clearly labeled external Robinhood Chain market discovery in Runner Radar
-- A continuous edge-to-edge operator interface across discovery, trading, runners, portfolio, watchlist, launch, and live status, with responsive terminal layouts instead of nested card grids
-
-Wallet ownership remains the authority for launches and trades. The application never receives a private key, seed phrase, or permission to move assets on a user&apos;s behalf.
-
-## Wallet funding
-
-RMT includes an environment-gated Add funds experience for Robinhood Connect. It remains in a clearly labeled pending state until Robinhood approves RMT and issues the exact partner checkout or SDK configuration. After approval, set `NEXT_PUBLIC_ROBINHOOD_CONNECT_ENABLED=true` and use the official Robinhood-hosted HTTPS URL in `NEXT_PUBLIC_ROBINHOOD_CONNECT_URL`.
-
-Payment, identity-verification, Google Pay, card, and bank details must remain inside the provider-hosted flow. RMT must never collect or proxy that information. Google Pay must be described as an eligible payment option, not a guarantee, because Robinhood controls availability by user, account, device, transaction, and region. Adding Robinhood cards to Google Wallet remains a Robinhood/Google Wallet account action outside RMT.
-
-## V6 economics
+### V6 economics
 
 | Parameter | V6 value |
 | --- | --- |
@@ -53,61 +61,65 @@ Payment, identity-verification, Google Pay, card, and bank details must remain i
 | Creator launch allocation | None; the full supply enters the market |
 | Bonding-curve fee | `1%` |
 | Graduation target | `2 ETH` net real reserve |
-| Creator share of trading fees | `70%` |
-| RMT protocol share of trading fees | `30%` |
-| Post-graduation V4 pool fee | `0.5%` |
+| Creator share of genuine trading fees | `70%` |
+| RMT protocol share of genuine trading fees | `30%` |
+| Post-graduation Uniswap v4 pool fee | `0.5%` |
 | Graduation liquidity | Full range and permanently locked |
 
-The 70/30 split applies to curve fees and to collected fees from the canonical V4 position after graduation. Post-graduation fees can be received in ETH or the launched token according to swap direction; they are fees, not an additional token allocation or ownership of liquidity principal.
+The 70/30 split applies to V6 curve fees and collected fees from the canonical Uniswap v4 position. It does not create an additional token allocation, ownership of liquidity principal, or a claim that revenue is guaranteed.
 
-The original creator is permanently recorded. A creator cannot self-change the creator-share recipient. Delayed V6 governance can redirect only future creator-share payments to the immutable protocol treasury or restore the immutable original creator; previously paid rewards and purchased tokens cannot be clawed back.
+## Retired RMT generations
 
-The legacy token [`0xaB374D24aFBD943a134AdB381D9646e71C6f6C0C`](https://robinhoodchain.blockscout.com/address/0xaB374D24aFBD943a134AdB381D9646e71C6f6C0C) is the official V6 launch&apos;s identity and provenance anchor only. The live official V6 token has its own address and fixed one-billion-token supply; legacy balances were not copied, swapped, or migrated.
+RMT V4 and V5 are retired product generations. They are not selectable launch versions, do not appear as current RMT markets, and are not part of the public V7 direction.
 
-## Fair Start
+RMT V4 infrastructure was deployed and received one explicitly disposable operator smoke token used to prove the bounded launch loop. No community or public project launched through RMT V4. Its contracts remain onchain and cannot be deleted, so the repository preserves their records only as historical evidence and as part of the legacy name/ticker reservation chain.
 
-Fair Start is the default launch policy, not a permanent trading restriction:
+The archived records live under [`docs/archive/rmt-v4`](docs/archive/rmt-v4/README.md). “RMT V4” is not the same thing as **Uniswap v4**, which is a current external DEX protocol used by eligible RMT trading and V6 graduation routes.
 
-- one-block opening delay
-- ten protected blocks
-- maximum `1%` of supply per opening buy
-- maximum `3%` per wallet during the protected window
-- one buy per wallet per block
+## Profiles and Bring Your Desk
 
-The Open policy uses the same supply, fee split, curve, and graduation economics without the temporary opening limits.
+Profiles are optional and separate from wallet connection.
+
+- local mode works automatically without an account;
+- cloud mode synchronizes profile preferences and watchlists through a private Firebase workspace;
+- users may continue with Google or use a passwordless sign-in link sent to Gmail, Outlook, Yahoo, iCloud, Proton, a business address, or another valid email provider;
+- email-link completion requires control of the same address and never places the address in the link URL;
+- the sign-in identity does not grant wallet, trade, approval, or custody permission.
+
+See [Firebase profile setup](docs/FIREBASE_PROFILES.md) for the data model, security rules, provider configuration, and activation checks.
 
 ## Data and reliability
 
-Trading and launches remain wallet-to-contract transactions. They do not depend on the database or indexer.
+Wallet transactions do not depend on the profile database or market indexer.
 
-Firebase Authentication and Firestore are optional offchain profile conveniences. If they are unconfigured or unavailable, profiles and watchlists remain local and every wallet, launch, discovery, and trading path continues operating. See [Firebase profile setup](docs/FIREBASE_PROFILES.md) for the isolated data model, rules, test suite, and activation order.
-
-The public discovery feed uses the read-only Railway/PostgreSQL indexer for confirmed launch and trade data, with a same-origin shared cache and a last-confirmed-data state during delays. This avoids making every visitor rescan the complete factory history through an RPC provider. Creator concentration is enriched with a single batched balance read per shared refresh.
-
-Runner Radar ranks only eligible external base tokens quoted against canonical WETH/USDG assets, then rejects invalid or zero-address identities and confirmed RMT V6 launches. DEX Screener price and valuation fields therefore cannot be reassigned to the opposite side of a pair, and a native-asset sentinel or malformed token record can never become an external Buy/Sell target.
-
-Production monitoring requests checks of the canonical domain, V6 registry and factory bindings, immutable economics, latest market, graduation adapter, indexer health, launch-feed source, and official-market trade data every five minutes. GitHub Actions scheduling is best-effort, so an independent uptime service remains required for dependable 1–5 minute alerting.
+- Firebase Authentication and Firestore provide optional profile, creator, referral, and community features.
+- The confirmed market-data service runs through a protected Railway/PostgreSQL indexer and a same-origin cache.
+- During an indexer delay, RMT keeps the last confirmed snapshot visible instead of rebuilding the complete history in every visitor’s browser.
+- Production health checks verify the canonical domain, V6 registry/factory bindings, launch pause, market feeds, and critical external dependencies.
 
 ## Repository map
 
-- `apps/web` — Next.js terminal, launch flow, trading, discovery, portfolio, and disclosures
-- `apps/indexer` — persistent V6 event indexer and protected read API
-- `apps/external-origin-indexer` — activation-locked external-origin research/indexer scaffold; no external adapters are active yet
-- `packages/contracts` — Foundry contracts, deployment scripts, fork tests, fuzz tests, and invariants
+- `apps/web` — Next.js terminal, trading, discovery, creator ecosystem, profiles, community, disclosures, and operations UI
+- `apps/indexer` — confirmed RMT V6 event indexer and protected read API
+- `apps/market-indexer` — rebuildable external DEX market index
+- `apps/external-origin-indexer` — launch-origin and metadata ingestion
+- `packages/contracts` — Foundry contracts, scripts, fork tests, fuzz tests, and invariants
 - `packages/shared` — shared Robinhood Chain and market-origin types
-- `docs` — deployment, operations, monitoring, incident response, and security-review records
+- `docs` — current architecture, deployment, operations, monitoring, and security records
+- `docs/archive` — retired release evidence that remains available without being presented as the current product
 
 ## Development
 
-The project targets Node 22, pnpm 10.12.1, Solidity 0.8.26, and Foundry 1.7.1. Keep Foundry pinned when reproducing the mainnet-fork execution suite.
+The project targets Node 22, pnpm 10.12.1, Solidity 0.8.26, and Foundry 1.7.1.
 
 ```bash
 pnpm install --frozen-lockfile
 pnpm audit:production
 pnpm test:firebase-rules
 pnpm --filter web test:profile
-pnpm --filter web test:reliability
-pnpm --filter web test:v4-trade
+pnpm --filter web test:public-discovery
+pnpm --filter web test:trade-ticket
+pnpm --filter web test:external-venues
 pnpm typecheck
 pnpm build
 
@@ -117,28 +129,20 @@ forge build
 forge test -vvv
 ```
 
-Use `.env.example` files as the configuration reference. Never commit RPC keys, database credentials, indexer bearer tokens, wallet keys, seed phrases, or signed production transactions.
-
-The web application encodes the reviewed Universal Router 2.1.1 command and V4 action ABI with the existing pinned `viem` dependency. RMT independently pins and verifies the Robinhood Chain deployment addresses and its immutable V6 pool configuration before returning calldata. Update these ABIs or addresses only with matching official deployment evidence, exact calldata regression tests, and the mainnet-fork Buy/Sell execution test.
-
-See the [dependency security policy](docs/DEPENDENCY_SECURITY.md) for the enforced pnpm build allowlist, workspace overrides, audit gate, and the reviewed moderate wallet-connector advisory.
+Use the committed `.env.example` files as the configuration reference. Never commit RPC credentials, database tokens, Firebase Admin keys, indexer bearer tokens, wallet keys, recovery phrases, or signed production transactions.
 
 ## Security status
 
-RMT V6 is an explicitly disclosed mainnet beta. Automated tests, mainnet-fork rehearsals, invariant checks, static analysis, and live state verification reduce risk but do not replace an independent security audit.
+RMT V6 is an explicitly disclosed mainnet beta. Automated tests, state verification, fork rehearsals, failure simulation, and static analysis reduce risk but do not replace an independent audit.
 
-Exact Blockscout source publication is also incomplete: key V6 explorer records currently do not show the canonical Solidity 0.8.26, optimizer-200, via-IR source match. Explorer pages are useful for address, bytecode, transaction, and event inspection, but RMT must not describe the V6 contracts as exactly source-verified or independently audited until those separate tasks are completed.
+No terminal can guarantee that a token is safe, profitable, or sellable in every future state. RMT evidence is time-bound and must be reviewed before every wallet confirmation.
 
-Read the [risk disclosures](https://www.rmtlaunch.fun/risks), [incident response plan](docs/INCIDENT_RESPONSE.md), [security review scope](docs/SECURITY_REVIEW_SCOPE.md), and [V6 protocol foundation](docs/V6_PROTOCOL_FOUNDATION.md) before operating or reviewing the protocol.
+Read the [risk disclosures](https://www.rmtlaunch.fun/risks), [incident response plan](docs/INCIDENT_RESPONSE.md), [security review scope](docs/SECURITY_REVIEW_SCOPE.md), [external Uniswap trading boundary](docs/EXTERNAL_UNISWAP_TRADING.md), and [V6 deployment record](docs/MAINNET_V6_DEPLOYMENT.md).
 
-See [third-party notices](docs/THIRD_PARTY_NOTICES.md) for the Sushi V3 ABI compatibility reference and upstream licensing boundary.
-
-The testnet-first [RMT consent-based Sushi V3 migration design](docs/LIQUIDITY_RESCUE.md) explores a direct, self-custodial mint into one code-bound Robinhood Chain WETH market. A valueless Sushi V3 ABI-compatible rehearsal stack is source verified on Robinhood Chain Testnet and remains paused with no public execution path. It cannot access source pools or pool customer funds, is isolated from the live V6 contracts, and is not an official Sushi deployment or production AMM.
+See [third-party notices](docs/THIRD_PARTY_NOTICES.md) for upstream licensing and integration boundaries.
 
 ## Support RMT
 
 RMT can be supported through [GitHub Sponsors](https://github.com/sponsors/LandoCrissian).
-Sponsorship helps fund infrastructure, security testing, verified integrations,
-mobile reliability, and public technical documentation. It is voluntary support,
-not an investment, token purchase, listing fee, revenue share, or partnership.
-See the [RMT sponsorship policy](docs/SPONSORSHIP.md) for the complete boundary.
+
+Sponsorship helps fund infrastructure, security testing, verified integrations, mobile reliability, and public documentation. It is voluntary support—not an investment, token purchase, listing fee, revenue share, or partnership. See the [RMT sponsorship policy](docs/SPONSORSHIP.md).

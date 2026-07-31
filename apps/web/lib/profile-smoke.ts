@@ -51,7 +51,11 @@ const vercelConfig = JSON.parse(readFileSync(new URL("../vercel.json", import.me
   }>;
   rewrites?: Array<{ source?: string; destination?: string }>;
 };
+const firebaseConfig = JSON.parse(readFileSync(new URL("../../../firebase.json", import.meta.url), "utf8")) as {
+  auth?: { providers?: { emailPassword?: boolean } };
+};
 const profileProviderSource = readFileSync(new URL("../app/profile-provider.tsx", import.meta.url), "utf8");
+const profilePageSource = readFileSync(new URL("../app/profile/page.tsx", import.meta.url), "utf8");
 assert.match(
   profileProviderSource,
   /signInWithPopup\(client\.auth, provider\)/,
@@ -61,6 +65,38 @@ assert.doesNotMatch(
   profileProviderSource,
   /signInWithRedirect\(/,
   "Google profile sign-in must not restore the sessionStorage-dependent redirect flow"
+);
+assert.match(
+  profileProviderSource,
+  /sendSignInLinkToEmail\(client\.auth, normalizedEmail,[\s\S]*handleCodeInApp:\s*true/,
+  "Profile sign-in must support passwordless links sent to any valid email provider"
+);
+assert.match(
+  profileProviderSource,
+  /signInWithEmailLink\(client\.auth, normalizedEmail, window\.location\.href\)/,
+  "Profile sign-in must complete Firebase email links in the RMT profile"
+);
+assert.match(
+  profileProviderSource,
+  /localStorage\.setItem\(EMAIL_SIGN_IN_STORAGE_KEY, normalizedEmail\)/,
+  "Same-device email completion must keep the address out of the link URL"
+);
+assert.match(
+  profileProviderSource,
+  /localStorage\.removeItem\(EMAIL_SIGN_IN_STORAGE_KEY\)/,
+  "The temporary email must be removed after successful sign-in"
+);
+assert.doesNotMatch(
+  profileProviderSource,
+  /searchParams\.set\(\s*["']email["']/,
+  "RMT must never place the sign-in email in the continuation URL"
+);
+assert.match(profilePageSource, /OR USE ANY EMAIL/);
+assert.match(profilePageSource, /Outlook, Yahoo, iCloud, Proton, business email/);
+assert.equal(
+  firebaseConfig.auth?.providers?.emailPassword,
+  true,
+  "The committed Firebase Authentication configuration must enable the email provider"
 );
 assert.equal(isEmbeddedAuthBrowser(
   "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 Version/18.5 Mobile/15E148 Safari/604.1"

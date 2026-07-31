@@ -51,15 +51,15 @@ assert.match(layoutSource, /siteName:\s*RMT_SITE_NAME/);
 assert.match(layoutSource, /manifest:\s*"\/manifest\.webmanifest"/);
 assert.match(layoutSource, /googleBot:[\s\S]*?"max-image-preview":\s*"large"/);
 assert.equal(RMT_SITE_URL, appUrl);
-assert.equal(RMT_SITE_NAME, "RMT Launch");
-assert.equal(RMT_SITE_ALTERNATE_NAME, "Robinhood Meme Terminal");
+assert.equal(RMT_SITE_NAME, "Robinhood Meme Terminal");
+assert.equal(RMT_SITE_ALTERNATE_NAME, "RMT");
 assert.deepEqual(rmtWebsiteStructuredData, {
   "@context": "https://schema.org",
   "@type": "WebSite",
   "@id": `${appUrl}/#website`,
   url: `${appUrl}/`,
-  name: "RMT Launch",
-  alternateName: "Robinhood Meme Terminal",
+  name: "Robinhood Meme Terminal",
+  alternateName: "RMT",
   description: rmtWebsiteStructuredData.description,
   inLanguage: "en-US"
 });
@@ -69,7 +69,7 @@ assert.match(homeSource, /alternates:\s*\{\s*canonical:\s*"\/"/);
 assert.match(homeSource, /openGraph:[\s\S]*?url:\s*"\/"/);
 assert.match(homeSource, /type="application\/ld\+json"/);
 assert.match(homeSource, /JSON\.stringify\(rmtWebsiteStructuredData\)/);
-assert.match(homeSource, /RMT LAUNCH · MARKET TERMINAL/);
+assert.match(homeSource, /RMT · MARKET TERMINAL/);
 assert.match(homeSource, /<ExternalMarketFeed \/>/);
 assert.match(homeSource, /<OfficialRmtMarket \/>/);
 assert.doesNotMatch(homeSource, /<FreshLaunchFeed \/>/);

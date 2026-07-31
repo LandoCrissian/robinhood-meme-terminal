@@ -71,7 +71,19 @@
 .profileCloudCard button{width:100%;min-height:44px;margin-top:8px;border:1px solid #334138;border-radius:11px;background:#101612;color:#b8c3ba;font-size:.73rem;font-weight:900;cursor:pointer}
 .profileCloudCard button:disabled{opacity:.58;cursor:wait}
 .profileCloudCard .googleProfileButton{border:0;background:#eaf0eb;color:#111713}
+.profileAuthOptions{display:flex;flex-direction:column;gap:10px;margin-top:12px}
+.profileAuthOptions>.googleProfileButton{margin-top:0}
+.profileAuthDivider{display:flex;align-items:center;gap:8px;color:#637069;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.48rem;font-weight:900;letter-spacing:.09em}
+.profileAuthDivider:before,.profileAuthDivider:after{content:"";height:1px;flex:1;background:#2a352e}
+.profileEmailAuth{display:flex;flex-direction:column;gap:8px;padding:12px;border:1px solid #324139;border-radius:12px;background:#090e0b}
+.profileEmailAuth>strong{color:#e8eee9;font-size:.78rem}
+.profileEmailAuth>span{color:#78857d;font-size:.61rem;line-height:1.5}
+.profileEmailAuth label{display:flex;flex-direction:column;gap:6px;color:#8d9991;font-size:.58rem;font-weight:900;letter-spacing:.04em}
+.profileEmailAuth input{width:100%;min-height:44px;padding:0 12px;border:1px solid #34463a;border-radius:10px;outline:0;background:#050806;color:#edf4ef;font-size:.76rem}
+.profileEmailAuth input:focus{border-color:#62e979;box-shadow:0 0 0 2px rgba(98,233,121,.12)}
+.profileCloudCard .profileEmailAuth button{min-height:44px;margin:0;border-color:#5be875;background:#61ed79;color:#061309}
 .profileAuthBrowserNotice{display:flex;flex-direction:column;gap:8px;margin-top:12px;padding:12px;border:1px solid #3d493f;border-radius:12px;background:#0b100d}
+.profileAuthOptions .profileAuthBrowserNotice{margin-top:0}
 .profileAuthBrowserNotice strong{color:#e8eee9;font-size:.76rem}
 .profileAuthBrowserNotice span{color:#8d9990;font-size:.68rem;line-height:1.5}
 .profileAuthBrowserNotice div{display:grid;grid-template-columns:1fr 1fr;gap:8px}
@@ -80,6 +92,7 @@
 .profileCloudActions{display:grid;grid-template-columns:1fr;gap:8px;margin-top:12px}
 .profileCloudActions button{margin-top:0}
 .profileCloudActions .profileRetryButton{border-color:#50df6b;background:#51ec70;color:#061309}
+.profileCloudCard .profileAuthMessage{margin:10px 0 0;color:#79e98c;font-size:.65rem;font-weight:800;line-height:1.5}
 .profileReferralCard>p:not(.eyebrow){margin:8px 0 0;color:#86938b;font-size:.72rem;line-height:1.5}
 .profileReferralCard h2{margin:4px 0 0;font-size:1.35rem;letter-spacing:-.03em}
 .referralAvailability{display:inline-flex;margin-top:13px;padding:6px 8px;border:1px solid #3a463d;border-radius:7px;color:#77857c;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.52rem;font-weight:950;letter-spacing:.08em}

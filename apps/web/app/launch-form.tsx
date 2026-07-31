@@ -211,7 +211,7 @@ export function LaunchForm() {
         {selectedPolicy && <div className="graduationNote">
           <strong>Fixed fee percentages</strong>
           <span>{formatBasisPoints(selectedPolicy.curveFeeBps)} curve fee · {formatBasisPoints(selectedPolicy.creatorFeeShareBps)} creator-share bucket · {formatBasisPoints(selectedPolicy.protocolFeeShareBps)} to RMT · {formatEther(selectedPolicy.graduationTarget)} ETH graduation target.</span>
-          <span>After graduation, the locked V4 position charges {formatBasisPoints(selectedPolicy.postGraduationFeeBps)} and can earn fees in ETH and ${normalizedSymbol || "TOKEN"}. Collected fees use the same split; liquidity principal is not distributed.</span>
+          <span>After graduation, the locked Uniswap v4 position charges {formatBasisPoints(selectedPolicy.postGraduationFeeBps)} and can earn fees in ETH and ${normalizedSymbol || "TOKEN"}. Collected fees use the same split; liquidity principal is not distributed.</span>
           <span>The token creator cannot authorize, propose, choose, or directly change the payout recipient. The RMT signer may propose only an evidence-linked move between the original creator and immutable V6 governance treasury. After 24 hours, any account may relay the exact approved call but cannot alter it or receive funds. Previously paid or deferred fees stay with the wallet that earned them. For uncollected pool fees, the active recipient at collection time receives the creator share.</span>
         </div>}
       </div>

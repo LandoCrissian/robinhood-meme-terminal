@@ -1,6 +1,7 @@
 {
   "auth": {
     "providers": {
+      "emailPassword": true,
       "googleSignIn": {
         "oAuthBrandDisplayName": "Robinhood Meme Terminal",
         "supportEmail": "launchrmt@gmail.com",

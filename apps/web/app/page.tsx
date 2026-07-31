@@ -42,13 +42,13 @@ export default function Home() {
       />
       <section className="terminalIntro">
         <div className="terminalIntroCopy">
-          <p className="eyebrow">RMT LAUNCH · MARKET TERMINAL</p>
+          <p className="eyebrow">RMT · MARKET TERMINAL</p>
           <h1>Robinhood Chain, in one view.</h1>
           <p>Scan live markets, verify project origin, compare activity, and review non-custodial execution without leaving RMT.</p>
         </div>
         <div className="terminalIntroActions">
           <Link className="primaryAction" href="/watchlist">Open watchlist</Link>
-          <Link className="secondaryAction" href="/explore">RMT projects</Link>
+          <Link className="secondaryAction" href="/explore">RMT ecosystem</Link>
         </div>
         <div className="trustStrip" aria-label="Terminal operating status">
           <span><b>NETWORK</b><i aria-hidden="true" />{isMainnetRelease ? "RHC MAINNET · 4663" : "RHC TESTNET · 46630"}</span>

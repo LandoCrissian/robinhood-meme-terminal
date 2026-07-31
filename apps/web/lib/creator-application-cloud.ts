@@ -81,7 +81,7 @@ export async function subscribeToGameUpdates(
 
 function requireVerifiedUser(user: User | null): User & { email: string } {
   if (!user || !user.email || !user.emailVerified) {
-    throw new Error("Sign in with a verified Google profile before applying.");
+    throw new Error("Sign in with a verified RMT profile before applying.");
   }
   return user as User & { email: string };
 }

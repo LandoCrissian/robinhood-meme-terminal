@@ -111,7 +111,7 @@ export function GraduatedMarketTrade({ tokenAddress, symbol, launchId, mode }: {
 
   useEffect(() => {
     if (!swapReceipt.isSuccess) return;
-    setMessage(`${mode === "buy" ? "Buy" : "Sell"} confirmed through the canonical RMT V4 pool.`);
+    setMessage(`${mode === "buy" ? "Buy" : "Sell"} confirmed through the canonical Uniswap v4 pool.`);
     void Promise.all([tokenBalance.refetch(), walletBalance.refetch(), tokenAllowance.refetch(), permit2Allowance.refetch()]);
   }, [swapReceipt.isSuccess]);
 
@@ -145,11 +145,11 @@ export function GraduatedMarketTrade({ tokenAddress, symbol, launchId, mode }: {
   const minimumOut = verifiedQuote ? BigInt(verifiedQuote.minimumOut) : 0n;
   const walletSpendable = (walletBalance.data?.value ?? 0n) > FALLBACK_NETWORK_FEE_RESERVE ? (walletBalance.data?.value ?? 0n) - FALLBACK_NETWORK_FEE_RESERVE : 0n;
   const insufficient = mode === "buy" ? amountIn > walletSpendable : amountIn > (tokenBalance.data ?? 0n);
-  const buttonLabel = !isConnected ? "Connect wallet to trade" : quoteLoading && !verifiedQuote ? "Reading canonical V4 pool…" : !verifiedQuote ? "Enter an amount for a verified quote" : insufficient ? `Insufficient ${mode === "buy" ? "ETH" : symbol}` : busy ? approval.isPending || swap.isPending ? "Review in your wallet…" : "Waiting for confirmation…" : needsTokenApproval ? "Approve this sell amount" : needsPermit2Approval ? "Set 20-minute router approval" : `${mode === "buy" ? "Buy" : "Sell"} ${symbol} on RMT`;
+  const buttonLabel = !isConnected ? "Connect wallet to trade" : quoteLoading && !verifiedQuote ? "Reading canonical Uniswap v4 pool…" : !verifiedQuote ? "Enter an amount for a verified quote" : insufficient ? `Insufficient ${mode === "buy" ? "ETH" : symbol}` : busy ? approval.isPending || swap.isPending ? "Review in your wallet…" : "Waiting for confirmation…" : needsTokenApproval ? "Approve this sell amount" : needsPermit2Approval ? "Set 20-minute router approval" : `${mode === "buy" ? "Buy" : "Sell"} ${symbol} on RMT`;
 
   return <div className="graduatedTradePanel">
     <div className="tradeAmountCard">
-      <div className="tradeAmountTop"><span>You {mode === "buy" ? "pay" : "sell"}</span><small>Canonical Uniswap V4 pool</small></div>
+      <div className="tradeAmountTop"><span>You {mode === "buy" ? "pay" : "sell"}</span><small>Canonical Uniswap v4 pool</small></div>
       {mode === "buy" ? <>
         <div className="tradeInputRow"><input aria-label="ETH amount for graduated-token buy" inputMode="decimal" value={buyAmount} onFocus={(event) => event.currentTarget.select()} onChange={(event) => setBuyAmount(event.target.value)} /><span>ETH</span></div>
         <small className="walletPresetNote">Wallet balance {displayEth(walletBalance.data?.value ?? 0n)} ETH before network fees.</small>

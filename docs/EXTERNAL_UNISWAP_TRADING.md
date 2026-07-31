@@ -1,6 +1,6 @@
 # External Uniswap trading inside RMT
 
-RMT can prepare non-custodial swaps for qualified external Robinhood Chain markets without sending the user away from Terminal. This path is separate from the canonical RMT V6 Uniswap V4 graduation path.
+RMT can prepare non-custodial swaps for qualified external Robinhood Chain markets without sending the user away from Terminal. This path is separate from the canonical RMT V6 Uniswap v4 graduation path.
 
 ## Supported production scope
 
@@ -133,7 +133,7 @@ Unknown origins and additional write controls are not exempted.
 ## Limitations
 
 - Only direct canonical Uniswap V3 token/WETH pools are supported.
-- V4 execution currently supports direct native-ETH pools only.
+- Uniswap v4 execution currently supports direct native-ETH pools only.
 - A V4 hook that can affect swaps, return deltas, expose custom write controls,
   lacks verified source, or cannot be proven non-upgradeable remains
   review-only even when a simulated sell succeeds.

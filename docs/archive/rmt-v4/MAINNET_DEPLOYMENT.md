@@ -1,8 +1,8 @@
 # Robinhood Chain legacy V4 deployment record
 
-> Superseded for new launches first by the [V5 deployment](./MAINNET_V5_DEPLOYMENT.md) and now by the [current V6 deployment](./MAINNET_V6_DEPLOYMENT.md). This record is retained as historical evidence and as part of the protected identity history for names and tickers used before V5.
+> Archived product generation. Superseded for new launches first by the [V5 deployment](../../MAINNET_V5_DEPLOYMENT.md) and now by the [current V6 deployment](../../MAINNET_V6_DEPLOYMENT.md). This record is retained only as historical evidence and as part of the protected identity history for names and tickers used before V5.
 
-Status: **deployed, application-verified, launch-loop smoke-tested, and published as a mainnet beta**
+Status: **retired; infrastructure deployed and launch-loop smoke-tested with one disposable operator token; no community or public project launched through RMT V4**
 
 Public application: https://www.rmtlaunch.fun
 

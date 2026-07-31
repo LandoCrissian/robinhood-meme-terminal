@@ -59,7 +59,7 @@ export function PublicChrome() {
     <>
       <header className="publicHeader">
         <nav className="publicNav" aria-label="Main navigation">
-          <Link className="brandLockup" href="/" aria-label="RMT Launch — Robinhood Meme Terminal home">
+          <Link className="brandLockup" href="/" aria-label="Robinhood Meme Terminal home">
             <img className="brandLogo" src="/brand/rmt-master-logo.png" alt="" />
             <strong>RMT</strong>
           </Link>
@@ -83,14 +83,14 @@ export function PublicChrome() {
                 </div>}
                 <div>
                   <span>Discover</span>
-                  <PublicLink href="/explore">Explore RMT launches<small>Verified projects created through RMT</small></PublicLink>
+                  <PublicLink href="/explore">Explore RMT ecosystem<small>Reviewed projects, creators, games, and native markets</small></PublicLink>
                   <PublicLink href="/portfolio">Portfolio<small>Your connected-wallet holdings</small></PublicLink>
                   <PublicLink href="/watchlist">Watchlist<small>Tokens saved on this device</small></PublicLink>
                   <PublicLink href="/sources">Sources<small>Launchpad coverage and origin labels</small></PublicLink>
                 </div>
                 <div>
                   <span>Protocol &amp; research</span>
-                  <PublicLink href="/sushi">Sushi integration<small>Routing boundary and launch readiness</small></PublicLink>
+                  <PublicLink href="/sushi">Sushi integration<small>Verified routing and execution boundary</small></PublicLink>
                   <PublicLink href="/launch">RMT V7 launch preparation<small>New token creation is currently paused</small></PublicLink>
                   <PublicLink href="/rescue">Migration lab<small>Paused, direct-to-wallet testnet research</small></PublicLink>
                 </div>

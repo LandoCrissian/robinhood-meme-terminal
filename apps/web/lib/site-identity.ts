@@ -1,6 +1,6 @@
 export const RMT_SITE_URL = "https://www.rmtlaunch.fun";
-export const RMT_SITE_NAME = "RMT Launch";
-export const RMT_SITE_ALTERNATE_NAME = "Robinhood Meme Terminal";
+export const RMT_SITE_NAME = "Robinhood Meme Terminal";
+export const RMT_SITE_ALTERNATE_NAME = "RMT";
 export const RMT_SITE_DESCRIPTION =
   "A mobile-first, non-custodial Robinhood Chain terminal for discovering, comparing, and trading markets across the ecosystem.";
 
