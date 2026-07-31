@@ -37,6 +37,14 @@ const SOURCES: LaunchpadSource[] = [
     disclosure: "RMT attaches Lemon identity only when its documented public record, token, pool, and live DEX market match."
   },
   {
+    name: "DEX Screener",
+    url: "https://docs.dexscreener.com/api/reference",
+    status: "live",
+    statusLabel: "LIVE · MARKET DATA",
+    capability: "Activity · Liquidity · Public discovery",
+    disclosure: "RMT ranks eligible markets from documented public fields. Artwork is a fallback only and must come from Dexscreener’s HTTPS CDN."
+  },
+  {
     name: "Uniswap Launches",
     url: "https://blog.uniswap.org/launch-aggregator-explore-top-uniswap-launchpads-in-one-place",
     status: "live",

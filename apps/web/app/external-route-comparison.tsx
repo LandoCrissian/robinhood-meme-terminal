@@ -8,6 +8,7 @@ import {
   formatUnits,
   parseEther,
   parseUnits,
+  zeroAddress,
   type Address,
   type Hex
 } from "viem";
@@ -15,24 +16,29 @@ import { useAccount, useReadContract } from "wagmi";
 import type { ExternalMarket } from "../lib/external-market";
 import {
   protectedOutputRecommendation,
+  tradeVenueLabel,
   type TradeVenueHealth,
   type TradeVenueId,
   type TradeVenueSelectionMode
 } from "../lib/trade-route-selection";
 import { estimatedNetworkFeeUsd } from "../lib/trade-ticket";
 import { SUSHI_RED_SNWAPPER } from "../lib/sushi";
-import { ROBINHOOD_SWAP_ROUTER_02 } from "../lib/uniswap-v4";
+import {
+  PERMIT2_ADDRESS,
+  ROBINHOOD_SWAP_ROUTER_02,
+  ROBINHOOD_UNIVERSAL_ROUTER
+} from "../lib/uniswap-v4";
 import { useTradeFeeEstimate } from "../lib/use-trade-fee-estimate";
 
 type TradeVenue = {
-  venue: "sushi" | "uniswap";
-  pair: Address;
+  venue: TradeVenueId;
+  pair: string;
   dexId: string;
   liquidityUsd: number;
 };
 
 type QuoteSummary = {
-  venue: "sushi" | "uniswap";
+  venue: TradeVenueId;
   amountIn: string;
   quoteOut: string;
   minimumOut: string;
@@ -49,6 +55,7 @@ type QuoteSummary = {
     symbol: string;
     decimals: number;
   };
+  passportEligible?: true;
 };
 
 type VenueState = {
@@ -152,10 +159,10 @@ export function ExternalRouteComparison({
   venues: TradeVenue[];
   side: "buy" | "sell";
   amount: string;
-  selectedVenue: "sushi" | "uniswap" | null;
+  selectedVenue: TradeVenueId | null;
   selectionMode: TradeVenueSelectionMode;
   maxPriceImpact: number;
-  onSelectVenue: (venue: "sushi" | "uniswap") => void;
+  onSelectVenue: (venue: TradeVenueId) => void;
   onRecommendedVenue?: (recommendation: {
     venue: TradeVenueId;
     improvementBps: number;
@@ -215,7 +222,9 @@ export function ExternalRouteComparison({
       void Promise.all(venues.map(async (candidate) => {
         const endpoint = candidate.venue === "sushi"
           ? "/api/trade/external-sushi-quote"
-          : "/api/trade/external-uniswap";
+          : candidate.venue === "uniswap-v4"
+            ? "/api/trade/external-uniswap-v4"
+            : "/api/trade/external-uniswap";
         try {
           const response = await fetch(endpoint, {
             method: "POST",
@@ -231,8 +240,11 @@ export function ExternalRouteComparison({
           });
           const payload = await response.json() as Record<string, unknown>;
           if (!response.ok) throw new Error(typeof payload.error === "string" ? payload.error : "Quote unavailable.");
-          const expectedVenue = candidate.venue === "sushi" ? "sushi-aggregator" : "uniswap-v3";
+          const expectedVenue = candidate.venue === "sushi"
+            ? "sushi-aggregator"
+            : candidate.venue;
           const output = payload.outputToken as Record<string, unknown> | undefined;
+          const passport = payload.passport as Record<string, unknown> | undefined;
           const executable = payload.executable === true;
           const deadline = candidate.venue === "sushi" ? payload.quoteExpiresAt : payload.deadline;
           if (
@@ -255,7 +267,22 @@ export function ExternalRouteComparison({
             || typeof deadline !== "string"
             || !/^\d+$/.test(deadline)
             || BigInt(deadline) <= BigInt(Math.floor(Date.now() / 1000) + 15)
-            || (candidate.venue === "uniswap" && !executable)
+            || (candidate.venue !== "sushi" && !executable)
+            || (candidate.venue === "uniswap-v4" && (
+              passport?.state !== "eligible"
+              || typeof passport.sellTestedAtBlock !== "string"
+              || !/^\d+$/.test(passport.sellTestedAtBlock)
+              || typeof passport.exactTradeTestedAtBlock !== "string"
+              || !/^\d+$/.test(passport.exactTradeTestedAtBlock)
+              || typeof payload.router !== "string"
+              || payload.router.toLowerCase() !== ROBINHOOD_UNIVERSAL_ROUTER.toLowerCase()
+              || typeof payload.approvalSpender !== "string"
+              || payload.approvalSpender.toLowerCase() !== PERMIT2_ADDRESS.toLowerCase()
+            ))
+            || (candidate.venue === "uniswap-v3" && (
+              typeof payload.router !== "string"
+              || payload.router.toLowerCase() !== ROBINHOOD_SWAP_ROUTER_02.toLowerCase()
+            ))
             || (executable && (
               typeof payload.router !== "string"
               || typeof payload.calldata !== "string"
@@ -286,12 +313,17 @@ export function ExternalRouteComparison({
             approvalRequired: payload.approvalRequired === true,
             approvalSpender: candidate.venue === "sushi"
               ? SUSHI_RED_SNWAPPER
-              : ROBINHOOD_SWAP_ROUTER_02,
+              : candidate.venue === "uniswap-v4"
+                ? PERMIT2_ADDRESS
+                : ROBINHOOD_SWAP_ROUTER_02,
             outputToken: {
-              address: output.address as Address,
+              // Sushi, v3 and v4 use different sentinel addresses for native ETH.
+              // Normalize only the comparison identity; transaction calldata remains untouched.
+              address: side === "sell" ? zeroAddress : output.address as Address,
               symbol: output.symbol.slice(0, 20),
               decimals: output.decimals
-            }
+            },
+            passportEligible: candidate.venue === "uniswap-v4" ? true : undefined
           };
           setStates((current) => ({ ...current, [candidate.venue]: { status: "ready", quote } }));
         } catch (cause) {
@@ -376,7 +408,7 @@ export function ExternalRouteComparison({
               key={candidate.venue}
             >
               <span className="universalVenueName">
-                <strong>{candidate.venue === "sushi" ? "Sushi" : "Uniswap"}</strong>
+                <strong>{tradeVenueLabel(candidate.venue)}</strong>
                 {leads && <em>
                   {recommendation && recommendation.leaderAdvantageBps > 0
                     ? `Best output +${(recommendation.leaderAdvantageBps / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}%`
@@ -393,7 +425,7 @@ export function ExternalRouteComparison({
               </span>
               {quote && <span>{(quote.priceImpact * 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}% impact</span>}
               {outsideImpactLimit && <span className="universalVenueLimit">Above your {(maxPriceImpact * 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}% limit</span>}
-              {quote && address && (
+              {quote && address && candidate.venue !== "uniswap-v4" && (
                 <RouteNextCost
                   quote={quote}
                   token={token}
@@ -401,6 +433,9 @@ export function ExternalRouteComparison({
                   amountIn={amountIn}
                   account={address}
                 />
+              )}
+              {quote?.passportEligible && (
+                <span className="universalVenueFee">Passport eligible · exact route simulated</span>
               )}
             </button>
           );

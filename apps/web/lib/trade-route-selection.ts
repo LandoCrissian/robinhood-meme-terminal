@@ -1,9 +1,15 @@
-export type TradeVenueId = "sushi" | "uniswap";
+export type TradeVenueId = "sushi" | "uniswap-v3" | "uniswap-v4";
 export type TradeVenueHealth = "loading" | "ready" | "unavailable";
 export type TradeVenueSelectionMode = "automatic" | "manual";
 export type RouteLiquidityDepth = "deep" | "strong" | "moderate" | "thin" | "unknown";
 
 export const MIN_AUTO_ROUTE_IMPROVEMENT_BPS = 25;
+
+export function tradeVenueLabel(venue: TradeVenueId) {
+  if (venue === "sushi") return "Sushi";
+  if (venue === "uniswap-v4") return "Uniswap v4";
+  return "Uniswap v3";
+}
 
 export function routeLiquidityDepth(liquidityUsd: number): RouteLiquidityDepth {
   if (!Number.isFinite(liquidityUsd) || liquidityUsd <= 0) return "unknown";
