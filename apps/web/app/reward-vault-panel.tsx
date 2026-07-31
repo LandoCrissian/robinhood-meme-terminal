@@ -306,13 +306,13 @@ export function RewardVaultPanel({ tokenAddress, symbol, launchHint }: { tokenAd
   const splitterExplorer = `${activeChain.blockExplorers.default.url}/address/${feeSplitter}`;
   const addressExplorer = (address: Address) => `${activeChain.blockExplorers.default.url}/address/${address}`;
   const txExplorer = (hash: Hash) => `${activeChain.blockExplorers.default.url}/tx/${hash}`;
-  const actionName = lastAction === "migrate" ? "V4 graduation" : lastAction === "collect" ? "Fee collection" : lastAction === "token" ? `${symbol} claim` : "ETH claim";
+  const actionName = lastAction === "migrate" ? "Uniswap v4 graduation" : lastAction === "collect" ? "Fee collection" : lastAction === "token" ? `${symbol} claim` : "ETH claim";
   const originalCreator = originalCreatorRead.data as Address;
   const creatorRecipient = creatorRecipientRead.data as Address;
   const protocolTreasury = protocolTreasuryRead.data as Address;
   const payoutAuthority = payoutAuthorityRead.data as Address;
   const graduationStage = migratedToV4 ? 3 : marketGraduatedRead.data === true ? 2 : 1;
-  const graduationStageLabel = migratedToV4 ? "V4 LIVE" : marketGraduatedRead.data === true ? "READY TO MIGRATE" : "CURVE LIVE";
+  const graduationStageLabel = migratedToV4 ? "UNISWAP V4 LIVE" : marketGraduatedRead.data === true ? "READY TO MIGRATE" : "CURVE LIVE";
 
   return (
     <section className="panel rewardDashboard">
@@ -322,18 +322,18 @@ export function RewardVaultPanel({ tokenAddress, symbol, launchHint }: { tokenAd
         <article><small>Curve trading fee</small><strong>1%</strong><span>Paid in ETH on buys and sells</span></article>
         <article><small>Creator share</small><strong>{creatorShareBps / 100}%</strong><span>Continues after graduation</span></article>
         <article><small>RMT share</small><strong>{protocolShareBps / 100}%</strong><span>Protocol treasury</span></article>
-        <article><small>V4 pool fee</small><strong>0.5%</strong><span>Starts after migration</span></article>
+        <article><small>Uniswap v4 pool fee</small><strong>0.5%</strong><span>Starts after migration</span></article>
       </div>
 
       <ol className="graduationFlow" aria-label="Graduation path">
         <li className={graduationStage === 1 ? "active" : "complete"}><span className="graduationStepNumber">01</span><div><strong>Bonding curve</strong><p>Trading remains live until the verified market reserve reaches the 2 ETH target.</p></div><em>{graduationStage === 1 ? "NOW" : "COMPLETE"}</em></li>
-        <li className={graduationStage === 2 ? "active" : graduationStage > 2 ? "complete" : ""}><span className="graduationStepNumber">02</span><div><strong>Permissionless migration</strong><p>Any wallet may finalize once. The market reserve and remaining token inventory become permanently locked V4 liquidity.</p></div><em>{graduationStage === 2 ? "READY" : graduationStage > 2 ? "COMPLETE" : "NEXT"}</em></li>
-        <li className={graduationStage === 3 ? "active" : ""}><span className="graduationStepNumber">03</span><div><strong>V4 trading</strong><p>Trading continues in the canonical pool while collected swap fees keep the verified 70/30 split.</p></div><em>{graduationStage === 3 ? "LIVE" : "AFTER MIGRATION"}</em></li>
+        <li className={graduationStage === 2 ? "active" : graduationStage > 2 ? "complete" : ""}><span className="graduationStepNumber">02</span><div><strong>Permissionless migration</strong><p>Any wallet may finalize once. The market reserve and remaining token inventory become permanently locked Uniswap v4 liquidity.</p></div><em>{graduationStage === 2 ? "READY" : graduationStage > 2 ? "COMPLETE" : "NEXT"}</em></li>
+        <li className={graduationStage === 3 ? "active" : ""}><span className="graduationStepNumber">03</span><div><strong>Uniswap v4 trading</strong><p>Trading continues in the canonical pool while collected swap fees keep the verified 70/30 split.</p></div><em>{graduationStage === 3 ? "LIVE" : "AFTER MIGRATION"}</em></li>
       </ol>
 
       <div className="callout creatorContinuation">
         <strong>Creator rewards continue after graduation</strong>
-        <span>Curve trades charge 1% in ETH today. After V4 migration, the 0.5% pool fee may be earned as ETH and/or {symbol}, depending on swap direction. Collected fees keep the same {creatorShareBps / 100}/{protocolShareBps / 100} split. The creator receives no extra token allocation, LP ownership, or graduation payout; liquidity principal stays locked.</span>
+        <span>Curve trades charge 1% in ETH today. After Uniswap v4 migration, the 0.5% pool fee may be earned as ETH and/or {symbol}, depending on swap direction. Collected fees keep the same {creatorShareBps / 100}/{protocolShareBps / 100} split. The creator receives no extra token allocation, LP ownership, or graduation payout; liquidity principal stays locked.</span>
       </div>
 
       <div className="feeSectionHeading"><div><small>CURRENT RECIPIENTS</small><strong>Where collected fees go</strong></div><span>{recipientRedirected ? "RMT directed" : "Onchain"}</span></div>
@@ -357,9 +357,9 @@ export function RewardVaultPanel({ tokenAddress, symbol, launchHint }: { tokenAd
       </details>
 
       <div className="callout postGraduationFees">
-        <strong>{migratedToV4 ? "Post-graduation fees are ready for permissionless collection" : marketGraduatedRead.data ? "Curve complete; V4 migration is still pending" : "Post-graduation fee collection begins after migration"}</strong>
-        <span>{migratedToV4 ? `The locked V4 position may earn ETH and/or ${symbol} fees depending on swap direction. These are swap fees, not a token allocation. Collection realizes the LP fees actually earned by the canonical pool through this same ${creatorShareBps / 100}/${protocolShareBps / 100} splitter; it does not remove liquidity principal. A separate PoolManager protocol fee, if enabled, is removed upstream. Fees do not reach recipients until someone collects them.` : marketGraduatedRead.data ? `The curve is permanently closed. Any connected wallet may now submit the one-time transaction that moves only the market's tracked ETH reserve and ${symbol} inventory into the canonical locked V4 position. The caller receives no tokens, ETH, liquidity, or reward.` : "No post-graduation fees are being represented as distributed before the adapter confirms migration."}</span>
-        {marketGraduatedRead.data && !migratedToV4 && <button type="button" disabled={!account || busy} onClick={finalizeGraduation}>{!account ? "Connect wallet to finalize V4 graduation" : busy && lastAction === "migrate" ? isPending ? "Confirm graduation…" : "Finalizing graduation…" : "Finalize V4 graduation"}</button>}
+        <strong>{migratedToV4 ? "Post-graduation fees are ready for permissionless collection" : marketGraduatedRead.data ? "Curve complete; Uniswap v4 migration is still pending" : "Post-graduation fee collection begins after migration"}</strong>
+        <span>{migratedToV4 ? `The locked Uniswap v4 position may earn ETH and/or ${symbol} fees depending on swap direction. These are swap fees, not a token allocation. Collection realizes the LP fees actually earned by the canonical pool through this same ${creatorShareBps / 100}/${protocolShareBps / 100} splitter; it does not remove liquidity principal. A separate PoolManager protocol fee, if enabled, is removed upstream. Fees do not reach recipients until someone collects them.` : marketGraduatedRead.data ? `The curve is permanently closed. Any connected wallet may now submit the one-time transaction that moves only the market's tracked ETH reserve and ${symbol} inventory into the canonical locked Uniswap v4 position. The caller receives no tokens, ETH, liquidity, or reward.` : "No post-graduation fees are being represented as distributed before the adapter confirms migration."}</span>
+        {marketGraduatedRead.data && !migratedToV4 && <button type="button" disabled={!account || busy} onClick={finalizeGraduation}>{!account ? "Connect wallet to finalize Uniswap v4 graduation" : busy && lastAction === "migrate" ? isPending ? "Confirm graduation…" : "Finalizing graduation…" : "Finalize Uniswap v4 graduation"}</button>}
         {marketGraduatedRead.data && !migratedToV4 && <small>Permissionless one-time action · caller receives no funds or ownership · network gas applies · liquidity principal becomes permanently locked</small>}
         {migratedToV4 && <button type="button" disabled={!account || busy} onClick={collectPostGraduationFees}>{!account ? "Connect wallet to collect" : busy && lastAction === "collect" ? isPending ? "Confirm collection…" : "Collecting fees…" : "Collect post-graduation fees"}</button>}
         {migratedToV4 && <small>Permissionless action · the caller cannot choose recipients · network gas applies · locked liquidity: {lockedLiquidityRead.data?.toString()}</small>}

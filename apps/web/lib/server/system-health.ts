@@ -264,11 +264,11 @@ export async function readFreshSystemHealth(): Promise<SystemHealthReport> {
         graduationHealthy = graduationHealthy
           && Boolean(adapterCode && adapterCode !== "0x")
           && getAddress(boundFactory) === factory;
-        graduationDetail = `${Number(policy.postGraduationFeeBps) / 100}% V4 pool fee · latest market adapter bound to active factory · ${latestGraduationAdapter.slice(0, 8)}…${latestGraduationAdapter.slice(-6)}`;
+        graduationDetail = `${Number(policy.postGraduationFeeBps) / 100}% Uniswap v4 pool fee · latest market adapter bound to active factory · ${latestGraduationAdapter.slice(0, 8)}…${latestGraduationAdapter.slice(-6)}`;
       }
       checks.push(check(
         "graduation",
-        "V4 graduation route",
+        "Uniswap v4 graduation route",
         graduationHealthy,
         graduationDetail
       ));

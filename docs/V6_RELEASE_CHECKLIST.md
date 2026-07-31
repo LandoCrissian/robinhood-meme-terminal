@@ -51,7 +51,7 @@ Current production status: **V6 is live and public launches are open**. This is 
 - [x] Post-graduation fee accounting and routing.
 - [x] Liquidity principal cannot be withdrawn.
 - [x] External direct liquidity-removal attempts cannot touch the adapter-owned position.
-- [x] Canonical V4 pool fee is exactly 0.5% within integer fee-growth rounding.
+- [x] Canonical Uniswap v4 pool fee is exactly 0.5% within integer fee-growth rounding.
 - [x] Permissionless fee collection cannot redirect proceeds.
 - [x] Creator cannot change their payout wallet; governance cannot select an unrelated recipient.
 - [x] Governance-delayed payout recovery preserves prior deferred balances and post-graduation fee routing.

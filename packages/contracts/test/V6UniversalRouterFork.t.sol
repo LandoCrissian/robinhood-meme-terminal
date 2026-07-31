@@ -3,6 +3,7 @@ pragma solidity ^0.8.26;
 
 import {CloneBondingCurveMarketV6} from "../src/clone/CloneBondingCurveMarketV6.sol";
 import {RMTLaunchFactoryV6} from "../src/RMTLaunchFactoryV6.sol";
+import {RMTLaunchGate} from "../src/RMTLaunchGate.sol";
 import {V4GraduationAdapter} from "../src/V4GraduationAdapter.sol";
 import {Currency} from "@uniswap/v4-core/src/types/Currency.sol";
 import {IHooks} from "@uniswap/v4-core/src/interfaces/IHooks.sol";
@@ -12,7 +13,9 @@ interface IUniversalRouterForkVm {
     function envOr(string calldata name, string calldata defaultValue) external returns (string memory value);
     function createSelectFork(string calldata rpcUrl) external returns (uint256 forkId);
     function deal(address account, uint256 balance) external;
+    function prank(address caller) external;
     function roll(uint256 newHeight) external;
+    function warp(uint256 newTimestamp) external;
 }
 
 interface IERC20RouterProbe {
@@ -65,6 +68,16 @@ contract V6UniversalRouterForkTest {
         require(address(ROUTER).code.length != 0, "official router missing");
         require(address(QUOTER).code.length != 0, "official quoter missing");
         require(address(PERMIT2).code.length != 0, "Permit2 missing");
+
+        RMTLaunchGate gate = RMTLaunchGate(address(FACTORY.launchGate()));
+        if (gate.launchesPaused()) {
+            vm.prank(gate.governance());
+            uint64 executableAt = gate.scheduleUnpause();
+            vm.warp(executableAt);
+            vm.prank(gate.guardian());
+            gate.executeUnpause();
+        }
+        require(!gate.launchesPaused(), "fork launch gate remained paused");
 
         (address tokenAddress, address marketAddress,) = FACTORY.launchSimple(
             "RMT Router Fork Probe",

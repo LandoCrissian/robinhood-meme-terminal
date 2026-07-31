@@ -26,7 +26,7 @@ The release preflight must read bytecode and state from the same production-capa
 | Bonding-curve trading fee | 1% |
 | Creator share of realized fees | 70% |
 | Protocol-treasury share of realized fees | 30% |
-| Post-graduation V4 pool fee | 0.5% |
+| Post-graduation Uniswap v4 pool fee | 0.5% |
 | Initial virtual ETH reserve | 0.3 ETH |
 | Initial virtual token reserve | 1,017,500,000 tokens |
 | Graduation target | 2 ETH net real reserve |

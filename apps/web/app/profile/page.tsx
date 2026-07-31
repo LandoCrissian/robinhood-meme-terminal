@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useAccount } from "wagmi";
 import { isEmbeddedAuthBrowser } from "../../lib/auth-environment";
 import { RMT_ADMIN_EMAIL } from "../../lib/creator-application";
@@ -46,7 +46,9 @@ function editTimeLabel(timestamp: number) {
 export default function ProfilePage() {
   const { address, isConnected } = useAccount();
   const {
+    completeEmailLinkSignIn,
     configured,
+    emailLinkPending,
     loading,
     profile,
     identityUpdatedAt,
@@ -54,16 +56,21 @@ export default function ProfilePage() {
     user,
     syncState,
     saveProfile,
+    sendEmailSignInLink,
     signInWithGoogle,
     signOutProfile
   } = useProfile();
   const [draft, setDraft] = useState<RmtProfile>(profile);
   const [watchCount, setWatchCount] = useState(0);
   const [message, setMessage] = useState("");
+  const [authMessage, setAuthMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [email, setEmail] = useState("");
+  const [emailLinkSent, setEmailLinkSent] = useState(false);
   const [reviewing, setReviewing] = useState(false);
   const [embeddedAuthBrowser, setEmbeddedAuthBrowser] = useState(false);
   const [now, setNow] = useState(() => Date.now());
+  const emailCompletionAttempted = useRef(false);
   const isAdmin = Boolean(user?.emailVerified && user.email?.toLowerCase() === RMT_ADMIN_EMAIL);
 
   useEffect(() => {
@@ -73,6 +80,19 @@ export default function ProfilePage() {
   useEffect(() => {
     setEmbeddedAuthBrowser(isEmbeddedAuthBrowser(window.navigator.userAgent));
   }, []);
+  useEffect(() => {
+    if (!emailLinkPending || user || emailCompletionAttempted.current) return;
+    emailCompletionAttempted.current = true;
+    setBusy(true);
+    setAuthMessage("Completing secure email sign-in…");
+    void completeEmailLinkSignIn().then(() => {
+      setAuthMessage("Email verified. Your RMT desk is connecting.");
+    }).catch((error) => {
+      setAuthMessage(error instanceof Error && error.message === "Enter a valid email address."
+        ? "Confirm the same email address that received this link."
+        : error instanceof Error ? error.message : "Email sign-in did not finish.");
+    }).finally(() => setBusy(false));
+  }, [completeEmailLinkSignIn, emailLinkPending, user]);
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 30_000);
     return () => window.clearInterval(timer);
@@ -122,34 +142,63 @@ export default function ProfilePage() {
 
   const beginGoogleSignIn = async () => {
     setBusy(true);
-    setMessage("");
+    setAuthMessage("");
     try {
       await signInWithGoogle();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Google sign-in did not finish. Your local profile is unchanged.");
+      setAuthMessage(error instanceof Error ? error.message : "Google sign-in did not finish. Your local profile is unchanged.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const beginEmailSignIn = async (event: FormEvent) => {
+    event.preventDefault();
+    setBusy(true);
+    setAuthMessage("");
+    try {
+      await sendEmailSignInLink(email);
+      setEmailLinkSent(true);
+      setAuthMessage("Secure sign-in link sent. Check your inbox and open it on this device or any other browser.");
+    } catch (error) {
+      setAuthMessage(error instanceof Error ? error.message : "RMT could not send the sign-in link.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const finishEmailSignIn = async (event: FormEvent) => {
+    event.preventDefault();
+    setBusy(true);
+    setAuthMessage("");
+    try {
+      await completeEmailLinkSignIn(email);
+      setAuthMessage("Email verified. Your RMT desk is connecting.");
+    } catch (error) {
+      setAuthMessage(error instanceof Error ? error.message : "Email sign-in did not finish.");
     } finally {
       setBusy(false);
     }
   };
 
   const copySecureProfileLink = async () => {
-    setMessage("");
+    setAuthMessage("");
     try {
       await window.navigator.clipboard.writeText(`${window.location.origin}/profile`);
-      setMessage("Secure RMT profile link copied. Open it in Safari, Chrome, Firefox, or Edge to sign in.");
+      setAuthMessage("Secure RMT profile link copied. Open it in Safari, Chrome, Firefox, or Edge to sign in.");
     } catch {
-      setMessage(`Open ${window.location.origin}/profile in Safari, Chrome, Firefox, or Edge to sign in.`);
+      setAuthMessage(`Open ${window.location.origin}/profile in Safari, Chrome, Firefox, or Edge to sign in.`);
     }
   };
 
   const endProfileSession = async () => {
     setBusy(true);
-    setMessage("");
+    setAuthMessage("");
     try {
       await signOutProfile();
-      setMessage("Signed out. This device keeps its local profile copy.");
+      setAuthMessage("Signed out. This device keeps its local profile copy.");
     } catch {
-      setMessage("RMT could not sign out of the cloud profile. Try again.");
+      setAuthMessage("RMT could not sign out of the cloud profile. Try again.");
     } finally {
       setBusy(false);
     }
@@ -157,12 +206,12 @@ export default function ProfilePage() {
 
   const retryCloudSync = async () => {
     setBusy(true);
-    setMessage("");
+    setAuthMessage("");
     try {
       await retrySync();
-      setMessage("Profile and watchlist synced.");
+      setAuthMessage("Profile and watchlist synced.");
     } catch {
-      setMessage("Cloud sync is still unavailable. Your local profile is safe on this device.");
+      setAuthMessage("Cloud sync is still unavailable. Your local profile is safe on this device.");
     } finally {
       setBusy(false);
     }
@@ -268,28 +317,78 @@ export default function ProfilePage() {
           <section className="profileCloudCard">
             <p className="eyebrow">CROSS-DEVICE PROFILE</p>
             <h2>{user ? "Your desk follows you" : "Take your desk anywhere"}</h2>
-            <p>{user ? "Profile preferences and watched RMT tokens sync through your private Firebase workspace. RMT does not display your Google email or photo." : "Sign in to carry your profile and watchlist between desktop and mobile. Wallet connection stays separate."}</p>
+            <p>{user ? "Profile preferences and watched RMT tokens sync through your private Firebase workspace. RMT does not publish your sign-in email." : "Sign in with Google or any email provider to carry your profile and watchlist between desktop and mobile. Wallet connection stays separate."}</p>
             {user ? (
               <div className="profileCloudActions">
                 {syncState === "error" && <button className="profileRetryButton" type="button" disabled={busy} onClick={() => void retryCloudSync()}>Retry sync</button>}
                 <button type="button" disabled={busy} onClick={() => void endProfileSession()}>Sign out of profile</button>
               </div>
-            ) : configured && embeddedAuthBrowser ? (
-              <div className="profileAuthBrowserNotice">
-                <strong>Open RMT in your browser to sign in</strong>
-                <span>Google protects accounts by blocking sign-in inside some in-app browsers. Open this profile page in Safari, Chrome, Firefox, or Edge; your local desk stays on this device until you sign in.</span>
-                <div>
-                  <a href="/profile" target="_blank" rel="noreferrer">Open secure sign-in ↗</a>
-                  <button type="button" disabled={busy} onClick={() => void copySecureProfileLink()}>Copy profile link</button>
-                </div>
-              </div>
             ) : configured ? (
-              <button className="googleProfileButton" type="button" disabled={busy || loading} onClick={() => void beginGoogleSignIn()}>
-                {loading ? "Preparing secure sign-in…" : "Continue with Google"}
-              </button>
+              <div className="profileAuthOptions">
+                {emailLinkPending ? (
+                  <form className="profileEmailAuth" onSubmit={finishEmailSignIn}>
+                    <strong>Finish email sign-in</strong>
+                    <span>Enter the same address that received the RMT link. The address is never placed in the link.</span>
+                    <label>
+                      Email address
+                      <input
+                        type="email"
+                        autoComplete="email"
+                        inputMode="email"
+                        maxLength={254}
+                        placeholder="you@example.com"
+                        required
+                        value={email}
+                        onChange={(event) => setEmail(event.target.value)}
+                      />
+                    </label>
+                    <button type="submit" disabled={busy || loading}>
+                      {busy ? "Verifying…" : "Verify and bring in my desk"}
+                    </button>
+                  </form>
+                ) : (
+                  <>
+                    {embeddedAuthBrowser ? (
+                      <div className="profileAuthBrowserNotice">
+                        <strong>Email works here; Google needs a full browser</strong>
+                        <span>Use any email address below, or open this page in Safari, Chrome, Firefox, or Edge to continue with Google.</span>
+                        <div>
+                          <a href="/profile" target="_blank" rel="noreferrer">Open secure sign-in ↗</a>
+                          <button type="button" disabled={busy} onClick={() => void copySecureProfileLink()}>Copy profile link</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button className="googleProfileButton" type="button" disabled={busy || loading} onClick={() => void beginGoogleSignIn()}>
+                        {loading ? "Preparing secure sign-in…" : "Continue with Google"}
+                      </button>
+                    )}
+                    <div className="profileAuthDivider"><span>OR USE ANY EMAIL</span></div>
+                    <form className="profileEmailAuth" onSubmit={beginEmailSignIn}>
+                      <label>
+                        Email address
+                        <input
+                          type="email"
+                          autoComplete="email"
+                          inputMode="email"
+                          maxLength={254}
+                          placeholder="you@example.com"
+                          required
+                          value={email}
+                          onChange={(event) => setEmail(event.target.value)}
+                        />
+                      </label>
+                      <button type="submit" disabled={busy || loading}>
+                        {busy ? "Sending secure link…" : emailLinkSent ? "Send another sign-in link" : "Email me a sign-in link"}
+                      </button>
+                      <span>Works with Outlook, Yahoo, iCloud, Proton, business email, and other providers. No password required.</span>
+                    </form>
+                  </>
+                )}
+              </div>
             ) : (
-              <div className="profileSetupNotice"><strong>Firebase connection prepared</strong><span>Add the project configuration to enable Google profile sync.</span></div>
+              <div className="profileSetupNotice"><strong>Firebase connection prepared</strong><span>Add the project configuration to enable secure profile sync.</span></div>
             )}
+            {authMessage && <p className="profileAuthMessage" role="status">{authMessage}</p>}
           </section>
           <ReferralCard />
 

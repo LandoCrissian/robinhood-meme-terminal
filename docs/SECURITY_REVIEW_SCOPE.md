@@ -47,7 +47,7 @@ Assess the live policy-driven V6 deployment, reconstruct the release from reposi
 
 ## Economic review
 
-Independently simulate low activity, whales, repeated buy/sell cycles, target approach, target crossing, panic sells, rounding effects, post-graduation two-way V4 trading, fee realization timing, payout redirects, and exact creator/protocol distributions in both ETH and the launched token. Assess whether the 2 ETH graduation target and virtual reserves create the disclosed approximately 17–18 ETH graduation FDV and whether the curve-to-pool price transition remains within the tested bound.
+Independently simulate low activity, whales, repeated buy/sell cycles, target approach, target crossing, panic sells, rounding effects, post-graduation two-way Uniswap v4 trading, fee realization timing, payout redirects, and exact creator/protocol distributions in both ETH and the launched token. Assess whether the 2 ETH graduation target and virtual reserves create the disclosed approximately 17–18 ETH graduation FDV and whether the curve-to-pool price transition remains within the tested bound.
 
 ## Deliverables and acceptance
 

@@ -109,7 +109,7 @@ export function CreatorApplicationPanel() {
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     if (!user) {
-      setMessage("Sign in with Google before applying.");
+      setMessage("Sign in to your RMT profile before applying.");
       return;
     }
     const validation = validateCreatorApplication(draft);
@@ -145,7 +145,7 @@ export function CreatorApplicationPanel() {
       {!configured ? (
         <div className="creatorApplicationState"><strong>Firebase setup required</strong><p>Project applications remain closed until secure profile storage is configured.</p></div>
       ) : !user ? (
-        <div className="creatorApplicationState"><strong>Sign in to apply</strong><p>Use the Google profile control above. Applications are private and never grant wallet or transaction access.</p></div>
+        <div className="creatorApplicationState"><strong>Sign in to apply</strong><p>Use Google or any email provider in the profile control above. Applications are private and never grant wallet or transaction access.</p></div>
       ) : loading ? (
         <div className="creatorApplicationState"><strong>Loading application status…</strong></div>
       ) : application?.status === "approved" && application.projectSlug ? (

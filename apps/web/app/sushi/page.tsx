@@ -22,7 +22,7 @@ export const metadata: Metadata = {
 
 const checks = [
   ["01", "Live RMT origin", "Native RMT V6 controls require an active launch recorded by the canonical factory.", "LIVE"],
-  ["02", "Native RMT trade", "Curve buy and sell execution is live; graduation uses RMT's canonical V4 adapter path.", "LIVE"],
+  ["02", "Native RMT trade", "Curve buy and sell execution is live; graduation uses RMT's canonical Uniswap v4 adapter path.", "LIVE"],
   ["03", "Sushi deployments", "Pinned Sushi source publishes Robinhood V3 and RedSnwapper addresses.", "SOURCE PINNED"],
   ["04", "Guarded Sushi execution", "RMT validates Sushi calldata, contract bytecode, minimum output and simulation before wallet submission.", "LIVE"],
   ["05", "V7 launch liquidity", "Sushi liquidity for future RMT-native launches remains a separate architecture and security-review track.", "RESEARCH"]
@@ -122,7 +122,7 @@ export default function SushiIntegrationPage() {
       <section className="sushiLabPromise">
         <p className="eyebrow">WHY THIS MATTERS</p>
         <h2>One Terminal. More verified routes.</h2>
-        <p>External Sushi markets can now execute inside RMT with visible evidence and wallet control. RMT-native V6 markets still use their own curve and canonical V4 graduation path; future V7 Sushi liquidity remains separate and undeployed.</p>
+        <p>External Sushi markets can now execute inside RMT with visible evidence and wallet control. RMT-native V6 markets still use their own curve and canonical Uniswap v4 graduation path; future V7 Sushi liquidity remains separate and undeployed.</p>
         <div><Link href={`/project/${officialToken}?launch=0#trade`}>Inspect live RMT</Link><Link href="/status">Verify production</Link><a href={`${sushiSource}/red-snwapper.ts`} target="_blank" rel="noreferrer">Inspect pinned Sushi source ↗</a></div>
       </section>
 

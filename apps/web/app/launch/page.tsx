@@ -16,7 +16,7 @@ export default function LaunchPage() {
         <h2 id="launch-pause-title">Launching reopens with V7—not before.</h2>
         <p>The pause affects new token creation only. Existing RMT launches remain discoverable and tradable, and external Robinhood Chain markets remain available in Terminal.</p>
         <div className="terminalIntroActions">
-          <Link className="primaryAction" href="/explore">Explore RMT launches</Link>
+          <Link className="primaryAction" href="/explore">Explore RMT ecosystem</Link>
           <Link className="secondaryAction" href="/">Open Terminal</Link>
         </div>
         <div className="callout"><strong>Onchain status is independently verifiable</strong><span>The website release gate cannot be reopened by an environment-variable change. V7 requires a dedicated reviewed release.</span></div>

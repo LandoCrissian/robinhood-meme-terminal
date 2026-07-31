@@ -16,12 +16,12 @@ const requestSchema = z.object({
 });
 
 const publicTradeErrors = new Set([
-  "Native V4 trading is available only on Robinhood Chain mainnet.",
+  "Native RMT Uniswap v4 trading is available only on Robinhood Chain mainnet.",
   "Trade amount is outside the supported range.",
   "A valid wallet recipient is required.",
   "The active V6 factory could not be verified.",
   "This token is not the requested active V6 launch.",
-  "The canonical V4 pool is not open yet.",
+  "The canonical Uniswap v4 pool is not open yet.",
   "The graduated pool configuration failed RMT verification.",
   "The official Uniswap execution contracts are unavailable.",
   "The canonical pool returned an invalid quote.",
@@ -57,7 +57,7 @@ export async function POST(request: Request) {
   } catch (cause) {
     const message = cause instanceof Error && publicTradeErrors.has(cause.message)
       ? cause.message
-      : "Unable to prepare the canonical V4 trade.";
+      : "Unable to prepare the canonical Uniswap v4 trade.";
     return Response.json({ error: message }, { status: 422, headers: { "Cache-Control": "no-store" } });
   }
 }

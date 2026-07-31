@@ -1,8 +1,8 @@
 # Robinhood Chain legacy V4 contract manifest
 
-> Historical V4 record. Superseded for new launches by the [canonical V6 deployment](./MAINNET_V6_DEPLOYMENT.md); V5 is the intermediate legacy identity layer. These addresses remain documented only for historical verification and legacy identity protection.
+> Archived product generation. Superseded for new launches by the [canonical V6 deployment](../../MAINNET_V6_DEPLOYMENT.md); V5 is the intermediate legacy identity layer. These addresses remain documented only for historical verification and legacy identity protection.
 
-Historical V4 status: **deployed and recorded; this statement does not describe V6 verification or audit status**
+Historical V4 status: **retired; infrastructure deployed and recorded; no community or public project launched through RMT V4**
 
 - Chain: Robinhood Chain mainnet
 - Chain ID: `4663`

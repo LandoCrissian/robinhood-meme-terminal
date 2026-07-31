@@ -102,7 +102,7 @@ No transfer tax is added to the ERC-20 token.
 
 V6 graduation is triggered when the tracked real ETH reserve reaches exactly 2 ETH net of curve fees. The final buy is clamped and excess ETH is refunded or left as a payer-controlled claim.
 
-The threshold-reaching buy closes the bonding curve and records graduation; it does not make an external DEX call. After that confirmation, `migrateLiquidity()` is a permissionless, one-time finalization transaction that moves only the tracked reserve and inventory into the canonical V4 position. The caller pays gas but receives no ETH, tokens, liquidity ownership, or reward.
+The threshold-reaching buy closes the bonding curve and records graduation; it does not make an external DEX call. After that confirmation, `migrateLiquidity()` is a permissionless, one-time finalization transaction that moves only the tracked reserve and inventory into the canonical Uniswap v4 position. The caller pays gas but receives no ETH, tokens, liquidity ownership, or reward.
 
 Graduation must:
 
@@ -127,7 +127,7 @@ Graduation must:
 8. A buy immediately followed by a sell cannot produce risk-free profit before external price movement.
 9. Rounding cannot create value through repeated dust trades.
 10. Graduation happens at most once.
-11. Curve trading is impossible after graduation; trading continues in the canonical V4 pool after migration.
+11. Curve trading is impossible after graduation; trading continues in the canonical Uniswap v4 pool after migration.
 12. Creator, fee, reserve, and adapter parameters are immutable per launch.
 13. No privileged address can withdraw public inventory or real reserves.
 14. All external ETH transfers use checks-effects-interactions and reentrancy protection.

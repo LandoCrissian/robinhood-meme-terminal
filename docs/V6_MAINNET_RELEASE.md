@@ -29,7 +29,7 @@ The [official Uniswap V4 deployment list](https://developers.uniswap.org/docs/pr
 - Bonding-curve fee: 1%
 - Creator share of fees: 70%
 - Protocol share of fees: 30%
-- Post-graduation V4 pool fee: 0.5%
+- Post-graduation Uniswap v4 pool fee: 0.5%
 - Graduation liquidity: full range, principal permanently locked, no removal function
 
 Both bonding-curve fees and collected V4 position fees use the launch's immutable 70/30 splitter. Each splitter accounts explicit deposits only from its bound market or graduation adapter, and the V4 hook rejects outside liquidity and permissionless donations; arbitrary transfers cannot inflate reported fee totals. The V6 policy registry constructor permanently records the one reviewed market implementation and graduation adapter, and every policy must use those exact addresses as well as the canonical fee percentages, split, graduation target, and RMT treasury. V4 fees can be collected by anyone, but the caller cannot choose the destination.

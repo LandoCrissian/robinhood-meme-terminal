@@ -18,7 +18,7 @@ RMT integrates Sushi in stages so a new venue cannot weaken the verified V6 exec
 - `NoWay`, partial fills, changed input amounts, invalid output amounts, excessive/invalid price impact values, upstream failures, and timeouts fail closed.
 - V6 launch previews remain off unless both `NEXT_PUBLIC_RMT_SUSHI_QUOTES_ENABLED=true` and `RMT_SUSHI_QUOTES_ENABLED=true` are intentionally deployed. External Terminal quotes require the server-only `RMT_SUSHI_QUOTES_ENABLED=true` flag.
 
-The current production Uniswap V4 graduation and execution path remains unchanged.
+The current production Uniswap v4 graduation and execution path remains unchanged.
 
 The canonical V6 Uniswap path remains available independently. Sushi execution applies to external Sushi markets and does not split or migrate RMT launch liquidity.
 

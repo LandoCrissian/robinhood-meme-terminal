@@ -3,7 +3,7 @@
 RMT supports two profile modes:
 
 - **Local mode** is the automatic fallback. Profile preferences and watchlists stay in the current browser, and the trading product remains fully usable.
-- **Cloud mode** uses Firebase Authentication and Cloud Firestore. A signed-in user owns one private profile workspace and receives live profile/watchlist updates across signed-in devices.
+- **Cloud mode** uses Firebase Authentication and Cloud Firestore. A user may continue with Google or request a passwordless sign-in link through any valid email provider. A signed-in user owns one private profile workspace and receives live profile/watchlist updates across signed-in devices.
 
 Wallet connection and profile authentication are deliberately separate. Firebase never receives a seed phrase, private key, wallet signature, trade approval, portfolio balance, or custody authority. Firebase remains an offchain convenience layer and is not a protocol dependency.
 
@@ -19,7 +19,7 @@ Wallet connection and profile authentication are deliberately separate. Firebase
 - `projectStats/{slug}` exposes only the aggregate follower count. Firestore rules require the private follow and aggregate count to change together in one atomic write, preventing direct count edits.
 - `users/{uid}/referralProfile/current` privately records one permanent invite code for the owner. `referralCodes/{code}` stores the private owner ID and aggregate verified activation count; only the owner may read it.
 - `users/{uid}/referralClaim/current` privately records the single code an account activated. Rules prevent self-referrals and require the claim and aggregate `+1` to occur in one atomic write.
-- Google account email and photo are read from the active Firebase Authentication session for the signed-in UI. RMT does not duplicate either value in Firestore.
+- The verified sign-in email and optional provider photo are read from the active Firebase Authentication session for the signed-in UI. RMT does not duplicate either value in Firestore.
 
 Local profile and watchlist records carry independent update versions. On sign-in, the latest profile and latest complete watchlist win separately. Newer deletions therefore stay deleted instead of being reintroduced by an older device. Firestore listeners deliver later changes to other open, signed-in RMT sessions.
 
@@ -30,13 +30,15 @@ Invite links use `/r/RMT-XXXXXXXX` and open a dedicated consent page. Only after
 ## Safe activation order
 
 1. Create or choose the Firebase project and register a Web app.
-2. Add only the exact RMT domains that need sign-in, including the canonical production domain. Do not authorize wildcard or disposable preview domains. Google sign-in, the OAuth display name, and the public support email are committed in `firebase.json` and deployed in step 4.
+2. Add only the exact RMT domains that need sign-in, including the canonical production domain. Do not authorize wildcard or disposable preview domains. Google sign-in, Email/Password provider activation, the OAuth display name, and the public support email are committed in `firebase.json` and deployed in step 4.
 3. Create Cloud Firestore in production mode. Never start with permissive test rules.
 4. From a reviewed local checkout, authenticate the Firebase CLI and deploy the committed Authentication provider configuration and rules:
 
    ```bash
    pnpm exec firebase deploy --only auth,firestore:rules --project <firebase-project-id>
    ```
+
+   In Firebase Authentication, confirm **Email/Password** and **Email link (passwordless sign-in)** are both enabled. The committed CLI configuration enables the email provider; the live project must also allow email-link sign-in (`signIn.email.passwordRequired=false`) before the website advertises the option. Keep email-enumeration protection enabled.
 
 5. Run the rules emulator suite and the web checks:
 
@@ -48,13 +50,13 @@ Invite links use `/r/RMT-XXXXXXXX` and open a dedicated consent page. Only after
    ```
 
 6. Copy the registered Web app values into the matching `NEXT_PUBLIC_FIREBASE_*` deployment variables documented in `apps/web/.env.example`. Set the variables only after the production rules are deployed.
-7. Redeploy RMT. On `/profile`, sign in, review and save an identity, confirm the correction window appears on a second device, and verify preferences remain editable. Add and remove a watched token, then confirm the same state appears on the second device. Also confirm signed-out and different-user reads fail.
+7. Redeploy RMT. On `/profile`, test Google sign-in and a passwordless link sent to a non-Gmail address. Open one link on the requesting device and another on a different browser, which must require the same email address again. Review and save an identity, confirm the correction window appears on a second device, and verify preferences remain editable. Add and remove a watched token, then confirm the same state appears on the second device. Also confirm signed-out and different-user reads fail.
 
 ## Branded authentication domain
 
 Production sets `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=www.rmtlaunch.fun`. In the browser, RMT uses the current approved RMT or Vercel deployment hostname as the Firebase `authDomain`. The Vercel rewrite in `apps/web/vercel.json` transparently proxies only `/__/auth/*` to the project's Firebase Hosting origin, so Google returns through the same RMT origin instead of depending on third-party browser storage. Local development retains the configured Firebase helper domain.
 
-Google profile sign-in uses Firebase's full-page redirect flow. This is deliberate: Firebase recommends redirects on mobile, and it avoids popup windows that embedded or mobile browsers may close before authentication completes.
+Google profile sign-in uses Firebase's user-initiated popup flow. RMT detects embedded browsers that commonly block it and directs those users to a full browser. Passwordless email sign-in remains available without a Google account: RMT sends a one-time Firebase link back to `/profile`, stores the normalized email only in the requesting browser for same-device completion, never places the email in the URL, and requires the user to re-enter the same address when the link opens on another device.
 
 Keep `www.rmtlaunch.fun` in Firebase Authentication's authorized domains and keep the exact handler URL registered on the Firebase-generated Google OAuth client. Do not use a redirect response in place of the rewrite: the auth helper must be reverse-proxied without changing the browser URL. The original `robinhood-meme-terminal.firebaseapp.com` domain remains the upstream and rollback path.
 
@@ -70,7 +72,9 @@ The browser uses Firestore's memory cache rather than persistent IndexedDB cachi
 
 ## Operational behavior
 
-- Google sign-in uses a user-initiated full-page redirect. Approved RMT and Vercel hosts proxy Firebase's `/__/auth/*` helper on the same origin, avoiding fragile popups and the third-party storage dependency that otherwise affects redirect sign-in on modern browsers.
+- Google sign-in uses a user-initiated popup, while embedded browsers receive a clear full-browser recovery path.
+- Passwordless email links work with Gmail, Outlook, Yahoo, iCloud, Proton, business domains, and other valid providers. The same email address must be confirmed when the link opens outside the requesting browser.
+- Approved RMT and Vercel hosts proxy Firebase's `/__/auth/*` helper on the same origin for the Google flow.
 - If Firebase is absent or temporarily unavailable, profile edits remain saved locally and trading remains operational.
 - A failed cloud write displays a retry action. Writes are serialized, schema-versioned, and protected from older profile/watchlist versions overwriting newer ones.
 - Deploy rules before enabling the client configuration. Rolling the variables back disables new Firebase initialization without affecting wallets, launches, market data, or trading.
