@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import "./server/lemon-project-feed-smoke";
+import "./server/sushi-launch-feed-smoke";
 import {
   externalProjectProvenanceDescription,
   externalProjectProvenanceLabel,
@@ -154,6 +155,27 @@ const sushiPassport = marketDistributionPassport({
 });
 assert.equal(sushiPassport.venue, "sushi");
 assert.equal(sushiPassport.state, "announced-watch");
-assert.match(sushiPassport.steps[2]?.detail ?? "", /public contracts and events/);
+assert.match(sushiPassport.steps[2]?.detail ?? "", /documented launch record and pool agree/);
+
+const verifiedSushiLaunchPassport = marketDistributionPassport({
+  ...ponsUniswapMarket,
+  dexId: "sushiswap-v3",
+  project: {
+    ...lemonProject,
+    sourceId: "sushi",
+    sourceName: "Sushi Launch"
+  },
+  venue: {
+    kind: "dex",
+    dexId: "sushiswap-v3",
+    pairAddress: ponsUniswapMarket.pairAddress,
+    url: ponsUniswapMarket.url,
+    execution: "read-only"
+  }
+});
+assert.equal(verifiedSushiLaunchPassport.state, "recognized-source-market");
+assert.equal(verifiedSushiLaunchPassport.shortLabel, "Sushi Launch verified");
+assert.equal(verifiedSushiLaunchPassport.steps[2]?.tone, "verified");
+assert.match(verifiedSushiLaunchPassport.steps[2]?.detail ?? "", /does not imply a partnership/);
 
 console.info("External market address integrity validation passed");
