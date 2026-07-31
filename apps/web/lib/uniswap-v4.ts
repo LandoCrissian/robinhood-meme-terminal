@@ -2,8 +2,10 @@ import type { Address } from "viem";
 
 // Official Uniswap deployments for Robinhood Chain (chain ID 4663).
 // Sources: Uniswap/contracts deployments/json/4663.json and canonical Permit2.
-export const ROBINHOOD_UNIVERSAL_ROUTER = "0x06afBA43fd06227fA663b0dAeCF536F6eaA6BF99" as Address;
+export const ROBINHOOD_UNIVERSAL_ROUTER = "0x06afba43fd06227fa663b0daecf536f6eaa6bf99" as Address;
 export const ROBINHOOD_V4_QUOTER = "0x8dc178efb8111bb0973dd9d722ebeff267c98f94" as Address;
+export const ROBINHOOD_V4_POOL_MANAGER = "0x8366a39cc670b4001a1121b8f6a443a643e40951" as Address;
+export const ROBINHOOD_V4_STATE_VIEW = "0xf3334192d15450cdd385c8b70e03f9a6bd9e673b" as Address;
 export const ROBINHOOD_WETH = "0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73" as Address;
 export const ROBINHOOD_V3_FACTORY = "0x1f7d7550b1b028f7571e69a784071f0205fd2efa" as Address;
 export const ROBINHOOD_V3_QUOTER = "0x33e885ed0ec9bf04ecfb19341582aadcb4c8a9e7" as Address;

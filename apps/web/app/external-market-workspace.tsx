@@ -14,6 +14,7 @@ import {
   type ExternalChartRange,
   type ExternalOhlcvPayload
 } from "../lib/external-ohlcv";
+import { isUniswapV4PoolId } from "../lib/external-v4-evidence";
 import { ipfsToHttp } from "../lib/token-metadata";
 import {
   resilientTradeVenue,
@@ -27,6 +28,7 @@ import { ExternalHolderIntelligence, ExternalTradeTape, ExternalWalletPosition }
 import { ExternalRouteComparison } from "./external-route-comparison";
 import { ExternalSushiQuotePanel } from "./external-sushi-quote-panel";
 import { ExternalUniswapTradePanel } from "./external-uniswap-trade-panel";
+import { ExternalV4HookPassport } from "./external-v4-hook-passport";
 import { SiteFooter } from "./site-footer";
 import { TradeExecutionControls } from "./trade-ticket-ui";
 import { WatchlistButton } from "./watchlist-button";
@@ -86,7 +88,7 @@ function originLabel(market: ExternalMarket) {
 
 function ImageMark({ market }: { market: ExternalMarket }) {
   const [failed, setFailed] = useState(false);
-  const image = market.project?.imageUri;
+  const image = market.project?.imageUri ?? market.imageUri;
   return (
     <span className="universalMarketMark" aria-hidden="true">
       {image && !failed
@@ -461,6 +463,7 @@ export function ExternalMarketWorkspace({ initialMarket }: { initialMarket?: Ext
   const oneHourTrades = market.buys1h + market.sells1h;
   const buyPressure = oneHourTrades > 0 ? Math.round(market.buyPressureBps / 100) : 0;
   const distributionPassport = marketDistributionPassport(market);
+  const isV4Market = isUniswapV4PoolId(market.pairAddress);
 
   return (
     <main className="universalMarketPage professionalTradeWorkspace">
@@ -490,7 +493,7 @@ export function ExternalMarketWorkspace({ initialMarket }: { initialMarket?: Ext
             address={market.address as Address}
             name={market.name}
             symbol={market.symbol}
-            image={market.project?.imageUri ?? undefined}
+            image={market.project?.imageUri ?? market.imageUri ?? undefined}
             compactLabel
           />
           <button type="button" onClick={() => void copyContract()}>{copied ? "Copied" : "Copy contract"}</button>
@@ -571,6 +574,7 @@ export function ExternalMarketWorkspace({ initialMarket }: { initialMarket?: Ext
 
           {tab === "safety" && (
             <>
+              {isV4Market && <ExternalV4HookPassport token={market.address} poolId={market.pairAddress} />}
               <section className="universalInsightPanel" aria-labelledby="workspace-safety">
                 <header><div><small>PRE-TRADE EVIDENCE</small><h2 id="workspace-safety">Know what RMT can—and cannot—prove</h2></div><span>{market.riskFlags.length} ranking flags</span></header>
                 <div className="universalSafetyGrid">
@@ -580,7 +584,7 @@ export function ExternalMarketWorkspace({ initialMarket }: { initialMarket?: Ext
                   <article><small>Current flags</small><strong>{market.riskFlags.length ? market.riskFlags.join(" · ") : "No ranking flags"}</strong><p>No flag is a safety guarantee. Your wallet remains the final authority.</p></article>
                 </div>
               </section>
-              <ExternalHolderIntelligence market={market} />
+              {!isV4Market && <ExternalHolderIntelligence market={market} />}
             </>
           )}
 
