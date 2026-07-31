@@ -15,8 +15,8 @@ if (!homeHeaders.includes("content-type: text/html")) {
 if (homeHeaders.includes("x-robots-tag: noindex")) {
   throw new Error("Public home page is sending an x-robots-tag noindex directive.");
 }
-if (!home.includes("<title>RMT Launch | Robinhood Meme Terminal</title>")) {
-  throw new Error("Public home page is missing the canonical RMT Launch title.");
+if (!home.includes("<title>Robinhood Meme Terminal | RMT</title>")) {
+  throw new Error("Public home page is missing the canonical Robinhood Meme Terminal title.");
 }
 if (!home.includes(`<link rel="canonical" href="${canonicalOrigin}"/>`)) {
   throw new Error("Public home page is missing the canonical www URL.");
@@ -24,7 +24,7 @@ if (!home.includes(`<link rel="canonical" href="${canonicalOrigin}"/>`)) {
 if (!home.includes('<meta name="robots" content="index, follow"/>')) {
   throw new Error("Public home page is not explicitly indexable.");
 }
-if (!home.includes('<meta property="og:site_name" content="RMT Launch"/>')) {
+if (!home.includes('<meta property="og:site_name" content="Robinhood Meme Terminal"/>')) {
   throw new Error("Public home page is missing its Open Graph site name.");
 }
 
@@ -34,8 +34,8 @@ const website = jsonLdBlocks
   .find((entry) => entry?.["@type"] === "WebSite");
 if (
   !website
-  || website.name !== "RMT Launch"
-  || website.alternateName !== "Robinhood Meme Terminal"
+  || website.name !== "Robinhood Meme Terminal"
+  || website.alternateName !== "RMT"
   || website.url !== `${canonicalOrigin}/`
 ) {
   throw new Error("Public home page WebSite identity is missing or invalid.");

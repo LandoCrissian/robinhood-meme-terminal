@@ -12,16 +12,16 @@ const write = (name, value) => fs.writeFileSync(path.join(directory, name), valu
 try {
   write("home.headers", "HTTP/2 200\r\ncontent-type: text/html; charset=utf-8\r\n");
   write("home.html", [
-    "<title>RMT Launch | Robinhood Meme Terminal</title>",
+    "<title>Robinhood Meme Terminal | RMT</title>",
     '<meta name="robots" content="index, follow"/>',
     '<link rel="canonical" href="https://www.rmtlaunch.fun"/>',
-    '<meta property="og:site_name" content="RMT Launch"/>',
+    '<meta property="og:site_name" content="Robinhood Meme Terminal"/>',
     '<script type="application/ld+json">',
     JSON.stringify({
       "@context": "https://schema.org",
       "@type": "WebSite",
-      name: "RMT Launch",
-      alternateName: "Robinhood Meme Terminal",
+      name: "Robinhood Meme Terminal",
+      alternateName: "RMT",
       url: "https://www.rmtlaunch.fun/"
     }),
     "</script>"
