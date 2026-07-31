@@ -463,6 +463,7 @@ assert.match(communityLiveSource, /event\.key !== "Escape"/);
 assert.match(communityStyles, /\.communityLive\.open\{inset:0;transform:none\}/);
 assert.match(communityStyles, /communityLiveSlideIn/);
 assert.match(communityStyles, /body:has\(\.universalTradeRail\.mobileOpen\)/);
+assert.match(communityStyles, /\.communityLivePanel textarea,\.communityFeedbackForm input,\.communityFeedbackForm select\{font-size:16px\}/);
 
 const termsSource = readFileSync(new URL("../app/terms/page.tsx", import.meta.url), "utf8");
 assert.match(termsSource, /RMT Live community/);
