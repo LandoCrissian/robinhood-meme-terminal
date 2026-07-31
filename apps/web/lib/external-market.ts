@@ -4,8 +4,8 @@ import type { ExternalMarketRiskFlag, ExternalMarketSignal } from "./external-ma
 export type ExternalMarketVenue = Extract<MarketVenue, { kind: "dex" | "external-launchpad" }>;
 
 export type ExternalProjectMetadata = {
-  sourceId: "pons" | "lemon" | "noxa" | "circus";
-  sourceName: "Pons" | "Lemon" | "Noxa" | "Circus";
+  sourceId: "pons" | "lemon" | "noxa" | "circus" | "sushi";
+  sourceName: "Pons" | "Lemon" | "Noxa" | "Circus" | "Sushi Launch";
   provenance:
     | "factory-and-token-cross-checked"
     | "launchpad-and-token-cross-checked"

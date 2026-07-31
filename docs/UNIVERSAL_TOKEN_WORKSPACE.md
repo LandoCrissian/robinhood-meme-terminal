@@ -18,6 +18,13 @@ Each external workspace combines:
   execution panels; and
 - a persistent mobile buy/sell dock designed for one-handed use.
 
+Sushi Launch is also a first-party discovery input. RMT reads the documented
+Sushi Data API through three bounded lenses (newest, 24-hour volume, and current
+TVL), then attaches launch identity only when the API token and exact launch pool
+match the independently discovered DEX pair. See
+[`SUSHI_LAUNCH_DISCOVERY.md`](./SUSHI_LAUNCH_DISCOVERY.md) for the trust and
+failure boundaries.
+
 Opening a workspace does not make a token safe. Execution remains unavailable
 unless the existing venue-specific verification and fresh-quote checks pass.
 

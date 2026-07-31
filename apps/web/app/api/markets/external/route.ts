@@ -16,6 +16,7 @@ import {
 import { enrichExternalProjectMetadata } from "../../../../lib/server/external-project-metadata";
 import { safeDexImageUri } from "../../../../lib/server/external-market-media";
 import { fetchLemonProjectSnapshot } from "../../../../lib/server/lemon-project-feed";
+import { fetchSushiLaunchSnapshot } from "../../../../lib/server/sushi-launch-feed";
 
 const CHAIN_SLUG = "robinhood";
 const DEXSCREENER_TOKEN_PAIRS_API = "https://api.dexscreener.com/token-pairs/v1";
@@ -224,7 +225,10 @@ async function fetchRmtOriginBatch(baseUrl: string, readToken: string | undefine
   }
 }
 
-async function resolvePreviewRmtOrigins(addresses: string[]): Promise<RmtOriginResolution | null> {
+async function resolvePreviewRmtOrigins(
+  addresses: string[],
+  verifiedExternalTokens: Set<string>
+): Promise<RmtOriginResolution | null> {
   if (process.env.VERCEL_ENV !== "preview") return null;
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), INDEXER_TIMEOUT_MS);
@@ -249,7 +253,7 @@ async function resolvePreviewRmtOrigins(addresses: string[]): Promise<RmtOriginR
         OFFICIAL_RMT_V6_TOKEN.toLowerCase(),
         ...addresses
           .map((address) => address.toLowerCase())
-          .filter((address) => !allowedExternalTokens.has(address))
+          .filter((address) => !allowedExternalTokens.has(address) && !verifiedExternalTokens.has(address))
       ])
     };
   } catch {
@@ -259,13 +263,16 @@ async function resolvePreviewRmtOrigins(addresses: string[]): Promise<RmtOriginR
   }
 }
 
-async function resolveRmtOrigins(addresses: string[]): Promise<RmtOriginResolution> {
+async function resolveRmtOrigins(
+  addresses: string[],
+  verifiedExternalTokens = new Set<string>()
+): Promise<RmtOriginResolution> {
   const known = new Set([OFFICIAL_RMT_V6_TOKEN.toLowerCase()]);
   if (addresses.length === 0) return { coverage: "complete", tokens: known };
 
   const baseUrl = process.env.RMT_INDEXER_URL?.trim().replace(/\/+$/, "");
   if (!baseUrl) {
-    return await resolvePreviewRmtOrigins(addresses)
+    return await resolvePreviewRmtOrigins(addresses, verifiedExternalTokens)
       ?? { coverage: "unavailable", tokens: known };
   }
   const readToken = process.env.RMT_INDEXER_READ_TOKEN?.trim();
@@ -273,7 +280,7 @@ async function resolveRmtOrigins(addresses: string[]): Promise<RmtOriginResoluti
   for (let index = 0; index < addresses.length; index += 100) {
     const claims = await fetchRmtOriginBatch(baseUrl, readToken, addresses.slice(index, index + 100));
     if (!claims) {
-      return await resolvePreviewRmtOrigins(addresses)
+      return await resolvePreviewRmtOrigins(addresses, verifiedExternalTokens)
         ?? { coverage: "unavailable", tokens: known };
     }
     for (const claim of claims) {
@@ -305,13 +312,15 @@ function staleResponse() {
 
 export async function GET() {
   try {
-    const [lemonSnapshot, publicDiscoveryTokens] = await Promise.all([
+    const [lemonSnapshot, sushiLaunchSnapshot, publicDiscoveryTokens] = await Promise.all([
       fetchLemonProjectSnapshot(),
+      fetchSushiLaunchSnapshot(),
       fetchPublicDiscoveryTokens().catch(() => [])
     ]);
     const requestedTokens = [...new Set(
       [
         ...lemonSnapshot.candidateAddresses.map((address) => address.toLowerCase()),
+        ...sushiLaunchSnapshot.candidateAddresses.map((address) => address.toLowerCase()),
         ...publicDiscoveryTokens
       ]
     )];
@@ -334,7 +343,10 @@ export async function GET() {
       const address = asText(tokenFromPair(pair)?.address, 42);
       return isNonzeroEvmAddress(address) ? [address.toLowerCase()] : [];
     }))];
-    const rmtOrigins = await resolveRmtOrigins(candidateAddresses);
+    const rmtOrigins = await resolveRmtOrigins(
+      candidateAddresses,
+      new Set(sushiLaunchSnapshot.projects.keys())
+    );
     if (rmtOrigins.coverage !== "complete") {
       const stale = staleResponse();
       if (stale) return stale;
@@ -427,14 +439,17 @@ export async function GET() {
         pairCreatedAt,
         ...ranking
       };
+      const sushiLaunchProject = sushiLaunchSnapshot.projects.get(address.toLowerCase());
       const lemonProject = lemonSnapshot.projects.get(address.toLowerCase());
-      const attributedMarket = lemonProject
-        && lemonProject.launchPool.toLowerCase() === pairAddress.toLowerCase()
+      const matchingProject = [sushiLaunchProject, lemonProject].find(
+        (project) => project?.launchPool.toLowerCase() === pairAddress.toLowerCase()
+      );
+      const attributedMarket = matchingProject
         ? {
             ...market,
-            name: lemonProject.name,
-            symbol: lemonProject.symbol,
-            project: lemonProject
+            name: matchingProject.name,
+            symbol: matchingProject.symbol,
+            project: matchingProject
           }
         : market;
 
@@ -450,10 +465,8 @@ export async function GET() {
       .catch(() => rankedMarkets);
     const snapshot: SuccessfulMarketSnapshot = {
       markets,
-      source: lemonSnapshot.projects.size > 0
-        ? "DEX Screener markets + public discovery + Lemon metadata"
-        : "DEX Screener markets + public discovery",
-      rankingVersion: "rmt-discovery-v4",
+      source: "DEX Screener markets + public discovery + verified Lemon and Sushi Launch metadata",
+      rankingVersion: "rmt-discovery-v5",
       thresholds: RUNNER_THRESHOLDS,
       originCoverage: "unavailable",
       rmtOriginCoverage: "complete",
@@ -462,11 +475,11 @@ export async function GET() {
     lastSuccessfulSnapshot = snapshot;
 
     return NextResponse.json(
-      lemonSnapshot.delayed
+      lemonSnapshot.delayed || sushiLaunchSnapshot.delayed
         ? {
             ...snapshot,
             stale: true,
-            error: "Lemon metadata refresh is delayed. DEX markets and cached project identity remain available."
+            error: "One launch-source metadata refresh is delayed. DEX markets and cached project identity remain available."
           }
         : snapshot,
       { headers: { "Cache-Control": "public, s-maxage=30, stale-while-revalidate=90" } }

@@ -29,7 +29,7 @@ type FeedStatus = "loading" | "ready" | "stale" | "error";
 type ExecutionAvailability = "checking" | "ready" | "view-only" | "unavailable";
 
 type DiscoveryView = ExternalMarketDiscoveryView;
-type SourceFilter = "all" | "attributed" | "pons" | "lemon";
+type SourceFilter = "all" | "attributed" | "pons" | "lemon" | "sushi";
 type VenueFilter = "all" | LaunchDistributionVenue;
 
 const VIEWS: Array<{ id: DiscoveryView; label: string }> = [
@@ -41,6 +41,7 @@ const VIEWS: Array<{ id: DiscoveryView; label: string }> = [
 const SOURCE_FILTERS: Array<{ id: SourceFilter; label: string }> = [
   { id: "all", label: "All origins" },
   { id: "attributed", label: "Launch sources" },
+  { id: "sushi", label: "Sushi Launch" },
   { id: "pons", label: "Pons" },
   { id: "lemon", label: "Lemon" }
 ];
@@ -548,6 +549,7 @@ export function ExternalMarketFeed() {
   const sourceCounts = useMemo(() => ({
     all: markets.length,
     attributed: markets.filter((market) => marketDistributionPassport(market).isAttributedLaunch).length,
+    sushi: markets.filter((market) => market.project?.sourceId === "sushi").length,
     pons: markets.filter((market) => market.project?.sourceId === "pons").length,
     lemon: markets.filter((market) => market.project?.sourceId === "lemon").length
   }), [markets]);
@@ -1021,7 +1023,7 @@ export function ExternalMarketFeed() {
         )}
       </div>
 
-      <p className="externalDisclosure">Market data uses DEX Screener market data and public discovery, with Lemon&apos;s documented API for cross-checked identity. Dexscreener artwork is accepted only from its HTTPS CDN when verified launch metadata has no image. Lemon identity is attached only when its token and pool match the discovered DEX pair; Pons identity requires matching factory and token records. Launch source is secondary evidence—not the ranking. Signals are automated review candidates, not investment recommendations or profit guarantees. Buy and Sell always require a fresh Sushi or Uniswap quote and wallet review.</p>
+      <p className="externalDisclosure">Market data uses DEX Screener market data and public discovery, with the documented Lemon and Sushi Launch APIs for cross-checked identity. Dexscreener artwork is accepted only from its HTTPS CDN when verified launch metadata has no image. Sushi Launch and Lemon identity are attached only when the source token and launch pool match the discovered DEX pair; Pons identity requires matching factory and token records. Launch source is secondary evidence—not the ranking. Signals are automated review candidates, not investment recommendations or profit guarantees. Buy and Sell always require a fresh Sushi or Uniswap quote and wallet review.</p>
 
       {quickTrade
         && selectedQuickTradeMarket

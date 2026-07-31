@@ -164,15 +164,29 @@ function distributionStep(
     };
   }
   if (venue === "sushi") {
+    if (sourceId === "sushi") {
+      return {
+        state: "recognized-source-market",
+        summary: "Sushi Launch origin and its live Sushi V3 market are independently cross-checked.",
+        shortLabel: "Sushi Launch verified",
+        step: {
+          id: "distribution",
+          label: "Distribution",
+          value: "Sushi Launch market verified",
+          detail: "RMT matched Sushi's documented Launch API token, creator, factory and launch pool to the live DEX market. This attribution does not imply a partnership or a safety guarantee.",
+          tone: "verified"
+        }
+      };
+    }
     return {
       state: "announced-watch",
-      summary: "Sushi market live. Sushi Launch origin is held in monitoring until published contracts can be verified.",
+      summary: "Sushi market live, but this token has not been matched to a Sushi Launch record.",
       shortLabel: "Sushi market",
       step: {
         id: "distribution",
         label: "Distribution",
-        value: "Sushi Launch monitoring",
-        detail: "A Sushi pool does not prove the token originated through Sushi Launch. RMT will activate that attribution only after public contracts and events can be independently verified.",
+        value: "Sushi market only",
+        detail: "A Sushi pool does not prove that the token originated through Sushi Launch. RMT keeps the origin separate until the documented launch record and pool agree.",
         tone: "watch"
       }
     };
