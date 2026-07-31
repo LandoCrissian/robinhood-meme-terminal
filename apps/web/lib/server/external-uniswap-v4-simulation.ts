@@ -7,6 +7,7 @@ import {
   erc20Abi,
   getAddress,
   http,
+  toHex,
   zeroAddress,
   type Address,
   type Hex
@@ -206,24 +207,30 @@ async function quoteSell(
   return result.result[0];
 }
 
-export function buildExternalV4SellSwap(params: {
+export function buildExternalV4Swap(params: {
   market: VerifiedExternalUniswapV4Market;
   recipient: Address;
+  side: "buy" | "sell";
   amountIn: bigint;
   quoteOut: bigint;
   deadline: bigint;
 }) {
-  const tokenIsCurrency0 = params.market.poolKey.currency0.toLowerCase() === params.market.token.toLowerCase();
-  const outputCurrency = tokenIsCurrency0
-    ? params.market.poolKey.currency1
-    : params.market.poolKey.currency0;
-  if (outputCurrency.toLowerCase() !== zeroAddress) {
-    throw new Error("RMT v4 execution currently requires a native ETH quote pool.");
+  const nativeIsCurrency0 = params.market.poolKey.currency0.toLowerCase() === zeroAddress;
+  const nativeIsCurrency1 = params.market.poolKey.currency1.toLowerCase() === zeroAddress;
+  if (!nativeIsCurrency0 && !nativeIsCurrency1) {
+    throw new Error("RMT v4 execution requires a native ETH quote pool.");
   }
-  const zeroForOne = tokenIsCurrency0;
+  const inputCurrency = params.side === "buy" ? zeroAddress : params.market.token;
+  const outputCurrency = params.side === "buy" ? params.market.token : zeroAddress;
+  const zeroForOne = params.market.poolKey.currency0.toLowerCase() === inputCurrency.toLowerCase();
   const minimumOut = params.quoteOut * 99n / 100n;
-  if (minimumOut <= 0n || minimumOut > MAX_UINT128) {
-    throw new Error("The v4 sell quote cannot enforce a valid minimum received.");
+  if (
+    params.amountIn <= 0n
+    || params.amountIn > MAX_UINT128
+    || minimumOut <= 0n
+    || minimumOut > MAX_UINT128
+  ) {
+    throw new Error("The v4 quote cannot enforce a valid input and minimum received.");
   }
   const swapAction = encodeAbiParameters(exactInputSingleParameters, [{
     poolKey: params.market.poolKey,
@@ -235,11 +242,11 @@ export function buildExternalV4SellSwap(params: {
   }]);
   const settleAction = encodeAbiParameters(
     [{ type: "address" }, { type: "uint256" }, { type: "bool" }],
-    [params.market.token, params.amountIn, false]
+    [inputCurrency, params.amountIn, false]
   );
   const takeAction = encodeAbiParameters(
     [{ type: "address" }, { type: "address" }, { type: "uint256" }],
-    [zeroAddress, ROUTER_AS_RECIPIENT, 0n]
+    [outputCurrency, ROUTER_AS_RECIPIENT, 0n]
   );
   const v4Swap = encodeAbiParameters(
     [{ type: "bytes" }, { type: "bytes[]" }],
@@ -247,22 +254,39 @@ export function buildExternalV4SellSwap(params: {
   );
   const outputSweep = encodeAbiParameters(
     [{ type: "address" }, { type: "address" }, { type: "uint256" }],
-    [zeroAddress, params.recipient, minimumOut]
+    [outputCurrency, params.recipient, minimumOut]
   );
   const safeNativeSweep = encodeAbiParameters(
     [{ type: "address" }, { type: "address" }, { type: "uint256" }],
     [zeroAddress, params.recipient, 0n]
   );
-  const tokenPull = encodeAbiParameters(
-    [{ type: "address" }, { type: "address" }, { type: "uint160" }],
-    [params.market.token, ROUTER_AS_RECIPIENT, params.amountIn]
-  );
+  const isBuy = params.side === "buy";
+  const commands = isBuy ? "0x100404" : "0x02100404";
+  const inputs = isBuy
+    ? [v4Swap, outputSweep, safeNativeSweep]
+    : [
+        encodeAbiParameters(
+          [{ type: "address" }, { type: "address" }, { type: "uint160" }],
+          [params.market.token, ROUTER_AS_RECIPIENT, params.amountIn]
+        ),
+        v4Swap,
+        outputSweep,
+        safeNativeSweep
+      ];
   const calldata = encodeFunctionData({
     abi: universalRouterAbi,
     functionName: "execute",
-    args: ["0x02100404", [tokenPull, v4Swap, outputSweep, safeNativeSweep], params.deadline]
+    args: [commands, inputs, params.deadline]
   });
-  return { calldata, minimumOut };
+  return {
+    calldata,
+    minimumOut,
+    value: isBuy ? params.amountIn : 0n
+  };
+}
+
+export function buildExternalV4SellSwap(params: Omit<Parameters<typeof buildExternalV4Swap>[0], "side">) {
+  return buildExternalV4Swap({ ...params, side: "sell" });
 }
 
 async function simulateCalls(
@@ -325,43 +349,56 @@ export async function simulateExternalUniswapV4Sell(
     return emptySimulation("not-run");
   }
 
-  let quoteOut: bigint;
-  try {
-    quoteOut = await (dependencies.quote ?? quoteSell)(market, holder.address, holder.amount);
-  } catch (cause) {
-    const reverted = cause instanceof BaseError
-      && cause.walk((entry) => entry instanceof ExecutionRevertedError);
-    return {
-      ...emptySimulation(reverted ? "blocked" : "unavailable"),
-      holder: holder.address,
-      amountIn: holder.amount.toString()
-    };
+  const quote = dependencies.quote ?? quoteSell;
+  let amountIn = holder.amount;
+  let quoteOut: bigint | undefined;
+  for (let attempt = 0; attempt < 7; attempt += 1) {
+    try {
+      const candidate = await quote(market, holder.address, amountIn);
+      if (candidate > 0n && candidate <= MAX_UINT128) {
+        quoteOut = candidate;
+        break;
+      }
+    } catch (cause) {
+      const reverted = cause instanceof BaseError
+        && cause.walk((entry) => entry instanceof ExecutionRevertedError);
+      if (!reverted) {
+        return {
+          ...emptySimulation("unavailable"),
+          holder: holder.address,
+          amountIn: amountIn.toString()
+        };
+      }
+    }
+    if (amountIn <= 1n) break;
+    amountIn = amountIn / 10n || 1n;
   }
-  if (quoteOut <= 0n || quoteOut > MAX_UINT128) {
+  if (quoteOut === undefined) {
     return {
       ...emptySimulation("blocked"),
       holder: holder.address,
-      amountIn: holder.amount.toString()
+      amountIn: amountIn.toString()
     };
   }
   const now = dependencies.now?.() ?? Date.now();
   const deadline = BigInt(Math.floor(now / 1_000) + 600);
-  const built = buildExternalV4SellSwap({
+  const built = buildExternalV4Swap({
     market,
     recipient: holder.address,
-    amountIn: holder.amount,
+    side: "sell",
+    amountIn,
     quoteOut,
     deadline
   });
   const tokenApproval = encodeFunctionData({
     abi: erc20Abi,
     functionName: "approve",
-    args: [PERMIT2_ADDRESS, holder.amount]
+    args: [PERMIT2_ADDRESS, amountIn]
   });
   const permit2Approval = encodeFunctionData({
     abi: permit2Abi,
     functionName: "approve",
-    args: [market.token, ROBINHOOD_UNIVERSAL_ROUTER, holder.amount, Number(deadline)]
+    args: [market.token, ROBINHOOD_UNIVERSAL_ROUTER, amountIn, Number(deadline)]
   });
   let result: { blockNumber: bigint; statuses: boolean[] };
   try {
@@ -374,7 +411,7 @@ export async function simulateExternalUniswapV4Sell(
     return {
       ...emptySimulation("unavailable"),
       holder: holder.address,
-      amountIn: holder.amount.toString(),
+      amountIn: amountIn.toString(),
       quoteOut: quoteOut.toString(),
       minimumOut: built.minimumOut.toString()
     };
@@ -385,7 +422,7 @@ export async function simulateExternalUniswapV4Sell(
     status: passed ? "passed" : "blocked",
     method: "holder-permit2-router-sequence",
     holder: holder.address,
-    amountIn: holder.amount.toString(),
+    amountIn: amountIn.toString(),
     quoteOut: quoteOut.toString(),
     minimumOut: built.minimumOut.toString(),
     testedAtBlock: result.blockNumber.toString(),
@@ -395,4 +432,101 @@ export async function simulateExternalUniswapV4Sell(
       swap: statuses[0] && statuses[1] ? statusLabel(statuses[2]) : "not-run"
     }
   };
+}
+
+export type ExternalV4ExactTradeSimulation = {
+  status: "passed" | "blocked" | "unavailable";
+  testedAtBlock: string | null;
+  calls: {
+    tokenApproval: "passed" | "blocked" | "not-run";
+    permit2Approval: "passed" | "blocked" | "not-run";
+    swap: "passed" | "blocked" | "not-run";
+  };
+};
+
+export async function simulateExactExternalUniswapV4Trade(
+  params: {
+    market: VerifiedExternalUniswapV4Market;
+    account: Address;
+    side: "buy" | "sell";
+    amountIn: bigint;
+    calldata: Hex;
+    deadline: bigint;
+  },
+  dependencies: Pick<SimulationDependencies, "fetch" | "simulateCalls" | "timeoutMs"> = {}
+): Promise<ExternalV4ExactTradeSimulation> {
+  const fetcher = dependencies.fetch ?? fetch;
+  const timeoutMs = dependencies.timeoutMs ?? TIMEOUT_MS;
+  const calls: Array<{ from: Address; to: Address; data: Hex; value?: Hex }> = [];
+  if (params.side === "sell") {
+    calls.push(
+      {
+        from: params.account,
+        to: params.market.token,
+        data: encodeFunctionData({
+          abi: erc20Abi,
+          functionName: "approve",
+          args: [PERMIT2_ADDRESS, params.amountIn]
+        })
+      },
+      {
+        from: params.account,
+        to: PERMIT2_ADDRESS,
+        data: encodeFunctionData({
+          abi: permit2Abi,
+          functionName: "approve",
+          args: [
+            params.market.token,
+            ROBINHOOD_UNIVERSAL_ROUTER,
+            params.amountIn,
+            Number(params.deadline)
+          ]
+        })
+      }
+    );
+  }
+  calls.push({
+    from: params.account,
+    to: ROBINHOOD_UNIVERSAL_ROUTER,
+    data: params.calldata,
+    value: params.side === "buy" ? toHex(params.amountIn) : "0x0"
+  });
+
+  try {
+    const result = await (dependencies.simulateCalls ?? ((nextCalls) => (
+      simulateCalls(nextCalls, fetcher, timeoutMs)
+    )))(calls);
+    const statuses = result.statuses.slice(0, calls.length);
+    const passed = statuses.length === calls.length && statuses.every(Boolean);
+    if (params.side === "buy") {
+      return {
+        status: passed ? "passed" : "blocked",
+        testedAtBlock: result.blockNumber.toString(),
+        calls: {
+          tokenApproval: "not-run",
+          permit2Approval: "not-run",
+          swap: statusLabel(statuses[0])
+        }
+      };
+    }
+    return {
+      status: passed ? "passed" : "blocked",
+      testedAtBlock: result.blockNumber.toString(),
+      calls: {
+        tokenApproval: statusLabel(statuses[0]),
+        permit2Approval: statuses[0] ? statusLabel(statuses[1]) : "not-run",
+        swap: statuses[0] && statuses[1] ? statusLabel(statuses[2]) : "not-run"
+      }
+    };
+  } catch {
+    return {
+      status: "unavailable",
+      testedAtBlock: null,
+      calls: {
+        tokenApproval: "not-run",
+        permit2Approval: "not-run",
+        swap: "not-run"
+      }
+    };
+  }
 }

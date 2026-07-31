@@ -18,6 +18,7 @@ import { isUniswapV4PoolId } from "../lib/external-v4-evidence";
 import { ipfsToHttp } from "../lib/token-metadata";
 import {
   resilientTradeVenue,
+  tradeVenueLabel,
   type TradeVenueHealth,
   type TradeVenueId,
   type TradeVenueSelectionMode
@@ -38,8 +39,8 @@ import { useTradePreferences } from "../lib/use-trade-preferences";
 type WorkspaceTab = "activity" | "safety" | "origin";
 type TradeSide = "buy" | "sell";
 type TradeVenue = {
-  venue: "sushi" | "uniswap";
-  pair: Address;
+  venue: TradeVenueId;
+  pair: string;
   dexId: string;
   liquidityUsd: number;
   verification: "dex-and-route" | "dex-and-onchain";
@@ -73,8 +74,14 @@ function age(minutes: number | null) {
 function venueKind(market: ExternalMarket) {
   const id = market.dexId.toLowerCase();
   if (id.includes("sushi")) return "sushi";
-  if (id === "uniswap" || id.startsWith("uniswap-")) return "uniswap";
+  if (id === "uniswap" || id.startsWith("uniswap-")) {
+    return isUniswapV4PoolId(market.pairAddress) ? "uniswap-v4" : "uniswap-v3";
+  }
   return null;
+}
+
+function matchesRoutePreference(venue: TradeVenueId, preference: "sushi" | "uniswap") {
+  return preference === "sushi" ? venue === "sushi" : venue.startsWith("uniswap-");
 }
 
 function originLabel(market: ExternalMarket) {
@@ -128,7 +135,7 @@ export function ExternalMarketWorkspace({ initialMarket }: { initialMarket?: Ext
   const [shared, setShared] = useState(false);
   const [tradeVenues, setTradeVenues] = useState<TradeVenue[]>([]);
   const [tradeVenueStatus, setTradeVenueStatus] = useState<"loading" | "ready" | "error">("loading");
-  const [selectedTradeVenue, setSelectedTradeVenue] = useState<"sushi" | "uniswap" | null>(null);
+  const [selectedTradeVenue, setSelectedTradeVenue] = useState<TradeVenueId | null>(null);
   const [tradeVenueHealth, setTradeVenueHealth] = useState<Partial<Record<TradeVenueId, TradeVenueHealth>>>({});
   const [tradeVenueSelectionMode, setTradeVenueSelectionMode] = useState<TradeVenueSelectionMode>("automatic");
   const [tradeVenueNotice, setTradeVenueNotice] = useState("");
@@ -273,8 +280,12 @@ export function ExternalMarketWorkspace({ initialMarket }: { initialMarket?: Ext
         || !Array.isArray(payload.venues)
       ) throw new Error(payload.error ?? "Execution venues unavailable.");
       const verified = payload.venues.filter((candidate) => (
-        (candidate.venue === "sushi" || candidate.venue === "uniswap")
-        && isAddress(candidate.pair)
+        (candidate.venue === "sushi" || candidate.venue === "uniswap-v3" || candidate.venue === "uniswap-v4")
+        && (
+          candidate.venue === "uniswap-v4"
+            ? isUniswapV4PoolId(candidate.pair)
+            : isAddress(candidate.pair)
+        )
         && typeof candidate.dexId === "string"
         && Number.isFinite(candidate.liquidityUsd)
         && candidate.liquidityUsd > 0
@@ -283,7 +294,9 @@ export function ExternalMarketWorkspace({ initialMarket }: { initialMarket?: Ext
       setTradeVenues(verified);
       const requestedVenue = tradePreferences.routePreference === "automatic"
         ? preferredVenue
-        : tradePreferences.routePreference;
+        : verified.find((candidate) => (
+            matchesRoutePreference(candidate.venue, tradePreferences.routePreference as "sushi" | "uniswap")
+          ))?.venue ?? null;
       setSelectedTradeVenue(
         requestedVenue && verified.some((candidate) => candidate.venue === requestedVenue)
           ? requestedVenue
@@ -296,7 +309,9 @@ export function ExternalMarketWorkspace({ initialMarket }: { initialMarket?: Ext
       );
       if (
         tradePreferences.routePreference !== "automatic"
-        && !verified.some((candidate) => candidate.venue === tradePreferences.routePreference)
+        && !verified.some((candidate) => (
+          matchesRoutePreference(candidate.venue, tradePreferences.routePreference as "sushi" | "uniswap")
+        ))
       ) {
         setTradeVenueNotice(
           `${tradePreferences.routePreference === "sushi" ? "Sushi" : "Uniswap"} is your saved preference, but it is not currently verified for this token. Choose an available route or change your rule.`
@@ -386,8 +401,8 @@ export function ExternalMarketWorkspace({ initialMarket }: { initialMarket?: Ext
       health: tradeVenueHealth
     });
     if (resilientVenue !== selectedTradeVenue) {
-      const previous = selectedTradeVenue === "sushi" ? "Sushi" : "Uniswap";
-      const next = resilientVenue === "sushi" ? "Sushi" : "Uniswap";
+      const previous = selectedTradeVenue ? tradeVenueLabel(selectedTradeVenue) : "Selected route";
+      const next = resilientVenue ? tradeVenueLabel(resilientVenue) : "verified route";
       setSelectedTradeVenue(resilientVenue);
       setTradeVenueNotice(`${previous} became unavailable. RMT moved this order to the verified ${next} route.`);
       return;
@@ -414,7 +429,7 @@ export function ExternalMarketWorkspace({ initialMarket }: { initialMarket?: Ext
   const selectTradeVenue = (venue: TradeVenueId) => {
     setSelectedTradeVenue(venue);
     setTradeVenueSelectionMode("manual");
-    setTradeVenueNotice(`${venue === "sushi" ? "Sushi" : "Uniswap"} selected by you. RMT will not replace a manual route.`);
+    setTradeVenueNotice(`${tradeVenueLabel(venue)} selected by you. RMT will not replace a manual route.`);
   };
   const applyRecommendedTradeVenue = useCallback((recommendation: {
     venue: TradeVenueId;
@@ -423,7 +438,7 @@ export function ExternalMarketWorkspace({ initialMarket }: { initialMarket?: Ext
     if (tradeVenueSelectionMode !== "automatic") return;
     setSelectedTradeVenue((current) => current === recommendation.venue ? current : recommendation.venue);
     setTradeVenueNotice(
-      `Automatic routing selected ${recommendation.venue === "sushi" ? "Sushi" : "Uniswap"} for `
+      `Automatic routing selected ${tradeVenueLabel(recommendation.venue)} for `
       + `${(recommendation.improvementBps / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}% more protected output.`
     );
   }, [tradeVenueSelectionMode]);
@@ -661,7 +676,7 @@ export function ExternalMarketWorkspace({ initialMarket }: { initialMarket?: Ext
             <div className={`universalRouteDecision ${tradeVenueSelectionMode}`} role="status">
               <span>
                 <small>{tradeVenueSelectionMode === "automatic" ? "AUTOMATIC ROUTE" : "MANUAL ROUTE"}</small>
-                <strong>{activeTradeVenue.venue === "sushi" ? "Sushi" : "Uniswap"}</strong>
+                <strong>{tradeVenueLabel(activeTradeVenue.venue)}</strong>
               </span>
               <p>{routeDecision}</p>
               {tradeVenueSelectionMode === "manual" && <button type="button" onClick={resumeAutomaticRouting}>Use automatic</button>}
@@ -683,7 +698,8 @@ export function ExternalMarketWorkspace({ initialMarket }: { initialMarket?: Ext
           )}
           {tradeVenueStatus === "loading" && <div className="universalTradeUnavailable"><strong>Verifying execution venues…</strong><p>Matching independent pool and onchain evidence for this token.</p></div>}
           {tradingMarket && activeTradeVenue?.venue === "sushi" && <ExternalSushiQuotePanel market={tradingMarket} side={side} amount={tradeAmount} onAmountChange={setTradeAmount} />}
-          {tradingMarket && activeTradeVenue?.venue === "uniswap" && <ExternalUniswapTradePanel market={tradingMarket} side={side} amount={tradeAmount} onAmountChange={setTradeAmount} />}
+          {tradingMarket && activeTradeVenue?.venue === "uniswap-v3" && <ExternalUniswapTradePanel market={tradingMarket} side={side} amount={tradeAmount} onAmountChange={setTradeAmount} version="v3" />}
+          {tradingMarket && activeTradeVenue?.venue === "uniswap-v4" && <ExternalUniswapTradePanel market={tradingMarket} side={side} amount={tradeAmount} onAmountChange={setTradeAmount} version="v4" />}
           {tradeVenueStatus === "error" && !tradingMarket && (
             <div className="universalTradeUnavailable">
               <strong>Execution check unavailable</strong>
@@ -695,11 +711,11 @@ export function ExternalMarketWorkspace({ initialMarket }: { initialMarket?: Ext
             <div className="universalTradeUnavailable">
               <strong>{tradeVenueOptions.length > 0 ? "Your saved route is unavailable" : "View-only market"}</strong>
               <p>{tradeVenueOptions.length > 0
-                ? `RMT verified ${tradeVenueOptions[0]?.venue === "sushi" ? "Sushi" : "Uniswap"} as an alternative, but it will not replace your saved venue without your decision.`
+                ? `RMT verified ${tradeVenueOptions[0] ? tradeVenueLabel(tradeVenueOptions[0].venue) : "another route"} as an alternative, but it will not replace your saved venue without your decision.`
                 : "RMT found no independently verified in-site execution route for this token."}</p>
               {tradeVenueOptions[0]
                 ? <button type="button" onClick={() => selectTradeVenue(tradeVenueOptions[0].venue)}>
-                    Use {tradeVenueOptions[0].venue === "sushi" ? "Sushi" : "Uniswap"} for this order
+                    Use {tradeVenueLabel(tradeVenueOptions[0].venue)} for this order
                   </button>
                 : <button type="button" onClick={retryTradeVenueDiscovery}>Recheck routes</button>}
             </div>

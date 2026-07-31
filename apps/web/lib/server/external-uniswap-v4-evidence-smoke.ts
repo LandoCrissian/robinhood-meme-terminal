@@ -6,7 +6,9 @@ import {
 } from "../external-v4-evidence";
 import { verifyExternalUniswapV4Market } from "./external-uniswap-v4-market";
 import {
+  buildExternalV4Swap,
   buildExternalV4SellSwap,
+  simulateExactExternalUniswapV4Trade,
   simulateExternalUniswapV4Sell
 } from "./external-uniswap-v4-simulation";
 
@@ -106,6 +108,17 @@ async function main() {
   assert.match(built.calldata, /^0x[0-9a-f]+$/);
   assert.equal(built.minimumOut, 495n);
 
+  const buy = buildExternalV4Swap({
+    market,
+    recipient: holder,
+    side: "buy",
+    amountIn: 1_000n,
+    quoteOut: 500n,
+    deadline: 2_000_000_000n
+  });
+  assert.equal(buy.value, 1_000n);
+  assert.equal(buy.minimumOut, 495n);
+
   const passed = await simulateExternalUniswapV4Sell(market, {
     findHolder: async () => ({ address: holder, amount: 1_000n }),
     quote: async () => 500n,
@@ -119,6 +132,73 @@ async function main() {
   assert.equal(passed.status, "passed");
   assert.equal(passed.calls.swap, "passed");
   assert.equal(passed.minimumOut, "495");
+
+  let fallbackQuoteAttempts = 0;
+  const reducedProbe = await simulateExternalUniswapV4Sell(market, {
+    findHolder: async () => ({ address: holder, amount: 10_000n }),
+    quote: async (_market, _holder, amountIn) => {
+      fallbackQuoteAttempts += 1;
+      return amountIn > 1_000n ? 0n : 500n;
+    },
+    simulateCalls: async () => ({
+      blockNumber: 23_743_249n,
+      statuses: [true, true, true]
+    }),
+    now: () => 1_800_000_000_000
+  });
+  assert.equal(fallbackQuoteAttempts, 2);
+  assert.equal(reducedProbe.status, "passed");
+  assert.equal(reducedProbe.amountIn, "1000");
+
+  const exactBuy = await simulateExactExternalUniswapV4Trade({
+    market,
+    account: holder,
+    side: "buy",
+    amountIn: 1_000n,
+    calldata: buy.calldata,
+    deadline: 2_000_000_000n
+  }, {
+    simulateCalls: async (calls) => {
+      assert.equal(calls.length, 1);
+      assert.equal(calls[0]?.value, "0x3e8");
+      return { blockNumber: 23_743_249n, statuses: [true] };
+    }
+  });
+  assert.equal(exactBuy.status, "passed");
+  assert.equal(exactBuy.calls.tokenApproval, "not-run");
+  assert.equal(exactBuy.calls.swap, "passed");
+
+  const exactSell = await simulateExactExternalUniswapV4Trade({
+    market,
+    account: holder,
+    side: "sell",
+    amountIn: 1_000n,
+    calldata: built.calldata,
+    deadline: 2_000_000_000n
+  }, {
+    simulateCalls: async (calls) => {
+      assert.equal(calls.length, 3);
+      return { blockNumber: 23_743_250n, statuses: [true, true, true] };
+    }
+  });
+  assert.equal(exactSell.status, "passed");
+  assert.equal(exactSell.calls.permit2Approval, "passed");
+
+  const exactBlocked = await simulateExactExternalUniswapV4Trade({
+    market,
+    account: holder,
+    side: "sell",
+    amountIn: 1_000n,
+    calldata: built.calldata,
+    deadline: 2_000_000_000n
+  }, {
+    simulateCalls: async () => ({
+      blockNumber: 23_743_251n,
+      statuses: [true, true, false]
+    })
+  });
+  assert.equal(exactBlocked.status, "blocked");
+  assert.equal(exactBlocked.calls.swap, "blocked");
 
   const blocked = await simulateExternalUniswapV4Sell(market, {
     findHolder: async () => ({ address: holder, amount: 1_000n }),

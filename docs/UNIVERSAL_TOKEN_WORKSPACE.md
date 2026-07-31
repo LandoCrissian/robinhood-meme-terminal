@@ -14,7 +14,8 @@ Each external workspace combines:
 - candlestick history for 1 hour, 6 hours, 24 hours, and 7 days;
 - project metadata and token imagery when a verified source supplies them;
 - activity, safety, and origin views;
-- RMT's existing non-custodial Sushi or canonical Uniswap execution panel; and
+- non-custodial Sushi, canonical Uniswap V3, and Passport-gated Uniswap V4
+  execution panels; and
 - a persistent mobile buy/sell dock designed for one-handed use.
 
 Opening a workspace does not make a token safe. Execution remains unavailable
@@ -22,7 +23,8 @@ unless the existing venue-specific verification and fresh-quote checks pass.
 
 ## Order ticket
 
-The Sushi and canonical Uniswap paths share one order-entry language while
+The Sushi, Uniswap V3, and Passport-eligible Uniswap V4 paths share one
+order-entry language while
 retaining separate venue verification and transaction construction:
 
 - 25%, 50%, and maximum wallet-balance shortcuts;
@@ -35,6 +37,12 @@ retaining separate venue verification and transaction construction:
 - price-impact severity that never weakens the existing 10% execution block;
 - a Quote → Evidence → Wallet progress path; and
 - explicit approval, submission, confirmation, and explorer states.
+
+When more than one venue is verified, RMT compares protected minimum output
+across Sushi, Uniswap V3 and Uniswap V4. Automatic mode respects the user's
+price-impact rule and moves only for at least 0.25% more protected output. A V4
+route participates only after its holder sell rehearsal and exact-wallet
+transaction both pass without broadcasting.
 
 ### Pre-sign fee transparency
 
@@ -179,6 +187,8 @@ pnpm --filter web test:trade-ticket
 pnpm --filter web test:trading-terms
 pnpm --filter web test:external-trades
 pnpm --filter web test:external-uniswap
+pnpm --filter web test:external-v4-evidence
+pnpm --filter web test:external-venues
 pnpm --filter web test:token-risk
 pnpm --filter web typecheck
 pnpm --filter web build

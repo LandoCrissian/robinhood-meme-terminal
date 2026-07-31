@@ -1,5 +1,6 @@
 import { getAddress, isAddress, type Address } from "viem";
 import { getCachedExternalTradeVenues } from "../../../../lib/server/external-trade-venues";
+import type { TradeVenueId } from "../../../../lib/trade-route-selection";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -10,7 +11,7 @@ const CONCURRENCY = 3;
 type Availability = {
   token: Address;
   status: "ready" | "view-only" | "unavailable";
-  venues: Array<"sushi" | "uniswap">;
+  venues: TradeVenueId[];
 };
 
 async function mapWithConcurrency<T, Result>(
