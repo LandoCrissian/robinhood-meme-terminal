@@ -181,6 +181,7 @@ const externalSushiTicketSource = readFileSync(new URL("../app/external-sushi-qu
 const externalUniswapTicketSource = readFileSync(new URL("../app/external-uniswap-trade-panel.tsx", import.meta.url), "utf8");
 const externalMarketFeedSource = readFileSync(new URL("../app/external-market-feed.tsx", import.meta.url), "utf8");
 const externalMarketWorkspaceSource = readFileSync(new URL("../app/external-market-workspace.tsx", import.meta.url), "utf8");
+const professionalTerminalStyles = readFileSync(new URL("../app/professional-terminal.css", import.meta.url), "utf8");
 const launchpadNetworkSource = readFileSync(new URL("../app/launchpad-network.tsx", import.meta.url), "utf8");
 assert.match(tradeTicketUiSource, /FINAL PRE-SIGN REVIEW/);
 assert.match(tradeTicketUiSource, /SAFER SIZE APPLIED/);
@@ -201,6 +202,9 @@ assert.match(externalMarketWorkspaceSource, /it will not replace your saved venu
 assert.match(externalMarketWorkspaceSource, /MARKET PASSPORT/);
 assert.match(externalMarketWorkspaceSource, /Origin, market and distribution/);
 assert.match(externalMarketWorkspaceSource, /distributionPassport\.steps/);
+assert.match(externalMarketWorkspaceSource, /tradeRef\.current\?\.scrollTo\(\{ top: 0, behavior: "auto" \}\)/);
+assert.match(professionalTerminalStyles, /top: max\(8px, env\(safe-area-inset-top\)\)/);
+assert.match(professionalTerminalStyles, /max-height: none/);
 assert.match(launchpadNetworkSource, /Uniswap Launches/);
 assert.match(launchpadNetworkSource, /Sushi Launch/);
 assert.match(launchpadNetworkSource, /Individual beta-feed inclusion is never assumed/);

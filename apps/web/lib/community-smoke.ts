@@ -445,6 +445,7 @@ for (const route of ["messages", "reports", "presence", "feedback"]) {
 }
 
 const communityLiveSource = readFileSync(new URL("../app/community-live.tsx", import.meta.url), "utf8");
+const communityStyles = readFileSync(new URL("../app/community.css", import.meta.url), "utf8");
 assert.match(communityLiveSource, /COMMUNITY_TERMS_STORAGE_KEY/);
 assert.match(communityLiveSource, /I agree — enter RMT Live/);
 assert.match(communityLiveSource, /RMT Live is ready/);
@@ -453,9 +454,15 @@ assert.doesNotMatch(communityLiveSource, /will open after secure Firebase activa
 assert.match(communityLiveSource, /view !== "updates"/);
 assert.match(communityLiveSource, /aria-controls="rmt-live-panel"/);
 assert.match(communityLiveSource, /aria-labelledby="rmt-live-heading"/);
+assert.match(communityLiveSource, /communityLiveLetters/);
+assert.match(communityLiveSource, /communityLiveBackdrop/);
+assert.match(communityLiveSource, /role="dialog" aria-modal="true"/);
 assert.match(communityLiveSource, /aria-label="Message RMT Live"/);
 assert.match(communityLiveSource, /role="group" aria-label="Report reason"/);
 assert.match(communityLiveSource, /event\.key !== "Escape"/);
+assert.match(communityStyles, /\.communityLive\.open\{inset:0;transform:none\}/);
+assert.match(communityStyles, /communityLiveSlideIn/);
+assert.match(communityStyles, /body:has\(\.universalTradeRail\.mobileOpen\)/);
 
 const termsSource = readFileSync(new URL("../app/terms/page.tsx", import.meta.url), "utf8");
 assert.match(termsSource, /RMT Live community/);

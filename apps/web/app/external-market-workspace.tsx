@@ -184,9 +184,11 @@ export function ExternalMarketWorkspace({ initialMarket }: { initialMarket?: Ext
   useEffect(() => {
     if (!mobileTradeOpen) return;
     const previousOverflow = document.body.style.overflow;
+    const previousRootOverflow = document.documentElement.style.overflow;
     const mobileViewport = window.matchMedia("(max-width: 760px)");
     const syncScrollLock = () => {
       document.body.style.overflow = mobileViewport.matches ? "hidden" : previousOverflow;
+      document.documentElement.style.overflow = mobileViewport.matches ? "hidden" : previousRootOverflow;
     };
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
@@ -218,6 +220,7 @@ export function ExternalMarketWorkspace({ initialMarket }: { initialMarket?: Ext
     window.addEventListener("keydown", handleKeyDown);
     return () => {
       document.body.style.overflow = previousOverflow;
+      document.documentElement.style.overflow = previousRootOverflow;
       mobileViewport.removeEventListener("change", syncScrollLock);
       window.removeEventListener("keydown", handleKeyDown);
     };
@@ -344,7 +347,10 @@ export function ExternalMarketWorkspace({ initialMarket }: { initialMarket?: Ext
     if (window.matchMedia("(max-width: 760px)").matches) {
       tradeReturnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
       setMobileTradeOpen(true);
-      window.requestAnimationFrame(() => tradeRef.current?.querySelector<HTMLElement>(".universalTradeRailClose")?.focus());
+      window.requestAnimationFrame(() => {
+        tradeRef.current?.scrollTo({ top: 0, behavior: "auto" });
+        tradeRef.current?.querySelector<HTMLElement>(".universalTradeRailClose")?.focus();
+      });
       return;
     }
     window.requestAnimationFrame(() => tradeRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
