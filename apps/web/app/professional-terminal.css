@@ -1551,12 +1551,13 @@
   .professionalTradeWorkspace .universalTradeRail {
     position: fixed;
     z-index: 55;
-    top: auto;
+    top: max(8px, env(safe-area-inset-top));
     right: 0;
     bottom: 0;
     left: 0;
     width: auto;
-    max-height: min(84dvh, 720px);
+    height: auto;
+    max-height: none;
     padding-bottom: env(safe-area-inset-bottom);
     overflow-x: hidden;
     overflow-y: auto;

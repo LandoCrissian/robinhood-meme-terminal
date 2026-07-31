@@ -134,13 +134,21 @@ export function CommunityLive() {
 
   useEffect(() => {
     if (!open) return;
+    const previousOverflow = document.body.style.overflow;
+    const previousRootOverflow = document.documentElement.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
       setOpen(false);
       launcher.current?.focus();
     };
     window.addEventListener("keydown", closeOnEscape);
-    return () => window.removeEventListener("keydown", closeOnEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.documentElement.style.overflow = previousRootOverflow;
+      window.removeEventListener("keydown", closeOnEscape);
+    };
   }, [open]);
 
   const send = async () => {
@@ -234,9 +242,12 @@ export function CommunityLive() {
   return (
     <aside className={`communityLive${open ? " open" : ""}`} aria-label="RMT Live community">
       <button ref={launcher} className="communityLiveLauncher" type="button" onClick={() => setOpen((current) => !current)} aria-expanded={open} aria-controls="rmt-live-panel">
-        <span aria-hidden="true">◌</span><b>Live</b>
+        <span className="communityLiveLetters" aria-hidden="true"><i>L</i><i>I</i><i>V</i><i>E</i></span>
+        <span className="srOnly">Open RMT Live</span>
       </button>
-      {open && <section className="communityLivePanel" id="rmt-live-panel" aria-labelledby="rmt-live-heading">
+      {open && <>
+      <button className="communityLiveBackdrop" type="button" aria-label="Close RMT Live" onClick={() => { setOpen(false); launcher.current?.focus(); }} />
+      <section className="communityLivePanel" id="rmt-live-panel" role="dialog" aria-modal="true" aria-labelledby="rmt-live-heading">
         <header>
           <div><small>RMT COMMUNITY</small><strong id="rmt-live-heading">Live lounge</strong></div>
           <span title="Approximate number active in RMT Live during the last few minutes">
@@ -303,7 +314,8 @@ export function CommunityLive() {
           {feedbackIds.length > 0 && <small>Removing a receipt only clears it from this browser. It does not delete the private submission from RMT’s review queue.</small>}
         </div>}
         {message && <p role="status" aria-live="polite">{message}</p>}
-      </section>}
+      </section>
+      </>}
     </aside>
   );
 }
