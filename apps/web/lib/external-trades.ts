@@ -38,6 +38,16 @@ export type ExternalTradeActorSummary = {
   actors: ExternalTradeActor[];
 };
 
+export type ExternalSellPressure = {
+  level: "none" | "watch" | "urgent";
+  largestSell: ExternalPoolTrade | null;
+  largestSellLiquidityBps: number;
+  sellVolume5mUsd: number;
+  buyVolume5mUsd: number;
+  netSellVolume5mUsd: number;
+  netSellLiquidityBps: number;
+};
+
 type RawTrade = {
   id?: unknown;
   attributes?: {
@@ -165,5 +175,45 @@ export function summarizeExternalTradeActors(trades: ExternalPoolTrade[]): Exter
     largestNetBuyer: netBuyers.sort((left, right) => right.netVolumeUsd - left.netVolumeUsd)[0] ?? null,
     largestNetSeller: netSellers.sort((left, right) => left.netVolumeUsd - right.netVolumeUsd)[0] ?? null,
     actors: ranked
+  };
+}
+
+export function summarizeExternalSellPressure(
+  trades: ExternalPoolTrade[],
+  liquidityUsd: number,
+  now = Date.now()
+): ExternalSellPressure {
+  const validLiquidity = Number.isFinite(liquidityUsd) && liquidityUsd > 0 ? liquidityUsd : 0;
+  const fiveMinutesAgo = now - 5 * 60 * 1_000;
+  const recent = trades.filter((trade) => {
+    const timestamp = Date.parse(trade.timestamp);
+    return Number.isFinite(timestamp) && timestamp >= fiveMinutesAgo && timestamp <= now + 30_000;
+  });
+  const sells = recent.filter((trade) => trade.side === "sell");
+  const largestSell = [...sells].sort((left, right) => right.volumeUsd - left.volumeUsd)[0] ?? null;
+  const sellVolume5mUsd = sells.reduce((sum, trade) => sum + trade.volumeUsd, 0);
+  const buyVolume5mUsd = recent
+    .filter((trade) => trade.side === "buy")
+    .reduce((sum, trade) => sum + trade.volumeUsd, 0);
+  const netSellVolume5mUsd = Math.max(0, sellVolume5mUsd - buyVolume5mUsd);
+  const largestSellLiquidityBps = validLiquidity && largestSell
+    ? Math.round(largestSell.volumeUsd / validLiquidity * 10_000)
+    : 0;
+  const netSellLiquidityBps = validLiquidity
+    ? Math.round(netSellVolume5mUsd / validLiquidity * 10_000)
+    : 0;
+  const level = largestSellLiquidityBps >= 300 || netSellLiquidityBps >= 700
+    ? "urgent"
+    : largestSellLiquidityBps >= 100 || netSellLiquidityBps >= 300
+      ? "watch"
+      : "none";
+  return {
+    level,
+    largestSell,
+    largestSellLiquidityBps,
+    sellVolume5mUsd,
+    buyVolume5mUsd,
+    netSellVolume5mUsd,
+    netSellLiquidityBps
   };
 }

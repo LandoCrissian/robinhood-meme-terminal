@@ -174,7 +174,7 @@ export function ExternalMarketWorkspace({ initialMarket }: { initialMarket?: Ext
 
   useEffect(() => {
     setTradeAmount(side === "buy" ? "0.0001" : "");
-  }, [market?.address, side]);
+  }, [market?.address]);
 
   const closeMobileTrade = useCallback(() => {
     setMobileTradeOpen(false);
@@ -336,10 +336,11 @@ export function ExternalMarketWorkspace({ initialMarket }: { initialMarket?: Ext
     tradeVenueRefresh
   ]);
 
-  const setTradeSide = (next: TradeSide, focus = false) => {
+  const setTradeSide = (next: TradeSide, focus = false, preparedAmount?: string) => {
     if (focus && (tradeVenueStatus !== "ready" || tradeVenues.length === 0)) return;
     if (focus) recordExperienceStage("trade_preparation_opened");
     setSide(next);
+    setTradeAmount(preparedAmount ?? (next === "buy" ? "0.0001" : ""));
     const url = new URL(window.location.href);
     url.searchParams.set("side", next);
     window.history.replaceState(window.history.state, "", url);
@@ -573,7 +574,7 @@ export function ExternalMarketWorkspace({ initialMarket }: { initialMarket?: Ext
               <ExternalWalletPosition
                 market={market}
                 onBuy={() => setTradeSide("buy", true)}
-                onSell={() => setTradeSide("sell", true)}
+                onSell={(amount) => setTradeSide("sell", true, amount)}
               />
               <section className="universalInsightPanel" aria-labelledby="workspace-activity">
                 <header><div><small>MARKET FLOW</small><h2 id="workspace-activity">Buyers and sellers</h2></div><span>{buyPressure}% buys · 1h</span></header>
