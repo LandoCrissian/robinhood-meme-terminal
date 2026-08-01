@@ -4,7 +4,8 @@ Current status: **the V6 Railway/PostgreSQL indexer is live and is the productio
 
 ## Recommended beta topology
 
-- **Primary RPC:** Alchemy Robinhood Chain mainnet archive-capable endpoint
+- **Primary RPC:** Robinhood Chain mainnet endpoint for current-chain polling and log ingestion
+- **Archive RPC:** Alchemy Robinhood Chain mainnet archive-capable endpoint for exact deployment-boundary verification
 - **Backup RPC:** separately operated Robinhood Chain provider
 - **Database:** managed PostgreSQL with encrypted backups and point-in-time recovery
 - **Worker/API:** one continuously running Railway service
@@ -23,7 +24,8 @@ Create these as encrypted service variables:
 | Variable | Purpose |
 | --- | --- |
 | `DATABASE_URL` | Managed PostgreSQL connection string |
-| `RMT_RPC_URL` | Primary Robinhood Chain mainnet RPC |
+| `RMT_RPC_URL` | Primary Robinhood Chain mainnet RPC for current-chain polling and logs |
+| `RMT_ARCHIVE_RPC_URL` | Archive-capable RPC used only for exact factory deployment-boundary verification |
 | `RMT_FACTORY_ADDRESS` | Exact canonical V6 factory address recorded after deployment; never use the V5 address with the V6 indexer |
 | `RMT_FACTORY_START_BLOCK` | Confirmed V6 factory deployment block recorded from its deployment receipt |
 | `RMT_INDEXER_READ_TOKEN` | Long random bearer token shared only with the Vercel server |
@@ -35,7 +37,7 @@ Create these as encrypted service variables:
 
 Railway injects `PORT`. Do not override it unless the provider requires an explicit value.
 
-Do not configure governance, creator-payout, or treasury addresses separately. At startup the indexer uses the archive RPC to require factory bytecode at the exact configured deployment block and no factory bytecode at the preceding block. It then reads `policyRegistry()` and `creatorPayoutAuthority()` from the configured V6 factory, reads `governance()` and `canonicalProtocolTreasury()` from that policy registry, requires the creator-payout authority and treasury to equal the fresh V6 governance contract, and requires bytecode at the policy-registry and governance addresses. Any future or late start block, missing contract, zero address, mismatch, RPC failure, or legacy factory stops startup before indexing.
+Do not configure governance, creator-payout, or treasury addresses separately. At startup the indexer uses `RMT_ARCHIVE_RPC_URL` to require factory bytecode at the exact configured deployment block and no factory bytecode at the preceding block. It uses `RMT_RPC_URL` for current-chain reads and log ingestion, so archive-provider historical query limits cannot slow live synchronization. The indexer then reads `policyRegistry()` and `creatorPayoutAuthority()` from the configured V6 factory, reads `governance()` and `canonicalProtocolTreasury()` from that policy registry, requires the creator-payout authority and treasury to equal the fresh V6 governance contract, and requires bytecode at the policy-registry and governance addresses. Any future or late start block, missing contract, zero address, mismatch, RPC failure, or legacy factory stops startup before indexing.
 
 ## Railway setup
 
