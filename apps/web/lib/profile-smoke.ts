@@ -150,7 +150,15 @@ assert.match(globalSecurityHeaders.get("permissions-policy") ?? "", /camera=\(\)
 assert.equal(
   firebaseAuthDomainForHost("www.rmtlaunch.fun", "robinhood-meme-terminal-git-code-437b4e.vercel.app"),
   "www.rmtlaunch.fun",
-  "Vercel previews must use the permanent registered Firebase auth helper"
+  "Unregistered Vercel previews must use the permanent Firebase auth helper"
+);
+assert.equal(
+  firebaseAuthDomainForHost(
+    "www.rmtlaunch.fun",
+    "robinhood-meme-terminal-git-code-d34b50-landocrissians-projects.vercel.app"
+  ),
+  "robinhood-meme-terminal-git-code-d34b50-landocrissians-projects.vercel.app",
+  "The stable QA preview may use its exact registered same-origin helper"
 );
 assert.equal(
   firebaseAuthDomainForHost("www.rmtlaunch.fun", "www.rmtlaunch.fun"),

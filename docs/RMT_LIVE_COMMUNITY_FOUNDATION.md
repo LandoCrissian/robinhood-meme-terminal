@@ -133,11 +133,11 @@ Traffic measurements should include active sessions, concurrent sessions, messag
   region and report controls to assistive technology, labels its message
   composer and status updates, closes with Escape, and returns focus to its
   launcher.
-- The controlled preview hostname was authorized as a Firebase caller for the
-  rehearsal. RMT uses the permanent registered authentication helper rather
-  than turning temporary deployment hostnames into OAuth callbacks. Google
-  profile sign-in now uses the user-initiated popup flow, while passwordless
-  email remains the fallback for browsers that block provider windows.
+- Controlled QA hostnames are authorized as Firebase callers and exact OAuth
+  callbacks for rehearsals. Arbitrary temporary deployments fall back to the
+  permanent helper and never receive wildcard trust. Google profile sign-in
+  uses the user-initiated popup flow, while passwordless email remains the
+  fallback for browsers that block provider windows.
 - A second isolated identity, `Guest-2110`, reported `Guest-3D1F`'s visible
   `hello` message as `spam`. The report appeared only in the private
   administrator queue, proving the true cross-identity report path rather than

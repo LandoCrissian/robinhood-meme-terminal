@@ -3,6 +3,11 @@ import type { Auth } from "firebase/auth";
 import type { Firestore } from "firebase/firestore";
 
 const FIREBASE_APP_NAME = "rmt-profile";
+const REGISTERED_AUTH_HELPER_HOSTS = new Set([
+  "www.rmtlaunch.fun",
+  "robinhood-meme-terminal-git-code-437b4e-landocrissians-projects.vercel.app",
+  "robinhood-meme-terminal-git-code-d34b50-landocrissians-projects.vercel.app"
+]);
 const appCheckSiteKey = process.env.NEXT_PUBLIC_FIREBASE_APP_CHECK_SITE_KEY?.trim();
 const configuredAuthDomain = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN?.trim();
 const firebaseConfig = {
@@ -21,14 +26,15 @@ export const firebaseConfigured = Boolean(
   && firebaseConfig.appId
 );
 
-export function firebaseAuthDomainForHost(authDomain: string | undefined, _hostname: string) {
+export function firebaseAuthDomainForHost(authDomain: string | undefined, hostname: string) {
   const normalizedAuthDomain = authDomain?.trim().toLowerCase();
   if (!normalizedAuthDomain) return authDomain;
+  const normalizedHost = hostname.trim().toLowerCase();
 
   // Google OAuth redirect URIs are exact-match values. Temporary Vercel
-  // hostnames are authorized callers, but they must not become Firebase auth
-  // helper domains or every deployment would require a new Google callback.
-  // Keep one registered helper domain for production, previews, and local QA.
+  // hostnames must not become Firebase auth helpers unless their exact handler
+  // is registered. RMT keeps only its canonical host and stable QA hosts here.
+  if (REGISTERED_AUTH_HELPER_HOSTS.has(normalizedHost)) return normalizedHost;
   return normalizedAuthDomain;
 }
 
