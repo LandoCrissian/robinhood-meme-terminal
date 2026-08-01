@@ -1,10 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import { useAccount } from "wagmi";
 
+const privyAppId = process.env.NEXT_PUBLIC_PRIVY_APP_ID?.trim();
 const robinhoodConnectEnabled = process.env.NEXT_PUBLIC_ROBINHOOD_CONNECT_ENABLED === "true";
 const robinhoodConnectUrl = process.env.NEXT_PUBLIC_ROBINHOOD_CONNECT_URL?.trim();
+const PrivyFundingActions = dynamic(
+  () => import("./privy-funding-actions").then((module) => module.PrivyFundingActions),
+  { ssr: false }
+);
 
 function shortAddress(address: string) {
   return `${address.slice(0, 6)}…${address.slice(-4)}`;
@@ -21,14 +27,29 @@ function approvedRobinhoodUrl(value: string | undefined) {
   }
 }
 
-export function FundWalletButton({ variant = "header", label = "Add funds" }: { variant?: "header" | "inline"; label?: string }) {
-  const [open, setOpen] = useState(false);
+export function FundWalletButton({
+  variant = "header",
+  label = "Add funds",
+  open: controlledOpen,
+  onOpenChange
+}: {
+  variant?: "header" | "inline";
+  label?: string;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+}) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen ?? internalOpen;
+  const setOpen = useCallback((value: boolean) => {
+    if (controlledOpen === undefined) setInternalOpen(value);
+    onOpenChange?.(value);
+  }, [controlledOpen, onOpenChange]);
   const { address } = useAccount();
   const trigger = useRef<HTMLButtonElement>(null);
   const dialog = useRef<HTMLDivElement>(null);
   const closeButton = useRef<HTMLButtonElement>(null);
   const approvedUrl = useMemo(() => robinhoodConnectEnabled ? approvedRobinhoodUrl(robinhoodConnectUrl) : undefined, []);
-  const close = useCallback(() => setOpen(false), []);
+  const close = useCallback(() => setOpen(false), [setOpen]);
 
   useEffect(() => {
     if (!open) return;
@@ -73,13 +94,15 @@ export function FundWalletButton({ variant = "header", label = "Add funds" }: { 
         <button className="fundWalletBackdrop" type="button" aria-label="Close funding options" onClick={close} />
         <div ref={dialog} className="fundWalletDialog" id="fund-wallet-dialog" role="dialog" aria-modal="true" aria-labelledby="fund-wallet-title" tabIndex={-1}>
           <div className="fundWalletHeader">
-            <div><span>{approvedUrl ? "ROBINHOOD-HOSTED CHECKOUT" : "PARTNER ACTIVATION PENDING"}</span><h2 id="fund-wallet-title">Fund your Robinhood Chain wallet</h2></div>
+            <div><span>{privyAppId ? "PRIVY SECURE FUNDING" : approvedUrl ? "ROBINHOOD-HOSTED CHECKOUT" : "FUNDING SETUP"}</span><h2 id="fund-wallet-title">Fund your Robinhood Chain wallet</h2></div>
             <button ref={closeButton} type="button" aria-label="Close funding options" onClick={close}>×</button>
           </div>
 
-          {address && <div className="fundWalletDestination"><span>Connected destination</span><strong>{shortAddress(address)}</strong></div>}
+          {!privyAppId && address && <div className="fundWalletDestination"><span>Connected destination</span><strong>{shortAddress(address)}</strong></div>}
 
-          <p>{approvedUrl
+          <p>{privyAppId
+            ? "Deposit ETH from crypto or choose any fiat method Privy makes available for your device and region. Privy and its providers handle payment details, quotes, identity checks, conversion, and delivery."
+            : approvedUrl
             ? "Continue to Robinhood’s secure checkout. Robinhood will show the payment methods available for your account and location before you confirm."
             : "RMT’s Robinhood Connect application is in progress. The embedded funding path will stay disabled until Robinhood approves RMT and supplies its official partner configuration."}</p>
 
@@ -88,9 +111,13 @@ export function FundWalletButton({ variant = "header", label = "Add funds" }: { 
             <span>RMT never receives your Google Pay, card, bank, identity-verification, recovery phrase, or private-key information.</span>
           </div>
 
-          {approvedUrl ? <a className="fundWalletPrimary" href={approvedUrl} target="_blank" rel="noopener noreferrer">Continue to Robinhood Connect ↗</a> : <button className="fundWalletPrimary" type="button" disabled>Robinhood Connect coming soon</button>}
-          <a className="fundWalletSecondary" href="https://robinhood.com/us/en/support/articles/robinhood-wallet/" target="_blank" rel="noreferrer">See official Robinhood Wallet funding options ↗</a>
-          <small className="fundWalletDisclosure">Google Pay is shown only when Robinhood makes it available for the user, device, account, transaction, and region. RMT does not control eligibility.</small>
+          {privyAppId
+            ? <PrivyFundingActions onComplete={close} />
+            : approvedUrl
+              ? <a className="fundWalletPrimary" href={approvedUrl} target="_blank" rel="noopener noreferrer">Continue to Robinhood Connect ↗</a>
+              : <button className="fundWalletPrimary" type="button" disabled>Secure funding activation pending</button>}
+          <a className="fundWalletSecondary" href="https://docs.robinhood.com/chain/bridging/" target="_blank" rel="noreferrer">Open official Robinhood Chain bridge options ↗</a>
+          {!privyAppId && <small className="fundWalletDisclosure">Available methods depend on the provider, user, device, account, transaction, and region. RMT does not control eligibility.</small>}
         </div>
       </>}
     </div>

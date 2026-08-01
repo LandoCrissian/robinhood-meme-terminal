@@ -33,6 +33,8 @@ jobs:
       - run: pnpm --filter web test:external-market-integrity
       - run: pnpm --filter web test:external-ohlcv
       - run: pnpm --filter web test:trade-ticket
+      - run: pnpm --filter web test:trade-speed
+      - run: pnpm --filter web test:transaction-integrity
       - run: pnpm --filter web test:wallet-constellation
       - run: pnpm --filter web test:trading-terms
       - run: pnpm --filter web test:experience

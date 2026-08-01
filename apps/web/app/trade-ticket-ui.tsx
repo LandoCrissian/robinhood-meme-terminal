@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
+import dynamic from "next/dynamic";
 import { formatEther, formatUnits, parseUnits } from "viem";
 import {
   estimatedNetworkFeeUsd,
@@ -16,8 +17,15 @@ import {
 } from "../lib/trade-readiness";
 import { routeLiquidityDepthLabel } from "../lib/trade-route-selection";
 import type { TradeFeeEstimateState } from "../lib/use-trade-fee-estimate";
+import { isTradePreflightReady } from "../lib/trade-preflight";
 import { normalizeTradePreferences } from "../lib/trade-preferences";
 import { useTradePreferences } from "../lib/use-trade-preferences";
+
+const SpeedWalletEntry = dynamic(
+  () => import("./speed-wallet-entry").then((module) => module.SpeedWalletEntry),
+  { ssr: false }
+);
+const speedWalletEnabled = Boolean(process.env.NEXT_PUBLIC_PRIVY_APP_ID?.trim());
 
 export function TradeExecutionControls() {
   const { preferences, save } = useTradePreferences();
@@ -38,7 +46,7 @@ export function TradeExecutionControls() {
             ? "BEST OUTPUT"
             : preferences.routePreference.toUpperCase()}
           {" · "}
-          {preferences.maxPriceImpactBps / 100}% MAX
+          {preferences.maxPriceImpactBps === 10_000 ? "NO RMT IMPACT CAP" : `${preferences.maxPriceImpactBps / 100}% MAX`} · {preferences.preparationMode === "speed" ? "SPEED" : "STANDARD"}
         </em>
       </summary>
       <div className="tradeExecutionControlGroup">
@@ -66,11 +74,36 @@ export function TradeExecutionControls() {
       </div>
       <div className="tradeExecutionControlGroup">
         <span>
+          <strong>Quote preparation</strong>
+          <small>Speed mode preloads and shares fresh venue quotes. It never bypasses your wallet signature or execution limits.</small>
+        </span>
+        <div role="group" aria-label="Quote preparation mode">
+          {([[
+            "speed",
+            "Speed"
+          ], [
+            "standard",
+            "Standard"
+          ]] as const).map(([value, label]) => (
+            <button
+              type="button"
+              aria-pressed={preferences.preparationMode === value}
+              className={preferences.preparationMode === value ? "active" : ""}
+              onClick={() => store({ ...preferences, preparationMode: value })}
+              key={value}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="tradeExecutionControlGroup">
+        <span>
           <strong>Maximum price impact</strong>
-          <small>RMT blocks wallet preparation above your limit. The protocol ceiling remains 5%.</small>
+          <small>Your limit controls wallet preparation. “No RMT cap” still preserves the quoted minimum output and exact-transaction simulation.</small>
         </span>
         <div role="group" aria-label="Maximum price impact">
-          {([100, 200, 500] as const).map((value) => (
+          {([100, 200, 500, 10_000] as const).map((value) => (
             <button
               type="button"
               aria-pressed={preferences.maxPriceImpactBps === value}
@@ -78,11 +111,12 @@ export function TradeExecutionControls() {
               onClick={() => store({ ...preferences, maxPriceImpactBps: value })}
               key={value}
             >
-              {value / 100}%
+              {value === 10_000 ? "No RMT cap" : `${value / 100}%`}
             </button>
           ))}
         </div>
       </div>
+      {speedWalletEnabled && <SpeedWalletEntry />}
       {message && <p role="status">{message}</p>}
     </details>
   );
@@ -124,7 +158,7 @@ export function TradeAmountPresets({
       }
     };
     const storeDrafts = () => {
-      const normalized = normalizeTradePreferences({ buyAmounts: drafts });
+      const normalized = normalizeTradePreferences({ ...preferences, buyAmounts: drafts });
       if (normalized.buyAmounts.some((amount, index) => amount !== drafts[index]?.replace(/0+$/, "").replace(/\.$/, ""))) {
         setError("Enter three different positive ETH amounts, each below 1,000.");
         return;
@@ -280,7 +314,8 @@ export function FinalOrderReview({
   priceImpact,
   estimate,
   venueFee,
-  routeLabel
+  routeLabel,
+  rmtFeeLabel = "$0"
 }: {
   originalAmount: bigint | undefined;
   saferAmount: bigint;
@@ -292,6 +327,7 @@ export function FinalOrderReview({
   estimate: TradeFeeEstimateState;
   venueFee: string;
   routeLabel: string;
+  rmtFeeLabel?: string;
 }) {
   if (
     originalAmount === undefined
@@ -324,7 +360,7 @@ export function FinalOrderReview({
         <span><small>EXECUTION ROUTE</small><strong>{routeLabel}</strong></span>
       </div>
       <footer>
-        <span>RMT fee <strong>$0</strong></span>
+        <span>RMT fee <strong>{rmtFeeLabel}</strong></span>
         <span>Network <strong>{estimate.status === "ready" ? `${feeEth(estimate.feeWei)} ETH` : estimate.status === "loading" ? "Calculating…" : "Wallet confirms"}</strong></span>
         <span>Venue <strong>{venueFee}</strong></span>
       </footer>
@@ -384,11 +420,21 @@ export function TradePreSignReadiness({
           ? "Unavailable"
           : "Enter amount";
   const readiness = tradeReadinessStatus(quoteState, evidenceState);
+  const preflightReady = isTradePreflightReady(estimate);
+  const readinessHeadline = quoteState === "ready" && evidenceState === "clear"
+    ? preflightReady
+      ? readiness.headline
+      : estimate.status === "unavailable"
+        ? "Transaction simulation failed · blocked"
+        : "Simulating exact transaction"
+    : readiness.headline;
   const networkFee = estimate.status === "ready"
     ? `${feeEth(estimate.feeWei)} ETH`
     : estimate.status === "loading"
       ? "Calculating"
-      : "Wallet confirms";
+      : estimate.status === "unavailable"
+        ? "Blocked"
+        : "Simulating";
   const evidenceLabel = evidenceState === "blocked"
     ? "Blocked"
     : evidenceState === "review"
@@ -400,7 +446,7 @@ export function TradePreSignReadiness({
     <section className={`tradePreSignReadiness ${readiness.tone}`} aria-live="polite">
       <header>
         <small>EXECUTION CHECK · {routeLabel}</small>
-        <strong>{readiness.headline}</strong>
+        <strong>{readinessHeadline}</strong>
       </header>
       <div>
         <span><small>QUOTE / SLIPPAGE</small><strong>{quoteLabel}</strong></span>
@@ -418,12 +464,14 @@ export function TradeCostSummary({
   side,
   amountIn,
   estimate,
-  venueLabel
+  venueLabel,
+  rmtFeeLabel = "$0"
 }: {
   side: "buy" | "sell";
   amountIn: bigint;
   estimate: TradeFeeEstimateState;
   venueLabel: string;
+  rmtFeeLabel?: string;
 }) {
   const networkUsd = estimatedNetworkFeeUsd(estimate.feeWei, estimate.ethUsd);
   const total = side === "buy" && estimate.feeWei !== undefined && amountIn > 0n
@@ -433,7 +481,7 @@ export function TradeCostSummary({
     <section className={`tradeCostSummary ${estimate.status}`} aria-label="Pre-sign cost estimate">
       <header><span>PRE-SIGN COST CHECK</span><strong>{estimate.status === "ready" ? "Estimated" : estimate.status === "loading" ? "Calculating…" : "Wallet confirms final fee"}</strong></header>
       <div>
-        <span><small>RMT PLATFORM FEE</small><strong>$0</strong></span>
+        <span><small>RMT PLATFORM FEE</small><strong>{rmtFeeLabel}</strong></span>
         <span><small>NETWORK FEE</small><strong>{estimate.status === "ready" ? `${feeEth(estimate.feeWei)} ETH` : estimate.status === "loading" ? "Checking…" : "Unavailable"}</strong><em>{feeUsd(networkUsd)}</em></span>
         <span><small>{side === "buy" ? "ORDER + NETWORK" : "VENUE COSTS"}</small><strong>{total !== undefined ? `${feeEth(total)} ETH` : venueLabel}</strong></span>
       </div>

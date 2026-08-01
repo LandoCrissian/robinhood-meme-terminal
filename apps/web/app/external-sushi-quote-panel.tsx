@@ -44,6 +44,9 @@ import {
 } from "./trade-ticket-ui";
 import { WalletButton } from "./wallet-button";
 import { recordExperienceStage } from "../lib/experience-funnel";
+import { requestTradeQuote } from "../lib/trade-quote-client";
+import { quoteDebounceMs, quoteRefreshMs } from "../lib/trade-speed";
+import { isTradePreflightReady } from "../lib/trade-preflight";
 
 const ROBINHOOD_CHAIN_ID = 4663;
 const EXPLORER = "https://robinhoodchain.blockscout.com";
@@ -95,6 +98,7 @@ export function ExternalSushiQuotePanel({
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [criticalEvidenceAcknowledged, setCriticalEvidenceAcknowledged] = useState(false);
   const [refresh, setRefresh] = useState(0);
   const [saferOrderOriginal, setSaferOrderOriginal] = useState<bigint>();
   const quoteRequestKey = useRef("");
@@ -156,6 +160,7 @@ export function ExternalSushiQuotePanel({
     setQuote(undefined);
     setError("");
     setMessage("");
+    setCriticalEvidenceAcknowledged(false);
     setStatus("idle");
     setSaferOrderOriginal(undefined);
     approval.reset();
@@ -163,12 +168,15 @@ export function ExternalSushiQuotePanel({
   }, [market.address, side]);
 
   useEffect(() => {
-    const interval = window.setInterval(() => setRefresh((value) => value + 1), 15_000);
+    const interval = window.setInterval(
+      () => setRefresh((value) => value + 1),
+      quoteRefreshMs(preferences.preparationMode)
+    );
     return () => window.clearInterval(interval);
-  }, []);
+  }, [preferences.preparationMode]);
 
   useEffect(() => {
-    const nextRequestKey = `${address ?? ""}:${amountIn}:${side}:${token}:${pair}`;
+    const nextRequestKey = `${address ?? ""}:${amountIn}:${side}:${token}:${pair}:${preferences.maxPriceImpactBps}`;
     const requestChanged = quoteRequestKey.current !== nextRequestKey;
     quoteRequestKey.current = nextRequestKey;
     if (requestChanged) setQuote(undefined);
@@ -177,22 +185,18 @@ export function ExternalSushiQuotePanel({
       setStatus("idle");
       return;
     }
-    const controller = new AbortController();
+    let cancelled = false;
     const timer = window.setTimeout(() => {
       setStatus("loading");
-      void fetch("/api/trade/external-sushi-quote", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          token,
-          pair,
-          recipient: address,
-          side,
-          amountIn: amountIn.toString()
-        }),
-        signal: controller.signal
-      }).then(async (response) => {
-        const payload = await response.json() as ExternalSushiQuote | { error?: string };
+      void requestTradeQuote("/api/trade/external-sushi-quote", {
+        token,
+        pair,
+        recipient: address,
+        side,
+        amountIn: amountIn.toString(),
+        maxPriceImpactBps: preferences.maxPriceImpactBps
+      }).then((response) => {
+        const payload = response.payload as ExternalSushiQuote | { error?: string };
         if (!response.ok) throw new Error("error" in payload ? payload.error : "Sushi quote is unavailable.");
         if (!("executable" in payload)) throw new Error("RMT rejected an incomplete Sushi response.");
         const executionReady = payload.executable === true
@@ -222,19 +226,21 @@ export function ExternalSushiQuotePanel({
         ) {
           throw new Error("RMT rejected an inconsistent Sushi quote.");
         }
-        setQuote(payload);
-        setStatus("idle");
+        if (!cancelled) {
+          setQuote(payload);
+          setStatus("idle");
+        }
       }).catch((cause) => {
-        if (controller.signal.aborted) return;
+        if (cancelled) return;
         setStatus("error");
         setError(cause instanceof Error ? cause.message : "Sushi quote is unavailable.");
       });
-    }, 350);
+    }, quoteDebounceMs(preferences.preparationMode));
     return () => {
-      controller.abort();
+      cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [address, amountIn, decimals, pair, refresh, side, token]);
+  }, [address, amountIn, decimals, pair, preferences.maxPriceImpactBps, preferences.preparationMode, refresh, side, token]);
 
   useEffect(() => {
     if (!approvalReceipt.isSuccess) return;
@@ -287,12 +293,21 @@ export function ExternalSushiQuotePanel({
     ? amountIn > 0n && amountIn + networkFeeReserve > (nativeBalance.data?.value ?? 0n)
     : amountIn > 0n && amountIn > (tokenBalance.data ?? 0n);
   const busy = approval.isPending || approvalReceipt.isLoading || swap.isPending || swapReceipt.isLoading;
+  const preflightReady = isTradePreflightReady(feeEstimate);
   const requiresAcknowledgement = tradeRequiresAcknowledgement(market, side);
   const evidenceDecision = tokenRiskDecision(tokenRisk, side);
   const confidenceEvidenceReady = side === "sell" || tokenRisk.status !== "loading";
   const confidenceReady = confidenceEvidenceReady && (!requiresAcknowledgement || tradingTerms.accepted);
-  const evidenceBlocked = evidenceDecision.state === "blocked";
+  const evidenceBlocked = evidenceDecision.state === "blocked" && !criticalEvidenceAcknowledged;
+  const criticalEvidenceKey = evidenceDecision.findings
+    .filter((finding) => finding.severity === "blocked")
+    .map((finding) => finding.code)
+    .join(":");
   const impactBlocked = Boolean(quote && quote.priceImpact > maxPriceImpact);
+
+  useEffect(() => {
+    setCriticalEvidenceAcknowledged(false);
+  }, [criticalEvidenceKey]);
   const sizingBalance = side === "buy"
     ? nativeBalance.data ? spendableTradeBalance(nativeBalance.data.value, networkFeeReserve) : undefined
     : tokenBalance.data;
@@ -308,7 +323,7 @@ export function ExternalSushiQuotePanel({
 
   const submit = () => {
     setMessage("");
-    if (!address || chainId !== ROBINHOOD_CHAIN_ID || !quoteIsFresh || !quote || insufficient || busy || !confidenceReady || evidenceBlocked || impactBlocked) return;
+    if (!address || chainId !== ROBINHOOD_CHAIN_ID || !quoteIsFresh || !quote || insufficient || busy || !confidenceReady || evidenceBlocked || impactBlocked || !preflightReady) return;
     recordExperienceStage("wallet_review_started");
     if (needsApproval) {
       approval.writeContract({
@@ -346,9 +361,11 @@ export function ExternalSushiQuotePanel({
       : !quoteIsFresh ? "Verifying route…"
       : insufficient ? "Insufficient balance"
       : !confidenceEvidenceReady ? "Checking contract and holders…"
-      : evidenceBlocked ? `Buy blocked: ${evidenceDecision.primaryFinding?.label ?? "evidence failed"}`
+      : evidenceBlocked ? "Review critical evidence to continue"
         : !confidenceReady ? "Accept RMT trading terms"
         : impactBlocked ? `Above your ${preferences.maxPriceImpactBps / 100}% impact limit`
+          : feeEstimate.status === "unavailable" ? "Preflight failed — trade blocked"
+            : !preflightReady ? "Simulating exact transaction…"
           : needsApproval ? `Approve exact ${market.symbol} amount`
             : side === "buy" ? `Buy ${market.symbol} with Sushi` : `Sell ${market.symbol} with Sushi`;
 
@@ -427,7 +444,10 @@ export function ExternalSushiQuotePanel({
         market={market}
         side={side}
         priceImpact={quote?.priceImpact}
+        maxPriceImpact={maxPriceImpact}
         evidenceState={tokenRisk}
+        criticalEvidenceAcknowledged={criticalEvidenceAcknowledged}
+        onCriticalEvidenceAcknowledgement={setCriticalEvidenceAcknowledged}
       />
 
       {isConnected && chainId === ROBINHOOD_CHAIN_ID && (
@@ -455,7 +475,7 @@ export function ExternalSushiQuotePanel({
             className={`externalUniswapSubmit ${side}`}
             type="button"
             aria-busy={busy || status === "loading"}
-            disabled={!quoteIsFresh || insufficient || busy || !confidenceReady || evidenceBlocked || impactBlocked}
+            disabled={!quoteIsFresh || insufficient || busy || !confidenceReady || evidenceBlocked || impactBlocked || !preflightReady}
             onClick={submit}
           >
             {buttonLabel}

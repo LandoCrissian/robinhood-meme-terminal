@@ -22,6 +22,8 @@ import {
   type TradeVenueSelectionMode
 } from "../lib/trade-route-selection";
 import { estimatedNetworkFeeUsd } from "../lib/trade-ticket";
+import { requestTradeQuote } from "../lib/trade-quote-client";
+import { quoteDebounceMs, quoteRefreshMs } from "../lib/trade-speed";
 import { SUSHI_RED_SNWAPPER } from "../lib/sushi";
 import {
   PERMIT2_ADDRESS,
@@ -29,6 +31,7 @@ import {
   ROBINHOOD_UNIVERSAL_ROUTER
 } from "../lib/uniswap-v4";
 import { useTradeFeeEstimate } from "../lib/use-trade-fee-estimate";
+import { useTradePreferences } from "../lib/use-trade-preferences";
 
 type TradeVenue = {
   venue: TradeVenueId;
@@ -56,6 +59,7 @@ type QuoteSummary = {
     decimals: number;
   };
   passportEligible?: true;
+  executionFee?: { bps: number } | null;
 };
 
 type VenueState = {
@@ -170,6 +174,7 @@ export function ExternalRouteComparison({
   onHealthChange?: (health: Partial<Record<TradeVenueId, TradeVenueHealth>>) => void;
 }) {
   const { address } = useAccount();
+  const { preferences } = useTradePreferences();
   const [states, setStates] = useState<Partial<Record<TradeVenue["venue"], VenueState>>>({});
   const [refresh, setRefresh] = useState(0);
   const requestKey = useRef("");
@@ -193,9 +198,12 @@ export function ExternalRouteComparison({
   }, [amount, decimalsRead.data, side]);
 
   useEffect(() => {
-    const interval = window.setInterval(() => setRefresh((value) => value + 1), 15_000);
+    const interval = window.setInterval(
+      () => setRefresh((value) => value + 1),
+      quoteRefreshMs(preferences.preparationMode)
+    );
     return () => window.clearInterval(interval);
-  }, []);
+  }, [preferences.preparationMode]);
 
   useEffect(() => {
     if (!address || amountIn <= 0n || venues.length < 2) {
@@ -206,7 +214,7 @@ export function ExternalRouteComparison({
     const nextRequestKey = `${address}:${amountIn}:${side}:${token}:${venues.map((venue) => `${venue.venue}:${venue.pair}`).join("|")}`;
     const requestChanged = requestKey.current !== nextRequestKey;
     requestKey.current = nextRequestKey;
-    const controller = new AbortController();
+    let cancelled = false;
     if (requestChanged) {
       setStates(Object.fromEntries(venues.map((venue) => [venue.venue, { status: "loading" }])));
     } else {
@@ -226,19 +234,14 @@ export function ExternalRouteComparison({
             ? "/api/trade/external-uniswap-v4"
             : "/api/trade/external-uniswap";
         try {
-          const response = await fetch(endpoint, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              token,
-              pair: candidate.pair,
-              recipient: address,
-              side,
-              amountIn: amountIn.toString()
-            }),
-            signal: controller.signal
+          const response = await requestTradeQuote(endpoint, {
+            token,
+            pair: candidate.pair,
+            recipient: address,
+            side,
+            amountIn: amountIn.toString()
           });
-          const payload = await response.json() as Record<string, unknown>;
+          const payload = response.payload;
           if (!response.ok) throw new Error(typeof payload.error === "string" ? payload.error : "Quote unavailable.");
           const expectedVenue = candidate.venue === "sushi"
             ? "sushi-aggregator"
@@ -323,11 +326,16 @@ export function ExternalRouteComparison({
               symbol: output.symbol.slice(0, 20),
               decimals: output.decimals
             },
-            passportEligible: candidate.venue === "uniswap-v4" ? true : undefined
+            passportEligible: candidate.venue === "uniswap-v4" ? true : undefined,
+            executionFee: payload.executionFee
+              && typeof payload.executionFee === "object"
+              && typeof (payload.executionFee as Record<string, unknown>).bps === "number"
+              ? { bps: (payload.executionFee as { bps: number }).bps }
+              : null
           };
-          setStates((current) => ({ ...current, [candidate.venue]: { status: "ready", quote } }));
+          if (!cancelled) setStates((current) => ({ ...current, [candidate.venue]: { status: "ready", quote } }));
         } catch (cause) {
-          if (controller.signal.aborted) return;
+          if (cancelled) return;
           setStates((current) => {
             const existing = current[candidate.venue];
             const existingStillFresh = existing?.quote
@@ -343,12 +351,12 @@ export function ExternalRouteComparison({
           });
         }
       }));
-    }, 400);
+    }, quoteDebounceMs(preferences.preparationMode));
     return () => {
-      controller.abort();
+      cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [address, amountIn, refresh, side, token, venues]);
+  }, [address, amountIn, preferences.preparationMode, refresh, side, token, venues]);
 
   useEffect(() => {
     onHealthChange?.(Object.fromEntries(venues.map((venue) => [
@@ -436,6 +444,9 @@ export function ExternalRouteComparison({
               )}
               {quote?.passportEligible && (
                 <span className="universalVenueFee">Passport eligible · exact route simulated</span>
+              )}
+              {quote?.executionFee && (
+                <span className="universalVenueFee">Includes {(quote.executionFee.bps / 100).toLocaleString()}% RMT fee · protected output is net</span>
               )}
             </button>
           );

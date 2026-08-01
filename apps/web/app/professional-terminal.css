@@ -1551,13 +1551,13 @@
   .professionalTradeWorkspace .universalTradeRail {
     position: fixed;
     z-index: 55;
-    top: max(8px, env(safe-area-inset-top));
+    top: auto;
     right: 0;
     bottom: 0;
     left: 0;
     width: auto;
     height: auto;
-    max-height: none;
+    max-height: min(82dvh, 740px);
     padding-bottom: env(safe-area-inset-bottom);
     overflow-x: hidden;
     overflow-y: auto;
@@ -1605,6 +1605,44 @@
     position: sticky;
     z-index: 3;
     top: 0;
+    min-height: 50px;
+    padding: 8px 11px;
+  }
+
+  .professionalTradeWorkspace .universalTradeRail > header:before {
+    position: absolute;
+    top: 4px;
+    left: 50%;
+    width: 34px;
+    height: 3px;
+    border-radius: 99px;
+    background: #395043;
+    content: "";
+    transform: translateX(-50%);
+  }
+
+  .professionalTradeWorkspace .universalTradeTabs {
+    margin: 6px;
+  }
+
+  .professionalTradeWorkspace .universalTradeTabs button {
+    min-height: 34px;
+  }
+
+  .professionalTradeWorkspace .universalRouteDecision {
+    grid-template-columns: auto minmax(0, 1fr);
+    margin: 0 6px 6px;
+    padding: 7px 8px;
+  }
+
+  .professionalTradeWorkspace .universalRouteDecision p {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .professionalTradeWorkspace .universalRouteDecision button {
+    grid-column: 1 / -1;
   }
 
   .professionalTradeWorkspace .universalTradeRailClose {
@@ -1629,6 +1667,12 @@
     right: 10px;
     width: calc(100vw - 20px);
     max-height: calc(100dvh - 90px - env(safe-area-inset-bottom));
+  }
+
+  .professionalTradeWorkspace .universalTradeRail > .externalSushiQuote,
+  .professionalTradeWorkspace .universalTradeRail > .externalUniswapTrade {
+    margin: 0 6px 6px;
+    padding: 10px;
   }
 
   .professionalTradeWorkspace .externalSushiResult dl {

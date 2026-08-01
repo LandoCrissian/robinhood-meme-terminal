@@ -173,7 +173,7 @@ export async function quoteSushiRoute(
 }
 
 export async function quoteAndBuildSushiSwap(
-  params: { token: Address; recipient: Address; side: "buy" | "sell"; amountIn: bigint },
+  params: { token: Address; recipient: Address; side: "buy" | "sell"; amountIn: bigint; maxPriceImpact?: number },
   dependencies: {
     fetch?: SushiFetch;
     enabled?: boolean;
@@ -191,12 +191,16 @@ export async function quoteAndBuildSushiSwap(
 
   const tokenIn = params.side === "buy" ? SUSHI_NATIVE_TOKEN : params.token;
   const tokenOut = params.side === "buy" ? params.token : SUSHI_NATIVE_TOKEN;
+  const maxPriceImpact = params.maxPriceImpact ?? PRICE_IMPACT_BLOCK;
+  if (!Number.isFinite(maxPriceImpact) || maxPriceImpact <= 0 || maxPriceImpact > 1) {
+    throw new Error("The selected maximum price impact is invalid.");
+  }
   const url = new URL(`${SUSHI_SWAP_API}/${chainId}`);
   url.searchParams.set("tokenIn", tokenIn);
   url.searchParams.set("tokenOut", tokenOut);
   url.searchParams.set("amount", params.amountIn.toString());
   url.searchParams.set("maxSlippage", (SUSHI_QUOTE_SLIPPAGE_BPS / 10_000).toString());
-  url.searchParams.set("maxPriceImpact", PRICE_IMPACT_BLOCK.toString());
+  url.searchParams.set("maxPriceImpact", maxPriceImpact.toString());
   url.searchParams.set("sender", params.recipient);
   url.searchParams.set("recipient", params.recipient);
   url.searchParams.set("simulate", "true");
@@ -231,7 +235,7 @@ export async function quoteAndBuildSushiSwap(
   const parsed = quoteResponseSchema.safeParse(payload);
   if (!parsed.success || parsed.data.status !== "Success") throw new Error("Sushi returned an invalid executable swap response.");
   const priceImpact = parsePriceImpact(parsed.data.priceImpact);
-  if (priceImpact > PRICE_IMPACT_BLOCK) throw new Error("RMT blocked this Sushi trade because price impact exceeds 5%.");
+  if (priceImpact > maxPriceImpact) throw new Error("Trade exceeds your selected maximum price impact.");
   const inputToken = quoteTokenMetadata(parsed.data.tokens, parsed.data.tokenFrom, tokenIn);
   const outputToken = quoteTokenMetadata(parsed.data.tokens, parsed.data.tokenTo, tokenOut);
   if (!inputToken || !outputToken) throw new Error("Sushi returned incomplete token metadata.");

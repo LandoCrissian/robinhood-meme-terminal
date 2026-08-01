@@ -17,7 +17,8 @@ const requestSchema = z.object({
   pair: z.string().refine(isAddress),
   recipient: z.string().refine(isAddress),
   side: z.enum(["buy", "sell"]),
-  amountIn: z.string().regex(/^\d+$/)
+  amountIn: z.string().regex(/^\d+$/),
+  maxPriceImpactBps: z.number().int().min(1).max(10_000).default(500)
 });
 
 const publicTradeErrors = new Set([
@@ -60,7 +61,8 @@ const publicTradeErrors = new Set([
   "Sushi contract bytecode is unavailable.",
   "Sushi router bytecode is not approved.",
   "Sushi executor bytecode is not approved.",
-  "RMT blocked this Sushi trade because price impact exceeds 5%."
+  "The selected maximum price impact is invalid.",
+  "Trade exceeds your selected maximum price impact."
 ]);
 
 export async function POST(request: Request) {
@@ -99,7 +101,8 @@ export async function POST(request: Request) {
           token,
           recipient,
           side: parsed.data.side,
-          amountIn
+          amountIn,
+          maxPriceImpact: parsed.data.maxPriceImpactBps / 10_000
         }, {
           chainId: 4663
         });

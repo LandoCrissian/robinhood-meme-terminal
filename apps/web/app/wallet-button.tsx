@@ -2,10 +2,17 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { robinhoodChain, robinhoodChainTestnet } from "@rmt/shared/chains";
+import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
 import { useAccount, useConnect, useDisconnect, useSwitchChain } from "wagmi";
 import { FundWalletButton } from "./fund-wallet-button";
 import { recordExperienceStage } from "../lib/experience-funnel";
+
+const privyAppId = process.env.NEXT_PUBLIC_PRIVY_APP_ID?.trim();
+const PrivyWalletButton = dynamic(
+  () => import("./privy-wallet-button").then((module) => module.PrivyWalletButton),
+  { ssr: false }
+);
 
 function shortAddress(address: string) {
   return `${address.slice(0, 6)}…${address.slice(-4)}`;
@@ -32,7 +39,7 @@ function walletErrorMessage(message: string) {
   return "The wallet did not connect. Close any stale wallet prompt and try again.";
 }
 
-export function WalletButton({
+function LegacyWalletButton({
   target = "testnet",
   returnTo,
   showFunding = true
@@ -142,4 +149,13 @@ export function WalletButton({
       </button>
     </div>
   );
+}
+
+export function WalletButton(props: {
+  target?: "testnet" | "mainnet";
+  returnTo?: string;
+  showFunding?: boolean;
+}) {
+  if (privyAppId) return <PrivyWalletButton {...props} />;
+  return <LegacyWalletButton {...props} />;
 }

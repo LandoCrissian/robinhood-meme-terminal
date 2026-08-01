@@ -1,18 +1,23 @@
+import type { TradePreparationMode } from "./trade-speed";
+
 export type TradePreferences = {
   buyAmounts: [string, string, string];
   routePreference: TradeRoutePreference;
   maxPriceImpactBps: TradePriceImpactLimitBps;
+  preparationMode: TradePreparationMode;
 };
 
 export type TradeRoutePreference = "automatic" | "sushi" | "uniswap";
-export type TradePriceImpactLimitBps = 100 | 200 | 500;
+export type TradePriceImpactLimitBps = 100 | 200 | 500 | 10_000;
+export type { TradePreparationMode } from "./trade-speed";
 
 export const TRADE_PREFERENCES_EVENT = "rmt:trade-preferences-changed";
 export const TRADE_PREFERENCES_STORAGE_KEY = "rmt-trade-preferences-v1";
 export const DEFAULT_TRADE_PREFERENCES: TradePreferences = {
   buyAmounts: ["0.0001", "0.001", "0.01"],
   routePreference: "automatic",
-  maxPriceImpactBps: 500
+  maxPriceImpactBps: 500,
+  preparationMode: "speed"
 };
 
 const DECIMAL_AMOUNT = /^(?:0|[1-9]\d{0,2})(?:\.\d{1,18})?$/;
@@ -33,6 +38,7 @@ export function normalizeTradePreferences(value: unknown): TradePreferences {
     buyAmounts?: unknown;
     routePreference?: unknown;
     maxPriceImpactBps?: unknown;
+    preparationMode?: unknown;
   };
   const amounts = candidate.buyAmounts;
   if (!Array.isArray(amounts) || amounts.length !== 3) return DEFAULT_TRADE_PREFERENCES;
@@ -45,13 +51,19 @@ export function normalizeTradePreferences(value: unknown): TradePreferences {
       ? candidate.routePreference
       : "automatic";
   const maxPriceImpactBps: TradePriceImpactLimitBps =
-    candidate.maxPriceImpactBps === 100 || candidate.maxPriceImpactBps === 200
+    candidate.maxPriceImpactBps === 100
+      || candidate.maxPriceImpactBps === 200
+      || candidate.maxPriceImpactBps === 10_000
       ? candidate.maxPriceImpactBps
       : 500;
+  const preparationMode: TradePreparationMode = candidate.preparationMode === "standard"
+    ? "standard"
+    : "speed";
   return {
     buyAmounts: normalized as [string, string, string],
     routePreference,
-    maxPriceImpactBps
+    maxPriceImpactBps,
+    preparationMode
   };
 }
 
@@ -70,7 +82,7 @@ export function writeTradePreferences(value: TradePreferences) {
   const normalized = normalizeTradePreferences(value);
   try {
     window.localStorage.setItem(TRADE_PREFERENCES_STORAGE_KEY, JSON.stringify({
-      version: 2,
+      version: 3,
       ...normalized
     }));
     window.dispatchEvent(new Event(TRADE_PREFERENCES_EVENT));

@@ -46,6 +46,10 @@ import {
 } from "./trade-ticket-ui";
 import { WalletButton } from "./wallet-button";
 import { recordExperienceStage } from "../lib/experience-funnel";
+import { requestTradeQuote } from "../lib/trade-quote-client";
+import { quoteDebounceMs, quoteRefreshMs } from "../lib/trade-speed";
+import { isTradePreflightReady } from "../lib/trade-preflight";
+import { assertUniswapTransactionIntegrity } from "../lib/uniswap-transaction-integrity";
 
 const ROBINHOOD_CHAIN_ID = 4663;
 const EXPLORER = "https://robinhoodchain.blockscout.com";
@@ -63,7 +67,9 @@ type ExternalUniswapQuote = {
   value: string;
   amountIn: string;
   quoteOut: string;
+  grossQuoteOut?: string;
   minimumOut: string;
+  grossMinimumOut?: string;
   priceImpact: number;
   deadline: string;
   fee: number;
@@ -73,6 +79,11 @@ type ExternalUniswapQuote = {
   approvalSpender?: Address;
   inputToken: { address: Address; symbol: string; name: string; decimals: number };
   outputToken: { address: Address; symbol: string; name: string; decimals: number };
+  executionFee?: {
+    bps: number;
+    treasury: Address;
+    estimatedAmount: string;
+  } | null;
   passport?: {
     state: "eligible";
     checkedAt: string;
@@ -123,6 +134,7 @@ export function ExternalUniswapTradePanel({
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [criticalEvidenceAcknowledged, setCriticalEvidenceAcknowledged] = useState(false);
   const [approvalStage, setApprovalStage] = useState<"token" | "permit2">();
   const [refresh, setRefresh] = useState(0);
   const [saferOrderOriginal, setSaferOrderOriginal] = useState<bigint>();
@@ -201,6 +213,7 @@ export function ExternalUniswapTradePanel({
     setQuote(undefined);
     setError("");
     setMessage("");
+    setCriticalEvidenceAcknowledged(false);
     setStatus("idle");
     setSaferOrderOriginal(undefined);
     setApprovalStage(undefined);
@@ -209,12 +222,15 @@ export function ExternalUniswapTradePanel({
   }, [market.address, market.pairAddress, side, version]);
 
   useEffect(() => {
-    const interval = window.setInterval(() => setRefresh((value) => value + 1), 15_000);
+    const interval = window.setInterval(
+      () => setRefresh((value) => value + 1),
+      quoteRefreshMs(preferences.preparationMode)
+    );
     return () => window.clearInterval(interval);
-  }, []);
+  }, [preferences.preparationMode]);
 
   useEffect(() => {
-    const nextRequestKey = `${address ?? ""}:${amountIn}:${side}:${token}:${pair}`;
+    const nextRequestKey = `${address ?? ""}:${amountIn}:${side}:${token}:${pair}:${preferences.maxPriceImpactBps}`;
     const requestChanged = quoteRequestKey.current !== nextRequestKey;
     quoteRequestKey.current = nextRequestKey;
     if (requestChanged) setQuote(undefined);
@@ -223,22 +239,18 @@ export function ExternalUniswapTradePanel({
       setStatus("idle");
       return;
     }
-    const controller = new AbortController();
+    let cancelled = false;
     const timer = window.setTimeout(() => {
       setStatus("loading");
-      void fetch(isV4 ? "/api/trade/external-uniswap-v4" : "/api/trade/external-uniswap", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          token,
-          pair,
-          recipient: address,
-          side,
-          amountIn: amountIn.toString()
-        }),
-        signal: controller.signal
-      }).then(async (response) => {
-        const payload = await response.json() as ExternalUniswapQuote | { error?: string };
+      void requestTradeQuote(isV4 ? "/api/trade/external-uniswap-v4" : "/api/trade/external-uniswap", {
+        token,
+        pair,
+        recipient: address,
+        side,
+        amountIn: amountIn.toString(),
+        maxPriceImpactBps: preferences.maxPriceImpactBps
+      }).then((response) => {
+        const payload = response.payload as ExternalUniswapQuote | { error?: string };
         if (!response.ok) throw new Error("error" in payload ? payload.error : "Uniswap quote is unavailable.");
         if (
           !("marketVerified" in payload)
@@ -271,19 +283,29 @@ export function ExternalUniswapTradePanel({
         ) {
           throw new Error("RMT rejected an inconsistent Uniswap transaction.");
         }
-        setQuote(payload);
-        setStatus("idle");
+        assertUniswapTransactionIntegrity(payload, {
+          version,
+          token,
+          recipient: address,
+          side,
+          amountIn,
+          nowSeconds: Math.floor(Date.now() / 1_000)
+        });
+        if (!cancelled) {
+          setQuote(payload);
+          setStatus("idle");
+        }
       }).catch((cause) => {
-        if (controller.signal.aborted) return;
+        if (cancelled) return;
         setStatus("error");
         setError(cause instanceof Error ? cause.message : "Uniswap quote is unavailable.");
       });
-    }, 350);
+    }, quoteDebounceMs(preferences.preparationMode));
     return () => {
-      controller.abort();
+      cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [address, amountIn, decimals, executionRouter, isV4, pair, refresh, side, token]);
+  }, [address, amountIn, decimals, executionRouter, isV4, pair, preferences.maxPriceImpactBps, preferences.preparationMode, refresh, side, token]);
 
   useEffect(() => {
     if (!approvalReceipt.isSuccess) return;
@@ -364,14 +386,26 @@ export function ExternalUniswapTradePanel({
     ? amountIn > 0n && amountIn + networkFeeReserve > (nativeBalance.data?.value ?? 0n)
     : amountIn > 0n && amountIn > (tokenBalance.data ?? 0n);
   const busy = approval.isPending || approvalReceipt.isLoading || swap.isPending || swapReceipt.isLoading;
+  const preflightReady = isTradePreflightReady(feeEstimate);
   const requiresAcknowledgement = tradeRequiresAcknowledgement(market, side);
   const evidenceDecision = tokenRiskDecision(tokenRisk, side);
   const confidenceEvidenceReady = side === "sell" || tokenRisk.status !== "loading";
   const confidenceReady = confidenceEvidenceReady && (!requiresAcknowledgement || tradingTerms.accepted);
-  const evidenceBlocked = evidenceDecision.state === "blocked";
+  const evidenceBlocked = evidenceDecision.state === "blocked" && !criticalEvidenceAcknowledged;
+  const criticalEvidenceKey = evidenceDecision.findings
+    .filter((finding) => finding.severity === "blocked")
+    .map((finding) => finding.code)
+    .join(":");
   const impactBlocked = Boolean(quote && quote.priceImpact > maxPriceImpact);
+
+  useEffect(() => {
+    setCriticalEvidenceAcknowledged(false);
+  }, [criticalEvidenceKey]);
   const outputDecimals = quote?.outputToken.decimals;
   const outputSymbol = quote?.outputToken.symbol ?? (side === "buy" ? market.symbol : "ETH");
+  const rmtFeeLabel = quote?.executionFee && outputDecimals !== undefined
+    ? `${quote.executionFee.bps / 100}% · ${displayUnits(quote.executionFee.estimatedAmount, outputDecimals)} ${outputSymbol}`
+    : "$0";
   const sizingBalance = side === "buy"
     ? nativeBalance.data ? spendableTradeBalance(nativeBalance.data.value, networkFeeReserve) : undefined
     : tokenBalance.data;
@@ -387,7 +421,7 @@ export function ExternalUniswapTradePanel({
 
   const submit = () => {
     setMessage("");
-    if (!address || chainId !== ROBINHOOD_CHAIN_ID || !quoteIsFresh || !quote || insufficient || busy || !confidenceReady || evidenceBlocked || impactBlocked) return;
+    if (!address || chainId !== ROBINHOOD_CHAIN_ID || !quoteIsFresh || !quote || insufficient || busy || !confidenceReady || evidenceBlocked || impactBlocked || !preflightReady) return;
     recordExperienceStage("wallet_review_started");
     if (needsTokenApproval) {
       setApprovalStage("token");
@@ -441,9 +475,11 @@ export function ExternalUniswapTradePanel({
       : !quoteIsFresh ? "Verifying route…"
       : insufficient ? "Insufficient balance"
       : !confidenceEvidenceReady ? "Checking contract and holders…"
-      : evidenceBlocked ? `Buy blocked: ${evidenceDecision.primaryFinding?.label ?? "evidence failed"}`
+      : evidenceBlocked ? "Review critical evidence to continue"
         : !confidenceReady ? "Accept RMT trading terms"
         : impactBlocked ? `Above your ${preferences.maxPriceImpactBps / 100}% impact limit`
+        : feeEstimate.status === "unavailable" ? "Preflight failed — trade blocked"
+          : !preflightReady ? "Simulating exact transaction…"
         : needsTokenApproval ? `Approve exact ${market.symbol} amount`
           : needsPermit2Approval ? "Set 20-minute router approval"
           : side === "buy" ? `Buy ${market.symbol} inside RMT` : `Sell ${market.symbol} inside RMT`;
@@ -523,7 +559,10 @@ export function ExternalUniswapTradePanel({
         market={market}
         side={side}
         priceImpact={quote?.priceImpact}
+        maxPriceImpact={maxPriceImpact}
         evidenceState={tokenRisk}
+        criticalEvidenceAcknowledged={criticalEvidenceAcknowledged}
+        onCriticalEvidenceAcknowledgement={setCriticalEvidenceAcknowledged}
       />
 
       {isConnected && chainId === ROBINHOOD_CHAIN_ID && (
@@ -551,7 +590,7 @@ export function ExternalUniswapTradePanel({
             className={`externalUniswapSubmit ${side}`}
             type="button"
             aria-busy={busy || status === "loading"}
-            disabled={!quoteIsFresh || insufficient || busy || !confidenceReady || evidenceBlocked || impactBlocked}
+            disabled={!quoteIsFresh || insufficient || busy || !confidenceReady || evidenceBlocked || impactBlocked || !preflightReady}
             onClick={submit}
           >
             {buttonLabel}
@@ -590,12 +629,14 @@ export function ExternalUniswapTradePanel({
             estimate={feeEstimate}
             venueFee={quote ? `${(quote.fee / 10_000).toLocaleString()}% pool` : "Checking…"}
             routeLabel={isV4 ? "Uniswap v4 · Universal Router" : "Uniswap v3 · Router02"}
+            rmtFeeLabel={rmtFeeLabel}
           />
           <TradeCostSummary
             side={side}
             amountIn={amountIn}
             estimate={feeEstimate}
             venueLabel="Pool fee reflected in quote"
+            rmtFeeLabel={rmtFeeLabel}
           />
           <p className="externalSushiSafety">
             {isV4

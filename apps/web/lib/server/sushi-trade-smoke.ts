@@ -190,7 +190,7 @@ async function main() {
 
   let executableUrl = "";
   const executable = await quoteAndBuildSushiSwap(
-    { token, recipient, side: "buy", amountIn },
+    { token, recipient, side: "buy", amountIn, maxPriceImpact: 0.1 },
     {
       enabled: true,
       chainId: 4663,
@@ -208,7 +208,7 @@ async function main() {
   assert.equal(executableRequest.searchParams.get("recipient"), recipient);
   assert.equal(executableRequest.searchParams.get("simulate"), "true");
   assert.equal(executableRequest.searchParams.get("validate"), "true");
-  assert.equal(executableRequest.searchParams.get("maxPriceImpact"), "0.05");
+  assert.equal(executableRequest.searchParams.get("maxPriceImpact"), "0.1");
   assert.equal(executable.executable, true);
   assert.equal(executable.onchainDeadline, false);
   assert.equal(executable.quoteExpiresAt, "1090");
@@ -224,7 +224,7 @@ async function main() {
         fetch: async () => Response.json(swapCandidate({ priceImpact: 0.051 }))
       }
     ),
-    /exceeds 5%/
+    /selected maximum price impact/
   );
 
   const auditedSell = await auditSushiSwapCandidate(
