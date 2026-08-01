@@ -7,6 +7,13 @@ import {
   PUBLIC_SYNC_DELAY_MESSAGE,
   publicSyncState
 } from "./rpc-resilience.js";
+import { resolveArchiveRpcUrl } from "./rpc-config.js";
+
+assert.equal(resolveArchiveRpcUrl("https://primary.example"), "https://primary.example");
+assert.equal(
+  resolveArchiveRpcUrl("https://primary.example", "  https://archive.example  "),
+  "https://archive.example"
+);
 
 const trade = { eventName: "Trade", id: 1 };
 const graduation = { eventName: "Graduated", id: 2 };
