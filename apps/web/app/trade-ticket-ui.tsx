@@ -17,6 +17,7 @@ import {
 } from "../lib/trade-readiness";
 import { routeLiquidityDepthLabel } from "../lib/trade-route-selection";
 import type { TradeFeeEstimateState } from "../lib/use-trade-fee-estimate";
+import { isTradePreflightReady } from "../lib/trade-preflight";
 import { normalizeTradePreferences } from "../lib/trade-preferences";
 import { useTradePreferences } from "../lib/use-trade-preferences";
 
@@ -417,11 +418,21 @@ export function TradePreSignReadiness({
           ? "Unavailable"
           : "Enter amount";
   const readiness = tradeReadinessStatus(quoteState, evidenceState);
+  const preflightReady = isTradePreflightReady(estimate);
+  const readinessHeadline = quoteState === "ready" && evidenceState === "clear"
+    ? preflightReady
+      ? readiness.headline
+      : estimate.status === "unavailable"
+        ? "Transaction simulation failed · blocked"
+        : "Simulating exact transaction"
+    : readiness.headline;
   const networkFee = estimate.status === "ready"
     ? `${feeEth(estimate.feeWei)} ETH`
     : estimate.status === "loading"
       ? "Calculating"
-      : "Wallet confirms";
+      : estimate.status === "unavailable"
+        ? "Blocked"
+        : "Simulating";
   const evidenceLabel = evidenceState === "blocked"
     ? "Blocked"
     : evidenceState === "review"
@@ -433,7 +444,7 @@ export function TradePreSignReadiness({
     <section className={`tradePreSignReadiness ${readiness.tone}`} aria-live="polite">
       <header>
         <small>EXECUTION CHECK · {routeLabel}</small>
-        <strong>{readiness.headline}</strong>
+        <strong>{readinessHeadline}</strong>
       </header>
       <div>
         <span><small>QUOTE / SLIPPAGE</small><strong>{quoteLabel}</strong></span>

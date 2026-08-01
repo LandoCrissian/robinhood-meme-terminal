@@ -48,6 +48,8 @@ import { WalletButton } from "./wallet-button";
 import { recordExperienceStage } from "../lib/experience-funnel";
 import { requestTradeQuote } from "../lib/trade-quote-client";
 import { quoteDebounceMs, quoteRefreshMs } from "../lib/trade-speed";
+import { isTradePreflightReady } from "../lib/trade-preflight";
+import { assertUniswapTransactionIntegrity } from "../lib/uniswap-transaction-integrity";
 
 const ROBINHOOD_CHAIN_ID = 4663;
 const EXPLORER = "https://robinhoodchain.blockscout.com";
@@ -271,6 +273,14 @@ export function ExternalUniswapTradePanel({
         ) {
           throw new Error("RMT rejected an inconsistent Uniswap transaction.");
         }
+        assertUniswapTransactionIntegrity(payload, {
+          version,
+          token,
+          recipient: address,
+          side,
+          amountIn,
+          nowSeconds: Math.floor(Date.now() / 1_000)
+        });
         if (!cancelled) {
           setQuote(payload);
           setStatus("idle");
@@ -366,6 +376,7 @@ export function ExternalUniswapTradePanel({
     ? amountIn > 0n && amountIn + networkFeeReserve > (nativeBalance.data?.value ?? 0n)
     : amountIn > 0n && amountIn > (tokenBalance.data ?? 0n);
   const busy = approval.isPending || approvalReceipt.isLoading || swap.isPending || swapReceipt.isLoading;
+  const preflightReady = isTradePreflightReady(feeEstimate);
   const requiresAcknowledgement = tradeRequiresAcknowledgement(market, side);
   const evidenceDecision = tokenRiskDecision(tokenRisk, side);
   const confidenceEvidenceReady = side === "sell" || tokenRisk.status !== "loading";
@@ -389,7 +400,7 @@ export function ExternalUniswapTradePanel({
 
   const submit = () => {
     setMessage("");
-    if (!address || chainId !== ROBINHOOD_CHAIN_ID || !quoteIsFresh || !quote || insufficient || busy || !confidenceReady || evidenceBlocked || impactBlocked) return;
+    if (!address || chainId !== ROBINHOOD_CHAIN_ID || !quoteIsFresh || !quote || insufficient || busy || !confidenceReady || evidenceBlocked || impactBlocked || !preflightReady) return;
     recordExperienceStage("wallet_review_started");
     if (needsTokenApproval) {
       setApprovalStage("token");
@@ -446,6 +457,8 @@ export function ExternalUniswapTradePanel({
       : evidenceBlocked ? `Buy blocked: ${evidenceDecision.primaryFinding?.label ?? "evidence failed"}`
         : !confidenceReady ? "Accept RMT trading terms"
         : impactBlocked ? `Above your ${preferences.maxPriceImpactBps / 100}% impact limit`
+        : feeEstimate.status === "unavailable" ? "Preflight failed — trade blocked"
+          : !preflightReady ? "Simulating exact transaction…"
         : needsTokenApproval ? `Approve exact ${market.symbol} amount`
           : needsPermit2Approval ? "Set 20-minute router approval"
           : side === "buy" ? `Buy ${market.symbol} inside RMT` : `Sell ${market.symbol} inside RMT`;
@@ -553,7 +566,7 @@ export function ExternalUniswapTradePanel({
             className={`externalUniswapSubmit ${side}`}
             type="button"
             aria-busy={busy || status === "loading"}
-            disabled={!quoteIsFresh || insufficient || busy || !confidenceReady || evidenceBlocked || impactBlocked}
+            disabled={!quoteIsFresh || insufficient || busy || !confidenceReady || evidenceBlocked || impactBlocked || !preflightReady}
             onClick={submit}
           >
             {buttonLabel}

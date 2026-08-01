@@ -30,6 +30,7 @@
     "test:external-ohlcv": "tsx lib/server/external-ohlcv-smoke.ts",
     "test:trade-ticket": "tsx lib/trade-ticket-smoke.ts",
     "test:trade-speed": "tsx lib/trade-speed-smoke.ts && tsx lib/speed-wallet-smoke.ts",
+    "test:transaction-integrity": "tsx lib/uniswap-transaction-integrity-smoke.ts",
     "test:trading-terms": "tsx lib/trading-terms-smoke.ts",
     "test:experience": "tsx lib/experience-funnel-smoke.ts",
     "test:external-trades": "tsx lib/external-trades-smoke.ts",

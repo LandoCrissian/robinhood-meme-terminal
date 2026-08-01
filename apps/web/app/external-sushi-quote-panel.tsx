@@ -46,6 +46,7 @@ import { WalletButton } from "./wallet-button";
 import { recordExperienceStage } from "../lib/experience-funnel";
 import { requestTradeQuote } from "../lib/trade-quote-client";
 import { quoteDebounceMs, quoteRefreshMs } from "../lib/trade-speed";
+import { isTradePreflightReady } from "../lib/trade-preflight";
 
 const ROBINHOOD_CHAIN_ID = 4663;
 const EXPLORER = "https://robinhoodchain.blockscout.com";
@@ -289,6 +290,7 @@ export function ExternalSushiQuotePanel({
     ? amountIn > 0n && amountIn + networkFeeReserve > (nativeBalance.data?.value ?? 0n)
     : amountIn > 0n && amountIn > (tokenBalance.data ?? 0n);
   const busy = approval.isPending || approvalReceipt.isLoading || swap.isPending || swapReceipt.isLoading;
+  const preflightReady = isTradePreflightReady(feeEstimate);
   const requiresAcknowledgement = tradeRequiresAcknowledgement(market, side);
   const evidenceDecision = tokenRiskDecision(tokenRisk, side);
   const confidenceEvidenceReady = side === "sell" || tokenRisk.status !== "loading";
@@ -310,7 +312,7 @@ export function ExternalSushiQuotePanel({
 
   const submit = () => {
     setMessage("");
-    if (!address || chainId !== ROBINHOOD_CHAIN_ID || !quoteIsFresh || !quote || insufficient || busy || !confidenceReady || evidenceBlocked || impactBlocked) return;
+    if (!address || chainId !== ROBINHOOD_CHAIN_ID || !quoteIsFresh || !quote || insufficient || busy || !confidenceReady || evidenceBlocked || impactBlocked || !preflightReady) return;
     recordExperienceStage("wallet_review_started");
     if (needsApproval) {
       approval.writeContract({
@@ -351,6 +353,8 @@ export function ExternalSushiQuotePanel({
       : evidenceBlocked ? `Buy blocked: ${evidenceDecision.primaryFinding?.label ?? "evidence failed"}`
         : !confidenceReady ? "Accept RMT trading terms"
         : impactBlocked ? `Above your ${preferences.maxPriceImpactBps / 100}% impact limit`
+          : feeEstimate.status === "unavailable" ? "Preflight failed — trade blocked"
+            : !preflightReady ? "Simulating exact transaction…"
           : needsApproval ? `Approve exact ${market.symbol} amount`
             : side === "buy" ? `Buy ${market.symbol} with Sushi` : `Sell ${market.symbol} with Sushi`;
 
@@ -457,7 +461,7 @@ export function ExternalSushiQuotePanel({
             className={`externalUniswapSubmit ${side}`}
             type="button"
             aria-busy={busy || status === "loading"}
-            disabled={!quoteIsFresh || insufficient || busy || !confidenceReady || evidenceBlocked || impactBlocked}
+            disabled={!quoteIsFresh || insufficient || busy || !confidenceReady || evidenceBlocked || impactBlocked || !preflightReady}
             onClick={submit}
           >
             {buttonLabel}
