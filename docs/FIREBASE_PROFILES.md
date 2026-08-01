@@ -56,7 +56,7 @@ Invite links use `/r/RMT-XXXXXXXX` and open a dedicated consent page. Only after
 
 Production sets `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=www.rmtlaunch.fun`. RMT keeps that registered Firebase `authDomain` on production, local development, and ordinary temporary Vercel previews. Two stable QA hostnames are deliberately registered as exact same-origin auth helpers so mobile and desktop rehearsals can complete without third-party storage. No wildcard preview host is trusted. The Vercel rewrite in `apps/web/vercel.json` transparently proxies only `/__/auth/*` to the project's Firebase Hosting origin.
 
-Google profile sign-in uses Firebase's user-initiated popup flow. RMT detects embedded browsers that commonly block it and directs those users to a full browser. Passwordless email sign-in remains available without a Google account: RMT sends a one-time Firebase link back to `/profile`, stores the normalized email only in the requesting browser for same-device completion, never places the email in the URL, and requires the user to re-enter the same address when the link opens on another device.
+Google profile sign-in uses Firebase's full-page redirect flow through a registered same-origin RMT auth helper. RMT processes the redirect result before restoring profile state, so mobile and desktop browsers do not depend on a provider popup. Embedded browsers that block provider authentication are still directed to a full browser. Passwordless email sign-in remains available without a Google account: RMT sends a one-time Firebase link back to `/profile`, stores the normalized email only in the requesting browser for same-device completion, never places the email in the URL, and requires the user to re-enter the same address when the link opens on another device.
 
 Keep `www.rmtlaunch.fun` and each explicitly named stable QA hostname in Firebase Authentication's authorized domains. Keep their exact `/__/auth/handler` URLs registered on the Firebase-generated Google OAuth client and in `firebase.json`. Never use a wildcard or automatically trust arbitrary previews. Do not use a redirect response in place of the rewrite: each registered auth helper must be reverse-proxied without changing the browser URL. The original `robinhood-meme-terminal.firebaseapp.com` domain remains the upstream and rollback path.
 
@@ -72,7 +72,7 @@ The browser uses Firestore's memory cache rather than persistent IndexedDB cachi
 
 ## Operational behavior
 
-- Google sign-in uses a user-initiated popup, while embedded browsers receive a clear full-browser recovery path.
+- Google sign-in uses a registered same-origin full-page redirect, while embedded browsers receive a clear full-browser recovery path.
 - Passwordless email links work with Gmail, Outlook, Yahoo, iCloud, Proton, business domains, and other valid providers. The same email address must be confirmed when the link opens outside the requesting browser.
 - Approved RMT and Vercel hosts proxy Firebase's `/__/auth/*` helper on the same origin for the Google flow.
 - If Firebase is absent or temporarily unavailable, profile edits remain saved locally and trading remains operational.

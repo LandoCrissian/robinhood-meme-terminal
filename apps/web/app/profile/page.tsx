@@ -51,6 +51,7 @@ export default function ProfilePage() {
     emailLinkPending,
     loading,
     profile,
+    profileAuthMessage,
     identityUpdatedAt,
     retrySync,
     user,
@@ -118,6 +119,7 @@ export default function ProfilePage() {
   const identityState = profileIdentityEditState(identityUpdatedAt, now);
   const identityChanged = profileIdentityChanged(profile, draft);
   const preferencesChanged = profile.traderMode !== draft.traderMode || profile.density !== draft.density;
+  const visibleAuthMessage = authMessage || profileAuthMessage;
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -388,7 +390,7 @@ export default function ProfilePage() {
             ) : (
               <div className="profileSetupNotice"><strong>Firebase connection prepared</strong><span>Add the project configuration to enable secure profile sync.</span></div>
             )}
-            {authMessage && <p className="profileAuthMessage" role="status">{authMessage}</p>}
+            {visibleAuthMessage && <p className="profileAuthMessage" role="status">{visibleAuthMessage}</p>}
           </section>
           <ReferralCard />
 

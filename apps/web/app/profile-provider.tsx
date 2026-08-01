@@ -50,6 +50,7 @@ type ProfileContextValue = {
   emailLinkPending: boolean;
   loading: boolean;
   profile: RmtProfile;
+  profileAuthMessage: string;
   identityUpdatedAt: number;
   user: User | null;
   syncState: SyncState;
@@ -218,6 +219,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   const [syncState, setSyncState] = useState<SyncState>(firebaseConfigured ? "syncing" : "local");
   const [cloudReady, setCloudReady] = useState(false);
   const [emailLinkPending, setEmailLinkPending] = useState(false);
+  const [profileAuthMessage, setProfileAuthMessage] = useState("");
   const activeUserRef = useRef<User | null>(null);
   const cleanupLegacyRef = useRef(false);
   const firebaseClientRef = useRef<FirebaseClient | null>(null);
@@ -295,7 +297,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     let unsubscribeWatchlist: (() => void) | undefined;
     let cancelled = false;
 
-    void getFirebaseClient().then((client) => {
+    void getFirebaseClient().then(async (client) => {
       if (cancelled || !client) {
         if (!cancelled) {
           setSyncState("local");
@@ -305,6 +307,20 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
       }
       firebaseClientRef.current = client;
       setEmailLinkPending(client.authApi.isSignInWithEmailLink(client.auth, window.location.href));
+
+      try {
+        const redirectResult = await client.authApi.getRedirectResult(client.auth);
+        if (cancelled) return;
+        if (redirectResult?.user && !redirectResult.user.isAnonymous) {
+          setProfileAuthMessage("Google verified. Your RMT desk is connecting.");
+        }
+      } catch (error) {
+        if (cancelled) return;
+        setSyncState("local");
+        setProfileAuthMessage(friendlyAuthError(error));
+      }
+
+      if (cancelled) return;
 
       unsubscribeAuth = client.authApi.onAuthStateChanged(client.auth, async (nextUser) => {
         const profileUser = nextUser?.isAnonymous ? null : nextUser;
@@ -474,12 +490,15 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     firebaseClientRef.current = client;
     const provider = new client.authApi.GoogleAuthProvider();
     provider.setCustomParameters({ prompt: "select_account" });
+    setProfileAuthMessage("");
     setSyncState("syncing");
     try {
-      await client.authApi.signInWithPopup(client.auth, provider);
+      await client.authApi.signInWithRedirect(client.auth, provider);
     } catch (error) {
       setSyncState("local");
-      throw new Error(friendlyAuthError(error));
+      const message = friendlyAuthError(error);
+      setProfileAuthMessage(message);
+      throw new Error(message);
     }
   }, []);
 
@@ -538,6 +557,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     emailLinkPending,
     loading,
     profile,
+    profileAuthMessage,
     identityUpdatedAt,
     retrySync,
     user,
@@ -552,6 +572,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     identityUpdatedAt,
     loading,
     profile,
+    profileAuthMessage,
     retrySync,
     saveProfile,
     sendEmailSignInLink,

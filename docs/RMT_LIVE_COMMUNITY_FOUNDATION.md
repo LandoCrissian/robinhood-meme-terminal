@@ -136,8 +136,8 @@ Traffic measurements should include active sessions, concurrent sessions, messag
 - Controlled QA hostnames are authorized as Firebase callers and exact OAuth
   callbacks for rehearsals. Arbitrary temporary deployments fall back to the
   permanent helper and never receive wildcard trust. Google profile sign-in
-  uses the user-initiated popup flow, while passwordless email remains the
-  fallback for browsers that block provider windows.
+  uses a registered same-origin full-page redirect, while passwordless email
+  remains the fallback for embedded browsers that block provider authentication.
 - A second isolated identity, `Guest-2110`, reported `Guest-3D1F`'s visible
   `hello` message as `spam`. The report appeared only in the private
   administrator queue, proving the true cross-identity report path rather than

@@ -58,13 +58,18 @@ const profileProviderSource = readFileSync(new URL("../app/profile-provider.tsx"
 const profilePageSource = readFileSync(new URL("../app/profile/page.tsx", import.meta.url), "utf8");
 assert.match(
   profileProviderSource,
-  /signInWithPopup\(client\.auth, provider\)/,
-  "Google profile sign-in must use the storage-partition-safe popup flow"
+  /signInWithRedirect\(client\.auth, provider\)/,
+  "Google profile sign-in must use the registered same-origin redirect flow"
+);
+assert.match(
+  profileProviderSource,
+  /getRedirectResult\(client\.auth\)/,
+  "Google profile sign-in must process the provider result after returning to RMT"
 );
 assert.doesNotMatch(
   profileProviderSource,
-  /signInWithRedirect\(/,
-  "Google profile sign-in must not restore the sessionStorage-dependent redirect flow"
+  /signInWithPopup\(/,
+  "Google profile sign-in must not depend on a browser popup"
 );
 assert.match(
   profileProviderSource,
