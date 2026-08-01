@@ -39,10 +39,26 @@ RMT's optional Speed Wallet is implemented behind `NEXT_PUBLIC_PRIVY_APP_ID`. Wh
 When configured, the provider layer:
 
 - uses Privy's official Wagmi adapter so the existing trade hooks can operate with an embedded wallet;
-- creates a wallet only after the user explicitly requests one;
+- lets Privy own external-wallet connection state instead of duplicating it through Wagmi;
+- creates a user-owned wallet after a user chooses to sign in, including users who also bring an external wallet;
 - keeps that wallet user-owned and exportable;
 - supports email, Google, passkey, and external-wallet authentication;
 - restricts supported networks to Robinhood Chain mainnet and testnet; and
+- exposes user-controlled MFA, recovery, key export and active-wallet selection; and
 - does not provision an RMT signer or allow unattended execution.
+
+## Funding layer
+
+Privy's unified funding interface is implemented behind `NEXT_PUBLIC_PRIVY_FUNDING_ENABLED`. It is separately gated from the wallet login because a configured wallet does not prove that a fiat or cross-chain provider supports a particular destination.
+
+The funding request binds all provider quotes to:
+
+- the wallet address selected by the user;
+- an explicit CAIP-2 destination chain (Robinhood Chain is `eip155:4663`);
+- one exact asset symbol or contract address;
+- an explicit sandbox or production environment; and
+- a bounded default fiat amount.
+
+The provider owns payment credentials, KYC, method eligibility, quotes and delivery. RMT never receives card, bank, Apple Pay, Google Pay or identity-document data. If no provider returns a compatible route, the flow fails without moving funds. Production funding must remain disabled until the Privy dashboard is configured and a provider-confirmed Robinhood Chain route has been tested end to end.
 
 The next phase requires a registered authorization-key quorum and a non-empty policy ID. RMT must never attach a signer with an empty policy list.

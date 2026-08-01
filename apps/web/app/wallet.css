@@ -23,6 +23,8 @@
 .fundWalletPrimary:disabled{background:#243029;color:#7e8a82;cursor:not-allowed}
 .fundWalletSecondary{margin-top:8px;border:1px solid #314139;background:#111913;color:#b5c0b8}
 .fundWalletDisclosure{display:block;margin-top:11px;color:#6f7c73;font-size:.62rem;line-height:1.45}
+.fundWalletMessage{margin:10px 0 0!important;padding:9px 10px;border:1px solid #314139;border-radius:9px;background:#0c130e;color:#a7b4aa!important;font-size:.67rem!important;line-height:1.4!important}
+.privyFundingUnavailable{display:flex;flex-direction:column;gap:5px;padding:12px;border:1px solid #485437;border-radius:11px;background:#17190f}.privyFundingUnavailable strong{color:#d7dfbd;font-size:.73rem}.privyFundingUnavailable span{color:#919b7c;font-size:.67rem;line-height:1.45}
 .walletBackdrop{position:fixed;z-index:59;inset:0;width:100%;height:100%;padding:0;border:0;border-radius:0;background:rgba(0,0,0,.46);cursor:default;backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px)}
 .walletPopover{position:absolute;z-index:60;top:calc(100% + 12px);right:0;width:min(390px,calc(100vw - 28px));padding:16px;border:1px solid #314239;border-radius:18px;background:rgba(10,15,11,.98);box-shadow:0 24px 70px rgba(0,0,0,.55);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
 .walletPopoverHeader{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px}
@@ -30,6 +32,19 @@
 .walletPopoverHeader strong{font-size:.9rem}
 .walletPopoverHeader span{color:#7e8b82;font-size:.7rem}
 .walletPopoverHeader>button{display:grid;place-items:center;width:44px;height:44px;margin:-6px -6px 0 0;border:0;border-radius:10px;background:#182019;color:#aeb9b0;font-size:1.2rem;cursor:pointer}
+.privyWalletList{display:flex;flex-direction:column;gap:7px}
+.privyWalletList>button{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-height:58px;padding:11px 12px;border:1px solid #29382f;border-radius:12px;background:#0d1510;color:#edf4ef;text-align:left;cursor:pointer}
+.privyWalletList>button:hover,.privyWalletList>button:focus-visible{border-color:#4be970;background:#112317}
+.privyWalletList>button.active{border-color:#315c3a;background:#102016;cursor:default}
+.privyWalletList>button:disabled{opacity:1}
+.privyWalletList span{display:flex;min-width:0;flex-direction:column;gap:3px}
+.privyWalletList strong{font-size:.78rem}
+.privyWalletList small{overflow:hidden;color:#829087;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.65rem;text-overflow:ellipsis;white-space:nowrap}
+.privyWalletList em{flex:0 0 auto;padding:5px 7px;border:1px solid #365440;border-radius:7px;color:#70e983;font-size:.58rem;font-style:normal;font-weight:900;letter-spacing:.08em}
+.privyWalletActions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.privyWalletActions button{min-height:42px;padding:9px 10px;border:1px solid #314139;border-radius:10px;background:#111913;color:#b9c4bc;font:inherit;font-size:.69rem;font-weight:850;cursor:pointer}
+.privyWalletActions button:first-child{border-color:#315c3a;color:#72eb85}
+.privyWalletActions button:hover,.privyWalletActions button:focus-visible{border-color:#4be970;background:#132018;color:#eff7f1}
 .connectorList{display:flex;flex-direction:column;gap:8px}
 .connectorOption{display:flex;flex-direction:column;align-items:flex-start;gap:3px;min-height:58px;padding:12px 14px;border:1px solid #2a3930;border-radius:13px;background:#0e1510;color:#eef4ef;text-align:left;cursor:pointer}
 .connectorOption:hover{border-color:#4be970;background:#112317}
@@ -64,4 +79,4 @@
 @media(min-width:621px){.mobileWalletLinks{display:none}
 }
 @media(max-width:420px){.walletPending{align-items:flex-start;flex-direction:column}.walletPending button{width:100%}}
-@media(max-width:420px){.walletConnectedActions>.fundWalletMenu.header .fundWalletTrigger{font-size:0;width:44px;padding:0}.walletConnectedActions>.fundWalletMenu.header .fundWalletTrigger::after{content:"+";font-size:1rem}.fundWalletDialog{padding:16px}}
+@media(max-width:420px){.walletConnectedActions>.fundWalletMenu.header .fundWalletTrigger{font-size:0;width:44px;padding:0}.walletConnectedActions>.fundWalletMenu.header .fundWalletTrigger::after{content:"+";font-size:1rem}.fundWalletDialog{padding:16px}.privyWalletActions{grid-template-columns:1fr}}
