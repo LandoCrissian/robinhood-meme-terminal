@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { normalizePrivyAppId } from "./privy-config";
 
 const appRoot = fileURLToPath(new URL("../app/", import.meta.url));
 const providers = readFileSync(`${appRoot}providers.tsx`, "utf8");
@@ -12,14 +13,17 @@ const walletTransferDialog = readFileSync(`${appRoot}wallet-transfer-dialog.tsx`
 const walletReceiveDialog = readFileSync(`${appRoot}wallet-receive-dialog.tsx`, "utf8");
 const combined = `${providers}\n${speedProvider}\n${speedEntry}\n${walletButton}\n${privyWalletButton}\n${walletTransferDialog}\n${walletReceiveDialog}`;
 
-assert.match(providers, /NEXT_PUBLIC_PRIVY_APP_ID/, "Speed Wallet must remain environment-gated.");
+assert.equal(normalizePrivyAppId("a".repeat(25)), "a".repeat(25), "A valid Privy app ID must activate Speed Wallet.");
+assert.equal(normalizePrivyAppId("too-short"), undefined, "An invalid Privy app ID must fail closed.");
+assert.equal(normalizePrivyAppId(undefined), undefined, "A missing Privy app ID must preserve the legacy wallet path.");
+assert.match(providers, /speedWalletEnabled/, "Speed Wallet must remain environment-gated.");
 assert.match(speedProvider, /@privy-io\/wagmi/, "Embedded wallets must use Privy's official Wagmi adapter.");
 assert.match(speedProvider, /createOnLogin:\s*"all-users"/, "A user who chooses Privy sign-in must receive an RMT wallet.");
 assert.match(speedEntry, /useExportWallet/, "The user-owned wallet must expose recovery/export controls.");
 assert.match(speedEntry, /useSetWalletRecovery/, "The user-owned wallet must expose cross-device recovery controls.");
 assert.match(speedEntry, /useMfaEnrollment/, "The user-owned wallet must expose MFA enrollment controls.");
 assert.match(speedEntry, /Session permissions remain off/, "Signer permissions must be visibly fail-closed.");
-assert.match(walletButton, /if \(privyAppId\) return <PrivyWalletButton/, "Privy must own the wallet entry point whenever configured.");
+assert.match(walletButton, /if \(speedWalletEnabled\) return <PrivyWalletButton/, "Privy must own the wallet entry point whenever validly configured.");
 assert.match(privyWalletButton, /useConnectOrCreateWallet/, "Privy must provide a connect-or-create path for first-time traders.");
 assert.match(privyWalletButton, /useSetActiveWallet/, "Traders must be able to choose the exact wallet RMT uses.");
 assert.match(privyWalletButton, /requestedWalletAddress/, "A newly connected external wallet must remain the requested active wallet after Privy finishes linking it.");

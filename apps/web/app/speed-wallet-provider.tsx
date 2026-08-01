@@ -6,8 +6,8 @@ import { robinhoodChain, robinhoodChainTestnet } from "@rmt/shared/chains";
 import { QueryClientProvider, type QueryClient } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { walletChains, walletTransports } from "./wallet-config";
+import { configuredPrivyAppId } from "../lib/privy-config";
 
-const privyAppId = process.env.NEXT_PUBLIC_PRIVY_APP_ID?.trim();
 const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.rmtlaunch.fun";
 const speedWalletConfig = createConfig({
   chains: walletChains,
@@ -16,10 +16,10 @@ const speedWalletConfig = createConfig({
 });
 
 export function SpeedWalletProvider({ children, queryClient }: { children: ReactNode; queryClient: QueryClient }) {
-  if (!privyAppId) return children;
+  if (!configuredPrivyAppId) return children;
   return (
     <PrivyProvider
-      appId={privyAppId}
+      appId={configuredPrivyAppId}
       config={{
         appearance: {
           theme: "dark",

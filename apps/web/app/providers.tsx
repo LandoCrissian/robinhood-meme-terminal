@@ -9,8 +9,7 @@ import { ReferralCapture } from "./referral-capture";
 import { CommunityLive } from "./community-live";
 import { ExperienceTelemetry } from "./experience-telemetry";
 import { walletChains, walletConnectors, walletTransports } from "./wallet-config";
-
-const privyAppId = process.env.NEXT_PUBLIC_PRIVY_APP_ID?.trim();
+import { speedWalletEnabled } from "../lib/privy-config";
 
 const config = createConfig({
   chains: walletChains,
@@ -31,7 +30,7 @@ export function Providers({ children }: { children: ReactNode }) {
     <ProfileProvider><ReferralCapture /><ExperienceTelemetry />{children}<CommunityLive /></ProfileProvider>
   );
 
-  if (privyAppId) return <SpeedWalletProvider queryClient={queryClient}>{application}</SpeedWalletProvider>;
+  if (speedWalletEnabled) return <SpeedWalletProvider queryClient={queryClient}>{application}</SpeedWalletProvider>;
   return (
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>{application}</QueryClientProvider>

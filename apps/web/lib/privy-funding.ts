@@ -1,3 +1,5 @@
+import { normalizePrivyAppId } from "./privy-config";
+
 export type PrivyFundingEnvironment = "sandbox" | "production";
 
 export type PrivyFundingConfig = {
@@ -41,7 +43,7 @@ export function parsePrivyFundingConfig(env: PrivyFundingPublicEnv): PrivyFundin
   const environment = env.environment === "production" ? "production" : "sandbox";
 
   return {
-    enabled: Boolean(env.appId?.trim()) && env.enabled === "true",
+    enabled: Boolean(normalizePrivyAppId(env.appId)) && env.enabled === "true",
     chain: `eip155:${chainId}`,
     asset: asset as `0x${string}`,
     assetLabel: asset.toLowerCase() === NATIVE_ASSET ? "ETH" : `${asset.slice(0, 6)}…${asset.slice(-4)}`,

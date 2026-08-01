@@ -34,7 +34,7 @@ Until these controls and the selected wallet provider are production-tested, RMT
 
 ## Provider foundation
 
-RMT's optional Speed Wallet is implemented behind `NEXT_PUBLIC_PRIVY_APP_ID`. When the variable is absent, the existing wallet experience and production application are unchanged.
+RMT's optional Speed Wallet is implemented behind `NEXT_PUBLIC_PRIVY_APP_ID`. When the variable is absent or does not match Privy's 25-character app-ID requirement, RMT fails closed to the existing wallet experience instead of initializing the provider or crashing the application.
 
 When configured, the provider layer:
 

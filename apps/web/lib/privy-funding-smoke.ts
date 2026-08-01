@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { parsePrivyFundingConfig } from "./privy-funding";
 
 const sandbox = parsePrivyFundingConfig({
-  appId: "app_test",
+  appId: "x".repeat(25),
   enabled: "true"
 });
 
@@ -16,7 +16,7 @@ assert.deepEqual(sandbox, {
 });
 
 const production = parsePrivyFundingConfig({
-  appId: "app_live",
+  appId: "p".repeat(25),
   enabled: "true",
   chainId: "4663",
   asset: "0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73",
@@ -30,7 +30,7 @@ assert.equal(production.chain, "eip155:4663");
 assert.equal(production.assetLabel, "0x0Bd7…AD73");
 
 assert.equal(parsePrivyFundingConfig({ enabled: "true" }).enabled, false);
-assert.equal(parsePrivyFundingConfig({ appId: "app", enabled: "false" }).enabled, false);
+assert.equal(parsePrivyFundingConfig({ appId: "invalid", enabled: "true" }).enabled, false);
 assert.throws(() => parsePrivyFundingConfig({ chainId: "0" }), /positive EVM chain ID/);
 assert.throws(() => parsePrivyFundingConfig({ asset: "eth" }), /exact destination token address/);
 assert.throws(() => parsePrivyFundingConfig({ defaultAmount: "0" }), /between 1 and 10,000/);
