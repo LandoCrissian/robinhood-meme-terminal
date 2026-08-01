@@ -7,6 +7,7 @@ const appRoot = fileURLToPath(new URL("../app/", import.meta.url));
 const providers = readFileSync(`${appRoot}providers.tsx`, "utf8");
 const speedProvider = readFileSync(`${appRoot}speed-wallet-provider.tsx`, "utf8");
 const speedEntry = readFileSync(`${appRoot}speed-wallet-entry.tsx`, "utf8");
+const walletConfig = readFileSync(`${appRoot}wallet-config.ts`, "utf8");
 const walletButton = readFileSync(`${appRoot}wallet-button.tsx`, "utf8");
 const privyWalletButton = readFileSync(`${appRoot}privy-wallet-button.tsx`, "utf8");
 const walletTransferDialog = readFileSync(`${appRoot}wallet-transfer-dialog.tsx`, "utf8");
@@ -17,6 +18,9 @@ assert.equal(normalizePrivyAppId("a".repeat(25)), "a".repeat(25), "A valid Privy
 assert.equal(normalizePrivyAppId("too-short"), undefined, "An invalid Privy app ID must fail closed.");
 assert.equal(normalizePrivyAppId(undefined), undefined, "A missing Privy app ID must preserve the legacy wallet path.");
 assert.match(providers, /speedWalletEnabled/, "Speed Wallet must remain environment-gated.");
+assert.match(walletConfig, /function createLegacyWalletConnectors/, "Legacy connectors must be initialized only when the legacy provider renders.");
+assert.match(providers, /connectors:\s*createLegacyWalletConnectors\(\)/, "The legacy provider must own legacy connector initialization.");
+assert.doesNotMatch(speedProvider, /createLegacyWalletConnectors/, "Privy must not initialize RMT's legacy WalletConnect connector a second time.");
 assert.match(speedProvider, /@privy-io\/wagmi/, "Embedded wallets must use Privy's official Wagmi adapter.");
 assert.match(speedProvider, /createOnLogin:\s*"all-users"/, "A user who chooses Privy sign-in must receive an RMT wallet.");
 assert.match(speedEntry, /useExportWallet/, "The user-owned wallet must expose recovery/export controls.");

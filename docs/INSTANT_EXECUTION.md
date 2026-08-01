@@ -40,6 +40,7 @@ When configured, the provider layer:
 
 - uses Privy's official Wagmi adapter so the existing trade hooks can operate with an embedded wallet;
 - lets Privy own external-wallet connection state instead of duplicating it through Wagmi;
+- defers RMT's legacy MetaMask, Coinbase and WalletConnect connectors entirely while Privy is active, preventing duplicate WalletConnect sessions and conflicting origin checks;
 - creates a user-owned wallet after a user chooses to sign in, including users who also bring an external wallet;
 - keeps that wallet user-owned and exportable;
 - supports email, Google, passkey, and external-wallet authentication;

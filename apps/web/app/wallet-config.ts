@@ -11,36 +11,38 @@ const testnetRpcUrl = process.env.NEXT_PUBLIC_RMT_TESTNET_RPC_URL ?? robinhoodCh
 const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.rmtlaunch.fun";
 
 export const walletChains = [robinhoodChainTestnet, robinhoodChain] as const;
-export const walletConnectors = [
-  metaMask({
-    dappMetadata: {
-      name: "Robinhood Meme Terminal",
-      url: appUrl,
-      iconUrl: `${appUrl}/brand/rmt-master-logo.png`
-    },
-    preferDesktop: false,
-    enableAnalytics: false
-  }),
-  coinbaseWallet({
-    appName: "Robinhood Meme Terminal",
-    appLogoUrl: `${appUrl}/brand/rmt-master-logo.png`,
-    preference: "all",
-    version: "4"
-  }),
-  injected({ shimDisconnect: true }),
-  ...(walletConnectProjectId
-    ? [walletConnect({
-        projectId: walletConnectProjectId,
-        showQrModal: true,
-        metadata: {
-          name: "Robinhood Meme Terminal",
-          description: "Robinhood Chain market intelligence and trading terminal",
-          url: appUrl,
-          icons: [`${appUrl}/brand/rmt-master-logo.png`]
-        }
-      })]
-    : [])
-];
+export function createLegacyWalletConnectors() {
+  return [
+    metaMask({
+      dappMetadata: {
+        name: "Robinhood Meme Terminal",
+        url: appUrl,
+        iconUrl: `${appUrl}/brand/rmt-master-logo.png`
+      },
+      preferDesktop: false,
+      enableAnalytics: false
+    }),
+    coinbaseWallet({
+      appName: "Robinhood Meme Terminal",
+      appLogoUrl: `${appUrl}/brand/rmt-master-logo.png`,
+      preference: "all",
+      version: "4"
+    }),
+    injected({ shimDisconnect: true }),
+    ...(walletConnectProjectId
+      ? [walletConnect({
+          projectId: walletConnectProjectId,
+          showQrModal: true,
+          metadata: {
+            name: "Robinhood Meme Terminal",
+            description: "Robinhood Chain market intelligence and trading terminal",
+            url: appUrl,
+            icons: [`${appUrl}/brand/rmt-master-logo.png`]
+          }
+        })]
+      : [])
+  ];
+}
 
 export const walletTransports = {
   [robinhoodChainTestnet.id]: http(testnetRpcUrl, { retryCount: 3, timeout: 12_000 }),
