@@ -57,7 +57,7 @@ The funding request binds all provider quotes to:
 
 - the wallet address selected by the user;
 - an explicit CAIP-2 destination chain (Robinhood Chain is `eip155:4663`);
-- one exact asset symbol or contract address;
+- one exact destination token address (the zero address represents native ETH);
 - an explicit sandbox or production environment; and
 - a bounded default fiat amount.
 

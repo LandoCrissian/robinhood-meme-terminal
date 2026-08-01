@@ -112,7 +112,7 @@ export function FundWalletButton({
           </div>
 
           {privyAppId
-            ? <PrivyFundingActions onComplete={close} />
+            ? <PrivyFundingActions />
             : approvedUrl
               ? <a className="fundWalletPrimary" href={approvedUrl} target="_blank" rel="noopener noreferrer">Continue to Robinhood Connect ↗</a>
               : <button className="fundWalletPrimary" type="button" disabled>Secure funding activation pending</button>}
