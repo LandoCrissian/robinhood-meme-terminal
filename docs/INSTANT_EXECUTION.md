@@ -31,3 +31,18 @@ A production Speed Wallet must provide:
 10. a clearly separate Standard Wallet path.
 
 Until these controls and the selected wallet provider are production-tested, RMT must keep one explicit wallet confirmation per trade.
+
+## Provider foundation
+
+RMT's optional Speed Wallet is implemented behind `NEXT_PUBLIC_PRIVY_APP_ID`. When the variable is absent, the existing wallet experience and production application are unchanged.
+
+When configured, the provider layer:
+
+- uses Privy's official Wagmi adapter so the existing trade hooks can operate with an embedded wallet;
+- creates a wallet only after the user explicitly requests one;
+- keeps that wallet user-owned and exportable;
+- supports email, Google, passkey, and external-wallet authentication;
+- restricts supported networks to Robinhood Chain mainnet and testnet; and
+- does not provision an RMT signer or allow unattended execution.
+
+The next phase requires a registered authorization-key quorum and a non-empty policy ID. RMT must never attach a signer with an empty policy list.

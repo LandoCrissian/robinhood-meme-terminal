@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
+import dynamic from "next/dynamic";
 import { formatEther, formatUnits, parseUnits } from "viem";
 import {
   estimatedNetworkFeeUsd,
@@ -18,6 +19,12 @@ import { routeLiquidityDepthLabel } from "../lib/trade-route-selection";
 import type { TradeFeeEstimateState } from "../lib/use-trade-fee-estimate";
 import { normalizeTradePreferences } from "../lib/trade-preferences";
 import { useTradePreferences } from "../lib/use-trade-preferences";
+
+const SpeedWalletEntry = dynamic(
+  () => import("./speed-wallet-entry").then((module) => module.SpeedWalletEntry),
+  { ssr: false }
+);
+const speedWalletEnabled = Boolean(process.env.NEXT_PUBLIC_PRIVY_APP_ID?.trim());
 
 export function TradeExecutionControls() {
   const { preferences, save } = useTradePreferences();
@@ -108,6 +115,7 @@ export function TradeExecutionControls() {
           ))}
         </div>
       </div>
+      {speedWalletEnabled && <SpeedWalletEntry />}
       {message && <p role="status">{message}</p>}
     </details>
   );

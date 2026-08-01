@@ -8,6 +8,6 @@
     "./market-origin": "./src/market-origin.ts"
   },
   "dependencies": {
-    "viem": "^2.23.2"
+    "viem": "2.55.5"
   }
 }
