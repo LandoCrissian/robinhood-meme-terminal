@@ -21,16 +21,15 @@ export const firebaseConfigured = Boolean(
   && firebaseConfig.appId
 );
 
-export function firebaseAuthDomainForHost(authDomain: string | undefined, hostname: string) {
-  const normalizedHost = hostname.trim().toLowerCase();
-  if (
-    normalizedHost === "rmtlaunch.fun"
-    || normalizedHost === "www.rmtlaunch.fun"
-    || normalizedHost.endsWith(".vercel.app")
-  ) {
-    return normalizedHost;
-  }
-  return authDomain;
+export function firebaseAuthDomainForHost(authDomain: string | undefined, _hostname: string) {
+  const normalizedAuthDomain = authDomain?.trim().toLowerCase();
+  if (!normalizedAuthDomain) return authDomain;
+
+  // Google OAuth redirect URIs are exact-match values. Temporary Vercel
+  // hostnames are authorized callers, but they must not become Firebase auth
+  // helper domains or every deployment would require a new Google callback.
+  // Keep one registered helper domain for production, previews, and local QA.
+  return normalizedAuthDomain;
 }
 
 type FirebaseClient = {

@@ -133,12 +133,11 @@ Traffic measurements should include active sessions, concurrent sessions, messag
   region and report controls to assistive technology, labels its message
   composer and status updates, closes with Escape, and returns focus to its
   launcher.
-- The exact protected preview hostname was added to Firebase Authentication's
-  authorized domains and to the Firebase-generated Google OAuth client's
-  redirect URI list. No wildcard, unrelated preview, or production OAuth
-  setting was added. RMT now selects the current approved RMT/Vercel hostname
-  as its same-origin Firebase auth helper and uses the full-page redirect flow
-  recommended for mobile browsers.
+- The controlled preview hostname was authorized as a Firebase caller for the
+  rehearsal. RMT uses the permanent registered authentication helper rather
+  than turning temporary deployment hostnames into OAuth callbacks. Google
+  profile sign-in now uses the user-initiated popup flow, while passwordless
+  email remains the fallback for browsers that block provider windows.
 - A second isolated identity, `Guest-2110`, reported `Guest-3D1F`'s visible
   `hello` message as `spam`. The report appeared only in the private
   administrator queue, proving the true cross-identity report path rather than
