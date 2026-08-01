@@ -24,6 +24,10 @@ import {
   permit2Abi
 } from "../uniswap-v4";
 import type { VerifiedExternalUniswapV4Market } from "./external-uniswap-v4-market";
+import {
+  calculateRmtExecutionFee,
+  type RmtExecutionFeeConfig
+} from "./rmt-execution-fee";
 
 const BLOCKSCOUT = "https://robinhoodchain.blockscout.com";
 const MAX_UINT128 = (1n << 128n) - 1n;
@@ -214,6 +218,7 @@ export function buildExternalV4Swap(params: {
   amountIn: bigint;
   quoteOut: bigint;
   deadline: bigint;
+  executionFee?: RmtExecutionFeeConfig;
 }) {
   const nativeIsCurrency0 = params.market.poolKey.currency0.toLowerCase() === zeroAddress;
   const nativeIsCurrency1 = params.market.poolKey.currency1.toLowerCase() === zeroAddress;
@@ -223,12 +228,17 @@ export function buildExternalV4Swap(params: {
   const inputCurrency = params.side === "buy" ? zeroAddress : params.market.token;
   const outputCurrency = params.side === "buy" ? params.market.token : zeroAddress;
   const zeroForOne = params.market.poolKey.currency0.toLowerCase() === inputCurrency.toLowerCase();
-  const minimumOut = params.quoteOut * 99n / 100n;
+  const grossMinimumOut = params.quoteOut * 99n / 100n;
+  const feeConfig = params.executionFee?.enabled ? params.executionFee : undefined;
+  const quoteAmounts = calculateRmtExecutionFee(params.quoteOut, feeConfig?.feeBps ?? 0);
+  const minimumAmounts = calculateRmtExecutionFee(grossMinimumOut, feeConfig?.feeBps ?? 0);
+  const minimumOut = minimumAmounts.netOutput;
   if (
     params.amountIn <= 0n
     || params.amountIn > MAX_UINT128
+    || grossMinimumOut <= 0n
+    || grossMinimumOut > MAX_UINT128
     || minimumOut <= 0n
-    || minimumOut > MAX_UINT128
   ) {
     throw new Error("The v4 quote cannot enforce a valid input and minimum received.");
   }
@@ -236,7 +246,7 @@ export function buildExternalV4Swap(params: {
     poolKey: params.market.poolKey,
     zeroForOne,
     amountIn: params.amountIn,
-    amountOutMinimum: minimumOut,
+    amountOutMinimum: grossMinimumOut,
     minHopPriceX36: 0n,
     hookData: "0x"
   }]);
@@ -256,20 +266,29 @@ export function buildExternalV4Swap(params: {
     [{ type: "address" }, { type: "address" }, { type: "uint256" }],
     [outputCurrency, params.recipient, minimumOut]
   );
+  const feePayment = feeConfig
+    ? encodeAbiParameters(
+        [{ type: "address" }, { type: "address" }, { type: "uint256" }],
+        [outputCurrency, feeConfig.treasury!, BigInt(feeConfig.feeBps)]
+      )
+    : undefined;
   const safeNativeSweep = encodeAbiParameters(
     [{ type: "address" }, { type: "address" }, { type: "uint256" }],
     [zeroAddress, params.recipient, 0n]
   );
   const isBuy = params.side === "buy";
-  const commands = isBuy ? "0x100404" : "0x02100404";
+  const commands = feeConfig
+    ? isBuy ? "0x10060404" : "0x0210060404"
+    : isBuy ? "0x100404" : "0x02100404";
   const inputs = isBuy
-    ? [v4Swap, outputSweep, safeNativeSweep]
+    ? feePayment ? [v4Swap, feePayment, outputSweep, safeNativeSweep] : [v4Swap, outputSweep, safeNativeSweep]
     : [
         encodeAbiParameters(
           [{ type: "address" }, { type: "address" }, { type: "uint160" }],
           [params.market.token, ROUTER_AS_RECIPIENT, params.amountIn]
         ),
         v4Swap,
+        ...(feePayment ? [feePayment] : []),
         outputSweep,
         safeNativeSweep
       ];
@@ -281,6 +300,9 @@ export function buildExternalV4Swap(params: {
   return {
     calldata,
     minimumOut,
+    grossMinimumOut,
+    netQuoteOut: quoteAmounts.netOutput,
+    estimatedFee: quoteAmounts.fee,
     value: isBuy ? params.amountIn : 0n
   };
 }

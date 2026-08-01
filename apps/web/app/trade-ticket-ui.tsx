@@ -314,7 +314,8 @@ export function FinalOrderReview({
   priceImpact,
   estimate,
   venueFee,
-  routeLabel
+  routeLabel,
+  rmtFeeLabel = "$0"
 }: {
   originalAmount: bigint | undefined;
   saferAmount: bigint;
@@ -326,6 +327,7 @@ export function FinalOrderReview({
   estimate: TradeFeeEstimateState;
   venueFee: string;
   routeLabel: string;
+  rmtFeeLabel?: string;
 }) {
   if (
     originalAmount === undefined
@@ -358,7 +360,7 @@ export function FinalOrderReview({
         <span><small>EXECUTION ROUTE</small><strong>{routeLabel}</strong></span>
       </div>
       <footer>
-        <span>RMT fee <strong>$0</strong></span>
+        <span>RMT fee <strong>{rmtFeeLabel}</strong></span>
         <span>Network <strong>{estimate.status === "ready" ? `${feeEth(estimate.feeWei)} ETH` : estimate.status === "loading" ? "Calculating…" : "Wallet confirms"}</strong></span>
         <span>Venue <strong>{venueFee}</strong></span>
       </footer>
@@ -462,12 +464,14 @@ export function TradeCostSummary({
   side,
   amountIn,
   estimate,
-  venueLabel
+  venueLabel,
+  rmtFeeLabel = "$0"
 }: {
   side: "buy" | "sell";
   amountIn: bigint;
   estimate: TradeFeeEstimateState;
   venueLabel: string;
+  rmtFeeLabel?: string;
 }) {
   const networkUsd = estimatedNetworkFeeUsd(estimate.feeWei, estimate.ethUsd);
   const total = side === "buy" && estimate.feeWei !== undefined && amountIn > 0n
@@ -477,7 +481,7 @@ export function TradeCostSummary({
     <section className={`tradeCostSummary ${estimate.status}`} aria-label="Pre-sign cost estimate">
       <header><span>PRE-SIGN COST CHECK</span><strong>{estimate.status === "ready" ? "Estimated" : estimate.status === "loading" ? "Calculating…" : "Wallet confirms final fee"}</strong></header>
       <div>
-        <span><small>RMT PLATFORM FEE</small><strong>$0</strong></span>
+        <span><small>RMT PLATFORM FEE</small><strong>{rmtFeeLabel}</strong></span>
         <span><small>NETWORK FEE</small><strong>{estimate.status === "ready" ? `${feeEth(estimate.feeWei)} ETH` : estimate.status === "loading" ? "Checking…" : "Unavailable"}</strong><em>{feeUsd(networkUsd)}</em></span>
         <span><small>{side === "buy" ? "ORDER + NETWORK" : "VENUE COSTS"}</small><strong>{total !== undefined ? `${feeEth(total)} ETH` : venueLabel}</strong></span>
       </div>

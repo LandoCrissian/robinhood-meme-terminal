@@ -67,7 +67,9 @@ type ExternalUniswapQuote = {
   value: string;
   amountIn: string;
   quoteOut: string;
+  grossQuoteOut?: string;
   minimumOut: string;
+  grossMinimumOut?: string;
   priceImpact: number;
   deadline: string;
   fee: number;
@@ -77,6 +79,11 @@ type ExternalUniswapQuote = {
   approvalSpender?: Address;
   inputToken: { address: Address; symbol: string; name: string; decimals: number };
   outputToken: { address: Address; symbol: string; name: string; decimals: number };
+  executionFee?: {
+    bps: number;
+    treasury: Address;
+    estimatedAmount: string;
+  } | null;
   passport?: {
     state: "eligible";
     checkedAt: string;
@@ -396,6 +403,9 @@ export function ExternalUniswapTradePanel({
   }, [criticalEvidenceKey]);
   const outputDecimals = quote?.outputToken.decimals;
   const outputSymbol = quote?.outputToken.symbol ?? (side === "buy" ? market.symbol : "ETH");
+  const rmtFeeLabel = quote?.executionFee && outputDecimals !== undefined
+    ? `${quote.executionFee.bps / 100}% · ${displayUnits(quote.executionFee.estimatedAmount, outputDecimals)} ${outputSymbol}`
+    : "$0";
   const sizingBalance = side === "buy"
     ? nativeBalance.data ? spendableTradeBalance(nativeBalance.data.value, networkFeeReserve) : undefined
     : tokenBalance.data;
@@ -619,12 +629,14 @@ export function ExternalUniswapTradePanel({
             estimate={feeEstimate}
             venueFee={quote ? `${(quote.fee / 10_000).toLocaleString()}% pool` : "Checking…"}
             routeLabel={isV4 ? "Uniswap v4 · Universal Router" : "Uniswap v3 · Router02"}
+            rmtFeeLabel={rmtFeeLabel}
           />
           <TradeCostSummary
             side={side}
             amountIn={amountIn}
             estimate={feeEstimate}
             venueLabel="Pool fee reflected in quote"
+            rmtFeeLabel={rmtFeeLabel}
           />
           <p className="externalSushiSafety">
             {isV4

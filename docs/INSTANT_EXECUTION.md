@@ -45,11 +45,13 @@ When configured, the provider layer:
 - supports email, Google, passkey, and external-wallet authentication;
 - restricts supported networks to Robinhood Chain mainnet and testnet; and
 - exposes user-controlled MFA, recovery, key export and active-wallet selection; and
+- keeps Firebase profile identity separate from wallet selection so changing between an RMT Wallet and MetaMask cannot overwrite a profile;
+- presents Deposit, Receive, Send and Trade as separate actions for the exact active wallet; and
 - does not provision an RMT signer or allow unattended execution.
 
 ## Funding layer
 
-Privy's unified funding interface is implemented behind `NEXT_PUBLIC_PRIVY_FUNDING_ENABLED`. It is separately gated from the wallet login because a configured wallet does not prove that a fiat or cross-chain provider supports a particular destination.
+Privy's unified funding interface is implemented behind `NEXT_PUBLIC_PRIVY_FUNDING_ENABLED`. Privy's documentation now lists Robinhood Chain mainnet (`eip155:4663`) for swaps and transfers and Robinhood Testnet (`eip155:46630`) for testnet wallet actions. Funding is still separately gated from wallet login because chain support does not prove that every fiat method, asset, region or user is eligible for a live provider quote.
 
 The funding request binds all provider quotes to:
 
@@ -59,6 +61,35 @@ The funding request binds all provider quotes to:
 - an explicit sandbox or production environment; and
 - a bounded default fiat amount.
 
-The provider owns payment credentials, KYC, method eligibility, quotes and delivery. RMT never receives card, bank, Apple Pay, Google Pay or identity-document data. If no provider returns a compatible route, the flow fails without moving funds. Production funding must remain disabled until the Privy dashboard is configured and a provider-confirmed Robinhood Chain route has been tested end to end.
+The provider owns payment credentials, KYC, method eligibility, quotes and delivery. RMT never receives card, bank, Apple Pay, Google Pay or identity-document data. The interface describes fiat methods as conditional rather than promising them. If no provider returns a compatible route, the flow fails without moving funds. Production funding must remain disabled until the Privy dashboard is configured and one live Robinhood Chain quote is tested end to end.
+
+The wallet control center also supports:
+
+- copying the exact active wallet address for a direct Robinhood Chain deposit;
+- opening a network-bound receive sheet with the full address, chain ID and matching Blockscout account;
+- sending native ETH only after the user reviews the full destination, amount and network and confirms in the active wallet; and
+- returning to RMT's independently decoded route comparison rather than silently using a different swap provider.
+
+Deposits, receiving and ordinary transfers do not carry an RMT execution fee. Provider charges and network fees, when applicable, must be shown by the provider or wallet before confirmation.
+
+## Revenue boundary
+
+Privy's wallet-action swap fee does not automatically accrue to RMT. Privy documents a fee of up to 0.25% for its swap action, requires application gas sponsorship, and offers custom developer revenue arrangements only for negotiated cross-chain swap or transfer flows. Therefore RMT must not replace its same-chain routes with Privy swaps merely to add monetization.
+
+RMT now has a disabled-by-default execution-fee path for independently built Uniswap v3 and v4 trades. When enabled, the router atomically pays the configured treasury from successful swap output and sends the remainder to the trader. On buys the treasury receives the purchased token; on sells it receives ETH. RMT does not custody the order input, and a reverted or failed trade pays no RMT fee.
+
+The implementation:
+
+- is visible before wallet confirmation as its own line item;
+- is encoded into and independently decoded from the exact transaction;
+- has a server-only treasury destination and a hard 100-basis-point software ceiling;
+- cannot be changed by a browser environment variable;
+- is included when calculating minimum received and price impact; and
+- fails closed when the treasury or rate is invalid; and
+- remains disabled until the final treasury controls, staged route simulations and public disclosures are complete.
+
+The browser receives net quoted output, net protected minimum, the gross values, the rate, estimated fee and treasury. Before wallet review, RMT independently decodes the v3 fee payout function or v4 `PAY_PORTION` command and rejects any mismatch. Route comparison therefore ranks what the user keeps after the RMT fee rather than advertising a higher gross value.
+
+The working product target is 25 basis points (0.25%), which is materially below GMGN's published 1% handling fee. This is implemented behind a release gate but is not a live charge. It must not be enabled until RMT updates any earlier public “no fee” messaging and the terms shown to users.
 
 The next phase requires a registered authorization-key quorum and a non-empty policy ID. RMT must never attach a signer with an empty policy list.

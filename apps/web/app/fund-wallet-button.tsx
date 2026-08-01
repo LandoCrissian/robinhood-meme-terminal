@@ -27,14 +27,29 @@ function approvedRobinhoodUrl(value: string | undefined) {
   }
 }
 
-export function FundWalletButton({ variant = "header", label = "Add funds" }: { variant?: "header" | "inline"; label?: string }) {
-  const [open, setOpen] = useState(false);
+export function FundWalletButton({
+  variant = "header",
+  label = "Add funds",
+  open: controlledOpen,
+  onOpenChange
+}: {
+  variant?: "header" | "inline";
+  label?: string;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+}) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen ?? internalOpen;
+  const setOpen = useCallback((value: boolean) => {
+    if (controlledOpen === undefined) setInternalOpen(value);
+    onOpenChange?.(value);
+  }, [controlledOpen, onOpenChange]);
   const { address } = useAccount();
   const trigger = useRef<HTMLButtonElement>(null);
   const dialog = useRef<HTMLDivElement>(null);
   const closeButton = useRef<HTMLButtonElement>(null);
   const approvedUrl = useMemo(() => robinhoodConnectEnabled ? approvedRobinhoodUrl(robinhoodConnectUrl) : undefined, []);
-  const close = useCallback(() => setOpen(false), []);
+  const close = useCallback(() => setOpen(false), [setOpen]);
 
   useEffect(() => {
     if (!open) return;
@@ -86,7 +101,7 @@ export function FundWalletButton({ variant = "header", label = "Add funds" }: { 
           {!privyAppId && address && <div className="fundWalletDestination"><span>Connected destination</span><strong>{shortAddress(address)}</strong></div>}
 
           <p>{privyAppId
-            ? "Choose the funding method available to you. Privy and its regulated providers handle payment details, quotes, identity checks, conversion, and delivery."
+            ? "Deposit ETH from crypto or choose any fiat method Privy makes available for your device and region. Privy and its providers handle payment details, quotes, identity checks, conversion, and delivery."
             : approvedUrl
             ? "Continue to Robinhood’s secure checkout. Robinhood will show the payment methods available for your account and location before you confirm."
             : "RMT’s Robinhood Connect application is in progress. The embedded funding path will stay disabled until Robinhood approves RMT and supplies its official partner configuration."}</p>

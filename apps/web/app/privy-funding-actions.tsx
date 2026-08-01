@@ -34,8 +34,8 @@ export function PrivyFundingActions({ onComplete }: { onComplete?: () => void })
   if (!funding.enabled) {
     return (
       <div className="privyFundingUnavailable">
-        <strong>Privy funding is staged, not activated</strong>
-        <span>RMT will enable live funding only after a provider confirms the exact Robinhood Chain asset route.</span>
+        <strong>Robinhood Chain funding is supported</strong>
+        <span>RMT is keeping live deposits off until the Privy dashboard funding methods and production environment are explicitly activated.</span>
       </div>
     );
   }
@@ -105,10 +105,10 @@ export function PrivyFundingActions({ onComplete }: { onComplete?: () => void })
         <strong>{shortAddress(destination.address)} · {funding.asset.toUpperCase()} · Robinhood Chain</strong>
       </div>
       <button className="fundWalletPrimary" type="button" disabled={busy} onClick={() => void beginFunding()}>
-        {busy ? "Opening secure funding…" : "Choose Apple Pay, card, bank, or crypto"}
+        {busy ? "Opening secure funding…" : "Deposit with crypto or available fiat methods"}
       </button>
       <small className="fundWalletDisclosure">
-        Privy shows only methods and quotes available for your device, region, and destination. Provider fees and identity checks appear before confirmation.
+        Privy shows only methods and quotes available for your device, region, and destination. Apple Pay, card, bank, and other options are never promised because eligibility is provider-controlled. Fees and identity checks appear before confirmation.
         {funding.environment === "sandbox" ? " This preview uses the provider sandbox; no live purchase is enabled." : ""}
       </small>
       {message && <p className="fundWalletMessage" role="status">{message}</p>}

@@ -14,6 +14,8 @@ import type { VerifiedExternalUniswapV4Market } from "./server/external-uniswap-
 const token = getAddress("0x26616fD1A48cA881cB5ca8181e04E76F64c1e58F");
 const recipient = getAddress("0x94973819b134A6F45C57448172Cc2B84019C161f");
 const otherRecipient = getAddress("0x1111111111111111111111111111111111111111");
+const treasury = getAddress("0x3333333333333333333333333333333333333333");
+const executionFee = { enabled: true, feeBps: 25, treasury } as const;
 const amountIn = 1_000n;
 const quoteOut = 990n;
 const minimumOut = 980n;
@@ -102,11 +104,45 @@ function v4Quote(side: "buy" | "sell", calldataRecipient: Address = recipient, o
   };
 }
 
+function v3FeeQuote(side: "buy" | "sell", override: Record<string, unknown> = {}) {
+  const built = buildExternalUniswapSwap({ token, recipient, side, fee: 10_000, amountIn, quoteOut, deadline, executionFee });
+  return {
+    ...v3Quote(side),
+    calldata: built.calldata,
+    quoteOut: built.netQuoteOut.toString(),
+    grossQuoteOut: quoteOut.toString(),
+    minimumOut: built.minimumOut.toString(),
+    grossMinimumOut: built.grossMinimumOut.toString(),
+    executionFee: { bps: executionFee.feeBps, treasury, estimatedAmount: built.estimatedFee.toString() },
+    ...override
+  };
+}
+
+function v4FeeQuote(side: "buy" | "sell", override: Record<string, unknown> = {}) {
+  const built = buildExternalV4Swap({ market: v4Market(), recipient, side, amountIn, quoteOut, deadline, executionFee });
+  return {
+    ...v4Quote(side),
+    calldata: built.calldata,
+    quoteOut: built.netQuoteOut.toString(),
+    grossQuoteOut: quoteOut.toString(),
+    minimumOut: built.minimumOut.toString(),
+    grossMinimumOut: built.grossMinimumOut.toString(),
+    executionFee: { bps: executionFee.feeBps, treasury, estimatedAmount: built.estimatedFee.toString() },
+    ...override
+  };
+}
+
 for (const side of ["buy", "sell"] as const) {
   assert.equal(assertUniswapTransactionIntegrity(v3Quote(side), {
     version: "v3", token, recipient, side, amountIn, nowSeconds
   }), true);
   assert.equal(assertUniswapTransactionIntegrity(v4Quote(side), {
+    version: "v4", token, recipient, side, amountIn, nowSeconds
+  }), true);
+  assert.equal(assertUniswapTransactionIntegrity(v3FeeQuote(side), {
+    version: "v3", token, recipient, side, amountIn, nowSeconds
+  }), true);
+  assert.equal(assertUniswapTransactionIntegrity(v4FeeQuote(side), {
     version: "v4", token, recipient, side, amountIn, nowSeconds
   }), true);
 }
@@ -131,6 +167,16 @@ assert.throws(() => assertUniswapTransactionIntegrity(v4Quote("buy", recipient, 
 }), {
   version: "v4", token, recipient, side: "buy", amountIn, nowSeconds
 }), /v4 pool key changed/);
+assert.throws(() => assertUniswapTransactionIntegrity(v3FeeQuote("buy", {
+  executionFee: { bps: 25, treasury: otherRecipient, estimatedAmount: "2" }
+}), {
+  version: "v3", token, recipient, side: "buy", amountIn, nowSeconds
+}), /buy fee treasury changed/);
+assert.throws(() => assertUniswapTransactionIntegrity(v4FeeQuote("sell", {
+  executionFee: { bps: 25, treasury, estimatedAmount: "3" }
+}), {
+  version: "v4", token, recipient, side: "sell", amountIn, nowSeconds
+}), /RMT fee estimate changed/);
 
 assert.equal(isTradePreflightReady({ status: "loading" }), false);
 assert.equal(isTradePreflightReady({ status: "unavailable" }), false);

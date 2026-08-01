@@ -59,6 +59,7 @@ type QuoteSummary = {
     decimals: number;
   };
   passportEligible?: true;
+  executionFee?: { bps: number } | null;
 };
 
 type VenueState = {
@@ -325,7 +326,12 @@ export function ExternalRouteComparison({
               symbol: output.symbol.slice(0, 20),
               decimals: output.decimals
             },
-            passportEligible: candidate.venue === "uniswap-v4" ? true : undefined
+            passportEligible: candidate.venue === "uniswap-v4" ? true : undefined,
+            executionFee: payload.executionFee
+              && typeof payload.executionFee === "object"
+              && typeof (payload.executionFee as Record<string, unknown>).bps === "number"
+              ? { bps: (payload.executionFee as { bps: number }).bps }
+              : null
           };
           if (!cancelled) setStates((current) => ({ ...current, [candidate.venue]: { status: "ready", quote } }));
         } catch (cause) {
@@ -438,6 +444,9 @@ export function ExternalRouteComparison({
               )}
               {quote?.passportEligible && (
                 <span className="universalVenueFee">Passport eligible · exact route simulated</span>
+              )}
+              {quote?.executionFee && (
+                <span className="universalVenueFee">Includes {(quote.executionFee.bps / 100).toLocaleString()}% RMT fee · protected output is net</span>
               )}
             </button>
           );

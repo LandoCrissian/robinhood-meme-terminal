@@ -30,6 +30,7 @@ import {
   verifyExternalUniswapV4Market,
   type VerifiedExternalUniswapV4Market
 } from "./external-uniswap-v4-market";
+import { currentRmtExecutionFeeConfig } from "./rmt-execution-fee";
 
 const MAX_UINT128 = (1n << 128n) - 1n;
 const PASSPORT_TTL_MS = 30_000;
@@ -87,7 +88,9 @@ export type ExternalUniswapV4Quote = {
   value: string;
   amountIn: string;
   quoteOut: string;
+  grossQuoteOut?: string;
   minimumOut: string;
+  grossMinimumOut?: string;
   priceImpact: number;
   deadline: string;
   fee: number;
@@ -98,6 +101,11 @@ export type ExternalUniswapV4Quote = {
   approvalSpender: Address;
   inputToken: { address: Address; symbol: string; name: string; decimals: number };
   outputToken: { address: Address; symbol: string; name: string; decimals: number };
+  executionFee: {
+    bps: number;
+    treasury: Address;
+    estimatedAmount: string;
+  } | null;
   passport: {
     state: "eligible";
     checkedAt: string;
@@ -281,13 +289,15 @@ export async function quoteAndBuildExternalUniswapV4Swap(
 
   const now = dependencies.now?.() ?? Date.now();
   const deadline = BigInt(Math.floor(now / 1_000) + 600);
+  const executionFee = currentRmtExecutionFeeConfig();
   const built = buildExternalV4Swap({
     market,
     recipient: params.recipient,
     side: params.side,
     amountIn: params.amountIn,
     quoteOut,
-    deadline
+    deadline,
+    executionFee
   });
   const exactSimulation = await (dependencies.simulateExact ?? simulateExactExternalUniswapV4Trade)({
     market,
@@ -319,8 +329,10 @@ export async function quoteAndBuildExternalUniswapV4Swap(
     calldata: built.calldata,
     value: built.value.toString(),
     amountIn: params.amountIn.toString(),
-    quoteOut: quoteOut.toString(),
+    quoteOut: built.netQuoteOut.toString(),
+    grossQuoteOut: quoteOut.toString(),
     minimumOut: built.minimumOut.toString(),
+    grossMinimumOut: built.grossMinimumOut.toString(),
     priceImpact,
     deadline: deadline.toString(),
     fee: market.poolState.lpFee,
@@ -331,6 +343,13 @@ export async function quoteAndBuildExternalUniswapV4Swap(
     approvalSpender: PERMIT2_ADDRESS,
     inputToken: params.side === "buy" ? native : metadata,
     outputToken: params.side === "buy" ? metadata : native,
+    executionFee: executionFee.enabled && built.estimatedFee > 0n
+      ? {
+          bps: executionFee.feeBps,
+          treasury: executionFee.treasury!,
+          estimatedAmount: built.estimatedFee.toString()
+        }
+      : null,
     passport: {
       state: "eligible",
       checkedAt: new Date(now).toISOString(),

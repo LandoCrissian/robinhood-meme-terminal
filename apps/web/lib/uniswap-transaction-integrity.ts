@@ -16,6 +16,7 @@ import {
 
 const V4_SWAP_ACTIONS = "0x060b0e";
 const MAX_QUOTE_LIFETIME_SECONDS = 15 * 60;
+const SENDER_AS_RECIPIENT = "0x0000000000000000000000000000000000000001";
 
 const v3RouterAbi = [
   {
@@ -38,6 +39,31 @@ const v3RouterAbi = [
     name: "unwrapWETH9",
     stateMutability: "payable",
     inputs: [{ name: "amountMinimum", type: "uint256" }, { name: "recipient", type: "address" }],
+    outputs: []
+  },
+  {
+    type: "function",
+    name: "unwrapWETH9WithFee",
+    stateMutability: "payable",
+    inputs: [
+      { name: "amountMinimum", type: "uint256" },
+      { name: "recipient", type: "address" },
+      { name: "feeBips", type: "uint256" },
+      { name: "feeRecipient", type: "address" }
+    ],
+    outputs: []
+  },
+  {
+    type: "function",
+    name: "sweepTokenWithFee",
+    stateMutability: "payable",
+    inputs: [
+      { name: "token", type: "address" },
+      { name: "amountMinimum", type: "uint256" },
+      { name: "recipient", type: "address" },
+      { name: "feeBips", type: "uint256" },
+      { name: "feeRecipient", type: "address" }
+    ],
     outputs: []
   },
   {
@@ -104,12 +130,19 @@ type PreparedUniswapQuote = {
   value: string;
   amountIn: string;
   quoteOut: string;
+  grossQuoteOut?: string;
   minimumOut: string;
+  grossMinimumOut?: string;
   deadline: string;
   fee: number;
   inputToken: { address: Address; decimals: number };
   outputToken: { address: Address; decimals: number };
   passport?: { hook: Address };
+  executionFee?: {
+    bps: number;
+    treasury: Address;
+    estimatedAmount: string;
+  } | null;
 };
 
 type UniswapV4PoolKey = {
@@ -158,6 +191,9 @@ function verifyEnvelope(
   const amountIn = uint(quote.amountIn, "input amount");
   const quoteOut = uint(quote.quoteOut, "quoted output");
   const minimumOut = uint(quote.minimumOut, "minimum output");
+  const executionFee = quote.executionFee ?? null;
+  const grossQuoteOut = quote.grossQuoteOut ? uint(quote.grossQuoteOut, "gross quoted output") : quoteOut;
+  const grossMinimumOut = quote.grossMinimumOut ? uint(quote.grossMinimumOut, "gross minimum output") : minimumOut;
   const value = uint(quote.value, "native value");
   const deadline = uint(quote.deadline, "deadline");
   requireAddress(quote.token, expected.token, "token");
@@ -166,6 +202,23 @@ function verifyEnvelope(
   requireValue(amountIn === expected.amountIn && amountIn > 0n, "input amount changed");
   requireValue(quoteOut > 0n, "quoted output is zero");
   requireValue(minimumOut > 0n && minimumOut <= quoteOut, "minimum output is invalid");
+  requireValue(grossQuoteOut >= quoteOut && grossMinimumOut >= minimumOut, "gross output is invalid");
+  if (executionFee) {
+    requireValue(Number.isSafeInteger(executionFee.bps) && executionFee.bps > 0 && executionFee.bps <= 100, "RMT fee rate is invalid");
+    requireValue(
+      !sameAddress(executionFee.treasury, zeroAddress)
+      && !sameAddress(executionFee.treasury, SENDER_AS_RECIPIENT)
+      && !sameAddress(executionFee.treasury, ROUTER_AS_RECIPIENT),
+      "RMT fee treasury is invalid"
+    );
+    const quoteFee = grossQuoteOut * BigInt(executionFee.bps) / 10_000n;
+    const minimumFee = grossMinimumOut * BigInt(executionFee.bps) / 10_000n;
+    requireValue(uint(executionFee.estimatedAmount, "RMT fee estimate") === quoteFee, "RMT fee estimate changed");
+    requireValue(quoteOut === grossQuoteOut - quoteFee, "net quoted output changed");
+    requireValue(minimumOut === grossMinimumOut - minimumFee, "net minimum output changed");
+  } else {
+    requireValue(grossQuoteOut === quoteOut && grossMinimumOut === minimumOut, "undisclosed RMT fee detected");
+  }
   requireValue(Number.isInteger(quote.fee) && quote.fee > 0 && quote.fee < 1_000_000, "pool fee is invalid");
   requireValue(
     Number.isInteger(quote.inputToken.decimals)
@@ -180,7 +233,7 @@ function verifyEnvelope(
   requireValue(deadline > now + 30n, "deadline is stale");
   requireValue(deadline <= now + BigInt(MAX_QUOTE_LIFETIME_SECONDS), "deadline is too far in the future");
   requireValue(value === (expected.side === "buy" ? amountIn : 0n), "native value changed");
-  return { amountIn, minimumOut, deadline };
+  return { amountIn, minimumOut, grossMinimumOut, deadline, executionFee };
 }
 
 function verifyV3(
@@ -195,18 +248,34 @@ function verifyV3(
   requireValue(outer.functionName === "multicall", "router function changed");
   const [deadline, calls] = outer.args;
   requireValue(deadline === envelope.deadline, "calldata deadline changed");
-  requireValue(calls.length === (expected.side === "buy" ? 1 : 2), "unexpected router calls were added");
+  requireValue(calls.length === (expected.side === "buy" && !envelope.executionFee ? 1 : 2), "unexpected router calls were added");
   const decodedSwap = decodeFunctionData({ abi: v3RouterAbi, data: calls[0] });
   requireValue(decodedSwap.functionName === "exactInputSingle", "swap function changed");
   const swap = decodedSwap.args[0];
   requireAddress(swap.tokenIn, expected.side === "buy" ? ROBINHOOD_WETH : expected.token, "swap input token");
   requireAddress(swap.tokenOut, expected.side === "buy" ? expected.token : ROBINHOOD_WETH, "swap output token");
-  requireAddress(swap.recipient, expected.side === "buy" ? expected.recipient : ROBINHOOD_SWAP_ROUTER_02, "swap recipient");
+  requireAddress(swap.recipient, expected.side === "buy" && !envelope.executionFee ? expected.recipient : ROBINHOOD_SWAP_ROUTER_02, "swap recipient");
   requireValue(swap.amountIn === envelope.amountIn, "swap amount changed");
-  requireValue(swap.amountOutMinimum === envelope.minimumOut, "protected minimum changed");
+  requireValue(swap.amountOutMinimum === envelope.grossMinimumOut, "protected minimum changed");
   requireValue(swap.fee === quote.fee, "pool fee changed");
   requireValue(swap.sqrtPriceLimitX96 === 0n, "unexpected price-limit behavior");
-  if (expected.side === "sell") {
+  if (envelope.executionFee) {
+    const payout = decodeFunctionData({ abi: v3RouterAbi, data: calls[1] });
+    if (expected.side === "buy") {
+      requireValue(payout.functionName === "sweepTokenWithFee", "buy fee payout function changed");
+      requireAddress(payout.args[0], expected.token, "buy fee output token");
+      requireValue(payout.args[1] === envelope.grossMinimumOut, "buy fee payout minimum changed");
+      requireAddress(payout.args[2], expected.recipient, "buy payout recipient");
+      requireValue(payout.args[3] === BigInt(envelope.executionFee.bps), "buy fee rate changed");
+      requireAddress(payout.args[4], envelope.executionFee.treasury, "buy fee treasury");
+    } else {
+      requireValue(payout.functionName === "unwrapWETH9WithFee", "sell fee payout function changed");
+      requireValue(payout.args[0] === envelope.grossMinimumOut, "sell fee payout minimum changed");
+      requireAddress(payout.args[1], expected.recipient, "sell payout recipient");
+      requireValue(payout.args[2] === BigInt(envelope.executionFee.bps), "sell fee rate changed");
+      requireAddress(payout.args[3], envelope.executionFee.treasury, "sell fee treasury");
+    }
+  } else if (expected.side === "sell") {
     const unwrap = decodeFunctionData({ abi: v3RouterAbi, data: calls[1] });
     requireValue(unwrap.functionName === "unwrapWETH9", "sell payout function changed");
     requireValue(unwrap.args[0] === envelope.minimumOut, "sell payout minimum changed");
@@ -226,8 +295,11 @@ function verifyV4(
   requireValue(outer.functionName === "execute", "router function changed");
   const [commands, inputs, deadline] = outer.args;
   const isBuy = expected.side === "buy";
-  requireValue(commands === (isBuy ? "0x100404" : "0x02100404"), "router command sequence changed");
-  requireValue(inputs.length === (isBuy ? 3 : 4), "unexpected router inputs were added");
+  const feeEnabled = Boolean(envelope.executionFee);
+  requireValue(commands === (feeEnabled
+    ? isBuy ? "0x10060404" : "0x0210060404"
+    : isBuy ? "0x100404" : "0x02100404"), "router command sequence changed");
+  requireValue(inputs.length === (isBuy ? feeEnabled ? 4 : 3 : feeEnabled ? 5 : 4), "unexpected router inputs were added");
   requireValue(deadline === envelope.deadline, "calldata deadline changed");
   const v4Offset = isBuy ? 0 : 1;
   if (!isBuy) {
@@ -252,7 +324,7 @@ function verifyV4(
     "v4 swap direction changed"
   );
   requireValue(swap.amountIn === envelope.amountIn, "v4 swap amount changed");
-  requireValue(swap.amountOutMinimum === envelope.minimumOut, "v4 protected minimum changed");
+  requireValue(swap.amountOutMinimum === envelope.grossMinimumOut, "v4 protected minimum changed");
   requireValue(swap.minHopPriceX36 === 0n && swap.hookData === "0x", "unexpected v4 hook or hop data");
   const [settleCurrency, settleAmount, settlePayer] = decodeAbiParameters(settleParameters, actionInputs[1]);
   requireAddress(settleCurrency, inputCurrency, "v4 settlement currency");
@@ -262,11 +334,18 @@ function verifyV4(
   requireAddress(takeCurrency, outputCurrency, "v4 output currency");
   requireAddress(takeRecipient, ROUTER_AS_RECIPIENT, "v4 output recipient");
   requireValue(takeAmount === 0n, "v4 take amount changed");
-  const [sweepCurrency, sweepRecipient, sweepMinimum] = decodeAbiParameters(takeParameters, inputs[v4Offset + 1]);
+  if (envelope.executionFee) {
+    const [feeCurrency, feeRecipient, feeBps] = decodeAbiParameters(takeParameters, inputs[v4Offset + 1]);
+    requireAddress(feeCurrency, outputCurrency, "v4 fee currency");
+    requireAddress(feeRecipient, envelope.executionFee.treasury, "v4 fee treasury");
+    requireValue(feeBps === BigInt(envelope.executionFee.bps), "v4 fee rate changed");
+  }
+  const sweepOffset = v4Offset + (feeEnabled ? 2 : 1);
+  const [sweepCurrency, sweepRecipient, sweepMinimum] = decodeAbiParameters(takeParameters, inputs[sweepOffset]);
   requireAddress(sweepCurrency, outputCurrency, "v4 sweep currency");
   requireAddress(sweepRecipient, expected.recipient, "v4 sweep recipient");
   requireValue(sweepMinimum === envelope.minimumOut, "v4 sweep minimum changed");
-  const [refundCurrency, refundRecipient, refundMinimum] = decodeAbiParameters(takeParameters, inputs[v4Offset + 2]);
+  const [refundCurrency, refundRecipient, refundMinimum] = decodeAbiParameters(takeParameters, inputs[sweepOffset + 1]);
   requireAddress(refundCurrency, zeroAddress, "v4 refund currency");
   requireAddress(refundRecipient, expected.recipient, "v4 refund recipient");
   requireValue(refundMinimum === 0n, "v4 refund minimum changed");
