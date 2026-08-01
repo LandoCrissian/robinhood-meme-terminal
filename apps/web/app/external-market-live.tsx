@@ -1,16 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { erc20Abi, formatUnits, type Address } from "viem";
 import { useAccount, useReadContract } from "wagmi";
 import type { ExternalMarket } from "../lib/external-market";
-import { summarizeExternalTradeActors, type ExternalPoolTradesPayload } from "../lib/external-trades";
+import { summarizeExternalSellPressure, summarizeExternalTradeActors, type ExternalPoolTradesPayload } from "../lib/external-trades";
 import { formatOwnershipBps } from "../lib/token-risk-evidence";
 import { useWalletConstellation } from "../lib/use-wallet-constellation";
 import type {
   WalletConstellationNode,
   WalletConstellationNodeRole
 } from "../lib/wallet-constellation";
+import { PositionGuardPanel } from "./position-guard-panel";
 
 const EXPLORER = "https://robinhoodchain.blockscout.com";
 
@@ -39,7 +40,7 @@ export function ExternalWalletPosition({
 }: {
   market: ExternalMarket;
   onBuy: () => void;
-  onSell: () => void;
+  onSell: (amount?: string) => void;
 }) {
   const { address } = useAccount();
   const token = market.address as Address;
@@ -71,7 +72,17 @@ export function ExternalWalletPosition({
         <div className="universalPositionBody">
           <span><small>HOLDINGS</small><strong>{units === null ? "Reading…" : `${compact(units, 4)} ${market.symbol}`}</strong></span>
           <span><small>CURRENT VALUE</small><strong>{units === null ? "—" : `$${compact(units * market.priceUsd)}`}</strong></span>
-          <div><button type="button" onClick={onBuy}>Buy more</button><button type="button" onClick={onSell}>Sell position</button></div>
+          <div><button type="button" onClick={onBuy}>Buy more</button><button type="button" onClick={() => onSell()}>Sell position</button></div>
+          {units !== null && units > 0 && (
+            <PositionGuardPanel
+              wallet={address}
+              token={market.address}
+              symbol={market.symbol}
+              balance={units}
+              currentValueUsd={units * market.priceUsd}
+              onPrepareExit={(amount) => onSell(amount)}
+            />
+          )}
         </div>
       ) : <p>Connect from the order ticket to display this wallet’s token balance and current market value.</p>}
       <footer>Cost basis and P&amp;L are withheld until RMT can prove complete wallet history.</footer>
@@ -120,6 +131,23 @@ export function ExternalTradeTape({ market }: { market: ExternalMarket }) {
     () => summarizeExternalTradeActors(payload?.trades ?? []),
     [payload?.trades]
   );
+  const sellPressure = useMemo(
+    () => summarizeExternalSellPressure(payload?.trades ?? [], market.liquidityUsd),
+    [market.liquidityUsd, payload?.trades]
+  );
+  const notifiedSell = useRef<string | null>(null);
+
+  useEffect(() => {
+    const signalId = sellPressure.largestSell?.transactionHash ?? null;
+    if (sellPressure.level === "none" || !signalId || notifiedSell.current === signalId) return;
+    notifiedSell.current = signalId;
+    if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+      new Notification(`${sellPressure.level === "urgent" ? "Urgent" : "Large"} sell · ${market.symbol}`, {
+        body: `$${compact(sellPressure.largestSell?.volumeUsd ?? 0)} confirmed sell; review the live position and exit quote.`,
+        tag: `rmt-large-sell:${market.address}:${signalId}`
+      });
+    }
+  }, [market.address, market.symbol, sellPressure]);
   const largestNetActor = (
     Math.abs(actorSummary.largestNetBuyer?.netVolumeUsd ?? 0)
     >= Math.abs(actorSummary.largestNetSeller?.netVolumeUsd ?? 0)
@@ -133,6 +161,12 @@ export function ExternalTradeTape({ market }: { market: ExternalMarket }) {
       </header>
       {payload?.trades.length ? (
         <>
+          {sellPressure.level !== "none" && (
+            <div className={`universalSellPressure ${sellPressure.level}`} role="alert">
+              <span><small>{sellPressure.level === "urgent" ? "URGENT SELL PRESSURE" : "LARGE SELL CONFIRMED"}</small><strong>${compact(sellPressure.largestSell?.volumeUsd ?? 0)} largest sell</strong></span>
+              <span><small>5M NET SELL FLOW</small><strong>${compact(sellPressure.netSellVolume5mUsd)} · {(sellPressure.netSellLiquidityBps / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}% of liquidity</strong></span>
+            </div>
+          )}
           <div className="universalActorSummary" aria-label="Recent pool actor summary">
             <span><small>ACTIVE WALLETS</small><strong>{actorSummary.uniqueActors}</strong></span>
             <span><small>REPEAT WALLETS</small><strong>{actorSummary.repeatActors}</strong></span>

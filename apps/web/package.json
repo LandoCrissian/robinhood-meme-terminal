@@ -13,6 +13,7 @@
     "test:reliability": "tsx lib/server/cache-headers-smoke.ts",
     "test:profile": "tsx lib/profile-smoke.ts",
     "test:watchlist-alerts": "tsx lib/watchlist-alerts-smoke.ts",
+    "test:position-guard": "tsx lib/position-guard-smoke.ts",
     "test:public-discovery": "tsx lib/public-discovery-smoke.ts",
     "test:market-reach": "tsx lib/public-market-discovery-smoke.ts",
     "test:market-discovery": "tsx lib/external-market-discovery-smoke.ts",
