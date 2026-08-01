@@ -10,7 +10,8 @@ const requestSchema = z.object({
   pair: z.string().refine(isAddress),
   recipient: z.string().refine(isAddress),
   side: z.enum(["buy", "sell"]),
-  amountIn: z.string().regex(/^\d+$/)
+  amountIn: z.string().regex(/^\d+$/),
+  maxPriceImpactBps: z.number().int().min(1).max(10_000).default(500)
 });
 
 const publicErrors = new Set([
@@ -25,7 +26,8 @@ const publicErrors = new Set([
   "The token decimals are outside the supported range.",
   "The Uniswap pool returned an invalid quote.",
   "The Uniswap quote is too small to enforce a safe minimum received.",
-  "RMT blocked this Uniswap trade because price impact exceeds 5%."
+  "The selected maximum price impact is invalid.",
+  "Trade exceeds your selected maximum price impact."
 ]);
 
 export async function POST(request: Request) {
@@ -48,7 +50,8 @@ export async function POST(request: Request) {
       pair: getAddress(parsed.data.pair),
       recipient: getAddress(parsed.data.recipient),
       side: parsed.data.side,
-      amountIn: BigInt(parsed.data.amountIn)
+      amountIn: BigInt(parsed.data.amountIn),
+      maxPriceImpact: parsed.data.maxPriceImpactBps / 10_000
     });
     return Response.json(result, { headers: { "Cache-Control": "no-store" } });
   } catch (cause) {

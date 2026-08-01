@@ -8,7 +8,7 @@ export type TradePreferences = {
 };
 
 export type TradeRoutePreference = "automatic" | "sushi" | "uniswap";
-export type TradePriceImpactLimitBps = 100 | 200 | 500;
+export type TradePriceImpactLimitBps = 100 | 200 | 500 | 10_000;
 export type { TradePreparationMode } from "./trade-speed";
 
 export const TRADE_PREFERENCES_EVENT = "rmt:trade-preferences-changed";
@@ -51,7 +51,9 @@ export function normalizeTradePreferences(value: unknown): TradePreferences {
       ? candidate.routePreference
       : "automatic";
   const maxPriceImpactBps: TradePriceImpactLimitBps =
-    candidate.maxPriceImpactBps === 100 || candidate.maxPriceImpactBps === 200
+    candidate.maxPriceImpactBps === 100
+      || candidate.maxPriceImpactBps === 200
+      || candidate.maxPriceImpactBps === 10_000
       ? candidate.maxPriceImpactBps
       : 500;
   const preparationMode: TradePreparationMode = candidate.preparationMode === "standard"

@@ -43,21 +43,28 @@ export function TradeConfidence({
   market,
   side,
   priceImpact,
-  evidenceState
+  maxPriceImpact = PRICE_IMPACT_BLOCK,
+  evidenceState,
+  criticalEvidenceAcknowledged = false,
+  onCriticalEvidenceAcknowledgement
 }: {
   market: ExternalMarket;
   side: "buy" | "sell";
   priceImpact?: number;
+  maxPriceImpact?: number;
   evidenceState: TokenRiskEvidenceState;
+  criticalEvidenceAcknowledged?: boolean;
+  onCriticalEvidenceAcknowledgement?: (acknowledged: boolean) => void;
 }) {
   const verifiedOrigin = hasVerifiedOrigin(market);
   const externalToken = market.origin?.kind !== "rmt-v6";
   const sushiRoute = market.venue.kind === "dex"
     && market.venue.dexId.toLowerCase().includes("sushi");
   const requiresAcknowledgement = tradeRequiresAcknowledgement(market, side);
-  const excessivePriceImpact = priceImpact !== undefined && priceImpact > PRICE_IMPACT_BLOCK;
+  const excessivePriceImpact = priceImpact !== undefined && priceImpact > maxPriceImpact;
   const evidenceDecision = tokenRiskDecision(evidenceState, side);
-  const evidenceBlocked = evidenceDecision.state === "blocked";
+  const criticalEvidence = evidenceDecision.state === "blocked";
+  const evidenceBlocked = criticalEvidence && !criticalEvidenceAcknowledged;
   const tradeBlocked = excessivePriceImpact || evidenceBlocked;
   const evidence = evidenceState.evidence;
   const sourceTransparent = evidence?.contract.sourcePublished === true
@@ -97,8 +104,10 @@ export function TradeConfidence({
     if (tradeBlocked) setExpanded(true);
   }, [tradeBlocked]);
 
-  const confidenceHeading = evidenceBlocked
-    ? `Buy blocked: ${evidenceDecision.primaryFinding?.label.toLowerCase() ?? "evidence failed"}`
+  const confidenceHeading = criticalEvidence
+    ? criticalEvidenceAcknowledged
+      ? "Critical evidence acknowledged"
+      : `Critical evidence: ${evidenceDecision.primaryFinding?.label.toLowerCase() ?? "review required"}`
     : excessivePriceImpact
       ? "Trade blocked: extreme price impact"
       : requiresAcknowledgement
@@ -217,7 +226,20 @@ export function TradeConfidence({
             </ul>
           )}
 
-          <p>These are evidence-based checks, not a safety rating or endorsement. Trading terms are accepted once per version; token evidence continues to update. Your wallet remains the final authority.</p>
+          {criticalEvidence && onCriticalEvidenceAcknowledgement && (
+            <label className="tradeConfidenceConsent">
+              <input
+                type="checkbox"
+                checked={criticalEvidenceAcknowledged}
+                onChange={(event) => onCriticalEvidenceAcknowledgement(event.target.checked)}
+              />
+              <span>
+                I reviewed the critical evidence and choose to continue. RMT will still verify and simulate the exact transaction before opening my wallet.
+              </span>
+            </label>
+          )}
+
+          <p>These are evidence-based checks, not a safety rating or endorsement. Critical findings require an explicit choice but do not decide the trade for you. Token evidence continues to update and your wallet remains the final authority.</p>
         </div>
       )}
     </section>

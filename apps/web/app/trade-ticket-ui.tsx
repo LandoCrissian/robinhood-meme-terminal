@@ -46,7 +46,7 @@ export function TradeExecutionControls() {
             ? "BEST OUTPUT"
             : preferences.routePreference.toUpperCase()}
           {" · "}
-          {preferences.maxPriceImpactBps / 100}% MAX · {preferences.preparationMode === "speed" ? "SPEED" : "STANDARD"}
+          {preferences.maxPriceImpactBps === 10_000 ? "NO RMT IMPACT CAP" : `${preferences.maxPriceImpactBps / 100}% MAX`} · {preferences.preparationMode === "speed" ? "SPEED" : "STANDARD"}
         </em>
       </summary>
       <div className="tradeExecutionControlGroup">
@@ -100,10 +100,10 @@ export function TradeExecutionControls() {
       <div className="tradeExecutionControlGroup">
         <span>
           <strong>Maximum price impact</strong>
-          <small>RMT blocks wallet preparation above your limit. The protocol ceiling remains 5%.</small>
+          <small>Your limit controls wallet preparation. “No RMT cap” still preserves the quoted minimum output and exact-transaction simulation.</small>
         </span>
         <div role="group" aria-label="Maximum price impact">
-          {([100, 200, 500] as const).map((value) => (
+          {([100, 200, 500, 10_000] as const).map((value) => (
             <button
               type="button"
               aria-pressed={preferences.maxPriceImpactBps === value}
@@ -111,7 +111,7 @@ export function TradeExecutionControls() {
               onClick={() => store({ ...preferences, maxPriceImpactBps: value })}
               key={value}
             >
-              {value / 100}%
+              {value === 10_000 ? "No RMT cap" : `${value / 100}%`}
             </button>
           ))}
         </div>

@@ -11,7 +11,8 @@ const requestSchema = z.object({
   pair: z.string().refine(isUniswapV4PoolId),
   recipient: z.string().refine(isAddress),
   side: z.enum(["buy", "sell"]),
-  amountIn: z.string().regex(/^\d+$/)
+  amountIn: z.string().regex(/^\d+$/),
+  maxPriceImpactBps: z.number().int().min(1).max(10_000).default(500)
 });
 
 const publicErrors = new Set([
@@ -28,7 +29,8 @@ const publicErrors = new Set([
   "The v4 quote cannot enforce a valid input and minimum received.",
   "The exact Uniswap v4 wallet route did not pass simulation.",
   "The token decimals are outside the supported range.",
-  "RMT blocked this Uniswap v4 trade because price impact exceeds 5%."
+  "The selected maximum price impact is invalid.",
+  "Trade exceeds your selected maximum price impact."
 ]);
 
 export async function POST(request: Request) {
@@ -51,7 +53,8 @@ export async function POST(request: Request) {
       poolId: parsed.data.pair as Hex,
       recipient: getAddress(parsed.data.recipient),
       side: parsed.data.side,
-      amountIn: BigInt(parsed.data.amountIn)
+      amountIn: BigInt(parsed.data.amountIn),
+      maxPriceImpact: parsed.data.maxPriceImpactBps / 10_000
     });
     return Response.json(result, {
       headers: { "Cache-Control": "no-store" }

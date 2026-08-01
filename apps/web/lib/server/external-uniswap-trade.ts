@@ -197,6 +197,7 @@ export async function quoteAndBuildExternalUniswapSwap(params: {
   recipient: Address;
   side: ExternalUniswapTradeSide;
   amountIn: bigint;
+  maxPriceImpact?: number;
 }): Promise<ExternalUniswapQuote> {
   if (params.amountIn <= 0n || params.amountIn > MAX_UINT128) {
     throw new Error("Trade amount is outside the supported range.");
@@ -232,8 +233,12 @@ export async function quoteAndBuildExternalUniswapSwap(params: {
     amountIn: params.amountIn,
     quoteOut
   });
-  if (priceImpact > PRICE_IMPACT_BLOCK) {
-    throw new Error("RMT blocked this Uniswap trade because price impact exceeds 5%.");
+  const maxPriceImpact = params.maxPriceImpact ?? PRICE_IMPACT_BLOCK;
+  if (!Number.isFinite(maxPriceImpact) || maxPriceImpact <= 0 || maxPriceImpact > 1) {
+    throw new Error("The selected maximum price impact is invalid.");
+  }
+  if (priceImpact > maxPriceImpact) {
+    throw new Error("Trade exceeds your selected maximum price impact.");
   }
   const deadline = BigInt(Math.floor(Date.now() / 1000) + 600);
   const built = buildExternalUniswapSwap({

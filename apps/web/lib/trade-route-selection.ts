@@ -74,7 +74,7 @@ export function protectedOutputRecommendation({
     || minimumImprovementBps > 10_000
     || !Number.isFinite(maxPriceImpact)
     || maxPriceImpact <= 0
-    || maxPriceImpact > 0.05
+    || maxPriceImpact > 1
   ) return undefined;
 
   const eligibleQuotes = quotes.filter((quote) => quote.priceImpact <= maxPriceImpact);

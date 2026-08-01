@@ -184,7 +184,7 @@ async function main() {
       ...dependencies,
       quote: async () => 900n
     }),
-    /price impact exceeds 5%/
+    /selected maximum price impact/
   );
 
   await assert.rejects(

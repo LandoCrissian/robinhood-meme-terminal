@@ -19,7 +19,7 @@ export function clearTradeQuoteCache() {
 
 export function requestTradeQuote(
   endpoint: string,
-  body: Record<string, string>,
+  body: Record<string, string | number>,
   now = Date.now()
 ) {
   const key = quoteRequestKey(endpoint, body);

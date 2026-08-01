@@ -98,6 +98,7 @@ export function ExternalSushiQuotePanel({
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [criticalEvidenceAcknowledged, setCriticalEvidenceAcknowledged] = useState(false);
   const [refresh, setRefresh] = useState(0);
   const [saferOrderOriginal, setSaferOrderOriginal] = useState<bigint>();
   const quoteRequestKey = useRef("");
@@ -159,6 +160,7 @@ export function ExternalSushiQuotePanel({
     setQuote(undefined);
     setError("");
     setMessage("");
+    setCriticalEvidenceAcknowledged(false);
     setStatus("idle");
     setSaferOrderOriginal(undefined);
     approval.reset();
@@ -174,7 +176,7 @@ export function ExternalSushiQuotePanel({
   }, [preferences.preparationMode]);
 
   useEffect(() => {
-    const nextRequestKey = `${address ?? ""}:${amountIn}:${side}:${token}:${pair}`;
+    const nextRequestKey = `${address ?? ""}:${amountIn}:${side}:${token}:${pair}:${preferences.maxPriceImpactBps}`;
     const requestChanged = quoteRequestKey.current !== nextRequestKey;
     quoteRequestKey.current = nextRequestKey;
     if (requestChanged) setQuote(undefined);
@@ -191,7 +193,8 @@ export function ExternalSushiQuotePanel({
         pair,
         recipient: address,
         side,
-        amountIn: amountIn.toString()
+        amountIn: amountIn.toString(),
+        maxPriceImpactBps: preferences.maxPriceImpactBps
       }).then((response) => {
         const payload = response.payload as ExternalSushiQuote | { error?: string };
         if (!response.ok) throw new Error("error" in payload ? payload.error : "Sushi quote is unavailable.");
@@ -237,7 +240,7 @@ export function ExternalSushiQuotePanel({
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [address, amountIn, decimals, pair, preferences.preparationMode, refresh, side, token]);
+  }, [address, amountIn, decimals, pair, preferences.maxPriceImpactBps, preferences.preparationMode, refresh, side, token]);
 
   useEffect(() => {
     if (!approvalReceipt.isSuccess) return;
@@ -295,8 +298,16 @@ export function ExternalSushiQuotePanel({
   const evidenceDecision = tokenRiskDecision(tokenRisk, side);
   const confidenceEvidenceReady = side === "sell" || tokenRisk.status !== "loading";
   const confidenceReady = confidenceEvidenceReady && (!requiresAcknowledgement || tradingTerms.accepted);
-  const evidenceBlocked = evidenceDecision.state === "blocked";
+  const evidenceBlocked = evidenceDecision.state === "blocked" && !criticalEvidenceAcknowledged;
+  const criticalEvidenceKey = evidenceDecision.findings
+    .filter((finding) => finding.severity === "blocked")
+    .map((finding) => finding.code)
+    .join(":");
   const impactBlocked = Boolean(quote && quote.priceImpact > maxPriceImpact);
+
+  useEffect(() => {
+    setCriticalEvidenceAcknowledged(false);
+  }, [criticalEvidenceKey]);
   const sizingBalance = side === "buy"
     ? nativeBalance.data ? spendableTradeBalance(nativeBalance.data.value, networkFeeReserve) : undefined
     : tokenBalance.data;
@@ -350,7 +361,7 @@ export function ExternalSushiQuotePanel({
       : !quoteIsFresh ? "Verifying route…"
       : insufficient ? "Insufficient balance"
       : !confidenceEvidenceReady ? "Checking contract and holders…"
-      : evidenceBlocked ? `Buy blocked: ${evidenceDecision.primaryFinding?.label ?? "evidence failed"}`
+      : evidenceBlocked ? "Review critical evidence to continue"
         : !confidenceReady ? "Accept RMT trading terms"
         : impactBlocked ? `Above your ${preferences.maxPriceImpactBps / 100}% impact limit`
           : feeEstimate.status === "unavailable" ? "Preflight failed — trade blocked"
@@ -433,7 +444,10 @@ export function ExternalSushiQuotePanel({
         market={market}
         side={side}
         priceImpact={quote?.priceImpact}
+        maxPriceImpact={maxPriceImpact}
         evidenceState={tokenRisk}
+        criticalEvidenceAcknowledged={criticalEvidenceAcknowledged}
+        onCriticalEvidenceAcknowledgement={setCriticalEvidenceAcknowledged}
       />
 
       {isConnected && chainId === ROBINHOOD_CHAIN_ID && (

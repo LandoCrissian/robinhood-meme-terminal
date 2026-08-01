@@ -83,7 +83,7 @@ assert.deepEqual(normalizeTradePreferences({
 }), {
   buyAmounts: ["0.0002", "0.002", "0.02"],
   routePreference: "automatic",
-  maxPriceImpactBps: 500,
+  maxPriceImpactBps: 10_000,
   preparationMode: "speed"
 });
 assert.deepEqual(normalizeTradePreferences({ buyAmounts: ["0.01", "0.01", "0.02"] }), DEFAULT_TRADE_PREFERENCES);
@@ -206,6 +206,13 @@ assert.equal(protectedOutputRecommendation({
   quotes: [
     { venue: "sushi", minimumOut: "100000", priceImpact: 0.009, outputToken: quoteToken },
     { venue: "uniswap-v3", minimumOut: "110000", priceImpact: 0.02, outputToken: quoteToken }
+  ]
+})?.automaticVenue, "uniswap-v3");
+assert.equal(protectedOutputRecommendation({
+  selected: "sushi",
+  maxPriceImpact: 1.01,
+  quotes: [
+    { venue: "sushi", minimumOut: "100000", priceImpact: 0.009, outputToken: quoteToken }
   ]
 }), undefined);
 assert.equal(protectedOutputRecommendation({
