@@ -38,7 +38,7 @@ export function TradeExecutionControls() {
             ? "BEST OUTPUT"
             : preferences.routePreference.toUpperCase()}
           {" · "}
-          {preferences.maxPriceImpactBps / 100}% MAX
+          {preferences.maxPriceImpactBps / 100}% MAX · {preferences.preparationMode === "speed" ? "SPEED" : "STANDARD"}
         </em>
       </summary>
       <div className="tradeExecutionControlGroup">
@@ -57,6 +57,31 @@ export function TradeExecutionControls() {
               aria-pressed={preferences.routePreference === value}
               className={preferences.routePreference === value ? "active" : ""}
               onClick={() => store({ ...preferences, routePreference: value })}
+              key={value}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="tradeExecutionControlGroup">
+        <span>
+          <strong>Quote preparation</strong>
+          <small>Speed mode preloads and shares fresh venue quotes. It never bypasses your wallet signature or execution limits.</small>
+        </span>
+        <div role="group" aria-label="Quote preparation mode">
+          {([[
+            "speed",
+            "Speed"
+          ], [
+            "standard",
+            "Standard"
+          ]] as const).map(([value, label]) => (
+            <button
+              type="button"
+              aria-pressed={preferences.preparationMode === value}
+              className={preferences.preparationMode === value ? "active" : ""}
+              onClick={() => store({ ...preferences, preparationMode: value })}
               key={value}
             >
               {label}
@@ -124,7 +149,7 @@ export function TradeAmountPresets({
       }
     };
     const storeDrafts = () => {
-      const normalized = normalizeTradePreferences({ buyAmounts: drafts });
+      const normalized = normalizeTradePreferences({ ...preferences, buyAmounts: drafts });
       if (normalized.buyAmounts.some((amount, index) => amount !== drafts[index]?.replace(/0+$/, "").replace(/\.$/, ""))) {
         setError("Enter three different positive ETH amounts, each below 1,000.");
         return;

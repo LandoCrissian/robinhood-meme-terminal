@@ -46,6 +46,8 @@ import {
 } from "./trade-ticket-ui";
 import { WalletButton } from "./wallet-button";
 import { recordExperienceStage } from "../lib/experience-funnel";
+import { requestTradeQuote } from "../lib/trade-quote-client";
+import { quoteDebounceMs, quoteRefreshMs } from "../lib/trade-speed";
 
 const ROBINHOOD_CHAIN_ID = 4663;
 const EXPLORER = "https://robinhoodchain.blockscout.com";
@@ -209,9 +211,12 @@ export function ExternalUniswapTradePanel({
   }, [market.address, market.pairAddress, side, version]);
 
   useEffect(() => {
-    const interval = window.setInterval(() => setRefresh((value) => value + 1), 15_000);
+    const interval = window.setInterval(
+      () => setRefresh((value) => value + 1),
+      quoteRefreshMs(preferences.preparationMode)
+    );
     return () => window.clearInterval(interval);
-  }, []);
+  }, [preferences.preparationMode]);
 
   useEffect(() => {
     const nextRequestKey = `${address ?? ""}:${amountIn}:${side}:${token}:${pair}`;
@@ -223,22 +228,17 @@ export function ExternalUniswapTradePanel({
       setStatus("idle");
       return;
     }
-    const controller = new AbortController();
+    let cancelled = false;
     const timer = window.setTimeout(() => {
       setStatus("loading");
-      void fetch(isV4 ? "/api/trade/external-uniswap-v4" : "/api/trade/external-uniswap", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          token,
-          pair,
-          recipient: address,
-          side,
-          amountIn: amountIn.toString()
-        }),
-        signal: controller.signal
-      }).then(async (response) => {
-        const payload = await response.json() as ExternalUniswapQuote | { error?: string };
+      void requestTradeQuote(isV4 ? "/api/trade/external-uniswap-v4" : "/api/trade/external-uniswap", {
+        token,
+        pair,
+        recipient: address,
+        side,
+        amountIn: amountIn.toString()
+      }).then((response) => {
+        const payload = response.payload as ExternalUniswapQuote | { error?: string };
         if (!response.ok) throw new Error("error" in payload ? payload.error : "Uniswap quote is unavailable.");
         if (
           !("marketVerified" in payload)
@@ -271,19 +271,21 @@ export function ExternalUniswapTradePanel({
         ) {
           throw new Error("RMT rejected an inconsistent Uniswap transaction.");
         }
-        setQuote(payload);
-        setStatus("idle");
+        if (!cancelled) {
+          setQuote(payload);
+          setStatus("idle");
+        }
       }).catch((cause) => {
-        if (controller.signal.aborted) return;
+        if (cancelled) return;
         setStatus("error");
         setError(cause instanceof Error ? cause.message : "Uniswap quote is unavailable.");
       });
-    }, 350);
+    }, quoteDebounceMs(preferences.preparationMode));
     return () => {
-      controller.abort();
+      cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [address, amountIn, decimals, executionRouter, isV4, pair, refresh, side, token]);
+  }, [address, amountIn, decimals, executionRouter, isV4, pair, preferences.preparationMode, refresh, side, token]);
 
   useEffect(() => {
     if (!approvalReceipt.isSuccess) return;

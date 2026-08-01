@@ -62,16 +62,19 @@ assert.equal(normalizeBuyPreset("1e-3"), null);
 assert.deepEqual(normalizeTradePreferences({ buyAmounts: ["0.0002", "0.002", "0.02"] }), {
   buyAmounts: ["0.0002", "0.002", "0.02"],
   routePreference: "automatic",
-  maxPriceImpactBps: 500
+  maxPriceImpactBps: 500,
+  preparationMode: "speed"
 });
 assert.deepEqual(normalizeTradePreferences({
   buyAmounts: ["0.0002", "0.002", "0.02"],
   routePreference: "sushi",
-  maxPriceImpactBps: 100
+  maxPriceImpactBps: 100,
+  preparationMode: "speed"
 }), {
   buyAmounts: ["0.0002", "0.002", "0.02"],
   routePreference: "sushi",
-  maxPriceImpactBps: 100
+  maxPriceImpactBps: 100,
+  preparationMode: "speed"
 });
 assert.deepEqual(normalizeTradePreferences({
   buyAmounts: ["0.0002", "0.002", "0.02"],
@@ -80,7 +83,8 @@ assert.deepEqual(normalizeTradePreferences({
 }), {
   buyAmounts: ["0.0002", "0.002", "0.02"],
   routePreference: "automatic",
-  maxPriceImpactBps: 500
+  maxPriceImpactBps: 500,
+  preparationMode: "speed"
 });
 assert.deepEqual(normalizeTradePreferences({ buyAmounts: ["0.01", "0.01", "0.02"] }), DEFAULT_TRADE_PREFERENCES);
 assert.deepEqual(normalizeTradePreferences({ buyAmounts: ["bad"] }), DEFAULT_TRADE_PREFERENCES);

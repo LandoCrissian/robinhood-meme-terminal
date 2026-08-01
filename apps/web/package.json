@@ -29,6 +29,7 @@
     "test:external-venues": "tsx lib/server/external-trade-venues-smoke.ts",
     "test:external-ohlcv": "tsx lib/server/external-ohlcv-smoke.ts",
     "test:trade-ticket": "tsx lib/trade-ticket-smoke.ts",
+    "test:trade-speed": "tsx lib/trade-speed-smoke.ts",
     "test:trading-terms": "tsx lib/trading-terms-smoke.ts",
     "test:experience": "tsx lib/experience-funnel-smoke.ts",
     "test:external-trades": "tsx lib/external-trades-smoke.ts",
