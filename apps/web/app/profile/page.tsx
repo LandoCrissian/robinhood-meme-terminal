@@ -1,9 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { useAccount } from "wagmi";
-import { isEmbeddedAuthBrowser } from "../../lib/auth-environment";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useAccount, useDisconnect } from "wagmi";
 import { RMT_ADMIN_EMAIL } from "../../lib/creator-application";
 import {
   PROFILE_EVENT,
@@ -19,6 +18,7 @@ import { FollowedProjectsHub } from "../followed-projects-hub";
 import { ReferralCard } from "../referral-card";
 import { SiteFooter } from "../site-footer";
 import { useProfile } from "../profile-provider";
+import { useRmtIdentity } from "../rmt-identity";
 
 const MODES: Array<{ id: TraderMode; label: string; copy: string }> = [
   { id: "scout", label: "Scout", copy: "Discovery first. Surface risk and origin before speed." },
@@ -45,10 +45,12 @@ function editTimeLabel(timestamp: number) {
 
 export default function ProfilePage() {
   const { address, isConnected } = useAccount();
+  const { disconnect: disconnectWallet } = useDisconnect();
+  const accountIdentity = useRmtIdentity();
   const {
-    completeEmailLinkSignIn,
+    accountAuthenticated,
+    accountReady,
     configured,
-    emailLinkPending,
     loading,
     profile,
     profileAuthMessage,
@@ -57,8 +59,7 @@ export default function ProfilePage() {
     user,
     syncState,
     saveProfile,
-    sendEmailSignInLink,
-    signInWithGoogle,
+    signInProfile,
     signOutProfile
   } = useProfile();
   const [draft, setDraft] = useState<RmtProfile>(profile);
@@ -66,34 +67,14 @@ export default function ProfilePage() {
   const [message, setMessage] = useState("");
   const [authMessage, setAuthMessage] = useState("");
   const [busy, setBusy] = useState(false);
-  const [email, setEmail] = useState("");
-  const [emailLinkSent, setEmailLinkSent] = useState(false);
   const [reviewing, setReviewing] = useState(false);
-  const [embeddedAuthBrowser, setEmbeddedAuthBrowser] = useState(false);
   const [now, setNow] = useState(() => Date.now());
-  const emailCompletionAttempted = useRef(false);
   const isAdmin = Boolean(user?.emailVerified && user.email?.toLowerCase() === RMT_ADMIN_EMAIL);
 
   useEffect(() => {
     setDraft(profile);
     setReviewing(false);
   }, [profile]);
-  useEffect(() => {
-    setEmbeddedAuthBrowser(isEmbeddedAuthBrowser(window.navigator.userAgent));
-  }, []);
-  useEffect(() => {
-    if (!emailLinkPending || user || emailCompletionAttempted.current) return;
-    emailCompletionAttempted.current = true;
-    setBusy(true);
-    setAuthMessage("Completing secure email sign-in…");
-    void completeEmailLinkSignIn().then(() => {
-      setAuthMessage("Email verified. Your RMT desk is connecting.");
-    }).catch((error) => {
-      setAuthMessage(error instanceof Error && error.message === "Enter a valid email address."
-        ? "Confirm the same email address that received this link."
-        : error instanceof Error ? error.message : "Email sign-in did not finish.");
-    }).finally(() => setBusy(false));
-  }, [completeEmailLinkSignIn, emailLinkPending, user]);
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 30_000);
     return () => window.clearInterval(timer);
@@ -142,55 +123,9 @@ export default function ProfilePage() {
     }
   };
 
-  const beginGoogleSignIn = async () => {
-    setBusy(true);
+  const beginAccountSignIn = () => {
     setAuthMessage("");
-    try {
-      await signInWithGoogle();
-    } catch (error) {
-      setAuthMessage(error instanceof Error ? error.message : "Google sign-in did not finish. Your local profile is unchanged.");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const beginEmailSignIn = async (event: FormEvent) => {
-    event.preventDefault();
-    setBusy(true);
-    setAuthMessage("");
-    try {
-      await sendEmailSignInLink(email);
-      setEmailLinkSent(true);
-      setAuthMessage("Secure sign-in link sent. Check your inbox and open it on this device or any other browser.");
-    } catch (error) {
-      setAuthMessage(error instanceof Error ? error.message : "RMT could not send the sign-in link.");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const finishEmailSignIn = async (event: FormEvent) => {
-    event.preventDefault();
-    setBusy(true);
-    setAuthMessage("");
-    try {
-      await completeEmailLinkSignIn(email);
-      setAuthMessage("Email verified. Your RMT desk is connecting.");
-    } catch (error) {
-      setAuthMessage(error instanceof Error ? error.message : "Email sign-in did not finish.");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const copySecureProfileLink = async () => {
-    setAuthMessage("");
-    try {
-      await window.navigator.clipboard.writeText(`${window.location.origin}/profile`);
-      setAuthMessage("Secure RMT profile link copied. Open it in Safari, Chrome, Firefox, or Edge to sign in.");
-    } catch {
-      setAuthMessage(`Open ${window.location.origin}/profile in Safari, Chrome, Firefox, or Edge to sign in.`);
-    }
+    signInProfile();
   };
 
   const endProfileSession = async () => {
@@ -198,9 +133,11 @@ export default function ProfilePage() {
     setAuthMessage("");
     try {
       await signOutProfile();
-      setAuthMessage("Signed out. This device keeps its local profile copy.");
+      disconnectWallet();
+      setAuthMessage("Disconnected from RMT. This device keeps its local profile copy.");
     } catch {
-      setAuthMessage("RMT could not sign out of the cloud profile. Try again.");
+      disconnectWallet();
+      setAuthMessage("The local wallet connection was cleared, but RMT could not fully end the cloud session. Try again.");
     } finally {
       setBusy(false);
     }
@@ -317,78 +254,45 @@ export default function ProfilePage() {
             <Link href="/admin">Open Admin Dashboard →</Link>
           </section>}
           <section className="profileCloudCard">
-            <p className="eyebrow">CROSS-DEVICE PROFILE</p>
-            <h2>{user ? "Your desk follows you" : "Take your desk anywhere"}</h2>
-            <p>{user ? "Profile preferences and watched RMT tokens sync through your private Firebase workspace. RMT does not publish your sign-in email." : "Sign in with Google or any email provider to carry your profile and watchlist between desktop and mobile. Wallet connection stays separate."}</p>
-            {user ? (
+            <p className="eyebrow">ONE RMT ACCOUNT</p>
+            <h2>{user ? "Your desk follows you" : accountAuthenticated ? "Connecting your desk" : "Take your desk anywhere"}</h2>
+            <p>{user
+              ? "Your profile, watchlist, community identity, and active trading wallets now follow one RMT account. Your sign-in details stay private."
+              : accountAuthenticated
+                ? "Your Privy identity is verified. RMT is finishing the private profile connection without asking you to sign in again."
+                : "Use one RMT sign-in for your profile and wallets. Choose email, Google, a passkey, or an existing wallet—Google is optional."}</p>
+            {accountAuthenticated ? (
               <div className="profileCloudActions">
-                {syncState === "error" && <button className="profileRetryButton" type="button" disabled={busy} onClick={() => void retryCloudSync()}>Retry sync</button>}
-                <button type="button" disabled={busy} onClick={() => void endProfileSession()}>Sign out of profile</button>
-              </div>
-            ) : configured ? (
-              <div className="profileAuthOptions">
-                {emailLinkPending ? (
-                  <form className="profileEmailAuth" onSubmit={finishEmailSignIn}>
-                    <strong>Finish email sign-in</strong>
-                    <span>Enter the same address that received the RMT link. The address is never placed in the link.</span>
-                    <label>
-                      Email address
-                      <input
-                        type="email"
-                        autoComplete="email"
-                        inputMode="email"
-                        maxLength={254}
-                        placeholder="you@example.com"
-                        required
-                        value={email}
-                        onChange={(event) => setEmail(event.target.value)}
-                      />
-                    </label>
-                    <button type="submit" disabled={busy || loading}>
-                      {busy ? "Verifying…" : "Verify and bring in my desk"}
+                <div className="profileLinkMethods">
+                  <strong>Keep one account—link extra sign-in methods here</strong>
+                  <span>Do not sign out to add another method. Linking keeps this profile, admin access, and wallet workspace together.</span>
+                  <div>
+                    <button type="button" disabled={accountIdentity.linked.email} onClick={accountIdentity.linkEmail}>
+                      {accountIdentity.linked.email ? "Email linked" : "Link email"}
                     </button>
-                  </form>
-                ) : (
-                  <>
-                    {embeddedAuthBrowser ? (
-                      <div className="profileAuthBrowserNotice">
-                        <strong>Email works here; Google needs a full browser</strong>
-                        <span>Use any email address below, or open this page in Safari, Chrome, Firefox, or Edge to continue with Google.</span>
-                        <div>
-                          <a href="/profile" target="_blank" rel="noreferrer">Open secure sign-in ↗</a>
-                          <button type="button" disabled={busy} onClick={() => void copySecureProfileLink()}>Copy profile link</button>
-                        </div>
-                      </div>
-                    ) : (
-                      <button className="googleProfileButton" type="button" disabled={busy || loading} onClick={() => void beginGoogleSignIn()}>
-                        {loading ? "Preparing secure sign-in…" : "Continue with Google"}
-                      </button>
-                    )}
-                    <div className="profileAuthDivider"><span>OR USE ANY EMAIL</span></div>
-                    <form className="profileEmailAuth" onSubmit={beginEmailSignIn}>
-                      <label>
-                        Email address
-                        <input
-                          type="email"
-                          autoComplete="email"
-                          inputMode="email"
-                          maxLength={254}
-                          placeholder="you@example.com"
-                          required
-                          value={email}
-                          onChange={(event) => setEmail(event.target.value)}
-                        />
-                      </label>
-                      <button type="submit" disabled={busy || loading}>
-                        {busy ? "Sending secure link…" : emailLinkSent ? "Send another sign-in link" : "Email me a sign-in link"}
-                      </button>
-                      <span>Works with Outlook, Yahoo, iCloud, Proton, business email, and other providers. No password required.</span>
-                    </form>
-                  </>
-                )}
+                    <button type="button" disabled={accountIdentity.linked.google} onClick={accountIdentity.linkGoogle}>
+                      {accountIdentity.linked.google ? "Google linked" : "Link Google"}
+                    </button>
+                    <button type="button" disabled={accountIdentity.linked.passkey} onClick={accountIdentity.linkPasskey}>
+                      {accountIdentity.linked.passkey ? "Passkey linked" : "Add passkey"}
+                    </button>
+                    <button type="button" disabled={accountIdentity.linked.wallet} onClick={accountIdentity.linkWallet}>
+                      {accountIdentity.linked.wallet ? "Wallet linked" : "Link wallet"}
+                    </button>
+                  </div>
+                </div>
+                {user && syncState === "error" && <button className="profileRetryButton" type="button" disabled={busy} onClick={() => void retryCloudSync()}>Retry sync</button>}
+                <button type="button" disabled={busy} onClick={() => void endProfileSession()}>Disconnect and sign out</button>
+              </div>
+            ) : configured && accountReady ? (
+              <div className="profileAuthOptions">
+                <button className="googleProfileButton" type="button" disabled={busy || loading} onClick={beginAccountSignIn}>
+                  Sign in or create RMT account
+                </button>
+                <span className="profileAccountMethods">Choose one method now. Link the others after sign-in so they do not become separate accounts.</span>
               </div>
             ) : (
-              <div className="profileSetupNotice"><strong>Firebase connection prepared</strong><span>Add the project configuration to enable secure profile sync.</span></div>
+              <div className="profileSetupNotice"><strong>Local profile ready</strong><span>RMT account sync is not enabled in this environment.</span></div>
             )}
             {visibleAuthMessage && <p className="profileAuthMessage" role="status">{visibleAuthMessage}</p>}
           </section>
@@ -402,8 +306,8 @@ export default function ProfilePage() {
           </nav>
 
           <section className="profilePrivacy">
-            <strong>Profile ≠ wallet custody</strong>
-            <p>RMT profile sign-in never exposes a seed phrase and never grants transaction permission. Every trade still requires your wallet confirmation.</p>
+            <strong>One account does not mean custody</strong>
+            <p>RMT never receives a seed phrase or private key. Disconnect clears the RMT session and active wallet state; transactions still follow the permissions shown in your wallet.</p>
           </section>
         </aside>
       </div>

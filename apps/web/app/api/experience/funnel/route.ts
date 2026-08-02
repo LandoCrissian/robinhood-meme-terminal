@@ -7,7 +7,7 @@ import {
   normalizeExperienceDevice,
   normalizeExperienceStage
 } from "../../../../lib/experience-funnel";
-import { communityBearerToken } from "../../../../lib/server/community-identity";
+import { communityBearerToken, isRmtAdminIdentity } from "../../../../lib/server/community-identity";
 import { getRmtAdminAuth, getRmtAdminFirestore } from "../../../../lib/server/firebase-admin";
 import { guardMediaRequest, readBoundedJsonRequest } from "../../../../lib/server/media-request-guard";
 
@@ -23,7 +23,7 @@ async function verifiedAdmin(request: Request) {
   const db = getRmtAdminFirestore();
   if (!token || !auth || !db) return null;
   const identity = await auth.verifyIdToken(token, true);
-  if (identity.email_verified !== true || identity.email?.toLowerCase() !== RMT_ADMIN_EMAIL) return null;
+  if (!isRmtAdminIdentity(identity, RMT_ADMIN_EMAIL)) return null;
   return db;
 }
 

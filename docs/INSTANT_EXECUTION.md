@@ -46,7 +46,7 @@ When configured, the provider layer:
 - supports email, Google, passkey, and external-wallet authentication;
 - restricts supported networks to Robinhood Chain mainnet and testnet; and
 - exposes user-controlled MFA, recovery, key export and active-wallet selection; and
-- keeps Firebase profile identity separate from wallet selection so changing between an RMT Wallet and MetaMask cannot overwrite a profile;
+- binds profile sync to the verified Privy user rather than the currently selected wallet, so changing between an RMT Wallet and MetaMask cannot overwrite a profile;
 - presents Deposit, Receive, Send and Trade as separate actions for the exact active wallet; and
 - does not provision an RMT signer or allow unattended execution.
 

@@ -31,10 +31,14 @@ assert.match(walletButton, /if \(speedWalletEnabled\) return <PrivyWalletButton/
 assert.match(privyWalletButton, /useConnectOrCreateWallet/, "Privy must provide a connect-or-create path for first-time traders.");
 assert.match(privyWalletButton, /useSetActiveWallet/, "Traders must be able to choose the exact wallet RMT uses.");
 assert.match(privyWalletButton, /requestedWalletAddress/, "A newly connected external wallet must remain the requested active wallet after Privy finishes linking it.");
-assert.match(privyWalletButton, /changing between MetaMask and an RMT Wallet cannot overwrite it/, "Wallet selection must explain the separate Firebase profile boundary.");
+assert.match(privyWalletButton, /One RMT account carries your private profile and wallet choices/, "Wallet selection must explain RMT's unified Privy identity boundary.");
 assert.match(privyWalletButton, />Deposit</, "The exact active wallet must expose Privy funding.");
 assert.match(privyWalletButton, />Receive</, "The exact active wallet must expose its receive address.");
 assert.match(privyWalletButton, /privyActiveWalletSummary/, "The wallet control center must identify its exact active wallet and network.");
+assert.match(privyWalletButton, /useDisconnect/, "Disconnect must clear RMT's Wagmi wallet state as well as the Privy session.");
+assert.match(privyWalletButton, /disconnectWagmi\(\)/, "Disconnect must remove the active wallet from RMT even when the wallet provider cannot revoke its own permission.");
+assert.match(privyWalletButton, /await logout\(\)/, "Authenticated Privy sessions must be ended during disconnect.");
+assert.match(privyWalletButton, />Disconnect from RMT</, "The wallet menu must clearly describe the scope of disconnecting.");
 assert.match(privyWalletButton, />Send</, "The exact active wallet must expose a user-reviewed transfer flow.");
 assert.match(privyWalletButton, />Trade</, "Wallet management must return users to RMT's independently verified trade routes.");
 assert.doesNotMatch(combined, /policyIds:\s*\[\s*\]/, "RMT must never attach an unrestricted signer.");

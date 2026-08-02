@@ -46,10 +46,20 @@ import {
   decideCommunityMessagePolicy
 } from "./server/community-message-policy";
 import { decideCommunityRateLimit } from "./server/community-rate-limit";
+import { isRmtAdminIdentity, isVerifiedCommunityMember } from "./server/community-identity";
 
 assert.equal(normalizeCommunityRoomId("global"), "global");
 assert.equal(normalizeCommunityRoomId("project--rmt-studio"), "project--rmt-studio");
 assert.equal(normalizeCommunityRoomId("project--../../admin"), "");
+assert.equal(isVerifiedCommunityMember({ email_verified: true }), false);
+assert.equal(isVerifiedCommunityMember({ privy_verified: true, rmt_privy_uid: "did:privy:member" }), true);
+assert.equal(isRmtAdminIdentity({
+  email: "launchrmt@gmail.com",
+  email_verified: true,
+  privy_verified: true,
+  rmt_privy_uid: "did:privy:admin"
+}, "launchrmt@gmail.com"), true);
+assert.equal(isRmtAdminIdentity({ email: "launchrmt@gmail.com", email_verified: true }, "launchrmt@gmail.com"), false);
 assert.equal(normalizeCommunityBody("  Hello\n\nRMT  "), "Hello RMT");
 assert.match(validateCommunityBody("https://malicious.example", true) ?? "", /cannot include external links/);
 assert.match(validateCommunityBody("my private key is abc", false) ?? "", /Never share/);
@@ -332,6 +342,9 @@ assert.doesNotMatch(routeSource, /authorLabel:\s*input|authorKind:\s*input|fireb
 const identitySource = readFileSync(new URL("./server/community-identity.ts", import.meta.url), "utf8");
 assert.match(identitySource, /COMMUNITY_IDENTITY_SECRET/);
 assert.match(identitySource, /createHmac/);
+assert.match(identitySource, /privy_verified === true/);
+assert.match(identitySource, /rmt_privy_uid/);
+assert.match(identitySource, /isRmtAdminIdentity/);
 
 const presenceRouteSource = readFileSync(new URL("../app/api/community/presence/route.ts", import.meta.url), "utf8");
 assert.match(presenceRouteSource, /verifyIdToken\(token, true\)/);
@@ -352,7 +365,7 @@ assert.doesNotMatch(reportRouteSource, /firebaseUid|reporterUid|email:/);
 
 const moderationRouteSource = readFileSync(new URL("../app/api/admin/community/moderation/route.ts", import.meta.url), "utf8");
 assert.match(moderationRouteSource, /RMT_ADMIN_EMAIL/);
-assert.match(moderationRouteSource, /email_verified !== true/);
+assert.match(moderationRouteSource, /isRmtAdminIdentity\(identity, RMT_ADMIN_EMAIL\)/);
 assert.match(moderationRouteSource, /communityModerationAudit/);
 assert.match(moderationRouteSource, /bannedUntil/);
 assert.match(moderationRouteSource, /status: "moderated"/);
@@ -471,6 +484,7 @@ assert.match(termsSource, /market manipulation/);
 assert.match(termsSource, /recovery words/);
 
 const profileProviderSource = readFileSync(new URL("../app/profile-provider.tsx", import.meta.url), "utf8");
-assert.match(profileProviderSource, /nextUser\?\.isAnonymous \? null : nextUser/);
+assert.match(profileProviderSource, /!nextUser\.isAnonymous/);
+assert.match(profileProviderSource, /token\.claims\.rmt_privy_uid === accountIdentity\.userId/);
 
 console.info("RMT Live community foundation smoke test passed");

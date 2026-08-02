@@ -6,7 +6,7 @@ import { robinhoodChain, robinhoodChainTestnet } from "@rmt/shared/chains";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import type { Address } from "viem";
-import { useAccount, useSwitchChain } from "wagmi";
+import { useAccount, useDisconnect, useSwitchChain } from "wagmi";
 import { recordExperienceStage } from "../lib/experience-funnel";
 import { FundWalletButton } from "./fund-wallet-button";
 import { WalletReceiveDialog } from "./wallet-receive-dialog";
@@ -47,6 +47,7 @@ export function PrivyWalletButton({
   const { wallets, ready: walletsReady } = useWallets();
   const { setActiveWallet } = useSetActiveWallet();
   const { address, chainId, isConnected } = useAccount();
+  const { disconnect: disconnectWagmi } = useDisconnect();
   const targetChain = target === "mainnet" ? robinhoodChain : robinhoodChainTestnet;
   const { switchChain, isPending: isSwitching, error: switchError, reset: resetSwitch } = useSwitchChain();
   const { connectOrCreateWallet } = useConnectOrCreateWallet({
@@ -129,9 +130,19 @@ export function PrivyWalletButton({
   const signOut = async () => {
     setMessage("");
     try {
+      await Promise.allSettled(
+        wallets
+          .filter((wallet) => wallet.walletClientType !== "privy")
+          .map((wallet) => Promise.resolve(wallet.disconnect()))
+      );
+      disconnectWagmi();
       if (authenticated) await logout();
-      else activeWallet?.disconnect();
+      setRequestedWalletAddress("");
+      setFundingOpen(false);
+      setReceiveOpen(false);
+      setTransferOpen(false);
       close();
+      setMessage("Wallet disconnected from RMT on this device.");
     } catch (error) {
       setMessage(error instanceof Error ? safeWalletMessage(error.message) : "Wallet sign-out did not complete.");
     }
@@ -180,10 +191,10 @@ export function PrivyWalletButton({
               </div>
               <div className="privyWalletActions">
                 <button type="button" onClick={() => connectWallet()}>Add another wallet</button>
-                <button type="button" onClick={() => void signOut()}>{authenticated ? "Sign out" : "Disconnect"}</button>
+                <button type="button" onClick={() => void signOut()}>Disconnect from RMT</button>
               </div>
               <p className="privyProfileBoundary">
-                Wallets authorize trades. Your private RMT profile remains tied to its profile sign-in, so changing between MetaMask and an RMT Wallet cannot overwrite it. <a href="/profile" onClick={close}>Open Profile →</a>
+                One RMT account carries your private profile and wallet choices across the terminal. You still choose the active wallet, and RMT never receives its private key. <a href="/profile" onClick={close}>Open Profile →</a>
               </p>
               {message && <p className="walletError" role="status">{message}</p>}
             </div>

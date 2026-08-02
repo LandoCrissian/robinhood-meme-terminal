@@ -1,19 +1,4 @@
 {
-  "auth": {
-    "providers": {
-      "emailPassword": true,
-      "googleSignIn": {
-        "oAuthBrandDisplayName": "Robinhood Meme Terminal",
-        "supportEmail": "launchrmt@gmail.com",
-        "authorizedRedirectUris": [
-          "https://robinhood-meme-terminal.firebaseapp.com/__/auth/handler",
-          "https://www.rmtlaunch.fun/__/auth/handler",
-          "https://robinhood-meme-terminal-git-code-437b4e-landocrissians-projects.vercel.app/__/auth/handler",
-          "https://robinhood-meme-terminal-git-code-d34b50-landocrissians-projects.vercel.app/__/auth/handler"
-        ]
-      }
-    }
-  },
   "firestore": {
     "rules": "firestore.rules",
     "indexes": "firestore.indexes.json"

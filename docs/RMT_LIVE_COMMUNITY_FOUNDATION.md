@@ -10,7 +10,7 @@ All message creation is server mediated. Firestore permits public reads of visib
 
 - Guests use Firebase Anonymous Authentication and receive a stable `Guest-XXXX` label derived with a server secret.
 - A guest is not a profile, verified creator, or RMT representative.
-- Verified Google members may use their protected display name and handle.
+- Verified RMT account members may use their protected display name and handle. Email, Google, passkey, and wallet are sign-in methods inside the same Privy account layer.
 - Project-creator and RMT labels are derived from server-side ownership and administrator records, never from client input.
 - Profile sync ignores anonymous Firebase sessions, so a guest cannot create or mutate a protected profile document.
 
@@ -86,6 +86,9 @@ Traffic measurements should include active sessions, concurrent sessions, messag
 - A dedicated `rmt-live-server` service account was created with only Cloud
   Datastore User and Firebase Authentication Viewer roles. It does not have an
   Editor, Owner, Firebase Admin, or IAM administration role.
+- This entry records the July 29 state. Before activating the later Privy
+  account bridge, add only the three-user custom role documented in
+  `docs/FIREBASE_PROFILES.md`; the broad roles excluded above remain excluded.
 - `FIREBASE_ADMIN_PROJECT_ID`, `FIREBASE_ADMIN_CLIENT_EMAIL`,
   `FIREBASE_ADMIN_PRIVATE_KEY`, and a newly generated
   `COMMUNITY_IDENTITY_SECRET` are stored as sensitive Vercel variables scoped
@@ -133,11 +136,10 @@ Traffic measurements should include active sessions, concurrent sessions, messag
   region and report controls to assistive technology, labels its message
   composer and status updates, closes with Escape, and returns focus to its
   launcher.
-- Controlled QA hostnames are authorized as Firebase callers and exact OAuth
-  callbacks for rehearsals. Arbitrary temporary deployments fall back to the
-  permanent helper and never receive wildcard trust. Google profile sign-in
-  uses a registered same-origin full-page redirect, while passwordless email
-  remains the fallback for embedded browsers that block provider authentication.
+- Controlled QA hostnames are authorized as exact Privy and Firebase callers
+  for rehearsals. Arbitrary temporary deployments never receive wildcard trust.
+  Privy now owns the visible account flow while Firebase accepts only the
+  short-lived custom session created from a server-verified Privy identity.
 - A second isolated identity, `Guest-2110`, reported `Guest-3D1F`'s visible
   `hello` message as `spam`. The report appeared only in the private
   administrator queue, proving the true cross-identity report path rather than

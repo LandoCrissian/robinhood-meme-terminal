@@ -78,21 +78,21 @@ The archived records live under [`docs/archive/rmt-v4`](docs/archive/rmt-v4/READ
 
 ## Profiles and Bring Your Desk
 
-Profiles are optional and separate from wallet connection.
+Profiles are optional. Privy provides one RMT account for sign-in and wallet selection; every transaction still requires the authority of the selected user-owned wallet.
 
 - local mode works automatically without an account;
-- cloud mode synchronizes profile preferences and watchlists through a private Firebase workspace;
-- users may continue with Google or use a passwordless sign-in link sent to Gmail, Outlook, Yahoo, iCloud, Proton, a business address, or another valid email provider;
-- email-link completion requires control of the same address and never places the address in the link URL;
-- the sign-in identity does not grant wallet, trade, approval, or custody permission.
+- cloud mode synchronizes profile preferences and watchlists through a private Firebase workspace bound server-side to the verified Privy identity;
+- users may choose email code, Google, passkey, or an existing wallet inside the same Privy sign-in—Google is optional;
+- RMT does not expose a second Firebase sign-in, preventing duplicate accounts and mismatched profiles;
+- account sign-in does not grant RMT wallet, trade, approval, or custody permission.
 
-See [Firebase profile setup](docs/FIREBASE_PROFILES.md) for the data model, security rules, provider configuration, and activation checks.
+See [RMT account and profile setup](docs/FIREBASE_PROFILES.md) for the identity bridge, data model, security rules, and activation checks.
 
 ## Data and reliability
 
 Wallet transactions do not depend on the profile database or market indexer.
 
-- Firebase Authentication and Firestore provide optional profile, creator, referral, and community features.
+- Privy provides the visible account and wallet layer; Firebase custom authentication and Firestore provide private profile, creator, referral, and community storage.
 - The confirmed market-data service runs through a protected Railway/PostgreSQL indexer and a same-origin cache.
 - During an indexer delay, RMT keeps the last confirmed snapshot visible instead of rebuilding the complete history in every visitor’s browser.
 - Production health checks verify the canonical domain, V6 registry/factory bindings, launch pause, market feeds, and critical external dependencies.

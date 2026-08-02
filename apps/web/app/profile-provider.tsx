@@ -40,14 +40,15 @@ import {
   WATCHLIST_EVENT,
   type WatchlistSnapshot
 } from "../lib/watchlist";
+import { useRmtIdentity } from "./rmt-identity";
 
 type SyncState = "local" | "syncing" | "synced" | "error";
 type FirebaseClient = NonNullable<Awaited<ReturnType<typeof getFirebaseClient>>>;
 
 type ProfileContextValue = {
-  completeEmailLinkSignIn: (email?: string) => Promise<void>;
+  accountAuthenticated: boolean;
+  accountReady: boolean;
   configured: boolean;
-  emailLinkPending: boolean;
   loading: boolean;
   profile: RmtProfile;
   profileAuthMessage: string;
@@ -56,8 +57,7 @@ type ProfileContextValue = {
   syncState: SyncState;
   retrySync: () => Promise<void>;
   saveProfile: (profile: RmtProfile) => Promise<void>;
-  sendEmailSignInLink: (email: string) => Promise<void>;
-  signInWithGoogle: () => Promise<void>;
+  signInProfile: () => void;
   signOutProfile: () => Promise<void>;
 };
 
@@ -73,7 +73,6 @@ type CloudWrite = {
 };
 
 const ProfileContext = createContext<ProfileContextValue | null>(null);
-const EMAIL_SIGN_IN_STORAGE_KEY = "rmt:profile:email-sign-in";
 
 function userDocumentData(
   client: FirebaseClient,
@@ -139,71 +138,6 @@ async function writeCloudState(client: FirebaseClient, write: CloudWrite) {
   await batch.commit();
 }
 
-function friendlyAuthError(error: unknown) {
-  const code = error && typeof error === "object" && "code" in error
-    ? String((error as { code?: unknown }).code)
-    : "";
-  if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") {
-    return "Google sign-in was closed. Your local profile is unchanged.";
-  }
-  if (code === "auth/popup-blocked") {
-    return "Your browser blocked Google sign-in. Allow popups for RMT or open RMT in Safari or Chrome, then try again.";
-  }
-  if (code === "auth/operation-not-supported-in-this-environment" || code === "auth/web-storage-unsupported") {
-    return "This in-app browser cannot complete Google sign-in. Open RMT in Safari or Chrome and try again.";
-  }
-  if (code === "auth/network-request-failed") {
-    return "Google sign-in could not reach Firebase. Check your connection and try again.";
-  }
-  if (code === "auth/unauthorized-domain") {
-    return "This RMT domain is not authorized for profile sign-in yet.";
-  }
-  if (code === "auth/operation-not-allowed") {
-    return "Google sign-in is not enabled in the RMT Firebase project yet.";
-  }
-  return "Google sign-in did not finish. Your local profile is unchanged. If this is an in-app browser, open RMT in Safari, Chrome, Firefox, or Edge and try again.";
-}
-
-function friendlyEmailAuthError(error: unknown) {
-  const code = error && typeof error === "object" && "code" in error
-    ? String((error as { code?: unknown }).code)
-    : "";
-  if (code === "auth/invalid-email") {
-    return "Enter a valid email address.";
-  }
-  if (code === "auth/invalid-action-code" || code === "auth/expired-action-code") {
-    return "This sign-in link is invalid or expired. Request a new link.";
-  }
-  if (code === "auth/user-disabled") {
-    return "This profile cannot sign in. Contact RMT support if you believe this is a mistake.";
-  }
-  if (code === "auth/too-many-requests" || code === "auth/quota-exceeded") {
-    return "Too many sign-in links were requested. Wait a few minutes and try again.";
-  }
-  if (code === "auth/network-request-failed") {
-    return "Email sign-in could not reach Firebase. Check your connection and try again.";
-  }
-  if (code === "auth/unauthorized-domain") {
-    return "This RMT domain is not authorized for profile sign-in yet.";
-  }
-  if (code === "auth/operation-not-allowed") {
-    return "Passwordless email sign-in is not enabled in the RMT Firebase project yet.";
-  }
-  return "Email sign-in did not finish. Your local profile is unchanged.";
-}
-
-function normalizeSignInEmail(email: string) {
-  const normalized = email.trim().toLowerCase();
-  if (
-    normalized.length < 3
-    || normalized.length > 254
-    || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)
-  ) {
-    throw new Error("Enter a valid email address.");
-  }
-  return normalized;
-}
-
 function slotDocuments(snapshot: { docs: Array<{ data: () => unknown; id: string }> }) {
   return snapshot.docs.map((document) => ({
     id: document.id,
@@ -212,13 +146,13 @@ function slotDocuments(snapshot: { docs: Array<{ data: () => unknown; id: string
 }
 
 export function ProfileProvider({ children }: { children: ReactNode }) {
+  const accountIdentity = useRmtIdentity();
   const [profile, setProfile] = useState<RmtProfile>(DEFAULT_PROFILE);
   const [identityUpdatedAt, setIdentityUpdatedAt] = useState(0);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [syncState, setSyncState] = useState<SyncState>(firebaseConfigured ? "syncing" : "local");
   const [cloudReady, setCloudReady] = useState(false);
-  const [emailLinkPending, setEmailLinkPending] = useState(false);
   const [profileAuthMessage, setProfileAuthMessage] = useState("");
   const activeUserRef = useRef<User | null>(null);
   const cleanupLegacyRef = useRef(false);
@@ -287,7 +221,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     setIdentityUpdatedAt(local.identityUpdatedAt);
     document.body.dataset.terminalDensity = local.profile.density;
 
-    if (!firebaseConfigured) {
+    if (!firebaseConfigured || !accountIdentity.enabled || !accountIdentity.ready) {
       setLoading(false);
       return;
     }
@@ -306,24 +240,22 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
         return;
       }
       firebaseClientRef.current = client;
-      setEmailLinkPending(client.authApi.isSignInWithEmailLink(client.auth, window.location.href));
-
-      try {
-        const redirectResult = await client.authApi.getRedirectResult(client.auth);
-        if (cancelled) return;
-        if (redirectResult?.user && !redirectResult.user.isAnonymous) {
-          setProfileAuthMessage("Google verified. Your RMT desk is connecting.");
-        }
-      } catch (error) {
-        if (cancelled) return;
-        setSyncState("local");
-        setProfileAuthMessage(friendlyAuthError(error));
-      }
-
-      if (cancelled) return;
 
       unsubscribeAuth = client.authApi.onAuthStateChanged(client.auth, async (nextUser) => {
-        const profileUser = nextUser?.isAnonymous ? null : nextUser;
+        let profileUser: User | null = null;
+        if (
+          nextUser
+          && !nextUser.isAnonymous
+          && accountIdentity.authenticated
+          && accountIdentity.userId
+        ) {
+          try {
+            const token = await nextUser.getIdTokenResult();
+            if (token.claims.rmt_privy_uid === accountIdentity.userId) profileUser = nextUser;
+          } catch {
+            profileUser = null;
+          }
+        }
         const generation = generationRef.current + 1;
         generationRef.current = generation;
         unsubscribeProfile?.();
@@ -429,7 +361,82 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
       unsubscribeWatchlist?.();
       firebaseClientRef.current = null;
     };
-  }, [applyProfile, applyWatchlist]);
+  }, [
+    accountIdentity.authenticated,
+    accountIdentity.enabled,
+    accountIdentity.ready,
+    accountIdentity.userId,
+    applyProfile,
+    applyWatchlist
+  ]);
+
+  useEffect(() => {
+    if (!firebaseConfigured || !accountIdentity.enabled || !accountIdentity.ready) return;
+    let cancelled = false;
+
+    const synchronizeIdentity = async () => {
+      const client = firebaseClientRef.current ?? await getFirebaseClient();
+      if (!client || cancelled) return;
+      firebaseClientRef.current = client;
+
+      if (!accountIdentity.authenticated) {
+        if (client.auth.currentUser) await client.authApi.signOut(client.auth);
+        if (!cancelled) {
+          setProfileAuthMessage("");
+          setSyncState("local");
+        }
+        return;
+      }
+      if (!accountIdentity.identityToken || !accountIdentity.userId) {
+        setSyncState("syncing");
+        return;
+      }
+
+      const currentUser = client.auth.currentUser;
+      if (currentUser) {
+        try {
+          const currentToken = await currentUser.getIdTokenResult();
+          if (currentToken.claims.rmt_privy_uid === accountIdentity.userId) {
+            setProfileAuthMessage("");
+            return;
+          }
+        } catch {
+          await client.authApi.signOut(client.auth);
+        }
+      }
+
+      setProfileAuthMessage("Securing your RMT account across devices…");
+      setSyncState("syncing");
+      const response = await fetch("/api/auth/firebase-session", {
+        method: "POST",
+        headers: { "privy-id-token": accountIdentity.identityToken }
+      });
+      const result = await response.json().catch(() => ({})) as { error?: string; firebaseToken?: string };
+      if (!response.ok || !result.firebaseToken) {
+        throw new Error(result.error || "RMT account sync could not be verified.");
+      }
+      if (cancelled) return;
+      await client.authApi.signInWithCustomToken(client.auth, result.firebaseToken);
+      if (!cancelled) setProfileAuthMessage("");
+    };
+
+    void synchronizeIdentity().catch((error) => {
+      if (cancelled) return;
+      setSyncState("error");
+      setProfileAuthMessage(error instanceof Error
+        ? error.message
+        : "RMT account sync could not be verified. Your local profile remains available.");
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    accountIdentity.authenticated,
+    accountIdentity.enabled,
+    accountIdentity.identityToken,
+    accountIdentity.ready,
+    accountIdentity.userId
+  ]);
 
   useEffect(() => {
     if (!user || !cloudReady) return;
@@ -484,77 +491,30 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     await syncCurrentState(true, true, pendingIdentityWriteRef.current);
   }, [syncCurrentState]);
 
-  const signInWithGoogle = useCallback(async () => {
-    const client = firebaseClientRef.current ?? await getFirebaseClient();
-    if (!client) throw new Error("Firebase profile sync is not configured yet.");
-    firebaseClientRef.current = client;
-    const provider = new client.authApi.GoogleAuthProvider();
-    provider.setCustomParameters({ prompt: "select_account" });
+  const signInProfile = useCallback(() => {
+    if (!accountIdentity.enabled) {
+      setProfileAuthMessage("RMT account sign-in is not configured yet.");
+      return;
+    }
     setProfileAuthMessage("");
     setSyncState("syncing");
-    try {
-      await client.authApi.signInWithRedirect(client.auth, provider);
-    } catch (error) {
-      setSyncState("local");
-      const message = friendlyAuthError(error);
-      setProfileAuthMessage(message);
-      throw new Error(message);
-    }
-  }, []);
-
-  const sendEmailSignInLink = useCallback(async (email: string) => {
-    const client = firebaseClientRef.current ?? await getFirebaseClient();
-    if (!client) throw new Error("Firebase profile sync is not configured yet.");
-    firebaseClientRef.current = client;
-    const normalizedEmail = normalizeSignInEmail(email);
-    const continueUrl = new URL("/profile", window.location.origin);
-    continueUrl.searchParams.set("desk", "email");
-    setSyncState("syncing");
-    try {
-      await client.authApi.sendSignInLinkToEmail(client.auth, normalizedEmail, {
-        handleCodeInApp: true,
-        url: continueUrl.toString()
-      });
-      window.localStorage.setItem(EMAIL_SIGN_IN_STORAGE_KEY, normalizedEmail);
-      setSyncState("local");
-    } catch (error) {
-      setSyncState("local");
-      throw new Error(friendlyEmailAuthError(error));
-    }
-  }, []);
-
-  const completeEmailLinkSignIn = useCallback(async (email?: string) => {
-    const client = firebaseClientRef.current ?? await getFirebaseClient();
-    if (!client) throw new Error("Firebase profile sync is not configured yet.");
-    firebaseClientRef.current = client;
-    if (!client.authApi.isSignInWithEmailLink(client.auth, window.location.href)) {
-      setEmailLinkPending(false);
-      throw new Error("This page does not contain an active RMT email sign-in link.");
-    }
-    const storedEmail = window.localStorage.getItem(EMAIL_SIGN_IN_STORAGE_KEY) ?? "";
-    const normalizedEmail = normalizeSignInEmail(email || storedEmail);
-    setSyncState("syncing");
-    try {
-      await client.authApi.signInWithEmailLink(client.auth, normalizedEmail, window.location.href);
-      window.localStorage.removeItem(EMAIL_SIGN_IN_STORAGE_KEY);
-      setEmailLinkPending(false);
-      window.history.replaceState(window.history.state, "", "/profile");
-    } catch (error) {
-      setSyncState("local");
-      throw new Error(friendlyEmailAuthError(error));
-    }
-  }, []);
+    accountIdentity.login();
+  }, [accountIdentity]);
 
   const signOutProfile = useCallback(async () => {
     const client = await getFirebaseClient();
-    if (!client) return;
-    await client.authApi.signOut(client.auth);
-  }, []);
+    const signOuts: Promise<unknown>[] = [];
+    if (client?.auth.currentUser) signOuts.push(client.authApi.signOut(client.auth));
+    if (accountIdentity.enabled && accountIdentity.authenticated) signOuts.push(accountIdentity.logout());
+    const results = await Promise.allSettled(signOuts);
+    const failed = results.find((result): result is PromiseRejectedResult => result.status === "rejected");
+    if (failed) throw failed.reason;
+  }, [accountIdentity]);
 
   const value = useMemo<ProfileContextValue>(() => ({
-    completeEmailLinkSignIn,
-    configured: firebaseConfigured,
-    emailLinkPending,
+    accountAuthenticated: accountIdentity.authenticated,
+    accountReady: accountIdentity.ready,
+    configured: firebaseConfigured && accountIdentity.enabled,
     loading,
     profile,
     profileAuthMessage,
@@ -563,20 +523,19 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     user,
     syncState,
     saveProfile,
-    sendEmailSignInLink,
-    signInWithGoogle,
+    signInProfile,
     signOutProfile
   }), [
-    completeEmailLinkSignIn,
-    emailLinkPending,
+    accountIdentity.authenticated,
+    accountIdentity.enabled,
+    accountIdentity.ready,
     identityUpdatedAt,
     loading,
     profile,
     profileAuthMessage,
     retrySync,
     saveProfile,
-    sendEmailSignInLink,
-    signInWithGoogle,
+    signInProfile,
     signOutProfile,
     syncState,
     user
