@@ -26,7 +26,7 @@
   overflow-y: auto;
 }
 
-body:has(.walletOverlayPopover, .fundWalletDialog, .walletTransferDialog, .walletReceiveDialog) .communityLive:not(.open) {
+body:has([role="dialog"]) .communityLive:not(.open) {
   opacity: 0;
   pointer-events: none;
   transform: translate(100%, -50%);
