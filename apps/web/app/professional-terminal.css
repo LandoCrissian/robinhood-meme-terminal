@@ -1989,6 +1989,125 @@
   text-transform: uppercase;
 }
 
+/* Confirmed pool price action: compact, continuously refreshed, and layout-stable. */
+.professionalTradeWorkspace .universalChartControls {
+  display: flex;
+  min-width: 0;
+  align-items: flex-end;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.professionalTradeWorkspace .universalChartFeed {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #77847c;
+  font: 900 .46rem/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: .07em;
+  white-space: nowrap;
+}
+
+.professionalTradeWorkspace .universalChartFeed i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #59655e;
+}
+
+.professionalTradeWorkspace .universalChartFeed.active {
+  color: #78e989;
+}
+
+.professionalTradeWorkspace .universalChartFeed.active i {
+  background: #65ec7a;
+  box-shadow: 0 0 0 4px rgba(101, 236, 122, .09);
+}
+
+.professionalTradeWorkspace .universalChartFeed.stale {
+  color: #dfbd67;
+}
+
+.professionalTradeWorkspace .universalChartFeed.stale i {
+  background: #dfbd67;
+}
+
+.professionalTradeWorkspace .universalChartRanges {
+  max-width: min(100%, 470px);
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+
+.professionalTradeWorkspace .universalChartRanges::-webkit-scrollbar {
+  display: none;
+}
+
+.professionalTradeWorkspace .universalChartRanges button:first-child {
+  color: #79ee89;
+}
+
+.professionalTradeWorkspace .universalChart .chartGridLine {
+  stroke: rgba(133, 157, 142, .10);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.professionalTradeWorkspace .universalChart .chartLatest line {
+  stroke: rgba(116, 224, 134, .18);
+  stroke-dasharray: 3 5;
+  vector-effect: non-scaling-stroke;
+}
+
+.professionalTradeWorkspace .universalChart .chartLatest circle {
+  fill: #101b13;
+  stroke: #67e77b;
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+
+.professionalTradeWorkspace .universalChart .chartLatest.active circle {
+  fill: #67e77b;
+  filter: drop-shadow(0 0 5px rgba(103, 231, 123, .65));
+}
+
+.professionalTradeWorkspace .universalChartAxis span:nth-child(2) {
+  letter-spacing: .06em;
+  text-align: center;
+}
+
+@media (max-width: 760px) {
+  .professionalTradeWorkspace .universalChart > header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .professionalTradeWorkspace .universalChartControls {
+    align-items: stretch;
+  }
+
+  .professionalTradeWorkspace .universalChartFeed {
+    min-height: 18px;
+  }
+
+  .professionalTradeWorkspace .universalChartRanges {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .professionalTradeWorkspace .universalChartRanges button {
+    min-width: 44px;
+    flex: 1 0 44px;
+  }
+
+  .professionalTradeWorkspace .universalChartAxis span:nth-child(2) {
+    max-width: 48%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
 .terminalPage .liveSignalDesk > header small {
   color: var(--green);
   font-size: 9px;

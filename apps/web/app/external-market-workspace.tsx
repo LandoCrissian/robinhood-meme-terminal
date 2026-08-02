@@ -11,6 +11,7 @@ import {
   type ExternalMarketResponse
 } from "../lib/external-market";
 import {
+  externalChartRefreshMs,
   type ExternalChartRange,
   type ExternalOhlcvPayload
 } from "../lib/external-ohlcv";
@@ -138,9 +139,9 @@ export function ExternalMarketWorkspace({ initialMarket }: { initialMarket?: Ext
   const [tradeAmount, setTradeAmount] = useState(initialSide === "buy" ? "0.0001" : "");
   const [preparedPositionExit, setPreparedPositionExit] = useState<PreparedPositionExit>();
   const [tab, setTab] = useState<WorkspaceTab>(initialWorkspaceTab);
-  const [range, setRange] = useState<ExternalChartRange>("24H");
+  const [range, setRange] = useState<ExternalChartRange>("LIVE");
   const [chart, setChart] = useState<ExternalOhlcvPayload>();
-  const [chartStatus, setChartStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [chartStatus, setChartStatus] = useState<"loading" | "ready" | "stale" | "error">("loading");
   const [chartError, setChartError] = useState<string>();
   const [copied, setCopied] = useState(false);
   const [shared, setShared] = useState(false);
@@ -243,6 +244,8 @@ export function ExternalMarketWorkspace({ initialMarket }: { initialMarket?: Ext
   useEffect(() => {
     if (!marketAddress || !marketPair) return;
     const controller = new AbortController();
+    let inFlight = false;
+    setChart(undefined);
     setChartStatus("loading");
     setChartError(undefined);
     const query = new URLSearchParams({
@@ -250,8 +253,14 @@ export function ExternalMarketWorkspace({ initialMarket }: { initialMarket?: Ext
       pair: marketPair,
       range
     });
-    void fetch(`/api/markets/ohlcv?${query}`, { signal: controller.signal })
-      .then(async (response) => {
+    const load = async (initial: boolean) => {
+      if (inFlight || controller.signal.aborted) return;
+      inFlight = true;
+      try {
+        const response = await fetch(`/api/markets/ohlcv?${query}`, {
+          cache: "no-store",
+          signal: controller.signal
+        });
         const payload = await response.json() as ExternalOhlcvPayload | { error?: string };
         if (!response.ok || !("candles" in payload)) {
           throw new Error("error" in payload ? payload.error : "Price history unavailable.");
@@ -264,14 +273,21 @@ export function ExternalMarketWorkspace({ initialMarket }: { initialMarket?: Ext
         ) throw new Error("RMT rejected mismatched chart data.");
         setChart(payload);
         setChartStatus("ready");
-      })
-      .catch((cause) => {
+        setChartError(undefined);
+      } catch (cause) {
         if (controller.signal.aborted) return;
-        setChart(undefined);
-        setChartStatus("error");
+        setChartStatus(initial ? "error" : "stale");
         setChartError(cause instanceof Error ? cause.message : "Price history unavailable.");
-      });
-    return () => controller.abort();
+      } finally {
+        inFlight = false;
+      }
+    };
+    void load(true);
+    const interval = window.setInterval(() => void load(false), externalChartRefreshMs(range));
+    return () => {
+      window.clearInterval(interval);
+      controller.abort();
+    };
   }, [marketAddress, marketPair, range]);
 
   useEffect(() => {
@@ -604,7 +620,10 @@ export function ExternalMarketWorkspace({ initialMarket }: { initialMarket?: Ext
             candles={chart?.candles ?? []}
             range={range}
             loading={chartStatus === "loading"}
+            stale={chartStatus === "stale"}
             error={chartError}
+            updatedAt={chart?.updatedAt}
+            lastTradeAt={chart?.lastTradeAt}
             onRangeChange={setRange}
           />
 

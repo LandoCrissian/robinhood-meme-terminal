@@ -98,6 +98,8 @@ export function ExternalWalletPosition({
               symbol={market.symbol}
               balance={units}
               currentValueUsd={units * market.priceUsd}
+              pair={market.pairAddress as Address}
+              rawBalance={balance.data}
               onPrepareExit={prepareGuardExit}
             />
           )}
@@ -144,7 +146,7 @@ export function ExternalTradeTape({
       }
     };
     void load();
-    const interval = window.setInterval(() => void load(), 10_000);
+    const interval = window.setInterval(() => void load(), 4_000);
     return () => {
       active = false;
       window.clearInterval(interval);
@@ -172,7 +174,7 @@ export function ExternalTradeTape({
     <section className="universalTradeTape" aria-labelledby="universal-trade-tape-heading">
       <header>
         <div><small>LIVE TRADE TAPE</small><h3 id="universal-trade-tape-heading">Latest confirmed swaps</h3></div>
-        <span>{status === "loading" ? "Syncing…" : status === "error" ? "Retrying" : `${payload?.trades.length ?? 0} shown · 10s`}</span>
+        <span>{status === "loading" ? "Syncing…" : status === "error" ? "Retrying" : `${payload?.trades.length ?? 0} shown · 4s`}</span>
       </header>
       {payload?.trades.length ? (
         <>

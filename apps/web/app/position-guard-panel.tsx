@@ -16,6 +16,8 @@ import {
   type PositionGuardExitReason,
   type PositionGuardExitRequest
 } from "../lib/position-guard";
+import { type Address } from "viem";
+import { LivePositionGuardControls } from "./live-position-guard-controls";
 
 function money(value: number) {
   if (!Number.isFinite(value) || value < 0) return "—";
@@ -42,6 +44,8 @@ export function PositionGuardPanel({
   symbol,
   balance,
   currentValueUsd,
+  pair,
+  rawBalance,
   onPrepareExit
 }: {
   wallet: string;
@@ -49,6 +53,8 @@ export function PositionGuardPanel({
   symbol: string;
   balance: number;
   currentValueUsd: number;
+  pair?: Address;
+  rawBalance?: bigint;
   onPrepareExit: (request: PositionGuardExitRequest) => boolean;
 }) {
   const [guard, setGuard] = useState<PositionGuard | null>(null);
@@ -332,6 +338,20 @@ export function PositionGuardPanel({
         <button type="button" onClick={() => { setBasis(String(guard.basisUsd)); setEditing(true); }}>Edit rules</button>
         <button type="button" onClick={removeGuard}>Remove</button>
       </div>
+      {pair && rawBalance !== undefined && (
+        <LivePositionGuardControls
+          pair={pair}
+          rawBalance={rawBalance}
+          settings={{
+            stopLossBps: guard.stopLossBps,
+            trailingStopBps: guard.trailingStopBps,
+            breakEvenActivationBps: guard.breakEvenActivationBps,
+            maxPriceImpactBps: 400
+          }}
+          token={token as Address}
+          wallet={wallet as Address}
+        />
+      )}
       {editing && (
         <div className="positionGuardEditor compact">
           <label><span>Original investment</span><div><b>$</b><input inputMode="decimal" type="number" min="0" value={basis} onChange={(event) => setBasis(event.target.value)} /></div></label>
