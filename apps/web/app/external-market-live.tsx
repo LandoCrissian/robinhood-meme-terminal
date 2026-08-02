@@ -98,6 +98,8 @@ export function ExternalWalletPosition({
               symbol={market.symbol}
               balance={units}
               currentValueUsd={units * market.priceUsd}
+              pair={market.pairAddress as Address}
+              rawBalance={balance.data}
               onPrepareExit={prepareGuardExit}
             />
           )}

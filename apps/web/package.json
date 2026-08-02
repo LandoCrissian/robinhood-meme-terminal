@@ -17,6 +17,7 @@
     "test:sms-alerts": "tsx lib/sms-alerts-smoke.ts",
     "test:market-protection": "tsx lib/market-protection-smoke.ts",
     "test:position-guard": "tsx lib/position-guard-smoke.ts",
+    "test:live-position-guard": "tsx lib/live-position-guard-smoke.ts && tsx lib/server/live-position-guard-execution-smoke.ts",
     "test:confirmed-buy-protection": "tsx lib/confirmed-buy-protection-smoke.ts",
     "test:after-buy-protection": "tsx lib/after-buy-protection-smoke.ts",
     "test:public-discovery": "tsx lib/public-discovery-smoke.ts",

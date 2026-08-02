@@ -91,6 +91,7 @@ pnpm --filter market-indexer test:replay
 pnpm --filter market-indexer test:schema
 pnpm --filter market-indexer test:telemetry
 pnpm --filter market-indexer test:server
+pnpm --filter market-indexer test:position-guard
 ```
 
 ## Cutover blockers
@@ -161,3 +162,18 @@ the hosting volume's operating files, write-ahead logs, backups, snapshots, or
 other provider overhead. Railway volume usage must therefore be monitored
 separately. The logical cap cannot guarantee that a small provider volume will
 not fill.
+
+### Optional Position Guard heartbeat
+
+The same private process can call RMT's release-locked Position Guard evaluator
+without provisioning another Railway service. This does not make the shadow
+market index authoritative and does not expose a new public endpoint.
+
+The worker is disabled when both `RMT_POSITION_GUARD_EVALUATOR_URL` and
+`RMT_POSITION_GUARD_EVALUATOR_TOKEN` are empty. If only one is present, startup
+fails. When enabled, the URL must be an exact HTTPS
+`/api/internal/position-guards/evaluate` endpoint with no credentials, query or
+fragment, and the random bearer token must match the server configuration.
+Intervals are restricted to 5–25 seconds so RMT can reject new automatic orders
+when the evaluator heartbeat is older than 30 seconds. Failures are reported in
+private service health without logging the bearer token.

@@ -37,7 +37,49 @@ When an armed market rule changes to triggered while RMT is open, the latest 100
 
 A trigger does not broadcast a transaction. It opens the existing sell workflow, which obtains a fresh quote, checks the exact route and token, enforces the user's price-impact rule and requires the wallet to approve and sign.
 
-Unattended execution is intentionally excluded until RMT has a separately audited, revocable permission contract with strict token, router, quantity, minimum-output, expiration and recipient limits.
+The production site still uses this manual boundary. A real automatic-exit path
+is now implemented behind a complete release lock, but its contract is not
+deployed and the feature is not enabled.
+
+The candidate path consists of:
+
+- `RMTPositionGuardExecutor`, an ownerless executor with immutable Uniswap V3
+  factory, SwapRouter02 and WETH bindings;
+- an exact token allowance chosen and signed by the user;
+- a time-limited Privy signer with a nonempty policy restricted to Robinhood
+  Chain, the executor and `executeV3Exit`;
+- a server-side order tied to the authenticated Privy identity, exact embedded
+  wallet, token, pool, maximum amount and user-selected guard limits;
+- an always-on evaluator with a 30-second heartbeat gate, two-block trigger
+  confirmation, Firestore lease, revision checks and idempotent submission;
+- transaction reconciliation that never blindly retries an unknown result.
+
+The executor has no owner, rescue method, fee path, generic call, arbitrary
+recipient or native-currency receiver. It can pull only a token amount the
+calling wallet approved, through the canonical factory-confirmed token/WETH
+pool, and sends WETH only to that same wallet. It clears its router allowance
+and rejects fee-on-transfer behavior. A 5% contract ceiling, ten-minute deadline
+ceiling and quote-derived minimum output remain enforceable even if the
+off-chain evaluator is wrong.
+
+This is real execution code, not a simulated order. It remains release-locked
+because an external smart-contract review, verified deployment evidence,
+production Privy policy inspection and a bounded canary with a dedicated test
+wallet are still required before user funds should rely on it.
+
+The contract suite includes adversarial coverage for replay, reentrancy,
+fee-on-transfer tokens, weak minimum output, invalid pools, excessive slippage,
+excessive deadlines and router failure rollback. An opt-in mainnet-fork test
+also performs a complete WETH-to-token buy and protected token-to-WETH exit
+through Robinhood Chain's deployed Uniswap V3 factory, quoter, SwapRouter02,
+WETH and a live pool. It verifies that output returns to the wallet and that the
+executor retains neither assets nor router allowance. Run that nonbroadcasting
+test with:
+
+```sh
+cd packages/contracts
+RMT_RUN_MAINNET_FORK=true forge test --match-path test/RMTPositionGuardExecutorFork.t.sol -vv
+```
 
 ## Monitoring limitations
 
@@ -47,3 +89,19 @@ Unattended execution is intentionally excluded until RMT has a separately audite
 - Large-sell thresholds are evidence, not predictions: `watch` begins at a single sell equal to 1% of displayed liquidity or five-minute net sells equal to 3%; `urgent` begins at 3% or 7%, respectively.
 - Notifications and prepared orders do not guarantee execution, profit or loss prevention.
 - Protection Inbox history stays on the current device and is not an execution record, fill receipt, or proof of investment performance.
+
+## Automatic-exit threat model
+
+- A compromised policy signer could sell the exact approved position early,
+  but cannot redirect proceeds or spend more than the wallet's executor
+  allowance. Revocation removes both the allowance and app signer.
+- Spot-price and quote manipulation remain production-review risks. The fixed
+  minimum output and slippage ceiling bound a single execution, but do not turn
+  a thin market into a safe market.
+- An evaluator outage blocks new arming once the heartbeat is stale. Existing
+  orders remain visible for review; RMT must never describe them as healthy
+  while the worker is offline.
+- Unknown submissions enter `review_required`; automatic retry is forbidden
+  until the chain result is reconciled.
+- No automatic exit guarantees a fill, profit, recovery of principal or
+  protection from a gap, freeze, malicious token, drained pool or chain outage.

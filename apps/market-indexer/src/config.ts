@@ -13,7 +13,55 @@ export type MarketIndexerConfig = Readonly<{
   databaseSizeLimitBytes: number | null;
   databaseSsl: boolean;
   port: number;
+  positionGuardEvaluator: Readonly<{
+    intervalMs: number;
+    token: string;
+    url: string;
+  }> | null;
 }>;
+
+function positionGuardEvaluator(env: NodeJS.ProcessEnv): MarketIndexerConfig["positionGuardEvaluator"] {
+  const rawUrl = env.RMT_POSITION_GUARD_EVALUATOR_URL?.trim() ?? "";
+  const token = env.RMT_POSITION_GUARD_EVALUATOR_TOKEN?.trim() ?? "";
+  if (!rawUrl && !token) return null;
+  if (!rawUrl || !token) {
+    throw new Error(
+      "RMT_POSITION_GUARD_EVALUATOR_URL and RMT_POSITION_GUARD_EVALUATOR_TOKEN must be configured together"
+    );
+  }
+  let parsed: URL;
+  try {
+    parsed = new URL(rawUrl);
+  } catch {
+    throw new Error("RMT_POSITION_GUARD_EVALUATOR_URL must be a valid URL");
+  }
+  if (
+    parsed.protocol !== "https:" || parsed.username || parsed.password
+    || parsed.search || parsed.hash
+    || parsed.pathname !== "/api/internal/position-guards/evaluate"
+  ) {
+    throw new Error(
+      "RMT_POSITION_GUARD_EVALUATOR_URL must be an exact HTTPS evaluator endpoint without credentials, query or fragment"
+    );
+  }
+  const length = Buffer.byteLength(token, "utf8");
+  if (length < 32 || length > 512 || !/^[A-Za-z0-9._~-]+$/.test(token)) {
+    throw new Error(
+      "RMT_POSITION_GUARD_EVALUATOR_TOKEN must contain 32 to 512 bearer-token characters"
+    );
+  }
+  return Object.freeze({
+    intervalMs: integer(
+      "RMT_POSITION_GUARD_EVALUATOR_INTERVAL_MS",
+      5_000,
+      5_000,
+      25_000,
+      env
+    ),
+    token,
+    url: parsed.href
+  });
+}
 
 function storageMode(env: NodeJS.ProcessEnv): MarketIndexerConfig["storageMode"] {
   const value = env.MARKET_INDEXER_STORAGE_MODE?.trim().toLowerCase();
@@ -166,6 +214,7 @@ export function loadMarketIndexerConfig(
     databasePoolSize: integer("MARKET_INDEXER_DB_POOL_SIZE", 5, 1, 50, env),
     databaseSizeLimitBytes: databaseSizeLimit(env),
     databaseSsl: databaseSsl(env),
-    port: integer("PORT", 3_003, 1, 65_535, env)
+    port: integer("PORT", 3_003, 1, 65_535, env),
+    positionGuardEvaluator: positionGuardEvaluator(env)
   });
 }

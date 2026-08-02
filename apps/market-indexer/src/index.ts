@@ -3,6 +3,7 @@ import { loadMarketIndexerConfig } from "./config.js";
 import { migrateMarketIndexer } from "./schema.js";
 import { createMarketIndexerServer } from "./server.js";
 import { MarketIndexerWorker } from "./worker.js";
+import { PositionGuardHeartbeat } from "./position-guard-heartbeat.js";
 
 const config = loadMarketIndexerConfig();
 const pool = new Pool({
@@ -13,8 +14,9 @@ const pool = new Pool({
 
 await migrateMarketIndexer(pool, config.storageMode);
 const worker = new MarketIndexerWorker(pool, config);
+const positionGuardHeartbeat = new PositionGuardHeartbeat(config.positionGuardEvaluator);
 await worker.verifySources();
-const server = createMarketIndexerServer(pool, config, worker);
+const server = createMarketIndexerServer(pool, config, worker, positionGuardHeartbeat);
 
 server.listen(config.port, "0.0.0.0", () => {
   console.info(
@@ -22,15 +24,18 @@ server.listen(config.port, "0.0.0.0", () => {
       event: "market_indexer_started",
       port: config.port,
       mode: "shadow",
-      servingProductionTraffic: false
+      servingProductionTraffic: false,
+      positionGuardEvaluatorEnabled: positionGuardHeartbeat.status.enabled
     })
   );
 });
 worker.start();
+positionGuardHeartbeat.start();
 
 async function shutdown(signal: string) {
   console.info(JSON.stringify({ event: "market_indexer_stopping", signal }));
   worker.stop();
+  positionGuardHeartbeat.stop();
   server.close();
   await pool.end();
   process.exit(0);

@@ -13,7 +13,8 @@
     "test:replay": "tsx src/replay-smoke.ts",
     "test:schema": "tsx src/schema-smoke.ts",
     "test:telemetry": "tsx src/telemetry-smoke.ts",
-    "test:server": "tsx src/server-smoke.ts"
+    "test:server": "tsx src/server-smoke.ts",
+    "test:position-guard": "tsx src/position-guard-heartbeat-smoke.ts"
   },
   "dependencies": {
     "pg": "8.22.0",
