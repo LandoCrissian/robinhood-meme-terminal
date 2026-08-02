@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { formatEther, type Address } from "viem";
 import { useAccount, useBalance, useSendTransaction, useWaitForTransactionReceipt } from "wagmi";
 import { prepareNativeTransfer, safeTransferMessage } from "../lib/wallet-transfer";
+import { OverlayPortal } from "./overlay-portal";
 
 type TransferStep = "details" | "review" | "submitted";
 
@@ -109,7 +110,7 @@ export function WalletTransferDialog({
     }
   };
 
-  return <>
+  return <OverlayPortal>
     <button className="walletTransferBackdrop" type="button" aria-label="Close transfer" disabled={transfer.isPending} onClick={onClose} />
     <div className="walletTransferDialog" role="dialog" aria-modal="true" aria-labelledby="wallet-transfer-title">
       <header>
@@ -149,5 +150,5 @@ export function WalletTransferDialog({
       {receipt.isLoading && <p className="walletTransferStatus" role="status">Wallet approved. Waiting for onchain confirmation…</p>}
       {(message || transfer.error) && <p className="walletError" role="alert">{message || safeTransferMessage(transfer.error?.message ?? "")}</p>}
     </div>
-  </>;
+  </OverlayPortal>;
 }

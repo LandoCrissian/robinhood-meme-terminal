@@ -12,7 +12,9 @@ const walletButton = readFileSync(`${appRoot}wallet-button.tsx`, "utf8");
 const privyWalletButton = readFileSync(`${appRoot}privy-wallet-button.tsx`, "utf8");
 const walletTransferDialog = readFileSync(`${appRoot}wallet-transfer-dialog.tsx`, "utf8");
 const walletReceiveDialog = readFileSync(`${appRoot}wallet-receive-dialog.tsx`, "utf8");
-const combined = `${providers}\n${speedProvider}\n${speedEntry}\n${walletButton}\n${privyWalletButton}\n${walletTransferDialog}\n${walletReceiveDialog}`;
+const fundWalletButton = readFileSync(`${appRoot}fund-wallet-button.tsx`, "utf8");
+const overlayPortal = readFileSync(`${appRoot}overlay-portal.tsx`, "utf8");
+const combined = `${providers}\n${speedProvider}\n${speedEntry}\n${walletButton}\n${privyWalletButton}\n${walletTransferDialog}\n${walletReceiveDialog}\n${fundWalletButton}\n${overlayPortal}`;
 
 assert.equal(normalizePrivyAppId("a".repeat(25)), "a".repeat(25), "A valid Privy app ID must activate Speed Wallet.");
 assert.equal(normalizePrivyAppId("too-short"), undefined, "An invalid Privy app ID must fail closed.");
@@ -45,5 +47,11 @@ assert.doesNotMatch(combined, /policyIds:\s*\[\s*\]/, "RMT must never attach an 
 assert.doesNotMatch(combined, /privateKey|authorizationPrivateKey|appSecret/, "Client code must not contain signing secrets.");
 assert.match(walletReceiveDialog, /Chain ID \{targetChain\.id\}/, "Receive must identify the exact destination network.");
 assert.match(walletReceiveDialog, /Copy full address/, "Receive must show and copy the full active-wallet address.");
+assert.match(walletButton, /<OverlayPortal>/, "Legacy wallet controls must escape the transformed header before rendering an overlay.");
+assert.match(privyWalletButton, /<OverlayPortal>/, "Privy wallet controls must escape the transformed header before rendering an overlay.");
+assert.match(fundWalletButton, /<OverlayPortal>/, "Funding controls must stay inside the visual viewport.");
+assert.match(walletTransferDialog, /<OverlayPortal>/, "Transfer controls must stay inside the visual viewport.");
+assert.match(walletReceiveDialog, /<OverlayPortal>/, "Receive controls must stay inside the visual viewport.");
+assert.match(overlayPortal, /createPortal\(children, document\.body\)/, "Wallet sheets must render above transformed navigation and community layers.");
 
 console.log("Speed Wallet remains optional, user-owned, exportable, and signer-disabled by default.");

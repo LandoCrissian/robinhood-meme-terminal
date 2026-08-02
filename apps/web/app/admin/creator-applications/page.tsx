@@ -118,7 +118,11 @@ export default function CreatorApplicationAdminPage() {
     <main className="adminReviewPage">
       <header className="adminReviewHeader">
         <div><p className="eyebrow">PRIVATE RMT OPERATIONS</p><h1>RMT Admin</h1><p>Manage RMT Live, creator applications, module activation requests, community reports, and product feedback from one verified workspace.</p></div>
-        <span>ADMIN VERIFIED</span>
+        <div className="adminExitActions">
+          <span>ADMIN VERIFIED</span>
+          <Link href="/">Return to Terminal</Link>
+          <Link href="/profile">Open Profile</Link>
+        </div>
       </header>
 
       <nav className="adminJumpNav" aria-label="RMT admin sections">

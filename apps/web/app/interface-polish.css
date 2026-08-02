@@ -1,0 +1,642 @@
+/* Final interaction layer: overlays escape transformed headers and every mobile
+   sheet stays inside the visual viewport with a persistent close control. */
+.fundWalletBackdrop,
+.walletBackdrop,
+.walletTransferBackdrop {
+  z-index: 98;
+  touch-action: none;
+}
+
+.fundWalletDialog,
+.walletTransferDialog,
+.walletReceiveDialog,
+.walletOverlayPopover {
+  z-index: 99;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.walletOverlayPopover {
+  position: fixed;
+  top: calc(72px + env(safe-area-inset-top));
+  right: 16px;
+  left: auto;
+  width: min(390px, calc(100vw - 32px));
+  max-height: calc(100dvh - 88px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  overflow-y: auto;
+}
+
+body:has([role="dialog"]) .communityLive:not(.open) {
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(100%, -50%);
+}
+
+.fundWalletHeader,
+.walletReceiveDialog > header,
+.walletTransferDialog > header,
+.walletOverlayPopover .walletPopoverHeader {
+  position: sticky;
+  z-index: 2;
+  top: -18px;
+  padding: 18px 0 10px;
+  background: linear-gradient(180deg, #09100b 78%, rgba(9, 16, 11, 0));
+}
+
+.profileSectionActions {
+  display: flex;
+  align-items: flex-end;
+  flex-direction: column;
+  gap: 8px;
+  text-align: right;
+}
+
+.profileSectionActions > span {
+  color: #637067;
+  font-size: .65rem;
+}
+
+.profileSectionActions > button,
+.profileIdentitySummary > button {
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid #3a5e43;
+  border-radius: 9px;
+  background: #102016;
+  color: #74eb86;
+  font: inherit;
+  font-size: .64rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.profileIdentitySummary {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid #2c4033;
+  border-radius: 15px;
+  background: radial-gradient(circle at 100% 0, rgba(83, 238, 112, .1), transparent 42%), #080d0a;
+}
+
+.profileIdentitySummaryTop {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 11px;
+}
+
+.profileIdentitySummaryAvatar {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border: 1px solid #3a6044;
+  border-radius: 12px;
+  background: #102017;
+  color: #75eb87;
+  font-size: .72rem;
+  font-weight: 950;
+}
+
+.profileIdentitySummaryTop > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.profileIdentitySummaryTop strong {
+  overflow: hidden;
+  color: #edf4ef;
+  font-size: .88rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profileIdentitySummaryTop span {
+  overflow: hidden;
+  color: #829087;
+  font-size: .66rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profileIdentitySummaryTop b {
+  padding: 6px 8px;
+  border: 1px solid #3f6849;
+  border-radius: 7px;
+  color: #69e77f;
+  font: 900 .5rem/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: .08em;
+}
+
+.profileIdentitySummary > p {
+  margin: 0;
+  color: #8d9a91;
+  font-size: .7rem;
+  line-height: 1.5;
+}
+
+.profileIdentitySummary dl {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid #29382f;
+  border-radius: 10px;
+  background: #29382f;
+}
+
+.profileIdentitySummary dl > div {
+  min-width: 0;
+  padding: 10px;
+  background: #0a100c;
+}
+
+.profileIdentitySummary dt {
+  color: #65736a;
+  font-size: .5rem;
+  font-weight: 900;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.profileIdentitySummary dd {
+  overflow: hidden;
+  margin: 4px 0 0;
+  color: #d7e1d9;
+  font-size: .65rem;
+  text-overflow: ellipsis;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+
+.profileIdentitySummary .profileIdentitySummaryMessage {
+  color: #75e889;
+  font-weight: 800;
+}
+
+.profileIdentitySummary > button {
+  align-self: flex-start;
+}
+
+.adminExitActions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.adminExitActions > span,
+.adminExitActions > a {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 11px;
+  border: 1px solid #3b5943;
+  border-radius: 9px;
+  color: #aebbb1;
+  font-size: .59rem;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.adminExitActions > span {
+  color: #72eb83;
+  letter-spacing: .08em;
+}
+
+.adminExitActions > a:hover,
+.adminExitActions > a:focus-visible {
+  border-color: #5adc71;
+  color: #7bed8c;
+}
+
+/* A calmer, product-grade desktop execution rail. */
+@media (min-width: 761px) {
+  .professionalTradeWorkspace .universalWorkspaceGrid {
+    grid-template-columns: minmax(0, 1fr) minmax(410px, 438px);
+    gap: 14px;
+  }
+
+  .professionalTradeWorkspace .universalTradeRail {
+    top: 78px;
+    max-height: calc(100dvh - 94px);
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-color: #35513d transparent;
+    scrollbar-width: thin;
+    border-color: #304438;
+    border-radius: 16px;
+    background: linear-gradient(180deg, #0b120e 0, #070b08 28%, #060906 100%);
+    box-shadow: 0 24px 70px rgba(0, 0, 0, .34);
+  }
+
+  .professionalTradeWorkspace .universalTradeRail > header {
+    position: sticky;
+    z-index: 4;
+    top: 0;
+    min-height: 72px;
+    padding: 15px 17px;
+    border-radius: 16px 16px 0 0;
+    background: rgba(9, 16, 11, .96);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+
+  .professionalTradeWorkspace .universalTradeRail > header h2 {
+    margin-top: 5px;
+    font-size: 1.08rem;
+    letter-spacing: -.02em;
+  }
+
+  .professionalTradeWorkspace .universalTradeRailHeaderActions > span {
+    padding: 6px 8px;
+    border: 1px solid #2c4734;
+    border-radius: 999px;
+    background: #0d1a11;
+    color: #85d891;
+  }
+
+  .professionalTradeWorkspace .universalTradeTabs {
+    position: sticky;
+    z-index: 3;
+    top: 72px;
+    margin: 12px 14px;
+    padding: 4px;
+    border: 1px solid #2f4136;
+    border-radius: 12px;
+    background: rgba(5, 9, 6, .96);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+  }
+
+  .professionalTradeWorkspace .universalTradeTabs button {
+    min-height: 44px;
+    border: 0;
+    border-radius: 8px;
+    font-size: .72rem;
+    letter-spacing: .01em;
+  }
+
+  .professionalTradeWorkspace .universalTradeTabs button:first-child {
+    border-right: 0;
+  }
+
+  .professionalTradeWorkspace .universalTradeTabs button:first-child.active {
+    background: linear-gradient(135deg, #1d4a27, #13361c);
+    box-shadow: inset 0 0 0 1px #397748, 0 5px 16px rgba(34, 186, 67, .12);
+    color: #9af6a7;
+  }
+
+  .professionalTradeWorkspace .universalTradeTabs button:last-child.active {
+    background: linear-gradient(135deg, #552126, #361418);
+    box-shadow: inset 0 0 0 1px #7c363d, 0 5px 16px rgba(197, 56, 68, .12);
+    color: #ffacb0;
+  }
+
+  .professionalTradeWorkspace .universalVenueSelector,
+  .professionalTradeWorkspace .universalRouteDecision,
+  .professionalTradeWorkspace .preparedPositionExit,
+  .professionalTradeWorkspace .universalTradeRail > .externalSushiQuote,
+  .professionalTradeWorkspace .universalTradeRail > .externalUniswapTrade {
+    margin-right: 14px;
+    margin-left: 14px;
+    border-radius: 12px;
+  }
+
+  .professionalTradeWorkspace .universalVenueSelector button {
+    min-height: 72px;
+    border-radius: 9px;
+  }
+
+  .professionalTradeWorkspace .universalRouteDecision {
+    padding: 11px 12px;
+    border-color: #31473a;
+    background: linear-gradient(120deg, #0d1b12, #09100b);
+  }
+
+  .professionalTradeWorkspace .universalTradeRail > .externalSushiQuote,
+  .professionalTradeWorkspace .universalTradeRail > .externalUniswapTrade {
+    padding: 16px;
+    border-color: #304438;
+    background: linear-gradient(150deg, rgba(13, 25, 17, .98), rgba(6, 10, 7, .99));
+    box-shadow: inset 0 1px rgba(255, 255, 255, .025), 0 10px 30px rgba(0, 0, 0, .18);
+  }
+
+  .professionalTradeWorkspace .externalSushiQuote > header {
+    padding-bottom: 13px;
+    border-bottom: 1px solid #26382e;
+  }
+
+  .professionalTradeWorkspace .externalSushiQuote > header strong {
+    margin-top: 5px;
+    font-size: .95rem;
+  }
+
+  .professionalTradeWorkspace .externalSushiAmount {
+    min-height: 108px;
+    margin-top: 14px;
+    padding: 14px;
+    border-color: #304438;
+    border-radius: 13px;
+    background: #050907;
+  }
+
+  .professionalTradeWorkspace .externalSushiAmount input {
+    font-size: 1.65rem;
+    letter-spacing: -.035em;
+  }
+
+  .professionalTradeWorkspace .externalSushiPresets {
+    gap: 8px;
+    margin-top: 9px;
+  }
+
+  .professionalTradeWorkspace .externalSushiPresets button {
+    min-height: 39px;
+    border-radius: 9px;
+    background: #0d1510;
+  }
+
+  .professionalTradeWorkspace .externalSushiResult {
+    min-height: 76px;
+    margin-top: 12px;
+    padding: 13px 14px;
+    border-color: #34503d;
+    border-radius: 12px;
+    background: #0c1710;
+  }
+
+  .professionalTradeWorkspace .externalSushiResult > div:first-child {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .professionalTradeWorkspace .externalSushiResult > div:first-child strong {
+    max-width: 100%;
+    font-size: .92rem;
+    text-align: left;
+  }
+
+  .professionalTradeWorkspace .tradeConfidence,
+  .professionalTradeWorkspace .tradePreSignReadiness,
+  .professionalTradeWorkspace .tradeOrderDetails,
+  .professionalTradeWorkspace .tradeProtectionIntent {
+    margin-top: 12px;
+    border-radius: 12px;
+  }
+
+  .professionalTradeWorkspace .tradeConfidenceToggle {
+    min-height: 64px;
+    padding: 11px 12px;
+  }
+
+  .professionalTradeWorkspace .tradeConfidenceToggle strong {
+    font-size: .72rem;
+  }
+
+  .professionalTradeWorkspace .externalUniswapSubmit {
+    min-height: 52px;
+    margin-top: 12px;
+    border-radius: 11px;
+    font-size: .74rem;
+    box-shadow: 0 8px 22px rgba(66, 221, 94, .14);
+  }
+
+  .professionalTradeWorkspace .externalUniswapSubmit.sell {
+    background: linear-gradient(135deg, #a13e47, #71262d);
+    box-shadow: 0 8px 22px rgba(196, 58, 70, .14);
+  }
+
+  .professionalTradeWorkspace .tradeExecutionPath {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-top: 12px;
+    border-radius: 11px;
+  }
+
+  .professionalTradeWorkspace .tradeExecutionPath li {
+    min-height: 52px;
+    padding: 9px 10px;
+  }
+
+  .professionalTradeWorkspace .tradeExecutionPath li:nth-child(3)::before {
+    display: none;
+  }
+
+  .professionalTradeWorkspace .tradeConfidenceEvidence {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .fundWalletDialog,
+  .walletTransferDialog,
+  .walletReceiveDialog,
+  .walletOverlayPopover {
+    top: auto;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    max-height: min(84dvh, 760px);
+    padding: 18px 16px calc(16px + env(safe-area-inset-bottom));
+    border-right: 0;
+    border-bottom: 0;
+    border-left: 0;
+    border-radius: 22px 22px 0 0;
+    transform: none;
+  }
+
+  .fundWalletDialog::before,
+  .walletTransferDialog::before,
+  .walletReceiveDialog::before,
+  .walletOverlayPopover::before {
+    position: absolute;
+    top: 7px;
+    left: 50%;
+    width: 38px;
+    height: 4px;
+    border-radius: 99px;
+    background: #3d5446;
+    content: "";
+    transform: translateX(-50%);
+  }
+
+  .fundWalletHeader,
+  .walletReceiveDialog > header,
+  .walletTransferDialog > header,
+  .walletOverlayPopover .walletPopoverHeader {
+    top: -18px;
+    padding-top: 20px;
+  }
+
+  .terminalPage .liveSignalDesk {
+    padding: 13px 12px 12px;
+  }
+
+  .terminalPage .liveSignalDesk > header {
+    align-items: center;
+    margin-bottom: 10px;
+  }
+
+  .terminalPage .liveSignalDesk > header strong {
+    margin-top: 2px;
+    font-size: 1rem;
+  }
+
+  .terminalPage .liveSignalDesk > header > em {
+    padding: 6px 8px;
+    border: 1px solid #2d4034;
+    border-radius: 999px;
+    background: #0a110d;
+    font-size: .58rem;
+  }
+
+  .terminalPage .liveSignalRail {
+    display: flex;
+    gap: 8px;
+    margin-inline: -12px;
+    padding: 0 12px 4px;
+    overflow-x: auto;
+    scroll-padding-inline: 12px;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    border: 0;
+    background: transparent;
+  }
+
+  .terminalPage .liveSignalRail::-webkit-scrollbar {
+    display: none;
+  }
+
+  .terminalPage .liveSignalRail > a {
+    flex: 0 0 min(78vw, 300px);
+    min-height: 112px;
+    padding: 13px 14px;
+    scroll-snap-align: start;
+    border: 1px solid #2b3c31;
+    border-radius: 14px;
+    background: linear-gradient(150deg, #0b120e, #070b08);
+  }
+
+  .terminalPage .liveSignalRail strong {
+    font-size: .82rem;
+  }
+
+  .terminalPage .liveSignalRail small {
+    font-size: .7rem;
+  }
+
+  .terminalPage .liveSignalDesk > footer {
+    margin-top: 8px;
+    padding-right: 48px;
+    font-size: .48rem;
+  }
+
+  .terminalPage .runnerSourceFilters {
+    gap: 7px;
+    padding: 8px 12px;
+    scroll-padding-inline: 12px;
+    scroll-snap-type: x proximity;
+    border-bottom-color: #26382e;
+  }
+
+  .terminalPage .runnerSourceFilters button {
+    min-height: 36px;
+    padding: 0 12px;
+    scroll-snap-align: start;
+    border: 1px solid #293b30;
+    border-radius: 9px;
+    background: #09100b;
+  }
+
+  .terminalPage .runnerSourceFilters button:last-child {
+    border-right: 1px solid #293b30;
+  }
+
+  .terminalPage .runnerSourceFilters button.active {
+    border-color: #3c7548;
+    background: #13271a;
+  }
+
+  .professionalTradeWorkspace .universalTradeRail > .externalSushiQuote,
+  .professionalTradeWorkspace .universalTradeRail > .externalUniswapTrade {
+    padding: 13px;
+    border-radius: 14px;
+  }
+
+  .professionalTradeWorkspace .externalSushiAmount,
+  .professionalTradeWorkspace .externalSushiResult,
+  .professionalTradeWorkspace .tradeConfidence,
+  .professionalTradeWorkspace .tradePreSignReadiness,
+  .professionalTradeWorkspace .tradeOrderDetails,
+  .professionalTradeWorkspace .tradeProtectionIntent {
+    border-radius: 12px;
+  }
+
+  .profileSectionHeading {
+    align-items: flex-start;
+    flex-direction: row;
+  }
+
+  .profileSectionActions {
+    align-items: flex-end;
+    max-width: 44%;
+  }
+
+  .profileSectionActions > span {
+    display: none;
+  }
+
+  .profileIdentitySummary {
+    padding: 14px;
+  }
+
+  .profileIdentitySummary dl {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .profileIdentitySummary dl > div:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .profileIdentitySummary > button {
+    width: 100%;
+    min-height: 44px;
+  }
+
+  .adminExitActions {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .adminExitActions > span {
+    width: 100%;
+  }
+
+  .adminExitActions > a {
+    flex: 1;
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 380px) {
+  .profileIdentitySummaryTop {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .profileIdentitySummaryTop > b {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+}

@@ -69,6 +69,7 @@ export default function ProfilePage() {
   const [authMessage, setAuthMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [reviewing, setReviewing] = useState(false);
+  const [editorExpanded, setEditorExpanded] = useState(true);
   const [now, setNow] = useState(() => Date.now());
   const isAdmin = Boolean(user?.emailVerified && user.email?.toLowerCase() === RMT_ADMIN_EMAIL);
 
@@ -76,6 +77,9 @@ export default function ProfilePage() {
     setDraft(profile);
     setReviewing(false);
   }, [profile]);
+  useEffect(() => {
+    if (!loading && identityUpdatedAt > 0) setEditorExpanded(false);
+  }, [identityUpdatedAt, loading]);
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 30_000);
     return () => window.clearInterval(timer);
@@ -117,6 +121,7 @@ export default function ProfilePage() {
       setMessage(identityChanged
         ? `Identity saved. Corrections remain open for 10 minutes, then editing pauses for 24 hours.${user ? " Synced across devices." : ""}`
         : user ? "Terminal preferences saved and synced." : "Terminal preferences saved on this device.");
+      setEditorExpanded(false);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Profile could not be saved.");
     } finally {
@@ -186,9 +191,43 @@ export default function ProfilePage() {
         <form className="profileEditor" onSubmit={submit}>
           <div className="profileSectionHeading">
             <div><p className="eyebrow">IDENTITY</p><h2>Make the desk yours</h2></div>
-            <span>{identityState.phase === "locked" ? "Protected across devices" : "Never tied to transaction signing"}</span>
+            <div className="profileSectionActions">
+              <span>{identityState.phase === "locked" ? "Protected across devices" : "Never tied to transaction signing"}</span>
+              {identityUpdatedAt > 0 && <button
+                type="button"
+                aria-expanded={editorExpanded}
+                onClick={() => {
+                  if (editorExpanded) {
+                    setDraft(profile);
+                    setReviewing(false);
+                    setMessage("");
+                  }
+                  setEditorExpanded((value) => !value);
+                }}
+              >{editorExpanded ? "Collapse" : "Edit desk"}</button>}
+            </div>
           </div>
 
+          {!editorExpanded && identityUpdatedAt > 0 ? (
+            <section className="profileIdentitySummary" aria-label="Saved desk identity">
+              <div className="profileIdentitySummaryTop">
+                <span className="profileIdentitySummaryAvatar" aria-hidden="true">{initials}</span>
+                <div>
+                  <strong>{profile.displayName}</strong>
+                  <span>{profile.handle ? `@${profile.handle}` : "Private RMT profile"}</span>
+                </div>
+                <b>{identityState.phase === "locked" ? "PROTECTED" : "SAVED"}</b>
+              </div>
+              {profile.bio && <p>{profile.bio}</p>}
+              <dl>
+                <div><dt>Mode</dt><dd>{profile.traderMode}</dd></div>
+                <div><dt>Density</dt><dd>{profile.density}</dd></div>
+                <div><dt>Editing</dt><dd>{identityState.phase === "locked" ? `Reopens ${editTimeLabel(identityState.nextEditAt)}` : "Available"}</dd></div>
+              </dl>
+              {message && <p className="profileIdentitySummaryMessage" role="status">{message}</p>}
+              <button type="button" onClick={() => setEditorExpanded(true)}>Update desk settings</button>
+            </section>
+          ) : <>
           <div className={`profileIdentityPolicy ${identityState.phase}`}>
             <div>
               <strong>
@@ -245,6 +284,7 @@ export default function ProfilePage() {
             </button>
             {message && <p role="status">{message}</p>}
           </div>
+          </>}
         </form>
 
         <aside className="profileRail">

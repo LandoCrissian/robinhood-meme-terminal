@@ -90,6 +90,8 @@ assert.match(profilePageSource, /Link Google/);
 assert.match(profilePageSource, /Link wallet/);
 assert.match(profilePageSource, /useDisconnect\(\)/);
 assert.match(profilePageSource, /disconnectWallet\(\)/);
+assert.match(profilePageSource, /setEditorExpanded\(false\)/, "A saved identity must return to a compact profile summary.");
+assert.match(profilePageSource, /Update desk settings/, "A user must be able to reopen the compact identity editor.");
 assert.equal((profilePageSource.match(/Sign in or create RMT account/g) ?? []).length, 1);
 assert.match(identityBridgeSource, /account\.walletClientType !== "privy"/);
 assert.match(identityBridgeSource, /linkWallet: \(\) => linkWallet\(\{ walletChainType: "ethereum-only" \}\)/);

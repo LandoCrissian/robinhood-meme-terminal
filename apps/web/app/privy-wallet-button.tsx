@@ -11,6 +11,7 @@ import { recordExperienceStage } from "../lib/experience-funnel";
 import { FundWalletButton } from "./fund-wallet-button";
 import { WalletReceiveDialog } from "./wallet-receive-dialog";
 import { WalletTransferDialog } from "./wallet-transfer-dialog";
+import { OverlayPortal } from "./overlay-portal";
 
 function shortAddress(address: string) {
   return `${address.slice(0, 6)}…${address.slice(-4)}`;
@@ -156,9 +157,9 @@ export function PrivyWalletButton({
           <button className="wallet live" type="button" aria-expanded={open} aria-controls="privy-wallet-dialog" onClick={() => setOpen((value) => !value)}>
             {shortAddress(address)}
           </button>
-          {open && <>
+          {open && <OverlayPortal>
             <button className="walletBackdrop" type="button" aria-label="Close wallet menu" onClick={close} />
-            <div className="walletPopover privyWalletPopover" id="privy-wallet-dialog" role="dialog" aria-modal="true" aria-label="Manage wallets">
+            <div className="walletPopover walletOverlayPopover privyWalletPopover" id="privy-wallet-dialog" role="dialog" aria-modal="true" aria-label="Manage wallets">
               <div className="walletPopoverHeader">
                 <div><strong>Your trading wallets</strong><span>Choose which wallet RMT uses. You remain in control.</span></div>
                 <button type="button" aria-label="Close wallet menu" onClick={close}>×</button>
@@ -198,7 +199,7 @@ export function PrivyWalletButton({
               </p>
               {message && <p className="walletError" role="status">{message}</p>}
             </div>
-          </>}
+          </OverlayPortal>}
         </div>
       </div>
       <WalletReceiveDialog address={address as Address} open={receiveOpen} target={target} onClose={() => setReceiveOpen(false)} />
