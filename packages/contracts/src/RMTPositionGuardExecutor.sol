@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import {FullMath} from "./libraries/FullMath.sol";
+import {FullMath} from "@uniswap/v4-core/src/libraries/FullMath.sol";
 
 interface IRMTPositionGuardERC20 {
     function balanceOf(address account) external view returns (uint256);
@@ -109,6 +109,9 @@ contract RMTPositionGuardExecutor {
     /// @dev A Privy signer may submit this transaction as the wallet only after the user grants a policy-scoped signer.
     ///      A direct wallet transaction works identically. The wallet must separately approve no more than the amount it
     ///      is prepared to protect; an unused or revoked allowance cannot be bypassed here.
+    // slither-disable-start reentrancy-balance
+    // The nonReentrant modifier is entered before every external token/router call. The balance snapshot is an
+    // intentional invariant that rejects fee-on-transfer, rebasing, or otherwise unsupported token behavior.
     function executeV3Exit(Exit calldata exit) external nonReentrant returns (uint256 amountOut) {
         if (
             exit.token == address(0) || exit.token == weth || exit.token.code.length == 0 || exit.amountIn == 0
@@ -162,6 +165,7 @@ contract RMTPositionGuardExecutor {
 
         emit ProtectedExitExecuted(msg.sender, exit.orderId, exit.token, exit.fee, exit.amountIn, amountOut);
     }
+    // slither-disable-end reentrancy-balance
 
     function _quoteAtSqrtPrice(uint160 sqrtPriceX96, uint256 amountIn, bool tokenInIsToken0)
         private
