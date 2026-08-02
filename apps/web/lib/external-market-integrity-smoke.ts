@@ -6,7 +6,11 @@ import {
   externalProjectProvenanceLabel,
   selectPreferredLifecycleMarket
 } from "./external-market";
-import { isNonzeroEvmAddress, selectExternalPairBaseToken } from "./external-market-identity";
+import {
+  isNonzeroEvmAddress,
+  selectExternalPairBaseToken,
+  selectExternalPairBaseTokenWithAssetQuotes
+} from "./external-market-identity";
 import {
   marketDistributionPassport,
   UNISWAP_LAUNCHES_ANNOUNCEMENT_URL,
@@ -18,6 +22,8 @@ const zero = { address: "0x0000000000000000000000000000000000000000", name: "Eth
 const wrappedNative = { address: syntheticAddress("a"), name: "Wrapped Ether" };
 const external = { address: syntheticAddress("b"), name: "External token" };
 const excluded = new Set([wrappedNative.address.toLowerCase()]);
+const stockToken = { address: syntheticAddress("c"), name: "Canonical Stock Token" };
+const stockTokens = new Set([stockToken.address.toLowerCase()]);
 
 assert.equal(isNonzeroEvmAddress(zero.address), false, "The native zero-address sentinel is not an ERC-20 trade target");
 assert.equal(isNonzeroEvmAddress(external.address), true);
@@ -48,6 +54,21 @@ assert.equal(
   selectExternalPairBaseToken(external, { address: syntheticAddress("c"), name: "Unknown quote" }, excluded),
   undefined,
   "An unrecognized quote asset must fail closed"
+);
+assert.equal(
+  selectExternalPairBaseTokenWithAssetQuotes(external, stockToken, excluded, stockTokens),
+  external,
+  "A project token quoted against an official Stock Token may be discovered"
+);
+assert.equal(
+  selectExternalPairBaseTokenWithAssetQuotes(stockToken, wrappedNative, excluded, stockTokens),
+  stockToken,
+  "An official Stock Token quoted against wrapped native remains independently discoverable"
+);
+assert.equal(
+  selectExternalPairBaseTokenWithAssetQuotes(stockToken, external, excluded, stockTokens),
+  undefined,
+  "A reversed Stock Token/project pair must not transfer base-token metrics to the quote token"
 );
 
 const curveMarket = {

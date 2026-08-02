@@ -27,6 +27,18 @@ export function verifiedPrivyEmail(user: Pick<PrivyUser, "linked_accounts">) {
   return "";
 }
 
+export function verifiedPrivyPhone(user: Pick<PrivyUser, "linked_accounts">) {
+  const phone = user.linked_accounts.find((account) => account.type === "phone");
+  if (phone?.type !== "phone" || phone.verified_at <= 0) return "";
+  const value = (phone.phoneNumber || phone.number || "").trim();
+  return /^\+[1-9][0-9]{7,14}$/.test(value) ? value : "";
+}
+
+export function privyBearerToken(request: Request) {
+  const token = request.headers.get("authorization")?.match(/^Bearer ([A-Za-z0-9._~-]{100,16384})$/)?.[1];
+  return token ?? "";
+}
+
 export async function verifyPrivyIdentity(identityToken: string) {
   const configuration = privyIdentityConfiguration();
   if (!configuration) throw new Error("privy_identity_not_configured");

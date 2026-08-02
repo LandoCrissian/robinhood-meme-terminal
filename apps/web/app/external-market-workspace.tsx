@@ -15,6 +15,7 @@ import {
   type ExternalOhlcvPayload
 } from "../lib/external-ohlcv";
 import { isUniswapV4PoolId } from "../lib/external-v4-evidence";
+import type { ExternalSellPressure } from "../lib/external-trades";
 import { ipfsToHttp } from "../lib/token-metadata";
 import {
   resilientTradeVenue,
@@ -30,11 +31,20 @@ import { ExternalRouteComparison } from "./external-route-comparison";
 import { ExternalSushiQuotePanel } from "./external-sushi-quote-panel";
 import { ExternalUniswapTradePanel } from "./external-uniswap-trade-panel";
 import { ExternalV4HookPassport } from "./external-v4-hook-passport";
+import { MarketProtectionDesk } from "./market-protection-desk";
 import { SiteFooter } from "./site-footer";
 import { TradeExecutionControls } from "./trade-ticket-ui";
 import { WatchlistButton } from "./watchlist-button";
 import { recordExperienceStage } from "../lib/experience-funnel";
 import { useTradePreferences } from "../lib/use-trade-preferences";
+import {
+  positionGuardAfterConfirmedExit,
+  positionGuardExitLabel,
+  readPositionGuard,
+  removePositionGuard,
+  writePositionGuard,
+  type PreparedPositionExit
+} from "../lib/position-guard";
 
 type WorkspaceTab = "activity" | "safety" | "origin";
 type TradeSide = "buy" | "sell";
@@ -126,6 +136,7 @@ export function ExternalMarketWorkspace({ initialMarket }: { initialMarket?: Ext
   );
   const [side, setSide] = useState<TradeSide>(initialSide);
   const [tradeAmount, setTradeAmount] = useState(initialSide === "buy" ? "0.0001" : "");
+  const [preparedPositionExit, setPreparedPositionExit] = useState<PreparedPositionExit>();
   const [tab, setTab] = useState<WorkspaceTab>(initialWorkspaceTab);
   const [range, setRange] = useState<ExternalChartRange>("24H");
   const [chart, setChart] = useState<ExternalOhlcvPayload>();
@@ -141,6 +152,7 @@ export function ExternalMarketWorkspace({ initialMarket }: { initialMarket?: Ext
   const [tradeVenueNotice, setTradeVenueNotice] = useState("");
   const [tradeVenueRefresh, setTradeVenueRefresh] = useState(0);
   const [mobileTradeOpen, setMobileTradeOpen] = useState(false);
+  const [sellPressure, setSellPressure] = useState<ExternalSellPressure>();
   const { preferences: tradePreferences } = useTradePreferences();
   const tradeRef = useRef<HTMLElement>(null);
   const tradeReturnFocus = useRef<HTMLElement>(null);
@@ -174,6 +186,8 @@ export function ExternalMarketWorkspace({ initialMarket }: { initialMarket?: Ext
 
   useEffect(() => {
     setTradeAmount(side === "buy" ? "0.0001" : "");
+    setPreparedPositionExit(undefined);
+    setSellPressure(undefined);
   }, [market?.address]);
 
   const closeMobileTrade = useCallback(() => {
@@ -336,11 +350,16 @@ export function ExternalMarketWorkspace({ initialMarket }: { initialMarket?: Ext
     tradeVenueRefresh
   ]);
 
-  const setTradeSide = (next: TradeSide, focus = false, preparedAmount?: string) => {
-    if (focus && (tradeVenueStatus !== "ready" || tradeVenues.length === 0)) return;
+  const setTradeSide = (next: TradeSide, focus = false, preparedExit?: PreparedPositionExit) => {
+    const acceptedPreparedExit = next === "sell"
+      && preparedExit?.token.toLowerCase() === marketAddress?.toLowerCase()
+        ? preparedExit
+        : undefined;
+    if (focus && !acceptedPreparedExit && (tradeVenueStatus !== "ready" || tradeVenues.length === 0)) return;
     if (focus) recordExperienceStage("trade_preparation_opened");
     setSide(next);
-    setTradeAmount(preparedAmount ?? (next === "buy" ? "0.0001" : ""));
+    setPreparedPositionExit(acceptedPreparedExit);
+    setTradeAmount(acceptedPreparedExit?.amount ?? (next === "buy" ? "0.0001" : ""));
     const url = new URL(window.location.href);
     url.searchParams.set("side", next);
     window.history.replaceState(window.history.state, "", url);
@@ -356,6 +375,25 @@ export function ExternalMarketWorkspace({ initialMarket }: { initialMarket?: Ext
     }
     window.requestAnimationFrame(() => tradeRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
   };
+
+  const updateTradeAmount = useCallback((value: string) => {
+    setTradeAmount(value);
+    setPreparedPositionExit((current) => current?.amount === value ? current : undefined);
+  }, []);
+
+  const completePreparedPositionExit = useCallback(() => {
+    if (preparedPositionExit) {
+      const guard = readPositionGuard(preparedPositionExit.wallet, preparedPositionExit.token);
+      const next = guard
+        ? positionGuardAfterConfirmedExit(guard, preparedPositionExit.reason)
+        : null;
+      if (next) writePositionGuard(next);
+      else if (preparedPositionExit.reason === "protected-floor") {
+        removePositionGuard(preparedPositionExit.wallet, preparedPositionExit.token);
+      }
+    }
+    setPreparedPositionExit(undefined);
+  }, [preparedPositionExit]);
 
   const copyContract = async () => {
     if (!market) return;
@@ -398,6 +436,9 @@ export function ExternalMarketWorkspace({ initialMarket }: { initialMarket?: Ext
       all.findIndex((item) => item.venue === candidate.venue) === index
     ))
   ), [tradeVenues]);
+  const officialStockToken = market?.stockAssetRelationships?.find(
+    (relationship) => relationship.relationship === "canonical-stock-token"
+  );
   const tradeVenueIds = useMemo(() => tradeVenueOptions.map((candidate) => candidate.venue), [tradeVenueOptions]);
 
   useEffect(() => {
@@ -503,6 +544,14 @@ export function ExternalMarketWorkspace({ initialMarket }: { initialMarket?: Ext
             <p>{originLabel(market)}</p>
             <h1>{market.name}</h1>
             <span>${market.symbol.replaceAll("$", "")} · {market.dexId}</span>
+            {market.stockAssetRelationships?.length ? (
+              <small className="universalStockAssetLabel">
+                {market.stockAssetRelationships.map((relationship) => relationship.tokenSymbol).join(" + ")}
+                {market.stockAssetRelationships.some((relationship) => relationship.relationship === "canonical-stock-token")
+                  ? " · OFFICIAL STOCK TOKEN"
+                  : " · STOCK-TOKEN PAIR"}
+              </small>
+            ) : null}
           </div>
         </div>
         <div className="universalHeroPrice">
@@ -574,8 +623,9 @@ export function ExternalMarketWorkspace({ initialMarket }: { initialMarket?: Ext
               <ExternalWalletPosition
                 market={market}
                 onBuy={() => setTradeSide("buy", true)}
-                onSell={(amount) => setTradeSide("sell", true, amount)}
+                onSell={(exit) => setTradeSide("sell", true, exit)}
               />
+              <MarketProtectionDesk market={market} sellPressure={sellPressure} />
               <section className="universalInsightPanel" aria-labelledby="workspace-activity">
                 <header><div><small>MARKET FLOW</small><h2 id="workspace-activity">Buyers and sellers</h2></div><span>{buyPressure}% buys · 1h</span></header>
                 <div className="universalFlowTrack" aria-hidden="true"><i style={{ width: `${buyPressure}%` }} /></div>
@@ -590,7 +640,7 @@ export function ExternalMarketWorkspace({ initialMarket }: { initialMarket?: Ext
                   ))}
                 </div>
               </section>
-              <ExternalTradeTape market={market} />
+              <ExternalTradeTape market={market} onSellPressure={setSellPressure} />
             </>
           )}
 
@@ -619,6 +669,28 @@ export function ExternalMarketWorkspace({ initialMarket }: { initialMarket?: Ext
                   : "RMT has not attributed this external token to a verified launchpad creator record."}
                 {" "}{distributionPassport.summary}
               </p>
+              {market.stockAssetRelationships?.length ? (
+                <div className="universalStockAssetEvidence" aria-label="Verified Robinhood Stock Token relationships">
+                  {market.stockAssetRelationships.map((relationship) => (
+                    <article key={`${relationship.relationship}:${relationship.contractAddress}`}>
+                      <div>
+                        {relationship.logoUrl ? <img src={relationship.logoUrl} alt="" referrerPolicy="no-referrer" /> : null}
+                        <span>
+                          <small>{relationship.relationship === "canonical-stock-token" ? "CANONICAL ROBINHOOD STOCK TOKEN" : "VERIFIED MARKET PAIR ASSET"}</small>
+                          <strong>{relationship.tokenSymbol} · {relationship.tokenName}</strong>
+                        </span>
+                      </div>
+                      <p>
+                        {relationship.relationship === "canonical-stock-token"
+                          ? `Robinhood’s live registry identifies this contract as the ${relationship.tokenSymbol} Stock Token.`
+                          : `This pool is paired with Robinhood’s canonical ${relationship.tokenSymbol} Stock Token. Pairing does not make ${market.symbol} stock-backed.`}
+                      </p>
+                      <span>{relationship.status} · multiplier {relationship.currentMultiplier}</span>
+                      <a href="https://docs.robinhood.com/chain/contracts/" target="_blank" rel="noopener noreferrer">Verify in Robinhood registry ↗</a>
+                    </article>
+                  ))}
+                </div>
+              ) : null}
               <div className="universalPassportFlow" aria-label="Market passport evidence chain">
                 {distributionPassport.steps.map((step, index) => (
                   <article className={step.tone} key={step.id}>
@@ -679,6 +751,17 @@ export function ExternalMarketWorkspace({ initialMarket }: { initialMarket?: Ext
             <button type="button" role="tab" aria-selected={side === "sell"} className={side === "sell" ? "active" : ""} onClick={() => setTradeSide("sell")}>Sell</button>
           </div>
           <TradeExecutionControls />
+          {side === "sell" && preparedPositionExit && (
+            <section className="preparedPositionExit" role="status" aria-label="Position Guard prepared sell">
+              <span>
+                <small>POSITION GUARD HANDOFF</small>
+                <strong>{positionGuardExitLabel(preparedPositionExit.reason)}</strong>
+                <em>{preparedPositionExit.amount} {market.symbol} · {preparedPositionExit.exitBps / 100}% of onchain balance</em>
+              </span>
+              <button type="button" onClick={() => { setPreparedPositionExit(undefined); setTradeAmount(""); }}>Clear</button>
+              <p>RMT calculated this amount from raw wallet units. The selected venue must still return a fresh quote, and your wallet must review and sign.</p>
+            </section>
+          )}
           {activeTradeVenue && (
             <div className={`universalRouteDecision ${tradeVenueSelectionMode}`} role="status">
               <span>
@@ -704,9 +787,9 @@ export function ExternalMarketWorkspace({ initialMarket }: { initialMarket?: Ext
             />
           )}
           {tradeVenueStatus === "loading" && <div className="universalTradeUnavailable"><strong>Verifying execution venues…</strong><p>Matching independent pool and onchain evidence for this token.</p></div>}
-          {tradingMarket && activeTradeVenue?.venue === "sushi" && <ExternalSushiQuotePanel market={tradingMarket} side={side} amount={tradeAmount} onAmountChange={setTradeAmount} />}
-          {tradingMarket && activeTradeVenue?.venue === "uniswap-v3" && <ExternalUniswapTradePanel market={tradingMarket} side={side} amount={tradeAmount} onAmountChange={setTradeAmount} version="v3" />}
-          {tradingMarket && activeTradeVenue?.venue === "uniswap-v4" && <ExternalUniswapTradePanel market={tradingMarket} side={side} amount={tradeAmount} onAmountChange={setTradeAmount} version="v4" />}
+          {tradingMarket && activeTradeVenue?.venue === "sushi" && <ExternalSushiQuotePanel market={tradingMarket} side={side} amount={tradeAmount} onAmountChange={updateTradeAmount} onSwapConfirmed={completePreparedPositionExit} />}
+          {tradingMarket && activeTradeVenue?.venue === "uniswap-v3" && <ExternalUniswapTradePanel market={tradingMarket} side={side} amount={tradeAmount} onAmountChange={updateTradeAmount} onSwapConfirmed={completePreparedPositionExit} version="v3" />}
+          {tradingMarket && activeTradeVenue?.venue === "uniswap-v4" && <ExternalUniswapTradePanel market={tradingMarket} side={side} amount={tradeAmount} onAmountChange={updateTradeAmount} onSwapConfirmed={completePreparedPositionExit} version="v4" />}
           {tradeVenueStatus === "error" && !tradingMarket && (
             <div className="universalTradeUnavailable">
               <strong>Execution check unavailable</strong>
@@ -716,15 +799,19 @@ export function ExternalMarketWorkspace({ initialMarket }: { initialMarket?: Ext
           )}
           {tradeVenueStatus === "ready" && !tradingMarket && (
             <div className="universalTradeUnavailable">
-              <strong>{tradeVenueOptions.length > 0 ? "Your saved route is unavailable" : "View-only market"}</strong>
-              <p>{tradeVenueOptions.length > 0
+              <strong>{officialStockToken
+                ? "Official Stock Token · view only"
+                : tradeVenueOptions.length > 0 ? "Your saved route is unavailable" : "View-only market"}</strong>
+              <p>{officialStockToken
+                ? `${officialStockToken.tokenName} is identified by Robinhood’s exact live registry contract. RMT shows its market evidence but does not prepare execution until jurisdiction controls are available.`
+                : tradeVenueOptions.length > 0
                 ? `RMT verified ${tradeVenueOptions[0] ? tradeVenueLabel(tradeVenueOptions[0].venue) : "another route"} as an alternative, but it will not replace your saved venue without your decision.`
                 : "RMT found no independently verified in-site execution route for this token."}</p>
-              {tradeVenueOptions[0]
+              {!officialStockToken && tradeVenueOptions[0]
                 ? <button type="button" onClick={() => selectTradeVenue(tradeVenueOptions[0].venue)}>
                     Use {tradeVenueLabel(tradeVenueOptions[0].venue)} for this order
                   </button>
-                : <button type="button" onClick={retryTradeVenueDiscovery}>Recheck routes</button>}
+                : !officialStockToken && <button type="button" onClick={retryTradeVenueDiscovery}>Recheck routes</button>}
             </div>
           )}
           <footer>

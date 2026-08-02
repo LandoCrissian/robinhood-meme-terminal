@@ -1,11 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { erc20Abi, formatUnits, type Address } from "viem";
 import { useAccount, useReadContract } from "wagmi";
 import type { ExternalMarket } from "../lib/external-market";
 import { summarizeExternalSellPressure, summarizeExternalTradeActors, type ExternalPoolTradesPayload } from "../lib/external-trades";
 import { formatOwnershipBps } from "../lib/token-risk-evidence";
+import {
+  exactTokenAmountForExit,
+  type PreparedPositionExit,
+  type PositionGuardExitRequest
+} from "../lib/position-guard";
 import { useWalletConstellation } from "../lib/use-wallet-constellation";
 import type {
   WalletConstellationNode,
@@ -40,7 +45,7 @@ export function ExternalWalletPosition({
 }: {
   market: ExternalMarket;
   onBuy: () => void;
-  onSell: (amount?: string) => void;
+  onSell: (exit?: PreparedPositionExit) => void;
 }) {
   const { address } = useAccount();
   const token = market.address as Address;
@@ -64,6 +69,19 @@ export function ExternalWalletPosition({
     const parsed = Number(formatUnits(balance.data, decimals.data));
     return Number.isFinite(parsed) ? parsed : null;
   }, [balance.data, decimals.data]);
+  const prepareGuardExit = (request: PositionGuardExitRequest) => {
+    if (!address || balance.data === undefined || decimals.data === undefined) return false;
+    const amount = exactTokenAmountForExit(balance.data, decimals.data, request.exitBps);
+    if (!amount) return false;
+    onSell({
+      ...request,
+      amount,
+      token: market.address,
+      wallet: address,
+      createdAt: Date.now()
+    });
+    return true;
+  };
 
   return (
     <section className="universalPosition" aria-labelledby="universal-position-heading">
@@ -80,7 +98,7 @@ export function ExternalWalletPosition({
               symbol={market.symbol}
               balance={units}
               currentValueUsd={units * market.priceUsd}
-              onPrepareExit={(amount) => onSell(amount)}
+              onPrepareExit={prepareGuardExit}
             />
           )}
         </div>
@@ -90,7 +108,13 @@ export function ExternalWalletPosition({
   );
 }
 
-export function ExternalTradeTape({ market }: { market: ExternalMarket }) {
+export function ExternalTradeTape({
+  market,
+  onSellPressure
+}: {
+  market: ExternalMarket;
+  onSellPressure?: (pressure: ReturnType<typeof summarizeExternalSellPressure>) => void;
+}) {
   const [payload, setPayload] = useState<ExternalPoolTradesPayload>();
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
 
@@ -135,19 +159,10 @@ export function ExternalTradeTape({ market }: { market: ExternalMarket }) {
     () => summarizeExternalSellPressure(payload?.trades ?? [], market.liquidityUsd),
     [market.liquidityUsd, payload?.trades]
   );
-  const notifiedSell = useRef<string | null>(null);
 
   useEffect(() => {
-    const signalId = sellPressure.largestSell?.transactionHash ?? null;
-    if (sellPressure.level === "none" || !signalId || notifiedSell.current === signalId) return;
-    notifiedSell.current = signalId;
-    if (typeof Notification !== "undefined" && Notification.permission === "granted") {
-      new Notification(`${sellPressure.level === "urgent" ? "Urgent" : "Large"} sell · ${market.symbol}`, {
-        body: `$${compact(sellPressure.largestSell?.volumeUsd ?? 0)} confirmed sell; review the live position and exit quote.`,
-        tag: `rmt-large-sell:${market.address}:${signalId}`
-      });
-    }
-  }, [market.address, market.symbol, sellPressure]);
+    onSellPressure?.(sellPressure);
+  }, [onSellPressure, sellPressure]);
   const largestNetActor = (
     Math.abs(actorSummary.largestNetBuyer?.netVolumeUsd ?? 0)
     >= Math.abs(actorSummary.largestNetSeller?.netVolumeUsd ?? 0)

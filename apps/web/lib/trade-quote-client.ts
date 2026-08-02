@@ -13,6 +13,12 @@ type QuoteEntry = {
 
 const quoteRequests = new Map<string, QuoteEntry>();
 
+export type TradeQuoteRequestOptions = {
+  identityScope?: string;
+  identityToken?: string | null;
+  now?: number;
+};
+
 export function clearTradeQuoteCache() {
   quoteRequests.clear();
 }
@@ -20,15 +26,19 @@ export function clearTradeQuoteCache() {
 export function requestTradeQuote(
   endpoint: string,
   body: Record<string, string | number>,
-  now = Date.now()
+  options: TradeQuoteRequestOptions = {}
 ) {
-  const key = quoteRequestKey(endpoint, body);
+  const now = options.now ?? Date.now();
+  const key = `${options.identityScope ?? "anonymous"}:${quoteRequestKey(endpoint, body)}`;
   const existing = quoteRequests.get(key);
   if (existing && now - existing.createdAt <= SHARED_QUOTE_CACHE_MS) return existing.promise;
 
   const promise = fetch(endpoint, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(options.identityToken ? { "privy-id-token": options.identityToken } : {})
+    },
     body: JSON.stringify(body)
   }).then(async (response) => ({
     ok: response.ok,

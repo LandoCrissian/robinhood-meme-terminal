@@ -2,7 +2,7 @@ import { LegalShell } from "../legal-shell";
 
 export default function TermsPage() {
   return (
-    <LegalShell eyebrow="MAINNET BETA" title="Terms of Use" updated="July 29, 2026">
+    <LegalShell eyebrow="MAINNET BETA" title="Terms of Use" updated="August 1, 2026">
       <div className="legalNotice"><strong>Important:</strong> Robinhood Meme Terminal is experimental, non-custodial software. It is not Robinhood Markets, Inc., is not endorsed by Robinhood, and does not provide investment, legal, or tax advice.</div>
       <h2>1. Acceptance and eligibility</h2>
       <p>By accessing or using RMT, you agree to these terms. You must be at least 18 years old, legally capable of entering this agreement, and permitted to use blockchain software in your jurisdiction. Do not use RMT where doing so would violate applicable law, sanctions, or restrictions.</p>
@@ -22,6 +22,7 @@ export default function TermsPage() {
       <p>RMT may rate-limit, hide, review, retain temporarily, or remove community content and may temporarily restrict an identity to protect users and infrastructure. Moderation and automated filters cannot identify every harmful message and do not endorse content that remains visible. Reports and feedback do not authorize a trade, change token rankings, establish a partnership, or require RMT to implement a request.</p>
       <h2>7. Beta functionality</h2>
       <p>The mainnet release is beta software and has not completed an independent security audit. Features may fail, be delayed, or change through the disclosed version-registry process. Existing token, market, fee-splitter, and liquidity contracts are not rewritten by a future factory version.</p>
+      <p>Watchlist and phone alerts are optional informational tools. Delivery can be delayed, duplicated, suppressed by a daily limit, or missed because of network, device, market-data, hosting, carrier, or provider conditions. An alert does not monitor every transaction, guarantee an exit, execute a trade, or replace reviewing current market and wallet state.</p>
       <h2>8. Third-party services</h2>
       <p>Wallets, RPC providers, block explorers, IPFS gateways, DEX infrastructure, DEX Screener, hosting providers, and linked websites are independent services with their own risks and terms. RMT is not responsible for their availability or conduct.</p>
       <h2>9. No warranties</h2>

@@ -21,3 +21,16 @@ export function selectExternalPairBaseToken<T extends PairToken>(
 
   return baseIsExternal && quoteIsCanonical ? baseToken : undefined;
 }
+
+export function selectExternalPairBaseTokenWithAssetQuotes<T extends PairToken>(
+  baseToken: T | undefined,
+  quoteToken: T | undefined,
+  canonicalQuoteAddresses: ReadonlySet<string>,
+  assetQuoteAddresses: ReadonlySet<string>
+) {
+  return selectExternalPairBaseToken(
+    baseToken,
+    quoteToken,
+    new Set([...canonicalQuoteAddresses, ...assetQuoteAddresses])
+  ) ?? selectExternalPairBaseToken(baseToken, quoteToken, canonicalQuoteAddresses);
+}

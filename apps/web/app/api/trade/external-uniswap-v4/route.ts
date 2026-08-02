@@ -2,6 +2,11 @@ import { getAddress, isAddress, type Hex } from "viem";
 import { z } from "zod";
 import { isUniswapV4PoolId } from "../../../../lib/external-v4-evidence";
 import { quoteAndBuildExternalUniswapV4Swap } from "../../../../lib/server/external-uniswap-v4-trade";
+import { requireAuthenticatedTradeWallet, tradeIdentityErrorResponse } from "../../../../lib/server/rmt-trade-identity";
+import {
+  requireStockTokenExecutionEligible,
+  stockTokenExecutionPolicyErrorResponse
+} from "../../../../lib/server/robinhood-stock-token-registry";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -48,18 +53,25 @@ export async function POST(request: Request) {
         { status: 400, headers: { "Cache-Control": "no-store" } }
       );
     }
+    const recipient = getAddress(parsed.data.recipient);
+    const authorization = await requireAuthenticatedTradeWallet(request, recipient);
+    await requireStockTokenExecutionEligible(parsed.data.token);
     const result = await quoteAndBuildExternalUniswapV4Swap({
       token: getAddress(parsed.data.token),
       poolId: parsed.data.pair as Hex,
-      recipient: getAddress(parsed.data.recipient),
+      recipient,
       side: parsed.data.side,
       amountIn: BigInt(parsed.data.amountIn),
       maxPriceImpact: parsed.data.maxPriceImpactBps / 10_000
     });
-    return Response.json(result, {
+    return Response.json({ ...result, authorization }, {
       headers: { "Cache-Control": "no-store" }
     });
   } catch (cause) {
+    const identityResponse = tradeIdentityErrorResponse(cause);
+    if (identityResponse) return identityResponse;
+    const stockTokenResponse = stockTokenExecutionPolicyErrorResponse(cause);
+    if (stockTokenResponse) return stockTokenResponse;
     const message = cause instanceof Error && publicErrors.has(cause.message)
       ? cause.message
       : "Unable to prepare the Passport-gated Uniswap v4 trade.";

@@ -1027,6 +1027,70 @@
   font: 750 .54rem/1 ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
+.professionalTradeWorkspace .universalMarketIdentity .universalStockAssetLabel {
+  display: block;
+  margin-top: 5px;
+  color: #d4bc72;
+  font: 850 .43rem/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: .045em;
+}
+
+.professionalTradeWorkspace .universalStockAssetEvidence {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 8px;
+  margin: 12px 0 14px;
+}
+
+.professionalTradeWorkspace .universalStockAssetEvidence article {
+  padding: 11px;
+  border: 1px solid #5a4a27;
+  border-radius: 4px;
+  background: linear-gradient(135deg, #151207, #080c09 58%);
+}
+
+.professionalTradeWorkspace .universalStockAssetEvidence article > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.professionalTradeWorkspace .universalStockAssetEvidence img {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.professionalTradeWorkspace .universalStockAssetEvidence small,
+.professionalTradeWorkspace .universalStockAssetEvidence span,
+.professionalTradeWorkspace .universalStockAssetEvidence a {
+  color: #9f8f65;
+  font: 750 .47rem/1.35 ui-monospace, SFMono-Regular, Menlo, monospace;
+  text-transform: uppercase;
+}
+
+.professionalTradeWorkspace .universalStockAssetEvidence strong {
+  display: block;
+  margin-top: 3px;
+  color: #e6d39b;
+  font-size: .62rem;
+}
+
+.professionalTradeWorkspace .universalStockAssetEvidence p {
+  margin: 9px 0;
+  color: #9c9f9b;
+  font-size: .57rem;
+  line-height: 1.5;
+}
+
+.professionalTradeWorkspace .universalStockAssetEvidence a {
+  display: inline-block;
+  margin-top: 7px;
+  color: #d6ba6a;
+  text-decoration: none;
+}
+
 .professionalTradeWorkspace .universalHeroPrice {
   min-width: 128px;
   padding: 0 17px;
@@ -1303,6 +1367,67 @@
 .professionalTradeWorkspace .universalRouteDecision {
   margin: 0 8px 8px;
   border-radius: 4px;
+}
+
+.professionalTradeWorkspace .preparedPositionExit {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 7px 10px;
+  margin: 0 8px 8px;
+  padding: 10px;
+  border: 1px solid #526832;
+  border-left: 3px solid #a9da5a;
+  border-radius: 4px;
+  background: linear-gradient(135deg, rgba(30, 48, 18, .96), rgba(10, 17, 11, .98));
+}
+
+.professionalTradeWorkspace .preparedPositionExit > span {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.professionalTradeWorkspace .preparedPositionExit small {
+  color: #a9da5a;
+  font-size: .45rem;
+  font-weight: 950;
+  letter-spacing: .1em;
+}
+
+.professionalTradeWorkspace .preparedPositionExit strong {
+  color: #f1f6ed;
+  font-size: .7rem;
+}
+
+.professionalTradeWorkspace .preparedPositionExit em {
+  overflow-wrap: anywhere;
+  color: #b8c4b4;
+  font-size: .52rem;
+  font-style: normal;
+  line-height: 1.4;
+}
+
+.professionalTradeWorkspace .preparedPositionExit > button {
+  min-width: 54px;
+  min-height: 34px;
+  padding: 0 9px;
+  border: 1px solid #526832;
+  border-radius: 4px;
+  background: #111a0d;
+  color: #d8efb4;
+  font: inherit;
+  font-size: .5rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.professionalTradeWorkspace .preparedPositionExit > p {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: #7f8c7b;
+  font-size: .49rem;
+  line-height: 1.45;
 }
 
 .professionalTradeWorkspace .universalVenueSelector button {
@@ -1635,6 +1760,15 @@
     padding: 7px 8px;
   }
 
+  .professionalTradeWorkspace .preparedPositionExit {
+    margin: 0 6px 6px;
+    padding: 9px;
+  }
+
+  .professionalTradeWorkspace .preparedPositionExit > button {
+    min-height: 40px;
+  }
+
   .professionalTradeWorkspace .universalRouteDecision p {
     overflow: hidden;
     text-overflow: ellipsis;
@@ -1816,4 +1950,150 @@
   .professionalTradeWorkspace .universalMobileTradeDock {
     transition: none;
   }
+}
+
+.terminalPage .liveSignalDesk {
+  padding: 14px 16px 13px;
+  border-block: 1px solid rgba(126, 151, 137, .2);
+  background:
+    linear-gradient(110deg, rgba(53, 239, 115, .045), transparent 48%),
+    rgba(4, 10, 6, .82);
+}
+
+.terminalPage .liveSignalDesk > header,
+.terminalPage .liveSignalDesk > header > span,
+.terminalPage .liveSignalRail > a,
+.terminalPage .liveSignalRail > a > span,
+.terminalPage .liveSignalEmpty {
+  display: flex;
+}
+
+.terminalPage .liveSignalDesk > header {
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 10px;
+}
+
+.terminalPage .liveSignalDesk > header > span,
+.terminalPage .liveSignalRail > a,
+.terminalPage .liveSignalEmpty {
+  flex-direction: column;
+}
+
+.terminalPage .liveSignalDesk > header small,
+.terminalPage .liveSignalRail b,
+.terminalPage .liveSignalDesk > footer {
+  font-family: var(--font-mono), monospace;
+  letter-spacing: .11em;
+  text-transform: uppercase;
+}
+
+.terminalPage .liveSignalDesk > header small {
+  color: var(--green);
+  font-size: 9px;
+  font-weight: 850;
+}
+
+.terminalPage .liveSignalDesk > header strong {
+  color: #f2f7f3;
+  font-size: 15px;
+  line-height: 1.2;
+}
+
+.terminalPage .liveSignalDesk > header > em {
+  color: #92a099;
+  font: 750 10px/1 var(--font-mono), monospace;
+  white-space: nowrap;
+}
+
+.terminalPage .liveSignalRail {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  border: 1px solid rgba(126, 151, 137, .16);
+  background: rgba(126, 151, 137, .16);
+}
+
+.terminalPage .liveSignalRail > a {
+  min-width: 0;
+  min-height: 104px;
+  gap: 6px;
+  padding: 11px 12px;
+  color: inherit;
+  background: #050a07;
+  text-decoration: none;
+  transition: background 140ms ease, box-shadow 140ms ease;
+}
+
+.terminalPage .liveSignalRail > a:hover,
+.terminalPage .liveSignalRail > a:focus-visible {
+  background: #09120d;
+  box-shadow: inset 0 -2px 0 var(--green);
+  outline: none;
+}
+
+.terminalPage .liveSignalRail > a.review {
+  box-shadow: inset 2px 0 0 #d79a48;
+}
+
+.terminalPage .liveSignalRail > a.urgent {
+  box-shadow: inset 2px 0 0 #ff6677;
+}
+
+.terminalPage .liveSignalRail > a > span {
+  align-items: center;
+  flex-direction: row;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.terminalPage .liveSignalRail b {
+  color: #5cf08a;
+  font-size: 8px;
+}
+
+.terminalPage .liveSignalRail .review b {
+  color: #e6b468;
+}
+
+.terminalPage .liveSignalRail .urgent b {
+  color: #ff7b8a;
+}
+
+.terminalPage .liveSignalRail em {
+  color: #afbbb3;
+  font: 800 10px/1 var(--font-mono), monospace;
+}
+
+.terminalPage .liveSignalRail strong {
+  color: #eef4f0;
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+.terminalPage .liveSignalRail small,
+.terminalPage .liveSignalEmpty span {
+  color: #849087;
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.terminalPage .liveSignalEmpty {
+  gap: 3px;
+  padding: 12px;
+  border: 1px solid rgba(126, 151, 137, .14);
+  background: #050a07;
+}
+
+.terminalPage .liveSignalEmpty strong {
+  color: #dfe7e1;
+  font-size: 12px;
+}
+
+.terminalPage .liveSignalDesk > footer {
+  margin-top: 9px;
+  color: #657169;
+  font-size: 7px;
+  line-height: 1.5;
 }

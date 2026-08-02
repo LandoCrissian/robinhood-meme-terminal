@@ -19,6 +19,7 @@ import { ReferralCard } from "../referral-card";
 import { SiteFooter } from "../site-footer";
 import { useProfile } from "../profile-provider";
 import { useRmtIdentity } from "../rmt-identity";
+import { SmsAlertEnrollment } from "../sms-alert-enrollment";
 
 const MODES: Array<{ id: TraderMode; label: string; copy: string }> = [
   { id: "scout", label: "Scout", copy: "Discovery first. Surface risk and origin before speed." },
@@ -276,6 +277,9 @@ export default function ProfilePage() {
                     <button type="button" disabled={accountIdentity.linked.passkey} onClick={accountIdentity.linkPasskey}>
                       {accountIdentity.linked.passkey ? "Passkey linked" : "Add passkey"}
                     </button>
+                    <button type="button" disabled={accountIdentity.linked.phone} onClick={accountIdentity.linkPhone}>
+                      {accountIdentity.linked.phone ? "Phone linked" : "Link phone"}
+                    </button>
                     <button type="button" disabled={accountIdentity.linked.wallet} onClick={accountIdentity.linkWallet}>
                       {accountIdentity.linked.wallet ? "Wallet linked" : "Link wallet"}
                     </button>
@@ -296,6 +300,7 @@ export default function ProfilePage() {
             )}
             {visibleAuthMessage && <p className="profileAuthMessage" role="status">{visibleAuthMessage}</p>}
           </section>
+          <SmsAlertEnrollment />
           <ReferralCard />
 
           <nav className="profileQuickLinks" aria-label="Your RMT workspace">

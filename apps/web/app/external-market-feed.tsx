@@ -22,6 +22,7 @@ import {
 import { ipfsToHttp } from "../lib/token-metadata";
 import { routeLiquidityDepthLabel } from "../lib/trade-route-selection";
 import { recordExperienceStage } from "../lib/experience-funnel";
+import { deriveLiveMarketSignals, type LiveMarketSignal } from "../lib/live-signal-engine";
 import { ExternalSushiQuotePanel } from "./external-sushi-quote-panel";
 import { ExternalUniswapTradePanel } from "./external-uniswap-trade-panel";
 
@@ -158,6 +159,37 @@ function runnerReason(market: ExternalMarket) {
     return `${trades1h} two-sided trades · qualified young market`;
   }
   return "Observed market · no qualified runner signal";
+}
+
+function LiveSignalDesk({ signals }: { signals: LiveMarketSignal[] }) {
+  const visible = signals.slice(0, 4);
+  return (
+    <section className="liveSignalDesk" aria-labelledby="live-signal-desk-title">
+      <header>
+        <span><small>RMT LIVE SIGNAL DESK</small><strong id="live-signal-desk-title">Markets requiring attention</strong></span>
+        <em>{signals.length} qualified</em>
+      </header>
+      {visible.length ? (
+        <div className="liveSignalRail">
+          {visible.map((signal) => (
+            <a
+              href={`/market/${signal.token}?tab=activity`}
+              className={signal.severity}
+              data-kind={signal.kind}
+              key={signal.id}
+            >
+              <span><b>{signal.severity === "urgent" ? "URGENT" : signal.severity === "review" ? "REVIEW" : "OBSERVE"}</b><em>${cleanSymbol(signal.symbol)}</em></span>
+              <strong>{signal.title}</strong>
+              <small>{signal.evidence}</small>
+            </a>
+          ))}
+        </div>
+      ) : (
+        <div className="liveSignalEmpty"><strong>No market has cleared a live signal threshold.</strong><span>RMT continues checking activity, pace, price and liquidity every 30 seconds.</span></div>
+      )}
+      <footer>Read-only observations from validated public market snapshots · open a market for confirmed swap and wallet evidence · never a profit promise or automatic trade</footer>
+    </section>
+  );
 }
 
 
@@ -400,6 +432,7 @@ function stabilizeOrder(order: string[], markets: ExternalMarket[]) {
 
 export function ExternalMarketFeed() {
   const [markets, setMarkets] = useState<ExternalMarket[]>([]);
+  const [liveSignals, setLiveSignals] = useState<LiveMarketSignal[]>([]);
   const [rankOrder, setRankOrder] = useState<string[]>([]);
   const [view, setView] = useState<DiscoveryView>("trending");
   const [status, setStatus] = useState<FeedStatus>("loading");
@@ -408,6 +441,7 @@ export function ExternalMarketFeed() {
   const nextRankRefresh = useRef(0);
   const rankInitialized = useRef(false);
   const hasSuccessfulData = useRef(false);
+  const previousMarketSnapshot = useRef<ExternalMarket[]>([]);
   const restoredQuickTrade = useRef(false);
   const returnFocusTo = useRef<HTMLElement | null>(null);
   const runnerHeading = useRef<HTMLHeadingElement>(null);
@@ -466,6 +500,8 @@ export function ExternalMarketFeed() {
       if (!response.ok || !Array.isArray(payload.markets)) throw new Error(payload.error || "Market data unavailable.");
 
       const now = Date.now();
+      setLiveSignals(deriveLiveMarketSignals(payload.markets, previousMarketSnapshot.current, now));
+      previousMarketSnapshot.current = payload.markets;
       setMarkets(payload.markets);
       setUpdatedAt(typeof payload.updatedAt === "string" ? payload.updatedAt : new Date(now).toISOString());
       hasSuccessfulData.current = true;
@@ -593,7 +629,12 @@ export function ExternalMarketFeed() {
         market.name,
         market.symbol,
         market.address,
-        market.pairAddress
+        market.pairAddress,
+        ...(market.stockAssetRelationships ?? []).flatMap((relationship) => [
+          relationship.tokenSymbol,
+          relationship.tokenName,
+          relationship.contractAddress
+        ])
       ].some((value) => value.toLowerCase().includes(normalizedMarketQuery)))
     : viewMarkets;
   const sourceFilteredMarkets = searchedMarkets.filter((market) => {
@@ -771,6 +812,7 @@ export function ExternalMarketFeed() {
           <button type="button" onClick={() => void refresh()}>Refresh</button>
         </p>
       )}
+      <LiveSignalDesk signals={liveSignals} />
       <div className="runnerDirectoryControls" role="search" aria-label="Search external markets">
         <div className="runnerMarketSearch">
           <span aria-hidden="true">⌕</span>
@@ -941,6 +983,12 @@ export function ExternalMarketFeed() {
                       : "Check route";
               const mobileWorkspaceHref = `/market/${market.address}${mobileReviewRequired ? "?tab=safety" : ""}`;
               const distribution = marketDistributionPassport(market);
+              const stockAssetLabel = market.stockAssetRelationships?.length
+                ? market.stockAssetRelationships.map((relationship) => relationship.tokenSymbol).join("+")
+                  + (market.stockAssetRelationships.some((relationship) => relationship.relationship === "canonical-stock-token")
+                    ? " stock token"
+                    : " pair")
+                : "";
               return (
                 <article className="externalMarketCard runnerMarketCard" data-signal={market.signal} key={market.address}>
                   <div className="mobileRunnerMarketRow">
@@ -949,7 +997,7 @@ export function ExternalMarketFeed() {
                       <ExternalArtwork market={market} />
                       <span className="mobileRunnerCopy">
                         <strong>{market.name}</strong>
-                        <small>{"$" + cleanSymbol(market.symbol)} · {marketAge(market.ageMinutes)}</small>
+                        <small>{"$" + cleanSymbol(market.symbol)} · {marketAge(market.ageMinutes)}{stockAssetLabel ? ` · ${stockAssetLabel}` : ""}</small>
                         <em>{distribution.shortLabel}</em>
                       </span>
                     </a>
@@ -977,7 +1025,7 @@ export function ExternalMarketFeed() {
                     <ExternalArtwork market={market} />
                     <span>
                       <a className="externalIdentityLink" href={`/market/${market.address}`} aria-label={`Open ${market.name} trading workspace`} onClick={() => recordExperienceStage("discovery_used")}><strong>{market.name}</strong></a>
-                      <small>{"$" + cleanSymbol(market.symbol)} · Venue: {venueLabel(market)}</small>
+                      <small>{"$" + cleanSymbol(market.symbol)} · Venue: {venueLabel(market)}{stockAssetLabel ? ` · ${stockAssetLabel}` : ""}</small>
                       {market.project?.creator && (
                         <small className="runnerCreator" title={market.project.creator}>Creator {shortAddress(market.project.creator)}</small>
                       )}
@@ -1023,7 +1071,7 @@ export function ExternalMarketFeed() {
         )}
       </div>
 
-      <p className="externalDisclosure">Market data uses DEX Screener market data and public discovery, with the documented Lemon and Sushi Launch APIs for cross-checked identity. Dexscreener artwork is accepted only from its HTTPS CDN when verified launch metadata has no image. Sushi Launch and Lemon identity are attached only when the source token and launch pool match the discovered DEX pair; Pons identity requires matching factory and token records. Launch source is secondary evidence—not the ranking. Signals are automated review candidates, not investment recommendations or profit guarantees. Buy and Sell always require a fresh Sushi or Uniswap quote and wallet review.</p>
+      <p className="externalDisclosure">Market data uses DEX Screener market data and public discovery, with the documented Lemon and Sushi Launch APIs for cross-checked identity. Robinhood Stock Token labels require an exact contract match to Robinhood&apos;s live asset registry; a paired market asset does not make another token stock-backed. Dexscreener artwork is accepted only from its HTTPS CDN when verified launch metadata has no image. Sushi Launch and Lemon identity are attached only when the source token and launch pool match the discovered DEX pair; Pons identity requires matching factory and token records. Launch source is secondary evidence—not the ranking. Signals are automated review candidates, not investment recommendations or profit guarantees. Buy and Sell always require a fresh Sushi or Uniswap quote and wallet review.</p>
 
       {quickTrade
         && selectedQuickTradeMarket

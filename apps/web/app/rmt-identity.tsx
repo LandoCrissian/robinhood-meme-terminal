@@ -10,15 +10,18 @@ type RmtIdentityContextValue = {
   linkEmail: () => void;
   linkGoogle: () => void;
   linkPasskey: () => void;
+  linkPhone: () => void;
   linkWallet: () => void;
   linked: {
     email: boolean;
     google: boolean;
     passkey: boolean;
+    phone: boolean;
     wallet: boolean;
   };
   login: () => void;
   logout: () => Promise<void>;
+  phoneLast4: string;
   ready: boolean;
   userId: string;
 };
@@ -30,10 +33,12 @@ const unavailableIdentity: RmtIdentityContextValue = {
   linkEmail: () => undefined,
   linkGoogle: () => undefined,
   linkPasskey: () => undefined,
+  linkPhone: () => undefined,
   linkWallet: () => undefined,
-  linked: { email: false, google: false, passkey: false, wallet: false },
+  linked: { email: false, google: false, passkey: false, phone: false, wallet: false },
   login: () => undefined,
   logout: async () => undefined,
+  phoneLast4: "",
   ready: true,
   userId: ""
 };
@@ -46,6 +51,7 @@ export function PrivyIdentityBridge({ children }: { children: ReactNode }) {
     linkEmail,
     linkGoogle,
     linkPasskey,
+    linkPhone,
     linkWallet,
     login,
     logout,
@@ -57,6 +63,7 @@ export function PrivyIdentityBridge({ children }: { children: ReactNode }) {
     email: Boolean(user?.linkedAccounts.some((account) => account.type === "email")),
     google: Boolean(user?.linkedAccounts.some((account) => account.type === "google_oauth")),
     passkey: Boolean(user?.linkedAccounts.some((account) => account.type === "passkey")),
+    phone: Boolean(user?.linkedAccounts.some((account) => account.type === "phone")),
     wallet: Boolean(user?.linkedAccounts.some((account) => (
       account.type === "wallet" && account.walletClientType !== "privy"
     )))
@@ -68,10 +75,12 @@ export function PrivyIdentityBridge({ children }: { children: ReactNode }) {
     linkEmail,
     linkGoogle,
     linkPasskey,
+    linkPhone,
     linkWallet: () => linkWallet({ walletChainType: "ethereum-only" }),
     linked,
     login,
     logout,
+    phoneLast4: user?.linkedAccounts.find((account) => account.type === "phone")?.number.slice(-4) ?? "",
     ready,
     userId: user?.id ?? ""
   }), [
@@ -80,6 +89,7 @@ export function PrivyIdentityBridge({ children }: { children: ReactNode }) {
     linkEmail,
     linkGoogle,
     linkPasskey,
+    linkPhone,
     linkWallet,
     linked,
     login,
