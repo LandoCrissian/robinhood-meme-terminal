@@ -1,7 +1,11 @@
 import { getAddress, isAddress } from "viem";
 import { z } from "zod";
 import { quoteSushiRoute, sushiQuotesEnabled } from "../../../../lib/server/sushi-trade";
-import { verifyActiveV6LaunchIdentity } from "../../../../lib/server/rmt-trade-identity";
+import {
+  requireAuthenticatedTradeWallet,
+  tradeIdentityErrorResponse,
+  verifyActiveV6LaunchIdentity
+} from "../../../../lib/server/rmt-trade-identity";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -37,19 +41,22 @@ export async function POST(request: Request) {
     if (!parsed.success) return Response.json({ error: "Invalid Sushi quote request." }, { status: 400, headers: { "Cache-Control": "no-store" } });
     const params = parsed.data;
     const token = getAddress(params.token);
+    const recipient = getAddress(params.recipient);
+    const authorization = await requireAuthenticatedTradeWallet(request, recipient);
     await verifyActiveV6LaunchIdentity({ launchId: BigInt(params.launchId), token });
     const result = await quoteSushiRoute({
       token,
-      recipient: getAddress(params.recipient),
+      recipient,
       side: params.side,
       amountIn: BigInt(params.amountIn)
     });
-    return Response.json(result, { headers: { "Cache-Control": "no-store" } });
+    return Response.json({ ...result, authorization }, { headers: { "Cache-Control": "no-store" } });
   } catch (cause) {
+    const identityResponse = tradeIdentityErrorResponse(cause);
+    if (identityResponse) return identityResponse;
     const message = cause instanceof Error && publicTradeErrors.has(cause.message)
       ? cause.message
       : "Unable to read the Sushi route.";
     return Response.json({ error: message }, { status: 422, headers: { "Cache-Control": "no-store" } });
   }
 }
-

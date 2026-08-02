@@ -7,9 +7,12 @@ RMT Speed Mode reduces the time between choosing an amount and opening the walle
 - quote requests begin after a 60 ms input-settle window rather than 350–400 ms;
 - Sushi, Uniswap v3, and Uniswap v4 requests remain concurrent;
 - identical executable-quote requests are shared for 1.5 seconds so the route comparison and active trade ticket do not ask the server to simulate the same transaction twice;
+- quote sharing is scoped to one verified Privy user and never crosses RMT account boundaries;
 - active quotes refresh every eight seconds;
 - recipient, token, pool, router, amount, deadline, minimum output, price impact, Passport, allowance, and sellability validation remain mandatory;
 - the user still signs the final wallet transaction.
+
+Before the server returns executable calldata, it verifies the current Privy identity token, rejects guest identities, and proves the requested recipient is a verified Ethereum wallet linked to that identity. The response carries an `identity-wallet-bound` marker that the browser rechecks before approval or swap controls can advance. This is provider-neutral: it works with Privy-created wallets and verified external Ethereum wallets discovered directly or connected through supported wallet connectors. MetaMask, Coinbase Wallet, WalletConnect, and other detected wallets do not receive special trust; the exact address must be linked to the signed-in Privy account. Neither Privy nor RMT receives signing authority over an external wallet.
 
 Standard Mode preserves the original 350 ms preparation window and 15-second refresh interval.
 
@@ -46,7 +49,7 @@ When configured, the provider layer:
 - supports email, Google, passkey, and external-wallet authentication;
 - restricts supported networks to Robinhood Chain mainnet and testnet; and
 - exposes user-controlled MFA, recovery, key export and active-wallet selection; and
-- binds profile sync to the verified Privy user rather than the currently selected wallet, so changing between an RMT Wallet and MetaMask cannot overwrite a profile;
+- binds profile sync to the verified Privy user rather than the currently selected wallet, so changing between an RMT Wallet and any linked external wallet cannot overwrite a profile;
 - presents Deposit, Receive, Send and Trade as separate actions for the exact active wallet; and
 - does not provision an RMT signer or allow unattended execution.
 

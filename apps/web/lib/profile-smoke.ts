@@ -53,6 +53,7 @@ const profileProviderSource = readFileSync(new URL("../app/profile-provider.tsx"
 const profilePageSource = readFileSync(new URL("../app/profile/page.tsx", import.meta.url), "utf8");
 const identityBridgeSource = readFileSync(new URL("../app/rmt-identity.tsx", import.meta.url), "utf8");
 const firebaseSessionRouteSource = readFileSync(new URL("../app/api/auth/firebase-session/route.ts", import.meta.url), "utf8");
+const firebaseUserBindingSource = readFileSync(new URL("./server/rmt-firebase-user.ts", import.meta.url), "utf8");
 assert.match(
   profileProviderSource,
   /useRmtIdentity\(\)/,
@@ -95,7 +96,9 @@ assert.match(identityBridgeSource, /linkWallet: \(\) => linkWallet\(\{ walletCha
 assert.doesNotMatch(profilePageSource, /OR USE ANY EMAIL|passwordless|Firebase sign-in/);
 
 assert.match(firebaseSessionRouteSource, /verifyPrivyIdentity\(token\)/);
-assert.match(firebaseSessionRouteSource, /getUserByEmail\(email\)/);
+assert.match(firebaseSessionRouteSource, /findRmtFirebaseUser\(auth, privyUserId, email\)/);
+assert.match(firebaseUserBindingSource, /getUserByEmail\(email\)/);
+assert.match(firebaseUserBindingSource, /emailBinding !== privyUserId/);
 assert.match(firebaseSessionRouteSource, /identity_already_bound/);
 assert.match(firebaseSessionRouteSource, /createCustomToken\(user\.uid, claims\)/);
 assert.match(firebaseSessionRouteSource, /rmt_privy_uid:\s*privyUserId/);

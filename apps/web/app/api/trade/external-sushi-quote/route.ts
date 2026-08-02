@@ -8,6 +8,11 @@ import {
   sushiExecutionAllowance,
   sushiQuotesEnabled
 } from "../../../../lib/server/sushi-trade";
+import { requireAuthenticatedTradeWallet, tradeIdentityErrorResponse } from "../../../../lib/server/rmt-trade-identity";
+import {
+  requireStockTokenExecutionEligible,
+  stockTokenExecutionPolicyErrorResponse
+} from "../../../../lib/server/robinhood-stock-token-registry";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -83,6 +88,8 @@ export async function POST(request: Request) {
     const token = getAddress(parsed.data.token);
     const pair = getAddress(parsed.data.pair);
     const recipient = getAddress(parsed.data.recipient);
+    const authorization = await requireAuthenticatedTradeWallet(request, recipient);
+    await requireStockTokenExecutionEligible(token);
     const market = await verifyExternalSushiMarket({ token, pair });
     const amountIn = BigInt(parsed.data.amountIn);
     const approvalRequired = parsed.data.side === "sell"
@@ -109,6 +116,7 @@ export async function POST(request: Request) {
 
     return Response.json({
       ...quote,
+      authorization,
       marketPair: market.pair,
       marketVerified: true,
       approvalRequired,
@@ -118,6 +126,10 @@ export async function POST(request: Request) {
         : String(Math.floor(Date.now() / 1000) + 90)
     }, { headers: { "Cache-Control": "no-store" } });
   } catch (cause) {
+    const identityResponse = tradeIdentityErrorResponse(cause);
+    if (identityResponse) return identityResponse;
+    const stockTokenResponse = stockTokenExecutionPolicyErrorResponse(cause);
+    if (stockTokenResponse) return stockTokenResponse;
     const message = cause instanceof Error && publicTradeErrors.has(cause.message)
       ? cause.message
       : "Unable to verify this Sushi market and route.";

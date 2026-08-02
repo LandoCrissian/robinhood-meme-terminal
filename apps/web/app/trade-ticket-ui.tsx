@@ -490,6 +490,7 @@ export function TradeCostSummary({
 }
 
 export function TradeExecutionPath({
+  authenticated,
   connected,
   quoteReady,
   evidenceReady,
@@ -497,6 +498,7 @@ export function TradeExecutionPath({
   success,
   needsApproval
 }: {
+  authenticated: boolean;
   connected: boolean;
   quoteReady: boolean;
   evidenceReady: boolean;
@@ -504,14 +506,16 @@ export function TradeExecutionPath({
   success: boolean;
   needsApproval: boolean;
 }) {
-  const quoteState = quoteReady ? "done" : connected ? "current" : "pending";
+  const accountState = authenticated ? "done" : "current";
+  const quoteState = quoteReady ? "done" : authenticated && connected ? "current" : "pending";
   const evidenceState = evidenceReady ? "done" : quoteReady ? "current" : "pending";
   const walletState = success ? "done" : busy || (quoteReady && evidenceReady) ? "current" : "pending";
   return (
     <ol className="tradeExecutionPath" aria-label="Trade execution path">
-      <li className={quoteState}><i>1</i><span><small>QUOTE</small><strong>{quoteReady ? "Route ready" : connected ? "Calculating" : "Connect"}</strong></span></li>
-      <li className={evidenceState}><i>2</i><span><small>EVIDENCE</small><strong>{evidenceReady ? "Reviewed" : "Checking"}</strong></span></li>
-      <li className={walletState}><i>3</i><span><small>WALLET</small><strong>{success ? "Confirmed" : busy ? needsApproval ? "Approving" : "Submitting" : needsApproval ? "Approval next" : "You sign"}</strong></span></li>
+      <li className={accountState}><i>1</i><span><small>ACCOUNT</small><strong>{authenticated ? "Protected" : "Sign in"}</strong></span></li>
+      <li className={quoteState}><i>2</i><span><small>QUOTE</small><strong>{quoteReady ? "Route ready" : connected && authenticated ? "Calculating" : "Waiting"}</strong></span></li>
+      <li className={evidenceState}><i>3</i><span><small>EVIDENCE</small><strong>{evidenceReady ? "Reviewed" : "Checking"}</strong></span></li>
+      <li className={walletState}><i>4</i><span><small>WALLET</small><strong>{success ? "Confirmed" : busy ? needsApproval ? "Approving" : "Submitting" : needsApproval ? "Approval next" : "You sign"}</strong></span></li>
     </ol>
   );
 }

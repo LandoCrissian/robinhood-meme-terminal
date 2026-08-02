@@ -112,6 +112,16 @@ service cloud.firestore {
         == data.listUpdatedAt;
     }
 
+    function validWatchlistAlertSettings(data) {
+      return data is map
+        && data.keys().hasAll(['schemaVersion', 'alerts', 'updatedAt', 'writtenAt'])
+        && data.keys().hasOnly(['schemaVersion', 'alerts', 'updatedAt', 'writtenAt'])
+        && data.schemaVersion == 1
+        && data.alerts is list && data.alerts.size() <= 50
+        && data.updatedAt is int && data.updatedAt > 0
+        && data.writtenAt is timestamp && data.writtenAt == request.time;
+    }
+
     function validProjectType(value) {
       return value in ['token', 'art', 'music', 'gaming', 'community', 'other'];
     }
@@ -626,6 +636,15 @@ service cloud.firestore {
           && (!existsAfter(/databases/$(database)/documents/users/$(userId))
             || getAfter(/databases/$(database)/documents/users/$(userId)).data.watchlistUpdatedAt
               > resource.data.listUpdatedAt);
+      }
+
+      match /settings/{settingsId} {
+        allow read: if settingsId == 'watchlistAlerts' && ownsProfile(userId);
+        allow create, update: if settingsId == 'watchlistAlerts'
+          && ownsProfile(userId)
+          && hasProfile(userId)
+          && validWatchlistAlertSettings(request.resource.data);
+        allow delete: if settingsId == 'watchlistAlerts' && ownsProfile(userId);
       }
 
       match /projectFollows/{projectId} {

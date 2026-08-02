@@ -7,7 +7,10 @@ import {
   type ExternalMarket,
   type ExternalMarketResponse
 } from "../../../../lib/external-market";
-import { isNonzeroEvmAddress, selectExternalPairBaseToken } from "../../../../lib/external-market-identity";
+import {
+  isNonzeroEvmAddress,
+  selectExternalPairBaseTokenWithAssetQuotes
+} from "../../../../lib/external-market-identity";
 import {
   RUNNER_THRESHOLDS,
   compareExternalMarketRank,
@@ -17,6 +20,10 @@ import { enrichExternalProjectMetadata } from "../../../../lib/server/external-p
 import { safeDexImageUri } from "../../../../lib/server/external-market-media";
 import { fetchLemonProjectSnapshot } from "../../../../lib/server/lemon-project-feed";
 import { fetchSushiLaunchSnapshot } from "../../../../lib/server/sushi-launch-feed";
+import {
+  fetchRobinhoodStockRegistry,
+  stockAssetRelationshipsForPair
+} from "../../../../lib/server/robinhood-stock-token-registry";
 
 const CHAIN_SLUG = "robinhood";
 const DEXSCREENER_TOKEN_PAIRS_API = "https://api.dexscreener.com/token-pairs/v1";
@@ -95,6 +102,7 @@ type SuccessfulMarketSnapshot = Required<Pick<
 >> & {
   originCoverage: OriginCoverage;
   rmtOriginCoverage: OriginCoverage;
+  stockAssetCoverage: "complete" | "unavailable";
   thresholds: typeof RUNNER_THRESHOLDS;
 };
 
@@ -127,8 +135,13 @@ function transactionWindow(pair: RawPair, window: string) {
   };
 }
 
-function tokenFromPair(pair: RawPair) {
-  return selectExternalPairBaseToken(pair.baseToken, pair.quoteToken, EXCLUDED_TOKENS);
+function tokenFromPair(pair: RawPair, stockTokenAddresses: ReadonlySet<string>) {
+  return selectExternalPairBaseTokenWithAssetQuotes(
+    pair.baseToken,
+    pair.quoteToken,
+    EXCLUDED_TOKENS,
+    stockTokenAddresses
+  );
 }
 
 async function fetchPublicDiscoveryTokens() {
@@ -312,11 +325,13 @@ function staleResponse() {
 
 export async function GET() {
   try {
-    const [lemonSnapshot, sushiLaunchSnapshot, publicDiscoveryTokens] = await Promise.all([
+    const [lemonSnapshot, sushiLaunchSnapshot, publicDiscoveryTokens, stockRegistry] = await Promise.all([
       fetchLemonProjectSnapshot(),
       fetchSushiLaunchSnapshot(),
-      fetchPublicDiscoveryTokens().catch(() => [])
+      fetchPublicDiscoveryTokens().catch(() => []),
+      fetchRobinhoodStockRegistry()
     ]);
+    const stockTokenAddresses = new Set(stockRegistry.assetsByAddress.keys());
     const requestedTokens = [...new Set(
       [
         ...lemonSnapshot.candidateAddresses.map((address) => address.toLowerCase()),
@@ -340,7 +355,7 @@ export async function GET() {
     }
 
     const candidateAddresses = [...new Set(pairs.flatMap((pair) => {
-      const address = asText(tokenFromPair(pair)?.address, 42);
+      const address = asText(tokenFromPair(pair, stockTokenAddresses)?.address, 42);
       return isNonzeroEvmAddress(address) ? [address.toLowerCase()] : [];
     }))];
     const rmtOrigins = await resolveRmtOrigins(
@@ -361,12 +376,14 @@ export async function GET() {
       const url = asText(pair.url, 300);
       if (!url.startsWith(DEXSCREENER_PAGE)) continue;
 
-      const token = tokenFromPair(pair);
+      const token = tokenFromPair(pair, stockTokenAddresses);
       const address = asText(token?.address, 42);
       const name = asText(token?.name);
       const symbol = asText(token?.symbol, 20);
       const pairAddress = asText(pair.pairAddress, 66);
       const dexId = asText(pair.dexId, 30) || "DEX";
+      const baseTokenAddress = asText(pair.baseToken?.address, 42);
+      const quoteTokenAddress = asText(pair.quoteToken?.address, 42);
       const liquidityUsd = asNumber(pair.liquidity?.usd);
       const marketCapUsd = Math.max(0, asNumber(pair.marketCap));
       const fdvUsd = Math.max(0, asNumber(pair.fdv));
@@ -408,6 +425,15 @@ export async function GET() {
         pairAddress,
         url,
         dexId,
+        stockAssetRelationships:
+          isNonzeroEvmAddress(baseTokenAddress) && isNonzeroEvmAddress(quoteTokenAddress)
+            ? stockAssetRelationshipsForPair(
+                address,
+                baseTokenAddress,
+                quoteTokenAddress,
+                stockRegistry.assetsByAddress
+              )
+            : [],
         origin: {
           kind: "external",
           state: "unknown",
@@ -455,7 +481,15 @@ export async function GET() {
 
       const key = address.toLowerCase();
       const existing = marketsByToken.get(key);
-      marketsByToken.set(key, selectPreferredLifecycleMarket(existing, attributedMarket));
+      const preferred = selectPreferredLifecycleMarket(existing, attributedMarket);
+      const stockAssetRelationships = [...new Map([
+        ...(existing?.stockAssetRelationships ?? []),
+        ...(attributedMarket.stockAssetRelationships ?? [])
+      ].map((relationship) => [
+        `${relationship.relationship}:${relationship.contractAddress.toLowerCase()}`,
+        relationship
+      ])).values()];
+      marketsByToken.set(key, { ...preferred, stockAssetRelationships });
     }
 
     const rankedMarkets = [...marketsByToken.values()]
@@ -465,11 +499,12 @@ export async function GET() {
       .catch(() => rankedMarkets);
     const snapshot: SuccessfulMarketSnapshot = {
       markets,
-      source: "DEX Screener markets + public discovery + verified Lemon and Sushi Launch metadata",
+      source: "DEX Screener markets + public discovery + verified Lemon and Sushi Launch metadata + Robinhood Stock Token registry",
       rankingVersion: "rmt-discovery-v5",
       thresholds: RUNNER_THRESHOLDS,
       originCoverage: "unavailable",
       rmtOriginCoverage: "complete",
+      stockAssetCoverage: stockRegistry.coverage,
       updatedAt: new Date().toISOString()
     };
     lastSuccessfulSnapshot = snapshot;

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { quoteAndBuildRmtV4Swap } from "../../../../lib/server/rmt-v4-trade";
 import { ROBINHOOD_UNIVERSAL_ROUTER } from "../../../../lib/uniswap-v4";
 import { activeChain } from "../../../../lib/network";
+import { requireAuthenticatedTradeWallet, tradeIdentityErrorResponse } from "../../../../lib/server/rmt-trade-identity";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -33,17 +34,19 @@ export async function POST(request: Request) {
     const parsed = requestSchema.safeParse(await request.json());
     if (!parsed.success) return Response.json({ error: "Invalid V4 trade request." }, { status: 400, headers: { "Cache-Control": "no-store" } });
     const params = parsed.data;
+    const recipient = getAddress(params.recipient);
+    const authorization = await requireAuthenticatedTradeWallet(request, recipient);
     const result = await quoteAndBuildRmtV4Swap({
       launchId: BigInt(params.launchId),
       token: getAddress(params.token),
-      recipient: getAddress(params.recipient),
+      recipient,
       side: params.side,
       amountIn: BigInt(params.amountIn)
     });
     return Response.json({
       chainId: activeChain.id,
       token: getAddress(params.token),
-      recipient: getAddress(params.recipient),
+      recipient,
       side: params.side,
       router: ROBINHOOD_UNIVERSAL_ROUTER,
       calldata: result.calldata,
@@ -52,9 +55,12 @@ export async function POST(request: Request) {
       quoteOut: result.quoteOut.toString(),
       minimumOut: result.minimumOut.toString(),
       deadline: result.deadline.toString(),
-      verified: true
+      verified: true,
+      authorization
     }, { headers: { "Cache-Control": "no-store" } });
   } catch (cause) {
+    const identityResponse = tradeIdentityErrorResponse(cause);
+    if (identityResponse) return identityResponse;
     const message = cause instanceof Error && publicTradeErrors.has(cause.message)
       ? cause.message
       : "Unable to prepare the canonical Uniswap v4 trade.";

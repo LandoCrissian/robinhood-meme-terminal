@@ -36,4 +36,8 @@ export type RmtV4Quote = {
   minimumOut: string;
   deadline: string;
   verified: true;
+  authorization: {
+    status: "identity-wallet-bound";
+    wallet: Address;
+  };
 };

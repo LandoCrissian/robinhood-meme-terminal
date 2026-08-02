@@ -13,6 +13,7 @@ Each external workspace combines:
 - live price, liquidity, valuation, volume, age, and trade-pressure metrics;
 - candlestick history for 1 hour, 6 hours, 24 hours, and 7 days;
 - project metadata and token imagery when a verified source supplies them;
+- exact-contract Robinhood Stock Token identity and verified Stock Token pool-pair relationships from Robinhood's live asset registry;
 - activity, safety, and origin views;
 - non-custodial Sushi, canonical Uniswap V3, and Passport-gated Uniswap V4
   execution panels; and
@@ -42,7 +43,7 @@ retaining separate venue verification and transaction construction:
 - the enforced 1% maximum slippage boundary;
 - a live quote-expiry countdown;
 - price-impact severity that never weakens the existing 10% execution block;
-- a Quote → Evidence → Wallet progress path; and
+- an Account → Quote → Evidence → Wallet progress path; and
 - explicit approval, submission, confirmation, and explorer states.
 
 When more than one venue is verified, RMT compares protected minimum output
@@ -69,6 +70,17 @@ wallet's own fee review.
 
 The interface does not expose a cosmetic slippage setting. The displayed
 protection is the value enforced in the server-verified transaction.
+
+## Robinhood Stock Token provenance
+
+RMT reads `https://api.robinhood.com/rhj/assets` as a cached, read-only identity registry. A stock label is attached only when the contract address exactly matches a Robinhood Chain deployment in that response. Matching a name or ticker is never sufficient.
+
+The data model intentionally supports more than one relationship per project and distinguishes:
+
+- `canonical-stock-token`: the displayed token contract is itself the canonical Robinhood Stock Token; and
+- `paired-market-asset`: an independently discovered pool pairs the displayed token with a canonical Robinhood Stock Token.
+
+A paired market does not mean the displayed project token is backed by, redeemable for, or economically entitled to the paired stock. RMT states that limitation in the optional Passport panel. Registry failure removes the relationship label without interrupting ordinary market discovery. Canonical Robinhood Stock Tokens remain view-only in RMT until enforceable jurisdiction controls exist; the server does not return execution venues or prepare a trade for those contracts. Stock Token availability and eligibility remain jurisdiction-dependent.
 
 ### Persistent trade presets
 

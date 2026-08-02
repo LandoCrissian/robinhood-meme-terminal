@@ -6,6 +6,7 @@ import {
   verifiedPrivyEmail,
   verifyPrivyIdentity
 } from "../../../../lib/server/privy-identity";
+import { findRmtFirebaseUser } from "../../../../lib/server/rmt-firebase-user";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -17,54 +18,12 @@ function identityToken(request: Request) {
   return token.length >= 100 && token.length <= 16_384 ? token : "";
 }
 
-function missingUser(error: unknown) {
-  return Boolean(
-    error
-    && typeof error === "object"
-    && "code" in error
-    && String((error as { code?: unknown }).code) === "auth/user-not-found"
-  );
-}
-
-async function optionalFirebaseUser(
-  lookup: () => Promise<UserRecord>
-) {
-  try {
-    return await lookup();
-  } catch (error) {
-    if (!missingUser(error)) throw error;
-    return null;
-  }
-}
-
-async function findFirebaseUser(
-  auth: NonNullable<ReturnType<typeof getRmtAdminAuth>>,
-  privyUserId: string,
-  email: string
-) {
-  const bridgeUid = firebaseUidForPrivyUser(privyUserId);
-  const [bridgeUser, emailUser] = await Promise.all([
-    optionalFirebaseUser(() => auth.getUser(bridgeUid)),
-    email ? optionalFirebaseUser(() => auth.getUserByEmail(email)) : Promise.resolve(null)
-  ]);
-  if (emailUser) {
-    const emailBinding = emailUser.customClaims?.rmt_privy_uid;
-    if (typeof emailBinding === "string" && emailBinding !== privyUserId) {
-      throw new Error("identity_already_bound");
-    }
-    // During the one-time migration, the verified email owner wins over an
-    // orphan bridge UID so the existing RMT admin/profile is recovered.
-    return emailUser;
-  }
-  return bridgeUser;
-}
-
 async function bindFirebaseUser(
   auth: NonNullable<ReturnType<typeof getRmtAdminAuth>>,
   privyUserId: string,
   email: string
 ) {
-  let user = await findFirebaseUser(auth, privyUserId, email);
+  let user = await findRmtFirebaseUser(auth, privyUserId, email);
   const boundPrivyUserId = user?.customClaims?.rmt_privy_uid;
   if (typeof boundPrivyUserId === "string" && boundPrivyUserId !== privyUserId) {
     throw new Error("identity_already_bound");

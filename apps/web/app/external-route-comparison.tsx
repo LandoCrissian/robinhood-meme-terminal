@@ -32,6 +32,7 @@ import {
 } from "../lib/uniswap-v4";
 import { useTradeFeeEstimate } from "../lib/use-trade-fee-estimate";
 import { useTradePreferences } from "../lib/use-trade-preferences";
+import { useRmtIdentity } from "./rmt-identity";
 
 type TradeVenue = {
   venue: TradeVenueId;
@@ -174,6 +175,7 @@ export function ExternalRouteComparison({
   onHealthChange?: (health: Partial<Record<TradeVenueId, TradeVenueHealth>>) => void;
 }) {
   const { address } = useAccount();
+  const identity = useRmtIdentity();
   const { preferences } = useTradePreferences();
   const [states, setStates] = useState<Partial<Record<TradeVenue["venue"], VenueState>>>({});
   const [refresh, setRefresh] = useState(0);
@@ -206,12 +208,12 @@ export function ExternalRouteComparison({
   }, [preferences.preparationMode]);
 
   useEffect(() => {
-    if (!address || amountIn <= 0n || venues.length < 2) {
+    if (!identity.ready || !identity.authenticated || !identity.identityToken || !identity.userId || !address || amountIn <= 0n || venues.length < 2) {
       requestKey.current = "";
       setStates({});
       return;
     }
-    const nextRequestKey = `${address}:${amountIn}:${side}:${token}:${venues.map((venue) => `${venue.venue}:${venue.pair}`).join("|")}`;
+    const nextRequestKey = `${identity.userId}:${address}:${amountIn}:${side}:${token}:${venues.map((venue) => `${venue.venue}:${venue.pair}`).join("|")}`;
     const requestChanged = requestKey.current !== nextRequestKey;
     requestKey.current = nextRequestKey;
     let cancelled = false;
@@ -240,6 +242,9 @@ export function ExternalRouteComparison({
             recipient: address,
             side,
             amountIn: amountIn.toString()
+          }, {
+            identityScope: identity.userId,
+            identityToken: identity.identityToken
           });
           const payload = response.payload;
           if (!response.ok) throw new Error(typeof payload.error === "string" ? payload.error : "Quote unavailable.");
@@ -259,6 +264,11 @@ export function ExternalRouteComparison({
             || payload.token.toLowerCase() !== token.toLowerCase()
             || typeof payload.recipient !== "string"
             || payload.recipient.toLowerCase() !== address.toLowerCase()
+            || typeof payload.authorization !== "object"
+            || payload.authorization === null
+            || (payload.authorization as Record<string, unknown>).status !== "identity-wallet-bound"
+            || typeof (payload.authorization as Record<string, unknown>).wallet !== "string"
+            || ((payload.authorization as Record<string, unknown>).wallet as string).toLowerCase() !== address.toLowerCase()
             || payload.side !== side
             || payload.amountIn !== amountIn.toString()
             || typeof payload.quoteOut !== "string"
@@ -356,7 +366,7 @@ export function ExternalRouteComparison({
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [address, amountIn, preferences.preparationMode, refresh, side, token, venues]);
+  }, [address, amountIn, identity.authenticated, identity.identityToken, identity.ready, identity.userId, preferences.preparationMode, refresh, side, token, venues]);
 
   useEffect(() => {
     onHealthChange?.(Object.fromEntries(venues.map((venue) => [
@@ -399,7 +409,7 @@ export function ExternalRouteComparison({
     <section className="universalVenueSelector" aria-labelledby="route-comparison-heading">
       <header>
         <div><small>VERIFIED ROUTE COMPARISON</small><strong id="route-comparison-heading">Choose execution</strong></div>
-        <span>{address ? amountIn > 0n ? "Fresh · 15s" : "Enter amount below" : "Connect to compare"}</span>
+        <span>{!address ? "Connect to compare" : !identity.authenticated ? "Sign in to compare" : amountIn > 0n ? "Fresh · 15s" : "Enter amount below"}</span>
       </header>
       <div>
         {venues.map((candidate) => {

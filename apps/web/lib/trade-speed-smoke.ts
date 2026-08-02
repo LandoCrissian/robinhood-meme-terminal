@@ -30,8 +30,10 @@ assert.equal(
 async function run() {
   const originalFetch = globalThis.fetch;
   let calls = 0;
-  globalThis.fetch = (async () => {
+  let lastIdentityToken = "";
+  globalThis.fetch = (async (_input, init) => {
     calls += 1;
+    lastIdentityToken = new Headers(init?.headers).get("privy-id-token") ?? "";
     return new Response(JSON.stringify({ quoteOut: "2" }), {
       status: 200,
       headers: { "Content-Type": "application/json" }
@@ -42,15 +44,24 @@ async function run() {
     clearTradeQuoteCache();
     const body = { amountIn: "1", side: "buy" };
     const [first, second] = await Promise.all([
-      requestTradeQuote("/quote", body, 1_000),
-      requestTradeQuote("/quote", body, 1_001)
+      requestTradeQuote("/quote", body, { identityScope: "did:privy:test", identityToken: "identity-token", now: 1_000 }),
+      requestTradeQuote("/quote", body, { identityScope: "did:privy:test", identityToken: "identity-token", now: 1_001 })
     ]);
     assert.equal(calls, 1);
+    assert.equal(lastIdentityToken, "identity-token");
     assert.equal(first.ok, true);
     assert.deepEqual(second.payload, { quoteOut: "2" });
 
-    await requestTradeQuote("/quote", body, 3_000);
+    await requestTradeQuote("/quote", body, {
+      identityScope: "did:privy:another-trader",
+      identityToken: "another-identity-token",
+      now: 1_002
+    });
     assert.equal(calls, 2);
+    assert.equal(lastIdentityToken, "another-identity-token");
+
+    await requestTradeQuote("/quote", body, { identityScope: "did:privy:test", identityToken: "identity-token", now: 3_000 });
+    assert.equal(calls, 3);
   } finally {
     clearTradeQuoteCache();
     globalThis.fetch = originalFetch;

@@ -98,6 +98,24 @@ function watchlistDocument(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function watchlistAlertSettings(overrides: Record<string, unknown> = {}) {
+  return {
+    schemaVersion: 1,
+    alerts: [{
+      id: "alert_1",
+      address: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      metric: "largeSellLiquidityBps",
+      direction: "above",
+      threshold: 100,
+      enabled: true,
+      createdAt: 1_000
+    }],
+    updatedAt: 1_000,
+    writtenAt: serverTimestamp(),
+    ...overrides
+  };
+}
+
 function creatorApplication(overrides: Record<string, unknown> = {}) {
   return {
     schemaVersion: 1,
@@ -535,9 +553,34 @@ test("watchlist records cannot change without advancing the parent list version"
   await assertFails(setDoc(slotReference, watchlistDocument({ name: "Silent rewrite" })));
 });
 
+test("watchlist alert settings are private, bounded and owned by the verified Privy profile", async () => {
+  const owner = authenticatedDb();
+  await seedOwner(owner);
+  const reference = doc(owner, "users", OWNER_ID, "settings", "watchlistAlerts");
+  await assertSucceeds(setDoc(reference, watchlistAlertSettings()));
+  await assertSucceeds(getDoc(reference));
+  await assertFails(getDoc(doc(authenticatedDb(OTHER_ID), "users", OWNER_ID, "settings", "watchlistAlerts")));
+  await assertFails(setDoc(reference, watchlistAlertSettings({ alerts: Array.from({ length: 51 }, (_, index) => ({ id: `alert_${index}` })) })));
+  await assertFails(setDoc(doc(owner, "users", OWNER_ID, "settings", "other"), watchlistAlertSettings()));
+});
+
 test("unrelated collections remain closed", async () => {
   const db = authenticatedDb();
   await assertFails(setDoc(doc(db, "publicProfiles", OWNER_ID), { displayName: "Public" }));
+  await assertFails(getDoc(doc(db, "smsAlertPreferences", OWNER_ID)));
+  await assertFails(setDoc(doc(db, "smsAlertPreferences", OWNER_ID), {
+    enabled: true,
+    encryptedPhone: "browser-supplied"
+  }));
+  for (const collectionName of [
+    "smsAlertEvaluationStates",
+    "smsAlertDeliveryAttempts",
+    "smsAlertBudgets",
+    "smsAlertSystem"
+  ]) {
+    await assertFails(getDoc(doc(db, collectionName, OWNER_ID)));
+    await assertFails(setDoc(doc(db, collectionName, OWNER_ID), { browserSupplied: true }));
+  }
 });
 
 test("verified owners can submit one private creator application", async () => {

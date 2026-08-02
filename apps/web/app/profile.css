@@ -84,6 +84,24 @@
 .profileCloudCard .profileLinkMethods button{min-height:38px;padding:7px;margin:0;font-size:.63rem}
 .profileCloudCard .profileLinkMethods button:disabled{border-color:#244f30;background:#0b1b10;color:#63d778;cursor:default;opacity:1}
 .profileCloudCard .profileAuthMessage{margin:10px 0 0;color:#79e98c;font-size:.65rem;font-weight:800;line-height:1.5}
+.profileSmsAlerts{border-color:#36513d!important;background:radial-gradient(circle at 100% 0,rgba(83,238,112,.12),transparent 42%),linear-gradient(180deg,#0b120e,#070a08)!important}
+.profileSmsHeading{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.profileSmsHeading h2{margin:4px 0 0;font-size:1.35rem;letter-spacing:-.03em}
+.profileSmsHeading>span{flex:0 0 auto;padding:6px 8px;border:1px solid #4a4d37;border-radius:7px;background:#17150a;color:#c9b667;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.5rem;font-weight:950;letter-spacing:.07em}
+.profileSmsHeading>span.active{border-color:#3a6844;background:#0d1b11;color:#71e987}
+.profileSmsAlerts>p:not(.eyebrow){margin:9px 0 0;color:#86938b;font-size:.72rem;line-height:1.55}
+.profileSmsAlerts>button{width:100%;min-height:43px;margin-top:12px;border:1px solid #3f6648;border-radius:10px;background:#111a14;color:#b9c4bb;font-size:.68rem;font-weight:950;cursor:pointer}
+.profileSmsAlerts>button:disabled{opacity:.55;cursor:wait}
+.profileSmsPhone{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:13px;padding:11px 12px;border:1px solid #2d3d32;border-radius:10px;background:#080d0a}
+.profileSmsPhone span{color:#6e7c73;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.5rem;font-weight:900;letter-spacing:.08em}
+.profileSmsPhone strong{color:#dce6de;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.72rem}
+.profileSmsLock{display:flex;flex-direction:column;gap:4px;margin-top:9px;padding:11px 12px;border:1px solid #4b4430;border-radius:10px;background:#111008}
+.profileSmsLock strong{color:#d8c879;font-size:.68rem}.profileSmsLock span{color:#8f885f;font-size:.61rem;line-height:1.5}
+.profileSmsLock.active{border-color:#345e3d;background:#0b160e}.profileSmsLock.active strong{color:#75e789}.profileSmsLock.active span{color:#7f9184}
+.profileSmsConsent{display:grid;grid-template-columns:auto 1fr;gap:9px;align-items:flex-start;margin-top:11px;padding:11px;border:1px solid #314238;border-radius:10px;background:#080d0a;cursor:pointer}
+.profileSmsConsent input{width:17px;height:17px;margin:1px 0 0;accent-color:#55ee72}.profileSmsConsent span{color:#91a097;font-size:.61rem;line-height:1.5}
+.profileSmsAlerts>small{display:block;margin-top:11px;color:#66736b;font-size:.57rem;line-height:1.45}
+.profileSmsAlerts .profileSmsMessage{margin-top:9px;color:#76e88a;font-size:.62rem;font-weight:800}
 .profileReferralCard>p:not(.eyebrow){margin:8px 0 0;color:#86938b;font-size:.72rem;line-height:1.5}
 .profileReferralCard h2{margin:4px 0 0;font-size:1.35rem;letter-spacing:-.03em}
 .referralAvailability{display:inline-flex;margin-top:13px;padding:6px 8px;border:1px solid #3a463d;border-radius:7px;color:#77857c;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.52rem;font-weight:950;letter-spacing:.08em}

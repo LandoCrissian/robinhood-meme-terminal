@@ -47,6 +47,14 @@ import { recordExperienceStage } from "../lib/experience-funnel";
 import { requestTradeQuote } from "../lib/trade-quote-client";
 import { quoteDebounceMs, quoteRefreshMs } from "../lib/trade-speed";
 import { isTradePreflightReady } from "../lib/trade-preflight";
+import { useRmtIdentity } from "./rmt-identity";
+import {
+  confirmedBuyProtectionSnapshot,
+  type ConfirmedBuyProtectionSnapshot
+} from "../lib/confirmed-buy-protection";
+import { PostTradeProtection, TradeProtectionIntent } from "./post-trade-protection";
+import { useAfterBuyProtection } from "../lib/use-after-buy-protection";
+import type { AfterBuyProtectionSettings } from "../lib/after-buy-protection";
 
 const ROBINHOOD_CHAIN_ID = 4663;
 const EXPLORER = "https://robinhoodchain.blockscout.com";
@@ -58,6 +66,10 @@ type ExternalSushiQuote = (SushiExecutableQuote | SushiIndicativeQuote) & {
   approvalRequired: boolean;
   approvalSpender: Address;
   quoteExpiresAt: string;
+  authorization: {
+    status: "identity-wallet-bound";
+    wallet: Address;
+  };
 };
 
 function cleanDecimal(value: string, maximumDecimals = 18) {
@@ -81,14 +93,18 @@ export function ExternalSushiQuotePanel({
   market,
   side,
   amount: controlledAmount,
-  onAmountChange
+  onAmountChange,
+  onSwapConfirmed
 }: {
   market: ExternalMarket;
   side: "buy" | "sell";
   amount?: string;
   onAmountChange?: (value: string) => void;
+  onSwapConfirmed?: () => void;
 }) {
   const { preferences } = useTradePreferences();
+  const identity = useRmtIdentity();
+  const afterBuyProtection = useAfterBuyProtection();
   const maxPriceImpact = preferences.maxPriceImpactBps / 10_000;
   const { address, chainId, isConnected } = useAccount();
   const tokenRisk = useTokenRiskEvidence(market);
@@ -101,7 +117,11 @@ export function ExternalSushiQuotePanel({
   const [criticalEvidenceAcknowledged, setCriticalEvidenceAcknowledged] = useState(false);
   const [refresh, setRefresh] = useState(0);
   const [saferOrderOriginal, setSaferOrderOriginal] = useState<bigint>();
+  const [confirmedBuy, setConfirmedBuy] = useState<ConfirmedBuyProtectionSnapshot>();
+  const [confirmedBuyProtectionSettings, setConfirmedBuyProtectionSettings] = useState<AfterBuyProtectionSettings>();
   const quoteRequestKey = useRef("");
+  const pendingBuy = useRef<{ beforeBalance?: bigint; amountInWei: bigint; ethUsd?: number; protectionSettings: AfterBuyProtectionSettings } | undefined>(undefined);
+  const handledSwap = useRef<string | undefined>(undefined);
   const token = market.address as Address;
   const pair = market.pairAddress as Address;
   const tokenDecimals = useReadContract({
@@ -163,6 +183,10 @@ export function ExternalSushiQuotePanel({
     setCriticalEvidenceAcknowledged(false);
     setStatus("idle");
     setSaferOrderOriginal(undefined);
+    setConfirmedBuy(undefined);
+    setConfirmedBuyProtectionSettings(undefined);
+    pendingBuy.current = undefined;
+    handledSwap.current = undefined;
     approval.reset();
     swap.reset();
   }, [market.address, side]);
@@ -176,12 +200,12 @@ export function ExternalSushiQuotePanel({
   }, [preferences.preparationMode]);
 
   useEffect(() => {
-    const nextRequestKey = `${address ?? ""}:${amountIn}:${side}:${token}:${pair}:${preferences.maxPriceImpactBps}`;
+    const nextRequestKey = `${identity.userId}:${address ?? ""}:${amountIn}:${side}:${token}:${pair}:${preferences.maxPriceImpactBps}`;
     const requestChanged = quoteRequestKey.current !== nextRequestKey;
     quoteRequestKey.current = nextRequestKey;
     if (requestChanged) setQuote(undefined);
     setError("");
-    if (!address || amountIn <= 0n || (side === "sell" && decimals === undefined)) {
+    if (!identity.ready || !identity.authenticated || !identity.identityToken || !identity.userId || !address || amountIn <= 0n || (side === "sell" && decimals === undefined)) {
       setStatus("idle");
       return;
     }
@@ -195,6 +219,9 @@ export function ExternalSushiQuotePanel({
         side,
         amountIn: amountIn.toString(),
         maxPriceImpactBps: preferences.maxPriceImpactBps
+      }, {
+        identityScope: identity.userId,
+        identityToken: identity.identityToken
       }).then((response) => {
         const payload = response.payload as ExternalSushiQuote | { error?: string };
         if (!response.ok) throw new Error("error" in payload ? payload.error : "Sushi quote is unavailable.");
@@ -216,6 +243,8 @@ export function ExternalSushiQuotePanel({
           || payload.chainId !== ROBINHOOD_CHAIN_ID
           || payload.token.toLowerCase() !== token.toLowerCase()
           || payload.recipient.toLowerCase() !== address.toLowerCase()
+          || payload.authorization?.status !== "identity-wallet-bound"
+          || payload.authorization.wallet.toLowerCase() !== address.toLowerCase()
           || payload.marketPair.toLowerCase() !== pair.toLowerCase()
           || payload.side !== side
           || payload.amountIn !== amountIn.toString()
@@ -240,7 +269,7 @@ export function ExternalSushiQuotePanel({
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [address, amountIn, decimals, pair, preferences.maxPriceImpactBps, preferences.preparationMode, refresh, side, token]);
+  }, [address, amountIn, decimals, identity.authenticated, identity.identityToken, identity.ready, identity.userId, pair, preferences.maxPriceImpactBps, preferences.preparationMode, refresh, side, token]);
 
   useEffect(() => {
     if (!approvalReceipt.isSuccess) return;
@@ -252,7 +281,26 @@ export function ExternalSushiQuotePanel({
   useEffect(() => {
     if (!swapReceipt.isSuccess || !swap.data) return;
     setMessage("Sushi swap confirmed on Robinhood Chain.");
-    void Promise.all([tokenBalance.refetch(), nativeBalance.refetch(), allowance.refetch()]);
+    if (handledSwap.current === swap.data) return;
+    handledSwap.current = swap.data;
+    onSwapConfirmed?.();
+    void Promise.all([tokenBalance.refetch(), nativeBalance.refetch(), allowance.refetch()])
+      .then(([refreshedToken]) => {
+        const pending = pendingBuy.current;
+        if (side !== "buy" || !pending || pending.beforeBalance === undefined || refreshedToken.data === undefined || decimals === undefined) return;
+        const snapshot = confirmedBuyProtectionSnapshot({
+          beforeBalance: pending.beforeBalance,
+          afterBalance: refreshedToken.data,
+          tokenDecimals: decimals,
+          amountInWei: pending.amountInWei,
+          ethUsd: pending.ethUsd,
+          marketPriceUsd: market.priceUsd
+        });
+        if (snapshot) {
+          setConfirmedBuy(snapshot);
+          setConfirmedBuyProtectionSettings(pending.protectionSettings);
+        }
+      });
   }, [swapReceipt.isSuccess]);
 
   const outputDecimals = quote?.outputToken?.decimals;
@@ -299,6 +347,7 @@ export function ExternalSushiQuotePanel({
   const confidenceEvidenceReady = side === "sell" || tokenRisk.status !== "loading";
   const confidenceReady = confidenceEvidenceReady && (!requiresAcknowledgement || tradingTerms.accepted);
   const evidenceBlocked = evidenceDecision.state === "blocked" && !criticalEvidenceAcknowledged;
+  const accountReady = identity.ready && identity.authenticated && Boolean(identity.identityToken && identity.userId);
   const criticalEvidenceKey = evidenceDecision.findings
     .filter((finding) => finding.severity === "blocked")
     .map((finding) => finding.code)
@@ -323,7 +372,7 @@ export function ExternalSushiQuotePanel({
 
   const submit = () => {
     setMessage("");
-    if (!address || chainId !== ROBINHOOD_CHAIN_ID || !quoteIsFresh || !quote || insufficient || busy || !confidenceReady || evidenceBlocked || impactBlocked || !preflightReady) return;
+    if (!accountReady || !address || chainId !== ROBINHOOD_CHAIN_ID || !quoteIsFresh || !quote || insufficient || busy || !confidenceReady || evidenceBlocked || impactBlocked || !preflightReady) return;
     recordExperienceStage("wallet_review_started");
     if (needsApproval) {
       approval.writeContract({
@@ -336,6 +385,14 @@ export function ExternalSushiQuotePanel({
       return;
     }
     if (quote.executable !== true || !("router" in quote) || !("calldata" in quote)) return;
+    if (side === "buy") {
+      pendingBuy.current = {
+        beforeBalance: tokenBalance.data,
+        amountInWei: amountIn,
+        ethUsd: feeEstimate.ethUsd,
+        protectionSettings: { ...afterBuyProtection.settings }
+      };
+    }
     swap.sendTransaction({
       account: address,
       chainId: ROBINHOOD_CHAIN_ID,
@@ -357,6 +414,7 @@ export function ExternalSushiQuotePanel({
   const buttonLabel = busy
     ? approval.isPending || approvalReceipt.isLoading ? "Confirming exact approval…" : "Confirming Sushi swap…"
     : amountIn <= 0n ? "Enter an amount"
+      : !accountReady ? "Sign in to protect this trade"
       : status === "error" && !quote ? "Quote unavailable"
       : !quoteIsFresh ? "Verifying route…"
       : insufficient ? "Insufficient balance"
@@ -383,6 +441,11 @@ export function ExternalSushiQuotePanel({
         <div className="externalSushiConnect">
           <p>Connect a wallet to calculate a route for your exact trade. RMT never takes custody.</p>
           <WalletButton target="mainnet" showFunding={false} />
+        </div>
+      ) : !accountReady ? (
+        <div className="externalSushiConnect">
+          <p>Sign in once so RMT can bind quotes to your account and selected wallet. Your wallet still signs every approval and swap.</p>
+          <button className="tradeIdentitySignIn" type="button" onClick={identity.login}>Sign in to protect trading</button>
         </div>
       ) : (
         <>
@@ -437,6 +500,9 @@ export function ExternalSushiQuotePanel({
             disabled={busy || !canReduceImpact}
             onReduce={chooseSaferAmount}
           />
+          {side === "buy" && (
+            <TradeProtectionIntent settings={afterBuyProtection.settings} onChange={afterBuyProtection.setSettings} />
+          )}
         </>
       )}
 
@@ -450,7 +516,7 @@ export function ExternalSushiQuotePanel({
         onCriticalEvidenceAcknowledgement={setCriticalEvidenceAcknowledged}
       />
 
-      {isConnected && chainId === ROBINHOOD_CHAIN_ID && (
+      {isConnected && accountReady && chainId === ROBINHOOD_CHAIN_ID && (
         <>
           <TradePreSignReadiness
             quoteState={quoteState}
@@ -495,6 +561,16 @@ export function ExternalSushiQuotePanel({
           )}
         </p>
       )}
+      {side === "buy" && swapReceipt.isSuccess && swap.data && address && confirmedBuy && (
+        <PostTradeProtection
+          wallet={address}
+          token={market.address}
+          symbol={market.symbol}
+          transactionHash={swap.data}
+          snapshot={confirmedBuy}
+          protectionSettings={confirmedBuyProtectionSettings}
+        />
+      )}
 
       {address && (
         <TradeOrderDetails priceImpact={quote?.priceImpact} routeLabel="Sushi">
@@ -530,6 +606,7 @@ export function ExternalSushiQuotePanel({
       )}
 
       <TradeExecutionPath
+        authenticated={accountReady}
         connected={Boolean(address && chainId === ROBINHOOD_CHAIN_ID)}
         quoteReady={quoteIsFresh}
         evidenceReady={confidenceReady && !evidenceBlocked && !impactBlocked}

@@ -171,16 +171,54 @@ export async function readBoundedJsonRequest(
   }
 }
 
+export async function readBoundedFormRequest(
+  request: Request,
+  maxBytes: number
+): Promise<MediaRequestSuccess<URLSearchParams> | MediaRequestFailure> {
+  const contentType = request.headers.get("content-type")?.split(";", 1)[0]?.trim().toLowerCase();
+  if (contentType !== "application/x-www-form-urlencoded") {
+    return { ok: false, status: 415, error: "The request must use form encoding." };
+  }
+
+  const contentEncoding = request.headers.get("content-encoding")?.trim().toLowerCase();
+  if (contentEncoding && contentEncoding !== "identity") {
+    return { ok: false, status: 415, error: "Encoded request bodies are not supported." };
+  }
+
+  const contentLength = request.headers.get("content-length");
+  if (contentLength) {
+    if (!/^\d+$/.test(contentLength)) {
+      return { ok: false, status: 400, error: "The request size is invalid." };
+    }
+    if (Number(contentLength) > maxBytes) {
+      return { ok: false, status: 413, error: "The request is too large." };
+    }
+  }
+
+  const body = await readBoundedText(request.body, maxBytes);
+  if (!body.ok) {
+    return body.tooLarge
+      ? { ok: false, status: 413, error: "The request is too large." }
+      : { ok: false, status: 400, error: "The request body is invalid." };
+  }
+
+  if (/\0|[\u0001-\u0008\u000B\u000C\u000E-\u001F\u007F]/.test(body.value)) {
+    return { ok: false, status: 400, error: "The request body is invalid." };
+  }
+  return { ok: true, value: new URLSearchParams(body.value) };
+}
+
 export async function fetchWithTimeout(
   input: string,
   init: RequestInit,
-  timeoutMs: number
+  timeoutMs: number,
+  request: typeof fetch = fetch
 ): Promise<{ ok: true; response: Response } | { ok: false; timedOut: boolean }> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    return { ok: true, response: await fetch(input, { ...init, signal: controller.signal }) };
+    return { ok: true, response: await request(input, { ...init, signal: controller.signal }) };
   } catch {
     return { ok: false, timedOut: controller.signal.aborted };
   } finally {
