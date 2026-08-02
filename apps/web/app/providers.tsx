@@ -8,16 +8,20 @@ import { ProfileProvider } from "./profile-provider";
 import { ReferralCapture } from "./referral-capture";
 import { CommunityLive } from "./community-live";
 import { ExperienceTelemetry } from "./experience-telemetry";
-import { walletChains, walletConnectors, walletTransports } from "./wallet-config";
+import { createLegacyWalletConnectors, walletChains, walletTransports } from "./wallet-config";
+import { speedWalletEnabled } from "../lib/privy-config";
 
-const privyAppId = process.env.NEXT_PUBLIC_PRIVY_APP_ID?.trim();
+let legacyWalletConfig: ReturnType<typeof createConfig> | undefined;
 
-const config = createConfig({
-  chains: walletChains,
-  connectors: walletConnectors,
-  transports: walletTransports,
-  ssr: true
-});
+function getLegacyWalletConfig() {
+  legacyWalletConfig ??= createConfig({
+    chains: walletChains,
+    connectors: createLegacyWalletConnectors(),
+    transports: walletTransports,
+    ssr: true
+  });
+  return legacyWalletConfig;
+}
 
 const SpeedWalletProvider = dynamic(
   () => import("./speed-wallet-provider").then((module) => module.SpeedWalletProvider),
@@ -31,9 +35,9 @@ export function Providers({ children }: { children: ReactNode }) {
     <ProfileProvider><ReferralCapture /><ExperienceTelemetry />{children}<CommunityLive /></ProfileProvider>
   );
 
-  if (privyAppId) return <SpeedWalletProvider queryClient={queryClient}>{application}</SpeedWalletProvider>;
+  if (speedWalletEnabled) return <SpeedWalletProvider queryClient={queryClient}>{application}</SpeedWalletProvider>;
   return (
-    <WagmiProvider config={config}>
+    <WagmiProvider config={getLegacyWalletConfig()}>
       <QueryClientProvider client={queryClient}>{application}</QueryClientProvider>
     </WagmiProvider>
   );

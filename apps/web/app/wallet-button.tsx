@@ -7,8 +7,8 @@ import { usePathname } from "next/navigation";
 import { useAccount, useConnect, useDisconnect, useSwitchChain } from "wagmi";
 import { FundWalletButton } from "./fund-wallet-button";
 import { recordExperienceStage } from "../lib/experience-funnel";
+import { speedWalletEnabled } from "../lib/privy-config";
 
-const privyAppId = process.env.NEXT_PUBLIC_PRIVY_APP_ID?.trim();
 const PrivyWalletButton = dynamic(
   () => import("./privy-wallet-button").then((module) => module.PrivyWalletButton),
   { ssr: false }
@@ -156,6 +156,6 @@ export function WalletButton(props: {
   returnTo?: string;
   showFunding?: boolean;
 }) {
-  if (privyAppId) return <PrivyWalletButton {...props} />;
+  if (speedWalletEnabled) return <PrivyWalletButton {...props} />;
   return <LegacyWalletButton {...props} />;
 }

@@ -41,126 +41,96 @@ import {
   validateGameUpdate
 } from "./game-updates";
 import { validateCreatorImage } from "./creator-media";
-import { firebaseAuthDomainForHost } from "./firebase-client";
-import { isEmbeddedAuthBrowser } from "./auth-environment";
+import { firebaseUidForPrivyUser, verifiedPrivyEmail } from "./server/privy-identity";
 
 const vercelConfig = JSON.parse(readFileSync(new URL("../vercel.json", import.meta.url), "utf8")) as {
   headers?: Array<{
     source?: string;
     headers?: Array<{ key?: string; value?: string }>;
   }>;
-  rewrites?: Array<{ source?: string; destination?: string }>;
-};
-const firebaseConfig = JSON.parse(readFileSync(new URL("../../../firebase.json", import.meta.url), "utf8")) as {
-  auth?: { providers?: { emailPassword?: boolean } };
 };
 const profileProviderSource = readFileSync(new URL("../app/profile-provider.tsx", import.meta.url), "utf8");
 const profilePageSource = readFileSync(new URL("../app/profile/page.tsx", import.meta.url), "utf8");
+const identityBridgeSource = readFileSync(new URL("../app/rmt-identity.tsx", import.meta.url), "utf8");
+const firebaseSessionRouteSource = readFileSync(new URL("../app/api/auth/firebase-session/route.ts", import.meta.url), "utf8");
 assert.match(
   profileProviderSource,
-  /signInWithPopup\(client\.auth, provider\)/,
-  "Google profile sign-in must use the storage-partition-safe popup flow"
+  /useRmtIdentity\(\)/,
+  "Profiles must use the single RMT identity context"
+);
+assert.match(
+  profileProviderSource,
+  /fetch\("\/api\/auth\/firebase-session"/,
+  "The browser must exchange the signed RMT identity through the same-origin bridge"
+);
+assert.match(
+  profileProviderSource,
+  /signInWithCustomToken\(client\.auth, result\.firebaseToken\)/,
+  "Firestore access must use a server-minted custom token"
 );
 assert.doesNotMatch(
   profileProviderSource,
-  /signInWithRedirect\(/,
-  "Google profile sign-in must not restore the sessionStorage-dependent redirect flow"
+  /signInWithRedirect|signInWithPopup|sendSignInLinkToEmail|signInWithEmailLink/,
+  "RMT must not expose a second Firebase sign-in flow"
 );
 assert.match(
-  profileProviderSource,
-  /sendSignInLinkToEmail\(client\.auth, normalizedEmail,[\s\S]*handleCodeInApp:\s*true/,
-  "Profile sign-in must support passwordless links sent to any valid email provider"
+  identityBridgeSource,
+  /usePrivy\(\)/,
+  "Privy must own the visible RMT account session"
 );
 assert.match(
-  profileProviderSource,
-  /signInWithEmailLink\(client\.auth, normalizedEmail, window\.location\.href\)/,
-  "Profile sign-in must complete Firebase email links in the RMT profile"
+  identityBridgeSource,
+  /useIdentityToken\(\)/,
+  "The account bridge must use Privy's signed identity token"
 );
-assert.match(
-  profileProviderSource,
-  /localStorage\.setItem\(EMAIL_SIGN_IN_STORAGE_KEY, normalizedEmail\)/,
-  "Same-device email completion must keep the address out of the link URL"
-);
-assert.match(
-  profileProviderSource,
-  /localStorage\.removeItem\(EMAIL_SIGN_IN_STORAGE_KEY\)/,
-  "The temporary email must be removed after successful sign-in"
-);
-assert.doesNotMatch(
-  profileProviderSource,
-  /searchParams\.set\(\s*["']email["']/,
-  "RMT must never place the sign-in email in the continuation URL"
-);
-assert.match(profilePageSource, /OR USE ANY EMAIL/);
-assert.match(profilePageSource, /Outlook, Yahoo, iCloud, Proton, business email/);
-assert.equal(
-  firebaseConfig.auth?.providers?.emailPassword,
-  true,
-  "The committed Firebase Authentication configuration must enable the email provider"
-);
-assert.equal(isEmbeddedAuthBrowser(
-  "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 Version/18.5 Mobile/15E148 Safari/604.1"
-), false);
-assert.equal(isEmbeddedAuthBrowser(
-  "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 CriOS/138.0 Mobile/15E148 Safari/604.1"
-), false);
-assert.equal(isEmbeddedAuthBrowser(
-  "Mozilla/5.0 (Linux; Android 15; Pixel 9 Build/AP3A) AppleWebKit/537.36 Version/4.0 Chrome/138.0 Mobile Safari/537.36 wv"
-), true);
-assert.equal(isEmbeddedAuthBrowser(
-  "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 ChatGPT/1.2026.196"
-), true);
-assert.equal(isEmbeddedAuthBrowser("custom mobile shell chatgpt/1.2026.196"), true);
-assert.equal(isEmbeddedAuthBrowser(
-  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/138.0 Safari/537.36"
-), false);
-assert.ok(vercelConfig.rewrites?.some((rewrite) => (
-  rewrite.source === "/__/auth/:path*"
-  && rewrite.destination === "https://robinhood-meme-terminal.firebaseapp.com/__/auth/:path*"
-)), "Vercel must transparently proxy Firebase auth helpers for the branded auth domain");
+assert.match(profilePageSource, /Sign in or create RMT account/);
+assert.match(profilePageSource, /Keep one account—link extra sign-in methods here/);
+assert.match(profilePageSource, /Link Google/);
+assert.match(profilePageSource, /Link wallet/);
+assert.match(profilePageSource, /useDisconnect\(\)/);
+assert.match(profilePageSource, /disconnectWallet\(\)/);
+assert.equal((profilePageSource.match(/Sign in or create RMT account/g) ?? []).length, 1);
+assert.match(identityBridgeSource, /account\.walletClientType !== "privy"/);
+assert.match(identityBridgeSource, /linkWallet: \(\) => linkWallet\(\{ walletChainType: "ethereum-only" \}\)/);
+assert.doesNotMatch(profilePageSource, /OR USE ANY EMAIL|passwordless|Firebase sign-in/);
+
+assert.match(firebaseSessionRouteSource, /verifyPrivyIdentity\(token\)/);
+assert.match(firebaseSessionRouteSource, /getUserByEmail\(email\)/);
+assert.match(firebaseSessionRouteSource, /identity_already_bound/);
+assert.match(firebaseSessionRouteSource, /createCustomToken\(user\.uid, claims\)/);
+assert.match(firebaseSessionRouteSource, /rmt_privy_uid:\s*privyUserId/);
+assert.doesNotMatch(firebaseSessionRouteSource, /request[^\n]*email|input[^\n]*email/);
+
+const privyUid = firebaseUidForPrivyUser("did:privy:rmt-user");
+assert.match(privyUid, /^rmt_privy_[a-f0-9]{64}$/);
+assert.doesNotMatch(privyUid, /rmt-user/);
+assert.equal(privyUid, firebaseUidForPrivyUser("did:privy:rmt-user"));
+assert.equal(verifiedPrivyEmail({ linked_accounts: [
+  { type: "email", address: " ADMIN@Example.com ", verified_at: 10 }
+] } as never), "admin@example.com");
+assert.equal(verifiedPrivyEmail({ linked_accounts: [
+  { type: "email", address: "ignored@example.com", verified_at: 0 },
+  { type: "google_oauth", email: " Google@Example.com ", verified_at: 20 }
+] } as never), "google@example.com");
+assert.equal(verifiedPrivyEmail({ linked_accounts: [
+  { type: "email", address: "unverified@example.com", verified_at: 0 }
+] } as never), "");
 
 const globalSecurityHeaders = new Map(
   vercelConfig.headers?.find((entry) => entry.source === "/(.*)")?.headers?.map((header) => (
     [header.key?.toLowerCase(), header.value]
   )) ?? []
 );
-const antiFramingHeaders = new Map(
-  vercelConfig.headers?.find((entry) => entry.source === "/((?!__/auth/).*)")?.headers?.map((header) => (
-    [header.key?.toLowerCase(), header.value]
-  )) ?? []
-);
 assert.match(
-  antiFramingHeaders.get("content-security-policy") ?? "",
+  globalSecurityHeaders.get("content-security-policy") ?? "",
   /frame-ancestors 'none'/,
   "Production must reject framing through CSP"
 );
-assert.equal(antiFramingHeaders.get("x-frame-options"), "DENY");
-assert.equal(
-  vercelConfig.headers?.some((entry) => (
-    entry.source === "/__/auth/:path*"
-    && entry.headers?.some((header) => ["content-security-policy", "x-frame-options"].includes(header.key?.toLowerCase() ?? ""))
-  )),
-  false,
-  "Firebase auth helpers must remain frameable by the same-origin Firebase SDK"
-);
+assert.equal(globalSecurityHeaders.get("x-frame-options"), "DENY");
+assert.equal("rewrites" in vercelConfig, false, "The retired Firebase OAuth helper proxy must remain removed");
 assert.equal(globalSecurityHeaders.get("x-content-type-options"), "nosniff");
 assert.equal(globalSecurityHeaders.get("referrer-policy"), "strict-origin-when-cross-origin");
 assert.match(globalSecurityHeaders.get("permissions-policy") ?? "", /camera=\(\)/);
-
-assert.equal(
-  firebaseAuthDomainForHost("www.rmtlaunch.fun", "robinhood-meme-terminal-git-code-437b4e.vercel.app"),
-  "robinhood-meme-terminal-git-code-437b4e.vercel.app",
-  "Vercel previews must keep Firebase auth helpers on the current authorized preview origin"
-);
-assert.equal(
-  firebaseAuthDomainForHost("www.rmtlaunch.fun", "www.rmtlaunch.fun"),
-  "www.rmtlaunch.fun"
-);
-assert.equal(
-  firebaseAuthDomainForHost("robinhood-meme-terminal.firebaseapp.com", "localhost"),
-  "robinhood-meme-terminal.firebaseapp.com",
-  "Local development should retain the configured Firebase auth helper"
-);
 
 assert.deepEqual(normalizeProfile(null), DEFAULT_PROFILE);
 

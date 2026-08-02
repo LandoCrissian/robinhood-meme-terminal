@@ -39,6 +39,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@privy-io/node": "0.28.0",
     "@privy-io/react-auth": "3.36.1",
     "@privy-io/wagmi": "4.0.15",
     "@rmt/shared": "file:../../packages/shared",

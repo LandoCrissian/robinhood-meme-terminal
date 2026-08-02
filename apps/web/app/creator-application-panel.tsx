@@ -143,9 +143,9 @@ export function CreatorApplicationPanel() {
       </header>
 
       {!configured ? (
-        <div className="creatorApplicationState"><strong>Firebase setup required</strong><p>Project applications remain closed until secure profile storage is configured.</p></div>
+        <div className="creatorApplicationState"><strong>RMT account setup required</strong><p>Project applications remain closed until secure account storage is configured.</p></div>
       ) : !user ? (
-        <div className="creatorApplicationState"><strong>Sign in to apply</strong><p>Use Google or any email provider in the profile control above. Applications are private and never grant wallet or transaction access.</p></div>
+        <div className="creatorApplicationState"><strong>Sign in to apply</strong><p>Use your RMT account and link a verified contact email. Applications are private and never grant wallet or transaction access.</p></div>
       ) : loading ? (
         <div className="creatorApplicationState"><strong>Loading application status…</strong></div>
       ) : application?.status === "approved" && application.projectSlug ? (

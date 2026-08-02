@@ -34,18 +34,19 @@ Until these controls and the selected wallet provider are production-tested, RMT
 
 ## Provider foundation
 
-RMT's optional Speed Wallet is implemented behind `NEXT_PUBLIC_PRIVY_APP_ID`. When the variable is absent, the existing wallet experience and production application are unchanged.
+RMT's optional Speed Wallet is implemented behind `NEXT_PUBLIC_PRIVY_APP_ID`. When the variable is absent or does not match Privy's 25-character app-ID requirement, RMT fails closed to the existing wallet experience instead of initializing the provider or crashing the application.
 
 When configured, the provider layer:
 
 - uses Privy's official Wagmi adapter so the existing trade hooks can operate with an embedded wallet;
 - lets Privy own external-wallet connection state instead of duplicating it through Wagmi;
+- defers RMT's legacy MetaMask, Coinbase and WalletConnect connectors entirely while Privy is active, preventing duplicate WalletConnect sessions and conflicting origin checks;
 - creates a user-owned wallet after a user chooses to sign in, including users who also bring an external wallet;
 - keeps that wallet user-owned and exportable;
 - supports email, Google, passkey, and external-wallet authentication;
 - restricts supported networks to Robinhood Chain mainnet and testnet; and
 - exposes user-controlled MFA, recovery, key export and active-wallet selection; and
-- keeps Firebase profile identity separate from wallet selection so changing between an RMT Wallet and MetaMask cannot overwrite a profile;
+- binds profile sync to the verified Privy user rather than the currently selected wallet, so changing between an RMT Wallet and MetaMask cannot overwrite a profile;
 - presents Deposit, Receive, Send and Trade as separate actions for the exact active wallet; and
 - does not provision an RMT signer or allow unattended execution.
 
@@ -57,7 +58,7 @@ The funding request binds all provider quotes to:
 
 - the wallet address selected by the user;
 - an explicit CAIP-2 destination chain (Robinhood Chain is `eip155:4663`);
-- one exact asset symbol or contract address;
+- one exact destination token address (the zero address represents native ETH);
 - an explicit sandbox or production environment; and
 - a bounded default fiat amount.
 

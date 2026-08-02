@@ -20,13 +20,12 @@ import type { TradeFeeEstimateState } from "../lib/use-trade-fee-estimate";
 import { isTradePreflightReady } from "../lib/trade-preflight";
 import { normalizeTradePreferences } from "../lib/trade-preferences";
 import { useTradePreferences } from "../lib/use-trade-preferences";
+import { speedWalletEnabled } from "../lib/privy-config";
 
 const SpeedWalletEntry = dynamic(
   () => import("./speed-wallet-entry").then((module) => module.SpeedWalletEntry),
   { ssr: false }
 );
-const speedWalletEnabled = Boolean(process.env.NEXT_PUBLIC_PRIVY_APP_ID?.trim());
-
 export function TradeExecutionControls() {
   const { preferences, save } = useTradePreferences();
   const [message, setMessage] = useState("");

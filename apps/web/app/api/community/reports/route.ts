@@ -9,7 +9,8 @@ import { normalizeCommunityReportReason } from "../../../../lib/community-modera
 import {
   communityAuthorKey,
   communityBearerToken,
-  communityIdentitySecret
+  communityIdentitySecret,
+  isVerifiedCommunityMember
 } from "../../../../lib/server/community-identity";
 import { getRmtAdminAuth, getRmtAdminFirestore } from "../../../../lib/server/firebase-admin";
 import { consumeCommunityRateLimit } from "../../../../lib/server/community-rate-limit";
@@ -49,7 +50,7 @@ export async function POST(request: Request) {
   try {
     const identity = await auth.verifyIdToken(token, true);
     const guest = identity.firebase?.sign_in_provider === "anonymous";
-    if (!guest && identity.email_verified !== true) {
+    if (!guest && !isVerifiedCommunityMember(identity)) {
       return NextResponse.json({ error: "Verified member or guest identity required." }, { status: 403, headers: HEADERS });
     }
     const distributedLimit = await consumeCommunityRateLimit(db, secret, request, {

@@ -11,8 +11,7 @@ import {
 import { useSetActiveWallet } from "@privy-io/wagmi";
 import { useState } from "react";
 import { useAccount } from "wagmi";
-
-const speedWalletEnabled = Boolean(process.env.NEXT_PUBLIC_PRIVY_APP_ID?.trim());
+import { speedWalletEnabled } from "../lib/privy-config";
 
 function shortAddress(address: string) {
   return `${address.slice(0, 6)}…${address.slice(-4)}`;

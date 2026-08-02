@@ -1,80 +1,88 @@
-# Firebase profile setup
+# RMT account and private profile setup
 
-RMT supports two profile modes:
+RMT has one visible account layer:
 
-- **Local mode** is the automatic fallback. Profile preferences and watchlists stay in the current browser, and the trading product remains fully usable.
-- **Cloud mode** uses Firebase Authentication and Cloud Firestore. A user may continue with Google or request a passwordless sign-in link through any valid email provider. A signed-in user owns one private profile workspace and receives live profile/watchlist updates across signed-in devices.
+- **Local mode** is the automatic fallback. Profile preferences and watchlists stay in the current browser, and trading remains usable without an account.
+- **RMT account mode** uses Privy for email-code, Google, passkey, and existing-wallet sign-in. RMT verifies Privy's signed identity on the server and creates a short-lived Firebase custom session for private Firestore data.
 
-Wallet connection and profile authentication are deliberately separate. Firebase never receives a seed phrase, private key, wallet signature, trade approval, portfolio balance, or custody authority. Firebase remains an offchain convenience layer and is not a protocol dependency.
+Firebase is not a second user-facing login. The browser never supplies a trusted email, UID, admin role, or database claim. Selecting a different trading wallet does not change the owner of the RMT profile.
+
+The first method a visitor uses opens the Privy identity. Additional email, Google, passkey, and external-wallet methods must be linked from the signed-in Profile page rather than used as fresh sign-ins. This keeps recovery methods, the private RMT profile, administrator access, and the wallet workspace attached to the same Privy user.
+
+Account sign-in does not authorize a trade or give RMT custody. RMT never receives a seed phrase, private key, wallet signature, approval, portfolio balance, or payment credential through the profile bridge.
+
+## Identity bridge
+
+1. Privy signs an identity token for the authenticated user.
+2. The browser sends that token to the same-origin `/api/auth/firebase-session` endpoint.
+3. The server verifies the token with Privy's official server library and configured public verification key.
+4. RMT binds the verified Privy user ID to one Firebase UID and sets the private `privy_verified` and `rmt_privy_uid` claims.
+5. If the Privy identity contains a verified email matching the existing RMT administrator account, the bridge adopts that Firebase user instead of creating a duplicate.
+6. The browser receives a short-lived Firebase custom token and uses it only for Firestore access. Firestore rules require the server-issued Privy binding.
+
+The binding is one way: an already-bound Firebase profile cannot be reassigned to a different Privy user through the browser. A wallet-only user may sync a profile, watchlist, referrals, and community identity. Creator applications require a verified contact email; RMT administrator access additionally requires the exact verified administrator email.
 
 ## Data model
 
 - `users/{uid}` stores schema version 1, the normalized profile, independent profile/watchlist update versions, the watchlist count, the last identity-change timestamp, and a server timestamp.
-- `users/{uid}/watchlist/00` through `49` store at most 50 validated token records. Fixed slot IDs make the maximum enforceable in Firestore rules, while per-record rules validate addresses, text lengths, image schemes, launch IDs, and timestamps.
-- `creatorApplications/{uid}` stores the private, review-gated project application. Only the applicant and the RMT administrator can read it.
-- `projects/{slug}` stores the approved public page. The assigned creator may update bounded presentation fields but cannot change the token address, enabled modules, publication state, or ownership.
-- `projectAssignments/{slug}` privately maps an approved page to its verified Firebase owner and permitted modules.
-- `projects/{slug}/gameUpdates/{updateId}` stores bounded creator-authored milestones, playtests and releases for approved game pages. Visitors may read updates only while the parent page is live; only the verified assigned creator may write them.
-- `users/{uid}/projectFollows/{slug}` privately records the approved pages a user follows. Follower identities and lists are never public.
-- `projectStats/{slug}` exposes only the aggregate follower count. Firestore rules require the private follow and aggregate count to change together in one atomic write, preventing direct count edits.
-- `users/{uid}/referralProfile/current` privately records one permanent invite code for the owner. `referralCodes/{code}` stores the private owner ID and aggregate verified activation count; only the owner may read it.
-- `users/{uid}/referralClaim/current` privately records the single code an account activated. Rules prevent self-referrals and require the claim and aggregate `+1` to occur in one atomic write.
-- The verified sign-in email and optional provider photo are read from the active Firebase Authentication session for the signed-in UI. RMT does not duplicate either value in Firestore.
+- `users/{uid}/watchlist/00` through `49` store at most 50 validated token records.
+- `creatorApplications/{uid}` stores the private, review-gated project application.
+- `projects/{slug}` stores the approved public page.
+- `projectAssignments/{slug}` privately maps an approved page to its verified owner and permitted modules.
+- `projects/{slug}/gameUpdates/{updateId}` stores bounded creator-authored project updates.
+- `users/{uid}/projectFollows/{slug}` privately records followed projects; `projectStats/{slug}` exposes only an aggregate follower count.
+- `users/{uid}/referralProfile/current`, `referralCodes/{code}`, and `users/{uid}/referralClaim/current` implement bounded, private referral attribution.
 
-Local profile and watchlist records carry independent update versions. On sign-in, the latest profile and latest complete watchlist win separately. Newer deletions therefore stay deleted instead of being reintroduced by an older device. Firestore listeners deliver later changes to other open, signed-in RMT sessions.
+The verified email and optional provider photo come from the authenticated account session and are not copied into the profile document.
 
-Display name, handle, and desk note use a deliberate identity lifecycle. The user reviews those fields before the first save, may make corrections for 10 minutes, and then waits 24 hours from the latest identity change before editing them again. Firestore rules enforce the same window across signed-in devices using server time. Operating mode and information density are terminal preferences and remain editable during the identity protection period. Local-only profiles apply the same experience in that browser, but browser storage is not an authentication boundary.
+Local and cloud profile/watchlist records carry independent update versions. The newest complete version wins on sign-in, so an older device cannot silently restore deleted items. Display name, handle, and desk note have a 10-minute correction period followed by a 24-hour edit protection period enforced in both the interface and Firestore rules.
 
-Invite links use `/r/RMT-XXXXXXXX` and open a dedicated consent page. Only after a visitor explicitly accepts the invite does RMT retain a valid pending code in that browser, for at most 30 days. An activation is recorded only after the referred user has verified sign-in and saved a protected profile. Codes are randomly generated, permanent, non-editable, and restricted to one claim per account. The first release measures verified profile activations only: it does not count clicks, create financial rewards, or connect an X account. Sharing on X uses a public Web Intent and does not require or expose X API credentials.
+## Required configuration
 
-## Safe activation order
+### Privy
 
-1. Create or choose the Firebase project and register a Web app.
-2. Add only the exact RMT domains that need sign-in, including the canonical production domain. Do not authorize wildcard or disposable preview domains. Google sign-in, Email/Password provider activation, the OAuth display name, and the public support email are committed in `firebase.json` and deployed in step 4.
-3. Create Cloud Firestore in production mode. Never start with permissive test rules.
-4. From a reviewed local checkout, authenticate the Firebase CLI and deploy the committed Authentication provider configuration and rules:
+1. Configure email, Google, passkey, and wallet login methods as desired in the Privy Dashboard. Google is optional; email code remains available to non-Gmail addresses.
+2. Under **User management → Authentication → Advanced**, enable **Return user data in an identity token**.
+3. Set `NEXT_PUBLIC_PRIVY_APP_ID` to the public app ID.
+4. Set the server-only `PRIVY_VERIFICATION_KEY` to the dashboard's identity-token public verification key. Preserve line breaks as escaped `\n` characters in hosted environments.
+5. Authorize only exact RMT production and controlled preview origins. Do not use wildcard preview trust.
 
-   ```bash
-   pnpm exec firebase deploy --only auth,firestore:rules --project <firebase-project-id>
-   ```
+### Firebase
 
-   In Firebase Authentication, confirm **Email/Password** and **Email link (passwordless sign-in)** are both enabled. The committed CLI configuration enables the email provider; the live project must also allow email-link sign-in (`signIn.email.passwordRequired=false`) before the website advertises the option. Keep email-enumeration protection enabled.
+1. Create or choose the Firebase project, register a Web app, and create Cloud Firestore in production mode.
+2. Set the documented `NEXT_PUBLIC_FIREBASE_*` Web app values. These values identify the Firebase project; they do not authorize database access.
+3. Configure the server-only Firebase Admin service-account variables. Keep the existing Cloud Datastore User and Firebase Authentication Viewer roles for the documented RMT Live work. Add a custom project role containing only `firebaseauth.users.get`, `firebaseauth.users.create`, and `firebaseauth.users.update` for the account bridge. The update permission covers the verified-email migration and custom access claims. Do not grant Owner, Editor, Firebase Admin, Firebase Authentication Admin, config-management, delete-user, or IAM-management access. The current private-key credential mints Firebase custom tokens locally and does not require a broader Firebase role. Never expose the service-account key to browser code or logs.
+4. Deploy the reviewed Firestore rules before enabling the browser configuration.
+5. Direct Firebase Google and email-link sign-in are not used by RMT and must not be advertised as a separate account path. The former Vercel `/__/auth/*` proxy and provider configuration are intentionally removed from the repository. After the protected migration proves the administrator profile recovery, disable those two legacy providers in the live Firebase project; keep Anonymous Authentication for RMT Live guests.
 
-5. Run the rules emulator suite and the web checks:
+## Verification gate
 
-   ```bash
-   pnpm test:firebase-rules
-   pnpm --filter web test:profile
-   pnpm typecheck
-   pnpm build
-   ```
+From a reviewed checkout, run:
 
-6. Copy the registered Web app values into the matching `NEXT_PUBLIC_FIREBASE_*` deployment variables documented in `apps/web/.env.example`. Set the variables only after the production rules are deployed.
-7. Redeploy RMT. On `/profile`, test Google sign-in and a passwordless link sent to a non-Gmail address. Open one link on the requesting device and another on a different browser, which must require the same email address again. Review and save an identity, confirm the correction window appears on a second device, and verify preferences remain editable. Add and remove a watched token, then confirm the same state appears on the second device. Also confirm signed-out and different-user reads fail.
+```bash
+pnpm test:firebase-rules
+pnpm --filter web test:profile
+pnpm --filter web test:community
+pnpm --filter web test:trade-speed
+pnpm typecheck
+pnpm build
+```
 
-## Branded authentication domain
+Then validate a protected preview on mobile and desktop:
 
-Production sets `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=www.rmtlaunch.fun`. In the browser, RMT uses the current approved RMT or Vercel deployment hostname as the Firebase `authDomain`. The Vercel rewrite in `apps/web/vercel.json` transparently proxies only `/__/auth/*` to the project's Firebase Hosting origin, so Google returns through the same RMT origin instead of depending on third-party browser storage. Local development retains the configured Firebase helper domain.
-
-Google profile sign-in uses Firebase's user-initiated popup flow. RMT detects embedded browsers that commonly block it and directs those users to a full browser. Passwordless email sign-in remains available without a Google account: RMT sends a one-time Firebase link back to `/profile`, stores the normalized email only in the requesting browser for same-device completion, never places the email in the URL, and requires the user to re-enter the same address when the link opens on another device.
-
-Keep `www.rmtlaunch.fun` in Firebase Authentication's authorized domains and keep the exact handler URL registered on the Firebase-generated Google OAuth client. Do not use a redirect response in place of the rewrite: the auth helper must be reverse-proxied without changing the browser URL. The original `robinhood-meme-terminal.firebaseapp.com` domain remains the upstream and rollback path.
-
-Google Search Console ownership for `https://www.rmtlaunch.fun` is maintained by the `verification.google` metadata entry in `apps/web/app/layout.tsx`. Keep that tag in the deployed homepage so the OAuth branding verification remains valid.
-
-The Firebase Web API key identifies the project; it is not the Firestore authorization boundary. Restrict the key to the required Firebase APIs and approved RMT origins in Google Cloud. Authorization is enforced by `firestore.rules`, which requires a verified signed-in owner and denies every unrelated collection.
-
-## App Check
-
-RMT can optionally initialize Firebase App Check with a reCAPTCHA Enterprise site key through `NEXT_PUBLIC_FIREBASE_APP_CHECK_SITE_KEY`. Treat this as defense in depth, not a replacement for Authentication or Firestore rules. Review reCAPTCHA Enterprise quotas and pricing, observe App Check metrics before enforcement, and never place a debug token in a public build.
-
-The browser uses Firestore's memory cache rather than persistent IndexedDB caching. RMT already keeps a deliberately small local profile fallback, and avoiding an additional persistent Firestore cache reduces leftover account data on shared devices.
+1. Sign in with the verified `launchrmt@gmail.com` Privy identity and confirm the existing profile and RMT Admin control return without a duplicate wallet or duplicate Firebase user.
+2. Sign out from Profile and from the wallet control; confirm the Privy session, Firebase session, active Wagmi connection, and visible account state clear.
+3. While still signed in, link an email code and an existing wallet from Profile. Sign out, then confirm each linked method reopens the same Privy-owned workspace. Do not test this by creating separate unlinked sign-ins.
+4. Switch between the embedded RMT Wallet and an external wallet. Confirm the cloud profile does not change owners.
+5. Save a profile and watchlist change on one device and confirm it appears on the other.
+6. Confirm signed-out users, unbound Firebase users, and different Privy users cannot read or write the profile.
+7. Confirm RMT Live, referrals, creator review, and the private admin dashboard still enforce their existing access rules.
 
 ## Operational behavior
 
-- Google sign-in uses a user-initiated popup, while embedded browsers receive a clear full-browser recovery path.
-- Passwordless email links work with Gmail, Outlook, Yahoo, iCloud, Proton, business domains, and other valid providers. The same email address must be confirmed when the link opens outside the requesting browser.
-- Approved RMT and Vercel hosts proxy Firebase's `/__/auth/*` helper on the same origin for the Google flow.
-- If Firebase is absent or temporarily unavailable, profile edits remain saved locally and trading remains operational.
-- A failed cloud write displays a retry action. Writes are serialized, schema-versioned, and protected from older profile/watchlist versions overwriting newer ones.
-- Deploy rules before enabling the client configuration. Rolling the variables back disables new Firebase initialization without affecting wallets, launches, market data, or trading.
+- If Privy, Firebase, or the bridge endpoint is unavailable, local profile mode and non-custodial trading remain available.
+- A failed cloud write displays a retry action. Writes remain serialized and versioned.
+- Signing out ends the RMT and Firebase cloud sessions. Browser-local preferences remain until the user clears site data.
+- Firebase App Check may be enabled as defense in depth after observing metrics. It does not replace identity verification or Firestore rules.
+- The browser uses Firestore memory cache rather than persistent IndexedDB caching to reduce leftover cloud data on shared devices.
+- Never enable the bridge without both server verification and the Privy-bound Firestore rules.

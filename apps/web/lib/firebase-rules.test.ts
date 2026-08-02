@@ -52,14 +52,24 @@ function emulatorAddress() {
 function authenticatedDb(userId = OWNER_ID, verified = true) {
   return testEnvironment.authenticatedContext(userId, {
     email: `${userId}@example.com`,
-    email_verified: verified
+    email_verified: verified,
+    ...(verified ? { privy_verified: true, rmt_privy_uid: `did:privy:${userId}` } : {})
+  }).firestore();
+}
+
+function legacyVerifiedDb(userId = OWNER_ID) {
+  return testEnvironment.authenticatedContext(userId, {
+    email: `${userId}@example.com`,
+    email_verified: true
   }).firestore();
 }
 
 function adminDb() {
   return testEnvironment.authenticatedContext(ADMIN_ID, {
     email: "launchrmt@gmail.com",
-    email_verified: true
+    email_verified: true,
+    privy_verified: true,
+    rmt_privy_uid: `did:privy:${ADMIN_ID}`
   }).firestore();
 }
 
@@ -246,14 +256,16 @@ test("verified owners can create, read, update, and delete their profile", async
   await assertSucceeds(deleteDoc(reference));
 });
 
-test("signed-out, unverified, and different users cannot access an owner profile", async () => {
+test("signed-out, unbound legacy, unverified, and different users cannot access an owner profile", async () => {
   await seedOwner();
   const anonymous = testEnvironment.unauthenticatedContext().firestore();
   const other = authenticatedDb(OTHER_ID);
   const unverified = authenticatedDb(OWNER_ID, false);
+  const legacyVerified = legacyVerifiedDb();
   await assertFails(getDoc(doc(anonymous, "users", OWNER_ID)));
   await assertFails(getDoc(doc(other, "users", OWNER_ID)));
   await assertFails(getDoc(doc(unverified, "users", OWNER_ID)));
+  await assertFails(getDoc(doc(legacyVerified, "users", OWNER_ID)));
   await assertFails(setDoc(doc(other, "users", OWNER_ID), userDocument()));
   await assertFails(deleteDoc(doc(other, "users", OWNER_ID)));
 });

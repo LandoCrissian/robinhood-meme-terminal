@@ -18,7 +18,17 @@ const funding = parsePrivyFundingConfig({
 function shortAddress(address: string) {
   return `${address.slice(0, 6)}…${address.slice(-4)}`;
 }
-export function PrivyFundingActions({ onComplete }: { onComplete?: () => void }) {
+
+function safeFundingMessage(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  if (/cancel|closed|exited|dismiss/i.test(message)) return "Funding was cancelled. No funds were moved.";
+  if (/already.*progress|in progress/i.test(message)) return "A funding window is already open. Finish or close it before trying again.";
+  if (/not authenticated|unauthenticated|login/i.test(message)) return "Your session expired. Sign in again before funding this wallet.";
+  if (/unsupported|not available|no.*route|quote|provider/i.test(message)) return "No compatible funding route is available for this asset, device, or region. No funds were moved.";
+  return "Funding did not complete. Review the provider window and try again; no funds were moved by RMT.";
+}
+
+export function PrivyFundingActions() {
   const { ready, authenticated, login } = usePrivy();
   const { wallets, ready: walletsReady } = useWallets();
   const { setActiveWallet } = useSetActiveWallet();
@@ -88,11 +98,8 @@ export function PrivyFundingActions({ onComplete }: { onComplete?: () => void })
       setMessage(result.method === "fiat"
         ? result.status === "confirmed" ? "Funding confirmed by the provider." : "Funding submitted to the provider."
         : "Crypto funding completed.");
-      onComplete?.();
     } catch (error) {
-      setMessage(error instanceof Error
-        ? error.message
-        : "No compatible funding route was returned. No funds were moved.");
+      setMessage(safeFundingMessage(error));
     } finally {
       setBusy(false);
     }
@@ -102,7 +109,7 @@ export function PrivyFundingActions({ onComplete }: { onComplete?: () => void })
     <>
       <div className="fundWalletDestination">
         <span>Exact destination</span>
-        <strong>{shortAddress(destination.address)} · {funding.asset.toUpperCase()} · Robinhood Chain</strong>
+        <strong>{shortAddress(destination.address)} · {funding.assetLabel} · Robinhood Chain</strong>
       </div>
       <button className="fundWalletPrimary" type="button" disabled={busy} onClick={() => void beginFunding()}>
         {busy ? "Opening secure funding…" : "Deposit with crypto or available fiat methods"}
