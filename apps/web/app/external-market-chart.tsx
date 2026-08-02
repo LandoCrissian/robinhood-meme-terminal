@@ -18,20 +18,46 @@ function timeLabel(timestamp: number, range: ExternalChartRange) {
   const date = new Date(timestamp * 1_000);
   return range === "7D"
     ? date.toLocaleDateString([], { month: "short", day: "numeric" })
-    : date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    : date.toLocaleTimeString([], {
+        hour: "numeric",
+        minute: "2-digit",
+        second: range === "LIVE" ? "2-digit" : undefined
+      });
+}
+
+function freshness(lastTradeAt?: string | null, updatedAt?: string) {
+  const timestamp = lastTradeAt ? Date.parse(lastTradeAt) : Number.NaN;
+  if (Number.isFinite(timestamp)) {
+    const seconds = Math.max(0, Math.floor((Date.now() - timestamp) / 1_000));
+    if (seconds < 10) return { label: "LIVE · JUST CONFIRMED", active: true };
+    if (seconds < 60) return { label: `LIVE · ${seconds}S AGO`, active: true };
+    if (seconds < 3_600) return { label: `LAST SWAP · ${Math.floor(seconds / 60)}M AGO`, active: false };
+    return { label: `LAST SWAP · ${Math.floor(seconds / 3_600)}H AGO`, active: false };
+  }
+  const updated = updatedAt ? Date.parse(updatedAt) : Number.NaN;
+  return {
+    label: Number.isFinite(updated) ? "POOL SNAPSHOT" : "SYNCING",
+    active: false
+  };
 }
 
 export function ExternalMarketChart({
   candles,
   range,
   loading,
+  stale,
   error,
+  updatedAt,
+  lastTradeAt,
   onRangeChange
 }: {
   candles: ExternalOhlcvCandle[];
   range: ExternalChartRange;
   loading: boolean;
+  stale?: boolean;
   error?: string;
+  updatedAt?: string;
+  lastTradeAt?: string | null;
   onRangeChange: (range: ExternalChartRange) => void;
 }) {
   const gradientId = useId().replaceAll(":", "");
@@ -63,30 +89,37 @@ export function ExternalMarketChart({
   const change = first > 0 ? ((latest - first) / first) * 100 : 0;
   const positive = change >= 0;
   const barWidth = Math.max(1.5, usableWidth / Math.max(candles.length, 1) - 1.5);
+  const feed = freshness(lastTradeAt, updatedAt);
+  const latestPoint = coordinates.at(-1);
 
   return (
     <section className="universalChart" aria-labelledby="universal-chart-title">
       <header>
         <div>
-          <small>LIVE USD PRICE</small>
-          <strong id="universal-chart-title">{price(latest)}</strong>
+          <small>CONFIRMED POOL PRICE</small>
+          <strong id="universal-chart-title" aria-live="polite">{price(latest)}</strong>
           <span className={positive ? "positive" : "negative"}>
             {positive ? "+" : ""}{change.toLocaleString(undefined, { maximumFractionDigits: 2 })}% · {range}
           </span>
         </div>
-        <div className="universalChartRanges" role="tablist" aria-label="Chart range">
-          {EXTERNAL_CHART_RANGES.map((item) => (
-            <button
-              type="button"
-              role="tab"
-              aria-selected={range === item}
-              className={range === item ? "active" : ""}
-              onClick={() => onRangeChange(item)}
-              key={item}
-            >
-              {item}
-            </button>
-          ))}
+        <div className="universalChartControls">
+          <span className={`universalChartFeed ${feed.active ? "active" : "quiet"}${stale ? " stale" : ""}`}>
+            <i aria-hidden="true" />{stale ? "FEED RETRYING" : feed.label}
+          </span>
+          <div className="universalChartRanges" role="tablist" aria-label="Chart range">
+            {EXTERNAL_CHART_RANGES.map((item) => (
+              <button
+                type="button"
+                role="tab"
+                aria-selected={range === item}
+                className={range === item ? "active" : ""}
+                onClick={() => onRangeChange(item)}
+                key={item}
+              >
+                {item}
+              </button>
+            ))}
+          </div>
         </div>
       </header>
 
@@ -99,6 +132,10 @@ export function ExternalMarketChart({
                 <stop offset="100%" stopColor={positive ? "#66ef7c" : "#ff7777"} stopOpacity="0" />
               </linearGradient>
             </defs>
+            {[0, 1, 2, 3].map((row) => {
+              const y = priceTop + row / 3 * (priceBottom - priceTop);
+              return <line x1={paddingX} x2={width - paddingX} y1={y} y2={y} className="chartGridLine" key={row} />;
+            })}
             <path d={areaPath} fill={`url(#${gradientId})`} />
             <path d={linePath} className={positive ? "chartLine positive" : "chartLine negative"} />
             {candles.map((candle, index) => {
@@ -115,10 +152,16 @@ export function ExternalMarketChart({
                 />
               );
             })}
+            {latestPoint && (
+              <g className={feed.active ? "chartLatest active" : "chartLatest"}>
+                <line x1={latestPoint.x} x2={latestPoint.x} y1={priceTop} y2={volumeBottom} />
+                <circle cx={latestPoint.x} cy={latestPoint.y} r="4.5" />
+              </g>
+            )}
           </svg>
           <div className="universalChartAxis">
             <span>{timeLabel(candles[0].timestamp, range)}</span>
-            <span>VOL</span>
+            <span>{range === "LIVE" ? "CONFIRMED SWAPS · 4S REFRESH" : "POOL OHLCV · AUTO REFRESH"}</span>
             <span>{timeLabel(candles.at(-1)?.timestamp ?? 0, range)}</span>
           </div>
         </>

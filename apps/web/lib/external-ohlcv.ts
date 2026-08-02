@@ -1,6 +1,7 @@
 import { isAddress } from "viem";
+import type { ExternalPoolTrade } from "./external-trades";
 
-export const EXTERNAL_CHART_RANGES = ["1H", "6H", "24H", "7D"] as const;
+export const EXTERNAL_CHART_RANGES = ["LIVE", "5M", "15M", "1H", "6H", "24H", "7D"] as const;
 
 export type ExternalChartRange = typeof EXTERNAL_CHART_RANGES[number];
 
@@ -20,6 +21,8 @@ export type ExternalOhlcvPayload = {
   candles: ExternalOhlcvCandle[];
   source: "GeckoTerminal";
   updatedAt: string;
+  lastTradeAt: string | null;
+  refreshMs: number;
 };
 
 const RANGE_CONFIG: Record<ExternalChartRange, {
@@ -28,10 +31,23 @@ const RANGE_CONFIG: Record<ExternalChartRange, {
   limit: number;
   revalidate: number;
 }> = {
+  "LIVE": { timeframe: "minute", aggregate: 1, limit: 15, revalidate: 3 },
+  "5M": { timeframe: "minute", aggregate: 1, limit: 5, revalidate: 5 },
+  "15M": { timeframe: "minute", aggregate: 1, limit: 15, revalidate: 10 },
   "1H": { timeframe: "minute", aggregate: 1, limit: 60, revalidate: 30 },
   "6H": { timeframe: "minute", aggregate: 5, limit: 72, revalidate: 60 },
   "24H": { timeframe: "minute", aggregate: 15, limit: 96, revalidate: 90 },
   "7D": { timeframe: "hour", aggregate: 2, limit: 84, revalidate: 180 }
+};
+
+const RANGE_REFRESH_MS: Record<ExternalChartRange, number> = {
+  LIVE: 4_000,
+  "5M": 5_000,
+  "15M": 10_000,
+  "1H": 15_000,
+  "6H": 30_000,
+  "24H": 30_000,
+  "7D": 60_000
 };
 
 function finiteNumber(value: unknown) {
@@ -41,6 +57,10 @@ function finiteNumber(value: unknown) {
 
 export function isExternalChartRange(value: string): value is ExternalChartRange {
   return EXTERNAL_CHART_RANGES.includes(value as ExternalChartRange);
+}
+
+export function externalChartRefreshMs(range: ExternalChartRange) {
+  return RANGE_REFRESH_MS[range];
 }
 
 export function externalOhlcvRequestUrl(
@@ -86,6 +106,48 @@ export function parseExternalOhlcvList(value: unknown) {
 
   const unique = new Map(candles.map((candle) => [candle.timestamp, candle]));
   return [...unique.values()]
+    .sort((left, right) => left.timestamp - right.timestamp)
+    .slice(-120);
+}
+
+export function mergeConfirmedTradesIntoOhlcv(
+  candles: ExternalOhlcvCandle[],
+  trades: ExternalPoolTrade[]
+) {
+  if (candles.length === 0 || trades.length === 0) return candles;
+  const byMinute = new Map(candles.map((candle) => [candle.timestamp, { ...candle }]));
+  const earliest = candles[0]?.timestamp ?? 0;
+  const latest = candles.at(-1)?.timestamp ?? earliest;
+  const orderedTrades = [...trades].sort((left, right) => (
+    Date.parse(left.timestamp) - Date.parse(right.timestamp)
+  ));
+
+  for (const trade of orderedTrades) {
+    const tradeSeconds = Math.floor(Date.parse(trade.timestamp) / 1_000);
+    if (!Number.isSafeInteger(tradeSeconds) || tradeSeconds < earliest || tradeSeconds > latest + 120) continue;
+    const minute = Math.floor(tradeSeconds / 60) * 60;
+    const existing = byMinute.get(minute);
+    if (existing) {
+      existing.high = Math.max(existing.high, trade.priceUsd);
+      existing.low = Math.min(existing.low, trade.priceUsd);
+      existing.close = trade.priceUsd;
+      continue;
+    }
+    const previous = [...byMinute.values()]
+      .filter((candle) => candle.timestamp < minute)
+      .sort((left, right) => right.timestamp - left.timestamp)[0];
+    const open = previous?.close ?? trade.priceUsd;
+    byMinute.set(minute, {
+      timestamp: minute,
+      open,
+      high: Math.max(open, trade.priceUsd),
+      low: Math.min(open, trade.priceUsd),
+      close: trade.priceUsd,
+      volume: trade.volumeUsd
+    });
+  }
+
+  return [...byMinute.values()]
     .sort((left, right) => left.timestamp - right.timestamp)
     .slice(-120);
 }

@@ -7,6 +7,7 @@ export type ExternalPoolTrade = {
   side: "buy" | "sell";
   tokenAmount: number;
   quoteAmount: number;
+  priceUsd: number;
   volumeUsd: number;
   timestamp: string;
 };
@@ -59,6 +60,8 @@ type RawTrade = {
     to_token_address?: unknown;
     block_timestamp?: unknown;
     kind?: unknown;
+    price_from_in_usd?: unknown;
+    price_to_in_usd?: unknown;
     volume_in_usd?: unknown;
   };
 };
@@ -107,6 +110,8 @@ export function parseExternalPoolTrades(payload: unknown, token: string, limit =
     const fromAmount = finitePositive(attributes?.from_token_amount);
     const toAmount = finitePositive(attributes?.to_token_amount);
     const volumeUsd = finitePositive(attributes?.volume_in_usd);
+    const fromPriceUsd = finitePositive(attributes?.price_from_in_usd);
+    const toPriceUsd = finitePositive(attributes?.price_to_in_usd);
     const tokenIsFrom = fromAddress?.toLowerCase() === requested;
     const tokenIsTo = toAddress?.toLowerCase() === requested;
     if (
@@ -116,14 +121,24 @@ export function parseExternalPoolTrades(payload: unknown, token: string, limit =
       || tokenIsFrom === tokenIsTo
     ) continue;
 
+    const tokenAmount = tokenIsFrom ? fromAmount : toAmount;
+    const providerPriceUsd = tokenIsFrom ? fromPriceUsd : toPriceUsd;
+    const priceUsd = providerPriceUsd && providerPriceUsd > 0
+      ? providerPriceUsd
+      : tokenAmount > 0
+        ? volumeUsd / tokenAmount
+        : 0;
+    if (!Number.isFinite(priceUsd) || priceUsd <= 0) continue;
+
     seen.add(item.id);
     trades.push({
       id: item.id.slice(0, 180),
       transactionHash,
       trader,
       side,
-      tokenAmount: tokenIsFrom ? fromAmount : toAmount,
+      tokenAmount,
       quoteAmount: tokenIsFrom ? toAmount : fromAmount,
+      priceUsd,
       volumeUsd,
       timestamp
     });

@@ -18,6 +18,8 @@ const parsed = parseExternalPoolTrades({
       to_token_address: token,
       block_timestamp: "2026-07-28T00:00:00.000Z",
       kind: "buy",
+      price_from_in_usd: "3250",
+      price_to_in_usd: "5.416666666666667",
       volume_in_usd: "650"
     }
   }]
@@ -27,6 +29,7 @@ assert.equal(parsed.length, 1);
 assert.equal(parsed[0]?.side, "buy");
 assert.equal(parsed[0]?.tokenAmount, 120);
 assert.equal(parsed[0]?.quoteAmount, 0.2);
+assert.equal(parsed[0]?.priceUsd, 5.416666666666667);
 assert.equal(new URL(externalTradesRequestUrl(pair, token)).hostname, "api.geckoterminal.com");
 assert.throws(() => externalTradesRequestUrl("bad", token), /Invalid/);
 assert.equal(parseExternalPoolTrades({ data: [{ id: "bad", attributes: {} }] }, token).length, 0);
@@ -63,6 +66,7 @@ const sellPressure = summarizeExternalSellPressure([
     side: "sell",
     tokenAmount: 100,
     quoteAmount: 3,
+    priceUsd: 31,
     volumeUsd: 3_100,
     timestamp: "2026-07-31T23:59:00.000Z"
   },
@@ -73,6 +77,7 @@ const sellPressure = summarizeExternalSellPressure([
     side: "buy",
     tokenAmount: 20,
     quoteAmount: 0.2,
+    priceUsd: 5,
     volumeUsd: 100,
     timestamp: "2026-07-31T23:58:00.000Z"
   }
