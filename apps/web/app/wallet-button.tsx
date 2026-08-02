@@ -8,6 +8,7 @@ import { useAccount, useConnect, useDisconnect, useSwitchChain } from "wagmi";
 import { FundWalletButton } from "./fund-wallet-button";
 import { recordExperienceStage } from "../lib/experience-funnel";
 import { speedWalletEnabled } from "../lib/privy-config";
+import { OverlayPortal } from "./overlay-portal";
 
 const PrivyWalletButton = dynamic(
   () => import("./privy-wallet-button").then((module) => module.PrivyWalletButton),
@@ -98,7 +99,7 @@ function LegacyWalletButton({
         <button className="wallet live connectTrigger" type="button" aria-expanded={open} aria-controls="wallet-connect-dialog" onClick={() => open ? closeMenu() : setOpen(true)}>
           Connect wallet
         </button>
-        {open && <><button className="walletBackdrop" type="button" aria-label="Close wallet menu" onClick={closeMenu} /><div className="walletPopover" id="wallet-connect-dialog" role="dialog" aria-modal="true" aria-label="Connect a wallet">
+        {open && <OverlayPortal><button className="walletBackdrop" type="button" aria-label="Close wallet menu" onClick={closeMenu} /><div className="walletPopover walletOverlayPopover" id="wallet-connect-dialog" role="dialog" aria-modal="true" aria-label="Connect a wallet">
           <div className="walletPopoverHeader"><div><strong>Choose your wallet</strong><span>RMT never sees your recovery phrase.</span></div><button type="button" aria-label="Close wallet menu" onClick={closeMenu}>×</button></div>
           <div className="connectorList">{connectors.map((connector) => (
             <button className="connectorOption" key={connector.uid} disabled={isPending} onClick={() => {
@@ -125,7 +126,7 @@ function LegacyWalletButton({
             <a href="https://robinhood.com/us/en/support/articles/connect-to-dapps/" target="_blank" rel="noreferrer">Official wallet connection guide ↗</a>
           </div>
           {error && <p className="walletError" role="alert">{walletErrorMessage(error.message)}</p>}
-        </div></>}
+        </div></OverlayPortal>}
       </div>
     );
   }

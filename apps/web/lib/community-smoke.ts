@@ -387,6 +387,8 @@ assert.match(communityMessageManagerSource, /private moderation record/);
 const adminPageSource = readFileSync(new URL("../app/admin/creator-applications/page.tsx", import.meta.url), "utf8");
 assert.match(adminPageSource, /<h1>RMT Admin<\/h1>/);
 assert.match(adminPageSource, /<CommunityMessageManager admin=\{user\}/);
+assert.match(adminPageSource, /Return to Terminal/, "The private admin workspace must provide a direct exit to the public terminal.");
+assert.match(adminPageSource, /Open Profile/, "The private admin workspace must provide a direct path back to the signed-in profile.");
 
 const profilePageSource = readFileSync(new URL("../app/profile/page.tsx", import.meta.url), "utf8");
 assert.match(profilePageSource, /Open Admin Dashboard/);

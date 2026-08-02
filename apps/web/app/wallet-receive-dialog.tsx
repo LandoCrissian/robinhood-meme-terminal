@@ -3,6 +3,7 @@
 import { robinhoodChain, robinhoodChainTestnet } from "@rmt/shared/chains";
 import { useEffect, useRef, useState } from "react";
 import type { Address } from "viem";
+import { OverlayPortal } from "./overlay-portal";
 
 export function WalletReceiveDialog({
   address,
@@ -46,7 +47,7 @@ export function WalletReceiveDialog({
     }
   };
 
-  return <>
+  return <OverlayPortal>
     <button className="walletTransferBackdrop" type="button" aria-label="Close receive wallet" onClick={onClose} />
     <div className="walletReceiveDialog" role="dialog" aria-modal="true" aria-labelledby="wallet-receive-title">
       <header>
@@ -68,5 +69,5 @@ export function WalletReceiveDialog({
         <a href={`${targetChain.blockExplorers.default.url}/address/${address}`} target="_blank" rel="noreferrer">View on Blockscout ↗</a>
       </div>
     </div>
-  </>;
+  </OverlayPortal>;
 }

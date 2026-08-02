@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useAccount } from "wagmi";
 import { speedWalletEnabled } from "../lib/privy-config";
+import { OverlayPortal } from "./overlay-portal";
 
 const robinhoodConnectEnabled = process.env.NEXT_PUBLIC_ROBINHOOD_CONNECT_ENABLED === "true";
 const robinhoodConnectUrl = process.env.NEXT_PUBLIC_ROBINHOOD_CONNECT_URL?.trim();
@@ -90,7 +91,7 @@ export function FundWalletButton({
   return (
     <div className={`fundWalletMenu ${variant}`}>
       <button ref={trigger} className="fundWalletTrigger" type="button" aria-expanded={open} aria-controls="fund-wallet-dialog" onClick={() => setOpen(true)}>{label}</button>
-      {open && <>
+      {open && <OverlayPortal>
         <button className="fundWalletBackdrop" type="button" aria-label="Close funding options" onClick={close} />
         <div ref={dialog} className="fundWalletDialog" id="fund-wallet-dialog" role="dialog" aria-modal="true" aria-labelledby="fund-wallet-title" tabIndex={-1}>
           <div className="fundWalletHeader">
@@ -119,7 +120,7 @@ export function FundWalletButton({
           <a className="fundWalletSecondary" href="https://docs.robinhood.com/chain/bridging/" target="_blank" rel="noreferrer">Open official Robinhood Chain bridge options ↗</a>
           {!speedWalletEnabled && <small className="fundWalletDisclosure">Available methods depend on the provider, user, device, account, transaction, and region. RMT does not control eligibility.</small>}
         </div>
-      </>}
+      </OverlayPortal>}
     </div>
   );
 }
