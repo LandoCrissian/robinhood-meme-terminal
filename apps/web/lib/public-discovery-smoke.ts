@@ -50,6 +50,8 @@ assert.match(layoutSource, /applicationName:\s*RMT_SITE_NAME/);
 assert.match(layoutSource, /siteName:\s*RMT_SITE_NAME/);
 assert.match(layoutSource, /manifest:\s*"\/manifest\.webmanifest"/);
 assert.match(layoutSource, /googleBot:[\s\S]*?"max-image-preview":\s*"large"/);
+assert.match(layoutSource, /type="application\/ld\+json"/);
+assert.match(layoutSource, /JSON\.stringify\(rmtWebsiteStructuredData\)/);
 assert.equal(RMT_SITE_URL, appUrl);
 assert.equal(RMT_SITE_NAME, "Robinhood Meme Terminal");
 assert.equal(RMT_SITE_ALTERNATE_NAME, "RMT");
@@ -67,8 +69,6 @@ assert.deepEqual(rmtWebsiteStructuredData, {
 const homeSource = readFileSync(new URL("../app/page.tsx", import.meta.url), "utf8");
 assert.match(homeSource, /alternates:\s*\{\s*canonical:\s*"\/"/);
 assert.match(homeSource, /openGraph:[\s\S]*?url:\s*"\/"/);
-assert.match(homeSource, /type="application\/ld\+json"/);
-assert.match(homeSource, /JSON\.stringify\(rmtWebsiteStructuredData\)/);
 assert.match(homeSource, /RMT · MARKET TERMINAL/);
 assert.match(homeSource, /<ExternalMarketFeed \/>/);
 assert.match(homeSource, /<OfficialRmtMarket \/>/);

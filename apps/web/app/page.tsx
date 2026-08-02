@@ -5,8 +5,7 @@ import { OfficialRmtMarket } from "./official-rmt-market";
 import { isMainnetRelease } from "../lib/network";
 import {
   RMT_SITE_ALTERNATE_NAME,
-  RMT_SITE_NAME,
-  rmtWebsiteStructuredData
+  RMT_SITE_NAME
 } from "../lib/site-identity";
 import { SiteFooter } from "./site-footer";
 
@@ -34,12 +33,6 @@ export const metadata: Metadata = {
 export default function Home() {
   return (
     <main className="terminalPage">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify(rmtWebsiteStructuredData).replace(/</g, "\\u003c")
-        }}
-      />
       <section className="terminalIntro">
         <div className="terminalIntroCopy">
           <p className="eyebrow">RMT · MARKET TERMINAL</p>

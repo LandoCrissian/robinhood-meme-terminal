@@ -27,7 +27,8 @@ import {
   RMT_SITE_ALTERNATE_NAME,
   RMT_SITE_DESCRIPTION,
   RMT_SITE_NAME,
-  RMT_SITE_URL
+  RMT_SITE_URL,
+  rmtWebsiteStructuredData
 } from "../lib/site-identity";
 
 export const viewport: Viewport = {
@@ -75,6 +76,14 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
+      <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(rmtWebsiteStructuredData).replace(/</g, "\\u003c")
+          }}
+        />
+      </head>
       <body><Providers><PublicChrome /><TradingTermsGate /><FirstVisitGuide />{children}</Providers></body>
     </html>
   );
