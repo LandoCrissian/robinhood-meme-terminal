@@ -11,8 +11,8 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 const encoder = new TextEncoder();
-const STREAM_INTERVAL_MS = 2_000;
-const STREAM_LIFETIME_MS = 25_000;
+const STREAM_INTERVAL_MS = 6_000;
+const STREAM_LIFETIME_MS = 45_000;
 const HEARTBEAT_INTERVAL_MS = 8_000;
 
 function event(name: string, value: unknown) {
@@ -36,7 +36,7 @@ function delay(milliseconds: number, signal: AbortSignal) {
 async function confirmedTradeSnapshot(token: string, pair: string) {
   const response = await fetch(externalTradesRequestUrl(pair, token), {
     headers: { Accept: "application/json" },
-    cache: "no-store",
+    next: { revalidate: STREAM_INTERVAL_MS / 1_000 },
     signal: AbortSignal.timeout(7_000)
   });
   if (!response.ok) throw new Error("Trade source unavailable.");
@@ -85,6 +85,9 @@ export async function GET(request: Request) {
               output.enqueue(event("upstream-delay", { at: new Date().toISOString() }));
             }
             await delay(STREAM_INTERVAL_MS, controller.signal);
+          }
+          if (!controller.signal.aborted) {
+            output.enqueue(event("rotate", { at: new Date().toISOString() }));
           }
         } finally {
           request.signal.removeEventListener("abort", stop);

@@ -158,6 +158,7 @@ export type ExternalMarketResponse = {
   originCoverage?: OriginCoverage;
   rmtOriginCoverage?: OriginCoverage;
   stockAssetCoverage?: "complete" | "unavailable";
+  delayedSources?: string[];
   updatedAt?: string;
   stale?: boolean;
   error?: string;

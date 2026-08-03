@@ -168,8 +168,9 @@ export async function fetchGeckoNewPoolSnapshot(
     });
     if (!response.ok) return { pairs: [], delayed: true };
     const payload: unknown = await response.json();
+    if (!payloadSchema.safeParse(payload).success) return { pairs: [], delayed: true };
     const pairs = parseGeckoNewPoolPairs(payload);
-    return { pairs, delayed: pairs.length === 0 };
+    return { pairs, delayed: false };
   } catch {
     return { pairs: [], delayed: true };
   } finally {
