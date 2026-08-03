@@ -8,6 +8,7 @@ import {
   type ExternalMarketResponse
 } from "../../../../lib/external-market";
 import {
+  canonicalExternalMarketLookupAddress,
   isNonzeroEvmAddress,
   selectExternalPairBaseTokenWithAssetQuotes
 } from "../../../../lib/external-market-identity";
@@ -18,8 +19,14 @@ import {
 } from "../../../../lib/external-market-ranking";
 import { enrichExternalProjectMetadata } from "../../../../lib/server/external-project-metadata";
 import { safeDexImageUri } from "../../../../lib/server/external-market-media";
-import { fetchLemonProjectSnapshot } from "../../../../lib/server/lemon-project-feed";
-import { fetchSushiLaunchSnapshot } from "../../../../lib/server/sushi-launch-feed";
+import {
+  fetchLemonProjectSnapshot,
+  type LemonProjectSnapshot
+} from "../../../../lib/server/lemon-project-feed";
+import {
+  fetchSushiLaunchSnapshot,
+  type SushiLaunchSnapshot
+} from "../../../../lib/server/sushi-launch-feed";
 import {
   fetchRobinhoodStockRegistry,
   stockAssetRelationshipsForPair
@@ -28,6 +35,7 @@ import {
 const CHAIN_SLUG = "robinhood";
 const DEXSCREENER_TOKEN_PAIRS_API = "https://api.dexscreener.com/token-pairs/v1";
 const DEXSCREENER_TOKENS_API = "https://api.dexscreener.com/tokens/v1";
+const DEXSCREENER_PAIR_API = "https://api.dexscreener.com/latest/dex/pairs";
 const DEXSCREENER_PROFILES_API = "https://api.dexscreener.com/token-profiles/latest/v1";
 const DEXSCREENER_BOOSTS_API = "https://api.dexscreener.com/token-boosts/top/v1";
 const DEXSCREENER_PAGE = "https://dexscreener.com/robinhood/";
@@ -211,6 +219,25 @@ async function fetchCanonicalTokenPairs(tokenAddress: string) {
   }
 }
 
+async function fetchPairByAddress(pairAddress: string) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), DEX_TIMEOUT_MS);
+  try {
+    const response = await fetch(DEXSCREENER_PAIR_API + "/" + CHAIN_SLUG + "/" + pairAddress, {
+      headers: { Accept: "application/json" },
+      next: { revalidate: 30 },
+      signal: controller.signal
+    });
+    if (!response.ok) throw new Error("DEX pair lookup failed with " + response.status);
+    const payload: unknown = await response.json();
+    if (!payload || typeof payload !== "object") return [];
+    const pairs = (payload as { pairs?: unknown }).pairs;
+    return Array.isArray(pairs) ? pairs as RawPair[] : [];
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 async function fetchRmtOriginBatch(baseUrl: string, readToken: string | undefined, addresses: string[]) {
   const url = new URL(baseUrl + "/origins");
   url.searchParams.set("tokens", addresses.join(","));
@@ -323,32 +350,59 @@ function staleResponse() {
   );
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const lookupParameter = new URL(request.url).searchParams.get("contract");
+  const requestedContract = canonicalExternalMarketLookupAddress(lookupParameter);
+  if (lookupParameter !== null && !requestedContract) {
+    return NextResponse.json(
+      { error: "A complete nonzero EVM contract address is required." },
+      { status: 400, headers: { "Cache-Control": "no-store" } }
+    );
+  }
+
   try {
-    const [lemonSnapshot, sushiLaunchSnapshot, publicDiscoveryTokens, stockRegistry] = await Promise.all([
-      fetchLemonProjectSnapshot(),
-      fetchSushiLaunchSnapshot(),
-      fetchPublicDiscoveryTokens().catch(() => []),
-      fetchRobinhoodStockRegistry()
-    ]);
+    const directResultsPromise = requestedContract
+      ? Promise.all([
+          fetchPairByAddress(requestedContract).catch(() => []),
+          fetchCanonicalTokenPairs(requestedContract).catch(() => [])
+        ])
+      : null;
+    let lemonSnapshot: LemonProjectSnapshot;
+    let sushiLaunchSnapshot: SushiLaunchSnapshot;
+    let publicDiscoveryTokens: string[];
+    let stockRegistry: Awaited<ReturnType<typeof fetchRobinhoodStockRegistry>>;
+    if (requestedContract) {
+      lemonSnapshot = { projects: new Map(), candidateAddresses: [], delayed: false };
+      sushiLaunchSnapshot = { projects: new Map(), candidateAddresses: [], delayed: false };
+      publicDiscoveryTokens = [];
+      stockRegistry = await fetchRobinhoodStockRegistry();
+    } else {
+      [lemonSnapshot, sushiLaunchSnapshot, publicDiscoveryTokens, stockRegistry] = await Promise.all([
+        fetchLemonProjectSnapshot(),
+        fetchSushiLaunchSnapshot(),
+        fetchPublicDiscoveryTokens().catch(() => []),
+        fetchRobinhoodStockRegistry()
+      ]);
+    }
     const stockTokenAddresses = new Set(stockRegistry.assetsByAddress.keys());
     const requestedTokens = [...new Set(
       [
         ...lemonSnapshot.candidateAddresses.map((address) => address.toLowerCase()),
         ...sushiLaunchSnapshot.candidateAddresses.map((address) => address.toLowerCase()),
-        ...publicDiscoveryTokens
+        ...publicDiscoveryTokens,
+        ...(requestedContract ? [requestedContract] : [])
       ]
     )];
     const tokenBatches = Array.from(
       { length: Math.ceil(requestedTokens.length / DEX_BATCH_SIZE) },
       (_, index) => requestedTokens.slice(index * DEX_BATCH_SIZE, (index + 1) * DEX_BATCH_SIZE)
     );
-    const results = await Promise.all(
-      [
-        ...CANONICAL_MARKET_TOKENS.map((address) => fetchCanonicalTokenPairs(address).catch(() => [])),
-        ...tokenBatches.map((addresses) => fetchTokenBatch(addresses).catch(() => []))
-      ]
-    );
+    const results = directResultsPromise
+      ? await directResultsPromise
+      : await Promise.all([
+          ...CANONICAL_MARKET_TOKENS.map((address) => fetchCanonicalTokenPairs(address).catch(() => [])),
+          ...tokenBatches.map((addresses) => fetchTokenBatch(addresses).catch(() => []))
+        ]);
     const pairs = results.flat();
     if (pairs.length === 0) {
       throw new Error("No external market source responded.");
@@ -363,9 +417,11 @@ export async function GET() {
       new Set(sushiLaunchSnapshot.projects.keys())
     );
     if (rmtOrigins.coverage !== "complete") {
-      const stale = staleResponse();
+      const stale = requestedContract ? null : staleResponse();
       if (stale) return stale;
-      throw new Error("Exact RMT V6 origin coverage is unavailable.");
+      if (!requestedContract) {
+        throw new Error("Exact RMT V6 origin coverage is unavailable.");
+      }
     }
 
     const marketsByToken = new Map<string, ExternalMarket>();
@@ -400,7 +456,12 @@ export async function GET() {
 
       if (!isNonzeroEvmAddress(address) || !name || !symbol || !pairAddress) continue;
       if (rmtOrigins.tokens.has(address.toLowerCase())) continue;
-      if (liquidityUsd < RUNNER_THRESHOLDS.minimumDisplayLiquidityUsd || volume24h <= 0) continue;
+      const exactContractLookup = requestedContract === address.toLowerCase()
+        || requestedContract === pairAddress.toLowerCase();
+      if (
+        !exactContractLookup
+        && (liquidityUsd < RUNNER_THRESHOLDS.minimumDisplayLiquidityUsd || volume24h <= 0)
+      ) continue;
 
       const ranking = rankExternalMarket({
         liquidityUsd,
@@ -492,22 +553,29 @@ export async function GET() {
       marketsByToken.set(key, { ...preferred, stockAssetRelationships });
     }
 
-    const rankedMarkets = [...marketsByToken.values()]
-      .sort(compareExternalMarketRank)
-      .slice(0, MAX_MARKETS);
-    const markets = await enrichExternalProjectMetadata(projectMetadataClient, rankedMarkets)
-      .catch(() => rankedMarkets);
+    const rankedMarkets = requestedContract
+      ? [...marketsByToken.values()].filter((market) =>
+          market.address.toLowerCase() === requestedContract
+          || market.pairAddress.toLowerCase() === requestedContract
+        )
+      : [...marketsByToken.values()]
+          .sort(compareExternalMarketRank)
+          .slice(0, MAX_MARKETS);
+    const markets = requestedContract
+      ? rankedMarkets
+      : await enrichExternalProjectMetadata(projectMetadataClient, rankedMarkets)
+          .catch(() => rankedMarkets);
     const snapshot: SuccessfulMarketSnapshot = {
       markets,
       source: "DEX Screener markets + public discovery + verified Lemon and Sushi Launch metadata + Robinhood Stock Token registry",
       rankingVersion: "rmt-discovery-v5",
       thresholds: RUNNER_THRESHOLDS,
       originCoverage: "unavailable",
-      rmtOriginCoverage: "complete",
+      rmtOriginCoverage: rmtOrigins.coverage,
       stockAssetCoverage: stockRegistry.coverage,
       updatedAt: new Date().toISOString()
     };
-    lastSuccessfulSnapshot = snapshot;
+    if (!requestedContract) lastSuccessfulSnapshot = snapshot;
 
     return NextResponse.json(
       lemonSnapshot.delayed || sushiLaunchSnapshot.delayed
@@ -524,7 +592,7 @@ export async function GET() {
       event: "external_market_refresh_failed",
       error: error instanceof Error ? error.message.slice(0, 1_000) : "unknown"
     }));
-    const stale = staleResponse();
+    const stale = requestedContract ? null : staleResponse();
     if (stale) return stale;
     return NextResponse.json(
       { error: "External Robinhood Chain markets are temporarily unavailable." },

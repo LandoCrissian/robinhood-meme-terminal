@@ -21,6 +21,23 @@ export async function fetchPublicMarketCatalog(): Promise<ExternalMarket[]> {
 export async function fetchPublicMarket(address: string) {
   const canonical = canonicalMarketAddress(address);
   if (!canonical) return null;
-  const markets = await fetchPublicMarketCatalog();
-  return markets.find((market) => market.address.toLowerCase() === canonical.toLowerCase()) ?? null;
+  const catalogMarket = (await fetchPublicMarketCatalog()).find(
+    (market) => market.address.toLowerCase() === canonical.toLowerCase()
+  );
+  if (catalogMarket) return catalogMarket;
+  try {
+    const url = new URL(PUBLIC_MARKET_CATALOG_URL);
+    url.searchParams.set("contract", canonical);
+    const response = await fetch(url, {
+      headers: { Accept: "application/json" },
+      next: { revalidate: 30 }
+    });
+    if (!response.ok) return null;
+    const payload = await response.json() as ExternalMarketResponse;
+    return Array.isArray(payload.markets)
+      ? payload.markets.find((market) => market.address.toLowerCase() === canonical.toLowerCase()) ?? null
+      : null;
+  } catch {
+    return null;
+  }
 }
