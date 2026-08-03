@@ -11,6 +11,10 @@ import {
   type ExternalMarketResponse
 } from "../lib/external-market";
 import {
+  hasExternalSocialLinks,
+  mergeExternalSocialLinks
+} from "../lib/external-market-socials";
+import {
   externalChartRefreshMs,
   type ExternalChartRange,
   type ExternalOhlcvPayload
@@ -544,6 +548,8 @@ export function ExternalMarketWorkspace({ initialMarket }: { initialMarket?: Ext
   const buyPressure = oneHourTrades > 0 ? Math.round(market.buyPressureBps / 100) : 0;
   const distributionPassport = marketDistributionPassport(market);
   const isV4Market = isUniswapV4PoolId(market.pairAddress);
+  const socialLinks = mergeExternalSocialLinks(market.project?.socials, market.socials);
+  const hasSocials = hasExternalSocialLinks(socialLinks);
 
   return (
     <main className="universalMarketPage professionalTradeWorkspace">
@@ -569,6 +575,15 @@ export function ExternalMarketWorkspace({ initialMarket }: { initialMarket?: Ext
                   : " · STOCK-TOKEN PAIR"}
               </small>
             ) : null}
+            {hasSocials && (
+              <nav className="universalHeroSocials" aria-label={`${market.name} public links`}>
+                {socialLinks.website && <a href={socialLinks.website} target="_blank" rel="noopener noreferrer nofollow">Website ↗</a>}
+                {socialLinks.x && <a href={socialLinks.x} target="_blank" rel="noopener noreferrer nofollow">X ↗</a>}
+                {socialLinks.telegram && <a href={socialLinks.telegram} target="_blank" rel="noopener noreferrer nofollow">Telegram ↗</a>}
+                {socialLinks.discord && <a href={socialLinks.discord} target="_blank" rel="noopener noreferrer nofollow">Discord ↗</a>}
+                {socialLinks.farcaster && <a href={socialLinks.farcaster} target="_blank" rel="noopener noreferrer nofollow">Farcaster ↗</a>}
+              </nav>
+            )}
           </div>
         </div>
         <div className="universalHeroPrice">
@@ -733,12 +748,14 @@ export function ExternalMarketWorkspace({ initialMarket }: { initialMarket?: Ext
                 <div><dt>Venue</dt><dd>{market.dexId}</dd></div>
               </dl>
               {market.project?.description && <p className="universalProjectDescription">{market.project.description}</p>}
-              {market.project && (
+              {hasSocials && (
                 <div className="universalSocials">
-                  {market.project.socials.website && <a href={market.project.socials.website} target="_blank" rel="noopener noreferrer">Website ↗</a>}
-                  {market.project.socials.x && <a href={market.project.socials.x} target="_blank" rel="noopener noreferrer">X ↗</a>}
-                  {market.project.socials.telegram && <a href={market.project.socials.telegram} target="_blank" rel="noopener noreferrer">Telegram ↗</a>}
-                  {market.project.socials.discord && <a href={market.project.socials.discord} target="_blank" rel="noopener noreferrer">Discord ↗</a>}
+                  {socialLinks.website && <a href={socialLinks.website} target="_blank" rel="noopener noreferrer nofollow">Website ↗</a>}
+                  {socialLinks.x && <a href={socialLinks.x} target="_blank" rel="noopener noreferrer nofollow">X ↗</a>}
+                  {socialLinks.telegram && <a href={socialLinks.telegram} target="_blank" rel="noopener noreferrer nofollow">Telegram ↗</a>}
+                  {socialLinks.discord && <a href={socialLinks.discord} target="_blank" rel="noopener noreferrer nofollow">Discord ↗</a>}
+                  {socialLinks.farcaster && <a href={socialLinks.farcaster} target="_blank" rel="noopener noreferrer nofollow">Farcaster ↗</a>}
+                  <small>{market.project ? "Project-attributed links" : "Market metadata links · verify before visiting"}</small>
                 </div>
               )}
             </section>

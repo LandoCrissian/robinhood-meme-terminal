@@ -13,6 +13,10 @@ import {
   selectExternalPairBaseTokenWithAssetQuotes
 } from "./external-market-identity";
 import {
+  externalMarketSocialsFromPairInfo,
+  mergeExternalSocialLinks
+} from "./external-market-socials";
+import {
   marketDistributionPassport,
   UNISWAP_LAUNCHES_ANNOUNCEMENT_URL,
   UNISWAP_LAUNCHPAD_DEPLOYMENTS_URL
@@ -37,6 +41,41 @@ assert.equal(
 );
 assert.equal(canonicalExternalMarketLookupAddress("0x1234"), null);
 assert.equal(canonicalExternalMarketLookupAddress(zero.address), null);
+
+const discoveredSocials = externalMarketSocialsFromPairInfo({
+  websites: [{ url: "https://runner.example/" }, { url: "javascript:alert(1)" }],
+  socials: [
+    { type: "twitter", url: "https://x.com/runner" },
+    { type: "telegram", url: "https://t.me/runner" },
+    { type: "discord", url: "https://evil.example/invite" },
+    { type: "warpcast", url: "https://warpcast.com/runner" }
+  ]
+});
+assert.deepEqual(discoveredSocials, {
+  website: "https://runner.example/",
+  x: "https://x.com/runner",
+  telegram: "https://t.me/runner",
+  discord: null,
+  farcaster: "https://warpcast.com/runner",
+  provenance: "dex-pair-metadata"
+});
+assert.equal(externalMarketSocialsFromPairInfo({
+  websites: [{ url: "http://runner.example" }],
+  socials: [{ type: "twitter", url: "https://evil.example/runner" }]
+}), undefined, "Unsafe or mislabeled social links must fail closed");
+assert.deepEqual(mergeExternalSocialLinks({
+  website: null,
+  x: "https://x.com/verified",
+  telegram: null,
+  discord: null,
+  farcaster: null
+}, discoveredSocials), {
+  website: "https://runner.example/",
+  x: "https://x.com/verified",
+  telegram: "https://t.me/runner",
+  discord: null,
+  farcaster: "https://warpcast.com/runner"
+}, "Verified project links must win while provider metadata fills missing channels");
 
 assert.equal(
   selectExternalPairBaseToken(external, wrappedNative, excluded),
