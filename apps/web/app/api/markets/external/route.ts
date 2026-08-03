@@ -7,19 +7,31 @@ import {
   type ExternalMarket,
   type ExternalMarketResponse
 } from "../../../../lib/external-market";
-import { isNonzeroEvmAddress, selectExternalPairBaseToken } from "../../../../lib/external-market-identity";
+import {
+  isNonzeroEvmAddress,
+  selectExternalPairBaseTokenWithAssetQuotes
+} from "../../../../lib/external-market-identity";
 import {
   RUNNER_THRESHOLDS,
   compareExternalMarketRank,
   rankExternalMarket
 } from "../../../../lib/external-market-ranking";
 import { enrichExternalProjectMetadata } from "../../../../lib/server/external-project-metadata";
+import { safeDexImageUri } from "../../../../lib/server/external-market-media";
 import { fetchLemonProjectSnapshot } from "../../../../lib/server/lemon-project-feed";
+import { fetchSushiLaunchSnapshot } from "../../../../lib/server/sushi-launch-feed";
+import {
+  fetchRobinhoodStockRegistry,
+  stockAssetRelationshipsForPair
+} from "../../../../lib/server/robinhood-stock-token-registry";
 
 const CHAIN_SLUG = "robinhood";
 const DEXSCREENER_TOKEN_PAIRS_API = "https://api.dexscreener.com/token-pairs/v1";
 const DEXSCREENER_TOKENS_API = "https://api.dexscreener.com/tokens/v1";
+const DEXSCREENER_PROFILES_API = "https://api.dexscreener.com/token-profiles/latest/v1";
+const DEXSCREENER_BOOSTS_API = "https://api.dexscreener.com/token-boosts/top/v1";
 const DEXSCREENER_PAGE = "https://dexscreener.com/robinhood/";
+const PREVIEW_MARKET_UPSTREAM = "https://www.rmtlaunch.fun/api/markets/external";
 const CANONICAL_MARKET_TOKENS = [
   "0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73",
   "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168"
@@ -57,6 +69,14 @@ type RawPair = {
   fdv?: unknown;
   marketCap?: unknown;
   pairCreatedAt?: unknown;
+  info?: {
+    imageUrl?: unknown;
+  };
+};
+
+type RawDiscoveryToken = {
+  chainId?: unknown;
+  tokenAddress?: unknown;
 };
 
 type RmtOriginClaim = {
@@ -82,6 +102,7 @@ type SuccessfulMarketSnapshot = Required<Pick<
 >> & {
   originCoverage: OriginCoverage;
   rmtOriginCoverage: OriginCoverage;
+  stockAssetCoverage: "complete" | "unavailable";
   thresholds: typeof RUNNER_THRESHOLDS;
 };
 
@@ -114,8 +135,40 @@ function transactionWindow(pair: RawPair, window: string) {
   };
 }
 
-function tokenFromPair(pair: RawPair) {
-  return selectExternalPairBaseToken(pair.baseToken, pair.quoteToken, EXCLUDED_TOKENS);
+function tokenFromPair(pair: RawPair, stockTokenAddresses: ReadonlySet<string>) {
+  return selectExternalPairBaseTokenWithAssetQuotes(
+    pair.baseToken,
+    pair.quoteToken,
+    EXCLUDED_TOKENS,
+    stockTokenAddresses
+  );
+}
+
+async function fetchPublicDiscoveryTokens() {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), DEX_TIMEOUT_MS);
+  try {
+    const payloads = await Promise.all(
+      [DEXSCREENER_PROFILES_API, DEXSCREENER_BOOSTS_API].map(async (url) => {
+        const response = await fetch(url, {
+          headers: { Accept: "application/json" },
+          next: { revalidate: 60 },
+          signal: controller.signal
+        });
+        if (!response.ok) return [];
+        const payload: unknown = await response.json();
+        return Array.isArray(payload) ? payload as RawDiscoveryToken[] : [];
+      })
+    );
+    return [...new Set(payloads.flat().flatMap((item) => {
+      const address = asText(item.tokenAddress, 42);
+      return item.chainId === CHAIN_SLUG && isNonzeroEvmAddress(address)
+        ? [address.toLowerCase()]
+        : [];
+    }))];
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 async function fetchTokenBatch(tokenAddresses: string[]) {
@@ -185,17 +238,64 @@ async function fetchRmtOriginBatch(baseUrl: string, readToken: string | undefine
   }
 }
 
-async function resolveRmtOrigins(addresses: string[]): Promise<RmtOriginResolution> {
+async function resolvePreviewRmtOrigins(
+  addresses: string[],
+  verifiedExternalTokens: Set<string>
+): Promise<RmtOriginResolution | null> {
+  if (process.env.VERCEL_ENV !== "preview") return null;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), INDEXER_TIMEOUT_MS);
+  try {
+    const response = await fetch(PREVIEW_MARKET_UPSTREAM, {
+      headers: { Accept: "application/json" },
+      cache: "no-store",
+      signal: controller.signal
+    });
+    if (!response.ok) return null;
+    const payload = (await response.json()) as ExternalMarketResponse;
+    if (payload.rmtOriginCoverage !== "complete" || !Array.isArray(payload.markets)) return null;
+
+    const allowedExternalTokens = new Set(payload.markets.flatMap((market) =>
+      isNonzeroEvmAddress(market.address) ? [market.address.toLowerCase()] : []
+    ));
+    if (allowedExternalTokens.size === 0) return null;
+
+    return {
+      coverage: "complete",
+      tokens: new Set([
+        OFFICIAL_RMT_V6_TOKEN.toLowerCase(),
+        ...addresses
+          .map((address) => address.toLowerCase())
+          .filter((address) => !allowedExternalTokens.has(address) && !verifiedExternalTokens.has(address))
+      ])
+    };
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function resolveRmtOrigins(
+  addresses: string[],
+  verifiedExternalTokens = new Set<string>()
+): Promise<RmtOriginResolution> {
   const known = new Set([OFFICIAL_RMT_V6_TOKEN.toLowerCase()]);
   if (addresses.length === 0) return { coverage: "complete", tokens: known };
 
   const baseUrl = process.env.RMT_INDEXER_URL?.trim().replace(/\/+$/, "");
-  if (!baseUrl) return { coverage: "unavailable", tokens: known };
+  if (!baseUrl) {
+    return await resolvePreviewRmtOrigins(addresses, verifiedExternalTokens)
+      ?? { coverage: "unavailable", tokens: known };
+  }
   const readToken = process.env.RMT_INDEXER_READ_TOKEN?.trim();
 
   for (let index = 0; index < addresses.length; index += 100) {
     const claims = await fetchRmtOriginBatch(baseUrl, readToken, addresses.slice(index, index + 100));
-    if (!claims) return { coverage: "unavailable", tokens: known };
+    if (!claims) {
+      return await resolvePreviewRmtOrigins(addresses, verifiedExternalTokens)
+        ?? { coverage: "unavailable", tokens: known };
+    }
     for (const claim of claims) {
       const token = asText(claim.token, 42);
       if (
@@ -225,9 +325,19 @@ function staleResponse() {
 
 export async function GET() {
   try {
-    const lemonSnapshot = await fetchLemonProjectSnapshot();
+    const [lemonSnapshot, sushiLaunchSnapshot, publicDiscoveryTokens, stockRegistry] = await Promise.all([
+      fetchLemonProjectSnapshot(),
+      fetchSushiLaunchSnapshot(),
+      fetchPublicDiscoveryTokens().catch(() => []),
+      fetchRobinhoodStockRegistry()
+    ]);
+    const stockTokenAddresses = new Set(stockRegistry.assetsByAddress.keys());
     const requestedTokens = [...new Set(
-      lemonSnapshot.candidateAddresses.map((address) => address.toLowerCase())
+      [
+        ...lemonSnapshot.candidateAddresses.map((address) => address.toLowerCase()),
+        ...sushiLaunchSnapshot.candidateAddresses.map((address) => address.toLowerCase()),
+        ...publicDiscoveryTokens
+      ]
     )];
     const tokenBatches = Array.from(
       { length: Math.ceil(requestedTokens.length / DEX_BATCH_SIZE) },
@@ -245,10 +355,13 @@ export async function GET() {
     }
 
     const candidateAddresses = [...new Set(pairs.flatMap((pair) => {
-      const address = asText(tokenFromPair(pair)?.address, 42);
+      const address = asText(tokenFromPair(pair, stockTokenAddresses)?.address, 42);
       return isNonzeroEvmAddress(address) ? [address.toLowerCase()] : [];
     }))];
-    const rmtOrigins = await resolveRmtOrigins(candidateAddresses);
+    const rmtOrigins = await resolveRmtOrigins(
+      candidateAddresses,
+      new Set(sushiLaunchSnapshot.projects.keys())
+    );
     if (rmtOrigins.coverage !== "complete") {
       const stale = staleResponse();
       if (stale) return stale;
@@ -263,12 +376,14 @@ export async function GET() {
       const url = asText(pair.url, 300);
       if (!url.startsWith(DEXSCREENER_PAGE)) continue;
 
-      const token = tokenFromPair(pair);
+      const token = tokenFromPair(pair, stockTokenAddresses);
       const address = asText(token?.address, 42);
       const name = asText(token?.name);
       const symbol = asText(token?.symbol, 20);
       const pairAddress = asText(pair.pairAddress, 66);
       const dexId = asText(pair.dexId, 30) || "DEX";
+      const baseTokenAddress = asText(pair.baseToken?.address, 42);
+      const quoteTokenAddress = asText(pair.quoteToken?.address, 42);
       const liquidityUsd = asNumber(pair.liquidity?.usd);
       const marketCapUsd = Math.max(0, asNumber(pair.marketCap));
       const fdvUsd = Math.max(0, asNumber(pair.fdv));
@@ -306,9 +421,19 @@ export async function GET() {
         address,
         name,
         symbol,
+        imageUri: safeDexImageUri(pair.info?.imageUrl),
         pairAddress,
         url,
         dexId,
+        stockAssetRelationships:
+          isNonzeroEvmAddress(baseTokenAddress) && isNonzeroEvmAddress(quoteTokenAddress)
+            ? stockAssetRelationshipsForPair(
+                address,
+                baseTokenAddress,
+                quoteTokenAddress,
+                stockRegistry.assetsByAddress
+              )
+            : [],
         origin: {
           kind: "external",
           state: "unknown",
@@ -340,20 +465,31 @@ export async function GET() {
         pairCreatedAt,
         ...ranking
       };
+      const sushiLaunchProject = sushiLaunchSnapshot.projects.get(address.toLowerCase());
       const lemonProject = lemonSnapshot.projects.get(address.toLowerCase());
-      const attributedMarket = lemonProject
-        && lemonProject.launchPool.toLowerCase() === pairAddress.toLowerCase()
+      const matchingProject = [sushiLaunchProject, lemonProject].find(
+        (project) => project?.launchPool.toLowerCase() === pairAddress.toLowerCase()
+      );
+      const attributedMarket = matchingProject
         ? {
             ...market,
-            name: lemonProject.name,
-            symbol: lemonProject.symbol,
-            project: lemonProject
+            name: matchingProject.name,
+            symbol: matchingProject.symbol,
+            project: matchingProject
           }
         : market;
 
       const key = address.toLowerCase();
       const existing = marketsByToken.get(key);
-      marketsByToken.set(key, selectPreferredLifecycleMarket(existing, attributedMarket));
+      const preferred = selectPreferredLifecycleMarket(existing, attributedMarket);
+      const stockAssetRelationships = [...new Map([
+        ...(existing?.stockAssetRelationships ?? []),
+        ...(attributedMarket.stockAssetRelationships ?? [])
+      ].map((relationship) => [
+        `${relationship.relationship}:${relationship.contractAddress.toLowerCase()}`,
+        relationship
+      ])).values()];
+      marketsByToken.set(key, { ...preferred, stockAssetRelationships });
     }
 
     const rankedMarkets = [...marketsByToken.values()]
@@ -363,26 +499,31 @@ export async function GET() {
       .catch(() => rankedMarkets);
     const snapshot: SuccessfulMarketSnapshot = {
       markets,
-      source: lemonSnapshot.projects.size > 0 ? "DEX Screener + Lemon public API" : "DEX Screener",
-      rankingVersion: "rmt-discovery-v3",
+      source: "DEX Screener markets + public discovery + verified Lemon and Sushi Launch metadata + Robinhood Stock Token registry",
+      rankingVersion: "rmt-discovery-v5",
       thresholds: RUNNER_THRESHOLDS,
       originCoverage: "unavailable",
       rmtOriginCoverage: "complete",
+      stockAssetCoverage: stockRegistry.coverage,
       updatedAt: new Date().toISOString()
     };
     lastSuccessfulSnapshot = snapshot;
 
     return NextResponse.json(
-      lemonSnapshot.delayed
+      lemonSnapshot.delayed || sushiLaunchSnapshot.delayed
         ? {
             ...snapshot,
             stale: true,
-            error: "Lemon metadata refresh is delayed. DEX markets and cached project identity remain available."
+            error: "One launch-source metadata refresh is delayed. DEX markets and cached project identity remain available."
           }
         : snapshot,
       { headers: { "Cache-Control": "public, s-maxage=30, stale-while-revalidate=90" } }
     );
-  } catch {
+  } catch (error) {
+    console.error(JSON.stringify({
+      event: "external_market_refresh_failed",
+      error: error instanceof Error ? error.message.slice(0, 1_000) : "unknown"
+    }));
     const stale = staleResponse();
     if (stale) return stale;
     return NextResponse.json(

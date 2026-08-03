@@ -2,9 +2,18 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { robinhoodChain, robinhoodChainTestnet } from "@rmt/shared/chains";
+import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
 import { useAccount, useConnect, useDisconnect, useSwitchChain } from "wagmi";
 import { FundWalletButton } from "./fund-wallet-button";
+import { recordExperienceStage } from "../lib/experience-funnel";
+import { speedWalletEnabled } from "../lib/privy-config";
+import { OverlayPortal } from "./overlay-portal";
+
+const PrivyWalletButton = dynamic(
+  () => import("./privy-wallet-button").then((module) => module.PrivyWalletButton),
+  { ssr: false }
+);
 
 function shortAddress(address: string) {
   return `${address.slice(0, 6)}…${address.slice(-4)}`;
@@ -31,7 +40,7 @@ function walletErrorMessage(message: string) {
   return "The wallet did not connect. Close any stale wallet prompt and try again.";
 }
 
-export function WalletButton({
+function LegacyWalletButton({
   target = "testnet",
   returnTo,
   showFunding = true
@@ -90,10 +99,15 @@ export function WalletButton({
         <button className="wallet live connectTrigger" type="button" aria-expanded={open} aria-controls="wallet-connect-dialog" onClick={() => open ? closeMenu() : setOpen(true)}>
           Connect wallet
         </button>
-        {open && <><button className="walletBackdrop" type="button" aria-label="Close wallet menu" onClick={closeMenu} /><div className="walletPopover" id="wallet-connect-dialog" role="dialog" aria-modal="true" aria-label="Connect a wallet">
+        {open && <OverlayPortal><button className="walletBackdrop" type="button" aria-label="Close wallet menu" onClick={closeMenu} /><div className="walletPopover walletOverlayPopover" id="wallet-connect-dialog" role="dialog" aria-modal="true" aria-label="Connect a wallet">
           <div className="walletPopoverHeader"><div><strong>Choose your wallet</strong><span>RMT never sees your recovery phrase.</span></div><button type="button" aria-label="Close wallet menu" onClick={closeMenu}>×</button></div>
           <div className="connectorList">{connectors.map((connector) => (
-            <button className="connectorOption" key={connector.uid} disabled={isPending} onClick={() => { reset(); setPendingConnectorUid(connector.uid); connect({ connector }); }}>
+            <button className="connectorOption" key={connector.uid} disabled={isPending} onClick={() => {
+              recordExperienceStage("wallet_connect_started");
+              reset();
+              setPendingConnectorUid(connector.uid);
+              connect({ connector });
+            }}>
               <span>{isPending && pendingConnectorUid === connector.uid ? `Opening ${walletLabel(connector.name)}…` : walletLabel(connector.name)}</span>
               <small>{walletDescription(connector.name)}</small>
             </button>
@@ -112,7 +126,7 @@ export function WalletButton({
             <a href="https://robinhood.com/us/en/support/articles/connect-to-dapps/" target="_blank" rel="noreferrer">Official wallet connection guide ↗</a>
           </div>
           {error && <p className="walletError" role="alert">{walletErrorMessage(error.message)}</p>}
-        </div></>}
+        </div></OverlayPortal>}
       </div>
     );
   }
@@ -136,4 +150,13 @@ export function WalletButton({
       </button>
     </div>
   );
+}
+
+export function WalletButton(props: {
+  target?: "testnet" | "mainnet";
+  returnTo?: string;
+  showFunding?: boolean;
+}) {
+  if (speedWalletEnabled) return <PrivyWalletButton {...props} />;
+  return <LegacyWalletButton {...props} />;
 }

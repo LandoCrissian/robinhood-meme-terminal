@@ -15,6 +15,11 @@ import {
 } from "../uniswap-v4";
 import { PRICE_IMPACT_BLOCK } from "../trade-ticket";
 import { verifyExternalUniswapMarket } from "./external-uniswap-market";
+import {
+  calculateRmtExecutionFee,
+  currentRmtExecutionFeeConfig,
+  type RmtExecutionFeeConfig
+} from "./rmt-execution-fee";
 
 const MAX_UINT128 = (1n << 128n) - 1n;
 const Q192 = 1n << 192n;
@@ -66,6 +71,31 @@ const routerAbi = [
   },
   {
     type: "function",
+    name: "unwrapWETH9WithFee",
+    stateMutability: "payable",
+    inputs: [
+      { name: "amountMinimum", type: "uint256" },
+      { name: "recipient", type: "address" },
+      { name: "feeBips", type: "uint256" },
+      { name: "feeRecipient", type: "address" }
+    ],
+    outputs: []
+  },
+  {
+    type: "function",
+    name: "sweepTokenWithFee",
+    stateMutability: "payable",
+    inputs: [
+      { name: "token", type: "address" },
+      { name: "amountMinimum", type: "uint256" },
+      { name: "recipient", type: "address" },
+      { name: "feeBips", type: "uint256" },
+      { name: "feeRecipient", type: "address" }
+    ],
+    outputs: []
+  },
+  {
+    type: "function",
     name: "multicall",
     stateMutability: "payable",
     inputs: [{ name: "deadline", type: "uint256" }, { name: "data", type: "bytes[]" }],
@@ -95,7 +125,9 @@ export type ExternalUniswapQuote = {
   value: string;
   amountIn: string;
   quoteOut: string;
+  grossQuoteOut?: string;
   minimumOut: string;
+  grossMinimumOut?: string;
   priceImpact: number;
   deadline: string;
   fee: number;
@@ -104,6 +136,11 @@ export type ExternalUniswapQuote = {
   executable: true;
   inputToken: { address: Address; symbol: string; name: string; decimals: number };
   outputToken: { address: Address; symbol: string; name: string; decimals: number };
+  executionFee: {
+    bps: number;
+    treasury: Address;
+    estimatedAmount: string;
+  } | null;
 };
 
 function safeText(value: string, fallback: string) {
@@ -156,9 +193,15 @@ export function buildExternalUniswapSwap(params: {
   amountIn: bigint;
   quoteOut: bigint;
   deadline: bigint;
+  executionFee?: RmtExecutionFeeConfig;
 }) {
-  const minimumOut = params.quoteOut * (BPS - SLIPPAGE_BPS) / BPS;
-  if (minimumOut <= 0n) throw new Error("The Uniswap quote is too small to enforce a safe minimum received.");
+  const grossMinimumOut = params.quoteOut * (BPS - SLIPPAGE_BPS) / BPS;
+  if (grossMinimumOut <= 0n) throw new Error("The Uniswap quote is too small to enforce a safe minimum received.");
+  const feeConfig = params.executionFee?.enabled ? params.executionFee : undefined;
+  const quoteAmounts = calculateRmtExecutionFee(params.quoteOut, feeConfig?.feeBps ?? 0);
+  const minimumAmounts = calculateRmtExecutionFee(grossMinimumOut, feeConfig?.feeBps ?? 0);
+  const minimumOut = minimumAmounts.netOutput;
+  if (minimumOut <= 0n) throw new Error("The Uniswap quote is too small after the RMT execution fee.");
   const isBuy = params.side === "buy";
   const swap = encodeFunctionData({
     abi: routerAbi,
@@ -167,20 +210,33 @@ export function buildExternalUniswapSwap(params: {
       tokenIn: isBuy ? ROBINHOOD_WETH : params.token,
       tokenOut: isBuy ? params.token : ROBINHOOD_WETH,
       fee: params.fee,
-      recipient: isBuy ? params.recipient : ROBINHOOD_SWAP_ROUTER_02,
+      recipient: feeConfig || !isBuy ? ROBINHOOD_SWAP_ROUTER_02 : params.recipient,
       amountIn: params.amountIn,
-      amountOutMinimum: minimumOut,
+      amountOutMinimum: grossMinimumOut,
       sqrtPriceLimitX96: 0n
     }]
   });
-  const calls = isBuy
-    ? [swap]
-    : [
+  let feePayoutFunction = "unwrapWETH9WithFee" as "unwrapWETH9WithFee" | "sweepTokenWithFee";
+  if (isBuy) feePayoutFunction = "sweepTokenWithFee";
+  const feePayout = feeConfig
+    ? encodeFunctionData({
+        abi: routerAbi,
+        functionName: feePayoutFunction,
+        args: isBuy
+          ? [params.token, grossMinimumOut, params.recipient, BigInt(feeConfig.feeBps), feeConfig.treasury!]
+          : [grossMinimumOut, params.recipient, BigInt(feeConfig.feeBps), feeConfig.treasury!]
+      })
+    : undefined;
+  const calls = feePayout
+    ? [swap, feePayout]
+    : isBuy
+      ? [swap]
+      : [
         swap,
         encodeFunctionData({
           abi: routerAbi,
           functionName: "unwrapWETH9",
-          args: [minimumOut, params.recipient]
+          args: [grossMinimumOut, params.recipient]
         })
       ];
   const calldata = encodeFunctionData({
@@ -188,7 +244,14 @@ export function buildExternalUniswapSwap(params: {
     functionName: "multicall",
     args: [params.deadline, calls]
   });
-  return { calldata, minimumOut, value: isBuy ? params.amountIn : 0n };
+  return {
+    calldata,
+    minimumOut,
+    grossMinimumOut,
+    netQuoteOut: quoteAmounts.netOutput,
+    estimatedFee: quoteAmounts.fee,
+    value: isBuy ? params.amountIn : 0n
+  };
 }
 
 export async function quoteAndBuildExternalUniswapSwap(params: {
@@ -197,6 +260,7 @@ export async function quoteAndBuildExternalUniswapSwap(params: {
   recipient: Address;
   side: ExternalUniswapTradeSide;
   amountIn: bigint;
+  maxPriceImpact?: number;
 }): Promise<ExternalUniswapQuote> {
   if (params.amountIn <= 0n || params.amountIn > MAX_UINT128) {
     throw new Error("Trade amount is outside the supported range.");
@@ -232,10 +296,15 @@ export async function quoteAndBuildExternalUniswapSwap(params: {
     amountIn: params.amountIn,
     quoteOut
   });
-  if (priceImpact > PRICE_IMPACT_BLOCK) {
-    throw new Error("RMT blocked this Uniswap trade because price impact exceeds 5%.");
+  const maxPriceImpact = params.maxPriceImpact ?? PRICE_IMPACT_BLOCK;
+  if (!Number.isFinite(maxPriceImpact) || maxPriceImpact <= 0 || maxPriceImpact > 1) {
+    throw new Error("The selected maximum price impact is invalid.");
+  }
+  if (priceImpact > maxPriceImpact) {
+    throw new Error("Trade exceeds your selected maximum price impact.");
   }
   const deadline = BigInt(Math.floor(Date.now() / 1000) + 600);
+  const executionFee = currentRmtExecutionFeeConfig();
   const built = buildExternalUniswapSwap({
     token: params.token,
     recipient: params.recipient,
@@ -243,7 +312,8 @@ export async function quoteAndBuildExternalUniswapSwap(params: {
     fee: market.fee,
     amountIn: params.amountIn,
     quoteOut,
-    deadline
+    deadline,
+    executionFee
   });
   const native = {
     address: ROBINHOOD_WETH,
@@ -262,8 +332,10 @@ export async function quoteAndBuildExternalUniswapSwap(params: {
     calldata: built.calldata,
     value: built.value.toString(),
     amountIn: params.amountIn.toString(),
-    quoteOut: quoteOut.toString(),
+    quoteOut: built.netQuoteOut.toString(),
+    grossQuoteOut: quoteOut.toString(),
     minimumOut: built.minimumOut.toString(),
+    grossMinimumOut: built.grossMinimumOut.toString(),
     priceImpact,
     deadline: deadline.toString(),
     fee: market.fee,
@@ -271,6 +343,13 @@ export async function quoteAndBuildExternalUniswapSwap(params: {
     marketVerified: true,
     executable: true,
     inputToken: isBuy ? native : metadata,
-    outputToken: isBuy ? metadata : native
+    outputToken: isBuy ? metadata : native,
+    executionFee: executionFee.enabled && built.estimatedFee > 0n
+      ? {
+          bps: executionFee.feeBps,
+          treasury: executionFee.treasury!,
+          estimatedAmount: built.estimatedFee.toString()
+        }
+      : null
   };
 }

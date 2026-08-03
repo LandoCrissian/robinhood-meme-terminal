@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { useAccount } from "wagmi";
+import { useAccount, useDisconnect } from "wagmi";
+import { RMT_ADMIN_EMAIL } from "../../lib/creator-application";
 import {
   PROFILE_EVENT,
   profileIdentityChanged,
@@ -17,6 +18,8 @@ import { FollowedProjectsHub } from "../followed-projects-hub";
 import { ReferralCard } from "../referral-card";
 import { SiteFooter } from "../site-footer";
 import { useProfile } from "../profile-provider";
+import { useRmtIdentity } from "../rmt-identity";
+import { SmsAlertEnrollment } from "../sms-alert-enrollment";
 
 const MODES: Array<{ id: TraderMode; label: string; copy: string }> = [
   { id: "scout", label: "Scout", copy: "Discovery first. Surface risk and origin before speed." },
@@ -43,29 +46,40 @@ function editTimeLabel(timestamp: number) {
 
 export default function ProfilePage() {
   const { address, isConnected } = useAccount();
+  const { disconnect: disconnectWallet } = useDisconnect();
+  const accountIdentity = useRmtIdentity();
   const {
+    accountAuthenticated,
+    accountReady,
     configured,
     loading,
     profile,
+    profileAuthMessage,
     identityUpdatedAt,
     retrySync,
     user,
     syncState,
     saveProfile,
-    signInWithGoogle,
+    signInProfile,
     signOutProfile
   } = useProfile();
   const [draft, setDraft] = useState<RmtProfile>(profile);
   const [watchCount, setWatchCount] = useState(0);
   const [message, setMessage] = useState("");
+  const [authMessage, setAuthMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [reviewing, setReviewing] = useState(false);
+  const [editorExpanded, setEditorExpanded] = useState(true);
   const [now, setNow] = useState(() => Date.now());
+  const isAdmin = Boolean(user?.emailVerified && user.email?.toLowerCase() === RMT_ADMIN_EMAIL);
 
   useEffect(() => {
     setDraft(profile);
     setReviewing(false);
   }, [profile]);
+  useEffect(() => {
+    if (!loading && identityUpdatedAt > 0) setEditorExpanded(false);
+  }, [identityUpdatedAt, loading]);
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 30_000);
     return () => window.clearInterval(timer);
@@ -91,6 +105,7 @@ export default function ProfilePage() {
   const identityState = profileIdentityEditState(identityUpdatedAt, now);
   const identityChanged = profileIdentityChanged(profile, draft);
   const preferencesChanged = profile.traderMode !== draft.traderMode || profile.density !== draft.density;
+  const visibleAuthMessage = authMessage || profileAuthMessage;
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -106,6 +121,7 @@ export default function ProfilePage() {
       setMessage(identityChanged
         ? `Identity saved. Corrections remain open for 10 minutes, then editing pauses for 24 hours.${user ? " Synced across devices." : ""}`
         : user ? "Terminal preferences saved and synced." : "Terminal preferences saved on this device.");
+      setEditorExpanded(false);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Profile could not be saved.");
     } finally {
@@ -113,26 +129,21 @@ export default function ProfilePage() {
     }
   };
 
-  const beginGoogleSignIn = async () => {
-    setBusy(true);
-    setMessage("");
-    try {
-      await signInWithGoogle();
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Google sign-in did not finish. Your local profile is unchanged.");
-    } finally {
-      setBusy(false);
-    }
+  const beginAccountSignIn = () => {
+    setAuthMessage("");
+    signInProfile();
   };
 
   const endProfileSession = async () => {
     setBusy(true);
-    setMessage("");
+    setAuthMessage("");
     try {
       await signOutProfile();
-      setMessage("Signed out. This device keeps its local profile copy.");
+      disconnectWallet();
+      setAuthMessage("Disconnected from RMT. This device keeps its local profile copy.");
     } catch {
-      setMessage("RMT could not sign out of the cloud profile. Try again.");
+      disconnectWallet();
+      setAuthMessage("The local wallet connection was cleared, but RMT could not fully end the cloud session. Try again.");
     } finally {
       setBusy(false);
     }
@@ -140,12 +151,12 @@ export default function ProfilePage() {
 
   const retryCloudSync = async () => {
     setBusy(true);
-    setMessage("");
+    setAuthMessage("");
     try {
       await retrySync();
-      setMessage("Profile and watchlist synced.");
+      setAuthMessage("Profile and watchlist synced.");
     } catch {
-      setMessage("Cloud sync is still unavailable. Your local profile is safe on this device.");
+      setAuthMessage("Cloud sync is still unavailable. Your local profile is safe on this device.");
     } finally {
       setBusy(false);
     }
@@ -180,9 +191,43 @@ export default function ProfilePage() {
         <form className="profileEditor" onSubmit={submit}>
           <div className="profileSectionHeading">
             <div><p className="eyebrow">IDENTITY</p><h2>Make the desk yours</h2></div>
-            <span>{identityState.phase === "locked" ? "Protected across devices" : "Never tied to transaction signing"}</span>
+            <div className="profileSectionActions">
+              <span>{identityState.phase === "locked" ? "Protected across devices" : "Never tied to transaction signing"}</span>
+              {identityUpdatedAt > 0 && <button
+                type="button"
+                aria-expanded={editorExpanded}
+                onClick={() => {
+                  if (editorExpanded) {
+                    setDraft(profile);
+                    setReviewing(false);
+                    setMessage("");
+                  }
+                  setEditorExpanded((value) => !value);
+                }}
+              >{editorExpanded ? "Collapse" : "Edit desk"}</button>}
+            </div>
           </div>
 
+          {!editorExpanded && identityUpdatedAt > 0 ? (
+            <section className="profileIdentitySummary" aria-label="Saved desk identity">
+              <div className="profileIdentitySummaryTop">
+                <span className="profileIdentitySummaryAvatar" aria-hidden="true">{initials}</span>
+                <div>
+                  <strong>{profile.displayName}</strong>
+                  <span>{profile.handle ? `@${profile.handle}` : "Private RMT profile"}</span>
+                </div>
+                <b>{identityState.phase === "locked" ? "PROTECTED" : "SAVED"}</b>
+              </div>
+              {profile.bio && <p>{profile.bio}</p>}
+              <dl>
+                <div><dt>Mode</dt><dd>{profile.traderMode}</dd></div>
+                <div><dt>Density</dt><dd>{profile.density}</dd></div>
+                <div><dt>Editing</dt><dd>{identityState.phase === "locked" ? `Reopens ${editTimeLabel(identityState.nextEditAt)}` : "Available"}</dd></div>
+              </dl>
+              {message && <p className="profileIdentitySummaryMessage" role="status">{message}</p>}
+              <button type="button" onClick={() => setEditorExpanded(true)}>Update desk settings</button>
+            </section>
+          ) : <>
           <div className={`profileIdentityPolicy ${identityState.phase}`}>
             <div>
               <strong>
@@ -239,24 +284,63 @@ export default function ProfilePage() {
             </button>
             {message && <p role="status">{message}</p>}
           </div>
+          </>}
         </form>
 
         <aside className="profileRail">
+          {isAdmin && <section className="profileAdminCard">
+            <p className="eyebrow">PRIVATE RMT OPERATIONS</p>
+            <h2>RMT Admin</h2>
+            <p>Moderate live messages, review applications, and manage creator requests.</p>
+            <Link href="/admin">Open Admin Dashboard →</Link>
+          </section>}
           <section className="profileCloudCard">
-            <p className="eyebrow">CROSS-DEVICE PROFILE</p>
-            <h2>{user ? "Your desk follows you" : "Take your desk anywhere"}</h2>
-            <p>{user ? "Profile preferences and watched RMT tokens sync through your private Firebase workspace. RMT does not display your Google email or photo." : "Sign in to carry your profile and watchlist between desktop and mobile. Wallet connection stays separate."}</p>
-            {user ? (
+            <p className="eyebrow">ONE RMT ACCOUNT</p>
+            <h2>{user ? "Your desk follows you" : accountAuthenticated ? "Connecting your desk" : "Take your desk anywhere"}</h2>
+            <p>{user
+              ? "Your profile, watchlist, community identity, and active trading wallets now follow one RMT account. Your sign-in details stay private."
+              : accountAuthenticated
+                ? "Your Privy identity is verified. RMT is finishing the private profile connection without asking you to sign in again."
+                : "Use one RMT sign-in for your profile and wallets. Choose email, Google, a passkey, or an existing wallet—Google is optional."}</p>
+            {accountAuthenticated ? (
               <div className="profileCloudActions">
-                {syncState === "error" && <button className="profileRetryButton" type="button" disabled={busy} onClick={() => void retryCloudSync()}>Retry sync</button>}
-                <button type="button" disabled={busy} onClick={() => void endProfileSession()}>Sign out of profile</button>
+                <div className="profileLinkMethods">
+                  <strong>Keep one account—link extra sign-in methods here</strong>
+                  <span>Do not sign out to add another method. Linking keeps this profile, admin access, and wallet workspace together.</span>
+                  <div>
+                    <button type="button" disabled={accountIdentity.linked.email} onClick={accountIdentity.linkEmail}>
+                      {accountIdentity.linked.email ? "Email linked" : "Link email"}
+                    </button>
+                    <button type="button" disabled={accountIdentity.linked.google} onClick={accountIdentity.linkGoogle}>
+                      {accountIdentity.linked.google ? "Google linked" : "Link Google"}
+                    </button>
+                    <button type="button" disabled={accountIdentity.linked.passkey} onClick={accountIdentity.linkPasskey}>
+                      {accountIdentity.linked.passkey ? "Passkey linked" : "Add passkey"}
+                    </button>
+                    <button type="button" disabled={accountIdentity.linked.phone} onClick={accountIdentity.linkPhone}>
+                      {accountIdentity.linked.phone ? "Phone linked" : "Link phone"}
+                    </button>
+                    <button type="button" disabled={accountIdentity.linked.wallet} onClick={accountIdentity.linkWallet}>
+                      {accountIdentity.linked.wallet ? "Wallet linked" : "Link wallet"}
+                    </button>
+                  </div>
+                </div>
+                {user && syncState === "error" && <button className="profileRetryButton" type="button" disabled={busy} onClick={() => void retryCloudSync()}>Retry sync</button>}
+                <button type="button" disabled={busy} onClick={() => void endProfileSession()}>Disconnect and sign out</button>
               </div>
-            ) : configured ? (
-              <button className="googleProfileButton" type="button" disabled={busy} onClick={() => void beginGoogleSignIn()}>Continue with Google</button>
+            ) : configured && accountReady ? (
+              <div className="profileAuthOptions">
+                <button className="googleProfileButton" type="button" disabled={busy || loading} onClick={beginAccountSignIn}>
+                  Sign in or create RMT account
+                </button>
+                <span className="profileAccountMethods">Choose one method now. Link the others after sign-in so they do not become separate accounts.</span>
+              </div>
             ) : (
-              <div className="profileSetupNotice"><strong>Firebase connection prepared</strong><span>Add the project configuration to enable Google profile sync.</span></div>
+              <div className="profileSetupNotice"><strong>Local profile ready</strong><span>RMT account sync is not enabled in this environment.</span></div>
             )}
+            {visibleAuthMessage && <p className="profileAuthMessage" role="status">{visibleAuthMessage}</p>}
           </section>
+          <SmsAlertEnrollment />
           <ReferralCard />
 
           <nav className="profileQuickLinks" aria-label="Your RMT workspace">
@@ -267,8 +351,8 @@ export default function ProfilePage() {
           </nav>
 
           <section className="profilePrivacy">
-            <strong>Profile ≠ wallet custody</strong>
-            <p>RMT profile sign-in never exposes a seed phrase and never grants transaction permission. Every trade still requires your wallet confirmation.</p>
+            <strong>One account does not mean custody</strong>
+            <p>RMT never receives a seed phrase or private key. Disconnect clears the RMT session and active wallet state; transactions still follow the permissions shown in your wallet.</p>
           </section>
         </aside>
       </div>

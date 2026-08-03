@@ -107,10 +107,10 @@ V6 token-market 70/30 fees remain a separate accounting domain.
 ## Remaining blockers
 
 - independent smart-contract security review;
-- property/invariant fuzzing beyond the current adversarial unit suite;
+- independent review of the new conservation and supply-cap fuzz properties;
 - a production fee policy and separately reviewed settlement contract;
 - independently reviewed production anchors, RPC finality policy and a second live verification immediately before any wallet request;
 - product disclosure for recipient, recovery, supported-token and rounding behavior;
-- deployment scripts, verification artifacts, monitoring and incident response;
+- final approved deployment manifest, explorer verification, monitoring and incident response;
 - explicit authorization for testnet deployment; and
 - separate explicit authorization for any later mainnet deployment.

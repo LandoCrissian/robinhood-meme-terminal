@@ -60,7 +60,31 @@ assert.equal(normalizeBuyPreset("1000"), null);
 assert.equal(normalizeBuyPreset("0"), null);
 assert.equal(normalizeBuyPreset("1e-3"), null);
 assert.deepEqual(normalizeTradePreferences({ buyAmounts: ["0.0002", "0.002", "0.02"] }), {
-  buyAmounts: ["0.0002", "0.002", "0.02"]
+  buyAmounts: ["0.0002", "0.002", "0.02"],
+  routePreference: "automatic",
+  maxPriceImpactBps: 500,
+  preparationMode: "speed"
+});
+assert.deepEqual(normalizeTradePreferences({
+  buyAmounts: ["0.0002", "0.002", "0.02"],
+  routePreference: "sushi",
+  maxPriceImpactBps: 100,
+  preparationMode: "speed"
+}), {
+  buyAmounts: ["0.0002", "0.002", "0.02"],
+  routePreference: "sushi",
+  maxPriceImpactBps: 100,
+  preparationMode: "speed"
+});
+assert.deepEqual(normalizeTradePreferences({
+  buyAmounts: ["0.0002", "0.002", "0.02"],
+  routePreference: "unknown",
+  maxPriceImpactBps: 10_000
+}), {
+  buyAmounts: ["0.0002", "0.002", "0.02"],
+  routePreference: "automatic",
+  maxPriceImpactBps: 10_000,
+  preparationMode: "speed"
 });
 assert.deepEqual(normalizeTradePreferences({ buyAmounts: ["0.01", "0.01", "0.02"] }), DEFAULT_TRADE_PREFERENCES);
 assert.deepEqual(normalizeTradePreferences({ buyAmounts: ["bad"] }), DEFAULT_TRADE_PREFERENCES);
@@ -96,26 +120,26 @@ assert.deepEqual(tradeReadinessStatus("error", "clear"), {
 assert.equal(resilientTradeVenue({
   selected: "sushi",
   mode: "automatic",
-  venues: ["sushi", "uniswap"],
-  health: { sushi: "unavailable", uniswap: "ready" }
-}), "uniswap");
+  venues: ["sushi", "uniswap-v3"],
+  health: { sushi: "unavailable", "uniswap-v3": "ready" }
+}), "uniswap-v3");
 assert.equal(resilientTradeVenue({
   selected: "sushi",
   mode: "manual",
-  venues: ["sushi", "uniswap"],
-  health: { sushi: "unavailable", uniswap: "ready" }
+  venues: ["sushi", "uniswap-v3"],
+  health: { sushi: "unavailable", "uniswap-v3": "ready" }
 }), "sushi");
 assert.equal(resilientTradeVenue({
   selected: "sushi",
   mode: "automatic",
-  venues: ["sushi", "uniswap"],
-  health: { sushi: "loading", uniswap: "ready" }
+  venues: ["sushi", "uniswap-v3"],
+  health: { sushi: "loading", "uniswap-v3": "ready" }
 }), "sushi");
 assert.equal(resilientTradeVenue({
   selected: "sushi",
   mode: "automatic",
-  venues: ["sushi", "uniswap"],
-  health: { sushi: "unavailable", uniswap: "unavailable" }
+  venues: ["sushi", "uniswap-v3"],
+  health: { sushi: "unavailable", "uniswap-v3": "unavailable" }
 }), "sushi");
 const quoteToken = {
   address: "0x1111111111111111111111111111111111111111",
@@ -125,34 +149,78 @@ assert.deepEqual(protectedOutputRecommendation({
   selected: "sushi",
   quotes: [
     { venue: "sushi", minimumOut: "100000", priceImpact: 0.01, outputToken: quoteToken },
-    { venue: "uniswap", minimumOut: "101000", priceImpact: 0.008, outputToken: quoteToken }
+    { venue: "uniswap-v3", minimumOut: "101000", priceImpact: 0.008, outputToken: quoteToken }
   ]
 }), {
-  leader: "uniswap",
+  leader: "uniswap-v3",
   leaderAdvantageBps: 100,
-  automaticVenue: "uniswap",
+  automaticVenue: "uniswap-v3",
   automaticImprovementBps: 100
+});
+assert.deepEqual(protectedOutputRecommendation({
+  selected: "sushi",
+  quotes: [
+    { venue: "sushi", minimumOut: "100000", priceImpact: 0.01, outputToken: quoteToken },
+    { venue: "uniswap-v3", minimumOut: "101000", priceImpact: 0.008, outputToken: quoteToken },
+    { venue: "uniswap-v4", minimumOut: "102000", priceImpact: 0.007, outputToken: quoteToken }
+  ]
+}), {
+  leader: "uniswap-v4",
+  leaderAdvantageBps: 99,
+  automaticVenue: "uniswap-v4",
+  automaticImprovementBps: 200
 });
 assert.equal(protectedOutputRecommendation({
   selected: "sushi",
   quotes: [
     { venue: "sushi", minimumOut: "100000", priceImpact: 0.01, outputToken: quoteToken },
-    { venue: "uniswap", minimumOut: "100200", priceImpact: 0.008, outputToken: quoteToken }
+    { venue: "uniswap-v3", minimumOut: "100200", priceImpact: 0.008, outputToken: quoteToken }
   ]
 })?.automaticVenue, "sushi");
 assert.equal(protectedOutputRecommendation({
-  selected: "uniswap",
+  selected: "uniswap-v3",
   quotes: [
     { venue: "sushi", minimumOut: "100000", priceImpact: 0.009, outputToken: quoteToken },
-    { venue: "uniswap", minimumOut: "100000", priceImpact: 0.01, outputToken: quoteToken }
+    { venue: "uniswap-v3", minimumOut: "100000", priceImpact: 0.01, outputToken: quoteToken }
   ]
-})?.automaticVenue, "uniswap");
+})?.automaticVenue, "uniswap-v3");
+assert.equal(protectedOutputRecommendation({
+  selected: "sushi",
+  maxPriceImpact: 0.01,
+  quotes: [
+    { venue: "sushi", minimumOut: "100000", priceImpact: 0.009, outputToken: quoteToken },
+    { venue: "uniswap-v3", minimumOut: "110000", priceImpact: 0.02, outputToken: quoteToken }
+  ]
+}), undefined);
+assert.equal(protectedOutputRecommendation({
+  selected: "sushi",
+  maxPriceImpact: 0.02,
+  quotes: [
+    { venue: "sushi", minimumOut: "100000", priceImpact: 0.009, outputToken: quoteToken },
+    { venue: "uniswap-v3", minimumOut: "110000", priceImpact: 0.02, outputToken: quoteToken }
+  ]
+})?.automaticVenue, "uniswap-v3");
+assert.equal(protectedOutputRecommendation({
+  selected: "sushi",
+  maxPriceImpact: 0.051,
+  quotes: [
+    { venue: "sushi", minimumOut: "100000", priceImpact: 0.009, outputToken: quoteToken },
+    { venue: "uniswap-v3", minimumOut: "110000", priceImpact: 0.02, outputToken: quoteToken }
+  ]
+})?.automaticVenue, "uniswap-v3");
+assert.equal(protectedOutputRecommendation({
+  selected: "sushi",
+  maxPriceImpact: 1.01,
+  quotes: [
+    { venue: "sushi", minimumOut: "100000", priceImpact: 0.009, outputToken: quoteToken }
+  ]
+}), undefined);
 assert.equal(protectedOutputRecommendation({
   selected: "sushi",
   quotes: [
     { venue: "sushi", minimumOut: "100000", priceImpact: 0.01, outputToken: quoteToken },
     {
-      venue: "uniswap",
+      venue: "uniswap-v3",
       minimumOut: "101000",
       priceImpact: 0.008,
       outputToken: { ...quoteToken, address: "0x2222222222222222222222222222222222222222" }
@@ -163,7 +231,7 @@ assert.equal(protectedOutputRecommendation({
   selected: "sushi",
   quotes: [
     { venue: "sushi", minimumOut: "0", priceImpact: 0.01, outputToken: quoteToken },
-    { venue: "uniswap", minimumOut: "101000", priceImpact: 0.008, outputToken: quoteToken }
+    { venue: "uniswap-v3", minimumOut: "101000", priceImpact: 0.008, outputToken: quoteToken }
   ]
 }), undefined);
 

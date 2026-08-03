@@ -1,17 +1,29 @@
 import assert from "node:assert/strict";
 import "./server/lemon-project-feed-smoke";
+import "./server/sushi-launch-feed-smoke";
 import {
   externalProjectProvenanceDescription,
   externalProjectProvenanceLabel,
   selectPreferredLifecycleMarket
 } from "./external-market";
-import { isNonzeroEvmAddress, selectExternalPairBaseToken } from "./external-market-identity";
+import {
+  isNonzeroEvmAddress,
+  selectExternalPairBaseToken,
+  selectExternalPairBaseTokenWithAssetQuotes
+} from "./external-market-identity";
+import {
+  marketDistributionPassport,
+  UNISWAP_LAUNCHES_ANNOUNCEMENT_URL,
+  UNISWAP_LAUNCHPAD_DEPLOYMENTS_URL
+} from "./launch-distribution";
 
 const syntheticAddress = (character: string) => ("0x" + character.repeat(40)) as `0x${string}`;
 const zero = { address: "0x0000000000000000000000000000000000000000", name: "Ether" };
 const wrappedNative = { address: syntheticAddress("a"), name: "Wrapped Ether" };
 const external = { address: syntheticAddress("b"), name: "External token" };
 const excluded = new Set([wrappedNative.address.toLowerCase()]);
+const stockToken = { address: syntheticAddress("c"), name: "Canonical Stock Token" };
+const stockTokens = new Set([stockToken.address.toLowerCase()]);
 
 assert.equal(isNonzeroEvmAddress(zero.address), false, "The native zero-address sentinel is not an ERC-20 trade target");
 assert.equal(isNonzeroEvmAddress(external.address), true);
@@ -42,6 +54,21 @@ assert.equal(
   selectExternalPairBaseToken(external, { address: syntheticAddress("c"), name: "Unknown quote" }, excluded),
   undefined,
   "An unrecognized quote asset must fail closed"
+);
+assert.equal(
+  selectExternalPairBaseTokenWithAssetQuotes(external, stockToken, excluded, stockTokens),
+  external,
+  "A project token quoted against an official Stock Token may be discovered"
+);
+assert.equal(
+  selectExternalPairBaseTokenWithAssetQuotes(stockToken, wrappedNative, excluded, stockTokens),
+  stockToken,
+  "An official Stock Token quoted against wrapped native remains independently discoverable"
+);
+assert.equal(
+  selectExternalPairBaseTokenWithAssetQuotes(stockToken, external, excluded, stockTokens),
+  undefined,
+  "A reversed Stock Token/project pair must not transfer base-token metrics to the quote token"
 );
 
 const curveMarket = {
@@ -100,5 +127,76 @@ assert.match(
   /documented public API.*token and launch pool match the live DEX pair/,
   "Lemon provenance disclosure must state the actual cross-check boundary"
 );
+
+const ponsUniswapMarket = {
+  ...dexMarket,
+  address: external.address,
+  name: "Pons market",
+  symbol: "PONS",
+  dexId: "uniswap-v3",
+  project: {
+    ...lemonProject,
+    sourceId: "pons",
+    sourceName: "Pons",
+    provenance: "factory-and-token-cross-checked"
+  },
+  origin: { kind: "external", state: "unknown", coverage: "unavailable" },
+  url: "https://dexscreener.com/robinhood/" + dexMarket.pairAddress
+} as unknown as Parameters<typeof marketDistributionPassport>[0];
+const ponsPassport = marketDistributionPassport(ponsUniswapMarket);
+assert.equal(ponsPassport.venue, "uniswap");
+assert.equal(ponsPassport.state, "recognized-source-market");
+assert.equal(ponsPassport.isAttributedLaunch, true);
+assert.match(ponsPassport.summary, /Individual beta-feed inclusion is not independently confirmed/);
+assert.equal(ponsPassport.steps[0]?.tone, "verified");
+assert.equal(ponsPassport.steps[1]?.tone, "verified");
+assert.equal(ponsPassport.steps[2]?.tone, "candidate");
+assert.equal(ponsPassport.steps[2]?.evidenceUrl, UNISWAP_LAUNCHES_ANNOUNCEMENT_URL);
+assert.match(UNISWAP_LAUNCHPAD_DEPLOYMENTS_URL, /developers\.uniswap\.org/);
+
+const unattributedPassport = marketDistributionPassport({
+  ...ponsUniswapMarket,
+  project: undefined
+});
+assert.equal(unattributedPassport.state, "market-live");
+assert.equal(unattributedPassport.isAttributedLaunch, false);
+assert.match(unattributedPassport.steps[0]?.detail ?? "", /does not prove which platform created the token/);
+assert.match(unattributedPassport.steps[2]?.detail ?? "", /does not by itself prove inclusion/);
+
+const sushiPassport = marketDistributionPassport({
+  ...ponsUniswapMarket,
+  dexId: "sushiswap-v3",
+  venue: {
+    kind: "dex",
+    dexId: "sushiswap-v3",
+    pairAddress: ponsUniswapMarket.pairAddress,
+    url: ponsUniswapMarket.url,
+    execution: "read-only"
+  }
+});
+assert.equal(sushiPassport.venue, "sushi");
+assert.equal(sushiPassport.state, "announced-watch");
+assert.match(sushiPassport.steps[2]?.detail ?? "", /documented launch record and pool agree/);
+
+const verifiedSushiLaunchPassport = marketDistributionPassport({
+  ...ponsUniswapMarket,
+  dexId: "sushiswap-v3",
+  project: {
+    ...lemonProject,
+    sourceId: "sushi",
+    sourceName: "Sushi Launch"
+  },
+  venue: {
+    kind: "dex",
+    dexId: "sushiswap-v3",
+    pairAddress: ponsUniswapMarket.pairAddress,
+    url: ponsUniswapMarket.url,
+    execution: "read-only"
+  }
+});
+assert.equal(verifiedSushiLaunchPassport.state, "recognized-source-market");
+assert.equal(verifiedSushiLaunchPassport.shortLabel, "Sushi Launch verified");
+assert.equal(verifiedSushiLaunchPassport.steps[2]?.tone, "verified");
+assert.match(verifiedSushiLaunchPassport.steps[2]?.detail ?? "", /does not imply a partnership/);
 
 console.info("External market address integrity validation passed");

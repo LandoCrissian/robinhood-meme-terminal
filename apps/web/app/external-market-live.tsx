@@ -4,13 +4,19 @@ import { useEffect, useMemo, useState } from "react";
 import { erc20Abi, formatUnits, type Address } from "viem";
 import { useAccount, useReadContract } from "wagmi";
 import type { ExternalMarket } from "../lib/external-market";
-import { summarizeExternalTradeActors, type ExternalPoolTradesPayload } from "../lib/external-trades";
+import { summarizeExternalSellPressure, summarizeExternalTradeActors, type ExternalPoolTradesPayload } from "../lib/external-trades";
 import { formatOwnershipBps } from "../lib/token-risk-evidence";
+import {
+  exactTokenAmountForExit,
+  type PreparedPositionExit,
+  type PositionGuardExitRequest
+} from "../lib/position-guard";
 import { useWalletConstellation } from "../lib/use-wallet-constellation";
 import type {
   WalletConstellationNode,
   WalletConstellationNodeRole
 } from "../lib/wallet-constellation";
+import { PositionGuardPanel } from "./position-guard-panel";
 
 const EXPLORER = "https://robinhoodchain.blockscout.com";
 
@@ -39,7 +45,7 @@ export function ExternalWalletPosition({
 }: {
   market: ExternalMarket;
   onBuy: () => void;
-  onSell: () => void;
+  onSell: (exit?: PreparedPositionExit) => void;
 }) {
   const { address } = useAccount();
   const token = market.address as Address;
@@ -63,6 +69,19 @@ export function ExternalWalletPosition({
     const parsed = Number(formatUnits(balance.data, decimals.data));
     return Number.isFinite(parsed) ? parsed : null;
   }, [balance.data, decimals.data]);
+  const prepareGuardExit = (request: PositionGuardExitRequest) => {
+    if (!address || balance.data === undefined || decimals.data === undefined) return false;
+    const amount = exactTokenAmountForExit(balance.data, decimals.data, request.exitBps);
+    if (!amount) return false;
+    onSell({
+      ...request,
+      amount,
+      token: market.address,
+      wallet: address,
+      createdAt: Date.now()
+    });
+    return true;
+  };
 
   return (
     <section className="universalPosition" aria-labelledby="universal-position-heading">
@@ -71,7 +90,19 @@ export function ExternalWalletPosition({
         <div className="universalPositionBody">
           <span><small>HOLDINGS</small><strong>{units === null ? "Reading…" : `${compact(units, 4)} ${market.symbol}`}</strong></span>
           <span><small>CURRENT VALUE</small><strong>{units === null ? "—" : `$${compact(units * market.priceUsd)}`}</strong></span>
-          <div><button type="button" onClick={onBuy}>Buy more</button><button type="button" onClick={onSell}>Sell position</button></div>
+          <div><button type="button" onClick={onBuy}>Buy more</button><button type="button" onClick={() => onSell()}>Sell position</button></div>
+          {units !== null && units > 0 && (
+            <PositionGuardPanel
+              wallet={address}
+              token={market.address}
+              symbol={market.symbol}
+              balance={units}
+              currentValueUsd={units * market.priceUsd}
+              pair={market.pairAddress as Address}
+              rawBalance={balance.data}
+              onPrepareExit={prepareGuardExit}
+            />
+          )}
         </div>
       ) : <p>Connect from the order ticket to display this wallet’s token balance and current market value.</p>}
       <footer>Cost basis and P&amp;L are withheld until RMT can prove complete wallet history.</footer>
@@ -79,7 +110,13 @@ export function ExternalWalletPosition({
   );
 }
 
-export function ExternalTradeTape({ market }: { market: ExternalMarket }) {
+export function ExternalTradeTape({
+  market,
+  onSellPressure
+}: {
+  market: ExternalMarket;
+  onSellPressure?: (pressure: ReturnType<typeof summarizeExternalSellPressure>) => void;
+}) {
   const [payload, setPayload] = useState<ExternalPoolTradesPayload>();
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
 
@@ -109,7 +146,7 @@ export function ExternalTradeTape({ market }: { market: ExternalMarket }) {
       }
     };
     void load();
-    const interval = window.setInterval(() => void load(), 10_000);
+    const interval = window.setInterval(() => void load(), 4_000);
     return () => {
       active = false;
       window.clearInterval(interval);
@@ -120,6 +157,14 @@ export function ExternalTradeTape({ market }: { market: ExternalMarket }) {
     () => summarizeExternalTradeActors(payload?.trades ?? []),
     [payload?.trades]
   );
+  const sellPressure = useMemo(
+    () => summarizeExternalSellPressure(payload?.trades ?? [], market.liquidityUsd),
+    [market.liquidityUsd, payload?.trades]
+  );
+
+  useEffect(() => {
+    onSellPressure?.(sellPressure);
+  }, [onSellPressure, sellPressure]);
   const largestNetActor = (
     Math.abs(actorSummary.largestNetBuyer?.netVolumeUsd ?? 0)
     >= Math.abs(actorSummary.largestNetSeller?.netVolumeUsd ?? 0)
@@ -129,10 +174,16 @@ export function ExternalTradeTape({ market }: { market: ExternalMarket }) {
     <section className="universalTradeTape" aria-labelledby="universal-trade-tape-heading">
       <header>
         <div><small>LIVE TRADE TAPE</small><h3 id="universal-trade-tape-heading">Latest confirmed swaps</h3></div>
-        <span>{status === "loading" ? "Syncing…" : status === "error" ? "Retrying" : `${payload?.trades.length ?? 0} shown · 10s`}</span>
+        <span>{status === "loading" ? "Syncing…" : status === "error" ? "Retrying" : `${payload?.trades.length ?? 0} shown · 4s`}</span>
       </header>
       {payload?.trades.length ? (
         <>
+          {sellPressure.level !== "none" && (
+            <div className={`universalSellPressure ${sellPressure.level}`} role="alert">
+              <span><small>{sellPressure.level === "urgent" ? "URGENT SELL PRESSURE" : "LARGE SELL CONFIRMED"}</small><strong>${compact(sellPressure.largestSell?.volumeUsd ?? 0)} largest sell</strong></span>
+              <span><small>5M NET SELL FLOW</small><strong>${compact(sellPressure.netSellVolume5mUsd)} · {(sellPressure.netSellLiquidityBps / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}% of liquidity</strong></span>
+            </div>
+          )}
           <div className="universalActorSummary" aria-label="Recent pool actor summary">
             <span><small>ACTIVE WALLETS</small><strong>{actorSummary.uniqueActors}</strong></span>
             <span><small>REPEAT WALLETS</small><strong>{actorSummary.repeatActors}</strong></span>

@@ -78,8 +78,8 @@ export function getFirebaseClient() {
         await authApi.setPersistence(auth, persistence);
         break;
       } catch {
-        // Keep profile sign-in available when a browser blocks a stronger
-        // persistence layer. The next option is progressively less durable.
+        // Keep the private profile bridge available when a browser blocks a
+        // stronger persistence layer. The next option is less durable.
       }
     }
     return { app, auth, db: firestoreApi.getFirestore(app), authApi, firestoreApi };

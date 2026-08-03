@@ -13,9 +13,9 @@ interface IUniversalRouterForkVm {
     function envOr(string calldata name, string calldata defaultValue) external returns (string memory value);
     function createSelectFork(string calldata rpcUrl) external returns (uint256 forkId);
     function deal(address account, uint256 balance) external;
+    function prank(address caller) external;
     function roll(uint256 newHeight) external;
     function warp(uint256 newTimestamp) external;
-    function prank(address caller) external;
 }
 
 interface IERC20RouterProbe {
@@ -69,7 +69,16 @@ contract V6UniversalRouterForkTest {
         require(address(QUOTER).code.length != 0, "official quoter missing");
         require(address(PERMIT2).code.length != 0, "Permit2 missing");
 
-        _openLaunchGateOnlyInsideFork();
+        RMTLaunchGate gate = RMTLaunchGate(address(FACTORY.launchGate()));
+        if (gate.launchesPaused()) {
+            vm.prank(gate.governance());
+            uint64 executableAt = gate.scheduleUnpause();
+            vm.warp(executableAt);
+            vm.prank(gate.guardian());
+            gate.executeUnpause();
+        }
+        require(!gate.launchesPaused(), "fork launch gate remained paused");
+
         (address tokenAddress, address marketAddress,) = FACTORY.launchSimple(
             "RMT Router Fork Probe",
             "RMTRF7",
@@ -109,29 +118,6 @@ contract V6UniversalRouterForkTest {
         uint256 nativeBalanceBefore = address(this).balance;
         _executeExactInput(key, false, tokenAmountIn, minimumNativeOut);
         require(address(this).balance - nativeBalanceBefore >= minimumNativeOut, "official router sell missed minimum");
-    }
-
-    /// @dev Production may be intentionally paused while a future release is prepared. The fork must preserve and
-    ///      exercise that safety state before simulating the existing delayed-governance reopening path. Cheatcode
-    ///      impersonation and time travel modify only this disposable fork; no mainnet transaction is broadcast.
-    function _openLaunchGateOnlyInsideFork() private {
-        RMTLaunchGate gate = RMTLaunchGate(address(FACTORY.launchGate()));
-        require(address(gate).code.length != 0, "V6 launch gate missing");
-        if (!gate.launchesPaused()) return;
-
-        address governance = gate.governance();
-        address guardian = gate.guardian();
-        require(governance.code.length != 0 && guardian != address(0), "launch gate authority missing");
-
-        vm.prank(governance);
-        uint64 executableAt = gate.scheduleUnpause();
-        require(gate.launchesPaused(), "schedule bypassed pause");
-        require(executableAt == gate.unpauseExecutableAt(), "unpause schedule mismatch");
-
-        vm.warp(executableAt);
-        vm.prank(guardian);
-        gate.executeUnpause();
-        require(!gate.launchesPaused(), "fork-only delayed unpause failed");
     }
 
     function _quote(PoolKey memory key, bool zeroForOne, uint128 amountIn) private returns (uint256 amountOut) {

@@ -7,15 +7,14 @@ const appDirectory = path.dirname(fileURLToPath(import.meta.url));
 const nextConfig = {
   outputFileTracingRoot: path.resolve(appDirectory, "../.."),
   webpack(config) {
-    // These imports are optional upstream branches that are unreachable in
-    // RMT's browser runtime. MetaMask uses localStorage on the web, while
-    // pino-pretty is a development-only logger transport. Resolving them to
-    // empty modules keeps the wallet bundle honest without shipping React
-    // Native storage or a server-side pretty printer to users.
+    // MetaMask probes React Native storage and Privy probes Farcaster's Solana
+    // adapter even though this app is an Ethereum-only browser terminal. Mark
+    // those optional platform modules unavailable so actionable build warnings
+    // are not hidden by integrations RMT cannot invoke.
     config.resolve.alias = {
       ...config.resolve.alias,
       "@react-native-async-storage/async-storage": false,
-      "pino-pretty": false
+      "@farcaster/mini-app-solana": false
     };
     return config;
   }

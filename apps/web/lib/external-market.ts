@@ -3,9 +3,21 @@ import type { ExternalMarketRiskFlag, ExternalMarketSignal } from "./external-ma
 
 export type ExternalMarketVenue = Extract<MarketVenue, { kind: "dex" | "external-launchpad" }>;
 
+export type RobinhoodStockAssetRelationship = {
+  relationship: "canonical-stock-token" | "paired-market-asset";
+  assetId: string;
+  tokenSymbol: string;
+  tokenName: string;
+  contractAddress: string;
+  currentMultiplier: string;
+  status: "active" | "inactive";
+  logoUrl: string | null;
+  provenance: "robinhood-live-asset-registry";
+};
+
 export type ExternalProjectMetadata = {
-  sourceId: "pons" | "lemon" | "noxa" | "circus";
-  sourceName: "Pons" | "Lemon" | "Noxa" | "Circus";
+  sourceId: "pons" | "lemon" | "noxa" | "circus" | "sushi";
+  sourceName: "Pons" | "Lemon" | "Noxa" | "Circus" | "Sushi Launch";
   provenance:
     | "factory-and-token-cross-checked"
     | "launchpad-and-token-cross-checked"
@@ -52,9 +64,11 @@ export type ExternalMarket = {
   address: string;
   name: string;
   symbol: string;
+  imageUri?: string;
   pairAddress: string;
   url: string;
   dexId: string;
+  stockAssetRelationships?: RobinhoodStockAssetRelationship[];
   project?: ExternalProjectMetadata;
   origin: TokenOrigin;
   venue: ExternalMarketVenue;
@@ -103,6 +117,7 @@ export type ExternalMarketResponse = {
   thresholds?: Record<string, number>;
   originCoverage?: OriginCoverage;
   rmtOriginCoverage?: OriginCoverage;
+  stockAssetCoverage?: "complete" | "unavailable";
   updatedAt?: string;
   stale?: boolean;
   error?: string;

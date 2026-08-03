@@ -28,6 +28,7 @@ import {
   publicSyncState,
   type SyncFailureKind
 } from "./rpc-resilience.js";
+import { resolveArchiveRpcUrl } from "./rpc-config.js";
 import { schemaSql } from "./schema.js";
 
 const CHAIN_ID = 4663;
@@ -80,9 +81,11 @@ function errorType(error: unknown) {
     : "UnknownError";
 }
 
+const primaryRpcUrl = required("RMT_RPC_URL");
 const config = {
   databaseUrl: required("DATABASE_URL"),
-  rpcUrl: required("RMT_RPC_URL"),
+  rpcUrl: primaryRpcUrl,
+  archiveRpcUrl: resolveArchiveRpcUrl(primaryRpcUrl, process.env.RMT_ARCHIVE_RPC_URL),
   factory: requiredFactoryAddress(),
   startBlock: requiredPositiveBigInt("RMT_FACTORY_START_BLOCK"),
   confirmations: positiveInteger("RMT_CONFIRMATION_DEPTH", 20),
@@ -102,6 +105,11 @@ const chain = {
 const rpc = createPublicClient({
   chain,
   transport: http(config.rpcUrl, { retryCount: 3, retryDelay: 1_000, timeout: 12_000 })
+});
+
+const archiveRpc = createPublicClient({
+  chain,
+  transport: http(config.archiveRpcUrl, { retryCount: 3, retryDelay: 1_000, timeout: 12_000 })
 });
 
 const pool = new Pool({
@@ -274,8 +282,8 @@ async function verifyV6Factory(): Promise<V6ProtocolBindings> {
     throw new Error("RMT_FACTORY_START_BLOCK is ahead of the current chain head");
   }
   const [factoryCodeAtStart, factoryCodeBeforeStart] = await Promise.all([
-    rpc.getBytecode({ address: config.factory, blockNumber: config.startBlock }),
-    rpc.getBytecode({ address: config.factory, blockNumber: config.startBlock - 1n })
+    archiveRpc.getBytecode({ address: config.factory, blockNumber: config.startBlock }),
+    archiveRpc.getBytecode({ address: config.factory, blockNumber: config.startBlock - 1n })
   ]);
   if (!factoryCodeAtStart || factoryCodeAtStart === "0x") {
     throw new Error("RMT_FACTORY_START_BLOCK does not contain the configured V6 factory deployment");

@@ -153,10 +153,7 @@ contract RMTV7TransactionSimulationVectorsTest {
         bytes32 configurationHash =
             keccak256(abi.encode(payoutManifestHash, consentManifestHash, config.consentDeadline, recipients.length));
 
-        require(
-            IRMTV7ConsentBoundSplitModule.deploySplit.selector == bytes4(0xeff78744),
-            "split selector drifted"
-        );
+        require(IRMTV7ConsentBoundSplitModule.deploySplit.selector == bytes4(0xeff78744), "split selector drifted");
         require(
             payoutManifestHash == 0x1d00b23ba62c530839eb0c21e93f17471fb87015592429f53be547e2898ad499,
             "split payout manifest drifted"

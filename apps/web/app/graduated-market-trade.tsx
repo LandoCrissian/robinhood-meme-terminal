@@ -7,6 +7,7 @@ import { activeChain } from "../lib/network";
 import { MAX_UINT160, PERMIT2_ADDRESS, permit2Abi, ROBINHOOD_UNIVERSAL_ROUTER, type RmtV4Quote } from "../lib/uniswap-v4";
 import { SushiRoutePreview } from "./sushi-route-preview";
 import { WalletButton } from "./wallet-button";
+import { useRmtIdentity } from "./rmt-identity";
 
 const tokenAbi = [
   { type: "function", name: "balanceOf", stateMutability: "view", inputs: [{ name: "account", type: "address" }], outputs: [{ type: "uint256" }] },
@@ -29,6 +30,7 @@ function displayEth(value: bigint) {
 }
 
 export function GraduatedMarketTrade({ tokenAddress, symbol, launchId, mode }: { tokenAddress: Address; symbol: string; launchId: bigint; mode: "buy" | "sell" }) {
+  const identity = useRmtIdentity();
   const { address: account, isConnected } = useAccount();
   const [buyAmount, setBuyAmount] = useState("0.001");
   const [sellAmount, setSellAmount] = useState("1000000");
@@ -65,32 +67,34 @@ export function GraduatedMarketTrade({ tokenAddress, symbol, launchId, mode }: {
   const needsTokenApproval = mode === "sell" && amountIn > 0n && (tokenAllowance.data ?? 0n) < amountIn;
   const needsPermit2Approval = mode === "sell" && amountIn > 0n && !needsTokenApproval && (permit2Amount < amountIn || permit2Expiration < now + 600n);
   const busy = approval.isPending || approvalReceipt.isLoading || swap.isPending || swapReceipt.isLoading;
+  const accountReady = identity.ready && identity.authenticated && Boolean(identity.identityToken && identity.userId);
 
   useEffect(() => {
-    if (!account || amountIn <= 0n) return;
+    if (!identity.ready || !identity.authenticated || !identity.identityToken || !identity.userId || !account || amountIn <= 0n) return;
     const timer = window.setInterval(() => setQuoteRefresh((value) => value + 1), 15_000);
     return () => window.clearInterval(timer);
-  }, [account, amountIn, launchId, mode, tokenAddress]);
+  }, [account, amountIn, identity.authenticated, identity.identityToken, identity.ready, identity.userId, launchId, mode, tokenAddress]);
 
   useEffect(() => {
-    const requestKey = `${account ?? ""}:${activeChain.id}:${launchId}:${tokenAddress}:${mode}:${amountIn}`;
+    const requestKey = `${identity.userId}:${account ?? ""}:${activeChain.id}:${launchId}:${tokenAddress}:${mode}:${amountIn}`;
     const requestChanged = lastRequestKey.current !== requestKey;
     lastRequestKey.current = requestKey;
     if (requestChanged) setQuote(undefined);
     setQuoteError(undefined);
     if (requestChanged) setMessage(undefined);
-    if (!account || amountIn <= 0n) return;
+    if (!identity.ready || !identity.authenticated || !identity.identityToken || !identity.userId || !account || amountIn <= 0n) return;
+    const identityToken = identity.identityToken;
     const controller = new AbortController();
     const timer = window.setTimeout(() => {
       setQuoteLoading(true);
       void fetch("/api/trade/rmt-v4", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "privy-id-token": identityToken },
         body: JSON.stringify({ launchId: launchId.toString(), token: tokenAddress, recipient: account, side: mode, amountIn: amountIn.toString() }),
         signal: controller.signal
       }).then(async (response) => {
         const payload = await response.json() as RmtV4Quote | { error?: string };
-        if (!response.ok || !("verified" in payload) || payload.verified !== true || payload.chainId !== activeChain.id || payload.token.toLowerCase() !== tokenAddress.toLowerCase() || payload.recipient.toLowerCase() !== account.toLowerCase() || payload.side !== mode || payload.router.toLowerCase() !== ROBINHOOD_UNIVERSAL_ROUTER.toLowerCase() || payload.amountIn !== amountIn.toString()) {
+        if (!response.ok || !("verified" in payload) || payload.verified !== true || payload.chainId !== activeChain.id || payload.token.toLowerCase() !== tokenAddress.toLowerCase() || payload.recipient.toLowerCase() !== account.toLowerCase() || payload.authorization?.status !== "identity-wallet-bound" || payload.authorization.wallet.toLowerCase() !== account.toLowerCase() || payload.side !== mode || payload.router.toLowerCase() !== ROBINHOOD_UNIVERSAL_ROUTER.toLowerCase() || payload.amountIn !== amountIn.toString()) {
           throw new Error("error" in payload ? payload.error : "The canonical pool quote failed verification.");
         }
         setQuote(payload);
@@ -101,7 +105,7 @@ export function GraduatedMarketTrade({ tokenAddress, symbol, launchId, mode }: {
       });
     }, 350);
     return () => { controller.abort(); window.clearTimeout(timer); };
-  }, [account, amountIn, launchId, mode, quoteRefresh, tokenAddress]);
+  }, [account, amountIn, identity.authenticated, identity.identityToken, identity.ready, identity.userId, launchId, mode, quoteRefresh, tokenAddress]);
 
   useEffect(() => {
     if (!approvalReceipt.isSuccess) return;
@@ -111,7 +115,7 @@ export function GraduatedMarketTrade({ tokenAddress, symbol, launchId, mode }: {
 
   useEffect(() => {
     if (!swapReceipt.isSuccess) return;
-    setMessage(`${mode === "buy" ? "Buy" : "Sell"} confirmed through the canonical RMT V4 pool.`);
+    setMessage(`${mode === "buy" ? "Buy" : "Sell"} confirmed through the canonical Uniswap v4 pool.`);
     void Promise.all([tokenBalance.refetch(), walletBalance.refetch(), tokenAllowance.refetch(), permit2Allowance.refetch()]);
   }, [swapReceipt.isSuccess]);
 
@@ -122,7 +126,7 @@ export function GraduatedMarketTrade({ tokenAddress, symbol, launchId, mode }: {
   }
 
   function submit() {
-    if (!account || !verifiedQuote || amountIn <= 0n) return;
+    if (!accountReady || !account || !verifiedQuote || amountIn <= 0n) return;
     approval.reset();
     swap.reset();
     if (needsTokenApproval) {
@@ -145,11 +149,11 @@ export function GraduatedMarketTrade({ tokenAddress, symbol, launchId, mode }: {
   const minimumOut = verifiedQuote ? BigInt(verifiedQuote.minimumOut) : 0n;
   const walletSpendable = (walletBalance.data?.value ?? 0n) > FALLBACK_NETWORK_FEE_RESERVE ? (walletBalance.data?.value ?? 0n) - FALLBACK_NETWORK_FEE_RESERVE : 0n;
   const insufficient = mode === "buy" ? amountIn > walletSpendable : amountIn > (tokenBalance.data ?? 0n);
-  const buttonLabel = !isConnected ? "Connect wallet to trade" : quoteLoading && !verifiedQuote ? "Reading canonical V4 pool…" : !verifiedQuote ? "Enter an amount for a verified quote" : insufficient ? `Insufficient ${mode === "buy" ? "ETH" : symbol}` : busy ? approval.isPending || swap.isPending ? "Review in your wallet…" : "Waiting for confirmation…" : needsTokenApproval ? "Approve this sell amount" : needsPermit2Approval ? "Set 20-minute router approval" : `${mode === "buy" ? "Buy" : "Sell"} ${symbol} on RMT`;
+  const buttonLabel = !isConnected ? "Connect wallet to trade" : !accountReady ? "Sign in to protect this trade" : quoteLoading && !verifiedQuote ? "Reading canonical Uniswap v4 pool…" : !verifiedQuote ? "Enter an amount for a verified quote" : insufficient ? `Insufficient ${mode === "buy" ? "ETH" : symbol}` : busy ? approval.isPending || swap.isPending ? "Review in your wallet…" : "Waiting for confirmation…" : needsTokenApproval ? "Approve this sell amount" : needsPermit2Approval ? "Set 20-minute router approval" : `${mode === "buy" ? "Buy" : "Sell"} ${symbol} on RMT`;
 
   return <div className="graduatedTradePanel">
     <div className="tradeAmountCard">
-      <div className="tradeAmountTop"><span>You {mode === "buy" ? "pay" : "sell"}</span><small>Canonical Uniswap V4 pool</small></div>
+      <div className="tradeAmountTop"><span>You {mode === "buy" ? "pay" : "sell"}</span><small>Canonical Uniswap v4 pool</small></div>
       {mode === "buy" ? <>
         <div className="tradeInputRow"><input aria-label="ETH amount for graduated-token buy" inputMode="decimal" value={buyAmount} onFocus={(event) => event.currentTarget.select()} onChange={(event) => setBuyAmount(event.target.value)} /><span>ETH</span></div>
         <small className="walletPresetNote">Wallet balance {displayEth(walletBalance.data?.value ?? 0n)} ETH before network fees.</small>
@@ -163,7 +167,7 @@ export function GraduatedMarketTrade({ tokenAddress, symbol, launchId, mode }: {
       {mode === "sell" && <p className="approvalNote">For safety, RMT approves only this sell amount. The router allowance expires after 20 minutes; RMT does not request unlimited token access.</p>}
       {quoteError && <p className="walletError" role="alert">{quoteError}</p>}
     </div>
-    {!isConnected ? <div className="quickTradeConnect"><WalletButton target="mainnet" /><small>Connect once. Your wallet confirms every approval and swap.</small></div> : <button className={`launch ${mode === "sell" ? "sellAction" : ""}`} type="button" disabled={!verifiedQuote || insufficient || busy} onClick={submit}>{buttonLabel}</button>}
+    {!isConnected ? <div className="quickTradeConnect"><WalletButton target="mainnet" /><small>Connect once. Your wallet confirms every approval and swap.</small></div> : !accountReady ? <div className="quickTradeConnect"><button className="launch" type="button" onClick={identity.login}>{buttonLabel}</button><small>RMT binds each verified quote to your signed-in account and selected wallet.</small></div> : <button className={`launch ${mode === "sell" ? "sellAction" : ""}`} type="button" disabled={!verifiedQuote || insufficient || busy} onClick={submit}>{buttonLabel}</button>}
     {(approvalReceipt.isLoading || swapReceipt.isLoading) && <div className="tradeStage" role="status"><span className="tradeStageDot" /><div><strong>Transaction submitted</strong><small>Waiting for Robinhood Chain confirmation.</small></div></div>}
     {(approval.error || approvalReceipt.error || swap.error || swapReceipt.error) && <div className="errors"><span>{approval.error?.message || approvalReceipt.error?.message || swap.error?.message || swapReceipt.error?.message}</span></div>}
     {message && <div className="callout"><strong>{message}</strong>{swapReceipt.isSuccess && swap.data && <a href={`${activeChain.blockExplorers.default.url}/tx/${swap.data}`} target="_blank" rel="noreferrer">View transaction ↗</a>}</div>}

@@ -2,10 +2,15 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    function ownsProfile(userId) {
+    function isVerifiedMember() {
       return request.auth != null
-        && request.auth.uid == userId
-        && request.auth.token.email_verified == true;
+        && request.auth.token.privy_verified == true
+        && request.auth.token.get('rmt_privy_uid', '').size() > 0;
+    }
+
+    function ownsProfile(userId) {
+      return isVerifiedMember()
+        && request.auth.uid == userId;
     }
 
     function hasProfile(userId) {
@@ -19,7 +24,7 @@ service cloud.firestore {
     }
 
     function isRmtAdmin() {
-      return request.auth != null
+      return isVerifiedMember()
         && request.auth.token.email_verified == true
         && request.auth.token.email == 'launchrmt@gmail.com';
     }
@@ -105,6 +110,16 @@ service cloud.firestore {
     function watchlistMatchesParent(userId, data) {
       return getAfter(/databases/$(database)/documents/users/$(userId)).data.watchlistUpdatedAt
         == data.listUpdatedAt;
+    }
+
+    function validWatchlistAlertSettings(data) {
+      return data is map
+        && data.keys().hasAll(['schemaVersion', 'alerts', 'updatedAt', 'writtenAt'])
+        && data.keys().hasOnly(['schemaVersion', 'alerts', 'updatedAt', 'writtenAt'])
+        && data.schemaVersion == 1
+        && data.alerts is list && data.alerts.size() <= 50
+        && data.updatedAt is int && data.updatedAt > 0
+        && data.writtenAt is timestamp && data.writtenAt == request.time;
     }
 
     function validProjectType(value) {
@@ -553,8 +568,7 @@ service cloud.firestore {
     }
 
     function ownsProjectAssignment(projectId) {
-      return request.auth != null
-        && request.auth.token.email_verified == true
+      return isVerifiedMember()
         && get(/databases/$(database)/documents/projectAssignments/$(projectId)).data.ownerId
           == request.auth.uid;
     }
@@ -813,6 +827,15 @@ service cloud.firestore {
               > resource.data.listUpdatedAt);
       }
 
+      match /settings/{settingsId} {
+        allow read: if settingsId == 'watchlistAlerts' && ownsProfile(userId);
+        allow create, update: if settingsId == 'watchlistAlerts'
+          && ownsProfile(userId)
+          && hasProfile(userId)
+          && validWatchlistAlertSettings(request.resource.data);
+        allow delete: if settingsId == 'watchlistAlerts' && ownsProfile(userId);
+      }
+
       match /projectFollows/{projectId} {
         allow read: if ownsProfile(userId);
         allow create: if ownsProfile(userId)
@@ -933,8 +956,7 @@ service cloud.firestore {
 
     match /projectAssignments/{projectId} {
       allow read: if isRmtAdmin()
-        || (request.auth != null
-          && request.auth.token.email_verified == true
+        || (isVerifiedMember()
           && resource.data.ownerId == request.auth.uid);
       allow create: if isRmtAdmin()
         && validProjectAssignment(projectId, request.resource.data)
@@ -1079,8 +1101,7 @@ service cloud.firestore {
 
     match /projectStats/{projectId} {
       allow read: if get(/databases/$(database)/documents/projects/$(projectId)).data.status == 'live';
-      allow create: if request.auth != null
-        && request.auth.token.email_verified == true
+      allow create: if isVerifiedMember()
         && hasProfile(request.auth.uid)
         && get(/databases/$(database)/documents/projects/$(projectId)).data.status == 'live'
         && validProjectStats(projectId, request.resource.data)
@@ -1088,8 +1109,7 @@ service cloud.firestore {
         && request.resource.data.updatedAt == request.time
         && !exists(/databases/$(database)/documents/users/$(request.auth.uid)/projectFollows/$(projectId))
         && existsAfter(/databases/$(database)/documents/users/$(request.auth.uid)/projectFollows/$(projectId));
-      allow update: if request.auth != null
-        && request.auth.token.email_verified == true
+      allow update: if isVerifiedMember()
         && hasProfile(request.auth.uid)
         && get(/databases/$(database)/documents/projects/$(projectId)).data.status == 'live'
         && validProjectStats(projectId, request.resource.data)
@@ -1109,11 +1129,9 @@ service cloud.firestore {
     }
 
     match /referralCodes/{code} {
-      allow read: if request.auth != null
-        && request.auth.token.email_verified == true
+      allow read: if isVerifiedMember()
         && resource.data.ownerId == request.auth.uid;
-      allow create: if request.auth != null
-        && request.auth.token.email_verified == true
+      allow create: if isVerifiedMember()
         && hasProfile(request.auth.uid)
         && validReferralCode(code, request.resource.data)
         && request.resource.data.ownerId == request.auth.uid
@@ -1122,8 +1140,7 @@ service cloud.firestore {
         && request.resource.data.updatedAt == request.time
         && existsAfter(/databases/$(database)/documents/users/$(request.auth.uid)/referralProfile/current)
         && getAfter(/databases/$(database)/documents/users/$(request.auth.uid)/referralProfile/current).data.code == code;
-      allow update: if request.auth != null
-        && request.auth.token.email_verified == true
+      allow update: if isVerifiedMember()
         && hasProtectedProfile(request.auth.uid)
         && validReferralCode(code, request.resource.data)
         && request.resource.data.ownerId == resource.data.ownerId

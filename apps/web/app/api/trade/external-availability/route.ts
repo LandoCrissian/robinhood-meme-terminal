@@ -1,5 +1,7 @@
 import { getAddress, isAddress, type Address } from "viem";
 import { getCachedExternalTradeVenues } from "../../../../lib/server/external-trade-venues";
+import type { TradeVenueId } from "../../../../lib/trade-route-selection";
+import { stockTokenExecutionPolicy } from "../../../../lib/server/robinhood-stock-token-registry";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -10,7 +12,7 @@ const CONCURRENCY = 3;
 type Availability = {
   token: Address;
   status: "ready" | "view-only" | "unavailable";
-  venues: Array<"sushi" | "uniswap">;
+  venues: TradeVenueId[];
 };
 
 async function mapWithConcurrency<T, Result>(
@@ -43,6 +45,14 @@ export async function GET(request: Request) {
 
   const availability = await mapWithConcurrency(tokens.map((token) => getAddress(token)), CONCURRENCY, async (token) => {
     try {
+      const policy = await stockTokenExecutionPolicy(token);
+      if (policy.status !== "eligible") {
+        return {
+          token,
+          status: policy.status === "view-only" ? "view-only" : "unavailable",
+          venues: []
+        } satisfies Availability;
+      }
       const venues = await getCachedExternalTradeVenues(token);
       return {
         token,

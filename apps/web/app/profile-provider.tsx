@@ -40,20 +40,24 @@ import {
   WATCHLIST_EVENT,
   type WatchlistSnapshot
 } from "../lib/watchlist";
+import { useRmtIdentity } from "./rmt-identity";
 
 type SyncState = "local" | "syncing" | "synced" | "error";
 type FirebaseClient = NonNullable<Awaited<ReturnType<typeof getFirebaseClient>>>;
 
 type ProfileContextValue = {
+  accountAuthenticated: boolean;
+  accountReady: boolean;
   configured: boolean;
   loading: boolean;
   profile: RmtProfile;
+  profileAuthMessage: string;
   identityUpdatedAt: number;
   user: User | null;
   syncState: SyncState;
   retrySync: () => Promise<void>;
   saveProfile: (profile: RmtProfile) => Promise<void>;
-  signInWithGoogle: () => Promise<void>;
+  signInProfile: () => void;
   signOutProfile: () => Promise<void>;
 };
 
@@ -134,28 +138,6 @@ async function writeCloudState(client: FirebaseClient, write: CloudWrite) {
   await batch.commit();
 }
 
-function friendlyAuthError(error: unknown) {
-  const code = error && typeof error === "object" && "code" in error
-    ? String((error as { code?: unknown }).code)
-    : "";
-  if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") {
-    return "Google sign-in was closed. Your local profile is unchanged.";
-  }
-  if (code === "auth/popup-blocked") {
-    return "Your browser blocked Google sign-in. Allow popups for RMT and try again.";
-  }
-  if (code === "auth/network-request-failed") {
-    return "Google sign-in could not reach Firebase. Check your connection and try again.";
-  }
-  if (code === "auth/unauthorized-domain") {
-    return "This RMT domain is not authorized for profile sign-in yet.";
-  }
-  if (code === "auth/operation-not-allowed") {
-    return "Google sign-in is not enabled in the RMT Firebase project yet.";
-  }
-  return "Google sign-in did not finish. Your local profile is unchanged.";
-}
-
 function slotDocuments(snapshot: { docs: Array<{ data: () => unknown; id: string }> }) {
   return snapshot.docs.map((document) => ({
     id: document.id,
@@ -164,14 +146,17 @@ function slotDocuments(snapshot: { docs: Array<{ data: () => unknown; id: string
 }
 
 export function ProfileProvider({ children }: { children: ReactNode }) {
+  const accountIdentity = useRmtIdentity();
   const [profile, setProfile] = useState<RmtProfile>(DEFAULT_PROFILE);
   const [identityUpdatedAt, setIdentityUpdatedAt] = useState(0);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [syncState, setSyncState] = useState<SyncState>(firebaseConfigured ? "syncing" : "local");
   const [cloudReady, setCloudReady] = useState(false);
+  const [profileAuthMessage, setProfileAuthMessage] = useState("");
   const activeUserRef = useRef<User | null>(null);
   const cleanupLegacyRef = useRef(false);
+  const firebaseClientRef = useRef<FirebaseClient | null>(null);
   const generationRef = useRef(0);
   const remoteSlotIdsRef = useRef(new Set<string>());
   const suppressWatchlistSyncRef = useRef(false);
@@ -236,7 +221,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     setIdentityUpdatedAt(local.identityUpdatedAt);
     document.body.dataset.terminalDensity = local.profile.density;
 
-    if (!firebaseConfigured) {
+    if (!firebaseConfigured || !accountIdentity.enabled || !accountIdentity.ready) {
       setLoading(false);
       return;
     }
@@ -246,7 +231,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     let unsubscribeWatchlist: (() => void) | undefined;
     let cancelled = false;
 
-    void getFirebaseClient().then((client) => {
+    void getFirebaseClient().then(async (client) => {
       if (cancelled || !client) {
         if (!cancelled) {
           setSyncState("local");
@@ -254,9 +239,23 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
         }
         return;
       }
+      firebaseClientRef.current = client;
 
       unsubscribeAuth = client.authApi.onAuthStateChanged(client.auth, async (nextUser) => {
-        const profileUser = nextUser?.isAnonymous ? null : nextUser;
+        let profileUser: User | null = null;
+        if (
+          nextUser
+          && !nextUser.isAnonymous
+          && accountIdentity.authenticated
+          && accountIdentity.userId
+        ) {
+          try {
+            const token = await nextUser.getIdTokenResult();
+            if (token.claims.rmt_privy_uid === accountIdentity.userId) profileUser = nextUser;
+          } catch {
+            profileUser = null;
+          }
+        }
         const generation = generationRef.current + 1;
         generationRef.current = generation;
         unsubscribeProfile?.();
@@ -360,8 +359,84 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
       unsubscribeAuth?.();
       unsubscribeProfile?.();
       unsubscribeWatchlist?.();
+      firebaseClientRef.current = null;
     };
-  }, [applyProfile, applyWatchlist]);
+  }, [
+    accountIdentity.authenticated,
+    accountIdentity.enabled,
+    accountIdentity.ready,
+    accountIdentity.userId,
+    applyProfile,
+    applyWatchlist
+  ]);
+
+  useEffect(() => {
+    if (!firebaseConfigured || !accountIdentity.enabled || !accountIdentity.ready) return;
+    let cancelled = false;
+
+    const synchronizeIdentity = async () => {
+      const client = firebaseClientRef.current ?? await getFirebaseClient();
+      if (!client || cancelled) return;
+      firebaseClientRef.current = client;
+
+      if (!accountIdentity.authenticated) {
+        if (client.auth.currentUser) await client.authApi.signOut(client.auth);
+        if (!cancelled) {
+          setProfileAuthMessage("");
+          setSyncState("local");
+        }
+        return;
+      }
+      if (!accountIdentity.identityToken || !accountIdentity.userId) {
+        setSyncState("syncing");
+        return;
+      }
+
+      const currentUser = client.auth.currentUser;
+      if (currentUser) {
+        try {
+          const currentToken = await currentUser.getIdTokenResult();
+          if (currentToken.claims.rmt_privy_uid === accountIdentity.userId) {
+            setProfileAuthMessage("");
+            return;
+          }
+        } catch {
+          await client.authApi.signOut(client.auth);
+        }
+      }
+
+      setProfileAuthMessage("Securing your RMT account across devices…");
+      setSyncState("syncing");
+      const response = await fetch("/api/auth/firebase-session", {
+        method: "POST",
+        headers: { "privy-id-token": accountIdentity.identityToken }
+      });
+      const result = await response.json().catch(() => ({})) as { error?: string; firebaseToken?: string };
+      if (!response.ok || !result.firebaseToken) {
+        throw new Error(result.error || "RMT account sync could not be verified.");
+      }
+      if (cancelled) return;
+      await client.authApi.signInWithCustomToken(client.auth, result.firebaseToken);
+      if (!cancelled) setProfileAuthMessage("");
+    };
+
+    void synchronizeIdentity().catch((error) => {
+      if (cancelled) return;
+      setSyncState("error");
+      setProfileAuthMessage(error instanceof Error
+        ? error.message
+        : "RMT account sync could not be verified. Your local profile remains available.");
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    accountIdentity.authenticated,
+    accountIdentity.enabled,
+    accountIdentity.identityToken,
+    accountIdentity.ready,
+    accountIdentity.userId
+  ]);
 
   useEffect(() => {
     if (!user || !cloudReady) return;
@@ -416,38 +491,55 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     await syncCurrentState(true, true, pendingIdentityWriteRef.current);
   }, [syncCurrentState]);
 
-  const signInWithGoogle = useCallback(async () => {
-    const client = await getFirebaseClient();
-    if (!client) throw new Error("Firebase profile sync is not configured yet.");
-    const provider = new client.authApi.GoogleAuthProvider();
-    provider.setCustomParameters({ prompt: "select_account" });
-    setSyncState("syncing");
-    try {
-      await client.authApi.signInWithRedirect(client.auth, provider);
-    } catch (error) {
-      setSyncState("local");
-      throw new Error(friendlyAuthError(error));
+  const signInProfile = useCallback(() => {
+    if (!accountIdentity.enabled) {
+      setProfileAuthMessage("RMT account sign-in is not configured yet.");
+      return;
     }
-  }, []);
+    setProfileAuthMessage("");
+    setSyncState("syncing");
+    accountIdentity.login();
+  }, [accountIdentity]);
 
   const signOutProfile = useCallback(async () => {
     const client = await getFirebaseClient();
-    if (!client) return;
-    await client.authApi.signOut(client.auth);
-  }, []);
+    const signOuts: Promise<unknown>[] = [];
+    if (client?.auth.currentUser) signOuts.push(client.authApi.signOut(client.auth));
+    if (accountIdentity.enabled && accountIdentity.authenticated) signOuts.push(accountIdentity.logout());
+    const results = await Promise.allSettled(signOuts);
+    const failed = results.find((result): result is PromiseRejectedResult => result.status === "rejected");
+    if (failed) throw failed.reason;
+  }, [accountIdentity]);
 
   const value = useMemo<ProfileContextValue>(() => ({
-    configured: firebaseConfigured,
+    accountAuthenticated: accountIdentity.authenticated,
+    accountReady: accountIdentity.ready,
+    configured: firebaseConfigured && accountIdentity.enabled,
     loading,
     profile,
+    profileAuthMessage,
     identityUpdatedAt,
     retrySync,
     user,
     syncState,
     saveProfile,
-    signInWithGoogle,
+    signInProfile,
     signOutProfile
-  }), [identityUpdatedAt, loading, profile, retrySync, saveProfile, signInWithGoogle, signOutProfile, syncState, user]);
+  }), [
+    accountIdentity.authenticated,
+    accountIdentity.enabled,
+    accountIdentity.ready,
+    identityUpdatedAt,
+    loading,
+    profile,
+    profileAuthMessage,
+    retrySync,
+    saveProfile,
+    signInProfile,
+    signOutProfile,
+    syncState,
+    user
+  ]);
 
   return <ProfileContext.Provider value={value}>{children}</ProfileContext.Provider>;
 }

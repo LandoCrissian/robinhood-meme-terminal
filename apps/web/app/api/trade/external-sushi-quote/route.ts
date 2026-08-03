@@ -8,6 +8,11 @@ import {
   sushiExecutionAllowance,
   sushiQuotesEnabled
 } from "../../../../lib/server/sushi-trade";
+import { requireAuthenticatedTradeWallet, tradeIdentityErrorResponse } from "../../../../lib/server/rmt-trade-identity";
+import {
+  requireStockTokenExecutionEligible,
+  stockTokenExecutionPolicyErrorResponse
+} from "../../../../lib/server/robinhood-stock-token-registry";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -17,7 +22,8 @@ const requestSchema = z.object({
   pair: z.string().refine(isAddress),
   recipient: z.string().refine(isAddress),
   side: z.enum(["buy", "sell"]),
-  amountIn: z.string().regex(/^\d+$/)
+  amountIn: z.string().regex(/^\d+$/),
+  maxPriceImpactBps: z.number().int().min(1).max(10_000).default(500)
 });
 
 const publicTradeErrors = new Set([
@@ -60,7 +66,8 @@ const publicTradeErrors = new Set([
   "Sushi contract bytecode is unavailable.",
   "Sushi router bytecode is not approved.",
   "Sushi executor bytecode is not approved.",
-  "RMT blocked this Sushi trade because price impact exceeds 5%."
+  "The selected maximum price impact is invalid.",
+  "Trade exceeds your selected maximum price impact."
 ]);
 
 export async function POST(request: Request) {
@@ -81,6 +88,8 @@ export async function POST(request: Request) {
     const token = getAddress(parsed.data.token);
     const pair = getAddress(parsed.data.pair);
     const recipient = getAddress(parsed.data.recipient);
+    const authorization = await requireAuthenticatedTradeWallet(request, recipient);
+    await requireStockTokenExecutionEligible(token);
     const market = await verifyExternalSushiMarket({ token, pair });
     const amountIn = BigInt(parsed.data.amountIn);
     const approvalRequired = parsed.data.side === "sell"
@@ -99,13 +108,15 @@ export async function POST(request: Request) {
           token,
           recipient,
           side: parsed.data.side,
-          amountIn
+          amountIn,
+          maxPriceImpact: parsed.data.maxPriceImpactBps / 10_000
         }, {
           chainId: 4663
         });
 
     return Response.json({
       ...quote,
+      authorization,
       marketPair: market.pair,
       marketVerified: true,
       approvalRequired,
@@ -115,6 +126,10 @@ export async function POST(request: Request) {
         : String(Math.floor(Date.now() / 1000) + 90)
     }, { headers: { "Cache-Control": "no-store" } });
   } catch (cause) {
+    const identityResponse = tradeIdentityErrorResponse(cause);
+    if (identityResponse) return identityResponse;
+    const stockTokenResponse = stockTokenExecutionPolicyErrorResponse(cause);
+    if (stockTokenResponse) return stockTokenResponse;
     const message = cause instanceof Error && publicTradeErrors.has(cause.message)
       ? cause.message
       : "Unable to verify this Sushi market and route.";

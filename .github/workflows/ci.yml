@@ -28,12 +28,16 @@ jobs:
       - run: pnpm check:repo
       - run: pnpm --filter web test:profile
       - run: pnpm --filter web test:watchlist-alerts
+      - run: pnpm --filter web test:position-guard
       - run: pnpm --filter web test:public-discovery
       - run: pnpm --filter web test:external-market-integrity
       - run: pnpm --filter web test:external-ohlcv
       - run: pnpm --filter web test:trade-ticket
+      - run: pnpm --filter web test:trade-speed
+      - run: pnpm --filter web test:transaction-integrity
       - run: pnpm --filter web test:wallet-constellation
       - run: pnpm --filter web test:trading-terms
+      - run: pnpm --filter web test:experience
       - run: pnpm --filter web test:external-trades
       - run: pnpm --filter web test:consent-rehearsal
       - run: pnpm --filter web test:consent-activation
@@ -42,6 +46,10 @@ jobs:
       - run: pnpm --filter web test:creator-split
       - run: pnpm --filter web test:creator-v7-simulation
       - run: pnpm --filter web test:creator-v7-live-state
+      - run: pnpm --filter web test:treasury-accounting
+      - run: pnpm --filter web test:community
+      - run: pnpm test:community-readiness
+      - run: pnpm check:community-readiness -- --repository-only
       - run: pnpm test:firebase-rules
       - run: pnpm --filter web test:reliability
       - run: pnpm --filter web test:v4-trade
@@ -205,6 +213,37 @@ jobs:
             test/V6MainnetFork.t.sol \
             test/V6UniversalRouterFork.t.sol \
             test/VersionedFactoryRegistry.t.sol
+      - name: Verify V7 creator foundation formatting and production lock
+        run: |
+          forge fmt --check \
+            script/DeployRMTV7CreatorFoundation.s.sol \
+            src/RMTV7ConsentBoundSplit.sol \
+            src/RMTV7ConsentBoundSplitModule.sol \
+            src/RMTV7CreatorCollection.sol \
+            src/RMTV7CreatorEditions.sol \
+            src/RMTV7CreatorFoundationCoreBundle.sol \
+            src/RMTV7CreatorFoundationModulesBundle.sol \
+            src/RMTV7ERC1155EditionModule.sol \
+            src/RMTV7ERC721CollectionModule.sol \
+            src/RMTV7MediaEvidenceVerifier.sol \
+            src/RMTV7ModuleRegistry.sol \
+            src/RMTV7ReleaseRegistry.sol \
+            src/interfaces/IRMTV7ConsentBoundSplitModule.sol \
+            src/interfaces/IRMTV7ERC1155EditionModule.sol \
+            src/interfaces/IRMTV7ERC721CollectionModule.sol \
+            src/interfaces/IRMTV7MediaEvidenceVerifier.sol \
+            src/interfaces/IRMTV7ModuleRegistry.sol \
+            src/interfaces/IRMTV7ReleaseRegistry.sol \
+            test/RMTV7ConsentBoundSplitModule.t.sol \
+            test/RMTV7CreatorFoundationDeployment.t.sol \
+            test/RMTV7ERC1155EditionModule.t.sol \
+            test/RMTV7ERC721CollectionModule.t.sol \
+            test/RMTV7EconomicInvariants.t.sol \
+            test/RMTV7ReleaseFoundation.t.sol \
+            test/RMTV7TransactionSimulationVectors.t.sol
+          python3 -m json.tool deployments/rmt-v7-creator-foundation.template.json >/dev/null
+          grep -q 'APPROVED_DEPLOYMENT_MANIFEST_HASH = bytes32(0)' \
+            script/DeployRMTV7CreatorFoundation.s.sol
       - name: Build the exact checked-in contract sources
         run: |
           set -o pipefail

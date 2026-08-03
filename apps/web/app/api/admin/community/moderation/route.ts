@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import {
   COMMUNITY_ACTOR_RETENTION_MS,
   COMMUNITY_AUDIT_RETENTION_MS,
+  GLOBAL_COMMUNITY_ROOM,
   normalizeCommunityRoomId
 } from "../../../../../lib/community";
 import { normalizeCommunityReportReason } from "../../../../../lib/community-moderation";
@@ -10,7 +11,8 @@ import { RMT_ADMIN_EMAIL } from "../../../../../lib/creator-application";
 import {
   communityAuthorKey,
   communityBearerToken,
-  communityIdentitySecret
+  communityIdentitySecret,
+  isRmtAdminIdentity
 } from "../../../../../lib/server/community-identity";
 import { getRmtAdminAuth, getRmtAdminFirestore } from "../../../../../lib/server/firebase-admin";
 import { guardMediaRequest, readBoundedJsonRequest } from "../../../../../lib/server/media-request-guard";
@@ -20,7 +22,17 @@ export const runtime = "nodejs";
 
 const HEADERS = { "Cache-Control": "no-store" };
 const REPORT_ID = /^[A-Za-z0-9]{20}--[0-9a-f]{32}$/;
+const MESSAGE_ID = /^[A-Za-z0-9]{20}$/;
 const RESTRICTION_MINUTES = [0, 60, 1_440] as const;
+const DIRECT_HIDE_REASONS = [
+  "test_cleanup",
+  "spam",
+  "scam",
+  "harassment",
+  "unsafe_link",
+  "private_information",
+  "other"
+] as const;
 
 async function verifiedAdmin(request: Request) {
   const token = communityBearerToken(request);
@@ -29,7 +41,7 @@ async function verifiedAdmin(request: Request) {
   const secret = communityIdentitySecret();
   if (!token || !auth || !db || !secret) return null;
   const identity = await auth.verifyIdToken(token, true);
-  if (identity.email_verified !== true || identity.email?.toLowerCase() !== RMT_ADMIN_EMAIL) return null;
+  if (!isRmtAdminIdentity(identity, RMT_ADMIN_EMAIL)) return null;
   return { db, reviewerKey: communityAuthorKey(secret, identity.uid) };
 }
 
@@ -50,6 +62,26 @@ async function pendingReports(db: Firestore) {
       messageBody: value.messageBodySnapshot,
       createdAt: value.createdAt?.toDate?.().toISOString?.() ?? new Date(0).toISOString()
     };
+  });
+}
+
+async function recentVisibleMessages(db: Firestore, roomId: string = GLOBAL_COMMUNITY_ROOM) {
+  const snapshot = await db.collection("communityRooms").doc(roomId).collection("messages")
+    .orderBy("createdAt", "desc")
+    .limit(50)
+    .get();
+  return snapshot.docs.flatMap((document) => {
+    const value = document.data();
+    if (value.status !== "visible") return [];
+    return [{
+      messageId: document.id,
+      roomId,
+      authorKind: value.authorKind,
+      authorLabel: value.authorLabel,
+      authorHandle: value.authorHandle,
+      messageBody: value.body,
+      createdAt: value.createdAt?.toDate?.().toISOString?.() ?? new Date(0).toISOString()
+    }];
   });
 }
 
@@ -88,6 +120,71 @@ export async function POST(request: Request) {
         : "";
       if (code.startsWith("auth/")) return NextResponse.json({ error: "Administrator sign-in expired." }, { status: 401, headers: HEADERS });
       return NextResponse.json({ error: "The moderation queue is temporarily unavailable." }, { status: 503, headers: HEADERS });
+    }
+  }
+  if (input.operation === "list_messages") {
+    const roomId = normalizeCommunityRoomId(input.roomId) || GLOBAL_COMMUNITY_ROOM;
+    try {
+      const admin = await verifiedAdmin(request);
+      if (!admin) return NextResponse.json({ error: "RMT administrator access required." }, { status: 403, headers: HEADERS });
+      return NextResponse.json({ messages: await recentVisibleMessages(admin.db, roomId) }, { headers: HEADERS });
+    } catch (error) {
+      const code = error && typeof error === "object" && "code" in error
+        ? String((error as { code?: unknown }).code)
+        : "";
+      if (code.startsWith("auth/")) return NextResponse.json({ error: "Administrator sign-in expired." }, { status: 401, headers: HEADERS });
+      return NextResponse.json({ error: "Recent community messages are temporarily unavailable." }, { status: 503, headers: HEADERS });
+    }
+  }
+  if (input.operation === "hide_message") {
+    const roomId = normalizeCommunityRoomId(input.roomId);
+    const messageId = typeof input.messageId === "string" && MESSAGE_ID.test(input.messageId) ? input.messageId : "";
+    const reason = typeof input.reason === "string" && DIRECT_HIDE_REASONS.includes(input.reason as never)
+      ? input.reason as typeof DIRECT_HIDE_REASONS[number]
+      : "";
+    if (!roomId || !messageId || !reason) {
+      return NextResponse.json({ error: "The direct moderation action is invalid." }, { status: 400, headers: HEADERS });
+    }
+    try {
+      const admin = await verifiedAdmin(request);
+      if (!admin) return NextResponse.json({ error: "RMT administrator access required." }, { status: 403, headers: HEADERS });
+      const messageReference = admin.db.collection("communityRooms").doc(roomId).collection("messages").doc(messageId);
+      const auditReference = admin.db.collection("communityModerationAudit").doc();
+      await admin.db.runTransaction(async (transaction) => {
+        const messageSnapshot = await transaction.get(messageReference);
+        const message = messageSnapshot.data();
+        if (!messageSnapshot.exists) throw new Error("missing");
+        if (message?.status !== "visible") throw new Error("resolved");
+        transaction.update(messageReference, {
+          status: "moderated",
+          moderationReason: reason,
+          moderatedAt: FieldValue.serverTimestamp(),
+          moderatedBy: admin.reviewerKey
+        });
+        transaction.create(auditReference, {
+          source: "admin_direct",
+          reportId: "",
+          roomId,
+          messageId,
+          action: "hide",
+          reason,
+          restrictionMinutes: 0,
+          reviewNote: `Direct admin action: ${reason.replaceAll("_", " ")}`,
+          reviewerKey: admin.reviewerKey,
+          createdAt: FieldValue.serverTimestamp(),
+          expiresAt: Timestamp.fromMillis(Date.now() + COMMUNITY_AUDIT_RETENTION_MS)
+        });
+      });
+      return NextResponse.json({ messageId, action: "hide", reason }, { headers: HEADERS });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "";
+      const code = error && typeof error === "object" && "code" in error
+        ? String((error as { code?: unknown }).code)
+        : "";
+      if (code.startsWith("auth/")) return NextResponse.json({ error: "Administrator sign-in expired." }, { status: 401, headers: HEADERS });
+      if (message === "missing") return NextResponse.json({ error: "This message no longer exists." }, { status: 404, headers: HEADERS });
+      if (message === "resolved") return NextResponse.json({ error: "This message was already hidden." }, { status: 409, headers: HEADERS });
+      return NextResponse.json({ error: "The message could not be hidden." }, { status: 503, headers: HEADERS });
     }
   }
   if (input.operation !== "review") {

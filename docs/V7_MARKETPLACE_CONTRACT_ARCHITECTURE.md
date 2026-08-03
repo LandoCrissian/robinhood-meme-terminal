@@ -20,6 +20,7 @@ The V7 source foundation now establishes two narrow registries, one evidence ver
 6. `RMTV7ConsentBoundSplitModule` deploys one immutable pull-payment `RMTV7ConsentBoundSplit` only after every recipient signs their exact share and recovery wallet.
 7. `creator-v7-transaction-simulation.ts` produces deterministic plain-language receipts and exact calldata for release freeze, both collection deployment modules and the consent-bound split module without reading the chain, signing or broadcasting.
 8. `creator-v7-live-state-verifier.ts` verifies release-freeze, ERC-721, ERC-1155 and split simulations against reviewed runtime anchors and one pinned block, then executes the exact calldata through read-only `eth_call`; it cannot sign or broadcast.
+9. `RMTV7CreatorFoundationCoreBundle` and `RMTV7CreatorFoundationModulesBundle` deploy the complete six-contract topology in two EIP-3860-compliant stages, verify every immutable binding and leave all creator modules inactive for separate delayed-governance admission.
 
 The ERC-721 module can mint only the sequential token IDs and exact token-URI hashes committed in the release's immutable Merkle manifest. The ERC-1155 module can mint only IDs, URI hashes, terms hashes and lifetime supplies committed in its immutable edition manifest. The split module can receive and distribute native currency or standard non-rebasing ERC-20 creator proceeds only if it is later deployed and funded; it has no platform fee or treasury route. No current module lists, approves, sells, charges a platform fee, settles a purchase, buys RMT, burns RMT, purchases NFTs or claims that RMT approved a creator.
 
@@ -35,6 +36,8 @@ Art, music, game items, ERC-721 collections and ERC-1155 editions share a proven
 - whether a module was active when the creator froze that plan.
 
 The registries solve that binding problem without taking the much larger custody and settlement risk.
+
+Uniswap v4 hooks are intentionally outside this foundation. Creator ownership and provenance must remain venue-neutral. See `V7_UNISWAP_V4_HOOK_BOUNDARY.md` for the pool-level use cases and security gates that apply to any future hook module.
 
 ## State machines
 

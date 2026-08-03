@@ -3,6 +3,7 @@ import { z } from "zod";
 import { quoteAndBuildRmtV4Swap } from "../../../../lib/server/rmt-v4-trade";
 import { ROBINHOOD_UNIVERSAL_ROUTER } from "../../../../lib/uniswap-v4";
 import { activeChain } from "../../../../lib/network";
+import { requireAuthenticatedTradeWallet, tradeIdentityErrorResponse } from "../../../../lib/server/rmt-trade-identity";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -16,12 +17,12 @@ const requestSchema = z.object({
 });
 
 const publicTradeErrors = new Set([
-  "Native V4 trading is available only on Robinhood Chain mainnet.",
+  "Native RMT Uniswap v4 trading is available only on Robinhood Chain mainnet.",
   "Trade amount is outside the supported range.",
   "A valid wallet recipient is required.",
   "The active V6 factory could not be verified.",
   "This token is not the requested active V6 launch.",
-  "The canonical V4 pool is not open yet.",
+  "The canonical Uniswap v4 pool is not open yet.",
   "The graduated pool configuration failed RMT verification.",
   "The official Uniswap execution contracts are unavailable.",
   "The canonical pool returned an invalid quote.",
@@ -33,17 +34,19 @@ export async function POST(request: Request) {
     const parsed = requestSchema.safeParse(await request.json());
     if (!parsed.success) return Response.json({ error: "Invalid V4 trade request." }, { status: 400, headers: { "Cache-Control": "no-store" } });
     const params = parsed.data;
+    const recipient = getAddress(params.recipient);
+    const authorization = await requireAuthenticatedTradeWallet(request, recipient);
     const result = await quoteAndBuildRmtV4Swap({
       launchId: BigInt(params.launchId),
       token: getAddress(params.token),
-      recipient: getAddress(params.recipient),
+      recipient,
       side: params.side,
       amountIn: BigInt(params.amountIn)
     });
     return Response.json({
       chainId: activeChain.id,
       token: getAddress(params.token),
-      recipient: getAddress(params.recipient),
+      recipient,
       side: params.side,
       router: ROBINHOOD_UNIVERSAL_ROUTER,
       calldata: result.calldata,
@@ -52,12 +55,15 @@ export async function POST(request: Request) {
       quoteOut: result.quoteOut.toString(),
       minimumOut: result.minimumOut.toString(),
       deadline: result.deadline.toString(),
-      verified: true
+      verified: true,
+      authorization
     }, { headers: { "Cache-Control": "no-store" } });
   } catch (cause) {
+    const identityResponse = tradeIdentityErrorResponse(cause);
+    if (identityResponse) return identityResponse;
     const message = cause instanceof Error && publicTradeErrors.has(cause.message)
       ? cause.message
-      : "Unable to prepare the canonical V4 trade.";
+      : "Unable to prepare the canonical Uniswap v4 trade.";
     return Response.json({ error: message }, { status: 422, headers: { "Cache-Control": "no-store" } });
   }
 }

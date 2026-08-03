@@ -24,7 +24,6 @@ import {
   where,
   writeBatch
 } from "firebase/firestore";
-import { hashCreatorAssetDraft, type CreatorAssetDraft } from "./creator-assets";
 
 const PROJECT_ID = "rmt-rules-test";
 const OWNER_ID = "owner-user";
@@ -53,14 +52,24 @@ function emulatorAddress() {
 function authenticatedDb(userId = OWNER_ID, verified = true) {
   return testEnvironment.authenticatedContext(userId, {
     email: `${userId}@example.com`,
-    email_verified: verified
+    email_verified: verified,
+    ...(verified ? { privy_verified: true, rmt_privy_uid: `did:privy:${userId}` } : {})
+  }).firestore();
+}
+
+function legacyVerifiedDb(userId = OWNER_ID) {
+  return testEnvironment.authenticatedContext(userId, {
+    email: `${userId}@example.com`,
+    email_verified: true
   }).firestore();
 }
 
 function adminDb() {
   return testEnvironment.authenticatedContext(ADMIN_ID, {
     email: "launchrmt@gmail.com",
-    email_verified: true
+    email_verified: true,
+    privy_verified: true,
+    rmt_privy_uid: `did:privy:${ADMIN_ID}`
   }).firestore();
 }
 
@@ -85,6 +94,24 @@ function watchlistDocument(overrides: Record<string, unknown> = {}) {
     launchId: "42",
     addedAt: 1_000,
     listUpdatedAt: 200,
+    ...overrides
+  };
+}
+
+function watchlistAlertSettings(overrides: Record<string, unknown> = {}) {
+  return {
+    schemaVersion: 1,
+    alerts: [{
+      id: "alert_1",
+      address: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      metric: "largeSellLiquidityBps",
+      direction: "above",
+      threshold: 100,
+      enabled: true,
+      createdAt: 1_000
+    }],
+    updatedAt: 1_000,
+    writtenAt: serverTimestamp(),
     ...overrides
   };
 }
@@ -159,119 +186,6 @@ function gameUpdate(overrides: Record<string, unknown> = {}) {
     version: "v0.3.0",
     link: "https://runner.example/alpha",
     imageUri: "https://media.runner.example/alpha.webp",
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-    ...overrides
-  };
-}
-
-function creatorAsset(overrides: Record<string, unknown> = {}) {
-  const data = {
-    schemaVersion: 1,
-    assetId: "abcdefghijklmnopqrst",
-    projectSlug: "runner-studio",
-    assetType: "artwork",
-    title: "Neon Robin",
-    description: "An original AI-assisted artwork prepared for the RMT creator ecosystem.",
-    primaryMediaUri: "ipfs://bafy-neon-robin",
-    previewMediaUri: "https://media.runner.example/neon-robin.webp",
-    creationMethod: "ai_assisted",
-    aiTools: ["OpenAI"],
-    aiDisclosure: "AI assisted with early composition studies; the creator selected and finished the final work.",
-    rightsBasis: "original",
-    rightsStatement: "The project creator produced the final work and controls the rights required for this draft.",
-    rightsConfirmed: true,
-    containsThirdPartyMaterial: false,
-    thirdPartyRightsConfirmed: false,
-    license: "all_rights_reserved",
-    licenseUri: "",
-    secondaryRoyaltyBps: 500,
-    editionMode: "limited",
-    editionSupply: 100,
-    musicReleaseType: "single",
-    explicitContent: false,
-    masterRightsConfirmed: false,
-    compositionRightsConfirmed: false,
-    collaborators: [{
-      name: "RMT Studio",
-      role: "artist",
-      walletAddress: "",
-      consentStatus: "unverified"
-    }],
-    revenueSplits: [{
-      label: "RMT Studio",
-      walletAddress: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-      shareBps: 10000
-    }],
-    collaboratorConsentStatus: "unverified",
-    status: "draft",
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-    ...overrides
-  };
-  const revenueSplitTotalBps = "revenueSplitTotalBps" in overrides
-    ? overrides.revenueSplitTotalBps
-    : Array.isArray(data.revenueSplits)
-      ? data.revenueSplits.reduce((total, split) => (
-          total + (
-            typeof split === "object"
-            && split
-            && "shareBps" in split
-            && typeof split.shareBps === "number"
-              ? split.shareBps
-              : 0
-          )
-      ), 0)
-      : 0;
-  return {
-    ...data,
-    revenueSplitTotalBps,
-    draftRevisionHash: "draftRevisionHash" in overrides
-      ? overrides.draftRevisionHash
-      : hashCreatorAssetDraft(data as unknown as CreatorAssetDraft)
-  };
-}
-
-function creatorConsentInvitation(
-  invitationId: string,
-  draftRevisionHash: unknown,
-  overrides: Record<string, unknown> = {}
-) {
-  return {
-    schemaVersion: 1,
-    invitationId,
-    invitationDigest: `0x${invitationId}`,
-    projectSlug: "runner-studio",
-    assetId: "abcdefghijklmnopqrst",
-    draftRevisionHash,
-    collaboratorName: "RMT Studio",
-    collaboratorRole: "artist",
-    collaboratorWallet: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    shareBps: 10000,
-    chainId: 4663,
-    expiresAt: 2_000_000_000,
-    termsHash: `0x${"1".repeat(64)}`,
-    nonce: `0x${"2".repeat(64)}`,
-    status: "pending",
-    revokedAt: null,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-    ...overrides
-  };
-}
-
-function creatorConsentPublicStatus(
-  invitationId: string,
-  overrides: Record<string, unknown> = {}
-) {
-  return {
-    schemaVersion: 1,
-    invitationId,
-    invitationDigest: `0x${invitationId}`,
-    projectSlug: "runner-studio",
-    assetId: "abcdefghijklmnopqrst",
-    status: "pending",
-    expiresAt: 2_000_000_000,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
     ...overrides
@@ -360,14 +274,16 @@ test("verified owners can create, read, update, and delete their profile", async
   await assertSucceeds(deleteDoc(reference));
 });
 
-test("signed-out, unverified, and different users cannot access an owner profile", async () => {
+test("signed-out, unbound legacy, unverified, and different users cannot access an owner profile", async () => {
   await seedOwner();
   const anonymous = testEnvironment.unauthenticatedContext().firestore();
   const other = authenticatedDb(OTHER_ID);
   const unverified = authenticatedDb(OWNER_ID, false);
+  const legacyVerified = legacyVerifiedDb();
   await assertFails(getDoc(doc(anonymous, "users", OWNER_ID)));
   await assertFails(getDoc(doc(other, "users", OWNER_ID)));
   await assertFails(getDoc(doc(unverified, "users", OWNER_ID)));
+  await assertFails(getDoc(doc(legacyVerified, "users", OWNER_ID)));
   await assertFails(setDoc(doc(other, "users", OWNER_ID), userDocument()));
   await assertFails(deleteDoc(doc(other, "users", OWNER_ID)));
 });
@@ -637,9 +553,34 @@ test("watchlist records cannot change without advancing the parent list version"
   await assertFails(setDoc(slotReference, watchlistDocument({ name: "Silent rewrite" })));
 });
 
+test("watchlist alert settings are private, bounded and owned by the verified Privy profile", async () => {
+  const owner = authenticatedDb();
+  await seedOwner(owner);
+  const reference = doc(owner, "users", OWNER_ID, "settings", "watchlistAlerts");
+  await assertSucceeds(setDoc(reference, watchlistAlertSettings()));
+  await assertSucceeds(getDoc(reference));
+  await assertFails(getDoc(doc(authenticatedDb(OTHER_ID), "users", OWNER_ID, "settings", "watchlistAlerts")));
+  await assertFails(setDoc(reference, watchlistAlertSettings({ alerts: Array.from({ length: 51 }, (_, index) => ({ id: `alert_${index}` })) })));
+  await assertFails(setDoc(doc(owner, "users", OWNER_ID, "settings", "other"), watchlistAlertSettings()));
+});
+
 test("unrelated collections remain closed", async () => {
   const db = authenticatedDb();
   await assertFails(setDoc(doc(db, "publicProfiles", OWNER_ID), { displayName: "Public" }));
+  await assertFails(getDoc(doc(db, "smsAlertPreferences", OWNER_ID)));
+  await assertFails(setDoc(doc(db, "smsAlertPreferences", OWNER_ID), {
+    enabled: true,
+    encryptedPhone: "browser-supplied"
+  }));
+  for (const collectionName of [
+    "smsAlertEvaluationStates",
+    "smsAlertDeliveryAttempts",
+    "smsAlertBudgets",
+    "smsAlertSystem"
+  ]) {
+    await assertFails(getDoc(doc(db, collectionName, OWNER_ID)));
+    await assertFails(setDoc(doc(db, collectionName, OWNER_ID), { browserSupplied: true }));
+  }
 });
 
 test("verified owners can submit one private creator application", async () => {
@@ -1056,483 +997,6 @@ test("RMT admin must review a module request before marking it ready", async () 
     reviewedAt: serverTimestamp(),
     updatedAt: serverTimestamp()
   }, { merge: true }));
-});
-
-test("assigned creators can privately manage valid asset and rights drafts", async () => {
-  const admin = adminDb();
-  await assertSucceeds(setDoc(doc(admin, "projectAssignments", "runner-studio"), projectAssignment()));
-  const owner = authenticatedDb();
-  const reference = doc(owner, "projectAssignments", "runner-studio", "assets", "abcdefghijklmnopqrst");
-  await assertSucceeds(setDoc(reference, creatorAsset()));
-  const stored = (await assertSucceeds(getDoc(reference))).data();
-  assert.equal(stored?.status, "draft");
-  assert.equal(stored?.revenueSplits[0].shareBps, 10000);
-
-  await assertFails(getDoc(doc(
-    authenticatedDb(OTHER_ID),
-    "projectAssignments",
-    "runner-studio",
-    "assets",
-    "abcdefghijklmnopqrst"
-  )));
-  await assertFails(getDoc(doc(
-    testEnvironment.unauthenticatedContext().firestore(),
-    "projectAssignments",
-    "runner-studio",
-    "assets",
-    "abcdefghijklmnopqrst"
-  )));
-  await assertSucceeds(getDoc(doc(
-    admin,
-    "projectAssignments",
-    "runner-studio",
-    "assets",
-    "abcdefghijklmnopqrst"
-  )));
-  await assertSucceeds(setDoc(
-    doc(owner, "projectAssignments", "runner-studio", "assets", "maximumassetdraft123"),
-    creatorAsset({
-      assetId: "maximumassetdraft123",
-      collaborators: [
-        { name: "Artist One", role: "artist", walletAddress: "", consentStatus: "unverified" },
-        { name: "Artist Two", role: "producer", walletAddress: "", consentStatus: "unverified" },
-        { name: "Artist Three", role: "songwriter", walletAddress: "", consentStatus: "unverified" },
-        { name: "Artist Four", role: "performer", walletAddress: "", consentStatus: "unverified" }
-      ],
-      revenueSplits: [
-        { label: "Recipient One", walletAddress: "0x1111111111111111111111111111111111111111", shareBps: 2500 },
-        { label: "Recipient Two", walletAddress: "0x2222222222222222222222222222222222222222", shareBps: 2500 },
-        { label: "Recipient Three", walletAddress: "0x3333333333333333333333333333333333333333", shareBps: 2500 },
-        { label: "Recipient Four", walletAddress: "0x4444444444444444444444444444444444444444", shareBps: 2500 }
-      ]
-    })
-  ));
-
-  await assertSucceeds(setDoc(reference, creatorAsset({
-    description: "An updated private rights draft that remains unavailable to public marketplace discovery.",
-    createdAt: stored?.createdAt,
-    updatedAt: serverTimestamp()
-  })));
-  await assertFails(deleteDoc(doc(
-    authenticatedDb(OTHER_ID),
-    "projectAssignments",
-    "runner-studio",
-    "assets",
-    "abcdefghijklmnopqrst"
-  )));
-  await assertSucceeds(deleteDoc(reference));
-});
-
-test("asset drafts fail closed on rights, consent, edition, and split violations", async () => {
-  const admin = adminDb();
-  await assertSucceeds(setDoc(doc(admin, "projectAssignments", "runner-studio"), projectAssignment()));
-  const owner = authenticatedDb();
-  const reference = (id: string) => doc(owner, "projectAssignments", "runner-studio", "assets", id);
-
-  await assertFails(setDoc(reference("aaaaaaaaaaaaaaaaaaaa"), creatorAsset({
-    assetId: "aaaaaaaaaaaaaaaaaaaa",
-    rightsConfirmed: false
-  })));
-  await assertFails(setDoc(reference("bbbbbbbbbbbbbbbbbbbb"), creatorAsset({
-    assetId: "bbbbbbbbbbbbbbbbbbbb",
-    collaboratorConsentStatus: "accepted",
-    collaborators: [{
-      name: "Unverified Artist",
-      role: "artist",
-      walletAddress: "",
-      consentStatus: "accepted"
-    }]
-  })));
-  await assertFails(setDoc(reference("cccccccccccccccccccc"), creatorAsset({
-    assetId: "cccccccccccccccccccc",
-    editionMode: "one_of_one",
-    editionSupply: 2
-  })));
-  await assertFails(setDoc(reference("dddddddddddddddddddd"), creatorAsset({
-    assetId: "dddddddddddddddddddd",
-    revenueSplits: [
-      {
-        label: "Artist",
-        walletAddress: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        shareBps: 6000
-      },
-      {
-        label: "Producer",
-        walletAddress: "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-        shareBps: 3000
-      }
-    ]
-  })));
-  await assertFails(setDoc(reference("eeeeeeeeeeeeeeeeeeee"), creatorAsset({
-    assetId: "eeeeeeeeeeeeeeeeeeee",
-    draftRevisionHash: "not-a-revision-hash"
-  })));
-  await assertFails(setDoc(reference("ffffffffffffffffffff"), creatorAsset({
-    assetId: "ffffffffffffffffffff",
-    status: "published"
-  })));
-  await assertFails(setDoc(reference("royaltyabovemaximum1"), creatorAsset({
-    assetId: "royaltyabovemaximum1",
-    secondaryRoyaltyBps: 1001
-  })));
-  await assertFails(setDoc(reference("royaltybelowminimum1"), creatorAsset({
-    assetId: "royaltybelowminimum1",
-    secondaryRoyaltyBps: -1
-  })));
-});
-
-test("music rights drafts require an approved music module and both music rights confirmations", async () => {
-  const admin = adminDb();
-  const assignmentReference = doc(admin, "projectAssignments", "runner-studio");
-  await assertSucceeds(setDoc(assignmentReference, projectAssignment()));
-  const assignmentCreatedAt = (await assertSucceeds(getDoc(assignmentReference))).data()?.createdAt;
-  const owner = authenticatedDb();
-  const reference = doc(owner, "projectAssignments", "runner-studio", "assets", "musicmusicmusicmusic");
-  const music = creatorAsset({
-    assetId: "musicmusicmusicmusic",
-    assetType: "music_release",
-    title: "Chain Signals",
-    description: "An original music single prepared for a future creator-controlled release.",
-    primaryMediaUri: "ipfs://bafy-chain-signals",
-    creationMethod: "human",
-    aiTools: [],
-    aiDisclosure: "",
-    masterRightsConfirmed: true,
-    compositionRightsConfirmed: true
-  });
-  await assertFails(setDoc(reference, music));
-  await assertSucceeds(setDoc(assignmentReference, projectAssignment({
-    allowedModules: ["token", "nft", "music"],
-    createdAt: assignmentCreatedAt,
-    updatedAt: serverTimestamp()
-  })));
-  await assertSucceeds(setDoc(reference, music));
-  await assertFails(setDoc(
-    doc(owner, "projectAssignments", "runner-studio", "assets", "musicnomasterrights1"),
-    creatorAsset({
-      assetId: "musicnomasterrights1",
-      assetType: "music_release",
-      title: "Missing rights",
-      primaryMediaUri: "ipfs://bafy-missing-rights",
-      creationMethod: "human",
-      aiTools: [],
-      aiDisclosure: "",
-      masterRightsConfirmed: false,
-      compositionRightsConfirmed: true
-    })
-  ));
-});
-
-test("creator consent invitations remain private, revision-bound, and creator-revocable", async () => {
-  const admin = adminDb();
-  await assertSucceeds(setDoc(doc(admin, "projectAssignments", "runner-studio"), projectAssignment()));
-  const owner = authenticatedDb();
-  const assetReference = doc(owner, "projectAssignments", "runner-studio", "assets", "abcdefghijklmnopqrst");
-  const asset = creatorAsset();
-  await assertSucceeds(setDoc(assetReference, asset));
-  const invitationId = "6".repeat(64);
-  const invitationReference = doc(assetReference, "consentInvitations", invitationId);
-  const statusReference = doc(owner, "creatorConsentStatuses", invitationId);
-  const createBatch = writeBatch(owner);
-  createBatch.set(invitationReference, creatorConsentInvitation(invitationId, asset.draftRevisionHash));
-  createBatch.set(statusReference, creatorConsentPublicStatus(invitationId));
-  await assertSucceeds(createBatch.commit());
-  await assertSucceeds(getDoc(invitationReference));
-  await assertSucceeds(getDoc(doc(
-    testEnvironment.unauthenticatedContext().firestore(),
-    "creatorConsentStatuses",
-    invitationId
-  )));
-  await assertFails(getDoc(doc(
-    authenticatedDb(OTHER_ID),
-    "projectAssignments",
-    "runner-studio",
-    "assets",
-    "abcdefghijklmnopqrst",
-    "consentInvitations",
-    invitationId
-  )));
-  const revokeBatch = writeBatch(owner);
-  revokeBatch.set(invitationReference, {
-    status: "revoked",
-    revokedAt: serverTimestamp(),
-    updatedAt: serverTimestamp()
-  }, { merge: true });
-  revokeBatch.set(statusReference, {
-    status: "revoked",
-    updatedAt: serverTimestamp()
-  }, { merge: true });
-  await assertSucceeds(revokeBatch.commit());
-  await assertFails(setDoc(invitationReference, {
-    status: "pending",
-    revokedAt: null,
-    updatedAt: serverTimestamp()
-  }, { merge: true }));
-  await assertFails(deleteDoc(invitationReference));
-});
-
-test("creator consent invitation rules reject stale revisions, self-acceptance, and mutation", async () => {
-  const admin = adminDb();
-  await assertSucceeds(setDoc(doc(admin, "projectAssignments", "runner-studio"), projectAssignment()));
-  const owner = authenticatedDb();
-  const assetReference = doc(owner, "projectAssignments", "runner-studio", "assets", "abcdefghijklmnopqrst");
-  const asset = creatorAsset();
-  await assertSucceeds(setDoc(assetReference, asset));
-
-  const staleId = "7".repeat(64);
-  const staleBatch = writeBatch(owner);
-  staleBatch.set(
-    doc(assetReference, "consentInvitations", staleId),
-    creatorConsentInvitation(staleId, `0x${"9".repeat(64)}`)
-  );
-  staleBatch.set(
-    doc(owner, "creatorConsentStatuses", staleId),
-    creatorConsentPublicStatus(staleId)
-  );
-  await assertFails(staleBatch.commit());
-  const acceptedId = "8".repeat(64);
-  const acceptedBatch = writeBatch(owner);
-  acceptedBatch.set(
-    doc(assetReference, "consentInvitations", acceptedId),
-    creatorConsentInvitation(acceptedId, asset.draftRevisionHash, {
-      status: "accepted",
-      revokedAt: null
-    })
-  );
-  acceptedBatch.set(
-    doc(owner, "creatorConsentStatuses", acceptedId),
-    creatorConsentPublicStatus(acceptedId)
-  );
-  await assertFails(acceptedBatch.commit());
-  const validId = "a".repeat(64);
-  const validReference = doc(assetReference, "consentInvitations", validId);
-  const validBatch = writeBatch(owner);
-  validBatch.set(validReference, creatorConsentInvitation(validId, asset.draftRevisionHash));
-  validBatch.set(
-    doc(owner, "creatorConsentStatuses", validId),
-    creatorConsentPublicStatus(validId)
-  );
-  await assertSucceeds(validBatch.commit());
-  const selfAcceptBatch = writeBatch(owner);
-  selfAcceptBatch.set(validReference, {
-    status: "accepted",
-    responseAction: "accept",
-    responseSignature: `0x${"c".repeat(130)}`,
-    respondedAt: 1_999_999_000,
-    signerWallet: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    receivedAt: serverTimestamp(),
-    updatedAt: serverTimestamp()
-  }, { merge: true });
-  selfAcceptBatch.set(
-    doc(owner, "creatorConsentStatuses", validId),
-    { status: "accepted", updatedAt: serverTimestamp() },
-    { merge: true }
-  );
-  await assertFails(selfAcceptBatch.commit());
-  await assertFails(setDoc(validReference, {
-    collaboratorName: "Changed collaborator",
-    updatedAt: serverTimestamp()
-  }, { merge: true }));
-  const other = authenticatedDb(OTHER_ID);
-  const unauthorizedId = "b".repeat(64);
-  const unauthorizedBatch = writeBatch(other);
-  unauthorizedBatch.set(
-    doc(
-      other,
-      "projectAssignments",
-      "runner-studio",
-      "assets",
-      "abcdefghijklmnopqrst",
-      "consentInvitations",
-      unauthorizedId
-    ),
-    creatorConsentInvitation(unauthorizedId, asset.draftRevisionHash)
-  );
-  unauthorizedBatch.set(
-    doc(other, "creatorConsentStatuses", unauthorizedId),
-    creatorConsentPublicStatus(unauthorizedId)
-  );
-  await assertFails(unauthorizedBatch.commit());
-});
-
-test("release-review snapshots are private and server-immutable", async () => {
-  const admin = adminDb();
-  await assertSucceeds(setDoc(doc(admin, "projectAssignments", "runner-studio"), projectAssignment()));
-  const owner = authenticatedDb();
-  const assetReference = doc(owner, "projectAssignments", "runner-studio", "assets", "abcdefghijklmnopqrst");
-  await assertSucceeds(setDoc(assetReference, creatorAsset()));
-  const reviewId = "d".repeat(64);
-  await testEnvironment.withSecurityRulesDisabled(async (context) => {
-    await setDoc(doc(
-      context.firestore(),
-      "projectAssignments",
-      "runner-studio",
-      "assets",
-      "abcdefghijklmnopqrst",
-      "releaseReviews",
-      reviewId
-    ), {
-      reviewId,
-      status: "prepared",
-      createdAt: serverTimestamp()
-    });
-  });
-  const ownerReviewReference = doc(
-    owner,
-    "projectAssignments",
-    "runner-studio",
-    "assets",
-    "abcdefghijklmnopqrst",
-    "releaseReviews",
-    reviewId
-  );
-  await assertSucceeds(getDoc(ownerReviewReference));
-  await assertFails(getDoc(doc(
-    authenticatedDb(OTHER_ID),
-    "projectAssignments",
-    "runner-studio",
-    "assets",
-    "abcdefghijklmnopqrst",
-    "releaseReviews",
-    reviewId
-  )));
-  await assertFails(setDoc(ownerReviewReference, { status: "approved" }, { merge: true }));
-  await assertFails(deleteDoc(ownerReviewReference));
-
-  const mediaReceiptId = "e".repeat(64);
-  await testEnvironment.withSecurityRulesDisabled(async (context) => {
-    await setDoc(doc(
-      context.firestore(),
-      "projectAssignments",
-      "runner-studio",
-      "assets",
-      "abcdefghijklmnopqrst",
-      "mediaReceipts",
-      mediaReceiptId
-    ), {
-      receiptId: mediaReceiptId,
-      metadataCid: "bafkreicnu2aqjkoglrlrd65giwo4l64pdajxffk6jtq2vb7yaiopc3yu7m",
-      createdAt: serverTimestamp()
-    });
-  });
-  const ownerMediaReceiptReference = doc(
-    owner,
-    "projectAssignments",
-    "runner-studio",
-    "assets",
-    "abcdefghijklmnopqrst",
-    "mediaReceipts",
-    mediaReceiptId
-  );
-  await assertSucceeds(getDoc(ownerMediaReceiptReference));
-  await assertFails(getDoc(doc(
-    authenticatedDb(OTHER_ID),
-    "projectAssignments",
-    "runner-studio",
-    "assets",
-    "abcdefghijklmnopqrst",
-    "mediaReceipts",
-    mediaReceiptId
-  )));
-  await assertFails(setDoc(ownerMediaReceiptReference, { metadataCid: "changed" }, { merge: true }));
-  await assertFails(deleteDoc(ownerMediaReceiptReference));
-
-  await testEnvironment.withSecurityRulesDisabled(async (context) => {
-    await setDoc(doc(
-      context.firestore(),
-      "projectAssignments",
-      "runner-studio",
-      "assets",
-      "abcdefghijklmnopqrst",
-      "mediaReceiptSupersessions",
-      mediaReceiptId
-    ), {
-      supersessionId: mediaReceiptId,
-      reasonCode: "creator_correction",
-      createdAt: serverTimestamp()
-    });
-  });
-  const ownerSupersessionReference = doc(
-    owner,
-    "projectAssignments",
-    "runner-studio",
-    "assets",
-    "abcdefghijklmnopqrst",
-    "mediaReceiptSupersessions",
-    mediaReceiptId
-  );
-  await assertSucceeds(getDoc(ownerSupersessionReference));
-  await assertFails(getDoc(doc(
-    authenticatedDb(OTHER_ID),
-    "projectAssignments",
-    "runner-studio",
-    "assets",
-    "abcdefghijklmnopqrst",
-    "mediaReceiptSupersessions",
-    mediaReceiptId
-  )));
-  await assertFails(setDoc(ownerSupersessionReference, { reasonCode: "other" }, { merge: true }));
-  await assertFails(deleteDoc(ownerSupersessionReference));
-
-  await testEnvironment.withSecurityRulesDisabled(async (context) => {
-    const server = context.firestore();
-    await setDoc(doc(server, "creatorMediaTakedownRequests", mediaReceiptId), {
-      requestId: mediaReceiptId,
-      projectSlug: "runner-studio",
-      assetId: "abcdefghijklmnopqrst",
-      providerExecution: "disabled"
-    });
-    await setDoc(doc(server, "creatorMediaTakedownDecisions", mediaReceiptId), {
-      decisionId: mediaReceiptId,
-      projectSlug: "runner-studio",
-      assetId: "abcdefghijklmnopqrst",
-      providerExecution: "disabled"
-    });
-    await setDoc(doc(server, "creatorMediaAvailability", mediaReceiptId), {
-      receiptId: mediaReceiptId,
-      projectSlug: "runner-studio",
-      assetId: "abcdefghijklmnopqrst",
-      overallState: "healthy"
-    });
-    await setDoc(doc(server, "creatorMediaAvailabilityObservations", "f".repeat(64)), {
-      receiptId: mediaReceiptId,
-      projectSlug: "runner-studio",
-      overallState: "healthy"
-    });
-    await setDoc(doc(server, "creatorMediaMaintenance", "availability"), {
-      leaseUntilMs: 0
-    });
-  });
-  for (const collectionName of [
-    "creatorMediaTakedownRequests",
-    "creatorMediaTakedownDecisions",
-    "creatorMediaAvailability"
-  ]) {
-    const ownerReference = doc(owner, collectionName, mediaReceiptId);
-    await assertSucceeds(getDoc(ownerReference));
-    await assertFails(getDoc(doc(authenticatedDb(OTHER_ID), collectionName, mediaReceiptId)));
-    await assertFails(setDoc(ownerReference, { providerExecution: "enabled" }, { merge: true }));
-    await assertFails(deleteDoc(ownerReference));
-  }
-  await assertFails(getDoc(doc(owner, "creatorMediaAvailabilityObservations", "f".repeat(64))));
-  await assertFails(getDoc(doc(owner, "creatorMediaMaintenance", "availability")));
-
-  await testEnvironment.withSecurityRulesDisabled(async (context) => {
-    await setDoc(doc(context.firestore(), "creatorReleaseDecisions", reviewId), {
-      reviewId,
-      projectSlug: "runner-studio",
-      outcome: "changes_requested"
-    });
-  });
-  const ownerDecisionReference = doc(owner, "creatorReleaseDecisions", reviewId);
-  await assertSucceeds(getDoc(ownerDecisionReference));
-  await assertSucceeds(getDocs(query(
-    collection(owner, "creatorReleaseDecisions"),
-    where("projectSlug", "==", "runner-studio")
-  )));
-  await assertFails(getDoc(doc(authenticatedDb(OTHER_ID), "creatorReleaseDecisions", reviewId)));
-  await assertFails(setDoc(ownerDecisionReference, { outcome: "preparation_ready" }, { merge: true }));
-  await assertFails(deleteDoc(ownerDecisionReference));
 });
 
 test("community records are publicly readable only when visible and remain server-write-only", async () => {

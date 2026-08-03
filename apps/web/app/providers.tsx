@@ -1,70 +1,44 @@
 "use client";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { robinhoodChain, robinhoodChainTestnet } from "@rmt/shared/chains";
+import dynamic from "next/dynamic";
 import { useState, type ReactNode } from "react";
-import { WagmiProvider, createConfig, http } from "wagmi";
-import { coinbaseWallet, injected, metaMask, walletConnect } from "wagmi/connectors";
+import { WagmiProvider, createConfig } from "wagmi";
 import { ProfileProvider } from "./profile-provider";
 import { ReferralCapture } from "./referral-capture";
 import { CommunityLive } from "./community-live";
+import { ExperienceTelemetry } from "./experience-telemetry";
+import { createLegacyWalletConnectors, walletChains, walletTransports } from "./wallet-config";
+import { speedWalletEnabled } from "../lib/privy-config";
 
-const walletConnectProjectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID;
-const mainnetRpcUrl = process.env.NEXT_PUBLIC_RMT_RPC_URL ?? robinhoodChain.rpcUrls.default.http[0];
-const testnetRpcUrl = process.env.NEXT_PUBLIC_RMT_TESTNET_RPC_URL ?? robinhoodChainTestnet.rpcUrls.default.http[0];
-// Wallet metadata is used by WalletConnect and mobile deep links. Production
-// must never identify itself as localhost when the deployment variable is
-// omitted, because some wallets reject or misroute that session.
-const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.rmtlaunch.fun";
-const connectors = [
-  metaMask({
-    dappMetadata: {
-      name: "Robinhood Meme Terminal",
-      url: appUrl,
-      iconUrl: `${appUrl}/brand/rmt-master-logo.png`
-    },
-    preferDesktop: false,
-    enableAnalytics: false
-  }),
-  coinbaseWallet({
-    appName: "Robinhood Meme Terminal",
-    appLogoUrl: `${appUrl}/brand/rmt-master-logo.png`,
-    preference: "all",
-    version: "4"
-  }),
-  injected({ shimDisconnect: true }),
-  ...(walletConnectProjectId
-    ? [walletConnect({
-        projectId: walletConnectProjectId,
-        showQrModal: true,
-        metadata: {
-          name: "Robinhood Meme Terminal",
-          description: "Robinhood Chain market intelligence and trading terminal",
-          url: appUrl,
-          icons: [`${appUrl}/brand/rmt-master-logo.png`]
-        }
-      })]
-    : [])
-];
+let legacyWalletConfig: ReturnType<typeof createConfig> | undefined;
 
-const config = createConfig({
-  chains: [robinhoodChainTestnet, robinhoodChain],
-  connectors,
-  transports: {
-    [robinhoodChainTestnet.id]: http(testnetRpcUrl, { retryCount: 3, timeout: 12_000 }),
-    [robinhoodChain.id]: http(mainnetRpcUrl, { retryCount: 3, timeout: 12_000 })
-  },
-  ssr: true
-});
+function getLegacyWalletConfig() {
+  legacyWalletConfig ??= createConfig({
+    chains: walletChains,
+    connectors: createLegacyWalletConnectors(),
+    transports: walletTransports,
+    ssr: true
+  });
+  return legacyWalletConfig;
+}
+
+const SpeedWalletProvider = dynamic(
+  () => import("./speed-wallet-provider").then((module) => module.SpeedWalletProvider),
+  { ssr: false }
+);
 
 export function Providers({ children }: { children: ReactNode }) {
   const [queryClient] = useState(() => new QueryClient());
 
+  const application = (
+    <ProfileProvider><ReferralCapture /><ExperienceTelemetry />{children}<CommunityLive /></ProfileProvider>
+  );
+
+  if (speedWalletEnabled) return <SpeedWalletProvider queryClient={queryClient}>{application}</SpeedWalletProvider>;
   return (
-    <WagmiProvider config={config}>
-      <QueryClientProvider client={queryClient}>
-        <ProfileProvider><ReferralCapture />{children}<CommunityLive /></ProfileProvider>
-      </QueryClientProvider>
+    <WagmiProvider config={getLegacyWalletConfig()}>
+      <QueryClientProvider client={queryClient}>{application}</QueryClientProvider>
     </WagmiProvider>
   );
 }

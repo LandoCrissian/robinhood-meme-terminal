@@ -16,6 +16,20 @@ assert.equal(config.heartbeatIntervalMs, 60_000);
 assert.equal(config.databaseSsl, false);
 assert.equal(config.storageMode, "durable");
 assert.equal(config.databaseSizeLimitBytes, null);
+assert.equal(config.positionGuardEvaluator, null);
+
+const evaluator = loadMarketIndexerConfig({
+  ...base,
+  RMT_POSITION_GUARD_EVALUATOR_URL:
+    "https://www.rmtlaunch.fun/api/internal/position-guards/evaluate",
+  RMT_POSITION_GUARD_EVALUATOR_TOKEN:
+    "position-guard-evaluator-token-000000000001"
+}).positionGuardEvaluator;
+assert.equal(evaluator?.intervalMs, 5_000);
+assert.equal(
+  evaluator?.url,
+  "https://www.rmtlaunch.fun/api/internal/position-guards/evaluate"
+);
 
 assert.equal(
   loadMarketIndexerConfig({
@@ -87,6 +101,34 @@ assert.throws(
       MARKET_INDEXER_HEARTBEAT_INTERVAL_MS: "9999"
     }),
   /between 10000 and 3600000/
+);
+assert.throws(
+  () => loadMarketIndexerConfig({
+    ...base,
+    RMT_POSITION_GUARD_EVALUATOR_URL:
+      "https://www.rmtlaunch.fun/api/internal/position-guards/evaluate"
+  }),
+  /must be configured together/
+);
+assert.throws(
+  () => loadMarketIndexerConfig({
+    ...base,
+    RMT_POSITION_GUARD_EVALUATOR_URL:
+      "http://www.rmtlaunch.fun/api/internal/position-guards/evaluate",
+    RMT_POSITION_GUARD_EVALUATOR_TOKEN:
+      "position-guard-evaluator-token-000000000001"
+  }),
+  /exact HTTPS evaluator endpoint/
+);
+assert.throws(
+  () => loadMarketIndexerConfig({
+    ...base,
+    RMT_POSITION_GUARD_EVALUATOR_URL:
+      "https://www.rmtlaunch.fun/api/internal/position-guards/evaluate?token=bad",
+    RMT_POSITION_GUARD_EVALUATOR_TOKEN:
+      "position-guard-evaluator-token-000000000001"
+  }),
+  /exact HTTPS evaluator endpoint/
 );
 
 console.info("market indexer config smoke passed");

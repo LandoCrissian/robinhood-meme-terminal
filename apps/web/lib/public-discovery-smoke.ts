@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import robots from "../app/robots";
-import sitemap from "../app/sitemap";
+import { staticPublicSitemap } from "../app/sitemap";
 import {
   buildVerifiedTokenProject,
   OFFICIAL_RMT_V6_TOKEN,
@@ -14,6 +14,12 @@ import {
   publicRmtNativeLaunches,
   publicRmtProjectVisibility
 } from "./public-project-visibility";
+import {
+  RMT_SITE_ALTERNATE_NAME,
+  RMT_SITE_NAME,
+  RMT_SITE_URL,
+  rmtWebsiteStructuredData
+} from "./site-identity";
 
 const appUrl = "https://www.rmtlaunch.fun";
 
@@ -28,21 +34,42 @@ assert.ok(publicRule?.disallow?.includes("/admin/"));
 assert.ok(publicRule?.disallow?.includes("/profile"));
 assert.ok(!publicRule?.disallow?.includes("/deploy-mainnet"), "robots.txt must not advertise hidden operator routes");
 
-const sitemapUrls = sitemap().map((entry) => entry.url);
-for (const route of ["/", "/explore", "/launch", `/project/${OFFICIAL_RMT_V6_TOKEN}`, "/status", "/sources", "/sushi", "/rescue"]) {
+const sitemapUrls = staticPublicSitemap().map((entry) => entry.url);
+for (const route of ["/", "/explore", "/launch", `/project/${OFFICIAL_RMT_V6_TOKEN}`, "/status", "/sources", "/sushi", "/rescue", "/experience"]) {
   assert.ok(sitemapUrls.includes(`${appUrl}${route}`), `Sitemap must include ${route}`);
 }
 for (const route of ["/api/health", "/deploy-mainnet", "/profile", "/portfolio", "/watchlist"]) {
   assert.ok(!sitemapUrls.includes(`${appUrl}${route}`), `Sitemap must not publish ${route}`);
 }
+assert.ok(!sitemapUrls.includes(`${appUrl}/token/${OFFICIAL_RMT_V6_TOKEN}`), "Legacy token URL must defer to the canonical Project URL");
 
 const layoutSource = readFileSync(new URL("../app/layout.tsx", import.meta.url), "utf8");
 assert.doesNotMatch(layoutSource, /alternates:\s*\{\s*canonical:\s*"\/"/);
 assert.doesNotMatch(layoutSource, /openGraph:\s*\{\s*url:/);
+assert.match(layoutSource, /applicationName:\s*RMT_SITE_NAME/);
+assert.match(layoutSource, /siteName:\s*RMT_SITE_NAME/);
+assert.match(layoutSource, /manifest:\s*"\/manifest\.webmanifest"/);
+assert.match(layoutSource, /googleBot:[\s\S]*?"max-image-preview":\s*"large"/);
+assert.match(layoutSource, /type="application\/ld\+json"/);
+assert.match(layoutSource, /JSON\.stringify\(rmtWebsiteStructuredData\)/);
+assert.equal(RMT_SITE_URL, appUrl);
+assert.equal(RMT_SITE_NAME, "Robinhood Meme Terminal");
+assert.equal(RMT_SITE_ALTERNATE_NAME, "RMT");
+assert.deepEqual(rmtWebsiteStructuredData, {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "@id": `${appUrl}/#website`,
+  url: `${appUrl}/`,
+  name: "Robinhood Meme Terminal",
+  alternateName: "RMT",
+  description: rmtWebsiteStructuredData.description,
+  inLanguage: "en-US"
+});
 
 const homeSource = readFileSync(new URL("../app/page.tsx", import.meta.url), "utf8");
 assert.match(homeSource, /alternates:\s*\{\s*canonical:\s*"\/"/);
 assert.match(homeSource, /openGraph:[\s\S]*?url:\s*"\/"/);
+assert.match(homeSource, /RMT · MARKET TERMINAL/);
 assert.match(homeSource, /<ExternalMarketFeed \/>/);
 assert.match(homeSource, /<OfficialRmtMarket \/>/);
 assert.doesNotMatch(homeSource, /<FreshLaunchFeed \/>/);
@@ -152,6 +179,12 @@ assert.doesNotMatch(marketPanelSource, /maxUint256/);
 const tradeTicketUiSource = readFileSync(new URL("../app/trade-ticket-ui.tsx", import.meta.url), "utf8");
 const externalSushiTicketSource = readFileSync(new URL("../app/external-sushi-quote-panel.tsx", import.meta.url), "utf8");
 const externalUniswapTicketSource = readFileSync(new URL("../app/external-uniswap-trade-panel.tsx", import.meta.url), "utf8");
+const externalMarketFeedSource = readFileSync(new URL("../app/external-market-feed.tsx", import.meta.url), "utf8");
+const externalMarketWorkspaceSource = readFileSync(new URL("../app/external-market-workspace.tsx", import.meta.url), "utf8");
+const positionGuardSource = readFileSync(new URL("../app/position-guard-panel.tsx", import.meta.url), "utf8");
+const postTradeProtectionSource = readFileSync(new URL("../app/post-trade-protection.tsx", import.meta.url), "utf8");
+const professionalTerminalStyles = readFileSync(new URL("../app/professional-terminal.css", import.meta.url), "utf8");
+const launchpadNetworkSource = readFileSync(new URL("../app/launchpad-network.tsx", import.meta.url), "utf8");
 assert.match(tradeTicketUiSource, /FINAL PRE-SIGN REVIEW/);
 assert.match(tradeTicketUiSource, /SAFER SIZE APPLIED/);
 assert.match(tradeTicketUiSource, /PROTECTED MINIMUM/);
@@ -159,12 +192,60 @@ assert.match(tradeTicketUiSource, /EXECUTION ROUTE/);
 assert.match(tradeTicketUiSource, /EXECUTION CHECK · \{routeLabel\}/);
 assert.match(tradeTicketUiSource, /LIQUIDITY DEPTH/);
 assert.match(tradeTicketUiSource, /EVIDENCE \/ CONTROL/);
+assert.match(tradeTicketUiSource, /YOUR EXECUTION RULES/);
+assert.match(tradeTicketUiSource, /Maximum price impact/);
+assert.match(tradeTicketUiSource, /No RMT cap/);
+assert.match(tradeTicketUiSource, /quoted minimum output and exact-transaction simulation/);
+assert.match(externalMarketFeedSource, /Routes syncing/);
+assert.match(externalMarketFeedSource, /VERIFYING IN-SITE ROUTE/);
+assert.match(externalMarketFeedSource, /Launch sources/);
+assert.match(externalMarketFeedSource, /Any venue/);
+assert.match(externalMarketFeedSource, /marketDistributionPassport/);
+assert.match(externalMarketWorkspaceSource, /it will not replace your saved venue without your decision/);
+assert.match(externalMarketWorkspaceSource, /MARKET PASSPORT/);
+assert.match(externalMarketWorkspaceSource, /Origin, market and distribution/);
+assert.match(externalMarketWorkspaceSource, /distributionPassport\.steps/);
+assert.match(externalMarketWorkspaceSource, /tradeRef\.current\?\.scrollTo\(\{ top: 0, behavior: "auto" \}\)/);
+assert.match(positionGuardSource, /Protect my win/);
+assert.match(positionGuardSource, /Recover the original/);
+assert.match(positionGuardSource, /PROFIT LOCK/);
+assert.match(positionGuardSource, /Bank gains at 3× and 5×/);
+assert.match(positionGuardSource, /Prepare full exit/);
+assert.match(positionGuardSource, /does not trade without your wallet/);
+assert.match(postTradeProtectionSource, /SWAP CONFIRMED · NEXT STEP/);
+assert.match(postTradeProtectionSource, /Protect my win/);
+assert.match(postTradeProtectionSource, /AFTER CONFIRMATION/);
+assert.match(postTradeProtectionSource, /Tight/);
+assert.match(postTradeProtectionSource, /Balanced/);
+assert.match(postTradeProtectionSource, /Wide/);
+assert.match(postTradeProtectionSource, /Custom/);
+assert.match(postTradeProtectionSource, /settings: protectionSettings/);
+assert.match(postTradeProtectionSource, /Armed after confirmation/);
+assert.match(postTradeProtectionSource, /did not overwrite its cost basis or rules/);
+assert.match(professionalTerminalStyles, /top: auto/);
+assert.match(professionalTerminalStyles, /max-height: min\(82dvh, 740px\)/);
+assert.match(professionalTerminalStyles, /universalTradeRail > header:before/);
+assert.match(launchpadNetworkSource, /Uniswap Launches/);
+assert.match(launchpadNetworkSource, /Sushi Launch/);
+assert.match(launchpadNetworkSource, /Individual beta-feed inclusion is never assumed/);
 assert.match(externalSushiTicketSource, /setSaferOrderOriginal\(amountIn\)/);
 assert.match(externalSushiTicketSource, /routeLabel="Sushi · RedSnwapper"/);
 assert.match(externalSushiTicketSource, /evidenceBlocked \|\| impactBlocked/);
+assert.match(externalSushiTicketSource, /criticalEvidenceAcknowledged/);
+assert.match(externalSushiTicketSource, /Review critical evidence to continue/);
+assert.match(externalSushiTicketSource, /confirmedBuyProtectionSnapshot/);
+assert.match(externalSushiTicketSource, /PostTradeProtection/);
+assert.match(externalSushiTicketSource, /protectionSettings: \{ \.\.\.afterBuyProtection\.settings \}/);
 assert.match(externalUniswapTicketSource, /setSaferOrderOriginal\(amountIn\)/);
-assert.match(externalUniswapTicketSource, /routeLabel="Uniswap V3 · Router02"/);
+assert.match(externalUniswapTicketSource, /Uniswap v3 · Router02/);
+assert.match(externalUniswapTicketSource, /Uniswap v4 · Universal Router/);
+assert.match(externalUniswapTicketSource, /PASSPORT-GATED UNISWAP V4 ROUTE/);
 assert.match(externalUniswapTicketSource, /evidenceBlocked \|\| impactBlocked/);
+assert.match(externalUniswapTicketSource, /criticalEvidenceAcknowledged/);
+assert.match(externalUniswapTicketSource, /Review critical evidence to continue/);
+assert.match(externalUniswapTicketSource, /confirmedBuyProtectionSnapshot/);
+assert.match(externalUniswapTicketSource, /PostTradeProtection/);
+assert.match(externalUniswapTicketSource, /protectionSettings: \{ \.\.\.afterBuyProtection\.settings \}/);
 assert.match(projectRouteSource, /isAddress/);
 assert.match(projectRouteSource, /ApprovedProjectPage/);
 assert.match(approvedProjectPageSource, /RMT PAGE · REVIEW APPROVED/);

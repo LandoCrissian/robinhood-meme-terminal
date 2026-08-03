@@ -2,7 +2,7 @@ import { cert, getApps, initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 
-const FIREBASE_ADMIN_APP_NAME = "rmt-server";
+const FIREBASE_ADMIN_APP_NAME = "rmt-live-server";
 
 function serverCredential() {
   const projectId = (
@@ -11,7 +11,9 @@ function serverCredential() {
     ?? ""
   ).trim();
   const clientEmail = (process.env.FIREBASE_ADMIN_CLIENT_EMAIL ?? "").trim();
-  const privateKey = (process.env.FIREBASE_ADMIN_PRIVATE_KEY ?? "").replaceAll("\\n", "\n").trim();
+  const privateKey = (process.env.FIREBASE_ADMIN_PRIVATE_KEY ?? "")
+    .replaceAll("\\n", "\n")
+    .trim();
   if (
     !/^[a-z0-9-]{4,64}$/.test(projectId)
     || !clientEmail.endsWith(".gserviceaccount.com")
@@ -21,24 +23,21 @@ function serverCredential() {
   return { projectId, clientEmail, privateKey };
 }
 
-export function getRmtAdminFirestore() {
+function getRmtLiveAdminApp() {
   const credential = serverCredential();
   if (!credential) return null;
-  const existing = getApps().find((app) => app.name === FIREBASE_ADMIN_APP_NAME);
-  const app = existing ?? initializeApp({
+  return getApps().find((app) => app.name === FIREBASE_ADMIN_APP_NAME) ?? initializeApp({
     credential: cert(credential),
     projectId: credential.projectId
   }, FIREBASE_ADMIN_APP_NAME);
-  return getFirestore(app);
+}
+
+export function getRmtAdminFirestore() {
+  const app = getRmtLiveAdminApp();
+  return app ? getFirestore(app) : null;
 }
 
 export function getRmtAdminAuth() {
-  const credential = serverCredential();
-  if (!credential) return null;
-  const existing = getApps().find((app) => app.name === FIREBASE_ADMIN_APP_NAME);
-  const app = existing ?? initializeApp({
-    credential: cert(credential),
-    projectId: credential.projectId
-  }, FIREBASE_ADMIN_APP_NAME);
-  return getAuth(app);
+  const app = getRmtLiveAdminApp();
+  return app ? getAuth(app) : null;
 }

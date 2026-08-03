@@ -1,10 +1,16 @@
 import { getAddress, isAddress } from "viem";
 import {
+  externalChartRefreshMs,
   externalOhlcvRequestUrl,
   isExternalChartRange,
+  mergeConfirmedTradesIntoOhlcv,
   parseExternalOhlcvList,
   type ExternalChartRange
 } from "../../../../lib/external-ohlcv";
+import {
+  externalTradesRequestUrl,
+  parseExternalPoolTrades
+} from "../../../../lib/external-trades";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -47,6 +53,17 @@ async function fetchOhlcv(pair: string, range: ExternalChartRange, tokenSide: "b
     clearTimeout(timeout);
   }
 }
+
+async function fetchRecentTrades(pair: string, token: string, revalidate: number) {
+  const response = await fetch(externalTradesRequestUrl(pair, token), {
+    headers: { Accept: "application/json" },
+    next: { revalidate },
+    signal: AbortSignal.timeout(8_000)
+  });
+  if (!response.ok) return [];
+  return parseExternalPoolTrades(await response.json(), token, 50);
+}
+
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const token = url.searchParams.get("token") ?? "";
@@ -70,19 +87,30 @@ export async function GET(request: Request) {
       result = await fetchOhlcv(canonicalPair, range, "quote");
     }
     if (result.candles.length < 2) throw new Error("Price history is not available for this range.");
+    const refreshMs = externalChartRefreshMs(range);
+    const shouldMergeConfirmedTrades = range === "LIVE" || range === "5M" || range === "15M" || range === "1H";
+    const recentTrades = shouldMergeConfirmedTrades
+      ? await fetchRecentTrades(canonicalPair, canonicalToken, Math.max(1, Math.floor(refreshMs / 1_000)))
+      : [];
+    const candles = shouldMergeConfirmedTrades
+      ? mergeConfirmedTradesIntoOhlcv(result.candles, recentTrades)
+      : result.candles;
+    const lastTradeAt = recentTrades[0]?.timestamp ?? null;
 
     return Response.json(
       {
         token: canonicalToken,
         pair: canonicalPair,
         range,
-        candles: result.candles,
+        candles,
         source: "GeckoTerminal",
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
+        lastTradeAt,
+        refreshMs
       },
       {
         headers: {
-          "Cache-Control": "public, s-maxage=30, stale-while-revalidate=300"
+          "Cache-Control": `public, s-maxage=${Math.max(1, Math.floor(refreshMs / 1_000))}, stale-while-revalidate=30`
         }
       }
     );

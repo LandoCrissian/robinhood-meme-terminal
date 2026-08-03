@@ -13,16 +13,26 @@ Each external workspace combines:
 - live price, liquidity, valuation, volume, age, and trade-pressure metrics;
 - candlestick history for 1 hour, 6 hours, 24 hours, and 7 days;
 - project metadata and token imagery when a verified source supplies them;
+- exact-contract Robinhood Stock Token identity and verified Stock Token pool-pair relationships from Robinhood's live asset registry;
 - activity, safety, and origin views;
-- RMT's existing non-custodial Sushi or canonical Uniswap execution panel; and
+- non-custodial Sushi, canonical Uniswap V3, and Passport-gated Uniswap V4
+  execution panels; and
 - a persistent mobile buy/sell dock designed for one-handed use.
+
+Sushi Launch is also a first-party discovery input. RMT reads the documented
+Sushi Data API through three bounded lenses (newest, 24-hour volume, and current
+TVL), then attaches launch identity only when the API token and exact launch pool
+match the independently discovered DEX pair. See
+[`SUSHI_LAUNCH_DISCOVERY.md`](./SUSHI_LAUNCH_DISCOVERY.md) for the trust and
+failure boundaries.
 
 Opening a workspace does not make a token safe. Execution remains unavailable
 unless the existing venue-specific verification and fresh-quote checks pass.
 
 ## Order ticket
 
-The Sushi and canonical Uniswap paths share one order-entry language while
+The Sushi, Uniswap V3, and Passport-eligible Uniswap V4 paths share one
+order-entry language while
 retaining separate venue verification and transaction construction:
 
 - 25%, 50%, and maximum wallet-balance shortcuts;
@@ -33,8 +43,14 @@ retaining separate venue verification and transaction construction:
 - the enforced 1% maximum slippage boundary;
 - a live quote-expiry countdown;
 - price-impact severity that never weakens the existing 10% execution block;
-- a Quote → Evidence → Wallet progress path; and
+- an Account → Quote → Evidence → Wallet progress path; and
 - explicit approval, submission, confirmation, and explorer states.
+
+When more than one venue is verified, RMT compares protected minimum output
+across Sushi, Uniswap V3 and Uniswap V4. Automatic mode respects the user's
+price-impact rule and moves only for at least 0.25% more protected output. A V4
+route participates only after its holder sell rehearsal and exact-wallet
+transaction both pass without broadcasting.
 
 ### Pre-sign fee transparency
 
@@ -54,6 +70,17 @@ wallet's own fee review.
 
 The interface does not expose a cosmetic slippage setting. The displayed
 protection is the value enforced in the server-verified transaction.
+
+## Robinhood Stock Token provenance
+
+RMT reads `https://api.robinhood.com/rhj/assets` as a cached, read-only identity registry. A stock label is attached only when the contract address exactly matches a Robinhood Chain deployment in that response. Matching a name or ticker is never sufficient.
+
+The data model intentionally supports more than one relationship per project and distinguishes:
+
+- `canonical-stock-token`: the displayed token contract is itself the canonical Robinhood Stock Token; and
+- `paired-market-asset`: an independently discovered pool pairs the displayed token with a canonical Robinhood Stock Token.
+
+A paired market does not mean the displayed project token is backed by, redeemable for, or economically entitled to the paired stock. RMT states that limitation in the optional Passport panel. Registry failure removes the relationship label without interrupting ordinary market discovery. Canonical Robinhood Stock Tokens remain view-only in RMT until enforceable jurisdiction controls exist; the server does not return execution venues or prepare a trade for those contracts. Stock Token availability and eligibility remain jurisdiction-dependent.
 
 ### Persistent trade presets
 
@@ -179,6 +206,8 @@ pnpm --filter web test:trade-ticket
 pnpm --filter web test:trading-terms
 pnpm --filter web test:external-trades
 pnpm --filter web test:external-uniswap
+pnpm --filter web test:external-v4-evidence
+pnpm --filter web test:external-venues
 pnpm --filter web test:token-risk
 pnpm --filter web typecheck
 pnpm --filter web build

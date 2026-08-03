@@ -1057,7 +1057,8 @@
   }
 
   .externalSushiConnect .walletMenu,
-  .externalSushiConnect .wallet {
+  .externalSushiConnect .wallet,
+  .externalSushiConnect .tradeIdentitySignIn {
     width: 100%;
   }
 
@@ -1537,6 +1538,50 @@
   .tokenInfoTabs {
     padding: 5px;
     border-radius: 14px;
+  }
+}
+
+@media (max-width: 760px) {
+  .terminalPage .liveSignalDesk {
+    padding: 11px 10px 10px;
+  }
+
+  .terminalPage .liveSignalDesk > header {
+    align-items: center;
+    margin-bottom: 8px;
+  }
+
+  .terminalPage .liveSignalDesk > header strong {
+    font-size: 13px;
+  }
+
+  .terminalPage .liveSignalRail {
+    display: flex;
+    gap: 7px;
+    margin-inline: -10px;
+    padding-inline: 10px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    border: 0;
+    background: transparent;
+  }
+
+  .terminalPage .liveSignalRail::-webkit-scrollbar {
+    display: none;
+  }
+
+  .terminalPage .liveSignalRail > a {
+    flex: 0 0 min(78vw, 300px);
+    min-height: 92px;
+    scroll-snap-align: start;
+    border: 1px solid rgba(126, 151, 137, .18);
+  }
+
+  .terminalPage .liveSignalDesk > footer {
+    min-height: 34px;
+    padding-right: 42px;
+    font-size: 7.5px;
   }
 }
 

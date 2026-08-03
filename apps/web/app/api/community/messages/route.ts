@@ -13,7 +13,9 @@ import { COMMUNITY_TERMS_VERSION } from "../../../../lib/community-terms";
 import {
   communityAuthorKey,
   communityBearerToken,
-  communityIdentitySecret
+  communityIdentitySecret,
+  isRmtAdminIdentity,
+  isVerifiedCommunityMember
 } from "../../../../lib/server/community-identity";
 import { getRmtAdminAuth, getRmtAdminFirestore } from "../../../../lib/server/firebase-admin";
 import { decideCommunityMessagePolicy } from "../../../../lib/server/community-message-policy";
@@ -75,7 +77,7 @@ export async function POST(request: Request) {
   try {
     const identity = await auth.verifyIdToken(token, true);
     const guest = identity.firebase?.sign_in_provider === "anonymous";
-    if (!guest && identity.email_verified !== true) {
+    if (!guest && !isVerifiedCommunityMember(identity)) {
       return NextResponse.json({ error: "Verified member or guest identity required." }, { status: 403, headers: HEADERS });
     }
     const validationError = validateCommunityBody(messageBody, guest);
@@ -111,7 +113,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "The referenced message is unavailable." }, { status: 409, headers: HEADERS });
     }
     const profile = cleanProfile(profileSnapshot?.data()?.profile);
-    const isRmt = identity.email?.toLowerCase() === RMT_ADMIN_EMAIL;
+    const isRmt = isRmtAdminIdentity(identity, RMT_ADMIN_EMAIL);
     const isCreator = Boolean(assignmentSnapshot?.exists && assignmentSnapshot.data()?.ownerId === identity.uid);
     const authorKind = isRmt ? "rmt" : isCreator ? "creator" : guest ? "guest" : "member";
     const authorLabel = guest ? `Guest-${key.slice(-4).toUpperCase()}` : profile.displayName;

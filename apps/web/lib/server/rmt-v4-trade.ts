@@ -129,7 +129,7 @@ export function buildRmtV4Swap(params: { token: Address; recipient: Address; sid
 }
 
 export async function quoteAndBuildRmtV4Swap(params: { launchId: bigint; token: Address; recipient: Address; side: RmtV4TradeSide; amountIn: bigint }) {
-  if (!isMainnetRelease) throw new Error("Native V4 trading is available only on Robinhood Chain mainnet.");
+  if (!isMainnetRelease) throw new Error("Native RMT Uniswap v4 trading is available only on Robinhood Chain mainnet.");
   if (params.amountIn <= 0n || params.amountIn > MAX_UINT128) throw new Error("Trade amount is outside the supported range.");
   if (sameAddress(params.recipient, zeroAddress)) throw new Error("A valid wallet recipient is required.");
 
@@ -147,7 +147,7 @@ export async function quoteAndBuildRmtV4Swap(params: { launchId: bigint; token: 
     client.getBytecode({ address: ROBINHOOD_V4_QUOTER })
   ]);
 
-  if (!marketGraduated || !adapterGraduated || preparedPoolId === ZERO_POOL_ID) throw new Error("The canonical V4 pool is not open yet.");
+  if (!marketGraduated || !adapterGraduated || preparedPoolId === ZERO_POOL_ID) throw new Error("The canonical Uniswap v4 pool is not open yet.");
   if (!sameAddress(graduationAdapter, RMT_V6_GRADUATION_ADAPTER) || Number(poolFee) !== RMT_V6_POOL_FEE || Number(tickSpacing) !== RMT_V6_TICK_SPACING || !sameAddress(hook, RMT_V6_GRADUATION_HOOK)) throw new Error("The graduated pool configuration failed RMT verification.");
   if (!routerCode || !quoterCode) throw new Error("The official Uniswap execution contracts are unavailable.");
 

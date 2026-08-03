@@ -9,6 +9,7 @@ import {
   marketSources
 } from "./sources.js";
 import type { MarketIndexerWorker } from "./worker.js";
+import type { PositionGuardHeartbeat } from "./position-guard-heartbeat.js";
 
 function json(response: ServerResponse, status: number, body: unknown) {
   response.writeHead(status, {
@@ -51,7 +52,8 @@ function heartbeat(worker: MarketIndexerWorker, config: MarketIndexerConfig) {
 export function createMarketIndexerServer(
   pool: Pool,
   config: MarketIndexerConfig,
-  worker: MarketIndexerWorker
+  worker: MarketIndexerWorker,
+  positionGuardHeartbeat?: PositionGuardHeartbeat
 ) {
   return createServer(async (request, response) => {
     try {
@@ -94,6 +96,14 @@ export function createMarketIndexerServer(
               lagBlocks: source.lagBlocks,
               poolCount: source.poolCount
             })) ?? [],
+          positionGuardEvaluator: positionGuardHeartbeat?.status ?? {
+            enabled: false,
+            running: false,
+            cycleSequence: 0,
+            lastAttemptAt: null,
+            lastSuccessAt: null,
+            lastError: null
+          },
           error: worker.status.lastError === null ? null : "worker-error"
         });
         return;
@@ -128,6 +138,7 @@ export function createMarketIndexerServer(
           lastSyncAt: worker.status.lastSyncAt,
           lastError: worker.status.lastError,
           heartbeat: heartbeat(worker, config),
+          positionGuardEvaluator: positionGuardHeartbeat?.status ?? null,
           telemetry: worker.status.telemetry
         });
         return;

@@ -17,56 +17,64 @@ const SOURCES: LaunchpadSource[] = [
     url: "https://www.rmtlaunch.fun",
     status: "live",
     statusLabel: "LIVE + VERIFIED",
-    capability: "Launch · Discover · Trade",
-    disclosure: "Official V6 factory, Fair Start, rewards, and graduation rules verified by RMT."
-  },
-  {
-    name: "hood.fun",
-    url: "https://hood.fun",
-    status: "review",
-    statusLabel: "ADAPTER REVIEW",
-    capability: "External discovery next",
-    disclosure: "External contracts and economics. Factory and event verification must finish before token attribution."
-  },
-  {
-    name: "Robinfun",
-    url: "https://robinfun.live",
-    status: "review",
-    statusLabel: "ADAPTER REVIEW",
-    capability: "External discovery next",
-    disclosure: "External contracts and economics. Factory and event verification must finish before token attribution."
-  },
-  {
-    name: "real.fun",
-    url: "https://real.fun",
-    status: "queued",
-    statusLabel: "SOURCE CHECK",
-    capability: "Verification queued",
-    disclosure: "Robinhood Chain launch source and contract history still need independent confirmation."
-  },
-  {
-    name: "Leavehood",
-    url: "https://leavehood.com",
-    status: "queued",
-    statusLabel: "SOURCE CHECK",
-    capability: "Verification queued",
-    disclosure: "External launch flow reviewed; factory, events, and live market history still need confirmation."
+    capability: "Discover · Passport · Trade",
+    disclosure: "RMT-native origin and external-market evidence remain visibly separate. New public creation stays paused until V7."
   },
   {
     name: "Pons",
     url: "https://pons.family",
-    status: "queued",
-    statusLabel: "SECURITY CHECK",
-    capability: "Approval flow review",
-    disclosure: "External approval, creator-wallet, factory, and market behavior require verification before indexing."
+    status: "live",
+    statusLabel: "LIVE · ATTRIBUTED",
+    capability: "Origin · Metadata · Markets",
+    disclosure: "RMT attaches Pons identity only after factory and token records agree with the discovered live market."
   },
   {
-    name: "Bow.fun",
-    url: "https://bow.fun",
+    name: "Lemon",
+    url: "https://lemon.fun",
+    status: "live",
+    statusLabel: "LIVE · ATTRIBUTED",
+    capability: "Origin · Metadata · Markets",
+    disclosure: "RMT attaches Lemon identity only when its documented public record, token, pool, and live DEX market match."
+  },
+  {
+    name: "DEX Screener",
+    url: "https://docs.dexscreener.com/api/reference",
+    status: "live",
+    statusLabel: "LIVE · MARKET DATA",
+    capability: "Activity · Liquidity · Public discovery",
+    disclosure: "RMT ranks eligible markets from documented public fields. Artwork is a fallback only and must come from Dexscreener’s HTTPS CDN."
+  },
+  {
+    name: "Uniswap Launches",
+    url: "https://blog.uniswap.org/launch-aggregator-explore-top-uniswap-launchpads-in-one-place",
+    status: "live",
+    statusLabel: "BETA · OFFICIAL",
+    capability: "External launch distribution",
+    disclosure: "RMT verifies recognized launch source and Uniswap market separately. Individual beta-feed inclusion is never assumed."
+  },
+  {
+    name: "Uniswap liquidity",
+    url: "https://blog.uniswap.org/robinhood-chain-is-live",
+    status: "live",
+    statusLabel: "LIVE · ROUTED",
+    capability: "Markets · Quotes · Execution",
+    disclosure: "RMT independently verifies the exact Robinhood Chain pool and route before preparing a non-custodial order."
+  },
+  {
+    name: "Sushi liquidity",
+    url: "https://www.sushi.com/robinhood/swap",
+    status: "live",
+    statusLabel: "LIVE · ROUTED",
+    capability: "Markets · Quotes · Execution",
+    disclosure: "A verified Sushi market is tradeable inside RMT without implying that Sushi created or endorsed the token."
+  },
+  {
+    name: "Sushi Launch",
+    url: "https://www.sushi.com/robinhood",
     status: "review",
-    statusLabel: "ADAPTER REVIEW",
-    capability: "External discovery next",
-    disclosure: "External contracts and economics. Factory and event verification must finish before token attribution."
+    statusLabel: "CONTRACT WATCH",
+    capability: "Origin adapter prepared",
+    disclosure: "Announced by a Sushi contributor. Attribution remains disabled until production contracts, events, and deployment blocks are published and replay-tested."
   }
 ];
 
@@ -75,11 +83,11 @@ export function LaunchpadNetwork() {
     <section className="panel launchpadNetwork" aria-labelledby="launchpad-network-title">
       <div className="feedHeading launchpadNetworkHeading">
         <div>
-          <p className="eyebrow">MULTI-LAUNCHPAD ROADMAP</p>
-          <h2 id="launchpad-network-title">One terminal. Every origin labeled.</h2>
-          <p>RMT is live now. External sources are being connected in read-only mode first, then trading only after their contracts and execution paths are verified.</p>
+          <p className="eyebrow">LAUNCH DISTRIBUTION NETWORK</p>
+          <h2 id="launchpad-network-title">Origin, liquidity and reach—verified separately.</h2>
+          <p>RMT connects launch sources to live markets and external distribution without pretending that one piece of evidence proves the others.</p>
         </div>
-        <span className="networkPhase">PHASE 1 · DISCOVERY</span>
+        <span className="networkPhase">LIVE · EVIDENCE FIRST</span>
       </div>
 
       <div className="launchpadSourceGrid">
@@ -97,7 +105,7 @@ export function LaunchpadNetwork() {
       </div>
 
       <p className="launchpadNetworkDisclosure">
-        External tokens keep their original platform economics and security assumptions. An RMT listing never converts an external token into an RMT-verified launch.
+        External tokens keep their original economics and security assumptions. An RMT market passport is evidence, not endorsement, partnership, or a guarantee of external listing.
       </p>
     </section>
   );

@@ -17,12 +17,13 @@ It:
 ## Required environment
 
 - `DATABASE_URL`
-- `RMT_RPC_URL`
+- `RMT_RPC_URL` (current-chain polling and log ingestion)
+- `RMT_ARCHIVE_RPC_URL` (historical deployment-boundary verification; falls back to `RMT_RPC_URL` locally)
 - `RMT_FACTORY_ADDRESS` (must expose `protocolVersion() == 6`)
 - `RMT_FACTORY_START_BLOCK` (the canonical V6 factory deployment block)
 - `RMT_INDEXER_READ_TOKEN` (long random bearer token shared only with the web server)
 
-There are no legacy-factory or legacy-start-block defaults. A missing value, an invalid address/block, an RPC failure, or a factory version other than V6 stops startup before any database indexing begins. The archive RPC must prove that the configured factory first has bytecode at the exact start block and has no bytecode at the preceding block. The indexer derives the policy registry from the configured factory, reads the V6 governance/creator-payout authority and canonical protocol treasury from that deployed stack, and fails closed unless those bindings match and both authority contracts contain bytecode. No V5 governance or treasury address is configured or accepted as a fallback.
+There are no legacy-factory or legacy-start-block defaults. A missing value, an invalid address/block, an RPC failure, or a factory version other than V6 stops startup before any database indexing begins. The archive RPC must prove that the configured factory first has bytecode at the exact start block and has no bytecode at the preceding block. Current-chain reads remain on the primary RPC so a constrained archive provider cannot throttle live ingestion. The indexer derives the policy registry from the configured factory, reads the V6 governance/creator-payout authority and canonical protocol treasury from that deployed stack, and fails closed unless those bindings match and both authority contracts contain bytecode. No V5 governance or treasury address is configured or accepted as a fallback.
 
 `/ready`, `/health`, and data endpoints return `503` until the first confirmed-chain backfill and all V6 accounting invariants complete successfully. After that point, `/ready` remains RPC-independent but verifies the local database and fails on local worker/invariant errors. `/health` still reports degraded synchronization. During a classified upstream RPC delay, `/launches` can serve the last confirmed PostgreSQL checkpoint and marks that response stale; exact origin and market-trade reads fail closed until synchronization recovers. Upstream diagnostics remain private in service logs. `/launches`, `/origins`, and `/markets/:market/trades` require `Authorization: Bearer <RMT_INDEXER_READ_TOKEN>` when the token is configured. Origin reads accept 1–100 explicit token addresses, return only confirmed RMT V6 creation claims, and never infer origin from a DEX listing. Market trade reads are limited to 50 confirmed rows, reject unknown/non-V6 markets, and return the indexer checkpoint with every response. Changing the schema version, factory, or exact deployment block forces a clean replay rather than trusting earlier indexed rows.
 

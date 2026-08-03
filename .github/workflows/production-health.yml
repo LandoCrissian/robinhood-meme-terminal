@@ -58,8 +58,19 @@ jobs:
           check_endpoint launches "$base/api/launches" "health-artifacts/launches.headers"
           check_endpoint indexer "$indexer/health"
           check_endpoint trades "$base/api/markets/$official_market/trades?limit=1" "health-artifacts/trades.headers"
+          if ! curl --silent --show-error --fail --location --max-time 25 \
+            --user-agent "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/127.0.0.0 Safari/537.36" \
+            --dump-header "health-artifacts/home.headers" "$base/" --output "health-artifacts/home.html"; then
+            echo "Public home page is unavailable to a standard Windows browser." >&2
+            exit 1
+          fi
+          check_endpoint robots "$base/robots.txt"
+          check_endpoint sitemap "$base/sitemap.xml"
+          mv health-artifacts/robots.json health-artifacts/robots.txt
+          mv health-artifacts/sitemap.json health-artifacts/sitemap.xml
 
           node scripts/verify-production-health.mjs health-artifacts
+          node scripts/verify-public-surface.mjs health-artifacts
 
       - name: Preserve health evidence
         if: always()

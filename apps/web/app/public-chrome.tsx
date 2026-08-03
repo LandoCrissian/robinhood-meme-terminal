@@ -3,11 +3,13 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
+import { RMT_ADMIN_EMAIL } from "../lib/creator-application";
 import { isMainnetRelease } from "../lib/network";
+import { useProfile } from "./profile-provider";
 import { WalletButton } from "./wallet-button";
 
 const HIDDEN_PREFIXES = ["/activate-consent-testnet", "/admin", "/deploy-consent-testnet", "/deploy-mainnet", "/deploy-testnet", "/mainnet-smoke"];
-const MORE_PREFIXES = ["/portfolio", "/launch", "/sources", "/sushi", "/rescue", "/support", "/risks"];
+const MORE_PREFIXES = ["/portfolio", "/launch", "/sources", "/sushi", "/rescue", "/support", "/experience", "/risks"];
 
 function currentPage(pathname: string, href: string) {
   if (href === "/") return pathname === "/";
@@ -22,8 +24,10 @@ function PublicLink({ href, children }: { href: string; children: React.ReactNod
 
 export function PublicChrome() {
   const pathname = usePathname();
+  const { user } = useProfile();
   const menu = useRef<HTMLDetailsElement>(null);
   const moreActive = MORE_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+  const isAdmin = Boolean(user?.emailVerified && user.email?.toLowerCase() === RMT_ADMIN_EMAIL);
 
   useEffect(() => {
     menu.current?.removeAttribute("open");
@@ -73,16 +77,20 @@ export function PublicChrome() {
             <details ref={menu} className={`publicMore${moreActive ? " active" : ""}`}>
               <summary aria-label="Open more RMT pages"><span>More</span><b aria-hidden="true">···</b></summary>
               <div className="publicMenu">
+                {isAdmin && <div>
+                  <span>Private operations</span>
+                  <PublicLink href="/admin">RMT Admin<small>Live messages, applications, reports, and feedback</small></PublicLink>
+                </div>}
                 <div>
                   <span>Discover</span>
-                  <PublicLink href="/explore">Explore RMT launches<small>Verified projects created through RMT</small></PublicLink>
+                  <PublicLink href="/explore">Explore RMT ecosystem<small>Reviewed projects, creators, games, and native markets</small></PublicLink>
                   <PublicLink href="/portfolio">Portfolio<small>Your connected-wallet holdings</small></PublicLink>
                   <PublicLink href="/watchlist">Watchlist<small>Tokens saved on this device</small></PublicLink>
                   <PublicLink href="/sources">Sources<small>Launchpad coverage and origin labels</small></PublicLink>
                 </div>
                 <div>
                   <span>Protocol &amp; research</span>
-                  <PublicLink href="/sushi">Sushi integration<small>Routing boundary and launch readiness</small></PublicLink>
+                  <PublicLink href="/sushi">Sushi integration<small>Verified routing and execution boundary</small></PublicLink>
                   <PublicLink href="/launch">RMT V7 launch preparation<small>New token creation is currently paused</small></PublicLink>
                   <PublicLink href="/rescue">Migration lab<small>Paused, direct-to-wallet testnet research</small></PublicLink>
                 </div>
@@ -90,6 +98,7 @@ export function PublicChrome() {
                   <span>Help &amp; safety</span>
                   <PublicLink href="/status">Status<small>Live network and protocol checks</small></PublicLink>
                   <PublicLink href="/support">Support<small>Transaction help and incident steps</small></PublicLink>
+                  <PublicLink href="/experience">Experience &amp; privacy<small>Replay the guide or control anonymous diagnostics</small></PublicLink>
                   <PublicLink href="/risks">Risks<small>Read before signing</small></PublicLink>
                   <a href="https://github.com/LandoCrissian/rmt-transparency" target="_blank" rel="noreferrer">Public evidence<small>Contracts, deployments and independent checks</small></a>
                   <a href="https://github.com/sponsors/LandoCrissian" target="_blank" rel="noreferrer">Support RMT<small>Voluntary sponsorship through GitHub</small></a>

@@ -61,7 +61,7 @@ The deployment is live but not independently audited. Exact Blockscout source pu
 - supply: 1,000,000,000 tokens
 - curve fee: 1%
 - creator/protocol split: 70% / 30%
-- post-graduation V4 pool fee: 0.5%
+- post-graduation Uniswap v4 pool fee: 0.5%
 - graduation target: 2 ETH net real reserve
 - modeled graduation valuation: approximately 17.33 ETH curve FDV and 17.36 ETH seeded-pool FDV (about 16.4 bps apart) under the immutable reserve parameters; this is not a fixed USD market-cap promise
 - final-buy behavior: accepted gross is clamped to the exact net target; excess is immediately refunded or credited to the payer without blocking graduation
@@ -87,7 +87,7 @@ The deployment is live but not independently audited. Exact Blockscout source pu
 2. Can clone initialization, identity reservation, or the official one-time migration be front-run, replayed, bypassed, or consumed incorrectly?
 3. Do buy/sell rounding, target crossing, repeated cycles, callbacks, or reentrancy create insolvency or extractable value?
 4. Can Fair Start limits be bypassed through recipients, contracts, same-block ordering, multiple wallets, reorgs, or transaction composition?
-5. Does graduation land on the exact net target, isolate pending refunds and forced assets, initialize and settle the correct V4 pool at a continuous price, and keep unavoidable seed dust outside collectible fees?
+5. Does graduation land on the exact net target, isolate pending refunds and forced assets, initialize and settle the correct Uniswap v4 pool at a continuous price, and keep unavoidable seed dust outside collectible fees?
 6. Is locked liquidity principal truly unreachable through every public, governance, hook, PoolManager, and callback path?
 7. Can permissionless fee collection change liquidity, redirect either fee currency, over-account deposits, accept seller/refund principal or arbitrary gifts as fees, reenter the adapter/splitter, or pay any collector?
 8. Can a policy substitute its market implementation or graduation adapter, or can policy economics, treasury, or existing-launch bindings be changed?
