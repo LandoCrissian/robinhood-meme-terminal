@@ -1,10 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import { erc20Abi, formatUnits, type Address } from "viem";
 import { useAccount, useReadContract } from "wagmi";
 import type { ExternalMarket } from "../lib/external-market";
-import { summarizeExternalSellPressure, summarizeExternalTradeActors, type ExternalPoolTradesPayload } from "../lib/external-trades";
+import {
+  summarizeExternalSellPressure,
+  summarizeExternalTradeActors,
+  type ExternalMarketStreamStatus,
+  type ExternalPoolTradesPayload
+} from "../lib/external-trades";
 import { formatOwnershipBps } from "../lib/token-risk-evidence";
 import {
   exactTokenAmountForExit,
@@ -112,46 +117,16 @@ export function ExternalWalletPosition({
 
 export function ExternalTradeTape({
   market,
+  livePayload,
+  liveStatus,
   onSellPressure
 }: {
   market: ExternalMarket;
+  livePayload?: ExternalPoolTradesPayload;
+  liveStatus: ExternalMarketStreamStatus;
   onSellPressure?: (pressure: ReturnType<typeof summarizeExternalSellPressure>) => void;
 }) {
-  const [payload, setPayload] = useState<ExternalPoolTradesPayload>();
-  const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
-
-  useEffect(() => {
-    let active = true;
-    const load = async () => {
-      const controller = new AbortController();
-      const timeout = window.setTimeout(() => controller.abort(), 8_000);
-      try {
-        const query = new URLSearchParams({ token: market.address, pair: market.pairAddress });
-        const response = await fetch(`/api/markets/external-trades?${query}`, { signal: controller.signal });
-        const next = await response.json() as ExternalPoolTradesPayload | { error?: string };
-        if (!response.ok || !("trades" in next)) throw new Error("Trade tape unavailable.");
-        if (
-          next.token.toLowerCase() !== market.address.toLowerCase()
-          || next.pair.toLowerCase() !== market.pairAddress.toLowerCase()
-          || !Array.isArray(next.trades)
-        ) throw new Error("RMT rejected mismatched trade data.");
-        if (active) {
-          setPayload(next);
-          setStatus("ready");
-        }
-      } catch {
-        if (active) setStatus("error");
-      } finally {
-        window.clearTimeout(timeout);
-      }
-    };
-    void load();
-    const interval = window.setInterval(() => void load(), 4_000);
-    return () => {
-      active = false;
-      window.clearInterval(interval);
-    };
-  }, [market.address, market.pairAddress]);
+  const payload = livePayload;
 
   const actorSummary = useMemo(
     () => summarizeExternalTradeActors(payload?.trades ?? []),
@@ -174,7 +149,13 @@ export function ExternalTradeTape({
     <section className="universalTradeTape" aria-labelledby="universal-trade-tape-heading">
       <header>
         <div><small>LIVE TRADE TAPE</small><h3 id="universal-trade-tape-heading">Latest confirmed swaps</h3></div>
-        <span>{status === "loading" ? "Syncing…" : status === "error" ? "Retrying" : `${payload?.trades.length ?? 0} shown · 4s`}</span>
+        <span>
+          {liveStatus === "live"
+            ? `${payload?.trades.length ?? 0} shown · streaming`
+            : liveStatus === "fallback"
+              ? `${payload?.trades.length ?? 0} shown · fallback`
+              : liveStatus === "connecting" ? "Connecting…" : "Reconnecting…"}
+        </span>
       </header>
       {payload?.trades.length ? (
         <>
@@ -225,8 +206,8 @@ export function ExternalTradeTape({
         </>
       ) : (
         <div className="universalTradeTapeEmpty">
-          <strong>{status === "error" ? "Trade tape delayed" : status === "loading" ? "Loading confirmed swaps…" : "No recent swaps"}</strong>
-          <span>{status === "error" ? "The workspace will retry automatically." : "New pool activity will appear here automatically."}</span>
+          <strong>{liveStatus === "reconnecting" ? "Trade stream reconnecting" : liveStatus === "connecting" ? "Opening confirmed swap stream…" : "No recent swaps"}</strong>
+          <span>{liveStatus === "reconnecting" ? "RMT is using automatic recovery and fallback delivery." : "New pool activity will appear here automatically."}</span>
         </div>
       )}
       <footer>Latest {payload?.trades.length ?? 0} swaps from the exact pool only · visible flow is not P&amp;L, identity, or a copy signal · source: GeckoTerminal</footer>

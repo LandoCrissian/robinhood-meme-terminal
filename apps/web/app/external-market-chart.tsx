@@ -6,6 +6,7 @@ import {
   type ExternalChartRange,
   type ExternalOhlcvCandle
 } from "../lib/external-ohlcv";
+import type { ExternalMarketStreamStatus } from "../lib/external-trades";
 
 function price(value: number) {
   if (!Number.isFinite(value) || value <= 0) return "—";
@@ -49,6 +50,7 @@ export function ExternalMarketChart({
   error,
   updatedAt,
   lastTradeAt,
+  feedStatus,
   onRangeChange
 }: {
   candles: ExternalOhlcvCandle[];
@@ -58,6 +60,7 @@ export function ExternalMarketChart({
   error?: string;
   updatedAt?: string;
   lastTradeAt?: string | null;
+  feedStatus?: ExternalMarketStreamStatus;
   onRangeChange: (range: ExternalChartRange) => void;
 }) {
   const gradientId = useId().replaceAll(":", "");
@@ -90,6 +93,15 @@ export function ExternalMarketChart({
   const positive = change >= 0;
   const barWidth = Math.max(1.5, usableWidth / Math.max(candles.length, 1) - 1.5);
   const feed = freshness(lastTradeAt, updatedAt);
+  const streamFeed = range !== "LIVE" || !feedStatus
+    ? feed
+    : feedStatus === "live"
+      ? { label: "CONFIRMED STREAM LIVE", active: true }
+      : feedStatus === "fallback"
+        ? { label: "LIVE FALLBACK ACTIVE", active: true }
+        : feedStatus === "connecting"
+          ? { label: "OPENING LIVE STREAM", active: false }
+          : { label: "STREAM RECONNECTING", active: false };
   const latestPoint = coordinates.at(-1);
 
   return (
@@ -103,8 +115,8 @@ export function ExternalMarketChart({
           </span>
         </div>
         <div className="universalChartControls">
-          <span className={`universalChartFeed ${feed.active ? "active" : "quiet"}${stale ? " stale" : ""}`}>
-            <i aria-hidden="true" />{stale ? "FEED RETRYING" : feed.label}
+          <span className={`universalChartFeed ${streamFeed.active ? "active" : "quiet"}${stale ? " stale" : ""}`}>
+            <i aria-hidden="true" />{stale ? "FEED RETRYING" : streamFeed.label}
           </span>
           <div className="universalChartRanges" role="tablist" aria-label="Chart range">
             {EXTERNAL_CHART_RANGES.map((item) => (
@@ -153,7 +165,7 @@ export function ExternalMarketChart({
               );
             })}
             {latestPoint && (
-              <g className={feed.active ? "chartLatest active" : "chartLatest"}>
+              <g className={streamFeed.active ? "chartLatest active" : "chartLatest"}>
                 <line x1={latestPoint.x} x2={latestPoint.x} y1={priceTop} y2={volumeBottom} />
                 <circle cx={latestPoint.x} cy={latestPoint.y} r="4.5" />
               </g>
@@ -161,7 +173,7 @@ export function ExternalMarketChart({
           </svg>
           <div className="universalChartAxis">
             <span>{timeLabel(candles[0].timestamp, range)}</span>
-            <span>{range === "LIVE" ? "CONFIRMED SWAPS · 4S REFRESH" : "POOL OHLCV · AUTO REFRESH"}</span>
+            <span>{range === "LIVE" ? "CONFIRMED SWAPS · AUTO RECONNECT" : "POOL OHLCV · AUTO REFRESH"}</span>
             <span>{timeLabel(candles.at(-1)?.timestamp ?? 0, range)}</span>
           </div>
         </>

@@ -22,7 +22,7 @@ assert.equal(isExternalChartRange("LIVE"), true);
 assert.equal(isExternalChartRange("5M"), true);
 assert.equal(isExternalChartRange("7D"), true);
 assert.equal(isExternalChartRange("30D"), false);
-assert.equal(externalChartRefreshMs("LIVE"), 4_000);
+assert.equal(externalChartRefreshMs("LIVE"), 60_000);
 
 const liveRequest = externalOhlcvRequestUrl(pair, "LIVE", "base");
 const liveUrl = new URL(liveRequest.url);
@@ -61,6 +61,19 @@ const merged = mergeConfirmedTradesIntoOhlcv([
 assert.equal(merged.at(-1)?.close, 2.45);
 assert.equal(merged.at(-1)?.high, 2.6);
 assert.equal(merged.at(-1)?.low, 1.7);
+assert.equal(merged.at(-1)?.volume, 110);
+const idempotentMerge = mergeConfirmedTradesIntoOhlcv(merged, [{
+  id: "confirmed-1",
+  transactionHash: `0x${"ab".repeat(32)}`,
+  trader: "0x1111111111111111111111111111111111111111",
+  side: "buy",
+  tokenAmount: 10,
+  quoteAmount: 0.1,
+  priceUsd: 2.45,
+  volumeUsd: 24.5,
+  timestamp: new Date(185_000).toISOString()
+}]);
+assert.equal(idempotentMerge.at(-1)?.volume, 110, "replayed snapshots must not inflate volume");
 assert.throws(() => parseExternalOhlcvList({}), /malformed/);
 assert.throws(() => externalOhlcvRequestUrl("not-an-address", "1H", "base"), /Invalid pool/);
 

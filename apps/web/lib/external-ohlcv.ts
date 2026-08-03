@@ -41,7 +41,7 @@ const RANGE_CONFIG: Record<ExternalChartRange, {
 };
 
 const RANGE_REFRESH_MS: Record<ExternalChartRange, number> = {
-  LIVE: 4_000,
+  LIVE: 60_000,
   "5M": 5_000,
   "15M": 10_000,
   "1H": 15_000,
@@ -121,6 +121,13 @@ export function mergeConfirmedTradesIntoOhlcv(
   const orderedTrades = [...trades].sort((left, right) => (
     Date.parse(left.timestamp) - Date.parse(right.timestamp)
   ));
+  const visibleVolumeByMinute = new Map<number, number>();
+  for (const trade of orderedTrades) {
+    const seconds = Math.floor(Date.parse(trade.timestamp) / 1_000);
+    if (!Number.isSafeInteger(seconds)) continue;
+    const minute = Math.floor(seconds / 60) * 60;
+    visibleVolumeByMinute.set(minute, (visibleVolumeByMinute.get(minute) ?? 0) + trade.volumeUsd);
+  }
 
   for (const trade of orderedTrades) {
     const tradeSeconds = Math.floor(Date.parse(trade.timestamp) / 1_000);
@@ -131,6 +138,7 @@ export function mergeConfirmedTradesIntoOhlcv(
       existing.high = Math.max(existing.high, trade.priceUsd);
       existing.low = Math.min(existing.low, trade.priceUsd);
       existing.close = trade.priceUsd;
+      existing.volume = Math.max(existing.volume, visibleVolumeByMinute.get(minute) ?? 0);
       continue;
     }
     const previous = [...byMinute.values()]
@@ -143,7 +151,7 @@ export function mergeConfirmedTradesIntoOhlcv(
       high: Math.max(open, trade.priceUsd),
       low: Math.min(open, trade.priceUsd),
       close: trade.priceUsd,
-      volume: trade.volumeUsd
+      volume: visibleVolumeByMinute.get(minute) ?? trade.volumeUsd
     });
   }
 
