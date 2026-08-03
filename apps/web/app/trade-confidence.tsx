@@ -44,17 +44,13 @@ export function TradeConfidence({
   side,
   priceImpact,
   maxPriceImpact = PRICE_IMPACT_BLOCK,
-  evidenceState,
-  criticalEvidenceAcknowledged = false,
-  onCriticalEvidenceAcknowledgement
+  evidenceState
 }: {
   market: ExternalMarket;
   side: "buy" | "sell";
   priceImpact?: number;
   maxPriceImpact?: number;
   evidenceState: TokenRiskEvidenceState;
-  criticalEvidenceAcknowledged?: boolean;
-  onCriticalEvidenceAcknowledgement?: (acknowledged: boolean) => void;
 }) {
   const verifiedOrigin = hasVerifiedOrigin(market);
   const externalToken = market.origin?.kind !== "rmt-v6";
@@ -64,8 +60,7 @@ export function TradeConfidence({
   const excessivePriceImpact = priceImpact !== undefined && priceImpact > maxPriceImpact;
   const evidenceDecision = tokenRiskDecision(evidenceState, side);
   const criticalEvidence = evidenceDecision.state === "blocked";
-  const evidenceBlocked = criticalEvidence && !criticalEvidenceAcknowledged;
-  const tradeBlocked = excessivePriceImpact || evidenceBlocked;
+  const tradeBlocked = excessivePriceImpact;
   const evidence = evidenceState.evidence;
   const sourceTransparent = evidence?.contract.sourcePublished === true
     && evidence.contract.bytecodeChanged === false
@@ -105,9 +100,7 @@ export function TradeConfidence({
   }, [tradeBlocked]);
 
   const confidenceHeading = criticalEvidence
-    ? criticalEvidenceAcknowledged
-      ? "Critical evidence acknowledged"
-      : `Critical evidence: ${evidenceDecision.primaryFinding?.label.toLowerCase() ?? "review required"}`
+    ? `Critical evidence: ${evidenceDecision.primaryFinding?.label.toLowerCase() ?? "inspect details"}`
     : excessivePriceImpact
       ? "Trade blocked: extreme price impact"
       : requiresAcknowledgement
@@ -133,7 +126,7 @@ export function TradeConfidence({
   const additionalFindingCount = Math.max(evidenceDecision.findings.length - 1, 0);
 
   return (
-    <section className={`tradeConfidence ${tradeBlocked ? "blocked" : requiresAcknowledgement ? "caution" : "clear"}`} aria-labelledby="trade-confidence-heading">
+    <section className={`tradeConfidence ${tradeBlocked ? "blocked" : requiresAcknowledgement || criticalEvidence ? "caution" : "clear"}`} aria-labelledby="trade-confidence-heading">
       <button
         type="button"
         className="tradeConfidenceToggle"
@@ -242,20 +235,7 @@ export function TradeConfidence({
             </div>
           </details>
 
-          {criticalEvidence && onCriticalEvidenceAcknowledgement && (
-            <label className="tradeConfidenceConsent">
-              <input
-                type="checkbox"
-                checked={criticalEvidenceAcknowledged}
-                onChange={(event) => onCriticalEvidenceAcknowledgement(event.target.checked)}
-              />
-              <span>
-                I reviewed the critical evidence and choose to continue. RMT will still verify and simulate the exact transaction before opening my wallet.
-              </span>
-            </label>
-          )}
-
-          {criticalEvidence && <p className="tradeConfidenceCriticalNote">Critical findings require an explicit choice but do not decide the trade for you.</p>}
+          {criticalEvidence && <p className="tradeConfidenceCriticalNote">Critical findings are visible evidence, not an RMT trading veto. Your selected limits, fresh quote, simulation, and wallet signature still control execution.</p>}
         </div>
       )}
     </section>

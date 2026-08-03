@@ -46,7 +46,8 @@ async function main() {
       poolKey: poolId === unsupportedV4Pool
         ? { currency0: token, currency1: weth }
         : { currency0: zeroAddress, currency1: token }
-    })
+    }),
+    resolveOnchain: async () => []
   });
 
   assert.equal(requestedUrl, `https://api.dexscreener.com/token-pairs/v1/robinhood/${token}`);
@@ -60,20 +61,36 @@ async function main() {
 
   const none = await discoverExternalTradeVenues(token, {
     fetch: async () => Response.json([pair(sushiPair, "sushiswap-v3", 50_000)]),
-    verifySushi: async () => { throw new Error("not verified"); }
+    verifySushi: async () => { throw new Error("not verified"); },
+    resolveOnchain: async () => []
   });
   assert.deepEqual(none, []);
 
-  await assert.rejects(
-    discoverExternalTradeVenues(token, { fetch: async () => Response.json({ pairs: [] }) }),
-    /invalid data/
-  );
-  await assert.rejects(
-    discoverExternalTradeVenues(token, { fetch: async () => new Response("down", { status: 503 }) }),
-    /discovery is unavailable/
-  );
+  const recovered = await discoverExternalTradeVenues(token, {
+    fetch: async () => new Response("down", { status: 503 }),
+    resolveOnchain: async () => [{
+      venue: "uniswap-v3",
+      protocolVersion: 3,
+      poolAddress: uniPair,
+      token0: token,
+      token1: weth,
+      quoteToken: weth,
+      fee: 3_000,
+      canonical: true,
+      execution: "route-check-required"
+    }]
+  });
+  assert.equal(recovered[0]?.venue, "uniswap-v3");
+  assert.equal(recovered[0]?.verification, "onchain-route");
+  assert.equal(recovered[0]?.liquidityUsd, 0);
 
-  console.log("External venue discovery exposes only independently verified executable pools.");
+  const malformed = await discoverExternalTradeVenues(token, {
+    fetch: async () => Response.json({ pairs: [] }),
+    resolveOnchain: async () => []
+  });
+  assert.deepEqual(malformed, []);
+
+  console.log("External venue discovery recovers canonical onchain routes when provider discovery is unavailable.");
 }
 
 void main().catch((cause) => {

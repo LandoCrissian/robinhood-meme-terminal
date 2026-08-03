@@ -5,6 +5,9 @@ import type { TradeVenueId } from "../trade-route-selection";
 import { verifyExternalSushiMarket } from "./external-sushi-market";
 import { verifyExternalUniswapMarket } from "./external-uniswap-market";
 import { verifyExternalUniswapV4Market } from "./external-uniswap-v4-market";
+import { fetchRobinhoodStockRegistry } from "./robinhood-stock-token-registry";
+import { resolveUniversalMarketAddress } from "./universal-market-resolver";
+import type { UniversalMarketPool } from "../external-market";
 
 const DEXSCREENER_TOKEN_PAIRS_API = "https://api.dexscreener.com/token-pairs/v1/robinhood";
 const TIMEOUT_MS = 8_000;
@@ -28,7 +31,7 @@ export type ExternalTradeVenue = {
   pair: string;
   dexId: string;
   liquidityUsd: number;
-  verification: "dex-and-route" | "dex-and-onchain";
+  verification: "dex-and-route" | "dex-and-onchain" | "onchain-route";
 };
 
 type VenueVerifier = (params: { token: Address; pair: Address }) => Promise<{
@@ -50,6 +53,7 @@ type DiscoveryDependencies = {
       currency1: Address;
     };
   }>;
+  resolveOnchain?: (token: Address) => Promise<UniversalMarketPool[]>;
 };
 
 type VenueCacheEntry = {
@@ -80,25 +84,24 @@ export async function discoverExternalTradeVenues(
 ): Promise<ExternalTradeVenue[]> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), dependencies.timeoutMs ?? TIMEOUT_MS);
-  let response: Response;
+  let providerPairs: z.infer<typeof rawPairsSchema> = [];
   try {
-    response = await (dependencies.fetch ?? fetch)(`${DEXSCREENER_TOKEN_PAIRS_API}/${token}`, {
+    const response = await (dependencies.fetch ?? fetch)(`${DEXSCREENER_TOKEN_PAIRS_API}/${token}`, {
       headers: { Accept: "application/json" },
       cache: "no-store",
       signal: controller.signal
     });
-  } catch (cause) {
-    if (controller.signal.aborted) throw new Error("Trade venue discovery timed out.");
-    throw cause;
+    if (response.ok) {
+      const payload = rawPairsSchema.safeParse(await response.json());
+      if (payload.success) providerPairs = payload.data;
+    }
+  } catch {
+    providerPairs = [];
   } finally {
     clearTimeout(timeout);
   }
-  if (!response.ok) throw new Error("Trade venue discovery is unavailable.");
-
-  const payload = rawPairsSchema.safeParse(await response.json());
-  if (!payload.success) throw new Error("Trade venue discovery returned invalid data.");
   const tokenLower = token.toLowerCase();
-  const candidates = payload.data
+  const candidates = providerPairs
     .flatMap((pair) => {
       const venue = venueKind(pair.dexId, pair.pairAddress);
       const validPair = venue === "uniswap-v4"
@@ -127,7 +130,7 @@ export async function discoverExternalTradeVenues(
       < MAX_CANDIDATES_PER_VENUE
     ));
 
-  const cachedFetch = async () => Response.json(payload.data);
+  const cachedFetch = async () => Response.json(providerPairs);
   const verifySushi: VenueVerifier = dependencies.verifySushi ?? ((params) => (
     verifyExternalSushiMarket(params, { fetch: cachedFetch })
   ));
@@ -137,7 +140,12 @@ export async function discoverExternalTradeVenues(
   const verifyUniswapV4 = dependencies.verifyUniswapV4 ?? ((params) => (
     verifyExternalUniswapV4Market(params, { fetch: cachedFetch })
   ));
-  const verified = await Promise.all(candidates.map(async (
+  const onchainPoolsPromise = (dependencies.resolveOnchain ?? (async (requestedToken) => {
+    const registry = await fetchRobinhoodStockRegistry();
+    const resolution = await resolveUniversalMarketAddress(requestedToken, registry);
+    return resolution?.pools ?? [];
+  }))(token).catch(() => []);
+  const [verified, onchainPools] = await Promise.all([Promise.all(candidates.map(async (
     candidate
   ): Promise<ExternalTradeVenue | undefined> => {
     try {
@@ -175,10 +183,34 @@ export async function discoverExternalTradeVenues(
     } catch {
       return undefined;
     }
-  }));
+  })), onchainPoolsPromise]);
+  const onchainVenues: ExternalTradeVenue[] = onchainPools.flatMap((pool) => (
+    pool.execution === "route-check-required" && pool.venue === "uniswap-v3"
+      ? [{
+          venue: "uniswap-v3" as const,
+          pair: pool.poolAddress,
+          dexId: pool.venue,
+          liquidityUsd: 0,
+          verification: "onchain-route" as const
+        }]
+      : []
+  ));
+  const sushiAnchor = onchainPools.find((pool) => pool.execution === "route-check-required")
+    ?? onchainPools[0];
+  if (sushiAnchor) {
+    onchainVenues.push({
+      venue: "sushi",
+      pair: sushiAnchor.poolAddress,
+      dexId: "sushi-aggregator",
+      liquidityUsd: 0,
+      verification: "onchain-route"
+    });
+  }
 
-  return verified
-    .filter((venue): venue is ExternalTradeVenue => venue !== undefined)
+  return [...verified.filter((venue): venue is ExternalTradeVenue => venue !== undefined), ...onchainVenues]
+    .filter((venue, index, all) => all.findIndex((candidate) => (
+      candidate.venue === venue.venue && candidate.pair.toLowerCase() === venue.pair.toLowerCase()
+    )) === index)
     .sort((left, right) => right.liquidityUsd - left.liquidityUsd);
 }
 

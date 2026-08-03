@@ -150,7 +150,6 @@ export function ExternalUniswapTradePanel({
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
-  const [criticalEvidenceAcknowledged, setCriticalEvidenceAcknowledged] = useState(false);
   const [approvalStage, setApprovalStage] = useState<"token" | "permit2">();
   const [refresh, setRefresh] = useState(0);
   const [saferOrderOriginal, setSaferOrderOriginal] = useState<bigint>();
@@ -233,7 +232,6 @@ export function ExternalUniswapTradePanel({
     setQuote(undefined);
     setError("");
     setMessage("");
-    setCriticalEvidenceAcknowledged(false);
     setStatus("idle");
     setSaferOrderOriginal(undefined);
     setApprovalStage(undefined);
@@ -433,18 +431,9 @@ export function ExternalUniswapTradePanel({
   const requiresAcknowledgement = tradeRequiresAcknowledgement(market, side);
   const evidenceDecision = tokenRiskDecision(tokenRisk, side);
   const confidenceEvidenceReady = side === "sell" || tokenRisk.status !== "loading";
-  const confidenceReady = confidenceEvidenceReady && (!requiresAcknowledgement || tradingTerms.accepted);
-  const evidenceBlocked = evidenceDecision.state === "blocked" && !criticalEvidenceAcknowledged;
+  const confidenceReady = !requiresAcknowledgement || tradingTerms.accepted;
   const accountReady = identity.ready && identity.authenticated && Boolean(identity.identityToken && identity.userId);
-  const criticalEvidenceKey = evidenceDecision.findings
-    .filter((finding) => finding.severity === "blocked")
-    .map((finding) => finding.code)
-    .join(":");
   const impactBlocked = Boolean(quote && quote.priceImpact > maxPriceImpact);
-
-  useEffect(() => {
-    setCriticalEvidenceAcknowledged(false);
-  }, [criticalEvidenceKey]);
   const outputDecimals = quote?.outputToken.decimals;
   const outputSymbol = quote?.outputToken.symbol ?? (side === "buy" ? market.symbol : "ETH");
   const rmtFeeLabel = quote?.executionFee && outputDecimals !== undefined
@@ -465,7 +454,7 @@ export function ExternalUniswapTradePanel({
 
   const submit = () => {
     setMessage("");
-    if (!accountReady || !address || chainId !== ROBINHOOD_CHAIN_ID || !quoteIsFresh || !quote || insufficient || busy || !confidenceReady || evidenceBlocked || impactBlocked || !preflightReady) return;
+    if (!accountReady || !address || chainId !== ROBINHOOD_CHAIN_ID || !quoteIsFresh || !quote || insufficient || busy || !confidenceReady || impactBlocked || !preflightReady) return;
     recordExperienceStage("wallet_review_started");
     if (needsTokenApproval) {
       setApprovalStage("token");
@@ -527,9 +516,7 @@ export function ExternalUniswapTradePanel({
       : status === "error" && !quote ? "Quote unavailable"
       : !quoteIsFresh ? "Verifying route…"
       : insufficient ? "Insufficient balance"
-      : !confidenceEvidenceReady ? "Checking contract and holders…"
-      : evidenceBlocked ? "Review critical evidence to continue"
-        : !confidenceReady ? "Accept RMT trading terms"
+      : !confidenceReady ? "Accept RMT trading terms"
         : impactBlocked ? `Above your ${preferences.maxPriceImpactBps / 100}% impact limit`
         : feeEstimate.status === "unavailable" ? "Preflight failed — trade blocked"
           : !preflightReady ? "Simulating exact transaction…"
@@ -622,8 +609,6 @@ export function ExternalUniswapTradePanel({
         priceImpact={quote?.priceImpact}
         maxPriceImpact={maxPriceImpact}
         evidenceState={tokenRisk}
-        criticalEvidenceAcknowledged={criticalEvidenceAcknowledged}
-        onCriticalEvidenceAcknowledgement={setCriticalEvidenceAcknowledged}
       />
 
       {isConnected && accountReady && chainId === ROBINHOOD_CHAIN_ID && (
@@ -638,11 +623,11 @@ export function ExternalUniswapTradePanel({
             liquidityUsd={market.liquidityUsd}
             slippageLabel="1% max"
             evidenceState={
-              evidenceBlocked || impactBlocked
+              impactBlocked
                 ? "blocked"
                 : !confidenceEvidenceReady
                   ? "checking"
-                  : !confidenceReady || evidenceDecision.state === "review"
+                  : evidenceDecision.state === "review" || evidenceDecision.state === "blocked"
                     ? "review"
                     : "clear"
             }
@@ -651,7 +636,7 @@ export function ExternalUniswapTradePanel({
             className={`externalUniswapSubmit ${side}`}
             type="button"
             aria-busy={busy || status === "loading"}
-            disabled={!quoteIsFresh || insufficient || busy || !confidenceReady || evidenceBlocked || impactBlocked || !preflightReady}
+            disabled={!quoteIsFresh || insufficient || busy || !confidenceReady || impactBlocked || !preflightReady}
             onClick={submit}
           >
             {buttonLabel}
@@ -726,7 +711,7 @@ export function ExternalUniswapTradePanel({
         authenticated={accountReady}
         connected={Boolean(address && chainId === ROBINHOOD_CHAIN_ID)}
         quoteReady={quoteIsFresh}
-        evidenceReady={confidenceReady && !evidenceBlocked && !impactBlocked}
+        evidenceReady={confidenceReady && !impactBlocked}
         busy={busy}
         success={swapReceipt.isSuccess}
         needsApproval={needsApproval}

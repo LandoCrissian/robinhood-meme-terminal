@@ -14,7 +14,7 @@ import {
   ROBINHOOD_WETH
 } from "../uniswap-v4";
 import { PRICE_IMPACT_BLOCK } from "../trade-ticket";
-import { verifyExternalUniswapMarket } from "./external-uniswap-market";
+import { verifyCanonicalExternalUniswapV3Market } from "./external-uniswap-market";
 import {
   calculateRmtExecutionFee,
   currentRmtExecutionFeeConfig,
@@ -265,7 +265,7 @@ export async function quoteAndBuildExternalUniswapSwap(params: {
   if (params.amountIn <= 0n || params.amountIn > MAX_UINT128) {
     throw new Error("Trade amount is outside the supported range.");
   }
-  const market = await verifyExternalUniswapMarket({ token: params.token, pair: params.pair });
+  const market = await verifyCanonicalExternalUniswapV3Market({ token: params.token, pair: params.pair });
   const [routerCode, quoterCode, metadata] = await Promise.all([
     client.getBytecode({ address: ROBINHOOD_SWAP_ROUTER_02 }),
     client.getBytecode({ address: ROBINHOOD_V3_QUOTER }),

@@ -114,7 +114,6 @@ export function ExternalSushiQuotePanel({
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
-  const [criticalEvidenceAcknowledged, setCriticalEvidenceAcknowledged] = useState(false);
   const [refresh, setRefresh] = useState(0);
   const [saferOrderOriginal, setSaferOrderOriginal] = useState<bigint>();
   const [confirmedBuy, setConfirmedBuy] = useState<ConfirmedBuyProtectionSnapshot>();
@@ -180,7 +179,6 @@ export function ExternalSushiQuotePanel({
     setQuote(undefined);
     setError("");
     setMessage("");
-    setCriticalEvidenceAcknowledged(false);
     setStatus("idle");
     setSaferOrderOriginal(undefined);
     setConfirmedBuy(undefined);
@@ -345,18 +343,9 @@ export function ExternalSushiQuotePanel({
   const requiresAcknowledgement = tradeRequiresAcknowledgement(market, side);
   const evidenceDecision = tokenRiskDecision(tokenRisk, side);
   const confidenceEvidenceReady = side === "sell" || tokenRisk.status !== "loading";
-  const confidenceReady = confidenceEvidenceReady && (!requiresAcknowledgement || tradingTerms.accepted);
-  const evidenceBlocked = evidenceDecision.state === "blocked" && !criticalEvidenceAcknowledged;
+  const confidenceReady = !requiresAcknowledgement || tradingTerms.accepted;
   const accountReady = identity.ready && identity.authenticated && Boolean(identity.identityToken && identity.userId);
-  const criticalEvidenceKey = evidenceDecision.findings
-    .filter((finding) => finding.severity === "blocked")
-    .map((finding) => finding.code)
-    .join(":");
   const impactBlocked = Boolean(quote && quote.priceImpact > maxPriceImpact);
-
-  useEffect(() => {
-    setCriticalEvidenceAcknowledged(false);
-  }, [criticalEvidenceKey]);
   const sizingBalance = side === "buy"
     ? nativeBalance.data ? spendableTradeBalance(nativeBalance.data.value, networkFeeReserve) : undefined
     : tokenBalance.data;
@@ -372,7 +361,7 @@ export function ExternalSushiQuotePanel({
 
   const submit = () => {
     setMessage("");
-    if (!accountReady || !address || chainId !== ROBINHOOD_CHAIN_ID || !quoteIsFresh || !quote || insufficient || busy || !confidenceReady || evidenceBlocked || impactBlocked || !preflightReady) return;
+    if (!accountReady || !address || chainId !== ROBINHOOD_CHAIN_ID || !quoteIsFresh || !quote || insufficient || busy || !confidenceReady || impactBlocked || !preflightReady) return;
     recordExperienceStage("wallet_review_started");
     if (needsApproval) {
       approval.writeContract({
@@ -418,9 +407,7 @@ export function ExternalSushiQuotePanel({
       : status === "error" && !quote ? "Quote unavailable"
       : !quoteIsFresh ? "Verifying route…"
       : insufficient ? "Insufficient balance"
-      : !confidenceEvidenceReady ? "Checking contract and holders…"
-      : evidenceBlocked ? "Review critical evidence to continue"
-        : !confidenceReady ? "Accept RMT trading terms"
+      : !confidenceReady ? "Accept RMT trading terms"
         : impactBlocked ? `Above your ${preferences.maxPriceImpactBps / 100}% impact limit`
           : feeEstimate.status === "unavailable" ? "Preflight failed — trade blocked"
             : !preflightReady ? "Simulating exact transaction…"
@@ -512,8 +499,6 @@ export function ExternalSushiQuotePanel({
         priceImpact={quote?.priceImpact}
         maxPriceImpact={maxPriceImpact}
         evidenceState={tokenRisk}
-        criticalEvidenceAcknowledged={criticalEvidenceAcknowledged}
-        onCriticalEvidenceAcknowledgement={setCriticalEvidenceAcknowledged}
       />
 
       {isConnected && accountReady && chainId === ROBINHOOD_CHAIN_ID && (
@@ -528,11 +513,11 @@ export function ExternalSushiQuotePanel({
             liquidityUsd={market.liquidityUsd}
             slippageLabel="1% max"
             evidenceState={
-              evidenceBlocked || impactBlocked
+              impactBlocked
                 ? "blocked"
                 : !confidenceEvidenceReady
                   ? "checking"
-                  : !confidenceReady || evidenceDecision.state === "review"
+                  : evidenceDecision.state === "review" || evidenceDecision.state === "blocked"
                     ? "review"
                     : "clear"
             }
@@ -541,7 +526,7 @@ export function ExternalSushiQuotePanel({
             className={`externalUniswapSubmit ${side}`}
             type="button"
             aria-busy={busy || status === "loading"}
-            disabled={!quoteIsFresh || insufficient || busy || !confidenceReady || evidenceBlocked || impactBlocked || !preflightReady}
+            disabled={!quoteIsFresh || insufficient || busy || !confidenceReady || impactBlocked || !preflightReady}
             onClick={submit}
           >
             {buttonLabel}
@@ -609,7 +594,7 @@ export function ExternalSushiQuotePanel({
         authenticated={accountReady}
         connected={Boolean(address && chainId === ROBINHOOD_CHAIN_ID)}
         quoteReady={quoteIsFresh}
-        evidenceReady={confidenceReady && !evidenceBlocked && !impactBlocked}
+        evidenceReady={confidenceReady && !impactBlocked}
         busy={busy}
         success={swapReceipt.isSuccess}
         needsApproval={needsApproval}

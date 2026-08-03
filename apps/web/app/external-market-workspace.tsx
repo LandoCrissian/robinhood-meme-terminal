@@ -8,7 +8,8 @@ import {
   externalProjectProvenanceDescription,
   externalProjectProvenanceLabel,
   type ExternalMarket,
-  type ExternalMarketResponse
+  type ExternalMarketResponse,
+  type UniversalMarketResolution
 } from "../lib/external-market";
 import {
   hasExternalSocialLinks,
@@ -58,7 +59,7 @@ type TradeVenue = {
   pair: string;
   dexId: string;
   liquidityUsd: number;
-  verification: "dex-and-route" | "dex-and-onchain";
+  verification: "dex-and-route" | "dex-and-onchain" | "onchain-route";
 };
 
 function money(value: number, price = false) {
@@ -136,6 +137,9 @@ export function ExternalMarketWorkspace({ initialMarket }: { initialMarket?: Ext
       ? "origin"
       : "activity";
   const [market, setMarket] = useState<ExternalMarket | undefined>(verifiedInitialMarket);
+  const [resolution, setResolution] = useState<UniversalMarketResolution | undefined>(
+    verifiedInitialMarket?.resolution
+  );
   const [status, setStatus] = useState<"loading" | "ready" | "stale" | "error">(
     verifiedInitialMarket ? "ready" : "loading"
   );
@@ -176,7 +180,12 @@ export function ExternalMarketWorkspace({ initialMarket }: { initialMarket?: Ext
       const payload = await response.json() as ExternalMarketResponse;
       if (!response.ok || !Array.isArray(payload.markets)) throw new Error(payload.error ?? "Market unavailable.");
       const next = payload.markets.find((item) => item.address.toLowerCase() === tokenAddress.toLowerCase());
-      if (!next) throw new Error("This market is no longer in the qualified index.");
+      const nextResolution = payload.resolution
+        && payload.resolution.token.address.toLowerCase() === tokenAddress.toLowerCase()
+          ? payload.resolution
+          : next?.resolution;
+      if (!next && !nextResolution) throw new Error("This contract could not be resolved on Robinhood Chain.");
+      setResolution(nextResolution);
       setMarket(next);
       setStatus(payload.stale ? "stale" : "ready");
     } catch {
@@ -326,8 +335,12 @@ export function ExternalMarketWorkspace({ initialMarket }: { initialMarket?: Ext
         )
         && typeof candidate.dexId === "string"
         && Number.isFinite(candidate.liquidityUsd)
-        && candidate.liquidityUsd > 0
-        && (candidate.verification === "dex-and-route" || candidate.verification === "dex-and-onchain")
+        && candidate.liquidityUsd >= 0
+        && (
+          candidate.verification === "dex-and-route"
+          || candidate.verification === "dex-and-onchain"
+          || candidate.verification === "onchain-route"
+        )
       ));
       setTradeVenues(verified);
       const requestedVenue = tradePreferences.routePreference === "automatic"
@@ -539,6 +552,28 @@ export function ExternalMarketWorkspace({ initialMarket }: { initialMarket?: Ext
   if (!market && status === "loading") {
     return <main className="universalMarketPage professionalTradeWorkspace"><Link href="/">← Terminal</Link><section className="universalWorkspaceState"><p className="eyebrow">UNIVERSAL TOKEN WORKSPACE</p><h1>Opening live market…</h1><p>Matching token, pool, venue, and origin evidence.</p></section></main>;
   }
+  if (!market && resolution) {
+    return (
+      <main className="universalMarketPage professionalTradeWorkspace">
+        <div className="universalWorkspaceNav"><Link href="/">← Back to Terminal</Link><span>UNIVERSAL TOKEN WORKSPACE · MAINNET</span></div>
+        <section className="universalWorkspaceState universalResolverState">
+          <p className="eyebrow">TOKEN VERIFIED ON ROBINHOOD CHAIN</p>
+          <h1>{resolution.token.name}</h1>
+          <p>${resolution.token.symbol} exists onchain, but RMT did not find a canonical supported pool. The contract remains inspectable and will resolve automatically when a pool appears.</p>
+          <dl>
+            <div><dt>Contract</dt><dd>{shortAddress(resolution.token.address)}</dd></div>
+            <div><dt>Decimals</dt><dd>{resolution.token.decimals}</dd></div>
+            <div><dt>Pools found</dt><dd>0</dd></div>
+            <div><dt>Execution</dt><dd>Waiting for route</dd></div>
+          </dl>
+          <div>
+            <a href={`https://explorer.mainnet.chain.robinhood.com/address/${resolution.token.address}`} target="_blank" rel="noopener noreferrer">Inspect on Blockscout ↗</a>
+            <button type="button" onClick={() => void refreshMarket()}>Scan again</button>
+          </div>
+        </section>
+      </main>
+    );
+  }
   if (!market) {
     return <main className="universalMarketPage professionalTradeWorkspace"><Link href="/">← Terminal</Link><section className="universalWorkspaceState"><p className="eyebrow">MARKET UNAVAILABLE</p><h1>This market is not in RMT’s qualified index</h1><p>RMT hides execution when the current token and pool cannot be matched to a live indexed market.</p><button type="button" onClick={() => void refreshMarket()}>Retry verification</button></section></main>;
   }
@@ -559,6 +594,11 @@ export function ExternalMarketWorkspace({ initialMarket }: { initialMarket?: Ext
       </div>
 
       {status === "stale" && <div className="universalDataNotice" role="status">Market snapshot delayed · trading still requires a fresh onchain quote.</div>}
+      {market.resolution?.marketData === "identity-only" && (
+        <div className="universalDataNotice resolver" role="status">
+          Pool found directly on Robinhood Chain · provider price and activity data are not available yet. Route preparation uses a fresh onchain quote.
+        </div>
+      )}
 
       <header className="universalMarketHero">
         <div className="universalMarketIdentity">

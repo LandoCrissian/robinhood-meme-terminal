@@ -1,6 +1,5 @@
 import { getAddress, isAddress } from "viem";
 import { z } from "zod";
-import { verifyExternalSushiMarket } from "../../../../lib/server/external-sushi-market";
 import { SUSHI_RED_SNWAPPER } from "../../../../lib/sushi";
 import {
   quoteAndBuildSushiSwap,
@@ -10,9 +9,11 @@ import {
 } from "../../../../lib/server/sushi-trade";
 import { requireAuthenticatedTradeWallet, tradeIdentityErrorResponse } from "../../../../lib/server/rmt-trade-identity";
 import {
+  fetchRobinhoodStockRegistry,
   requireStockTokenExecutionEligible,
   stockTokenExecutionPolicyErrorResponse
 } from "../../../../lib/server/robinhood-stock-token-registry";
+import { verifyUniversalMarketPoolForToken } from "../../../../lib/server/universal-market-resolver";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -35,6 +36,7 @@ const publicTradeErrors = new Set([
   "Market verification returned invalid data.",
   "This Sushi pool is no longer verified.",
   "This Sushi pool is no longer eligible for an RMT quote.",
+  "This is not a canonical Robinhood Chain pool for the requested token.",
   "Sushi quote discovery timed out.",
   "Sushi quote discovery is unavailable.",
   "Sushi returned an invalid quote response.",
@@ -90,7 +92,11 @@ export async function POST(request: Request) {
     const recipient = getAddress(parsed.data.recipient);
     const authorization = await requireAuthenticatedTradeWallet(request, recipient);
     await requireStockTokenExecutionEligible(token);
-    const market = await verifyExternalSushiMarket({ token, pair });
+    const market = await verifyUniversalMarketPoolForToken(
+      token,
+      pair,
+      await fetchRobinhoodStockRegistry()
+    );
     const amountIn = BigInt(parsed.data.amountIn);
     const approvalRequired = parsed.data.side === "sell"
       && await sushiExecutionAllowance(token, recipient) < amountIn;
@@ -117,7 +123,7 @@ export async function POST(request: Request) {
     return Response.json({
       ...quote,
       authorization,
-      marketPair: market.pair,
+      marketPair: market.poolAddress,
       marketVerified: true,
       approvalRequired,
       approvalSpender: SUSHI_RED_SNWAPPER,

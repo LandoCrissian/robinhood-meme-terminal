@@ -32,6 +32,10 @@ import {
   fetchRobinhoodStockRegistry,
   stockAssetRelationshipsForPair
 } from "../../../../lib/server/robinhood-stock-token-registry";
+import {
+  marketFromUniversalResolution,
+  resolveUniversalMarketAddress
+} from "../../../../lib/server/universal-market-resolver";
 
 const CHAIN_SLUG = "robinhood";
 const DEXSCREENER_TOKEN_PAIRS_API = "https://api.dexscreener.com/token-pairs/v1";
@@ -408,6 +412,28 @@ export async function GET(request: Request) {
         ]);
     const pairs = results.flat();
     if (pairs.length === 0) {
+      if (requestedContract) {
+        const resolution = await resolveUniversalMarketAddress(requestedContract, stockRegistry);
+        const resolvedMarket = resolution
+          ? marketFromUniversalResolution(resolution, stockRegistry)
+          : null;
+        return NextResponse.json(
+          {
+            markets: resolvedMarket ? [resolvedMarket] : [],
+            resolution: resolution ?? undefined,
+            source: resolution
+              ? "RMT Universal Market Resolver · verified Robinhood Chain contract reads"
+              : "RMT Universal Market Resolver",
+            rankingVersion: "rmt-universal-resolver-v1",
+            thresholds: RUNNER_THRESHOLDS,
+            originCoverage: "unavailable",
+            rmtOriginCoverage: "unavailable",
+            stockAssetCoverage: stockRegistry.coverage,
+            updatedAt: new Date().toISOString()
+          },
+          { headers: { "Cache-Control": "public, s-maxage=20, stale-while-revalidate=60" } }
+        );
+      }
       throw new Error("No external market source responded.");
     }
 
@@ -565,10 +591,18 @@ export async function GET(request: Request) {
       : [...marketsByToken.values()]
           .sort(compareExternalMarketRank)
           .slice(0, MAX_MARKETS);
-    const markets = requestedContract
+    let markets = requestedContract
       ? rankedMarkets
       : await enrichExternalProjectMetadata(projectMetadataClient, rankedMarkets)
           .catch(() => rankedMarkets);
+    let resolution;
+    if (requestedContract && markets.length === 0) {
+      resolution = await resolveUniversalMarketAddress(requestedContract, stockRegistry);
+      const resolvedMarket = resolution
+        ? marketFromUniversalResolution(resolution, stockRegistry)
+        : null;
+      if (resolvedMarket) markets = [resolvedMarket];
+    }
     const snapshot: SuccessfulMarketSnapshot = {
       markets,
       source: "DEX Screener markets + public discovery + verified Lemon and Sushi Launch metadata + Robinhood Stock Token registry",
@@ -585,10 +619,11 @@ export async function GET(request: Request) {
       lemonSnapshot.delayed || sushiLaunchSnapshot.delayed
         ? {
             ...snapshot,
+            resolution,
             stale: true,
             error: "One launch-source metadata refresh is delayed. DEX markets and cached project identity remain available."
           }
-        : snapshot,
+        : { ...snapshot, resolution },
       { headers: { "Cache-Control": "public, s-maxage=30, stale-while-revalidate=90" } }
     );
   } catch (error) {

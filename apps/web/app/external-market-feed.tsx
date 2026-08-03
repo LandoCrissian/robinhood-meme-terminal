@@ -1,11 +1,13 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import {
   externalProjectProvenanceDescription,
   externalProjectProvenanceLabel,
   type ExternalMarket,
-  type ExternalMarketResponse
+  type ExternalMarketResponse,
+  type UniversalMarketResolution
 } from "../lib/external-market";
 import {
   canonicalExternalMarketLookupAddress,
@@ -454,6 +456,7 @@ export function ExternalMarketFeed() {
   const [marketQuery, setMarketQuery] = useState("");
   const [contractLookupStatus, setContractLookupStatus] = useState<ContractLookupStatus>("idle");
   const [contractLookupMarket, setContractLookupMarket] = useState<ExternalMarket>();
+  const [contractLookupResolution, setContractLookupResolution] = useState<UniversalMarketResolution>();
   const [showAllMarkets, setShowAllMarkets] = useState(false);
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
   const [venueFilter, setVenueFilter] = useState<VenueFilter>("all");
@@ -535,6 +538,7 @@ export function ExternalMarketFeed() {
     if (!contract) {
       setContractLookupStatus("idle");
       setContractLookupMarket(undefined);
+      setContractLookupResolution(undefined);
       return;
     }
 
@@ -545,6 +549,7 @@ export function ExternalMarketFeed() {
     if (listedMarket) {
       setContractLookupStatus("resolved");
       setContractLookupMarket(listedMarket);
+      setContractLookupResolution(listedMarket.resolution);
       return;
     }
 
@@ -552,6 +557,7 @@ export function ExternalMarketFeed() {
     const query = new URLSearchParams({ contract });
     setContractLookupStatus("searching");
     setContractLookupMarket(undefined);
+    setContractLookupResolution(undefined);
     void fetch(`/api/markets/external?${query}`, {
       cache: "no-store",
       signal: controller.signal
@@ -566,11 +572,13 @@ export function ExternalMarketFeed() {
       );
       if (controller.signal.aborted) return;
       setContractLookupMarket(match);
-      setContractLookupStatus(match ? "resolved" : "not-found");
+      setContractLookupResolution(payload.resolution);
+      setContractLookupStatus(match || payload.resolution ? "resolved" : "not-found");
     }).catch(() => {
       if (controller.signal.aborted) return;
       setContractLookupStatus("error");
       setContractLookupMarket(undefined);
+      setContractLookupResolution(undefined);
     });
     return () => controller.abort();
   }, [contractLookupAddress, markets]);
@@ -922,12 +930,25 @@ export function ExternalMarketFeed() {
             : contractLookupStatus === "searching"
             ? "Searching beyond the loaded market list…"
             : contractLookupStatus === "resolved"
-              ? "Exact contract market found on Robinhood Chain."
+              ? contractLookupMarket
+                ? contractLookupMarket.resolution
+                  ? "Canonical pool found directly on Robinhood Chain. Live route verification is available."
+                  : "Exact contract market found on Robinhood Chain."
+                : "Token contract found on Robinhood Chain. No supported pool is available yet."
               : contractLookupStatus === "not-found"
                 ? "No Robinhood Chain DEX market was found for this contract."
                 : "Direct contract lookup is temporarily delayed."}
         </p>
       )}
+      {contractLookupAddress
+        && contractLookupStatus === "resolved"
+        && !contractLookupMarket
+        && contractLookupResolution && (
+          <div className="runnerResolvedToken">
+            <span><small>ONCHAIN TOKEN</small><strong>{contractLookupResolution.token.name} · ${contractLookupResolution.token.symbol}</strong></span>
+            <Link href={`/market/${contractLookupResolution.token.address}`}>Open token workspace →</Link>
+          </div>
+        )}
       <div className="runnerToolbar">
         <div className="runnerTabs" role="tablist" aria-label="Market discovery views">
           {VIEWS.map((item) => (

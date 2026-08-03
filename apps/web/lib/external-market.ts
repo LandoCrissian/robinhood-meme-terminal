@@ -15,6 +15,37 @@ export type ExternalMarketSocials = ExternalSocialLinks & {
   provenance: "dex-pair-metadata";
 };
 
+export type UniversalMarketPool = {
+  venue: "uniswap-v2" | "uniswap-v3" | "sushi-v2" | "sushi-v3";
+  protocolVersion: 2 | 3;
+  poolAddress: string;
+  token0: string;
+  token1: string;
+  quoteToken: string;
+  fee: number | null;
+  canonical: true;
+  execution: "route-check-required" | "view-only";
+};
+
+export type UniversalMarketResolution = {
+  chainId: 4663;
+  requestedAddress: string;
+  requestedKind: "token" | "pool";
+  status: "pool-found" | "token-only";
+  token: {
+    address: string;
+    name: string;
+    symbol: string;
+    decimals: number;
+    totalSupply: string;
+  };
+  pools: UniversalMarketPool[];
+  marketData: "live-provider" | "identity-only";
+  execution: "route-check-required" | "view-only";
+  provenance: "robinhood-chain-contract-reads";
+  resolvedAt: string;
+};
+
 export type RobinhoodStockAssetRelationship = {
   relationship: "canonical-stock-token" | "paired-market-asset";
   assetId: string;
@@ -77,6 +108,7 @@ export type ExternalMarket = {
   stockAssetRelationships?: RobinhoodStockAssetRelationship[];
   project?: ExternalProjectMetadata;
   socials?: ExternalMarketSocials;
+  resolution?: UniversalMarketResolution;
   origin: TokenOrigin;
   venue: ExternalMarketVenue;
   curve?: {
@@ -119,6 +151,7 @@ export type ExternalMarket = {
 
 export type ExternalMarketResponse = {
   markets?: ExternalMarket[];
+  resolution?: UniversalMarketResolution;
   source?: string;
   rankingVersion?: string;
   thresholds?: Record<string, number>;
