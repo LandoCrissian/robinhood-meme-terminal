@@ -1,5 +1,14 @@
 import assert from "node:assert/strict";
-import { externalTradesRequestUrl, parseExternalPoolTrades, summarizeExternalSellPressure, summarizeExternalTradeActors } from "./external-trades";
+import { readFileSync } from "node:fs";
+import {
+  acceptExternalPoolTradesPayload,
+  externalTradeSnapshotSignature,
+  externalTradesRequestUrl,
+  parseExternalPoolTrades,
+  summarizeExternalSellPressure,
+  summarizeExternalTradeActors,
+  type ExternalPoolTradesPayload
+} from "./external-trades";
 
 const token = "0x232CDFc415D10b673845D83Dc02ba2eaBe7e30d1";
 const weth = "0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73";
@@ -33,6 +42,20 @@ assert.equal(parsed[0]?.priceUsd, 5.416666666666667);
 assert.equal(new URL(externalTradesRequestUrl(pair, token)).hostname, "api.geckoterminal.com");
 assert.throws(() => externalTradesRequestUrl("bad", token), /Invalid/);
 assert.equal(parseExternalPoolTrades({ data: [{ id: "bad", attributes: {} }] }, token).length, 0);
+const snapshot: ExternalPoolTradesPayload = {
+  token: token as `0x${string}`,
+  pair: pair as `0x${string}`,
+  source: "GeckoTerminal" as const,
+  updatedAt: "2026-08-03T00:00:00.000Z",
+  trades: parsed
+};
+assert.equal(acceptExternalPoolTradesPayload(snapshot, token, pair), snapshot);
+assert.equal(acceptExternalPoolTradesPayload({ ...snapshot, pair: weth }, token, pair), null);
+assert.match(externalTradeSnapshotSignature(snapshot), /trade-1/);
+const streamRoute = readFileSync(new URL("../app/api/markets/external-stream/route.ts", import.meta.url), "utf8");
+assert.match(streamRoute, /text\/event-stream/);
+assert.match(streamRoute, /event\("snapshot", payload\)/);
+assert.match(streamRoute, /STREAM_INTERVAL_MS = 2_000/);
 
 const secondTrader = "0x2222222222222222222222222222222222222222";
 const actorSummary = summarizeExternalTradeActors([

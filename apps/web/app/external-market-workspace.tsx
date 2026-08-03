@@ -17,6 +17,7 @@ import {
 } from "../lib/external-market-socials";
 import {
   externalChartRefreshMs,
+  mergeConfirmedTradesIntoOhlcv,
   type ExternalChartRange,
   type ExternalOhlcvPayload
 } from "../lib/external-ohlcv";
@@ -43,6 +44,7 @@ import { TradeExecutionControls } from "./trade-ticket-ui";
 import { WatchlistButton } from "./watchlist-button";
 import { recordExperienceStage } from "../lib/experience-funnel";
 import { useTradePreferences } from "../lib/use-trade-preferences";
+import { useExternalMarketStream } from "../lib/use-external-market-stream";
 import {
   positionGuardAfterConfirmedExit,
   positionGuardExitLabel,
@@ -169,6 +171,7 @@ export function ExternalMarketWorkspace({ initialMarket }: { initialMarket?: Ext
   const marketAddress = market?.address;
   const marketPair = market?.pairAddress;
   const preferredVenue = market ? venueKind(market) : null;
+  const liveFeed = useExternalMarketStream(market);
 
   const refreshMarket = useCallback(async () => {
     if (!tokenAddress) {
@@ -596,6 +599,13 @@ export function ExternalMarketWorkspace({ initialMarket }: { initialMarket?: Ext
   }
 
   const valuation = market.marketCapUsd > 0 ? market.marketCapUsd : market.fdvUsd;
+  const liveTrades = liveFeed.payload?.trades ?? [];
+  const latestLiveTrade = liveTrades[0];
+  const livePriceUsd = latestLiveTrade?.priceUsd ?? market.priceUsd;
+  const pricedMarket = livePriceUsd === market.priceUsd ? market : { ...market, priceUsd: livePriceUsd };
+  const displayedCandles = range === "LIVE" && chart?.candles
+    ? mergeConfirmedTradesIntoOhlcv(chart.candles, liveTrades)
+    : chart?.candles ?? [];
   const oneHourTrades = market.buys1h + market.sells1h;
   const buyPressure = oneHourTrades > 0 ? Math.round(market.buyPressureBps / 100) : 0;
   const distributionPassport = marketDistributionPassport(market);
@@ -645,7 +655,7 @@ export function ExternalMarketWorkspace({ initialMarket }: { initialMarket?: Ext
         </div>
         <div className="universalHeroPrice">
           <small>LIVE PRICE</small>
-          <strong>{money(market.priceUsd, true)}</strong>
+          <strong>{money(livePriceUsd, true)}</strong>
           <span className={market.priceChange1h >= 0 ? "positive" : "negative"}>{signedPercent(market.priceChange1h)} · 1h</span>
         </div>
         <div className="universalHeroActions">
@@ -690,13 +700,14 @@ export function ExternalMarketWorkspace({ initialMarket }: { initialMarket?: Ext
       <div className="universalWorkspaceGrid">
         <section className="universalMarketCanvas">
           <ExternalMarketChart
-            candles={chart?.candles ?? []}
+            candles={displayedCandles}
             range={range}
             loading={chartStatus === "loading"}
             stale={chartStatus === "stale"}
             error={chartError}
-            updatedAt={chart?.updatedAt}
-            lastTradeAt={chart?.lastTradeAt}
+            updatedAt={liveFeed.payload?.updatedAt ?? chart?.updatedAt}
+            lastTradeAt={latestLiveTrade?.timestamp ?? chart?.lastTradeAt}
+            feedStatus={liveFeed.status}
             onRangeChange={setRange}
           />
 
@@ -713,7 +724,7 @@ export function ExternalMarketWorkspace({ initialMarket }: { initialMarket?: Ext
           {tab === "activity" && (
             <>
               <ExternalWalletPosition
-                market={market}
+                market={pricedMarket}
                 onBuy={() => setTradeSide("buy", true)}
                 onSell={(exit) => setTradeSide("sell", true, exit)}
               />
@@ -732,7 +743,12 @@ export function ExternalMarketWorkspace({ initialMarket }: { initialMarket?: Ext
                   ))}
                 </div>
               </section>
-              <ExternalTradeTape market={market} onSellPressure={setSellPressure} />
+              <ExternalTradeTape
+                market={pricedMarket}
+                livePayload={liveFeed.payload}
+                liveStatus={liveFeed.status}
+                onSellPressure={setSellPressure}
+              />
             </>
           )}
 

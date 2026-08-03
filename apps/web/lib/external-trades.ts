@@ -20,6 +20,8 @@ export type ExternalPoolTradesPayload = {
   trades: ExternalPoolTrade[];
 };
 
+export type ExternalMarketStreamStatus = "connecting" | "live" | "reconnecting" | "fallback";
+
 export type ExternalTradeActor = {
   trader: `0x${string}`;
   buyCount: number;
@@ -73,6 +75,35 @@ function finitePositive(value: unknown) {
 
 function address(value: unknown) {
   return typeof value === "string" && isAddress(value) ? getAddress(value) : null;
+}
+
+export function acceptExternalPoolTradesPayload(
+  value: unknown,
+  token: string,
+  pair: string
+): ExternalPoolTradesPayload | null {
+  if (!isAddress(token) || !isAddress(pair) || !value || typeof value !== "object") return null;
+  const payload = value as Partial<ExternalPoolTradesPayload>;
+  if (
+    typeof payload.token !== "string"
+    || typeof payload.pair !== "string"
+    || !isAddress(payload.token)
+    || !isAddress(payload.pair)
+    || payload.token.toLowerCase() !== token.toLowerCase()
+    || payload.pair.toLowerCase() !== pair.toLowerCase()
+    || payload.source !== "GeckoTerminal"
+    || typeof payload.updatedAt !== "string"
+    || !Number.isFinite(Date.parse(payload.updatedAt))
+    || !Array.isArray(payload.trades)
+  ) return null;
+  return payload as ExternalPoolTradesPayload;
+}
+
+export function externalTradeSnapshotSignature(payload: ExternalPoolTradesPayload) {
+  const latest = payload.trades[0];
+  return latest
+    ? `${latest.id}:${latest.transactionHash}:${latest.timestamp}:${payload.trades.length}`
+    : `empty:${payload.pair.toLowerCase()}`;
 }
 
 export function externalTradesRequestUrl(pair: string, token: string) {
