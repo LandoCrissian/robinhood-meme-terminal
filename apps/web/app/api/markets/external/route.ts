@@ -19,6 +19,7 @@ import {
 } from "../../../../lib/external-market-ranking";
 import { enrichExternalProjectMetadata } from "../../../../lib/server/external-project-metadata";
 import { safeDexImageUri } from "../../../../lib/server/external-market-media";
+import { externalMarketSocialsFromPairInfo } from "../../../../lib/external-market-socials";
 import {
   fetchLemonProjectSnapshot,
   type LemonProjectSnapshot
@@ -79,6 +80,8 @@ type RawPair = {
   pairCreatedAt?: unknown;
   info?: {
     imageUrl?: unknown;
+    websites?: unknown;
+    socials?: unknown;
   };
 };
 
@@ -483,6 +486,7 @@ export async function GET(request: Request) {
         name,
         symbol,
         imageUri: safeDexImageUri(pair.info?.imageUrl),
+        socials: externalMarketSocialsFromPairInfo(pair.info),
         pairAddress,
         url,
         dexId,

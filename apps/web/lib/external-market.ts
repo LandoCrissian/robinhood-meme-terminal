@@ -3,6 +3,18 @@ import type { ExternalMarketRiskFlag, ExternalMarketSignal } from "./external-ma
 
 export type ExternalMarketVenue = Extract<MarketVenue, { kind: "dex" | "external-launchpad" }>;
 
+export type ExternalSocialLinks = {
+  x: string | null;
+  telegram: string | null;
+  discord: string | null;
+  website: string | null;
+  farcaster: string | null;
+};
+
+export type ExternalMarketSocials = ExternalSocialLinks & {
+  provenance: "dex-pair-metadata";
+};
+
 export type RobinhoodStockAssetRelationship = {
   relationship: "canonical-stock-token" | "paired-market-asset";
   assetId: string;
@@ -28,13 +40,7 @@ export type ExternalProjectMetadata = {
   symbol: string;
   description: string;
   imageUri: string | null;
-  socials: {
-    x: string | null;
-    telegram: string | null;
-    discord: string | null;
-    website: string | null;
-    farcaster: string | null;
-  };
+  socials: ExternalSocialLinks;
 };
 
 export function externalProjectProvenanceLabel(project: ExternalProjectMetadata) {
@@ -70,6 +76,7 @@ export type ExternalMarket = {
   dexId: string;
   stockAssetRelationships?: RobinhoodStockAssetRelationship[];
   project?: ExternalProjectMetadata;
+  socials?: ExternalMarketSocials;
   origin: TokenOrigin;
   venue: ExternalMarketVenue;
   curve?: {
