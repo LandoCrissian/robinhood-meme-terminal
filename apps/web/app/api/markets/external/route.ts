@@ -29,6 +29,14 @@ import {
   type SushiLaunchSnapshot
 } from "../../../../lib/server/sushi-launch-feed";
 import {
+  fetchGeckoNewPoolSnapshot,
+  type GeckoNewPoolPair
+} from "../../../../lib/server/gecko-new-pool-feed";
+import {
+  parseDexDiscoveryMetadata,
+  type PublicDiscoverySnapshot
+} from "../../../../lib/server/dex-discovery-metadata";
+import {
   fetchRobinhoodStockRegistry,
   stockAssetRelationshipsForPair
 } from "../../../../lib/server/robinhood-stock-token-registry";
@@ -42,6 +50,7 @@ const DEXSCREENER_TOKEN_PAIRS_API = "https://api.dexscreener.com/token-pairs/v1"
 const DEXSCREENER_TOKENS_API = "https://api.dexscreener.com/tokens/v1";
 const DEXSCREENER_PAIR_API = "https://api.dexscreener.com/latest/dex/pairs";
 const DEXSCREENER_PROFILES_API = "https://api.dexscreener.com/token-profiles/latest/v1";
+const DEXSCREENER_LATEST_BOOSTS_API = "https://api.dexscreener.com/token-boosts/latest/v1";
 const DEXSCREENER_BOOSTS_API = "https://api.dexscreener.com/token-boosts/top/v1";
 const DEXSCREENER_PAGE = "https://dexscreener.com/robinhood/";
 const PREVIEW_MARKET_UPSTREAM = "https://www.rmtlaunch.fun/api/markets/external";
@@ -87,11 +96,6 @@ type RawPair = {
     websites?: unknown;
     socials?: unknown;
   };
-};
-
-type RawDiscoveryToken = {
-  chainId?: unknown;
-  tokenAddress?: unknown;
 };
 
 type RmtOriginClaim = {
@@ -164,7 +168,7 @@ async function fetchPublicDiscoveryTokens() {
   const timeout = setTimeout(() => controller.abort(), DEX_TIMEOUT_MS);
   try {
     const payloads = await Promise.all(
-      [DEXSCREENER_PROFILES_API, DEXSCREENER_BOOSTS_API].map(async (url) => {
+      [DEXSCREENER_PROFILES_API, DEXSCREENER_LATEST_BOOSTS_API, DEXSCREENER_BOOSTS_API].map(async (url) => {
         const response = await fetch(url, {
           headers: { Accept: "application/json" },
           next: { revalidate: 60 },
@@ -172,15 +176,10 @@ async function fetchPublicDiscoveryTokens() {
         });
         if (!response.ok) return [];
         const payload: unknown = await response.json();
-        return Array.isArray(payload) ? payload as RawDiscoveryToken[] : [];
+        return Array.isArray(payload) ? payload : [];
       })
     );
-    return [...new Set(payloads.flat().flatMap((item) => {
-      const address = asText(item.tokenAddress, 42);
-      return item.chainId === CHAIN_SLUG && isNonzeroEvmAddress(address)
-        ? [address.toLowerCase()]
-        : [];
-    }))];
+    return parseDexDiscoveryMetadata(payloads);
   } finally {
     clearTimeout(timeout);
   }
@@ -376,19 +375,24 @@ export async function GET(request: Request) {
       : null;
     let lemonSnapshot: LemonProjectSnapshot;
     let sushiLaunchSnapshot: SushiLaunchSnapshot;
-    let publicDiscoveryTokens: string[];
+    let publicDiscoverySnapshot: PublicDiscoverySnapshot;
+    let geckoNewPoolPairs: GeckoNewPoolPair[];
+    let geckoNewPoolsDelayed: boolean;
     let stockRegistry: Awaited<ReturnType<typeof fetchRobinhoodStockRegistry>>;
     if (requestedContract) {
       lemonSnapshot = { projects: new Map(), candidateAddresses: [], delayed: false };
       sushiLaunchSnapshot = { projects: new Map(), candidateAddresses: [], delayed: false };
-      publicDiscoveryTokens = [];
+      publicDiscoverySnapshot = { tokenAddresses: [], metadata: new Map() };
+      geckoNewPoolPairs = [];
+      geckoNewPoolsDelayed = false;
       stockRegistry = await fetchRobinhoodStockRegistry();
     } else {
-      [lemonSnapshot, sushiLaunchSnapshot, publicDiscoveryTokens, stockRegistry] = await Promise.all([
+      [lemonSnapshot, sushiLaunchSnapshot, publicDiscoverySnapshot, stockRegistry, { pairs: geckoNewPoolPairs, delayed: geckoNewPoolsDelayed }] = await Promise.all([
         fetchLemonProjectSnapshot(),
         fetchSushiLaunchSnapshot(),
-        fetchPublicDiscoveryTokens().catch(() => []),
-        fetchRobinhoodStockRegistry()
+        fetchPublicDiscoveryTokens().catch(() => ({ tokenAddresses: [], metadata: new Map() })),
+        fetchRobinhoodStockRegistry(),
+        fetchGeckoNewPoolSnapshot()
       ]);
     }
     const stockTokenAddresses = new Set(stockRegistry.assetsByAddress.keys());
@@ -396,7 +400,8 @@ export async function GET(request: Request) {
       [
         ...lemonSnapshot.candidateAddresses.map((address) => address.toLowerCase()),
         ...sushiLaunchSnapshot.candidateAddresses.map((address) => address.toLowerCase()),
-        ...publicDiscoveryTokens,
+        ...geckoNewPoolPairs.map((pair) => pair.baseToken.address.toLowerCase()),
+        ...publicDiscoverySnapshot.tokenAddresses,
         ...(requestedContract ? [requestedContract] : [])
       ]
     )];
@@ -410,7 +415,7 @@ export async function GET(request: Request) {
           ...CANONICAL_MARKET_TOKENS.map((address) => fetchCanonicalTokenPairs(address).catch(() => [])),
           ...tokenBatches.map((addresses) => fetchTokenBatch(addresses).catch(() => []))
         ]);
-    const pairs = results.flat();
+    const pairs: RawPair[] = [...results.flat(), ...geckoNewPoolPairs];
     if (pairs.length === 0) {
       if (requestedContract) {
         const resolution = await resolveUniversalMarketAddress(requestedContract, stockRegistry);
@@ -507,12 +512,13 @@ export async function GET(request: Request) {
         pairCreatedAt
       });
 
+      const discoveryMetadata = publicDiscoverySnapshot.metadata.get(address.toLowerCase());
       const market: ExternalMarket = {
         address,
         name,
         symbol,
-        imageUri: safeDexImageUri(pair.info?.imageUrl),
-        socials: externalMarketSocialsFromPairInfo(pair.info),
+        imageUri: safeDexImageUri(pair.info?.imageUrl) ?? discoveryMetadata?.imageUri,
+        socials: externalMarketSocialsFromPairInfo(pair.info) ?? discoveryMetadata?.socials,
         pairAddress,
         url,
         dexId,
@@ -580,7 +586,12 @@ export async function GET(request: Request) {
         `${relationship.relationship}:${relationship.contractAddress.toLowerCase()}`,
         relationship
       ])).values()];
-      marketsByToken.set(key, { ...preferred, stockAssetRelationships });
+      marketsByToken.set(key, {
+        ...preferred,
+        imageUri: preferred.imageUri ?? existing?.imageUri ?? attributedMarket.imageUri,
+        socials: preferred.socials ?? existing?.socials ?? attributedMarket.socials,
+        stockAssetRelationships
+      });
     }
 
     const rankedMarkets = requestedContract
@@ -605,8 +616,8 @@ export async function GET(request: Request) {
     }
     const snapshot: SuccessfulMarketSnapshot = {
       markets,
-      source: "DEX Screener markets + public discovery + verified Lemon and Sushi Launch metadata + Robinhood Stock Token registry",
-      rankingVersion: "rmt-discovery-v5",
+      source: "DEX Screener markets + GeckoTerminal newest pools + public discovery + verified Lemon and Sushi Launch metadata + Robinhood Stock Token registry",
+      rankingVersion: "rmt-discovery-v6",
       thresholds: RUNNER_THRESHOLDS,
       originCoverage: "unavailable",
       rmtOriginCoverage: rmtOrigins.coverage,
@@ -616,7 +627,7 @@ export async function GET(request: Request) {
     if (!requestedContract) lastSuccessfulSnapshot = snapshot;
 
     return NextResponse.json(
-      lemonSnapshot.delayed || sushiLaunchSnapshot.delayed
+      lemonSnapshot.delayed || sushiLaunchSnapshot.delayed || geckoNewPoolsDelayed
         ? {
             ...snapshot,
             resolution,

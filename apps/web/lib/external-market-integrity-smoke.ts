@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import "./server/lemon-project-feed-smoke";
 import "./server/sushi-launch-feed-smoke";
+import "./server/gecko-new-pool-feed-smoke";
+import "./server/dex-discovery-metadata-smoke";
 import {
   externalProjectProvenanceDescription,
   externalProjectProvenanceLabel,

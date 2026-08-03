@@ -3,7 +3,11 @@ export function safeDexImageUri(value: unknown) {
   if (!text) return undefined;
   try {
     const url = new URL(text);
-    return url.protocol === "https:" && url.hostname === "cdn.dexscreener.com"
+    return url.protocol === "https:" && [
+      "cdn.dexscreener.com",
+      "assets.coingecko.com",
+      "coin-images.coingecko.com"
+    ].includes(url.hostname.toLowerCase())
       ? url.toString()
       : undefined;
   } catch {
