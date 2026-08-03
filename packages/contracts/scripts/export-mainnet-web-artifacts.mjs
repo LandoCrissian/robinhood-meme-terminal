@@ -19,6 +19,7 @@ const artifacts = {
   policyRegistryV6: "out/RMTLaunchPolicyRegistry.sol/RMTLaunchPolicyRegistry.json",
   rmtFactoryV6: "out/RMTLaunchFactoryV6.sol/RMTLaunchFactoryV6.json",
   feeSplitterV6: "out/DirectLaunchFeeSplitter.sol/DirectLaunchFeeSplitter.json",
+  positionGuardExecutor: "out/RMTPositionGuardExecutor.sol/RMTPositionGuardExecutor.json",
   market: "out/CloneBondingCurveMarketV3.sol/CloneBondingCurveMarketV3.json",
   marketV6: "out/CloneBondingCurveMarketV6.sol/CloneBondingCurveMarketV6.json",
   registry: "out/VersionedFactoryRegistry.sol/VersionedFactoryRegistry.json"
@@ -164,6 +165,18 @@ for (const [functionName, types] of [
   ["creatorPayoutAuthority", []]
 ]) {
   requireFunction("feeSplitterV6", functionName, types);
+}
+
+if (!hasConstructor(result.positionGuardExecutor, ["address", "address", "address"])) {
+  throw new Error("RMTPositionGuardExecutor artifact has the wrong three-address constructor.");
+}
+for (const [functionName, types] of [
+  ["factory", []],
+  ["router", []],
+  ["weth", []],
+  ["executeV3Exit", ["tuple"]]
+]) {
+  requireFunction("positionGuardExecutor", functionName, types);
 }
 
 await mkdir(dirname(output), { recursive: true });
