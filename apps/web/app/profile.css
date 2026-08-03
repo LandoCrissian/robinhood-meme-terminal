@@ -230,8 +230,8 @@
 .adminApplicationCard dt{color:#69756d}.adminApplicationCard dd{color:#c1cbc3;text-align:left}.adminApplicationCard dd a{color:#75e988}
 .adminReviewControls{display:grid;grid-template-columns:240px minmax(0,1fr);gap:10px;margin-top:12px}
 .adminReviewControls label{display:flex;flex-direction:column;gap:6px;color:#8d9991;font-size:.66rem;font-weight:850}
-.adminReviewControls input,.adminReviewControls textarea{width:100%;border:1px solid #2e3b32;border-radius:10px;background:#060907;color:#e6ece7;font:inherit;outline:0}
-.adminReviewControls input{min-height:44px;padding:0 11px}.adminReviewControls textarea{min-height:76px;padding:10px;resize:vertical}
+.adminReviewControls input,.adminReviewControls textarea,.adminReviewControls select{width:100%;border:1px solid #2e3b32;border-radius:10px;background:#060907;color:#e6ece7;font:inherit;outline:0}
+.adminReviewControls input,.adminReviewControls select{min-height:44px;padding:0 11px}.adminReviewControls textarea{min-height:76px;padding:10px;resize:vertical}
 .adminReviewControls>div{grid-column:1/-1;display:flex;gap:8px}
 .adminReviewControls button{min-height:42px;padding:0 14px;border:1px solid #344139;border-radius:10px;background:#101612;color:#b5c0b8;font-weight:900;cursor:pointer}
 .adminReviewControls .adminApproveButton{border:0;background:#55ee72;color:#031207}
@@ -248,6 +248,8 @@
 .status-needs_changes{border-color:#665832}.status-rejected{border-color:#603939}.status-approved{border-color:#3a6844}
 .adminActivationSection{margin-top:28px;padding-top:28px;border-top:1px solid #253129}
 .adminActivationSection>.adminReviewHeader h2{margin:4px 0 7px;font-size:clamp(1.7rem,4vw,2.7rem);letter-spacing:-.04em}
+.adminMediaLifecycleSection .adminReviewHeader span{white-space:nowrap}
+.adminMediaAttentionList{margin-top:12px;padding-top:12px;border-top:1px dashed #4a3f29}
 .adminActivationGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:10px}
 .adminActivationCard{display:flex;min-height:260px;flex-direction:column;padding:18px;border:1px solid #29372e;border-radius:17px;background:#090e0b}
 .adminActivationCard>header{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}

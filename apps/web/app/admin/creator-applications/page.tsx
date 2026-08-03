@@ -13,8 +13,10 @@ import { ActivationReviewInbox } from "./activation-review-inbox";
 import { CommunityFeedbackInbox } from "./community-feedback-inbox";
 import { CommunityMessageManager } from "./community-message-manager";
 import { CommunityModerationInbox } from "./community-moderation-inbox";
+import { CreatorMediaLifecycleInbox } from "./creator-media-lifecycle-inbox";
 import { ExperienceFunnelInsights } from "./experience-funnel-insights";
 import { PositionGuardReleaseControl } from "./position-guard-release-control";
+import { ReleaseReviewInbox } from "./release-review-inbox";
 
 type ReviewDraft = { note: string; slug: string };
 
@@ -186,6 +188,8 @@ export default function CreatorApplicationAdminPage() {
         {message && <p className="adminReviewMessage" role="status">{message}</p>}
       </section>
       <ActivationReviewInbox admin={user} />
+      <ReleaseReviewInbox admin={user} />
+      <CreatorMediaLifecycleInbox admin={user} />
       <CommunityModerationInbox admin={user} />
       <CommunityFeedbackInbox admin={user} />
       <ExperienceFunnelInsights admin={user} />

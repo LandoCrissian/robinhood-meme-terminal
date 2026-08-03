@@ -600,6 +600,195 @@ service cloud.firestore {
         && reviewNote is string && reviewNote.size() <= 600;
     }
 
+    function validCreatorAssetMedia(value, optional) {
+      return value is string
+        && value.size() <= 512
+        && ((optional && value == '') || value.matches('^(https://|ipfs://).+$'));
+    }
+
+    function validCreatorAsset(assetId, projectId, data) {
+      let aiDisclosure = data.get('aiDisclosure', '');
+      let licenseUri = data.get('licenseUri', '');
+      return assetId.matches('^[A-Za-z0-9]{20}$')
+        && data.keys().hasOnly([
+          'schemaVersion',
+          'assetId',
+          'projectSlug',
+          'assetType',
+          'title',
+          'description',
+          'primaryMediaUri',
+          'previewMediaUri',
+          'creationMethod',
+          'aiTools',
+          'aiDisclosure',
+          'rightsBasis',
+          'rightsStatement',
+          'rightsConfirmed',
+          'containsThirdPartyMaterial',
+          'thirdPartyRightsConfirmed',
+          'license',
+          'licenseUri',
+          'secondaryRoyaltyBps',
+          'editionMode',
+          'editionSupply',
+          'musicReleaseType',
+          'explicitContent',
+          'masterRightsConfirmed',
+          'compositionRightsConfirmed',
+          'collaborators',
+          'collaboratorConsentStatus',
+          'revenueSplits',
+          'revenueSplitTotalBps',
+          'draftRevisionHash',
+          'status',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.schemaVersion == 1
+        && data.assetId == assetId
+        && data.projectSlug == projectId
+        && data.assetType in ['artwork', 'music_release', 'nft_collection']
+        && data.title is string && data.title.size() >= 2 && data.title.size() <= 100
+        && data.description is string && data.description.size() >= 20 && data.description.size() <= 1200
+        && validCreatorAssetMedia(data.primaryMediaUri, false)
+        && validCreatorAssetMedia(data.previewMediaUri, true)
+        && data.creationMethod in ['human', 'ai_assisted', 'ai_generated']
+        && data.aiTools is list && data.aiTools.size() <= 8
+        && aiDisclosure is string && aiDisclosure.size() <= 600
+        && (data.creationMethod == 'human'
+          ? data.aiTools.size() == 0 && aiDisclosure == ''
+          : data.aiTools.size() > 0 && aiDisclosure.size() >= 20)
+        && data.rightsBasis in ['original', 'commissioned', 'licensed', 'public_domain']
+        && data.rightsStatement is string
+        && data.rightsStatement.size() >= 20 && data.rightsStatement.size() <= 1000
+        && data.rightsConfirmed == true
+        && data.containsThirdPartyMaterial is bool
+        && data.thirdPartyRightsConfirmed is bool
+        && (!data.containsThirdPartyMaterial || data.thirdPartyRightsConfirmed)
+        && data.license in ['all_rights_reserved', 'personal_use', 'commercial_use', 'cc0', 'cc_by', 'custom']
+        && licenseUri is string && licenseUri.size() <= 512
+        && (data.license == 'custom' ? licenseUri.matches('^https://.+$') : licenseUri == '')
+        && data.secondaryRoyaltyBps is int
+        && data.secondaryRoyaltyBps >= 0 && data.secondaryRoyaltyBps <= 1000
+        && data.editionMode in ['one_of_one', 'limited', 'open']
+        && data.editionSupply is int
+        && (data.editionMode == 'one_of_one'
+          ? data.editionSupply == 1
+          : data.editionMode == 'open'
+            ? data.editionSupply == 0
+            : data.editionSupply >= 1 && data.editionSupply <= 1000000)
+        && data.musicReleaseType in ['single', 'ep', 'album']
+        && data.explicitContent is bool
+        && data.masterRightsConfirmed is bool
+        && data.compositionRightsConfirmed is bool
+        && (data.assetType == 'music_release'
+          ? data.masterRightsConfirmed && data.compositionRightsConfirmed
+          : !data.explicitContent && !data.masterRightsConfirmed && !data.compositionRightsConfirmed)
+        && data.collaborators is list && data.collaborators.size() <= 6
+        && data.collaboratorConsentStatus == 'unverified'
+        && data.revenueSplits is list && data.revenueSplits.size() <= 5
+        && data.revenueSplitTotalBps is int
+        && (data.revenueSplits.size() == 0
+          ? data.revenueSplitTotalBps == 0
+          : data.revenueSplitTotalBps == 10000)
+        && data.draftRevisionHash.matches('^0x[0-9a-f]{64}$')
+        && data.status == 'draft'
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function projectAssignmentAllowsAsset(projectId, assetType) {
+      let modules = get(/databases/$(database)/documents/projectAssignments/$(projectId)).data.allowedModules;
+      return assetType == 'music_release'
+        ? modules.hasAny(['music'])
+        : modules.hasAny(['nft']);
+    }
+
+    function validCreatorConsentInvitation(invitationId, projectId, assetId, data) {
+      return invitationId.matches('^[0-9a-f]{64}$')
+        && data.keys().hasOnly([
+          'schemaVersion',
+          'invitationId',
+          'invitationDigest',
+          'projectSlug',
+          'assetId',
+          'draftRevisionHash',
+          'collaboratorName',
+          'collaboratorRole',
+          'collaboratorWallet',
+          'shareBps',
+          'chainId',
+          'expiresAt',
+          'termsHash',
+          'nonce',
+          'status',
+          'revokedAt',
+          'responseAction',
+          'responseSignature',
+          'respondedAt',
+          'signerWallet',
+          'receivedAt',
+          'withdrawalSignature',
+          'withdrawalSignedAt',
+          'withdrawalReceivedAt',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.schemaVersion == 1
+        && data.invitationId == invitationId
+        && data.invitationDigest == '0x' + invitationId
+        && data.projectSlug == projectId
+        && data.assetId == assetId
+        && data.draftRevisionHash.matches('^0x[0-9a-f]{64}$')
+        && data.collaboratorName is string
+        && data.collaboratorName.size() >= 2 && data.collaboratorName.size() <= 60
+        && data.collaboratorRole in ['artist', 'producer', 'songwriter', 'performer', 'developer', 'label', 'publisher', 'other']
+        && data.collaboratorWallet.matches('^0x[0-9a-f]{40}$')
+        && data.shareBps is int && data.shareBps >= 0 && data.shareBps <= 10000
+        && data.chainId is int && data.chainId > 0
+        && data.expiresAt is int && data.expiresAt > 0
+        && data.termsHash.matches('^0x[0-9a-f]{64}$')
+        && data.nonce.matches('^0x[0-9a-f]{64}$')
+        && data.status in ['pending', 'revoked']
+        && ((data.status == 'pending' && data.revokedAt == null)
+          || (data.status == 'revoked' && data.revokedAt is timestamp))
+        && data.get('responseAction', null) == null
+        && data.get('responseSignature', null) == null
+        && data.get('respondedAt', null) == null
+        && data.get('signerWallet', null) == null
+        && data.get('receivedAt', null) == null
+        && data.get('withdrawalSignature', null) == null
+        && data.get('withdrawalSignedAt', null) == null
+        && data.get('withdrawalReceivedAt', null) == null
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function validCreatorConsentPublicStatus(invitationId, data) {
+      return invitationId.matches('^[0-9a-f]{64}$')
+        && data.keys().hasOnly([
+          'schemaVersion',
+          'invitationId',
+          'invitationDigest',
+          'projectSlug',
+          'assetId',
+          'status',
+          'expiresAt',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.schemaVersion == 1
+        && data.invitationId == invitationId
+        && data.invitationDigest == '0x' + invitationId
+        && data.projectSlug.matches('^[a-z0-9]+(?:-[a-z0-9]+)*$')
+        && data.assetId.matches('^[A-Za-z0-9]{20}$')
+        && data.status in ['pending', 'revoked']
+        && data.expiresAt is int && data.expiresAt > 0
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
     function validAdminModuleReview() {
       let changed = request.resource.data.diff(resource.data).affectedKeys();
       let note = request.resource.data.get('reviewNote', '');
@@ -793,6 +982,117 @@ service cloud.firestore {
           && validModuleActivationRequest(module, request.resource.data)
           && request.resource.data.requestedAt == resource.data.requestedAt;
       }
+
+      match /assets/{assetId} {
+        allow read: if isRmtAdmin() || ownsProjectAssignment(projectId);
+        allow create: if ownsProjectAssignment(projectId)
+          && projectAssignmentAllowsAsset(projectId, request.resource.data.assetType)
+          && validCreatorAsset(assetId, projectId, request.resource.data)
+          && request.resource.data.createdAt == request.time
+          && request.resource.data.updatedAt == request.time;
+        allow update: if ownsProjectAssignment(projectId)
+          && projectAssignmentAllowsAsset(projectId, request.resource.data.assetType)
+          && validCreatorAsset(assetId, projectId, request.resource.data)
+          && request.resource.data.schemaVersion == resource.data.schemaVersion
+          && request.resource.data.assetId == resource.data.assetId
+          && request.resource.data.projectSlug == resource.data.projectSlug
+          && request.resource.data.status == resource.data.status
+          && request.resource.data.createdAt == resource.data.createdAt
+          && request.resource.data.updatedAt == request.time;
+        allow delete: if ownsProjectAssignment(projectId)
+          && resource.data.status == 'draft';
+
+        match /consentInvitations/{invitationId} {
+          allow read: if isRmtAdmin() || ownsProjectAssignment(projectId);
+          allow create: if ownsProjectAssignment(projectId)
+            && validCreatorConsentInvitation(invitationId, projectId, assetId, request.resource.data)
+            && request.resource.data.status == 'pending'
+            && request.resource.data.revokedAt == null
+            && request.resource.data.draftRevisionHash
+              == get(/databases/$(database)/documents/projectAssignments/$(projectId)/assets/$(assetId)).data.draftRevisionHash
+            && getAfter(/databases/$(database)/documents/creatorConsentStatuses/$(invitationId)).data.status == 'pending'
+            && getAfter(/databases/$(database)/documents/creatorConsentStatuses/$(invitationId)).data.projectSlug == projectId
+            && getAfter(/databases/$(database)/documents/creatorConsentStatuses/$(invitationId)).data.assetId == assetId
+            && request.resource.data.createdAt == request.time
+            && request.resource.data.updatedAt == request.time;
+          allow update: if ownsProjectAssignment(projectId)
+            && validCreatorConsentInvitation(invitationId, projectId, assetId, request.resource.data)
+            && resource.data.status == 'pending'
+            && request.resource.data.status == 'revoked'
+            && request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['status', 'revokedAt', 'updatedAt'])
+            && request.resource.data.revokedAt == request.time
+            && getAfter(/databases/$(database)/documents/creatorConsentStatuses/$(invitationId)).data.status == 'revoked'
+            && request.resource.data.updatedAt == request.time;
+          allow delete: if false;
+        }
+
+        match /releaseReviews/{reviewId} {
+          allow read: if isRmtAdmin() || ownsProjectAssignment(projectId);
+          allow create, update, delete: if false;
+        }
+
+        match /mediaReceipts/{receiptId} {
+          allow read: if isRmtAdmin() || ownsProjectAssignment(projectId);
+          allow create, update, delete: if false;
+        }
+
+        match /mediaReceiptSupersessions/{receiptId} {
+          allow read: if isRmtAdmin() || ownsProjectAssignment(projectId);
+          allow create, update, delete: if false;
+        }
+      }
+    }
+
+    match /creatorConsentStatuses/{invitationId} {
+      allow read: if true;
+      allow create: if validCreatorConsentPublicStatus(invitationId, request.resource.data)
+        && ownsProjectAssignment(request.resource.data.projectSlug)
+        && request.resource.data.status == 'pending'
+        && getAfter(/databases/$(database)/documents/projectAssignments/$(request.resource.data.projectSlug)/assets/$(request.resource.data.assetId)/consentInvitations/$(invitationId)).data.status == 'pending'
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+      allow update: if validCreatorConsentPublicStatus(invitationId, request.resource.data)
+        && ownsProjectAssignment(request.resource.data.projectSlug)
+        && resource.data.status == 'pending'
+        && request.resource.data.status == 'revoked'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt'])
+        && getAfter(/databases/$(database)/documents/projectAssignments/$(request.resource.data.projectSlug)/assets/$(request.resource.data.assetId)/consentInvitations/$(invitationId)).data.status == 'revoked'
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if false;
+    }
+
+    match /creatorReleaseDecisions/{reviewId} {
+      allow read: if isRmtAdmin()
+        || ownsProjectAssignment(resource.data.projectSlug);
+      allow create, update, delete: if false;
+    }
+
+    match /creatorMediaTakedownRequests/{requestId} {
+      allow read: if isRmtAdmin()
+        || ownsProjectAssignment(resource.data.projectSlug);
+      allow create, update, delete: if false;
+    }
+
+    match /creatorMediaTakedownDecisions/{decisionId} {
+      allow read: if isRmtAdmin()
+        || ownsProjectAssignment(resource.data.projectSlug);
+      allow create, update, delete: if false;
+    }
+
+    match /creatorMediaAvailability/{receiptId} {
+      allow read: if isRmtAdmin()
+        || ownsProjectAssignment(resource.data.projectSlug);
+      allow create, update, delete: if false;
+    }
+
+    match /creatorMediaAvailabilityObservations/{observationId} {
+      allow read: if isRmtAdmin();
+      allow create, update, delete: if false;
+    }
+
+    match /creatorMediaMaintenance/{documentId} {
+      allow read, create, update, delete: if false;
     }
 
     match /{path=**}/moduleRequests/{module} {

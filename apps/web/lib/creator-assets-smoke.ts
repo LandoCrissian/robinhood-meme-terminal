@@ -1,0 +1,1234 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { keccak256, recoverTypedDataAddress, toHex } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
+import {
+  EMPTY_CREATOR_ASSET,
+  hashCreatorAssetDraft,
+  normalizeCreatorAsset,
+  parseCreatorAsset,
+  validateCreatorAsset
+} from "./creator-assets";
+import {
+  createMarketplaceEconomicsPolicy,
+  RMT_MARKETPLACE_SIMULATION_POLICY,
+  validateMarketplaceEconomicsPolicy
+} from "./creator-economics";
+import { evaluateCreatorReleaseReadiness } from "./creator-release-readiness";
+import {
+  CREATOR_CONSENT_TERMS_HASH,
+  CREATOR_CONSENT_WITHDRAWAL_TERMS_HASH,
+  creatorConsentResponseTypedData,
+  creatorConsentWithdrawalTypedData,
+  decodeCreatorConsentInvitationPacket,
+  decodeCreatorConsentResponsePacket,
+  decodeCreatorConsentWithdrawalPacket,
+  encodeCreatorConsentPacket,
+  hashCreatorConsentInvitation,
+  verifyCreatorConsentResponse,
+  verifyCreatorConsentWithdrawal,
+  validateCreatorConsentInvitation,
+  type CreatorConsentInvitation,
+  type CreatorConsentInvitationRecord,
+  type CreatorConsentPublicStatus
+} from "./creator-consent";
+import {
+  CreatorConsentReceiptError,
+  evaluateCreatorConsentReceipt
+} from "./server/creator-consent-receipt";
+import {
+  CreatorConsentWithdrawalError,
+  evaluateCreatorConsentWithdrawal
+} from "./server/creator-consent-withdrawal";
+import {
+  createCreatorReleaseReview,
+  parseCreatorReleaseReview
+} from "./creator-release-review";
+import {
+  createCreatorReleaseDecision,
+  parseCreatorReleaseDecision
+} from "./creator-release-decision";
+import {
+  TOKEN_MARKET_CREATOR_SHARE_BPS,
+  TOKEN_MARKET_PROTOCOL_SHARE_BPS,
+  createProtocolTreasuryAllocation,
+  validateProtocolTreasuryAllocation
+} from "./token-fee-economics";
+import {
+  buildCreatorMarketplaceMetadata,
+  createCreatorMediaManifest,
+  creatorMediaReference
+} from "./creator-media-manifest";
+import {
+  createCreatorMediaReceipt,
+  creatorMetadataBytes,
+  parseCreatorMediaReceipt,
+  receiptMatchesManifest
+} from "./creator-media-receipt";
+import {
+  createCreatorMediaSupersession,
+  parseCreatorMediaSupersession
+} from "./creator-media-supersession";
+import {
+  availabilityStatusFromObservation,
+  createCreatorMediaAvailabilityObservation,
+  parseCreatorMediaAvailabilityObservation,
+  parseCreatorMediaAvailabilityStatus
+} from "./creator-media-availability";
+import {
+  createCreatorMediaTakedownDecision,
+  createCreatorMediaTakedownRequest,
+  parseCreatorMediaTakedownDecision,
+  parseCreatorMediaTakedownRequest
+} from "./creator-media-takedown";
+import {
+  createCreatorReleaseFreezeEvidence,
+  hashCreatorReleaseFreezeEvidence
+} from "./creator-release-freeze-evidence";
+import {
+  buildCreatorEditionManifest,
+  verifyCreatorEditionProof
+} from "./creator-edition-manifest";
+
+const validArtwork = {
+  ...EMPTY_CREATOR_ASSET,
+  title: "Neon Robin",
+  description: "An original AI-assisted artwork prepared for a future limited edition.",
+  primaryMediaUri: "ipfs://bafyneonrobin",
+  creationMethod: "ai_assisted" as const,
+  aiTools: ["OpenAI"],
+  aiDisclosure: "AI produced composition studies; the creator selected and finished the final work.",
+  rightsStatement: "The project creator produced the final work and controls the rights required for this draft.",
+  rightsConfirmed: true,
+  editionMode: "limited" as const,
+  editionSupply: 100,
+  collaborators: [{
+    name: "RMT Studio",
+    role: "artist" as const,
+    walletAddress: "",
+    consentStatus: "unverified" as const
+  }],
+  revenueSplits: [{
+    label: "RMT Studio",
+    walletAddress: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    shareBps: 10_000
+  }]
+};
+
+assert.equal(
+  hashCreatorReleaseFreezeEvidence({
+    receiptHash: `0x${"11".repeat(32)}`,
+    availabilityObservationHash: `0x${"22".repeat(32)}`,
+    observedAt: 1_785_283_200,
+    validUntil: 1_785_286_800,
+    signerEpoch: 1
+  }),
+  "0x8c97155382c77e182384b824fd6bace122b48e6f9b25178dba90612249bc18ef"
+);
+
+const creatorEditionManifest = buildCreatorEditionManifest({
+  name: "RMT Creator Editions",
+  symbol: "RMTED",
+  collectionURI: "ipfs://bafy-editions/contract.json",
+  royaltyReceiver: "0x1111111111111111111111111111111111111111",
+  royaltyBps: 500,
+  editions: [
+    {
+      tokenId: 1n,
+      tokenURI: "ipfs://bafy-edition-one/metadata.json",
+      termsHash: `0x${"11".repeat(32)}`,
+      maximumSupply: 3
+    },
+    {
+      tokenId: 2n,
+      tokenURI: "ipfs://bafy-edition-two/metadata.json",
+      termsHash: `0x${"22".repeat(32)}`,
+      maximumSupply: 2
+    }
+  ]
+});
+assert.equal(
+  creatorEditionManifest.config.editionManifestRoot,
+  "0x04a260ca9b2a885161ecf1df5dd28da708b5d2b753081462fc5ccde70690ca00"
+);
+assert.equal(
+  creatorEditionManifest.configurationHash,
+  "0x67cf2e32f092b4cf0bb1e4c6accab8759c07fbf96e623b9088179e3c917bfea1"
+);
+assert.equal(creatorEditionManifest.config.maximumEditionTypes, 2);
+assert.equal(creatorEditionManifest.config.maximumTotalSupply, 5);
+assert.equal(creatorEditionManifest.contractExecution, "disabled");
+for (const edition of creatorEditionManifest.items) {
+  assert.equal(
+    verifyCreatorEditionProof(
+      edition.leaf,
+      edition.proof,
+      creatorEditionManifest.config.editionManifestRoot
+    ),
+    true
+  );
+}
+assert.throws(() => buildCreatorEditionManifest({
+  name: "Duplicate IDs",
+  symbol: "DUP",
+  collectionURI: "ipfs://bafy-duplicate/contract.json",
+  royaltyReceiver: "0x0000000000000000000000000000000000000000",
+  royaltyBps: 0,
+  editions: [
+    {
+      tokenId: 1n,
+      tokenURI: "ipfs://bafy-one/metadata.json",
+      termsHash: `0x${"11".repeat(32)}`,
+      maximumSupply: 1
+    },
+    {
+      tokenId: 1n,
+      tokenURI: "ipfs://bafy-two/metadata.json",
+      termsHash: `0x${"22".repeat(32)}`,
+      maximumSupply: 1
+    }
+  ]
+}), /unique positive/);
+const threeEditionManifest = buildCreatorEditionManifest({
+  name: "Three Editions",
+  symbol: "THREE",
+  collectionURI: "ipfs://bafy-three/contract.json",
+  royaltyReceiver: "0x0000000000000000000000000000000000000000",
+  royaltyBps: 0,
+  editions: [1n, 2n, 3n].map((tokenId) => ({
+    tokenId,
+    tokenURI: `ipfs://bafy-${tokenId}/metadata.json`,
+    termsHash: `0x${tokenId.toString(16).padStart(64, "0")}`,
+    maximumSupply: 1
+  }))
+});
+for (const edition of threeEditionManifest.items) {
+  assert.equal(
+    verifyCreatorEditionProof(
+      edition.leaf,
+      edition.proof,
+      threeEditionManifest.config.editionManifestRoot
+    ),
+    true
+  );
+}
+assert.throws(() => buildCreatorEditionManifest({
+  name: "Zero Terms",
+  symbol: "ZERO",
+  collectionURI: "ipfs://bafy-zero/contract.json",
+  royaltyReceiver: "0x0000000000000000000000000000000000000000",
+  royaltyBps: 0,
+  editions: [{
+    tokenId: 1n,
+    tokenURI: "ipfs://bafy-zero/metadata.json",
+    termsHash: `0x${"00".repeat(32)}`,
+    maximumSupply: 1
+  }]
+}), /cannot be zero/);
+
+assert.equal(validateCreatorAsset(validArtwork), null);
+assert.equal(normalizeCreatorAsset({
+  ...validArtwork,
+  editionMode: "one_of_one",
+  editionSupply: 999
+}).editionSupply, 1);
+assert.equal(normalizeCreatorAsset({
+  ...validArtwork,
+  editionMode: "open",
+  editionSupply: 999
+}).editionSupply, 0);
+assert.equal(normalizeCreatorAsset({
+  ...validArtwork,
+  secondaryRoyaltyBps: 1_500
+}).secondaryRoyaltyBps, 1_000);
+assert.match(validateCreatorAsset({
+  ...validArtwork,
+  secondaryRoyaltyBps: 1_001
+}) ?? "", /between 0% and 10%/);
+assert.notEqual(
+  hashCreatorAssetDraft(validArtwork),
+  hashCreatorAssetDraft({ ...validArtwork, secondaryRoyaltyBps: 500 })
+);
+const immutableMediaDraft = {
+  ...validArtwork,
+  primaryMediaUri: "ipfs://QmYwAPJzv5CZsnAzt8auVZRnGiRAeQ8HtgT8t3HKxZKdkb",
+  previewMediaUri: "ipfs://bafybeigdyrzt5sfp7udm7hu76xgg5h2r74kqwy5kp6et6zv7b3r5zjdhai/preview.webp"
+};
+const immutableMediaManifest = createCreatorMediaManifest({
+  projectSlug: "runner-studio",
+  assetId: "abcdefghijklmnopqrst",
+  draft: immutableMediaDraft
+});
+const retrievalEvidence = (
+  manifest: typeof immutableMediaManifest,
+  metadataCid: string
+) => ({
+  retrievalGatewayOrigin: "https://ipfs.io",
+  retrievalChecks: [{
+    role: "metadata" as const,
+    uri: `ipfs://${metadataCid}`,
+    contentType: "application/json",
+    bytesRead: new TextEncoder().encode(creatorMetadataBytes(manifest)).byteLength,
+    exactBytesVerified: true,
+    status: "retrieved" as const
+  }, ...manifest.media.map((reference) => ({
+    role: reference.role,
+    uri: reference.uri,
+    contentType: reference.role === "primary" ? "image/png" : "image/webp",
+    bytesRead: 4_096,
+    exactBytesVerified: false,
+    status: "retrieved" as const
+  }))]
+});
+assert.equal(immutableMediaManifest.mediaIntegrity, "content_addressed");
+assert.equal(immutableMediaManifest.metadataStorage, "not_pinned");
+assert.equal(immutableMediaManifest.contractExecution, "disabled");
+assert.match(immutableMediaManifest.metadataHash, /^0x[0-9a-f]{64}$/);
+assert.match(immutableMediaManifest.manifestHash, /^0x[0-9a-f]{64}$/);
+const mediaReceipt = createCreatorMediaReceipt({
+  manifest: immutableMediaManifest,
+  metadataCid: "bafkreicnu2aqjkoglrlrd65giwo4l64pdajxffk6jtq2vb7yaiopc3yu7m",
+  providerFileId: "e5323ea7-8a02-4486-9b6f-63c788810aeb",
+  storedSize: new TextEncoder().encode(creatorMetadataBytes(immutableMediaManifest)).byteLength,
+  ...retrievalEvidence(
+    immutableMediaManifest,
+    "bafkreicnu2aqjkoglrlrd65giwo4l64pdajxffk6jtq2vb7yaiopc3yu7m"
+  )
+});
+assert.equal(mediaReceipt.metadataUri, `ipfs://${mediaReceipt.metadataCid}`);
+assert.equal(mediaReceipt.providerRecordVerified, true);
+assert.equal(mediaReceipt.retrievalVerified, true);
+assert.equal(mediaReceipt.retrievalChecks[0]?.exactBytesVerified, true);
+assert.equal(mediaReceipt.contractExecution, "disabled");
+assert.equal(receiptMatchesManifest(mediaReceipt, immutableMediaManifest), true);
+assert.deepEqual(parseCreatorMediaReceipt(mediaReceipt.receiptId, mediaReceipt), mediaReceipt);
+assert.equal(parseCreatorMediaReceipt(mediaReceipt.receiptId, {
+  ...mediaReceipt,
+  storedSize: mediaReceipt.storedSize + 1
+}), null);
+const mediaSupersession = createCreatorMediaSupersession({
+  projectSlug: mediaReceipt.projectSlug,
+  assetId: mediaReceipt.assetId,
+  receiptId: mediaReceipt.receiptId,
+  replacedDraftRevisionHash: mediaReceipt.draftRevisionHash,
+  replacementDraftRevisionHash: `0x${"9".repeat(64)}`,
+  recordedBy: "creator-user-id"
+});
+assert.equal(mediaSupersession.contractExecution, "disabled");
+assert.deepEqual(
+  parseCreatorMediaSupersession(mediaSupersession.supersessionId, mediaSupersession),
+  mediaSupersession
+);
+assert.equal(parseCreatorMediaSupersession(mediaSupersession.supersessionId, {
+  ...mediaSupersession,
+  replacementDraftRevisionHash: `0x${"8".repeat(64)}`
+}), null);
+const mediaTakedownRequest = createCreatorMediaTakedownRequest({
+  projectSlug: mediaReceipt.projectSlug,
+  assetId: mediaReceipt.assetId,
+  receiptId: mediaReceipt.receiptId,
+  metadataCid: mediaReceipt.metadataCid,
+  providerFileId: mediaReceipt.providerFileId,
+  reasonCode: "creator_withdrawal",
+  requestNote: "The creator requests review of RMT's provider copy after withdrawing this draft.",
+  requestedBy: "creator-user-id"
+});
+assert.equal(mediaTakedownRequest.providerExecution, "disabled");
+assert.equal(mediaTakedownRequest.contentErasureGuarantee, "none");
+assert.deepEqual(
+  parseCreatorMediaTakedownRequest(mediaTakedownRequest.requestId, mediaTakedownRequest),
+  mediaTakedownRequest
+);
+const mediaTakedownDecision = createCreatorMediaTakedownDecision({
+  request: mediaTakedownRequest,
+  outcome: "approved_for_future_execution",
+  reviewNote: "Policy request accepted; provider execution remains separately disabled.",
+  reviewedBy: "rmt-reviewer"
+});
+assert.equal(mediaTakedownDecision.providerExecution, "disabled");
+assert.deepEqual(
+  parseCreatorMediaTakedownDecision(mediaTakedownDecision.decisionId, mediaTakedownDecision),
+  mediaTakedownDecision
+);
+assert.equal(parseCreatorMediaTakedownDecision(mediaTakedownDecision.decisionId, {
+  ...mediaTakedownDecision,
+  providerExecution: "enabled"
+}), null);
+const availabilityObservation = createCreatorMediaAvailabilityObservation({
+  schemaVersion: 1,
+  receiptId: mediaReceipt.receiptId,
+  projectSlug: mediaReceipt.projectSlug,
+  assetId: mediaReceipt.assetId,
+  metadataCid: mediaReceipt.metadataCid,
+  providerState: "verified",
+  gatewayState: "available",
+  overallState: "healthy",
+  checksAttempted: 3,
+  checksPassed: 3,
+  failureCode: "",
+  observedAtMs: 1_785_283_200_000,
+  providerExecution: "disabled"
+});
+assert.deepEqual(
+  parseCreatorMediaAvailabilityObservation(availabilityObservation.observationId, availabilityObservation),
+  availabilityObservation
+);
+const availabilityStatus = availabilityStatusFromObservation(availabilityObservation, null);
+assert.equal(availabilityStatus.consecutiveFailures, 0);
+assert.equal(availabilityStatus.lastHealthyAtMs, availabilityObservation.observedAtMs);
+assert.deepEqual(
+  parseCreatorMediaAvailabilityStatus(mediaReceipt.receiptId, availabilityStatus),
+  availabilityStatus
+);
+const unavailableObservation = createCreatorMediaAvailabilityObservation({
+  ...availabilityObservation,
+  providerState: "unknown",
+  gatewayState: "unavailable",
+  overallState: "unavailable",
+  checksPassed: 0,
+  failureCode: "provider_unavailable",
+  observedAtMs: availabilityObservation.observedAtMs + 86_400_000
+});
+assert.equal(
+  availabilityStatusFromObservation(unavailableObservation, availabilityStatus).consecutiveFailures,
+  1
+);
+assert.throws(() => createCreatorMediaReceipt({
+  manifest: createCreatorMediaManifest({
+    projectSlug: "runner-studio",
+    assetId: "abcdefghijklmnopqrst",
+    draft: { ...immutableMediaDraft, previewMediaUri: "https://example.com/preview.png" }
+  }),
+  metadataCid: mediaReceipt.metadataCid,
+  providerFileId: mediaReceipt.providerFileId,
+  storedSize: mediaReceipt.storedSize,
+  ...retrievalEvidence(
+    createCreatorMediaManifest({
+      projectSlug: "runner-studio",
+      assetId: "abcdefghijklmnopqrst",
+      draft: { ...immutableMediaDraft, previewMediaUri: "https://example.com/preview.png" }
+    }),
+    mediaReceipt.metadataCid
+  )
+}), /content-addressed/);
+assert.notEqual(createCreatorMediaManifest({
+  projectSlug: "runner-studio",
+  assetId: "abcdefghijklmnopqrst",
+  draft: { ...immutableMediaDraft, title: "Changed title" }
+}).manifestHash, immutableMediaManifest.manifestHash);
+assert.equal(creatorMediaReference("primary", "ipfs://not-a-cid"), null);
+assert.equal(creatorMediaReference("primary", "https://example.com/art.png")?.contentAddressed, false);
+assert.equal(createCreatorMediaManifest({
+  projectSlug: "runner-studio",
+  assetId: "abcdefghijklmnopqrst",
+  draft: { ...immutableMediaDraft, previewMediaUri: "https://example.com/preview.png" }
+}).mediaIntegrity, "contains_mutable_reference");
+const musicMetadata = buildCreatorMarketplaceMetadata({
+  ...immutableMediaDraft,
+  assetType: "music_release",
+  primaryMediaUri: "ipfs://bafybeigdyrzt5sfp7udm7hu76xgg5h2r74kqwy5kp6et6zv7b3r5zjdhai/audio.wav",
+  masterRightsConfirmed: true,
+  compositionRightsConfirmed: true
+});
+assert.equal(musicMetadata.animation_url?.startsWith("ipfs://"), true);
+assert.equal(musicMetadata.image?.startsWith("ipfs://"), true);
+assert.deepEqual(normalizeCreatorAsset({
+  ...validArtwork,
+  creationMethod: "human",
+  aiTools: ["should be removed"],
+  aiDisclosure: "should be removed"
+}).aiTools, []);
+assert.match(validateCreatorAsset({
+  ...validArtwork,
+  creationMethod: "ai_generated",
+  aiTools: [],
+  aiDisclosure: ""
+}) ?? "", /AI tool/);
+assert.match(validateCreatorAsset({
+  ...validArtwork,
+  rightsConfirmed: false
+}) ?? "", /control the rights/);
+assert.match(validateCreatorAsset({
+  ...validArtwork,
+  containsThirdPartyMaterial: true,
+  thirdPartyRightsConfirmed: false
+}) ?? "", /third-party/);
+assert.match(validateCreatorAsset({
+  ...validArtwork,
+  revenueSplits: [
+    { label: "Artist", walletAddress: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", shareBps: 5_000 },
+    { label: "Producer", walletAddress: "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", shareBps: 4_999 }
+  ]
+}) ?? "", /exactly 100%/);
+assert.match(validateCreatorAsset({
+  ...validArtwork,
+  revenueSplits: [
+    { label: "Artist", walletAddress: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", shareBps: 5_000 },
+    { label: "Duplicate", walletAddress: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", shareBps: 5_000 }
+  ]
+}) ?? "", /unique/);
+assert.match(validateCreatorAsset({
+  ...validArtwork,
+  assetType: "music_release",
+  creationMethod: "human",
+  aiTools: [],
+  aiDisclosure: "",
+  masterRightsConfirmed: false,
+  compositionRightsConfirmed: true
+}) ?? "", /master-recording/);
+
+const parsed = parseCreatorAsset("abcdefghijklmnopqrst", {
+  ...validArtwork,
+  schemaVersion: 1,
+  assetId: "abcdefghijklmnopqrst",
+  projectSlug: "runner-studio",
+  collaboratorConsentStatus: "unverified",
+  revenueSplitTotalBps: 10_000,
+  draftRevisionHash: hashCreatorAssetDraft(validArtwork),
+  status: "draft"
+});
+assert.equal(parsed?.title, "Neon Robin");
+const { secondaryRoyaltyBps: _legacyRoyaltyPreference, ...legacyArtwork } = validArtwork;
+assert.equal(parseCreatorAsset("legacyassetdraft1234", {
+  ...legacyArtwork,
+  schemaVersion: 1,
+  assetId: "legacyassetdraft1234",
+  projectSlug: "runner-studio",
+  collaboratorConsentStatus: "unverified",
+  revenueSplitTotalBps: 10_000,
+  draftRevisionHash: hashCreatorAssetDraft(validArtwork),
+  status: "draft"
+})?.secondaryRoyaltyBps, 0);
+assert.equal(parseCreatorAsset("abcdefghijklmnopqrst", {
+  ...parsed,
+  revenueSplitTotalBps: 9_999
+}), null);
+
+const economicsPolicy = createMarketplaceEconomicsPolicy({
+  policyName: "RMT marketplace economics draft",
+  marketplaceFeeBps: 250,
+  allocation: {
+    platformOperationsBps: 4_000,
+    tokenFlywheelBps: 2_500,
+    creatorEcosystemBps: 2_500,
+    safetyReserveBps: 1_000
+  },
+  tokenFlywheelMode: "governance_proposal",
+  disclosure: "A disclosed 2.50% platform fee is allocated by this draft policy; token-directed actions require governance and do not guarantee returns."
+});
+assert.match(economicsPolicy.policyHash, /^0x[0-9a-f]{64}$/);
+assert.equal(economicsPolicy.status, "draft");
+assert.match(validateMarketplaceEconomicsPolicy({
+  ...economicsPolicy,
+  allocation: {
+    ...economicsPolicy.allocation,
+    safetyReserveBps: 999
+  }
+}) ?? "", /exactly 100%/);
+assert.match(validateMarketplaceEconomicsPolicy({
+  ...economicsPolicy,
+  tokenFlywheelMode: "none"
+}) ?? "", /governance proposal/);
+
+const releaseCandidate = {
+  ...validArtwork,
+  collaborators: [],
+  secondaryRoyaltyBps: 500
+};
+const releaseReadiness = evaluateCreatorReleaseReadiness(releaseCandidate, {
+  savedRevisionHash: hashCreatorAssetDraft(releaseCandidate),
+  economicsPolicy
+});
+assert.equal(releaseReadiness.status, "attention");
+assert.equal(releaseReadiness.checks.find((candidate) => candidate.id === "revision")?.status, "ready");
+assert.equal(releaseReadiness.checks.find((candidate) => candidate.id === "royalty")?.status, "attention");
+assert.match(
+  releaseReadiness.checks.find((candidate) => candidate.id === "royalty")?.detail ?? "",
+  /cannot force external marketplaces/
+);
+assert.equal(evaluateCreatorReleaseReadiness({
+  ...releaseCandidate,
+  rightsConfirmed: false
+}, {
+  economicsPolicy
+}).status, "blocked");
+
+const nowSeconds = 2_000_000_000;
+const consentInvitation: CreatorConsentInvitation = {
+  schemaVersion: 1,
+  projectSlug: "runner-studio",
+  assetId: "abcdefghijklmnopqrst",
+  draftRevisionHash: hashCreatorAssetDraft(validArtwork),
+  collaboratorName: "RMT Studio",
+  collaboratorRole: "artist",
+  collaboratorWallet: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  shareBps: 2_500,
+  chainId: 46_663,
+  expiresAt: nowSeconds + 86_400,
+  termsHash: `0x${"1".repeat(64)}`,
+  nonce: `0x${"2".repeat(64)}`
+};
+assert.equal(validateCreatorConsentInvitation(consentInvitation, nowSeconds), null);
+const consentDigest = hashCreatorConsentInvitation(consentInvitation);
+assert.match(consentDigest, /^0x[0-9a-f]{64}$/);
+assert.notEqual(hashCreatorConsentInvitation({
+  ...consentInvitation,
+  shareBps: 2_501
+}), consentDigest);
+assert.notEqual(hashCreatorConsentInvitation({
+  ...consentInvitation,
+  draftRevisionHash: `0x${"3".repeat(64)}`
+}), consentDigest);
+assert.match(validateCreatorConsentInvitation({
+  ...consentInvitation,
+  expiresAt: nowSeconds - 1
+}, nowSeconds) ?? "", /expired/);
+
+const collaboratorAccount = privateKeyToAccount(`0x${"4".repeat(64)}`);
+const signedInvitation: CreatorConsentInvitation = {
+  ...consentInvitation,
+  collaboratorWallet: collaboratorAccount.address.toLowerCase() as `0x${string}`,
+  termsHash: CREATOR_CONSENT_TERMS_HASH
+};
+const invitationPacket = {
+  kind: "rmt_creator_consent_invitation" as const,
+  invitation: signedInvitation,
+  invitationDigest: hashCreatorConsentInvitation(signedInvitation)
+};
+const invitationCode = encodeCreatorConsentPacket(invitationPacket);
+assert.deepEqual(decodeCreatorConsentInvitationPacket(invitationCode), invitationPacket);
+assert.equal(decodeCreatorConsentInvitationPacket(`${invitationCode}tampered`), null);
+
+async function testSignedConsentResponse() {
+  const respondedAt = nowSeconds + 60;
+  const signature = await collaboratorAccount.signTypedData(
+    creatorConsentResponseTypedData(signedInvitation, "accept", respondedAt)
+  );
+  const responsePacket = {
+    kind: "rmt_creator_consent_response" as const,
+    response: {
+      schemaVersion: 1 as const,
+      invitationDigest: invitationPacket.invitationDigest,
+      action: "accept" as const,
+      collaboratorWallet: signedInvitation.collaboratorWallet,
+      respondedAt,
+      signature
+    }
+  };
+  const responseCode = encodeCreatorConsentPacket(responsePacket);
+  assert.deepEqual(decodeCreatorConsentResponsePacket(responseCode), responsePacket);
+  assert.equal(await verifyCreatorConsentResponse(signedInvitation, responsePacket.response), true);
+  assert.equal(await verifyCreatorConsentResponse({
+    ...signedInvitation,
+    nonce: `0x${"5".repeat(64)}`
+  }, responsePacket.response).catch(() => false), false);
+  assert.equal(decodeCreatorConsentResponsePacket(encodeCreatorConsentPacket({
+    ...responsePacket,
+    response: { ...responsePacket.response, signature: "0x1234" }
+  } as never)), null);
+
+  const invitationRecord: CreatorConsentInvitationRecord = {
+    ...signedInvitation,
+    invitationId: invitationPacket.invitationDigest.slice(2),
+    invitationDigest: invitationPacket.invitationDigest,
+    status: "pending",
+    revokedAt: null,
+    responseAction: null,
+    responseSignature: null,
+    respondedAt: null,
+    signerWallet: null,
+    receivedAt: null,
+    withdrawalSignature: null,
+    withdrawalSignedAt: null,
+    withdrawalReceivedAt: null
+  };
+  const publicStatus: CreatorConsentPublicStatus = {
+    schemaVersion: 1,
+    invitationId: invitationRecord.invitationId,
+    invitationDigest: invitationRecord.invitationDigest,
+    projectSlug: invitationRecord.projectSlug,
+    assetId: invitationRecord.assetId,
+    status: "pending",
+    expiresAt: invitationRecord.expiresAt
+  };
+  const evaluated = await evaluateCreatorConsentReceipt({
+    asset: parsed,
+    invitation: invitationRecord,
+    nowSeconds: respondedAt,
+    publicStatus,
+    response: responsePacket.response
+  });
+  assert.deepEqual(evaluated, { status: "accepted", action: "accept", idempotent: false });
+
+  const finalRecord: CreatorConsentInvitationRecord = {
+    ...invitationRecord,
+    status: "accepted",
+    responseAction: "accept",
+    responseSignature: responsePacket.response.signature,
+    respondedAt,
+    signerWallet: signedInvitation.collaboratorWallet,
+    receivedAt: {}
+  };
+  assert.deepEqual(await evaluateCreatorConsentReceipt({
+    asset: parsed,
+    invitation: finalRecord,
+    nowSeconds: respondedAt + 1,
+    publicStatus: { ...publicStatus, status: "accepted" },
+    response: responsePacket.response
+  }), { status: "accepted", action: "accept", idempotent: true });
+
+  const withdrawnAt = respondedAt + 120;
+  const withdrawalSignature = await collaboratorAccount.signTypedData(
+    creatorConsentWithdrawalTypedData(signedInvitation, withdrawnAt)
+  );
+  const withdrawalPacket = {
+    kind: "rmt_creator_consent_withdrawal" as const,
+    withdrawal: {
+      schemaVersion: 1 as const,
+      invitationDigest: invitationPacket.invitationDigest,
+      collaboratorWallet: signedInvitation.collaboratorWallet,
+      withdrawnAt,
+      termsHash: CREATOR_CONSENT_WITHDRAWAL_TERMS_HASH,
+      signature: withdrawalSignature
+    }
+  };
+  const withdrawalCode = encodeCreatorConsentPacket(withdrawalPacket);
+  assert.deepEqual(decodeCreatorConsentWithdrawalPacket(withdrawalCode), withdrawalPacket);
+  assert.equal(
+    await verifyCreatorConsentWithdrawal(signedInvitation, withdrawalPacket.withdrawal),
+    true
+  );
+  assert.deepEqual(await evaluateCreatorConsentWithdrawal({
+    invitation: finalRecord,
+    nowSeconds: withdrawnAt,
+    publicStatus: { ...publicStatus, status: "accepted" },
+    withdrawal: withdrawalPacket.withdrawal
+  }), { status: "withdrawn", idempotent: false });
+  const withdrawnRecord: CreatorConsentInvitationRecord = {
+    ...finalRecord,
+    status: "withdrawn",
+    withdrawalSignature,
+    withdrawalSignedAt: withdrawnAt,
+    withdrawalReceivedAt: {}
+  };
+  assert.deepEqual(await evaluateCreatorConsentWithdrawal({
+    invitation: withdrawnRecord,
+    nowSeconds: withdrawnAt + 1,
+    publicStatus: { ...publicStatus, status: "withdrawn" },
+    withdrawal: withdrawalPacket.withdrawal
+  }), { status: "withdrawn", idempotent: true });
+  await assert.rejects(
+    evaluateCreatorConsentWithdrawal({
+      invitation: invitationRecord,
+      nowSeconds: withdrawnAt,
+      publicStatus,
+      withdrawal: withdrawalPacket.withdrawal
+    }),
+    (error: unknown) => error instanceof CreatorConsentWithdrawalError
+      && error.code === "not_accepted"
+  );
+  await assert.rejects(
+    evaluateCreatorConsentWithdrawal({
+      invitation: finalRecord,
+      nowSeconds: withdrawnAt,
+      publicStatus: { ...publicStatus, status: "accepted" },
+      withdrawal: {
+        ...withdrawalPacket.withdrawal,
+        collaboratorWallet: "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }),
+    (error: unknown) => error instanceof CreatorConsentWithdrawalError
+      && error.code === "invalid"
+  );
+
+  async function expectReceiptFailure(
+    code: CreatorConsentReceiptError["code"],
+    overrides: Partial<Parameters<typeof evaluateCreatorConsentReceipt>[0]>
+  ) {
+    await assert.rejects(
+      evaluateCreatorConsentReceipt({
+        asset: parsed,
+        invitation: invitationRecord,
+        nowSeconds: respondedAt,
+        publicStatus,
+        response: responsePacket.response,
+        ...overrides
+      }),
+      (error: unknown) => error instanceof CreatorConsentReceiptError && error.code === code
+    );
+  }
+  await expectReceiptFailure("revoked", {
+    invitation: { ...invitationRecord, status: "revoked", revokedAt: {} },
+    publicStatus: { ...publicStatus, status: "revoked" }
+  });
+  await expectReceiptFailure("expired", { nowSeconds: invitationRecord.expiresAt });
+  await expectReceiptFailure("stale_revision", {
+    asset: { ...parsed!, draftRevisionHash: `0x${"6".repeat(64)}` }
+  });
+  await expectReceiptFailure("conflict", {
+    invitation: finalRecord,
+    publicStatus: { ...publicStatus, status: "accepted" },
+    response: { ...responsePacket.response, respondedAt: respondedAt + 1 }
+  });
+  await expectReceiptFailure("invalid", {
+    invitation: finalRecord,
+    publicStatus: { ...publicStatus, status: "rejected" }
+  });
+  await expectReceiptFailure("invalid", {
+    response: { ...responsePacket.response, respondedAt: respondedAt + 301 },
+    nowSeconds: respondedAt
+  });
+
+  const attacker = privateKeyToAccount(`0x${"7".repeat(64)}`);
+  const attackerSignature = await attacker.signTypedData(
+    creatorConsentResponseTypedData(signedInvitation, "accept", respondedAt)
+  );
+  await expectReceiptFailure("wrong_signer", {
+    response: { ...responsePacket.response, signature: attackerSignature }
+  });
+
+  const consentReadyDraft = {
+    ...validArtwork,
+    primaryMediaUri: immutableMediaDraft.primaryMediaUri,
+    previewMediaUri: immutableMediaDraft.previewMediaUri,
+    collaborators: [{
+      name: signedInvitation.collaboratorName,
+      role: signedInvitation.collaboratorRole,
+      walletAddress: signedInvitation.collaboratorWallet,
+      consentStatus: "unverified" as const
+    }],
+    revenueSplits: [{
+      label: signedInvitation.collaboratorName,
+      walletAddress: signedInvitation.collaboratorWallet,
+      shareBps: signedInvitation.shareBps
+    }, {
+      label: "Creator",
+      walletAddress: "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      shareBps: 10_000 - signedInvitation.shareBps
+    }]
+  };
+  const consentReadyRevision = hashCreatorAssetDraft(consentReadyDraft);
+  const matchingReceipt = {
+    ...finalRecord,
+    draftRevisionHash: consentReadyRevision
+  };
+  assert.equal(
+    evaluateCreatorReleaseReadiness(consentReadyDraft, {
+      savedRevisionHash: consentReadyRevision,
+      economicsPolicy,
+      consentRecords: [matchingReceipt]
+    }).checks.find((candidate) => candidate.id === "consent")?.status,
+    "ready"
+  );
+
+  const reviewAsset = {
+    ...consentReadyDraft,
+    schemaVersion: 1 as const,
+    assetId: signedInvitation.assetId,
+    projectSlug: signedInvitation.projectSlug,
+    collaboratorConsentStatus: "unverified" as const,
+    revenueSplitTotalBps: 10_000,
+    draftRevisionHash: consentReadyRevision,
+    status: "draft" as const
+  };
+  const reviewMediaManifest = createCreatorMediaManifest({
+    projectSlug: reviewAsset.projectSlug,
+    assetId: reviewAsset.assetId,
+    draft: reviewAsset
+  });
+  const reviewMediaReceipt = createCreatorMediaReceipt({
+    manifest: reviewMediaManifest,
+    metadataCid: "bafkreiffsgtnic7uebaeuaixgph3pmmq2ywglpylzwrswv5so7m23hyuny",
+    providerFileId: "f6424fb8-9b13-4486-9b6f-63c788810aeb",
+    storedSize: new TextEncoder().encode(creatorMetadataBytes(reviewMediaManifest)).byteLength,
+    ...retrievalEvidence(
+      reviewMediaManifest,
+      "bafkreiffsgtnic7uebaeuaixgph3pmmq2ywglpylzwrswv5so7m23hyuny"
+    )
+  });
+  const review = createCreatorReleaseReview({
+    asset: reviewAsset,
+    consentRecords: [matchingReceipt],
+    mediaReceipt: reviewMediaReceipt,
+    economicsPolicy: RMT_MARKETPLACE_SIMULATION_POLICY,
+    preparedBy: "creator-user-id"
+  });
+  assert.match(review.reviewId, /^[0-9a-f]{64}$/);
+  assert.equal(review.reviewHash, `0x${review.reviewId}`);
+  assert.equal(review.economicsMode, "simulation_only");
+  assert.equal(review.contractExecution, "disabled");
+  assert.equal(review.acceptedConsentManifest.length, 1);
+  assert.equal(review.mediaReceipt?.receiptId, reviewMediaReceipt.receiptId);
+  assert.deepEqual(parseCreatorReleaseReview(review.reviewId, review), review);
+  const preparationDecision = createCreatorReleaseDecision({
+    reviewId: review.reviewId,
+    reviewHash: review.reviewHash,
+    projectSlug: review.projectSlug,
+    assetId: review.assetId,
+    outcome: "preparation_ready",
+    reasonCode: "preparation_complete",
+    reviewNote: "Preparation evidence is internally complete; execution remains disabled.",
+    reviewerId: "rmt-reviewer"
+  });
+  const freezeObservedAtMs = 1_785_283_200_000;
+  const freezeAvailability = availabilityStatusFromObservation(
+    createCreatorMediaAvailabilityObservation({
+      schemaVersion: 1,
+      receiptId: reviewMediaReceipt.receiptId,
+      projectSlug: reviewMediaReceipt.projectSlug,
+      assetId: reviewMediaReceipt.assetId,
+      metadataCid: reviewMediaReceipt.metadataCid,
+      providerState: "verified",
+      gatewayState: "available",
+      overallState: "healthy",
+      checksAttempted: 3,
+      checksPassed: 3,
+      failureCode: "",
+      observedAtMs: freezeObservedAtMs,
+      providerExecution: "disabled"
+    }),
+    null
+  );
+  const freezeEvidence = createCreatorReleaseFreezeEvidence({
+    review,
+    decision: preparationDecision,
+    availability: freezeAvailability,
+    chainId: 4663,
+    verifier: "0x1111111111111111111111111111111111111111",
+    releaseRegistry: "0x2222222222222222222222222222222222222222",
+    releaseId: `0x${"3".repeat(64)}`,
+    creator: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    signerEpoch: 1,
+    validUntil: freezeObservedAtMs / 1_000 + 3_600,
+    nowSeconds: freezeObservedAtMs / 1_000 + 60
+  });
+  assert.equal(freezeEvidence.evidence.receiptHash, `0x${reviewMediaReceipt.receiptId}`);
+  assert.equal(freezeEvidence.message.metadataHash, reviewMediaReceipt.metadataHash);
+  assert.equal(freezeEvidence.message.mediaManifestHash, reviewMediaReceipt.manifestHash);
+  assert.match(freezeEvidence.evidenceHash, /^0x[0-9a-f]{64}$/);
+  assert.match(freezeEvidence.digest, /^0x[0-9a-f]{64}$/);
+  assert.equal(freezeEvidence.contractExecution, "disabled");
+  const evidenceSigner = privateKeyToAccount(`0x${"4".repeat(64)}`);
+  const evidenceSignature = await evidenceSigner.signTypedData(freezeEvidence.typedData);
+  assert.equal(
+    await recoverTypedDataAddress({ ...freezeEvidence.typedData, signature: evidenceSignature }),
+    evidenceSigner.address
+  );
+  const degradedFreezeAvailability = availabilityStatusFromObservation(
+    createCreatorMediaAvailabilityObservation({
+      schemaVersion: 1,
+      receiptId: reviewMediaReceipt.receiptId,
+      projectSlug: reviewMediaReceipt.projectSlug,
+      assetId: reviewMediaReceipt.assetId,
+      metadataCid: reviewMediaReceipt.metadataCid,
+      providerState: "unknown",
+      gatewayState: "partial",
+      overallState: "degraded",
+      checksAttempted: 3,
+      checksPassed: 2,
+      failureCode: "provider_unknown",
+      observedAtMs: freezeObservedAtMs,
+      providerExecution: "disabled"
+    }),
+    null
+  );
+  assert.throws(() => createCreatorReleaseFreezeEvidence({
+    ...{
+      review,
+      decision: preparationDecision,
+      chainId: 4663,
+      verifier: "0x1111111111111111111111111111111111111111" as const,
+      releaseRegistry: "0x2222222222222222222222222222222222222222" as const,
+      releaseId: `0x${"3".repeat(64)}` as const,
+      creator: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" as const,
+      signerEpoch: 1,
+      validUntil: freezeObservedAtMs / 1_000 + 3_600,
+      nowSeconds: freezeObservedAtMs / 1_000 + 60
+    },
+    availability: degradedFreezeAvailability
+  }), /must be healthy/);
+  assert.throws(() => createCreatorReleaseFreezeEvidence({
+    review,
+    decision: preparationDecision,
+    availability: freezeAvailability,
+    chainId: 4663,
+    verifier: "0x1111111111111111111111111111111111111111",
+    releaseRegistry: "0x2222222222222222222222222222222222222222",
+    releaseId: `0x${"3".repeat(64)}`,
+    creator: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    signerEpoch: 1,
+    validUntil: freezeObservedAtMs / 1_000 + 3_600,
+    nowSeconds: freezeObservedAtMs / 1_000 + 24 * 60 * 60 + 1
+  }), /not current/);
+  const legacyReviewPayload = {
+    schemaVersion: 1 as const,
+    projectSlug: review.projectSlug,
+    assetId: review.assetId,
+    draftRevisionHash: review.draftRevisionHash,
+    preparedBy: review.preparedBy,
+    assetSnapshot: review.assetSnapshot,
+    acceptedConsentManifest: review.acceptedConsentManifest,
+    payoutManifest: review.payoutManifest,
+    economicsPolicy: review.economicsPolicy,
+    economicsMode: review.economicsMode,
+    contractExecution: review.contractExecution,
+    status: review.status
+  };
+  const legacyReviewHash = keccak256(toHex(JSON.stringify(legacyReviewPayload)));
+  const legacyReview = {
+    ...legacyReviewPayload,
+    reviewId: legacyReviewHash.slice(2),
+    reviewHash: legacyReviewHash
+  };
+  assert.deepEqual(parseCreatorReleaseReview(legacyReview.reviewId, legacyReview), {
+    ...legacyReview,
+    mediaReceipt: null
+  });
+  const legacyMediaReceiptPayload = {
+    schemaVersion: 1 as const,
+    projectSlug: reviewMediaReceipt.projectSlug,
+    assetId: reviewMediaReceipt.assetId,
+    draftRevisionHash: reviewMediaReceipt.draftRevisionHash,
+    metadataHash: reviewMediaReceipt.metadataHash,
+    manifestHash: reviewMediaReceipt.manifestHash,
+    metadataCid: reviewMediaReceipt.metadataCid,
+    metadataUri: reviewMediaReceipt.metadataUri,
+    storageProvider: reviewMediaReceipt.storageProvider,
+    storageNetwork: reviewMediaReceipt.storageNetwork,
+    providerFileId: reviewMediaReceipt.providerFileId,
+    storedSize: reviewMediaReceipt.storedSize,
+    providerRecordVerified: reviewMediaReceipt.providerRecordVerified,
+    contractExecution: reviewMediaReceipt.contractExecution
+  };
+  const legacyMediaReceiptHash = keccak256(toHex(JSON.stringify(legacyMediaReceiptPayload)));
+  const legacyMediaReceipt = {
+    ...legacyMediaReceiptPayload,
+    receiptId: legacyMediaReceiptHash.slice(2)
+  };
+  assert.deepEqual(
+    parseCreatorMediaReceipt(legacyMediaReceipt.receiptId, legacyMediaReceipt),
+    legacyMediaReceipt
+  );
+  const storedMediaReviewPayload = {
+    schemaVersion: 2 as const,
+    projectSlug: review.projectSlug,
+    assetId: review.assetId,
+    draftRevisionHash: review.draftRevisionHash,
+    preparedBy: review.preparedBy,
+    assetSnapshot: review.assetSnapshot,
+    acceptedConsentManifest: review.acceptedConsentManifest,
+    payoutManifest: review.payoutManifest,
+    mediaReceipt: legacyMediaReceipt,
+    economicsPolicy: review.economicsPolicy,
+    economicsMode: review.economicsMode,
+    contractExecution: review.contractExecution,
+    status: review.status
+  };
+  const storedMediaReviewHash = keccak256(toHex(JSON.stringify(storedMediaReviewPayload)));
+  const storedMediaReview = {
+    ...storedMediaReviewPayload,
+    reviewId: storedMediaReviewHash.slice(2),
+    reviewHash: storedMediaReviewHash
+  };
+  assert.deepEqual(
+    parseCreatorReleaseReview(storedMediaReview.reviewId, storedMediaReview),
+    storedMediaReview
+  );
+  assert.equal(parseCreatorReleaseReview(review.reviewId, {
+    ...review,
+    payoutManifest: [{ ...review.payoutManifest[0], shareBps: 9_999 }]
+  }), null);
+  assert.equal(parseCreatorReleaseReview(review.reviewId, {
+    ...review,
+    contractExecution: "enabled"
+  }), null);
+  assert.throws(() => createCreatorReleaseReview({
+    asset: { ...reviewAsset, draftRevisionHash: `0x${"8".repeat(64)}` },
+    consentRecords: [matchingReceipt],
+    mediaReceipt: reviewMediaReceipt,
+    economicsPolicy: RMT_MARKETPLACE_SIMULATION_POLICY,
+    preparedBy: "creator-user-id"
+  }), /revision fingerprint/);
+
+  const decision = preparationDecision;
+  assert.deepEqual(parseCreatorReleaseDecision(review.reviewId, decision), decision);
+  assert.equal(parseCreatorReleaseDecision(review.reviewId, {
+    ...decision,
+    contractExecution: "enabled"
+  }), null);
+  assert.throws(() => createCreatorReleaseDecision({
+    ...decision,
+    outcome: "preparation_ready",
+    reasonCode: "other"
+  }), /preparation-complete/);
+}
+
+assert.equal(TOKEN_MARKET_CREATOR_SHARE_BPS, 7_000);
+assert.equal(TOKEN_MARKET_PROTOCOL_SHARE_BPS, 3_000);
+const treasuryAllocation = createProtocolTreasuryAllocation({
+  policyName: "Treasury allocation test only",
+  allocation: {
+    platformGrowthBps: 3_000,
+    projectSupportBps: 2_500,
+    holderIncentivesBps: 2_000,
+    governedTokenActionsBps: 1_500,
+    safetyReserveBps: 1_000
+  },
+  disclosure: "Test-only allocation of RMT's protocol-owned 30% share. Governance remains required, eligibility is not yet defined, and no holder return is promised or guaranteed.",
+  governanceRequired: true,
+  status: "draft"
+});
+assert.match(treasuryAllocation.policyHash, /^0x[0-9a-f]{64}$/);
+assert.match(validateProtocolTreasuryAllocation({
+  ...treasuryAllocation,
+  allocation: { ...treasuryAllocation.allocation, safetyReserveBps: 999 }
+}) ?? "", /must total exactly 100%/);
+assert.equal(parseCreatorAsset("abcdefghijklmnopqrst", {
+  ...parsed,
+  title: "Changed without a new revision hash"
+}), null);
+assert.equal(parseCreatorAsset("abcdefghijklmnopqrst", {
+  ...parsed,
+  status: "published"
+}), null);
+
+const studioSource = readFileSync(new URL("../app/creator-asset-studio.tsx", import.meta.url), "utf8");
+assert.match(studioSource, /No minting\. No marketplace\. No payouts\./);
+assert.match(studioSource, /revision-bound/i);
+assert.match(studioSource, /Proposed revenue split/);
+assert.match(studioSource, /Save private draft/);
+assert.match(studioSource, /RELEASE PASSPORT · PRIVATE/);
+assert.match(studioSource, /MEDIA \+ METADATA MANIFEST/);
+assert.match(studioSource, /Download metadata JSON/);
+assert.match(studioSource, /NOT PINNED/);
+assert.match(studioSource, /Pin exact metadata to IPFS/);
+assert.match(studioSource, /VERIFIED PUBLIC IPFS RECEIPT/);
+assert.match(studioSource, /ERC-2981 can signal this preference/);
+assert.doesNotMatch(studioSource, /mintNFT|createListing|executeSplit/);
+
+const consentPageSource = readFileSync(new URL("../app/creator-consent/page.tsx", import.meta.url), "utf8");
+assert.match(consentPageSource, /Creator-supplied information/);
+assert.match(consentPageSource, /trusted receipt service/);
+assert.match(consentPageSource, /No minting · No listing · No transfer/);
+assert.match(consentPageSource, /current revocation status/);
+assert.match(consentPageSource, /Withdraw acceptance/);
+
+const cloudSource = readFileSync(new URL("./creator-assets-cloud.ts", import.meta.url), "utf8");
+assert.match(cloudSource, /projectAssignments/);
+assert.match(cloudSource, /assignment\.ownerId !== verified\.uid/);
+assert.match(cloudSource, /status: "draft"/);
+
+const consentCloudSource = readFileSync(new URL("./creator-consent-cloud.ts", import.meta.url), "utf8");
+assert.match(consentCloudSource, /creatorConsentStatuses/);
+assert.match(consentCloudSource, /status: "pending"/);
+assert.match(consentCloudSource, /status: "revoked"/);
+assert.doesNotMatch(consentCloudSource, /status: "accepted"/);
+
+const consentReceiptSource = readFileSync(
+  new URL("../app/api/creator-consent/receipt/route.ts", import.meta.url),
+  "utf8"
+);
+assert.match(consentReceiptSource, /runTransaction/);
+assert.match(consentReceiptSource, /FieldValue\.serverTimestamp/);
+assert.match(consentReceiptSource, /evaluateCreatorConsentReceipt/);
+assert.doesNotMatch(consentReceiptSource, /console\.(log|info|debug)/);
+
+const consentWithdrawalSource = readFileSync(
+  new URL("../app/api/creator-consent/withdrawal/route.ts", import.meta.url),
+  "utf8"
+);
+assert.match(consentWithdrawalSource, /runTransaction/);
+assert.match(consentWithdrawalSource, /evaluateCreatorConsentWithdrawal/);
+assert.match(consentWithdrawalSource, /status: "withdrawn"/);
+assert.doesNotMatch(consentWithdrawalSource, /mintNFT|createListing|executeSplit|transferFrom/);
+
+const releaseReviewRouteSource = readFileSync(
+  new URL("../app/api/creator-release/review/route.ts", import.meta.url),
+  "utf8"
+);
+assert.match(releaseReviewRouteSource, /verifyIdToken\(token, true\)/);
+assert.match(releaseReviewRouteSource, /transaction\.create/);
+assert.match(releaseReviewRouteSource, /RMT_MARKETPLACE_SIMULATION_POLICY/);
+assert.match(releaseReviewRouteSource, /contractExecution/);
+assert.match(releaseReviewRouteSource, /creatorMediaTakedownRequests/);
+assert.doesNotMatch(releaseReviewRouteSource, /mintNFT|createListing|executeSplit/);
+
+const mediaPinRouteSource = readFileSync(
+  new URL("../app/api/creator-media/pin/route.ts", import.meta.url),
+  "utf8"
+);
+assert.match(mediaPinRouteSource, /verifyIdToken\(token, true\)/);
+assert.match(mediaPinRouteSource, /pinAndVerifyCreatorMetadata/);
+assert.match(mediaPinRouteSource, /transaction\.create/);
+assert.match(mediaPinRouteSource, /mediaIntegrity/);
+assert.match(mediaPinRouteSource, /retrievalVerified/);
+assert.doesNotMatch(mediaPinRouteSource, /mintNFT|createListing|executeSplit|transferFrom/);
+const pinataStorageSource = readFileSync(
+  new URL("./server/pinata-public-file.ts", import.meta.url),
+  "utf8"
+);
+assert.match(pinataStorageSource, /Range: `bytes=0-\$\{maxBytes - 1\}`/);
+assert.match(pinataStorageSource, /redirect: "error"/);
+assert.match(pinataStorageSource, /retrieval_metadata_mismatch/);
+assert.match(pinataStorageSource, /reader\.cancel/);
+assert.doesNotMatch(pinataStorageSource, /console\.(log|info|debug)/);
+
+const mediaSupersessionRouteSource = readFileSync(
+  new URL("../app/api/creator-media/supersede/route.ts", import.meta.url),
+  "utf8"
+);
+assert.match(mediaSupersessionRouteSource, /verifyIdToken\(token, true\)/);
+assert.match(mediaSupersessionRouteSource, /transaction\.create/);
+assert.match(mediaSupersessionRouteSource, /draftRevisionHash === asset\.draftRevisionHash/);
+assert.doesNotMatch(mediaSupersessionRouteSource, /mintNFT|createListing|executeSplit|transferFrom/);
+
+const mediaTakedownRouteSource = readFileSync(
+  new URL("../app/api/creator-media/takedown/route.ts", import.meta.url),
+  "utf8"
+);
+assert.match(mediaTakedownRouteSource, /verifyIdToken\(token, true\)/);
+assert.match(mediaTakedownRouteSource, /transaction\.create/);
+assert.match(mediaTakedownRouteSource, /providerExecution/);
+assert.doesNotMatch(mediaTakedownRouteSource, /DELETE|files\/public\/delete|pinning\/unpin/);
+
+const mediaTakedownDecisionRouteSource = readFileSync(
+  new URL("../app/api/admin/creator-media/takedown/decision/route.ts", import.meta.url),
+  "utf8"
+);
+assert.match(mediaTakedownDecisionRouteSource, /RMT_ADMIN_EMAIL/);
+assert.match(mediaTakedownDecisionRouteSource, /verifyIdToken\(token, true\)/);
+assert.match(mediaTakedownDecisionRouteSource, /providerExecution/);
+assert.doesNotMatch(mediaTakedownDecisionRouteSource, /DELETE|files\/public\/delete|pinning\/unpin/);
+
+const mediaMonitorRouteSource = readFileSync(
+  new URL("../app/api/cron/creator-media-availability/route.ts", import.meta.url),
+  "utf8"
+);
+assert.match(mediaMonitorRouteSource, /CRON_SECRET/);
+assert.match(mediaMonitorRouteSource, /CREATOR_MEDIA_MONITOR_ENABLED/);
+assert.match(mediaMonitorRouteSource, /collectionGroup\("mediaReceipts"\)\.limit/);
+assert.match(mediaMonitorRouteSource, /creatorMediaAvailabilityObservations/);
+assert.match(mediaMonitorRouteSource, /providerExecution: "disabled"/);
+assert.doesNotMatch(mediaMonitorRouteSource, /DELETE|files\/public\/delete|pinning\/unpin/);
+
+const releaseDecisionRouteSource = readFileSync(
+  new URL("../app/api/admin/creator-release/decision/route.ts", import.meta.url),
+  "utf8"
+);
+assert.match(releaseDecisionRouteSource, /RMT_ADMIN_EMAIL/);
+assert.match(releaseDecisionRouteSource, /verifyIdToken\(token, true\)/);
+assert.match(releaseDecisionRouteSource, /transaction\.create/);
+assert.match(releaseDecisionRouteSource, /contractExecution/);
+assert.match(releaseDecisionRouteSource, /parseCreatorConsentPublicStatus/);
+assert.match(releaseDecisionRouteSource, /status\.status === "accepted"/);
+assert.match(releaseDecisionRouteSource, /mediaReceiptSupersessions/);
+assert.match(releaseDecisionRouteSource, /creatorMediaTakedownRequests/);
+assert.match(releaseDecisionRouteSource, /release_changed/);
+assert.doesNotMatch(releaseDecisionRouteSource, /mintNFT|createListing|executeSplit/);
+
+void testSignedConsentResponse().then(() => {
+  console.info("Creator asset and rights foundation smoke test passed");
+}).catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});

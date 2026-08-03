@@ -1,0 +1,69 @@
+{
+  "schema": "rmt-v7-creator-foundation-deployment",
+  "version": 1,
+  "status": "template_only",
+  "network": {
+    "name": "Robinhood Chain",
+    "chainId": 4663,
+    "rpcUsedForVerification": "https://rpc.mainnet.chain.robinhood.com/",
+    "pinnedBlockNumber": 26355113,
+    "pinnedBlockHash": "0xf9b421ff096e48dcf9fd85ce85f74babddd27309ecc4dcdaad911c8e975af2ba",
+    "lastReadOnlyVerificationAt": "2026-08-03T01:08:02Z"
+  },
+  "authorization": {
+    "deploymentAuthorized": false,
+    "moduleRegistrationAuthorized": false,
+    "productEnablementAuthorized": false
+  },
+  "inputs": {
+    "deployer": null,
+    "deployerNonce": null,
+    "governance": "0x52c43239dF8965EB27F26E115Cc5EAD11b35d5C3",
+    "governanceRuntimeCodeHash": "0x85bc5b5b878054e5c6aafa667f896e29a91e4748d762a569d27d706886252dc0",
+    "evidenceSigner": null,
+    "coreBundleInitCodeHash": null,
+    "coreBundleCreationCodeHash": null,
+    "modulesBundleInitCodeHash": null,
+    "modulesBundleCreationCodeHash": null,
+    "deploymentManifestHash": null
+  },
+  "governanceState": {
+    "executionDelaySeconds": 86400,
+    "executionWindowSeconds": 604800,
+    "signerCount": 1,
+    "threshold": 1,
+    "configurationEpoch": 1
+  },
+  "expected": {
+    "coreBundle": null,
+    "modulesBundle": null
+  },
+  "contracts": {
+    "moduleRegistry": { "address": null, "runtimeCodeHash": null, "sourceVerification": "pending" },
+    "mediaEvidenceVerifier": { "address": null, "runtimeCodeHash": null, "sourceVerification": "pending" },
+    "releaseRegistry": { "address": null, "runtimeCodeHash": null, "sourceVerification": "pending" },
+    "collectionModule": { "address": null, "runtimeCodeHash": null, "sourceVerification": "pending" },
+    "editionModule": { "address": null, "runtimeCodeHash": null, "sourceVerification": "pending" },
+    "splitModule": { "address": null, "runtimeCodeHash": null, "sourceVerification": "pending" }
+  },
+  "moduleAdmissions": {
+    "collection": { "policyHash": null, "metadataHash": null, "proposalId": null, "activationTx": null },
+    "editions": { "policyHash": null, "metadataHash": null, "proposalId": null, "activationTx": null },
+    "split": { "policyHash": null, "metadataHash": null, "proposalId": null, "activationTx": null }
+  },
+  "receipts": {
+    "coreDeploymentTx": null,
+    "coreDeploymentBlock": null,
+    "coreDeploymentBlockHash": null,
+    "modulesDeploymentTx": null,
+    "modulesDeploymentBlock": null,
+    "modulesDeploymentBlockHash": null,
+    "verificationCompletedAt": null
+  },
+  "limitations": [
+    "No deployment is recorded by this template.",
+    "Deployment does not activate any creator module.",
+    "Marketplace settlement and platform fees are not part of this foundation.",
+    "Uniswap v4 hooks are a separate, unimplemented module boundary."
+  ]
+}

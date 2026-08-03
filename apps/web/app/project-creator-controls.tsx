@@ -37,6 +37,7 @@ import type {
   ProjectAssignment
 } from "../lib/project-ownership";
 import { CreatorGalleryField, CreatorImageField } from "./creator-media-upload";
+import { CreatorAssetStudio } from "./creator-asset-studio";
 import { useProfile } from "./profile-provider";
 
 const MODULE_COPY: Record<RequestedProjectModule, { label: string; description: string }> = {
@@ -298,6 +299,7 @@ export function ProjectCreatorControls({ project }: { project: PublicProjectReco
           {updateMessage && <p className="creatorControlMessage" role="status">{updateMessage}</p>}
         </form>
       )}
+      <CreatorAssetStudio assignment={assignment} projectSlug={slug} user={user} />
       <div className="creatorCapabilityHeading"><strong>Optional project modules</strong><span>SEPARATE REVIEW</span></div>
       <div className="creatorControlGrid">
         {PROJECT_MODULES.filter((module) => assignment.allowedModules.includes(module)).map((module) => {
