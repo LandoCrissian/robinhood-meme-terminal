@@ -255,7 +255,8 @@ assert.match(externalSushiTicketSource, /protectionSettings: \{ \.\.\.afterBuyPr
 assert.match(externalUniswapTicketSource, /setSaferOrderOriginal\(amountIn\)/);
 assert.match(externalUniswapTicketSource, /Uniswap v3 · Router02/);
 assert.match(externalUniswapTicketSource, /Uniswap v4 · Universal Router/);
-assert.match(externalUniswapTicketSource, /PASSPORT-GATED UNISWAP V4 ROUTE/);
+assert.match(externalUniswapTicketSource, /UNIVERSAL ROUTER/);
+assert.match(externalUniswapTicketSource, /preparedQuote/);
 assert.match(externalUniswapTicketSource, /impactBlocked/);
 assert.doesNotMatch(externalUniswapTicketSource, /evidenceBlocked/);
 assert.doesNotMatch(externalUniswapTicketSource, /criticalEvidenceAcknowledged/);

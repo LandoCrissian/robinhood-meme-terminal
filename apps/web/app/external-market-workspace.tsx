@@ -33,7 +33,7 @@ import {
 import { marketDistributionPassport } from "../lib/launch-distribution";
 import { ExternalMarketChart } from "./external-market-chart";
 import { ExternalHolderIntelligence, ExternalTradeTape, ExternalWalletPosition } from "./external-market-live";
-import { ExternalRouteComparison } from "./external-route-comparison";
+import { ExternalRouteComparison, type UniversalPreparedRoute } from "./external-route-comparison";
 import { ExternalSushiQuotePanel } from "./external-sushi-quote-panel";
 import { ExternalUniswapTradePanel } from "./external-uniswap-trade-panel";
 import { ExternalV4HookPassport } from "./external-v4-hook-passport";
@@ -159,6 +159,7 @@ export function ExternalMarketWorkspace({ initialMarket }: { initialMarket?: Ext
   const [tradeVenueHealth, setTradeVenueHealth] = useState<Partial<Record<TradeVenueId, TradeVenueHealth>>>({});
   const [tradeVenueSelectionMode, setTradeVenueSelectionMode] = useState<TradeVenueSelectionMode>("automatic");
   const [tradeVenueNotice, setTradeVenueNotice] = useState("");
+  const [preparedTradeRoutes, setPreparedTradeRoutes] = useState<UniversalPreparedRoute[]>([]);
   const [tradeVenueRefresh, setTradeVenueRefresh] = useState(0);
   const [mobileTradeOpen, setMobileTradeOpen] = useState(false);
   const [sellPressure, setSellPressure] = useState<ExternalSellPressure>();
@@ -313,6 +314,7 @@ export function ExternalMarketWorkspace({ initialMarket }: { initialMarket?: Ext
     setTradeVenueHealth({});
     setTradeVenueSelectionMode("automatic");
     setTradeVenueNotice("");
+    setPreparedTradeRoutes([]);
     const query = new URLSearchParams({ token: marketAddress });
     if (tradeVenueRefresh > 0) query.set("refresh", "1");
     void fetch(`/api/trade/external-venues?${query}`, {
@@ -500,6 +502,10 @@ export function ExternalMarketWorkspace({ initialMarket }: { initialMarket?: Ext
   }, [selectedTradeVenue, tradeVenueHealth, tradeVenueIds, tradeVenueSelectionMode]);
 
   const activeTradeVenue = tradeVenueOptions.find((candidate) => candidate.venue === selectedTradeVenue);
+  const activePreparedRoute = preparedTradeRoutes.find((candidate) => (
+    candidate.venue === selectedTradeVenue
+    && candidate.pair.toLowerCase() === activeTradeVenue?.pair.toLowerCase()
+  ));
   const tradingMarket = market && activeTradeVenue
     ? {
         ...market,
@@ -516,12 +522,23 @@ export function ExternalMarketWorkspace({ initialMarket }: { initialMarket?: Ext
   const applyRecommendedTradeVenue = useCallback((recommendation: {
     venue: TradeVenueId;
     improvementBps: number;
+    backups: TradeVenueId[];
+    reason: "protected-output" | "lower-network-fee" | "lower-price-impact" | "deeper-liquidity" | "fresher-quote";
   }) => {
     if (tradeVenueSelectionMode !== "automatic") return;
     setSelectedTradeVenue((current) => current === recommendation.venue ? current : recommendation.venue);
+    const reason = recommendation.reason === "protected-output"
+      ? `${(recommendation.improvementBps / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}% more protected output`
+      : recommendation.reason === "lower-network-fee"
+        ? "lower estimated network cost at comparable output"
+        : recommendation.reason === "lower-price-impact"
+          ? "lower price impact at comparable output"
+          : recommendation.reason === "deeper-liquidity"
+            ? "deeper verified liquidity at comparable output"
+            : "the freshest comparable executable quote";
     setTradeVenueNotice(
-      `Automatic routing selected ${tradeVenueLabel(recommendation.venue)} for `
-      + `${(recommendation.improvementBps / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}% more protected output.`
+      `Automatic routing selected ${tradeVenueLabel(recommendation.venue)} for ${reason}. `
+      + `${recommendation.backups.length} verified backup${recommendation.backups.length === 1 ? " is" : "s are"} warm.`
     );
   }, [tradeVenueSelectionMode]);
   const resumeAutomaticRouting = () => {
@@ -861,12 +878,13 @@ export function ExternalMarketWorkspace({ initialMarket }: { initialMarket?: Ext
               onSelectVenue={selectTradeVenue}
               onRecommendedVenue={applyRecommendedTradeVenue}
               onHealthChange={setTradeVenueHealth}
+              onPreparedRoutes={setPreparedTradeRoutes}
             />
           )}
           {tradeVenueStatus === "loading" && <div className="universalTradeUnavailable"><strong>Verifying execution venues…</strong><p>Matching independent pool and onchain evidence for this token.</p></div>}
-          {tradingMarket && activeTradeVenue?.venue === "sushi" && <ExternalSushiQuotePanel market={tradingMarket} side={side} amount={tradeAmount} onAmountChange={updateTradeAmount} onSwapConfirmed={completePreparedPositionExit} />}
-          {tradingMarket && activeTradeVenue?.venue === "uniswap-v3" && <ExternalUniswapTradePanel market={tradingMarket} side={side} amount={tradeAmount} onAmountChange={updateTradeAmount} onSwapConfirmed={completePreparedPositionExit} version="v3" />}
-          {tradingMarket && activeTradeVenue?.venue === "uniswap-v4" && <ExternalUniswapTradePanel market={tradingMarket} side={side} amount={tradeAmount} onAmountChange={updateTradeAmount} onSwapConfirmed={completePreparedPositionExit} version="v4" />}
+          {tradingMarket && activeTradeVenue?.venue === "sushi" && <ExternalSushiQuotePanel market={tradingMarket} side={side} amount={tradeAmount} onAmountChange={updateTradeAmount} onSwapConfirmed={completePreparedPositionExit} preparedQuote={activePreparedRoute?.payload} />}
+          {tradingMarket && activeTradeVenue?.venue === "uniswap-v3" && <ExternalUniswapTradePanel market={tradingMarket} side={side} amount={tradeAmount} onAmountChange={updateTradeAmount} onSwapConfirmed={completePreparedPositionExit} version="v3" preparedQuote={activePreparedRoute?.payload} />}
+          {tradingMarket && activeTradeVenue?.venue === "uniswap-v4" && <ExternalUniswapTradePanel market={tradingMarket} side={side} amount={tradeAmount} onAmountChange={updateTradeAmount} onSwapConfirmed={completePreparedPositionExit} version="v4" preparedQuote={activePreparedRoute?.payload} />}
           {tradeVenueStatus === "error" && !tradingMarket && (
             <div className="universalTradeUnavailable">
               <strong>Execution check unavailable</strong>

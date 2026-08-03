@@ -123,13 +123,68 @@ function displayUnits(value: string, decimals: number, maximumFractionDigits = 6
     : formatted;
 }
 
+function verifiedPreparedUniswapQuote(value: unknown, expected: {
+  version: "v3" | "v4";
+  token: Address;
+  pair: string;
+  recipient: Address;
+  side: "buy" | "sell";
+  amountIn: bigint;
+  executionRouter: Address;
+}) {
+  if (!value || typeof value !== "object") throw new Error("RMT rejected an incomplete Uniswap transaction.");
+  const payload = value as ExternalUniswapQuote;
+  const isV4 = expected.version === "v4";
+  if (
+    payload.marketVerified !== true
+    || payload.executable !== true
+    || payload.venue !== (isV4 ? "uniswap-v4" : "uniswap-v3")
+    || payload.protocol !== "UNISWAP"
+    || payload.chainId !== ROBINHOOD_CHAIN_ID
+    || payload.token?.toLowerCase() !== expected.token.toLowerCase()
+    || payload.recipient?.toLowerCase() !== expected.recipient.toLowerCase()
+    || payload.authorization?.status !== "identity-wallet-bound"
+    || payload.authorization.wallet.toLowerCase() !== expected.recipient.toLowerCase()
+    || payload.marketPair?.toLowerCase() !== expected.pair.toLowerCase()
+    || payload.router?.toLowerCase() !== expected.executionRouter.toLowerCase()
+    || payload.side !== expected.side
+    || payload.amountIn !== expected.amountIn.toString()
+    || !Number.isFinite(payload.priceImpact)
+    || payload.priceImpact < 0
+    || payload.priceImpact > 1
+    || !/^\d+$/.test(payload.deadline ?? "")
+    || BigInt(payload.deadline) <= BigInt(Math.floor(Date.now() / 1000) + 30)
+    || !payload.calldata?.startsWith("0x")
+    || !payload.inputToken
+    || !payload.outputToken
+    || (isV4 && (
+      payload.passport?.state !== "eligible"
+      || typeof payload.passport?.sellTestedAtBlock !== "string"
+      || !/^\d+$/.test(payload.passport.sellTestedAtBlock)
+      || typeof payload.passport?.exactTradeTestedAtBlock !== "string"
+      || !/^\d+$/.test(payload.passport.exactTradeTestedAtBlock)
+      || payload.approvalSpender?.toLowerCase() !== PERMIT2_ADDRESS.toLowerCase()
+    ))
+  ) throw new Error("RMT rejected an inconsistent Uniswap transaction.");
+  assertUniswapTransactionIntegrity(payload, {
+    version: expected.version,
+    token: expected.token,
+    recipient: expected.recipient,
+    side: expected.side,
+    amountIn: expected.amountIn,
+    nowSeconds: Math.floor(Date.now() / 1_000)
+  });
+  return payload;
+}
+
 export function ExternalUniswapTradePanel({
   market,
   side,
   amount: controlledAmount,
   onAmountChange,
   onSwapConfirmed,
-  version = "v3"
+  version = "v3",
+  preparedQuote
 }: {
   market: ExternalMarket;
   side: "buy" | "sell";
@@ -137,6 +192,7 @@ export function ExternalUniswapTradePanel({
   onAmountChange?: (value: string) => void;
   onSwapConfirmed?: () => void;
   version?: "v3" | "v4";
+  preparedQuote?: unknown;
 }) {
   const { preferences } = useTradePreferences();
   const identity = useRmtIdentity();
@@ -262,6 +318,25 @@ export function ExternalUniswapTradePanel({
       return;
     }
     let cancelled = false;
+    if (preparedQuote) {
+      try {
+        setQuote(verifiedPreparedUniswapQuote(preparedQuote, {
+          version,
+          token,
+          pair,
+          recipient: address,
+          side,
+          amountIn,
+          executionRouter
+        }));
+        setStatus("idle");
+        return;
+      } catch (cause) {
+        setQuote(undefined);
+        setStatus("loading");
+        setError(cause instanceof Error ? cause.message : "Refreshing the selected Uniswap route.");
+      }
+    }
     const timer = window.setTimeout(() => {
       setStatus("loading");
       void requestTradeQuote(isV4 ? "/api/trade/external-uniswap-v4" : "/api/trade/external-uniswap", {
@@ -270,56 +345,24 @@ export function ExternalUniswapTradePanel({
         recipient: address,
         side,
         amountIn: amountIn.toString(),
-        maxPriceImpactBps: preferences.maxPriceImpactBps
+        maxPriceImpactBps: 10_000
       }, {
         identityScope: identity.userId,
         identityToken: identity.identityToken
       }).then((response) => {
         const payload = response.payload as ExternalUniswapQuote | { error?: string };
         if (!response.ok) throw new Error("error" in payload ? payload.error : "Uniswap quote is unavailable.");
-        if (
-          !("marketVerified" in payload)
-          || payload.marketVerified !== true
-          || payload.executable !== true
-          || payload.venue !== (isV4 ? "uniswap-v4" : "uniswap-v3")
-          || payload.protocol !== "UNISWAP"
-          || payload.chainId !== ROBINHOOD_CHAIN_ID
-          || payload.token.toLowerCase() !== token.toLowerCase()
-          || payload.recipient.toLowerCase() !== address.toLowerCase()
-          || payload.authorization?.status !== "identity-wallet-bound"
-          || payload.authorization.wallet.toLowerCase() !== address.toLowerCase()
-          || payload.marketPair.toLowerCase() !== pair.toLowerCase()
-          || payload.router.toLowerCase() !== executionRouter.toLowerCase()
-          || payload.side !== side
-          || payload.amountIn !== amountIn.toString()
-          || !Number.isFinite(payload.priceImpact)
-          || payload.priceImpact < 0
-          || payload.priceImpact > 1
-          || BigInt(payload.deadline) <= BigInt(Math.floor(Date.now() / 1000) + 30)
-          || !payload.calldata.startsWith("0x")
-          || !payload.inputToken
-          || !payload.outputToken
-          || (isV4 && (
-            payload.passport?.state !== "eligible"
-            || typeof payload.passport?.sellTestedAtBlock !== "string"
-            || !/^\d+$/.test(payload.passport.sellTestedAtBlock)
-            || typeof payload.passport?.exactTradeTestedAtBlock !== "string"
-            || !/^\d+$/.test(payload.passport.exactTradeTestedAtBlock)
-            || payload.approvalSpender?.toLowerCase() !== PERMIT2_ADDRESS.toLowerCase()
-          ))
-        ) {
-          throw new Error("RMT rejected an inconsistent Uniswap transaction.");
-        }
-        assertUniswapTransactionIntegrity(payload, {
+        const verified = verifiedPreparedUniswapQuote(payload, {
           version,
           token,
+          pair,
           recipient: address,
           side,
           amountIn,
-          nowSeconds: Math.floor(Date.now() / 1_000)
+          executionRouter
         });
         if (!cancelled) {
-          setQuote(payload);
+          setQuote(verified);
           setStatus("idle");
         }
       }).catch((cause) => {
@@ -332,7 +375,7 @@ export function ExternalUniswapTradePanel({
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [address, amountIn, decimals, executionRouter, identity.authenticated, identity.identityToken, identity.ready, identity.userId, isV4, pair, preferences.maxPriceImpactBps, preferences.preparationMode, refresh, side, token]);
+  }, [address, amountIn, decimals, executionRouter, identity.authenticated, identity.identityToken, identity.ready, identity.userId, isV4, pair, preferences.preparationMode, preparedQuote, refresh, side, token, version]);
 
   useEffect(() => {
     if (!approvalReceipt.isSuccess) return;
@@ -454,7 +497,7 @@ export function ExternalUniswapTradePanel({
 
   const submit = () => {
     setMessage("");
-    if (!accountReady || !address || chainId !== ROBINHOOD_CHAIN_ID || !quoteIsFresh || !quote || insufficient || busy || !confidenceReady || impactBlocked || !preflightReady) return;
+    if (!accountReady || !address || chainId !== ROBINHOOD_CHAIN_ID || !quoteIsFresh || !quote || insufficient || busy || !confidenceReady || !preflightReady) return;
     recordExperienceStage("wallet_review_started");
     if (needsTokenApproval) {
       setApprovalStage("token");
@@ -517,7 +560,6 @@ export function ExternalUniswapTradePanel({
       : !quoteIsFresh ? "Verifying route…"
       : insufficient ? "Insufficient balance"
       : !confidenceReady ? "Accept RMT trading terms"
-        : impactBlocked ? `Above your ${preferences.maxPriceImpactBps / 100}% impact limit`
         : feeEstimate.status === "unavailable" ? "Preflight failed — trade blocked"
           : !preflightReady ? "Simulating exact transaction…"
         : needsTokenApproval ? `Approve exact ${market.symbol} amount`
@@ -528,8 +570,8 @@ export function ExternalUniswapTradePanel({
     <section className="externalSushiQuote externalUniswapTrade" aria-labelledby="external-uniswap-trade-heading">
       <header>
         <div>
-          <small>{isV4 ? "PASSPORT-GATED UNISWAP V4 ROUTE" : "VERIFIED UNISWAP V3 ROUTE"}</small>
-          <strong id="external-uniswap-trade-heading">Trade without leaving RMT</strong>
+          <small>UNIVERSAL ROUTER · {isV4 ? "UNISWAP V4" : "UNISWAP V3"} SELECTED</small>
+          <strong id="external-uniswap-trade-heading">Review one RMT order</strong>
         </div>
         <span>1% · 10 min</span>
       </header>
@@ -624,7 +666,7 @@ export function ExternalUniswapTradePanel({
             slippageLabel="1% max"
             evidenceState={
               impactBlocked
-                ? "blocked"
+                ? "review"
                 : !confidenceEvidenceReady
                   ? "checking"
                   : evidenceDecision.state === "review" || evidenceDecision.state === "blocked"
@@ -636,7 +678,7 @@ export function ExternalUniswapTradePanel({
             className={`externalUniswapSubmit ${side}`}
             type="button"
             aria-busy={busy || status === "loading"}
-            disabled={!quoteIsFresh || insufficient || busy || !confidenceReady || impactBlocked || !preflightReady}
+            disabled={!quoteIsFresh || insufficient || busy || !confidenceReady || !preflightReady}
             onClick={submit}
           >
             {buttonLabel}
@@ -711,7 +753,7 @@ export function ExternalUniswapTradePanel({
         authenticated={accountReady}
         connected={Boolean(address && chainId === ROBINHOOD_CHAIN_ID)}
         quoteReady={quoteIsFresh}
-        evidenceReady={confidenceReady && !impactBlocked}
+        evidenceReady={confidenceReady}
         busy={busy}
         success={swapReceipt.isSuccess}
         needsApproval={needsApproval}

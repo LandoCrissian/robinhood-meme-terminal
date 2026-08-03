@@ -258,17 +258,17 @@ export function SmartOrderGuard({
   disabled?: boolean;
   onReduce: () => void;
 }) {
-  const blocked = priceImpact !== undefined && priceImpact > maxPriceImpact;
-  const tone = blocked ? "danger" : priceImpactTone(priceImpact);
+  const abovePreference = priceImpact !== undefined && priceImpact > maxPriceImpact;
+  const tone = abovePreference ? "danger" : priceImpactTone(priceImpact);
   if (tone === "calm") return null;
   const limitLabel = `${(maxPriceImpact * 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}%`;
   return (
     <div className={`smartOrderGuard ${tone}`} role="alert">
       <div>
-        <strong>{blocked ? `Order blocked · above your ${limitLabel} limit` : "Price-impact caution"}</strong>
+        <strong>{abovePreference ? `High impact · above your ${limitLabel} preference` : "Price-impact caution"}</strong>
         <small>
-          {blocked
-            ? "RMT will not open your wallet for this amount. Reduce it or deliberately choose a different limit, then RMT will verify a fresh route."
+          {abovePreference
+            ? "RMT is warning you before wallet review. You may reduce the amount for a safer quote or continue with the displayed route and minimum received."
             : "This quote is above 1% impact. RMT can reduce the amount and automatically request a safer quote."}
         </small>
       </div>
