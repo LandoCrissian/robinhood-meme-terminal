@@ -38,6 +38,7 @@
     "test:external-uniswap": "tsx lib/server/external-uniswap-market-smoke.ts && tsx lib/server/external-uniswap-trade-smoke.ts",
     "test:external-v4-evidence": "tsx lib/server/external-uniswap-v4-evidence-smoke.ts && tsx lib/server/external-uniswap-v4-trade-smoke.ts",
     "test:external-venues": "tsx lib/server/external-trade-venues-smoke.ts",
+    "test:universal-resolver": "tsx lib/server/universal-market-resolver-smoke.ts",
     "test:external-ohlcv": "tsx lib/server/external-ohlcv-smoke.ts",
     "test:trade-ticket": "tsx lib/trade-ticket-smoke.ts",
     "test:trade-speed": "tsx lib/trade-speed-smoke.ts && tsx lib/speed-wallet-smoke.ts && tsx lib/privy-funding-smoke.ts && tsx lib/wallet-transfer-smoke.ts",

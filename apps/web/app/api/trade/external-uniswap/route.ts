@@ -21,12 +21,7 @@ const requestSchema = z.object({
 
 const publicErrors = new Set([
   "Trade amount is outside the supported range.",
-  "This Uniswap pool is no longer verified.",
-  "This Uniswap pool is no longer eligible for in-RMT trading.",
   "This market is not a verified canonical Uniswap V3 token/WETH pool.",
-  "Market verification timed out.",
-  "Market verification is unavailable.",
-  "Market verification returned invalid data.",
   "The official Uniswap execution contracts are unavailable.",
   "The token decimals are outside the supported range.",
   "The Uniswap pool returned an invalid quote.",

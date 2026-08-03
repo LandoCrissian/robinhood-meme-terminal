@@ -70,6 +70,11 @@ export type VerifiedExternalUniswapMarket = {
   url: string;
 };
 
+export type VerifiedCanonicalUniswapV3Market = Omit<
+  VerifiedExternalUniswapMarket,
+  "liquidityUsd" | "url"
+>;
+
 const client = createPublicClient({
   chain: robinhoodChain,
   transport: http(
@@ -109,6 +114,36 @@ async function readPool(pair: Address) {
     sqrtPriceX96: slot0[0],
     canonicalPair: getAddress(canonicalPair),
     code
+  };
+}
+
+export async function verifyCanonicalExternalUniswapV3Market(
+  params: { token: Address; pair: Address },
+  dependencies: { readPool?: ReadPool } = {}
+): Promise<VerifiedCanonicalUniswapV3Market> {
+  const pool = await (dependencies.readPool ?? readPool)(getAddress(params.pair));
+  const tokens = [pool.token0.toLowerCase(), pool.token1.toLowerCase()];
+  if (
+    !pool.code
+    || pool.code === "0x"
+    || !sameAddress(pool.factory, ROBINHOOD_V3_FACTORY)
+    || !sameAddress(pool.canonicalPair, params.pair)
+    || !tokens.includes(params.token.toLowerCase())
+    || !tokens.includes(ROBINHOOD_WETH.toLowerCase())
+    || !Number.isInteger(pool.fee)
+    || pool.fee <= 0
+    || pool.fee >= 1_000_000
+    || pool.sqrtPriceX96 <= 0n
+  ) {
+    throw new Error("This market is not a verified canonical Uniswap V3 token/WETH pool.");
+  }
+  return {
+    token: getAddress(params.token),
+    pair: getAddress(params.pair),
+    fee: pool.fee,
+    token0: pool.token0,
+    token1: pool.token1,
+    sqrtPriceX96: pool.sqrtPriceX96
   };
 }
 
@@ -157,25 +192,13 @@ export async function verifyExternalUniswapMarket(
     throw new Error("This Uniswap pool is no longer eligible for in-RMT trading.");
   }
 
-  const pool = await (dependencies.readPool ?? readPool)(pair);
-  const tokens = [pool.token0.toLowerCase(), pool.token1.toLowerCase()];
-  if (
-    !pool.code
-    || pool.code === "0x"
-    || !sameAddress(pool.factory, ROBINHOOD_V3_FACTORY)
-    || !sameAddress(pool.canonicalPair, pair)
-    || !tokens.includes(params.token.toLowerCase())
-    || !tokens.includes(ROBINHOOD_WETH.toLowerCase())
-    || !Number.isInteger(pool.fee)
-    || pool.fee <= 0
-    || pool.fee >= 1_000_000
-    || pool.sqrtPriceX96 <= 0n
-  ) {
-    throw new Error("This market is not a verified canonical Uniswap V3 token/WETH pool.");
-  }
+  const pool = await verifyCanonicalExternalUniswapV3Market(
+    { token: params.token, pair },
+    { readPool: dependencies.readPool }
+  );
 
   return {
-    token: getAddress(params.token),
+    token: pool.token,
     pair,
     fee: pool.fee,
     token0: pool.token0,

@@ -2260,3 +2260,31 @@
 .terminalPage .runnerContractLookup.error i {
   background: #d79a48;
 }
+
+.terminalPage .runnerResolvedToken {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin: 0 12px 12px;
+  padding: 12px 14px;
+  border: 1px solid rgba(91, 242, 116, .32);
+  background: rgba(7, 24, 12, .82);
+}
+.terminalPage .runnerResolvedToken span { display: grid; gap: 3px; min-width: 0; }
+.terminalPage .runnerResolvedToken small { color: #62e87a; font: 800 .62rem/1.1 var(--font-mono); letter-spacing: .13em; }
+.terminalPage .runnerResolvedToken strong { overflow: hidden; color: #eef8f0; text-overflow: ellipsis; white-space: nowrap; }
+.terminalPage .runnerResolvedToken a {
+  flex: 0 0 auto;
+  min-height: 38px;
+  padding: 0 12px;
+  border: 1px solid rgba(91, 242, 116, .5);
+  color: #7cf08e;
+  font-weight: 850;
+  line-height: 36px;
+  text-decoration: none;
+}
+@media (max-width: 620px) {
+  .terminalPage .runnerResolvedToken { align-items: stretch; flex-direction: column; }
+  .terminalPage .runnerResolvedToken a { text-align: center; }
+}
