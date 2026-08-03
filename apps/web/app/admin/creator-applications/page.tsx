@@ -14,6 +14,7 @@ import { CommunityFeedbackInbox } from "./community-feedback-inbox";
 import { CommunityMessageManager } from "./community-message-manager";
 import { CommunityModerationInbox } from "./community-moderation-inbox";
 import { ExperienceFunnelInsights } from "./experience-funnel-insights";
+import { PositionGuardReleaseControl } from "./position-guard-release-control";
 
 type ReviewDraft = { note: string; slug: string };
 
@@ -133,6 +134,8 @@ export default function CreatorApplicationAdminPage() {
         <a href="#community-feedback-title">Feedback</a>
         <a href="#experience-funnel">Visitor journey</a>
       </nav>
+
+      <PositionGuardReleaseControl />
 
       <CommunityMessageManager admin={user} />
 
