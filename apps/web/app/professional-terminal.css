@@ -2216,3 +2216,47 @@
   font-size: 7px;
   line-height: 1.5;
 }
+
+.terminalPage .runnerContractLookup {
+  display: flex;
+  min-height: 34px;
+  align-items: center;
+  gap: 8px;
+  margin: -4px 8px 8px;
+  padding: 7px 10px;
+  border: 1px solid rgba(126, 151, 137, .18);
+  border-radius: 8px;
+  background: #07100a;
+  color: #91a098;
+  font: 750 10px/1.35 var(--font-mono), monospace;
+}
+
+.terminalPage .runnerContractLookup i {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: #708079;
+}
+
+.terminalPage .runnerContractLookup.searching i,
+.terminalPage .runnerContractLookup.resolved i {
+  background: var(--green);
+  box-shadow: 0 0 0 4px rgba(53, 239, 115, .08);
+}
+
+.terminalPage .runnerContractLookup.resolved {
+  border-color: rgba(53, 239, 115, .28);
+  color: #b8d8c0;
+}
+
+.terminalPage .runnerContractLookup.not-found,
+.terminalPage .runnerContractLookup.error {
+  border-color: rgba(215, 154, 72, .3);
+  color: #d6b678;
+}
+
+.terminalPage .runnerContractLookup.not-found i,
+.terminalPage .runnerContractLookup.error i {
+  background: #d79a48;
+}

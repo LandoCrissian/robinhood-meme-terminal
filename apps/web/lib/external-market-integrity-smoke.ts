@@ -7,6 +7,7 @@ import {
   selectPreferredLifecycleMarket
 } from "./external-market";
 import {
+  canonicalExternalMarketLookupAddress,
   isNonzeroEvmAddress,
   selectExternalPairBaseToken,
   selectExternalPairBaseTokenWithAssetQuotes
@@ -29,6 +30,13 @@ assert.equal(isNonzeroEvmAddress(zero.address), false, "The native zero-address 
 assert.equal(isNonzeroEvmAddress(external.address), true);
 assert.equal(isNonzeroEvmAddress("0x1234"), false);
 assert.equal(isNonzeroEvmAddress("NATIVE"), false);
+assert.equal(
+  canonicalExternalMarketLookupAddress(`  ${external.address.toUpperCase()}  `),
+  external.address.toLowerCase(),
+  "A complete contract search must be whitespace- and case-insensitive"
+);
+assert.equal(canonicalExternalMarketLookupAddress("0x1234"), null);
+assert.equal(canonicalExternalMarketLookupAddress(zero.address), null);
 
 assert.equal(
   selectExternalPairBaseToken(external, wrappedNative, excluded),

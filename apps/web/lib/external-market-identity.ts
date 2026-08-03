@@ -9,6 +9,12 @@ export function isNonzeroEvmAddress(value: string) {
   return EVM_ADDRESS_PATTERN.test(value) && value.toLowerCase() !== ZERO_EVM_ADDRESS;
 }
 
+export function canonicalExternalMarketLookupAddress(value: string | null | undefined) {
+  const address = typeof value === "string" ? value.trim() : "";
+  const normalizedPrefix = address.startsWith("0X") ? "0x" + address.slice(2) : address;
+  return isNonzeroEvmAddress(normalizedPrefix) ? normalizedPrefix.toLowerCase() : null;
+}
+
 export function selectExternalPairBaseToken<T extends PairToken>(
   baseToken: T | undefined,
   quoteToken: T | undefined,

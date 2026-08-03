@@ -167,7 +167,8 @@ export function ExternalMarketWorkspace({ initialMarket }: { initialMarket?: Ext
       return;
     }
     try {
-      const response = await fetch("/api/markets/external", { cache: "no-store" });
+      const query = new URLSearchParams({ contract: tokenAddress });
+      const response = await fetch(`/api/markets/external?${query}`, { cache: "no-store" });
       const payload = await response.json() as ExternalMarketResponse;
       if (!response.ok || !Array.isArray(payload.markets)) throw new Error(payload.error ?? "Market unavailable.");
       const next = payload.markets.find((item) => item.address.toLowerCase() === tokenAddress.toLowerCase());

@@ -7,7 +7,10 @@ import {
   type ExternalMarket,
   type ExternalMarketResponse
 } from "../lib/external-market";
-import { isNonzeroEvmAddress } from "../lib/external-market-identity";
+import {
+  canonicalExternalMarketLookupAddress,
+  isNonzeroEvmAddress
+} from "../lib/external-market-identity";
 import type { ExternalMarketRiskFlag, ExternalMarketSignal } from "../lib/external-market-ranking";
 import {
   externalMarketViewCounts,
@@ -28,6 +31,7 @@ import { ExternalUniswapTradePanel } from "./external-uniswap-trade-panel";
 
 type FeedStatus = "loading" | "ready" | "stale" | "error";
 type ExecutionAvailability = "checking" | "ready" | "view-only" | "unavailable";
+type ContractLookupStatus = "idle" | "searching" | "resolved" | "not-found" | "error";
 
 type DiscoveryView = ExternalMarketDiscoveryView;
 type SourceFilter = "all" | "attributed" | "pons" | "lemon" | "sushi";
@@ -162,16 +166,15 @@ function runnerReason(market: ExternalMarket) {
 }
 
 function LiveSignalDesk({ signals }: { signals: LiveMarketSignal[] }) {
-  const visible = signals.slice(0, 4);
   return (
     <section className="liveSignalDesk" aria-labelledby="live-signal-desk-title">
       <header>
         <span><small>RMT LIVE SIGNAL DESK</small><strong id="live-signal-desk-title">Markets requiring attention</strong></span>
-        <em>{signals.length} qualified</em>
+        <em>{signals.length} live · all shown</em>
       </header>
-      {visible.length ? (
+      {signals.length ? (
         <div className="liveSignalRail">
-          {visible.map((signal) => (
+          {signals.map((signal) => (
             <a
               href={`/market/${signal.token}?tab=activity`}
               className={signal.severity}
@@ -449,11 +452,15 @@ export function ExternalMarketFeed() {
   const [quickTrade, setQuickTrade] = useState<{ address: string; side: ExternalTradeSide }>();
   const [tradeAnnouncement, setTradeAnnouncement] = useState("");
   const [marketQuery, setMarketQuery] = useState("");
+  const [contractLookupStatus, setContractLookupStatus] = useState<ContractLookupStatus>("idle");
+  const [contractLookupMarket, setContractLookupMarket] = useState<ExternalMarket>();
   const [showAllMarkets, setShowAllMarkets] = useState(false);
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
   const [venueFilter, setVenueFilter] = useState<VenueFilter>("all");
   const [tradeableOnly, setTradeableOnly] = useState(false);
   const [executionAvailability, setExecutionAvailability] = useState<Record<string, ExecutionAvailability>>({});
+  const normalizedMarketQuery = marketQuery.trim().toLowerCase();
+  const contractLookupAddress = canonicalExternalMarketLookupAddress(normalizedMarketQuery);
 
   const syncQuickTradeUrl = useCallback((market?: ExternalMarket, side?: ExternalTradeSide) => {
     const url = new URL(window.location.href);
@@ -524,6 +531,51 @@ export function ExternalMarketFeed() {
   }, [refresh]);
 
   useEffect(() => {
+    const contract = contractLookupAddress;
+    if (!contract) {
+      setContractLookupStatus("idle");
+      setContractLookupMarket(undefined);
+      return;
+    }
+
+    const listedMarket = markets.find((market) =>
+      market.address.toLowerCase() === contract
+      || market.pairAddress.toLowerCase() === contract
+    );
+    if (listedMarket) {
+      setContractLookupStatus("resolved");
+      setContractLookupMarket(listedMarket);
+      return;
+    }
+
+    const controller = new AbortController();
+    const query = new URLSearchParams({ contract });
+    setContractLookupStatus("searching");
+    setContractLookupMarket(undefined);
+    void fetch(`/api/markets/external?${query}`, {
+      cache: "no-store",
+      signal: controller.signal
+    }).then(async (response) => {
+      const payload = await response.json() as ExternalMarketResponse;
+      if (!response.ok || !Array.isArray(payload.markets)) {
+        throw new Error(payload.error || "Contract lookup is unavailable.");
+      }
+      const match = payload.markets.find((market) =>
+        market.address.toLowerCase() === contract
+        || market.pairAddress.toLowerCase() === contract
+      );
+      if (controller.signal.aborted) return;
+      setContractLookupMarket(match);
+      setContractLookupStatus(match ? "resolved" : "not-found");
+    }).catch(() => {
+      if (controller.signal.aborted) return;
+      setContractLookupStatus("error");
+      setContractLookupMarket(undefined);
+    });
+    return () => controller.abort();
+  }, [contractLookupAddress, markets]);
+
+  useEffect(() => {
     if (restoredQuickTrade.current || status === "loading") return;
     restoredQuickTrade.current = true;
     const params = new URLSearchParams(window.location.search);
@@ -559,9 +611,11 @@ export function ExternalMarketFeed() {
 
   const selectedQuickTradeMarket = useMemo(
     () => quickTrade
-      ? markets.find((market) => market.address.toLowerCase() === quickTrade.address.toLowerCase())
+      ? [contractLookupMarket, ...markets].find((market) =>
+          market?.address.toLowerCase() === quickTrade.address.toLowerCase()
+        )
       : undefined,
-    [markets, quickTrade]
+    [contractLookupMarket, markets, quickTrade]
   );
 
   useEffect(() => {
@@ -610,7 +664,6 @@ export function ExternalMarketFeed() {
     [sourceScopedMarkets, venueFilter]
   );
   const counts = useMemo(() => externalMarketViewCounts(scopedMarkets), [scopedMarkets]);
-  const normalizedMarketQuery = marketQuery.trim().toLowerCase();
   const rankByAddress = useMemo(
     () => new Map(
       orderedMarkets.map((market, index) => [
@@ -624,8 +677,16 @@ export function ExternalMarketFeed() {
     () => selectExternalMarketView([...orderedMarkets], view),
     [orderedMarkets, view]
   );
+  const searchableMarkets = contractLookupMarket
+    ? [
+        contractLookupMarket,
+        ...orderedMarkets.filter((market) =>
+          market.address.toLowerCase() !== contractLookupMarket.address.toLowerCase()
+        )
+      ]
+    : orderedMarkets;
   const searchedMarkets = normalizedMarketQuery
-    ? orderedMarkets.filter((market) => [
+    ? searchableMarkets.filter((market) => [
         market.name,
         market.symbol,
         market.address,
@@ -637,7 +698,7 @@ export function ExternalMarketFeed() {
         ])
       ].some((value) => value.toLowerCase().includes(normalizedMarketQuery)))
     : viewMarkets;
-  const sourceFilteredMarkets = searchedMarkets.filter((market) => {
+  const sourceFilteredMarkets = normalizedMarketQuery ? searchedMarkets : searchedMarkets.filter((market) => {
     if (sourceFilter === "attributed" && !marketDistributionPassport(market).isAttributedLaunch) return false;
     if (
       sourceFilter !== "all"
@@ -741,8 +802,10 @@ export function ExternalMarketFeed() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [availabilityKey]);
 
-  const marketCountLabel = normalizedMarketQuery
-    ? filteredMarkets.length + " match" + (filteredMarkets.length === 1 ? "" : "es")
+  const marketCountLabel = contractLookupAddress && contractLookupStatus === "searching"
+    ? "Searching Robinhood Chain…"
+    : normalizedMarketQuery
+      ? filteredMarkets.length + " match" + (filteredMarkets.length === 1 ? "" : "es")
     : tradeableVerificationPending
       ? "Verifying routes · " + routeResolvedCount + " of " + sourceFilteredMarkets.length +
         " checked · " + tradeableCount + " tradeable"
@@ -761,6 +824,9 @@ export function ExternalMarketFeed() {
     if (value.trim()) {
       setView("explore");
       setShowAllMarkets(true);
+      setSourceFilter("all");
+      setVenueFilter("all");
+      setTradeableOnly(false);
     }
   };
   const clearMarketQuery = () => {
@@ -838,7 +904,7 @@ export function ExternalMarketFeed() {
           type="button"
           aria-controls="runner-market-panel"
           aria-expanded={expandedDirectory}
-          disabled={filteredMarkets.length === 0}
+          disabled={!normalizedMarketQuery && filteredMarkets.length === 0}
           onClick={handleDirectoryAction}
         >
           {normalizedMarketQuery
@@ -848,6 +914,20 @@ export function ExternalMarketFeed() {
               : "Browse all " + filteredMarkets.length}
         </button>
       </div>
+      {contractLookupAddress && (
+        <p className={`runnerContractLookup ${contractLookupStatus}`} role="status">
+          <i aria-hidden="true" />
+          {contractLookupStatus === "idle"
+            ? "Preparing exact contract lookup…"
+            : contractLookupStatus === "searching"
+            ? "Searching beyond the loaded market list…"
+            : contractLookupStatus === "resolved"
+              ? "Exact contract market found on Robinhood Chain."
+              : contractLookupStatus === "not-found"
+                ? "No Robinhood Chain DEX market was found for this contract."
+                : "Direct contract lookup is temporarily delayed."}
+        </p>
+      )}
       <div className="runnerToolbar">
         <div className="runnerTabs" role="tablist" aria-label="Market discovery views">
           {VIEWS.map((item) => (
@@ -937,6 +1017,12 @@ export function ExternalMarketFeed() {
           <div className="emptyFeed">
             <strong>{tradeableVerificationPending
               ? "Verifying in-site execution routes…"
+              : contractLookupAddress && contractLookupStatus === "searching"
+                ? "Searching the chain for this contract…"
+                : contractLookupAddress && contractLookupStatus === "not-found"
+                  ? "No live DEX market was found for this contract."
+                  : contractLookupAddress && contractLookupStatus === "error"
+                    ? "Direct contract lookup is temporarily delayed."
               : normalizedMarketQuery
                 ? "No external markets match that search."
                 : tradeableOnly
@@ -944,6 +1030,12 @@ export function ExternalMarketFeed() {
                   : "No markets meet this signal yet."}</strong>
             <span>{tradeableVerificationPending
               ? "RMT is checking prioritized markets in bounded batches. Tradeable results appear as each route is independently verified."
+              : contractLookupAddress && contractLookupStatus === "searching"
+                ? "RMT is checking Sushi and Uniswap market data beyond the loaded terminal snapshot."
+                : contractLookupAddress && contractLookupStatus === "not-found"
+                  ? "Check that this is the token contract on Robinhood Chain and that a DEX pool has been created."
+                  : contractLookupAddress && contractLookupStatus === "error"
+                    ? "The loaded terminal remains available. Clear the search or retry this contract shortly."
               : normalizedMarketQuery
               ? "Try a token name, ticker, or complete contract address, or change the project-source filter."
               : tradeableOnly
