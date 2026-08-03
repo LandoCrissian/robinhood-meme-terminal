@@ -89,18 +89,59 @@ function displayUnits(value: string, decimals: number, maximumFractionDigits = 6
     : formatted;
 }
 
+function verifiedPreparedSushiQuote(value: unknown, expected: {
+  token: Address;
+  pair: Address;
+  recipient: Address;
+  side: "buy" | "sell";
+  amountIn: bigint;
+}) {
+  if (!value || typeof value !== "object") throw new Error("RMT rejected an incomplete Sushi response.");
+  const payload = value as ExternalSushiQuote;
+  const executionReady = payload.executable === true
+    && "router" in payload
+    && payload.router.toLowerCase() === SUSHI_RED_SNWAPPER.toLowerCase()
+    && "calldata" in payload
+    && payload.calldata.startsWith("0x");
+  const approvalReady = payload.executable === false
+    && payload.approvalRequired === true
+    && payload.side === "sell";
+  if (
+    payload.marketVerified !== true
+    || payload.verifiedInput !== true
+    || (!executionReady && !approvalReady)
+    || payload.venue !== "sushi-aggregator"
+    || payload.chainId !== ROBINHOOD_CHAIN_ID
+    || payload.token?.toLowerCase() !== expected.token.toLowerCase()
+    || payload.recipient?.toLowerCase() !== expected.recipient.toLowerCase()
+    || payload.authorization?.status !== "identity-wallet-bound"
+    || payload.authorization.wallet.toLowerCase() !== expected.recipient.toLowerCase()
+    || payload.marketPair?.toLowerCase() !== expected.pair.toLowerCase()
+    || payload.side !== expected.side
+    || payload.amountIn !== expected.amountIn.toString()
+    || payload.approvalSpender?.toLowerCase() !== SUSHI_RED_SNWAPPER.toLowerCase()
+    || !/^\d+$/.test(payload.quoteExpiresAt ?? "")
+    || BigInt(payload.quoteExpiresAt) <= BigInt(Math.floor(Date.now() / 1000) + 15)
+    || !payload.inputToken
+    || !payload.outputToken
+  ) throw new Error("RMT rejected an inconsistent Sushi quote.");
+  return payload;
+}
+
 export function ExternalSushiQuotePanel({
   market,
   side,
   amount: controlledAmount,
   onAmountChange,
-  onSwapConfirmed
+  onSwapConfirmed,
+  preparedQuote
 }: {
   market: ExternalMarket;
   side: "buy" | "sell";
   amount?: string;
   onAmountChange?: (value: string) => void;
   onSwapConfirmed?: () => void;
+  preparedQuote?: unknown;
 }) {
   const { preferences } = useTradePreferences();
   const identity = useRmtIdentity();
@@ -208,6 +249,23 @@ export function ExternalSushiQuotePanel({
       return;
     }
     let cancelled = false;
+    if (preparedQuote) {
+      try {
+        setQuote(verifiedPreparedSushiQuote(preparedQuote, {
+          token,
+          pair,
+          recipient: address,
+          side,
+          amountIn
+        }));
+        setStatus("idle");
+        return;
+      } catch (cause) {
+        setQuote(undefined);
+        setStatus("loading");
+        setError(cause instanceof Error ? cause.message : "Refreshing the selected Sushi route.");
+      }
+    }
     const timer = window.setTimeout(() => {
       setStatus("loading");
       void requestTradeQuote("/api/trade/external-sushi-quote", {
@@ -216,45 +274,22 @@ export function ExternalSushiQuotePanel({
         recipient: address,
         side,
         amountIn: amountIn.toString(),
-        maxPriceImpactBps: preferences.maxPriceImpactBps
+        maxPriceImpactBps: 10_000
       }, {
         identityScope: identity.userId,
         identityToken: identity.identityToken
       }).then((response) => {
         const payload = response.payload as ExternalSushiQuote | { error?: string };
         if (!response.ok) throw new Error("error" in payload ? payload.error : "Sushi quote is unavailable.");
-        if (!("executable" in payload)) throw new Error("RMT rejected an incomplete Sushi response.");
-        const executionReady = payload.executable === true
-          && "router" in payload
-          && payload.router.toLowerCase() === SUSHI_RED_SNWAPPER.toLowerCase()
-          && "calldata" in payload
-          && payload.calldata.startsWith("0x");
-        const approvalReady = payload.executable === false
-          && payload.approvalRequired === true
-          && payload.side === "sell";
-        if (
-          !("marketVerified" in payload)
-          || payload.marketVerified !== true
-          || payload.verifiedInput !== true
-          || (!executionReady && !approvalReady)
-          || payload.venue !== "sushi-aggregator"
-          || payload.chainId !== ROBINHOOD_CHAIN_ID
-          || payload.token.toLowerCase() !== token.toLowerCase()
-          || payload.recipient.toLowerCase() !== address.toLowerCase()
-          || payload.authorization?.status !== "identity-wallet-bound"
-          || payload.authorization.wallet.toLowerCase() !== address.toLowerCase()
-          || payload.marketPair.toLowerCase() !== pair.toLowerCase()
-          || payload.side !== side
-          || payload.amountIn !== amountIn.toString()
-          || payload.approvalSpender.toLowerCase() !== SUSHI_RED_SNWAPPER.toLowerCase()
-          || BigInt(payload.quoteExpiresAt) <= BigInt(Math.floor(Date.now() / 1000) + 15)
-          || !payload.inputToken
-          || !payload.outputToken
-        ) {
-          throw new Error("RMT rejected an inconsistent Sushi quote.");
-        }
+        const verified = verifiedPreparedSushiQuote(payload, {
+          token,
+          pair,
+          recipient: address,
+          side,
+          amountIn
+        });
         if (!cancelled) {
-          setQuote(payload);
+          setQuote(verified);
           setStatus("idle");
         }
       }).catch((cause) => {
@@ -267,7 +302,7 @@ export function ExternalSushiQuotePanel({
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [address, amountIn, decimals, identity.authenticated, identity.identityToken, identity.ready, identity.userId, pair, preferences.maxPriceImpactBps, preferences.preparationMode, refresh, side, token]);
+  }, [address, amountIn, decimals, identity.authenticated, identity.identityToken, identity.ready, identity.userId, pair, preferences.preparationMode, preparedQuote, refresh, side, token]);
 
   useEffect(() => {
     if (!approvalReceipt.isSuccess) return;
@@ -361,7 +396,7 @@ export function ExternalSushiQuotePanel({
 
   const submit = () => {
     setMessage("");
-    if (!accountReady || !address || chainId !== ROBINHOOD_CHAIN_ID || !quoteIsFresh || !quote || insufficient || busy || !confidenceReady || impactBlocked || !preflightReady) return;
+    if (!accountReady || !address || chainId !== ROBINHOOD_CHAIN_ID || !quoteIsFresh || !quote || insufficient || busy || !confidenceReady || !preflightReady) return;
     recordExperienceStage("wallet_review_started");
     if (needsApproval) {
       approval.writeContract({
@@ -408,8 +443,7 @@ export function ExternalSushiQuotePanel({
       : !quoteIsFresh ? "Verifying route…"
       : insufficient ? "Insufficient balance"
       : !confidenceReady ? "Accept RMT trading terms"
-        : impactBlocked ? `Above your ${preferences.maxPriceImpactBps / 100}% impact limit`
-          : feeEstimate.status === "unavailable" ? "Preflight failed — trade blocked"
+        : feeEstimate.status === "unavailable" ? "Preflight failed — trade blocked"
             : !preflightReady ? "Simulating exact transaction…"
           : needsApproval ? `Approve exact ${market.symbol} amount`
             : side === "buy" ? `Buy ${market.symbol} with Sushi` : `Sell ${market.symbol} with Sushi`;
@@ -418,8 +452,8 @@ export function ExternalSushiQuotePanel({
     <section className="externalSushiQuote" aria-labelledby="external-sushi-quote-heading">
       <header>
         <div>
-          <small>VERIFIED SUSHI ROUTE</small>
-          <strong id="external-sushi-quote-heading">Fresh quote inside RMT</strong>
+          <small>UNIVERSAL ROUTER · SUSHI SELECTED</small>
+          <strong id="external-sushi-quote-heading">Review one RMT order</strong>
         </div>
         <span>1% · simulated</span>
       </header>
@@ -514,7 +548,7 @@ export function ExternalSushiQuotePanel({
             slippageLabel="1% max"
             evidenceState={
               impactBlocked
-                ? "blocked"
+                ? "review"
                 : !confidenceEvidenceReady
                   ? "checking"
                   : evidenceDecision.state === "review" || evidenceDecision.state === "blocked"
@@ -526,7 +560,7 @@ export function ExternalSushiQuotePanel({
             className={`externalUniswapSubmit ${side}`}
             type="button"
             aria-busy={busy || status === "loading"}
-            disabled={!quoteIsFresh || insufficient || busy || !confidenceReady || impactBlocked || !preflightReady}
+            disabled={!quoteIsFresh || insufficient || busy || !confidenceReady || !preflightReady}
             onClick={submit}
           >
             {buttonLabel}
@@ -594,7 +628,7 @@ export function ExternalSushiQuotePanel({
         authenticated={accountReady}
         connected={Boolean(address && chainId === ROBINHOOD_CHAIN_ID)}
         quoteReady={quoteIsFresh}
-        evidenceReady={confidenceReady && !impactBlocked}
+        evidenceReady={confidenceReady}
         busy={busy}
         success={swapReceipt.isSuccess}
         needsApproval={needsApproval}

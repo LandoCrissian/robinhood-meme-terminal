@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   encodeFunctionData,
   erc20Abi,
@@ -15,7 +15,7 @@ import {
 import { useAccount, useReadContract } from "wagmi";
 import type { ExternalMarket } from "../lib/external-market";
 import {
-  protectedOutputRecommendation,
+  universalRouteRecommendation,
   tradeVenueLabel,
   type TradeVenueHealth,
   type TradeVenueId,
@@ -61,6 +61,15 @@ type QuoteSummary = {
   };
   passportEligible?: true;
   executionFee?: { bps: number } | null;
+  quotedAtMs: number;
+  preparedPayload: Record<string, unknown>;
+};
+
+export type UniversalPreparedRoute = {
+  venue: TradeVenueId;
+  pair: string;
+  quotedAtMs: number;
+  payload: Record<string, unknown>;
 };
 
 type VenueState = {
@@ -99,13 +108,15 @@ function RouteNextCost({
   token,
   side,
   amountIn,
-  account
+  account,
+  onEstimate
 }: {
   quote: QuoteSummary;
   token: Address;
   side: "buy" | "sell";
   amountIn: bigint;
   account: Address;
+  onEstimate?: (feeWei: bigint | undefined) => void;
 }) {
   const allowance = useReadContract({
     address: token,
@@ -137,6 +148,9 @@ function RouteNextCost({
     )
   });
   const usd = estimatedNetworkFeeUsd(fee.feeWei, fee.ethUsd);
+  useEffect(() => {
+    onEstimate?.(fee.feeWei);
+  }, [fee.feeWei, onEstimate]);
   return (
     <span className="universalVenueFee">
       {fee.status === "loading"
@@ -158,7 +172,8 @@ export function ExternalRouteComparison({
   maxPriceImpact,
   onSelectVenue,
   onRecommendedVenue,
-  onHealthChange
+  onHealthChange,
+  onPreparedRoutes
 }: {
   market: ExternalMarket;
   venues: TradeVenue[];
@@ -171,14 +186,18 @@ export function ExternalRouteComparison({
   onRecommendedVenue?: (recommendation: {
     venue: TradeVenueId;
     improvementBps: number;
+    backups: TradeVenueId[];
+    reason: "protected-output" | "lower-network-fee" | "lower-price-impact" | "deeper-liquidity" | "fresher-quote";
   }) => void;
   onHealthChange?: (health: Partial<Record<TradeVenueId, TradeVenueHealth>>) => void;
+  onPreparedRoutes?: (routes: UniversalPreparedRoute[]) => void;
 }) {
   const { address } = useAccount();
   const identity = useRmtIdentity();
   const { preferences } = useTradePreferences();
   const [states, setStates] = useState<Partial<Record<TradeVenue["venue"], VenueState>>>({});
   const [refresh, setRefresh] = useState(0);
+  const [networkFees, setNetworkFees] = useState<Partial<Record<TradeVenueId, string>>>({});
   const requestKey = useRef("");
   const token = market.address as Address;
   const decimalsRead = useReadContract({
@@ -241,7 +260,10 @@ export function ExternalRouteComparison({
             pair: candidate.pair,
             recipient: address,
             side,
-            amountIn: amountIn.toString()
+            amountIn: amountIn.toString(),
+            // The preference is a visible decision aid, not a quote blocker.
+            // Request the complete executable set so manual routing remains possible.
+            maxPriceImpactBps: 10_000
           }, {
             identityScope: identity.userId,
             identityToken: identity.identityToken
@@ -341,7 +363,9 @@ export function ExternalRouteComparison({
               && typeof payload.executionFee === "object"
               && typeof (payload.executionFee as Record<string, unknown>).bps === "number"
               ? { bps: (payload.executionFee as { bps: number }).bps }
-              : null
+              : null,
+            quotedAtMs: Date.now(),
+            preparedPayload: payload
           };
           if (!cancelled) setStates((current) => ({ ...current, [candidate.venue]: { status: "ready", quote } }));
         } catch (cause) {
@@ -375,28 +399,51 @@ export function ExternalRouteComparison({
     ])));
   }, [onHealthChange, states, venues]);
 
+  useEffect(() => {
+    onPreparedRoutes?.(venues.flatMap((venue) => {
+      const quote = states[venue.venue]?.quote;
+      return quote ? [{
+        venue: venue.venue,
+        pair: venue.pair,
+        quotedAtMs: quote.quotedAtMs,
+        payload: quote.preparedPayload
+      }] : [];
+    }));
+  }, [onPreparedRoutes, states, venues]);
+
   const ready = useMemo(() => venues.flatMap((venue) => {
     const quote = states[venue.venue]?.quote;
-    return quote ? [quote] : [];
-  }), [states, venues]);
-  const recommendation = useMemo(() => protectedOutputRecommendation({
+    return quote ? [{
+      ...quote,
+      estimatedNetworkFeeWei: networkFees[venue.venue],
+      liquidityUsd: venue.liquidityUsd
+    }] : [];
+  }), [networkFees, states, venues]);
+  const recommendation = useMemo(() => universalRouteRecommendation({
     selected: selectedVenue,
     quotes: ready,
+    nowMs: Date.now(),
     maxPriceImpact
   }), [maxPriceImpact, ready, selectedVenue]);
   const higherProtectedOutput = recommendation
-    ? ready.find((quote) => quote.venue === recommendation.leader)
+    ? ready.find((quote) => quote.venue === recommendation.protectedOutputLeader)
     : undefined;
+  const recordNetworkFee = useCallback((venue: TradeVenueId, feeWei: bigint | undefined) => {
+    const next = feeWei?.toString();
+    setNetworkFees((current) => current[venue] === next ? current : { ...current, [venue]: next });
+  }, []);
 
   useEffect(() => {
     if (
       selectionMode !== "automatic"
       || !recommendation
-      || recommendation.automaticVenue === selectedVenue
+      || recommendation.selected === selectedVenue
     ) return;
     onRecommendedVenue?.({
-      venue: recommendation.automaticVenue,
-      improvementBps: recommendation.automaticImprovementBps
+      venue: recommendation.selected,
+      improvementBps: recommendation.selectedOutputAdvantageBps,
+      backups: recommendation.backups,
+      reason: recommendation.reason
     });
   }, [
     onRecommendedVenue,
@@ -408,14 +455,15 @@ export function ExternalRouteComparison({
   return (
     <section className="universalVenueSelector" aria-labelledby="route-comparison-heading">
       <header>
-        <div><small>VERIFIED ROUTE COMPARISON</small><strong id="route-comparison-heading">Choose execution</strong></div>
-        <span>{!address ? "Connect to compare" : !identity.authenticated ? "Sign in to compare" : amountIn > 0n ? "Fresh · 15s" : "Enter amount below"}</span>
+        <div><small>UNIVERSAL EXECUTION ROUTER</small><strong id="route-comparison-heading">One order · every verified route</strong></div>
+        <span>{!address ? "Connect to compare" : !identity.authenticated ? "Sign in to compare" : amountIn > 0n ? `${ready.length} ready${recommendation?.backups.length ? ` · ${recommendation.backups.length} backup${recommendation.backups.length === 1 ? "" : "s"}` : ""}` : "Enter amount below"}</span>
       </header>
       <div>
         {venues.map((candidate) => {
           const state = states[candidate.venue];
           const quote = state?.quote;
           const leads = higherProtectedOutput?.venue === candidate.venue;
+          const isAutomaticChoice = recommendation?.selected === candidate.venue;
           const outsideImpactLimit = Boolean(quote && quote.priceImpact > maxPriceImpact);
           return (
             <button
@@ -427,10 +475,8 @@ export function ExternalRouteComparison({
             >
               <span className="universalVenueName">
                 <strong>{tradeVenueLabel(candidate.venue)}</strong>
-                {leads && <em>
-                  {recommendation && recommendation.leaderAdvantageBps > 0
-                    ? `Best output +${(recommendation.leaderAdvantageBps / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}%`
-                    : "Best protected output"}
+                {(leads || isAutomaticChoice) && <em>
+                  {isAutomaticChoice ? "Automatic choice" : "Best protected output"}
                 </em>}
               </span>
               <span>{liquidity(candidate.liquidityUsd)} verified liquidity</span>
@@ -442,14 +488,15 @@ export function ExternalRouteComparison({
                     : address && amountIn > 0n ? "Route unavailable" : "Select venue"}
               </span>
               {quote && <span>{(quote.priceImpact * 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}% impact</span>}
-              {outsideImpactLimit && <span className="universalVenueLimit">Above your {(maxPriceImpact * 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}% limit</span>}
-              {quote && address && candidate.venue !== "uniswap-v4" && (
+              {outsideImpactLimit && <span className="universalVenueLimit">Warning · above your {(maxPriceImpact * 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}% preference</span>}
+              {quote && address && (
                 <RouteNextCost
                   quote={quote}
                   token={token}
                   side={side}
                   amountIn={amountIn}
                   account={address}
+                  onEstimate={(feeWei) => recordNetworkFee(candidate.venue, feeWei)}
                 />
               )}
               {quote?.passportEligible && (
@@ -463,8 +510,7 @@ export function ExternalRouteComparison({
         })}
       </div>
       <p>
-        Automatic mode considers only routes within your price-impact limit and changes routes only when protected output improves by at least 0.25%.
-        Network fees remain separate; the selected ticket rebuilds and rechecks the final transaction before signing.
+        Automatic mode compares protected output, the next network fee, price impact, verified liquidity and quote freshness. Your price-impact setting remains visible as a warning; manual venue selection stays available. The final transaction is still rebuilt and rechecked before your wallet signs.
       </p>
     </section>
   );

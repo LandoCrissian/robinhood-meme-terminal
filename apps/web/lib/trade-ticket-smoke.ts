@@ -19,7 +19,8 @@ import {
   protectedOutputRecommendation,
   resilientTradeVenue,
   routeLiquidityDepth,
-  routeLiquidityDepthLabel
+  routeLiquidityDepthLabel,
+  universalRouteRecommendation
 } from "./trade-route-selection";
 import { tradeReadinessStatus } from "./trade-readiness";
 import { tokenRiskDecision } from "./token-risk-policy";
@@ -145,6 +146,38 @@ const quoteToken = {
   address: "0x1111111111111111111111111111111111111111",
   decimals: 18
 };
+const routeNow = 1_800_000_000_000;
+assert.deepEqual(universalRouteRecommendation({
+  selected: "sushi",
+  nowMs: routeNow,
+  quotes: [
+    { venue: "sushi", minimumOut: "100000", priceImpact: 0.01, deadline: "1800000090", quotedAtMs: routeNow - 1_000, estimatedNetworkFeeWei: "500", liquidityUsd: 50_000, outputToken: quoteToken },
+    { venue: "uniswap-v3", minimumOut: "101000", priceImpact: 0.008, deadline: "1800000090", quotedAtMs: routeNow - 2_000, estimatedNetworkFeeWei: "700", liquidityUsd: 75_000, outputToken: quoteToken },
+    { venue: "uniswap-v4", minimumOut: "100900", priceImpact: 0.007, deadline: "1800000090", quotedAtMs: routeNow - 500, estimatedNetworkFeeWei: "300", liquidityUsd: 100_000, outputToken: quoteToken }
+  ]
+}), {
+  selected: "uniswap-v4",
+  backups: ["uniswap-v3", "sushi"],
+  protectedOutputLeader: "uniswap-v3",
+  selectedOutputAdvantageBps: 90,
+  reason: "lower-network-fee"
+});
+assert.equal(universalRouteRecommendation({
+  selected: "sushi",
+  nowMs: routeNow,
+  maxPriceImpact: 0.01,
+  quotes: [
+    { venue: "sushi", minimumOut: "100000", priceImpact: 0.2, deadline: "1800000090", outputToken: quoteToken },
+    { venue: "uniswap-v3", minimumOut: "110000", priceImpact: 0.15, deadline: "1800000090", outputToken: quoteToken }
+  ]
+})?.selected, "uniswap-v3");
+assert.equal(universalRouteRecommendation({
+  selected: "sushi",
+  nowMs: routeNow,
+  quotes: [
+    { venue: "sushi", minimumOut: "100000", priceImpact: 0.01, deadline: "1799999999", outputToken: quoteToken }
+  ]
+}), undefined);
 assert.deepEqual(protectedOutputRecommendation({
   selected: "sushi",
   quotes: [
