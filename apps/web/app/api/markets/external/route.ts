@@ -626,15 +626,18 @@ export async function GET(request: Request) {
     };
     if (!requestedContract) lastSuccessfulSnapshot = snapshot;
 
+    const delayedSources = [
+      ...(lemonSnapshot.delayed ? ["lemon-project-metadata"] : []),
+      ...(sushiLaunchSnapshot.delayed ? ["sushi-launch-metadata"] : []),
+      ...(geckoNewPoolsDelayed ? ["geckoterminal-new-pools"] : [])
+    ];
+
     return NextResponse.json(
-      lemonSnapshot.delayed || sushiLaunchSnapshot.delayed || geckoNewPoolsDelayed
-        ? {
-            ...snapshot,
-            resolution,
-            stale: true,
-            error: "One launch-source metadata refresh is delayed. DEX markets and cached project identity remain available."
-          }
-        : { ...snapshot, resolution },
+      {
+        ...snapshot,
+        resolution,
+        ...(delayedSources.length > 0 ? { delayedSources } : {})
+      },
       { headers: { "Cache-Control": "public, s-maxage=30, stale-while-revalidate=90" } }
     );
   } catch (error) {

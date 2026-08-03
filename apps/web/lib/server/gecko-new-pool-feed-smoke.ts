@@ -55,6 +55,17 @@ async function main() {
   assert.equal(snapshot.delayed, false);
   assert.equal(snapshot.pairs.length, 1);
 
+  const validEmpty = await fetchGeckoNewPoolSnapshot({
+    fetch: async () => Response.json({ data: [], included: [] })
+  });
+  assert.equal(validEmpty.delayed, false, "A valid response with no address-based pools is not an outage");
+  assert.deepEqual(validEmpty.pairs, []);
+
+  const malformed = await fetchGeckoNewPoolSnapshot({
+    fetch: async () => Response.json({ malformed: true })
+  });
+  assert.equal(malformed.delayed, true);
+
   const delayed = await fetchGeckoNewPoolSnapshot({
     fetch: async () => new Response("delayed", { status: 503 })
   });

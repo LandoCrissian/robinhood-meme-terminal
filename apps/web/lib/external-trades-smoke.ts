@@ -55,7 +55,12 @@ assert.match(externalTradeSnapshotSignature(snapshot), /trade-1/);
 const streamRoute = readFileSync(new URL("../app/api/markets/external-stream/route.ts", import.meta.url), "utf8");
 assert.match(streamRoute, /text\/event-stream/);
 assert.match(streamRoute, /event\("snapshot", payload\)/);
-assert.match(streamRoute, /STREAM_INTERVAL_MS = 2_000/);
+assert.match(streamRoute, /STREAM_INTERVAL_MS = 6_000/);
+assert.match(streamRoute, /event\("rotate"/);
+const streamHook = readFileSync(new URL("use-external-market-stream.ts", import.meta.url), "utf8");
+assert.match(streamHook, /addEventListener\("rotate"/);
+assert.match(streamHook, /addEventListener\("visibilitychange"/);
+assert.match(streamHook, /Date\.now\(\) - lastEventAt > 20_000/);
 
 const secondTrader = "0x2222222222222222222222222222222222222222";
 const actorSummary = summarizeExternalTradeActors([

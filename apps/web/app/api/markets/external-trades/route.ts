@@ -19,7 +19,7 @@ export async function GET(request: Request) {
   try {
     const response = await fetch(externalTradesRequestUrl(pair, token), {
       headers: { Accept: "application/json" },
-      next: { revalidate: 4 },
+      next: { revalidate: 6 },
       signal: AbortSignal.timeout(8_000)
     });
     if (!response.ok) throw new Error("Trade source unavailable.");
@@ -33,7 +33,7 @@ export async function GET(request: Request) {
     };
     return Response.json(payload, {
       headers: {
-        "Cache-Control": "public, s-maxage=4, stale-while-revalidate=12",
+        "Cache-Control": "public, s-maxage=6, stale-while-revalidate=30",
         "X-Content-Type-Options": "nosniff"
       }
     });
