@@ -27,10 +27,11 @@ const client = createPublicClient({
   )
 });
 const EXPLORER = "https://robinhoodchain.blockscout.com";
+const STATUS_REFRESH_MS = 10_000;
 
 type LiveGuardStatus = {
   available?: boolean;
-  systemStatus?: "ready" | "release_locked" | "worker_offline";
+  systemStatus?: "ready" | "release_locked" | "worker_offline" | "unverified";
   status?: string;
   armedAt?: number | null;
   expiresAt?: number | null;
@@ -106,7 +107,9 @@ function ConfiguredLivePositionGuardControls({
   const active = ["active", "confirming", "executing", "submitted"].includes(status.status ?? "");
   const cleanupRequired = ["executed", "expired", "review_required", "approval_required", "no_position"].includes(status.status ?? "");
   const revocationPending = status.revocationPending === true;
-  const systemUnavailable = status.systemStatus === "worker_offline" || status.systemStatus === "release_locked";
+  const systemUnavailable = status.systemStatus === "worker_offline"
+    || status.systemStatus === "release_locked"
+    || status.systemStatus === "unverified";
   const hasOrderToClear = active || cleanupRequired || revocationPending;
   const headers = useMemo(() => identityToken ? {
     Authorization: `Bearer ${identityToken}`,
@@ -118,22 +121,47 @@ function ConfiguredLivePositionGuardControls({
       setStatus({ status: "inactive" });
       return;
     }
+    if (busy) return;
     let cancelled = false;
+    let timeout: number | undefined;
+    let inFlight = false;
+    const controller = new AbortController();
     const query = new URLSearchParams({ token, wallet });
-    void fetch(`/api/position-guards/live?${query}`, { cache: "no-store", headers })
-      .then(parseResponse)
-      .then((next) => { if (!cancelled) setStatus(next); })
-      .catch((cause) => {
-        if (!cancelled) {
+    setStatus({ status: "loading" });
+
+    const load = async () => {
+      if (cancelled || inFlight) return;
+      inFlight = true;
+      try {
+        const next = await parseResponse(await fetch(`/api/position-guards/live?${query}`, {
+          cache: "no-store",
+          headers,
+          signal: controller.signal
+        }));
+        if (!cancelled) setStatus(next);
+      } catch (cause) {
+        if (!cancelled && !controller.signal.aborted) {
           setStatus((current) => ({
             ...current,
+            available: false,
             error: cause instanceof Error ? cause.message : "Status unavailable.",
-            status: current.status && current.status !== "loading" ? current.status : "error"
+            status: current.status && current.status !== "loading" ? current.status : "error",
+            systemStatus: "unverified"
           }));
         }
-      });
-    return () => { cancelled = true; };
-  }, [authenticated, headers, token, wallet]);
+      } finally {
+        inFlight = false;
+        if (!cancelled) timeout = window.setTimeout(() => void load(), STATUS_REFRESH_MS);
+      }
+    };
+
+    void load();
+    return () => {
+      cancelled = true;
+      controller.abort();
+      if (timeout !== undefined) window.clearTimeout(timeout);
+    };
+  }, [authenticated, busy, headers, token, wallet]);
 
   async function approveExact(amount: bigint) {
     if (!embeddedWallet) throw new Error("The RMT wallet is not ready.");
@@ -267,9 +295,14 @@ function ConfiguredLivePositionGuardControls({
     );
   }
   if (systemUnavailable && !hasOrderToClear) {
+    const systemHeading = status.systemStatus === "worker_offline"
+      ? "Automatic-exit evaluator is offline"
+      : status.systemStatus === "unverified"
+        ? "Automatic-exit status is unverified"
+        : "Automatic exits are release-locked";
     return (
       <div className="livePositionGuardControl compactState unavailable">
-        <strong>{status.systemStatus === "worker_offline" ? "Automatic-exit evaluator is offline" : "Automatic exits are release-locked"}</strong>
+        <strong>{systemHeading}</strong>
         <p>New authority is blocked. The local Position Guard can still monitor and prepare a wallet-confirmed sell ticket.</p>
       </div>
     );
@@ -310,7 +343,9 @@ function ConfiguredLivePositionGuardControls({
         <p className="livePositionGuardSystemWarning" role="alert">
           {status.systemStatus === "worker_offline"
             ? "The evaluator heartbeat is stale. New orders are blocked, but emergency revocation remains available."
-            : "Server execution is release-locked. Remove any remaining allowance and delegated signer authority before relying on local monitoring only."}
+            : status.systemStatus === "unverified"
+              ? "RMT could not refresh the order state. New authority is blocked; remove wallet authority if you cannot independently verify the order."
+              : "Server execution is release-locked. Remove any remaining allowance and delegated signer authority before relying on local monitoring only."}
         </p>
       )}
 
