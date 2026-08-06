@@ -4,6 +4,7 @@ import { getAddress, isAddress } from "viem";
 import {
   livePositionGuardHeartbeatIsFresh
 } from "../../../../../lib/live-position-guard";
+import { livePositionGuardReviewReason } from "../../../../../lib/live-position-guard-review";
 import { getRmtAdminFirestore } from "../../../../../lib/server/firebase-admin";
 import { livePositionGuardServerConfiguration } from "../../../../../lib/server/live-position-guard-execution";
 import { privyBearerToken, verifyPrivyIdentity } from "../../../../../lib/server/privy-identity";
@@ -114,6 +115,7 @@ export async function GET(request: Request) {
           pair,
           executor,
           status,
+          reviewReason: livePositionGuardReviewReason(data.reviewReason),
           amountIn: amountOrNull(data.amountIn),
           armedAt: numberOrNull(data.armedAt),
           expiresAt: numberOrNull(data.expiresAt),
