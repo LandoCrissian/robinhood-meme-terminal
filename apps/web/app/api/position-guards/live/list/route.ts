@@ -1,9 +1,7 @@
 import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 import { getAddress, isAddress } from "viem";
-import {
-  livePositionGuardHeartbeatIsFresh
-} from "../../../../../lib/live-position-guard";
+import { livePositionGuardHeartbeatIsFresh } from "../../../../../lib/live-position-guard";
 import { livePositionGuardReviewReason } from "../../../../../lib/live-position-guard-review";
 import { getRmtAdminFirestore } from "../../../../../lib/server/firebase-admin";
 import { livePositionGuardServerConfiguration } from "../../../../../lib/server/live-position-guard-execution";
@@ -116,6 +114,7 @@ export async function GET(request: Request) {
           executor,
           status,
           reviewReason: livePositionGuardReviewReason(data.reviewReason),
+          orderId: hashOrNull(data.orderId),
           amountIn: amountOrNull(data.amountIn),
           armedAt: numberOrNull(data.armedAt),
           expiresAt: numberOrNull(data.expiresAt),
@@ -126,7 +125,14 @@ export async function GET(request: Request) {
           walletCleanupReported: revocationRequestedAt === null
             ? null
             : typeof data.walletCleanupReportedAt === "number",
+          onchainOrderClosed: revocationRequestedAt === null
+            ? null
+            : typeof data.onchainOrderClosedAt === "number",
           transactionHash: hashOrNull(data.transactionHash),
+          checkpointTransactionHash: hashOrNull(data.checkpointTransactionHash),
+          fee: numberOrNull(data.fee),
+          twapSeconds: numberOrNull(data.twapSeconds),
+          maxSlippageBps: numberOrNull(data.maxSlippageBps),
           settings: settingsOrNull(data.settings)
         };
       })
