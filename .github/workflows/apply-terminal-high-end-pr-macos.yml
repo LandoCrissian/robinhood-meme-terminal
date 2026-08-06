@@ -1,4 +1,4 @@
-name: Apply terminal high-end PR pass macOS
+name: Apply terminal high-end PR diagnostic
 
 on:
   pull_request:
@@ -15,7 +15,7 @@ permissions:
 jobs:
   apply:
     if: github.head_ref == 'fix/terminal-desktop-layout-v9'
-    runs-on: macos-15
+    runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
