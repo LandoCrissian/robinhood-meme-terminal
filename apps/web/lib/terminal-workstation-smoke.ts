@@ -9,6 +9,10 @@ const workspaceSource = readFileSync(
   new URL("../app/external-market-workspace.tsx", import.meta.url),
   "utf8"
 );
+const minorFixesCss = readFileSync(
+  new URL("../app/terminal-minor-fixes-v10.css", import.meta.url),
+  "utf8"
+);
 
 type Availability = "checking" | "ready" | "view-only" | "unavailable";
 
@@ -99,7 +103,37 @@ assert.match(
   /const initialSide = searchParams\.get\("side"\) === "sell" \? "sell" : "buy";/,
   "Scanner Buy and Sell shortcuts must initialize the requested ticket side."
 );
+assert.match(
+  workspaceSource,
+  /setMobileTradeOpen\(true\)/,
+  "Mobile Buy and Sell must explicitly open the execution sheet."
+);
+assert.match(
+  workspaceSource,
+  /className=\{`universalTradeRail \$\{side\} \$\{mobileTradeOpen \? "mobileOpen" : ""\}`\}/,
+  "The execution rail must expose a deterministic mobile-open state."
+);
+assert.match(
+  minorFixesCss,
+  /\.externalIdentity \{[\s\S]*?padding: 10px 48px 10px 12px;/,
+  "Desktop identity must reserve a fixed watch-control gutter."
+);
+assert.match(
+  minorFixesCss,
+  /\.runnerWatchButton \{[\s\S]*?position: absolute;[\s\S]*?right: 10px;/,
+  "The desktop watch star must stay inside the identity cell instead of consuming the token-name column."
+);
+assert.match(
+  minorFixesCss,
+  /\.universalTradeRail\.mobileOpen \{[\s\S]*?opacity: 1 !important;[\s\S]*?transform: translate3d\(0, 0, 0\) !important;[\s\S]*?visibility: visible !important;/,
+  "Mobile execution must render as a visible viewport-bound sheet when opened."
+);
+assert.match(
+  minorFixesCss,
+  /\.universalTradeSheetBackdrop\.visible \{[\s\S]*?pointer-events: auto !important;[\s\S]*?visibility: visible !important;/,
+  "The mobile trade backdrop must participate in the same explicit open state."
+);
 
 console.log(
-  "RMT terminal workstation preserves reversible discovery, persistent operator settings, complete route batching, signal-board cleanup, and exact Buy/Sell handoff."
+  "RMT terminal preserves reversible discovery, persistent operator settings, complete route batching, signal-board cleanup, desktop identity space, and visible mobile Buy/Sell execution."
 );
