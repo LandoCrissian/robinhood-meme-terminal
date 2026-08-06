@@ -28,6 +28,7 @@ import "./terminal-readability-v8.css";
 import "./terminal-completion-v8.css";
 import "./terminal-acceptance-critical.css";
 import "./terminal-desktop-v9.css";
+import "./terminal-high-end-v10.css";
 import { Providers } from "./providers";
 import { PublicChrome } from "./public-chrome";
 import { TradingTermsGate } from "./trading-terms-gate";
