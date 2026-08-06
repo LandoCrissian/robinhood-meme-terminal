@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from "node:crypto";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { PrivyClient } from "@privy-io/node";
 import { FieldValue } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
@@ -8,22 +8,29 @@ import {
   getAddress,
   http,
   isAddress,
-  type Address
+  type Address,
+  type Hex
 } from "viem";
 import { robinhoodChain } from "@rmt/shared/chains";
 import {
+  LIVE_POSITION_GUARD_EXECUTION_SLIPPAGE_BPS,
   LIVE_POSITION_GUARD_SCHEMA_VERSION,
+  LIVE_POSITION_GUARD_TWAP_SECONDS,
   livePositionGuardAuthorityMatchesPlan,
   livePositionGuardCancellationDisposition,
   livePositionGuardCanReplaceOrder,
   livePositionGuardHeartbeatIsFresh,
+  livePositionGuardOnchainOrderMatchesPlan,
+  normalizeLivePositionGuardOnchainOrder,
   normalizeLivePositionGuardSettings,
-  unitQuoteX18
+  rmtPositionGuardExecutorAbi,
+  type LivePositionGuardPreparedPlan
 } from "../../../../lib/live-position-guard";
 import { guardMediaRequest, readBoundedJsonRequest } from "../../../../lib/server/media-request-guard";
 import { getRmtAdminFirestore } from "../../../../lib/server/firebase-admin";
 import {
   delegatedEmbeddedEthereumWallet,
+  embeddedEthereumWallet,
   livePositionGuardServerConfiguration
 } from "../../../../lib/server/live-position-guard-execution";
 import { privyBearerToken, verifyPrivyIdentity } from "../../../../lib/server/privy-identity";
@@ -35,6 +42,7 @@ export const maxDuration = 30;
 
 const HEADERS = { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" };
 const MAX_UINT128 = (1n << 128n) - 1n;
+const ORDER_ID = /^0x[0-9a-fA-F]{64}$/;
 
 const client = createPublicClient({
   chain: robinhoodChain,
@@ -62,8 +70,7 @@ async function evaluatorIsHealthy(database: NonNullable<ReturnType<typeof getRmt
   const heartbeat = await database.collection("livePositionGuardSystem")
     .doc("evaluatorHeartbeat")
     .get();
-  const lastSeenAt = heartbeat.data()?.lastSeenAt;
-  return livePositionGuardHeartbeatIsFresh(lastSeenAt);
+  return livePositionGuardHeartbeatIsFresh(heartbeat.data()?.lastSeenAt);
 }
 
 function validAddress(value: unknown) {
@@ -76,6 +83,10 @@ function validAmount(value: unknown) {
   return amount > 0n && amount <= MAX_UINT128 ? amount : null;
 }
 
+function validOrderId(value: unknown) {
+  return typeof value === "string" && ORDER_ID.test(value) ? value as Hex : null;
+}
+
 async function verifiedIdentity(request: Request) {
   const token = privyBearerToken(request);
   if (!token) return null;
@@ -86,13 +97,15 @@ async function verifiedIdentity(request: Request) {
 function publicOrder(data: Record<string, unknown> | undefined) {
   if (!data) return {
     status: "inactive",
+    orderId: null,
     armedAt: null,
     expiresAt: null,
     lastEvaluatedAt: null,
     revocationPending: false,
     revocationRequestedAt: null,
     transactionHash: null,
-    walletCleanupReported: null
+    walletCleanupReported: null,
+    onchainOrderClosed: null
   };
   const status = typeof data.status === "string" ? data.status : "inactive";
   const revocationRequestedAt = typeof data.revocationRequestedAt === "number"
@@ -100,6 +113,7 @@ function publicOrder(data: Record<string, unknown> | undefined) {
     : null;
   return {
     status,
+    orderId: validOrderId(data.orderId),
     armedAt: typeof data.armedAt === "number" ? data.armedAt : null,
     expiresAt: typeof data.expiresAt === "number" ? data.expiresAt : null,
     lastEvaluatedAt: typeof data.lastEvaluatedAt === "number" ? data.lastEvaluatedAt : null,
@@ -108,8 +122,33 @@ function publicOrder(data: Record<string, unknown> | undefined) {
     transactionHash: typeof data.transactionHash === "string" ? data.transactionHash : null,
     walletCleanupReported: revocationRequestedAt === null
       ? null
-      : typeof data.walletCleanupReportedAt === "number"
+      : typeof data.walletCleanupReportedAt === "number",
+    onchainOrderClosed: revocationRequestedAt === null
+      ? null
+      : typeof data.onchainOrderClosedAt === "number"
   };
+}
+
+async function verifiedQuote(input: {
+  amountIn: bigint;
+  pair: Address;
+  settings: NonNullable<ReturnType<typeof normalizeLivePositionGuardSettings>>;
+  token: Address;
+  wallet: Address;
+}) {
+  const quote = await quoteAndBuildExternalUniswapSwap({
+    token: input.token,
+    pair: input.pair,
+    recipient: input.wallet,
+    side: "sell",
+    amountIn: input.amountIn,
+    maxPriceImpact: input.settings.maxPriceImpactBps / 10_000
+  });
+  if (
+    quote.executionFee || !quote.grossQuoteOut || !quote.grossMinimumOut
+    || quote.marketPair.toLowerCase() !== input.pair.toLowerCase()
+  ) throw new Error("This route is not eligible for zero-fee automatic protection.");
+  return quote;
 }
 
 export async function GET(request: Request) {
@@ -183,7 +222,7 @@ export async function POST(request: Request) {
   const action = input.action;
   const wallet = validAddress(input.wallet);
   const token = validAddress(input.token);
-  if ((action !== "arm" && action !== "cancel") || !wallet || !token) {
+  if ((action !== "prepare" && action !== "arm" && action !== "cancel") || !wallet || !token) {
     return NextResponse.json({ error: "Choose a valid Position Guard action, wallet and token." }, {
       status: 400,
       headers: HEADERS
@@ -219,31 +258,69 @@ export async function POST(request: Request) {
         });
       }
       const now = Date.now();
-      const walletCleanupReportedAt = input.walletAuthorityRemoved === true ? now : null;
+      const executor = validAddress(existingData.executor);
+      const existingOrderId = validOrderId(existingData.orderId);
+      let allowanceCleared = false;
+      let onchainOrderClosed = false;
+      if (executor) {
+        const [allowance, order] = await Promise.all([
+          client.readContract({
+            address: token,
+            abi: erc20Abi,
+            functionName: "allowance",
+            args: [wallet, executor]
+          }).catch(() => null),
+          existingOrderId
+            ? client.readContract({
+                address: executor,
+                abi: rmtPositionGuardExecutorAbi,
+                functionName: "getV3Order",
+                args: [wallet, existingOrderId]
+              }).catch(() => null)
+            : Promise.resolve(null)
+        ]);
+        allowanceCleared = allowance === 0n;
+        const normalizedOrder = normalizeLivePositionGuardOnchainOrder(order);
+        onchainOrderClosed = Boolean(normalizedOrder && normalizedOrder.status !== 1);
+      }
+      const walletCleanupReportedAt = input.walletAuthorityRemoved === true && allowanceCleared ? now : null;
+      const onchainOrderClosedAt = onchainOrderClosed ? now : null;
       const disposition = livePositionGuardCancellationDisposition(existingData.status);
       if (disposition === "reconcile") {
-        const next = { ...existingData, revocationRequestedAt: now, walletCleanupReportedAt };
+        const next = {
+          ...existingData,
+          revocationRequestedAt: now,
+          walletCleanupReportedAt,
+          onchainOrderClosedAt
+        };
         await reference.set({
           revocationRequestedAt: now,
           updatedAt: FieldValue.serverTimestamp(),
-          walletCleanupReportedAt
+          walletCleanupReportedAt,
+          onchainOrderClosedAt
         }, { merge: true });
         return NextResponse.json({ available: true, ...publicOrder(next) }, { headers: HEADERS });
       }
-      if (disposition === "review") {
+      if (disposition === "review" || !walletCleanupReportedAt || !onchainOrderClosedAt) {
         const next = {
           ...existingData,
-          reviewReason: "cancellation_unknown_state",
+          reviewReason: !onchainOrderClosedAt
+            ? "onchain_order_not_closed"
+            : !walletCleanupReportedAt
+              ? "wallet_authority_not_cleared"
+              : "cancellation_unknown_state",
           revocationRequestedAt: now,
           status: "review_required",
-          walletCleanupReportedAt
+          walletCleanupReportedAt,
+          onchainOrderClosedAt
         };
         await reference.set({
-          reviewReason: "cancellation_unknown_state",
+          reviewReason: next.reviewReason,
           revocationRequestedAt: now,
           status: "review_required",
           updatedAt: FieldValue.serverTimestamp(),
-          walletCleanupReportedAt
+          walletCleanupReportedAt,
+          onchainOrderClosedAt
         }, { merge: true });
         return NextResponse.json({ available: true, ...publicOrder(next) }, { headers: HEADERS });
       }
@@ -252,14 +329,16 @@ export async function POST(request: Request) {
         cancelledAt: now,
         revocationRequestedAt: now,
         status: "cancelled",
-        walletCleanupReportedAt
+        walletCleanupReportedAt,
+        onchainOrderClosedAt
       };
       await reference.set({
         cancelledAt: now,
         revocationRequestedAt: now,
         status: "cancelled",
         updatedAt: FieldValue.serverTimestamp(),
-        walletCleanupReportedAt
+        walletCleanupReportedAt,
+        onchainOrderClosedAt
       }, { merge: true });
       return NextResponse.json({ available: true, ...publicOrder(next) }, { headers: HEADERS });
     }
@@ -291,35 +370,38 @@ export async function POST(request: Request) {
       appId: configuration.appId,
       appSecret: configuration.appSecret
     }).users()._get(identity.id);
-    const embeddedWallet = delegatedEmbeddedEthereumWallet(latestUser, wallet);
-    if (!embeddedWallet?.id) {
+    const walletAccount = action === "prepare"
+      ? embeddedEthereumWallet(latestUser, wallet)
+      : delegatedEmbeddedEthereumWallet(latestUser, wallet);
+    if (!walletAccount?.id) {
       return NextResponse.json({
-        error: "Use the RMT embedded wallet and approve the bounded Position Guard permission first."
+        error: action === "prepare"
+          ? "Use the matching RMT embedded wallet to prepare automatic protection."
+          : "Confirm the registered order and bounded delegated signer before arming automatic protection."
       }, { status: 409, headers: HEADERS });
     }
 
-    const [executorCode, allowance, balance, quote] = await Promise.all([
+    const existing = await reference.get();
+    const existingData = existing.data() as Record<string, unknown> | undefined;
+    if (existingData && existingData.ownerKey !== identityOwnerKey) {
+      return NextResponse.json({ error: "Position Guard ownership could not be verified." }, {
+        status: 403,
+        headers: HEADERS
+      });
+    }
+    if (existingData && !livePositionGuardCanReplaceOrder(
+      existingData.status,
+      existingData.walletCleanupReportedAt
+    )) {
+      return NextResponse.json({
+        error: "Position Guard must be cleared or reconciled before another automatic order can be armed."
+      }, { status: 409, headers: HEADERS });
+    }
+
+    const [executorCode, balance, quote] = await Promise.all([
       client.getBytecode({ address: configuration.executor }),
-      client.readContract({
-        address: token,
-        abi: erc20Abi,
-        functionName: "allowance",
-        args: [wallet, configuration.executor]
-      }),
-      client.readContract({
-        address: token,
-        abi: erc20Abi,
-        functionName: "balanceOf",
-        args: [wallet]
-      }),
-      quoteAndBuildExternalUniswapSwap({
-        token,
-        pair,
-        recipient: wallet,
-        side: "sell",
-        amountIn,
-        maxPriceImpact: settings.maxPriceImpactBps / 10_000
-      })
+      client.readContract({ address: token, abi: erc20Abi, functionName: "balanceOf", args: [wallet] }),
+      verifiedQuote({ amountIn, pair, settings, token, wallet })
     ]);
     if (!executorCode) {
       return NextResponse.json({ error: "The Position Guard execution boundary is not deployed on Robinhood Chain." }, {
@@ -327,48 +409,122 @@ export async function POST(request: Request) {
         headers: HEADERS
       });
     }
+    if (balance < amountIn) {
+      return NextResponse.json({ error: "The protected wallet no longer holds the reviewed token amount." }, {
+        status: 409,
+        headers: HEADERS
+      });
+    }
+
+    if (action === "prepare") {
+      const nowSeconds = Math.floor(Date.now() / 1_000);
+      const plan: LivePositionGuardPreparedPlan = {
+        amountIn,
+        breakEvenActivationBps: settings.breakEvenActivationBps,
+        expiresAt: nowSeconds + settings.expiresAfterHours * 60 * 60,
+        fee: quote.fee,
+        maxSlippageBps: LIVE_POSITION_GUARD_EXECUTION_SLIPPAGE_BPS,
+        orderId: `0x${randomBytes(32).toString("hex")}` as Hex,
+        pair,
+        stopLossBps: settings.stopLossBps,
+        token,
+        trailingStopBps: settings.trailingStopBps,
+        twapSeconds: LIVE_POSITION_GUARD_TWAP_SECONDS
+      };
+      return NextResponse.json({
+        available: true,
+        plan: { ...plan, amountIn: plan.amountIn.toString() },
+        systemStatus: "ready"
+      }, { headers: HEADERS });
+    }
+
+    const orderId = validOrderId(input.orderId);
+    if (!orderId) {
+      return NextResponse.json({ error: "The registered onchain order ID is missing or invalid." }, {
+        status: 400,
+        headers: HEADERS
+      });
+    }
+    const [allowance, rawOnchainOrder] = await Promise.all([
+      client.readContract({
+        address: token,
+        abi: erc20Abi,
+        functionName: "allowance",
+        args: [wallet, configuration.executor]
+      }),
+      client.readContract({
+        address: configuration.executor,
+        abi: rmtPositionGuardExecutorAbi,
+        functionName: "getV3Order",
+        args: [wallet, orderId]
+      })
+    ]);
     if (!livePositionGuardAuthorityMatchesPlan({ allowance, balance, amountIn })) {
       return NextResponse.json({
         error: "Position Guard requires an exact executor allowance equal to the protected amount, and the wallet must still hold that amount."
       }, { status: 409, headers: HEADERS });
     }
-    if (quote.executionFee || !quote.grossQuoteOut || !quote.grossMinimumOut) {
-      return NextResponse.json({ error: "This route is not eligible for zero-fee automatic protection." }, {
+    const onchainOrder = normalizeLivePositionGuardOnchainOrder(rawOnchainOrder);
+    const plan: LivePositionGuardPreparedPlan = {
+      amountIn,
+      breakEvenActivationBps: settings.breakEvenActivationBps,
+      expiresAt: onchainOrder?.expiresAt ?? 0,
+      fee: onchainOrder?.fee ?? 0,
+      maxSlippageBps: LIVE_POSITION_GUARD_EXECUTION_SLIPPAGE_BPS,
+      orderId,
+      pair,
+      stopLossBps: settings.stopLossBps,
+      token,
+      trailingStopBps: settings.trailingStopBps,
+      twapSeconds: LIVE_POSITION_GUARD_TWAP_SECONDS
+    };
+    if (!onchainOrder || !livePositionGuardOnchainOrderMatchesPlan(onchainOrder, plan)) {
+      return NextResponse.json({
+        error: "The onchain Position Guard order does not match the reviewed token, pool, amount, settings, TWAP, slippage or expiry."
+      }, { status: 409, headers: HEADERS });
+    }
+    if (onchainOrder.expiresAt <= Math.floor(Date.now() / 1_000)) {
+      return NextResponse.json({ error: "The registered onchain Position Guard order has already expired." }, {
         status: 409,
         headers: HEADERS
       });
     }
 
     const now = Date.now();
-    const expiresAt = now + settings.expiresAfterHours * 60 * 60 * 1_000;
-    const entryUnitQuote = unitQuoteX18(BigInt(quote.grossQuoteOut), amountIn);
     const authorizationId = randomUUID();
     await database.runTransaction(async (transaction) => {
-      const existing = await transaction.get(reference);
-      const existingData = existing.data() as Record<string, unknown> | undefined;
-      if (existingData && existingData.ownerKey !== identityOwnerKey) {
+      const fresh = await transaction.get(reference);
+      const freshData = fresh.data() as Record<string, unknown> | undefined;
+      if (freshData && freshData.ownerKey !== identityOwnerKey) {
         throw new Error("Position Guard ownership could not be verified.");
       }
-      if (existingData && !livePositionGuardCanReplaceOrder(
-        existingData.status,
-        existingData.walletCleanupReportedAt
+      if (freshData && !livePositionGuardCanReplaceOrder(
+        freshData.status,
+        freshData.walletCleanupReportedAt
       )) {
         throw new Error("Position Guard must be cleared or reconciled before another automatic order can be armed.");
       }
-      const revision = safeRevision(existingData?.revision) + 1;
+      const revision = safeRevision(freshData?.revision) + 1;
       transaction.set(reference, {
         amountIn: amountIn.toString(),
         armedAt: now,
         authorizationId,
         chainId: 4663,
         createdAt: FieldValue.serverTimestamp(),
-        entryUnitQuoteX18: entryUnitQuote.toString(),
+        effectiveFloorUnitQuoteX18: null,
+        entryUnitQuoteX18: onchainOrder.entryUnitQuoteX18.toString(),
         executor: configuration.executor,
-        expiresAt,
-        firstBelowFloorAt: null,
-        firstBelowFloorBlock: null,
-        highWatermarkUnitQuoteX18: entryUnitQuote.toString(),
+        expiresAt: onchainOrder.expiresAt * 1_000,
+        fee: onchainOrder.fee,
+        firstBelowFloorAt: onchainOrder.firstBelowFloorAt || null,
+        firstBelowFloorBlock: onchainOrder.firstBelowFloorBlock > 0n
+          ? onchainOrder.firstBelowFloorBlock.toString()
+          : null,
+        highWatermarkUnitQuoteX18: onchainOrder.highWatermarkUnitQuoteX18.toString(),
         lastEvaluatedAt: null,
+        maxSlippageBps: onchainOrder.maxSlippageBps,
+        onchainRegisteredAt: now,
+        orderId,
         ownerKey: identityOwnerKey,
         pair,
         revision,
@@ -376,24 +532,27 @@ export async function POST(request: Request) {
         settings,
         status: "active",
         token,
+        twapSeconds: onchainOrder.twapSeconds,
         updatedAt: FieldValue.serverTimestamp(),
         wallet,
-        walletId: embeddedWallet.id
+        walletId: walletAccount.id
       }, { merge: false });
     });
     return NextResponse.json({
       available: true,
       armedAt: now,
-      expiresAt,
+      expiresAt: onchainOrder.expiresAt * 1_000,
+      orderId,
       revocationPending: false,
       revocationRequestedAt: null,
       status: "active",
       systemStatus: "ready",
-      walletCleanupReported: null
+      walletCleanupReported: null,
+      onchainOrderClosed: false
     }, { headers: HEADERS });
   } catch (cause) {
     return NextResponse.json({
-      error: cause instanceof Error && /^(Live Position Guard|Position Guard|Use the RMT|Confirm the exact|This route|The Position Guard)/.test(cause.message)
+      error: cause instanceof Error && /^(Live Position Guard|Position Guard|Use the matching|Confirm the registered|This route|The Position Guard|The protected|The registered|The onchain)/.test(cause.message)
         ? cause.message
         : "RMT could not safely update live Position Guard."
     }, { status: 409, headers: HEADERS });
