@@ -26,6 +26,7 @@ const client = createPublicClient({
     { retryCount: 3, timeout: 12_000 }
   )
 });
+const EXPLORER = "https://robinhoodchain.blockscout.com";
 
 type LiveGuardStatus = {
   available?: boolean;
@@ -39,6 +40,7 @@ type LiveGuardStatus = {
 
 function statusLabel(status: string) {
   if (status === "active") return "LIVE";
+  if (status === "executing") return "EXECUTING";
   if (status === "submitted") return "EXIT SENT";
   if (status === "executed") return "EXIT CONFIRMED";
   if (status === "confirming") return "VERIFYING TRIGGER";
@@ -46,7 +48,24 @@ function statusLabel(status: string) {
   if (status === "review_required") return "REVIEW REQUIRED";
   if (status === "expired") return "EXPIRED";
   if (status === "cancelled") return "OFF";
+  if (status === "loading") return "CHECKING";
+  if (status === "error") return "UNAVAILABLE";
   return "READY";
+}
+
+function shortAddress(value: string) {
+  return `${value.slice(0, 6)}…${value.slice(-4)}`;
+}
+
+function durationLabel(hours: number) {
+  if (hours === 24) return "24 hours";
+  if (hours === 72) return "3 days";
+  return "7 days";
+}
+
+function timeLabel(value?: number | null) {
+  if (!value) return "—";
+  return new Date(value).toLocaleString();
 }
 
 async function parseResponse(response: Response) {
@@ -75,6 +94,7 @@ function ConfiguredLivePositionGuardControls({
   const [expiresAfterHours, setExpiresAfterHours] = useState(24);
   const [status, setStatus] = useState<LiveGuardStatus>({ status: "loading" });
   const [busy, setBusy] = useState(false);
+  const [authorityReviewed, setAuthorityReviewed] = useState(false);
   const [message, setMessage] = useState("");
   const embeddedWallet = wallets.find((candidate) => candidate.walletClientType === "privy");
   const walletMatches = embeddedWallet?.address.toLowerCase() === wallet.toLowerCase();
@@ -125,15 +145,18 @@ function ConfiguredLivePositionGuardControls({
   }
 
   async function arm() {
-    if (!configuration || !headers || !embeddedWallet || !walletMatches || rawBalance <= 0n) return;
+    if (
+      !configuration || !headers || !embeddedWallet || !walletMatches
+      || rawBalance <= 0n || !authorityReviewed
+    ) return;
     setBusy(true);
-    setMessage("Confirm the exact token allowance in your RMT wallet.");
+    setMessage("Step 1 of 2 · confirm the exact token allowance in your RMT wallet.");
     let allowanceApproved = false;
     let signerAdded = false;
     try {
       await approveExact(rawBalance);
       allowanceApproved = true;
-      setMessage("Review the bounded automatic-exit permission. It can be revoked at any time.");
+      setMessage("Step 2 of 2 · review the bounded automatic-exit permission.");
       await addSigners({
         address: wallet,
         signers: [{ signerId: configuration.signerId, policyIds: [configuration.policyId] }]
@@ -153,17 +176,18 @@ function ConfiguredLivePositionGuardControls({
       });
       const next = await parseResponse(response);
       setStatus(next);
-      setMessage("Live Position Guard is active. RMT can execute only the bounded exit you approved.");
+      setAuthorityReviewed(false);
+      setMessage("Automatic exit is live. The permission is bounded to this token, this wallet, and this expiry.");
     } catch (cause) {
       if (signerAdded) await removeSigners({ address: wallet }).catch(() => undefined);
       let allowanceCleared = !allowanceApproved;
       if (allowanceApproved) {
         allowanceCleared = await approveExact(0n).then(() => true).catch(() => false);
       }
-      const detail = cause instanceof Error ? cause.message : "Live Position Guard could not be armed.";
+      const detail = cause instanceof Error ? cause.message : "Automatic exit could not be armed.";
       setMessage(allowanceCleared
         ? `${detail} The incomplete permission was removed.`
-        : `${detail} The guard is not active. Revoke its token approval in your wallet before continuing.`);
+        : `${detail} The order is not active. Revoke the executor token approval in your wallet before continuing.`);
     } finally {
       setBusy(false);
     }
@@ -172,7 +196,7 @@ function ConfiguredLivePositionGuardControls({
   async function revoke() {
     if (!headers || !embeddedWallet || !walletMatches) return;
     setBusy(true);
-    setMessage("Confirm removal of the executor allowance, then RMT will revoke its signer and cancel the order.");
+    setMessage("Removing the executor allowance, RMT signer permission, and live order.");
     try {
       await approveExact(0n);
       await removeSigners({ address: wallet });
@@ -182,7 +206,7 @@ function ConfiguredLivePositionGuardControls({
         body: JSON.stringify({ action: "cancel", token, wallet })
       }));
       setStatus(next);
-      setMessage("Automatic execution is revoked. Your manual Position Guard remains available.");
+      setMessage("Automatic execution is revoked. The local monitoring plan remains available.");
     } catch (cause) {
       setMessage(cause instanceof Error ? cause.message : "Revocation did not complete. Review the wallet permission.");
     } finally {
@@ -191,41 +215,103 @@ function ConfiguredLivePositionGuardControls({
   }
 
   if (!ready || !walletsReady) {
-    return <div className="livePositionGuardControl"><p>Checking automatic-exit eligibility…</p></div>;
+    return <div className="livePositionGuardControl compactState"><p>Checking automatic-exit eligibility…</p></div>;
   }
   if (!authenticated || !identityToken) {
-    return <div className="livePositionGuardControl"><strong>Automatic exits require RMT sign-in</strong><p>The manual guard remains active on this device.</p></div>;
+    return (
+      <div className="livePositionGuardControl compactState">
+        <strong>Automatic exits require RMT sign-in</strong>
+        <p>The local Position Guard can still monitor and prepare a sell ticket on this device.</p>
+      </div>
+    );
   }
   if (!embeddedWallet || !walletMatches) {
-    return <div className="livePositionGuardControl"><strong>Use your RMT wallet for automatic exits</strong><p>MetaMask and other linked wallets keep full manual execution with their own confirmation.</p></div>;
+    return (
+      <div className="livePositionGuardControl compactState">
+        <strong>Automatic exits use the RMT embedded wallet</strong>
+        <p>Linked external wallets keep manual execution and their own confirmation flow.</p>
+      </div>
+    );
   }
   if (status.status === "worker_offline" || status.status === "release_locked") {
-    return <div className="livePositionGuardControl unavailable"><strong>Automatic exits are release-locked</strong><p>Your manual Position Guard remains active and still requires your wallet.</p></div>;
+    return (
+      <div className="livePositionGuardControl compactState unavailable">
+        <strong>Automatic exits are release-locked</strong>
+        <p>The contract and worker must both pass the production release gate before this control can authorize funds.</p>
+      </div>
+    );
   }
 
+  const transactionHref = status.transactionHash && /^0x[0-9a-fA-F]{64}$/.test(status.transactionHash)
+    ? `${EXPLORER}/tx/${status.transactionHash}`
+    : null;
+
   return (
-    <section className={`livePositionGuardControl ${active ? "active" : ""}`} aria-label="Live Position Guard execution">
+    <section className={`livePositionGuardControl ${active ? "active" : ""} ${cleanupRequired ? "cleanup" : ""}`} aria-label="Automatic Position Guard execution">
       <header>
-        <span><small>AUTOMATIC EXECUTION</small><strong>{active
-          ? "Protection continues when RMT is closed"
-          : cleanupRequired
-            ? "Clear the completed or interrupted permission"
-            : "Turn this guard into a live order"}</strong></span>
+        <span>
+          <small>AUTOMATIC EXIT · BOUNDED AUTHORITY</small>
+          <strong>{active
+            ? "Protection continues when RMT is closed"
+            : cleanupRequired
+              ? "Clear the completed or interrupted permission"
+              : "Authorize this position plan"}</strong>
+        </span>
         <em>{statusLabel(status.status ?? "")}</em>
       </header>
-      <p>Exact token allowance · exact executor · WETH returns only to this wallet · no RMT custody.</p>
+
+      <div className="livePositionGuardBoundary" aria-label="Automatic exit authorization boundary">
+        <span><small>ASSET ACCESS</small><strong>Exact current token balance</strong></span>
+        <span><small>EXECUTION PATH</small><strong>Verified V3 pool → WETH</strong></span>
+        <span><small>RECIPIENT</small><strong>Same wallet only</strong></span>
+        <span><small>CONTROL</small><strong>Expiry + revoke</strong></span>
+      </div>
+
       {active || cleanupRequired ? (
-        <button type="button" disabled={busy} onClick={() => void revoke()}>{busy ? "Revoking safely…" : cleanupRequired ? "Clear automatic permission" : "Revoke automatic exit"}</button>
+        <>
+          <div className="livePositionGuardRuntime" aria-label="Live automatic exit status">
+            <span><small>ARMED</small><strong>{timeLabel(status.armedAt)}</strong></span>
+            <span><small>LAST CHECK</small><strong>{timeLabel(status.lastEvaluatedAt)}</strong></span>
+            <span><small>EXPIRES</small><strong>{timeLabel(status.expiresAt)}</strong></span>
+          </div>
+          {transactionHref && <a className="livePositionGuardTransaction" href={transactionHref} target="_blank" rel="noopener noreferrer">View execution transaction ↗</a>}
+          <button className="livePositionGuardRevoke" type="button" disabled={busy} onClick={() => void revoke()}>
+            {busy ? "Revoking safely…" : cleanupRequired ? "Clear automatic permission" : "Revoke automatic exit"}
+          </button>
+        </>
       ) : (
         <div className="livePositionGuardArm">
-          <label><span>Permission expires</span><select value={expiresAfterHours} onChange={(event) => setExpiresAfterHours(Number(event.target.value))}>
-            <option value={24}>24 hours</option><option value={72}>3 days</option><option value={168}>7 days</option>
-          </select></label>
-          <button type="button" disabled={busy || rawBalance <= 0n} onClick={() => void arm()}>{busy ? "Securing permission…" : "Enable automatic exit"}</button>
+          <label className="livePositionGuardExpiry">
+            <span>Permission expires</span>
+            <select value={expiresAfterHours} onChange={(event) => setExpiresAfterHours(Number(event.target.value))}>
+              <option value={24}>24 hours</option>
+              <option value={72}>3 days</option>
+              <option value={168}>7 days</option>
+            </select>
+            <small>The order stops after {durationLabel(expiresAfterHours)} even if no exit occurs.</small>
+          </label>
+          <label className="livePositionGuardReview">
+            <input type="checkbox" checked={authorityReviewed} onChange={(event) => setAuthorityReviewed(event.target.checked)} />
+            <span>I reviewed the exact-token approval, fixed executor, same-wallet recipient, and revocation path.</span>
+          </label>
+          <button type="button" disabled={busy || rawBalance <= 0n || !authorityReviewed} onClick={() => void arm()}>
+            {busy ? "Securing permission…" : "Authorize automatic exit"}
+          </button>
         </div>
       )}
-      {status.expiresAt && active && <small>Permission expires {new Date(status.expiresAt).toLocaleString()}.</small>}
-      {(message || status.error) && <p className="livePositionGuardMessage" role="status">{message || status.error}</p>}
+
+      <details className="livePositionGuardDetails">
+        <summary>View contract boundary</summary>
+        <dl>
+          <div><dt>Executor</dt><dd title={configuration.executor}>{shortAddress(configuration.executor)}</dd></div>
+          <div><dt>Wallet</dt><dd title={wallet}>{shortAddress(wallet)}</dd></div>
+          <div><dt>Token</dt><dd title={token}>{shortAddress(token)}</dd></div>
+          <div><dt>Max price impact</dt><dd>{(settings.maxPriceImpactBps / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}%</dd></div>
+        </dl>
+        <p>No arbitrary recipient, arbitrary contract call, custody account, or RMT trading fee is included in this authorization.</p>
+      </details>
+
+      {(message || status.error) && <p className="livePositionGuardMessage" role="status" aria-live="polite">{message || status.error}</p>}
     </section>
   );
 }
