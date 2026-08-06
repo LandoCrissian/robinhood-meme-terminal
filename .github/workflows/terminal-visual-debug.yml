@@ -1,0 +1,63 @@
+name: Terminal visual debug
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/terminal-visual-debug.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  debug:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      NEXT_PUBLIC_RMT_NETWORK: mainnet
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a # v4.4.0
+        with:
+          version: 10.12.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - name: Start local production server
+        run: |
+          nohup pnpm --filter web exec next start -p 3000 > /tmp/rmt-terminal.log 2>&1 &
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:3000/ > /dev/null; then exit 0; fi
+            sleep 2
+          done
+          cat /tmp/rmt-terminal.log
+          exit 1
+      - name: Install isolated Chromium runtime
+        run: |
+          mkdir -p /tmp/terminal-playwright terminal-captures
+          cd /tmp/terminal-playwright
+          npm init -y
+          npm install --save-exact --no-package-lock playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Extract and run capture with durable diagnostics
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          workflow = Path('.github/workflows/terminal-visual-capture.yml').read_text()
+          marker = "          cat > /tmp/terminal-playwright/capture-terminal.mjs <<'SCRIPT'\n"
+          if marker not in workflow:
+              raise SystemExit('Capture script marker not found.')
+          body = workflow.split(marker, 1)[1].split("\n          SCRIPT\n", 1)[0]
+          normalized = "\n".join(line[10:] if line.startswith("          ") else line for line in body.splitlines()) + "\n"
+          Path('/tmp/terminal-playwright/capture-terminal.mjs').write_text(normalized)
+          PY
+          set +e
+          node /tmp/terminal-playwright/capture-terminal.mjs 2>&1 | tee /tmp/terminal-visual-debug.log
+          status=${PIPESTATUS[0]}
+          echo "--- terminal visual capture tail ---"
+          tail -n 240 /tmp/terminal-visual-debug.log
+          echo "--- local server tail ---"
+          tail -n 120 /tmp/rmt-terminal.log || true
+          exit $status
