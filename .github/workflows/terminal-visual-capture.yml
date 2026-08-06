@@ -20,19 +20,22 @@ jobs:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 22
-      - name: Install deterministic browser runtime
+      - name: Install isolated deterministic browser runtime
         run: |
-          npm install --no-save --no-package-lock playwright@1.55.0
+          mkdir -p /tmp/terminal-playwright terminal-captures
+          cd /tmp/terminal-playwright
+          npm init -y
+          npm install --save-exact --no-package-lock playwright@1.55.0
           npx playwright install --with-deps chromium
       - name: Capture the deployed terminal
         run: |
-          mkdir -p terminal-captures
-          cat > /tmp/capture-terminal.mjs <<'SCRIPT'
+          cat > /tmp/terminal-playwright/capture-terminal.mjs <<'SCRIPT'
           import { chromium, devices } from "playwright";
           import { writeFile } from "node:fs/promises";
 
           const base = process.env.PREVIEW_URL;
-          if (!base) throw new Error("PREVIEW_URL is required.");
+          const output = `${process.env.GITHUB_WORKSPACE}/terminal-captures`;
+          if (!base || !process.env.GITHUB_WORKSPACE) throw new Error("Preview and workspace paths are required.");
 
           async function openReady(page, url, selector) {
             let lastError = "Preview did not become ready.";
@@ -60,12 +63,11 @@ jobs:
             const context = await browser.newContext(contextOptions);
             const page = await context.newPage();
             const home = await openReady(page, base, ".terminalPage");
-            await page.screenshot({ path: `terminal-captures/home-${suffix}.png`, fullPage: true });
+            await page.screenshot({ path: `${output}/home-${suffix}.png`, fullPage: true });
 
             const marketHref = await page.locator('a[href^="/market/"]').evaluateAll((links) => {
               const visible = links.find((link) => {
-                const element = link;
-                const rect = element.getBoundingClientRect();
+                const rect = link.getBoundingClientRect();
                 return rect.width > 0 && rect.height > 0;
               });
               return visible?.getAttribute("href") ?? links[0]?.getAttribute("href") ?? null;
@@ -74,16 +76,16 @@ jobs:
 
             const marketUrl = new URL(marketHref, base).toString();
             const market = await openReady(page, marketUrl, ".professionalTradeWorkspace");
-            await page.screenshot({ path: `terminal-captures/market-${suffix}.png`, fullPage: true });
+            await page.screenshot({ path: `${output}/market-${suffix}.png`, fullPage: true });
             await browser.close();
             return { home, market, marketUrl };
           }
 
           const desktop = await capture({ viewport: { width: 1440, height: 1000 }, deviceScaleFactor: 1 }, "desktop");
           const mobile = await capture({ ...devices["iPhone 13"] }, "mobile");
-          await writeFile("terminal-captures/capture.json", JSON.stringify({ base, desktop, mobile }, null, 2));
+          await writeFile(`${output}/capture.json`, JSON.stringify({ base, desktop, mobile }, null, 2));
           SCRIPT
-          node /tmp/capture-terminal.mjs
+          node /tmp/terminal-playwright/capture-terminal.mjs
       - name: Upload rendered desktop and mobile evidence
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
