@@ -45,6 +45,7 @@ export type LivePositionGuardEvaluation = {
 };
 
 export type LivePositionGuardPublicConfiguration = {
+  enabled: boolean;
   executor: Address;
   policyId: string;
   signerId: string;
@@ -76,12 +77,16 @@ export function normalizeLivePositionGuardSettings(value: unknown): LivePosition
 export function livePositionGuardPublicConfiguration(
   env: Record<string, string | undefined> = process.env
 ): LivePositionGuardPublicConfiguration | null {
-  if (env.NEXT_PUBLIC_RMT_LIVE_POSITION_GUARD_ENABLED !== "true") return null;
   const executor = env.NEXT_PUBLIC_RMT_POSITION_GUARD_EXECUTOR?.trim() ?? "";
   const policyId = env.NEXT_PUBLIC_RMT_POSITION_GUARD_POLICY_ID?.trim() ?? "";
   const signerId = env.NEXT_PUBLIC_RMT_POSITION_GUARD_SIGNER_ID?.trim() ?? "";
   if (!isAddress(executor) || !ID.test(policyId) || !ID.test(signerId)) return null;
-  return { executor: getAddress(executor), policyId, signerId };
+  return {
+    enabled: env.NEXT_PUBLIC_RMT_LIVE_POSITION_GUARD_ENABLED === "true",
+    executor: getAddress(executor),
+    policyId,
+    signerId
+  };
 }
 
 export function livePositionGuardCancellationDisposition(status: unknown): LivePositionGuardCancellationDisposition {
