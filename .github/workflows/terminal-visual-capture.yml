@@ -2,8 +2,7 @@ name: Terminal visual capture
 
 on:
   workflow_dispatch:
-  push:
-    branches: [feat/terminal-rebuild]
+  pull_request:
     paths:
       - ".github/workflows/terminal-visual-capture.yml"
 
