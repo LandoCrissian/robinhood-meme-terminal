@@ -82,7 +82,7 @@ export function PublicChrome() {
                   <PublicLink href="/admin">RMT Admin<small>Live messages, applications, reports, and feedback</small></PublicLink>
                 </div>}
                 <div>
-                  <span>Account and markets</span>
+                  <span>Account &amp; markets</span>
                   <PublicLink href="/explore">Explore RMT ecosystem<small>Reviewed projects, creators, games, and native markets</small></PublicLink>
                   <PublicLink href="/portfolio">Portfolio<small>Your connected-wallet holdings</small></PublicLink>
                   <PublicLink href="/protection">Protection Center<small>Automatic orders, permission cleanup, and execution history</small></PublicLink>
@@ -90,16 +90,16 @@ export function PublicChrome() {
                   <PublicLink href="/sources">Sources<small>Launchpad coverage and origin labels</small></PublicLink>
                 </div>
                 <div>
-                  <span>Protocol and research</span>
+                  <span>Protocol &amp; research</span>
                   <PublicLink href="/sushi">Sushi integration<small>Verified routing and execution boundary</small></PublicLink>
                   <PublicLink href="/launch">RMT V7 launch preparation<small>New token creation is currently paused</small></PublicLink>
                   <PublicLink href="/rescue">Migration lab<small>Paused, direct-to-wallet testnet research</small></PublicLink>
                 </div>
                 <div>
-                  <span>Help and safety</span>
+                  <span>Help &amp; safety</span>
                   <PublicLink href="/status">Status<small>Live network and protocol checks</small></PublicLink>
                   <PublicLink href="/support">Support<small>Transaction help and incident steps</small></PublicLink>
-                  <PublicLink href="/experience">Experience and privacy<small>Replay the guide or control anonymous diagnostics</small></PublicLink>
+                  <PublicLink href="/experience">Experience &amp; privacy<small>Replay the guide or control anonymous diagnostics</small></PublicLink>
                   <PublicLink href="/risks">Risks<small>Read before signing</small></PublicLink>
                   <a href="https://github.com/LandoCrissian/rmt-transparency" target="_blank" rel="noreferrer">Public evidence<small>Contracts, deployments and independent checks</small></a>
                   <a href="https://github.com/sponsors/LandoCrissian" target="_blank" rel="noreferrer">Support RMT<small>Voluntary sponsorship through GitHub</small></a>
