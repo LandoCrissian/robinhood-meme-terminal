@@ -13,7 +13,9 @@ import {
 import { robinhoodChain } from "@rmt/shared/chains";
 import {
   LIVE_POSITION_GUARD_SCHEMA_VERSION,
+  livePositionGuardAuthorityMatchesPlan,
   livePositionGuardCancellationDisposition,
+  livePositionGuardCanReplaceOrder,
   livePositionGuardHeartbeatIsFresh,
   normalizeLivePositionGuardSettings,
   unitQuoteX18
@@ -50,6 +52,10 @@ function orderDocumentId(identityId: string, wallet: Address, token: Address) {
 
 function ownerKey(identityId: string) {
   return createHash("sha256").update(identityId).digest("hex");
+}
+
+function safeRevision(value: unknown) {
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0 ? value : 0;
 }
 
 async function evaluatorIsHealthy(database: NonNullable<ReturnType<typeof getRmtAdminFirestore>>) {
@@ -196,6 +202,7 @@ export async function POST(request: Request) {
         headers: { ...HEADERS, "Retry-After": "30" }
       });
     }
+    const identityOwnerKey = ownerKey(identity.id);
     const reference = database.collection("livePositionGuardOrders")
       .doc(orderDocumentId(identity.id, wallet, token));
 
@@ -205,7 +212,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ available: true, ...publicOrder(undefined) }, { headers: HEADERS });
       }
       const existingData = existing.data() as Record<string, unknown>;
-      if (existingData.ownerKey !== ownerKey(identity.id)) {
+      if (existingData.ownerKey !== identityOwnerKey) {
         return NextResponse.json({ error: "Position Guard ownership could not be verified." }, {
           status: 403,
           headers: HEADERS
@@ -291,13 +298,19 @@ export async function POST(request: Request) {
       }, { status: 409, headers: HEADERS });
     }
 
-    const [executorCode, allowance, quote] = await Promise.all([
+    const [executorCode, allowance, balance, quote] = await Promise.all([
       client.getBytecode({ address: configuration.executor }),
       client.readContract({
         address: token,
         abi: erc20Abi,
         functionName: "allowance",
         args: [wallet, configuration.executor]
+      }),
+      client.readContract({
+        address: token,
+        abi: erc20Abi,
+        functionName: "balanceOf",
+        args: [wallet]
       }),
       quoteAndBuildExternalUniswapSwap({
         token,
@@ -314,11 +327,10 @@ export async function POST(request: Request) {
         headers: HEADERS
       });
     }
-    if (allowance < amountIn) {
-      return NextResponse.json({ error: "Confirm the exact Position Guard token approval before arming." }, {
-        status: 409,
-        headers: HEADERS
-      });
+    if (!livePositionGuardAuthorityMatchesPlan({ allowance, balance, amountIn })) {
+      return NextResponse.json({
+        error: "Position Guard requires an exact executor allowance equal to the protected amount, and the wallet must still hold that amount."
+      }, { status: 409, headers: HEADERS });
     }
     if (quote.executionFee || !quote.grossQuoteOut || !quote.grossMinimumOut) {
       return NextResponse.json({ error: "This route is not eligible for zero-fee automatic protection." }, {
@@ -328,35 +340,51 @@ export async function POST(request: Request) {
     }
 
     const now = Date.now();
+    const expiresAt = now + settings.expiresAfterHours * 60 * 60 * 1_000;
     const entryUnitQuote = unitQuoteX18(BigInt(quote.grossQuoteOut), amountIn);
-    await reference.set({
-      amountIn: amountIn.toString(),
-      armedAt: now,
-      authorizationId: randomUUID(),
-      chainId: 4663,
-      createdAt: FieldValue.serverTimestamp(),
-      entryUnitQuoteX18: entryUnitQuote.toString(),
-      executor: configuration.executor,
-      expiresAt: now + settings.expiresAfterHours * 60 * 60 * 1_000,
-      firstBelowFloorAt: null,
-      firstBelowFloorBlock: null,
-      highWatermarkUnitQuoteX18: entryUnitQuote.toString(),
-      lastEvaluatedAt: null,
-      ownerKey: ownerKey(identity.id),
-      pair,
-      revision: 1,
-      schemaVersion: LIVE_POSITION_GUARD_SCHEMA_VERSION,
-      settings,
-      status: "active",
-      token,
-      updatedAt: FieldValue.serverTimestamp(),
-      wallet,
-      walletId: embeddedWallet.id
-    }, { merge: false });
+    const authorizationId = randomUUID();
+    await database.runTransaction(async (transaction) => {
+      const existing = await transaction.get(reference);
+      const existingData = existing.data() as Record<string, unknown> | undefined;
+      if (existingData && existingData.ownerKey !== identityOwnerKey) {
+        throw new Error("Position Guard ownership could not be verified.");
+      }
+      if (existingData && !livePositionGuardCanReplaceOrder(
+        existingData.status,
+        existingData.walletCleanupReportedAt
+      )) {
+        throw new Error("Position Guard must be cleared or reconciled before another automatic order can be armed.");
+      }
+      const revision = safeRevision(existingData?.revision) + 1;
+      transaction.set(reference, {
+        amountIn: amountIn.toString(),
+        armedAt: now,
+        authorizationId,
+        chainId: 4663,
+        createdAt: FieldValue.serverTimestamp(),
+        entryUnitQuoteX18: entryUnitQuote.toString(),
+        executor: configuration.executor,
+        expiresAt,
+        firstBelowFloorAt: null,
+        firstBelowFloorBlock: null,
+        highWatermarkUnitQuoteX18: entryUnitQuote.toString(),
+        lastEvaluatedAt: null,
+        ownerKey: identityOwnerKey,
+        pair,
+        revision,
+        schemaVersion: LIVE_POSITION_GUARD_SCHEMA_VERSION,
+        settings,
+        status: "active",
+        token,
+        updatedAt: FieldValue.serverTimestamp(),
+        wallet,
+        walletId: embeddedWallet.id
+      }, { merge: false });
+    });
     return NextResponse.json({
       available: true,
       armedAt: now,
-      expiresAt: now + settings.expiresAfterHours * 60 * 60 * 1_000,
+      expiresAt,
       revocationPending: false,
       revocationRequestedAt: null,
       status: "active",
