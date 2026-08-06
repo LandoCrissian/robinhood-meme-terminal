@@ -1,0 +1,83 @@
+/*
+ * Deterministic acceptance invariants.
+ *
+ * Next.js may split global CSS into route chunks, so these rules use explicit
+ * importance only for measurable accessibility and collision boundaries that
+ * must survive chunk ordering. Visual styling remains in the scoped V8 files.
+ */
+
+.terminalPage .runnerSourceFilters button,
+.terminalPage .runnerOriginFilters summary,
+.terminalPage .runnerOriginFilters > div button {
+  height: 34px !important;
+  min-height: 34px !important;
+}
+
+.terminalPage .runnerStats small,
+.terminalPage .externalIdentity small,
+.terminalPage .runnerCardStatus > span:nth-child(2),
+.terminalPage .runnerCardStatus > small,
+.terminalPage .runnerActivity em,
+.terminalPage .externalChartLink,
+.terminalPage .runnerSourceFilters button b,
+.terminalPage .runnerTabs button span,
+.terminalPage .officialRmtStatus small,
+.terminalPage .officialRmtMetrics dt {
+  font-size: .625rem !important;
+  line-height: 1.25 !important;
+}
+
+.terminalPage .liveSignalRail b,
+.terminalPage .terminalIntro .trustStrip b,
+.terminalPage .terminalMarketShell .feedHeading .eyebrow,
+.terminalPage .runnerColumnHeader {
+  font-size: .6rem !important;
+}
+
+.professionalTradeWorkspace .positionGuardDisclosure,
+.professionalTradeWorkspace .universalPosition footer,
+.professionalTradeWorkspace .universalPosition > header span,
+.professionalTradeWorkspace .universalInsightPanel > header span,
+.professionalTradeWorkspace .universalTradeTape > header span,
+.professionalTradeWorkspace .universalTradeTapeDetails summary,
+.professionalTradeWorkspace .universalTradeTapeList small,
+.professionalTradeWorkspace .universalActorList small,
+.professionalTradeWorkspace .universalActorListHeading span,
+.professionalTradeWorkspace .universalSellPressure small,
+.professionalTradeWorkspace .universalActorSummary small,
+.professionalTradeWorkspace .universalTradeTape footer,
+.professionalTradeWorkspace .universalHolderIntelligence footer {
+  font-size: .625rem !important;
+  line-height: 1.35 !important;
+}
+
+@media (max-width: 760px) {
+  .publicNav .brandLockup {
+    width: 40px !important;
+    min-width: 40px !important;
+    height: 40px !important;
+    min-height: 40px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  .publicNav .brandLogo {
+    width: 30px !important;
+    height: 30px !important;
+  }
+
+  .terminalPage .runnerSourceFilters button,
+  .terminalPage .runnerOriginFilters summary,
+  .terminalPage .runnerOriginFilters > div button {
+    height: 36px !important;
+    min-height: 36px !important;
+  }
+
+  .terminalPage .mobileRunnerRank,
+  .terminalPage .mobileRunnerCopy small,
+  .terminalPage .mobileRunnerCopy em,
+  .terminalPage .mobileRunnerMetrics small {
+    font-size: .625rem !important;
+  }
+}
