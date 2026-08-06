@@ -157,7 +157,7 @@ function ConfiguredLivePositionGuardControls({
     try {
       await approveExact(rawBalance);
       allowanceApproved = true;
-      setMessage("Step 2 of 2 · review the bounded automatic-exit permission.");
+      setMessage("Step 2 of 2 · review the bounded automatic-exit delegation.");
       await addSigners({
         address: wallet,
         signers: [{ signerId: liveConfiguration.signerId, policyIds: [liveConfiguration.policyId] }]
@@ -178,7 +178,7 @@ function ConfiguredLivePositionGuardControls({
       const next = await parseResponse(response);
       setStatus(next);
       setAuthorityReviewed(false);
-      setMessage("Automatic exit is live. The permission is bounded to this token, this wallet, and this expiry.");
+      setMessage("Automatic exit is live. RMT's evaluator may submit the bounded exit until it expires or you revoke it.");
     } catch (cause) {
       if (signerAdded) await removeSigners({ address: wallet }).catch(() => undefined);
       let allowanceCleared = !allowanceApproved;
@@ -238,7 +238,7 @@ function ConfiguredLivePositionGuardControls({
     return (
       <div className="livePositionGuardControl compactState unavailable">
         <strong>Automatic exits are release-locked</strong>
-        <p>The contract and worker must both pass the production release gate before this control can authorize funds.</p>
+        <p>The contract, signer policy, and evaluator must all pass the production release gate before this control can authorize funds.</p>
       </div>
     );
   }
@@ -251,7 +251,7 @@ function ConfiguredLivePositionGuardControls({
     <section className={`livePositionGuardControl ${active ? "active" : ""} ${cleanupRequired ? "cleanup" : ""}`} aria-label="Automatic Position Guard execution">
       <header>
         <span>
-          <small>AUTOMATIC EXIT · BOUNDED AUTHORITY</small>
+          <small>AUTOMATIC EXIT · BOUNDED DELEGATION</small>
           <strong>{active
             ? "Protection continues when RMT is closed"
             : cleanupRequired
@@ -262,10 +262,10 @@ function ConfiguredLivePositionGuardControls({
       </header>
 
       <div className="livePositionGuardBoundary" aria-label="Automatic exit authorization boundary">
-        <span><small>ASSET ACCESS</small><strong>Exact current token balance</strong></span>
+        <span><small>ASSET ACCESS</small><strong>Up to the approved token amount</strong></span>
+        <span><small>TRIGGER AUTHORITY</small><strong>RMT evaluator + policy signer</strong></span>
         <span><small>EXECUTION PATH</small><strong>Verified V3 pool → WETH</strong></span>
         <span><small>RECIPIENT</small><strong>Same wallet only</strong></span>
-        <span><small>CONTROL</small><strong>Expiry + revoke</strong></span>
       </div>
 
       {active || cleanupRequired ? (
@@ -293,7 +293,7 @@ function ConfiguredLivePositionGuardControls({
           </label>
           <label className="livePositionGuardReview">
             <input type="checkbox" checked={authorityReviewed} onChange={(event) => setAuthorityReviewed(event.target.checked)} />
-            <span>I reviewed the exact-token approval, fixed executor, same-wallet recipient, and revocation path.</span>
+            <span>I reviewed the approved amount, RMT evaluator timing authority, fixed executor, same-wallet recipient, expiry, and revocation path.</span>
           </label>
           <button type="button" disabled={busy || rawBalance <= 0n || !authorityReviewed} onClick={() => void arm()}>
             {busy ? "Securing permission…" : "Authorize automatic exit"}
@@ -302,14 +302,14 @@ function ConfiguredLivePositionGuardControls({
       )}
 
       <details className="livePositionGuardDetails">
-        <summary>View contract boundary</summary>
+        <summary>View contract and trust boundary</summary>
         <dl>
           <div><dt>Executor</dt><dd title={liveConfiguration.executor}>{shortAddress(liveConfiguration.executor)}</dd></div>
           <div><dt>Wallet</dt><dd title={wallet}>{shortAddress(wallet)}</dd></div>
           <div><dt>Token</dt><dd title={token}>{shortAddress(token)}</dd></div>
           <div><dt>Max price impact</dt><dd>{(settings.maxPriceImpactBps / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}%</dd></div>
         </dl>
-        <p>No arbitrary recipient, arbitrary contract call, custody account, or RMT trading fee is included in this authorization.</p>
+        <p>The evaluator and policy signer control submission timing. A compromised signer could submit early within the approved allowance, but cannot redirect proceeds or spend beyond that approval. The executor has no arbitrary recipient, generic call, custody account, or RMT fee path.</p>
       </details>
 
       {(message || status.error) && <p className="livePositionGuardMessage" role="status" aria-live="polite">{message || status.error}</p>}
