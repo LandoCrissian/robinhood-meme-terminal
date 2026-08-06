@@ -10,6 +10,16 @@ export const LIVE_POSITION_GUARD_HEARTBEAT_STALE_AFTER_MS = 30_000;
 const BPS = 10_000n;
 const ADDRESS = /^0x[0-9a-fA-F]{40}$/;
 const ID = /^[A-Za-z0-9_-]{8,160}$/;
+const CANCELLABLE_ORDER_STATUS = new Set([
+  "active",
+  "approval_required",
+  "cancelled",
+  "executed",
+  "expired",
+  "inactive",
+  "no_position",
+  "review_required"
+]);
 
 export type LivePositionGuardSettings = {
   stopLossBps: number;
@@ -39,6 +49,8 @@ export type LivePositionGuardPublicConfiguration = {
   policyId: string;
   signerId: string;
 };
+
+export type LivePositionGuardCancellationDisposition = "cancel" | "reconcile" | "review";
 
 function integerInRange(value: unknown, minimum: number, maximum: number) {
   return typeof value === "number" && Number.isSafeInteger(value) && value >= minimum && value <= maximum
@@ -70,6 +82,12 @@ export function livePositionGuardPublicConfiguration(
   const signerId = env.NEXT_PUBLIC_RMT_POSITION_GUARD_SIGNER_ID?.trim() ?? "";
   if (!isAddress(executor) || !ID.test(policyId) || !ID.test(signerId)) return null;
   return { executor: getAddress(executor), policyId, signerId };
+}
+
+export function livePositionGuardCancellationDisposition(status: unknown): LivePositionGuardCancellationDisposition {
+  if (status === "executing" || status === "submitted") return "reconcile";
+  if (typeof status === "string" && CANCELLABLE_ORDER_STATUS.has(status)) return "cancel";
+  return "review";
 }
 
 export function livePositionGuardOrderId(input: {
