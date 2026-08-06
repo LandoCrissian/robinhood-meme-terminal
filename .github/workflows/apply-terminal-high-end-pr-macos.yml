@@ -1,4 +1,4 @@
-name: Apply terminal high-end PR diagnostic
+name: Apply terminal high-end PR pass macOS
 
 on:
   pull_request:
@@ -15,7 +15,7 @@ permissions:
 jobs:
   apply:
     if: github.head_ref == 'fix/terminal-desktop-layout-v9'
-    runs-on: ubuntu-latest
+    runs-on: macos-15
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -36,10 +36,25 @@ jobs:
               line[10:] if line.startswith("          ") else line
               for line in workflow[start:end].splitlines()
           )
-          script = script.replace(
-              'raise SystemExit(f"{path}: expected one exact match, found {count}")',
-              'raise SystemExit(f"{path}: expected one exact match, found {count}: {old[:160]!r}")'
-          )
+
+          function_start = script.index("def replace_once")
+          function_end = script.index("\ndef regex_once", function_start)
+          robust_replace = '''def replace_once(path: str, old: str, new: str) -> None:
+    file = Path(path)
+    text = file.read_text()
+    if text.count(old) == 1:
+        file.write_text(text.replace(old, new, 1))
+        return
+    flexible = "".join(
+        r"\\s+" if part.isspace() else re.escape(part)
+        for part in re.split(r"(\\s+)", old)
+    )
+    updated, count = re.subn(flexible, lambda _match: new, text, count=1, flags=re.S)
+    if count != 1:
+        raise SystemExit(f"{path}: expected one flexible match, found {count}: {old[:160]!r}")
+    file.write_text(updated)
+'''
+          script = script[:function_start] + robust_replace + script[function_end:]
           exec(compile(script, 'terminal-high-end-pass.py', 'exec'))
           PY
 
