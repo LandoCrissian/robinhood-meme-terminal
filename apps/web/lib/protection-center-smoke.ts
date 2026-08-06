@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 
 const protectionLayout = readFileSync(new URL("../app/protection/layout.tsx", import.meta.url), "utf8");
 const protectionPage = readFileSync(new URL("../app/protection/page.tsx", import.meta.url), "utf8");
+const protectionBoundary = readFileSync(new URL("../app/protection/protection-center-boundary.tsx", import.meta.url), "utf8");
 const protectionCenter = readFileSync(new URL("../app/protection/protection-center.tsx", import.meta.url), "utf8");
 const protectionInventoryRoute = readFileSync(
   new URL("../app/api/position-guards/live/list/route.ts", import.meta.url),
@@ -32,7 +33,11 @@ const firestoreIndexes = JSON.parse(
 
 assert.match(protectionLayout, /import "\.\/protection-center\.css"/);
 assert.match(protectionLayout, /import "\.\/protection-recovery\.css"/);
-assert.match(protectionPage, /<ProtectionCenter \/>/);
+assert.match(protectionPage, /<ProtectionCenterBoundary \/>/);
+assert.match(protectionBoundary, /speedWalletEnabled/);
+assert.match(protectionBoundary, /ConfiguredProtectionCenter/);
+assert.match(protectionBoundary, /ssr: false/);
+assert.match(protectionBoundary, /No automatic authority can be created from this release environment/);
 assert.match(protectionCenter, /\/api\/position-guards\/live\/list/);
 assert.match(protectionCenter, /Review authority/);
 assert.match(protectionCenter, /<LivePositionGuardControls/);
