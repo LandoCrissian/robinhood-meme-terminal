@@ -80,6 +80,7 @@ export function PositionGuardPanel({
   onPrepareExit: (request: PositionGuardExitRequest) => boolean;
 }) {
   const defaults = defaultPositionGuardSettings();
+  const [mounted, setMounted] = useState(false);
   const [guard, setGuard] = useState(() => readPositionGuard(wallet, token));
   const [editing, setEditing] = useState(false);
   const [message, setMessage] = useState("");
@@ -96,6 +97,8 @@ export function PositionGuardPanel({
     breakEvenActivationPercent,
     maxPriceImpactPercent
   });
+
+  useEffect(() => setMounted(true), []);
 
   useEffect(() => {
     const next = readPositionGuard(wallet, token);
@@ -236,14 +239,16 @@ export function PositionGuardPanel({
           </div>
         )}
         <small className="positionGuardDisclosure">Local monitoring works only while this browser receives fresh market updates. Any existing server-backed automatic order is recovered below even when this browser has no saved local guard.</small>
-        <LivePositionGuardControls
-          armingEnabled={false}
-          pair={pair}
-          rawBalance={rawBalance}
-          settings={settingsForLiveExecution}
-          token={token as Address}
-          wallet={wallet}
-        />
+        {mounted && (
+          <LivePositionGuardControls
+            armingEnabled={false}
+            pair={pair}
+            rawBalance={rawBalance}
+            settings={settingsForLiveExecution}
+            token={token as Address}
+            wallet={wallet}
+          />
+        )}
         {message && <p className="positionGuardMessage" role="status">{message}</p>}
       </section>
     );
@@ -310,13 +315,15 @@ export function PositionGuardPanel({
         <button type="button" onClick={disableGuard}>Disable local guard</button>
       </div>
       <small className="positionGuardDisclosure">Local monitoring is not an exchange stop order. Conditions can be missed when the browser, data feed or wallet is unavailable. Automatic execution below is a separate bounded delegation and remains independently revocable.</small>
-      <LivePositionGuardControls
-        pair={pair}
-        rawBalance={rawBalance}
-        settings={settingsForLiveExecution}
-        token={token as Address}
-        wallet={wallet}
-      />
+      {mounted && (
+        <LivePositionGuardControls
+          pair={pair}
+          rawBalance={rawBalance}
+          settings={settingsForLiveExecution}
+          token={token as Address}
+          wallet={wallet}
+        />
+      )}
       {message && <p className="positionGuardMessage" role="status">{message}</p>}
     </section>
   );
