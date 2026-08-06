@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "prebuild": "node -e \"console.log('RMT diagnostic: compile-only build')\"",
+    "prebuild": "mkdir -p public && (pnpm typecheck > public/terminal-v11-typecheck.txt 2>&1 || true)",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
