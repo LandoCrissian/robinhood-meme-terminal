@@ -3,6 +3,11 @@
 import { useEffect, useState } from "react";
 import type { Address, Hex } from "viem";
 import { usePublicClient } from "wagmi";
+import { recordExperienceStage } from "./experience-funnel";
+import {
+  classifyTradeExecutionError,
+  type TradeExecutionFailure
+} from "./trade-execution-reliability";
 import { estimatedNetworkFeeWei } from "./trade-ticket";
 
 export type TradeFeeEstimateState = {
@@ -11,7 +16,13 @@ export type TradeFeeEstimateState = {
   gasPrice?: bigint;
   feeWei?: bigint;
   ethUsd?: number;
+  attempts?: number;
+  failure?: TradeExecutionFailure;
 };
+
+function wait(milliseconds: number) {
+  return new Promise<void>((resolve) => setTimeout(resolve, milliseconds));
+}
 
 export function useTradeFeeEstimate({
   account,
@@ -36,28 +47,52 @@ export function useTradeFeeEstimate({
     }
     let active = true;
     const controller = new AbortController();
-    setState({ status: "loading" });
-    void Promise.all([
-      client.estimateGas({ account, to, data, value }),
-      client.getGasPrice(),
-      fetch("/api/prices/eth", { cache: "no-store", signal: controller.signal })
-        .then(async (response) => {
-          if (!response.ok) return undefined;
-          const payload = await response.json() as { usd?: unknown };
-          return typeof payload.usd === "number" && Number.isFinite(payload.usd) && payload.usd > 0
-            ? payload.usd
-            : undefined;
-        })
-        .catch(() => undefined)
-    ]).then(([gas, gasPrice, ethUsd]) => {
+    setState({ status: "loading", attempts: 0 });
+
+    const loadEthUsd = fetch("/api/prices/eth", { cache: "no-store", signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok) return undefined;
+        const payload = await response.json() as { usd?: unknown };
+        return typeof payload.usd === "number" && Number.isFinite(payload.usd) && payload.usd > 0
+          ? payload.usd
+          : undefined;
+      })
+      .catch(() => undefined);
+
+    const estimate = async () => {
+      let finalFailure: TradeExecutionFailure | undefined;
+      for (let attempt = 1; attempt <= 2; attempt += 1) {
+        try {
+          const [gas, gasPrice, ethUsd] = await Promise.all([
+            client.estimateGas({ account, to, data, value }),
+            client.getGasPrice(),
+            loadEthUsd
+          ]);
+          const feeWei = estimatedNetworkFeeWei(gas, gasPrice);
+          if (!active) return;
+          if (feeWei > 0n) {
+            setState({ status: "ready", gas, gasPrice, feeWei, ethUsd, attempts: attempt });
+            recordExperienceStage("preflight_ready");
+            return;
+          }
+          finalFailure = classifyTradeExecutionError("Exact transaction simulation returned no usable network fee.");
+          break;
+        } catch (cause) {
+          finalFailure = classifyTradeExecutionError(cause);
+          if (finalFailure.code !== "network" || attempt === 2) break;
+          await wait(180 * attempt);
+        }
+      }
       if (!active) return;
-      const feeWei = estimatedNetworkFeeWei(gas, gasPrice);
-      setState(feeWei > 0n
-        ? { status: "ready", gas, gasPrice, feeWei, ethUsd }
-        : { status: "unavailable" });
-    }).catch(() => {
-      if (active) setState({ status: "unavailable" });
-    });
+      setState({
+        status: "unavailable",
+        attempts: finalFailure?.code === "network" ? 2 : 1,
+        failure: finalFailure ?? classifyTradeExecutionError("Trade preflight unavailable.")
+      });
+      recordExperienceStage("preflight_failed");
+    };
+
+    void estimate();
     return () => {
       active = false;
       controller.abort();
