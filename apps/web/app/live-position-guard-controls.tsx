@@ -31,7 +31,7 @@ const STATUS_REFRESH_MS = 10_000;
 
 type LiveGuardStatus = {
   available?: boolean;
-  systemStatus?: "ready" | "release_locked" | "worker_offline" | "unverified";
+  systemStatus?: string;
   status?: string;
   armedAt?: number | null;
   expiresAt?: number | null;
