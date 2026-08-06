@@ -20,6 +20,7 @@ import "./community.css";
 import "./experience.css";
 import "./interface-polish.css";
 import "./terminal-v8.css";
+import "./workspace-v8.css";
 import { Providers } from "./providers";
 import { PublicChrome } from "./public-chrome";
 import { TradingTermsGate } from "./trading-terms-gate";
