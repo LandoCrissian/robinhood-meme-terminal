@@ -26,7 +26,7 @@ export function useTradeQuoteFreshness({
 }) {
   const [nowSeconds, setNowSeconds] = useState(() => Math.floor(Date.now() / 1_000));
   const refreshCallback = useRef(onRefreshNeeded);
-  const refreshRequestedFor = useRef<string>();
+  const refreshRequestedFor = useRef<string | undefined>(undefined);
   refreshCallback.current = onRefreshNeeded;
 
   useEffect(() => {
