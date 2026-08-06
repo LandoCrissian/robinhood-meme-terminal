@@ -96,7 +96,7 @@ export function ExternalWalletPosition({
           <span><small>HOLDINGS</small><strong>{units === null ? "Reading…" : `${compact(units, 4)} ${market.symbol}`}</strong></span>
           <span><small>CURRENT VALUE</small><strong>{units === null ? "—" : `$${compact(units * market.priceUsd)}`}</strong></span>
           <div><button type="button" onClick={onBuy}>Buy more</button><button type="button" onClick={() => onSell()}>Sell position</button></div>
-          {units !== null && units > 0 && (
+          {units !== null && units > 0 && balance.data !== undefined && (
             <PositionGuardPanel
               wallet={address}
               token={market.address}
