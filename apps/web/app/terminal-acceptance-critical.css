@@ -56,6 +56,17 @@
   line-height: 1.35 !important;
 }
 
+@media (min-width: 761px) {
+  .terminalPage .runnerDirectoryControls {
+    width: 100% !important;
+  }
+
+  .terminalPage .runnerDirectoryControls .runnerMarketSearch {
+    width: 100% !important;
+    max-width: none !important;
+  }
+}
+
 /* The medium desktop layout must not inherit the legacy rule that hides the
  * evidence column and source link below 1180px. */
 @media (min-width: 761px) and (max-width: 1180px) {
