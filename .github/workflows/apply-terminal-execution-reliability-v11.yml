@@ -7,6 +7,12 @@ on:
     paths:
       - ".github/workflows/apply-terminal-execution-reliability-v11.yml"
       - "scripts/apply-terminal-execution-reliability-v11.py"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/apply-terminal-execution-reliability-v11.yml"
+      - "scripts/apply-terminal-execution-reliability-v11.py"
 
 permissions:
   contents: write
@@ -17,6 +23,7 @@ concurrency:
 
 jobs:
   apply:
+    if: github.event_name == 'push' || github.head_ref == 'feat/terminal-pro-workflow-v11'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -37,4 +44,5 @@ jobs:
           git config user.email "actions@users.noreply.github.com"
           git add -A
           git commit -m "feat(web): integrate recoverable trade execution"
+          git pull --rebase origin feat/terminal-pro-workflow-v11
           git push origin HEAD:feat/terminal-pro-workflow-v11
