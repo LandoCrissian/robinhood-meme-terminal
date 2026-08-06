@@ -26,7 +26,6 @@ import "./chart-guard-v8.css";
 import "./automation-safety-v8.css";
 import "./terminal-readability-v8.css";
 import "./terminal-completion-v8.css";
-import "./terminal-render-fixes.css";
 import { Providers } from "./providers";
 import { PublicChrome } from "./public-chrome";
 import { TradingTermsGate } from "./trading-terms-gate";
