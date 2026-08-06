@@ -6,6 +6,7 @@ on:
       - "apps/web/app/**"
       - "apps/web/lib/live-position-guard*"
       - "apps/web/lib/position-guard*"
+      - "apps/web/lib/protection-center-smoke.ts"
       - "apps/web/lib/market-protection*"
       - "apps/web/package.json"
       - "package.json"
@@ -38,6 +39,8 @@ jobs:
         run: pnpm --filter web test:position-guard
       - name: Verify bounded automatic execution
         run: pnpm --filter web test:live-position-guard
+      - name: Verify cross-device protection recovery
+        run: pnpm --filter web test:protection-center
       - name: Verify market protection rules
         run: pnpm --filter web test:market-protection
       - name: Verify confirmed-buy protection handoff
