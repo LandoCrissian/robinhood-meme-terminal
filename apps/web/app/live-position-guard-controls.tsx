@@ -87,6 +87,7 @@ function ConfiguredLivePositionGuardControls({
   token: Address;
   wallet: Address;
 }) {
+  const liveConfiguration = configuration!;
   const { authenticated, ready } = usePrivy();
   const { identityToken } = useIdentityToken();
   const { wallets, ready: walletsReady } = useWallets();
@@ -122,7 +123,7 @@ function ConfiguredLivePositionGuardControls({
   }, [authenticated, headers, token, wallet]);
 
   async function approveExact(amount: bigint) {
-    if (!embeddedWallet || !configuration) throw new Error("The RMT wallet is not ready.");
+    if (!embeddedWallet) throw new Error("The RMT wallet is not ready.");
     const provider = await embeddedWallet.getEthereumProvider();
     const transactionHash = await provider.request({
       method: "eth_sendTransaction",
@@ -130,7 +131,7 @@ function ConfiguredLivePositionGuardControls({
         data: encodeFunctionData({
           abi: erc20Abi,
           functionName: "approve",
-          args: [configuration.executor, amount]
+          args: [liveConfiguration.executor, amount]
         }),
         from: wallet,
         to: token,
@@ -146,7 +147,7 @@ function ConfiguredLivePositionGuardControls({
 
   async function arm() {
     if (
-      !configuration || !headers || !embeddedWallet || !walletMatches
+      !headers || !embeddedWallet || !walletMatches
       || rawBalance <= 0n || !authorityReviewed
     ) return;
     setBusy(true);
@@ -159,7 +160,7 @@ function ConfiguredLivePositionGuardControls({
       setMessage("Step 2 of 2 · review the bounded automatic-exit permission.");
       await addSigners({
         address: wallet,
-        signers: [{ signerId: configuration.signerId, policyIds: [configuration.policyId] }]
+        signers: [{ signerId: liveConfiguration.signerId, policyIds: [liveConfiguration.policyId] }]
       });
       signerAdded = true;
       const response = await fetch("/api/position-guards/live", {
@@ -303,7 +304,7 @@ function ConfiguredLivePositionGuardControls({
       <details className="livePositionGuardDetails">
         <summary>View contract boundary</summary>
         <dl>
-          <div><dt>Executor</dt><dd title={configuration.executor}>{shortAddress(configuration.executor)}</dd></div>
+          <div><dt>Executor</dt><dd title={liveConfiguration.executor}>{shortAddress(liveConfiguration.executor)}</dd></div>
           <div><dt>Wallet</dt><dd title={wallet}>{shortAddress(wallet)}</dd></div>
           <div><dt>Token</dt><dd title={token}>{shortAddress(token)}</dd></div>
           <div><dt>Max price impact</dt><dd>{(settings.maxPriceImpactBps / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}%</dd></div>
