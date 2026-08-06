@@ -116,7 +116,7 @@ export function PositionGuardPanel({
     if (typeof navigator !== "undefined" && "vibrate" in navigator) navigator.vibrate([160, 80, 160]);
     if (typeof Notification !== "undefined" && Notification.permission === "granted") {
       new Notification(`RMT Position Guard · ${symbol}`, {
-        body: `Your protected floor was reached. Reopen RMT to review a fresh sell quote.`,
+        body: "Your protected floor was reached. Reopen RMT to review a fresh sell quote.",
         tag: `rmt-position-guard:${wallet}:${token}`
       });
     }
@@ -236,15 +236,15 @@ export function PositionGuardPanel({
     if (!removePositionGuard(wallet, token)) return;
     setGuard(null);
     setEditing(false);
-    setMessage("Position Guard removed.");
+    setMessage("Position Guard removed. Server-backed automatic permissions must be managed separately in Protection Center.");
   }
 
   if (!guard) {
     return (
       <section className="positionGuardPanel idle" aria-labelledby="position-guard-heading">
         <header>
-          <span><small>POSITION GUARD</small><strong id="position-guard-heading">Protect this position</strong></span>
-          <em>Manual execution</em>
+          <span><small>POSITION GUARD · LOCAL</small><strong id="position-guard-heading">Protect this position</strong></span>
+          <em>Wallet-confirmed exits</em>
         </header>
         <p>A trailing floor follows gains upward and never follows a falling position back down.</p>
         {!editing ? (
@@ -272,7 +272,22 @@ export function PositionGuardPanel({
             <div className="positionGuardEditorActions"><button type="button" onClick={saveCustom}>Arm Position Guard</button><button type="button" onClick={() => setEditing(false)}>Cancel</button></div>
           </div>
         )}
-        <small className="positionGuardDisclosure">RMT monitors while this market is open. A trigger prepares a fresh sell ticket; it does not trade without your wallet.</small>
+        <small className="positionGuardDisclosure">RMT monitors while this market is open. A trigger prepares a fresh sell ticket; it does not trade without your wallet. Automatic permissions are separate and remain release-locked.</small>
+        {pair && rawBalance !== undefined && (
+          <LivePositionGuardControls
+            armingEnabled={false}
+            pair={pair}
+            rawBalance={rawBalance}
+            settings={{
+              stopLossBps,
+              trailingStopBps,
+              breakEvenActivationBps,
+              maxPriceImpactBps: 400
+            }}
+            token={token as Address}
+            wallet={wallet as Address}
+          />
+        )}
         {message && <p className="positionGuardMessage" role="status">{message}</p>}
       </section>
     );
@@ -281,7 +296,7 @@ export function PositionGuardPanel({
   return (
     <section className={`positionGuardPanel armed ${evaluation?.stopTriggered ? "triggered" : ""}`} aria-labelledby="position-guard-heading">
       <header>
-        <span><small>POSITION GUARD · ARMED</small><strong id="position-guard-heading">{evaluation?.stopTriggered ? "Protected floor reached" : "Following this position"}</strong></span>
+        <span><small>POSITION GUARD · LOCAL</small><strong id="position-guard-heading">{evaluation?.stopTriggered ? "Protected floor reached" : "Following this position"}</strong></span>
         <em>{evaluation?.breakEvenArmed ? "Break-even locked" : `${percent(guard.trailingStopBps)} trail`}</em>
       </header>
       {evaluation && (
@@ -336,7 +351,7 @@ export function PositionGuardPanel({
       <div className="positionGuardActions">
         <button type="button" onClick={() => void enableNotifications()}>Enable browser alert</button>
         <button type="button" onClick={() => { setBasis(String(guard.basisUsd)); setEditing(true); }}>Edit rules</button>
-        <button type="button" onClick={removeGuard}>Remove</button>
+        <button type="button" onClick={removeGuard}>Remove local guard</button>
       </div>
       {pair && rawBalance !== undefined && (
         <LivePositionGuardControls

@@ -9,45 +9,47 @@ import {
 } from "../lib/site-identity";
 import { SiteFooter } from "./site-footer";
 
+const terminalDescription = "Scan live Robinhood Chain markets, inspect origin and liquidity evidence, and prepare self-custodial Sushi or Uniswap trades from one terminal.";
+
 export const metadata: Metadata = {
   title: `${RMT_SITE_NAME} | ${RMT_SITE_ALTERNATE_NAME}`,
-  description: "Discover and trade Robinhood Chain tokens launched outside RMT across Pons, Lemon, Sushi, Uniswap, and the wider ecosystem.",
+  description: terminalDescription,
   alternates: { canonical: "/" },
   openGraph: {
     type: "website",
     locale: "en_US",
     siteName: RMT_SITE_NAME,
     title: `${RMT_SITE_NAME} | ${RMT_SITE_ALTERNATE_NAME}`,
-    description: "Discover and trade Robinhood Chain tokens launched outside RMT across Pons, Lemon, Sushi, Uniswap, and the wider ecosystem.",
+    description: terminalDescription,
     url: "/",
     images: ["/brand/rmt-master-logo.png"]
   },
   twitter: {
     card: "summary",
     title: `${RMT_SITE_NAME} | ${RMT_SITE_ALTERNATE_NAME}`,
-    description: "Discover and trade Robinhood Chain tokens launched outside RMT across Pons, Lemon, Sushi, Uniswap, and the wider ecosystem.",
+    description: terminalDescription,
     images: ["/brand/rmt-master-logo.png"]
   }
 };
 
 export default function Home() {
   return (
-    <main className="terminalPage">
+    <main className="terminalPage" data-product-family="RMT · MARKET TERMINAL">
       <section className="terminalIntro">
         <div className="terminalIntroCopy">
-          <p className="eyebrow">RMT · MARKET TERMINAL</p>
-          <h1>Robinhood Chain, in one view.</h1>
-          <p>Scan live markets, verify project origin, compare activity, and review non-custodial execution without leaving RMT.</p>
+          <p className="eyebrow">RMT · LIVE MARKET INTELLIGENCE</p>
+          <h1>Robinhood Chain markets</h1>
+          <p>Scan momentum, verify origin and liquidity, then prepare a wallet-signed Sushi or Uniswap trade.</p>
         </div>
         <div className="terminalIntroActions">
-          <Link className="primaryAction" href="/watchlist">Open watchlist</Link>
-          <Link className="secondaryAction" href="/explore">RMT ecosystem</Link>
+          <Link className="primaryAction" href="#market-explorer">Scan markets</Link>
+          <Link className="secondaryAction" href="/watchlist">Open watchlist</Link>
         </div>
         <div className="trustStrip" aria-label="Terminal operating status">
           <span><b>NETWORK</b><i aria-hidden="true" />{isMainnetRelease ? "RHC MAINNET · 4663" : "RHC TESTNET · 46630"}</span>
-          <span><b>MARKETS</b>PONS · LEMON · SUSHI · UNISWAP</span>
-          <span><b>DATA</b>30S SNAPSHOTS</span>
-          <span><b>EXECUTION</b>SELF-CUSTODY</span>
+          <span><b>ROUTING</b>SUSHI · UNISWAP</span>
+          <span><b>DATA</b>30S LIVE SNAPSHOTS</span>
+          <span><b>CONTROL</b>WALLET SIGNS</span>
         </div>
       </section>
 

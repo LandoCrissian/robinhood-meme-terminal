@@ -1,0 +1,365 @@
+/*
+ * Final terminal acceptance pass.
+ *
+ * These rules intentionally load after every legacy and V8 layer. They address
+ * defects found in deterministic desktop and mobile browser captures without
+ * changing execution, routing, risk, or wallet behavior.
+ */
+
+/* Focused financial surfaces require uninterrupted controls. RMT Live remains
+ * available elsewhere, but its edge launcher cannot cover markets, execution,
+ * evidence, or protection-management actions. */
+body:has(.terminalPage) .communityLive,
+body:has(.professionalTradeWorkspace) .communityLive,
+body:has(.protectionCenterPage) .communityLive {
+  display: none !important;
+}
+
+/* Minimum readable and operable terminal controls. */
+.terminalPage .runnerSourceFilters button,
+.terminalPage .runnerOriginFilters summary {
+  min-height: 34px;
+}
+
+.terminalPage .runnerSourceFilters button b,
+.terminalPage .runnerTabs button span,
+.terminalPage .runnerCardStatus > span:nth-child(2),
+.terminalPage .runnerCardStatus > small,
+.terminalPage .runnerStats small,
+.terminalPage .externalIdentity small,
+.terminalPage .runnerActivity em,
+.terminalPage .externalChartLink {
+  font-size: .56rem;
+}
+
+.terminalPage .externalIdentityLink {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+}
+
+.terminalPage .liveSignalRail > a {
+  min-height: 92px;
+  overflow: hidden;
+}
+
+.terminalPage .liveSignalRail > a > strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.terminalPage .liveSignalRail > a > small {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.terminalPage .siteFooter a,
+.professionalTradeWorkspace .siteFooter a,
+.protectionCenterPage .siteFooter a {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+}
+
+/* Workspace labels stay compact, but never collapse into six- or seven-pixel
+ * text. These values are deliberately scoped to the terminal workspace. */
+.professionalTradeWorkspace .universalWorkspaceNav a,
+.professionalTradeWorkspace .universalHeroSocials a {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+}
+
+.professionalTradeWorkspace .universalChartAxis,
+.professionalTradeWorkspace .universalPosition footer,
+.professionalTradeWorkspace .positionGuardDisclosure,
+.professionalTradeWorkspace .universalSellPressure small,
+.professionalTradeWorkspace .universalActorSummary small,
+.professionalTradeWorkspace .universalActorListHeading span,
+.professionalTradeWorkspace .universalActorList small,
+.professionalTradeWorkspace .universalTradeTape footer {
+  font-size: .625rem !important;
+}
+
+.professionalTradeWorkspace .universalTradeTapeDetails summary,
+.professionalTradeWorkspace .tradeExecutionControlGroup button {
+  min-height: 34px;
+}
+
+/* Put the first actionable market row inside the initial desktop viewport. */
+@media (min-width: 761px) {
+  .terminalPage .terminalIntro {
+    padding-top: 14px;
+    padding-bottom: 11px;
+  }
+
+  .terminalPage .terminalIntro h1 {
+    font-size: clamp(1.8rem, 3vw, 2.55rem);
+  }
+
+  .terminalPage .officialRmtMarket {
+    min-height: 68px;
+    margin-bottom: 8px;
+    padding-top: 9px;
+    padding-bottom: 9px;
+  }
+
+  .terminalPage .terminalMarketShell .feedHeading {
+    min-height: 62px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+
+  .terminalPage .liveSignalDesk > header {
+    min-height: 38px;
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+
+  .terminalPage .liveSignalRail {
+    padding-bottom: 8px;
+  }
+
+  .terminalPage .liveSignalRail > a {
+    min-height: 64px;
+    padding: 8px 9px;
+  }
+}
+
+/* Mobile terminal: finite carousels, visible actions, and a five-tab dock. */
+@media (max-width: 760px) {
+  .publicNav {
+    height: 54px;
+  }
+
+  .publicNav .brandLogo {
+    width: 30px;
+    height: 30px;
+  }
+
+  .publicNavActions .wallet,
+  .publicMore summary {
+    min-height: 40px;
+  }
+
+  .mobileDock {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    padding: 4px 4px calc(4px + env(safe-area-inset-bottom));
+  }
+
+  .mobileDock a {
+    min-height: 42px;
+    gap: 3px;
+    padding: 0 2px;
+    font-size: .62rem;
+  }
+
+  .mobileDock span {
+    font-size: .78rem;
+  }
+
+  .terminalPage {
+    padding-bottom: calc(66px + env(safe-area-inset-bottom));
+  }
+
+  .terminalPage .terminalIntro {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px 10px;
+    padding: 11px 12px 8px;
+  }
+
+  .terminalPage .terminalIntro h1 {
+    max-width: 290px;
+    font-size: clamp(1.38rem, 7vw, 1.75rem);
+  }
+
+  .terminalPage .terminalIntroCopy > p:last-child {
+    display: -webkit-box;
+    overflow: hidden;
+    margin-top: 5px;
+    font-size: .7rem;
+    line-height: 1.35;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 1;
+  }
+
+  .terminalPage .terminalIntroActions a {
+    min-height: 38px;
+    padding-right: 10px;
+    padding-left: 10px;
+    font-size: .62rem;
+  }
+
+  .terminalPage .terminalIntro .trustStrip {
+    gap: 5px;
+  }
+
+  .terminalPage .terminalIntro .trustStrip span {
+    min-height: 28px;
+    padding: 0 5px;
+    font-size: .52rem;
+  }
+
+  .terminalPage .officialRmtMarket {
+    min-height: 62px;
+    margin: 0 10px 7px;
+    padding: 8px 9px;
+  }
+
+  .terminalPage .officialRmtIdentity {
+    grid-template-columns: 36px minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .terminalPage .officialRmtArtwork {
+    width: 36px;
+    height: 36px;
+  }
+
+  .terminalPage .officialRmtActions a {
+    min-height: 32px;
+  }
+
+  .terminalPage .terminalMarketShell .feedHeading {
+    min-height: 52px;
+    padding: 9px 12px;
+  }
+
+  .terminalPage .liveSignalDesk {
+    padding: 0 !important;
+  }
+
+  .terminalPage .liveSignalDesk > header {
+    min-height: 38px;
+    padding: 6px 12px;
+  }
+
+  .terminalPage .liveSignalDesk > header small {
+    display: none;
+  }
+
+  .terminalPage .liveSignalRail {
+    display: flex !important;
+    width: auto !important;
+    min-height: 0 !important;
+    height: auto !important;
+    max-height: none !important;
+    flex-flow: row nowrap !important;
+    align-items: stretch !important;
+    justify-content: flex-start !important;
+    gap: 8px !important;
+    margin: 0 !important;
+    padding: 0 12px 9px !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    direction: ltr !important;
+    grid-template-columns: none !important;
+    grid-auto-columns: auto !important;
+    grid-auto-flow: initial !important;
+    scroll-snap-type: x proximity;
+    overflow-anchor: none;
+  }
+
+  .terminalPage .liveSignalRail > a {
+    position: static !important;
+    inset: auto !important;
+    display: flex !important;
+    width: min(82vw, 300px) !important;
+    min-width: min(82vw, 300px) !important;
+    max-width: 300px !important;
+    min-height: 96px !important;
+    height: auto !important;
+    max-height: none !important;
+    flex: 0 0 min(82vw, 300px) !important;
+    align-self: stretch !important;
+    justify-content: flex-start !important;
+    margin: 0 !important;
+    padding: 11px 12px !important;
+    transform: none !important;
+    scroll-snap-align: start;
+  }
+
+  .terminalPage .liveSignalRail > a > strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .terminalPage .liveSignalRail > a > small {
+    display: -webkit-box;
+    overflow: hidden;
+    white-space: normal;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .terminalPage .runnerMarketSearch input {
+    min-height: 42px;
+  }
+
+  .terminalPage .runnerSourceFilters button,
+  .terminalPage .runnerOriginFilters summary {
+    min-height: 34px;
+  }
+
+  .terminalPage .runnerSourceFilters button,
+  .terminalPage .runnerOriginFilters summary,
+  .terminalPage .mobileRunnerRank,
+  .terminalPage .mobileRunnerCopy small,
+  .terminalPage .mobileRunnerCopy em,
+  .terminalPage .mobileRunnerMetrics small {
+    font-size: .59rem !important;
+  }
+
+  /* The token hero uses a finite 2×2 action grid instead of a clipped rail. */
+  .professionalTradeWorkspace .universalHeroActions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    overflow: visible;
+  }
+
+  .professionalTradeWorkspace .universalHeroActions button,
+  .professionalTradeWorkspace .universalHeroActions a {
+    min-width: 0;
+    min-height: 36px;
+    padding: 0 7px;
+    overflow: hidden;
+    font-size: .625rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .professionalTradeWorkspace .universalChartAxis,
+  .professionalTradeWorkspace .universalPosition footer,
+  .professionalTradeWorkspace .positionGuardDisclosure,
+  .professionalTradeWorkspace .universalActivityGrid article span,
+  .professionalTradeWorkspace .universalActivityGrid article b,
+  .professionalTradeWorkspace .universalSellPressure small,
+  .professionalTradeWorkspace .universalActorSummary small,
+  .professionalTradeWorkspace .universalActorListHeading span,
+  .professionalTradeWorkspace .universalActorList small,
+  .professionalTradeWorkspace .universalTradeTape footer {
+    font-size: .625rem !important;
+  }
+
+  .professionalTradeWorkspace .universalHeroSocials a,
+  .professionalTradeWorkspace .universalTradeTapeDetails summary,
+  .professionalTradeWorkspace .tradeExecutionControlGroup button {
+    min-height: 36px;
+  }
+
+  .professionalTradeWorkspace .universalMobileTradeDock {
+    right: 8px;
+    bottom: calc(56px + env(safe-area-inset-bottom));
+    left: 8px;
+    padding: 4px;
+  }
+
+  .professionalTradeWorkspace .universalMobileTradeDock button {
+    min-height: 46px;
+  }
+}

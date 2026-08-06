@@ -10,6 +10,22 @@ export const LIVE_POSITION_GUARD_HEARTBEAT_STALE_AFTER_MS = 30_000;
 const BPS = 10_000n;
 const ADDRESS = /^0x[0-9a-fA-F]{40}$/;
 const ID = /^[A-Za-z0-9_-]{8,160}$/;
+const CANCELLABLE_ORDER_STATUS = new Set([
+  "active",
+  "approval_required",
+  "cancelled",
+  "executed",
+  "expired",
+  "inactive",
+  "no_position",
+  "review_required"
+]);
+const REPLACEABLE_ORDER_STATUS = new Set([
+  "cancelled",
+  "executed",
+  "expired",
+  "inactive"
+]);
 
 export type LivePositionGuardSettings = {
   stopLossBps: number;
@@ -35,9 +51,21 @@ export type LivePositionGuardEvaluation = {
 };
 
 export type LivePositionGuardPublicConfiguration = {
+  enabled: boolean;
   executor: Address;
   policyId: string;
   signerId: string;
+};
+
+export type LivePositionGuardCancellationDisposition = "cancel" | "reconcile" | "review";
+
+export type LivePositionGuardRuntimeAuthority = {
+  status: "ready" | "no_position" | "approval_required" | "review_required";
+  reviewReason:
+    | null
+    | "invalid_order_limit"
+    | "allowance_exceeds_order_limit"
+    | "balance_below_order_limit";
 };
 
 function integerInRange(value: unknown, minimum: number, maximum: number) {
@@ -64,12 +92,71 @@ export function normalizeLivePositionGuardSettings(value: unknown): LivePosition
 export function livePositionGuardPublicConfiguration(
   env: Record<string, string | undefined> = process.env
 ): LivePositionGuardPublicConfiguration | null {
-  if (env.NEXT_PUBLIC_RMT_LIVE_POSITION_GUARD_ENABLED !== "true") return null;
   const executor = env.NEXT_PUBLIC_RMT_POSITION_GUARD_EXECUTOR?.trim() ?? "";
   const policyId = env.NEXT_PUBLIC_RMT_POSITION_GUARD_POLICY_ID?.trim() ?? "";
   const signerId = env.NEXT_PUBLIC_RMT_POSITION_GUARD_SIGNER_ID?.trim() ?? "";
   if (!isAddress(executor) || !ID.test(policyId) || !ID.test(signerId)) return null;
-  return { executor: getAddress(executor), policyId, signerId };
+  return {
+    enabled: env.NEXT_PUBLIC_RMT_LIVE_POSITION_GUARD_ENABLED === "true",
+    executor: getAddress(executor),
+    policyId,
+    signerId
+  };
+}
+
+export function livePositionGuardCancellationDisposition(status: unknown): LivePositionGuardCancellationDisposition {
+  if (status === "executing" || status === "submitted") return "reconcile";
+  if (typeof status === "string" && CANCELLABLE_ORDER_STATUS.has(status)) return "cancel";
+  return "review";
+}
+
+export function livePositionGuardCanReplaceOrder(status: unknown, walletCleanupReportedAt: unknown) {
+  return typeof status === "string"
+    && REPLACEABLE_ORDER_STATUS.has(status)
+    && typeof walletCleanupReportedAt === "number"
+    && Number.isSafeInteger(walletCleanupReportedAt)
+    && walletCleanupReportedAt > 0;
+}
+
+export function livePositionGuardAuthorityMatchesPlan(input: {
+  allowance: bigint;
+  balance: bigint;
+  amountIn: bigint;
+}) {
+  return input.amountIn > 0n
+    && input.allowance === input.amountIn
+    && input.balance >= input.amountIn;
+}
+
+/**
+ * Re-check the wallet authority immediately before every evaluator decision.
+ *
+ * The protected amount is indivisible at the authority boundary: if the wallet
+ * balance falls below the reviewed amount, RMT stops instead of executing a
+ * smaller transfer and leaving a residual executor allowance that could spend
+ * tokens deposited later. The user must revoke and re-arm the new amount.
+ */
+export function livePositionGuardRuntimeAuthority(input: {
+  allowance: bigint;
+  balance: bigint;
+  amountLimit: bigint;
+}): LivePositionGuardRuntimeAuthority {
+  if (input.amountLimit <= 0n) {
+    return { status: "review_required", reviewReason: "invalid_order_limit" };
+  }
+  if (input.allowance > input.amountLimit) {
+    return { status: "review_required", reviewReason: "allowance_exceeds_order_limit" };
+  }
+  if (input.balance === 0n) {
+    return { status: "no_position", reviewReason: null };
+  }
+  if (input.allowance < input.amountLimit) {
+    return { status: "approval_required", reviewReason: null };
+  }
+  if (input.balance < input.amountLimit) {
+    return { status: "review_required", reviewReason: "balance_below_order_limit" };
+  }
+  return { status: "ready", reviewReason: null };
 }
 
 export function livePositionGuardOrderId(input: {

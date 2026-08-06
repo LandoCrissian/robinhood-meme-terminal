@@ -1,0 +1,58 @@
+/* Fail-closed and emergency-revocation states for automatic Position Guard exits. */
+.professionalTradeWorkspace .livePositionGuardControl.systemUnavailable {
+  border-color: rgba(239, 199, 106, .34);
+  background: linear-gradient(140deg, rgba(239, 199, 106, .075), rgba(7, 11, 8, .98) 52%);
+  box-shadow: inset 3px 0 #efc76a;
+}
+
+.professionalTradeWorkspace .livePositionGuardControl.systemUnavailable > header small,
+.professionalTradeWorkspace .livePositionGuardControl.systemUnavailable > header em {
+  color: #efc76a;
+}
+
+.professionalTradeWorkspace .livePositionGuardControl.systemUnavailable > header em {
+  border-color: rgba(239, 199, 106, .28);
+  background: rgba(239, 199, 106, .08);
+}
+
+.professionalTradeWorkspace .livePositionGuardSystemWarning {
+  margin: 9px 0 0;
+  padding: 9px 10px;
+  border: 1px solid rgba(239, 199, 106, .28);
+  border-radius: 8px;
+  background: rgba(239, 199, 106, .065);
+  color: #e0c98f;
+  font-size: .49rem;
+  line-height: 1.45;
+}
+
+.professionalTradeWorkspace .livePositionGuardEmergencyRevoke {
+  width: 100%;
+  min-height: 40px;
+  margin-top: 9px;
+  padding: 0 11px;
+  border: 1px solid rgba(255, 116, 125, .3);
+  border-radius: 9px;
+  background: #241013;
+  color: #ffadb3;
+  font: inherit;
+  font-size: .52rem;
+  font-weight: 900;
+}
+
+.professionalTradeWorkspace .livePositionGuardEmergencyRevoke:disabled {
+  border-color: rgba(179, 201, 185, .12);
+  background: #151b17;
+  color: #647168;
+  cursor: not-allowed;
+}
+
+@media (max-width: 760px) {
+  .professionalTradeWorkspace .livePositionGuardSystemWarning {
+    font-size: .47rem;
+  }
+
+  .professionalTradeWorkspace .livePositionGuardEmergencyRevoke {
+    min-height: 46px;
+  }
+}

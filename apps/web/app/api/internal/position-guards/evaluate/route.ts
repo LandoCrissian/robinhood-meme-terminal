@@ -13,6 +13,7 @@ import { robinhoodChain } from "@rmt/shared/chains";
 import {
   evaluateLivePositionGuard,
   livePositionGuardOrderId,
+  livePositionGuardRuntimeAuthority,
   normalizeLivePositionGuardSettings,
   unitQuoteX18
 } from "../../../../../lib/live-position-guard";
@@ -30,7 +31,8 @@ export const maxDuration = 60;
 
 const HEADERS = { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" };
 const LEASE_MS = 55_000;
-const MAX_ORDERS = 20;
+const MAX_ORDERS = 8;
+const SUBMITTED_REVIEW_AFTER_MS = 15 * 60_000;
 const MAX_UINT128 = (1n << 128n) - 1n;
 const ORDER_STATUS = ["active", "executing", "submitted"];
 
@@ -94,24 +96,48 @@ async function releaseLease(database: Firestore, token: string) {
   });
 }
 
-async function reconcileSubmitted(reference: FirebaseFirestore.DocumentReference, data: Record<string, unknown>) {
+async function reconcileSubmitted(
+  reference: FirebaseFirestore.DocumentReference,
+  data: Record<string, unknown>,
+  now: number
+) {
   const transactionHash = typeof data.transactionHash === "string" && /^0x[0-9a-fA-F]{64}$/.test(data.transactionHash)
     ? data.transactionHash as `0x${string}`
     : null;
-  if (!transactionHash) {
-    await reference.set({ status: "review_required", reviewReason: "missing_transaction_hash" }, { merge: true });
+  const submittedAt = safeInteger(data.submittedAt);
+  if (!transactionHash || submittedAt === null) {
+    await reference.set({
+      lastEvaluatedAt: now,
+      status: "review_required",
+      reviewReason: transactionHash ? "missing_submitted_at" : "missing_transaction_hash",
+      updatedAt: FieldValue.serverTimestamp()
+    }, { merge: true });
     return "review_required";
   }
   try {
     const receipt = await client.getTransactionReceipt({ hash: transactionHash });
     await reference.set({
-      confirmedAt: Date.now(),
+      confirmedAt: now,
+      lastEvaluatedAt: now,
       status: receipt.status === "success" ? "executed" : "review_required",
       reviewReason: receipt.status === "success" ? FieldValue.delete() : "transaction_reverted",
       updatedAt: FieldValue.serverTimestamp()
     }, { merge: true });
     return receipt.status === "success" ? "executed" : "review_required";
   } catch {
+    if (now - submittedAt >= SUBMITTED_REVIEW_AFTER_MS) {
+      await reference.set({
+        lastEvaluatedAt: now,
+        status: "review_required",
+        reviewReason: "transaction_receipt_timeout",
+        updatedAt: FieldValue.serverTimestamp()
+      }, { merge: true });
+      return "review_required";
+    }
+    await reference.set({
+      lastEvaluatedAt: now,
+      updatedAt: FieldValue.serverTimestamp()
+    }, { merge: true });
     return "pending";
   }
 }
@@ -125,17 +151,22 @@ async function evaluateOrder(input: {
   const reference = input.document.ref;
   const data = input.document.data() as Record<string, unknown>;
   const status = typeof data.status === "string" ? data.status : "";
-  if (status === "submitted") return reconcileSubmitted(reference, data);
+  if (status === "submitted") return reconcileSubmitted(reference, data, input.now);
   if (status === "executing") {
     const executionStartedAt = safeInteger(data.executionStartedAt) ?? input.now;
     if (input.now - executionStartedAt > 120_000) {
       await reference.set({
+        lastEvaluatedAt: input.now,
         reviewReason: "execution_result_unknown",
         status: "review_required",
         updatedAt: FieldValue.serverTimestamp()
       }, { merge: true });
       return "review_required";
     }
+    await reference.set({
+      lastEvaluatedAt: input.now,
+      updatedAt: FieldValue.serverTimestamp()
+    }, { merge: true });
     return "executing";
   }
 
@@ -159,11 +190,21 @@ async function evaluateOrder(input: {
     !wallet || !token || !pair || executor !== input.configuration.executor || !amountLimit || !entry
     || !highWatermark || !settings || !expiresAt || !walletId || !authorizationId || revision === null
   ) {
-    await reference.set({ status: "review_required", reviewReason: "invalid_order_record" }, { merge: true });
+    await reference.set({
+      lastEvaluatedAt: input.now,
+      status: "review_required",
+      reviewReason: "invalid_order_record",
+      updatedAt: FieldValue.serverTimestamp()
+    }, { merge: true });
     return "review_required";
   }
   if (expiresAt <= input.now) {
-    await reference.set({ expiredAt: input.now, status: "expired", updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+    await reference.set({
+      expiredAt: input.now,
+      lastEvaluatedAt: input.now,
+      status: "expired",
+      updatedAt: FieldValue.serverTimestamp()
+    }, { merge: true });
     return "expired";
   }
 
@@ -172,16 +213,18 @@ async function evaluateOrder(input: {
     client.readContract({ address: token, abi: erc20Abi, functionName: "allowance", args: [wallet, executor] }),
     client.getBlockNumber()
   ]);
-  const amountIn = balance < amountLimit ? balance : amountLimit;
-  if (amountIn <= 0n) {
-    await reference.set({ status: "no_position", updatedAt: FieldValue.serverTimestamp() }, { merge: true });
-    return "no_position";
-  }
-  if (allowance < amountIn) {
-    await reference.set({ status: "approval_required", updatedAt: FieldValue.serverTimestamp() }, { merge: true });
-    return "approval_required";
+  const authority = livePositionGuardRuntimeAuthority({ allowance, balance, amountLimit });
+  if (authority.status !== "ready") {
+    await reference.set({
+      lastEvaluatedAt: input.now,
+      status: authority.status,
+      reviewReason: authority.reviewReason ?? FieldValue.delete(),
+      updatedAt: FieldValue.serverTimestamp()
+    }, { merge: true });
+    return authority.status;
   }
 
+  const amountIn = amountLimit;
   const quote = await quoteAndBuildExternalUniswapSwap({
     token,
     pair,
@@ -191,7 +234,12 @@ async function evaluateOrder(input: {
     maxPriceImpact: settings.maxPriceImpactBps / 10_000
   });
   if (quote.executionFee || !quote.grossQuoteOut || !quote.grossMinimumOut) {
-    await reference.set({ status: "review_required", reviewReason: "ineligible_route" }, { merge: true });
+    await reference.set({
+      lastEvaluatedAt: input.now,
+      status: "review_required",
+      reviewReason: "ineligible_route",
+      updatedAt: FieldValue.serverTimestamp()
+    }, { merge: true });
     return "review_required";
   }
   const evaluation = evaluateLivePositionGuard({
@@ -218,6 +266,8 @@ async function evaluateOrder(input: {
         highWatermarkUnitQuoteX18: evaluation.highWatermarkUnitQuoteX18.toString(),
         lastEvaluatedAt: input.now,
         lastEvaluatedBlock: currentBlock.toString(),
+        lastEvaluationError: FieldValue.delete(),
+        reviewReason: FieldValue.delete(),
         revision: revision + 1,
         updatedAt: FieldValue.serverTimestamp()
       }, { merge: true });
@@ -232,6 +282,7 @@ async function evaluateOrder(input: {
     transaction.set(reference, {
       executionAttemptId: attemptId,
       executionStartedAt: input.now,
+      lastEvaluatedAt: input.now,
       status: "executing",
       updatedAt: FieldValue.serverTimestamp()
     }, { merge: true });
@@ -261,7 +312,11 @@ async function evaluateOrder(input: {
       idempotencyKey: `rmt-guard-${attemptId}`,
       walletId
     });
+    if (typeof result.hash !== "string" || !/^0x[0-9a-fA-F]{64}$/.test(result.hash)) {
+      throw new Error("Position Guard transaction hash was not returned.");
+    }
     await reference.set({
+      lastEvaluatedAt: Date.now(),
       orderId,
       status: "submitted",
       submittedAt: Date.now(),
@@ -271,6 +326,7 @@ async function evaluateOrder(input: {
     return "submitted";
   } catch {
     await reference.set({
+      lastEvaluatedAt: Date.now(),
       reviewReason: "execution_not_confirmed",
       status: "review_required",
       updatedAt: FieldValue.serverTimestamp()
@@ -286,34 +342,42 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401, headers: HEADERS });
   }
   const now = Date.now();
-  await database.collection("livePositionGuardSystem").doc("evaluatorHeartbeat").set({
-    lastSeenAt: now,
-    updatedAt: FieldValue.serverTimestamp()
-  }, { merge: true });
   const lease = await acquireLease(database, now);
   if (!lease) return NextResponse.json({ status: "already_running" }, { headers: HEADERS });
+  const heartbeat = database.collection("livePositionGuardSystem").doc("evaluatorHeartbeat");
   try {
+    await heartbeat.set({
+      lastSeenAt: now,
+      updatedAt: FieldValue.serverTimestamp()
+    }, { merge: true });
     const orders = await database.collection("livePositionGuardOrders")
       .where("status", "in", ORDER_STATUS)
+      .orderBy("lastEvaluatedAt", "asc")
       .limit(MAX_ORDERS)
       .get();
-    const results: string[] = [];
-    for (const document of orders.docs) {
+    const results = await Promise.all(orders.docs.map(async (document) => {
       try {
-        results.push(await evaluateOrder({ configuration, database, document, now }));
+        return await evaluateOrder({ configuration, database, document, now });
       } catch {
         await document.ref.set({
           lastEvaluatedAt: now,
           lastEvaluationError: "evaluation_failed_safely",
           updatedAt: FieldValue.serverTimestamp()
         }, { merge: true });
-        results.push("failed_safely");
+        return "failed_safely";
       }
-    }
+    }));
     const counts = results.reduce<Record<string, number>>((summary, result) => ({
       ...summary,
       [result]: (summary[result] ?? 0) + 1
     }), {});
+    await heartbeat.set({
+      lastCompletedAt: Date.now(),
+      lastProcessed: orders.size,
+      lastResultCounts: counts,
+      lastSeenAt: Date.now(),
+      updatedAt: FieldValue.serverTimestamp()
+    }, { merge: true });
     return NextResponse.json({ counts, processed: orders.size, status: "complete" }, { headers: HEADERS });
   } finally {
     await releaseLease(database, lease).catch(() => undefined);

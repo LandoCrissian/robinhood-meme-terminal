@@ -13,6 +13,9 @@ import {
 import { robinhoodChain } from "@rmt/shared/chains";
 import {
   LIVE_POSITION_GUARD_SCHEMA_VERSION,
+  livePositionGuardAuthorityMatchesPlan,
+  livePositionGuardCancellationDisposition,
+  livePositionGuardCanReplaceOrder,
   livePositionGuardHeartbeatIsFresh,
   normalizeLivePositionGuardSettings,
   unitQuoteX18
@@ -51,6 +54,10 @@ function ownerKey(identityId: string) {
   return createHash("sha256").update(identityId).digest("hex");
 }
 
+function safeRevision(value: unknown) {
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0 ? value : 0;
+}
+
 async function evaluatorIsHealthy(database: NonNullable<ReturnType<typeof getRmtAdminFirestore>>) {
   const heartbeat = await database.collection("livePositionGuardSystem")
     .doc("evaluatorHeartbeat")
@@ -77,13 +84,31 @@ async function verifiedIdentity(request: Request) {
 }
 
 function publicOrder(data: Record<string, unknown> | undefined) {
-  if (!data) return { status: "inactive" };
+  if (!data) return {
+    status: "inactive",
+    armedAt: null,
+    expiresAt: null,
+    lastEvaluatedAt: null,
+    revocationPending: false,
+    revocationRequestedAt: null,
+    transactionHash: null,
+    walletCleanupReported: null
+  };
+  const status = typeof data.status === "string" ? data.status : "inactive";
+  const revocationRequestedAt = typeof data.revocationRequestedAt === "number"
+    ? data.revocationRequestedAt
+    : null;
   return {
-    status: typeof data.status === "string" ? data.status : "inactive",
+    status,
     armedAt: typeof data.armedAt === "number" ? data.armedAt : null,
     expiresAt: typeof data.expiresAt === "number" ? data.expiresAt : null,
     lastEvaluatedAt: typeof data.lastEvaluatedAt === "number" ? data.lastEvaluatedAt : null,
-    transactionHash: typeof data.transactionHash === "string" ? data.transactionHash : null
+    revocationPending: revocationRequestedAt !== null && (status === "executing" || status === "submitted"),
+    revocationRequestedAt,
+    transactionHash: typeof data.transactionHash === "string" ? data.transactionHash : null,
+    walletCleanupReported: revocationRequestedAt === null
+      ? null
+      : typeof data.walletCleanupReportedAt === "number"
   };
 }
 
@@ -95,11 +120,12 @@ export async function GET(request: Request) {
     if (!identity) {
       return NextResponse.json({ error: "Sign in to manage live Position Guard." }, { status: 401, headers: HEADERS });
     }
-    if (!configuration || !database) {
-      return NextResponse.json({ available: false, status: "release_locked" }, { headers: HEADERS });
-    }
-    if (!await evaluatorIsHealthy(database)) {
-      return NextResponse.json({ available: false, status: "worker_offline" }, { headers: HEADERS });
+    if (!database) {
+      return NextResponse.json({
+        available: false,
+        systemStatus: "release_locked",
+        ...publicOrder(undefined)
+      }, { headers: HEADERS });
     }
     const url = new URL(request.url);
     const wallet = validAddress(url.searchParams.get("wallet"));
@@ -114,7 +140,25 @@ export async function GET(request: Request) {
     if (data && data.ownerKey !== ownerKey(identity.id)) {
       return NextResponse.json({ error: "Position Guard ownership could not be verified." }, { status: 403, headers: HEADERS });
     }
-    return NextResponse.json({ available: true, ...publicOrder(data) }, { headers: HEADERS });
+    if (!configuration) {
+      return NextResponse.json({
+        available: false,
+        systemStatus: "release_locked",
+        ...publicOrder(data)
+      }, { headers: HEADERS });
+    }
+    if (!await evaluatorIsHealthy(database)) {
+      return NextResponse.json({
+        available: false,
+        systemStatus: "worker_offline",
+        ...publicOrder(data)
+      }, { headers: HEADERS });
+    }
+    return NextResponse.json({
+      available: true,
+      systemStatus: "ready",
+      ...publicOrder(data)
+    }, { headers: HEADERS });
   } catch {
     return NextResponse.json({ error: "RMT could not verify live Position Guard." }, { status: 401, headers: HEADERS });
   }
@@ -147,13 +191,81 @@ export async function POST(request: Request) {
   }
 
   try {
-    const configuration = livePositionGuardServerConfiguration();
     const database = getRmtAdminFirestore();
     const identity = await verifiedIdentity(request);
     if (!identity) {
       return NextResponse.json({ error: "Sign in to manage live Position Guard." }, { status: 401, headers: HEADERS });
     }
-    if (!configuration || !database) {
+    if (!database) {
+      return NextResponse.json({ error: "Live Position Guard records are temporarily unavailable." }, {
+        status: 503,
+        headers: { ...HEADERS, "Retry-After": "30" }
+      });
+    }
+    const identityOwnerKey = ownerKey(identity.id);
+    const reference = database.collection("livePositionGuardOrders")
+      .doc(orderDocumentId(identity.id, wallet, token));
+
+    if (action === "cancel") {
+      const existing = await reference.get();
+      if (!existing.exists) {
+        return NextResponse.json({ available: true, ...publicOrder(undefined) }, { headers: HEADERS });
+      }
+      const existingData = existing.data() as Record<string, unknown>;
+      if (existingData.ownerKey !== identityOwnerKey) {
+        return NextResponse.json({ error: "Position Guard ownership could not be verified." }, {
+          status: 403,
+          headers: HEADERS
+        });
+      }
+      const now = Date.now();
+      const walletCleanupReportedAt = input.walletAuthorityRemoved === true ? now : null;
+      const disposition = livePositionGuardCancellationDisposition(existingData.status);
+      if (disposition === "reconcile") {
+        const next = { ...existingData, revocationRequestedAt: now, walletCleanupReportedAt };
+        await reference.set({
+          revocationRequestedAt: now,
+          updatedAt: FieldValue.serverTimestamp(),
+          walletCleanupReportedAt
+        }, { merge: true });
+        return NextResponse.json({ available: true, ...publicOrder(next) }, { headers: HEADERS });
+      }
+      if (disposition === "review") {
+        const next = {
+          ...existingData,
+          reviewReason: "cancellation_unknown_state",
+          revocationRequestedAt: now,
+          status: "review_required",
+          walletCleanupReportedAt
+        };
+        await reference.set({
+          reviewReason: "cancellation_unknown_state",
+          revocationRequestedAt: now,
+          status: "review_required",
+          updatedAt: FieldValue.serverTimestamp(),
+          walletCleanupReportedAt
+        }, { merge: true });
+        return NextResponse.json({ available: true, ...publicOrder(next) }, { headers: HEADERS });
+      }
+      const next = {
+        ...existingData,
+        cancelledAt: now,
+        revocationRequestedAt: now,
+        status: "cancelled",
+        walletCleanupReportedAt
+      };
+      await reference.set({
+        cancelledAt: now,
+        revocationRequestedAt: now,
+        status: "cancelled",
+        updatedAt: FieldValue.serverTimestamp(),
+        walletCleanupReportedAt
+      }, { merge: true });
+      return NextResponse.json({ available: true, ...publicOrder(next) }, { headers: HEADERS });
+    }
+
+    const configuration = livePositionGuardServerConfiguration();
+    if (!configuration) {
       return NextResponse.json({ error: "Live Position Guard is release-locked." }, {
         status: 503,
         headers: { ...HEADERS, "Retry-After": "3600" }
@@ -164,23 +276,6 @@ export async function POST(request: Request) {
         status: 503,
         headers: { ...HEADERS, "Retry-After": "30" }
       });
-    }
-    const reference = database.collection("livePositionGuardOrders")
-      .doc(orderDocumentId(identity.id, wallet, token));
-    if (action === "cancel") {
-      const existing = await reference.get();
-      if (existing.exists && existing.data()?.ownerKey !== ownerKey(identity.id)) {
-        return NextResponse.json({ error: "Position Guard ownership could not be verified." }, {
-          status: 403,
-          headers: HEADERS
-        });
-      }
-      await reference.set({
-        cancelledAt: Date.now(),
-        status: "cancelled",
-        updatedAt: FieldValue.serverTimestamp()
-      }, { merge: true });
-      return NextResponse.json({ available: true, status: "cancelled" }, { headers: HEADERS });
     }
 
     const pair = validAddress(input.pair);
@@ -203,13 +298,19 @@ export async function POST(request: Request) {
       }, { status: 409, headers: HEADERS });
     }
 
-    const [executorCode, allowance, quote] = await Promise.all([
+    const [executorCode, allowance, balance, quote] = await Promise.all([
       client.getBytecode({ address: configuration.executor }),
       client.readContract({
         address: token,
         abi: erc20Abi,
         functionName: "allowance",
         args: [wallet, configuration.executor]
+      }),
+      client.readContract({
+        address: token,
+        abi: erc20Abi,
+        functionName: "balanceOf",
+        args: [wallet]
       }),
       quoteAndBuildExternalUniswapSwap({
         token,
@@ -226,11 +327,10 @@ export async function POST(request: Request) {
         headers: HEADERS
       });
     }
-    if (allowance < amountIn) {
-      return NextResponse.json({ error: "Confirm the exact Position Guard token approval before arming." }, {
-        status: 409,
-        headers: HEADERS
-      });
+    if (!livePositionGuardAuthorityMatchesPlan({ allowance, balance, amountIn })) {
+      return NextResponse.json({
+        error: "Position Guard requires an exact executor allowance equal to the protected amount, and the wallet must still hold that amount."
+      }, { status: 409, headers: HEADERS });
     }
     if (quote.executionFee || !quote.grossQuoteOut || !quote.grossMinimumOut) {
       return NextResponse.json({ error: "This route is not eligible for zero-fee automatic protection." }, {
@@ -240,36 +340,56 @@ export async function POST(request: Request) {
     }
 
     const now = Date.now();
+    const expiresAt = now + settings.expiresAfterHours * 60 * 60 * 1_000;
     const entryUnitQuote = unitQuoteX18(BigInt(quote.grossQuoteOut), amountIn);
-    await reference.set({
-      amountIn: amountIn.toString(),
-      armedAt: now,
-      authorizationId: randomUUID(),
-      chainId: 4663,
-      createdAt: FieldValue.serverTimestamp(),
-      entryUnitQuoteX18: entryUnitQuote.toString(),
-      executor: configuration.executor,
-      expiresAt: now + settings.expiresAfterHours * 60 * 60 * 1_000,
-      firstBelowFloorAt: null,
-      firstBelowFloorBlock: null,
-      highWatermarkUnitQuoteX18: entryUnitQuote.toString(),
-      lastEvaluatedAt: null,
-      ownerKey: ownerKey(identity.id),
-      pair,
-      revision: 1,
-      schemaVersion: LIVE_POSITION_GUARD_SCHEMA_VERSION,
-      settings,
-      status: "active",
-      token,
-      updatedAt: FieldValue.serverTimestamp(),
-      wallet,
-      walletId: embeddedWallet.id
-    }, { merge: false });
+    const authorizationId = randomUUID();
+    await database.runTransaction(async (transaction) => {
+      const existing = await transaction.get(reference);
+      const existingData = existing.data() as Record<string, unknown> | undefined;
+      if (existingData && existingData.ownerKey !== identityOwnerKey) {
+        throw new Error("Position Guard ownership could not be verified.");
+      }
+      if (existingData && !livePositionGuardCanReplaceOrder(
+        existingData.status,
+        existingData.walletCleanupReportedAt
+      )) {
+        throw new Error("Position Guard must be cleared or reconciled before another automatic order can be armed.");
+      }
+      const revision = safeRevision(existingData?.revision) + 1;
+      transaction.set(reference, {
+        amountIn: amountIn.toString(),
+        armedAt: now,
+        authorizationId,
+        chainId: 4663,
+        createdAt: FieldValue.serverTimestamp(),
+        entryUnitQuoteX18: entryUnitQuote.toString(),
+        executor: configuration.executor,
+        expiresAt,
+        firstBelowFloorAt: null,
+        firstBelowFloorBlock: null,
+        highWatermarkUnitQuoteX18: entryUnitQuote.toString(),
+        lastEvaluatedAt: null,
+        ownerKey: identityOwnerKey,
+        pair,
+        revision,
+        schemaVersion: LIVE_POSITION_GUARD_SCHEMA_VERSION,
+        settings,
+        status: "active",
+        token,
+        updatedAt: FieldValue.serverTimestamp(),
+        wallet,
+        walletId: embeddedWallet.id
+      }, { merge: false });
+    });
     return NextResponse.json({
       available: true,
       armedAt: now,
-      expiresAt: now + settings.expiresAfterHours * 60 * 60 * 1_000,
-      status: "active"
+      expiresAt,
+      revocationPending: false,
+      revocationRequestedAt: null,
+      status: "active",
+      systemStatus: "ready",
+      walletCleanupReported: null
     }, { headers: HEADERS });
   } catch (cause) {
     return NextResponse.json({

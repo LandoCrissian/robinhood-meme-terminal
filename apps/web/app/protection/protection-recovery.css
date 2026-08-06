@@ -1,0 +1,100 @@
+/* Exact-wallet automatic-order recovery controls. */
+.protectionOrder:has(.protectionOrderManagement) {
+  grid-column: 1 / -1;
+}
+
+.protectionOrder > footer button,
+.protectionOrder > footer a {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 10px;
+  border: 1px solid var(--protection-line);
+  border-radius: 8px;
+  background: var(--protection-raised);
+  color: var(--protection-muted);
+  font: inherit;
+  font-size: .56rem;
+  font-weight: 850;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.protectionOrder > footer button:disabled {
+  cursor: wait;
+  opacity: .6;
+}
+
+.protectionOrder > footer .protectionPrimaryAction {
+  margin-right: auto;
+  border-color: rgba(102, 237, 122, .34);
+  background: rgba(102, 237, 122, .1);
+  color: var(--protection-green);
+}
+
+.protectionOrderManagement {
+  padding: 14px;
+  border-top: 1px solid var(--protection-line);
+  background: linear-gradient(120deg, rgba(102, 237, 122, .035), rgba(7, 10, 8, .98) 42%);
+}
+
+.protectionOrderManagement > p {
+  max-width: 820px;
+  margin: 0 0 11px;
+  color: var(--protection-muted);
+  font-size: .65rem;
+  line-height: 1.5;
+}
+
+.protectionOrderManagement .livePositionGuardControl {
+  margin: 0;
+  border-color: var(--protection-line-strong);
+  border-radius: 12px;
+  background: rgba(9, 14, 10, .98);
+}
+
+.protectionOrderManagement .livePositionGuardControl.compactState {
+  min-height: 86px;
+}
+
+.protectionOrderManagement .livePositionGuardBoundary,
+.protectionOrderManagement .livePositionGuardRuntime {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.protectionOrderManagement .livePositionGuardRevoke,
+.protectionOrderManagement .livePositionGuardEmergencyRevoke {
+  min-height: 44px;
+}
+
+@media (max-width: 760px) {
+  .protectionOrder > footer {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .protectionOrder > footer .protectionPrimaryAction {
+    grid-column: 1 / -1;
+    margin-right: 0;
+  }
+
+  .protectionOrder > footer button,
+  .protectionOrder > footer a {
+    min-height: 40px;
+    padding: 0 6px;
+    font-size: .52rem;
+  }
+
+  .protectionOrderManagement {
+    padding: 11px;
+  }
+
+  .protectionOrderManagement > p {
+    font-size: .62rem;
+  }
+
+  .protectionOrderManagement .livePositionGuardBoundary,
+  .protectionOrderManagement .livePositionGuardRuntime {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

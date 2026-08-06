@@ -1,0 +1,61 @@
+name: Terminal verification
+
+on:
+  pull_request:
+    paths:
+      - "apps/web/app/**"
+      - "apps/web/lib/live-position-guard*"
+      - "apps/web/lib/position-guard*"
+      - "apps/web/lib/protection-center-smoke.ts"
+      - "apps/web/lib/market-protection*"
+      - "apps/web/package.json"
+      - "firestore.indexes.json"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/terminal-verification.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: terminal-verification-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  terminal:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a # v4.4.0
+        with:
+          version: 10.12.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+      - run: pnpm install --frozen-lockfile
+      - name: Verify production dependency boundary
+        run: pnpm audit:production
+      - name: Verify local Position Guard math
+        run: pnpm --filter web test:position-guard
+      - name: Verify bounded automatic execution
+        run: pnpm --filter web test:live-position-guard
+      - name: Verify cross-device protection recovery
+        run: pnpm --filter web test:protection-center
+      - name: Verify market protection rules
+        run: pnpm --filter web test:market-protection
+      - name: Verify confirmed-buy protection handoff
+        run: |
+          pnpm --filter web test:confirmed-buy-protection
+          pnpm --filter web test:after-buy-protection
+      - name: Typecheck terminal application
+        shell: bash
+        run: |
+          set +e
+          pnpm typecheck 2>&1 | tee /tmp/terminal-typecheck.log
+          status=${PIPESTATUS[0]}
+          echo "--- terminal typecheck tail ---"
+          tail -n 240 /tmp/terminal-typecheck.log
+          exit $status
+      - name: Build terminal application
+        run: pnpm build

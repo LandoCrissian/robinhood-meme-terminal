@@ -9,7 +9,7 @@ import { useProfile } from "./profile-provider";
 import { WalletButton } from "./wallet-button";
 
 const HIDDEN_PREFIXES = ["/activate-consent-testnet", "/admin", "/deploy-consent-testnet", "/deploy-mainnet", "/deploy-testnet", "/mainnet-smoke"];
-const MORE_PREFIXES = ["/portfolio", "/launch", "/sources", "/sushi", "/rescue", "/support", "/experience", "/risks"];
+const MORE_PREFIXES = ["/portfolio", "/protection", "/launch", "/sources", "/sushi", "/rescue", "/support", "/experience", "/risks"];
 
 function currentPage(pathname: string, href: string) {
   if (href === "/") return pathname === "/";
@@ -41,8 +41,8 @@ export function PublicChrome() {
     };
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape" && menu.current?.open) {
-        menu.current?.removeAttribute("open");
-        menu.current?.querySelector("summary")?.focus();
+        menu.current.removeAttribute("open");
+        menu.current.querySelector("summary")?.focus();
       }
     };
     document.addEventListener("pointerdown", closeOnOutsidePress);
@@ -67,8 +67,8 @@ export function PublicChrome() {
           <div className="publicNavLinks">
             <PublicLink href="/">Terminal</PublicLink>
             <PublicLink href="/explore">Explore</PublicLink>
+            <PublicLink href="/protection">Protection</PublicLink>
             <PublicLink href="/watchlist">Watchlist</PublicLink>
-            <PublicLink href="/status">Status</PublicLink>
             <PublicLink href="/profile">Profile</PublicLink>
             <span className="networkPulse" aria-label={`${isMainnetRelease ? "Robinhood Chain Mainnet" : "Robinhood Chain Testnet"} live`}><i aria-hidden="true" />RHC <b>{isMainnetRelease ? "MAINNET" : "TESTNET"}</b></span>
           </div>
@@ -82,9 +82,10 @@ export function PublicChrome() {
                   <PublicLink href="/admin">RMT Admin<small>Live messages, applications, reports, and feedback</small></PublicLink>
                 </div>}
                 <div>
-                  <span>Discover</span>
+                  <span>Account &amp; markets</span>
                   <PublicLink href="/explore">Explore RMT ecosystem<small>Reviewed projects, creators, games, and native markets</small></PublicLink>
                   <PublicLink href="/portfolio">Portfolio<small>Your connected-wallet holdings</small></PublicLink>
+                  <PublicLink href="/protection">Protection Center<small>Automatic orders, permission cleanup, and execution history</small></PublicLink>
                   <PublicLink href="/watchlist">Watchlist<small>Tokens saved on this device</small></PublicLink>
                   <PublicLink href="/sources">Sources<small>Launchpad coverage and origin labels</small></PublicLink>
                 </div>
@@ -114,6 +115,7 @@ export function PublicChrome() {
         <PublicLink href="/"><span aria-hidden="true">◉</span>Terminal</PublicLink>
         <PublicLink href="/explore"><span aria-hidden="true">⌕</span>Explore</PublicLink>
         <PublicLink href="/watchlist"><span aria-hidden="true">☆</span>Watchlist</PublicLink>
+        <PublicLink href="/protection"><span aria-hidden="true">◇</span>Protection</PublicLink>
         <PublicLink href="/profile"><span aria-hidden="true">◎</span>Profile</PublicLink>
       </nav>
     </>
