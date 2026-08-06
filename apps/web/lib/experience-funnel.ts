@@ -13,7 +13,17 @@ export const EXPERIENCE_STAGES = [
   "wallet_connect_started",
   "wallet_connected",
   "quote_ready",
-  "wallet_review_started"
+  "quote_failed",
+  "preflight_ready",
+  "preflight_failed",
+  "wallet_review_started",
+  "wallet_rejected",
+  "transaction_submitted",
+  "transaction_recovered",
+  "transaction_confirmed",
+  "transaction_failed",
+  "execution_status_clear",
+  "execution_status_unclear"
 ] as const;
 
 export type ExperienceStage = typeof EXPERIENCE_STAGES[number];
@@ -35,7 +45,17 @@ export const EXPERIENCE_STAGE_COPY: Record<ExperienceStage, { label: string; det
   wallet_connect_started: { label: "Wallet connection started", detail: "Selected a wallet connection path." },
   wallet_connected: { label: "Wallet connected", detail: "Connected a wallet during the visit." },
   quote_ready: { label: "Protected quote ready", detail: "Reached a fresh, reviewable route quote." },
-  wallet_review_started: { label: "Wallet review requested", detail: "Sent a prepared action to the wallet for review." }
+  quote_failed: { label: "Quote unavailable", detail: "A route request ended without a reviewable quote." },
+  preflight_ready: { label: "Simulation passed", detail: "The exact transaction passed gas estimation and pre-sign checks." },
+  preflight_failed: { label: "Simulation blocked", detail: "RMT blocked signing because exact preflight could not be proven." },
+  wallet_review_started: { label: "Wallet review requested", detail: "Sent a prepared action to the wallet for review." },
+  wallet_rejected: { label: "Wallet review declined", detail: "The wallet request was declined before submission." },
+  transaction_submitted: { label: "Transaction submitted", detail: "A public transaction hash was returned by the wallet." },
+  transaction_recovered: { label: "Pending transaction recovered", detail: "RMT restored an unresolved local transaction after refresh." },
+  transaction_confirmed: { label: "Transaction confirmed", detail: "A submitted transaction received a successful EVM receipt." },
+  transaction_failed: { label: "Transaction failed", detail: "Submission or execution ended in a classified failure state." },
+  execution_status_clear: { label: "Status explanation clear", detail: "A user marked the post-submit status explanation as clear." },
+  execution_status_unclear: { label: "Status explanation unclear", detail: "A user marked the post-submit status explanation as unclear." }
 };
 
 export function normalizeExperienceStage(value: unknown): ExperienceStage | null {
