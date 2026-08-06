@@ -8,8 +8,12 @@ const DESKTOP_QUERY = "(min-width: 761px)";
 
 function subscribe(callback: () => void) {
   const media = window.matchMedia(DESKTOP_QUERY);
-  media.addEventListener("change", callback);
-  return () => media.removeEventListener("change", callback);
+  if (typeof media.addEventListener === "function") {
+    media.addEventListener("change", callback);
+    return () => media.removeEventListener("change", callback);
+  }
+  media.addListener(callback);
+  return () => media.removeListener(callback);
 }
 
 function getSnapshot() {
