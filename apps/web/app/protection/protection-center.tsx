@@ -2,11 +2,13 @@
 
 import Link from "next/link";
 import { useIdentityToken, usePrivy, useWallets } from "@privy-io/react-auth";
+import { type Address } from "viem";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   livePositionGuardReviewMessage,
   type LivePositionGuardReviewReason
 } from "../../lib/live-position-guard-review";
+import { LivePositionGuardControls } from "../live-position-guard-controls";
 
 type ProtectionOrder = {
   id: string;
@@ -47,6 +49,12 @@ const ACTIVE = new Set(["active", "confirming", "executing", "submitted"]);
 const ATTENTION = new Set(["review_required", "approval_required", "no_position"]);
 const HISTORY = new Set(["executed", "expired", "cancelled"]);
 const EXPLORER = "https://robinhoodchain.blockscout.com";
+const RECOVERY_SETTINGS = {
+  stopLossBps: 2_000,
+  trailingStopBps: 2_000,
+  breakEvenActivationBps: 5_000,
+  maxPriceImpactBps: 400
+} as const;
 
 function shortAddress(value: string) {
   return `${value.slice(0, 6)}…${value.slice(-4)}`;
@@ -102,12 +110,22 @@ function matchesView(order: ProtectionOrder, view: View) {
   return HISTORY.has(order.status);
 }
 
+function protectedAmount(value: string | null) {
+  if (!value || !/^[0-9]+$/.test(value)) return 0n;
+  try {
+    return BigInt(value);
+  } catch {
+    return 0n;
+  }
+}
+
 export function ProtectionCenter() {
   const { authenticated, login, ready } = usePrivy();
   const { identityToken } = useIdentityToken();
   const { wallets, ready: walletsReady } = useWallets();
   const [payload, setPayload] = useState<ProtectionPayload>({});
   const [view, setView] = useState<View>("active");
+  const [managedOrderId, setManagedOrderId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
@@ -189,7 +207,7 @@ export function ProtectionCenter() {
         <section className="protectionCenterIntro compact">
           <p className="eyebrow">RMT · CONTINUING WALLET AUTHORITY</p>
           <h1>Protection Center</h1>
-          <p>Sign in to recover automatic Position Guard orders independently of browser storage, review continuing wallet authority, and open the correct market workspace for revocation.</p>
+          <p>Sign in to recover automatic Position Guard orders independently of browser storage, review continuing wallet authority, and revoke from the exact embedded wallet that authorized each order.</p>
           <div className="protectionCenterIntroActions">
             <button type="button" onClick={login}>Sign in to review orders</button>
             <Link href="/">Return to terminal</Link>
@@ -205,7 +223,7 @@ export function ProtectionCenter() {
         <div>
           <p className="eyebrow">RMT · AUTOMATIC POSITION GUARD</p>
           <h1>Protection Center</h1>
-          <p>Every server-backed automatic exit tied to your RMT identity, including orders that this browser has never seen.</p>
+          <p>Every server-backed automatic exit tied to your RMT identity, including orders that this browser has never seen and positions whose remaining token balance is zero.</p>
         </div>
         <div className="protectionCenterIntroActions">
           <button type="button" disabled={refreshing} onClick={() => void load(undefined, true)}>{refreshing ? "Refreshing…" : "Refresh status"}</button>
@@ -223,7 +241,7 @@ export function ProtectionCenter() {
       {payload.systemStatus && payload.systemStatus !== "ready" && (
         <section className="protectionCenterWarning" role="alert">
           <strong>New automatic authority is blocked.</strong>
-          <span>Existing orders and wallet permissions still require review. Open the affected market to clear token allowance, delegated signers, and the server order record.</span>
+          <span>Existing orders and wallet permissions still require review. Open an order’s authority controls below to clear token allowance, delegated signers, and the server order record.</span>
         </section>
       )}
 
@@ -264,6 +282,8 @@ export function ProtectionCenter() {
           <div className="protectionOrderList">
             {visibleOrders.map((order) => {
               const reviewMessage = livePositionGuardReviewMessage(order.reviewReason, order.status);
+              const managing = managedOrderId === order.id;
+              const settings = order.settings ?? RECOVERY_SETTINGS;
               return (
                 <article className={`protectionOrder ${statusClass(order)}`} key={order.id}>
                   <header>
@@ -292,17 +312,40 @@ export function ProtectionCenter() {
                     <p className="protectionOrderNotice">Future authority may already be removed, but an exit was in flight. A submitted transaction can still settle and remains under reconciliation.</p>
                   )}
                   {order.walletCleanupReported === false && order.revocationRequestedAt && (
-                    <p className="protectionOrderNotice danger">The server received a revoke request without proof that both the token allowance and all additional signers were removed. Retry wallet cleanup from the market workspace.</p>
+                    <p className="protectionOrderNotice danger">The server received a revoke request without proof that both the token allowance and all additional signers were removed. Retry wallet cleanup below.</p>
                   )}
                   {reviewMessage && !order.revocationPending && !(order.walletCleanupReported === false && order.revocationRequestedAt) && (
                     <p className="protectionOrderNotice danger">{reviewMessage}</p>
                   )}
 
                   <footer>
-                    <Link className="protectionPrimaryAction" href={`/market/${order.token}`}>Manage and revoke</Link>
+                    <button
+                      className="protectionPrimaryAction"
+                      type="button"
+                      aria-expanded={managing}
+                      aria-controls={`protection-order-controls-${order.id}`}
+                      onClick={() => setManagedOrderId(managing ? null : order.id)}
+                    >
+                      {managing ? "Close authority controls" : "Review authority"}
+                    </button>
+                    <Link href={`/market/${order.token}`}>Market</Link>
                     <a href={`${EXPLORER}/address/${order.executor}`} target="_blank" rel="noopener noreferrer">Executor ↗</a>
                     {order.transactionHash && <a href={`${EXPLORER}/tx/${order.transactionHash}`} target="_blank" rel="noopener noreferrer">Transaction ↗</a>}
                   </footer>
+
+                  {managing && (
+                    <section className="protectionOrderManagement" id={`protection-order-controls-${order.id}`}>
+                      <p>These controls target the exact embedded wallet shown above. Arming is disabled here; only status recovery, reconciliation, and revocation are available.</p>
+                      <LivePositionGuardControls
+                        armingEnabled={false}
+                        pair={order.pair as Address}
+                        rawBalance={protectedAmount(order.amountIn)}
+                        settings={settings}
+                        token={order.token as Address}
+                        wallet={order.wallet as Address}
+                      />
+                    </section>
+                  )}
                 </article>
               );
             })}
@@ -312,7 +355,7 @@ export function ProtectionCenter() {
 
       <section className="protectionTrustBoundary">
         <h2>What this inventory proves</h2>
-        <p>It proves which automatic-order records RMT can associate with the signed-in identity. It does not, by itself, prove that a token allowance is zero, that every additional signer is removed, or that an already-submitted transaction cannot settle. The market workspace performs wallet cleanup and shows the transaction reconciliation state.</p>
+        <p>It proves which automatic-order records RMT can associate with the signed-in identity. It does not, by itself, prove that a token allowance is zero, that every additional signer is removed, or that an already-submitted transaction cannot settle. The order’s authority controls perform wallet cleanup and preserve transaction reconciliation state.</p>
       </section>
     </main>
   );
