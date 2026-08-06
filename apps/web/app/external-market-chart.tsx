@@ -1,11 +1,19 @@
 "use client";
 
-import { useId } from "react";
+import { useParams } from "next/navigation";
+import { useEffect, useId, useMemo, useState } from "react";
+import { getAddress, isAddress } from "viem";
+import { useAccount } from "wagmi";
 import {
   EXTERNAL_CHART_RANGES,
   type ExternalChartRange,
   type ExternalOhlcvCandle
 } from "../lib/external-ohlcv";
+import {
+  POSITION_GUARD_CHANGED_EVENT,
+  readPositionGuard,
+  type PositionGuard
+} from "../lib/position-guard";
 import type { ExternalMarketStreamStatus } from "../lib/external-trades";
 
 function price(value: number) {
@@ -42,6 +50,42 @@ function freshness(lastTradeAt?: string | null, updatedAt?: string) {
   };
 }
 
+type ChartGuardLevel = {
+  id: "floor" | "target";
+  label: string;
+  value: number;
+  tone: "floor" | "target";
+  location: "visible" | "above" | "below";
+};
+
+function nextProfitTarget(guard: PositionGuard) {
+  if (guard.entryPriceUsd === null) return null;
+  if (
+    guard.recoverPrincipal
+    && !guard.principalRecovered
+    && !guard.handledProfitTargets.includes("principal-2x")
+  ) return { label: "PRINCIPAL · 2×", value: guard.entryPriceUsd * 2 };
+  if (guard.stagedProfitLock && !guard.handledProfitTargets.includes("bank-3x")) {
+    return { label: "BANK 25% · 3×", value: guard.entryPriceUsd * 3 };
+  }
+  if (guard.stagedProfitLock && !guard.handledProfitTargets.includes("bank-5x")) {
+    return { label: "BANK 20% · 5×", value: guard.entryPriceUsd * 5 };
+  }
+  return null;
+}
+
+function levelLocation(value: number, minimum: number, maximum: number): ChartGuardLevel["location"] {
+  if (value > maximum) return "above";
+  if (value < minimum) return "below";
+  return "visible";
+}
+
+function locationLabel(location: ChartGuardLevel["location"]) {
+  if (location === "above") return "ABOVE RANGE ↑";
+  if (location === "below") return "BELOW RANGE ↓";
+  return "ON CHART";
+}
+
 export function ExternalMarketChart({
   candles,
   range,
@@ -64,6 +108,37 @@ export function ExternalMarketChart({
   onRangeChange: (range: ExternalChartRange) => void;
 }) {
   const gradientId = useId().replaceAll(":", "");
+  const params = useParams<{ address: string }>();
+  const { address: wallet } = useAccount();
+  const token = useMemo(
+    () => params.address && isAddress(params.address) ? getAddress(params.address) : null,
+    [params.address]
+  );
+  const [guard, setGuard] = useState<PositionGuard | null>(null);
+
+  useEffect(() => {
+    if (!wallet || !token) {
+      setGuard(null);
+      return;
+    }
+    const sync = () => setGuard(readPositionGuard(wallet, token));
+    const onGuardChange = (event: Event) => {
+      const detail = (event as CustomEvent<{ wallet?: string; token?: string }>).detail;
+      if (
+        detail?.wallet && detail?.token
+        && (detail.wallet.toLowerCase() !== wallet.toLowerCase() || detail.token.toLowerCase() !== token.toLowerCase())
+      ) return;
+      sync();
+    };
+    sync();
+    window.addEventListener(POSITION_GUARD_CHANGED_EVENT, onGuardChange);
+    window.addEventListener("storage", sync);
+    return () => {
+      window.removeEventListener(POSITION_GUARD_CHANGED_EVENT, onGuardChange);
+      window.removeEventListener("storage", sync);
+    };
+  }, [token, wallet]);
+
   const width = 760;
   const height = 300;
   const paddingX = 14;
@@ -104,6 +179,36 @@ export function ExternalMarketChart({
           : { label: "STREAM RECONNECTING", active: false };
   const latestPoint = coordinates.at(-1);
 
+  const chartGuardLevels = useMemo<ChartGuardLevel[]>(() => {
+    if (
+      candles.length < 2 || !guard?.enabled || latest <= 0
+      || guard.entryPriceUsd === null || guard.highWatermarkPriceUsd === null
+      || !Number.isFinite(minimum) || !Number.isFinite(maximum)
+    ) return [];
+    const highWatermark = Math.max(guard.highWatermarkPriceUsd, latest);
+    const staticFloor = guard.entryPriceUsd * (1 - guard.stopLossBps / 10_000);
+    const trailingFloor = highWatermark * (1 - guard.trailingStopBps / 10_000);
+    const breakEvenArmed = highWatermark >= guard.entryPriceUsd * (1 + guard.breakEvenActivationBps / 10_000);
+    const effectiveFloor = Math.max(staticFloor, trailingFloor, breakEvenArmed ? guard.entryPriceUsd : 0);
+    const nextTarget = nextProfitTarget(guard);
+    return [
+      {
+        id: "floor",
+        label: guard.triggeredAt ? "EXIT FLOOR TRIGGERED" : "POSITION FLOOR",
+        value: effectiveFloor,
+        tone: "floor",
+        location: levelLocation(effectiveFloor, minimum, maximum)
+      },
+      ...(nextTarget ? [{
+        id: "target" as const,
+        label: nextTarget.label,
+        value: nextTarget.value,
+        tone: "target" as const,
+        location: levelLocation(nextTarget.value, minimum, maximum)
+      }] : [])
+    ];
+  }, [candles.length, guard, latest, maximum, minimum]);
+
   return (
     <section className="universalChart" aria-labelledby="universal-chart-title">
       <header>
@@ -135,6 +240,18 @@ export function ExternalMarketChart({
         </div>
       </header>
 
+      {chartGuardLevels.length > 0 && (
+        <div className="universalChartGuardSummary" aria-label="Position Guard chart levels">
+          {chartGuardLevels.map((level) => (
+            <span className={level.tone} key={level.id}>
+              <small>{level.label}</small>
+              <strong>{price(level.value)}</strong>
+              <em>{locationLabel(level.location)}</em>
+            </span>
+          ))}
+        </div>
+      )}
+
       {candles.length >= 2 ? (
         <>
           <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label={`${range} price and volume chart`}>
@@ -147,6 +264,16 @@ export function ExternalMarketChart({
             {[0, 1, 2, 3].map((row) => {
               const y = priceTop + row / 3 * (priceBottom - priceTop);
               return <line x1={paddingX} x2={width - paddingX} y1={y} y2={y} className="chartGridLine" key={row} />;
+            })}
+            {chartGuardLevels.filter((level) => level.location === "visible").map((level) => {
+              const y = priceTop + (1 - (level.value - minimum) / rangeValue) * (priceBottom - priceTop);
+              return (
+                <g className={`chartGuardLevel ${level.tone}`} key={level.id} aria-hidden="true">
+                  <line x1={paddingX} x2={width - paddingX} y1={y} y2={y} />
+                  <rect x={width - 162} y={y - 12} width="148" height="22" rx="5" />
+                  <text x={width - 22} y={y + 4} textAnchor="end">{level.label} · {price(level.value)}</text>
+                </g>
+              );
             })}
             <path d={areaPath} fill={`url(#${gradientId})`} />
             <path d={linePath} className={positive ? "chartLine positive" : "chartLine negative"} />
