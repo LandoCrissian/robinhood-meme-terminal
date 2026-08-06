@@ -32,29 +32,21 @@ jobs:
           marker = "          python3 <<'PY'\n"
           start = workflow.index(marker) + len(marker)
           end = workflow.index("\n          PY\n", start)
-          script = "\n".join(
-              line[10:] if line.startswith("          ") else line
-              for line in workflow[start:end].splitlines()
-          )
-
-          function_start = script.index("def replace_once")
-          function_end = script.index("\ndef regex_once", function_start)
-          robust_replace = '''def replace_once(path: str, old: str, new: str) -> None:
-    file = Path(path)
-    text = file.read_text()
-    if text.count(old) == 1:
-        file.write_text(text.replace(old, new, 1))
-        return
-    flexible = "".join(
-        r"\\s+" if part.isspace() else re.escape(part)
-        for part in re.split(r"(\\s+)", old)
-    )
-    updated, count = re.subn(flexible, lambda _match: new, text, count=1, flags=re.S)
-    if count != 1:
-        raise SystemExit(f"{path}: expected one flexible match, found {count}: {old[:160]!r}")
-    file.write_text(updated)
-'''
-          script = script[:function_start] + robust_replace + script[function_end:]
+          raw_lines = workflow[start:end].splitlines()
+          normalized = []
+          quote = None
+          for line in raw_lines:
+              output = line if quote else (line[10:] if line.startswith("          ") else line)
+              normalized.append(output)
+              for token in ("'''", '\"\"\"'):
+                  occurrences = output.count(token)
+                  if quote is None and occurrences % 2 == 1:
+                      quote = token
+                      break
+                  if quote == token and occurrences % 2 == 1:
+                      quote = None
+                      break
+          script = "\n".join(normalized)
           exec(compile(script, 'terminal-high-end-pass.py', 'exec'))
           PY
 
