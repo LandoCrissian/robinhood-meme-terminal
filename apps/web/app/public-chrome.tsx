@@ -114,6 +114,7 @@ export function PublicChrome() {
       <nav className={`mobileDock${pathname.startsWith("/token/") || pathname.startsWith("/project/") ? " tokenRouteDock" : ""}`} aria-label="Mobile navigation">
         <PublicLink href="/"><span aria-hidden="true">◉</span>Terminal</PublicLink>
         <PublicLink href="/explore"><span aria-hidden="true">⌕</span>Explore</PublicLink>
+        <PublicLink href="/watchlist"><span aria-hidden="true">☆</span>Watchlist</PublicLink>
         <PublicLink href="/protection"><span aria-hidden="true">◇</span>Protection</PublicLink>
         <PublicLink href="/profile"><span aria-hidden="true">◎</span>Profile</PublicLink>
       </nav>
