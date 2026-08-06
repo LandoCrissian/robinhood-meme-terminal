@@ -13,6 +13,18 @@ const minorFixesCss = readFileSync(
   new URL("../app/terminal-minor-fixes-v10.css", import.meta.url),
   "utf8"
 );
+const traderControlCss = readFileSync(
+  new URL("../app/terminal-trader-control-v12.css", import.meta.url),
+  "utf8"
+);
+const tradeConfidenceSource = readFileSync(
+  new URL("../app/trade-confidence.tsx", import.meta.url),
+  "utf8"
+);
+const tradeReadinessSource = readFileSync(
+  new URL("./trade-readiness.ts", import.meta.url),
+  "utf8"
+);
 
 type Availability = "checking" | "ready" | "view-only" | "unavailable";
 
@@ -161,9 +173,50 @@ assert.match(
 assert.match(
   minorFixesCss,
   /\.externalUniswapSubmit \{[\s\S]*?position: sticky !important;[\s\S]*?bottom: max\(8px, env\(safe-area-inset-bottom\)\) !important;[\s\S]*?min-height: 54px !important;/,
-  "The final wallet action must remain reachable above the mobile safe area."
+  "An executable wallet action must remain reachable above the mobile safe area."
+);
+
+assert.doesNotMatch(
+  tradeConfidenceSource,
+  /Trade blocked: extreme price impact/,
+  "Price impact must not be presented as an RMT transaction-integrity veto."
+);
+assert.match(
+  tradeConfidenceSource,
+  /Price impact above your \$\{impactLimitLabel\} alert/,
+  "Price impact must be compared with the trader's selected alert."
+);
+assert.match(
+  tradeConfidenceSource,
+  /Price impact is market risk, not a transaction-integrity veto/,
+  "The terminal must explain the boundary between market risk and execution integrity."
+);
+assert.match(
+  tradeReadinessSource,
+  /Review advised · you remain in control/,
+  "Advisory evidence must not masquerade as a hard execution block."
+);
+assert.match(
+  tradeReadinessSource,
+  /Transaction integrity block · action required/,
+  "Real execution-integrity failures must remain explicitly blocking."
+);
+assert.match(
+  traderControlCss,
+  /\.smartOrderGuard\.caution \{[\s\S]*?display: none;/,
+  "The generic one-percent observation must not interrupt ordinary orders."
+);
+assert.match(
+  traderControlCss,
+  /\.smartOrderGuard button::after \{[\s\S]*?content: "Use safer size";/,
+  "Safer sizing must be offered as an optional action instead of a fixed one-percent command."
+);
+assert.match(
+  traderControlCss,
+  /\.externalUniswapSubmit:disabled \{[\s\S]*?position: static !important;[\s\S]*?box-shadow: none !important;/,
+  "A disabled mobile action must stay in document flow instead of covering the execution evidence."
 );
 
 console.log(
-  "RMT preserves reversible discovery, complete route batching, readable desktop identity, and an amount-first mobile Buy/Sell sheet with a reachable wallet action."
+  "RMT preserves discovery and mobile execution while separating trader-controlled market risk from hard transaction-integrity blocks."
 );
