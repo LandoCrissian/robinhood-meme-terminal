@@ -21,6 +21,14 @@ const localGuardPanel = readFileSync(new URL("../app/position-guard-panel.tsx", 
 const liveGuardControls = readFileSync(new URL("../app/live-position-guard-controls.tsx", import.meta.url), "utf8");
 const runtimePolicy = readFileSync(new URL("./live-position-guard.ts", import.meta.url), "utf8");
 const reviewPolicy = readFileSync(new URL("./live-position-guard-review.ts", import.meta.url), "utf8");
+const firestoreIndexes = JSON.parse(
+  readFileSync(new URL("../../../firestore.indexes.json", import.meta.url), "utf8")
+) as {
+  indexes?: Array<{
+    collectionGroup?: string;
+    fields?: Array<{ fieldPath?: string; order?: string }>;
+  }>;
+};
 
 assert.match(protectionLayout, /import "\.\/protection-center\.css"/);
 assert.match(protectionPage, /<ProtectionCenter \/>/);
@@ -53,6 +61,15 @@ assert.match(runtimePolicy, /balance_below_order_limit/);
 assert.match(runtimePolicy, /residual executor allowance/);
 assert.match(reviewPolicy, /allowance_exceeds_order_limit/);
 assert.match(reviewPolicy, /residual executor allowance/);
+
+const evaluatorIndex = firestoreIndexes.indexes?.find((index) => (
+  index.collectionGroup === "livePositionGuardOrders"
+  && index.fields?.[0]?.fieldPath === "status"
+  && index.fields?.[0]?.order === "ASCENDING"
+  && index.fields?.[1]?.fieldPath === "lastEvaluatedAt"
+  && index.fields?.[1]?.order === "ASCENDING"
+));
+assert.ok(evaluatorIndex, "Automatic Position Guard requires the fair-scheduling Firestore index.");
 
 assert.match(localGuardPanel, /armingEnabled=\{false\}/);
 assert.match(localGuardPanel, /Server-backed automatic permissions must be managed separately in Protection Center/);
