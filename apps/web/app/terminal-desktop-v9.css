@@ -1,0 +1,631 @@
+/*
+ * Terminal Desktop V9
+ *
+ * Desktop-only correction for the market scanner. Mobile keeps the purpose-built
+ * card and signal-rail experience from Terminal V8.
+ */
+
+@media (min-width: 761px) {
+  .terminalPage {
+    width: min(1720px, 100%);
+  }
+
+  /* Live signals are a readable grid on desktop, never a hidden horizontal rail. */
+  .terminalPage .liveSignalDesk {
+    padding: 0 16px 16px;
+    border-bottom: 1px solid var(--tv8-line);
+    background:
+      radial-gradient(circle at 0 0, rgba(102, 237, 122, .055), transparent 38%),
+      #080c09;
+  }
+
+  .terminalPage .liveSignalDesk > header {
+    min-height: 54px;
+    padding: 12px 0 10px;
+  }
+
+  .terminalPage .liveSignalDesk > header span {
+    align-items: baseline;
+    flex-direction: row;
+    gap: 10px;
+  }
+
+  .terminalPage .liveSignalDesk > header small {
+    font-size: .625rem;
+  }
+
+  .terminalPage .liveSignalDesk > header strong {
+    font-size: .86rem;
+  }
+
+  .terminalPage .liveSignalDesk > header em {
+    padding: 6px 9px;
+    border: 1px solid var(--tv8-line);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .025);
+    font-size: .625rem;
+  }
+
+  .terminalPage .liveSignalRail {
+    display: grid !important;
+    width: 100% !important;
+    min-height: 0 !important;
+    height: auto !important;
+    max-height: none !important;
+    grid-template-columns: repeat(auto-fit, minmax(238px, 1fr)) !important;
+    grid-auto-columns: auto !important;
+    grid-auto-flow: row !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    border: 0;
+    background: transparent;
+    direction: ltr !important;
+  }
+
+  .terminalPage .liveSignalRail > a {
+    position: relative !important;
+    inset: auto !important;
+    display: grid !important;
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    min-height: 94px !important;
+    height: auto !important;
+    max-height: none !important;
+    grid-template-rows: auto auto 1fr;
+    align-content: start;
+    gap: 7px !important;
+    margin: 0 !important;
+    padding: 13px 14px 12px 16px !important;
+    overflow: hidden !important;
+    border: 1px solid rgba(179, 201, 185, .14);
+    border-radius: 12px;
+    background: linear-gradient(145deg, rgba(16, 24, 19, .98), rgba(8, 12, 9, .98));
+    box-shadow: none !important;
+    transform: none !important;
+  }
+
+  .terminalPage .liveSignalRail > a::before {
+    position: absolute;
+    top: 11px;
+    bottom: 11px;
+    left: 0;
+    width: 3px;
+    border-radius: 0 99px 99px 0;
+    background: var(--tv8-green);
+    content: "";
+  }
+
+  .terminalPage .liveSignalRail > a.review::before {
+    background: var(--tv8-amber);
+  }
+
+  .terminalPage .liveSignalRail > a.urgent::before {
+    background: var(--tv8-red);
+  }
+
+  .terminalPage .liveSignalRail > a:hover,
+  .terminalPage .liveSignalRail > a:focus-visible {
+    border-color: rgba(102, 237, 122, .34);
+    background: linear-gradient(145deg, rgba(20, 34, 25, .98), rgba(9, 15, 11, .98));
+    box-shadow: 0 12px 28px rgba(0, 0, 0, .2) !important;
+    transform: translateY(-1px) !important;
+  }
+
+  .terminalPage .liveSignalRail > a > span {
+    display: flex !important;
+    min-width: 0;
+    align-items: center;
+    justify-content: space-between;
+    flex-direction: row !important;
+    gap: 10px;
+  }
+
+  .terminalPage .liveSignalRail b,
+  .terminalPage .liveSignalRail em {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .terminalPage .liveSignalRail b {
+    font-size: .625rem !important;
+  }
+
+  .terminalPage .liveSignalRail em {
+    color: var(--tv8-copy);
+    font-size: .72rem;
+  }
+
+  .terminalPage .liveSignalRail > a > strong {
+    display: -webkit-box;
+    overflow: hidden;
+    color: var(--tv8-text);
+    font-size: .78rem;
+    line-height: 1.3;
+    white-space: normal;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .terminalPage .liveSignalRail > a > small {
+    display: -webkit-box;
+    overflow: hidden;
+    color: var(--tv8-muted);
+    font-size: .66rem;
+    line-height: 1.45;
+    white-space: normal;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .terminalPage .liveSignalDesk > footer {
+    display: block;
+    padding: 10px 1px 0;
+    color: var(--tv8-dim);
+    font: 750 .59rem/1.45 ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+
+  /* Controls use the desktop width instead of behaving like mobile carousels. */
+  .terminalPage .runnerDirectoryControls {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px;
+    padding: 13px 16px 9px;
+  }
+
+  .terminalPage .runnerMarketSearch input {
+    min-height: 46px;
+    border-radius: 9px;
+    font-size: .82rem;
+  }
+
+  .terminalPage .runnerDirectoryButton {
+    min-height: 46px;
+    border-radius: 9px;
+    font-size: .7rem;
+  }
+
+  .terminalPage .runnerToolbar {
+    min-height: 54px;
+    flex-wrap: wrap;
+    gap: 10px 16px;
+    padding: 8px 16px;
+  }
+
+  .terminalPage .runnerTabs button {
+    min-height: 36px;
+    padding: 0 13px;
+    font-size: .7rem;
+  }
+
+  .terminalPage .runnerSourceFilters {
+    min-height: 50px;
+    flex-wrap: wrap;
+    gap: 7px;
+    padding: 8px 16px;
+    overflow: visible;
+  }
+
+  .terminalPage .runnerSourceFilters button,
+  .terminalPage .runnerOriginFilters summary {
+    min-height: 36px !important;
+    height: 36px !important;
+    padding: 0 11px;
+    font-size: .66rem;
+  }
+
+  .terminalPage .runnerEdgeBrief {
+    min-height: 42px;
+    gap: 12px;
+    padding: 9px 16px;
+  }
+
+  .terminalPage .runnerEdgeBrief strong,
+  .terminalPage .runnerEdgeBrief span {
+    font-size: .625rem;
+  }
+
+  /* Reset the old cell-box treatment before applying the grouped row system. */
+  .terminalPage .runnerMarketCard.externalMarketCard {
+    position: relative;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+    border: 0;
+    border-bottom: 1px solid rgba(179, 201, 185, .12);
+    border-radius: 0;
+    background: #080c09;
+    box-shadow: none;
+  }
+
+  .terminalPage .runnerMarketCard.externalMarketCard:nth-child(even) {
+    background: #090e0b;
+  }
+
+  .terminalPage .runnerMarketCard.externalMarketCard:hover {
+    background: #0d1510;
+  }
+
+  .terminalPage .runnerMarketCard.externalMarketCard[data-signal="moving"]::before {
+    top: 10px;
+    bottom: 10px;
+    left: 0;
+    width: 3px;
+    border-radius: 0 99px 99px 0;
+  }
+
+  .terminalPage .runnerMarketCard > * {
+    min-width: 0;
+    min-height: 0;
+    padding: 0;
+    border-right: 0;
+  }
+
+  .terminalPage .runnerCardStatus {
+    align-items: flex-start;
+    justify-content: center;
+    gap: 7px;
+    padding: 14px 12px 14px 16px;
+  }
+
+  .terminalPage .runnerCardStatus .marketSignal {
+    min-height: 26px;
+    max-width: 100%;
+    padding: 0 8px;
+    font-size: .625rem;
+    line-height: 1;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .terminalPage .runnerCardStatus > span:nth-child(2),
+  .terminalPage .runnerCardStatus > small {
+    font-size: .625rem !important;
+    line-height: 1.35 !important;
+  }
+
+  .terminalPage .externalIdentity {
+    grid-template-columns: 46px minmax(0, 1fr);
+    align-content: center;
+    gap: 11px;
+    padding: 14px 16px;
+  }
+
+  .terminalPage .externalIdentity .externalArtwork {
+    width: 46px;
+    height: 46px;
+    border-radius: 12px;
+  }
+
+  .terminalPage .externalIdentity > span {
+    gap: 4px;
+  }
+
+  .terminalPage .externalIdentityLink {
+    min-height: 30px;
+  }
+
+  .terminalPage .externalIdentityLink strong {
+    font-size: .9rem;
+  }
+
+  .terminalPage .externalIdentity small {
+    font-size: .625rem !important;
+    line-height: 1.35 !important;
+  }
+
+  .terminalPage .runnerStats {
+    align-self: center;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+    margin: 10px 12px;
+    padding: 11px 12px;
+    border: 1px solid rgba(179, 201, 185, .11);
+    border-radius: 11px;
+    background: rgba(4, 8, 5, .58);
+  }
+
+  .terminalPage .runnerStats > span {
+    min-height: 48px;
+    justify-content: center;
+    gap: 6px;
+    padding: 0 9px;
+    border-right: 0;
+  }
+
+  .terminalPage .runnerStats > span + span {
+    border-left: 1px solid rgba(179, 201, 185, .09);
+  }
+
+  .terminalPage .runnerStats small {
+    overflow: hidden;
+    font-size: .625rem !important;
+    line-height: 1.3 !important;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .terminalPage .runnerStats strong {
+    overflow: hidden;
+    font-size: .76rem;
+    line-height: 1.25;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .terminalPage .runnerActivity {
+    display: flex;
+    justify-content: center;
+    gap: 7px;
+    padding: 14px 16px;
+    border-left: 1px solid rgba(179, 201, 185, .08);
+    color: var(--tv8-muted);
+    font-size: .67rem;
+    line-height: 1.45;
+  }
+
+  .terminalPage .runnerActivity > span {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+  }
+
+  .terminalPage .runnerActivity em {
+    max-width: 100%;
+    padding: 5px 7px;
+    overflow: hidden;
+    font-size: .625rem !important;
+    line-height: 1.25;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .terminalPage .externalMarketActions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-content: end;
+    gap: 7px;
+    padding: 12px 12px 5px;
+    border-left: 1px solid rgba(179, 201, 185, .08);
+  }
+
+  .terminalPage .externalMarketActions button {
+    min-height: 44px;
+    border-radius: 9px;
+    font-size: .7rem;
+  }
+
+  .terminalPage .runnerMarketCard > .externalBadge {
+    align-self: end;
+    min-height: 44px;
+    justify-content: center;
+    margin: 12px 12px 5px;
+    padding: 7px 9px;
+    border-left: 1px solid rgba(179, 201, 185, .08);
+    border-radius: 9px;
+    font-size: .625rem;
+    line-height: 1.35;
+    white-space: normal;
+  }
+
+  .terminalPage .runnerMarketCard > .externalChartLink {
+    display: flex;
+    min-height: 32px;
+    align-items: center;
+    justify-content: center;
+    margin: 0 12px 10px;
+    padding: 0 8px;
+    border: 1px solid rgba(102, 237, 122, .16);
+    border-radius: 8px;
+    background: rgba(102, 237, 122, .035);
+    color: #83d990;
+    font-size: .625rem !important;
+    line-height: 1.2;
+  }
+}
+
+/* Full desktop: six truthful column groups with execution stacked in one rail. */
+@media (min-width: 1280px) {
+  .terminalPage {
+    padding-right: 28px;
+    padding-left: 28px;
+  }
+
+  .terminalPage .runnerColumnHeader,
+  .terminalPage .runnerMarketCard.externalMarketCard {
+    grid-template-columns:
+      118px
+      minmax(260px, 1.15fr)
+      minmax(190px, .78fr)
+      minmax(190px, .78fr)
+      minmax(210px, .92fr)
+      176px;
+  }
+
+  .terminalPage .runnerColumnHeader {
+    display: grid;
+    min-height: 42px;
+    align-items: center;
+    border-bottom: 1px solid rgba(179, 201, 185, .13);
+    background: #050806;
+    font-size: .625rem !important;
+  }
+
+  .terminalPage .runnerColumnHeader span {
+    padding: 0 14px;
+  }
+
+  .terminalPage .runnerColumnHeader span:nth-child(3),
+  .terminalPage .runnerColumnHeader span:nth-child(5),
+  .terminalPage .runnerColumnHeader span:nth-child(6) {
+    border-left: 1px solid rgba(179, 201, 185, .08);
+  }
+
+  .terminalPage .runnerMarketCard.externalMarketCard {
+    grid-template-rows: minmax(70px, auto) 36px;
+    min-height: 106px;
+  }
+
+  .terminalPage .runnerCardStatus {
+    grid-column: 1;
+    grid-row: 1 / 3;
+  }
+
+  .terminalPage .externalIdentity {
+    grid-column: 2;
+    grid-row: 1 / 3;
+  }
+
+  .terminalPage .runnerStats {
+    grid-column: 3 / 5;
+    grid-row: 1 / 3;
+  }
+
+  .terminalPage .runnerActivity {
+    grid-column: 5;
+    grid-row: 1 / 3;
+  }
+
+  .terminalPage .externalMarketActions,
+  .terminalPage .runnerMarketCard > .externalBadge {
+    grid-column: 6;
+    grid-row: 1;
+  }
+
+  .terminalPage .runnerMarketCard > .externalChartLink {
+    grid-column: 6;
+    grid-row: 2;
+  }
+}
+
+/* Standard laptops: keep every metric, but use a calmer two-tier row. */
+@media (min-width: 1024px) and (max-width: 1279px) {
+  .terminalPage .runnerColumnHeader {
+    display: none;
+  }
+
+  .terminalPage .runnerMarketCard.externalMarketCard {
+    display: grid;
+    grid-template-columns: 104px minmax(190px, .95fr) minmax(300px, 1.35fr) 152px;
+    grid-template-rows: minmax(78px, auto) minmax(40px, auto);
+    min-height: 120px;
+  }
+
+  .terminalPage .runnerCardStatus {
+    grid-column: 1;
+    grid-row: 1 / 3;
+  }
+
+  .terminalPage .externalIdentity {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .terminalPage .runnerStats {
+    grid-column: 3;
+    grid-row: 1;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin: 9px 10px 5px;
+  }
+
+  .terminalPage .runnerStats > span {
+    min-height: 34px;
+  }
+
+  .terminalPage .runnerStats > span:nth-child(3) {
+    border-left: 0;
+  }
+
+  .terminalPage .runnerActivity {
+    grid-column: 2 / 4;
+    grid-row: 2;
+    align-items: center;
+    justify-content: flex-start;
+    flex-direction: row;
+    padding: 7px 12px 11px 16px;
+    border-left: 0;
+  }
+
+  .terminalPage .runnerActivity > span {
+    -webkit-line-clamp: 2;
+  }
+
+  .terminalPage .externalMarketActions,
+  .terminalPage .runnerMarketCard > .externalBadge {
+    grid-column: 4;
+    grid-row: 1;
+  }
+
+  .terminalPage .runnerMarketCard > .externalChartLink {
+    grid-column: 4;
+    grid-row: 2;
+  }
+}
+
+/* Small laptops and tablets: a full-width snapshot tier prevents text crushing. */
+@media (min-width: 761px) and (max-width: 1023px) {
+  .terminalPage {
+    padding-right: 18px;
+    padding-left: 18px;
+  }
+
+  .terminalPage .terminalIntroActions .secondaryAction {
+    display: none;
+  }
+
+  .terminalPage .runnerColumnHeader {
+    display: none;
+  }
+
+  .terminalPage .runnerMarketCard.externalMarketCard {
+    display: grid;
+    grid-template-columns: 100px minmax(0, 1fr) 144px;
+    grid-template-rows: minmax(78px, auto) auto minmax(42px, auto);
+    min-height: 174px;
+  }
+
+  .terminalPage .runnerCardStatus {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .terminalPage .externalIdentity {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .terminalPage .externalMarketActions,
+  .terminalPage .runnerMarketCard > .externalBadge {
+    grid-column: 3;
+    grid-row: 1;
+  }
+
+  .terminalPage .runnerStats {
+    grid-column: 1 / 4;
+    grid-row: 2;
+    margin: 0 12px 8px;
+  }
+
+  .terminalPage .runnerActivity {
+    grid-column: 1 / 3;
+    grid-row: 3;
+    align-items: center;
+    justify-content: flex-start;
+    flex-direction: row;
+    padding: 8px 12px 11px 16px;
+    border-left: 0;
+  }
+
+  .terminalPage .runnerActivity > span {
+    -webkit-line-clamp: 2;
+  }
+
+  .terminalPage .runnerMarketCard > .externalChartLink {
+    grid-column: 3;
+    grid-row: 3;
+  }
+}
