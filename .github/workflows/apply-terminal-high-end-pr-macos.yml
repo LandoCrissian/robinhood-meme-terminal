@@ -6,11 +6,13 @@ on:
       - main
     paths:
       - ".github/workflows/apply-terminal-high-end-pr-macos.yml"
-      - ".github/workflows/apply-terminal-high-end-pass.yml"
-      - ".terminal-high-end-trigger"
 
 permissions:
   contents: write
+
+concurrency:
+  group: apply-terminal-high-end-final-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
 
 jobs:
   apply:
@@ -20,11 +22,13 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: fix/terminal-desktop-layout-v9
           fetch-depth: 0
       - name: Execute staged terminal patch
         shell: bash
         run: |
+          set -euo pipefail
+          git pull --ff-only origin fix/terminal-desktop-layout-v9
           python3 <<'PY'
           from pathlib import Path
 
@@ -38,7 +42,7 @@ jobs:
           for line in raw_lines:
               output = line if quote else (line[10:] if line.startswith("          ") else line)
               normalized.append(output)
-              for token in ("'''", '\"\"\"'):
+              for token in ("'''", '"""'):
                   occurrences = output.count(token)
                   if quote is None and occurrences % 2 == 1:
                       quote = token
@@ -62,8 +66,9 @@ jobs:
       - name: Commit completed terminal pass
         shell: bash
         run: |
+          set -euo pipefail
           git config user.name "rmt-terminal-bot"
           git config user.email "actions@users.noreply.github.com"
           git add -A
           git commit -m "feat(web): complete high-end terminal workstation pass"
-          git push origin HEAD:${{ github.head_ref }}
+          git push origin HEAD:fix/terminal-desktop-layout-v9
