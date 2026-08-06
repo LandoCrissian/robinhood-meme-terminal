@@ -1,0 +1,708 @@
+name: Finalize terminal v11 reliability
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/finalize-terminal-v11.yml"
+      - "apps/web/app/external-market-feed-v10.tsx"
+      - "apps/web/app/external-market-workspace.tsx"
+      - "apps/web/app/api/trade/external-availability/route.ts"
+      - "apps/web/lib/server/external-trade-venues.ts"
+      - "apps/web/lib/route-availability.ts"
+      - "apps/web/lib/route-availability-stability-smoke.ts"
+      - "apps/web/next.config.mjs"
+      - "apps/web/package.json"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: finalize-terminal-v11-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  finalize:
+    if: github.head_ref == 'feat/terminal-pro-workflow-v11'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+      - name: Apply route stability and release-gate corrections
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          import json
+
+          def replace_once(path: str, old: str, new: str) -> None:
+              file = Path(path)
+              text = file.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{path}: expected one match, found {count}: {old[:160]!r}")
+              file.write_text(text.replace(old, new, 1))
+
+          # --- Shared route-availability state ---
+          Path("apps/web/lib/route-availability.ts").write_text(r'''export type RouteAvailabilityStatus =
+            | "checking"
+            | "ready"
+            | "view-only"
+            | "unavailable"
+            | "temporarily-unavailable";
+
+          export const ROUTE_AVAILABILITY_BATCH_SIZE = 12;
+          export const ROUTE_RETRY_BASE_MS = 1_500;
+          export const ROUTE_RETRY_MAX_MS = 30_000;
+
+          export function routeRetryDelay(attempt: number) {
+            const normalizedAttempt = Number.isFinite(attempt) ? Math.max(1, Math.floor(attempt)) : 1;
+            return Math.min(ROUTE_RETRY_MAX_MS, ROUTE_RETRY_BASE_MS * 2 ** (normalizedAttempt - 1));
+          }
+
+          export function selectRouteAvailabilityBatch({
+            candidates,
+            availability,
+            retryAfter,
+            now
+          }: {
+            candidates: string[];
+            availability: Readonly<Record<string, RouteAvailabilityStatus | undefined>>;
+            retryAfter: Readonly<Record<string, number | undefined>>;
+            now: number;
+          }) {
+            const unique = candidates.filter((address, index, list) => list.indexOf(address) === index);
+            const checking = unique
+              .filter((address) => availability[address] === "checking")
+              .slice(0, ROUTE_AVAILABILITY_BATCH_SIZE);
+            if (checking.length) return checking;
+            return unique
+              .filter((address) => {
+                const status = availability[address];
+                return status === undefined
+                  || (status === "temporarily-unavailable" && (retryAfter[address] ?? 0) <= now);
+              })
+              .slice(0, ROUTE_AVAILABILITY_BATCH_SIZE);
+          }
+          ''')
+
+          Path("apps/web/lib/route-availability-stability-smoke.ts").write_text(r'''import assert from "node:assert/strict";
+          import { readFileSync } from "node:fs";
+          import {
+            ROUTE_AVAILABILITY_BATCH_SIZE,
+            ROUTE_RETRY_MAX_MS,
+            routeRetryDelay,
+            selectRouteAvailabilityBatch,
+            type RouteAvailabilityStatus
+          } from "./route-availability";
+
+          const addresses = Array.from(
+            { length: 38 },
+            (_, index) => `0x${(index + 1).toString(16).padStart(40, "0")}`
+          );
+          const availability: Record<string, RouteAvailabilityStatus | undefined> = {};
+          const retryAfter: Record<string, number | undefined> = {};
+          const now = 1_000_000;
+
+          const first = selectRouteAvailabilityBatch({ candidates: addresses, availability, retryAfter, now });
+          assert.equal(ROUTE_AVAILABILITY_BATCH_SIZE, 12);
+          assert.deepEqual(first, addresses.slice(0, 12));
+          for (const address of first) availability[address] = "checking";
+          assert.deepEqual(
+            selectRouteAvailabilityBatch({ candidates: addresses, availability, retryAfter, now }),
+            first,
+            "An in-flight batch must block additional batches instead of flooding the route endpoint."
+          );
+          for (const address of first) availability[address] = "ready";
+
+          const second = selectRouteAvailabilityBatch({ candidates: addresses, availability, retryAfter, now });
+          assert.deepEqual(second, addresses.slice(12, 24));
+          for (const address of second) availability[address] = "view-only";
+
+          const third = selectRouteAvailabilityBatch({ candidates: addresses, availability, retryAfter, now });
+          assert.deepEqual(third, addresses.slice(24, 36));
+          for (const address of third) availability[address] = "unavailable";
+
+          const fourth = selectRouteAvailabilityBatch({ candidates: addresses, availability, retryAfter, now });
+          assert.deepEqual(fourth, addresses.slice(36));
+
+          availability[addresses[0]] = "temporarily-unavailable";
+          retryAfter[addresses[0]] = now + 5_000;
+          assert.ok(!selectRouteAvailabilityBatch({ candidates: addresses, availability, retryAfter, now }).includes(addresses[0]));
+          assert.ok(selectRouteAvailabilityBatch({
+            candidates: addresses,
+            availability,
+            retryAfter,
+            now: now + 5_001
+          }).includes(addresses[0]));
+
+          assert.equal(routeRetryDelay(1), 1_500);
+          assert.equal(routeRetryDelay(2), 3_000);
+          assert.equal(routeRetryDelay(8), ROUTE_RETRY_MAX_MS);
+
+          const scanner = readFileSync(new URL("../app/external-market-feed-v10.tsx", import.meta.url), "utf8");
+          const availabilityRoute = readFileSync(
+            new URL("../app/api/trade/external-availability/route.ts", import.meta.url),
+            "utf8"
+          );
+          const venueDiscovery = readFileSync(
+            new URL("./server/external-trade-venues.ts", import.meta.url),
+            "utf8"
+          );
+          const workspace = readFileSync(
+            new URL("../app/external-market-workspace.tsx", import.meta.url),
+            "utf8"
+          );
+          const nextConfig = readFileSync(new URL("../next.config.mjs", import.meta.url), "utf8");
+
+          assert.match(scanner, /ROUTE_AVAILABILITY_BATCH_SIZE/);
+          assert.match(scanner, /temporarily-unavailable/);
+          assert.doesNotMatch(scanner, /MAX_ROUTE_BATCH = 48/);
+          assert.match(availabilityRoute, /const MAX_TOKENS = 12;/);
+          assert.match(availabilityRoute, /const CONCURRENCY = 6;/);
+          assert.match(availabilityRoute, /temporarily-unavailable/);
+          assert.match(venueDiscovery, /const TIMEOUT_MS = 4_500;/);
+          assert.match(venueDiscovery, /const VENUE_NEGATIVE_CACHE_TTL_MS = 15_000;/);
+          assert.match(workspace, /verifiedTradeVenuesRef/);
+          assert.match(workspace, /Route recheck delayed/);
+          assert.doesNotMatch(nextConfig, /ignoreBuildErrors/);
+
+          console.info("Route availability stability smoke test passed");
+          ''')
+
+          # --- Scanner: 12-token batches, transient state, bounded retries ---
+          scanner = "apps/web/app/external-market-feed-v10.tsx"
+          replace_once(
+              scanner,
+              'import { routeLiquidityDepthLabel } from "../lib/trade-route-selection";\n',
+              '''import { routeLiquidityDepthLabel } from "../lib/trade-route-selection";
+          import {
+            ROUTE_RETRY_MAX_MS,
+            routeRetryDelay,
+            selectRouteAvailabilityBatch,
+            type RouteAvailabilityStatus
+          } from "../lib/route-availability";
+          '''
+          )
+          replace_once(
+              scanner,
+              'type ExecutionAvailability = "checking" | "ready" | "view-only" | "unavailable";',
+              'type ExecutionAvailability = RouteAvailabilityStatus;'
+          )
+          replace_once(scanner, 'const MAX_ROUTE_BATCH = 48;\n', '')
+          replace_once(
+              scanner,
+              '  const [executionAvailability, setExecutionAvailability] = useState<Record<string, ExecutionAvailability>>({});\n',
+              '''  const [executionAvailability, setExecutionAvailability] = useState<Record<string, ExecutionAvailability>>({});
+            const [routeRetryNonce, setRouteRetryNonce] = useState(0);
+            const routeRetryAttempts = useRef<Record<string, number>>({});
+            const routeRetryAfter = useRef<Record<string, number>>({});
+          '''
+          )
+          replace_once(
+              scanner,
+              '''  const contractLookupAddress = canonicalExternalMarketLookupAddress(normalizedQuery);
+
+            const refresh = useCallback(async () => {
+          ''',
+              '''  const contractLookupAddress = canonicalExternalMarketLookupAddress(normalizedQuery);
+
+            const scheduleRouteRetry = useCallback((addresses: string[]) => {
+              if (!addresses.length) return;
+              const now = Date.now();
+              let nextDelay = ROUTE_RETRY_MAX_MS;
+              for (const address of addresses) {
+                const attempt = (routeRetryAttempts.current[address] ?? 0) + 1;
+                routeRetryAttempts.current[address] = attempt;
+                const delay = routeRetryDelay(attempt);
+                routeRetryAfter.current[address] = now + delay;
+                nextDelay = Math.min(nextDelay, delay);
+              }
+              window.setTimeout(() => setRouteRetryNonce((value) => value + 1), nextDelay + 25);
+            }, []);
+
+            const refresh = useCallback(async () => {
+          '''
+          )
+          old_route_block = '''  const routeCandidates = useMemo(() => {
+            const candidates = (tradeableOnly ? sorted : visibleMarkets)
+              .filter(canVerifyExecution)
+              .map((market) => market.address.toLowerCase())
+              .filter((address, index, list) => list.indexOf(address) === index);
+            const checking = candidates
+              .filter((address) => executionAvailability[address] === "checking")
+              .slice(0, MAX_ROUTE_BATCH);
+            if (checking.length) return checking;
+            return candidates
+              .filter((address) => executionAvailability[address] === undefined)
+              .slice(0, MAX_ROUTE_BATCH);
+          }, [executionAvailability, sorted, tradeableOnly, visibleMarkets]);
+          const routeKey = routeCandidates.join(",");
+
+          useEffect(() => {
+            const tokens = routeCandidates.filter((address) => executionAvailability[address] === undefined);
+            if (!tokens.length) return;
+            setExecutionAvailability((current) => ({
+              ...current,
+              ...Object.fromEntries(tokens.map((address) => [address, "checking" as const]))
+            }));
+            const controller = new AbortController();
+            const query = new URLSearchParams({ tokens: tokens.join(",") });
+            void fetch(`/api/trade/external-availability?${query}`, { cache: "no-store", signal: controller.signal })
+              .then(async (response) => {
+                const payload = await response.json() as { availability?: Array<{ token?: string; status?: Exclude<ExecutionAvailability, "checking"> }> };
+                if (!response.ok || !Array.isArray(payload.availability)) throw new Error("Route verification unavailable.");
+                const resolved: Record<string, Exclude<ExecutionAvailability, "checking">> = Object.fromEntries(
+                  tokens.map((address) => [address, "unavailable" as const])
+                );
+                for (const item of payload.availability) {
+                  const address = item.token?.toLowerCase();
+                  if (!address || !tokens.includes(address)) continue;
+                  if (item.status === "ready" || item.status === "view-only" || item.status === "unavailable") resolved[address] = item.status;
+                }
+                setExecutionAvailability((current) => ({ ...current, ...resolved }));
+              })
+              .catch(() => {
+                if (controller.signal.aborted) return;
+                setExecutionAvailability((current) => ({
+                  ...current,
+                  ...Object.fromEntries(tokens.map((address) => [address, "unavailable" as const]))
+                }));
+              });
+            return () => controller.abort();
+            // The stable address key is the intended dependency boundary.
+            // eslint-disable-next-line react-hooks/exhaustive-deps
+          }, [routeKey]);
+          '''
+          new_route_block = '''  const routeCandidates = useMemo(() => {
+            const candidates = (tradeableOnly ? sorted : visibleMarkets)
+              .filter(canVerifyExecution)
+              .map((market) => market.address.toLowerCase())
+              .filter((address, index, list) => list.indexOf(address) === index);
+            return selectRouteAvailabilityBatch({
+              candidates,
+              availability: executionAvailability,
+              retryAfter: routeRetryAfter.current,
+              now: Date.now()
+            });
+          }, [executionAvailability, routeRetryNonce, sorted, tradeableOnly, visibleMarkets]);
+          const routeKey = `${routeRetryNonce}:${routeCandidates.join(",")}`;
+
+          useEffect(() => {
+            const tokens = routeCandidates.filter((address) => {
+              const state = executionAvailability[address];
+              return state === undefined || state === "temporarily-unavailable";
+            });
+            if (!tokens.length) return;
+            setExecutionAvailability((current) => ({
+              ...current,
+              ...Object.fromEntries(tokens.map((address) => [address, "checking" as const]))
+            }));
+            const controller = new AbortController();
+            const query = new URLSearchParams({ tokens: tokens.join(",") });
+            void fetch(`/api/trade/external-availability?${query}`, { cache: "no-store", signal: controller.signal })
+              .then(async (response) => {
+                const payload = await response.json() as {
+                  availability?: Array<{ token?: string; status?: Exclude<ExecutionAvailability, "checking"> }>
+                };
+                if (!response.ok || !Array.isArray(payload.availability)) throw new Error("Route verification unavailable.");
+                const resolved: Record<string, Exclude<ExecutionAvailability, "checking">> = Object.fromEntries(
+                  tokens.map((address) => [address, "temporarily-unavailable" as const])
+                );
+                for (const item of payload.availability) {
+                  const address = item.token?.toLowerCase();
+                  if (!address || !tokens.includes(address)) continue;
+                  if (
+                    item.status === "ready"
+                    || item.status === "view-only"
+                    || item.status === "unavailable"
+                    || item.status === "temporarily-unavailable"
+                  ) resolved[address] = item.status;
+                }
+                const retryTokens: string[] = [];
+                for (const address of tokens) {
+                  if (resolved[address] === "temporarily-unavailable") retryTokens.push(address);
+                  else {
+                    delete routeRetryAttempts.current[address];
+                    delete routeRetryAfter.current[address];
+                  }
+                }
+                setExecutionAvailability((current) => ({ ...current, ...resolved }));
+                scheduleRouteRetry(retryTokens);
+              })
+              .catch(() => {
+                if (controller.signal.aborted) return;
+                setExecutionAvailability((current) => ({
+                  ...current,
+                  ...Object.fromEntries(tokens.map((address) => [address, "temporarily-unavailable" as const]))
+                }));
+                scheduleRouteRetry(tokens);
+              });
+            return () => controller.abort();
+          }, [routeKey, scheduleRouteRetry]);
+          '''
+          replace_once(scanner, old_route_block, new_route_block)
+          replace_once(
+              scanner,
+              '''  const routeResolvedCount = sorted.filter((market) => {
+            if (!canVerifyExecution(market)) return true;
+            const state = executionAvailability[market.address.toLowerCase()];
+            return state !== undefined && state !== "checking";
+          }).length;
+          const tradeableCount = sorted.filter((market) => executionAvailability[market.address.toLowerCase()] === "ready").length;
+          const routeSyncing = routeResolvedCount < sorted.length;
+          ''',
+              '''  const routePendingCount = sorted.filter((market) => {
+            if (!canVerifyExecution(market)) return false;
+            const state = executionAvailability[market.address.toLowerCase()];
+            return state === undefined || state === "checking";
+          }).length;
+          const routeDelayedCount = sorted.filter((market) => (
+            executionAvailability[market.address.toLowerCase()] === "temporarily-unavailable"
+          )).length;
+          const routeResolvedCount = sorted.length - routePendingCount;
+          const tradeableCount = sorted.filter((market) => executionAvailability[market.address.toLowerCase()] === "ready").length;
+          const routeSyncing = routePendingCount > 0;
+          '''
+          )
+          replace_once(
+              scanner,
+              '''      : tradeableOnly && routeSyncing
+                ? `Verifying routes · ${routeResolvedCount}/${sorted.length} checked · ${tradeableCount} tradeable`
+                : expanded
+          ''',
+              '''      : tradeableOnly && routeSyncing
+                ? `Verifying routes · ${routeResolvedCount}/${sorted.length} checked · ${tradeableCount} tradeable`
+                : routeDelayedCount > 0
+                  ? `${tradeableCount} tradeable · ${routeDelayedCount} route check${routeDelayedCount === 1 ? "" : "s"} retrying`
+                : expanded
+          '''
+          )
+          replace_once(
+              scanner,
+              '''          {routeSyncing ? "Routes syncing" : "Tradeable"}<b>{routeSyncing ? `${routeResolvedCount}/${sorted.length}` : tradeableCount}</b>
+          ''',
+              '''          {routeSyncing ? "Routes syncing" : routeDelayedCount > 0 ? "Routes retrying" : "Tradeable"}<b>{routeSyncing ? `${routeResolvedCount}/${sorted.length}` : tradeableCount}</b>
+          '''
+          )
+          replace_once(
+              scanner,
+              '''              const mobileAction = reviewRequired ? "Review" : executionState === "ready" ? "Trade" : executionState === "checking" ? "Verifying" : "Open";
+          ''',
+              '''              const mobileAction = reviewRequired
+                        ? "Review"
+                        : executionState === "ready"
+                          ? "Trade"
+                          : executionState === "checking"
+                            ? "Verifying"
+                            : executionState === "temporarily-unavailable"
+                              ? "Retrying"
+                              : "Open";
+          '''
+          )
+          replace_once(
+              scanner,
+              '''                      {executionState === "checking" ? "VERIFYING IN-SITE ROUTE" : executionState === "view-only" ? "VIEW ONLY · NO VERIFIED ROUTE" : "CHECK ROUTE IN WORKSPACE"}
+          ''',
+              '''                      {executionState === "checking"
+                                ? "VERIFYING IN-SITE ROUTE"
+                                : executionState === "temporarily-unavailable"
+                                  ? "ROUTE CHECK DELAYED · RETRYING"
+                                  : executionState === "view-only"
+                                    ? "VIEW ONLY · NO VERIFIED ROUTE"
+                                    : "CHECK ROUTE IN WORKSPACE"}
+          '''
+          )
+
+          # --- Availability endpoint: distinguish infrastructure failure ---
+          availability_route = "apps/web/app/api/trade/external-availability/route.ts"
+          replace_once(availability_route, 'const CONCURRENCY = 3;', 'const CONCURRENCY = 6;')
+          replace_once(
+              availability_route,
+              '  status: "ready" | "view-only" | "unavailable";',
+              '  status: "ready" | "view-only" | "unavailable" | "temporarily-unavailable";'
+          )
+          replace_once(
+              availability_route,
+              '''      return {
+                token,
+                status: "unavailable",
+                venues: []
+              } satisfies Availability;
+          ''',
+              '''      return {
+                token,
+                status: "temporarily-unavailable",
+                venues: []
+              } satisfies Availability;
+          '''
+          )
+          replace_once(
+              availability_route,
+              '''  return Response.json(
+            { availability },
+            { headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=240" } }
+          );
+          ''',
+              '''  const transient = availability.some((item) => item.status === "temporarily-unavailable");
+            return Response.json(
+              { availability },
+              { headers: { "Cache-Control": transient ? "no-store" : "public, s-maxage=60, stale-while-revalidate=240" } }
+            );
+          '''
+          )
+
+          # --- Venue discovery: faster fallback and short negative cache ---
+          venue_discovery = "apps/web/lib/server/external-trade-venues.ts"
+          replace_once(venue_discovery, 'const TIMEOUT_MS = 8_000;', 'const TIMEOUT_MS = 4_500;')
+          replace_once(
+              venue_discovery,
+              'const VENUE_CACHE_TTL_MS = 5 * 60_000;\n',
+              'const VENUE_CACHE_TTL_MS = 5 * 60_000;\nconst VENUE_NEGATIVE_CACHE_TTL_MS = 15_000;\n'
+          )
+          replace_once(
+              venue_discovery,
+              '''): Promise<ExternalTradeVenue[]> {
+            const controller = new AbortController();
+          ''',
+              '''): Promise<ExternalTradeVenue[]> {
+            const onchainPoolsPromise = (dependencies.resolveOnchain ?? (async (requestedToken) => {
+              const registry = await fetchRobinhoodStockRegistry();
+              const resolution = await resolveUniversalMarketAddress(requestedToken, registry);
+              return resolution?.pools ?? [];
+            }))(token).catch(() => []);
+            const controller = new AbortController();
+          '''
+          )
+          # Remove the later duplicate after it has been hoisted. We match the second occurrence.
+          duplicate = '''  const onchainPoolsPromise = (dependencies.resolveOnchain ?? (async (requestedToken) => {
+            const registry = await fetchRobinhoodStockRegistry();
+            const resolution = await resolveUniversalMarketAddress(requestedToken, registry);
+            return resolution?.pools ?? [];
+          }))(token).catch(() => []);
+          '''
+          text = Path(venue_discovery).read_text()
+          if text.count(duplicate) != 2:
+              raise SystemExit(f"{venue_discovery}: expected two onchain promise blocks after hoist, found {text.count(duplicate)}")
+          first = text.find(duplicate)
+          second = text.find(duplicate, first + len(duplicate))
+          Path(venue_discovery).write_text(text[:second] + text[second + len(duplicate):])
+          replace_once(
+              venue_discovery,
+              '''        expiresAt: Date.now() + VENUE_CACHE_TTL_MS,
+                venues
+          ''',
+              '''        expiresAt: Date.now() + (venues.length > 0 ? VENUE_CACHE_TTL_MS : VENUE_NEGATIVE_CACHE_TTL_MS),
+                venues
+          '''
+          )
+
+          # --- Workspace: preserve last verified route during transient refresh ---
+          workspace = "apps/web/app/external-market-workspace.tsx"
+          replace_once(
+              workspace,
+              '  const [tradeVenueStatus, setTradeVenueStatus] = useState<"loading" | "ready" | "error">("loading");',
+              '  const [tradeVenueStatus, setTradeVenueStatus] = useState<"loading" | "ready" | "stale" | "error">("loading");'
+          )
+          replace_once(
+              workspace,
+              '''  const tradeRef = useRef<HTMLElement>(null);
+            const tradeReturnFocus = useRef<HTMLElement>(null);
+          ''',
+              '''  const tradeRef = useRef<HTMLElement>(null);
+            const tradeReturnFocus = useRef<HTMLElement>(null);
+            const verifiedTradeVenuesRef = useRef<TradeVenue[]>([]);
+            const tradeVenueRetryAttempts = useRef(0);
+            const tradeVenueRetryTimer = useRef<number | null>(null);
+          '''
+          )
+          replace_once(
+              workspace,
+              '''  useEffect(() => {
+            setTradeAmount(side === "buy" ? "0.0001" : "");
+            setPreparedPositionExit(undefined);
+            setSellPressure(undefined);
+          }, [market?.address]);
+          ''',
+              '''  useEffect(() => {
+            setTradeAmount(side === "buy" ? "0.0001" : "");
+            setPreparedPositionExit(undefined);
+            setSellPressure(undefined);
+            verifiedTradeVenuesRef.current = [];
+            tradeVenueRetryAttempts.current = 0;
+            if (tradeVenueRetryTimer.current !== null) {
+              window.clearTimeout(tradeVenueRetryTimer.current);
+              tradeVenueRetryTimer.current = null;
+            }
+            setTradeVenues([]);
+            setSelectedTradeVenue(null);
+            setTradeVenueHealth({});
+            setTradeVenueSelectionMode("automatic");
+            setTradeVenueNotice("");
+            setPreparedTradeRoutes([]);
+          }, [market?.address]);
+          '''
+          )
+          replace_once(
+              workspace,
+              '''    setTradeVenueStatus("loading");
+            setTradeVenues([]);
+            setSelectedTradeVenue(null);
+            setTradeVenueHealth({});
+            setTradeVenueSelectionMode("automatic");
+            setTradeVenueNotice("");
+            setPreparedTradeRoutes([]);
+          ''',
+              '''    setTradeVenueStatus("loading");
+            if (verifiedTradeVenuesRef.current.length > 0) {
+              setTradeVenueNotice("Rechecking verified execution routes. A fresh quote is still required before wallet review.");
+            } else {
+              setTradeVenueHealth({});
+              setTradeVenueSelectionMode("automatic");
+              setTradeVenueNotice("");
+              setPreparedTradeRoutes([]);
+            }
+          '''
+          )
+          replace_once(
+              workspace,
+              '''      setTradeVenues(verified);
+            const requestedVenue = tradePreferences.routePreference === "automatic"
+          ''',
+              '''      verifiedTradeVenuesRef.current = verified;
+            tradeVenueRetryAttempts.current = 0;
+            if (tradeVenueRetryTimer.current !== null) {
+              window.clearTimeout(tradeVenueRetryTimer.current);
+              tradeVenueRetryTimer.current = null;
+            }
+            setTradeVenues(verified);
+            const requestedVenue = tradePreferences.routePreference === "automatic"
+          '''
+          )
+          replace_once(
+              workspace,
+              '''    }).catch(() => {
+            if (controller.signal.aborted) return;
+            setTradeVenueStatus("error");
+            setTradeVenues([]);
+            setSelectedTradeVenue(null);
+          });
+          ''',
+              '''    }).catch(() => {
+            if (controller.signal.aborted) return;
+            const previous = verifiedTradeVenuesRef.current;
+            tradeVenueRetryAttempts.current += 1;
+            const retryDelay = routeRetryDelay(tradeVenueRetryAttempts.current);
+            if (tradeVenueRetryTimer.current !== null) window.clearTimeout(tradeVenueRetryTimer.current);
+            tradeVenueRetryTimer.current = window.setTimeout(() => {
+              tradeVenueRetryTimer.current = null;
+              setTradeVenueRefresh((value) => value + 1);
+            }, retryDelay);
+            if (previous.length > 0) {
+              setTradeVenues(previous);
+              setTradeVenueStatus("stale");
+              setTradeVenueNotice(
+                `Route recheck delayed. RMT will retry in ${Math.ceil(retryDelay / 1_000)}s. `
+                + "The last verified route stays visible, but a fresh executable quote is still required."
+              );
+              return;
+            }
+            setTradeVenueStatus("error");
+            setTradeVenues([]);
+            setSelectedTradeVenue(null);
+          });
+          '''
+          )
+          replace_once(
+              workspace,
+              '''    if (focus && !acceptedPreparedExit && (tradeVenueStatus !== "ready" || tradeVenues.length === 0)) return;
+          ''',
+              '''    if (focus && !acceptedPreparedExit && (tradeVenueStatus === "error" || tradeVenues.length === 0)) return;
+          '''
+          )
+          replace_once(
+              workspace,
+              '''              <span>{tradeVenueStatus === "loading" ? "Checking route" : tradingMarket ? "Fresh quote" : "View only"}</span>
+          ''',
+              '''              <span>{tradeVenueStatus === "loading"
+                        ? "Checking route"
+                        : tradeVenueStatus === "stale"
+                          ? "Route retrying"
+                          : tradingMarket
+                            ? "Fresh quote"
+                            : "View only"}</span>
+          '''
+          )
+          replace_once(
+              workspace,
+              'import { recordExperienceStage } from "../lib/experience-funnel";\n',
+              'import { recordExperienceStage } from "../lib/experience-funnel";\nimport { routeRetryDelay } from "../lib/route-availability";\n'
+          )
+
+          # --- Remove diagnostic bypass and make deploy builds prove the release ---
+          next_config = Path("apps/web/next.config.mjs")
+          next_text = next_config.read_text()
+          diagnostic = '''  // Temporary draft-only diagnostic. Removed before PR #300 can leave draft.
+            typescript: {
+              ignoreBuildErrors: true
+            },
+          '''
+          if diagnostic not in next_text:
+              raise SystemExit("apps/web/next.config.mjs: diagnostic TypeScript bypass not found")
+          next_config.write_text(next_text.replace(diagnostic, "", 1))
+
+          package_path = Path("apps/web/package.json")
+          package = json.loads(package_path.read_text())
+          scripts = package["scripts"]
+          scripts["test:route-availability"] = "tsx lib/route-availability-stability-smoke.ts"
+          scripts["prebuild"] = (
+              "tsx lib/terminal-workstation-smoke.ts"
+              " && tsx lib/public-discovery-smoke.ts"
+              " && tsx lib/route-availability-stability-smoke.ts"
+              " && tsx lib/trade-execution-reliability-smoke.ts"
+              " && tsx lib/trade-speed-smoke.ts"
+              " && pnpm typecheck"
+          )
+          package_path.write_text(json.dumps(package, indent=2) + "\n")
+          PY
+
+          git diff --check
+
+      - uses: pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a # v4.4.0
+        with:
+          version: 10.12.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Run terminal execution release gate
+        env:
+          NEXT_PUBLIC_RMT_NETWORK: mainnet
+        run: |
+          pnpm --filter web test:route-availability
+          pnpm --filter web test:trade-reliability
+          pnpm --filter web test:trade-speed
+          pnpm --filter web test:experience
+          pnpm --filter web test:trade-ticket
+          pnpm --filter web test:external-sushi
+          pnpm --filter web test:external-uniswap
+          pnpm --filter web test:external-venues
+          pnpm --filter web test:transaction-integrity
+          pnpm --filter web test:terminal-workstation
+          pnpm --filter web typecheck
+          pnpm --filter web build
+      - name: Commit validated release candidate
+        shell: bash
+        run: |
+          rm .github/workflows/finalize-terminal-v11.yml
+          git diff --check
+          git config user.name "rmt-terminal-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git commit -m "fix(web): stabilize route availability and finalize execution recovery"
+          git push origin HEAD:feat/terminal-pro-workflow-v11
