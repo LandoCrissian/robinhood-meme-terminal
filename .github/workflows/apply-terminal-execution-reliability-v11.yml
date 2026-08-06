@@ -26,6 +26,8 @@ jobs:
     if: github.event_name == 'push' || github.head_ref == 'feat/terminal-pro-workflow-v11'
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    env:
+      RMT_INTEGRATION_REVISION: final-draft-head
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -33,6 +35,7 @@ jobs:
           fetch-depth: 0
       - name: Apply execution reliability integration
         run: |
+          echo "Applying ${RMT_INTEGRATION_REVISION}"
           python3 scripts/apply-terminal-execution-reliability-v11.py
           rm -f scripts/apply-terminal-execution-reliability-v11.py
           rm -f .github/workflows/apply-terminal-execution-reliability-v11.yml
