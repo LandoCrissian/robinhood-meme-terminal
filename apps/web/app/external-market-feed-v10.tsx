@@ -50,6 +50,13 @@ type VenueFilter = "all" | LaunchDistributionVenue;
 type MarketSortKey = "rank" | "age" | "valuation" | "change5m" | "volume1h" | "liquidity" | "risk";
 type MarketSortDirection = "asc" | "desc";
 type MarketSort = { key: MarketSortKey; direction: MarketSortDirection };
+type StoredTerminalPreferences = {
+  view: DiscoveryView;
+  sourceFilter: SourceFilter;
+  venueFilter: VenueFilter;
+  tradeableOnly: boolean;
+  marketSort: MarketSort;
+};
 
 const VIEWS: Array<{ id: DiscoveryView; label: string }> = [
   { id: "trending", label: "Signals" },
@@ -69,6 +76,9 @@ const VENUE_FILTERS: Array<{ id: VenueFilter; label: string }> = [
   { id: "uniswap", label: "Uniswap" },
   { id: "sushi", label: "Sushi" }
 ];
+const SORT_KEYS: MarketSortKey[] = ["rank", "age", "valuation", "change5m", "volume1h", "liquidity", "risk"];
+const SORT_DIRECTIONS: MarketSortDirection[] = ["asc", "desc"];
+const TERMINAL_PREFERENCES_KEY = "rmt:terminal-v10-preferences";
 const DATA_REFRESH_MS = 30_000;
 const RANK_REFRESH_MS = 60_000;
 const MAX_VISIBLE_MARKETS = 12;
@@ -224,6 +234,34 @@ function momentumWidth(value: number) {
   return Math.min(100, Math.max(Math.abs(value) < 0.01 ? 4 : 12, Math.abs(value) * 4));
 }
 
+function readTerminalPreferences(): StoredTerminalPreferences | null {
+  try {
+    const raw = window.localStorage.getItem(TERMINAL_PREFERENCES_KEY);
+    if (!raw) return null;
+    const value = JSON.parse(raw) as Partial<StoredTerminalPreferences>;
+    const view = VIEWS.some((item) => item.id === value.view) ? value.view : undefined;
+    const sourceFilter = SOURCE_FILTERS.some((item) => item.id === value.sourceFilter) ? value.sourceFilter : undefined;
+    const venueFilter = VENUE_FILTERS.some((item) => item.id === value.venueFilter) ? value.venueFilter : undefined;
+    const key = value.marketSort?.key;
+    const direction = value.marketSort?.direction;
+    if (
+      !view || !sourceFilter || !venueFilter
+      || typeof value.tradeableOnly !== "boolean"
+      || !key || !SORT_KEYS.includes(key)
+      || !direction || !SORT_DIRECTIONS.includes(direction)
+    ) return null;
+    return {
+      view,
+      sourceFilter,
+      venueFilter,
+      tradeableOnly: value.tradeableOnly,
+      marketSort: { key, direction }
+    };
+  } catch {
+    return null;
+  }
+}
+
 function ExternalArtwork({ market }: { market: ExternalMarket }) {
   const [failed, setFailed] = useState(false);
   const image = market.project?.imageUri ?? market.imageUri;
@@ -236,13 +274,14 @@ function ExternalArtwork({ market }: { market: ExternalMarket }) {
   );
 }
 
-function SignalCard({ signal }: { signal: LiveMarketSignal }) {
+function SignalCard({ signal, onOpen }: { signal: LiveMarketSignal; onOpen?: () => void }) {
   const status = signal.severity === "urgent" ? "URGENT" : signal.severity === "review" ? "REVIEW" : "OBSERVE";
   return (
     <Link
       href={`/market/${signal.token}?tab=activity`}
       className={signal.severity}
       data-kind={signal.kind}
+      onClick={onOpen}
     >
       <span><b>{status}</b><em>${cleanSymbol(signal.symbol)}</em></span>
       <strong>{signal.title}</strong>
@@ -328,7 +367,7 @@ function LiveSignalDesk({ signals }: { signals: LiveMarketSignal[] }) {
             <button ref={close} type="button" onClick={() => setOpen(false)}>Close</button>
           </header>
           <div className="liveSignalBoardGrid">
-            {signals.map((signal) => <SignalCard signal={signal} key={`board:${signal.id}`} />)}
+            {signals.map((signal) => <SignalCard signal={signal} onOpen={() => setOpen(false)} key={`board:${signal.id}`} />)}
           </div>
           <footer>Signals are automated review candidates from validated public snapshots—not recommendations, profit promises, or automatic trades.</footer>
         </section>
@@ -361,6 +400,7 @@ export function ExternalMarketFeedV10() {
   const [venueFilter, setVenueFilter] = useState<VenueFilter>("all");
   const [tradeableOnly, setTradeableOnly] = useState(false);
   const [marketSort, setMarketSort] = useState<MarketSort>({ key: "rank", direction: "asc" });
+  const [preferencesLoaded, setPreferencesLoaded] = useState(false);
   const [executionAvailability, setExecutionAvailability] = useState<Record<string, ExecutionAvailability>>({});
   const [watchedAddresses, setWatchedAddresses] = useState(() => new Set<string>());
   const [contractLookupStatus, setContractLookupStatus] = useState<ContractLookupStatus>("idle");
@@ -396,6 +436,34 @@ export function ExternalMarketFeedV10() {
       setStatus(hasData.current ? "stale" : "error");
     }
   }, [rankOrder.length]);
+
+  useEffect(() => {
+    const preferences = readTerminalPreferences();
+    if (preferences) {
+      setView(preferences.view);
+      setSourceFilter(preferences.sourceFilter);
+      setVenueFilter(preferences.venueFilter);
+      setTradeableOnly(preferences.tradeableOnly);
+      setMarketSort(preferences.marketSort);
+      setShowAllMarkets(preferences.view === "explore");
+    }
+    setPreferencesLoaded(true);
+  }, []);
+
+  useEffect(() => {
+    if (!preferencesLoaded) return;
+    try {
+      window.localStorage.setItem(TERMINAL_PREFERENCES_KEY, JSON.stringify({
+        view,
+        sourceFilter,
+        venueFilter,
+        tradeableOnly,
+        marketSort
+      } satisfies StoredTerminalPreferences));
+    } catch {
+      // A blocked preference store does not prevent terminal use.
+    }
+  }, [marketSort, preferencesLoaded, sourceFilter, tradeableOnly, venueFilter, view]);
 
   useEffect(() => {
     void refresh();
@@ -522,18 +590,21 @@ export function ExternalMarketFeedV10() {
   const filtered = tradeableOnly
     ? sorted.filter((market) => executionAvailability[market.address.toLowerCase()] === "ready")
     : sorted;
-  const expanded = showAllMarkets || normalizedQuery.length > 0 || view === "explore" || tradeableOnly;
+  const expanded = showAllMarkets || normalizedQuery.length > 0;
   const visibleMarkets = expanded ? filtered : filtered.slice(0, MAX_VISIBLE_MARKETS);
 
   const routeCandidates = useMemo(() => {
     const candidates = (tradeableOnly ? sorted : visibleMarkets)
       .filter(canVerifyExecution)
       .map((market) => market.address.toLowerCase())
-      .filter((address, index, list) => list.indexOf(address) === index)
+      .filter((address, index, list) => list.indexOf(address) === index);
+    const checking = candidates
+      .filter((address) => executionAvailability[address] === "checking")
       .slice(0, MAX_ROUTE_BATCH);
-    const unresolved = candidates.filter((address) => executionAvailability[address] === undefined);
-    const checking = candidates.filter((address) => executionAvailability[address] === "checking");
-    return checking.length ? checking : unresolved;
+    if (checking.length) return checking;
+    return candidates
+      .filter((address) => executionAvailability[address] === undefined)
+      .slice(0, MAX_ROUTE_BATCH);
   }, [executionAvailability, sorted, tradeableOnly, visibleMarkets]);
   const routeKey = routeCandidates.join(",");
 
@@ -583,7 +654,7 @@ export function ExternalMarketFeedV10() {
   const changeView = (next: DiscoveryView) => {
     setView(next);
     setMarketQuery("");
-    setShowAllMarkets(next === "explore" || tradeableOnly);
+    setShowAllMarkets(next === "explore");
   };
 
   const changeSort = (key: MarketSortKey) => {
@@ -758,7 +829,7 @@ export function ExternalMarketFeedV10() {
             type="button"
             aria-pressed={venueFilter === item.id}
             className={venueFilter === item.id ? "active" : ""}
-            onClick={() => { setVenueFilter(item.id); setShowAllMarkets(tradeableOnly || view === "explore"); }}
+            onClick={() => { setVenueFilter(item.id); setShowAllMarkets(view === "explore"); }}
             key={item.id}
           >
             {item.label}<b>{venueCounts[item.id]}</b>
@@ -769,7 +840,7 @@ export function ExternalMarketFeedV10() {
           type="button"
           aria-pressed={tradeableOnly}
           className={tradeableOnly ? "active executionFilter" : "executionFilter"}
-          onClick={() => { setTradeableOnly((current) => !current); setShowAllMarkets(!tradeableOnly || view === "explore"); }}
+          onClick={() => { setTradeableOnly((current) => !current); setShowAllMarkets(view === "explore"); }}
         >
           {routeSyncing ? "Routes syncing" : "Tradeable"}<b>{routeSyncing ? `${routeResolvedCount}/${sorted.length}` : tradeableCount}</b>
         </button>
@@ -781,7 +852,7 @@ export function ExternalMarketFeedV10() {
                 type="button"
                 aria-pressed={sourceFilter === item.id}
                 className={sourceFilter === item.id ? "active" : ""}
-                onClick={() => { setSourceFilter(item.id); setShowAllMarkets(tradeableOnly || view === "explore"); }}
+                onClick={() => { setSourceFilter(item.id); setShowAllMarkets(view === "explore"); }}
                 key={item.id}
               >
                 {item.label}<b>{sourceCounts[item.id]}</b>
