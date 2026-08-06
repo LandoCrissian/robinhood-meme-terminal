@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { decodeFunctionData } from "viem";
 import { rmtPositionGuardExecutorAbi } from "../live-position-guard";
 import {
+  buildLivePositionGuardCancelCall,
+  buildLivePositionGuardCheckpointCall,
   buildLivePositionGuardExecutorCall,
   livePositionGuardServerConfiguration
 } from "./live-position-guard-execution";
@@ -31,31 +33,38 @@ assert.equal(livePositionGuardServerConfiguration({
   RMT_POSITION_GUARD_WORKER_ENABLED: "false"
 }), null);
 
+const executor = "0x0000000000000000000000000000000000000001";
+const orderId = `0x${"11".repeat(32)}` as const;
 const call = buildLivePositionGuardExecutorCall({
-  amountIn: 100n,
   amountOutMinimum: 95n,
   deadline: 1_000n,
-  executor: "0x0000000000000000000000000000000000000001",
-  fee: 3_000,
-  maxSlippageBps: 500,
-  orderId: `0x${"11".repeat(32)}`,
-  token: "0x0000000000000000000000000000000000000002"
+  executor,
+  orderId
 });
 const decoded = decodeFunctionData({ abi: rmtPositionGuardExecutorAbi, data: call.data });
 assert.equal(decoded.functionName, "executeV3Exit");
-assert.equal(decoded.args[0].token, "0x0000000000000000000000000000000000000002");
-assert.equal(decoded.args[0].amountIn, 100n);
+assert.equal(decoded.args[0].orderId, orderId);
 assert.equal(decoded.args[0].amountOutMinimum, 95n);
+assert.equal(decoded.args[0].deadline, 1_000n);
 assert.throws(() => buildLivePositionGuardExecutorCall({
-  ...call,
-  amountIn: 100n,
-  amountOutMinimum: 95n,
+  amountOutMinimum: 0n,
   deadline: 1_000n,
-  executor: call.to,
-  fee: 3_000,
-  maxSlippageBps: 501,
-  orderId: `0x${"11".repeat(32)}`,
-  token: "0x0000000000000000000000000000000000000002"
+  executor,
+  orderId
 }));
+
+const checkpoint = decodeFunctionData({
+  abi: rmtPositionGuardExecutorAbi,
+  data: buildLivePositionGuardCheckpointCall({ executor, orderId }).data
+});
+assert.equal(checkpoint.functionName, "checkpointV3Order");
+assert.equal(checkpoint.args[0], orderId);
+
+const cancel = decodeFunctionData({
+  abi: rmtPositionGuardExecutorAbi,
+  data: buildLivePositionGuardCancelCall({ executor, orderId }).data
+});
+assert.equal(cancel.functionName, "cancelV3Order");
+assert.equal(cancel.args[0], orderId);
 
 console.log("live Position Guard execution smoke checks passed");
