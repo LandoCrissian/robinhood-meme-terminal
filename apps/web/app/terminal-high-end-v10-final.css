@@ -40,6 +40,17 @@
     text-decoration: none;
   }
 
+  .terminalPage .liveSignalBoardButton,
+  .terminalPage .runnerWatchButton {
+    min-width: 32px;
+    min-height: 32px;
+    height: 32px;
+  }
+
+  .terminalPage .runnerMarketCard > .externalChartLink {
+    min-height: 32px;
+  }
+
   .terminalPage .runnerColumnHeader button:focus-visible,
   .terminalPage .runnerWatchButton:focus-visible,
   .terminalPage .liveSignalBoardButton:focus-visible {
