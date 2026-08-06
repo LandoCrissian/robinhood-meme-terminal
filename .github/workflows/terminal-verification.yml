@@ -45,6 +45,13 @@ jobs:
           pnpm --filter web test:confirmed-buy-protection
           pnpm --filter web test:after-buy-protection
       - name: Typecheck terminal application
-        run: pnpm typecheck
+        shell: bash
+        run: |
+          set +e
+          pnpm typecheck 2>&1 | tee /tmp/terminal-typecheck.log
+          status=${PIPESTATUS[0]}
+          echo "--- terminal typecheck tail ---"
+          tail -n 240 /tmp/terminal-typecheck.log
+          exit $status
       - name: Build terminal application
         run: pnpm build
