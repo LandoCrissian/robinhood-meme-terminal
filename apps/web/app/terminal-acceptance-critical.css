@@ -34,6 +34,11 @@
   font-size: .6rem !important;
 }
 
+.terminalPage .runnerMarketCard .runnerActivity {
+  font-size: .67rem !important;
+  line-height: 1.45 !important;
+}
+
 .professionalTradeWorkspace .positionGuardDisclosure,
 .professionalTradeWorkspace .universalPosition footer,
 .professionalTradeWorkspace .universalPosition > header span,
