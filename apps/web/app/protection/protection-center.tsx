@@ -3,6 +3,10 @@
 import Link from "next/link";
 import { useIdentityToken, usePrivy, useWallets } from "@privy-io/react-auth";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  livePositionGuardReviewMessage,
+  type LivePositionGuardReviewReason
+} from "../../lib/live-position-guard-review";
 
 type ProtectionOrder = {
   id: string;
@@ -11,6 +15,7 @@ type ProtectionOrder = {
   pair: string;
   executor: string;
   status: string;
+  reviewReason: LivePositionGuardReviewReason | null;
   amountIn: string | null;
   armedAt: number | null;
   expiresAt: number | null;
@@ -257,44 +262,50 @@ export function ProtectionCenter() {
           </div>
         ) : (
           <div className="protectionOrderList">
-            {visibleOrders.map((order) => (
-              <article className={`protectionOrder ${statusClass(order)}`} key={order.id}>
-                <header>
-                  <div className="protectionOrderIdentity">
-                    <span>{shortAddress(order.token)}</span>
-                    <strong>{statusLabel(order)}</strong>
+            {visibleOrders.map((order) => {
+              const reviewMessage = livePositionGuardReviewMessage(order.reviewReason, order.status);
+              return (
+                <article className={`protectionOrder ${statusClass(order)}`} key={order.id}>
+                  <header>
+                    <div className="protectionOrderIdentity">
+                      <span>{shortAddress(order.token)}</span>
+                      <strong>{statusLabel(order)}</strong>
+                    </div>
+                    <span className="protectionOrderStatus"><i />{statusLabel(order)}</span>
+                  </header>
+
+                  <dl className="protectionOrderMetrics">
+                    <div><dt>WALLET</dt><dd title={order.wallet}>{shortAddress(order.wallet)}</dd></div>
+                    <div><dt>ARMED</dt><dd>{timeLabel(order.armedAt)}</dd></div>
+                    <div><dt>LAST CHECK</dt><dd>{timeLabel(order.lastEvaluatedAt)}</dd></div>
+                    <div><dt>{order.revocationPending ? "REVOKE REQUESTED" : "EXPIRES"}</dt><dd>{timeLabel(order.revocationPending ? order.revocationRequestedAt : order.expiresAt)}</dd></div>
+                  </dl>
+
+                  <div className="protectionOrderRules">
+                    <span><small>STOP</small><strong>−{percentFromBps(order.settings?.stopLossBps)}</strong></span>
+                    <span><small>TRAIL</small><strong>−{percentFromBps(order.settings?.trailingStopBps)}</strong></span>
+                    <span><small>BREAK EVEN</small><strong>+{percentFromBps(order.settings?.breakEvenActivationBps)}</strong></span>
+                    <span><small>IMPACT CAP</small><strong>{percentFromBps(order.settings?.maxPriceImpactBps)}</strong></span>
                   </div>
-                  <span className="protectionOrderStatus"><i />{statusLabel(order)}</span>
-                </header>
 
-                <dl className="protectionOrderMetrics">
-                  <div><dt>WALLET</dt><dd title={order.wallet}>{shortAddress(order.wallet)}</dd></div>
-                  <div><dt>ARMED</dt><dd>{timeLabel(order.armedAt)}</dd></div>
-                  <div><dt>LAST CHECK</dt><dd>{timeLabel(order.lastEvaluatedAt)}</dd></div>
-                  <div><dt>{order.revocationPending ? "REVOKE REQUESTED" : "EXPIRES"}</dt><dd>{timeLabel(order.revocationPending ? order.revocationRequestedAt : order.expiresAt)}</dd></div>
-                </dl>
+                  {order.revocationPending && (
+                    <p className="protectionOrderNotice">Future authority may already be removed, but an exit was in flight. A submitted transaction can still settle and remains under reconciliation.</p>
+                  )}
+                  {order.walletCleanupReported === false && order.revocationRequestedAt && (
+                    <p className="protectionOrderNotice danger">The server received a revoke request without proof that both the token allowance and all additional signers were removed. Retry wallet cleanup from the market workspace.</p>
+                  )}
+                  {reviewMessage && !order.revocationPending && !(order.walletCleanupReported === false && order.revocationRequestedAt) && (
+                    <p className="protectionOrderNotice danger">{reviewMessage}</p>
+                  )}
 
-                <div className="protectionOrderRules">
-                  <span><small>STOP</small><strong>−{percentFromBps(order.settings?.stopLossBps)}</strong></span>
-                  <span><small>TRAIL</small><strong>−{percentFromBps(order.settings?.trailingStopBps)}</strong></span>
-                  <span><small>BREAK EVEN</small><strong>+{percentFromBps(order.settings?.breakEvenActivationBps)}</strong></span>
-                  <span><small>IMPACT CAP</small><strong>{percentFromBps(order.settings?.maxPriceImpactBps)}</strong></span>
-                </div>
-
-                {order.revocationPending && (
-                  <p className="protectionOrderNotice">Future authority may already be removed, but an exit was in flight. A submitted transaction can still settle and remains under reconciliation.</p>
-                )}
-                {order.walletCleanupReported === false && order.revocationRequestedAt && (
-                  <p className="protectionOrderNotice danger">The server received a revoke request without proof that both the token allowance and all additional signers were removed. Retry wallet cleanup from the market workspace.</p>
-                )}
-
-                <footer>
-                  <Link className="protectionPrimaryAction" href={`/market/${order.token}`}>Manage and revoke</Link>
-                  <a href={`${EXPLORER}/address/${order.executor}`} target="_blank" rel="noopener noreferrer">Executor ↗</a>
-                  {order.transactionHash && <a href={`${EXPLORER}/tx/${order.transactionHash}`} target="_blank" rel="noopener noreferrer">Transaction ↗</a>}
-                </footer>
-              </article>
-            ))}
+                  <footer>
+                    <Link className="protectionPrimaryAction" href={`/market/${order.token}`}>Manage and revoke</Link>
+                    <a href={`${EXPLORER}/address/${order.executor}`} target="_blank" rel="noopener noreferrer">Executor ↗</a>
+                    {order.transactionHash && <a href={`${EXPLORER}/tx/${order.transactionHash}`} target="_blank" rel="noopener noreferrer">Transaction ↗</a>}
+                  </footer>
+                </article>
+              );
+            })}
           </div>
         )}
       </section>
