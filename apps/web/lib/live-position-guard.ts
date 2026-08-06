@@ -59,6 +59,15 @@ export type LivePositionGuardPublicConfiguration = {
 
 export type LivePositionGuardCancellationDisposition = "cancel" | "reconcile" | "review";
 
+export type LivePositionGuardRuntimeAuthority = {
+  status: "ready" | "no_position" | "approval_required" | "review_required";
+  reviewReason:
+    | null
+    | "invalid_order_limit"
+    | "allowance_exceeds_order_limit"
+    | "balance_below_order_limit";
+};
+
 function integerInRange(value: unknown, minimum: number, maximum: number) {
   return typeof value === "number" && Number.isSafeInteger(value) && value >= minimum && value <= maximum
     ? value
@@ -117,6 +126,37 @@ export function livePositionGuardAuthorityMatchesPlan(input: {
   return input.amountIn > 0n
     && input.allowance === input.amountIn
     && input.balance >= input.amountIn;
+}
+
+/**
+ * Re-check the wallet authority immediately before every evaluator decision.
+ *
+ * The protected amount is indivisible at the authority boundary: if the wallet
+ * balance falls below the reviewed amount, RMT stops instead of executing a
+ * smaller transfer and leaving a residual executor allowance that could spend
+ * tokens deposited later. The user must revoke and re-arm the new amount.
+ */
+export function livePositionGuardRuntimeAuthority(input: {
+  allowance: bigint;
+  balance: bigint;
+  amountLimit: bigint;
+}): LivePositionGuardRuntimeAuthority {
+  if (input.amountLimit <= 0n) {
+    return { status: "review_required", reviewReason: "invalid_order_limit" };
+  }
+  if (input.allowance > input.amountLimit) {
+    return { status: "review_required", reviewReason: "allowance_exceeds_order_limit" };
+  }
+  if (input.balance === 0n) {
+    return { status: "no_position", reviewReason: null };
+  }
+  if (input.allowance < input.amountLimit) {
+    return { status: "approval_required", reviewReason: null };
+  }
+  if (input.balance < input.amountLimit) {
+    return { status: "review_required", reviewReason: "balance_below_order_limit" };
+  }
+  return { status: "ready", reviewReason: null };
 }
 
 export function livePositionGuardOrderId(input: {
