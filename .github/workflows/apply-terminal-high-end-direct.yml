@@ -1,0 +1,60 @@
+name: Apply terminal high-end pass direct
+
+on:
+  push:
+    branches:
+      - fix/terminal-desktop-layout-v9
+    paths:
+      - ".github/workflows/apply-terminal-high-end-direct.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apply-terminal-high-end-direct
+  cancel-in-progress: true
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone branch and execute staged terminal patch
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          git clone --single-branch --branch fix/terminal-desktop-layout-v9 \
+            "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" repo
+          cd repo
+
+          python3 <<'PY'
+          from pathlib import Path
+          import textwrap
+
+          workflow = Path('.github/workflows/apply-terminal-high-end-pass.yml').read_text()
+          marker = "          python3 <<'PY'\n"
+          start = workflow.index(marker) + len(marker)
+          end = workflow.index("\n          PY\n", start)
+          script = textwrap.dedent(workflow[start:end])
+          exec(compile(script, 'terminal-high-end-pass.py', 'exec'))
+          PY
+
+          rm -f \
+            .github/workflows/apply-terminal-high-end-direct.yml \
+            .github/workflows/apply-terminal-high-end-pr.yml \
+            .github/workflows/apply-terminal-high-end-pr-macos.yml \
+            .github/workflows/run-terminal-high-end-pass.yml \
+            .github/workflows/export-terminal-source.yml \
+            .terminal-high-end-trigger
+
+          git diff --check
+          git config user.name "rmt-terminal-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No terminal changes remained to commit."
+            exit 0
+          fi
+          git commit -m "feat(web): complete high-end terminal workstation pass"
+          git push origin HEAD:fix/terminal-desktop-layout-v9
