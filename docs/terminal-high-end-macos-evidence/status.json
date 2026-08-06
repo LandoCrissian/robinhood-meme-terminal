@@ -1,0 +1,11 @@
+{
+  "jobStatus": "failure",
+  "sourceSha": "dc0d0d16ac2d88b8e9d3e5b480a87facda40773a",
+  "workflowRun": "31124102857",
+  "reportPresent": false,
+  "evidenceFiles": [
+    "acceptance.log",
+    "server.log"
+  ],
+  "report": null
+}
