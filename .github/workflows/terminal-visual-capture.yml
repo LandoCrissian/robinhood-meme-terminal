@@ -12,14 +12,33 @@ permissions:
 jobs:
   capture:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 35
     env:
-      PREVIEW_URL: https://robinhood-meme-terminal-git-feat-0fedbf-landocrissians-projects.vercel.app
+      NEXT_PUBLIC_RMT_NETWORK: mainnet
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a # v4.4.0
+        with:
+          version: 10.12.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 22
+      - name: Install and build the exact pull-request source
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
+      - name: Start the built terminal locally
+        run: |
+          nohup pnpm --filter web start -- -p 3000 > /tmp/rmt-terminal.log 2>&1 &
+          echo $! > /tmp/rmt-terminal.pid
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:3000/ > /dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          cat /tmp/rmt-terminal.log
+          exit 1
       - name: Install isolated deterministic browser runtime
         run: |
           mkdir -p /tmp/terminal-playwright terminal-captures
@@ -27,58 +46,71 @@ jobs:
           npm init -y
           npm install --save-exact --no-package-lock playwright@1.55.0
           npx playwright install --with-deps chromium
-      - name: Capture the deployed terminal
+      - name: Capture desktop and mobile product surfaces
         run: |
           cat > /tmp/terminal-playwright/capture-terminal.mjs <<'SCRIPT'
           import { chromium, devices } from "playwright";
           import { writeFile } from "node:fs/promises";
 
-          const base = process.env.PREVIEW_URL;
+          const base = "http://127.0.0.1:3000";
           const output = `${process.env.GITHUB_WORKSPACE}/terminal-captures`;
-          if (!base || !process.env.GITHUB_WORKSPACE) throw new Error("Preview and workspace paths are required.");
+          if (!process.env.GITHUB_WORKSPACE) throw new Error("GITHUB_WORKSPACE is required.");
 
-          async function openReady(page, url, selector) {
-            let lastError = "Preview did not become ready.";
-            for (let attempt = 1; attempt <= 24; attempt += 1) {
-              try {
-                const response = await page.goto(url, { waitUntil: "domcontentloaded", timeout: 45_000 });
-                const status = response?.status() ?? 0;
-                const body = (await page.locator("body").innerText({ timeout: 15_000 })).slice(0, 500);
-                if (status >= 200 && status < 400 && !/deployment.*building|not found/i.test(body)) {
-                  await page.locator(selector).first().waitFor({ state: "visible", timeout: 30_000 });
-                  await page.waitForTimeout(4_000);
-                  return { attempt, status };
-                }
-                lastError = `HTTP ${status}: ${body}`;
-              } catch (error) {
-                lastError = error instanceof Error ? error.message : String(error);
-              }
-              await page.waitForTimeout(15_000);
-            }
-            throw new Error(lastError);
+          async function prepareContext(browser, options) {
+            const context = await browser.newContext(options);
+            await context.addInitScript(() => {
+              localStorage.setItem("rmt:trading-terms", JSON.stringify({
+                version: "2026-07-28",
+                acceptedAt: new Date().toISOString()
+              }));
+              localStorage.setItem("rmt:experience-preferences", JSON.stringify({
+                schemaVersion: 1,
+                onboardingVersion: 1,
+                diagnosticsEnabled: false,
+                updatedAt: Date.now()
+              }));
+            });
+            return context;
           }
 
-          async function capture(contextOptions, suffix) {
+          async function openReady(page, url, selector) {
+            const response = await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60_000 });
+            if (!response || response.status() >= 400) throw new Error(`HTTP ${response?.status() ?? 0} for ${url}`);
+            await page.locator(selector).first().waitFor({ state: "visible", timeout: 60_000 });
+            await page.waitForTimeout(4_000);
+          }
+
+          async function marketAddress(page) {
+            for (let attempt = 1; attempt <= 18; attempt += 1) {
+              const response = await page.request.get(`${base}/api/markets/external`, { timeout: 45_000 });
+              if (response.ok()) {
+                const payload = await response.json();
+                const candidate = Array.isArray(payload?.markets)
+                  ? payload.markets.find((market) => /^0x[0-9a-fA-F]{40}$/.test(market?.address ?? ""))
+                  : null;
+                if (candidate?.address) return candidate.address;
+              }
+              await page.waitForTimeout(5_000);
+            }
+            const href = await page.locator('a[href^="/market/"]').first().getAttribute("href").catch(() => null);
+            if (href) return href.split("/market/")[1]?.split(/[?#]/)[0] ?? null;
+            return null;
+          }
+
+          async function capture(options, suffix) {
             const browser = await chromium.launch({ headless: true });
-            const context = await browser.newContext(contextOptions);
+            const context = await prepareContext(browser, options);
             const page = await context.newPage();
-            const home = await openReady(page, base, ".terminalPage");
+            await openReady(page, base, ".terminalPage");
             await page.screenshot({ path: `${output}/home-${suffix}.png`, fullPage: true });
 
-            const marketHref = await page.locator('a[href^="/market/"]').evaluateAll((links) => {
-              const visible = links.find((link) => {
-                const rect = link.getBoundingClientRect();
-                return rect.width > 0 && rect.height > 0;
-              });
-              return visible?.getAttribute("href") ?? links[0]?.getAttribute("href") ?? null;
-            });
-            if (!marketHref) throw new Error("No market workspace link was rendered on the preview terminal.");
-
-            const marketUrl = new URL(marketHref, base).toString();
-            const market = await openReady(page, marketUrl, ".professionalTradeWorkspace");
+            const address = await marketAddress(page);
+            if (!address) throw new Error("No Robinhood Chain market was available for workspace capture.");
+            const marketUrl = `${base}/market/${address}`;
+            await openReady(page, marketUrl, ".professionalTradeWorkspace");
             await page.screenshot({ path: `${output}/market-${suffix}.png`, fullPage: true });
             await browser.close();
-            return { home, market, marketUrl };
+            return { address, marketUrl };
           }
 
           const desktop = await capture({ viewport: { width: 1440, height: 1000 }, deviceScaleFactor: 1 }, "desktop");
@@ -93,3 +125,6 @@ jobs:
           path: terminal-captures
           if-no-files-found: error
           retention-days: 7
+      - name: Print local server diagnostics on failure
+        if: failure()
+        run: cat /tmp/rmt-terminal.log || true
