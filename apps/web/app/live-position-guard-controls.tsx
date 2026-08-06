@@ -43,6 +43,15 @@ type LiveGuardStatus = {
   error?: string;
 };
 
+type LivePositionGuardControlProps = {
+  armingEnabled?: boolean;
+  pair: Address;
+  rawBalance: bigint;
+  settings: Omit<LivePositionGuardSettings, "expiresAfterHours">;
+  token: Address;
+  wallet: Address;
+};
+
 function statusLabel(status: string) {
   if (status === "active") return "LIVE";
   if (status === "executing") return "EXECUTING";
@@ -81,18 +90,13 @@ async function parseResponse(response: Response) {
 }
 
 function ConfiguredLivePositionGuardControls({
+  armingEnabled,
   pair,
   rawBalance,
   settings,
   token,
   wallet
-}: {
-  pair: Address;
-  rawBalance: bigint;
-  settings: Omit<LivePositionGuardSettings, "expiresAfterHours">;
-  token: Address;
-  wallet: Address;
-}) {
+}: Required<LivePositionGuardControlProps>) {
   const liveConfiguration = configuration!;
   const { authenticated, ready } = usePrivy();
   const { identityToken } = useIdentityToken();
@@ -193,7 +197,7 @@ function ConfiguredLivePositionGuardControls({
 
   async function arm() {
     if (
-      !headers || !embeddedWallet || !walletMatches
+      !armingEnabled || !headers || !embeddedWallet || !walletMatches
       || rawBalance <= 0n || !authorityReviewed || walletCleanupRequired
       || status.systemStatus !== "ready" || status.available === false
     ) return;
@@ -316,7 +320,7 @@ function ConfiguredLivePositionGuardControls({
   if (!authenticated || !identityToken) {
     return (
       <div className="livePositionGuardControl compactState">
-        <strong>Automatic exits require RMT sign-in</strong>
+        <strong>{armingEnabled ? "Automatic exits require RMT sign-in" : "Sign in to recover automatic-exit controls"}</strong>
         <p>The local Position Guard can still monitor and prepare a sell ticket on this device.</p>
       </div>
     );
@@ -349,10 +353,14 @@ function ConfiguredLivePositionGuardControls({
     return (
       <div className="livePositionGuardControl compactState unavailable">
         <strong>{systemHeading}</strong>
-        <p>New authority is blocked. The local Position Guard can still monitor and prepare a wallet-confirmed sell ticket.</p>
+        <p>New authority is blocked. Guided emergency revocation remains available for this RMT wallet.</p>
+        <button className="livePositionGuardEmergencyRevoke" type="button" disabled={busy} onClick={() => void revoke()}>
+          {busy ? "Removing authority…" : "Review and revoke wallet authority"}
+        </button>
       </div>
     );
   }
+  if (!armingEnabled && !hasOrderToClear) return null;
 
   const transactionHref = status.transactionHash && /^0x[0-9a-fA-F]{64}$/.test(status.transactionHash)
     ? `${EXPLORER}/tx/${status.transactionHash}`
@@ -425,7 +433,7 @@ function ConfiguredLivePositionGuardControls({
             </button>
           )}
         </>
-      ) : (
+      ) : armingEnabled ? (
         <div className="livePositionGuardArm">
           <label className="livePositionGuardExpiry">
             <span>Permission expires</span>
@@ -444,7 +452,7 @@ function ConfiguredLivePositionGuardControls({
             {busy ? "Securing permission…" : "Authorize automatic exit"}
           </button>
         </div>
-      )}
+      ) : null}
 
       <details className="livePositionGuardDetails">
         <summary>View contract and trust boundary</summary>
@@ -452,7 +460,7 @@ function ConfiguredLivePositionGuardControls({
           <div><dt>Executor</dt><dd title={liveConfiguration.executor}>{shortAddress(liveConfiguration.executor)}</dd></div>
           <div><dt>Wallet</dt><dd title={wallet}>{shortAddress(wallet)}</dd></div>
           <div><dt>Token</dt><dd title={token}>{shortAddress(token)}</dd></div>
-          <div><dt>Max price impact</dt><dd>{(settings.maxPriceImpactBps / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}%</dd></div>
+          <div><dt>Price-impact cap</dt><dd>≤{(settings.maxPriceImpactBps / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}%</dd></div>
         </dl>
         <p>The evaluator and policy signer control submission timing. A compromised signer could submit early within the approved allowance, but cannot redirect proceeds or spend beyond that approval. The executor has no arbitrary recipient, generic call, custody account, or RMT fee path. Privy’s revoke operation removes all additional signers on this embedded wallet.</p>
       </details>
@@ -462,13 +470,7 @@ function ConfiguredLivePositionGuardControls({
   );
 }
 
-export function LivePositionGuardControls(props: {
-  pair: Address;
-  rawBalance: bigint;
-  settings: Omit<LivePositionGuardSettings, "expiresAfterHours">;
-  token: Address;
-  wallet: Address;
-}) {
+export function LivePositionGuardControls({ armingEnabled = true, ...props }: LivePositionGuardControlProps) {
   if (!configuration) return null;
-  return <ConfiguredLivePositionGuardControls {...props} />;
+  return <ConfiguredLivePositionGuardControls armingEnabled={armingEnabled} {...props} />;
 }
