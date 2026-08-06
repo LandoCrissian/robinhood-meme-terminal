@@ -19,6 +19,7 @@ const evaluatorRoute = readFileSync(
 const publicChrome = readFileSync(new URL("../app/public-chrome.tsx", import.meta.url), "utf8");
 const localGuardPanel = readFileSync(new URL("../app/position-guard-panel.tsx", import.meta.url), "utf8");
 const liveGuardControls = readFileSync(new URL("../app/live-position-guard-controls.tsx", import.meta.url), "utf8");
+const reviewPolicy = readFileSync(new URL("./live-position-guard-review.ts", import.meta.url), "utf8");
 
 assert.match(protectionLayout, /import "\.\/protection-center\.css"/);
 assert.match(protectionPage, /<ProtectionCenter \/>/);
@@ -28,10 +29,12 @@ assert.match(protectionCenter, /walletCleanupReported === false/);
 assert.match(protectionCenter, /revocationPending/);
 assert.match(protectionCenter, /already-submitted transaction cannot settle/);
 assert.match(protectionCenter, /server-backed automatic exit/);
+assert.match(protectionCenter, /livePositionGuardReviewMessage/);
 
 assert.match(protectionInventoryRoute, /\.where\("ownerKey", "==", ownerKey\(identity\.id\)\)/);
 assert.match(protectionInventoryRoute, /\.limit\(MAX_ORDERS\)/);
 assert.match(protectionInventoryRoute, /capped: snapshot\.size >= MAX_ORDERS/);
+assert.match(protectionInventoryRoute, /reviewReason: livePositionGuardReviewReason/);
 assert.doesNotMatch(protectionInventoryRoute, /walletId\s*:/);
 assert.doesNotMatch(protectionInventoryRoute, /authorizationId\s*:/);
 
@@ -40,8 +43,14 @@ assert.match(protectionOrderRoute, /livePositionGuardCanReplaceOrder/);
 assert.match(protectionOrderRoute, /database\.runTransaction/);
 assert.match(protectionOrderRoute, /allowance equal to the protected amount/);
 assert.match(protectionOrderRoute, /must be cleared or reconciled/);
-assert.match(evaluatorRoute, /allowance !== amountLimit/);
-assert.match(evaluatorRoute, /allowance_exceeds_order_limit/);
+assert.match(evaluatorRoute, /livePositionGuardRuntimeAuthority/);
+assert.match(evaluatorRoute, /const amountIn = amountLimit/);
+assert.match(evaluatorRoute, /balance_below_order_limit/);
+assert.match(evaluatorRoute, /transaction_receipt_timeout/);
+assert.match(evaluatorRoute, /\.orderBy\("lastEvaluatedAt", "asc"\)/);
+assert.match(evaluatorRoute, /Promise\.all\(orders\.docs\.map/);
+assert.match(reviewPolicy, /allowance_exceeds_order_limit/);
+assert.match(reviewPolicy, /residual executor allowance/);
 
 assert.match(localGuardPanel, /armingEnabled=\{false\}/);
 assert.match(localGuardPanel, /Server-backed automatic permissions must be managed separately in Protection Center/);
