@@ -1,0 +1,142 @@
+/* Final corrections derived from deterministic desktop and phone renders. */
+.terminalPage .runnerSourceFilters button,
+.terminalPage .runnerOriginFilters summary {
+  min-height: 32px;
+}
+
+.terminalPage .runnerSourceFilters button b,
+.terminalPage .runnerTabs button span {
+  font-size: .59rem;
+}
+
+.terminalPage .terminalIntro .trustStrip b,
+.terminalPage .liveSignalRail b,
+.terminalPage .runnerEdgeBrief strong {
+  font-size: .59rem;
+}
+
+.terminalPage .externalIdentityLink {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+}
+
+.professionalTradeWorkspace .universalHeroSocials a,
+.professionalTradeWorkspace .universalTradeTapeDetails summary,
+.professionalTradeWorkspace .tradeExecutionControlGroup button {
+  min-height: 34px;
+}
+
+.professionalTradeWorkspace .universalChartAxis,
+.professionalTradeWorkspace .universalPosition > header > span,
+.professionalTradeWorkspace .universalPosition > footer,
+.professionalTradeWorkspace .positionGuardDisclosure,
+.professionalTradeWorkspace .universalInsightPanel > header > span,
+.professionalTradeWorkspace .universalTradeTape > header > span,
+.professionalTradeWorkspace .universalSellPressure small,
+.professionalTradeWorkspace .universalActorSummary small,
+.professionalTradeWorkspace .universalActorListHeading,
+.professionalTradeWorkspace .universalActorList small,
+.professionalTradeWorkspace .universalTradeTape > footer {
+  font-size: .625rem !important;
+}
+
+.siteFooter a {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+}
+
+@media (max-width: 760px) {
+  .publicNav .brandLockup {
+    display: inline-flex;
+    min-height: 36px;
+    align-items: center;
+  }
+
+  .terminalPage .liveSignalRail {
+    display: flex !important;
+    width: auto !important;
+    min-height: 0 !important;
+    height: auto !important;
+    max-height: none !important;
+    flex-flow: row nowrap !important;
+    align-items: stretch !important;
+    justify-content: flex-start !important;
+    gap: 8px !important;
+    margin: 0 !important;
+    padding: 0 12px 10px !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    direction: ltr !important;
+    grid-template-columns: none !important;
+    grid-auto-columns: auto !important;
+    grid-auto-flow: initial !important;
+    scroll-snap-type: x proximity;
+    overflow-anchor: none;
+  }
+
+  .terminalPage .liveSignalRail > a {
+    position: static !important;
+    inset: auto !important;
+    display: flex !important;
+    width: min(82vw, 300px) !important;
+    min-width: min(82vw, 300px) !important;
+    max-width: 300px !important;
+    min-height: 96px !important;
+    height: auto !important;
+    max-height: none !important;
+    flex: 0 0 min(82vw, 300px) !important;
+    align-self: stretch !important;
+    justify-content: flex-start !important;
+    margin: 0 !important;
+    padding: 11px 12px !important;
+    transform: none !important;
+    scroll-snap-align: start;
+  }
+
+  .terminalPage .liveSignalRail > a > span {
+    flex: 0 0 auto;
+  }
+
+  .terminalPage .liveSignalRail strong,
+  .terminalPage .liveSignalRail small {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+  }
+
+  .terminalPage .liveSignalRail b,
+  .terminalPage .runnerSourceFilters button,
+  .terminalPage .runnerOriginFilters summary,
+  .terminalPage .mobileRunnerRank,
+  .terminalPage .mobileRunnerCopy small,
+  .terminalPage .mobileRunnerCopy em,
+  .terminalPage .mobileRunnerMetrics small {
+    font-size: .59rem !important;
+  }
+
+  .terminalPage .runnerSourceFilters button,
+  .terminalPage .runnerOriginFilters summary {
+    min-height: 34px;
+  }
+
+  .professionalTradeWorkspace .universalActivityGrid article span,
+  .professionalTradeWorkspace .universalActivityGrid article b,
+  .professionalTradeWorkspace .universalActorSummary small,
+  .professionalTradeWorkspace .universalActorListHeading,
+  .professionalTradeWorkspace .universalActorList small,
+  .professionalTradeWorkspace .universalSellPressure small {
+    font-size: .625rem !important;
+  }
+
+  .professionalTradeWorkspace .universalHeroSocials a,
+  .professionalTradeWorkspace .universalTradeTapeDetails summary,
+  .professionalTradeWorkspace .tradeExecutionControlGroup button {
+    min-height: 36px;
+  }
+
+  .siteFooter a {
+    min-height: 36px;
+  }
+}
