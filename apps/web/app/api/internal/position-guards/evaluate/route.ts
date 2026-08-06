@@ -177,9 +177,14 @@ async function evaluateOrder(input: {
     await reference.set({ status: "no_position", updatedAt: FieldValue.serverTimestamp() }, { merge: true });
     return "no_position";
   }
-  if (allowance < amountIn) {
-    await reference.set({ status: "approval_required", updatedAt: FieldValue.serverTimestamp() }, { merge: true });
-    return "approval_required";
+  if (allowance !== amountLimit) {
+    const allowanceTooLarge = allowance > amountLimit;
+    await reference.set({
+      status: allowanceTooLarge ? "review_required" : "approval_required",
+      reviewReason: allowanceTooLarge ? "allowance_exceeds_order_limit" : FieldValue.delete(),
+      updatedAt: FieldValue.serverTimestamp()
+    }, { merge: true });
+    return allowanceTooLarge ? "review_required" : "approval_required";
   }
 
   const quote = await quoteAndBuildExternalUniswapSwap({
