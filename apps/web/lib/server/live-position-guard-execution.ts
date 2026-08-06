@@ -49,7 +49,7 @@ export function livePositionGuardServerConfiguration(
   };
 }
 
-export function delegatedEmbeddedEthereumWallet(
+export function embeddedEthereumWallet(
   user: Pick<PrivyUser, "linked_accounts">,
   wallet: Address
 ): LinkedAccountEmbeddedWallet | null {
@@ -58,7 +58,6 @@ export function delegatedEmbeddedEthereumWallet(
       isEmbeddedWalletLinkedAccount(account)
       && account.chain_type === "ethereum"
       && account.id
-      && account.delegated
       && isAddress(account.address)
       && getAddress(account.address).toLowerCase() === wallet.toLowerCase()
     ) return account;
@@ -66,35 +65,61 @@ export function delegatedEmbeddedEthereumWallet(
   return null;
 }
 
+export function delegatedEmbeddedEthereumWallet(
+  user: Pick<PrivyUser, "linked_accounts">,
+  wallet: Address
+): LinkedAccountEmbeddedWallet | null {
+  const account = embeddedEthereumWallet(user, wallet);
+  return account?.delegated ? account : null;
+}
+
+export function buildLivePositionGuardCheckpointCall(input: {
+  executor: Address;
+  orderId: Hex;
+}) {
+  return {
+    to: input.executor,
+    data: encodeFunctionData({
+      abi: rmtPositionGuardExecutorAbi,
+      functionName: "checkpointV3Order",
+      args: [input.orderId]
+    })
+  };
+}
+
 export function buildLivePositionGuardExecutorCall(input: {
-  amountIn: bigint;
   amountOutMinimum: bigint;
   deadline: bigint;
   executor: Address;
-  fee: number;
-  maxSlippageBps: number;
   orderId: Hex;
-  token: Address;
 }) {
-  if (
-    input.amountIn <= 0n || input.amountOutMinimum <= 0n || input.deadline <= 0n
-    || !Number.isSafeInteger(input.fee) || input.fee <= 0 || input.fee > 1_000_000
-    || !Number.isSafeInteger(input.maxSlippageBps) || input.maxSlippageBps <= 0 || input.maxSlippageBps > 500
-  ) throw new Error("Invalid live Position Guard execution request.");
+  if (input.amountOutMinimum <= 0n || input.deadline <= 0n) {
+    throw new Error("Invalid live Position Guard execution request.");
+  }
   return {
     to: input.executor,
     data: encodeFunctionData({
       abi: rmtPositionGuardExecutorAbi,
       functionName: "executeV3Exit",
       args: [{
-        token: input.token,
-        fee: input.fee,
-        amountIn: input.amountIn,
+        orderId: input.orderId,
         amountOutMinimum: input.amountOutMinimum,
-        maxSlippageBps: input.maxSlippageBps,
-        deadline: input.deadline,
-        orderId: input.orderId
+        deadline: input.deadline
       }]
+    })
+  };
+}
+
+export function buildLivePositionGuardCancelCall(input: {
+  executor: Address;
+  orderId: Hex;
+}) {
+  return {
+    to: input.executor,
+    data: encodeFunctionData({
+      abi: rmtPositionGuardExecutorAbi,
+      functionName: "cancelV3Order",
+      args: [input.orderId]
     })
   };
 }
