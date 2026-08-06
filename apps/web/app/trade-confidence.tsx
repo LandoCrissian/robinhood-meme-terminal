@@ -57,10 +57,10 @@ export function TradeConfidence({
   const sushiRoute = market.venue.kind === "dex"
     && market.venue.dexId.toLowerCase().includes("sushi");
   const requiresAcknowledgement = tradeRequiresAcknowledgement(market, side);
-  const excessivePriceImpact = priceImpact !== undefined && priceImpact > maxPriceImpact;
+  const impactAbovePreference = priceImpact !== undefined && priceImpact > maxPriceImpact;
+  const impactLimitLabel = `${(maxPriceImpact * 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}%`;
   const evidenceDecision = tokenRiskDecision(evidenceState, side);
   const criticalEvidence = evidenceDecision.state === "blocked";
-  const tradeBlocked = excessivePriceImpact;
   const evidence = evidenceState.evidence;
   const sourceTransparent = evidence?.contract.sourcePublished === true
     && evidence.contract.bytecodeChanged === false
@@ -96,18 +96,18 @@ export function TradeConfidence({
   const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
-    if (tradeBlocked) setExpanded(true);
-  }, [tradeBlocked]);
+    if (impactAbovePreference) setExpanded(true);
+  }, [impactAbovePreference]);
 
   const confidenceHeading = criticalEvidence
     ? `Critical evidence: ${evidenceDecision.primaryFinding?.label.toLowerCase() ?? "inspect details"}`
-    : excessivePriceImpact
-      ? "Trade blocked: extreme price impact"
+    : impactAbovePreference
+      ? `Price impact above your ${impactLimitLabel} alert`
       : requiresAcknowledgement
         ? "Review before buying"
         : "Verified checks passed";
-  const reviewLabel = tradeBlocked
-    ? "Required review"
+  const reviewLabel = impactAbovePreference
+    ? "Review advised"
     : expanded
       ? "Hide evidence"
       : `${warnings.length > 0 ? warnings.length : 3} ${warnings.length === 1 ? "notice" : "checks"}`;
@@ -124,9 +124,10 @@ export function TradeConfidence({
       ? "Unavailable"
       : formatOwnershipBps(largestHolderBps);
   const additionalFindingCount = Math.max(evidenceDecision.findings.length - 1, 0);
+  const caution = requiresAcknowledgement || criticalEvidence || impactAbovePreference;
 
   return (
-    <section className={`tradeConfidence ${tradeBlocked ? "blocked" : requiresAcknowledgement || criticalEvidence ? "caution" : "clear"}`} aria-labelledby="trade-confidence-heading">
+    <section className={`tradeConfidence ${caution ? "caution" : "clear"}`} aria-labelledby="trade-confidence-heading">
       <button
         type="button"
         className="tradeConfidenceToggle"
@@ -134,7 +135,7 @@ export function TradeConfidence({
         aria-controls="trade-confidence-details"
         onClick={() => setExpanded((value) => !value)}
       >
-        <span className="tradeConfidenceIcon" aria-hidden="true">{tradeBlocked ? "!" : requiresAcknowledgement ? "?" : "✓"}</span>
+        <span className="tradeConfidenceIcon" aria-hidden="true">{criticalEvidence ? "!" : caution ? "?" : "✓"}</span>
         <span>
           <small>RMT PRE-TRADE EVIDENCE</small>
           <strong id="trade-confidence-heading">{confidenceHeading}</strong>
@@ -235,6 +236,11 @@ export function TradeConfidence({
             </div>
           </details>
 
+          {impactAbovePreference && (
+            <p className="tradeConfidenceImpactNote">
+              Price impact is market risk, not a transaction-integrity veto. RMT preserves the quoted minimum, simulates the exact transaction, and leaves the decision with you.
+            </p>
+          )}
           {criticalEvidence && <p className="tradeConfidenceCriticalNote">Critical findings are visible evidence, not an RMT trading veto. Your selected limits, fresh quote, simulation, and wallet signature still control execution.</p>}
         </div>
       )}
