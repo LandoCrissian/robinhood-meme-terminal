@@ -1,0 +1,29 @@
+name: Export terminal source
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/export-terminal-source.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    if: github.head_ref == 'fix/terminal-desktop-layout-v9'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4.6.2
+        with:
+          name: terminal-source
+          retention-days: 1
+          path: |
+            apps/web/app/external-market-feed.tsx
+            apps/web/app/external-market-chart.tsx
+            apps/web/app/layout.tsx
+            apps/web/app/terminal-high-end-v10.css
+            .github/workflows/terminal-visual-v2.yml
