@@ -34,7 +34,7 @@ export const metadata: Metadata = {
 
 export default function Home() {
   return (
-    <main className="terminalPage">
+    <main className="terminalPage" data-product-family="RMT · MARKET TERMINAL">
       <section className="terminalIntro">
         <div className="terminalIntroCopy">
           <p className="eyebrow">RMT · LIVE MARKET INTELLIGENCE</p>
