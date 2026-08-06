@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import {
   evaluateLivePositionGuard,
+  livePositionGuardAuthorityMatchesPlan,
   livePositionGuardCancellationDisposition,
+  livePositionGuardCanReplaceOrder,
   livePositionGuardHeartbeatIsFresh,
   livePositionGuardOrderId,
   livePositionGuardPublicConfiguration,
@@ -28,6 +30,44 @@ assert.equal(livePositionGuardCancellationDisposition("submitted"), "reconcile")
 assert.equal(livePositionGuardCancellationDisposition("executing"), "reconcile");
 assert.equal(livePositionGuardCancellationDisposition("no_position"), "cancel");
 assert.equal(livePositionGuardCancellationDisposition("unknown_state"), "review");
+
+assert.equal(livePositionGuardCanReplaceOrder("active", 1_000), false);
+assert.equal(livePositionGuardCanReplaceOrder("confirming", 1_000), false);
+assert.equal(livePositionGuardCanReplaceOrder("executing", 1_000), false);
+assert.equal(livePositionGuardCanReplaceOrder("submitted", 1_000), false);
+assert.equal(livePositionGuardCanReplaceOrder("review_required", 1_000), false);
+assert.equal(livePositionGuardCanReplaceOrder("cancelled", null), false);
+assert.equal(livePositionGuardCanReplaceOrder("cancelled", 0), false);
+assert.equal(livePositionGuardCanReplaceOrder("cancelled", 1_000), true);
+assert.equal(livePositionGuardCanReplaceOrder("executed", 1_000), true);
+assert.equal(livePositionGuardCanReplaceOrder("expired", 1_000), true);
+assert.equal(livePositionGuardCanReplaceOrder("inactive", 1_000), true);
+
+assert.equal(livePositionGuardAuthorityMatchesPlan({
+  allowance: 100n,
+  balance: 100n,
+  amountIn: 100n
+}), true);
+assert.equal(livePositionGuardAuthorityMatchesPlan({
+  allowance: 101n,
+  balance: 100n,
+  amountIn: 100n
+}), false);
+assert.equal(livePositionGuardAuthorityMatchesPlan({
+  allowance: 99n,
+  balance: 100n,
+  amountIn: 100n
+}), false);
+assert.equal(livePositionGuardAuthorityMatchesPlan({
+  allowance: 100n,
+  balance: 99n,
+  amountIn: 100n
+}), false);
+assert.equal(livePositionGuardAuthorityMatchesPlan({
+  allowance: 0n,
+  balance: 100n,
+  amountIn: 0n
+}), false);
 
 const base = {
   entryUnitQuoteX18: 100n,
