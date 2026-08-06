@@ -37,9 +37,9 @@ export default function Home() {
     <main className="terminalPage">
       <section className="terminalIntro">
         <div className="terminalIntroCopy">
-          <p className="eyebrow">RMT · MARKET TERMINAL · ROBINHOOD CHAIN</p>
-          <h1>Find the market. Read the evidence. Trade.</h1>
-          <p>Live discovery, verified origin, price action, liquidity, and self-custodial execution across Robinhood Chain.</p>
+          <p className="eyebrow">RMT · LIVE MARKET INTELLIGENCE</p>
+          <h1>Robinhood Chain markets</h1>
+          <p>Scan momentum, verify origin and liquidity, then prepare a wallet-signed Sushi or Uniswap trade.</p>
         </div>
         <div className="terminalIntroActions">
           <Link className="primaryAction" href="#market-explorer">Scan markets</Link>
