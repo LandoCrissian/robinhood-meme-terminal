@@ -8,7 +8,11 @@ import {
   STANDARD_QUOTE_DEBOUNCE_MS,
   STANDARD_QUOTE_REFRESH_MS
 } from "./trade-speed";
-import { clearTradeQuoteCache, requestTradeQuote } from "./trade-quote-client";
+import {
+  clearTradeQuoteCache,
+  requestTradeQuote,
+  TradeQuoteRequestError
+} from "./trade-quote-client";
 import { normalizeTradePreferences } from "./trade-preferences";
 
 assert.equal(quoteDebounceMs("speed"), SPEED_QUOTE_DEBOUNCE_MS);
@@ -50,6 +54,7 @@ async function run() {
     assert.equal(calls, 1);
     assert.equal(lastIdentityToken, "identity-token");
     assert.equal(first.ok, true);
+    assert.equal(first.attempts, 1);
     assert.deepEqual(second.payload, { quoteOut: "2" });
 
     await requestTradeQuote("/quote", body, {
@@ -62,6 +67,43 @@ async function run() {
 
     await requestTradeQuote("/quote", body, { identityScope: "did:privy:test", identityToken: "identity-token", now: 3_000 });
     assert.equal(calls, 3);
+
+    clearTradeQuoteCache();
+    let retryCalls = 0;
+    globalThis.fetch = (async () => {
+      retryCalls += 1;
+      return new Response(JSON.stringify(retryCalls === 1
+        ? { error: "temporary upstream failure" }
+        : { quoteOut: "3" }), {
+        status: retryCalls === 1 ? 503 : 200,
+        headers: { "Content-Type": "application/json" }
+      });
+    }) as typeof fetch;
+    const retried = await requestTradeQuote("/retry-quote", body, {
+      identityScope: "did:privy:retry",
+      maxAttempts: 2,
+      retryDelayMs: 0,
+      timeoutMs: 1_000,
+      now: 5_000
+    });
+    assert.equal(retryCalls, 2);
+    assert.equal(retried.ok, true);
+    assert.equal(retried.attempts, 2);
+    assert.deepEqual(retried.payload, { quoteOut: "3" });
+
+    clearTradeQuoteCache();
+    globalThis.fetch = ((_input, init) => new Promise<Response>((_resolve, reject) => {
+      init?.signal?.addEventListener("abort", () => reject(new Error("aborted")), { once: true });
+    })) as typeof fetch;
+    await assert.rejects(
+      requestTradeQuote("/timeout-quote", body, {
+        identityScope: "did:privy:timeout",
+        maxAttempts: 1,
+        timeoutMs: 10,
+        now: 8_000
+      }),
+      (error: unknown) => error instanceof TradeQuoteRequestError && error.code === "timeout" && error.attempts === 1
+    );
   } finally {
     clearTradeQuoteCache();
     globalThis.fetch = originalFetch;
