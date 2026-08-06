@@ -82,8 +82,8 @@ function statusClass(order: ProtectionOrder) {
 }
 
 function percentFromBps(value: number | undefined) {
-  if (!Number.isFinite(value)) return "—";
-  return `${((value ?? 0) / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}%`;
+  if (typeof value !== "number" || !Number.isFinite(value)) return "—";
+  return `${(value / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}%`;
 }
 
 function matchesView(order: ProtectionOrder, view: View) {
@@ -162,11 +162,13 @@ export function ProtectionCenter() {
     [orders, view]
   );
   const embeddedWallets = wallets.filter((wallet) => wallet.walletClientType === "privy");
-  const systemLabel = payload.systemStatus === "ready"
-    ? "EVALUATOR ONLINE"
-    : payload.systemStatus === "worker_offline"
-      ? "EVALUATOR OFFLINE"
-      : "NEW AUTHORITY LOCKED";
+  const systemLabel = loading && !payload.systemStatus
+    ? "VERIFYING SYSTEM"
+    : payload.systemStatus === "ready"
+      ? "EVALUATOR ONLINE"
+      : payload.systemStatus === "worker_offline"
+        ? "EVALUATOR OFFLINE"
+        : "NEW AUTHORITY LOCKED";
 
   if (!ready || !walletsReady) {
     return (
@@ -213,7 +215,7 @@ export function ProtectionCenter() {
         <span><b>LAST REFRESH</b>{payload.updatedAt ? timeLabel(payload.updatedAt) : "—"}</span>
       </section>
 
-      {payload.systemStatus !== "ready" && (
+      {payload.systemStatus && payload.systemStatus !== "ready" && (
         <section className="protectionCenterWarning" role="alert">
           <strong>New automatic authority is blocked.</strong>
           <span>Existing orders and wallet permissions still require review. Open the affected market to clear token allowance, delegated signers, and the server order record.</span>
@@ -223,7 +225,7 @@ export function ProtectionCenter() {
       {payload.capped && (
         <section className="protectionCenterWarning" role="status">
           <strong>Inventory limit reached.</strong>
-          <span>The newest {orders.length} records are shown. Historical export is required before claiming this is the complete lifetime inventory.</span>
+          <span>Up to {orders.length} records are shown. Historical export is required before treating this as a complete lifetime inventory.</span>
         </section>
       )}
 
