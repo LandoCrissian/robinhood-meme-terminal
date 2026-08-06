@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ResponsiveExternalMarketFeed } from "./responsive-external-market-feed";
+import { ResponsiveExternalMarketFeed as ExternalMarketFeed } from "./responsive-external-market-feed";
 import { OfficialRmtMarket } from "./official-rmt-market";
 import { isMainnetRelease } from "../lib/network";
 import {
@@ -54,7 +54,7 @@ export default function Home() {
       </section>
 
       <OfficialRmtMarket />
-      <ResponsiveExternalMarketFeed />
+      <ExternalMarketFeed />
       <SiteFooter />
     </main>
   );
