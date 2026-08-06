@@ -34,10 +34,25 @@ The evaluator re-checks allowance and wallet balance before every possible execu
 - an allowance below the order limit moves the order to `approval_required`;
 - an allowance above the order limit moves the order to `review_required` with `allowance_exceeds_order_limit`;
 - a zero token balance moves the order to `no_position`;
-- a lower nonzero balance may reduce the executed amount, but never increases the original order limit;
+- a lower nonzero balance moves the order to `review_required` with `balance_below_order_limit`;
+- the evaluator never silently reduces the protected amount;
 - an unknown execution result is not retried automatically.
 
-The server must never interpret a changed allowance as permission to expand, repair, or silently replace the user’s reviewed plan.
+A partial automatic exit is deliberately rejected. Executing less than the reviewed amount would leave a residual wallet-to-executor allowance that could apply to tokens deposited later. The user must revoke the old authority and explicitly arm a new exact amount.
+
+The server must never interpret a changed allowance or balance as permission to expand, repair, reduce, or silently replace the user’s reviewed plan.
+
+## Evaluator scheduling and reconciliation
+
+Production evaluation must remain fair and bounded:
+
+- eligible orders are selected by oldest `lastEvaluatedAt`, not stable document order;
+- the required Firestore composite index is deployed before the worker is enabled;
+- each invocation processes a bounded batch concurrently under one lease;
+- a second invocation cannot refresh the heartbeat while another lease is stuck;
+- submitted transactions are reconciled by receipt and are never automatically rebroadcast;
+- a submitted transaction with no receipt after the review window moves to `review_required` instead of remaining indefinitely active;
+- every order failure is isolated and recorded as a safe evaluation failure.
 
 ## Recovery configuration
 
@@ -63,6 +78,10 @@ Before activation, automated and canary evidence must prove:
 - an allowance changed after arming stops evaluator execution;
 - an oversized post-arm allowance enters `review_required`;
 - an undersized post-arm allowance enters `approval_required`;
+- a lower post-arm balance enters `review_required` without preparing a partial exit;
+- a zero balance enters `no_position`;
+- stale submitted transactions enter review without an automatic retry;
+- more orders than one evaluator batch are eventually selected fairly;
 - an in-flight transaction remains under reconciliation after future authority is removed.
 
 Until those checks are attached to the release record, automatic execution remains disabled.
