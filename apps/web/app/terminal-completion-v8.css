@@ -6,11 +6,12 @@
  * changing execution, routing, risk, or wallet behavior.
  */
 
-/* Trading requires an uninterrupted workspace. RMT Live remains available on
- * the rest of the product, but its edge launcher no longer covers charts,
- * evidence, order controls, or market rows. */
+/* Focused financial surfaces require uninterrupted controls. RMT Live remains
+ * available elsewhere, but its edge launcher cannot cover markets, execution,
+ * evidence, or protection-management actions. */
 body:has(.terminalPage) .communityLive,
-body:has(.professionalTradeWorkspace) .communityLive {
+body:has(.professionalTradeWorkspace) .communityLive,
+body:has(.protectionCenterPage) .communityLive {
   display: none !important;
 }
 
@@ -78,84 +79,168 @@ body:has(.professionalTradeWorkspace) .communityLive {
 .professionalTradeWorkspace .universalSellPressure small,
 .professionalTradeWorkspace .universalActorSummary small,
 .professionalTradeWorkspace .universalActorListHeading span,
-.professionalTradeWorkspace .universalActorList a small,
-.professionalTradeWorkspace .universalTradeTape footer,
-.professionalTradeWorkspace .universalTradeTapeDetails summary,
-.professionalTradeWorkspace .universalTradeTapeList small,
-.professionalTradeWorkspace .universalHolderIntelligence footer {
-  font-size: .56rem !important;
-  line-height: 1.35;
+.professionalTradeWorkspace .universalActorList small,
+.professionalTradeWorkspace .universalTradeTape footer {
+  font-size: .625rem !important;
 }
 
 .professionalTradeWorkspace .universalTradeTapeDetails summary,
-.professionalTradeWorkspace .universalTradeRail summary,
 .professionalTradeWorkspace .tradeExecutionControlGroup button {
-  min-height: 36px;
+  min-height: 34px;
 }
 
-.professionalTradeWorkspace .universalTradeRail button:not(.universalTradeRailClose) {
-  min-height: 36px;
+/* Put the first actionable market row inside the initial desktop viewport. */
+@media (min-width: 761px) {
+  .terminalPage .terminalIntro {
+    padding-top: 14px;
+    padding-bottom: 11px;
+  }
+
+  .terminalPage .terminalIntro h1 {
+    font-size: clamp(1.8rem, 3vw, 2.55rem);
+  }
+
+  .terminalPage .officialRmtMarket {
+    min-height: 68px;
+    margin-bottom: 8px;
+    padding-top: 9px;
+    padding-bottom: 9px;
+  }
+
+  .terminalPage .terminalMarketShell .feedHeading {
+    min-height: 62px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+
+  .terminalPage .liveSignalDesk > header {
+    min-height: 38px;
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+
+  .terminalPage .liveSignalRail {
+    padding-bottom: 8px;
+  }
+
+  .terminalPage .liveSignalRail > a {
+    min-height: 64px;
+    padding: 8px 9px;
+  }
 }
 
-/* The Protection Center is a safety surface; timestamps, authority boundaries,
- * and cleanup status must remain legible even in a dense inventory. */
-.protectionCenterPage .protectionOrderMetrics dt,
-.protectionCenterPage .protectionOrderRules small,
-.protectionCenterPage .protectionOrderStatus,
-.protectionCenterPage .protectionOrderNotice,
-.protectionCenterPage .protectionOrder > footer a {
-  font-size: .56rem;
-}
-
-.protectionCenterPage .protectionOrderMetrics dd,
-.protectionCenterPage .protectionOrderRules strong {
-  font-size: .64rem;
-}
-
+/* Mobile terminal: finite carousels, visible actions, and a five-tab dock. */
 @media (max-width: 760px) {
-  /* Keep global navigation present without letting it dominate the viewport. */
   .publicNav {
-    height: 58px;
+    height: 54px;
   }
 
-  .publicNav .brandLockup {
-    display: inline-flex;
-    min-height: 44px;
-    align-items: center;
+  .publicNav .brandLogo {
+    width: 30px;
+    height: 30px;
   }
 
-  .publicNavActions .wallet {
-    min-height: 44px;
-    max-width: 148px;
-    padding: 8px 12px;
-    border-radius: 11px;
-    overflow: hidden;
-    font-size: .68rem;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+  .publicNavActions .wallet,
+  .publicMore summary {
+    min-height: 40px;
   }
 
   .mobileDock {
     grid-template-columns: repeat(5, minmax(0, 1fr));
-    padding: 3px 4px calc(3px + env(safe-area-inset-bottom));
+    padding: 4px 4px calc(4px + env(safe-area-inset-bottom));
   }
 
   .mobileDock a {
-    min-height: 44px;
+    min-height: 42px;
     gap: 3px;
     padding: 0 2px;
-    border-radius: 8px;
-    font-size: .56rem;
-    line-height: 1.05;
+    font-size: .62rem;
   }
 
   .mobileDock span {
-    font-size: .72rem;
-    line-height: 1;
+    font-size: .78rem;
   }
 
-  /* The signal rail previously inherited enough flexible height to resemble a
-   * stack of hero cards. It is now a compact, horizontally scannable feed. */
+  .terminalPage {
+    padding-bottom: calc(66px + env(safe-area-inset-bottom));
+  }
+
+  .terminalPage .terminalIntro {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px 10px;
+    padding: 11px 12px 8px;
+  }
+
+  .terminalPage .terminalIntro h1 {
+    max-width: 290px;
+    font-size: clamp(1.38rem, 7vw, 1.75rem);
+  }
+
+  .terminalPage .terminalIntroCopy > p:last-child {
+    display: -webkit-box;
+    overflow: hidden;
+    margin-top: 5px;
+    font-size: .7rem;
+    line-height: 1.35;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 1;
+  }
+
+  .terminalPage .terminalIntroActions a {
+    min-height: 38px;
+    padding-right: 10px;
+    padding-left: 10px;
+    font-size: .62rem;
+  }
+
+  .terminalPage .terminalIntro .trustStrip {
+    gap: 5px;
+  }
+
+  .terminalPage .terminalIntro .trustStrip span {
+    min-height: 28px;
+    padding: 0 5px;
+    font-size: .52rem;
+  }
+
+  .terminalPage .officialRmtMarket {
+    min-height: 62px;
+    margin: 0 10px 7px;
+    padding: 8px 9px;
+  }
+
+  .terminalPage .officialRmtIdentity {
+    grid-template-columns: 36px minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .terminalPage .officialRmtArtwork {
+    width: 36px;
+    height: 36px;
+  }
+
+  .terminalPage .officialRmtActions a {
+    min-height: 32px;
+  }
+
+  .terminalPage .terminalMarketShell .feedHeading {
+    min-height: 52px;
+    padding: 9px 12px;
+  }
+
+  .terminalPage .liveSignalDesk {
+    padding: 0 !important;
+  }
+
+  .terminalPage .liveSignalDesk > header {
+    min-height: 38px;
+    padding: 6px 12px;
+  }
+
+  .terminalPage .liveSignalDesk > header small {
+    display: none;
+  }
+
   .terminalPage .liveSignalRail {
     display: flex !important;
     width: auto !important;
@@ -165,11 +250,12 @@ body:has(.professionalTradeWorkspace) .communityLive {
     flex-flow: row nowrap !important;
     align-items: stretch !important;
     justify-content: flex-start !important;
-    gap: 7px !important;
+    gap: 8px !important;
     margin: 0 !important;
-    padding: 0 12px 11px !important;
+    padding: 0 12px 9px !important;
     overflow-x: auto !important;
     overflow-y: hidden !important;
+    direction: ltr !important;
     grid-template-columns: none !important;
     grid-auto-columns: auto !important;
     grid-auto-flow: initial !important;
@@ -184,44 +270,43 @@ body:has(.professionalTradeWorkspace) .communityLive {
     width: min(82vw, 300px) !important;
     min-width: min(82vw, 300px) !important;
     max-width: 300px !important;
-    height: 104px !important;
-    min-height: 104px !important;
-    max-height: 104px !important;
+    min-height: 96px !important;
+    height: auto !important;
+    max-height: none !important;
     flex: 0 0 min(82vw, 300px) !important;
     align-self: stretch !important;
     justify-content: flex-start !important;
-    flex-direction: column;
-    gap: 6px !important;
     margin: 0 !important;
     padding: 11px 12px !important;
-    overflow: hidden !important;
     transform: none !important;
     scroll-snap-align: start;
   }
 
-  .terminalPage .liveSignalRail > a > span {
-    min-height: 20px;
-    flex: 0 0 auto;
-  }
-
   .terminalPage .liveSignalRail > a > strong {
-    font-size: .72rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .terminalPage .liveSignalRail > a > small {
-    font-size: .62rem;
-    line-height: 1.4;
+    display: -webkit-box;
+    overflow: hidden;
+    white-space: normal;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .terminalPage .runnerMarketSearch input {
+    min-height: 42px;
   }
 
   .terminalPage .runnerSourceFilters button,
   .terminalPage .runnerOriginFilters summary {
-    min-height: 36px;
-    padding-right: 10px;
-    padding-left: 10px;
+    min-height: 34px;
   }
 
-  .terminalPage .runnerSourceFilters button b,
-  .terminalPage .runnerTabs button span,
+  .terminalPage .runnerSourceFilters button,
+  .terminalPage .runnerOriginFilters summary,
   .terminalPage .mobileRunnerRank,
   .terminalPage .mobileRunnerCopy small,
   .terminalPage .mobileRunnerCopy em,
@@ -229,154 +314,52 @@ body:has(.professionalTradeWorkspace) .communityLive {
     font-size: .59rem !important;
   }
 
-  /* The complete disclosure remains in the DOM and is available to assistive
-   * technology. On the scanner it is visually summarized instead of becoming
-   * several screens of low-priority copy. */
-  .terminalPage .terminalMarketShell .externalDisclosure {
-    display: -webkit-box;
-    max-height: 5.9em;
-    overflow: hidden;
-    padding: 11px 12px;
-    font-size: .59rem;
-    line-height: 1.48;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 4;
-  }
-
-  /* Market identity actions must never clip the Market source control. */
+  /* The token hero uses a finite 2×2 action grid instead of a clipped rail. */
   .professionalTradeWorkspace .universalHeroActions {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 6px;
+    width: 100%;
     overflow: visible;
   }
 
   .professionalTradeWorkspace .universalHeroActions button,
   .professionalTradeWorkspace .universalHeroActions a {
-    width: 100%;
     min-width: 0;
-    min-height: 40px;
-    padding: 7px 8px;
-    line-height: 1.2;
-    text-align: center;
-    white-space: normal;
-  }
-
-  .professionalTradeWorkspace {
-    padding-bottom: calc(112px + env(safe-area-inset-bottom));
-  }
-
-  /* Preserve immediate buy/sell access while reducing the amount of market and
-   * chart content obscured by two stacked fixed navigation surfaces. */
-  .professionalTradeWorkspace .universalMobileTradeDock {
-    right: 0;
-    bottom: calc(50px + env(safe-area-inset-bottom));
-    left: 0;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 6px;
-    padding: 4px 8px;
-    border: 0;
-    border-top: 1px solid rgba(179, 201, 185, .18);
-    border-radius: 0;
-    background: rgba(6, 10, 7, .97);
-    box-shadow: 0 -10px 28px rgba(0, 0, 0, .32);
-  }
-
-  .professionalTradeWorkspace .universalMobileTradeDock button {
-    min-height: 42px;
-    border-radius: 8px;
-    font-size: .67rem;
-  }
-
-  .professionalTradeWorkspace .universalChart {
-    min-height: 300px;
-  }
-
-  .professionalTradeWorkspace .universalChart > header {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .professionalTradeWorkspace .universalChartControls {
-    width: 100%;
-  }
-
-  .professionalTradeWorkspace .universalChartRanges {
-    display: grid;
-    width: 100%;
-    grid-template-columns: repeat(7, minmax(0, 1fr));
-  }
-
-  .professionalTradeWorkspace .universalChartRanges button {
-    width: 100%;
-    min-width: 0;
-    min-height: 38px;
-    padding: 0 3px;
-  }
-
-  .professionalTradeWorkspace .universalWorkspaceNav a,
-  .professionalTradeWorkspace .universalHeroSocials a {
-    min-height: 34px;
-  }
-
-  .professionalTradeWorkspace .universalTradeTapeDetails summary,
-  .professionalTradeWorkspace .universalTradeRail summary,
-  .professionalTradeWorkspace .tradeExecutionControlGroup button,
-  .professionalTradeWorkspace .universalTradeRail button:not(.universalTradeRailClose) {
-    min-height: 40px;
+    min-height: 36px;
+    padding: 0 7px;
+    overflow: hidden;
+    font-size: .625rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .professionalTradeWorkspace .universalChartAxis,
   .professionalTradeWorkspace .universalPosition footer,
   .professionalTradeWorkspace .positionGuardDisclosure,
+  .professionalTradeWorkspace .universalActivityGrid article span,
+  .professionalTradeWorkspace .universalActivityGrid article b,
   .professionalTradeWorkspace .universalSellPressure small,
   .professionalTradeWorkspace .universalActorSummary small,
   .professionalTradeWorkspace .universalActorListHeading span,
-  .professionalTradeWorkspace .universalActorList a small,
-  .professionalTradeWorkspace .universalTradeTape footer,
-  .professionalTradeWorkspace .universalTradeTapeList small,
-  .professionalTradeWorkspace .universalHolderIntelligence footer,
-  .professionalTradeWorkspace .universalActivityGrid article span,
-  .professionalTradeWorkspace .universalActivityGrid article b {
-    font-size: .59rem !important;
+  .professionalTradeWorkspace .universalActorList small,
+  .professionalTradeWorkspace .universalTradeTape footer {
+    font-size: .625rem !important;
   }
 
-  .terminalPage .siteFooter a,
-  .professionalTradeWorkspace .siteFooter a,
-  .protectionCenterPage .siteFooter a {
+  .professionalTradeWorkspace .universalHeroSocials a,
+  .professionalTradeWorkspace .universalTradeTapeDetails summary,
+  .professionalTradeWorkspace .tradeExecutionControlGroup button {
     min-height: 36px;
   }
 
-  .protectionCenterPage .protectionTabs button {
-    min-height: 42px;
-    font-size: .57rem;
-  }
-
-  .protectionCenterPage .protectionOrder > footer a {
-    min-height: 40px;
-    font-size: .54rem;
-  }
-}
-
-@media (max-width: 390px) {
-  .publicNavActions .wallet {
-    max-width: 136px;
-  }
-
-  .mobileDock a {
-    font-size: .53rem;
-  }
-
-  .professionalTradeWorkspace .universalHeroActions button,
-  .professionalTradeWorkspace .universalHeroActions a {
-    font-size: .62rem;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .terminalPage .liveSignalRail,
   .professionalTradeWorkspace .universalMobileTradeDock {
-    scroll-behavior: auto;
-    transition: none;
+    right: 8px;
+    bottom: calc(56px + env(safe-area-inset-bottom));
+    left: 8px;
+    padding: 4px;
+  }
+
+  .professionalTradeWorkspace .universalMobileTradeDock button {
+    min-height: 46px;
   }
 }
