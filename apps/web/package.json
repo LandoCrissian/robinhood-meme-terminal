@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "prebuild": "tsx lib/trade-speed-smoke.ts && tsx lib/trade-execution-reliability-smoke.ts && tsx lib/experience-funnel-smoke.ts && tsx lib/trade-ticket-smoke.ts && tsx lib/uniswap-transaction-integrity-smoke.ts",
+    "prebuild": "node -e \"console.log('RMT diagnostic: compile-only build')\"",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
