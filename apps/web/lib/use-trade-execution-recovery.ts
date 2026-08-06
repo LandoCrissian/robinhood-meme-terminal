@@ -64,7 +64,7 @@ export function useTradeExecutionRecovery({
   const [rawError, setRawError] = useState("");
   const [confirmationUnavailable, setConfirmationUnavailable] = useState(false);
   const [resolvedStatus, setResolvedStatus] = useState<"confirmed" | "failed">();
-  const recordedSubmission = useRef<Hash>();
+  const recordedSubmission = useRef<Hash | undefined>(undefined);
 
   const identityKey = `${wallet?.toLowerCase() ?? ""}:${token.toLowerCase()}:${pair.toLowerCase()}:${venue}:${side}`;
 
