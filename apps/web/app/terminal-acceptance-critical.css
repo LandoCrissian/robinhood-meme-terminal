@@ -51,6 +51,15 @@
   line-height: 1.35 !important;
 }
 
+/* The medium desktop layout must not inherit the legacy rule that hides the
+ * evidence column and source link below 1180px. */
+@media (min-width: 761px) and (max-width: 1180px) {
+  .terminalPage .runnerMarketCard .runnerActivity,
+  .terminalPage .runnerMarketCard .externalChartLink {
+    display: flex;
+  }
+}
+
 @media (max-width: 760px) {
   .publicNav .brandLockup {
     width: 40px !important;
