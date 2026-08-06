@@ -13,6 +13,7 @@ import {
 import { robinhoodChain } from "@rmt/shared/chains";
 import {
   LIVE_POSITION_GUARD_SCHEMA_VERSION,
+  livePositionGuardCancellationDisposition,
   livePositionGuardHeartbeatIsFresh,
   normalizeLivePositionGuardSettings,
   unitQuoteX18
@@ -77,12 +78,26 @@ async function verifiedIdentity(request: Request) {
 }
 
 function publicOrder(data: Record<string, unknown> | undefined) {
-  if (!data) return { status: "inactive" };
+  if (!data) return {
+    status: "inactive",
+    armedAt: null,
+    expiresAt: null,
+    lastEvaluatedAt: null,
+    revocationPending: false,
+    revocationRequestedAt: null,
+    transactionHash: null
+  };
+  const status = typeof data.status === "string" ? data.status : "inactive";
+  const revocationRequestedAt = typeof data.revocationRequestedAt === "number"
+    ? data.revocationRequestedAt
+    : null;
   return {
-    status: typeof data.status === "string" ? data.status : "inactive",
+    status,
     armedAt: typeof data.armedAt === "number" ? data.armedAt : null,
     expiresAt: typeof data.expiresAt === "number" ? data.expiresAt : null,
     lastEvaluatedAt: typeof data.lastEvaluatedAt === "number" ? data.lastEvaluatedAt : null,
+    revocationPending: revocationRequestedAt !== null && (status === "executing" || status === "submitted"),
+    revocationRequestedAt,
     transactionHash: typeof data.transactionHash === "string" ? data.transactionHash : null
   };
 }
@@ -95,11 +110,12 @@ export async function GET(request: Request) {
     if (!identity) {
       return NextResponse.json({ error: "Sign in to manage live Position Guard." }, { status: 401, headers: HEADERS });
     }
-    if (!configuration || !database) {
-      return NextResponse.json({ available: false, status: "release_locked" }, { headers: HEADERS });
-    }
-    if (!await evaluatorIsHealthy(database)) {
-      return NextResponse.json({ available: false, status: "worker_offline" }, { headers: HEADERS });
+    if (!database) {
+      return NextResponse.json({
+        available: false,
+        systemStatus: "release_locked",
+        ...publicOrder(undefined)
+      }, { headers: HEADERS });
     }
     const url = new URL(request.url);
     const wallet = validAddress(url.searchParams.get("wallet"));
@@ -114,7 +130,25 @@ export async function GET(request: Request) {
     if (data && data.ownerKey !== ownerKey(identity.id)) {
       return NextResponse.json({ error: "Position Guard ownership could not be verified." }, { status: 403, headers: HEADERS });
     }
-    return NextResponse.json({ available: true, ...publicOrder(data) }, { headers: HEADERS });
+    if (!configuration) {
+      return NextResponse.json({
+        available: false,
+        systemStatus: "release_locked",
+        ...publicOrder(data)
+      }, { headers: HEADERS });
+    }
+    if (!await evaluatorIsHealthy(database)) {
+      return NextResponse.json({
+        available: false,
+        systemStatus: "worker_offline",
+        ...publicOrder(data)
+      }, { headers: HEADERS });
+    }
+    return NextResponse.json({
+      available: true,
+      systemStatus: "ready",
+      ...publicOrder(data)
+    }, { headers: HEADERS });
   } catch {
     return NextResponse.json({ error: "RMT could not verify live Position Guard." }, { status: 401, headers: HEADERS });
   }
@@ -147,13 +181,74 @@ export async function POST(request: Request) {
   }
 
   try {
-    const configuration = livePositionGuardServerConfiguration();
     const database = getRmtAdminFirestore();
     const identity = await verifiedIdentity(request);
     if (!identity) {
       return NextResponse.json({ error: "Sign in to manage live Position Guard." }, { status: 401, headers: HEADERS });
     }
-    if (!configuration || !database) {
+    if (!database) {
+      return NextResponse.json({ error: "Live Position Guard records are temporarily unavailable." }, {
+        status: 503,
+        headers: { ...HEADERS, "Retry-After": "30" }
+      });
+    }
+    const reference = database.collection("livePositionGuardOrders")
+      .doc(orderDocumentId(identity.id, wallet, token));
+
+    if (action === "cancel") {
+      const existing = await reference.get();
+      if (!existing.exists) {
+        return NextResponse.json({ available: true, ...publicOrder(undefined) }, { headers: HEADERS });
+      }
+      const existingData = existing.data() as Record<string, unknown>;
+      if (existingData.ownerKey !== ownerKey(identity.id)) {
+        return NextResponse.json({ error: "Position Guard ownership could not be verified." }, {
+          status: 403,
+          headers: HEADERS
+        });
+      }
+      const now = Date.now();
+      const disposition = livePositionGuardCancellationDisposition(existingData.status);
+      if (disposition === "reconcile") {
+        const next = { ...existingData, revocationRequestedAt: now };
+        await reference.set({
+          revocationRequestedAt: now,
+          updatedAt: FieldValue.serverTimestamp()
+        }, { merge: true });
+        return NextResponse.json({ available: true, ...publicOrder(next) }, { headers: HEADERS });
+      }
+      if (disposition === "review") {
+        const next = {
+          ...existingData,
+          reviewReason: "cancellation_unknown_state",
+          revocationRequestedAt: now,
+          status: "review_required"
+        };
+        await reference.set({
+          reviewReason: "cancellation_unknown_state",
+          revocationRequestedAt: now,
+          status: "review_required",
+          updatedAt: FieldValue.serverTimestamp()
+        }, { merge: true });
+        return NextResponse.json({ available: true, ...publicOrder(next) }, { headers: HEADERS });
+      }
+      const next = {
+        ...existingData,
+        cancelledAt: now,
+        revocationRequestedAt: now,
+        status: "cancelled"
+      };
+      await reference.set({
+        cancelledAt: now,
+        revocationRequestedAt: now,
+        status: "cancelled",
+        updatedAt: FieldValue.serverTimestamp()
+      }, { merge: true });
+      return NextResponse.json({ available: true, ...publicOrder(next) }, { headers: HEADERS });
+    }
+
+    const configuration = livePositionGuardServerConfiguration();
+    if (!configuration) {
       return NextResponse.json({ error: "Live Position Guard is release-locked." }, {
         status: 503,
         headers: { ...HEADERS, "Retry-After": "3600" }
@@ -164,23 +259,6 @@ export async function POST(request: Request) {
         status: 503,
         headers: { ...HEADERS, "Retry-After": "30" }
       });
-    }
-    const reference = database.collection("livePositionGuardOrders")
-      .doc(orderDocumentId(identity.id, wallet, token));
-    if (action === "cancel") {
-      const existing = await reference.get();
-      if (existing.exists && existing.data()?.ownerKey !== ownerKey(identity.id)) {
-        return NextResponse.json({ error: "Position Guard ownership could not be verified." }, {
-          status: 403,
-          headers: HEADERS
-        });
-      }
-      await reference.set({
-        cancelledAt: Date.now(),
-        status: "cancelled",
-        updatedAt: FieldValue.serverTimestamp()
-      }, { merge: true });
-      return NextResponse.json({ available: true, status: "cancelled" }, { headers: HEADERS });
     }
 
     const pair = validAddress(input.pair);
@@ -269,7 +347,10 @@ export async function POST(request: Request) {
       available: true,
       armedAt: now,
       expiresAt: now + settings.expiresAfterHours * 60 * 60 * 1_000,
-      status: "active"
+      revocationPending: false,
+      revocationRequestedAt: null,
+      status: "active",
+      systemStatus: "ready"
     }, { headers: HEADERS });
   } catch (cause) {
     return NextResponse.json({
