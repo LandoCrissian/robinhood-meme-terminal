@@ -8,7 +8,7 @@ on:
       - ".terminal-v11-ci-trigger"
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: terminal-v11-diagnostics
@@ -17,12 +17,62 @@ concurrency:
 jobs:
   diagnose:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: feat/terminal-pro-workflow-v11
-          fetch-depth: 1
+          fetch-depth: 0
+      - name: Restore reliability implementation onto stable terminal
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin archive/terminal-pro-workflow-v11-pre-rebase
+          git checkout origin/archive/terminal-pro-workflow-v11-pre-rebase -- \
+            apps/web/app/execution-reliability-v11.css \
+            apps/web/app/external-sushi-quote-panel.tsx \
+            apps/web/app/external-uniswap-trade-panel.tsx \
+            apps/web/app/trade-execution-status.tsx \
+            apps/web/lib/experience-funnel.ts \
+            apps/web/lib/trade-execution-reliability-smoke.ts \
+            apps/web/lib/trade-execution-reliability.ts \
+            apps/web/lib/trade-quote-client.ts \
+            apps/web/lib/trade-speed-smoke.ts \
+            apps/web/lib/use-trade-execution-recovery.ts \
+            apps/web/lib/use-trade-fee-estimate.ts \
+            apps/web/lib/use-trade-quote-freshness.ts \
+            apps/web/next.config.mjs \
+            docs/TERMINAL_EXECUTION_RELIABILITY.md
+
+          python3 <<'PY'
+          import json
+          from pathlib import Path
+
+          package_path = Path("apps/web/package.json")
+          package = json.loads(package_path.read_text())
+          scripts = package["scripts"]
+          scripts["test:trade-reliability"] = "tsx lib/trade-execution-reliability-smoke.ts"
+          speed = scripts["test:trade-speed"]
+          reliability = "tsx lib/trade-execution-reliability-smoke.ts"
+          if reliability not in speed:
+              parts = speed.split(" && ")
+              parts.insert(1, reliability)
+              scripts["test:trade-speed"] = " && ".join(parts)
+          package_path.write_text(json.dumps(package, indent=2) + "\n")
+
+          layout_path = Path("apps/web/app/layout.tsx")
+          layout = layout_path.read_text()
+          import_line = 'import "./execution-reliability-v11.css";\n'
+          if import_line not in layout:
+              anchor = 'import "./terminal-minor-fixes-v10.css";\n'
+              if anchor not in layout:
+                  raise SystemExit("terminal minor fixes import anchor missing")
+              layout = layout.replace(anchor, anchor + import_line, 1)
+              layout_path.write_text(layout)
+          PY
+
+          rm -f .github/workflows/rebase-terminal-v11.yml
+          git diff --check
       - uses: pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a # v4.4.0
         with:
           version: 10.12.1
@@ -39,7 +89,20 @@ jobs:
           pnpm --filter web test:trade-speed
           pnpm --filter web test:experience
           pnpm --filter web test:trade-ticket
+          pnpm --filter web test:terminal-workstation
       - name: Compile production web application
         env:
           NEXT_PUBLIC_RMT_NETWORK: mainnet
         run: pnpm --filter web build
+      - name: Commit validated reliability implementation
+        shell: bash
+        run: |
+          git config user.name "rmt-terminal-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No reliability changes remained to commit."
+            exit 0
+          fi
+          git commit -m "feat(web): rebase execution reliability onto stable terminal"
+          git push origin HEAD:feat/terminal-pro-workflow-v11
