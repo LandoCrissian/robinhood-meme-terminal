@@ -115,13 +115,18 @@ assert.match(
 );
 assert.match(
   minorFixesCss,
-  /\.externalIdentity \{[\s\S]*?padding: 10px 48px 10px 12px;/,
+  /\.externalIdentity \{[\s\S]*?padding: 9px 48px 9px 12px;/,
   "Desktop identity must reserve a fixed watch-control gutter."
 );
 assert.match(
   minorFixesCss,
   /\.runnerWatchButton \{[\s\S]*?position: absolute;[\s\S]*?right: 10px;/,
   "The desktop watch star must stay inside the identity cell instead of consuming the token-name column."
+);
+assert.match(
+  minorFixesCss,
+  /\.universalTradeRail \{[\s\S]*?display: flex !important;[\s\S]*?max-height: min\(94dvh, 900px\) !important;[\s\S]*?flex-direction: column !important;/,
+  "Mobile execution must be a viewport-bound ordered sheet rather than the desktop rail squeezed onto a phone."
 );
 assert.match(
   minorFixesCss,
@@ -133,7 +138,32 @@ assert.match(
   /\.universalTradeSheetBackdrop\.visible \{[\s\S]*?pointer-events: auto !important;[\s\S]*?visibility: visible !important;/,
   "The mobile trade backdrop must participate in the same explicit open state."
 );
+assert.match(
+  minorFixesCss,
+  /> \.externalSushiQuote,[\s\S]*?> \.universalTradeUnavailable \{[\s\S]*?order: 3 !important;/,
+  "The live order ticket must appear before route comparison and advanced execution controls on mobile."
+);
+assert.match(
+  minorFixesCss,
+  /> \.universalRouteDecision \{[\s\S]*?order: 4 !important;/,
+  "The selected route summary must follow the primary order ticket on mobile."
+);
+assert.match(
+  minorFixesCss,
+  /> \.universalVenueSelector \{[\s\S]*?order: 5 !important;/,
+  "Full venue comparison must remain available below the primary order ticket."
+);
+assert.match(
+  minorFixesCss,
+  /> \.tradeExecutionControls \{[\s\S]*?order: 6 !important;/,
+  "Advanced execution rules must remain available without preceding the amount and quote controls."
+);
+assert.match(
+  minorFixesCss,
+  /\.externalUniswapSubmit \{[\s\S]*?position: sticky !important;[\s\S]*?bottom: max\(8px, env\(safe-area-inset-bottom\)\) !important;[\s\S]*?min-height: 54px !important;/,
+  "The final wallet action must remain reachable above the mobile safe area."
+);
 
 console.log(
-  "RMT terminal preserves reversible discovery, persistent operator settings, complete route batching, signal-board cleanup, desktop identity space, and visible mobile Buy/Sell execution."
+  "RMT preserves reversible discovery, complete route batching, readable desktop identity, and an amount-first mobile Buy/Sell sheet with a reachable wallet action."
 );
