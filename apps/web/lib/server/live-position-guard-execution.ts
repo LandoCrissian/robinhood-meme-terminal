@@ -34,11 +34,13 @@ export function livePositionGuardServerConfiguration(
   const evaluatorToken = env.RMT_POSITION_GUARD_EVALUATOR_TOKEN?.trim() ?? "";
   const workerEnabled = env.RMT_POSITION_GUARD_WORKER_ENABLED?.trim() === "true";
   if (
-    !publicConfiguration || appId.length !== 25 || !SECRET.test(appSecret)
+    !publicConfiguration?.enabled || appId.length !== 25 || !SECRET.test(appSecret)
     || !BASE64.test(authorizationPrivateKey) || !SECRET.test(evaluatorToken) || !workerEnabled
   ) return null;
   return {
-    ...publicConfiguration,
+    executor: publicConfiguration.executor,
+    policyId: publicConfiguration.policyId,
+    signerId: publicConfiguration.signerId,
     appId,
     appSecret,
     authorizationPrivateKey,
