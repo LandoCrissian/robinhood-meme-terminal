@@ -58,18 +58,26 @@ assert.match(protectionInventoryRoute, /reviewReason: livePositionGuardReviewRea
 assert.doesNotMatch(protectionInventoryRoute, /walletId\s*:/);
 assert.doesNotMatch(protectionInventoryRoute, /authorizationId\s*:/);
 
-assert.match(protectionOrderRoute, /livePositionGuardAuthorityMatchesPlan/);
-assert.match(protectionOrderRoute, /livePositionGuardCanReplaceOrder/);
-assert.match(protectionOrderRoute, /database\.runTransaction/);
+assert.match(protectionOrderRoute, /action !== "prepare"/);
+assert.match(protectionOrderRoute, /normalizeLivePositionGuardOnchainOrder/);
+assert.match(protectionOrderRoute, /livePositionGuardOnchainOrderMatchesPlan/);
 assert.match(protectionOrderRoute, /allowance equal to the protected amount/);
+assert.match(protectionOrderRoute, /onchain_order_not_closed/);
 assert.match(protectionOrderRoute, /must be cleared or reconciled/);
+assert.match(protectionOrderRoute, /randomBytes\(32\)/);
 assert.match(evaluatorRoute, /livePositionGuardRuntimeAuthority/);
-assert.match(evaluatorRoute, /const amountIn = amountLimit/);
+assert.match(evaluatorRoute, /buildLivePositionGuardCheckpointCall/);
+assert.match(evaluatorRoute, /previewV3Order/);
+assert.match(evaluatorRoute, /fresh_quote_below_twap_minimum/);
 assert.match(evaluatorRoute, /transaction_receipt_timeout/);
 assert.match(evaluatorRoute, /\.orderBy\("lastEvaluatedAt", "asc"\)/);
 assert.match(evaluatorRoute, /Promise\.all\(orders\.docs\.map/);
 assert.match(runtimePolicy, /balance_below_order_limit/);
-assert.match(runtimePolicy, /residual executor allowance/);
+assert.match(runtimePolicy, /allowance_exceeds_order_limit/);
+assert.match(runtimePolicy, /registerV3Order/);
+assert.match(runtimePolicy, /checkpointV3Order/);
+assert.match(runtimePolicy, /cancelV3Order/);
+assert.match(runtimePolicy, /livePositionGuardOnchainOrderMatchesPlan/);
 assert.match(reviewPolicy, /allowance_exceeds_order_limit/);
 assert.match(reviewPolicy, /residual executor allowance/);
 
@@ -86,6 +94,9 @@ assert.match(localGuardPanel, /armingEnabled=\{false\}/);
 assert.match(localGuardPanel, /Server-backed automatic permissions must be managed separately in Protection Center/);
 assert.match(liveGuardControls, /candidate\.address\.toLowerCase\(\) === wallet\.toLowerCase\(\)/);
 assert.match(liveGuardControls, /armingEnabled && configuration\.enabled/);
+assert.match(liveGuardControls, /registerV3Order/);
+assert.match(liveGuardControls, /cancelV3Order/);
+assert.match(liveGuardControls, /5-minute TWAP/);
 assert.match(liveGuardControls, /already-authorized transaction may still confirm/);
 
 assert.match(publicChrome, /<PublicLink href="\/protection">Protection<\/PublicLink>/);
