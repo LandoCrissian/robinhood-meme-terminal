@@ -1,0 +1,45 @@
+name: Terminal V11 diagnostics
+
+on:
+  pull_request:
+    branches:
+      - automation/terminal-v11-ci-base
+    paths:
+      - ".terminal-v11-ci-trigger"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: terminal-v11-diagnostics
+  cancel-in-progress: true
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: feat/terminal-pro-workflow-v11
+          fetch-depth: 1
+      - uses: pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a # v4.4.0
+        with:
+          version: 10.12.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: TypeScript diagnostics
+        run: pnpm --filter web typecheck
+      - name: Targeted execution reliability tests
+        run: |
+          pnpm --filter web test:trade-reliability
+          pnpm --filter web test:trade-speed
+          pnpm --filter web test:experience
+          pnpm --filter web test:trade-ticket
+      - name: Compile production web application
+        env:
+          NEXT_PUBLIC_RMT_NETWORK: mainnet
+        run: pnpm --filter web build
