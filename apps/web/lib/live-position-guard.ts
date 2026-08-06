@@ -20,6 +20,12 @@ const CANCELLABLE_ORDER_STATUS = new Set([
   "no_position",
   "review_required"
 ]);
+const REPLACEABLE_ORDER_STATUS = new Set([
+  "cancelled",
+  "executed",
+  "expired",
+  "inactive"
+]);
 
 export type LivePositionGuardSettings = {
   stopLossBps: number;
@@ -93,6 +99,24 @@ export function livePositionGuardCancellationDisposition(status: unknown): LiveP
   if (status === "executing" || status === "submitted") return "reconcile";
   if (typeof status === "string" && CANCELLABLE_ORDER_STATUS.has(status)) return "cancel";
   return "review";
+}
+
+export function livePositionGuardCanReplaceOrder(status: unknown, walletCleanupReportedAt: unknown) {
+  return typeof status === "string"
+    && REPLACEABLE_ORDER_STATUS.has(status)
+    && typeof walletCleanupReportedAt === "number"
+    && Number.isSafeInteger(walletCleanupReportedAt)
+    && walletCleanupReportedAt > 0;
+}
+
+export function livePositionGuardAuthorityMatchesPlan(input: {
+  allowance: bigint;
+  balance: bigint;
+  amountIn: bigint;
+}) {
+  return input.amountIn > 0n
+    && input.allowance === input.amountIn
+    && input.balance >= input.amountIn;
 }
 
 export function livePositionGuardOrderId(input: {
