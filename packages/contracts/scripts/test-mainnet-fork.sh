@@ -53,4 +53,8 @@ ROBINHOOD_MAINNET_RPC_URL="$FORK_RPC_URL" \
 ROBINHOOD_MAINNET_RPC_URL="$FORK_RPC_URL" \
   forge test --match-contract V6UniversalRouterForkTest -vvv
 
-echo "The exact V6 deployment script, phased launch, graduation, fee routing, and official Universal Router Buy/Sell rehearsal passed on a Robinhood mainnet fork."
+RMT_RUN_MAINNET_FORK=true \
+ROBINHOOD_MAINNET_RPC_URL="$FORK_RPC_URL" \
+  forge test --match-contract RMTPositionGuardExecutorForkTest -vvv
+
+echo "The exact V6 deployment script, phased launch, graduation, fee routing, Universal Router Buy/Sell flow, and registered-TWAP Position Guard registration/revocation rehearsal passed on a Robinhood mainnet fork."
