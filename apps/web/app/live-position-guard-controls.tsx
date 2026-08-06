@@ -46,6 +46,7 @@ function statusLabel(status: string) {
   if (status === "confirming") return "VERIFYING TRIGGER";
   if (status === "approval_required") return "APPROVAL ENDED";
   if (status === "review_required") return "REVIEW REQUIRED";
+  if (status === "no_position") return "NO POSITION";
   if (status === "expired") return "EXPIRED";
   if (status === "cancelled") return "OFF";
   if (status === "loading") return "CHECKING";
@@ -100,7 +101,7 @@ function ConfiguredLivePositionGuardControls({
   const embeddedWallet = wallets.find((candidate) => candidate.walletClientType === "privy");
   const walletMatches = embeddedWallet?.address.toLowerCase() === wallet.toLowerCase();
   const active = ["active", "confirming", "executing", "submitted"].includes(status.status ?? "");
-  const cleanupRequired = ["executed", "expired", "review_required", "approval_required"].includes(status.status ?? "");
+  const cleanupRequired = ["executed", "expired", "review_required", "approval_required", "no_position"].includes(status.status ?? "");
   const headers = useMemo(() => identityToken ? {
     Authorization: `Bearer ${identityToken}`,
     "Content-Type": "application/json"
@@ -197,7 +198,7 @@ function ConfiguredLivePositionGuardControls({
   async function revoke() {
     if (!headers || !embeddedWallet || !walletMatches) return;
     setBusy(true);
-    setMessage("Removing the executor allowance, RMT signer permission, and live order.");
+    setMessage("Removing the executor allowance, every delegated signer on this RMT wallet, and the live order.");
     try {
       await approveExact(0n);
       await removeSigners({ address: wallet });
@@ -207,7 +208,7 @@ function ConfiguredLivePositionGuardControls({
         body: JSON.stringify({ action: "cancel", token, wallet })
       }));
       setStatus(next);
-      setMessage("Automatic execution is revoked. The local monitoring plan remains available.");
+      setMessage("Automatic execution is revoked. Privy removed all delegated signers from this RMT wallet; local monitoring remains available.");
     } catch (cause) {
       setMessage(cause instanceof Error ? cause.message : "Revocation did not complete. Review the wallet permission.");
     } finally {
@@ -239,6 +240,14 @@ function ConfiguredLivePositionGuardControls({
       <div className="livePositionGuardControl compactState unavailable">
         <strong>Automatic exits are release-locked</strong>
         <p>The contract, signer policy, and evaluator must all pass the production release gate before this control can authorize funds.</p>
+      </div>
+    );
+  }
+  if (status.status === "error") {
+    return (
+      <div className="livePositionGuardControl compactState unavailable">
+        <strong>Automatic-exit status could not be verified</strong>
+        <p>{status.error ?? "RMT will not request delegated authority while the current order state is unknown."}</p>
       </div>
     );
   }
@@ -293,7 +302,7 @@ function ConfiguredLivePositionGuardControls({
           </label>
           <label className="livePositionGuardReview">
             <input type="checkbox" checked={authorityReviewed} onChange={(event) => setAuthorityReviewed(event.target.checked)} />
-            <span>I reviewed the approved amount, RMT evaluator timing authority, fixed executor, same-wallet recipient, expiry, and revocation path.</span>
+            <span>I reviewed the approved amount, RMT evaluator timing authority, fixed executor, same-wallet recipient, expiry, and revocation path. Revocation removes all additional signers from this embedded wallet.</span>
           </label>
           <button type="button" disabled={busy || rawBalance <= 0n || !authorityReviewed} onClick={() => void arm()}>
             {busy ? "Securing permission…" : "Authorize automatic exit"}
@@ -309,7 +318,7 @@ function ConfiguredLivePositionGuardControls({
           <div><dt>Token</dt><dd title={token}>{shortAddress(token)}</dd></div>
           <div><dt>Max price impact</dt><dd>{(settings.maxPriceImpactBps / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}%</dd></div>
         </dl>
-        <p>The evaluator and policy signer control submission timing. A compromised signer could submit early within the approved allowance, but cannot redirect proceeds or spend beyond that approval. The executor has no arbitrary recipient, generic call, custody account, or RMT fee path.</p>
+        <p>The evaluator and policy signer control submission timing. A compromised signer could submit early within the approved allowance, but cannot redirect proceeds or spend beyond that approval. The executor has no arbitrary recipient, generic call, custody account, or RMT fee path. Privy’s revoke operation removes all additional signers on this embedded wallet.</p>
       </details>
 
       {(message || status.error) && <p className="livePositionGuardMessage" role="status" aria-live="polite">{message || status.error}</p>}
