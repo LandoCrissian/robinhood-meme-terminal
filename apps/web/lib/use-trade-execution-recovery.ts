@@ -12,7 +12,6 @@ import {
   type TradeExecutionFailure,
   type TradeExecutionRecord,
   type TradeExecutionSide,
-  type TradeExecutionStatus,
   type TradeExecutionVenue
 } from "./trade-execution-reliability";
 
@@ -46,6 +45,7 @@ export function useTradeExecutionRecovery({
   const [failure, setFailure] = useState<TradeExecutionFailure>();
   const [rawError, setRawError] = useState("");
   const [confirmationUnavailable, setConfirmationUnavailable] = useState(false);
+  const [resolvedStatus, setResolvedStatus] = useState<"confirmed" | "failed">();
   const recordedSubmission = useRef<Hash>();
 
   const identityKey = `${wallet?.toLowerCase() ?? ""}:${token.toLowerCase()}:${venue}:${side}`;
@@ -57,6 +57,7 @@ export function useTradeExecutionRecovery({
     setFailure(undefined);
     setRawError("");
     setConfirmationUnavailable(false);
+    setResolvedStatus(undefined);
     recordedSubmission.current = undefined;
     if (!wallet) return;
     const pending = findRecoverableTrade({ wallet, token, venue, side });
@@ -85,6 +86,7 @@ export function useTradeExecutionRecovery({
     setFailure(undefined);
     setRawError("");
     setConfirmationUnavailable(false);
+    setResolvedStatus(undefined);
     recordExperienceStage("transaction_submitted");
   }, [amountIn, pair, side, submittedHash, token, venue, wallet]);
 
@@ -92,6 +94,7 @@ export function useTradeExecutionRecovery({
     setFailure(undefined);
     setRawError("");
     setConfirmationUnavailable(false);
+    setResolvedStatus("confirmed");
     setRecord((current) => current ? markTradeExecutionConfirmed(current.id) ?? { ...current, state: "confirmed" } : current);
     recordExperienceStage("transaction_confirmed");
   }, []);
@@ -102,6 +105,7 @@ export function useTradeExecutionRecovery({
     setFailure(nextFailure);
     setRawError(detail);
     setConfirmationUnavailable(false);
+    setResolvedStatus("failed");
     setRecord((current) => current
       ? markTradeExecutionFailed(current.id, nextFailure.code) ?? { ...current, state: "failed", failureCode: nextFailure.code }
       : current);
@@ -115,6 +119,7 @@ export function useTradeExecutionRecovery({
     setFailure(nextFailure);
     setRawError(detail);
     setConfirmationUnavailable(true);
+    setResolvedStatus(undefined);
     return nextFailure;
   }, []);
 
@@ -123,15 +128,16 @@ export function useTradeExecutionRecovery({
     setFailure(undefined);
     setRawError("");
     setConfirmationUnavailable(false);
+    setResolvedStatus(undefined);
   }, [record?.state]);
 
   const status = useMemo<RecoveredTradeExecutionStatus>(() => {
-    if (record?.state === "confirmed") return "confirmed";
-    if (record?.state === "failed" || (failure && !trackedHash)) return "failed";
+    if (resolvedStatus === "confirmed" || record?.state === "confirmed") return "confirmed";
+    if (resolvedStatus === "failed" || record?.state === "failed" || (failure && !trackedHash)) return "failed";
     if (trackedHash && confirmationUnavailable) return "confirmation-unavailable";
     if (trackedHash) return "confirming";
     return "idle";
-  }, [confirmationUnavailable, failure, record?.state, trackedHash]);
+  }, [confirmationUnavailable, failure, record?.state, resolvedStatus, trackedHash]);
 
   return {
     trackedHash,
