@@ -1,0 +1,202 @@
+/* RMT execution reliability V11: transaction state, recovery, and actionable failures. */
+.tradePreflightFailure,
+.tradeExecutionStatus {
+  display: grid;
+  gap: 10px;
+  margin: 10px 14px;
+  padding: 12px 13px;
+  border: 1px solid rgba(239, 199, 106, .28);
+  border-radius: 12px;
+  background: rgba(239, 199, 106, .065);
+  color: #d7e0d9;
+}
+
+.tradePreflightFailure {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+}
+
+.tradePreflightFailure > span,
+.tradeExecutionStatus > header > span {
+  color: #efc76a;
+  font: 900 .58rem/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: .08em;
+}
+
+.tradePreflightFailure > div,
+.tradeExecutionStatusCopy {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.tradePreflightFailure strong,
+.tradeExecutionStatusCopy strong {
+  color: #edf3ee;
+  font-size: .75rem;
+  line-height: 1.35;
+}
+
+.tradePreflightFailure p,
+.tradeExecutionStatusCopy p,
+.tradeExecutionStatus details p {
+  margin: 0;
+  color: #a2aea6;
+  font-size: .65rem;
+  line-height: 1.5;
+}
+
+.tradePreflightFailure small,
+.tradeExecutionStatusCopy small {
+  color: #d7c389;
+  font-size: .61rem;
+  line-height: 1.45;
+}
+
+.tradeExecutionStatus.confirming {
+  border-color: rgba(102, 237, 122, .24);
+  background: rgba(102, 237, 122, .055);
+}
+
+.tradeExecutionStatus.confirmed {
+  border-color: rgba(102, 237, 122, .38);
+  background: rgba(102, 237, 122, .085);
+}
+
+.tradeExecutionStatus.failed {
+  border-color: rgba(255, 116, 125, .34);
+  background: rgba(255, 116, 125, .07);
+}
+
+.tradeExecutionStatus.confirmation-unavailable {
+  border-color: rgba(239, 199, 106, .34);
+  background: rgba(239, 199, 106, .07);
+}
+
+.tradeExecutionStatus.confirming > header > span,
+.tradeExecutionStatus.confirmed > header > span {
+  color: #7ce98b;
+}
+
+.tradeExecutionStatus.failed > header > span {
+  color: #ff9ea5;
+}
+
+.tradeExecutionStatus > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.tradeExecutionStatus > header em {
+  padding: 5px 7px;
+  border: 1px solid rgba(102, 237, 122, .2);
+  border-radius: 999px;
+  color: #9fe7a9;
+  font-size: .54rem;
+  font-style: normal;
+  font-weight: 850;
+}
+
+.tradeExecutionStatusActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.tradeExecutionStatusActions a,
+.tradeExecutionStatusActions button,
+.tradeExecutionStatus footer button {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 10px;
+  border: 1px solid rgba(179, 201, 185, .2);
+  border-radius: 8px;
+  background: #111813;
+  color: #cad4cc;
+  font: inherit;
+  font-size: .61rem;
+  font-weight: 850;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.tradeExecutionStatusActions a:hover,
+.tradeExecutionStatusActions button:hover,
+.tradeExecutionStatus footer button:hover,
+.tradeExecutionStatusActions a:focus-visible,
+.tradeExecutionStatusActions button:focus-visible,
+.tradeExecutionStatus footer button:focus-visible {
+  border-color: rgba(102, 237, 122, .42);
+  color: #8def9b;
+}
+
+.tradeExecutionStatus details {
+  border-top: 1px solid rgba(179, 201, 185, .11);
+  padding-top: 9px;
+}
+
+.tradeExecutionStatus details summary {
+  min-height: 32px;
+  color: #89958d;
+  font-size: .61rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.tradeExecutionStatus details p {
+  overflow-wrap: anywhere;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.tradeExecutionStatus > footer {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding-top: 9px;
+  border-top: 1px solid rgba(179, 201, 185, .11);
+}
+
+.tradeExecutionStatus > footer span {
+  margin-right: auto;
+  color: #87948b;
+  font-size: .61rem;
+}
+
+.tradeExecutionStatus > footer button[aria-pressed="true"] {
+  border-color: rgba(102, 237, 122, .38);
+  background: rgba(102, 237, 122, .12);
+  color: #90eda0;
+}
+
+@media (max-width: 760px) {
+  .tradePreflightFailure,
+  .tradeExecutionStatus {
+    margin-right: 10px;
+    margin-left: 10px;
+  }
+
+  .tradePreflightFailure {
+    grid-template-columns: 1fr;
+  }
+
+  .tradeExecutionStatusActions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .tradeExecutionStatusActions > :only-child {
+    grid-column: 1 / -1;
+  }
+
+  .tradeExecutionStatus > footer {
+    flex-wrap: wrap;
+  }
+
+  .tradeExecutionStatus > footer span {
+    flex: 0 0 100%;
+  }
+}
