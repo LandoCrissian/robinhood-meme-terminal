@@ -102,12 +102,21 @@ assert.equal(recovered.state, "healthy");
 assert.equal(recovered.firstBelowFloorAt, null);
 
 assert.equal(livePositionGuardPublicConfiguration({}), null);
-assert.equal(livePositionGuardPublicConfiguration({
+const revokeOnlyConfiguration = livePositionGuardPublicConfiguration({
+  NEXT_PUBLIC_RMT_POSITION_GUARD_EXECUTOR: "0x0000000000000000000000000000000000000001",
+  NEXT_PUBLIC_RMT_POSITION_GUARD_POLICY_ID: "policy_12345678",
+  NEXT_PUBLIC_RMT_POSITION_GUARD_SIGNER_ID: "signer_12345678"
+});
+assert.equal(revokeOnlyConfiguration?.enabled, false);
+assert.equal(revokeOnlyConfiguration?.executor, "0x0000000000000000000000000000000000000001");
+const enabledConfiguration = livePositionGuardPublicConfiguration({
   NEXT_PUBLIC_RMT_LIVE_POSITION_GUARD_ENABLED: "true",
   NEXT_PUBLIC_RMT_POSITION_GUARD_EXECUTOR: "0x0000000000000000000000000000000000000001",
   NEXT_PUBLIC_RMT_POSITION_GUARD_POLICY_ID: "policy_12345678",
   NEXT_PUBLIC_RMT_POSITION_GUARD_SIGNER_ID: "signer_12345678"
-})?.executor, "0x0000000000000000000000000000000000000001");
+});
+assert.equal(enabledConfiguration?.enabled, true);
+assert.equal(enabledConfiguration?.executor, "0x0000000000000000000000000000000000000001");
 
 assert.match(livePositionGuardOrderId({
   authorizationId: "authorization_12345678",
