@@ -201,6 +201,22 @@
 }
 
 @media (max-width: 760px) {
+  .mobileDock {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    padding-right: 6px;
+    padding-left: 6px;
+  }
+
+  .mobileDock a {
+    gap: 3px;
+    padding: 0 2px;
+    font-size: .62rem;
+  }
+
+  .mobileDock span {
+    font-size: .78rem;
+  }
+
   .terminalPage .terminalIntro {
     padding-top: 14px;
   }
