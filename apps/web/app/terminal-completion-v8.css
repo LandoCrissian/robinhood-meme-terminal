@@ -31,6 +31,12 @@ body:has(.professionalTradeWorkspace) .communityLive {
   font-size: .56rem;
 }
 
+.terminalPage .externalIdentityLink {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+}
+
 .terminalPage .liveSignalRail > a {
   min-height: 92px;
   overflow: hidden;
@@ -47,6 +53,14 @@ body:has(.professionalTradeWorkspace) .communityLive {
   overflow: hidden;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
+}
+
+.terminalPage .siteFooter a,
+.professionalTradeWorkspace .siteFooter a,
+.protectionCenterPage .siteFooter a {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
 }
 
 /* Workspace labels stay compact, but never collapse into six- or seven-pixel
@@ -74,7 +88,8 @@ body:has(.professionalTradeWorkspace) .communityLive {
 }
 
 .professionalTradeWorkspace .universalTradeTapeDetails summary,
-.professionalTradeWorkspace .universalTradeRail summary {
+.professionalTradeWorkspace .universalTradeRail summary,
+.professionalTradeWorkspace .tradeExecutionControlGroup button {
   min-height: 36px;
 }
 
@@ -101,6 +116,12 @@ body:has(.professionalTradeWorkspace) .communityLive {
   /* Keep global navigation present without letting it dominate the viewport. */
   .publicNav {
     height: 58px;
+  }
+
+  .publicNav .brandLockup {
+    display: inline-flex;
+    min-height: 44px;
+    align-items: center;
   }
 
   .publicNavActions .wallet {
@@ -136,23 +157,51 @@ body:has(.professionalTradeWorkspace) .communityLive {
   /* The signal rail previously inherited enough flexible height to resemble a
    * stack of hero cards. It is now a compact, horizontally scannable feed. */
   .terminalPage .liveSignalRail {
-    grid-auto-columns: minmax(0, calc(100vw - 44px));
-    gap: 7px;
-    padding: 0 12px 11px;
+    display: flex !important;
+    width: auto !important;
+    min-height: 0 !important;
+    height: auto !important;
+    max-height: none !important;
+    flex-flow: row nowrap !important;
+    align-items: stretch !important;
+    justify-content: flex-start !important;
+    gap: 7px !important;
+    margin: 0 !important;
+    padding: 0 12px 11px !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    grid-template-columns: none !important;
+    grid-auto-columns: auto !important;
+    grid-auto-flow: initial !important;
+    scroll-snap-type: x proximity;
+    overflow-anchor: none;
   }
 
   .terminalPage .liveSignalRail > a {
-    height: 104px;
-    min-height: 104px;
-    max-height: 104px;
-    align-content: start;
-    gap: 6px;
-    padding: 11px 12px;
-    overflow: hidden;
+    position: static !important;
+    inset: auto !important;
+    display: flex !important;
+    width: min(82vw, 300px) !important;
+    min-width: min(82vw, 300px) !important;
+    max-width: 300px !important;
+    height: 104px !important;
+    min-height: 104px !important;
+    max-height: 104px !important;
+    flex: 0 0 min(82vw, 300px) !important;
+    align-self: stretch !important;
+    justify-content: flex-start !important;
+    flex-direction: column;
+    gap: 6px !important;
+    margin: 0 !important;
+    padding: 11px 12px !important;
+    overflow: hidden !important;
+    transform: none !important;
+    scroll-snap-align: start;
   }
 
   .terminalPage .liveSignalRail > a > span {
     min-height: 20px;
+    flex: 0 0 auto;
   }
 
   .terminalPage .liveSignalRail > a > strong {
@@ -169,6 +218,15 @@ body:has(.professionalTradeWorkspace) .communityLive {
     min-height: 36px;
     padding-right: 10px;
     padding-left: 10px;
+  }
+
+  .terminalPage .runnerSourceFilters button b,
+  .terminalPage .runnerTabs button span,
+  .terminalPage .mobileRunnerRank,
+  .terminalPage .mobileRunnerCopy small,
+  .terminalPage .mobileRunnerCopy em,
+  .terminalPage .mobileRunnerMetrics small {
+    font-size: .59rem !important;
   }
 
   /* The complete disclosure remains in the DOM and is available to assistive
@@ -263,6 +321,7 @@ body:has(.professionalTradeWorkspace) .communityLive {
 
   .professionalTradeWorkspace .universalTradeTapeDetails summary,
   .professionalTradeWorkspace .universalTradeRail summary,
+  .professionalTradeWorkspace .tradeExecutionControlGroup button,
   .professionalTradeWorkspace .universalTradeRail button:not(.universalTradeRailClose) {
     min-height: 40px;
   }
@@ -276,8 +335,16 @@ body:has(.professionalTradeWorkspace) .communityLive {
   .professionalTradeWorkspace .universalActorList a small,
   .professionalTradeWorkspace .universalTradeTape footer,
   .professionalTradeWorkspace .universalTradeTapeList small,
-  .professionalTradeWorkspace .universalHolderIntelligence footer {
+  .professionalTradeWorkspace .universalHolderIntelligence footer,
+  .professionalTradeWorkspace .universalActivityGrid article span,
+  .professionalTradeWorkspace .universalActivityGrid article b {
     font-size: .59rem !important;
+  }
+
+  .terminalPage .siteFooter a,
+  .professionalTradeWorkspace .siteFooter a,
+  .protectionCenterPage .siteFooter a {
+    min-height: 36px;
   }
 
   .protectionCenterPage .protectionTabs button {
@@ -298,10 +365,6 @@ body:has(.professionalTradeWorkspace) .communityLive {
 
   .mobileDock a {
     font-size: .53rem;
-  }
-
-  .terminalPage .liveSignalRail {
-    grid-auto-columns: minmax(0, calc(100vw - 34px));
   }
 
   .professionalTradeWorkspace .universalHeroActions button,
