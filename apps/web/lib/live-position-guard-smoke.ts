@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import {
   evaluateLivePositionGuard,
+  livePositionGuardCancellationDisposition,
   livePositionGuardHeartbeatIsFresh,
   livePositionGuardOrderId,
   livePositionGuardPublicConfiguration,
@@ -22,6 +23,11 @@ assert.equal(unitQuoteX18(50n, 100n), 500_000_000_000_000_000n);
 assert.equal(livePositionGuardHeartbeatIsFresh(970_000, 1_000_000), true);
 assert.equal(livePositionGuardHeartbeatIsFresh(969_999, 1_000_000), false);
 assert.equal(livePositionGuardHeartbeatIsFresh(1_000_001, 1_000_000), false);
+assert.equal(livePositionGuardCancellationDisposition("active"), "cancel");
+assert.equal(livePositionGuardCancellationDisposition("submitted"), "reconcile");
+assert.equal(livePositionGuardCancellationDisposition("executing"), "reconcile");
+assert.equal(livePositionGuardCancellationDisposition("no_position"), "cancel");
+assert.equal(livePositionGuardCancellationDisposition("unknown_state"), "review");
 
 const base = {
   entryUnitQuoteX18: 100n,
