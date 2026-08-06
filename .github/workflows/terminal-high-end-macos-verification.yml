@@ -8,7 +8,7 @@ on:
       - ".github/workflows/terminal-high-end-macos-verification.yml"
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: terminal-high-end-macos-verification
@@ -62,7 +62,8 @@ jobs:
           lines = [line[10:] if line.startswith("          ") else line for line in source[start:end]]
           Path('/tmp/rmt-high-end/acceptance.mjs').write_text('\n'.join(lines) + '\n')
           PY
-          node /tmp/rmt-high-end/acceptance.mjs
+          set -o pipefail
+          node /tmp/rmt-high-end/acceptance.mjs 2>&1 | tee /tmp/terminal-high-end-acceptance.log
       - name: Upload high-end terminal evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -71,3 +72,73 @@ jobs:
           path: terminal-high-end-evidence
           if-no-files-found: warn
           retention-days: 14
+      - name: Publish compact verification evidence to the branch
+        if: always()
+        shell: bash
+        env:
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          set -euo pipefail
+          evidence="docs/terminal-high-end-macos-evidence"
+          rm -rf "$evidence"
+          mkdir -p "$evidence"
+
+          if [ -f terminal-high-end-evidence/report.json ]; then
+            cp terminal-high-end-evidence/report.json "$evidence/report.json"
+          fi
+          if [ -f /tmp/terminal-high-end-acceptance.log ]; then
+            tail -n 240 /tmp/terminal-high-end-acceptance.log > "$evidence/acceptance.log"
+          fi
+          if [ -f /tmp/rmt-high-end-macos.log ]; then
+            tail -n 160 /tmp/rmt-high-end-macos.log > "$evidence/server.log"
+          fi
+
+          for image in \
+            home-1366x768.png \
+            scanner-1366x768.png \
+            home-1440x900.png \
+            scanner-1440x900.png \
+            home-1920x1080.png \
+            market-1440x900.png \
+            chart-candles.png \
+            home-mobile.png; do
+            source="terminal-high-end-evidence/$image"
+            if [ ! -f "$source" ]; then continue; fi
+            name="${image%.png}"
+            sips -Z 760 -s format jpeg -s formatOptions 44 "$source" --out "/tmp/$name.jpg" >/dev/null
+            base64 < "/tmp/$name.jpg" | tr -d '\n' > "$evidence/$name.jpg.b64"
+          done
+
+          python3 <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          root = Path("docs/terminal-high-end-macos-evidence")
+          report_path = root / "report.json"
+          report = None
+          if report_path.exists():
+              try:
+                  report = json.loads(report_path.read_text())
+              except Exception as error:
+                  report = {"parseError": str(error)}
+          metadata = {
+              "jobStatus": os.environ.get("JOB_STATUS", "unknown"),
+              "sourceSha": os.environ.get("GITHUB_SHA"),
+              "workflowRun": os.environ.get("GITHUB_RUN_ID"),
+              "reportPresent": report_path.exists(),
+              "evidenceFiles": sorted(path.name for path in root.iterdir()),
+              "report": report,
+          }
+          (root / "status.json").write_text(json.dumps(metadata, indent=2) + "\n")
+          PY
+
+          git config user.name "rmt-verification-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add "$evidence"
+          if git diff --cached --quiet; then
+            echo "No compact evidence changed."
+            exit 0
+          fi
+          git commit -m "test(web): publish high-end terminal verification evidence"
+          git push origin HEAD:verify/terminal-high-end-macos
