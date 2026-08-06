@@ -1,63 +1,41 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import type { Address } from "viem";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  POSITION_GUARD_CHANGED_EVENT,
+  acknowledgeProfitTarget,
+  acknowledgePrincipalRecovery,
   advancePositionGuard,
   createPositionGuard,
-  defaultPositionGuardSettings,
   evaluatePositionGuard,
-  positionGuardAfterConfirmedExit,
+  POSITION_GUARD_CHANGED_EVENT,
   readPositionGuard,
   removePositionGuard,
+  resetPositionGuardTrigger,
   writePositionGuard,
-  type PositionGuardExitRequest,
-  type PreparedPositionExit
+  type PositionGuard,
+  type PositionGuardExitReason,
+  type PositionGuardExitRequest
 } from "../lib/position-guard";
+import { type Address } from "viem";
 import { LivePositionGuardControls } from "./live-position-guard-controls";
 
-function compactUsd(value: number) {
-  return `$${value.toLocaleString(undefined, {
-    notation: value >= 1_000_000 ? "compact" : "standard",
-    maximumFractionDigits: value >= 1_000 ? 0 : 2
-  })}`;
+function money(value: number) {
+  if (!Number.isFinite(value) || value < 0) return "—";
+  return value.toLocaleString(undefined, {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: value < 10 ? 2 : 0
+  });
 }
 
-function percent(value: number) {
-  return `${value.toLocaleString(undefined, { maximumFractionDigits: 1 })}%`;
+function percent(bps: number) {
+  return `${(bps / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}%`;
 }
 
-function clampNumber(value: number, minimum: number, maximum: number) {
-  return Math.min(maximum, Math.max(minimum, value));
-}
-
-function priceFromValue(balance: number, currentValueUsd: number) {
-  if (!Number.isFinite(balance) || balance <= 0 || !Number.isFinite(currentValueUsd) || currentValueUsd <= 0) return null;
-  return currentValueUsd / balance;
-}
-
-function exactSettings(input: {
-  stopLossPercent: number;
-  trailingStopPercent: number;
-  breakEvenActivationPercent: number;
-  maxPriceImpactPercent: number;
-}) {
-  return {
-    stopLossBps: Math.round(clampNumber(input.stopLossPercent, 5, 50) * 100),
-    trailingStopBps: Math.round(clampNumber(input.trailingStopPercent, 5, 50) * 100),
-    breakEvenActivationBps: Math.round(clampNumber(input.breakEvenActivationPercent, 10, 100) * 100),
-    maxPriceImpactBps: Math.round(clampNumber(input.maxPriceImpactPercent, 0.1, 4) * 100),
-    recoverPrincipal: true,
-    stagedProfitLock: true
-  };
-}
-
-function levelPriceLabel(value: number | null) {
-  if (value === null || !Number.isFinite(value) || value <= 0) return "—";
-  return value < 0.0001
-    ? `$${value.toLocaleString(undefined, { maximumSignificantDigits: 5 })}`
-    : `$${value.toLocaleString(undefined, { maximumFractionDigits: 6 })}`;
+function profitTargetLabel(key: "principal-2x" | "bank-3x" | "bank-5x") {
+  if (key === "principal-2x") return "Recover basis";
+  if (key === "bank-3x") return "Bank 25%";
+  return "Bank 20%";
 }
 
 export function PositionGuardPanel({
@@ -70,260 +48,322 @@ export function PositionGuardPanel({
   rawBalance,
   onPrepareExit
 }: {
-  wallet: Address;
+  wallet: string;
   token: string;
   symbol: string;
   balance: number;
   currentValueUsd: number;
-  pair: Address;
-  rawBalance: bigint;
+  pair?: Address;
+  rawBalance?: bigint;
   onPrepareExit: (request: PositionGuardExitRequest) => boolean;
 }) {
-  const defaults = defaultPositionGuardSettings();
-  const [mounted, setMounted] = useState(false);
-  const [guard, setGuard] = useState(() => readPositionGuard(wallet, token));
+  const [guard, setGuard] = useState<PositionGuard | null>(null);
   const [editing, setEditing] = useState(false);
+  const [basis, setBasis] = useState("");
+  const [stopLossBps, setStopLossBps] = useState(2000);
+  const [trailingStopBps, setTrailingStopBps] = useState(2000);
+  const [breakEvenActivationBps, setBreakEvenActivationBps] = useState(5000);
+  const [recoverPrincipal, setRecoverPrincipal] = useState(true);
+  const [stagedProfitLock, setStagedProfitLock] = useState(true);
   const [message, setMessage] = useState("");
-  const [stopLossPercent, setStopLossPercent] = useState(defaults.stopLossBps / 100);
-  const [trailingStopPercent, setTrailingStopPercent] = useState(defaults.trailingStopBps / 100);
-  const [breakEvenActivationPercent, setBreakEvenActivationPercent] = useState(defaults.breakEvenActivationBps / 100);
-  const [maxPriceImpactPercent, setMaxPriceImpactPercent] = useState(defaults.maxPriceImpactBps / 100);
-  const [recoverPrincipal, setRecoverPrincipal] = useState(defaults.recoverPrincipal);
-  const [stagedProfitLock, setStagedProfitLock] = useState(defaults.stagedProfitLock);
-  const currentPriceUsd = priceFromValue(balance, currentValueUsd);
-  const currentSettings = exactSettings({
-    stopLossPercent,
-    trailingStopPercent,
-    breakEvenActivationPercent,
-    maxPriceImpactPercent
-  });
-
-  useEffect(() => setMounted(true), []);
+  const notifiedTrigger = useRef<number | null>(null);
+  const notifiedProfitTarget = useRef<string | null>(null);
 
   useEffect(() => {
-    const next = readPositionGuard(wallet, token);
-    setGuard(next);
-    if (next) {
-      setStopLossPercent(next.stopLossBps / 100);
-      setTrailingStopPercent(next.trailingStopBps / 100);
-      setBreakEvenActivationPercent(next.breakEvenActivationBps / 100);
-      setMaxPriceImpactPercent(next.maxPriceImpactBps / 100);
-      setRecoverPrincipal(next.recoverPrincipal);
-      setStagedProfitLock(next.stagedProfitLock);
-    }
-  }, [token, wallet]);
-
-  useEffect(() => {
-    if (!guard || currentPriceUsd === null) return;
-    const advanced = advancePositionGuard(guard, currentPriceUsd);
-    if (advanced.updatedAt !== guard.updatedAt) {
-      writePositionGuard(advanced);
-      setGuard(advanced);
-    }
-  }, [currentPriceUsd, guard]);
-
-  useEffect(() => {
-    const sync = (event: Event) => {
+    const load = () => {
+      const stored = readPositionGuard(wallet, token);
+      setGuard(stored);
+      setEditing(false);
+      setBasis(stored ? String(stored.basisUsd) : currentValueUsd > 0 ? currentValueUsd.toFixed(2) : "");
+      setStopLossBps(stored?.stopLossBps ?? 2000);
+      setTrailingStopBps(stored?.trailingStopBps ?? 2000);
+      setBreakEvenActivationBps(stored?.breakEvenActivationBps ?? 5000);
+      setRecoverPrincipal(stored?.recoverPrincipal ?? true);
+      setStagedProfitLock(stored?.stagedProfitLock ?? true);
+      setMessage("");
+      notifiedTrigger.current = stored?.triggeredAt ?? null;
+      notifiedProfitTarget.current = null;
+    };
+    const handleChange = (event: Event) => {
       const detail = (event as CustomEvent<{ wallet?: string; token?: string }>).detail;
-      if (
-        detail?.wallet && detail?.token
-        && (detail.wallet.toLowerCase() !== wallet.toLowerCase() || detail.token.toLowerCase() !== token.toLowerCase())
-      ) return;
-      setGuard(readPositionGuard(wallet, token));
+      if (detail?.wallet !== wallet.toLowerCase() || detail?.token !== token.toLowerCase()) return;
+      load();
     };
-    window.addEventListener(POSITION_GUARD_CHANGED_EVENT, sync);
-    window.addEventListener("storage", sync);
-    return () => {
-      window.removeEventListener(POSITION_GUARD_CHANGED_EVENT, sync);
-      window.removeEventListener("storage", sync);
-    };
+    load();
+    window.addEventListener(POSITION_GUARD_CHANGED_EVENT, handleChange);
+    return () => window.removeEventListener(POSITION_GUARD_CHANGED_EVENT, handleChange);
   }, [token, wallet]);
+
+  useEffect(() => {
+    if (!guard || currentValueUsd <= 0) return;
+    const next = advancePositionGuard(guard, currentValueUsd, Date.now(), balance);
+    if (
+      next.highWatermarkUsd === guard.highWatermarkUsd
+      && next.triggeredAt === guard.triggeredAt
+      && next.updatedAt === guard.updatedAt
+    ) return;
+    if (writePositionGuard(next)) setGuard(next);
+  }, [balance, currentValueUsd, guard]);
 
   const evaluation = useMemo(
-    () => guard && currentPriceUsd !== null
-      ? evaluatePositionGuard(guard, currentPriceUsd)
-      : null,
-    [currentPriceUsd, guard]
+    () => guard ? evaluatePositionGuard(guard, currentValueUsd, balance) : null,
+    [balance, currentValueUsd, guard]
   );
 
-  const settingsForLiveExecution = useMemo(() => ({
-    stopLossBps: guard?.stopLossBps ?? currentSettings.stopLossBps,
-    trailingStopBps: guard?.trailingStopBps ?? currentSettings.trailingStopBps,
-    breakEvenActivationBps: guard?.breakEvenActivationBps ?? currentSettings.breakEvenActivationBps,
-    maxPriceImpactBps: guard?.maxPriceImpactBps ?? currentSettings.maxPriceImpactBps
-  }), [currentSettings, guard]);
-
-  const saveGuard = () => {
-    if (currentPriceUsd === null) {
-      setMessage("RMT needs a current market value before Position Guard can be enabled.");
-      return;
+  useEffect(() => {
+    if (!guard?.triggeredAt || notifiedTrigger.current === guard.triggeredAt) return;
+    notifiedTrigger.current = guard.triggeredAt;
+    if (typeof navigator !== "undefined" && "vibrate" in navigator) navigator.vibrate([160, 80, 160]);
+    if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+      new Notification(`RMT Position Guard · ${symbol}`, {
+        body: "Your protected floor was reached. Reopen RMT to review a fresh sell quote.",
+        tag: `rmt-position-guard:${wallet}:${token}`
+      });
     }
+  }, [guard?.triggeredAt, symbol, token, wallet]);
+
+  function arm(inputBasis: number) {
     const next = createPositionGuard({
       wallet,
       token,
-      symbol,
-      balance,
+      basisUsd: inputBasis,
       currentValueUsd,
-      currentPriceUsd,
-      settings: {
-        ...currentSettings,
-        recoverPrincipal,
-        stagedProfitLock
-      }
+      tokenBalance: balance,
+      stopLossBps,
+      trailingStopBps,
+      breakEvenActivationBps,
+      recoverPrincipal,
+      stagedProfitLock
     });
-    writePositionGuard(next);
-    setGuard(next);
-    setEditing(false);
-    setMessage("Position Guard is monitoring this position on this device.");
-  };
-
-  const disableGuard = () => {
-    removePositionGuard(wallet, token);
-    setGuard(null);
-    setEditing(false);
-    setMessage("Local monitoring is off. Any server-backed automatic order still appears below until it is revoked or reconciled.");
-  };
-
-  const prepareExit = (request: PositionGuardExitRequest, successMessage: string) => {
-    if (!guard) return;
-    const prepared = onPrepareExit(request);
-    if (!prepared) {
-      setMessage("RMT could not prepare this exact-token exit from the current wallet balance.");
+    if (!next || !writePositionGuard(next)) {
+      setMessage("Position Guard could not be saved on this device.");
       return;
     }
-    setMessage(successMessage);
-  };
-
-  const handleConfirmedExit = (exit: PreparedPositionExit) => {
-    if (!guard) return;
-    const next = positionGuardAfterConfirmedExit(guard, exit);
-    writePositionGuard(next);
     setGuard(next);
-  };
+    setEditing(false);
+    setMessage("Position Guard armed. Its protected floor can rise, but never move backward.");
+  }
+
+  function saveCustom() {
+    const inputBasis = Number(basis);
+    if (!Number.isFinite(inputBasis) || inputBasis <= 0) {
+      setMessage("Enter the amount originally invested in USD.");
+      return;
+    }
+    arm(inputBasis);
+  }
+
+  function quickProtect() {
+    if (currentValueUsd <= 0) return;
+    setStopLossBps(2000);
+    setTrailingStopBps(2000);
+    setBreakEvenActivationBps(5000);
+    setRecoverPrincipal(true);
+    setStagedProfitLock(true);
+    const next = createPositionGuard({
+      wallet,
+      token,
+      basisUsd: currentValueUsd,
+      currentValueUsd,
+      tokenBalance: balance,
+      stopLossBps: 2000,
+      trailingStopBps: 2000,
+      breakEvenActivationBps: 5000,
+      recoverPrincipal: true,
+      stagedProfitLock: true
+    });
+    if (!next || !writePositionGuard(next)) {
+      setMessage("Position Guard could not be saved on this device.");
+      return;
+    }
+    setGuard(next);
+    setEditing(false);
+    setMessage("Protect my win is armed: 20% trailing floor plus staged profit prompts.");
+  }
+
+  function prepareExit(exitBps: number, reason: PositionGuardExitReason) {
+    if (!onPrepareExit({ exitBps, reason })) {
+      setMessage("RMT could not read an exact onchain balance for this exit. Refresh the position and try again.");
+    }
+  }
+
+  function resetTrigger() {
+    if (!guard) return;
+    const next = resetPositionGuardTrigger(guard, currentValueUsd, Date.now(), balance);
+    if (writePositionGuard(next)) {
+      notifiedTrigger.current = null;
+      setGuard(next);
+      setMessage("Trigger reset from the current position value.");
+    }
+  }
+
+  function dismissProfitTarget(target: "principal-2x" | "bank-3x" | "bank-5x") {
+    if (!guard) return;
+    const next = target === "principal-2x"
+      ? acknowledgePrincipalRecovery(guard)
+      : acknowledgeProfitTarget(guard, target);
+    if (writePositionGuard(next)) {
+      setGuard(next);
+      setMessage(`${profitTargetLabel(target)} marked handled on this device.`);
+    }
+  }
+
+  async function enableNotifications() {
+    if (typeof Notification === "undefined") {
+      setMessage("This browser does not support system notifications.");
+      return;
+    }
+    const permission = await Notification.requestPermission();
+    setMessage(permission === "granted"
+      ? "Browser alerts enabled while RMT is open."
+      : "Browser alerts were not enabled. In-app monitoring remains active.");
+  }
 
   useEffect(() => {
-    const handle = (event: Event) => {
-      const exit = (event as CustomEvent<PreparedPositionExit>).detail;
-      if (
-        !exit || exit.wallet.toLowerCase() !== wallet.toLowerCase()
-        || exit.token.toLowerCase() !== token.toLowerCase()
-      ) return;
-      handleConfirmedExit(exit);
-    };
-    window.addEventListener("rmt:position-guard-confirmed-exit", handle);
-    return () => window.removeEventListener("rmt:position-guard-confirmed-exit", handle);
-  }, [guard, token, wallet]);
+    const target = evaluation?.activeProfitTarget;
+    if (!target || notifiedProfitTarget.current === target.key || evaluation?.stopTriggered) return;
+    notifiedProfitTarget.current = target.key;
+    if (typeof navigator !== "undefined" && "vibrate" in navigator) navigator.vibrate([120, 60, 120]);
+    if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+      new Notification(`RMT Profit Lock · ${symbol}`, {
+        body: `${profitTargetLabel(target.key)} is ready. Reopen RMT to review a fresh partial-sell quote.`,
+        tag: `rmt-profit-lock:${wallet}:${token}:${target.key}`
+      });
+    }
+  }, [evaluation?.activeProfitTarget, evaluation?.stopTriggered, symbol, token, wallet]);
+
+  function removeGuard() {
+    if (!removePositionGuard(wallet, token)) return;
+    setGuard(null);
+    setEditing(false);
+    setMessage("Position Guard removed. Server-backed automatic permissions must be managed separately in Protection Center.");
+  }
 
   if (!guard) {
     return (
-      <section className="positionGuardPanel idle" aria-label="Position Guard">
+      <section className="positionGuardPanel idle" aria-labelledby="position-guard-heading">
         <header>
-          <span><small>POSITION GUARD · LOCAL</small><strong>Protect the downside and bank gains</strong></span>
-          <em>OFF</em>
+          <span><small>POSITION GUARD · LOCAL</small><strong id="position-guard-heading">Protect this position</strong></span>
+          <em>Wallet-confirmed exits</em>
         </header>
-        <p>Monitor this position against stop-loss, trailing-stop, break-even and staged-profit rules. Local monitoring prepares exits; it does not submit them.</p>
-        {editing ? (
-          <div className="positionGuardEditor">
-            <label><span>STOP LOSS</span><div><b>−</b><input aria-label="Position Guard stop loss percent" type="number" min={5} max={50} step={1} value={stopLossPercent} onChange={(event) => setStopLossPercent(Number(event.target.value))} /><i>%</i></div></label>
-            <label><span>TRAIL FROM HIGH</span><div><b>−</b><input aria-label="Position Guard trailing stop percent" type="number" min={5} max={50} step={1} value={trailingStopPercent} onChange={(event) => setTrailingStopPercent(Number(event.target.value))} /><i>%</i></div></label>
-            <label><span>BREAK EVEN AFTER</span><div><b>+</b><input aria-label="Position Guard break even activation percent" type="number" min={10} max={100} step={5} value={breakEvenActivationPercent} onChange={(event) => setBreakEvenActivationPercent(Number(event.target.value))} /><i>%</i></div></label>
-            <label><span>MAX PRICE IMPACT</span><div><input aria-label="Position Guard maximum price impact percent" type="number" min={0.1} max={4} step={0.1} value={maxPriceImpactPercent} onChange={(event) => setMaxPriceImpactPercent(Number(event.target.value))} /><i>%</i></div></label>
-            <label className="positionGuardCheck"><input type="checkbox" checked={recoverPrincipal} onChange={(event) => setRecoverPrincipal(event.target.checked)} /><span>Prepare a 50% exit at 2× to recover principal.</span></label>
-            <label className="positionGuardCheck"><input type="checkbox" checked={stagedProfitLock} onChange={(event) => setStagedProfitLock(event.target.checked)} /><span>Prepare staged profit exits at 3× and 5×.</span></label>
-            <div className="positionGuardEditorActions"><button type="button" onClick={saveGuard}>Enable local monitoring</button><button type="button" onClick={() => setEditing(false)}>Cancel</button></div>
+        <p>A trailing floor follows gains upward and never follows a falling position back down.</p>
+        {!editing ? (
+          <div className="positionGuardStart">
+            <button type="button" onClick={quickProtect}>Protect my win</button>
+            <button type="button" onClick={() => setEditing(true)}>Customize</button>
           </div>
         ) : (
-          <div className="positionGuardStart">
-            <button type="button" onClick={saveGuard}>Quick protect · −20% / 20% trail</button>
-            <button type="button" onClick={() => setEditing(true)}>Customize protection</button>
+          <div className="positionGuardEditor">
+            <label>
+              <span>Original investment</span>
+              <div><b>$</b><input inputMode="decimal" type="number" min="0" value={basis} onChange={(event) => setBasis(event.target.value)} /></div>
+            </label>
+            <label><span>Initial stop</span><select value={stopLossBps} onChange={(event) => setStopLossBps(Number(event.target.value))}>
+              <option value={1000}>10% below basis</option><option value={1500}>15% below basis</option><option value={2000}>20% below basis</option><option value={2500}>25% below basis</option><option value={3000}>30% below basis</option><option value={4000}>40% below basis</option><option value={5000}>50% below basis</option>
+            </select></label>
+            <label><span>Trailing distance</span><select value={trailingStopBps} onChange={(event) => setTrailingStopBps(Number(event.target.value))}>
+              <option value={500}>5% behind peak</option><option value={1000}>10% behind peak</option><option value={1500}>15% behind peak</option><option value={2000}>20% behind peak</option><option value={2500}>25% behind peak</option><option value={3000}>30% behind peak</option><option value={4000}>40% behind peak</option><option value={5000}>50% behind peak</option>
+            </select></label>
+            <label><span>Move to break-even after</span><select value={breakEvenActivationBps} onChange={(event) => setBreakEvenActivationBps(Number(event.target.value))}>
+              <option value={1000}>+10%</option><option value={2500}>+25%</option><option value={5000}>+50%</option><option value={7500}>+75%</option><option value={10000}>+100%</option>
+            </select></label>
+            <label className="positionGuardCheck"><input type="checkbox" checked={recoverPrincipal} onChange={(event) => setRecoverPrincipal(event.target.checked)} /><span>Prompt me to recover my original investment at 2×</span></label>
+            <label className="positionGuardCheck"><input type="checkbox" checked={stagedProfitLock} onChange={(event) => setStagedProfitLock(event.target.checked)} /><span>Prompt me to bank 25% at 3× and 20% at 5×</span></label>
+            <div className="positionGuardEditorActions"><button type="button" onClick={saveCustom}>Arm Position Guard</button><button type="button" onClick={() => setEditing(false)}>Cancel</button></div>
           </div>
         )}
-        <small className="positionGuardDisclosure">Local monitoring works only while this browser receives fresh market updates. Any existing server-backed automatic order is recovered below even when this browser has no saved local guard.</small>
-        {mounted && (
-          <LivePositionGuardControls
-            armingEnabled={false}
-            pair={pair}
-            rawBalance={rawBalance}
-            settings={settingsForLiveExecution}
-            token={token as Address}
-            wallet={wallet}
-          />
-        )}
+        <small className="positionGuardDisclosure">RMT monitors while this market is open. A trigger prepares a fresh sell ticket; it does not trade without your wallet. Automatic permissions are separate and remain release-locked.</small>
         {message && <p className="positionGuardMessage" role="status">{message}</p>}
       </section>
     );
   }
 
   return (
-    <section className={`positionGuardPanel ${evaluation?.triggered ? "triggered" : "active"}`} aria-label="Position Guard">
+    <section className={`positionGuardPanel armed ${evaluation?.stopTriggered ? "triggered" : ""}`} aria-labelledby="position-guard-heading">
       <header>
-        <span>
-          <small>POSITION GUARD · LOCAL</small>
-          <strong>{evaluation?.triggered ? "Exit condition needs review" : "Monitoring position"}</strong>
-        </span>
-        <em>{evaluation?.triggered ? "TRIGGERED" : evaluation?.breakEvenArmed ? "BREAK EVEN ARMED" : "ACTIVE"}</em>
+        <span><small>POSITION GUARD · LOCAL</small><strong id="position-guard-heading">{evaluation?.stopTriggered ? "Protected floor reached" : "Following this position"}</strong></span>
+        <em>{evaluation?.breakEvenArmed ? "Break-even locked" : `${percent(guard.trailingStopBps)} trail`}</em>
       </header>
-      <div className="positionGuardMetrics">
-        <span><small>ENTRY</small><strong>{levelPriceLabel(guard.entryPriceUsd)}</strong><i>{compactUsd(guard.entryValueUsd)}</i></span>
-        <span><small>HIGH WATER</small><strong>{levelPriceLabel(evaluation?.highWatermarkPriceUsd ?? guard.highWatermarkPriceUsd)}</strong><i>{evaluation ? percent(evaluation.changeFromEntryPct) : "—"}</i></span>
-        <span><small>EFFECTIVE FLOOR</small><strong>{levelPriceLabel(evaluation?.effectiveFloorPriceUsd ?? null)}</strong><i>{evaluation ? `${percent(evaluation.distanceToFloorPct)} away` : "—"}</i></span>
-      </div>
-      <div className="positionGuardTrack" aria-hidden="true"><i style={{ width: `${clampNumber((evaluation?.changeFromEntryPct ?? 0) + 50, 0, 100)}%` }} /></div>
-
-      <div className="positionGuardLadder">
-        <header><span>PROFIT LADDER</span><em>Prepared exits require wallet confirmation</em></header>
-        <div>
-          <span className={evaluation?.principalTargetReached ? "ready" : guard.principalRecovered || guard.handledProfitTargets.includes("principal-2x") ? "handled" : ""}><small>2×</small><strong>Recover principal</strong><i>{guard.principalRecovered || guard.handledProfitTargets.includes("principal-2x") ? "Handled" : evaluation?.principalTargetReached ? "Ready" : "Watching"}</i></span>
-          <span className={evaluation?.bank3xReached ? "ready" : guard.handledProfitTargets.includes("bank-3x") ? "handled" : ""}><small>3×</small><strong>Bank 25%</strong><i>{guard.handledProfitTargets.includes("bank-3x") ? "Handled" : evaluation?.bank3xReached ? "Ready" : "Watching"}</i></span>
-          <span className={evaluation?.bank5xReached ? "ready" : guard.handledProfitTargets.includes("bank-5x") ? "handled" : ""}><small>5×</small><strong>Bank 20%</strong><i>{guard.handledProfitTargets.includes("bank-5x") ? "Handled" : evaluation?.bank5xReached ? "Ready" : "Watching"}</i></span>
-        </div>
-      </div>
-
-      {evaluation?.triggered && (
-        <div className="positionGuardTrigger">
-          <strong>{evaluation.triggerLabel ?? "Protection condition triggered"}</strong>
-          <span>Fresh wallet and route checks still run before the transaction can be signed.</span>
-          <button type="button" onClick={() => prepareExit({ reason: evaluation.triggerReason ?? "stop-loss", exitBps: 10_000 }, "Exit ticket prepared. Review the exact route and wallet confirmation.")}>Prepare full exit</button>
-        </div>
+      {evaluation && (
+        <>
+          <div className="positionGuardMetrics">
+            <span><small>CURRENT</small><strong>{money(evaluation.currentValueUsd)}</strong><i className={evaluation.gainBps >= 0 ? "positive" : "negative"}>{evaluation.gainBps >= 0 ? "+" : ""}{percent(evaluation.gainBps)}</i></span>
+            <span>
+              <small>{evaluation.priceTracked ? "PEAK TOKEN PRICE" : "RECORDED PEAK"}</small>
+              <strong>{money(evaluation.priceTracked ? evaluation.highWatermarkPriceUsd! : evaluation.highWatermarkUsd)}</strong>
+              <i>On this device</i>
+            </span>
+            <span><small>PROTECTED FLOOR</small><strong>{money(evaluation.effectiveStopUsd)}</strong><i>{percent(evaluation.distanceToStopBps)} below current</i></span>
+          </div>
+          <div className="positionGuardTrack" aria-label={`Current value ${money(evaluation.currentValueUsd)}; protected floor ${money(evaluation.effectiveStopUsd)}`}>
+            <i style={{ width: `${Math.min(100, evaluation.effectiveStopUsd / evaluation.highWatermarkUsd * 100)}%` }} />
+          </div>
+          {evaluation.profitTargets.length > 0 && (
+            <div className="positionGuardLadder" aria-label="Profit lock plan">
+              <header><span>PROFIT LOCK</span><em>Prepared sells only</em></header>
+              <div>
+                {evaluation.profitTargets.map((target) => (
+                  <span className={target.handled ? "handled" : target.ready ? "ready" : "upcoming"} key={target.key}>
+                    <small>{target.multipleBps / 10_000}×</small>
+                    <strong>{profitTargetLabel(target.key)}</strong>
+                    <i>{target.handled ? "Handled" : target.ready ? "Ready" : "Waiting"}</i>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+          {evaluation.stopTriggered && (
+            <div className="positionGuardTrigger" role="alert">
+              <strong>Exit review required</strong>
+              <span>The current position value reached the highest active protection rule. RMT will request a new executable quote.</span>
+              <button type="button" onClick={() => prepareExit(10_000, "protected-floor")}>Prepare full exit</button>
+              <button type="button" onClick={resetTrigger}>Keep position · reset trail</button>
+            </div>
+          )}
+          {evaluation.activeProfitTarget && !evaluation.stopTriggered && (
+            <div className="positionGuardProfit" role="alert">
+              <span>
+                <small>{evaluation.activeProfitTarget.multipleBps / 10_000}× TARGET REACHED</small>
+                <strong>{evaluation.activeProfitTarget.key === "principal-2x" ? `Recover the original ${money(guard.basisUsd)}` : profitTargetLabel(evaluation.activeProfitTarget.key)}</strong>
+                <em>{evaluation.activeProfitTarget.key === "principal-2x" ? "Estimated" : "Prepare"} {percent(evaluation.activeProfitTarget.exitBps)} of current holdings</em>
+              </span>
+              <button type="button" onClick={() => prepareExit(evaluation.activeProfitTarget!.exitBps, evaluation.activeProfitTarget!.key)}>Prepare partial exit</button>
+              <button type="button" onClick={() => dismissProfitTarget(evaluation.activeProfitTarget!.key)}>Mark handled</button>
+            </div>
+          )}
+        </>
       )}
-
-      {evaluation?.principalTargetReached && guard.recoverPrincipal && !guard.principalRecovered && !guard.handledProfitTargets.includes("principal-2x") && (
-        <div className="positionGuardProfit"><span><strong>2× target reached</strong><small>Prepare a 50% exit to recover principal.</small></span><button type="button" onClick={() => prepareExit({ reason: "principal-recovery", exitBps: 5_000 }, "Principal-recovery ticket prepared. Review before signing.")}>Prepare 50% exit</button></div>
-      )}
-      {evaluation?.bank3xReached && guard.stagedProfitLock && !guard.handledProfitTargets.includes("bank-3x") && (
-        <div className="positionGuardProfit"><span><strong>3× target reached</strong><small>Prepare a 25% profit-lock exit.</small></span><button type="button" onClick={() => prepareExit({ reason: "bank-3x", exitBps: 2_500 }, "3× profit-lock ticket prepared. Review before signing.")}>Prepare 25% exit</button></div>
-      )}
-      {evaluation?.bank5xReached && guard.stagedProfitLock && !guard.handledProfitTargets.includes("bank-5x") && (
-        <div className="positionGuardProfit"><span><strong>5× target reached</strong><small>Prepare a 20% profit-lock exit.</small></span><button type="button" onClick={() => prepareExit({ reason: "bank-5x", exitBps: 2_000 }, "5× profit-lock ticket prepared. Review before signing.")}>Prepare 20% exit</button></div>
-      )}
-
-      {editing && (
-        <div className="positionGuardEditor compact">
-          <label><span>STOP LOSS</span><div><b>−</b><input aria-label="Position Guard stop loss percent" type="number" min={5} max={50} step={1} value={stopLossPercent} onChange={(event) => setStopLossPercent(Number(event.target.value))} /><i>%</i></div></label>
-          <label><span>TRAIL FROM HIGH</span><div><b>−</b><input aria-label="Position Guard trailing stop percent" type="number" min={5} max={50} step={1} value={trailingStopPercent} onChange={(event) => setTrailingStopPercent(Number(event.target.value))} /><i>%</i></div></label>
-          <label><span>BREAK EVEN AFTER</span><div><b>+</b><input aria-label="Position Guard break even activation percent" type="number" min={10} max={100} step={5} value={breakEvenActivationPercent} onChange={(event) => setBreakEvenActivationPercent(Number(event.target.value))} /><i>%</i></div></label>
-          <label><span>MAX PRICE IMPACT</span><div><input aria-label="Position Guard maximum price impact percent" type="number" min={0.1} max={4} step={0.1} value={maxPriceImpactPercent} onChange={(event) => setMaxPriceImpactPercent(Number(event.target.value))} /><i>%</i></div></label>
-          <label className="positionGuardCheck"><input type="checkbox" checked={recoverPrincipal} onChange={(event) => setRecoverPrincipal(event.target.checked)} /><span>Recover principal at 2×.</span></label>
-          <label className="positionGuardCheck"><input type="checkbox" checked={stagedProfitLock} onChange={(event) => setStagedProfitLock(event.target.checked)} /><span>Use staged 3× and 5× profit locks.</span></label>
-          <div className="positionGuardEditorActions"><button type="button" onClick={saveGuard}>Save rules</button><button type="button" onClick={() => setEditing(false)}>Cancel</button></div>
-        </div>
-      )}
-
       <div className="positionGuardActions">
-        <button type="button" onClick={() => setEditing((current) => !current)}>{editing ? "Close editor" : "Edit rules"}</button>
-        <button type="button" onClick={() => prepareExit({ reason: "manual-protection", exitBps: 10_000 }, "Manual protection ticket prepared. Review before signing.")}>Prepare exit</button>
-        <button type="button" onClick={disableGuard}>Disable local guard</button>
+        <button type="button" onClick={() => void enableNotifications()}>Enable browser alert</button>
+        <button type="button" onClick={() => { setBasis(String(guard.basisUsd)); setEditing(true); }}>Edit rules</button>
+        <button type="button" onClick={removeGuard}>Remove local guard</button>
       </div>
-      <small className="positionGuardDisclosure">Local monitoring is not an exchange stop order. Conditions can be missed when the browser, data feed or wallet is unavailable. Automatic execution below is a separate bounded delegation and remains independently revocable.</small>
-      {mounted && (
+      {pair && rawBalance !== undefined && (
         <LivePositionGuardControls
           pair={pair}
           rawBalance={rawBalance}
-          settings={settingsForLiveExecution}
+          settings={{
+            stopLossBps: guard.stopLossBps,
+            trailingStopBps: guard.trailingStopBps,
+            breakEvenActivationBps: guard.breakEvenActivationBps,
+            maxPriceImpactBps: 400
+          }}
           token={token as Address}
-          wallet={wallet}
+          wallet={wallet as Address}
         />
       )}
+      {editing && (
+        <div className="positionGuardEditor compact">
+          <label><span>Original investment</span><div><b>$</b><input inputMode="decimal" type="number" min="0" value={basis} onChange={(event) => setBasis(event.target.value)} /></div></label>
+          <label><span>Initial stop</span><select value={stopLossBps} onChange={(event) => setStopLossBps(Number(event.target.value))}><option value={1000}>10%</option><option value={1500}>15%</option><option value={2000}>20%</option><option value={2500}>25%</option><option value={3000}>30%</option><option value={4000}>40%</option><option value={5000}>50%</option></select></label>
+          <label><span>Trailing distance</span><select value={trailingStopBps} onChange={(event) => setTrailingStopBps(Number(event.target.value))}><option value={500}>5%</option><option value={1000}>10%</option><option value={1500}>15%</option><option value={2000}>20%</option><option value={2500}>25%</option><option value={3000}>30%</option><option value={4000}>40%</option><option value={5000}>50%</option></select></label>
+          <label><span>Break-even after</span><select value={breakEvenActivationBps} onChange={(event) => setBreakEvenActivationBps(Number(event.target.value))}><option value={1000}>+10%</option><option value={2500}>+25%</option><option value={5000}>+50%</option><option value={7500}>+75%</option><option value={10000}>+100%</option></select></label>
+          <label className="positionGuardCheck"><input type="checkbox" checked={recoverPrincipal} onChange={(event) => setRecoverPrincipal(event.target.checked)} /><span>Principal recovery at 2×</span></label>
+          <label className="positionGuardCheck"><input type="checkbox" checked={stagedProfitLock} onChange={(event) => setStagedProfitLock(event.target.checked)} /><span>Bank gains at 3× and 5×</span></label>
+          <div className="positionGuardEditorActions"><button type="button" onClick={saveCustom}>Save and re-arm</button><button type="button" onClick={() => setEditing(false)}>Cancel</button></div>
+        </div>
+      )}
+      <small className="positionGuardDisclosure">Value uses the indexed market price; the sell ticket still requires a fresh route quote, price-impact review, and your wallet signature. Browser alerts require RMT to remain open in this release.</small>
       {message && <p className="positionGuardMessage" role="status">{message}</p>}
     </section>
   );
