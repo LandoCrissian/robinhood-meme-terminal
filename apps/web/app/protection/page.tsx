@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { ProtectionCenter } from "./protection-center";
+import { ProtectionCenterBoundary } from "./protection-center-boundary";
 import { RMT_SITE_NAME } from "../../lib/site-identity";
 
 export const metadata: Metadata = {
@@ -10,5 +10,5 @@ export const metadata: Metadata = {
 };
 
 export default function ProtectionPage() {
-  return <ProtectionCenter />;
+  return <ProtectionCenterBoundary />;
 }
