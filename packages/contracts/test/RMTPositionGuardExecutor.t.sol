@@ -5,6 +5,7 @@ import {RMTPositionGuardExecutor} from "../src/RMTPositionGuardExecutor.sol";
 
 interface PositionGuardVm {
     function prank(address caller) external;
+    function roll(uint256 blockNumber) external;
     function warp(uint256 timestamp) external;
     function expectRevert(bytes4 selector) external;
 }
@@ -64,24 +65,27 @@ contract GuardToken {
 contract GuardPool {
     address public token0;
     address public token1;
-    uint160 public sqrtPriceX96 = uint160(1 << 96);
-    bool public unlocked = true;
+    int24 public twapTick;
 
     constructor(address token0_, address token1_) {
         token0 = token0_;
         token1 = token1_;
     }
 
-    function setPrice(uint160 value) external {
-        sqrtPriceX96 = value;
+    function setTick(int24 value) external {
+        twapTick = value;
     }
 
-    function setUnlocked(bool value) external {
-        unlocked = value;
-    }
-
-    function slot0() external view returns (uint160, int24, uint16, uint16, uint16, uint8, bool) {
-        return (sqrtPriceX96, 0, 0, 1, 1, 0, unlocked);
+    function observe(uint32[] calldata secondsAgos)
+        external
+        view
+        returns (int56[] memory tickCumulatives, uint160[] memory secondsPerLiquidityCumulativeX128s)
+    {
+        tickCumulatives = new int56[](secondsAgos.length);
+        secondsPerLiquidityCumulativeX128s = new uint160[](secondsAgos.length);
+        for (uint256 index; index < secondsAgos.length; index++) {
+            tickCumulatives[index] = int56(-int256(twapTick) * int256(uint256(secondsAgos[index])));
+        }
     }
 }
 
@@ -131,7 +135,9 @@ contract GuardRouter {
 contract RMTPositionGuardExecutorTest {
     PositionGuardVm private constant vm = PositionGuardVm(address(uint160(uint256(keccak256("hevm cheat code")))));
     address private constant WALLET = address(0xA11CE);
+    address private constant CHECKPOINTER = address(0xB0B);
     uint24 private constant FEE = 3_000;
+    uint256 private constant AMOUNT = 100 ether;
 
     GuardToken private token;
     GuardToken private weth;
@@ -142,6 +148,7 @@ contract RMTPositionGuardExecutorTest {
 
     function setUp() public {
         vm.warp(1_000_000);
+        vm.roll(100);
         token = new GuardToken();
         weth = new GuardToken();
         factory = new GuardFactory();
@@ -150,114 +157,288 @@ contract RMTPositionGuardExecutorTest {
         factory.setPool(address(token), address(weth), FEE, address(pool));
         executor = new RMTPositionGuardExecutor(address(factory), address(router), address(weth));
         token.mint(WALLET, 1_000 ether);
-        vm.prank(WALLET);
-        token.approve(address(executor), 1_000 ether);
     }
 
-    function testExecutesExactExitAndReturnsWethOnlyToCallingWallet() public {
-        RMTPositionGuardExecutor.Exit memory exit = _exit(100 ether, 99 ether, keccak256("one"));
-        vm.prank(WALLET);
-        uint256 amountOut = executor.executeV3Exit(exit);
+    function testRegistersExactPlanAndExecutesOnlyAfterOnchainConfirmation() public {
+        bytes32 orderId = keccak256("confirmed");
+        _register(orderId, AMOUNT);
 
-        require(amountOut == 100 ether, "output");
+        pool.setTick(-1_200);
+        vm.prank(CHECKPOINTER);
+        RMTPositionGuardExecutor.V3OrderPreview memory first = executor.checkpointV3Order(WALLET, orderId);
+        require(first.state == RMTPositionGuardExecutor.TriggerState.Confirming, "not confirming");
+        require(first.firstBelowFloorAt == block.timestamp, "missing confirmation time");
+        require(first.firstBelowFloorBlock == block.number, "missing confirmation block");
+
+        vm.warp(block.timestamp + 4);
+        vm.roll(block.number + 1);
+        RMTPositionGuardExecutor.V3OrderPreview memory ready = executor.previewV3Order(WALLET, orderId);
+        require(ready.state == RMTPositionGuardExecutor.TriggerState.Triggered, "not triggered");
+
+        uint256 minimum = ready.twapAmountOut * 99 / 100;
+        vm.prank(WALLET);
+        uint256 amountOut = executor.executeV3Exit(_exit(orderId, minimum));
+
+        require(amountOut == AMOUNT, "output");
         require(token.balanceOf(WALLET) == 900 ether, "wallet input");
-        require(weth.balanceOf(WALLET) == 100 ether, "wallet output");
+        require(weth.balanceOf(WALLET) == AMOUNT, "wallet output");
         require(token.balanceOf(address(executor)) == 0, "executor custody");
         require(weth.balanceOf(address(executor)) == 0, "executor output custody");
         require(token.allowance(address(executor), address(router)) == 0, "router allowance");
-        require(executor.orderConsumed(WALLET, exit.orderId), "order not consumed");
+        require(executor.orderConsumed(WALLET, orderId), "order not consumed");
+        require(
+            executor.getV3Order(WALLET, orderId).status == RMTPositionGuardExecutor.OrderStatus.Executed,
+            "order not executed"
+        );
     }
 
-    function testCannotReplayAnExecutedOrder() public {
-        RMTPositionGuardExecutor.Exit memory exit = _exit(10 ether, 9.9 ether, keccak256("replay"));
+    function testUnregisteredOrUnconfirmedOrdersCannotExecute() public {
+        bytes32 missing = keccak256("missing");
+        vm.expectRevert(RMTPositionGuardExecutor.OrderNotActive.selector);
         vm.prank(WALLET);
-        executor.executeV3Exit(exit);
-        vm.expectRevert(RMTPositionGuardExecutor.OrderAlreadyConsumed.selector);
+        executor.executeV3Exit(_exit(missing, 99 ether));
+
+        bytes32 healthy = keccak256("healthy");
+        _register(healthy, AMOUNT);
+        vm.expectRevert(RMTPositionGuardExecutor.OrderNotTriggered.selector);
         vm.prank(WALLET);
-        executor.executeV3Exit(exit);
+        executor.executeV3Exit(_exit(healthy, 99 ether));
+
+        pool.setTick(-1_200);
+        vm.expectRevert(RMTPositionGuardExecutor.ConfirmationRequired.selector);
+        vm.prank(WALLET);
+        executor.executeV3Exit(_exit(healthy, 88 ether));
+
+        vm.prank(CHECKPOINTER);
+        executor.checkpointV3Order(WALLET, healthy);
+        vm.warp(block.timestamp + 4);
+        vm.expectRevert(RMTPositionGuardExecutor.ConfirmationRequired.selector);
+        vm.prank(WALLET);
+        executor.executeV3Exit(_exit(healthy, 88 ether));
     }
 
-    function testRejectsAWeakMinimumOutputEvenWhenRouterWouldAcceptIt() public {
+    function testCheckpointCanOnlyTightenTrailingProtection() public {
+        bytes32 orderId = keccak256("high-watermark");
+        _register(orderId, AMOUNT);
+        uint256 entry = executor.getV3Order(WALLET, orderId).entryUnitQuoteX18;
+
+        pool.setTick(1_200);
+        vm.prank(CHECKPOINTER);
+        RMTPositionGuardExecutor.V3OrderPreview memory higher = executor.checkpointV3Order(WALLET, orderId);
+        require(higher.highWatermarkUnitQuoteX18 > entry, "high watermark did not rise");
+        require(higher.state == RMTPositionGuardExecutor.TriggerState.Healthy, "gain marked unsafe");
+
+        pool.setTick(0);
+        vm.prank(CHECKPOINTER);
+        RMTPositionGuardExecutor.V3OrderPreview memory falling = executor.checkpointV3Order(WALLET, orderId);
+        require(falling.state == RMTPositionGuardExecutor.TriggerState.Confirming, "trailing floor not reached");
+        require(falling.highWatermarkUnitQuoteX18 == higher.highWatermarkUnitQuoteX18, "high watermark moved back");
+
+        vm.warp(block.timestamp + 4);
+        vm.roll(block.number + 1);
+        RMTPositionGuardExecutor.V3OrderPreview memory ready = executor.previewV3Order(WALLET, orderId);
+        require(ready.state == RMTPositionGuardExecutor.TriggerState.Triggered, "trailing trigger not confirmed");
+    }
+
+    function testWeakMinimumOutputIsRejectedAgainstTwap() public {
+        bytes32 orderId = keccak256("weak-minimum");
+        _register(orderId, AMOUNT);
+        RMTPositionGuardExecutor.V3OrderPreview memory ready = _trigger(orderId, -1_200);
+        uint256 required = ready.twapAmountOut * 99 / 100;
+
+        vm.expectRevert(RMTPositionGuardExecutor.UnsafeMinimumOutput.selector);
         vm.prank(WALLET);
-        (bool success,) = address(executor)
-            .call(abi.encodeCall(executor.executeV3Exit, (_exit(100 ether, 94 ether, keccak256("weak-minimum")))));
-        require(!success, "weak minimum accepted");
+        executor.executeV3Exit(_exit(orderId, required - 1));
         require(token.balanceOf(WALLET) == 1_000 ether, "rejected order moved tokens");
+        require(!executor.orderConsumed(WALLET, orderId), "rejected order consumed");
     }
 
-    function testRejectsUnboundedSlippageAndDeadlines() public {
-        RMTPositionGuardExecutor.Exit memory excessive = _exit(100 ether, 99 ether, keccak256("slippage"));
-        excessive.maxSlippageBps = 501;
-        vm.expectRevert(RMTPositionGuardExecutor.InvalidExit.selector);
+    function testRegistrationAndExecutionRequireExactAllowanceAndBalance() public {
+        bytes32 orderId = keccak256("authority");
         vm.prank(WALLET);
-        executor.executeV3Exit(excessive);
+        token.approve(address(executor), AMOUNT + 1);
+        vm.expectRevert(RMTPositionGuardExecutor.ExactAllowanceRequired.selector);
+        vm.prank(WALLET);
+        executor.registerV3Order(_registration(orderId, AMOUNT));
 
-        RMTPositionGuardExecutor.Exit memory late = _exit(100 ether, 99 ether, keccak256("deadline"));
-        late.deadline = block.timestamp + 10 minutes + 1;
-        vm.expectRevert(RMTPositionGuardExecutor.InvalidExit.selector);
+        _register(orderId, AMOUNT);
+        _trigger(orderId, -1_200);
         vm.prank(WALLET);
-        executor.executeV3Exit(late);
+        token.approve(address(executor), AMOUNT + 1);
+        vm.expectRevert(RMTPositionGuardExecutor.ExactAllowanceRequired.selector);
+        vm.prank(WALLET);
+        executor.executeV3Exit(_exit(orderId, 88 ether));
+
+        vm.prank(WALLET);
+        token.approve(address(executor), AMOUNT);
+        vm.prank(WALLET);
+        token.transfer(address(0xCAFE), 901 ether);
+        vm.expectRevert(RMTPositionGuardExecutor.InsufficientBalance.selector);
+        vm.prank(WALLET);
+        executor.executeV3Exit(_exit(orderId, 88 ether));
     }
 
-    function testRejectsFeeOnTransferTokensWithoutLeavingCustody() public {
+    function testCancelAndExpiryEndOnchainAuthority() public {
+        bytes32 cancelled = keccak256("cancelled");
+        _register(cancelled, AMOUNT);
+        vm.prank(WALLET);
+        executor.cancelV3Order(cancelled);
+        require(
+            executor.getV3Order(WALLET, cancelled).status == RMTPositionGuardExecutor.OrderStatus.Cancelled,
+            "not cancelled"
+        );
+        vm.expectRevert(RMTPositionGuardExecutor.OrderNotActive.selector);
+        vm.prank(WALLET);
+        executor.executeV3Exit(_exit(cancelled, 99 ether));
+
+        bytes32 expired = keccak256("expired");
+        _register(expired, AMOUNT);
+        RMTPositionGuardExecutor.V3Order memory order = executor.getV3Order(WALLET, expired);
+        vm.warp(uint256(order.expiresAt) + 1);
+        vm.prank(CHECKPOINTER);
+        RMTPositionGuardExecutor.V3OrderPreview memory preview = executor.checkpointV3Order(WALLET, expired);
+        require(preview.state == RMTPositionGuardExecutor.TriggerState.Expired, "not expired");
+        require(
+            executor.getV3Order(WALLET, expired).status == RMTPositionGuardExecutor.OrderStatus.Expired,
+            "expiry not stored"
+        );
+    }
+
+    function testOrderIdCannotBeReusedAfterCancellationOrExecution() public {
+        bytes32 orderId = keccak256("one-time-id");
+        _register(orderId, AMOUNT);
+        vm.prank(WALLET);
+        executor.cancelV3Order(orderId);
+        vm.expectRevert(RMTPositionGuardExecutor.OrderAlreadyExists.selector);
+        vm.prank(WALLET);
+        executor.registerV3Order(_registration(orderId, AMOUNT));
+    }
+
+    function testStoredPoolCannotBeSubstitutedAfterRegistration() public {
+        bytes32 orderId = keccak256("pool-binding");
+        _register(orderId, AMOUNT);
+        _trigger(orderId, -1_200);
+
+        GuardPool replacement = new GuardPool(address(token), address(weth));
+        replacement.setTick(-1_200);
+        factory.setPool(address(token), address(weth), FEE, address(replacement));
+        vm.expectRevert(RMTPositionGuardExecutor.InvalidPool.selector);
+        vm.prank(WALLET);
+        executor.executeV3Exit(_exit(orderId, 88 ether));
+    }
+
+    function testInvalidPoolAndUnsafeOrderBoundsAreRejected() public {
+        factory.setPool(address(token), address(weth), FEE, address(0));
+        _approve(AMOUNT);
+        vm.expectRevert(RMTPositionGuardExecutor.InvalidPool.selector);
+        vm.prank(WALLET);
+        executor.registerV3Order(_registration(keccak256("missing-pool"), AMOUNT));
+
+        factory.setPool(address(token), address(weth), FEE, address(pool));
+        RMTPositionGuardExecutor.RegisterV3Order memory unsafe = _registration(keccak256("unsafe"), AMOUNT);
+        unsafe.maxSlippageBps = 501;
+        vm.expectRevert(RMTPositionGuardExecutor.InvalidOrder.selector);
+        vm.prank(WALLET);
+        executor.registerV3Order(unsafe);
+
+        unsafe = _registration(keccak256("short-twap"), AMOUNT);
+        unsafe.twapSeconds = 59;
+        vm.expectRevert(RMTPositionGuardExecutor.InvalidOrder.selector);
+        vm.prank(WALLET);
+        executor.registerV3Order(unsafe);
+    }
+
+    function testFeeOnTransferTokensAndReentryRemainBlocked() public {
+        bytes32 feeOrder = keccak256("fee-token");
+        _register(feeOrder, AMOUNT);
+        RMTPositionGuardExecutor.V3OrderPreview memory ready = _trigger(feeOrder, -1_200);
         token.setChargeTransferFee(true);
         vm.expectRevert(RMTPositionGuardExecutor.UnsupportedTransferBehavior.selector);
         vm.prank(WALLET);
-        executor.executeV3Exit(_exit(100 ether, 99 ether, keccak256("fee-token")));
+        executor.executeV3Exit(_exit(feeOrder, ready.twapAmountOut * 99 / 100));
         require(token.balanceOf(WALLET) == 1_000 ether, "revert did not restore wallet");
         require(token.balanceOf(address(executor)) == 0, "revert left custody");
-    }
 
-    function testTokenCallbackCannotReenterExecutor() public {
-        RMTPositionGuardExecutor.Exit memory nested = _exit(1 ether, 0.99 ether, keccak256("nested"));
+        token.setChargeTransferFee(false);
+        bytes32 nestedId = keccak256("nested");
+        RMTPositionGuardExecutor.ExecuteV3Exit memory nested = _exit(nestedId, 1);
         token.setReentry(address(executor), abi.encodeCall(executor.executeV3Exit, (nested)));
-
         vm.prank(WALLET);
-        executor.executeV3Exit(_exit(100 ether, 99 ether, keccak256("outer")));
-
-        require(token.balanceOf(WALLET) == 900 ether, "outer exit failed");
-        require(weth.balanceOf(WALLET) == 100 ether, "output missing");
-        require(!executor.orderConsumed(address(token), nested.orderId), "nested order consumed");
+        executor.executeV3Exit(_exit(feeOrder, ready.twapAmountOut * 99 / 100));
+        require(weth.balanceOf(WALLET) == AMOUNT, "outer output missing");
     }
 
-    function testRejectsAnUnregisteredOrMismatchedPool() public {
-        factory.setPool(address(token), address(weth), FEE, address(0));
-        vm.expectRevert(RMTPositionGuardExecutor.InvalidPool.selector);
-        vm.prank(WALLET);
-        executor.executeV3Exit(_exit(100 ether, 99 ether, keccak256("missing-pool")));
-
-        GuardToken other = new GuardToken();
-        GuardPool wrongPool = new GuardPool(address(token), address(other));
-        factory.setPool(address(token), address(weth), FEE, address(wrongPool));
-        vm.expectRevert(RMTPositionGuardExecutor.InvalidPool.selector);
-        vm.prank(WALLET);
-        executor.executeV3Exit(_exit(100 ether, 99 ether, keccak256("wrong-pool")));
-    }
-
-    function testARevertedRouterCallDoesNotConsumeTheOrderOrTokens() public {
-        router.setOutputBps(9_800);
+    function testRouterRevertDoesNotConsumeOrderOrLeaveCustody() public {
         bytes32 orderId = keccak256("router-revert");
+        _register(orderId, AMOUNT);
+        RMTPositionGuardExecutor.V3OrderPreview memory ready = _trigger(orderId, -1_200);
+        router.setOutputBps(8_000);
         vm.prank(WALLET);
-        (bool success,) =
-            address(executor).call(abi.encodeCall(executor.executeV3Exit, (_exit(100 ether, 99 ether, orderId))));
+        (bool success,) = address(executor).call(
+            abi.encodeCall(executor.executeV3Exit, (_exit(orderId, ready.twapAmountOut * 99 / 100)))
+        );
         require(!success, "unsafe router result accepted");
         require(!executor.orderConsumed(WALLET, orderId), "reverted order consumed");
+        require(
+            executor.getV3Order(WALLET, orderId).status == RMTPositionGuardExecutor.OrderStatus.Active,
+            "reverted order not restored"
+        );
         require(token.balanceOf(WALLET) == 1_000 ether, "reverted tokens moved");
+        require(token.balanceOf(address(executor)) == 0, "executor retained token");
     }
 
-    function _exit(uint256 amountIn, uint256 amountOutMinimum, bytes32 orderId)
+    function _trigger(bytes32 orderId, int24 tick)
+        private
+        returns (RMTPositionGuardExecutor.V3OrderPreview memory ready)
+    {
+        pool.setTick(tick);
+        vm.prank(CHECKPOINTER);
+        executor.checkpointV3Order(WALLET, orderId);
+        vm.warp(block.timestamp + 4);
+        vm.roll(block.number + 1);
+        ready = executor.previewV3Order(WALLET, orderId);
+        require(ready.state == RMTPositionGuardExecutor.TriggerState.Triggered, "trigger helper failed");
+    }
+
+    function _register(bytes32 orderId, uint256 amount) private {
+        _approve(amount);
+        vm.prank(WALLET);
+        executor.registerV3Order(_registration(orderId, amount));
+    }
+
+    function _approve(uint256 amount) private {
+        vm.prank(WALLET);
+        token.approve(address(executor), amount);
+    }
+
+    function _registration(bytes32 orderId, uint256 amount)
         private
         view
-        returns (RMTPositionGuardExecutor.Exit memory)
+        returns (RMTPositionGuardExecutor.RegisterV3Order memory)
     {
-        return RMTPositionGuardExecutor.Exit({
+        return RMTPositionGuardExecutor.RegisterV3Order({
             token: address(token),
             fee: FEE,
-            amountIn: amountIn,
-            amountOutMinimum: amountOutMinimum,
+            amountIn: uint128(amount),
+            stopLossBps: 1_000,
+            trailingStopBps: 1_000,
+            breakEvenActivationBps: 5_000,
             maxSlippageBps: 100,
-            deadline: block.timestamp + 5 minutes,
+            twapSeconds: 300,
+            expiresAt: uint64(block.timestamp + 1 days),
             orderId: orderId
+        });
+    }
+
+    function _exit(bytes32 orderId, uint256 amountOutMinimum)
+        private
+        view
+        returns (RMTPositionGuardExecutor.ExecuteV3Exit memory)
+    {
+        return RMTPositionGuardExecutor.ExecuteV3Exit({
+            orderId: orderId,
+            amountOutMinimum: amountOutMinimum,
+            deadline: block.timestamp + 5 minutes
         });
     }
 }
