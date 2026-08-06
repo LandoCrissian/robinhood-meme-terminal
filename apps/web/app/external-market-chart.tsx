@@ -23,6 +23,14 @@ function price(value: number) {
     : "$" + value.toLocaleString(undefined, { maximumFractionDigits: 6 });
 }
 
+function compactVolume(value: number) {
+  if (!Number.isFinite(value) || value <= 0) return "—";
+  return "$" + value.toLocaleString(undefined, {
+    notation: value >= 1_000 ? "compact" : "standard",
+    maximumFractionDigits: 1
+  });
+}
+
 function timeLabel(timestamp: number, range: ExternalChartRange) {
   const date = new Date(timestamp * 1_000);
   return range === "7D"
@@ -44,10 +52,7 @@ function freshness(lastTradeAt?: string | null, updatedAt?: string) {
     return { label: `LAST SWAP · ${Math.floor(seconds / 3_600)}H AGO`, active: false };
   }
   const updated = updatedAt ? Date.parse(updatedAt) : Number.NaN;
-  return {
-    label: Number.isFinite(updated) ? "POOL SNAPSHOT" : "SYNCING",
-    active: false
-  };
+  return { label: Number.isFinite(updated) ? "POOL SNAPSHOT" : "SYNCING", active: false };
 }
 
 type ChartGuardLevel = {
@@ -57,14 +62,13 @@ type ChartGuardLevel = {
   tone: "floor" | "target";
   location: "visible" | "above" | "below";
 };
+type ChartMode = "candles" | "line";
 
 function nextProfitTarget(guard: PositionGuard) {
   if (guard.entryPriceUsd === null) return null;
-  if (
-    guard.recoverPrincipal
-    && !guard.principalRecovered
-    && !guard.handledProfitTargets.includes("principal-2x")
-  ) return { label: "PRINCIPAL · 2×", value: guard.entryPriceUsd * 2 };
+  if (guard.recoverPrincipal && !guard.principalRecovered && !guard.handledProfitTargets.includes("principal-2x")) {
+    return { label: "PRINCIPAL · 2×", value: guard.entryPriceUsd * 2 };
+  }
   if (guard.stagedProfitLock && !guard.handledProfitTargets.includes("bank-3x")) {
     return { label: "BANK 25% · 3×", value: guard.entryPriceUsd * 3 };
   }
@@ -115,6 +119,8 @@ export function ExternalMarketChart({
     [params.address]
   );
   const [guard, setGuard] = useState<PositionGuard | null>(null);
+  const [chartMode, setChartMode] = useState<ChartMode>("candles");
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   useEffect(() => {
     if (!wallet || !token) {
@@ -139,6 +145,26 @@ export function ExternalMarketChart({
     };
   }, [token, wallet]);
 
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem("rmt:external-chart-mode");
+      if (saved === "candles" || saved === "line") setChartMode(saved);
+    } catch {
+      // Chart mode remains session-local when storage is unavailable.
+    }
+  }, []);
+
+  useEffect(() => setHoveredIndex(null), [candles.length, range]);
+
+  const changeChartMode = (mode: ChartMode) => {
+    setChartMode(mode);
+    try {
+      window.localStorage.setItem("rmt:external-chart-mode", mode);
+    } catch {
+      // The selected mode still applies to this session.
+    }
+  };
+
   const width = 760;
   const height = 300;
   const paddingX = 14;
@@ -147,14 +173,15 @@ export function ExternalMarketChart({
   const volumeTop = 238;
   const volumeBottom = 282;
   const closes = candles.map((candle) => candle.close);
-  const minimum = Math.min(...closes);
-  const maximum = Math.max(...closes);
+  const minimum = candles.length ? Math.min(...candles.map((candle) => candle.low)) : 0;
+  const maximum = candles.length ? Math.max(...candles.map((candle) => candle.high)) : 0;
   const rangeValue = maximum - minimum || maximum * 0.02 || 1;
   const maximumVolume = Math.max(...candles.map((candle) => candle.volume), 1);
   const usableWidth = width - paddingX * 2;
+  const priceY = (value: number) => priceTop + (1 - (value - minimum) / rangeValue) * (priceBottom - priceTop);
   const coordinates = candles.map((candle, index) => ({
     x: paddingX + (index / Math.max(candles.length - 1, 1)) * usableWidth,
-    y: priceTop + (1 - (candle.close - minimum) / rangeValue) * (priceBottom - priceTop)
+    y: priceY(candle.close)
   }));
   const linePath = coordinates
     .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x.toFixed(2)} ${point.y.toFixed(2)}`)
@@ -167,6 +194,7 @@ export function ExternalMarketChart({
   const change = first > 0 ? ((latest - first) / first) * 100 : 0;
   const positive = change >= 0;
   const barWidth = Math.max(1.5, usableWidth / Math.max(candles.length, 1) - 1.5);
+  const candleWidth = Math.max(2.2, Math.min(10, usableWidth / Math.max(candles.length, 1) * 0.68));
   const feed = freshness(lastTradeAt, updatedAt);
   const streamFeed = range !== "LIVE" || !feedStatus
     ? feed
@@ -178,6 +206,8 @@ export function ExternalMarketChart({
           ? { label: "OPENING LIVE STREAM", active: false }
           : { label: "STREAM RECONNECTING", active: false };
   const latestPoint = coordinates.at(-1);
+  const hoveredCandle = hoveredIndex === null ? undefined : candles[hoveredIndex];
+  const hoveredPoint = hoveredIndex === null ? undefined : coordinates[hoveredIndex];
 
   const chartGuardLevels = useMemo<ChartGuardLevel[]>(() => {
     if (
@@ -223,6 +253,10 @@ export function ExternalMarketChart({
           <span className={`universalChartFeed ${streamFeed.active ? "active" : "quiet"}${stale ? " stale" : ""}`}>
             <i aria-hidden="true" />{stale ? "FEED RETRYING" : streamFeed.label}
           </span>
+          <div className="universalChartModes" role="group" aria-label="Chart display mode">
+            <button type="button" className={chartMode === "candles" ? "active" : ""} aria-pressed={chartMode === "candles"} onClick={() => changeChartMode("candles")}>Candles</button>
+            <button type="button" className={chartMode === "line" ? "active" : ""} aria-pressed={chartMode === "line"} onClick={() => changeChartMode("line")}>Line</button>
+          </div>
           <div className="universalChartRanges" role="tablist" aria-label="Chart range">
             {EXTERNAL_CHART_RANGES.map((item) => (
               <button
@@ -252,9 +286,36 @@ export function ExternalMarketChart({
         </div>
       )}
 
+      {hoveredCandle && hoveredIndex !== null && (
+        <div className={`universalChartTooltip ${hoveredIndex > candles.length / 2 ? "left" : "right"}`} role="status">
+          <span>{timeLabel(hoveredCandle.timestamp, range)} · {chartMode.toUpperCase()}</span>
+          <dl>
+            <div><dt>Open</dt><dd>{price(hoveredCandle.open)}</dd></div>
+            <div><dt>High</dt><dd>{price(hoveredCandle.high)}</dd></div>
+            <div><dt>Low</dt><dd>{price(hoveredCandle.low)}</dd></div>
+            <div><dt>Close</dt><dd>{price(hoveredCandle.close)}</dd></div>
+            <div><dt>Volume</dt><dd>{compactVolume(hoveredCandle.volume)}</dd></div>
+          </dl>
+        </div>
+      )}
+
       {candles.length >= 2 ? (
         <>
-          <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label={`${range} price and volume chart`}>
+          <svg
+            viewBox={`0 0 ${width} ${height}`}
+            role="img"
+            aria-label={`${range} ${chartMode} price and volume chart`}
+            onMouseMove={(event) => {
+              const rect = event.currentTarget.getBoundingClientRect();
+              const chartX = (event.clientX - rect.left) / Math.max(rect.width, 1) * width;
+              const index = Math.max(0, Math.min(
+                candles.length - 1,
+                Math.round((chartX - paddingX) / Math.max(usableWidth, 1) * Math.max(candles.length - 1, 1))
+              ));
+              setHoveredIndex(index);
+            }}
+            onMouseLeave={() => setHoveredIndex(null)}
+          >
             <defs>
               <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor={positive ? "#66ef7c" : "#ff7777"} stopOpacity=".28" />
@@ -266,7 +327,7 @@ export function ExternalMarketChart({
               return <line x1={paddingX} x2={width - paddingX} y1={y} y2={y} className="chartGridLine" key={row} />;
             })}
             {chartGuardLevels.filter((level) => level.location === "visible").map((level) => {
-              const y = priceTop + (1 - (level.value - minimum) / rangeValue) * (priceBottom - priceTop);
+              const y = priceY(level.value);
               return (
                 <g className={`chartGuardLevel ${level.tone}`} key={level.id} aria-hidden="true">
                   <line x1={paddingX} x2={width - paddingX} y1={y} y2={y} />
@@ -275,14 +336,31 @@ export function ExternalMarketChart({
                 </g>
               );
             })}
-            <path d={areaPath} fill={`url(#${gradientId})`} />
-            <path d={linePath} className={positive ? "chartLine positive" : "chartLine negative"} />
+            {chartMode === "line" ? <>
+              <path d={areaPath} fill={`url(#${gradientId})`} />
+              <path d={linePath} className={positive ? "chartLine positive" : "chartLine negative"} />
+            </> : candles.map((candle, index) => {
+              const point = coordinates[index];
+              const openY = priceY(candle.open);
+              const closeY = priceY(candle.close);
+              const highY = priceY(candle.high);
+              const lowY = priceY(candle.low);
+              const bodyY = Math.min(openY, closeY);
+              const bodyHeight = Math.max(1, Math.abs(closeY - openY));
+              const rising = candle.close >= candle.open;
+              return (
+                <g className={`chartCandle ${rising ? "buy" : "sell"}`} key={`candle:${candle.timestamp}`}>
+                  <line x1={point.x} x2={point.x} y1={highY} y2={lowY} />
+                  <rect x={point.x - candleWidth / 2} y={bodyY} width={candleWidth} height={bodyHeight} rx=".7" />
+                </g>
+              );
+            })}
             {candles.map((candle, index) => {
               const point = coordinates[index];
               const barHeight = Math.max(1, candle.volume / maximumVolume * (volumeBottom - volumeTop));
               return (
                 <rect
-                  key={candle.timestamp}
+                  key={`volume:${candle.timestamp}`}
                   x={point.x - barWidth / 2}
                   y={volumeBottom - barHeight}
                   width={barWidth}
@@ -291,6 +369,13 @@ export function ExternalMarketChart({
                 />
               );
             })}
+            {hoveredPoint && (
+              <g className="chartHoverCrosshair" aria-hidden="true">
+                <line x1={hoveredPoint.x} x2={hoveredPoint.x} y1={priceTop} y2={volumeBottom} />
+                <line x1={paddingX} x2={width - paddingX} y1={hoveredPoint.y} y2={hoveredPoint.y} />
+                <circle cx={hoveredPoint.x} cy={hoveredPoint.y} r="3.5" />
+              </g>
+            )}
             {latestPoint && (
               <g className={streamFeed.active ? "chartLatest active" : "chartLatest"}>
                 <line x1={latestPoint.x} x2={latestPoint.x} y1={priceTop} y2={volumeBottom} />
@@ -300,7 +385,7 @@ export function ExternalMarketChart({
           </svg>
           <div className="universalChartAxis">
             <span>{timeLabel(candles[0].timestamp, range)}</span>
-            <span>{range === "LIVE" ? "CONFIRMED SWAPS · AUTO RECONNECT" : "POOL OHLCV · AUTO REFRESH"}</span>
+            <span>{chartMode === "candles" ? "OHLC CANDLES" : "CLOSE-PRICE LINE"} · {range === "LIVE" ? "CONFIRMED SWAPS" : "AUTO REFRESH"}</span>
             <span>{timeLabel(candles.at(-1)?.timestamp ?? 0, range)}</span>
           </div>
         </>

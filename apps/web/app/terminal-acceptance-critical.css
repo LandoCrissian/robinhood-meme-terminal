@@ -34,6 +34,11 @@
   font-size: .6rem !important;
 }
 
+.terminalPage .runnerMarketCard .runnerActivity {
+  font-size: .67rem !important;
+  line-height: 1.45 !important;
+}
+
 .professionalTradeWorkspace .positionGuardDisclosure,
 .professionalTradeWorkspace .universalPosition footer,
 .professionalTradeWorkspace .universalPosition > header span,
@@ -49,6 +54,26 @@
 .professionalTradeWorkspace .universalHolderIntelligence footer {
   font-size: .625rem !important;
   line-height: 1.35 !important;
+}
+
+@media (min-width: 761px) {
+  .terminalPage .runnerDirectoryControls {
+    width: 100% !important;
+  }
+
+  .terminalPage .runnerDirectoryControls .runnerMarketSearch {
+    width: 100% !important;
+    max-width: none !important;
+  }
+}
+
+/* The medium desktop layout must not inherit the legacy rule that hides the
+ * evidence column and source link below 1180px. */
+@media (min-width: 761px) and (max-width: 1180px) {
+  .terminalPage .runnerMarketCard .runnerActivity,
+  .terminalPage .runnerMarketCard .externalChartLink {
+    display: flex;
+  }
 }
 
 @media (max-width: 760px) {
