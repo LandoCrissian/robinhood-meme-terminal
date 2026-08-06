@@ -22,21 +22,9 @@ interface PositionGuardForkWeth is PositionGuardForkToken {
     function deposit() external payable;
 }
 
-interface PositionGuardForkQuoter {
-    struct QuoteExactInputSingleParams {
-        address tokenIn;
-        address tokenOut;
-        uint256 amountIn;
-        uint24 fee;
-        uint160 sqrtPriceLimitX96;
-    }
-
-    function quoteExactInputSingle(QuoteExactInputSingleParams calldata params)
-        external
-        returns (uint256 amountOut, uint160 sqrtPriceX96After, uint32 initializedTicksCrossed, uint256 gasEstimate);
-}
-
-/// @dev Opt-in fork test against the canonical Robinhood Chain deployment. It never broadcasts.
+/// @dev Opt-in fork rehearsal against the canonical Robinhood Chain deployment. It never broadcasts.
+///      The wallet buys the live token, grants an exact allowance, registers a TWAP-bound order, verifies its immutable
+///      route and settings, cancels it onchain, and clears the allowance.
 ///      Run with: RMT_RUN_MAINNET_FORK=true forge test --match-path test/RMTPositionGuardExecutorFork.t.sol -vv
 contract RMTPositionGuardExecutorForkTest {
     PositionGuardForkVm private constant vm =
@@ -44,7 +32,6 @@ contract RMTPositionGuardExecutorForkTest {
 
     address private constant FACTORY = 0x1f7d7550B1b028f7571E69A784071F0205FD2EfA;
     address private constant ROUTER = 0xCaf681a66D020601342297493863E78C959E5cb2;
-    address private constant QUOTER = 0x33e885eD0Ec9bF04EcfB19341582aADCb4c8A9E7;
     address private constant WETH = 0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73;
     address private constant TOKEN = 0x232CDFc415D10b673845D83Dc02ba2eaBe7e30d1; // gitleaks:allow -- public token address
     address private constant WALLET = address(0xA11CE);
@@ -58,7 +45,7 @@ contract RMTPositionGuardExecutorForkTest {
         vm.createSelectFork("robinhood_mainnet");
     }
 
-    function testCanonicalBuyThenProtectedExit() public {
+    function testCanonicalBuyRegisterAndRevoke() public {
         if (!enabled) return;
 
         RMTPositionGuardExecutor executor = new RMTPositionGuardExecutor(FACTORY, ROUTER, WETH);
@@ -67,9 +54,8 @@ contract RMTPositionGuardExecutorForkTest {
         vm.startPrank(WALLET);
         PositionGuardForkWeth(WETH).deposit{value: 0.001 ether}();
         PositionGuardForkWeth(WETH).approve(ROUTER, 0.001 ether);
-        uint256 tokenAmount = IRMTPositionGuardSwapRouter02(ROUTER)
-            .exactInputSingle(
-                IRMTPositionGuardSwapRouter02.ExactInputSingleParams({
+        uint256 tokenAmount = IRMTPositionGuardSwapRouter02(ROUTER).exactInputSingle(
+            IRMTPositionGuardSwapRouter02.ExactInputSingleParams({
                 tokenIn: WETH,
                 tokenOut: TOKEN,
                 fee: FEE,
@@ -78,38 +64,46 @@ contract RMTPositionGuardExecutorForkTest {
                 amountOutMinimum: 1,
                 sqrtPriceLimitX96: 0
             })
-            );
-        PositionGuardForkToken(TOKEN).approve(address(executor), tokenAmount);
+        );
+        uint128 protectedAmount = tokenAmount > type(uint128).max ? type(uint128).max : uint128(tokenAmount);
+        PositionGuardForkToken(TOKEN).approve(address(executor), protectedAmount);
         vm.stopPrank();
 
+        bytes32 orderId = keccak256("canonical-fork-order-v2");
         vm.prank(WALLET);
-        (uint256 quotedWeth,,,) = PositionGuardForkQuoter(QUOTER)
-            .quoteExactInputSingle(
-                PositionGuardForkQuoter.QuoteExactInputSingleParams({
-                tokenIn: TOKEN, tokenOut: WETH, amountIn: tokenAmount, fee: FEE, sqrtPriceLimitX96: 0
-            })
-            );
-        uint256 minimumWeth = quotedWeth * 99 / 100;
-        uint256 wethBefore = PositionGuardForkToken(WETH).balanceOf(WALLET);
-
-        vm.prank(WALLET);
-        uint256 amountOut = executor.executeV3Exit(
-            RMTPositionGuardExecutor.Exit({
+        executor.registerV3Order(
+            RMTPositionGuardExecutor.RegisterV3Order({
                 token: TOKEN,
                 fee: FEE,
-                amountIn: tokenAmount,
-                amountOutMinimum: minimumWeth,
-                maxSlippageBps: 500,
-                deadline: block.timestamp + 5 minutes,
-                orderId: keccak256("canonical-fork-exit")
+                amountIn: protectedAmount,
+                stopLossBps: 2_000,
+                trailingStopBps: 2_000,
+                breakEvenActivationBps: 5_000,
+                maxSlippageBps: 100,
+                twapSeconds: 300,
+                expiresAt: uint64(block.timestamp + 1 days),
+                orderId: orderId
             })
         );
 
-        require(amountOut >= minimumWeth, "protected output below minimum");
-        require(PositionGuardForkToken(TOKEN).balanceOf(WALLET) == 0, "protected token remained");
-        require(PositionGuardForkToken(WETH).balanceOf(WALLET) == wethBefore + amountOut, "WETH not returned");
+        RMTPositionGuardExecutor.V3Order memory order = executor.getV3Order(WALLET, orderId);
+        require(order.status == RMTPositionGuardExecutor.OrderStatus.Active, "order inactive");
+        require(order.token == TOKEN, "token mismatch");
+        require(order.amountIn == protectedAmount, "amount mismatch");
+        require(order.fee == FEE, "fee mismatch");
+        require(order.entryUnitQuoteX18 > 0, "entry TWAP missing");
+        require(order.highWatermarkUnitQuoteX18 == order.entryUnitQuoteX18, "initial high watermark mismatch");
+        require(PositionGuardForkToken(TOKEN).allowance(WALLET, address(executor)) == protectedAmount, "allowance mismatch");
+
+        vm.startPrank(WALLET);
+        executor.cancelV3Order(orderId);
+        PositionGuardForkToken(TOKEN).approve(address(executor), 0);
+        vm.stopPrank();
+
+        order = executor.getV3Order(WALLET, orderId);
+        require(order.status == RMTPositionGuardExecutor.OrderStatus.Cancelled, "order not cancelled");
+        require(PositionGuardForkToken(TOKEN).allowance(WALLET, address(executor)) == 0, "allowance remained");
         require(PositionGuardForkToken(TOKEN).balanceOf(address(executor)) == 0, "executor retained token");
         require(PositionGuardForkToken(WETH).balanceOf(address(executor)) == 0, "executor retained WETH");
-        require(PositionGuardForkToken(TOKEN).allowance(address(executor), ROUTER) == 0, "router allowance remained");
     }
 }
