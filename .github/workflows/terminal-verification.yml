@@ -14,12 +14,13 @@ on:
       - "package.json"
       - "pnpm-lock.yaml"
       - ".github/workflows/terminal-verification.yml"
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: terminal-verification-${{ github.event.pull_request.number }}
+  group: terminal-verification-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
