@@ -273,6 +273,21 @@ export function PositionGuardPanel({
           </div>
         )}
         <small className="positionGuardDisclosure">RMT monitors while this market is open. A trigger prepares a fresh sell ticket; it does not trade without your wallet. Automatic permissions are separate and remain release-locked.</small>
+        {pair && rawBalance !== undefined && (
+          <LivePositionGuardControls
+            armingEnabled={false}
+            pair={pair}
+            rawBalance={rawBalance}
+            settings={{
+              stopLossBps,
+              trailingStopBps,
+              breakEvenActivationBps,
+              maxPriceImpactBps: 400
+            }}
+            token={token as Address}
+            wallet={wallet as Address}
+          />
+        )}
         {message && <p className="positionGuardMessage" role="status">{message}</p>}
       </section>
     );
