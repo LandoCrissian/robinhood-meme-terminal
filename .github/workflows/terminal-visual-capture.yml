@@ -29,7 +29,7 @@ jobs:
           pnpm build
       - name: Start the built terminal locally
         run: |
-          nohup pnpm --filter web start -- -p 3000 > /tmp/rmt-terminal.log 2>&1 &
+          nohup pnpm --filter web exec next start -p 3000 > /tmp/rmt-terminal.log 2>&1 &
           echo $! > /tmp/rmt-terminal.pid
           for attempt in $(seq 1 60); do
             if curl --fail --silent http://127.0.0.1:3000/ > /dev/null; then
