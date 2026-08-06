@@ -55,16 +55,16 @@ export type TradeExecutionStorage = {
   setItem(key: string, value: string): void;
 };
 
-type TradeExecutionIdentity = Pick<TradeExecutionRecord, "wallet" | "token" | "venue" | "side">;
+type TradeExecutionIdentity = Pick<TradeExecutionRecord, "wallet" | "token" | "pair" | "venue" | "side">;
 
 type SubmittedTradeInput = TradeExecutionIdentity & {
-  pair: string;
   amountIn: string;
   txHash: Hash;
 };
 
 const ADDRESS = /^0x[0-9a-f]{40}$/;
 const HASH = /^0x[0-9a-f]{64}$/;
+const POOL_IDENTIFIER = /^(?:0x[0-9a-f]{40}|0x[0-9a-f]{64})$/;
 const VENUES = new Set<TradeExecutionVenue>(["sushi", "uniswap-v3", "uniswap-v4"]);
 const SIDES = new Set<TradeExecutionSide>(["buy", "sell"]);
 const STATES = new Set<TradeExecutionState>(["submitted", "confirmed", "failed"]);
@@ -93,6 +93,12 @@ function normalizeAddress(value: unknown) {
   return ADDRESS.test(normalized) ? normalized as Address : null;
 }
 
+function normalizePair(value: unknown) {
+  if (typeof value !== "string") return null;
+  const normalized = value.toLowerCase();
+  return POOL_IDENTIFIER.test(normalized) ? normalized : null;
+}
+
 function normalizeHash(value: unknown) {
   if (typeof value !== "string") return null;
   const normalized = value.toLowerCase();
@@ -108,6 +114,7 @@ function normalizeRecord(value: unknown): TradeExecutionRecord | null {
   const candidate = value as Partial<TradeExecutionRecord>;
   const wallet = normalizeAddress(candidate.wallet);
   const token = normalizeAddress(candidate.token);
+  const pair = normalizePair(candidate.pair);
   const txHash = normalizeHash(candidate.txHash);
   const createdAt = normalizeTimestamp(candidate.createdAt);
   const updatedAt = normalizeTimestamp(candidate.updatedAt);
@@ -128,26 +135,25 @@ function normalizeRecord(value: unknown): TradeExecutionRecord | null {
     || candidate.chainId !== ROBINHOOD_CHAIN_ID
     || !wallet
     || !token
+    || !pair
     || !txHash
     || !createdAt
     || !updatedAt
     || !venue
     || !side
     || !state
-    || typeof candidate.pair !== "string"
-    || candidate.pair.length < 3
-    || candidate.pair.length > 90
     || typeof candidate.amountIn !== "string"
     || !/^\d+$/.test(candidate.amountIn)
   ) return null;
-  const id = tradeExecutionRecordId({ wallet, token, venue, side });
+  const id = tradeExecutionRecordId({ wallet, token, pair, venue, side });
+  const recoveredAt = normalizeTimestamp(candidate.recoveredAt);
   return {
     schemaVersion: TRADE_EXECUTION_SCHEMA_VERSION,
     chainId: ROBINHOOD_CHAIN_ID,
     id,
     wallet,
     token,
-    pair: candidate.pair,
+    pair,
     venue,
     side,
     amountIn: candidate.amountIn,
@@ -155,7 +161,7 @@ function normalizeRecord(value: unknown): TradeExecutionRecord | null {
     txHash,
     createdAt,
     updatedAt,
-    ...(normalizeTimestamp(candidate.recoveredAt) ? { recoveredAt: normalizeTimestamp(candidate.recoveredAt)! } : {}),
+    ...(recoveredAt ? { recoveredAt } : {}),
     ...(failureCode ? { failureCode } : {})
   };
 }
@@ -172,11 +178,11 @@ function emitJournalChange(records: TradeExecutionRecord[]) {
   window.dispatchEvent(new CustomEvent(TRADE_EXECUTION_EVENT, { detail: records }));
 }
 
-function storeRecords(records: TradeExecutionRecord[], storage?: TradeExecutionStorage) {
+function storeRecords(records: TradeExecutionRecord[], storage?: TradeExecutionStorage, now = Date.now()) {
   const target = browserStorage(storage);
   if (!target) return false;
   try {
-    const normalized = pruneRecords(records, Date.now());
+    const normalized = pruneRecords(records, now);
     target.setItem(TRADE_EXECUTION_STORAGE_KEY, JSON.stringify(normalized));
     emitJournalChange(normalized);
     return true;
@@ -218,6 +224,7 @@ export function tradeExecutionRecordId(identity: TradeExecutionIdentity) {
   return [
     identity.wallet.toLowerCase(),
     identity.token.toLowerCase(),
+    identity.pair.toLowerCase(),
     identity.venue,
     identity.side
   ].join(":");
@@ -248,19 +255,18 @@ export function readTradeExecutionJournal(storage?: TradeExecutionStorage, now =
 export function recordSubmittedTrade(input: SubmittedTradeInput, storage?: TradeExecutionStorage, now = Date.now()) {
   const wallet = normalizeAddress(input.wallet);
   const token = normalizeAddress(input.token);
+  const pair = normalizePair(input.pair);
   const txHash = normalizeHash(input.txHash);
   if (
     !wallet
     || !token
+    || !pair
     || !txHash
     || !VENUES.has(input.venue)
     || !SIDES.has(input.side)
-    || typeof input.pair !== "string"
-    || input.pair.length < 3
-    || input.pair.length > 90
     || !/^\d+$/.test(input.amountIn)
   ) return null;
-  const id = tradeExecutionRecordId({ wallet, token, venue: input.venue, side: input.side });
+  const id = tradeExecutionRecordId({ wallet, token, pair, venue: input.venue, side: input.side });
   const current = readTradeExecutionJournal(storage, now).filter((record) => record.id !== id);
   const record: TradeExecutionRecord = {
     schemaVersion: TRADE_EXECUTION_SCHEMA_VERSION,
@@ -268,7 +274,7 @@ export function recordSubmittedTrade(input: SubmittedTradeInput, storage?: Trade
     id,
     wallet,
     token,
-    pair: input.pair,
+    pair,
     venue: input.venue,
     side: input.side,
     amountIn: input.amountIn,
@@ -277,7 +283,7 @@ export function recordSubmittedTrade(input: SubmittedTradeInput, storage?: Trade
     createdAt: now,
     updatedAt: now
   };
-  return storeRecords([record, ...current], storage) ? record : null;
+  return storeRecords([record, ...current], storage, now) ? record : null;
 }
 
 export function findRecoverableTrade(identity: TradeExecutionIdentity, storage?: TradeExecutionStorage, now = Date.now()) {
@@ -304,7 +310,7 @@ export function updateTradeExecutionRecord(
     ...update,
     updatedAt: now
   };
-  return storeRecords([next, ...current.filter((candidate) => candidate.id !== id)], storage)
+  return storeRecords([next, ...current.filter((candidate) => candidate.id !== id)], storage, now)
     ? next
     : null;
 }
