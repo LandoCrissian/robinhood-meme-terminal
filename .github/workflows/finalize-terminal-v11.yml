@@ -1,6 +1,11 @@
 name: Finalize terminal v11 reliability
 
 on:
+  push:
+    branches:
+      - feat/terminal-pro-workflow-v11
+    paths:
+      - ".github/workflows/finalize-terminal-v11.yml"
   pull_request:
     branches:
       - main
@@ -19,23 +24,24 @@ permissions:
   contents: write
 
 concurrency:
-  group: finalize-terminal-v11-${{ github.event.pull_request.number }}
+  group: finalize-terminal-v11-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
   finalize:
-    if: github.head_ref == 'feat/terminal-pro-workflow-v11'
+    if: github.event_name == 'push' || github.head_ref == 'feat/terminal-pro-workflow-v11'
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: feat/terminal-pro-workflow-v11
           fetch-depth: 0
       - name: Apply route stability and release-gate corrections
         shell: bash
         run: |
-          python3 <<'PY'
+          set +e
+          python3 <<'PY' 2>&1 | tee /tmp/terminal-v11-patch.log
           from pathlib import Path
           import json
 
@@ -669,8 +675,13 @@ jobs:
           )
           package_path.write_text(json.dumps(package, indent=2) + "\n")
           PY
-
-          git diff --check
+          patch_status=${PIPESTATUS[0]}
+          if [ "$patch_status" -eq 0 ]; then
+            git diff --check 2>&1 | tee -a /tmp/terminal-v11-patch.log
+            patch_status=${PIPESTATUS[0]}
+          fi
+          echo "$patch_status" > /tmp/terminal-v11-patch-status
+          exit 0
 
       - uses: pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a # v4.4.0
         with:
@@ -683,26 +694,62 @@ jobs:
       - name: Run terminal execution release gate
         env:
           NEXT_PUBLIC_RMT_NETWORK: mainnet
-        run: |
-          pnpm --filter web test:route-availability
-          pnpm --filter web test:trade-reliability
-          pnpm --filter web test:trade-speed
-          pnpm --filter web test:experience
-          pnpm --filter web test:trade-ticket
-          pnpm --filter web test:external-sushi
-          pnpm --filter web test:external-uniswap
-          pnpm --filter web test:external-venues
-          pnpm --filter web test:transaction-integrity
-          pnpm --filter web test:terminal-workstation
-          pnpm --filter web typecheck
-          pnpm --filter web build
-      - name: Commit validated release candidate
         shell: bash
         run: |
-          rm .github/workflows/finalize-terminal-v11.yml
-          git diff --check
+          if [ "$(cat /tmp/terminal-v11-patch-status)" -ne 0 ]; then
+            echo "Patch phase failed; release tests skipped." | tee /tmp/terminal-v11-gate.log
+            echo "1" > /tmp/terminal-v11-gate-status
+            exit 0
+          fi
+          set +e
+          {
+            pnpm --filter web test:route-availability
+            pnpm --filter web test:trade-reliability
+            pnpm --filter web test:trade-speed
+            pnpm --filter web test:experience
+            pnpm --filter web test:trade-ticket
+            pnpm --filter web test:external-sushi
+            pnpm --filter web test:external-uniswap
+            pnpm --filter web test:external-venues
+            pnpm --filter web test:transaction-integrity
+            pnpm --filter web test:terminal-workstation
+            pnpm --filter web typecheck
+            pnpm --filter web build
+          } 2>&1 | tee /tmp/terminal-v11-gate.log
+          gate_status=${PIPESTATUS[0]}
+          echo "$gate_status" > /tmp/terminal-v11-gate-status
+          exit 0
+      - name: Publish result or commit validated release candidate
+        shell: bash
+        run: |
+          patch_status=$(cat /tmp/terminal-v11-patch-status)
+          gate_status=$(cat /tmp/terminal-v11-gate-status)
           git config user.name "rmt-terminal-bot"
           git config user.email "actions@users.noreply.github.com"
+          if [ "$patch_status" -ne 0 ] || [ "$gate_status" -ne 0 ]; then
+            git reset --hard HEAD
+            mkdir -p docs
+            {
+              echo "# Terminal V11 release-gate failure"
+              echo
+              echo "## Patch phase"
+              echo '```'
+              cat /tmp/terminal-v11-patch.log
+              echo '```'
+              echo
+              echo "## Test/build phase"
+              echo '```'
+              cat /tmp/terminal-v11-gate.log
+              echo '```'
+            } > docs/TERMINAL_V11_GATE_FAILURE.md
+            rm .github/workflows/finalize-terminal-v11.yml
+            git add -A
+            git commit -m "test(web): publish terminal v11 release-gate failure"
+            git push origin HEAD:feat/terminal-pro-workflow-v11
+            exit 1
+          fi
+          rm .github/workflows/finalize-terminal-v11.yml
+          git diff --check
           git add -A
           git commit -m "fix(web): stabilize route availability and finalize execution recovery"
           git push origin HEAD:feat/terminal-pro-workflow-v11
