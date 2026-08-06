@@ -85,7 +85,8 @@ function publicOrder(data: Record<string, unknown> | undefined) {
     lastEvaluatedAt: null,
     revocationPending: false,
     revocationRequestedAt: null,
-    transactionHash: null
+    transactionHash: null,
+    walletCleanupReported: null
   };
   const status = typeof data.status === "string" ? data.status : "inactive";
   const revocationRequestedAt = typeof data.revocationRequestedAt === "number"
@@ -98,7 +99,10 @@ function publicOrder(data: Record<string, unknown> | undefined) {
     lastEvaluatedAt: typeof data.lastEvaluatedAt === "number" ? data.lastEvaluatedAt : null,
     revocationPending: revocationRequestedAt !== null && (status === "executing" || status === "submitted"),
     revocationRequestedAt,
-    transactionHash: typeof data.transactionHash === "string" ? data.transactionHash : null
+    transactionHash: typeof data.transactionHash === "string" ? data.transactionHash : null,
+    walletCleanupReported: revocationRequestedAt === null
+      ? null
+      : typeof data.walletCleanupReportedAt === "number"
   };
 }
 
@@ -208,12 +212,14 @@ export async function POST(request: Request) {
         });
       }
       const now = Date.now();
+      const walletCleanupReportedAt = input.walletAuthorityRemoved === true ? now : null;
       const disposition = livePositionGuardCancellationDisposition(existingData.status);
       if (disposition === "reconcile") {
-        const next = { ...existingData, revocationRequestedAt: now };
+        const next = { ...existingData, revocationRequestedAt: now, walletCleanupReportedAt };
         await reference.set({
           revocationRequestedAt: now,
-          updatedAt: FieldValue.serverTimestamp()
+          updatedAt: FieldValue.serverTimestamp(),
+          walletCleanupReportedAt
         }, { merge: true });
         return NextResponse.json({ available: true, ...publicOrder(next) }, { headers: HEADERS });
       }
@@ -222,13 +228,15 @@ export async function POST(request: Request) {
           ...existingData,
           reviewReason: "cancellation_unknown_state",
           revocationRequestedAt: now,
-          status: "review_required"
+          status: "review_required",
+          walletCleanupReportedAt
         };
         await reference.set({
           reviewReason: "cancellation_unknown_state",
           revocationRequestedAt: now,
           status: "review_required",
-          updatedAt: FieldValue.serverTimestamp()
+          updatedAt: FieldValue.serverTimestamp(),
+          walletCleanupReportedAt
         }, { merge: true });
         return NextResponse.json({ available: true, ...publicOrder(next) }, { headers: HEADERS });
       }
@@ -236,13 +244,15 @@ export async function POST(request: Request) {
         ...existingData,
         cancelledAt: now,
         revocationRequestedAt: now,
-        status: "cancelled"
+        status: "cancelled",
+        walletCleanupReportedAt
       };
       await reference.set({
         cancelledAt: now,
         revocationRequestedAt: now,
         status: "cancelled",
-        updatedAt: FieldValue.serverTimestamp()
+        updatedAt: FieldValue.serverTimestamp(),
+        walletCleanupReportedAt
       }, { merge: true });
       return NextResponse.json({ available: true, ...publicOrder(next) }, { headers: HEADERS });
     }
@@ -350,7 +360,8 @@ export async function POST(request: Request) {
       revocationPending: false,
       revocationRequestedAt: null,
       status: "active",
-      systemStatus: "ready"
+      systemStatus: "ready",
+      walletCleanupReported: null
     }, { headers: HEADERS });
   } catch (cause) {
     return NextResponse.json({
