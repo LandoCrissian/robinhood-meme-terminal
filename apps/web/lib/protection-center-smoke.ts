@@ -31,13 +31,19 @@ const firestoreIndexes = JSON.parse(
 };
 
 assert.match(protectionLayout, /import "\.\/protection-center\.css"/);
+assert.match(protectionLayout, /import "\.\/protection-recovery\.css"/);
 assert.match(protectionPage, /<ProtectionCenter \/>/);
 assert.match(protectionCenter, /\/api\/position-guards\/live\/list/);
-assert.match(protectionCenter, /Manage and revoke/);
+assert.match(protectionCenter, /Review authority/);
+assert.match(protectionCenter, /<LivePositionGuardControls/);
+assert.match(protectionCenter, /armingEnabled=\{false\}/);
+assert.match(protectionCenter, /wallet=\{order\.wallet as Address\}/);
+assert.match(protectionCenter, /rawBalance=\{protectedAmount\(order\.amountIn\)\}/);
 assert.match(protectionCenter, /walletCleanupReported === false/);
 assert.match(protectionCenter, /revocationPending/);
 assert.match(protectionCenter, /already-submitted transaction cannot settle/);
 assert.match(protectionCenter, /server-backed automatic exit/);
+assert.match(protectionCenter, /positions whose remaining token balance is zero/);
 assert.match(protectionCenter, /livePositionGuardReviewMessage/);
 
 assert.match(protectionInventoryRoute, /\.where\("ownerKey", "==", ownerKey\(identity\.id\)\)/);
