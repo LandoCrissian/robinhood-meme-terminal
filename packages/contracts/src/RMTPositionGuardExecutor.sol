@@ -238,18 +238,15 @@ contract RMTPositionGuardExecutor {
         );
     }
 
-    /// @notice Advances the contract-enforced high watermark and trigger-confirmation state.
-    /// @dev Anyone may checkpoint because price and state transitions are derived entirely onchain and can only tighten
-    ///      protection or clear a recovered trigger. Checkpointing cannot move funds, change an order or redirect output.
-    function checkpointV3Order(address wallet, bytes32 orderId)
-        external
-        returns (V3OrderPreview memory preview)
-    {
-        V3Order storage order = _orders[wallet][orderId];
+    /// @notice Advances the calling wallet's contract-enforced high watermark and trigger-confirmation state.
+    /// @dev A policy-scoped signer may checkpoint, but the contract derives every transition from TWAP and can only
+    ///      tighten protection or clear a recovered trigger. This function cannot move funds or change order parameters.
+    function checkpointV3Order(bytes32 orderId) external returns (V3OrderPreview memory preview) {
+        V3Order storage order = _orders[msg.sender][orderId];
         if (order.status != OrderStatus.Active) revert OrderNotActive();
         if (block.timestamp > order.expiresAt) {
             order.status = OrderStatus.Expired;
-            emit V3OrderExpired(wallet, orderId);
+            emit V3OrderExpired(msg.sender, orderId);
             return V3OrderPreview({
                 state: TriggerState.Expired,
                 twapAmountOut: 0,
@@ -284,7 +281,7 @@ contract RMTPositionGuardExecutor {
         preview.firstBelowFloorBlock = order.firstBelowFloorBlock;
 
         emit V3OrderCheckpointed(
-            wallet,
+            msg.sender,
             orderId,
             preview.state,
             preview.currentUnitQuoteX18,
@@ -477,10 +474,12 @@ contract RMTPositionGuardExecutor {
             FullMath.mulDiv(order.entryUnitQuoteX18, BPS_DENOMINATOR - order.stopLossBps, BPS_DENOMINATOR);
         uint256 trailingFloor =
             FullMath.mulDiv(highWatermark, BPS_DENOMINATOR - order.trailingStopBps, BPS_DENOMINATOR);
-        uint256 breakEvenFloor = highWatermark * BPS_DENOMINATOR
-                >= order.entryUnitQuoteX18 * (BPS_DENOMINATOR + order.breakEvenActivationBps)
-            ? order.entryUnitQuoteX18
-            : 0;
+        uint256 breakEvenThreshold = FullMath.mulDiv(
+            order.entryUnitQuoteX18,
+            BPS_DENOMINATOR + order.breakEvenActivationBps,
+            BPS_DENOMINATOR
+        );
+        uint256 breakEvenFloor = highWatermark >= breakEvenThreshold ? order.entryUnitQuoteX18 : 0;
         floor = staticFloor > trailingFloor ? staticFloor : trailingFloor;
         if (breakEvenFloor > floor) floor = breakEvenFloor;
     }
