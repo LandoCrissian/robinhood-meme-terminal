@@ -1,11 +1,12 @@
 /* Terminal V8 readability pass: dense, but never microscopic. */
 .terminalPage .terminalIntro {
-  padding-top: 22px;
+  padding-top: 18px;
+  padding-bottom: 14px;
 }
 
 .terminalPage .terminalIntro h1 {
   max-width: 780px;
-  font-size: clamp(1.8rem, 3.2vw, 2.9rem);
+  font-size: clamp(1.8rem, 3.2vw, 2.75rem);
   line-height: 1.01;
   letter-spacing: -.045em;
 }
@@ -16,7 +17,7 @@
 }
 
 .terminalPage .terminalIntroCopy > p:last-child {
-  margin-top: 10px;
+  margin-top: 9px;
   font-size: .82rem;
   line-height: 1.5;
 }
@@ -200,14 +201,99 @@
   font-size: .69rem;
 }
 
+/* Trading surfaces should never be covered by the community lounge launcher. */
+body:has(.terminalPage) .communityLive,
+body:has(.professionalTradeWorkspace) .communityLive,
+body:has(.protectionCenterPage) .communityLive {
+  display: none !important;
+}
+
+/* Put actionable markets inside the first desktop viewport. */
+@media (min-width: 761px) {
+  .terminalPage .terminalIntro {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 12px 22px;
+  }
+
+  .terminalPage .terminalIntro h1 {
+    font-size: clamp(1.8rem, 3vw, 2.65rem);
+  }
+
+  .terminalPage .terminalIntro .trustStrip {
+    margin-top: 0;
+  }
+
+  .terminalPage .officialRmtMarket {
+    margin-bottom: 10px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+
+  .terminalPage .terminalMarketShell .feedHeading {
+    min-height: 66px;
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+
+  .terminalPage .liveSignalDesk > header {
+    min-height: 40px;
+    padding-top: 7px;
+    padding-bottom: 7px;
+  }
+
+  .terminalPage .liveSignalRail {
+    padding-bottom: 10px;
+  }
+
+  .terminalPage .liveSignalRail > a {
+    min-height: 68px;
+    padding: 9px 10px;
+  }
+
+  .professionalTradeWorkspace .universalWorkspaceNav {
+    display: flex;
+    min-height: 36px;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .professionalTradeWorkspace .universalWorkspaceNav a {
+    display: inline-flex;
+    min-height: 32px;
+    align-items: center;
+  }
+}
+
 @media (max-width: 760px) {
+  .publicNav {
+    height: 54px;
+    padding-right: 10px;
+    padding-left: 10px;
+  }
+
+  .publicNav .brandLogo {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+  }
+
+  .publicNavActions .wallet,
+  .publicMore summary {
+    min-height: 40px;
+  }
+
+  .publicNavActions .wallet {
+    padding-right: 11px;
+    padding-left: 11px;
+  }
+
   .mobileDock {
     grid-template-columns: repeat(5, minmax(0, 1fr));
-    padding-right: 6px;
-    padding-left: 6px;
+    padding: 4px 4px calc(4px + env(safe-area-inset-bottom));
   }
 
   .mobileDock a {
+    min-height: 42px;
     gap: 3px;
     padding: 0 2px;
     font-size: .62rem;
@@ -217,12 +303,14 @@
     font-size: .78rem;
   }
 
-  .terminalPage .terminalIntro {
-    padding-top: 14px;
+  .terminalPage {
+    padding-bottom: calc(66px + env(safe-area-inset-bottom));
   }
 
-  .terminalPage .terminalIntro h1 {
-    font-size: clamp(1.45rem, 7vw, 2rem);
+  .terminalPage .terminalIntro {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px 10px;
+    padding: 12px 12px 9px;
   }
 
   .terminalPage .terminalIntroCopy .eyebrow,
@@ -230,17 +318,137 @@
     font-size: .56rem;
   }
 
+  .terminalPage .terminalIntro h1 {
+    max-width: 290px;
+    font-size: clamp(1.38rem, 7vw, 1.8rem);
+    line-height: 1.02;
+  }
+
   .terminalPage .terminalIntroCopy > p:last-child {
-    font-size: .72rem;
+    display: -webkit-box;
+    margin-top: 6px;
+    overflow: hidden;
+    font-size: .7rem;
+    line-height: 1.4;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 1;
   }
 
   .terminalPage .terminalIntroActions a {
-    font-size: .66rem;
+    min-height: 38px;
+    padding-right: 10px;
+    padding-left: 10px;
+    font-size: .62rem;
+  }
+
+  .terminalPage .terminalIntro .trustStrip {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 5px;
   }
 
   .terminalPage .terminalIntro .trustStrip span {
+    min-height: 28px;
+    padding: 0 5px;
+    font-size: .52rem;
+  }
+
+  .terminalPage .officialRmtMarket {
+    min-height: 64px;
+    margin: 0 10px 8px;
+    padding: 8px 9px;
+  }
+
+  .terminalPage .officialRmtIdentity {
+    grid-template-columns: 36px minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .terminalPage .officialRmtArtwork {
+    width: 36px;
+    height: 36px;
+    border-radius: 9px;
+  }
+
+  .terminalPage .officialRmtIdentity h2 {
+    font-size: .72rem;
+  }
+
+  .terminalPage .officialRmtActions a {
     min-height: 32px;
-    font-size: .56rem;
+  }
+
+  .terminalPage .terminalMarketShell .feedHeading {
+    min-height: 54px;
+    padding: 10px 12px;
+  }
+
+  .terminalPage .terminalMarketShell .feedHeading h2 {
+    font-size: .96rem;
+  }
+
+  .terminalPage .liveSignalDesk {
+    padding: 0 !important;
+    border-bottom: 1px solid var(--tv8-line);
+  }
+
+  .terminalPage .liveSignalDesk > header {
+    min-height: 40px;
+    padding: 7px 12px;
+  }
+
+  .terminalPage .liveSignalDesk > header span {
+    display: flex;
+    align-items: baseline;
+    gap: 7px;
+  }
+
+  .terminalPage .liveSignalDesk > header small {
+    display: none;
+  }
+
+  .terminalPage .liveSignalDesk > header strong {
+    font-size: .68rem;
+  }
+
+  .terminalPage .liveSignalRail {
+    display: grid !important;
+    grid-auto-columns: minmax(238px, 82vw) !important;
+    grid-auto-flow: column !important;
+    gap: 7px !important;
+    padding: 0 12px 9px !important;
+    overflow-x: auto !important;
+    scroll-snap-type: x proximity;
+  }
+
+  .terminalPage .liveSignalRail > a {
+    position: relative !important;
+    inset: auto !important;
+    display: grid !important;
+    width: auto !important;
+    min-width: 0 !important;
+    min-height: 88px !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 9px 10px !important;
+    transform: none !important;
+    scroll-snap-align: start;
+  }
+
+  .terminalPage .liveSignalRail strong {
+    font-size: .7rem;
+  }
+
+  .terminalPage .liveSignalRail small {
+    font-size: .62rem;
+    line-height: 1.35;
+  }
+
+  .terminalPage .runnerDirectoryControls {
+    padding-top: 8px;
+  }
+
+  .terminalPage .runnerMarketSearch input {
+    min-height: 42px;
   }
 
   .terminalPage .mobileRunnerRank,
@@ -264,6 +472,59 @@
 
   .terminalPage .mobileRunnerMetrics strong {
     font-size: .62rem;
+  }
+
+  .professionalTradeWorkspace {
+    padding-top: 7px;
+    padding-bottom: calc(98px + env(safe-area-inset-bottom));
+  }
+
+  .professionalTradeWorkspace .universalWorkspaceNav {
+    display: flex;
+    min-height: 34px;
+    align-items: center;
+  }
+
+  .professionalTradeWorkspace .universalWorkspaceNav a {
+    display: inline-flex;
+    min-height: 32px;
+    align-items: center;
+  }
+
+  .professionalTradeWorkspace .universalMarketHero {
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .professionalTradeWorkspace .universalMarketMark {
+    width: 40px;
+    height: 40px;
+  }
+
+  .professionalTradeWorkspace .universalMarketIdentity h1 {
+    font-size: .96rem;
+  }
+
+  .professionalTradeWorkspace .universalHeroPrice strong {
+    font-size: .84rem;
+  }
+
+  .professionalTradeWorkspace .universalHeroActions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    overflow: visible;
+  }
+
+  .professionalTradeWorkspace .universalHeroActions button,
+  .professionalTradeWorkspace .universalHeroActions a {
+    min-width: 0;
+    min-height: 34px;
+    padding: 0 7px;
+    overflow: hidden;
+    font-size: .61rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .professionalTradeWorkspace .universalWorkspaceNav,
@@ -298,5 +559,17 @@
   .professionalTradeWorkspace .marketProtectionDisclosure,
   .professionalTradeWorkspace .universalRouteDecision p {
     font-size: .64rem;
+  }
+
+  .professionalTradeWorkspace .universalMobileTradeDock {
+    right: 8px;
+    bottom: calc(56px + env(safe-area-inset-bottom));
+    left: 8px;
+    padding: 4px;
+  }
+
+  .professionalTradeWorkspace .universalMobileTradeDock button {
+    min-height: 46px;
+    font-size: .68rem;
   }
 }
