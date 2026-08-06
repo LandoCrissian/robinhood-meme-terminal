@@ -39,6 +39,7 @@ type LiveGuardStatus = {
   revocationPending?: boolean;
   revocationRequestedAt?: number | null;
   transactionHash?: string | null;
+  walletCleanupReported?: boolean | null;
   error?: string;
 };
 
@@ -105,8 +106,12 @@ function ConfiguredLivePositionGuardControls({
   const embeddedWallet = wallets.find((candidate) => candidate.walletClientType === "privy");
   const walletMatches = embeddedWallet?.address.toLowerCase() === wallet.toLowerCase();
   const active = ["active", "confirming", "executing", "submitted"].includes(status.status ?? "");
-  const cleanupRequired = ["executed", "expired", "review_required", "approval_required", "no_position"].includes(status.status ?? "");
   const revocationPending = status.revocationPending === true;
+  const walletCleanupRequired = status.revocationRequestedAt !== null
+    && status.revocationRequestedAt !== undefined
+    && status.walletCleanupReported === false;
+  const cleanupRequired = ["executed", "expired", "review_required", "approval_required", "no_position"].includes(status.status ?? "")
+    || walletCleanupRequired;
   const systemUnavailable = status.systemStatus === "worker_offline"
     || status.systemStatus === "release_locked"
     || status.systemStatus === "unverified";
@@ -189,7 +194,7 @@ function ConfiguredLivePositionGuardControls({
   async function arm() {
     if (
       !headers || !embeddedWallet || !walletMatches
-      || rawBalance <= 0n || !authorityReviewed
+      || rawBalance <= 0n || !authorityReviewed || walletCleanupRequired
       || status.systemStatus !== "ready" || status.available === false
     ) return;
     setBusy(true);
@@ -222,15 +227,22 @@ function ConfiguredLivePositionGuardControls({
       setAuthorityReviewed(false);
       setMessage("Automatic exit is live. RMT's evaluator may submit the bounded exit until it expires or you revoke it.");
     } catch (cause) {
-      if (signerAdded) await removeSigners({ address: wallet }).catch(() => undefined);
+      let signersCleared = !signerAdded;
+      if (signerAdded) {
+        signersCleared = await removeSigners({ address: wallet }).then(() => true).catch(() => false);
+      }
       let allowanceCleared = !allowanceApproved;
       if (allowanceApproved) {
         allowanceCleared = await approveExact(0n).then(() => true).catch(() => false);
       }
       const detail = cause instanceof Error ? cause.message : "Automatic exit could not be armed.";
-      setMessage(allowanceCleared
+      const residue = [
+        ...(!allowanceCleared ? ["the executor token allowance may remain"] : []),
+        ...(!signersCleared ? ["one or more delegated signers may remain"] : [])
+      ];
+      setMessage(residue.length === 0
         ? `${detail} The incomplete permission was removed.`
-        : `${detail} The order is not active. Revoke the executor token approval in your wallet before continuing.`);
+        : `${detail} The order is not active, but ${residue.join(" and ")}. Use emergency revocation before continuing.`);
     } finally {
       setBusy(false);
     }
@@ -240,28 +252,62 @@ function ConfiguredLivePositionGuardControls({
     if (!headers || !embeddedWallet || !walletMatches) return;
     setBusy(true);
     setMessage("Removing the executor allowance, every delegated signer on this RMT wallet, and the live order.");
-    let walletAuthorityRemoved = false;
+    let allowanceCleared = false;
+    let signersCleared = false;
+    let serverUpdated = false;
+    let next: LiveGuardStatus | null = null;
+    const failures: string[] = [];
+
     try {
       await approveExact(0n);
+      allowanceCleared = true;
+    } catch (cause) {
+      failures.push(`Token allowance: ${cause instanceof Error ? cause.message : "not cleared"}`);
+    }
+
+    try {
       await removeSigners({ address: wallet });
-      walletAuthorityRemoved = true;
-      const next = await parseResponse(await fetch("/api/position-guards/live", {
+      signersCleared = true;
+    } catch (cause) {
+      failures.push(`Delegated signers: ${cause instanceof Error ? cause.message : "not removed"}`);
+    }
+
+    try {
+      next = await parseResponse(await fetch("/api/position-guards/live", {
         method: "POST",
         headers,
-        body: JSON.stringify({ action: "cancel", token, wallet })
+        body: JSON.stringify({
+          action: "cancel",
+          token,
+          wallet,
+          walletAuthorityRemoved: allowanceCleared && signersCleared
+        })
       }));
+      serverUpdated = true;
       setStatus((current) => ({ ...current, ...next, error: undefined }));
-      setMessage(next.revocationPending
+    } catch (cause) {
+      failures.push(`Order record: ${cause instanceof Error ? cause.message : "not updated"}`);
+      setStatus((current) => ({
+        ...current,
+        available: false,
+        systemStatus: "unverified",
+        walletCleanupReported: allowanceCleared && signersCleared
+      }));
+    }
+
+    if (allowanceCleared && signersCleared && serverUpdated) {
+      setMessage(next?.revocationPending
         ? "Future wallet authority is removed. An exit was already in flight and may still settle; RMT will keep reconciling its chain result."
         : "Automatic execution is revoked. Privy removed all delegated signers from this RMT wallet; local monitoring remains available.");
-    } catch (cause) {
-      const detail = cause instanceof Error ? cause.message : "Revocation did not complete.";
-      setMessage(walletAuthorityRemoved
-        ? `Wallet authority was removed, but RMT could not update the server record: ${detail} Do not assume an already-submitted transaction was cancelled.`
-        : `${detail} Review the token allowance and delegated signers before treating the order as revoked.`);
-    } finally {
-      setBusy(false);
+    } else {
+      const completed = [
+        ...(allowanceCleared ? ["token allowance cleared"] : []),
+        ...(signersCleared ? ["all additional signers removed"] : []),
+        ...(serverUpdated ? ["order record updated"] : [])
+      ];
+      setMessage(`Revocation is incomplete. ${completed.length > 0 ? `Completed: ${completed.join(", ")}. ` : ""}${failures.join(" ")} Do not treat an already-submitted transaction as cancelled.`);
     }
+    setBusy(false);
   }
 
   if (!ready || !walletsReady || status.status === "loading") {
@@ -311,16 +357,22 @@ function ConfiguredLivePositionGuardControls({
   const transactionHref = status.transactionHash && /^0x[0-9a-fA-F]{64}$/.test(status.transactionHash)
     ? `${EXPLORER}/tx/${status.transactionHash}`
     : null;
-  const displayStatus = revocationPending ? "RECONCILING" : statusLabel(status.status ?? "");
-  const heading = revocationPending
-    ? "Future authority removed · reconciling an in-flight exit"
-    : systemUnavailable
-      ? "Execution system unavailable · remove wallet authority"
-      : active
-        ? "Protection continues when RMT is closed"
-        : cleanupRequired
-          ? "Clear the completed or interrupted permission"
-          : "Authorize this position plan";
+  const displayStatus = walletCleanupRequired
+    ? "CLEANUP REQUIRED"
+    : revocationPending
+      ? "RECONCILING"
+      : statusLabel(status.status ?? "");
+  const heading = walletCleanupRequired
+    ? "Wallet permission cleanup is incomplete"
+    : revocationPending
+      ? "Future authority removed · reconciling an in-flight exit"
+      : systemUnavailable
+        ? "Execution system unavailable · remove wallet authority"
+        : active
+          ? "Protection continues when RMT is closed"
+          : cleanupRequired
+            ? "Clear the completed or interrupted permission"
+            : "Authorize this position plan";
 
   return (
     <section className={`livePositionGuardControl ${active ? "active" : ""} ${cleanupRequired ? "cleanup" : ""} ${systemUnavailable ? "systemUnavailable" : ""}`} aria-label="Automatic Position Guard execution">
@@ -354,14 +406,22 @@ function ConfiguredLivePositionGuardControls({
           <div className="livePositionGuardRuntime" aria-label="Live automatic exit status">
             <span><small>ARMED</small><strong>{timeLabel(status.armedAt)}</strong></span>
             <span><small>LAST CHECK</small><strong>{timeLabel(status.lastEvaluatedAt)}</strong></span>
-            <span><small>{revocationPending ? "REVOKE REQUESTED" : "EXPIRES"}</small><strong>{timeLabel(revocationPending ? status.revocationRequestedAt : status.expiresAt)}</strong></span>
+            <span><small>{revocationPending || walletCleanupRequired ? "REVOKE REQUESTED" : "EXPIRES"}</small><strong>{timeLabel(revocationPending || walletCleanupRequired ? status.revocationRequestedAt : status.expiresAt)}</strong></span>
           </div>
           {transactionHref && <a className="livePositionGuardTransaction" href={transactionHref} target="_blank" rel="noopener noreferrer">View execution transaction ↗</a>}
-          {revocationPending ? (
+          {revocationPending && !walletCleanupRequired ? (
             <p className="livePositionGuardSystemWarning" role="status">An already-authorized transaction may still confirm. RMT keeps the order in reconciliation instead of falsely marking it cancelled.</p>
           ) : (
             <button className="livePositionGuardRevoke" type="button" disabled={busy} onClick={() => void revoke()}>
-              {busy ? "Revoking safely…" : systemUnavailable ? "Emergency revoke automatic authority" : cleanupRequired ? "Clear automatic permission" : "Revoke automatic exit"}
+              {busy
+                ? "Revoking safely…"
+                : walletCleanupRequired
+                  ? "Retry wallet permission cleanup"
+                  : systemUnavailable
+                    ? "Emergency revoke automatic authority"
+                    : cleanupRequired
+                      ? "Clear automatic permission"
+                      : "Revoke automatic exit"}
             </button>
           )}
         </>
@@ -380,7 +440,7 @@ function ConfiguredLivePositionGuardControls({
             <input type="checkbox" checked={authorityReviewed} onChange={(event) => setAuthorityReviewed(event.target.checked)} />
             <span>I reviewed the approved amount, RMT evaluator timing authority, fixed executor, same-wallet recipient, expiry, and revocation path. Revocation removes all additional signers from this embedded wallet.</span>
           </label>
-          <button type="button" disabled={busy || rawBalance <= 0n || !authorityReviewed || status.systemStatus !== "ready" || status.available === false} onClick={() => void arm()}>
+          <button type="button" disabled={busy || rawBalance <= 0n || !authorityReviewed || walletCleanupRequired || status.systemStatus !== "ready" || status.available === false} onClick={() => void arm()}>
             {busy ? "Securing permission…" : "Authorize automatic exit"}
           </button>
         </div>
