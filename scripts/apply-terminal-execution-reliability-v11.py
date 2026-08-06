@@ -1,3 +1,4 @@
+# One-shot integration script. The workflow deletes this file after a successful patch.
 from pathlib import Path
 import re
 
