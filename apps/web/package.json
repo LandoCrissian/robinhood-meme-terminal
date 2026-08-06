@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "prebuild": "tsx lib/terminal-workstation-smoke.ts && tsx lib/public-discovery-smoke.ts",
+    "prebuild": "tsx lib/terminal-workstation-smoke.ts && tsx lib/public-discovery-smoke.ts && tsx lib/route-batch-alignment-smoke.ts && tsx lib/trade-execution-reliability-smoke.ts && tsx lib/trade-speed-smoke.ts && pnpm typecheck",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
@@ -44,6 +44,7 @@
     "test:universal-resolver": "tsx lib/server/universal-market-resolver-smoke.ts",
     "test:external-ohlcv": "tsx lib/server/external-ohlcv-smoke.ts",
     "test:trade-ticket": "tsx lib/trade-ticket-smoke.ts",
+    "test:route-batch-alignment": "tsx lib/route-batch-alignment-smoke.ts",
     "test:trade-reliability": "tsx lib/trade-execution-reliability-smoke.ts",
     "test:trade-speed": "tsx lib/trade-speed-smoke.ts && tsx lib/trade-execution-reliability-smoke.ts && tsx lib/speed-wallet-smoke.ts && tsx lib/privy-funding-smoke.ts && tsx lib/wallet-transfer-smoke.ts",
     "test:trade-identity": "tsx lib/server/rmt-trade-identity-smoke.ts",
