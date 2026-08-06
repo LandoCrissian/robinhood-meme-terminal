@@ -125,10 +125,14 @@ export function useTradeExecutionRecovery({
 
   const clearFailure = useCallback(() => {
     if (record?.state === "submitted") return;
+    setTrackedHash(undefined);
+    setRecord(null);
+    setRecovered(false);
     setFailure(undefined);
     setRawError("");
     setConfirmationUnavailable(false);
     setResolvedStatus(undefined);
+    recordedSubmission.current = undefined;
   }, [record?.state]);
 
   const status = useMemo<RecoveredTradeExecutionStatus>(() => {
