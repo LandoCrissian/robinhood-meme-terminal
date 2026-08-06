@@ -8,6 +8,7 @@ interface PositionGuardVm {
     function roll(uint256 blockNumber) external;
     function warp(uint256 timestamp) external;
     function expectRevert(bytes4 selector) external;
+    function expectRevert(bytes calldata revertData) external;
 }
 
 contract GuardToken {
@@ -234,7 +235,11 @@ contract RMTPositionGuardExecutorTest {
         _register(orderId, AMOUNT);
         RMTPositionGuardExecutor.V3OrderPreview memory ready = _trigger(orderId, -1_200);
         uint256 required = ready.twapAmountOut * 99 / 100;
-        vm.expectRevert(RMTPositionGuardExecutor.UnsafeMinimumOutput.selector);
+        vm.expectRevert(abi.encodeWithSelector(
+            RMTPositionGuardExecutor.UnsafeMinimumOutput.selector,
+            required - 1,
+            required
+        ));
         vm.prank(WALLET);
         executor.executeV3Exit(_exit(orderId, required - 1));
         require(token.balanceOf(WALLET) == 1_000 ether, "rejected order moved tokens");
@@ -244,21 +249,33 @@ contract RMTPositionGuardExecutorTest {
     function testRegistrationAndExecutionRequireExactAllowanceAndBalance() public {
         bytes32 orderId = keccak256("authority");
         _approve(AMOUNT + 1);
-        vm.expectRevert(RMTPositionGuardExecutor.ExactAllowanceRequired.selector);
+        vm.expectRevert(abi.encodeWithSelector(
+            RMTPositionGuardExecutor.ExactAllowanceRequired.selector,
+            AMOUNT + 1,
+            AMOUNT
+        ));
         vm.prank(WALLET);
         executor.registerV3Order(_registration(orderId, AMOUNT));
 
         _register(orderId, AMOUNT);
         _trigger(orderId, -1_200);
         _approve(AMOUNT + 1);
-        vm.expectRevert(RMTPositionGuardExecutor.ExactAllowanceRequired.selector);
+        vm.expectRevert(abi.encodeWithSelector(
+            RMTPositionGuardExecutor.ExactAllowanceRequired.selector,
+            AMOUNT + 1,
+            AMOUNT
+        ));
         vm.prank(WALLET);
         executor.executeV3Exit(_exit(orderId, 88 ether));
 
         _approve(AMOUNT);
         vm.prank(WALLET);
         token.transfer(address(0xCAFE), 901 ether);
-        vm.expectRevert(RMTPositionGuardExecutor.InsufficientBalance.selector);
+        vm.expectRevert(abi.encodeWithSelector(
+            RMTPositionGuardExecutor.InsufficientBalance.selector,
+            99 ether,
+            AMOUNT
+        ));
         vm.prank(WALLET);
         executor.executeV3Exit(_exit(orderId, 88 ether));
     }
