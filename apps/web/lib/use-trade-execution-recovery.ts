@@ -66,7 +66,7 @@ export function useTradeExecutionRecovery({
   const [resolvedStatus, setResolvedStatus] = useState<"confirmed" | "failed">();
   const recordedSubmission = useRef<Hash>();
 
-  const identityKey = `${wallet?.toLowerCase() ?? ""}:${token.toLowerCase()}:${venue}:${side}`;
+  const identityKey = `${wallet?.toLowerCase() ?? ""}:${token.toLowerCase()}:${pair.toLowerCase()}:${venue}:${side}`;
 
   useEffect(() => {
     setTrackedHash(undefined);
@@ -76,18 +76,21 @@ export function useTradeExecutionRecovery({
     setRawError("");
     setConfirmationUnavailable(false);
     setResolvedStatus(undefined);
-    recordedSubmission.current = undefined;
     if (!wallet) return;
-    const pending = findRecoverableTrade({ wallet, token, venue, side });
+    const pending = findRecoverableTrade({ wallet, token, pair, venue, side });
     if (!pending) return;
     setTrackedHash(pending.txHash);
     setRecord(pending);
     setRecovered(true);
     recordExperienceStage("transaction_recovered");
-  }, [identityKey, side, token, venue, wallet]);
+  }, [identityKey, pair, side, token, venue, wallet]);
 
   useEffect(() => {
-    if (!submittedHash || !wallet || recordedSubmission.current === submittedHash) return;
+    if (!submittedHash) {
+      recordedSubmission.current = undefined;
+      return;
+    }
+    if (!wallet || recordedSubmission.current === submittedHash) return;
     recordedSubmission.current = submittedHash;
     const submitted = recordSubmittedTrade({
       wallet,
@@ -153,7 +156,6 @@ export function useTradeExecutionRecovery({
     setRawError("");
     setConfirmationUnavailable(false);
     setResolvedStatus(undefined);
-    recordedSubmission.current = undefined;
   }, [record?.state]);
 
   const status = useMemo<RecoveredTradeExecutionStatus>(() => {
