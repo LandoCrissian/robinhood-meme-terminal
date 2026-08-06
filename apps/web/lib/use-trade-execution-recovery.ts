@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Address, Hash } from "viem";
-import { recordExperienceStage } from "./experience-funnel";
+import { recordExperienceStage, type ExperienceStage } from "./experience-funnel";
 import {
   classifyTradeExecutionError,
   findRecoverableTrade,
@@ -10,6 +10,7 @@ import {
   markTradeExecutionFailed,
   recordSubmittedTrade,
   type TradeExecutionFailure,
+  type TradeExecutionFailureCode,
   type TradeExecutionRecord,
   type TradeExecutionSide,
   type TradeExecutionVenue
@@ -21,6 +22,23 @@ export type RecoveredTradeExecutionStatus =
   | "confirmed"
   | "failed"
   | "confirmation-unavailable";
+
+const FAILURE_STAGE: Partial<Record<TradeExecutionFailureCode, ExperienceStage>> = {
+  "insufficient-funds": "failure_insufficient_funds",
+  slippage: "failure_slippage",
+  allowance: "failure_allowance",
+  "route-unavailable": "failure_route_unavailable",
+  "simulation-failed": "failure_simulation",
+  network: "failure_network",
+  "nonce-or-duplicate": "failure_nonce_duplicate",
+  reverted: "failure_reverted",
+  unknown: "failure_unknown"
+};
+
+function recordFailureStage(code: TradeExecutionFailureCode) {
+  const stage = FAILURE_STAGE[code];
+  if (stage) recordExperienceStage(stage);
+}
 
 export function useTradeExecutionRecovery({
   wallet,
@@ -110,6 +128,7 @@ export function useTradeExecutionRecovery({
       ? markTradeExecutionFailed(current.id, nextFailure.code) ?? { ...current, state: "failed", failureCode: nextFailure.code }
       : current);
     recordExperienceStage(nextFailure.code === "user-rejected" ? "wallet_rejected" : "transaction_failed");
+    recordFailureStage(nextFailure.code);
     return nextFailure;
   }, []);
 
@@ -120,6 +139,8 @@ export function useTradeExecutionRecovery({
     setRawError(detail);
     setConfirmationUnavailable(true);
     setResolvedStatus(undefined);
+    recordExperienceStage("reconciliation_required");
+    recordFailureStage(nextFailure.code);
     return nextFailure;
   }, []);
 
