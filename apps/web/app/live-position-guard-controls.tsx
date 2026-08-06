@@ -107,8 +107,11 @@ function ConfiguredLivePositionGuardControls({
   const [busy, setBusy] = useState(false);
   const [authorityReviewed, setAuthorityReviewed] = useState(false);
   const [message, setMessage] = useState("");
-  const embeddedWallet = wallets.find((candidate) => candidate.walletClientType === "privy");
-  const walletMatches = embeddedWallet?.address.toLowerCase() === wallet.toLowerCase();
+  const embeddedWallet = wallets.find((candidate) => (
+    candidate.walletClientType === "privy"
+    && candidate.address.toLowerCase() === wallet.toLowerCase()
+  ));
+  const walletMatches = Boolean(embeddedWallet);
   const active = ["active", "confirming", "executing", "submitted"].includes(status.status ?? "");
   const revocationPending = status.revocationPending === true;
   const walletCleanupRequired = status.revocationRequestedAt !== null
@@ -173,7 +176,7 @@ function ConfiguredLivePositionGuardControls({
   }, [authenticated, busy, headers, token, wallet]);
 
   async function approveExact(amount: bigint) {
-    if (!embeddedWallet) throw new Error("The RMT wallet is not ready.");
+    if (!embeddedWallet) throw new Error("The matching RMT wallet is not ready.");
     const provider = await embeddedWallet.getEthereumProvider();
     const transactionHash = await provider.request({
       method: "eth_sendTransaction",
@@ -325,22 +328,25 @@ function ConfiguredLivePositionGuardControls({
       </div>
     );
   }
-  if (!embeddedWallet || !walletMatches) {
-    return (
-      <div className="livePositionGuardControl compactState">
-        <strong>Automatic exits use the RMT embedded wallet</strong>
-        <p>Linked external wallets keep manual execution and their own confirmation flow.</p>
-      </div>
-    );
-  }
   if (status.error && status.status === "error") {
     return (
       <div className="livePositionGuardControl compactState unavailable">
         <strong>Automatic-exit status could not be verified</strong>
         <p>{status.error} RMT will not request new delegated authority while the order state is unknown.</p>
-        <button className="livePositionGuardEmergencyRevoke" type="button" disabled={busy} onClick={() => void revoke()}>
-          {busy ? "Removing authority…" : "Emergency revoke wallet authority"}
-        </button>
+        {walletMatches && (
+          <button className="livePositionGuardEmergencyRevoke" type="button" disabled={busy} onClick={() => void revoke()}>
+            {busy ? "Removing authority…" : "Emergency revoke wallet authority"}
+          </button>
+        )}
+      </div>
+    );
+  }
+  if (!armingEnabled && !hasOrderToClear) return null;
+  if (!embeddedWallet || !walletMatches) {
+    return (
+      <div className="livePositionGuardControl compactState">
+        <strong>Open the matching RMT embedded wallet</strong>
+        <p>This automatic order belongs to {shortAddress(wallet)}. Switch to that embedded wallet before changing its allowance or delegated signers.</p>
       </div>
     );
   }
@@ -360,7 +366,6 @@ function ConfiguredLivePositionGuardControls({
       </div>
     );
   }
-  if (!armingEnabled && !hasOrderToClear) return null;
 
   const transactionHref = status.transactionHash && /^0x[0-9a-fA-F]{64}$/.test(status.transactionHash)
     ? `${EXPLORER}/tx/${status.transactionHash}`
