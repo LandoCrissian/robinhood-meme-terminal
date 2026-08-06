@@ -18,6 +18,7 @@ type ProtectionOrder = {
   executor: string;
   status: string;
   reviewReason: LivePositionGuardReviewReason | null;
+  orderId: string | null;
   amountIn: string | null;
   armedAt: number | null;
   expiresAt: number | null;
@@ -25,7 +26,12 @@ type ProtectionOrder = {
   revocationRequestedAt: number | null;
   revocationPending: boolean;
   walletCleanupReported: boolean | null;
+  onchainOrderClosed: boolean | null;
   transactionHash: string | null;
+  checkpointTransactionHash: string | null;
+  fee: number | null;
+  twapSeconds: number | null;
+  maxSlippageBps: number | null;
   settings: {
     stopLossBps: number;
     trailingStopBps: number;
@@ -71,7 +77,8 @@ function timeLabel(value: number | null) {
 }
 
 function statusLabel(order: ProtectionOrder) {
-  if (order.walletCleanupReported === false && order.revocationRequestedAt) return "CLEANUP REQUIRED";
+  if (order.onchainOrderClosed === false && order.revocationRequestedAt) return "ONCHAIN CLEANUP";
+  if (order.walletCleanupReported === false && order.revocationRequestedAt) return "WALLET CLEANUP";
   if (order.revocationPending) return "RECONCILING";
   if (order.status === "active") return "ACTIVE";
   if (order.status === "confirming") return "VERIFYING TRIGGER";
@@ -86,7 +93,10 @@ function statusLabel(order: ProtectionOrder) {
 }
 
 function statusClass(order: ProtectionOrder) {
-  if (order.walletCleanupReported === false && order.revocationRequestedAt) return "attention";
+  if (
+    (order.onchainOrderClosed === false || order.walletCleanupReported === false)
+    && order.revocationRequestedAt
+  ) return "attention";
   if (order.revocationPending) return "pending";
   if (ACTIVE.has(order.status)) return "active";
   if (ATTENTION.has(order.status)) return "attention";
@@ -94,7 +104,7 @@ function statusClass(order: ProtectionOrder) {
   return "inactive";
 }
 
-function percentFromBps(value: number | undefined) {
+function percentFromBps(value: number | undefined | null) {
   if (typeof value !== "number" || !Number.isFinite(value)) return "—";
   return `${(value / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}%`;
 }
@@ -105,6 +115,7 @@ function matchesView(order: ProtectionOrder, view: View) {
   if (view === "attention") {
     return ATTENTION.has(order.status)
       || order.walletCleanupReported === false
+      || order.onchainOrderClosed === false
       || (!ACTIVE.has(order.status) && !HISTORY.has(order.status));
   }
   return HISTORY.has(order.status);
@@ -207,7 +218,7 @@ export function ProtectionCenter() {
         <section className="protectionCenterIntro compact">
           <p className="eyebrow">RMT · CONTINUING WALLET AUTHORITY</p>
           <h1>Protection Center</h1>
-          <p>Sign in to recover automatic Position Guard orders independently of browser storage, review continuing wallet authority, and revoke from the exact embedded wallet that authorized each order.</p>
+          <p>Sign in to recover automatic Position Guard orders independently of browser storage, review continuing onchain and wallet authority, and revoke from the exact embedded wallet that authorized each order.</p>
           <div className="protectionCenterIntroActions">
             <button type="button" onClick={login}>Sign in to review orders</button>
             <Link href="/">Return to terminal</Link>
@@ -223,7 +234,7 @@ export function ProtectionCenter() {
         <div>
           <p className="eyebrow">RMT · AUTOMATIC POSITION GUARD</p>
           <h1>Protection Center</h1>
-          <p>Every server-backed automatic exit tied to your RMT identity, including orders that this browser has never seen and positions whose remaining token balance is zero.</p>
+          <p>Every server-backed automatic exit tied to your RMT identity, including registered onchain orders that this browser has never seen and positions whose remaining token balance is zero.</p>
         </div>
         <div className="protectionCenterIntroActions">
           <button type="button" disabled={refreshing} onClick={() => void load(undefined, true)}>{refreshing ? "Refreshing…" : "Refresh status"}</button>
@@ -241,7 +252,7 @@ export function ProtectionCenter() {
       {payload.systemStatus && payload.systemStatus !== "ready" && (
         <section className="protectionCenterWarning" role="alert">
           <strong>New automatic authority is blocked.</strong>
-          <span>Existing orders and wallet permissions still require review. Open an order’s authority controls below to clear token allowance, delegated signers, and the server order record.</span>
+          <span>Existing registered orders and wallet permissions still require review. Open an order&apos;s authority controls below to cancel it onchain, clear token allowance, remove delegated signers, and reconcile the server record.</span>
         </section>
       )}
 
@@ -255,7 +266,7 @@ export function ProtectionCenter() {
       <section className="protectionInventory">
         <header>
           <div>
-            <p className="eyebrow">CONTINUING PERMISSIONS AND EXECUTION STATE</p>
+            <p className="eyebrow">ONCHAIN ORDERS, WALLET PERMISSIONS AND EXECUTION STATE</p>
             <h2>Automatic orders</h2>
           </div>
           <nav className="protectionTabs" aria-label="Protection order filters">
@@ -305,18 +316,26 @@ export function ProtectionCenter() {
                     <span><small>STOP</small><strong>−{percentFromBps(order.settings?.stopLossBps)}</strong></span>
                     <span><small>TRAIL</small><strong>−{percentFromBps(order.settings?.trailingStopBps)}</strong></span>
                     <span><small>BREAK EVEN</small><strong>+{percentFromBps(order.settings?.breakEvenActivationBps)}</strong></span>
-                    <span><small>IMPACT CAP</small><strong>{percentFromBps(order.settings?.maxPriceImpactBps)}</strong></span>
+                    <span><small>TWAP / SLIPPAGE</small><strong>{order.twapSeconds ? `${Math.round(order.twapSeconds / 60)}m` : "—"} / {percentFromBps(order.maxSlippageBps)}</strong></span>
                   </div>
 
+                  {order.orderId && (
+                    <p className="protectionOrderNotice">Registered order {shortAddress(order.orderId)} · V3 fee {order.fee?.toLocaleString() ?? "—"} · same-wallet WETH recipient.</p>
+                  )}
                   {order.revocationPending && (
                     <p className="protectionOrderNotice">Future authority may already be removed, but an exit was in flight. A submitted transaction can still settle and remains under reconciliation.</p>
+                  )}
+                  {order.onchainOrderClosed === false && order.revocationRequestedAt && (
+                    <p className="protectionOrderNotice danger">The registered executor order is not proven cancelled, executed, or expired. Retry onchain order cancellation below.</p>
                   )}
                   {order.walletCleanupReported === false && order.revocationRequestedAt && (
                     <p className="protectionOrderNotice danger">The server received a revoke request without proof that both the token allowance and all additional signers were removed. Retry wallet cleanup below.</p>
                   )}
-                  {reviewMessage && !order.revocationPending && !(order.walletCleanupReported === false && order.revocationRequestedAt) && (
-                    <p className="protectionOrderNotice danger">{reviewMessage}</p>
-                  )}
+                  {reviewMessage
+                    && !order.revocationPending
+                    && !(order.walletCleanupReported === false && order.revocationRequestedAt)
+                    && !(order.onchainOrderClosed === false && order.revocationRequestedAt)
+                    && <p className="protectionOrderNotice danger">{reviewMessage}</p>}
 
                   <footer>
                     <button
@@ -330,12 +349,13 @@ export function ProtectionCenter() {
                     </button>
                     <Link href={`/market/${order.token}`}>Market</Link>
                     <a href={`${EXPLORER}/address/${order.executor}`} target="_blank" rel="noopener noreferrer">Executor ↗</a>
-                    {order.transactionHash && <a href={`${EXPLORER}/tx/${order.transactionHash}`} target="_blank" rel="noopener noreferrer">Transaction ↗</a>}
+                    {order.checkpointTransactionHash && <a href={`${EXPLORER}/tx/${order.checkpointTransactionHash}`} target="_blank" rel="noopener noreferrer">Checkpoint ↗</a>}
+                    {order.transactionHash && <a href={`${EXPLORER}/tx/${order.transactionHash}`} target="_blank" rel="noopener noreferrer">Execution ↗</a>}
                   </footer>
 
                   {managing && (
                     <section className="protectionOrderManagement" id={`protection-order-controls-${order.id}`}>
-                      <p>These controls target the exact embedded wallet shown above. Arming is disabled here; only status recovery, reconciliation, and revocation are available.</p>
+                      <p>These controls target the exact embedded wallet shown above. Arming is disabled here; only status recovery, onchain cancellation, allowance cleanup, signer removal, and transaction reconciliation are available.</p>
                       <LivePositionGuardControls
                         armingEnabled={false}
                         pair={order.pair as Address}
@@ -355,7 +375,7 @@ export function ProtectionCenter() {
 
       <section className="protectionTrustBoundary">
         <h2>What this inventory proves</h2>
-        <p>It proves which automatic-order records RMT can associate with the signed-in identity. It does not, by itself, prove that a token allowance is zero, that every additional signer is removed, or that an already-submitted transaction cannot settle. The order’s authority controls perform wallet cleanup and preserve transaction reconciliation state.</p>
+        <p>It proves which server records RMT can associate with the signed-in identity and exposes their registered order IDs and transaction evidence. It does not, by itself, prove that an onchain order is closed, that a token allowance is zero, that every additional signer is removed, or that an already-submitted transaction cannot settle. The order&apos;s authority controls perform onchain cancellation and wallet cleanup while preserving reconciliation state.</p>
       </section>
     </main>
   );
