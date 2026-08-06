@@ -9,6 +9,7 @@ on:
       - "apps/web/lib/protection-center-smoke.ts"
       - "apps/web/lib/market-protection*"
       - "apps/web/package.json"
+      - "firestore.indexes.json"
       - "package.json"
       - "pnpm-lock.yaml"
       - ".github/workflows/terminal-verification.yml"
