@@ -7,6 +7,7 @@ import {
   livePositionGuardHeartbeatIsFresh,
   livePositionGuardOrderId,
   livePositionGuardPublicConfiguration,
+  livePositionGuardRuntimeAuthority,
   normalizeLivePositionGuardSettings,
   unitQuoteX18
 } from "./live-position-guard";
@@ -68,6 +69,37 @@ assert.equal(livePositionGuardAuthorityMatchesPlan({
   balance: 100n,
   amountIn: 0n
 }), false);
+
+assert.deepEqual(livePositionGuardRuntimeAuthority({
+  allowance: 100n,
+  balance: 100n,
+  amountLimit: 100n
+}), { status: "ready", reviewReason: null });
+assert.deepEqual(livePositionGuardRuntimeAuthority({
+  allowance: 101n,
+  balance: 100n,
+  amountLimit: 100n
+}), { status: "review_required", reviewReason: "allowance_exceeds_order_limit" });
+assert.deepEqual(livePositionGuardRuntimeAuthority({
+  allowance: 99n,
+  balance: 100n,
+  amountLimit: 100n
+}), { status: "approval_required", reviewReason: null });
+assert.deepEqual(livePositionGuardRuntimeAuthority({
+  allowance: 100n,
+  balance: 99n,
+  amountLimit: 100n
+}), { status: "review_required", reviewReason: "balance_below_order_limit" });
+assert.deepEqual(livePositionGuardRuntimeAuthority({
+  allowance: 100n,
+  balance: 0n,
+  amountLimit: 100n
+}), { status: "no_position", reviewReason: null });
+assert.deepEqual(livePositionGuardRuntimeAuthority({
+  allowance: 0n,
+  balance: 0n,
+  amountLimit: 0n
+}), { status: "review_required", reviewReason: "invalid_order_limit" });
 
 const base = {
   entryUnitQuoteX18: 100n,
