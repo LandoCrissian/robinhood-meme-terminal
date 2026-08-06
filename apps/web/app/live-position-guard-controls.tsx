@@ -472,5 +472,10 @@ function ConfiguredLivePositionGuardControls({
 
 export function LivePositionGuardControls({ armingEnabled = true, ...props }: LivePositionGuardControlProps) {
   if (!configuration) return null;
-  return <ConfiguredLivePositionGuardControls armingEnabled={armingEnabled} {...props} />;
+  return (
+    <ConfiguredLivePositionGuardControls
+      armingEnabled={armingEnabled && configuration.enabled}
+      {...props}
+    />
+  );
 }
