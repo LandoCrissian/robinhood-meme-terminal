@@ -1,0 +1,104 @@
+name: Apply terminal high-end pass direct
+
+on:
+  push:
+    branches:
+      - fix/terminal-desktop-layout-v9
+    paths:
+      - ".github/workflows/apply-terminal-high-end-direct.yml"
+      - ".github/workflows/apply-terminal-high-end-pass.yml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/apply-terminal-high-end-direct.yml"
+      - ".github/workflows/apply-terminal-high-end-pass.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apply-terminal-high-end-direct-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  apply:
+    if: github.event_name == 'push' || github.head_ref == 'fix/terminal-desktop-layout-v9'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Clone branch and execute staged terminal patch
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          git clone --single-branch --branch fix/terminal-desktop-layout-v9 \
+            "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" repo
+          cd repo
+
+          python3 <<'PY'
+          from pathlib import Path
+          import re
+
+          workflow = Path('.github/workflows/apply-terminal-high-end-pass.yml').read_text()
+          marker = "          python3 <<'PY'\n"
+          start = workflow.index(marker) + len(marker)
+          end = workflow.index("\n          PY\n", start)
+
+          raw_lines = workflow[start:end].splitlines()
+          normalized = []
+          quote = None
+          for line in raw_lines:
+              output = line if quote else (line[10:] if line.startswith("          ") else line)
+              normalized.append(output)
+              for token in ("'''", '"""'):
+                  occurrences = output.count(token)
+                  if quote is None and occurrences % 2 == 1:
+                      quote = token
+                      break
+                  if quote == token and occurrences % 2 == 1:
+                      quote = None
+                      break
+          script = "\n".join(normalized)
+
+          function_start = script.index("def replace_once")
+          function_end = script.index("\ndef regex_once", function_start)
+          robust_replace = '''def replace_once(path: str, old: str, new: str) -> None:
+    file = Path(path)
+    text = file.read_text()
+    if text.count(old) == 1:
+        file.write_text(text.replace(old, new, 1))
+        return
+    flexible = "".join(
+        r"\\s+" if part.isspace() else re.escape(part)
+        for part in re.split(r"(\\s+)", old)
+    )
+    updated, count = re.subn(flexible, lambda _match: new, text, count=1, flags=re.S)
+    if count != 1:
+        raise SystemExit(f"{path}: expected one flexible match, found {count}: {old[:160]!r}")
+    file.write_text(updated)
+'''
+          script = script[:function_start] + robust_replace + script[function_end:]
+          exec(compile(script, 'terminal-high-end-pass.py', 'exec'))
+          PY
+
+          rm -f \
+            .github/workflows/apply-terminal-high-end-direct.yml \
+            .github/workflows/apply-terminal-high-end-pass.yml \
+            .github/workflows/apply-terminal-high-end-pr.yml \
+            .github/workflows/apply-terminal-high-end-pr-macos.yml \
+            .github/workflows/run-terminal-high-end-pass.yml \
+            .github/workflows/export-terminal-source.yml \
+            .terminal-high-end-trigger
+
+          git diff --check
+          git config user.name "rmt-terminal-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No terminal changes remained to commit."
+            exit 0
+          fi
+          git commit -m "feat(web): complete high-end terminal workstation pass"
+          git push origin HEAD:fix/terminal-desktop-layout-v9
