@@ -17,6 +17,14 @@ const traderControlCss = readFileSync(
   new URL("../app/terminal-trader-control-v12.css", import.meta.url),
   "utf8"
 );
+const tradeTicketUiSource = readFileSync(
+  new URL("../app/trade-ticket-ui.tsx", import.meta.url),
+  "utf8"
+);
+const tradeTicketSource = readFileSync(
+  new URL("./trade-ticket.ts", import.meta.url),
+  "utf8"
+);
 const tradeConfidenceSource = readFileSync(
   new URL("../app/trade-confidence.tsx", import.meta.url),
   "utf8"
@@ -202,14 +210,44 @@ assert.match(
   "Real execution-integrity failures must remain explicitly blocking."
 );
 assert.match(
+  tradeTicketSource,
+  /export const PRICE_IMPACT_CAUTION = 0\.05;/,
+  "Routine price-impact disclosure should begin at the professional five-percent warning band."
+);
+assert.match(
+  tradeTicketSource,
+  /export const PRICE_IMPACT_CRITICAL = 0\.10;/,
+  "Very high price impact should use a distinct ten-percent critical band."
+);
+assert.match(
+  tradeTicketUiSource,
+  /<strong>Price-impact alert<\/strong>/,
+  "The saved impact value must be described as an alert rather than a hidden veto."
+);
+assert.match(
+  tradeTicketUiSource,
+  /RMT highlights quotes above this level\. It does not veto a valid order/,
+  "Execution controls must state who owns the market-risk decision."
+);
+assert.match(
+  tradeTicketUiSource,
+  />Use safer size<\/button>/,
+  "Safer sizing must remain an optional action instead of a fixed one-percent command."
+);
+assert.doesNotMatch(
+  tradeTicketUiSource,
+  /Reduce below 1%|This quote is above 1% impact/,
+  "The terminal must not hard-code a one-percent interruption."
+);
+assert.doesNotMatch(
   traderControlCss,
-  /\.smartOrderGuard\.caution \{[\s\S]*?display: none;/,
-  "The generic one-percent observation must not interrupt ordinary orders."
+  /\.smartOrderGuard\.caution \{[\s\S]*?display:\s*none;/,
+  "Elevated impact warnings must remain visible when their semantic threshold is crossed."
 );
 assert.match(
   traderControlCss,
-  /\.smartOrderGuard button::after \{[\s\S]*?content: "Use safer size";/,
-  "Safer sizing must be offered as an optional action instead of a fixed one-percent command."
+  /\.smartOrderGuard\.caution \{[\s\S]*?border-color:/,
+  "Advisory impact needs a visible, non-blocking caution treatment."
 );
 assert.match(
   traderControlCss,
