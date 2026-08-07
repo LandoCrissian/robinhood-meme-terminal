@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Address, Hash } from "viem";
 import { recordExperienceStage, type ExperienceStage } from "./experience-funnel";
+import { sanitizeTradeDiagnosticText } from "./trade-diagnostic-sanitize";
+import { findRecoverableTradeAcrossRoutes } from "./trade-execution-recovery-lookup";
 import {
   classifyTradeExecutionError,
   findRecoverableTrade,
@@ -77,7 +79,8 @@ export function useTradeExecutionRecovery({
     setConfirmationUnavailable(false);
     setResolvedStatus(undefined);
     if (!wallet) return;
-    const pending = findRecoverableTrade({ wallet, token, pair, venue, side });
+    const pending = findRecoverableTrade({ wallet, token, pair, venue, side })
+      ?? findRecoverableTradeAcrossRoutes({ wallet, token, side });
     if (!pending) return;
     setTrackedHash(pending.txHash);
     setRecord(pending);
@@ -122,9 +125,8 @@ export function useTradeExecutionRecovery({
 
   const fail = useCallback((cause: unknown, explicit?: TradeExecutionFailure) => {
     const nextFailure = explicit ?? classifyTradeExecutionError(cause);
-    const detail = cause instanceof Error ? cause.message : typeof cause === "string" ? cause : String(cause ?? "");
     setFailure(nextFailure);
-    setRawError(detail);
+    setRawError(sanitizeTradeDiagnosticText(cause));
     setConfirmationUnavailable(false);
     setResolvedStatus("failed");
     setRecord((current) => current
@@ -137,9 +139,8 @@ export function useTradeExecutionRecovery({
 
   const holdForReconciliation = useCallback((cause: unknown) => {
     const nextFailure = classifyTradeExecutionError(cause);
-    const detail = cause instanceof Error ? cause.message : typeof cause === "string" ? cause : String(cause ?? "");
     setFailure(nextFailure);
-    setRawError(detail);
+    setRawError(sanitizeTradeDiagnosticText(cause));
     setConfirmationUnavailable(true);
     setResolvedStatus(undefined);
     recordExperienceStage("reconciliation_required");
