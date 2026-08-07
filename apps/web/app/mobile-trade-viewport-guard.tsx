@@ -33,51 +33,51 @@ export function MobileTradeViewportGuard() {
     let frame = 0;
 
     const align = () => {
-      frame = 0;
       if (!rail || !rail.classList.contains("mobileOpen")) {
         clearAlignment(rail);
         return;
       }
 
+      const visual = window.visualViewport;
+      const viewportTop = visual?.offsetTop ?? 0;
+      const viewportHeight = visual?.height ?? window.innerHeight;
+      const viewportBottom = viewportTop + viewportHeight;
+      const availableHeight = Math.max(320, Math.floor(viewportHeight * 0.94));
+
       rail.style.setProperty("transition", "none", "important");
       rail.style.setProperty("transform", "translate3d(0, 0, 0)", "important");
+      rail.style.setProperty("height", `${availableHeight}px`, "important");
+      rail.style.setProperty("max-height", `${availableHeight}px`, "important");
 
-      window.requestAnimationFrame(() => {
-        if (!rail || !rail.classList.contains("mobileOpen")) return;
-        const visual = window.visualViewport;
-        const viewportTop = visual?.offsetTop ?? 0;
-        const viewportHeight = visual?.height ?? window.innerHeight;
-        const viewportBottom = viewportTop + viewportHeight;
-        const availableHeight = Math.max(320, Math.floor(viewportHeight * 0.94));
-
-        rail.style.setProperty("height", `${availableHeight}px`, "important");
-        rail.style.setProperty("max-height", `${availableHeight}px`, "important");
-
-        const rect = rail.getBoundingClientRect();
-        let correction = viewportBottom - rect.bottom;
-        if (rect.top + correction < viewportTop) {
-          correction += viewportTop - (rect.top + correction);
-        }
-        rail.style.setProperty(
-          "transform",
-          `translate3d(0, ${correction.toFixed(3)}px, 0)`,
-          "important"
-        );
-      });
+      // getBoundingClientRect forces the open layout to settle before the
+      // final correction is applied, so the first visible frame is usable.
+      const rect = rail.getBoundingClientRect();
+      let correction = viewportBottom - rect.bottom;
+      if (rect.top + correction < viewportTop) {
+        correction += viewportTop - (rect.top + correction);
+      }
+      rail.style.setProperty(
+        "transform",
+        `translate3d(0, ${correction.toFixed(3)}px, 0)`,
+        "important"
+      );
     };
 
     const schedule = () => {
       if (frame) window.cancelAnimationFrame(frame);
-      frame = window.requestAnimationFrame(align);
+      frame = window.requestAnimationFrame(() => {
+        frame = 0;
+        align();
+      });
     };
 
     const bindRail = () => {
       const candidate = document.querySelector<HTMLElement>(RAIL_SELECTOR);
       if (!candidate) return false;
       rail = candidate;
-      railObserver = new MutationObserver(schedule);
+      railObserver = new MutationObserver(align);
       railObserver.observe(rail, { attributes: true, attributeFilter: ["class"] });
-      schedule();
+      align();
       return true;
     };
 
