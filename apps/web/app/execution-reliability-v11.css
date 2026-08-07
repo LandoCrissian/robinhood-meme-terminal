@@ -172,6 +172,21 @@
   color: #90eda0;
 }
 
+/* Loaded after the workstation CSS so every keyboard/mouse control keeps a
+ * professional minimum target without changing the table density. */
+@media (min-width: 761px) {
+  .terminalPage .runnerColumnHeader button {
+    min-height: 32px !important;
+  }
+
+  .terminalPage .runnerMarketCard > .externalChartLink {
+    display: inline-flex !important;
+    min-height: 34px !important;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
 @media (max-width: 760px) {
   .tradePreflightFailure,
   .tradeExecutionStatus {
