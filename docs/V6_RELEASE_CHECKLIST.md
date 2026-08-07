@@ -1,6 +1,6 @@
 # V6 Release Checklist
 
-Current production status: **V6 is live and public launches are open**. This is the historical release plan, not proof that every planned gate was completed. Its unchecked deployment and verification items remain unchecked deliberately. Use [MAINNET_V6_DEPLOYMENT.md](MAINNET_V6_DEPLOYMENT.md) for confirmed addresses and receipts; exact source publication and the independent human audit remain open work.
+Current production status: **the official V6 market is live; new V6 token creation is intentionally paused for V7 preparation**. This is the historical release plan, not proof that every planned gate was completed. Its unchecked deployment and verification items remain unchecked deliberately. Use [MAINNET_V6_DEPLOYMENT.md](MAINNET_V6_DEPLOYMENT.md) for confirmed addresses and receipts; exact source publication and the independent human audit remain open work.
 
 ## Architecture
 

@@ -97,3 +97,7 @@
   .watchlistAlertPresets{grid-column:1}
   .watchlistAlertPresets button{flex:1 1 calc(50% - 4px);min-height:40px}
 }
+
+/* Mobile QA: destructive and notification controls must remain thumb-sized. */
+.watchlistNotifyButton,.watchlistAlertHistory>header button{min-height:40px}
+.watchlistAlertHistoryList article>button{right:10px;width:40px;height:40px}

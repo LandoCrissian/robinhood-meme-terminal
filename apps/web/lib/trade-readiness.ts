@@ -7,10 +7,10 @@ export function tradeReadinessStatus(
   evidenceState: TradeEvidenceState
 ): { tone: TradeReadinessTone; headline: string } {
   if (evidenceState === "blocked") {
-    return { tone: "blocked", headline: "Order blocked · review required" };
+    return { tone: "blocked", headline: "Transaction integrity block · action required" };
   }
   if (evidenceState === "review") {
-    return { tone: "review", headline: "Review required before wallet" };
+    return { tone: "review", headline: "Review advised · you remain in control" };
   }
   if (evidenceState === "checking") {
     return { tone: "checking", headline: "Reviewing contract evidence" };

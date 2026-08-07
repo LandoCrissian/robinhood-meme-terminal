@@ -290,7 +290,7 @@ function SignalCard({ signal, onOpen }: { signal: LiveMarketSignal; onOpen?: () 
   );
 }
 
-function LiveSignalDesk({ signals }: { signals: LiveMarketSignal[] }) {
+function LiveSignalDesk({ signals, loading }: { signals: LiveMarketSignal[]; loading: boolean }) {
   const [open, setOpen] = useState(false);
   const dialog = useRef<HTMLElement>(null);
   const close = useRef<HTMLButtonElement>(null);
@@ -339,11 +339,18 @@ function LiveSignalDesk({ signals }: { signals: LiveMarketSignal[] }) {
     <section className="liveSignalDesk" aria-labelledby="live-signal-desk-title">
       <header>
         <span><small>RMT LIVE SIGNAL DESK</small><strong id="live-signal-desk-title">Markets requiring attention</strong></span>
-        {signals.length > 5
+        {loading
+          ? <span className="liveSignalCount">Scanning markets</span>
+          : signals.length > 5
           ? <button className="liveSignalBoardButton" type="button" aria-haspopup="dialog" onClick={openBoard}>View all {signals.length}</button>
           : <span className="liveSignalCount">{signals.length} live</span>}
       </header>
-      {signals.length ? (
+      {loading ? (
+        <div className="liveSignalEmpty loading" role="status">
+          <strong>Building the live signal desk…</strong>
+          <span>RMT is validating liquidity, two-sided activity, price movement, and market pace.</span>
+        </div>
+      ) : signals.length ? (
         <div className="liveSignalRail" aria-label="Highest-priority market signals">
           {signals.map((signal) => <SignalCard signal={signal} key={signal.id} />)}
         </div>
@@ -718,7 +725,7 @@ export function ExternalMarketFeedV10() {
           <h2 id="external-markets-title" ref={heading} tabIndex={-1}>Runner signals</h2>
           <p>Live Robinhood Chain discovery ranked by liquidity, two-sided activity, acceleration, and route evidence.</p>
         </div>
-        <span className="externalBadge"><i aria-hidden="true" />{status === "stale" ? "DATA DELAYED" : "LIVE · 60S RANKS"}</span>
+        <span className="externalBadge"><i aria-hidden="true" />{status === "loading" ? "SYNCING MARKETS" : status === "stale" ? "DATA DELAYED" : "LIVE · 60S RANKS"}</span>
       </div>
 
       <p className="srOnly" aria-live="polite">{announcement}</p>
@@ -729,7 +736,7 @@ export function ExternalMarketFeedV10() {
         </p>
       )}
 
-      <LiveSignalDesk signals={liveSignals} />
+      <LiveSignalDesk signals={liveSignals} loading={status === "loading"} />
 
       <div className="runnerDirectoryControls" role="search" aria-label="Search Robinhood Chain markets">
         <div className="runnerMarketSearch">
@@ -815,7 +822,7 @@ export function ExternalMarketFeedV10() {
               onKeyDown={(event) => handleTabKeyDown(event, item.id)}
               key={item.id}
             >
-              {item.label}<span>{viewCounts[item.id]}</span>
+              {item.label}<span>{status === "loading" ? "—" : viewCounts[item.id]}</span>
             </button>
           ))}
         </div>
@@ -832,7 +839,7 @@ export function ExternalMarketFeedV10() {
             onClick={() => { setVenueFilter(item.id); setShowAllMarkets(view === "explore"); }}
             key={item.id}
           >
-            {item.label}<b>{venueCounts[item.id]}</b>
+            {item.label}<b>{status === "loading" ? "—" : venueCounts[item.id]}</b>
           </button>
         ))}
         <span className="runnerFilterDivider">Execute</span>
@@ -842,7 +849,7 @@ export function ExternalMarketFeedV10() {
           className={tradeableOnly ? "active executionFilter" : "executionFilter"}
           onClick={() => { setTradeableOnly((current) => !current); setShowAllMarkets(view === "explore"); }}
         >
-          {routeSyncing ? "Routes syncing" : "Tradeable"}<b>{routeSyncing ? `${routeResolvedCount}/${sorted.length}` : tradeableCount}</b>
+          {status === "loading" ? "Checking routes" : routeSyncing ? "Routes syncing" : "Tradeable"}<b>{status === "loading" ? "—" : routeSyncing ? `${routeResolvedCount}/${sorted.length}` : tradeableCount}</b>
         </button>
         <details className="runnerOriginFilters">
           <summary>Source · {sourceFilter === "all" ? "All" : SOURCE_FILTERS.find((item) => item.id === sourceFilter)?.label}</summary>
@@ -855,7 +862,7 @@ export function ExternalMarketFeedV10() {
                 onClick={() => { setSourceFilter(item.id); setShowAllMarkets(view === "explore"); }}
                 key={item.id}
               >
-                {item.label}<b>{sourceCounts[item.id]}</b>
+                {item.label}<b>{status === "loading" ? "—" : sourceCounts[item.id]}</b>
               </button>
             ))}
           </div>

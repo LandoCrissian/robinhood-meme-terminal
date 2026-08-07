@@ -2,7 +2,7 @@
 
 ## Status
 
-V6 is deployed, active, and open for public token creation. The official V6 RMT token is `0xdBa33be56C89CC9fc014c4459028d7e5c7878671`; the canonical live addresses and receipts are recorded in [MAINNET_V6_DEPLOYMENT.md](MAINNET_V6_DEPLOYMENT.md). V6 remains an explicitly disclosed unaudited mainnet beta. Exact Blockscout source publication and an independent human audit remain post-launch security priorities.
+V6 is deployed and its official RMT market remains active, while new V6 token creation is intentionally paused for V7 preparation. The official V6 RMT token is `0xdBa33be56C89CC9fc014c4459028d7e5c7878671`; the canonical live addresses and receipts are recorded in [MAINNET_V6_DEPLOYMENT.md](MAINNET_V6_DEPLOYMENT.md). V6 remains an explicitly disclosed unaudited mainnet beta. Exact Blockscout source publication and an independent human audit remain post-launch security priorities.
 
 ## Product contract
 

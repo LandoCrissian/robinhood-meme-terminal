@@ -9,7 +9,7 @@ export default function RisksPage() {
       <h2>Smart-contract risk</h2>
       <p>Contracts can contain unknown defects, economic weaknesses, rounding issues, integration failures, or exploitable assumptions. Immutability can make some failures difficult or impossible to reverse.</p>
       <h2>Graduation and liquidity risk</h2>
-      <p>RMT V6 is deployed and public launches are open, but successful deployment and smoke checks do not guarantee that every launch will graduate successfully. Network congestion, DEX behavior, hook or adapter failure, price movement, or liquidity conditions may affect migration and post-graduation trading.</p>
+      <p>RMT V6 is deployed and its existing official market remains live, but new V6 token creation is intentionally paused while V7 is designed and reviewed. Successful deployment and smoke checks do not guarantee that every market path will operate without interruption. Network congestion, DEX behavior, hook or adapter failure, price movement, and liquidity conditions may affect trading.</p>
       <p>V6 clamps the final curve buy to the exact net graduation target. If an excess-payment refund cannot be delivered, it remains a payer-owned onchain claim. Forced ETH, unsolicited tokens, and pool-seeding dust are intentionally excluded from liquidity and fee distribution and may remain permanently locked.</p>
       <h2>Market and execution risk</h2>
       <p>Quotes can change before confirmation. Slippage, price impact, frontrunning, sandwiching, failed transactions, gas spikes, and wallet delays may produce a different outcome than expected.</p>

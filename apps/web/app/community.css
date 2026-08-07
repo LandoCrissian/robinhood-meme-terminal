@@ -21,3 +21,7 @@
 @media(max-width:640px){.communityLivePanel{top:max(8px,env(safe-area-inset-top));bottom:max(8px,env(safe-area-inset-bottom));width:min(390px,calc(100vw - 38px));border-radius:18px 0 0 18px;padding-bottom:env(safe-area-inset-bottom)}.communityLivePanel textarea,.communityFeedbackForm input,.communityFeedbackForm select{font-size:16px}.communityLiveStream article p{font-size:.72rem}}
 @media(max-width:760px){body:has(.universalTradeRail.mobileOpen) .communityLive:not(.open){opacity:0;pointer-events:none;transform:translate(100%,-50%)}body:has(.universalTradeRail.mobileOpen) .communityLive:not(.open) .communityLiveLauncher{pointer-events:none}}
 @media(prefers-reduced-motion:reduce){.communityLive,.communityLivePanel,.communityLiveBackdrop{transition:none;animation:none}}
+
+/* Keep the persistent community entry and close action within a reliable thumb target. */
+.communityLiveLauncher{width:42px;min-height:104px}
+.communityLivePanel>header>button{width:42px;height:42px}
