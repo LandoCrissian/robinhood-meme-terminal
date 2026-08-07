@@ -36,7 +36,6 @@ import { Providers } from "./providers";
 import { PublicChrome } from "./public-chrome";
 import { TradingTermsGate } from "./trading-terms-gate";
 import { FirstVisitGuide } from "./first-visit-guide";
-import { MobileTradeViewportGuard } from "./mobile-trade-viewport-guard";
 import {
   RMT_SITE_ALTERNATE_NAME,
   RMT_SITE_DESCRIPTION,
@@ -103,7 +102,6 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           <PublicChrome />
           <TradingTermsGate />
           <FirstVisitGuide />
-          <MobileTradeViewportGuard />
           {children}
         </Providers>
       </body>
