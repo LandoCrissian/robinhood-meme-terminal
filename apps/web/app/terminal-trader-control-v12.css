@@ -6,31 +6,43 @@
  * transaction-integrity requirements.
  */
 
-/* Do not interrupt an otherwise executable order merely because it crossed
- * RMT's generic 1% observation level. The panel reappears when the quote is
- * above the trader's selected alert or reaches the system high-impact band. */
+.professionalTradeWorkspace .smartOrderGuard {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+}
+
 .professionalTradeWorkspace .smartOrderGuard.caution {
-  display: none;
+  border-color: rgba(239, 199, 106, .34);
+  background: linear-gradient(135deg, rgba(61, 48, 20, .42), rgba(18, 17, 10, .94));
+  color: #dfc987;
 }
 
 .professionalTradeWorkspace .smartOrderGuard.danger {
-  border-color: rgba(239, 199, 106, .46);
-  background: linear-gradient(135deg, rgba(77, 55, 18, .54), rgba(24, 20, 9, .94));
-  color: #f1d48d;
+  border-color: rgba(255, 116, 125, .46);
+  background: linear-gradient(135deg, rgba(77, 27, 31, .52), rgba(24, 10, 12, .95));
+  color: #f1a5ab;
 }
 
-.professionalTradeWorkspace .smartOrderGuard.danger strong,
-.professionalTradeWorkspace .smartOrderGuard.danger small {
+.professionalTradeWorkspace .smartOrderGuard strong,
+.professionalTradeWorkspace .smartOrderGuard small {
   color: inherit;
 }
 
 .professionalTradeWorkspace .smartOrderGuard button {
-  font-size: 0;
+  min-width: 120px;
+  min-height: 42px;
+  padding: 0 12px;
+  border-color: currentColor;
+  background: rgba(8, 12, 9, .7);
+  color: inherit;
+  font-size: .66rem;
+  white-space: nowrap;
 }
 
-.professionalTradeWorkspace .smartOrderGuard button::after {
-  content: "Use safer size";
-  font-size: .72rem;
+.professionalTradeWorkspace .smartOrderGuard button:disabled {
+  opacity: .5;
 }
 
 .professionalTradeWorkspace .tradeConfidenceImpactNote {
@@ -87,8 +99,11 @@
     width: auto !important;
     min-height: 52px !important;
     margin: 12px 0 0 !important;
+    border-color: #354239 !important;
+    background: #151b17 !important;
     box-shadow: none !important;
-    opacity: .76;
+    color: #aeb8b1 !important;
+    opacity: 1;
   }
 
   .professionalTradeWorkspace .tradePreSignReadiness > header {
@@ -109,7 +124,13 @@
     min-height: 76px;
   }
 
-  .professionalTradeWorkspace .smartOrderGuard button::after {
-    font-size: .78rem;
+  .professionalTradeWorkspace .smartOrderGuard {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .professionalTradeWorkspace .smartOrderGuard button {
+    width: 100%;
+    min-height: 46px;
+    font-size: .72rem;
   }
 }
