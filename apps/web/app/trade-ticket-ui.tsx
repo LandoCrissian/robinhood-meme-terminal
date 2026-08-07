@@ -7,6 +7,8 @@ import { formatEther, formatUnits, parseUnits } from "viem";
 import {
   estimatedNetworkFeeUsd,
   fractionalTradeAmount,
+  PRICE_IMPACT_CAUTION,
+  PRICE_IMPACT_CRITICAL,
   priceImpactTone,
   quoteSecondsRemaining
 } from "../lib/trade-ticket";
@@ -45,7 +47,7 @@ export function TradeExecutionControls() {
             ? "BEST OUTPUT"
             : preferences.routePreference.toUpperCase()}
           {" · "}
-          {preferences.maxPriceImpactBps === 10_000 ? "NO RMT IMPACT CAP" : `${preferences.maxPriceImpactBps / 100}% MAX`} · {preferences.preparationMode === "speed" ? "SPEED" : "STANDARD"}
+          {preferences.maxPriceImpactBps === 10_000 ? "NO IMPACT ALERT" : `${preferences.maxPriceImpactBps / 100}% ALERT`} · {preferences.preparationMode === "speed" ? "SPEED" : "STANDARD"}
         </em>
       </summary>
       <div className="tradeExecutionControlGroup">
@@ -98,10 +100,10 @@ export function TradeExecutionControls() {
       </div>
       <div className="tradeExecutionControlGroup">
         <span>
-          <strong>Maximum price impact</strong>
-          <small>Your limit controls wallet preparation. “No RMT cap” still preserves the quoted minimum output and exact-transaction simulation.</small>
+          <strong>Price-impact alert</strong>
+          <small>RMT highlights quotes above this level. It does not veto a valid order. Protected minimum output and exact-transaction simulation remain authoritative.</small>
         </span>
-        <div role="group" aria-label="Maximum price impact">
+        <div role="group" aria-label="Price-impact alert">
           {([100, 200, 500, 10_000] as const).map((value) => (
             <button
               type="button"
@@ -110,7 +112,7 @@ export function TradeExecutionControls() {
               onClick={() => store({ ...preferences, maxPriceImpactBps: value })}
               key={value}
             >
-              {value === 10_000 ? "No RMT cap" : `${value / 100}%`}
+              {value === 10_000 ? "No alert" : `${value / 100}%`}
             </button>
           ))}
         </div>
@@ -249,7 +251,7 @@ export function QuoteProtection({
 
 export function SmartOrderGuard({
   priceImpact,
-  maxPriceImpact = 0.05,
+  maxPriceImpact = PRICE_IMPACT_CAUTION,
   disabled = false,
   onReduce
 }: {
@@ -258,21 +260,32 @@ export function SmartOrderGuard({
   disabled?: boolean;
   onReduce: () => void;
 }) {
-  const abovePreference = priceImpact !== undefined && priceImpact > maxPriceImpact;
-  const tone = abovePreference ? "danger" : priceImpactTone(priceImpact);
-  if (tone === "calm") return null;
-  const limitLabel = `${(maxPriceImpact * 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}%`;
+  if (priceImpact === undefined || !Number.isFinite(priceImpact) || priceImpact < 0) return null;
+  const alertEnabled = maxPriceImpact < 1;
+  const aboveSavedAlert = alertEnabled && priceImpact > maxPriceImpact;
+  const criticalImpact = priceImpact > PRICE_IMPACT_CRITICAL;
+  const elevatedImpact = priceImpact > PRICE_IMPACT_CAUTION;
+  if (!aboveSavedAlert && !elevatedImpact) return null;
+  const tone = criticalImpact ? "danger" : "caution";
+  const actualImpactLabel = `${(priceImpact * 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}%`;
+  const alertLabel = alertEnabled ? `${(maxPriceImpact * 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}%` : null;
+  const heading = criticalImpact
+    ? `Very high price impact · ${actualImpactLabel}`
+    : aboveSavedAlert && alertLabel
+      ? `Above your ${alertLabel} alert`
+      : `Elevated price impact · ${actualImpactLabel}`;
+  const explanation = criticalImpact
+    ? "This order may move the market materially. RMT preserves the quoted minimum and simulates the exact transaction, but the market-risk decision remains yours."
+    : aboveSavedAlert
+      ? "This quote crossed your saved alert. RMT is not blocking it; reduce the amount or continue when the integrity checks are ready."
+      : "Review the protected minimum and verified liquidity before continuing. This warning does not replace your own trading decision.";
   return (
-    <div className={`smartOrderGuard ${tone}`} role="alert">
+    <div className={`smartOrderGuard ${tone}`} role={criticalImpact ? "alert" : "status"}>
       <div>
-        <strong>{abovePreference ? `High impact · above your ${limitLabel} preference` : "Price-impact caution"}</strong>
-        <small>
-          {abovePreference
-            ? "RMT is warning you before wallet review. You may reduce the amount for a safer quote or continue with the displayed route and minimum received."
-            : "This quote is above 1% impact. RMT can reduce the amount and automatically request a safer quote."}
-        </small>
+        <strong>{heading}</strong>
+        <small>{explanation}</small>
       </div>
-      <button type="button" disabled={disabled} onClick={onReduce}>Reduce below 1%</button>
+      <button type="button" disabled={disabled} onClick={onReduce}>Use safer size</button>
     </div>
   );
 }
@@ -437,7 +450,7 @@ export function TradePreSignReadiness({
   const evidenceLabel = evidenceState === "blocked"
     ? "Blocked"
     : evidenceState === "review"
-      ? "Review required"
+      ? "Review advised"
       : evidenceState === "checking"
         ? "Checking"
         : "Reviewed";

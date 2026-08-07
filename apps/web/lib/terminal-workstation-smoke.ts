@@ -13,6 +13,10 @@ const minorFixesCss = readFileSync(
   new URL("../app/terminal-minor-fixes-v10.css", import.meta.url),
   "utf8"
 );
+const traderControlCss = readFileSync(
+  new URL("../app/terminal-trader-control-v12.css", import.meta.url),
+  "utf8"
+);
 
 type Availability = "checking" | "ready" | "view-only" | "unavailable";
 
@@ -168,7 +172,12 @@ assert.match(
   /\.externalUniswapSubmit \{[\s\S]*?position: sticky !important;[\s\S]*?bottom: max\(8px, env\(safe-area-inset-bottom\)\) !important;[\s\S]*?min-height: 54px !important;/,
   "The final wallet action must remain reachable above the mobile safe area."
 );
+assert.match(scannerSource, /SYNCING MARKETS/, "Desktop must disclose the initial market synchronization state.");
+assert.match(scannerSource, /Building the live signal desk/, "Desktop must not present a truthful-looking zero-signal state before data arrives.");
+assert.match(traderControlCss, /runnerTabs\{[\s\S]*?grid-template-columns:repeat\(4,minmax\(0,1fr\)\)/, "All four mobile market tabs must fit the viewport.");
+assert.match(traderControlCss, /runnerSourceFilters\{[\s\S]*?flex-wrap:wrap/, "Mobile route and source filters must wrap instead of clipping offscreen.");
+assert.match(traderControlCss, /externalUniswapSubmit:disabled\{[\s\S]*?position:static!important/, "Disabled mobile execution must remain in flow instead of covering evidence.");
 
 console.log(
-  "RMT preserves reversible discovery, complete route batching, readable desktop identity, and a dynamic-viewport mobile Buy/Sell sheet with a reachable wallet action."
+  "RMT preserves truthful loading, complete route batching, readable desktop identity, and a viewport-safe mobile execution flow."
 );

@@ -167,14 +167,16 @@ function runnerReason(market: ExternalMarket) {
   return "Observed market · no qualified runner signal";
 }
 
-function LiveSignalDesk({ signals }: { signals: LiveMarketSignal[] }) {
+function LiveSignalDesk({ signals, loading }: { signals: LiveMarketSignal[]; loading: boolean }) {
   return (
     <section className="liveSignalDesk" aria-labelledby="live-signal-desk-title">
       <header>
         <span><small>RMT LIVE SIGNAL DESK</small><strong id="live-signal-desk-title">Markets requiring attention</strong></span>
-        <em>{signals.length} live · all shown</em>
+        <em>{loading ? "Scanning markets" : `${signals.length} live · all shown`}</em>
       </header>
-      {signals.length ? (
+      {loading ? (
+        <div className="liveSignalEmpty loading" role="status"><strong>Building the live signal desk…</strong><span>RMT is validating liquidity, two-sided activity, price movement and market pace.</span></div>
+      ) : signals.length ? (
         <div className="liveSignalRail">
           {signals.map((signal) => (
             <a
@@ -875,7 +877,7 @@ export function ExternalMarketFeed() {
           <h2 id="external-markets-title" ref={runnerHeading} tabIndex={-1}>Runner signals</h2>
           <p>Market-first discovery across Robinhood Chain, ranked by liquidity, two-sided activity and acceleration.</p>
         </div>
-        <span className="externalBadge"><i aria-hidden="true" />{status === "stale" ? "DATA DELAYED" : "LIVE · 60S RANKS"}</span>
+        <span className="externalBadge"><i aria-hidden="true" />{status === "loading" ? "SYNCING MARKETS" : status === "stale" ? "DATA DELAYED" : "LIVE · 60S RANKS"}</span>
       </div>
 
       <p className="srOnly" aria-live="polite">{rankingAnnouncement}</p>
@@ -886,7 +888,7 @@ export function ExternalMarketFeed() {
           <button type="button" onClick={() => void refresh()}>Refresh</button>
         </p>
       )}
-      <LiveSignalDesk signals={liveSignals} />
+      <LiveSignalDesk signals={liveSignals} loading={status === "loading"} />
       <div className="runnerDirectoryControls" role="search" aria-label="Search external markets">
         <div className="runnerMarketSearch">
           <span aria-hidden="true">⌕</span>
@@ -964,7 +966,7 @@ export function ExternalMarketFeed() {
               onKeyDown={(event) => handleTabKeyDown(event, item.id)}
               key={item.id}
             >
-              {item.label}<span>{counts[item.id]}</span>
+              {item.label}<span>{status === "loading" ? "—" : counts[item.id]}</span>
             </button>
           ))}
         </div>
@@ -983,7 +985,7 @@ export function ExternalMarketFeed() {
             }}
             key={item.id}
           >
-            {item.label}<b>{venueCounts[item.id]}</b>
+            {item.label}<b>{status === "loading" ? "—" : venueCounts[item.id]}</b>
           </button>
         ))}
         <span className="runnerFilterDivider">Execute</span>
@@ -997,7 +999,7 @@ export function ExternalMarketFeed() {
           }}
         >
           {routeSyncPending ? "Routes syncing" : "Tradeable"}
-          <b>{routeSyncPending ? `${routeResolvedCount}/${sourceFilteredMarkets.length}` : tradeableCount}</b>
+          <b>{status === "loading" ? "—" : routeSyncPending ? `${routeResolvedCount}/${sourceFilteredMarkets.length}` : tradeableCount}</b>
         </button>
         <details className="runnerOriginFilters">
           <summary>Source · {sourceFilter === "all" ? "All" : SOURCE_FILTERS.find((item) => item.id === sourceFilter)?.label}</summary>
@@ -1013,7 +1015,7 @@ export function ExternalMarketFeed() {
                 }}
                 key={item.id}
               >
-                {item.label}<b>{sourceCounts[item.id]}</b>
+                  {item.label}<b>{status === "loading" ? "—" : sourceCounts[item.id]}</b>
               </button>
             ))}
           </div>
