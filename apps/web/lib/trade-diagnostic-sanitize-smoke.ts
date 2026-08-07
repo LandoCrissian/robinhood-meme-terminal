@@ -10,7 +10,7 @@ const sanitized = sanitizeTradeDiagnosticText(
 
 assert.doesNotMatch(sanitized, /private-key|apiKey=secret|abcdefghijklmnopqrstuvwxyz123456|eyJabcdefghijk/);
 assert.match(sanitized, /\[redacted-url\]/);
-assert.match(sanitized, /Bearer \[redacted\]/);
+assert.match(sanitized, /Authorization: \[redacted\]/);
 assert.match(sanitized, /id_token=\[redacted\]/);
 assert.match(sanitized, /\[redacted-calldata\]/);
 assert.equal(sanitizeTradeDiagnosticText("visible error", 7), "visible ");
