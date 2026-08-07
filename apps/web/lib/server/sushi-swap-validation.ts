@@ -61,6 +61,7 @@ export type SushiSwapAudit = {
   minimumOut: bigint;
   value: bigint;
   calldata: Hex;
+  executorData: Hex;
   executable: true;
   onchainDeadline: false;
 };
@@ -68,6 +69,7 @@ export type SushiSwapAudit = {
 export async function auditSushiSwapCandidate(
   params: {
     token: Address;
+    sender?: Address;
     recipient: Address;
     side: "buy" | "sell";
     amountIn: bigint;
@@ -82,7 +84,7 @@ export async function auditSushiSwapCandidate(
   const payload = parsed.data;
   const sender = getAddress(payload.tx.from);
   const router = getAddress(payload.tx.to);
-  if (!sameAddress(sender, params.recipient)) throw new Error("Sushi changed the transaction sender.");
+  if (!sameAddress(sender, params.sender ?? params.recipient)) throw new Error("Sushi changed the transaction sender.");
   if (!sameAddress(router, SUSHI_RED_SNWAPPER)) throw new Error("Sushi returned an unapproved execution router.");
   if (BigInt(payload.amountIn) !== params.amountIn) throw new Error("Sushi changed the executable input amount.");
 
@@ -134,6 +136,7 @@ export async function auditSushiSwapCandidate(
     minimumOut,
     value,
     calldata: payload.tx.data as Hex,
+    executorData,
     executable: true,
     onchainDeadline: false
   };

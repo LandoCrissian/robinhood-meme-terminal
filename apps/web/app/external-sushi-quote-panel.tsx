@@ -12,7 +12,7 @@ import {
 } from "wagmi";
 import type { ExternalMarket } from "../lib/external-market";
 import {
-  SUSHI_RED_SNWAPPER,
+  publicSushiDeadlineGuardAddress,
   type SushiExecutableQuote,
   type SushiIndicativeQuote
 } from "../lib/sushi";
@@ -63,6 +63,7 @@ import { TradeExecutionStatus, TradePreflightFailure } from "./trade-execution-s
 const ROBINHOOD_CHAIN_ID = 4663;
 const EXPLORER = "https://robinhoodchain.blockscout.com";
 const NETWORK_FEE_RESERVE = parseEther("0.00002");
+const SUSHI_DEADLINE_GUARD = publicSushiDeadlineGuardAddress();
 
 type ExternalSushiQuote = (SushiExecutableQuote | SushiIndicativeQuote) & {
   marketPair: Address;
@@ -104,7 +105,9 @@ function verifiedPreparedSushiQuote(value: unknown, expected: {
   const payload = value as ExternalSushiQuote;
   const executionReady = payload.executable === true
     && "router" in payload
-    && payload.router.toLowerCase() === SUSHI_RED_SNWAPPER.toLowerCase()
+    && SUSHI_DEADLINE_GUARD !== undefined
+    && payload.router.toLowerCase() === SUSHI_DEADLINE_GUARD.toLowerCase()
+    && payload.onchainDeadline === true
     && "calldata" in payload
     && payload.calldata.startsWith("0x");
   const approvalReady = payload.executable === false
@@ -123,7 +126,8 @@ function verifiedPreparedSushiQuote(value: unknown, expected: {
     || payload.marketPair?.toLowerCase() !== expected.pair.toLowerCase()
     || payload.side !== expected.side
     || payload.amountIn !== expected.amountIn.toString()
-    || payload.approvalSpender?.toLowerCase() !== SUSHI_RED_SNWAPPER.toLowerCase()
+    || SUSHI_DEADLINE_GUARD === undefined
+    || payload.approvalSpender?.toLowerCase() !== SUSHI_DEADLINE_GUARD.toLowerCase()
     || !/^\d+$/.test(payload.quoteExpiresAt ?? "")
     || BigInt(payload.quoteExpiresAt) <= BigInt(Math.floor(Date.now() / 1000) + 15)
     || !payload.inputToken
@@ -192,9 +196,9 @@ export function ExternalSushiQuotePanel({
     address: token,
     abi: erc20Abi,
     functionName: "allowance",
-    args: address ? [address, SUSHI_RED_SNWAPPER] : undefined,
+    args: address && SUSHI_DEADLINE_GUARD ? [address, SUSHI_DEADLINE_GUARD] : undefined,
     chainId: ROBINHOOD_CHAIN_ID,
-    query: { enabled: Boolean(address && side === "sell"), retry: false, refetchInterval: 10_000 }
+    query: { enabled: Boolean(address && SUSHI_DEADLINE_GUARD && side === "sell"), retry: false, refetchInterval: 10_000 }
   });
   const approval = useWriteContract();
   const approvalReceipt = useWaitForTransactionReceipt({ hash: approval.data, chainId: ROBINHOOD_CHAIN_ID, confirmations: 1 });
@@ -399,14 +403,20 @@ export function ExternalSushiQuotePanel({
   useEffect(() => {
     if (quoteIsFresh) recordExperienceStage("quote_ready");
   }, [quoteIsFresh]);
-  const needsApproval = side === "sell" && amountIn > 0n && (allowance.data ?? 0n) < amountIn;
-  const approvalCalldata = useMemo(() => needsApproval
-    ? encodeFunctionData({
+  const needsApproval = Boolean(
+    SUSHI_DEADLINE_GUARD
+    && side === "sell"
+    && amountIn > 0n
+    && (allowance.data ?? 0n) < amountIn
+  );
+  const approvalCalldata = useMemo(() => {
+    if (!needsApproval || !SUSHI_DEADLINE_GUARD) return undefined;
+    return encodeFunctionData({
         abi: erc20Abi,
         functionName: "approve",
-        args: [SUSHI_RED_SNWAPPER, amountIn]
-      })
-    : undefined, [amountIn, needsApproval]);
+        args: [SUSHI_DEADLINE_GUARD, amountIn]
+      });
+  }, [amountIn, needsApproval]);
   const executableRouter = quote?.executable === true ? quote.router : undefined;
   const executableCalldata = quote?.executable === true ? quote.calldata : undefined;
   const executableValue = quote?.executable === true ? BigInt(quote.value) : 0n;
@@ -461,14 +471,14 @@ export function ExternalSushiQuotePanel({
       setRefresh((value) => value + 1);
       return;
     }
-    if (!accountReady || !address || chainId !== ROBINHOOD_CHAIN_ID || !quote || insufficient || busy || !confidenceReady || !preflightReady) return;
+    if (!accountReady || !address || !SUSHI_DEADLINE_GUARD || chainId !== ROBINHOOD_CHAIN_ID || !quote || insufficient || busy || !confidenceReady || !preflightReady) return;
     recordExperienceStage("wallet_review_started");
     if (needsApproval) {
       approval.writeContract({
         address: token,
         abi: erc20Abi,
         functionName: "approve",
-        args: [SUSHI_RED_SNWAPPER, amountIn],
+        args: [SUSHI_DEADLINE_GUARD, amountIn],
         chainId: ROBINHOOD_CHAIN_ID
       });
       return;

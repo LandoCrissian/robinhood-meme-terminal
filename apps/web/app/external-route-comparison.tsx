@@ -24,7 +24,7 @@ import {
 import { estimatedNetworkFeeUsd } from "../lib/trade-ticket";
 import { requestTradeQuote } from "../lib/trade-quote-client";
 import { quoteDebounceMs, quoteRefreshMs } from "../lib/trade-speed";
-import { SUSHI_RED_SNWAPPER } from "../lib/sushi";
+import { publicSushiDeadlineGuardAddress } from "../lib/sushi";
 import {
   PERMIT2_ADDRESS,
   ROBINHOOD_SWAP_ROUTER_02,
@@ -79,6 +79,7 @@ type VenueState = {
 };
 
 const ROBINHOOD_CHAIN_ID = 4663;
+const SUSHI_DEADLINE_GUARD = publicSushiDeadlineGuardAddress();
 
 function displayUnits(value: string, decimals: number) {
   const formatted = formatUnits(BigInt(value), decimals);
@@ -318,6 +319,16 @@ export function ExternalRouteComparison({
               typeof payload.router !== "string"
               || payload.router.toLowerCase() !== ROBINHOOD_SWAP_ROUTER_02.toLowerCase()
             ))
+            || (candidate.venue === "sushi" && (
+              !SUSHI_DEADLINE_GUARD
+              || typeof payload.approvalSpender !== "string"
+              || payload.approvalSpender.toLowerCase() !== SUSHI_DEADLINE_GUARD.toLowerCase()
+              || (executable
+                ? payload.onchainDeadline !== true
+                  || typeof payload.router !== "string"
+                  || payload.router.toLowerCase() !== SUSHI_DEADLINE_GUARD.toLowerCase()
+                : payload.approvalRequired !== true)
+            ))
             || (executable && (
               typeof payload.router !== "string"
               || typeof payload.calldata !== "string"
@@ -347,7 +358,7 @@ export function ExternalRouteComparison({
             value: executable ? payload.value as string : undefined,
             approvalRequired: payload.approvalRequired === true,
             approvalSpender: candidate.venue === "sushi"
-              ? SUSHI_RED_SNWAPPER
+              ? payload.approvalSpender as Address
               : candidate.venue === "uniswap-v4"
                 ? PERMIT2_ADDRESS
                 : ROBINHOOD_SWAP_ROUTER_02,

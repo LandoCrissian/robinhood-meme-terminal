@@ -1,11 +1,12 @@
 import { getAddress, isAddress } from "viem";
 import { z } from "zod";
-import { SUSHI_RED_SNWAPPER } from "../../../../lib/sushi";
 import {
   quoteAndBuildSushiSwap,
   quoteSushiRoute,
+  sushiDeadlineGuardConfiguration,
   sushiExecutionAllowance,
-  sushiQuotesEnabled
+  sushiQuotesEnabled,
+  verifySushiDeadlineGuardConfiguration
 } from "../../../../lib/server/sushi-trade";
 import { requireAuthenticatedTradeWallet, tradeIdentityErrorResponse } from "../../../../lib/server/rmt-trade-identity";
 import {
@@ -49,8 +50,8 @@ const publicTradeErrors = new Set([
   "Sushi returned a quote for a different input amount.",
   "Sushi returned an invalid quote amount.",
   "Sushi execution is available only on Robinhood Chain mainnet.",
-  "Sushi swap simulation timed out.",
-  "Sushi could not simulate this trade.",
+  "Sushi route construction timed out.",
+  "Sushi could not construct this trade route.",
   "Sushi returned an invalid executable swap response.",
   "Sushi returned undecodable execution calldata.",
   "Sushi returned an unsupported execution function.",
@@ -68,6 +69,9 @@ const publicTradeErrors = new Set([
   "Sushi contract bytecode is unavailable.",
   "Sushi router bytecode is not approved.",
   "Sushi executor bytecode is not approved.",
+  "Sushi deadline guard is not configured.",
+  "Sushi deadline guard bytecode is not approved.",
+  "RMT deadline guard could not simulate this trade.",
   "The selected maximum price impact is invalid.",
   "Trade exceeds your selected maximum price impact."
 ]);
@@ -98,8 +102,10 @@ export async function POST(request: Request) {
       await fetchRobinhoodStockRegistry()
     );
     const amountIn = BigInt(parsed.data.amountIn);
+    const deadlineGuard = sushiDeadlineGuardConfiguration();
+    await verifySushiDeadlineGuardConfiguration(deadlineGuard);
     const approvalRequired = parsed.data.side === "sell"
-      && await sushiExecutionAllowance(token, recipient) < amountIn;
+      && await sushiExecutionAllowance(token, recipient, deadlineGuard.address) < amountIn;
     const quote = approvalRequired
       ? await quoteSushiRoute({
           token,
@@ -117,7 +123,8 @@ export async function POST(request: Request) {
           amountIn,
           maxPriceImpact: parsed.data.maxPriceImpactBps / 10_000
         }, {
-          chainId: 4663
+          chainId: 4663,
+          guard: deadlineGuard
         });
 
     return Response.json({
@@ -126,7 +133,7 @@ export async function POST(request: Request) {
       marketPair: market.poolAddress,
       marketVerified: true,
       approvalRequired,
-      approvalSpender: SUSHI_RED_SNWAPPER,
+      approvalSpender: deadlineGuard.address,
       quoteExpiresAt: "quoteExpiresAt" in quote
         ? quote.quoteExpiresAt
         : String(Math.floor(Date.now() / 1000) + 90)

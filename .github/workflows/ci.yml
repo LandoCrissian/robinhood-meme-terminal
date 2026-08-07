@@ -185,6 +185,7 @@ jobs:
             script/DeployMainnetMemeLaunchFactory.s.sol \
             script/MainnetReleaseConfigV6.sol \
             script/DeployMainnetV6OfficialMigration.s.sol \
+            script/DeployRMTSushiDeadlineGuard.s.sol \
             src/RMTV6Governance.sol \
             src/RMTV6BootstrapController.sol \
             src/RMTV6BootstrapFoundationVerifier.sol \
@@ -196,6 +197,7 @@ jobs:
             src/OfficialRMTIdentityMigration.sol \
             src/DirectLaunchFeeSplitter.sol \
             src/RMTTestnetSushiV3RehearsalStack.sol \
+            src/RMTSushiDeadlineGuard.sol \
             src/clone/CloneBondingCurveMarketV6.sol \
             src/V5GraduationHook.sol \
             src/V4GraduationAdapter.sol \
@@ -209,6 +211,8 @@ jobs:
             test/RMTLaunchFactoryV6.t.sol \
             test/DirectLaunchFeeSplitter.t.sol \
             test/RMTTestnetSushiV3RehearsalStack.t.sol \
+            test/RMTSushiDeadlineGuard.t.sol \
+            test/RMTSushiDeadlineGuardFork.t.sol \
             test/V4GraduationAdapter.t.sol \
             test/V6MainnetFork.t.sol \
             test/V6UniversalRouterFork.t.sol \

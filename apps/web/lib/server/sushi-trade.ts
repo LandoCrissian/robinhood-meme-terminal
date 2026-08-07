@@ -1,10 +1,15 @@
 import {
   createPublicClient,
+  encodeAbiParameters,
+  encodeFunctionData,
   erc20Abi,
   getAddress,
   http,
+  isAddress,
+  keccak256,
   zeroAddress,
-  type Address
+  type Address,
+  type Hex
 } from "viem";
 import { z } from "zod";
 import { robinhoodChain } from "@rmt/shared/chains";
@@ -13,6 +18,7 @@ import {
   SUSHI_NATIVE_TOKEN,
   SUSHI_QUOTE_SLIPPAGE_BPS,
   SUSHI_RED_SNWAPPER,
+  sushiDeadlineGuardAbi,
   type SushiExecutableQuote,
   type SushiIndicativeQuote,
   type SushiTokenMetadata
@@ -59,13 +65,43 @@ export function sushiQuotesEnabled(environment: Readonly<Record<string, string |
   return environment.RMT_SUSHI_QUOTES_ENABLED === "true";
 }
 
-export async function sushiExecutionAllowance(token: Address, owner: Address) {
+export type SushiDeadlineGuardConfiguration = {
+  address: Address;
+  codeHash: Hex;
+};
+
+export function sushiDeadlineGuardConfiguration(
+  environment: Readonly<Record<string, string | undefined>> = process.env
+): SushiDeadlineGuardConfiguration {
+  const rawAddress = environment.RMT_SUSHI_DEADLINE_GUARD?.trim()
+    || environment.NEXT_PUBLIC_RMT_SUSHI_DEADLINE_GUARD?.trim();
+  const rawCodeHash = environment.RMT_SUSHI_DEADLINE_GUARD_CODE_HASH?.trim();
+  if (!rawAddress || !isAddress(rawAddress) || !rawCodeHash || !/^0x[0-9a-fA-F]{64}$/.test(rawCodeHash)) {
+    throw new Error("Sushi deadline guard is not configured.");
+  }
+  return { address: getAddress(rawAddress), codeHash: rawCodeHash as Hex };
+}
+
+export async function sushiExecutionAllowance(token: Address, owner: Address, spender: Address) {
   return client.readContract({
     address: token,
     abi: erc20Abi,
     functionName: "allowance",
-    args: [owner, SUSHI_RED_SNWAPPER]
+    args: [owner, spender]
   });
+}
+
+export async function verifySushiDeadlineGuardConfiguration(
+  guard: SushiDeadlineGuardConfiguration,
+  codeHash: (address: Address) => Promise<Hex> = async (address) => {
+    const code = await client.getBytecode({ address });
+    if (!code) throw new Error("Sushi contract bytecode is unavailable.");
+    return hashSushiContractCode(code);
+  }
+) {
+  if ((await codeHash(guard.address)).toLowerCase() !== guard.codeHash.toLowerCase()) {
+    throw new Error("Sushi deadline guard bytecode is not approved.");
+  }
 }
 
 function parsePriceImpact(value: number | string | undefined) {
@@ -181,6 +217,13 @@ export async function quoteAndBuildSushiSwap(
     chainId?: number;
     now?: () => number;
     codeHash?: (address: Address) => Promise<`0x${string}`>;
+    guard?: SushiDeadlineGuardConfiguration;
+    simulateGuardTransaction?: (request: {
+      account: Address;
+      to: Address;
+      data: Hex;
+      value: bigint;
+    }) => Promise<void>;
   } = {}
 ): Promise<SushiExecutableQuote> {
   const chainId = dependencies.chainId ?? activeChain.id;
@@ -189,6 +232,7 @@ export async function quoteAndBuildSushiSwap(
   if (params.amountIn <= 0n || params.amountIn > MAX_UINT256) throw new Error("Trade amount is outside the supported range.");
   if (params.recipient.toLowerCase() === zeroAddress) throw new Error("A valid wallet recipient is required.");
 
+  const guard = dependencies.guard ?? sushiDeadlineGuardConfiguration();
   const tokenIn = params.side === "buy" ? SUSHI_NATIVE_TOKEN : params.token;
   const tokenOut = params.side === "buy" ? params.token : SUSHI_NATIVE_TOKEN;
   const maxPriceImpact = params.maxPriceImpact ?? PRICE_IMPACT_BLOCK;
@@ -201,9 +245,11 @@ export async function quoteAndBuildSushiSwap(
   url.searchParams.set("amount", params.amountIn.toString());
   url.searchParams.set("maxSlippage", (SUSHI_QUOTE_SLIPPAGE_BPS / 10_000).toString());
   url.searchParams.set("maxPriceImpact", maxPriceImpact.toString());
-  url.searchParams.set("sender", params.recipient);
+  url.searchParams.set("sender", guard.address);
   url.searchParams.set("recipient", params.recipient);
-  url.searchParams.set("simulate", "true");
+  // Sushi cannot simulate from an unfunded wrapper address. RMT requests route construction,
+  // validates every RedSnwapper field, then simulates the complete guard call from the user.
+  url.searchParams.set("simulate", "false");
   url.searchParams.set("validate", "true");
   url.searchParams.set("referrer", "rmt");
 
@@ -217,20 +263,22 @@ export async function quoteAndBuildSushiSwap(
       signal: controller.signal
     });
   } catch (cause) {
-    if (controller.signal.aborted) throw new Error("Sushi swap simulation timed out.");
+    if (controller.signal.aborted) throw new Error("Sushi route construction timed out.");
     throw cause;
   } finally {
     clearTimeout(timeout);
   }
-  if (!response.ok) throw new Error("Sushi could not simulate this trade.");
+  if (!response.ok) throw new Error("Sushi could not construct this trade route.");
   const payload = await response.json();
-  const audit = await auditSushiSwapCandidate(params, payload, {
-    codeHash: dependencies.codeHash ?? (async (address) => {
+  const codeHash = dependencies.codeHash ?? (async (address: Address) => {
       const code = await client.getBytecode({ address });
       if (!code) throw new Error("Sushi contract bytecode is unavailable.");
       return hashSushiContractCode(code);
-    })
+    });
+  const audit = await auditSushiSwapCandidate({ ...params, sender: guard.address }, payload, {
+    codeHash
   });
+  await verifySushiDeadlineGuardConfiguration(guard, codeHash);
 
   const parsed = quoteResponseSchema.safeParse(payload);
   if (!parsed.success || parsed.data.status !== "Success") throw new Error("Sushi returned an invalid executable swap response.");
@@ -240,6 +288,63 @@ export async function quoteAndBuildSushiSwap(
   const outputToken = quoteTokenMetadata(parsed.data.tokens, parsed.data.tokenTo, tokenOut);
   if (!inputToken || !outputToken) throw new Error("Sushi returned incomplete token metadata.");
   const now = dependencies.now?.() ?? Date.now();
+  const deadline = BigInt(Math.floor(now / 1000) + QUOTE_LIFETIME_SECONDS);
+  const orderId = keccak256(encodeAbiParameters(
+    [
+      { name: "chainId", type: "uint256" },
+      { name: "guard", type: "address" },
+      { name: "wallet", type: "address" },
+      { name: "tokenIn", type: "address" },
+      { name: "tokenOut", type: "address" },
+      { name: "amountIn", type: "uint256" },
+      { name: "amountOutMinimum", type: "uint256" },
+      { name: "deadline", type: "uint256" },
+      { name: "executorDataHash", type: "bytes32" }
+    ],
+    [
+      BigInt(chainId),
+      guard.address,
+      getAddress(params.recipient),
+      audit.tokenIn,
+      audit.tokenOut,
+      audit.amountIn,
+      audit.minimumOut,
+      deadline,
+      keccak256(audit.executorData)
+    ]
+  ));
+  const calldata = encodeFunctionData({
+    abi: sushiDeadlineGuardAbi,
+    functionName: "execute",
+    args: [{
+      tokenIn: audit.tokenIn,
+      tokenOut: audit.tokenOut,
+      amountIn: audit.amountIn,
+      amountOutMinimum: audit.minimumOut,
+      deadline,
+      orderId,
+      executorData: audit.executorData
+    }]
+  });
+  try {
+    if (dependencies.simulateGuardTransaction) {
+      await dependencies.simulateGuardTransaction({
+        account: getAddress(params.recipient),
+        to: guard.address,
+        data: calldata,
+        value: audit.value
+      });
+    } else {
+      await client.call({
+        account: getAddress(params.recipient),
+        to: guard.address,
+        data: calldata,
+        value: audit.value
+      });
+    }
+  } catch {
+    throw new Error("RMT deadline guard could not simulate this trade.");
+  }
 
   return {
     chainId,
@@ -254,13 +359,14 @@ export async function quoteAndBuildSushiSwap(
     priceImpact,
     inputToken,
     outputToken,
-    router: audit.router,
+    router: guard.address,
+    approvalSpender: guard.address,
     executor: audit.executor,
-    calldata: audit.calldata,
+    calldata,
     value: audit.value.toString(),
-    quoteExpiresAt: String(Math.floor(now / 1000) + QUOTE_LIFETIME_SECONDS),
+    quoteExpiresAt: deadline.toString(),
     executable: true,
-    onchainDeadline: false,
+    onchainDeadline: true,
     verifiedInput: true
   };
 }

@@ -10,4 +10,4 @@ Before RMT vendors, copies, modifies, links, or redistributes any upstream imple
 
 ## OpenZeppelin Contracts
 
-The migration router imports `IERC20`, `SafeERC20`, and `ReentrancyGuard` from the project-pinned OpenZeppelin Contracts dependency. Preserve the dependency's license and notices whenever the contracts are redistributed.
+The migration router and Sushi deadline guard import `IERC20`, `SafeERC20`, and `ReentrancyGuard` from OpenZeppelin Contracts 5.0.2, transitively pinned by the repository's reviewed Uniswap V4 Core revision. Preserve the dependency's license and notices whenever the contracts are redistributed.

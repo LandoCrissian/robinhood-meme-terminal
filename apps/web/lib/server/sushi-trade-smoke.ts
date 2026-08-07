@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { encodeFunctionData, getAddress, type Address, type Hex } from "viem";
+import { decodeFunctionData, encodeFunctionData, getAddress, type Address, type Hex } from "viem";
 import {
   auditSushiSwapCandidate,
   SUSHI_RED_SNWAPPER_CODE_HASH,
@@ -7,8 +7,17 @@ import {
   SUSHI_ROUTE_EXECUTOR_CODE_HASH,
   sushiRedSnwapperAbi
 } from "./sushi-swap-validation";
-import { SUSHI_RED_SNWAPPER } from "../sushi";
-import { quoteAndBuildSushiSwap, quoteSushiRoute, sushiQuotesEnabled } from "./sushi-trade";
+import {
+  publicSushiDeadlineGuardAddress,
+  SUSHI_RED_SNWAPPER,
+  sushiDeadlineGuardAbi
+} from "../sushi";
+import {
+  quoteAndBuildSushiSwap,
+  quoteSushiRoute,
+  sushiDeadlineGuardConfiguration,
+  sushiQuotesEnabled
+} from "./sushi-trade";
 
 const token = getAddress("0xdBa33be56C89CC9fc014c4459028d7e5c7878671");
 const recipient = getAddress("0x1111111111111111111111111111111111111111");
@@ -16,6 +25,8 @@ const amountIn = 1_000_000_000_000_000n;
 const nativeToken = getAddress("0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE");
 const routeAmountOut = 1_831_716n;
 const routeMinimumOut = 1_813_398n;
+const deadlineGuard = getAddress("0x3333333333333333333333333333333333333333");
+const deadlineGuardCodeHash = "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc" as Hex;
 
 function swapCandidate(overrides: Partial<{
   sender: Address;
@@ -69,11 +80,19 @@ function swapCandidate(overrides: Partial<{
 const approvedCodeHash = async (address: Address) => {
   if (address.toLowerCase() === SUSHI_RED_SNWAPPER.toLowerCase()) return SUSHI_RED_SNWAPPER_CODE_HASH;
   if (address.toLowerCase() === SUSHI_ROUTE_EXECUTOR.toLowerCase()) return SUSHI_ROUTE_EXECUTOR_CODE_HASH;
+  if (address.toLowerCase() === deadlineGuard.toLowerCase()) return deadlineGuardCodeHash;
   throw new Error("Unexpected contract lookup.");
 };
 
 assert.equal(sushiQuotesEnabled({ RMT_SUSHI_QUOTES_ENABLED: "true" }), true);
 assert.equal(sushiQuotesEnabled({ RMT_SUSHI_QUOTES_ENABLED: "false" }), false);
+assert.equal(publicSushiDeadlineGuardAddress({ NEXT_PUBLIC_RMT_SUSHI_DEADLINE_GUARD: deadlineGuard }), deadlineGuard);
+assert.equal(publicSushiDeadlineGuardAddress({ NEXT_PUBLIC_RMT_SUSHI_DEADLINE_GUARD: "invalid" }), undefined);
+assert.deepEqual(sushiDeadlineGuardConfiguration({
+  RMT_SUSHI_DEADLINE_GUARD: deadlineGuard,
+  RMT_SUSHI_DEADLINE_GUARD_CODE_HASH: deadlineGuardCodeHash
+}), { address: deadlineGuard, codeHash: deadlineGuardCodeHash });
+assert.throws(() => sushiDeadlineGuardConfiguration({}), /not configured/);
 
 async function main() {
   let requestedUrl = "";
@@ -189,6 +208,7 @@ async function main() {
   assert.equal(auditedSwap.onchainDeadline, false);
 
   let executableUrl = "";
+  let simulatedGuard = false;
   const executable = await quoteAndBuildSushiSwap(
     { token, recipient, side: "buy", amountIn, maxPriceImpact: 0.1 },
     {
@@ -196,24 +216,39 @@ async function main() {
       chainId: 4663,
       now: () => 1_000_000,
       codeHash: approvedCodeHash,
+      guard: { address: deadlineGuard, codeHash: deadlineGuardCodeHash },
+      simulateGuardTransaction: async (request) => {
+        simulatedGuard = true;
+        assert.equal(request.account, recipient);
+        assert.equal(request.to, deadlineGuard);
+        assert.equal(request.value, amountIn);
+        assert.match(request.data, /^0x/);
+      },
       fetch: async (input) => {
         executableUrl = input.toString();
-        return Response.json(swapCandidate());
+        return Response.json(swapCandidate({ sender: deadlineGuard }));
       }
     }
   );
   const executableRequest = new URL(executableUrl);
   assert.equal(executableRequest.pathname, "/swap/v7/4663");
-  assert.equal(executableRequest.searchParams.get("sender"), recipient);
+  assert.equal(executableRequest.searchParams.get("sender"), deadlineGuard);
   assert.equal(executableRequest.searchParams.get("recipient"), recipient);
-  assert.equal(executableRequest.searchParams.get("simulate"), "true");
+  assert.equal(executableRequest.searchParams.get("simulate"), "false");
   assert.equal(executableRequest.searchParams.get("validate"), "true");
   assert.equal(executableRequest.searchParams.get("maxPriceImpact"), "0.1");
   assert.equal(executable.executable, true);
-  assert.equal(executable.onchainDeadline, false);
+  assert.equal(executable.onchainDeadline, true);
   assert.equal(executable.quoteExpiresAt, "1090");
-  assert.equal(executable.router, SUSHI_RED_SNWAPPER);
+  assert.equal(executable.router, deadlineGuard);
+  assert.equal(executable.approvalSpender, deadlineGuard);
   assert.equal(executable.minimumOut, routeMinimumOut.toString());
+  assert.equal(simulatedGuard, true);
+  const guardedCall = decodeFunctionData({ abi: sushiDeadlineGuardAbi, data: executable.calldata });
+  assert.equal(guardedCall.functionName, "execute");
+  assert.equal(guardedCall.args[0].deadline, 1_090n);
+  assert.equal(guardedCall.args[0].amountOutMinimum, routeMinimumOut);
+  assert.equal(guardedCall.args[0].executorData, "0x6be92b8900");
   await assert.rejects(
     quoteAndBuildSushiSwap(
       { token, recipient, side: "buy", amountIn },
@@ -221,10 +256,28 @@ async function main() {
         enabled: true,
         chainId: 4663,
         codeHash: approvedCodeHash,
-        fetch: async () => Response.json(swapCandidate({ priceImpact: 0.051 }))
+        guard: { address: deadlineGuard, codeHash: deadlineGuardCodeHash },
+        simulateGuardTransaction: async () => undefined,
+        fetch: async () => Response.json(swapCandidate({ sender: deadlineGuard, priceImpact: 0.051 }))
       }
     ),
     /selected maximum price impact/
+  );
+  await assert.rejects(
+    quoteAndBuildSushiSwap(
+      { token, recipient, side: "buy", amountIn, maxPriceImpact: 0.1 },
+      {
+        enabled: true,
+        chainId: 4663,
+        codeHash: approvedCodeHash,
+        guard: { address: deadlineGuard, codeHash: deadlineGuardCodeHash },
+        simulateGuardTransaction: async () => {
+          throw new Error("reverted");
+        },
+        fetch: async () => Response.json(swapCandidate({ sender: deadlineGuard }))
+      }
+    ),
+    /deadline guard could not simulate/
   );
 
   const auditedSell = await auditSushiSwapCandidate(

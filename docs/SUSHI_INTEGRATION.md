@@ -4,12 +4,12 @@ RMT integrates Sushi in stages so a new venue cannot weaken the verified V6 exec
 
 ## Current stage: verified in-terminal execution
 
-- `apps/web/lib/server/sushi-trade.ts` calls Sushi's official v7 Swap API for Robinhood Chain (`4663`) with server-side validation and simulation enabled.
+- `apps/web/lib/server/sushi-trade.ts` calls Sushi's official v7 Swap API for Robinhood Chain (`4663`) for validated route construction, then independently simulates the complete deadline-guard transaction through the Robinhood Chain RPC.
 - The same-origin `/api/trade/sushi-quote` route accepts only an origin-verified active V6 launch ID and matching token address.
 - The same-origin `/api/trade/external-sushi-quote` route supports external Sushi markets in Terminal only after RMT independently re-verifies the exact token, pair, Sushi venue, Robinhood Chain identity, DEX Screener URL, and minimum live liquidity.
 - Terminal displays Sushi's token metadata, estimated output, exact 1% minimum output, and price impact. The response must match the requested token, pair, wallet, side, amount, chain, router, executor, bytecode hashes, and supported function or the client rejects it.
-- RMT decodes RedSnwapper calldata before returning it, pins the current official router and executor runtime bytecode, requires Sushi's successful simulation, rejects price impact above 10%, and expires the client quote after 90 seconds.
-- Token sells request only the exact allowance needed for the entered trade. RMT never asks for an unlimited Sushi approval and never takes custody.
+- RMT decodes RedSnwapper calldata, pins the current official router and executor runtime bytecode, requires Sushi's validated route construction, rejects price impact above 10%, then wraps the reviewed executor data in `RMTSushiDeadlineGuard.execute` with an onchain 90-second deadline and a replay-resistant order ID. RMT independently simulates that complete guard call from the authenticated trade wallet before returning it.
+- Token sells request only the exact allowance needed for the entered trade, and that allowance targets the verified deadline guard rather than RedSnwapper. The guard pulls only the caller's stated input, approves RedSnwapper for that exact amount, clears its approval, and requires that it retain no input. RMT never asks for an unlimited Sushi approval and never becomes a custodian.
 - Before an external buy is enabled, RMT also rechecks Blockscout contract transparency and holder concentration, excludes the verified pool and burn addresses from the whale calculation, and reads the reported creator balance directly from the token contract. Missing evidence is shown as unknown rather than passing.
 - RMT also simulates a small holder-to-pool token transfer with `eth_call`. A deterministic revert, `false`, or router-incompatible response blocks the buy. The probe changes no state and is disclosed as point-in-time evidence, never a guarantee that a later sale will succeed.
 - Published token ABIs are scanned for common supply, transfer, fee, upgrade, access, and launch controls. Active launch-block restrictions are read onchain when exposed. Pool-held supply is never presented as proof that a V3 position is locked.
@@ -47,15 +47,60 @@ the current route executor does not.
 router, executor, entrypoint, bytecode hash, token, amount, recipient, minimum output, or
 native value.
 
-### Disclosed router limitation
+### Deadline guard release boundary
 
-RedSnwapper's `snwap` function has no onchain deadline. A client-side quote timestamp is
-not an equivalent protection because a submitted transaction can remain pending and execute
-later if its minimum output becomes available again. The current executor is also not
-source-verified on Robinhood Chain. RMT discloses both facts beside the trade action, expires
-the local quote after 90 seconds, enforces minimum output, uses exact sell approvals, and
-requires successful upstream simulation. A future reviewed deadline guard or Sushi-supported
-deadline surface should replace this bounded compromise.
+RedSnwapper's `snwap` function has no native deadline. `RMTSushiDeadlineGuard` supplies that
+missing onchain boundary without changing Sushi's route execution. It is ownerless and has no
+fee path, upgrade path, sweep, arbitrary recipient, or arbitrary executor. It permits only
+ETH-to-token and token-to-ETH trades, binds the current RedSnwapper and route executor by exact
+runtime bytecode hash, accepts only the reviewed route entrypoint, sends output directly to the
+calling wallet, caps deadlines at ten minutes, and rejects replayed order IDs.
+
+The integration remains fail-closed until the reviewed mainnet deployment is complete and all
+three environment variables point to that exact deployment:
+
+```text
+NEXT_PUBLIC_RMT_SUSHI_DEADLINE_GUARD=0x...
+RMT_SUSHI_DEADLINE_GUARD=0x...
+RMT_SUSHI_DEADLINE_GUARD_CODE_HASH=0x...
+```
+
+The server verifies the configured guard bytecode before returning either an approval target or
+executable swap. The browser independently requires the same public guard address, an onchain
+deadline flag, and matching router and approval spender. Missing or changed configuration makes
+Sushi execution unavailable rather than falling back to the deadline-free route.
+
+The current Sushi route executor remains unverified source on Robinhood Chain. Runtime pinning,
+calldata decoding, full wrapper simulation, minimum output and the wrapper deadline reduce
+the execution boundary but are not a substitute for an independent audit.
+
+### Verification and deployment
+
+Unit and fork checks are nonbroadcasting:
+
+```sh
+cd packages/contracts
+forge test --match-path test/RMTSushiDeadlineGuard.t.sol -vv
+RMT_RUN_MAINNET_FORK=true forge test --match-path test/RMTSushiDeadlineGuardFork.t.sol -vv
+```
+
+The deployment script rechecks chain ID and both live code hashes before constructing the guard.
+It changes chain state only when an operator deliberately supplies `--broadcast`:
+
+```sh
+cd packages/contracts
+forge script script/DeployRMTSushiDeadlineGuard.s.sol:DeployRMTSushiDeadlineGuard \
+  --rpc-url robinhood_mainnet
+```
+
+Run the command without `--broadcast` first. Before a real deployment, review the complete
+simulation, deployment cost, deployer address, source-verification inputs, runtime hash and the
+production canary plan. The script uses ordinary `CREATE`, so its address depends on the exact
+deployer and nonce; a dry-run address is not a promised production address. Record the deployed
+address from the confirmed receipt and independently verify its runtime hash before configuring
+the web application. Use a Foundry keystore or hardware-wallet signer for the explicit broadcast;
+do not place a private key in the repository, shell history, command line, hosted environment, or
+deployment documentation.
 
 ## External market adversarial checks
 
