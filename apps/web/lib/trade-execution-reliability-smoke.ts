@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import type { Address, Hash } from "viem";
+import { findRecoverableTradeAcrossRoutes } from "./trade-execution-recovery-lookup";
 import {
   classifyTradeExecutionError,
   findRecoverableTrade,
@@ -51,10 +52,17 @@ assert.ok(recovered.recoveredAt);
 assert.equal(findRecoverableTrade({ wallet, token, pair, venue: "uniswap-v3", side: "sell" }, storage, now + 1_000), null);
 assert.equal(findRecoverableTrade({ wallet, token, pair, venue: "sushi", side: "buy" }, storage, now + 1_000), null);
 assert.equal(findRecoverableTrade({ wallet, token, pair: otherPair, venue: "uniswap-v3", side: "buy" }, storage, now + 1_000), null);
+assert.equal(
+  findRecoverableTradeAcrossRoutes({ wallet, token, side: "buy" }, storage, now + 1_000)?.txHash,
+  txHash,
+  "A pending order must remain recoverable when automatic routing selects another venue."
+);
+assert.equal(findRecoverableTradeAcrossRoutes({ wallet, token, side: "sell" }, storage, now + 1_000), null);
 
 const confirmed = markTradeExecutionConfirmed(submitted.id, storage, now + 2_000);
 assert.equal(confirmed?.state, "confirmed");
 assert.equal(findRecoverableTrade({ wallet, token, pair, venue: "uniswap-v3", side: "buy" }, storage, now + 3_000), null);
+assert.equal(findRecoverableTradeAcrossRoutes({ wallet, token, side: "buy" }, storage, now + 3_000), null);
 
 const secondHash = `0x${"cd".repeat(32)}` as Hash;
 const second = recordSubmittedTrade({
@@ -85,6 +93,7 @@ assert.ok(parallelPair);
 assert.notEqual(parallelPair.id, second.id);
 assert.equal(readTradeExecutionJournal(storage, now + 6_000).length, 2);
 assert.equal(findRecoverableTrade({ wallet, token, pair: otherPair, venue: "uniswap-v3", side: "buy" }, storage, now + 7_000)?.txHash, parallelPairHash);
+assert.equal(findRecoverableTradeAcrossRoutes({ wallet, token, side: "buy" }, storage, now + 7_000)?.txHash, parallelPairHash);
 
 assert.equal(classifyTradeExecutionError({ code: 4001, message: "User rejected the request" }).code, "user-rejected");
 assert.equal(classifyTradeExecutionError("insufficient funds for gas").code, "insufficient-funds");
