@@ -1,6 +1,14 @@
 export type PriceImpactTone = "calm" | "caution" | "danger";
 
-export const PRICE_IMPACT_CAUTION = 0.01;
+// Market-risk disclosure thresholds. These are intentionally distinct from
+// transaction-integrity checks such as quote freshness, protected output,
+// calldata validation, exact simulation, balance, and wallet authorization.
+export const PRICE_IMPACT_CAUTION = 0.05;
+export const PRICE_IMPACT_CRITICAL = 0.10;
+
+// Retained as the conservative fallback for callers that explicitly ask RMT
+// to enforce an impact ceiling. The public terminal requests complete quotes
+// and treats the user's saved value as an alert unless a strict mode is added.
 export const PRICE_IMPACT_BLOCK = 0.05;
 
 export function spendableTradeBalance(balance: bigint, reserve = 0n) {
@@ -24,7 +32,7 @@ export function quoteSecondsRemaining(deadline: string | undefined, nowSeconds: 
 
 export function priceImpactTone(priceImpact: number | undefined): PriceImpactTone {
   if (priceImpact === undefined || !Number.isFinite(priceImpact) || priceImpact < 0) return "calm";
-  if (priceImpact > PRICE_IMPACT_BLOCK) return "danger";
+  if (priceImpact > PRICE_IMPACT_CRITICAL) return "danger";
   if (priceImpact > PRICE_IMPACT_CAUTION) return "caution";
   return "calm";
 }
