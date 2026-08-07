@@ -136,8 +136,12 @@ export function saveExperiencePreferences(update: Partial<Pick<ExperiencePrefere
     ...update,
     updatedAt: Date.now()
   });
-  window.localStorage.setItem(EXPERIENCE_PREFERENCES_STORAGE_KEY, JSON.stringify(next));
-  window.dispatchEvent(new CustomEvent(EXPERIENCE_PREFERENCES_EVENT, { detail: next }));
+  try {
+    window.localStorage.setItem(EXPERIENCE_PREFERENCES_STORAGE_KEY, JSON.stringify(next));
+    window.dispatchEvent(new CustomEvent(EXPERIENCE_PREFERENCES_EVENT, { detail: next }));
+  } catch {
+    // Continue with in-memory UI state when mobile storage is unavailable.
+  }
   return next;
 }
 
@@ -156,7 +160,11 @@ export function recordExperienceStage(stage: ExperienceStage) {
   const recorded = readRecordedStages();
   if (recorded.has(stage)) return false;
   recorded.add(stage);
-  window.sessionStorage.setItem(EXPERIENCE_SESSION_STORAGE_KEY, JSON.stringify([...recorded]));
+  try {
+    window.sessionStorage.setItem(EXPERIENCE_SESSION_STORAGE_KEY, JSON.stringify([...recorded]));
+  } catch {
+    return false;
+  }
   const device: ExperienceDevice = window.matchMedia("(max-width: 760px)").matches ? "mobile" : "desktop";
   void fetch("/api/experience/funnel", {
     method: "POST",

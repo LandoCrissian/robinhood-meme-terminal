@@ -2288,3 +2288,26 @@
   .terminalPage .runnerResolvedToken { align-items: stretch; flex-direction: column; }
   .terminalPage .runnerResolvedToken a { text-align: center; }
 }
+/* Keep an isolated data failure from taking down the surrounding terminal. */
+.marketFeedRecovery {
+  margin: 18px auto 32px;
+  width: min(1180px, calc(100% - 24px));
+  box-sizing: border-box;
+  padding: clamp(24px, 5vw, 48px);
+  border: 1px solid rgba(76, 241, 123, 0.26);
+  border-radius: 20px;
+  background: linear-gradient(145deg, rgba(16, 40, 23, 0.9), rgba(5, 10, 7, 0.96));
+}
+
+.marketFeedRecovery h2 { margin: 8px 0; font-size: clamp(24px, 4vw, 38px); }
+.marketFeedRecovery > p:not(.eyebrow) { max-width: 680px; color: var(--muted); line-height: 1.55; }
+.marketFeedRecovery button {
+  min-height: 48px;
+  margin-top: 10px;
+  padding: 0 20px;
+  border: 1px solid rgba(76, 241, 123, 0.4);
+  border-radius: 13px;
+  color: #061008;
+  background: var(--lime);
+  font: 800 14px/1 inherit;
+}

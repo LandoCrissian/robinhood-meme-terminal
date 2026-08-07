@@ -8,6 +8,8 @@ import {
   RMT_SITE_NAME
 } from "../lib/site-identity";
 import { SiteFooter } from "./site-footer";
+import { RecoveryBoundary } from "./recovery-boundary";
+import { MarketFeedRecovery } from "./market-feed-recovery";
 
 const terminalDescription = "Scan live Robinhood Chain markets, inspect origin and liquidity evidence, and prepare self-custodial Sushi or Uniswap trades from one terminal.";
 
@@ -54,7 +56,9 @@ export default function Home() {
       </section>
 
       <OfficialRmtMarket />
-      <ExternalMarketFeed />
+      <RecoveryBoundary name="market-feed" fallback={<MarketFeedRecovery />}>
+        <ExternalMarketFeed />
+      </RecoveryBoundary>
       <SiteFooter />
     </main>
   );
