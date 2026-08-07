@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { Hash } from "viem";
 import { recordExperienceStage } from "../lib/experience-funnel";
+import { sanitizeTradeDiagnosticText } from "../lib/trade-diagnostic-sanitize";
 import {
   tradeExecutionDiagnostics,
   type TradeExecutionFailure,
@@ -80,9 +81,15 @@ export function TradeExecutionStatus({
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
   const [feedback, setFeedback] = useState<"clear" | "unclear">();
   const copy = statusCopy(status, recovered);
+  const safeRawError = sanitizeTradeDiagnosticText(rawError);
 
   const copyDiagnostics = async () => {
-    const diagnostics = tradeExecutionDiagnostics({ record, failure, rawError, status });
+    const diagnostics = tradeExecutionDiagnostics({
+      record,
+      failure,
+      rawError: safeRawError,
+      status
+    });
     try {
       await navigator.clipboard.writeText(diagnostics);
       setCopyState("copied");
@@ -116,10 +123,10 @@ export function TradeExecutionStatus({
           {copyState === "copied" ? "Diagnostics copied" : copyState === "failed" ? "Copy unavailable" : "Copy diagnostics"}
         </button>
       </div>
-      {rawError && (
+      {safeRawError && (
         <details>
           <summary>Technical response</summary>
-          <p>{rawError.slice(0, 500)}</p>
+          <p>{safeRawError}</p>
         </details>
       )}
       {(status === "confirmed" || status === "failed" || status === "confirmation-unavailable") && (
