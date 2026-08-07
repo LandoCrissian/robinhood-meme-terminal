@@ -104,7 +104,7 @@ export function TradeExecutionControls() {
       <div className="tradeExecutionControlGroup">
         <span>
           <strong>Price-impact alert</strong>
-          <small>RMT highlights quotes above this level. It does not veto a valid order unless a separate transaction-integrity check fails.</small>
+          <small>Maximum price impact is not enforced by this advisory control. RMT highlights quotes above this level. It does not veto a valid order. “No RMT cap” means no advisory threshold; the quoted minimum output and exact-transaction simulation remain authoritative.</small>
         </span>
         <div role="group" aria-label="Price-impact alert">
           {([100, 200, 500, 10_000] as const).map((value) => (
