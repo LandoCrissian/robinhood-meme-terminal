@@ -31,6 +31,7 @@ import "./terminal-desktop-v9.css";
 import "./terminal-high-end-v10.css";
 import "./terminal-high-end-v10-final.css";
 import "./terminal-minor-fixes-v10.css";
+import "./execution-reliability-v11.css";
 import "./terminal-trader-control-v12.css";
 import { Providers } from "./providers";
 import { PublicChrome } from "./public-chrome";
@@ -97,7 +98,14 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           }}
         />
       </head>
-      <body><Providers><PublicChrome /><TradingTermsGate /><FirstVisitGuide />{children}</Providers></body>
+      <body>
+        <Providers>
+          <PublicChrome />
+          <TradingTermsGate />
+          <FirstVisitGuide />
+          {children}
+        </Providers>
+      </body>
     </html>
   );
 }
