@@ -6,11 +6,6 @@ const appDirectory = path.dirname(fileURLToPath(import.meta.url));
 /** @type {import("next").NextConfig} */
 const nextConfig = {
   outputFileTracingRoot: path.resolve(appDirectory, "../.."),
-  // Diagnostic-only: the next commit removes this after the exact compiler
-  // output is captured from the preview deployment.
-  typescript: {
-    ignoreBuildErrors: true
-  },
   webpack(config) {
     // MetaMask probes React Native storage and Privy probes Farcaster's Solana
     // adapter even though this app is an Ethereum-only browser terminal. Mark
