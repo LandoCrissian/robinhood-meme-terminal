@@ -16,6 +16,7 @@
     "test:firebase-rules": "firebase emulators:exec --project rmt-rules-test --only firestore \"pnpm --filter web test:firebase-rules:unit\"",
     "test:community-readiness": "node scripts/community-readiness-smoke.mjs",
     "test:production-health": "node scripts/production-health-smoke.mjs",
+    "test:terminal-high-end": "node .github/scripts/terminal-high-end-acceptance.mjs",
     "typecheck": "pnpm --filter web typecheck"
   },
   "devDependencies": {
