@@ -125,8 +125,13 @@ assert.match(
 );
 assert.match(
   minorFixesCss,
-  /\.universalTradeRail \{[\s\S]*?display: flex !important;[\s\S]*?max-height: min\(94dvh, 900px\) !important;[\s\S]*?flex-direction: column !important;/,
-  "Mobile execution must be a viewport-bound ordered sheet rather than the desktop rail squeezed onto a phone."
+  /html,[\s\S]*?body,[\s\S]*?content-visibility: visible !important;[\s\S]*?transform: none !important;/,
+  "Mobile ancestors must not create a document-height containing block for the execution sheet."
+);
+assert.match(
+  minorFixesCss,
+  /\.universalTradeRail \{[\s\S]*?top: max\(6dvh, env\(safe-area-inset-top\)\) !important;[\s\S]*?bottom: auto !important;[\s\S]*?height: min\(94dvh, 900px\) !important;[\s\S]*?flex-direction: column !important;/,
+  "Mobile execution must anchor to dynamic viewport dimensions rather than document height."
 );
 assert.match(
   minorFixesCss,
@@ -165,5 +170,5 @@ assert.match(
 );
 
 console.log(
-  "RMT preserves reversible discovery, complete route batching, readable desktop identity, and an amount-first mobile Buy/Sell sheet with a reachable wallet action."
+  "RMT preserves reversible discovery, complete route batching, readable desktop identity, and a dynamic-viewport mobile Buy/Sell sheet with a reachable wallet action."
 );
