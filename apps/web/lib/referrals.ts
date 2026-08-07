@@ -30,8 +30,20 @@ export function capturePendingReferral(value: unknown) {
   if (typeof window === "undefined") return false;
   const code = normalizeReferralCode(value);
   if (!code) return false;
-  window.localStorage.setItem(PENDING_REFERRAL_STORAGE_NAME, JSON.stringify({ code, capturedAt: Date.now() }));
-  return true;
+  try {
+    window.localStorage.setItem(PENDING_REFERRAL_STORAGE_NAME, JSON.stringify({ code, capturedAt: Date.now() }));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function removePendingReferral() {
+  try {
+    window.localStorage.removeItem(PENDING_REFERRAL_STORAGE_NAME);
+  } catch {
+    // Restricted browser storage is equivalent to no pending referral.
+  }
 }
 
 export function readPendingReferral() {
@@ -44,18 +56,18 @@ export function readPendingReferral() {
     const code = normalizeReferralCode(parsed?.code);
     const capturedAt = typeof parsed?.capturedAt === "number" ? parsed.capturedAt : 0;
     if (!code || capturedAt <= 0 || Date.now() - capturedAt > PENDING_REFERRAL_MAX_AGE_MS) {
-      window.localStorage.removeItem(PENDING_REFERRAL_STORAGE_NAME);
+      removePendingReferral();
       return "";
     }
     return code;
   } catch {
-    window.localStorage.removeItem(PENDING_REFERRAL_STORAGE_NAME);
+    removePendingReferral();
     return "";
   }
 }
 
 export function clearPendingReferral() {
-  if (typeof window !== "undefined") window.localStorage.removeItem(PENDING_REFERRAL_STORAGE_NAME);
+  if (typeof window !== "undefined") removePendingReferral();
 }
 
 function parseReferralSummary(value: unknown, fallbackCode = ""): ReferralSummary | null {

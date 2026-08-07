@@ -110,13 +110,17 @@ export function writeLocalProfile(profile: RmtProfile, updatedAt?: number, ident
   if (typeof window === "undefined") return;
   const normalized = normalizeProfile(profile);
   const previous = readLocalProfileSnapshot();
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify({
-    version: STORAGE_VERSION,
-    profile: normalized,
-    updatedAt: updatedAt === undefined ? nextProfileTimestamp(previous.updatedAt) : cleanTimestamp(updatedAt),
-    identityUpdatedAt: identityUpdatedAt === undefined
-      ? previous.identityUpdatedAt
-      : cleanTimestamp(identityUpdatedAt)
-  }));
-  window.dispatchEvent(new Event(PROFILE_EVENT));
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      version: STORAGE_VERSION,
+      profile: normalized,
+      updatedAt: updatedAt === undefined ? nextProfileTimestamp(previous.updatedAt) : cleanTimestamp(updatedAt),
+      identityUpdatedAt: identityUpdatedAt === undefined
+        ? previous.identityUpdatedAt
+        : cleanTimestamp(identityUpdatedAt)
+    }));
+    window.dispatchEvent(new Event(PROFILE_EVENT));
+  } catch {
+    // A restricted or full browser store must never take down the terminal.
+  }
 }

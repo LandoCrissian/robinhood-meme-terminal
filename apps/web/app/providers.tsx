@@ -10,6 +10,7 @@ import { CommunityLive } from "./community-live";
 import { ExperienceTelemetry } from "./experience-telemetry";
 import { createLegacyWalletConnectors, walletChains, walletTransports } from "./wallet-config";
 import { speedWalletEnabled } from "../lib/privy-config";
+import { RecoveryBoundary } from "./recovery-boundary";
 
 let legacyWalletConfig: ReturnType<typeof createConfig> | undefined;
 
@@ -35,10 +36,18 @@ export function Providers({ children }: { children: ReactNode }) {
     <ProfileProvider><ReferralCapture /><ExperienceTelemetry />{children}<CommunityLive /></ProfileProvider>
   );
 
-  if (speedWalletEnabled) return <SpeedWalletProvider queryClient={queryClient}>{application}</SpeedWalletProvider>;
-  return (
+  const legacyApplication = (
     <WagmiProvider config={getLegacyWalletConfig()}>
       <QueryClientProvider client={queryClient}>{application}</QueryClientProvider>
     </WagmiProvider>
   );
+
+  if (speedWalletEnabled) {
+    return (
+      <RecoveryBoundary name="wallet-provider" fallback={legacyApplication}>
+        <SpeedWalletProvider queryClient={queryClient}>{application}</SpeedWalletProvider>
+      </RecoveryBoundary>
+    );
+  }
+  return legacyApplication;
 }
