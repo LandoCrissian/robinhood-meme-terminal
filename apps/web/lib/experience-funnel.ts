@@ -13,7 +13,27 @@ export const EXPERIENCE_STAGES = [
   "wallet_connect_started",
   "wallet_connected",
   "quote_ready",
-  "wallet_review_started"
+  "quote_failed",
+  "preflight_ready",
+  "preflight_failed",
+  "wallet_review_started",
+  "wallet_rejected",
+  "transaction_submitted",
+  "transaction_recovered",
+  "reconciliation_required",
+  "transaction_confirmed",
+  "transaction_failed",
+  "failure_insufficient_funds",
+  "failure_slippage",
+  "failure_allowance",
+  "failure_route_unavailable",
+  "failure_simulation",
+  "failure_network",
+  "failure_nonce_duplicate",
+  "failure_reverted",
+  "failure_unknown",
+  "execution_status_clear",
+  "execution_status_unclear"
 ] as const;
 
 export type ExperienceStage = typeof EXPERIENCE_STAGES[number];
@@ -35,7 +55,27 @@ export const EXPERIENCE_STAGE_COPY: Record<ExperienceStage, { label: string; det
   wallet_connect_started: { label: "Wallet connection started", detail: "Selected a wallet connection path." },
   wallet_connected: { label: "Wallet connected", detail: "Connected a wallet during the visit." },
   quote_ready: { label: "Protected quote ready", detail: "Reached a fresh, reviewable route quote." },
-  wallet_review_started: { label: "Wallet review requested", detail: "Sent a prepared action to the wallet for review." }
+  quote_failed: { label: "Quote unavailable", detail: "A route request ended without a reviewable quote." },
+  preflight_ready: { label: "Simulation passed", detail: "The exact transaction passed gas estimation and pre-sign checks." },
+  preflight_failed: { label: "Simulation blocked", detail: "RMT blocked signing because exact preflight could not be proven." },
+  wallet_review_started: { label: "Wallet review requested", detail: "Sent a prepared action to the wallet for review." },
+  wallet_rejected: { label: "Wallet review declined", detail: "The wallet request was declined before submission." },
+  transaction_submitted: { label: "Transaction submitted", detail: "A public transaction hash was returned by the wallet." },
+  transaction_recovered: { label: "Pending transaction recovered", detail: "RMT restored an unresolved local transaction after refresh." },
+  reconciliation_required: { label: "Receipt reconciliation required", detail: "A public hash existed while the current RPC could not prove its final status." },
+  transaction_confirmed: { label: "Transaction confirmed", detail: "A submitted transaction received a successful EVM receipt." },
+  transaction_failed: { label: "Transaction failed", detail: "Submission or execution ended in a classified failure state." },
+  failure_insufficient_funds: { label: "Failure · insufficient funds", detail: "The input balance or native network reserve was insufficient." },
+  failure_slippage: { label: "Failure · protected minimum", detail: "The route moved beyond the signed minimum-output boundary." },
+  failure_allowance: { label: "Failure · approval", detail: "The exact approval or allowance state did not complete." },
+  failure_route_unavailable: { label: "Failure · route unavailable", detail: "The selected liquidity venue could not satisfy the order." },
+  failure_simulation: { label: "Failure · simulation", detail: "Exact gas estimation or preflight could not prove execution." },
+  failure_network: { label: "Failure · network uncertainty", detail: "An RPC, transport, or receipt-status request was unavailable." },
+  failure_nonce_duplicate: { label: "Failure · nonce or duplicate", detail: "The wallet or RPC indicated another transaction may already exist." },
+  failure_reverted: { label: "Failure · EVM revert", detail: "A submitted transaction returned a reverted EVM receipt." },
+  failure_unknown: { label: "Failure · unclassified", detail: "The response could not be mapped to a safe automatic recovery action." },
+  execution_status_clear: { label: "Status explanation clear", detail: "A user marked the post-submit status explanation as clear." },
+  execution_status_unclear: { label: "Status explanation unclear", detail: "A user marked the post-submit status explanation as unclear." }
 };
 
 export function normalizeExperienceStage(value: unknown): ExperienceStage | null {

@@ -1,0 +1,513 @@
+import { chromium, devices } from "playwright";
+import { mkdir, writeFile } from "node:fs/promises";
+
+const base = process.env.RMT_ACCEPTANCE_BASE_URL ?? "http://127.0.0.1:3000";
+const output = process.env.RMT_ACCEPTANCE_OUTPUT
+  ?? `${process.env.GITHUB_WORKSPACE}/terminal-high-end-evidence`;
+const now = new Date().toISOString();
+const address = (seed) => `0x${seed.toString(16).padStart(40, "0")}`;
+const txHash = (seed) => `0x${seed.toString(16).repeat(64).slice(0, 64)}`;
+const token = address(0x1001);
+const pair = address(0x2001);
+const factory = address(0x3001);
+const creator = address(0x4001);
+
+await mkdir(output, { recursive: true });
+
+function market(index) {
+  const sourceId = index % 3 === 0 ? "sushi" : index % 3 === 1 ? "lemon" : "pons";
+  const sourceName = sourceId === "sushi" ? "Sushi Launch" : sourceId === "lemon" ? "Lemon" : "Pons";
+  const marketToken = index === 0 ? token : address(0x1001 + index);
+  const marketPair = index === 0 ? pair : address(0x2001 + index);
+  const change5m = ((index * 17) % 31) - 12;
+  const change1h = ((index * 11) % 43) - 9;
+  const liquidity = 58_000 + index * 19_000;
+  const volume1h = 46_000 + index * 7_300;
+  return {
+    address: marketToken,
+    name: `RMT Market ${String(index + 1).padStart(2, "0")}`,
+    symbol: `R${String(index + 1).padStart(2, "0")}`,
+    pairAddress: marketPair,
+    url: `https://robinhoodchain.blockscout.com/address/${marketPair}`,
+    dexId: index % 2 === 0 ? "sushiswap" : "uniswap-v3",
+    project: {
+      sourceId,
+      sourceName,
+      provenance: sourceId === "sushi"
+        ? "public-api-and-dex-pool-cross-checked"
+        : "factory-and-token-cross-checked",
+      creator,
+      launchPool: marketPair,
+      name: `RMT Market ${String(index + 1).padStart(2, "0")}`,
+      symbol: `R${String(index + 1).padStart(2, "0")}`,
+      description: "Deterministic high-end terminal acceptance fixture.",
+      imageUri: null,
+      socials: {
+        x: "https://x.com/RMTLaunch",
+        telegram: null,
+        discord: null,
+        website: "https://www.rmtlaunch.fun",
+        farcaster: null
+      }
+    },
+    socials: {
+      x: "https://x.com/RMTLaunch",
+      telegram: null,
+      discord: null,
+      website: "https://www.rmtlaunch.fun",
+      farcaster: null,
+      provenance: "dex-pair-metadata"
+    },
+    origin: {
+      kind: "external",
+      state: "attributed",
+      sourceId,
+      sourceName,
+      coverage: "complete",
+      claim: {
+        claimKind: "token-created",
+        sourceId,
+        sourceName,
+        factory,
+        transactionHash: txHash(index + 1),
+        blockNumber: String(12_400_000 + index),
+        evidenceHash: txHash(index + 101)
+      }
+    },
+    venue: {
+      kind: "dex",
+      dexId: index % 2 === 0 ? "sushiswap" : "uniswap-v3",
+      pairAddress: marketPair,
+      url: `https://robinhoodchain.blockscout.com/address/${marketPair}`,
+      execution: "read-only"
+    },
+    priceUsd: 0.00072 + index * 0.000083,
+    liquidityUsd: liquidity,
+    marketCapUsd: 390_000 + index * 235_000,
+    fdvUsd: 480_000 + index * 280_000,
+    volume5m: Math.max(12_000, volume1h * 0.36),
+    volume1h,
+    volume24h: 420_000 + index * 97_000,
+    priceChange5m: change5m,
+    priceChange1h: change1h,
+    priceChange24h: change1h * 1.9,
+    buys5m: 24 + index,
+    sells5m: 8 + index % 5,
+    buys1h: 138 + index * 7,
+    sells1h: 67 + index * 3,
+    buys24h: 1_120 + index * 31,
+    sells24h: 610 + index * 19,
+    pairCreatedAt: Date.now() - (index + 1) * 3_600_000,
+    ageMinutes: 52 + index * 83,
+    momentumScore: 58 + (index * 7) % 39,
+    buyPressureBps: 6_400 + index * 75,
+    signal: "moving",
+    riskFlags: index % 7 === 0 ? ["thin-liquidity"] : []
+  };
+}
+
+const markets = Array.from({ length: 24 }, (_, index) => market(index));
+const trades = Array.from({ length: 14 }, (_, index) => ({
+  id: `fixture-${index}`,
+  transactionHash: txHash(index + 300),
+  trader: address(0x5000 + index % 7),
+  side: index % 4 === 0 ? "sell" : "buy",
+  tokenAmount: 130_000 + index * 23_000,
+  quoteAmount: 0.08 + index * 0.014,
+  priceUsd: 0.00141 + index * 0.000013,
+  volumeUsd: 390 + index * 215,
+  timestamp: new Date(Date.now() - index * 24_000).toISOString()
+}));
+
+function candles(range) {
+  const count = range === "7D" ? 84 : range === "24H" ? 72 : 48;
+  const step = range === "7D" ? 7_200 : range === "24H" ? 1_200 : 60;
+  const start = Math.floor(Date.now() / 1_000) - count * step;
+  return Array.from({ length: count }, (_, index) => {
+    const close = 0.00122 + index * 0.000009 + Math.sin(index / 3.1) * 0.000047;
+    const open = close - Math.cos(index / 2.7) * 0.000019;
+    return {
+      timestamp: start + index * step,
+      open,
+      high: Math.max(open, close) + 0.000024,
+      low: Math.min(open, close) - 0.000022,
+      close,
+      volume: 2_700 + Math.abs(Math.sin(index / 2.1)) * 8_800
+    };
+  });
+}
+
+const riskPayload = {
+  token,
+  pair,
+  marketVerified: true,
+  coverage: "complete",
+  contract: {
+    sourcePublished: true,
+    isProxy: false,
+    bytecodeChanged: false,
+    controls: {
+      assessment: "no-common-controls-found",
+      detected: [],
+      customWriteFunctions: [],
+      administrator: null,
+      activeLaunchRestrictions: false,
+      restrictionEndBlock: null,
+      maxTransactionBps: null,
+      maxWalletBps: null
+    }
+  },
+  liquidity: {
+    controlStatus: "contract-held",
+    evidenceSource: "launchpad-registry",
+    positionManager: factory,
+    positionId: "1842",
+    owner: factory,
+    approvedOperator: null,
+    creatorCanTransfer: false,
+    positionLiquidity: "842000000000000000000"
+  },
+  holders: {
+    count: 1_842,
+    poolShareBps: 4_200,
+    topNonPoolShareBps: 740,
+    topNonPoolHolders: [],
+    largestNonPoolHolder: { address: address(0x7001), shareBps: 210 },
+    creator,
+    creatorShareBps: 95
+  },
+  sellSimulation: {
+    status: "passed",
+    method: "holder-to-pool-transfer",
+    holder: address(0x7001),
+    amount: "1000000000000000000",
+    returnStyle: "boolean-true"
+  },
+  warnings: [],
+  checkedAt: now
+};
+
+async function installRoutes(page) {
+  await page.route(/\/api\/markets\/external(?:\?.*)?$/, async (route) => {
+    const url = new URL(route.request().url());
+    const contract = url.searchParams.get("contract")?.toLowerCase();
+    const selected = contract
+      ? markets.filter((item) => (
+          item.address.toLowerCase() === contract
+          || item.pairAddress.toLowerCase() === contract
+        ))
+      : markets;
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        markets: selected,
+        source: "high-end-acceptance",
+        rankingVersion: "terminal-v10",
+        thresholds: {},
+        originCoverage: "complete",
+        rmtOriginCoverage: "complete",
+        stockAssetCoverage: "complete",
+        delayedSources: [],
+        updatedAt: now,
+        stale: false
+      })
+    });
+  });
+  await page.route(/\/api\/trade\/external-availability(?:\?.*)?$/, async (route) => {
+    const url = new URL(route.request().url());
+    const tokens = (url.searchParams.get("tokens") ?? "").split(",").filter(Boolean);
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        availability: tokens.map((item) => ({ token: item, status: "ready", venues: ["sushi"] }))
+      })
+    });
+  });
+  await page.route(/\/api\/trade\/external-venues(?:\?.*)?$/, (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({
+      token,
+      venues: [{
+        venue: "sushi",
+        pair,
+        dexId: "sushiswap",
+        liquidityUsd: markets[0].liquidityUsd,
+        verification: "dex-and-route"
+      }]
+    })
+  }));
+  await page.route(/\/api\/markets\/ohlcv(?:\?.*)?$/, async (route) => {
+    const range = new URL(route.request().url()).searchParams.get("range") ?? "LIVE";
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        token,
+        pair,
+        range,
+        candles: candles(range),
+        source: "GeckoTerminal",
+        updatedAt: now,
+        lastTradeAt: trades[0].timestamp,
+        refreshMs: 60_000
+      })
+    });
+  });
+  await page.route(/\/api\/markets\/external-trades(?:\?.*)?$/, (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({ token, pair, source: "GeckoTerminal", updatedAt: now, trades })
+  }));
+  await page.route(/\/api\/markets\/external-stream(?:\?.*)?$/, (route) => route.fulfill({
+    status: 204,
+    body: ""
+  }));
+  await page.route(/\/api\/markets\/token-risk(?:\?.*)?$/, (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify(riskPayload)
+  }));
+}
+
+async function createContext(browser, options) {
+  const context = await browser.newContext(options);
+  await context.addInitScript(() => {
+    localStorage.setItem(
+      "rmt:trading-terms",
+      JSON.stringify({ version: "2026-07-28", acceptedAt: new Date().toISOString() })
+    );
+    localStorage.setItem(
+      "rmt:experience-preferences",
+      JSON.stringify({
+        schemaVersion: 1,
+        onboardingVersion: 1,
+        diagnosticsEnabled: false,
+        updatedAt: Date.now()
+      })
+    );
+  });
+  return context;
+}
+
+async function gotoReady(page, url, selector) {
+  await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60_000 });
+  await page.locator(selector).first().waitFor({ state: "visible", timeout: 30_000 });
+  await page.waitForTimeout(900);
+}
+
+function visibleAudit() {
+  const visible = (element) => {
+    const style = getComputedStyle(element);
+    const rect = element.getBoundingClientRect();
+    return style.display !== "none"
+      && style.visibility !== "hidden"
+      && Number(style.opacity) > 0
+      && rect.width > 0
+      && rect.height > 0;
+  };
+  const signalCards = [...document.querySelectorAll(".liveSignalRail > a")].filter(visible);
+  const signalRects = signalCards.map((element) => element.getBoundingClientRect());
+  const overlap = signalRects.some((left, index) => signalRects.slice(index + 1).some((right) => !(
+    left.right <= right.left + 1
+    || right.right <= left.left + 1
+    || left.bottom <= right.top + 1
+    || right.bottom <= left.top + 1
+  )));
+  const signalRail = document.querySelector(".liveSignalRail");
+  const controlsUnder32 = [...document.querySelectorAll("button,a,input,summary")]
+    .filter(visible)
+    .map((element) => ({
+      text: (element.textContent ?? element.getAttribute("aria-label") ?? "").trim().slice(0, 70),
+      height: Math.round(element.getBoundingClientRect().height),
+      exempt: Boolean(element.closest(".siteFooter,.externalIdentityLink,.universalHeroSocials"))
+    }))
+    .filter((item) => !item.exempt && item.height < 32)
+    .slice(0, 30);
+  return {
+    viewport: { width: innerWidth, height: innerHeight },
+    horizontalOverflow: Math.max(0, document.documentElement.scrollWidth - innerWidth),
+    visibleSignals: signalCards.length,
+    signalOverlap: overlap,
+    signalRailOverflow: signalRail
+      ? Math.max(0, signalRail.scrollWidth - signalRail.clientWidth)
+      : null,
+    marketRowsAboveFold: [...document.querySelectorAll(".runnerMarketCard")]
+      .filter(visible)
+      .filter((element) => {
+        const rect = element.getBoundingClientRect();
+        return rect.top < innerHeight && rect.bottom > 0;
+      }).length,
+    controlsUnder32
+  };
+}
+
+async function inspectHome(browser, viewport, label) {
+  const context = await createContext(browser, { viewport, deviceScaleFactor: 1 });
+  const page = await context.newPage();
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await installRoutes(page);
+  await gotoReady(page, base, ".runnerMarketCard");
+
+  const audit = await page.evaluate(visibleAudit);
+  if (audit.horizontalOverflow > 2) throw new Error(`${label}: page horizontal overflow ${audit.horizontalOverflow}px`);
+  if (audit.visibleSignals > 5) throw new Error(`${label}: ${audit.visibleSignals} priority signals are visible`);
+  if (audit.signalOverlap) throw new Error(`${label}: priority signal cards overlap`);
+  if ((audit.signalRailOverflow ?? 0) > 2) throw new Error(`${label}: signal rail has hidden horizontal overflow`);
+  if (viewport.width >= 1_180 && audit.marketRowsAboveFold < 2) {
+    throw new Error(`${label}: only ${audit.marketRowsAboveFold} market rows are above the fold`);
+  }
+  if (audit.controlsUnder32.length) {
+    throw new Error(`${label}: undersized controls ${JSON.stringify(audit.controlsUnder32)}`);
+  }
+
+  const beforeSort = await page.locator(".externalIdentityLink strong").first().textContent();
+  await page.locator(".runnerHeaderSplit button").filter({ hasText: "5m" }).click();
+  const afterSort = await page.locator(".externalIdentityLink strong").first().textContent();
+  if (!beforeSort || !afterSort || beforeSort === afterSort) {
+    throw new Error(`${label}: sortable market rows did not reorder`);
+  }
+
+  const watch = page.locator(".runnerWatchButton").first();
+  await watch.click();
+  if (await watch.getAttribute("aria-pressed") !== "true") {
+    throw new Error(`${label}: watchlist star did not activate`);
+  }
+
+  const boardButton = page.locator(".liveSignalBoardButton");
+  if (await boardButton.count()) {
+    await boardButton.click();
+    await page.locator(".liveSignalBoardDialog").waitFor({ state: "visible" });
+    const boardCount = await page.locator(".liveSignalBoardGrid > a").count();
+    if (boardCount !== markets.length) {
+      throw new Error(`${label}: signal board has ${boardCount} of ${markets.length} signals`);
+    }
+    await page.locator(".liveSignalBoardDialog > header button").click();
+  }
+
+  await page.screenshot({ path: `${output}/home-${label}.png`, fullPage: false, animations: "disabled" });
+  await page.locator("#market-explorer").screenshot({ path: `${output}/scanner-${label}.png`, animations: "disabled" });
+  await context.close();
+  return audit;
+}
+
+async function inspectMarket(browser) {
+  const context = await createContext(browser, {
+    viewport: { width: 1_440, height: 900 },
+    deviceScaleFactor: 1
+  });
+  const page = await context.newPage();
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await installRoutes(page);
+  await gotoReady(page, `${base}/market/${token}`, ".universalChart");
+
+  const candlesButton = page.getByRole("button", { name: "Candles" });
+  const lineButton = page.getByRole("button", { name: "Line" });
+  if (await candlesButton.getAttribute("aria-pressed") !== "true") {
+    throw new Error("Candlestick chart is not the default desktop mode");
+  }
+  if (await page.locator(".chartCandle").count() < 10) {
+    throw new Error("Candlestick chart did not render enough OHLC candles");
+  }
+  await lineButton.click();
+  if (await lineButton.getAttribute("aria-pressed") !== "true") {
+    throw new Error("Line chart mode did not activate");
+  }
+  await candlesButton.click();
+  await page.locator(".universalChart svg").hover({ position: { x: 480, y: 150 } });
+  await page.locator(".universalChartTooltip").waitFor({ state: "visible" });
+  await page.screenshot({ path: `${output}/market-1440x900.png`, fullPage: false, animations: "disabled" });
+  await page.locator(".universalChart").screenshot({ path: `${output}/chart-candles.png`, animations: "disabled" });
+  await context.close();
+  return { candles: true, line: true, crosshair: true };
+}
+
+async function inspectMobile(browser) {
+  const context = await createContext(browser, { ...devices["iPhone 13"] });
+  const page = await context.newPage();
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await installRoutes(page);
+  await gotoReady(page, base, ".mobileRunnerMarketRow");
+
+  const homeAudit = await page.evaluate(() => {
+    const mobileCard = document.querySelector(".mobileRunnerMarketRow");
+    const desktopHeader = document.querySelector(".runnerColumnHeader");
+    const desktopHeaderVisible = desktopHeader
+      ? getComputedStyle(desktopHeader).display !== "none"
+      : false;
+    return {
+      horizontalOverflow: Math.max(0, document.documentElement.scrollWidth - innerWidth),
+      mobileCardVisible: Boolean(mobileCard && mobileCard.getBoundingClientRect().height > 0),
+      desktopHeaderVisible,
+      signalBoardButtonVisible: [...document.querySelectorAll(".liveSignalBoardButton")]
+        .some((element) => getComputedStyle(element).display !== "none")
+    };
+  });
+  if (homeAudit.horizontalOverflow > 2) {
+    throw new Error(`mobile: horizontal overflow ${homeAudit.horizontalOverflow}px`);
+  }
+  if (!homeAudit.mobileCardVisible || homeAudit.desktopHeaderVisible || homeAudit.signalBoardButtonVisible) {
+    throw new Error(`mobile: desktop workstation leaked into mobile layout ${JSON.stringify(homeAudit)}`);
+  }
+  await page.screenshot({ path: `${output}/home-mobile.png`, fullPage: false, animations: "disabled" });
+
+  await gotoReady(page, `${base}/market/${token}`, ".universalMobileTradeDock");
+  const buy = page.locator(".universalMobileTradeDock .buy");
+  await buy.waitFor({ state: "visible" });
+  await buy.click();
+  await page.locator(".universalTradeRail.mobileOpen").waitFor({ state: "visible" });
+  const sheetAudit = await page.evaluate(() => {
+    const sheet = document.querySelector(".universalTradeRail.mobileOpen");
+    const backdrop = document.querySelector(".universalTradeSheetBackdrop.visible");
+    if (!sheet || !backdrop) return null;
+    const rect = sheet.getBoundingClientRect();
+    const backdropStyle = getComputedStyle(backdrop);
+    return {
+      top: rect.top,
+      right: rect.right,
+      bottom: rect.bottom,
+      left: rect.left,
+      width: rect.width,
+      height: rect.height,
+      viewportWidth: innerWidth,
+      viewportHeight: innerHeight,
+      backdropVisible: backdropStyle.visibility !== "hidden" && Number(backdropStyle.opacity) > 0
+    };
+  });
+  if (!sheetAudit) throw new Error("mobile: Buy did not open an execution sheet");
+  if (
+    sheetAudit.top < -2
+    || sheetAudit.left < -2
+    || sheetAudit.right > sheetAudit.viewportWidth + 2
+    || sheetAudit.bottom > sheetAudit.viewportHeight + 2
+    || !sheetAudit.backdropVisible
+  ) {
+    throw new Error(`mobile: execution sheet escaped the viewport ${JSON.stringify(sheetAudit)}`);
+  }
+  await page.screenshot({ path: `${output}/market-mobile-buy.png`, fullPage: false, animations: "disabled" });
+  await page.locator(".universalTradeRailClose").click();
+  await page.locator(".universalTradeRail.mobileOpen").waitFor({ state: "detached" }).catch(async () => {
+    if (await page.locator(".universalTradeRail.mobileOpen").count()) {
+      throw new Error("mobile: execution sheet did not close");
+    }
+  });
+  await context.close();
+  return { home: homeAudit, tradeSheet: sheetAudit };
+}
+
+const browser = await chromium.launch({ headless: true });
+try {
+  const laptop = await inspectHome(browser, { width: 1_366, height: 768 }, "1366x768");
+  const desktop = await inspectHome(browser, { width: 1_440, height: 900 }, "1440x900");
+  const wide = await inspectHome(browser, { width: 1_920, height: 1_080 }, "1920x1080");
+  const marketAudit = await inspectMarket(browser);
+  const mobile = await inspectMobile(browser);
+  await writeFile(
+    `${output}/report.json`,
+    JSON.stringify({ laptop, desktop, wide, marketAudit, mobile }, null, 2)
+  );
+} finally {
+  await browser.close();
+}

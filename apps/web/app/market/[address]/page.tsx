@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { ExternalMarketWorkspace } from "../../external-market-workspace";
+import { MobileTradeViewportGuard } from "../../mobile-trade-viewport-guard";
 import {
   buildPublicMarketMetadata,
   publicMarketStructuredData
@@ -30,6 +31,7 @@ export default async function ExternalMarketPage({ params }: MarketRouteProps) {
           }}
         />
       )}
+      <MobileTradeViewportGuard />
       <ExternalMarketWorkspace initialMarket={market ?? undefined} />
     </>
   );

@@ -6,8 +6,10 @@ import { stockTokenExecutionPolicy } from "../../../../lib/server/robinhood-stoc
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-const MAX_TOKENS = 12;
-const CONCURRENCY = 3;
+// The desktop scanner resolves at most 48 markets per pass. Keep this endpoint
+// aligned so a valid scanner batch cannot be rejected and falsely downgraded.
+const MAX_TOKENS = 48;
+const CONCURRENCY = 12;
 
 type Availability = {
   token: Address;

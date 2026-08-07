@@ -23,6 +23,9 @@ import {
   spendableTradeBalance
 } from "../lib/trade-ticket";
 import { useTradeFeeEstimate } from "../lib/use-trade-fee-estimate";
+import { classifyTradeExecutionError } from "../lib/trade-execution-reliability";
+import { useTradeExecutionRecovery } from "../lib/use-trade-execution-recovery";
+import { useTradeQuoteFreshness } from "../lib/use-trade-quote-freshness";
 import { useTokenRiskEvidence } from "../lib/use-token-risk-evidence";
 import { tokenRiskDecision } from "../lib/token-risk-policy";
 import { useTradingTermsAcceptance } from "../lib/use-trading-terms";
@@ -55,6 +58,7 @@ import {
 import { PostTradeProtection, TradeProtectionIntent } from "./post-trade-protection";
 import { useAfterBuyProtection } from "../lib/use-after-buy-protection";
 import type { AfterBuyProtectionSettings } from "../lib/after-buy-protection";
+import { TradeExecutionStatus, TradePreflightFailure } from "./trade-execution-status";
 
 const ROBINHOOD_CHAIN_ID = 4663;
 const EXPLORER = "https://robinhoodchain.blockscout.com";
@@ -193,9 +197,8 @@ export function ExternalSushiQuotePanel({
     query: { enabled: Boolean(address && side === "sell"), retry: false, refetchInterval: 10_000 }
   });
   const approval = useWriteContract();
-  const approvalReceipt = useWaitForTransactionReceipt({ hash: approval.data, chainId: ROBINHOOD_CHAIN_ID });
+  const approvalReceipt = useWaitForTransactionReceipt({ hash: approval.data, chainId: ROBINHOOD_CHAIN_ID, confirmations: 1 });
   const swap = useSendTransaction();
-  const swapReceipt = useWaitForTransactionReceipt({ hash: swap.data, chainId: ROBINHOOD_CHAIN_ID });
   const decimals = tokenDecimals.data;
   const amount = controlledAmount ?? internalAmount;
   const setAmount = (value: string, preserveSaferOrder = false) => {
@@ -214,6 +217,24 @@ export function ExternalSushiQuotePanel({
       return 0n;
     }
   }, [address, amount, decimals, side]);
+  const execution = useTradeExecutionRecovery({
+    wallet: address,
+    token,
+    pair,
+    venue: "sushi",
+    side,
+    amountIn,
+    submittedHash: swap.data
+  });
+  const swapReceipt = useWaitForTransactionReceipt({
+    hash: execution.trackedHash,
+    chainId: ROBINHOOD_CHAIN_ID,
+    confirmations: 1
+  });
+  const approvalConfirmed = approvalReceipt.isSuccess && approvalReceipt.data?.status === "success";
+  const approvalReverted = approvalReceipt.isSuccess && approvalReceipt.data?.status === "reverted";
+  const swapConfirmed = swapReceipt.isSuccess && swapReceipt.data?.status === "success";
+  const swapReverted = swapReceipt.isSuccess && swapReceipt.data?.status === "reverted";
 
   useEffect(() => {
     if (controlledAmount === undefined) setInternalAmount(side === "buy" ? "0.0001" : "");
@@ -305,17 +326,27 @@ export function ExternalSushiQuotePanel({
   }, [address, amountIn, decimals, identity.authenticated, identity.identityToken, identity.ready, identity.userId, pair, preferences.preparationMode, preparedQuote, refresh, side, token]);
 
   useEffect(() => {
-    if (!approvalReceipt.isSuccess) return;
-    setMessage("Exact sell approval confirmed. Review and submit the swap next.");
-    void allowance.refetch();
-    setRefresh((value) => value + 1);
-  }, [approvalReceipt.isSuccess]);
+    if (approvalConfirmed) {
+      setMessage("Exact sell approval confirmed. Review and submit the swap next.");
+      void allowance.refetch();
+      setRefresh((value) => value + 1);
+      return;
+    }
+    if (approvalReverted) execution.fail("Exact sell approval transaction reverted onchain.");
+  }, [approvalConfirmed, approvalReverted]);
 
   useEffect(() => {
-    if (!swapReceipt.isSuccess || !swap.data) return;
+    if (swapReverted) {
+      execution.fail("Sushi swap receipt status reverted onchain.");
+      setQuote(undefined);
+      setRefresh((value) => value + 1);
+      return;
+    }
+    if (!swapConfirmed || !execution.trackedHash) return;
+    execution.confirm();
     setMessage("Sushi swap confirmed on Robinhood Chain.");
-    if (handledSwap.current === swap.data) return;
-    handledSwap.current = swap.data;
+    if (handledSwap.current === execution.trackedHash) return;
+    handledSwap.current = execution.trackedHash;
     onSwapConfirmed?.();
     void Promise.all([tokenBalance.refetch(), nativeBalance.refetch(), allowance.refetch()])
       .then(([refreshedToken]) => {
@@ -334,14 +365,36 @@ export function ExternalSushiQuotePanel({
           setConfirmedBuyProtectionSettings(pending.protectionSettings);
         }
       });
-  }, [swapReceipt.isSuccess]);
+  }, [swapConfirmed, swapReverted, execution.trackedHash]);
+
+  useEffect(() => {
+    if (approval.error) execution.fail(approval.error);
+  }, [approval.error]);
+
+  useEffect(() => {
+    if (swap.error) execution.fail(swap.error);
+  }, [swap.error]);
+
+  useEffect(() => {
+    if (swapReceipt.error && execution.trackedHash) execution.holdForReconciliation(swapReceipt.error);
+  }, [swapReceipt.error, execution.trackedHash]);
 
   const outputDecimals = quote?.outputToken?.decimals;
   const outputSymbol = quote?.outputToken?.symbol ?? (side === "buy" ? market.symbol : "ETH");
+  const quoteFreshness = useTradeQuoteFreshness({
+    deadline: quote?.quoteExpiresAt,
+    bufferSeconds: 15,
+    enabled: Boolean(quote && quote.amountIn === amountIn.toString()),
+    onRefreshNeeded: () => {
+      setQuote(undefined);
+      setStatus("loading");
+      setRefresh((value) => value + 1);
+    }
+  });
   const quoteIsFresh = Boolean(
     quote
-    && BigInt(quote.quoteExpiresAt) > BigInt(Math.floor(Date.now() / 1000) + 15)
     && quote.amountIn === amountIn.toString()
+    && quoteFreshness.isFresh
   );
   useEffect(() => {
     if (quoteIsFresh) recordExperienceStage("quote_ready");
@@ -373,8 +426,11 @@ export function ExternalSushiQuotePanel({
   const insufficient = side === "buy"
     ? amountIn > 0n && amountIn + networkFeeReserve > (nativeBalance.data?.value ?? 0n)
     : amountIn > 0n && amountIn > (tokenBalance.data ?? 0n);
-  const busy = approval.isPending || approvalReceipt.isLoading || swap.isPending || swapReceipt.isLoading;
+  const approvalConfirmationUnavailable = Boolean(approval.data && approvalReceipt.error);
+  const busy = approval.isPending || approvalReceipt.isLoading || swap.isPending || swapReceipt.isLoading
+    || execution.unresolved || approvalConfirmationUnavailable;
   const preflightReady = isTradePreflightReady(feeEstimate);
+  const preflightFailure = feeEstimate.status === "unavailable" ? feeEstimate.failure : undefined;
   const requiresAcknowledgement = tradeRequiresAcknowledgement(market, side);
   const evidenceDecision = tokenRiskDecision(tokenRisk, side);
   const confidenceEvidenceReady = side === "sell" || tokenRisk.status !== "loading";
@@ -396,7 +452,16 @@ export function ExternalSushiQuotePanel({
 
   const submit = () => {
     setMessage("");
-    if (!accountReady || !address || chainId !== ROBINHOOD_CHAIN_ID || !quoteIsFresh || !quote || insufficient || busy || !confidenceReady || !preflightReady) return;
+    execution.clearFailure();
+    if (execution.unresolved || approvalConfirmationUnavailable) return;
+    if (!quoteIsFresh) {
+      setMessage("The protected Sushi quote expired before wallet review. RMT is requesting a fresh route.");
+      setQuote(undefined);
+      setStatus("loading");
+      setRefresh((value) => value + 1);
+      return;
+    }
+    if (!accountReady || !address || chainId !== ROBINHOOD_CHAIN_ID || !quote || insufficient || busy || !confidenceReady || !preflightReady) return;
     recordExperienceStage("wallet_review_started");
     if (needsApproval) {
       approval.writeContract({
@@ -435,18 +500,22 @@ export function ExternalSushiQuotePanel({
         : status === "loading" || !quoteIsFresh
           ? "checking"
           : "ready";
-  const buttonLabel = busy
-    ? approval.isPending || approvalReceipt.isLoading ? "Confirming exact approval…" : "Confirming Sushi swap…"
-    : amountIn <= 0n ? "Enter an amount"
-      : !accountReady ? "Sign in to protect this trade"
-      : status === "error" && !quote ? "Quote unavailable"
-      : !quoteIsFresh ? "Verifying route…"
-      : insufficient ? "Insufficient balance"
-      : !confidenceReady ? "Accept RMT trading terms"
-        : feeEstimate.status === "unavailable" ? "Preflight failed — trade blocked"
-            : !preflightReady ? "Simulating exact transaction…"
-          : needsApproval ? `Approve exact ${market.symbol} amount`
-            : side === "buy" ? `Buy ${market.symbol} with Sushi` : `Sell ${market.symbol} with Sushi`;
+  const buttonLabel = execution.unresolved
+    ? "Sushi transaction pending — do not resubmit"
+    : approvalConfirmationUnavailable
+      ? "Approval status unknown — check chain"
+      : busy
+        ? approval.isPending || approvalReceipt.isLoading ? "Confirming exact approval…" : "Confirming Sushi swap…"
+        : amountIn <= 0n ? "Enter an amount"
+          : !accountReady ? "Sign in to protect this trade"
+          : status === "error" && !quote ? "Quote unavailable"
+          : !quoteIsFresh ? "Verifying route…"
+          : insufficient ? "Insufficient balance"
+          : !confidenceReady ? "Accept RMT trading terms"
+            : feeEstimate.status === "unavailable" ? "Preflight failed — trade blocked"
+                : !preflightReady ? "Simulating exact transaction…"
+              : needsApproval ? `Approve exact ${market.symbol} amount`
+                : side === "buy" ? `Buy ${market.symbol} with Sushi` : `Sell ${market.symbol} with Sushi`;
 
   return (
     <section className="externalSushiQuote" aria-labelledby="external-sushi-quote-heading">
@@ -556,6 +625,7 @@ export function ExternalSushiQuotePanel({
                     : "clear"
             }
           />
+          <TradePreflightFailure failure={preflightFailure} />
           <button
             className={`externalUniswapSubmit ${side}`}
             type="button"
@@ -567,25 +637,40 @@ export function ExternalSushiQuotePanel({
           </button>
         </>
       )}
-      {(approval.error || approvalReceipt.error || swap.error || swapReceipt.error) && (
-        <p className="externalUniswapError" role="alert">
-          {approval.error?.message || approvalReceipt.error?.message || swap.error?.message || swapReceipt.error?.message}
-        </p>
+      {approvalConfirmationUnavailable && approval.data && (
+        <TradeExecutionStatus
+          status="confirmation-unavailable"
+          hash={approval.data}
+          failure={classifyTradeExecutionError(approvalReceipt.error)}
+          rawError={approvalReceipt.error?.message}
+          onRecheck={() => void approvalReceipt.refetch()}
+        />
+      )}
+      {execution.status !== "idle" && (
+        <TradeExecutionStatus
+          status={execution.status}
+          hash={execution.trackedHash ?? (approvalReverted ? approval.data : undefined)}
+          record={execution.record}
+          recovered={execution.recovered}
+          failure={execution.failure}
+          rawError={execution.rawError}
+          onRecheck={execution.trackedHash ? () => void swapReceipt.refetch() : undefined}
+        />
       )}
       {message && (
         <p className="externalUniswapMessage" role="status">
           {message}
-          {swapReceipt.isSuccess && swap.data && (
-            <> <a href={`${EXPLORER}/tx/${swap.data}`} target="_blank" rel="noopener noreferrer">View transaction ↗</a></>
+          {swapConfirmed && execution.trackedHash && (
+            <> <a href={`${EXPLORER}/tx/${execution.trackedHash}`} target="_blank" rel="noopener noreferrer">View transaction ↗</a></>
           )}
         </p>
       )}
-      {side === "buy" && swapReceipt.isSuccess && swap.data && address && confirmedBuy && (
+      {side === "buy" && swapConfirmed && execution.trackedHash && address && confirmedBuy && (
         <PostTradeProtection
           wallet={address}
           token={market.address}
           symbol={market.symbol}
-          transactionHash={swap.data}
+          transactionHash={execution.trackedHash}
           snapshot={confirmedBuy}
           protectionSettings={confirmedBuyProtectionSettings}
         />
@@ -630,7 +715,7 @@ export function ExternalSushiQuotePanel({
         quoteReady={quoteIsFresh}
         evidenceReady={confidenceReady}
         busy={busy}
-        success={swapReceipt.isSuccess}
+        success={swapConfirmed}
         needsApproval={needsApproval}
       />
     </section>

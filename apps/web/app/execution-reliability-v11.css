@@ -1,0 +1,364 @@
+/* RMT execution reliability V11: transaction state, recovery, and actionable failures. */
+.tradePreflightFailure,
+.tradeExecutionStatus {
+  display: grid;
+  gap: 10px;
+  margin: 10px 14px;
+  padding: 12px 13px;
+  border: 1px solid rgba(239, 199, 106, .28);
+  border-radius: 12px;
+  background: rgba(239, 199, 106, .065);
+  color: #d7e0d9;
+}
+
+.tradePreflightFailure {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+}
+
+.tradePreflightFailure > span,
+.tradeExecutionStatus > header > span {
+  color: #efc76a;
+  font: 900 .58rem/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: .08em;
+}
+
+.tradePreflightFailure > div,
+.tradeExecutionStatusCopy {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.tradePreflightFailure strong,
+.tradeExecutionStatusCopy strong {
+  color: #edf3ee;
+  font-size: .75rem;
+  line-height: 1.35;
+}
+
+.tradePreflightFailure p,
+.tradeExecutionStatusCopy p,
+.tradeExecutionStatus details p {
+  margin: 0;
+  color: #a2aea6;
+  font-size: .65rem;
+  line-height: 1.5;
+}
+
+.tradePreflightFailure small,
+.tradeExecutionStatusCopy small {
+  color: #d7c389;
+  font-size: .61rem;
+  line-height: 1.45;
+}
+
+.tradeExecutionStatus.confirming {
+  border-color: rgba(102, 237, 122, .24);
+  background: rgba(102, 237, 122, .055);
+}
+
+.tradeExecutionStatus.confirmed {
+  border-color: rgba(102, 237, 122, .38);
+  background: rgba(102, 237, 122, .085);
+}
+
+.tradeExecutionStatus.failed {
+  border-color: rgba(255, 116, 125, .34);
+  background: rgba(255, 116, 125, .07);
+}
+
+.tradeExecutionStatus.confirmation-unavailable {
+  border-color: rgba(239, 199, 106, .34);
+  background: rgba(239, 199, 106, .07);
+}
+
+.tradeExecutionStatus.confirming > header > span,
+.tradeExecutionStatus.confirmed > header > span {
+  color: #7ce98b;
+}
+
+.tradeExecutionStatus.failed > header > span {
+  color: #ff9ea5;
+}
+
+.tradeExecutionStatus > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.tradeExecutionStatus > header em {
+  padding: 5px 7px;
+  border: 1px solid rgba(102, 237, 122, .2);
+  border-radius: 999px;
+  color: #9fe7a9;
+  font-size: .54rem;
+  font-style: normal;
+  font-weight: 850;
+}
+
+.tradeExecutionStatusActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.tradeExecutionStatusActions a,
+.tradeExecutionStatusActions button,
+.tradeExecutionStatus footer button {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 10px;
+  border: 1px solid rgba(179, 201, 185, .2);
+  border-radius: 8px;
+  background: #111813;
+  color: #cad4cc;
+  font: inherit;
+  font-size: .61rem;
+  font-weight: 850;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.tradeExecutionStatusActions a:hover,
+.tradeExecutionStatusActions button:hover,
+.tradeExecutionStatus footer button:hover,
+.tradeExecutionStatusActions a:focus-visible,
+.tradeExecutionStatusActions button:focus-visible,
+.tradeExecutionStatus footer button:focus-visible {
+  border-color: rgba(102, 237, 122, .42);
+  color: #8def9b;
+}
+
+.tradeExecutionStatus details {
+  border-top: 1px solid rgba(179, 201, 185, .11);
+  padding-top: 9px;
+}
+
+.tradeExecutionStatus details summary {
+  min-height: 32px;
+  color: #89958d;
+  font-size: .61rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.tradeExecutionStatus details p {
+  overflow-wrap: anywhere;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.tradeExecutionStatus > footer {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding-top: 9px;
+  border-top: 1px solid rgba(179, 201, 185, .11);
+}
+
+.tradeExecutionStatus > footer span {
+  margin-right: auto;
+  color: #87948b;
+  font-size: .61rem;
+}
+
+.tradeExecutionStatus > footer button[aria-pressed="true"] {
+  border-color: rgba(102, 237, 122, .38);
+  background: rgba(102, 237, 122, .12);
+  color: #90eda0;
+}
+
+/* Loaded after the workstation CSS so every keyboard/mouse control keeps a
+ * professional minimum target without changing the table density. */
+@media (min-width: 761px) {
+  .terminalPage .runnerColumnHeader button {
+    min-height: 32px !important;
+  }
+
+  .terminalPage .runnerMarketCard > .externalChartLink {
+    display: inline-flex !important;
+    min-height: 34px !important;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+/*
+ * A 1366×768 workstation should open on markets, not on stacked chrome.
+ * Preserve every control and the complete signal board, but compress the
+ * low-height laptop hierarchy into a true terminal header and three-signal
+ * priority strip. Larger desktop viewports retain the five-signal layout.
+ */
+@media (min-width: 1180px) and (max-height: 820px) {
+  .terminalPage .terminalIntro {
+    min-height: 44px !important;
+    gap: 8px 14px !important;
+    padding: 4px 10px 3px !important;
+  }
+
+  .terminalPage .terminalIntroCopy .eyebrow,
+  .terminalPage .terminalIntroCopy > p:last-child,
+  .terminalPage .terminalIntroActions .secondaryAction {
+    display: none !important;
+  }
+
+  .terminalPage .terminalIntro h1 {
+    font-size: 1.18rem !important;
+  }
+
+  .terminalPage .terminalIntroActions a {
+    min-height: 32px !important;
+    padding: 0 10px !important;
+  }
+
+  .terminalPage .officialRmtMarket {
+    min-height: 40px !important;
+    gap: 8px !important;
+    margin: 0 12px 3px !important;
+    padding: 3px 7px !important;
+  }
+
+  .terminalPage .officialRmtIdentity {
+    grid-template-columns: 30px minmax(0, 1fr) !important;
+    gap: 7px !important;
+  }
+
+  .terminalPage .officialRmtArtwork {
+    width: 30px !important;
+    height: 30px !important;
+    border-radius: 7px !important;
+  }
+
+  .terminalPage .officialRmtIdentity .eyebrow,
+  .terminalPage .officialRmtIdentity > div > p:last-child {
+    display: none !important;
+  }
+
+  .terminalPage .officialRmtIdentity h2 {
+    font-size: .74rem !important;
+  }
+
+  .terminalPage .officialRmtActions a {
+    min-height: 32px !important;
+    padding: 0 8px !important;
+  }
+
+  .terminalPage .terminalMarketShell .feedHeading {
+    min-height: 36px !important;
+    padding: 3px 10px !important;
+  }
+
+  .terminalPage .terminalMarketShell .feedHeading h2 {
+    font-size: .86rem !important;
+  }
+
+  .terminalPage .liveSignalDesk {
+    padding: 0 10px 4px !important;
+  }
+
+  .terminalPage .liveSignalDesk > header {
+    min-height: 28px !important;
+    padding: 2px 0 3px !important;
+  }
+
+  .terminalPage .liveSignalDesk > header strong {
+    font-size: .68rem !important;
+  }
+
+  .terminalPage .liveSignalRail {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 6px !important;
+  }
+
+  .terminalPage .liveSignalRail > a:nth-child(n + 4) {
+    display: none !important;
+  }
+
+  .terminalPage .liveSignalRail > a {
+    min-height: 52px !important;
+    grid-template-rows: auto auto !important;
+    gap: 2px !important;
+    padding: 6px 8px 5px 11px !important;
+  }
+
+  .terminalPage .liveSignalRail > a > small {
+    display: none !important;
+  }
+
+  .terminalPage .runnerDirectoryControls {
+    min-height: 36px !important;
+    padding: 2px 8px !important;
+  }
+
+  .terminalPage .runnerMarketSearch input,
+  .terminalPage .runnerDirectoryButton {
+    min-height: 32px !important;
+  }
+
+  .terminalPage .runnerToolbar {
+    min-height: 34px !important;
+    padding: 1px 8px !important;
+  }
+
+  .terminalPage .runnerTabs button {
+    min-height: 32px !important;
+  }
+
+  .terminalPage .runnerSourceFilters {
+    min-height: 34px !important;
+    padding: 1px 8px !important;
+  }
+
+  .terminalPage .runnerSourceFilters button,
+  .terminalPage .runnerOriginFilters summary {
+    min-height: 32px !important;
+    height: 32px !important;
+  }
+
+  .terminalPage .runnerColumnHeader,
+  .terminalPage .runnerColumnHeader > button,
+  .terminalPage .runnerColumnHeader > span,
+  .terminalPage .runnerHeaderSplit,
+  .terminalPage .runnerHeaderSplit button {
+    min-height: 32px !important;
+    height: 32px !important;
+  }
+
+  .terminalPage .runnerMarketCard.externalMarketCard,
+  .terminalPage .runnerMarketCard.externalMarketCard > * {
+    min-height: 74px !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .tradePreflightFailure,
+  .tradeExecutionStatus {
+    margin-right: 10px;
+    margin-left: 10px;
+  }
+
+  .tradePreflightFailure {
+    grid-template-columns: 1fr;
+  }
+
+  .tradeExecutionStatusActions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .tradeExecutionStatusActions > :only-child {
+    grid-column: 1 / -1;
+  }
+
+  .tradeExecutionStatus > footer {
+    flex-wrap: wrap;
+  }
+
+  .tradeExecutionStatus > footer span {
+    flex: 0 0 100%;
+  }
+}

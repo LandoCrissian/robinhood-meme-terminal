@@ -25,6 +25,9 @@ import {
   ROBINHOOD_UNIVERSAL_ROUTER
 } from "../lib/uniswap-v4";
 import { useTradeFeeEstimate } from "../lib/use-trade-fee-estimate";
+import { classifyTradeExecutionError } from "../lib/trade-execution-reliability";
+import { useTradeExecutionRecovery } from "../lib/use-trade-execution-recovery";
+import { useTradeQuoteFreshness } from "../lib/use-trade-quote-freshness";
 import { useTokenRiskEvidence } from "../lib/use-token-risk-evidence";
 import { tokenRiskDecision } from "../lib/token-risk-policy";
 import { useTradingTermsAcceptance } from "../lib/use-trading-terms";
@@ -58,6 +61,7 @@ import {
 import { PostTradeProtection, TradeProtectionIntent } from "./post-trade-protection";
 import { useAfterBuyProtection } from "../lib/use-after-buy-protection";
 import type { AfterBuyProtectionSettings } from "../lib/after-buy-protection";
+import { TradeExecutionStatus, TradePreflightFailure } from "./trade-execution-status";
 
 const ROBINHOOD_CHAIN_ID = 4663;
 const EXPLORER = "https://robinhoodchain.blockscout.com";
@@ -261,9 +265,8 @@ export function ExternalUniswapTradePanel({
     }
   });
   const approval = useWriteContract();
-  const approvalReceipt = useWaitForTransactionReceipt({ hash: approval.data, chainId: ROBINHOOD_CHAIN_ID });
+  const approvalReceipt = useWaitForTransactionReceipt({ hash: approval.data, chainId: ROBINHOOD_CHAIN_ID, confirmations: 1 });
   const swap = useSendTransaction();
-  const swapReceipt = useWaitForTransactionReceipt({ hash: swap.data, chainId: ROBINHOOD_CHAIN_ID });
   const decimals = tokenDecimals.data;
   const amount = controlledAmount ?? internalAmount;
   const setAmount = (value: string, preserveSaferOrder = false) => {
@@ -282,6 +285,24 @@ export function ExternalUniswapTradePanel({
       return 0n;
     }
   }, [address, amount, decimals, side]);
+  const execution = useTradeExecutionRecovery({
+    wallet: address,
+    token,
+    pair,
+    venue: isV4 ? "uniswap-v4" : "uniswap-v3",
+    side,
+    amountIn,
+    submittedHash: swap.data
+  });
+  const swapReceipt = useWaitForTransactionReceipt({
+    hash: execution.trackedHash,
+    chainId: ROBINHOOD_CHAIN_ID,
+    confirmations: 1
+  });
+  const approvalConfirmed = approvalReceipt.isSuccess && approvalReceipt.data?.status === "success";
+  const approvalReverted = approvalReceipt.isSuccess && approvalReceipt.data?.status === "reverted";
+  const swapConfirmed = swapReceipt.isSuccess && swapReceipt.data?.status === "success";
+  const swapReverted = swapReceipt.isSuccess && swapReceipt.data?.status === "reverted";
 
   useEffect(() => {
     if (controlledAmount === undefined) setInternalAmount(side === "buy" ? "0.0001" : "");
@@ -378,20 +399,30 @@ export function ExternalUniswapTradePanel({
   }, [address, amountIn, decimals, executionRouter, identity.authenticated, identity.identityToken, identity.ready, identity.userId, isV4, pair, preferences.preparationMode, preparedQuote, refresh, side, token, version]);
 
   useEffect(() => {
-    if (!approvalReceipt.isSuccess) return;
-    setMessage(
-      approvalStage === "token" && isV4
-        ? "Exact token approval confirmed. Continue to the short-lived Permit2 router approval."
-        : "Exact sell approval confirmed. Review and submit the swap next."
-    );
-    void Promise.all([allowance.refetch(), permit2Allowance.refetch()]);
-  }, [approvalReceipt.isSuccess, approvalStage, isV4]);
+    if (approvalConfirmed) {
+      setMessage(
+        approvalStage === "token" && isV4
+          ? "Exact token approval confirmed. Continue to the short-lived Permit2 router approval."
+          : "Exact sell approval confirmed. Review and submit the swap next."
+      );
+      void Promise.all([allowance.refetch(), permit2Allowance.refetch()]);
+      return;
+    }
+    if (approvalReverted) execution.fail("Exact sell approval transaction reverted onchain.");
+  }, [approvalConfirmed, approvalReverted, approvalStage, isV4]);
 
   useEffect(() => {
-    if (!swapReceipt.isSuccess || !swap.data) return;
+    if (swapReverted) {
+      execution.fail("Uniswap swap receipt status reverted onchain.");
+      setQuote(undefined);
+      setRefresh((value) => value + 1);
+      return;
+    }
+    if (!swapConfirmed || !execution.trackedHash) return;
+    execution.confirm();
     setMessage("Swap confirmed on Robinhood Chain.");
-    if (handledSwap.current === swap.data) return;
-    handledSwap.current = swap.data;
+    if (handledSwap.current === execution.trackedHash) return;
+    handledSwap.current = execution.trackedHash;
     onSwapConfirmed?.();
     void Promise.all([tokenBalance.refetch(), nativeBalance.refetch(), allowance.refetch(), permit2Allowance.refetch()])
       .then(([refreshedToken]) => {
@@ -410,12 +441,34 @@ export function ExternalUniswapTradePanel({
           setConfirmedBuyProtectionSettings(pending.protectionSettings);
         }
       });
-  }, [swapReceipt.isSuccess]);
+  }, [swapConfirmed, swapReverted, execution.trackedHash]);
 
+  useEffect(() => {
+    if (approval.error) execution.fail(approval.error);
+  }, [approval.error]);
+
+  useEffect(() => {
+    if (swap.error) execution.fail(swap.error);
+  }, [swap.error]);
+
+  useEffect(() => {
+    if (swapReceipt.error && execution.trackedHash) execution.holdForReconciliation(swapReceipt.error);
+  }, [swapReceipt.error, execution.trackedHash]);
+
+  const quoteFreshness = useTradeQuoteFreshness({
+    deadline: quote?.deadline,
+    bufferSeconds: 30,
+    enabled: Boolean(quote && quote.amountIn === amountIn.toString()),
+    onRefreshNeeded: () => {
+      setQuote(undefined);
+      setStatus("loading");
+      setRefresh((value) => value + 1);
+    }
+  });
   const quoteIsFresh = Boolean(
     quote
-    && BigInt(quote.deadline) > BigInt(Math.floor(Date.now() / 1000) + 30)
     && quote.amountIn === amountIn.toString()
+    && quoteFreshness.isFresh
   );
   useEffect(() => {
     if (quoteIsFresh) recordExperienceStage("quote_ready");
@@ -469,8 +522,11 @@ export function ExternalUniswapTradePanel({
   const insufficient = side === "buy"
     ? amountIn > 0n && amountIn + networkFeeReserve > (nativeBalance.data?.value ?? 0n)
     : amountIn > 0n && amountIn > (tokenBalance.data ?? 0n);
-  const busy = approval.isPending || approvalReceipt.isLoading || swap.isPending || swapReceipt.isLoading;
+  const approvalConfirmationUnavailable = Boolean(approval.data && approvalReceipt.error);
+  const busy = approval.isPending || approvalReceipt.isLoading || swap.isPending || swapReceipt.isLoading
+    || execution.unresolved || approvalConfirmationUnavailable;
   const preflightReady = isTradePreflightReady(feeEstimate);
+  const preflightFailure = feeEstimate.status === "unavailable" ? feeEstimate.failure : undefined;
   const requiresAcknowledgement = tradeRequiresAcknowledgement(market, side);
   const evidenceDecision = tokenRiskDecision(tokenRisk, side);
   const confidenceEvidenceReady = side === "sell" || tokenRisk.status !== "loading";
@@ -497,7 +553,16 @@ export function ExternalUniswapTradePanel({
 
   const submit = () => {
     setMessage("");
-    if (!accountReady || !address || chainId !== ROBINHOOD_CHAIN_ID || !quoteIsFresh || !quote || insufficient || busy || !confidenceReady || !preflightReady) return;
+    execution.clearFailure();
+    if (execution.unresolved || approvalConfirmationUnavailable) return;
+    if (!quoteIsFresh) {
+      setMessage("The protected Uniswap quote expired before wallet review. RMT is requesting a fresh route.");
+      setQuote(undefined);
+      setStatus("loading");
+      setRefresh((value) => value + 1);
+      return;
+    }
+    if (!accountReady || !address || chainId !== ROBINHOOD_CHAIN_ID || !quote || insufficient || busy || !confidenceReady || !preflightReady) return;
     recordExperienceStage("wallet_review_started");
     if (needsTokenApproval) {
       setApprovalStage("token");
@@ -552,19 +617,23 @@ export function ExternalUniswapTradePanel({
         : status === "loading" || !quoteIsFresh
           ? "checking"
           : "ready";
-  const buttonLabel = busy
-    ? approval.isPending || approvalReceipt.isLoading ? "Confirming exact approval…" : "Confirming swap…"
-    : amountIn <= 0n ? "Enter an amount"
-      : !accountReady ? "Sign in to protect this trade"
-      : status === "error" && !quote ? "Quote unavailable"
-      : !quoteIsFresh ? "Verifying route…"
-      : insufficient ? "Insufficient balance"
-      : !confidenceReady ? "Accept RMT trading terms"
-        : feeEstimate.status === "unavailable" ? "Preflight failed — trade blocked"
-          : !preflightReady ? "Simulating exact transaction…"
-        : needsTokenApproval ? `Approve exact ${market.symbol} amount`
-          : needsPermit2Approval ? "Set 20-minute router approval"
-          : side === "buy" ? `Buy ${market.symbol} inside RMT` : `Sell ${market.symbol} inside RMT`;
+  const buttonLabel = execution.unresolved
+    ? "Uniswap transaction pending — do not resubmit"
+    : approvalConfirmationUnavailable
+      ? "Approval status unknown — check chain"
+      : busy
+        ? approval.isPending || approvalReceipt.isLoading ? "Confirming exact approval…" : "Confirming swap…"
+        : amountIn <= 0n ? "Enter an amount"
+          : !accountReady ? "Sign in to protect this trade"
+          : status === "error" && !quote ? "Quote unavailable"
+          : !quoteIsFresh ? "Verifying route…"
+          : insufficient ? "Insufficient balance"
+          : !confidenceReady ? "Accept RMT trading terms"
+            : feeEstimate.status === "unavailable" ? "Preflight failed — trade blocked"
+              : !preflightReady ? "Simulating exact transaction…"
+            : needsTokenApproval ? `Approve exact ${market.symbol} amount`
+              : needsPermit2Approval ? "Set 20-minute router approval"
+              : side === "buy" ? `Buy ${market.symbol} inside RMT` : `Sell ${market.symbol} inside RMT`;
 
   return (
     <section className="externalSushiQuote externalUniswapTrade" aria-labelledby="external-uniswap-trade-heading">
@@ -674,6 +743,7 @@ export function ExternalUniswapTradePanel({
                     : "clear"
             }
           />
+          <TradePreflightFailure failure={preflightFailure} />
           <button
             className={`externalUniswapSubmit ${side}`}
             type="button"
@@ -685,25 +755,40 @@ export function ExternalUniswapTradePanel({
           </button>
         </>
       )}
-      {(approval.error || approvalReceipt.error || swap.error || swapReceipt.error) && (
-        <p className="externalUniswapError" role="alert">
-          {approval.error?.message || approvalReceipt.error?.message || swap.error?.message || swapReceipt.error?.message}
-        </p>
+      {approvalConfirmationUnavailable && approval.data && (
+        <TradeExecutionStatus
+          status="confirmation-unavailable"
+          hash={approval.data}
+          failure={classifyTradeExecutionError(approvalReceipt.error)}
+          rawError={approvalReceipt.error?.message}
+          onRecheck={() => void approvalReceipt.refetch()}
+        />
+      )}
+      {execution.status !== "idle" && (
+        <TradeExecutionStatus
+          status={execution.status}
+          hash={execution.trackedHash ?? (approvalReverted ? approval.data : undefined)}
+          record={execution.record}
+          recovered={execution.recovered}
+          failure={execution.failure}
+          rawError={execution.rawError}
+          onRecheck={execution.trackedHash ? () => void swapReceipt.refetch() : undefined}
+        />
       )}
       {message && (
         <p className="externalUniswapMessage" role="status">
           {message}
-          {swapReceipt.isSuccess && swap.data && (
-            <> <a href={`${EXPLORER}/tx/${swap.data}`} target="_blank" rel="noopener noreferrer">View transaction ↗</a></>
+          {swapConfirmed && execution.trackedHash && (
+            <> <a href={`${EXPLORER}/tx/${execution.trackedHash}`} target="_blank" rel="noopener noreferrer">View transaction ↗</a></>
           )}
         </p>
       )}
-      {side === "buy" && swapReceipt.isSuccess && swap.data && address && confirmedBuy && (
+      {side === "buy" && swapConfirmed && execution.trackedHash && address && confirmedBuy && (
         <PostTradeProtection
           wallet={address}
           token={market.address}
           symbol={market.symbol}
-          transactionHash={swap.data}
+          transactionHash={execution.trackedHash}
           snapshot={confirmedBuy}
           protectionSettings={confirmedBuyProtectionSettings}
         />
@@ -755,7 +840,7 @@ export function ExternalUniswapTradePanel({
         quoteReady={quoteIsFresh}
         evidenceReady={confidenceReady}
         busy={busy}
-        success={swapReceipt.isSuccess}
+        success={swapConfirmed}
         needsApproval={needsApproval}
       />
     </section>
