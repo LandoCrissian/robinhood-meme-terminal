@@ -5,6 +5,8 @@ import {
   estimatedNetworkFeeUsd,
   estimatedNetworkFeeWei,
   fractionalTradeAmount,
+  PRICE_IMPACT_CAUTION,
+  PRICE_IMPACT_CRITICAL,
   priceImpactTone,
   quoteSecondsRemaining,
   saferTradeAmount,
@@ -36,9 +38,11 @@ assert.throws(() => fractionalTradeAmount(1_000n, 10_001n), /basis points/);
 assert.equal(quoteSecondsRemaining("130", 100), 30);
 assert.equal(quoteSecondsRemaining("90", 100), 0);
 assert.equal(quoteSecondsRemaining("not-a-deadline", 100), 0);
-assert.equal(priceImpactTone(0.005), "calm");
-assert.equal(priceImpactTone(0.02), "caution");
-assert.equal(priceImpactTone(0.08), "danger");
+assert.equal(PRICE_IMPACT_CAUTION, 0.05);
+assert.equal(PRICE_IMPACT_CRITICAL, 0.10);
+assert.equal(priceImpactTone(0.02), "calm");
+assert.equal(priceImpactTone(0.06), "caution");
+assert.equal(priceImpactTone(0.12), "danger");
 assert.equal(saferTradeAmount(1_000n, 0.08), 450n);
 assert.equal(saferTradeAmount(1_000n, 0.04), 1_000n);
 assert.equal(saferTradeAmount(1_000n, 0.02, 0.01), 450n);
@@ -100,11 +104,11 @@ assert.equal(routeLiquidityDepth(250_000), "deep");
 assert.equal(routeLiquidityDepthLabel(250_000), "Deep");
 assert.deepEqual(tradeReadinessStatus("ready", "blocked"), {
   tone: "blocked",
-  headline: "Order blocked · review required"
+  headline: "Transaction integrity block · action required"
 });
 assert.deepEqual(tradeReadinessStatus("ready", "review"), {
   tone: "review",
-  headline: "Review required before wallet"
+  headline: "Review advised · you remain in control"
 });
 assert.deepEqual(tradeReadinessStatus("ready", "checking"), {
   tone: "checking",
@@ -347,4 +351,4 @@ assert.equal(tokenRiskDecision({
 }, "sell").state, "clear");
 assert.equal(tokenRiskDecision({ status: "unavailable" }, "buy").state, "review");
 
-console.log("Trade ticket sizing, freshness, and impact classifications passed.");
+console.log("Trade ticket sizing, freshness, and advisory impact classifications passed.");
