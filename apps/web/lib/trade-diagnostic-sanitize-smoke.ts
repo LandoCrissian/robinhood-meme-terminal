@@ -13,6 +13,6 @@ assert.match(sanitized, /\[redacted-url\]/);
 assert.match(sanitized, /Authorization: \[redacted\]/);
 assert.match(sanitized, /id_token=\[redacted\]/);
 assert.match(sanitized, /\[redacted-calldata\]/);
-assert.equal(sanitizeTradeDiagnosticText("visible error", 7), "visible ");
+assert.equal(sanitizeTradeDiagnosticText("visible error", 7), "visible");
 
 console.info("Trade diagnostic redaction smoke test passed");
