@@ -93,7 +93,10 @@
   /* The deterministic visual gate found this secondary market action at 28px.
    * Keep every desktop row action at the terminal's 32px interaction floor. */
   .terminalPage .runnerMarketCard > .externalChartLink {
-    min-height: 32px;
+    display: inline-flex !important;
+    min-height: 32px !important;
+    align-items: center !important;
+    justify-content: center !important;
   }
 }
 
