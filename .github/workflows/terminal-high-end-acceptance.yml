@@ -21,6 +21,7 @@ on:
       - "apps/web/lib/terminal-workstation-smoke.ts"
       - "apps/web/lib/watchlist.ts"
       - "apps/web/package.json"
+      - "package.json"
   workflow_dispatch:
 
 permissions:
