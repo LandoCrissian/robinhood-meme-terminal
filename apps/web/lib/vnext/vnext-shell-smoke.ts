@@ -9,6 +9,7 @@ const chrome = readFileSync(new URL("../../app/public-chrome.tsx", import.meta.u
 
 assert.match(page, /vnextShellAvailable\(process\.env\)/);
 assert.match(page, /notFound\(\)/);
+assert.match(page, /export const dynamic = "force-dynamic"/);
 assert.match(chrome, /"\/vnext"/);
 
 assert.equal(vnextShellAvailable({ NODE_ENV: "development" }), true);
