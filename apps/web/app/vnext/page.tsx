@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { vnextShellAvailable } from "../../lib/vnext/vnext-shell-access";
 import { VNextTerminalShell } from "./vnext-terminal-shell";
 
 export const metadata: Metadata = {
@@ -8,8 +9,7 @@ export const metadata: Metadata = {
 };
 
 export default function VNextPreviewPage() {
-  const explicitlyEnabled = process.env.NEXT_PUBLIC_RMT_VNEXT_SHELL_ENABLED === "true";
-  if (process.env.VERCEL_ENV === "production" && !explicitlyEnabled) notFound();
+  if (!vnextShellAvailable(process.env)) notFound();
 
   return <VNextTerminalShell />;
 }

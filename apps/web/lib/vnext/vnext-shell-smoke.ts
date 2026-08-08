@@ -1,15 +1,21 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { vnextShellAvailable } from "./vnext-shell-access";
 
 const page = readFileSync(new URL("../../app/vnext/page.tsx", import.meta.url), "utf8");
 const shell = readFileSync(new URL("../../app/vnext/vnext-terminal-shell.tsx", import.meta.url), "utf8");
 const styles = readFileSync(new URL("../../app/vnext/vnext-terminal.css", import.meta.url), "utf8");
 const chrome = readFileSync(new URL("../../app/public-chrome.tsx", import.meta.url), "utf8");
 
-assert.match(page, /VERCEL_ENV === "production"/);
-assert.match(page, /NEXT_PUBLIC_RMT_VNEXT_SHELL_ENABLED/);
+assert.match(page, /vnextShellAvailable\(process\.env\)/);
 assert.match(page, /notFound\(\)/);
 assert.match(chrome, /"\/vnext"/);
+
+assert.equal(vnextShellAvailable({ NODE_ENV: "development" }), true);
+assert.equal(vnextShellAvailable({ NODE_ENV: "production", VERCEL_ENV: "preview" }), true);
+assert.equal(vnextShellAvailable({ NODE_ENV: "production", VERCEL_ENV: "production" }), false);
+assert.equal(vnextShellAvailable({ NODE_ENV: "production" }), false);
+assert.equal(vnextShellAvailable({ NODE_ENV: "production", NEXT_PUBLIC_RMT_VNEXT_SHELL_ENABLED: "true" }), true);
 
 assert.equal((shell.match(/export function VNextTerminalShell/g) ?? []).length, 1);
 assert.match(shell, /Available to trade/);
