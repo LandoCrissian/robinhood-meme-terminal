@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
-import { createPublicClient, http } from "viem";
 import type { OriginCoverage } from "@rmt/shared/market-origin";
-import { robinhoodChain } from "@rmt/shared/chains";
 import {
   selectPreferredLifecycleMarket,
   type ExternalMarket,
@@ -17,13 +15,8 @@ import {
   compareExternalMarketRank,
   rankExternalMarket
 } from "../../../../lib/external-market-ranking";
-import { enrichExternalProjectMetadata } from "../../../../lib/server/external-project-metadata";
 import { safeDexImageUri } from "../../../../lib/server/external-market-media";
 import { externalMarketSocialsFromPairInfo } from "../../../../lib/external-market-socials";
-import {
-  fetchLemonProjectSnapshot,
-  type LemonProjectSnapshot
-} from "../../../../lib/server/lemon-project-feed";
 import {
   fetchSushiLaunchSnapshot,
   type SushiLaunchSnapshot
@@ -126,17 +119,6 @@ type SuccessfulMarketSnapshot = Required<Pick<
 };
 
 let lastSuccessfulSnapshot: SuccessfulMarketSnapshot | undefined;
-
-const projectMetadataClient = createPublicClient({
-  chain: robinhoodChain,
-  transport: http(
-    process.env.RMT_MAINNET_RPC_URL
-      ?? process.env.ROBINHOOD_MAINNET_RPC_URL
-      ?? process.env.NEXT_PUBLIC_RMT_RPC_URL
-      ?? robinhoodChain.rpcUrls.default.http[0],
-    { retryCount: 1, timeout: 6_000 }
-  )
-});
 
 function asText(value: unknown, maximumLength = 80) {
   return typeof value === "string" ? value.trim().slice(0, maximumLength) : "";
@@ -373,22 +355,19 @@ export async function GET(request: Request) {
           fetchCanonicalTokenPairs(requestedContract).catch(() => [])
         ])
       : null;
-    let lemonSnapshot: LemonProjectSnapshot;
     let sushiLaunchSnapshot: SushiLaunchSnapshot;
     let publicDiscoverySnapshot: PublicDiscoverySnapshot;
     let geckoNewPoolPairs: GeckoNewPoolPair[];
     let geckoNewPoolsDelayed: boolean;
     let stockRegistry: Awaited<ReturnType<typeof fetchRobinhoodStockRegistry>>;
     if (requestedContract) {
-      lemonSnapshot = { projects: new Map(), candidateAddresses: [], delayed: false };
       sushiLaunchSnapshot = { projects: new Map(), candidateAddresses: [], delayed: false };
       publicDiscoverySnapshot = { tokenAddresses: [], metadata: new Map() };
       geckoNewPoolPairs = [];
       geckoNewPoolsDelayed = false;
       stockRegistry = await fetchRobinhoodStockRegistry();
     } else {
-      [lemonSnapshot, sushiLaunchSnapshot, publicDiscoverySnapshot, stockRegistry, { pairs: geckoNewPoolPairs, delayed: geckoNewPoolsDelayed }] = await Promise.all([
-        fetchLemonProjectSnapshot(),
+      [sushiLaunchSnapshot, publicDiscoverySnapshot, stockRegistry, { pairs: geckoNewPoolPairs, delayed: geckoNewPoolsDelayed }] = await Promise.all([
         fetchSushiLaunchSnapshot(),
         fetchPublicDiscoveryTokens().catch(() => ({ tokenAddresses: [], metadata: new Map() })),
         fetchRobinhoodStockRegistry(),
@@ -398,7 +377,6 @@ export async function GET(request: Request) {
     const stockTokenAddresses = new Set(stockRegistry.assetsByAddress.keys());
     const requestedTokens = [...new Set(
       [
-        ...lemonSnapshot.candidateAddresses.map((address) => address.toLowerCase()),
         ...sushiLaunchSnapshot.candidateAddresses.map((address) => address.toLowerCase()),
         ...geckoNewPoolPairs.map((pair) => pair.baseToken.address.toLowerCase()),
         ...publicDiscoverySnapshot.tokenAddresses,
@@ -563,10 +541,9 @@ export async function GET(request: Request) {
         ...ranking
       };
       const sushiLaunchProject = sushiLaunchSnapshot.projects.get(address.toLowerCase());
-      const lemonProject = lemonSnapshot.projects.get(address.toLowerCase());
-      const matchingProject = [sushiLaunchProject, lemonProject].find(
-        (project) => project?.launchPool.toLowerCase() === pairAddress.toLowerCase()
-      );
+      const matchingProject = sushiLaunchProject?.launchPool.toLowerCase() === pairAddress.toLowerCase()
+        ? sushiLaunchProject
+        : undefined;
       const attributedMarket = matchingProject
         ? {
             ...market,
@@ -602,10 +579,7 @@ export async function GET(request: Request) {
       : [...marketsByToken.values()]
           .sort(compareExternalMarketRank)
           .slice(0, MAX_MARKETS);
-    let markets = requestedContract
-      ? rankedMarkets
-      : await enrichExternalProjectMetadata(projectMetadataClient, rankedMarkets)
-          .catch(() => rankedMarkets);
+    let markets = rankedMarkets;
     let resolution;
     if (requestedContract && markets.length === 0) {
       resolution = await resolveUniversalMarketAddress(requestedContract, stockRegistry);
@@ -616,7 +590,7 @@ export async function GET(request: Request) {
     }
     const snapshot: SuccessfulMarketSnapshot = {
       markets,
-      source: "DEX Screener markets + GeckoTerminal newest pools + public discovery + verified Lemon and Sushi Launch metadata + Robinhood Stock Token registry",
+      source: "DEX Screener markets + GeckoTerminal newest pools + public discovery + verified Sushi Launch metadata + Robinhood Stock Token registry",
       rankingVersion: "rmt-discovery-v6",
       thresholds: RUNNER_THRESHOLDS,
       originCoverage: "unavailable",
@@ -627,7 +601,6 @@ export async function GET(request: Request) {
     if (!requestedContract) lastSuccessfulSnapshot = snapshot;
 
     const delayedSources = [
-      ...(lemonSnapshot.delayed ? ["lemon-project-metadata"] : []),
       ...(sushiLaunchSnapshot.delayed ? ["sushi-launch-metadata"] : []),
       ...(geckoNewPoolsDelayed ? ["geckoterminal-new-pools"] : [])
     ];

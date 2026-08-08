@@ -3,16 +3,12 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import {
-  externalProjectProvenanceDescription,
   externalProjectProvenanceLabel,
   type ExternalMarket,
   type ExternalMarketResponse,
   type UniversalMarketResolution
 } from "../lib/external-market";
-import {
-  canonicalExternalMarketLookupAddress,
-  isNonzeroEvmAddress
-} from "../lib/external-market-identity";
+import { canonicalExternalMarketLookupAddress } from "../lib/external-market-identity";
 import type { ExternalMarketRiskFlag, ExternalMarketSignal } from "../lib/external-market-ranking";
 import {
   externalMarketViewCounts,
@@ -25,18 +21,13 @@ import {
   type LaunchDistributionVenue
 } from "../lib/launch-distribution";
 import { ipfsToHttp } from "../lib/token-metadata";
-import { routeLiquidityDepthLabel } from "../lib/trade-route-selection";
 import { recordExperienceStage } from "../lib/experience-funnel";
 import { deriveLiveMarketSignals, type LiveMarketSignal } from "../lib/live-signal-engine";
-import { ExternalSushiQuotePanel } from "./external-sushi-quote-panel";
-import { ExternalUniswapTradePanel } from "./external-uniswap-trade-panel";
 
 type FeedStatus = "loading" | "ready" | "stale" | "error";
-type ExecutionAvailability = "checking" | "ready" | "view-only" | "unavailable";
 type ContractLookupStatus = "idle" | "searching" | "resolved" | "not-found" | "error";
 
 type DiscoveryView = ExternalMarketDiscoveryView;
-type SourceFilter = "all" | "attributed" | "pons" | "lemon" | "sushi";
 type VenueFilter = "all" | LaunchDistributionVenue;
 
 const VIEWS: Array<{ id: DiscoveryView; label: string }> = [
@@ -44,13 +35,6 @@ const VIEWS: Array<{ id: DiscoveryView; label: string }> = [
   { id: "new", label: "New · 24h" },
   { id: "top", label: "Active" },
   { id: "explore", label: "All" }
-];
-const SOURCE_FILTERS: Array<{ id: SourceFilter; label: string }> = [
-  { id: "all", label: "All origins" },
-  { id: "attributed", label: "Launch sources" },
-  { id: "sushi", label: "Sushi Launch" },
-  { id: "pons", label: "Pons" },
-  { id: "lemon", label: "Lemon" }
 ];
 const VENUE_FILTERS: Array<{ id: VenueFilter; label: string }> = [
   { id: "all", label: "Any venue" },
@@ -136,15 +120,6 @@ function snapshotTime(value: string) {
   return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 }
 
-function signedPercent(value: number) {
-  if (!Number.isFinite(value)) return "—";
-  return `${value > 0 ? "+" : ""}${value.toLocaleString(undefined, { maximumFractionDigits: 2 })}%`;
-}
-
-function changeTone(value: number) {
-  return value > 0 ? "positive" : value < 0 ? "negative" : "neutral";
-}
-
 function marketAge(minutes: number | null) {
   if (minutes === null || !Number.isFinite(minutes)) return "Age unavailable";
   if (minutes < 60) return `${Math.max(1, Math.round(minutes))}m old`;
@@ -200,230 +175,12 @@ function LiveSignalDesk({ signals, loading }: { signals: LiveMarketSignal[]; loa
 }
 
 
-type ExternalTradeSide = "buy" | "sell";
-
-function isTradeableAddress(address: string) {
-  return isNonzeroEvmAddress(address);
-}
-
-function isUniswapVenue(market: ExternalMarket) {
-  if (market.venue.kind !== "dex") return false;
-  const venue = market.venue.dexId.trim().toLowerCase();
-  return venue === "uniswap" || venue.startsWith("uniswap-");
-}
-
-function isSushiVenue(market: ExternalMarket) {
-  if (market.venue.kind !== "dex") return false;
-  return market.venue.dexId.trim().toLowerCase().includes("sushi");
-}
-
 function venueLabel(market: ExternalMarket) {
   return market.venue.kind === "dex" ? market.venue.dexId : "Circus curve";
 }
 
-function executionProvider(market: ExternalMarket) {
-  if (isSushiVenue(market)) return "Sushi";
-  if (isUniswapVenue(market)) return "Uniswap";
-  return null;
-}
-
-function canHandoffToVenue(market: ExternalMarket) {
-  return isTradeableAddress(market.address) && executionProvider(market) !== null;
-}
-
-function venueSwapUrl(market: ExternalMarket, side: ExternalTradeSide) {
-  const inputCurrency = side === "buy" ? "NATIVE" : market.address;
-  const outputCurrency = side === "buy" ? market.address : "NATIVE";
-  if (isSushiVenue(market)) {
-    return "https://www.sushi.com/robinhood/swap?token0="
-      + encodeURIComponent(inputCurrency)
-      + "&token1="
-      + encodeURIComponent(outputCurrency);
-  }
-  return "https://app.uniswap.org/swap?chain=robinhood&inputCurrency="
-    + encodeURIComponent(inputCurrency)
-    + "&outputCurrency="
-    + encodeURIComponent(outputCurrency);
-}
-
 function shortAddress(address: string) {
   return address.slice(0, 6) + "…" + address.slice(-4);
-}
-
-function ExternalTradeDialog({
-  market,
-  side,
-  delayed,
-  onSideChange,
-  onClose,
-  returnFocusTo
-}: {
-  market: ExternalMarket;
-  side: ExternalTradeSide;
-  delayed: boolean;
-  onSideChange: (side: ExternalTradeSide) => void;
-  onClose: () => void;
-  returnFocusTo: HTMLElement | null;
-}) {
-  const dialog = useRef<HTMLElement>(null);
-  const closeButton = useRef<HTMLButtonElement>(null);
-  const value = valuation(market);
-  const venue = venueLabel(market);
-  const provider = executionProvider(market) ?? "DEX";
-  const reviewUrl = venueSwapUrl(market, side);
-  const sideLabel = side === "buy" ? "Buy" : "Sell";
-  const oneHourTrades = market.buys1h + market.sells1h;
-  const buyPressure = Math.max(0, Math.min(100, market.buyPressureBps / 100));
-
-  useEffect(() => {
-    const previousOverflow = document.body.style.overflow;
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        onClose();
-        return;
-      }
-      if (event.key !== "Tab" || !dialog.current) return;
-
-      const focusable = Array.from(dialog.current.querySelectorAll<HTMLElement>(
-        'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])'
-      )).filter((element) => element.getAttribute("aria-hidden") !== "true");
-      if (focusable.length === 0) {
-        event.preventDefault();
-        dialog.current.focus();
-        return;
-      }
-
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
-      }
-    };
-
-    document.body.style.overflow = "hidden";
-    window.addEventListener("keydown", handleKeyDown);
-    closeButton.current?.focus();
-
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      window.removeEventListener("keydown", handleKeyDown);
-      window.setTimeout(() => returnFocusTo?.focus(), 0);
-    };
-  }, [onClose, returnFocusTo]);
-
-  return <>
-    <button className="quickTradeBackdrop" type="button" aria-label="Close external trade review" onClick={onClose} />
-    <section
-      ref={dialog}
-      className="quickTradeDialog"
-      role="dialog"
-      aria-modal="true"
-      aria-label={sideLabel + " " + market.name}
-      tabIndex={-1}
-    >
-      <header className="quickTradeHeader">
-        <div className="quickTradeIdentity">
-          <ExternalArtwork market={market} />
-          <span>
-            <small>EXTERNAL MARKET · {provider.toUpperCase()} REVIEW</small>
-            <strong>{market.name}</strong>
-            <em>{"$" + cleanSymbol(market.symbol) + " · " + sideLabel}</em>
-          </span>
-        </div>
-        <div className="quickTradeHeaderActions">
-          <a href={market.url} target="_blank" rel="noopener noreferrer">Chart ↗</a>
-          <button ref={closeButton} type="button" aria-label="Close external trade review" onClick={onClose}>×</button>
-        </div>
-      </header>
-
-      <div className="quickTradeBody">
-        <div className="externalTradeSideTabs" role="tablist" aria-label={`Trade side for ${market.name}`}>
-          <button type="button" role="tab" aria-selected={side === "buy"} className={side === "buy" ? "active buy" : ""} onClick={() => onSideChange("buy")}>Buy</button>
-          <button type="button" role="tab" aria-selected={side === "sell"} className={side === "sell" ? "active sell" : ""} onClick={() => onSideChange("sell")}>Sell</button>
-        </div>
-
-        <section className="externalTradeSnapshot" aria-labelledby="external-market-snapshot">
-          <header>
-            <div>
-              <span className={`marketSignal ${market.signal}`}>{signalLabel(market.signal)}</span>
-              <small>{venue} · {marketAge(market.ageMinutes)}</small>
-            </div>
-            {market.riskFlags.length > 0
-              ? <strong className="externalTradeRisk">{riskSummary(market.riskFlags)}</strong>
-              : <strong className="externalTradeRisk clear">No ranking flags</strong>}
-          </header>
-          <div className="externalTradePrice">
-            <span><small id="external-market-snapshot">Live price</small><strong>{money(market.priceUsd, true)}</strong></span>
-            <em className={changeTone(market.priceChange1h)}>{signedPercent(market.priceChange1h)} · 1h</em>
-          </div>
-          <div className="externalTradeMetrics">
-            <span><small>{value.label}</small><strong>{money(value.value)}</strong></span>
-            <span><small>Liquidity · {routeLiquidityDepthLabel(market.liquidityUsd)}</small><strong>{money(market.liquidityUsd)}</strong></span>
-            <span><small>1h volume</small><strong>{money(market.volume1h)}</strong></span>
-            <span><small>1h trades</small><strong>{oneHourTrades.toLocaleString()}</strong></span>
-          </div>
-        </section>
-
-        {isSushiVenue(market) && <ExternalSushiQuotePanel market={market} side={side} />}
-        {isUniswapVenue(market) && <ExternalUniswapTradePanel market={market} side={side} />}
-
-        <section className="externalTradePulse" aria-labelledby="external-market-pulse">
-          <header><div><small>MARKET PULSE</small><strong id="external-market-pulse">Momentum and flow</strong></div><a href={market.url} target="_blank" rel="noopener noreferrer">Full chart ↗</a></header>
-          <div className="externalTradeChanges">
-            <span className={changeTone(market.priceChange5m)}><small>5m</small><strong>{signedPercent(market.priceChange5m)}</strong></span>
-            <span className={changeTone(market.priceChange1h)}><small>1h</small><strong>{signedPercent(market.priceChange1h)}</strong></span>
-            <span className={changeTone(market.priceChange24h)}><small>24h</small><strong>{signedPercent(market.priceChange24h)}</strong></span>
-          </div>
-          <div className="externalTradeFlow">
-            <div><span>Buy pressure</span><strong>{oneHourTrades > 0 ? `${Math.round(buyPressure)}% buys` : "No 1h trades"}</strong></div>
-            <span className="externalTradeFlowTrack" aria-hidden="true"><i style={{ width: `${oneHourTrades > 0 ? buyPressure : 0}%` }} /></span>
-            <small>{market.buys1h.toLocaleString()} buys · {market.sells1h.toLocaleString()} sells in 1h</small>
-          </div>
-        </section>
-
-        <section className="externalTradeProvenance" aria-labelledby="external-market-origin">
-          <div><small id="external-market-origin">PROJECT ORIGIN</small><strong>{originLabel(market)}</strong></div>
-          <dl>
-            <div><dt>Token</dt><dd title={market.address}>{shortAddress(market.address)}</dd></div>
-            <div><dt>Pool</dt><dd title={market.pairAddress}>{shortAddress(market.pairAddress)}</dd></div>
-          </dl>
-          {delayed && <p className="runnerDataNotice"><span>RMT’s snapshot is delayed. {provider} will still calculate a fresh route and quote before any wallet confirmation.</span></p>}
-          <details>
-            <summary>How this market is verified</summary>
-            <p>
-            {market.project
-              ? externalProjectProvenanceDescription(market.project) + " This is provenance, not an endorsement. "
-              : "This token is external and its launchpad origin is not yet verified by RMT. "}
-            {isUniswapVenue(market)
-              ? "RMT re-verifies the canonical V3 pool and constructs deadline- and slippage-bounded calldata for your wallet. RMT never takes custody."
-              : "RMT re-verifies the displayed Sushi pool, audits Sushi’s simulated transaction, and checks its sender, recipient, tokens, amount, minimum output, router and executor before your wallet can submit it. RMT never takes custody."}
-            </p>
-          </details>
-        </section>
-      </div>
-
-      <div className={`externalTradeActionDock ${side}`}>
-        <a href={reviewUrl} target="_blank" rel="noopener noreferrer">
-          {isSushiVenue(market) ? "Sushi fallback ↗" : "Uniswap fallback ↗"}
-        </a>
-        <small>
-          {isSushiVenue(market)
-            ? "Verified Sushi trading is available above without leaving RMT."
-            : "Verified Uniswap V3 trading is available above without leaving RMT."}
-        </small>
-      </div>
-      <footer className="quickTradeFooter">
-        <span>Fresh {provider} quote required</span>
-        <span>Wallet confirmation required</span>
-        <span>RMT never controls your funds</span>
-      </footer>
-    </section>
-  </>;
 }
 
 function stabilizeOrder(order: string[], markets: ExternalMarket[]) {
@@ -449,61 +206,16 @@ export function ExternalMarketFeed() {
   const rankInitialized = useRef(false);
   const hasSuccessfulData = useRef(false);
   const previousMarketSnapshot = useRef<ExternalMarket[]>([]);
-  const restoredQuickTrade = useRef(false);
-  const returnFocusTo = useRef<HTMLElement | null>(null);
   const runnerHeading = useRef<HTMLHeadingElement>(null);
   const marketSearchInput = useRef<HTMLInputElement>(null);
-  const [quickTrade, setQuickTrade] = useState<{ address: string; side: ExternalTradeSide }>();
-  const [tradeAnnouncement, setTradeAnnouncement] = useState("");
   const [marketQuery, setMarketQuery] = useState("");
   const [contractLookupStatus, setContractLookupStatus] = useState<ContractLookupStatus>("idle");
   const [contractLookupMarket, setContractLookupMarket] = useState<ExternalMarket>();
   const [contractLookupResolution, setContractLookupResolution] = useState<UniversalMarketResolution>();
   const [showAllMarkets, setShowAllMarkets] = useState(false);
-  const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
   const [venueFilter, setVenueFilter] = useState<VenueFilter>("all");
-  const [tradeableOnly, setTradeableOnly] = useState(false);
-  const [executionAvailability, setExecutionAvailability] = useState<Record<string, ExecutionAvailability>>({});
   const normalizedMarketQuery = marketQuery.trim().toLowerCase();
   const contractLookupAddress = canonicalExternalMarketLookupAddress(normalizedMarketQuery);
-
-  const syncQuickTradeUrl = useCallback((market?: ExternalMarket, side?: ExternalTradeSide) => {
-    const url = new URL(window.location.href);
-    if (market && side) {
-      url.searchParams.delete("quickTrade");
-      url.searchParams.delete("side");
-      url.searchParams.set("externalTrade", market.address);
-      url.searchParams.set("externalSide", side);
-      url.hash = "market-explorer";
-    } else {
-      url.searchParams.delete("externalTrade");
-      url.searchParams.delete("externalSide");
-    }
-    window.history.replaceState({}, "", url.pathname + url.search + url.hash);
-  }, []);
-
-  const openQuickTrade = useCallback((market: ExternalMarket, side: ExternalTradeSide) => {
-    if (
-      !canHandoffToVenue(market)
-      || executionAvailability[market.address.toLowerCase()] !== "ready"
-    ) return;
-    recordExperienceStage("discovery_used");
-    recordExperienceStage("trade_preparation_opened");
-    returnFocusTo.current = document.activeElement instanceof HTMLElement ? document.activeElement : runnerHeading.current;
-    setTradeAnnouncement("");
-    setQuickTrade({ address: market.address, side });
-    syncQuickTradeUrl(market, side);
-  }, [executionAvailability, syncQuickTradeUrl]);
-
-  const closeQuickTrade = useCallback(() => {
-    setQuickTrade(undefined);
-    syncQuickTradeUrl();
-  }, [syncQuickTradeUrl]);
-
-  const changeQuickTradeSide = useCallback((market: ExternalMarket, side: ExternalTradeSide) => {
-    setQuickTrade({ address: market.address, side });
-    syncQuickTradeUrl(market, side);
-  }, [syncQuickTradeUrl]);
 
   const refresh = useCallback(async () => {
     try {
@@ -585,93 +297,18 @@ export function ExternalMarketFeed() {
     return () => controller.abort();
   }, [contractLookupAddress, markets]);
 
-  useEffect(() => {
-    if (restoredQuickTrade.current || status === "loading") return;
-    restoredQuickTrade.current = true;
-    const params = new URLSearchParams(window.location.search);
-    const token = params.get("externalTrade")?.toLowerCase();
-    const side = params.get("externalSide");
-    if (!token && !side) return;
-    if (params.has("quickTrade")) {
-      syncQuickTradeUrl();
-      setTradeAnnouncement("The RMT launch trade was kept open; the conflicting external review was cleared.");
-      return;
-    }
-    if (!token || (side !== "buy" && side !== "sell")) {
-      syncQuickTradeUrl();
-      setTradeAnnouncement("The external trade review link was incomplete and was cleared.");
-      return;
-    }
-    const market = markets.find((item) => item.address.toLowerCase() === token);
-    if (!market || !canHandoffToVenue(market)) {
-      syncQuickTradeUrl();
-      setTradeAnnouncement("That market is no longer available for venue review.");
-      return;
-    }
-    const executionState = executionAvailability[market.address.toLowerCase()];
-    if (executionState === undefined || executionState === "checking") return;
-    if (executionState !== "ready") {
-      syncQuickTradeUrl();
-      setTradeAnnouncement("That market does not currently have a verified in-site execution route.");
-      return;
-    }
-    returnFocusTo.current = runnerHeading.current;
-    setQuickTrade({ address: market.address, side });
-  }, [executionAvailability, markets, status, syncQuickTradeUrl]);
-
-  const selectedQuickTradeMarket = useMemo(
-    () => quickTrade
-      ? [contractLookupMarket, ...markets].find((market) =>
-          market?.address.toLowerCase() === quickTrade.address.toLowerCase()
-        )
-      : undefined,
-    [contractLookupMarket, markets, quickTrade]
-  );
-
-  useEffect(() => {
-    if (!quickTrade) return;
-    if (
-      selectedQuickTradeMarket
-      && canHandoffToVenue(selectedQuickTradeMarket)
-      && executionAvailability[selectedQuickTradeMarket.address.toLowerCase()] === "ready"
-    ) return;
-    if (
-      selectedQuickTradeMarket
-      && executionAvailability[selectedQuickTradeMarket.address.toLowerCase()] === undefined
-    ) return;
-    setQuickTrade(undefined);
-    syncQuickTradeUrl();
-    setTradeAnnouncement("The external market changed or left the eligible feed, so its trade review was closed.");
-    window.setTimeout(() => runnerHeading.current?.focus(), 0);
-  }, [executionAvailability, quickTrade, selectedQuickTradeMarket, syncQuickTradeUrl]);
-
   const orderedMarkets = useMemo(() => stabilizeOrder(rankOrder, markets), [markets, rankOrder]);
-  const sourceCounts = useMemo(() => ({
-    all: markets.length,
-    attributed: markets.filter((market) => marketDistributionPassport(market).isAttributedLaunch).length,
-    sushi: markets.filter((market) => market.project?.sourceId === "sushi").length,
-    pons: markets.filter((market) => market.project?.sourceId === "pons").length,
-    lemon: markets.filter((market) => market.project?.sourceId === "lemon").length
-  }), [markets]);
-  const sourceScopedMarkets = useMemo(
-    () => sourceFilter === "all"
-      ? markets
-      : sourceFilter === "attributed"
-        ? markets.filter((market) => marketDistributionPassport(market).isAttributedLaunch)
-      : markets.filter((market) => market.project?.sourceId === sourceFilter),
-    [markets, sourceFilter]
-  );
   const venueCounts = useMemo(() => ({
-    all: sourceScopedMarkets.length,
-    uniswap: sourceScopedMarkets.filter((market) => launchDistributionVenue(market) === "uniswap").length,
-    sushi: sourceScopedMarkets.filter((market) => launchDistributionVenue(market) === "sushi").length,
-    other: sourceScopedMarkets.filter((market) => launchDistributionVenue(market) === "other").length
-  }), [sourceScopedMarkets]);
+    all: markets.length,
+    uniswap: markets.filter((market) => launchDistributionVenue(market) === "uniswap").length,
+    sushi: markets.filter((market) => launchDistributionVenue(market) === "sushi").length,
+    other: markets.filter((market) => launchDistributionVenue(market) === "other").length
+  }), [markets]);
   const scopedMarkets = useMemo(
     () => venueFilter === "all"
-      ? sourceScopedMarkets
-      : sourceScopedMarkets.filter((market) => launchDistributionVenue(market) === venueFilter),
-    [sourceScopedMarkets, venueFilter]
+      ? markets
+      : markets.filter((market) => launchDistributionVenue(market) === venueFilter),
+    [markets, venueFilter]
   );
   const counts = useMemo(() => externalMarketViewCounts(scopedMarkets), [scopedMarkets]);
   const rankByAddress = useMemo(
@@ -708,117 +345,18 @@ export function ExternalMarketFeed() {
         ])
       ].some((value) => value.toLowerCase().includes(normalizedMarketQuery)))
     : viewMarkets;
-  const sourceFilteredMarkets = normalizedMarketQuery ? searchedMarkets : searchedMarkets.filter((market) => {
-    if (sourceFilter === "attributed" && !marketDistributionPassport(market).isAttributedLaunch) return false;
-    if (
-      sourceFilter !== "all"
-      && sourceFilter !== "attributed"
-      && market.project?.sourceId !== sourceFilter
-    ) return false;
-    return venueFilter === "all" || launchDistributionVenue(market) === venueFilter;
-  });
-  const filteredMarkets = tradeableOnly
-    ? sourceFilteredMarkets.filter((market) => executionAvailability[market.address.toLowerCase()] === "ready")
-    : sourceFilteredMarkets;
+  const filteredMarkets = normalizedMarketQuery
+    ? searchedMarkets
+    : searchedMarkets.filter((market) => venueFilter === "all" || launchDistributionVenue(market) === venueFilter);
   const expandedDirectory =
     showAllMarkets || normalizedMarketQuery.length > 0;
   const visibleMarkets = expandedDirectory
     ? filteredMarkets
     : filteredMarkets.slice(0, MAX_VISIBLE_MARKETS);
-  const availabilityCandidates = (tradeableOnly ? sourceFilteredMarkets : visibleMarkets.slice(0, MAX_VISIBLE_MARKETS))
-    .filter(canHandoffToVenue)
-    .map((market) => market.address.toLowerCase());
-  const checkingAvailability = availabilityCandidates.filter(
-    (address) => executionAvailability[address] === "checking"
-  );
-  const unknownAvailability = availabilityCandidates.filter(
-    (address) => executionAvailability[address] === undefined
-  );
-  const availabilityAddresses = tradeableOnly
-    ? (checkingAvailability.length > 0 ? checkingAvailability : unknownAvailability).slice(0, MAX_VISIBLE_MARKETS)
-    : availabilityCandidates;
-  const availabilityKey = availabilityAddresses.join(",");
-  const tradeableCount = sourceFilteredMarkets.filter(
-    (market) => executionAvailability[market.address.toLowerCase()] === "ready"
-  ).length;
-  const routeResolvedCount = sourceFilteredMarkets.filter((market) => {
-    const executionState = executionAvailability[market.address.toLowerCase()];
-    return !canHandoffToVenue(market)
-      || (executionState !== undefined && executionState !== "checking");
-  }).length;
-  const routeSyncPending = routeResolvedCount < sourceFilteredMarkets.length;
-  const tradeableVerificationPending = tradeableOnly && routeResolvedCount < sourceFilteredMarkets.length;
-
-  useEffect(() => {
-    const tokens = availabilityAddresses.filter((address) => executionAvailability[address] === undefined);
-    if (tokens.length === 0) return;
-
-    setExecutionAvailability((current) => ({
-      ...current,
-      ...Object.fromEntries(tokens.map((address) => [address, "checking" as const]))
-    }));
-    const controller = new AbortController();
-    let settled = false;
-    const query = new URLSearchParams({ tokens: tokens.join(",") });
-    void fetch(`/api/trade/external-availability?${query}`, {
-      cache: "no-store",
-      signal: controller.signal
-    }).then(async (response) => {
-      const payload = await response.json() as {
-        availability?: Array<{
-          token?: string;
-          status?: Exclude<ExecutionAvailability, "checking">;
-        }>;
-      };
-      if (!response.ok || !Array.isArray(payload.availability)) {
-        throw new Error("Execution availability is unavailable.");
-      }
-      const requested = new Set(tokens);
-      const resolved: Record<string, Exclude<ExecutionAvailability, "checking">> = Object.fromEntries(
-        tokens.map((address) => [address, "unavailable" as const])
-      );
-      for (const item of payload.availability) {
-        const address = item.token?.toLowerCase();
-        if (
-          !address
-          || !requested.has(address)
-          || (item.status !== "ready" && item.status !== "view-only" && item.status !== "unavailable")
-        ) continue;
-        resolved[address] = item.status;
-      }
-      settled = true;
-      setExecutionAvailability((current) => ({ ...current, ...resolved }));
-    }).catch(() => {
-      if (controller.signal.aborted) return;
-      settled = true;
-      setExecutionAvailability((current) => ({
-        ...current,
-        ...Object.fromEntries(tokens.map((address) => [address, "unavailable" as const]))
-      }));
-    });
-    return () => {
-      controller.abort();
-      if (!settled) {
-        setExecutionAvailability((current) => {
-          const next = { ...current };
-          for (const address of tokens) {
-            if (next[address] === "checking") delete next[address];
-          }
-          return next;
-        });
-      }
-    };
-    // availabilityKey changes only when the prioritized market set changes.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [availabilityKey]);
-
   const marketCountLabel = contractLookupAddress && contractLookupStatus === "searching"
     ? "Searching Robinhood Chain…"
     : normalizedMarketQuery
       ? filteredMarkets.length + " match" + (filteredMarkets.length === 1 ? "" : "es")
-    : tradeableVerificationPending
-      ? "Verifying routes · " + routeResolvedCount + " of " + sourceFilteredMarkets.length +
-        " checked · " + tradeableCount + " tradeable"
     : showAllMarkets
       ? "Showing all " + filteredMarkets.length
       : "Top " + Math.min(MAX_VISIBLE_MARKETS, filteredMarkets.length) +
@@ -827,16 +365,14 @@ export function ExternalMarketFeed() {
   const changeView = (nextView: DiscoveryView) => {
     setView(nextView);
     setMarketQuery("");
-    setShowAllMarkets(tradeableOnly || nextView === "explore");
+    setShowAllMarkets(nextView === "explore");
   };
   const handleMarketQueryChange = (value: string) => {
     setMarketQuery(value);
     if (value.trim()) {
       setView("explore");
       setShowAllMarkets(true);
-      setSourceFilter("all");
       setVenueFilter("all");
-      setTradeableOnly(false);
     }
   };
   const clearMarketQuery = () => {
@@ -881,7 +417,6 @@ export function ExternalMarketFeed() {
       </div>
 
       <p className="srOnly" aria-live="polite">{rankingAnnouncement}</p>
-      <p className="srOnly" aria-live="polite">{tradeAnnouncement}</p>
       {status === "stale" && (
         <p className="runnerDataNotice" role="status">
           <span>Data delayed · showing the last successful snapshot{updatedAt ? " from " + snapshotTime(updatedAt) : ""}. Direct venue trading remains available.</span>
@@ -972,7 +507,7 @@ export function ExternalMarketFeed() {
         </div>
         <small id="runner-market-count" aria-live="polite">{marketCountLabel}</small>
       </div>
-      <div className="runnerSourceFilters" role="group" aria-label="Filter markets by launch origin, liquidity venue, or execution availability">
+      <div className="runnerSourceFilters" role="group" aria-label="Filter markets by observed venue">
         <span>Market</span>
         {VENUE_FILTERS.map((item) => (
           <button
@@ -981,45 +516,14 @@ export function ExternalMarketFeed() {
             className={venueFilter === item.id ? "active" : ""}
             onClick={() => {
               setVenueFilter(item.id);
-              setShowAllMarkets(tradeableOnly || view === "explore");
+              setShowAllMarkets(view === "explore");
             }}
             key={item.id}
           >
             {item.label}<b>{status === "loading" ? "—" : venueCounts[item.id]}</b>
           </button>
         ))}
-        <span className="runnerFilterDivider">Execute</span>
-        <button
-          type="button"
-          aria-pressed={tradeableOnly}
-          className={tradeableOnly ? "active executionFilter" : "executionFilter"}
-          onClick={() => {
-            setTradeableOnly((current) => !current);
-            setShowAllMarkets(!tradeableOnly || view === "explore");
-          }}
-        >
-          {routeSyncPending ? "Routes syncing" : "Tradeable"}
-          <b>{status === "loading" ? "—" : routeSyncPending ? `${routeResolvedCount}/${sourceFilteredMarkets.length}` : tradeableCount}</b>
-        </button>
-        <details className="runnerOriginFilters">
-          <summary>Source · {sourceFilter === "all" ? "All" : SOURCE_FILTERS.find((item) => item.id === sourceFilter)?.label}</summary>
-          <div>
-            {SOURCE_FILTERS.map((item) => (
-              <button
-                type="button"
-                aria-pressed={sourceFilter === item.id}
-                className={sourceFilter === item.id ? "active" : ""}
-                onClick={() => {
-                  setSourceFilter(item.id);
-                  setShowAllMarkets(tradeableOnly || view === "explore");
-                }}
-                key={item.id}
-              >
-                  {item.label}<b>{status === "loading" ? "—" : sourceCounts[item.id]}</b>
-              </button>
-            ))}
-          </div>
-        </details>
+        <span className="runnerFilterDivider">Execution route checked on open</span>
       </div>
 
       <div className="runnerEdgeBrief" role="note">
@@ -1038,9 +542,7 @@ export function ExternalMarketFeed() {
           <div className="emptyFeed"><strong>Market discovery is temporarily unavailable.</strong><span>Direct venue trading remains available.</span><button type="button" onClick={() => void refresh()}>Try again</button></div>
         ) : visibleMarkets.length === 0 ? (
           <div className="emptyFeed">
-            <strong>{tradeableVerificationPending
-              ? "Verifying in-site execution routes…"
-              : contractLookupAddress && contractLookupStatus === "searching"
+            <strong>{contractLookupAddress && contractLookupStatus === "searching"
                 ? "Searching the chain for this contract…"
                 : contractLookupAddress && contractLookupStatus === "not-found"
                   ? "No live DEX market was found for this contract."
@@ -1048,27 +550,21 @@ export function ExternalMarketFeed() {
                     ? "Direct contract lookup is temporarily delayed."
               : normalizedMarketQuery
                 ? "No external markets match that search."
-                : tradeableOnly
-                  ? "No verified in-site routes match these filters."
-                  : "No markets meet this signal yet."}</strong>
-            <span>{tradeableVerificationPending
-              ? "RMT is checking prioritized markets in bounded batches. Tradeable results appear as each route is independently verified."
-              : contractLookupAddress && contractLookupStatus === "searching"
+                : "No markets meet this signal yet."}</strong>
+            <span>{contractLookupAddress && contractLookupStatus === "searching"
                 ? "RMT is checking Sushi and Uniswap market data beyond the loaded terminal snapshot."
                 : contractLookupAddress && contractLookupStatus === "not-found"
                   ? "Check that this is the token contract on Robinhood Chain and that a DEX pool has been created."
                   : contractLookupAddress && contractLookupStatus === "error"
                     ? "The loaded terminal remains available. Clear the search or retry this contract shortly."
               : normalizedMarketQuery
-              ? "Try a token name, ticker, or complete contract address, or change the project-source filter."
-              : tradeableOnly
-                ? "Change the project source or turn off Tradeable to inspect view-only markets."
-              : sourceFilter !== "all" || venueFilter !== "all"
-                ? "No markets meet the selected origin and venue evidence filters."
+              ? "Try a token name, ticker, or complete contract address."
+              : venueFilter !== "all"
+                ? "No markets meet the selected venue filter."
                 : "The filter will update automatically when activity qualifies."}</span>
-            {!tradeableVerificationPending && normalizedMarketQuery
+            {normalizedMarketQuery
               ? <button type="button" onClick={clearMarketQuery}>Clear search</button>
-              : !tradeableVerificationPending && !tradeableOnly && view !== "explore" && <button type="button" onClick={() => changeView("explore")}>Explore all markets</button>}
+              : view !== "explore" && <button type="button" onClick={() => changeView("explore")}>Explore all markets</button>}
           </div>
         ) : (
           <div className="externalMarketGrid runnerMarketGrid">
@@ -1080,22 +576,10 @@ export function ExternalMarketFeed() {
                 ? (market.curve.progressBps / 100).toFixed(1) + "%"
                 : (market.priceChange5m > 0 ? "+" : "") + market.priceChange5m.toFixed(2) + "%";
               const addressKey = market.address.toLowerCase();
-              const executionState: ExecutionAvailability = canHandoffToVenue(market)
-                ? executionAvailability[addressKey] ?? (index < MAX_VISIBLE_MARKETS ? "checking" : "unavailable")
-                : "view-only";
-              const executionDepth = executionState === "ready"
-                ? routeLiquidityDepthLabel(market.liquidityUsd)
-                : null;
               const mobileReviewRequired = market.riskFlags.length > 0;
               const mobileActionLabel = mobileReviewRequired
                 ? "Review"
-                : executionState === "ready"
-                  ? "Trade"
-                  : executionState === "checking"
-                    ? "Verifying"
-                    : executionState === "view-only"
-                      ? "View only"
-                      : "Check route";
+                : "Trade";
               const mobileWorkspaceHref = `/market/${market.address}${mobileReviewRequired ? "?tab=safety" : ""}`;
               const distribution = marketDistributionPassport(market);
               const stockAssetLabel = market.stockAssetRelationships?.length
@@ -1117,7 +601,7 @@ export function ExternalMarketFeed() {
                       </span>
                     </a>
                     <a
-                      className={`mobileRunnerTrade ${mobileReviewRequired ? "review" : executionState}`}
+                      className={`mobileRunnerTrade ${mobileReviewRequired ? "review" : "ready"}`}
                       href={mobileWorkspaceHref}
                       aria-label={`${mobileActionLabel} ${market.name}`}
                     >
@@ -1128,7 +612,7 @@ export function ExternalMarketFeed() {
                       <span className={"mobileRunnerMove " + (market.curve ? "positive" : changeClass)}>
                         <small>{market.curve ? "Progress" : "5m"}</small><strong>{mobileMoveLabel}</strong>
                       </span>
-                      <span><small>{executionDepth ? "Depth · " + executionDepth : "Liquidity"}</small><strong>{money(market.liquidityUsd)}</strong></span>
+                      <span><small>Liquidity</small><strong>{money(market.liquidityUsd)}</strong></span>
                     </div>
                   </div>
                   <div className="runnerCardStatus">
@@ -1164,20 +648,10 @@ export function ExternalMarketFeed() {
                       : runnerReason(market)}</span>
                     {market.riskFlags.length > 0 && <em>{riskSummary(market.riskFlags)}</em>}
                   </div>
-                  {executionState === "ready" ? (
-                    <div className="externalMarketActions">
-                      <button className="buyCardAction" type="button" aria-haspopup="dialog" aria-label={"Buy " + market.name} onClick={() => openQuickTrade(market, "buy")}>Buy</button>
-                      <button className="sellCardAction" type="button" aria-haspopup="dialog" aria-label={"Sell " + market.name} onClick={() => openQuickTrade(market, "sell")}>Sell</button>
-                    </div>
-                  ) : (
-                    <span className="externalBadge">
-                      {executionState === "checking"
-                        ? "VERIFYING IN-SITE ROUTE"
-                        : executionState === "view-only"
-                          ? "VIEW ONLY · NO VERIFIED ROUTE"
-                          : "CHECK ROUTE IN WORKSPACE"}
-                    </span>
-                  )}
+                  <div className="externalMarketActions">
+                    <Link className="buyCardAction" href={`/market/${market.address}?side=buy`} onClick={() => recordExperienceStage("trade_preparation_opened")}>Buy</Link>
+                    <Link className="sellCardAction" href={`/market/${market.address}?side=sell`} onClick={() => recordExperienceStage("trade_preparation_opened")}>Sell</Link>
+                  </div>
                   <a className="externalChartLink" href={market.url} target="_blank" rel="noreferrer" aria-label={"View " + market.name + " market source"}>{market.curve ? "Open verified curve ↗" : "Chart & pair ↗"}</a>
                 </article>
               );
@@ -1186,21 +660,8 @@ export function ExternalMarketFeed() {
         )}
       </div>
 
-      <p className="externalDisclosure">Market data uses DEX Screener market data and public discovery, with the documented Lemon and Sushi Launch APIs for cross-checked identity. Robinhood Stock Token labels require an exact contract match to Robinhood&apos;s live asset registry; a paired market asset does not make another token stock-backed. Dexscreener artwork is accepted only from its HTTPS CDN when verified launch metadata has no image. Sushi Launch and Lemon identity are attached only when the source token and launch pool match the discovered DEX pair; Pons identity requires matching factory and token records. Launch source is secondary evidence—not the ranking. Signals are automated review candidates, not investment recommendations or profit guarantees. Buy and Sell always require a fresh Sushi or Uniswap quote and wallet review.</p>
+      <p className="externalDisclosure">Market data uses DEX Screener and other documented public records for discovery and cross-checked project identity. Robinhood Stock Token labels require an exact contract match to Robinhood&apos;s live asset registry; a paired market asset does not make another token stock-backed. External artwork is accepted only from its validated HTTPS source when verified project metadata has no image. Project provenance is attached only when token, factory, and referenced-market evidence agree. Provenance is secondary evidence—not the ranking, an endorsement, or an execution promise. Signals are automated review candidates, not investment recommendations or profit guarantees. Buy and Sell always require a fresh Sushi or Uniswap quote and wallet review.</p>
 
-      {quickTrade
-        && selectedQuickTradeMarket
-        && executionAvailability[selectedQuickTradeMarket.address.toLowerCase()] === "ready"
-        && (
-        <ExternalTradeDialog
-          market={selectedQuickTradeMarket}
-          side={quickTrade.side}
-          delayed={status === "stale"}
-          onSideChange={(side) => changeQuickTradeSide(selectedQuickTradeMarket, side)}
-          onClose={closeQuickTrade}
-          returnFocusTo={returnFocusTo.current ?? runnerHeading.current}
-        />
-      )}
     </section>
   );
 }

@@ -5,6 +5,10 @@ const scannerSource = readFileSync(
   new URL("../app/external-market-feed-v10.tsx", import.meta.url),
   "utf8"
 );
+const mobileScannerSource = readFileSync(
+  new URL("../app/external-market-feed.tsx", import.meta.url),
+  "utf8"
+);
 const workspaceSource = readFileSync(
   new URL("../app/external-market-workspace.tsx", import.meta.url),
   "utf8"
@@ -18,42 +22,6 @@ const traderControlCss = readFileSync(
   "utf8"
 );
 
-type Availability = "checking" | "ready" | "view-only" | "unavailable";
-
-function nextRouteBatch(
-  candidates: string[],
-  availability: Record<string, Availability>,
-  batchSize: number
-) {
-  const unique = candidates.filter((address, index, list) => list.indexOf(address) === index);
-  const checking = unique
-    .filter((address) => availability[address] === "checking")
-    .slice(0, batchSize);
-  if (checking.length) return checking;
-  return unique
-    .filter((address) => availability[address] === undefined)
-    .slice(0, batchSize);
-}
-
-const addresses = Array.from(
-  { length: 110 },
-  (_, index) => `0x${(index + 1).toString(16).padStart(40, "0")}`
-);
-const availability: Record<string, Availability> = {};
-const first = nextRouteBatch(addresses, availability, 48);
-assert.equal(first.length, 48);
-assert.deepEqual(first, addresses.slice(0, 48));
-for (const address of first) availability[address] = "ready";
-const second = nextRouteBatch(addresses, availability, 48);
-assert.equal(second.length, 48);
-assert.deepEqual(second, addresses.slice(48, 96));
-for (const address of second) availability[address] = "view-only";
-const third = nextRouteBatch(addresses, availability, 48);
-assert.equal(third.length, 14);
-assert.deepEqual(third, addresses.slice(96));
-availability[addresses[102]] = "checking";
-assert.deepEqual(nextRouteBatch(addresses, availability, 48), [addresses[102]]);
-
 assert.match(
   scannerSource,
   /const expanded = showAllMarkets \|\| normalizedQuery\.length > 0;/,
@@ -64,29 +32,19 @@ assert.match(
   /else setShowAllMarkets\(\(current\) => !current\);/,
   "Browse all and Show top twelve must use a real state toggle."
 );
-assert.doesNotMatch(
-  scannerSource,
-  /const expanded =[^;]*(view === "explore"|tradeableOnly)/,
-  "All and Tradeable views must not force the directory permanently open."
-);
-assert.match(
-  scannerSource,
-  /const checking = candidates[\s\S]*?slice\(0, MAX_ROUTE_BATCH\);[\s\S]*?if \(checking\.length\) return checking;[\s\S]*?filter\(\(address\) => executionAvailability\[address\] === undefined\)[\s\S]*?slice\(0, MAX_ROUTE_BATCH\);/,
-  "Route verification must select each unresolved batch after prior batches settle."
-);
-assert.doesNotMatch(
-  scannerSource,
-  /\.slice\(0, MAX_ROUTE_BATCH\);\s*const unresolved = candidates/,
-  "The market catalog must not be truncated before unresolved routes are selected."
-);
+assert.doesNotMatch(scannerSource, /api\/trade\/external-availability/, "Desktop discovery must not fan out execution checks across market cards.");
+assert.doesNotMatch(mobileScannerSource, /api\/trade\/external-availability/, "Mobile discovery must not fan out execution checks across market cards.");
+assert.match(scannerSource, /Execution route checked on open/, "Desktop must explain that execution verification is deferred until intent.");
+assert.match(mobileScannerSource, /Execution route checked on open/, "Mobile must explain that execution verification is deferred until intent.");
+assert.doesNotMatch(scannerSource, /SOURCE_FILTERS|sourceFilter/, "Desktop discovery must not organize markets around token-launch sources.");
+assert.doesNotMatch(mobileScannerSource, /SOURCE_FILTERS|sourceFilter/, "Mobile discovery must not organize markets around token-launch sources.");
+assert.doesNotMatch(mobileScannerSource, /ExternalTradeDialog|quickTrade|externalTrade=/, "Mobile discovery must use the canonical market workspace instead of a duplicate trade overlay.");
 
 assert.match(scannerSource, /const TERMINAL_PREFERENCES_KEY = "rmt:terminal-v10-preferences";/);
 assert.match(scannerSource, /function readTerminalPreferences\(\)/);
 assert.match(scannerSource, /window\.localStorage\.setItem\(TERMINAL_PREFERENCES_KEY/);
 assert.match(scannerSource, /setView\(preferences\.view\)/);
-assert.match(scannerSource, /setSourceFilter\(preferences\.sourceFilter\)/);
 assert.match(scannerSource, /setVenueFilter\(preferences\.venueFilter\)/);
-assert.match(scannerSource, /setTradeableOnly\(preferences\.tradeableOnly\)/);
 assert.match(scannerSource, /setMarketSort\(preferences\.marketSort\)/);
 
 assert.match(
@@ -175,9 +133,9 @@ assert.match(
 assert.match(scannerSource, /SYNCING MARKETS/, "Desktop must disclose the initial market synchronization state.");
 assert.match(scannerSource, /Building the live signal desk/, "Desktop must not present a truthful-looking zero-signal state before data arrives.");
 assert.match(traderControlCss, /runnerTabs\{[\s\S]*?grid-template-columns:repeat\(4,minmax\(0,1fr\)\)/, "All four mobile market tabs must fit the viewport.");
-assert.match(traderControlCss, /runnerSourceFilters\{[\s\S]*?flex-wrap:wrap/, "Mobile route and source filters must wrap instead of clipping offscreen.");
+assert.match(traderControlCss, /runnerSourceFilters\{[\s\S]*?flex-wrap:wrap/, "Mobile venue controls must wrap instead of clipping offscreen.");
 assert.match(traderControlCss, /externalUniswapSubmit:disabled\{[\s\S]*?position:static!important/, "Disabled mobile execution must remain in flow instead of covering evidence.");
 
 console.log(
-  "RMT preserves truthful loading, complete route batching, readable desktop identity, and a viewport-safe mobile execution flow."
+  "RMT preserves truthful loading, optimistic discovery, strict workspace routing, readable desktop identity, and a viewport-safe mobile execution flow."
 );

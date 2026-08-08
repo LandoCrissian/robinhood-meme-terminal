@@ -16,8 +16,7 @@ import {
   type UniversalMarketResolution
 } from "../lib/external-market";
 import {
-  canonicalExternalMarketLookupAddress,
-  isNonzeroEvmAddress
+  canonicalExternalMarketLookupAddress
 } from "../lib/external-market-identity";
 import {
   externalMarketViewCounts,
@@ -42,19 +41,15 @@ import {
 import { recordExperienceStage } from "../lib/experience-funnel";
 
 type FeedStatus = "loading" | "ready" | "stale" | "error";
-type ExecutionAvailability = "checking" | "ready" | "view-only" | "unavailable";
 type ContractLookupStatus = "idle" | "searching" | "resolved" | "not-found" | "error";
 type DiscoveryView = ExternalMarketDiscoveryView;
-type SourceFilter = "all" | "attributed" | "pons" | "lemon" | "sushi";
 type VenueFilter = "all" | LaunchDistributionVenue;
 type MarketSortKey = "rank" | "age" | "valuation" | "change5m" | "volume1h" | "liquidity" | "risk";
 type MarketSortDirection = "asc" | "desc";
 type MarketSort = { key: MarketSortKey; direction: MarketSortDirection };
 type StoredTerminalPreferences = {
   view: DiscoveryView;
-  sourceFilter: SourceFilter;
   venueFilter: VenueFilter;
-  tradeableOnly: boolean;
   marketSort: MarketSort;
 };
 
@@ -63,13 +58,6 @@ const VIEWS: Array<{ id: DiscoveryView; label: string }> = [
   { id: "new", label: "New · 24h" },
   { id: "top", label: "Active" },
   { id: "explore", label: "All" }
-];
-const SOURCE_FILTERS: Array<{ id: SourceFilter; label: string }> = [
-  { id: "all", label: "All origins" },
-  { id: "attributed", label: "Verified sources" },
-  { id: "sushi", label: "Sushi Launch" },
-  { id: "pons", label: "Pons" },
-  { id: "lemon", label: "Lemon" }
 ];
 const VENUE_FILTERS: Array<{ id: VenueFilter; label: string }> = [
   { id: "all", label: "Any venue" },
@@ -82,7 +70,6 @@ const TERMINAL_PREFERENCES_KEY = "rmt:terminal-v10-preferences";
 const DATA_REFRESH_MS = 30_000;
 const RANK_REFRESH_MS = 60_000;
 const MAX_VISIBLE_MARKETS = 12;
-const MAX_ROUTE_BATCH = 48;
 
 function money(value: number, priceValue = false) {
   if (!Number.isFinite(value) || value <= 0) return "—";
@@ -168,18 +155,6 @@ function venueLabel(market: ExternalMarket) {
   return market.venue.kind === "dex" ? market.venue.dexId : "Circus curve";
 }
 
-function executionProvider(market: ExternalMarket) {
-  if (market.venue.kind !== "dex") return null;
-  const venue = market.venue.dexId.toLowerCase();
-  if (venue.includes("sushi")) return "Sushi";
-  if (venue === "uniswap" || venue.startsWith("uniswap-")) return "Uniswap";
-  return null;
-}
-
-function canVerifyExecution(market: ExternalMarket) {
-  return isNonzeroEvmAddress(market.address) && executionProvider(market) !== null;
-}
-
 function runnerReason(market: ExternalMarket) {
   const trades5m = market.buys5m + market.sells5m;
   const trades1h = market.buys1h + market.sells1h;
@@ -240,21 +215,17 @@ function readTerminalPreferences(): StoredTerminalPreferences | null {
     if (!raw) return null;
     const value = JSON.parse(raw) as Partial<StoredTerminalPreferences>;
     const view = VIEWS.some((item) => item.id === value.view) ? value.view : undefined;
-    const sourceFilter = SOURCE_FILTERS.some((item) => item.id === value.sourceFilter) ? value.sourceFilter : undefined;
     const venueFilter = VENUE_FILTERS.some((item) => item.id === value.venueFilter) ? value.venueFilter : undefined;
     const key = value.marketSort?.key;
     const direction = value.marketSort?.direction;
     if (
-      !view || !sourceFilter || !venueFilter
-      || typeof value.tradeableOnly !== "boolean"
+      !view || !venueFilter
       || !key || !SORT_KEYS.includes(key)
       || !direction || !SORT_DIRECTIONS.includes(direction)
     ) return null;
     return {
       view,
-      sourceFilter,
       venueFilter,
-      tradeableOnly: value.tradeableOnly,
       marketSort: { key, direction }
     };
   } catch {
@@ -403,12 +374,9 @@ export function ExternalMarketFeedV10() {
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
   const [marketQuery, setMarketQuery] = useState("");
   const [showAllMarkets, setShowAllMarkets] = useState(false);
-  const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
   const [venueFilter, setVenueFilter] = useState<VenueFilter>("all");
-  const [tradeableOnly, setTradeableOnly] = useState(false);
   const [marketSort, setMarketSort] = useState<MarketSort>({ key: "rank", direction: "asc" });
   const [preferencesLoaded, setPreferencesLoaded] = useState(false);
-  const [executionAvailability, setExecutionAvailability] = useState<Record<string, ExecutionAvailability>>({});
   const [watchedAddresses, setWatchedAddresses] = useState(() => new Set<string>());
   const [contractLookupStatus, setContractLookupStatus] = useState<ContractLookupStatus>("idle");
   const [contractLookupMarket, setContractLookupMarket] = useState<ExternalMarket>();
@@ -448,9 +416,7 @@ export function ExternalMarketFeedV10() {
     const preferences = readTerminalPreferences();
     if (preferences) {
       setView(preferences.view);
-      setSourceFilter(preferences.sourceFilter);
       setVenueFilter(preferences.venueFilter);
-      setTradeableOnly(preferences.tradeableOnly);
       setMarketSort(preferences.marketSort);
       setShowAllMarkets(preferences.view === "explore");
     }
@@ -462,15 +428,13 @@ export function ExternalMarketFeedV10() {
     try {
       window.localStorage.setItem(TERMINAL_PREFERENCES_KEY, JSON.stringify({
         view,
-        sourceFilter,
         venueFilter,
-        tradeableOnly,
         marketSort
       } satisfies StoredTerminalPreferences));
     } catch {
       // A blocked preference store does not prevent terminal use.
     }
-  }, [marketSort, preferencesLoaded, sourceFilter, tradeableOnly, venueFilter, view]);
+  }, [marketSort, preferencesLoaded, venueFilter, view]);
 
   useEffect(() => {
     void refresh();
@@ -547,30 +511,18 @@ export function ExternalMarketFeedV10() {
     () => new Map(orderedMarkets.map((market, index) => [market.address.toLowerCase(), index + 1])),
     [orderedMarkets]
   );
-  const sourceCounts = useMemo(() => ({
-    all: markets.length,
-    attributed: markets.filter((market) => marketDistributionPassport(market).isAttributedLaunch).length,
-    sushi: markets.filter((market) => market.project?.sourceId === "sushi").length,
-    pons: markets.filter((market) => market.project?.sourceId === "pons").length,
-    lemon: markets.filter((market) => market.project?.sourceId === "lemon").length
-  }), [markets]);
-  const sourceScoped = useMemo(() => sourceFilter === "all"
-    ? markets
-    : sourceFilter === "attributed"
-      ? markets.filter((market) => marketDistributionPassport(market).isAttributedLaunch)
-      : markets.filter((market) => market.project?.sourceId === sourceFilter), [markets, sourceFilter]);
   const venueCounts = useMemo(() => ({
-    all: sourceScoped.length,
-    uniswap: sourceScoped.filter((market) => launchDistributionVenue(market) === "uniswap").length,
-    sushi: sourceScoped.filter((market) => launchDistributionVenue(market) === "sushi").length,
-    other: sourceScoped.filter((market) => launchDistributionVenue(market) === "other").length
-  }), [sourceScoped]);
+    all: markets.length,
+    uniswap: markets.filter((market) => launchDistributionVenue(market) === "uniswap").length,
+    sushi: markets.filter((market) => launchDistributionVenue(market) === "sushi").length,
+    other: markets.filter((market) => launchDistributionVenue(market) === "other").length
+  }), [markets]);
   const viewCounts = useMemo(() => {
     const venueScoped = venueFilter === "all"
-      ? sourceScoped
-      : sourceScoped.filter((market) => launchDistributionVenue(market) === venueFilter);
+      ? markets
+      : markets.filter((market) => launchDistributionVenue(market) === venueFilter);
     return externalMarketViewCounts(venueScoped);
-  }, [sourceScoped, venueFilter]);
+  }, [markets, venueFilter]);
   const viewed = useMemo(() => selectExternalMarketView([...orderedMarkets], view), [orderedMarkets, view]);
   const searchable = contractLookupMarket
     ? [contractLookupMarket, ...orderedMarkets.filter((market) => market.address.toLowerCase() !== contractLookupMarket.address.toLowerCase())]
@@ -584,79 +536,16 @@ export function ExternalMarketFeedV10() {
         ...(market.stockAssetRelationships ?? []).flatMap((relationship) => [relationship.tokenName, relationship.tokenSymbol, relationship.contractAddress])
       ].some((value) => value.toLowerCase().includes(normalizedQuery)))
     : viewed;
-  const filteredByEvidence = searched.filter((market) => {
-    if (normalizedQuery) return true;
-    if (sourceFilter === "attributed" && !marketDistributionPassport(market).isAttributedLaunch) return false;
-    if (sourceFilter !== "all" && sourceFilter !== "attributed" && market.project?.sourceId !== sourceFilter) return false;
-    return venueFilter === "all" || launchDistributionVenue(market) === venueFilter;
-  });
+  const filteredByEvidence = normalizedQuery
+    ? searched
+    : searched.filter((market) => venueFilter === "all" || launchDistributionVenue(market) === venueFilter);
   const sorted = useMemo(
     () => sortMarkets(filteredByEvidence, marketSort, rankByAddress),
     [filteredByEvidence, marketSort, rankByAddress]
   );
-  const filtered = tradeableOnly
-    ? sorted.filter((market) => executionAvailability[market.address.toLowerCase()] === "ready")
-    : sorted;
+  const filtered = sorted;
   const expanded = showAllMarkets || normalizedQuery.length > 0;
   const visibleMarkets = expanded ? filtered : filtered.slice(0, MAX_VISIBLE_MARKETS);
-
-  const routeCandidates = useMemo(() => {
-    const candidates = (tradeableOnly ? sorted : visibleMarkets)
-      .filter(canVerifyExecution)
-      .map((market) => market.address.toLowerCase())
-      .filter((address, index, list) => list.indexOf(address) === index);
-    const checking = candidates
-      .filter((address) => executionAvailability[address] === "checking")
-      .slice(0, MAX_ROUTE_BATCH);
-    if (checking.length) return checking;
-    return candidates
-      .filter((address) => executionAvailability[address] === undefined)
-      .slice(0, MAX_ROUTE_BATCH);
-  }, [executionAvailability, sorted, tradeableOnly, visibleMarkets]);
-  const routeKey = routeCandidates.join(",");
-
-  useEffect(() => {
-    const tokens = routeCandidates.filter((address) => executionAvailability[address] === undefined);
-    if (!tokens.length) return;
-    setExecutionAvailability((current) => ({
-      ...current,
-      ...Object.fromEntries(tokens.map((address) => [address, "checking" as const]))
-    }));
-    const controller = new AbortController();
-    const query = new URLSearchParams({ tokens: tokens.join(",") });
-    void fetch(`/api/trade/external-availability?${query}`, { cache: "no-store", signal: controller.signal })
-      .then(async (response) => {
-        const payload = await response.json() as { availability?: Array<{ token?: string; status?: Exclude<ExecutionAvailability, "checking"> }> };
-        if (!response.ok || !Array.isArray(payload.availability)) throw new Error("Route verification unavailable.");
-        const resolved: Record<string, Exclude<ExecutionAvailability, "checking">> = Object.fromEntries(
-          tokens.map((address) => [address, "unavailable" as const])
-        );
-        for (const item of payload.availability) {
-          const address = item.token?.toLowerCase();
-          if (!address || !tokens.includes(address)) continue;
-          if (item.status === "ready" || item.status === "view-only" || item.status === "unavailable") resolved[address] = item.status;
-        }
-        setExecutionAvailability((current) => ({ ...current, ...resolved }));
-      })
-      .catch(() => {
-        if (controller.signal.aborted) return;
-        setExecutionAvailability((current) => ({
-          ...current,
-          ...Object.fromEntries(tokens.map((address) => [address, "unavailable" as const]))
-        }));
-      });
-    return () => controller.abort();
-    // The stable address key is the intended dependency boundary.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [routeKey]);
-
-  const routeResolvedCount = sorted.filter((market) => {
-    if (!canVerifyExecution(market)) return true;
-    const state = executionAvailability[market.address.toLowerCase()];
-    return state !== undefined && state !== "checking";
-  }).length;
-  const tradeableCount = sorted.filter((market) => executionAvailability[market.address.toLowerCase()] === "ready").length;
-  const routeSyncing = routeResolvedCount < sorted.length;
 
   const changeView = (next: DiscoveryView) => {
     setView(next);
@@ -711,9 +600,7 @@ export function ExternalMarketFeedV10() {
     ? "Searching Robinhood Chain…"
     : normalizedQuery
       ? `${filtered.length} match${filtered.length === 1 ? "" : "es"}`
-      : tradeableOnly && routeSyncing
-        ? `Verifying routes · ${routeResolvedCount}/${sorted.length} checked · ${tradeableCount} tradeable`
-        : expanded
+      : expanded
           ? `Showing all ${filtered.length}`
           : `Top ${Math.min(MAX_VISIBLE_MARKETS, filtered.length)} of ${filtered.length}`;
 
@@ -753,9 +640,7 @@ export function ExternalMarketFeedV10() {
               if (value.trim()) {
                 setView("explore");
                 setShowAllMarkets(true);
-                setSourceFilter("all");
                 setVenueFilter("all");
-                setTradeableOnly(false);
               }
             }}
             placeholder="Search name, ticker, or contract · press /"
@@ -829,7 +714,7 @@ export function ExternalMarketFeedV10() {
         <small id="runner-market-count" aria-live="polite">{marketCountLabel}</small>
       </div>
 
-      <div className="runnerSourceFilters" role="group" aria-label="Filter markets by venue, route, and origin">
+      <div className="runnerSourceFilters" role="group" aria-label="Filter markets by observed venue">
         <span>Market</span>
         {VENUE_FILTERS.map((item) => (
           <button
@@ -842,31 +727,7 @@ export function ExternalMarketFeedV10() {
             {item.label}<b>{status === "loading" ? "—" : venueCounts[item.id]}</b>
           </button>
         ))}
-        <span className="runnerFilterDivider">Execute</span>
-        <button
-          type="button"
-          aria-pressed={tradeableOnly}
-          className={tradeableOnly ? "active executionFilter" : "executionFilter"}
-          onClick={() => { setTradeableOnly((current) => !current); setShowAllMarkets(view === "explore"); }}
-        >
-          {status === "loading" ? "Checking routes" : routeSyncing ? "Routes syncing" : "Tradeable"}<b>{status === "loading" ? "—" : routeSyncing ? `${routeResolvedCount}/${sorted.length}` : tradeableCount}</b>
-        </button>
-        <details className="runnerOriginFilters">
-          <summary>Source · {sourceFilter === "all" ? "All" : SOURCE_FILTERS.find((item) => item.id === sourceFilter)?.label}</summary>
-          <div>
-            {SOURCE_FILTERS.map((item) => (
-              <button
-                type="button"
-                aria-pressed={sourceFilter === item.id}
-                className={sourceFilter === item.id ? "active" : ""}
-                onClick={() => { setSourceFilter(item.id); setShowAllMarkets(view === "explore"); }}
-                key={item.id}
-              >
-                {item.label}<b>{status === "loading" ? "—" : sourceCounts[item.id]}</b>
-              </button>
-            ))}
-          </div>
-        </details>
+        <span className="runnerFilterDivider">Execution route checked on open</span>
       </div>
 
       <div className="runnerColumnHeader" aria-label="Sortable market columns">
@@ -886,13 +747,13 @@ export function ExternalMarketFeedV10() {
 
       <div id="runner-market-panel" role="tabpanel" aria-labelledby={`runner-tab-${view}`}>
         {status === "loading" ? (
-          <div className="emptyFeed" role="status"><strong>Loading market intelligence…</strong><span>Scanning liquidity, price action, two-sided flow, origin evidence, and executable routes.</span></div>
+          <div className="emptyFeed" role="status"><strong>Loading market intelligence…</strong><span>Scanning liquidity, price action, two-sided flow, and origin evidence.</span></div>
         ) : status === "error" ? (
           <div className="emptyFeed"><strong>Market discovery is temporarily unavailable.</strong><span>Direct venue trading remains available.</span><button type="button" onClick={() => void refresh()}>Try again</button></div>
         ) : visibleMarkets.length === 0 ? (
           <div className="emptyFeed">
-            <strong>{normalizedQuery ? "No markets match that search." : tradeableOnly ? "No verified routes match these filters." : "No markets meet this signal yet."}</strong>
-            <span>{normalizedQuery ? "Try a token name, ticker, or complete token or pool contract." : "Change a venue, origin, or execution filter."}</span>
+            <strong>{normalizedQuery ? "No markets match that search." : "No markets meet this signal yet."}</strong>
+            <span>{normalizedQuery ? "Try a token name, ticker, or complete token or pool contract." : "Change a venue or origin filter."}</span>
             {normalizedQuery && <button type="button" onClick={() => setMarketQuery("")}>Clear search</button>}
           </div>
         ) : (
@@ -902,9 +763,6 @@ export function ExternalMarketFeedV10() {
               const rank = rankByAddress.get(market.address.toLowerCase()) ?? index + 1;
               const addressKey = market.address.toLowerCase();
               const watched = watchedAddresses.has(addressKey);
-              const executionState: ExecutionAvailability = canVerifyExecution(market)
-                ? executionAvailability[addressKey] ?? "checking"
-                : "view-only";
               const distribution = marketDistributionPassport(market);
               const changeClass = changeTone(market.priceChange5m);
               const stockAssetLabel = market.stockAssetRelationships?.length
@@ -912,7 +770,7 @@ export function ExternalMarketFeedV10() {
                 : "";
               const reviewRequired = market.riskFlags.length > 0;
               const workspaceHref = `/market/${market.address}${reviewRequired ? "?tab=safety" : ""}`;
-              const mobileAction = reviewRequired ? "Review" : executionState === "ready" ? "Trade" : executionState === "checking" ? "Verifying" : "Open";
+              const mobileAction = reviewRequired ? "Review" : "Trade";
               return (
                 <article className="externalMarketCard runnerMarketCard" data-signal={market.signal} key={market.address}>
                   <div className="mobileRunnerMarketRow">
@@ -925,7 +783,7 @@ export function ExternalMarketFeedV10() {
                         <em>{distribution.shortLabel}</em>
                       </span>
                     </Link>
-                    <Link className={`mobileRunnerTrade ${reviewRequired ? "review" : executionState}`} href={workspaceHref}>{mobileAction}</Link>
+                    <Link className={`mobileRunnerTrade ${reviewRequired ? "review" : "ready"}`} href={workspaceHref}>{mobileAction}</Link>
                     <div className="mobileRunnerMetrics" aria-label={`${market.name} market snapshot`}>
                       <span><small>{value.label}</small><strong>{money(value.value)}</strong></span>
                       <span className={`mobileRunnerMove ${changeClass}`}><small>5m</small><strong>{signedPercent(market.priceChange5m)}</strong></span>
@@ -985,16 +843,10 @@ export function ExternalMarketFeedV10() {
                     {market.riskFlags.length > 0 && <em>{riskSummary(market.riskFlags)}</em>}
                   </div>
 
-                  {executionState === "ready" ? (
-                    <div className="externalMarketActions">
-                      <Link className="buyCardAction" href={`/market/${market.address}?side=buy`} onClick={() => recordExperienceStage("trade_preparation_opened")}>Buy</Link>
-                      <Link className="sellCardAction" href={`/market/${market.address}?side=sell`} onClick={() => recordExperienceStage("trade_preparation_opened")}>Sell</Link>
-                    </div>
-                  ) : (
-                    <span className="externalBadge">
-                      {executionState === "checking" ? "VERIFYING IN-SITE ROUTE" : executionState === "view-only" ? "VIEW ONLY · NO VERIFIED ROUTE" : "CHECK ROUTE IN WORKSPACE"}
-                    </span>
-                  )}
+                  <div className="externalMarketActions">
+                    <Link className="buyCardAction" href={`/market/${market.address}?side=buy`} onClick={() => recordExperienceStage("trade_preparation_opened")}>Buy</Link>
+                    <Link className="sellCardAction" href={`/market/${market.address}?side=sell`} onClick={() => recordExperienceStage("trade_preparation_opened")}>Sell</Link>
+                  </div>
                   <a className="externalChartLink" href={market.url} target="_blank" rel="noreferrer">{market.curve ? "Open verified curve ↗" : "Chart & pair ↗"}</a>
                 </article>
               );
@@ -1005,7 +857,7 @@ export function ExternalMarketFeedV10() {
 
       <details className="externalDisclosure">
         <summary>Data and methodology</summary>
-        <p>Market data uses validated public DEX snapshots and documented project-source APIs. Project identity is attached only after the source token and launch pool agree with the discovered market. Launch source is secondary evidence—not the ranking. Signals are automated review candidates, not investment recommendations or profit guarantees. Buy and Sell always enter the full RMT workspace, request a fresh Sushi or Uniswap quote, re-check the route, and require wallet review.</p>
+        <p>Market data uses validated public DEX snapshots and documented project records. Project identity is attached only after its token and referenced market agree with the observed market. Provenance is evidence—not the ranking, an endorsement, or an execution promise. Signals are automated review candidates, not investment recommendations or profit guarantees. Buy and Sell always enter the full RMT workspace, request a fresh Sushi or Uniswap quote, re-check the route, and require wallet review.</p>
       </details>
     </section>
   );

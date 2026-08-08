@@ -21,22 +21,6 @@ const SOURCES: LaunchpadSource[] = [
     disclosure: "RMT-native origin and external-market evidence remain visibly separate. New public creation stays paused until V7."
   },
   {
-    name: "Pons",
-    url: "https://pons.family",
-    status: "live",
-    statusLabel: "LIVE · ATTRIBUTED",
-    capability: "Origin · Metadata · Markets",
-    disclosure: "RMT attaches Pons identity only after factory and token records agree with the discovered live market."
-  },
-  {
-    name: "Lemon",
-    url: "https://lemon.fun",
-    status: "live",
-    statusLabel: "LIVE · ATTRIBUTED",
-    capability: "Origin · Metadata · Markets",
-    disclosure: "RMT attaches Lemon identity only when its documented public record, token, pool, and live DEX market match."
-  },
-  {
     name: "DEX Screener",
     url: "https://docs.dexscreener.com/api/reference",
     status: "live",
