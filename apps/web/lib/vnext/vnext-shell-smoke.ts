@@ -14,6 +14,14 @@ assert.match(chrome, /"\/vnext"/);
 assert.equal(vnextShellAvailable({ NODE_ENV: "development" }), true);
 assert.equal(vnextShellAvailable({ NODE_ENV: "production", VERCEL_ENV: "preview" }), true);
 assert.equal(vnextShellAvailable({ NODE_ENV: "production", VERCEL_ENV: "production" }), false);
+assert.equal(
+  vnextShellAvailable({
+    NODE_ENV: "production",
+    VERCEL_ENV: "production",
+    NEXT_PUBLIC_RMT_VNEXT_SHELL_ENABLED: "true",
+  }),
+  false,
+);
 assert.equal(vnextShellAvailable({ NODE_ENV: "production" }), false);
 assert.equal(vnextShellAvailable({ NODE_ENV: "production", NEXT_PUBLIC_RMT_VNEXT_SHELL_ENABLED: "true" }), true);
 
