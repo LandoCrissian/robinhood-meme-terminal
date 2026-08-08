@@ -1,4 +1,4 @@
-type VNextShellEnvironment = Partial<Pick<
+export type VNextShellEnvironment = Partial<Pick<
   NodeJS.ProcessEnv,
   "NODE_ENV" | "VERCEL_ENV" | "NEXT_PUBLIC_RMT_VNEXT_SHELL_ENABLED"
 >>;
