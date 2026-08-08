@@ -70,7 +70,7 @@ function safeText(value: string, fallback: string, maximum: number) {
   return normalized || fallback;
 }
 
-async function readToken(address: Address): Promise<TokenIdentity | null> {
+export async function readRobinhoodTokenIdentity(address: Address): Promise<TokenIdentity | null> {
   try {
     const [code, name, symbol, decimals, totalSupply] = await Promise.all([
       client.getBytecode({ address }),
@@ -257,7 +257,7 @@ export async function resolveUniversalMarketAddress(
   if (!isAddress(requested) || requested.toLowerCase() === zeroAddress) return null;
   const address = getAddress(requested);
   const quotes = quoteTokens(stockRegistry);
-  const tokenReader = dependencies.readToken ?? readToken;
+  const tokenReader = dependencies.readToken ?? readRobinhoodTokenIdentity;
   const poolReader = dependencies.readPool ?? readPool;
   const poolDiscovery = dependencies.discoverPools ?? discoverPools;
   let token = await tokenReader(address);
