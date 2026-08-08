@@ -28,6 +28,22 @@ export type SushiIndicativeQuote = {
   verifiedInput: true;
 };
 
+export type SushiAssetIndicativeQuote = {
+  chainId: 4663;
+  venue: "sushi-aggregator";
+  protocol: "SUSHI";
+  inputAsset: Address;
+  outputAsset: Address;
+  amountIn: string;
+  quoteOut: string;
+  minimumOut: string;
+  priceImpact: number;
+  inputToken?: SushiTokenMetadata;
+  outputToken?: SushiTokenMetadata;
+  executable: false;
+  verifiedInput: true;
+};
+
 export type SushiExecutableQuote = Omit<SushiIndicativeQuote, "executable"> & {
   router: Address;
   executor: Address;

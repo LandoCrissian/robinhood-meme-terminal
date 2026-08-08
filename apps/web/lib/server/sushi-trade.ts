@@ -13,6 +13,7 @@ import {
   SUSHI_NATIVE_TOKEN,
   SUSHI_QUOTE_SLIPPAGE_BPS,
   SUSHI_RED_SNWAPPER,
+  type SushiAssetIndicativeQuote,
   type SushiExecutableQuote,
   type SushiIndicativeQuote,
   type SushiTokenMetadata
@@ -107,13 +108,47 @@ export async function quoteSushiRoute(
   } = {}
 ): Promise<SushiIndicativeQuote> {
   const chainId = dependencies.chainId ?? activeChain.id;
-  if (chainId !== 4663) throw new Error("Sushi quotes are available only on Robinhood Chain mainnet.");
-  if (!(dependencies.enabled ?? sushiQuotesEnabled())) throw new Error("Sushi quote discovery is not enabled.");
-  if (params.amountIn <= 0n || params.amountIn > MAX_UINT256) throw new Error("Trade amount is outside the supported range.");
   if (params.recipient.toLowerCase() === zeroAddress) throw new Error("A valid wallet recipient is required.");
 
   const tokenIn = params.side === "buy" ? SUSHI_NATIVE_TOKEN : params.token;
   const tokenOut = params.side === "buy" ? params.token : SUSHI_NATIVE_TOKEN;
+  const quote = await quoteSushiAssetRoute({ inputAsset: tokenIn, outputAsset: tokenOut, amountIn: params.amountIn }, dependencies);
+
+  return {
+    chainId,
+    venue: "sushi-aggregator",
+    protocol: "SUSHI",
+    token: getAddress(params.token),
+    recipient: getAddress(params.recipient),
+    side: params.side,
+    amountIn: quote.amountIn,
+    quoteOut: quote.quoteOut,
+    minimumOut: quote.minimumOut,
+    priceImpact: quote.priceImpact,
+    inputToken: quote.inputToken,
+    outputToken: quote.outputToken,
+    executable: false,
+    verifiedInput: true
+  };
+}
+
+export async function quoteSushiAssetRoute(
+  params: { inputAsset: Address; outputAsset: Address; amountIn: bigint },
+  dependencies: {
+    fetch?: SushiFetch;
+    enabled?: boolean;
+    timeoutMs?: number;
+    chainId?: number;
+    requireTokenMetadata?: boolean;
+  } = {}
+): Promise<SushiAssetIndicativeQuote> {
+  const chainId = dependencies.chainId ?? activeChain.id;
+  if (chainId !== 4663) throw new Error("Sushi quotes are available only on Robinhood Chain mainnet.");
+  if (!(dependencies.enabled ?? sushiQuotesEnabled())) throw new Error("Sushi quote discovery is not enabled.");
+  if (params.amountIn <= 0n || params.amountIn > MAX_UINT256) throw new Error("Trade amount is outside the supported range.");
+  const tokenIn = getAddress(params.inputAsset);
+  const tokenOut = getAddress(params.outputAsset);
+  if (tokenIn.toLowerCase() === tokenOut.toLowerCase()) throw new Error("Sushi input and output assets must differ.");
   const url = new URL(`${SUSHI_QUOTE_API}/${chainId}`);
   url.searchParams.set("tokenIn", tokenIn);
   url.searchParams.set("tokenOut", tokenOut);
@@ -155,12 +190,11 @@ export async function quoteSushiRoute(
   }
 
   return {
-    chainId,
+    chainId: 4663,
     venue: "sushi-aggregator",
     protocol: "SUSHI",
-    token: getAddress(params.token),
-    recipient: getAddress(params.recipient),
-    side: params.side,
+    inputAsset: tokenIn,
+    outputAsset: tokenOut,
     amountIn: params.amountIn.toString(),
     quoteOut: quoteOut.toString(),
     minimumOut: minimumOut.toString(),
