@@ -1,0 +1,1526 @@
+body:has(.rmtVnext) {
+  margin: 0;
+  overflow-x: hidden;
+  background: #0b0e0c;
+}
+
+body:has(.rmtVnext) .communityLive {
+  display: none;
+}
+
+.rmtVnext,
+.rmtVnext * {
+  box-sizing: border-box;
+}
+
+body .rmtVnext {
+  --vn-canvas: #0b0e0c;
+  --vn-sidebar: #0f1310;
+  --vn-surface: #121713;
+  --vn-surface-raised: #171d18;
+  --vn-surface-soft: #1c231d;
+  --vn-border: rgba(223, 239, 222, 0.1);
+  --vn-border-strong: rgba(223, 239, 222, 0.18);
+  --vn-text: #f4f7f3;
+  --vn-text-secondary: #aeb8ae;
+  --vn-text-muted: #748075;
+  --vn-accent: #82f28f;
+  --vn-accent-strong: #a8ff9d;
+  --vn-accent-soft: rgba(130, 242, 143, 0.12);
+  --vn-warning: #f3c77e;
+  --vn-negative: #ff8c8c;
+  --vn-focus: rgba(130, 242, 143, 0.55);
+  --vn-radius-sm: 10px;
+  --vn-radius-md: 16px;
+  --vn-radius-lg: 24px;
+  position: relative;
+  display: grid;
+  grid-template-columns: 224px minmax(0, 1fr);
+  width: 100%;
+  max-width: none;
+  min-height: 100svh;
+  margin: 0;
+  padding: 0;
+  color: var(--vn-text);
+  background:
+    radial-gradient(circle at 78% 3%, rgba(95, 177, 103, 0.08), transparent 27rem),
+    var(--vn-canvas);
+  font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 14px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+
+.rmtVnext button,
+.rmtVnext input {
+  font: inherit;
+}
+
+.rmtVnext button,
+.rmtVnext a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.rmtVnext button:focus-visible,
+.rmtVnext a:focus-visible,
+.rmtVnext input:focus-visible {
+  outline: 3px solid var(--vn-focus);
+  outline-offset: 2px;
+}
+
+.vnSrOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.vnSkipLink {
+  position: fixed;
+  z-index: 100;
+  top: 12px;
+  left: 12px;
+  padding: 10px 14px;
+  color: #071008;
+  background: var(--vn-accent);
+  border-radius: 10px;
+  font-weight: 800;
+  transform: translateY(-180%);
+  transition: transform 150ms ease;
+}
+
+.vnSkipLink:focus {
+  transform: translateY(0);
+}
+
+.vnSidebar {
+  position: sticky;
+  z-index: 10;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100svh;
+  padding: 24px 18px;
+  background: color-mix(in srgb, var(--vn-sidebar) 96%, transparent);
+  border-right: 1px solid var(--vn-border);
+}
+
+.vnBrand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  padding: 2px 8px;
+  color: var(--vn-text);
+  text-decoration: none;
+}
+
+.vnBrand img,
+.vnMobileBrand img {
+  display: block;
+  border-radius: 11px;
+  box-shadow: 0 0 0 1px rgba(130, 242, 143, 0.14), 0 12px 28px rgba(0, 0, 0, 0.28);
+}
+
+.vnBrand > span {
+  display: grid;
+  line-height: 1.08;
+}
+
+.vnBrand strong {
+  font-size: 17px;
+  letter-spacing: 0.08em;
+}
+
+.vnBrand small {
+  margin-top: 4px;
+  color: var(--vn-text-muted);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.vnPrimaryNav {
+  display: grid;
+  gap: 7px;
+  margin-top: 42px;
+}
+
+.vnPrimaryNav button,
+.vnMobileDock button {
+  border: 0;
+  color: var(--vn-text-secondary);
+  background: transparent;
+  cursor: pointer;
+}
+
+.vnPrimaryNav button {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  min-height: 46px;
+  padding: 0 14px;
+  border-radius: 12px;
+  font-weight: 680;
+  text-align: left;
+}
+
+.vnPrimaryNav button span {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  color: var(--vn-text-muted);
+  font-size: 19px;
+}
+
+.vnPrimaryNav button:hover,
+.vnPrimaryNav button.isActive {
+  color: var(--vn-text);
+  background: var(--vn-surface-soft);
+}
+
+.vnPrimaryNav button.isActive span {
+  color: var(--vn-accent);
+}
+
+.vnSidebarFoot {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  margin-top: auto;
+  padding: 14px 11px 4px;
+  color: var(--vn-text-secondary);
+}
+
+.vnSidebarFoot > span:last-child {
+  display: grid;
+  line-height: 1.2;
+}
+
+.vnSidebarFoot strong {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.vnSidebarFoot small {
+  margin-top: 3px;
+  color: var(--vn-text-muted);
+  font-size: 10px;
+}
+
+.vnNetworkDot,
+.vnChainLabel i,
+.vnBalancePrimary small i,
+.vnRouteTop i {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--vn-accent);
+  box-shadow: 0 0 0 4px rgba(130, 242, 143, 0.09), 0 0 14px rgba(130, 242, 143, 0.35);
+}
+
+.vnApp {
+  min-width: 0;
+}
+
+.vnTopbar {
+  position: sticky;
+  z-index: 9;
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 76px;
+  padding: 0 clamp(20px, 3vw, 44px);
+  background: rgba(11, 14, 12, 0.82);
+  border-bottom: 1px solid var(--vn-border);
+  backdrop-filter: blur(18px);
+}
+
+.vnMobileBrand {
+  display: none;
+}
+
+.vnTopbarTitle,
+.vnTopbarActions,
+.vnChainLabel,
+.vnWalletButton {
+  display: flex;
+  align-items: center;
+}
+
+.vnTopbarTitle {
+  gap: 12px;
+}
+
+.vnPreviewPill {
+  padding: 5px 9px;
+  color: var(--vn-accent-strong);
+  background: var(--vn-accent-soft);
+  border: 1px solid rgba(130, 242, 143, 0.2);
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.vnChainLabel {
+  gap: 8px;
+  color: var(--vn-text-secondary);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.vnTopbarActions {
+  gap: 10px;
+}
+
+.vnIconButton,
+.vnWalletButton {
+  min-height: 42px;
+  border: 1px solid var(--vn-border-strong);
+  color: var(--vn-text);
+  background: var(--vn-surface);
+  cursor: pointer;
+}
+
+.vnIconButton {
+  position: relative;
+  width: 42px;
+  border-radius: 50%;
+  font-size: 20px;
+}
+
+.vnUnread {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 6px;
+  height: 6px;
+  background: var(--vn-accent);
+  border: 2px solid var(--vn-surface);
+  border-radius: 50%;
+}
+
+.vnWalletButton {
+  gap: 9px;
+  padding: 5px 11px 5px 6px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 720;
+}
+
+.vnWalletButton b {
+  color: var(--vn-text-muted);
+  font-size: 10px;
+}
+
+.vnWalletAvatar {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  color: #0b150d;
+  background: linear-gradient(145deg, var(--vn-accent-strong), #64c971);
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.vnCanvas {
+  width: min(100%, 1720px);
+  margin: 0 auto;
+  padding: clamp(20px, 2.5vw, 38px) clamp(18px, 3vw, 44px) 48px;
+}
+
+.vnBalanceBar {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.25fr) repeat(2, minmax(150px, 0.72fr)) auto;
+  align-items: stretch;
+  min-height: 120px;
+  overflow: hidden;
+  background: linear-gradient(135deg, rgba(25, 33, 27, 0.98), rgba(17, 22, 18, 0.96));
+  border: 1px solid var(--vn-border-strong);
+  border-radius: var(--vn-radius-lg);
+  box-shadow: 0 22px 54px rgba(0, 0, 0, 0.18);
+}
+
+.vnBalancePrimary,
+.vnBalanceMetric,
+.vnBalanceActions {
+  padding: 22px 26px;
+}
+
+.vnBalancePrimary,
+.vnBalanceMetric {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  border-right: 1px solid var(--vn-border);
+}
+
+.vnBalancePrimary > span,
+.vnBalanceMetric > span,
+.vnAmountField > span,
+.vnReceiveField > span,
+.vnAvailableLine span {
+  color: var(--vn-text-muted);
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.vnBalancePrimary > strong {
+  margin-top: 3px;
+  font-size: clamp(30px, 3vw, 42px);
+  font-weight: 760;
+  letter-spacing: -0.045em;
+  line-height: 1.1;
+}
+
+.vnBalancePrimary small,
+.vnBalanceMetric small {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 8px;
+  color: var(--vn-text-muted);
+  font-size: 11px;
+}
+
+.vnBalanceMetric strong {
+  margin-top: 8px;
+  font-size: 21px;
+  letter-spacing: -0.025em;
+}
+
+.rmtVnext .vnPositive {
+  color: var(--vn-accent);
+}
+
+.rmtVnext .vnNegative {
+  color: var(--vn-negative);
+}
+
+.vnBalanceActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.vnPrimaryButton,
+.vnQuietButton,
+.vnReviewButton {
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: 12px;
+  font-weight: 780;
+  cursor: pointer;
+}
+
+.vnPrimaryButton {
+  border: 1px solid transparent;
+  color: #0a120b;
+  background: linear-gradient(135deg, var(--vn-accent-strong), #70de7d);
+  box-shadow: 0 8px 22px rgba(94, 205, 107, 0.16);
+}
+
+.vnQuietButton {
+  border: 1px solid var(--vn-border-strong);
+  color: var(--vn-text-secondary);
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.vnWorkspaceGrid {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.76fr) minmax(430px, 1.45fr) minmax(320px, 0.86fr);
+  gap: 18px;
+  margin-top: 18px;
+  align-items: start;
+}
+
+.vnMarketPanel,
+.vnAssetPanel,
+.vnTradePanel {
+  min-width: 0;
+  background: linear-gradient(150deg, rgba(19, 24, 20, 0.98), rgba(15, 19, 16, 0.98));
+  border: 1px solid var(--vn-border);
+  border-radius: var(--vn-radius-lg);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.13);
+}
+
+.vnMarketPanel,
+.vnAssetPanel {
+  min-height: 624px;
+}
+
+.vnMarketPanel {
+  padding: 22px;
+}
+
+.vnSectionHeading,
+.vnAssetHeader,
+.vnPriceHeader,
+.vnTradeHeader,
+.vnRouteTop,
+.vnAvailableLine {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.vnSectionHeading h1,
+.vnTradeHeader h2 {
+  margin: 2px 0 0;
+  font-size: 22px;
+  line-height: 1.15;
+  letter-spacing: -0.025em;
+}
+
+.vnEyebrow {
+  color: var(--vn-accent);
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.vnFilterButton,
+.vnStarButton {
+  min-height: 38px;
+  border: 1px solid var(--vn-border);
+  color: var(--vn-text-secondary);
+  background: var(--vn-surface-raised);
+  cursor: pointer;
+}
+
+.vnFilterButton {
+  padding: 0 12px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.vnSearch {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  height: 46px;
+  margin-top: 22px;
+  padding: 0 12px;
+  color: var(--vn-text-muted);
+  background: rgba(4, 7, 5, 0.36);
+  border: 1px solid var(--vn-border-strong);
+  border-radius: 12px;
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+
+.vnSearch > span:first-child {
+  font-size: 18px;
+}
+
+.vnSearch input {
+  width: auto;
+  height: 100%;
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  outline: 0;
+  color: var(--vn-text);
+  background: transparent;
+  box-shadow: none;
+  font-size: 13px;
+}
+
+.vnSearch input::placeholder {
+  color: #687169;
+}
+
+.vnSearch kbd {
+  display: grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  border: 1px solid var(--vn-border);
+  border-radius: 6px;
+  color: var(--vn-text-muted);
+  background: var(--vn-surface-raised);
+  font-family: inherit;
+  font-size: 10px;
+  flex: 0 0 auto;
+}
+
+.vnMarketTabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  margin: 14px 0 8px;
+  padding: 4px;
+  background: rgba(4, 7, 5, 0.28);
+  border-radius: 11px;
+}
+
+.vnMarketTabs button,
+.vnSideTabs button,
+.vnTimeframes button,
+.vnQuickAmounts button {
+  border: 0;
+  color: var(--vn-text-muted);
+  background: transparent;
+  cursor: pointer;
+  font-weight: 720;
+}
+
+.vnMarketTabs button {
+  min-height: 34px;
+  border-radius: 8px;
+  font-size: 11px;
+}
+
+.vnMarketTabs button.isActive,
+.vnSideTabs button.isActive,
+.vnQuickAmounts button.isActive {
+  color: var(--vn-text);
+  background: var(--vn-surface-soft);
+  box-shadow: inset 0 0 0 1px var(--vn-border);
+}
+
+.vnMarketList {
+  display: grid;
+  gap: 4px;
+}
+
+.vnMarketRow {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) auto;
+  grid-template-areas: "mark identity price" "mark identity signal";
+  column-gap: 10px;
+  row-gap: 4px;
+  align-items: center;
+  width: 100%;
+  min-height: 70px;
+  padding: 9px 10px;
+  border: 1px solid transparent;
+  border-radius: 13px;
+  color: var(--vn-text);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.vnMarketRow:hover {
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.vnMarketRow.isSelected {
+  background: linear-gradient(90deg, rgba(130, 242, 143, 0.1), rgba(130, 242, 143, 0.025));
+  border-color: rgba(130, 242, 143, 0.18);
+}
+
+.vnMarketMark {
+  grid-area: mark;
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 12px;
+  color: #0e170f;
+  background: linear-gradient(145deg, #c2ffad, #5eb86a);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  font-size: 14px;
+  font-weight: 950;
+}
+
+.vnMarketMarkTHINK { background: linear-gradient(145deg, #f1cf9c, #a17144); }
+.vnMarketMarkMOG { background: linear-gradient(145deg, #c4b8ff, #7869b9); }
+.vnMarketMarkNOVA { background: linear-gradient(145deg, #9bdff4, #4e91a7); }
+
+.vnMarketIdentity {
+  grid-area: identity;
+  display: grid;
+  min-width: 0;
+}
+
+.vnMarketIdentity strong {
+  font-size: 13px;
+  letter-spacing: 0.01em;
+}
+
+.vnMarketIdentity small,
+.vnAssetIdentity small {
+  overflow: hidden;
+  margin-top: 3px;
+  color: var(--vn-text-muted);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vnMarketPrice {
+  grid-area: price;
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  justify-self: end;
+}
+
+.vnMarketPrice strong {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.vnMarketPrice small {
+  font-size: 9px;
+  font-weight: 750;
+}
+
+.vnSignal {
+  grid-area: signal;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  justify-self: end;
+  color: var(--vn-text-muted);
+  font-size: 9px;
+  font-weight: 720;
+}
+
+.vnSignal i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.vnSignalpositive { color: var(--vn-accent); }
+.vnSignalwarning { color: var(--vn-warning); }
+
+.vnViewAll {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 40px;
+  margin-top: 9px;
+  padding: 0 11px;
+  border: 0;
+  color: var(--vn-text-secondary);
+  background: transparent;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 720;
+}
+
+.vnNoResults {
+  display: grid;
+  gap: 4px;
+  min-height: 176px;
+  place-content: center;
+  padding: 24px;
+  color: var(--vn-text-secondary);
+  text-align: center;
+}
+
+.vnNoResults span {
+  color: var(--vn-text-muted);
+  font-size: 11px;
+}
+
+.vnAssetPanel {
+  padding: 24px;
+}
+
+.vnAssetIdentity {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 12px;
+}
+
+.vnAssetIdentity > div {
+  display: grid;
+  min-width: 0;
+}
+
+.vnAssetIdentity > div > span {
+  display: flex;
+  align-items: baseline;
+  min-width: 0;
+  gap: 8px;
+}
+
+.vnAssetIdentity h2 {
+  overflow: hidden;
+  margin: 0;
+  font-size: 18px;
+  letter-spacing: -0.02em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vnAssetIdentity b {
+  color: var(--vn-text-muted);
+  font-size: 11px;
+}
+
+.vnStarButton {
+  width: 40px;
+  flex: 0 0 auto;
+  border-radius: 12px;
+  font-size: 21px;
+}
+
+.vnPriceHeader {
+  margin-top: 30px;
+}
+
+.vnPriceHeader > div:first-child {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.vnPriceHeader > div:first-child > strong {
+  font-size: clamp(28px, 3vw, 36px);
+  letter-spacing: -0.045em;
+}
+
+.vnPriceHeader > div:first-child > span {
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.vnPriceHeader small {
+  color: var(--vn-text-muted);
+  font-size: 9px;
+}
+
+.vnTimeframes {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.vnTimeframes button {
+  min-width: 37px;
+  min-height: 32px;
+  border-radius: 8px;
+  font-size: 10px;
+}
+
+.vnTimeframes button.isActive {
+  color: #0a120b;
+  background: var(--vn-accent);
+}
+
+.vnChartWrap {
+  position: relative;
+  height: 260px;
+  margin: 20px -5px 0;
+  overflow: hidden;
+}
+
+.vnChart {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.vnChartGrid path {
+  fill: none;
+  stroke: rgba(210, 230, 211, 0.055);
+  stroke-width: 1;
+}
+
+.vnChartArea { fill: url(#vnChartFill); }
+.vnChartLine { fill: none; stroke: url(#vnChartStroke); stroke-width: 2.5; vector-effect: non-scaling-stroke; }
+.vnChartPoint { fill: var(--vn-accent-strong); stroke: rgba(130, 242, 143, 0.2); stroke-width: 9; }
+
+.vnChartNow {
+  position: absolute;
+  right: 4px;
+  bottom: 5px;
+  color: var(--vn-text-muted);
+  font-size: 9px;
+}
+
+.vnAssetStats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  margin: 8px 0 0;
+  overflow: hidden;
+  background: var(--vn-border);
+  border: 1px solid var(--vn-border);
+  border-radius: 13px;
+}
+
+.vnAssetStats div {
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+  background: var(--vn-surface);
+}
+
+.vnAssetStats dt {
+  color: var(--vn-text-muted);
+  font-size: 9px;
+  text-transform: uppercase;
+}
+
+.vnAssetStats dd {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.vnEvidence {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-top: 18px;
+  padding: 14px 16px;
+  background: rgba(130, 242, 143, 0.055);
+  border: 1px solid rgba(130, 242, 143, 0.11);
+  border-radius: 13px;
+}
+
+.vnEvidence > div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.vnEvidence > div > span:last-child {
+  display: grid;
+}
+
+.vnEvidenceIcon {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  place-items: center;
+  color: #0a130b;
+  background: var(--vn-accent);
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.vnEvidence strong {
+  font-size: 11px;
+}
+
+.vnEvidence small {
+  margin-top: 2px;
+  color: var(--vn-text-muted);
+  font-size: 9px;
+}
+
+.vnEvidence button {
+  border: 0;
+  color: var(--vn-accent);
+  background: transparent;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.vnTradePanel {
+  position: sticky;
+  top: 94px;
+  padding: 22px;
+}
+
+.vnFixtureBadge {
+  padding: 5px 8px;
+  color: var(--vn-warning);
+  background: rgba(243, 199, 126, 0.08);
+  border: 1px solid rgba(243, 199, 126, 0.15);
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 780;
+}
+
+.vnSideTabs {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 5px;
+  margin-top: 20px;
+  padding: 4px;
+  background: rgba(4, 7, 5, 0.4);
+  border-radius: 12px;
+}
+
+.vnSideTabs button {
+  min-height: 40px;
+  border-radius: 9px;
+}
+
+.vnSideTabs button.isActive {
+  color: #09120a;
+  background: var(--vn-accent);
+  box-shadow: none;
+}
+
+.vnAvailableLine {
+  margin-top: 18px;
+}
+
+.vnAvailableLine strong {
+  font-size: 11px;
+}
+
+.vnAmountField,
+.vnReceiveField {
+  display: block;
+  margin-top: 10px;
+  padding: 14px;
+  background: rgba(4, 7, 5, 0.35);
+  border: 1px solid var(--vn-border-strong);
+  border-radius: 14px;
+}
+
+.vnAmountField > div,
+.vnReceiveField > div {
+  display: flex;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.vnCurrencyBadge {
+  margin-right: 4px;
+  color: var(--vn-text-muted);
+  font-size: 22px;
+  font-weight: 500;
+}
+
+.vnAmountField input {
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  color: var(--vn-text);
+  background: transparent;
+  font-size: 26px;
+  font-weight: 720;
+  letter-spacing: -0.03em;
+}
+
+.vnAmountField button,
+.vnReceiveField button {
+  flex: 0 0 auto;
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--vn-border);
+  border-radius: 10px;
+  color: var(--vn-text);
+  background: var(--vn-surface-soft);
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 780;
+}
+
+.vnQuickAmounts {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.vnQuickAmounts button {
+  min-height: 34px;
+  border: 1px solid var(--vn-border);
+  border-radius: 9px;
+  font-size: 10px;
+}
+
+.vnQuickAmounts button.isActive {
+  color: var(--vn-accent);
+  border-color: rgba(130, 242, 143, 0.22);
+  background: var(--vn-accent-soft);
+}
+
+.vnSwapDivider {
+  position: relative;
+  display: grid;
+  height: 18px;
+  place-items: center;
+}
+
+.vnSwapDivider span {
+  position: absolute;
+  z-index: 1;
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  color: var(--vn-accent);
+  background: var(--vn-surface-soft);
+  border: 4px solid var(--vn-surface);
+  border-radius: 9px;
+}
+
+.vnReceiveField {
+  margin-top: 0;
+}
+
+.vnReceiveField strong {
+  width: 100%;
+  font-size: 22px;
+  letter-spacing: -0.025em;
+}
+
+.vnReceiveField > small {
+  display: block;
+  margin-top: 6px;
+  color: var(--vn-text-muted);
+  font-size: 10px;
+}
+
+.vnRouteCard {
+  margin-top: 13px;
+  padding: 14px;
+  background: rgba(130, 242, 143, 0.04);
+  border: 1px solid rgba(130, 242, 143, 0.13);
+  border-radius: 13px;
+}
+
+.vnRouteTop span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--vn-accent);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.vnRouteTop strong {
+  font-size: 11px;
+}
+
+.vnRouteCard dl {
+  display: grid;
+  gap: 7px;
+  margin: 12px 0 0;
+}
+
+.vnRouteCard dl div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.vnRouteCard dt,
+.vnRouteCard dd {
+  font-size: 10px;
+}
+
+.vnRouteCard dt { color: var(--vn-text-muted); }
+.vnRouteCard dd { margin: 0; color: var(--vn-text-secondary); font-weight: 700; }
+
+.vnRouteCard > button {
+  width: 100%;
+  margin-top: 12px;
+  padding: 10px 0 0;
+  border: 0;
+  border-top: 1px solid var(--vn-border);
+  color: var(--vn-text-secondary);
+  background: transparent;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.vnReviewButton {
+  width: 100%;
+  margin-top: 13px;
+  border: 1px solid rgba(130, 242, 143, 0.16);
+  color: rgba(7, 15, 8, 0.58);
+  background: linear-gradient(135deg, rgba(168, 255, 157, 0.7), rgba(112, 222, 125, 0.7));
+  cursor: not-allowed;
+}
+
+.vnTradeFootnote {
+  margin: 10px 4px 0;
+  color: var(--vn-text-muted);
+  font-size: 9px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.vnMobileDock {
+  display: none;
+}
+
+@media (max-width: 1280px) {
+  body .rmtVnext {
+    grid-template-columns: 82px minmax(0, 1fr);
+  }
+
+  .vnSidebar {
+    align-items: center;
+    padding-inline: 12px;
+  }
+
+  .vnBrand > span,
+  .vnPrimaryNav button:not(.isActive)::after,
+  .vnPrimaryNav button {
+    font-size: 0;
+  }
+
+  .vnBrand {
+    padding: 2px;
+  }
+
+  .vnPrimaryNav button {
+    justify-content: center;
+    width: 48px;
+    padding: 0;
+  }
+
+  .vnPrimaryNav button span {
+    font-size: 20px;
+  }
+
+  .vnSidebarFoot > span:last-child {
+    display: none;
+  }
+
+  .vnWorkspaceGrid {
+    grid-template-columns: minmax(260px, 0.72fr) minmax(430px, 1.25fr);
+  }
+
+  .vnTradePanel {
+    position: relative;
+    top: auto;
+    grid-column: 1 / -1;
+  }
+
+  .vnTradePanel {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 18px;
+  }
+
+  .vnTradeHeader,
+  .vnSideTabs,
+  .vnAvailableLine,
+  .vnReviewButton,
+  .vnTradeFootnote {
+    grid-column: 1 / -1;
+  }
+
+  .vnQuickAmounts { grid-column: 1; }
+  .vnSwapDivider { display: none; }
+  .vnReceiveField { grid-column: 2; grid-row: 4 / span 2; margin-top: 10px; }
+  .vnRouteCard { grid-column: 2; }
+}
+
+@media (max-width: 920px) {
+  .vnBalanceBar {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .vnBalanceActions {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+    padding-top: 0;
+  }
+
+  .vnWorkspaceGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .vnMarketPanel,
+  .vnAssetPanel {
+    min-height: auto;
+  }
+
+  .vnMarketPanel {
+    order: 1;
+  }
+
+  .vnAssetPanel {
+    order: 2;
+  }
+
+  .vnTradePanel {
+    order: 3;
+  }
+}
+
+@media (max-width: 760px) {
+  body:has(.rmtVnext) {
+    padding-bottom: 74px;
+  }
+
+  body .rmtVnext {
+    display: block;
+    min-height: calc(100svh - 74px);
+  }
+
+  .vnSidebar {
+    display: none;
+  }
+
+  .vnTopbar {
+    height: 64px;
+    padding: 0 14px;
+  }
+
+  .vnMobileBrand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    letter-spacing: 0.06em;
+  }
+
+  .vnTopbarTitle {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .vnChainLabel,
+  .vnIconButton,
+  .vnWalletButton > span:not(.vnWalletAvatar),
+  .vnWalletButton b {
+    display: none;
+  }
+
+  .vnWalletButton {
+    min-width: 42px;
+    min-height: 44px;
+    padding: 5px;
+  }
+
+  .vnCanvas {
+    padding: 14px 12px 30px;
+  }
+
+  .vnBalanceBar {
+    grid-template-columns: 1.15fr 0.85fr;
+    border-radius: 20px;
+  }
+
+  .vnBalancePrimary,
+  .vnBalanceMetric,
+  .vnBalanceActions {
+    padding: 18px;
+  }
+
+  .vnBalancePrimary {
+    grid-row: span 2;
+  }
+
+  .vnBalanceMetric {
+    border-right: 0;
+    border-bottom: 1px solid var(--vn-border);
+  }
+
+  .vnBalanceMetric:nth-child(3) {
+    border-bottom: 0;
+  }
+
+  .vnBalancePrimary > strong {
+    margin-top: 6px;
+    font-size: 32px;
+  }
+
+  .vnBalanceMetric strong {
+    font-size: 16px;
+  }
+
+  .vnBalanceActions {
+    grid-column: 1 / -1;
+    padding-top: 14px;
+    border-top: 1px solid var(--vn-border);
+  }
+
+  .vnBalanceActions button {
+    flex: 1;
+  }
+
+  .vnWorkspaceGrid {
+    gap: 12px;
+    margin-top: 12px;
+  }
+
+  .vnMarketPanel,
+  .vnAssetPanel,
+  .vnTradePanel {
+    border-radius: 20px;
+  }
+
+  .vnMarketPanel,
+  .vnAssetPanel,
+  .vnTradePanel {
+    padding: 18px;
+  }
+
+  .vnMarketRow {
+    min-height: 68px;
+  }
+
+  .vnAssetPanel {
+    padding-bottom: 20px;
+  }
+
+  .vnPriceHeader {
+    align-items: flex-end;
+    margin-top: 24px;
+  }
+
+  .vnPriceHeader > div:first-child {
+    display: grid;
+    gap: 2px;
+  }
+
+  .vnChartWrap {
+    height: 190px;
+    margin-top: 14px;
+  }
+
+  .vnAssetStats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .vnEvidence {
+    align-items: flex-start;
+  }
+
+  .vnEvidence button {
+    max-width: 82px;
+    text-align: right;
+  }
+
+  .vnTradePanel {
+    display: block;
+  }
+
+  .vnReceiveField {
+    margin-top: 0;
+  }
+
+  .vnSwapDivider {
+    display: grid;
+  }
+
+  .vnMobileDock {
+    position: fixed;
+    z-index: 30;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    min-height: 70px;
+    padding: 6px max(8px, env(safe-area-inset-right)) max(6px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+    background: rgba(13, 17, 14, 0.96);
+    border-top: 1px solid var(--vn-border-strong);
+    backdrop-filter: blur(18px);
+  }
+
+  .vnMobileDock button {
+    display: grid;
+    min-height: 54px;
+    place-content: center;
+    gap: 2px;
+    border-radius: 10px;
+    font-size: 9px;
+    font-weight: 700;
+  }
+
+  .vnMobileDock button span {
+    color: var(--vn-text-muted);
+    font-size: 18px;
+  }
+
+  .vnMobileDock button.isActive {
+    color: var(--vn-accent);
+  }
+
+  .vnMobileDock button.isActive span {
+    color: var(--vn-accent);
+  }
+}
+
+@media (max-width: 420px) {
+  .vnPreviewPill {
+    max-width: 82px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .vnBalancePrimary,
+  .vnBalanceMetric {
+    padding-inline: 14px;
+  }
+
+  .vnBalancePrimary > strong {
+    font-size: 29px;
+  }
+
+  .vnBalanceMetric > span {
+    font-size: 9px;
+  }
+
+  .vnBalanceMetric strong {
+    font-size: 14px;
+  }
+
+  .vnAssetIdentity h2 {
+    max-width: 180px;
+  }
+
+  .vnTimeframes button {
+    min-width: 32px;
+  }
+
+  .vnEvidence small {
+    white-space: normal;
+  }
+
+  .vnFilterButton,
+  .vnStarButton,
+  .vnMarketTabs button,
+  .vnTimeframes button,
+  .vnQuickAmounts button {
+    min-height: 44px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rmtVnext *,
+  .rmtVnext *::before,
+  .rmtVnext *::after {
+    scroll-behavior: auto;
+    transition-duration: 0.01ms;
+    animation-duration: 0.01ms;
+    animation-iteration-count: 1;
+  }
+}

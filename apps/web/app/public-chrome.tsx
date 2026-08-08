@@ -8,7 +8,7 @@ import { isMainnetRelease } from "../lib/network";
 import { useProfile } from "./profile-provider";
 import { WalletButton } from "./wallet-button";
 
-const HIDDEN_PREFIXES = ["/activate-consent-testnet", "/admin", "/deploy-consent-testnet", "/deploy-mainnet", "/deploy-testnet", "/mainnet-smoke"];
+const HIDDEN_PREFIXES = ["/activate-consent-testnet", "/admin", "/deploy-consent-testnet", "/deploy-mainnet", "/deploy-testnet", "/mainnet-smoke", "/vnext"];
 const MORE_PREFIXES = ["/portfolio", "/protection", "/launch", "/sources", "/sushi", "/rescue", "/support", "/experience", "/risks"];
 
 function currentPage(pathname: string, href: string) {
