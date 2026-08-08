@@ -75,6 +75,8 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
   const handledExecution = useRef<string | undefined>(undefined);
   const pendingTradeAfterLogin = useRef(false);
   const continuedApproval = useRef<string | undefined>(undefined);
+  const lastReadyQuote = useRef<VNextQuoteResponse | undefined>(undefined);
+  const lastReadyVerification = useRef<VNextPreSignEvidence | undefined>(undefined);
   const receiptAction = useRef<HTMLButtonElement>(null);
   const { address, chainId, isConnected } = useAccount();
   const identity = useRmtIdentity();
@@ -156,6 +158,8 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
     setVerificationState({ state: "idle" });
     setAuthorizationState({ state: "idle" });
     setPostExecutionState({ state: "idle" });
+    lastReadyQuote.current = undefined;
+    lastReadyVerification.current = undefined;
     pendingTradeAfterLogin.current = false;
     continuedApproval.current = undefined;
   }, [requestKey]);
@@ -203,8 +207,18 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
       window.removeEventListener("keydown", closeOnEscape);
     };
   }, [postExecutionState.state]);
-  const routeSelection = quoteState.state === "ready"
-    ? selectVNextRoute(quoteState.response.attempts)
+  const visibleQuote = quoteState.state === "ready"
+    ? quoteState.response
+    : quoteState.state === "loading"
+      ? lastReadyQuote.current
+      : undefined;
+  const visibleVerification = verificationState.state === "ready"
+    ? verificationState.evidence
+    : verificationState.state === "loading"
+      ? lastReadyVerification.current
+      : undefined;
+  const routeSelection = visibleQuote
+    ? selectVNextRoute(visibleQuote.attempts)
     : { bestObserved: undefined, verificationCandidate: undefined, usesVerifiedBackup: false };
   const bestQuote = routeSelection.bestObserved;
   const verificationQuote = routeSelection.verificationCandidate;
@@ -345,9 +359,11 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
     clearTradeQuoteCache();
     try {
       const freshQuote = await requestLiveRoutes();
+      lastReadyQuote.current = freshQuote;
       setQuoteState({ state: "ready", response: freshQuote });
       stage = "verification";
       const freshEvidence = await requestStrictVerification(freshQuote);
+      lastReadyVerification.current = freshEvidence;
       setVerificationState({ state: "ready", evidence: freshEvidence });
       if (!["verified", "approval_required"].includes(freshEvidence.status)) {
         throw new Error(freshEvidence.status === "insufficient_balance"
@@ -378,8 +394,10 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
     clearTradeQuoteCache();
     try {
       const freshQuote = await requestLiveRoutes();
+      lastReadyQuote.current = freshQuote;
       setQuoteState({ state: "ready", response: freshQuote });
       const freshEvidence = await requestStrictVerification(freshQuote);
+      lastReadyVerification.current = freshEvidence;
       setVerificationState({ state: "ready", evidence: freshEvidence });
       const outcome = postApprovalVerificationOutcome(freshEvidence);
       setPostExecutionState(outcome);
@@ -410,16 +428,16 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
     void continueAfterApproval();
   }, [executionRecord, postExecutionState.state]);
 
-  const verificationLabel = verificationState.state === "ready"
-    ? verificationState.evidence.status === "verified"
+  const verificationLabel = visibleVerification
+    ? visibleVerification.status === "verified"
       ? "Exact simulation passed"
-      : verificationState.evidence.status === "approval_required"
+      : visibleVerification.status === "approval_required"
         ? "Approval required"
-        : verificationState.evidence.status === "insufficient_balance"
+        : visibleVerification.status === "insufficient_balance"
           ? "Insufficient balance"
-          : verificationState.evidence.status === "insufficient_gas"
+          : visibleVerification.status === "insufficient_gas"
             ? "Insufficient ETH for gas"
-            : verificationState.evidence.status === "gas_unavailable"
+            : visibleVerification.status === "gas_unavailable"
               ? "Gas estimate unavailable"
           : "Simulation failed"
     : null;
@@ -536,7 +554,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
         <small>{postExecutionState.message}</small>
       </div> : null}
       <details className="vnRouteCard">
-        <summary className="vnRouteTop"><span><i aria-hidden="true" /> Advanced execution details</span><strong>{verificationState.state === "ready" ? verificationLabel : quoteState.state === "ready" ? "Routes compared" : draft.intent ? "Ready" : "Not ready"}</strong></summary>
+        <summary className="vnRouteTop"><span><i aria-hidden="true" /> Advanced execution details</span><strong>{visibleVerification ? verificationLabel : visibleQuote ? "Routes compared" : draft.intent ? "Ready" : "Not ready"}</strong></summary>
         <dl className="vnIntentSummary">
           <div><dt>Input</dt><dd>{inputSymbol}</dd></div>
           <div><dt>Output</dt><dd>{outputSymbol}</dd></div>
@@ -549,8 +567,8 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
           : inputBalance
             ? `Confirmed ${inputSymbol} balance is the source for percentage and Max controls.`
             : `Confirmed ${inputSymbol} balance is not detected. Percentage controls remain disabled.`}</p> : null}
-        {quoteState.state === "ready" ? <div className="vnQuoteAttempts">
-          {quoteState.response.attempts.map((attempt) => (
+        {visibleQuote ? <div className="vnQuoteAttempts">
+          {visibleQuote.attempts.map((attempt) => (
             <div className={attempt.status === "indicative" ? "isReady" : ""} key={attempt.provider}>
               <span><strong>{attempt.providerLabel}</strong><small>{attempt.executionKind === "aggregator" ? "Aggregator" : "Direct AMM"} · {attempt.latencyMs}ms</small></span>
               <span><strong>{attempt.status === "indicative" && attempt.outputDecimals !== null ? `${formatAtomicDisplay(attempt.protectedOutputAtomic!, attempt.outputDecimals)} ${outputSymbol}` : attempt.status === "no_route" ? "No route" : attempt.status === "invalid_response" ? "Rejected" : "Unavailable"}</strong><small>{attempt.status === "indicative"
@@ -567,7 +585,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
           <div><dt>Trader gas</dt><dd>Unknown until executable route</dd></div>
           <div><dt>RMT fee</dt><dd>Not enabled</dd></div>
         </dl>}
-        {quoteState.state === "ready" ? <div className="vnVerificationGate">
+        {visibleQuote ? <div className="vnVerificationGate">
           <div>
             <span><strong>Strict pre-sign evidence</strong><small>{verificationQuote
               ? routeSelection.usesVerifiedBackup
@@ -576,16 +594,18 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
               : "No observed route has a strict verifier available yet"}</small></span>
           </div>
           {verificationState.state === "error" ? <p className="isError" role="status">{verificationState.message}</p> : null}
-          {verificationState.state === "ready" ? <div className={`vnVerificationEvidence is${verificationState.evidence.status}`}>
-            <span><strong>{verificationLabel}</strong><small>{authorizationEnabled ? "RMT completed the internal checks from your single trade action" : "Authorization remains disabled in this preview"}</small></span>
+          {visibleVerification ? <div className={`vnVerificationEvidence is${visibleVerification.status}`} aria-busy={verificationState.state === "loading"}>
+            <span><strong>{verificationLabel}</strong><small>{verificationState.state === "loading"
+              ? "Last verified evidence remains stable while its replacement is checked"
+              : authorizationEnabled ? "RMT completed the internal checks from your single trade action" : "Authorization remains disabled in this preview"}</small></span>
             <dl>
-              <div><dt>Route</dt><dd>{verificationState.evidence.route === "direct" ? "Direct V3" : "V3 via WETH"}</dd></div>
-              <div><dt>Protected</dt><dd>{formatAtomicDisplay(verificationState.evidence.protectedOutputAtomic, verificationQuote?.outputDecimals ?? 18)} {outputSymbol}</dd></div>
-              <div><dt>Simulation</dt><dd>{verificationState.evidence.exactSimulationPassed ? "Passed" : "Not passed"}</dd></div>
-              <div><dt>Next action</dt><dd>{verificationState.evidence.nextAction === "approval" ? "Exact approval" : verificationState.evidence.nextAction === "swap" ? "Verified swap" : "Blocked"}</dd></div>
-              <div><dt>Gas</dt><dd>{verificationState.evidence.gasState}</dd></div>
-              <div><dt>Gas reserve</dt><dd>{verificationState.evidence.estimatedNetworkCostWei ? `${formatAtomicDisplay(verificationState.evidence.estimatedNetworkCostWei, 18)} ETH` : "Unavailable"}</dd></div>
-              <div><dt>Calldata</dt><dd>{shortAddress(verificationState.evidence.calldataHash)}</dd></div>
+              <div><dt>Route</dt><dd>{visibleVerification.route === "direct" ? "Direct V3" : "V3 via WETH"}</dd></div>
+              <div><dt>Protected</dt><dd>{formatAtomicDisplay(visibleVerification.protectedOutputAtomic, verificationQuote?.outputDecimals ?? 18)} {outputSymbol}</dd></div>
+              <div><dt>Simulation</dt><dd>{visibleVerification.exactSimulationPassed ? "Passed" : "Not passed"}</dd></div>
+              <div><dt>Next action</dt><dd>{visibleVerification.nextAction === "approval" ? "Exact approval" : visibleVerification.nextAction === "swap" ? "Verified swap" : "Blocked"}</dd></div>
+              <div><dt>Gas</dt><dd>{visibleVerification.gasState}</dd></div>
+              <div><dt>Gas reserve</dt><dd>{visibleVerification.estimatedNetworkCostWei ? `${formatAtomicDisplay(visibleVerification.estimatedNetworkCostWei, 18)} ETH` : "Unavailable"}</dd></div>
+              <div><dt>Calldata</dt><dd>{shortAddress(visibleVerification.calldataHash)}</dd></div>
             </dl>
             {authorizationState.state === "error" ? <p className="vnAuthorizationError" role="status">{authorizationState.message}</p> : null}
             {authorizationState.state === "ready" ? <div className="vnAuthorizationPlan" role="status">
@@ -596,7 +616,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
                 <div><dt>Payload</dt><dd>{shortAddress(authorizationState.plan.payloadHash)}</dd></div>
                 <div><dt>Expires</dt><dd>{new Date(authorizationState.plan.expiresAtMs).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</dd></div>
               </dl>
-              <VNextWalletReview autoRequest key={authorizationState.plan.planId} plan={authorizationState.plan} evidence={verificationState.evidence} />
+              <VNextWalletReview autoRequest key={authorizationState.plan.planId} plan={authorizationState.plan} evidence={visibleVerification} />
             </div> : null}
           </div> : null}
         </div> : null}

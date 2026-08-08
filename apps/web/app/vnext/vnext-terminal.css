@@ -52,8 +52,14 @@ body .rmtVnext {
 }
 
 .rmtVnext button,
-.rmtVnext input {
+.rmtVnext input,
+.rmtVnext select {
   font: inherit;
+  font-variant-numeric: tabular-nums;
+}
+
+.rmtVnext {
+  font-variant-numeric: tabular-nums;
 }
 
 .rmtVnext button,
@@ -339,6 +345,7 @@ body .rmtVnext {
   width: min(100%, 1720px);
   margin: 0 auto;
   padding: clamp(20px, 2.5vw, 38px) clamp(18px, 3vw, 44px) 48px;
+  overflow-anchor: none;
 }
 
 .vnBalanceBar {
