@@ -53,6 +53,7 @@
     "test:stock-assets": "tsx lib/server/robinhood-stock-token-registry-smoke.ts",
     "test:live-signals": "tsx lib/live-signal-engine-smoke.ts",
     "test:transaction-integrity": "tsx lib/uniswap-transaction-integrity-smoke.ts && tsx lib/server/rmt-execution-fee-smoke.ts",
+    "test:vnext-domain": "tsx lib/vnext/execution-domain-smoke.ts",
     "test:trading-terms": "tsx lib/trading-terms-smoke.ts",
     "test:experience": "tsx lib/experience-funnel-smoke.ts",
     "test:external-trades": "tsx lib/external-trades-smoke.ts",
