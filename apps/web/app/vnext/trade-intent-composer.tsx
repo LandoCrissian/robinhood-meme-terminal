@@ -430,6 +430,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
   const walletPlanActive = authorizationState.state === "ready";
   const transactionPending = executionRecord?.state === "submitted";
   const triggerPrimaryAction = () => {
+    if (!identity.enabled) return;
     if (!identity.authenticated || !address) {
       pendingTradeAfterLogin.current = true;
       identity.login();
@@ -502,7 +503,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
       <button
         className="vnReviewButton"
         type="button"
-        disabled={flowBusy || walletPlanActive || transactionPending || amountExceedsBalance || !identity.ready || Boolean(identity.authenticated && address && !draft.intent)}
+        disabled={flowBusy || walletPlanActive || transactionPending || amountExceedsBalance || !identity.enabled || !identity.ready || Boolean(identity.authenticated && address && !draft.intent)}
         onClick={triggerPrimaryAction}
       >{postExecutionState.state === "refreshing"
         ? "Preparing verified swap…"
@@ -512,10 +513,14 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
             ? "Complete review in wallet…"
           : flowBusy
             ? "Finding best execution…"
+            : !identity.enabled
+              ? "Trading identity unavailable"
             : !address || !identity.authenticated
               ? `${side === "buy" ? "Connect & buy" : "Connect & sell"} ${marketSymbol}`
               : `${authorizationEnabled ? "" : "Preview "}${side === "buy" ? "Buy" : "Sell"} ${marketSymbol}`}</button>
-      <p className="vnTradeSafety">One action handles routing, verification, simulation, and exact payload preparation. Your wallet always shows the final authorization.</p>
+      <p className="vnTradeSafety">{identity.enabled
+        ? "One action handles routing, verification, simulation, and exact payload preparation. Your wallet always shows the final authorization."
+        : "Trading identity is not configured in this environment. RMT will not request a quote or prepare a wallet transaction."}</p>
       {postExecutionState.state !== "idle" ? <div className={`vnPostExecution is${postExecutionState.state}`} role="status">
         <strong>{postExecutionState.state === "approval_confirmed"
           ? "Approval confirmed · fresh execution required"
