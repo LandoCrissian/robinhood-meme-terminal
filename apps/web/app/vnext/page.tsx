@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import { vnextShellAvailable } from "../../lib/vnext/vnext-shell-access";
 import { VNextTerminalShell } from "./vnext-terminal-shell";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "RMT Terminal VNext Preview",
   description: "A non-executable design preview of the next RMT trading terminal."
