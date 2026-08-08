@@ -2,26 +2,14 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useMemo, useState } from "react";
-
-type MarketFixture = {
-  symbol: string;
-  name: string;
-  price: string;
-  change: string;
-  liquidity: string;
-  signal: string;
-  tone: "positive" | "warning" | "neutral";
-  age: string;
-  holding: string;
-};
-
-const markets: MarketFixture[] = [
-  { symbol: "RMT", name: "Robinhood Meme Terminal", price: "$0.00418", change: "+18.4%", liquidity: "$286K", signal: "Momentum", tone: "positive", age: "V6 native", holding: "86,205 RMT" },
-  { symbol: "THINK", name: "Thinking Cat", price: "$0.000842", change: "+7.8%", liquidity: "$142K", signal: "Active", tone: "positive", age: "2d", holding: "41,822 THINK" },
-  { symbol: "MOG", name: "Mog on Robinhood", price: "$0.0124", change: "−2.1%", liquidity: "$91K", signal: "Review", tone: "warning", age: "6h", holding: "0 MOG" },
-  { symbol: "NOVA", name: "Nova Protocol", price: "$0.0781", change: "+1.2%", liquidity: "$418K", signal: "Steady", tone: "neutral", age: "14d", holding: "1,204 NOVA" }
-];
+import { useCallback, useMemo, useRef, useState } from "react";
+import type { VNextDetectedWalletAsset } from "../../lib/vnext/wallet-assets";
+import { WalletButton } from "../wallet-button";
+import { SpendBalance } from "./spend-balance";
+import { TradeIntentComposer } from "./trade-intent-composer";
+import { VNextExecutionRecoveryBanner } from "./vnext-execution-recovery-banner";
+import { useVNextExecutionRecovery } from "./use-vnext-execution-recovery";
+import { useVNextMarketDirectory } from "./use-vnext-market-directory";
 
 const navItems = [
   { label: "Terminal", icon: "⌂" },
@@ -34,42 +22,49 @@ function MarketMark({ symbol }: { symbol: string }) {
   return <span className={`vnMarketMark vnMarketMark${symbol}`} aria-hidden="true">{symbol.slice(0, 1)}</span>;
 }
 
-function TrendChart() {
-  return (
-    <svg className="vnChart" viewBox="0 0 680 240" role="img" aria-label="Illustrative seven-day RMT price trend">
-      <defs>
-        <linearGradient id="vnChartFill" x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0%" stopColor="#82f28f" stopOpacity="0.24" />
-          <stop offset="100%" stopColor="#82f28f" stopOpacity="0" />
-        </linearGradient>
-        <linearGradient id="vnChartStroke" x1="0" x2="1">
-          <stop offset="0%" stopColor="#6ede7c" />
-          <stop offset="100%" stopColor="#b9ff9f" />
-        </linearGradient>
-      </defs>
-      <g className="vnChartGrid">
-        <path d="M0 40H680M0 100H680M0 160H680M0 220H680" />
-        <path d="M80 0V240M220 0V240M360 0V240M500 0V240M640 0V240" />
-      </g>
-      <path className="vnChartArea" d="M0 205 C42 196 54 202 84 184 S140 181 165 154 S218 170 252 136 S310 143 338 112 S389 129 421 88 S476 105 509 70 S568 93 604 50 S648 52 680 24 L680 240 L0 240Z" />
-      <path className="vnChartLine" d="M0 205 C42 196 54 202 84 184 S140 181 165 154 S218 170 252 136 S310 143 338 112 S389 129 421 88 S476 105 509 70 S568 93 604 50 S648 52 680 24" />
-      <circle className="vnChartPoint" cx="680" cy="24" r="5" />
-    </svg>
-  );
+function formatUsd(value: number) {
+  if (!Number.isFinite(value) || value <= 0) return "—";
+  if (value >= 1) return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(value);
+  return `$${value.toLocaleString("en-US", { maximumSignificantDigits: 4 })}`;
+}
+
+function formatCompactUsd(value: number) {
+  if (!Number.isFinite(value) || value <= 0) return "—";
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", notation: "compact", maximumFractionDigits: 1 }).format(value);
+}
+
+function formatChange(value: number) {
+  if (!Number.isFinite(value)) return "—";
+  return `${value > 0 ? "+" : value < 0 ? "−" : ""}${Math.abs(value).toFixed(1)}%`;
+}
+
+function formatAge(minutes: number | null) {
+  if (minutes === null) return "Unknown";
+  if (minutes < 60) return `${Math.max(1, Math.floor(minutes))}m`;
+  if (minutes < 1_440) return `${Math.floor(minutes / 60)}h`;
+  return `${Math.floor(minutes / 1_440)}d`;
 }
 
 export function VNextTerminalShell() {
-  const [selectedSymbol, setSelectedSymbol] = useState("RMT");
-  const [side, setSide] = useState<"buy" | "sell">("buy");
-  const [amount, setAmount] = useState("100");
   const [query, setQuery] = useState("");
-
-  const selected = markets.find((market) => market.symbol === selectedSymbol) ?? markets[0];
+  const [walletAssets, setWalletAssets] = useState<VNextDetectedWalletAsset[]>([]);
+  const marketSearch = useRef<HTMLInputElement>(null);
+  const executionRecovery = useVNextExecutionRecovery();
+  const { markets, status, selected, selectedAsset, identityStatus, setSelectedAddress, refresh } = useVNextMarketDirectory();
   const filteredMarkets = useMemo(() => {
     const normalized = query.trim().toLowerCase();
-    if (!normalized) return markets;
-    return markets.filter((market) => `${market.symbol} ${market.name}`.toLowerCase().includes(normalized));
-  }, [query]);
+    const matches = !normalized ? markets : markets.filter((market) =>
+      `${market.symbol} ${market.name} ${market.address}`.toLowerCase().includes(normalized)
+    );
+    return matches.slice(0, 8);
+  }, [markets, query]);
+  const continueTrading = useCallback(() => {
+    setQuery("");
+    window.requestAnimationFrame(() => {
+      marketSearch.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      marketSearch.current?.focus({ preventScroll: true });
+    });
+  }, []);
 
   return (
     <main className="rmtVnext">
@@ -104,32 +99,13 @@ export function VNextTerminalShell() {
           </div>
           <div className="vnTopbarActions">
             <button className="vnIconButton" type="button" aria-label="Open notifications">○<span className="vnUnread" /></button>
-            <button className="vnWalletButton" type="button"><span className="vnWalletAvatar">L</span><span>0xF6d1…830F</span><b aria-hidden="true">⌄</b></button>
+            <WalletButton target="mainnet" showFunding={false} returnTo="/vnext" />
           </div>
         </header>
 
         <div className="vnCanvas" id="vnext-workspace">
-          <section className="vnBalanceBar" aria-labelledby="vn-balance-heading">
-            <div className="vnBalancePrimary">
-              <span id="vn-balance-heading">Available to trade</span>
-              <strong>$428.16</strong>
-              <small><i aria-hidden="true" /> Settled USDG</small>
-            </div>
-            <div className="vnBalanceMetric">
-              <span>Portfolio</span>
-              <strong>$1,862.34</strong>
-              <small className="vnPositive">+$84.22 today</small>
-            </div>
-            <div className="vnBalanceMetric">
-              <span>Pending</span>
-              <strong>+$102.82</strong>
-              <small>Awaiting settlement</small>
-            </div>
-            <div className="vnBalanceActions">
-              <button className="vnPrimaryButton" type="button"><span aria-hidden="true">＋</span> Deposit</button>
-              <button className="vnQuietButton" type="button">Withdraw</button>
-            </div>
-          </section>
+          <SpendBalance markets={markets} onAssetsChange={setWalletAssets} executionRecord={executionRecovery.record} />
+          <VNextExecutionRecoveryBanner record={executionRecovery.record} status={executionRecovery.status} />
 
           <div className="vnWorkspaceGrid">
             <section className="vnMarketPanel" aria-labelledby="vn-markets-heading">
@@ -140,7 +116,7 @@ export function VNextTerminalShell() {
               <label className="vnSearch">
                 <span aria-hidden="true">⌕</span>
                 <span className="vnSrOnly">Search markets</span>
-                <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search asset or address" />
+                <input ref={marketSearch} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search asset or address" />
                 <kbd>/</kbd>
               </label>
               <div className="vnMarketTabs" role="tablist" aria-label="Market categories">
@@ -149,89 +125,65 @@ export function VNextTerminalShell() {
                 <button type="button" role="tab" aria-selected="false">Watchlist</button>
               </div>
               <div className="vnMarketList" aria-live="polite">
+                {status === "loading" && markets.length === 0 && <div className="vnNoResults"><strong>Syncing markets</strong><span>Loading the fast directory. Routes are not being checked.</span></div>}
+                {status === "error" && markets.length === 0 && <div className="vnNoResults"><strong>Directory unavailable</strong><span>Market data could not be loaded. No asset has been marked untradeable.</span><button type="button" onClick={() => void refresh()}>Try again</button></div>}
                 {filteredMarkets.map((market) => (
                   <button
-                    className={`vnMarketRow${selected.symbol === market.symbol ? " isSelected" : ""}`}
-                    key={market.symbol}
+                    className={`vnMarketRow${selected?.address === market.address ? " isSelected" : ""}`}
+                    key={market.address}
                     type="button"
-                    onClick={() => setSelectedSymbol(market.symbol)}
-                    aria-pressed={selected.symbol === market.symbol}
+                    onClick={() => setSelectedAddress(market.address)}
+                    aria-pressed={selected?.address === market.address}
                   >
                     <MarketMark symbol={market.symbol} />
                     <span className="vnMarketIdentity"><strong>{market.symbol}</strong><small>{market.name}</small></span>
-                    <span className="vnMarketPrice"><strong>{market.price}</strong><small className={market.change.startsWith("+") ? "vnPositive" : "vnNegative"}>{market.change}</small></span>
-                    <span className={`vnSignal vnSignal${market.tone}`}><i aria-hidden="true" />{market.signal}</span>
+                    <span className="vnMarketPrice"><strong>{formatUsd(market.priceUsd)}</strong><small className={market.priceChange24h > 0 ? "vnPositive" : market.priceChange24h < 0 ? "vnNegative" : ""}>{formatChange(market.priceChange24h)}</small></span>
+                    <span className={`vnSignal vnSignal${market.signal === "moving" ? "positive" : market.signal === "early" ? "warning" : "neutral"}`}><i aria-hidden="true" />{market.signal}</span>
                   </button>
                 ))}
-                {filteredMarkets.length === 0 && <div className="vnNoResults"><strong>No matching assets</strong><span>Try a symbol, name, or verified contract address.</span></div>}
+                {status !== "loading" && markets.length > 0 && filteredMarkets.length === 0 && <div className="vnNoResults"><strong>No matching assets</strong><span>Try a symbol, name, or contract address.</span></div>}
               </div>
-              <button className="vnViewAll" type="button">View all markets <span aria-hidden="true">→</span></button>
+              <Link className="vnViewAll" href="/">Open current market directory <span aria-hidden="true">→</span></Link>
             </section>
 
-            <section className="vnAssetPanel" aria-labelledby="vn-asset-heading">
+            {selected ? <section className="vnAssetPanel" aria-labelledby="vn-asset-heading">
               <div className="vnAssetHeader">
                 <div className="vnAssetIdentity">
                   <MarketMark symbol={selected.symbol} />
-                  <div><span><h2 id="vn-asset-heading">{selected.name}</h2><b>{selected.symbol}</b></span><small>Robinhood Chain · Verified identity</small></div>
+                  <div><span><h2 id="vn-asset-heading">{selected.name}</h2><b>{selected.symbol}</b></span><small>Robinhood Chain · {identityStatus === "verified" ? "Verified identity" : identityStatus === "checking" ? "Identity checking" : "Detected asset"}</small></div>
                 </div>
                 <button className="vnStarButton" type="button" aria-label={`Add ${selected.symbol} to watchlist`}>☆</button>
               </div>
               <div className="vnPriceHeader">
-                <div><strong>{selected.price}</strong><span className={selected.change.startsWith("+") ? "vnPositive" : "vnNegative"}>{selected.change} <small>24h</small></span></div>
-                <div className="vnTimeframes" aria-label="Chart timeframe">
-                  {['1H', '1D', '1W', '1M'].map((timeframe) => <button className={timeframe === '1W' ? 'isActive' : ''} type="button" key={timeframe}>{timeframe}</button>)}
-                </div>
+                <div><strong>{formatUsd(selected.priceUsd)}</strong><span className={selected.priceChange24h > 0 ? "vnPositive" : selected.priceChange24h < 0 ? "vnNegative" : ""}>{formatChange(selected.priceChange24h)} <small>24h</small></span></div>
+                <Link className="vnOpenChart" href={`/market/${selected.address}`}>Open live chart <span aria-hidden="true">↗</span></Link>
               </div>
-              <div className="vnChartWrap"><TrendChart /><span className="vnChartNow">Now</span></div>
+              <div className="vnChartPending">
+                <span className="vnEyebrow">Price history</span>
+                <strong>No synthetic chart</strong>
+                <small>Live candles load in the current market workspace.</small>
+                <Link href={`/market/${selected.address}`}>Open verified market data <span aria-hidden="true">→</span></Link>
+              </div>
               <dl className="vnAssetStats">
-                <div><dt>Market cap</dt><dd>$4.18M</dd></div>
-                <div><dt>Liquidity</dt><dd>{selected.liquidity}</dd></div>
-                <div><dt>24h volume</dt><dd>$312K</dd></div>
-                <div><dt>Market age</dt><dd>{selected.age}</dd></div>
+                <div><dt>Market cap</dt><dd>{formatCompactUsd(selected.marketCapUsd)}</dd></div>
+                <div><dt>Liquidity</dt><dd>{formatCompactUsd(selected.liquidityUsd)}</dd></div>
+                <div><dt>24h volume</dt><dd>{formatCompactUsd(selected.volume24h)}</dd></div>
+                <div><dt>Market age</dt><dd>{formatAge(selected.ageMinutes)}</dd></div>
               </dl>
               <div className="vnEvidence">
-                <div><span className="vnEvidenceIcon" aria-hidden="true">✓</span><span><strong>Identity verified</strong><small>Chain and token contract confirmed</small></span></div>
-                <button type="button">View market evidence <span aria-hidden="true">→</span></button>
+                <div><span className="vnEvidenceIcon" aria-hidden="true">{identityStatus === "verified" ? "✓" : identityStatus === "checking" ? "…" : "!"}</span><span><strong>{identityStatus === "verified" ? "Identity verified" : identityStatus === "checking" ? "Checking identity" : "Identity not verified"}</strong><small>{identityStatus === "verified" ? "Chain, contract, and decimals confirmed" : identityStatus === "checking" ? "One selected-asset contract lookup" : "Execution remains blocked"}</small></span></div>
+                <Link href={`/market/${selected.address}`}>View market evidence <span aria-hidden="true">→</span></Link>
               </div>
-            </section>
+            </section> : <section className="vnAssetPanel vnAssetEmpty" aria-label="Market detail"><strong>{status === "loading" ? "Syncing market directory" : "Select a market"}</strong><span>No price, identity, or execution claims are shown until real directory data is available.</span></section>}
 
-            <aside className="vnTradePanel" aria-labelledby="vn-trade-heading">
-              <div className="vnTradeHeader">
-                <div><span className="vnEyebrow">Trade</span><h2 id="vn-trade-heading">{selected.symbol}</h2></div>
-                <span className="vnFixtureBadge">Preview data</span>
-              </div>
-              <div className="vnSideTabs" role="tablist" aria-label="Trade side">
-                <button className={side === "buy" ? "isActive" : ""} onClick={() => setSide("buy")} type="button" role="tab" aria-selected={side === "buy"}>Buy</button>
-                <button className={side === "sell" ? "isActive" : ""} onClick={() => setSide("sell")} type="button" role="tab" aria-selected={side === "sell"}>Sell</button>
-              </div>
-              <div className="vnAvailableLine"><span>{side === "buy" ? "Available" : "Your position"}</span><strong>{side === "buy" ? "$428.16" : selected.holding}</strong></div>
-              <label className="vnAmountField">
-                <span>You {side === "buy" ? "pay" : "sell"}</span>
-                <div>{side === "buy" && <span className="vnCurrencyBadge">$</span>}<input inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} aria-label={`Amount to ${side}`} /><button type="button">{side === "buy" ? "USDG" : selected.symbol} ⌄</button></div>
-              </label>
-              <div className="vnQuickAmounts">
-                {(side === "buy" ? ["25", "50", "100", "250"] : ["25%", "50%", "75%", "Max"]).map((preset) => (
-                  <button className={preset === amount ? "isActive" : ""} type="button" key={preset} onClick={() => setAmount(preset)}>{side === "buy" && preset !== "Max" ? "$" : ""}{preset}</button>
-                ))}
-              </div>
-              <div className="vnSwapDivider"><span aria-hidden="true">↓</span></div>
-              <div className="vnReceiveField">
-                <span>You receive</span>
-                <div><strong>{side === "buy" ? "24,581" : "$102.82"}</strong><button type="button">{side === "buy" ? selected.symbol : "USDG"} ⌄</button></div>
-                <small>Protected: {side === "buy" ? `24,312 ${selected.symbol}` : "$101.74 USDG"}</small>
-              </div>
-              <div className="vnRouteCard">
-                <div className="vnRouteTop"><span><i aria-hidden="true" /> Example best execution</span><strong>UniswapX</strong></div>
-                <dl>
-                  <div><dt>Trader gas</dt><dd>Filler pays</dd></div>
-                  <div><dt>Expected settlement</dt><dd>~8 sec</dd></div>
-                  <div><dt>RMT fee</dt><dd>Not enabled</dd></div>
-                </dl>
-                <button type="button">Compare example routes <span aria-hidden="true">⌄</span></button>
-              </div>
-              <button className="vnReviewButton" type="button" disabled>Preview only — trading disabled</button>
-              <p className="vnTradeFootnote">This isolated shell cannot request quotes, approvals, signatures, or transactions.</p>
-            </aside>
+            <TradeIntentComposer
+              marketName={selected?.name ?? "No market selected"}
+              marketSymbol={selected?.symbol ?? "—"}
+              marketAsset={selectedAsset}
+              walletAssets={walletAssets}
+              executionRecord={executionRecovery.record}
+              onContinueTrading={continueTrading}
+            />
           </div>
         </div>
       </div>
