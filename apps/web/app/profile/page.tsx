@@ -311,9 +311,11 @@ export default function ProfilePage() {
                     <button type="button" disabled={accountIdentity.linked.email} onClick={accountIdentity.linkEmail}>
                       {accountIdentity.linked.email ? "Email linked" : "Link email"}
                     </button>
-                    <button type="button" disabled={accountIdentity.linked.google} onClick={accountIdentity.linkGoogle}>
+                    {accountIdentity.supportsOAuth ? <button type="button" disabled={accountIdentity.linked.google} onClick={accountIdentity.linkGoogle}>
                       {accountIdentity.linked.google ? "Google linked" : "Link Google"}
-                    </button>
+                    </button> : <button type="button" disabled title="Open RMT in Safari or Chrome to link Google.">
+                      Google unavailable here
+                    </button>}
                     <button type="button" disabled={accountIdentity.linked.passkey} onClick={accountIdentity.linkPasskey}>
                       {accountIdentity.linked.passkey ? "Passkey linked" : "Add passkey"}
                     </button>

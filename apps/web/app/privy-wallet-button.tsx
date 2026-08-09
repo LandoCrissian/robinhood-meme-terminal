@@ -8,10 +8,12 @@ import { useCallback, useEffect, useState } from "react";
 import type { Address } from "viem";
 import { useAccount, useDisconnect, useSwitchChain } from "wagmi";
 import { recordExperienceStage } from "../lib/experience-funnel";
+import { metaMaskDappLink, walletBrowserEnvironment } from "../lib/mobile-wallet-link";
 import { FundWalletButton } from "./fund-wallet-button";
 import { WalletReceiveDialog } from "./wallet-receive-dialog";
 import { WalletTransferDialog } from "./wallet-transfer-dialog";
 import { OverlayPortal } from "./overlay-portal";
+import { useRmtIdentity } from "./rmt-identity";
 
 function shortAddress(address: string) {
   return `${address.slice(0, 6)}…${address.slice(-4)}`;
@@ -44,6 +46,7 @@ export function PrivyWalletButton({
   const [message, setMessage] = useState("");
   const [requestedWalletAddress, setRequestedWalletAddress] = useState("");
   const pathname = usePathname();
+  const identity = useRmtIdentity();
   const { ready, authenticated, logout, connectWallet } = usePrivy();
   const { wallets, ready: walletsReady } = useWallets();
   const { setActiveWallet } = useSetActiveWallet();
@@ -51,6 +54,13 @@ export function PrivyWalletButton({
   const { disconnect: disconnectWagmi } = useDisconnect();
   const targetChain = target === "mainnet" ? robinhoodChain : robinhoodChainTestnet;
   const { switchChain, isPending: isSwitching, error: switchError, reset: resetSwitch } = useSwitchChain();
+  const [walletEnvironment] = useState(() => {
+    if (typeof window === "undefined") return "desktop" as const;
+    return walletBrowserEnvironment(window.navigator.userAgent, Boolean((window as Window & { ethereum?: unknown }).ethereum));
+  });
+  const mobileMetaMaskUrl = walletEnvironment === "mobile-browser" && typeof window !== "undefined"
+    ? metaMaskDappLink(window.location.href)
+    : "";
   const { connectOrCreateWallet } = useConnectOrCreateWallet({
     onSuccess: async ({ wallet }) => {
       setRequestedWalletAddress(wallet.address.toLowerCase());
@@ -99,6 +109,50 @@ export function PrivyWalletButton({
   }
 
   if (!isConnected || !address) {
+    if (walletEnvironment === "mobile-wallet-browser") {
+      return (
+        <div className="walletMenu">
+          <button
+            className="wallet live connectTrigger"
+            type="button"
+            onClick={() => {
+              setMessage("");
+              recordExperienceStage("wallet_connect_started");
+              identity.login();
+            }}
+          >
+            Use this wallet
+          </button>
+          {message && <span className="networkSwitchError" role="alert">{message}</span>}
+        </div>
+      );
+    }
+    if (mobileMetaMaskUrl) {
+      return (
+        <div className="walletMenu mobileWalletEntry">
+          <a
+            className="wallet live connectTrigger mobileMetaMaskTrigger"
+            href={mobileMetaMaskUrl}
+            onClick={() => recordExperienceStage("wallet_connect_started")}
+          >
+            MetaMask
+          </a>
+          <button
+            className="wallet mobileOtherWalletTrigger"
+            type="button"
+            aria-label="Use RMT Wallet or another wallet"
+            onClick={() => {
+              setMessage("");
+              recordExperienceStage("wallet_connect_started");
+              connectOrCreateWallet();
+            }}
+          >
+            Other
+          </button>
+          {message && <span className="networkSwitchError" role="alert">{message}</span>}
+        </div>
+      );
+    }
     return (
       <div className="walletMenu">
         <button

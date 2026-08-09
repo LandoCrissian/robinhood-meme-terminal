@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import { useAccount, useConnect, useDisconnect, useSwitchChain } from "wagmi";
 import { FundWalletButton } from "./fund-wallet-button";
 import { recordExperienceStage } from "../lib/experience-funnel";
+import { metaMaskDappLink } from "../lib/mobile-wallet-link";
 import { speedWalletEnabled } from "../lib/privy-config";
 import { OverlayPortal } from "./overlay-portal";
 
@@ -59,7 +60,7 @@ function LegacyWalletButton({
   const { disconnect } = useDisconnect();
   const { switchChain, isPending: isSwitching, error: switchError, reset: resetSwitch } = useSwitchChain();
   const hasWalletConnect = connectors.some((connector) => connector.name === "WalletConnect");
-  const metaMaskUrl = `https://metamask.app.link/dapp/${currentUrl.replace(/^https?:\/\//, "")}`;
+  const metaMaskUrl = metaMaskDappLink(currentUrl);
 
   const clearPendingConnection = useCallback(() => {
     reset();

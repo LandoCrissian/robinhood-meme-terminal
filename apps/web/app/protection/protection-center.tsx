@@ -9,6 +9,7 @@ import {
   type LivePositionGuardReviewReason
 } from "../../lib/live-position-guard-review";
 import { LivePositionGuardControls } from "../live-position-guard-controls";
+import { useRmtIdentity } from "../rmt-identity";
 
 type ProtectionOrder = {
   id: string;
@@ -120,7 +121,8 @@ function protectedAmount(value: string | null) {
 }
 
 export function ProtectionCenter() {
-  const { authenticated, login, ready } = usePrivy();
+  const { authenticated, ready } = usePrivy();
+  const identity = useRmtIdentity();
   const { identityToken } = useIdentityToken();
   const { wallets, ready: walletsReady } = useWallets();
   const [payload, setPayload] = useState<ProtectionPayload>({});
@@ -209,7 +211,7 @@ export function ProtectionCenter() {
           <h1>Protection Center</h1>
           <p>Sign in to recover automatic Position Guard orders independently of browser storage, review continuing wallet authority, and revoke from the exact embedded wallet that authorized each order.</p>
           <div className="protectionCenterIntroActions">
-            <button type="button" onClick={login}>Sign in to review orders</button>
+            <button type="button" onClick={identity.login}>Sign in to review orders</button>
             <Link href="/">Return to terminal</Link>
           </div>
         </section>

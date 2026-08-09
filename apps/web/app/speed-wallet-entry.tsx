@@ -12,13 +12,15 @@ import { useSetActiveWallet } from "@privy-io/wagmi";
 import { useState } from "react";
 import { useAccount } from "wagmi";
 import { speedWalletEnabled } from "../lib/privy-config";
+import { useRmtIdentity } from "./rmt-identity";
 
 function shortAddress(address: string) {
   return `${address.slice(0, 6)}…${address.slice(-4)}`;
 }
 
 function ConfiguredSpeedWalletEntry() {
-  const { ready, authenticated, login, logout, user } = usePrivy();
+  const { ready, authenticated, logout, user } = usePrivy();
+  const identity = useRmtIdentity();
   const { wallets, ready: walletsReady } = useWallets();
   const { address: activeAddress } = useAccount();
   const { setActiveWallet } = useSetActiveWallet();
@@ -58,7 +60,7 @@ function ConfiguredSpeedWalletEntry() {
       {!ready || (authenticated && !walletsReady) ? (
         <button type="button" disabled>Checking Speed Wallet…</button>
       ) : !authenticated ? (
-        <button type="button" onClick={login}>Sign in or create RMT Wallet</button>
+        <button type="button" onClick={identity.login}>Sign in or create RMT Wallet</button>
       ) : !embeddedWallet ? (
         <button
           type="button"
