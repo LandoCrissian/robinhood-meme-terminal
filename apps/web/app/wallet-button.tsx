@@ -144,7 +144,7 @@ function LegacyWalletButton({
 
   return (
     <div className="walletConnectedActions">
-      {showFunding && pathname !== "/deploy-consent-testnet" && <FundWalletButton />}
+      {showFunding && pathname !== "/deploy-consent-testnet" && <FundWalletButton target={target} />}
       <button className="wallet live" title="Disconnect wallet" onClick={() => disconnect()}>
         {address ? shortAddress(address) : "Connected"}
       </button>

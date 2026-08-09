@@ -3,8 +3,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useAccount } from "wagmi";
+import type { Address } from "viem";
 import { speedWalletEnabled } from "../lib/privy-config";
 import { OverlayPortal } from "./overlay-portal";
+import { WalletReceiveDialog } from "./wallet-receive-dialog";
 
 const robinhoodConnectEnabled = process.env.NEXT_PUBLIC_ROBINHOOD_CONNECT_ENABLED === "true";
 const robinhoodConnectUrl = process.env.NEXT_PUBLIC_ROBINHOOD_CONNECT_URL?.trim();
@@ -31,15 +33,18 @@ function approvedRobinhoodUrl(value: string | undefined) {
 export function FundWalletButton({
   variant = "header",
   label = "Add funds",
+  target = "mainnet",
   open: controlledOpen,
   onOpenChange
 }: {
   variant?: "header" | "inline";
   label?: string;
+  target?: "testnet" | "mainnet";
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
 }) {
   const [internalOpen, setInternalOpen] = useState(false);
+  const [receiveOpen, setReceiveOpen] = useState(false);
   const open = controlledOpen ?? internalOpen;
   const setOpen = useCallback((value: boolean) => {
     if (controlledOpen === undefined) setInternalOpen(value);
@@ -88,7 +93,7 @@ export function FundWalletButton({
     };
   }, [close, open]);
 
-  return (
+  return <>
     <div className={`fundWalletMenu ${variant}`}>
       <button ref={trigger} className="fundWalletTrigger" type="button" aria-expanded={open} aria-controls="fund-wallet-dialog" onClick={() => setOpen(true)}>{label}</button>
       {open && <OverlayPortal>
@@ -117,10 +122,12 @@ export function FundWalletButton({
             : approvedUrl
               ? <a className="fundWalletPrimary" href={approvedUrl} target="_blank" rel="noopener noreferrer">Continue to Robinhood Connect ↗</a>
               : <button className="fundWalletPrimary" type="button" disabled>Secure funding activation pending</button>}
+          {address ? <button className="fundWalletSecondary" type="button" onClick={() => { close(); setReceiveOpen(true); }}>Receive at active wallet</button> : null}
           <a className="fundWalletSecondary" href="https://docs.robinhood.com/chain/bridging/" target="_blank" rel="noreferrer">Open official Robinhood Chain bridge options ↗</a>
           {!speedWalletEnabled && <small className="fundWalletDisclosure">Available methods depend on the provider, user, device, account, transaction, and region. RMT does not control eligibility.</small>}
         </div>
       </OverlayPortal>}
     </div>
-  );
+    {address ? <WalletReceiveDialog address={address as Address} open={receiveOpen} target={target} onClose={() => setReceiveOpen(false)} /> : null}
+  </>;
 }

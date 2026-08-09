@@ -152,7 +152,7 @@ export function PrivyWalletButton({
   return (
     <>
       <div className="walletConnectedActions">
-        {showFunding && pathname !== "/deploy-consent-testnet" && <FundWalletButton open={fundingOpen} onOpenChange={setFundingOpen} />}
+        {showFunding && pathname !== "/deploy-consent-testnet" && <FundWalletButton target={target} open={fundingOpen} onOpenChange={setFundingOpen} />}
         <div className="walletMenu">
           <button className="wallet live" type="button" aria-expanded={open} aria-controls="privy-wallet-dialog" onClick={() => setOpen((value) => !value)}>
             {shortAddress(address)}

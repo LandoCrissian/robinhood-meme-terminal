@@ -21,7 +21,7 @@
 .fundWalletPrimary,.fundWalletSecondary{display:flex;align-items:center;justify-content:center;width:100%;min-height:46px;padding:10px 13px;border-radius:11px;font:inherit;font-size:.73rem;font-weight:900;text-align:center;text-decoration:none}
 .fundWalletPrimary{border:0;background:#38ed67;color:#031207}
 .fundWalletPrimary:disabled{background:#243029;color:#7e8a82;cursor:not-allowed}
-.fundWalletSecondary{margin-top:8px;border:1px solid #314139;background:#111913;color:#b5c0b8}
+.fundWalletSecondary{margin-top:8px;border:1px solid #314139;background:#111913;color:#b5c0b8;cursor:pointer}
 .fundWalletDisclosure{display:block;margin-top:11px;color:#6f7c73;font-size:.62rem;line-height:1.45}
 .fundWalletMessage{margin:10px 0 0!important;padding:9px 10px;border:1px solid #314139;border-radius:9px;background:#0c130e;color:#a7b4aa!important;font-size:.67rem!important;line-height:1.4!important}
 .privyFundingUnavailable{display:flex;flex-direction:column;gap:5px;padding:12px;border:1px solid #485437;border-radius:11px;background:#17190f}.privyFundingUnavailable strong{color:#d7dfbd;font-size:.73rem}.privyFundingUnavailable span{color:#919b7c;font-size:.67rem;line-height:1.45}

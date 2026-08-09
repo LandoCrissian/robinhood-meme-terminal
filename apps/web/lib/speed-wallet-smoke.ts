@@ -50,6 +50,8 @@ assert.match(walletReceiveDialog, /Copy full address/, "Receive must show and co
 assert.match(walletButton, /<OverlayPortal>/, "Legacy wallet controls must escape the transformed header before rendering an overlay.");
 assert.match(privyWalletButton, /<OverlayPortal>/, "Privy wallet controls must escape the transformed header before rendering an overlay.");
 assert.match(fundWalletButton, /<OverlayPortal>/, "Funding controls must stay inside the visual viewport.");
+assert.match(fundWalletButton, /Receive at active wallet/, "Funding must retain a direct onchain receive path when provider funding is unavailable.");
+assert.match(fundWalletButton, /<WalletReceiveDialog/, "Funding recovery must reuse the exact active-wallet receive boundary.");
 assert.match(walletTransferDialog, /<OverlayPortal>/, "Transfer controls must stay inside the visual viewport.");
 assert.match(walletReceiveDialog, /<OverlayPortal>/, "Receive controls must stay inside the visual viewport.");
 assert.match(overlayPortal, /createPortal\(children, document\.body\)/, "Wallet sheets must render above transformed navigation and community layers.");
