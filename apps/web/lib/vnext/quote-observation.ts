@@ -3,7 +3,7 @@ import { z } from "zod";
 
 const MAX_CLOCK_SKEW_MS = 5_000;
 
-export type VNextQuoteProvider = "sushi" | "uniswap-v3";
+export type VNextQuoteProvider = "sushi" | "uniswap-v3" | "zero-x-swap" | "zero-x-gasless";
 export type VNextQuoteAttemptStatus =
   | "indicative"
   | "no_route"
@@ -13,7 +13,7 @@ export type VNextQuoteAttemptStatus =
 export type VNextQuoteAttempt = {
   provider: VNextQuoteProvider;
   providerLabel: string;
-  providerFamily: "sushi" | "uniswap";
+  providerFamily: "sushi" | "uniswap" | "zeroex";
   adapterVersion: 1;
   status: VNextQuoteAttemptStatus;
   chainId: 4_663;
@@ -27,9 +27,13 @@ export type VNextQuoteAttempt = {
   quotedAtMs: number | null;
   expiresAtMs: number | null;
   latencyMs: number;
-  executionKind: "aggregator" | "direct_amm";
+  executionKind: "aggregator" | "direct_amm" | "gasless";
   strictVerificationAvailable: boolean;
   userPaysGas: boolean | null;
+  providerFeeAsset: string | null;
+  providerFeeAtomic: string | null;
+  gasSponsorshipFeeAsset: string | null;
+  gasSponsorshipFeeAtomic: string | null;
   explicitProviderFeeOutputAtomic: string | null;
   rmtFeeOutputAtomic: string | null;
   networkFeeNativeAtomic: string | null;
@@ -52,9 +56,9 @@ export type VNextQuoteResponse = {
 };
 
 const attemptSchema = z.object({
-  provider: z.enum(["sushi", "uniswap-v3"]),
+  provider: z.enum(["sushi", "uniswap-v3", "zero-x-swap", "zero-x-gasless"]),
   providerLabel: z.string().min(1).max(40),
-  providerFamily: z.enum(["sushi", "uniswap"]),
+  providerFamily: z.enum(["sushi", "uniswap", "zeroex"]),
   adapterVersion: z.literal(1),
   status: z.enum(["indicative", "no_route", "temporarily_unavailable", "invalid_response"]),
   chainId: z.literal(4_663),
@@ -68,9 +72,13 @@ const attemptSchema = z.object({
   quotedAtMs: z.number().nullable(),
   expiresAtMs: z.number().nullable(),
   latencyMs: z.number(),
-  executionKind: z.enum(["aggregator", "direct_amm"]),
+  executionKind: z.enum(["aggregator", "direct_amm", "gasless"]),
   strictVerificationAvailable: z.boolean(),
   userPaysGas: z.boolean().nullable(),
+  providerFeeAsset: z.string().nullable(),
+  providerFeeAtomic: z.string().nullable(),
+  gasSponsorshipFeeAsset: z.string().nullable(),
+  gasSponsorshipFeeAtomic: z.string().nullable(),
   explicitProviderFeeOutputAtomic: z.string().nullable(),
   rmtFeeOutputAtomic: z.string().nullable(),
   networkFeeNativeAtomic: z.string().nullable(),
@@ -102,7 +110,8 @@ export function assertVNextQuoteAttempt(
   nowMs: number
 ) {
   if (attempt.chainId !== 4_663) throw new Error("Quote attempt chain changed.");
-  if ((attempt.provider === "sushi") !== (attempt.providerFamily === "sushi")) throw new Error("Quote attempt provider family changed.");
+  const expectedProviderFamily = attempt.provider === "sushi" ? "sushi" : attempt.provider === "uniswap-v3" ? "uniswap" : "zeroex";
+  if (attempt.providerFamily !== expectedProviderFamily) throw new Error("Quote attempt provider family changed.");
   if (!isAddress(attempt.inputAsset) || getAddress(attempt.inputAsset) !== getAddress(expected.inputAsset)) throw new Error("Quote attempt input asset changed.");
   if (!isAddress(attempt.outputAsset) || getAddress(attempt.outputAsset) !== getAddress(expected.outputAsset)) throw new Error("Quote attempt output asset changed.");
   if (attempt.inputAmountAtomic !== expected.inputAmountAtomic || !atomic(attempt.inputAmountAtomic) || BigInt(attempt.inputAmountAtomic) <= 0n) throw new Error("Quote attempt input amount changed.");
@@ -115,15 +124,33 @@ export function assertVNextQuoteAttempt(
     if (!Number.isSafeInteger(attempt.outputDecimals) || attempt.outputDecimals! < 0 || attempt.outputDecimals! > 255) throw new Error("Quote attempt output decimals are invalid.");
     if (!Number.isSafeInteger(attempt.quotedAtMs) || !Number.isSafeInteger(attempt.expiresAtMs) || attempt.quotedAtMs! > nowMs + MAX_CLOCK_SKEW_MS || attempt.expiresAtMs! <= nowMs) throw new Error("Quote attempt is stale or from the future.");
     if (attempt.priceImpact !== null && (!Number.isFinite(attempt.priceImpact) || attempt.priceImpact < 0 || attempt.priceImpact > 1)) throw new Error("Quote attempt price impact is invalid.");
+    const providerFee = attempt.providerFeeAtomic === null ? null : atomic(attempt.providerFeeAtomic);
+    const gasSponsorshipFee = attempt.gasSponsorshipFeeAtomic === null ? null : atomic(attempt.gasSponsorshipFeeAtomic);
     if (
-      attempt.userPaysGas !== true
-      || attempt.explicitProviderFeeOutputAtomic !== null
+      (attempt.providerFeeAsset === null) !== (attempt.providerFeeAtomic === null)
+      || (attempt.providerFeeAsset !== null && (!isAddress(attempt.providerFeeAsset) || providerFee === null))
+      || (attempt.gasSponsorshipFeeAsset === null) !== (attempt.gasSponsorshipFeeAtomic === null)
+      || (attempt.gasSponsorshipFeeAsset !== null && (!isAddress(attempt.gasSponsorshipFeeAsset) || gasSponsorshipFee === null))
+      || attempt.explicitProviderFeeOutputAtomic !== (attempt.providerFeeAsset !== null && getAddress(attempt.providerFeeAsset) === getAddress(attempt.outputAsset) ? attempt.providerFeeAtomic : null)
       || attempt.rmtFeeOutputAtomic !== "0"
-      || attempt.networkFeeNativeAtomic !== null
-      || attempt.networkFeeNativeSymbol !== "ETH"
-      || attempt.protectedNetOutputAtomic !== null
-      || attempt.costState !== "network_fee_pending"
-    ) throw new Error("Indicative quote exposed incomplete or inconsistent cost economics.");
+    ) throw new Error("Indicative quote exposed incomplete or inconsistent fee economics.");
+    if (attempt.userPaysGas === true) {
+      if (
+        attempt.gasSponsorshipFeeAsset !== null
+        || (attempt.networkFeeNativeAtomic !== null && atomic(attempt.networkFeeNativeAtomic) === null)
+        || attempt.networkFeeNativeSymbol !== "ETH"
+        || attempt.protectedNetOutputAtomic !== null
+        || attempt.costState !== "network_fee_pending"
+      ) throw new Error("Indicative quote exposed incomplete or inconsistent wallet-gas economics.");
+    } else if (attempt.userPaysGas === false) {
+      if (
+        attempt.gasSponsorshipFeeAsset === null
+        || attempt.networkFeeNativeAtomic !== null
+        || attempt.networkFeeNativeSymbol !== null
+        || attempt.protectedNetOutputAtomic !== attempt.protectedOutputAtomic
+        || attempt.costState !== null
+      ) throw new Error("Indicative quote exposed incomplete or inconsistent gasless economics.");
+    } else throw new Error("Indicative quote omitted gas-payer economics.");
   } else if (
     attempt.expectedOutputAtomic !== null
     || attempt.protectedOutputAtomic !== null
@@ -132,6 +159,10 @@ export function assertVNextQuoteAttempt(
     || attempt.quotedAtMs !== null
     || attempt.expiresAtMs !== null
     || attempt.userPaysGas !== null
+    || attempt.providerFeeAsset !== null
+    || attempt.providerFeeAtomic !== null
+    || attempt.gasSponsorshipFeeAsset !== null
+    || attempt.gasSponsorshipFeeAtomic !== null
     || attempt.explicitProviderFeeOutputAtomic !== null
     || attempt.rmtFeeOutputAtomic !== null
     || attempt.networkFeeNativeAtomic !== null

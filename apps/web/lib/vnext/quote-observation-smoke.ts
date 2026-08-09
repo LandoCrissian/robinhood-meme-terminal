@@ -35,6 +35,10 @@ const response: VNextQuoteResponse = {
       executionKind: "aggregator",
       strictVerificationAvailable: false,
       userPaysGas: true,
+      providerFeeAsset: null,
+      providerFeeAtomic: null,
+      gasSponsorshipFeeAsset: null,
+      gasSponsorshipFeeAtomic: null,
       explicitProviderFeeOutputAtomic: null,
       rmtFeeOutputAtomic: "0",
       networkFeeNativeAtomic: null,
@@ -64,6 +68,10 @@ const response: VNextQuoteResponse = {
       executionKind: "direct_amm",
       strictVerificationAvailable: true,
       userPaysGas: null,
+      providerFeeAsset: null,
+      providerFeeAtomic: null,
+      gasSponsorshipFeeAsset: null,
+      gasSponsorshipFeeAtomic: null,
       explicitProviderFeeOutputAtomic: null,
       rmtFeeOutputAtomic: null,
       networkFeeNativeAtomic: null,
@@ -119,12 +127,34 @@ assert.throws(() => parseVNextQuoteResponse({ ...response, attempts: [
 assert.throws(() => parseVNextQuoteResponse({ ...response, attempts: [
   { ...response.attempts[0], protectedNetOutputAtomic: response.attempts[0].protectedOutputAtomic },
   response.attempts[1]
-] }, expected, now), /cost economics/);
+] }, expected, now), /wallet-gas economics/);
+
+const gaslessAttempt = {
+  ...response.attempts[0],
+  provider: "zero-x-gasless" as const,
+  providerLabel: "0x Gasless",
+  providerFamily: "zeroex" as const,
+  executionKind: "gasless" as const,
+  userPaysGas: false,
+  providerFeeAsset: inputAsset,
+  providerFeeAtomic: "150000",
+  gasSponsorshipFeeAsset: inputAsset,
+  gasSponsorshipFeeAtomic: "22000",
+  networkFeeNativeSymbol: null,
+  protectedNetOutputAtomic: response.attempts[0].protectedOutputAtomic,
+  costState: null
+};
+assert.equal(parseVNextQuoteResponse({ ...response, attempts: [gaslessAttempt] }, expected, now).attempts[0].userPaysGas, false);
+assert.throws(() => parseVNextQuoteResponse({
+  ...response,
+  attempts: [{ ...gaslessAttempt, gasSponsorshipFeeAtomic: null }]
+}, expected, now), /fee economics/);
 
 const route = readFileSync(new URL("../../app/api/vnext/quotes/route.ts", import.meta.url), "utf8");
 const engine = readFileSync(new URL("../server/vnext-provider-adapter.ts", import.meta.url), "utf8");
 const sushiAdapter = readFileSync(new URL("../server/vnext-sushi-adapter.ts", import.meta.url), "utf8");
 const uniswapAdapter = readFileSync(new URL("../server/vnext-uniswap-v3-adapter.ts", import.meta.url), "utf8");
+const zeroXAdapter = readFileSync(new URL("../server/vnext-zero-x-adapter.ts", import.meta.url), "utf8");
 const composer = readFileSync(new URL("../../app/vnext/trade-intent-composer.tsx", import.meta.url), "utf8");
 const sushi = readFileSync(new URL("../server/sushi-trade.ts", import.meta.url), "utf8");
 const uniswap = readFileSync(new URL("../server/vnext-uniswap-quote.ts", import.meta.url), "utf8");
@@ -138,6 +168,11 @@ assert.match(engine, /authorizationReady: false/);
 assert.match(engine, /networkFeeNativeAtomic: null/);
 assert.match(sushiAdapter, /quoteSushiAssetRoute/);
 assert.match(uniswapAdapter, /quoteVNextUniswapDirect/);
+assert.match(zeroXAdapter, /RMT_VNEXT_ZEROX_OBSERVATION_ENABLED/);
+assert.match(zeroXAdapter, /"\/gasless\/price"/);
+assert.match(zeroXAdapter, /"\/swap\/allowance-holder\/price"/);
+assert.doesNotMatch(zeroXAdapter, /"\/(?:gasless|swap\/allowance-holder)\/quote"/);
+assert.doesNotMatch(zeroXAdapter, /writeContract|sendTransaction|signTypedData|privateKey/);
 assert.doesNotMatch(route, /writeContract|sendTransaction|signTypedData|calldata|database|firestore/);
 assert.match(sushi, /quoteSushiAssetRoute/);
 assert.match(uniswap, /quoteExactInputSingle/);

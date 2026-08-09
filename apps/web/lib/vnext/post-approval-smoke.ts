@@ -48,7 +48,7 @@ assert.match(composer, /const freshEvidence = await requestStrictVerification\(f
 assert.match(composer, /Approval confirmed\. RMT is refreshing and verifying the swap automatically/);
 assert.match(composer, /continuedApproval\.current/);
 assert.match(composer, /requestAuthorizationPlan\(freshEvidence\)/);
-assert.match(composer, /lastReadyQuote\.current = freshQuote/);
+assert.match(composer, /lastReadyQuote\.current = \{ requestKey, response: freshQuote \}/);
 assert.match(composer, /lastReadyVerification\.current = freshEvidence/);
 assert.match(composer, /const visibleQuote =/);
 assert.match(composer, /const visibleVerification =/);

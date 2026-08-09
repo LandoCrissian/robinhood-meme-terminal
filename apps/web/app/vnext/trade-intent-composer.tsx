@@ -11,7 +11,7 @@ import { parseVNextQuoteResponse, selectVNextRoute, type VNextQuoteResponse } fr
 import { parseVNextPreSignEvidence, type VNextPreSignEvidence } from "../../lib/vnext/pre-sign-evidence";
 import { postApprovalVerificationOutcome, resolvedVNextExecutionOutcome } from "../../lib/vnext/post-approval";
 import { parseVNextAuthorizationBundle, type VNextAuthorizationPlan } from "../../lib/vnext/authorization-plan";
-import { isVNextQuoteReusableForTrade, VNEXT_BACKGROUND_QUOTE_DEBOUNCE_MS, VNEXT_BACKGROUND_QUOTE_REFRESH_MS } from "../../lib/vnext/background-quote";
+import { cachedVNextQuoteForRequest, isVNextQuoteReusableForTrade, VNEXT_BACKGROUND_QUOTE_DEBOUNCE_MS, VNEXT_BACKGROUND_QUOTE_REFRESH_MS, type VNextCachedQuote } from "../../lib/vnext/background-quote";
 import { ROBINHOOD_MAINNET_CHAIN_ID, ROBINHOOD_USDG, ROBINHOOD_USDG_ADDRESS, ROBINHOOD_WETH, robinhoodWalletAccount } from "../../lib/vnext/robinhood-assets";
 import { deriveVNextVerifiedUsdgOutcome } from "../../lib/vnext/verified-cost-outcome";
 import { metadataFromDetectedWalletAsset, type VNextDetectedWalletAsset } from "../../lib/vnext/wallet-assets";
@@ -96,7 +96,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
   const autoFitBuyAmount = useRef(true);
   const backgroundQuoteEpoch = useRef(0);
   const backgroundQuoteImmediate = useRef(false);
-  const lastReadyQuote = useRef<VNextQuoteResponse | undefined>(undefined);
+  const lastReadyQuote = useRef<VNextCachedQuote | undefined>(undefined);
   const lastReadyVerification = useRef<VNextPreSignEvidence | undefined>(undefined);
   const receiptAction = useRef<HTMLButtonElement>(null);
   const { address, chainId, isConnected } = useAccount();
@@ -192,6 +192,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
   const inputAddress = pair?.inputAsset.id.locator.kind === "contract" ? pair.inputAsset.id.locator.address : null;
   const outputAddress = pair?.outputAsset.id.locator.kind === "contract" ? pair.outputAsset.id.locator.address : null;
   const requestKey = `${address ?? ""}:${side}:${amount}:${inputAddress ?? ""}:${outputAddress ?? ""}`;
+  const cachedQuote = cachedVNextQuoteForRequest(lastReadyQuote.current, requestKey);
   useEffect(() => {
     backgroundQuoteEpoch.current += 1;
     setQuoteState({ state: "idle" });
@@ -247,11 +248,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
       window.removeEventListener("keydown", closeOnEscape);
     };
   }, [postExecutionState.state]);
-  const visibleQuote = quoteState.state === "ready"
-    ? quoteState.response
-    : quoteState.state === "loading"
-      ? lastReadyQuote.current
-      : undefined;
+  const visibleQuote = cachedQuote;
   const visibleVerification = verificationState.state === "ready"
     ? verificationState.evidence
     : verificationState.state === "loading"
@@ -361,16 +358,16 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
     };
     const refresh = async () => {
       if (cancelled || backgroundQuoteEpoch.current !== epoch) return;
-      const hadVisibleQuote = Boolean(lastReadyQuote.current);
+      const hadVisibleQuote = Boolean(cachedVNextQuoteForRequest(lastReadyQuote.current, requestKey));
       if (!hadVisibleQuote) setQuoteState({ state: "loading" });
       try {
         const freshQuote = await requestLiveRoutes();
         if (cancelled || backgroundQuoteEpoch.current !== epoch) return;
-        lastReadyQuote.current = freshQuote;
+        lastReadyQuote.current = { requestKey, response: freshQuote };
         setQuoteState({ state: "ready", response: freshQuote });
       } catch (cause) {
         if (cancelled || backgroundQuoteEpoch.current !== epoch) return;
-        if (!lastReadyQuote.current) {
+        if (!cachedVNextQuoteForRequest(lastReadyQuote.current, requestKey)) {
           setQuoteState({
             state: "error",
             message: cause instanceof Error ? cause.message : "Live routes are temporarily unavailable."
@@ -379,7 +376,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
       }
       if (!cancelled && backgroundQuoteEpoch.current === epoch) schedule(VNEXT_BACKGROUND_QUOTE_REFRESH_MS);
     };
-    const initialDelay = backgroundQuoteImmediate.current || !lastReadyQuote.current
+    const initialDelay = backgroundQuoteImmediate.current || !cachedVNextQuoteForRequest(lastReadyQuote.current, requestKey)
       ? VNEXT_BACKGROUND_QUOTE_DEBOUNCE_MS
       : VNEXT_BACKGROUND_QUOTE_REFRESH_MS;
     backgroundQuoteImmediate.current = false;
@@ -494,8 +491,9 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
   const startTrade = async () => {
     if (!draft.intent || amountExceedsBalance) return;
     backgroundQuoteEpoch.current += 1;
-    const reusableQuote = isVNextQuoteReusableForTrade(lastReadyQuote.current, Date.now())
-      ? lastReadyQuote.current
+    const cachedQuoteForTrade = cachedVNextQuoteForRequest(lastReadyQuote.current, requestKey);
+    const reusableQuote = isVNextQuoteReusableForTrade(cachedQuoteForTrade, Date.now())
+      ? cachedQuoteForTrade
       : undefined;
     let stage: "quote" | "verification" | "authorization" = "quote";
     setPostExecutionState({ state: "idle" });
@@ -505,7 +503,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
     try {
       if (!reusableQuote) clearTradeQuoteCache();
       const freshQuote = reusableQuote ?? await requestLiveRoutes();
-      lastReadyQuote.current = freshQuote;
+      lastReadyQuote.current = { requestKey, response: freshQuote };
       setQuoteState({ state: "ready", response: freshQuote });
       stage = "verification";
       const freshEvidence = await requestStrictVerification(freshQuote);
@@ -555,7 +553,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
     clearTradeQuoteCache();
     try {
       const freshQuote = await requestLiveRoutes();
-      lastReadyQuote.current = freshQuote;
+      lastReadyQuote.current = { requestKey, response: freshQuote };
       setQuoteState({ state: "ready", response: freshQuote });
       const freshEvidence = await requestStrictVerification(freshQuote);
       lastReadyVerification.current = freshEvidence;
@@ -773,7 +771,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
         {visibleQuote ? <div className="vnQuoteAttempts">
           {visibleQuote.attempts.map((attempt) => (
             <div className={attempt.status === "indicative" ? "isReady" : ""} key={attempt.provider}>
-              <span><strong>{attempt.providerLabel}</strong><small>{attempt.executionKind === "aggregator" ? "Aggregator" : "Direct AMM"} · {attempt.latencyMs}ms</small></span>
+              <span><strong>{attempt.providerLabel}</strong><small>{attempt.executionKind === "gasless" ? "Gasless" : attempt.executionKind === "aggregator" ? "Aggregator" : "Direct AMM"} · {attempt.userPaysGas === false ? "trader gas sponsored" : "wallet gas"} · {attempt.latencyMs}ms</small></span>
               <span><strong>{attempt.status === "indicative" && attempt.outputDecimals !== null ? `${formatAtomicDisplay(attempt.protectedOutputAtomic!, attempt.outputDecimals)} ${outputSymbol}` : attempt.status === "no_route" ? "No route" : attempt.status === "invalid_response" ? "Rejected" : "Unavailable"}</strong><small>{attempt.status === "indicative"
                 ? attempt.provider === bestQuote?.provider
                   ? "Highest before network fee · indicative floor"
@@ -790,8 +788,8 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
         </dl>}
         {visibleQuote ? <dl>
           <div><dt>Ranking basis</dt><dd>Protected output before network fee</dd></div>
-          <div><dt>Trader gas</dt><dd>Estimated during strict verification</dd></div>
-          <div><dt>Provider fee</dt><dd>Not separately reported</dd></div>
+          <div><dt>Trader gas</dt><dd>{visibleQuote.attempts.some((attempt) => attempt.userPaysGas === false) ? "Route-specific · sponsored option observed" : "Estimated during strict verification"}</dd></div>
+          <div><dt>Provider fee</dt><dd>{visibleQuote.attempts.some((attempt) => attempt.providerFeeAtomic !== null) ? "Disclosed by provider and reflected in output" : "Not separately reported"}</dd></div>
           <div><dt>RMT fee</dt><dd>Not enabled</dd></div>
         </dl> : null}
         {visibleQuote ? <div className="vnVerificationGate">

@@ -9,6 +9,9 @@ const profile = readFileSync(new URL("./profile.ts", import.meta.url), "utf8");
 const referrals = readFileSync(new URL("./referrals.ts", import.meta.url), "utf8");
 
 assert.match(providers, /RecoveryBoundary name="wallet-provider" fallback=\{legacyApplication\}/);
+assert.match(providers, /function LegacyWalletProvider/);
+assert.match(providers, /const legacyApplication = <LegacyWalletProvider/);
+assert.doesNotMatch(providers, /const legacyApplication = \(\s*<WagmiProvider/);
 assert.match(providers, /SpeedWalletProvider queryClient=\{queryClient\}/);
 assert.match(home, /RecoveryBoundary name="market-feed" fallback=\{<MarketFeedRecovery \/>\}/);
 assert.match(globalError, /Your funds and wallet remain untouched\./);

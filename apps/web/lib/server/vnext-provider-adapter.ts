@@ -66,9 +66,9 @@ export type VNextPreparedProviderAuthorization = {
 export type VNextQuoteProviderAdapter = {
   provider: VNextQuoteProvider;
   providerLabel: string;
-  providerFamily: "sushi" | "uniswap";
+  providerFamily: "sushi" | "uniswap" | "zeroex";
   adapterVersion: 1;
-  executionKind: "aggregator" | "direct_amm";
+  executionKind: "aggregator" | "direct_amm" | "gasless";
   capabilities: {
     strictVerification: boolean;
     walletAuthorization: boolean;
@@ -106,6 +106,10 @@ export function unavailableVNextQuoteAttempt(input: {
     latencyMs: Math.max(0, Date.now() - input.startedAtMs),
     strictVerificationAvailable: input.adapter.capabilities.strictVerification,
     userPaysGas: null,
+    providerFeeAsset: null,
+    providerFeeAtomic: null,
+    gasSponsorshipFeeAsset: null,
+    gasSponsorshipFeeAtomic: null,
     explicitProviderFeeOutputAtomic: null,
     rmtFeeOutputAtomic: null,
     networkFeeNativeAtomic: null,

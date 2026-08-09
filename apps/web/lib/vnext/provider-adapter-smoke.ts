@@ -29,7 +29,9 @@ const readyAdapter: VNextQuoteProviderAdapter = {
       expectedOutputAtomic: "1000", protectedOutputAtomic: "990", outputDecimals: 18, priceImpact: 0.01,
       quotedAtMs: now, expiresAtMs: now + 30_000, latencyMs: 1, executionKind: "aggregator",
       strictVerificationAvailable: false,
-      userPaysGas: true, explicitProviderFeeOutputAtomic: null, rmtFeeOutputAtomic: "0",
+      userPaysGas: true, providerFeeAsset: null, providerFeeAtomic: null,
+      gasSponsorshipFeeAsset: null, gasSponsorshipFeeAtomic: null,
+      explicitProviderFeeOutputAtomic: null, rmtFeeOutputAtomic: "0",
       networkFeeNativeAtomic: null, networkFeeNativeSymbol: "ETH", protectedNetOutputAtomic: null,
       costState: "network_fee_pending", authorizationReady: false, detail: "Test-only normalized provider observation."
     };
@@ -108,6 +110,7 @@ assert.match(route, /readRobinhoodTokenIdentity/);
 assert.match(route, /quoteRobinhoodVNextExecution/);
 assert.match(registry, /vNextSushiAdapter/);
 assert.match(registry, /vNextUniswapV3Adapter/);
+assert.match(registry, /configuredVNextZeroXAdapters/);
 assert.match(boundary, /assertVNextQuoteAttempt/);
 assert.match(boundary, /adapters\.length === 0 \|\| adapters\.length > 8/);
 assert.match(boundary, /authorizationReady: false/);
