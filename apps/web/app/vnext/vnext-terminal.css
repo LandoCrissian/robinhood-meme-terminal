@@ -1404,13 +1404,17 @@ body .rmtVnext {
 }
 
 .vnReceiveField strong {
+  display: flex;
+  align-items: center;
   width: 100%;
+  min-height: 58px;
   font-size: 22px;
   letter-spacing: -0.025em;
 }
 
 .vnReceiveField > small {
   display: block;
+  min-height: 45px;
   margin-top: 6px;
   color: var(--vn-text-muted);
   font-size: 10px;
@@ -1450,7 +1454,7 @@ body .rmtVnext {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1px;
-  margin: 12px 0 0;
+  margin: 0;
   overflow: hidden;
   background: var(--vn-border);
   border: 1px solid var(--vn-border);
@@ -1506,6 +1510,15 @@ body .rmtVnext {
   display: none;
 }
 
+.vnRouteDetails {
+  height: clamp(280px, 42svh, 390px);
+  margin-top: 12px;
+  padding-right: 4px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
 .vnRouteTop span {
   display: flex;
   align-items: center;
@@ -1524,7 +1537,7 @@ body .rmtVnext {
 .vnRouteCard dl {
   display: grid;
   gap: 7px;
-  margin: 12px 0 0;
+  margin: 0;
 }
 
 .vnRouteCard dl div {

@@ -70,6 +70,7 @@ assert.match(directory, /address: selected\.address/);
 assert.match(composer, /Asset-to-asset intent/);
 assert.match(composer, /One action handles routing, verification, simulation, and exact payload preparation/);
 assert.match(composer, /Finding best execution/);
+assert.match(composer, /className="vnRouteDetails"/);
 assert.match(composer, /Connect & buy/);
 assert.match(composer, /Sign in & buy/);
 assert.match(composer, /!address/);
@@ -104,6 +105,9 @@ assert.match(styles, /\.rmtVnext/);
 assert.match(styles, /@media \(max-width: 760px\)/);
 assert.match(styles, /@media \(max-width: 1280px\)/);
 assert.match(styles, /prefers-reduced-motion/);
+assert.match(styles, /\.vnRouteDetails[\s\S]*height: clamp\(280px, 42svh, 390px\)/);
+assert.match(styles, /scrollbar-gutter: stable/);
+assert.match(styles, /\.vnReceiveField strong[\s\S]*min-height: 58px/);
 assert.doesNotMatch(styles, /!important/);
 assert.doesNotMatch(styles, /terminal-v(?:7|8|9|10|11|12)/i);
 

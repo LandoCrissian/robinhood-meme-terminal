@@ -597,6 +597,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
       </div> : null}
       <details className="vnRouteCard">
         <summary className="vnRouteTop"><span><i aria-hidden="true" /> Advanced execution details</span><strong>{visibleVerification ? verificationLabel : visibleQuote ? "Routes compared" : draft.intent ? "Ready" : "Not ready"}</strong></summary>
+        <div className="vnRouteDetails">
         <dl className="vnIntentSummary">
           <div><dt>Input</dt><dd>{inputSymbol}</dd></div>
           <div><dt>Output</dt><dd>{outputSymbol}</dd></div>
@@ -662,6 +663,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
             </div> : null}
           </div> : null}
         </div> : null}
+        </div>
       </details>
       {postExecutionState.state === "swap_confirmed" && executionRecord?.kind === "swap" && executionRecord.state === "confirmed" ? (
         <div className="vnTradeReceiptBackdrop" role="presentation">
