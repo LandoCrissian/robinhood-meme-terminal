@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import type { VNextQuoteResponse } from "./quote-observation";
 import {
+  cachedVNextQuoteForRequest,
   isVNextQuoteReusableForTrade,
   VNEXT_BACKGROUND_QUOTE_REFRESH_MS,
   VNEXT_TRADE_QUOTE_MAX_AGE_MS
@@ -21,6 +22,8 @@ const response = {
 } as VNextQuoteResponse;
 
 assert.equal(VNEXT_BACKGROUND_QUOTE_REFRESH_MS, 4_000);
+assert.equal(cachedVNextQuoteForRequest({ requestKey: "wallet:buy:1:usdg:token", response }, "wallet:buy:1:usdg:token"), response);
+assert.equal(cachedVNextQuoteForRequest({ requestKey: "wallet:buy:1:usdg:token", response }, "wallet:buy:2:usdg:token"), undefined);
 assert.equal(isVNextQuoteReusableForTrade(response, now), true);
 assert.equal(isVNextQuoteReusableForTrade({
   ...response,
@@ -39,7 +42,8 @@ const composer = readFileSync(new URL("../../app/vnext/trade-intent-composer.tsx
 assert.match(composer, /backgroundQuoteEpoch/);
 assert.match(composer, /backgroundQuoteImmediate/);
 assert.match(composer, /VNEXT_BACKGROUND_QUOTE_REFRESH_MS/);
-assert.match(composer, /lastReadyQuote\.current = freshQuote/);
+assert.match(composer, /lastReadyQuote\.current = \{ requestKey, response: freshQuote \}/);
+assert.match(composer, /const visibleQuote = cachedQuote/);
 assert.match(composer, /isVNextQuoteReusableForTrade/);
 const continuation = composer.slice(composer.indexOf("const continueTrading"), composer.indexOf("return (", composer.indexOf("const continueTrading")));
 assert.match(continuation, /clearTradeQuoteCache\(\)/);

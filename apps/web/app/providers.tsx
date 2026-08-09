@@ -24,6 +24,14 @@ function getLegacyWalletConfig() {
   return legacyWalletConfig;
 }
 
+function LegacyWalletProvider({ children, queryClient }: { children: ReactNode; queryClient: QueryClient }) {
+  return (
+    <WagmiProvider config={getLegacyWalletConfig()}>
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    </WagmiProvider>
+  );
+}
+
 const SpeedWalletProvider = dynamic(
   () => import("./speed-wallet-provider").then((module) => module.SpeedWalletProvider),
   { ssr: false }
@@ -36,11 +44,7 @@ export function Providers({ children }: { children: ReactNode }) {
     <ProfileProvider><ReferralCapture /><ExperienceTelemetry />{children}<CommunityLive /></ProfileProvider>
   );
 
-  const legacyApplication = (
-    <WagmiProvider config={getLegacyWalletConfig()}>
-      <QueryClientProvider client={queryClient}>{application}</QueryClientProvider>
-    </WagmiProvider>
-  );
+  const legacyApplication = <LegacyWalletProvider queryClient={queryClient}>{application}</LegacyWalletProvider>;
 
   if (speedWalletEnabled) {
     return (

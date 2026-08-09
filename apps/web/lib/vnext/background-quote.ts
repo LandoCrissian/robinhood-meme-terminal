@@ -1,9 +1,18 @@
 import { selectVNextRoute, type VNextQuoteResponse } from "./quote-observation";
 
+export interface VNextCachedQuote {
+  requestKey: string;
+  response: VNextQuoteResponse;
+}
+
 export const VNEXT_BACKGROUND_QUOTE_DEBOUNCE_MS = 120;
 export const VNEXT_BACKGROUND_QUOTE_REFRESH_MS = 4_000;
 export const VNEXT_TRADE_QUOTE_MAX_AGE_MS = 6_000;
 const MIN_EXECUTION_LIFETIME_MS = 5_000;
+
+export function cachedVNextQuoteForRequest(cached: VNextCachedQuote | undefined, requestKey: string) {
+  return cached?.requestKey === requestKey ? cached.response : undefined;
+}
 
 export function isVNextQuoteReusableForTrade(response: VNextQuoteResponse | undefined, nowMs: number) {
   if (!response || !Number.isFinite(nowMs)) return false;
