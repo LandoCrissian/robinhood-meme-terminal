@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { normalizePrivyAppId } from "./privy-config";
+import { isMobileWebUserAgent, metaMaskDappLink } from "./mobile-wallet-link";
 
 const appRoot = fileURLToPath(new URL("../app/", import.meta.url));
 const providers = readFileSync(`${appRoot}providers.tsx`, "utf8");
@@ -19,6 +20,13 @@ const combined = `${providers}\n${speedProvider}\n${speedEntry}\n${walletButton}
 assert.equal(normalizePrivyAppId("a".repeat(25)), "a".repeat(25), "A valid Privy app ID must activate Speed Wallet.");
 assert.equal(normalizePrivyAppId("too-short"), undefined, "An invalid Privy app ID must fail closed.");
 assert.equal(normalizePrivyAppId(undefined), undefined, "A missing Privy app ID must preserve the legacy wallet path.");
+assert.equal(isMobileWebUserAgent("Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Mobile"), true);
+assert.equal(isMobileWebUserAgent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)"), false);
+assert.equal(
+  metaMaskDappLink("https://www.rmtlaunch.fun/vnext?asset=RMT"),
+  "https://link.metamask.io/dapp/www.rmtlaunch.fun/vnext?asset=RMT",
+  "Mobile MetaMask must open the exact RMT route through MetaMask's current universal link."
+);
 assert.match(providers, /speedWalletEnabled/, "Speed Wallet must remain environment-gated.");
 assert.match(walletConfig, /function createLegacyWalletConnectors/, "Legacy connectors must be initialized only when the legacy provider renders.");
 assert.match(providers, /connectors:\s*createLegacyWalletConnectors\(\)/, "The legacy provider must own legacy connector initialization.");
@@ -31,6 +39,8 @@ assert.match(speedEntry, /useMfaEnrollment/, "The user-owned wallet must expose 
 assert.match(speedEntry, /Session permissions remain off/, "Signer permissions must be visibly fail-closed.");
 assert.match(walletButton, /if \(speedWalletEnabled\) return <PrivyWalletButton/, "Privy must own the wallet entry point whenever validly configured.");
 assert.match(privyWalletButton, /useConnectOrCreateWallet/, "Privy must provide a connect-or-create path for first-time traders.");
+assert.match(privyWalletButton, /mobileMetaMaskUrl/, "Mobile traders must have a direct MetaMask app handoff outside blocked embedded-browser connection modals.");
+assert.match(speedProvider, /"metamask", "coinbase_wallet", "detected_ethereum_wallets", "wallet_connect"/, "Privy must put named mobile wallets before desktop-only detection and the full registry.");
 assert.match(privyWalletButton, /useSetActiveWallet/, "Traders must be able to choose the exact wallet RMT uses.");
 assert.match(privyWalletButton, /requestedWalletAddress/, "A newly connected external wallet must remain the requested active wallet after Privy finishes linking it.");
 assert.match(privyWalletButton, /One RMT account carries your private profile and wallet choices/, "Wallet selection must explain RMT's unified Privy identity boundary.");

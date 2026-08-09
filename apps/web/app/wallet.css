@@ -1,4 +1,7 @@
 .walletMenu{position:relative;justify-self:end}
+.mobileWalletEntry{display:flex;align-items:center;gap:6px}
+.mobileMetaMaskTrigger{display:inline-flex;align-items:center;justify-content:center;text-decoration:none}
+.mobileOtherWalletTrigger{cursor:pointer}
 .walletConnectedActions{display:flex;align-items:center;justify-self:end;gap:7px}
 .fundWalletMenu{position:relative}
 .fundWalletTrigger{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:10px 13px;border:1px solid #2f5c39;border-radius:12px;background:#102016;color:#76ef87;font:inherit;font-size:.72rem;font-weight:900;cursor:pointer}
@@ -83,6 +86,8 @@
 .setup-link:hover{color:#00e506}
 @media(max-width:620px){.setup-link{display:none}
 .walletConnectedActions{gap:5px}
+.mobileWalletEntry .mobileMetaMaskTrigger{padding-inline:12px}
+.mobileWalletEntry .mobileOtherWalletTrigger{min-width:52px;padding-inline:9px}
 .walletConnectedActions>.fundWalletMenu.header .fundWalletTrigger{padding:9px 10px;font-size:.66rem}
 .walletPopover{position:fixed;top:calc(68px + env(safe-area-inset-top));right:12px;left:12px;width:auto;max-height:calc(100dvh - 84px - env(safe-area-inset-top) - env(safe-area-inset-bottom));overflow-y:auto;overscroll-behavior:contain}
 .connectTrigger{white-space:nowrap}

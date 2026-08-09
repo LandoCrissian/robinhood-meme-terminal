@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { Address } from "viem";
 import { useAccount, useDisconnect, useSwitchChain } from "wagmi";
 import { recordExperienceStage } from "../lib/experience-funnel";
+import { isMobileWebUserAgent, metaMaskDappLink } from "../lib/mobile-wallet-link";
 import { FundWalletButton } from "./fund-wallet-button";
 import { WalletReceiveDialog } from "./wallet-receive-dialog";
 import { WalletTransferDialog } from "./wallet-transfer-dialog";
@@ -51,6 +52,12 @@ export function PrivyWalletButton({
   const { disconnect: disconnectWagmi } = useDisconnect();
   const targetChain = target === "mainnet" ? robinhoodChain : robinhoodChainTestnet;
   const { switchChain, isPending: isSwitching, error: switchError, reset: resetSwitch } = useSwitchChain();
+  const [mobileMetaMaskUrl] = useState(() => {
+    if (typeof window === "undefined" || !isMobileWebUserAgent(window.navigator.userAgent)) return "";
+    const ethereum = (window as Window & { ethereum?: { isMetaMask?: boolean } }).ethereum;
+    if (ethereum?.isMetaMask) return "";
+    return metaMaskDappLink(window.location.href);
+  });
   const { connectOrCreateWallet } = useConnectOrCreateWallet({
     onSuccess: async ({ wallet }) => {
       setRequestedWalletAddress(wallet.address.toLowerCase());
@@ -99,6 +106,32 @@ export function PrivyWalletButton({
   }
 
   if (!isConnected || !address) {
+    if (mobileMetaMaskUrl) {
+      return (
+        <div className="walletMenu mobileWalletEntry">
+          <a
+            className="wallet live connectTrigger mobileMetaMaskTrigger"
+            href={mobileMetaMaskUrl}
+            onClick={() => recordExperienceStage("wallet_connect_started")}
+          >
+            MetaMask
+          </a>
+          <button
+            className="wallet mobileOtherWalletTrigger"
+            type="button"
+            aria-label="Use RMT Wallet or another wallet"
+            onClick={() => {
+              setMessage("");
+              recordExperienceStage("wallet_connect_started");
+              connectOrCreateWallet();
+            }}
+          >
+            Other
+          </button>
+          {message && <span className="networkSwitchError" role="alert">{message}</span>}
+        </div>
+      );
+    }
     return (
       <div className="walletMenu">
         <button

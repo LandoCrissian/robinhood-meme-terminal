@@ -29,7 +29,7 @@ export function SpeedWalletProvider({ children, queryClient }: { children: React
           landingHeader: "Your RMT trading wallet",
           loginMessage: "Use your wallet or create a user-owned Robinhood Chain wallet in seconds.",
           walletChainType: "ethereum-only",
-          walletList: ["detected_wallets", "wallet_connect", "metamask", "coinbase_wallet"]
+          walletList: ["metamask", "coinbase_wallet", "detected_ethereum_wallets", "wallet_connect"]
         },
         loginMethods: ["email", "google", "passkey", "wallet"],
         defaultChain: robinhoodChain,
