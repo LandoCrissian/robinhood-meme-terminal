@@ -5,10 +5,10 @@ import { deriveVNextVerifiedUsdgOutcome } from "./verified-cost-outcome";
 
 const now = 1_786_000_000_000;
 const usdg = "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168";
-const token = "0xdBa33be56C89CC9fc014c4459028d7e5c7878671";
+const tradeAsset = "0xdBa33be56C89CC9fc014c4459028d7e5c7878671";
 const evidence = {
   inputAsset: usdg,
-  outputAsset: token,
+  outputAsset: tradeAsset,
   inputAmountAtomic: "100000000",
   protectedOutputAtomic: "500000000000000000000",
   estimatedNetworkCostUsdgAtomic: "12500",
@@ -23,7 +23,7 @@ assert.deepEqual(deriveVNextVerifiedUsdgOutcome(evidence, now), {
 });
 assert.deepEqual(deriveVNextVerifiedUsdgOutcome({
   ...evidence,
-  inputAsset: token,
+  inputAsset: tradeAsset,
   outputAsset: usdg,
   protectedOutputAtomic: "99900000"
 }, now), {
@@ -35,7 +35,7 @@ assert.deepEqual(deriveVNextVerifiedUsdgOutcome({
 });
 assert.deepEqual(deriveVNextVerifiedUsdgOutcome({
   ...evidence,
-  inputAsset: token,
+  inputAsset: tradeAsset,
   outputAsset: usdg,
   protectedOutputAtomic: "100"
 }, now), {
@@ -47,7 +47,7 @@ assert.deepEqual(deriveVNextVerifiedUsdgOutcome({
 });
 assert.equal(deriveVNextVerifiedUsdgOutcome({ ...evidence, networkCostValuationExpiresAtMs: now }, now), null);
 assert.equal(deriveVNextVerifiedUsdgOutcome({ ...evidence, estimatedNetworkCostUsdgAtomic: null }, now), null);
-assert.equal(deriveVNextVerifiedUsdgOutcome({ ...evidence, inputAsset: token }, now), null);
+assert.equal(deriveVNextVerifiedUsdgOutcome({ ...evidence, inputAsset: tradeAsset }, now), null);
 
 const composer = readFileSync(new URL("../../app/vnext/trade-intent-composer.tsx", import.meta.url), "utf8");
 assert.match(composer, /deriveVNextVerifiedUsdgOutcome/);
