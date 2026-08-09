@@ -4,7 +4,7 @@ Status: read-only foundation run; no provider admitted for production
 
 ## Safety boundary
 
-This run used public registry, RPC bytecode, source-discovery, and indicative-price endpoints only. It made no wallet request, signature, approval, executable quote request, order submission, transaction, deployment, bridge, fee, or treasury action. Raw encoded orders, calldata, typed data, and credentials are not logged.
+This run used public registry, RPC bytecode/read calls, source-discovery, and indicative-price endpoints only. It made no wallet request, signature, approval, executable transaction request, order submission, transaction, deployment, bridge, fee, or treasury action. Raw encoded orders, calldata, typed data, and credentials are not logged.
 
 Run the sanitized live probe from `apps/web` with:
 
@@ -15,6 +15,23 @@ pnpm benchmark:vnext-providers
 The optional `RMT_ZEROX_API_KEY` is server-only. When absent, every 0x row is reported as `blocked_missing_key`; it is not counted as provider failure.
 
 ## Evidence snapshot
+
+### Live production baseline
+
+Every run now requests real indicative quotes for both existing RMT provider families across four Robinhood directions: USDG→RMT, RMT→USDG, USDG→WETH, and WETH→USDG. Sushi is restricted by the harness to `GET /quote/v7/4663`; Uniswap uses the existing bytecode-pinned V3 quoter through read-only RPC calls. Results include atomic expected/protected output and latency, but never executable calldata.
+
+These rows establish the comparison baseline for future providers. They do not request wallet balances, approvals, simulations against a user account, signatures, or transactions.
+
+Initial live snapshot at 2026-08-08 21:20 MDT:
+
+| Direction and input | Sushi protected output | Uniswap V3 protected output | Coverage result |
+| --- | ---: | ---: | --- |
+| 1 USDG → RMT | — | — | Neither adapter found a route. |
+| 1 RMT → USDG | — | — | Neither adapter found a route. |
+| 1 USDG → WETH | `0.000517582299197998` WETH | `0.000517610631032090` WETH | Both available; Uniswap V3 was slightly higher in this sample. |
+| 0.001 WETH → USDG | `1.892710` USDG | `1.893129` USDG | Both available; Uniswap V3 was slightly higher in this sample. |
+
+These values are time-specific and indicative. The RMT result is a measured coverage gap in the currently admitted Sushi and Uniswap V3 adapters, not evidence that the official RMT market is offline. Its other Uniswap execution path must be benchmarked and represented separately rather than mislabeled as V3.
 
 ### Pancake and PancakeSwapX contracts
 

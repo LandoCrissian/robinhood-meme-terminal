@@ -1,4 +1,7 @@
 import { getAddress, isAddress, isHex, keccak256, type Hex } from "viem";
+import { quoteSushiAssetRoute } from "../lib/server/sushi-trade";
+import { quoteVNextUniswapDirect } from "../lib/server/vnext-uniswap-quote";
+import { ROBINHOOD_RMT_ADDRESS } from "../lib/vnext/robinhood-assets";
 
 const CHAIN_ID = 4663;
 const RPC_URL = process.env.RMT_RPC_URL ?? "https://rpc.mainnet.chain.robinhood.com/";
@@ -26,7 +29,7 @@ type ProbeStatus =
   | "invalid_response";
 
 type Probe = {
-  provider: "pancake-onchain" | "pancakeswapx" | "0x";
+  provider: "sushi" | "uniswap-v3" | "pancake-onchain" | "pancakeswapx" | "0x";
   probe: string;
   status: ProbeStatus;
   latencyMs: number;
@@ -34,6 +37,11 @@ type Probe = {
   routeAvailable?: boolean;
   errorCategory?: string;
   sourceNames?: string[];
+  inputAsset?: string;
+  outputAsset?: string;
+  inputAmountAtomic?: string;
+  expectedOutputAtomic?: string;
+  protectedOutputAtomic?: string;
   evidence?: Record<string, string | number | boolean | null>;
 };
 
@@ -94,6 +102,17 @@ function assertReadOnlyRequest(url: string, init?: RequestInit) {
   }
   writeBoundaryViolation = true;
   throw new Error("benchmark_write_boundary_rejected_request");
+}
+
+async function sushiReadOnlyFetch(input: string | URL, init?: RequestInit) {
+  const requested = new URL(input);
+  const method = (init?.method ?? "GET").toUpperCase();
+  if (requested.origin !== "https://api.sushi.com" || requested.pathname !== "/quote/v7/4663" || method !== "GET") {
+    writeBoundaryViolation = true;
+    throw new Error("benchmark_write_boundary_rejected_sushi_request");
+  }
+  readOnlyRequestsValidated += 1;
+  return fetch(requested, init);
 }
 
 async function fetchJson(url: string, init?: RequestInit) {
@@ -236,6 +255,128 @@ async function probePcsx(name: string, tokenOut: string, symbol: string): Promis
   }
 }
 
+const baselinePairs = [
+  { name: "usd-g-to-rmt", inputSymbol: "USDG", outputSymbol: "RMT", inputAsset: USDG, outputAsset: ROBINHOOD_RMT_ADDRESS, amountIn: 1_000_000n },
+  { name: "rmt-to-usd-g", inputSymbol: "RMT", outputSymbol: "USDG", inputAsset: ROBINHOOD_RMT_ADDRESS, outputAsset: USDG, amountIn: 1_000_000_000_000_000_000n },
+  { name: "usd-g-to-weth", inputSymbol: "USDG", outputSymbol: "WETH", inputAsset: USDG, outputAsset: WETH, amountIn: 1_000_000n },
+  { name: "weth-to-usd-g", inputSymbol: "WETH", outputSymbol: "USDG", inputAsset: WETH, outputAsset: USDG, amountIn: 1_000_000_000_000_000n }
+] as const;
+
+function baselineFailure(error: unknown) {
+  const message = error instanceof Error ? error.message.toLowerCase() : "";
+  if (/no route|does not have a route/.test(message)) return { status: "unavailable" as const, category: "no_route" };
+  if (/unavailable/.test(message)) return { status: "unavailable" as const, category: "provider_unavailable" };
+  if (/timed out|timeout/.test(message)) return { status: "timeout" as const, category: "timeout" };
+  return { status: "provider_error" as const, category: "provider_or_validation_error" };
+}
+
+async function probeSushiBaseline(pair: typeof baselinePairs[number]): Promise<Probe> {
+  const startedAt = performance.now();
+  try {
+    const quote = await quoteSushiAssetRoute({
+      inputAsset: pair.inputAsset,
+      outputAsset: pair.outputAsset,
+      amountIn: pair.amountIn
+    }, {
+      chainId: CHAIN_ID,
+      enabled: true,
+      requireTokenMetadata: true,
+      fetch: sushiReadOnlyFetch
+    });
+    return {
+      provider: "sushi",
+      probe: pair.name,
+      status: "available",
+      latencyMs: latency(startedAt),
+      chainId: CHAIN_ID,
+      routeAvailable: true,
+      inputAsset: pair.inputAsset,
+      outputAsset: pair.outputAsset,
+      inputAmountAtomic: pair.amountIn.toString(),
+      expectedOutputAtomic: quote.quoteOut,
+      protectedOutputAtomic: quote.minimumOut,
+      evidence: { inputSymbol: pair.inputSymbol, outputSymbol: pair.outputSymbol, indicativeOnly: true }
+    };
+  } catch (error) {
+    const failure = baselineFailure(error);
+    return {
+      provider: "sushi",
+      probe: pair.name,
+      status: failure.status,
+      latencyMs: latency(startedAt),
+      chainId: CHAIN_ID,
+      routeAvailable: false,
+      errorCategory: failure.category,
+      inputAsset: pair.inputAsset,
+      outputAsset: pair.outputAsset,
+      inputAmountAtomic: pair.amountIn.toString(),
+      evidence: { inputSymbol: pair.inputSymbol, outputSymbol: pair.outputSymbol, indicativeOnly: true }
+    };
+  }
+}
+
+async function probeUniswapBaseline(pair: typeof baselinePairs[number]): Promise<Probe> {
+  const startedAt = performance.now();
+  try {
+    const quote = await quoteVNextUniswapDirect({
+      inputAsset: pair.inputAsset,
+      outputAsset: pair.outputAsset,
+      amountIn: pair.amountIn
+    });
+    if (!quote) {
+      return {
+        provider: "uniswap-v3",
+        probe: pair.name,
+        status: "unavailable",
+        latencyMs: latency(startedAt),
+        chainId: CHAIN_ID,
+        routeAvailable: false,
+        errorCategory: "no_route",
+        inputAsset: pair.inputAsset,
+        outputAsset: pair.outputAsset,
+        inputAmountAtomic: pair.amountIn.toString(),
+        evidence: { inputSymbol: pair.inputSymbol, outputSymbol: pair.outputSymbol, indicativeOnly: true }
+      };
+    }
+    return {
+      provider: "uniswap-v3",
+      probe: pair.name,
+      status: "available",
+      latencyMs: latency(startedAt),
+      chainId: CHAIN_ID,
+      routeAvailable: true,
+      sourceNames: quote.route === "direct" ? ["UniswapV3"] : ["UniswapV3", "WETH-hop"],
+      inputAsset: pair.inputAsset,
+      outputAsset: pair.outputAsset,
+      inputAmountAtomic: pair.amountIn.toString(),
+      expectedOutputAtomic: quote.quoteOut.toString(),
+      protectedOutputAtomic: quote.minimumOut.toString(),
+      evidence: {
+        inputSymbol: pair.inputSymbol,
+        outputSymbol: pair.outputSymbol,
+        route: quote.route,
+        poolCount: quote.pools.length,
+        indicativeOnly: true
+      }
+    };
+  } catch (error) {
+    const failure = baselineFailure(error);
+    return {
+      provider: "uniswap-v3",
+      probe: pair.name,
+      status: failure.status,
+      latencyMs: latency(startedAt),
+      chainId: CHAIN_ID,
+      routeAvailable: false,
+      errorCategory: failure.category,
+      inputAsset: pair.inputAsset,
+      outputAsset: pair.outputAsset,
+      inputAmountAtomic: pair.amountIn.toString(),
+      evidence: { inputSymbol: pair.inputSymbol, outputSymbol: pair.outputSymbol, indicativeOnly: true }
+    };
+  }
+}
+
 async function firstActiveRobinhoodRwa() {
   const { response, body } = await fetchJson(ROBINHOOD_ASSETS_URL);
   if (!response.ok || !isObject(body) || !Array.isArray(body.assets)) throw new Error("invalid_asset_registry");
@@ -318,8 +459,11 @@ async function probeZeroX(name: string, path: string, params: Record<string, str
 
 async function main() {
   const apiKey = process.env.RMT_ZEROX_API_KEY?.trim();
-  const contractProbes = await probeContracts();
-  const pcsxCryptoProbe = await probePcsx("usd-g-to-weth", WETH, "WETH");
+  const [contractProbes, baselineProbes, pcsxCryptoProbe] = await Promise.all([
+    probeContracts(),
+    Promise.all(baselinePairs.flatMap((pair) => [probeSushiBaseline(pair), probeUniswapBaseline(pair)])),
+    probePcsx("usd-g-to-weth", WETH, "WETH")
+  ]);
   let pcsxRwaProbe: Probe;
   try {
     const rwa = await firstActiveRobinhoodRwa();
@@ -343,7 +487,7 @@ async function main() {
     probeZeroX("gasless-price", "/gasless/price", { ...common, taker: NON_FUNDED_BENCHMARK_TAKER }, apiKey)
   ]);
 
-  const probes = [...contractProbes, pcsxCryptoProbe, pcsxRwaProbe, ...zeroXProbes];
+  const probes = [...baselineProbes, ...contractProbes, pcsxCryptoProbe, pcsxRwaProbe, ...zeroXProbes];
   const noWriteAssertion = readOnlyRequestsValidated > 0 && !writeBoundaryViolation;
   process.stdout.write(`${JSON.stringify({
     generatedAt: new Date().toISOString(),
