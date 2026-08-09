@@ -84,7 +84,7 @@ assert.match(component, /assessVNextWalletGasReadiness/);
 assert.match(component, /RMT did not open the wallet/);
 assert.match(component, /Checking Robinhood ETH reserve/);
 assert.match(component, /setGasShortfall\(shortfall\)/);
-assert.match(component, /<FundWalletButton variant="inline" label="Add Robinhood ETH" \/>/);
+assert.match(component, /<FundWalletButton directReceive variant="inline" label="Add Robinhood ETH" \/>/);
 assert.match(component, /prepareVNextWalletTransaction/);
 assert.match(component, /recordSubmittedVNextExecution/);
 assert.match(component, /findUnresolvedVNextExecution/);

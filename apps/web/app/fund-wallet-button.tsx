@@ -34,12 +34,14 @@ export function FundWalletButton({
   variant = "header",
   label = "Add funds",
   target = "mainnet",
+  directReceive = false,
   open: controlledOpen,
   onOpenChange
 }: {
   variant?: "header" | "inline";
   label?: string;
   target?: "testnet" | "mainnet";
+  directReceive?: boolean;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
 }) {
@@ -95,7 +97,15 @@ export function FundWalletButton({
 
   return <>
     <div className={`fundWalletMenu ${variant}`}>
-      <button ref={trigger} className="fundWalletTrigger" type="button" aria-expanded={open} aria-controls="fund-wallet-dialog" onClick={() => setOpen(true)}>{label}</button>
+      <button
+        ref={trigger}
+        className="fundWalletTrigger"
+        type="button"
+        aria-haspopup="dialog"
+        aria-expanded={directReceive ? receiveOpen : open}
+        aria-controls={directReceive ? undefined : "fund-wallet-dialog"}
+        onClick={() => directReceive && address ? setReceiveOpen(true) : setOpen(true)}
+      >{label}</button>
       {open && <OverlayPortal>
         <button className="fundWalletBackdrop" type="button" aria-label="Close funding options" onClick={close} />
         <div ref={dialog} className="fundWalletDialog" id="fund-wallet-dialog" role="dialog" aria-modal="true" aria-labelledby="fund-wallet-title" tabIndex={-1}>

@@ -57,6 +57,8 @@ When configured, the provider layer:
 
 Privy's unified funding interface is implemented behind both `NEXT_PUBLIC_PRIVY_FUNDING_ENABLED` and `NEXT_PUBLIC_PRIVY_FUNDING_PROVIDER_VERIFIED`. Privy's documentation supports custom EVM wallet networks and CAIP-2 funding destinations, but does not publicly establish that a configured provider currently serves Robinhood Chain mainnet (`eip155:4663`). Funding is therefore separately gated from wallet login because wallet-chain support does not prove provider route, asset, region or user eligibility.
 
+The RMT Privy development app's funding dashboard was checked on 2026-08-09. Its available EVM funding networks did not include Robinhood Chain. Provider funding therefore remains disabled, and insufficient-gas recovery opens the exact active-wallet Robinhood receive sheet directly instead of advertising an unavailable provider route.
+
 The funding request binds all provider quotes to:
 
 - the wallet address selected by the user;

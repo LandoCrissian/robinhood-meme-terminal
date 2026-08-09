@@ -46,7 +46,7 @@ export function PrivyFundingActions() {
     return (
       <div className="privyFundingUnavailable">
         <strong>Direct wallet deposits are ready</strong>
-        <span>Privy provider funding stays off until the dashboard methods are configured and an exact Robinhood Chain provider quote is verified. Use Receive at active wallet below in the meantime.</span>
+        <span>Privy does not currently offer Robinhood Chain in this app's provider-funding network list. Use Receive at active wallet below.</span>
       </div>
     );
   }

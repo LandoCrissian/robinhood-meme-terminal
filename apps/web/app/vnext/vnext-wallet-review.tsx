@@ -114,7 +114,7 @@ export function VNextWalletReview({ plan, evidence, autoRequest = false }: {
       : "The final wallet-submission gate remains off in production."}</small>
     {plan.kind === "erc20_approval" ? <small>Standard ERC-20 approvals have no onchain expiry. This request is limited to the exact input amount, and RMT requires fresh verification before the swap.</small> : <small>The verified swap calldata enforces its onchain deadline and protected output.</small>}
     {localError ? <p className="vnAuthorizationError" role="status">{localError}</p> : null}
-    {gasShortfall ? <FundWalletButton variant="inline" label="Add Robinhood ETH" /> : null}
+    {gasShortfall ? <FundWalletButton directReceive variant="inline" label="Add Robinhood ETH" /> : null}
     {submission.data ? <a href={`${EXPLORER}/tx/${submission.data}`} target="_blank" rel="noreferrer">View transaction ↗</a> : null}
   </div>;
 }

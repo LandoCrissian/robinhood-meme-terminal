@@ -822,7 +822,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
             </dl>
             {visibleVerification.status === "insufficient_gas" ? <div className="vnGasRecovery" role="status">
               <span><strong>Robinhood ETH is required only for network gas</strong><small>Add it to the exact active wallet, then press Buy or Sell once. RMT will quietly recheck the route, balance, and gas reserve.</small></span>
-              <FundWalletButton variant="inline" label="Add Robinhood ETH" />
+              <FundWalletButton directReceive variant="inline" label="Add Robinhood ETH" />
             </div> : null}
             {authorizationState.state === "error" ? <p className="vnAuthorizationError" role="status">{authorizationState.message}</p> : null}
             {authorizationState.state === "ready" ? <div className="vnAuthorizationPlan" role="status">
