@@ -41,6 +41,18 @@ export function percentageOfAtomic(balanceAtomic: string, basisPoints: number) {
   return amount.toString();
 }
 
+export function affordableDefaultAmount(balanceAtomic: string, decimals: number, desiredAmount: string) {
+  if (!/^(0|[1-9][0-9]*)$/.test(balanceAtomic)) throw new Error("Confirmed balance must be an unsigned atomic amount.");
+  const balance = BigInt(balanceAtomic);
+  if (balance === 0n) return "";
+  const desired = BigInt(decimalToAtomic(desiredAmount, decimals));
+  const selected = balance < desired ? balance : desired;
+  const scale = 10n ** BigInt(decimals);
+  const whole = selected / scale;
+  const fraction = (selected % scale).toString().padStart(decimals, "0").replace(/0+$/, "");
+  return fraction ? `${whole}.${fraction}` : whole.toString();
+}
+
 export function assetsForSide(side: TradeSide, marketAsset: AssetMetadata, settlementAsset: AssetMetadata) {
   return side === "buy"
     ? { inputAsset: settlementAsset, outputAsset: marketAsset }

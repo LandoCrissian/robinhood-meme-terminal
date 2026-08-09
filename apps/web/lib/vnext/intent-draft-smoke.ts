@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { assetKey, evmAsset, evmChain, type AssetMetadata, type WalletAccount } from "./execution-domain";
-import { assetsForSide, createExactInputIntent, decimalToAtomic, percentageOfAtomic } from "./intent-draft";
+import { affordableDefaultAmount, assetsForSide, createExactInputIntent, decimalToAtomic, percentageOfAtomic } from "./intent-draft";
 import { ROBINHOOD_RMT, ROBINHOOD_USDG, robinhoodWalletAccount } from "./robinhood-assets";
 
 const wallet = robinhoodWalletAccount("0x1111111111111111111111111111111111111111");
@@ -18,6 +18,11 @@ assert.throws(() => percentageOfAtomic("-1", 5_000), /unsigned atomic/);
 assert.throws(() => percentageOfAtomic("1", 0), /between/);
 assert.throws(() => percentageOfAtomic("1", 10_001), /between/);
 assert.throws(() => percentageOfAtomic("1", 2_500), /too small/);
+assert.equal(affordableDefaultAmount("40771730", 6, "25"), "25");
+assert.equal(affordableDefaultAmount("10123456", 6, "25"), "10.123456");
+assert.equal(affordableDefaultAmount("1", 6, "25"), "0.000001");
+assert.equal(affordableDefaultAmount("0", 6, "25"), "");
+assert.throws(() => affordableDefaultAmount("-1", 6, "25"), /unsigned atomic/);
 
 const buy = assetsForSide("buy", ROBINHOOD_RMT, ROBINHOOD_USDG);
 assert.equal(assetKey(buy.inputAsset.id), assetKey(ROBINHOOD_USDG.id));
@@ -89,6 +94,10 @@ assert.match(composer, /No different verified wallet-held input asset is detecte
 assert.match(composer, /ROBINHOOD_USDG, ROBINHOOD_WETH/);
 assert.match(composer, /pair\.inputAsset\.id/);
 assert.match(composer, /percentageOfAtomic/);
+assert.match(composer, /affordableDefaultAmount/);
+assert.match(composer, /autoFitBuyAmount/);
+assert.match(composer, /confirmedUsdgBalance/);
+assert.match(composer, /setAmount\(next === "buy" \? defaultBuyAmount : ""\)/);
 assert.match(composer, /Confirmed balance percentages/);
 assert.match(composer, /Amount exceeds the confirmed/);
 assert.match(composer, /Authorization must remain blocked/);
