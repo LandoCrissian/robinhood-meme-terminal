@@ -22,8 +22,8 @@ const evidence: VNextPreSignEvidence = {
   pools: ["0x4444444444444444444444444444444444444444"], deadline: "1786000300",
   calldataHash: `0x${"1".repeat(64)}`, nextAction: "approval", nextActionTarget: inputAsset,
   nextActionCalldataHash: keccak256(data), nativeBalanceWei: "1000000000000000",
-  gasPriceWei: "1000000000", estimatedGasUnits: "50000", gasLimitUnits: "60000",
-  estimatedNetworkCostWei: "60000000000000", gasState: "sufficient",
+  gasPriceWei: "1000000000", feeCeilingWei: "3000000000", estimatedGasUnits: "50000", gasLimitUnits: "60000",
+  estimatedNetworkCostWei: "180000000000000", gasState: "sufficient",
   routerRuntimeHash: `0x${"2".repeat(64)}`, factoryRuntimeHash: `0x${"3".repeat(64)}`,
   quoterRuntimeHash: `0x${"4".repeat(64)}`, exactSimulationPassed: false, userPaysGas: true,
   rmtFeeEnabled: false, verifiedAtMs: now - 1_000, expiresAtMs: now + 300_000, authorizationReady: false

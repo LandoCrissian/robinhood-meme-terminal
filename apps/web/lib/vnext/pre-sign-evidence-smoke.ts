@@ -32,9 +32,10 @@ const evidence: VNextPreSignEvidence = {
   nextActionCalldataHash: `0x${"1".repeat(64)}`,
   nativeBalanceWei: "1000000000000000",
   gasPriceWei: "1000000000",
+  feeCeilingWei: "3000000000",
   estimatedGasUnits: "100000",
   gasLimitUnits: "120000",
-  estimatedNetworkCostWei: "120000000000000",
+  estimatedNetworkCostWei: "360000000000000",
   gasState: "sufficient",
   routerRuntimeHash: `0x${"2".repeat(64)}`,
   factoryRuntimeHash: `0x${"3".repeat(64)}`,
@@ -78,6 +79,10 @@ assert.throws(() => parseVNextPreSignEvidence({
   ...evidence,
   estimatedNetworkCostWei: "1"
 }, expected, now), /gas economics/);
+assert.throws(() => parseVNextPreSignEvidence({
+  ...evidence,
+  feeCeilingWei: "999999999"
+}, expected, now), /gas economics/);
 
 const route = readFileSync(new URL("../../app/api/vnext/verify/route.ts", import.meta.url), "utf8");
 const verifier = readFileSync(new URL("../server/vnext-uniswap-quote.ts", import.meta.url), "utf8");
@@ -96,6 +101,7 @@ assert.match(verifier, /client\.estimateGas/);
 assert.match(verifier, /client\.getGasPrice/);
 assert.match(verifier, /client\.getBalance/);
 assert.match(verifier, /estimatedGasUnits \* 120n \/ 100n/);
+assert.match(verifier, /WALLET_FEE_CEILING_MULTIPLIER = 3n/);
 assert.match(verifier, /calldataHash: keccak256\(calldata\)/);
 assert.match(verifier, /authorizationReady: false/);
 assert.doesNotMatch(route, /writeContract|sendTransaction|signTypedData|database|firestore/);

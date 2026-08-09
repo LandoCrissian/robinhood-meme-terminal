@@ -30,6 +30,7 @@ export type VNextPreSignEvidence = {
   nextActionCalldataHash: string | null;
   nativeBalanceWei: string;
   gasPriceWei: string;
+  feeCeilingWei: string;
   estimatedGasUnits: string | null;
   gasLimitUnits: string | null;
   estimatedNetworkCostWei: string | null;
@@ -75,6 +76,7 @@ const evidenceSchema = z.object({
   nextActionCalldataHash: hash.nullable(),
   nativeBalanceWei: atomic,
   gasPriceWei: atomic,
+  feeCeilingWei: atomic,
   estimatedGasUnits: atomic.nullable(),
   gasLimitUnits: atomic.nullable(),
   estimatedNetworkCostWei: atomic.nullable(),
@@ -131,7 +133,8 @@ export function parseVNextPreSignEvidence(value: unknown, expected: {
   if (completeGasEstimate && (
     BigInt(evidence.estimatedGasUnits!) <= 0n
     || BigInt(evidence.gasLimitUnits!) < BigInt(evidence.estimatedGasUnits!)
-    || BigInt(evidence.estimatedNetworkCostWei!) !== BigInt(evidence.gasLimitUnits!) * BigInt(evidence.gasPriceWei)
+    || BigInt(evidence.feeCeilingWei) < BigInt(evidence.gasPriceWei)
+    || BigInt(evidence.estimatedNetworkCostWei!) !== BigInt(evidence.gasLimitUnits!) * BigInt(evidence.feeCeilingWei)
     || (evidence.gasState === "sufficient") !== (BigInt(evidence.nativeBalanceWei) >= BigInt(evidence.estimatedNetworkCostWei!))
   )) throw new Error("RMT rejected inconsistent gas economics.");
   if (evidence.status === "verified" && (!evidence.exactSimulationPassed || evidence.approvalRequired || !evidence.sufficientBalance)) {

@@ -16,6 +16,10 @@ import { ROBINHOOD_SWAP_ROUTER_02, ROBINHOOD_V3_FACTORY, ROBINHOOD_V3_QUOTER, RO
 const FEES = [100, 500, 3_000, 10_000] as const;
 const BPS = 10_000n;
 const SLIPPAGE_BPS = 100n;
+// MetaMask currently reserves up to 3x Robinhood Chain's observed gas price for
+// EIP-1559 transactions. Match that wallet-side ceiling so RMT never labels a
+// balance sufficient only for the final wallet review to reject it.
+const WALLET_FEE_CEILING_MULTIPLIER = 3n;
 const ROUTER_RUNTIME_HASH = "0x6f36c378e272c6324c48f045182bcb54bd8ad654cf9ebd42e8893d52c4cb25dc";
 const FACTORY_RUNTIME_HASH = "0xec72b1abd1f2faee020cfea9c646bd8994f9fb389054f6e574f103a895091739";
 const QUOTER_RUNTIME_HASH = "0x3db0868d945e9304c9bc6a8b2181948109ea617647142f3c4083e14393496a28";
@@ -260,6 +264,7 @@ async function evaluateVNextUniswapRoute(input: {
   let estimatedGasUnits: bigint | null = null;
   let gasLimitUnits: bigint | null = null;
   let estimatedNetworkCostWei: bigint | null = null;
+  const feeCeilingWei = gasPrice * WALLET_FEE_CEILING_MULTIPLIER;
   let gasState: "sufficient" | "insufficient" | "unavailable" | "not_checked" = "not_checked";
   if (!sufficientBalance) {
     status = "insufficient_balance";
@@ -299,7 +304,7 @@ async function evaluateVNextUniswapRoute(input: {
   }
   if (estimatedGasUnits !== null) {
     gasLimitUnits = estimatedGasUnits * 120n / 100n;
-    estimatedNetworkCostWei = gasLimitUnits * gasPrice;
+    estimatedNetworkCostWei = gasLimitUnits * feeCeilingWei;
     gasState = nativeBalance >= estimatedNetworkCostWei ? "sufficient" : "insufficient";
     if (gasState === "insufficient") status = "insufficient_gas";
   }
@@ -329,6 +334,7 @@ async function evaluateVNextUniswapRoute(input: {
     nextActionCalldataHash,
     nativeBalanceWei: nativeBalance.toString(),
     gasPriceWei: gasPrice.toString(),
+    feeCeilingWei: feeCeilingWei.toString(),
     estimatedGasUnits: estimatedGasUnits?.toString() ?? null,
     gasLimitUnits: gasLimitUnits?.toString() ?? null,
     estimatedNetworkCostWei: estimatedNetworkCostWei?.toString() ?? null,
