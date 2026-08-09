@@ -1,5 +1,6 @@
-import { getAddress, isAddress, isHex, keccak256, type Hex } from "viem";
+import { getAddress, isAddress, isHex, keccak256, parseUnits, type Address, type Hex } from "viem";
 import { quoteSushiAssetRoute } from "../lib/server/sushi-trade";
+import { readRobinhoodTokenIdentity } from "../lib/server/universal-market-resolver";
 import { quoteVNextUniswapDirect } from "../lib/server/vnext-uniswap-quote";
 import { ROBINHOOD_RMT_ADDRESS } from "../lib/vnext/robinhood-assets";
 
@@ -8,6 +9,7 @@ const RPC_URL = process.env.RMT_RPC_URL ?? "https://rpc.mainnet.chain.robinhood.
 const ROBINHOOD_ASSETS_URL = "https://api.robinhood.com/rhj/assets";
 const PCSX_PRICE_URL = "https://x.pancakeswap.com/order-price/get-price";
 const ZEROX_API_URL = "https://api.0x.org";
+const DEXSCREENER_PAIRS_URL = "https://api.dexscreener.com/token-pairs/v1/robinhood";
 const TIMEOUT_MS = 10_000;
 
 const USDG = "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168";
@@ -29,7 +31,7 @@ type ProbeStatus =
   | "invalid_response";
 
 type Probe = {
-  provider: "sushi" | "uniswap-v3" | "pancake-onchain" | "pancakeswapx" | "0x";
+  provider: "market-directory" | "sushi" | "uniswap-v3" | "pancake-onchain" | "pancakeswapx" | "0x";
   probe: string;
   status: ProbeStatus;
   latencyMs: number;
@@ -92,6 +94,10 @@ function assertReadOnlyRequest(url: string, init?: RequestInit) {
     return;
   }
   if (requested.href === PCSX_PRICE_URL && method === "POST") {
+    readOnlyRequestsValidated += 1;
+    return;
+  }
+  if (requested.origin === "https://api.dexscreener.com" && requested.pathname.startsWith("/token-pairs/v1/robinhood/") && method === "GET") {
     readOnlyRequestsValidated += 1;
     return;
   }
@@ -255,12 +261,109 @@ async function probePcsx(name: string, tokenOut: string, symbol: string): Promis
   }
 }
 
-const baselinePairs = [
+type BaselinePair = {
+  name: string;
+  inputSymbol: string;
+  outputSymbol: string;
+  inputAsset: Address;
+  outputAsset: Address;
+  amountIn: bigint;
+};
+
+const baselinePairs: BaselinePair[] = [
   { name: "usd-g-to-rmt", inputSymbol: "USDG", outputSymbol: "RMT", inputAsset: USDG, outputAsset: ROBINHOOD_RMT_ADDRESS, amountIn: 1_000_000n },
   { name: "rmt-to-usd-g", inputSymbol: "RMT", outputSymbol: "USDG", inputAsset: ROBINHOOD_RMT_ADDRESS, outputAsset: USDG, amountIn: 1_000_000_000_000_000_000n },
   { name: "usd-g-to-weth", inputSymbol: "USDG", outputSymbol: "WETH", inputAsset: USDG, outputAsset: WETH, amountIn: 1_000_000n },
   { name: "weth-to-usd-g", inputSymbol: "WETH", outputSymbol: "USDG", inputAsset: WETH, outputAsset: USDG, amountIn: 1_000_000_000_000_000n }
-] as const;
+];
+
+function finitePositive(value: unknown) {
+  const parsed = typeof value === "number" ? value : typeof value === "string" ? Number(value) : Number.NaN;
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+async function discoverLiquidBaseline(): Promise<{ probe: Probe; pairs: BaselinePair[] }> {
+  const startedAt = performance.now();
+  try {
+    const snapshots = await Promise.all([USDG, WETH].map(async (quoteAsset) => {
+      const { response, body } = await fetchJson(`${DEXSCREENER_PAIRS_URL}/${quoteAsset}`);
+      if (!response.ok || !Array.isArray(body)) throw new Error("directory_unavailable");
+      return body;
+    }));
+    const excluded = new Set([USDG, WETH, ROBINHOOD_RMT_ADDRESS].map((address) => address.toLowerCase()));
+    const candidates = snapshots.flat().flatMap((pair) => {
+      if (!isObject(pair) || pair.chainId !== "robinhood") return [];
+      const baseToken = isObject(pair.baseToken) ? pair.baseToken : null;
+      const quoteToken = isObject(pair.quoteToken) ? pair.quoteToken : null;
+      if (!baseToken || !quoteToken || typeof baseToken.address !== "string" || typeof quoteToken.address !== "string") return [];
+      if (!isAddress(baseToken.address, { strict: false }) || !isAddress(quoteToken.address, { strict: false })) return [];
+      const baseAddress = getAddress(baseToken.address);
+      const quoteAddress = getAddress(quoteToken.address);
+      if (excluded.has(baseAddress.toLowerCase()) || ![USDG.toLowerCase(), WETH.toLowerCase()].includes(quoteAddress.toLowerCase())) return [];
+      const liquidity = isObject(pair.liquidity) ? finitePositive(pair.liquidity.usd) : null;
+      const priceUsd = finitePositive(pair.priceUsd);
+      if (liquidity === null || priceUsd === null) return [];
+      return [{ address: baseAddress, liquidity, priceUsd }];
+    }).sort((left, right) => right.liquidity - left.liquidity);
+    const unique = [...new Map(candidates.map((candidate) => [candidate.address.toLowerCase(), candidate])).values()];
+    for (const candidate of unique.slice(0, 12)) {
+      const identity = await readRobinhoodTokenIdentity(candidate.address);
+      if (!identity || identity.decimals > 36) continue;
+      const displayAmount = 1 / candidate.priceUsd;
+      if (!Number.isFinite(displayAmount) || displayAmount <= 0) continue;
+      const precision = Math.min(identity.decimals, 12);
+      const tokenAmount = parseUnits(displayAmount.toFixed(precision), identity.decimals);
+      if (tokenAmount <= 0n || tokenAmount > BigInt(identity.totalSupply)) continue;
+      const slug = identity.symbol.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "liquid-token";
+      return {
+        probe: {
+          provider: "market-directory",
+          probe: "highest-liquidity-live-asset",
+          status: "available",
+          latencyMs: latency(startedAt),
+          chainId: CHAIN_ID,
+          routeAvailable: false,
+          evidence: {
+            symbol: identity.symbol,
+            address: identity.address,
+            decimals: identity.decimals,
+            observedLiquidityUsd: Math.round(candidate.liquidity),
+            observedPriceUsd: candidate.priceUsd
+          }
+        },
+        pairs: [{
+          name: `usd-g-to-${slug}`,
+          inputSymbol: "USDG",
+          outputSymbol: identity.symbol,
+          inputAsset: getAddress(USDG),
+          outputAsset: identity.address,
+          amountIn: 1_000_000n
+        }, {
+          name: `${slug}-to-usd-g`,
+          inputSymbol: identity.symbol,
+          outputSymbol: "USDG",
+          inputAsset: identity.address,
+          outputAsset: getAddress(USDG),
+          amountIn: tokenAmount
+        }]
+      };
+    }
+    throw new Error("no_verified_liquid_asset");
+  } catch (error) {
+    return {
+      probe: {
+        provider: "market-directory",
+        probe: "highest-liquidity-live-asset",
+        status: isTimeout(error) ? "timeout" : "unavailable",
+        latencyMs: latency(startedAt),
+        chainId: CHAIN_ID,
+        routeAvailable: false,
+        errorCategory: isTimeout(error) ? "timeout" : "no_verified_liquid_asset"
+      },
+      pairs: []
+    };
+  }
+}
 
 function baselineFailure(error: unknown) {
   const message = error instanceof Error ? error.message.toLowerCase() : "";
@@ -270,7 +373,7 @@ function baselineFailure(error: unknown) {
   return { status: "provider_error" as const, category: "provider_or_validation_error" };
 }
 
-async function probeSushiBaseline(pair: typeof baselinePairs[number]): Promise<Probe> {
+async function probeSushiBaseline(pair: BaselinePair): Promise<Probe> {
   const startedAt = performance.now();
   try {
     const quote = await quoteSushiAssetRoute({
@@ -315,7 +418,7 @@ async function probeSushiBaseline(pair: typeof baselinePairs[number]): Promise<P
   }
 }
 
-async function probeUniswapBaseline(pair: typeof baselinePairs[number]): Promise<Probe> {
+async function probeUniswapBaseline(pair: BaselinePair): Promise<Probe> {
   const startedAt = performance.now();
   try {
     const quote = await quoteVNextUniswapDirect({
@@ -459,9 +562,11 @@ async function probeZeroX(name: string, path: string, params: Record<string, str
 
 async function main() {
   const apiKey = process.env.RMT_ZEROX_API_KEY?.trim();
+  const liquidBaseline = await discoverLiquidBaseline();
+  const activeBaselinePairs = [...baselinePairs, ...liquidBaseline.pairs];
   const [contractProbes, baselineProbes, pcsxCryptoProbe] = await Promise.all([
     probeContracts(),
-    Promise.all(baselinePairs.flatMap((pair) => [probeSushiBaseline(pair), probeUniswapBaseline(pair)])),
+    Promise.all(activeBaselinePairs.flatMap((pair) => [probeSushiBaseline(pair), probeUniswapBaseline(pair)])),
     probePcsx("usd-g-to-weth", WETH, "WETH")
   ]);
   let pcsxRwaProbe: Probe;
@@ -487,7 +592,7 @@ async function main() {
     probeZeroX("gasless-price", "/gasless/price", { ...common, taker: NON_FUNDED_BENCHMARK_TAKER }, apiKey)
   ]);
 
-  const probes = [...baselineProbes, ...contractProbes, pcsxCryptoProbe, pcsxRwaProbe, ...zeroXProbes];
+  const probes = [liquidBaseline.probe, ...baselineProbes, ...contractProbes, pcsxCryptoProbe, pcsxRwaProbe, ...zeroXProbes];
   const noWriteAssertion = readOnlyRequestsValidated > 0 && !writeBoundaryViolation;
   process.stdout.write(`${JSON.stringify({
     generatedAt: new Date().toISOString(),

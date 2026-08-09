@@ -18,7 +18,9 @@ The optional `RMT_ZEROX_API_KEY` is server-only. When absent, every 0x row is re
 
 ### Live production baseline
 
-Every run now requests real indicative quotes for both existing RMT provider families across four Robinhood directions: USDG→RMT, RMT→USDG, USDG→WETH, and WETH→USDG. Sushi is restricted by the harness to `GET /quote/v7/4663`; Uniswap uses the existing bytecode-pinned V3 quoter through read-only RPC calls. Results include atomic expected/protected output and latency, but never executable calldata.
+Every run now requests real indicative quotes for both existing RMT provider families across USDG→WETH, WETH→USDG, and a live-discovered liquid token in both directions. RMT is retained separately as a pre-graduation control case. Sushi is restricted by the harness to `GET /quote/v7/4663`; Uniswap uses the existing bytecode-pinned V3 quoter through read-only RPC calls. Results include atomic expected/protected output and latency, but never executable calldata.
+
+The liquid-token sample is not hardcoded or mocked. The harness reads current Robinhood pairs from Dexscreener, selects the highest-liquidity non-USDG/non-WETH/non-RMT base asset with verified onchain ERC-20 identity, and derives an approximately $1 sell amount from its observed price and verified decimals. The selected symbol, address, liquidity, and price are included in sanitized output so every run remains auditable.
 
 These rows establish the comparison baseline for future providers. They do not request wallet balances, approvals, simulations against a user account, signatures, or transactions.
 
@@ -26,12 +28,21 @@ Initial live snapshot at 2026-08-08 21:20 MDT:
 
 | Direction and input | Sushi protected output | Uniswap V3 protected output | Coverage result |
 | --- | ---: | ---: | --- |
-| 1 USDG → RMT | — | — | Neither adapter found a route. |
-| 1 RMT → USDG | — | — | Neither adapter found a route. |
+| 1 USDG → RMT | — | — | Expected pre-graduation control result; RMT has not graduated into real liquidity. |
+| 1 RMT → USDG | — | — | Expected pre-graduation control result; RMT has not graduated into real liquidity. |
 | 1 USDG → WETH | `0.000517582299197998` WETH | `0.000517610631032090` WETH | Both available; Uniswap V3 was slightly higher in this sample. |
 | 0.001 WETH → USDG | `1.892710` USDG | `1.893129` USDG | Both available; Uniswap V3 was slightly higher in this sample. |
 
-These values are time-specific and indicative. The RMT result is a measured coverage gap in the currently admitted Sushi and Uniswap V3 adapters, not evidence that the official RMT market is offline. Its other Uniswap execution path must be benchmarked and represented separately rather than mislabeled as V3.
+These values are time-specific and indicative. The RMT result is not an adapter defect or evidence that the official RMT market is offline. It is the expected result for a token that has not graduated and does not yet have real liquidity; it must not be used to justify unnecessary route work.
+
+Live-discovery validation at 2026-08-08 21:37 MDT selected `PIPEDOG` (`0x5Cb6F181081301b44905F3ae15419112ecaBd8A6`) from approximately $8.89 million of observed liquidity. Both providers returned complete indicative routes in both directions:
+
+| Direction and input | Sushi protected output | Uniswap V3 protected output | Coverage result |
+| --- | ---: | ---: | --- |
+| 1 USDG → PIPEDOG | `372.478356632269351157` PIPEDOG | `372.493965925674468048` PIPEDOG | Both available. |
+| ~1 USDG of PIPEDOG → USDG | `0.986057` USDG | `0.979599` USDG | Both available. |
+
+The selected asset will change with live liquidity. This snapshot proves the discovery and bidirectional benchmark path; it does not permanently promote or endorse PIPEDOG.
 
 ### Pancake and PancakeSwapX contracts
 
