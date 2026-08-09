@@ -11,6 +11,7 @@ import { parseVNextQuoteResponse, selectVNextRoute, type VNextQuoteResponse } fr
 import { parseVNextPreSignEvidence, type VNextPreSignEvidence } from "../../lib/vnext/pre-sign-evidence";
 import { postApprovalVerificationOutcome, resolvedVNextExecutionOutcome } from "../../lib/vnext/post-approval";
 import { parseVNextAuthorizationBundle, type VNextAuthorizationPlan } from "../../lib/vnext/authorization-plan";
+import { isVNextQuoteReusableForTrade, VNEXT_BACKGROUND_QUOTE_DEBOUNCE_MS, VNEXT_BACKGROUND_QUOTE_REFRESH_MS } from "../../lib/vnext/background-quote";
 import { ROBINHOOD_MAINNET_CHAIN_ID, ROBINHOOD_USDG, ROBINHOOD_WETH, robinhoodWalletAccount } from "../../lib/vnext/robinhood-assets";
 import { deriveVNextVerifiedUsdgOutcome } from "../../lib/vnext/verified-cost-outcome";
 import { metadataFromDetectedWalletAsset, type VNextDetectedWalletAsset } from "../../lib/vnext/wallet-assets";
@@ -91,6 +92,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
   const handledExecution = useRef<string | undefined>(undefined);
   const pendingTradeAfterLogin = useRef(false);
   const continuedApproval = useRef<string | undefined>(undefined);
+  const backgroundQuoteEpoch = useRef(0);
   const lastReadyQuote = useRef<VNextQuoteResponse | undefined>(undefined);
   const lastReadyVerification = useRef<VNextPreSignEvidence | undefined>(undefined);
   const receiptAction = useRef<HTMLButtonElement>(null);
@@ -170,6 +172,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
   const outputAddress = pair?.outputAsset.id.locator.kind === "contract" ? pair.outputAsset.id.locator.address : null;
   const requestKey = `${address ?? ""}:${side}:${amount}:${inputAddress ?? ""}:${outputAddress ?? ""}`;
   useEffect(() => {
+    backgroundQuoteEpoch.current += 1;
     setQuoteState({ state: "idle" });
     setVerificationState({ state: "idle" });
     setAuthorizationState({ state: "idle" });
@@ -311,6 +314,71 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
     return parseVNextQuoteResponse(response.payload, expected, Date.now());
   };
 
+  useEffect(() => {
+    const canRefresh = Boolean(
+      identity.enabled
+      && identity.authenticated
+      && identity.identityToken
+      && identity.userId
+      && draft.intent
+      && address
+      && inputAddress
+      && outputAddress
+      && (verificationState.state === "idle" || verificationState.state === "error")
+      && authorizationState.state === "idle"
+      && postExecutionState.state === "idle"
+      && executionRecord?.state !== "submitted"
+    );
+    if (!canRefresh) return;
+
+    const epoch = ++backgroundQuoteEpoch.current;
+    let timeout: number | undefined;
+    let cancelled = false;
+    const schedule = (delayMs: number) => {
+      timeout = window.setTimeout(() => void refresh(), delayMs);
+    };
+    const refresh = async () => {
+      if (cancelled || backgroundQuoteEpoch.current !== epoch) return;
+      const hadVisibleQuote = Boolean(lastReadyQuote.current);
+      if (!hadVisibleQuote) setQuoteState({ state: "loading" });
+      try {
+        const freshQuote = await requestLiveRoutes();
+        if (cancelled || backgroundQuoteEpoch.current !== epoch) return;
+        lastReadyQuote.current = freshQuote;
+        setQuoteState({ state: "ready", response: freshQuote });
+      } catch (cause) {
+        if (cancelled || backgroundQuoteEpoch.current !== epoch) return;
+        if (!lastReadyQuote.current) {
+          setQuoteState({
+            state: "error",
+            message: cause instanceof Error ? cause.message : "Live routes are temporarily unavailable."
+          });
+        }
+      }
+      if (!cancelled && backgroundQuoteEpoch.current === epoch) schedule(VNEXT_BACKGROUND_QUOTE_REFRESH_MS);
+    };
+    schedule(lastReadyQuote.current ? VNEXT_BACKGROUND_QUOTE_REFRESH_MS : VNEXT_BACKGROUND_QUOTE_DEBOUNCE_MS);
+    return () => {
+      cancelled = true;
+      backgroundQuoteEpoch.current += 1;
+      if (timeout !== undefined) window.clearTimeout(timeout);
+    };
+  }, [
+    address,
+    authorizationState.state,
+    draft.intent,
+    executionRecord?.state,
+    identity.authenticated,
+    identity.enabled,
+    identity.identityToken,
+    identity.userId,
+    inputAddress,
+    outputAddress,
+    postExecutionState.state,
+    requestKey,
+    verificationState.state
+  ]);
+
   const requestStrictVerification = async (quoteResponse: VNextQuoteResponse) => {
     const selectedRoute = selectVNextRoute(quoteResponse.attempts);
     const winningQuote = selectedRoute.verificationCandidate;
@@ -399,14 +467,18 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
 
   const startTrade = async () => {
     if (!draft.intent || amountExceedsBalance) return;
+    backgroundQuoteEpoch.current += 1;
+    const reusableQuote = isVNextQuoteReusableForTrade(lastReadyQuote.current, Date.now())
+      ? lastReadyQuote.current
+      : undefined;
     let stage: "quote" | "verification" | "authorization" = "quote";
     setPostExecutionState({ state: "idle" });
-    setQuoteState({ state: "loading" });
+    setQuoteState(reusableQuote ? { state: "ready", response: reusableQuote } : { state: "loading" });
     setVerificationState({ state: "loading" });
     setAuthorizationState({ state: authorizationEnabled ? "loading" : "idle" });
-    clearTradeQuoteCache();
     try {
-      const freshQuote = await requestLiveRoutes();
+      if (!reusableQuote) clearTradeQuoteCache();
+      const freshQuote = reusableQuote ?? await requestLiveRoutes();
       lastReadyQuote.current = freshQuote;
       setQuoteState({ state: "ready", response: freshQuote });
       stage = "verification";
@@ -445,6 +517,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
   };
 
   const continueAfterApproval = async () => {
+    backgroundQuoteEpoch.current += 1;
     setPostExecutionState({ state: "refreshing", message: "Approval confirmed. RMT is refreshing and verifying the swap automatically…" });
     setQuoteState({ state: "loading" });
     setVerificationState({ state: "loading" });
