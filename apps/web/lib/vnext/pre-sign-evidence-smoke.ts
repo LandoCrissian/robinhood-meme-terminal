@@ -36,6 +36,10 @@ const evidence: VNextPreSignEvidence = {
   estimatedGasUnits: "100000",
   gasLimitUnits: "120000",
   estimatedNetworkCostWei: "360000000000000",
+  estimatedNetworkCostUsdgAtomic: "750000",
+  networkCostValuationSource: "canonical_uniswap_v3_weth_usdg_quote_plus_1pct",
+  networkCostValuedAtMs: now - 1_000,
+  networkCostValuationExpiresAtMs: now + 29_000,
   gasState: "sufficient",
   routerRuntimeHash: `0x${"2".repeat(64)}`,
   factoryRuntimeHash: `0x${"3".repeat(64)}`,
@@ -85,6 +89,14 @@ assert.throws(() => parseVNextPreSignEvidence({
   ...evidence,
   feeCeilingWei: "999999999"
 }, expected, now), /gas economics/);
+assert.throws(() => parseVNextPreSignEvidence({
+  ...evidence,
+  networkCostValuationSource: null
+}, expected, now), /incomplete network-cost valuation/);
+assert.throws(() => parseVNextPreSignEvidence({
+  ...evidence,
+  networkCostValuationExpiresAtMs: now
+}, expected, now), /stale or inconsistent network-cost valuation/);
 
 const route = readFileSync(new URL("../../app/api/vnext/verify/route.ts", import.meta.url), "utf8");
 const verifier = readFileSync(new URL("../server/vnext-uniswap-quote.ts", import.meta.url), "utf8");
@@ -103,6 +115,7 @@ assert.match(verifier, /client\.estimateGas/);
 assert.match(verifier, /client\.getGasPrice/);
 assert.match(verifier, /client\.getBalance/);
 assert.match(verifier, /estimatedGasUnits \* 120n \/ 100n/);
+assert.match(verifier, /canonical_uniswap_v3_weth_usdg_quote_plus_1pct/);
 assert.match(verifier, /WALLET_FEE_CEILING_MULTIPLIER = 3n/);
 assert.match(verifier, /calldataHash: keccak256\(calldata\)/);
 assert.match(verifier, /authorizationReady: false/);
@@ -114,6 +127,7 @@ assert.match(composer, /Strict pre-sign evidence/);
 assert.match(composer, /Authorization remains disabled/);
 assert.match(composer, /Insufficient ETH for gas/);
 assert.match(composer, /estimatedNetworkCostWei/);
+assert.match(composer, /estimatedNetworkCostUsdgAtomic/);
 assert.match(composer, /selectVNextRoute/);
 assert.match(composer, /selectedRoute\.verificationCandidate/);
 assert.match(composer, /best strict-verification candidate/);

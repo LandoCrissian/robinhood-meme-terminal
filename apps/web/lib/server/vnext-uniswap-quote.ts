@@ -12,6 +12,7 @@ import {
 } from "viem";
 import { robinhoodChain } from "@rmt/shared/chains";
 import { ROBINHOOD_SWAP_ROUTER_02, ROBINHOOD_V3_FACTORY, ROBINHOOD_V3_QUOTER, ROBINHOOD_WETH } from "../uniswap-v4";
+import { ROBINHOOD_USDG_ADDRESS } from "../vnext/robinhood-assets";
 
 const FEES = [100, 500, 3_000, 10_000] as const;
 const BPS = 10_000n;
@@ -264,6 +265,10 @@ async function evaluateVNextUniswapRoute(input: {
   let estimatedGasUnits: bigint | null = null;
   let gasLimitUnits: bigint | null = null;
   let estimatedNetworkCostWei: bigint | null = null;
+  let estimatedNetworkCostUsdgAtomic: bigint | null = null;
+  let networkCostValuationSource: "canonical_uniswap_v3_weth_usdg_quote_plus_1pct" | null = null;
+  let networkCostValuedAtMs: number | null = null;
+  let networkCostValuationExpiresAtMs: number | null = null;
   const feeCeilingWei = gasPrice * WALLET_FEE_CEILING_MULTIPLIER;
   let gasState: "sufficient" | "insufficient" | "unavailable" | "not_checked" = "not_checked";
   if (!sufficientBalance) {
@@ -307,6 +312,23 @@ async function evaluateVNextUniswapRoute(input: {
     estimatedNetworkCostWei = gasLimitUnits * feeCeilingWei;
     gasState = nativeBalance >= estimatedNetworkCostWei ? "sufficient" : "insufficient";
     if (gasState === "insufficient") status = "insufficient_gas";
+    try {
+      const valuation = await quoteVNextUniswapDirect({
+        inputAsset: ROBINHOOD_WETH,
+        outputAsset: ROBINHOOD_USDG_ADDRESS,
+        amountIn: estimatedNetworkCostWei
+      });
+      if (valuation) {
+        // Round upward so the displayed USDG reserve never understates this
+        // conservative wallet-fee ceiling by a fractional atomic unit.
+        estimatedNetworkCostUsdgAtomic = (valuation.quoteOut * (BPS + SLIPPAGE_BPS) + BPS - 1n) / BPS;
+        networkCostValuationSource = "canonical_uniswap_v3_weth_usdg_quote_plus_1pct";
+        networkCostValuedAtMs = nowMs;
+        networkCostValuationExpiresAtMs = Math.min(Number(deadline) * 1_000, nowMs + 30_000);
+      }
+    } catch {
+      // USDG valuation is advisory evidence. Exact gas readiness remains onchain.
+    }
   }
   return { evidence: {
     provider: "uniswap-v3" as const,
@@ -338,6 +360,10 @@ async function evaluateVNextUniswapRoute(input: {
     estimatedGasUnits: estimatedGasUnits?.toString() ?? null,
     gasLimitUnits: gasLimitUnits?.toString() ?? null,
     estimatedNetworkCostWei: estimatedNetworkCostWei?.toString() ?? null,
+    estimatedNetworkCostUsdgAtomic: estimatedNetworkCostUsdgAtomic?.toString() ?? null,
+    networkCostValuationSource,
+    networkCostValuedAtMs,
+    networkCostValuationExpiresAtMs,
     gasState,
     routerRuntimeHash,
     factoryRuntimeHash: FACTORY_RUNTIME_HASH,

@@ -39,6 +39,10 @@ export type VNextProviderVerificationEvidence = Record<string, unknown> & {
   nextActionTarget: Address | null;
   nextActionCalldataHash: Hex | null;
   gasLimitUnits: string | null;
+  estimatedNetworkCostUsdgAtomic: string | null;
+  networkCostValuationSource: "canonical_uniswap_v3_weth_usdg_quote_plus_1pct" | null;
+  networkCostValuedAtMs: number | null;
+  networkCostValuationExpiresAtMs: number | null;
 };
 
 export type VNextProviderAuthorizationRequest = VNextProviderVerificationRequest & {

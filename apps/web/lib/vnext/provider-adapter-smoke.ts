@@ -63,7 +63,9 @@ const executableAdapter: VNextQuoteProviderAdapter = {
       inputAsset: input.inputAsset, outputAsset: input.outputAsset, inputAmountAtomic: input.inputAmountAtomic,
       protectedOutputAtomic: "990", recipient: input.recipient, router: recipient, approvalSpender: recipient,
       deadline: deadlineSeconds.toString(), calldataHash: actionHash, nextAction: "swap",
-      nextActionTarget: recipient, nextActionCalldataHash: actionHash, gasLimitUnits: "120000"
+      nextActionTarget: recipient, nextActionCalldataHash: actionHash, gasLimitUnits: "120000",
+      estimatedNetworkCostUsdgAtomic: null, networkCostValuationSource: null,
+      networkCostValuedAtMs: null, networkCostValuationExpiresAtMs: null
     };
   },
   async prepareAuthorization(input) {

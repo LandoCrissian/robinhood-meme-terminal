@@ -654,6 +654,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
               <div><dt>Next action</dt><dd>{visibleVerification.nextAction === "approval" ? "Exact approval" : visibleVerification.nextAction === "swap" ? "Verified swap" : "Blocked"}</dd></div>
               <div><dt>Gas</dt><dd>{visibleVerification.gasState}</dd></div>
               <div><dt>Gas reserve</dt><dd>{visibleVerification.estimatedNetworkCostWei ? `${formatAtomicDisplay(visibleVerification.estimatedNetworkCostWei, 18)} ETH` : "Unavailable"}</dd></div>
+              <div><dt>Gas reserve value</dt><dd>{visibleVerification.estimatedNetworkCostUsdgAtomic ? `${formatAtomicDisplay(visibleVerification.estimatedNetworkCostUsdgAtomic, 6)} USDG` : "Unavailable"}</dd></div>
               <div><dt>Calldata</dt><dd>{shortAddress(visibleVerification.calldataHash)}</dd></div>
             </dl>
             {authorizationState.state === "error" ? <p className="vnAuthorizationError" role="status">{authorizationState.message}</p> : null}

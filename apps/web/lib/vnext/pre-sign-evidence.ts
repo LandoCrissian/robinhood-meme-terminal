@@ -36,6 +36,10 @@ export type VNextPreSignEvidence = {
   estimatedGasUnits: string | null;
   gasLimitUnits: string | null;
   estimatedNetworkCostWei: string | null;
+  estimatedNetworkCostUsdgAtomic: string | null;
+  networkCostValuationSource: "canonical_uniswap_v3_weth_usdg_quote_plus_1pct" | null;
+  networkCostValuedAtMs: number | null;
+  networkCostValuationExpiresAtMs: number | null;
   gasState: "sufficient" | "insufficient" | "unavailable" | "not_checked";
   routerRuntimeHash: string;
   factoryRuntimeHash: string;
@@ -82,6 +86,10 @@ const evidenceSchema = z.object({
   estimatedGasUnits: atomic.nullable(),
   gasLimitUnits: atomic.nullable(),
   estimatedNetworkCostWei: atomic.nullable(),
+  estimatedNetworkCostUsdgAtomic: atomic.nullable(),
+  networkCostValuationSource: z.literal("canonical_uniswap_v3_weth_usdg_quote_plus_1pct").nullable(),
+  networkCostValuedAtMs: z.number().int().positive().nullable(),
+  networkCostValuationExpiresAtMs: z.number().int().positive().nullable(),
   gasState: z.enum(["sufficient", "insufficient", "unavailable", "not_checked"]),
   routerRuntimeHash: hash,
   factoryRuntimeHash: hash,
@@ -139,6 +147,23 @@ export function parseVNextPreSignEvidence(value: unknown, expected: {
     || BigInt(evidence.estimatedNetworkCostWei!) !== BigInt(evidence.gasLimitUnits!) * BigInt(evidence.feeCeilingWei)
     || (evidence.gasState === "sufficient") !== (BigInt(evidence.nativeBalanceWei) >= BigInt(evidence.estimatedNetworkCostWei!))
   )) throw new Error("RMT rejected inconsistent gas economics.");
+  const valuationParts = [
+    evidence.estimatedNetworkCostUsdgAtomic,
+    evidence.networkCostValuationSource,
+    evidence.networkCostValuedAtMs,
+    evidence.networkCostValuationExpiresAtMs
+  ];
+  const completeValuation = valuationParts.every((value) => value !== null);
+  if (!completeValuation && valuationParts.some((value) => value !== null)) {
+    throw new Error("RMT rejected incomplete network-cost valuation evidence.");
+  }
+  if (completeValuation && (
+    evidence.estimatedNetworkCostWei === null
+    || BigInt(evidence.estimatedNetworkCostUsdgAtomic!) <= 0n
+    || evidence.networkCostValuedAtMs! > evidence.verifiedAtMs + MAX_CLOCK_SKEW_MS
+    || evidence.networkCostValuationExpiresAtMs! <= nowMs
+    || evidence.networkCostValuationExpiresAtMs! - evidence.networkCostValuedAtMs! > 30_000
+  )) throw new Error("RMT rejected stale or inconsistent network-cost valuation evidence.");
   if (evidence.status === "verified" && (!evidence.exactSimulationPassed || evidence.approvalRequired || !evidence.sufficientBalance)) {
     throw new Error("RMT rejected a false verified status.");
   }
