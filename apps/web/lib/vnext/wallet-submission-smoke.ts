@@ -4,7 +4,7 @@ import { encodeFunctionData, erc20Abi, keccak256 } from "viem";
 import { ROBINHOOD_SWAP_ROUTER_02 } from "../uniswap-v4";
 import { authorizationPayloadHash, type VNextAuthorizationPlan } from "./authorization-plan";
 import type { VNextPreSignEvidence } from "./pre-sign-evidence";
-import { prepareVNextWalletTransaction } from "./wallet-submission";
+import { assessVNextWalletGasReadiness, prepareVNextWalletTransaction } from "./wallet-submission";
 
 const now = 1_786_000_000_000;
 const inputAsset = "0x1111111111111111111111111111111111111111";
@@ -54,11 +54,35 @@ assert.throws(() => prepareVNextWalletTransaction({ plan, evidence, connectedAdd
 assert.throws(() => prepareVNextWalletTransaction({ plan, evidence, connectedAddress: outputAsset, connectedChainId: 4_663, nowMs: now + 1 }), /verified recipient/);
 assert.throws(() => prepareVNextWalletTransaction({ plan, evidence, connectedAddress: recipient, connectedChainId: 4_663, nowMs: now + 60_001 }), /inconsistent authorization plan/);
 assert.throws(() => prepareVNextWalletTransaction({ plan: { ...plan, gasLimit: "60001" }, evidence, connectedAddress: recipient, connectedChainId: 4_663, nowMs: now + 1 }));
+const readyGas = assessVNextWalletGasReadiness({
+  nativeBalanceWei: 1_000_000n,
+  currentGasPriceWei: 2n,
+  evidenceFeeCeilingWei: "5",
+  gasLimitUnits: "100000"
+});
+assert.equal(readyGas.ready, true);
+assert.equal(readyGas.requiredWei, 600_000n);
+assert.equal(readyGas.effectiveFeeCeilingWei, 6n);
+const missingGas = assessVNextWalletGasReadiness({
+  nativeBalanceWei: 500_000n,
+  currentGasPriceWei: 1n,
+  evidenceFeeCeilingWei: "6",
+  gasLimitUnits: "100000"
+});
+assert.equal(missingGas.ready, false);
+assert.equal(missingGas.shortfallWei, 100_000n);
+assert.throws(() => assessVNextWalletGasReadiness({ nativeBalanceWei: 1n, currentGasPriceWei: 0n, evidenceFeeCeilingWei: "1", gasLimitUnits: "1" }), /invalid live gas/);
 
 const component = readFileSync(new URL("../../app/vnext/vnext-wallet-review.tsx", import.meta.url), "utf8");
 const helper = readFileSync(new URL("./wallet-submission.ts", import.meta.url), "utf8");
 assert.match(component, /NEXT_PUBLIC_RMT_VNEXT_WALLET_SUBMISSION_ENABLED === "true"/);
 assert.match(component, /useSendTransaction/);
+assert.match(component, /usePublicClient/);
+assert.match(component, /publicClient\.getBalance/);
+assert.match(component, /publicClient\.getGasPrice/);
+assert.match(component, /assessVNextWalletGasReadiness/);
+assert.match(component, /RMT did not open the wallet/);
+assert.match(component, /Checking Robinhood ETH reserve/);
 assert.match(component, /prepareVNextWalletTransaction/);
 assert.match(component, /recordSubmittedVNextExecution/);
 assert.match(component, /findUnresolvedVNextExecution/);
@@ -69,6 +93,7 @@ assert.match(component, /Standard ERC-20 approvals have no onchain expiry/);
 assert.match(component, /swap calldata enforces its onchain deadline and protected output/);
 assert.match(helper, /parseVNextAuthorizationPlan/);
 assert.match(helper, /connectedChainId !== ROBINHOOD_MAINNET_CHAIN_ID/);
+assert.match(helper, /WALLET_FEE_CEILING_MULTIPLIER = 3n/);
 assert.doesNotMatch(component, /fetch\s*\(|writeContract|signTypedData|PRIVATE_KEY|MNEMONIC/);
 assert.doesNotMatch(helper, /fetch\s*\(|sendTransaction|writeContract|signTypedData/);
 

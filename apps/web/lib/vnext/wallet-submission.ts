@@ -12,6 +12,32 @@ export type VNextWalletTransaction = {
   gas: bigint;
 };
 
+const WALLET_FEE_CEILING_MULTIPLIER = 3n;
+
+export function assessVNextWalletGasReadiness(input: {
+  nativeBalanceWei: bigint;
+  currentGasPriceWei: bigint;
+  evidenceFeeCeilingWei: string;
+  gasLimitUnits: string;
+}) {
+  if (input.nativeBalanceWei < 0n || input.currentGasPriceWei <= 0n) throw new Error("RMT rejected invalid live gas inputs.");
+  if (!/^[1-9][0-9]*$/.test(input.evidenceFeeCeilingWei) || !/^[1-9][0-9]*$/.test(input.gasLimitUnits)) {
+    throw new Error("RMT rejected incomplete verified gas evidence.");
+  }
+  const evidenceFeeCeiling = BigInt(input.evidenceFeeCeilingWei);
+  const liveFeeCeiling = input.currentGasPriceWei * WALLET_FEE_CEILING_MULTIPLIER;
+  const effectiveFeeCeiling = liveFeeCeiling > evidenceFeeCeiling ? liveFeeCeiling : evidenceFeeCeiling;
+  const requiredWei = BigInt(input.gasLimitUnits) * effectiveFeeCeiling;
+  const shortfallWei = input.nativeBalanceWei >= requiredWei ? 0n : requiredWei - input.nativeBalanceWei;
+  return {
+    ready: shortfallWei === 0n,
+    availableWei: input.nativeBalanceWei,
+    requiredWei,
+    shortfallWei,
+    effectiveFeeCeilingWei: effectiveFeeCeiling
+  };
+}
+
 export function prepareVNextWalletTransaction(input: {
   plan: VNextAuthorizationPlan;
   evidence: VNextPreSignEvidence;

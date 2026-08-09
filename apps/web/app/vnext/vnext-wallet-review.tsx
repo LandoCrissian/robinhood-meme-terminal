@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useAccount, useSendTransaction } from "wagmi";
+import { formatUnits } from "viem";
+import { useAccount, usePublicClient, useSendTransaction } from "wagmi";
 import type { VNextAuthorizationPlan } from "../../lib/vnext/authorization-plan";
 import { findUnresolvedVNextExecution, recordSubmittedVNextExecution } from "../../lib/vnext/execution-recovery";
 import type { VNextPreSignEvidence } from "../../lib/vnext/pre-sign-evidence";
 import { ROBINHOOD_MAINNET_CHAIN_ID } from "../../lib/vnext/robinhood-assets";
-import { prepareVNextWalletTransaction } from "../../lib/vnext/wallet-submission";
+import { assessVNextWalletGasReadiness, prepareVNextWalletTransaction } from "../../lib/vnext/wallet-submission";
 
 const EXPLORER = "https://robinhoodchain.blockscout.com";
 
@@ -16,11 +17,13 @@ export function VNextWalletReview({ plan, evidence, autoRequest = false }: {
   autoRequest?: boolean;
 }) {
   const { address, chainId, isConnected } = useAccount();
+  const publicClient = usePublicClient({ chainId: ROBINHOOD_MAINNET_CHAIN_ID });
   const submission = useSendTransaction();
   const [localError, setLocalError] = useState("");
+  const [preflightPending, setPreflightPending] = useState(false);
   const automaticallyRequestedPlan = useRef<string | undefined>(undefined);
   const submissionEnabled = process.env.NEXT_PUBLIC_RMT_VNEXT_WALLET_SUBMISSION_ENABLED === "true";
-  const busy = submission.isPending || Boolean(submission.data);
+  const busy = preflightPending || submission.isPending || Boolean(submission.data);
 
   const requestWalletReview = async () => {
     setLocalError("");
@@ -29,12 +32,31 @@ export function VNextWalletReview({ plan, evidence, autoRequest = false }: {
       setLocalError("Connect the verified wallet on Robinhood Chain before continuing.");
       return;
     }
+    if (!publicClient) {
+      setLocalError("Live Robinhood gas readiness is unavailable. RMT did not open the wallet.");
+      return;
+    }
     const unresolved = findUnresolvedVNextExecution(address);
     if (unresolved) {
       setLocalError(`An RMT transaction is still unresolved (${unresolved.txHash.slice(0, 10)}…). Do not resubmit.`);
       return;
     }
+    setPreflightPending(true);
     try {
+      const [nativeBalanceWei, currentGasPriceWei] = await Promise.all([
+        publicClient.getBalance({ address }),
+        publicClient.getGasPrice()
+      ]);
+      const gasReadiness = assessVNextWalletGasReadiness({
+        nativeBalanceWei,
+        currentGasPriceWei,
+        evidenceFeeCeilingWei: evidence.feeCeilingWei,
+        gasLimitUnits: plan.gasLimit
+      });
+      if (!gasReadiness.ready) {
+        setLocalError(`Add at least ${formatUnits(gasReadiness.shortfallWei, 18)} ETH on Robinhood Chain for this transaction. RMT did not open the wallet.`);
+        return;
+      }
       const transaction = prepareVNextWalletTransaction({
         plan,
         evidence,
@@ -51,6 +73,8 @@ export function VNextWalletReview({ plan, evidence, autoRequest = false }: {
       setLocalError(rejected
         ? "Wallet review was cancelled. Nothing was submitted."
         : "The exact transaction request was not accepted. Verify the route again.");
+    } finally {
+      setPreflightPending(false);
     }
   };
 
@@ -67,17 +91,19 @@ export function VNextWalletReview({ plan, evidence, autoRequest = false }: {
       onClick={() => void requestWalletReview()}
     >{!submissionEnabled
       ? "Wallet submission disabled"
-      : submission.isPending
-        ? "Review exact request in wallet…"
-        : submission.data
-          ? "Submitted · recovery active"
-          : localError
-            ? "Retry wallet review"
-            : autoRequest
-              ? "Opening verified wallet request…"
-              : plan.kind === "erc20_approval"
-                ? "Review exact approval in wallet"
-                : "Review verified swap in wallet"}</button>
+      : preflightPending
+        ? "Checking Robinhood ETH reserve…"
+        : submission.isPending
+          ? "Review exact request in wallet…"
+          : submission.data
+            ? "Submitted · recovery active"
+            : localError
+              ? "Retry wallet review"
+              : autoRequest
+                ? "Opening verified wallet request…"
+                : plan.kind === "erc20_approval"
+                  ? "Review exact approval in wallet"
+                  : "Review verified swap in wallet"}</button>
     <small>{submissionEnabled
       ? "Your wallet displays and authorizes this exact request. RMT cannot sign or submit it for you."
       : "The final wallet-submission gate remains off in production."}</small>
