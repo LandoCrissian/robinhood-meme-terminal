@@ -533,8 +533,10 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
             ? "Finding best execution…"
             : !identity.enabled
               ? "Trading identity unavailable"
-            : !address || !identity.authenticated
+            : !address
               ? `${side === "buy" ? "Connect & buy" : "Connect & sell"} ${marketSymbol}`
+            : !identity.authenticated
+              ? `${side === "buy" ? "Sign in & buy" : "Sign in & sell"} ${marketSymbol}`
               : `${authorizationEnabled ? "" : "Preview "}${side === "buy" ? "Buy" : "Sell"} ${marketSymbol}`}</button>
       <p className="vnTradeSafety">{identity.enabled
         ? "One action handles routing, verification, simulation, and exact payload preparation. Your wallet always shows the final authorization."
