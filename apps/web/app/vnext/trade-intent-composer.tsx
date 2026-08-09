@@ -480,6 +480,10 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
   };
   const continueTrading = () => {
     setPostExecutionState({ state: "idle" });
+    setSide("buy");
+    setAmount("");
+    setBuyInputKey(assetKey(ROBINHOOD_USDG.id));
+    setSellOutputKey(assetKey(ROBINHOOD_USDG.id));
     onContinueTrading();
   };
 
