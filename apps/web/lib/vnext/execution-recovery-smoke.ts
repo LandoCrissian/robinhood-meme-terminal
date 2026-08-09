@@ -7,9 +7,11 @@ import {
   readVNextExecutionJournal,
   recordSubmittedVNextExecution,
   resolveVNextExecution,
+  settledVNextOutputAtomic,
   VNEXT_EXECUTION_STORAGE_KEY,
   type VNextExecutionStorage
 } from "./execution-recovery";
+import { encodeAbiParameters, encodeEventTopics, type Hex } from "viem";
 
 const wallet = "0x1111111111111111111111111111111111111111";
 const inputAsset = "0x2222222222222222222222222222222222222222";
@@ -42,6 +44,32 @@ assert.equal(readVNextExecutionJournal(storage, now + 5).length, 2);
 assert.deepEqual(normalizeVNextExecutionJournal([{ bad: true }], now), []);
 assert.equal(recordSubmittedVNextExecution({ wallet: outputAsset, plan, txHash }, storage, now), null);
 
+const swapRecord = { ...submitted!, kind: "swap" as const };
+const transferTopics = encodeEventTopics({
+  abi: [{ type: "event", name: "Transfer", anonymous: false, inputs: [
+    { indexed: true, name: "from", type: "address" },
+    { indexed: true, name: "to", type: "address" },
+    { indexed: false, name: "value", type: "uint256" }
+  ] }] as const,
+  eventName: "Transfer",
+  args: { from: inputAsset, to: wallet }
+});
+const outputLog = (value: bigint, address = outputAsset) => ({
+  address,
+  topics: transferTopics.flatMap((topic) => typeof topic === "string" ? [topic as Hex] : []),
+  data: encodeAbiParameters([{ type: "uint256" }], [value])
+});
+assert.equal(settledVNextOutputAtomic(swapRecord, [outputLog(700n), outputLog(300n)]), "1000");
+assert.equal(settledVNextOutputAtomic(swapRecord, [outputLog(1000n, inputAsset)]), null);
+assert.equal(settledVNextOutputAtomic({ ...swapRecord, kind: "erc20_approval" }, [outputLog(1000n)]), null);
+
+const settledValues = new Map<string, string>();
+const settledStorage: VNextExecutionStorage = { getItem: (key) => settledValues.get(key) ?? null, setItem: (key, value) => { settledValues.set(key, value); } };
+recordSubmittedVNextExecution({ wallet, plan: { ...plan, kind: "swap" }, txHash }, settledStorage, now);
+assert.equal(resolveVNextExecution(txHash, "confirmed", settledStorage, now + 1, { outputAmountAtomic: "1000" })?.outputAmountAtomic, "1000");
+assert.equal(readVNextExecutionJournal(settledStorage, now + 2)[0]?.outputAmountAtomic, "1000");
+assert.equal(resolveVNextExecution(txHash, "confirmed", settledStorage, now + 3, { outputAmountAtomic: "0" }), null);
+
 const oldValues = new Map<string, string>();
 const oldStorage: VNextExecutionStorage = { getItem: (key) => oldValues.get(key) ?? null, setItem: (key, value) => { oldValues.set(key, value); } };
 recordSubmittedVNextExecution({ wallet, plan, txHash }, oldStorage, now - 24 * 60 * 60 * 1_000 - 1);
@@ -53,6 +81,7 @@ const walletReview = readFileSync(new URL("../../app/vnext/vnext-wallet-review.t
 const spendBalance = readFileSync(new URL("../../app/vnext/spend-balance.tsx", import.meta.url), "utf8");
 assert.match(hook, /useWaitForTransactionReceipt/);
 assert.match(hook, /resolveVNextExecution/);
+assert.match(hook, /settledVNextOutputAtomic/);
 assert.match(hook, /receipt\.data\.transactionHash\.toLowerCase\(\) !== record\.txHash\.toLowerCase\(\)/);
 assert.match(hook, /VNEXT_EXECUTION_STORAGE_KEY/);
 assert.match(banner, /Do not resubmit/);

@@ -1,4 +1,4 @@
-import { getAddress, isAddress, isHash, type Address, type Hash, type Hex } from "viem";
+import { decodeEventLog, getAddress, isAddress, isHash, type Address, type Hash, type Hex } from "viem";
 import type { VNextAuthorizationPlan } from "./authorization-plan";
 
 export const VNEXT_EXECUTION_STORAGE_KEY = "rmt:vnext-execution-journal:v1:4663";
@@ -7,6 +7,14 @@ const SCHEMA_VERSION = 1 as const;
 const MAX_RECORDS = 20;
 const RECOVERABLE_AGE_MS = 24 * 60 * 60 * 1_000;
 const HISTORY_AGE_MS = 7 * 24 * 60 * 60 * 1_000;
+const transferEventAbi = [{
+  type: "event", name: "Transfer", anonymous: false,
+  inputs: [
+    { indexed: true, name: "from", type: "address" },
+    { indexed: true, name: "to", type: "address" },
+    { indexed: false, name: "value", type: "uint256" }
+  ]
+}] as const;
 
 export type VNextExecutionRecord = {
   schemaVersion: typeof SCHEMA_VERSION;
@@ -16,6 +24,7 @@ export type VNextExecutionRecord = {
   inputAsset: Address;
   outputAsset: Address;
   inputAmountAtomic: string;
+  outputAmountAtomic?: string;
   planId: string;
   payloadHash: Hex;
   txHash: Hash;
@@ -40,6 +49,9 @@ function normalizeRecord(value: unknown): VNextExecutionRecord | null {
   const candidate = value as Partial<VNextExecutionRecord>;
   const submittedAtMs = normalizeTimestamp(candidate.submittedAtMs);
   const updatedAtMs = normalizeTimestamp(candidate.updatedAtMs);
+  const outputAmountAtomic = candidate.outputAmountAtomic === undefined
+    ? undefined
+    : /^(?:[1-9][0-9]*)$/.test(candidate.outputAmountAtomic) ? candidate.outputAmountAtomic : null;
   if (
     candidate.schemaVersion !== SCHEMA_VERSION || candidate.chainId !== 4_663
     || !candidate.wallet || !isAddress(candidate.wallet, { strict: false })
@@ -50,9 +62,11 @@ function normalizeRecord(value: unknown): VNextExecutionRecord | null {
     || !candidate.payloadHash || !isHash(candidate.payloadHash)
     || !candidate.planId || !/^[0-9a-f-]{36}$/i.test(candidate.planId)
     || !candidate.inputAmountAtomic || !/^[1-9][0-9]*$/.test(candidate.inputAmountAtomic)
+    || outputAmountAtomic === null
     || !submittedAtMs || !updatedAtMs || updatedAtMs < submittedAtMs
     || !["erc20_approval", "swap"].includes(candidate.kind ?? "")
     || !["submitted", "confirmed", "reverted"].includes(candidate.state ?? "")
+    || (outputAmountAtomic !== undefined && (candidate.kind !== "swap" || candidate.state !== "confirmed"))
   ) return null;
   return {
     schemaVersion: SCHEMA_VERSION,
@@ -62,6 +76,7 @@ function normalizeRecord(value: unknown): VNextExecutionRecord | null {
     inputAsset: getAddress(candidate.inputAsset),
     outputAsset: getAddress(candidate.outputAsset),
     inputAmountAtomic: candidate.inputAmountAtomic,
+    ...(outputAmountAtomic ? { outputAmountAtomic } : {}),
     planId: candidate.planId,
     payloadHash: candidate.payloadHash.toLowerCase() as Hex,
     txHash: candidate.txHash.toLowerCase() as Hash,
@@ -146,12 +161,52 @@ export function recordSubmittedVNextExecution(input: {
   return writeJournal([record, ...current], storage, nowMs) ? record : null;
 }
 
-export function resolveVNextExecution(txHash: string, state: "confirmed" | "reverted", storage?: VNextExecutionStorage, nowMs = Date.now()) {
+export function settledVNextOutputAtomic(record: VNextExecutionRecord, logs: readonly {
+  address: string;
+  data: Hex;
+  topics: readonly Hex[];
+}[]) {
+  if (record.kind !== "swap") return null;
+  let received = 0n;
+  logs.forEach((log) => {
+    if (!isAddress(log.address, { strict: false }) || getAddress(log.address) !== record.outputAsset || log.topics.length === 0) return;
+    try {
+      const decoded = decodeEventLog({
+        abi: transferEventAbi,
+        data: log.data,
+        topics: log.topics as [Hex, ...Hex[]]
+      });
+      if (decoded.eventName === "Transfer" && getAddress(decoded.args.to) === record.wallet) received += decoded.args.value;
+    } catch {
+      return;
+    }
+  });
+  return received > 0n ? received.toString() : null;
+}
+
+export function resolveVNextExecution(
+  txHash: string,
+  state: "confirmed" | "reverted",
+  storage?: VNextExecutionStorage,
+  nowMs = Date.now(),
+  settlement?: { outputAmountAtomic: string }
+) {
   if (!isHash(txHash)) return null;
   const normalizedHash = txHash.toLowerCase();
   const current = readVNextExecutionJournal(storage, nowMs);
   const existing = current.find((record) => record.txHash === normalizedHash);
   if (!existing) return null;
-  const resolved: VNextExecutionRecord = { ...existing, state, updatedAtMs: nowMs };
+  const outputAmountAtomic = settlement?.outputAmountAtomic;
+  if (outputAmountAtomic !== undefined && (
+    state !== "confirmed" || existing.kind !== "swap" || !/^[1-9][0-9]*$/.test(outputAmountAtomic)
+  )) return null;
+  const resolved: VNextExecutionRecord = {
+    ...existing,
+    state,
+    ...(state === "confirmed" && existing.kind === "swap" && (outputAmountAtomic ?? existing.outputAmountAtomic)
+      ? { outputAmountAtomic: outputAmountAtomic ?? existing.outputAmountAtomic }
+      : { outputAmountAtomic: undefined }),
+    updatedAtMs: nowMs
+  };
   return writeJournal([resolved, ...current.filter((record) => record.txHash !== normalizedHash)], storage, nowMs) ? resolved : null;
 }

@@ -6,6 +6,7 @@ import {
   findUnresolvedVNextExecution,
   readVNextExecutionJournal,
   resolveVNextExecution,
+  settledVNextOutputAtomic,
   VNEXT_EXECUTION_EVENT,
   VNEXT_EXECUTION_STORAGE_KEY,
   type VNextExecutionRecord
@@ -15,8 +16,10 @@ import { ROBINHOOD_MAINNET_CHAIN_ID } from "../../lib/vnext/robinhood-assets";
 export function useVNextExecutionRecovery() {
   const { address } = useAccount();
   const [record, setRecord] = useState<VNextExecutionRecord | null>(null);
+  const receiptRequired = record?.state === "submitted"
+    || (record?.state === "confirmed" && record.kind === "swap" && !record.outputAmountAtomic);
   const receipt = useWaitForTransactionReceipt({
-    hash: record?.state === "submitted" ? record.txHash : undefined,
+    hash: receiptRequired ? record?.txHash : undefined,
     chainId: ROBINHOOD_MAINNET_CHAIN_ID,
     confirmations: 1
   });
@@ -47,13 +50,23 @@ export function useVNextExecutionRecovery() {
 
   useEffect(() => {
     if (
-      !record || record.state !== "submitted" || !receipt.isSuccess || !receipt.data
+      !record || !receiptRequired || !receipt.isSuccess || !receipt.data
       || receipt.data.transactionHash.toLowerCase() !== record.txHash.toLowerCase()
     ) return;
     const state = receipt.data.status === "success" ? "confirmed" : "reverted";
-    const resolved = resolveVNextExecution(record.txHash, state) ?? { ...record, state, updatedAtMs: Date.now() };
+    const outputAmountAtomic = state === "confirmed"
+      ? settledVNextOutputAtomic(record, receipt.data.logs)
+      : null;
+    if (record.state === "confirmed" && !outputAmountAtomic) return;
+    const resolved = resolveVNextExecution(
+      record.txHash,
+      state,
+      undefined,
+      Date.now(),
+      outputAmountAtomic ? { outputAmountAtomic } : undefined
+    ) ?? { ...record, state, ...(outputAmountAtomic ? { outputAmountAtomic } : {}), updatedAtMs: Date.now() };
     setRecord(address ? findUnresolvedVNextExecution(address) ?? resolved : resolved);
-  }, [address, receipt.data, receipt.isSuccess, record]);
+  }, [address, receipt.data, receipt.isSuccess, receiptRequired, record]);
 
   const status = record?.state === "submitted"
     ? receipt.isError ? "confirmation_unavailable" : "confirming"

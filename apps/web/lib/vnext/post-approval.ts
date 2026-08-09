@@ -31,7 +31,7 @@ export function resolvedVNextExecutionOutcome(input: {
     message: "Exact approval confirmed. The previous quote and payload were discarded."
   } : {
     state: "swap_confirmed",
-    message: "Swap settlement confirmed. Confirmed balances are refreshing."
+    message: "Swap settlement confirmed onchain."
   };
 }
 

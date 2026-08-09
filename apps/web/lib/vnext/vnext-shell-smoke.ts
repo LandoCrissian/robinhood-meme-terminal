@@ -78,7 +78,9 @@ assert.match(composer, /stage === "verification"[\s\S]*setVerificationState\(\{ 
 assert.match(composer, /Purchase confirmed/);
 assert.match(composer, /Sale confirmed/);
 assert.match(composer, /Continue trading/);
-assert.match(composer, /balance refreshing/);
+assert.match(composer, /reading confirmed receipt/);
+assert.match(composer, /confirmedOutputDisplay/);
+assert.doesNotMatch(composer, /balance refreshing/);
 assert.match(composer, /robinhoodchain\.blockscout\.com\/tx/);
 assert.doesNotMatch(composer, /actual output|estimated received/i);
 assert.doesNotMatch(composer, /Check live routes|Verify best route|Prepare wallet review|Continue with fresh verification/);

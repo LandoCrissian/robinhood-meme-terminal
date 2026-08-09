@@ -239,6 +239,14 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
     && pairInputDecimals !== null
       ? formatAtomicDisplay(executionRecord.inputAmountAtomic, pairInputDecimals)
       : null;
+  const confirmedOutputDisplay = postExecutionState.state === "swap_confirmed"
+    && executionRecord?.kind === "swap"
+    && executionRecord.state === "confirmed"
+    && executionRecord.outputAmountAtomic
+    && pair?.outputAsset.decimals !== null
+    && pair?.outputAsset.decimals !== undefined
+      ? formatAtomicDisplay(executionRecord.outputAmountAtomic, pair.outputAsset.decimals)
+      : null;
 
   const useBalancePercentage = (basisPoints: number) => {
     if (!inputBalance || pair?.inputAsset.decimals === null || pair?.inputAsset.decimals === undefined) return;
@@ -655,7 +663,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
               : `You sold ${inputSymbol} for ${outputSymbol}.`}</p>
             <dl>
               <div><dt>{side === "buy" ? "Paid" : "Sold"}</dt><dd>{confirmedInputDisplay ? `${confirmedInputDisplay} ${inputSymbol}` : `${inputSymbol} confirmed`}</dd></div>
-              <div><dt>{side === "buy" ? "Asset received" : "Proceeds"}</dt><dd>{outputSymbol} · balance refreshing</dd></div>
+              <div><dt>{side === "buy" ? "Asset received" : "Proceeds"}</dt><dd>{confirmedOutputDisplay ? `${confirmedOutputDisplay} ${outputSymbol}` : `${outputSymbol} · reading confirmed receipt`}</dd></div>
               <div><dt>Transaction</dt><dd>{shortAddress(executionRecord.txHash)}</dd></div>
             </dl>
             <button ref={receiptAction} className="vnTradeReceiptContinue" type="button" onClick={continueTrading}>Continue trading</button>
