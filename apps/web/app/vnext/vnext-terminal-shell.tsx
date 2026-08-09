@@ -99,7 +99,7 @@ export function VNextTerminalShell() {
           </div>
           <div className="vnTopbarActions">
             <button className="vnIconButton" type="button" aria-label="Open notifications">○<span className="vnUnread" /></button>
-            <WalletButton target="mainnet" showFunding={false} returnTo="/vnext" />
+            <WalletButton target="mainnet" returnTo="/vnext" />
           </div>
         </header>
 

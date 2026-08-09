@@ -51,6 +51,8 @@ assert.equal(previewResponse.headers.get("x-middleware-next"), "1");
 assert.equal(middlewareConfig.matcher, "/vnext/:path*");
 
 assert.equal((shell.match(/export function VNextTerminalShell/g) ?? []).length, 1);
+assert.match(shell, /<WalletButton target="mainnet" returnTo="\/vnext" \/>/);
+assert.doesNotMatch(shell, /showFunding=\{false\}/);
 assert.match(shell, /<SpendBalance markets=\{markets\} onAssetsChange=\{setWalletAssets\} executionRecord=\{executionRecovery\.record\} \/>/);
 assert.match(shell, /<VNextExecutionRecoveryBanner/);
 assert.match(shell, /useVNextExecutionRecovery/);
