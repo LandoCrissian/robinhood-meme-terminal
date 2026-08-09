@@ -87,8 +87,10 @@ assert.match(hook, /VNEXT_EXECUTION_STORAGE_KEY/);
 assert.match(banner, /Do not resubmit/);
 assert.match(walletReview, /findUnresolvedVNextExecution/);
 assert.match(walletReview, /recordSubmittedVNextExecution/);
-assert.match(spendBalance, /executionRecord\.state === "confirmed"/);
-assert.match(spendBalance, /void refresh\(\)/);
+assert.match(spendBalance, /executionRecord\.state !== "confirmed"/);
+assert.match(spendBalance, /SETTLEMENT_BALANCE_REFRESH_DELAYS_MS/);
+assert.match(spendBalance, /void refreshBalances\.current\(\)/);
+assert.match(banner, /record\.outputAmountAtomic/);
 assert.doesNotMatch(hook, /sendTransaction|writeContract|signTypedData/);
 assert.doesNotMatch(banner, /sendTransaction|writeContract|signTypedData/);
 

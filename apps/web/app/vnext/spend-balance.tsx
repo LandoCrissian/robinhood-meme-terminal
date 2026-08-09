@@ -23,6 +23,8 @@ import {
 } from "../../lib/vnext/wallet-assets";
 import { useVNextWalletAssets } from "./use-vnext-wallet-assets";
 
+const SETTLEMENT_BALANCE_REFRESH_DELAYS_MS = [0, 900, 2_500] as const;
+
 function amount(value: bigint | undefined, decimals: number | null, maximumFractionDigits: number) {
   if (value === undefined || decimals === null) return "—";
   const formatted = Number(formatUnits(value, decimals));
@@ -73,13 +75,29 @@ export function SpendBalance({ markets, onAssetsChange, executionRecord }: {
     : undefined;
   const delayed = enabled && (status === "stale" || status === "error");
   const refreshedResolution = useRef<string | undefined>(undefined);
+  const refreshBalances = useRef(refresh);
 
   useEffect(() => onAssetsChange?.(assets), [assets, onAssetsChange]);
   useEffect(() => {
-    if (!executionRecord || executionRecord.state === "submitted" || refreshedResolution.current === executionRecord.txHash) return;
+    refreshBalances.current = refresh;
+  }, [refresh]);
+  useEffect(() => {
+    if (
+      !executionRecord
+      || executionRecord.kind !== "swap"
+      || executionRecord.state !== "confirmed"
+      || refreshedResolution.current === executionRecord.txHash
+    ) return;
     refreshedResolution.current = executionRecord.txHash;
-    if (executionRecord.state === "confirmed") void refresh();
-  }, [executionRecord, refresh]);
+    const timers = SETTLEMENT_BALANCE_REFRESH_DELAYS_MS.flatMap((delayMs) => {
+      if (delayMs === 0) {
+        void refreshBalances.current();
+        return [];
+      }
+      return [window.setTimeout(() => void refreshBalances.current(), delayMs)];
+    });
+    return () => timers.forEach((timer) => window.clearTimeout(timer));
+  }, [executionRecord]);
 
   async function importAsset(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

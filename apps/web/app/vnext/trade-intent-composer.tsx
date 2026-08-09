@@ -803,7 +803,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
               : `You sold ${inputSymbol} for ${outputSymbol}.`}</p>
             <dl>
               <div><dt>{side === "buy" ? "Paid" : "Sold"}</dt><dd>{confirmedInputDisplay ? `${confirmedInputDisplay} ${inputSymbol}` : `${inputSymbol} confirmed`}</dd></div>
-              <div><dt>{side === "buy" ? "Asset received" : "Proceeds"}</dt><dd>{confirmedOutputDisplay ? `${confirmedOutputDisplay} ${outputSymbol}` : `${outputSymbol} · reading confirmed receipt`}</dd></div>
+              <div><dt>{side === "buy" ? "Asset received" : "Proceeds"}</dt><dd>{confirmedOutputDisplay ? `${confirmedOutputDisplay} ${outputSymbol}` : `${outputSymbol} · confirmed onchain`}</dd></div>
               <div><dt>Transaction</dt><dd>{shortAddress(executionRecord.txHash)}</dd></div>
             </dl>
             <button ref={receiptAction} className="vnTradeReceiptContinue" type="button" onClick={continueTrading}>Continue trading</button>

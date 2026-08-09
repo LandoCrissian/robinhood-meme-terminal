@@ -22,8 +22,10 @@ export function VNextExecutionRecoveryBanner({ record, status }: {
       ? "Do not resubmit. Check Blockscout while RMT retains the unresolved transaction."
       : status === "confirmed" && record.kind === "erc20_approval"
         ? "The exact allowance is confirmed. RMT will verify a fresh route before preparing the swap."
-        : status === "confirmed"
-          ? "Onchain settlement and the exact received amount are confirmed."
+      : status === "confirmed"
+          ? record.outputAmountAtomic
+            ? "Onchain settlement and the exact received amount are confirmed."
+            : "Onchain settlement is confirmed. Open the transaction for exact receipt details."
           : "No proceeds are credited. Verify fresh route and wallet state before retrying.";
   return <section className={`vnRecoveryBanner is${status}`} role="status">
     <span><strong>{title}</strong><small>{detail}</small></span>
