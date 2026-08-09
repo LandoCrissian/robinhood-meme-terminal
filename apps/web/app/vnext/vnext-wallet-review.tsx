@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { formatUnits } from "viem";
 import { useAccount, usePublicClient, useSendTransaction } from "wagmi";
+import { FundWalletButton } from "../fund-wallet-button";
 import type { VNextAuthorizationPlan } from "../../lib/vnext/authorization-plan";
 import { findUnresolvedVNextExecution, recordSubmittedVNextExecution } from "../../lib/vnext/execution-recovery";
 import type { VNextPreSignEvidence } from "../../lib/vnext/pre-sign-evidence";
@@ -20,6 +21,7 @@ export function VNextWalletReview({ plan, evidence, autoRequest = false }: {
   const publicClient = usePublicClient({ chainId: ROBINHOOD_MAINNET_CHAIN_ID });
   const submission = useSendTransaction();
   const [localError, setLocalError] = useState("");
+  const [gasShortfall, setGasShortfall] = useState("");
   const [preflightPending, setPreflightPending] = useState(false);
   const automaticallyRequestedPlan = useRef<string | undefined>(undefined);
   const submissionEnabled = process.env.NEXT_PUBLIC_RMT_VNEXT_WALLET_SUBMISSION_ENABLED === "true";
@@ -27,6 +29,7 @@ export function VNextWalletReview({ plan, evidence, autoRequest = false }: {
 
   const requestWalletReview = async () => {
     setLocalError("");
+    setGasShortfall("");
     if (!submissionEnabled) return;
     if (!isConnected || !address || chainId !== ROBINHOOD_MAINNET_CHAIN_ID) {
       setLocalError("Connect the verified wallet on Robinhood Chain before continuing.");
@@ -54,7 +57,9 @@ export function VNextWalletReview({ plan, evidence, autoRequest = false }: {
         gasLimitUnits: plan.gasLimit
       });
       if (!gasReadiness.ready) {
-        setLocalError(`Add at least ${formatUnits(gasReadiness.shortfallWei, 18)} ETH on Robinhood Chain for this transaction. RMT did not open the wallet.`);
+        const shortfall = formatUnits(gasReadiness.shortfallWei, 18);
+        setGasShortfall(shortfall);
+        setLocalError(`Add at least ${shortfall} ETH on Robinhood Chain for this transaction. RMT did not open the wallet.`);
         return;
       }
       const transaction = prepareVNextWalletTransaction({
@@ -109,6 +114,7 @@ export function VNextWalletReview({ plan, evidence, autoRequest = false }: {
       : "The final wallet-submission gate remains off in production."}</small>
     {plan.kind === "erc20_approval" ? <small>Standard ERC-20 approvals have no onchain expiry. This request is limited to the exact input amount, and RMT requires fresh verification before the swap.</small> : <small>The verified swap calldata enforces its onchain deadline and protected output.</small>}
     {localError ? <p className="vnAuthorizationError" role="status">{localError}</p> : null}
+    {gasShortfall ? <FundWalletButton variant="inline" label="Add Robinhood ETH" /> : null}
     {submission.data ? <a href={`${EXPLORER}/tx/${submission.data}`} target="_blank" rel="noreferrer">View transaction ↗</a> : null}
   </div>;
 }

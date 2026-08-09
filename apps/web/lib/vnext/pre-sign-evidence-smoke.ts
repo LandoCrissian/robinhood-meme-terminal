@@ -133,6 +133,8 @@ assert.match(composer, /\/api\/vnext\/verify/);
 assert.match(composer, /Strict pre-sign evidence/);
 assert.match(composer, /Authorization remains disabled/);
 assert.match(composer, /Insufficient ETH for gas/);
+assert.match(composer, /Robinhood ETH is required only for network gas/);
+assert.match(composer, /<FundWalletButton variant="inline" label="Add Robinhood ETH" \/>/);
 assert.match(composer, /estimatedNetworkCostWei/);
 assert.match(composer, /estimatedNetworkCostUsdgAtomic/);
 assert.match(composer, /selectVNextRoute/);

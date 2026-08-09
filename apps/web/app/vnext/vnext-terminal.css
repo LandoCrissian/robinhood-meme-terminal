@@ -1692,6 +1692,32 @@ body .rmtVnext {
   line-height: 1.45;
 }
 
+.vnGasRecovery {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  margin-top: 9px;
+  padding: 10px;
+  border: 1px solid rgba(238, 174, 103, 0.25);
+  border-radius: 9px;
+  background: rgba(238, 174, 103, 0.05);
+}
+
+.vnGasRecovery > span {
+  display: grid;
+  gap: 3px;
+}
+
+.vnGasRecovery strong {
+  color: var(--vn-text-secondary);
+  font-size: 9px;
+}
+
+.vnGasRecovery .fundWalletTrigger {
+  min-height: 42px;
+}
+
 .vnAuthorizationPlan {
   display: grid;
   gap: 8px;
@@ -1721,6 +1747,11 @@ body .rmtVnext {
 .vnWalletSubmission > button {
   width: 100%;
   min-height: 42px;
+}
+
+.vnWalletSubmission > .fundWalletMenu,
+.vnWalletSubmission > .fundWalletMenu .fundWalletTrigger {
+  width: 100%;
 }
 
 .vnWalletSubmission > small,
@@ -2124,6 +2155,15 @@ body .rmtVnext {
   .vnTopbar {
     height: 64px;
     padding: 0 14px;
+  }
+
+  .vnGasRecovery {
+    grid-template-columns: 1fr;
+  }
+
+  .vnGasRecovery .fundWalletMenu,
+  .vnGasRecovery .fundWalletTrigger {
+    width: 100%;
   }
 
   .vnMobileBrand {

@@ -83,6 +83,8 @@ assert.match(component, /publicClient\.getGasPrice/);
 assert.match(component, /assessVNextWalletGasReadiness/);
 assert.match(component, /RMT did not open the wallet/);
 assert.match(component, /Checking Robinhood ETH reserve/);
+assert.match(component, /setGasShortfall\(shortfall\)/);
+assert.match(component, /<FundWalletButton variant="inline" label="Add Robinhood ETH" \/>/);
 assert.match(component, /prepareVNextWalletTransaction/);
 assert.match(component, /recordSubmittedVNextExecution/);
 assert.match(component, /findUnresolvedVNextExecution/);
@@ -95,6 +97,7 @@ assert.match(helper, /parseVNextAuthorizationPlan/);
 assert.match(helper, /connectedChainId !== ROBINHOOD_MAINNET_CHAIN_ID/);
 assert.match(helper, /WALLET_FEE_CEILING_MULTIPLIER = 3n/);
 assert.doesNotMatch(component, /fetch\s*\(|writeContract|signTypedData|PRIVATE_KEY|MNEMONIC/);
+assert.doesNotMatch(component, /MetaMask/, "The live gas boundary must apply to every supported wallet.");
 assert.doesNotMatch(helper, /fetch\s*\(|sendTransaction|writeContract|signTypedData/);
 
 console.log("RMT VNext exact wallet-submission boundary smoke checks passed.");

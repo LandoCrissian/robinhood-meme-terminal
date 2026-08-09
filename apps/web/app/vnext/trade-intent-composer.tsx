@@ -17,6 +17,7 @@ import { deriveVNextVerifiedUsdgOutcome } from "../../lib/vnext/verified-cost-ou
 import { metadataFromDetectedWalletAsset, type VNextDetectedWalletAsset } from "../../lib/vnext/wallet-assets";
 import { clearTradeQuoteCache, requestTradeQuote, tradeQuoteFailureFromResponse } from "../../lib/trade-quote-client";
 import { useRmtIdentity } from "../rmt-identity";
+import { FundWalletButton } from "../fund-wallet-button";
 import { VNextWalletReview } from "./vnext-wallet-review";
 
 function shortAddress(address: string) {
@@ -511,11 +512,15 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
       lastReadyVerification.current = freshEvidence;
       setVerificationState({ state: "ready", evidence: freshEvidence });
       if (!["verified", "approval_required"].includes(freshEvidence.status)) {
-        throw new Error(freshEvidence.status === "insufficient_balance"
+        setAuthorizationState({
+          state: "error",
+          message: freshEvidence.status === "insufficient_balance"
           ? "Your confirmed balance is insufficient for this trade."
           : freshEvidence.status === "insufficient_gas"
             ? "Add ETH for network gas before trading."
-            : "The exact route did not pass final execution checks.");
+            : "The exact route did not pass final execution checks."
+        });
+        return;
       }
       if (!authorizationEnabled) {
         setAuthorizationState({ state: "error", message: "Wallet execution remains disabled in this build." });
@@ -815,6 +820,10 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
               {verifiedUsdgOutcome?.kind === "sell_proceeds_after_gas" ? <div><dt>Protected after gas</dt><dd>{verifiedUsdgOutcome.gasExceedsProtectedProceeds ? "Gas exceeds protected proceeds" : `${formatAtomicDisplay(verifiedUsdgOutcome.proceedsAfterGasUsdgAtomic, 6)} USDG equivalent`}</dd></div> : null}
               <div><dt>Calldata</dt><dd>{shortAddress(visibleVerification.calldataHash)}</dd></div>
             </dl>
+            {visibleVerification.status === "insufficient_gas" ? <div className="vnGasRecovery" role="status">
+              <span><strong>Robinhood ETH is required only for network gas</strong><small>Add it to the exact active wallet, then press Buy or Sell once. RMT will quietly recheck the route, balance, and gas reserve.</small></span>
+              <FundWalletButton variant="inline" label="Add Robinhood ETH" />
+            </div> : null}
             {authorizationState.state === "error" ? <p className="vnAuthorizationError" role="status">{authorizationState.message}</p> : null}
             {authorizationState.state === "ready" ? <div className="vnAuthorizationPlan" role="status">
               <span><strong>{authorizationState.plan.kind === "erc20_approval" ? "Exact token approval prepared" : "Verified swap prepared"}</strong><small>RMT is opening the exact request in your wallet automatically.</small></span>
