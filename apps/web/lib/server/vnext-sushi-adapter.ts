@@ -42,7 +42,13 @@ export const vNextSushiAdapter: VNextQuoteProviderAdapter = {
         latencyMs: quotedAtMs - startedAtMs,
         executionKind: "aggregator",
         strictVerificationAvailable: false,
-        userPaysGas: null,
+        userPaysGas: true,
+        explicitProviderFeeOutputAtomic: null,
+        rmtFeeOutputAtomic: "0",
+        networkFeeNativeAtomic: null,
+        networkFeeNativeSymbol: "ETH",
+        protectedNetOutputAtomic: null,
+        costState: "network_fee_pending",
         authorizationReady: false,
         detail: "Live indicative Sushi route. Exact executable verification has not run."
       };

@@ -29,7 +29,13 @@ export type VNextQuoteAttempt = {
   latencyMs: number;
   executionKind: "aggregator" | "direct_amm";
   strictVerificationAvailable: boolean;
-  userPaysGas: null;
+  userPaysGas: boolean | null;
+  explicitProviderFeeOutputAtomic: string | null;
+  rmtFeeOutputAtomic: string | null;
+  networkFeeNativeAtomic: string | null;
+  networkFeeNativeSymbol: "ETH" | null;
+  protectedNetOutputAtomic: string | null;
+  costState: "network_fee_pending" | null;
   authorizationReady: false;
   detail: string;
 };
@@ -64,7 +70,13 @@ const attemptSchema = z.object({
   latencyMs: z.number(),
   executionKind: z.enum(["aggregator", "direct_amm"]),
   strictVerificationAvailable: z.boolean(),
-  userPaysGas: z.null(),
+  userPaysGas: z.boolean().nullable(),
+  explicitProviderFeeOutputAtomic: z.string().nullable(),
+  rmtFeeOutputAtomic: z.string().nullable(),
+  networkFeeNativeAtomic: z.string().nullable(),
+  networkFeeNativeSymbol: z.literal("ETH").nullable(),
+  protectedNetOutputAtomic: z.string().nullable(),
+  costState: z.literal("network_fee_pending").nullable(),
   authorizationReady: z.literal(false),
   detail: z.string().min(1).max(240)
 });
@@ -95,7 +107,7 @@ export function assertVNextQuoteAttempt(
   if (!isAddress(attempt.outputAsset) || getAddress(attempt.outputAsset) !== getAddress(expected.outputAsset)) throw new Error("Quote attempt output asset changed.");
   if (attempt.inputAmountAtomic !== expected.inputAmountAtomic || !atomic(attempt.inputAmountAtomic) || BigInt(attempt.inputAmountAtomic) <= 0n) throw new Error("Quote attempt input amount changed.");
   if (!Number.isFinite(attempt.latencyMs) || attempt.latencyMs < 0) throw new Error("Quote attempt latency is invalid.");
-  if (attempt.authorizationReady !== false || attempt.userPaysGas !== null) throw new Error("Indicative quote cannot claim authorization or gas economics.");
+  if (attempt.authorizationReady !== false) throw new Error("Indicative quote cannot claim authorization readiness.");
   if (attempt.status === "indicative") {
     const expectedOutput = attempt.expectedOutputAtomic ? atomic(attempt.expectedOutputAtomic) : null;
     const protectedOutput = attempt.protectedOutputAtomic ? atomic(attempt.protectedOutputAtomic) : null;
@@ -103,12 +115,29 @@ export function assertVNextQuoteAttempt(
     if (!Number.isSafeInteger(attempt.outputDecimals) || attempt.outputDecimals! < 0 || attempt.outputDecimals! > 255) throw new Error("Quote attempt output decimals are invalid.");
     if (!Number.isSafeInteger(attempt.quotedAtMs) || !Number.isSafeInteger(attempt.expiresAtMs) || attempt.quotedAtMs! > nowMs + MAX_CLOCK_SKEW_MS || attempt.expiresAtMs! <= nowMs) throw new Error("Quote attempt is stale or from the future.");
     if (attempt.priceImpact !== null && (!Number.isFinite(attempt.priceImpact) || attempt.priceImpact < 0 || attempt.priceImpact > 1)) throw new Error("Quote attempt price impact is invalid.");
+    if (
+      attempt.userPaysGas !== true
+      || attempt.explicitProviderFeeOutputAtomic !== null
+      || attempt.rmtFeeOutputAtomic !== "0"
+      || attempt.networkFeeNativeAtomic !== null
+      || attempt.networkFeeNativeSymbol !== "ETH"
+      || attempt.protectedNetOutputAtomic !== null
+      || attempt.costState !== "network_fee_pending"
+    ) throw new Error("Indicative quote exposed incomplete or inconsistent cost economics.");
   } else if (
     attempt.expectedOutputAtomic !== null
     || attempt.protectedOutputAtomic !== null
     || attempt.outputDecimals !== null
+    || attempt.priceImpact !== null
     || attempt.quotedAtMs !== null
     || attempt.expiresAtMs !== null
+    || attempt.userPaysGas !== null
+    || attempt.explicitProviderFeeOutputAtomic !== null
+    || attempt.rmtFeeOutputAtomic !== null
+    || attempt.networkFeeNativeAtomic !== null
+    || attempt.networkFeeNativeSymbol !== null
+    || attempt.protectedNetOutputAtomic !== null
+    || attempt.costState !== null
   ) {
     throw new Error("Unavailable quote attempt exposed partial economics.");
   }
@@ -129,6 +158,8 @@ export type VNextRouteSelection = {
   bestObserved: VNextQuoteAttempt | undefined;
   verificationCandidate: VNextQuoteAttempt | undefined;
   usesVerifiedBackup: boolean;
+  selectionBasis: "protected_output_before_network_fee" | "none";
+  netOutcomeReady: false;
 };
 
 export function selectVNextRoute(attempts: VNextQuoteAttempt[]): VNextRouteSelection {
@@ -143,7 +174,9 @@ export function selectVNextRoute(attempts: VNextQuoteAttempt[]): VNextRouteSelec
       bestObserved
       && verificationCandidate
       && bestObserved.provider !== verificationCandidate.provider
-    )
+    ),
+    selectionBasis: bestObserved ? "protected_output_before_network_fee" : "none",
+    netOutcomeReady: false
   };
 }
 

@@ -43,7 +43,13 @@ export const vNextUniswapV3Adapter: VNextQuoteProviderAdapter = {
         latencyMs: quotedAtMs - startedAtMs,
         executionKind: "direct_amm",
         strictVerificationAvailable: true,
-        userPaysGas: null,
+        userPaysGas: true,
+        explicitProviderFeeOutputAtomic: null,
+        rmtFeeOutputAtomic: "0",
+        networkFeeNativeAtomic: null,
+        networkFeeNativeSymbol: "ETH",
+        protectedNetOutputAtomic: null,
+        costState: "network_fee_pending",
         authorizationReady: false,
         detail: "Live direct-pool quote. Price impact and executable verification have not run."
       };

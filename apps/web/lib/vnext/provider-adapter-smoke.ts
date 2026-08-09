@@ -29,7 +29,9 @@ const readyAdapter: VNextQuoteProviderAdapter = {
       expectedOutputAtomic: "1000", protectedOutputAtomic: "990", outputDecimals: 18, priceImpact: 0.01,
       quotedAtMs: now, expiresAtMs: now + 30_000, latencyMs: 1, executionKind: "aggregator",
       strictVerificationAvailable: false,
-      userPaysGas: null, authorizationReady: false, detail: "Test-only normalized provider observation."
+      userPaysGas: true, explicitProviderFeeOutputAtomic: null, rmtFeeOutputAtomic: "0",
+      networkFeeNativeAtomic: null, networkFeeNativeSymbol: "ETH", protectedNetOutputAtomic: null,
+      costState: "network_fee_pending", authorizationReady: false, detail: "Test-only normalized provider observation."
     };
   }
 };

@@ -101,6 +101,12 @@ export function unavailableVNextQuoteAttempt(input: {
     latencyMs: Math.max(0, Date.now() - input.startedAtMs),
     strictVerificationAvailable: input.adapter.capabilities.strictVerification,
     userPaysGas: null,
+    explicitProviderFeeOutputAtomic: null,
+    rmtFeeOutputAtomic: null,
+    networkFeeNativeAtomic: null,
+    networkFeeNativeSymbol: null,
+    protectedNetOutputAtomic: null,
+    costState: null,
     authorizationReady: false
   };
 }

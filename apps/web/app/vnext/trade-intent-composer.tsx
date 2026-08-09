@@ -221,7 +221,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
       : undefined;
   const routeSelection = visibleQuote
     ? selectVNextRoute(visibleQuote.attempts)
-    : { bestObserved: undefined, verificationCandidate: undefined, usesVerifiedBackup: false };
+    : { bestObserved: undefined, verificationCandidate: undefined, usesVerifiedBackup: false, selectionBasis: "none" as const, netOutcomeReady: false as const };
   const bestQuote = routeSelection.bestObserved;
   const verificationQuote = routeSelection.verificationCandidate;
   const displayOutput = bestQuote && bestQuote.outputDecimals !== null
@@ -556,7 +556,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
             {sellOutputs.map((asset) => <option value={assetKey(asset.id)} key={assetKey(asset.id)}>{asset.symbol ?? "Asset"}</option>)}
           </select> : <button type="button" disabled>{outputSymbol}</button>}
         </div>
-        <small>{displayOutput ? `Best live indicative floor from ${bestQuote?.providerLabel}. RMT verifies the executable route automatically when you trade.` : "Protected executable output is set during the one-tap execution check."}</small>
+        <small>{displayOutput ? `Highest observed protected output before network fee from ${bestQuote?.providerLabel}. RMT verifies exact costs and execution automatically when you trade.` : "Protected executable output is set during the one-tap execution check."}</small>
       </div>
       <button
         className="vnReviewButton"
@@ -616,7 +616,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
               <span><strong>{attempt.providerLabel}</strong><small>{attempt.executionKind === "aggregator" ? "Aggregator" : "Direct AMM"} · {attempt.latencyMs}ms</small></span>
               <span><strong>{attempt.status === "indicative" && attempt.outputDecimals !== null ? `${formatAtomicDisplay(attempt.protectedOutputAtomic!, attempt.outputDecimals)} ${outputSymbol}` : attempt.status === "no_route" ? "No route" : attempt.status === "invalid_response" ? "Rejected" : "Unavailable"}</strong><small>{attempt.status === "indicative"
                 ? attempt.provider === bestQuote?.provider
-                  ? "Best observed · indicative floor"
+                  ? "Highest before network fee · indicative floor"
                   : routeSelection.usesVerifiedBackup && attempt.provider === verificationQuote?.provider
                     ? "Strict-verification backup · indicative floor"
                     : "Indicative floor"
@@ -628,6 +628,12 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
           <div><dt>Trader gas</dt><dd>Unknown until executable route</dd></div>
           <div><dt>RMT fee</dt><dd>Not enabled</dd></div>
         </dl>}
+        {visibleQuote ? <dl>
+          <div><dt>Ranking basis</dt><dd>Protected output before network fee</dd></div>
+          <div><dt>Trader gas</dt><dd>Estimated during strict verification</dd></div>
+          <div><dt>Provider fee</dt><dd>Not separately reported</dd></div>
+          <div><dt>RMT fee</dt><dd>Not enabled</dd></div>
+        </dl> : null}
         {visibleQuote ? <div className="vnVerificationGate">
           <div>
             <span><strong>Strict pre-sign evidence</strong><small>{verificationQuote

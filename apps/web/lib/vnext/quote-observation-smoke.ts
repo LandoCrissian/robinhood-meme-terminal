@@ -34,7 +34,13 @@ const response: VNextQuoteResponse = {
       latencyMs: 500,
       executionKind: "aggregator",
       strictVerificationAvailable: false,
-      userPaysGas: null,
+      userPaysGas: true,
+      explicitProviderFeeOutputAtomic: null,
+      rmtFeeOutputAtomic: "0",
+      networkFeeNativeAtomic: null,
+      networkFeeNativeSymbol: "ETH",
+      protectedNetOutputAtomic: null,
+      costState: "network_fee_pending",
       authorizationReady: false,
       detail: "Live indicative route."
     },
@@ -58,6 +64,12 @@ const response: VNextQuoteResponse = {
       executionKind: "direct_amm",
       strictVerificationAvailable: true,
       userPaysGas: null,
+      explicitProviderFeeOutputAtomic: null,
+      rmtFeeOutputAtomic: null,
+      networkFeeNativeAtomic: null,
+      networkFeeNativeSymbol: null,
+      protectedNetOutputAtomic: null,
+      costState: null,
       authorizationReady: false,
       detail: "No direct route."
     }
@@ -67,6 +79,8 @@ const response: VNextQuoteResponse = {
 const parsed = parseVNextQuoteResponse(response, expected, now);
 assert.equal(bestIndicativeAttempt(parsed.attempts)?.provider, "sushi");
 assert.equal(selectVNextRoute(parsed.attempts).verificationCandidate, undefined);
+assert.equal(selectVNextRoute(parsed.attempts).selectionBasis, "protected_output_before_network_fee");
+assert.equal(selectVNextRoute(parsed.attempts).netOutcomeReady, false);
 const withVerifiedBackup = parseVNextQuoteResponse({
   ...response,
   attempts: [response.attempts[0], {
@@ -76,7 +90,11 @@ const withVerifiedBackup = parseVNextQuoteResponse({
     protectedOutputAtomic: "980000000000000000000",
     outputDecimals: 18,
     quotedAtMs: now - 400,
-    expiresAtMs: now + 29_600
+    expiresAtMs: now + 29_600,
+    userPaysGas: true,
+    rmtFeeOutputAtomic: "0",
+    networkFeeNativeSymbol: "ETH",
+    costState: "network_fee_pending"
   }]
 }, expected, now);
 const backupSelection = selectVNextRoute(withVerifiedBackup.attempts);
@@ -98,6 +116,10 @@ assert.throws(() => parseVNextQuoteResponse({ ...response, attempts: [
   response.attempts[0],
   { ...response.attempts[1], expectedOutputAtomic: "1" }
 ] }, expected, now), /partial economics/);
+assert.throws(() => parseVNextQuoteResponse({ ...response, attempts: [
+  { ...response.attempts[0], protectedNetOutputAtomic: response.attempts[0].protectedOutputAtomic },
+  response.attempts[1]
+] }, expected, now), /cost economics/);
 
 const route = readFileSync(new URL("../../app/api/vnext/quotes/route.ts", import.meta.url), "utf8");
 const engine = readFileSync(new URL("../server/vnext-provider-adapter.ts", import.meta.url), "utf8");
@@ -113,6 +135,7 @@ assert.match(route, /Cache-Control": "no-store/);
 assert.doesNotMatch(route, /quoteSushiAssetRoute|quoteVNextUniswapDirect/);
 assert.match(engine, /Promise\.all/);
 assert.match(engine, /authorizationReady: false/);
+assert.match(engine, /networkFeeNativeAtomic: null/);
 assert.match(sushiAdapter, /quoteSushiAssetRoute/);
 assert.match(uniswapAdapter, /quoteVNextUniswapDirect/);
 assert.doesNotMatch(route, /writeContract|sendTransaction|signTypedData|calldata|database|firestore/);
@@ -120,6 +143,7 @@ assert.match(sushi, /quoteSushiAssetRoute/);
 assert.match(uniswap, /quoteExactInputSingle/);
 assert.match(composer, /\/api\/vnext\/quotes/);
 assert.match(composer, /One action handles routing, verification, simulation, and exact payload preparation/);
+assert.match(composer, /Protected output before network fee/);
 assert.doesNotMatch(composer, /writeContract|sendTransaction|signTypedData/);
 
 console.log("RMT VNext live quote observation smoke checks passed.");
