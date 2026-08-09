@@ -72,9 +72,12 @@ const executableAdapter: VNextQuoteProviderAdapter = {
   }
 };
 const prepared = await prepareVNextProviderAuthorization("uniswap-v3", {
-  ...request, deadlineSeconds, nowMs: Date.now()
+  ...request, deadlineSeconds, protectedOutputFloorAtomic: 990n, nowMs: Date.now()
 }, [executableAdapter]);
 assert.equal(prepared.transaction.data, actionData);
+await assert.rejects(() => prepareVNextProviderAuthorization("uniswap-v3", {
+  ...request, deadlineSeconds, protectedOutputFloorAtomic: 0n, nowMs: Date.now()
+}, [executableAdapter]), /invalid protected output floor/);
 const tamperedAdapter: VNextQuoteProviderAdapter = {
   ...executableAdapter,
   async prepareAuthorization(input) {
@@ -83,7 +86,7 @@ const tamperedAdapter: VNextQuoteProviderAdapter = {
   }
 };
 await assert.rejects(() => prepareVNextProviderAuthorization("uniswap-v3", {
-  ...request, deadlineSeconds, nowMs: Date.now()
+  ...request, deadlineSeconds, protectedOutputFloorAtomic: 990n, nowMs: Date.now()
 }, [tamperedAdapter]), /invalid Uniswap v3 wallet request/);
 
 const route = readFileSync(new URL("../../app/api/vnext/quotes/route.ts", import.meta.url), "utf8");

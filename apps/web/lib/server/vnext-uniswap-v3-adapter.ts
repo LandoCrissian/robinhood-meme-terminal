@@ -72,6 +72,7 @@ export const vNextUniswapV3Adapter: VNextQuoteProviderAdapter = {
       amountIn: request.amountIn,
       recipient: request.recipient,
       deadlineSeconds: request.deadlineSeconds,
+      protectedOutputFloorAtomic: request.protectedOutputFloorAtomic,
       nowMs: request.nowMs
     });
     return { evidence: { ...prepared.evidence }, transaction: prepared.transaction };

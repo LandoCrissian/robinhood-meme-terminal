@@ -9,7 +9,6 @@ import { authorizationPayloadHash, type VNextAuthorizationPlan } from "../../../
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-const hash = z.string().regex(/^0x[0-9a-fA-F]{64}$/);
 const requestSchema = z.object({
   chainId: z.literal(4_663),
   quoteRequestId: z.string().uuid(),
@@ -21,10 +20,7 @@ const requestSchema = z.object({
   recipient: z.string().refine((value) => isAddress(value, { strict: false })),
   deadline: z.string().regex(/^[1-9][0-9]*$/),
   expectedStatus: z.enum(["approval_required", "verified"]),
-  expectedProtectedOutputAtomic: z.string().regex(/^[1-9][0-9]*$/),
-  expectedGasLimitUnits: z.string().regex(/^[1-9][0-9]*$/),
-  expectedSwapCalldataHash: hash,
-  expectedNextActionCalldataHash: hash
+  expectedProtectedOutputAtomic: z.string().regex(/^[1-9][0-9]*$/)
 });
 
 const noStore = { "Cache-Control": "no-store" };
@@ -57,16 +53,14 @@ export async function POST(request: Request) {
       inputAmountAtomic: parsed.data.inputAmountAtomic,
       recipient,
       deadlineSeconds: BigInt(parsed.data.deadline),
+      protectedOutputFloorAtomic: BigInt(parsed.data.expectedProtectedOutputAtomic),
       nowMs: preparedAtMs
     });
     if (prepared.evidence.provider !== "uniswap-v3") {
       return Response.json({ error: "This provider does not have a supported wallet-plan codec yet." }, { status: 422, headers: noStore });
     }
     const evidenceChanged = prepared.evidence.status !== parsed.data.expectedStatus
-      || prepared.evidence.protectedOutputAtomic !== parsed.data.expectedProtectedOutputAtomic
-      || prepared.evidence.gasLimitUnits !== parsed.data.expectedGasLimitUnits
-      || prepared.evidence.calldataHash.toLowerCase() !== parsed.data.expectedSwapCalldataHash.toLowerCase()
-      || prepared.evidence.nextActionCalldataHash?.toLowerCase() !== parsed.data.expectedNextActionCalldataHash.toLowerCase();
+      || BigInt(prepared.evidence.protectedOutputAtomic) < BigInt(parsed.data.expectedProtectedOutputAtomic);
     if (evidenceChanged) {
       return Response.json({ error: "Route evidence changed. Verify the route again." }, { status: 409, headers: noStore });
     }
@@ -99,7 +93,14 @@ export async function POST(request: Request) {
       ...unsignedPlan,
       payloadHash: authorizationPayloadHash(unsignedPlan) as Hex
     };
-    return Response.json(plan, { headers: noStore });
+    return Response.json({
+      evidence: {
+        verificationId: parsed.data.verificationId,
+        sourceQuoteRequestId: parsed.data.quoteRequestId,
+        ...prepared.evidence
+      },
+      plan
+    }, { headers: noStore });
   } catch (cause) {
     const identityResponse = tradeIdentityErrorResponse(cause);
     if (identityResponse) return identityResponse;

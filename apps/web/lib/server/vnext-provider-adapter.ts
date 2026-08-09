@@ -43,6 +43,7 @@ export type VNextProviderVerificationEvidence = Record<string, unknown> & {
 
 export type VNextProviderAuthorizationRequest = VNextProviderVerificationRequest & {
   deadlineSeconds: bigint;
+  protectedOutputFloorAtomic: bigint;
   nowMs: number;
 };
 
@@ -201,6 +202,7 @@ export async function prepareVNextProviderAuthorization(
   request: VNextProviderAuthorizationRequest,
   adapters: readonly VNextQuoteProviderAdapter[]
 ) {
+  if (request.protectedOutputFloorAtomic <= 0n) throw new Error("RMT rejected an invalid protected output floor.");
   const adapter = adapterForProvider(provider, adapters);
   if (!adapter.capabilities.walletAuthorization || !adapter.prepareAuthorization) {
     throw new Error(`${adapter.providerLabel} wallet authorization is not available yet.`);
@@ -209,6 +211,7 @@ export async function prepareVNextProviderAuthorization(
   assertVerificationEvidence(prepared.evidence, adapter, request);
   if (
     prepared.evidence.deadline !== request.deadlineSeconds.toString()
+    || BigInt(prepared.evidence.protectedOutputAtomic) < request.protectedOutputFloorAtomic
     || prepared.evidence.nextAction === null
     || prepared.evidence.nextActionTarget === null
     || prepared.evidence.nextActionCalldataHash === null

@@ -196,6 +196,7 @@ async function evaluateVNextUniswapRoute(input: {
   recipient: Address;
   nowMs?: number;
   deadlineSeconds?: bigint;
+  protectedOutputFloorAtomic?: bigint;
 }) {
   const recipient = getAddress(input.recipient);
   const nowMs = input.nowMs ?? Date.now();
@@ -209,6 +210,9 @@ async function evaluateVNextUniswapRoute(input: {
   if (deadline <= currentSeconds + 30n || deadline > currentSeconds + 300n) {
     throw new Error("The authorization deadline is stale or outside the supported window.");
   }
+  const protectedOutputFloor = input.protectedOutputFloorAtomic ?? 0n;
+  if (protectedOutputFloor < 0n) throw new Error("The protected output floor is invalid.");
+  const protectedOutput = quote.minimumOut > protectedOutputFloor ? quote.minimumOut : protectedOutputFloor;
   const path = quote.route === "direct"
     ? null
     : encodePacked(
@@ -225,14 +229,14 @@ async function evaluateVNextUniswapRoute(input: {
           fee: quote.fees[0],
           recipient,
           amountIn: quote.amountIn,
-          amountOutMinimum: quote.minimumOut,
+          amountOutMinimum: protectedOutput,
           sqrtPriceLimitX96: 0n
         }]
       })
     : encodeFunctionData({
         abi: routerAbi,
         functionName: "exactInput",
-        args: [{ path: path!, recipient, amountIn: quote.amountIn, amountOutMinimum: quote.minimumOut }]
+        args: [{ path: path!, recipient, amountIn: quote.amountIn, amountOutMinimum: protectedOutput }]
       });
   const calldata = encodeFunctionData({
     abi: routerAbi,
@@ -307,7 +311,7 @@ async function evaluateVNextUniswapRoute(input: {
     outputAsset: quote.outputAsset,
     inputAmountAtomic: quote.amountIn.toString(),
     expectedOutputAtomic: quote.quoteOut.toString(),
-    protectedOutputAtomic: quote.minimumOut.toString(),
+    protectedOutputAtomic: protectedOutput.toString(),
     recipient,
     router: ROBINHOOD_SWAP_ROUTER_02,
     approvalSpender: ROBINHOOD_SWAP_ROUTER_02,
@@ -357,6 +361,7 @@ export async function prepareVNextUniswapAuthorization(input: {
   amountIn: bigint;
   recipient: Address;
   deadlineSeconds: bigint;
+  protectedOutputFloorAtomic: bigint;
   nowMs?: number;
 }) {
   const evaluated = await evaluateVNextUniswapRoute(input);

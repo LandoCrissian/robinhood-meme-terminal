@@ -10,7 +10,7 @@ import {
 } from "viem";
 import { z } from "zod";
 import { ROBINHOOD_SWAP_ROUTER_02, ROBINHOOD_WETH } from "../uniswap-v4";
-import type { VNextPreSignEvidence } from "./pre-sign-evidence";
+import { parseVNextPreSignEvidence, type VNextPreSignEvidence } from "./pre-sign-evidence";
 
 const routerAbi = [{
   type: "function",
@@ -75,6 +75,8 @@ const planSchema = z.object({
   preparedAtMs: z.number().int().positive(), expiresAtMs: z.number().int().positive(),
   userAuthorizationRequired: z.literal(true), serverSubmissionEnabled: z.literal(false)
 });
+
+const authorizationBundleSchema = z.object({ evidence: z.unknown(), plan: z.unknown() });
 
 export function authorizationPayloadHash(plan: Pick<VNextAuthorizationPlan, "chainId" | "target" | "value" | "data">) {
   return keccak256(encodePacked(
@@ -166,4 +168,25 @@ export function parseVNextAuthorizationPlan(value: unknown, evidence: VNextPreSi
     ) throw new Error("RMT rejected changed multihop-swap economics.");
   }
   return plan;
+}
+
+export function parseVNextAuthorizationBundle(value: unknown, priorEvidence: VNextPreSignEvidence, expected: {
+  quoteRequestId: string;
+  inputAsset: string;
+  outputAsset: string;
+  inputAmountAtomic: string;
+  recipient: string;
+}, nowMs: number) {
+  const parsed = authorizationBundleSchema.safeParse(value);
+  if (!parsed.success) throw new Error("RMT rejected a malformed authorization bundle.");
+  const evidence = parseVNextPreSignEvidence(parsed.data.evidence, expected, nowMs);
+  if (
+    evidence.verificationId !== priorEvidence.verificationId
+    || evidence.provider !== priorEvidence.provider
+    || evidence.status !== priorEvidence.status
+    || evidence.deadline !== priorEvidence.deadline
+    || BigInt(evidence.protectedOutputAtomic) < BigInt(priorEvidence.protectedOutputAtomic)
+  ) throw new Error("RMT rejected changed authorization authority or weakened protection.");
+  const plan = parseVNextAuthorizationPlan(parsed.data.plan, evidence, nowMs);
+  return { evidence, plan };
 }

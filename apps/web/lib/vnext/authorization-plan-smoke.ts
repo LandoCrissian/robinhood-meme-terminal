@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { encodeFunctionData, erc20Abi, keccak256, type Hex } from "viem";
 import { ROBINHOOD_SWAP_ROUTER_02 } from "../uniswap-v4";
-import { authorizationPayloadHash, parseVNextAuthorizationPlan, type VNextAuthorizationPlan } from "./authorization-plan";
+import { authorizationPayloadHash, parseVNextAuthorizationBundle, parseVNextAuthorizationPlan, type VNextAuthorizationPlan } from "./authorization-plan";
 import type { VNextPreSignEvidence } from "./pre-sign-evidence";
 
 const routerAbi = [{
@@ -81,12 +81,30 @@ const swapPlan = planWithHash({
   target: ROBINHOOD_SWAP_ROUTER_02, data: swapData, gasLimit: "120000"
 });
 assert.equal(parseVNextAuthorizationPlan(swapPlan, verifiedEvidence, now + 1).kind, "swap");
+const bundleEvidence = { ...verifiedEvidence, verifiedAtMs: now, expiresAtMs: now + 300_000 };
 const changedMinimum = encodeFunctionData({ abi: routerAbi, functionName: "exactInputSingle", args: [{
   tokenIn: inputAsset, tokenOut: outputAsset, fee: 3_000, recipient,
   amountIn: 1_000_000n, amountOutMinimum: 989n, sqrtPriceLimitX96: 0n
 }] });
 const changedSwap = encodeFunctionData({ abi: routerAbi, functionName: "multicall", args: [1_786_000_300n, [changedMinimum]] });
 assert.throws(() => parseVNextAuthorizationPlan(planWithHash({ ...swapPlan, data: changedSwap } as Omit<VNextAuthorizationPlan, "payloadHash">), verifiedEvidence, now + 1));
+assert.equal(parseVNextAuthorizationBundle({ evidence: bundleEvidence, plan: swapPlan }, bundleEvidence, {
+  quoteRequestId: verifiedEvidence.sourceQuoteRequestId,
+  inputAsset,
+  outputAsset,
+  inputAmountAtomic: "1000000",
+  recipient
+}, now + 1).plan.kind, "swap");
+assert.throws(() => parseVNextAuthorizationBundle({
+  evidence: { ...bundleEvidence, protectedOutputAtomic: "989" },
+  plan: { ...swapPlan, protectedOutputAtomic: "989" }
+}, bundleEvidence, {
+  quoteRequestId: verifiedEvidence.sourceQuoteRequestId,
+  inputAsset,
+  outputAsset,
+  inputAmountAtomic: "1000000",
+  recipient
+}, now + 1), /weakened protection/);
 
 const endpoint = readFileSync(new URL("../../app/api/vnext/authorize/route.ts", import.meta.url), "utf8");
 const parser = readFileSync(new URL("./authorization-plan.ts", import.meta.url), "utf8");
@@ -97,11 +115,13 @@ assert.match(endpoint, /readRobinhoodTokenIdentity/);
 assert.match(endpoint, /prepareRobinhoodVNextAuthorization/);
 assert.doesNotMatch(endpoint, /prepareVNextUniswapAuthorization/);
 assert.match(endpoint, /Route evidence changed/);
-assert.match(endpoint, /expectedGasLimitUnits/);
+assert.match(endpoint, /expectedProtectedOutputAtomic/);
+assert.match(endpoint, /protectedOutputFloorAtomic/);
+assert.match(endpoint, /evidence:/);
 assert.match(endpoint, /serverSubmissionEnabled: false/);
 assert.match(parser, /decodeFunctionData/);
 assert.match(composer, /NEXT_PUBLIC_RMT_VNEXT_AUTHORIZATION_ENABLED === "true"/);
-assert.match(composer, /parseVNextAuthorizationPlan/);
+assert.match(composer, /parseVNextAuthorizationBundle/);
 assert.match(composer, /opening the exact request in your wallet automatically/);
 assert.match(composer, /requestAuthorizationPlan/);
 assert.match(composer, /Wallet-review plan expired/);

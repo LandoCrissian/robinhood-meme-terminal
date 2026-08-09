@@ -10,7 +10,7 @@ import { createExactInputIntent, percentageOfAtomic, type TradeSide } from "../.
 import { parseVNextQuoteResponse, selectVNextRoute, type VNextQuoteResponse } from "../../lib/vnext/quote-observation";
 import { parseVNextPreSignEvidence, type VNextPreSignEvidence } from "../../lib/vnext/pre-sign-evidence";
 import { postApprovalVerificationOutcome, resolvedVNextExecutionOutcome } from "../../lib/vnext/post-approval";
-import { parseVNextAuthorizationPlan, type VNextAuthorizationPlan } from "../../lib/vnext/authorization-plan";
+import { parseVNextAuthorizationBundle, type VNextAuthorizationPlan } from "../../lib/vnext/authorization-plan";
 import { ROBINHOOD_MAINNET_CHAIN_ID, ROBINHOOD_USDG, ROBINHOOD_WETH, robinhoodWalletAccount } from "../../lib/vnext/robinhood-assets";
 import { metadataFromDetectedWalletAsset, type VNextDetectedWalletAsset } from "../../lib/vnext/wallet-assets";
 import { clearTradeQuoteCache, requestTradeQuote, tradeQuoteFailureFromResponse } from "../../lib/trade-quote-client";
@@ -321,8 +321,6 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
       || !evidence.nextActionCalldataHash
       || !evidence.gasLimitUnits
     ) throw new Error("This route is not ready for exact wallet authorization.");
-    const nextActionCalldataHash = evidence.nextActionCalldataHash;
-    const gasLimitUnits = evidence.gasLimitUnits;
     const response = await requestTradeQuote("/api/vnext/authorize", {
       chainId: ROBINHOOD_MAINNET_CHAIN_ID,
       quoteRequestId: evidence.sourceQuoteRequestId,
@@ -334,10 +332,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
       recipient: address,
       deadline: evidence.deadline,
       expectedStatus: evidence.status,
-      expectedProtectedOutputAtomic: evidence.protectedOutputAtomic,
-      expectedGasLimitUnits: gasLimitUnits,
-      expectedSwapCalldataHash: evidence.calldataHash,
-      expectedNextActionCalldataHash: nextActionCalldataHash
+      expectedProtectedOutputAtomic: evidence.protectedOutputAtomic
     }, {
       identityScope: identity.userId,
       identityToken: identity.identityToken,
@@ -346,7 +341,13 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
     });
     const failure = tradeQuoteFailureFromResponse(response);
     if (failure) throw failure;
-    return parseVNextAuthorizationPlan(response.payload, evidence, Date.now());
+    return parseVNextAuthorizationBundle(response.payload, evidence, {
+      quoteRequestId: evidence.sourceQuoteRequestId,
+      inputAsset: inputAddress,
+      outputAsset: outputAddress,
+      inputAmountAtomic: draft.intent.amountAtomic,
+      recipient: address
+    }, Date.now());
   };
 
   const startTrade = async () => {
@@ -377,7 +378,10 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
         return;
       }
       stage = "authorization";
-      setAuthorizationState({ state: "ready", plan: await requestAuthorizationPlan(freshEvidence) });
+      const authorization = await requestAuthorizationPlan(freshEvidence);
+      lastReadyVerification.current = authorization.evidence;
+      setVerificationState({ state: "ready", evidence: authorization.evidence });
+      setAuthorizationState({ state: "ready", plan: authorization.plan });
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : "RMT could not prepare this trade.";
       if (stage === "quote") {
@@ -409,7 +413,10 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
       const outcome = postApprovalVerificationOutcome(freshEvidence);
       setPostExecutionState(outcome);
       if (outcome.state !== "swap_ready") throw new Error(outcome.message);
-      setAuthorizationState({ state: "ready", plan: await requestAuthorizationPlan(freshEvidence) });
+      const authorization = await requestAuthorizationPlan(freshEvidence);
+      lastReadyVerification.current = authorization.evidence;
+      setVerificationState({ state: "ready", evidence: authorization.evidence });
+      setAuthorizationState({ state: "ready", plan: authorization.plan });
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : "Fresh post-approval verification failed.";
       setVerificationState({ state: "error", message });
