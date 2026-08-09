@@ -12,6 +12,7 @@ import { parseVNextPreSignEvidence, type VNextPreSignEvidence } from "../../lib/
 import { postApprovalVerificationOutcome, resolvedVNextExecutionOutcome } from "../../lib/vnext/post-approval";
 import { parseVNextAuthorizationBundle, type VNextAuthorizationPlan } from "../../lib/vnext/authorization-plan";
 import { ROBINHOOD_MAINNET_CHAIN_ID, ROBINHOOD_USDG, ROBINHOOD_WETH, robinhoodWalletAccount } from "../../lib/vnext/robinhood-assets";
+import { deriveVNextVerifiedUsdgOutcome } from "../../lib/vnext/verified-cost-outcome";
 import { metadataFromDetectedWalletAsset, type VNextDetectedWalletAsset } from "../../lib/vnext/wallet-assets";
 import { clearTradeQuoteCache, requestTradeQuote, tradeQuoteFailureFromResponse } from "../../lib/trade-quote-client";
 import { useRmtIdentity } from "../rmt-identity";
@@ -74,6 +75,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
     | { state: "swap_confirmed"; message: string }
     | { state: "reverted"; message: string }
   >({ state: "idle" });
+  const [costValuationClockMs, setCostValuationClockMs] = useState(() => Date.now());
   const handledExecution = useRef<string | undefined>(undefined);
   const pendingTradeAfterLogin = useRef(false);
   const continuedApproval = useRef<string | undefined>(undefined);
@@ -219,11 +221,28 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
     : verificationState.state === "loading"
       ? lastReadyVerification.current
       : undefined;
+  useEffect(() => {
+    const expiry = visibleVerification?.networkCostValuationExpiresAtMs;
+    if (!expiry) return;
+    const timeout = window.setTimeout(
+      () => setCostValuationClockMs(Date.now()),
+      Math.max(0, expiry - Date.now() + 1)
+    );
+    return () => window.clearTimeout(timeout);
+  }, [visibleVerification?.networkCostValuationExpiresAtMs, visibleVerification?.verificationId]);
   const routeSelection = visibleQuote
     ? selectVNextRoute(visibleQuote.attempts)
     : { bestObserved: undefined, verificationCandidate: undefined, usesVerifiedBackup: false, selectionBasis: "none" as const, netOutcomeReady: false as const };
   const bestQuote = routeSelection.bestObserved;
   const verificationQuote = routeSelection.verificationCandidate;
+  const freshVerifiedNetworkCostUsdgAtomic = visibleVerification?.estimatedNetworkCostUsdgAtomic
+    && visibleVerification.networkCostValuationExpiresAtMs
+    && visibleVerification.networkCostValuationExpiresAtMs > costValuationClockMs
+      ? visibleVerification.estimatedNetworkCostUsdgAtomic
+      : null;
+  const verifiedUsdgOutcome = visibleVerification
+    ? deriveVNextVerifiedUsdgOutcome(visibleVerification, costValuationClockMs)
+    : null;
   const displayOutput = bestQuote && bestQuote.outputDecimals !== null
     ? formatAtomicDisplay(bestQuote.protectedOutputAtomic!, bestQuote.outputDecimals)
     : null;
@@ -654,7 +673,9 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
               <div><dt>Next action</dt><dd>{visibleVerification.nextAction === "approval" ? "Exact approval" : visibleVerification.nextAction === "swap" ? "Verified swap" : "Blocked"}</dd></div>
               <div><dt>Gas</dt><dd>{visibleVerification.gasState}</dd></div>
               <div><dt>Gas reserve</dt><dd>{visibleVerification.estimatedNetworkCostWei ? `${formatAtomicDisplay(visibleVerification.estimatedNetworkCostWei, 18)} ETH` : "Unavailable"}</dd></div>
-              <div><dt>Gas reserve value</dt><dd>{visibleVerification.estimatedNetworkCostUsdgAtomic ? `${formatAtomicDisplay(visibleVerification.estimatedNetworkCostUsdgAtomic, 6)} USDG` : "Unavailable"}</dd></div>
+              <div><dt>Gas reserve value</dt><dd>{freshVerifiedNetworkCostUsdgAtomic ? `${formatAtomicDisplay(freshVerifiedNetworkCostUsdgAtomic, 6)} USDG equivalent` : "Unavailable"}</dd></div>
+              {verifiedUsdgOutcome?.kind === "buy_cost_ceiling" ? <div><dt>Trade + gas ceiling</dt><dd>{formatAtomicDisplay(verifiedUsdgOutcome.totalCostUsdgAtomic, 6)} USDG equivalent</dd></div> : null}
+              {verifiedUsdgOutcome?.kind === "sell_proceeds_after_gas" ? <div><dt>Protected after gas</dt><dd>{verifiedUsdgOutcome.gasExceedsProtectedProceeds ? "Gas exceeds protected proceeds" : `${formatAtomicDisplay(verifiedUsdgOutcome.proceedsAfterGasUsdgAtomic, 6)} USDG equivalent`}</dd></div> : null}
               <div><dt>Calldata</dt><dd>{shortAddress(visibleVerification.calldataHash)}</dd></div>
             </dl>
             {authorizationState.state === "error" ? <p className="vnAuthorizationError" role="status">{authorizationState.message}</p> : null}
