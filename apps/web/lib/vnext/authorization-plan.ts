@@ -12,6 +12,8 @@ import { z } from "zod";
 import { ROBINHOOD_SWAP_ROUTER_02, ROBINHOOD_WETH } from "../uniswap-v4";
 import { parseVNextPreSignEvidence, type VNextPreSignEvidence } from "./pre-sign-evidence";
 
+const MAX_CLOCK_SKEW_MS = 5_000;
+
 const routerAbi = [{
   type: "function",
   name: "exactInputSingle",
@@ -115,7 +117,7 @@ export function parseVNextAuthorizationPlan(value: unknown, evidence: VNextPreSi
     || plan.deadline !== evidence.deadline
     || plan.gasLimit !== evidence.gasLimitUnits
     || plan.payloadHash !== authorizationPayloadHash(plan)
-    || plan.preparedAtMs > nowMs || plan.expiresAtMs <= nowMs
+    || plan.preparedAtMs > nowMs + MAX_CLOCK_SKEW_MS || plan.expiresAtMs <= nowMs
     || plan.expiresAtMs - plan.preparedAtMs > 60_000
     || plan.expiresAtMs > Number(BigInt(plan.deadline) * 1_000n)
   ) throw new Error("RMT rejected an inconsistent authorization plan.");

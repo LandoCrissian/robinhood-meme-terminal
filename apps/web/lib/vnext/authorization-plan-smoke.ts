@@ -58,6 +58,8 @@ const approvalPlan = planWithHash({
   userAuthorizationRequired: true, serverSubmissionEnabled: false
 });
 assert.equal(parseVNextAuthorizationPlan(approvalPlan, baseEvidence, now + 1).kind, "erc20_approval");
+assert.equal(parseVNextAuthorizationPlan({ ...approvalPlan, preparedAtMs: now + 5_001 }, baseEvidence, now + 1).kind, "erc20_approval");
+assert.throws(() => parseVNextAuthorizationPlan({ ...approvalPlan, preparedAtMs: now + 5_002 }, baseEvidence, now + 1), /inconsistent/);
 const broadenedApproval = encodeFunctionData({ abi: erc20Abi, functionName: "approve", args: [ROBINHOOD_SWAP_ROUTER_02, 2_000_000n] });
 assert.throws(() => parseVNextAuthorizationPlan(planWithHash({ ...approvalPlan, data: broadenedApproval } as Omit<VNextAuthorizationPlan, "payloadHash">), baseEvidence, now + 1));
 assert.throws(() => parseVNextAuthorizationPlan({ ...approvalPlan, target: outputAsset }, baseEvidence, now + 1));

@@ -55,6 +55,8 @@ const expected = {
   recipient: evidence.recipient
 };
 assert.equal(parseVNextPreSignEvidence(evidence, expected, now).status, "verified");
+assert.equal(parseVNextPreSignEvidence({ ...evidence, verifiedAtMs: now + 5_000 }, expected, now).status, "verified");
+assert.throws(() => parseVNextPreSignEvidence({ ...evidence, verifiedAtMs: now + 5_001 }, expected, now), /inconsistent/);
 assert.throws(() => parseVNextPreSignEvidence({ ...evidence, authorizationReady: true }, expected, now));
 assert.throws(() => parseVNextPreSignEvidence({ ...evidence, exactSimulationPassed: false }, expected, now), /false verified/);
 assert.throws(() => parseVNextPreSignEvidence({ ...evidence, protectedOutputAtomic: "1001" }, expected, now), /inconsistent/);

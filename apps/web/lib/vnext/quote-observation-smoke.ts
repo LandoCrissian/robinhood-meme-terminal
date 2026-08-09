@@ -83,6 +83,12 @@ const backupSelection = selectVNextRoute(withVerifiedBackup.attempts);
 assert.equal(backupSelection.bestObserved?.provider, "sushi");
 assert.equal(backupSelection.verificationCandidate?.provider, "uniswap-v3");
 assert.equal(backupSelection.usesVerifiedBackup, true);
+assert.equal(parseVNextQuoteResponse({
+  ...response,
+  completedAtMs: now + 5_000,
+  attempts: [{ ...response.attempts[0], quotedAtMs: now + 5_000 }, response.attempts[1]]
+}, expected, now).requestId, response.requestId);
+assert.throws(() => parseVNextQuoteResponse({ ...response, completedAtMs: now + 5_001 }, expected, now), /inconsistent/);
 assert.throws(() => parseVNextQuoteResponse({ ...response, outputAsset: inputAsset }, expected, now), /inconsistent/);
 assert.throws(() => parseVNextQuoteResponse({ ...response, attempts: [
   { ...response.attempts[0], protectedOutputAtomic: "1000000000000000000001" },

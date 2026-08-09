@@ -2,6 +2,8 @@ import { getAddress, isAddress } from "viem";
 import { z } from "zod";
 import { ROBINHOOD_SWAP_ROUTER_02 } from "../uniswap-v4";
 
+const MAX_CLOCK_SKEW_MS = 5_000;
+
 export type VNextPreSignEvidence = {
   verificationId: string;
   sourceQuoteRequestId: string;
@@ -115,7 +117,7 @@ export function parseVNextPreSignEvidence(value: unknown, expected: {
     || getAddress(evidence.approvalSpender) !== getAddress(ROBINHOOD_SWAP_ROUTER_02)
     || evidence.protectedOutputAtomic === "0"
     || BigInt(evidence.protectedOutputAtomic) > BigInt(evidence.expectedOutputAtomic)
-    || evidence.verifiedAtMs > nowMs
+    || evidence.verifiedAtMs > nowMs + MAX_CLOCK_SKEW_MS
     || evidence.expiresAtMs <= nowMs
     || evidence.expiresAtMs - evidence.verifiedAtMs > 300_000
     || evidence.authorizationReady !== false
