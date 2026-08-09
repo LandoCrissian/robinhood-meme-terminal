@@ -1,11 +1,17 @@
 export type VNextShellEnvironment = Partial<Pick<
   NodeJS.ProcessEnv,
-  "NODE_ENV" | "VERCEL_ENV" | "NEXT_PUBLIC_RMT_VNEXT_SHELL_ENABLED"
+  "NODE_ENV" | "VERCEL_ENV" | "RMT_VNEXT_SHELL_ENABLED"
 >>;
 
+export type VNextShellMode = "unavailable" | "development" | "preview" | "production-observe";
+
+export function vnextShellMode(env: VNextShellEnvironment): VNextShellMode {
+  if (env.VERCEL_ENV === "preview") return "preview";
+  if (env.NODE_ENV !== "production") return "development";
+  if (env.RMT_VNEXT_SHELL_ENABLED === "true") return "production-observe";
+  return "unavailable";
+}
+
 export function vnextShellAvailable(env: VNextShellEnvironment) {
-  if (env.VERCEL_ENV === "production") return false;
-  if (env.VERCEL_ENV === "preview") return true;
-  if (env.NODE_ENV !== "production") return true;
-  return env.NEXT_PUBLIC_RMT_VNEXT_SHELL_ENABLED === "true";
+  return vnextShellMode(env) !== "unavailable";
 }
