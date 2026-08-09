@@ -15,6 +15,7 @@ const TIMEOUT_MS = 10_000;
 const USDG = "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168";
 const WETH = "0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73";
 const NON_FUNDED_BENCHMARK_TAKER = "0x0000000000000000000000000000000000000001";
+const BENCHMARK_NOTIONALS_USD = [10, 50, 100, 500, 1_000] as const;
 
 type ProbeStatus =
   | "verified"
@@ -268,13 +269,15 @@ type BaselinePair = {
   inputAsset: Address;
   outputAsset: Address;
   amountIn: bigint;
+  notionalUsd?: number;
+  segment: "pre_graduation_control" | "core" | "liquid_dynamic";
 };
 
 const baselinePairs: BaselinePair[] = [
-  { name: "usd-g-to-rmt", inputSymbol: "USDG", outputSymbol: "RMT", inputAsset: USDG, outputAsset: ROBINHOOD_RMT_ADDRESS, amountIn: 1_000_000n },
-  { name: "rmt-to-usd-g", inputSymbol: "RMT", outputSymbol: "USDG", inputAsset: ROBINHOOD_RMT_ADDRESS, outputAsset: USDG, amountIn: 1_000_000_000_000_000_000n },
-  { name: "usd-g-to-weth", inputSymbol: "USDG", outputSymbol: "WETH", inputAsset: USDG, outputAsset: WETH, amountIn: 1_000_000n },
-  { name: "weth-to-usd-g", inputSymbol: "WETH", outputSymbol: "USDG", inputAsset: WETH, outputAsset: USDG, amountIn: 1_000_000_000_000_000n }
+  { name: "usd-g-to-rmt", inputSymbol: "USDG", outputSymbol: "RMT", inputAsset: USDG, outputAsset: ROBINHOOD_RMT_ADDRESS, amountIn: 1_000_000n, segment: "pre_graduation_control" },
+  { name: "rmt-to-usd-g", inputSymbol: "RMT", outputSymbol: "USDG", inputAsset: ROBINHOOD_RMT_ADDRESS, outputAsset: USDG, amountIn: 1_000_000_000_000_000_000n, segment: "pre_graduation_control" },
+  { name: "usd-g-to-weth", inputSymbol: "USDG", outputSymbol: "WETH", inputAsset: USDG, outputAsset: WETH, amountIn: 1_000_000n, segment: "core" },
+  { name: "weth-to-usd-g", inputSymbol: "WETH", outputSymbol: "USDG", inputAsset: WETH, outputAsset: USDG, amountIn: 1_000_000_000_000_000n, segment: "core" }
 ];
 
 function finitePositive(value: unknown) {
@@ -309,12 +312,38 @@ async function discoverLiquidBaseline(): Promise<{ probe: Probe; pairs: Baseline
     for (const candidate of unique.slice(0, 12)) {
       const identity = await readRobinhoodTokenIdentity(candidate.address);
       if (!identity || identity.decimals > 36) continue;
-      const displayAmount = 1 / candidate.priceUsd;
-      if (!Number.isFinite(displayAmount) || displayAmount <= 0) continue;
       const precision = Math.min(identity.decimals, 12);
-      const tokenAmount = parseUnits(displayAmount.toFixed(precision), identity.decimals);
-      if (tokenAmount <= 0n || tokenAmount > BigInt(identity.totalSupply)) continue;
       const slug = identity.symbol.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "liquid-token";
+      const pairs = BENCHMARK_NOTIONALS_USD.flatMap((notionalUsd): BaselinePair[] => {
+        const displayAmount = notionalUsd / candidate.priceUsd;
+        if (!Number.isFinite(displayAmount) || displayAmount <= 0) return [];
+        try {
+          const tokenAmount = parseUnits(displayAmount.toFixed(precision), identity.decimals);
+          if (tokenAmount <= 0n || tokenAmount > BigInt(identity.totalSupply)) return [];
+          return [{
+            name: `usd-g-to-${slug}-${notionalUsd}`,
+            inputSymbol: "USDG",
+            outputSymbol: identity.symbol,
+            inputAsset: getAddress(USDG),
+            outputAsset: getAddress(identity.address),
+            amountIn: BigInt(notionalUsd) * 1_000_000n,
+            notionalUsd,
+            segment: "liquid_dynamic"
+          }, {
+            name: `${slug}-to-usd-g-${notionalUsd}`,
+            inputSymbol: identity.symbol,
+            outputSymbol: "USDG",
+            inputAsset: getAddress(identity.address),
+            outputAsset: getAddress(USDG),
+            amountIn: tokenAmount,
+            notionalUsd,
+            segment: "liquid_dynamic"
+          }];
+        } catch {
+          return [];
+        }
+      });
+      if (pairs.length !== BENCHMARK_NOTIONALS_USD.length * 2) continue;
       return {
         probe: {
           provider: "market-directory",
@@ -331,21 +360,7 @@ async function discoverLiquidBaseline(): Promise<{ probe: Probe; pairs: Baseline
             observedPriceUsd: candidate.priceUsd
           }
         },
-        pairs: [{
-          name: `usd-g-to-${slug}`,
-          inputSymbol: "USDG",
-          outputSymbol: identity.symbol,
-          inputAsset: getAddress(USDG),
-          outputAsset: identity.address,
-          amountIn: 1_000_000n
-        }, {
-          name: `${slug}-to-usd-g`,
-          inputSymbol: identity.symbol,
-          outputSymbol: "USDG",
-          inputAsset: identity.address,
-          outputAsset: getAddress(USDG),
-          amountIn: tokenAmount
-        }]
+        pairs
       };
     }
     throw new Error("no_verified_liquid_asset");
@@ -398,7 +413,7 @@ async function probeSushiBaseline(pair: BaselinePair): Promise<Probe> {
       inputAmountAtomic: pair.amountIn.toString(),
       expectedOutputAtomic: quote.quoteOut,
       protectedOutputAtomic: quote.minimumOut,
-      evidence: { inputSymbol: pair.inputSymbol, outputSymbol: pair.outputSymbol, indicativeOnly: true }
+      evidence: { inputSymbol: pair.inputSymbol, outputSymbol: pair.outputSymbol, benchmarkNotionalUsd: pair.notionalUsd ?? null, benchmarkSegment: pair.segment, indicativeOnly: true }
     };
   } catch (error) {
     const failure = baselineFailure(error);
@@ -413,7 +428,7 @@ async function probeSushiBaseline(pair: BaselinePair): Promise<Probe> {
       inputAsset: pair.inputAsset,
       outputAsset: pair.outputAsset,
       inputAmountAtomic: pair.amountIn.toString(),
-      evidence: { inputSymbol: pair.inputSymbol, outputSymbol: pair.outputSymbol, indicativeOnly: true }
+      evidence: { inputSymbol: pair.inputSymbol, outputSymbol: pair.outputSymbol, benchmarkNotionalUsd: pair.notionalUsd ?? null, benchmarkSegment: pair.segment, indicativeOnly: true }
     };
   }
 }
@@ -438,7 +453,7 @@ async function probeUniswapBaseline(pair: BaselinePair): Promise<Probe> {
         inputAsset: pair.inputAsset,
         outputAsset: pair.outputAsset,
         inputAmountAtomic: pair.amountIn.toString(),
-        evidence: { inputSymbol: pair.inputSymbol, outputSymbol: pair.outputSymbol, indicativeOnly: true }
+        evidence: { inputSymbol: pair.inputSymbol, outputSymbol: pair.outputSymbol, benchmarkNotionalUsd: pair.notionalUsd ?? null, benchmarkSegment: pair.segment, indicativeOnly: true }
       };
     }
     return {
@@ -457,6 +472,8 @@ async function probeUniswapBaseline(pair: BaselinePair): Promise<Probe> {
       evidence: {
         inputSymbol: pair.inputSymbol,
         outputSymbol: pair.outputSymbol,
+        benchmarkNotionalUsd: pair.notionalUsd ?? null,
+        benchmarkSegment: pair.segment,
         route: quote.route,
         poolCount: quote.pools.length,
         indicativeOnly: true
@@ -475,9 +492,63 @@ async function probeUniswapBaseline(pair: BaselinePair): Promise<Probe> {
       inputAsset: pair.inputAsset,
       outputAsset: pair.outputAsset,
       inputAmountAtomic: pair.amountIn.toString(),
-      evidence: { inputSymbol: pair.inputSymbol, outputSymbol: pair.outputSymbol, indicativeOnly: true }
+      evidence: { inputSymbol: pair.inputSymbol, outputSymbol: pair.outputSymbol, benchmarkNotionalUsd: pair.notionalUsd ?? null, benchmarkSegment: pair.segment, indicativeOnly: true }
     };
   }
+}
+
+async function probeBaselinePairs(pairs: readonly BaselinePair[]) {
+  const probes: Probe[] = [];
+  for (const pair of pairs) {
+    probes.push(...await Promise.all([probeSushiBaseline(pair), probeUniswapBaseline(pair)]));
+  }
+  return probes;
+}
+
+function percentile(values: number[], fraction: number) {
+  if (values.length === 0) return null;
+  const sorted = [...values].sort((left, right) => left - right);
+  return sorted[Math.max(0, Math.ceil(sorted.length * fraction) - 1)];
+}
+
+function summarizeBaseline(probes: readonly Probe[]) {
+  const providers = ["sushi", "uniswap-v3"] as const;
+  const eligibleProbes = probes.filter((probe) => probe.evidence?.benchmarkSegment !== "pre_graduation_control");
+  const comparable = new Map<string, Probe[]>();
+  for (const probe of eligibleProbes) {
+    if (!providers.includes(probe.provider as typeof providers[number]) || !probe.routeAvailable || !probe.protectedOutputAtomic) continue;
+    const sample = comparable.get(probe.probe) ?? [];
+    sample.push(probe);
+    comparable.set(probe.probe, sample);
+  }
+  const comparableSamples = [...comparable.values()].filter((sample) => sample.length === providers.length);
+  const wins = new Map<string, number>(providers.map((provider) => [provider, 0]));
+  for (const sample of comparableSamples) {
+    const best = sample.reduce((maximum, probe) => {
+      const output = BigInt(probe.protectedOutputAtomic!);
+      return output > maximum ? output : maximum;
+    }, 0n);
+    for (const probe of sample) {
+      if (BigInt(probe.protectedOutputAtomic!) === best) wins.set(probe.provider, (wins.get(probe.provider) ?? 0) + 1);
+    }
+  }
+  return providers.map((provider) => {
+    const attempts = eligibleProbes.filter((probe) => probe.provider === provider);
+    const available = attempts.filter((probe) => probe.routeAvailable);
+    return {
+      provider,
+      samples: attempts.length,
+      routesAvailable: available.length,
+      routeAvailabilityPct: attempts.length === 0 ? 0 : Number((available.length * 100 / attempts.length).toFixed(1)),
+      latencyP50Ms: percentile(attempts.map((probe) => probe.latencyMs), 0.5),
+      latencyP95Ms: percentile(attempts.map((probe) => probe.latencyMs), 0.95),
+      comparableSamples: comparableSamples.length,
+      protectedOutputWins: wins.get(provider) ?? 0,
+      preGraduationControlSamplesExcluded: probes.filter((probe) => (
+        probe.provider === provider && probe.evidence?.benchmarkSegment === "pre_graduation_control"
+      )).length
+    };
+  });
 }
 
 async function firstActiveRobinhoodRwa() {
@@ -564,9 +635,9 @@ async function main() {
   const apiKey = process.env.RMT_ZEROX_API_KEY?.trim();
   const liquidBaseline = await discoverLiquidBaseline();
   const activeBaselinePairs = [...baselinePairs, ...liquidBaseline.pairs];
-  const [contractProbes, baselineProbes, pcsxCryptoProbe] = await Promise.all([
-    probeContracts(),
-    Promise.all(activeBaselinePairs.flatMap((pair) => [probeSushiBaseline(pair), probeUniswapBaseline(pair)])),
+  const contractProbes = await probeContracts();
+  const [baselineProbes, pcsxCryptoProbe] = await Promise.all([
+    probeBaselinePairs(activeBaselinePairs),
     probePcsx("usd-g-to-weth", WETH, "WETH")
   ]);
   let pcsxRwaProbe: Probe;
@@ -600,6 +671,7 @@ async function main() {
     mode: "read-only",
     noWriteAssertion,
     credentials: { zeroX: apiKey ? "configured" : "missing" },
+    baselineSummary: summarizeBaseline(baselineProbes),
     probes
   }, null, 2)}\n`);
   if (!noWriteAssertion || probes.some((probe) => probe.status === "mismatch")) process.exitCode = 1;

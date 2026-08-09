@@ -20,7 +20,7 @@ The optional `RMT_ZEROX_API_KEY` is server-only. When absent, every 0x row is re
 
 Every run now requests real indicative quotes for both existing RMT provider families across USDG→WETH, WETH→USDG, and a live-discovered liquid token in both directions. RMT is retained separately as a pre-graduation control case. Sushi is restricted by the harness to `GET /quote/v7/4663`; Uniswap uses the existing bytecode-pinned V3 quoter through read-only RPC calls. Results include atomic expected/protected output and latency, but never executable calldata.
 
-The liquid-token sample is not hardcoded or mocked. The harness reads current Robinhood pairs from Dexscreener, selects the highest-liquidity non-USDG/non-WETH/non-RMT base asset with verified onchain ERC-20 identity, and derives an approximately $1 sell amount from its observed price and verified decimals. The selected symbol, address, liquidity, and price are included in sanitized output so every run remains auditable.
+The liquid-token sample is not hardcoded or mocked. The harness reads current Robinhood pairs from Dexscreener, selects the highest-liquidity non-USDG/non-WETH/non-RMT base asset with verified onchain ERC-20 identity, and derives sell amounts for $10, $50, $100, $500, and $1,000 notionals from its observed price and verified decimals. The selected symbol, address, liquidity, and price are included in sanitized output so every run remains auditable.
 
 These rows establish the comparison baseline for future providers. They do not request wallet balances, approvals, simulations against a user account, signatures, or transactions.
 
@@ -43,6 +43,19 @@ Live-discovery validation at 2026-08-08 21:37 MDT selected `PIPEDOG` (`0x5Cb6F18
 | ~1 USDG of PIPEDOG → USDG | `0.986057` USDG | `0.979599` USDG | Both available. |
 
 The selected asset will change with live liquidity. This snapshot proves the discovery and bidirectional benchmark path; it does not permanently promote or endorse PIPEDOG.
+
+### Multi-notional comparison
+
+The 2026-08-08 21:56 MDT run tested the live-discovered asset in both directions at $10, $50, $100, $500, and $1,000. Contract fingerprint checks complete before route measurement so RPC audit traffic cannot distort provider latency or availability.
+
+| Provider | Eligible samples | Route availability | Latency P50 | Latency P95 | Protected-output wins |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Sushi | 12 | 100% | 62 ms | 69 ms | 5 |
+| Uniswap V3 | 12 | 100% | 593 ms | 683 ms | 7 |
+
+The 12 eligible samples are ten live-token directions plus two USDG/WETH controls. The two expected RMT pre-graduation no-route controls are reported but excluded from availability and winner metrics.
+
+In this run, Uniswap V3 had the higher protected output for all five USDG→PIPEDOG buys, while Sushi had the higher protected output for all five PIPEDOG→USDG sells. Sushi was faster; Uniswap V3 won more protected-output comparisons after the two USDG/WETH samples were included. This is not yet a best-net-outcome result because user-paid gas and provider fees have not been normalized, and one run is not enough for provider admission.
 
 ### Pancake and PancakeSwapX contracts
 
