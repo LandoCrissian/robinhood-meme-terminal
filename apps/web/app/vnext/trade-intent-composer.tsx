@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { formatUnits, type Address } from "viem";
+import { formatUnits, parseUnits, type Address } from "viem";
 import { useAccount } from "wagmi";
 import type { AssetMetadata } from "../../lib/vnext/execution-domain";
 import { assetKey } from "../../lib/vnext/execution-domain";
@@ -33,6 +33,8 @@ function uniqueAssets(assets: AssetMetadata[]) {
   return [...new Map(assets.map((asset) => [assetKey(asset.id), asset])).values()];
 }
 
+const DEFAULT_BUY_AMOUNT = "25";
+
 export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, walletAssets, executionRecord, onContinueTrading }: {
   marketName: string;
   marketSymbol: string;
@@ -42,7 +44,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
   onContinueTrading: () => void;
 }) {
   const [side, setSide] = useState<TradeSide>("buy");
-  const [amount, setAmount] = useState("100");
+  const [amount, setAmount] = useState(DEFAULT_BUY_AMOUNT);
   const [buyInputKey, setBuyInputKey] = useState<string>();
   const [sellOutputKey, setSellOutputKey] = useState(assetKey(ROBINHOOD_USDG.id));
   const [quoteState, setQuoteState] = useState<
@@ -146,7 +148,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
 
   const chooseSide = (next: TradeSide) => {
     setSide(next);
-    setAmount(next === "buy" ? "100" : "");
+    setAmount(next === "buy" ? DEFAULT_BUY_AMOUNT : "");
   };
   const inputSymbol = pair?.inputAsset.symbol ?? (side === "buy" ? "—" : marketSymbol);
   const outputSymbol = pair?.outputAsset.symbol ?? (side === "buy" ? marketSymbol : "USDG");
@@ -481,7 +483,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
   const continueTrading = () => {
     setPostExecutionState({ state: "idle" });
     setSide("buy");
-    setAmount("");
+    setAmount(DEFAULT_BUY_AMOUNT);
     setBuyInputKey(assetKey(ROBINHOOD_USDG.id));
     setSellOutputKey(assetKey(ROBINHOOD_USDG.id));
     onContinueTrading();
@@ -524,9 +526,21 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
       </div>
       {side === "buy" && inputSymbol === "USDG" ? (
         <div className="vnQuickAmounts">
-          {["25", "50", "100", "250"].map((preset) => (
-            <button className={preset === amount ? "isActive" : ""} type="button" key={preset} onClick={() => setAmount(preset)}>${preset}</button>
-          ))}
+          {["25", "50", "100", "250"].map((preset) => {
+            const exceedsBalance = Boolean(
+              inputBalance
+              && pairInputDecimals !== null
+              && parseUnits(preset, pairInputDecimals) > BigInt(inputBalance.balanceAtomic)
+            );
+            return <button
+              className={preset === amount ? "isActive" : ""}
+              type="button"
+              key={preset}
+              disabled={exceedsBalance}
+              aria-label={`Use $${preset}${exceedsBalance ? " (exceeds confirmed balance)" : ""}`}
+              onClick={() => setAmount(preset)}
+            >${preset}</button>;
+          })}
         </div>
       ) : <p className="vnIntentHint">Enter the exact {inputSymbol === "—" ? "input asset" : inputSymbol} amount. RMT does not estimate or inflate wallet balances.</p>}
       <div className="vnSwapDivider"><span aria-hidden="true">↓</span></div>
