@@ -1,12 +1,14 @@
 "use client";
 
 import { useIdentityToken, usePrivy } from "@privy-io/react-auth";
-import { createContext, useContext, useMemo, type ReactNode } from "react";
+import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+import { walletBrowserEnvironment, type WalletBrowserEnvironment } from "../lib/mobile-wallet-link";
 
 type RmtIdentityContextValue = {
   authenticated: boolean;
   enabled: boolean;
   identityToken: string | null;
+  environment: WalletBrowserEnvironment;
   linkEmail: () => void;
   linkGoogle: () => void;
   linkPasskey: () => void;
@@ -23,12 +25,14 @@ type RmtIdentityContextValue = {
   logout: () => Promise<void>;
   phoneLast4: string;
   ready: boolean;
+  supportsOAuth: boolean;
   userId: string;
 };
 
 const unavailableIdentity: RmtIdentityContextValue = {
   authenticated: false,
   enabled: false,
+  environment: "desktop",
   identityToken: null,
   linkEmail: () => undefined,
   linkGoogle: () => undefined,
@@ -40,6 +44,7 @@ const unavailableIdentity: RmtIdentityContextValue = {
   logout: async () => undefined,
   phoneLast4: "",
   ready: true,
+  supportsOAuth: true,
   userId: ""
 };
 
@@ -53,12 +58,17 @@ export function PrivyIdentityBridge({ children }: { children: ReactNode }) {
     linkPasskey,
     linkPhone,
     linkWallet,
-    login,
+    login: openPrivyLogin,
     logout,
     ready,
     user
   } = usePrivy();
   const { identityToken } = useIdentityToken();
+  const [environment] = useState<WalletBrowserEnvironment>(() => {
+    if (typeof window === "undefined") return "desktop";
+    return walletBrowserEnvironment(window.navigator.userAgent, Boolean((window as Window & { ethereum?: unknown }).ethereum));
+  });
+  const supportsOAuth = environment !== "mobile-wallet-browser";
   const linked = useMemo(() => ({
     email: Boolean(user?.linkedAccounts.some((account) => account.type === "email")),
     google: Boolean(user?.linkedAccounts.some((account) => account.type === "google_oauth")),
@@ -71,20 +81,28 @@ export function PrivyIdentityBridge({ children }: { children: ReactNode }) {
   const value = useMemo<RmtIdentityContextValue>(() => ({
     authenticated,
     enabled: true,
+    environment,
     identityToken: identityToken ?? null,
     linkEmail,
-    linkGoogle,
+    linkGoogle: () => {
+      if (supportsOAuth) linkGoogle();
+    },
     linkPasskey,
     linkPhone,
     linkWallet: () => linkWallet({ walletChainType: "ethereum-only" }),
     linked,
-    login,
+    login: () => openPrivyLogin({
+      loginMethods: supportsOAuth ? ["email", "google", "passkey", "wallet"] : ["wallet"],
+      walletChainType: "ethereum-only"
+    }),
     logout,
     phoneLast4: user?.linkedAccounts.find((account) => account.type === "phone")?.number.slice(-4) ?? "",
     ready,
+    supportsOAuth,
     userId: user?.id ?? ""
   }), [
     authenticated,
+    environment,
     identityToken,
     linkEmail,
     linkGoogle,
@@ -92,9 +110,10 @@ export function PrivyIdentityBridge({ children }: { children: ReactNode }) {
     linkPhone,
     linkWallet,
     linked,
-    login,
+    openPrivyLogin,
     logout,
     ready,
+    supportsOAuth,
     user?.id
   ]);
 

@@ -1,7 +1,14 @@
 const RMT_APP_URL = "https://www.rmtlaunch.fun";
 
+export type WalletBrowserEnvironment = "desktop" | "mobile-browser" | "mobile-wallet-browser";
+
 export function isMobileWebUserAgent(userAgent: string) {
   return /Android|iPhone|iPad|iPod|Mobile/i.test(userAgent);
+}
+
+export function walletBrowserEnvironment(userAgent: string, hasInjectedEthereum: boolean): WalletBrowserEnvironment {
+  if (!isMobileWebUserAgent(userAgent)) return "desktop";
+  return hasInjectedEthereum ? "mobile-wallet-browser" : "mobile-browser";
 }
 
 export function metaMaskDappLink(rawUrl: string) {

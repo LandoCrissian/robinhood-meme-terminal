@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { normalizePrivyAppId } from "./privy-config";
-import { isMobileWebUserAgent, metaMaskDappLink } from "./mobile-wallet-link";
+import { isMobileWebUserAgent, metaMaskDappLink, walletBrowserEnvironment } from "./mobile-wallet-link";
 
 const appRoot = fileURLToPath(new URL("../app/", import.meta.url));
 const providers = readFileSync(`${appRoot}providers.tsx`, "utf8");
@@ -11,8 +11,10 @@ const speedEntry = readFileSync(`${appRoot}speed-wallet-entry.tsx`, "utf8");
 const walletConfig = readFileSync(`${appRoot}wallet-config.ts`, "utf8");
 const walletButton = readFileSync(`${appRoot}wallet-button.tsx`, "utf8");
 const privyWalletButton = readFileSync(`${appRoot}privy-wallet-button.tsx`, "utf8");
+const rmtIdentity = readFileSync(`${appRoot}rmt-identity.tsx`, "utf8");
 const walletTransferDialog = readFileSync(`${appRoot}wallet-transfer-dialog.tsx`, "utf8");
 const walletReceiveDialog = readFileSync(`${appRoot}wallet-receive-dialog.tsx`, "utf8");
+const privyFundingActions = readFileSync(`${appRoot}privy-funding-actions.tsx`, "utf8");
 const fundWalletButton = readFileSync(`${appRoot}fund-wallet-button.tsx`, "utf8");
 const overlayPortal = readFileSync(`${appRoot}overlay-portal.tsx`, "utf8");
 const combined = `${providers}\n${speedProvider}\n${speedEntry}\n${walletButton}\n${privyWalletButton}\n${walletTransferDialog}\n${walletReceiveDialog}\n${fundWalletButton}\n${overlayPortal}`;
@@ -22,6 +24,8 @@ assert.equal(normalizePrivyAppId("too-short"), undefined, "An invalid Privy app 
 assert.equal(normalizePrivyAppId(undefined), undefined, "A missing Privy app ID must preserve the legacy wallet path.");
 assert.equal(isMobileWebUserAgent("Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Mobile"), true);
 assert.equal(isMobileWebUserAgent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)"), false);
+assert.equal(walletBrowserEnvironment("Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Mobile", true), "mobile-wallet-browser");
+assert.equal(walletBrowserEnvironment("Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Mobile", false), "mobile-browser");
 assert.equal(
   metaMaskDappLink("https://www.rmtlaunch.fun/vnext?asset=RMT"),
   "https://link.metamask.io/dapp/www.rmtlaunch.fun/vnext?asset=RMT",
@@ -33,6 +37,7 @@ assert.match(providers, /connectors:\s*createLegacyWalletConnectors\(\)/, "The l
 assert.doesNotMatch(speedProvider, /createLegacyWalletConnectors/, "Privy must not initialize RMT's legacy WalletConnect connector a second time.");
 assert.match(speedProvider, /@privy-io\/wagmi/, "Embedded wallets must use Privy's official Wagmi adapter.");
 assert.match(speedProvider, /createOnLogin:\s*"all-users"/, "A user who chooses Privy sign-in must receive an RMT wallet.");
+assert.match(speedProvider, /showWalletLoginFirst:\s*true/, "Privy must prioritize the wallet already available to a trader.");
 assert.match(speedEntry, /useExportWallet/, "The user-owned wallet must expose recovery/export controls.");
 assert.match(speedEntry, /useSetWalletRecovery/, "The user-owned wallet must expose cross-device recovery controls.");
 assert.match(speedEntry, /useMfaEnrollment/, "The user-owned wallet must expose MFA enrollment controls.");
@@ -40,6 +45,9 @@ assert.match(speedEntry, /Session permissions remain off/, "Signer permissions m
 assert.match(walletButton, /if \(speedWalletEnabled\) return <PrivyWalletButton/, "Privy must own the wallet entry point whenever validly configured.");
 assert.match(privyWalletButton, /useConnectOrCreateWallet/, "Privy must provide a connect-or-create path for first-time traders.");
 assert.match(privyWalletButton, /mobileMetaMaskUrl/, "Mobile traders must have a direct MetaMask app handoff outside blocked embedded-browser connection modals.");
+assert.match(privyWalletButton, /Use this wallet/, "A mobile wallet browser must offer its injected wallet directly.");
+assert.match(rmtIdentity, /supportsOAuth \? \["email", "google", "passkey", "wallet"\] : \["wallet"\]/, "Wallet browsers must not offer OAuth flows that cannot leave their embedded browser.");
+assert.doesNotMatch(`${speedEntry}\n${privyFundingActions}`, /onClick=\{login\}/, "Wallet and funding entry points must use RMT's environment-aware Privy login.");
 assert.match(speedProvider, /"metamask", "coinbase_wallet", "detected_ethereum_wallets", "wallet_connect"/, "Privy must put named mobile wallets before desktop-only detection and the full registry.");
 assert.match(privyWalletButton, /useSetActiveWallet/, "Traders must be able to choose the exact wallet RMT uses.");
 assert.match(privyWalletButton, /requestedWalletAddress/, "A newly connected external wallet must remain the requested active wallet after Privy finishes linking it.");

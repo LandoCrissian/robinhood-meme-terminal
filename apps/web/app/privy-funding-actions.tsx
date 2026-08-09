@@ -5,6 +5,7 @@ import { useSetActiveWallet } from "@privy-io/wagmi";
 import { useState } from "react";
 import { useAccount } from "wagmi";
 import { parsePrivyFundingConfig } from "../lib/privy-funding";
+import { useRmtIdentity } from "./rmt-identity";
 
 const funding = parsePrivyFundingConfig({
   appId: process.env.NEXT_PUBLIC_PRIVY_APP_ID,
@@ -30,7 +31,8 @@ function safeFundingMessage(error: unknown) {
 }
 
 export function PrivyFundingActions() {
-  const { ready, authenticated, login } = usePrivy();
+  const { ready, authenticated } = usePrivy();
+  const identity = useRmtIdentity();
   const { wallets, ready: walletsReady } = useWallets();
   const { setActiveWallet } = useSetActiveWallet();
   const { address: activeAddress } = useAccount();
@@ -58,8 +60,10 @@ export function PrivyFundingActions() {
   if (!authenticated) {
     return (
       <>
-        <button className="fundWalletPrimary" type="button" onClick={login}>Sign in to fund an RMT wallet</button>
-        <small className="fundWalletDisclosure">Email, Google, passkey, and external-wallet sign-in are supported. A wallet is created only for this user.</small>
+        <button className="fundWalletPrimary" type="button" onClick={identity.login}>Sign in to fund an RMT wallet</button>
+        <small className="fundWalletDisclosure">{identity.supportsOAuth
+          ? "Use email, Google, a passkey, or an external wallet. Your first sign-in creates one RMT account."
+          : "Use the wallet already available in this browser. Google linking remains optional in Safari or Chrome."}</small>
       </>
     );
   }
