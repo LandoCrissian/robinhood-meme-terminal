@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { config as middlewareConfig, vnextRequestBoundary } from "../../middleware";
-import { vnextShellAvailable } from "./vnext-shell-access";
+import { vnextShellAvailable, vnextShellMode } from "./vnext-shell-access";
 
 const page = readFileSync(new URL("../../app/vnext/page.tsx", import.meta.url), "utf8");
 const shell = readFileSync(new URL("../../app/vnext/vnext-terminal-shell.tsx", import.meta.url), "utf8");
@@ -12,9 +12,12 @@ const spendBalance = readFileSync(new URL("../../app/vnext/spend-balance.tsx", i
 const styles = readFileSync(new URL("../../app/vnext/vnext-terminal.css", import.meta.url), "utf8");
 const chrome = readFileSync(new URL("../../app/public-chrome.tsx", import.meta.url), "utf8");
 
-assert.match(page, /vnextShellAvailable\(process\.env\)/);
+assert.match(page, /readVNextReleaseReadiness\(process\.env\)/);
+assert.match(page, /!readiness\.shellEnabled \|\| !readiness\.configurationConsistent/);
 assert.match(page, /notFound\(\)/);
 assert.match(page, /export const dynamic = "force-dynamic"/);
+assert.match(page, /index: false/);
+assert.match(page, /follow: false/);
 assert.match(chrome, /"\/vnext"/);
 
 assert.equal(vnextShellAvailable({ NODE_ENV: "development" }), true);
@@ -24,22 +27,40 @@ assert.equal(
   vnextShellAvailable({
     NODE_ENV: "production",
     VERCEL_ENV: "production",
-    NEXT_PUBLIC_RMT_VNEXT_SHELL_ENABLED: "true",
+    RMT_VNEXT_SHELL_ENABLED: "true",
   }),
-  false,
+  true,
 );
 assert.equal(vnextShellAvailable({ NODE_ENV: "production" }), false);
-assert.equal(vnextShellAvailable({ NODE_ENV: "production", NEXT_PUBLIC_RMT_VNEXT_SHELL_ENABLED: "true" }), true);
-
-const blockedResponse = vnextRequestBoundary({
+assert.equal(vnextShellAvailable({ NODE_ENV: "production", RMT_VNEXT_SHELL_ENABLED: "true" }), true);
+assert.equal(vnextShellMode({ NODE_ENV: "development" }), "development");
+assert.equal(vnextShellMode({ NODE_ENV: "production", VERCEL_ENV: "preview" }), "preview");
+assert.equal(vnextShellMode({
   NODE_ENV: "production",
   VERCEL_ENV: "production",
-  NEXT_PUBLIC_RMT_VNEXT_SHELL_ENABLED: "true",
+  RMT_VNEXT_SHELL_ENABLED: "true",
+}), "production-observe");
+assert.equal(vnextShellMode({ NODE_ENV: "production", VERCEL_ENV: "production" }), "unavailable");
+
+const productionObserveResponse = vnextRequestBoundary({
+  NODE_ENV: "production",
+  VERCEL_ENV: "production",
+  RMT_VNEXT_SHELL_ENABLED: "true",
 });
-assert.equal(blockedResponse.status, 404);
-assert.equal(blockedResponse.headers.get("cache-control"), "private, no-store, max-age=0");
-assert.equal(blockedResponse.headers.get("x-robots-tag"), "noindex, nofollow");
-assert.notEqual(blockedResponse.body, null);
+assert.equal(productionObserveResponse.status, 200);
+assert.equal(productionObserveResponse.headers.get("cache-control"), "private, no-store, max-age=0");
+assert.equal(productionObserveResponse.headers.get("x-rmt-vnext-mode"), "production-observe");
+assert.equal(productionObserveResponse.headers.get("x-rmt-vnext-release"), "observation");
+assert.equal(productionObserveResponse.headers.get("x-robots-tag"), "noindex, nofollow");
+
+const misconfiguredResponse = vnextRequestBoundary({
+  NODE_ENV: "production",
+  VERCEL_ENV: "production",
+  RMT_VNEXT_SHELL_ENABLED: "true",
+  NEXT_PUBLIC_RMT_VNEXT_WALLET_SUBMISSION_ENABLED: "true",
+});
+assert.equal(misconfiguredResponse.status, 404);
+assert.equal(misconfiguredResponse.headers.get("x-robots-tag"), "noindex, nofollow");
 
 const blockedHeadResponse = vnextRequestBoundary({ NODE_ENV: "production", VERCEL_ENV: "production" }, "HEAD");
 assert.equal(blockedHeadResponse.status, 404);
@@ -48,6 +69,9 @@ assert.equal(blockedHeadResponse.body, null);
 const previewResponse = vnextRequestBoundary({ NODE_ENV: "production", VERCEL_ENV: "preview" });
 assert.equal(previewResponse.status, 200);
 assert.equal(previewResponse.headers.get("x-middleware-next"), "1");
+assert.equal(previewResponse.headers.get("x-rmt-vnext-mode"), "preview");
+assert.equal(previewResponse.headers.get("x-rmt-vnext-release"), "observation");
+assert.equal(previewResponse.headers.get("x-robots-tag"), "noindex, nofollow");
 assert.equal(middlewareConfig.matcher, "/vnext/:path*");
 
 assert.equal((shell.match(/export function VNextTerminalShell/g) ?? []).length, 1);

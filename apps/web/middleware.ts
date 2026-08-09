@@ -1,9 +1,6 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import {
-  type VNextShellEnvironment,
-  vnextShellAvailable,
-} from "./lib/vnext/vnext-shell-access";
+import { readVNextReleaseReadiness, type VNextReleaseEnvironment } from "./lib/vnext/release-readiness";
 
 const blockedHeaders = {
   "Cache-Control": "private, no-store, max-age=0",
@@ -12,8 +9,16 @@ const blockedHeaders = {
   "X-Robots-Tag": "noindex, nofollow",
 };
 
-export function vnextRequestBoundary(env: VNextShellEnvironment, method = "GET") {
-  if (vnextShellAvailable(env)) return NextResponse.next();
+export function vnextRequestBoundary(env: VNextReleaseEnvironment, method = "GET") {
+  const readiness = readVNextReleaseReadiness(env);
+  if (readiness.shellEnabled && readiness.configurationConsistent) {
+    const response = NextResponse.next();
+    response.headers.set("Cache-Control", "private, no-store, max-age=0");
+    response.headers.set("X-RMT-VNext-Mode", readiness.shellMode);
+    response.headers.set("X-RMT-VNext-Release", readiness.mode);
+    response.headers.set("X-Robots-Tag", "noindex, nofollow");
+    return response;
+  }
 
   return new NextResponse(method === "HEAD" ? null : "Not Found", {
     status: 404,
