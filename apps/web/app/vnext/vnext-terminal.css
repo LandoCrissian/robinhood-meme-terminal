@@ -633,7 +633,7 @@ body .rmtVnext {
 .vnTopbarActions .wallet,
 .vnTopbarActions .connectTrigger,
 .vnTopbarActions .network {
-  min-height: 42px;
+  min-height: 44px;
   border: 1px solid var(--vn-border-strong);
   border-radius: 999px;
   background: var(--vn-surface);
