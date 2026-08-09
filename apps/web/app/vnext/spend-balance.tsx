@@ -22,6 +22,7 @@ import {
   type VNextWalletAssetCandidate
 } from "../../lib/vnext/wallet-assets";
 import { useVNextWalletAssets } from "./use-vnext-wallet-assets";
+import { FundWalletButton } from "../fund-wallet-button";
 
 const SETTLEMENT_BALANCE_REFRESH_DELAYS_MS = [0, 900, 2_500] as const;
 
@@ -162,8 +163,8 @@ export function SpendBalance({ markets, onAssetsChange, executionRecord }: {
         <small>{executionRecord?.state === "submitted" ? `${executionRecord.kind === "erc20_approval" ? "Approval" : "Swap"} awaiting confirmation` : "Unconfirmed proceeds are never spendable"}</small>
       </div>
       <div className="vnBalanceActions">
-        <Link className="vnPrimaryButton" href="/portfolio">View portfolio</Link>
-        <a className="vnQuietButton" href="https://docs.robinhood.com/chain/contracts/" target="_blank" rel="noreferrer">Verify USDG ↗</a>
+        <FundWalletButton variant="inline" label="Add funds" target="mainnet" />
+        <Link className="vnQuietButton" href="/portfolio">View portfolio</Link>
       </div>
 
       {enabled && <div className="vnDetectedAssets" aria-live="polite">
