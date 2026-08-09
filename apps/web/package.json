@@ -66,6 +66,7 @@
     "test:vnext-wallet-submission": "tsx lib/vnext/wallet-submission-smoke.ts",
     "test:vnext-recovery": "tsx lib/vnext/execution-recovery-smoke.ts",
     "test:vnext-post-approval": "tsx lib/vnext/post-approval-smoke.ts",
+    "benchmark:vnext-providers": "tsx scripts/vnext-provider-benchmark.ts",
     "test:trading-terms": "tsx lib/trading-terms-smoke.ts",
     "test:experience": "tsx lib/experience-funnel-smoke.ts",
     "test:external-trades": "tsx lib/external-trades-smoke.ts",
