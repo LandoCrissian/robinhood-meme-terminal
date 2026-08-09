@@ -181,7 +181,11 @@ export function parseVNextAuthorizationBundle(value: unknown, priorEvidence: VNe
 }, nowMs: number) {
   const parsed = authorizationBundleSchema.safeParse(value);
   if (!parsed.success) throw new Error("RMT rejected a malformed authorization bundle.");
-  const evidence = parseVNextPreSignEvidence(parsed.data.evidence, expected, nowMs);
+  const evidence = parseVNextPreSignEvidence(parsed.data.evidence, {
+    ...expected,
+    provider: priorEvidence.provider,
+    protectedOutputFloorAtomic: priorEvidence.indicativeProtectedOutputFloorAtomic
+  }, nowMs);
   if (
     evidence.verificationId !== priorEvidence.verificationId
     || evidence.provider !== priorEvidence.provider

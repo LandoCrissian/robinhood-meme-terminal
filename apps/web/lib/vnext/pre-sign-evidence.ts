@@ -13,6 +13,7 @@ export type VNextPreSignEvidence = {
   inputAsset: string;
   outputAsset: string;
   inputAmountAtomic: string;
+  indicativeProtectedOutputFloorAtomic: string;
   expectedOutputAtomic: string;
   protectedOutputAtomic: string;
   recipient: string;
@@ -63,6 +64,7 @@ const evidenceSchema = z.object({
   inputAsset: z.string(),
   outputAsset: z.string(),
   inputAmountAtomic: atomic,
+  indicativeProtectedOutputFloorAtomic: atomic,
   expectedOutputAtomic: atomic,
   protectedOutputAtomic: atomic,
   recipient: z.string(),
@@ -107,6 +109,8 @@ export function parseVNextPreSignEvidence(value: unknown, expected: {
   inputAsset: string;
   outputAsset: string;
   inputAmountAtomic: string;
+  provider: "uniswap-v3";
+  protectedOutputFloorAtomic: string;
   recipient: string;
 }, nowMs: number): VNextPreSignEvidence {
   const parsed = evidenceSchema.safeParse(value);
@@ -119,6 +123,10 @@ export function parseVNextPreSignEvidence(value: unknown, expected: {
     || !isAddress(evidence.outputAsset)
     || getAddress(evidence.outputAsset) !== getAddress(expected.outputAsset)
     || evidence.inputAmountAtomic !== expected.inputAmountAtomic
+    || evidence.provider !== expected.provider
+    || evidence.indicativeProtectedOutputFloorAtomic !== expected.protectedOutputFloorAtomic
+    || evidence.indicativeProtectedOutputFloorAtomic === "0"
+    || BigInt(evidence.protectedOutputAtomic) < BigInt(expected.protectedOutputFloorAtomic)
     || !isAddress(evidence.recipient)
     || getAddress(evidence.recipient) !== getAddress(expected.recipient)
     || getAddress(evidence.router) !== getAddress(ROBINHOOD_SWAP_ROUTER_02)

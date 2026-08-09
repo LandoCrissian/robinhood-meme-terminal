@@ -68,7 +68,9 @@ export const vNextUniswapV3Adapter: VNextQuoteProviderAdapter = {
       inputAsset: request.inputAsset,
       outputAsset: request.outputAsset,
       amountIn: request.amountIn,
-      recipient: request.recipient
+      recipient: request.recipient,
+      protectedOutputFloorAtomic: request.indicativeProtectedOutputFloorAtomic,
+      indicativeProtectedOutputFloorAtomic: request.indicativeProtectedOutputFloorAtomic
     }) };
   },
   async prepareAuthorization(request) {
@@ -79,6 +81,7 @@ export const vNextUniswapV3Adapter: VNextQuoteProviderAdapter = {
       recipient: request.recipient,
       deadlineSeconds: request.deadlineSeconds,
       protectedOutputFloorAtomic: request.protectedOutputFloorAtomic,
+      indicativeProtectedOutputFloorAtomic: request.indicativeProtectedOutputFloorAtomic,
       nowMs: request.nowMs
     });
     return { evidence: { ...prepared.evidence }, transaction: prepared.transaction };

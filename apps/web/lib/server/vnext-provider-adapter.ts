@@ -20,7 +20,7 @@ export type VNextProviderQuoteRequest = {
 
 export type VNextProviderVerificationRequest = Pick<VNextProviderQuoteRequest,
   "chainId" | "inputAsset" | "outputAsset" | "inputAmountAtomic" | "amountIn" | "recipient"
->;
+> & { indicativeProtectedOutputFloorAtomic: bigint };
 
 export type VNextProviderVerificationEvidence = Record<string, unknown> & {
   provider: VNextQuoteProvider;
@@ -29,6 +29,7 @@ export type VNextProviderVerificationEvidence = Record<string, unknown> & {
   inputAsset: Address;
   outputAsset: Address;
   inputAmountAtomic: string;
+  indicativeProtectedOutputFloorAtomic: string;
   protectedOutputAtomic: string;
   recipient: Address;
   router: Address;
@@ -180,11 +181,14 @@ function assertVerificationEvidence(
     || getAddress(evidence.outputAsset) !== getAddress(request.outputAsset)
     || evidence.inputAmountAtomic !== request.inputAmountAtomic
     || evidence.inputAmountAtomic !== request.amountIn.toString()
+    || evidence.indicativeProtectedOutputFloorAtomic !== request.indicativeProtectedOutputFloorAtomic.toString()
+    || request.indicativeProtectedOutputFloorAtomic <= 0n
     || !isAddress(evidence.recipient)
     || getAddress(evidence.recipient) !== getAddress(request.recipient)
     || !isAddress(evidence.router)
     || !isAddress(evidence.approvalSpender)
     || !/^[1-9][0-9]*$/.test(evidence.protectedOutputAtomic)
+    || BigInt(evidence.protectedOutputAtomic) < request.indicativeProtectedOutputFloorAtomic
     || !/^[1-9][0-9]*$/.test(evidence.deadline)
     || !/^0x[0-9a-fA-F]{64}$/.test(evidence.calldataHash)
     || (evidence.nextActionTarget !== null && !isAddress(evidence.nextActionTarget))
@@ -198,6 +202,7 @@ export async function verifyVNextExecutionProvider(
   request: VNextProviderVerificationRequest,
   adapters: readonly VNextQuoteProviderAdapter[]
 ) {
+  if (request.indicativeProtectedOutputFloorAtomic <= 0n) throw new Error("RMT rejected an invalid indicative protected-output floor.");
   const adapter = adapterForProvider(provider, adapters);
   if (!adapter.capabilities.strictVerification || !adapter.verify) {
     throw new Error(`${adapter.providerLabel} strict verification is not available yet.`);
@@ -212,7 +217,11 @@ export async function prepareVNextProviderAuthorization(
   request: VNextProviderAuthorizationRequest,
   adapters: readonly VNextQuoteProviderAdapter[]
 ) {
-  if (request.protectedOutputFloorAtomic <= 0n) throw new Error("RMT rejected an invalid protected output floor.");
+  if (
+    request.protectedOutputFloorAtomic <= 0n
+    || request.indicativeProtectedOutputFloorAtomic <= 0n
+    || request.indicativeProtectedOutputFloorAtomic > request.protectedOutputFloorAtomic
+  ) throw new Error("RMT rejected an invalid protected output floor.");
   const adapter = adapterForProvider(provider, adapters);
   if (!adapter.capabilities.walletAuthorization || !adapter.prepareAuthorization) {
     throw new Error(`${adapter.providerLabel} wallet authorization is not available yet.`);

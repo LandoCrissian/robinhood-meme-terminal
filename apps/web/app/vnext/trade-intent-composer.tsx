@@ -30,6 +30,18 @@ function formatAtomicDisplay(value: string, decimals: number) {
   return visibleFraction ? `${grouped}.${visibleFraction}` : grouped;
 }
 
+function describeProtectedOutputContinuity(verifiedAtomic: string, indicativeFloorAtomic: string) {
+  const verified = BigInt(verifiedAtomic);
+  const floor = BigInt(indicativeFloorAtomic);
+  if (verified < floor) return "Continuity check failed";
+  if (verified === floor) return "Indicative floor held";
+  const improvementBps = (verified - floor) * 10_000n / floor;
+  if (improvementBps <= 0n) return "Improved by less than 0.01%";
+  if (improvementBps > 1_000_000n) return "Improved materially";
+  const percent = Number(improvementBps) / 100;
+  return `Improved +${percent.toFixed(2).replace(/\.?0+$/, "")}%`;
+}
+
 function uniqueAssets(assets: AssetMetadata[]) {
   return [...new Map(assets.map((asset) => [assetKey(asset.id), asset])).values()];
 }
@@ -310,12 +322,16 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
       || !identity.identityToken
       || !identity.userId
       || !winningQuote
+      || winningQuote.provider !== "uniswap-v3"
+      || !winningQuote.protectedOutputAtomic
     ) throw new Error("No observed route is supported by a strict verifier yet.");
     const expected = {
       quoteRequestId: quoteResponse.requestId,
       inputAsset: inputAddress,
       outputAsset: outputAddress,
       inputAmountAtomic: draft.intent.amountAtomic,
+      provider: winningQuote.provider,
+      protectedOutputFloorAtomic: winningQuote.protectedOutputAtomic,
       recipient: address
     };
     const response = await requestTradeQuote("/api/vnext/verify", {
@@ -325,6 +341,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
       inputAsset: inputAddress,
       outputAsset: outputAddress,
       inputAmountAtomic: draft.intent.amountAtomic,
+      protectedOutputFloorAtomic: winningQuote.protectedOutputAtomic,
       recipient: address
     }, {
       identityScope: identity.userId,
@@ -361,6 +378,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
       recipient: address,
       deadline: evidence.deadline,
       expectedStatus: evidence.status,
+      indicativeProtectedOutputFloorAtomic: evidence.indicativeProtectedOutputFloorAtomic,
       expectedProtectedOutputAtomic: evidence.protectedOutputAtomic
     }, {
       identityScope: identity.userId,
@@ -669,6 +687,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
             <dl>
               <div><dt>Route</dt><dd>{visibleVerification.route === "direct" ? "Direct V3" : "V3 via WETH"}</dd></div>
               <div><dt>Protected</dt><dd>{formatAtomicDisplay(visibleVerification.protectedOutputAtomic, verificationQuote?.outputDecimals ?? 18)} {outputSymbol}</dd></div>
+              <div><dt>Quote continuity</dt><dd>{describeProtectedOutputContinuity(visibleVerification.protectedOutputAtomic, visibleVerification.indicativeProtectedOutputFloorAtomic)}</dd></div>
               <div><dt>Simulation</dt><dd>{visibleVerification.exactSimulationPassed ? "Passed" : "Not passed"}</dd></div>
               <div><dt>Next action</dt><dd>{visibleVerification.nextAction === "approval" ? "Exact approval" : visibleVerification.nextAction === "swap" ? "Verified swap" : "Blocked"}</dd></div>
               <div><dt>Gas</dt><dd>{visibleVerification.gasState}</dd></div>

@@ -15,7 +15,7 @@ const evidence: VNextPreSignEvidence = {
   verificationId: "11111111-1111-4111-8111-111111111111",
   sourceQuoteRequestId: "22222222-2222-4222-8222-222222222222",
   provider: "uniswap-v3", status: "approval_required", chainId: 4_663,
-  inputAsset, outputAsset, inputAmountAtomic: "1000000", expectedOutputAtomic: "1000",
+  inputAsset, outputAsset, inputAmountAtomic: "1000000", indicativeProtectedOutputFloorAtomic: "980", expectedOutputAtomic: "1000",
   protectedOutputAtomic: "990", recipient, router: ROBINHOOD_SWAP_ROUTER_02,
   approvalSpender: ROBINHOOD_SWAP_ROUTER_02, approvalRequired: true, sufficientBalance: true,
   allowanceAtomic: "0", balanceAtomic: "2000000", route: "direct", fees: [3_000],

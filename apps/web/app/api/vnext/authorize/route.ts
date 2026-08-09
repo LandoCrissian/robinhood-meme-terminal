@@ -20,6 +20,7 @@ const requestSchema = z.object({
   recipient: z.string().refine((value) => isAddress(value, { strict: false })),
   deadline: z.string().regex(/^[1-9][0-9]*$/),
   expectedStatus: z.enum(["approval_required", "verified"]),
+  indicativeProtectedOutputFloorAtomic: z.string().regex(/^[1-9][0-9]*$/),
   expectedProtectedOutputAtomic: z.string().regex(/^[1-9][0-9]*$/)
 });
 
@@ -32,6 +33,9 @@ export async function POST(request: Request) {
   try {
     const parsed = requestSchema.safeParse(await request.json());
     if (!parsed.success) return Response.json({ error: "Invalid VNext authorization request." }, { status: 400, headers: noStore });
+    if (BigInt(parsed.data.indicativeProtectedOutputFloorAtomic) > BigInt(parsed.data.expectedProtectedOutputAtomic)) {
+      return Response.json({ error: "Invalid VNext quote-continuity floor." }, { status: 400, headers: noStore });
+    }
     const recipient = getAddress(parsed.data.recipient);
     const inputAsset = getAddress(parsed.data.inputAsset);
     const outputAsset = getAddress(parsed.data.outputAsset);
@@ -53,6 +57,7 @@ export async function POST(request: Request) {
       inputAmountAtomic: parsed.data.inputAmountAtomic,
       recipient,
       deadlineSeconds: BigInt(parsed.data.deadline),
+      indicativeProtectedOutputFloorAtomic: BigInt(parsed.data.indicativeProtectedOutputFloorAtomic),
       protectedOutputFloorAtomic: BigInt(parsed.data.expectedProtectedOutputAtomic),
       nowMs: preparedAtMs
     });

@@ -13,6 +13,7 @@ const evidence: VNextPreSignEvidence = {
   inputAsset: "0x1111111111111111111111111111111111111111",
   outputAsset: "0x2222222222222222222222222222222222222222",
   inputAmountAtomic: "1000000",
+  indicativeProtectedOutputFloorAtomic: "980",
   expectedOutputAtomic: "1000",
   protectedOutputAtomic: "990",
   recipient: "0x3333333333333333333333333333333333333333",
@@ -56,6 +57,8 @@ const expected = {
   inputAsset: evidence.inputAsset,
   outputAsset: evidence.outputAsset,
   inputAmountAtomic: evidence.inputAmountAtomic,
+  provider: evidence.provider,
+  protectedOutputFloorAtomic: evidence.indicativeProtectedOutputFloorAtomic,
   recipient: evidence.recipient
 };
 assert.equal(parseVNextPreSignEvidence(evidence, expected, now).status, "verified");
@@ -64,6 +67,8 @@ assert.throws(() => parseVNextPreSignEvidence({ ...evidence, verifiedAtMs: now +
 assert.throws(() => parseVNextPreSignEvidence({ ...evidence, authorizationReady: true }, expected, now));
 assert.throws(() => parseVNextPreSignEvidence({ ...evidence, exactSimulationPassed: false }, expected, now), /false verified/);
 assert.throws(() => parseVNextPreSignEvidence({ ...evidence, protectedOutputAtomic: "1001" }, expected, now), /inconsistent/);
+assert.throws(() => parseVNextPreSignEvidence({ ...evidence, indicativeProtectedOutputFloorAtomic: "981" }, expected, now), /inconsistent/);
+assert.throws(() => parseVNextPreSignEvidence({ ...evidence, protectedOutputAtomic: "979" }, expected, now), /inconsistent/);
 assert.throws(() => parseVNextPreSignEvidence({ ...evidence, expiresAtMs: now + 300_001 }, expected, now), /inconsistent/);
 assert.equal(parseVNextPreSignEvidence({
   ...evidence,
@@ -104,6 +109,8 @@ const composer = readFileSync(new URL("../../app/vnext/trade-intent-composer.tsx
 assert.match(route, /requireAuthenticatedTradeWallet/);
 assert.match(route, /readRobinhoodTokenIdentity/);
 assert.match(route, /verifyRobinhoodVNextExecution/);
+assert.match(route, /protectedOutputFloorAtomic/);
+assert.match(verifier, /moved below the indicative protected-output floor/);
 assert.match(verifier, /ROUTER_RUNTIME_HASH/);
 assert.match(verifier, /FACTORY_RUNTIME_HASH/);
 assert.match(verifier, /QUOTER_RUNTIME_HASH/);
@@ -131,6 +138,8 @@ assert.match(composer, /estimatedNetworkCostUsdgAtomic/);
 assert.match(composer, /selectVNextRoute/);
 assert.match(composer, /selectedRoute\.verificationCandidate/);
 assert.match(composer, /best strict-verification candidate/);
+assert.match(composer, /Quote continuity/);
+assert.match(composer, /Indicative floor held/);
 assert.doesNotMatch(composer, /writeContract|sendTransaction|signTypedData|useSendTransaction/);
 
 console.log("RMT VNext strict pre-sign evidence smoke checks passed.");

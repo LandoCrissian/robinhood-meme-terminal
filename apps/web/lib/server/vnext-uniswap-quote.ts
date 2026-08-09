@@ -202,6 +202,7 @@ async function evaluateVNextUniswapRoute(input: {
   nowMs?: number;
   deadlineSeconds?: bigint;
   protectedOutputFloorAtomic?: bigint;
+  indicativeProtectedOutputFloorAtomic?: bigint;
 }) {
   const recipient = getAddress(input.recipient);
   const nowMs = input.nowMs ?? Date.now();
@@ -217,6 +218,7 @@ async function evaluateVNextUniswapRoute(input: {
   }
   const protectedOutputFloor = input.protectedOutputFloorAtomic ?? 0n;
   if (protectedOutputFloor < 0n) throw new Error("The protected output floor is invalid.");
+  if (protectedOutputFloor > quote.quoteOut) throw new Error("The live route moved below the indicative protected-output floor.");
   const protectedOutput = quote.minimumOut > protectedOutputFloor ? quote.minimumOut : protectedOutputFloor;
   const path = quote.route === "direct"
     ? null
@@ -337,6 +339,7 @@ async function evaluateVNextUniswapRoute(input: {
     inputAsset: quote.inputAsset,
     outputAsset: quote.outputAsset,
     inputAmountAtomic: quote.amountIn.toString(),
+    indicativeProtectedOutputFloorAtomic: (input.indicativeProtectedOutputFloorAtomic ?? protectedOutputFloor).toString(),
     expectedOutputAtomic: quote.quoteOut.toString(),
     protectedOutputAtomic: protectedOutput.toString(),
     recipient,
@@ -382,6 +385,8 @@ export async function verifyVNextUniswapRoute(input: {
   outputAsset: Address;
   amountIn: bigint;
   recipient: Address;
+  protectedOutputFloorAtomic: bigint;
+  indicativeProtectedOutputFloorAtomic: bigint;
   nowMs?: number;
 }) {
   return (await evaluateVNextUniswapRoute(input)).evidence;
@@ -394,6 +399,7 @@ export async function prepareVNextUniswapAuthorization(input: {
   recipient: Address;
   deadlineSeconds: bigint;
   protectedOutputFloorAtomic: bigint;
+  indicativeProtectedOutputFloorAtomic: bigint;
   nowMs?: number;
 }) {
   const evaluated = await evaluateVNextUniswapRoute(input);
