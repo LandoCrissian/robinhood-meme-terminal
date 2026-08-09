@@ -14,6 +14,7 @@ export type PrivyFundingConfig = {
 export type PrivyFundingPublicEnv = {
   appId?: string;
   enabled?: string;
+  providerVerified?: string;
   chainId?: string;
   asset?: string;
   defaultAmount?: string;
@@ -43,7 +44,7 @@ export function parsePrivyFundingConfig(env: PrivyFundingPublicEnv): PrivyFundin
   const environment = env.environment === "production" ? "production" : "sandbox";
 
   return {
-    enabled: Boolean(normalizePrivyAppId(env.appId)) && env.enabled === "true",
+    enabled: Boolean(normalizePrivyAppId(env.appId)) && env.enabled === "true" && env.providerVerified === "true",
     chain: `eip155:${chainId}`,
     asset: asset as `0x${string}`,
     assetLabel: asset.toLowerCase() === NATIVE_ASSET ? "ETH" : `${asset.slice(0, 6)}…${asset.slice(-4)}`,

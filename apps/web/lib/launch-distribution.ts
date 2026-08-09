@@ -50,8 +50,8 @@ function originStep(market: ExternalMarket): MarketPassportStep {
   if (market.project) {
     return {
       id: "origin",
-      label: "Launch origin",
-      value: `${market.project.sourceName} attributed`,
+      label: "Project provenance",
+      value: `${market.project.sourceName} verified`,
       detail: market.project.provenance === "public-api-and-dex-pool-cross-checked"
         ? "Project identity is attached only after the documented source record, token, and live DEX pool agree."
         : "Project identity is attached only after RMT cross-checks its source records against the live token.",
@@ -61,7 +61,7 @@ function originStep(market: ExternalMarket): MarketPassportStep {
   if (market.origin.kind === "rmt-v6") {
     return {
       id: "origin",
-      label: "Launch origin",
+      label: "Protocol provenance",
       value: "RMT V6 verified",
       detail: "The active RMT factory and exact launch event establish this token's protocol origin.",
       tone: "verified"
@@ -70,15 +70,15 @@ function originStep(market: ExternalMarket): MarketPassportStep {
   if (market.origin.state === "disputed") {
     return {
       id: "origin",
-      label: "Launch origin",
+      label: "Project provenance",
       value: "Conflicting claims",
-      detail: "RMT found incompatible origin evidence and does not attribute this token to a launchpad.",
+      detail: "RMT found incompatible origin evidence and does not attribute this token to a project source.",
       tone: "watch"
     };
   }
   return {
     id: "origin",
-    label: "Launch origin",
+    label: "Project provenance",
     value: "Not attributed",
     detail: "A live market does not prove which platform created the token. RMT keeps the origin unknown.",
     tone: "unknown"
@@ -90,7 +90,7 @@ function marketStep(market: ExternalMarket, venue: LaunchDistributionVenue): Mar
     return {
       id: "market",
       label: "Liquidity market",
-      value: "Pre-DEX launch market",
+      value: "Pre-DEX market",
       detail: "The token has not been matched to a qualified DEX pool in this snapshot.",
       tone: "watch"
     };
@@ -134,32 +134,32 @@ function distributionStep(
   if (venue === "uniswap" && sourceId && UNISWAP_RECOGNIZED_SOURCE_IDS.has(sourceId)) {
     return {
       state: "recognized-source-market",
-      summary: "Recognized launch source and live Uniswap market. Individual beta-feed inclusion is not independently confirmed.",
-      shortLabel: "Uniswap launch path",
+      summary: "Verified project provenance and a live Uniswap market. Execution availability is checked separately when the workspace opens.",
+      shortLabel: "Verified provenance",
       step: {
         id: "distribution",
-        label: "Distribution",
-        value: "Recognized Uniswap launch path",
-        detail: `Uniswap publicly names ${market.project?.sourceName} as a Launches source. RMT verifies this token's source and Uniswap market separately, but does not claim this individual token is present in Uniswap's beta feed.`,
+        label: "Market context",
+        value: "Provenance and market verified",
+        detail: `RMT independently verifies the ${market.project?.sourceName} project record and the observed Uniswap market. This provenance does not assert an executable route or endorsement.`,
         tone: "candidate",
         evidenceUrl: UNISWAP_LAUNCHES_ANNOUNCEMENT_URL,
-        evidenceLabel: "Official Launches announcement"
+        evidenceLabel: "Official source announcement"
       }
     };
   }
   if (venue === "uniswap") {
     return {
       state: "market-live",
-      summary: "Uniswap market live. Launches feed inclusion has not been independently verified.",
+      summary: "Uniswap market observed. Project provenance and execution availability are evaluated separately.",
       shortLabel: "Uniswap market",
       step: {
         id: "distribution",
-        label: "Distribution",
+        label: "Market context",
         value: "Uniswap market live",
-        detail: "Liquidity on Uniswap makes this market externally tradeable, but it does not by itself prove inclusion in the Uniswap Launches beta feed.",
+        detail: "An observed Uniswap market does not establish project provenance or guarantee that RMT can execute a route. Both remain separate checks.",
         tone: "candidate",
-        evidenceUrl: UNISWAP_LAUNCHES_ANNOUNCEMENT_URL,
-        evidenceLabel: "How Uniswap Launches works"
+        evidenceUrl: UNISWAP_ROBINHOOD_ANNOUNCEMENT_URL,
+        evidenceLabel: "Uniswap on Robinhood Chain"
       }
     };
   }
@@ -167,39 +167,39 @@ function distributionStep(
     if (sourceId === "sushi") {
       return {
         state: "recognized-source-market",
-        summary: "Sushi Launch origin and its live Sushi V3 market are independently cross-checked.",
-        shortLabel: "Sushi Launch verified",
+        summary: "Verified project provenance and a live Sushi V3 market are independently cross-checked.",
+        shortLabel: "Verified provenance",
         step: {
           id: "distribution",
-          label: "Distribution",
-          value: "Sushi Launch market verified",
-          detail: "RMT matched Sushi's documented Launch API token, creator, factory and launch pool to the live DEX market. This attribution does not imply a partnership or a safety guarantee.",
+          label: "Market context",
+          value: "Provenance and market verified",
+          detail: "RMT matched Sushi's documented project record, token, creator, factory and referenced pool to the live DEX market. This attribution does not imply a partnership, executable route or safety guarantee.",
           tone: "verified"
         }
       };
     }
     return {
       state: "announced-watch",
-      summary: "Sushi market live, but this token has not been matched to a Sushi Launch record.",
+      summary: "Sushi market observed, but this token has not been matched to a verified project record.",
       shortLabel: "Sushi market",
       step: {
         id: "distribution",
-        label: "Distribution",
+        label: "Market context",
         value: "Sushi market only",
-        detail: "A Sushi pool does not prove that the token originated through Sushi Launch. RMT keeps the origin separate until the documented launch record and pool agree.",
+        detail: "A Sushi pool does not prove project provenance. RMT keeps identity evidence separate from observed liquidity and executable routing.",
         tone: "watch"
       }
     };
   }
   return {
     state: "unverified",
-    summary: "No supported external launch-distribution channel is independently confirmed.",
-    shortLabel: "Distribution unverified",
+    summary: "Project provenance is not independently confirmed for this observed market.",
+    shortLabel: "Provenance unknown",
     step: {
       id: "distribution",
-      label: "Distribution",
+      label: "Market context",
       value: "Not independently verified",
-      detail: "RMT has not confirmed a supported launch aggregator or launch protocol for this market.",
+      detail: "RMT has not confirmed a project source for this market. Market discovery alone does not establish identity or execution availability.",
       tone: "unknown"
     }
   };

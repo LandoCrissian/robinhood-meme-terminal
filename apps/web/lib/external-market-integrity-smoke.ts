@@ -1,5 +1,4 @@
 import assert from "node:assert/strict";
-import "./server/lemon-project-feed-smoke";
 import "./server/sushi-launch-feed-smoke";
 import "./server/gecko-new-pool-feed-smoke";
 import "./server/dex-discovery-metadata-smoke";
@@ -196,7 +195,7 @@ const ponsPassport = marketDistributionPassport(ponsUniswapMarket);
 assert.equal(ponsPassport.venue, "uniswap");
 assert.equal(ponsPassport.state, "recognized-source-market");
 assert.equal(ponsPassport.isAttributedLaunch, true);
-assert.match(ponsPassport.summary, /Individual beta-feed inclusion is not independently confirmed/);
+assert.match(ponsPassport.summary, /Verified project provenance/);
 assert.equal(ponsPassport.steps[0]?.tone, "verified");
 assert.equal(ponsPassport.steps[1]?.tone, "verified");
 assert.equal(ponsPassport.steps[2]?.tone, "candidate");
@@ -210,7 +209,7 @@ const unattributedPassport = marketDistributionPassport({
 assert.equal(unattributedPassport.state, "market-live");
 assert.equal(unattributedPassport.isAttributedLaunch, false);
 assert.match(unattributedPassport.steps[0]?.detail ?? "", /does not prove which platform created the token/);
-assert.match(unattributedPassport.steps[2]?.detail ?? "", /does not by itself prove inclusion/);
+assert.match(unattributedPassport.steps[2]?.detail ?? "", /does not establish project provenance/);
 
 const sushiPassport = marketDistributionPassport({
   ...ponsUniswapMarket,
@@ -225,7 +224,7 @@ const sushiPassport = marketDistributionPassport({
 });
 assert.equal(sushiPassport.venue, "sushi");
 assert.equal(sushiPassport.state, "announced-watch");
-assert.match(sushiPassport.steps[2]?.detail ?? "", /documented launch record and pool agree/);
+assert.match(sushiPassport.steps[2]?.detail ?? "", /keeps identity evidence separate/);
 
 const verifiedSushiLaunchPassport = marketDistributionPassport({
   ...ponsUniswapMarket,
@@ -244,7 +243,7 @@ const verifiedSushiLaunchPassport = marketDistributionPassport({
   }
 });
 assert.equal(verifiedSushiLaunchPassport.state, "recognized-source-market");
-assert.equal(verifiedSushiLaunchPassport.shortLabel, "Sushi Launch verified");
+assert.equal(verifiedSushiLaunchPassport.shortLabel, "Verified provenance");
 assert.equal(verifiedSushiLaunchPassport.steps[2]?.tone, "verified");
 assert.match(verifiedSushiLaunchPassport.steps[2]?.detail ?? "", /does not imply a partnership/);
 

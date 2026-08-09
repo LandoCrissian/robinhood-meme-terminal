@@ -52,8 +52,14 @@ body .rmtVnext {
 }
 
 .rmtVnext button,
-.rmtVnext input {
+.rmtVnext input,
+.rmtVnext select {
   font: inherit;
+  font-variant-numeric: tabular-nums;
+}
+
+.rmtVnext {
+  font-variant-numeric: tabular-nums;
 }
 
 .rmtVnext button,
@@ -339,6 +345,7 @@ body .rmtVnext {
   width: min(100%, 1720px);
   margin: 0 auto;
   padding: clamp(20px, 2.5vw, 38px) clamp(18px, 3vw, 44px) 48px;
+  overflow-anchor: none;
 }
 
 .vnBalanceBar {
@@ -418,14 +425,219 @@ body .rmtVnext {
   gap: 10px;
 }
 
+.vnDetectedAssets {
+  grid-column: 1 / -1;
+  min-width: 0;
+  padding: 0 22px 20px;
+  border-top: 1px solid var(--vn-border);
+}
+
+.vnDetectedAssetsHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  min-height: 62px;
+}
+
+.vnDetectedAssetsHead > span {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.vnDetectedAssetsHead strong {
+  font-size: 13px;
+}
+
+.vnDetectedAssetsHead small,
+.vnDetectedAsset small,
+.vnDetectedAssetsEmpty,
+.vnDetectedAssetsMore {
+  color: var(--vn-text-muted);
+  font-size: 10px;
+}
+
+.vnDetectedAssetsHead button {
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--vn-border-strong);
+  border-radius: 10px;
+  background: var(--vn-surface-raised);
+  color: var(--vn-text-secondary);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 760;
+  cursor: pointer;
+}
+
+.vnDetectedAssetsHead button:disabled {
+  cursor: wait;
+  opacity: 0.58;
+}
+
+.vnDetectedAssetList {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.vnAssetImport {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.28fr) minmax(260px, 1fr);
+  align-items: center;
+  gap: 8px 18px;
+  margin-bottom: 12px;
+  padding: 12px;
+  border: 1px solid var(--vn-border);
+  border-radius: 12px;
+  background: rgba(10, 14, 11, 0.42);
+}
+
+.vnAssetImport label {
+  color: var(--vn-text-secondary);
+  font-size: 11px;
+  font-weight: 780;
+}
+
+.vnAssetImport > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  min-width: 0;
+}
+
+.vnAssetImport input {
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+  padding: 0 12px;
+  border: 1px solid var(--vn-border-strong);
+  border-radius: 10px;
+  outline: none;
+  background: var(--vn-surface);
+  color: var(--vn-text);
+  font: 600 12px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.vnAssetImport input:focus {
+  border-color: rgba(100, 201, 113, 0.65);
+  box-shadow: 0 0 0 3px rgba(100, 201, 113, 0.08);
+}
+
+.vnAssetImport button {
+  min-height: 42px;
+  padding: 0 14px;
+  border: 1px solid rgba(100, 201, 113, 0.32);
+  border-radius: 10px;
+  background: rgba(100, 201, 113, 0.12);
+  color: var(--vn-accent);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.vnAssetImport button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+.vnAssetImport > small {
+  grid-column: 2;
+  color: var(--vn-text-muted);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.vnAssetImport > small.isError {
+  color: var(--vn-negative);
+}
+
+.vnAssetImport > small.isSuccess {
+  color: var(--vn-accent);
+}
+
+.vnDetectedAsset {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--vn-border);
+  border-radius: 12px;
+  background: rgba(10, 14, 11, 0.42);
+}
+
+.vnDetectedMark {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border: 1px solid rgba(100, 201, 113, 0.2);
+  border-radius: 9px;
+  background: rgba(100, 201, 113, 0.08);
+  color: var(--vn-accent);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.vnDetectedAsset > span:not(.vnDetectedMark) {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.vnDetectedAsset > span:last-child {
+  align-items: flex-end;
+  text-align: right;
+}
+
+.vnDetectedAsset strong,
+.vnDetectedAsset small {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vnDetectedAsset strong {
+  font-size: 12px;
+}
+
+.vnDetectedAssetsEmpty,
+.vnDetectedAssetsMore {
+  margin: 0;
+  padding: 12px;
+  border: 1px dashed var(--vn-border);
+  border-radius: 10px;
+}
+
 .vnPrimaryButton,
 .vnQuietButton,
 .vnReviewButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   min-height: 44px;
   padding: 0 18px;
   border-radius: 12px;
   font-weight: 780;
+  text-decoration: none;
   cursor: pointer;
+}
+
+.vnTopbarActions .wallet,
+.vnTopbarActions .connectTrigger,
+.vnTopbarActions .network {
+  min-height: 42px;
+  border: 1px solid var(--vn-border-strong);
+  border-radius: 999px;
+  background: var(--vn-surface);
+  color: var(--vn-text);
 }
 
 .vnPrimaryButton {
@@ -577,7 +789,6 @@ body .rmtVnext {
 
 .vnMarketTabs button,
 .vnSideTabs button,
-.vnTimeframes button,
 .vnQuickAmounts button {
   border: 0;
   color: var(--vn-text-muted);
@@ -658,8 +869,11 @@ body .rmtVnext {
 }
 
 .vnMarketIdentity strong {
+  overflow: hidden;
   font-size: 13px;
   letter-spacing: 0.01em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .vnMarketIdentity small,
@@ -678,6 +892,7 @@ body .rmtVnext {
   align-items: baseline;
   gap: 7px;
   justify-self: end;
+  white-space: nowrap;
 }
 
 .vnMarketPrice strong {
@@ -725,6 +940,7 @@ body .rmtVnext {
   cursor: pointer;
   font-size: 11px;
   font-weight: 720;
+  text-decoration: none;
 }
 
 .vnNoResults {
@@ -740,6 +956,34 @@ body .rmtVnext {
 .vnNoResults span {
   color: var(--vn-text-muted);
   font-size: 11px;
+}
+
+.vnNoResults button {
+  justify-self: center;
+  min-height: 38px;
+  margin-top: 8px;
+  padding: 0 14px;
+  border: 1px solid var(--vn-border-strong);
+  border-radius: 10px;
+  color: var(--vn-text-secondary);
+  background: var(--vn-surface-raised);
+  cursor: pointer;
+}
+
+.vnAssetEmpty {
+  display: grid;
+  min-height: 320px;
+  place-content: center;
+  gap: 8px;
+  color: var(--vn-text-secondary);
+  text-align: center;
+}
+
+.vnAssetEmpty span {
+  max-width: 320px;
+  color: var(--vn-text-muted);
+  font-size: 11px;
+  line-height: 1.5;
 }
 
 .vnAssetPanel {
@@ -811,54 +1055,43 @@ body .rmtVnext {
   font-size: 9px;
 }
 
-.vnTimeframes {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-}
-
-.vnTimeframes button {
-  min-width: 37px;
-  min-height: 32px;
-  border-radius: 8px;
+.vnOpenChart,
+.vnChartPending a {
+  color: var(--vn-accent);
   font-size: 10px;
+  font-weight: 750;
+  text-decoration: none;
 }
 
-.vnTimeframes button.isActive {
-  color: #0a120b;
-  background: var(--vn-accent);
+.vnChartPending {
+  display: grid;
+  min-height: 230px;
+  margin-top: 20px;
+  place-content: center;
+  justify-items: center;
+  padding: 28px;
+  border: 1px dashed var(--vn-border-strong);
+  border-radius: 16px;
+  background: radial-gradient(circle at 50% 30%, rgba(130, 242, 143, 0.055), transparent 62%);
+  text-align: center;
 }
 
-.vnChartWrap {
-  position: relative;
-  height: 260px;
-  margin: 20px -5px 0;
-  overflow: hidden;
+.vnChartPending strong {
+  margin-top: 10px;
+  color: var(--vn-text-secondary);
+  font-size: 18px;
 }
 
-.vnChart {
-  display: block;
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-}
-
-.vnChartGrid path {
-  fill: none;
-  stroke: rgba(210, 230, 211, 0.055);
-  stroke-width: 1;
-}
-
-.vnChartArea { fill: url(#vnChartFill); }
-.vnChartLine { fill: none; stroke: url(#vnChartStroke); stroke-width: 2.5; vector-effect: non-scaling-stroke; }
-.vnChartPoint { fill: var(--vn-accent-strong); stroke: rgba(130, 242, 143, 0.2); stroke-width: 9; }
-
-.vnChartNow {
-  position: absolute;
-  right: 4px;
-  bottom: 5px;
+.vnChartPending small {
+  max-width: 270px;
+  margin-top: 6px;
   color: var(--vn-text-muted);
-  font-size: 9px;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.vnChartPending a {
+  margin-top: 18px;
 }
 
 .vnAssetStats {
@@ -936,13 +1169,15 @@ body .rmtVnext {
   font-size: 9px;
 }
 
-.vnEvidence button {
+.vnEvidence button,
+.vnEvidence a {
   border: 0;
   color: var(--vn-accent);
   background: transparent;
   cursor: pointer;
   font-size: 10px;
   font-weight: 750;
+  text-decoration: none;
 }
 
 .vnTradePanel {
@@ -959,6 +1194,17 @@ body .rmtVnext {
   border-radius: 999px;
   font-size: 9px;
   font-weight: 780;
+}
+
+.vnTradeHeader small {
+  display: block;
+  max-width: 190px;
+  margin-top: 4px;
+  overflow: hidden;
+  color: var(--vn-text-muted);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .vnSideTabs {
@@ -1028,17 +1274,27 @@ body .rmtVnext {
 }
 
 .vnAmountField button,
-.vnReceiveField button {
+.vnReceiveField button,
+.vnAmountField select,
+.vnReceiveField select {
   flex: 0 0 auto;
   min-height: 34px;
+  max-width: 132px;
   padding: 0 10px;
   border: 1px solid var(--vn-border);
   border-radius: 10px;
   color: var(--vn-text);
   background: var(--vn-surface-soft);
   cursor: pointer;
+  font-family: inherit;
   font-size: 10px;
   font-weight: 780;
+}
+
+.vnAmountField select:disabled,
+.vnReceiveField select:disabled {
+  cursor: default;
+  opacity: 0.78;
 }
 
 .vnQuickAmounts {
@@ -1046,6 +1302,63 @@ body .rmtVnext {
   grid-template-columns: repeat(4, 1fr);
   gap: 6px;
   margin-top: 8px;
+}
+
+.vnConfirmedBalance {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+  margin-top: 8px;
+}
+
+.vnConfirmedBalance > span {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.vnConfirmedBalance small {
+  color: var(--vn-text-muted);
+  font-size: 9px;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.vnConfirmedBalance strong {
+  overflow: hidden;
+  color: var(--vn-text-secondary);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vnConfirmedBalance > div {
+  display: grid;
+  grid-template-columns: repeat(4, auto);
+  gap: 5px;
+}
+
+.vnConfirmedBalance button {
+  min-width: 38px;
+  min-height: 34px;
+  padding: 0 8px;
+  border: 1px solid var(--vn-border);
+  border-radius: 9px;
+  background: var(--vn-surface-soft);
+  color: var(--vn-text-secondary);
+  font: inherit;
+  font-size: 9px;
+  font-weight: 780;
+  cursor: pointer;
+}
+
+.vnConfirmedBalance button:disabled {
+  cursor: not-allowed;
+  opacity: 0.38;
 }
 
 .vnQuickAmounts button {
@@ -1059,6 +1372,11 @@ body .rmtVnext {
   color: var(--vn-accent);
   border-color: rgba(130, 242, 143, 0.22);
   background: var(--vn-accent-soft);
+}
+
+.vnQuickAmounts button:disabled {
+  cursor: not-allowed;
+  opacity: 0.36;
 }
 
 .vnSwapDivider {
@@ -1086,16 +1404,95 @@ body .rmtVnext {
 }
 
 .vnReceiveField strong {
+  display: flex;
+  align-items: center;
   width: 100%;
+  min-width: 0;
+  min-height: 58px;
   font-size: 22px;
+  font-variant-numeric: tabular-nums;
   letter-spacing: -0.025em;
 }
 
 .vnReceiveField > small {
   display: block;
+  min-height: 45px;
   margin-top: 6px;
   color: var(--vn-text-muted);
   font-size: 10px;
+}
+
+.vnIntentHint,
+.vnIntentStatus,
+.vnTradeSafety {
+  color: var(--vn-text-muted);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.vnBalanceEvidence {
+  margin: 8px 0 0;
+  padding: 8px 10px;
+  border: 1px solid rgba(100, 201, 113, 0.18);
+  border-radius: 9px;
+  background: rgba(100, 201, 113, 0.05);
+  color: var(--vn-text-muted);
+  font-size: 9px;
+  line-height: 1.45;
+}
+
+.vnBalanceEvidence.isBlocking {
+  border-color: rgba(238, 111, 103, 0.28);
+  background: rgba(238, 111, 103, 0.07);
+  color: #e9aaa5;
+}
+
+.vnIntentHint {
+  min-height: 34px;
+  margin: 8px 2px 0;
+}
+
+.vnIntentSummary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  margin: 0;
+  overflow: hidden;
+  background: var(--vn-border);
+  border: 1px solid var(--vn-border);
+  border-radius: 12px;
+}
+
+.vnIntentSummary > div {
+  min-width: 0;
+  padding: 10px 11px;
+  background: var(--vn-surface-raised);
+}
+
+.vnIntentSummary dt {
+  color: var(--vn-text-muted);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.vnIntentSummary dd {
+  margin: 4px 0 0;
+  overflow: hidden;
+  color: var(--vn-text-secondary);
+  font-size: 11px;
+  font-weight: 720;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vnIntentStatus {
+  margin: 10px 0 0;
+}
+
+.vnTradeSafety {
+  margin: 10px 2px 0;
+  text-align: center;
 }
 
 .vnRouteCard {
@@ -1104,6 +1501,24 @@ body .rmtVnext {
   background: rgba(130, 242, 143, 0.04);
   border: 1px solid rgba(130, 242, 143, 0.13);
   border-radius: 13px;
+}
+
+.vnRouteCard > summary {
+  list-style: none;
+  cursor: pointer;
+}
+
+.vnRouteCard > summary::-webkit-details-marker {
+  display: none;
+}
+
+.vnRouteDetails {
+  height: clamp(280px, 42svh, 390px);
+  margin-top: 12px;
+  padding-right: 4px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
 }
 
 .vnRouteTop span {
@@ -1124,7 +1539,7 @@ body .rmtVnext {
 .vnRouteCard dl {
   display: grid;
   gap: 7px;
-  margin: 12px 0 0;
+  margin: 0;
 }
 
 .vnRouteCard dl div {
@@ -1140,6 +1555,446 @@ body .rmtVnext {
 
 .vnRouteCard dt { color: var(--vn-text-muted); }
 .vnRouteCard dd { margin: 0; color: var(--vn-text-secondary); font-weight: 700; }
+
+.vnQuoteAttempts {
+  display: grid;
+  gap: 7px;
+  margin-top: 12px;
+}
+
+.vnQuoteAttempts > div {
+  display: grid;
+  grid-template-columns: minmax(0, 0.65fr) minmax(0, 1.35fr);
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--vn-border);
+  border-radius: 10px;
+  background: rgba(4, 7, 5, 0.28);
+}
+
+.vnQuoteAttempts > div.isReady {
+  border-color: rgba(130, 242, 143, 0.16);
+  background: rgba(130, 242, 143, 0.035);
+}
+
+.vnQuoteAttempts span {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.vnQuoteAttempts span:last-child {
+  text-align: right;
+}
+
+.vnQuoteAttempts strong,
+.vnQuoteAttempts small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.vnVerificationGate {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--vn-border);
+}
+
+.vnVerificationGate > div:first-child {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.vnVerificationGate > div:first-child > span,
+.vnVerificationEvidence > span {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.vnVerificationGate strong {
+  color: var(--vn-text-secondary);
+  font-size: 10px;
+}
+
+.vnVerificationGate small {
+  color: var(--vn-text-muted);
+  font-size: 8px;
+  line-height: 1.4;
+}
+
+.vnVerificationGate button {
+  flex: 0 0 auto;
+  min-height: 38px;
+  padding: 0 12px;
+  border: 1px solid rgba(130, 242, 143, 0.22);
+  border-radius: 9px;
+  background: rgba(130, 242, 143, 0.08);
+  color: var(--vn-accent);
+  font: inherit;
+  font-size: 9px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.vnVerificationGate button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.vnVerificationGate > p {
+  margin: 0;
+  color: var(--vn-text-muted);
+  font-size: 9px;
+  line-height: 1.45;
+}
+
+.vnVerificationGate > p.isError {
+  color: #e9aaa5;
+}
+
+.vnVerificationEvidence {
+  padding: 10px;
+  border: 1px solid var(--vn-border);
+  border-radius: 10px;
+  background: rgba(4, 7, 5, 0.3);
+}
+
+.vnVerificationEvidence.isverified {
+  border-color: rgba(130, 242, 143, 0.25);
+}
+
+.vnVerificationEvidence.isapproval_required,
+.vnVerificationEvidence.isinsufficient_balance,
+.vnVerificationEvidence.isinsufficient_gas,
+.vnVerificationEvidence.isgas_unavailable,
+.vnVerificationEvidence.issimulation_failed {
+  border-color: rgba(238, 174, 103, 0.24);
+}
+
+.vnVerificationEvidence dl {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.vnAuthorizationPlan small {
+  color: var(--vn-text-muted);
+  font-size: 8px;
+  line-height: 1.45;
+}
+
+.vnAuthorizationError {
+  margin: 8px 0 0;
+  color: #e9aaa5;
+  font-size: 9px;
+  line-height: 1.45;
+}
+
+.vnGasRecovery {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  margin-top: 9px;
+  padding: 10px;
+  border: 1px solid rgba(238, 174, 103, 0.25);
+  border-radius: 9px;
+  background: rgba(238, 174, 103, 0.05);
+}
+
+.vnGasRecovery > span {
+  display: grid;
+  gap: 3px;
+}
+
+.vnGasRecovery strong {
+  color: var(--vn-text-secondary);
+  font-size: 9px;
+}
+
+.vnGasRecovery .fundWalletTrigger {
+  min-height: 42px;
+}
+
+.vnAuthorizationPlan {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 9px;
+  border: 1px solid rgba(130, 242, 143, 0.22);
+  border-radius: 9px;
+  background: rgba(130, 242, 143, 0.045);
+}
+
+.vnAuthorizationPlan > span {
+  display: grid;
+  gap: 3px;
+}
+
+.vnAuthorizationPlan dl {
+  margin: 0;
+}
+
+.vnWalletSubmission {
+  display: grid;
+  gap: 7px;
+  padding-top: 9px;
+  border-top: 1px solid var(--vn-border);
+}
+
+.vnWalletSubmission > button {
+  width: 100%;
+  min-height: 42px;
+}
+
+.vnWalletSubmission > .fundWalletMenu,
+.vnWalletSubmission > .fundWalletMenu .fundWalletTrigger {
+  width: 100%;
+}
+
+.vnWalletSubmission > small,
+.vnWalletSubmission > a {
+  color: var(--vn-text-muted);
+  font-size: 8px;
+  line-height: 1.45;
+}
+
+.vnWalletSubmission > a {
+  color: var(--vn-accent);
+  text-decoration: none;
+}
+
+.vnWalletResult {
+  display: grid;
+  gap: 3px;
+  padding: 8px;
+  border: 1px solid rgba(130, 242, 143, 0.2);
+  border-radius: 8px;
+  background: rgba(130, 242, 143, 0.04);
+}
+
+.vnWalletResult.isError {
+  border-color: rgba(233, 170, 165, 0.25);
+  background: rgba(233, 170, 165, 0.04);
+}
+
+.vnPostExecution {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(238, 174, 103, 0.24);
+  border-radius: 10px;
+  background: rgba(238, 174, 103, 0.05);
+}
+
+.vnPostExecution.isswap_ready,
+.vnPostExecution.isswap_confirmed {
+  border-color: rgba(130, 242, 143, 0.24);
+  background: rgba(130, 242, 143, 0.05);
+}
+
+.vnPostExecution.isblocked,
+.vnPostExecution.isreverted {
+  border-color: rgba(233, 170, 165, 0.25);
+  background: rgba(233, 170, 165, 0.05);
+}
+
+.vnPostExecution strong {
+  color: var(--vn-text-secondary);
+  font-size: 10px;
+}
+
+.vnPostExecution small {
+  color: var(--vn-text-muted);
+  font-size: 8px;
+  line-height: 1.45;
+}
+
+.vnTradeReceiptBackdrop {
+  position: fixed;
+  z-index: 80;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(2, 5, 3, 0.78);
+  backdrop-filter: blur(18px);
+}
+
+.vnTradeReceipt {
+  position: relative;
+  display: grid;
+  width: min(100%, 430px);
+  gap: 12px;
+  padding: 34px;
+  overflow: hidden;
+  border: 1px solid rgba(130, 242, 143, 0.26);
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(130, 242, 143, 0.14), transparent 38%),
+    #101511;
+  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.58);
+  text-align: center;
+}
+
+.vnTradeReceiptClose {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border: 1px solid var(--vn-border-strong);
+  border-radius: 50%;
+  color: var(--vn-text-muted);
+  background: rgba(255, 255, 255, 0.025);
+  cursor: pointer;
+  font-size: 22px;
+}
+
+.vnTradeReceiptMark {
+  display: grid;
+  width: 58px;
+  height: 58px;
+  margin: 0 auto 4px;
+  place-items: center;
+  border-radius: 50%;
+  color: #071008;
+  background: var(--vn-accent);
+  box-shadow: 0 0 38px rgba(130, 242, 143, 0.24);
+  font-size: 24px;
+  font-weight: 950;
+}
+
+.vnTradeReceipt h3 {
+  margin: 0;
+  color: var(--vn-text-primary);
+  font-size: 25px;
+  letter-spacing: -0.035em;
+}
+
+.vnTradeReceipt > p {
+  margin: -4px auto 4px;
+  color: var(--vn-text-secondary);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.vnTradeReceipt dl {
+  display: grid;
+  gap: 1px;
+  margin: 4px 0;
+  overflow: hidden;
+  border: 1px solid var(--vn-border);
+  border-radius: 14px;
+  background: var(--vn-border);
+  text-align: left;
+}
+
+.vnTradeReceipt dl div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 13px 14px;
+  background: rgba(7, 11, 8, 0.82);
+}
+
+.vnTradeReceipt dt {
+  color: var(--vn-text-muted);
+  font-size: 9px;
+  text-transform: uppercase;
+}
+
+.vnTradeReceipt dd {
+  margin: 0;
+  color: var(--vn-text-secondary);
+  font-size: 10px;
+  font-weight: 750;
+  text-align: right;
+}
+
+.vnTradeReceiptContinue {
+  min-height: 50px;
+  border: 0;
+  border-radius: 13px;
+  color: #071008;
+  background: var(--vn-accent);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.vnTradeReceipt > a {
+  color: var(--vn-text-muted);
+  font-size: 9px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.vnRecoveryBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  border: 1px solid rgba(238, 174, 103, 0.24);
+  border-radius: 12px;
+  background: rgba(238, 174, 103, 0.055);
+}
+
+.vnRecoveryBanner.isconfirmed {
+  border-color: rgba(130, 242, 143, 0.24);
+  background: rgba(130, 242, 143, 0.05);
+}
+
+.vnRecoveryBanner.isreverted,
+.vnRecoveryBanner.isconfirmation_unavailable {
+  border-color: rgba(233, 170, 165, 0.25);
+  background: rgba(233, 170, 165, 0.05);
+}
+
+.vnRecoveryBanner > span {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.vnRecoveryBanner strong {
+  color: var(--vn-text-secondary);
+  font-size: 10px;
+}
+
+.vnRecoveryBanner small {
+  color: var(--vn-text-muted);
+  font-size: 8px;
+  line-height: 1.45;
+}
+
+.vnRecoveryBanner a {
+  flex: 0 0 auto;
+  color: var(--vn-accent);
+  font-size: 9px;
+  font-weight: 750;
+  text-decoration: none;
+}
+
+.vnQuoteAttempts strong {
+  color: var(--vn-text-secondary);
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.vnQuoteAttempts small {
+  color: var(--vn-text-muted);
+  font-size: 8px;
+  line-height: 1.4;
+}
 
 .vnRouteCard > button {
   width: 100%;
@@ -1158,6 +2013,12 @@ body .rmtVnext {
   width: 100%;
   margin-top: 13px;
   border: 1px solid rgba(130, 242, 143, 0.16);
+  color: #071008;
+  background: linear-gradient(135deg, #a8ff9d, #70de7d);
+  cursor: pointer;
+}
+
+.vnReviewButton:disabled {
   color: rgba(7, 15, 8, 0.58);
   background: linear-gradient(135deg, rgba(168, 255, 157, 0.7), rgba(112, 222, 125, 0.7));
   cursor: not-allowed;
@@ -1234,6 +2095,7 @@ body .rmtVnext {
   }
 
   .vnQuickAmounts { grid-column: 1; }
+  .vnConfirmedBalance { grid-column: 1; }
   .vnSwapDivider { display: none; }
   .vnReceiveField { grid-column: 2; grid-row: 4 / span 2; margin-top: 10px; }
   .vnRouteCard { grid-column: 2; }
@@ -1248,6 +2110,10 @@ body .rmtVnext {
     grid-column: 1 / -1;
     justify-content: flex-start;
     padding-top: 0;
+  }
+
+  .vnDetectedAssetList {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .vnWorkspaceGrid {
@@ -1291,6 +2157,15 @@ body .rmtVnext {
     padding: 0 14px;
   }
 
+  .vnGasRecovery {
+    grid-template-columns: 1fr;
+  }
+
+  .vnGasRecovery .fundWalletMenu,
+  .vnGasRecovery .fundWalletTrigger {
+    width: 100%;
+  }
+
   .vnMobileBrand {
     display: flex;
     align-items: center;
@@ -1319,6 +2194,21 @@ body .rmtVnext {
 
   .vnCanvas {
     padding: 14px 12px 30px;
+  }
+
+  .vnTradeReceiptBackdrop {
+    align-items: end;
+    padding: 12px 12px max(12px, env(safe-area-inset-bottom));
+  }
+
+  .vnTradeReceipt {
+    width: 100%;
+    padding: 30px 20px 24px;
+    border-radius: 24px;
+  }
+
+  .vnTradeReceipt h3 {
+    font-size: 23px;
   }
 
   .vnBalanceBar {
@@ -1360,8 +2250,34 @@ body .rmtVnext {
     border-top: 1px solid var(--vn-border);
   }
 
-  .vnBalanceActions button {
+  .vnBalanceActions button,
+  .vnBalanceActions a {
     flex: 1;
+  }
+
+  .vnDetectedAssets {
+    padding: 0 14px 14px;
+  }
+
+  .vnDetectedAssetsHead {
+    min-height: 58px;
+  }
+
+  .vnDetectedAssetList {
+    grid-template-columns: 1fr;
+  }
+
+  .vnDetectedAsset {
+    min-height: 56px;
+  }
+
+  .vnAssetImport {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .vnAssetImport > small {
+    grid-column: 1;
   }
 
   .vnWorkspaceGrid {
@@ -1399,8 +2315,8 @@ body .rmtVnext {
     gap: 2px;
   }
 
-  .vnChartWrap {
-    height: 190px;
+  .vnChartPending {
+    min-height: 180px;
     margin-top: 14px;
   }
 
@@ -1412,7 +2328,8 @@ body .rmtVnext {
     align-items: flex-start;
   }
 
-  .vnEvidence button {
+  .vnEvidence button,
+  .vnEvidence a {
     max-width: 82px;
     text-align: right;
   }
@@ -1497,18 +2414,52 @@ body .rmtVnext {
     max-width: 180px;
   }
 
-  .vnTimeframes button {
-    min-width: 32px;
-  }
-
   .vnEvidence small {
     white-space: normal;
+  }
+
+  .vnAssetImport > div {
+    grid-template-columns: 1fr;
+  }
+
+  .vnAssetImport button {
+    width: 100%;
+  }
+
+  .vnConfirmedBalance {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .vnConfirmedBalance > div {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .vnConfirmedBalance button {
+    min-width: 0;
+  }
+
+  .vnVerificationGate > div:first-child {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .vnVerificationGate button {
+    width: 100%;
+  }
+
+  .vnRecoveryBanner {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .vnRecoveryBanner a {
+    min-height: 36px;
   }
 
   .vnFilterButton,
   .vnStarButton,
   .vnMarketTabs button,
-  .vnTimeframes button,
   .vnQuickAmounts button {
     min-height: 44px;
   }

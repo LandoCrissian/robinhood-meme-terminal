@@ -9,6 +9,7 @@ import { parsePrivyFundingConfig } from "../lib/privy-funding";
 const funding = parsePrivyFundingConfig({
   appId: process.env.NEXT_PUBLIC_PRIVY_APP_ID,
   enabled: process.env.NEXT_PUBLIC_PRIVY_FUNDING_ENABLED,
+  providerVerified: process.env.NEXT_PUBLIC_PRIVY_FUNDING_PROVIDER_VERIFIED,
   chainId: process.env.NEXT_PUBLIC_PRIVY_FUNDING_CHAIN_ID,
   asset: process.env.NEXT_PUBLIC_PRIVY_FUNDING_ASSET,
   defaultAmount: process.env.NEXT_PUBLIC_PRIVY_FUNDING_DEFAULT_AMOUNT,
@@ -44,8 +45,8 @@ export function PrivyFundingActions() {
   if (!funding.enabled) {
     return (
       <div className="privyFundingUnavailable">
-        <strong>Robinhood Chain funding is supported</strong>
-        <span>RMT is keeping live deposits off until the Privy dashboard funding methods and production environment are explicitly activated.</span>
+        <strong>Direct wallet deposits are ready</strong>
+        <span>Privy does not currently offer Robinhood Chain in this app's provider-funding network list. Use Receive at active wallet below.</span>
       </div>
     );
   }

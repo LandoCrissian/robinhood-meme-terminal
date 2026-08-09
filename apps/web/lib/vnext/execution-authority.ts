@@ -1,0 +1,142 @@
+import { getAddress, isAddress, isHash, type Hex } from "viem";
+import type { VNextAuthorizationPlan } from "./authorization-plan";
+
+const PRIVY_RESOURCE_ID = /^[A-Za-z0-9_-]{8,160}$/;
+const SELECTOR = /^0x[0-9a-fA-F]{8}$/;
+
+export type VNextExecutionPurpose = "spot_trade" | "position_guard_exit";
+
+export type VNextExecutionInstruction = {
+  purpose: VNextExecutionPurpose;
+  chainId: number;
+  account: string;
+  target: string;
+  data: Hex;
+  valueAtomic: string;
+  payloadHash: Hex;
+  expiresAtMs: number;
+};
+
+export type VNextExecutionAuthority =
+  | {
+      mode: "interactive_wallet";
+      chainId: number;
+      account: string;
+    }
+  | {
+      mode: "bounded_privy_delegate";
+      chainId: number;
+      account: string;
+      executor: string;
+      functionSelector: Hex;
+      signerId: string;
+      policyId: string;
+      expiresAtMs: number;
+      purpose: "position_guard_exit";
+    };
+
+export type VNextExecutionAuthorityDecision =
+  | { status: "wallet_confirmation_required"; account: string }
+  | { status: "delegated_submission_ready"; account: string; signerId: string; policyId: string }
+  | {
+      status: "blocked";
+      reason:
+        | "invalid_instruction"
+        | "invalid_authority"
+        | "account_mismatch"
+        | "chain_mismatch"
+        | "instruction_expired"
+        | "delegation_expired"
+        | "purpose_not_delegated"
+        | "executor_mismatch"
+        | "function_not_delegated"
+        | "native_value_not_delegated";
+    };
+
+function blocked(reason: Extract<VNextExecutionAuthorityDecision, { status: "blocked" }> ["reason"]): VNextExecutionAuthorityDecision {
+  return { status: "blocked", reason };
+}
+
+function validInstruction(instruction: VNextExecutionInstruction) {
+  return Number.isSafeInteger(instruction.chainId)
+    && instruction.chainId > 0
+    && isAddress(instruction.account, { strict: false })
+    && isAddress(instruction.target, { strict: false })
+    && /^0x[0-9a-fA-F]{8,}$/.test(instruction.data)
+    && /^(0|[1-9][0-9]*)$/.test(instruction.valueAtomic)
+    && isHash(instruction.payloadHash)
+    && Number.isSafeInteger(instruction.expiresAtMs)
+    && instruction.expiresAtMs > 0;
+}
+
+/**
+ * Selects who may submit an already verified instruction.
+ *
+ * This function does not verify route economics or calldata. Those checks must
+ * happen first. Its only job is to prevent a user-approved Position Guard
+ * delegation from becoming generic spot-trading or arbitrary-call authority.
+ */
+export function decideVNextExecutionAuthority(input: {
+  authority: VNextExecutionAuthority;
+  instruction: VNextExecutionInstruction;
+  nowMs: number;
+}): VNextExecutionAuthorityDecision {
+  const { authority, instruction, nowMs } = input;
+  if (!validInstruction(instruction) || !Number.isSafeInteger(nowMs) || nowMs <= 0) {
+    return blocked("invalid_instruction");
+  }
+  if (
+    !Number.isSafeInteger(authority.chainId)
+    || authority.chainId <= 0
+    || !isAddress(authority.account, { strict: false })
+  ) return blocked("invalid_authority");
+  if (getAddress(authority.account) !== getAddress(instruction.account)) return blocked("account_mismatch");
+  if (authority.chainId !== instruction.chainId) return blocked("chain_mismatch");
+  if (instruction.expiresAtMs <= nowMs) return blocked("instruction_expired");
+
+  if (authority.mode === "interactive_wallet") {
+    return { status: "wallet_confirmation_required", account: getAddress(authority.account) };
+  }
+
+  if (
+    !isAddress(authority.executor, { strict: false })
+    || !SELECTOR.test(authority.functionSelector)
+    || !PRIVY_RESOURCE_ID.test(authority.signerId)
+    || !PRIVY_RESOURCE_ID.test(authority.policyId)
+    || !Number.isSafeInteger(authority.expiresAtMs)
+    || authority.expiresAtMs <= 0
+  ) return blocked("invalid_authority");
+  if (authority.expiresAtMs <= nowMs || instruction.expiresAtMs > authority.expiresAtMs) {
+    return blocked("delegation_expired");
+  }
+  if (instruction.purpose !== "position_guard_exit" || authority.purpose !== "position_guard_exit") {
+    return blocked("purpose_not_delegated");
+  }
+  if (getAddress(authority.executor) !== getAddress(instruction.target)) return blocked("executor_mismatch");
+  if (instruction.data.slice(0, 10).toLowerCase() !== authority.functionSelector.toLowerCase()) {
+    return blocked("function_not_delegated");
+  }
+  if (instruction.valueAtomic !== "0") return blocked("native_value_not_delegated");
+  return {
+    status: "delegated_submission_ready",
+    account: getAddress(authority.account),
+    signerId: authority.signerId,
+    policyId: authority.policyId
+  };
+}
+
+export function vnextSpotTradeInstruction(plan: VNextAuthorizationPlan): VNextExecutionInstruction {
+  if (!plan.userAuthorizationRequired || plan.serverSubmissionEnabled) {
+    throw new Error("RMT rejected a spot plan that bypasses wallet authorization.");
+  }
+  return {
+    purpose: "spot_trade",
+    chainId: plan.chainId,
+    account: plan.recipient,
+    target: plan.target,
+    data: plan.data,
+    valueAtomic: plan.value,
+    payloadHash: plan.payloadHash,
+    expiresAtMs: plan.expiresAtMs
+  };
+}

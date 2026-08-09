@@ -55,7 +55,9 @@ When configured, the provider layer:
 
 ## Funding layer
 
-Privy's unified funding interface is implemented behind `NEXT_PUBLIC_PRIVY_FUNDING_ENABLED`. Privy's documentation now lists Robinhood Chain mainnet (`eip155:4663`) for swaps and transfers and Robinhood Testnet (`eip155:46630`) for testnet wallet actions. Funding is still separately gated from wallet login because chain support does not prove that every fiat method, asset, region or user is eligible for a live provider quote.
+Privy's unified funding interface is implemented behind both `NEXT_PUBLIC_PRIVY_FUNDING_ENABLED` and `NEXT_PUBLIC_PRIVY_FUNDING_PROVIDER_VERIFIED`. Privy's documentation supports custom EVM wallet networks and CAIP-2 funding destinations, but does not publicly establish that a configured provider currently serves Robinhood Chain mainnet (`eip155:4663`). Funding is therefore separately gated from wallet login because wallet-chain support does not prove provider route, asset, region or user eligibility.
+
+The RMT Privy development app's funding dashboard was checked on 2026-08-09. Its available EVM funding networks did not include Robinhood Chain. Provider funding therefore remains disabled, and insufficient-gas recovery opens the exact active-wallet Robinhood receive sheet directly instead of advertising an unavailable provider route.
 
 The funding request binds all provider quotes to:
 
@@ -65,7 +67,7 @@ The funding request binds all provider quotes to:
 - an explicit sandbox or production environment; and
 - a bounded default fiat amount.
 
-The provider owns payment credentials, KYC, method eligibility, quotes and delivery. RMT never receives card, bank, Apple Pay, Google Pay or identity-document data. The interface describes fiat methods as conditional rather than promising them. If no provider returns a compatible route, the flow fails without moving funds. Production funding must remain disabled until the Privy dashboard is configured and one live Robinhood Chain quote is tested end to end.
+The provider owns payment credentials, KYC, method eligibility, quotes and delivery. RMT never receives card, bank, Apple Pay, Google Pay or identity-document data. The interface describes fiat methods as conditional rather than promising them. If no provider returns a compatible route, the flow fails without moving funds. The provider-verification flag must remain false until the Privy dashboard is configured and an exact Robinhood Chain quote is observed in that deployment environment. Production funding must remain disabled until a separate small-value live quote is tested end to end.
 
 The wallet control center also supports:
 
