@@ -773,7 +773,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
         {visibleQuote ? <div className="vnQuoteAttempts">
           {visibleQuote.attempts.map((attempt) => (
             <div className={attempt.status === "indicative" ? "isReady" : ""} key={attempt.provider}>
-              <span><strong>{attempt.providerLabel}</strong><small>{attempt.executionKind === "aggregator" ? "Aggregator" : "Direct AMM"} · {attempt.latencyMs}ms</small></span>
+              <span><strong>{attempt.providerLabel}</strong><small>{attempt.executionKind === "gasless" ? "Gasless" : attempt.executionKind === "aggregator" ? "Aggregator" : "Direct AMM"} · {attempt.userPaysGas === false ? "trader gas sponsored" : "wallet gas"} · {attempt.latencyMs}ms</small></span>
               <span><strong>{attempt.status === "indicative" && attempt.outputDecimals !== null ? `${formatAtomicDisplay(attempt.protectedOutputAtomic!, attempt.outputDecimals)} ${outputSymbol}` : attempt.status === "no_route" ? "No route" : attempt.status === "invalid_response" ? "Rejected" : "Unavailable"}</strong><small>{attempt.status === "indicative"
                 ? attempt.provider === bestQuote?.provider
                   ? "Highest before network fee · indicative floor"
@@ -790,8 +790,8 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
         </dl>}
         {visibleQuote ? <dl>
           <div><dt>Ranking basis</dt><dd>Protected output before network fee</dd></div>
-          <div><dt>Trader gas</dt><dd>Estimated during strict verification</dd></div>
-          <div><dt>Provider fee</dt><dd>Not separately reported</dd></div>
+          <div><dt>Trader gas</dt><dd>{visibleQuote.attempts.some((attempt) => attempt.userPaysGas === false) ? "Route-specific · sponsored option observed" : "Estimated during strict verification"}</dd></div>
+          <div><dt>Provider fee</dt><dd>{visibleQuote.attempts.some((attempt) => attempt.providerFeeAtomic !== null) ? "Disclosed by provider and reflected in output" : "Not separately reported"}</dd></div>
           <div><dt>RMT fee</dt><dd>Not enabled</dd></div>
         </dl> : null}
         {visibleQuote ? <div className="vnVerificationGate">
