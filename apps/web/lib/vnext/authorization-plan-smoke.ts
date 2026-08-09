@@ -119,6 +119,7 @@ assert.match(endpoint, /expectedProtectedOutputAtomic/);
 assert.match(endpoint, /protectedOutputFloorAtomic/);
 assert.match(endpoint, /evidence:/);
 assert.match(endpoint, /serverSubmissionEnabled: false/);
+assert.match(readFileSync(new URL("../server/vnext-uniswap-quote.ts", import.meta.url), "utf8"), /wallet authorization \(\$\{evidence\.status\}\)/);
 assert.match(parser, /decodeFunctionData/);
 assert.match(composer, /NEXT_PUBLIC_RMT_VNEXT_AUTHORIZATION_ENABLED === "true"/);
 assert.match(composer, /parseVNextAuthorizationBundle/);

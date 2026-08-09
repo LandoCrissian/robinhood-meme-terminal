@@ -390,5 +390,5 @@ export async function prepareVNextUniswapAuthorization(input: {
       }
     };
   }
-  throw new Error("The exact next action is not ready for wallet authorization.");
+  throw new Error(`The exact next action is not ready for wallet authorization (${evidence.status}).`);
 }
