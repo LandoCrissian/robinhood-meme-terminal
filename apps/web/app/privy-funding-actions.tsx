@@ -44,15 +44,6 @@ export function PrivyFundingActions() {
   const activeWallet = wallets.find((wallet) => wallet.address.toLowerCase() === activeAddress?.toLowerCase());
   const destination = activeWallet ?? embeddedWallet;
 
-  if (!funding.enabled) {
-    return (
-      <div className="privyFundingUnavailable">
-        <strong>Direct wallet deposits are ready</strong>
-        <span>Privy does not currently offer Robinhood Chain in this app's provider-funding network list. Use Receive at active wallet below.</span>
-      </div>
-    );
-  }
-
   if (!ready || (authenticated && !walletsReady)) {
     return <button className="fundWalletPrimary" type="button" disabled>Checking funding options…</button>;
   }
@@ -73,6 +64,15 @@ export function PrivyFundingActions() {
       <div className="privyFundingUnavailable">
         <strong>Wallet setup is still completing</strong>
         <span>Close this panel and reopen it after Privy finishes creating your user-owned wallet.</span>
+      </div>
+    );
+  }
+
+  if (!funding.enabled) {
+    return (
+      <div className="privyFundingUnavailable">
+        <strong>Direct wallet deposits are ready</strong>
+        <span>Provider funding remains disabled until an exact Robinhood Chain route is verified. Use Receive at active wallet below.</span>
       </div>
     );
   }

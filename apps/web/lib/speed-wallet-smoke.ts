@@ -48,6 +48,10 @@ assert.match(privyWalletButton, /mobileMetaMaskUrl/, "Mobile traders must have a
 assert.match(privyWalletButton, /Use this wallet/, "A mobile wallet browser must offer its injected wallet directly.");
 assert.match(rmtIdentity, /supportsOAuth \? \["email", "google", "passkey", "wallet"\] : \["wallet"\]/, "Wallet browsers must not offer OAuth flows that cannot leave their embedded browser.");
 assert.doesNotMatch(`${speedEntry}\n${privyFundingActions}`, /onClick=\{login\}/, "Wallet and funding entry points must use RMT's environment-aware Privy login.");
+assert.ok(
+  privyFundingActions.indexOf("if (!authenticated)") < privyFundingActions.indexOf("if (!funding.enabled)"),
+  "A trader must be able to create or recover the wallet before provider funding availability is evaluated."
+);
 assert.match(speedProvider, /"metamask", "coinbase_wallet", "detected_ethereum_wallets", "wallet_connect"/, "Privy must put named mobile wallets before desktop-only detection and the full registry.");
 assert.match(privyWalletButton, /useSetActiveWallet/, "Traders must be able to choose the exact wallet RMT uses.");
 assert.match(privyWalletButton, /requestedWalletAddress/, "A newly connected external wallet must remain the requested active wallet after Privy finishes linking it.");

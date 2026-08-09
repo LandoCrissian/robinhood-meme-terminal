@@ -84,6 +84,8 @@ const detectedMetadata = metadataFromDetectedWalletAsset({
 assert.equal(detectedMetadata?.metadataState, "verified");
 assert.equal(detectedMetadata?.decimals, 18);
 assert.match(component, /Confirmed wallet-held USDG/);
+assert.match(component, /<FundWalletButton variant="inline" label="Add funds" target="mainnet" \/>/);
+assert.doesNotMatch(component, /Verify USDG/);
 assert.match(component, /Unconfirmed proceeds are never spendable/);
 assert.match(component, /executionRecord\?\.state === "submitted"/);
 assert.match(component, /executionRecord\.state !== "confirmed"/);

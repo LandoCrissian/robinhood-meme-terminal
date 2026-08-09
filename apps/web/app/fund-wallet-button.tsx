@@ -110,14 +110,14 @@ export function FundWalletButton({
         <button className="fundWalletBackdrop" type="button" aria-label="Close funding options" onClick={close} />
         <div ref={dialog} className="fundWalletDialog" id="fund-wallet-dialog" role="dialog" aria-modal="true" aria-labelledby="fund-wallet-title" tabIndex={-1}>
           <div className="fundWalletHeader">
-            <div><span>{speedWalletEnabled ? "PRIVY SECURE FUNDING" : approvedUrl ? "ROBINHOOD-HOSTED CHECKOUT" : "FUNDING SETUP"}</span><h2 id="fund-wallet-title">Fund your Robinhood Chain wallet</h2></div>
+            <div><span>{speedWalletEnabled ? "WALLET FUNDING" : approvedUrl ? "ROBINHOOD-HOSTED CHECKOUT" : "FUNDING SETUP"}</span><h2 id="fund-wallet-title">Fund your Robinhood Chain wallet</h2></div>
             <button ref={closeButton} type="button" aria-label="Close funding options" onClick={close}>×</button>
           </div>
 
           {!speedWalletEnabled && address && <div className="fundWalletDestination"><span>Connected destination</span><strong>{shortAddress(address)}</strong></div>}
 
           <p>{speedWalletEnabled
-            ? "Deposit ETH from crypto or choose any fiat method Privy makes available for your device and region. Privy and its providers handle payment details, quotes, identity checks, conversion, and delivery."
+            ? "Receive Robinhood Chain assets at your active wallet. Verified Privy funding options appear only when a provider supports the exact asset, network, device, and region."
             : approvedUrl
             ? "Continue to Robinhood’s secure checkout. Robinhood will show the payment methods available for your account and location before you confirm."
             : "RMT’s Robinhood Connect application is in progress. The embedded funding path will stay disabled until Robinhood approves RMT and supplies its official partner configuration."}</p>

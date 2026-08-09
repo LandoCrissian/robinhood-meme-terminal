@@ -425,6 +425,17 @@ body .rmtVnext {
   gap: 10px;
 }
 
+.vnBalanceActions > .fundWalletMenu .fundWalletTrigger {
+  min-height: 44px;
+  padding: 0 18px;
+  border-color: transparent;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--vn-accent-strong), #70de7d);
+  box-shadow: 0 8px 22px rgba(94, 205, 107, 0.16);
+  color: #0a120b;
+  font-size: inherit;
+}
+
 .vnDetectedAssets {
   grid-column: 1 / -1;
   min-width: 0;
@@ -2253,6 +2264,14 @@ body .rmtVnext {
   .vnBalanceActions button,
   .vnBalanceActions a {
     flex: 1;
+  }
+
+  .vnBalanceActions > .fundWalletMenu {
+    flex: 1;
+  }
+
+  .vnBalanceActions > .fundWalletMenu .fundWalletTrigger {
+    width: 100%;
   }
 
   .vnDetectedAssets {
