@@ -380,8 +380,15 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
       setAuthorizationState({ state: "ready", plan: await requestAuthorizationPlan(freshEvidence) });
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : "RMT could not prepare this trade.";
-      if (stage === "quote") setQuoteState({ state: "error", message });
-      if (stage === "verification") setVerificationState({ state: "error", message });
+      if (stage === "quote") {
+        setQuoteState({ state: "error", message });
+        setVerificationState({ state: "idle" });
+        setAuthorizationState({ state: "idle" });
+      }
+      if (stage === "verification") {
+        setVerificationState({ state: "error", message });
+        setAuthorizationState({ state: "idle" });
+      }
       if (stage === "authorization") setAuthorizationState({ state: "error", message });
     }
   };

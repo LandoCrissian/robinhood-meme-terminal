@@ -73,6 +73,8 @@ assert.match(composer, /Connect & buy/);
 assert.match(composer, /Sign in & buy/);
 assert.match(composer, /!address/);
 assert.match(composer, /!identity\.authenticated/);
+assert.match(composer, /stage === "quote"[\s\S]*setVerificationState\(\{ state: "idle" \}\)[\s\S]*setAuthorizationState\(\{ state: "idle" \}\)/);
+assert.match(composer, /stage === "verification"[\s\S]*setVerificationState\(\{ state: "error", message \}\)[\s\S]*setAuthorizationState\(\{ state: "idle" \}\)/);
 assert.match(composer, /Purchase confirmed/);
 assert.match(composer, /Sale confirmed/);
 assert.match(composer, /Continue trading/);
