@@ -9,13 +9,17 @@ const RPC_URL = process.env.RMT_RPC_URL ?? "https://rpc.mainnet.chain.robinhood.
 const ROBINHOOD_ASSETS_URL = "https://api.robinhood.com/rhj/assets";
 const PCSX_PRICE_URL = "https://x.pancakeswap.com/order-price/get-price";
 const ZEROX_API_URL = "https://api.0x.org";
+const UNISWAP_TRADE_API_URL = "https://trade-api.gateway.uniswap.org/v1";
 const DEXSCREENER_PAIRS_URL = "https://api.dexscreener.com/token-pairs/v1/robinhood";
 const TIMEOUT_MS = 10_000;
 
 const USDG = "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168";
 const WETH = "0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73";
-const NON_FUNDED_BENCHMARK_TAKER = "0x0000000000000000000000000000000000000001";
+// 0x rejects user addresses at or below 0x...ffff. Keep this unfunded
+// benchmark identity above that floor while never authorizing or submitting.
+const NON_FUNDED_BENCHMARK_TAKER = "0x0000000000000000000000000000000000010000";
 const BENCHMARK_NOTIONALS_USD = [10, 50, 100, 500, 1_000] as const;
+const PCSX_RWA_SAMPLE_LIMIT = 6;
 
 type ProbeStatus =
   | "verified"
@@ -32,7 +36,7 @@ type ProbeStatus =
   | "invalid_response";
 
 type Probe = {
-  provider: "market-directory" | "sushi" | "uniswap-v3" | "pancake-onchain" | "pancakeswapx" | "0x";
+  provider: "market-directory" | "sushi" | "uniswap-v3" | "uniswapx" | "pancake-onchain" | "pancakeswapx" | "0x";
   probe: string;
   status: ProbeStatus;
   latencyMs: number;
@@ -104,6 +108,10 @@ function assertReadOnlyRequest(url: string, init?: RequestInit) {
   }
   const zeroXReadOnlyPaths = new Set(["/sources", "/swap/allowance-holder/price", "/gasless/price"]);
   if (requested.origin === ZEROX_API_URL && method === "GET" && zeroXReadOnlyPaths.has(requested.pathname)) {
+    readOnlyRequestsValidated += 1;
+    return;
+  }
+  if (requested.origin === new URL(UNISWAP_TRADE_API_URL).origin && requested.pathname === "/v1/quote" && method === "POST") {
     readOnlyRequestsValidated += 1;
     return;
   }
@@ -193,13 +201,13 @@ async function probeContracts(): Promise<Probe[]> {
   }));
 }
 
-function pcsxRequest(tokenOut: string) {
+function pcsxRequest(tokenOut: string, amount: string) {
   return {
     tokenInChainId: CHAIN_ID,
     tokenIn: USDG,
     tokenOutChainId: CHAIN_ID,
     tokenOut,
-    amount: "1000000",
+    amount,
     type: "EXACT_INPUT",
     configs: [{ routingType: "DUTCH_LIMIT", useSyntheticQuotes: false }]
   };
@@ -217,13 +225,13 @@ function classifyPcsxError(message: string): { status: ProbeStatus; category: st
   return { status: "provider_error", category: "provider_rejected_request" };
 }
 
-async function probePcsx(name: string, tokenOut: string, symbol: string): Promise<Probe> {
+async function probePcsx(name: string, tokenOut: string, symbol: string, amount = "1000000"): Promise<Probe> {
   const startedAt = performance.now();
   try {
     const { response, body, text } = await fetchJson(PCSX_PRICE_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(pcsxRequest(tokenOut))
+      body: JSON.stringify(pcsxRequest(tokenOut, amount))
     });
     if (response.ok) {
       return {
@@ -234,7 +242,7 @@ async function probePcsx(name: string, tokenOut: string, symbol: string): Promis
         chainId: CHAIN_ID,
         routeAvailable: isObject(body),
         errorCategory: isObject(body) ? "requires_provider_specific_order_verification" : "invalid_json",
-        evidence: { inputSymbol: "USDG", outputSymbol: symbol, httpStatus: response.status }
+        evidence: { inputSymbol: "USDG", outputSymbol: symbol, inputAmountAtomic: amount, httpStatus: response.status }
       };
     }
     const classified = classifyPcsxError(errorMessage(body, text));
@@ -246,7 +254,7 @@ async function probePcsx(name: string, tokenOut: string, symbol: string): Promis
       chainId: CHAIN_ID,
       routeAvailable: false,
       errorCategory: classified.category,
-      evidence: { inputSymbol: "USDG", outputSymbol: symbol, httpStatus: response.status }
+      evidence: { inputSymbol: "USDG", outputSymbol: symbol, inputAmountAtomic: amount, httpStatus: response.status }
     };
   } catch (error) {
     return {
@@ -257,7 +265,7 @@ async function probePcsx(name: string, tokenOut: string, symbol: string): Promis
       chainId: CHAIN_ID,
       routeAvailable: false,
       errorCategory: isTimeout(error) ? "timeout" : "network_error",
-      evidence: { inputSymbol: "USDG", outputSymbol: symbol }
+      evidence: { inputSymbol: "USDG", outputSymbol: symbol, inputAmountAtomic: amount }
     };
   }
 }
@@ -551,18 +559,37 @@ function summarizeBaseline(probes: readonly Probe[]) {
   });
 }
 
-async function firstActiveRobinhoodRwa() {
+async function activeRobinhoodRwas(limit = PCSX_RWA_SAMPLE_LIMIT) {
   const { response, body } = await fetchJson(ROBINHOOD_ASSETS_URL);
   if (!response.ok || !isObject(body) || !Array.isArray(body.assets)) throw new Error("invalid_asset_registry");
+  const active: { symbol: string; address: Address }[] = [];
   for (const asset of body.assets) {
     if (!isObject(asset) || asset.status !== "ASSET_STATUS_ACTIVE" || typeof asset.tokenSymbol !== "string") continue;
     const deployments = Array.isArray(asset.deployments) ? asset.deployments : [];
     const deployment = deployments.find((item) => isObject(item) && item.chainId === CHAIN_ID && typeof item.contractAddress === "string" && isAddress(item.contractAddress));
     if (isObject(deployment) && typeof deployment.contractAddress === "string") {
-      return { symbol: asset.tokenSymbol.slice(0, 24), address: getAddress(deployment.contractAddress) };
+      const address = getAddress(deployment.contractAddress);
+      if (!active.some((candidate) => candidate.address === address)) active.push({ symbol: asset.tokenSymbol.slice(0, 24), address });
+      if (active.length >= limit) return active;
     }
   }
-  throw new Error("no_active_chain_4663_rwa");
+  if (active.length === 0) throw new Error("no_active_chain_4663_rwa");
+  return active;
+}
+
+function summarizePcsx(probes: readonly Probe[]) {
+  const attempts = probes.filter((probe) => probe.provider === "pancakeswapx" && probe.probe.startsWith("usd-g-to-rwa-"));
+  const symbols = new Set(attempts.map((probe) => String(probe.evidence?.outputSymbol ?? "")).filter(Boolean));
+  const routes = attempts.filter((probe) => probe.routeAvailable);
+  return {
+    rwaAssetsSampled: symbols.size,
+    samples: attempts.length,
+    routesAvailable: routes.length,
+    routeAvailabilityPct: attempts.length === 0 ? 0 : Number((routes.length * 100 / attempts.length).toFixed(1)),
+    quoteReturnedUnverified: attempts.filter((probe) => probe.status === "quote_returned_unverified").length,
+    supportedNoRoute: attempts.filter((probe) => probe.status === "supported_no_route").length,
+    providerErrors: attempts.filter((probe) => probe.status === "provider_error" || probe.status === "timeout" || probe.status === "invalid_response").length
+  };
 }
 
 function collectSourceNames(body: unknown) {
@@ -573,7 +600,39 @@ function collectSourceNames(body: unknown) {
   return [...new Set(fills.flatMap((fill) => isObject(fill) && typeof fill.source === "string" ? [fill.source] : []))];
 }
 
-async function probeZeroX(name: string, path: string, params: Record<string, string>, apiKey?: string): Promise<Probe> {
+function zeroXPriceEconomics(body: unknown, params: Record<string, string>) {
+  if (
+    !isObject(body)
+    || body.liquidityAvailable !== true
+    || typeof body.sellToken !== "string" || !isAddress(body.sellToken)
+    || typeof body.buyToken !== "string" || !isAddress(body.buyToken)
+    || getAddress(body.sellToken) !== getAddress(params.sellToken)
+    || getAddress(body.buyToken) !== getAddress(params.buyToken)
+    || body.sellAmount !== params.sellAmount
+    || typeof body.buyAmount !== "string" || !/^[1-9][0-9]*$/.test(body.buyAmount)
+    || typeof body.minBuyAmount !== "string" || !/^[1-9][0-9]*$/.test(body.minBuyAmount)
+    || BigInt(body.minBuyAmount) > BigInt(body.buyAmount)
+  ) return null;
+  const fees = isObject(body.fees) ? body.fees : null;
+  const zeroExFee = fees && isObject(fees.zeroExFee) && typeof fees.zeroExFee.amount === "string" ? fees.zeroExFee.amount : null;
+  const gasFee = fees && isObject(fees.gasFee) && typeof fees.gasFee.amount === "string" ? fees.gasFee.amount : null;
+  return {
+    expectedOutputAtomic: body.buyAmount,
+    protectedOutputAtomic: body.minBuyAmount,
+    zeroExFeeAtomic: zeroExFee,
+    gasFeeAtomic: gasFee,
+    networkFeeAtomic: typeof body.totalNetworkFee === "string" ? body.totalNetworkFee : null
+  };
+}
+
+async function probeZeroX(
+  name: string,
+  path: string,
+  params: Record<string, string>,
+  apiKey?: string,
+  pair?: BaselinePair,
+  executionMode?: "swap" | "gasless"
+): Promise<Probe> {
   if (!apiKey) {
     return {
       provider: "0x",
@@ -607,16 +666,36 @@ async function probeZeroX(name: string, path: string, params: Record<string, str
     const sourceNames = collectSourceNames(body);
     const isSourcesProbe = name === "liquidity-sources";
     const liquidityAvailable = isObject(body) && body.liquidityAvailable === true;
-    const valid = isObject(body) && (isSourcesProbe ? Array.isArray(body.sources) : typeof body.liquidityAvailable === "boolean");
+    const economics = isSourcesProbe || !liquidityAvailable ? null : zeroXPriceEconomics(body, params);
+    const valid = isObject(body) && (isSourcesProbe
+      ? Array.isArray(body.sources)
+      : typeof body.liquidityAvailable === "boolean" && (!liquidityAvailable || Boolean(economics)));
     return {
       provider: "0x",
       probe: name,
-      status: valid ? "available" : "invalid_response",
+      status: valid ? (isSourcesProbe || liquidityAvailable ? "available" : "supported_no_route") : "invalid_response",
       latencyMs: latency(startedAt),
       chainId: CHAIN_ID,
       routeAvailable: isSourcesProbe ? false : liquidityAvailable,
       errorCategory: valid ? undefined : "invalid_json_schema",
-      sourceNames
+      sourceNames,
+      inputAsset: pair?.inputAsset,
+      outputAsset: pair?.outputAsset,
+      inputAmountAtomic: pair?.amountIn.toString(),
+      expectedOutputAtomic: economics?.expectedOutputAtomic,
+      protectedOutputAtomic: economics?.protectedOutputAtomic,
+      evidence: pair ? {
+        inputSymbol: pair.inputSymbol,
+        outputSymbol: pair.outputSymbol,
+        benchmarkNotionalUsd: pair.notionalUsd ?? null,
+        benchmarkSegment: pair.segment,
+        executionMode: executionMode ?? null,
+        userPaysGas: executionMode === "swap",
+        zeroExFeeAtomic: economics?.zeroExFeeAtomic ?? null,
+        gasFeeAtomic: economics?.gasFeeAtomic ?? null,
+        networkFeeAtomic: economics?.networkFeeAtomic ?? null,
+        indicativeOnly: true
+      } : undefined
     };
   } catch (error) {
     return {
@@ -631,8 +710,140 @@ async function probeZeroX(name: string, path: string, params: Record<string, str
   }
 }
 
+function summarizeZeroX(probes: readonly Probe[]) {
+  return (["swap", "gasless"] as const).map((executionMode) => {
+    const samples = probes.filter((probe) => probe.provider === "0x" && probe.evidence?.executionMode === executionMode);
+    const available = samples.filter((probe) => probe.routeAvailable);
+    const latencies = available.map((probe) => probe.latencyMs).sort((a, b) => a - b);
+    return {
+      executionMode,
+      samples: samples.length,
+      routesAvailable: available.length,
+      routeAvailabilityPct: samples.length === 0 ? 0 : Number((available.length * 100 / samples.length).toFixed(1)),
+      latencyP50Ms: percentile(latencies, 0.5),
+      latencyP95Ms: percentile(latencies, 0.95)
+    };
+  });
+}
+
+function uniswapXQuoteEconomics(body: unknown, pair: BaselinePair) {
+  if (!isObject(body) || !isObject(body.quote) || typeof body.routing !== "string") return null;
+  if (!["DUTCH_V2", "DUTCH_V3", "PRIORITY"].includes(body.routing)) return null;
+  const quote = body.quote;
+  const input = isObject(quote.input) ? quote.input : null;
+  const output = isObject(quote.output) ? quote.output : null;
+  if (
+    !input || !output
+    || typeof input.token !== "string" || !isAddress(input.token)
+    || getAddress(input.token) !== pair.inputAsset
+    || input.amount !== pair.amountIn.toString()
+    || typeof output.token !== "string" || !isAddress(output.token)
+    || getAddress(output.token) !== pair.outputAsset
+    || typeof output.recipient !== "string" || !isAddress(output.recipient)
+    || getAddress(output.recipient) !== getAddress(NON_FUNDED_BENCHMARK_TAKER)
+    || typeof output.amount !== "string" || !/^[1-9][0-9]*$/.test(output.amount)
+    || typeof output.minimumAmount !== "string" || !/^[1-9][0-9]*$/.test(output.minimumAmount)
+    || BigInt(output.minimumAmount) > BigInt(output.amount)
+  ) return null;
+  return {
+    routing: body.routing,
+    expectedOutputAtomic: output.amount,
+    protectedOutputAtomic: output.minimumAmount
+  };
+}
+
+async function probeUniswapX(pair: BaselinePair, apiKey?: string): Promise<Probe> {
+  if (!apiKey) {
+    return {
+      provider: "uniswapx",
+      probe: "uniswapx-latest-quotes",
+      status: "blocked_missing_key",
+      latencyMs: 0,
+      chainId: CHAIN_ID,
+      routeAvailable: false,
+      errorCategory: "missing_server_only_api_key"
+    };
+  }
+  const startedAt = performance.now();
+  try {
+    const { response, body, text } = await fetchJson(`${UNISWAP_TRADE_API_URL}/quote`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": apiKey,
+        "x-universal-router-version": "2.0"
+      },
+      body: JSON.stringify({
+        type: "EXACT_INPUT",
+        amount: pair.amountIn.toString(),
+        tokenInChainId: CHAIN_ID,
+        tokenOutChainId: CHAIN_ID,
+        tokenIn: pair.inputAsset,
+        tokenOut: pair.outputAsset,
+        swapper: NON_FUNDED_BENCHMARK_TAKER,
+        slippageTolerance: 1,
+        routingPreference: "BEST_PRICE",
+        protocols: ["UNISWAPX_LATEST"]
+      })
+    });
+    if (!response.ok) {
+      return {
+        provider: "uniswapx",
+        probe: pair.name,
+        status: response.status === 401 || response.status === 403 ? "provider_error" : "supported_no_route",
+        latencyMs: latency(startedAt),
+        chainId: CHAIN_ID,
+        routeAvailable: false,
+        errorCategory: response.status === 401 || response.status === 403 ? "credential_rejected" : "no_uniswapx_route",
+        inputAsset: pair.inputAsset,
+        outputAsset: pair.outputAsset,
+        inputAmountAtomic: pair.amountIn.toString(),
+        evidence: { httpStatus: response.status, responseClass: errorMessage(body, text) ? "structured_error" : "empty_error" }
+      };
+    }
+    const economics = uniswapXQuoteEconomics(body, pair);
+    return {
+      provider: "uniswapx",
+      probe: pair.name,
+      status: economics ? "quote_returned_unverified" : "invalid_response",
+      latencyMs: latency(startedAt),
+      chainId: CHAIN_ID,
+      routeAvailable: Boolean(economics),
+      errorCategory: economics ? "requires_exact_order_verification" : "invalid_uniswapx_quote",
+      inputAsset: pair.inputAsset,
+      outputAsset: pair.outputAsset,
+      inputAmountAtomic: pair.amountIn.toString(),
+      expectedOutputAtomic: economics?.expectedOutputAtomic,
+      protectedOutputAtomic: economics?.protectedOutputAtomic,
+      sourceNames: economics ? [economics.routing] : [],
+      evidence: {
+        inputSymbol: pair.inputSymbol,
+        outputSymbol: pair.outputSymbol,
+        benchmarkNotionalUsd: pair.notionalUsd ?? null,
+        benchmarkSegment: pair.segment,
+        indicativeOnly: true,
+        exactOrderVerificationRequired: true
+      }
+    };
+  } catch (error) {
+    return {
+      provider: "uniswapx",
+      probe: pair.name,
+      status: isTimeout(error) ? "timeout" : "provider_error",
+      latencyMs: latency(startedAt),
+      chainId: CHAIN_ID,
+      routeAvailable: false,
+      errorCategory: isTimeout(error) ? "timeout" : "network_error",
+      inputAsset: pair.inputAsset,
+      outputAsset: pair.outputAsset,
+      inputAmountAtomic: pair.amountIn.toString()
+    };
+  }
+}
+
 async function main() {
   const apiKey = process.env.RMT_ZEROX_API_KEY?.trim();
+  const uniswapApiKey = process.env.RMT_UNISWAP_API_KEY?.trim();
   const liquidBaseline = await discoverLiquidBaseline();
   const activeBaselinePairs = [...baselinePairs, ...liquidBaseline.pairs];
   const contractProbes = await probeContracts();
@@ -640,38 +851,76 @@ async function main() {
     probeBaselinePairs(activeBaselinePairs),
     probePcsx("usd-g-to-weth", WETH, "WETH")
   ]);
-  let pcsxRwaProbe: Probe;
+  let pcsxRwaProbes: Probe[] = [];
   try {
-    const rwa = await firstActiveRobinhoodRwa();
-    pcsxRwaProbe = await probePcsx("usd-g-to-first-active-rwa", rwa.address, rwa.symbol);
+    const rwas = await activeRobinhoodRwas();
+    for (const rwa of rwas) {
+      for (const notionalUsd of BENCHMARK_NOTIONALS_USD) {
+        pcsxRwaProbes.push(await probePcsx(
+          `usd-g-to-rwa-${rwa.symbol.toLowerCase()}-${notionalUsd}`,
+          rwa.address,
+          rwa.symbol,
+          (BigInt(notionalUsd) * 1_000_000n).toString()
+        ));
+      }
+    }
   } catch (error) {
-    pcsxRwaProbe = {
+    pcsxRwaProbes = [{
       provider: "pancakeswapx",
-      probe: "usd-g-to-first-active-rwa",
+      probe: "usd-g-to-rwa-sample",
       status: isTimeout(error) ? "timeout" : "provider_error",
       latencyMs: 0,
       chainId: CHAIN_ID,
       routeAvailable: false,
       errorCategory: isTimeout(error) ? "asset_registry_timeout" : "asset_registry_unavailable"
-    };
+    }];
   }
 
-  const common = { chainId: String(CHAIN_ID), sellToken: USDG, buyToken: WETH, sellAmount: "1000000" };
-  const zeroXProbes = await Promise.all([
-    probeZeroX("liquidity-sources", "/sources", { chainId: String(CHAIN_ID) }, apiKey),
-    probeZeroX("allowance-holder-price", "/swap/allowance-holder/price", common, apiKey),
-    probeZeroX("gasless-price", "/gasless/price", { ...common, taker: NON_FUNDED_BENCHMARK_TAKER }, apiKey)
-  ]);
+  const zeroXProbes: Probe[] = [await probeZeroX("liquidity-sources", "/sources", { chainId: String(CHAIN_ID) }, apiKey)];
+  const zeroXBenchmarkPairs = activeBaselinePairs.filter((pair) => pair.segment !== "pre_graduation_control");
+  for (const pair of zeroXBenchmarkPairs) {
+    const common = {
+      chainId: String(CHAIN_ID),
+      sellToken: pair.inputAsset,
+      buyToken: pair.outputAsset,
+      sellAmount: pair.amountIn.toString(),
+      taker: NON_FUNDED_BENCHMARK_TAKER
+    };
+    zeroXProbes.push(await probeZeroX(`swap-${pair.name}`, "/swap/allowance-holder/price", common, apiKey, pair, "swap"));
+    await new Promise((resolve) => setTimeout(resolve, 225));
+    zeroXProbes.push(await probeZeroX(`gasless-${pair.name}`, "/gasless/price", common, apiKey, pair, "gasless"));
+    await new Promise((resolve) => setTimeout(resolve, 225));
+  }
+  const uniswapXFallbackPair: BaselinePair = {
+    name: "usd-g-to-weth-500",
+    inputSymbol: "USDG",
+    outputSymbol: "WETH",
+    inputAsset: getAddress(USDG),
+    outputAsset: getAddress(WETH),
+    amountIn: 500_000_000n,
+    notionalUsd: 500,
+    segment: "core"
+  };
+  const observedUniswapXPairs = liquidBaseline.pairs.filter((pair) => (pair.notionalUsd ?? 0) >= 500);
+  const uniswapXBenchmarkPairs = observedUniswapXPairs.length > 0 ? observedUniswapXPairs : [uniswapXFallbackPair];
+  const uniswapXProbes = uniswapApiKey
+    ? await Promise.all(uniswapXBenchmarkPairs.map((pair) => probeUniswapX(pair, uniswapApiKey)))
+    : [await probeUniswapX(baselinePairs[2], undefined)];
 
-  const probes = [liquidBaseline.probe, ...baselineProbes, ...contractProbes, pcsxCryptoProbe, pcsxRwaProbe, ...zeroXProbes];
+  const probes = [liquidBaseline.probe, ...baselineProbes, ...contractProbes, pcsxCryptoProbe, ...pcsxRwaProbes, ...uniswapXProbes, ...zeroXProbes];
   const noWriteAssertion = readOnlyRequestsValidated > 0 && !writeBoundaryViolation;
   process.stdout.write(`${JSON.stringify({
     generatedAt: new Date().toISOString(),
     chainId: CHAIN_ID,
     mode: "read-only",
     noWriteAssertion,
-    credentials: { zeroX: apiKey ? "configured" : "missing" },
+    credentials: {
+      uniswap: uniswapApiKey ? "configured" : "missing",
+      zeroX: apiKey ? "configured" : "missing"
+    },
     baselineSummary: summarizeBaseline(baselineProbes),
+    pcsxRwaSummary: summarizePcsx(pcsxRwaProbes),
+    zeroXSummary: summarizeZeroX(zeroXProbes),
     probes
   }, null, 2)}\n`);
   if (!noWriteAssertion || probes.some((probe) => probe.status === "mismatch")) process.exitCode = 1;
