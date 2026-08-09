@@ -84,6 +84,8 @@ assert.match(composer, /setSide\("buy"\)/);
 assert.match(composer, /const DEFAULT_BUY_AMOUNT = "25"/);
 assert.match(composer, /setAmount\(DEFAULT_BUY_AMOUNT\)/);
 assert.match(composer, /setBuyInputKey\(assetKey\(ROBINHOOD_USDG\.id\)\)/);
+assert.match(composer, /backgroundQuoteImmediate\.current = true/);
+assert.match(composer, /lastReadyVerification\.current = undefined/);
 assert.match(composer, /exceeds confirmed balance/);
 assert.match(composer, /disabled=\{exceedsBalance\}/);
 assert.match(composer, /confirmed onchain/);

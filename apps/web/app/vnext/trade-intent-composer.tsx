@@ -93,6 +93,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
   const pendingTradeAfterLogin = useRef(false);
   const continuedApproval = useRef<string | undefined>(undefined);
   const backgroundQuoteEpoch = useRef(0);
+  const backgroundQuoteImmediate = useRef(false);
   const lastReadyQuote = useRef<VNextQuoteResponse | undefined>(undefined);
   const lastReadyVerification = useRef<VNextPreSignEvidence | undefined>(undefined);
   const receiptAction = useRef<HTMLButtonElement>(null);
@@ -357,7 +358,11 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
       }
       if (!cancelled && backgroundQuoteEpoch.current === epoch) schedule(VNEXT_BACKGROUND_QUOTE_REFRESH_MS);
     };
-    schedule(lastReadyQuote.current ? VNEXT_BACKGROUND_QUOTE_REFRESH_MS : VNEXT_BACKGROUND_QUOTE_DEBOUNCE_MS);
+    const initialDelay = backgroundQuoteImmediate.current || !lastReadyQuote.current
+      ? VNEXT_BACKGROUND_QUOTE_DEBOUNCE_MS
+      : VNEXT_BACKGROUND_QUOTE_REFRESH_MS;
+    backgroundQuoteImmediate.current = false;
+    schedule(initialDelay);
     return () => {
       cancelled = true;
       backgroundQuoteEpoch.current += 1;
@@ -591,6 +596,13 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
     void startTrade();
   };
   const continueTrading = () => {
+    backgroundQuoteEpoch.current += 1;
+    backgroundQuoteImmediate.current = true;
+    clearTradeQuoteCache();
+    setQuoteState({ state: "loading" });
+    setVerificationState({ state: "idle" });
+    setAuthorizationState({ state: "idle" });
+    lastReadyVerification.current = undefined;
     setPostExecutionState({ state: "idle" });
     setSide("buy");
     setAmount(DEFAULT_BUY_AMOUNT);

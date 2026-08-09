@@ -37,9 +37,17 @@ assert.equal(isVNextQuoteReusableForTrade({
 
 const composer = readFileSync(new URL("../../app/vnext/trade-intent-composer.tsx", import.meta.url), "utf8");
 assert.match(composer, /backgroundQuoteEpoch/);
+assert.match(composer, /backgroundQuoteImmediate/);
 assert.match(composer, /VNEXT_BACKGROUND_QUOTE_REFRESH_MS/);
 assert.match(composer, /lastReadyQuote\.current = freshQuote/);
 assert.match(composer, /isVNextQuoteReusableForTrade/);
+const continuation = composer.slice(composer.indexOf("const continueTrading"), composer.indexOf("return (", composer.indexOf("const continueTrading")));
+assert.match(continuation, /clearTradeQuoteCache\(\)/);
+assert.match(continuation, /setQuoteState\(\{ state: "loading" \}\)/);
+assert.match(continuation, /setVerificationState\(\{ state: "idle" \}\)/);
+assert.match(continuation, /setAuthorizationState\(\{ state: "idle" \}\)/);
+assert.match(continuation, /backgroundQuoteImmediate\.current = true/);
+assert.doesNotMatch(continuation, /requestAuthorizationPlan|sendTransaction|writeContract|signTypedData/);
 assert.doesNotMatch(composer, /setInterval/);
 
 console.log("RMT VNext quiet background quote refresh smoke checks passed.");
