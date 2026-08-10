@@ -44,8 +44,13 @@ contract KittensTokenTest {
     }
 
     function testZeroAddressCannotReceiveSupplyOrTransfers() public {
-        (bool zeroConstructor,) = address(new KittensToken(address(this))).call("");
-        require(zeroConstructor, "sanity");
+        bool constructorRejected;
+        try new KittensToken(address(0)) returns (KittensToken) {
+            constructorRejected = false;
+        } catch {
+            constructorRejected = true;
+        }
+        require(constructorRejected, "zero initial recipient accepted");
 
         KittensToken token = new KittensToken(address(this));
         (bool zeroTransfer,) = address(token).call(abi.encodeCall(token.transfer, (address(0), 1)));
