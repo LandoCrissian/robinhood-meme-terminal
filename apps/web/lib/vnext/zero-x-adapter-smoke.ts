@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { getAddress } from "viem";
 import { vNextZeroXGaslessAdapter, vNextZeroXSwapAdapter } from "../server/vnext-zero-x-adapter";
 import type { VNextProviderQuoteRequest } from "../server/vnext-provider-adapter";
+import { runZeroXFirmQuoteVerifierSmoke } from "./zero-x-firm-quote-verifier-smoke";
 
 const originalFetch = globalThis.fetch;
 const originalKey = process.env.RMT_ZEROX_API_KEY;
@@ -59,6 +60,7 @@ async function run() {
   assert.equal(swap.providerFeeAtomic, "1500");
   assert.equal(swap.gasSponsorshipFeeAtomic, null);
   assert.equal(swap.authorizationReady, false);
+  assert.equal(swap.strictVerificationAvailable, false);
 
   const gasless = await vNextZeroXGaslessAdapter.quote(request);
   assert.equal(gasless.status, "indicative");
@@ -68,16 +70,19 @@ async function run() {
   assert.equal(gasless.gasSponsorshipFeeAtomic, "22000");
   assert.equal(gasless.protectedNetOutputAtomic, gasless.protectedOutputAtomic);
   assert.equal(gasless.authorizationReady, false);
+  assert.equal(gasless.strictVerificationAvailable, false);
 
   globalThis.fetch = async () => Response.json({ ...priceResponse("swap"), buyToken: inputAsset });
   assert.equal((await vNextZeroXSwapAdapter.quote(request)).status, "invalid_response");
 
   delete process.env.RMT_ZEROX_API_KEY;
   assert.equal((await vNextZeroXSwapAdapter.quote(request)).status, "temporarily_unavailable");
+
+  await runZeroXFirmQuoteVerifierSmoke();
 }
 
 void run().then(() => {
-  console.log("RMT VNext 0x observation-only adapter smoke checks passed.");
+  console.log("RMT VNext 0x observation and firm-quote verification foundation smoke checks passed.");
 }).catch((cause) => {
   console.error(cause);
   process.exitCode = 1;
