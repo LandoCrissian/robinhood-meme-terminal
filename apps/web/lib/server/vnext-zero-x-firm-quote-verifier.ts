@@ -33,6 +33,7 @@ type ZeroXFirmQuote = {
   expectedOutputAtomic: string;
   gasLimitUnits: string;
   gasPriceWei: string;
+  gasCostCeilingNativeAtomic: string;
   networkFeeNativeAtomic: string;
   protectedOutputAtomic: string;
   providerFee: { asset: Address; amountAtomic: string } | null;
@@ -65,6 +66,7 @@ export type ZeroXSwapFirmQuoteVerificationEvidence = {
   calldataHash: Hex;
   gasLimitUnits: string;
   gasPriceWei: string;
+  gasCostCeilingNativeAtomic: string;
   networkFeeNativeAtomic: string;
   transactionValueAtomic: string;
   providerFeeAsset: Address | null;
@@ -175,12 +177,21 @@ async function nativeBalance(address: Address) {
   return BigInt(result);
 }
 
-async function simulate(input: { account: Address; target: Address; calldata: Hex; valueAtomic: string }) {
+async function simulate(input: {
+  account: Address;
+  target: Address;
+  calldata: Hex;
+  valueAtomic: string;
+  gasLimitUnits: string;
+  gasPriceWei: string;
+}) {
   await rpc("eth_call", [{
     from: input.account,
     to: input.target,
     data: input.calldata,
-    value: `0x${BigInt(input.valueAtomic).toString(16)}`
+    value: `0x${BigInt(input.valueAtomic).toString(16)}`,
+    gas: `0x${BigInt(input.gasLimitUnits).toString(16)}`,
+    gasPrice: `0x${BigInt(input.gasPriceWei).toString(16)}`
   }, "latest"]);
 }
 
@@ -274,6 +285,11 @@ function parseFirmQuote(
     || !gasLimitUnits || !gasPriceWei || transactionValueAtomic !== "0"
   ) throw new ZeroXInvalidResponseError("0x returned an invalid AllowanceHolder transaction envelope.");
 
+  const transactionGasCost = BigInt(gasLimitUnits) * BigInt(gasPriceWei);
+  const gasCostCeilingNativeAtomic = transactionGasCost > BigInt(networkFeeNativeAtomic)
+    ? transactionGasCost.toString()
+    : networkFeeNativeAtomic;
+
   return {
     allowanceIssue,
     balanceIssue,
@@ -282,6 +298,7 @@ function parseFirmQuote(
     expectedOutputAtomic,
     gasLimitUnits,
     gasPriceWei,
+    gasCostCeilingNativeAtomic,
     networkFeeNativeAtomic,
     protectedOutputAtomic,
     providerFee,
@@ -335,19 +352,21 @@ export async function verifyZeroXSwapFirmQuote(
   let exactTransactionSimulationPassed = false;
   if (quote.balanceIssue) {
     status = "insufficient_balance";
-  } else if (balance < BigInt(quote.networkFeeNativeAtomic)) {
-    status = "insufficient_gas";
   } else if (quote.allowanceIssue) {
     status = "approval_required";
   } else if (quote.simulationIncomplete) {
     status = "provider_simulation_incomplete";
+  } else if (balance < BigInt(quote.gasCostCeilingNativeAtomic)) {
+    status = "insufficient_gas";
   } else {
     try {
       await simulate({
         account: request.recipient,
         target: quote.transactionTarget,
         calldata: quote.calldata,
-        valueAtomic: quote.transactionValueAtomic
+        valueAtomic: quote.transactionValueAtomic,
+        gasLimitUnits: quote.gasLimitUnits,
+        gasPriceWei: quote.gasPriceWei
       });
       exactTransactionSimulationPassed = true;
       status = "envelope_verified";
@@ -374,6 +393,7 @@ export async function verifyZeroXSwapFirmQuote(
     calldataHash: keccak256(quote.calldata),
     gasLimitUnits: quote.gasLimitUnits,
     gasPriceWei: quote.gasPriceWei,
+    gasCostCeilingNativeAtomic: quote.gasCostCeilingNativeAtomic,
     networkFeeNativeAtomic: quote.networkFeeNativeAtomic,
     transactionValueAtomic: quote.transactionValueAtomic,
     providerFeeAsset: quote.providerFee?.asset ?? null,
