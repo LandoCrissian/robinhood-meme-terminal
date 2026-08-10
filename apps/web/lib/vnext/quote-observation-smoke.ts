@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { bestIndicativeAttempt, parseVNextQuoteResponse, selectVNextRoute, type VNextQuoteResponse } from "./quote-observation";
+import { bestIndicativeAttempt, hasVNextWalletAuthorizationCodec, parseVNextQuoteResponse, selectVNextRoute, type VNextQuoteResponse } from "./quote-observation";
 
 const now = 1_786_000_000_000;
 const inputAsset = "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168";
@@ -109,6 +109,25 @@ const backupSelection = selectVNextRoute(withVerifiedBackup.attempts);
 assert.equal(backupSelection.bestObserved?.provider, "sushi");
 assert.equal(backupSelection.verificationCandidate?.provider, "uniswap-v3");
 assert.equal(backupSelection.usesVerifiedBackup, true);
+assert.equal(hasVNextWalletAuthorizationCodec("uniswap-v3"), true);
+assert.equal(hasVNextWalletAuthorizationCodec("zero-x-swap"), false);
+assert.equal(hasVNextWalletAuthorizationCodec("zero-x-gasless"), false);
+
+const strictOnlyZeroX = parseVNextQuoteResponse({
+  ...response,
+  attempts: [{
+    ...response.attempts[0],
+    provider: "zero-x-swap",
+    providerLabel: "0x Swap",
+    providerFamily: "zeroex",
+    strictVerificationAvailable: true
+  }]
+}, expected, now);
+const strictOnlySelection = selectVNextRoute(strictOnlyZeroX.attempts);
+assert.equal(strictOnlySelection.bestObserved?.provider, "zero-x-swap");
+assert.equal(strictOnlySelection.verificationCandidate, undefined);
+assert.equal(strictOnlySelection.usesVerifiedBackup, false);
+
 assert.equal(parseVNextQuoteResponse({
   ...response,
   completedAtMs: now + 5_000,
