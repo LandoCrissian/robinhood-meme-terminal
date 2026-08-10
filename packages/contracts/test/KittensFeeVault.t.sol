@@ -61,10 +61,15 @@ contract KittensFeeVaultTest {
         (
             KittensFeeVault vault,
             KittensVaultHookSource hook,
-            ,
-            ,
-            ,
+            KittensVaultExecutor burnExecutor,
+            KittensVaultExecutor liquidityExecutor,
+            KittensNativeRecipient paymaster,
+            KittensNativeRecipient operations
         ) = _configuredVault();
+        burnExecutor;
+        liquidityExecutor;
+        paymaster;
+        operations;
         vm.deal(address(vault), 1 ether);
         hook.credit(vault, 1 ether);
 
@@ -80,10 +85,15 @@ contract KittensFeeVaultTest {
         (
             KittensFeeVault vault,
             KittensVaultHookSource hook,
-            ,
-            ,
-            ,
+            KittensVaultExecutor burnExecutor,
+            KittensVaultExecutor liquidityExecutor,
+            KittensNativeRecipient paymaster,
+            KittensNativeRecipient operations
         ) = _configuredVault();
+        burnExecutor;
+        liquidityExecutor;
+        paymaster;
+        operations;
         vm.deal(address(vault), 7 wei);
         hook.credit(vault, 7 wei);
         require(vault.burnReserve() == 7 wei, "dust not assigned to burn lane");
@@ -94,10 +104,15 @@ contract KittensFeeVaultTest {
         (
             KittensFeeVault vault,
             KittensVaultHookSource hook,
-            ,
-            ,
-            ,
+            KittensVaultExecutor burnExecutor,
+            KittensVaultExecutor liquidityExecutor,
+            KittensNativeRecipient paymaster,
+            KittensNativeRecipient operations
         ) = _configuredVault();
+        burnExecutor;
+        liquidityExecutor;
+        paymaster;
+        operations;
 
         (bool unauthorized,) = address(vault).call(abi.encodeCall(vault.creditFee, (1 ether)));
         require(!unauthorized, "unauthorized credit accepted");
@@ -116,8 +131,11 @@ contract KittensFeeVaultTest {
             KittensVaultHookSource hook,
             KittensVaultExecutor burnExecutor,
             KittensVaultExecutor liquidityExecutor,
-            ,
+            KittensNativeRecipient paymaster,
+            KittensNativeRecipient operations
         ) = _configuredVault();
+        paymaster;
+        operations;
         vm.deal(address(vault), 1 ether);
         hook.credit(vault, 1 ether);
 
@@ -138,11 +156,13 @@ contract KittensFeeVaultTest {
         (
             KittensFeeVault vault,
             KittensVaultHookSource hook,
-            ,
-            ,
+            KittensVaultExecutor burnExecutor,
+            KittensVaultExecutor liquidityExecutor,
             KittensNativeRecipient paymaster,
             KittensNativeRecipient operations
         ) = _configuredVault();
+        burnExecutor;
+        liquidityExecutor;
         vm.deal(address(vault), 1 ether);
         hook.credit(vault, 1 ether);
 
@@ -186,10 +206,15 @@ contract KittensFeeVaultTest {
         (
             KittensFeeVault vault,
             KittensVaultHookSource hook,
-            ,
-            ,
-            ,
+            KittensVaultExecutor burnExecutor,
+            KittensVaultExecutor liquidityExecutor,
+            KittensNativeRecipient paymaster,
+            KittensNativeRecipient operations
         ) = _configuredVault();
+        burnExecutor;
+        liquidityExecutor;
+        paymaster;
+        operations;
         vm.deal(address(vault), 2 ether);
         require(vault.unaccountedBalance() == 2 ether, "forced balance accounted");
         hook.credit(vault, 1 ether);
