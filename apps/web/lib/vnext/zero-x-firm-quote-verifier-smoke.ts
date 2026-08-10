@@ -72,7 +72,7 @@ export async function runZeroXFirmQuoteVerifierSmoke() {
     process.env.RMT_RPC_URL = "https://rpc.test.invalid";
 
     let issue: "none" | "allowance" | "balance" | "simulation" = "none";
-    let alter: ((value: ReturnType<typeof firmQuote>) => ReturnType<typeof firmQuote>) | undefined;
+    let alter: ((value: ReturnType<typeof firmQuote>) => unknown) | undefined;
     let rpcCallCount = 0;
     globalThis.fetch = async (input, init) => {
       const url = new URL(String(input));
@@ -111,6 +111,7 @@ export async function runZeroXFirmQuoteVerifierSmoke() {
     assert.equal(verified.approvalSpender, allowanceHolder);
     assert.equal(verified.protectedOutputAtomic, "514800000000000");
     assert.equal(verified.exactTransactionSimulationPassed, true);
+    assert.equal(verified.gasCostCeilingNativeAtomic, "9000000000000");
     assert.equal(verified.strictVerificationAvailable, false);
     assert.equal(verified.walletAuthorizationAvailable, false);
     assert.equal(verified.admissionReady, false);
@@ -139,6 +140,24 @@ export async function runZeroXFirmQuoteVerifierSmoke() {
     issue = "none";
     alter = (value) => ({ ...value, allowanceTarget: recipient });
     await assert.rejects(() => verifyZeroXSwapFirmQuote(verificationRequest), /unapproved AllowanceHolder/);
+    alter = undefined;
+
+    alter = (value) => ({ ...value, transaction: { ...value.transaction, to: recipient } });
+    await assert.rejects(() => verifyZeroXSwapFirmQuote(verificationRequest), /invalid AllowanceHolder transaction envelope/);
+    alter = undefined;
+
+    alter = (value) => ({
+      ...value,
+      fees: {
+        ...value.fees,
+        integratorFee: { amount: "1", token: outputAsset, type: "volume" }
+      }
+    });
+    await assert.rejects(() => verifyZeroXSwapFirmQuote(verificationRequest), /unexpected integrator fee/);
+    alter = undefined;
+
+    alter = (value) => ({ ...value, minBuyAmount: "513999999999999" });
+    await assert.rejects(() => verifyZeroXSwapFirmQuote(verificationRequest), /firm-quote economics/);
     alter = undefined;
 
     process.env.RMT_ZEROX_ALLOWANCE_HOLDER_CODE_HASH = `0x${"11".repeat(32)}`;
