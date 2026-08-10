@@ -37,6 +37,14 @@ assert.equal(isVNextQuoteReusableForTrade({
   ...response,
   attempts: [{ ...response.attempts[0], strictVerificationAvailable: false }]
 } as VNextQuoteResponse, now), false);
+assert.equal(isVNextQuoteReusableForTrade({
+  ...response,
+  attempts: [{
+    ...response.attempts[0],
+    provider: "zero-x-swap",
+    strictVerificationAvailable: true
+  }]
+} as VNextQuoteResponse, now), false);
 
 const composer = readFileSync(new URL("../../app/vnext/trade-intent-composer.tsx", import.meta.url), "utf8");
 assert.match(composer, /backgroundQuoteEpoch/);
