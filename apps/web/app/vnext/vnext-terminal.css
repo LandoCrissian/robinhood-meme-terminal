@@ -675,7 +675,7 @@ body .rmtVnext {
 
 .vnDiscoveryWorkspace {
   display: grid;
-  grid-template-columns: minmax(270px, 0.72fr) minmax(0, 1.28fr);
+  grid-template-columns: minmax(300px, 0.78fr) minmax(0, 1.22fr);
   overflow: hidden;
 }
 
@@ -2126,9 +2126,7 @@ body .rmtVnext {
   }
 
   .vnTopbarTitle {
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
+    display: none;
   }
 
   .vnChainLabel,
@@ -2244,7 +2242,12 @@ body .rmtVnext {
     margin-top: 12px;
   }
 
+  .vnTradePanel {
+    order: 1;
+  }
+
   .vnDiscoveryWorkspace {
+    order: 2;
     grid-template-columns: 1fr;
     gap: 12px;
     overflow: visible;
