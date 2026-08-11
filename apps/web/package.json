@@ -56,6 +56,7 @@
     "test:vnext-domain": "tsx lib/vnext/execution-domain-smoke.ts",
     "test:vnext-assets": "tsx lib/vnext/trusted-asset-registry-smoke.ts",
     "test:vnext-across": "tsx lib/vnext/across-funding-smoke.ts",
+    "test:vnext-cross-chain": "tsx lib/vnext/cross-chain-funding-smoke.ts",
     "test:vnext-shell": "tsx lib/vnext/vnext-shell-smoke.ts",
     "test:vnext-release-readiness": "tsx lib/vnext/release-readiness-smoke.ts",
     "test:vnext-spend-balance": "tsx lib/vnext/spend-balance-smoke.ts",
