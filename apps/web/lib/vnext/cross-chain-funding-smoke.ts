@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import {
   encodeAbiParameters,
   encodeEventTopics,
@@ -472,5 +473,18 @@ const refundReceipt = {
 };
 assert.equal(verifyAcrossRefundReceipt({ session: submitted, observation: refundObservation, receipt: refundReceipt }), true);
 assert.equal(applyAcrossFundingObservation(sourceConfirmed, refundObservation, now + 20, true).state, "refunded");
+
+const quoteRoute = readFileSync(new URL("../../app/api/vnext/funding/across/quote/route.ts", import.meta.url), "utf8");
+const sessionsRoute = readFileSync(new URL("../../app/api/vnext/funding/sessions/route.ts", import.meta.url), "utf8");
+assert.match(quoteRoute, /if \(!operational\.authorizationEnabled\)/);
+assert.match(quoteRoute, /requireAuthenticatedTradeWallet\(request, recipient\)/);
+assert.match(quoteRoute, /fundingReadiness\.fundedPreflightReady/);
+assert.match(quoteRoute, /userAuthorizationRequired: true/);
+assert.match(quoteRoute, /serverSubmissionEnabled: false/);
+assert.doesNotMatch(quoteRoute, /sendTransaction|writeContract|privateKey/);
+assert.match(sessionsRoute, /requireAuthenticatedTradeWallet\(request, wallet\)/);
+assert.match(sessionsRoute, /verifyAcrossSourceTransaction/);
+assert.match(sessionsRoute, /refreshAcrossFundingSession/);
+assert.doesNotMatch(sessionsRoute, /sendTransaction|writeContract|privateKey/);
 
 console.log("RMT cross-chain funding lifecycle and local recovery smoke checks passed.");
