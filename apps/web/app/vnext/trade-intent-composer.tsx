@@ -808,7 +808,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
         {visibleQuote ? <div className="vnQuoteAttempts">
           {visibleQuote.attempts.map((attempt) => (
             <div className={attempt.status === "indicative" ? "isReady" : ""} key={attempt.provider}>
-              <span><strong>{attempt.providerLabel}</strong><small>{attempt.executionKind === "rfq_intent" ? "Intent" : attempt.executionKind === "gasless" ? "Gasless" : attempt.executionKind === "aggregator" ? "Aggregator" : "Direct AMM"} · {attempt.userPaysGas === false ? "filler pays gas" : "wallet gas"} · {attempt.latencyMs}ms</small></span>
+              <span><strong>{attempt.providerLabel}</strong><small>{attempt.executionKind === "rfq_intent" ? "Intent" : attempt.executionKind === "gasless" ? "Gasless" : attempt.executionKind === "aggregator" ? "Aggregator" : "Direct AMM"} · {attempt.userPaysGas === null ? "gas unknown" : attempt.userPaysGas ? "wallet gas" : "filler pays gas"} · {attempt.latencyMs}ms</small></span>
               <span><strong>{attempt.status === "indicative" && attempt.outputDecimals !== null ? `${formatAtomicDisplay(attempt.protectedOutputAtomic!, attempt.outputDecimals)} ${outputSymbol}` : attempt.status === "no_route" ? "No route" : attempt.status === "invalid_response" ? "Rejected" : "Unavailable"}</strong><small>{attempt.status === "indicative"
                 ? attempt.provider === bestQuote?.provider
                   ? "Highest before network fee · indicative floor"

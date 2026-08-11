@@ -224,6 +224,7 @@ assert.match(uniswap, /quoteExactInputSingle/);
 assert.match(composer, /\/api\/vnext\/quotes/);
 assert.match(composer, /One action handles routing, verification, simulation, and exact payload preparation/);
 assert.match(composer, /Protected output before network fee/);
+assert.match(composer, /attempt\.userPaysGas === null \? "gas unknown"/);
 assert.doesNotMatch(composer, /writeContract|sendTransaction|signTypedData/);
 
 console.log("RMT VNext live quote observation smoke checks passed.");
