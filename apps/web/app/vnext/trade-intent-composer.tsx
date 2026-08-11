@@ -308,7 +308,10 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
   const verifiedUsdgOutcome = visibleVerification
     ? deriveVNextVerifiedUsdgOutcome(visibleVerification, costValuationClockMs)
     : null;
-  const displayOutput = bestQuote && bestQuote.outputDecimals !== null
+  const expectedOutput = bestQuote?.expectedOutputAtomic && bestQuote.outputDecimals !== null
+    ? formatAtomicDisplay(bestQuote.expectedOutputAtomic, bestQuote.outputDecimals)
+    : null;
+  const protectedOutput = bestQuote && bestQuote.outputDecimals !== null
     ? formatAtomicDisplay(bestQuote.protectedOutputAtomic!, bestQuote.outputDecimals)
     : null;
   const availableDisplay = inputBalanceAtomic && pairInputDecimals !== null
@@ -675,15 +678,15 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
     <aside className="vnTradePanel" aria-labelledby="vn-trade-heading">
       <div className="vnTradeHeader">
         <div><span className="vnEyebrow">Trade</span><h2 id="vn-trade-heading">{marketSymbol === "—" ? "Select an asset" : `Trade ${marketSymbol}`}</h2><small>{marketName}</small></div>
-        <span className="vnFixtureBadge">{authorizationEnabled ? "Guarded execution" : "Execution preview"}</span>
+        <span className="vnFixtureBadge">{authorizationEnabled ? "Live trading" : "Preview mode"}</span>
       </div>
       <div className="vnSideTabs" role="tablist" aria-label="Trade side">
         <button className={side === "buy" ? "isActive" : ""} onClick={() => chooseSide("buy")} type="button" role="tab" aria-selected={side === "buy"}>Buy</button>
         <button className={side === "sell" ? "isActive" : ""} onClick={() => chooseSide("sell")} type="button" role="tab" aria-selected={side === "sell"}>Sell</button>
       </div>
-      <div className="vnAvailableLine"><span>{side === "buy" ? "Pay with wallet asset" : "Settlement asset"}</span><strong>{pair ? `${inputSymbol} → ${outputSymbol}` : "Verified pair required"}</strong></div>
+      <div className="vnAvailableLine"><span>{side === "buy" ? "Pay with" : "Receive"}</span><strong>{pair ? `${inputSymbol} → ${outputSymbol}` : "Verified pair required"}</strong></div>
       <label className="vnAmountField">
-        <span>Exact input amount</span>
+        <span>{side === "buy" ? "You pay" : "You sell"}</span>
         <div><input inputMode="decimal" value={amount} onChange={(event) => {
           autoFitBuyAmount.current = false;
           setAmount(event.target.value);
@@ -740,8 +743,8 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
       ) : <p className="vnIntentHint">Enter the exact {inputSymbol === "—" ? "input asset" : inputSymbol} amount. RMT does not estimate or inflate wallet balances.</p>}
       <div className="vnSwapDivider"><span aria-hidden="true">↓</span></div>
       <div className="vnReceiveField">
-        <span>Output asset</span>
-        <div><strong>{displayOutput ? `${displayOutput} ${outputSymbol}` : quoteState.state === "loading" ? "Checking live routes…" : "Fresh quote required"}</strong>
+        <span>Expected receive</span>
+        <div><strong>{expectedOutput ? `${expectedOutput} ${outputSymbol}` : quoteState.state === "loading" ? "Checking live routes…" : "Fresh quote required"}</strong>
           {side === "sell" ? <select
             aria-label="Receive asset"
             value={selectedSellOutput ? assetKey(selectedSellOutput.id) : ""}
@@ -751,7 +754,8 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
             {sellOutputs.map((asset) => <option value={assetKey(asset.id)} key={assetKey(asset.id)}>{asset.symbol ?? "Asset"}</option>)}
           </select> : <button type="button" disabled>{outputSymbol}</button>}
         </div>
-        <small>{displayOutput ? `Highest observed protected output before network fee from ${bestQuote?.providerLabel}. RMT verifies exact costs and execution automatically when you trade.` : "Protected executable output is set during the one-tap execution check."}</small>
+        <div className="vnOutputProtection"><span>Protected minimum</span><strong>{protectedOutput ? `${protectedOutput} ${outputSymbol}` : "Set when you trade"}</strong></div>
+        <small>{protectedOutput ? `Best observed: ${bestQuote?.providerLabel}. Quotes update quietly; RMT verifies the executable route when you trade.` : "RMT sets and verifies the protected minimum during the one-tap execution check."}</small>
       </div>
       <button
         className="vnReviewButton"
@@ -774,7 +778,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
               ? `${side === "buy" ? "Sign in & buy" : "Sign in & sell"} ${marketSymbol}`
               : `${authorizationEnabled ? "" : "Preview "}${side === "buy" ? "Buy" : "Sell"} ${marketSymbol}`}</button>
       <p className="vnTradeSafety">{identity.enabled
-        ? "One action handles routing, verification, simulation, and exact payload preparation. Your wallet always shows the final authorization."
+        ? "One tap checks the best route and opens the final wallet confirmation."
         : "Trading identity is not configured in this environment. RMT will not request a quote or prepare a wallet transaction."}</p>
       {postExecutionState.state !== "idle" ? <div className={`vnPostExecution is${postExecutionState.state}`} role="status">
         <strong>{postExecutionState.state === "approval_confirmed"
@@ -791,7 +795,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
         <small>{postExecutionState.message}</small>
       </div> : null}
       <details className="vnRouteCard">
-        <summary className="vnRouteTop"><span><i aria-hidden="true" /> Advanced execution details</span><strong>{visibleVerification ? verificationLabel : visibleQuote ? "Routes compared" : draft.intent ? "Ready" : "Not ready"}</strong></summary>
+        <summary className="vnRouteTop"><span><i aria-hidden="true" /> Advanced details</span><strong>{visibleVerification ? verificationLabel : visibleQuote ? "Routes compared" : draft.intent ? "Ready" : "Not ready"}</strong></summary>
         <div className="vnRouteDetails">
         <dl className="vnIntentSummary">
           <div><dt>Input</dt><dd>{inputSymbol}</dd></div>
