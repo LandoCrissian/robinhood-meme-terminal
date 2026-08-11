@@ -668,7 +668,7 @@ body .rmtVnext {
 
 .vnWorkspaceGrid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(340px, 390px);
+  grid-template-columns: minmax(0, 1fr) minmax(400px, 440px);
   gap: 22px;
   margin-top: 22px;
   align-items: start;
@@ -1178,14 +1178,14 @@ body .rmtVnext {
 .vnTradePanel {
   position: sticky;
   top: 94px;
-  padding: 22px;
+  padding: 24px;
 }
 
 .vnFixtureBadge {
-  padding: 5px 8px;
-  color: var(--vn-warning);
-  background: rgba(243, 199, 126, 0.08);
-  border: 1px solid rgba(243, 199, 126, 0.15);
+  padding: 6px 9px;
+  color: var(--vn-accent);
+  background: rgba(130, 242, 143, 0.07);
+  border: 1px solid rgba(130, 242, 143, 0.16);
   border-radius: 999px;
   font-size: 9px;
   font-weight: 780;
@@ -1206,7 +1206,7 @@ body .rmtVnext {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 5px;
-  margin-top: 20px;
+  margin-top: 18px;
   padding: 4px;
   background: rgba(4, 7, 5, 0.4);
   border-radius: 12px;
@@ -1235,7 +1235,7 @@ body .rmtVnext {
 .vnReceiveField {
   display: block;
   margin-top: 10px;
-  padding: 14px;
+  padding: 16px;
   background: rgba(4, 7, 5, 0.35);
   border: 1px solid var(--vn-border-strong);
   border-radius: 14px;
@@ -1398,7 +1398,7 @@ body .rmtVnext {
   margin-top: 0;
 }
 
-.vnReceiveField strong {
+.vnReceiveField > div:not(.vnOutputProtection) > strong {
   display: flex;
   align-items: center;
   width: 100%;
@@ -1409,10 +1409,37 @@ body .rmtVnext {
   letter-spacing: -0.025em;
 }
 
+.vnOutputProtection {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 38px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--vn-border);
+}
+
+.vnOutputProtection span {
+  color: var(--vn-text-muted);
+  font-size: 9px;
+  font-weight: 760;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.vnOutputProtection strong {
+  overflow: hidden;
+  color: var(--vn-accent);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .vnReceiveField > small {
   display: block;
-  min-height: 45px;
-  margin-top: 6px;
+  min-height: 32px;
+  margin-top: 8px;
   color: var(--vn-text-muted);
   font-size: 10px;
 }
@@ -2006,6 +2033,7 @@ body .rmtVnext {
 
 .vnReviewButton {
   width: 100%;
+  min-height: 52px;
   margin-top: 13px;
   border: 1px solid rgba(130, 242, 143, 0.16);
   color: #071008;
@@ -2061,7 +2089,7 @@ body .rmtVnext {
   }
 
   .vnWorkspaceGrid {
-    grid-template-columns: minmax(0, 1fr) minmax(320px, 360px);
+    grid-template-columns: minmax(0, 1fr) minmax(360px, 400px);
   }
 
   .vnDiscoveryWorkspace {
