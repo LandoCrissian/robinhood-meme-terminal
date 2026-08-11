@@ -3,7 +3,7 @@ import type { VNextProviderAuthorizationRequest, VNextProviderVerificationReques
 import { prepareVNextProviderAuthorization, quoteVNextExecutionProviders, verifyVNextExecutionProvider } from "./vnext-provider-adapter";
 import { vNextSushiAdapter } from "./vnext-sushi-adapter";
 import { vNextUniswapV3Adapter } from "./vnext-uniswap-v3-adapter";
-import { configuredVNextUniswapXAdapters } from "./vnext-uniswapx-adapter";
+import { configuredVNextUniswapXAdapters, prepareVNextUniswapXIntent } from "./vnext-uniswapx-adapter";
 import { configuredVNextZeroXAdapters } from "./vnext-zero-x-adapter";
 
 export const robinhoodVNextQuoteAdapters: readonly VNextQuoteProviderAdapter[] = [
@@ -23,4 +23,11 @@ export function verifyRobinhoodVNextExecution(provider: VNextQuoteProvider, inpu
 
 export function prepareRobinhoodVNextAuthorization(provider: VNextQuoteProvider, input: VNextProviderAuthorizationRequest) {
   return prepareVNextProviderAuthorization(provider, input, robinhoodVNextQuoteAdapters);
+}
+
+export function prepareRobinhoodVNextUniswapXIntent(
+  input: Parameters<typeof prepareVNextUniswapXIntent>[0],
+  protectedOutputFloorAtomic: bigint
+) {
+  return prepareVNextUniswapXIntent(input, protectedOutputFloorAtomic);
 }
