@@ -11,6 +11,7 @@ import {
 import { z } from "zod";
 import { ROBINHOOD_SWAP_ROUTER_02, ROBINHOOD_WETH } from "../uniswap-v4";
 import { parseVNextPreSignEvidence, type VNextPreSignEvidence } from "./pre-sign-evidence";
+import { isRobinhoodNativeAsset } from "./robinhood-assets";
 
 const MAX_CLOCK_SKEW_MS = 5_000;
 
@@ -51,7 +52,7 @@ export type VNextAuthorizationPlan = {
   chainId: 4_663;
   target: string;
   data: Hex;
-  value: "0";
+  value: string;
   gasLimit: string;
   payloadHash: Hex;
   inputAsset: string;
@@ -71,7 +72,7 @@ const atomic = z.string().regex(/^(0|[1-9][0-9]*)$/);
 const planSchema = z.object({
   planId: z.string().uuid(), sourceQuoteRequestId: z.string().uuid(), sourceVerificationId: z.string().uuid(),
   provider: z.literal("uniswap-v3"), kind: z.enum(["erc20_approval", "swap"]), chainId: z.literal(4_663),
-  target: z.string(), data: z.string().regex(/^0x[0-9a-fA-F]+$/), value: z.literal("0"), gasLimit: atomic,
+  target: z.string(), data: z.string().regex(/^0x[0-9a-fA-F]+$/), value: atomic, gasLimit: atomic,
   payloadHash: z.string().regex(/^0x[0-9a-fA-F]{64}$/), inputAsset: z.string(), outputAsset: z.string(),
   inputAmountAtomic: atomic, protectedOutputAtomic: atomic, recipient: z.string(), router: z.string(), deadline: atomic,
   preparedAtMs: z.number().int().positive(), expiresAtMs: z.number().int().positive(),
@@ -114,6 +115,7 @@ export function parseVNextAuthorizationPlan(value: unknown, evidence: VNextPreSi
     || getAddress(plan.router) !== getAddress(ROBINHOOD_SWAP_ROUTER_02)
     || plan.inputAmountAtomic !== evidence.inputAmountAtomic
     || plan.protectedOutputAtomic !== evidence.protectedOutputAtomic
+    || plan.value !== evidence.transactionValueAtomic
     || plan.deadline !== evidence.deadline
     || plan.gasLimit !== evidence.gasLimitUnits
     || plan.payloadHash !== authorizationPayloadHash(plan)
@@ -123,7 +125,7 @@ export function parseVNextAuthorizationPlan(value: unknown, evidence: VNextPreSi
   ) throw new Error("RMT rejected an inconsistent authorization plan.");
 
   if (plan.kind === "erc20_approval") {
-    if (evidence.status !== "approval_required" || getAddress(plan.target) !== getAddress(evidence.inputAsset) || keccak256(plan.data) !== evidence.nextActionCalldataHash) {
+    if (plan.value !== "0" || evidence.status !== "approval_required" || getAddress(plan.target) !== getAddress(evidence.inputAsset) || keccak256(plan.data) !== evidence.nextActionCalldataHash) {
       throw new Error("RMT rejected an approval plan that does not match strict evidence.");
     }
     const decoded = decodeFunctionData({ abi: erc20Abi, data: plan.data });
@@ -143,11 +145,15 @@ export function parseVNextAuthorizationPlan(value: unknown, evidence: VNextPreSi
   const [deadline, calls] = outer.args;
   if (deadline !== BigInt(evidence.deadline) || calls.length !== 1) throw new Error("RMT rejected changed deadline or call count.");
   const inner = decodeFunctionData({ abi: routerAbi, data: calls[0] });
+  const expectedSwapInput = isRobinhoodNativeAsset(evidence.inputAsset) ? ROBINHOOD_WETH : getAddress(evidence.inputAsset);
+  if (plan.value !== (isRobinhoodNativeAsset(evidence.inputAsset) ? evidence.inputAmountAtomic : "0")) {
+    throw new Error("RMT rejected changed native swap value.");
+  }
   if (evidence.route === "direct") {
     if (inner.functionName !== "exactInputSingle") throw new Error("RMT rejected a changed direct-swap function.");
     const params = inner.args[0];
     if (
-      getAddress(params.tokenIn) !== getAddress(evidence.inputAsset)
+      getAddress(params.tokenIn) !== expectedSwapInput
       || getAddress(params.tokenOut) !== getAddress(evidence.outputAsset)
       || getAddress(params.recipient) !== getAddress(evidence.recipient)
       || params.amountIn !== BigInt(evidence.inputAmountAtomic)
@@ -160,7 +166,7 @@ export function parseVNextAuthorizationPlan(value: unknown, evidence: VNextPreSi
     const params = inner.args[0];
     const path = decodeTwoHopPath(params.path);
     if (
-      getAddress(path.tokenIn) !== getAddress(evidence.inputAsset)
+      getAddress(path.tokenIn) !== expectedSwapInput
       || getAddress(path.intermediate) !== getAddress(ROBINHOOD_WETH)
       || getAddress(path.tokenOut) !== getAddress(evidence.outputAsset)
       || path.fee0 !== evidence.fees[0] || path.fee1 !== evidence.fees[1]

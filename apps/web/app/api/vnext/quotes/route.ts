@@ -3,7 +3,8 @@ import { getAddress, isAddress } from "viem";
 import { z } from "zod";
 import { quoteRobinhoodVNextExecution } from "../../../../lib/server/vnext-execution-engine";
 import { requireAuthenticatedTradeWallet, tradeIdentityErrorResponse } from "../../../../lib/server/rmt-trade-identity";
-import { readRobinhoodTokenIdentity } from "../../../../lib/server/universal-market-resolver";
+import { readVNextVerifiedAssetIdentity } from "../../../../lib/server/vnext-asset-identity";
+import { isRobinhoodNativeAsset } from "../../../../lib/vnext/robinhood-assets";
 import type { VNextQuoteResponse } from "../../../../lib/vnext/quote-observation";
 
 export const dynamic = "force-dynamic";
@@ -30,9 +31,12 @@ export async function POST(request: Request) {
       return Response.json({ error: "Input and output assets must differ." }, { status: 400, headers: { "Cache-Control": "no-store" } });
     }
     await requireAuthenticatedTradeWallet(request, recipient);
+    if (isRobinhoodNativeAsset(outputAsset)) {
+      return Response.json({ error: "Native ETH settlement is not enabled in VNext yet. Choose USDG or WETH." }, { status: 422, headers: { "Cache-Control": "no-store" } });
+    }
     const [inputIdentity, outputIdentity] = await Promise.all([
-      readRobinhoodTokenIdentity(inputAsset),
-      readRobinhoodTokenIdentity(outputAsset)
+      readVNextVerifiedAssetIdentity(inputAsset),
+      readVNextVerifiedAssetIdentity(outputAsset)
     ]);
     if (!inputIdentity || !outputIdentity) {
       return Response.json({ error: "Both quote assets require verified Robinhood Chain identity and decimals." }, { status: 422, headers: { "Cache-Control": "no-store" } });
@@ -46,8 +50,8 @@ export async function POST(request: Request) {
       inputAmountAtomic: parsed.data.inputAmountAtomic,
       amountIn: BigInt(parsed.data.inputAmountAtomic),
       recipient,
-      inputIdentity: { address: inputAsset, symbol: inputIdentity.symbol, decimals: inputIdentity.decimals },
-      outputIdentity: { address: outputAsset, symbol: outputIdentity.symbol, decimals: outputIdentity.decimals }
+      inputIdentity,
+      outputIdentity
     });
     const response: VNextQuoteResponse = {
       requestId: randomUUID(),

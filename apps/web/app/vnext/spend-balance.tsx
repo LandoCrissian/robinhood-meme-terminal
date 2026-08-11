@@ -49,9 +49,10 @@ function stateLabel(asset: VNextDetectedWalletAsset) {
   return asset.identityState === "verified" ? "Detected" : "Detected · identity reported";
 }
 
-export function SpendBalance({ markets, onAssetsChange, executionRecord }: {
+export function SpendBalance({ markets, onAssetsChange, onNativeBalanceChange, executionRecord }: {
   markets: VNextDirectoryMarket[];
   onAssetsChange?: (assets: VNextDetectedWalletAsset[]) => void;
+  onNativeBalanceChange?: (balance: bigint | undefined) => void;
   executionRecord?: VNextExecutionRecord | null;
 }) {
   const { address, chainId, isConnected } = useAccount();
@@ -79,6 +80,7 @@ export function SpendBalance({ markets, onAssetsChange, executionRecord }: {
   const refreshBalances = useRef(refresh);
 
   useEffect(() => onAssetsChange?.(assets), [assets, onAssetsChange]);
+  useEffect(() => onNativeBalanceChange?.(nativeBalance), [nativeBalance, onNativeBalanceChange]);
   useEffect(() => {
     refreshBalances.current = refresh;
   }, [refresh]);

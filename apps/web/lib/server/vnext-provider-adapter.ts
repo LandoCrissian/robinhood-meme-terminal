@@ -39,6 +39,7 @@ export type VNextProviderVerificationEvidence = Record<string, unknown> & {
   nextAction: "approval" | "swap" | null;
   nextActionTarget: Address | null;
   nextActionCalldataHash: Hex | null;
+  transactionValueAtomic: string;
   gasLimitUnits: string | null;
   estimatedNetworkCostUsdgAtomic: string | null;
   networkCostValuationSource: "canonical_uniswap_v3_weth_usdg_quote_plus_1pct" | null;
@@ -58,7 +59,7 @@ export type VNextPreparedProviderAuthorization = {
     kind: "erc20_approval" | "swap";
     target: Address;
     data: Hex;
-    value: "0";
+    value: string;
     gasLimit: string;
   };
 };
@@ -197,6 +198,7 @@ function assertVerificationEvidence(
     || !/^0x[0-9a-fA-F]{64}$/.test(evidence.calldataHash)
     || (evidence.nextActionTarget !== null && !isAddress(evidence.nextActionTarget))
     || (evidence.nextActionCalldataHash !== null && !/^0x[0-9a-fA-F]{64}$/.test(evidence.nextActionCalldataHash))
+    || !/^(0|[1-9][0-9]*)$/.test(evidence.transactionValueAtomic)
     || (evidence.gasLimitUnits !== null && !/^[1-9][0-9]*$/.test(evidence.gasLimitUnits))
   ) throw new Error(`RMT rejected inconsistent ${adapter.providerLabel} verification evidence.`);
 }
@@ -244,7 +246,8 @@ export async function prepareVNextProviderAuthorization(
     || getAddress(prepared.transaction.target) !== getAddress(prepared.evidence.nextActionTarget)
     || !/^0x(?:[0-9a-fA-F]{2})+$/.test(prepared.transaction.data)
     || keccak256(prepared.transaction.data).toLowerCase() !== prepared.evidence.nextActionCalldataHash.toLowerCase()
-    || prepared.transaction.value !== "0"
+    || !/^(0|[1-9][0-9]*)$/.test(prepared.transaction.value)
+    || prepared.transaction.value !== prepared.evidence.transactionValueAtomic
     || !/^[1-9][0-9]*$/.test(prepared.transaction.gasLimit)
     || prepared.transaction.gasLimit !== prepared.evidence.gasLimitUnits
   ) throw new Error(`RMT rejected an invalid ${adapter.providerLabel} wallet request.`);
