@@ -82,6 +82,8 @@ assert.match(shell, /<VNextExecutionRecoveryBanner/);
 assert.match(shell, /useVNextExecutionRecovery/);
 assert.match(spendBalance, /Available to trade/);
 assert.match(spendBalance, /Pending/);
+assert.match(spendBalance, /aria-expanded=\{holdingsExpanded\}/);
+assert.match(spendBalance, /View assets/);
 assert.match(shell, /Markets/);
 assert.match(shell, /<TradeIntentComposer/);
 assert.match(shell, /useVNextMarketDirectory/);
@@ -150,6 +152,9 @@ assert.match(styles, /\.vnWorkspaceGrid[\s\S]*grid-template-columns: minmax\(0, 
 assert.match(styles, /\.vnDiscoveryWorkspace[\s\S]*grid-template-columns: minmax\(300px, 0\.78fr\) minmax\(0, 1\.22fr\)/);
 assert.match(styles, /\.vnMobileDock[\s\S]*grid-template-columns: repeat\(3, 1fr\)/);
 assert.match(styles, /@media \(max-width: 760px\)[\s\S]*\.vnTopbarTitle \{[\s\S]*display: none[\s\S]*\.vnTradePanel \{[\s\S]*order: 1[\s\S]*\.vnDiscoveryWorkspace \{[\s\S]*order: 2/);
+assert.match(styles, /@media \(max-width: 760px\)[\s\S]*\.vnDetectedAssetsToggle \{[\s\S]*display: inline-flex/);
+assert.match(styles, /\.vnDetectedAssets:not\(\.isExpanded\) \.vnDetectedAssetsRefresh/);
+assert.match(styles, /@media \(max-width: 760px\)[\s\S]*\.vnDetectedAssetsBody \{[\s\S]*display: none[\s\S]*\.vnDetectedAssets\.isExpanded \.vnDetectedAssetsBody \{[\s\S]*display: block/);
 assert.match(styles, /\.vnRouteDetails[\s\S]*height: clamp\(280px, 42svh, 390px\)/);
 assert.match(styles, /scrollbar-gutter: stable/);
 assert.match(styles, /\.vnReceiveField strong[\s\S]*min-height: 58px/);

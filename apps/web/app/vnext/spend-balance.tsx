@@ -61,6 +61,7 @@ export function SpendBalance({ markets, onAssetsChange, onNativeBalanceChange, e
   const [imported, setImported] = useState<VNextWalletAssetCandidate[]>([]);
   const [importState, setImportState] = useState<"idle" | "checking" | "success" | "error">("idle");
   const [importMessage, setImportMessage] = useState("Paste a Robinhood token contract that is missing from the directory.");
+  const [holdingsExpanded, setHoldingsExpanded] = useState(false);
   const wallet = address;
   const onRobinhood = chainId === ROBINHOOD_MAINNET_CHAIN_ID;
   const { assets, nativeBalance, status, enabled, refresh } = useVNextWalletAssets(markets, imported);
@@ -169,49 +170,60 @@ export function SpendBalance({ markets, onAssetsChange, onNativeBalanceChange, e
         <Link className="vnQuietButton" href="/portfolio">View portfolio</Link>
       </div>
 
-      {enabled && <div className="vnDetectedAssets" aria-live="polite">
+      {enabled && <div className={`vnDetectedAssets${holdingsExpanded ? " isExpanded" : ""}`} aria-live="polite">
         <div className="vnDetectedAssetsHead">
           <span><strong>Onchain holdings</strong><small>Canonical assets + current live directory</small></span>
-          <button type="button" onClick={() => void refresh()} disabled={status === "loading"}>{status === "loading" ? "Scanning…" : "Refresh"}</button>
-        </div>
-        <form className="vnAssetImport" onSubmit={(event) => void importAsset(event)}>
-          <label htmlFor="vn-import-token">Import held token</label>
-          <div>
-            <input
-              id="vn-import-token"
-              value={importAddress}
-              onChange={(event) => {
-                setImportAddress(event.target.value);
-                if (importState !== "idle") {
-                  setImportState("idle");
-                  setImportMessage("Paste a Robinhood token contract that is missing from the directory.");
-                }
-              }}
-              inputMode="text"
-              autoComplete="off"
-              spellCheck={false}
-              placeholder="0x… token contract"
-              aria-describedby="vn-import-token-status"
-            />
-            <button type="submit" disabled={importState === "checking" || importAddress.trim().length === 0}>{importState === "checking" ? "Checking…" : "Check balance"}</button>
+          <div className="vnDetectedAssetsControls">
+            <button
+              className="vnDetectedAssetsToggle"
+              type="button"
+              aria-expanded={holdingsExpanded}
+              aria-controls="vn-detected-assets-body"
+              onClick={() => setHoldingsExpanded((expanded) => !expanded)}
+            >{holdingsExpanded ? "Hide assets" : "View assets"}</button>
+            <button className="vnDetectedAssetsRefresh" type="button" onClick={() => void refresh()} disabled={status === "loading"}>{status === "loading" ? "Scanning…" : "Refresh"}</button>
           </div>
-          <small id="vn-import-token-status" className={importState === "error" ? "isError" : importState === "success" ? "isSuccess" : ""} role="status">{importMessage}</small>
-        </form>
-        {status === "error" && assets.length === 0 ? <p className="vnDetectedAssetsEmpty">Wallet reads are temporarily unavailable. No asset was marked unavailable.</p> : null}
-        {status === "ready" && assets.length === 0 && (!nativeBalance || nativeBalance === 0n) ? <p className="vnDetectedAssetsEmpty">No positive balance was found in the current scan set.</p> : null}
-        {(assets.length > 0 || (nativeBalance && nativeBalance > 0n)) ? <div className="vnDetectedAssetList">
-          {nativeBalance && nativeBalance > 0n ? <div className="vnDetectedAsset">
-            <span className="vnDetectedMark" aria-hidden="true">E</span>
-            <span><strong>ETH</strong><small>Ether</small></span>
-            <span><strong>{amount(nativeBalance, ROBINHOOD_ETH.decimals, 5)}</strong><small>Detected · native</small></span>
+        </div>
+        <div className="vnDetectedAssetsBody" id="vn-detected-assets-body">
+          <form className="vnAssetImport" onSubmit={(event) => void importAsset(event)}>
+            <label htmlFor="vn-import-token">Import held token</label>
+            <div>
+              <input
+                id="vn-import-token"
+                value={importAddress}
+                onChange={(event) => {
+                  setImportAddress(event.target.value);
+                  if (importState !== "idle") {
+                    setImportState("idle");
+                    setImportMessage("Paste a Robinhood token contract that is missing from the directory.");
+                  }
+                }}
+                inputMode="text"
+                autoComplete="off"
+                spellCheck={false}
+                placeholder="0x… token contract"
+                aria-describedby="vn-import-token-status"
+              />
+              <button type="submit" disabled={importState === "checking" || importAddress.trim().length === 0}>{importState === "checking" ? "Checking…" : "Check balance"}</button>
+            </div>
+            <small id="vn-import-token-status" className={importState === "error" ? "isError" : importState === "success" ? "isSuccess" : ""} role="status">{importMessage}</small>
+          </form>
+          {status === "error" && assets.length === 0 ? <p className="vnDetectedAssetsEmpty">Wallet reads are temporarily unavailable. No asset was marked unavailable.</p> : null}
+          {status === "ready" && assets.length === 0 && (!nativeBalance || nativeBalance === 0n) ? <p className="vnDetectedAssetsEmpty">No positive balance was found in the current scan set.</p> : null}
+          {(assets.length > 0 || (nativeBalance && nativeBalance > 0n)) ? <div className="vnDetectedAssetList">
+            {nativeBalance && nativeBalance > 0n ? <div className="vnDetectedAsset">
+              <span className="vnDetectedMark" aria-hidden="true">E</span>
+              <span><strong>ETH</strong><small>Ether</small></span>
+              <span><strong>{amount(nativeBalance, ROBINHOOD_ETH.decimals, 5)}</strong><small>Detected · native</small></span>
+            </div> : null}
+            {assets.slice(0, 8).map((asset) => <div className="vnDetectedAsset" key={asset.address}>
+              <span className="vnDetectedMark" aria-hidden="true">{asset.symbol.slice(0, 1)}</span>
+              <span><strong>{asset.symbol}</strong><small>{asset.name}</small></span>
+              <span><strong>{assetAmount(asset)}</strong><small>{stateLabel(asset)} · route not checked</small></span>
+            </div>)}
           </div> : null}
-          {assets.slice(0, 8).map((asset) => <div className="vnDetectedAsset" key={asset.address}>
-            <span className="vnDetectedMark" aria-hidden="true">{asset.symbol.slice(0, 1)}</span>
-            <span><strong>{asset.symbol}</strong><small>{asset.name}</small></span>
-            <span><strong>{assetAmount(asset)}</strong><small>{stateLabel(asset)} · route not checked</small></span>
-          </div>)}
-        </div> : null}
-        {assets.length > 8 ? <p className="vnDetectedAssetsMore">+{assets.length - 8} more detected assets</p> : null}
+          {assets.length > 8 ? <p className="vnDetectedAssetsMore">+{assets.length - 8} more detected assets</p> : null}
+        </div>
       </div>}
     </section>
   );
