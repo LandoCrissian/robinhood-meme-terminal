@@ -107,6 +107,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
   const autoFitBuyAmount = useRef(true);
   const backgroundQuoteEpoch = useRef(0);
   const backgroundQuoteImmediate = useRef(false);
+  const backgroundQuoteAttempted = useRef(false);
   const lastReadyQuote = useRef<VNextCachedQuote | undefined>(undefined);
   const lastReadyVerification = useRef<VNextPreSignEvidence | undefined>(undefined);
   const receiptAction = useRef<HTMLButtonElement>(null);
@@ -227,6 +228,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
   const cachedQuote = cachedVNextQuoteForRequest(lastReadyQuote.current, requestKey);
   useEffect(() => {
     backgroundQuoteEpoch.current += 1;
+    backgroundQuoteAttempted.current = false;
     setQuoteState({ state: "idle" });
     setVerificationState({ state: "idle" });
     setAuthorizationState({ state: "idle" });
@@ -399,7 +401,8 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
     const refresh = async () => {
       if (cancelled || backgroundQuoteEpoch.current !== epoch) return;
       const hadVisibleQuote = Boolean(cachedVNextQuoteForRequest(lastReadyQuote.current, requestKey));
-      if (!hadVisibleQuote) setQuoteState({ state: "loading" });
+      if (!hadVisibleQuote && !backgroundQuoteAttempted.current) setQuoteState({ state: "loading" });
+      backgroundQuoteAttempted.current = true;
       try {
         const freshQuote = await requestLiveRoutes();
         if (cancelled || backgroundQuoteEpoch.current !== epoch) return;
@@ -644,6 +647,22 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
               ? "Gas estimate unavailable"
           : "Simulation failed"
     : null;
+  const expectedOutputLabel = expectedOutput
+    ? `${expectedOutput} ${outputSymbol}`
+    : !draft.intent
+      ? "Enter trade amount"
+      : quoteState.state === "error"
+        ? "Route temporarily unavailable"
+        : "Finding best route…";
+  const routeStatusLabel = visibleVerification
+    ? verificationLabel
+    : visibleQuote
+      ? "Routes compared"
+      : quoteState.state === "error"
+        ? "Route unavailable"
+        : draft.intent
+          ? "Finding route"
+          : "Not ready";
   const flowBusy = verificationState.state === "loading"
     || authorizationState.state === "loading"
     || postExecutionState.state === "refreshing";
@@ -745,7 +764,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
       <div className="vnSwapDivider"><span aria-hidden="true">↓</span></div>
       <div className="vnReceiveField">
         <span>Expected receive</span>
-        <div><strong>{expectedOutput ? `${expectedOutput} ${outputSymbol}` : quoteState.state === "loading" ? "Checking live routes…" : "Fresh quote required"}</strong>
+        <div><strong>{expectedOutputLabel}</strong>
           {side === "sell" ? <select
             aria-label="Receive asset"
             value={selectedSellOutput ? assetKey(selectedSellOutput.id) : ""}
@@ -796,7 +815,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
         <small>{postExecutionState.message}</small>
       </div> : null}
       <details className="vnRouteCard">
-        <summary className="vnRouteTop"><span><i aria-hidden="true" /> Advanced details</span><strong>{visibleVerification ? verificationLabel : visibleQuote ? "Routes compared" : draft.intent ? "Ready" : "Not ready"}</strong></summary>
+        <summary className="vnRouteTop"><span><i aria-hidden="true" /> Advanced details</span><strong>{routeStatusLabel}</strong></summary>
         <div className="vnRouteDetails">
         <dl className="vnIntentSummary">
           <div><dt>Input</dt><dd>{inputSymbol}</dd></div>

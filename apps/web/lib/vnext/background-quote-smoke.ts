@@ -49,9 +49,14 @@ assert.equal(isVNextQuoteReusableForTrade({
 const composer = readFileSync(new URL("../../app/vnext/trade-intent-composer.tsx", import.meta.url), "utf8");
 assert.match(composer, /backgroundQuoteEpoch/);
 assert.match(composer, /backgroundQuoteImmediate/);
+assert.match(composer, /backgroundQuoteAttempted/);
 assert.match(composer, /VNEXT_BACKGROUND_QUOTE_REFRESH_MS/);
 assert.match(composer, /lastReadyQuote\.current = \{ requestKey, response: freshQuote \}/);
 assert.match(composer, /const visibleQuote = cachedQuote/);
+assert.match(composer, /Route temporarily unavailable/);
+assert.match(composer, /Route unavailable/);
+assert.match(composer, /Finding route/);
+assert.doesNotMatch(composer, /Fresh quote required|Checking live routes/);
 assert.match(composer, /isVNextQuoteReusableForTrade/);
 const continuation = composer.slice(composer.indexOf("const continueTrading"), composer.indexOf("return (", composer.indexOf("const continueTrading")));
 assert.match(continuation, /clearTradeQuoteCache\(\)/);
