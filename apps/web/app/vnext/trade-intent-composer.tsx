@@ -674,7 +674,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
   return (
     <aside className="vnTradePanel" aria-labelledby="vn-trade-heading">
       <div className="vnTradeHeader">
-        <div><span className="vnEyebrow">Asset-to-asset intent</span><h2 id="vn-trade-heading">{marketSymbol}</h2><small>{marketName}</small></div>
+        <div><span className="vnEyebrow">Trade</span><h2 id="vn-trade-heading">{marketSymbol === "—" ? "Select an asset" : `Trade ${marketSymbol}`}</h2><small>{marketName}</small></div>
         <span className="vnFixtureBadge">{authorizationEnabled ? "Guarded execution" : "Execution preview"}</span>
       </div>
       <div className="vnSideTabs" role="tablist" aria-label="Trade side">
