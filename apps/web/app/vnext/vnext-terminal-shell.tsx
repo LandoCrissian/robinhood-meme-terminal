@@ -12,11 +12,20 @@ import { useVNextExecutionRecovery } from "./use-vnext-execution-recovery";
 import { useVNextMarketDirectory } from "./use-vnext-market-directory";
 
 const navItems = [
-  { label: "Terminal", icon: "⌂" },
-  { label: "Markets", icon: "⌕" },
-  { label: "Portfolio", icon: "◫" },
-  { label: "Activity", icon: "↗" }
-];
+  { label: "Trade", href: "#vnext-workspace", icon: "trade" },
+  { label: "Markets", href: "#vn-markets-heading", icon: "markets" },
+  { label: "Portfolio", href: "/portfolio", icon: "portfolio" }
+] as const;
+
+function NavIcon({ icon }: { icon: (typeof navItems)[number]["icon"] }) {
+  if (icon === "markets") {
+    return <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6" /><path d="m16 16 4 4" /></svg>;
+  }
+  if (icon === "portfolio") {
+    return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5h16v11H4z" /><path d="M7 7.5V5h10v2.5M15.5 12h4.5" /></svg>;
+  }
+  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M5 17h14" /><path d="m15 3 4 4-4 4M9 13l-4 4 4 4" /></svg>;
+}
 
 function MarketMark({ symbol }: { symbol: string }) {
   return <span className={`vnMarketMark vnMarketMark${symbol}`} aria-hidden="true">{symbol.slice(0, 1)}</span>;
@@ -71,15 +80,15 @@ export function VNextTerminalShell() {
     <main className="rmtVnext">
       <a className="vnSkipLink" href="#vnext-workspace">Skip to trading workspace</a>
       <aside className="vnSidebar" aria-label="VNext navigation">
-        <Link className="vnBrand" href="/" aria-label="Return to the current RMT terminal">
+        <Link className="vnBrand" href="/vnext" aria-label="RMT Terminal home">
           <Image src="/brand/rmt-master-logo.png" alt="" width={42} height={42} priority />
           <span><strong>RMT</strong><small>Terminal</small></span>
         </Link>
         <nav className="vnPrimaryNav">
           {navItems.map((item, index) => (
-            <button className={index === 0 ? "isActive" : ""} type="button" key={item.label}>
-              <span aria-hidden="true">{item.icon}</span>{item.label}
-            </button>
+            <Link className={index === 0 ? "isActive" : ""} href={item.href} key={item.label}>
+              <span><NavIcon icon={item.icon} /></span>{item.label}
+            </Link>
           ))}
         </nav>
         <div className="vnSidebarFoot">
@@ -95,11 +104,10 @@ export function VNextTerminalShell() {
             <strong>RMT</strong>
           </div>
           <div className="vnTopbarTitle">
-            <span className="vnPreviewPill">VNext preview</span>
+            <span className="vnPreviewPill">Terminal preview</span>
             <span className="vnChainLabel"><i aria-hidden="true" /> Robinhood Chain</span>
           </div>
           <div className="vnTopbarActions">
-            <button className="vnIconButton" type="button" aria-label="Open notifications">○<span className="vnUnread" /></button>
             <WalletButton target="mainnet" returnTo="/vnext" />
           </div>
         </header>
@@ -114,73 +122,65 @@ export function VNextTerminalShell() {
           <VNextExecutionRecoveryBanner record={executionRecovery.record} status={executionRecovery.status} />
 
           <div className="vnWorkspaceGrid">
-            <section className="vnMarketPanel" aria-labelledby="vn-markets-heading">
-              <div className="vnSectionHeading">
-                <div><span className="vnEyebrow">Discover</span><h1 id="vn-markets-heading">Markets</h1></div>
-                <button className="vnFilterButton" type="button">Trending <span aria-hidden="true">⌄</span></button>
-              </div>
-              <label className="vnSearch">
-                <span aria-hidden="true">⌕</span>
-                <span className="vnSrOnly">Search markets</span>
-                <input ref={marketSearch} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search asset or address" />
-                <kbd>/</kbd>
-              </label>
-              <div className="vnMarketTabs" role="tablist" aria-label="Market categories">
-                <button className="isActive" type="button" role="tab" aria-selected="true">Trending</button>
-                <button type="button" role="tab" aria-selected="false">New</button>
-                <button type="button" role="tab" aria-selected="false">Watchlist</button>
-              </div>
-              <div className="vnMarketList" aria-live="polite">
-                {status === "loading" && markets.length === 0 && <div className="vnNoResults"><strong>Syncing markets</strong><span>Loading the fast directory. Routes are not being checked.</span></div>}
-                {status === "error" && markets.length === 0 && <div className="vnNoResults"><strong>Directory unavailable</strong><span>Market data could not be loaded. No asset has been marked untradeable.</span><button type="button" onClick={() => void refresh()}>Try again</button></div>}
-                {filteredMarkets.map((market) => (
-                  <button
-                    className={`vnMarketRow${selected?.address === market.address ? " isSelected" : ""}`}
-                    key={market.address}
-                    type="button"
-                    onClick={() => setSelectedAddress(market.address)}
-                    aria-pressed={selected?.address === market.address}
-                  >
-                    <MarketMark symbol={market.symbol} />
-                    <span className="vnMarketIdentity"><strong>{market.symbol}</strong><small>{market.name}</small></span>
-                    <span className="vnMarketPrice"><strong>{formatUsd(market.priceUsd)}</strong><small className={market.priceChange24h > 0 ? "vnPositive" : market.priceChange24h < 0 ? "vnNegative" : ""}>{formatChange(market.priceChange24h)}</small></span>
-                    <span className={`vnSignal vnSignal${market.signal === "moving" ? "positive" : market.signal === "early" ? "warning" : "neutral"}`}><i aria-hidden="true" />{market.signal}</span>
-                  </button>
-                ))}
-                {status !== "loading" && markets.length > 0 && filteredMarkets.length === 0 && <div className="vnNoResults"><strong>No matching assets</strong><span>Try a symbol, name, or contract address.</span></div>}
-              </div>
-              <Link className="vnViewAll" href="/">Open current market directory <span aria-hidden="true">→</span></Link>
-            </section>
-
-            {selected ? <section className="vnAssetPanel" aria-labelledby="vn-asset-heading">
-              <div className="vnAssetHeader">
-                <div className="vnAssetIdentity">
-                  <MarketMark symbol={selected.symbol} />
-                  <div><span><h2 id="vn-asset-heading">{selected.name}</h2><b>{selected.symbol}</b></span><small>Robinhood Chain · {identityStatus === "verified" ? "Verified identity" : identityStatus === "checking" ? "Identity checking" : "Detected asset"}</small></div>
+            <div className="vnDiscoveryWorkspace">
+              <section className="vnMarketPanel" aria-labelledby="vn-markets-heading">
+                <div className="vnSectionHeading">
+                  <div><span className="vnEyebrow">Discover</span><h1 id="vn-markets-heading">Markets</h1></div>
+                  <span className="vnDirectoryMode"><i aria-hidden="true" />Live directory</span>
                 </div>
-                <button className="vnStarButton" type="button" aria-label={`Add ${selected.symbol} to watchlist`}>☆</button>
-              </div>
-              <div className="vnPriceHeader">
-                <div><strong>{formatUsd(selected.priceUsd)}</strong><span className={selected.priceChange24h > 0 ? "vnPositive" : selected.priceChange24h < 0 ? "vnNegative" : ""}>{formatChange(selected.priceChange24h)} <small>24h</small></span></div>
-                <Link className="vnOpenChart" href={`/market/${selected.address}`}>Open live chart <span aria-hidden="true">↗</span></Link>
-              </div>
-              <div className="vnChartPending">
-                <span className="vnEyebrow">Price history</span>
-                <strong>No synthetic chart</strong>
-                <small>Live candles load in the current market workspace.</small>
-                <Link href={`/market/${selected.address}`}>Open verified market data <span aria-hidden="true">→</span></Link>
-              </div>
-              <dl className="vnAssetStats">
-                <div><dt>Market cap</dt><dd>{formatCompactUsd(selected.marketCapUsd)}</dd></div>
-                <div><dt>Liquidity</dt><dd>{formatCompactUsd(selected.liquidityUsd)}</dd></div>
-                <div><dt>24h volume</dt><dd>{formatCompactUsd(selected.volume24h)}</dd></div>
-                <div><dt>Market age</dt><dd>{formatAge(selected.ageMinutes)}</dd></div>
-              </dl>
-              <div className="vnEvidence">
-                <div><span className="vnEvidenceIcon" aria-hidden="true">{identityStatus === "verified" ? "✓" : identityStatus === "checking" ? "…" : "!"}</span><span><strong>{identityStatus === "verified" ? "Identity verified" : identityStatus === "checking" ? "Checking identity" : "Identity not verified"}</strong><small>{identityStatus === "verified" ? "Chain, contract, and decimals confirmed" : identityStatus === "checking" ? "One selected-asset contract lookup" : "Execution remains blocked"}</small></span></div>
-                <Link href={`/market/${selected.address}`}>View market evidence <span aria-hidden="true">→</span></Link>
-              </div>
-            </section> : <section className="vnAssetPanel vnAssetEmpty" aria-label="Market detail"><strong>{status === "loading" ? "Syncing market directory" : "Select a market"}</strong><span>No price, identity, or execution claims are shown until real directory data is available.</span></section>}
+                <label className="vnSearch">
+                  <span aria-hidden="true">⌕</span>
+                  <span className="vnSrOnly">Search markets</span>
+                  <input ref={marketSearch} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search asset or address" />
+                  <kbd>/</kbd>
+                </label>
+                <div className="vnMarketList" aria-live="polite">
+                  {status === "loading" && markets.length === 0 && <div className="vnNoResults"><strong>Syncing markets</strong><span>Loading the fast directory. Routes are not being checked.</span></div>}
+                  {status === "error" && markets.length === 0 && <div className="vnNoResults"><strong>Directory unavailable</strong><span>Market data could not be loaded. No asset has been marked untradeable.</span><button type="button" onClick={() => void refresh()}>Try again</button></div>}
+                  {filteredMarkets.map((market) => (
+                    <button
+                      className={`vnMarketRow${selected?.address === market.address ? " isSelected" : ""}`}
+                      key={market.address}
+                      type="button"
+                      onClick={() => setSelectedAddress(market.address)}
+                      aria-pressed={selected?.address === market.address}
+                    >
+                      <MarketMark symbol={market.symbol} />
+                      <span className="vnMarketIdentity"><strong>{market.symbol}</strong><small>{market.name}</small></span>
+                      <span className="vnMarketPrice"><strong>{formatUsd(market.priceUsd)}</strong><small className={market.priceChange24h > 0 ? "vnPositive" : market.priceChange24h < 0 ? "vnNegative" : ""}>{formatChange(market.priceChange24h)}</small></span>
+                      <span className={`vnSignal vnSignal${market.signal === "moving" ? "positive" : market.signal === "early" ? "warning" : "neutral"}`}><i aria-hidden="true" />{market.signal}</span>
+                    </button>
+                  ))}
+                  {status !== "loading" && markets.length > 0 && filteredMarkets.length === 0 && <div className="vnNoResults"><strong>No matching assets</strong><span>Try a symbol, name, or contract address.</span></div>}
+                </div>
+              </section>
+
+              {selected ? <section className="vnAssetPanel" aria-labelledby="vn-asset-heading">
+                <div className="vnAssetHeader">
+                  <div className="vnAssetIdentity">
+                    <MarketMark symbol={selected.symbol} />
+                    <div><span><h2 id="vn-asset-heading">{selected.name}</h2><b>{selected.symbol}</b></span><small>Robinhood Chain · {identityStatus === "verified" ? "Verified identity" : identityStatus === "checking" ? "Identity checking" : "Detected asset"}</small></div>
+                  </div>
+                </div>
+                <div className="vnPriceHeader">
+                  <div><strong>{formatUsd(selected.priceUsd)}</strong><span className={selected.priceChange24h > 0 ? "vnPositive" : selected.priceChange24h < 0 ? "vnNegative" : ""}>{formatChange(selected.priceChange24h)} <small>24h</small></span></div>
+                </div>
+                <div className="vnMarketDataCard">
+                  <span><span className="vnEyebrow">Verified market data</span><strong>Live price history and trades</strong><small>Open the market workspace for candles, liquidity, and recent onchain activity.</small></span>
+                  <Link href={`/market/${selected.address}`}>Open live market <span aria-hidden="true">↗</span></Link>
+                </div>
+                <dl className="vnAssetStats">
+                  <div><dt>Market cap</dt><dd>{formatCompactUsd(selected.marketCapUsd)}</dd></div>
+                  <div><dt>Liquidity</dt><dd>{formatCompactUsd(selected.liquidityUsd)}</dd></div>
+                  <div><dt>24h volume</dt><dd>{formatCompactUsd(selected.volume24h)}</dd></div>
+                  <div><dt>Market age</dt><dd>{formatAge(selected.ageMinutes)}</dd></div>
+                </dl>
+                <div className="vnEvidence">
+                  <div><span className="vnEvidenceIcon" aria-hidden="true">{identityStatus === "verified" ? "✓" : identityStatus === "checking" ? "…" : "!"}</span><span><strong>{identityStatus === "verified" ? "Identity verified" : identityStatus === "checking" ? "Checking identity" : "Identity not verified"}</strong><small>{identityStatus === "verified" ? "Chain, contract, and decimals confirmed" : identityStatus === "checking" ? "One selected-asset contract lookup" : "Execution remains blocked"}</small></span></div>
+                  <Link href={`/market/${selected.address}`}>View market evidence <span aria-hidden="true">→</span></Link>
+                </div>
+              </section> : <section className="vnAssetPanel vnAssetEmpty" aria-label="Market detail"><strong>{status === "loading" ? "Syncing market directory" : "Select a market"}</strong><span>No price, identity, or execution claims are shown until real directory data is available.</span></section>}
+            </div>
 
             <TradeIntentComposer
               marketName={selected?.name ?? "No market selected"}
@@ -196,7 +196,7 @@ export function VNextTerminalShell() {
       </div>
 
       <nav className="vnMobileDock" aria-label="VNext mobile navigation">
-        {navItems.map((item, index) => <button className={index === 0 ? "isActive" : ""} type="button" key={item.label}><span aria-hidden="true">{item.icon}</span>{item.label}</button>)}
+        {navItems.map((item, index) => <Link className={index === 0 ? "isActive" : ""} href={item.href} key={item.label}><span><NavIcon icon={item.icon} /></span>{item.label}</Link>)}
       </nav>
     </main>
   );

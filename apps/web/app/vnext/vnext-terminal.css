@@ -35,7 +35,7 @@ body .rmtVnext {
   --vn-radius-lg: 24px;
   position: relative;
   display: grid;
-  grid-template-columns: 224px minmax(0, 1fr);
+  grid-template-columns: 208px minmax(0, 1fr);
   width: 100%;
   max-width: none;
   min-height: 100svh;
@@ -156,15 +156,16 @@ body .rmtVnext {
   margin-top: 42px;
 }
 
-.vnPrimaryNav button,
-.vnMobileDock button {
+.vnPrimaryNav a,
+.vnMobileDock a {
   border: 0;
   color: var(--vn-text-secondary);
   background: transparent;
   cursor: pointer;
+  text-decoration: none;
 }
 
-.vnPrimaryNav button {
+.vnPrimaryNav a {
   display: flex;
   align-items: center;
   gap: 13px;
@@ -175,22 +176,32 @@ body .rmtVnext {
   text-align: left;
 }
 
-.vnPrimaryNav button span {
+.vnPrimaryNav a span {
   display: grid;
   width: 24px;
   height: 24px;
   place-items: center;
   color: var(--vn-text-muted);
-  font-size: 19px;
 }
 
-.vnPrimaryNav button:hover,
-.vnPrimaryNav button.isActive {
+.vnPrimaryNav svg,
+.vnMobileDock svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.vnPrimaryNav a:hover,
+.vnPrimaryNav a.isActive {
   color: var(--vn-text);
   background: var(--vn-surface-soft);
 }
 
-.vnPrimaryNav button.isActive span {
+.vnPrimaryNav a.isActive span {
   color: var(--vn-accent);
 }
 
@@ -289,31 +300,12 @@ body .rmtVnext {
   gap: 10px;
 }
 
-.vnIconButton,
 .vnWalletButton {
   min-height: 42px;
   border: 1px solid var(--vn-border-strong);
   color: var(--vn-text);
   background: var(--vn-surface);
   cursor: pointer;
-}
-
-.vnIconButton {
-  position: relative;
-  width: 42px;
-  border-radius: 50%;
-  font-size: 20px;
-}
-
-.vnUnread {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 6px;
-  height: 6px;
-  background: var(--vn-accent);
-  border: 2px solid var(--vn-surface);
-  border-radius: 50%;
 }
 
 .vnWalletButton {
@@ -666,20 +658,31 @@ body .rmtVnext {
 
 .vnWorkspaceGrid {
   display: grid;
-  grid-template-columns: minmax(260px, 0.76fr) minmax(430px, 1.45fr) minmax(320px, 0.86fr);
-  gap: 18px;
-  margin-top: 18px;
+  grid-template-columns: minmax(0, 1fr) minmax(340px, 390px);
+  gap: 22px;
+  margin-top: 22px;
   align-items: start;
 }
 
-.vnMarketPanel,
-.vnAssetPanel,
+.vnDiscoveryWorkspace,
 .vnTradePanel {
   min-width: 0;
   background: linear-gradient(150deg, rgba(19, 24, 20, 0.98), rgba(15, 19, 16, 0.98));
   border: 1px solid var(--vn-border);
   border-radius: var(--vn-radius-lg);
   box-shadow: 0 18px 44px rgba(0, 0, 0, 0.13);
+}
+
+.vnDiscoveryWorkspace {
+  display: grid;
+  grid-template-columns: minmax(270px, 0.72fr) minmax(0, 1.28fr);
+  overflow: hidden;
+}
+
+.vnMarketPanel,
+.vnAssetPanel {
+  min-width: 0;
+  background: transparent;
 }
 
 .vnMarketPanel,
@@ -689,6 +692,7 @@ body .rmtVnext {
 
 .vnMarketPanel {
   padding: 22px;
+  border-right: 1px solid var(--vn-border);
 }
 
 .vnSectionHeading,
@@ -718,20 +722,22 @@ body .rmtVnext {
   text-transform: uppercase;
 }
 
-.vnFilterButton,
-.vnStarButton {
-  min-height: 38px;
-  border: 1px solid var(--vn-border);
-  color: var(--vn-text-secondary);
-  background: var(--vn-surface-raised);
-  cursor: pointer;
+.vnDirectoryMode {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--vn-text-muted);
+  font-size: 11px;
+  font-weight: 720;
+  white-space: nowrap;
 }
 
-.vnFilterButton {
-  padding: 0 12px;
-  border-radius: 10px;
-  font-size: 11px;
-  font-weight: 700;
+.vnDirectoryMode i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--vn-accent);
+  box-shadow: 0 0 12px rgba(130, 242, 143, 0.35);
 }
 
 .vnSearch {
@@ -788,17 +794,6 @@ body .rmtVnext {
   flex: 0 0 auto;
 }
 
-.vnMarketTabs {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 4px;
-  margin: 14px 0 8px;
-  padding: 4px;
-  background: rgba(4, 7, 5, 0.28);
-  border-radius: 11px;
-}
-
-.vnMarketTabs button,
 .vnSideTabs button,
 .vnQuickAmounts button {
   border: 0;
@@ -808,13 +803,6 @@ body .rmtVnext {
   font-weight: 720;
 }
 
-.vnMarketTabs button {
-  min-height: 34px;
-  border-radius: 8px;
-  font-size: 11px;
-}
-
-.vnMarketTabs button.isActive,
 .vnSideTabs button.isActive,
 .vnQuickAmounts button.isActive {
   color: var(--vn-text);
@@ -825,6 +813,7 @@ body .rmtVnext {
 .vnMarketList {
   display: grid;
   gap: 4px;
+  margin-top: 14px;
 }
 
 .vnMarketRow {
@@ -937,23 +926,6 @@ body .rmtVnext {
 .vnSignalpositive { color: var(--vn-accent); }
 .vnSignalwarning { color: var(--vn-warning); }
 
-.vnViewAll {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  min-height: 40px;
-  margin-top: 9px;
-  padding: 0 11px;
-  border: 0;
-  color: var(--vn-text-secondary);
-  background: transparent;
-  cursor: pointer;
-  font-size: 11px;
-  font-weight: 720;
-  text-decoration: none;
-}
-
 .vnNoResults {
   display: grid;
   gap: 4px;
@@ -1034,13 +1006,6 @@ body .rmtVnext {
   font-size: 11px;
 }
 
-.vnStarButton {
-  width: 40px;
-  flex: 0 0 auto;
-  border-radius: 12px;
-  font-size: 21px;
-}
-
 .vnPriceHeader {
   margin-top: 30px;
 }
@@ -1066,43 +1031,52 @@ body .rmtVnext {
   font-size: 9px;
 }
 
-.vnOpenChart,
-.vnChartPending a {
-  color: var(--vn-accent);
-  font-size: 10px;
-  font-weight: 750;
-  text-decoration: none;
-}
-
-.vnChartPending {
-  display: grid;
-  min-height: 230px;
+.vnMarketDataCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 22px;
+  min-height: 132px;
   margin-top: 20px;
-  place-content: center;
-  justify-items: center;
-  padding: 28px;
-  border: 1px dashed var(--vn-border-strong);
+  padding: 22px;
+  border: 1px solid var(--vn-border);
   border-radius: 16px;
-  background: radial-gradient(circle at 50% 30%, rgba(130, 242, 143, 0.055), transparent 62%);
-  text-align: center;
+  background: linear-gradient(135deg, rgba(130, 242, 143, 0.065), rgba(255, 255, 255, 0.018));
 }
 
-.vnChartPending strong {
-  margin-top: 10px;
+.vnMarketDataCard > span {
+  display: grid;
+  min-width: 0;
+}
+
+.vnMarketDataCard strong {
+  margin-top: 8px;
   color: var(--vn-text-secondary);
-  font-size: 18px;
+  font-size: 16px;
 }
 
-.vnChartPending small {
+.vnMarketDataCard small {
   max-width: 270px;
-  margin-top: 6px;
+  margin-top: 5px;
   color: var(--vn-text-muted);
   font-size: 10px;
   line-height: 1.5;
 }
 
-.vnChartPending a {
-  margin-top: 18px;
+.vnMarketDataCard a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid rgba(130, 242, 143, 0.2);
+  border-radius: 11px;
+  color: var(--vn-accent);
+  background: rgba(130, 242, 143, 0.07);
+  font-size: 10px;
+  font-weight: 780;
+  text-decoration: none;
+  white-space: nowrap;
 }
 
 .vnAssetStats {
@@ -2058,8 +2032,7 @@ body .rmtVnext {
   }
 
   .vnBrand > span,
-  .vnPrimaryNav button:not(.isActive)::after,
-  .vnPrimaryNav button {
+  .vnPrimaryNav a {
     font-size: 0;
   }
 
@@ -2067,14 +2040,10 @@ body .rmtVnext {
     padding: 2px;
   }
 
-  .vnPrimaryNav button {
+  .vnPrimaryNav a {
     justify-content: center;
     width: 48px;
     padding: 0;
-  }
-
-  .vnPrimaryNav button span {
-    font-size: 20px;
   }
 
   .vnSidebarFoot > span:last-child {
@@ -2082,34 +2051,12 @@ body .rmtVnext {
   }
 
   .vnWorkspaceGrid {
-    grid-template-columns: minmax(260px, 0.72fr) minmax(430px, 1.25fr);
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 360px);
   }
 
-  .vnTradePanel {
-    position: relative;
-    top: auto;
-    grid-column: 1 / -1;
+  .vnDiscoveryWorkspace {
+    grid-template-columns: minmax(240px, 0.68fr) minmax(0, 1.32fr);
   }
-
-  .vnTradePanel {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    column-gap: 18px;
-  }
-
-  .vnTradeHeader,
-  .vnSideTabs,
-  .vnAvailableLine,
-  .vnReviewButton,
-  .vnTradeFootnote {
-    grid-column: 1 / -1;
-  }
-
-  .vnQuickAmounts { grid-column: 1; }
-  .vnConfirmedBalance { grid-column: 1; }
-  .vnSwapDivider { display: none; }
-  .vnReceiveField { grid-column: 2; grid-row: 4 / span 2; margin-top: 10px; }
-  .vnRouteCard { grid-column: 2; }
 }
 
 @media (max-width: 920px) {
@@ -2136,15 +2083,9 @@ body .rmtVnext {
     min-height: auto;
   }
 
-  .vnMarketPanel {
-    order: 1;
-  }
-
-  .vnAssetPanel {
-    order: 2;
-  }
-
   .vnTradePanel {
+    position: relative;
+    top: auto;
     order: 3;
   }
 }
@@ -2191,7 +2132,6 @@ body .rmtVnext {
   }
 
   .vnChainLabel,
-  .vnIconButton,
   .vnWalletButton > span:not(.vnWalletAvatar),
   .vnWalletButton b {
     display: none;
@@ -2304,16 +2244,32 @@ body .rmtVnext {
     margin-top: 12px;
   }
 
+  .vnDiscoveryWorkspace {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    overflow: visible;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
   .vnMarketPanel,
   .vnAssetPanel,
   .vnTradePanel {
     border-radius: 20px;
   }
 
-  .vnMarketPanel,
-  .vnAssetPanel,
   .vnTradePanel {
     padding: 18px;
+  }
+
+  .vnMarketPanel,
+  .vnAssetPanel {
+    padding: 18px;
+    background: linear-gradient(150deg, rgba(19, 24, 20, 0.98), rgba(15, 19, 16, 0.98));
+    border: 1px solid var(--vn-border);
+    box-shadow: 0 18px 44px rgba(0, 0, 0, 0.13);
   }
 
   .vnMarketRow {
@@ -2334,9 +2290,15 @@ body .rmtVnext {
     gap: 2px;
   }
 
-  .vnChartPending {
-    min-height: 180px;
+  .vnMarketDataCard {
+    align-items: stretch;
+    flex-direction: column;
+    min-height: 0;
     margin-top: 14px;
+  }
+
+  .vnMarketDataCard a {
+    width: 100%;
   }
 
   .vnAssetStats {
@@ -2372,7 +2334,7 @@ body .rmtVnext {
     bottom: 0;
     left: 0;
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(3, 1fr);
     min-height: 70px;
     padding: 6px max(8px, env(safe-area-inset-right)) max(6px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
     background: rgba(13, 17, 14, 0.96);
@@ -2380,7 +2342,7 @@ body .rmtVnext {
     backdrop-filter: blur(18px);
   }
 
-  .vnMobileDock button {
+  .vnMobileDock a {
     display: grid;
     min-height: 54px;
     place-content: center;
@@ -2390,16 +2352,15 @@ body .rmtVnext {
     font-weight: 700;
   }
 
-  .vnMobileDock button span {
+  .vnMobileDock a span {
     color: var(--vn-text-muted);
-    font-size: 18px;
   }
 
-  .vnMobileDock button.isActive {
+  .vnMobileDock a.isActive {
     color: var(--vn-accent);
   }
 
-  .vnMobileDock button.isActive span {
+  .vnMobileDock a.isActive span {
     color: var(--vn-accent);
   }
 }
@@ -2476,9 +2437,6 @@ body .rmtVnext {
     min-height: 36px;
   }
 
-  .vnFilterButton,
-  .vnStarButton,
-  .vnMarketTabs button,
   .vnQuickAmounts button {
     min-height: 44px;
   }
