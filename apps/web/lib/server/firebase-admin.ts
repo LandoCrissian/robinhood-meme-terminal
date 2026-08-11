@@ -4,14 +4,14 @@ import { getFirestore } from "firebase-admin/firestore";
 
 const FIREBASE_ADMIN_APP_NAME = "rmt-live-server";
 
-function serverCredential() {
+function serverCredential(env: NodeJS.ProcessEnv = process.env) {
   const projectId = (
-    process.env.FIREBASE_ADMIN_PROJECT_ID
-    ?? process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID
+    env.FIREBASE_ADMIN_PROJECT_ID
+    ?? env.NEXT_PUBLIC_FIREBASE_PROJECT_ID
     ?? ""
   ).trim();
-  const clientEmail = (process.env.FIREBASE_ADMIN_CLIENT_EMAIL ?? "").trim();
-  const privateKey = (process.env.FIREBASE_ADMIN_PRIVATE_KEY ?? "")
+  const clientEmail = (env.FIREBASE_ADMIN_CLIENT_EMAIL ?? "").trim();
+  const privateKey = (env.FIREBASE_ADMIN_PRIVATE_KEY ?? "")
     .replaceAll("\\n", "\n")
     .trim();
   if (
@@ -21,6 +21,10 @@ function serverCredential() {
     || !privateKey.endsWith("-----END PRIVATE KEY-----")
   ) return null;
   return { projectId, clientEmail, privateKey };
+}
+
+export function hasRmtAdminConfiguration(env: NodeJS.ProcessEnv = process.env) {
+  return Boolean(serverCredential(env));
 }
 
 function getRmtLiveAdminApp() {
