@@ -771,7 +771,7 @@ async function probeUniswapX(pair: BaselinePair, apiKey?: string): Promise<Probe
       headers: {
         "Content-Type": "application/json",
         "x-api-key": apiKey,
-        "x-universal-router-version": "2.0"
+        "x-universal-router-version": "2.1.1"
       },
       body: JSON.stringify({
         type: "EXACT_INPUT",

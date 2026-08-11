@@ -7,6 +7,7 @@ const envExample = readFileSync(new URL("../../.env.example", import.meta.url), 
 assert.match(benchmark, /UNISWAP_TRADE_API_URL = "https:\/\/trade-api\.gateway\.uniswap\.org\/v1"/);
 assert.match(benchmark, /requested\.pathname === "\/v1\/quote" && method === "POST"/);
 assert.match(benchmark, /protocols: \["UNISWAPX_LATEST"\]/);
+assert.match(benchmark, /"x-universal-router-version": "2\.1\.1"/);
 assert.match(benchmark, /exactOrderVerificationRequired: true/);
 assert.match(benchmark, /RMT_UNISWAP_API_KEY/);
 assert.match(benchmark, /RMT_ZEROX_API_KEY/);
@@ -18,6 +19,7 @@ assert.match(benchmark, /PCSX_RWA_SAMPLE_LIMIT = 6/);
 assert.match(benchmark, /BENCHMARK_NOTIONALS_USD/);
 assert.match(benchmark, /pcsxRwaSummary: summarizePcsx/);
 assert.match(envExample, /^RMT_UNISWAP_API_KEY=$/m);
+assert.match(envExample, /^RMT_VNEXT_UNISWAPX_OBSERVATION_ENABLED=false$/m);
 assert.doesNotMatch(benchmark, /\/v1\/(?:order|swap)["'`]/);
 assert.doesNotMatch(benchmark, /"\/(?:swap\/allowance-holder|gasless)\/quote"/);
 assert.doesNotMatch(benchmark, /signTypedData|sendTransaction|writeContract|walletClient|privateKey/);

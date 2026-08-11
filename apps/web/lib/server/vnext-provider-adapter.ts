@@ -67,9 +67,9 @@ export type VNextPreparedProviderAuthorization = {
 export type VNextQuoteProviderAdapter = {
   provider: VNextQuoteProvider;
   providerLabel: string;
-  providerFamily: "sushi" | "uniswap" | "zeroex";
+  providerFamily: "sushi" | "uniswap" | "uniswapx" | "zeroex";
   adapterVersion: 1;
-  executionKind: "aggregator" | "direct_amm" | "gasless";
+  executionKind: "aggregator" | "direct_amm" | "gasless" | "rfq_intent";
   capabilities: {
     strictVerification: boolean;
     walletAuthorization: boolean;

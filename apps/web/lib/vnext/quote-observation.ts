@@ -3,7 +3,7 @@ import { z } from "zod";
 
 const MAX_CLOCK_SKEW_MS = 5_000;
 
-export type VNextQuoteProvider = "sushi" | "uniswap-v3" | "zero-x-swap" | "zero-x-gasless";
+export type VNextQuoteProvider = "sushi" | "uniswap-v3" | "uniswapx" | "zero-x-swap" | "zero-x-gasless";
 
 // Strict verification and wallet authorization are deliberately separate
 // capabilities. A provider-specific verifier may be implemented before RMT has
@@ -27,7 +27,7 @@ export type VNextQuoteAttemptStatus =
 export type VNextQuoteAttempt = {
   provider: VNextQuoteProvider;
   providerLabel: string;
-  providerFamily: "sushi" | "uniswap" | "zeroex";
+  providerFamily: "sushi" | "uniswap" | "uniswapx" | "zeroex";
   adapterVersion: 1;
   status: VNextQuoteAttemptStatus;
   chainId: 4_663;
@@ -41,7 +41,7 @@ export type VNextQuoteAttempt = {
   quotedAtMs: number | null;
   expiresAtMs: number | null;
   latencyMs: number;
-  executionKind: "aggregator" | "direct_amm" | "gasless";
+  executionKind: "aggregator" | "direct_amm" | "gasless" | "rfq_intent";
   strictVerificationAvailable: boolean;
   userPaysGas: boolean | null;
   providerFeeAsset: string | null;
@@ -70,9 +70,9 @@ export type VNextQuoteResponse = {
 };
 
 const attemptSchema = z.object({
-  provider: z.enum(["sushi", "uniswap-v3", "zero-x-swap", "zero-x-gasless"]),
+  provider: z.enum(["sushi", "uniswap-v3", "uniswapx", "zero-x-swap", "zero-x-gasless"]),
   providerLabel: z.string().min(1).max(40),
-  providerFamily: z.enum(["sushi", "uniswap", "zeroex"]),
+  providerFamily: z.enum(["sushi", "uniswap", "uniswapx", "zeroex"]),
   adapterVersion: z.literal(1),
   status: z.enum(["indicative", "no_route", "temporarily_unavailable", "invalid_response"]),
   chainId: z.literal(4_663),
@@ -86,7 +86,7 @@ const attemptSchema = z.object({
   quotedAtMs: z.number().nullable(),
   expiresAtMs: z.number().nullable(),
   latencyMs: z.number(),
-  executionKind: z.enum(["aggregator", "direct_amm", "gasless"]),
+  executionKind: z.enum(["aggregator", "direct_amm", "gasless", "rfq_intent"]),
   strictVerificationAvailable: z.boolean(),
   userPaysGas: z.boolean().nullable(),
   providerFeeAsset: z.string().nullable(),
@@ -124,7 +124,13 @@ export function assertVNextQuoteAttempt(
   nowMs: number
 ) {
   if (attempt.chainId !== 4_663) throw new Error("Quote attempt chain changed.");
-  const expectedProviderFamily = attempt.provider === "sushi" ? "sushi" : attempt.provider === "uniswap-v3" ? "uniswap" : "zeroex";
+  const expectedProviderFamily = attempt.provider === "sushi"
+    ? "sushi"
+    : attempt.provider === "uniswap-v3"
+      ? "uniswap"
+      : attempt.provider === "uniswapx"
+        ? "uniswapx"
+        : "zeroex";
   if (attempt.providerFamily !== expectedProviderFamily) throw new Error("Quote attempt provider family changed.");
   if (!isAddress(attempt.inputAsset) || getAddress(attempt.inputAsset) !== getAddress(expected.inputAsset)) throw new Error("Quote attempt input asset changed.");
   if (!isAddress(attempt.outputAsset) || getAddress(attempt.outputAsset) !== getAddress(expected.outputAsset)) throw new Error("Quote attempt output asset changed.");
@@ -156,6 +162,14 @@ export function assertVNextQuoteAttempt(
         || attempt.protectedNetOutputAtomic !== null
         || attempt.costState !== "network_fee_pending"
       ) throw new Error("Indicative quote exposed incomplete or inconsistent wallet-gas economics.");
+    } else if (attempt.userPaysGas === false && attempt.executionKind === "rfq_intent") {
+      if (
+        attempt.gasSponsorshipFeeAsset !== null
+        || attempt.networkFeeNativeAtomic !== null
+        || attempt.networkFeeNativeSymbol !== null
+        || attempt.protectedNetOutputAtomic !== attempt.protectedOutputAtomic
+        || attempt.costState !== null
+      ) throw new Error("Indicative quote exposed incomplete or inconsistent intent-gas economics.");
     } else if (attempt.userPaysGas === false) {
       if (
         attempt.gasSponsorshipFeeAsset === null
