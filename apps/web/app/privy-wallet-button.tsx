@@ -1,6 +1,6 @@
 "use client";
 
-import { useConnectOrCreateWallet, usePrivy, useWallets } from "@privy-io/react-auth";
+import { usePrivy, useWallets } from "@privy-io/react-auth";
 import { useSetActiveWallet } from "@privy-io/wagmi";
 import { robinhoodChain, robinhoodChainTestnet } from "@rmt/shared/chains";
 import { usePathname } from "next/navigation";
@@ -44,7 +44,6 @@ export function PrivyWalletButton({
   const [receiveOpen, setReceiveOpen] = useState(false);
   const [transferOpen, setTransferOpen] = useState(false);
   const [message, setMessage] = useState("");
-  const [requestedWalletAddress, setRequestedWalletAddress] = useState("");
   const pathname = usePathname();
   const identity = useRmtIdentity();
   const { ready, authenticated, logout, connectWallet } = usePrivy();
@@ -61,34 +60,8 @@ export function PrivyWalletButton({
   const mobileMetaMaskUrl = walletEnvironment === "mobile-browser" && typeof window !== "undefined"
     ? metaMaskDappLink(window.location.href)
     : "";
-  const { connectOrCreateWallet } = useConnectOrCreateWallet({
-    onSuccess: async ({ wallet }) => {
-      setRequestedWalletAddress(wallet.address.toLowerCase());
-      setMessage("");
-      recordExperienceStage("wallet_connect_started");
-    },
-    onError: async (errorCode) => setMessage(safeWalletMessage(String(errorCode)))
-  });
   const activeWallet = wallets.find((wallet) => wallet.address.toLowerCase() === address?.toLowerCase());
   const close = useCallback(() => setOpen(false), []);
-
-  useEffect(() => {
-    if (!requestedWalletAddress) return;
-    const requestedWallet = wallets.find((wallet) => wallet.address.toLowerCase() === requestedWalletAddress);
-    if (!requestedWallet) return;
-    let cancelled = false;
-    void setActiveWallet(requestedWallet).then(() => {
-      if (!cancelled) setRequestedWalletAddress("");
-    }).catch((error) => {
-      if (!cancelled) {
-        setMessage(safeWalletMessage(error instanceof Error ? error.message : ""));
-        setRequestedWalletAddress("");
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [requestedWalletAddress, setActiveWallet, wallets]);
 
   useEffect(() => {
     if (!open) return;
@@ -144,7 +117,7 @@ export function PrivyWalletButton({
             onClick={() => {
               setMessage("");
               recordExperienceStage("wallet_connect_started");
-              connectOrCreateWallet();
+              identity.login();
             }}
           >
             Other
@@ -161,10 +134,10 @@ export function PrivyWalletButton({
           onClick={() => {
             setMessage("");
             recordExperienceStage("wallet_connect_started");
-            connectOrCreateWallet();
+            identity.login();
           }}
         >
-          Connect or create wallet
+          Sign in or create wallet
         </button>
         {message && <span className="networkSwitchError" role="alert">{message}</span>}
       </div>
@@ -192,7 +165,6 @@ export function PrivyWalletButton({
       );
       disconnectWagmi();
       if (authenticated) await logout();
-      setRequestedWalletAddress("");
       setFundingOpen(false);
       setReceiveOpen(false);
       setTransferOpen(false);
