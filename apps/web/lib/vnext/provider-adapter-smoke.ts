@@ -110,6 +110,7 @@ assert.match(route, /readVNextVerifiedAssetIdentity/);
 assert.match(route, /quoteRobinhoodVNextExecution/);
 assert.match(registry, /vNextSushiAdapter/);
 assert.match(registry, /vNextUniswapV3Adapter/);
+assert.match(registry, /configuredVNextUniswapXAdapters/);
 assert.match(registry, /configuredVNextZeroXAdapters/);
 assert.match(boundary, /assertVNextQuoteAttempt/);
 assert.match(boundary, /adapters\.length === 0 \|\| adapters\.length > 8/);

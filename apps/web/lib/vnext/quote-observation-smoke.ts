@@ -112,6 +112,26 @@ assert.equal(backupSelection.usesVerifiedBackup, true);
 assert.equal(hasVNextWalletAuthorizationCodec("uniswap-v3"), true);
 assert.equal(hasVNextWalletAuthorizationCodec("zero-x-swap"), false);
 assert.equal(hasVNextWalletAuthorizationCodec("zero-x-gasless"), false);
+assert.equal(hasVNextWalletAuthorizationCodec("uniswapx"), false);
+
+const uniswapXAttempt = {
+  ...response.attempts[0],
+  provider: "uniswapx" as const,
+  providerLabel: "UniswapX",
+  providerFamily: "uniswapx" as const,
+  executionKind: "rfq_intent" as const,
+  userPaysGas: false,
+  networkFeeNativeSymbol: null,
+  protectedNetOutputAtomic: response.attempts[0].protectedOutputAtomic,
+  costState: null
+};
+const uniswapXSelection = selectVNextRoute(parseVNextQuoteResponse({
+  ...response,
+  attempts: [uniswapXAttempt, withVerifiedBackup.attempts[1]]
+}, expected, now).attempts);
+assert.equal(uniswapXSelection.bestObserved?.provider, "uniswapx");
+assert.equal(uniswapXSelection.verificationCandidate?.provider, "uniswap-v3");
+assert.equal(uniswapXSelection.usesVerifiedBackup, true);
 
 const strictOnlyZeroX = parseVNextQuoteResponse({
   ...response,
@@ -174,6 +194,7 @@ const engine = readFileSync(new URL("../server/vnext-provider-adapter.ts", impor
 const sushiAdapter = readFileSync(new URL("../server/vnext-sushi-adapter.ts", import.meta.url), "utf8");
 const uniswapAdapter = readFileSync(new URL("../server/vnext-uniswap-v3-adapter.ts", import.meta.url), "utf8");
 const zeroXAdapter = readFileSync(new URL("../server/vnext-zero-x-adapter.ts", import.meta.url), "utf8");
+const uniswapXAdapter = readFileSync(new URL("../server/vnext-uniswapx-adapter.ts", import.meta.url), "utf8");
 const composer = readFileSync(new URL("../../app/vnext/trade-intent-composer.tsx", import.meta.url), "utf8");
 const sushi = readFileSync(new URL("../server/sushi-trade.ts", import.meta.url), "utf8");
 const uniswap = readFileSync(new URL("../server/vnext-uniswap-quote.ts", import.meta.url), "utf8");
@@ -189,6 +210,10 @@ assert.match(engine, /networkFeeNativeAtomic: null/);
 assert.match(sushiAdapter, /quoteSushiAssetRoute/);
 assert.match(uniswapAdapter, /quoteVNextUniswapDirect/);
 assert.match(zeroXAdapter, /RMT_VNEXT_ZEROX_OBSERVATION_ENABLED/);
+assert.match(uniswapXAdapter, /RMT_VNEXT_UNISWAPX_OBSERVATION_ENABLED/);
+assert.match(uniswapXAdapter, /protocols: \["UNISWAPX_LATEST"\]/);
+assert.match(uniswapXAdapter, /ROBINHOOD_UNIVERSAL_ROUTER_VERSION = "2\.1\.1"/);
+assert.doesNotMatch(uniswapXAdapter, /\/order|\/swap|writeContract|sendTransaction|signTypedData|privateKey/);
 assert.match(zeroXAdapter, /"\/gasless\/price"/);
 assert.match(zeroXAdapter, /"\/swap\/allowance-holder\/price"/);
 assert.doesNotMatch(zeroXAdapter, /"\/(?:gasless|swap\/allowance-holder)\/quote"/);

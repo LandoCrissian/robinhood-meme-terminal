@@ -3,11 +3,13 @@ import type { VNextProviderAuthorizationRequest, VNextProviderVerificationReques
 import { prepareVNextProviderAuthorization, quoteVNextExecutionProviders, verifyVNextExecutionProvider } from "./vnext-provider-adapter";
 import { vNextSushiAdapter } from "./vnext-sushi-adapter";
 import { vNextUniswapV3Adapter } from "./vnext-uniswap-v3-adapter";
+import { configuredVNextUniswapXAdapters } from "./vnext-uniswapx-adapter";
 import { configuredVNextZeroXAdapters } from "./vnext-zero-x-adapter";
 
 export const robinhoodVNextQuoteAdapters: readonly VNextQuoteProviderAdapter[] = [
   vNextSushiAdapter,
   vNextUniswapV3Adapter,
+  ...configuredVNextUniswapXAdapters(),
   ...configuredVNextZeroXAdapters()
 ];
 

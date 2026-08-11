@@ -78,7 +78,7 @@ const envExample = readFileSync(new URL("../../.env.example", import.meta.url), 
 assert.match(route, /readVNextReleaseReadiness\(process\.env\)/);
 assert.match(route, /private, no-store, max-age=0/);
 assert.match(route, /noindex, nofollow/);
-assert.doesNotMatch(route, /RMT_INDEXER_READ_TOKEN|RMT_ZEROX_API_KEY|PRIVY_APP_SECRET/);
+assert.doesNotMatch(route, /RMT_INDEXER_READ_TOKEN|RMT_ZEROX_API_KEY|RMT_UNISWAP_API_KEY|PRIVY_APP_SECRET/);
 assert.match(envExample, /^RMT_VNEXT_SHELL_ENABLED=false$/m);
 assert.doesNotMatch(envExample, /^NEXT_PUBLIC_RMT_VNEXT_SHELL_ENABLED=/m);
 
