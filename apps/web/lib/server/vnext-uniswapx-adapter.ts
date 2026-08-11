@@ -1,12 +1,17 @@
-import { getAddress, isAddress } from "viem";
+import { getAddress, isAddress, type Hex } from "viem";
 import { isRobinhoodNativeAsset } from "../vnext/robinhood-assets";
 import { unavailableVNextQuoteAttempt, type VNextProviderQuoteRequest, type VNextQuoteProviderAdapter } from "./vnext-provider-adapter";
+import {
+  ROBINHOOD_UNISWAPX_V3_REACTOR,
+  UniswapXV3OrderVerificationError,
+  verifyUniswapXV3Order,
+  type VerifiedUniswapXV3Order
+} from "./vnext-uniswapx-order-verifier";
 
 const UNISWAP_TRADE_API_URL = "https://trade-api.gateway.uniswap.org/v1";
 const UNISWAPX_TIMEOUT_MS = 4_000;
 const UNISWAPX_QUOTE_TTL_MS = 10_000;
 const ROBINHOOD_UNIVERSAL_ROUTER_VERSION = "2.1.1";
-const ROBINHOOD_UNISWAPX_V3_REACTOR = getAddress("0x000000007A1C8e570011EeDF86A2A35593013cBA");
 
 type JsonObject = Record<string, unknown>;
 
@@ -24,7 +29,7 @@ function zeroOrAbsent(value: unknown) {
   return value === undefined || value === null || value === 0 || value === "0";
 }
 
-function parseUniswapXQuote(body: unknown, request: VNextProviderQuoteRequest) {
+async function parseUniswapXQuote(body: unknown, request: VNextProviderQuoteRequest) {
   if (!isObject(body) || body.routing !== "DUTCH_V3" || !isObject(body.quote)) {
     throw new UniswapXInvalidResponseError("Uniswap returned an unexpected routing response.");
   }
@@ -62,7 +67,29 @@ function parseUniswapXQuote(body: unknown, request: VNextProviderQuoteRequest) {
     throw new UniswapXInvalidResponseError("UniswapX returned an unexpected service fee.");
   }
 
-  return { expectedOutputAtomic, protectedOutputAtomic };
+  let verifiedOrder: VerifiedUniswapXV3Order;
+  try {
+    verifiedOrder = await verifyUniswapXV3Order({
+      encodedOrder: quote.encodedOrder,
+      orderId: quote.orderId,
+      permitData: body.permitData,
+      request,
+      expectedOutputAtomic,
+      protectedOutputAtomic
+    });
+  } catch (cause) {
+    if (cause instanceof UniswapXV3OrderVerificationError) {
+      throw new UniswapXInvalidResponseError(cause.message);
+    }
+    throw cause;
+  }
+
+  return {
+    expectedOutputAtomic,
+    protectedOutputAtomic,
+    verifiedOrder,
+    submissionPayload: { routing: "DUTCH_V3" as const, quote }
+  };
 }
 
 function isNoRouteResponse(status: number, body: unknown) {
@@ -95,7 +122,7 @@ async function quoteUniswapX(request: VNextProviderQuoteRequest) {
       recipient: request.recipient,
       slippageTolerance: 1,
       routingPreference: "BEST_PRICE",
-      protocols: ["UNISWAPX_LATEST"]
+      protocols: ["UNISWAPX_V3"]
     }),
     cache: "no-store",
     signal: AbortSignal.timeout(UNISWAPX_TIMEOUT_MS)
@@ -105,7 +132,61 @@ async function quoteUniswapX(request: VNextProviderQuoteRequest) {
     if (isNoRouteResponse(response.status, body)) return null;
     throw new Error(`UniswapX quote request failed with ${response.status}.`);
   }
-  return parseUniswapXQuote(body, request);
+  return await parseUniswapXQuote(body, request);
+}
+
+export type PreparedVNextUniswapXIntent = {
+  provider: "uniswapx";
+  chainId: 4_663;
+  inputAsset: string;
+  outputAsset: string;
+  inputAmountAtomic: string;
+  expectedOutputAtomic: string;
+  protectedOutputAtomic: string;
+  recipient: string;
+  orderId: string;
+  deadline: string;
+  permit2: string;
+  reactor: string;
+  permitPayloadHash: Hex;
+  permitData: VerifiedUniswapXV3Order["permitData"];
+  submissionPayload: { routing: "DUTCH_V3"; quote: JsonObject };
+};
+
+/**
+ * Produces a fresh, fully decoded server-only intent for the authorization
+ * layer. The public quote adapter deliberately discards this payload.
+ */
+export async function prepareVNextUniswapXIntent(
+  request: VNextProviderQuoteRequest,
+  protectedOutputFloorAtomic: bigint
+): Promise<PreparedVNextUniswapXIntent> {
+  if (isRobinhoodNativeAsset(request.inputAsset)) {
+    throw new Error("UniswapX native ETH authorization is not enabled.");
+  }
+  if (protectedOutputFloorAtomic <= 0n) throw new Error("UniswapX requires a positive protected-output floor.");
+  const prepared = await quoteUniswapX(request);
+  if (!prepared) throw new Error("No complete UniswapX V3 intent quote was found for this amount.");
+  if (BigInt(prepared.protectedOutputAtomic) < protectedOutputFloorAtomic) {
+    throw new Error("The fresh UniswapX intent moved below the protected-output floor.");
+  }
+  return {
+    provider: "uniswapx",
+    chainId: 4_663,
+    inputAsset: request.inputAsset,
+    outputAsset: request.outputAsset,
+    inputAmountAtomic: request.inputAmountAtomic,
+    expectedOutputAtomic: prepared.expectedOutputAtomic,
+    protectedOutputAtomic: prepared.protectedOutputAtomic,
+    recipient: request.recipient,
+    orderId: prepared.verifiedOrder.orderHash,
+    deadline: prepared.verifiedOrder.deadline.toString(),
+    permit2: prepared.verifiedOrder.permit2,
+    reactor: prepared.verifiedOrder.reactor,
+    permitPayloadHash: prepared.verifiedOrder.permitPayloadHash,
+    permitData: prepared.verifiedOrder.permitData,
+    submissionPayload: prepared.submissionPayload
+  };
 }
 
 export const vNextUniswapXAdapter: VNextQuoteProviderAdapter = {
@@ -167,7 +248,7 @@ export const vNextUniswapXAdapter: VNextQuoteProviderAdapter = {
         protectedNetOutputAtomic: quote.protectedOutputAtomic,
         costState: null,
         authorizationReady: false,
-        detail: "Live UniswapX V3 intent observation. Exact order decoding and signed-order authorization remain disabled."
+        detail: "Live UniswapX V3 intent with exact encoded-order and cosigner verification. Trader signing and order submission remain disabled."
       };
     } catch (cause) {
       const invalidResponse = cause instanceof UniswapXInvalidResponseError;

@@ -211,7 +211,7 @@ assert.match(sushiAdapter, /quoteSushiAssetRoute/);
 assert.match(uniswapAdapter, /quoteVNextUniswapDirect/);
 assert.match(zeroXAdapter, /RMT_VNEXT_ZEROX_OBSERVATION_ENABLED/);
 assert.match(uniswapXAdapter, /RMT_VNEXT_UNISWAPX_OBSERVATION_ENABLED/);
-assert.match(uniswapXAdapter, /protocols: \["UNISWAPX_LATEST"\]/);
+assert.match(uniswapXAdapter, /protocols: \["UNISWAPX_V3"\]/);
 assert.match(uniswapXAdapter, /ROBINHOOD_UNIVERSAL_ROUTER_VERSION = "2\.1\.1"/);
 assert.doesNotMatch(uniswapXAdapter, /\/order|\/swap|writeContract|sendTransaction|signTypedData|privateKey/);
 assert.match(zeroXAdapter, /"\/gasless\/price"/);
