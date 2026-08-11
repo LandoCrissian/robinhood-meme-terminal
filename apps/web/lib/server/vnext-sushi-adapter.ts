@@ -1,4 +1,6 @@
 import { quoteSushiAssetRoute } from "./sushi-trade";
+import { SUSHI_NATIVE_TOKEN } from "../sushi";
+import { isRobinhoodNativeAsset } from "../vnext/robinhood-assets";
 import { unavailableVNextQuoteAttempt, type VNextQuoteProviderAdapter } from "./vnext-provider-adapter";
 
 export const vNextSushiAdapter: VNextQuoteProviderAdapter = {
@@ -12,7 +14,7 @@ export const vNextSushiAdapter: VNextQuoteProviderAdapter = {
     const startedAtMs = Date.now();
     try {
       const quote = await quoteSushiAssetRoute({
-        inputAsset: request.inputAsset,
+        inputAsset: isRobinhoodNativeAsset(request.inputAsset) ? SUSHI_NATIVE_TOKEN : request.inputAsset,
         outputAsset: request.outputAsset,
         amountIn: request.amountIn
       }, { chainId: request.chainId, requireTokenMetadata: true });

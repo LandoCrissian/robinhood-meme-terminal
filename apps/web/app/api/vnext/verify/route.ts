@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { getAddress, isAddress } from "viem";
 import { z } from "zod";
 import { requireAuthenticatedTradeWallet, tradeIdentityErrorResponse } from "../../../../lib/server/rmt-trade-identity";
-import { readRobinhoodTokenIdentity } from "../../../../lib/server/universal-market-resolver";
+import { readVNextVerifiedAssetIdentity } from "../../../../lib/server/vnext-asset-identity";
 import { verifyRobinhoodVNextExecution } from "../../../../lib/server/vnext-execution-engine";
 
 export const dynamic = "force-dynamic";
@@ -28,8 +28,8 @@ export async function POST(request: Request) {
     const outputAsset = getAddress(parsed.data.outputAsset);
     await requireAuthenticatedTradeWallet(request, recipient);
     const [inputIdentity, outputIdentity] = await Promise.all([
-      readRobinhoodTokenIdentity(inputAsset),
-      readRobinhoodTokenIdentity(outputAsset)
+      readVNextVerifiedAssetIdentity(inputAsset),
+      readVNextVerifiedAssetIdentity(outputAsset)
     ]);
     if (!inputIdentity || !outputIdentity) {
       return Response.json({ error: "Both assets require verified Robinhood Chain identity before route verification." }, { status: 422, headers: { "Cache-Control": "no-store" } });

@@ -66,7 +66,7 @@ const executableAdapter: VNextQuoteProviderAdapter = {
       indicativeProtectedOutputFloorAtomic: input.indicativeProtectedOutputFloorAtomic.toString(),
       protectedOutputAtomic: "990", recipient: input.recipient, router: recipient, approvalSpender: recipient,
       deadline: deadlineSeconds.toString(), calldataHash: actionHash, nextAction: "swap",
-      nextActionTarget: recipient, nextActionCalldataHash: actionHash, gasLimitUnits: "120000",
+      nextActionTarget: recipient, nextActionCalldataHash: actionHash, transactionValueAtomic: "0", gasLimitUnits: "120000",
       estimatedNetworkCostUsdgAtomic: null, networkCostValuationSource: null,
       networkCostValuedAtMs: null, networkCostValuationExpiresAtMs: null
     };
@@ -106,7 +106,7 @@ const route = readFileSync(new URL("../../app/api/vnext/quotes/route.ts", import
 const registry = readFileSync(new URL("../server/vnext-execution-engine.ts", import.meta.url), "utf8");
 const boundary = readFileSync(new URL("../server/vnext-provider-adapter.ts", import.meta.url), "utf8");
 assert.match(route, /requireAuthenticatedTradeWallet/);
-assert.match(route, /readRobinhoodTokenIdentity/);
+assert.match(route, /readVNextVerifiedAssetIdentity/);
 assert.match(route, /quoteRobinhoodVNextExecution/);
 assert.match(registry, /vNextSushiAdapter/);
 assert.match(registry, /vNextUniswapV3Adapter/);

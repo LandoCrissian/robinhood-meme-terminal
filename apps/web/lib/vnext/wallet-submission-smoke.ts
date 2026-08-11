@@ -22,6 +22,7 @@ const evidence: VNextPreSignEvidence = {
   pools: ["0x4444444444444444444444444444444444444444"], deadline: "1786000300",
   calldataHash: `0x${"1".repeat(64)}`, nextAction: "approval", nextActionTarget: inputAsset,
   nextActionCalldataHash: keccak256(data), nativeBalanceWei: "1000000000000000",
+  transactionValueAtomic: "0",
   gasPriceWei: "1000000000", feeCeilingWei: "3000000000", estimatedGasUnits: "50000", gasLimitUnits: "60000",
   estimatedNetworkCostWei: "180000000000000", gasState: "sufficient",
   estimatedNetworkCostUsdgAtomic: null, networkCostValuationSource: null,
@@ -63,6 +64,15 @@ const readyGas = assessVNextWalletGasReadiness({
 assert.equal(readyGas.ready, true);
 assert.equal(readyGas.requiredWei, 600_000n);
 assert.equal(readyGas.effectiveFeeCeilingWei, 6n);
+const nativeValueShortfall = assessVNextWalletGasReadiness({
+  nativeBalanceWei: 1_000_000n,
+  currentGasPriceWei: 2n,
+  evidenceFeeCeilingWei: "5",
+  gasLimitUnits: "100000",
+  transactionValueAtomic: "500000"
+});
+assert.equal(nativeValueShortfall.ready, false);
+assert.equal(nativeValueShortfall.shortfallWei, 100_000n);
 const missingGas = assessVNextWalletGasReadiness({
   nativeBalanceWei: 500_000n,
   currentGasPriceWei: 1n,

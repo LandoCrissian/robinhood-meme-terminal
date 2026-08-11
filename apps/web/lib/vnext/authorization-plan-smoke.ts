@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { encodeFunctionData, erc20Abi, keccak256, type Hex } from "viem";
-import { ROBINHOOD_SWAP_ROUTER_02 } from "../uniswap-v4";
+import { encodeFunctionData, erc20Abi, keccak256, zeroAddress, type Hex } from "viem";
+import { ROBINHOOD_SWAP_ROUTER_02, ROBINHOOD_WETH } from "../uniswap-v4";
 import { authorizationPayloadHash, parseVNextAuthorizationBundle, parseVNextAuthorizationPlan, type VNextAuthorizationPlan } from "./authorization-plan";
 import type { VNextPreSignEvidence } from "./pre-sign-evidence";
 
@@ -35,6 +35,7 @@ const baseEvidence: VNextPreSignEvidence = {
   pools: ["0x4444444444444444444444444444444444444444"], deadline: "1786000300",
   calldataHash: `0x${"1".repeat(64)}`, nextAction: "approval", nextActionTarget: inputAsset,
   nextActionCalldataHash: keccak256(approvalData), nativeBalanceWei: "1000000000000000",
+  transactionValueAtomic: "0",
   gasPriceWei: "1000000000", feeCeilingWei: "3000000000", estimatedGasUnits: "50000", gasLimitUnits: "60000",
   estimatedNetworkCostWei: "180000000000000", gasState: "sufficient",
   estimatedNetworkCostUsdgAtomic: null, networkCostValuationSource: null,
@@ -77,6 +78,7 @@ const verifiedEvidence: VNextPreSignEvidence = {
   ...baseEvidence, status: "verified", approvalRequired: false, allowanceAtomic: "1000000",
   nextAction: "swap", nextActionTarget: ROBINHOOD_SWAP_ROUTER_02,
   nextActionCalldataHash: keccak256(swapData), calldataHash: keccak256(swapData),
+  transactionValueAtomic: "0",
   estimatedGasUnits: "100000", gasLimitUnits: "120000", estimatedNetworkCostWei: "360000000000000",
   exactSimulationPassed: true
 };
@@ -85,6 +87,32 @@ const swapPlan = planWithHash({
   target: ROBINHOOD_SWAP_ROUTER_02, data: swapData, gasLimit: "120000"
 });
 assert.equal(parseVNextAuthorizationPlan(swapPlan, verifiedEvidence, now + 1).kind, "swap");
+const nativeAmount = "100000000000000";
+const nativeSwapCall = encodeFunctionData({ abi: routerAbi, functionName: "exactInputSingle", args: [{
+  tokenIn: ROBINHOOD_WETH, tokenOut: outputAsset, fee: 3_000, recipient,
+  amountIn: BigInt(nativeAmount), amountOutMinimum: 990n, sqrtPriceLimitX96: 0n
+}] });
+const nativeSwapData = encodeFunctionData({ abi: routerAbi, functionName: "multicall", args: [1_786_000_300n, [nativeSwapCall]] });
+const nativeEvidence: VNextPreSignEvidence = {
+  ...verifiedEvidence,
+  inputAsset: zeroAddress,
+  inputAmountAtomic: nativeAmount,
+  balanceAtomic: "1000000000000000",
+  allowanceAtomic: ((1n << 256n) - 1n).toString(),
+  transactionValueAtomic: nativeAmount,
+  nextActionCalldataHash: keccak256(nativeSwapData),
+  calldataHash: keccak256(nativeSwapData)
+};
+const nativePlan = planWithHash({
+  ...swapPlan,
+  planId: "66666666-6666-4666-8666-666666666666",
+  inputAsset: zeroAddress,
+  inputAmountAtomic: nativeAmount,
+  data: nativeSwapData,
+  value: nativeAmount
+});
+assert.equal(parseVNextAuthorizationPlan(nativePlan, nativeEvidence, now + 1).value, nativeAmount);
+assert.throws(() => parseVNextAuthorizationPlan(planWithHash({ ...nativePlan, value: "0" }), nativeEvidence, now + 1), /inconsistent authorization plan/);
 const bundleEvidence = { ...verifiedEvidence, verifiedAtMs: now, expiresAtMs: now + 300_000 };
 const changedMinimum = encodeFunctionData({ abi: routerAbi, functionName: "exactInputSingle", args: [{
   tokenIn: inputAsset, tokenOut: outputAsset, fee: 3_000, recipient,
@@ -115,7 +143,7 @@ const parser = readFileSync(new URL("./authorization-plan.ts", import.meta.url),
 const composer = readFileSync(new URL("../../app/vnext/trade-intent-composer.tsx", import.meta.url), "utf8");
 assert.match(endpoint, /RMT_VNEXT_AUTHORIZATION_ENABLED !== "true"/);
 assert.match(endpoint, /requireAuthenticatedTradeWallet/);
-assert.match(endpoint, /readRobinhoodTokenIdentity/);
+assert.match(endpoint, /readVNextVerifiedAssetIdentity/);
 assert.match(endpoint, /prepareRobinhoodVNextAuthorization/);
 assert.doesNotMatch(endpoint, /prepareVNextUniswapAuthorization/);
 assert.match(endpoint, /Route evidence changed/);

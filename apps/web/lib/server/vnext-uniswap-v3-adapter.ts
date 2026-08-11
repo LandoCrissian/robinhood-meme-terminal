@@ -1,5 +1,7 @@
 import { prepareVNextUniswapAuthorization, quoteVNextUniswapDirect, verifyVNextUniswapRoute } from "./vnext-uniswap-quote";
 import { unavailableVNextQuoteAttempt, type VNextQuoteProviderAdapter } from "./vnext-provider-adapter";
+import { ROBINHOOD_WETH } from "../uniswap-v4";
+import { isRobinhoodNativeAsset } from "../vnext/robinhood-assets";
 
 export const vNextUniswapV3Adapter: VNextQuoteProviderAdapter = {
   provider: "uniswap-v3",
@@ -12,7 +14,7 @@ export const vNextUniswapV3Adapter: VNextQuoteProviderAdapter = {
     const startedAtMs = Date.now();
     try {
       const quote = await quoteVNextUniswapDirect({
-        inputAsset: request.inputAsset,
+        inputAsset: isRobinhoodNativeAsset(request.inputAsset) ? ROBINHOOD_WETH : request.inputAsset,
         outputAsset: request.outputAsset,
         amountIn: request.amountIn
       });

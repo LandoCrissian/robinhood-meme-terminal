@@ -8,7 +8,7 @@ export type VNextWalletTransaction = {
   chainId: 4_663;
   to: Address;
   data: Hex;
-  value: 0n;
+  value: bigint;
   gas: bigint;
 };
 
@@ -19,15 +19,20 @@ export function assessVNextWalletGasReadiness(input: {
   currentGasPriceWei: bigint;
   evidenceFeeCeilingWei: string;
   gasLimitUnits: string;
+  transactionValueAtomic?: string;
 }) {
   if (input.nativeBalanceWei < 0n || input.currentGasPriceWei <= 0n) throw new Error("RMT rejected invalid live gas inputs.");
   if (!/^[1-9][0-9]*$/.test(input.evidenceFeeCeilingWei) || !/^[1-9][0-9]*$/.test(input.gasLimitUnits)) {
     throw new Error("RMT rejected incomplete verified gas evidence.");
   }
+  if (input.transactionValueAtomic !== undefined && !/^(0|[1-9][0-9]*)$/.test(input.transactionValueAtomic)) {
+    throw new Error("RMT rejected invalid native transaction value.");
+  }
   const evidenceFeeCeiling = BigInt(input.evidenceFeeCeilingWei);
   const liveFeeCeiling = input.currentGasPriceWei * WALLET_FEE_CEILING_MULTIPLIER;
   const effectiveFeeCeiling = liveFeeCeiling > evidenceFeeCeiling ? liveFeeCeiling : evidenceFeeCeiling;
-  const requiredWei = BigInt(input.gasLimitUnits) * effectiveFeeCeiling;
+  const transactionValue = BigInt(input.transactionValueAtomic ?? "0");
+  const requiredWei = transactionValue + BigInt(input.gasLimitUnits) * effectiveFeeCeiling;
   const shortfallWei = input.nativeBalanceWei >= requiredWei ? 0n : requiredWei - input.nativeBalanceWei;
   return {
     ready: shortfallWei === 0n,
@@ -58,7 +63,7 @@ export function prepareVNextWalletTransaction(input: {
     chainId: ROBINHOOD_MAINNET_CHAIN_ID,
     to: getAddress(exact.target),
     data: exact.data,
-    value: 0n,
+    value: BigInt(exact.value),
     gas: BigInt(exact.gasLimit)
   };
 }

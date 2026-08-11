@@ -12,11 +12,12 @@ import {
 } from "viem";
 import { robinhoodChain } from "@rmt/shared/chains";
 import { ROBINHOOD_SWAP_ROUTER_02, ROBINHOOD_V3_FACTORY, ROBINHOOD_V3_QUOTER, ROBINHOOD_WETH } from "../uniswap-v4";
-import { ROBINHOOD_USDG_ADDRESS } from "../vnext/robinhood-assets";
+import { ROBINHOOD_USDG_ADDRESS, isRobinhoodNativeAsset } from "../vnext/robinhood-assets";
 
 const FEES = [100, 500, 3_000, 10_000] as const;
 const BPS = 10_000n;
 const SLIPPAGE_BPS = 100n;
+const MAX_UINT256 = (1n << 256n) - 1n;
 // MetaMask currently reserves up to 3x Robinhood Chain's observed gas price for
 // EIP-1559 transactions. Match that wallet-side ceiling so RMT never labels a
 // balance sufficient only for the final wallet review to reject it.
@@ -205,9 +206,13 @@ async function evaluateVNextUniswapRoute(input: {
   indicativeProtectedOutputFloorAtomic?: bigint;
 }) {
   const recipient = getAddress(input.recipient);
+  const requestedInputAsset = getAddress(input.inputAsset);
+  const nativeInput = isRobinhoodNativeAsset(requestedInputAsset);
+  const routedInputAsset = nativeInput ? ROBINHOOD_WETH : requestedInputAsset;
+  const transactionValue = nativeInput ? input.amountIn : 0n;
   const nowMs = input.nowMs ?? Date.now();
   const [quote, routerRuntimeHash] = await Promise.all([
-    quoteVNextUniswapDirect(input),
+    quoteVNextUniswapDirect({ ...input, inputAsset: routedInputAsset }),
     requireRuntimeHash(ROBINHOOD_SWAP_ROUTER_02, ROUTER_RUNTIME_HASH, "Uniswap router")
   ]);
   if (!quote) throw new Error("No canonical Uniswap V3 route is available for exact verification.");
@@ -250,14 +255,20 @@ async function evaluateVNextUniswapRoute(input: {
     functionName: "multicall",
     args: [deadline, [swap]]
   });
-  const [balance, allowance, nativeBalance, gasPrice] = await Promise.all([
-    client.readContract({ address: quote.inputAsset, abi: erc20Abi, functionName: "balanceOf", args: [recipient] }),
-    client.readContract({ address: quote.inputAsset, abi: erc20Abi, functionName: "allowance", args: [recipient, ROBINHOOD_SWAP_ROUTER_02] }),
+  const [tokenState, nativeBalance, gasPrice] = await Promise.all([
+    nativeInput
+      ? Promise.resolve({ balance: 0n, allowance: MAX_UINT256 })
+      : Promise.all([
+          client.readContract({ address: quote.inputAsset, abi: erc20Abi, functionName: "balanceOf", args: [recipient] }),
+          client.readContract({ address: quote.inputAsset, abi: erc20Abi, functionName: "allowance", args: [recipient, ROBINHOOD_SWAP_ROUTER_02] })
+        ]).then(([balance, allowance]) => ({ balance, allowance })),
     client.getBalance({ address: recipient }),
     client.getGasPrice()
   ]);
+  const balance = nativeInput ? nativeBalance : tokenState.balance;
+  const allowance = tokenState.allowance;
   const sufficientBalance = balance >= quote.amountIn;
-  const approvalRequired = allowance < quote.amountIn;
+  const approvalRequired = !nativeInput && allowance < quote.amountIn;
   let simulationPassed = false;
   let status: "verified" | "approval_required" | "insufficient_balance" | "insufficient_gas" | "gas_unavailable" | "simulation_failed";
   let nextAction: "approval" | "swap" | null = null;
@@ -293,14 +304,14 @@ async function evaluateVNextUniswapRoute(input: {
     }
   } else {
     try {
-      await client.call({ account: recipient, to: ROBINHOOD_SWAP_ROUTER_02, data: calldata, value: 0n });
+      await client.call({ account: recipient, to: ROBINHOOD_SWAP_ROUTER_02, data: calldata, value: transactionValue });
       simulationPassed = true;
       status = "verified";
       nextAction = "swap";
       nextActionTarget = ROBINHOOD_SWAP_ROUTER_02;
       nextActionCalldataHash = keccak256(calldata);
       try {
-        estimatedGasUnits = await client.estimateGas({ account: recipient, to: ROBINHOOD_SWAP_ROUTER_02, data: calldata, value: 0n });
+        estimatedGasUnits = await client.estimateGas({ account: recipient, to: ROBINHOOD_SWAP_ROUTER_02, data: calldata, value: transactionValue });
       } catch {
         gasState = "unavailable";
         status = "gas_unavailable";
@@ -312,7 +323,7 @@ async function evaluateVNextUniswapRoute(input: {
   if (estimatedGasUnits !== null) {
     gasLimitUnits = estimatedGasUnits * 120n / 100n;
     estimatedNetworkCostWei = gasLimitUnits * feeCeilingWei;
-    gasState = nativeBalance >= estimatedNetworkCostWei ? "sufficient" : "insufficient";
+    gasState = nativeBalance >= transactionValue + estimatedNetworkCostWei ? "sufficient" : "insufficient";
     if (gasState === "insufficient") status = "insufficient_gas";
     try {
       const valuation = await quoteVNextUniswapDirect({
@@ -336,7 +347,7 @@ async function evaluateVNextUniswapRoute(input: {
     provider: "uniswap-v3" as const,
     status,
     chainId: 4_663 as const,
-    inputAsset: quote.inputAsset,
+    inputAsset: requestedInputAsset,
     outputAsset: quote.outputAsset,
     inputAmountAtomic: quote.amountIn.toString(),
     indicativeProtectedOutputFloorAtomic: (input.indicativeProtectedOutputFloorAtomic ?? protectedOutputFloor).toString(),
@@ -357,6 +368,7 @@ async function evaluateVNextUniswapRoute(input: {
     nextAction,
     nextActionTarget,
     nextActionCalldataHash,
+    transactionValueAtomic: transactionValue.toString(),
     nativeBalanceWei: nativeBalance.toString(),
     gasPriceWei: gasPrice.toString(),
     feeCeilingWei: feeCeilingWei.toString(),
@@ -423,7 +435,7 @@ export async function prepareVNextUniswapAuthorization(input: {
         kind: "swap" as const,
         target: evidence.router,
         data: payloads.swapCalldata,
-        value: "0" as const,
+        value: evidence.transactionValueAtomic,
         gasLimit: evidence.gasLimitUnits
       }
     };

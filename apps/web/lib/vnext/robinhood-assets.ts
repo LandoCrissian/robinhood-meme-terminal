@@ -1,4 +1,4 @@
-import { getAddress, type Address } from "viem";
+import { getAddress, zeroAddress, type Address } from "viem";
 import {
   VNEXT_EXECUTION_SCHEMA_VERSION,
   evmAsset,
@@ -10,6 +10,7 @@ import {
 } from "./execution-domain";
 
 export const ROBINHOOD_MAINNET_CHAIN_ID = 4_663;
+export const ROBINHOOD_NATIVE_ASSET_ADDRESS = zeroAddress;
 export const ROBINHOOD_USDG_ADDRESS = getAddress("0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168");
 export const ROBINHOOD_WETH_ADDRESS = getAddress("0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73");
 export const ROBINHOOD_RMT_ADDRESS = getAddress("0xdBa33be56C89CC9fc014c4459028d7e5c7878671");
@@ -37,6 +38,10 @@ export const ROBINHOOD_ETH: AssetMetadata = {
   decimals: 18,
   metadataState: "verified"
 };
+
+export function isRobinhoodNativeAsset(address: string) {
+  return getAddress(address) === ROBINHOOD_NATIVE_ASSET_ADDRESS;
+}
 
 export const ROBINHOOD_RMT: AssetMetadata = {
   id: evmAsset(ROBINHOOD_MAINNET_CHAIN_ID, ROBINHOOD_RMT_ADDRESS),

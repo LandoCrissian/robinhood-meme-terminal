@@ -1,6 +1,7 @@
 import { getAddress, isAddress } from "viem";
 import { z } from "zod";
 import { ROBINHOOD_SWAP_ROUTER_02 } from "../uniswap-v4";
+import { isRobinhoodNativeAsset } from "./robinhood-assets";
 
 const MAX_CLOCK_SKEW_MS = 5_000;
 
@@ -31,6 +32,7 @@ export type VNextPreSignEvidence = {
   nextAction: "approval" | "swap" | null;
   nextActionTarget: string | null;
   nextActionCalldataHash: string | null;
+  transactionValueAtomic: string;
   nativeBalanceWei: string;
   gasPriceWei: string;
   feeCeilingWei: string;
@@ -82,6 +84,7 @@ const evidenceSchema = z.object({
   nextAction: z.enum(["approval", "swap"]).nullable(),
   nextActionTarget: z.string().nullable(),
   nextActionCalldataHash: hash.nullable(),
+  transactionValueAtomic: atomic,
   nativeBalanceWei: atomic,
   gasPriceWei: atomic,
   feeCeilingWei: atomic,
@@ -144,6 +147,11 @@ export function parseVNextPreSignEvidence(value: unknown, expected: {
     if (!isAddress(pool)) throw new Error("RMT rejected an invalid route pool.");
   });
   if (evidence.nextActionTarget !== null && !isAddress(evidence.nextActionTarget)) throw new Error("RMT rejected an invalid next-action target.");
+  const nativeInput = isRobinhoodNativeAsset(evidence.inputAsset);
+  if (
+    evidence.transactionValueAtomic !== (nativeInput ? evidence.inputAmountAtomic : "0")
+    || (nativeInput && evidence.approvalRequired)
+  ) throw new Error("RMT rejected inconsistent native transaction value.");
   const completeGasEstimate = evidence.estimatedGasUnits !== null && evidence.gasLimitUnits !== null && evidence.estimatedNetworkCostWei !== null;
   if ((evidence.gasState === "sufficient" || evidence.gasState === "insufficient") !== completeGasEstimate) {
     throw new Error("RMT rejected incomplete gas evidence.");
@@ -153,7 +161,9 @@ export function parseVNextPreSignEvidence(value: unknown, expected: {
     || BigInt(evidence.gasLimitUnits!) < BigInt(evidence.estimatedGasUnits!)
     || BigInt(evidence.feeCeilingWei) < BigInt(evidence.gasPriceWei)
     || BigInt(evidence.estimatedNetworkCostWei!) !== BigInt(evidence.gasLimitUnits!) * BigInt(evidence.feeCeilingWei)
-    || (evidence.gasState === "sufficient") !== (BigInt(evidence.nativeBalanceWei) >= BigInt(evidence.estimatedNetworkCostWei!))
+    || (evidence.gasState === "sufficient") !== (
+      BigInt(evidence.nativeBalanceWei) >= BigInt(evidence.transactionValueAtomic) + BigInt(evidence.estimatedNetworkCostWei!)
+    )
   )) throw new Error("RMT rejected inconsistent gas economics.");
   const valuationParts = [
     evidence.estimatedNetworkCostUsdgAtomic,

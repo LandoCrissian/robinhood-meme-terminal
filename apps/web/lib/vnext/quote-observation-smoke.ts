@@ -178,7 +178,8 @@ const composer = readFileSync(new URL("../../app/vnext/trade-intent-composer.tsx
 const sushi = readFileSync(new URL("../server/sushi-trade.ts", import.meta.url), "utf8");
 const uniswap = readFileSync(new URL("../server/vnext-uniswap-quote.ts", import.meta.url), "utf8");
 assert.match(route, /requireAuthenticatedTradeWallet/);
-assert.match(route, /readRobinhoodTokenIdentity/);
+assert.match(route, /readVNextVerifiedAssetIdentity/);
+assert.match(route, /isRobinhoodNativeAsset/);
 assert.match(route, /quoteRobinhoodVNextExecution/);
 assert.match(route, /Cache-Control": "no-store/);
 assert.doesNotMatch(route, /quoteSushiAssetRoute|quoteVNextUniswapDirect/);

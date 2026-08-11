@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { getAddress, isAddress, type Hex } from "viem";
 import { z } from "zod";
 import { requireAuthenticatedTradeWallet, tradeIdentityErrorResponse } from "../../../../lib/server/rmt-trade-identity";
-import { readRobinhoodTokenIdentity } from "../../../../lib/server/universal-market-resolver";
+import { readVNextVerifiedAssetIdentity } from "../../../../lib/server/vnext-asset-identity";
 import { prepareRobinhoodVNextAuthorization } from "../../../../lib/server/vnext-execution-engine";
 import { authorizationPayloadHash, type VNextAuthorizationPlan } from "../../../../lib/vnext/authorization-plan";
 
@@ -41,8 +41,8 @@ export async function POST(request: Request) {
     const outputAsset = getAddress(parsed.data.outputAsset);
     await requireAuthenticatedTradeWallet(request, recipient);
     const [inputIdentity, outputIdentity] = await Promise.all([
-      readRobinhoodTokenIdentity(inputAsset),
-      readRobinhoodTokenIdentity(outputAsset)
+      readVNextVerifiedAssetIdentity(inputAsset),
+      readVNextVerifiedAssetIdentity(outputAsset)
     ]);
     if (!inputIdentity || !outputIdentity) {
       return Response.json({ error: "Both assets require verified Robinhood Chain identity before wallet review." }, { status: 422, headers: noStore });
@@ -80,7 +80,7 @@ export async function POST(request: Request) {
       chainId: 4_663 as const,
       target: prepared.transaction.target,
       data: prepared.transaction.data,
-      value: "0" as const,
+      value: prepared.transaction.value,
       gasLimit: prepared.transaction.gasLimit,
       inputAsset: prepared.evidence.inputAsset,
       outputAsset: prepared.evidence.outputAsset,

@@ -48,6 +48,7 @@ function formatAge(minutes: number | null) {
 export function VNextTerminalShell() {
   const [query, setQuery] = useState("");
   const [walletAssets, setWalletAssets] = useState<VNextDetectedWalletAsset[]>([]);
+  const [nativeBalance, setNativeBalance] = useState<bigint>();
   const marketSearch = useRef<HTMLInputElement>(null);
   const executionRecovery = useVNextExecutionRecovery();
   const { markets, status, selected, selectedAsset, identityStatus, setSelectedAddress, refresh } = useVNextMarketDirectory();
@@ -104,7 +105,12 @@ export function VNextTerminalShell() {
         </header>
 
         <div className="vnCanvas" id="vnext-workspace">
-          <SpendBalance markets={markets} onAssetsChange={setWalletAssets} executionRecord={executionRecovery.record} />
+          <SpendBalance
+            markets={markets}
+            onAssetsChange={setWalletAssets}
+            onNativeBalanceChange={setNativeBalance}
+            executionRecord={executionRecovery.record}
+          />
           <VNextExecutionRecoveryBanner record={executionRecovery.record} status={executionRecovery.status} />
 
           <div className="vnWorkspaceGrid">
@@ -181,6 +187,7 @@ export function VNextTerminalShell() {
               marketSymbol={selected?.symbol ?? "—"}
               marketAsset={selectedAsset}
               walletAssets={walletAssets}
+              nativeBalance={nativeBalance}
               executionRecord={executionRecovery.record}
               onContinueTrading={continueTrading}
             />

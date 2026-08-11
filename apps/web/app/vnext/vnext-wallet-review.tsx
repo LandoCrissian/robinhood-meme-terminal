@@ -54,7 +54,8 @@ export function VNextWalletReview({ plan, evidence, autoRequest = false }: {
         nativeBalanceWei,
         currentGasPriceWei,
         evidenceFeeCeilingWei: evidence.feeCeilingWei,
-        gasLimitUnits: plan.gasLimit
+        gasLimitUnits: plan.gasLimit,
+        transactionValueAtomic: plan.value
       });
       if (!gasReadiness.ready) {
         const shortfall = formatUnits(gasReadiness.shortfallWei, 18);

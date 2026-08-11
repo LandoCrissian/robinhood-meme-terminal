@@ -95,6 +95,7 @@ assert.match(component, /void refreshBalances\.current\(\)/);
 assert.match(component, /Canonical assets \+ current live directory/);
 assert.match(component, /route not checked/);
 assert.match(component, /useVNextWalletAssets/);
+assert.match(component, /onNativeBalanceChange\?\.\(nativeBalance\)/);
 assert.match(component, /\/api\/vnext\/asset-identity/);
 assert.match(component, /functionName: "balanceOf"/);
 assert.match(component, /balance <= 0n/);

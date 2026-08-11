@@ -12,7 +12,15 @@ import { parseVNextPreSignEvidence, type VNextPreSignEvidence } from "../../lib/
 import { postApprovalVerificationOutcome, resolvedVNextExecutionOutcome } from "../../lib/vnext/post-approval";
 import { parseVNextAuthorizationBundle, type VNextAuthorizationPlan } from "../../lib/vnext/authorization-plan";
 import { cachedVNextQuoteForRequest, isVNextQuoteReusableForTrade, VNEXT_BACKGROUND_QUOTE_DEBOUNCE_MS, VNEXT_BACKGROUND_QUOTE_REFRESH_MS, type VNextCachedQuote } from "../../lib/vnext/background-quote";
-import { ROBINHOOD_MAINNET_CHAIN_ID, ROBINHOOD_USDG, ROBINHOOD_USDG_ADDRESS, ROBINHOOD_WETH, robinhoodWalletAccount } from "../../lib/vnext/robinhood-assets";
+import {
+  ROBINHOOD_ETH,
+  ROBINHOOD_MAINNET_CHAIN_ID,
+  ROBINHOOD_NATIVE_ASSET_ADDRESS,
+  ROBINHOOD_USDG,
+  ROBINHOOD_USDG_ADDRESS,
+  ROBINHOOD_WETH,
+  robinhoodWalletAccount
+} from "../../lib/vnext/robinhood-assets";
 import { deriveVNextVerifiedUsdgOutcome } from "../../lib/vnext/verified-cost-outcome";
 import { metadataFromDetectedWalletAsset, type VNextDetectedWalletAsset } from "../../lib/vnext/wallet-assets";
 import { clearTradeQuoteCache, requestTradeQuote, tradeQuoteFailureFromResponse } from "../../lib/trade-quote-client";
@@ -49,12 +57,15 @@ function uniqueAssets(assets: AssetMetadata[]) {
 }
 
 const DEFAULT_BUY_AMOUNT = "25";
+const DEFAULT_NATIVE_BUY_AMOUNT = "0.0005";
+const NATIVE_GAS_RESERVE_ATOMIC = 100_000_000_000_000n;
 
-export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, walletAssets, executionRecord, onContinueTrading }: {
+export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, walletAssets, nativeBalance, executionRecord, onContinueTrading }: {
   marketName: string;
   marketSymbol: string;
   marketAsset?: AssetMetadata;
   walletAssets: VNextDetectedWalletAsset[];
+  nativeBalance?: bigint;
   executionRecord?: VNextExecutionRecord | null;
   onContinueTrading: () => void;
 }) {
@@ -112,6 +123,13 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
   const defaultBuyAmount = confirmedUsdgBalance && ROBINHOOD_USDG.decimals !== null
     ? affordableDefaultAmount(confirmedUsdgBalance.balanceAtomic, ROBINHOOD_USDG.decimals, DEFAULT_BUY_AMOUNT)
     : DEFAULT_BUY_AMOUNT;
+  const defaultNativeBuyAmount = nativeBalance && nativeBalance > NATIVE_GAS_RESERVE_ATOMIC && ROBINHOOD_ETH.decimals !== null
+    ? affordableDefaultAmount(
+        (nativeBalance - NATIVE_GAS_RESERVE_ATOMIC).toString(),
+        ROBINHOOD_ETH.decimals,
+        DEFAULT_NATIVE_BUY_AMOUNT
+      )
+    : "";
   const verifiedWalletAssets = useMemo(
     () => uniqueAssets(walletAssets.flatMap((asset) => {
       const metadata = metadataFromDetectedWalletAsset(asset);
@@ -119,13 +137,20 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
     })),
     [walletAssets]
   );
-  const buyInputs = useMemo(() => marketAsset
-    ? verifiedWalletAssets.filter((asset) => assetKey(asset.id) !== assetKey(marketAsset.id))
-    : verifiedWalletAssets,
-  [marketAsset, verifiedWalletAssets]);
+  const buyInputs = useMemo(() => {
+    const eligibleContracts = marketAsset
+      ? verifiedWalletAssets.filter((asset) => assetKey(asset.id) !== assetKey(marketAsset.id))
+      : verifiedWalletAssets;
+    const usdg = eligibleContracts.filter((asset) => assetKey(asset.id) === assetKey(ROBINHOOD_USDG.id));
+    const others = eligibleContracts.filter((asset) => assetKey(asset.id) !== assetKey(ROBINHOOD_USDG.id));
+    const native = nativeBalance && nativeBalance > NATIVE_GAS_RESERVE_ATOMIC ? [ROBINHOOD_ETH] : [];
+    return uniqueAssets([...usdg, ...native, ...others]);
+  }, [marketAsset, nativeBalance, verifiedWalletAssets]);
+  const defaultBuyInput = buyInputs.find((asset) => assetKey(asset.id) === assetKey(ROBINHOOD_USDG.id))
+    ?? buyInputs.find((asset) => assetKey(asset.id) === assetKey(ROBINHOOD_ETH.id))
+    ?? buyInputs[0];
   const selectedBuyInput = buyInputs.find((asset) => assetKey(asset.id) === buyInputKey)
-    ?? buyInputs.find((asset) => assetKey(asset.id) === assetKey(ROBINHOOD_USDG.id))
-    ?? buyInputs[0]
+    ?? defaultBuyInput
     ?? (!isConnected ? ROBINHOOD_USDG : undefined);
   const displayedBuyInputs = buyInputs.length > 0 ? buyInputs : selectedBuyInput ? [selectedBuyInput] : [];
   const sellOutputs = useMemo(() => marketAsset
@@ -139,24 +164,27 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
     return selectedSellOutput ? { inputAsset: marketAsset, outputAsset: selectedSellOutput } : null;
   }, [marketAsset, selectedBuyInput, selectedSellOutput, side]);
   const pairInputDecimals = pair?.inputAsset.decimals ?? null;
-  const inputBalance = useMemo(() => {
-    const inputAddress = pair?.inputAsset.id.locator.kind === "contract" ? pair.inputAsset.id.locator.address.toLowerCase() : null;
-    if (!inputAddress || pairInputDecimals === null) return undefined;
+  const inputBalanceAtomic = useMemo(() => {
+    if (pair?.inputAsset.id.locator.kind === "native") return nativeBalance?.toString();
+    const contractAddress = pair?.inputAsset.id.locator.kind === "contract" ? pair.inputAsset.id.locator.address.toLowerCase() : null;
+    if (!contractAddress || pairInputDecimals === null) return undefined;
     return walletAssets.find((asset) => (
-      asset.address.toLowerCase() === inputAddress
+      asset.address.toLowerCase() === contractAddress
       && asset.identityState === "verified"
       && asset.decimals === pairInputDecimals
       && /^(0|[1-9][0-9]*)$/.test(asset.balanceAtomic)
-    ));
-  }, [pair, pairInputDecimals, walletAssets]);
+    ))?.balanceAtomic;
+  }, [nativeBalance, pair, pairInputDecimals, walletAssets]);
   const buyUsesUsdg = side === "buy"
     && pair?.inputAsset.id.locator.kind === "contract"
     && pair.inputAsset.id.locator.address.toLowerCase() === ROBINHOOD_USDG_ADDRESS.toLowerCase();
+  const buyUsesNative = side === "buy" && pair?.inputAsset.id.locator.kind === "native";
+  const selectedDefaultBuyAmount = buyUsesUsdg ? defaultBuyAmount : buyUsesNative ? defaultNativeBuyAmount : "";
 
   useEffect(() => {
-    if (!autoFitBuyAmount.current || !buyUsesUsdg || !confirmedUsdgBalance || !defaultBuyAmount) return;
-    setAmount((current) => current === defaultBuyAmount ? current : defaultBuyAmount);
-  }, [buyUsesUsdg, confirmedUsdgBalance, defaultBuyAmount]);
+    if (!autoFitBuyAmount.current || !selectedDefaultBuyAmount) return;
+    setAmount((current) => current === selectedDefaultBuyAmount ? current : selectedDefaultBuyAmount);
+  }, [selectedDefaultBuyAmount]);
 
   const draft = useMemo(() => {
     if (!marketAsset) return { intent: null, message: "This preview asset has no verified chain-qualified contract identity." };
@@ -185,11 +213,15 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
   const chooseSide = (next: TradeSide) => {
     autoFitBuyAmount.current = next === "buy";
     setSide(next);
-    setAmount(next === "buy" ? defaultBuyAmount : "");
+    setAmount(next === "buy" ? selectedDefaultBuyAmount : "");
   };
   const inputSymbol = pair?.inputAsset.symbol ?? (side === "buy" ? "—" : marketSymbol);
   const outputSymbol = pair?.outputAsset.symbol ?? (side === "buy" ? marketSymbol : "USDG");
-  const inputAddress = pair?.inputAsset.id.locator.kind === "contract" ? pair.inputAsset.id.locator.address : null;
+  const inputAddress = pair?.inputAsset.id.locator.kind === "contract"
+    ? pair.inputAsset.id.locator.address
+    : pair?.inputAsset.id.locator.kind === "native"
+      ? ROBINHOOD_NATIVE_ASSET_ADDRESS
+      : null;
   const outputAddress = pair?.outputAsset.id.locator.kind === "contract" ? pair.outputAsset.id.locator.address : null;
   const requestKey = `${address ?? ""}:${side}:${amount}:${inputAddress ?? ""}:${outputAddress ?? ""}`;
   const cachedQuote = cachedVNextQuoteForRequest(lastReadyQuote.current, requestKey);
@@ -279,13 +311,13 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
   const displayOutput = bestQuote && bestQuote.outputDecimals !== null
     ? formatAtomicDisplay(bestQuote.protectedOutputAtomic!, bestQuote.outputDecimals)
     : null;
-  const availableDisplay = inputBalance && pairInputDecimals !== null
-    ? formatAtomicDisplay(inputBalance.balanceAtomic, pairInputDecimals)
+  const availableDisplay = inputBalanceAtomic && pairInputDecimals !== null
+    ? formatAtomicDisplay(inputBalanceAtomic, pairInputDecimals)
     : null;
   const amountExceedsBalance = Boolean(
     draft.intent
-    && inputBalance
-    && BigInt(draft.intent.amountAtomic) > BigInt(inputBalance.balanceAtomic)
+    && inputBalanceAtomic
+    && BigInt(draft.intent.amountAtomic) > BigInt(inputBalanceAtomic)
   );
   const confirmedInputDisplay = postExecutionState.state === "swap_confirmed"
     && executionRecord?.kind === "swap"
@@ -303,9 +335,13 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
       : null;
 
   const useBalancePercentage = (basisPoints: number) => {
-    if (!inputBalance || pair?.inputAsset.decimals === null || pair?.inputAsset.decimals === undefined) return;
+    if (!inputBalanceAtomic || pair?.inputAsset.decimals === null || pair?.inputAsset.decimals === undefined) return;
     try {
-      const atomic = percentageOfAtomic(inputBalance.balanceAtomic, basisPoints);
+      const balance = pair.inputAsset.id.locator.kind === "native"
+        ? BigInt(inputBalanceAtomic) - NATIVE_GAS_RESERVE_ATOMIC
+        : BigInt(inputBalanceAtomic);
+      if (balance <= 0n) return;
+      const atomic = percentageOfAtomic(balance.toString(), basisPoints);
       autoFitBuyAmount.current = false;
       setAmount(formatUnits(BigInt(atomic), pair.inputAsset.decimals));
     } catch {
@@ -629,8 +665,8 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
     autoFitBuyAmount.current = true;
     setPostExecutionState({ state: "idle" });
     setSide("buy");
-    setAmount(defaultBuyAmount);
-    setBuyInputKey(assetKey(ROBINHOOD_USDG.id));
+    setAmount(defaultBuyInput?.id.locator.kind === "native" ? defaultNativeBuyAmount : defaultBuyAmount);
+    setBuyInputKey(defaultBuyInput ? assetKey(defaultBuyInput.id) : undefined);
     setSellOutputKey(assetKey(ROBINHOOD_USDG.id));
     onContinueTrading();
   };
@@ -659,8 +695,9 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
             onChange={(event) => {
               const nextKey = event.target.value;
               const nextUsesUsdg = nextKey === assetKey(ROBINHOOD_USDG.id);
-              autoFitBuyAmount.current = nextUsesUsdg;
-              setAmount(nextUsesUsdg ? defaultBuyAmount : "");
+              const nextUsesNative = nextKey === assetKey(ROBINHOOD_ETH.id);
+              autoFitBuyAmount.current = nextUsesUsdg || nextUsesNative;
+              setAmount(nextUsesUsdg ? defaultBuyAmount : nextUsesNative ? defaultNativeBuyAmount : "");
               setBuyInputKey(nextKey);
             }}
           >
@@ -674,7 +711,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
           {[2_500, 5_000, 7_500, 10_000].map((basisPoints) => <button
             type="button"
             key={basisPoints}
-            disabled={!inputBalance}
+            disabled={!inputBalanceAtomic}
             onClick={() => useBalancePercentage(basisPoints)}
           >{basisPoints === 10_000 ? "Max" : `${basisPoints / 100}%`}</button>)}
         </div>
@@ -683,9 +720,9 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
         <div className="vnQuickAmounts">
           {["25", "50", "100", "250"].map((preset) => {
             const exceedsBalance = Boolean(
-              inputBalance
+              inputBalanceAtomic
               && pairInputDecimals !== null
-              && parseUnits(preset, pairInputDecimals) > BigInt(inputBalance.balanceAtomic)
+              && parseUnits(preset, pairInputDecimals) > BigInt(inputBalanceAtomic)
             );
             return <button
               className={preset === amount ? "isActive" : ""}
@@ -765,7 +802,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
         <p className="vnIntentStatus">{quoteState.state === "error" ? quoteState.message : draft.message}</p>
         {address && pair ? <p className={`vnBalanceEvidence${amountExceedsBalance ? " isBlocking" : ""}`}>{amountExceedsBalance
           ? `Amount exceeds the confirmed ${inputSymbol} balance. Authorization must remain blocked.`
-          : inputBalance
+          : inputBalanceAtomic
             ? `Confirmed ${inputSymbol} balance is the source for percentage and Max controls.`
             : `Confirmed ${inputSymbol} balance is not detected. Percentage controls remain disabled.`}</p> : null}
         {visibleQuote ? <div className="vnQuoteAttempts">

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { parseVNextPreSignEvidence, type VNextPreSignEvidence } from "./pre-sign-evidence";
+import { zeroAddress } from "viem";
 import { ROBINHOOD_SWAP_ROUTER_02 } from "../uniswap-v4";
 
 const now = 1_786_000_000_000;
@@ -31,6 +32,7 @@ const evidence: VNextPreSignEvidence = {
   nextAction: "swap",
   nextActionTarget: ROBINHOOD_SWAP_ROUTER_02,
   nextActionCalldataHash: `0x${"1".repeat(64)}`,
+  transactionValueAtomic: "0",
   nativeBalanceWei: "1000000000000000",
   gasPriceWei: "1000000000",
   feeCeilingWei: "3000000000",
@@ -70,6 +72,20 @@ assert.throws(() => parseVNextPreSignEvidence({ ...evidence, protectedOutputAtom
 assert.throws(() => parseVNextPreSignEvidence({ ...evidence, indicativeProtectedOutputFloorAtomic: "981" }, expected, now), /inconsistent/);
 assert.throws(() => parseVNextPreSignEvidence({ ...evidence, protectedOutputAtomic: "979" }, expected, now), /inconsistent/);
 assert.throws(() => parseVNextPreSignEvidence({ ...evidence, expiresAtMs: now + 300_001 }, expected, now), /inconsistent/);
+const nativeEvidence = {
+  ...evidence,
+  inputAsset: zeroAddress,
+  inputAmountAtomic: "100000000000000",
+  transactionValueAtomic: "100000000000000",
+  balanceAtomic: evidence.nativeBalanceWei
+};
+const nativeExpected = {
+  ...expected,
+  inputAsset: zeroAddress,
+  inputAmountAtomic: nativeEvidence.inputAmountAtomic
+};
+assert.equal(parseVNextPreSignEvidence(nativeEvidence, nativeExpected, now).transactionValueAtomic, nativeEvidence.inputAmountAtomic);
+assert.throws(() => parseVNextPreSignEvidence({ ...nativeEvidence, transactionValueAtomic: "0" }, nativeExpected, now), /native transaction value/);
 assert.equal(parseVNextPreSignEvidence({
   ...evidence,
   status: "approval_required",
@@ -78,7 +94,8 @@ assert.equal(parseVNextPreSignEvidence({
   allowanceAtomic: "0",
   nextAction: "approval",
   nextActionTarget: evidence.inputAsset,
-  nextActionCalldataHash: `0x${"5".repeat(64)}`
+  nextActionCalldataHash: `0x${"5".repeat(64)}`,
+  transactionValueAtomic: "0"
 }, expected, now).status, "approval_required");
 assert.equal(parseVNextPreSignEvidence({
   ...evidence,
@@ -107,7 +124,7 @@ const route = readFileSync(new URL("../../app/api/vnext/verify/route.ts", import
 const verifier = readFileSync(new URL("../server/vnext-uniswap-quote.ts", import.meta.url), "utf8");
 const composer = readFileSync(new URL("../../app/vnext/trade-intent-composer.tsx", import.meta.url), "utf8");
 assert.match(route, /requireAuthenticatedTradeWallet/);
-assert.match(route, /readRobinhoodTokenIdentity/);
+assert.match(route, /readVNextVerifiedAssetIdentity/);
 assert.match(route, /verifyRobinhoodVNextExecution/);
 assert.match(route, /protectedOutputFloorAtomic/);
 assert.match(verifier, /moved below the indicative protected-output floor/);
