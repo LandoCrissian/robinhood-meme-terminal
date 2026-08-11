@@ -450,6 +450,16 @@ body .rmtVnext {
   gap: 3px;
 }
 
+.vnDetectedAssetsControls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.vnDetectedAssetsToggle {
+  display: none;
+}
+
 .vnDetectedAssetsHead strong {
   font-size: 13px;
 }
@@ -2218,6 +2228,24 @@ body .rmtVnext {
 
   .vnDetectedAssetsHead {
     min-height: 58px;
+  }
+
+  .vnDetectedAssetsToggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .vnDetectedAssets:not(.isExpanded) .vnDetectedAssetsRefresh {
+    display: none;
+  }
+
+  .vnDetectedAssetsBody {
+    display: none;
+  }
+
+  .vnDetectedAssets.isExpanded .vnDetectedAssetsBody {
+    display: block;
   }
 
   .vnDetectedAssetList {
