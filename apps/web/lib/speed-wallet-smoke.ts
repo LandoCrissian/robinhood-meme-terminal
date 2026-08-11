@@ -36,18 +36,19 @@ assert.match(walletConfig, /function createLegacyWalletConnectors/, "Legacy conn
 assert.match(providers, /connectors:\s*createLegacyWalletConnectors\(\)/, "The legacy provider must own legacy connector initialization.");
 assert.doesNotMatch(speedProvider, /createLegacyWalletConnectors/, "Privy must not initialize RMT's legacy WalletConnect connector a second time.");
 assert.match(speedProvider, /@privy-io\/wagmi/, "Embedded wallets must use Privy's official Wagmi adapter.");
-assert.match(speedProvider, /createOnLogin:\s*"all-users"/, "A user who chooses Privy sign-in must receive an RMT wallet.");
+assert.match(speedProvider, /createOnLogin:\s*"users-without-wallets"/, "Privy must not create a second wallet for a trader who already has an external wallet.");
 assert.match(speedProvider, /showWalletLoginFirst:\s*true/, "Privy must prioritize the wallet already available to a trader.");
 assert.match(speedEntry, /useExportWallet/, "The user-owned wallet must expose recovery/export controls.");
 assert.match(speedEntry, /useSetWalletRecovery/, "The user-owned wallet must expose cross-device recovery controls.");
 assert.match(speedEntry, /useMfaEnrollment/, "The user-owned wallet must expose MFA enrollment controls.");
 assert.match(speedEntry, /Session permissions remain off/, "Signer permissions must be visibly fail-closed.");
 assert.match(walletButton, /if \(speedWalletEnabled\) return <PrivyWalletButton/, "Privy must own the wallet entry point whenever validly configured.");
-assert.match(privyWalletButton, />\s*Sign in or create wallet\s*</, "The primary wallet entry must establish one authenticated RMT account session.");
-assert.match(privyWalletButton, /identity\.login\(\)/, "The primary wallet entry must authenticate and connect in one Privy flow.");
+assert.match(privyWalletButton, /"Connect trading wallet"/, "VNext must lead with a trading-wallet connection rather than a profile login.");
+assert.match(privyWalletButton, /identity\.connectTradingWallet\(\)/, "VNext must use the external-wallet-only Privy flow.");
 assert.doesNotMatch(privyWalletButton, /useConnectOrCreateWallet|connectOrCreateWallet\(/, "RMT must not open a connection-only flow before wallet authentication.");
 assert.match(privyWalletButton, /mobileMetaMaskUrl/, "Mobile traders must have a direct MetaMask app handoff outside blocked embedded-browser connection modals.");
-assert.match(privyWalletButton, /Use this wallet/, "A mobile wallet browser must offer its injected wallet directly.");
+assert.match(privyWalletButton, /Connect this wallet/, "A mobile wallet browser must offer its injected wallet directly.");
+assert.match(privyWalletButton, /Rabby \/ other/, "Mobile traders must have a clear Rabby and WalletConnect fallback.");
 assert.match(rmtIdentity, /supportsOAuth \? \["email", "google", "passkey", "wallet"\] : \["wallet"\]/, "Wallet browsers must not offer OAuth flows that cannot leave their embedded browser.");
 assert.doesNotMatch(`${speedEntry}\n${privyFundingActions}`, /onClick=\{login\}/, "Wallet and funding entry points must use RMT's environment-aware Privy login.");
 assert.ok(
@@ -56,7 +57,8 @@ assert.ok(
 );
 assert.match(speedProvider, /"metamask", "coinbase_wallet", "detected_ethereum_wallets", "wallet_connect"/, "Privy must put named mobile wallets before desktop-only detection and the full registry.");
 assert.match(privyWalletButton, /useSetActiveWallet/, "An authenticated user must still be able to choose the exact active trading wallet.");
-assert.match(privyWalletButton, /One RMT account carries your private profile and wallet choices/, "Wallet selection must explain RMT's unified Privy identity boundary.");
+assert.match(privyWalletButton, /!walletFirstTerminal && <p className="privyProfileBoundary">/, "VNext must keep profile controls out of its wallet menu.");
+assert.match(providers, /profileEnabled = !\(pathname === "\/vnext"/, "VNext must not initialize the profile sync runtime.");
 assert.match(privyWalletButton, />Deposit</, "The exact active wallet must expose Privy funding.");
 assert.match(privyWalletButton, />Receive</, "The exact active wallet must expose its receive address.");
 assert.match(privyWalletButton, /privyActiveWalletSummary/, "The wallet control center must identify its exact active wallet and network.");

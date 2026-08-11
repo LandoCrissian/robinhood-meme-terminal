@@ -188,7 +188,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
 
   const draft = useMemo(() => {
     if (!marketAsset) return { intent: null, message: "This preview asset has no verified chain-qualified contract identity." };
-    if (!address || !isConnected) return { intent: null, message: "Connect a wallet to bind the source account and recipient." };
+    if (!address || !isConnected || identity.activeWalletKind !== "external") return { intent: null, message: "Connect an external trading wallet to bind the source account and recipient." };
     if (!onRobinhood) return { intent: null, message: "Switch to Robinhood Chain before creating an intent." };
     if (!pair) return { intent: null, message: side === "buy" ? "No different verified wallet-held input asset is detected." : "No supported settlement asset is available." };
     try {
@@ -208,7 +208,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
     } catch (error) {
       return { intent: null, message: error instanceof Error ? error.message : "Intent is incomplete." };
     }
-  }, [address, amount, isConnected, marketAsset, onRobinhood, pair, side]);
+  }, [address, amount, identity.activeWalletKind, isConnected, marketAsset, onRobinhood, pair, side]);
 
   const chooseSide = (next: TradeSide) => {
     autoFitBuyAmount.current = next === "buy";
@@ -376,6 +376,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
     const canRefresh = Boolean(
       identity.enabled
       && identity.authenticated
+      && identity.activeWalletKind === "external"
       && identity.identityToken
       && identity.userId
       && draft.intent
@@ -431,6 +432,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
     draft.intent,
     executionRecord?.state,
     identity.authenticated,
+    identity.activeWalletKind,
     identity.enabled,
     identity.identityToken,
     identity.userId,
@@ -613,10 +615,10 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
   };
 
   useEffect(() => {
-    if (!identity.authenticated || !address || !draft.intent || !pendingTradeAfterLogin.current) return;
+    if (!identity.authenticated || !address || identity.activeWalletKind !== "external" || !draft.intent || !pendingTradeAfterLogin.current) return;
     pendingTradeAfterLogin.current = false;
     void startTrade();
-  }, [address, draft.intent, identity.authenticated]);
+  }, [address, draft.intent, identity.activeWalletKind, identity.authenticated]);
 
   useEffect(() => {
     if (
@@ -642,17 +644,16 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
               ? "Gas estimate unavailable"
           : "Simulation failed"
     : null;
-  const flowBusy = quoteState.state === "loading"
-    || verificationState.state === "loading"
+  const flowBusy = verificationState.state === "loading"
     || authorizationState.state === "loading"
     || postExecutionState.state === "refreshing";
   const walletPlanActive = authorizationState.state === "ready";
   const transactionPending = executionRecord?.state === "submitted";
   const triggerPrimaryAction = () => {
     if (!identity.enabled) return;
-    if (!identity.authenticated || !address) {
+    if (!identity.authenticated || !address || identity.activeWalletKind !== "external") {
       pendingTradeAfterLogin.current = true;
-      identity.login();
+      identity.connectTradingWallet();
       return;
     }
     void startTrade();
@@ -675,7 +676,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
   };
 
   return (
-    <aside className="vnTradePanel" aria-labelledby="vn-trade-heading">
+    <aside className="vnTradePanel" id="vnext-trade-ticket" aria-labelledby="vn-trade-heading">
       <div className="vnTradeHeader">
         <div><span className="vnEyebrow">Trade</span><h2 id="vn-trade-heading">{marketSymbol === "—" ? "Select an asset" : `Trade ${marketSymbol}`}</h2><small>{marketName}</small></div>
         <span className="vnFixtureBadge">{authorizationEnabled ? "Live trading" : "Preview mode"}</span>
@@ -760,7 +761,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
       <button
         className="vnReviewButton"
         type="button"
-        disabled={flowBusy || walletPlanActive || transactionPending || amountExceedsBalance || !identity.enabled || !identity.ready || Boolean(identity.authenticated && address && !draft.intent)}
+        disabled={flowBusy || walletPlanActive || transactionPending || amountExceedsBalance || !identity.enabled || !identity.ready || Boolean(identity.authenticated && address && identity.activeWalletKind === "external" && !draft.intent)}
         onClick={triggerPrimaryAction}
       >{postExecutionState.state === "refreshing"
         ? "Preparing verified swap…"
@@ -772,10 +773,10 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
             ? "Finding best execution…"
             : !identity.enabled
               ? "Trading identity unavailable"
-            : !address
+            : !address || identity.activeWalletKind !== "external"
               ? `${side === "buy" ? "Connect & buy" : "Connect & sell"} ${marketSymbol}`
             : !identity.authenticated
-              ? `${side === "buy" ? "Sign in & buy" : "Sign in & sell"} ${marketSymbol}`
+              ? `${side === "buy" ? "Connect & buy" : "Connect & sell"} ${marketSymbol}`
               : `${authorizationEnabled ? "" : "Preview "}${side === "buy" ? "Buy" : "Sell"} ${marketSymbol}`}</button>
       <p className="vnTradeSafety">{identity.enabled
         ? "One tap checks the best route and opens the final wallet confirmation."

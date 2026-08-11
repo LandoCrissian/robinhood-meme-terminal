@@ -4,7 +4,7 @@ import { usePrivy, useWallets } from "@privy-io/react-auth";
 import { useSetActiveWallet } from "@privy-io/wagmi";
 import { robinhoodChain, robinhoodChainTestnet } from "@rmt/shared/chains";
 import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Address } from "viem";
 import { useAccount, useDisconnect, useSwitchChain } from "wagmi";
 import { recordExperienceStage } from "../lib/experience-funnel";
@@ -45,6 +45,7 @@ export function PrivyWalletButton({
   const [transferOpen, setTransferOpen] = useState(false);
   const [message, setMessage] = useState("");
   const pathname = usePathname();
+  const walletFirstTerminal = pathname === "/vnext" || pathname.startsWith("/vnext/");
   const identity = useRmtIdentity();
   const { ready, authenticated, logout, connectWallet } = usePrivy();
   const { wallets, ready: walletsReady } = useWallets();
@@ -61,7 +62,26 @@ export function PrivyWalletButton({
     ? metaMaskDappLink(window.location.href)
     : "";
   const activeWallet = wallets.find((wallet) => wallet.address.toLowerCase() === address?.toLowerCase());
+  const externalWallets = useMemo(
+    () => wallets.filter((wallet) => wallet.walletClientType !== "privy"),
+    [wallets]
+  );
+  const displayedWallets = walletFirstTerminal ? externalWallets : wallets;
+  const connectedTradingWallet = Boolean(
+    isConnected
+    && address
+    && (!walletFirstTerminal || activeWallet?.walletClientType !== "privy")
+  );
   const close = useCallback(() => setOpen(false), []);
+
+  useEffect(() => {
+    if (!walletFirstTerminal || !walletsReady || activeWallet?.walletClientType !== "privy") return;
+    const preferredExternalWallet = externalWallets[0];
+    if (!preferredExternalWallet) return;
+    void setActiveWallet(preferredExternalWallet).catch((error) => {
+      setMessage(safeWalletMessage(error instanceof Error ? error.message : ""));
+    });
+  }, [activeWallet?.walletClientType, externalWallets, setActiveWallet, walletFirstTerminal, walletsReady]);
 
   useEffect(() => {
     if (!open) return;
@@ -81,7 +101,7 @@ export function PrivyWalletButton({
     return <button className="wallet live connectTrigger" type="button" disabled>Wallet loading…</button>;
   }
 
-  if (!isConnected || !address) {
+  if (!connectedTradingWallet || !address) {
     if (walletEnvironment === "mobile-wallet-browser") {
       return (
         <div className="walletMenu">
@@ -91,10 +111,10 @@ export function PrivyWalletButton({
             onClick={() => {
               setMessage("");
               recordExperienceStage("wallet_connect_started");
-              identity.login();
+              walletFirstTerminal ? identity.connectTradingWallet() : identity.login();
             }}
           >
-            Use this wallet
+            Connect this wallet
           </button>
           {message && <span className="networkSwitchError" role="alert">{message}</span>}
         </div>
@@ -113,14 +133,14 @@ export function PrivyWalletButton({
           <button
             className="wallet mobileOtherWalletTrigger"
             type="button"
-            aria-label="Use RMT Wallet or another wallet"
+            aria-label="Use Rabby or another external wallet"
             onClick={() => {
               setMessage("");
               recordExperienceStage("wallet_connect_started");
-              identity.login();
+              walletFirstTerminal ? identity.connectTradingWallet() : identity.login();
             }}
           >
-            Other
+            Rabby / other
           </button>
           {message && <span className="networkSwitchError" role="alert">{message}</span>}
         </div>
@@ -134,10 +154,10 @@ export function PrivyWalletButton({
           onClick={() => {
             setMessage("");
             recordExperienceStage("wallet_connect_started");
-            identity.login();
+            walletFirstTerminal ? identity.connectTradingWallet() : identity.login();
           }}
         >
-          Sign in or create wallet
+          {walletFirstTerminal ? "Connect trading wallet" : "Sign in or create wallet"}
         </button>
         {message && <span className="networkSwitchError" role="alert">{message}</span>}
       </div>
@@ -201,7 +221,7 @@ export function PrivyWalletButton({
                 <a href="/" onClick={close}><strong>Trade</strong><span>RMT route checks</span></a>
               </div>
               <div className="privyWalletList" role="list">
-                {wallets.map((wallet) => {
+                {displayedWallets.map((wallet) => {
                   const active = wallet.address.toLowerCase() === address.toLowerCase();
                   return <button
                     type="button"
@@ -217,12 +237,16 @@ export function PrivyWalletButton({
                 })}
               </div>
               <div className="privyWalletActions">
-                <button type="button" onClick={() => connectWallet()}>Add another wallet</button>
+                <button type="button" onClick={() => connectWallet({
+                  description: "Connect an external wallet for RMT trading.",
+                  walletChainType: "ethereum-only",
+                  walletList: ["metamask", "coinbase_wallet", "detected_ethereum_wallets", "wallet_connect"]
+                })}>Add another wallet</button>
                 <button type="button" onClick={() => void signOut()}>Disconnect from RMT</button>
               </div>
-              <p className="privyProfileBoundary">
+              {!walletFirstTerminal && <p className="privyProfileBoundary">
                 One RMT account carries your private profile and wallet choices across the terminal. You still choose the active wallet, and RMT never receives its private key. <a href="/profile" onClick={close}>Open Profile →</a>
-              </p>
+              </p>}
               {message && <p className="walletError" role="status">{message}</p>}
             </div>
           </OverlayPortal>}

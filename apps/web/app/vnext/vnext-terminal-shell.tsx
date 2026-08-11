@@ -75,6 +75,13 @@ export function VNextTerminalShell() {
       marketSearch.current?.focus({ preventScroll: true });
     });
   }, []);
+  const selectMarket = useCallback((address: string) => {
+    setSelectedAddress(address);
+    if (!window.matchMedia("(max-width: 760px)").matches) return;
+    window.requestAnimationFrame(() => {
+      document.getElementById("vnext-trade-ticket")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }, [setSelectedAddress]);
 
   return (
     <main className="rmtVnext">
@@ -142,7 +149,7 @@ export function VNextTerminalShell() {
                       className={`vnMarketRow${selected?.address === market.address ? " isSelected" : ""}`}
                       key={market.address}
                       type="button"
-                      onClick={() => setSelectedAddress(market.address)}
+                      onClick={() => selectMarket(market.address)}
                       aria-pressed={selected?.address === market.address}
                     >
                       <MarketMark symbol={market.symbol} />

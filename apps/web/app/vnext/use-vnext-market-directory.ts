@@ -12,6 +12,8 @@ import {
 } from "../../lib/vnext/market-directory";
 import { ROBINHOOD_RMT_ADDRESS } from "../../lib/vnext/robinhood-assets";
 
+const IDENTITY_LOOKUP_TIMEOUT_MS = 5_000;
+
 export type DirectoryStatus = "loading" | "ready" | "stale" | "error";
 export type IdentityStatus = "idle" | "checking" | "verified" | "unverified";
 
@@ -115,23 +117,37 @@ export function useVNextMarketDirectory() {
       return;
     }
     const controller = new AbortController();
+    let active = true;
     setSelectedAsset(undefined);
     setIdentityStatus("checking");
+    const timeout = window.setTimeout(() => {
+      if (!active) return;
+      controller.abort();
+      setIdentityStatus("unverified");
+    }, IDENTITY_LOOKUP_TIMEOUT_MS);
     const query = new URLSearchParams({ address: selected.address });
     void fetch(`/api/vnext/asset-identity?${query}`, { cache: "no-store", signal: controller.signal })
       .then(async (response) => {
         const payload = await response.json() as ExternalMarketResponse;
         if (!response.ok) throw new Error(payload.error ?? "Identity lookup unavailable.");
         const asset = verifiedDirectoryAsset(selected, resolutionFromLookup(payload, selected.address));
-        if (controller.signal.aborted) return;
+        if (!active || controller.signal.aborted) return;
+        window.clearTimeout(timeout);
         identityCache.current.set(key, asset ?? null);
         setSelectedAsset(asset ?? undefined);
         setIdentityStatus(asset ? "verified" : "unverified");
       })
       .catch(() => {
-        if (!controller.signal.aborted) setIdentityStatus("unverified");
+        if (active) {
+          window.clearTimeout(timeout);
+          setIdentityStatus("unverified");
+        }
       });
-    return () => controller.abort();
+    return () => {
+      active = false;
+      window.clearTimeout(timeout);
+      controller.abort();
+    };
   }, [selected]);
 
   return { markets, status, selected, selectedAsset, identityStatus, selectedAddress, setSelectedAddress, refresh };
