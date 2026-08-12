@@ -2,6 +2,7 @@
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import dynamic from "next/dynamic";
+import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import { WagmiProvider, createConfig } from "wagmi";
 import { ProfileProvider } from "./profile-provider";
@@ -39,10 +40,13 @@ const SpeedWalletProvider = dynamic(
 
 export function Providers({ children }: { children: ReactNode }) {
   const [queryClient] = useState(() => new QueryClient());
+  const pathname = usePathname();
+  const profileEnabled = !(pathname === "/vnext" || pathname.startsWith("/vnext/"));
 
-  const application = (
-    <ProfileProvider><ReferralCapture /><ExperienceTelemetry />{children}<CommunityLive /></ProfileProvider>
-  );
+  const terminal = <><ExperienceTelemetry />{children}<CommunityLive /></>;
+  const application = profileEnabled
+    ? <ProfileProvider><ReferralCapture />{terminal}</ProfileProvider>
+    : terminal;
 
   const legacyApplication = <LegacyWalletProvider queryClient={queryClient}>{application}</LegacyWalletProvider>;
 

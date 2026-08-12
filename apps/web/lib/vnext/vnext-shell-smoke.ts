@@ -110,9 +110,11 @@ assert.match(composer, /Expected receive/);
 assert.match(composer, /Protected minimum/);
 assert.match(composer, /Quotes update quietly/);
 assert.match(composer, /Connect & buy/);
-assert.match(composer, /Sign in & buy/);
+assert.match(composer, /identity\.activeWalletKind !== "external"/);
+assert.match(composer, /identity\.connectTradingWallet\(\)/);
 assert.match(composer, /!address/);
 assert.match(composer, /!identity\.authenticated/);
+assert.doesNotMatch(composer, /const flowBusy = quoteState\.state === "loading"/);
 assert.match(composer, /stage === "quote"[\s\S]*setVerificationState\(\{ state: "idle" \}\)[\s\S]*setAuthorizationState\(\{ state: "idle" \}\)/);
 assert.match(composer, /stage === "verification"[\s\S]*setVerificationState\(\{ state: "error", message \}\)[\s\S]*setAuthorizationState\(\{ state: "idle" \}\)/);
 assert.match(composer, /Purchase confirmed/);
@@ -162,6 +164,7 @@ assert.match(styles, /\.vnRouteDetails[\s\S]*height: clamp\(280px, 42svh, 390px\
 assert.match(styles, /scrollbar-gutter: stable/);
 assert.match(styles, /\.vnReceiveField > div:not\(\.vnOutputProtection\) > strong[\s\S]*min-height: 58px/);
 assert.match(styles, /\.vnOutputProtection[\s\S]*min-height: 38px/);
+assert.match(shell, /getElementById\("vnext-trade-ticket"\)\?\.scrollIntoView/);
 assert.doesNotMatch(styles, /!important/);
 assert.doesNotMatch(styles, /terminal-v(?:7|8|9|10|11|12)/i);
 

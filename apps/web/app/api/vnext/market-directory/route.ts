@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getAddress, isAddress } from "viem";
+import { getAddress, isAddress, zeroAddress } from "viem";
 import type { ExternalMarketSignal } from "../../../../lib/external-market-ranking";
 import type { VNextDirectoryMarket, VNextDirectoryResponse } from "../../../../lib/vnext/market-directory";
 import {
@@ -63,7 +63,7 @@ function marketFromPair(pair: RawPair): VNextDirectoryMarket | null {
   if (pair.chainId !== CHAIN_SLUG) return null;
   const token = selectedToken(pair);
   const address = text(token?.address, 42);
-  if (!isAddress(address, { strict: false })) return null;
+  if (!isAddress(address, { strict: false }) || address.toLowerCase() === zeroAddress) return null;
   const canonicalAddress = getAddress(address);
   const symbol = text(token?.symbol, 16) || `${canonicalAddress.slice(0, 6)}…${canonicalAddress.slice(-4)}`;
   const name = text(token?.name, 80) || symbol;

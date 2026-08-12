@@ -36,7 +36,7 @@ export function SpeedWalletProvider({ children, queryClient }: { children: React
         defaultChain: robinhoodChain,
         supportedChains: [robinhoodChain, robinhoodChainTestnet],
         embeddedWallets: {
-          ethereum: { createOnLogin: "all-users" },
+          ethereum: { createOnLogin: "users-without-wallets" },
           showWalletUIs: true,
           extendedCalldataDecoding: true,
           priceDisplay: { primary: "fiat-currency", secondary: "native-token" }

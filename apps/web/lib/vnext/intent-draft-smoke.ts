@@ -82,7 +82,8 @@ assert.throws(() => createExactInputIntent({
 }), /assets must differ/);
 
 const composer = readFileSync(new URL("../../app/vnext/trade-intent-composer.tsx", import.meta.url), "utf8");
-assert.match(composer, /Fresh quote required/);
+assert.match(composer, /Finding best route/);
+assert.match(composer, /Route temporarily unavailable/);
 assert.match(composer, /RMT sets and verifies the protected minimum during the one-tap execution check/);
 assert.match(composer, /One tap checks the best route and opens the final wallet confirmation/);
 assert.doesNotMatch(composer, /Check live routes|Verify best route|Prepare wallet review/);

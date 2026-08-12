@@ -77,6 +77,7 @@ assert.doesNotMatch(hook, /external-availability|external-sushi-quote|external-u
 assert.equal((hook.match(/setInterval/g) ?? []).length, 1);
 assert.match(route, /token-pairs\/v1/);
 assert.match(route, /Promise\.all\(DIRECTORY_TOKENS/);
+assert.match(route, /address\.toLowerCase\(\) === zeroAddress/);
 assert.match(route, /stale-while-revalidate=60/);
 assert.doesNotMatch(route, /resolveRmtOrigins|external-availability|external-sushi-quote|external-uniswap|router|reactor/);
 assert.match(identityRoute, /readRobinhoodTokenIdentity/);

@@ -1,11 +1,14 @@
 "use client";
 
-import { useIdentityToken, usePrivy } from "@privy-io/react-auth";
+import { useIdentityToken, usePrivy, useWallets } from "@privy-io/react-auth";
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+import { useAccount } from "wagmi";
 import { walletBrowserEnvironment, type WalletBrowserEnvironment } from "../lib/mobile-wallet-link";
 
 type RmtIdentityContextValue = {
   authenticated: boolean;
+  activeWalletKind: "embedded" | "external" | null;
+  connectTradingWallet: () => void;
   enabled: boolean;
   identityToken: string | null;
   environment: WalletBrowserEnvironment;
@@ -31,6 +34,8 @@ type RmtIdentityContextValue = {
 
 const unavailableIdentity: RmtIdentityContextValue = {
   authenticated: false,
+  activeWalletKind: null,
+  connectTradingWallet: () => undefined,
   enabled: false,
   environment: "desktop",
   identityToken: null,
@@ -53,6 +58,7 @@ const RmtIdentityContext = createContext<RmtIdentityContextValue>(unavailableIde
 export function PrivyIdentityBridge({ children }: { children: ReactNode }) {
   const {
     authenticated,
+    connectWallet: openPrivyWalletConnect,
     linkEmail,
     linkGoogle,
     linkPasskey,
@@ -63,12 +69,18 @@ export function PrivyIdentityBridge({ children }: { children: ReactNode }) {
     ready,
     user
   } = usePrivy();
+  const { wallets } = useWallets();
+  const { address } = useAccount();
   const { identityToken } = useIdentityToken();
   const [environment] = useState<WalletBrowserEnvironment>(() => {
     if (typeof window === "undefined") return "desktop";
     return walletBrowserEnvironment(window.navigator.userAgent, Boolean((window as Window & { ethereum?: unknown }).ethereum));
   });
   const supportsOAuth = environment !== "mobile-wallet-browser";
+  const activeWallet = wallets.find((wallet) => wallet.address.toLowerCase() === address?.toLowerCase());
+  const activeWalletKind = activeWallet
+    ? activeWallet.walletClientType === "privy" ? "embedded" : "external"
+    : null;
   const linked = useMemo(() => ({
     email: Boolean(user?.linkedAccounts.some((account) => account.type === "email")),
     google: Boolean(user?.linkedAccounts.some((account) => account.type === "google_oauth")),
@@ -80,6 +92,18 @@ export function PrivyIdentityBridge({ children }: { children: ReactNode }) {
   }), [user?.linkedAccounts]);
   const value = useMemo<RmtIdentityContextValue>(() => ({
     authenticated,
+    activeWalletKind,
+    connectTradingWallet: () => {
+      if (authenticated) {
+        openPrivyWalletConnect({
+          description: "Connect the external wallet RMT should use for trading.",
+          walletChainType: "ethereum-only",
+          walletList: ["metamask", "coinbase_wallet", "detected_ethereum_wallets", "wallet_connect"]
+        });
+        return;
+      }
+      openPrivyLogin({ loginMethods: ["wallet"], walletChainType: "ethereum-only" });
+    },
     enabled: true,
     environment,
     identityToken: identityToken ?? null,
@@ -102,6 +126,7 @@ export function PrivyIdentityBridge({ children }: { children: ReactNode }) {
     userId: user?.id ?? ""
   }), [
     authenticated,
+    activeWalletKind,
     environment,
     identityToken,
     linkEmail,
@@ -111,6 +136,7 @@ export function PrivyIdentityBridge({ children }: { children: ReactNode }) {
     linkWallet,
     linked,
     openPrivyLogin,
+    openPrivyWalletConnect,
     logout,
     ready,
     supportsOAuth,

@@ -24,6 +24,12 @@ function PublicLink({ href, children }: { href: string; children: React.ReactNod
 
 export function PublicChrome() {
   const pathname = usePathname();
+  if (HIDDEN_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))) return null;
+
+  return <VisiblePublicChrome pathname={pathname} />;
+}
+
+function VisiblePublicChrome({ pathname }: { pathname: string }) {
   const { user } = useProfile();
   const menu = useRef<HTMLDetailsElement>(null);
   const moreActive = MORE_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
@@ -52,8 +58,6 @@ export function PublicChrome() {
       document.removeEventListener("keydown", closeOnEscape);
     };
   }, []);
-
-  if (HIDDEN_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))) return null;
 
   return (
     <>

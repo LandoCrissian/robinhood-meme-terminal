@@ -5,7 +5,9 @@ import { evmAsset } from "./execution-domain";
 import {
   ROBINHOOD_MAINNET_CHAIN_ID,
   ROBINHOOD_RMT,
-  ROBINHOOD_RMT_ADDRESS
+  ROBINHOOD_RMT_ADDRESS,
+  ROBINHOOD_WETH,
+  ROBINHOOD_WETH_ADDRESS
 } from "./robinhood-assets";
 
 export type VNextDirectoryMarket = Pick<ExternalMarket,
@@ -74,6 +76,7 @@ function resolutionToken(resolution: UniversalMarketResolution | undefined, expe
 
 export function verifiedDirectoryAsset(market: VNextDirectoryMarket, resolution = market.resolution): AssetMetadata | null {
   if (getAddress(market.address) === ROBINHOOD_RMT_ADDRESS) return ROBINHOOD_RMT;
+  if (getAddress(market.address) === ROBINHOOD_WETH_ADDRESS) return ROBINHOOD_WETH;
   const token = resolutionToken(resolution, market.address);
   if (!token) return null;
   return {
