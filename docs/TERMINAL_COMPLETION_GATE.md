@@ -71,7 +71,7 @@
 
 ## Current known gaps
 
-VNext remains at `/vnext`; its asset workspace and authoritative wallet holdings no longer depend on `/market/[address]` or `/portfolio`, while both routes remain preserved for production compatibility; external-wallet reliability still requires supported-device acceptance; legacy CSS is globally loaded; up-v2/up-cl read-only discovery and live-fee/gauge enrichment require shadow backfill evidence before this gate can pass, and up quote/authorization plus Stonk/full attribution are not implemented; Across production proof is incomplete; profiles/community/creator source remains preserved; production cutover has not occurred.
+VNext remains at `/vnext`; its asset workspace and authoritative wallet holdings no longer depend on `/market/[address]` or `/portfolio`, while both routes remain preserved for production compatibility; external-wallet reliability still requires supported-device acceptance; legacy CSS is globally loaded; up-v2/up-cl read-only discovery and live-fee/gauge enrichment require shadow backfill evidence before this gate can pass, and up quote/authorization are not implemented. StonkBrokers has a fail-closed source candidate, but production launcher contract/event evidence, backfill and authoritative claims remain unavailable, so its gate is not complete. Across production proof is incomplete; profiles/community/creator source remains preserved; production cutover has not occurred.
 
 ## Explicit completion decision
 

@@ -5,7 +5,8 @@ export type ExternalAdapterState = {
   adapterId: string;
   sourceId: string;
   sourceName: string;
-  factory: string;
+  evidenceContract: string;
+  evidenceRole: string;
   startBlock: string;
   nextBlock: string;
   manifestHash: string;
@@ -21,7 +22,8 @@ export type StoredExternalOriginClaim = {
   sourceName: string;
   claimKind: "token-created";
   token: string;
-  factory: string;
+  evidenceContract: string;
+  evidenceRole: string;
   startBlock: string;
   manifestHash: string;
   schemaVersion: number;
@@ -66,7 +68,8 @@ export class ExternalOriginStore implements ExternalOriginStoreLike {
          adapter_id,
          source_id,
          source_name,
-         factory,
+         evidence_contract,
+         evidence_role,
          start_block::TEXT AS start_block,
          next_block::TEXT AS next_block,
          manifest_hash,
@@ -85,7 +88,8 @@ export class ExternalOriginStore implements ExternalOriginStoreLike {
       adapterId: row.adapter_id as string,
       sourceId: row.source_id as string,
       sourceName: row.source_name as string,
-      factory: row.factory as string,
+      evidenceContract: row.evidence_contract as string,
+      evidenceRole: row.evidence_role as string,
       startBlock: row.start_block as string,
       nextBlock: row.next_block as string,
       manifestHash: row.manifest_hash as string,
@@ -109,7 +113,8 @@ export class ExternalOriginStore implements ExternalOriginStoreLike {
          source_name,
          claim_kind,
          token,
-         factory,
+         evidence_contract,
+         evidence_role,
          start_block::TEXT AS start_block,
          manifest_hash,
          schema_version,
@@ -137,7 +142,8 @@ export class ExternalOriginStore implements ExternalOriginStoreLike {
       sourceName: row.source_name as string,
       claimKind: "token-created" as const,
       token: row.token as string,
-      factory: row.factory as string,
+      evidenceContract: row.evidence_contract as string,
+      evidenceRole: row.evidence_role as string,
       startBlock: row.start_block as string,
       manifestHash: row.manifest_hash as string,
       schemaVersion: Number(row.schema_version),

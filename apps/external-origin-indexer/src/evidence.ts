@@ -7,7 +7,12 @@ export type ExternalOriginEvidence = Readonly<{
   manifestHash: `0x${string}`;
   claimKind: "token-created" | "source-listed";
   token: `0x${string}`;
-  factory: `0x${string}`;
+  evidenceContract: `0x${string}`;
+  evidenceRole:
+    | "creation-factory"
+    | "listing-registry"
+    | "curation-registry"
+    | "other-explicit-role";
   transactionHash: `0x${string}`;
   logIndex: number;
   transactionIndex: number;
@@ -21,13 +26,14 @@ export function canonicalExternalOriginEvidence(
   evidence: ExternalOriginEvidence
 ) {
   return JSON.stringify({
-    schema: "rmt-external-origin-evidence-v1",
+    schema: "rmt-external-origin-evidence-v2",
     chainId: evidence.chainId,
     adapterId: evidence.adapterId,
     manifestHash: evidence.manifestHash,
     claimKind: evidence.claimKind,
     token: evidence.token,
-    factory: evidence.factory,
+    evidenceContract: evidence.evidenceContract,
+    evidenceRole: evidence.evidenceRole,
     transactionHash: evidence.transactionHash,
     logIndex: evidence.logIndex,
     transactionIndex: evidence.transactionIndex,

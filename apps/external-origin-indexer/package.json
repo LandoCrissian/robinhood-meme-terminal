@@ -11,7 +11,9 @@
     "typecheck:shadow": "tsc -p tsconfig.shadow.json --noEmit",
     "test:schema": "tsx src/schema-smoke.ts",
     "test:api": "tsx src/api-smoke.ts",
-    "test:candidates": "tsx src/candidates/bow-candidate-smoke.ts",
+    "test:candidates": "pnpm test:candidate:bow && pnpm test:candidate:stonkbrokers",
+    "test:candidate:bow": "tsx src/candidates/bow-candidate-smoke.ts",
+    "test:candidate:stonkbrokers": "tsx src/candidates/stonkbrokers-candidate-smoke.ts",
     "test:shadow-replay": "tsx shadow/bow-replay-smoke.ts"
   },
   "dependencies": {

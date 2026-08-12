@@ -88,7 +88,8 @@ try {
   const adapterId = "example-v1";
   const sourceId = "example";
   const sourceName = "Example Launchpad";
-  const factory = `0x${"1".repeat(40)}` as `0x${string}`;
+  const evidenceContract = `0x${"1".repeat(40)}` as `0x${string}`;
+  const evidenceRole = "creation-factory" as const;
   const token = `0x${"3".repeat(40)}` as `0x${string}`;
   const creator = `0x${"4".repeat(40)}` as `0x${string}`;
   const market = `0x${"5".repeat(40)}` as `0x${string}`;
@@ -103,7 +104,8 @@ try {
     manifestHash,
     claimKind: "token-created",
     token,
-    factory,
+    evidenceContract,
+    evidenceRole,
     transactionHash,
     logIndex: 7,
     transactionIndex: 2,
@@ -116,17 +118,21 @@ try {
 
   await client.query(
     `INSERT INTO external_origin_adapter_state (
-       chain_id, adapter_id, source_id, source_name, factory,
+       chain_id, adapter_id, source_id, source_name,
+       evidence_contract, evidence_role,
        start_block, next_block, manifest_hash, schema_version,
        status, last_sync_at
      )
-     VALUES ($1, $2, $3, $4, $5, 100, 101, $6, $7, 'ready', NOW())`,
+     VALUES (
+       $1, $2, $3, $4, $5, $6, 100, 101, $7, $8, 'ready', NOW()
+     )`,
     [
       chainId,
       adapterId,
       sourceId,
       sourceName,
-      factory,
+      evidenceContract,
+      evidenceRole,
       manifestHash,
       EXTERNAL_ORIGIN_SCHEMA_VERSION
     ]
@@ -134,17 +140,20 @@ try {
 
   await client.query(
     `INSERT INTO external_origin_adapter_state (
-       chain_id, adapter_id, source_id, source_name, factory,
+       chain_id, adapter_id, source_id, source_name,
+       evidence_contract, evidence_role,
        start_block, next_block, manifest_hash, schema_version, status
      )
      VALUES (
-       $1, 'example-v2', $2, $3, $4, 100, 100, $5, $6, 'backfilling'
+       $1, 'example-v2', $2, $3, $4, $5, 100, 100, $6, $7,
+       'backfilling'
      )`,
     [
       chainId,
       sourceId,
       sourceName,
-      factory,
+      evidenceContract,
+      evidenceRole,
       `0x${"6".repeat(64)}`,
       EXTERNAL_ORIGIN_SCHEMA_VERSION
     ]
@@ -156,12 +165,13 @@ try {
     "external_origin_adapter_state_ready_check",
     () => client.query(
       `INSERT INTO external_origin_adapter_state (
-         chain_id, adapter_id, source_id, source_name, factory,
+         chain_id, adapter_id, source_id, source_name,
+         evidence_contract, evidence_role,
          start_block, next_block, manifest_hash, schema_version, status
        )
        VALUES (
          $1, 'bad-ready-v1', 'bad-ready', 'Bad Ready',
-         $2, 100, 100, $3, $4, 'ready'
+         $2, 'creation-factory', 100, 100, $3, $4, 'ready'
        )`,
       [
         chainId,
@@ -183,7 +193,10 @@ try {
   type ClaimOverrides = {
     claimKind?: "token-created" | "source-listed";
     adapterId?: string;
-    factory?: string;
+    sourceId?: string;
+    sourceName?: string;
+    evidenceContract?: string;
+    evidenceRole?: string;
     startBlock?: string;
     manifestHash?: string;
     token?: string;
@@ -197,22 +210,24 @@ try {
     client.query(
       `INSERT INTO external_origin_claims (
          chain_id, adapter_id, source_id, source_name, claim_kind,
-         token, factory, start_block, manifest_hash, schema_version,
+         token, evidence_contract, evidence_role, start_block,
+         manifest_hash, schema_version,
          transaction_hash, log_index, transaction_index,
          block_number, block_hash, creator, market, evidence_hash
        )
        VALUES (
-         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
-         $11, $12, 2, $13, $14, $15, $16, $17
+         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11,
+         $12, $13, 2, $14, $15, $16, $17, $18
        )`,
       [
         chainId,
         overrides.adapterId ?? adapterId,
-        sourceId,
-        sourceName,
+        overrides.sourceId ?? sourceId,
+        overrides.sourceName ?? sourceName,
         overrides.claimKind ?? "token-created",
         overrides.token ?? token,
-        overrides.factory ?? factory,
+        overrides.evidenceContract ?? evidenceContract,
+        overrides.evidenceRole ?? evidenceRole,
         overrides.startBlock ?? "100",
         overrides.manifestHash ?? manifestHash,
         EXTERNAL_ORIGIN_SCHEMA_VERSION,
@@ -265,10 +280,74 @@ try {
     evidenceHash: `0x${"b".repeat(64)}`
   });
 
+  const listingAdapterId = "listing-v1";
+  const listingSourceId = "listing";
+  const listingSourceName = "Listing Registry";
+  const listingContract = `0x${"2".repeat(40)}`;
+  const listingManifestHash = `0x${"6".repeat(64)}`;
+  await client.query(
+    `INSERT INTO external_origin_adapter_state (
+       chain_id, adapter_id, source_id, source_name,
+       evidence_contract, evidence_role,
+       start_block, next_block, manifest_hash, schema_version,
+       status, last_sync_at
+     )
+     VALUES (
+       $1, $2, $3, $4, $5, 'listing-registry',
+       100, 101, $6, $7, 'ready', NOW()
+     )`,
+    [
+      chainId,
+      listingAdapterId,
+      listingSourceId,
+      listingSourceName,
+      listingContract,
+      listingManifestHash,
+      EXTERNAL_ORIGIN_SCHEMA_VERSION
+    ]
+  );
+  await client.query(
+    `INSERT INTO external_origin_sync_points (
+       chain_id, adapter_id, block_number, block_hash, parent_hash
+     )
+     VALUES ($1, $2, 100, $3, $4)`,
+    [chainId, listingAdapterId, blockHash, parentHash]
+  );
+  await insertClaim({
+    claimKind: "source-listed",
+    adapterId: listingAdapterId,
+    sourceId: listingSourceId,
+    sourceName: listingSourceName,
+    evidenceContract: listingContract,
+    evidenceRole: "listing-registry",
+    manifestHash: listingManifestHash,
+    transactionHash: `0x${"4".repeat(64)}`,
+    logIndex: 14,
+    evidenceHash: `0x${"5".repeat(64)}`
+  });
+  await expectPgFailure(
+    "Listing registry cannot claim token creation",
+    "23514",
+    "external_origin_claims_created_role_check",
+    () => insertClaim({
+      claimKind: "token-created",
+      adapterId: listingAdapterId,
+      sourceId: listingSourceId,
+      sourceName: listingSourceName,
+      token: `0x${"8".repeat(40)}`,
+      evidenceContract: listingContract,
+      evidenceRole: "listing-registry",
+      manifestHash: listingManifestHash,
+      transactionHash: `0x${"5".repeat(64)}`,
+      logIndex: 15,
+      evidenceHash: `0x${"6".repeat(64)}`
+    })
+  );
+
   const store = new ExternalOriginStore(pool);
   const creationClaims = await store.originClaims(
     [token],
-    [adapterId]
+    [adapterId, listingAdapterId]
   );
   assert.equal(creationClaims.length, 1);
   assert.equal(creationClaims[0]?.claimKind, "token-created");
@@ -368,6 +447,12 @@ try {
     reorgClaims.rows[0]?.count,
     0,
     "Deleting a checkpoint must remove its claims"
+  );
+
+  await client.query(
+    `DELETE FROM external_origin_sync_points
+     WHERE chain_id = $1 AND adapter_id = $2`,
+    [chainId, listingAdapterId]
   );
 
   await client.query(
