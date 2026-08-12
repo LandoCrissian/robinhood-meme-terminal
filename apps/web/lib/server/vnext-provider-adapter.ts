@@ -67,7 +67,7 @@ export type VNextPreparedProviderAuthorization = {
 export type VNextQuoteProviderAdapter = {
   provider: VNextQuoteProvider;
   providerLabel: string;
-  providerFamily: "sushi" | "uniswap" | "uniswapx" | "zeroex";
+  providerFamily: "sushi" | "uniswap" | "uniswapx" | "zeroex" | "up";
   adapterVersion: 1;
   executionKind: "aggregator" | "direct_amm" | "gasless" | "rfq_intent";
   capabilities: {
@@ -102,6 +102,7 @@ export function unavailableVNextQuoteAttempt(input: {
     protectedOutputAtomic: null,
     outputDecimals: null,
     priceImpact: null,
+    liquidityFeeEvidence: [],
     quotedAtMs: null,
     expiresAtMs: null,
     latencyMs: Math.max(0, Date.now() - input.startedAtMs),

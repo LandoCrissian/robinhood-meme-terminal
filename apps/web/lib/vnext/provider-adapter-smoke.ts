@@ -27,6 +27,7 @@ const readyAdapter: VNextQuoteProviderAdapter = {
       provider: "sushi", providerLabel: "Sushi", providerFamily: "sushi", adapterVersion: 1, status: "indicative", chainId: 4_663,
       inputAsset: input.inputAsset, outputAsset: input.outputAsset, inputAmountAtomic: input.inputAmountAtomic,
       expectedOutputAtomic: "1000", protectedOutputAtomic: "990", outputDecimals: 18, priceImpact: 0.01,
+      liquidityFeeEvidence: [],
       quotedAtMs: now, expiresAtMs: now + 30_000, latencyMs: 1, executionKind: "aggregator",
       strictVerificationAvailable: false,
       userPaysGas: true, providerFeeAsset: null, providerFeeAtomic: null,
@@ -112,6 +113,7 @@ assert.match(registry, /vNextSushiAdapter/);
 assert.match(registry, /vNextUniswapV3Adapter/);
 assert.match(registry, /configuredVNextUniswapXAdapters/);
 assert.match(registry, /configuredVNextZeroXAdapters/);
+assert.match(registry, /configuredVNextUpAdapters/);
 assert.match(boundary, /assertVNextQuoteAttempt/);
 assert.match(boundary, /adapters\.length === 0 \|\| adapters\.length > 8/);
 assert.match(boundary, /authorizationReady: false/);
