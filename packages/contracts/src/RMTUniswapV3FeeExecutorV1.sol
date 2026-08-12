@@ -236,7 +236,7 @@ contract RMTUniswapV3FeeExecutorV1 is ReentrancyGuard {
         uint256 nativeBalanceBefore = address(this).balance - msg.value;
         uint256 inputBalanceBefore = 0;
         if (!nativeInput) {
-            inputBalanceBefore = _pullExact(route.tokenIn, authorization.trader, authorization.userGrossInput);
+            inputBalanceBefore = _pullExact(route.tokenIn, authorization.userGrossInput);
             _approveExact(route.tokenIn, authorization.providerInput);
         }
 
@@ -258,7 +258,7 @@ contract RMTUniswapV3FeeExecutorV1 is ReentrancyGuard {
         }
 
         if (nativeInput) {
-            if (actualRmtFee != 0) _sendNative(treasury, actualRmtFee);
+            if (actualRmtFee != 0) _sendNative(actualRmtFee);
             if (address(this).balance != nativeBalanceBefore) revert UnsupportedTransferBehavior();
         } else {
             _transferExact(route.tokenIn, treasury, actualRmtFee);
@@ -303,7 +303,7 @@ contract RMTUniswapV3FeeExecutorV1 is ReentrancyGuard {
         uint256 nativeBalanceBefore = address(this).balance - msg.value;
         uint256 inputBalanceBefore = 0;
         if (!nativeInput) {
-            inputBalanceBefore = _pullExact(route.tokenIn, authorization.trader, authorization.providerInput);
+            inputBalanceBefore = _pullExact(route.tokenIn, authorization.providerInput);
             _approveExact(route.tokenIn, authorization.providerInput);
         }
 
@@ -427,9 +427,9 @@ contract RMTUniswapV3FeeExecutorV1 is ReentrancyGuard {
         private
         returns (uint256 amountOut)
     {
+        // slither-disable-start arbitrary-send-eth
+        // Both calls send only the exact authorized native input to immutable, runtime-verified Router02.
         if (route.kind == RouteKind.EXACT_INPUT_SINGLE) {
-            // slither-disable-next-line arbitrary-send-eth
-            // The receiver is immutable verified Router02 and value is the exact authorized WETH-denominated input.
             amountOut = IRMTUniswapSwapRouter02V1(router).exactInputSingle{value: value}(
                 IRMTUniswapSwapRouter02V1.ExactInputSingleParams({
                     tokenIn: route.tokenIn,
@@ -442,8 +442,6 @@ contract RMTUniswapV3FeeExecutorV1 is ReentrancyGuard {
                 })
             );
         } else {
-            // slither-disable-next-line arbitrary-send-eth
-            // The receiver is immutable verified Router02 and value is the exact authorized WETH-denominated input.
             amountOut = IRMTUniswapSwapRouter02V1(router).exactInput{value: value}(
                 IRMTUniswapSwapRouter02V1.ExactInputParams({
                     path: abi.encodePacked(route.tokenIn, route.fee0, weth, route.fee1, route.tokenOut),
@@ -453,19 +451,21 @@ contract RMTUniswapV3FeeExecutorV1 is ReentrancyGuard {
                 })
             );
         }
+        // slither-disable-end arbitrary-send-eth
     }
 
-    function _pullExact(address token, address trader, uint256 amount) private returns (uint256 balanceBefore) {
+    // slither-disable-start reentrancy-balance
+    // All callers are nonReentrant entry points; the snapshots deliberately detect unsupported callback token behavior.
+    function _pullExact(address token, uint256 amount) private returns (uint256 balanceBefore) {
         IERC20 asset = IERC20(token);
         balanceBefore = asset.balanceOf(address(this));
-        // slither-disable-next-line arbitrary-send-erc20
-        // trader is required to equal msg.sender by _validateCommon; no third-party wallet can be selected.
-        asset.safeTransferFrom(trader, address(this), amount);
+        asset.safeTransferFrom(msg.sender, address(this), amount);
         uint256 balanceAfter = asset.balanceOf(address(this));
         if (balanceAfter < balanceBefore || balanceAfter - balanceBefore != amount) {
             revert UnsupportedTransferBehavior();
         }
     }
+    // slither-disable-end reentrancy-balance
 
     function _approveExact(address token, uint256 amount) private {
         IERC20 asset = IERC20(token);
@@ -480,6 +480,8 @@ contract RMTUniswapV3FeeExecutorV1 is ReentrancyGuard {
         if (asset.allowance(address(this), router) != 0) revert UnsupportedTransferBehavior();
     }
 
+    // slither-disable-start reentrancy-balance
+    // All callers are nonReentrant entry points; the snapshots enforce exact sender and recipient deltas.
     function _transferExact(address token, address recipient, uint256 amount) private {
         if (amount == 0) return;
         IERC20 asset = IERC20(token);
@@ -493,11 +495,12 @@ contract RMTUniswapV3FeeExecutorV1 is ReentrancyGuard {
                 || recipientAfter - recipientBefore != amount
         ) revert UnsupportedTransferBehavior();
     }
+    // slither-disable-end reentrancy-balance
 
-    function _sendNative(address recipient, uint256 amount) private {
+    function _sendNative(uint256 amount) private {
+        // The receiver is the immutable treasury and this executes inside nonReentrant; failure reverts the full swap.
         // slither-disable-next-line arbitrary-send-eth,low-level-calls
-        // recipient is the immutable treasury and this executes inside nonReentrant; failure reverts the full swap.
-        (bool success,) = recipient.call{value: amount}("");
+        (bool success,) = treasury.call{value: amount}("");
         if (!success) revert NativeTransferFailed();
     }
 
