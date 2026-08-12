@@ -345,6 +345,7 @@ body .rmtVnext {
   grid-template-columns: minmax(220px, 1.25fr) repeat(2, minmax(150px, 0.72fr)) auto;
   align-items: stretch;
   min-height: 120px;
+  scroll-margin-top: 92px;
   overflow: hidden;
   background: linear-gradient(135deg, rgba(25, 33, 27, 0.98), rgba(17, 22, 18, 0.96));
   border: 1px solid var(--vn-border-strong);

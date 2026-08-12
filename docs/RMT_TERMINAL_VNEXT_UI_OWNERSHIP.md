@@ -140,6 +140,32 @@ The content may collapse or move, but no breakpoint may silently omit a blocker,
 7. Delete an old component/style layer only after repository references reach zero and visual acceptance passes.
 8. Remove `ResponsiveExternalMarketFeed` only after the unified collection owns all supported widths.
 
+## Current dependency inventory
+
+This table is the review boundary for the VNext ownership migration. A dependency listed as shared is intentionally reused; it is not permission to copy or fork the implementation.
+
+| Capability | Current dependency | Classification | Retirement path |
+| --- | --- | --- | --- |
+| Production root terminal | No VNext component import; both routes still inherit the root provider and public-shell layout | Compatibility runtime | Keep shared providers until production cutover; do not import either legacy feed into VNext. |
+| Wallet connection | VNext-owned `VNextWalletConnection` delegates to the mature shared external-wallet button | Shared security runtime | Preserve exact wallet authentication and connector behavior; migrate presentation only when it can remain one implementation. |
+| Funding controls | Shared `FundWalletButton` | Shared terminal infrastructure | Keep one funding implementation; do not fork wallet funding into VNext. |
+| Trading wallet identity | Shared `useRmtIdentity` | Shared security runtime | This is exact-wallet session binding, not the paused profile product. |
+| Wallet holdings | VNext `SpendBalance` and wallet-asset detection | VNext-owned | VNext navigation now reveals these holdings directly. PR 4 completes the authoritative holdings surface; `/portfolio` remains a preserved legacy route but is no longer a VNext navigation dependency. |
+| Full asset workspace | `/market/[address]` through `legacyAssetWorkspaceHref` | Named legacy compatibility boundary | PR 3 migrates chart, activity, evidence, origin, liquidity, holders, position, and RWA relationships into VNext, then removes this boundary. |
+| Market directory and identity | `/api/vnext/market-directory`, `/api/vnext/asset-identity`, shared resolver/data contracts | VNext API with shared data infrastructure | Preserve the resolver as a shared service; do not introduce a second market resolver. |
+| Quote, verification and authorization | `/api/vnext/quotes`, `/api/vnext/verify`, `/api/vnext/authorize` using the shared bounded quote transport | VNext-owned orchestration with shared transport | Keep the transport generic. No legacy terminal route selection is imported into VNext. |
+| Styling | `vnext-terminal.css` owns the `.rmtVnext`/`.vn*` namespace; root layout still loads legacy global styles | VNext-owned selectors with inherited global-load debt | Keep legacy styles from reaching into the VNext namespace. Isolate route-specific global imports incrementally after the routes they serve migrate. |
+
+The executable ownership smoke enforces the route, import, and selector boundaries. It rejects direct VNext links to `/portfolio`, direct construction of `/market/*`, promotion of paused `/profile` or `/launch` routes, unclassified shared imports, extra VNext stylesheets, and legacy global selectors that reach inside the VNext namespace.
+
+## Smallest safe retirement sequence
+
+1. Keep the current VNext shell and execution orchestration unchanged while enforcing the ownership boundary.
+2. Move the complete selected-asset workspace into VNext and remove `legacyAssetWorkspaceHref` only after parity evidence passes.
+3. Finish authoritative wallet holdings inside VNext; preserve pending-versus-spendable semantics and remove any remaining reason to visit `/portfolio`.
+4. Isolate legacy route CSS from the root load as each compatibility route is retired. Do not remove generations in one mass cascade rewrite.
+5. Cut production `/` to VNext only after the terminal completion gate passes; then redirect or retire replaced compatibility routes in separate reviewed changes.
+
 ## Acceptance matrix
 
 | Area | Required evidence |

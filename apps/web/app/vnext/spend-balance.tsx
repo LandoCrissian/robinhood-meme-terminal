@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { erc20Abi, formatUnits, getAddress, isAddress, zeroAddress } from "viem";
 import { useAccount, usePublicClient } from "wagmi";
@@ -49,11 +48,12 @@ function stateLabel(asset: VNextDetectedWalletAsset) {
   return asset.identityState === "verified" ? "Detected" : "Detected · identity reported";
 }
 
-export function SpendBalance({ markets, onAssetsChange, onNativeBalanceChange, executionRecord }: {
+export function SpendBalance({ markets, onAssetsChange, onNativeBalanceChange, executionRecord, portfolioRevealRequest = 0 }: {
   markets: VNextDirectoryMarket[];
   onAssetsChange?: (assets: VNextDetectedWalletAsset[]) => void;
   onNativeBalanceChange?: (balance: bigint | undefined) => void;
   executionRecord?: VNextExecutionRecord | null;
+  portfolioRevealRequest?: number;
 }) {
   const { address, chainId, isConnected } = useAccount();
   const publicClient = usePublicClient({ chainId: ROBINHOOD_MAINNET_CHAIN_ID });
@@ -82,6 +82,9 @@ export function SpendBalance({ markets, onAssetsChange, onNativeBalanceChange, e
 
   useEffect(() => onAssetsChange?.(assets), [assets, onAssetsChange]);
   useEffect(() => onNativeBalanceChange?.(nativeBalance), [nativeBalance, onNativeBalanceChange]);
+  useEffect(() => {
+    if (portfolioRevealRequest > 0) setHoldingsExpanded(true);
+  }, [portfolioRevealRequest]);
   useEffect(() => {
     refreshBalances.current = refresh;
   }, [refresh]);
@@ -149,7 +152,7 @@ export function SpendBalance({ markets, onAssetsChange, onNativeBalanceChange, e
   }
 
   return (
-    <section className="vnBalanceBar" aria-labelledby="vn-balance-heading" aria-busy={status === "loading"}>
+    <section id="vnext-portfolio" className="vnBalanceBar" aria-labelledby="vn-balance-heading" aria-busy={status === "loading"}>
       <div className="vnBalancePrimary">
         <span id="vn-balance-heading">Available to trade</span>
         <strong>{enabled ? dollars(spendable) : "—"}</strong>
@@ -167,7 +170,6 @@ export function SpendBalance({ markets, onAssetsChange, onNativeBalanceChange, e
       </div>
       <div className="vnBalanceActions">
         <FundWalletButton variant="inline" label="Add funds" target="mainnet" />
-        <Link className="vnQuietButton" href="/portfolio">View portfolio</Link>
       </div>
 
       {enabled && <div className={`vnDetectedAssets${holdingsExpanded ? " isExpanded" : ""}`} aria-live="polite">

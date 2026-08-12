@@ -27,7 +27,8 @@
 | --- | --- |
 | `/` | Current production compatibility terminal until the completion gate passes. |
 | `/vnext` | Canonical forward terminal; not yet production root. |
-| `/market/[address]`, `/portfolio` | Legacy compatibility dependencies scheduled for VNext migration. |
+| `/market/[address]` | Named VNext compatibility boundary until the complete asset workspace moves into VNext. |
+| `/portfolio` | Preserved legacy route. VNext navigation now owns its holdings entry point; PR 4 completes the authoritative holdings surface. |
 | `/profile` | Paused; preserved source/data, not promoted by active navigation. |
 | `/launch` | Paused product notice; must not promise a V7 reopening roadmap. |
 | `/explore` | Allowed only as ecosystem/market discovery; creator-platform promotion is paused. |

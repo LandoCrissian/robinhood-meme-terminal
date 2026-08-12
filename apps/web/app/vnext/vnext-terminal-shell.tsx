@@ -3,18 +3,19 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useMemo, useRef, useState } from "react";
+import { legacyAssetWorkspaceHref } from "../../lib/vnext/legacy-route-compatibility";
 import type { VNextDetectedWalletAsset } from "../../lib/vnext/wallet-assets";
-import { WalletButton } from "../wallet-button";
 import { SpendBalance } from "./spend-balance";
 import { TradeIntentComposer } from "./trade-intent-composer";
 import { VNextExecutionRecoveryBanner } from "./vnext-execution-recovery-banner";
+import { VNextWalletConnection } from "./vnext-wallet-connection";
 import { useVNextExecutionRecovery } from "./use-vnext-execution-recovery";
 import { useVNextMarketDirectory } from "./use-vnext-market-directory";
 
 const navItems = [
   { label: "Trade", href: "#vnext-workspace", icon: "trade" },
   { label: "Markets", href: "#vn-markets-heading", icon: "markets" },
-  { label: "Portfolio", href: "/portfolio", icon: "portfolio" }
+  { label: "Portfolio", href: "#vnext-portfolio", icon: "portfolio" }
 ] as const;
 
 function NavIcon({ icon }: { icon: (typeof navItems)[number]["icon"] }) {
@@ -58,6 +59,7 @@ export function VNextTerminalShell() {
   const [query, setQuery] = useState("");
   const [walletAssets, setWalletAssets] = useState<VNextDetectedWalletAsset[]>([]);
   const [nativeBalance, setNativeBalance] = useState<bigint>();
+  const [portfolioRevealRequest, setPortfolioRevealRequest] = useState(0);
   const marketSearch = useRef<HTMLInputElement>(null);
   const executionRecovery = useVNextExecutionRecovery();
   const { markets, status, selected, selectedAsset, identityStatus, setSelectedAddress, refresh } = useVNextMarketDirectory();
@@ -82,6 +84,9 @@ export function VNextTerminalShell() {
       document.getElementById("vnext-trade-ticket")?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
   }, [setSelectedAddress]);
+  const revealPortfolio = useCallback(() => {
+    setPortfolioRevealRequest((request) => request + 1);
+  }, []);
 
   return (
     <main className="rmtVnext">
@@ -93,7 +98,7 @@ export function VNextTerminalShell() {
         </Link>
         <nav className="vnPrimaryNav">
           {navItems.map((item, index) => (
-            <Link className={index === 0 ? "isActive" : ""} href={item.href} key={item.label}>
+            <Link className={index === 0 ? "isActive" : ""} href={item.href} key={item.label} onClick={item.icon === "portfolio" ? revealPortfolio : undefined}>
               <span><NavIcon icon={item.icon} /></span>{item.label}
             </Link>
           ))}
@@ -115,7 +120,7 @@ export function VNextTerminalShell() {
             <span className="vnChainLabel"><i aria-hidden="true" /> Robinhood Chain</span>
           </div>
           <div className="vnTopbarActions">
-            <WalletButton target="mainnet" returnTo="/vnext" />
+            <VNextWalletConnection />
           </div>
         </header>
 
@@ -125,6 +130,7 @@ export function VNextTerminalShell() {
             onAssetsChange={setWalletAssets}
             onNativeBalanceChange={setNativeBalance}
             executionRecord={executionRecovery.record}
+            portfolioRevealRequest={portfolioRevealRequest}
           />
           <VNextExecutionRecoveryBanner record={executionRecovery.record} status={executionRecovery.status} />
 
@@ -174,7 +180,7 @@ export function VNextTerminalShell() {
                 </div>
                 <div className="vnMarketDataCard">
                   <span><span className="vnEyebrow">Verified market data</span><strong>Live price history and trades</strong><small>Open the market workspace for candles, liquidity, and recent onchain activity.</small></span>
-                  <Link href={`/market/${selected.address}`}>Open live market <span aria-hidden="true">↗</span></Link>
+                  <Link href={legacyAssetWorkspaceHref(selected.address)}>Open live market <span aria-hidden="true">↗</span></Link>
                 </div>
                 <dl className="vnAssetStats">
                   <div><dt>Market cap</dt><dd>{formatCompactUsd(selected.marketCapUsd)}</dd></div>
@@ -184,7 +190,7 @@ export function VNextTerminalShell() {
                 </dl>
                 <div className="vnEvidence">
                   <div><span className="vnEvidenceIcon" aria-hidden="true">{identityStatus === "verified" ? "✓" : identityStatus === "checking" ? "…" : "!"}</span><span><strong>{identityStatus === "verified" ? "Identity verified" : identityStatus === "checking" ? "Checking identity" : "Identity not verified"}</strong><small>{identityStatus === "verified" ? "Chain, contract, and decimals confirmed" : identityStatus === "checking" ? "One selected-asset contract lookup" : "Execution remains blocked"}</small></span></div>
-                  <Link href={`/market/${selected.address}`}>View market evidence <span aria-hidden="true">→</span></Link>
+                  <Link href={legacyAssetWorkspaceHref(selected.address)}>View market evidence <span aria-hidden="true">→</span></Link>
                 </div>
               </section> : <section className="vnAssetPanel vnAssetEmpty" aria-label="Market detail"><strong>{status === "loading" ? "Syncing market directory" : "Select a market"}</strong><span>No price, identity, or execution claims are shown until real directory data is available.</span></section>}
             </div>
@@ -203,7 +209,7 @@ export function VNextTerminalShell() {
       </div>
 
       <nav className="vnMobileDock" aria-label="VNext mobile navigation">
-        {navItems.map((item, index) => <Link className={index === 0 ? "isActive" : ""} href={item.href} key={item.label}><span><NavIcon icon={item.icon} /></span>{item.label}</Link>)}
+        {navItems.map((item, index) => <Link className={index === 0 ? "isActive" : ""} href={item.href} key={item.label} onClick={item.icon === "portfolio" ? revealPortfolio : undefined}><span><NavIcon icon={item.icon} /></span>{item.label}</Link>)}
       </nav>
     </main>
   );
