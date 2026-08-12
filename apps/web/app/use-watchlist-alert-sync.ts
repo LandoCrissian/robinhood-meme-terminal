@@ -10,8 +10,7 @@ import {
   WATCHLIST_ALERT_EVENT
 } from "../lib/watchlist-alerts";
 import { useProfile } from "./profile-provider";
-
-export type WatchlistAlertSyncState = "local" | "syncing" | "synced" | "error";
+import type { WatchlistAlertSyncState } from "./use-local-watchlist-alert-state";
 
 export function useWatchlistAlertSync() {
   const { user, syncState: profileSyncState } = useProfile();

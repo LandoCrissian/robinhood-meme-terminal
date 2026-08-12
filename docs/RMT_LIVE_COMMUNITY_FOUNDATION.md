@@ -1,5 +1,7 @@
 # RMT Live community foundation
 
+**Status: PAUSED / preserved reference.** RMT Live is not mounted in the active trader runtime and is not part of terminal completion. Source, data protections and moderation evidence remain preserved.
+
 ## First release
 
 RMT Live begins with one global public room and a room identifier model for reviewed project pages. It supports pseudonymous guests and verified members without exposing Firebase IDs, emails, wallet addresses, IP addresses, or raw presence records.

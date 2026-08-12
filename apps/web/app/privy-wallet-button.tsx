@@ -245,7 +245,7 @@ export function PrivyWalletButton({
                 <button type="button" onClick={() => void signOut()}>Disconnect from RMT</button>
               </div>
               {!walletFirstTerminal && <p className="privyProfileBoundary">
-                One RMT account carries your private profile and wallet choices across the terminal. You still choose the active wallet, and RMT never receives its private key. <a href="/profile" onClick={close}>Open Profile →</a>
+                Your authenticated wallet session protects exact recipient binding for RMT trading. No social profile is required, you choose the active wallet, and RMT never receives its private key.
               </p>}
               {message && <p className="walletError" role="status">{message}</p>}
             </div>

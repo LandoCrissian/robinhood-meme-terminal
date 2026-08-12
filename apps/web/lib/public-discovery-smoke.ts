@@ -35,10 +35,10 @@ assert.ok(publicRule?.disallow?.includes("/profile"));
 assert.ok(!publicRule?.disallow?.includes("/deploy-mainnet"), "robots.txt must not advertise hidden operator routes");
 
 const sitemapUrls = staticPublicSitemap().map((entry) => entry.url);
-for (const route of ["/", "/explore", "/launch", `/project/${OFFICIAL_RMT_V6_TOKEN}`, "/status", "/sources", "/sushi", "/rescue", "/experience"]) {
+for (const route of ["/", "/explore", `/project/${OFFICIAL_RMT_V6_TOKEN}`, "/status", "/sources", "/sushi", "/experience"]) {
   assert.ok(sitemapUrls.includes(`${appUrl}${route}`), `Sitemap must include ${route}`);
 }
-for (const route of ["/api/health", "/deploy-mainnet", "/profile", "/portfolio", "/watchlist"]) {
+for (const route of ["/api/health", "/deploy-mainnet", "/profile", "/portfolio", "/watchlist", "/launch", "/rescue"]) {
   assert.ok(!sitemapUrls.includes(`${appUrl}${route}`), `Sitemap must not publish ${route}`);
 }
 assert.ok(!sitemapUrls.includes(`${appUrl}/token/${OFFICIAL_RMT_V6_TOKEN}`), "Legacy token URL must defer to the canonical Project URL");
@@ -83,21 +83,10 @@ assert.match(officialRmtMarketSource, /New V6 launches paused · existing market
 assert.match(officialRmtMarketSource, /Open native RMT market/);
 
 const exploreSource = readFileSync(new URL("../app/explore/page.tsx", import.meta.url), "utf8");
-const approvedDirectorySource = readFileSync(new URL("../app/approved-project-directory.tsx", import.meta.url), "utf8");
 assert.match(exploreSource, /<FreshLaunchFeed \/>/);
-assert.match(exploreSource, /<ApprovedProjectDirectory \/>/);
+assert.doesNotMatch(exploreSource, /<ApprovedProjectDirectory \/>/);
 assert.doesNotMatch(exploreSource, /<ExternalMarketFeed \/>/);
-assert.match(approvedDirectorySource, /OFFICIAL RMT · FACTORY VERIFIED/);
-assert.match(approvedDirectorySource, /Only official RMT is public until V7 opens/);
-assert.match(approvedDirectorySource, /publicCommunityProjectPagesEnabled/);
-assert.match(approvedDirectorySource, /publicCommunityProjectPagesEnabled && <GameDirectorySection/);
-assert.match(approvedDirectorySource, /RMT GAMES/);
-assert.match(approvedDirectorySource, /A token is optional/);
-assert.match(approvedDirectorySource, /Play or view/);
-assert.match(approvedDirectorySource, /project\.gamePlatforms/);
-assert.match(approvedDirectorySource, /Filter approved games/);
-assert.match(approvedDirectorySource, /Reset filters/);
-assert.match(exploreSource, /Projects, games and verified markets/);
+assert.match(exploreSource, /RMT markets and onchain evidence/);
 assert.equal(publicRmtProjectVisibility, "official-only");
 assert.equal(publicCommunityProjectPagesEnabled, false);
 assert.deepEqual(publicRmtNativeLaunches([
@@ -106,7 +95,8 @@ assert.deepEqual(publicRmtNativeLaunches([
 ] as Parameters<typeof publicRmtNativeLaunches>[0]).map((launch) => launch.token), [OFFICIAL_RMT_V6_TOKEN]);
 const freshLaunchFeedSource = readFileSync(new URL("../app/fresh-launch-feed.tsx", import.meta.url), "utf8");
 assert.match(freshLaunchFeedSource, /publicRmtNativeLaunches\(result\.launches\)/);
-assert.match(freshLaunchFeedSource, /<b>V7<\/b> RELEASE GATE/);
+assert.match(freshLaunchFeedSource, /<b>NEW<\/b> CREATION CLOSED/);
+assert.match(freshLaunchFeedSource, /Historical V6 compatibility/);
 
 const discoveryGames = [
   {
@@ -152,7 +142,6 @@ assert.deepEqual(filterGameProjects(sortedDiscoveryGames, {
 }).map((game) => game.name), ["Pocket Racer"]);
 
 const projectPageSource = readFileSync(new URL("../app/project/[address]/project-detail-page.tsx", import.meta.url), "utf8");
-const approvedProjectPageSource = readFileSync(new URL("../app/project/[address]/approved-project-page.tsx", import.meta.url), "utf8");
 const projectRouteSource = readFileSync(new URL("../app/project/[address]/page.tsx", import.meta.url), "utf8");
 const tokenPageSource = readFileSync(new URL("../app/token/[address]/page.tsx", import.meta.url), "utf8");
 assert.match(projectPageSource, /ProjectModuleGrid/);
@@ -268,11 +257,8 @@ assert.match(externalUniswapTicketSource, /confirmedBuyProtectionSnapshot/);
 assert.match(externalUniswapTicketSource, /PostTradeProtection/);
 assert.match(externalUniswapTicketSource, /protectionSettings: \{ \.\.\.afterBuyProtection\.settings \}/);
 assert.match(projectRouteSource, /isAddress/);
-assert.match(projectRouteSource, /ApprovedProjectPage/);
-assert.match(approvedProjectPageSource, /RMT PAGE · REVIEW APPROVED/);
-assert.match(approvedProjectPageSource, /No module is activated by page approval/);
-assert.match(approvedProjectPageSource, /Eligible for assigned-creator review · inactive by default/);
-assert.match(approvedProjectPageSource, /ProjectCreatorControls/);
+assert.match(projectRouteSource, /if \(!isAddress\(address\)\) redirect\("\/explore"\)/);
+assert.doesNotMatch(projectRouteSource, /ApprovedProjectPage/);
 assert.match(tokenPageSource, /ProjectDetailPage/);
 
 const officialProject = buildVerifiedTokenProject({
@@ -296,7 +282,8 @@ assert.equal(buildVerifiedTokenProject({
 }).official, false);
 
 const launchSource = readFileSync(new URL("../app/launch/page.tsx", import.meta.url), "utf8");
-assert.match(launchSource, /Launching reopens with V7—not before/);
+assert.match(launchSource, /RMT is a trading terminal, not a launchpad/);
+assert.match(launchSource, /No launch reopening is implied/);
 assert.doesNotMatch(launchSource, /LaunchForm/);
 assert.doesNotMatch(launchSource, /CREATE ON RMT V6/);
 
@@ -308,6 +295,8 @@ const mobileDock = chromeSource.match(/<nav className=\{`mobileDock[\s\S]*?<\/na
 assert.ok(mobileDock, "Mobile navigation must remain present");
 assert.match(mobileDock, /href="\/explore"/);
 assert.match(mobileDock, /href="\/watchlist"/);
+assert.match(mobileDock, /href="\/sources"/);
+assert.doesNotMatch(mobileDock, /href="\/profile"/);
 assert.doesNotMatch(mobileDock, /href="\/status"/);
 assert.doesNotMatch(mobileDock, /github\.com\/sponsors/);
 

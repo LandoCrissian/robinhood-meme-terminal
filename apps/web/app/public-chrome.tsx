@@ -3,13 +3,11 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
-import { RMT_ADMIN_EMAIL } from "../lib/creator-application";
 import { isMainnetRelease } from "../lib/network";
-import { useProfile } from "./profile-provider";
 import { WalletButton } from "./wallet-button";
 
 const HIDDEN_PREFIXES = ["/activate-consent-testnet", "/admin", "/deploy-consent-testnet", "/deploy-mainnet", "/deploy-testnet", "/mainnet-smoke", "/vnext"];
-const MORE_PREFIXES = ["/portfolio", "/protection", "/launch", "/sources", "/sushi", "/rescue", "/support", "/experience", "/risks"];
+const MORE_PREFIXES = ["/portfolio", "/protection", "/sources", "/sushi", "/support", "/experience", "/risks"];
 
 function currentPage(pathname: string, href: string) {
   if (href === "/") return pathname === "/";
@@ -30,10 +28,8 @@ export function PublicChrome() {
 }
 
 function VisiblePublicChrome({ pathname }: { pathname: string }) {
-  const { user } = useProfile();
   const menu = useRef<HTMLDetailsElement>(null);
   const moreActive = MORE_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
-  const isAdmin = Boolean(user?.emailVerified && user.email?.toLowerCase() === RMT_ADMIN_EMAIL);
 
   useEffect(() => {
     menu.current?.removeAttribute("open");
@@ -73,7 +69,6 @@ function VisiblePublicChrome({ pathname }: { pathname: string }) {
             <PublicLink href="/explore">Explore</PublicLink>
             <PublicLink href="/protection">Protection</PublicLink>
             <PublicLink href="/watchlist">Watchlist</PublicLink>
-            <PublicLink href="/profile">Profile</PublicLink>
             <span className="networkPulse" aria-label={`${isMainnetRelease ? "Robinhood Chain Mainnet" : "Robinhood Chain Testnet"} live`}><i aria-hidden="true" />RHC <b>{isMainnetRelease ? "MAINNET" : "TESTNET"}</b></span>
           </div>
 
@@ -81,23 +76,17 @@ function VisiblePublicChrome({ pathname }: { pathname: string }) {
             <details ref={menu} className={`publicMore${moreActive ? " active" : ""}`}>
               <summary aria-label="Open more RMT pages"><span>More</span><b aria-hidden="true">···</b></summary>
               <div className="publicMenu">
-                {isAdmin && <div>
-                  <span>Private operations</span>
-                  <PublicLink href="/admin">RMT Admin<small>Live messages, applications, reports, and feedback</small></PublicLink>
-                </div>}
                 <div>
-                  <span>Account &amp; markets</span>
-                  <PublicLink href="/explore">Explore RMT ecosystem<small>Reviewed projects, creators, games, and native markets</small></PublicLink>
+                  <span>Markets &amp; evidence</span>
+                  <PublicLink href="/explore">Explore RMT markets<small>Verified RMT history and Robinhood Chain market evidence</small></PublicLink>
                   <PublicLink href="/portfolio">Portfolio<small>Your connected-wallet holdings</small></PublicLink>
                   <PublicLink href="/protection">Protection Center<small>Automatic orders, permission cleanup, and execution history</small></PublicLink>
                   <PublicLink href="/watchlist">Watchlist<small>Tokens saved on this device</small></PublicLink>
-                  <PublicLink href="/sources">Sources<small>Launchpad coverage and origin labels</small></PublicLink>
+                  <PublicLink href="/sources">Sources<small>Origin, venue, and market-evidence boundaries</small></PublicLink>
                 </div>
                 <div>
                   <span>Protocol &amp; research</span>
                   <PublicLink href="/sushi">Sushi integration<small>Verified routing and execution boundary</small></PublicLink>
-                  <PublicLink href="/launch">RMT V7 launch preparation<small>New token creation is currently paused</small></PublicLink>
-                  <PublicLink href="/rescue">Migration lab<small>Paused, direct-to-wallet testnet research</small></PublicLink>
                 </div>
                 <div>
                   <span>Help &amp; safety</span>
@@ -120,7 +109,7 @@ function VisiblePublicChrome({ pathname }: { pathname: string }) {
         <PublicLink href="/explore"><span aria-hidden="true">⌕</span>Explore</PublicLink>
         <PublicLink href="/watchlist"><span aria-hidden="true">☆</span>Watchlist</PublicLink>
         <PublicLink href="/protection"><span aria-hidden="true">◇</span>Protection</PublicLink>
-        <PublicLink href="/profile"><span aria-hidden="true">◎</span>Profile</PublicLink>
+        <PublicLink href="/sources"><span aria-hidden="true">◎</span>Sources</PublicLink>
       </nav>
     </>
   );

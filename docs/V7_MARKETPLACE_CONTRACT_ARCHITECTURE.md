@@ -1,6 +1,6 @@
 # V7 marketplace contract architecture
 
-Status: source-level foundation only
+Status: **PAUSED — preserved source-level foundation only; not current roadmap**
 
 Date: July 30, 2026
 

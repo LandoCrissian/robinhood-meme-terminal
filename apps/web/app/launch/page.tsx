@@ -7,19 +7,19 @@ export default function LaunchPage() {
   return (
     <main className="launchPage">
       <header className="launchPageHeader">
-        <div><p className="eyebrow">RMT V{publicLaunchRelease.requiredProtocolVersion} PREPARATION</p><h1>New token launches are paused.</h1><p>RMT V6 creation is closed while the V7 factory, market path, indexing, and release controls are configured and reviewed together.</p></div>
-        <div className="launchAssurances"><span>Existing trading remains live</span><span>RMT projects remain visible</span><span>No V6 launches through the site</span></div>
+        <div><p className="eyebrow">RMT PRODUCT DIRECTION</p><h1>RMT is a trading terminal, not a launchpad.</h1><p>{publicLaunchRelease.reason} RMT is focused on Robinhood Chain discovery, market intelligence, wallet holdings, funding, and verified execution.</p></div>
+        <div className="launchAssurances"><span>Existing RMT market remains live</span><span>External markets remain discoverable</span><span>No new token launches through RMT</span></div>
       </header>
 
       <section className="panel launchPausePanel" aria-labelledby="launch-pause-title">
-        <p className="eyebrow">FAIL-CLOSED RELEASE GATE</p>
-        <h2 id="launch-pause-title">Launching reopens with V7—not before.</h2>
-        <p>The pause affects new token creation only. Existing RMT launches remain discoverable and tradable, and external Robinhood Chain markets remain available in Terminal.</p>
+        <p className="eyebrow">TERMINAL COMPLETION PROGRAM</p>
+        <h2 id="launch-pause-title">The product is moving forward as one terminal.</h2>
+        <p>The deployed V6 protocol and existing official RMT market remain represented truthfully. V7 creator, NFT, marketplace, and launch work is preserved but paused and is not the next product phase.</p>
         <div className="terminalIntroActions">
-          <Link className="primaryAction" href="/explore">Explore RMT ecosystem</Link>
-          <Link className="secondaryAction" href="/">Open Terminal</Link>
+          <Link className="primaryAction" href="/">Open Terminal</Link>
+          <Link className="secondaryAction" href="/explore">Explore markets</Link>
         </div>
-        <div className="callout"><strong>Onchain status is independently verifiable</strong><span>The website release gate cannot be reopened by an environment-variable change. V7 requires a dedicated reviewed release.</span></div>
+        <div className="callout"><strong>No launch reopening is implied</strong><span>Any future return to launching requires a separate, explicit architecture decision after the terminal completion gate has passed.</span></div>
       </section>
 
       <SiteFooter />

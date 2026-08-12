@@ -111,6 +111,6 @@ The implementation:
 
 The browser receives net quoted output, net protected minimum, the gross values, the rate, estimated fee and treasury. Before wallet review, RMT independently decodes the v3 fee payout function or v4 `PAY_PORTION` command and rejects any mismatch. Route comparison therefore ranks what the user keeps after the RMT fee rather than advertising a higher gross value.
 
-The working product target is 25 basis points (0.25%), which is materially below GMGN's published 1% handling fee. This is implemented behind a release gate but is not a live charge. It must not be enabled until RMT updates any earlier public “no fee” messaging and the terms shown to users.
+No RMT terminal execution-fee percentage or treasury policy is approved. The existing transaction-integrity capability remains disabled and carries no default percentage. Any future fee requires a separate, versioned policy decision, complete pre-authorization disclosure, route-specific verification, updated terms, and explicit release approval.
 
 The next phase requires a registered authorization-key quorum and a non-empty policy ID. RMT must never attach a signer with an empty policy list.

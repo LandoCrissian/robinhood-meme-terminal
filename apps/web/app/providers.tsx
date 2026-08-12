@@ -6,8 +6,6 @@ import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import { WagmiProvider, createConfig } from "wagmi";
 import { ProfileProvider } from "./profile-provider";
-import { ReferralCapture } from "./referral-capture";
-import { CommunityLive } from "./community-live";
 import { ExperienceTelemetry } from "./experience-telemetry";
 import { createLegacyWalletConnectors, walletChains, walletTransports } from "./wallet-config";
 import { speedWalletEnabled } from "../lib/privy-config";
@@ -41,11 +39,16 @@ const SpeedWalletProvider = dynamic(
 export function Providers({ children }: { children: ReactNode }) {
   const [queryClient] = useState(() => new QueryClient());
   const pathname = usePathname();
-  const profileEnabled = !(pathname === "/vnext" || pathname.startsWith("/vnext/"));
+  const profileCompatibilityEnabled = [
+    "/admin",
+    "/deploy-consent-testnet",
+    "/deploy-mainnet",
+    "/deploy-testnet"
+  ].some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
 
-  const terminal = <><ExperienceTelemetry />{children}<CommunityLive /></>;
-  const application = profileEnabled
-    ? <ProfileProvider><ReferralCapture />{terminal}</ProfileProvider>
+  const terminal = <><ExperienceTelemetry />{children}</>;
+  const application = profileCompatibilityEnabled
+    ? <ProfileProvider>{terminal}</ProfileProvider>
     : terminal;
 
   const legacyApplication = <LegacyWalletProvider queryClient={queryClient}>{application}</LegacyWalletProvider>;

@@ -2,7 +2,7 @@
 
 ## Objective
 
-Assess the live policy-driven V6 deployment, reconstruct the release from repository source and receipts, verify deployed bytecode and immutable configuration, and review operational controls while public creation is intentionally paused for V7 preparation. The canonical deployment record is [MAINNET_V6_DEPLOYMENT.md](MAINNET_V6_DEPLOYMENT.md). Existing V5 launches are immutable and are in scope only where V6 depends on legacy identity lookup.
+Assess the live policy-driven V6 deployment, reconstruct the release from repository source and receipts, verify deployed bytecode and immutable configuration, and review operational controls while new creation remains closed under RMT's terminal product direction. The canonical deployment record is [MAINNET_V6_DEPLOYMENT.md](MAINNET_V6_DEPLOYMENT.md). Existing V5 launches are immutable and are in scope only where V6 depends on legacy identity lookup.
 
 ## System boundaries
 

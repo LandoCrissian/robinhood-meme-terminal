@@ -395,9 +395,11 @@ assert.match(profilePageSource, /Open Admin Dashboard/);
 assert.match(profilePageSource, /href="\/admin"/);
 
 const publicChromeSource = readFileSync(new URL("../app/public-chrome.tsx", import.meta.url), "utf8");
-assert.match(publicChromeSource, /Private operations/);
-assert.match(publicChromeSource, /RMT Admin/);
-assert.match(publicChromeSource, /href="\/admin"/);
+assert.doesNotMatch(publicChromeSource, /Private operations/);
+assert.doesNotMatch(publicChromeSource, /RMT Admin/);
+assert.doesNotMatch(publicChromeSource, /href="\/admin"/);
+const providersSource = readFileSync(new URL("../app/providers.tsx", import.meta.url), "utf8");
+assert.doesNotMatch(providersSource, /<CommunityLive/);
 
 const feedbackRouteSource = readFileSync(new URL("../app/api/community/feedback/route.ts", import.meta.url), "utf8");
 assert.match(feedbackRouteSource, /verifyIdToken\(token, true\)/);

@@ -18,7 +18,7 @@ const SOURCES: LaunchpadSource[] = [
     status: "live",
     statusLabel: "LIVE + VERIFIED",
     capability: "Discover · Passport · Trade",
-    disclosure: "RMT-native origin and external-market evidence remain visibly separate. New public creation stays paused until V7."
+    disclosure: "RMT-native origin and external-market evidence remain visibly separate. New token creation is outside the current terminal roadmap."
   },
   {
     name: "DEX Screener",

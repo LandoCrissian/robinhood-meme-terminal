@@ -21,7 +21,7 @@ import {
   type WatchlistAlert
 } from "../lib/watchlist-alerts";
 import { addToWatchlist } from "../lib/watchlist";
-import { useWatchlistAlertSync } from "./use-watchlist-alert-sync";
+import { useLocalWatchlistAlertState } from "./use-local-watchlist-alert-state";
 
 function ruleLabel(alert: WatchlistAlert) {
   const preset = MARKET_PROTECTION_PRESETS.find((candidate) => candidate.metric === alert.metric);
@@ -38,7 +38,7 @@ export function MarketProtectionDesk({
   const [alerts, setAlerts] = useState<WatchlistAlert[]>([]);
   const [permission, setPermission] = useState<NotificationPermission>("default");
   const [message, setMessage] = useState("");
-  const alertSyncState = useWatchlistAlertSync();
+  const alertSyncState = useLocalWatchlistAlertState();
   const previousMarketRef = useRef<ExternalMarket | undefined>(undefined);
   const alertMatchStateRef = useRef(new Map<string, boolean>());
 

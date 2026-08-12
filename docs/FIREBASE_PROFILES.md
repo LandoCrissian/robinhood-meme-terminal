@@ -1,5 +1,7 @@
 # RMT account and private profile setup
 
+**Status: PAUSED product / preserved security and data reference.** Profile onboarding, editing, referrals and cloud-profile synchronization are not part of the active terminal. The exact-wallet identity boundary remains active security infrastructure; existing records and Firestore protections are preserved. See [`ARCHITECTURE_FREEZE.md`](ARCHITECTURE_FREEZE.md).
+
 RMT has one visible account layer:
 
 - **Local mode** is the automatic fallback. Profile preferences and watchlists stay in the current browser, and trading remains usable without an account.

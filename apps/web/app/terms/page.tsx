@@ -2,7 +2,7 @@ import { LegalShell } from "../legal-shell";
 
 export default function TermsPage() {
   return (
-    <LegalShell eyebrow="MAINNET BETA" title="Terms of Use" updated="August 1, 2026">
+    <LegalShell eyebrow="MAINNET BETA" title="Terms of Use" updated="August 11, 2026">
       <div className="legalNotice"><strong>Important:</strong> Robinhood Meme Terminal is experimental, non-custodial software. It is not Robinhood Markets, Inc., is not endorsed by Robinhood, and does not provide investment, legal, or tax advice.</div>
       <h2>1. Acceptance and eligibility</h2>
       <p>By accessing or using RMT, you agree to these terms. You must be at least 18 years old, legally capable of entering this agreement, and permitted to use blockchain software in your jurisdiction. Do not use RMT where doing so would violate applicable law, sanctions, or restrictions.</p>
@@ -18,7 +18,7 @@ export default function TermsPage() {
       <p>The official V6 RMT relaunch creates a new token contract, address, and fixed one-billion-token supply. The legacy token address is an identity and provenance anchor only; old holder balances are not copied, swapped, or migrated. Name and ticker uniqueness applies to origin-verified RMT V6 launches. RMT cannot prevent unrelated ERC-20 deployments or direct use of older immutable contracts outside the V6 terminal.</p>
       <p>After graduation, the splitter divides only LP fees actually collected from the canonical RMT pool. Fees may arrive in ETH, the launched token, or both depending on swap direction; token-denominated fees are not a creator allocation or newly minted supply. Independent pools are outside this mechanism. Any separate PoolManager protocol fee is removed upstream before the remaining LP fees reach the RMT splitter.</p>
       <h2>6. RMT Live community</h2>
-      <p>RMT Live is a public, moderated community surface. You may not post scams, impersonation, harassment, threats, unlawful or infringing material, spam, personal or confidential information, coordinated market manipulation, deceptive promotion, malicious links, or content intended to compromise a wallet or device. Never request or share recovery words or private keys. Do not present community commentary as guaranteed results or professional advice.</p>
+      <p>RMT Live is paused during terminal completion. These rules continue to govern preserved community records and apply if a separately authorized community surface returns. You may not post scams, impersonation, harassment, threats, unlawful or infringing material, spam, personal or confidential information, coordinated market manipulation, deceptive promotion, malicious links, or content intended to compromise a wallet or device. Never request or share recovery words or private keys.</p>
       <p>RMT may rate-limit, hide, review, retain temporarily, or remove community content and may temporarily restrict an identity to protect users and infrastructure. Moderation and automated filters cannot identify every harmful message and do not endorse content that remains visible. Reports and feedback do not authorize a trade, change token rankings, establish a partnership, or require RMT to implement a request.</p>
       <h2>7. Beta functionality</h2>
       <p>The mainnet release is beta software and has not completed an independent security audit. Features may fail, be delayed, or change through the disclosed version-registry process. Existing token, market, fee-splitter, and liquidity contracts are not rewritten by a future factory version.</p>
