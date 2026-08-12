@@ -1,6 +1,7 @@
 import type { VNextLiquidityFeeEvidence } from "../vnext/quote-observation";
 import { unavailableVNextQuoteAttempt, type VNextProviderQuoteRequest, type VNextQuoteProviderAdapter } from "./vnext-provider-adapter";
 import { quoteUpCl, quoteUpV2, type UpObservedQuote } from "./vnext-up-quote";
+import { prepareVNextUpAuthorization, verifyVNextUpRoute } from "./vnext-up-execution";
 
 const UP_QUOTE_TTL_MS = 20_000;
 
@@ -36,7 +37,7 @@ export function createVNextUpAdapters(dependencies: UpQuoteDependencies = liveDe
       providerFamily: "up",
       adapterVersion: 1,
       executionKind: "direct_amm",
-      capabilities: { strictVerification: false, walletAuthorization: false },
+      capabilities: { strictVerification: true, walletAuthorization: true },
       async quote(request) {
         const startedAtMs = Date.now();
         try {
@@ -68,7 +69,7 @@ export function createVNextUpAdapters(dependencies: UpQuoteDependencies = liveDe
             expiresAtMs: quotedAtMs + UP_QUOTE_TTL_MS,
             latencyMs: quotedAtMs - startedAtMs,
             executionKind: "direct_amm",
-            strictVerificationAvailable: false,
+            strictVerificationAvailable: true,
             userPaysGas: true,
             providerFeeAsset: null,
             providerFeeAtomic: null,
@@ -81,7 +82,7 @@ export function createVNextUpAdapters(dependencies: UpQuoteDependencies = liveDe
             protectedNetOutputAtomic: null,
             costState: "network_fee_pending",
             authorizationReady: false,
-            detail: `Live ${result.routeKind === "direct" ? "direct" : "WETH-hop"} ${label} quote with block-pinned fee evidence. Signing is not enabled.`
+            detail: `Live ${result.routeKind === "direct" ? "direct" : "WETH-hop"} ${label} quote with block-pinned fee evidence. Wallet authorization remains release-gated.`
           };
         } catch {
           return unavailableVNextQuoteAttempt({
@@ -90,6 +91,15 @@ export function createVNextUpAdapters(dependencies: UpQuoteDependencies = liveDe
             startedAtMs
           });
         }
+      },
+      verify: (request) => verifyVNextUpRoute(provider, request),
+      async prepareAuthorization(request) {
+        const observationGate = provider === "up-v2" ? "RMT_VNEXT_UP_V2_OBSERVATION_ENABLED" : "RMT_VNEXT_UP_CL_OBSERVATION_ENABLED";
+        const authorizationGate = provider === "up-v2" ? "RMT_VNEXT_UP_V2_AUTHORIZATION_ENABLED" : "RMT_VNEXT_UP_CL_AUTHORIZATION_ENABLED";
+        if (process.env[observationGate] !== "true" || process.env[authorizationGate] !== "true") {
+          throw new Error(`${label} wallet authorization is not enabled.`);
+        }
+        return prepareVNextUpAuthorization(provider, request);
       }
     };
     return adapter;

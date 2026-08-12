@@ -91,23 +91,17 @@ async function run() {
   assert.deepEqual(attempts.map((attempt) => attempt.provider), ["up-v2", "up-cl"]);
   assert(attempts.every((attempt) => attempt.status === "indicative"));
   assert(attempts.every((attempt) => attempt.providerFamily === "up"));
-  assert(attempts.every((attempt) => attempt.strictVerificationAvailable === false));
+  assert(attempts.every((attempt) => attempt.strictVerificationAvailable === true));
   assert(attempts.every((attempt) => attempt.authorizationReady === false));
   assert.deepEqual(attempts[0].liquidityFeeEvidence.map((evidence) => evidence.denominator), [10_000, 10_000]);
   assert.deepEqual(attempts[0].liquidityFeeEvidence.map((evidence) => evidence.stable), [false, false]);
   assert.deepEqual(attempts[1].liquidityFeeEvidence.map((evidence) => evidence.denominator), [1_000_000, 1_000_000]);
   assert.deepEqual(attempts[1].liquidityFeeEvidence.map((evidence) => evidence.tickSpacing), [60, 60]);
   assert(attempts.every((attempt) => attempt.liquidityFeeEvidence.every((evidence) => evidence.observedBlock === snapshot.blockNumber.toString())));
-  await assert.rejects(() => verifyVNextExecutionProvider("up-v2", {
-    ...request, indicativeProtectedOutputFloorAtomic: 1_000n
-  }, [adapters.v2]), /strict verification is not available/);
-  await assert.rejects(() => prepareVNextProviderAuthorization("up-cl", {
-    ...request,
-    indicativeProtectedOutputFloorAtomic: 1_000n,
-    protectedOutputFloorAtomic: 1_000n,
-    deadlineSeconds: 1_786_000_300n,
-    nowMs: 1_786_000_000_000
-  }, [adapters.cl]), /wallet authorization is not available/);
+  assert.equal(adapters.v2.capabilities.strictVerification, true);
+  assert.equal(adapters.v2.capabilities.walletAuthorization, true);
+  assert.equal(adapters.cl.capabilities.strictVerification, true);
+  assert.equal(adapters.cl.capabilities.walletAuthorization, true);
 
   const poisoned = createVNextUpAdapters({
     async quoteV2() {
@@ -142,7 +136,10 @@ async function run() {
   const adapterSource = readFileSync(new URL("../server/vnext-up-adapter.ts", import.meta.url), "utf8");
   const quoteSource = readFileSync(new URL("../server/vnext-up-quote.ts", import.meta.url), "utf8");
   assert.match(quoteSource, /tickSpacing/);
-  assert.doesNotMatch(adapterSource, /prepareAuthorization|sendTransaction|writeContract|signTypedData/);
+  assert.match(adapterSource, /RMT_VNEXT_UP_V2_AUTHORIZATION_ENABLED/);
+  assert.match(adapterSource, /RMT_VNEXT_UP_CL_AUTHORIZATION_ENABLED/);
+  assert.match(adapterSource, /prepareAuthorization/);
+  assert.doesNotMatch(adapterSource, /sendTransaction|writeContract|signTypedData/);
   assert.doesNotMatch(quoteSource, /sendTransaction|writeContract|signTypedData|privateKey/);
   console.log("RMT VNext up v2 and Slipstream observation adapter smoke checks passed.");
 }

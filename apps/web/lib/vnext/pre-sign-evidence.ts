@@ -2,14 +2,15 @@ import { getAddress, isAddress } from "viem";
 import { z } from "zod";
 import { ROBINHOOD_SWAP_ROUTER_02 } from "../uniswap-v4";
 import { isRobinhoodNativeAsset } from "./robinhood-assets";
+import { UP_CL_EXECUTION_ROUTER, UP_V2_EXECUTION_ROUTER } from "./up-authorization-codec";
 
 const MAX_CLOCK_SKEW_MS = 5_000;
 
 export type VNextPreSignEvidence = {
   verificationId: string;
   sourceQuoteRequestId: string;
-  provider: "uniswap-v3";
-  status: "verified" | "approval_required" | "insufficient_balance" | "insufficient_gas" | "gas_unavailable" | "simulation_failed";
+  provider: "uniswap-v3" | "up-v2" | "up-cl";
+  status: "verified" | "approval_required" | "approval_simulation_failed" | "insufficient_balance" | "insufficient_gas" | "gas_unavailable" | "simulation_failed";
   chainId: 4_663;
   inputAsset: string;
   outputAsset: string;
@@ -27,6 +28,10 @@ export type VNextPreSignEvidence = {
   route: "direct" | "weth_hop";
   fees: number[];
   pools: string[];
+  stableFlags?: boolean[];
+  tickSpacings?: number[];
+  quoteBlock?: string;
+  quoteBlockHash?: string;
   deadline: string;
   calldataHash: string;
   nextAction: "approval" | "swap" | null;
@@ -60,8 +65,8 @@ const hash = z.string().regex(/^0x[0-9a-fA-F]{64}$/);
 const evidenceSchema = z.object({
   verificationId: z.string().uuid(),
   sourceQuoteRequestId: z.string().uuid(),
-  provider: z.literal("uniswap-v3"),
-  status: z.enum(["verified", "approval_required", "insufficient_balance", "insufficient_gas", "gas_unavailable", "simulation_failed"]),
+  provider: z.enum(["uniswap-v3", "up-v2", "up-cl"]),
+  status: z.enum(["verified", "approval_required", "approval_simulation_failed", "insufficient_balance", "insufficient_gas", "gas_unavailable", "simulation_failed"]),
   chainId: z.literal(4_663),
   inputAsset: z.string(),
   outputAsset: z.string(),
@@ -79,6 +84,10 @@ const evidenceSchema = z.object({
   route: z.enum(["direct", "weth_hop"]),
   fees: z.array(z.number().int().positive()).min(1).max(2),
   pools: z.array(z.string()).min(1).max(2),
+  stableFlags: z.array(z.boolean()).min(1).max(2).optional(),
+  tickSpacings: z.array(z.number().int().positive().max(16_383)).min(1).max(2).optional(),
+  quoteBlock: atomic.optional(),
+  quoteBlockHash: hash.optional(),
   deadline: atomic,
   calldataHash: hash,
   nextAction: z.enum(["approval", "swap"]).nullable(),
@@ -112,7 +121,7 @@ export function parseVNextPreSignEvidence(value: unknown, expected: {
   inputAsset: string;
   outputAsset: string;
   inputAmountAtomic: string;
-  provider: "uniswap-v3";
+  provider: "uniswap-v3" | "up-v2" | "up-cl";
   protectedOutputFloorAtomic: string;
   recipient: string;
 }, nowMs: number): VNextPreSignEvidence {
@@ -132,8 +141,8 @@ export function parseVNextPreSignEvidence(value: unknown, expected: {
     || BigInt(evidence.protectedOutputAtomic) < BigInt(expected.protectedOutputFloorAtomic)
     || !isAddress(evidence.recipient)
     || getAddress(evidence.recipient) !== getAddress(expected.recipient)
-    || getAddress(evidence.router) !== getAddress(ROBINHOOD_SWAP_ROUTER_02)
-    || getAddress(evidence.approvalSpender) !== getAddress(ROBINHOOD_SWAP_ROUTER_02)
+    || getAddress(evidence.router) !== getAddress(evidence.provider === "uniswap-v3" ? ROBINHOOD_SWAP_ROUTER_02 : evidence.provider === "up-v2" ? UP_V2_EXECUTION_ROUTER : UP_CL_EXECUTION_ROUTER)
+    || getAddress(evidence.approvalSpender) !== getAddress(evidence.router)
     || evidence.protectedOutputAtomic === "0"
     || BigInt(evidence.protectedOutputAtomic) > BigInt(evidence.expectedOutputAtomic)
     || evidence.verifiedAtMs > nowMs + MAX_CLOCK_SKEW_MS
@@ -143,6 +152,17 @@ export function parseVNextPreSignEvidence(value: unknown, expected: {
   ) throw new Error("RMT rejected inconsistent pre-sign evidence.");
   if (evidence.route === "direct" && (evidence.fees.length !== 1 || evidence.pools.length !== 1)) throw new Error("RMT rejected an inconsistent direct route.");
   if (evidence.route === "weth_hop" && (evidence.fees.length !== 2 || evidence.pools.length !== 2)) throw new Error("RMT rejected an inconsistent multihop route.");
+  if (evidence.provider === "up-v2" && (
+    evidence.stableFlags?.length !== evidence.pools.length || evidence.tickSpacings !== undefined
+    || evidence.quoteBlock === undefined || evidence.quoteBlockHash === undefined
+  )) throw new Error("RMT rejected incomplete up v2 route evidence.");
+  if (evidence.provider === "up-cl" && (
+    evidence.tickSpacings?.length !== evidence.pools.length || evidence.stableFlags !== undefined
+    || evidence.quoteBlock === undefined || evidence.quoteBlockHash === undefined
+  )) throw new Error("RMT rejected incomplete up CL route evidence.");
+  if (evidence.provider === "uniswap-v3" && (evidence.stableFlags !== undefined || evidence.tickSpacings !== undefined || evidence.quoteBlock !== undefined || evidence.quoteBlockHash !== undefined)) {
+    throw new Error("RMT rejected foreign route evidence on Uniswap.");
+  }
   evidence.pools.forEach((pool) => {
     if (!isAddress(pool)) throw new Error("RMT rejected an invalid route pool.");
   });
@@ -187,6 +207,9 @@ export function parseVNextPreSignEvidence(value: unknown, expected: {
   }
   if (evidence.status === "approval_required" && (!evidence.approvalRequired || !evidence.sufficientBalance || evidence.exactSimulationPassed)) {
     throw new Error("RMT rejected inconsistent approval evidence.");
+  }
+  if (evidence.status === "approval_simulation_failed" && (!evidence.approvalRequired || !evidence.sufficientBalance || evidence.exactSimulationPassed || evidence.gasState !== "not_checked")) {
+    throw new Error("RMT rejected inconsistent failed approval simulation evidence.");
   }
   if (evidence.status === "insufficient_balance" && (evidence.sufficientBalance || evidence.exactSimulationPassed)) {
     throw new Error("RMT rejected inconsistent balance evidence.");

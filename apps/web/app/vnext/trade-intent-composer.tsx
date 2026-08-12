@@ -462,7 +462,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
       || !identity.identityToken
       || !identity.userId
       || !winningQuote
-      || winningQuote.provider !== "uniswap-v3"
+      || (winningQuote.provider !== "uniswap-v3" && winningQuote.provider !== "up-v2" && winningQuote.provider !== "up-cl")
       || !winningQuote.protectedOutputAtomic
     ) throw new Error("No observed route is supported by a strict verifier yet.");
     const expected = {
@@ -644,6 +644,8 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
       ? "Exact simulation passed"
       : visibleVerification.status === "approval_required"
         ? "Approval required"
+        : visibleVerification.status === "approval_simulation_failed"
+          ? "Approval simulation failed"
         : visibleVerification.status === "insufficient_balance"
           ? "Insufficient balance"
           : visibleVerification.status === "insufficient_gas"

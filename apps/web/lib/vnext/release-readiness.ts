@@ -23,6 +23,10 @@ export type VNextReleaseEnvironment = VNextShellEnvironment & Partial<Pick<
   | "RMT_ACROSS_ROBINHOOD_SPOKE_POOL_IMPLEMENTATION_CODE_HASH"
   | "RMT_VNEXT_ACROSS_FUNDING_QUOTES_ENABLED"
   | "RMT_VNEXT_ACROSS_FUNDING_AUTHORIZATION_ENABLED"
+  | "RMT_VNEXT_UP_V2_OBSERVATION_ENABLED"
+  | "RMT_VNEXT_UP_CL_OBSERVATION_ENABLED"
+  | "RMT_VNEXT_UP_V2_AUTHORIZATION_ENABLED"
+  | "RMT_VNEXT_UP_CL_AUTHORIZATION_ENABLED"
   | "RMT_ETHEREUM_RPC_URL"
   | "RMT_ETHEREUM_RPC_AUTH_TOKEN"
   | "RMT_ARBITRUM_RPC_URL"
@@ -90,12 +94,18 @@ export function readVNextReleaseReadiness(env: VNextReleaseEnvironment) {
     && acrossPersistenceConfigured;
   const acrossQuotesRequested = enabled(env.RMT_VNEXT_ACROSS_FUNDING_QUOTES_ENABLED);
   const acrossAuthorizationRequested = enabled(env.RMT_VNEXT_ACROSS_FUNDING_AUTHORIZATION_ENABLED);
+  const upV2ObservationEnabled = enabled(env.RMT_VNEXT_UP_V2_OBSERVATION_ENABLED);
+  const upClObservationEnabled = enabled(env.RMT_VNEXT_UP_CL_OBSERVATION_ENABLED);
+  const upV2AuthorizationEnabled = enabled(env.RMT_VNEXT_UP_V2_AUTHORIZATION_ENABLED);
+  const upClAuthorizationEnabled = enabled(env.RMT_VNEXT_UP_CL_AUTHORIZATION_ENABLED);
   const acrossConfigurationValid = (!acrossQuotesRequested || acrossConfigured)
     && (!acrossAuthorizationRequested || (acrossConfigured && acrossQuotesRequested));
   const authorizationConsistent = authorizationClientEnabled === authorizationServerEnabled;
   const sushiConsistent = sushiClientEnabled === sushiServerEnabled;
   const walletSubmissionValid = !walletSubmissionEnabled || (authorizationClientEnabled && authorizationServerEnabled);
-  const configurationConsistent = authorizationConsistent && sushiConsistent && walletSubmissionValid && acrossConfigurationValid;
+  const upAuthorizationValid = (!upV2AuthorizationEnabled || (upV2ObservationEnabled && authorizationClientEnabled && authorizationServerEnabled))
+    && (!upClAuthorizationEnabled || (upClObservationEnabled && authorizationClientEnabled && authorizationServerEnabled));
+  const configurationConsistent = authorizationConsistent && sushiConsistent && walletSubmissionValid && acrossConfigurationValid && upAuthorizationValid;
 
   let mode: VNextReleaseMode = "disabled";
   if (shellEnabled && !configurationConsistent) mode = "misconfigured";
@@ -117,6 +127,20 @@ export function readVNextReleaseReadiness(env: VNextReleaseEnvironment) {
     providers: {
       sushiClientEnabled,
       sushiServerEnabled,
+      upV2: {
+        observationEnabled: upV2ObservationEnabled,
+        strictVerificationAvailable: true,
+        walletAuthorizationAvailable: true,
+        authorizationEnabled: upV2AuthorizationEnabled && upV2ObservationEnabled && authorizationClientEnabled && authorizationServerEnabled,
+        mainnetProofComplete: false
+      },
+      upCl: {
+        observationEnabled: upClObservationEnabled,
+        strictVerificationAvailable: true,
+        walletAuthorizationAvailable: true,
+        authorizationEnabled: upClAuthorizationEnabled && upClObservationEnabled && authorizationClientEnabled && authorizationServerEnabled,
+        mainnetProofComplete: false
+      },
       acrossFunding: {
         configured: acrossConfigured,
         credentialsConfigured: acrossCredentialsConfigured,

@@ -36,7 +36,7 @@ RMT provides:
 - self-custodial wallet connection and wallet-reviewed transactions;
 - verified Sushi and Uniswap execution where an independently supported route exists;
 - VNext Spend Balance, asset-to-asset intent, provider comparison, authorization, settlement and recovery foundations;
-- disabled-by-default up. v2 and up. Slipstream quote observation with live onchain fee evidence, without signing or execution activation;
+- disabled-by-default up. v2 and up. Slipstream quote, strict-verification and exact wallet-authorization paths with live onchain fee evidence; controlled mainnet proofs and explicit release activation remain pending;
 - canonical V6 compatibility for the existing official RMT market;
 - independent external-origin and market indexers;
 - chain-qualified asset and Robinhood stock-token evidence;

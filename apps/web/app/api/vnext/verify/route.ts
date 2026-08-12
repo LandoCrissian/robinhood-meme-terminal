@@ -11,7 +11,7 @@ export const runtime = "nodejs";
 const requestSchema = z.object({
   chainId: z.literal(4_663),
   quoteRequestId: z.string().uuid(),
-  provider: z.enum(["sushi", "uniswap-v3"]),
+  provider: z.enum(["sushi", "uniswap-v3", "up-v2", "up-cl"]),
   inputAsset: z.string().refine((value) => isAddress(value, { strict: false })),
   outputAsset: z.string().refine((value) => isAddress(value, { strict: false })),
   inputAmountAtomic: z.string().regex(/^[1-9][0-9]*$/),
@@ -51,7 +51,7 @@ export async function POST(request: Request) {
   } catch (cause) {
     const identityResponse = tradeIdentityErrorResponse(cause);
     if (identityResponse) return identityResponse;
-    const message = cause instanceof Error && /No canonical Uniswap|runtime bytecode is not approved|strict verification is not available|moved below the indicative protected-output floor/.test(cause.message)
+    const message = cause instanceof Error && /No canonical Uniswap|No up-|runtime bytecode is not approved|dependencies changed|strict verification is not available|moved below the indicative protected-output floor|quote block was reorganized/.test(cause.message)
       ? cause.message
       : "Unable to produce strict pre-sign evidence.";
     return Response.json({ error: message }, { status: 422, headers: { "Cache-Control": "no-store" } });
