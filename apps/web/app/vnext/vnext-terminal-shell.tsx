@@ -3,10 +3,10 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useMemo, useRef, useState } from "react";
-import { legacyAssetWorkspaceHref } from "../../lib/vnext/legacy-route-compatibility";
 import type { VNextDetectedWalletAsset } from "../../lib/vnext/wallet-assets";
 import { SpendBalance } from "./spend-balance";
 import { TradeIntentComposer } from "./trade-intent-composer";
+import { VNextAssetWorkspace } from "./vnext-asset-workspace";
 import { VNextExecutionRecoveryBanner } from "./vnext-execution-recovery-banner";
 import { VNextWalletConnection } from "./vnext-wallet-connection";
 import { useVNextExecutionRecovery } from "./use-vnext-execution-recovery";
@@ -38,21 +38,9 @@ function formatUsd(value: number) {
   return `$${value.toLocaleString("en-US", { maximumSignificantDigits: 4 })}`;
 }
 
-function formatCompactUsd(value: number) {
-  if (!Number.isFinite(value) || value <= 0) return "—";
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", notation: "compact", maximumFractionDigits: 1 }).format(value);
-}
-
 function formatChange(value: number) {
   if (!Number.isFinite(value)) return "—";
   return `${value > 0 ? "+" : value < 0 ? "−" : ""}${Math.abs(value).toFixed(1)}%`;
-}
-
-function formatAge(minutes: number | null) {
-  if (minutes === null) return "Unknown";
-  if (minutes < 60) return `${Math.max(1, Math.floor(minutes))}m`;
-  if (minutes < 1_440) return `${Math.floor(minutes / 60)}h`;
-  return `${Math.floor(minutes / 1_440)}d`;
 }
 
 export function VNextTerminalShell() {
@@ -60,6 +48,7 @@ export function VNextTerminalShell() {
   const [walletAssets, setWalletAssets] = useState<VNextDetectedWalletAsset[]>([]);
   const [nativeBalance, setNativeBalance] = useState<bigint>();
   const [portfolioRevealRequest, setPortfolioRevealRequest] = useState(0);
+  const [tradeSideRequest, setTradeSideRequest] = useState<{ side: "buy" | "sell"; nonce: number }>();
   const marketSearch = useRef<HTMLInputElement>(null);
   const executionRecovery = useVNextExecutionRecovery();
   const { markets, status, selected, selectedAsset, identityStatus, setSelectedAddress, refresh } = useVNextMarketDirectory();
@@ -86,6 +75,12 @@ export function VNextTerminalShell() {
   }, [setSelectedAddress]);
   const revealPortfolio = useCallback(() => {
     setPortfolioRevealRequest((request) => request + 1);
+  }, []);
+  const requestTradeSide = useCallback((side: "buy" | "sell") => {
+    setTradeSideRequest({ side, nonce: Date.now() });
+    window.requestAnimationFrame(() => {
+      document.getElementById("vnext-trade-ticket")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
   }, []);
 
   return (
@@ -168,31 +163,12 @@ export function VNextTerminalShell() {
                 </div>
               </section>
 
-              {selected ? <section className="vnAssetPanel" aria-labelledby="vn-asset-heading">
-                <div className="vnAssetHeader">
-                  <div className="vnAssetIdentity">
-                    <MarketMark symbol={selected.symbol} />
-                    <div><span><h2 id="vn-asset-heading">{selected.name}</h2><b>{selected.symbol}</b></span><small>Robinhood Chain · {identityStatus === "verified" ? "Verified identity" : identityStatus === "checking" ? "Identity checking" : "Detected asset"}</small></div>
-                  </div>
-                </div>
-                <div className="vnPriceHeader">
-                  <div><strong>{formatUsd(selected.priceUsd)}</strong><span className={selected.priceChange24h > 0 ? "vnPositive" : selected.priceChange24h < 0 ? "vnNegative" : ""}>{formatChange(selected.priceChange24h)} <small>24h</small></span></div>
-                </div>
-                <div className="vnMarketDataCard">
-                  <span><span className="vnEyebrow">Verified market data</span><strong>Live price history and trades</strong><small>Open the market workspace for candles, liquidity, and recent onchain activity.</small></span>
-                  <Link href={legacyAssetWorkspaceHref(selected.address)}>Open live market <span aria-hidden="true">↗</span></Link>
-                </div>
-                <dl className="vnAssetStats">
-                  <div><dt>Market cap</dt><dd>{formatCompactUsd(selected.marketCapUsd)}</dd></div>
-                  <div><dt>Liquidity</dt><dd>{formatCompactUsd(selected.liquidityUsd)}</dd></div>
-                  <div><dt>24h volume</dt><dd>{formatCompactUsd(selected.volume24h)}</dd></div>
-                  <div><dt>Market age</dt><dd>{formatAge(selected.ageMinutes)}</dd></div>
-                </dl>
-                <div className="vnEvidence">
-                  <div><span className="vnEvidenceIcon" aria-hidden="true">{identityStatus === "verified" ? "✓" : identityStatus === "checking" ? "…" : "!"}</span><span><strong>{identityStatus === "verified" ? "Identity verified" : identityStatus === "checking" ? "Checking identity" : "Identity not verified"}</strong><small>{identityStatus === "verified" ? "Chain, contract, and decimals confirmed" : identityStatus === "checking" ? "One selected-asset contract lookup" : "Execution remains blocked"}</small></span></div>
-                  <Link href={legacyAssetWorkspaceHref(selected.address)}>View market evidence <span aria-hidden="true">→</span></Link>
-                </div>
-              </section> : <section className="vnAssetPanel vnAssetEmpty" aria-label="Market detail"><strong>{status === "loading" ? "Syncing market directory" : "Select a market"}</strong><span>No price, identity, or execution claims are shown until real directory data is available.</span></section>}
+              {selected ? <VNextAssetWorkspace
+                directoryMarket={selected}
+                identityStatus={identityStatus}
+                walletAssets={walletAssets}
+                onTradeSide={requestTradeSide}
+              /> : <section className="vnAssetPanel vnAssetEmpty" aria-label="Market detail"><strong>{status === "loading" ? "Syncing market directory" : "Select a market"}</strong><span>No price, identity, or execution claims are shown until real directory data is available.</span></section>}
             </div>
 
             <TradeIntentComposer
@@ -203,6 +179,7 @@ export function VNextTerminalShell() {
               nativeBalance={nativeBalance}
               executionRecord={executionRecovery.record}
               onContinueTrading={continueTrading}
+              sideRequest={tradeSideRequest}
             />
           </div>
         </div>

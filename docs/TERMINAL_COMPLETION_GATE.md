@@ -15,8 +15,8 @@
 
 - [ ] Live market discovery, exact token/pool lookup, search, ranking/filtering and truthful stale/source-delay states are complete.
 - [ ] Origin, venue, age, liquidity, activity/volume and valuation are available.
-- [ ] Selected assets remain inside VNext for identity, chart, activity, holders, liquidity, risk, origin, verified markets, RWA relationships, wallet position and trading.
-- [ ] No permanent `/market/[address]` dependency remains.
+- [x] Selected assets remain inside VNext for identity, chart, activity, holders, liquidity, risk, origin, verified markets, RWA relationships, wallet position and trading.
+- [x] No permanent `/market/[address]` dependency remains.
 
 ## Wallet and balances
 
@@ -71,7 +71,7 @@
 
 ## Current known gaps
 
-VNext remains at `/vnext`; the full asset workspace still uses the named `/market/[address]` compatibility boundary; VNext navigation now reveals its own wallet holdings but the PR 4 holdings gate remains incomplete; legacy CSS is globally loaded; up/Stonk integrations and full attribution are not implemented; Across production proof is incomplete; profiles/community/creator source remains preserved; production cutover has not occurred.
+VNext remains at `/vnext`; the VNext-owned asset workspace no longer navigates to `/market/[address]`, while that route remains preserved for production compatibility; VNext navigation reveals its own wallet holdings but the PR 4 holdings gate remains incomplete; legacy CSS is globally loaded; up/Stonk integrations and full attribution are not implemented; Across production proof is incomplete; profiles/community/creator source remains preserved; production cutover has not occurred.
 
 ## Explicit completion decision
 

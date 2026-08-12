@@ -2,10 +2,6 @@ import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import {
-  VNEXT_LEGACY_ROUTE_DEPENDENCIES,
-  legacyAssetWorkspaceHref,
-} from "./legacy-route-compatibility";
 
 const vnextAppDirectory = fileURLToPath(new URL("../../app/vnext/", import.meta.url));
 const rootAppDirectory = dirname(vnextAppDirectory);
@@ -31,7 +27,13 @@ for (const { path, source } of vnextSources) {
 
 const allowedSharedImports = new Set([
   "../../lib/external-market",
+  "../../lib/external-ohlcv",
+  "../../lib/external-trades",
+  "../../lib/token-risk-evidence",
   "../../lib/trade-quote-client",
+  "../../lib/use-external-market-stream",
+  "../../lib/use-token-risk-evidence",
+  "../../lib/use-wallet-constellation",
   "../fund-wallet-button",
   "../rmt-identity",
   "../wallet-button",
@@ -58,17 +60,5 @@ for (const stylesheet of globalCssImports) {
   const source = readFileSync(join(rootAppDirectory, stylesheet.replace(/^\.\//, "")), "utf8");
   assert.doesNotMatch(source, /\.rmtVnext|\.vn[A-Z]/, `${stylesheet} must not style inside the VNext ownership boundary.`);
 }
-
-assert.deepEqual(VNEXT_LEGACY_ROUTE_DEPENDENCIES, {
-  assetWorkspace: {
-    routePattern: "/market/[address]",
-    retirementGate: "VNext asset workspace completion",
-  },
-});
-assert.equal(
-  legacyAssetWorkspaceHref("0x0000000000000000000000000000000000000001"),
-  "/market/0x0000000000000000000000000000000000000001",
-);
-assert.throws(() => legacyAssetWorkspaceHref("not-an-address"), /valid market address/);
 
 console.log("VNext ownership boundary smoke passed.");
