@@ -11,10 +11,15 @@ export type ExternalOriginAdapterManifest = Readonly<{
   sourceUrl: string;
   evidenceUrl: string;
   chainId: typeof EXTERNAL_ORIGIN_CHAIN_ID;
-  factory: `0x${string}`;
+  evidenceContract: `0x${string}`;
+  evidenceRole:
+    | "creation-factory"
+    | "listing-registry"
+    | "curation-registry"
+    | "other-explicit-role";
   startBlock: bigint;
   runtimeCodeHash: `0x${string}`;
-  creationEventTopic0: `0x${string}`;
+  evidenceEventTopic0: `0x${string}`;
   manifestHash: `0x${string}`;
   schemaVersion: typeof EXTERNAL_ORIGIN_SCHEMA_VERSION;
   claimKinds: readonly ("token-created" | "source-listed")[];
@@ -53,17 +58,18 @@ export function canonicalExternalOriginManifest(
   manifest: ExternalOriginAdapterManifestInput
 ) {
   return JSON.stringify({
-    schema: "rmt-external-origin-adapter-v1",
+    schema: "rmt-external-origin-adapter-v2",
     chainId: manifest.chainId,
     adapterId: manifest.adapterId,
     sourceId: manifest.sourceId,
     sourceName: manifest.sourceName,
     sourceUrl: manifest.sourceUrl,
     evidenceUrl: manifest.evidenceUrl,
-    factory: manifest.factory,
+    evidenceContract: manifest.evidenceContract,
+    evidenceRole: manifest.evidenceRole,
     startBlock: manifest.startBlock.toString(),
     runtimeCodeHash: manifest.runtimeCodeHash,
-    creationEventTopic0: manifest.creationEventTopic0,
+    evidenceEventTopic0: manifest.evidenceEventTopic0,
     claimKinds: [...manifest.claimKinds].sort(),
     schemaVersion: manifest.schemaVersion
   });
@@ -82,7 +88,7 @@ export function validateExternalOriginAdapters(
   adapters: readonly ExternalOriginAdapterManifest[]
 ) {
   const adapterIds = new Set<string>();
-  const factories = new Set<string>();
+  const evidenceContracts = new Set<string>();
 
   for (const adapter of adapters) {
     if (adapter.chainId !== EXTERNAL_ORIGIN_CHAIN_ID) {
@@ -102,12 +108,21 @@ export function validateExternalOriginAdapters(
       throw new Error(adapter.adapterId + " has an invalid sourceName");
     }
     if (
-      !ADDRESS_PATTERN.test(adapter.factory) ||
-      adapter.factory === ZERO_ADDRESS
+      !ADDRESS_PATTERN.test(adapter.evidenceContract) ||
+      adapter.evidenceContract === ZERO_ADDRESS
     ) {
       throw new Error(
-        adapter.adapterId + " factory must be a nonzero lowercase address"
+        adapter.adapterId +
+        " evidenceContract must be a nonzero lowercase address"
       );
+    }
+    if (
+      adapter.evidenceRole !== "creation-factory" &&
+      adapter.evidenceRole !== "listing-registry" &&
+      adapter.evidenceRole !== "curation-registry" &&
+      adapter.evidenceRole !== "other-explicit-role"
+    ) {
+      throw new Error(adapter.adapterId + " has an invalid evidenceRole");
     }
     if (adapter.startBlock < 0n) {
       throw new Error(adapter.adapterId + " has an invalid startBlock");
@@ -117,8 +132,8 @@ export function validateExternalOriginAdapters(
       adapter.runtimeCodeHash
     );
     requireHash(
-      adapter.adapterId + " creationEventTopic0",
-      adapter.creationEventTopic0
+      adapter.adapterId + " evidenceEventTopic0",
+      adapter.evidenceEventTopic0
     );
     requireHash(
       adapter.adapterId + " manifestHash",
@@ -135,6 +150,24 @@ export function validateExternalOriginAdapters(
       )
     ) {
       throw new Error(adapter.adapterId + " has invalid claimKinds");
+    }
+    if (
+      adapter.claimKinds.includes("token-created") &&
+      adapter.evidenceRole !== "creation-factory"
+    ) {
+      throw new Error(
+        adapter.adapterId +
+        " may only claim token-created from a creation-factory"
+      );
+    }
+    if (
+      adapter.evidenceRole === "creation-factory" &&
+      !adapter.claimKinds.includes("token-created")
+    ) {
+      throw new Error(
+        adapter.adapterId +
+        " creation-factory must admit token-created evidence"
+      );
     }
     requireHttps(adapter.adapterId + " sourceUrl", adapter.sourceUrl);
     requireHttps(adapter.adapterId + " evidenceUrl", adapter.evidenceUrl);
@@ -154,19 +187,19 @@ export function validateExternalOriginAdapters(
     if (adapterIds.has(adapter.adapterId)) {
       throw new Error("Duplicate external-origin adapterId");
     }
-    if (factories.has(adapter.factory)) {
-      throw new Error("Duplicate active external-origin factory");
+    if (evidenceContracts.has(adapter.evidenceContract)) {
+      throw new Error("Duplicate active external-origin evidence contract");
     }
     adapterIds.add(adapter.adapterId);
-    factories.add(adapter.factory);
+    evidenceContracts.add(adapter.evidenceContract);
   }
 
   return Object.freeze([...adapters]);
 }
 
 // This is the only adapter allowlist. It intentionally remains empty until an
-// external factory, deployment boundary, runtime bytecode, verified ABI/source,
-// and creation event pass independent review. Environment variables cannot
-// enable an adapter.
+// external evidence contract, its explicit role, deployment boundary, runtime
+// bytecode, verified ABI/source, and exact event pass independent review.
+// Environment variables cannot enable an adapter.
 export const externalOriginAdapters = [] as const satisfies
   readonly ExternalOriginAdapterManifest[];

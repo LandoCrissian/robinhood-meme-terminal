@@ -28,10 +28,11 @@ const manifestInput: ExternalOriginAdapterManifestInput = {
   sourceUrl: "https://example.com/source",
   evidenceUrl: "https://example.com/evidence",
   chainId: 4663,
-  factory: `0x${"1".repeat(40)}`,
+  evidenceContract: `0x${"1".repeat(40)}`,
+  evidenceRole: "creation-factory",
   startBlock: 100n,
   runtimeCodeHash: `0x${"2".repeat(64)}`,
-  creationEventTopic0: `0x${"3".repeat(64)}`,
+  evidenceEventTopic0: `0x${"3".repeat(64)}`,
   schemaVersion: EXTERNAL_ORIGIN_SCHEMA_VERSION,
   claimKinds: ["token-created"]
 };
@@ -49,11 +50,16 @@ const manifestTampering: ExternalOriginAdapterManifest[] = [
   { ...manifest, sourceName: "Changed Launchpad" },
   { ...manifest, sourceUrl: "https://example.com/changed-source" },
   { ...manifest, evidenceUrl: "https://example.com/changed-evidence" },
-  { ...manifest, factory: `0x${"4".repeat(40)}` },
+  { ...manifest, evidenceContract: `0x${"4".repeat(40)}` },
+  {
+    ...manifest,
+    evidenceRole: "listing-registry",
+    claimKinds: ["source-listed"]
+  },
   { ...manifest, startBlock: 101n },
   { ...manifest, runtimeCodeHash: `0x${"5".repeat(64)}` },
-  { ...manifest, creationEventTopic0: `0x${"6".repeat(64)}` },
-  { ...manifest, claimKinds: ["source-listed"] }
+  { ...manifest, evidenceEventTopic0: `0x${"6".repeat(64)}` },
+  { ...manifest, claimKinds: ["token-created", "source-listed"] }
 ];
 for (const tampered of manifestTampering) {
   assert.throws(
@@ -68,7 +74,8 @@ const evidence: ExternalOriginEvidence = {
   manifestHash: manifest.manifestHash,
   claimKind: "token-created",
   token: address.toLowerCase() as `0x${string}`,
-  factory: manifest.factory,
+  evidenceContract: manifest.evidenceContract,
+  evidenceRole: manifest.evidenceRole,
   transactionHash: `0x${"7".repeat(64)}`,
   logIndex: 1,
   transactionIndex: 2,
@@ -86,6 +93,14 @@ assert.notEqual(
   deriveExternalOriginEvidenceHash({
     ...evidence,
     transactionHash: `0x${"9".repeat(64)}`
+  })
+);
+assert.notEqual(
+  deriveExternalOriginEvidenceHash(evidence),
+  deriveExternalOriginEvidenceHash({
+    ...evidence,
+    claimKind: "source-listed",
+    evidenceRole: "listing-registry"
   })
 );
 

@@ -48,6 +48,27 @@ This is a safety harness, not a completed backfill:
 
 Every replay result reports those limits directly: independent-provider agreement, finalized ancestry, coverage from deployment, live counter semantics, local runtime hashing, and local state decoding are all `false`. They continue to block activation.
 
+## StonkBrokers candidate foundation (not enabled)
+
+`src/candidates/stonkbrokers-candidate.ts` establishes the chain-4663 source identity `stonkbrokers` / `StonkBrokers` and records the current production-launcher evidence gaps. It is candidate metadata and adversarial policy only. It is not an adapter, is absent from `externalOriginAdapters`, admits no claim kinds, performs no RPC work, and cannot affect the API.
+
+The official [StonkBrokers launcher](https://www.stonkbrokers.cash/launcher) and [documentation](https://www.stonkbrokers.cash/docs) still describe the launcher as coming soon. Product descriptions for planned launch modes, pair assets, graduation, liquidity and buyback behavior are not contract evidence. The documented address `0x631f9371fd6b2c85f8f61d19a90547ee67fa61a2` is explicitly classified as an archived testnet demo and is forbidden by the candidate guard as production evidence. At the review boundary it also had no runtime code on Robinhood Chain 4663. The public [`Clutch-L4bs/clutch-launchpad`](https://github.com/Clutch-L4bs/clutch-launchpad) repository describes itself as a mock-data UI shell without contracts, so it is explicitly excluded as contract evidence.
+
+DERP, MANCER and YARD are identified by the official surface as independent Special Projects. A Special Project, website card, Stonk Exchange listing, STONKBROKER pair, up pool or up gauge is association evidence only. None can produce `source-listed` or `token-created`. An onchain listing/registry emitter would have to be independently admitted before `source-listed` could exist.
+
+Production launcher attribution remains blocked until a later review establishes all of the following:
+
+1. Exact production contract address, deployment transaction/block/block hash, preceding-boundary code state, runtime bytecode and locally calculated runtime hash.
+2. Proxy runtime hash, implementation slot/address/runtime hash and upgradeability classification if the deployment is upgradeable.
+3. Authoritative verified source/compiler match, exact ABI, event topic, indexed and nonindexed field positions, and canonical ABI padding.
+4. Exact token, creator/deployer, launch ID, sale/curve/market, pair-asset and launch-model semantics, including whether every launch mode emits the same event. A `deployer` field is not reinterpreted as `creator` without contract proof.
+5. Multiple successful production receipt fixtures with exact transaction/log coordinates and runtime checks for created token and related market/sale contracts.
+6. State cross-checks for counters, launch records and mappings where the contract exposes them.
+7. Bounded/idempotent backfill, canonical block checkpoints, finality, restart, provider-failure and reorg deletion/replay behavior.
+8. Independent provider comparison, shadow backfill, deployment-boundary proof and known-launch reconciliation.
+
+Even complete evidence would only make a candidate eligible for a separately reviewed adapter/backfill proposal. It would not remove the compile-time activation lock in this change.
+
 ## Isolation boundary
 
 The service requires its own PostgreSQL database through `EXTERNAL_ORIGIN_DATABASE_URL`.
@@ -76,16 +97,20 @@ The model enforces:
 - lowercase nonzero addresses and hashes
 - no claim before its adapter start block
 - consistent ready/error adapter state
-- versioned adapters that may safely reference the same historical factory
+- explicit evidence-contract roles (`creation-factory`, `listing-registry`, `curation-registry` or another reviewed role)
+- `token-created` claims only from a `creation-factory`
+- versioned adapters that may safely reference the same historical evidence contract
 
 `source-listed` evidence is distinct from `token-created` evidence. Exact origin lookup code filters to `token-created`; a source listing alone can never prove creation origin.
 
 Adapter manifests and evidence hashes use deterministic SHA-256 identities:
 
-- manifest domain: `rmt-external-origin-adapter-v1`
-- evidence domain: `rmt-external-origin-evidence-v1`
+- manifest domain: `rmt-external-origin-adapter-v2`
+- evidence domain: `rmt-external-origin-evidence-v2`
 
-The canonical serializers are committed in `adapter-registry.ts` and `evidence.ts`. Changing a factory, start block, bytecode hash, event topic, source evidence, or claim kind without recomputing and reviewing the manifest is rejected.
+The canonical serializers are committed in `adapter-registry.ts` and `evidence.ts`. Changing an evidence contract or role, start block, bytecode hash, event topic, source evidence, or claim kind without recomputing and reviewing the manifest is rejected.
+
+Schema v2 deliberately replaces the ambiguous `factory` field with `evidence_contract` plus `evidence_role`. There are no active adapters, no claim-serving path, no RPC writer and no authoritative external-origin records to migrate. The service has not been deployed with a production database. A stale local schema-v1 database therefore fails the exact startup schema assertion instead of being silently reinterpreted; local development must recreate the dedicated empty database. Any future durable-state migration requires its own explicit reviewed path.
 
 ## API
 
@@ -149,14 +174,14 @@ pnpm --filter external-origin-indexer test:candidates
 pnpm --filter external-origin-indexer test:shadow-replay
 ```
 
-Tests cover concurrent/idempotent migration, database isolation, schema drift, manifest mutation, versioned factories, source-list exclusion, duplicate/conflicting origin evidence, checkpoint mismatches, reorg cleanup, block ranges, authentication, activation lock, exact API responses, candidate-assumed zero-index replay accounting, and adversarial whole-window rejection.
+Tests cover concurrent/idempotent schema application, database isolation, schema drift, manifest mutation, versioned evidence contracts, claim-role separation, source-list exclusion, duplicate/conflicting origin evidence, checkpoint mismatches, reorg cleanup, block ranges, authentication, activation lock, exact API responses, Stonk testnet/association/environment poisoning, candidate-assumed zero-index replay accounting, and adversarial whole-window rejection.
 
 ## First-adapter activation gate
 
 Do not deploy this service merely because the scaffold compiles. Before the activation lock can be removed:
 
 1. Confirm the official source identity and public HTTPS documentation.
-2. Verify the exact factory, deployment block, runtime bytecode, source, ABI, and creation event.
+2. Verify the exact evidence contract and role, deployment block, runtime bytecode, source, ABI, and evidence event.
 3. Commit the adapter manifest and deterministic hash.
 4. Implement its RPC backfill in this isolated service.
 5. Track a finalized target head and exact checkpoint at the indexed boundary.

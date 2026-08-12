@@ -1,5 +1,5 @@
 export const EXTERNAL_ORIGIN_CHAIN_ID = 4663 as const;
-export const EXTERNAL_ORIGIN_SCHEMA_VERSION = 1 as const;
+export const EXTERNAL_ORIGIN_SCHEMA_VERSION = 2 as const;
 
 // Source-only safety lock. The first verified adapter must add finalized-head,
 // freshness, reorg, and atomic-read logic in a separate reviewed change before

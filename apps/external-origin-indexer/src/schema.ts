@@ -10,7 +10,8 @@ CREATE TABLE IF NOT EXISTS external_origin_adapter_state (
   adapter_id TEXT NOT NULL,
   source_id TEXT NOT NULL,
   source_name TEXT NOT NULL,
-  factory TEXT NOT NULL,
+  evidence_contract TEXT NOT NULL,
+  evidence_role TEXT NOT NULL,
   start_block BIGINT NOT NULL,
   next_block BIGINT NOT NULL,
   manifest_hash TEXT NOT NULL,
@@ -28,7 +29,8 @@ CREATE TABLE IF NOT EXISTS external_origin_adapter_state (
       adapter_id,
       source_id,
       source_name,
-      factory,
+      evidence_contract,
+      evidence_role,
       start_block,
       manifest_hash,
       schema_version
@@ -52,10 +54,20 @@ CREATE TABLE IF NOT EXISTS external_origin_adapter_state (
       source_name = BTRIM(source_name)
       AND CHAR_LENGTH(source_name) BETWEEN 1 AND 120
     ),
-  CONSTRAINT external_origin_adapter_state_factory_check
+  CONSTRAINT external_origin_adapter_state_evidence_contract_check
     CHECK (
-      factory ~ '^0x[0-9a-f]{40}$'
-      AND factory <> '0x0000000000000000000000000000000000000000'
+      evidence_contract ~ '^0x[0-9a-f]{40}$'
+      AND evidence_contract <>
+        '0x0000000000000000000000000000000000000000'
+    ),
+  CONSTRAINT external_origin_adapter_state_evidence_role_check
+    CHECK (
+      evidence_role IN (
+        'creation-factory',
+        'listing-registry',
+        'curation-registry',
+        'other-explicit-role'
+      )
     ),
   CONSTRAINT external_origin_adapter_state_block_range_check
     CHECK (start_block >= 0 AND next_block >= start_block),
@@ -121,7 +133,8 @@ CREATE TABLE IF NOT EXISTS external_origin_claims (
   source_name TEXT NOT NULL,
   claim_kind TEXT NOT NULL,
   token TEXT NOT NULL,
-  factory TEXT NOT NULL,
+  evidence_contract TEXT NOT NULL,
+  evidence_role TEXT NOT NULL,
   start_block BIGINT NOT NULL,
   manifest_hash TEXT NOT NULL,
   schema_version INTEGER NOT NULL,
@@ -145,7 +158,8 @@ CREATE TABLE IF NOT EXISTS external_origin_claims (
       adapter_id,
       source_id,
       source_name,
-      factory,
+      evidence_contract,
+      evidence_role,
       start_block,
       manifest_hash,
       schema_version
@@ -155,7 +169,8 @@ CREATE TABLE IF NOT EXISTS external_origin_claims (
       adapter_id,
       source_id,
       source_name,
-      factory,
+      evidence_contract,
+      evidence_role,
       start_block,
       manifest_hash,
       schema_version
@@ -182,10 +197,25 @@ CREATE TABLE IF NOT EXISTS external_origin_claims (
       token ~ '^0x[0-9a-f]{40}$'
       AND token <> '0x0000000000000000000000000000000000000000'
     ),
-  CONSTRAINT external_origin_claims_factory_check
+  CONSTRAINT external_origin_claims_evidence_contract_check
     CHECK (
-      factory ~ '^0x[0-9a-f]{40}$'
-      AND factory <> '0x0000000000000000000000000000000000000000'
+      evidence_contract ~ '^0x[0-9a-f]{40}$'
+      AND evidence_contract <>
+        '0x0000000000000000000000000000000000000000'
+    ),
+  CONSTRAINT external_origin_claims_evidence_role_check
+    CHECK (
+      evidence_role IN (
+        'creation-factory',
+        'listing-registry',
+        'curation-registry',
+        'other-explicit-role'
+      )
+    ),
+  CONSTRAINT external_origin_claims_created_role_check
+    CHECK (
+      claim_kind <> 'token-created'
+      OR evidence_role = 'creation-factory'
     ),
   CONSTRAINT external_origin_claims_start_block_check
     CHECK (start_block >= 0),
@@ -265,7 +295,8 @@ const EXPECTED_COLUMNS = [
   "external_origin_adapter_state.adapter_id:text:NO",
   "external_origin_adapter_state.source_id:text:NO",
   "external_origin_adapter_state.source_name:text:NO",
-  "external_origin_adapter_state.factory:text:NO",
+  "external_origin_adapter_state.evidence_contract:text:NO",
+  "external_origin_adapter_state.evidence_role:text:NO",
   "external_origin_adapter_state.start_block:int8:NO",
   "external_origin_adapter_state.next_block:int8:NO",
   "external_origin_adapter_state.manifest_hash:text:NO",
@@ -286,7 +317,8 @@ const EXPECTED_COLUMNS = [
   "external_origin_claims.source_name:text:NO",
   "external_origin_claims.claim_kind:text:NO",
   "external_origin_claims.token:text:NO",
-  "external_origin_claims.factory:text:NO",
+  "external_origin_claims.evidence_contract:text:NO",
+  "external_origin_claims.evidence_role:text:NO",
   "external_origin_claims.start_block:int8:NO",
   "external_origin_claims.manifest_hash:text:NO",
   "external_origin_claims.schema_version:int4:NO",
@@ -308,7 +340,8 @@ const EXPECTED_CONSTRAINTS = [
   "external_origin_adapter_state_adapter_id_check:CHECK",
   "external_origin_adapter_state_source_id_check:CHECK",
   "external_origin_adapter_state_source_name_check:CHECK",
-  "external_origin_adapter_state_factory_check:CHECK",
+  "external_origin_adapter_state_evidence_contract_check:CHECK",
+  "external_origin_adapter_state_evidence_role_check:CHECK",
   "external_origin_adapter_state_block_range_check:CHECK",
   "external_origin_adapter_state_manifest_hash_check:CHECK",
   "external_origin_adapter_state_schema_version_check:CHECK",
@@ -328,7 +361,9 @@ const EXPECTED_CONSTRAINTS = [
   "external_origin_claims_checkpoint_fkey:FOREIGN KEY",
   "external_origin_claims_claim_kind_check:CHECK",
   "external_origin_claims_token_check:CHECK",
-  "external_origin_claims_factory_check:CHECK",
+  "external_origin_claims_evidence_contract_check:CHECK",
+  "external_origin_claims_evidence_role_check:CHECK",
+  "external_origin_claims_created_role_check:CHECK",
   "external_origin_claims_start_block_check:CHECK",
   "external_origin_claims_manifest_hash_check:CHECK",
   "external_origin_claims_schema_version_check:CHECK",
@@ -502,7 +537,8 @@ export async function assertExternalOriginSchema(
       "adapter_id",
       "source_id",
       "source_name",
-      "factory",
+      "evidence_contract",
+      "evidence_role",
       "start_block",
       "manifest_hash",
       "schema_version"
@@ -541,6 +577,10 @@ export async function assertExternalOriginSchema(
     external_origin_claims_claim_kind_check: [
       "token-created",
       "source-listed"
+    ],
+    external_origin_claims_created_role_check: [
+      "token-created",
+      "creation-factory"
     ],
     external_origin_claims_block_range_check: [
       "block_number",
