@@ -15,6 +15,7 @@ import { useExternalMarketStream } from "../../lib/use-external-market-stream";
 import { useTokenRiskEvidence } from "../../lib/use-token-risk-evidence";
 import { useWalletConstellation } from "../../lib/use-wallet-constellation";
 import type { VNextDirectoryMarket } from "../../lib/vnext/market-directory";
+import type { VNextEcosystemIntelligence, VNextUpMarketIntelligence } from "../../lib/vnext/ecosystem-intelligence";
 import type { VNextDetectedWalletAsset } from "../../lib/vnext/wallet-assets";
 import type { IdentityStatus } from "./use-vnext-market-directory";
 import { TokenArtwork } from "./token-artwork";
@@ -289,6 +290,33 @@ function WorkspaceRwaRelationships({ market, coverage }: { market?: ExternalMark
   </section>;
 }
 
+function upVenueLabel(market: VNextUpMarketIntelligence) {
+  return market.venue === "up-v2"
+    ? `up. V2 · ${market.stable ? "stable" : "volatile"}`
+    : `up. CL · ${market.tickSpacing} spacing`;
+}
+
+function upFeeLabel(market: VNextUpMarketIntelligence) {
+  return `${(market.liveFee / market.feeDenominator * 100).toLocaleString(undefined, { maximumFractionDigits: 4 })}% live fee`;
+}
+
+function WorkspaceEcosystemIntelligence({ ecosystem }: { ecosystem?: VNextEcosystemIntelligence }) {
+  const markets = ecosystem?.upMarkets ?? [];
+  const status = ecosystem?.status === "ready" ? "Onchain verified"
+    : ecosystem?.status === "partial" ? "Partial evidence"
+      : ecosystem ? "Unavailable" : "Checking";
+  return <section className="vnWorkspaceCard vnEcosystemCard" aria-labelledby="vn-ecosystem-heading">
+    <header className="vnWorkspaceCardHead"><div><span className="vnEyebrow">Ecosystem intelligence</span><h3 id="vn-ecosystem-heading">up. markets &amp; gauge evidence</h3></div><span>{status}</span></header>
+    {markets.length ? <div className="vnEcosystemMarkets">{markets.map((market) => <a href={`${EXPLORER}/address/${market.poolAddress}`} target="_blank" rel="noopener noreferrer" key={market.poolAddress}>
+      <span><strong>{upVenueLabel(market)}</strong><small>{shortAddress(market.poolAddress)} · quote {shortAddress(market.quoteToken)}</small></span>
+      <span><b>{upFeeLabel(market)}</b><small>{market.gaugeState === "live" ? "Gauge live" : market.gaugeState === "inactive" ? "Gauge inactive" : market.gaugeState === "none" ? "No gauge" : "Gauge state delayed"}</small></span>
+      <i aria-hidden="true">↗</i>
+    </a>)}</div> : <p className="vnEvidenceCaution">{!ecosystem ? "Checking exact up. market identity without blocking the rest of the workspace." : ecosystem.status === "unavailable" ? "up. market evidence is temporarily unavailable. RMT does not convert that into a no-market claim." : "No canonical USDG, WETH, or displayed up. pool was found for this asset at the verified block."}</p>}
+    {ecosystem?.observedBlock && <p className="vnCoverageNote">Factory, pool, live fee and Voter state checked at Robinhood block {Number(ecosystem.observedBlock).toLocaleString()}.</p>}
+    <footer>up. is a market venue, not project origin. It never proves StonkBrokers creation. StonkBrokers token-created and source-listed claims remain unavailable until production launcher or registry evidence is independently admitted.</footer>
+  </section>;
+}
+
 export function VNextAssetWorkspace({
   directoryMarket,
   identityStatus,
@@ -300,7 +328,7 @@ export function VNextAssetWorkspace({
   walletAssets: VNextDetectedWalletAsset[];
   onTradeSide: (side: "buy" | "sell") => void;
 }) {
-  const workspace = useVNextAssetWorkspace(directoryMarket.address);
+  const workspace = useVNextAssetWorkspace(directoryMarket.address, directoryMarket.pairAddress);
   const resolution = workspace.resolution ?? workspace.market?.resolution;
   const market = workspace.market ?? fallbackMarketFromResolution(directoryMarket, resolution);
   const selectedPool = market?.pairAddress ?? directoryMarket.pairAddress ?? resolution?.pools[0]?.poolAddress;
@@ -323,6 +351,7 @@ export function VNextAssetWorkspace({
     <div className="vnWorkspaceEvidenceGrid">
       {market ? <WorkspaceActivity market={market} /> : <div className="vnWorkspaceCard vnWorkspaceEmpty"><strong>Trade activity loading</strong><span>Exact-pool activity appears only after the selected market is verified.</span></div>}
       {market ? <WorkspaceEvidence market={market} /> : <div className="vnWorkspaceCard vnWorkspaceEmpty"><strong>Market evidence loading</strong><span>Missing contract, liquidity and holder evidence remains unknown.</span></div>}
+      <WorkspaceEcosystemIntelligence ecosystem={workspace.ecosystem} />
       <WorkspaceRwaRelationships market={market} coverage={workspace.stockAssetCoverage} />
       <VerifiedMarkets resolution={resolution} selectedPool={selectedPool} />
     </div>

@@ -1900,14 +1900,16 @@ body .rmtVnext {
 .vnTapeDetails summary b { color: var(--vn-accent); }
 
 .vnTradeTape,
-.vnVerifiedMarkets {
+.vnVerifiedMarkets,
+.vnEcosystemMarkets {
   display: grid;
   gap: 5px;
   margin-top: 10px;
 }
 
 .vnTradeTape a,
-.vnVerifiedMarkets a {
+.vnVerifiedMarkets a,
+.vnEcosystemMarkets a {
   display: grid;
   align-items: center;
   min-height: 44px;
@@ -2120,6 +2122,27 @@ body .rmtVnext {
   gap: 10px;
   padding: 8px 10px;
 }
+
+.vnEcosystemMarkets a {
+  grid-template-columns: minmax(0, 1fr) auto 12px;
+  gap: 10px;
+  padding: 8px 10px;
+}
+
+.vnEcosystemMarkets a > span {
+  display: grid;
+  gap: 2px;
+}
+
+.vnEcosystemMarkets a > span:nth-child(2) {
+  text-align: right;
+}
+
+.vnEcosystemMarkets strong,
+.vnEcosystemMarkets b { font-size: 9px; }
+.vnEcosystemMarkets b { color: var(--vn-accent); }
+.vnEcosystemMarkets small { color: var(--vn-text-muted); font-size: 8px; }
+.vnEcosystemMarkets i { color: var(--vn-text-muted); font-size: 9px; font-style: normal; }
 
 .vnVerifiedMarkets a.isSelected {
   border-color: rgba(130, 242, 143, .22);
