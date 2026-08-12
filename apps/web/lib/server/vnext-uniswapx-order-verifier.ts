@@ -125,6 +125,9 @@ const PERMIT_WITNESS_TYPES = {
   ...V3_DUTCH_ORDER_TYPES
 } as const;
 
+export const ROBINHOOD_UNISWAPX_V3_ORDER_TYPES = V3_DUTCH_ORDER_TYPES;
+export const ROBINHOOD_UNISWAPX_V3_PERMIT_TYPES = PERMIT_WITNESS_TYPES;
+
 export class UniswapXV3OrderVerificationError extends Error {}
 
 function fail(message: string): never {
