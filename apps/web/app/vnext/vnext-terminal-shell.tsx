@@ -124,6 +124,7 @@ export function VNextTerminalShell() {
             markets={markets}
             onAssetsChange={setWalletAssets}
             onNativeBalanceChange={setNativeBalance}
+            onSelectAsset={selectMarket}
             executionRecord={executionRecovery.record}
             portfolioRevealRequest={portfolioRevealRequest}
           />

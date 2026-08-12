@@ -148,9 +148,9 @@ This table is the review boundary for the VNext ownership migration. A dependenc
 | --- | --- | --- | --- |
 | Production root terminal | No VNext component import; both routes still inherit the root provider and public-shell layout | Compatibility runtime | Keep shared providers until production cutover; do not import either legacy feed into VNext. |
 | Wallet connection | VNext-owned `VNextWalletConnection` delegates to the mature shared external-wallet button | Shared security runtime | Preserve exact wallet authentication and connector behavior; migrate presentation only when it can remain one implementation. |
-| Funding controls | Shared `FundWalletButton` | Shared terminal infrastructure | Keep one funding implementation; do not fork wallet funding into VNext. |
+| Funding and transfer controls | Shared `FundWalletButton` and `WalletTransferDialog` | Shared terminal infrastructure | Keep one receive/funding implementation and one reviewed native-transfer boundary; do not fork wallet actions into VNext. |
 | Trading wallet identity | Shared `useRmtIdentity` | Shared security runtime | This is exact-wallet session binding, not the paused profile product. |
-| Wallet holdings | VNext `SpendBalance` and wallet-asset detection | VNext-owned | VNext navigation now reveals these holdings directly. PR 4 completes the authoritative holdings surface; `/portfolio` remains a preserved legacy route but is no longer a VNext navigation dependency. |
+| Wallet holdings | VNext `SpendBalance`, wallet-address discovery, and independent onchain balance reads | VNext-owned | VNext owns confirmed USDG Spend Balance, known-value portfolio estimates, gas separation, full held-asset visibility, receive, and native ETH send. `/portfolio` remains a preserved compatibility route but is no longer a VNext navigation dependency. |
 | Full asset workspace | VNext `VNextAssetWorkspace`, `VNextMarketChart`, and VNext-owned `.vn*` presentation | VNext-owned with shared evidence infrastructure | Chart, activity, evidence, origin, liquidity, holders, position, verified markets, and RWA relationships stay inside VNext. The legacy public market route remains compatibility-only and is no longer a VNext navigation dependency. |
 | Market directory and identity | `/api/vnext/market-directory`, `/api/vnext/asset-identity`, `/api/vnext/asset-workspace`, shared resolver/data contracts | VNext API with shared data infrastructure | Preserve the resolver, exact-pool OHLCV/trade streams, holder/risk evidence, and stock registry as shared services; do not introduce a second resolver or duplicate provider graph. |
 | Quote, verification and authorization | `/api/vnext/quotes`, `/api/vnext/verify`, `/api/vnext/authorize` using the shared bounded quote transport | VNext-owned orchestration with shared transport | Keep the transport generic. No legacy terminal route selection is imported into VNext. |
@@ -162,7 +162,7 @@ The executable ownership smoke enforces the route, import, and selector boundari
 
 1. Keep the current VNext shell and execution orchestration unchanged while enforcing the ownership boundary.
 2. The selected-asset workspace is now VNext-owned and no longer constructs `/market/*` links. Preserve its real-data and fail-closed evidence boundaries as it is accepted visually.
-3. Finish authoritative wallet holdings inside VNext; preserve pending-versus-spendable semantics and remove any remaining reason to visit `/portfolio`.
+3. Authoritative wallet holdings are now VNext-owned. Preserve exact canonical-asset identity, indexer-plus-onchain reconciliation, and pending-versus-spendable semantics.
 4. Isolate legacy route CSS from the root load as each compatibility route is retired. Do not remove generations in one mass cascade rewrite.
 5. Cut production `/` to VNext only after the terminal completion gate passes; then redirect or retire replaced compatibility routes in separate reviewed changes.
 

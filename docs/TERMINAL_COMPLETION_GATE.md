@@ -21,9 +21,9 @@
 ## Wallet and balances
 
 - [ ] External wallet-first connection is reliable on supported mobile and desktop paths.
-- [ ] Holdings and authoritative Spend Balance are available inside VNext.
-- [ ] Gas reserve is correct and pending funds are never spendable.
-- [ ] No permanent `/portfolio` dependency remains.
+- [x] Holdings and authoritative Spend Balance are available inside VNext.
+- [x] Gas reserve is separate from Spend Balance and pending funds are never spendable.
+- [x] No permanent `/portfolio` dependency remains.
 
 ## Execution and funding
 
@@ -71,7 +71,7 @@
 
 ## Current known gaps
 
-VNext remains at `/vnext`; the VNext-owned asset workspace no longer navigates to `/market/[address]`, while that route remains preserved for production compatibility; VNext navigation reveals its own wallet holdings but the PR 4 holdings gate remains incomplete; legacy CSS is globally loaded; up/Stonk integrations and full attribution are not implemented; Across production proof is incomplete; profiles/community/creator source remains preserved; production cutover has not occurred.
+VNext remains at `/vnext`; its asset workspace and authoritative wallet holdings no longer depend on `/market/[address]` or `/portfolio`, while both routes remain preserved for production compatibility; external-wallet reliability still requires supported-device acceptance; legacy CSS is globally loaded; up/Stonk integrations and full attribution are not implemented; Across production proof is incomplete; profiles/community/creator source remains preserved; production cutover has not occurred.
 
 ## Explicit completion decision
 

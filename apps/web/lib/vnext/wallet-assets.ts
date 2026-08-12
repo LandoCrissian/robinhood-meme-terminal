@@ -2,6 +2,7 @@ import { getAddress, isAddress, type Address } from "viem";
 import { evmAsset, type AssetMetadata, type AssetRouteState } from "./execution-domain";
 import type { ExternalMarketResponse } from "../external-market";
 import type { VNextDirectoryMarket } from "./market-directory";
+import type { VNextWalletDiscoveryAsset } from "./wallet-discovery";
 import {
   ROBINHOOD_MAINNET_CHAIN_ID,
   ROBINHOOD_RMT,
@@ -18,7 +19,8 @@ export type VNextWalletAssetCandidate = {
   name: string;
   decimals: number | null;
   identityState: "verified" | "reported";
-  source: "canonical" | "live_directory" | "manual_import";
+  source: "canonical" | "live_directory" | "manual_import" | "wallet_index";
+  reputation: "ok" | "suspicious" | "unknown";
 };
 
 export type VNextDetectedWalletAsset = VNextWalletAssetCandidate & {
@@ -44,7 +46,8 @@ const CANONICAL_CANDIDATES: VNextWalletAssetCandidate[] = [
     name: ROBINHOOD_USDG.name ?? "Global Dollar",
     decimals: ROBINHOOD_USDG.decimals,
     identityState: "verified",
-    source: "canonical"
+    source: "canonical",
+    reputation: "ok"
   },
   {
     address: ROBINHOOD_WETH_ADDRESS,
@@ -52,7 +55,8 @@ const CANONICAL_CANDIDATES: VNextWalletAssetCandidate[] = [
     name: ROBINHOOD_WETH.name ?? "Wrapped Ether",
     decimals: ROBINHOOD_WETH.decimals,
     identityState: "verified",
-    source: "canonical"
+    source: "canonical",
+    reputation: "ok"
   },
   {
     address: ROBINHOOD_RMT_ADDRESS,
@@ -60,7 +64,8 @@ const CANONICAL_CANDIDATES: VNextWalletAssetCandidate[] = [
     name: ROBINHOOD_RMT.name ?? "Robinhood Meme Terminal",
     decimals: ROBINHOOD_RMT.decimals,
     identityState: "verified",
-    source: "canonical"
+    source: "canonical",
+    reputation: "ok"
   }
 ];
 
@@ -80,7 +85,20 @@ export function importedWalletCandidate(payload: ExternalMarketResponse, request
     name: cleanText(token.name, 80) || "Verified token",
     decimals: token.decimals,
     identityState: "verified",
-    source: "manual_import"
+    source: "manual_import",
+    reputation: "unknown"
+  };
+}
+
+export function walletDiscoveryCandidate(asset: VNextWalletDiscoveryAsset): VNextWalletAssetCandidate {
+  return {
+    address: asset.address,
+    symbol: cleanText(asset.symbol, 16) || `${asset.address.slice(0, 6)}…${asset.address.slice(-4)}`,
+    name: cleanText(asset.name, 80) || "Detected token",
+    decimals: asset.decimals,
+    identityState: "reported",
+    source: "wallet_index",
+    reputation: asset.reputation
   };
 }
 
@@ -108,7 +126,8 @@ export function walletAssetCandidates(
       name: cleanText(market.name, 80) || symbol,
       decimals: null,
       identityState: "reported",
-      source: "live_directory"
+      source: "live_directory",
+      reputation: "unknown"
     });
   }
   return [...candidates.values()];
