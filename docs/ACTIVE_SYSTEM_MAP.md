@@ -50,7 +50,7 @@ V6 governance, registry, gate, policy, factory, bootstrap, official migration, c
 
 ### B. Terminal security / optional execution
 
-Position Guard source and the separate Sushi deadline-guard track. Source does not imply production activation.
+Position Guard source, the separate Sushi deadline-guard track and the non-deployed `RMTUniswapV3FeeExecutorV1` atomic settlement source. Source and passing fork tests do not imply deployment, wallet routing or production fee activation.
 
 ### C. Paused experimental
 

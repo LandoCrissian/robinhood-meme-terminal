@@ -1,0 +1,26 @@
+{
+  "policy": {
+    "policyId": "RMT_EXECUTION_V1",
+    "policyIdHash": "0xa7fdfdc2b754862dc94b4ab2366b10527c8dd297beee047425032426c01b4feb",
+    "version": 1,
+    "feeBps": 25,
+    "treasury": "0x000000000000000000000000000000000000bEEF",
+    "chainId": 4663,
+    "fromBlock": "1",
+    "beforeBlock": null,
+    "eligibleSettlementAssetIds": [
+      "eip155:4663/contract:0x0bd7d308f8e1639fab988df18a8011f41eacad73",
+      "eip155:4663/contract:0x5fc5360d0400a0fd4f2af552add042d716f1d168",
+      "eip155:4663/native"
+    ],
+    "policyHash": "0x3ea1930a2d170062b04acdb6584059d47a095305b70ccc8b4037aef149c58824"
+  },
+  "feeVectors": [
+    { "amount": 1, "feeBps": 25, "fee": 0 },
+    { "amount": 399, "feeBps": 25, "fee": 0 },
+    { "amount": 400, "feeBps": 25, "fee": 1 },
+    { "amount": 10000, "feeBps": 25, "fee": 25 },
+    { "amount": 40000, "feeBps": 25, "fee": 100 },
+    { "amount": 40000, "feeBps": 50, "fee": 200 }
+  ]
+}

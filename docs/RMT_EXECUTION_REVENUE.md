@@ -78,6 +78,80 @@ Planned settlement identities are:
 
 These identifiers describe bounded settlement families, not active providers. Uniswap V3 receives the first separately reviewed executor. up-v2 and up-cl require their non-fee production proofs first. Sushi must be reconciled with the separate deadline-guard track. UniswapX and 0x require their own admitted wallet execution and native fee semantics.
 
+## Uniswap V3 atomic fee executor
+
+`packages/contracts/src/RMTUniswapV3FeeExecutorV1.sol` is the first provider-specific onchain settlement primitive. Its source and tests do not constitute a deployment or production activation.
+
+The executor is non-upgradeable and has no owner, proxy, mutable router, mutable treasury, arbitrary target, arbitrary calldata, delegatecall, sweep or rescue method. One deployment immutably binds:
+
+- Robinhood Chain `4663`;
+- Router02, its runtime hash and its reported factory/WETH dependencies;
+- factory and canonical WETH runtime hashes;
+- one treasury supplied during a separately reviewed deployment;
+- one exact policy ID hash, version, policy hash, fee rate and block boundary;
+- the exact ERC-20 fee assets and optional native fee-asset eligibility admitted by that policy.
+
+Every execution rechecks router/factory/WETH code hashes and Router02 dependencies. Every pool is reconstructed from the immutable factory and its token identity. The only supported route grammar is a typed direct `exactInputSingle` route or typed two-leg `exactInput` route through immutable canonical WETH at the admitted fee tiers `100`, `500`, `3000` and `10000`. The contract does not accept router calldata or an execution target.
+
+### Fee and output formulas
+
+For input-side settlement:
+
+```text
+actualFee = floor(userGrossInput × feeBps / 10,000)
+providerInput = userGrossInput - actualFee
+actualUserNetOutput = actualGrossOutput
+```
+
+The disclosed expected fee and wallet-authorized maximum must both equal `actualFee`. The provider quote and router minimum apply to `providerInput`. The fee and swap settle in one transaction; any later failure rolls both back.
+
+For output-side settlement:
+
+```text
+candidateFee = floor(actualGrossOutput × feeBps / 10,000)
+actualFee = min(candidateFee, maximumFeeAtomic)
+actualUserNetOutput = actualGrossOutput - actualFee
+require actualUserNetOutput >= protectedUserNetOutput
+```
+
+`expectedFeeAtomic` and `maximumFeeAtomic` must equal the PR #350 expected-output fee. Positive slippage cannot increase RMT revenue above that wallet-authorized maximum; every remaining atomic unit belongs to the trader. Tiny eligible trades may produce a zero fee by floor rounding and still emit the canonical settlement event.
+
+### Approval and balance topology
+
+For ERC-20 input, the trader approves the executor. The executor pulls the exact authorized amount, approves only exact `providerInput` to immutable Router02, and clears the router allowance after execution. Native input is accepted only when the routed input is immutable WETH and `msg.value` exactly equals the authorization.
+
+Input/output balance deltas must exactly match the execution. Fee-on-transfer, rebasing or otherwise abnormal settlement behavior fails closed. Pre-existing donated balances are preserved and cannot be swept or attributed to a trade. A successful execution returns to its pre-execution balances except for any unrelated donation already present.
+
+### Replay and reconciliation
+
+`executionId` is globally consumed exactly once after a successful atomic settlement. Reverts roll the consumption state back, allowing the same correct authorization to be retried before its deadline. Exactly one successful execution emits:
+
+```solidity
+event RMTUniswapV3FeeSettled(
+  bytes32 indexed executionId,
+  bytes32 indexed policyHash,
+  address indexed trader,
+  bytes32 policyIdHash,
+  uint256 policyVersion,
+  bytes32 providerId,
+  address router,
+  bytes32 routeIdentity,
+  address feeAsset,
+  uint16 feeBps,
+  FeeSide feeSide,
+  uint256 userGrossInput,
+  uint256 providerInput,
+  uint256 grossActualOutput,
+  uint256 actualRmtFee,
+  uint256 actualUserNetOutput,
+  address treasury
+);
+```
+
+### Deployment prerequisites
+
+Before any deployment, RMT still requires an explicitly selected public treasury, the exact production policy hash/effective block, reviewed eligible settlement assets, constructor and bytecode review, deterministic deployment/verification tooling, and independent security review. After deployment, server authorization, client disclosure, receipt reconciliation and controlled proof remain separate default-off phases.
+
 ## Review sequence
 
 1. Versioned policy, normalized commitment and net math — no collection.
@@ -93,7 +167,7 @@ Production revenue is not booked from a quote or plan. It exists only after a su
 
 - Policy implementation: foundation present.
 - Production treasury: not configured.
-- Fee executor: not implemented or deployed.
+- Fee executor: source and adversarial/fork tests implemented; not deployed.
 - Fee-bearing authorization: not implemented.
 - Fee disclosure: not implemented.
 - Fee settlement ledger: not implemented.
