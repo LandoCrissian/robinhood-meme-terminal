@@ -5,12 +5,14 @@ import { vNextSushiAdapter } from "./vnext-sushi-adapter";
 import { vNextUniswapV3Adapter } from "./vnext-uniswap-v3-adapter";
 import { configuredVNextUniswapXAdapters, prepareVNextUniswapXIntent } from "./vnext-uniswapx-adapter";
 import { configuredVNextZeroXAdapters } from "./vnext-zero-x-adapter";
+import { configuredVNextUpAdapters } from "./vnext-up-adapter";
 
 export const robinhoodVNextQuoteAdapters: readonly VNextQuoteProviderAdapter[] = [
   vNextSushiAdapter,
   vNextUniswapV3Adapter,
   ...configuredVNextUniswapXAdapters(),
-  ...configuredVNextZeroXAdapters()
+  ...configuredVNextZeroXAdapters(),
+  ...configuredVNextUpAdapters()
 ];
 
 export function quoteRobinhoodVNextExecution(input: Parameters<typeof quoteVNextExecutionProviders>[0]) {

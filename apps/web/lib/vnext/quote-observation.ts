@@ -3,7 +3,18 @@ import { z } from "zod";
 
 const MAX_CLOCK_SKEW_MS = 5_000;
 
-export type VNextQuoteProvider = "sushi" | "uniswap-v3" | "uniswapx" | "zero-x-swap" | "zero-x-gasless";
+export type VNextQuoteProvider = "sushi" | "uniswap-v3" | "uniswapx" | "zero-x-swap" | "zero-x-gasless" | "up-v2" | "up-cl";
+
+export type VNextLiquidityFeeEvidence = {
+  source: "up-v2-factory" | "up-cl-pool";
+  poolAddress: string;
+  fee: number;
+  denominator: 10_000 | 1_000_000;
+  stable: boolean | null;
+  tickSpacing: number | null;
+  observedBlock: string;
+  observedBlockHash: `0x${string}`;
+};
 
 // Strict verification and wallet authorization are deliberately separate
 // capabilities. A provider-specific verifier may be implemented before RMT has
@@ -27,7 +38,7 @@ export type VNextQuoteAttemptStatus =
 export type VNextQuoteAttempt = {
   provider: VNextQuoteProvider;
   providerLabel: string;
-  providerFamily: "sushi" | "uniswap" | "uniswapx" | "zeroex";
+  providerFamily: "sushi" | "uniswap" | "uniswapx" | "zeroex" | "up";
   adapterVersion: 1;
   status: VNextQuoteAttemptStatus;
   chainId: 4_663;
@@ -38,6 +49,7 @@ export type VNextQuoteAttempt = {
   protectedOutputAtomic: string | null;
   outputDecimals: number | null;
   priceImpact: number | null;
+  liquidityFeeEvidence: VNextLiquidityFeeEvidence[];
   quotedAtMs: number | null;
   expiresAtMs: number | null;
   latencyMs: number;
@@ -70,9 +82,9 @@ export type VNextQuoteResponse = {
 };
 
 const attemptSchema = z.object({
-  provider: z.enum(["sushi", "uniswap-v3", "uniswapx", "zero-x-swap", "zero-x-gasless"]),
+  provider: z.enum(["sushi", "uniswap-v3", "uniswapx", "zero-x-swap", "zero-x-gasless", "up-v2", "up-cl"]),
   providerLabel: z.string().min(1).max(40),
-  providerFamily: z.enum(["sushi", "uniswap", "uniswapx", "zeroex"]),
+  providerFamily: z.enum(["sushi", "uniswap", "uniswapx", "zeroex", "up"]),
   adapterVersion: z.literal(1),
   status: z.enum(["indicative", "no_route", "temporarily_unavailable", "invalid_response"]),
   chainId: z.literal(4_663),
@@ -83,6 +95,16 @@ const attemptSchema = z.object({
   protectedOutputAtomic: z.string().nullable(),
   outputDecimals: z.number().nullable(),
   priceImpact: z.number().nullable(),
+  liquidityFeeEvidence: z.array(z.object({
+    source: z.enum(["up-v2-factory", "up-cl-pool"]),
+    poolAddress: z.string(),
+    fee: z.number(),
+    denominator: z.union([z.literal(10_000), z.literal(1_000_000)]),
+    stable: z.boolean().nullable(),
+    tickSpacing: z.number().nullable(),
+    observedBlock: z.string(),
+    observedBlockHash: z.string()
+  })).max(2),
   quotedAtMs: z.number().nullable(),
   expiresAtMs: z.number().nullable(),
   latencyMs: z.number(),
@@ -130,7 +152,9 @@ export function assertVNextQuoteAttempt(
       ? "uniswap"
       : attempt.provider === "uniswapx"
         ? "uniswapx"
-        : "zeroex";
+        : attempt.provider === "up-v2" || attempt.provider === "up-cl"
+          ? "up"
+          : "zeroex";
   if (attempt.providerFamily !== expectedProviderFamily) throw new Error("Quote attempt provider family changed.");
   if (!isAddress(attempt.inputAsset) || getAddress(attempt.inputAsset) !== getAddress(expected.inputAsset)) throw new Error("Quote attempt input asset changed.");
   if (!isAddress(attempt.outputAsset) || getAddress(attempt.outputAsset) !== getAddress(expected.outputAsset)) throw new Error("Quote attempt output asset changed.");
@@ -144,6 +168,37 @@ export function assertVNextQuoteAttempt(
     if (!Number.isSafeInteger(attempt.outputDecimals) || attempt.outputDecimals! < 0 || attempt.outputDecimals! > 255) throw new Error("Quote attempt output decimals are invalid.");
     if (!Number.isSafeInteger(attempt.quotedAtMs) || !Number.isSafeInteger(attempt.expiresAtMs) || attempt.quotedAtMs! > nowMs + MAX_CLOCK_SKEW_MS || attempt.expiresAtMs! <= nowMs) throw new Error("Quote attempt is stale or from the future.");
     if (attempt.priceImpact !== null && (!Number.isFinite(attempt.priceImpact) || attempt.priceImpact < 0 || attempt.priceImpact > 1)) throw new Error("Quote attempt price impact is invalid.");
+    for (const evidence of attempt.liquidityFeeEvidence) {
+      if (
+        !isAddress(evidence.poolAddress)
+        || !Number.isSafeInteger(evidence.fee)
+        || evidence.fee < 0
+        || evidence.fee > evidence.denominator
+        || !/^[1-9][0-9]*$/.test(evidence.observedBlock)
+        || !/^0x[0-9a-fA-F]{64}$/.test(evidence.observedBlockHash)
+      ) throw new Error("Quote attempt liquidity-fee evidence is invalid.");
+    }
+    const feeBlocks = new Set(attempt.liquidityFeeEvidence.map((evidence) => `${evidence.observedBlock}:${evidence.observedBlockHash.toLowerCase()}`));
+    const feePools = new Set(attempt.liquidityFeeEvidence.map((evidence) => getAddress(evidence.poolAddress)));
+    if (feeBlocks.size > 1 || feePools.size !== attempt.liquidityFeeEvidence.length) throw new Error("Quote attempt liquidity-fee evidence is inconsistent.");
+    if (attempt.provider === "up-v2" && (
+      attempt.liquidityFeeEvidence.length === 0
+      || attempt.liquidityFeeEvidence.some((evidence) => (
+        evidence.source !== "up-v2-factory" || evidence.denominator !== 10_000 || evidence.fee > 300
+        || evidence.stable === null || evidence.tickSpacing !== null
+      ))
+    )) throw new Error("up v2 quote omitted live fee evidence.");
+    if (attempt.provider === "up-cl" && (
+      attempt.liquidityFeeEvidence.length === 0
+      || attempt.liquidityFeeEvidence.some((evidence) => (
+        evidence.source !== "up-cl-pool" || evidence.denominator !== 1_000_000
+        || evidence.stable !== null || !Number.isSafeInteger(evidence.tickSpacing)
+        || evidence.tickSpacing! <= 0 || evidence.tickSpacing! > 16_383
+      ))
+    )) throw new Error("up CL quote omitted live fee evidence.");
+    if (attempt.provider !== "up-v2" && attempt.provider !== "up-cl" && attempt.liquidityFeeEvidence.length !== 0) {
+      throw new Error("Non-up quote exposed unexpected up liquidity-fee evidence.");
+    }
     const providerFee = attempt.providerFeeAtomic === null ? null : atomic(attempt.providerFeeAtomic);
     const gasSponsorshipFee = attempt.gasSponsorshipFeeAtomic === null ? null : atomic(attempt.gasSponsorshipFeeAtomic);
     if (
@@ -184,6 +239,7 @@ export function assertVNextQuoteAttempt(
     || attempt.protectedOutputAtomic !== null
     || attempt.outputDecimals !== null
     || attempt.priceImpact !== null
+    || attempt.liquidityFeeEvidence.length !== 0
     || attempt.quotedAtMs !== null
     || attempt.expiresAtMs !== null
     || attempt.userPaysGas !== null

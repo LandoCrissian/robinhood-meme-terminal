@@ -40,6 +40,7 @@ export const vNextUniswapV3Adapter: VNextQuoteProviderAdapter = {
         protectedOutputAtomic: quote.minimumOut.toString(),
         outputDecimals: request.outputIdentity.decimals,
         priceImpact: null,
+        liquidityFeeEvidence: [],
         quotedAtMs,
         expiresAtMs: quotedAtMs + 30_000,
         latencyMs: quotedAtMs - startedAtMs,

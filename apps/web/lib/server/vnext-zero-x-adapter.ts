@@ -113,6 +113,7 @@ function createZeroXAdapter(mode: ZeroXMode): VNextQuoteProviderAdapter {
           protectedOutputAtomic: price.protectedOutputAtomic,
           outputDecimals: request.outputIdentity.decimals,
           priceImpact: null,
+          liquidityFeeEvidence: [],
           quotedAtMs,
           expiresAtMs: quotedAtMs + ZERO_X_QUOTE_TTL_MS,
           latencyMs: quotedAtMs - startedAtMs,

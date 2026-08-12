@@ -39,6 +39,7 @@ export const vNextSushiAdapter: VNextQuoteProviderAdapter = {
         protectedOutputAtomic: quote.minimumOut,
         outputDecimals: request.outputIdentity.decimals,
         priceImpact: quote.priceImpact,
+        liquidityFeeEvidence: [],
         quotedAtMs,
         expiresAtMs: quotedAtMs + 30_000,
         latencyMs: quotedAtMs - startedAtMs,

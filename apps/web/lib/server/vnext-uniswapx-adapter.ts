@@ -231,6 +231,7 @@ export const vNextUniswapXAdapter: VNextQuoteProviderAdapter = {
         protectedOutputAtomic: quote.protectedOutputAtomic,
         outputDecimals: request.outputIdentity.decimals,
         priceImpact: null,
+        liquidityFeeEvidence: [],
         quotedAtMs,
         expiresAtMs: quotedAtMs + UNISWAPX_QUOTE_TTL_MS,
         latencyMs: quotedAtMs - startedAtMs,
