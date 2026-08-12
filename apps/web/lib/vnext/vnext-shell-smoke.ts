@@ -9,6 +9,7 @@ const composer = readFileSync(new URL("../../app/vnext/trade-intent-composer.tsx
 const recoveryBanner = readFileSync(new URL("../../app/vnext/vnext-execution-recovery-banner.tsx", import.meta.url), "utf8");
 const directory = readFileSync(new URL("../../app/vnext/use-vnext-market-directory.ts", import.meta.url), "utf8");
 const spendBalance = readFileSync(new URL("../../app/vnext/spend-balance.tsx", import.meta.url), "utf8");
+const walletConnection = readFileSync(new URL("../../app/vnext/vnext-wallet-connection.tsx", import.meta.url), "utf8");
 const styles = readFileSync(new URL("../../app/vnext/vnext-terminal.css", import.meta.url), "utf8");
 const chrome = readFileSync(new URL("../../app/public-chrome.tsx", import.meta.url), "utf8");
 
@@ -75,7 +76,8 @@ assert.equal(previewResponse.headers.get("x-robots-tag"), "noindex, nofollow");
 assert.equal(middlewareConfig.matcher, "/vnext/:path*");
 
 assert.equal((shell.match(/export function VNextTerminalShell/g) ?? []).length, 1);
-assert.match(shell, /<WalletButton target="mainnet" returnTo="\/vnext" \/>/);
+assert.match(shell, /<VNextWalletConnection \/>/);
+assert.match(walletConnection, /<WalletButton target="mainnet" returnTo="\/vnext" \/>/);
 assert.doesNotMatch(shell, /showFunding=\{false\}/);
 assert.match(shell, /<SpendBalance[\s\S]*onAssetsChange=\{setWalletAssets\}[\s\S]*onNativeBalanceChange=\{setNativeBalance\}/);
 assert.match(shell, /<VNextExecutionRecoveryBanner/);
@@ -84,6 +86,8 @@ assert.match(spendBalance, /Available to trade/);
 assert.match(spendBalance, /Pending/);
 assert.match(spendBalance, /aria-expanded=\{holdingsExpanded\}/);
 assert.match(spendBalance, /View assets/);
+assert.match(spendBalance, /id="vnext-portfolio"/);
+assert.match(spendBalance, /portfolioRevealRequest > 0/);
 assert.match(shell, /Markets/);
 assert.match(shell, /<TradeIntentComposer/);
 assert.match(shell, /useVNextMarketDirectory/);
@@ -97,7 +101,9 @@ assert.match(shell, /className="vnDiscoveryWorkspace"/);
 assert.match(shell, /Live price history and trades/);
 assert.match(shell, /href: "#vnext-workspace"/);
 assert.match(shell, /href: "#vn-markets-heading"/);
-assert.match(shell, /href: "\/portfolio"/);
+assert.match(shell, /href: "#vnext-portfolio"/);
+assert.doesNotMatch(shell, /href: "\/portfolio"|href="\/portfolio"/);
+assert.match(shell, /legacyAssetWorkspaceHref\(selected\.address\)/);
 assert.doesNotMatch(shell, /Open notifications|vnMarketTabs|vnFilterButton|vnStarButton/);
 assert.doesNotMatch(shell, /\/launch|launchpad|create token/i);
 assert.doesNotMatch(shell, /TrendChart|Illustrative preview|vnChartLine/);

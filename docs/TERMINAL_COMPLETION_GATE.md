@@ -71,7 +71,7 @@
 
 ## Current known gaps
 
-VNext remains at `/vnext`; asset workspace and holdings still link to `/market/[address]` and `/portfolio`; legacy CSS is globally loaded; up/Stonk integrations and full attribution are not implemented; Across production proof is incomplete; profiles/community/creator source remains preserved; production cutover has not occurred.
+VNext remains at `/vnext`; the full asset workspace still uses the named `/market/[address]` compatibility boundary; VNext navigation now reveals its own wallet holdings but the PR 4 holdings gate remains incomplete; legacy CSS is globally loaded; up/Stonk integrations and full attribution are not implemented; Across production proof is incomplete; profiles/community/creator source remains preserved; production cutover has not occurred.
 
 ## Explicit completion decision
 
