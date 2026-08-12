@@ -59,43 +59,61 @@ export async function GET(request: Request) {
   }
 
   const controller = new AbortController();
+  let cancelled = false;
   const stop = () => controller.abort();
   request.signal.addEventListener("abort", stop, { once: true });
   const stream = new ReadableStream<Uint8Array>({
     start(output) {
       void (async () => {
+        const enqueue = (chunk: Uint8Array) => {
+          if (cancelled || controller.signal.aborted) return false;
+          try {
+            output.enqueue(chunk);
+            return true;
+          } catch {
+            controller.abort();
+            return false;
+          }
+        };
         const startedAt = Date.now();
         let lastSignature = "";
         let lastHeartbeatAt = 0;
-        output.enqueue(encoder.encode(`retry: 1000\n\n`));
         try {
+          if (!enqueue(encoder.encode(`retry: 1000\n\n`))) return;
           while (!controller.signal.aborted && Date.now() - startedAt < STREAM_LIFETIME_MS) {
             try {
               const payload = await confirmedTradeSnapshot(token, pair);
               const signature = externalTradeSnapshotSignature(payload);
               if (signature !== lastSignature) {
-                output.enqueue(event("snapshot", payload));
+                if (!enqueue(event("snapshot", payload))) break;
                 lastSignature = signature;
                 lastHeartbeatAt = Date.now();
               } else if (Date.now() - lastHeartbeatAt >= HEARTBEAT_INTERVAL_MS) {
-                output.enqueue(event("heartbeat", { at: new Date().toISOString() }));
+                if (!enqueue(event("heartbeat", { at: new Date().toISOString() }))) break;
                 lastHeartbeatAt = Date.now();
               }
             } catch {
-              output.enqueue(event("upstream-delay", { at: new Date().toISOString() }));
+              if (!enqueue(event("upstream-delay", { at: new Date().toISOString() }))) break;
             }
             await delay(STREAM_INTERVAL_MS, controller.signal);
           }
           if (!controller.signal.aborted) {
-            output.enqueue(event("rotate", { at: new Date().toISOString() }));
+            enqueue(event("rotate", { at: new Date().toISOString() }));
           }
         } finally {
           request.signal.removeEventListener("abort", stop);
-          if (!controller.signal.aborted) output.close();
+          if (!cancelled && !controller.signal.aborted) {
+            try {
+              output.close();
+            } catch {
+              controller.abort();
+            }
+          }
         }
       })();
     },
     cancel() {
+      cancelled = true;
       controller.abort();
       request.signal.removeEventListener("abort", stop);
     }

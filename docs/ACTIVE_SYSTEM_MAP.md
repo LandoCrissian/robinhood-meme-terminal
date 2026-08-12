@@ -7,11 +7,11 @@
 
 | Domain | Authority | Status | Notes |
 | --- | --- | --- | --- |
-| Forward terminal | `apps/web/lib/vnext/*`, `apps/web/lib/server/vnext-*`, `/vnext` | ACTIVE / MIGRATING | Canonical architecture; production root cutover not complete. |
+| Forward terminal | `apps/web/lib/vnext/*`, `apps/web/lib/server/vnext-*`, `/vnext` | ACTIVE / MIGRATING | Canonical architecture; production root cutover not complete. The selected-asset workspace independently checks exact displayed and USDG/WETH up. pools, live fees and gauge state without treating venue evidence as project origin. |
 | Production compatibility terminal | `apps/web/app/page.tsx`, legacy market workspace | ACTIVE COMPATIBILITY | Preserve trading behavior while capabilities migrate into VNext. |
 | V6 protocol history | `apps/indexer` | ACTIVE COMPATIBILITY | Canonical deployed V6 launches, trades, graduation, fees and origin only. |
 | External project origin | `apps/external-origin-indexer` | ACTIVE FOUNDATION | Fail closed; `source-listed` and `token-created` remain distinct. StonkBrokers has candidate identity only: the production launcher contract/event is unverified, no claims are served and activation remains locked. |
-| External markets | `apps/market-indexer` | ACTIVE | Read-oriented discovery/enrichment, including separately identified `up-v2` and `up-cl` shadow sources; no execution or treasury work. |
+| External markets | `apps/market-indexer` | ACTIVE | Read-oriented discovery/enrichment, including separately identified `up-v2` and `up-cl` shadow sources; no execution or treasury work. Shadow rows are not consumed by the public terminal. |
 | Same-chain execution | VNext adapters plus current Sushi/Uniswap verifiers | ACTIVE | Provider admission is capability-specific. `up-v2` and `up-cl` now have strict verification and exact wallet-authorization codecs, but their observation and provider-specific authorization gates default off pending controlled mainnet proof. |
 | Funding/recovery | VNext Across domain and server-side Firebase persistence | RELEASE-GATED | Asynchronous, wallet-bound and non-custodial. |
 | RWA registry/evidence | Robinhood stock-token registry and policy evidence | ACTIVE FOUNDATION | Canonical RWA and RWA-paired markets remain distinct. |

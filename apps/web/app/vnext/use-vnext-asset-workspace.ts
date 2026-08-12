@@ -6,11 +6,13 @@ import type {
   ExternalMarketResponse,
   UniversalMarketResolution
 } from "../../lib/external-market";
+import type { VNextEcosystemIntelligence } from "../../lib/vnext/ecosystem-intelligence";
 
 export type VNextAssetWorkspaceStatus = "idle" | "loading" | "ready" | "partial" | "stale" | "unavailable";
 
 type WorkspaceResolutionResponse = {
   resolution?: UniversalMarketResolution;
+  ecosystem?: VNextEcosystemIntelligence;
   stockAssetCoverage?: "complete" | "unavailable";
   updatedAt?: string;
   error?: string;
@@ -28,9 +30,10 @@ function validResolution(payload: WorkspaceResolutionResponse, address: string) 
     : undefined;
 }
 
-export function useVNextAssetWorkspace(address?: string) {
+export function useVNextAssetWorkspace(address?: string, pairAddress?: string) {
   const [market, setMarket] = useState<ExternalMarket>();
   const [resolution, setResolution] = useState<UniversalMarketResolution>();
+  const [ecosystem, setEcosystem] = useState<VNextEcosystemIntelligence>();
   const [stockAssetCoverage, setStockAssetCoverage] = useState<"complete" | "unavailable">();
   const [status, setStatus] = useState<VNextAssetWorkspaceStatus>(address ? "loading" : "idle");
   const [observedAt, setObservedAt] = useState<string>();
@@ -42,6 +45,7 @@ export function useVNextAssetWorkspace(address?: string) {
     if (!address) {
       setMarket(undefined);
       setResolution(undefined);
+      setEcosystem(undefined);
       setObservedAt(undefined);
       setStockAssetCoverage(undefined);
       setStatus("idle");
@@ -54,6 +58,7 @@ export function useVNextAssetWorkspace(address?: string) {
     if (!quiet || !sameAsset) setStatus("loading");
     const lookup = new URLSearchParams({ contract: address });
     const workspace = new URLSearchParams({ address });
+    if (pairAddress) workspace.set("pair", pairAddress);
     try {
       const [marketResult, resolutionResult] = await Promise.allSettled([
         fetch(`/api/markets/external?${lookup}`, { cache: "no-store" }).then(async (response) => ({
@@ -80,6 +85,11 @@ export function useVNextAssetWorkspace(address?: string) {
       if (nextResolution) setResolution(nextResolution);
       else if (!sameAsset) setResolution(nextMarket?.resolution);
       if (resolutionResult.status === "fulfilled" && resolutionResult.value.ok) {
+        setEcosystem(resolutionResult.value.payload.ecosystem);
+      } else if (!sameAsset) {
+        setEcosystem(undefined);
+      }
+      if (resolutionResult.status === "fulfilled" && resolutionResult.value.ok) {
         setStockAssetCoverage(resolutionResult.value.payload.stockAssetCoverage);
       } else if (!sameAsset) {
         setStockAssetCoverage(undefined);
@@ -100,7 +110,7 @@ export function useVNextAssetWorkspace(address?: string) {
       if (id !== requestId.current) return;
       setStatus(sameAsset && hasSnapshot.current ? "stale" : "unavailable");
     }
-  }, [address]);
+  }, [address, pairAddress]);
 
   useEffect(() => {
     void refresh(false);
@@ -116,6 +126,7 @@ export function useVNextAssetWorkspace(address?: string) {
   return {
     market: snapshotIsCurrent ? market : undefined,
     resolution: snapshotIsCurrent ? resolution : undefined,
+    ecosystem: snapshotIsCurrent ? ecosystem : undefined,
     status,
     observedAt: snapshotIsCurrent ? observedAt : undefined,
     stockAssetCoverage: snapshotIsCurrent ? stockAssetCoverage : undefined,
