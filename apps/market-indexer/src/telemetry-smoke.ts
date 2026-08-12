@@ -19,6 +19,8 @@ const sourceRows = marketSources.map((source, index) => ({
   start_block: source.startBlock.toString(),
   next_block: "101",
   pool_count: String(index + 1),
+  state_ready_count: source.protocol === "up" ? "1" : "0",
+  state_error_count: source.id === "up-cl" ? "1" : "0",
   last_sync_at: "2026-07-27T12:00:00.000Z",
   updated_at: "2026-07-27T12:00:01.000Z",
   last_error: null
@@ -38,10 +40,15 @@ const telemetry = await readMarketIndexerTelemetry(
   110n,
   10_000
 );
-assert.equal(telemetry.totalPools, 15);
+assert.equal(
+  telemetry.totalPools,
+  marketSources.reduce((total, _source, index) => total + index + 1, 0)
+);
 assert.equal(telemetry.database.scope, "logical-database-only");
 assert.equal(telemetry.database.providerVolumeIncluded, false);
 assert.equal(telemetry.database.pressure, "warning");
+assert.equal(telemetry.stateReadyPools, 2);
+assert.equal(telemetry.stateErrorPools, 1);
 assert.equal(telemetry.sources[0]?.indexedThrough, "100");
 assert.equal(telemetry.sources[0]?.lagBlocks, "10");
 assert.equal(telemetry.sources[0]?.finalizedHead, "110");

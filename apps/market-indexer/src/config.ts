@@ -7,6 +7,7 @@ export type MarketIndexerConfig = Readonly<{
   storageMode: "durable" | "rebuildable";
   confirmations: number;
   batchSize: number;
+  enrichmentBatchSize: number;
   pollIntervalMs: number;
   heartbeatIntervalMs: number;
   databasePoolSize: number;
@@ -197,6 +198,13 @@ export function loadMarketIndexerConfig(
     storageMode: storageMode(env),
     confirmations: integer("MARKET_INDEXER_CONFIRMATIONS", 20, 12, 10_000, env),
     batchSize: integer("MARKET_INDEXER_BATCH_SIZE", 5_000, 1, 5_000, env),
+    enrichmentBatchSize: integer(
+      "MARKET_INDEXER_ENRICHMENT_BATCH_SIZE",
+      25,
+      1,
+      250,
+      env
+    ),
     pollIntervalMs: integer(
       "MARKET_INDEXER_POLL_INTERVAL_MS",
       5_000,

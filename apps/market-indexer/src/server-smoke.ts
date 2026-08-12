@@ -17,6 +17,10 @@ const config = loadMarketIndexerConfig({
   PGSSLMODE: "disable"
 });
 const now = new Date().toISOString();
+const totalPools = marketSources.reduce(
+  (total, _source, index) => total + index + 1,
+  0
+);
 const sources = marketSources.map((source, index) => ({
   sourceId: source.id,
   status: "backfilling" as const,
@@ -26,6 +30,8 @@ const sources = marketSources.map((source, index) => ({
   finalizedHead: "110",
   lagBlocks: "10",
   poolCount: index + 1,
+  stateReadyCount: source.protocol === "up" ? 1 : 0,
+  stateErrorCount: source.id === "up-cl" ? 1 : 0,
   lastSyncAt: now,
   updatedAt: now,
   error: null
@@ -35,6 +41,11 @@ const worker = {
     running: false,
     cycleSequence: 3,
     verifiedSources: marketSources.map((source) => source.id),
+    verifiedDependencies: [
+      "up-voter",
+      "up-v2-pool-implementation",
+      "up-cl-pool-implementation"
+    ],
     indexedThrough: Object.fromEntries(
       marketSources.map((source) => [source.id, "100"])
     ),
@@ -47,7 +58,9 @@ const worker = {
     telemetry: {
       capturedAt: now,
       finalizedHead: "110",
-      totalPools: 15,
+      totalPools,
+      stateReadyPools: 2,
+      stateErrorPools: 1,
       database: {
         scope: "logical-database-only" as const,
         logicalBytes: 10_000,
@@ -83,7 +96,9 @@ try {
   assert.equal(health.authoritative, false);
   assert.equal(health.database.scope, "logical-database-only");
   assert.equal(health.database.providerVolumeIncluded, false);
-  assert.equal(health.totalPools, 15);
+  assert.equal(health.totalPools, totalPools);
+  assert.equal(health.stateReadyPools, 2);
+  assert.equal(health.stateErrorPools, 1);
   assert.equal(healthText.includes(readToken), false);
   assert.equal(healthText.includes(config.databaseUrl), false);
 
@@ -114,7 +129,7 @@ try {
   const status = JSON.parse(statusText);
   assert.equal(statusResponse.status, 200);
   assert.equal(status.activationLocked, true);
-  assert.equal(status.telemetry.totalPools, 15);
+  assert.equal(status.telemetry.totalPools, totalPools);
   assert.equal(statusText.includes(readToken), false);
   assert.equal(statusText.includes(config.databaseUrl), false);
 } finally {

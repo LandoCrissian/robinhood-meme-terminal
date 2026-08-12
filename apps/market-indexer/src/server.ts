@@ -75,11 +75,14 @@ export function createMarketIndexerServer(
           sourceManifestHash: MARKET_SOURCE_MANIFEST_HASH,
           configuredSources: marketSources.map((source) => source.id),
           verifiedSources: worker.status.verifiedSources,
+          verifiedDependencies: worker.status.verifiedDependencies,
           indexedThrough: worker.status.indexedThrough,
           lastSyncAt: worker.status.lastSyncAt,
           heartbeat: workerHeartbeat,
           finalizedHead: worker.status.lastFinalizedHead,
           totalPools: telemetry?.totalPools ?? null,
+          stateReadyPools: telemetry?.stateReadyPools ?? null,
+          stateErrorPools: telemetry?.stateErrorPools ?? null,
           database: telemetry?.database ?? {
             scope: "logical-database-only",
             logicalBytes: null,
@@ -94,7 +97,9 @@ export function createMarketIndexerServer(
               sourceId: source.sourceId,
               status: source.status,
               lagBlocks: source.lagBlocks,
-              poolCount: source.poolCount
+              poolCount: source.poolCount,
+              stateReadyCount: source.stateReadyCount,
+              stateErrorCount: source.stateErrorCount
             })) ?? [],
           positionGuardEvaluator: positionGuardHeartbeat?.status ?? {
             enabled: false,
@@ -134,6 +139,7 @@ export function createMarketIndexerServer(
           sourceManifestHash: MARKET_SOURCE_MANIFEST_HASH,
           configuredSources: marketSources.map((source) => source.id),
           verifiedSources: worker.status.verifiedSources,
+          verifiedDependencies: worker.status.verifiedDependencies,
           indexedThrough: worker.status.indexedThrough,
           lastSyncAt: worker.status.lastSyncAt,
           lastError: worker.status.lastError,
@@ -164,15 +170,31 @@ export function createMarketIndexerServer(
           return;
         }
         const result = await pool.query(
-          `SELECT source_id AS "sourceId", protocol,
-                  protocol_version AS "version", pool_key AS "poolKey",
-                  pool_address AS "poolAddress", token0, token1, fee,
-                  tick_spacing AS "tickSpacing", hooks,
-                  transaction_hash AS "transactionHash",
-                  block_number AS "blockNumber", block_hash AS "blockHash"
-           FROM market_pools
-           WHERE chain_id = $1 AND ($2::text IS NULL OR source_id = $2)
-           ORDER BY block_number DESC, transaction_index DESC, log_index DESC
+          `SELECT pools.source_id AS "sourceId", pools.protocol,
+                  pools.protocol_version AS "version", pools.pool_key AS "poolKey",
+                  pools.pool_address AS "poolAddress", pools.token0, pools.token1,
+                  pools.stable, pools.fee, pools.tick_spacing AS "tickSpacing",
+                  pools.hooks, pools.transaction_hash AS "transactionHash",
+                  pools.block_number AS "blockNumber", pools.block_hash AS "blockHash",
+                  state.status AS "stateStatus",
+                  state.live_fee AS "liveFee",
+                  state.fee_denominator AS "feeDenominator",
+                  state.gauge_address AS "gaugeAddress",
+                  state.gauge_alive AS "gaugeAlive",
+                  state.gauge_weight AS "gaugeWeight",
+                  state.gauge_claimable AS "gaugeClaimable",
+                  state.fees_address AS "feesAddress",
+                  state.bribe_address AS "bribeAddress",
+                  state.last_error AS "stateError",
+                  state.observed_block AS "stateObservedBlock",
+                  state.observed_block_hash AS "stateObservedBlockHash"
+           FROM market_pools AS pools
+           LEFT JOIN market_pool_state AS state
+             ON state.chain_id = pools.chain_id
+            AND state.source_id = pools.source_id
+            AND state.pool_key = pools.pool_key
+           WHERE pools.chain_id = $1 AND ($2::text IS NULL OR pools.source_id = $2)
+           ORDER BY pools.block_number DESC, pools.transaction_index DESC, pools.log_index DESC
            LIMIT $3`,
           [MARKET_INDEXER_CHAIN_ID, source, limit]
         );

@@ -66,6 +66,41 @@ const v2Log = raw(
 const decodedV2 = decodeMarketLog(v2, v2Log);
 assert.equal(decodedV2?.poolAddress, pool.toLowerCase());
 assert.equal(decodedV2?.fee, null);
+assert.equal(decodedV2?.stable, null);
+
+const upV2 = source("up-v2");
+const upV2Log = raw(
+  upV2,
+  concreteTopics(encodeEventTopics({
+    abi: [upV2.event],
+    eventName: "PoolCreated",
+    args: { token0, token1, stable: true }
+  })),
+  encodeAbiParameters(
+    [{ type: "address" }, { type: "uint256" }],
+    [pool, 1n]
+  )
+);
+const decodedUpV2 = decodeMarketLog(upV2, upV2Log);
+assert.equal(decodedUpV2?.poolAddress, pool.toLowerCase());
+assert.equal(decodedUpV2?.stable, true);
+assert.equal(decodedUpV2?.fee, null);
+
+const upCl = source("up-cl");
+const upClLog = raw(
+  upCl,
+  concreteTopics(encodeEventTopics({
+    abi: [upCl.event],
+    eventName: "PoolCreated",
+    args: { token0, token1, tickSpacing: 200 }
+  })),
+  encodeAbiParameters([{ type: "address" }], [pool])
+);
+const decodedUpCl = decodeMarketLog(upCl, upClLog);
+assert.equal(decodedUpCl?.poolAddress, pool.toLowerCase());
+assert.equal(decodedUpCl?.stable, null);
+assert.equal(decodedUpCl?.fee, null);
+assert.equal(decodedUpCl?.tickSpacing, 200);
 
 const v3 = source("uniswap-v3");
 const v3Log = raw(
@@ -83,6 +118,7 @@ const v3Log = raw(
 const decodedV3 = decodeMarketLog(v3, v3Log);
 assert.equal(decodedV3?.fee, 3_000);
 assert.equal(decodedV3?.tickSpacing, 60);
+assert.equal(decodedV3?.stable, null);
 
 const v4 = source("uniswap-v4");
 const poolId = keccak256(stringToHex("pool-id"));

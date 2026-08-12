@@ -12,6 +12,7 @@ const base = {
 const config = loadMarketIndexerConfig(base);
 assert.equal(config.confirmations, 20);
 assert.equal(config.batchSize, 5_000);
+assert.equal(config.enrichmentBatchSize, 25);
 assert.equal(config.heartbeatIntervalMs, 60_000);
 assert.equal(config.databaseSsl, false);
 assert.equal(config.storageMode, "durable");
@@ -53,6 +54,14 @@ assert.throws(
       DATABASE_URL: base.MARKET_INDEXER_DATABASE_URL
     }),
   /must not equal DATABASE_URL/
+);
+assert.throws(
+  () =>
+    loadMarketIndexerConfig({
+      ...base,
+      MARKET_INDEXER_ENRICHMENT_BATCH_SIZE: "251"
+    }),
+  /between 1 and 250/
 );
 assert.throws(
   () =>
