@@ -686,7 +686,7 @@ body .rmtVnext {
 
 .vnDiscoveryWorkspace {
   display: grid;
-  grid-template-columns: minmax(300px, 0.78fr) minmax(0, 1.22fr);
+  grid-template-columns: minmax(240px, 0.62fr) minmax(0, 1.38fr);
   overflow: hidden;
 }
 
@@ -1176,9 +1176,841 @@ body .rmtVnext {
   text-decoration: none;
 }
 
+.vnAssetWorkspace {
+  display: grid;
+  align-content: start;
+  grid-auto-rows: max-content;
+  gap: 18px;
+  max-height: calc(100svh - 140px);
+  overflow: auto;
+  scrollbar-color: var(--vn-border-strong) transparent;
+}
+
+.vnAssetWorkspaceHeader,
+.vnAssetPrice,
+.vnWorkspaceCardHead,
+.vnChartHeader,
+.vnChartHeadline > div,
+.vnChartControls,
+.vnChartFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.vnAssetWorkspaceHeader {
+  gap: 18px;
+}
+
+.vnAssetWorkspaceHeader > div {
+  min-width: 0;
+}
+
+.vnAssetWorkspaceHeader h2 {
+  overflow: hidden;
+  margin: 3px 0 0;
+  font-size: 20px;
+  letter-spacing: -0.035em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vnAssetWorkspaceHeader h2 b {
+  margin-left: 6px;
+  color: var(--vn-text-muted);
+  font-size: 11px;
+  letter-spacing: 0;
+}
+
+.vnAssetWorkspaceHeader small {
+  display: block;
+  margin-top: 3px;
+  color: var(--vn-text-muted);
+  font-size: 10px;
+}
+
+.vnWorkspaceStatus,
+.vnLiveState,
+.vnChartState {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 7px;
+  color: var(--vn-text-muted);
+  font-size: 9px;
+  font-weight: 780;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.vnWorkspaceStatus i,
+.vnLiveState i,
+.vnChartState i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.vnWorkspaceStatus.isready,
+.vnLiveState.islive,
+.vnLiveState.isfallback,
+.vnChartState.isready {
+  color: var(--vn-accent);
+}
+
+.vnWorkspaceStatus.isstale,
+.vnWorkspaceStatus.ispartial,
+.vnChartState.isstale,
+.vnWorkspaceStatus.isloading,
+.vnChartState.isloading {
+  color: var(--vn-warning);
+}
+
+.vnAssetPrice {
+  justify-content: flex-start;
+  gap: 10px;
+}
+
+.vnAssetPrice > strong {
+  font-size: clamp(28px, 3vw, 38px);
+  letter-spacing: -.05em;
+}
+
+.vnAssetPrice > span {
+  font-size: 12px;
+  font-weight: 780;
+}
+
+.vnAssetPrice small {
+  color: var(--vn-text-muted);
+  font-size: 9px;
+}
+
+.vnChart {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 20% -20%, rgba(130, 242, 143, .09), transparent 42%),
+    rgba(6, 10, 7, .56);
+  border: 1px solid var(--vn-border);
+  border-radius: 18px;
+}
+
+.vnChartHeader {
+  gap: 18px;
+  padding: 18px 18px 10px;
+}
+
+.vnChartHeadline {
+  min-width: 0;
+}
+
+.vnChartHeadline > div {
+  justify-content: flex-start;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.vnChartHeadline strong {
+  font-size: 25px;
+  letter-spacing: -.04em;
+}
+
+.vnChartHeadline > div span {
+  font-size: 11px;
+  font-weight: 780;
+}
+
+.vnChartHeadline > small {
+  display: block;
+  margin-top: 2px;
+  color: var(--vn-text-muted);
+  font-size: 9px;
+}
+
+.vnChartControls {
+  gap: 10px;
+}
+
+.vnChartModes,
+.vnChartRanges {
+  display: flex;
+  align-items: center;
+  padding: 3px;
+  background: rgba(255, 255, 255, .025);
+  border: 1px solid var(--vn-border);
+  border-radius: 10px;
+}
+
+.vnChartModes button,
+.vnChartRanges button {
+  min-height: 30px;
+  border: 0;
+  border-radius: 7px;
+  color: var(--vn-text-muted);
+  background: transparent;
+  cursor: pointer;
+  font-size: 9px;
+  font-weight: 760;
+}
+
+.vnChartModes button {
+  padding: 0 9px;
+}
+
+.vnChartModes button.isActive,
+.vnChartRanges button.isActive {
+  color: var(--vn-text);
+  background: var(--vn-surface-soft);
+  box-shadow: inset 0 0 0 1px var(--vn-border);
+}
+
+.vnChartRanges {
+  width: max-content;
+  max-width: calc(100% - 36px);
+  margin: 0 18px 8px;
+  overflow-x: auto;
+}
+
+.vnChartRanges button {
+  min-width: 44px;
+  padding: 0 10px;
+}
+
+.vnChartFrame {
+  position: relative;
+  min-height: 300px;
+  padding: 0 8px;
+  touch-action: pan-y;
+}
+
+.vnChartFrame svg {
+  display: block;
+  width: 100%;
+  min-height: 300px;
+  overflow: visible;
+}
+
+.vnChartGrid line {
+  stroke: rgba(223, 239, 222, .075);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.vnChartGrid text {
+  fill: var(--vn-text-muted);
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.vnChartCandle line,
+.vnChartCandle rect {
+  stroke: currentColor;
+  vector-effect: non-scaling-stroke;
+}
+
+.vnChartCandle rect {
+  fill: currentColor;
+}
+
+.vnChartCandle.isUp,
+.vnChartVolume.isUp {
+  color: #82f28f;
+  fill: rgba(130, 242, 143, .38);
+}
+
+.vnChartCandle.isDown,
+.vnChartVolume.isDown {
+  color: #ff8c8c;
+  fill: rgba(255, 140, 140, .36);
+}
+
+.vnChartLine {
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.vnChartLine.isUp { stroke: #82f28f; }
+.vnChartLine.isDown { stroke: #ff8c8c; }
+.vnChartArea { pointer-events: none; }
+
+.vnChartCrosshair line {
+  stroke: rgba(244, 247, 243, .24);
+  stroke-dasharray: 4 4;
+  vector-effect: non-scaling-stroke;
+}
+
+.vnChartCrosshair circle {
+  fill: var(--vn-canvas);
+  stroke: var(--vn-text);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+
+.vnChartLatest line {
+  stroke: rgba(130, 242, 143, .4);
+  stroke-dasharray: 3 4;
+  vector-effect: non-scaling-stroke;
+}
+
+.vnChartLatest circle {
+  fill: var(--vn-accent);
+  stroke: rgba(130, 242, 143, .24);
+  stroke-width: 8;
+  vector-effect: non-scaling-stroke;
+}
+
+.vnChartTooltip {
+  position: absolute;
+  z-index: 3;
+  top: 8px;
+  right: 16px;
+  min-width: 184px;
+  padding: 10px 12px;
+  color: var(--vn-text-secondary);
+  background: rgba(10, 14, 11, .94);
+  border: 1px solid var(--vn-border-strong);
+  border-radius: 11px;
+  box-shadow: 0 16px 34px rgba(0, 0, 0, .28);
+  pointer-events: none;
+  backdrop-filter: blur(12px);
+}
+
+.vnChartTooltip.isLeft {
+  right: auto;
+  left: 16px;
+}
+
+.vnChartTooltip > span {
+  color: var(--vn-text-muted);
+  font-size: 9px;
+  font-weight: 750;
+}
+
+.vnChartTooltip dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px 12px;
+  margin: 7px 0 0;
+}
+
+.vnChartTooltip dl div {
+  display: flex;
+  justify-content: space-between;
+  gap: 7px;
+}
+
+.vnChartTooltip dt {
+  color: var(--vn-text-muted);
+  font-size: 9px;
+}
+
+.vnChartTooltip dd {
+  margin: 0;
+  font-size: 9px;
+  font-weight: 720;
+}
+
+.vnChartFooter {
+  min-height: 36px;
+  padding: 0 18px;
+  color: var(--vn-text-muted);
+  border-top: 1px solid var(--vn-border);
+  font-size: 8px;
+  font-weight: 680;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.vnChartEmpty,
+.vnWorkspaceEmpty {
+  display: grid;
+  place-content: center;
+  gap: 5px;
+  min-height: 160px;
+  padding: 24px;
+  color: var(--vn-text-secondary);
+  text-align: center;
+}
+
+.vnChartEmpty span,
+.vnWorkspaceEmpty span {
+  color: var(--vn-text-muted);
+  font-size: 10px;
+}
+
+.vnWorkspaceQuickGrid,
+.vnWorkspaceEvidenceGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+}
+
+.vnWorkspaceEvidenceGrid > :last-child {
+  grid-column: auto;
+}
+
+.vnWorkspaceCard {
+  min-width: 0;
+  padding: 16px;
+  background: rgba(255, 255, 255, .018);
+  border: 1px solid var(--vn-border);
+  border-radius: 15px;
+}
+
+.vnWorkspaceCardHead {
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.vnWorkspaceCardHead h3 {
+  margin: 3px 0 0;
+  color: var(--vn-text-secondary);
+  font-size: 13px;
+  letter-spacing: -.015em;
+}
+
+.vnWorkspaceCardHead > span {
+  color: var(--vn-text-muted);
+  font-size: 8px;
+  font-weight: 720;
+  text-align: right;
+  text-transform: uppercase;
+}
+
+.vnWorkspaceCard footer {
+  margin-top: 12px;
+  color: var(--vn-text-muted);
+  font-size: 8px;
+  line-height: 1.45;
+}
+
+.vnPositionValue,
+.vnActivitySummary,
+.vnEvidenceGrid {
+  display: grid;
+  gap: 1px;
+  margin-top: 13px;
+  overflow: hidden;
+  background: var(--vn-border);
+  border: 1px solid var(--vn-border);
+  border-radius: 11px;
+}
+
+.vnPositionValue {
+  grid-template-columns: 1fr 1fr;
+}
+
+.vnPositionValue > span,
+.vnActivitySummary > span,
+.vnEvidenceGrid > span {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 10px;
+  background: var(--vn-surface);
+}
+
+.vnPositionValue small,
+.vnActivitySummary small,
+.vnEvidenceGrid small {
+  color: var(--vn-text-muted);
+  font-size: 8px;
+  text-transform: uppercase;
+}
+
+.vnPositionValue strong,
+.vnActivitySummary strong,
+.vnEvidenceGrid strong {
+  overflow: hidden;
+  color: var(--vn-text-secondary);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vnPositionActions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.vnPositionActions button {
+  min-height: 40px;
+  border: 1px solid rgba(130, 242, 143, .2);
+  border-radius: 10px;
+  color: #0a120b;
+  background: var(--vn-accent);
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.vnPositionActions button:last-child {
+  color: var(--vn-text-secondary);
+  background: transparent;
+  border-color: var(--vn-border-strong);
+}
+
+.vnPositionActions button:disabled {
+  opacity: .42;
+  cursor: not-allowed;
+}
+
+.vnOriginCard p,
+.vnEvidenceCaution {
+  margin: 14px 0 0;
+  color: var(--vn-text-muted);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.vnOriginProject {
+  padding-top: 10px;
+  border-top: 1px solid var(--vn-border);
+}
+
+.vnOriginLinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  margin-top: 12px;
+}
+
+.vnOriginLinks a {
+  color: var(--vn-accent);
+  font-size: 9px;
+  font-weight: 720;
+  text-decoration: none;
+}
+
+.vnMarketFlow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 13px;
+}
+
+.vnMarketFlow > span {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding: 9px;
+  border: 1px solid var(--vn-border);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, .015);
+}
+
+.vnMarketFlow b {
+  color: var(--vn-accent);
+  font-size: 8px;
+  text-transform: uppercase;
+}
+
+.vnMarketFlow small {
+  overflow: hidden;
+  color: var(--vn-text-muted);
+  font-size: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vnMarketFlow strong {
+  color: var(--vn-text-secondary);
+  font-size: 10px;
+}
+
+.vnActivitySummary {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.vnActorStrip {
+  display: grid;
+  gap: 4px;
+  margin-top: 10px;
+}
+
+.vnActorStrip a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 38px;
+  padding: 7px 9px;
+  color: var(--vn-text-secondary);
+  border: 1px solid var(--vn-border);
+  border-radius: 8px;
+  text-decoration: none;
+}
+
+.vnActorStrip a > span {
+  display: grid;
+  gap: 2px;
+}
+
+.vnActorStrip strong,
+.vnActorStrip b { font-size: 9px; }
+.vnActorStrip small { color: var(--vn-text-muted); font-size: 8px; }
+
+.vnTapeDetails {
+  margin-top: 10px;
+  border-top: 1px solid var(--vn-border);
+}
+
+.vnTapeDetails summary {
+  padding-top: 10px;
+  color: var(--vn-text-secondary);
+  cursor: pointer;
+  font-size: 9px;
+}
+
+.vnTapeDetails summary b { color: var(--vn-accent); }
+
+.vnTradeTape,
+.vnVerifiedMarkets {
+  display: grid;
+  gap: 5px;
+  margin-top: 10px;
+}
+
+.vnTradeTape a,
+.vnVerifiedMarkets a {
+  display: grid;
+  align-items: center;
+  min-height: 44px;
+  color: var(--vn-text-secondary);
+  background: rgba(255, 255, 255, .015);
+  border: 1px solid var(--vn-border);
+  border-radius: 9px;
+  text-decoration: none;
+}
+
+.vnTradeTape a {
+  grid-template-columns: 42px 1fr auto;
+  gap: 8px;
+  padding: 6px 9px;
+}
+
+.vnTradeTape a > b {
+  padding: 4px;
+  border-radius: 6px;
+  font-size: 8px;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.vnTradeTape a > b.isBuy { color: var(--vn-accent); background: var(--vn-accent-soft); }
+.vnTradeTape a > b.isSell { color: var(--vn-negative); background: rgba(255, 140, 140, .09); }
+.vnTradeTape a > span { display: grid; }
+.vnTradeTape a > span:last-child { text-align: right; }
+.vnTradeTape a strong { font-size: 9px; }
+.vnTradeTape a small { color: var(--vn-text-muted); font-size: 8px; }
+
+.vnEvidenceGrid {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.vnEvidenceTabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  margin-top: 13px;
+  padding: 4px;
+  border: 1px solid var(--vn-border);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, .12);
+}
+
+.vnEvidenceTabs button {
+  min-height: 34px;
+  border: 0;
+  border-radius: 7px;
+  color: var(--vn-text-muted);
+  background: transparent;
+  cursor: pointer;
+  font-size: 8px;
+  font-weight: 780;
+  text-transform: uppercase;
+}
+
+.vnEvidenceTabs button.isActive {
+  color: var(--vn-accent);
+  background: var(--vn-accent-soft);
+  box-shadow: inset 0 0 0 1px rgba(130, 242, 143, .12);
+}
+
+.vnEvidencePane {
+  min-height: 300px;
+}
+
+.vnConcentrationTrack {
+  display: flex;
+  min-height: 13px;
+  margin-top: 11px;
+  overflow: hidden;
+  border: 1px solid var(--vn-border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .018);
+}
+
+.vnConcentrationTrack i {
+  max-width: 100%;
+  background: rgba(130, 242, 143, .48);
+  border-right: 1px solid rgba(5, 9, 6, .52);
+}
+
+.vnConcentrationTrack i.isContract { background: rgba(117, 176, 255, .5); }
+.vnConcentrationTrack i.isFlagged { background: rgba(255, 140, 140, .62); }
+
+.vnHolderList {
+  display: grid;
+  gap: 4px;
+  margin-top: 9px;
+}
+
+.vnHolderList a {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) auto 10px;
+  align-items: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 6px 8px;
+  color: var(--vn-text-secondary);
+  border: 1px solid var(--vn-border);
+  border-radius: 8px;
+  text-decoration: none;
+}
+
+.vnHolderList a > b,
+.vnHolderList a > i {
+  color: var(--vn-text-muted);
+  font-size: 8px;
+  font-style: normal;
+}
+
+.vnHolderList a > span { display: grid; min-width: 0; }
+.vnHolderList a strong { font-size: 9px; }
+.vnHolderList a small { color: var(--vn-text-muted); font-size: 8px; }
+
+.vnCoverageNote {
+  margin: 10px 0 0;
+  color: var(--vn-text-muted);
+  font-size: 8px;
+  line-height: 1.45;
+}
+
+.vnLiquidityHeadline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 13px;
+  padding: 12px;
+  border: 1px solid rgba(130, 242, 143, .13);
+  border-radius: 11px;
+  background: rgba(130, 242, 143, .035);
+}
+
+.vnLiquidityHeadline > span { display: grid; gap: 3px; }
+.vnLiquidityHeadline small { color: var(--vn-text-muted); font-size: 8px; text-transform: uppercase; }
+.vnLiquidityHeadline strong { color: var(--vn-text-primary); font-size: 17px; }
+.vnLiquidityHeadline a { color: var(--vn-accent); font-size: 8px; font-weight: 720; text-decoration: none; }
+
+.vnRiskFindings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 10px;
+}
+
+.vnRiskFindings > span {
+  padding: 5px 7px;
+  color: var(--vn-warning);
+  background: rgba(243, 199, 126, .07);
+  border: 1px solid rgba(243, 199, 126, .13);
+  border-radius: 7px;
+  font-size: 8px;
+}
+
+.vnEvidenceDetails {
+  margin-top: 10px;
+  border-top: 1px solid var(--vn-border);
+}
+
+.vnEvidenceDetails summary {
+  padding: 10px 0 0;
+  color: var(--vn-text-secondary);
+  cursor: pointer;
+  font-size: 9px;
+}
+
+.vnEvidenceDetails summary b {
+  color: var(--vn-accent);
+}
+
+.vnEvidenceDetails > div {
+  display: grid;
+  gap: 5px;
+  margin-top: 8px;
+}
+
+.vnEvidenceDetails > div > span,
+.vnRwaCard > div > span {
+  display: grid;
+  gap: 2px;
+  padding: 8px;
+  color: var(--vn-text-secondary);
+  background: rgba(255, 255, 255, .02);
+  border-radius: 8px;
+}
+
+.vnRwaCard > div > span a {
+  margin-top: 4px;
+  color: var(--vn-accent);
+  font-size: 8px;
+  text-decoration: none;
+}
+
+.vnEvidenceDetails strong,
+.vnRwaCard strong { font-size: 9px; }
+.vnEvidenceDetails small,
+.vnRwaCard small { color: var(--vn-text-muted); font-size: 8px; line-height: 1.4; }
+
+.vnRwaCard > div {
+  display: grid;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.vnVerifiedMarkets a {
+  grid-template-columns: 1fr auto 12px;
+  gap: 10px;
+  padding: 8px 10px;
+}
+
+.vnVerifiedMarkets a.isSelected {
+  border-color: rgba(130, 242, 143, .22);
+  background: rgba(130, 242, 143, .035);
+}
+
+.vnVerifiedMarkets a > span { display: grid; }
+.vnVerifiedMarkets strong { font-size: 9px; }
+.vnVerifiedMarkets small { color: var(--vn-text-muted); font-size: 8px; }
+.vnVerifiedMarkets b { color: var(--vn-accent); font-size: 8px; }
+.vnVerifiedMarkets i { color: var(--vn-text-muted); font-size: 9px; font-style: normal; }
+
 .vnTradePanel {
   position: sticky;
   top: 94px;
+  max-height: calc(100svh - 116px);
+  overflow-y: auto;
+  scrollbar-gutter: stable;
   padding: 24px;
 }
 
@@ -2096,6 +2928,19 @@ body .rmtVnext {
   .vnDiscoveryWorkspace {
     grid-template-columns: minmax(240px, 0.68fr) minmax(0, 1.32fr);
   }
+
+  .vnWorkspaceQuickGrid,
+  .vnWorkspaceEvidenceGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .vnWorkspaceEvidenceGrid > :last-child {
+    grid-column: auto;
+  }
+
+  .vnEvidenceTabs button {
+    min-height: 44px;
+  }
 }
 
 @media (max-width: 920px) {
@@ -2126,6 +2971,13 @@ body .rmtVnext {
     position: relative;
     top: auto;
     order: 3;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .vnAssetWorkspace {
+    max-height: none;
+    overflow: visible;
   }
 }
 
@@ -2340,6 +3192,63 @@ body .rmtVnext {
     padding-bottom: 20px;
   }
 
+  .vnAssetWorkspace {
+    gap: 14px;
+  }
+
+  .vnAssetWorkspaceHeader {
+    align-items: flex-start;
+  }
+
+  .vnWorkspaceQuickGrid,
+  .vnWorkspaceEvidenceGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .vnWorkspaceEvidenceGrid > :last-child {
+    grid-column: auto;
+  }
+
+  .vnChartHeader {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .vnChartControls {
+    width: 100%;
+  }
+
+  .vnChartState {
+    margin-left: auto;
+  }
+
+  .vnChartFrame,
+  .vnChartFrame svg {
+    min-height: 250px;
+  }
+
+  .vnChartRanges {
+    max-width: calc(100% - 24px);
+    margin-inline: 12px;
+  }
+
+  .vnChartRanges button {
+    min-width: 42px;
+  }
+
+  .vnChartTooltip {
+    top: 2px;
+    right: 8px;
+    transform: scale(.9);
+    transform-origin: top right;
+  }
+
+  .vnChartTooltip.isLeft {
+    right: auto;
+    left: 8px;
+    transform-origin: top left;
+  }
+
   .vnPriceHeader {
     align-items: flex-end;
     margin-top: 24px;
@@ -2456,6 +3365,74 @@ body .rmtVnext {
 
   .vnEvidence small {
     white-space: normal;
+  }
+
+  .vnAssetWorkspaceHeader {
+    display: grid;
+  }
+
+  .vnWorkspaceStatus {
+    justify-self: start;
+  }
+
+  .vnAssetStats,
+  .vnEvidenceGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .vnChartHeadline strong {
+    font-size: 21px;
+  }
+
+  .vnChartModes button {
+    min-height: 44px;
+  }
+
+  .vnChartRanges {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    width: auto;
+    overflow: visible;
+  }
+
+  .vnChartRanges button {
+    min-width: 0;
+    min-height: 44px;
+  }
+
+  .vnChartFrame,
+  .vnChartFrame svg {
+    min-height: 224px;
+  }
+
+  .vnChartFooter {
+    padding-inline: 10px;
+  }
+
+  .vnChartFooter span:nth-child(2) {
+    display: none;
+  }
+
+  .vnPositionValue,
+  .vnActivitySummary {
+    grid-template-columns: 1fr;
+  }
+
+  .vnMarketFlow {
+    grid-template-columns: 1fr;
+  }
+
+  .vnLiquidityHeadline {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .vnEvidencePane {
+    min-height: 0;
+  }
+
+  .vnTradeTape a {
+    grid-template-columns: 38px minmax(0, 1fr) auto;
   }
 
   .vnAssetImport > div {

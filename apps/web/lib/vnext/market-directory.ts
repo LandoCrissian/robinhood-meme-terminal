@@ -22,7 +22,11 @@ export type VNextDirectoryMarket = Pick<ExternalMarket,
   | "ageMinutes"
   | "signal"
   | "resolution"
->;
+> & {
+  pairAddress?: string;
+  dexId?: string;
+  url?: string;
+};
 
 export type VNextDirectoryResponse = {
   markets?: VNextDirectoryMarket[];
@@ -61,7 +65,12 @@ export function normalizeDirectoryMarkets(payload: Pick<ExternalMarketResponse, 
       priceChange24h: finite(market.priceChange24h),
       ageMinutes: market.ageMinutes === null ? null : Math.max(0, finite(market.ageMinutes)),
       signal: market.signal,
-      resolution: market.resolution
+      resolution: market.resolution,
+      pairAddress: typeof market.pairAddress === "string" && isAddress(market.pairAddress, { strict: false })
+        ? getAddress(market.pairAddress)
+        : undefined,
+      dexId: text(market.dexId, 30) || undefined,
+      url: typeof market.url === "string" && market.url.startsWith("https://") ? market.url.slice(0, 300) : undefined
     }];
   });
 }

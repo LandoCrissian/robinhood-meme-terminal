@@ -60,7 +60,7 @@ const DEFAULT_BUY_AMOUNT = "25";
 const DEFAULT_NATIVE_BUY_AMOUNT = "0.0005";
 const NATIVE_GAS_RESERVE_ATOMIC = 100_000_000_000_000n;
 
-export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, walletAssets, nativeBalance, executionRecord, onContinueTrading }: {
+export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, walletAssets, nativeBalance, executionRecord, onContinueTrading, sideRequest }: {
   marketName: string;
   marketSymbol: string;
   marketAsset?: AssetMetadata;
@@ -68,6 +68,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
   nativeBalance?: bigint;
   executionRecord?: VNextExecutionRecord | null;
   onContinueTrading: () => void;
+  sideRequest?: { side: TradeSide; nonce: number };
 }) {
   const [side, setSide] = useState<TradeSide>("buy");
   const [amount, setAmount] = useState(DEFAULT_BUY_AMOUNT);
@@ -216,6 +217,10 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
     setSide(next);
     setAmount(next === "buy" ? selectedDefaultBuyAmount : "");
   };
+  useEffect(() => {
+    if (!sideRequest) return;
+    chooseSide(sideRequest.side);
+  }, [sideRequest?.nonce]);
   const inputSymbol = pair?.inputAsset.symbol ?? (side === "buy" ? "—" : marketSymbol);
   const outputSymbol = pair?.outputAsset.symbol ?? (side === "buy" ? marketSymbol : "USDG");
   const inputAddress = pair?.inputAsset.id.locator.kind === "contract"

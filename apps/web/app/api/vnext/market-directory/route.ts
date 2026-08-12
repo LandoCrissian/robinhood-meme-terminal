@@ -19,6 +19,8 @@ type RawToken = { address?: unknown; name?: unknown; symbol?: unknown };
 type RawPair = {
   chainId?: unknown;
   pairAddress?: unknown;
+  dexId?: unknown;
+  url?: unknown;
   baseToken?: RawToken;
   quoteToken?: RawToken;
   priceUsd?: unknown;
@@ -65,6 +67,8 @@ function marketFromPair(pair: RawPair): VNextDirectoryMarket | null {
   const address = text(token?.address, 42);
   if (!isAddress(address, { strict: false }) || address.toLowerCase() === zeroAddress) return null;
   const canonicalAddress = getAddress(address);
+  const pairAddress = text(pair.pairAddress, 42);
+  if (!isAddress(pairAddress, { strict: false }) || pairAddress.toLowerCase() === zeroAddress) return null;
   const symbol = text(token?.symbol, 16) || `${canonicalAddress.slice(0, 6)}…${canonicalAddress.slice(-4)}`;
   const name = text(token?.name, 80) || symbol;
   const pairCreatedAt = number(pair.pairCreatedAt);
@@ -78,7 +82,10 @@ function marketFromPair(pair: RawPair): VNextDirectoryMarket | null {
     volume24h: Math.max(0, number(pair.volume?.h24)),
     priceChange24h: number(pair.priceChange?.h24),
     ageMinutes: pairCreatedAt > 0 ? Math.max(0, (Date.now() - pairCreatedAt) / 60_000) : null,
-    signal: signalFor(pair)
+    signal: signalFor(pair),
+    pairAddress: getAddress(pairAddress),
+    dexId: text(pair.dexId, 30) || "DEX",
+    url: text(pair.url, 300) || undefined
   };
 }
 
