@@ -1,4 +1,4 @@
-import type { WatchlistAlertSyncState } from "./use-watchlist-alert-sync";
+export type WatchlistAlertSyncState = "local" | "syncing" | "synced" | "error";
 
 export function useLocalWatchlistAlertState(): WatchlistAlertSyncState {
   return "local";

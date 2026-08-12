@@ -21,8 +21,10 @@ assert.equal(marketProtectionAlertInput("runner-pace", token)?.threshold, 1.5);
 const marketDeskSource = readFileSync(new URL("../app/market-protection-desk.tsx", import.meta.url), "utf8");
 const watchlistPanelSource = readFileSync(new URL("../app/watchlist-panel.tsx", import.meta.url), "utf8");
 const tradeTapeSource = readFileSync(new URL("../app/external-market-live.tsx", import.meta.url), "utf8");
-assert.match(marketDeskSource, /useWatchlistAlertSync\(\)/);
-assert.match(watchlistPanelSource, /useWatchlistAlertSync\(\)/);
+assert.match(marketDeskSource, /useLocalWatchlistAlertState\(\)/);
+assert.match(watchlistPanelSource, /useLocalWatchlistAlertState\(\)/);
+assert.doesNotMatch(marketDeskSource, /useWatchlistAlertSync\(\)/);
+assert.doesNotMatch(watchlistPanelSource, /useWatchlistAlertSync\(\)/);
 assert.doesNotMatch(tradeTapeSource, /new Notification\(/);
 assert.match(marketDeskSource, /new Notification\(/);
 
