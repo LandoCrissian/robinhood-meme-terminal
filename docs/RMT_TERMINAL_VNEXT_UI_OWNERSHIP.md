@@ -1,6 +1,6 @@
 # RMT Terminal VNext UI Ownership
 
-Status: proposed migration contract; no visual production change
+Status: **CURRENT — canonical UI migration contract; legacy ownership remains**
 
 ## Problem
 

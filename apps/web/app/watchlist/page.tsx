@@ -9,7 +9,7 @@ export default function WatchlistPage() {
         <div>
           <p className="eyebrow">YOUR RMT DESK</p>
           <h1>Your watchlist</h1>
-          <p>Keep interesting Robinhood Chain markets close. Signed-in profiles sync the saved-token list privately across devices, with this browser as the fallback.</p>
+          <p>Keep interesting Robinhood Chain markets close. During terminal completion, the saved-token list stays on this device.</p>
         </div>
         <Link className="secondaryAction" href="/">Find tokens to watch</Link>
       </header>

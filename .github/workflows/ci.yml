@@ -26,37 +26,24 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm audit:production
       - run: pnpm check:repo
-      - run: pnpm --filter web test:profile
-      - run: pnpm --filter web test:watchlist-alerts
-      - run: pnpm --filter web test:position-guard
-      - run: pnpm --filter web test:public-discovery
-      - run: pnpm --filter web test:external-market-integrity
-      - run: pnpm --filter web test:external-ohlcv
-      - run: pnpm --filter web test:trade-ticket
-      - run: pnpm --filter web test:trade-speed
-      - run: pnpm --filter web test:transaction-integrity
-      - run: pnpm --filter web test:wallet-constellation
-      - run: pnpm --filter web test:trading-terms
-      - run: pnpm --filter web test:experience
-      - run: pnpm --filter web test:external-trades
-      - run: pnpm --filter web test:consent-rehearsal
-      - run: pnpm --filter web test:consent-activation
-      - run: pnpm --filter web test:media-guard
-      - run: pnpm --filter web test:creator-assets
-      - run: pnpm --filter web test:creator-split
-      - run: pnpm --filter web test:creator-v7-simulation
-      - run: pnpm --filter web test:creator-v7-live-state
-      - run: pnpm --filter web test:treasury-accounting
-      - run: pnpm --filter web test:community
-      - run: pnpm test:community-readiness
-      - run: pnpm check:community-readiness -- --repository-only
+      - run: pnpm test:terminal-release
       - run: pnpm test:firebase-rules
-      - run: pnpm --filter web test:reliability
-      - run: pnpm --filter web test:v4-trade
-      - run: pnpm --filter web test:sushi-trade
       - run: pnpm test:production-health
       - run: pnpm typecheck
       - run: pnpm build
+
+  paused-integrity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a # v4.4.0
+        with:
+          version: 10.12.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test:paused-integrity
 
   indexer:
     runs-on: ubuntu-latest

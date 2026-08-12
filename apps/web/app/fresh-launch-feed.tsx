@@ -11,7 +11,6 @@ import {
   type KeyboardEvent as ReactKeyboardEvent
 } from "react";
 import { activeReleaseBadge, isMainnetRelease } from "../lib/network";
-import { publicRmtLaunchingEnabled } from "../lib/public-launch-release";
 import { describeCreatorExposure } from "../lib/creator-signals";
 import type { LaunchFeedItem, LaunchFeedResponse } from "../lib/launch-feed";
 import {
@@ -436,7 +435,7 @@ export function FreshLaunchFeed() {
         <span><b>{launches.length}</b> PUBLIC RMT PROJECT{launches.length === 1 ? "" : "S"}</span>
         <span><b>30S</b> CHAIN REFRESH</span>
         <span><b>60S</b> RANK WINDOW</span>
-        <span><b>V7</b> RELEASE GATE</span>
+        <span><b>NEW</b> CREATION CLOSED</span>
       </div>
 
       <div className="rmtControlDeck">
@@ -475,9 +474,7 @@ export function FreshLaunchFeed() {
               </button>
             ))}
           </div>
-          {publicRmtLaunchingEnabled
-            ? <Link className="discoveryLaunchLink" href="/launch">+ Launch token</Link>
-            : <span className="discoveryLaunchLink paused">V7 launching in preparation</span>}
+          <span className="discoveryLaunchLink paused">Historical V6 compatibility</span>
         </div>
       </div>
 

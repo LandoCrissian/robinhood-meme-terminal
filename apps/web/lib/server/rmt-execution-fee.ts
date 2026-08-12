@@ -1,29 +1,31 @@
 import { getAddress, isAddress, zeroAddress, type Address } from "viem";
 
-export const RMT_EXECUTION_FEE_TARGET_BPS = 25;
 export const RMT_EXECUTION_FEE_MAX_BPS = 100;
 const UNIVERSAL_ROUTER_SENDER_SENTINEL = "0x0000000000000000000000000000000000000001";
 const UNIVERSAL_ROUTER_SELF_SENTINEL = "0x0000000000000000000000000000000000000002";
 
-export type RmtExecutionFeeConfig = {
-  enabled: boolean;
-  feeBps: number;
-  treasury: Address | null;
-};
+export type RmtExecutionFeeConfig =
+  | { enabled: false; feeBps: null; treasury: null }
+  | { enabled: true; feeBps: number; treasury: Address };
 
 export function parseRmtExecutionFeeConfig(env: {
   enabled?: string;
   feeBps?: string;
   treasury?: string;
 }): RmtExecutionFeeConfig {
-  const feeBps = Number(env.feeBps ?? RMT_EXECUTION_FEE_TARGET_BPS);
+  const requested = env.enabled === "true";
+  if (!requested) return { enabled: false, feeBps: null, treasury: null };
+
+  const feeInput = env.feeBps?.trim();
+  if (!feeInput) {
+    throw new Error("RMT execution fee requires an explicitly approved basis-point value.");
+  }
+  const feeBps = Number(feeInput);
   if (!Number.isSafeInteger(feeBps) || feeBps < 0 || feeBps > RMT_EXECUTION_FEE_MAX_BPS) {
     throw new Error(`RMT execution fee must be between 0 and ${RMT_EXECUTION_FEE_MAX_BPS} basis points.`);
   }
 
-  const requested = env.enabled === "true";
   const treasuryInput = env.treasury?.trim();
-  if (!requested) return { enabled: false, feeBps, treasury: null };
   if (!treasuryInput || !isAddress(treasuryInput, { strict: false })) {
     throw new Error("RMT execution fee requires an exact treasury address.");
   }

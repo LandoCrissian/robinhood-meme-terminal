@@ -58,7 +58,8 @@ assert.ok(
 assert.match(speedProvider, /"metamask", "coinbase_wallet", "detected_ethereum_wallets", "wallet_connect"/, "Privy must put named mobile wallets before desktop-only detection and the full registry.");
 assert.match(privyWalletButton, /useSetActiveWallet/, "An authenticated user must still be able to choose the exact active trading wallet.");
 assert.match(privyWalletButton, /!walletFirstTerminal && <p className="privyProfileBoundary">/, "VNext must keep profile controls out of its wallet menu.");
-assert.match(providers, /profileEnabled = !\(pathname === "\/vnext"/, "VNext must not initialize the profile sync runtime.");
+assert.match(providers, /const profileCompatibilityEnabled = \[/, "Profile sync must be limited to explicit compatibility routes.");
+assert.doesNotMatch(providers, /"\/vnext"/, "VNext must not initialize the profile sync runtime.");
 assert.match(privyWalletButton, />Deposit</, "The exact active wallet must expose Privy funding.");
 assert.match(privyWalletButton, />Receive</, "The exact active wallet must expose its receive address.");
 assert.match(privyWalletButton, /privyActiveWalletSummary/, "The wallet control center must identify its exact active wallet and network.");

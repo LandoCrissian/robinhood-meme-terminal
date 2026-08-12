@@ -28,7 +28,7 @@ import {
   WATCHLIST_EVENT,
   type WatchlistEntry
 } from "../lib/watchlist";
-import { useWatchlistAlertSync } from "./use-watchlist-alert-sync";
+import { useLocalWatchlistAlertState } from "./use-local-watchlist-alert-state";
 import { WatchlistAlertHistory } from "./watchlist-alert-history";
 
 const MARKET_REFRESH_MS = 30_000;
@@ -72,7 +72,7 @@ export function WatchlistPanel() {
   const [previousMarkets, setPreviousMarkets] = useState<ExternalMarket[]>([]);
   const [tradePressure, setTradePressure] = useState<Record<string, ExternalSellPressure>>({});
   const [marketStatus, setMarketStatus] = useState<"loading" | "live" | "stale">("loading");
-  const alertSyncState = useWatchlistAlertSync();
+  const alertSyncState = useLocalWatchlistAlertState();
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>("default");
   const [editingAddress, setEditingAddress] = useState<string | null>(null);
   const [metric, setMetric] = useState<WatchlistAlertMetric>("priceUsd");

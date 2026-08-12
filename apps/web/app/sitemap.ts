@@ -11,12 +11,10 @@ export const revalidate = 300;
 const publicRoutes = [
   ["/", "hourly", 1],
   ["/explore", "hourly", 0.9],
-  ["/launch", "weekly", 0.6],
   [`/project/${officialToken}`, "hourly", 0.9],
   ["/status", "hourly", 0.8],
   ["/sources", "daily", 0.7],
   ["/sushi", "daily", 0.8],
-  ["/rescue", "weekly", 0.6],
   ["/support", "monthly", 0.5],
   ["/risks", "monthly", 0.6],
   ["/terms", "monthly", 0.4],

@@ -1,6 +1,6 @@
 # RMT Terminal VNext Architecture
 
-Status: proposed foundation; no production execution behavior
+Status: **CURRENT — canonical forward architecture; production cutover incomplete**
 
 Last reviewed: 2026-08-07
 

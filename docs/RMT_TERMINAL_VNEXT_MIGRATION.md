@@ -1,6 +1,6 @@
 # RMT Terminal VNext Migration Boundary
 
-Status: proposed delivery sequence; no production routing change
+Status: **CURRENT — canonical migration boundary; production root cutover incomplete**
 
 ## Objective
 

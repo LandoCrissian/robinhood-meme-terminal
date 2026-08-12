@@ -412,10 +412,16 @@ assert.match(projectAudienceSource, /aria-pressed/);
 const referralRouteSource = readFileSync(new URL("../app/r/[code]/route.ts", import.meta.url), "utf8");
 const referralCaptureSource = readFileSync(new URL("../app/referral-capture.tsx", import.meta.url), "utf8");
 const inviteSource = readFileSync(new URL("../app/invite/[code]/invite-acceptance.tsx", import.meta.url), "utf8");
-assert.match(referralRouteSource, /`\/invite\/\$\{normalized\}`/);
+const invitePageSource = readFileSync(new URL("../app/invite/[code]/page.tsx", import.meta.url), "utf8");
+const profileLayoutSource = readFileSync(new URL("../app/profile/layout.tsx", import.meta.url), "utf8");
+const providersSource = readFileSync(new URL("../app/providers.tsx", import.meta.url), "utf8");
+assert.match(referralRouteSource, /new URL\("\/", request\.nextUrl\.origin\)/);
+assert.match(invitePageSource, /redirect\("\/"\)/);
+assert.match(profileLayoutSource, /redirect\("\/"\)/);
+assert.doesNotMatch(providersSource, /<ReferralCapture|<CommunityLive/);
 assert.doesNotMatch(referralCaptureSource, /window\.location\.search|capturePendingReferral/);
 assert.match(inviteSource, /Accept &amp; set up my profile/);
 assert.match(inviteSource, /Continue without this invite/);
 assert.match(inviteSource, /clearPendingReferral/);
 
-console.log("Profile and Firebase sync smoke tests passed.");
+console.log("Paused profile source, Firebase protections, and public quarantine smoke tests passed.");
