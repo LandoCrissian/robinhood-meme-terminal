@@ -24,6 +24,7 @@ import { walletPortfolioSummary } from "../../lib/vnext/wallet-portfolio";
 import { useVNextWalletAssets } from "./use-vnext-wallet-assets";
 import { FundWalletButton } from "../fund-wallet-button";
 import { WalletTransferDialog } from "../wallet-transfer-dialog";
+import { TokenArtwork } from "./token-artwork";
 
 const SETTLEMENT_BALANCE_REFRESH_DELAYS_MS = [0, 900, 2_500] as const;
 
@@ -262,7 +263,7 @@ export function SpendBalance({ markets, onAssetsChange, onNativeBalanceChange, o
           {status === "ready" && assets.length === 0 && (!nativeBalance || nativeBalance === 0n) ? <p className="vnDetectedAssetsEmpty">No positive Robinhood Chain balance was found for this wallet.</p> : null}
           {(assets.length > 0 || (nativeBalance && nativeBalance > 0n)) ? <div className="vnDetectedAssetList">
             {nativeBalance && nativeBalance > 0n ? <div className="vnDetectedAsset">
-              <span className="vnDetectedMark" aria-hidden="true">E</span>
+              <TokenArtwork className="vnDetectedMark" symbol="ETH" imageUrl={null} />
               <span><strong>ETH</strong><small>Ether</small></span>
               <span><strong>{amount(nativeBalance, ROBINHOOD_ETH.decimals, 5)}</strong><small>{portfolio.nativeValueUsd === null ? "Network gas asset" : `${portfolioDollars(portfolio.nativeValueUsd)} · network gas`}</small></span>
             </div> : null}
@@ -270,7 +271,7 @@ export function SpendBalance({ markets, onAssetsChange, onNativeBalanceChange, o
               const marketFound = marketAddresses.has(asset.address.toLowerCase());
               const valuation = portfolio.valuations.find((item) => item.address.toLowerCase() === asset.address.toLowerCase());
               return <div className={`vnDetectedAsset${asset.reputation === "suspicious" ? " isReview" : ""}`} key={asset.address}>
-              <span className="vnDetectedMark" aria-hidden="true">{asset.symbol.slice(0, 1)}</span>
+              <TokenArtwork className="vnDetectedMark" symbol={asset.symbol} imageUrl={asset.imageUrl} />
               <span><strong>{asset.symbol}</strong><small>{asset.name} · {shortAddress(asset.address)}</small></span>
               <span><strong>{assetAmount(asset)}</strong><small>{valuation?.valueUsd === null || valuation?.valueUsd === undefined ? stateLabel(asset, marketFound) : `${portfolioDollars(valuation.valueUsd)} · ${stateLabel(asset, marketFound)}`}</small></span>
               {marketFound && onSelectAsset ? <button className="vnDetectedAssetOpen" type="button" onClick={() => onSelectAsset(asset.address)}>Open</button> : <span className="vnDetectedAssetNoRoute">View only</span>}

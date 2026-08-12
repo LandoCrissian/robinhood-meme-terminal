@@ -1,4 +1,5 @@
 import { getAddress, isAddress, type Address } from "viem";
+import { safeTokenArtworkUrl } from "./token-artwork";
 
 export const MAX_WALLET_DISCOVERY_ASSETS = 160;
 
@@ -8,6 +9,7 @@ export type VNextWalletDiscoveryAsset = {
   name: string;
   decimals: number | null;
   reputation: "ok" | "suspicious" | "unknown";
+  imageUrl: string | null;
 };
 
 export type VNextWalletDiscoveryResponse = {
@@ -25,6 +27,7 @@ type BlockscoutTokenBalance = {
     address_hash?: unknown;
     decimals?: unknown;
     name?: unknown;
+    icon_url?: unknown;
     reputation?: unknown;
     symbol?: unknown;
     type?: unknown;
@@ -69,7 +72,8 @@ export function parseBlockscoutWalletAssets(payload: unknown, maximum = MAX_WALL
       symbol,
       name: cleanText(token.name, 80) || "Detected token",
       decimals: tokenDecimals(token.decimals),
-      reputation: tokenReputation(token.reputation)
+      reputation: tokenReputation(token.reputation),
+      imageUrl: safeTokenArtworkUrl(token.icon_url)
     });
   }
   return [...assets.values()];
@@ -103,7 +107,8 @@ export function normalizeWalletDiscoveryResponse(payload: unknown, expectedWalle
       symbol: cleanText(raw.symbol, 16) || `${address.slice(0, 6)}…${address.slice(-4)}`,
       name: cleanText(raw.name, 80) || "Detected token",
       decimals: decimals as number | null,
-      reputation: raw.reputation as VNextWalletDiscoveryAsset["reputation"]
+      reputation: raw.reputation as VNextWalletDiscoveryAsset["reputation"],
+      imageUrl: safeTokenArtworkUrl(raw.imageUrl)
     }];
   });
   return {

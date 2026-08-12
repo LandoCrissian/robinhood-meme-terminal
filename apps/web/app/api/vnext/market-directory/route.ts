@@ -7,6 +7,7 @@ import {
   ROBINHOOD_USDG_ADDRESS,
   ROBINHOOD_WETH_ADDRESS
 } from "../../../../lib/vnext/robinhood-assets";
+import { RMT_TOKEN_ARTWORK, safeTokenArtworkUrl } from "../../../../lib/vnext/token-artwork";
 
 const CHAIN_SLUG = "robinhood";
 const PAIRS_API = "https://api.dexscreener.com/token-pairs/v1";
@@ -30,6 +31,7 @@ type RawPair = {
   volume?: { h24?: unknown };
   priceChange?: { h24?: unknown };
   pairCreatedAt?: unknown;
+  info?: { imageUrl?: unknown };
 };
 
 let lastSnapshot: VNextDirectoryResponse | undefined;
@@ -72,6 +74,7 @@ function marketFromPair(pair: RawPair): VNextDirectoryMarket | null {
   const symbol = text(token?.symbol, 16) || `${canonicalAddress.slice(0, 6)}…${canonicalAddress.slice(-4)}`;
   const name = text(token?.name, 80) || symbol;
   const pairCreatedAt = number(pair.pairCreatedAt);
+  const baseAddress = text(pair.baseToken?.address, 42).toLowerCase();
   return {
     address: canonicalAddress,
     name,
@@ -83,6 +86,11 @@ function marketFromPair(pair: RawPair): VNextDirectoryMarket | null {
     priceChange24h: number(pair.priceChange?.h24),
     ageMinutes: pairCreatedAt > 0 ? Math.max(0, (Date.now() - pairCreatedAt) / 60_000) : null,
     signal: signalFor(pair),
+    imageUri: canonicalAddress.toLowerCase() === ROBINHOOD_RMT_ADDRESS.toLowerCase()
+      ? RMT_TOKEN_ARTWORK
+      : canonicalAddress.toLowerCase() === baseAddress
+        ? safeTokenArtworkUrl(pair.info?.imageUrl) ?? undefined
+        : undefined,
     pairAddress: getAddress(pairAddress),
     dexId: text(pair.dexId, 30) || "DEX",
     url: text(pair.url, 300) || undefined
@@ -112,7 +120,15 @@ export async function GET() {
       if (!market) continue;
       const key = market.address.toLowerCase();
       const existing = preferred.get(key);
-      if (!existing || market.liquidityUsd > existing.liquidityUsd) preferred.set(key, market);
+      if (!existing) preferred.set(key, market);
+      else if (market.liquidityUsd > existing.liquidityUsd) preferred.set(key, {
+        ...market,
+        imageUri: market.imageUri ?? existing.imageUri
+      });
+      else if (!existing.imageUri && market.imageUri) preferred.set(key, {
+        ...existing,
+        imageUri: market.imageUri
+      });
     }
     const markets = [...preferred.values()]
       .sort((left, right) => right.liquidityUsd - left.liquidityUsd || right.volume24h - left.volume24h)

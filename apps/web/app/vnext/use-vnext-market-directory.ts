@@ -29,6 +29,7 @@ function directorySnapshot(markets: VNextDirectoryMarket[]) {
     market.priceChange24h,
     market.ageMinutes,
     market.signal,
+    market.imageUri,
     market.pairAddress,
     market.dexId,
     market.url,

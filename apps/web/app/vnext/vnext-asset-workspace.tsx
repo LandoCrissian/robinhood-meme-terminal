@@ -17,6 +17,7 @@ import { useWalletConstellation } from "../../lib/use-wallet-constellation";
 import type { VNextDirectoryMarket } from "../../lib/vnext/market-directory";
 import type { VNextDetectedWalletAsset } from "../../lib/vnext/wallet-assets";
 import type { IdentityStatus } from "./use-vnext-market-directory";
+import { TokenArtwork } from "./token-artwork";
 import { useVNextAssetWorkspace } from "./use-vnext-asset-workspace";
 import { VNextMarketChart } from "./vnext-market-chart";
 
@@ -306,7 +307,7 @@ export function VNextAssetWorkspace({
 
   return <section className="vnAssetPanel vnAssetWorkspace" aria-labelledby="vn-asset-heading">
     <header className="vnAssetWorkspaceHeader">
-      <div><span className="vnEyebrow">Asset workspace</span><h2 id="vn-asset-heading">{directoryMarket.name} <b>{directoryMarket.symbol}</b></h2><small>Robinhood Chain · {identityStatus === "verified" ? "contract verified" : identityStatus === "checking" ? "identity checking" : "detected asset"}</small></div>
+      <div className="vnAssetWorkspaceIdentity"><TokenArtwork className="vnAssetWorkspaceMark" symbol={directoryMarket.symbol} imageUrl={directoryMarket.imageUri} /><span><span className="vnEyebrow">Asset workspace</span><h2 id="vn-asset-heading">{directoryMarket.name} <b>{directoryMarket.symbol}</b></h2><small>Robinhood Chain · {identityStatus === "verified" ? "contract verified" : identityStatus === "checking" ? "identity checking" : "detected asset"}</small></span></div>
       <span className={`vnWorkspaceStatus is${workspace.status}`}><i aria-hidden="true" />{workspace.status === "ready" ? "Live evidence" : workspace.status === "partial" ? "Partial evidence" : workspace.status === "stale" ? "Last verified" : workspace.status === "loading" ? "Loading evidence" : "Evidence unavailable"}</span>
     </header>
     <div className="vnAssetPrice"><strong>{formatUsd(directoryMarket.priceUsd)}</strong><span className={directoryMarket.priceChange24h > 0 ? "vnPositive" : directoryMarket.priceChange24h < 0 ? "vnNegative" : ""}>{directoryMarket.priceChange24h > 0 ? "+" : ""}{directoryMarket.priceChange24h.toFixed(1)}% <small>24h</small></span></div>

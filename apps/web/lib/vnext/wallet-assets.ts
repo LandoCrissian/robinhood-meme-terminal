@@ -3,6 +3,7 @@ import { evmAsset, type AssetMetadata, type AssetRouteState } from "./execution-
 import type { ExternalMarketResponse } from "../external-market";
 import type { VNextDirectoryMarket } from "./market-directory";
 import type { VNextWalletDiscoveryAsset } from "./wallet-discovery";
+import { RMT_TOKEN_ARTWORK, safeTokenArtworkUrl } from "./token-artwork";
 import {
   ROBINHOOD_MAINNET_CHAIN_ID,
   ROBINHOOD_RMT,
@@ -21,6 +22,7 @@ export type VNextWalletAssetCandidate = {
   identityState: "verified" | "reported";
   source: "canonical" | "live_directory" | "manual_import" | "wallet_index";
   reputation: "ok" | "suspicious" | "unknown";
+  imageUrl: string | null;
 };
 
 export type VNextDetectedWalletAsset = VNextWalletAssetCandidate & {
@@ -47,7 +49,8 @@ const CANONICAL_CANDIDATES: VNextWalletAssetCandidate[] = [
     decimals: ROBINHOOD_USDG.decimals,
     identityState: "verified",
     source: "canonical",
-    reputation: "ok"
+    reputation: "ok",
+    imageUrl: null
   },
   {
     address: ROBINHOOD_WETH_ADDRESS,
@@ -56,7 +59,8 @@ const CANONICAL_CANDIDATES: VNextWalletAssetCandidate[] = [
     decimals: ROBINHOOD_WETH.decimals,
     identityState: "verified",
     source: "canonical",
-    reputation: "ok"
+    reputation: "ok",
+    imageUrl: null
   },
   {
     address: ROBINHOOD_RMT_ADDRESS,
@@ -65,7 +69,8 @@ const CANONICAL_CANDIDATES: VNextWalletAssetCandidate[] = [
     decimals: ROBINHOOD_RMT.decimals,
     identityState: "verified",
     source: "canonical",
-    reputation: "ok"
+    reputation: "ok",
+    imageUrl: RMT_TOKEN_ARTWORK
   }
 ];
 
@@ -86,7 +91,8 @@ export function importedWalletCandidate(payload: ExternalMarketResponse, request
     decimals: token.decimals,
     identityState: "verified",
     source: "manual_import",
-    reputation: "unknown"
+    reputation: "unknown",
+    imageUrl: safeTokenArtworkUrl(payload.markets?.find((market) => market.address.toLowerCase() === address.toLowerCase())?.imageUri)
   };
 }
 
@@ -98,7 +104,8 @@ export function walletDiscoveryCandidate(asset: VNextWalletDiscoveryAsset): VNex
     decimals: asset.decimals,
     identityState: "reported",
     source: "wallet_index",
-    reputation: asset.reputation
+    reputation: asset.reputation,
+    imageUrl: safeTokenArtworkUrl(asset.imageUrl)
   };
 }
 
@@ -112,7 +119,9 @@ export function walletAssetCandidates(
   for (const candidate of imported) {
     if (!isAddress(candidate.address, { strict: false })) continue;
     const address = getAddress(candidate.address);
-    if (!candidates.has(address.toLowerCase())) candidates.set(address.toLowerCase(), { ...candidate, address });
+    const existing = candidates.get(address.toLowerCase());
+    if (!existing) candidates.set(address.toLowerCase(), { ...candidate, address });
+    else if (!existing.imageUrl && candidate.imageUrl) candidates.set(address.toLowerCase(), { ...existing, imageUrl: candidate.imageUrl });
   }
   for (const market of markets.slice(0, Math.max(0, maximum))) {
     if (!isAddress(market.address, { strict: false })) continue;
@@ -127,7 +136,8 @@ export function walletAssetCandidates(
       decimals: null,
       identityState: "reported",
       source: "live_directory",
-      reputation: "unknown"
+      reputation: "unknown",
+      imageUrl: safeTokenArtworkUrl(market.imageUri)
     });
   }
   return [...candidates.values()];

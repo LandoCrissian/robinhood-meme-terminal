@@ -11,22 +11,30 @@ import {
   normalizeWalletDiscoveryResponse,
   parseBlockscoutWalletAssets
 } from "./wallet-discovery";
+import { RMT_TOKEN_ARTWORK, safeTokenArtworkUrl } from "./token-artwork";
 
 const wallet = "0x1111111111111111111111111111111111111111";
 const otherWallet = "0x2222222222222222222222222222222222222222";
 const marketToken = "0x3333333333333333333333333333333333333333";
 const fakeUsdg = "0x4444444444444444444444444444444444444444";
+const trustedLogo = "https://assets.coingecko.com/coins/images/51281/standard/usdg.png";
 
 const discovered = parseBlockscoutWalletAssets([
-  { token: { address_hash: ROBINHOOD_USDG_ADDRESS, decimals: "6", name: "Global Dollar", reputation: "ok", symbol: "USDG", type: "ERC-20" }, value: "46000000" },
+  { token: { address_hash: ROBINHOOD_USDG_ADDRESS, decimals: "6", icon_url: trustedLogo, name: "Global Dollar", reputation: "ok", symbol: "USDG", type: "ERC-20" }, value: "46000000" },
   { token: { address_hash: fakeUsdg, decimals: "18", name: "Not canonical", reputation: "scam", symbol: "USDG", type: "ERC-20" }, value: "31000000000000000000" },
   { token: { address_hash: marketToken, decimals: "18", name: "Market Token", reputation: "ok", symbol: "MKT", type: "ERC-20" }, value: "2000000000000000000" },
   { token: { address_hash: otherWallet, decimals: "18", name: "Empty", reputation: "ok", symbol: "ZERO", type: "ERC-20" }, value: "0" },
   { token: { address_hash: otherWallet, decimals: "0", name: "NFT", reputation: "ok", symbol: "NFT", type: "ERC-721" }, value: "1" }
 ]);
 assert.equal(discovered.length, 3);
+assert.equal(discovered[0]?.imageUrl, trustedLogo);
 assert.equal(discovered[1]?.symbol, "USDG");
 assert.equal(discovered[1]?.reputation, "suspicious");
+assert.equal(safeTokenArtworkUrl(RMT_TOKEN_ARTWORK), RMT_TOKEN_ARTWORK);
+assert.equal(safeTokenArtworkUrl("https://cdn.dexscreener.com/cms/images/token"), "https://cdn.dexscreener.com/cms/images/token");
+assert.equal(safeTokenArtworkUrl("http://assets.coingecko.com/token.png"), null);
+assert.equal(safeTokenArtworkUrl("https://untrusted.example/token.png"), null);
+assert.equal(safeTokenArtworkUrl("javascript:alert(1)"), null);
 
 const response = normalizeWalletDiscoveryResponse({
   chainId: 4_663,
@@ -46,6 +54,7 @@ function heldAsset(input: Partial<VNextDetectedWalletAsset> & Pick<VNextDetected
     identityState: "verified",
     source: "wallet_index",
     reputation: "ok",
+    imageUrl: null,
     routeState: "detected",
     ...input
   };
@@ -85,6 +94,8 @@ const component = readFileSync(new URL("../../app/vnext/spend-balance.tsx", impo
 const hook = readFileSync(new URL("../../app/vnext/use-vnext-wallet-assets.ts", import.meta.url), "utf8");
 const route = readFileSync(new URL("../../app/api/vnext/wallet-assets/route.ts", import.meta.url), "utf8");
 const shell = readFileSync(new URL("../../app/vnext/vnext-terminal-shell.tsx", import.meta.url), "utf8");
+const artwork = readFileSync(new URL("../../app/vnext/token-artwork.tsx", import.meta.url), "utf8");
+const marketRoute = readFileSync(new URL("../../app/api/vnext/market-directory/route.ts", import.meta.url), "utf8");
 
 assert.match(route, /https:\/\/robinhoodchain\.blockscout\.com/);
 assert.match(route, /token-balances/);
@@ -102,7 +113,15 @@ assert.match(component, /WalletTransferDialog/);
 assert.match(component, /directReceive/);
 assert.match(component, /Show all \$\{assets\.length\} assets/);
 assert.match(component, /review token identity/);
+assert.match(component, /imageUrl=\{asset\.imageUrl\}/);
 assert.match(shell, /onSelectAsset=\{selectMarket\}/);
+assert.match(shell, /imageUrl=\{market\.imageUri\}/);
+assert.match(artwork, /safeTokenArtworkUrl/);
+assert.match(artwork, /onError=\{\(\) => setFailedImage\(safeImage\)\}/);
+assert.match(artwork, /symbol\.trim\(\)\.slice\(0, 1\)/);
+assert.match(marketRoute, /canonicalAddress\.toLowerCase\(\) === baseAddress/);
+assert.match(marketRoute, /canonicalAddress\.toLowerCase\(\) === ROBINHOOD_RMT_ADDRESS\.toLowerCase\(\)/);
+assert.match(marketRoute, /imageUri: market\.imageUri \?\? existing\.imageUri/);
 assert.doesNotMatch(component, /href="\/portfolio"|href=\{"\/portfolio"\}/);
 assert.doesNotMatch(component, /\$428\.16|\$1,862\.34|mock|fixture/i);
 
