@@ -1,6 +1,6 @@
 import { getAddress, isAddress, type Hex } from "viem";
 import { isRobinhoodNativeAsset } from "../vnext/robinhood-assets";
-import { unavailableVNextQuoteAttempt, type VNextProviderQuoteRequest, type VNextQuoteProviderAdapter } from "./vnext-provider-adapter";
+import { disabledVNextFeeEconomics, unavailableVNextQuoteAttempt, type VNextProviderQuoteRequest, type VNextQuoteProviderAdapter } from "./vnext-provider-adapter";
 import {
   ROBINHOOD_UNISWAPX_V3_REACTOR,
   UniswapXV3OrderVerificationError,
@@ -243,7 +243,11 @@ export const vNextUniswapXAdapter: VNextQuoteProviderAdapter = {
         gasSponsorshipFeeAsset: null,
         gasSponsorshipFeeAtomic: null,
         explicitProviderFeeOutputAtomic: null,
-        rmtFeeOutputAtomic: "0",
+        netEconomics: disabledVNextFeeEconomics({
+          inputAmountAtomic: request.inputAmountAtomic,
+          expectedOutputAtomic: quote.expectedOutputAtomic,
+          protectedOutputAtomic: quote.protectedOutputAtomic
+        }),
         networkFeeNativeAtomic: null,
         networkFeeNativeSymbol: null,
         protectedNetOutputAtomic: quote.protectedOutputAtomic,

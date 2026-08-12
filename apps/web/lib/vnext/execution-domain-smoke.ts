@@ -18,6 +18,7 @@ import {
   type TradeIntent,
   type WalletAccount
 } from "./execution-domain";
+import { normalizeDisabledRmtFee } from "./execution-fee-policy";
 
 const now = 1_800_000_000_000;
 const wallet: WalletAccount = {
@@ -75,7 +76,12 @@ const candidate: ExecutionCandidate = {
   maximumInputAtomic: null,
   expectedOutputAtomic: "25000000000000000000000",
   protectedOutputAtomic: "24500000000000000000000",
-  fees: [{ kind: "rmt", asset: token, amountAtomic: "0", payer: "user", disclosure: "RMT fee disabled." }],
+  netEconomics: normalizeDisabledRmtFee({
+    userGrossInputAtomic: intent.amountAtomic,
+    providerGrossExpectedOutputAtomic: "25000000000000000000000",
+    providerProtectedOutputAtomic: "24500000000000000000000"
+  }),
+  fees: [{ kind: "rmt", asset: usdg, amountAtomic: "0", payer: "user", disclosure: "RMT fee policy is not configured." }],
   authorization: {
     kind: "evm_typed_data",
     approvalRequired: true,
@@ -113,6 +119,11 @@ assert.throws(() => assertCandidateMatchesIntent({ ...candidate, outputAsset: us
 assert.throws(() => assertCandidateMatchesIntent({ ...candidate, recipient: { ...wallet, address: "0x9999999999999999999999999999999999999999" } }, intent, now + 1), /recipient changed/);
 assert.throws(() => assertCandidateMatchesIntent({ ...candidate, protectedOutputAtomic: "26000000000000000000000" }, intent, now + 1), /protected output/);
 assert.throws(() => assertCandidateMatchesIntent({ ...candidate, capabilities: ["rfq", "rfq"] }, intent, now + 1), /duplicated/);
+assert.throws(() => assertCandidateMatchesIntent({ ...candidate, fees: [] }, intent, now + 1), /exactly one RMT fee/);
+assert.throws(() => assertCandidateMatchesIntent({
+  ...candidate,
+  netEconomics: { ...candidate.netEconomics, protectedUserNetOutputAtomic: "24499999999999999999999" }
+}, intent, now + 1), /disabled fee changed execution economics|protected output is not user net output/);
 
 const plan: AuthorizationPlan = {
   schemaVersion: 1,

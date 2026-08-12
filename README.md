@@ -27,6 +27,7 @@ Read the current system-of-record documents before substantial work:
 - [Active system map](docs/ACTIVE_SYSTEM_MAP.md)
 - [Terminal completion gate](docs/TERMINAL_COMPLETION_GATE.md)
 - [VNext architecture](docs/RMT_TERMINAL_VNEXT_ARCHITECTURE.md)
+- [Execution revenue architecture](docs/RMT_EXECUTION_REVENUE.md)
 
 ## Current terminal behavior
 
@@ -44,7 +45,7 @@ RMT provides:
 
 RMT never receives a private key or recovery phrase. A provider quote is not permission to execute. Strict verification, wallet authorization and production activation are independently admitted.
 
-No forward RMT terminal execution fee or treasury policy is approved. RMT adds no enabled trading fee. Venue fees, price impact, slippage, approvals and network gas remain visible where applicable.
+RMT has approved implementation support for the explicit, versioned `RMT_EXECUTION_V1` policy (25 basis points, floor rounding, no minimum and 100% RMT operations). Production fee collection remains disabled: no treasury or effective production boundary is configured, no fee executor is deployed, and no current provider route collects this fee. Venue fees, price impact, slippage, approvals and network gas remain separately visible.
 
 ## Paused product systems
 

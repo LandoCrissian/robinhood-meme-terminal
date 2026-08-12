@@ -1,7 +1,7 @@
 # RMT architecture freeze
 
 **Status: CURRENT — system of record**
-**Effective:** 2026-08-11
+**Effective:** 2026-08-12
 **Baseline:** `main` at or after `35bd37a1d81bcdeb47e7f7dc5c8e310e438a9e7e`
 
 This document records the durable product and system boundaries. It supersedes historical launchpad, V7 creator, profile, community and older terminal-roadmap language. It does not authorize deployment, production configuration changes, provider activation, fees, autonomous execution or destructive migration.
@@ -83,16 +83,16 @@ Across remains an asynchronous funding domain: external payment asset → confir
 
 ## Economics
 
-No forward RMT terminal execution-fee percentage, treasury or allocation is approved. The semantic default is:
+The owner has approved implementation support for the versioned `RMT_EXECUTION_V1` policy: 25 basis points, floor rounding, no minimum fee and 100% allocation to RMT operations. This decision supersedes the earlier unapproved-percentage state but does not authorize production activation.
 
 ```text
-fee policy: unapproved
+fee policy: RMT_EXECUTION_V1 / version 1
+fee bps: 25
 enabled: false
-totalFeeBps: null
 treasury: null
 ```
 
-Existing disabled transaction-integrity capability may remain for future review, but it must not supply a default percentage or imply that 25 bps is policy. Deployed V6 70/30 economics remain historical/current protocol facts and are not forward terminal economics.
+The policy is explicit and hash-bound; execution logic must never infer 25 basis points as a fallback. Missing treasury, effective boundary or provider settlement admission fails closed. Across funding, wallet transfers and failed executions are ineligible. Deployed V6 70/30 economics remain historical/current protocol facts and are not forward terminal economics. See [`RMT_EXECUTION_REVENUE.md`](RMT_EXECUTION_REVENUE.md).
 
 ## Contracts
 

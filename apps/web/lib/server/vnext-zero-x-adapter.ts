@@ -1,5 +1,5 @@
 import { getAddress, isAddress } from "viem";
-import { unavailableVNextQuoteAttempt, type VNextProviderQuoteRequest, type VNextQuoteProviderAdapter } from "./vnext-provider-adapter";
+import { disabledVNextFeeEconomics, unavailableVNextQuoteAttempt, type VNextProviderQuoteRequest, type VNextQuoteProviderAdapter } from "./vnext-provider-adapter";
 
 const ZERO_X_API_URL = "https://api.0x.org";
 const ZERO_X_TIMEOUT_MS = 4_000;
@@ -125,7 +125,11 @@ function createZeroXAdapter(mode: ZeroXMode): VNextQuoteProviderAdapter {
           gasSponsorshipFeeAsset: price.gasSponsorshipFee?.asset ?? null,
           gasSponsorshipFeeAtomic: price.gasSponsorshipFee?.amountAtomic ?? null,
           explicitProviderFeeOutputAtomic: price.providerFee?.asset === request.outputAsset ? price.providerFee.amountAtomic : null,
-          rmtFeeOutputAtomic: "0",
+          netEconomics: disabledVNextFeeEconomics({
+            inputAmountAtomic: request.inputAmountAtomic,
+            expectedOutputAtomic: price.expectedOutputAtomic,
+            protectedOutputAtomic: price.protectedOutputAtomic
+          }),
           networkFeeNativeAtomic: price.networkFeeNativeAtomic,
           networkFeeNativeSymbol: gasless ? null : "ETH",
           protectedNetOutputAtomic: gasless ? price.protectedOutputAtomic : null,

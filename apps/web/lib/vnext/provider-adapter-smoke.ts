@@ -5,6 +5,7 @@ import {
   prepareVNextProviderAuthorization,
   quoteVNextExecutionProviders,
   verifyVNextExecutionProvider,
+  disabledVNextFeeEconomics,
   type VNextProviderQuoteRequest,
   type VNextQuoteProviderAdapter
 } from "../server/vnext-provider-adapter";
@@ -32,7 +33,12 @@ const readyAdapter: VNextQuoteProviderAdapter = {
       strictVerificationAvailable: false,
       userPaysGas: true, providerFeeAsset: null, providerFeeAtomic: null,
       gasSponsorshipFeeAsset: null, gasSponsorshipFeeAtomic: null,
-      explicitProviderFeeOutputAtomic: null, rmtFeeOutputAtomic: "0",
+      explicitProviderFeeOutputAtomic: null,
+      netEconomics: disabledVNextFeeEconomics({
+        inputAmountAtomic: input.inputAmountAtomic,
+        expectedOutputAtomic: "1000",
+        protectedOutputAtomic: "990"
+      }),
       networkFeeNativeAtomic: null, networkFeeNativeSymbol: "ETH", protectedNetOutputAtomic: null,
       costState: "network_fee_pending", authorizationReady: false, detail: "Test-only normalized provider observation."
     };

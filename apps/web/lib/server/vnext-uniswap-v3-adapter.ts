@@ -1,5 +1,5 @@
 import { prepareVNextUniswapAuthorization, quoteVNextUniswapDirect, verifyVNextUniswapRoute } from "./vnext-uniswap-quote";
-import { unavailableVNextQuoteAttempt, type VNextQuoteProviderAdapter } from "./vnext-provider-adapter";
+import { disabledVNextFeeEconomics, unavailableVNextQuoteAttempt, type VNextQuoteProviderAdapter } from "./vnext-provider-adapter";
 import { ROBINHOOD_WETH } from "../uniswap-v4";
 import { isRobinhoodNativeAsset } from "../vnext/robinhood-assets";
 
@@ -52,7 +52,11 @@ export const vNextUniswapV3Adapter: VNextQuoteProviderAdapter = {
         gasSponsorshipFeeAsset: null,
         gasSponsorshipFeeAtomic: null,
         explicitProviderFeeOutputAtomic: null,
-        rmtFeeOutputAtomic: "0",
+        netEconomics: disabledVNextFeeEconomics({
+          inputAmountAtomic: quote.amountIn.toString(),
+          expectedOutputAtomic: quote.quoteOut.toString(),
+          protectedOutputAtomic: quote.minimumOut.toString()
+        }),
         networkFeeNativeAtomic: null,
         networkFeeNativeSymbol: "ETH",
         protectedNetOutputAtomic: null,

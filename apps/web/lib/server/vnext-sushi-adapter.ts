@@ -1,7 +1,7 @@
 import { quoteSushiAssetRoute } from "./sushi-trade";
 import { SUSHI_NATIVE_TOKEN } from "../sushi";
 import { isRobinhoodNativeAsset } from "../vnext/robinhood-assets";
-import { unavailableVNextQuoteAttempt, type VNextQuoteProviderAdapter } from "./vnext-provider-adapter";
+import { disabledVNextFeeEconomics, unavailableVNextQuoteAttempt, type VNextQuoteProviderAdapter } from "./vnext-provider-adapter";
 
 export const vNextSushiAdapter: VNextQuoteProviderAdapter = {
   provider: "sushi",
@@ -51,7 +51,11 @@ export const vNextSushiAdapter: VNextQuoteProviderAdapter = {
         gasSponsorshipFeeAsset: null,
         gasSponsorshipFeeAtomic: null,
         explicitProviderFeeOutputAtomic: null,
-        rmtFeeOutputAtomic: "0",
+        netEconomics: disabledVNextFeeEconomics({
+          inputAmountAtomic: quote.amountIn,
+          expectedOutputAtomic: quote.quoteOut,
+          protectedOutputAtomic: quote.minimumOut
+        }),
         networkFeeNativeAtomic: null,
         networkFeeNativeSymbol: "ETH",
         protectedNetOutputAtomic: null,

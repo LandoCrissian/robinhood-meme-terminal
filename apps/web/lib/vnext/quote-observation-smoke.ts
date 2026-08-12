@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { bestIndicativeAttempt, hasVNextWalletAuthorizationCodec, parseVNextQuoteResponse, selectVNextRoute, type VNextQuoteResponse } from "./quote-observation";
+import { normalizeDisabledRmtFee } from "./execution-fee-policy";
 
 const now = 1_786_000_000_000;
 const inputAsset = "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168";
@@ -41,7 +42,11 @@ const response: VNextQuoteResponse = {
       gasSponsorshipFeeAsset: null,
       gasSponsorshipFeeAtomic: null,
       explicitProviderFeeOutputAtomic: null,
-      rmtFeeOutputAtomic: "0",
+      netEconomics: normalizeDisabledRmtFee({
+        userGrossInputAtomic: "100000000",
+        providerGrossExpectedOutputAtomic: "1000000000000000000000",
+        providerProtectedOutputAtomic: "990000000000000000000"
+      }),
       networkFeeNativeAtomic: null,
       networkFeeNativeSymbol: "ETH",
       protectedNetOutputAtomic: null,
@@ -75,7 +80,7 @@ const response: VNextQuoteResponse = {
       gasSponsorshipFeeAsset: null,
       gasSponsorshipFeeAtomic: null,
       explicitProviderFeeOutputAtomic: null,
-      rmtFeeOutputAtomic: null,
+      netEconomics: null,
       networkFeeNativeAtomic: null,
       networkFeeNativeSymbol: null,
       protectedNetOutputAtomic: null,
@@ -102,7 +107,11 @@ const withVerifiedBackup = parseVNextQuoteResponse({
     quotedAtMs: now - 400,
     expiresAtMs: now + 29_600,
     userPaysGas: true,
-    rmtFeeOutputAtomic: "0",
+    netEconomics: normalizeDisabledRmtFee({
+      userGrossInputAtomic: "100000000",
+      providerGrossExpectedOutputAtomic: "989000000000000000000",
+      providerProtectedOutputAtomic: "980000000000000000000"
+    }),
     networkFeeNativeSymbol: "ETH",
     costState: "network_fee_pending"
   }]
@@ -171,6 +180,13 @@ assert.throws(() => parseVNextQuoteResponse({ ...response, attempts: [
   { ...response.attempts[0], protectedNetOutputAtomic: response.attempts[0].protectedOutputAtomic },
   response.attempts[1]
 ] }, expected, now), /wallet-gas economics/);
+assert.throws(() => parseVNextQuoteResponse({ ...response, attempts: [
+  { ...response.attempts[0], netEconomics: { ...response.attempts[0].netEconomics!, rmtFee: {
+    ...response.attempts[0].netEconomics!.rmtFee,
+    expectedFeeAtomic: "1"
+  } } },
+  response.attempts[1]
+] }, expected, now), /disabled commitment exposed fee authority/);
 
 const gaslessAttempt = {
   ...response.attempts[0],
