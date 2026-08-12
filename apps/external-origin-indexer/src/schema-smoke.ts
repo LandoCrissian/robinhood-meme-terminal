@@ -450,6 +450,12 @@ try {
   );
 
   await client.query(
+    `DELETE FROM external_origin_sync_points
+     WHERE chain_id = $1 AND adapter_id = $2`,
+    [chainId, listingAdapterId]
+  );
+
+  await client.query(
     `DELETE FROM external_origin_adapter_state
      WHERE chain_id = $1`,
     [chainId]
