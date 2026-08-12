@@ -1,20 +1,32 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { erc20Abi, type Address } from "viem";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { erc20Abi } from "viem";
 import { useAccount, usePublicClient } from "wagmi";
 import type { VNextDirectoryMarket } from "../../lib/vnext/market-directory";
 import { ROBINHOOD_MAINNET_CHAIN_ID } from "../../lib/vnext/robinhood-assets";
 import {
+  normalizeWalletDiscoveryResponse,
+  type VNextWalletDiscoveryAsset
+} from "../../lib/vnext/wallet-discovery";
+import {
   detectedWalletAssets,
   walletAssetCandidates,
+  walletDiscoveryCandidate,
   type VNextWalletAssetCandidate,
   type VNextDetectedWalletAsset
 } from "../../lib/vnext/wallet-assets";
 
 export type VNextWalletAssetStatus = "idle" | "loading" | "ready" | "stale" | "error";
+export type VNextWalletDiscoveryStatus = "idle" | "loading" | "ready" | "partial" | "stale" | "unavailable";
 
 const EMPTY_WALLET_ASSETS: VNextDetectedWalletAsset[] = [];
+
+function sameCandidateAddresses(left: VNextWalletAssetCandidate[], right: VNextWalletAssetCandidate[]) {
+  if (left.length !== right.length) return false;
+  const rightAddresses = new Set(right.map((asset) => asset.address.toLowerCase()));
+  return left.every((asset) => rightAddresses.has(asset.address.toLowerCase()));
+}
 
 export function useVNextWalletAssets(markets: VNextDirectoryMarket[], imported: VNextWalletAssetCandidate[] = []) {
   const { address, chainId, isConnected } = useAccount();
@@ -22,10 +34,12 @@ export function useVNextWalletAssets(markets: VNextDirectoryMarket[], imported: 
   const [assets, setAssets] = useState<VNextDetectedWalletAsset[]>([]);
   const [nativeBalance, setNativeBalance] = useState<bigint>();
   const [status, setStatus] = useState<VNextWalletAssetStatus>("idle");
+  const [discoveryStatus, setDiscoveryStatus] = useState<VNextWalletDiscoveryStatus>("idle");
   const [observedAtMs, setObservedAtMs] = useState<number>();
   const requestId = useRef(0);
   const snapshotWallet = useRef<string | null>(null);
-  const candidates = useMemo(() => walletAssetCandidates(markets, 48, imported), [imported, markets]);
+  const discoveryWallet = useRef<string | null>(null);
+  const discoveredAssets = useRef<VNextWalletDiscoveryAsset[]>([]);
   const onRobinhood = chainId === ROBINHOOD_MAINNET_CHAIN_ID;
   const enabled = Boolean(address && isConnected && onRobinhood && publicClient);
 
@@ -36,31 +50,39 @@ export function useVNextWalletAssets(markets: VNextDirectoryMarket[], imported: 
       setNativeBalance(undefined);
       setObservedAtMs(undefined);
       setStatus("idle");
+      setDiscoveryStatus("idle");
       snapshotWallet.current = null;
+      discoveryWallet.current = null;
+      discoveredAssets.current = [];
       return;
     }
 
-    if (snapshotWallet.current !== address.toLowerCase()) {
+    const walletKey = address.toLowerCase();
+    if (snapshotWallet.current !== walletKey) {
       setAssets([]);
       setNativeBalance(undefined);
     }
+    if (discoveryWallet.current !== walletKey) {
+      discoveryWallet.current = walletKey;
+      discoveredAssets.current = [];
+      setDiscoveryStatus("loading");
+    } else {
+      setDiscoveryStatus((current) => current === "idle" || current === "unavailable" ? "loading" : current);
+    }
     setStatus((current) => current === "ready" || current === "stale" ? current : "loading");
 
-    try {
-      const [native, balances] = await Promise.all([
-        publicClient.getBalance({ address }),
-        publicClient.multicall({
-          contracts: candidates.map((candidate) => ({
-            address: candidate.address,
-            abi: erc20Abi,
-            functionName: "balanceOf" as const,
-            args: [address] as const
-          })),
-          allowFailure: true,
-          batchSize: 0,
-          deployless: true
-        })
-      ]);
+    const readCandidates = async (candidates: VNextWalletAssetCandidate[]) => {
+      const balances = await publicClient.multicall({
+        contracts: candidates.map((candidate) => ({
+          address: candidate.address,
+          abi: erc20Abi,
+          functionName: "balanceOf" as const,
+          args: [address] as const
+        })),
+        allowFailure: true,
+        batchSize: 0,
+        deployless: true
+      });
       const positive = candidates.flatMap((candidate, index) => {
         const result = balances[index];
         return result?.status === "success" && typeof result.result === "bigint" && result.result > 0n
@@ -90,27 +112,62 @@ export function useVNextWalletAssets(markets: VNextDirectoryMarket[], imported: 
           name: name?.status === "success" && typeof name.result === "string" ? name.result : null
         });
       });
-      const detected = detectedWalletAssets(positive.map(({ candidate, balance }) => ({
+      return detectedWalletAssets(positive.map(({ candidate, balance }) => ({
         candidate,
         balance,
         ...metadataByAddress.get(candidate.address.toLowerCase())
       })));
+    };
+
+    const cachedDiscovery = discoveredAssets.current.map(walletDiscoveryCandidate);
+    const initialCandidates = walletAssetCandidates(markets, 48, [...imported, ...cachedDiscovery]);
+    const discoveryRequest = fetch(`/api/vnext/wallet-assets?${new URLSearchParams({ wallet: address })}`, { cache: "no-store" })
+      .then(async (response) => ({
+        ok: response.ok,
+        payload: normalizeWalletDiscoveryResponse(await response.json(), address)
+      }))
+      .catch(() => ({ ok: false, payload: null }));
+
+    try {
+      const [native, detected] = await Promise.all([
+        publicClient.getBalance({ address }),
+        readCandidates(initialCandidates)
+      ]);
       if (currentRequest !== requestId.current) return;
-      snapshotWallet.current = address.toLowerCase();
+      snapshotWallet.current = walletKey;
       setAssets(detected);
       setNativeBalance(native);
       setObservedAtMs(Date.now());
       setStatus("ready");
+
+      const discovery = await discoveryRequest;
+      if (currentRequest !== requestId.current) return;
+      if (!discovery.ok || !discovery.payload) {
+        setDiscoveryStatus(discoveredAssets.current.length > 0 ? "stale" : "unavailable");
+        return;
+      }
+      discoveredAssets.current = discovery.payload.assets;
+      discoveryWallet.current = walletKey;
+      setDiscoveryStatus(discovery.payload.complete ? "ready" : "partial");
+      const finalCandidates = walletAssetCandidates(markets, 48, [
+        ...imported,
+        ...discovery.payload.assets.map(walletDiscoveryCandidate)
+      ]);
+      if (sameCandidateAddresses(initialCandidates, finalCandidates)) return;
+      const completeDetected = await readCandidates(finalCandidates);
+      if (currentRequest !== requestId.current) return;
+      setAssets(completeDetected);
+      setObservedAtMs(Date.now());
     } catch {
       if (currentRequest !== requestId.current) return;
-      const currentWallet = snapshotWallet.current === address.toLowerCase();
+      const currentWallet = snapshotWallet.current === walletKey;
       if (!currentWallet) {
         setAssets([]);
         setNativeBalance(undefined);
       }
       setStatus(currentWallet ? "stale" : "error");
     }
-  }, [address, candidates, isConnected, onRobinhood, publicClient]);
+  }, [address, imported, isConnected, markets, onRobinhood, publicClient]);
 
   useEffect(() => {
     if (!enabled) {
@@ -119,7 +176,10 @@ export function useVNextWalletAssets(markets: VNextDirectoryMarket[], imported: 
       setNativeBalance(undefined);
       setObservedAtMs(undefined);
       setStatus("idle");
+      setDiscoveryStatus("idle");
       snapshotWallet.current = null;
+      discoveryWallet.current = null;
+      discoveredAssets.current = [];
       return;
     }
     void refresh();
@@ -132,6 +192,7 @@ export function useVNextWalletAssets(markets: VNextDirectoryMarket[], imported: 
     assets: snapshotIsCurrent ? assets : EMPTY_WALLET_ASSETS,
     nativeBalance: snapshotIsCurrent ? nativeBalance : undefined,
     status,
+    discoveryStatus,
     observedAtMs: snapshotIsCurrent ? observedAtMs : undefined,
     enabled,
     onRobinhood,

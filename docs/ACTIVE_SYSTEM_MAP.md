@@ -28,7 +28,7 @@
 | `/` | Current production compatibility terminal until the completion gate passes. |
 | `/vnext` | Canonical forward terminal; not yet production root. |
 | `/market/[address]` | Preserved production compatibility route; VNext no longer depends on or navigates to it. Retirement/redirect is a separate reviewed change. |
-| `/portfolio` | Preserved legacy route. VNext navigation now owns its holdings entry point; PR 4 completes the authoritative holdings surface. |
+| `/portfolio` | Preserved compatibility route. VNext owns authoritative wallet discovery, confirmed Spend Balance, known-value portfolio estimates, gas separation and receive/send entry points; active VNext navigation has no dependency on this route. |
 | `/profile` | Paused; preserved source/data, not promoted by active navigation. |
 | `/launch` | Paused product notice; must not promise a V7 reopening roadmap. |
 | `/explore` | Allowed only as ecosystem/market discovery; creator-platform promotion is paused. |

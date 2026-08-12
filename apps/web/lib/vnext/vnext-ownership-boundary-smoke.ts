@@ -37,6 +37,7 @@ const allowedSharedImports = new Set([
   "../fund-wallet-button",
   "../rmt-identity",
   "../wallet-button",
+  "../wallet-transfer-dialog",
 ]);
 for (const { path, source } of vnextSources) {
   const relativeImports = [...source.matchAll(/from\s+["'](\.\.?\/[^"']+)["']/g)].map((match) => match[1]);

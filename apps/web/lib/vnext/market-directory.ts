@@ -9,6 +9,7 @@ import {
   ROBINHOOD_WETH,
   ROBINHOOD_WETH_ADDRESS
 } from "./robinhood-assets";
+import { safeTokenArtworkUrl } from "./token-artwork";
 
 export type VNextDirectoryMarket = Pick<ExternalMarket,
   | "address"
@@ -21,6 +22,7 @@ export type VNextDirectoryMarket = Pick<ExternalMarket,
   | "priceChange24h"
   | "ageMinutes"
   | "signal"
+  | "imageUri"
   | "resolution"
 > & {
   pairAddress?: string;
@@ -65,6 +67,7 @@ export function normalizeDirectoryMarkets(payload: Pick<ExternalMarketResponse, 
       priceChange24h: finite(market.priceChange24h),
       ageMinutes: market.ageMinutes === null ? null : Math.max(0, finite(market.ageMinutes)),
       signal: market.signal,
+      imageUri: safeTokenArtworkUrl(market.imageUri) ?? undefined,
       resolution: market.resolution,
       pairAddress: typeof market.pairAddress === "string" && isAddress(market.pairAddress, { strict: false })
         ? getAddress(market.pairAddress)

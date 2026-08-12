@@ -11,6 +11,7 @@ import { VNextExecutionRecoveryBanner } from "./vnext-execution-recovery-banner"
 import { VNextWalletConnection } from "./vnext-wallet-connection";
 import { useVNextExecutionRecovery } from "./use-vnext-execution-recovery";
 import { useVNextMarketDirectory } from "./use-vnext-market-directory";
+import { TokenArtwork } from "./token-artwork";
 
 const navItems = [
   { label: "Trade", href: "#vnext-workspace", icon: "trade" },
@@ -28,8 +29,8 @@ function NavIcon({ icon }: { icon: (typeof navItems)[number]["icon"] }) {
   return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M5 17h14" /><path d="m15 3 4 4-4 4M9 13l-4 4 4 4" /></svg>;
 }
 
-function MarketMark({ symbol }: { symbol: string }) {
-  return <span className={`vnMarketMark vnMarketMark${symbol}`} aria-hidden="true">{symbol.slice(0, 1)}</span>;
+function MarketMark({ symbol, imageUrl }: { symbol: string; imageUrl?: string | null }) {
+  return <TokenArtwork className={`vnMarketMark vnMarketMark${symbol}`} symbol={symbol} imageUrl={imageUrl} />;
 }
 
 function formatUsd(value: number) {
@@ -124,6 +125,7 @@ export function VNextTerminalShell() {
             markets={markets}
             onAssetsChange={setWalletAssets}
             onNativeBalanceChange={setNativeBalance}
+            onSelectAsset={selectMarket}
             executionRecord={executionRecovery.record}
             portfolioRevealRequest={portfolioRevealRequest}
           />
@@ -153,7 +155,7 @@ export function VNextTerminalShell() {
                       onClick={() => selectMarket(market.address)}
                       aria-pressed={selected?.address === market.address}
                     >
-                      <MarketMark symbol={market.symbol} />
+                      <MarketMark symbol={market.symbol} imageUrl={market.imageUri} />
                       <span className="vnMarketIdentity"><strong>{market.symbol}</strong><small>{market.name}</small></span>
                       <span className="vnMarketPrice"><strong>{formatUsd(market.priceUsd)}</strong><small className={market.priceChange24h > 0 ? "vnPositive" : market.priceChange24h < 0 ? "vnNegative" : ""}>{formatChange(market.priceChange24h)}</small></span>
                       <span className={`vnSignal vnSignal${market.signal === "moving" ? "positive" : market.signal === "early" ? "warning" : "neutral"}`}><i aria-hidden="true" />{market.signal}</span>

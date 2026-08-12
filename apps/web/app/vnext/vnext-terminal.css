@@ -418,7 +418,8 @@ body .rmtVnext {
   gap: 10px;
 }
 
-.vnBalanceActions > .fundWalletMenu .fundWalletTrigger {
+.vnBalanceActions > .fundWalletMenu .fundWalletTrigger,
+.vnBalanceSend {
   min-height: 44px;
   padding: 0 18px;
   border-color: transparent;
@@ -427,6 +428,22 @@ body .rmtVnext {
   box-shadow: 0 8px 22px rgba(94, 205, 107, 0.16);
   color: #0a120b;
   font-size: inherit;
+}
+
+.vnBalanceSend {
+  border: 1px solid var(--vn-border-strong);
+  background: var(--vn-surface-raised);
+  box-shadow: none;
+  color: var(--vn-text-secondary);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 760;
+  cursor: pointer;
+}
+
+.vnBalanceSend:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
 }
 
 .vnDetectedAssets {
@@ -493,8 +510,46 @@ body .rmtVnext {
 
 .vnDetectedAssetList {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
+}
+
+.vnPortfolioTruth {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.vnPortfolioTruth > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+  border: 1px solid var(--vn-border);
+  border-radius: 12px;
+  background: rgba(10, 14, 11, 0.42);
+}
+
+.vnPortfolioTruth span {
+  color: var(--vn-text-muted);
+  font-size: 9px;
+  font-weight: 780;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.vnPortfolioTruth strong {
+  font-size: 13px;
+}
+
+.vnPortfolioTruth small {
+  overflow: hidden;
+  color: var(--vn-text-muted);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .vnAssetImport {
@@ -575,7 +630,7 @@ body .rmtVnext {
 
 .vnDetectedAsset {
   display: grid;
-  grid-template-columns: 32px minmax(0, 1fr) auto;
+  grid-template-columns: 32px minmax(0, 1fr) minmax(128px, auto) auto;
   align-items: center;
   gap: 9px;
   min-width: 0;
@@ -583,6 +638,10 @@ body .rmtVnext {
   border: 1px solid var(--vn-border);
   border-radius: 12px;
   background: rgba(10, 14, 11, 0.42);
+}
+
+.vnDetectedAsset.isReview {
+  border-color: rgba(234, 181, 83, 0.34);
 }
 
 .vnDetectedMark {
@@ -596,6 +655,15 @@ body .rmtVnext {
   color: var(--vn-accent);
   font-size: 12px;
   font-weight: 850;
+  overflow: hidden;
+}
+
+.vnDetectedMark img,
+.vnMarketMark img,
+.vnAssetWorkspaceMark img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .vnDetectedAsset > span:not(.vnDetectedMark) {
@@ -622,9 +690,42 @@ body .rmtVnext {
   font-size: 12px;
 }
 
+.vnDetectedAssetOpen,
+.vnDetectedAssetNoRoute {
+  display: inline-flex;
+  min-width: 58px;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.vnDetectedAssetOpen {
+  border: 1px solid rgba(100, 201, 113, 0.32);
+  background: rgba(100, 201, 113, 0.1);
+  color: var(--vn-accent);
+  cursor: pointer;
+}
+
+.vnDetectedAssetNoRoute {
+  color: var(--vn-text-muted);
+}
+
+.vnDetectedAsset > .vnDetectedAssetNoRoute {
+  align-items: center;
+  text-align: center;
+}
+
 .vnDetectedAssetsEmpty,
 .vnDetectedAssetsMore {
-  margin: 0;
+  width: 100%;
+  margin: 8px 0 0;
+  background: transparent;
+  color: var(--vn-text-secondary);
+  cursor: pointer;
+  font: inherit;
   padding: 12px;
   border: 1px dashed var(--vn-border);
   border-radius: 10px;
@@ -867,6 +968,7 @@ body .rmtVnext {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
   font-size: 14px;
   font-weight: 950;
+  overflow: hidden;
 }
 
 .vnMarketMarkTHINK { background: linear-gradient(145deg, #f1cf9c, #a17144); }
@@ -1204,6 +1306,31 @@ body .rmtVnext {
 
 .vnAssetWorkspaceHeader > div {
   min-width: 0;
+}
+
+.vnAssetWorkspaceIdentity {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.vnAssetWorkspaceIdentity > span:last-child {
+  min-width: 0;
+}
+
+.vnAssetWorkspaceMark {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid rgba(130, 242, 143, 0.2);
+  border-radius: 13px;
+  background: linear-gradient(145deg, #c2ffad, #5eb86a);
+  color: #0e170f;
+  font-size: 15px;
+  font-weight: 900;
 }
 
 .vnAssetWorkspaceHeader h2 {
@@ -3131,6 +3258,14 @@ body .rmtVnext {
 
   .vnDetectedAssetList {
     grid-template-columns: 1fr;
+  }
+
+  .vnPortfolioTruth {
+    grid-template-columns: 1fr;
+  }
+
+  .vnDetectedAsset {
+    grid-template-columns: 32px minmax(0, 1fr) minmax(108px, auto) auto;
   }
 
   .vnDetectedAsset {
