@@ -2,9 +2,11 @@ import type { Pool, PoolClient } from "pg";
 import {
   createPublicClient,
   defineChain,
+  getAddress,
   http,
   keccak256,
-  type Block,
+  parseAbi,
+  type Hex,
   type PublicClient
 } from "viem";
 import type { MarketIndexerConfig } from "./config.js";
@@ -14,17 +16,22 @@ import { migrateMarketIndexer, rollbackSourceAfter } from "./schema.js";
 import {
   MARKET_INDEXER_CHAIN_ID,
   marketSources,
+  UP_CL_POOL_IMPLEMENTATION,
+  UP_V2_POOL_IMPLEMENTATION,
+  UP_VOTER,
   type MarketSource
 } from "./sources.js";
 import {
   readMarketIndexerTelemetry,
   type MarketIndexerTelemetry
 } from "./telemetry.js";
+import { isUpSource, readUpPoolEvidence } from "./up-enrichment.js";
 
 export type WorkerStatus = {
   running: boolean;
   cycleSequence: number;
   verifiedSources: string[];
+  verifiedDependencies: string[];
   indexedThrough: Record<string, string | null>;
   lastSyncAt: string | null;
   lastError: string | null;
@@ -41,6 +48,11 @@ const robinhoodChain = defineChain({
   nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
   rpcUrls: { default: { http: ["https://rpc.mainnet.chain.robinhood.com/"] } }
 });
+
+const upFactoryDependencyAbi = parseAbi([
+  "function implementation() view returns (address)",
+  "function poolImplementation() view returns (address)"
+]);
 
 function errorText(error: unknown) {
   return (error instanceof Error ? error.message : String(error)).slice(0, 4_096);
@@ -86,9 +98,9 @@ async function insertPool(
   const result = await client.query(
     `INSERT INTO market_pools (
        chain_id, source_id, protocol, protocol_version, pool_key, pool_address,
-       token0, token1, fee, tick_spacing, hooks, transaction_hash,
+       token0, token1, stable, fee, tick_spacing, hooks, transaction_hash,
        transaction_index, log_index, block_number, block_hash
-     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
      ON CONFLICT (chain_id, source_id, pool_key) DO UPDATE SET
        pool_address = EXCLUDED.pool_address
      WHERE market_pools.transaction_hash = EXCLUDED.transaction_hash
@@ -103,6 +115,7 @@ async function insertPool(
       pool.poolAddress,
       pool.token0,
       pool.token1,
+      pool.stable,
       pool.fee,
       pool.tickSpacing,
       pool.hooks,
@@ -125,6 +138,7 @@ export class MarketIndexerWorker {
     running: false,
     cycleSequence: 0,
     verifiedSources: [],
+    verifiedDependencies: [],
     indexedThrough: Object.fromEntries(marketSources.map((source) => [source.id, null])),
     lastSyncAt: null,
     lastError: null,
@@ -156,6 +170,8 @@ export class MarketIndexerWorker {
   }
 
   async verifySources() {
+    this.status.verifiedSources = [];
+    this.status.verifiedDependencies = [];
     const chainId = await this.rpc.getChainId();
     if (chainId !== MARKET_INDEXER_CHAIN_ID) {
       throw new Error(
@@ -172,9 +188,13 @@ export class MarketIndexerWorker {
       if (receipt.status !== "success" || receipt.blockNumber !== source.startBlock) {
         throw new Error(`${source.id} deployment transaction or block does not match`);
       }
+      const deployedAddress = receipt.contractAddress?.toLowerCase() ?? null;
+      const expectedAddress = source.contract.toLowerCase();
       if (
-        receipt.contractAddress &&
-        receipt.contractAddress.toLowerCase() !== source.contract.toLowerCase()
+        (source.protocol === "up" && deployedAddress !== expectedAddress) ||
+        (source.protocol !== "up" &&
+          deployedAddress !== null &&
+          deployedAddress !== expectedAddress)
       ) {
         throw new Error(`${source.id} deployment transaction created a different contract`);
       }
@@ -215,6 +235,168 @@ export class MarketIndexerWorker {
       }
       this.status.verifiedSources.push(source.id);
     }
+    const voterReceipt = await this.rpc.getTransactionReceipt({
+      hash: UP_VOTER.deploymentTransaction
+    });
+    if (
+      voterReceipt.status !== "success" ||
+      voterReceipt.blockNumber !== UP_VOTER.startBlock ||
+      voterReceipt.contractAddress?.toLowerCase() !==
+        UP_VOTER.contract.toLowerCase()
+    ) {
+      throw new Error("up-voter deployment transaction or block does not match");
+    }
+    for (const dependency of [
+      UP_VOTER,
+      UP_V2_POOL_IMPLEMENTATION,
+      UP_CL_POOL_IMPLEMENTATION
+    ]) {
+      const code = await this.rpc.getBytecode({ address: dependency.contract });
+      if (!code || code === "0x" || keccak256(code) !== dependency.runtimeCodeHash) {
+        throw new Error(`${dependency.id} runtime bytecode does not match`);
+      }
+      this.status.verifiedDependencies.push(dependency.id);
+    }
+    const upV2 = marketSources.find((source) => source.id === "up-v2")!;
+    const upCl = marketSources.find((source) => source.id === "up-cl")!;
+    const [v2Implementation, clImplementation] = await Promise.all([
+      this.rpc.readContract({
+        address: upV2.contract,
+        abi: upFactoryDependencyAbi,
+        functionName: "implementation"
+      }),
+      this.rpc.readContract({
+        address: upCl.contract,
+        abi: upFactoryDependencyAbi,
+        functionName: "poolImplementation"
+      })
+    ]);
+    if (
+      v2Implementation.toLowerCase() !==
+        UP_V2_POOL_IMPLEMENTATION.contract.toLowerCase() ||
+      clImplementation.toLowerCase() !==
+        UP_CL_POOL_IMPLEMENTATION.contract.toLowerCase()
+    ) {
+      throw new Error("up factory pool implementation drift");
+    }
+  }
+
+  private async refreshUpPoolEvidence(
+    finalizedHead: bigint,
+    finalizedHash: Hex
+  ) {
+    const result = await this.pool.query<{
+      source_id: string;
+      pool_address: string;
+      stable: boolean | null;
+    }>(
+      `SELECT pools.source_id, pools.pool_address, pools.stable
+       FROM market_pools AS pools
+       LEFT JOIN market_pool_state AS state
+         ON state.chain_id = pools.chain_id
+        AND state.source_id = pools.source_id
+        AND state.pool_key = pools.pool_key
+       WHERE pools.chain_id = $1
+         AND pools.source_id IN ('up-v2', 'up-cl')
+         AND pools.pool_address IS NOT NULL
+       ORDER BY state.observed_block ASC NULLS FIRST,
+                state.observed_at ASC NULLS FIRST,
+                pools.block_number ASC,
+                pools.log_index ASC
+       LIMIT $2`,
+      [MARKET_INDEXER_CHAIN_ID, this.config.enrichmentBatchSize]
+    );
+    let firstFailure: Error | null = null;
+    for (const row of result.rows) {
+      const source = marketSources.find(
+        (candidate) => candidate.id === row.source_id
+      );
+      if (!source || !isUpSource(source)) {
+        throw new Error(`unsupported up evidence source ${row.source_id}`);
+      }
+      const poolAddress = getAddress(row.pool_address);
+      try {
+        const evidence = await readUpPoolEvidence(
+          this.rpc,
+          source,
+          poolAddress,
+          row.stable,
+          finalizedHead,
+          finalizedHash
+        );
+        await this.pool.query(
+          `INSERT INTO market_pool_state (
+             chain_id, source_id, pool_key, status, live_fee, fee_denominator,
+             gauge_address, gauge_alive, gauge_weight, gauge_claimable,
+             fees_address, bribe_address, last_error, observed_block,
+             observed_block_hash, observed_at
+           ) VALUES ($1,$2,$3,'ready',$4,$5,$6,$7,$8,$9,$10,$11,NULL,$12,$13,NOW())
+           ON CONFLICT (chain_id, source_id, pool_key) DO UPDATE SET
+             status = EXCLUDED.status,
+             live_fee = EXCLUDED.live_fee,
+             fee_denominator = EXCLUDED.fee_denominator,
+             gauge_address = EXCLUDED.gauge_address,
+             gauge_alive = EXCLUDED.gauge_alive,
+             gauge_weight = EXCLUDED.gauge_weight,
+             gauge_claimable = EXCLUDED.gauge_claimable,
+             fees_address = EXCLUDED.fees_address,
+             bribe_address = EXCLUDED.bribe_address,
+             last_error = NULL,
+             observed_block = EXCLUDED.observed_block,
+             observed_block_hash = EXCLUDED.observed_block_hash,
+             observed_at = NOW()`,
+          [
+            MARKET_INDEXER_CHAIN_ID,
+            evidence.sourceId,
+            evidence.poolAddress,
+            evidence.liveFee,
+            evidence.feeDenominator,
+            evidence.gaugeAddress,
+            evidence.gaugeAlive,
+            evidence.gaugeWeight,
+            evidence.gaugeClaimable,
+            evidence.feesAddress,
+            evidence.bribeAddress,
+            evidence.observedBlock.toString(),
+            evidence.observedBlockHash
+          ]
+        );
+      } catch (error) {
+        const message = errorText(error) || "unknown up enrichment failure";
+        firstFailure ??= new Error(`${source.id}:${poolAddress}: ${message}`);
+        await this.pool.query(
+          `INSERT INTO market_pool_state (
+             chain_id, source_id, pool_key, status, live_fee, fee_denominator,
+             gauge_address, gauge_alive, gauge_weight, gauge_claimable,
+             fees_address, bribe_address, last_error, observed_block,
+             observed_block_hash, observed_at
+           ) VALUES ($1,$2,$3,'error',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,$4,$5,$6,NOW())
+           ON CONFLICT (chain_id, source_id, pool_key) DO UPDATE SET
+             status = EXCLUDED.status,
+             live_fee = NULL,
+             fee_denominator = NULL,
+             gauge_address = NULL,
+             gauge_alive = NULL,
+             gauge_weight = NULL,
+             gauge_claimable = NULL,
+             fees_address = NULL,
+             bribe_address = NULL,
+             last_error = EXCLUDED.last_error,
+             observed_block = EXCLUDED.observed_block,
+             observed_block_hash = EXCLUDED.observed_block_hash,
+             observed_at = NOW()`,
+          [
+            MARKET_INDEXER_CHAIN_ID,
+            source.id,
+            poolAddress.toLowerCase(),
+            message,
+            finalizedHead.toString(),
+            finalizedHash.toLowerCase()
+          ]
+        );
+      }
+    }
+    if (firstFailure) throw firstFailure;
   }
 
   private async reconcileSource(source: MarketSource) {
@@ -406,6 +588,8 @@ export class MarketIndexerWorker {
         lastCycleDurationMs: this.status.lastCycleDurationMs,
         finalizedHead: this.status.lastFinalizedHead,
         totalPools: telemetry?.totalPools ?? null,
+        stateReadyPools: telemetry?.stateReadyPools ?? null,
+        stateErrorPools: telemetry?.stateErrorPools ?? null,
         database: telemetry?.database ?? null,
         sources:
           telemetry?.sources.map((source) => ({
@@ -414,6 +598,8 @@ export class MarketIndexerWorker {
             indexedThrough: source.indexedThrough,
             lagBlocks: source.lagBlocks,
             poolCount: source.poolCount,
+            stateReadyCount: source.stateReadyCount,
+            stateErrorCount: source.stateErrorCount,
             lastSyncAt: source.lastSyncAt,
             error: source.error
           })) ?? [],
@@ -437,6 +623,12 @@ export class MarketIndexerWorker {
       const confirmations = BigInt(this.config.confirmations);
       if (head <= confirmations) throw new Error("chain head is below confirmation depth");
       finalizedHead = head - confirmations;
+      const finalizedBlock = await this.rpc.getBlock({
+        blockNumber: finalizedHead
+      });
+      if (!finalizedBlock.hash) {
+        throw new Error("RPC omitted the finalized block hash");
+      }
       let failure: Error | null = null;
       for (const source of marketSources) {
         try {
@@ -451,6 +643,11 @@ export class MarketIndexerWorker {
           );
           failure ??= new Error(`${source.id}: ${message}`);
         }
+      }
+      try {
+        await this.refreshUpPoolEvidence(finalizedHead, finalizedBlock.hash);
+      } catch (error) {
+        failure ??= new Error(`up enrichment: ${errorText(error)}`);
       }
       this.status.lastError = failure?.message ?? null;
     } catch (error) {

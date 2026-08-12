@@ -27,6 +27,8 @@ export type SourceTelemetry = {
   finalizedHead: string | null;
   lagBlocks: string | null;
   poolCount: number;
+  stateReadyCount: number;
+  stateErrorCount: number;
   lastSyncAt: string | null;
   updatedAt: string;
   error: string | null;
@@ -36,6 +38,8 @@ export type MarketIndexerTelemetry = {
   capturedAt: string;
   finalizedHead: string | null;
   totalPools: number;
+  stateReadyPools: number;
+  stateErrorPools: number;
   database: DatabaseTelemetry;
   sources: SourceTelemetry[];
 };
@@ -46,6 +50,8 @@ type SourceTelemetryRow = {
   start_block: string;
   next_block: string;
   pool_count: string;
+  state_ready_count: string;
+  state_error_count: string;
   last_sync_at: Date | string | null;
   updated_at: Date | string;
   last_error: string | null;
@@ -124,11 +130,19 @@ export async function readMarketIndexerTelemetry(
     pool.query<SourceTelemetryRow>(
       `SELECT state.source_id, state.status, state.start_block,
               state.next_block, state.last_sync_at, state.updated_at,
-              state.last_error, COUNT(pools.pool_key)::text AS pool_count
+              state.last_error, COUNT(pools.pool_key)::text AS pool_count,
+              COUNT(pool_state.pool_key) FILTER (WHERE pool_state.status = 'ready')::text
+                AS state_ready_count,
+              COUNT(pool_state.pool_key) FILTER (WHERE pool_state.status = 'error')::text
+                AS state_error_count
        FROM market_indexer_source_state AS state
        LEFT JOIN market_pools AS pools
          ON pools.chain_id = state.chain_id
-        AND pools.source_id = state.source_id
+       AND pools.source_id = state.source_id
+       LEFT JOIN market_pool_state AS pool_state
+         ON pool_state.chain_id = pools.chain_id
+        AND pool_state.source_id = pools.source_id
+        AND pool_state.pool_key = pools.pool_key
        WHERE state.chain_id = $1
        GROUP BY state.chain_id, state.source_id, state.status, state.start_block,
                 state.next_block, state.last_sync_at, state.updated_at,
@@ -169,6 +183,8 @@ export async function readMarketIndexerTelemetry(
       finalizedHead: finalizedHead?.toString() ?? null,
       lagBlocks,
       poolCount: safeInteger(row.pool_count, "pool count"),
+      stateReadyCount: safeInteger(row.state_ready_count, "ready state count"),
+      stateErrorCount: safeInteger(row.state_error_count, "error state count"),
       lastSyncAt: timestamp(row.last_sync_at),
       updatedAt: timestamp(row.updated_at)!,
       error: row.last_error
@@ -178,6 +194,14 @@ export async function readMarketIndexerTelemetry(
     capturedAt: new Date().toISOString(),
     finalizedHead: finalizedHead?.toString() ?? null,
     totalPools: sources.reduce((total, source) => total + source.poolCount, 0),
+    stateReadyPools: sources.reduce(
+      (total, source) => total + source.stateReadyCount,
+      0
+    ),
+    stateErrorPools: sources.reduce(
+      (total, source) => total + source.stateErrorCount,
+      0
+    ),
     database: databaseTelemetry(logicalBytes, configuredLimitBytes),
     sources
   };

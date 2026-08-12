@@ -11,7 +11,7 @@
 | Production compatibility terminal | `apps/web/app/page.tsx`, legacy market workspace | ACTIVE COMPATIBILITY | Preserve trading behavior while capabilities migrate into VNext. |
 | V6 protocol history | `apps/indexer` | ACTIVE COMPATIBILITY | Canonical deployed V6 launches, trades, graduation, fees and origin only. |
 | External project origin | `apps/external-origin-indexer` | ACTIVE | Fail closed; `source-listed` and `token-created` remain distinct. |
-| External markets | `apps/market-indexer` | ACTIVE | Read-oriented discovery/enrichment; no execution or treasury work. |
+| External markets | `apps/market-indexer` | ACTIVE | Read-oriented discovery/enrichment, including separately identified `up-v2` and `up-cl` shadow sources; no execution or treasury work. |
 | Same-chain execution | VNext adapters plus current Sushi/Uniswap verifiers | ACTIVE | Provider admission is capability-specific. |
 | Funding/recovery | VNext Across domain and server-side Firebase persistence | RELEASE-GATED | Asynchronous, wallet-bound and non-custodial. |
 | RWA registry/evidence | Robinhood stock-token registry and policy evidence | ACTIVE FOUNDATION | Canonical RWA and RWA-paired markets remain distinct. |

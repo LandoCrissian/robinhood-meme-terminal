@@ -16,6 +16,8 @@ The reviewed source manifest is compiled into the service:
 | Uniswap V2 factory | `0x8bcEaA40B9AcdfAedF85AdF4FF01F5Ad6517937f` | 8,928 | [Pinned Uniswap chain 4663 deployment record](https://github.com/Uniswap/contracts/blob/37936185dee7decf681360ec799c124e0e034672/deployments/json/4663.json) |
 | Uniswap V3 factory | `0x1f7d7550B1b028f7571e69A784071F0205FD2EfA` | 8,930 | [Pinned Uniswap chain 4663 deployment record](https://github.com/Uniswap/contracts/blob/37936185dee7decf681360ec799c124e0e034672/deployments/json/4663.json) |
 | Uniswap V4 PoolManager | `0x8366a39CC670B4001A1121B8F6A443A643E40951` | 9,070 | [Pinned Uniswap chain 4663 deployment record](https://github.com/Uniswap/contracts/blob/37936185dee7decf681360ec799c124e0e034672/deployments/json/4663.json) |
+| up. V2 PoolFactory | `0xFA5429AEBa338BEa2BFcc1b9a889862Ee395bc28` | 6,180,950 | [Pinned official up. production application record](https://up33.xyz/assets/index-Cx7kG_8N.js) |
+| up. Slipstream CLFactory | `0x1ac9dB4a2608ba45D6127B1737949b51Bb54B7F3` | 6,184,096 | [Pinned official up. production application record](https://up33.xyz/assets/index-Cx7kG_8N.js) |
 
 Each source also pins its deployment transaction and current runtime bytecode
 hash. Startup fails if the RPC is on the wrong chain, a deployment receipt does
@@ -24,14 +26,48 @@ deployment-block bytecode is checked when the RPC retains that state; the
 official public RPC prunes some early state, so immutable transaction receipts
 remain the required deployment-boundary proof.
 
+The official up. production record is cross-checked against each factory's
+verified Blockscout source, exact creation receipt and current runtime. The
+application record alone is never allowed to activate a source.
+
+The up. manifest additionally pins the shared Voter at
+`0x7F749fDD351C1Ceed82d76d7699CB631Eb8332a7`, both factory-selected pool
+implementations and all three runtime hashes. Startup independently checks the
+Voter deployment receipt, every pinned runtime, and both factories' current
+implementation getters. Any drift stops the shadow worker.
+
 The indexer records only canonical pool-creation or initialization events:
 
 - V2 `PairCreated`;
 - V3 `PoolCreated`;
 - V4 `Initialize`.
+- up. V2 `PoolCreated(token0, token1, stable, pool, index)`;
+- up. CL `PoolCreated(token0, token1, tickSpacing, pool)`.
+
+`up-v2` and `up-cl` are separate source identities. Slipstream is not decoded
+or routed as Uniswap V3. A version number retained in the shared storage shape
+does not override the source identity.
+
+For up. pools, a bounded round-robin enrichment pass reads state at the same
+finalized block boundary used by the worker. It verifies factory membership,
+then records the current fee and denominator:
+
+- V2: `PoolFactory.getFee(pool, stable)`, denominator `10,000`;
+- CL: pool `fee()`, denominator `1,000,000`.
+
+The Voter is enrichment only. The indexer records `gauges`, `isAlive`,
+`weights`, `claimable`, `gaugeToFees` and `gaugeToBribe` when a gauge exists.
+A zero gauge remains a valid, visible market with null gauge evidence. Gauge
+state can never create, reject or rename a pool.
+
+An enrichment read failure is stored as non-authoritative error evidence and
+rotated through the bounded refresh queue, so one malformed or temporarily
+unreadable pool cannot starve the remaining market inventory. The pool itself
+remains discoverable; only its live state is withheld until verification passes.
 
 It does not calculate prices, volume, liquidity, token metadata, origin
-attribution, rankings, or trade routes yet. Those are separate, later layers.
+attribution, rankings, quotes or trade routes yet. Those are separate, later
+layers. This change cannot authorize or submit an up. trade.
 
 ## Fail-safe state machine
 
@@ -91,6 +127,7 @@ pnpm --filter market-indexer test:replay
 pnpm --filter market-indexer test:schema
 pnpm --filter market-indexer test:telemetry
 pnpm --filter market-indexer test:server
+pnpm --filter market-indexer test:up-enrichment
 pnpm --filter market-indexer test:position-guard
 ```
 

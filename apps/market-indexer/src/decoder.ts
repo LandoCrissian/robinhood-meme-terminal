@@ -28,6 +28,7 @@ export type DiscoveredPool = Readonly<{
   poolAddress: string | null;
   token0: string;
   token1: string;
+  stable: boolean | null;
   fee: number | null;
   tickSpacing: number | null;
   hooks: string | null;
@@ -91,6 +92,7 @@ export function decodeMarketLog(
 
   let poolKey: string;
   let poolAddress: string | null = null;
+  let stable: boolean | null = null;
   let fee: number | null = null;
   let tickSpacing: number | null = null;
   let hooks: string | null = null;
@@ -100,6 +102,29 @@ export function decodeMarketLog(
     if (pair === zeroAddress) throw new Error("V2 pair address is zero");
     poolAddress = lowerAddress(pair);
     poolKey = poolAddress;
+  } else if (source.kind === "up-v2-factory") {
+    const pool = getAddress(String(args.pool));
+    if (pool === zeroAddress) throw new Error("up v2 pool address is zero");
+    if (typeof args.stable !== "boolean") {
+      throw new Error("up v2 stable identity is malformed");
+    }
+    poolAddress = lowerAddress(pool);
+    poolKey = poolAddress;
+    stable = args.stable;
+  } else if (source.kind === "up-cl-factory") {
+    const pool = getAddress(String(args.pool));
+    if (pool === zeroAddress) throw new Error("up CL pool address is zero");
+    const decodedSpacing = Number(args.tickSpacing);
+    if (
+      !Number.isSafeInteger(decodedSpacing) ||
+      decodedSpacing <= 0 ||
+      decodedSpacing > 16_384
+    ) {
+      throw new Error("up CL tick spacing is outside the supported domain");
+    }
+    poolAddress = lowerAddress(pool);
+    poolKey = poolAddress;
+    tickSpacing = decodedSpacing;
   } else if (source.kind === "v3-factory") {
     const pool = getAddress(String(args.pool));
     if (pool === zeroAddress) throw new Error("V3 pool address is zero");
@@ -151,6 +176,7 @@ export function decodeMarketLog(
     poolAddress,
     token0: lowerAddress(token0),
     token1: lowerAddress(token1),
+    stable,
     fee,
     tickSpacing,
     hooks,
