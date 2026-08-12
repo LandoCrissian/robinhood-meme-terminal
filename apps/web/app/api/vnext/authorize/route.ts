@@ -13,7 +13,7 @@ const requestSchema = z.object({
   chainId: z.literal(4_663),
   quoteRequestId: z.string().uuid(),
   verificationId: z.string().uuid(),
-  provider: z.enum(["sushi", "uniswap-v3"]),
+  provider: z.enum(["sushi", "uniswap-v3", "up-v2", "up-cl"]),
   inputAsset: z.string().refine((value) => isAddress(value, { strict: false })),
   outputAsset: z.string().refine((value) => isAddress(value, { strict: false })),
   inputAmountAtomic: z.string().regex(/^[1-9][0-9]*$/),
@@ -61,7 +61,7 @@ export async function POST(request: Request) {
       protectedOutputFloorAtomic: BigInt(parsed.data.expectedProtectedOutputAtomic),
       nowMs: preparedAtMs
     });
-    if (prepared.evidence.provider !== "uniswap-v3") {
+    if (prepared.evidence.provider !== "uniswap-v3" && prepared.evidence.provider !== "up-v2" && prepared.evidence.provider !== "up-cl") {
       return Response.json({ error: "This provider does not have a supported wallet-plan codec yet." }, { status: 422, headers: noStore });
     }
     const evidenceChanged = prepared.evidence.status !== parsed.data.expectedStatus

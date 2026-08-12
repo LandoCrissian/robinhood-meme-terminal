@@ -24,7 +24,7 @@ export type VNextProviderVerificationRequest = Pick<VNextProviderQuoteRequest,
 
 export type VNextProviderVerificationEvidence = Record<string, unknown> & {
   provider: VNextQuoteProvider;
-  status: "verified" | "approval_required" | "insufficient_balance" | "insufficient_gas" | "gas_unavailable" | "simulation_failed";
+  status: "verified" | "approval_required" | "approval_simulation_failed" | "insufficient_balance" | "insufficient_gas" | "gas_unavailable" | "simulation_failed";
   chainId: 4_663;
   inputAsset: Address;
   outputAsset: Address;

@@ -12,6 +12,7 @@ import { z } from "zod";
 import { ROBINHOOD_SWAP_ROUTER_02, ROBINHOOD_WETH } from "../uniswap-v4";
 import { parseVNextPreSignEvidence, type VNextPreSignEvidence } from "./pre-sign-evidence";
 import { isRobinhoodNativeAsset } from "./robinhood-assets";
+import { assertUpSwapCalldata, UP_CL_EXECUTION_ROUTER, UP_V2_EXECUTION_ROUTER, type UpAuthorizationEvidence } from "./up-authorization-codec";
 
 const MAX_CLOCK_SKEW_MS = 5_000;
 
@@ -47,7 +48,7 @@ export type VNextAuthorizationPlan = {
   planId: string;
   sourceQuoteRequestId: string;
   sourceVerificationId: string;
-  provider: "uniswap-v3";
+  provider: "uniswap-v3" | "up-v2" | "up-cl";
   kind: "erc20_approval" | "swap";
   chainId: 4_663;
   target: string;
@@ -71,7 +72,7 @@ export type VNextAuthorizationPlan = {
 const atomic = z.string().regex(/^(0|[1-9][0-9]*)$/);
 const planSchema = z.object({
   planId: z.string().uuid(), sourceQuoteRequestId: z.string().uuid(), sourceVerificationId: z.string().uuid(),
-  provider: z.literal("uniswap-v3"), kind: z.enum(["erc20_approval", "swap"]), chainId: z.literal(4_663),
+  provider: z.enum(["uniswap-v3", "up-v2", "up-cl"]), kind: z.enum(["erc20_approval", "swap"]), chainId: z.literal(4_663),
   target: z.string(), data: z.string().regex(/^0x[0-9a-fA-F]+$/), value: atomic, gasLimit: atomic,
   payloadHash: z.string().regex(/^0x[0-9a-fA-F]{64}$/), inputAsset: z.string(), outputAsset: z.string(),
   inputAmountAtomic: atomic, protectedOutputAtomic: atomic, recipient: z.string(), router: z.string(), deadline: atomic,
@@ -112,7 +113,8 @@ export function parseVNextAuthorizationPlan(value: unknown, evidence: VNextPreSi
     || getAddress(plan.inputAsset) !== getAddress(evidence.inputAsset)
     || getAddress(plan.outputAsset) !== getAddress(evidence.outputAsset)
     || getAddress(plan.recipient) !== getAddress(evidence.recipient)
-    || getAddress(plan.router) !== getAddress(ROBINHOOD_SWAP_ROUTER_02)
+    || plan.provider !== evidence.provider
+    || getAddress(plan.router) !== getAddress(evidence.provider === "uniswap-v3" ? ROBINHOOD_SWAP_ROUTER_02 : evidence.provider === "up-v2" ? UP_V2_EXECUTION_ROUTER : UP_CL_EXECUTION_ROUTER)
     || plan.inputAmountAtomic !== evidence.inputAmountAtomic
     || plan.protectedOutputAtomic !== evidence.protectedOutputAtomic
     || plan.value !== evidence.transactionValueAtomic
@@ -131,14 +133,18 @@ export function parseVNextAuthorizationPlan(value: unknown, evidence: VNextPreSi
     const decoded = decodeFunctionData({ abi: erc20Abi, data: plan.data });
     if (decoded.functionName !== "approve") throw new Error("RMT rejected a non-approval token call.");
     const [spender, amount] = decoded.args;
-    if (getAddress(spender) !== getAddress(ROBINHOOD_SWAP_ROUTER_02) || amount !== BigInt(evidence.inputAmountAtomic)) {
+    if (getAddress(spender) !== getAddress(evidence.approvalSpender) || amount !== BigInt(evidence.inputAmountAtomic)) {
       throw new Error("RMT rejected broadened approval authority.");
     }
     return plan;
   }
 
-  if (evidence.status !== "verified" || getAddress(plan.target) !== getAddress(ROBINHOOD_SWAP_ROUTER_02) || keccak256(plan.data) !== evidence.calldataHash) {
+  if (evidence.status !== "verified" || getAddress(plan.target) !== getAddress(evidence.router) || keccak256(plan.data) !== evidence.calldataHash) {
     throw new Error("RMT rejected a swap plan that does not match strict evidence.");
+  }
+  if (evidence.provider === "up-v2" || evidence.provider === "up-cl") {
+    assertUpSwapCalldata(plan.data, evidence as UpAuthorizationEvidence);
+    return plan;
   }
   const outer = decodeFunctionData({ abi: routerAbi, data: plan.data });
   if (outer.functionName !== "multicall") throw new Error("RMT rejected a swap outside the verified multicall boundary.");

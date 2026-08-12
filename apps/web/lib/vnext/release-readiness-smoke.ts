@@ -65,6 +65,17 @@ const invalidSubmission = readVNextReleaseReadiness({
 });
 assert.equal(invalidSubmission.mode, "misconfigured");
 
+const invalidUpAuthorization = readVNextReleaseReadiness({
+  NODE_ENV: "production",
+  VERCEL_ENV: "production",
+  RMT_VNEXT_SHELL_ENABLED: "true",
+  RMT_VNEXT_UP_V2_AUTHORIZATION_ENABLED: "true"
+});
+assert.equal(invalidUpAuthorization.mode, "misconfigured");
+assert.equal(invalidUpAuthorization.providers.upV2.authorizationEnabled, false);
+assert.equal(invalidUpAuthorization.providers.upV2.strictVerificationAvailable, true);
+assert.equal(invalidUpAuthorization.providers.upCl.walletAuthorizationAvailable, true);
+
 const mismatchedSushi = readVNextReleaseReadiness({
   NODE_ENV: "production",
   VERCEL_ENV: "production",

@@ -22,7 +22,9 @@ export type VNextLiquidityFeeEvidence = {
 // Keep this local allowlist fail closed so a server capability change cannot
 // silently promote an observation-only provider into wallet preparation.
 const VNEXT_WALLET_AUTHORIZATION_CODECS: ReadonlySet<VNextQuoteProvider> = new Set([
-  "uniswap-v3"
+  "uniswap-v3",
+  "up-v2",
+  "up-cl"
 ]);
 
 export function hasVNextWalletAuthorizationCodec(provider: VNextQuoteProvider) {

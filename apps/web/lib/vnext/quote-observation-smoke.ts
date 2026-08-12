@@ -115,6 +115,8 @@ assert.equal(hasVNextWalletAuthorizationCodec("uniswap-v3"), true);
 assert.equal(hasVNextWalletAuthorizationCodec("zero-x-swap"), false);
 assert.equal(hasVNextWalletAuthorizationCodec("zero-x-gasless"), false);
 assert.equal(hasVNextWalletAuthorizationCodec("uniswapx"), false);
+assert.equal(hasVNextWalletAuthorizationCodec("up-v2"), true);
+assert.equal(hasVNextWalletAuthorizationCodec("up-cl"), true);
 
 const uniswapXAttempt = {
   ...response.attempts[0],
