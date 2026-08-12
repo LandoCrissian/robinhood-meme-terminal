@@ -1,5 +1,6 @@
 import { getAddress, isAddress, keccak256, type Address, type Hex } from "viem";
 import { assertVNextQuoteAttempt, type VNextQuoteAttempt, type VNextQuoteAttemptStatus, type VNextQuoteProvider } from "../vnext/quote-observation";
+import { normalizeDisabledRmtFee } from "../vnext/execution-fee-policy";
 
 export type VNextVerifiedTokenIdentity = {
   address: Address;
@@ -79,6 +80,18 @@ export type VNextQuoteProviderAdapter = {
   prepareAuthorization?(request: VNextProviderAuthorizationRequest): Promise<VNextPreparedProviderAuthorization>;
 };
 
+export function disabledVNextFeeEconomics(input: {
+  inputAmountAtomic: string;
+  expectedOutputAtomic: string;
+  protectedOutputAtomic: string;
+}) {
+  return normalizeDisabledRmtFee({
+    userGrossInputAtomic: input.inputAmountAtomic,
+    providerGrossExpectedOutputAtomic: input.expectedOutputAtomic,
+    providerProtectedOutputAtomic: input.protectedOutputAtomic
+  });
+}
+
 export function unavailableVNextQuoteAttempt(input: {
   adapter: VNextQuoteProviderAdapter;
   request: VNextProviderQuoteRequest;
@@ -113,7 +126,7 @@ export function unavailableVNextQuoteAttempt(input: {
     gasSponsorshipFeeAsset: null,
     gasSponsorshipFeeAtomic: null,
     explicitProviderFeeOutputAtomic: null,
-    rmtFeeOutputAtomic: null,
+    netEconomics: null,
     networkFeeNativeAtomic: null,
     networkFeeNativeSymbol: null,
     protectedNetOutputAtomic: null,

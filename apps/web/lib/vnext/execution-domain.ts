@@ -6,6 +6,11 @@
  * satisfy before their data can reach an authorization surface.
  */
 
+import {
+  assertRmtNetExecutionEconomics,
+  type RmtNetExecutionEconomics
+} from "./execution-fee-policy";
+
 export const VNEXT_EXECUTION_SCHEMA_VERSION = 1 as const;
 
 export type ChainFamily = "evm" | "solana";
@@ -165,6 +170,7 @@ export type ExecutionCandidate = {
   maximumInputAtomic: string | null;
   expectedOutputAtomic: string;
   protectedOutputAtomic: string;
+  netEconomics: RmtNetExecutionEconomics;
   fees: ExecutionFee[];
   authorization: AuthorizationSummary;
   verification: VerificationStrategy;
@@ -341,6 +347,10 @@ export function assertCandidateMatchesIntent(candidate: ExecutionCandidate, inte
   atomicAmount(candidate.expectedOutputAtomic);
   atomicAmount(candidate.protectedOutputAtomic);
   invariant(BigInt(candidate.protectedOutputAtomic) <= BigInt(candidate.expectedOutputAtomic), "protected output exceeds expected output");
+  assertRmtNetExecutionEconomics(candidate.netEconomics);
+  invariant(candidate.netEconomics.userGrossInputAtomic === candidate.inputAmountAtomic, "candidate gross input economics changed");
+  invariant(candidate.netEconomics.expectedUserNetOutputAtomic === candidate.expectedOutputAtomic, "candidate expected output is not user net output");
+  invariant(candidate.netEconomics.protectedUserNetOutputAtomic === candidate.protectedOutputAtomic, "candidate protected output is not user net output");
   invariant(candidate.adapterVersion > 0 && candidate.verification.verifierVersion > 0, "adapter or verifier version is invalid");
   invariant(candidate.capabilities.length > 0 && new Set(candidate.capabilities).size === candidate.capabilities.length, "candidate capabilities are missing or duplicated");
   invariant(candidate.verification.unknownFields === "reject", "unknown provider fields must fail closed");
@@ -351,6 +361,16 @@ export function assertCandidateMatchesIntent(candidate: ExecutionCandidate, inte
   invariant(candidate.quotedAtMs <= nowMs && candidate.expiresAtMs > nowMs, "candidate quote is stale or from the future");
   invariant(candidate.expectedSettlementSeconds === null || (Number.isFinite(candidate.expectedSettlementSeconds) && candidate.expectedSettlementSeconds >= 0), "settlement estimate is invalid");
   for (const fee of candidate.fees) atomicAmount(fee.amountAtomic, { allowZero: true });
+  const rmtFees = candidate.fees.filter((fee) => fee.kind === "rmt");
+  invariant(rmtFees.length === 1, "candidate must disclose exactly one RMT fee line");
+  invariant(rmtFees[0].amountAtomic === candidate.netEconomics.rmtFee.expectedFeeAtomic, "candidate RMT fee line changed");
+  if (candidate.netEconomics.rmtFee.state === "planned") {
+    invariant(assetKey(rmtFees[0].asset) === candidate.netEconomics.rmtFee.feeAssetId, "candidate RMT fee asset changed");
+    invariant(
+      candidate.netEconomics.rmtFee.feeAssetId === assetKey(candidate.netEconomics.rmtFee.feeSide === "input" ? candidate.inputAsset : candidate.outputAsset),
+      "candidate RMT fee asset is not the canonical trade-side settlement asset"
+    );
+  }
   return true;
 }
 

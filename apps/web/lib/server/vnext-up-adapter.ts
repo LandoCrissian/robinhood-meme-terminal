@@ -1,5 +1,5 @@
 import type { VNextLiquidityFeeEvidence } from "../vnext/quote-observation";
-import { unavailableVNextQuoteAttempt, type VNextProviderQuoteRequest, type VNextQuoteProviderAdapter } from "./vnext-provider-adapter";
+import { disabledVNextFeeEconomics, unavailableVNextQuoteAttempt, type VNextProviderQuoteRequest, type VNextQuoteProviderAdapter } from "./vnext-provider-adapter";
 import { quoteUpCl, quoteUpV2, type UpObservedQuote } from "./vnext-up-quote";
 import { prepareVNextUpAuthorization, verifyVNextUpRoute } from "./vnext-up-execution";
 
@@ -76,7 +76,11 @@ export function createVNextUpAdapters(dependencies: UpQuoteDependencies = liveDe
             gasSponsorshipFeeAsset: null,
             gasSponsorshipFeeAtomic: null,
             explicitProviderFeeOutputAtomic: null,
-            rmtFeeOutputAtomic: "0",
+            netEconomics: disabledVNextFeeEconomics({
+              inputAmountAtomic: request.inputAmountAtomic,
+              expectedOutputAtomic: result.amountOut.toString(),
+              protectedOutputAtomic: result.protectedAmountOut.toString()
+            }),
             networkFeeNativeAtomic: null,
             networkFeeNativeSymbol: "ETH",
             protectedNetOutputAtomic: null,

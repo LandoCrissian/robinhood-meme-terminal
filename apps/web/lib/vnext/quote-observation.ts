@@ -1,5 +1,9 @@
 import { getAddress, isAddress } from "viem";
 import { z } from "zod";
+import {
+  assertRmtNetExecutionEconomics,
+  type RmtNetExecutionEconomics
+} from "./execution-fee-policy";
 
 const MAX_CLOCK_SKEW_MS = 5_000;
 
@@ -63,7 +67,7 @@ export type VNextQuoteAttempt = {
   gasSponsorshipFeeAsset: string | null;
   gasSponsorshipFeeAtomic: string | null;
   explicitProviderFeeOutputAtomic: string | null;
-  rmtFeeOutputAtomic: string | null;
+  netEconomics: RmtNetExecutionEconomics | null;
   networkFeeNativeAtomic: string | null;
   networkFeeNativeSymbol: "ETH" | null;
   protectedNetOutputAtomic: string | null;
@@ -118,7 +122,7 @@ const attemptSchema = z.object({
   gasSponsorshipFeeAsset: z.string().nullable(),
   gasSponsorshipFeeAtomic: z.string().nullable(),
   explicitProviderFeeOutputAtomic: z.string().nullable(),
-  rmtFeeOutputAtomic: z.string().nullable(),
+  netEconomics: z.unknown().nullable(),
   networkFeeNativeAtomic: z.string().nullable(),
   networkFeeNativeSymbol: z.literal("ETH").nullable(),
   protectedNetOutputAtomic: z.string().nullable(),
@@ -203,13 +207,17 @@ export function assertVNextQuoteAttempt(
     }
     const providerFee = attempt.providerFeeAtomic === null ? null : atomic(attempt.providerFeeAtomic);
     const gasSponsorshipFee = attempt.gasSponsorshipFeeAtomic === null ? null : atomic(attempt.gasSponsorshipFeeAtomic);
+    if (!attempt.netEconomics) throw new Error("Indicative quote omitted explicit RMT fee economics.");
+    assertRmtNetExecutionEconomics(attempt.netEconomics);
     if (
       (attempt.providerFeeAsset === null) !== (attempt.providerFeeAtomic === null)
       || (attempt.providerFeeAsset !== null && (!isAddress(attempt.providerFeeAsset) || providerFee === null))
       || (attempt.gasSponsorshipFeeAsset === null) !== (attempt.gasSponsorshipFeeAtomic === null)
       || (attempt.gasSponsorshipFeeAsset !== null && (!isAddress(attempt.gasSponsorshipFeeAsset) || gasSponsorshipFee === null))
       || attempt.explicitProviderFeeOutputAtomic !== (attempt.providerFeeAsset !== null && getAddress(attempt.providerFeeAsset) === getAddress(attempt.outputAsset) ? attempt.providerFeeAtomic : null)
-      || attempt.rmtFeeOutputAtomic !== "0"
+      || attempt.netEconomics.userGrossInputAtomic !== attempt.inputAmountAtomic
+      || attempt.netEconomics.expectedUserNetOutputAtomic !== attempt.expectedOutputAtomic
+      || attempt.netEconomics.protectedUserNetOutputAtomic !== attempt.protectedOutputAtomic
     ) throw new Error("Indicative quote exposed incomplete or inconsistent fee economics.");
     if (attempt.userPaysGas === true) {
       if (
@@ -250,7 +258,7 @@ export function assertVNextQuoteAttempt(
     || attempt.gasSponsorshipFeeAsset !== null
     || attempt.gasSponsorshipFeeAtomic !== null
     || attempt.explicitProviderFeeOutputAtomic !== null
-    || attempt.rmtFeeOutputAtomic !== null
+    || attempt.netEconomics !== null
     || attempt.networkFeeNativeAtomic !== null
     || attempt.networkFeeNativeSymbol !== null
     || attempt.protectedNetOutputAtomic !== null

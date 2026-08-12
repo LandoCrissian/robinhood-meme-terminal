@@ -229,7 +229,8 @@ async function run() {
   assert.equal(ready.protectedNetOutputAtomic, ready.protectedOutputAtomic);
   assert.equal(ready.userPaysGas, false);
   assert.equal(ready.gasSponsorshipFeeAtomic, null);
-  assert.equal(ready.rmtFeeOutputAtomic, "0");
+  assert.equal(ready.netEconomics?.rmtFee.state, "disabled");
+  assert.equal(ready.netEconomics?.rmtFee.expectedFeeAtomic, "0");
   assert.equal(ready.strictVerificationAvailable, false);
   assert.equal(ready.authorizationReady, false);
   assert.equal("rawProviderQuote" in ready, false);

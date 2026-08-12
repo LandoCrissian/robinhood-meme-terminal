@@ -136,7 +136,8 @@ The candidate contains:
 - provider and adapter version;
 - exact input/output identities and amounts;
 - exact recipient and, for exact-output trades, maximum input;
-- expected and protected output;
+- provider-gross and user-net expected/protected output;
+- one explicit RMT fee commitment, including an explicit disabled commitment while collection is off;
 - separately denominated fee lines;
 - authorization summary;
 - settlement mode and estimate;
@@ -146,6 +147,8 @@ The candidate contains:
 - an opaque server-side quote reference.
 
 It does not contain a raw provider response. Raw payloads may contain vendor-specific data, signature material, or fields the shared client is not qualified to interpret. They remain short-lived server-side data addressed by an opaque reference and fingerprint.
+
+The canonical fee commitment and net math are defined in [`RMT_EXECUTION_REVENUE.md`](RMT_EXECUTION_REVENUE.md). A policy descriptor is not activation, and a quote cannot invent a treasury or implicit percentage.
 
 ### Authorization plan
 

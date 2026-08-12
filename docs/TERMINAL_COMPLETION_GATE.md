@@ -49,8 +49,8 @@
 
 ## Economics
 
-- [ ] No hidden RMT fee or accidental 25-bps default exists.
-- [ ] Any future policy model remains versioned, disclosed and disabled until explicitly approved.
+- [ ] No hidden RMT fee or implicit 25-bps fallback exists; the approved 25-bps policy is explicit, versioned and hash-bound.
+- [ ] `RMT_EXECUTION_V1` remains disabled until provider settlement, disclosure, reconciliation, treasury and release gates are explicitly approved.
 - [ ] No historical V6 split is reused as forward terminal policy.
 
 ## Quality, reliability and security

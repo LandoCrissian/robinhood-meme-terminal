@@ -38,8 +38,8 @@
 
 - `NEXT_PUBLIC_RMT_VNEXT_*` / `RMT_VNEXT_*`: independent shell, provider, authorization, submission and funding gates. Capability does not imply activation. Each up. provider requires its observation gate, its own server authorization gate, both global authorization gates and the wallet-submission gate before an actual wallet prompt.
 - `NEXT_PUBLIC_RMT_LIVE_*`, creator/V7, profile and autonomous execution controls: paused unless required for preserved compatibility tests; must not be newly enabled.
-- `RMT_EXECUTION_FEE_ENABLED`: must remain `false` without explicit fee-policy approval.
-- `RMT_EXECUTION_FEE_BPS` and treasury: no approved production values; examples must remain blank/unapproved.
+- `RMT_EXECUTION_FEE_ENABLED`: remains `false`; policy implementation approval is not production activation approval.
+- `RMT_EXECUTION_FEE_BPS` and treasury: production examples remain blank. `RMT_EXECUTION_V1` explicitly describes 25 basis points in the versioned domain, but no treasury/effective production boundary has been supplied and no provider settlement implementation is active.
 - Production values are changed only through a separate authorized release action, never by architecture documentation.
 
 ## Contract source classification
