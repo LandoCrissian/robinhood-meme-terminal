@@ -72,7 +72,11 @@ function normalizeRecord(value: unknown): VNextExecutionRecord | null {
   const outputAmountAtomic = candidate.outputAmountAtomic === undefined
     ? undefined
     : /^(?:[1-9][0-9]*)$/.test(candidate.outputAmountAtomic) ? candidate.outputAmountAtomic : null;
-  const feeCandidate = candidate.feeSettlement;
+  // Approval plans can carry the eventual swap fee commitment for disclosure,
+  // but an ERC-20 approval never settles that fee. Older journals may therefore
+  // contain fee metadata on an approval record; discard it while preserving the
+  // transaction so receipt recovery can resolve the confirmed allowance safely.
+  const feeCandidate = candidate.kind === "swap" ? candidate.feeSettlement : undefined;
   const feeSettlement = feeCandidate === undefined ? undefined : (() => {
     if (
       !feeCandidate || !isAddress(feeCandidate.executor, { strict: false })
@@ -204,7 +208,7 @@ export function recordSubmittedVNextExecution(input: {
     inputAsset: getAddress(input.plan.inputAsset),
     outputAsset: getAddress(input.plan.outputAsset),
     inputAmountAtomic: input.plan.inputAmountAtomic,
-    ...(input.plan.feeExecution ? { feeSettlement: {
+    ...(input.plan.kind === "swap" && input.plan.feeExecution ? { feeSettlement: {
       executor: getAddress(input.plan.feeExecution.executor),
       executionId: input.plan.feeExecution.executionId,
       policyIdHash: input.plan.feeExecution.policyIdHash,

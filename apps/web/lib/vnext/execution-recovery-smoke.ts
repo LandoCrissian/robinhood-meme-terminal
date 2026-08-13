@@ -63,6 +63,42 @@ assert.equal(settledVNextOutputAtomic(swapRecord, [outputLog(700n), outputLog(30
 assert.equal(settledVNextOutputAtomic(swapRecord, [outputLog(1000n, inputAsset)]), null);
 assert.equal(settledVNextOutputAtomic({ ...swapRecord, kind: "erc20_approval" }, [outputLog(1000n)]), null);
 
+const feeCommitment = {
+  executor: "0x4444444444444444444444444444444444444444",
+  executionId: `0x${"4".repeat(64)}`,
+  policyIdHash: `0x${"5".repeat(64)}`,
+  policyHash: `0x${"6".repeat(64)}`,
+  policyVersion: 1,
+  treasury: "0x5555555555555555555555555555555555555555",
+  feeAsset: inputAsset,
+  feeBps: 25,
+  feeSide: "input" as const,
+  routeIdentity: `0x${"7".repeat(64)}`,
+  providerInputAtomic: "997500",
+  protectedUserNetOutputAtomic: "990",
+  maximumFeeAtomic: "2500"
+};
+const approvalWithFutureFee = {
+  ...plan,
+  kind: "erc20_approval" as const,
+  feeExecution: feeCommitment
+} as VNextAuthorizationPlan;
+const approvalStorageValues = new Map<string, string>();
+const approvalStorage: VNextExecutionStorage = {
+  getItem: (key) => approvalStorageValues.get(key) ?? null,
+  setItem: (key, value) => { approvalStorageValues.set(key, value); }
+};
+const approvalRecord = recordSubmittedVNextExecution({ wallet, plan: approvalWithFutureFee, txHash }, approvalStorage, now);
+assert.equal(approvalRecord?.kind, "erc20_approval");
+assert.equal(approvalRecord?.feeSettlement, undefined, "approval recovery must not expect a swap settlement event");
+
+const legacyApprovalRecord = {
+  ...approvalRecord!,
+  feeSettlement: feeCommitment
+};
+assert.equal(normalizeVNextExecutionJournal([legacyApprovalRecord], now)[0]?.feeSettlement, undefined,
+  "legacy approval records must retain receipt recovery while dropping swap-only fee metadata");
+
 const settledValues = new Map<string, string>();
 const settledStorage: VNextExecutionStorage = { getItem: (key) => settledValues.get(key) ?? null, setItem: (key, value) => { settledValues.set(key, value); } };
 recordSubmittedVNextExecution({ wallet, plan: { ...plan, kind: "swap" }, txHash }, settledStorage, now);
@@ -82,6 +118,7 @@ const spendBalance = readFileSync(new URL("../../app/vnext/spend-balance.tsx", i
 assert.match(hook, /useWaitForTransactionReceipt/);
 assert.match(hook, /resolveVNextExecution/);
 assert.match(hook, /settledVNextOutputAtomic/);
+assert.match(hook, /record\.kind === "swap" && record\.feeSettlement/);
 assert.match(hook, /receipt\.data\.transactionHash\.toLowerCase\(\) !== record\.txHash\.toLowerCase\(\)/);
 assert.match(hook, /VNEXT_EXECUTION_STORAGE_KEY/);
 assert.match(banner, /Do not resubmit/);
