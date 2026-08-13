@@ -269,9 +269,7 @@ contract RMTUniswapV3FeeExecutorV1Test is Test {
         vm.roll(100);
         vm.warp(1_000_000);
         vm.mockCall(
-            address(100),
-            abi.encodeWithSelector(IRMTArbSysV1.arbBlockNumber.selector),
-            abi.encode(uint256(100))
+            address(100), abi.encodeWithSelector(IRMTArbSysV1.arbBlockNumber.selector), abi.encode(uint256(100))
         );
         input = new FeeExecutorToken();
         output = new FeeExecutorToken();

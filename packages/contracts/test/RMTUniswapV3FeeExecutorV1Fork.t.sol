@@ -70,9 +70,7 @@ contract RMTUniswapV3FeeExecutorV1ForkTest is Test {
         // Pin its response to the exact fork's canonical L2 block so the
         // executor exercises the same policy boundary used on live chain.
         vm.mockCall(
-            address(100),
-            abi.encodeWithSelector(IRMTArbSysV1.arbBlockNumber.selector),
-            abi.encode(block.number)
+            address(100), abi.encodeWithSelector(IRMTArbSysV1.arbBlockNumber.selector), abi.encode(block.number)
         );
         address[] memory eligibleFeeAssets = new address[](2);
         eligibleFeeAssets[0] = WETH;
