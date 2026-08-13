@@ -7,5 +7,5 @@ import { WalletButton } from "../wallet-button";
  * The shared wallet implementation remains authoritative during migration.
  */
 export function VNextWalletConnection() {
-  return <WalletButton target="mainnet" returnTo="/vnext" />;
+  return <WalletButton target="mainnet" returnTo="/" />;
 }

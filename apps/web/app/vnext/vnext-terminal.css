@@ -8,6 +8,11 @@ body:has(.rmtVnext) .communityLive {
   display: none;
 }
 
+body:has(.rmtVnext) .publicHeader,
+body:has(.rmtVnext) .mobileDock {
+  display: none;
+}
+
 .rmtVnext,
 .rmtVnext * {
   box-sizing: border-box;
@@ -1473,7 +1478,7 @@ body .rmtVnext {
 
 .vnChartModes button,
 .vnChartRanges button {
-  min-height: 30px;
+  min-height: 32px;
   border: 0;
   border-radius: 7px;
   color: var(--vn-text-muted);
@@ -1811,6 +1816,9 @@ body .rmtVnext {
 }
 
 .vnOriginLinks a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
   color: var(--vn-accent);
   font-size: 9px;
   font-weight: 720;
@@ -1891,6 +1899,9 @@ body .rmtVnext {
 }
 
 .vnTapeDetails summary {
+  display: flex;
+  align-items: center;
+  min-height: 36px;
   padding-top: 10px;
   color: var(--vn-text-secondary);
   cursor: pointer;
@@ -2509,6 +2520,7 @@ body .rmtVnext {
 }
 
 .vnRouteCard > summary {
+  min-height: 36px;
   list-style: none;
   cursor: pointer;
 }

@@ -27,8 +27,8 @@ assert.equal(isMobileWebUserAgent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_
 assert.equal(walletBrowserEnvironment("Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Mobile", true), "mobile-wallet-browser");
 assert.equal(walletBrowserEnvironment("Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Mobile", false), "mobile-browser");
 assert.equal(
-  metaMaskDappLink("https://www.rmtlaunch.fun/vnext?asset=RMT"),
-  "https://link.metamask.io/dapp/www.rmtlaunch.fun/vnext?asset=RMT",
+  metaMaskDappLink("https://www.rmtlaunch.fun/?asset=RMT"),
+  "https://link.metamask.io/dapp/www.rmtlaunch.fun/?asset=RMT",
   "Mobile MetaMask must open the exact RMT route through MetaMask's current universal link."
 );
 assert.match(providers, /speedWalletEnabled/, "Speed Wallet must remain environment-gated.");
@@ -44,6 +44,7 @@ assert.match(speedEntry, /useMfaEnrollment/, "The user-owned wallet must expose 
 assert.match(speedEntry, /Session permissions remain off/, "Signer permissions must be visibly fail-closed.");
 assert.match(walletButton, /if \(speedWalletEnabled\) return <PrivyWalletButton/, "Privy must own the wallet entry point whenever validly configured.");
 assert.match(privyWalletButton, /"Connect trading wallet"/, "VNext must lead with a trading-wallet connection rather than a profile login.");
+assert.match(privyWalletButton, /pathname === "\/" \|\| pathname === "\/vnext"/, "The production root must retain VNext's external-wallet-only boundary.");
 assert.match(privyWalletButton, /identity\.connectTradingWallet\(\)/, "VNext must use the external-wallet-only Privy flow.");
 assert.doesNotMatch(privyWalletButton, /useConnectOrCreateWallet|connectOrCreateWallet\(/, "RMT must not open a connection-only flow before wallet authentication.");
 assert.match(privyWalletButton, /mobileMetaMaskUrl/, "Mobile traders must have a direct MetaMask app handoff outside blocked embedded-browser connection modals.");

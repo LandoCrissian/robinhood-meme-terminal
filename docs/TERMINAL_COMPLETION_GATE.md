@@ -7,7 +7,7 @@
 
 ## Product ownership
 
-- [ ] VNext is served from production `/` and no competing terminal architecture remains active.
+- [x] VNext is served from production `/` and no competing terminal architecture remains active.
 - [ ] Legacy routes are compatibility-only, redirected or retired after their VNext replacement is proven.
 - [ ] One VNext component/design-system ownership model serves mobile and desktop.
 
@@ -71,7 +71,7 @@
 
 ## Current known gaps
 
-VNext remains at `/vnext`; its asset workspace and authoritative wallet holdings no longer depend on `/market/[address]` or `/portfolio`, while both routes remain preserved for production compatibility; external-wallet reliability still requires supported-device acceptance; legacy CSS is globally loaded. The selected-asset workspace now independently verifies exact displayed and USDG/WETH up. pools, live fees and gauge state directly onchain, while the broader up-v2/up-cl discovery gate still requires shadow backfill evidence before it can pass. Shadow market-indexer rows do not influence the public terminal. The VNext up. quote, strict-verification, exact-approval and wallet-authorization paths are implemented behind independent default-off gates, but one controlled USDG/WETH mainnet proof per provider and explicit release authorization remain incomplete. StonkBrokers has a fail-closed source candidate, but production launcher contract/event evidence, backfill and authoritative claims remain unavailable; up. venue evidence is explicitly prevented from satisfying that origin gate. Across production proof is incomplete; profiles/community/creator source remains preserved; production cutover has not occurred.
+VNext is the production root and `/vnext` redirects to `/`. Its asset workspace and authoritative wallet holdings do not depend on `/market/[address]` or `/portfolio`, while both routes remain preserved for compatibility; legacy CSS is still globally loaded. The selected-asset workspace independently verifies exact displayed and USDG/WETH up. pools, live fees and gauge state directly onchain, while broader up-v2/up-cl discovery still requires shadow backfill evidence. Shadow market-indexer rows do not influence the public terminal. up. authorization remains default-off pending controlled proof. StonkBrokers remains a fail-closed candidate without production launcher evidence or authoritative claims. Across public funding remains incomplete and disabled. Profiles/community/creator source remains preserved and paused. Production fee collection remains disabled.
 
 ## Explicit completion decision
 

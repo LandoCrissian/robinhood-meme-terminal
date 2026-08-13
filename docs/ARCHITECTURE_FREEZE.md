@@ -39,7 +39,7 @@ user intent
 
 Observation, strict verification, wallet authorization and production activation are four independent admissions. A provider may safely stop at any level. No provider is required merely to increase provider count.
 
-During migration, `/` remains the production compatibility terminal and `/vnext` remains the forward terminal. Mature legacy capabilities may be reused. VNext must eventually own the complete market workspace and wallet holdings without permanent `/market/[address]` or `/portfolio` dependencies. Production root cutover is a separate reviewed phase governed by [`TERMINAL_COMPLETION_GATE.md`](TERMINAL_COMPLETION_GATE.md).
+VNext is served from production `/`. The former `/vnext` address redirects to `/`; it is not a competing terminal. Mature legacy capabilities may still be reused through explicit shared boundaries, while `/market/[address]` and `/portfolio` remain compatibility-only routes that the canonical terminal does not require. Remaining retirement and completion evidence is governed by [`TERMINAL_COMPLETION_GATE.md`](TERMINAL_COMPLETION_GATE.md).
 
 ## Active security identity versus paused profile
 

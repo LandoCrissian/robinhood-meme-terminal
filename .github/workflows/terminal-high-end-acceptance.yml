@@ -5,21 +5,13 @@ on:
     paths:
       - ".github/scripts/terminal-high-end-acceptance.mjs"
       - ".github/workflows/terminal-high-end-acceptance.yml"
-      - "apps/web/app/external-market-chart.tsx"
-      - "apps/web/app/external-market-feed.tsx"
-      - "apps/web/app/external-market-feed-v10.tsx"
-      - "apps/web/app/external-market-workspace.tsx"
-      - "apps/web/app/responsive-external-market-feed.tsx"
-      - "apps/web/app/page.tsx"
+      - "apps/web/app/vnext/**"
+      - "apps/web/lib/vnext/**"
+      - "apps/web/lib/server/vnext-*"
+      - "apps/web/app/privy-wallet-button.tsx"
+      - "apps/web/app/public-chrome.tsx"
       - "apps/web/app/layout.tsx"
-      - "apps/web/app/terminal-desktop-v9.css"
-      - "apps/web/app/terminal-high-end-v10.css"
-      - "apps/web/app/terminal-high-end-v10-final.css"
-      - "apps/web/app/terminal-minor-fixes-v10.css"
-      - "apps/web/lib/external-market*.ts"
-      - "apps/web/lib/live-signal-engine.ts"
-      - "apps/web/lib/terminal-workstation-smoke.ts"
-      - "apps/web/lib/watchlist.ts"
+      - "apps/web/next.config.mjs"
       - "apps/web/package.json"
       - "package.json"
   workflow_dispatch:
@@ -37,6 +29,7 @@ jobs:
     timeout-minutes: 40
     env:
       NEXT_PUBLIC_RMT_NETWORK: mainnet
+      RMT_VNEXT_SHELL_ENABLED: "true"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a # v4.4.0

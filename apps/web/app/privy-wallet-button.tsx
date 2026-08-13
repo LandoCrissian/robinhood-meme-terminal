@@ -45,7 +45,7 @@ export function PrivyWalletButton({
   const [transferOpen, setTransferOpen] = useState(false);
   const [message, setMessage] = useState("");
   const pathname = usePathname();
-  const walletFirstTerminal = pathname === "/vnext" || pathname.startsWith("/vnext/");
+  const walletFirstTerminal = pathname === "/" || pathname === "/vnext" || pathname.startsWith("/vnext/");
   const identity = useRmtIdentity();
   const { ready, authenticated, logout, connectWallet } = usePrivy();
   const { wallets, ready: walletsReady } = useWallets();
