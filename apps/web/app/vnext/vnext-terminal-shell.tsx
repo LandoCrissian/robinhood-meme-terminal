@@ -88,7 +88,7 @@ export function VNextTerminalShell() {
     <main className="rmtVnext">
       <a className="vnSkipLink" href="#vnext-workspace">Skip to trading workspace</a>
       <aside className="vnSidebar" aria-label="VNext navigation">
-        <Link className="vnBrand" href="/vnext" aria-label="RMT Terminal home">
+        <Link className="vnBrand" href="/" aria-label="RMT Terminal home">
           <Image src="/brand/rmt-master-logo.png" alt="" width={42} height={42} priority />
           <span><strong>RMT</strong><small>Terminal</small></span>
         </Link>
@@ -112,7 +112,7 @@ export function VNextTerminalShell() {
             <strong>RMT</strong>
           </div>
           <div className="vnTopbarTitle">
-            <span className="vnPreviewPill">Terminal preview</span>
+            <span className="vnPreviewPill">Live terminal</span>
             <span className="vnChainLabel"><i aria-hidden="true" /> Robinhood Chain</span>
           </div>
           <div className="vnTopbarActions">

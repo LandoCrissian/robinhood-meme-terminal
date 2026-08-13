@@ -7,8 +7,8 @@
 
 | Domain | Authority | Status | Notes |
 | --- | --- | --- | --- |
-| Forward terminal | `apps/web/lib/vnext/*`, `apps/web/lib/server/vnext-*`, `/vnext` | ACTIVE / MIGRATING | Canonical architecture; production root cutover not complete. The selected-asset workspace independently checks exact displayed and USDG/WETH up. pools, live fees and gauge state without treating venue evidence as project origin. |
-| Production compatibility terminal | `apps/web/app/page.tsx`, legacy market workspace | ACTIVE COMPATIBILITY | Preserve trading behavior while capabilities migrate into VNext. |
+| Production terminal | `apps/web/lib/vnext/*`, `apps/web/lib/server/vnext-*`, `/` | ACTIVE / CANONICAL | VNext owns the public root. The selected-asset workspace independently checks exact displayed and USDG/WETH up. pools, live fees and gauge state without treating venue evidence as project origin. |
+| Legacy terminal source and routes | legacy root feed source, `/market/[address]`, `/portfolio` | PRESERVED COMPATIBILITY | Not used by the canonical root workflow; retire or redirect only through separate reviewed changes. |
 | V6 protocol history | `apps/indexer` | ACTIVE COMPATIBILITY | Canonical deployed V6 launches, trades, graduation, fees and origin only. |
 | External project origin | `apps/external-origin-indexer` | ACTIVE FOUNDATION | Fail closed; `source-listed` and `token-created` remain distinct. StonkBrokers has candidate identity only: the production launcher contract/event is unverified, no claims are served and activation remains locked. |
 | External markets | `apps/market-indexer` | ACTIVE | Read-oriented discovery/enrichment, including separately identified `up-v2` and `up-cl` shadow sources; no execution or treasury work. Shadow rows are not consumed by the public terminal. |
@@ -25,8 +25,8 @@
 
 | Route | Status |
 | --- | --- |
-| `/` | Current production compatibility terminal until the completion gate passes. |
-| `/vnext` | Canonical forward terminal; not yet production root. |
+| `/` | Canonical production VNext terminal. |
+| `/vnext` | Permanent compatibility redirect to `/`. |
 | `/market/[address]` | Preserved production compatibility route; VNext no longer depends on or navigates to it. Retirement/redirect is a separate reviewed change. |
 | `/portfolio` | Preserved compatibility route. VNext owns authoritative wallet discovery, confirmed Spend Balance, known-value portfolio estimates, gas separation and receive/send entry points; active VNext navigation has no dependency on this route. |
 | `/profile` | Paused; preserved source/data, not promoted by active navigation. |

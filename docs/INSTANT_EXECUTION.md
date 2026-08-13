@@ -80,18 +80,18 @@ Deposits, receiving and ordinary transfers do not carry an RMT execution fee. Pr
 
 ## VNext production activation boundary
 
-VNext production release is separated into reversible modes. `RMT_VNEXT_SHELL_ENABLED=true` exposes the unlisted `/vnext` observation surface without adding it to public navigation or search indexing. It does not enable wallet review, wallet prompts, transaction submission, provider funding, execution fees or Position Guard.
+VNext now serves production `/`, and `/vnext` redirects to the public root. `RMT_VNEXT_SHELL_ENABLED=true` remains the server-only shell rollback gate. It does not enable wallet review, wallet prompts, transaction submission, provider funding, execution fees or Position Guard.
 
 `GET /api/vnext/readiness` returns only non-secret release evidence and classifies the deployment as `disabled`, `observation`, `wallet-review`, `interactive` or `misconfigured`. Production must enter `observation` first. Any mismatch between the public and server authorization gates, between the Sushi quote gates, or any wallet-submission gate enabled without both authorization gates causes the terminal route to fail closed with a 404.
 
-The initial production sequence is:
+The completed production sequence was:
 
-1. enable only `RMT_VNEXT_SHELL_ENABLED`;
-2. require readiness mode `observation` and `productionObservationReady=true`;
-3. verify the unlisted terminal with real directory, wallet balance and quote data;
-4. enable both authorization gates for wallet-review rehearsal while submission remains off;
-5. enable wallet submission only after a connected-wallet buy and sell rehearsal is approved; and
-6. keep the server-only shell switch as the immediate rollback control.
+1. enable only `RMT_VNEXT_SHELL_ENABLED` for the unlisted observation rehearsal;
+2. verify readiness, real directory data, wallet balances and quotes;
+3. enable both authorization gates for wallet review;
+4. enable wallet submission after connected-wallet buy and sell rehearsal;
+5. cut `/` to the same reviewed VNext shell; and
+6. retain the server-only shell switch as the immediate rollback control.
 
 ## Revenue boundary
 

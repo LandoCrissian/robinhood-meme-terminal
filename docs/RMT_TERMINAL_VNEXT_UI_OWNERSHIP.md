@@ -146,7 +146,7 @@ This table is the review boundary for the VNext ownership migration. A dependenc
 
 | Capability | Current dependency | Classification | Retirement path |
 | --- | --- | --- | --- |
-| Production root terminal | No VNext component import; both routes still inherit the root provider and public-shell layout | Compatibility runtime | Keep shared providers until production cutover; do not import either legacy feed into VNext. |
+| Production root terminal | `/` resolves to the VNext route and shell; `/vnext` redirects to `/` | VNext-owned | Keep shared providers while legacy compatibility routes remain; do not import either legacy feed into VNext. |
 | Wallet connection | VNext-owned `VNextWalletConnection` delegates to the mature shared external-wallet button | Shared security runtime | Preserve exact wallet authentication and connector behavior; migrate presentation only when it can remain one implementation. |
 | Funding and transfer controls | Shared `FundWalletButton` and `WalletTransferDialog` | Shared terminal infrastructure | Keep one receive/funding implementation and one reviewed native-transfer boundary; do not fork wallet actions into VNext. |
 | Trading wallet identity | Shared `useRmtIdentity` | Shared security runtime | This is exact-wallet session binding, not the paused profile product. |
@@ -164,7 +164,7 @@ The executable ownership smoke enforces the route, import, and selector boundari
 2. The selected-asset workspace is now VNext-owned and no longer constructs `/market/*` links. Preserve its real-data and fail-closed evidence boundaries as it is accepted visually.
 3. Authoritative wallet holdings are now VNext-owned. Preserve exact canonical-asset identity, indexer-plus-onchain reconciliation, and pending-versus-spendable semantics.
 4. Isolate legacy route CSS from the root load as each compatibility route is retired. Do not remove generations in one mass cascade rewrite.
-5. Cut production `/` to VNext only after the terminal completion gate passes; then redirect or retire replaced compatibility routes in separate reviewed changes.
+5. Production `/` now resolves to VNext. Redirect or retire replaced compatibility routes only through separate reviewed changes.
 
 ## Acceptance matrix
 

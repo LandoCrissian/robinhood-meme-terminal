@@ -19,7 +19,7 @@ The terminal loop is:
 SCAN → VERIFY → ANALYZE → EXECUTE → RECONCILE → MANAGE
 ```
 
-The canonical forward architecture is Terminal VNext. During migration, the current production terminal remains at `/` and the forward terminal remains at `/vnext`. Production root cutover happens only after the documented completion gate passes; the repository will not create another terminal generation.
+Terminal VNext is the canonical production terminal served from `/`. The former `/vnext` address redirects to the public root; preserved legacy market and portfolio routes are compatibility-only and are not separate terminal architectures.
 
 Read the current system-of-record documents before substantial work:
 
@@ -45,7 +45,7 @@ RMT provides:
 
 RMT never receives a private key or recovery phrase. A provider quote is not permission to execute. Strict verification, wallet authorization and production activation are independently admitted.
 
-RMT has approved implementation support for the explicit, versioned `RMT_EXECUTION_V1` policy (25 basis points, floor rounding, no minimum and 100% RMT operations). Production fee collection remains disabled: no treasury or effective production boundary is configured, no fee executor is deployed, and no current provider route collects this fee. Venue fees, price impact, slippage, approvals and network gas remain separately visible.
+RMT has approved implementation support for the explicit, versioned `RMT_EXECUTION_V1` policy (25 basis points, floor rounding, no minimum and 100% RMT operations). Production fee collection remains disabled. The independently runtime-verified Uniswap V3 executor is deployed, but wallet routing and every fee activation gate remain off; no current provider route collects an RMT fee. Venue fees, price impact, slippage, approvals and network gas remain separately visible.
 
 ## Paused product systems
 
@@ -73,7 +73,7 @@ RMT V4/V5 and earlier generations are retired historical systems. Their source a
 
 ## Service ownership
 
-- `apps/web` — production compatibility terminal, canonical VNext terminal, trading, wallet, evidence and recovery UI
+- `apps/web` — canonical production VNext terminal plus preserved compatibility routes, trading, wallet, evidence and recovery UI
 - `apps/indexer` — canonical deployed V6 event/history authority
 - `apps/external-origin-indexer` — fail-closed external project-origin attribution
 - `apps/market-indexer` — read-oriented external market discovery and enrichment

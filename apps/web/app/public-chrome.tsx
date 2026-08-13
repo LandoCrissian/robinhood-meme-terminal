@@ -22,7 +22,7 @@ function PublicLink({ href, children }: { href: string; children: React.ReactNod
 
 export function PublicChrome() {
   const pathname = usePathname();
-  if (HIDDEN_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))) return null;
+  if (pathname === "/" || HIDDEN_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))) return null;
 
   return <VisiblePublicChrome pathname={pathname} />;
 }

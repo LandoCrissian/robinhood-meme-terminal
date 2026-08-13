@@ -86,7 +86,7 @@ export function FirstVisitGuide() {
     });
     setOpen(false);
     if (pathname === "/") {
-      window.requestAnimationFrame(() => document.querySelector("#market-explorer")?.scrollIntoView({
+      window.requestAnimationFrame(() => document.querySelector("#vn-markets-heading")?.scrollIntoView({
         behavior: "smooth",
         block: "start"
       }));

@@ -1,12 +1,12 @@
 # RMT Terminal VNext Migration Boundary
 
-Status: **CURRENT — canonical migration boundary; production root cutover incomplete**
+Status: **CURRENT — production root cut over; compatibility retirement incomplete**
 
 ## Objective
 
 Move RMT from a Robinhood ETH↔token, displayed-pair-centered terminal to a chain-aware account, portfolio, asset-to-asset execution, and settlement architecture without interrupting live Sushi or Uniswap trading.
 
-This is not a big-bang rewrite. Existing production remains available until VNext reaches state parity and its individual release gates pass.
+This was not a big-bang rewrite. VNext now serves production `/`; preserved compatibility routes remain available while their remaining dependencies are retired through separate reviewed changes.
 
 ## Branch and release isolation
 

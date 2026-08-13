@@ -4,6 +4,7 @@ import { config as middlewareConfig, vnextRequestBoundary } from "../../middlewa
 import { vnextShellAvailable, vnextShellMode } from "./vnext-shell-access";
 
 const page = readFileSync(new URL("../../app/vnext/page.tsx", import.meta.url), "utf8");
+const nextConfig = readFileSync(new URL("../../next.config.mjs", import.meta.url), "utf8");
 const shell = readFileSync(new URL("../../app/vnext/vnext-terminal-shell.tsx", import.meta.url), "utf8");
 const composer = readFileSync(new URL("../../app/vnext/trade-intent-composer.tsx", import.meta.url), "utf8");
 const workspace = readFileSync(new URL("../../app/vnext/vnext-asset-workspace.tsx", import.meta.url), "utf8");
@@ -21,9 +22,13 @@ assert.match(page, /readVNextReleaseReadiness\(process\.env\)/);
 assert.match(page, /!readiness\.shellEnabled \|\| !readiness\.configurationConsistent/);
 assert.match(page, /notFound\(\)/);
 assert.match(page, /export const dynamic = "force-dynamic"/);
-assert.match(page, /index: false/);
-assert.match(page, /follow: false/);
+assert.match(page, /alternates: \{ canonical: "\/" \}/);
+assert.match(page, /openGraph:[\s\S]*url: "\/"/);
+assert.doesNotMatch(page, /index: false|follow: false/);
+assert.match(nextConfig, /source: "\/"[\s\S]*destination: "\/vnext"/);
+assert.match(nextConfig, /source: "\/vnext"[\s\S]*destination: "\/"[\s\S]*permanent: true/);
 assert.match(chrome, /"\/vnext"/);
+assert.match(chrome, /pathname === "\/"/);
 
 assert.equal(vnextShellAvailable({ NODE_ENV: "development" }), true);
 assert.equal(vnextShellAvailable({ NODE_ENV: "production", VERCEL_ENV: "preview" }), true);
@@ -81,7 +86,10 @@ assert.equal(middlewareConfig.matcher, "/vnext/:path*");
 
 assert.equal((shell.match(/export function VNextTerminalShell/g) ?? []).length, 1);
 assert.match(shell, /<VNextWalletConnection \/>/);
-assert.match(walletConnection, /<WalletButton target="mainnet" returnTo="\/vnext" \/>/);
+assert.match(walletConnection, /<WalletButton target="mainnet" returnTo="\/" \/>/);
+assert.match(shell, /href="\/" aria-label="RMT Terminal home"/);
+assert.match(shell, /Live terminal/);
+assert.doesNotMatch(shell, /Terminal preview/);
 assert.doesNotMatch(shell, /showFunding=\{false\}/);
 assert.match(shell, /<SpendBalance[\s\S]*onAssetsChange=\{setWalletAssets\}[\s\S]*onNativeBalanceChange=\{setNativeBalance\}/);
 assert.match(shell, /<VNextExecutionRecoveryBanner/);
@@ -199,6 +207,7 @@ assert.doesNotMatch(composer, /useSendTransaction|writeContract|signTypedData|fe
 assert.doesNotMatch(spendBalance, /useSendTransaction|writeContract|signTypedData/);
 
 assert.match(styles, /\.rmtVnext/);
+assert.match(styles, /body:has\(\.rmtVnext\) \.publicHeader/);
 assert.match(styles, /@media \(max-width: 760px\)/);
 assert.match(styles, /@media \(max-width: 1280px\)/);
 assert.match(styles, /prefers-reduced-motion/);

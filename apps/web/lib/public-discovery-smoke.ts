@@ -67,12 +67,18 @@ assert.deepEqual(rmtWebsiteStructuredData, {
 });
 
 const homeSource = readFileSync(new URL("../app/page.tsx", import.meta.url), "utf8");
+const vnextSource = readFileSync(new URL("../app/vnext/page.tsx", import.meta.url), "utf8");
+const nextConfigSource = readFileSync(new URL("../next.config.mjs", import.meta.url), "utf8");
 assert.match(homeSource, /alternates:\s*\{\s*canonical:\s*"\/"/);
 assert.match(homeSource, /openGraph:[\s\S]*?url:\s*"\/"/);
 assert.match(homeSource, /RMT · MARKET TERMINAL/);
 assert.match(homeSource, /<ExternalMarketFeed \/>/);
 assert.match(homeSource, /<OfficialRmtMarket \/>/);
 assert.doesNotMatch(homeSource, /<FreshLaunchFeed \/>/);
+assert.match(vnextSource, /<VNextTerminalShell \/>/);
+assert.match(vnextSource, /alternates: \{ canonical: "\/" \}/);
+assert.match(nextConfigSource, /source: "\/"[\s\S]*destination: "\/vnext"/);
+assert.match(nextConfigSource, /source: "\/vnext"[\s\S]*destination: "\/"[\s\S]*permanent: true/);
 
 const officialRmtMarketSource = readFileSync(new URL("../app/official-rmt-market.tsx", import.meta.url), "utf8");
 assert.match(officialRmtMarketSource, /OFFICIAL_RMT_V6_TOKEN/);
