@@ -25,6 +25,7 @@ type RawPair = {
   baseToken?: RawToken;
   quoteToken?: RawToken;
   priceUsd?: unknown;
+  priceNative?: unknown;
   liquidity?: { usd?: unknown };
   marketCap?: unknown;
   fdv?: unknown;
@@ -48,11 +49,11 @@ function number(value: unknown) {
 function selectedToken(pair: RawPair, requestedAddress: string) {
   const base = text(pair.baseToken?.address, 42).toLowerCase();
   const quote = text(pair.quoteToken?.address, 42).toLowerCase();
-  if (
-    requestedAddress.toLowerCase() === ROBINHOOD_WETH_ADDRESS.toLowerCase()
-    && base === ROBINHOOD_WETH_ADDRESS.toLowerCase()
-    && quote === ROBINHOOD_USDG_ADDRESS.toLowerCase()
-  ) return pair.baseToken;
+  if (requestedAddress.toLowerCase() === ROBINHOOD_WETH_ADDRESS.toLowerCase()) {
+    if (base === ROBINHOOD_WETH_ADDRESS.toLowerCase()) return pair.baseToken;
+    if (quote === ROBINHOOD_WETH_ADDRESS.toLowerCase()) return pair.quoteToken;
+    return null;
+  }
   if (QUOTE_ASSETS.has(quote) && !QUOTE_ASSETS.has(base)) return pair.baseToken;
   if (QUOTE_ASSETS.has(base) && !QUOTE_ASSETS.has(quote)) return pair.quoteToken;
   if (base === ROBINHOOD_RMT_ADDRESS.toLowerCase()) return pair.baseToken;
@@ -80,20 +81,28 @@ function marketFromPair(pair: RawPair, requestedAddress: string): VNextDirectory
   const name = text(token?.name, 80) || symbol;
   const pairCreatedAt = number(pair.pairCreatedAt);
   const baseAddress = text(pair.baseToken?.address, 42).toLowerCase();
+  const selectedIsBase = canonicalAddress.toLowerCase() === baseAddress;
+  const basePriceUsd = Math.max(0, number(pair.priceUsd));
+  const basePriceInQuote = Math.max(0, number(pair.priceNative));
+  const selectedPriceUsd = selectedIsBase
+    ? basePriceUsd
+    : basePriceInQuote > 0
+      ? basePriceUsd / basePriceInQuote
+      : 0;
   return {
     address: canonicalAddress,
     name,
     symbol,
-    priceUsd: Math.max(0, number(pair.priceUsd)),
+    priceUsd: selectedPriceUsd,
     liquidityUsd: Math.max(0, number(pair.liquidity?.usd)),
-    marketCapUsd: Math.max(0, number(pair.marketCap) || number(pair.fdv)),
+    marketCapUsd: selectedIsBase ? Math.max(0, number(pair.marketCap) || number(pair.fdv)) : 0,
     volume24h: Math.max(0, number(pair.volume?.h24)),
-    priceChange24h: number(pair.priceChange?.h24),
+    priceChange24h: selectedIsBase ? number(pair.priceChange?.h24) : 0,
     ageMinutes: pairCreatedAt > 0 ? Math.max(0, (Date.now() - pairCreatedAt) / 60_000) : null,
     signal: signalFor(pair),
     imageUri: canonicalAddress.toLowerCase() === ROBINHOOD_RMT_ADDRESS.toLowerCase()
       ? RMT_TOKEN_ARTWORK
-      : canonicalAddress.toLowerCase() === baseAddress
+      : selectedIsBase
         ? safeTokenArtworkUrl(pair.info?.imageUrl) ?? undefined
         : undefined,
     pairAddress: getAddress(pairAddress),
