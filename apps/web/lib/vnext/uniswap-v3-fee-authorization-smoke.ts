@@ -21,7 +21,10 @@ import {
   RMT_UNISWAP_V3_PROVIDER_ID,
   rmtUniswapV3FeeExecutorAbi
 } from "./uniswap-v3-fee-executor";
-import { configuredVNextUniswapFeeExecutor } from "../server/vnext-uniswap-fee-executor";
+import {
+  configuredVNextUniswapFeeExecutor,
+  ROBINHOOD_WETH_RUNTIME_HASH
+} from "../server/vnext-uniswap-fee-executor";
 import { settledVNextFeeExecution, type VNextExecutionRecord } from "./execution-recovery";
 import { ROBINHOOD_SWAP_ROUTER_02, ROBINHOOD_WETH } from "../uniswap-v4";
 import { parseVNextPreSignEvidence, type VNextPreSignEvidence } from "./pre-sign-evidence";
@@ -215,4 +218,8 @@ assert.equal(settledVNextFeeExecution(record, [{ address: executor, topics, data
 assert.equal(settledVNextFeeExecution({ ...record, wallet: token }, [{ address: executor, topics, data }]), null);
 
 assert.notEqual(ROBINHOOD_WETH, zeroAddress);
+assert.equal(
+  ROBINHOOD_WETH_RUNTIME_HASH,
+  "0x5706be52f64875fee65a2cec0d80e47a23d8793cbe85d214b48445e2d05f5353"
+);
 console.log("RMT Uniswap V3 fee authorization, gate, and canonical settlement checks passed.");
