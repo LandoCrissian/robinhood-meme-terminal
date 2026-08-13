@@ -15,7 +15,7 @@ export const vNextSushiAdapter: VNextQuoteProviderAdapter = {
     try {
       const quote = await quoteSushiAssetRoute({
         inputAsset: isRobinhoodNativeAsset(request.inputAsset) ? SUSHI_NATIVE_TOKEN : request.inputAsset,
-        outputAsset: request.outputAsset,
+        outputAsset: isRobinhoodNativeAsset(request.outputAsset) ? SUSHI_NATIVE_TOKEN : request.outputAsset,
         amountIn: request.amountIn
       }, { chainId: request.chainId, requireTokenMetadata: true });
       if (

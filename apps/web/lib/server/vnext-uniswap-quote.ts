@@ -108,6 +108,12 @@ const routerAbi = [{
   outputs: [{ name: "amountOut", type: "uint256" }]
 }, {
   type: "function",
+  name: "unwrapWETH9",
+  stateMutability: "payable",
+  inputs: [{ name: "amountMinimum", type: "uint256" }, { name: "recipient", type: "address" }],
+  outputs: []
+}, {
+  type: "function",
   name: "multicall",
   stateMutability: "payable",
   inputs: [{ name: "deadline", type: "uint256" }, { name: "data", type: "bytes[]" }],
@@ -218,17 +224,21 @@ export async function quoteVNextUniswapDirect(input: {
 async function vNextUniswapFeeContext(input: {
   requestedInputAsset: Address;
   routedInputAsset: Address;
-  outputAsset: Address;
+  requestedOutputAsset: Address;
+  routedOutputAsset: Address;
   userGrossInput: bigint;
 }) {
   const configured = configuredVNextUniswapFeeExecutor();
   if (!configured) return null;
   const verified = await verifyConfiguredVNextUniswapFeeExecutor(configured);
   const inputAssetId = vNextFeeAssetId(input.routedInputAsset, isRobinhoodNativeAsset(input.requestedInputAsset));
-  const outputAssetId = vNextFeeAssetId(input.outputAsset, false);
+  const outputAssetId = vNextFeeAssetId(input.routedOutputAsset, isRobinhoodNativeAsset(input.requestedOutputAsset));
   const inputEligible = configured.policy.eligibleSettlementAssetIds.includes(inputAssetId);
   const outputEligible = configured.policy.eligibleSettlementAssetIds.includes(outputAssetId);
   if (!inputEligible && !outputEligible) return { verified, feeSide: null as null, inputAssetId, outputAssetId };
+  if (isRobinhoodNativeAsset(input.requestedOutputAsset)) {
+    throw new Error("The configured RMT fee executor does not support native ETH output settlement.");
+  }
   const feeSide = inputEligible ? "input" as const : "output" as const;
   const providerInput = feeSide === "input"
     ? input.userGrossInput - BigInt(calculateRmtFeeFloor(input.userGrossInput.toString(), configured.policy.feeBps))
@@ -243,16 +253,18 @@ export async function quoteVNextUniswapForUser(input: {
   userGrossInput: bigint;
 }) {
   const requestedInputAsset = getAddress(input.inputAsset);
-  const outputAsset = getAddress(input.outputAsset);
+  const requestedOutputAsset = getAddress(input.outputAsset);
   const routedInputAsset = isRobinhoodNativeAsset(requestedInputAsset) ? ROBINHOOD_WETH : requestedInputAsset;
+  const routedOutputAsset = isRobinhoodNativeAsset(requestedOutputAsset) ? ROBINHOOD_WETH : requestedOutputAsset;
   const feeContext = await vNextUniswapFeeContext({
     requestedInputAsset,
     routedInputAsset,
-    outputAsset,
+    requestedOutputAsset,
+    routedOutputAsset,
     userGrossInput: input.userGrossInput
   });
   const providerInput = feeContext?.feeSide ? feeContext.providerInput : input.userGrossInput;
-  const quote = await quoteVNextUniswapDirect({ inputAsset: routedInputAsset, outputAsset, amountIn: providerInput });
+  const quote = await quoteVNextUniswapDirect({ inputAsset: routedInputAsset, outputAsset: routedOutputAsset, amountIn: providerInput });
   if (!quote) return null;
   let netEconomics: RmtNetExecutionEconomics;
   if (feeContext?.feeSide === "input") {
@@ -285,7 +297,7 @@ export async function quoteVNextUniswapForUser(input: {
       reason: feeContext ? "execution_not_eligible" : "policy_not_configured"
     });
   }
-  return { quote, netEconomics, feeContext };
+  return { quote, netEconomics, feeContext, requestedOutputAsset };
 }
 
 async function evaluateVNextUniswapRoute(input: {
@@ -310,7 +322,8 @@ async function evaluateVNextUniswapRoute(input: {
     requireRuntimeHash(ROBINHOOD_SWAP_ROUTER_02, ROUTER_RUNTIME_HASH, "Uniswap router")
   ]);
   if (!quoted) throw new Error("No canonical Uniswap V3 route is available for exact verification.");
-  const { quote, netEconomics, feeContext } = quoted;
+  const { quote, netEconomics, feeContext, requestedOutputAsset } = quoted;
+  const nativeOutput = isRobinhoodNativeAsset(requestedOutputAsset);
   const currentSeconds = BigInt(Math.floor(nowMs / 1_000));
   const deadline = input.deadlineSeconds ?? currentSeconds + 300n;
   if (deadline <= currentSeconds + 30n || deadline > currentSeconds + 300n) {
@@ -358,6 +371,7 @@ async function evaluateVNextUniswapRoute(input: {
       });
   const protectedOutput = BigInt(finalEconomics.protectedUserNetOutputAtomic);
   if (protectedOutput < protectedOutputFloor) throw new Error("The live route weakened protected user output.");
+  const swapRecipient = nativeOutput ? ROBINHOOD_SWAP_ROUTER_02 : recipient;
   const path = quote.route === "direct"
     ? null
     : encodePacked(
@@ -372,7 +386,7 @@ async function evaluateVNextUniswapRoute(input: {
           tokenIn: quote.inputAsset,
           tokenOut: quote.outputAsset,
           fee: quote.fees[0],
-          recipient,
+          recipient: swapRecipient,
           amountIn: quote.amountIn,
           amountOutMinimum: routerMinimumGrossOutput,
           sqrtPriceLimitX96: 0n
@@ -381,12 +395,22 @@ async function evaluateVNextUniswapRoute(input: {
     : encodeFunctionData({
         abi: routerAbi,
         functionName: "exactInput",
-        args: [{ path: path!, recipient, amountIn: quote.amountIn, amountOutMinimum: routerMinimumGrossOutput }]
+        args: [{ path: path!, recipient: swapRecipient, amountIn: quote.amountIn, amountOutMinimum: routerMinimumGrossOutput }]
       });
+  const calls = nativeOutput
+    ? [
+        swap,
+        encodeFunctionData({
+          abi: routerAbi,
+          functionName: "unwrapWETH9",
+          args: [routerMinimumGrossOutput, recipient]
+        })
+      ]
+    : [swap];
   const routerCalldata = encodeFunctionData({
     abi: routerAbi,
     functionName: "multicall",
-    args: [deadline, [swap]]
+    args: [deadline, calls]
   });
   const feeExecution: RmtUniswapV3FeeExecution | null = finalEconomics.rmtFee.state === "planned"
     ? createRmtUniswapV3FeeExecution({
@@ -506,7 +530,7 @@ async function evaluateVNextUniswapRoute(input: {
     status,
     chainId: 4_663 as const,
     inputAsset: requestedInputAsset,
-    outputAsset: quote.outputAsset,
+    outputAsset: requestedOutputAsset,
     inputAmountAtomic: grossInput.toString(),
     indicativeProtectedOutputFloorAtomic: (input.indicativeProtectedOutputFloorAtomic ?? protectedOutputFloor).toString(),
     expectedOutputAtomic: finalEconomics.expectedUserNetOutputAtomic,

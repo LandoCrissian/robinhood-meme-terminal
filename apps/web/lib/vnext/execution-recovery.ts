@@ -2,7 +2,9 @@ import { decodeEventLog, getAddress, isAddress, isHash, type Address, type Hash,
 import type { VNextAuthorizationPlan } from "./authorization-plan";
 import { calculateRmtFeeFloor } from "./execution-fee-policy";
 import { RMT_UNISWAP_V3_PROVIDER_ID, rmtUniswapV3FeeExecutorAbi } from "./uniswap-v3-fee-executor";
-import { ROBINHOOD_SWAP_ROUTER_02 } from "../uniswap-v4";
+import { ROBINHOOD_SWAP_ROUTER_02, ROBINHOOD_WETH } from "../uniswap-v4";
+import { isRobinhoodNativeAsset } from "./robinhood-assets";
+import { UP_CL_EXECUTION_ROUTER, UP_V2_EXECUTION_ROUTER } from "./up-authorization-codec";
 
 export const VNEXT_EXECUTION_STORAGE_KEY = "rmt:vnext-execution-journal:v1:4663";
 export const VNEXT_EXECUTION_EVENT = "rmt:vnext-execution-changed";
@@ -10,12 +12,24 @@ const SCHEMA_VERSION = 1 as const;
 const MAX_RECORDS = 20;
 const RECOVERABLE_AGE_MS = 24 * 60 * 60 * 1_000;
 const HISTORY_AGE_MS = 7 * 24 * 60 * 60 * 1_000;
+const NATIVE_OUTPUT_ROUTERS = new Set([
+  getAddress(ROBINHOOD_SWAP_ROUTER_02),
+  getAddress(UP_V2_EXECUTION_ROUTER),
+  getAddress(UP_CL_EXECUTION_ROUTER)
+]);
 const transferEventAbi = [{
   type: "event", name: "Transfer", anonymous: false,
   inputs: [
     { indexed: true, name: "from", type: "address" },
     { indexed: true, name: "to", type: "address" },
     { indexed: false, name: "value", type: "uint256" }
+  ]
+}] as const;
+const withdrawalEventAbi = [{
+  type: "event", name: "Withdrawal", anonymous: false,
+  inputs: [
+    { indexed: true, name: "src", type: "address" },
+    { indexed: false, name: "wad", type: "uint256" }
   ]
 }] as const;
 
@@ -292,6 +306,26 @@ export function settledVNextOutputAtomic(record: VNextExecutionRecord, logs: rea
   topics: readonly Hex[];
 }[]) {
   if (record.kind !== "swap") return null;
+  if (isRobinhoodNativeAsset(record.outputAsset)) {
+    const withdrawals = logs.flatMap((log) => {
+      if (!isAddress(log.address, { strict: false }) || getAddress(log.address) !== getAddress(ROBINHOOD_WETH) || log.topics.length === 0) return [];
+      try {
+        const decoded = decodeEventLog({
+          abi: withdrawalEventAbi,
+          data: log.data,
+          topics: log.topics as [Hex, ...Hex[]]
+        });
+        return decoded.eventName === "Withdrawal"
+          && NATIVE_OUTPUT_ROUTERS.has(getAddress(decoded.args.src))
+          && decoded.args.wad > 0n
+          ? [decoded.args.wad]
+          : [];
+      } catch {
+        return [];
+      }
+    });
+    return withdrawals.length === 1 ? withdrawals[0].toString() : null;
+  }
   let received = 0n;
   logs.forEach((log) => {
     if (!isAddress(log.address, { strict: false }) || getAddress(log.address) !== record.outputAsset || log.topics.length === 0) return;

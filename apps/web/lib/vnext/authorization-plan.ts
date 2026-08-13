@@ -40,6 +40,12 @@ const routerAbi = [{
   outputs: [{ name: "amountOut", type: "uint256" }]
 }, {
   type: "function",
+  name: "unwrapWETH9",
+  stateMutability: "payable",
+  inputs: [{ name: "amountMinimum", type: "uint256" }, { name: "recipient", type: "address" }],
+  outputs: []
+}, {
+  type: "function",
   name: "multicall",
   stateMutability: "payable",
   inputs: [{ name: "deadline", type: "uint256" }, { name: "data", type: "bytes[]" }],
@@ -168,9 +174,14 @@ export function parseVNextAuthorizationPlan(value: unknown, evidence: VNextPreSi
   const outer = decodeFunctionData({ abi: routerAbi, data: plan.data });
   if (outer.functionName !== "multicall") throw new Error("RMT rejected a swap outside the verified multicall boundary.");
   const [deadline, calls] = outer.args;
-  if (deadline !== BigInt(evidence.deadline) || calls.length !== 1) throw new Error("RMT rejected changed deadline or call count.");
+  const nativeOutput = isRobinhoodNativeAsset(evidence.outputAsset);
+  if (deadline !== BigInt(evidence.deadline) || calls.length !== (nativeOutput ? 2 : 1)) {
+    throw new Error("RMT rejected changed deadline or call count.");
+  }
   const inner = decodeFunctionData({ abi: routerAbi, data: calls[0] });
   const expectedSwapInput = isRobinhoodNativeAsset(evidence.inputAsset) ? ROBINHOOD_WETH : getAddress(evidence.inputAsset);
+  const expectedSwapOutput = nativeOutput ? getAddress(ROBINHOOD_WETH) : getAddress(evidence.outputAsset);
+  const expectedSwapRecipient = nativeOutput ? getAddress(ROBINHOOD_SWAP_ROUTER_02) : getAddress(evidence.recipient);
   if (plan.value !== (isRobinhoodNativeAsset(evidence.inputAsset) ? evidence.inputAmountAtomic : "0")) {
     throw new Error("RMT rejected changed native swap value.");
   }
@@ -179,8 +190,8 @@ export function parseVNextAuthorizationPlan(value: unknown, evidence: VNextPreSi
     const params = inner.args[0];
     if (
       getAddress(params.tokenIn) !== expectedSwapInput
-      || getAddress(params.tokenOut) !== getAddress(evidence.outputAsset)
-      || getAddress(params.recipient) !== getAddress(evidence.recipient)
+      || getAddress(params.tokenOut) !== expectedSwapOutput
+      || getAddress(params.recipient) !== expectedSwapRecipient
       || params.amountIn !== BigInt(evidence.inputAmountAtomic)
       || params.amountOutMinimum !== BigInt(evidence.protectedOutputAtomic)
       || params.fee !== evidence.fees[0]
@@ -193,12 +204,21 @@ export function parseVNextAuthorizationPlan(value: unknown, evidence: VNextPreSi
     if (
       getAddress(path.tokenIn) !== expectedSwapInput
       || getAddress(path.intermediate) !== getAddress(ROBINHOOD_WETH)
-      || getAddress(path.tokenOut) !== getAddress(evidence.outputAsset)
+      || getAddress(path.tokenOut) !== expectedSwapOutput
       || path.fee0 !== evidence.fees[0] || path.fee1 !== evidence.fees[1]
-      || getAddress(params.recipient) !== getAddress(evidence.recipient)
+      || getAddress(params.recipient) !== expectedSwapRecipient
       || params.amountIn !== BigInt(evidence.inputAmountAtomic)
       || params.amountOutMinimum !== BigInt(evidence.protectedOutputAtomic)
     ) throw new Error("RMT rejected changed multihop-swap economics.");
+  }
+  if (nativeOutput) {
+    const unwrap = decodeFunctionData({ abi: routerAbi, data: calls[1] });
+    if (unwrap.functionName !== "unwrapWETH9") throw new Error("RMT rejected missing native-output unwrap.");
+    const [amountMinimum, unwrapRecipient] = unwrap.args;
+    if (
+      amountMinimum !== BigInt(evidence.protectedOutputAtomic)
+      || getAddress(unwrapRecipient) !== getAddress(evidence.recipient)
+    ) throw new Error("RMT rejected changed native-output unwrap economics.");
   }
   return plan;
 }
