@@ -1,6 +1,7 @@
 import {
   configuredVNextUniswapFeeExecutor,
-  verifyConfiguredVNextUniswapFeeExecutor
+  verifyConfiguredVNextUniswapFeeExecutor,
+  verifyVNextUniswapFeeInfrastructure
 } from "../lib/server/vnext-uniswap-fee-executor";
 
 async function main() {
@@ -12,6 +13,12 @@ async function main() {
   const walletSubmissionGate = process.env.NEXT_PUBLIC_RMT_VNEXT_WALLET_SUBMISSION_ENABLED === "true";
   let configured: ReturnType<typeof configuredVNextUniswapFeeExecutor> = null;
   let deployment: Awaited<ReturnType<typeof verifyConfiguredVNextUniswapFeeExecutor>> | null = null;
+  let infrastructure: Awaited<ReturnType<typeof verifyVNextUniswapFeeInfrastructure>> | null = null;
+  try {
+    infrastructure = await verifyVNextUniswapFeeInfrastructure();
+  } catch (cause) {
+    blockers.push(cause instanceof Error ? cause.message : "fee infrastructure verification failed");
+  }
   try {
     configured = configuredVNextUniswapFeeExecutor();
     if (configured) deployment = await verifyConfiguredVNextUniswapFeeExecutor(configured);
@@ -38,6 +45,7 @@ async function main() {
     feeBps: configured?.policy.feeBps ?? null,
     effectiveBoundary: configured?.policy.effectiveBoundary ?? null,
     eligibleSettlementAssetIds: configured?.policy.eligibleSettlementAssetIds ?? [],
+    infrastructure,
     deploymentVerifiedAtBlock: deployment?.verifiedAtBlock ?? null,
     gates: { policyGate, providerGate, globalServerGate, globalClientGate, walletSubmissionGate },
     releaseReady: blockers.length === 0,

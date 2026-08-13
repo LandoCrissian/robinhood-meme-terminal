@@ -50,6 +50,11 @@ contract RMTUniswapV3FeeExecutorV1ForkTest is Test {
     bytes32 private constant ROUTER_RUNTIME_HASH = 0x6f36c378e272c6324c48f045182bcb54bd8ad654cf9ebd42e8893d52c4cb25dc;
     bytes32 private constant FACTORY_RUNTIME_HASH = 0xec72b1abd1f2faee020cfea9c646bd8994f9fb389054f6e574f103a895091739;
     bytes32 private constant WETH_RUNTIME_HASH = 0x5706be52f64875fee65a2cec0d80e47a23d8793cbe85d214b48445e2d05f5353;
+    bytes32 private constant EIP1967_IMPLEMENTATION_SLOT =
+        0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc;
+    address private constant WETH_IMPLEMENTATION = 0xC6B81b429797E0f555440b70cD99e032D7AE947e;
+    bytes32 private constant WETH_IMPLEMENTATION_RUNTIME_HASH =
+        0xbe1295f37be34ffe03ad779bda0ef278907e1856b51a3be2f35ee541d75d4650;
     bytes32 private constant POLICY_ID_HASH = 0xa7fdfdc2b754862dc94b4ab2366b10527c8dd297beee047425032426c01b4feb;
     bytes32 private constant POLICY_HASH = 0x3ea1930a2d170062b04acdb6584059d47a095305b70ccc8b4037aef149c58824;
     uint24 private constant FEE = 100;
@@ -89,6 +94,8 @@ contract RMTUniswapV3FeeExecutorV1ForkTest is Test {
         assertEq(ROUTER.codehash, ROUTER_RUNTIME_HASH);
         assertEq(FACTORY.codehash, FACTORY_RUNTIME_HASH);
         assertEq(WETH.codehash, WETH_RUNTIME_HASH);
+        assertEq(address(uint160(uint256(vm.load(WETH, EIP1967_IMPLEMENTATION_SLOT)))), WETH_IMPLEMENTATION);
+        assertEq(WETH_IMPLEMENTATION.codehash, WETH_IMPLEMENTATION_RUNTIME_HASH);
         assertEq(FeeExecutorForkRouterState(ROUTER).factory(), FACTORY);
         assertEq(FeeExecutorForkRouterState(ROUTER).WETH9(), WETH);
         address pool = FeeExecutorForkFactory(FACTORY).getPool(WETH, USDG, FEE);

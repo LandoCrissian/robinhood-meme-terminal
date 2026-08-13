@@ -93,6 +93,8 @@ The executor is non-upgradeable and has no owner, proxy, mutable router, mutable
 
 Every execution rechecks router/factory/WETH code hashes and Router02 dependencies. Every pool is reconstructed from the immutable factory and its token identity. The only supported route grammar is a typed direct `exactInputSingle` route or typed two-leg `exactInput` route through immutable canonical WETH at the admitted fee tiers `100`, `500`, `3000` and `10000`. The contract does not accept router calldata or an execution target.
 
+Canonical WETH is an EIP-1967 proxy. The executor can pin its proxy runtime but cannot read another contract's storage slot onchain. RMT therefore additionally pins the exact WETH implementation address and implementation runtime hash in the server-side admission check, verifies both before every fee-bearing quote/authorization, and includes them in the read-only readiness report. Any proxy implementation change fails closed before wallet review. This does not eliminate the narrow upgrade race between final simulation and inclusion, so exact transaction simulation, short deadlines and controlled proof remain release requirements.
+
 ### Fee and output formulas
 
 For input-side settlement:
