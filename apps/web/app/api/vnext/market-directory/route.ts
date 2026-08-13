@@ -45,9 +45,14 @@ function number(value: unknown) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function selectedToken(pair: RawPair) {
+function selectedToken(pair: RawPair, requestedAddress: string) {
   const base = text(pair.baseToken?.address, 42).toLowerCase();
   const quote = text(pair.quoteToken?.address, 42).toLowerCase();
+  if (
+    requestedAddress.toLowerCase() === ROBINHOOD_WETH_ADDRESS.toLowerCase()
+    && base === ROBINHOOD_WETH_ADDRESS.toLowerCase()
+    && quote === ROBINHOOD_USDG_ADDRESS.toLowerCase()
+  ) return pair.baseToken;
   if (QUOTE_ASSETS.has(quote) && !QUOTE_ASSETS.has(base)) return pair.baseToken;
   if (QUOTE_ASSETS.has(base) && !QUOTE_ASSETS.has(quote)) return pair.quoteToken;
   if (base === ROBINHOOD_RMT_ADDRESS.toLowerCase()) return pair.baseToken;
@@ -63,9 +68,9 @@ function signalFor(pair: RawPair): ExternalMarketSignal {
   return "early";
 }
 
-function marketFromPair(pair: RawPair): VNextDirectoryMarket | null {
+function marketFromPair(pair: RawPair, requestedAddress: string): VNextDirectoryMarket | null {
   if (pair.chainId !== CHAIN_SLUG) return null;
-  const token = selectedToken(pair);
+  const token = selectedToken(pair, requestedAddress);
   const address = text(token?.address, 42);
   if (!isAddress(address, { strict: false }) || address.toLowerCase() === zeroAddress) return null;
   const canonicalAddress = getAddress(address);
@@ -113,22 +118,27 @@ export async function GET() {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
-    const batches = await Promise.all(DIRECTORY_TOKENS.map((address) => fetchPairs(address, controller.signal).catch(() => [])));
+    const batches = await Promise.all(DIRECTORY_TOKENS.map(async (address) => ({
+      requestedAddress: address,
+      pairs: await fetchPairs(address, controller.signal).catch(() => [])
+    })));
     const preferred = new Map<string, VNextDirectoryMarket>();
-    for (const pair of batches.flat()) {
-      const market = marketFromPair(pair);
-      if (!market) continue;
-      const key = market.address.toLowerCase();
-      const existing = preferred.get(key);
-      if (!existing) preferred.set(key, market);
-      else if (market.liquidityUsd > existing.liquidityUsd) preferred.set(key, {
-        ...market,
-        imageUri: market.imageUri ?? existing.imageUri
-      });
-      else if (!existing.imageUri && market.imageUri) preferred.set(key, {
-        ...existing,
-        imageUri: market.imageUri
-      });
+    for (const batch of batches) {
+      for (const pair of batch.pairs) {
+        const market = marketFromPair(pair, batch.requestedAddress);
+        if (!market) continue;
+        const key = market.address.toLowerCase();
+        const existing = preferred.get(key);
+        if (!existing) preferred.set(key, market);
+        else if (market.liquidityUsd > existing.liquidityUsd) preferred.set(key, {
+          ...market,
+          imageUri: market.imageUri ?? existing.imageUri
+        });
+        else if (!existing.imageUri && market.imageUri) preferred.set(key, {
+          ...existing,
+          imageUri: market.imageUri
+        });
+      }
     }
     const markets = [...preferred.values()]
       .sort((left, right) => right.liquidityUsd - left.liquidityUsd || right.volume24h - left.volume24h)

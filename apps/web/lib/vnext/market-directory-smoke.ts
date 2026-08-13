@@ -77,6 +77,10 @@ assert.doesNotMatch(hook, /external-availability|external-sushi-quote|external-u
 assert.equal((hook.match(/setInterval/g) ?? []).length, 1);
 assert.match(route, /token-pairs\/v1/);
 assert.match(route, /Promise\.all\(DIRECTORY_TOKENS/);
+assert.match(route, /requestedAddress\.toLowerCase\(\) === ROBINHOOD_WETH_ADDRESS\.toLowerCase\(\)/);
+assert.match(route, /base === ROBINHOOD_WETH_ADDRESS\.toLowerCase\(\)/);
+assert.match(route, /quote === ROBINHOOD_USDG_ADDRESS\.toLowerCase\(\)/);
+assert.match(route, /marketFromPair\(pair, batch\.requestedAddress\)/);
 assert.match(route, /address\.toLowerCase\(\) === zeroAddress/);
 assert.match(route, /stale-while-revalidate=60/);
 assert.doesNotMatch(route, /resolveRmtOrigins|external-availability|external-sushi-quote|external-uniswap|router|reactor/);
