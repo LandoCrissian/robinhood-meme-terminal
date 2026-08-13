@@ -12,13 +12,19 @@ async function main() {
   const manifest = JSON.parse(await readFile(manifestUrl, "utf8"));
 
   assert.equal(manifest.schemaVersion, 1);
-  assert.equal(manifest.status, "prepared_not_authorized");
+  assert.equal(manifest.status, "deployed_not_activated");
   assert.equal(manifest.chainId, 4_663);
   assert.equal(manifest.contract, "RMTUniswapV3FeeExecutorV1");
   assert.match(manifest.sourceBaseline, /^[0-9a-f]{40}$/);
-  assert.equal(manifest.deploymentAuthorized, false);
+  assert.equal(manifest.deploymentAuthorized, true);
   assert.equal(manifest.feeActivationAuthorized, false);
-  assert.equal(manifest.deterministicDeployment.deploymentTransaction, null);
+  assert.match(manifest.deterministicDeployment.deploymentTransaction, /^0x[0-9a-f]{64}$/);
+  assert.match(manifest.deterministicDeployment.deploymentBlock, /^[0-9]+$/);
+  assert.match(manifest.deterministicDeployment.deploymentBlockHash, /^0x[0-9a-f]{64}$/);
+  assert.equal(
+    manifest.deterministicDeployment.deployedRuntimeHash,
+    manifest.deterministicDeployment.expectedRuntimeHash
+  );
   assert.equal(manifest.treasury.kind, "safe_1_of_1");
   assert.equal(manifest.treasury.threshold, 1);
   assert.equal(getAddress(manifest.treasury.address), getAddress("0x61700479A4A1F62584Fd3ABA2c2b290EA727d2eC"));
@@ -54,7 +60,7 @@ async function main() {
     getAddress(manifest.deterministicDeployment.predictedExecutor)
   );
 
-  console.log("RMT Uniswap V3 fee deployment manifest remains exact, deterministic, and disabled.");
+  console.log("RMT Uniswap V3 fee deployment manifest remains exact, deployed, and fee-disabled.");
 }
 
 void main();

@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
-  "status": "prepared_not_authorized",
+  "status": "deployed_not_activated",
   "chainId": 4663,
   "contract": "RMTUniswapV3FeeExecutorV1",
   "sourceBaseline": "3c3bc7278c66f89e858a505cf23128963c022d60",
-  "deploymentAuthorized": false,
+  "deploymentAuthorized": true,
   "feeActivationAuthorized": false,
   "deployer": "0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA",
   "deterministicDeployment": {
@@ -18,7 +18,13 @@
     "expectedRuntimeHash": "0x86cc453830da2f44aa6d236b55ad9a9b1054cfdac25f09f7335a3eca8414b224",
     "creationCodeBytes": 14470,
     "initCodeBytes": 15046,
-    "deploymentTransaction": null
+    "deploymentTransaction": "0xdc0129e313187dd5d28516dbd67df8ac907ae47d083e8c30b0d909fc2eb5bcbd",
+    "deploymentBlock": "35070206",
+    "deploymentBlockHash": "0x464ad98e492ff7745b34dafcf529e7260cc9f44b20805e154d815d188e064ba9",
+    "deployedRuntimeHash": "0x86cc453830da2f44aa6d236b55ad9a9b1054cfdac25f09f7335a3eca8414b224",
+    "gasUsed": "2801855",
+    "effectiveGasPriceWei": "55518000",
+    "actualCostWei": "155553385890000"
   },
   "treasury": {
     "address": "0x61700479A4A1F62584Fd3ABA2c2b290EA727d2eC",
