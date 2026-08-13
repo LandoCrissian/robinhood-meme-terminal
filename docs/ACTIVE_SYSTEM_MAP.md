@@ -39,7 +39,7 @@
 - `NEXT_PUBLIC_RMT_VNEXT_*` / `RMT_VNEXT_*`: independent shell, provider, authorization, submission and funding gates. Capability does not imply activation. Each up. provider requires its observation gate, its own server authorization gate, both global authorization gates and the wallet-submission gate before an actual wallet prompt.
 - `NEXT_PUBLIC_RMT_LIVE_*`, creator/V7, profile and autonomous execution controls: paused unless required for preserved compatibility tests; must not be newly enabled.
 - `RMT_EXECUTION_FEE_ENABLED`: remains `false`; policy implementation approval is not production activation approval.
-- `RMT_EXECUTION_FEE_BPS` and treasury: production examples remain blank. `RMT_EXECUTION_V1` explicitly describes 25 basis points in the versioned domain, but no treasury/effective production boundary has been supplied and no provider settlement implementation is active.
+- `RMT_EXECUTION_FEE_BPS` and treasury: production examples remain blank and no environment was changed. `RMT_EXECUTION_V1` now binds 25 basis points to the verified Safe `0x61700479A4A1F62584Fd3ABA2c2b290EA727d2eC`, block `35041945` and policy hash `0x295c900143405bb585a4d88c3788fadab522fd4313f69242f64e52e39827f141`; no provider settlement deployment or collection gate is active.
 - Production values are changed only through a separate authorized release action, never by architecture documentation.
 
 ## Contract source classification
@@ -50,7 +50,7 @@ V6 governance, registry, gate, policy, factory, bootstrap, official migration, c
 
 ### B. Terminal security / optional execution
 
-Position Guard source, the separate Sushi deadline-guard track and the non-deployed `RMTUniswapV3FeeExecutorV1` atomic settlement source. Source and passing fork tests do not imply deployment, wallet routing or production fee activation.
+Position Guard source, the separate Sushi deadline-guard track and the non-deployed `RMTUniswapV3FeeExecutorV1` atomic settlement source. Its deterministic deployment package and treasury exist, but source, simulations and a predicted address do not imply executor deployment, wallet routing or production fee activation.
 
 ### C. Paused experimental
 
