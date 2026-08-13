@@ -203,9 +203,9 @@ export async function verifyConfiguredVNextUniswapFeeExecutor(
   ]);
   const currentBlock = BigInt(infrastructure.verifiedAtBlock);
   if (
-    getAddress(router) !== ROBINHOOD_SWAP_ROUTER_02
-    || getAddress(factory) !== ROBINHOOD_V3_FACTORY
-    || getAddress(weth) !== ROBINHOOD_WETH
+    getAddress(router) !== getAddress(ROBINHOOD_SWAP_ROUTER_02)
+    || getAddress(factory) !== getAddress(ROBINHOOD_V3_FACTORY)
+    || getAddress(weth) !== getAddress(ROBINHOOD_WETH)
     || getAddress(treasury) !== policy.treasury
     || routerHash.toLowerCase() !== ROBINHOOD_UNISWAP_ROUTER_RUNTIME_HASH
     || factoryHash.toLowerCase() !== ROBINHOOD_UNISWAP_FACTORY_RUNTIME_HASH
