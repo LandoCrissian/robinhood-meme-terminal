@@ -76,6 +76,16 @@ assert.equal(invalidUpAuthorization.providers.upV2.authorizationEnabled, false);
 assert.equal(invalidUpAuthorization.providers.upV2.strictVerificationAvailable, true);
 assert.equal(invalidUpAuthorization.providers.upCl.walletAuthorizationAvailable, true);
 
+const invalidFeeAuthorization = readVNextReleaseReadiness({
+  NODE_ENV: "production",
+  VERCEL_ENV: "production",
+  RMT_VNEXT_SHELL_ENABLED: "true",
+  RMT_VNEXT_EXECUTION_FEE_POLICY_ENABLED: "true"
+});
+assert.equal(invalidFeeAuthorization.mode, "misconfigured");
+assert.equal(invalidFeeAuthorization.providers.uniswapV3FeeExecutor.authorizationEnabled, false);
+assert.equal(invalidFeeAuthorization.providers.uniswapV3FeeExecutor.mainnetProofComplete, false);
+
 const mismatchedSushi = readVNextReleaseReadiness({
   NODE_ENV: "production",
   VERCEL_ENV: "production",

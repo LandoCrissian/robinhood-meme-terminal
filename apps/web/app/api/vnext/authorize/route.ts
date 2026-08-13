@@ -21,7 +21,8 @@ const requestSchema = z.object({
   deadline: z.string().regex(/^[1-9][0-9]*$/),
   expectedStatus: z.enum(["approval_required", "verified"]),
   indicativeProtectedOutputFloorAtomic: z.string().regex(/^[1-9][0-9]*$/),
-  expectedProtectedOutputAtomic: z.string().regex(/^[1-9][0-9]*$/)
+  expectedProtectedOutputAtomic: z.string().regex(/^[1-9][0-9]*$/),
+  executionId: z.string().regex(/^0x[0-9a-fA-F]{64}$/).optional()
 });
 
 const noStore = { "Cache-Control": "no-store" };
@@ -59,13 +60,15 @@ export async function POST(request: Request) {
       deadlineSeconds: BigInt(parsed.data.deadline),
       indicativeProtectedOutputFloorAtomic: BigInt(parsed.data.indicativeProtectedOutputFloorAtomic),
       protectedOutputFloorAtomic: BigInt(parsed.data.expectedProtectedOutputAtomic),
-      nowMs: preparedAtMs
+      nowMs: preparedAtMs,
+      ...(parsed.data.executionId ? { executionId: parsed.data.executionId as Hex } : {})
     });
     if (prepared.evidence.provider !== "uniswap-v3" && prepared.evidence.provider !== "up-v2" && prepared.evidence.provider !== "up-cl") {
       return Response.json({ error: "This provider does not have a supported wallet-plan codec yet." }, { status: 422, headers: noStore });
     }
     const evidenceChanged = prepared.evidence.status !== parsed.data.expectedStatus
-      || BigInt(prepared.evidence.protectedOutputAtomic) < BigInt(parsed.data.expectedProtectedOutputAtomic);
+      || BigInt(prepared.evidence.protectedOutputAtomic) < BigInt(parsed.data.expectedProtectedOutputAtomic)
+      || (parsed.data.executionId !== undefined && prepared.evidence.feeExecution?.executionId !== parsed.data.executionId);
     if (evidenceChanged) {
       return Response.json({ error: "Route evidence changed. Verify the route again." }, { status: 409, headers: noStore });
     }
@@ -88,6 +91,8 @@ export async function POST(request: Request) {
       protectedOutputAtomic: prepared.evidence.protectedOutputAtomic,
       recipient: prepared.evidence.recipient,
       router: prepared.evidence.router,
+      ...(prepared.evidence.netEconomics ? { netEconomics: prepared.evidence.netEconomics } : {}),
+      ...(prepared.evidence.feeExecution !== undefined ? { feeExecution: prepared.evidence.feeExecution } : {}),
       deadline: prepared.evidence.deadline,
       preparedAtMs,
       expiresAtMs,

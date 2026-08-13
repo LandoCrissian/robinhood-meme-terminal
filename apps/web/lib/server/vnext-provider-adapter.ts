@@ -1,6 +1,7 @@
 import { getAddress, isAddress, keccak256, type Address, type Hex } from "viem";
 import { assertVNextQuoteAttempt, type VNextQuoteAttempt, type VNextQuoteAttemptStatus, type VNextQuoteProvider } from "../vnext/quote-observation";
-import { normalizeDisabledRmtFee } from "../vnext/execution-fee-policy";
+import { normalizeDisabledRmtFee, type RmtNetExecutionEconomics } from "../vnext/execution-fee-policy";
+import type { RmtUniswapV3FeeExecution } from "../vnext/uniswap-v3-fee-executor";
 
 export type VNextVerifiedTokenIdentity = {
   address: Address;
@@ -21,7 +22,7 @@ export type VNextProviderQuoteRequest = {
 
 export type VNextProviderVerificationRequest = Pick<VNextProviderQuoteRequest,
   "chainId" | "inputAsset" | "outputAsset" | "inputAmountAtomic" | "amountIn" | "recipient"
-> & { indicativeProtectedOutputFloorAtomic: bigint };
+> & { indicativeProtectedOutputFloorAtomic: bigint; executionId?: Hex };
 
 export type VNextProviderVerificationEvidence = Record<string, unknown> & {
   provider: VNextQuoteProvider;
@@ -46,6 +47,8 @@ export type VNextProviderVerificationEvidence = Record<string, unknown> & {
   networkCostValuationSource: "canonical_uniswap_v3_weth_usdg_quote_plus_1pct" | null;
   networkCostValuedAtMs: number | null;
   networkCostValuationExpiresAtMs: number | null;
+  netEconomics?: RmtNetExecutionEconomics;
+  feeExecution?: RmtUniswapV3FeeExecution | null;
 };
 
 export type VNextProviderAuthorizationRequest = VNextProviderVerificationRequest & {

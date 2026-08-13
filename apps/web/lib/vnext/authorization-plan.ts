@@ -13,6 +13,8 @@ import { ROBINHOOD_SWAP_ROUTER_02, ROBINHOOD_WETH } from "../uniswap-v4";
 import { parseVNextPreSignEvidence, type VNextPreSignEvidence } from "./pre-sign-evidence";
 import { isRobinhoodNativeAsset } from "./robinhood-assets";
 import { assertUpSwapCalldata, UP_CL_EXECUTION_ROUTER, UP_V2_EXECUTION_ROUTER, type UpAuthorizationEvidence } from "./up-authorization-codec";
+import type { RmtNetExecutionEconomics } from "./execution-fee-policy";
+import { assertRmtUniswapV3FeeCalldata, type RmtUniswapV3FeeExecution } from "./uniswap-v3-fee-executor";
 
 const MAX_CLOCK_SKEW_MS = 5_000;
 
@@ -62,6 +64,8 @@ export type VNextAuthorizationPlan = {
   protectedOutputAtomic: string;
   recipient: string;
   router: string;
+  netEconomics?: RmtNetExecutionEconomics;
+  feeExecution?: RmtUniswapV3FeeExecution | null;
   deadline: string;
   preparedAtMs: number;
   expiresAtMs: number;
@@ -76,6 +80,7 @@ const planSchema = z.object({
   target: z.string(), data: z.string().regex(/^0x[0-9a-fA-F]+$/), value: atomic, gasLimit: atomic,
   payloadHash: z.string().regex(/^0x[0-9a-fA-F]{64}$/), inputAsset: z.string(), outputAsset: z.string(),
   inputAmountAtomic: atomic, protectedOutputAtomic: atomic, recipient: z.string(), router: z.string(), deadline: atomic,
+  netEconomics: z.unknown().optional(), feeExecution: z.unknown().nullable().optional(),
   preparedAtMs: z.number().int().positive(), expiresAtMs: z.number().int().positive(),
   userAuthorizationRequired: z.literal(true), serverSubmissionEnabled: z.literal(false)
 });
@@ -120,6 +125,12 @@ export function parseVNextAuthorizationPlan(value: unknown, evidence: VNextPreSi
     || plan.value !== evidence.transactionValueAtomic
     || plan.deadline !== evidence.deadline
     || plan.gasLimit !== evidence.gasLimitUnits
+    || Boolean(plan.feeExecution) !== evidence.rmtFeeEnabled
+    || (evidence.rmtFeeEnabled && (
+      plan.feeExecution?.executionId !== evidence.feeExecution?.executionId
+      || plan.feeExecution?.policyHash !== evidence.feeExecution?.policyHash
+      || plan.feeExecution?.routeIdentity !== evidence.feeExecution?.routeIdentity
+    ))
     || plan.payloadHash !== authorizationPayloadHash(plan)
     || plan.preparedAtMs > nowMs + MAX_CLOCK_SKEW_MS || plan.expiresAtMs <= nowMs
     || plan.expiresAtMs - plan.preparedAtMs > 60_000
@@ -139,11 +150,19 @@ export function parseVNextAuthorizationPlan(value: unknown, evidence: VNextPreSi
     return plan;
   }
 
-  if (evidence.status !== "verified" || getAddress(plan.target) !== getAddress(evidence.router) || keccak256(plan.data) !== evidence.calldataHash) {
+  const expectedSwapTarget = evidence.rmtFeeEnabled ? evidence.feeExecution!.executor : evidence.router;
+  if (evidence.status !== "verified" || getAddress(plan.target) !== getAddress(expectedSwapTarget) || keccak256(plan.data) !== evidence.calldataHash) {
     throw new Error("RMT rejected a swap plan that does not match strict evidence.");
   }
   if (evidence.provider === "up-v2" || evidence.provider === "up-cl") {
     assertUpSwapCalldata(plan.data, evidence as UpAuthorizationEvidence);
+    return plan;
+  }
+  if (evidence.rmtFeeEnabled) {
+    if (!plan.netEconomics || !plan.feeExecution || !evidence.netEconomics || !evidence.feeExecution) {
+      throw new Error("RMT rejected incomplete fee-executor wallet authority.");
+    }
+    assertRmtUniswapV3FeeCalldata(plan.data, plan.feeExecution, plan.netEconomics);
     return plan;
   }
   const outer = decodeFunctionData({ abi: routerAbi, data: plan.data });
@@ -203,6 +222,15 @@ export function parseVNextAuthorizationBundle(value: unknown, priorEvidence: VNe
     || evidence.provider !== priorEvidence.provider
     || evidence.status !== priorEvidence.status
     || evidence.deadline !== priorEvidence.deadline
+    || evidence.rmtFeeEnabled !== priorEvidence.rmtFeeEnabled
+    || (priorEvidence.rmtFeeEnabled && (
+      evidence.feeExecution?.executionId !== priorEvidence.feeExecution?.executionId
+      || evidence.feeExecution?.policyHash !== priorEvidence.feeExecution?.policyHash
+      || evidence.feeExecution?.treasury !== priorEvidence.feeExecution?.treasury
+      || evidence.feeExecution?.feeBps !== priorEvidence.feeExecution?.feeBps
+      || evidence.feeExecution?.feeSide !== priorEvidence.feeExecution?.feeSide
+      || evidence.feeExecution?.maximumFeeAtomic !== priorEvidence.feeExecution?.maximumFeeAtomic
+    ))
     || BigInt(evidence.protectedOutputAtomic) < BigInt(priorEvidence.protectedOutputAtomic)
   ) throw new Error("RMT rejected changed authorization authority or weakened protection.");
   const plan = parseVNextAuthorizationPlan(parsed.data.plan, evidence, nowMs);

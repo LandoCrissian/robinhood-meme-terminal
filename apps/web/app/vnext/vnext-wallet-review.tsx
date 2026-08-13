@@ -12,10 +12,22 @@ import { assessVNextWalletGasReadiness, prepareVNextWalletTransaction } from "..
 
 const EXPLORER = "https://robinhoodchain.blockscout.com";
 
-export function VNextWalletReview({ plan, evidence, autoRequest = false }: {
+export function VNextWalletReview({
+  plan,
+  evidence,
+  autoRequest = false,
+  inputSymbol = "input asset",
+  outputSymbol = "output asset",
+  inputDecimals = 18,
+  outputDecimals = 18
+}: {
   plan: VNextAuthorizationPlan;
   evidence: VNextPreSignEvidence;
   autoRequest?: boolean;
+  inputSymbol?: string;
+  outputSymbol?: string;
+  inputDecimals?: number;
+  outputDecimals?: number;
 }) {
   const { address, chainId, isConnected } = useAccount();
   const publicClient = usePublicClient({ chainId: ROBINHOOD_MAINNET_CHAIN_ID });
@@ -26,6 +38,9 @@ export function VNextWalletReview({ plan, evidence, autoRequest = false }: {
   const automaticallyRequestedPlan = useRef<string | undefined>(undefined);
   const submissionEnabled = process.env.NEXT_PUBLIC_RMT_VNEXT_WALLET_SUBMISSION_ENABLED === "true";
   const busy = preflightPending || submission.isPending || Boolean(submission.data);
+  const fee = evidence.netEconomics?.rmtFee.state === "planned" ? evidence.netEconomics.rmtFee : null;
+  const feeSymbol = fee?.feeSide === "input" ? inputSymbol : outputSymbol;
+  const feeDecimals = fee?.feeSide === "input" ? inputDecimals : outputDecimals;
 
   const requestWalletReview = async () => {
     setLocalError("");
@@ -113,6 +128,11 @@ export function VNextWalletReview({ plan, evidence, autoRequest = false }: {
     <small>{submissionEnabled
       ? "Your wallet displays and authorizes this exact request. RMT cannot sign or submit it for you."
       : "The final wallet-submission gate remains off in production."}</small>
+    {fee && evidence.feeExecution ? <div className="vnWalletFeeDisclosure" role="note">
+      <strong>RMT execution fee: {formatUnits(BigInt(fee.expectedFeeAtomic), feeDecimals)} {feeSymbol} ({fee.feeBps / 100}%)</strong>
+      <small>Maximum: {formatUnits(BigInt(fee.maximumFeeAtomic), feeDecimals)} {feeSymbol}. It settles atomically to {evidence.feeExecution.treasury.slice(0, 6)}…{evidence.feeExecution.treasury.slice(-4)} only if the swap succeeds.</small>
+      <small>Positive slippage cannot raise the fee above this maximum. Your protected amount is net of the fee.</small>
+    </div> : null}
     {plan.kind === "erc20_approval" ? <small>Standard ERC-20 approvals have no onchain expiry. This request is limited to the exact input amount, and RMT requires fresh verification before the swap.</small> : <small>The verified swap calldata enforces its onchain deadline and protected output.</small>}
     {localError ? <p className="vnAuthorizationError" role="status">{localError}</p> : null}
     {gasShortfall ? <FundWalletButton directReceive variant="inline" label="Add Robinhood ETH" /> : null}

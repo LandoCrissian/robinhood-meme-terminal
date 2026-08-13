@@ -1,7 +1,5 @@
-import { prepareVNextUniswapAuthorization, quoteVNextUniswapDirect, verifyVNextUniswapRoute } from "./vnext-uniswap-quote";
-import { disabledVNextFeeEconomics, unavailableVNextQuoteAttempt, type VNextQuoteProviderAdapter } from "./vnext-provider-adapter";
-import { ROBINHOOD_WETH } from "../uniswap-v4";
-import { isRobinhoodNativeAsset } from "../vnext/robinhood-assets";
+import { prepareVNextUniswapAuthorization, quoteVNextUniswapForUser, verifyVNextUniswapRoute } from "./vnext-uniswap-quote";
+import { unavailableVNextQuoteAttempt, type VNextQuoteProviderAdapter } from "./vnext-provider-adapter";
 
 export const vNextUniswapV3Adapter: VNextQuoteProviderAdapter = {
   provider: "uniswap-v3",
@@ -13,18 +11,19 @@ export const vNextUniswapV3Adapter: VNextQuoteProviderAdapter = {
   async quote(request) {
     const startedAtMs = Date.now();
     try {
-      const quote = await quoteVNextUniswapDirect({
-        inputAsset: isRobinhoodNativeAsset(request.inputAsset) ? ROBINHOOD_WETH : request.inputAsset,
+      const result = await quoteVNextUniswapForUser({
+        inputAsset: request.inputAsset,
         outputAsset: request.outputAsset,
-        amountIn: request.amountIn
+        userGrossInput: request.amountIn
       });
-      if (!quote) return unavailableVNextQuoteAttempt({
+      if (!result) return unavailableVNextQuoteAttempt({
         adapter: vNextUniswapV3Adapter,
         request,
         status: "no_route",
         detail: "No canonical direct or WETH-hop Uniswap v3 route returned a complete quote.",
         startedAtMs
       });
+      const { quote, netEconomics } = result;
       const quotedAtMs = Date.now();
       return {
         provider: "uniswap-v3",
@@ -35,9 +34,9 @@ export const vNextUniswapV3Adapter: VNextQuoteProviderAdapter = {
         chainId: request.chainId,
         inputAsset: request.inputAsset,
         outputAsset: request.outputAsset,
-        inputAmountAtomic: quote.amountIn.toString(),
-        expectedOutputAtomic: quote.quoteOut.toString(),
-        protectedOutputAtomic: quote.minimumOut.toString(),
+        inputAmountAtomic: request.inputAmountAtomic,
+        expectedOutputAtomic: netEconomics.expectedUserNetOutputAtomic,
+        protectedOutputAtomic: netEconomics.protectedUserNetOutputAtomic,
         outputDecimals: request.outputIdentity.decimals,
         priceImpact: null,
         liquidityFeeEvidence: [],
@@ -52,11 +51,7 @@ export const vNextUniswapV3Adapter: VNextQuoteProviderAdapter = {
         gasSponsorshipFeeAsset: null,
         gasSponsorshipFeeAtomic: null,
         explicitProviderFeeOutputAtomic: null,
-        netEconomics: disabledVNextFeeEconomics({
-          inputAmountAtomic: quote.amountIn.toString(),
-          expectedOutputAtomic: quote.quoteOut.toString(),
-          protectedOutputAtomic: quote.minimumOut.toString()
-        }),
+        netEconomics,
         networkFeeNativeAtomic: null,
         networkFeeNativeSymbol: "ETH",
         protectedNetOutputAtomic: null,
@@ -81,7 +76,8 @@ export const vNextUniswapV3Adapter: VNextQuoteProviderAdapter = {
       amountIn: request.amountIn,
       recipient: request.recipient,
       protectedOutputFloorAtomic: request.indicativeProtectedOutputFloorAtomic,
-      indicativeProtectedOutputFloorAtomic: request.indicativeProtectedOutputFloorAtomic
+      indicativeProtectedOutputFloorAtomic: request.indicativeProtectedOutputFloorAtomic,
+      executionId: request.executionId
     }) };
   },
   async prepareAuthorization(request) {
@@ -93,7 +89,8 @@ export const vNextUniswapV3Adapter: VNextQuoteProviderAdapter = {
       deadlineSeconds: request.deadlineSeconds,
       protectedOutputFloorAtomic: request.protectedOutputFloorAtomic,
       indicativeProtectedOutputFloorAtomic: request.indicativeProtectedOutputFloorAtomic,
-      nowMs: request.nowMs
+      nowMs: request.nowMs,
+      executionId: request.executionId
     });
     return { evidence: { ...prepared.evidence }, transaction: prepared.transaction };
   }
