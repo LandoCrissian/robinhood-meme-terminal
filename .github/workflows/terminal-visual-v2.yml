@@ -21,6 +21,7 @@ jobs:
     timeout-minutes: 35
     env:
       NEXT_PUBLIC_RMT_NETWORK: mainnet
+      RMT_VNEXT_SHELL_ENABLED: "true"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a # v4.4.0

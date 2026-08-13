@@ -188,6 +188,13 @@ const riskPayload = {
 };
 
 async function installRoutes(page) {
+  await page.route(/\/api\/vnext\/market-directory(?:\?.*)?$/, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ markets, updatedAt: now, stale: false })
+    });
+  });
   await page.route(/\/api\/markets\/external(?:\?.*)?$/, async (route) => {
     const url = new URL(route.request().url());
     const contract = url.searchParams.get("contract")?.toLowerCase();
@@ -308,33 +315,19 @@ function visibleAudit() {
       && rect.width > 0
       && rect.height > 0;
   };
-  const signalCards = [...document.querySelectorAll(".liveSignalRail > a")].filter(visible);
-  const signalRects = signalCards.map((element) => element.getBoundingClientRect());
-  const overlap = signalRects.some((left, index) => signalRects.slice(index + 1).some((right) => !(
-    left.right <= right.left + 1
-    || right.right <= left.left + 1
-    || left.bottom <= right.top + 1
-    || right.bottom <= left.top + 1
-  )));
-  const signalRail = document.querySelector(".liveSignalRail");
   const controlsUnder32 = [...document.querySelectorAll("button,a,input,summary")]
     .filter(visible)
     .map((element) => ({
       text: (element.textContent ?? element.getAttribute("aria-label") ?? "").trim().slice(0, 70),
       height: Math.round(element.getBoundingClientRect().height),
-      exempt: Boolean(element.closest(".siteFooter,.externalIdentityLink,.universalHeroSocials"))
+      exempt: Boolean(element.closest(".siteFooter"))
     }))
     .filter((item) => !item.exempt && item.height < 32)
     .slice(0, 30);
   return {
     viewport: { width: innerWidth, height: innerHeight },
     horizontalOverflow: Math.max(0, document.documentElement.scrollWidth - innerWidth),
-    visibleSignals: signalCards.length,
-    signalOverlap: overlap,
-    signalRailOverflow: signalRail
-      ? Math.max(0, signalRail.scrollWidth - signalRail.clientWidth)
-      : null,
-    marketRowsAboveFold: [...document.querySelectorAll(".runnerMarketCard")]
+    marketRowsAboveFold: [...document.querySelectorAll(".vnMarketRow")]
       .filter(visible)
       .filter((element) => {
         const rect = element.getBoundingClientRect();
@@ -349,13 +342,10 @@ async function inspectHome(browser, viewport, label) {
   const page = await context.newPage();
   await page.emulateMedia({ reducedMotion: "reduce" });
   await installRoutes(page);
-  await gotoReady(page, base, ".runnerMarketCard");
+  await gotoReady(page, base, ".vnMarketRow");
 
   const audit = await page.evaluate(visibleAudit);
   if (audit.horizontalOverflow > 2) throw new Error(`${label}: page horizontal overflow ${audit.horizontalOverflow}px`);
-  if (audit.visibleSignals > 5) throw new Error(`${label}: ${audit.visibleSignals} priority signals are visible`);
-  if (audit.signalOverlap) throw new Error(`${label}: priority signal cards overlap`);
-  if ((audit.signalRailOverflow ?? 0) > 2) throw new Error(`${label}: signal rail has hidden horizontal overflow`);
   if (viewport.width >= 1_180 && audit.marketRowsAboveFold < 2) {
     throw new Error(`${label}: only ${audit.marketRowsAboveFold} market rows are above the fold`);
   }
@@ -363,32 +353,18 @@ async function inspectHome(browser, viewport, label) {
     throw new Error(`${label}: undersized controls ${JSON.stringify(audit.controlsUnder32)}`);
   }
 
-  const beforeSort = await page.locator(".externalIdentityLink strong").first().textContent();
-  await page.locator(".runnerHeaderSplit button").filter({ hasText: "5m" }).click();
-  const afterSort = await page.locator(".externalIdentityLink strong").first().textContent();
-  if (!beforeSort || !afterSort || beforeSort === afterSort) {
-    throw new Error(`${label}: sortable market rows did not reorder`);
-  }
-
-  const watch = page.locator(".runnerWatchButton").first();
-  await watch.click();
-  if (await watch.getAttribute("aria-pressed") !== "true") {
-    throw new Error(`${label}: watchlist star did not activate`);
-  }
-
-  const boardButton = page.locator(".liveSignalBoardButton");
-  if (await boardButton.count()) {
-    await boardButton.click();
-    await page.locator(".liveSignalBoardDialog").waitFor({ state: "visible" });
-    const boardCount = await page.locator(".liveSignalBoardGrid > a").count();
-    if (boardCount !== markets.length) {
-      throw new Error(`${label}: signal board has ${boardCount} of ${markets.length} signals`);
-    }
-    await page.locator(".liveSignalBoardDialog > header button").click();
-  }
+  const search = page.getByRole("textbox", { name: "Search markets" });
+  await search.fill("R02");
+  await page.waitForTimeout(100);
+  if (await page.locator(".vnMarketRow").count() !== 1) throw new Error(`${label}: market search did not narrow the directory`);
+  if (!(await page.locator(".vnMarketRow").first().textContent())?.includes("R02")) throw new Error(`${label}: market search returned the wrong asset`);
+  await page.locator(".vnMarketRow").first().click();
+  if (!(await page.locator("#vn-asset-heading").textContent())?.includes("R02")) throw new Error(`${label}: selected asset did not update the VNext workspace`);
+  await search.fill("");
+  await page.waitForTimeout(100);
 
   await page.screenshot({ path: `${output}/home-${label}.png`, fullPage: false, animations: "disabled" });
-  await page.locator("#market-explorer").screenshot({ path: `${output}/scanner-${label}.png`, animations: "disabled" });
+  await page.locator(".vnMarketPanel").screenshot({ path: `${output}/scanner-${label}.png`, animations: "disabled" });
   await context.close();
   return audit;
 }
@@ -401,14 +377,14 @@ async function inspectMarket(browser) {
   const page = await context.newPage();
   await page.emulateMedia({ reducedMotion: "reduce" });
   await installRoutes(page);
-  await gotoReady(page, `${base}/market/${token}`, ".universalChart");
+  await gotoReady(page, base, ".vnChartFrame svg");
 
   const candlesButton = page.getByRole("button", { name: "Candles" });
   const lineButton = page.getByRole("button", { name: "Line" });
   if (await candlesButton.getAttribute("aria-pressed") !== "true") {
     throw new Error("Candlestick chart is not the default desktop mode");
   }
-  if (await page.locator(".chartCandle").count() < 10) {
+  if (await page.locator(".vnChartCandle").count() < 10) {
     throw new Error("Candlestick chart did not render enough OHLC candles");
   }
   await lineButton.click();
@@ -416,10 +392,10 @@ async function inspectMarket(browser) {
     throw new Error("Line chart mode did not activate");
   }
   await candlesButton.click();
-  await page.locator(".universalChart svg").hover({ position: { x: 480, y: 150 } });
-  await page.locator(".universalChartTooltip").waitFor({ state: "visible" });
+  await page.locator(".vnChartFrame svg").hover({ position: { x: 480, y: 150 } });
+  await page.locator(".vnChartTooltip").waitFor({ state: "visible" });
   await page.screenshot({ path: `${output}/market-1440x900.png`, fullPage: false, animations: "disabled" });
-  await page.locator(".universalChart").screenshot({ path: `${output}/chart-candles.png`, animations: "disabled" });
+  await page.locator(".vnChartFrame").screenshot({ path: `${output}/chart-candles.png`, animations: "disabled" });
   await context.close();
   return { candles: true, line: true, crosshair: true };
 }
@@ -429,72 +405,55 @@ async function inspectMobile(browser) {
   const page = await context.newPage();
   await page.emulateMedia({ reducedMotion: "reduce" });
   await installRoutes(page);
-  await gotoReady(page, base, ".mobileRunnerMarketRow");
+  await gotoReady(page, base, ".vnMarketRow");
 
   const homeAudit = await page.evaluate(() => {
-    const mobileCard = document.querySelector(".mobileRunnerMarketRow");
-    const desktopHeader = document.querySelector(".runnerColumnHeader");
-    const desktopHeaderVisible = desktopHeader
-      ? getComputedStyle(desktopHeader).display !== "none"
+    const marketRow = document.querySelector(".vnMarketRow");
+    const sidebar = document.querySelector(".vnSidebar");
+    const mobileDock = document.querySelector(".vnMobileDock");
+    const sidebarVisible = sidebar
+      ? getComputedStyle(sidebar).display !== "none"
+      : false;
+    const mobileDockVisible = mobileDock
+      ? getComputedStyle(mobileDock).display !== "none"
       : false;
     return {
       horizontalOverflow: Math.max(0, document.documentElement.scrollWidth - innerWidth),
-      mobileCardVisible: Boolean(mobileCard && mobileCard.getBoundingClientRect().height > 0),
-      desktopHeaderVisible,
-      signalBoardButtonVisible: [...document.querySelectorAll(".liveSignalBoardButton")]
-        .some((element) => getComputedStyle(element).display !== "none")
+      marketRowVisible: Boolean(marketRow && marketRow.getBoundingClientRect().height > 0),
+      sidebarVisible,
+      mobileDockVisible
     };
   });
   if (homeAudit.horizontalOverflow > 2) {
     throw new Error(`mobile: horizontal overflow ${homeAudit.horizontalOverflow}px`);
   }
-  if (!homeAudit.mobileCardVisible || homeAudit.desktopHeaderVisible || homeAudit.signalBoardButtonVisible) {
+  if (!homeAudit.marketRowVisible || homeAudit.sidebarVisible || !homeAudit.mobileDockVisible) {
     throw new Error(`mobile: desktop workstation leaked into mobile layout ${JSON.stringify(homeAudit)}`);
   }
   await page.screenshot({ path: `${output}/home-mobile.png`, fullPage: false, animations: "disabled" });
 
-  await gotoReady(page, `${base}/market/${token}`, ".universalMobileTradeDock");
-  const buy = page.locator(".universalMobileTradeDock .buy");
-  await buy.waitFor({ state: "visible" });
-  await buy.click();
-  await page.locator(".universalTradeRail.mobileOpen").waitFor({ state: "visible" });
-  const sheetAudit = await page.evaluate(() => {
-    const sheet = document.querySelector(".universalTradeRail.mobileOpen");
-    const backdrop = document.querySelector(".universalTradeSheetBackdrop.visible");
-    if (!sheet || !backdrop) return null;
-    const rect = sheet.getBoundingClientRect();
-    const backdropStyle = getComputedStyle(backdrop);
+  await page.locator(".vnMarketRow").first().click();
+  await page.locator(".vnTradePanel").waitFor({ state: "visible" });
+  const tradeAudit = await page.evaluate(() => {
+    const trade = document.querySelector(".vnTradePanel");
+    if (!trade) return null;
+    const rect = trade.getBoundingClientRect();
     return {
-      top: rect.top,
-      right: rect.right,
-      bottom: rect.bottom,
-      left: rect.left,
       width: rect.width,
-      height: rect.height,
       viewportWidth: innerWidth,
-      viewportHeight: innerHeight,
-      backdropVisible: backdropStyle.visibility !== "hidden" && Number(backdropStyle.opacity) > 0
+      horizontalOverflow: Math.max(0, document.documentElement.scrollWidth - innerWidth)
     };
   });
-  if (!sheetAudit) throw new Error("mobile: Buy did not open an execution sheet");
-  if (
-    sheetAudit.top < -2
-    || sheetAudit.left < -2
-    || sheetAudit.right > sheetAudit.viewportWidth + 2
-    || sheetAudit.bottom > sheetAudit.viewportHeight + 2
-    || !sheetAudit.backdropVisible
-  ) {
-    throw new Error(`mobile: execution sheet escaped the viewport ${JSON.stringify(sheetAudit)}`);
-  }
+  if (!tradeAudit || tradeAudit.width > tradeAudit.viewportWidth + 2 || tradeAudit.horizontalOverflow > 2) throw new Error(`mobile: trade panel escaped the viewport ${JSON.stringify(tradeAudit)}`);
+  const sell = page.getByRole("tab", { name: "Sell" });
+  await sell.click();
+  if (await sell.getAttribute("aria-selected") !== "true") throw new Error("mobile: Sell tab did not activate");
+  const buy = page.getByRole("tab", { name: "Buy" });
+  await buy.click();
+  if (await buy.getAttribute("aria-selected") !== "true") throw new Error("mobile: Buy tab did not activate");
   await page.screenshot({ path: `${output}/market-mobile-buy.png`, fullPage: false, animations: "disabled" });
-  await page.locator(".universalTradeRailClose").click();
-  await page.locator(".universalTradeRail.mobileOpen").waitFor({ state: "detached" }).catch(async () => {
-    if (await page.locator(".universalTradeRail.mobileOpen").count()) {
-      throw new Error("mobile: execution sheet did not close");
-    }
-  });
   await context.close();
-  return { home: homeAudit, tradeSheet: sheetAudit };
+  return { home: homeAudit, tradePanel: tradeAudit };
 }
 
 const browser = await chromium.launch({ headless: true });
