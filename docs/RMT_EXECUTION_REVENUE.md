@@ -82,7 +82,7 @@ These identifiers describe bounded settlement families, not active providers. Un
 
 ## Uniswap V3 atomic fee executor
 
-`packages/contracts/src/RMTUniswapV3FeeExecutorV1.sol` is the first provider-specific onchain settlement primitive. Its source and tests do not constitute a deployment or production activation.
+`packages/contracts/src/RMTUniswapV3FeeExecutorV1.sol` is the first provider-specific onchain settlement primitive. It is deployed at `0x843a4D8BEa13037c5706eA005d336aE735BB0eD4` through the reviewed CREATE2 factory in transaction `0xdc0129e313187dd5d28516dbd67df8ac907ae47d083e8c30b0d909fc2eb5bcbd` at block `35070206`. Its exact runtime hash is `0x86cc453830da2f44aa6d236b55ad9a9b1054cfdac25f09f7335a3eca8414b224`. Deployment does not constitute wallet routing or production fee activation.
 
 The executor is non-upgradeable and has no owner, proxy, mutable router, mutable treasury, arbitrary target, arbitrary calldata, delegatecall, sweep or rescue method. One deployment immutably binds:
 
@@ -204,16 +204,16 @@ pnpm --filter web readiness:vnext-uniswap-fee
 It reports public contract/policy identities and exact blockers. It never signs,
 deploys, approves, submits or changes environment configuration.
 
-### Deployment prerequisites
+### Deployment record and remaining release prerequisites
 
-The exact public treasury, policy hash/effective block and eligible settlement assets are now recorded in `packages/contracts/deployments/rmt-uniswap-v3-fee-executor-v1.json`. The same manifest pins the verified CREATE2 factory, constructor bytecode, constructor arguments, init code, expected runtime and predicted executor address. Run:
+The exact public treasury, policy hash/effective block and eligible settlement assets are recorded in `packages/contracts/deployments/rmt-uniswap-v3-fee-executor-v1.json`. The same manifest pins the verified CREATE2 factory, constructor bytecode, constructor arguments, init code, expected runtime, executor address and canonical deployment receipt. Run:
 
 ```text
 forge build --root packages/contracts --contracts src/RMTUniswapV3FeeExecutorV1.sol
 pnpm --filter web readiness:vnext-uniswap-fee-deployment
 ```
 
-The command reconstructs the deployment from the compiled artifact, re-verifies the Safe ownership and runtime, re-verifies Router02/factory/WETH/USDG identities, simulates the constructor and CREATE2 deployment, proves the predicted address is empty and reports current gas sufficiency. It never signs or submits. The committed manifest explicitly keeps deployment and fee activation unauthorized. Separate explicit authorization, final bytecode/constructor review and post-deployment verification remain required. Server authorization, client disclosure, receipt reconciliation and controlled proof remain separate default-off phases after deployment.
+The command reconstructs the deployment from the compiled artifact, re-verifies the Safe ownership and runtime, re-verifies Router02/factory/WETH/USDG identities, verifies the exact deployment transaction and live executor runtime, and reports confirmation evidence. Before deployment it also simulates the constructor/CREATE2 path and reports gas sufficiency; after deployment it never attempts the consumed CREATE2 salt again. It never signs or submits. Fee activation remains unauthorized. Server authorization, client disclosure, receipt reconciliation and controlled proof remain separate default-off phases after deployment.
 
 ## Review sequence
 
@@ -222,7 +222,7 @@ The command reconstructs the deployment from the compiled artifact, re-verifies 
 3. Server quote, strict verification and fee-bearing authorization — implemented, gates off.
 4. Client pre-sign verification and fee disclosure — implemented, gates off.
 5. Canonical receipt reconciliation and exactly-once settlement proof — implemented; deployment finality/proof evidence pending.
-6. Deployment verification and controlled proof tooling — no public activation.
+6. Deployment verification complete; controlled proof tooling and public activation remain gated.
 
 Production revenue is not booked from a quote or plan. It exists only after a successful, final, unambiguous settlement proves exactly one authorized fee to the exact treasury.
 
@@ -231,7 +231,7 @@ Production revenue is not booked from a quote or plan. It exists only after a su
 - Policy implementation: foundation present.
 - Production treasury: approved Safe deployed and independently verified; production environment remains unconfigured.
 - Policy identity: exact hash and block boundary recorded; collection remains disabled.
-- Fee executor: source and adversarial/fork tests implemented; not deployed.
+- Fee executor: deployed at `0x843a4D8BEa13037c5706eA005d336aE735BB0eD4`; exact transaction and runtime verified.
 - Fee-bearing authorization: implemented and independently gated off.
 - Fee disclosure: implemented; unreachable without an admitted deployment/policy.
 - Fee settlement reconciliation: implemented for the canonical event; no production settlement exists.

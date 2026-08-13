@@ -20,11 +20,11 @@ import { rmtUniswapV3PolicyIdHash } from "../lib/vnext/uniswap-v3-fee-executor";
 
 type DeploymentManifest = {
   schemaVersion: number;
-  status: "prepared_not_authorized";
+  status: "prepared_not_authorized" | "deployed_not_activated";
   chainId: number;
   contract: "RMTUniswapV3FeeExecutorV1";
   sourceBaseline: string;
-  deploymentAuthorized: false;
+  deploymentAuthorized: boolean;
   feeActivationAuthorized: false;
   deployer: Address;
   deterministicDeployment: {
@@ -39,6 +39,12 @@ type DeploymentManifest = {
     creationCodeBytes: number;
     initCodeBytes: number;
     deploymentTransaction: Hex | null;
+    deploymentBlock?: string;
+    deploymentBlockHash?: Hex;
+    deployedRuntimeHash?: Hex;
+    gasUsed?: string;
+    effectiveGasPriceWei?: string;
+    actualCostWei?: string;
   };
   treasury: {
     address: Address;
@@ -134,10 +140,23 @@ async function main() {
     throw new Error("Run `forge build --root packages/contracts --contracts src/RMTUniswapV3FeeExecutorV1.sol` first");
   });
   invariant(manifest.schemaVersion === 1, "unsupported manifest schema");
-  invariant(manifest.status === "prepared_not_authorized", "deployment status is not fail closed");
-  invariant(!manifest.deploymentAuthorized && !manifest.feeActivationAuthorized, "manifest unexpectedly authorizes a release");
+  const deploymentRecorded = manifest.status === "deployed_not_activated";
+  invariant(
+    manifest.status === "prepared_not_authorized" || deploymentRecorded,
+    "deployment status is not fail closed"
+  );
+  invariant(!manifest.feeActivationAuthorized, "manifest unexpectedly authorizes fee activation");
   invariant(manifest.chainId === robinhoodChain.id, "manifest chain is not Robinhood Chain 4663");
-  invariant(manifest.deterministicDeployment.deploymentTransaction === null, "manifest already records a deployment");
+  if (deploymentRecorded) {
+    invariant(manifest.deploymentAuthorized, "recorded deployment is missing its explicit authorization");
+    invariant(manifest.deterministicDeployment.deploymentTransaction !== null, "deployment transaction is missing");
+    invariant(manifest.deterministicDeployment.deploymentBlock !== undefined, "deployment block is missing");
+    invariant(manifest.deterministicDeployment.deploymentBlockHash !== undefined, "deployment block hash is missing");
+    invariant(manifest.deterministicDeployment.deployedRuntimeHash !== undefined, "deployed runtime hash is missing");
+  } else {
+    invariant(!manifest.deploymentAuthorized, "prepared manifest unexpectedly authorizes deployment");
+    invariant(manifest.deterministicDeployment.deploymentTransaction === null, "prepared manifest records a deployment");
+  }
 
   const rpc = process.env.RMT_MAINNET_RPC_URL?.trim()
     || process.env.ROBINHOOD_MAINNET_RPC_URL?.trim()
@@ -304,13 +323,90 @@ async function main() {
   });
   invariant(predictedExecutor === getAddress(manifest.deterministicDeployment.predictedExecutor), "predicted executor changed");
   const deploymentData = concatHex([manifest.deterministicDeployment.salt, initCode]);
-  const [existingExecutorCode, simulatedRuntime, create2Simulation, estimatedGas, gasPrice, deployerBalance] =
-    await Promise.all([
-      client.getBytecode({ address: predictedExecutor }),
-      client.request({
-        method: "eth_call",
-        params: [{ from: manifest.deployer, data: initCode, value: "0x0" }, "latest"]
-      }),
+  const [existingExecutorCode, simulatedRuntime, gasPrice, deployerBalance] = await Promise.all([
+    client.getBytecode({ address: predictedExecutor }),
+    client.request({
+      method: "eth_call",
+      params: [{ from: manifest.deployer, data: initCode, value: "0x0" }, "latest"]
+    }),
+    client.getGasPrice(),
+    client.getBalance({ address: getAddress(manifest.deployer) })
+  ]);
+  invariant(typeof simulatedRuntime === "string" && simulatedRuntime !== "0x", "constructor simulation returned no runtime");
+  const simulatedRuntimeHash = keccak256(simulatedRuntime);
+  invariant(
+    same(simulatedRuntimeHash, manifest.deterministicDeployment.expectedRuntimeHash),
+    `simulated executor runtime changed (received ${simulatedRuntimeHash})`
+  );
+  const alreadyDeployed = existingExecutorCode !== undefined && existingExecutorCode !== "0x";
+  let estimatedGas: bigint | null = null;
+  let create2SimulationPassed = false;
+  let deploymentReceipt: {
+    transaction: Hex;
+    blockNumber: string;
+    blockHash: Hex;
+    confirmations: string;
+    gasUsed: string;
+    effectiveGasPriceWei: string;
+    actualCostWei: string;
+  } | null = null;
+  if (alreadyDeployed) {
+    invariant(deploymentRecorded, "predicted executor contains code but the deployment is not recorded");
+    invariant(
+      same(codeHash(existingExecutorCode, "deployed executor"), manifest.deterministicDeployment.expectedRuntimeHash),
+      "predicted executor contains unexpected code"
+    );
+    invariant(
+      same(manifest.deterministicDeployment.deployedRuntimeHash!, manifest.deterministicDeployment.expectedRuntimeHash),
+      "recorded deployed runtime hash changed"
+    );
+    const deploymentTransaction = manifest.deterministicDeployment.deploymentTransaction!;
+    const [receipt, transaction, latestBlock] = await Promise.all([
+      client.getTransactionReceipt({ hash: deploymentTransaction }),
+      client.getTransaction({ hash: deploymentTransaction }),
+      client.getBlockNumber()
+    ]);
+    invariant(receipt.status === "success", "deployment transaction was not successful");
+    invariant(getAddress(transaction.from) === getAddress(manifest.deployer), "deployment sender changed");
+    invariant(transaction.to !== null && getAddress(transaction.to) === create2Factory, "deployment target changed");
+    invariant(transaction.value === 0n, "deployment unexpectedly transferred value");
+    invariant(same(keccak256(transaction.input), keccak256(deploymentData)), "deployment calldata changed");
+    invariant(
+      receipt.blockNumber === BigInt(manifest.deterministicDeployment.deploymentBlock!),
+      "deployment block changed"
+    );
+    invariant(
+      same(receipt.blockHash, manifest.deterministicDeployment.deploymentBlockHash!),
+      "deployment block hash changed"
+    );
+    const actualCostWei = receipt.gasUsed * receipt.effectiveGasPrice;
+    if (manifest.deterministicDeployment.gasUsed !== undefined) {
+      invariant(receipt.gasUsed === BigInt(manifest.deterministicDeployment.gasUsed), "recorded deployment gas changed");
+    }
+    if (manifest.deterministicDeployment.effectiveGasPriceWei !== undefined) {
+      invariant(
+        receipt.effectiveGasPrice === BigInt(manifest.deterministicDeployment.effectiveGasPriceWei),
+        "recorded deployment gas price changed"
+      );
+    }
+    if (manifest.deterministicDeployment.actualCostWei !== undefined) {
+      invariant(
+        actualCostWei === BigInt(manifest.deterministicDeployment.actualCostWei),
+        "recorded deployment cost changed"
+      );
+    }
+    deploymentReceipt = {
+      transaction: deploymentTransaction,
+      blockNumber: receipt.blockNumber.toString(),
+      blockHash: receipt.blockHash,
+      confirmations: (latestBlock - receipt.blockNumber + 1n).toString(),
+      gasUsed: receipt.gasUsed.toString(),
+      effectiveGasPriceWei: receipt.effectiveGasPrice.toString(),
+      actualCostWei: actualCostWei.toString()
+    };
+  } else {
+    invariant(!deploymentRecorded, "recorded executor deployment has no runtime bytecode");
+    const [create2Simulation, gasEstimate] = await Promise.all([
       client.call({
         account: getAddress(manifest.deployer),
         to: create2Factory,
@@ -322,31 +418,19 @@ async function main() {
         to: create2Factory,
         data: deploymentData,
         value: 0n
-      }),
-      client.getGasPrice(),
-      client.getBalance({ address: getAddress(manifest.deployer) })
+      })
     ]);
-  invariant(typeof simulatedRuntime === "string" && simulatedRuntime !== "0x", "constructor simulation returned no runtime");
-  const simulatedRuntimeHash = keccak256(simulatedRuntime);
-  invariant(
-    same(simulatedRuntimeHash, manifest.deterministicDeployment.expectedRuntimeHash),
-    `simulated executor runtime changed (received ${simulatedRuntimeHash})`
-  );
-  invariant(create2Simulation.data !== undefined, "CREATE2 simulation returned no address");
-  invariant(
-    getAddress(`0x${create2Simulation.data.slice(-40)}`) === predictedExecutor,
-    "CREATE2 factory returned an unexpected executor"
-  );
-  const alreadyDeployed = existingExecutorCode !== undefined && existingExecutorCode !== "0x";
-  if (alreadyDeployed) {
+    invariant(create2Simulation.data !== undefined, "CREATE2 simulation returned no address");
     invariant(
-      same(codeHash(existingExecutorCode, "deployed executor"), manifest.deterministicDeployment.expectedRuntimeHash),
-      "predicted executor contains unexpected code"
+      getAddress(`0x${create2Simulation.data.slice(-40)}`) === predictedExecutor,
+      "CREATE2 factory returned an unexpected executor"
     );
+    estimatedGas = gasEstimate;
+    create2SimulationPassed = true;
   }
 
-  const estimatedCostWei = estimatedGas * gasPrice;
-  const technicalDeploymentReady = !alreadyDeployed && deployerBalance >= estimatedCostWei;
+  const estimatedCostWei = estimatedGas === null ? null : estimatedGas * gasPrice;
+  const technicalDeploymentReady = !alreadyDeployed && estimatedCostWei !== null && deployerBalance >= estimatedCostWei;
   console.log(JSON.stringify({
     status: alreadyDeployed ? "executor_already_deployed" : "executor_deployment_prepared",
     chainId,
@@ -385,27 +469,34 @@ async function main() {
       deploymentCalldataHash: keccak256(deploymentData),
       transactionTo: create2Factory,
       transactionValueWei: "0",
-      estimatedGas: estimatedGas.toString(),
+      estimatedGas: estimatedGas?.toString() ?? null,
       gasPriceWei: gasPrice.toString(),
-      estimatedCostWei: estimatedCostWei.toString(),
+      estimatedCostWei: estimatedCostWei?.toString() ?? null,
       deployerBalanceWei: deployerBalance.toString(),
       existingCode: alreadyDeployed,
       constructorSimulationPassed: true,
-      create2SimulationPassed: true,
-      technicalDeploymentReady
+      create2SimulationPassed,
+      technicalDeploymentReady,
+      deploymentReceipt,
+      deploymentVerified: deploymentReceipt !== null
     },
     authorization: {
       deploymentAuthorized: manifest.deploymentAuthorized,
       feeActivationAuthorized: manifest.feeActivationAuthorized,
       productionEnvironmentChanged: false,
-      transactionSubmitted: false
+      transactionSubmitted: deploymentReceipt !== null
     },
     releaseReady: false,
-    blockers: [
-      "executor deployment requires a separate explicit authorization",
-      "production fee and provider gates remain disabled",
-      "wallet disclosure and controlled small-value proof remain required after deployment"
-    ]
+    blockers: alreadyDeployed
+      ? [
+          "production fee and provider gates remain disabled",
+          "wallet disclosure and controlled small-value proof remain required after deployment"
+        ]
+      : [
+          "executor deployment requires a separate explicit authorization",
+          "production fee and provider gates remain disabled",
+          "wallet disclosure and controlled small-value proof remain required after deployment"
+        ]
   }, null, 2));
 }
 

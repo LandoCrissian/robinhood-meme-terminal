@@ -50,7 +50,7 @@ V6 governance, registry, gate, policy, factory, bootstrap, official migration, c
 
 ### B. Terminal security / optional execution
 
-Position Guard source, the separate Sushi deadline-guard track and the non-deployed `RMTUniswapV3FeeExecutorV1` atomic settlement source. Its deterministic deployment package and treasury exist, but source, simulations and a predicted address do not imply executor deployment, wallet routing or production fee activation.
+Position Guard source, the separate Sushi deadline-guard track and the deployed `RMTUniswapV3FeeExecutorV1` atomic settlement primitive at `0x843a4D8BEa13037c5706eA005d336aE735BB0eD4`. Its exact runtime and receipt are verified, but deployment does not imply wallet routing or production fee activation; all fee/provider gates remain disabled.
 
 ### C. Paused experimental
 

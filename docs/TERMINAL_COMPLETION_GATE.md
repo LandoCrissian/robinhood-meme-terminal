@@ -50,7 +50,7 @@
 ## Economics
 
 - [ ] No hidden RMT fee or implicit 25-bps fallback exists; the approved 25-bps policy is explicit, versioned and hash-bound.
-- [ ] `RMT_EXECUTION_V1` remains disabled until the tested but non-deployed Uniswap V3 executor and every other admitted provider settlement path have approved disclosure, reconciliation, treasury and release gates.
+- [ ] `RMT_EXECUTION_V1` remains disabled until the deployed, runtime-verified Uniswap V3 executor and every other admitted provider settlement path have approved disclosure, reconciliation, treasury and release gates.
 - [ ] No historical V6 split is reused as forward terminal policy.
 
 ## Quality, reliability and security
