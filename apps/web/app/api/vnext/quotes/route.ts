@@ -4,7 +4,6 @@ import { z } from "zod";
 import { quoteRobinhoodVNextExecution } from "../../../../lib/server/vnext-execution-engine";
 import { requireAuthenticatedTradeWallet, tradeIdentityErrorResponse } from "../../../../lib/server/rmt-trade-identity";
 import { readVNextVerifiedAssetIdentity } from "../../../../lib/server/vnext-asset-identity";
-import { isRobinhoodNativeAsset } from "../../../../lib/vnext/robinhood-assets";
 import type { VNextQuoteResponse } from "../../../../lib/vnext/quote-observation";
 
 export const dynamic = "force-dynamic";
@@ -31,9 +30,6 @@ export async function POST(request: Request) {
       return Response.json({ error: "Input and output assets must differ." }, { status: 400, headers: { "Cache-Control": "no-store" } });
     }
     await requireAuthenticatedTradeWallet(request, recipient);
-    if (isRobinhoodNativeAsset(outputAsset)) {
-      return Response.json({ error: "Native ETH settlement is not enabled in VNext yet. Choose USDG or WETH." }, { status: 422, headers: { "Cache-Control": "no-store" } });
-    }
     const [inputIdentity, outputIdentity] = await Promise.all([
       readVNextVerifiedAssetIdentity(inputAsset),
       readVNextVerifiedAssetIdentity(outputAsset)

@@ -18,7 +18,6 @@ import {
   ROBINHOOD_NATIVE_ASSET_ADDRESS,
   ROBINHOOD_USDG,
   ROBINHOOD_USDG_ADDRESS,
-  ROBINHOOD_WETH,
   robinhoodWalletAccount
 } from "../../lib/vnext/robinhood-assets";
 import { deriveVNextVerifiedUsdgOutcome } from "../../lib/vnext/verified-cost-outcome";
@@ -156,8 +155,8 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
     ?? (!isConnected ? ROBINHOOD_USDG : undefined);
   const displayedBuyInputs = buyInputs.length > 0 ? buyInputs : selectedBuyInput ? [selectedBuyInput] : [];
   const sellOutputs = useMemo(() => marketAsset
-    ? [ROBINHOOD_USDG, ROBINHOOD_WETH].filter((asset) => assetKey(asset.id) !== assetKey(marketAsset.id))
-    : [ROBINHOOD_USDG, ROBINHOOD_WETH],
+    ? [ROBINHOOD_USDG, ROBINHOOD_ETH].filter((asset) => assetKey(asset.id) !== assetKey(marketAsset.id))
+    : [ROBINHOOD_USDG, ROBINHOOD_ETH],
   [marketAsset]);
   const selectedSellOutput = sellOutputs.find((asset) => assetKey(asset.id) === sellOutputKey) ?? sellOutputs[0];
   const pair = useMemo(() => {
@@ -228,7 +227,11 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
     : pair?.inputAsset.id.locator.kind === "native"
       ? ROBINHOOD_NATIVE_ASSET_ADDRESS
       : null;
-  const outputAddress = pair?.outputAsset.id.locator.kind === "contract" ? pair.outputAsset.id.locator.address : null;
+  const outputAddress = pair?.outputAsset.id.locator.kind === "contract"
+    ? pair.outputAsset.id.locator.address
+    : pair?.outputAsset.id.locator.kind === "native"
+      ? ROBINHOOD_NATIVE_ASSET_ADDRESS
+      : null;
   const requestKey = `${address ?? ""}:${side}:${amount}:${inputAddress ?? ""}:${outputAddress ?? ""}`;
   const cachedQuote = cachedVNextQuoteForRequest(lastReadyQuote.current, requestKey);
   useEffect(() => {
@@ -798,7 +801,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
             disabled={sellOutputs.length < 2}
             onChange={(event) => setSellOutputKey(event.target.value)}
           >
-            {sellOutputs.map((asset) => <option value={assetKey(asset.id)} key={assetKey(asset.id)}>{asset.symbol ?? "Asset"}</option>)}
+            {sellOutputs.map((asset) => <option value={assetKey(asset.id)} key={assetKey(asset.id)}>{asset.id.locator.kind === "native" ? "ETH (native)" : asset.symbol ?? "Asset"}</option>)}
           </select> : <button type="button" disabled>{outputSymbol}</button>}
         </div>
         <div className="vnOutputProtection"><span>Protected minimum</span><strong>{protectedOutput ? `${protectedOutput} ${outputSymbol}` : "Set when you trade"}</strong></div>

@@ -14,6 +14,9 @@ const routerAbi = [{
     { name: "sqrtPriceLimitX96", type: "uint160" }
   ] }], outputs: [{ name: "amountOut", type: "uint256" }]
 }, {
+  type: "function", name: "unwrapWETH9", stateMutability: "payable",
+  inputs: [{ name: "amountMinimum", type: "uint256" }, { name: "recipient", type: "address" }], outputs: []
+}, {
   type: "function", name: "multicall", stateMutability: "payable",
   inputs: [{ name: "deadline", type: "uint256" }, { name: "data", type: "bytes[]" }],
   outputs: [{ name: "results", type: "bytes[]" }]
@@ -113,6 +116,68 @@ const nativePlan = planWithHash({
 });
 assert.equal(parseVNextAuthorizationPlan(nativePlan, nativeEvidence, now + 1).value, nativeAmount);
 assert.throws(() => parseVNextAuthorizationPlan(planWithHash({ ...nativePlan, value: "0" }), nativeEvidence, now + 1), /inconsistent authorization plan/);
+const nativeOutputSwapCall = encodeFunctionData({ abi: routerAbi, functionName: "exactInputSingle", args: [{
+  tokenIn: inputAsset, tokenOut: ROBINHOOD_WETH, fee: 3_000, recipient: ROBINHOOD_SWAP_ROUTER_02,
+  amountIn: 1_000_000n, amountOutMinimum: 990n, sqrtPriceLimitX96: 0n
+}] });
+const nativeOutputUnwrap = encodeFunctionData({
+  abi: routerAbi,
+  functionName: "unwrapWETH9",
+  args: [990n, recipient]
+});
+const nativeOutputSwapData = encodeFunctionData({
+  abi: routerAbi,
+  functionName: "multicall",
+  args: [1_786_000_300n, [nativeOutputSwapCall, nativeOutputUnwrap]]
+});
+const nativeOutputEvidence: VNextPreSignEvidence = {
+  ...verifiedEvidence,
+  outputAsset: zeroAddress,
+  nextActionCalldataHash: keccak256(nativeOutputSwapData),
+  calldataHash: keccak256(nativeOutputSwapData)
+};
+const nativeOutputPlan = planWithHash({
+  ...swapPlan,
+  planId: "77777777-7777-4777-8777-777777777777",
+  outputAsset: zeroAddress,
+  data: nativeOutputSwapData
+});
+assert.equal(parseVNextAuthorizationPlan(nativeOutputPlan, nativeOutputEvidence, now + 1).outputAsset, zeroAddress);
+const missingNativeUnwrap = encodeFunctionData({
+  abi: routerAbi,
+  functionName: "multicall",
+  args: [1_786_000_300n, [nativeOutputSwapCall]]
+});
+const missingNativeUnwrapEvidence = {
+  ...nativeOutputEvidence,
+  calldataHash: keccak256(missingNativeUnwrap),
+  nextActionCalldataHash: keccak256(missingNativeUnwrap)
+};
+assert.throws(() => parseVNextAuthorizationPlan(
+  planWithHash({ ...nativeOutputPlan, data: missingNativeUnwrap } as Omit<VNextAuthorizationPlan, "payloadHash">),
+  missingNativeUnwrapEvidence,
+  now + 1
+), /call count/);
+const redirectedNativeUnwrap = encodeFunctionData({
+  abi: routerAbi,
+  functionName: "unwrapWETH9",
+  args: [990n, outputAsset]
+});
+const redirectedNativeOutput = encodeFunctionData({
+  abi: routerAbi,
+  functionName: "multicall",
+  args: [1_786_000_300n, [nativeOutputSwapCall, redirectedNativeUnwrap]]
+});
+const redirectedNativeOutputEvidence = {
+  ...nativeOutputEvidence,
+  calldataHash: keccak256(redirectedNativeOutput),
+  nextActionCalldataHash: keccak256(redirectedNativeOutput)
+};
+assert.throws(() => parseVNextAuthorizationPlan(
+  planWithHash({ ...nativeOutputPlan, data: redirectedNativeOutput } as Omit<VNextAuthorizationPlan, "payloadHash">),
+  redirectedNativeOutputEvidence,
+  now + 1
+), /unwrap economics/);
 const bundleEvidence = { ...verifiedEvidence, verifiedAtMs: now, expiresAtMs: now + 300_000 };
 const changedMinimum = encodeFunctionData({ abi: routerAbi, functionName: "exactInputSingle", args: [{
   tokenIn: inputAsset, tokenOut: outputAsset, fee: 3_000, recipient,

@@ -11,7 +11,8 @@ import {
   VNEXT_EXECUTION_STORAGE_KEY,
   type VNextExecutionStorage
 } from "./execution-recovery";
-import { encodeAbiParameters, encodeEventTopics, type Hex } from "viem";
+import { encodeAbiParameters, encodeEventTopics, zeroAddress, type Hex } from "viem";
+import { ROBINHOOD_SWAP_ROUTER_02, ROBINHOOD_WETH } from "../uniswap-v4";
 
 const wallet = "0x1111111111111111111111111111111111111111";
 const inputAsset = "0x2222222222222222222222222222222222222222";
@@ -62,6 +63,32 @@ const outputLog = (value: bigint, address = outputAsset) => ({
 assert.equal(settledVNextOutputAtomic(swapRecord, [outputLog(700n), outputLog(300n)]), "1000");
 assert.equal(settledVNextOutputAtomic(swapRecord, [outputLog(1000n, inputAsset)]), null);
 assert.equal(settledVNextOutputAtomic({ ...swapRecord, kind: "erc20_approval" }, [outputLog(1000n)]), null);
+const withdrawalTopics = encodeEventTopics({
+  abi: [{ type: "event", name: "Withdrawal", anonymous: false, inputs: [
+    { indexed: true, name: "src", type: "address" },
+    { indexed: false, name: "wad", type: "uint256" }
+  ] }] as const,
+  eventName: "Withdrawal",
+  args: { src: ROBINHOOD_SWAP_ROUTER_02 }
+});
+const withdrawalLog = (value: bigint, address = ROBINHOOD_WETH, src = ROBINHOOD_SWAP_ROUTER_02) => ({
+  address,
+  topics: encodeEventTopics({
+    abi: [{ type: "event", name: "Withdrawal", anonymous: false, inputs: [
+      { indexed: true, name: "src", type: "address" },
+      { indexed: false, name: "wad", type: "uint256" }
+    ] }] as const,
+    eventName: "Withdrawal",
+    args: { src }
+  }).flatMap((topic) => typeof topic === "string" ? [topic as Hex] : []),
+  data: encodeAbiParameters([{ type: "uint256" }], [value])
+});
+assert.equal(withdrawalTopics.length, 2);
+const nativeSwapRecord = { ...swapRecord, outputAsset: zeroAddress };
+assert.equal(settledVNextOutputAtomic(nativeSwapRecord, [withdrawalLog(1_234n)]), "1234");
+assert.equal(settledVNextOutputAtomic(nativeSwapRecord, [withdrawalLog(700n), withdrawalLog(300n)]), null);
+assert.equal(settledVNextOutputAtomic(nativeSwapRecord, [withdrawalLog(1_234n, inputAsset)]), null);
+assert.equal(settledVNextOutputAtomic(nativeSwapRecord, [withdrawalLog(1_234n, ROBINHOOD_WETH, inputAsset)]), null);
 
 const settledValues = new Map<string, string>();
 const settledStorage: VNextExecutionStorage = { getItem: (key) => settledValues.get(key) ?? null, setItem: (key, value) => { settledValues.set(key, value); } };
