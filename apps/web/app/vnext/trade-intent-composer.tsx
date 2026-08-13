@@ -321,6 +321,25 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
   const protectedOutput = bestQuote && bestQuote.outputDecimals !== null
     ? formatAtomicDisplay(bestQuote.protectedOutputAtomic!, bestQuote.outputDecimals)
     : null;
+  const bestRmtFee = bestQuote?.netEconomics?.rmtFee.state === "planned" ? bestQuote.netEconomics.rmtFee : null;
+  const bestRmtFeeLabel = bestRmtFee && pair
+    ? `${formatAtomicDisplay(
+        bestRmtFee.expectedFeeAtomic,
+        bestRmtFee.feeSide === "input" ? pair.inputAsset.decimals ?? 18 : pair.outputAsset.decimals ?? 18
+      )} ${bestRmtFee.feeSide === "input" ? inputSymbol : outputSymbol} · ${bestRmtFee.feeBps / 100}%`
+    : "Not enabled";
+  const verifiedRmtFee = visibleVerification?.netEconomics?.rmtFee.state === "planned"
+    ? visibleVerification.netEconomics.rmtFee
+    : null;
+  const verifiedRmtFeeLabel = verifiedRmtFee && pair
+    ? `${formatAtomicDisplay(
+        verifiedRmtFee.expectedFeeAtomic,
+        verifiedRmtFee.feeSide === "input" ? pair.inputAsset.decimals ?? 18 : pair.outputAsset.decimals ?? 18
+      )} ${verifiedRmtFee.feeSide === "input" ? inputSymbol : outputSymbol} · maximum ${formatAtomicDisplay(
+        verifiedRmtFee.maximumFeeAtomic,
+        verifiedRmtFee.feeSide === "input" ? pair.inputAsset.decimals ?? 18 : pair.outputAsset.decimals ?? 18
+      )}`
+    : "Not enabled";
   const availableDisplay = inputBalanceAtomic && pairInputDecimals !== null
     ? formatAtomicDisplay(inputBalanceAtomic, pairInputDecimals)
     : null;
@@ -519,7 +538,8 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
       deadline: evidence.deadline,
       expectedStatus: evidence.status,
       indicativeProtectedOutputFloorAtomic: evidence.indicativeProtectedOutputFloorAtomic,
-      expectedProtectedOutputAtomic: evidence.protectedOutputAtomic
+      expectedProtectedOutputAtomic: evidence.protectedOutputAtomic,
+      ...(evidence.feeExecution ? { executionId: evidence.feeExecution.executionId } : {})
     }, {
       identityScope: identity.userId,
       identityToken: identity.identityToken,
@@ -852,13 +872,13 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
         </div> : <dl>
           <div><dt>Providers</dt><dd>Not requested</dd></div>
           <div><dt>Trader gas</dt><dd>Unknown until executable route</dd></div>
-          <div><dt>RMT fee</dt><dd>Not enabled</dd></div>
+          <div><dt>RMT fee</dt><dd>{bestRmtFeeLabel}</dd></div>
         </dl>}
         {visibleQuote ? <dl>
           <div><dt>Ranking basis</dt><dd>Protected output before network fee</dd></div>
           <div><dt>Trader gas</dt><dd>{visibleQuote.attempts.some((attempt) => attempt.userPaysGas === false) ? "Route-specific · sponsored option observed" : "Estimated during strict verification"}</dd></div>
           <div><dt>Provider fee</dt><dd>{visibleQuote.attempts.some((attempt) => attempt.providerFeeAtomic !== null) ? "Disclosed by provider and reflected in output" : "Not separately reported"}</dd></div>
-          <div><dt>RMT fee</dt><dd>Not enabled</dd></div>
+          <div><dt>RMT fee</dt><dd>{bestRmtFeeLabel}</dd></div>
         </dl> : null}
         {visibleQuote ? <div className="vnVerificationGate">
           <div>
@@ -884,6 +904,9 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
               <div><dt>Gas reserve value</dt><dd>{freshVerifiedNetworkCostUsdgAtomic ? `${formatAtomicDisplay(freshVerifiedNetworkCostUsdgAtomic, 6)} USDG equivalent` : "Unavailable"}</dd></div>
               {verifiedUsdgOutcome?.kind === "buy_cost_ceiling" ? <div><dt>Trade + gas ceiling</dt><dd>{formatAtomicDisplay(verifiedUsdgOutcome.totalCostUsdgAtomic, 6)} USDG equivalent</dd></div> : null}
               {verifiedUsdgOutcome?.kind === "sell_proceeds_after_gas" ? <div><dt>Protected after gas</dt><dd>{verifiedUsdgOutcome.gasExceedsProtectedProceeds ? "Gas exceeds protected proceeds" : `${formatAtomicDisplay(verifiedUsdgOutcome.proceedsAfterGasUsdgAtomic, 6)} USDG equivalent`}</dd></div> : null}
+              <div><dt>RMT fee</dt><dd>{verifiedRmtFeeLabel}</dd></div>
+              {visibleVerification.feeExecution ? <div><dt>Fee treasury</dt><dd>{shortAddress(visibleVerification.feeExecution.treasury)}</dd></div> : null}
+              {visibleVerification.feeExecution ? <div><dt>Settlement</dt><dd>Atomic with swap · policy v{visibleVerification.feeExecution.policyVersion}</dd></div> : null}
               <div><dt>Calldata</dt><dd>{shortAddress(visibleVerification.calldataHash)}</dd></div>
             </dl>
             {visibleVerification.status === "insufficient_gas" ? <div className="vnGasRecovery" role="status">
@@ -899,7 +922,16 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
                 <div><dt>Payload</dt><dd>{shortAddress(authorizationState.plan.payloadHash)}</dd></div>
                 <div><dt>Expires</dt><dd>{new Date(authorizationState.plan.expiresAtMs).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</dd></div>
               </dl>
-              <VNextWalletReview autoRequest key={authorizationState.plan.planId} plan={authorizationState.plan} evidence={visibleVerification} />
+              <VNextWalletReview
+                autoRequest
+                key={authorizationState.plan.planId}
+                plan={authorizationState.plan}
+                evidence={visibleVerification}
+                inputSymbol={inputSymbol}
+                outputSymbol={outputSymbol}
+                inputDecimals={pair?.inputAsset.decimals ?? 18}
+                outputDecimals={pair?.outputAsset.decimals ?? 18}
+              />
             </div> : null}
           </div> : null}
         </div> : null}
@@ -924,6 +956,10 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
             <dl>
               <div><dt>{side === "buy" ? "Paid" : "Sold"}</dt><dd>{confirmedInputDisplay ? `${confirmedInputDisplay} ${inputSymbol}` : `${inputSymbol} confirmed`}</dd></div>
               <div><dt>{side === "buy" ? "Asset received" : "Proceeds"}</dt><dd>{confirmedOutputDisplay ? `${confirmedOutputDisplay} ${outputSymbol}` : `${outputSymbol} · confirmed onchain`}</dd></div>
+              {executionRecord.feeSettlement?.actualFeeAtomic !== undefined ? <div><dt>RMT fee settled</dt><dd>{formatAtomicDisplay(
+                executionRecord.feeSettlement.actualFeeAtomic,
+                executionRecord.feeSettlement.feeSide === "input" ? pair?.inputAsset.decimals ?? 18 : pair?.outputAsset.decimals ?? 18
+              )} {executionRecord.feeSettlement.feeSide === "input" ? inputSymbol : outputSymbol}</dd></div> : null}
               <div><dt>Transaction</dt><dd>{shortAddress(executionRecord.txHash)}</dd></div>
             </dl>
             <button ref={receiptAction} className="vnTradeReceiptContinue" type="button" onClick={continueTrading}>Continue trading</button>

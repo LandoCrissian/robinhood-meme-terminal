@@ -27,6 +27,14 @@ export type VNextReleaseEnvironment = VNextShellEnvironment & Partial<Pick<
   | "RMT_VNEXT_UP_CL_OBSERVATION_ENABLED"
   | "RMT_VNEXT_UP_V2_AUTHORIZATION_ENABLED"
   | "RMT_VNEXT_UP_CL_AUTHORIZATION_ENABLED"
+  | "RMT_VNEXT_EXECUTION_FEE_POLICY_ENABLED"
+  | "RMT_VNEXT_UNISWAP_V3_FEE_AUTHORIZATION_ENABLED"
+  | "RMT_VNEXT_UNISWAP_V3_FEE_EXECUTOR_ADDRESS"
+  | "RMT_VNEXT_UNISWAP_V3_FEE_EXECUTOR_RUNTIME_HASH"
+  | "RMT_VNEXT_EXECUTION_FEE_TREASURY"
+  | "RMT_VNEXT_EXECUTION_FEE_POLICY_FROM_BLOCK"
+  | "RMT_VNEXT_EXECUTION_FEE_POLICY_BEFORE_BLOCK"
+  | "RMT_VNEXT_EXECUTION_FEE_SETTLEMENT_ASSET_IDS"
   | "RMT_ETHEREUM_RPC_URL"
   | "RMT_ETHEREUM_RPC_AUTH_TOKEN"
   | "RMT_ARBITRUM_RPC_URL"
@@ -98,6 +106,15 @@ export function readVNextReleaseReadiness(env: VNextReleaseEnvironment) {
   const upClObservationEnabled = enabled(env.RMT_VNEXT_UP_CL_OBSERVATION_ENABLED);
   const upV2AuthorizationEnabled = enabled(env.RMT_VNEXT_UP_V2_AUTHORIZATION_ENABLED);
   const upClAuthorizationEnabled = enabled(env.RMT_VNEXT_UP_CL_AUTHORIZATION_ENABLED);
+  const feePolicyRequested = enabled(env.RMT_VNEXT_EXECUTION_FEE_POLICY_ENABLED);
+  const uniswapFeeAuthorizationRequested = enabled(env.RMT_VNEXT_UNISWAP_V3_FEE_AUTHORIZATION_ENABLED);
+  const feeExecutorConfigured = /^0x[0-9a-fA-F]{40}$/.test(env.RMT_VNEXT_UNISWAP_V3_FEE_EXECUTOR_ADDRESS?.trim() ?? "")
+    && /^0x[0-9a-fA-F]{64}$/.test(env.RMT_VNEXT_UNISWAP_V3_FEE_EXECUTOR_RUNTIME_HASH?.trim() ?? "")
+    && /^0x[0-9a-fA-F]{40}$/.test(env.RMT_VNEXT_EXECUTION_FEE_TREASURY?.trim() ?? "")
+    && /^[1-9][0-9]*$/.test(env.RMT_VNEXT_EXECUTION_FEE_POLICY_FROM_BLOCK?.trim() ?? "")
+    && (!env.RMT_VNEXT_EXECUTION_FEE_POLICY_BEFORE_BLOCK?.trim()
+      || /^[1-9][0-9]*$/.test(env.RMT_VNEXT_EXECUTION_FEE_POLICY_BEFORE_BLOCK.trim()))
+    && Boolean(env.RMT_VNEXT_EXECUTION_FEE_SETTLEMENT_ASSET_IDS?.trim());
   const acrossConfigurationValid = (!acrossQuotesRequested || acrossConfigured)
     && (!acrossAuthorizationRequested || (acrossConfigured && acrossQuotesRequested));
   const authorizationConsistent = authorizationClientEnabled === authorizationServerEnabled;
@@ -105,7 +122,9 @@ export function readVNextReleaseReadiness(env: VNextReleaseEnvironment) {
   const walletSubmissionValid = !walletSubmissionEnabled || (authorizationClientEnabled && authorizationServerEnabled);
   const upAuthorizationValid = (!upV2AuthorizationEnabled || (upV2ObservationEnabled && authorizationClientEnabled && authorizationServerEnabled))
     && (!upClAuthorizationEnabled || (upClObservationEnabled && authorizationClientEnabled && authorizationServerEnabled));
-  const configurationConsistent = authorizationConsistent && sushiConsistent && walletSubmissionValid && acrossConfigurationValid && upAuthorizationValid;
+  const feeAuthorizationValid = feePolicyRequested === uniswapFeeAuthorizationRequested
+    && (!feePolicyRequested || (feeExecutorConfigured && authorizationClientEnabled && authorizationServerEnabled));
+  const configurationConsistent = authorizationConsistent && sushiConsistent && walletSubmissionValid && acrossConfigurationValid && upAuthorizationValid && feeAuthorizationValid;
 
   let mode: VNextReleaseMode = "disabled";
   if (shellEnabled && !configurationConsistent) mode = "misconfigured";
@@ -139,6 +158,16 @@ export function readVNextReleaseReadiness(env: VNextReleaseEnvironment) {
         strictVerificationAvailable: true,
         walletAuthorizationAvailable: true,
         authorizationEnabled: upClAuthorizationEnabled && upClObservationEnabled && authorizationClientEnabled && authorizationServerEnabled,
+        mainnetProofComplete: false
+      },
+      uniswapV3FeeExecutor: {
+        policyEnabled: feePolicyRequested,
+        configured: feeExecutorConfigured,
+        strictVerificationAvailable: true,
+        walletAuthorizationAvailable: true,
+        authorizationEnabled: feePolicyRequested && uniswapFeeAuthorizationRequested
+          && feeExecutorConfigured && authorizationClientEnabled && authorizationServerEnabled,
+        deployedAndVerified: false,
         mainnetProofComplete: false
       },
       acrossFunding: {

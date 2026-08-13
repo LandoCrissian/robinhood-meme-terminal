@@ -13,6 +13,26 @@ import {
 import { robinhoodChain } from "@rmt/shared/chains";
 import { ROBINHOOD_SWAP_ROUTER_02, ROBINHOOD_V3_FACTORY, ROBINHOOD_V3_QUOTER, ROBINHOOD_WETH } from "../uniswap-v4";
 import { ROBINHOOD_USDG_ADDRESS, isRobinhoodNativeAsset } from "../vnext/robinhood-assets";
+import {
+  calculateRmtFeeFloor,
+  normalizeDisabledRmtFee,
+  normalizeInputSideRmtFee,
+  normalizeOutputSideRmtFee,
+  type RmtNetExecutionEconomics
+} from "../vnext/execution-fee-policy";
+import {
+  createRmtUniswapV3FeeExecution,
+  encodeRmtUniswapV3FeeExecution,
+  type RmtUniswapV3FeeExecution,
+  type RmtUniswapV3FeeRoute
+} from "../vnext/uniswap-v3-fee-executor";
+import {
+  ROBINHOOD_UNISWAP_FACTORY_RUNTIME_HASH,
+  ROBINHOOD_UNISWAP_ROUTER_RUNTIME_HASH,
+  configuredVNextUniswapFeeExecutor,
+  verifyConfiguredVNextUniswapFeeExecutor,
+  vNextFeeAssetId
+} from "./vnext-uniswap-fee-executor";
 
 const FEES = [100, 500, 3_000, 10_000] as const;
 const BPS = 10_000n;
@@ -22,8 +42,8 @@ const MAX_UINT256 = (1n << 256n) - 1n;
 // EIP-1559 transactions. Match that wallet-side ceiling so RMT never labels a
 // balance sufficient only for the final wallet review to reject it.
 const WALLET_FEE_CEILING_MULTIPLIER = 3n;
-const ROUTER_RUNTIME_HASH = "0x6f36c378e272c6324c48f045182bcb54bd8ad654cf9ebd42e8893d52c4cb25dc";
-const FACTORY_RUNTIME_HASH = "0xec72b1abd1f2faee020cfea9c646bd8994f9fb389054f6e574f103a895091739";
+const ROUTER_RUNTIME_HASH = ROBINHOOD_UNISWAP_ROUTER_RUNTIME_HASH;
+const FACTORY_RUNTIME_HASH = ROBINHOOD_UNISWAP_FACTORY_RUNTIME_HASH;
 const QUOTER_RUNTIME_HASH = "0x3db0868d945e9304c9bc6a8b2181948109ea617647142f3c4083e14393496a28";
 const factoryAbi = [{
   type: "function",
@@ -195,6 +215,79 @@ export async function quoteVNextUniswapDirect(input: {
   };
 }
 
+async function vNextUniswapFeeContext(input: {
+  requestedInputAsset: Address;
+  routedInputAsset: Address;
+  outputAsset: Address;
+  userGrossInput: bigint;
+}) {
+  const configured = configuredVNextUniswapFeeExecutor();
+  if (!configured) return null;
+  const verified = await verifyConfiguredVNextUniswapFeeExecutor(configured);
+  const inputAssetId = vNextFeeAssetId(input.routedInputAsset, isRobinhoodNativeAsset(input.requestedInputAsset));
+  const outputAssetId = vNextFeeAssetId(input.outputAsset, false);
+  const inputEligible = configured.policy.eligibleSettlementAssetIds.includes(inputAssetId);
+  const outputEligible = configured.policy.eligibleSettlementAssetIds.includes(outputAssetId);
+  if (!inputEligible && !outputEligible) return { verified, feeSide: null as null, inputAssetId, outputAssetId };
+  const feeSide = inputEligible ? "input" as const : "output" as const;
+  const providerInput = feeSide === "input"
+    ? input.userGrossInput - BigInt(calculateRmtFeeFloor(input.userGrossInput.toString(), configured.policy.feeBps))
+    : input.userGrossInput;
+  if (providerInput <= 0n) throw new Error("The configured RMT fee leaves no executable provider input.");
+  return { verified, feeSide, inputAssetId, outputAssetId, providerInput };
+}
+
+export async function quoteVNextUniswapForUser(input: {
+  inputAsset: Address;
+  outputAsset: Address;
+  userGrossInput: bigint;
+}) {
+  const requestedInputAsset = getAddress(input.inputAsset);
+  const outputAsset = getAddress(input.outputAsset);
+  const routedInputAsset = isRobinhoodNativeAsset(requestedInputAsset) ? ROBINHOOD_WETH : requestedInputAsset;
+  const feeContext = await vNextUniswapFeeContext({
+    requestedInputAsset,
+    routedInputAsset,
+    outputAsset,
+    userGrossInput: input.userGrossInput
+  });
+  const providerInput = feeContext?.feeSide ? feeContext.providerInput : input.userGrossInput;
+  const quote = await quoteVNextUniswapDirect({ inputAsset: routedInputAsset, outputAsset, amountIn: providerInput });
+  if (!quote) return null;
+  let netEconomics: RmtNetExecutionEconomics;
+  if (feeContext?.feeSide === "input") {
+    netEconomics = normalizeInputSideRmtFee({
+      policy: feeContext.verified.policy,
+      inputAssetId: feeContext.inputAssetId,
+      outputAssetId: feeContext.outputAssetId,
+      feeAssetId: feeContext.inputAssetId,
+      settlementMode: "rmt-direct-executor-v1",
+      userGrossInputAtomic: input.userGrossInput.toString(),
+      providerGrossExpectedOutputAtomic: quote.quoteOut.toString(),
+      providerProtectedOutputAtomic: quote.minimumOut.toString()
+    });
+  } else if (feeContext?.feeSide === "output") {
+    netEconomics = normalizeOutputSideRmtFee({
+      policy: feeContext.verified.policy,
+      inputAssetId: feeContext.inputAssetId,
+      outputAssetId: feeContext.outputAssetId,
+      feeAssetId: feeContext.outputAssetId,
+      settlementMode: "rmt-direct-executor-v1",
+      userGrossInputAtomic: input.userGrossInput.toString(),
+      providerGrossExpectedOutputAtomic: quote.quoteOut.toString(),
+      providerProtectedOutputAtomic: quote.minimumOut.toString()
+    });
+  } else {
+    netEconomics = normalizeDisabledRmtFee({
+      userGrossInputAtomic: input.userGrossInput.toString(),
+      providerGrossExpectedOutputAtomic: quote.quoteOut.toString(),
+      providerProtectedOutputAtomic: quote.minimumOut.toString(),
+      reason: feeContext ? "execution_not_eligible" : "policy_not_configured"
+    });
+  }
+  return { quote, netEconomics, feeContext };
+}
+
 async function evaluateVNextUniswapRoute(input: {
   inputAsset: Address;
   outputAsset: Address;
@@ -204,6 +297,7 @@ async function evaluateVNextUniswapRoute(input: {
   deadlineSeconds?: bigint;
   protectedOutputFloorAtomic?: bigint;
   indicativeProtectedOutputFloorAtomic?: bigint;
+  executionId?: Hex;
 }) {
   const recipient = getAddress(input.recipient);
   const requestedInputAsset = getAddress(input.inputAsset);
@@ -211,11 +305,12 @@ async function evaluateVNextUniswapRoute(input: {
   const routedInputAsset = nativeInput ? ROBINHOOD_WETH : requestedInputAsset;
   const transactionValue = nativeInput ? input.amountIn : 0n;
   const nowMs = input.nowMs ?? Date.now();
-  const [quote, routerRuntimeHash] = await Promise.all([
-    quoteVNextUniswapDirect({ ...input, inputAsset: routedInputAsset }),
+  const [quoted, routerRuntimeHash] = await Promise.all([
+    quoteVNextUniswapForUser({ inputAsset: requestedInputAsset, outputAsset: input.outputAsset, userGrossInput: input.amountIn }),
     requireRuntimeHash(ROBINHOOD_SWAP_ROUTER_02, ROUTER_RUNTIME_HASH, "Uniswap router")
   ]);
-  if (!quote) throw new Error("No canonical Uniswap V3 route is available for exact verification.");
+  if (!quoted) throw new Error("No canonical Uniswap V3 route is available for exact verification.");
+  const { quote, netEconomics, feeContext } = quoted;
   const currentSeconds = BigInt(Math.floor(nowMs / 1_000));
   const deadline = input.deadlineSeconds ?? currentSeconds + 300n;
   if (deadline <= currentSeconds + 30n || deadline > currentSeconds + 300n) {
@@ -223,8 +318,46 @@ async function evaluateVNextUniswapRoute(input: {
   }
   const protectedOutputFloor = input.protectedOutputFloorAtomic ?? 0n;
   if (protectedOutputFloor < 0n) throw new Error("The protected output floor is invalid.");
-  if (protectedOutputFloor > quote.quoteOut) throw new Error("The live route moved below the indicative protected-output floor.");
-  const protectedOutput = quote.minimumOut > protectedOutputFloor ? quote.minimumOut : protectedOutputFloor;
+  if (protectedOutputFloor > BigInt(netEconomics.expectedUserNetOutputAtomic)) {
+    throw new Error("The live route moved below the indicative protected-output floor.");
+  }
+  let routerMinimumGrossOutput = quote.minimumOut;
+  if (netEconomics.rmtFee.state === "planned" && netEconomics.rmtFee.feeSide === "output") {
+    const grossNeededForContinuity = protectedOutputFloor + BigInt(netEconomics.rmtFee.maximumFeeAtomic);
+    if (grossNeededForContinuity > routerMinimumGrossOutput) routerMinimumGrossOutput = grossNeededForContinuity;
+  } else if (protectedOutputFloor > routerMinimumGrossOutput) {
+    routerMinimumGrossOutput = protectedOutputFloor;
+  }
+  const finalEconomics = netEconomics.rmtFee.state === "planned"
+    ? netEconomics.rmtFee.feeSide === "input"
+      ? normalizeInputSideRmtFee({
+          policy: feeContext!.verified.policy,
+          inputAssetId: feeContext!.inputAssetId,
+          outputAssetId: feeContext!.outputAssetId,
+          feeAssetId: feeContext!.inputAssetId,
+          settlementMode: "rmt-direct-executor-v1",
+          userGrossInputAtomic: input.amountIn.toString(),
+          providerGrossExpectedOutputAtomic: quote.quoteOut.toString(),
+          providerProtectedOutputAtomic: routerMinimumGrossOutput.toString()
+        })
+      : normalizeOutputSideRmtFee({
+          policy: feeContext!.verified.policy,
+          inputAssetId: feeContext!.inputAssetId,
+          outputAssetId: feeContext!.outputAssetId,
+          feeAssetId: feeContext!.outputAssetId,
+          settlementMode: "rmt-direct-executor-v1",
+          userGrossInputAtomic: input.amountIn.toString(),
+          providerGrossExpectedOutputAtomic: quote.quoteOut.toString(),
+          providerProtectedOutputAtomic: routerMinimumGrossOutput.toString()
+        })
+    : normalizeDisabledRmtFee({
+        userGrossInputAtomic: input.amountIn.toString(),
+        providerGrossExpectedOutputAtomic: quote.quoteOut.toString(),
+        providerProtectedOutputAtomic: routerMinimumGrossOutput.toString(),
+        reason: netEconomics.rmtFee.reason
+      });
+  const protectedOutput = BigInt(finalEconomics.protectedUserNetOutputAtomic);
+  if (protectedOutput < protectedOutputFloor) throw new Error("The live route weakened protected user output.");
   const path = quote.route === "direct"
     ? null
     : encodePacked(
@@ -241,34 +374,59 @@ async function evaluateVNextUniswapRoute(input: {
           fee: quote.fees[0],
           recipient,
           amountIn: quote.amountIn,
-          amountOutMinimum: protectedOutput,
+          amountOutMinimum: routerMinimumGrossOutput,
           sqrtPriceLimitX96: 0n
         }]
       })
     : encodeFunctionData({
         abi: routerAbi,
         functionName: "exactInput",
-        args: [{ path: path!, recipient, amountIn: quote.amountIn, amountOutMinimum: protectedOutput }]
+        args: [{ path: path!, recipient, amountIn: quote.amountIn, amountOutMinimum: routerMinimumGrossOutput }]
       });
-  const calldata = encodeFunctionData({
+  const routerCalldata = encodeFunctionData({
     abi: routerAbi,
     functionName: "multicall",
     args: [deadline, [swap]]
   });
+  const feeExecution: RmtUniswapV3FeeExecution | null = finalEconomics.rmtFee.state === "planned"
+    ? createRmtUniswapV3FeeExecution({
+        executor: feeContext!.verified.executor,
+        executorRuntimeHash: feeContext!.verified.executorRuntimeHash,
+        executionId: input.executionId ?? (() => { throw new Error("RMT fee execution requires an exact execution ID."); })(),
+        policyId: feeContext!.verified.policy.policyId,
+        netEconomics: finalEconomics,
+        trader: recipient,
+        deadline: deadline.toString(),
+        routerMinimumGrossOutputAtomic: routerMinimumGrossOutput.toString(),
+        route: {
+          kind: quote.route === "direct" ? 0 : 1,
+          tokenIn: quote.inputAsset,
+          tokenOut: quote.outputAsset,
+          fee0: quote.fees[0],
+          fee1: quote.route === "direct" ? 0 : quote.fees[1],
+          pool0: quote.pools[0],
+          pool1: quote.route === "direct" ? zeroAddress : quote.pools[1]
+        } satisfies RmtUniswapV3FeeRoute
+      })
+    : null;
+  const calldata = feeExecution ? encodeRmtUniswapV3FeeExecution(feeExecution) : routerCalldata;
+  const executionTarget = feeExecution?.executor ?? ROBINHOOD_SWAP_ROUTER_02;
+  const approvalSpender = feeExecution?.executor ?? ROBINHOOD_SWAP_ROUTER_02;
+  const grossInput = input.amountIn;
   const [tokenState, nativeBalance, gasPrice] = await Promise.all([
     nativeInput
       ? Promise.resolve({ balance: 0n, allowance: MAX_UINT256 })
       : Promise.all([
           client.readContract({ address: quote.inputAsset, abi: erc20Abi, functionName: "balanceOf", args: [recipient] }),
-          client.readContract({ address: quote.inputAsset, abi: erc20Abi, functionName: "allowance", args: [recipient, ROBINHOOD_SWAP_ROUTER_02] })
+          client.readContract({ address: quote.inputAsset, abi: erc20Abi, functionName: "allowance", args: [recipient, approvalSpender] })
         ]).then(([balance, allowance]) => ({ balance, allowance })),
     client.getBalance({ address: recipient }),
     client.getGasPrice()
   ]);
   const balance = nativeInput ? nativeBalance : tokenState.balance;
   const allowance = tokenState.allowance;
-  const sufficientBalance = balance >= quote.amountIn;
-  const approvalRequired = !nativeInput && allowance < quote.amountIn;
+  const sufficientBalance = balance >= grossInput;
+  const approvalRequired = !nativeInput && allowance < grossInput;
   let simulationPassed = false;
   let status: "verified" | "approval_required" | "insufficient_balance" | "insufficient_gas" | "gas_unavailable" | "simulation_failed";
   let nextAction: "approval" | "swap" | null = null;
@@ -293,7 +451,7 @@ async function evaluateVNextUniswapRoute(input: {
     approvalCalldata = encodeFunctionData({
       abi: erc20Abi,
       functionName: "approve",
-      args: [ROBINHOOD_SWAP_ROUTER_02, quote.amountIn]
+      args: [approvalSpender, grossInput]
     });
     nextActionCalldataHash = keccak256(approvalCalldata);
     try {
@@ -304,14 +462,14 @@ async function evaluateVNextUniswapRoute(input: {
     }
   } else {
     try {
-      await client.call({ account: recipient, to: ROBINHOOD_SWAP_ROUTER_02, data: calldata, value: transactionValue });
+      await client.call({ account: recipient, to: executionTarget, data: calldata, value: transactionValue });
       simulationPassed = true;
       status = "verified";
       nextAction = "swap";
-      nextActionTarget = ROBINHOOD_SWAP_ROUTER_02;
+      nextActionTarget = executionTarget;
       nextActionCalldataHash = keccak256(calldata);
       try {
-        estimatedGasUnits = await client.estimateGas({ account: recipient, to: ROBINHOOD_SWAP_ROUTER_02, data: calldata, value: transactionValue });
+        estimatedGasUnits = await client.estimateGas({ account: recipient, to: executionTarget, data: calldata, value: transactionValue });
       } catch {
         gasState = "unavailable";
         status = "gas_unavailable";
@@ -349,13 +507,13 @@ async function evaluateVNextUniswapRoute(input: {
     chainId: 4_663 as const,
     inputAsset: requestedInputAsset,
     outputAsset: quote.outputAsset,
-    inputAmountAtomic: quote.amountIn.toString(),
+    inputAmountAtomic: grossInput.toString(),
     indicativeProtectedOutputFloorAtomic: (input.indicativeProtectedOutputFloorAtomic ?? protectedOutputFloor).toString(),
-    expectedOutputAtomic: quote.quoteOut.toString(),
+    expectedOutputAtomic: finalEconomics.expectedUserNetOutputAtomic,
     protectedOutputAtomic: protectedOutput.toString(),
     recipient,
     router: ROBINHOOD_SWAP_ROUTER_02,
-    approvalSpender: ROBINHOOD_SWAP_ROUTER_02,
+    approvalSpender,
     approvalRequired,
     sufficientBalance,
     allowanceAtomic: allowance.toString(),
@@ -385,7 +543,9 @@ async function evaluateVNextUniswapRoute(input: {
     quoterRuntimeHash: QUOTER_RUNTIME_HASH,
     exactSimulationPassed: simulationPassed,
     userPaysGas: true,
-    rmtFeeEnabled: false,
+    rmtFeeEnabled: feeExecution !== null,
+    netEconomics: finalEconomics,
+    feeExecution,
     verifiedAtMs: nowMs,
     expiresAtMs: Number(deadline) * 1_000,
     authorizationReady: false as const
@@ -399,6 +559,7 @@ export async function verifyVNextUniswapRoute(input: {
   recipient: Address;
   protectedOutputFloorAtomic: bigint;
   indicativeProtectedOutputFloorAtomic: bigint;
+  executionId?: Hex;
   nowMs?: number;
 }) {
   return (await evaluateVNextUniswapRoute(input)).evidence;
@@ -412,6 +573,7 @@ export async function prepareVNextUniswapAuthorization(input: {
   deadlineSeconds: bigint;
   protectedOutputFloorAtomic: bigint;
   indicativeProtectedOutputFloorAtomic: bigint;
+  executionId?: Hex;
   nowMs?: number;
 }) {
   const evaluated = await evaluateVNextUniswapRoute(input);
@@ -433,7 +595,7 @@ export async function prepareVNextUniswapAuthorization(input: {
       evidence,
       transaction: {
         kind: "swap" as const,
-        target: evidence.router,
+        target: evidence.nextActionTarget!,
         data: payloads.swapCalldata,
         value: evidence.transactionValueAtomic,
         gasLimit: evidence.gasLimitUnits

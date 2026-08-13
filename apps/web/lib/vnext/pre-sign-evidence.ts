@@ -1,8 +1,10 @@
-import { getAddress, isAddress } from "viem";
+import { getAddress, isAddress, keccak256 } from "viem";
 import { z } from "zod";
 import { ROBINHOOD_SWAP_ROUTER_02 } from "../uniswap-v4";
 import { isRobinhoodNativeAsset } from "./robinhood-assets";
 import { UP_CL_EXECUTION_ROUTER, UP_V2_EXECUTION_ROUTER } from "./up-authorization-codec";
+import { assertRmtNetExecutionEconomics, type RmtNetExecutionEconomics } from "./execution-fee-policy";
+import { assertRmtUniswapV3FeeExecution, encodeRmtUniswapV3FeeExecution, type RmtUniswapV3FeeExecution } from "./uniswap-v3-fee-executor";
 
 const MAX_CLOCK_SKEW_MS = 5_000;
 
@@ -54,7 +56,9 @@ export type VNextPreSignEvidence = {
   quoterRuntimeHash: string;
   exactSimulationPassed: boolean;
   userPaysGas: true;
-  rmtFeeEnabled: false;
+  rmtFeeEnabled: boolean;
+  netEconomics?: RmtNetExecutionEconomics;
+  feeExecution?: RmtUniswapV3FeeExecution | null;
   verifiedAtMs: number;
   expiresAtMs: number;
   authorizationReady: false;
@@ -110,7 +114,9 @@ const evidenceSchema = z.object({
   quoterRuntimeHash: hash,
   exactSimulationPassed: z.boolean(),
   userPaysGas: z.literal(true),
-  rmtFeeEnabled: z.literal(false),
+  rmtFeeEnabled: z.boolean(),
+  netEconomics: z.unknown().optional(),
+  feeExecution: z.unknown().nullable().optional(),
   verifiedAtMs: z.number().int().positive(),
   expiresAtMs: z.number().int().positive(),
   authorizationReady: z.literal(false)
@@ -142,7 +148,6 @@ export function parseVNextPreSignEvidence(value: unknown, expected: {
     || !isAddress(evidence.recipient)
     || getAddress(evidence.recipient) !== getAddress(expected.recipient)
     || getAddress(evidence.router) !== getAddress(evidence.provider === "uniswap-v3" ? ROBINHOOD_SWAP_ROUTER_02 : evidence.provider === "up-v2" ? UP_V2_EXECUTION_ROUTER : UP_CL_EXECUTION_ROUTER)
-    || getAddress(evidence.approvalSpender) !== getAddress(evidence.router)
     || evidence.protectedOutputAtomic === "0"
     || BigInt(evidence.protectedOutputAtomic) > BigInt(evidence.expectedOutputAtomic)
     || evidence.verifiedAtMs > nowMs + MAX_CLOCK_SKEW_MS
@@ -150,6 +155,34 @@ export function parseVNextPreSignEvidence(value: unknown, expected: {
     || evidence.expiresAtMs - evidence.verifiedAtMs > 300_000
     || evidence.authorizationReady !== false
   ) throw new Error("RMT rejected inconsistent pre-sign evidence.");
+  if (evidence.rmtFeeEnabled) {
+    if (evidence.provider !== "uniswap-v3" || !evidence.netEconomics || !evidence.feeExecution) {
+      throw new Error("RMT rejected incomplete fee-executor evidence.");
+    }
+    assertRmtNetExecutionEconomics(evidence.netEconomics);
+    assertRmtUniswapV3FeeExecution(evidence.feeExecution, evidence.netEconomics);
+    if (
+      evidence.netEconomics.rmtFee.state !== "planned"
+      || evidence.inputAmountAtomic !== evidence.netEconomics.userGrossInputAtomic
+      || evidence.expectedOutputAtomic !== evidence.netEconomics.expectedUserNetOutputAtomic
+      || evidence.protectedOutputAtomic !== evidence.netEconomics.protectedUserNetOutputAtomic
+      || getAddress(evidence.approvalSpender) !== getAddress(evidence.feeExecution.executor)
+      || getAddress(evidence.feeExecution.trader) !== getAddress(evidence.recipient)
+      || evidence.feeExecution.deadline !== evidence.deadline
+      || keccak256(encodeRmtUniswapV3FeeExecution(evidence.feeExecution)) !== evidence.calldataHash
+      || (evidence.nextAction === "swap" && (
+        !evidence.nextActionTarget
+        || getAddress(evidence.nextActionTarget) !== getAddress(evidence.feeExecution.executor)
+        || evidence.nextActionCalldataHash !== evidence.calldataHash
+      ))
+    ) throw new Error("RMT rejected changed fee-executor economics.");
+  } else if (
+    evidence.feeExecution != null
+    || (evidence.netEconomics && evidence.netEconomics.rmtFee.state !== "disabled")
+    || getAddress(evidence.approvalSpender) !== getAddress(evidence.router)
+  ) {
+    throw new Error("RMT rejected hidden or inconsistent fee authority.");
+  }
   if (evidence.route === "direct" && (evidence.fees.length !== 1 || evidence.pools.length !== 1)) throw new Error("RMT rejected an inconsistent direct route.");
   if (evidence.route === "weth_hop" && (evidence.fees.length !== 2 || evidence.pools.length !== 2)) throw new Error("RMT rejected an inconsistent multihop route.");
   if (evidence.provider === "up-v2" && (

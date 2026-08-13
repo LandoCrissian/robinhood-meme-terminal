@@ -228,7 +228,7 @@ assert.match(engine, /Promise\.all/);
 assert.match(engine, /authorizationReady: false/);
 assert.match(engine, /networkFeeNativeAtomic: null/);
 assert.match(sushiAdapter, /quoteSushiAssetRoute/);
-assert.match(uniswapAdapter, /quoteVNextUniswapDirect/);
+assert.match(uniswapAdapter, /quoteVNextUniswapForUser/);
 assert.match(zeroXAdapter, /RMT_VNEXT_ZEROX_OBSERVATION_ENABLED/);
 assert.match(uniswapXAdapter, /RMT_VNEXT_UNISWAPX_OBSERVATION_ENABLED/);
 assert.match(uniswapXAdapter, /protocols: \["UNISWAPX_V3"\]/);

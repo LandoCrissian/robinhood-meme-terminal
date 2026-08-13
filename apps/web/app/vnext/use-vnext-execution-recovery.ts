@@ -6,6 +6,7 @@ import {
   findUnresolvedVNextExecution,
   readVNextExecutionJournal,
   resolveVNextExecution,
+  settledVNextFeeExecution,
   settledVNextOutputAtomic,
   VNEXT_EXECUTION_EVENT,
   VNEXT_EXECUTION_STORAGE_KEY,
@@ -16,12 +17,13 @@ import { ROBINHOOD_MAINNET_CHAIN_ID } from "../../lib/vnext/robinhood-assets";
 export function useVNextExecutionRecovery() {
   const { address } = useAccount();
   const [record, setRecord] = useState<VNextExecutionRecord | null>(null);
+  const [reconciliationFailed, setReconciliationFailed] = useState(false);
   const receiptRequired = record?.state === "submitted"
     || (record?.state === "confirmed" && record.kind === "swap" && !record.outputAmountAtomic);
   const receipt = useWaitForTransactionReceipt({
     hash: receiptRequired ? record?.txHash : undefined,
     chainId: ROBINHOOD_MAINNET_CHAIN_ID,
-    confirmations: 1
+    confirmations: record?.feeSettlement ? 2 : 1
   });
 
   useEffect(() => {
@@ -49,27 +51,44 @@ export function useVNextExecutionRecovery() {
   }, [address]);
 
   useEffect(() => {
+    setReconciliationFailed(false);
+  }, [record?.txHash]);
+
+  useEffect(() => {
     if (
       !record || !receiptRequired || !receipt.isSuccess || !receipt.data
       || receipt.data.transactionHash.toLowerCase() !== record.txHash.toLowerCase()
     ) return;
     const state = receipt.data.status === "success" ? "confirmed" : "reverted";
-    const outputAmountAtomic = state === "confirmed"
-      ? settledVNextOutputAtomic(record, receipt.data.logs)
+    const feeSettlement = state === "confirmed" && record.feeSettlement
+      ? settledVNextFeeExecution(record, receipt.data.logs)
       : null;
+    const outputAmountAtomic = state === "confirmed"
+      ? feeSettlement?.outputAmountAtomic ?? (record.feeSettlement ? null : settledVNextOutputAtomic(record, receipt.data.logs))
+      : null;
+    if (state === "confirmed" && record.feeSettlement && !feeSettlement) {
+      setReconciliationFailed(true);
+      return;
+    }
     if (record.state === "confirmed" && !outputAmountAtomic) return;
     const resolved = resolveVNextExecution(
       record.txHash,
       state,
       undefined,
       Date.now(),
-      outputAmountAtomic ? { outputAmountAtomic } : undefined
+      outputAmountAtomic ? {
+        outputAmountAtomic,
+        ...(feeSettlement ? {
+          actualFeeAtomic: feeSettlement.actualFeeAtomic,
+          grossActualOutputAtomic: feeSettlement.grossActualOutputAtomic
+        } : {})
+      } : undefined
     ) ?? { ...record, state, ...(outputAmountAtomic ? { outputAmountAtomic } : {}), updatedAtMs: Date.now() };
     setRecord(address ? findUnresolvedVNextExecution(address) ?? resolved : resolved);
   }, [address, receipt.data, receipt.isSuccess, receiptRequired, record]);
 
   const status = record?.state === "submitted"
-    ? receipt.isError ? "confirmation_unavailable" : "confirming"
+    ? reconciliationFailed ? "reconciliation_failed" : receipt.isError ? "confirmation_unavailable" : "confirming"
     : record?.state ?? "idle";
   return { record, status } as const;
 }

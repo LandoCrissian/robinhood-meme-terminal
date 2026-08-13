@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import { getAddress, isAddress } from "viem";
 import { z } from "zod";
 import { requireAuthenticatedTradeWallet, tradeIdentityErrorResponse } from "../../../../lib/server/rmt-trade-identity";
@@ -34,6 +34,7 @@ export async function POST(request: Request) {
     if (!inputIdentity || !outputIdentity) {
       return Response.json({ error: "Both assets require verified Robinhood Chain identity before route verification." }, { status: 422, headers: { "Cache-Control": "no-store" } });
     }
+    const executionId = `0x${randomBytes(32).toString("hex")}` as const;
     const evidence = await verifyRobinhoodVNextExecution(parsed.data.provider, {
       chainId: 4_663,
       inputAsset,
@@ -41,7 +42,8 @@ export async function POST(request: Request) {
       amountIn: BigInt(parsed.data.inputAmountAtomic),
       inputAmountAtomic: parsed.data.inputAmountAtomic,
       recipient,
-      indicativeProtectedOutputFloorAtomic: BigInt(parsed.data.protectedOutputFloorAtomic)
+      indicativeProtectedOutputFloorAtomic: BigInt(parsed.data.protectedOutputFloorAtomic),
+      executionId
     });
     return Response.json({
       verificationId: randomUUID(),

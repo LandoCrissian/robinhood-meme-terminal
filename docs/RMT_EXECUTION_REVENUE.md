@@ -148,6 +148,58 @@ event RMTUniswapV3FeeSettled(
 );
 ```
 
+## Default-off VNext authorization integration
+
+VNext now has a typed client/server codec for the executor, but the path cannot
+become active from a single setting. Fee-bearing Uniswap V3 execution requires
+all of the following independently:
+
+- `RMT_VNEXT_EXECUTION_FEE_POLICY_ENABLED=true`;
+- `RMT_VNEXT_UNISWAP_V3_FEE_AUTHORIZATION_ENABLED=true`;
+- an exact deployed executor address and runtime hash;
+- the exact treasury, policy start/end boundary and chain-qualified settlement-asset registry;
+- both existing VNext client/server authorization gates;
+- the existing wallet-submission gate before a prompt can open.
+
+When the policy is active and the input settlement asset is eligible, RMT quotes
+the provider using the post-fee provider input. When the output settlement asset
+is eligible, RMT quotes the full provider input and displays/protects the user's
+net output. Routes with no eligible settlement asset remain fee-ineligible; they
+do not acquire hidden economics.
+
+Before wallet review the server verifies the executor runtime and every immutable
+router, factory, WETH, treasury, policy and eligible-asset value against the exact
+configured policy. The wallet approval spender changes from Router02 to the
+executor only for this admitted path. Approval remains exact, and confirmation
+forces a new quote, route verification and complete executor simulation.
+
+The browser independently decodes the typed executor call. It verifies the exact
+execution ID, policy, treasury, fee side/asset/rate/cap, trader, gross input,
+provider input, expected gross output, protected user net output, deadline,
+route identity, pools and fee tiers before opening the wallet.
+
+## Receipt reconciliation
+
+A mined fee-bearing transaction is not credited from generic token transfers.
+RMT requires exactly one `RMTUniswapV3FeeSettled` event from the exact executor
+and reconciles every authorization field, Router02/provider identity, actual fee,
+positive-slippage cap, actual net output and treasury. A missing, duplicated or
+mutated event leaves the transaction unresolved with a recovery warning; users
+are told not to resubmit and Spend Balance is not credited from unverified data.
+
+The local recovery journal stores only the bounded settlement expectation and
+actual canonical amounts. It does not store a signing key or create server-side
+transaction authority. The wallet remains the only signer.
+
+Run the read-only release report with:
+
+```text
+pnpm --filter web readiness:vnext-uniswap-fee
+```
+
+It reports public contract/policy identities and exact blockers. It never signs,
+deploys, approves, submits or changes environment configuration.
+
 ### Deployment prerequisites
 
 Before any deployment, RMT still requires an explicitly selected public treasury, the exact production policy hash/effective block, reviewed eligible settlement assets, constructor and bytecode review, deterministic deployment/verification tooling, and independent security review. After deployment, server authorization, client disclosure, receipt reconciliation and controlled proof remain separate default-off phases.
@@ -156,9 +208,9 @@ Before any deployment, RMT still requires an explicitly selected public treasury
 
 1. Versioned policy, normalized commitment and net math — no collection.
 2. Narrow non-upgradeable Uniswap V3 fee executor and adversarial/fork tests — no deployment.
-3. Server quote, strict verification and fee-bearing authorization — gates off.
-4. Client pre-sign verification and fee disclosure — gates off.
-5. Receipt reconciliation, exactly-once settlement proof and finality/reorg accounting.
+3. Server quote, strict verification and fee-bearing authorization — implemented, gates off.
+4. Client pre-sign verification and fee disclosure — implemented, gates off.
+5. Canonical receipt reconciliation and exactly-once settlement proof — implemented; deployment finality/proof evidence pending.
 6. Deployment verification and controlled proof tooling — no public activation.
 
 Production revenue is not booked from a quote or plan. It exists only after a successful, final, unambiguous settlement proves exactly one authorized fee to the exact treasury.
@@ -168,10 +220,10 @@ Production revenue is not booked from a quote or plan. It exists only after a su
 - Policy implementation: foundation present.
 - Production treasury: not configured.
 - Fee executor: source and adversarial/fork tests implemented; not deployed.
-- Fee-bearing authorization: not implemented.
-- Fee disclosure: not implemented.
-- Fee settlement ledger: not implemented.
-- Provider fee gates: off/not present.
+- Fee-bearing authorization: implemented and independently gated off.
+- Fee disclosure: implemented; unreachable without an admitted deployment/policy.
+- Fee settlement reconciliation: implemented for the canonical event; no production settlement exists.
+- Provider fee gates: present and default off.
 - Production fee collection: disabled.
 
 The older disabled Uniswap fee capability is compatibility code, not authorization to activate revenue and not the canonical VNext revenue architecture.
