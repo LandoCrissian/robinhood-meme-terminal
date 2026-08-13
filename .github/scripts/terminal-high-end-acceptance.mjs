@@ -392,7 +392,10 @@ async function inspectMarket(browser) {
     throw new Error("Line chart mode did not activate");
   }
   await candlesButton.click();
-  await page.locator(".vnChartFrame svg").hover({ position: { x: 480, y: 150 } });
+  const chart = page.locator(".vnChartFrame svg");
+  const chartBox = await chart.boundingBox();
+  if (!chartBox) throw new Error("Chart bounds are unavailable");
+  await page.mouse.move(chartBox.x + chartBox.width * 0.5, chartBox.y + chartBox.height * 0.4);
   await page.locator(".vnChartTooltip").waitFor({ state: "visible" });
   await page.screenshot({ path: `${output}/market-1440x900.png`, fullPage: false, animations: "disabled" });
   await page.locator(".vnChartFrame").screenshot({ path: `${output}/chart-candles.png`, animations: "disabled" });
