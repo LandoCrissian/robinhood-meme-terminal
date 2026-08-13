@@ -182,6 +182,7 @@ jobs:
             src/VersionedFactoryRegistry.sol \
             src/OfficialRMTIdentityMigration.sol \
             src/DirectLaunchFeeSplitter.sol \
+            src/RMTUniswapV3FeeExecutorV1.sol \
             src/RMTTestnetSushiV3RehearsalStack.sol \
             src/clone/CloneBondingCurveMarketV6.sol \
             src/V5GraduationHook.sol \
@@ -195,6 +196,8 @@ jobs:
             test/RMTLaunchPolicyRegistry.t.sol \
             test/RMTLaunchFactoryV6.t.sol \
             test/DirectLaunchFeeSplitter.t.sol \
+            test/RMTUniswapV3FeeExecutorV1.t.sol \
+            test/RMTUniswapV3FeeExecutorV1Fork.t.sol \
             test/RMTTestnetSushiV3RehearsalStack.t.sol \
             test/V4GraduationAdapter.t.sol \
             test/V6MainnetFork.t.sol \
