@@ -35,6 +35,7 @@ const executorViewAbi = parseAbi([
   "function wethRuntimeHash() view returns (bytes32)", "function policyIdHash() view returns (bytes32)",
   "function policyHash() view returns (bytes32)", "function policyVersion() view returns (uint256)",
   "function policyFromBlock() view returns (uint256)", "function policyBeforeBlock() view returns (uint256)",
+  "function currentPolicyBlock() view returns (uint256)",
   "function policyFeeBps() view returns (uint16)", "function nativeFeeAssetEligible() view returns (bool)",
   "function feeAssetEligible(address feeAsset) view returns (bool)"
 ]);
@@ -184,7 +185,7 @@ export async function verifyConfiguredVNextUniswapFeeExecutor(
   const [
     router, factory, weth, treasury, routerHash, factoryHash, wethHash,
     policyIdHash, policyVersion, policyHash, policyFeeBps, policyFromBlock,
-    policyBeforeBlock, nativeEligible
+    policyBeforeBlock, currentPolicyBlock, nativeEligible
   ] = await Promise.all([
     readExecutor<Address>(config.executor, "router"),
     readExecutor<Address>(config.executor, "factory"),
@@ -199,9 +200,9 @@ export async function verifyConfiguredVNextUniswapFeeExecutor(
     readExecutor<number>(config.executor, "policyFeeBps"),
     readExecutor<bigint>(config.executor, "policyFromBlock"),
     readExecutor<bigint>(config.executor, "policyBeforeBlock"),
+    readExecutor<bigint>(config.executor, "currentPolicyBlock"),
     readExecutor<boolean>(config.executor, "nativeFeeAssetEligible")
   ]);
-  const currentBlock = BigInt(infrastructure.verifiedAtBlock);
   if (
     getAddress(router) !== getAddress(ROBINHOOD_SWAP_ROUTER_02)
     || getAddress(factory) !== getAddress(ROBINHOOD_V3_FACTORY)
@@ -216,8 +217,8 @@ export async function verifyConfiguredVNextUniswapFeeExecutor(
     || Number(policyFeeBps) !== policy.feeBps
     || policyFromBlock !== BigInt(policy.effectiveBoundary.fromBlock)
     || policyBeforeBlock !== BigInt(policy.effectiveBoundary.beforeBlock ?? "0")
-    || currentBlock < policyFromBlock
-    || (policyBeforeBlock !== 0n && currentBlock >= policyBeforeBlock)
+    || currentPolicyBlock < policyFromBlock
+    || (policyBeforeBlock !== 0n && currentPolicyBlock >= policyBeforeBlock)
   ) throw new Error("RMT fee executor immutable policy or dependency identity changed.");
 
   for (const assetId of policy.eligibleSettlementAssetIds) {
@@ -228,7 +229,7 @@ export async function verifyConfiguredVNextUniswapFeeExecutor(
       throw new Error("RMT fee executor rejected a policy settlement asset.");
     }
   }
-  return { ...config, verifiedAtBlock: currentBlock.toString(), infrastructure };
+  return { ...config, verifiedAtBlock: currentPolicyBlock.toString(), infrastructure };
 }
 
 export function vNextFeeAssetId(address: Address, native: boolean) {

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.26;
 
 import {Test} from "forge-std/Test.sol";
-import {RMTUniswapV3FeeExecutorV1} from "../src/RMTUniswapV3FeeExecutorV1.sol";
+import {RMTUniswapV3FeeExecutorV1, IRMTArbSysV1} from "../src/RMTUniswapV3FeeExecutorV1.sol";
 
 interface FeeExecutorForkToken {
     function approve(address spender, uint256 amount) external returns (bool);
@@ -66,6 +66,14 @@ contract RMTUniswapV3FeeExecutorV1ForkTest is Test {
         enabled = vm.envOr("RMT_RUN_MAINNET_FORK", false);
         if (!enabled) return;
         vm.createSelectFork("robinhood_mainnet");
+        // Foundry's fork EVM does not execute Robinhood's ArbSys precompile.
+        // Pin its response to the exact fork's canonical L2 block so the
+        // executor exercises the same policy boundary used on live chain.
+        vm.mockCall(
+            address(100),
+            abi.encodeWithSelector(IRMTArbSysV1.arbBlockNumber.selector),
+            abi.encode(block.number)
+        );
         address[] memory eligibleFeeAssets = new address[](2);
         eligibleFeeAssets[0] = WETH;
         eligibleFeeAssets[1] = USDG;
@@ -91,6 +99,7 @@ contract RMTUniswapV3FeeExecutorV1ForkTest is Test {
     function testCanonicalRuntimeDependenciesAndAtomicRoundTrip() public {
         if (!enabled) return;
         assertEq(block.chainid, 4_663);
+        assertEq(executor.currentPolicyBlock(), block.number);
         assertEq(ROUTER.codehash, ROUTER_RUNTIME_HASH);
         assertEq(FACTORY.codehash, FACTORY_RUNTIME_HASH);
         assertEq(WETH.codehash, WETH_RUNTIME_HASH);

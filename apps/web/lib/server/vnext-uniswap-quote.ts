@@ -37,6 +37,11 @@ import {
 const FEES = [100, 500, 3_000, 10_000] as const;
 const BPS = 10_000n;
 const SLIPPAGE_BPS = 100n;
+// The executor rejects deadlines more than five minutes ahead of the current
+// block timestamp. Keep the default below that hard ceiling so ordinary RPC,
+// server and block-clock drift cannot turn a fresh authorization invalid.
+const DEFAULT_AUTHORIZATION_WINDOW_SECONDS = 240n;
+const MAX_AUTHORIZATION_WINDOW_SECONDS = 300n;
 const MAX_UINT256 = (1n << 256n) - 1n;
 // MetaMask currently reserves up to 3x Robinhood Chain's observed gas price for
 // EIP-1559 transactions. Match that wallet-side ceiling so RMT never labels a
@@ -312,8 +317,8 @@ async function evaluateVNextUniswapRoute(input: {
   if (!quoted) throw new Error("No canonical Uniswap V3 route is available for exact verification.");
   const { quote, netEconomics, feeContext } = quoted;
   const currentSeconds = BigInt(Math.floor(nowMs / 1_000));
-  const deadline = input.deadlineSeconds ?? currentSeconds + 300n;
-  if (deadline <= currentSeconds + 30n || deadline > currentSeconds + 300n) {
+  const deadline = input.deadlineSeconds ?? currentSeconds + DEFAULT_AUTHORIZATION_WINDOW_SECONDS;
+  if (deadline <= currentSeconds + 30n || deadline > currentSeconds + MAX_AUTHORIZATION_WINDOW_SECONDS) {
     throw new Error("The authorization deadline is stale or outside the supported window.");
   }
   const protectedOutputFloor = input.protectedOutputFloorAtomic ?? 0n;
