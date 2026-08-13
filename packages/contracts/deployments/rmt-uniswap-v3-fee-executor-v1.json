@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 1,
+  "status": "prepared_not_authorized",
+  "chainId": 4663,
+  "contract": "RMTUniswapV3FeeExecutorV1",
+  "sourceBaseline": "3c3bc7278c66f89e858a505cf23128963c022d60",
+  "deploymentAuthorized": false,
+  "feeActivationAuthorized": false,
+  "deployer": "0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA",
+  "deterministicDeployment": {
+    "factory": "0x4e59b44847b379578588920cA78FbF26c0B4956C",
+    "factoryRuntimeHash": "0x2fa86add0aed31f33a762c9d88e807c475bd51d0f52bd0955754b2608f7e4989",
+    "salt": "0x295c900143405bb585a4d88c3788fadab522fd4313f69242f64e52e39827f141",
+    "predictedExecutor": "0x843a4D8BEa13037c5706eA005d336aE735BB0eD4",
+    "creationCodeHash": "0xddb5a202781c1dd6ee17f43b927183f5aad3013fb268ba4f87715834a411b05c",
+    "constructorArgumentsHash": "0x748d1d22b04a5806ddc52374b9eee1da242a345713299b5a41ebde3077729cce",
+    "initCodeHash": "0x2cffde01526edcd1c4c1b0907171ab34e3b7d734b54c8c6caeaa6539f720e337",
+    "expectedRuntimeHash": "0x86cc453830da2f44aa6d236b55ad9a9b1054cfdac25f09f7335a3eca8414b224",
+    "creationCodeBytes": 14470,
+    "initCodeBytes": 15046,
+    "deploymentTransaction": null
+  },
+  "treasury": {
+    "address": "0x61700479A4A1F62584Fd3ABA2c2b290EA727d2eC",
+    "kind": "safe_1_of_1",
+    "owner": "0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA",
+    "threshold": 1,
+    "safeVersion": "1.5.0",
+    "singleton": "0xEdd160fEBBD92E350D4D398fb636302fccd67C7e",
+    "singletonRuntimeHash": "0x180193227186ccb85316c94db1f0d156ed932b14712cfaac78901899178572dc",
+    "fallbackHandler": "0x3EfCBb83A4A7AfcB4F68D501E2c2203a38be77f4",
+    "fallbackHandlerRuntimeHash": "0x3c6a85bcf7b563daa624b884b4e9a1b9fa5371edde7be945d998071a48f28bbc",
+    "proxyRuntimeHash": "0x4e381985ca68b3e5d27b4425fa581c19cf33146d3f887a3cfca96f55528ea46f",
+    "deploymentTransaction": "0xae7c35dc956efe6691a983e5c0980f2221800f46461e2346205b6d21b158be15",
+    "deploymentBlock": "35041945",
+    "deploymentBlockHash": "0x079c545bd498bd9fc8c1f808d25c9a8ef3ac2087b3c5f01c10badb83fe45ee11"
+  },
+  "infrastructure": {
+    "router": "0xcaf681a66d020601342297493863e78c959e5cb2",
+    "routerRuntimeHash": "0x6f36c378e272c6324c48f045182bcb54bd8ad654cf9ebd42e8893d52c4cb25dc",
+    "factory": "0x1f7d7550b1b028f7571e69a784071f0205fd2efa",
+    "factoryRuntimeHash": "0xec72b1abd1f2faee020cfea9c646bd8994f9fb389054f6e574f103a895091739",
+    "weth": "0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73",
+    "wethRuntimeHash": "0x5706be52f64875fee65a2cec0d80e47a23d8793cbe85d214b48445e2d05f5353",
+    "wethImplementation": "0xC6B81b429797E0f555440b70cD99e032D7AE947e",
+    "wethImplementationRuntimeHash": "0xbe1295f37be34ffe03ad779bda0ef278907e1856b51a3be2f35ee541d75d4650",
+    "usdg": "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168",
+    "usdgRuntimeHash": "0x864cc9ad53b338b82da1f7cab85ab0b3d5c8861acb422b6fec63cf36234f36a6"
+  },
+  "policy": {
+    "policyId": "RMT_EXECUTION_V1",
+    "policyIdHash": "0xa7fdfdc2b754862dc94b4ab2366b10527c8dd297beee047425032426c01b4feb",
+    "version": 1,
+    "feeBps": 25,
+    "policyHash": "0x295c900143405bb585a4d88c3788fadab522fd4313f69242f64e52e39827f141",
+    "fromBlock": "35041945",
+    "beforeBlock": null,
+    "eligibleSettlementAssetIds": [
+      "eip155:4663/contract:0x0bd7d308f8e1639fab988df18a8011f41eacad73",
+      "eip155:4663/contract:0x5fc5360d0400a0fd4f2af552add042d716f1d168",
+      "eip155:4663/native"
+    ],
+    "eligibleFeeAssets": [
+      "0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73",
+      "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168"
+    ],
+    "nativeFeeAssetEligible": true
+  }
+}

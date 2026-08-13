@@ -17,7 +17,7 @@ The owner has approved implementation support for the first forward terminal exe
 | Eligible origin | independently proven RMT-originated executions only |
 | Initial settlement assets | canonical Robinhood USDG and WETH/native-compatible settlement, subject to exact provider admission |
 
-This policy direction does **not** activate collection. Production remains disabled until an exact public treasury, effective block boundary, provider-specific settlement implementation, complete wallet disclosure, settlement proof and explicit release authorization all exist.
+This policy direction does **not** activate collection. The treasury and policy boundary are now fixed, but production remains disabled until the provider-specific settlement deployment, complete wallet disclosure, settlement proof and explicit release authorization all exist.
 
 Across funding, wallet transfers, failed transactions, quote requests and unrelated transactions are not eligible. V6 economics, Stonk/up allocations, PoH allocations, subscriptions, hidden spread, positive-slippage capture and automatic fee-conversion swaps are not part of this policy.
 
@@ -36,7 +36,9 @@ A complete policy binds:
 - the 100% RMT-operations allocation;
 - one deterministic policy hash.
 
-No treasury is embedded in the repository. The `RMT_EXECUTION_V1` descriptor is deliberately incomplete until an exact public treasury and effective boundary are supplied. A policy missing either cannot produce a valid commitment.
+The approved treasury is the independently verified one-owner Safe at `0x61700479A4A1F62584Fd3ABA2c2b290EA727d2eC`. Its sole owner is `0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA` and its threshold is one. The Safe was deployed in transaction `0xae7c35dc956efe6691a983e5c0980f2221800f46461e2346205b6d21b158be15` at Robinhood block `35041945`.
+
+That confirmed treasury-deployment block is the immutable V1 policy `fromBlock`. It anchors the policy identity; it does not activate collection or make transactions before the executor deployment fee-bearing. With canonical WETH, USDG and native Robinhood ETH as the reviewed settlement identities, the exact policy hash is `0x295c900143405bb585a4d88c3788fadab522fd4313f69242f64e52e39827f141`. A runtime configuration missing or changing any of these values still fails closed.
 
 Every indicative provider observation now carries explicit net economics. While collection is disabled, its commitment is structurally `disabled`, exposes no policy or treasury authority, carries zero expected/maximum fee and leaves gross/provider/net amounts unchanged. A bare hard-coded zero is not accepted as the normalized RMT fee model.
 
@@ -204,7 +206,14 @@ deploys, approves, submits or changes environment configuration.
 
 ### Deployment prerequisites
 
-Before any deployment, RMT still requires an explicitly selected public treasury, the exact production policy hash/effective block, reviewed eligible settlement assets, constructor and bytecode review, deterministic deployment/verification tooling, and independent security review. After deployment, server authorization, client disclosure, receipt reconciliation and controlled proof remain separate default-off phases.
+The exact public treasury, policy hash/effective block and eligible settlement assets are now recorded in `packages/contracts/deployments/rmt-uniswap-v3-fee-executor-v1.json`. The same manifest pins the verified CREATE2 factory, constructor bytecode, constructor arguments, init code, expected runtime and predicted executor address. Run:
+
+```text
+forge build --root packages/contracts --contracts src/RMTUniswapV3FeeExecutorV1.sol
+pnpm --filter web readiness:vnext-uniswap-fee-deployment
+```
+
+The command reconstructs the deployment from the compiled artifact, re-verifies the Safe ownership and runtime, re-verifies Router02/factory/WETH/USDG identities, simulates the constructor and CREATE2 deployment, proves the predicted address is empty and reports current gas sufficiency. It never signs or submits. The committed manifest explicitly keeps deployment and fee activation unauthorized. Separate explicit authorization, final bytecode/constructor review and post-deployment verification remain required. Server authorization, client disclosure, receipt reconciliation and controlled proof remain separate default-off phases after deployment.
 
 ## Review sequence
 
@@ -220,7 +229,8 @@ Production revenue is not booked from a quote or plan. It exists only after a su
 ## Current release state
 
 - Policy implementation: foundation present.
-- Production treasury: not configured.
+- Production treasury: approved Safe deployed and independently verified; production environment remains unconfigured.
+- Policy identity: exact hash and block boundary recorded; collection remains disabled.
 - Fee executor: source and adversarial/fork tests implemented; not deployed.
 - Fee-bearing authorization: implemented and independently gated off.
 - Fee disclosure: implemented; unreachable without an admitted deployment/policy.

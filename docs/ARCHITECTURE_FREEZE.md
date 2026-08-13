@@ -89,7 +89,9 @@ The owner has approved implementation support for the versioned `RMT_EXECUTION_V
 fee policy: RMT_EXECUTION_V1 / version 1
 fee bps: 25
 enabled: false
-treasury: null
+treasury: 0x61700479A4A1F62584Fd3ABA2c2b290EA727d2eC (verified 1-of-1 Safe)
+policy from block: 35041945
+policy hash: 0x295c900143405bb585a4d88c3788fadab522fd4313f69242f64e52e39827f141
 ```
 
 The policy is explicit and hash-bound; execution logic must never infer 25 basis points as a fallback. Missing treasury, effective boundary or provider settlement admission fails closed. Across funding, wallet transfers and failed executions are ineligible. Deployed V6 70/30 economics remain historical/current protocol facts and are not forward terminal economics. See [`RMT_EXECUTION_REVENUE.md`](RMT_EXECUTION_REVENUE.md).
