@@ -4,6 +4,7 @@ import { config as middlewareConfig, vnextRequestBoundary } from "../../middlewa
 import { vnextShellAvailable, vnextShellMode } from "./vnext-shell-access";
 
 const page = readFileSync(new URL("../../app/vnext/page.tsx", import.meta.url), "utf8");
+const rootPage = readFileSync(new URL("../../app/page.tsx", import.meta.url), "utf8");
 const nextConfig = readFileSync(new URL("../../next.config.mjs", import.meta.url), "utf8");
 const shell = readFileSync(new URL("../../app/vnext/vnext-terminal-shell.tsx", import.meta.url), "utf8");
 const composer = readFileSync(new URL("../../app/vnext/trade-intent-composer.tsx", import.meta.url), "utf8");
@@ -25,7 +26,9 @@ assert.match(page, /export const dynamic = "force-dynamic"/);
 assert.match(page, /alternates: \{ canonical: "\/" \}/);
 assert.match(page, /openGraph:[\s\S]*url: "\/"/);
 assert.doesNotMatch(page, /index: false|follow: false/);
-assert.match(nextConfig, /source: "\/"[\s\S]*destination: "\/vnext"/);
+assert.match(rootPage, /export \{ metadata \} from "\.\/vnext\/page"/);
+assert.match(rootPage, /export \{ default \} from "\.\/vnext\/page"/);
+assert.doesNotMatch(nextConfig, /source: "\/"[\s\S]*destination: "\/vnext"/);
 assert.match(nextConfig, /source: "\/vnext"[\s\S]*destination: "\/"[\s\S]*permanent: true/);
 assert.match(chrome, /"\/vnext"/);
 assert.match(chrome, /pathname === "\/"/);
