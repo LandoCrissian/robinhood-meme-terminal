@@ -186,6 +186,11 @@ export class PaperRiskCapacityPlanner {
     if (input.strategy.agentId !== input.agent.id) fail("paper capacity strategy does not belong to agent");
     assertStrategyWithinSafetyEnvelope(input.strategy.spec, this.config.safetyEnvelope);
     assertHash(input.strategy.strategyHash, "paper capacity strategyHash");
+    if (input.strategy.strategyHash !== hashCanonicalPayload({
+      agentId: input.strategy.agentId,
+      version: input.strategy.version,
+      spec: input.strategy.spec,
+    })) fail("paper capacity strategy hash mismatch");
     if (input.account.participantType !== "AGENT" || input.account.participantId !== input.agent.id) fail("paper capacity account does not belong to agent");
     if (plannedAt < input.account.openedAt) fail("paper capacity plan predates paper account");
     assertPaperRiskSnapshot(input.riskSnapshot);
