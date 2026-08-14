@@ -1,0 +1,80 @@
+{
+  "schema": "rmt.physical-commodity-evidence.v0.full",
+  "environment": "synthetic-testnet",
+  "disclaimer": "This complete fixture is fabricated for contract testing. Every entity, account, lot, measurement, document, location, quality result, title statement, custody statement and encumbrance statement is synthetic and has no legal or monetary effect.",
+  "control": {
+    "fixtureVersion": 0,
+    "canonicalBytesPolicy": "exact checked-in UTF-8 bytes",
+    "confidential": false,
+    "realWorldUseProhibited": true
+  },
+  "parties": {
+    "issuer": {
+      "partyIdLabel": "RMT-SYNTHETIC-ISSUER-0001",
+      "legalEntity": "Synthetic Issuer Fixture LLC",
+      "jurisdiction": "ZZ-SYNTHETIC",
+      "registrationNumber": "SYNTHETIC-ONLY-ISSUER-0001"
+    },
+    "custodian": {
+      "partyIdLabel": "RMT-SYNTHETIC-CUSTODIAN-0001",
+      "legalEntity": "Synthetic Custodian Fixture LLC",
+      "jurisdiction": "ZZ-SYNTHETIC",
+      "registrationNumber": "SYNTHETIC-ONLY-CUSTODIAN-0001"
+    },
+    "attestor": {
+      "partyIdLabel": "RMT-SYNTHETIC-ATTESTOR-0001",
+      "legalEntity": "Synthetic Attestor Fixture LLC",
+      "jurisdiction": "ZZ-SYNTHETIC",
+      "registrationNumber": "SYNTHETIC-ONLY-ATTESTOR-0001",
+      "scope": "Contract-path demonstration only; not an audit, laboratory result, assurance opinion or legal opinion."
+    }
+  },
+  "inventory": {
+    "operatorInventoryId": "SYNTHETIC-INVENTORY-HE-0001",
+    "custodyAccountId": "SYNTHETIC-CUSTODY-ACCOUNT-0001",
+    "storageLocation": "SYNTHETIC-LOCATION-NOT-A-REAL-SITE",
+    "containerId": "SYNTHETIC-TUBE-TRAILER-0001",
+    "measuredCommodityQuantity": {
+      "value": "170000",
+      "decimals": 0,
+      "unitCode": "SCF_SYNTHETIC",
+      "quantityStandard": "SYNTHETIC_STANDARD_TEMPERATURE_PRESSURE_V0",
+      "uncertaintyPpm": 2500,
+      "measurementMethod": "synthetic calibrated-flow fixture",
+      "meterId": "SYNTHETIC-METER-0001",
+      "calibrationRecord": "SYNTHETIC-CALIBRATION-0001"
+    },
+    "equipmentCapacityNotBacking": true,
+    "futureProductionNotBacking": true,
+    "undergroundResourceNotBacking": true
+  },
+  "quality": {
+    "commoditySpecification": "SYNTHETIC_HELIUM_99_999_V0",
+    "sampleId": "SYNTHETIC-SAMPLE-0001",
+    "samplingPoint": "SYNTHETIC-SAMPLING-POINT-0001",
+    "chainOfCustody": "SYNTHETIC-CHAIN-OF-CUSTODY-0001",
+    "analyticalMethod": "synthetic-method-only",
+    "result": "99.999% synthetic fixture",
+    "accreditation": "none; synthetic"
+  },
+  "legalAndCustody": {
+    "governingInstrument": "RMT_SYNTHETIC_NO_RIGHTS_V0",
+    "titleEvidence": "SYNTHETIC-TITLE-COMMITMENT-0001",
+    "custodyEvidence": "SYNTHETIC-CUSTODY-COMMITMENT-0001",
+    "encumbranceStatement": "NOT_APPLICABLE_SYNTHETIC",
+    "offtake": null,
+    "lien": null,
+    "priorSale": null,
+    "priorTokenization": null,
+    "redemptionRight": false,
+    "transferRight": false,
+    "mintRight": false
+  },
+  "sourceDocuments": [
+    "SYNTHETIC-TITLE-DOCUMENT-0001",
+    "SYNTHETIC-CUSTODY-DOCUMENT-0001",
+    "SYNTHETIC-QUANTITY-DOCUMENT-0001",
+    "SYNTHETIC-QUALITY-DOCUMENT-0001",
+    "SYNTHETIC-ENCUMBRANCE-DOCUMENT-0001"
+  ]
+}
