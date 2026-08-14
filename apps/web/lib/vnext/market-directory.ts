@@ -28,8 +28,10 @@ export type VNextDirectoryMarket = Pick<ExternalMarket,
   pairAddress?: string;
   dexId?: string;
   url?: string;
-  rwaRelationship?: "canonical-stock-token" | "paired-market-asset";
+  rwaRelationship?: VNextRwaRelationship;
 };
+
+export type VNextRwaRelationship = "canonical-stock-token" | "paired-market-asset";
 
 export type VNextMarketDirectoryView = "trending" | "new" | "active" | "rwa" | "held" | "all";
 
@@ -113,6 +115,18 @@ function compareLiquidity(left: VNextDirectoryMarket, right: VNextDirectoryMarke
   return right.liquidityUsd - left.liquidityUsd || right.volume24h - left.volume24h;
 }
 
+function compareRwaClassification(left: VNextDirectoryMarket, right: VNextDirectoryMarket) {
+  const leftRank = left.rwaRelationship === "canonical-stock-token" ? 0 : 1;
+  const rightRank = right.rwaRelationship === "canonical-stock-token" ? 0 : 1;
+  return leftRank - rightRank || compareLiquidity(left, right);
+}
+
+export function vNextRwaClassificationLabel(relationship: VNextRwaRelationship | undefined) {
+  if (relationship === "canonical-stock-token") return "Stock Token";
+  if (relationship === "paired-market-asset") return "RWA Pair";
+  return null;
+}
+
 export function selectVNextMarketDirectoryView(
   markets: VNextDirectoryMarket[],
   view: VNextMarketDirectoryView,
@@ -130,7 +144,7 @@ export function selectVNextMarketDirectoryView(
     return markets.filter((market) => market.signal === "active" && market.volume24h > 0).sort(compareVolume);
   }
   if (view === "rwa") {
-    return markets.filter((market) => Boolean(market.rwaRelationship)).sort(compareLiquidity);
+    return markets.filter((market) => Boolean(market.rwaRelationship)).sort(compareRwaClassification);
   }
   if (view === "held") {
     return markets.filter((market) => heldAddresses.has(market.address.toLowerCase())).sort(compareLiquidity);

@@ -7,6 +7,7 @@ import type { AssetMetadata } from "../../lib/vnext/execution-domain";
 import type { VNextExecutionRecord } from "../../lib/vnext/execution-recovery";
 import {
   VNEXT_MARKET_DIRECTORY_VIEWS,
+  vNextRwaClassificationLabel,
   type VNextDirectoryMarket,
   type VNextMarketDirectoryView
 } from "../../lib/vnext/market-directory";
@@ -110,7 +111,7 @@ function MarketDirectory({ mode, markets, selected, status, view, viewCounts, se
         onClick={() => onViewChange(candidate.id)}
       ><span>{candidate.label}</span><small>{viewCounts[candidate.id]}</small></button>)}
     </nav>
-    <div className="rmtMarketViewStatus"><strong>{searchActive ? "Search results" : VNEXT_MARKET_DIRECTORY_VIEWS.find((candidate) => candidate.id === view)?.label}</strong><span>{markets.length} markets · routes checked on demand</span></div>
+    <div className="rmtMarketViewStatus"><strong>{searchActive ? "Search results" : VNEXT_MARKET_DIRECTORY_VIEWS.find((candidate) => candidate.id === view)?.label}</strong><span>{!searchActive && view === "rwa" ? "Stock Tokens first · RWA Pairs labeled" : `${markets.length} markets · routes checked on demand`}</span></div>
     {status === "loading" && markets.length === 0 && <div className="rmtDirectoryMessage"><strong>Syncing markets</strong><span>Loading directory data without prechecking routes.</span></div>}
     {status === "error" && markets.length === 0 && <div className="rmtDirectoryMessage"><strong>Directory unavailable</strong><span>No asset has been marked untradeable.</span><button type="button" onClick={onRefresh}>Try again</button></div>}
     {markets.map((market) => <button
@@ -121,7 +122,10 @@ function MarketDirectory({ mode, markets, selected, status, view, viewCounts, se
       onClick={() => onSelect(market.address)}
     >
       <TokenArtwork className="rmtMarketArtwork" symbol={market.symbol} imageUrl={market.imageUri} />
-      <span className="rmtMarketName"><strong>{market.symbol}</strong><small>{mode === "desktop" ? market.name : compactUsd(market.volume24h) + " vol"}</small></span>
+      <span className="rmtMarketName">
+        <span className="rmtMarketIdentity"><strong>{market.symbol}</strong>{vNextRwaClassificationLabel(market.rwaRelationship) ? <em className={`rmtRwaClassification is${market.rwaRelationship === "canonical-stock-token" ? "Stock" : "Pair"}`}>{vNextRwaClassificationLabel(market.rwaRelationship)}</em> : null}</span>
+        <small>{mode === "desktop" ? market.name : compactUsd(market.volume24h) + " vol"}</small>
+      </span>
       <span className="rmtMarketQuote"><strong>{formatUsd(market.priceUsd)}</strong><small className={market.priceChange24h > 0 ? "vnPositive" : market.priceChange24h < 0 ? "vnNegative" : ""}>{formatChange(market.priceChange24h)}</small></span>
     </button>)}
     {status !== "loading" && markets.length === 0 && <div className="rmtDirectoryMessage"><strong>{searchActive ? "No matching markets" : `No ${view === "held" ? "wallet-held" : view} markets yet`}</strong><span>{searchActive ? "Search by name, symbol, or a complete contract address." : "Choose another category or use exact contract search. No asset was marked unavailable."}</span></div>}

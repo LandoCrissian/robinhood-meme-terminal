@@ -363,12 +363,38 @@ body .rmtTerminal {
   min-width: 0;
 }
 
-.rmtMarketName strong,
+.rmtMarketIdentity {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 5px;
+}
+
+.rmtMarketIdentity strong,
 .rmtMarketQuote strong {
   overflow: hidden;
   font-size: 11px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.rmtRwaClassification {
+  flex: 0 0 auto;
+  padding: 1px 4px;
+  border: 1px solid rgba(183, 217, 255, 0.34);
+  border-radius: 3px;
+  color: #b7d9ff;
+  font-size: 7px;
+  font-style: normal;
+  font-weight: 780;
+  line-height: 1.35;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.rmtRwaClassification.isPair {
+  border-color: rgba(222, 191, 126, 0.32);
+  color: #debf7e;
 }
 
 .rmtMarketName small,
