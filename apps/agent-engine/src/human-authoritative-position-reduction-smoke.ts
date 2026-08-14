@@ -149,17 +149,31 @@ await stateStore.commit({
 
 class StaticQuoteReader implements RmtPaperQuoteReader {
   readonly sourceId: string;
+  private readonly inputAddress: string;
+  private readonly outputAddress: string;
+  private readonly inputAmountAtomic: string;
+  private readonly outputAmountAtomic: string;
+  private readonly priceImpact: number;
+  private readonly quotedAtMs: number;
+
   constructor(
-    private readonly inputAddress: string,
-    private readonly outputAddress: string,
-    private readonly inputAmountAtomic: string,
-    private readonly outputAmountAtomic: string,
-    private readonly priceImpact: number,
-    private readonly quotedAtMs: number,
+    inputAddress: string,
+    outputAddress: string,
+    inputAmountAtomic: string,
+    outputAmountAtomic: string,
+    priceImpact: number,
+    quotedAtMs: number,
     suffix: string,
   ) {
+    this.inputAddress = inputAddress;
+    this.outputAddress = outputAddress;
+    this.inputAmountAtomic = inputAmountAtomic;
+    this.outputAmountAtomic = outputAmountAtomic;
+    this.priceImpact = priceImpact;
+    this.quotedAtMs = quotedAtMs;
     this.sourceId = `reduction-${suffix}`;
   }
+
   async compare(input: RmtPaperQuoteReaderInput): Promise<unknown> {
     assert.equal(input.inputAsset, this.inputAddress);
     assert.equal(input.outputAsset, this.outputAddress);
