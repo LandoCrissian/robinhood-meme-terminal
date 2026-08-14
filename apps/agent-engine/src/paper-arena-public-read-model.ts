@@ -74,8 +74,16 @@ export interface PaperArenaPublicReadModel {
   publicHash: string;
 }
 
+export interface PaperArenaAuthoritativeMatchupReader {
+  snapshot(seasonId: string): Promise<PaperArenaAuthoritativeMatchupRecord>;
+}
+
 function fail(message: string): never {
   throw new Error(message);
+}
+
+function assertNonEmpty(value: string, field: string): void {
+  if (typeof value !== "string" || !value.trim()) fail(`${field} must be non-empty`);
 }
 
 function assertHash(value: string, field: string): void {
@@ -154,6 +162,9 @@ function derive(source: PaperArenaAuthoritativeMatchupRecord): Omit<PaperArenaPu
 
 export function assertPaperArenaPublicReadModel(record: PaperArenaPublicReadModel): void {
   if (record.schemaVersion !== 1 || record.apiVersion !== RMT_ARENA_PUBLIC_READ_MODEL_V1) fail("unsupported public Arena read-model version");
+  assertNonEmpty(record.streamId, "public Arena streamId");
+  assertNonEmpty(record.seasonId, "public Arena seasonId");
+  assertNonEmpty(record.quoteAssetId, "public Arena quoteAssetId");
   assertHash(record.roster.rosterHash, "public Arena rosterHash");
   assertHash(record.source.authoritativeSnapshotHash, "public Arena authoritativeSnapshotHash");
   assertHash(record.source.latestPerformanceDigest, "public Arena latestPerformanceDigest");
@@ -168,4 +179,18 @@ export function buildPaperArenaPublicReadModel(source: PaperArenaAuthoritativeMa
   const record: PaperArenaPublicReadModel = { ...payload, publicHash: hashCanonicalPayload(payload) };
   assertPaperArenaPublicReadModel(record);
   return record;
+}
+
+export class PaperArenaPublicReadService {
+  private readonly reader: PaperArenaAuthoritativeMatchupReader;
+
+  constructor(reader: PaperArenaAuthoritativeMatchupReader) {
+    this.reader = reader;
+  }
+
+  async read(seasonId: string): Promise<PaperArenaPublicReadModel> {
+    assertNonEmpty(seasonId, "public Arena seasonId");
+    const source = await this.reader.snapshot(seasonId);
+    return buildPaperArenaPublicReadModel(source);
+  }
 }
