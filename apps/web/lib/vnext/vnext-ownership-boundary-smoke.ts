@@ -51,7 +51,9 @@ for (const { path, source } of vnextSources) {
 
 const vnextLayout = readFileSync(join(vnextAppDirectory, "layout.tsx"), "utf8");
 const vnextCssImports = [...vnextLayout.matchAll(/^import\s+["'](.+\.css)["'];$/gm)].map((match) => match[1]);
-assert.deepEqual(vnextCssImports, ["./vnext-terminal.css"]);
+assert.deepEqual(vnextCssImports, ["./vnext-terminal.css", "./vnext-terminal-reconstruction.css"]);
+const reconstructionCss = readFileSync(join(vnextAppDirectory, "vnext-terminal-reconstruction.css"), "utf8");
+assert.doesNotMatch(reconstructionCss, /!important/);
 
 const rootLayout = readFileSync(join(rootAppDirectory, "layout.tsx"), "utf8");
 const globalCssImports = [...rootLayout.matchAll(/^import\s+["'](.+\.css)["'];$/gm)].map((match) => match[1]);

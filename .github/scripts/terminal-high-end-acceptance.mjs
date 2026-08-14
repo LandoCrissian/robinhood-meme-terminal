@@ -247,13 +247,14 @@ async function installRoutes(page) {
     })
   }));
   await page.route(/\/api\/markets\/ohlcv(?:\?.*)?$/, async (route) => {
-    const range = new URL(route.request().url()).searchParams.get("range") ?? "LIVE";
+    const query = new URL(route.request().url()).searchParams;
+    const range = query.get("range") ?? "LIVE";
     await route.fulfill({
       status: 200,
       contentType: "application/json",
       body: JSON.stringify({
-        token,
-        pair,
+        token: query.get("token") ?? token,
+        pair: query.get("pair") ?? pair,
         range,
         candles: candles(range),
         source: "GeckoTerminal",
@@ -327,7 +328,7 @@ function visibleAudit() {
   return {
     viewport: { width: innerWidth, height: innerHeight },
     horizontalOverflow: Math.max(0, document.documentElement.scrollWidth - innerWidth),
-    marketRowsAboveFold: [...document.querySelectorAll(".vnMarketRow")]
+    marketRowsAboveFold: [...document.querySelectorAll(".rmtMarketItem")]
       .filter(visible)
       .filter((element) => {
         const rect = element.getBoundingClientRect();
@@ -337,36 +338,48 @@ function visibleAudit() {
   };
 }
 
-async function inspectHome(browser, viewport, label) {
+async function inspectDesktop(browser, viewport, label) {
   const context = await createContext(browser, { viewport, deviceScaleFactor: 1 });
   const page = await context.newPage();
   await page.emulateMedia({ reducedMotion: "reduce" });
   await installRoutes(page);
-  await gotoReady(page, base, ".vnMarketRow");
+  await gotoReady(page, base, ".rmtDesktopTerminal .rmtMarketItem");
 
   const audit = await page.evaluate(visibleAudit);
   if (audit.horizontalOverflow > 2) throw new Error(`${label}: page horizontal overflow ${audit.horizontalOverflow}px`);
-  if (viewport.width >= 1_180 && audit.marketRowsAboveFold < 2) {
+  if (audit.marketRowsAboveFold < 2) {
     throw new Error(`${label}: only ${audit.marketRowsAboveFold} market rows are above the fold`);
   }
   if (audit.controlsUnder32.length) {
     throw new Error(`${label}: undersized controls ${JSON.stringify(audit.controlsUnder32)}`);
   }
 
-  const search = page.getByRole("textbox", { name: "Search markets" });
+  const composition = await page.evaluate(() => ({
+    desktop: Boolean(document.querySelector(".rmtDesktopTerminal")),
+    mobile: Boolean(document.querySelector(".rmtMobileTerminal")),
+    chart: document.querySelector(".vnChart")?.getBoundingClientRect().height ?? 0,
+    rail: document.querySelector(".rmtDesktopExecution")?.getBoundingClientRect(),
+    workspace: document.querySelector(".rmtDesktopAsset")?.getBoundingClientRect(),
+    directory: document.querySelector(".rmtDesktopMarkets")?.getBoundingClientRect()
+  }));
+  if (!composition.desktop || composition.mobile) throw new Error(`${label}: dedicated desktop composition was not selected`);
+  if (composition.chart < 280) throw new Error(`${label}: chart lacks workstation authority (${composition.chart}px)`);
+  if (!composition.rail || !composition.workspace || !composition.directory) throw new Error(`${label}: workstation columns are incomplete`);
+  if (composition.rail.x < composition.workspace.x + composition.workspace.width - 2) throw new Error(`${label}: execution rail overlaps the asset workspace`);
+
+  const search = page.getByRole("textbox", { name: "Search Robinhood Chain markets" });
   await search.fill("R02");
   await page.waitForTimeout(100);
-  if (await page.locator(".vnMarketRow").count() !== 1) throw new Error(`${label}: market search did not narrow the directory`);
-  if (!(await page.locator(".vnMarketRow").first().textContent())?.includes("R02")) throw new Error(`${label}: market search returned the wrong asset`);
-  await page.locator(".vnMarketRow").first().click();
+  if (await page.locator(".rmtMarketItem").count() !== 1) throw new Error(`${label}: market search did not narrow the directory`);
+  if (!(await page.locator(".rmtMarketItem").first().textContent())?.includes("R02")) throw new Error(`${label}: market search returned the wrong asset`);
+  await page.locator(".rmtMarketItem").first().click();
   if (!(await page.locator("#vn-asset-heading").textContent())?.includes("R02")) throw new Error(`${label}: selected asset did not update the VNext workspace`);
   await search.fill("");
   await page.waitForTimeout(100);
 
   await page.screenshot({ path: `${output}/home-${label}.png`, fullPage: false, animations: "disabled" });
-  await page.locator(".vnMarketPanel").screenshot({ path: `${output}/scanner-${label}.png`, animations: "disabled" });
   await context.close();
-  return audit;
+  return { ...audit, composition };
 }
 
 async function inspectMarket(browser) {
@@ -403,72 +416,95 @@ async function inspectMarket(browser) {
   return { candles: true, line: true, crosshair: true };
 }
 
-async function inspectMobile(browser) {
-  const context = await createContext(browser, { ...devices["iPhone 13"] });
+async function inspectMobile(browser, viewport, label) {
+  const context = await createContext(browser, { viewport, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
   const page = await context.newPage();
   await page.emulateMedia({ reducedMotion: "reduce" });
   await installRoutes(page);
-  await gotoReady(page, base, ".vnMarketRow");
+  await gotoReady(page, base, ".rmtMobileTerminal #vn-asset-heading");
+  await page.locator(".rmtMobileDiscovery > summary").click();
+  await page.locator(".rmtMobileTerminal .rmtMarketItem").first().waitFor({ state: "visible" });
 
   const homeAudit = await page.evaluate(() => {
-    const marketRow = document.querySelector(".vnMarketRow");
-    const sidebar = document.querySelector(".vnSidebar");
-    const mobileDock = document.querySelector(".vnMobileDock");
-    const sidebarVisible = sidebar
-      ? getComputedStyle(sidebar).display !== "none"
-      : false;
-    const mobileDockVisible = mobileDock
-      ? getComputedStyle(mobileDock).display !== "none"
-      : false;
+    const marketRow = document.querySelector(".rmtMarketDirectory.ismobile .rmtMarketItem");
+    const desktop = document.querySelector(".rmtDesktopTerminal");
+    const mobile = document.querySelector(".rmtMobileTerminal");
+    const mobileDock = document.querySelector(".rmtMobileTradeDock");
     return {
       horizontalOverflow: Math.max(0, document.documentElement.scrollWidth - innerWidth),
       marketRowVisible: Boolean(marketRow && marketRow.getBoundingClientRect().height > 0),
-      sidebarVisible,
-      mobileDockVisible
+      desktopRendered: Boolean(desktop),
+      mobileRendered: Boolean(mobile),
+      mobileDockVisible: Boolean(mobileDock && mobileDock.getBoundingClientRect().height > 0),
+      chartWidth: document.querySelector(".vnChart")?.getBoundingClientRect().width ?? 0
     };
   });
   if (homeAudit.horizontalOverflow > 2) {
     throw new Error(`mobile: horizontal overflow ${homeAudit.horizontalOverflow}px`);
   }
-  if (!homeAudit.marketRowVisible || homeAudit.sidebarVisible || !homeAudit.mobileDockVisible) {
+  if (!homeAudit.marketRowVisible || homeAudit.desktopRendered || !homeAudit.mobileRendered || !homeAudit.mobileDockVisible) {
     throw new Error(`mobile: desktop workstation leaked into mobile layout ${JSON.stringify(homeAudit)}`);
   }
-  await page.screenshot({ path: `${output}/home-mobile.png`, fullPage: false, animations: "disabled" });
+  if (homeAudit.chartWidth > viewport.width + 2) throw new Error(`${label}: chart escaped the viewport`);
+  await page.screenshot({ path: `${output}/discovery-${label}.png`, fullPage: false, animations: "disabled" });
+  await page.locator(".rmtMobileDiscovery > summary").click();
+  await page.screenshot({ path: `${output}/home-${label}.png`, fullPage: false, animations: "disabled" });
 
-  await page.locator(".vnMarketRow").first().click();
-  await page.locator(".vnTradePanel").waitFor({ state: "visible" });
+  const mobileBuyAction = page.locator(".rmtMobileTradeDock .isBuy");
+  const selectedSymbol = (await mobileBuyAction.textContent())?.replace(/^Buy\s+/, "").trim();
+  if (!selectedSymbol) throw new Error(`${label}: selected asset symbol is unavailable`);
+  await mobileBuyAction.click();
+  const mobileDialog = page.getByRole("dialog", { name: `Trade ${selectedSymbol}` });
+  await mobileDialog.waitFor({ state: "visible" });
   const tradeAudit = await page.evaluate(() => {
-    const trade = document.querySelector(".vnTradePanel");
+    const trade = document.querySelector(".rmtMobileTradeSheet");
     if (!trade) return null;
     const rect = trade.getBoundingClientRect();
     return {
       width: rect.width,
+      height: rect.height,
       viewportWidth: innerWidth,
-      horizontalOverflow: Math.max(0, document.documentElement.scrollWidth - innerWidth)
+      viewportHeight: innerHeight,
+      horizontalOverflow: Math.max(0, document.documentElement.scrollWidth - innerWidth),
+      bodyLocked: document.body.style.overflow === "hidden" && document.documentElement.style.overflow === "hidden",
+      backdropVisible: Boolean(document.querySelector(".rmtMobileSheetLayer.isOpen .rmtMobileSheetBackdrop"))
     };
   });
-  if (!tradeAudit || tradeAudit.width > tradeAudit.viewportWidth + 2 || tradeAudit.horizontalOverflow > 2) throw new Error(`mobile: trade panel escaped the viewport ${JSON.stringify(tradeAudit)}`);
+  if (!tradeAudit || tradeAudit.width > tradeAudit.viewportWidth + 2 || tradeAudit.height > tradeAudit.viewportHeight || tradeAudit.horizontalOverflow > 2 || !tradeAudit.bodyLocked || !tradeAudit.backdropVisible) throw new Error(`${label}: trade sheet failed its viewport/containment contract ${JSON.stringify(tradeAudit)}`);
   const sell = page.getByRole("tab", { name: "Sell" });
   await sell.click();
   if (await sell.getAttribute("aria-selected") !== "true") throw new Error("mobile: Sell tab did not activate");
+  await page.screenshot({ path: `${output}/sheet-sell-${label}.png`, fullPage: false, animations: "disabled" });
   const buy = page.getByRole("tab", { name: "Buy" });
   await buy.click();
   if (await buy.getAttribute("aria-selected") !== "true") throw new Error("mobile: Buy tab did not activate");
-  await page.screenshot({ path: `${output}/market-mobile-buy.png`, fullPage: false, animations: "disabled" });
+  await page.screenshot({ path: `${output}/sheet-${label}.png`, fullPage: false, animations: "disabled" });
+  await page.keyboard.press("Escape");
+  await mobileDialog.waitFor({ state: "hidden" });
+  await page.waitForTimeout(50);
+  const unlocked = await page.evaluate(() => document.body.style.overflow === "" && document.documentElement.style.overflow === "");
+  if (!unlocked) throw new Error(`${label}: page scroll did not unlock after closing the sheet`);
+  if (!(await mobileBuyAction.evaluate((button) => document.activeElement === button))) throw new Error(`${label}: focus did not return to the Buy action`);
   await context.close();
   return { home: homeAudit, tradePanel: tradeAudit };
 }
 
-const browser = await chromium.launch({ headless: true });
+const browser = await chromium.launch({
+  headless: true,
+  ...(process.platform === "darwin" ? { channel: "chrome" } : {})
+});
 try {
-  const laptop = await inspectHome(browser, { width: 1_366, height: 768 }, "1366x768");
-  const desktop = await inspectHome(browser, { width: 1_440, height: 900 }, "1440x900");
-  const wide = await inspectHome(browser, { width: 1_920, height: 1_080 }, "1920x1080");
+  const desktop = await inspectDesktop(browser, { width: 1_440, height: 900 }, "1440x900");
+  const laptop = await inspectDesktop(browser, { width: 1_280, height: 800 }, "1280x800");
+  const compact = await inspectDesktop(browser, { width: 1_024, height: 768 }, "1024x768");
   const marketAudit = await inspectMarket(browser);
-  const mobile = await inspectMobile(browser);
+  const mobile430 = await inspectMobile(browser, { width: 430, height: 932 }, "430x932");
+  const mobile390 = await inspectMobile(browser, { width: 390, height: 844 }, "390x844");
+  const mobile375 = await inspectMobile(browser, { width: 375, height: 812 }, "375x812");
+  const mobile360 = await inspectMobile(browser, { width: 360, height: 800 }, "360x800");
   await writeFile(
     `${output}/report.json`,
-    JSON.stringify({ laptop, desktop, wide, marketAudit, mobile }, null, 2)
+    JSON.stringify({ desktop, laptop, compact, marketAudit, mobile430, mobile390, mobile375, mobile360 }, null, 2)
   );
 } finally {
   await browser.close();

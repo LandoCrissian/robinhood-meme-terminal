@@ -67,6 +67,9 @@ const hook = readFileSync(new URL("../../app/vnext/use-vnext-market-directory.ts
 const route = readFileSync(new URL("../../app/api/vnext/market-directory/route.ts", import.meta.url), "utf8");
 const identityRoute = readFileSync(new URL("../../app/api/vnext/asset-identity/route.ts", import.meta.url), "utf8");
 assert.match(hook, /fetch\("\/api\/vnext\/market-directory"/);
+assert.match(hook, /fetch\("\/api\/markets\/external"/);
+assert.match(hook, /URLSearchParams\(\{ contract: address \}\)/);
+assert.match(hook, /publishMarkets/);
 assert.match(hook, /URLSearchParams\(\{ address: selected\.address \}\)/);
 assert.match(hook, /fetch\(`\/api\/vnext\/asset-identity/);
 assert.match(hook, /setIdentityStatus\("checking"\)/);
@@ -74,7 +77,7 @@ assert.match(hook, /directorySnapshot/);
 assert.match(hook, /identityCache/);
 assert.match(hook, /nextSnapshot !== marketSnapshot\.current/);
 assert.doesNotMatch(hook, /external-availability|external-sushi-quote|external-uniswap/);
-assert.equal((hook.match(/setInterval/g) ?? []).length, 1);
+assert.equal((hook.match(/setInterval/g) ?? []).length, 2);
 assert.match(route, /token-pairs\/v1/);
 assert.match(route, /Promise\.all\(DIRECTORY_TOKENS/);
 assert.match(route, /address\.toLowerCase\(\) === zeroAddress/);

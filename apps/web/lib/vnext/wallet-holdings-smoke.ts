@@ -93,7 +93,7 @@ assert.equal(portfolio.valuations.find((item) => item.address === ROBINHOOD_USDG
 const component = readFileSync(new URL("../../app/vnext/spend-balance.tsx", import.meta.url), "utf8");
 const hook = readFileSync(new URL("../../app/vnext/use-vnext-wallet-assets.ts", import.meta.url), "utf8");
 const route = readFileSync(new URL("../../app/api/vnext/wallet-assets/route.ts", import.meta.url), "utf8");
-const shell = readFileSync(new URL("../../app/vnext/vnext-terminal-shell.tsx", import.meta.url), "utf8");
+const presentations = readFileSync(new URL("../../app/vnext/terminal-presentations.tsx", import.meta.url), "utf8");
 const artwork = readFileSync(new URL("../../app/vnext/token-artwork.tsx", import.meta.url), "utf8");
 const marketRoute = readFileSync(new URL("../../app/api/vnext/market-directory/route.ts", import.meta.url), "utf8");
 
@@ -114,8 +114,8 @@ assert.match(component, /directReceive/);
 assert.match(component, /Show all \$\{assets\.length\} assets/);
 assert.match(component, /review token identity/);
 assert.match(component, /imageUrl=\{asset\.imageUrl\}/);
-assert.match(shell, /onSelectAsset=\{selectMarket\}/);
-assert.match(shell, /imageUrl=\{market\.imageUri\}/);
+assert.match(presentations, /onSelectAsset=\{props\.onSelectMarket\}/);
+assert.match(presentations, /imageUrl=\{market\.imageUri\}/);
 assert.match(artwork, /safeTokenArtworkUrl/);
 assert.match(artwork, /onError=\{\(\) => setFailedImage\(safeImage\)\}/);
 assert.match(artwork, /symbol\.trim\(\)\.slice\(0, 1\)/);
