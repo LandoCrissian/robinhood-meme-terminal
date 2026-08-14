@@ -113,6 +113,13 @@ export class DurableAgentEngine {
     return this.mutate("openPaperAccount", input, idempotencyKey, (engine) => engine.openPaperAccount(input));
   }
 
+  async openHumanPaperAccount(
+    input: { walletAddress: string; seasonId: string; initialBalances: Record<string, string>; openedAt?: number },
+    idempotencyKey: string,
+  ): Promise<PaperAccountRecord> {
+    return this.mutate("openHumanPaperAccount", input, idempotencyKey, (engine) => engine.openHumanPaperAccount(input));
+  }
+
   async recordDecision(
     input: Omit<AgentDecision, "decisionId" | "decisionHash" | "policyVersion">,
     idempotencyKey: string,
