@@ -147,7 +147,7 @@ await assert.rejects(
 await assert.rejects(
   () => new RmtPaperQuoteService({
     reader: new FakeQuoteReader(response([
-      attempt({ provider: "uniswap-v3", protectedOutputAtomic: "980000000000000000", priceImpact: 0.001, strictVerificationAvailable: true, quotedAtMs: 104_000, expiresAtMs: 120_000 }),
+      attempt({ provider: "uniswap-v3", protectedOutputAtomic: "980000000000000000", priceImpact: 0.001, strictVerificationAvailable: true, quotedAtMs: 104_975, expiresAtMs: 120_000 }),
     ])),
     policy: { maximumQuoteAgeMs: 5_000, maximumPriceImpactBps: 25 },
   }).quote({ inputAsset, outputAsset, inputAmountAtomic: "1000000", observedAtMs: now }),
