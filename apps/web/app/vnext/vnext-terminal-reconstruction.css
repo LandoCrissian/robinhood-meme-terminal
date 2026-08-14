@@ -337,6 +337,36 @@ body .rmtTerminal {
   background: rgba(130, 242, 143, 0.065);
 }
 
+.rmtMarketLoadMore {
+  display: grid;
+  gap: 5px;
+  justify-items: center;
+  padding: 10px 11px 12px;
+  border-bottom: 1px solid rgba(220, 235, 221, 0.065);
+}
+
+.rmtMarketLoadMore button {
+  width: 100%;
+  min-height: 34px;
+  border: 1px solid rgba(130, 242, 143, 0.28);
+  border-radius: 5px;
+  color: var(--vn-accent);
+  background: rgba(130, 242, 143, 0.055);
+  cursor: pointer;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 760;
+}
+
+.rmtMarketLoadMore button:hover {
+  background: rgba(130, 242, 143, 0.1);
+}
+
+.rmtMarketLoadMore span {
+  color: var(--rmt-muted);
+  font-size: 8px;
+}
+
 .rmtMarketArtwork {
   display: grid;
   width: 30px;
@@ -730,6 +760,10 @@ body .rmtTerminal {
 .rmtMarketDirectory.ismobile .rmtMarketArtwork {
   width: 34px;
   height: 34px;
+}
+
+.rmtMarketDirectory.ismobile .rmtMarketLoadMore button {
+  min-height: 44px;
 }
 
 .rmtMobileAsset .vnAssetPanel {
