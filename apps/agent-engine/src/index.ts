@@ -3,6 +3,7 @@ export * from "./durable-engine.ts";
 export * from "./engine.ts";
 export * from "./paper-arena-entry.ts";
 export * from "./paper-arena-leaderboard.ts";
+export * from "./paper-arena-net-leaderboard.ts";
 export * from "./paper-arena-net-performance.ts";
 export * from "./paper-arena-performance.ts";
 export * from "./paper-canonical-valuation.ts";
