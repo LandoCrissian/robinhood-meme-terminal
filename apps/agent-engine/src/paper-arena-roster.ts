@@ -89,9 +89,11 @@ export function assertPaperArenaRosterRecord(record: PaperArenaRosterRecord): vo
 export class PaperArenaRegistrationService {
   private readonly entryService: PaperArenaEntryService;
   private readonly entryStore: PaperArenaEntryStore;
+  private readonly streamId: string;
 
   constructor(input: { stateStore: AgentStateStore; entryStore: PaperArenaEntryStore; streamId: string }) {
     assertNonEmpty(input.streamId, "Arena registration streamId");
+    this.streamId = input.streamId;
     this.entryService = new PaperArenaEntryService({ store: input.stateStore, streamId: input.streamId });
     this.entryStore = input.entryStore;
   }
@@ -99,7 +101,7 @@ export class PaperArenaRegistrationService {
   async register(input: { accountId: string; quoteAssetId: string }): Promise<PaperArenaEntryRecord> {
     assertNonEmpty(input.accountId, "Arena registration accountId");
     assertNonEmpty(input.quoteAssetId, "Arena registration quoteAssetId");
-    const existing = await this.entryStore.getByAccount((this.entryService as unknown as { streamId?: string }).streamId ?? "", input.accountId);
+    const existing = await this.entryStore.getByAccount(this.streamId, input.accountId);
     if (existing) {
       if (existing.quoteAssetId !== input.quoteAssetId) fail("Arena account is already registered under a different quote asset");
       return structuredClone(existing);
