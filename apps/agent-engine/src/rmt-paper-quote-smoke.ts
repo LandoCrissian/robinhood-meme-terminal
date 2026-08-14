@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
-import { hashPaperQuoteEvidence } from "../../../packages/agent-core/src/index.ts";
-import { RmtPaperQuoteService, type RmtPaperQuoteReader, type RmtPaperQuoteReaderInput } from "./rmt-paper-quote.ts";
+import { hashCanonicalPayload, hashPaperQuoteEvidence } from "../../../packages/agent-core/src/index.ts";
+import {
+  RmtPaperQuoteService,
+  assertRmtPaperQuoteResult,
+  type RmtPaperQuoteReader,
+  type RmtPaperQuoteReaderInput,
+} from "./rmt-paper-quote.ts";
 
 const inputAsset = "0x1111111111111111111111111111111111111111";
 const outputAsset = "0x2222222222222222222222222222222222222222";
@@ -90,12 +95,29 @@ assert.equal(selected.evidence.providerId, "rmt-vnext:uniswap-v3:adapter-v1");
 assert.equal(selected.evidence.observedAt, 99_900);
 assert.equal(selected.evidence.expiresAt, 120_000);
 assert.equal(selected.costState, "NETWORK_FEE_PENDING");
+assert.equal(selected.comparison.attempts.length, 3);
+assert.equal(selected.comparisonHash, hashCanonicalPayload(selected.comparison));
+const selectedAttempt = selected.comparison.attempts.find((candidate) => candidate.provider === selected.provider)!;
+assert.equal(selected.selectedAttemptHash, hashCanonicalPayload(selectedAttempt));
 const { evidenceHash, ...evidencePayload } = selected.evidence;
 assert.equal(evidenceHash, hashPaperQuoteEvidence(evidencePayload));
 assert.match(selected.resultHash, /^0x[0-9a-f]{64}$/);
+assert.doesNotThrow(() => assertRmtPaperQuoteResult(selected));
+
+const tampered = structuredClone(selected);
+tampered.comparison.attempts[0]!.protectedOutputAtomic = "1";
+assert.throws(() => assertRmtPaperQuoteResult(tampered), /comparison hash mismatch/);
 assert.equal("fill" in service, false);
 assert.equal("submitPaperOrder" in service, false);
 assert.equal("execute" in service, false);
+
+const tinyImpact = await new RmtPaperQuoteService({
+  reader: new FakeQuoteReader(response([
+    attempt({ provider: "uniswap-v3", protectedOutputAtomic: "980000000000000000", priceImpact: 0.0000001, strictVerificationAvailable: true }),
+  ])),
+  policy: { maximumQuoteAgeMs: 5_000, maximumPriceImpactBps: 1 },
+}).quote({ inputAsset, outputAsset, inputAmountAtomic: "1000000", observedAtMs: now });
+assert.equal(tinyImpact.evidence.priceImpactBps, 1);
 
 await assert.rejects(
   () => new RmtPaperQuoteService({
@@ -107,14 +129,29 @@ await assert.rejects(
   /no strictly verified paper quote satisfies/,
 );
 
+const staleResponse = {
+  ...response([
+    attempt({ provider: "uniswap-v3", protectedOutputAtomic: "980000000000000000", priceImpact: 0.001, strictVerificationAvailable: true, quotedAtMs: 90_000, expiresAtMs: 120_000 }),
+  ]),
+  requestedAtMs: 89_900,
+  completedAtMs: 90_100,
+};
 await assert.rejects(
   () => new RmtPaperQuoteService({
-    reader: new FakeQuoteReader(response([
-      attempt({ provider: "uniswap-v3", protectedOutputAtomic: "980000000000000000", priceImpact: 0.001, strictVerificationAvailable: true, quotedAtMs: 90_000, expiresAtMs: 120_000 }),
-    ])),
+    reader: new FakeQuoteReader(staleResponse),
     policy: { maximumQuoteAgeMs: 5_000, maximumPriceImpactBps: 25 },
   }).quote({ inputAsset, outputAsset, inputAmountAtomic: "1000000", observedAtMs: now }),
   /no strictly verified paper quote satisfies/,
+);
+
+await assert.rejects(
+  () => new RmtPaperQuoteService({
+    reader: new FakeQuoteReader(response([
+      attempt({ provider: "uniswap-v3", protectedOutputAtomic: "980000000000000000", priceImpact: 0.001, strictVerificationAvailable: true, quotedAtMs: 104_000, expiresAtMs: 120_000 }),
+    ])),
+    policy: { maximumQuoteAgeMs: 5_000, maximumPriceImpactBps: 25 },
+  }).quote({ inputAsset, outputAsset, inputAmountAtomic: "1000000", observedAtMs: now }),
+  /timestamp is inconsistent with comparison window/,
 );
 
 const authorizationPayload = response([
