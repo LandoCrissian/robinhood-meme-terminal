@@ -1,6 +1,7 @@
 import {
   assertAtomicAmount,
   assertNonEmptyString,
+  assertPaperAccountParticipantIdentity,
   assertPositiveAtomicAmount,
   hashCanonicalPayload,
   type PaperAccountRecord,
@@ -75,6 +76,7 @@ export function assertPaperArenaEntryRecord(record: PaperArenaEntryRecord): void
   assertHash(record.engineStateHash, "paper arena engineStateHash");
   if (record.engineStateHash !== hashCanonicalPayload(record.engineSnapshot)) fail("paper arena entry engine state hash mismatch");
   const account = snapshotAccount(record.engineSnapshot, record.account.accountId);
+  assertPaperAccountParticipantIdentity(account);
   if (hashCanonicalPayload(account) !== hashCanonicalPayload(record.account)) fail("paper arena entry account differs from engine snapshot");
   const season = snapshotSeason(record.engineSnapshot, account.seasonId);
   if (hashCanonicalPayload(season) !== hashCanonicalPayload(record.season)) fail("paper arena entry season differs from engine snapshot");
@@ -110,6 +112,7 @@ export class PaperArenaEntryService {
     assertRevision(state.revision);
     const snapshot = structuredClone(state.snapshot);
     const account = structuredClone(snapshotAccount(snapshot, input.accountId));
+    assertPaperAccountParticipantIdentity(account);
     const season = structuredClone(snapshotSeason(snapshot, account.seasonId));
     const startingNavQuoteAtomic = assertQuoteOnlyStart(account, input.quoteAssetId);
     if (snapshot.paperOrders.some((order) => order.accountId === account.accountId)) fail("paper arena account has already submitted an order");
