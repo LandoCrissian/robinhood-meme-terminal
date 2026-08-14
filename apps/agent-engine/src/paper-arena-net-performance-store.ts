@@ -14,6 +14,7 @@ export interface PaperArenaNetPerformanceStore {
     participantId: string;
   }): Promise<PaperArenaNetPerformanceRecord | null>;
   listLatestSeason(streamId: string, seasonId: string): Promise<PaperArenaNetPerformanceRecord[]>;
+  listLatestSeasonAtOrBefore(streamId: string, seasonId: string, capturedAtMax: number): Promise<PaperArenaNetPerformanceRecord[]>;
 }
 
 function fail(message: string): never {
@@ -22,6 +23,10 @@ function fail(message: string): never {
 
 function assertNonEmpty(value: string, field: string): void {
   if (typeof value !== "string" || !value.trim()) fail(`${field} must be non-empty`);
+}
+
+function assertTimestamp(value: number, field: string): void {
+  if (!Number.isSafeInteger(value) || value < 0) fail(`${field} must be a non-negative safe integer`);
 }
 
 function clone<T>(value: T): T {
@@ -117,6 +122,20 @@ export class InMemoryPaperArenaNetPerformanceStore implements PaperArenaNetPerfo
       .filter((record) => {
         const value = entry(record);
         return value.streamId === streamId && value.season.seasonId === seasonId;
+      })
+      .map(clone));
+  }
+
+  async listLatestSeasonAtOrBefore(streamId: string, seasonId: string, capturedAtMax: number): Promise<PaperArenaNetPerformanceRecord[]> {
+    assertNonEmpty(streamId, "Arena net performance streamId");
+    assertNonEmpty(seasonId, "Arena net performance seasonId");
+    assertTimestamp(capturedAtMax, "Arena net performance cutoff");
+    return latestOnly([...this.records.values()]
+      .filter((record) => {
+        const value = entry(record);
+        return value.streamId === streamId
+          && value.season.seasonId === seasonId
+          && record.capturedAt <= capturedAtMax;
       })
       .map(clone));
   }
@@ -244,14 +263,21 @@ export class PostgresPaperArenaNetPerformanceStore implements PaperArenaNetPerfo
   async listLatestSeason(streamId: string, seasonId: string): Promise<PaperArenaNetPerformanceRecord[]> {
     assertNonEmpty(streamId, "Arena net performance streamId");
     assertNonEmpty(seasonId, "Arena net performance seasonId");
+    return this.listLatestSeasonAtOrBefore(streamId, seasonId, Number.MAX_SAFE_INTEGER);
+  }
+
+  async listLatestSeasonAtOrBefore(streamId: string, seasonId: string, capturedAtMax: number): Promise<PaperArenaNetPerformanceRecord[]> {
+    assertNonEmpty(streamId, "Arena net performance streamId");
+    assertNonEmpty(seasonId, "Arena net performance seasonId");
+    assertTimestamp(capturedAtMax, "Arena net performance cutoff");
     const client = await this.pool.connect();
     try {
       const result = await client.query<StoredRow>(
         `SELECT DISTINCT ON (participant_type, participant_id) performance_json, performance_hash
          FROM paper_arena_net_performance_history
-         WHERE stream_id=$1 AND season_id=$2
+         WHERE stream_id=$1 AND season_id=$2 AND captured_at_ms <= $3
          ORDER BY participant_type ASC, participant_id ASC, captured_at_ms DESC`,
-        [streamId, seasonId],
+        [streamId, seasonId, capturedAtMax],
       );
       return result.rows.map((row) => {
         assertPaperArenaNetPerformanceRecord(row.performance_json);
