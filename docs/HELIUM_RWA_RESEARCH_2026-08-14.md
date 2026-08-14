@@ -425,10 +425,16 @@ No implementation is authorized, but the eventual architecture should separate e
 - [x] Confirm quantum-computing industrial use from a primary source.
 - [x] Identify current Robinhood Chain RWA/Stock Token boundary.
 - [x] Identify initial U.S. securities, CFTC, FinCEN, and Colorado-UCC research surfaces.
-- [ ] Audit Argonon's current contract/token, custody, redemption history, liquidity, transfer restrictions, and legal entities.
-- [ ] Build current physical-helium supply, grade, packaging, transport, and price-source map.
+- [x] Audit Argonon's current contract/token and the public evidence available for custody/redemption/liquidity/transfer/legal design; unresolved private/offchain facts remain explicit unknowns.
+- [x] Build an initial physical-helium supply, packaging, transport, custody-boundary, and price-source map; real pilot quotes and exact contract specifications remain required.
 - [ ] Identify qualified commodity/custody counsel.
-- [ ] Identify potential producer, industrial-gas distributor, custodian, warehouse/document-of-title, insurer, and independent attestor roles.
+- [ ] Identify willing producer, industrial-gas distributor, custodian, warehouse/document-of-title, insurer, and independent attestor roles.
+
+Completed research tranches are recorded in:
+
+- `HELIUM_RWA_ARGONON_FORENSIC_2026-08-14.md`
+- `HELIUM_RWA_CUSTODY_TITLE_MARKET_STRUCTURE_2026-08-14.md`
+- `HELIUM_RWA_PHYSICAL_OPERATIONS_AND_UNIT_ECONOMICS_2026-08-14.md`
 
 ### Phase 1 — evidence schema / read-only prototype
 
@@ -489,23 +495,27 @@ RMT should stop the project rather than force a token launch if any of these rem
 
 ## 16. Immediate research queue
 
-### A. Argonon forensic review
+### A. Argonon forensic review — initial public-source tranche complete
 
-Determine:
+Completed in `HELIUM_RWA_ARGONON_FORENSIC_2026-08-14.md`:
 
-- token contract(s), chain(s), issuer/legal entity;
-- current circulating supply and holders;
-- actual redemption transactions or documentary evidence;
-- custody/title mechanics;
-- whether tokens map one-to-one to purchased physical units or forward entitlements;
-- exchange/liquidity history and current depth;
-- current legal terms and transfer restrictions;
-- reserve update mechanism;
-- what worked, what did not, and what RMT must not copy.
+- token contract / chain / public issuer evidence;
+- supply and public holder/liquidity evidence;
+- public redemption claims and documentation gaps;
+- exchange/liquidity history;
+- public transfer architecture;
+- distinction between onchain token mechanics and offchain reserve/redemption controls.
 
-### B. Colorado supply-chain map
+Still requires non-public or counterparty evidence before any stronger conclusion:
 
-Map:
+- independently documented physical redemptions;
+- current custody/title records;
+- current reserve reconciliation;
+- private legal/commercial agreements.
+
+### B. Colorado / U.S. physical supply-chain map — initial tranche complete
+
+Mapped in `HELIUM_RWA_PHYSICAL_OPERATIONS_AND_UNIT_ECONOMICS_2026-08-14.md`:
 
 ```text
 well / raw gas
@@ -513,23 +523,20 @@ well / raw gas
 → purified helium
 → compression / liquefaction
 → tube trailer / container
-→ title passage
-→ industrial gas distributor
+→ transfill / custody
+→ industrial delivery
 → end user
 ```
 
-For each step determine:
+The remaining work is counterparty-specific:
 
-- who measures quantity;
-- who certifies quality;
-- when title changes;
-- who bears loss;
-- standard contract unit;
-- minimum commercial shipment;
-- storage duration and loss characteristics;
+- exact measurement/custody-transfer standards;
+- storage and trailer economics;
+- minimum commercial withdrawal;
 - insurance;
-- transport constraints;
-- price-setting convention.
+- auditable third-party custody;
+- independent attestation;
+- real nonbinding RFQ quotes after counsel approves outreach.
 
 ### C. Market data / price discovery
 
@@ -541,17 +548,19 @@ Build a hierarchy:
 4. authenticated RMT RFQ/auction observations;
 5. secondary onchain market prices, clearly labeled as token-market prices rather than universal physical-helium spot prices.
 
-### D. Legal structure comparison
+### D. Legal structure comparison — initial issue-spotting complete
 
-Compare at least:
+`HELIUM_RWA_CUSTODY_TITLE_MARKET_STRUCTURE_2026-08-14.md` compares:
 
-- direct title / warehouse-receipt-like structure;
-- SPV-held inventory with contractual redemption claim;
-- trust/custodian structure;
-- producer-issued redeemable entitlement;
-- prepaid forward entitlement.
+- evidence-only registry;
+- direct commodity sale plus non-transferable electronic receipt;
+- permissioned transferable entitlement;
+- freely transferable bearer-like token / AMM;
+- direct-title, SPV/trust, and contractual-delivery-claim holder-right structures.
 
-Evaluate holder rights, insolvency treatment, transferability, KYC, custody, mint authority, redemption, tax/accounting, commodity/derivatives treatment, securities analysis, and money transmission.
+The research recommendation is to start with evidence-only architecture and treat secondary transferability as a separate legal/product admission.
+
+Specialist counsel still must evaluate holder rights, insolvency treatment, transferability, KYC, custody, mint authority, redemption, tax/accounting, commodity/derivatives treatment, securities analysis, and money transmission.
 
 ## 17. Codex coexistence rule
 
