@@ -8,6 +8,7 @@ export * from "./paper-fill-orchestration.ts";
 export * from "./paper-order-admission.ts";
 export * from "./paper-order-submission.ts";
 export * from "./paper-risk-capacity.ts";
+export * from "./paper-trade-request.ts";
 export * from "./rmt-paper-quote.ts";
 export * from "./rmt-robinhood-stock-market-source.ts";
 export * from "./snapshot.ts";
