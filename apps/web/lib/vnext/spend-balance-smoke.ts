@@ -91,7 +91,7 @@ assert.match(component, /executionRecord\?\.state === "submitted"/);
 assert.match(component, /executionRecord\.state !== "confirmed"/);
 assert.match(component, /SETTLEMENT_BALANCE_REFRESH_DELAYS_MS = \[0, 900, 2_500\]/);
 assert.match(component, /executionRecord\.kind !== "swap"/);
-assert.match(component, /void refreshBalances\.current\(\)/);
+assert.match(component, /void refreshBalances\.current\(false\)/);
 assert.match(component, /Indexer finds assets; onchain reads confirm balances/);
 assert.match(component, /route not checked/);
 assert.match(component, /useVNextWalletAssets/);

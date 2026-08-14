@@ -28,7 +28,21 @@ export type VNextDirectoryMarket = Pick<ExternalMarket,
   pairAddress?: string;
   dexId?: string;
   url?: string;
+  rwaRelationship?: VNextRwaRelationship;
 };
+
+export type VNextRwaRelationship = "canonical-stock-token" | "paired-market-asset";
+
+export type VNextMarketDirectoryView = "trending" | "new" | "active" | "rwa" | "held" | "all";
+
+export const VNEXT_MARKET_DIRECTORY_VIEWS: ReadonlyArray<{ id: VNextMarketDirectoryView; label: string }> = [
+  { id: "trending", label: "Trending" },
+  { id: "new", label: "New" },
+  { id: "active", label: "Active" },
+  { id: "rwa", label: "RWA" },
+  { id: "held", label: "Held" },
+  { id: "all", label: "All" }
+];
 
 export type VNextDirectoryResponse = {
   markets?: VNextDirectoryMarket[];
@@ -43,6 +57,20 @@ function finite(value: number) {
 
 function text(value: unknown, maximumLength: number) {
   return typeof value === "string" ? value.trim().slice(0, maximumLength) : "";
+}
+
+function rwaRelationship(market: ExternalMarket | VNextDirectoryMarket) {
+  if (!Array.isArray((market as ExternalMarket).stockAssetRelationships)) return undefined;
+  const relationships = (market as ExternalMarket).stockAssetRelationships ?? [];
+  if (relationships.some((relationship) => (
+    relationship.relationship === "canonical-stock-token"
+    && relationship.provenance === "robinhood-live-asset-registry"
+  ))) return "canonical-stock-token" as const;
+  if (relationships.some((relationship) => (
+    relationship.relationship === "paired-market-asset"
+    && relationship.provenance === "robinhood-live-asset-registry"
+  ))) return "paired-market-asset" as const;
+  return undefined;
 }
 
 export function normalizeDirectoryMarkets(payload: Pick<ExternalMarketResponse, "markets"> | VNextDirectoryResponse) {
@@ -73,9 +101,69 @@ export function normalizeDirectoryMarkets(payload: Pick<ExternalMarketResponse, 
         ? getAddress(market.pairAddress)
         : undefined,
       dexId: text(market.dexId, 30) || undefined,
-      url: typeof market.url === "string" && market.url.startsWith("https://") ? market.url.slice(0, 300) : undefined
+      url: typeof market.url === "string" && market.url.startsWith("https://") ? market.url.slice(0, 300) : undefined,
+      rwaRelationship: rwaRelationship(market)
     }];
   });
+}
+
+function compareVolume(left: VNextDirectoryMarket, right: VNextDirectoryMarket) {
+  return right.volume24h - left.volume24h || right.liquidityUsd - left.liquidityUsd;
+}
+
+function compareLiquidity(left: VNextDirectoryMarket, right: VNextDirectoryMarket) {
+  return right.liquidityUsd - left.liquidityUsd || right.volume24h - left.volume24h;
+}
+
+function compareRwaClassification(left: VNextDirectoryMarket, right: VNextDirectoryMarket) {
+  const leftRank = left.rwaRelationship === "canonical-stock-token" ? 0 : 1;
+  const rightRank = right.rwaRelationship === "canonical-stock-token" ? 0 : 1;
+  return leftRank - rightRank || compareLiquidity(left, right);
+}
+
+export function vNextRwaClassificationLabel(relationship: VNextRwaRelationship | undefined) {
+  if (relationship === "canonical-stock-token") return "Stock Token";
+  if (relationship === "paired-market-asset") return "RWA Pair";
+  return null;
+}
+
+export function selectVNextMarketDirectoryView(
+  markets: VNextDirectoryMarket[],
+  view: VNextMarketDirectoryView,
+  heldAddresses: ReadonlySet<string> = new Set()
+) {
+  if (view === "trending") {
+    return markets.filter((market) => market.signal === "moving" || market.signal === "early").sort(compareVolume);
+  }
+  if (view === "new") {
+    return markets
+      .filter((market) => market.ageMinutes !== null && market.ageMinutes <= 24 * 60)
+      .sort((left, right) => (left.ageMinutes ?? Number.MAX_SAFE_INTEGER) - (right.ageMinutes ?? Number.MAX_SAFE_INTEGER) || compareVolume(left, right));
+  }
+  if (view === "active") {
+    return markets.filter((market) => market.signal === "active" && market.volume24h > 0).sort(compareVolume);
+  }
+  if (view === "rwa") {
+    return markets.filter((market) => Boolean(market.rwaRelationship)).sort(compareRwaClassification);
+  }
+  if (view === "held") {
+    return markets.filter((market) => heldAddresses.has(market.address.toLowerCase())).sort(compareLiquidity);
+  }
+  return [...markets].sort(compareLiquidity);
+}
+
+export function vNextMarketDirectoryViewCounts(
+  markets: VNextDirectoryMarket[],
+  heldAddresses: ReadonlySet<string> = new Set()
+): Record<VNextMarketDirectoryView, number> {
+  return {
+    trending: selectVNextMarketDirectoryView(markets, "trending", heldAddresses).length,
+    new: selectVNextMarketDirectoryView(markets, "new", heldAddresses).length,
+    active: selectVNextMarketDirectoryView(markets, "active", heldAddresses).length,
+    rwa: selectVNextMarketDirectoryView(markets, "rwa", heldAddresses).length,
+    held: selectVNextMarketDirectoryView(markets, "held", heldAddresses).length,
+    all: markets.length
+  };
 }
 
 function resolutionToken(resolution: UniversalMarketResolution | undefined, expectedAddress: string) {

@@ -423,10 +423,13 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
     let timeout: number | undefined;
     let cancelled = false;
     const schedule = (delayMs: number) => {
+      if (timeout !== undefined) window.clearTimeout(timeout);
+      timeout = undefined;
+      if (cancelled || document.visibilityState === "hidden") return;
       timeout = window.setTimeout(() => void refresh(), delayMs);
     };
     const refresh = async () => {
-      if (cancelled || backgroundQuoteEpoch.current !== epoch) return;
+      if (cancelled || backgroundQuoteEpoch.current !== epoch || document.visibilityState === "hidden") return;
       const hadVisibleQuote = Boolean(cachedVNextQuoteForRequest(lastReadyQuote.current, requestKey));
       if (!hadVisibleQuote && !backgroundQuoteAttempted.current) setQuoteState({ state: "loading" });
       backgroundQuoteAttempted.current = true;
@@ -446,15 +449,25 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
       }
       if (!cancelled && backgroundQuoteEpoch.current === epoch) schedule(VNEXT_BACKGROUND_QUOTE_REFRESH_MS);
     };
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        if (timeout !== undefined) window.clearTimeout(timeout);
+        timeout = undefined;
+        return;
+      }
+      schedule(VNEXT_BACKGROUND_QUOTE_DEBOUNCE_MS);
+    };
     const initialDelay = backgroundQuoteImmediate.current || !cachedVNextQuoteForRequest(lastReadyQuote.current, requestKey)
       ? VNEXT_BACKGROUND_QUOTE_DEBOUNCE_MS
       : VNEXT_BACKGROUND_QUOTE_REFRESH_MS;
     backgroundQuoteImmediate.current = false;
+    document.addEventListener("visibilitychange", onVisibilityChange);
     schedule(initialDelay);
     return () => {
       cancelled = true;
       backgroundQuoteEpoch.current += 1;
       if (timeout !== undefined) window.clearTimeout(timeout);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
     };
   }, [
     address,

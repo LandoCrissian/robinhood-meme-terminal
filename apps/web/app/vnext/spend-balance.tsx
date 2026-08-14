@@ -25,6 +25,8 @@ import { useVNextWalletAssets } from "./use-vnext-wallet-assets";
 import { FundWalletButton } from "../fund-wallet-button";
 import { WalletTransferDialog } from "../wallet-transfer-dialog";
 import { TokenArtwork } from "./token-artwork";
+import { VNEXT_CLIENT_REFRESH_POLICY } from "../../lib/vnext/client-refresh-policy";
+import { useVisibilityRefresh } from "./use-visibility-refresh";
 
 const SETTLEMENT_BALANCE_REFRESH_DELAYS_MS = [0, 900, 2_500] as const;
 
@@ -111,24 +113,18 @@ export function SpendBalance({ markets, onAssetsChange, onNativeBalanceChange, o
   useEffect(() => {
     refreshBalances.current = refresh;
   }, [refresh]);
-  useEffect(() => {
-    if (!enabled) {
-      setEthUsd(undefined);
-      return;
-    }
+  const refreshEthPrice = () => {
     const controller = new AbortController();
-    const load = () => void fetch("/api/prices/eth", { cache: "no-store", signal: controller.signal })
+    return fetch("/api/prices/eth", { signal: controller.signal })
       .then(async (response) => response.ok ? response.json() as Promise<{ usd?: unknown }> : null)
       .then((payload) => {
         if (typeof payload?.usd === "number" && Number.isFinite(payload.usd) && payload.usd > 0) setEthUsd(payload.usd);
       })
       .catch(() => undefined);
-    load();
-    const interval = window.setInterval(load, 30_000);
-    return () => {
-      controller.abort();
-      window.clearInterval(interval);
-    };
+  };
+  useVisibilityRefresh(refreshEthPrice, VNEXT_CLIENT_REFRESH_POLICY.ethPriceMs, { enabled });
+  useEffect(() => {
+    if (!enabled) setEthUsd(undefined);
   }, [enabled]);
   useEffect(() => {
     if (
@@ -140,10 +136,10 @@ export function SpendBalance({ markets, onAssetsChange, onNativeBalanceChange, o
     refreshedResolution.current = executionRecord.txHash;
     const timers = SETTLEMENT_BALANCE_REFRESH_DELAYS_MS.flatMap((delayMs) => {
       if (delayMs === 0) {
-        void refreshBalances.current();
+        void refreshBalances.current(false);
         return [];
       }
-      return [window.setTimeout(() => void refreshBalances.current(), delayMs)];
+      return [window.setTimeout(() => void refreshBalances.current(false), delayMs)];
     });
     return () => timers.forEach((timer) => window.clearTimeout(timer));
   }, [executionRecord]);
@@ -166,7 +162,7 @@ export function SpendBalance({ markets, onAssetsChange, onNativeBalanceChange, o
     setImportMessage("Verifying the contract and connected-wallet balance…");
     try {
       const query = new URLSearchParams({ address });
-      const response = await fetch(`/api/vnext/asset-identity?${query}`, { cache: "no-store" });
+      const response = await fetch(`/api/vnext/asset-identity?${query}`);
       const payload = await response.json() as ExternalMarketResponse;
       const candidate = importedWalletCandidate(payload, address);
       if (!response.ok || !candidate) throw new Error("Token identity could not be verified on Robinhood Chain.");
