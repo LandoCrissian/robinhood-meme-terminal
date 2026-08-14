@@ -8,6 +8,7 @@ import {
   type ExternalOhlcvCandle,
   type ExternalOhlcvPayload
 } from "../../lib/external-ohlcv";
+import { useVisibilityRefresh } from "./use-visibility-refresh";
 
 type ChartMode = "candles" | "line";
 type ChartStatus = "loading" | "ready" | "stale" | "unavailable";
@@ -79,46 +80,42 @@ export function VNextMarketChart({ token, pair, symbol }: {
     }
   }, []);
 
-  useEffect(() => {
-    let active = true;
-    const load = async (quiet: boolean) => {
-      const id = ++requestId.current;
-      if (!quiet || activeKey.current !== chartKey) {
-        activeKey.current = chartKey;
-        signature.current = "";
-        setPayload(undefined);
-        setStatus("loading");
-        setHoveredIndex(null);
+  const load = async (quiet: boolean) => {
+    const id = ++requestId.current;
+    if (!quiet || activeKey.current !== chartKey) {
+      activeKey.current = chartKey;
+      signature.current = "";
+      setPayload(undefined);
+      setStatus("loading");
+      setHoveredIndex(null);
+    }
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 9_000);
+    try {
+      const query = new URLSearchParams({ token, pair, range });
+      const response = await fetch(`/api/markets/ohlcv?${query}`, { signal: controller.signal });
+      const next = acceptPayload(await response.json(), token, pair, range);
+      if (!response.ok || !next) throw new Error("Chart response unavailable.");
+      if (id !== requestId.current) return;
+      const nextSignature = payloadSignature(next);
+      if (signature.current !== nextSignature) {
+        signature.current = nextSignature;
+        setPayload(next);
       }
-      const controller = new AbortController();
-      const timeout = window.setTimeout(() => controller.abort(), 9_000);
-      try {
-        const query = new URLSearchParams({ token, pair, range });
-        const response = await fetch(`/api/markets/ohlcv?${query}`, { cache: "no-store", signal: controller.signal });
-        const next = acceptPayload(await response.json(), token, pair, range);
-        if (!response.ok || !next) throw new Error("Chart response unavailable.");
-        if (!active || id !== requestId.current) return;
-        const nextSignature = payloadSignature(next);
-        if (signature.current !== nextSignature) {
-          signature.current = nextSignature;
-          setPayload(next);
-        }
-        setStatus("ready");
-      } catch {
-        if (!active || id !== requestId.current) return;
-        setStatus(signature.current ? "stale" : "unavailable");
-      } finally {
-        window.clearTimeout(timeout);
-      }
-    };
-    void load(false);
-    const interval = window.setInterval(() => void load(true), externalChartRefreshMs(range));
-    return () => {
-      active = false;
-      requestId.current += 1;
-      window.clearInterval(interval);
-    };
-  }, [chartKey, pair, range, token]);
+      setStatus("ready");
+    } catch {
+      if (id !== requestId.current) return;
+      setStatus(signature.current ? "stale" : "unavailable");
+    } finally {
+      window.clearTimeout(timeout);
+    }
+  };
+
+  useVisibilityRefresh(() => load(true), externalChartRefreshMs(range), { refreshKey: chartKey });
+
+  useEffect(() => () => {
+    requestId.current += 1;
+  }, [chartKey]);
 
   const candles = payload?.candles ?? [];
   const geometry = useMemo(() => {

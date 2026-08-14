@@ -16,6 +16,8 @@ import {
   type VNextWalletAssetCandidate,
   type VNextDetectedWalletAsset
 } from "../../lib/vnext/wallet-assets";
+import { VNEXT_CLIENT_REFRESH_POLICY } from "../../lib/vnext/client-refresh-policy";
+import { useVisibilityRefresh } from "./use-visibility-refresh";
 
 export type VNextWalletAssetStatus = "idle" | "loading" | "ready" | "stale" | "error";
 export type VNextWalletDiscoveryStatus = "idle" | "loading" | "ready" | "partial" | "stale" | "unavailable";
@@ -40,10 +42,11 @@ export function useVNextWalletAssets(markets: VNextDirectoryMarket[], imported: 
   const snapshotWallet = useRef<string | null>(null);
   const discoveryWallet = useRef<string | null>(null);
   const discoveredAssets = useRef<VNextWalletDiscoveryAsset[]>([]);
+  const lastDiscoveryAt = useRef<number | null>(null);
   const onRobinhood = chainId === ROBINHOOD_MAINNET_CHAIN_ID;
   const enabled = Boolean(address && isConnected && onRobinhood && publicClient);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (forceDiscovery = true) => {
     const currentRequest = ++requestId.current;
     if (!address || !publicClient || !isConnected || !onRobinhood) {
       setAssets([]);
@@ -54,6 +57,7 @@ export function useVNextWalletAssets(markets: VNextDirectoryMarket[], imported: 
       snapshotWallet.current = null;
       discoveryWallet.current = null;
       discoveredAssets.current = [];
+      lastDiscoveryAt.current = null;
       return;
     }
 
@@ -65,8 +69,9 @@ export function useVNextWalletAssets(markets: VNextDirectoryMarket[], imported: 
     if (discoveryWallet.current !== walletKey) {
       discoveryWallet.current = walletKey;
       discoveredAssets.current = [];
+      lastDiscoveryAt.current = null;
       setDiscoveryStatus("loading");
-    } else {
+    } else if (forceDiscovery) {
       setDiscoveryStatus((current) => current === "idle" || current === "unavailable" ? "loading" : current);
     }
     setStatus((current) => current === "ready" || current === "stale" ? current : "loading");
@@ -121,12 +126,18 @@ export function useVNextWalletAssets(markets: VNextDirectoryMarket[], imported: 
 
     const cachedDiscovery = discoveredAssets.current.map(walletDiscoveryCandidate);
     const initialCandidates = walletAssetCandidates(markets, 48, [...imported, ...cachedDiscovery]);
-    const discoveryRequest = fetch(`/api/vnext/wallet-assets?${new URLSearchParams({ wallet: address })}`, { cache: "no-store" })
-      .then(async (response) => ({
-        ok: response.ok,
-        payload: normalizeWalletDiscoveryResponse(await response.json(), address)
-      }))
-      .catch(() => ({ ok: false, payload: null }));
+    const discoveryDue = forceDiscovery
+      || lastDiscoveryAt.current === null
+      || Date.now() - lastDiscoveryAt.current >= VNEXT_CLIENT_REFRESH_POLICY.walletDiscoveryMs;
+    if (discoveryDue) lastDiscoveryAt.current = Date.now();
+    const discoveryRequest = discoveryDue
+      ? fetch(`/api/vnext/wallet-assets?${new URLSearchParams({ wallet: address })}`, { cache: "no-store" })
+        .then(async (response) => ({
+          ok: response.ok,
+          payload: normalizeWalletDiscoveryResponse(await response.json(), address)
+        }))
+        .catch(() => ({ ok: false, payload: null }))
+      : null;
 
     try {
       const [native, detected] = await Promise.all([
@@ -140,6 +151,7 @@ export function useVNextWalletAssets(markets: VNextDirectoryMarket[], imported: 
       setObservedAtMs(Date.now());
       setStatus("ready");
 
+      if (!discoveryRequest) return;
       const discovery = await discoveryRequest;
       if (currentRequest !== requestId.current) return;
       if (!discovery.ok || !discovery.payload) {
@@ -180,12 +192,15 @@ export function useVNextWalletAssets(markets: VNextDirectoryMarket[], imported: 
       snapshotWallet.current = null;
       discoveryWallet.current = null;
       discoveredAssets.current = [];
+      lastDiscoveryAt.current = null;
       return;
     }
-    void refresh();
-    const interval = window.setInterval(() => void refresh(), 20_000);
-    return () => window.clearInterval(interval);
-  }, [enabled, refresh]);
+  }, [enabled]);
+
+  useVisibilityRefresh(() => refresh(false), VNEXT_CLIENT_REFRESH_POLICY.walletBalanceMs, {
+    enabled,
+    refreshKey: address?.toLowerCase() ?? "disconnected"
+  });
 
   const snapshotIsCurrent = Boolean(address && snapshotWallet.current === address.toLowerCase());
   return {

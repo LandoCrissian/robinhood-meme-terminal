@@ -42,9 +42,9 @@ const RANGE_CONFIG: Record<ExternalChartRange, {
 
 const RANGE_REFRESH_MS: Record<ExternalChartRange, number> = {
   LIVE: 60_000,
-  "5M": 5_000,
-  "15M": 10_000,
-  "1H": 15_000,
+  "5M": 15_000,
+  "15M": 20_000,
+  "1H": 30_000,
   "6H": 30_000,
   "24H": 30_000,
   "7D": 60_000
