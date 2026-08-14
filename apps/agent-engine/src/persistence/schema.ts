@@ -20,8 +20,7 @@ CREATE TABLE IF NOT EXISTS agent_engine_mutations (
   PRIMARY KEY (stream_id, revision),
   UNIQUE (stream_id, idempotency_key)
 );
-CREATE INDEX IF NOT EXISTS agent_engine_mutation_request_idx
-  ON agent_engine_mutations (stream_id, request_hash);
+CREATE INDEX IF NOT EXISTS agent_engine_mutation_request_idx ON agent_engine_mutations (stream_id, request_hash);
 
 CREATE TABLE IF NOT EXISTS agent_seasons (
   stream_id TEXT NOT NULL,
@@ -108,10 +107,6 @@ CREATE TABLE IF NOT EXISTS paper_accounts (
   CONSTRAINT paper_accounts_participant_identity_key UNIQUE (stream_id, season_id, participant_type, participant_id),
   FOREIGN KEY (stream_id, season_id) REFERENCES agent_seasons (stream_id, season_id)
 );
-
--- Development migration from the original AGENT-only projection. The canonical
--- engine snapshot remains the authority for validating that AGENT participant
--- IDs actually reference registered agents; HUMAN IDs are canonical wallet addresses.
 ALTER TABLE paper_accounts DROP CONSTRAINT IF EXISTS paper_accounts_participant_type_check;
 ALTER TABLE paper_accounts ADD CONSTRAINT paper_accounts_participant_type_check CHECK (participant_type IN ('AGENT','HUMAN'));
 ALTER TABLE paper_accounts DROP CONSTRAINT IF EXISTS paper_accounts_stream_id_participant_id_fkey;
@@ -133,8 +128,11 @@ $$;
 CREATE TABLE IF NOT EXISTS paper_orders (
   stream_id TEXT NOT NULL,
   order_id TEXT NOT NULL,
-  agent_id TEXT NOT NULL,
-  strategy_version INTEGER NOT NULL CHECK (strategy_version > 0),
+  participant_type TEXT NOT NULL CHECK (participant_type IN ('AGENT','HUMAN')),
+  participant_id TEXT NOT NULL,
+  agent_id TEXT,
+  strategy_version INTEGER CHECK (strategy_version IS NULL OR strategy_version > 0),
+  manual_policy_version TEXT,
   account_id TEXT NOT NULL,
   input_asset_id TEXT NOT NULL,
   output_asset_id TEXT NOT NULL,
@@ -145,16 +143,40 @@ CREATE TABLE IF NOT EXISTS paper_orders (
   PRIMARY KEY (stream_id, order_id),
   FOREIGN KEY (stream_id, agent_id, strategy_version) REFERENCES strategy_versions (stream_id, agent_id, version),
   FOREIGN KEY (stream_id, account_id) REFERENCES paper_accounts (stream_id, account_id),
-  CHECK (input_asset_id <> output_asset_id)
+  CHECK (input_asset_id <> output_asset_id),
+  CONSTRAINT paper_orders_origin_check CHECK (
+    (participant_type = 'AGENT' AND agent_id IS NOT NULL AND strategy_version IS NOT NULL AND manual_policy_version IS NULL)
+    OR
+    (participant_type = 'HUMAN' AND agent_id IS NULL AND strategy_version IS NULL AND manual_policy_version IS NOT NULL)
+  )
 );
 CREATE INDEX IF NOT EXISTS paper_orders_account_time_idx ON paper_orders (stream_id, account_id, created_at_ms DESC);
+ALTER TABLE paper_orders ADD COLUMN IF NOT EXISTS participant_type TEXT;
+ALTER TABLE paper_orders ADD COLUMN IF NOT EXISTS participant_id TEXT;
+ALTER TABLE paper_orders ADD COLUMN IF NOT EXISTS manual_policy_version TEXT;
+ALTER TABLE paper_orders ALTER COLUMN agent_id DROP NOT NULL;
+ALTER TABLE paper_orders ALTER COLUMN strategy_version DROP NOT NULL;
+UPDATE paper_orders SET participant_type = 'AGENT' WHERE participant_type IS NULL;
+UPDATE paper_orders SET participant_id = agent_id WHERE participant_id IS NULL AND agent_id IS NOT NULL;
+ALTER TABLE paper_orders ALTER COLUMN participant_type SET NOT NULL;
+ALTER TABLE paper_orders ALTER COLUMN participant_id SET NOT NULL;
+ALTER TABLE paper_orders DROP CONSTRAINT IF EXISTS paper_orders_participant_type_check;
+ALTER TABLE paper_orders ADD CONSTRAINT paper_orders_participant_type_check CHECK (participant_type IN ('AGENT','HUMAN'));
+ALTER TABLE paper_orders DROP CONSTRAINT IF EXISTS paper_orders_origin_check;
+ALTER TABLE paper_orders ADD CONSTRAINT paper_orders_origin_check CHECK (
+  (participant_type = 'AGENT' AND agent_id IS NOT NULL AND strategy_version IS NOT NULL AND manual_policy_version IS NULL)
+  OR
+  (participant_type = 'HUMAN' AND agent_id IS NULL AND strategy_version IS NULL AND manual_policy_version IS NOT NULL)
+);
 
 CREATE TABLE IF NOT EXISTS paper_fills (
   stream_id TEXT NOT NULL,
   fill_id TEXT NOT NULL,
   order_id TEXT NOT NULL,
   quote_id TEXT NOT NULL,
-  agent_id TEXT NOT NULL,
+  participant_type TEXT NOT NULL CHECK (participant_type IN ('AGENT','HUMAN')),
+  participant_id TEXT NOT NULL,
+  agent_id TEXT,
   account_id TEXT NOT NULL,
   input_asset_id TEXT NOT NULL,
   output_asset_id TEXT NOT NULL,
@@ -171,9 +193,30 @@ CREATE TABLE IF NOT EXISTS paper_fills (
   PRIMARY KEY (stream_id, fill_id),
   UNIQUE (stream_id, order_id),
   FOREIGN KEY (stream_id, order_id) REFERENCES paper_orders (stream_id, order_id),
-  FOREIGN KEY (stream_id, account_id) REFERENCES paper_accounts (stream_id, account_id)
+  FOREIGN KEY (stream_id, account_id) REFERENCES paper_accounts (stream_id, account_id),
+  CONSTRAINT paper_fills_origin_check CHECK (
+    (participant_type = 'AGENT' AND agent_id IS NOT NULL)
+    OR
+    (participant_type = 'HUMAN' AND agent_id IS NULL)
+  )
 );
 CREATE INDEX IF NOT EXISTS paper_fills_agent_time_idx ON paper_fills (stream_id, agent_id, filled_at_ms DESC);
+CREATE INDEX IF NOT EXISTS paper_fills_participant_time_idx ON paper_fills (stream_id, participant_type, participant_id, filled_at_ms DESC);
+ALTER TABLE paper_fills ADD COLUMN IF NOT EXISTS participant_type TEXT;
+ALTER TABLE paper_fills ADD COLUMN IF NOT EXISTS participant_id TEXT;
+ALTER TABLE paper_fills ALTER COLUMN agent_id DROP NOT NULL;
+UPDATE paper_fills SET participant_type = 'AGENT' WHERE participant_type IS NULL;
+UPDATE paper_fills SET participant_id = agent_id WHERE participant_id IS NULL AND agent_id IS NOT NULL;
+ALTER TABLE paper_fills ALTER COLUMN participant_type SET NOT NULL;
+ALTER TABLE paper_fills ALTER COLUMN participant_id SET NOT NULL;
+ALTER TABLE paper_fills DROP CONSTRAINT IF EXISTS paper_fills_participant_type_check;
+ALTER TABLE paper_fills ADD CONSTRAINT paper_fills_participant_type_check CHECK (participant_type IN ('AGENT','HUMAN'));
+ALTER TABLE paper_fills DROP CONSTRAINT IF EXISTS paper_fills_origin_check;
+ALTER TABLE paper_fills ADD CONSTRAINT paper_fills_origin_check CHECK (
+  (participant_type = 'AGENT' AND agent_id IS NOT NULL)
+  OR
+  (participant_type = 'HUMAN' AND agent_id IS NULL)
+);
 
 CREATE TABLE IF NOT EXISTS portfolio_snapshots (
   stream_id TEXT NOT NULL,
