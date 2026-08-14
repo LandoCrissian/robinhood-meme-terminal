@@ -27,7 +27,7 @@ assert.match(page, /alternates: \{ canonical: "\/" \}/);
 assert.match(page, /openGraph:[\s\S]*url: "\/"/);
 assert.doesNotMatch(page, /index: false|follow: false/);
 assert.match(rootPage, /export \{ metadata \} from "\.\/vnext\/page"/);
-assert.match(rootPage, /export \{ default \} from "\.\/vnext\/page"/);
+assert.match(rootPage, /<VNextTerminalShell \/>/);
 assert.match(rootPage, /import "\.\/vnext\/vnext-terminal\.css"/);
 assert.doesNotMatch(nextConfig, /source: "\/"[\s\S]*destination: "\/vnext"/);
 assert.match(nextConfig, /source: "\/vnext"[\s\S]*destination: "\/"[\s\S]*permanent: true/);

@@ -71,7 +71,7 @@ const legacyHomeSource = readFileSync(new URL("../app/legacy-terminal-page.tsx",
 const vnextSource = readFileSync(new URL("../app/vnext/page.tsx", import.meta.url), "utf8");
 const nextConfigSource = readFileSync(new URL("../next.config.mjs", import.meta.url), "utf8");
 assert.match(homeSource, /export \{ metadata \} from "\.\/vnext\/page"/);
-assert.match(homeSource, /export \{ default \} from "\.\/vnext\/page"/);
+assert.match(homeSource, /<VNextTerminalShell \/>/);
 assert.doesNotMatch(homeSource, /export const dynamic = "force-dynamic"/);
 assert.match(legacyHomeSource, /RMT · MARKET TERMINAL/);
 assert.match(legacyHomeSource, /<ExternalMarketFeed \/>/);
