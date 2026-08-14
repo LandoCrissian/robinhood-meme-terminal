@@ -90,6 +90,23 @@ function assertReasoningSummary(value: unknown): string {
   return normalized;
 }
 
+function observationIdentityKeys(observation: MarketObservationDraft): Set<string> {
+  const keys = new Set<string>([observation.assetId.toLowerCase()]);
+  for (const field of ["contractAddress", "registryAssetId", "registrySymbol"] as const) {
+    const value = observation.features?.[field];
+    if (typeof value === "string" && value.trim()) keys.add(value.trim().toLowerCase());
+  }
+  return keys;
+}
+
+function predictionObservation(assetId: string, snapshot: AgentMarketSnapshot): MarketObservationDraft {
+  const key = assetId.trim().toLowerCase();
+  const matches = snapshot.observations.filter((observation) => observationIdentityKeys(observation).has(key));
+  if (matches.length === 0) fail("prediction asset is absent from market snapshot");
+  if (matches.length > 1) fail("prediction asset alias is ambiguous in market snapshot");
+  return matches[0]!;
+}
+
 export function parseMarketObservationDraft(value: unknown, maximumFeatures: number): MarketObservationDraft {
   if (!Number.isInteger(maximumFeatures) || maximumFeatures < 0) fail("maximumFeatures must be a non-negative integer");
   if (!isRecord(value)) fail("market observation must be an object");
@@ -208,14 +225,32 @@ export function parseEvaluationProposal(value: unknown, strategy: StrategySpec, 
   };
 }
 
-export function assertPredictionAssetAllowed(proposal: AgentEvaluationProposal, strategy: StrategySpec, snapshot: AgentMarketSnapshot): void {
-  if (!proposal.prediction) return;
-  const assetKey = proposal.prediction.assetId.toLowerCase();
-  if (!snapshot.observations.some((observation) => observation.assetId.toLowerCase() === assetKey)) fail("prediction asset is absent from market snapshot");
+export function canonicalizePredictionAsset(
+  proposal: AgentEvaluationProposal,
+  strategy: StrategySpec,
+  snapshot: AgentMarketSnapshot,
+): AgentEvaluationProposal {
+  if (!proposal.prediction) return structuredClone(proposal);
+  const observation = predictionObservation(proposal.prediction.assetId, snapshot);
+  const identityKeys = observationIdentityKeys(observation);
   const include = strategy.universe.includeAssets?.map((asset) => asset.toLowerCase());
-  if (include?.length && !include.includes(assetKey)) fail("prediction asset is outside strategy includeAssets");
+  if (include?.length && !include.some((asset) => identityKeys.has(asset))) fail("prediction asset is outside strategy includeAssets");
   const exclude = strategy.universe.excludeAssets?.map((asset) => asset.toLowerCase()) ?? [];
-  if (exclude.includes(assetKey)) fail("prediction asset is excluded by strategy");
+  if (exclude.some((asset) => identityKeys.has(asset))) fail("prediction asset is excluded by strategy");
+  return {
+    ...structuredClone(proposal),
+    prediction: {
+      ...structuredClone(proposal.prediction),
+      assetId: observation.assetId,
+    },
+  };
+}
+
+export function assertPredictionAssetAllowed(proposal: AgentEvaluationProposal, strategy: StrategySpec, snapshot: AgentMarketSnapshot): void {
+  const canonical = canonicalizePredictionAsset(proposal, strategy, snapshot);
+  if (proposal.prediction && canonical.prediction?.assetId !== proposal.prediction.assetId) {
+    fail("prediction asset must be canonicalized before persistence");
+  }
 }
 
 export function hashAgentRunPayload(record: Omit<AgentRunRecord, "runHash">): string {
@@ -261,6 +296,7 @@ export function assertAgentRunRecord(record: AgentRunRecord): void {
     assertUnitInterval(record.proposal.prediction.forecastProbability, "run forecastProbability");
     assertTimestamp(record.proposal.prediction.resolvesAt, "run prediction resolvesAt");
     if (record.proposal.prediction.resolvesAt <= record.evaluatedAt) fail("run prediction must resolve after evaluatedAt");
+    assertPredictionAssetAllowed(record.proposal, { ...({} as StrategySpec), universe: { assetClasses: [] } } as StrategySpec, record.marketSnapshot);
   }
   if (record.proposalHash !== hashCanonicalPayload(record.proposal)) fail("agent run proposal hash mismatch");
   const { runHash, ...payload } = record;
