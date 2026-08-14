@@ -27,7 +27,7 @@ export interface PaperLiquidationValuationRecord {
   schemaVersion: 1;
   accountId: string;
   quoteAssetId: string;
-  positionBookHash: string;
+  positionBook: PaperPositionBookRecord;
   accountSnapshot: PaperAccountRecord;
   valuedAt: number;
   maximumQuoteAgeMs: number;
@@ -86,11 +86,18 @@ function quoteForPosition(
   return quote;
 }
 
+function assertExternalCostsEqual(left: Record<string, string>, right: Record<string, string>): void {
+  if (hashCanonicalPayload(left) !== hashCanonicalPayload(right)) fail("paper liquidation external costs differ from position book");
+}
+
 export function assertPaperLiquidationValuationRecord(record: PaperLiquidationValuationRecord): void {
   if (record.schemaVersion !== 1) fail("unsupported paper liquidation valuation schema version");
   assertNonEmptyString(record.accountId, "paper liquidation accountId");
   assertNonEmptyString(record.quoteAssetId, "paper liquidation quoteAssetId");
-  assertHash(record.positionBookHash, "paper liquidation positionBookHash");
+  assertPaperPositionBookRecord(record.positionBook);
+  if (record.positionBook.accountId !== record.accountId || record.positionBook.quoteAssetId !== record.quoteAssetId) {
+    fail("paper liquidation position book identity mismatch");
+  }
   assertTimestamp(record.valuedAt, "paper liquidation valuedAt");
   assertPositiveSafeInteger(record.maximumQuoteAgeMs, "paper liquidation maximumQuoteAgeMs");
   assertAtomicAmount(record.quoteBalanceAtomic, "paper liquidation quote balance");
@@ -99,7 +106,13 @@ export function assertPaperLiquidationValuationRecord(record: PaperLiquidationVa
   assertSignedAtomic(record.unrealizedPnlQuoteAtomic, "paper liquidation unrealized PnL");
   assertSignedAtomic(record.totalPnlQuoteAtomicExcludingExternalCosts, "paper liquidation total PnL");
   if (record.accountSnapshot.accountId !== record.accountId) fail("paper liquidation account snapshot mismatch");
-  if (record.accountSnapshot.balances[record.quoteAssetId] !== record.quoteBalanceAtomic) fail("paper liquidation quote balance does not match account snapshot");
+  if ((record.accountSnapshot.balances[record.quoteAssetId] ?? "0") !== record.quoteBalanceAtomic) fail("paper liquidation quote balance does not match account snapshot");
+  if (record.realizedPnlQuoteAtomic !== record.positionBook.totalRealizedPnlQuoteAtomic) fail("paper liquidation realized PnL differs from position book");
+  assertExternalCostsEqual(record.externalCostsByAsset, record.positionBook.externalCostsByAsset);
+
+  const expectedOpen = openPositions(record.positionBook);
+  const expectedByAsset = new Map(expectedOpen.map((position) => [position.assetId.toLowerCase(), position]));
+  if (record.positionValues.length !== expectedOpen.length) fail("paper liquidation position valuation count differs from open position book");
   const positionIds = new Set<string>();
   let liquidation = BigInt(record.quoteBalanceAtomic);
   let unrealized = 0n;
@@ -108,12 +121,17 @@ export function assertPaperLiquidationValuationRecord(record: PaperLiquidationVa
     const key = position.assetId.toLowerCase();
     if (positionIds.has(key)) fail("paper liquidation contains duplicate position valuation");
     positionIds.add(key);
+    const bookPosition = expectedByAsset.get(key);
+    if (!bookPosition) fail("paper liquidation contains valuation for non-open position");
     assertAtomicAmount(position.quantityAtomic, "paper liquidation position quantity");
     if (BigInt(position.quantityAtomic) <= 0n) fail("paper liquidation position quantity must be positive");
     assertAtomicAmount(position.costBasisQuoteAtomic, "paper liquidation position cost basis");
     assertAtomicAmount(position.liquidationValueQuoteAtomic, "paper liquidation position value");
     assertSignedAtomic(position.unrealizedPnlQuoteAtomic, "paper liquidation position unrealized PnL");
-    if (record.accountSnapshot.balances[position.assetId] !== position.quantityAtomic) fail("paper liquidation position quantity does not match current account balance");
+    if (position.quantityAtomic !== bookPosition.quantityAtomic || position.costBasisQuoteAtomic !== bookPosition.costBasisQuoteAtomic) {
+      fail("paper liquidation position differs from position book");
+    }
+    if ((record.accountSnapshot.balances[position.assetId] ?? "0") !== position.quantityAtomic) fail("paper liquidation position quantity does not match current account balance");
     assertRmtPaperQuoteResult(position.quoteResult);
     if (
       position.quoteResult.evidence.inputAssetId !== position.assetId
@@ -166,7 +184,7 @@ export function buildPaperLiquidationValuation(input: {
   if (quoteKeys.size !== input.quoteResults.length) fail("paper liquidation contains duplicate position quote evidence");
 
   const positionValues = open.map((position): PaperPositionLiquidationValue => {
-    if (input.account.balances[position.assetId] !== position.quantityAtomic) {
+    if ((input.account.balances[position.assetId] ?? "0") !== position.quantityAtomic) {
       fail(`paper liquidation current balance mismatch for ${position.assetId}`);
     }
     const quote = quoteForPosition(position, input.positionBook.quoteAssetId, input.quoteResults, valuedAt, input.maximumQuoteAgeMs);
@@ -189,7 +207,7 @@ export function buildPaperLiquidationValuation(input: {
     schemaVersion: 1,
     accountId: input.account.accountId,
     quoteAssetId: input.positionBook.quoteAssetId,
-    positionBookHash: input.positionBook.bookHash,
+    positionBook: structuredClone(input.positionBook),
     accountSnapshot: structuredClone(input.account),
     valuedAt,
     maximumQuoteAgeMs: input.maximumQuoteAgeMs,
