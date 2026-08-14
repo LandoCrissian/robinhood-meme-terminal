@@ -5,7 +5,12 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type RefObject } from "react";
 import type { AssetMetadata } from "../../lib/vnext/execution-domain";
 import type { VNextExecutionRecord } from "../../lib/vnext/execution-recovery";
-import type { VNextDirectoryMarket } from "../../lib/vnext/market-directory";
+import {
+  VNEXT_MARKET_DIRECTORY_VIEWS,
+  vNextRwaClassificationLabel,
+  type VNextDirectoryMarket,
+  type VNextMarketDirectoryView
+} from "../../lib/vnext/market-directory";
 import type { VNextDetectedWalletAsset } from "../../lib/vnext/wallet-assets";
 import { SpendBalance } from "./spend-balance";
 import { TokenArtwork } from "./token-artwork";
@@ -23,6 +28,9 @@ export type TerminalPresentationProps = {
   marketSearch: RefObject<HTMLInputElement | null>;
   markets: VNextDirectoryMarket[];
   filteredMarkets: VNextDirectoryMarket[];
+  directoryView: VNextMarketDirectoryView;
+  directoryViewCounts: Record<VNextMarketDirectoryView, number>;
+  searchActive: boolean;
   directoryStatus: DirectoryStatus;
   selected?: VNextDirectoryMarket;
   selectedAsset?: AssetMetadata;
@@ -38,6 +46,7 @@ export type TerminalPresentationProps = {
   onSelectMarket: (address: string) => void;
   onSearchSubmit: () => void;
   onRefresh: () => void;
+  onDirectoryViewChange: (view: VNextMarketDirectoryView) => void;
   onRevealPortfolio: () => void;
   onRequestTradeSide: (side: "buy" | "sell") => void;
   onContinueTrading: () => void;
@@ -80,15 +89,29 @@ function MarketSearch({ query, setQuery, inputRef, onSubmit }: {
   </form>;
 }
 
-function MarketDirectory({ mode, markets, selected, status, onSelect, onRefresh }: {
+function MarketDirectory({ mode, markets, selected, status, view, viewCounts, searchActive, onSelect, onRefresh, onViewChange }: {
   mode: "desktop" | "mobile";
   markets: VNextDirectoryMarket[];
   selected?: VNextDirectoryMarket;
   status: DirectoryStatus;
+  view: VNextMarketDirectoryView;
+  viewCounts: Record<VNextMarketDirectoryView, number>;
+  searchActive: boolean;
   onSelect: (address: string) => void;
   onRefresh: () => void;
+  onViewChange: (view: VNextMarketDirectoryView) => void;
 }) {
   return <div className={`rmtMarketDirectory is${mode}`} aria-live="polite">
+    <nav className="rmtMarketViews" aria-label="Market categories">
+      {VNEXT_MARKET_DIRECTORY_VIEWS.map((candidate) => <button
+        className={!searchActive && candidate.id === view ? "isActive" : ""}
+        type="button"
+        key={candidate.id}
+        aria-pressed={!searchActive && candidate.id === view}
+        onClick={() => onViewChange(candidate.id)}
+      ><span>{candidate.label}</span><small>{viewCounts[candidate.id]}</small></button>)}
+    </nav>
+    <div className="rmtMarketViewStatus"><strong>{searchActive ? "Search results" : VNEXT_MARKET_DIRECTORY_VIEWS.find((candidate) => candidate.id === view)?.label}</strong><span>{!searchActive && view === "rwa" ? "Stock Tokens first · RWA Pairs labeled" : `${markets.length} markets · routes checked on demand`}</span></div>
     {status === "loading" && markets.length === 0 && <div className="rmtDirectoryMessage"><strong>Syncing markets</strong><span>Loading directory data without prechecking routes.</span></div>}
     {status === "error" && markets.length === 0 && <div className="rmtDirectoryMessage"><strong>Directory unavailable</strong><span>No asset has been marked untradeable.</span><button type="button" onClick={onRefresh}>Try again</button></div>}
     {markets.map((market) => <button
@@ -99,10 +122,13 @@ function MarketDirectory({ mode, markets, selected, status, onSelect, onRefresh 
       onClick={() => onSelect(market.address)}
     >
       <TokenArtwork className="rmtMarketArtwork" symbol={market.symbol} imageUrl={market.imageUri} />
-      <span className="rmtMarketName"><strong>{market.symbol}</strong><small>{mode === "desktop" ? market.name : compactUsd(market.volume24h) + " vol"}</small></span>
+      <span className="rmtMarketName">
+        <span className="rmtMarketIdentity"><strong>{market.symbol}</strong>{vNextRwaClassificationLabel(market.rwaRelationship) ? <em className={`rmtRwaClassification is${market.rwaRelationship === "canonical-stock-token" ? "Stock" : "Pair"}`}>{vNextRwaClassificationLabel(market.rwaRelationship)}</em> : null}</span>
+        <small>{mode === "desktop" ? market.name : compactUsd(market.volume24h) + " vol"}</small>
+      </span>
       <span className="rmtMarketQuote"><strong>{formatUsd(market.priceUsd)}</strong><small className={market.priceChange24h > 0 ? "vnPositive" : market.priceChange24h < 0 ? "vnNegative" : ""}>{formatChange(market.priceChange24h)}</small></span>
     </button>)}
-    {status !== "loading" && markets.length === 0 && <div className="rmtDirectoryMessage"><strong>No matching markets</strong><span>Search by name, symbol, or a complete contract address.</span></div>}
+    {status !== "loading" && markets.length === 0 && <div className="rmtDirectoryMessage"><strong>{searchActive ? "No matching markets" : `No ${view === "held" ? "wallet-held" : view} markets yet`}</strong><span>{searchActive ? "Search by name, symbol, or a complete contract address." : "Choose another category or use exact contract search. No asset was marked unavailable."}</span></div>}
   </div>;
 }
 
@@ -153,7 +179,7 @@ export function DesktopTerminal(props: TerminalPresentationProps) {
     <div className="rmtDesktopWorkstation">
       <aside className="rmtDesktopMarkets" id="rmt-markets" aria-labelledby="rmt-market-directory-heading">
         <header><div><span className="vnEyebrow">Discover</span><h1 id="rmt-market-directory-heading">Markets</h1></div><span>{props.filteredMarkets.length}/{props.markets.length}</span></header>
-        <MarketDirectory mode="desktop" markets={props.filteredMarkets} selected={props.selected} status={props.directoryStatus} onSelect={selectMarket} onRefresh={props.onRefresh} />
+        <MarketDirectory mode="desktop" markets={props.filteredMarkets} selected={props.selected} status={props.directoryStatus} view={props.directoryView} viewCounts={props.directoryViewCounts} searchActive={props.searchActive} onSelect={selectMarket} onRefresh={props.onRefresh} onViewChange={props.onDirectoryViewChange} />
       </aside>
       <section className="rmtDesktopAsset" id="rmt-asset-workspace">
         {props.selected ? <VNextAssetWorkspace presentation="desktop" directoryMarket={props.selected} identityStatus={props.identityStatus} walletAssets={props.walletAssets} onTradeSide={requestTrade} /> : <div className="rmtEmptyWorkspace"><strong>Select a market</strong><span>RMT does not invent asset or route data.</span></div>}
@@ -224,7 +250,7 @@ export function MobileTerminal(props: TerminalPresentationProps) {
     <section className="rmtMobileBalance"><TerminalBalance {...props} /></section>
     <details className="rmtMobileDiscovery" open={discoveryOpen} onToggle={(event) => setDiscoveryOpen(event.currentTarget.open)}>
       <summary><span><b>Markets</b><small>{props.filteredMarkets.length} shown · routes checked on demand</small></span><i aria-hidden="true">⌄</i></summary>
-      <MarketDirectory mode="mobile" markets={props.filteredMarkets} selected={props.selected} status={props.directoryStatus} onSelect={(address) => { props.onSelectMarket(address); setDiscoveryOpen(false); }} onRefresh={props.onRefresh} />
+      <MarketDirectory mode="mobile" markets={props.filteredMarkets} selected={props.selected} status={props.directoryStatus} view={props.directoryView} viewCounts={props.directoryViewCounts} searchActive={props.searchActive} onSelect={(address) => { props.onSelectMarket(address); setDiscoveryOpen(false); }} onRefresh={props.onRefresh} onViewChange={props.onDirectoryViewChange} />
     </details>
     <section id="rmt-mobile-asset" className="rmtMobileAsset">
       {props.selected ? <VNextAssetWorkspace presentation="mobile" directoryMarket={props.selected} identityStatus={props.identityStatus} walletAssets={props.walletAssets} onTradeSide={openTrade} /> : <div className="rmtEmptyWorkspace"><strong>Select a market</strong><span>Live market intelligence will appear here.</span></div>}

@@ -23,6 +23,31 @@ function market(index) {
   const change1h = ((index * 11) % 43) - 9;
   const liquidity = 58_000 + index * 19_000;
   const volume1h = 46_000 + index * 7_300;
+  const stockAssetRelationships = index === 0
+    ? [{
+        relationship: "canonical-stock-token",
+        assetId: "fixture-stock",
+        tokenSymbol: `R${String(index + 1).padStart(2, "0")}`,
+        tokenName: `RMT Market ${String(index + 1).padStart(2, "0")}`,
+        contractAddress: marketToken,
+        currentMultiplier: "1",
+        status: "active",
+        logoUrl: null,
+        provenance: "robinhood-live-asset-registry"
+      }]
+    : index === 1
+      ? [{
+          relationship: "paired-market-asset",
+          assetId: "fixture-stock",
+          tokenSymbol: "STOCK",
+          tokenName: "Verified Stock Fixture",
+          contractAddress: address(0x9001),
+          currentMultiplier: "1",
+          status: "active",
+          logoUrl: null,
+          provenance: "robinhood-live-asset-registry"
+        }]
+      : [];
   return {
     address: marketToken,
     name: `RMT Market ${String(index + 1).padStart(2, "0")}`,
@@ -102,7 +127,8 @@ function market(index) {
     momentumScore: 58 + (index * 7) % 39,
     buyPressureBps: 6_400 + index * 75,
     signal: "moving",
-    riskFlags: index % 7 === 0 ? ["thin-liquidity"] : []
+    riskFlags: index % 7 === 0 ? ["thin-liquidity"] : [],
+    stockAssetRelationships
   };
 }
 
@@ -367,6 +393,14 @@ async function inspectDesktop(browser, viewport, label) {
   if (!composition.rail || !composition.workspace || !composition.directory) throw new Error(`${label}: workstation columns are incomplete`);
   if (composition.rail.x < composition.workspace.x + composition.workspace.width - 2) throw new Error(`${label}: execution rail overlaps the asset workspace`);
 
+  await page.getByRole("button", { name: /^RWA\s+2$/ }).click();
+  const rwaRows = page.locator(".rmtMarketItem");
+  if (await rwaRows.count() !== 2) throw new Error(`${label}: RWA directory did not preserve both verified classifications`);
+  if (!(await rwaRows.nth(0).textContent())?.includes("Stock Token")) throw new Error(`${label}: canonical Stock Token was not first or clearly labeled`);
+  if (!(await rwaRows.nth(1).textContent())?.includes("RWA Pair")) throw new Error(`${label}: paired market asset was not clearly labeled`);
+  await page.screenshot({ path: `${output}/rwa-${label}.png`, fullPage: false, animations: "disabled" });
+  await page.getByRole("button", { name: /^Trending\s+/ }).click();
+
   const search = page.getByRole("textbox", { name: "Search Robinhood Chain markets" });
   await search.fill("R02");
   await page.waitForTimeout(100);
@@ -424,6 +458,11 @@ async function inspectMobile(browser, viewport, label) {
   await gotoReady(page, base, ".rmtMobileTerminal #vn-asset-heading");
   await page.locator(".rmtMobileDiscovery > summary").click();
   await page.locator(".rmtMobileTerminal .rmtMarketItem").first().waitFor({ state: "visible" });
+  await page.getByRole("button", { name: /^RWA\s+2$/ }).click();
+  const mobileRwaRows = page.locator(".rmtMobileTerminal .rmtMarketItem");
+  if (await mobileRwaRows.count() !== 2) throw new Error(`${label}: mobile RWA directory lost a verified classification`);
+  if (!(await mobileRwaRows.nth(0).textContent())?.includes("Stock Token")) throw new Error(`${label}: mobile canonical Stock Token is not first or clearly labeled`);
+  if (!(await mobileRwaRows.nth(1).textContent())?.includes("RWA Pair")) throw new Error(`${label}: mobile paired market asset is not clearly labeled`);
 
   const homeAudit = await page.evaluate(() => {
     const marketRow = document.querySelector(".rmtMarketDirectory.ismobile .rmtMarketItem");

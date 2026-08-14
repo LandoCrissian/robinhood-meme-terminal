@@ -2,7 +2,14 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import type { ExternalMarketResponse, UniversalMarketResolution } from "../external-market";
 import { assetKey } from "./execution-domain";
-import { normalizeDirectoryMarkets, resolutionFromLookup, verifiedDirectoryAsset } from "./market-directory";
+import {
+  normalizeDirectoryMarkets,
+  resolutionFromLookup,
+  selectVNextMarketDirectoryView,
+  verifiedDirectoryAsset,
+  vNextRwaClassificationLabel,
+  vNextMarketDirectoryViewCounts
+} from "./market-directory";
 import { ROBINHOOD_RMT, ROBINHOOD_RMT_ADDRESS } from "./robinhood-assets";
 
 const otherAddress = "0x2222222222222222222222222222222222222222";
@@ -44,6 +51,73 @@ assert.equal(markets[1].liquidityUsd, 0);
 assert.equal(markets[1].priceChange24h, 0);
 assert.equal(assetKey(verifiedDirectoryAsset(markets[0])!.id), assetKey(ROBINHOOD_RMT.id));
 assert.equal(verifiedDirectoryAsset(markets[1]), null);
+
+const categorized = normalizeDirectoryMarkets({
+  markets: [
+    ...(payload.markets ?? []),
+    {
+      address: "0x5555555555555555555555555555555555555555",
+      name: "Verified Stock Token",
+      symbol: "STOCKX",
+      priceUsd: 20,
+      liquidityUsd: 40_000,
+      marketCapUsd: 2_000_000,
+      volume24h: 4_000,
+      priceChange24h: 0,
+      ageMinutes: 2_000,
+      signal: "active",
+      stockAssetRelationships: [{
+        relationship: "canonical-stock-token",
+        assetId: "stock-x",
+        tokenSymbol: "STOCKX",
+        tokenName: "Verified Stock Token",
+        contractAddress: "0x5555555555555555555555555555555555555555",
+        currentMultiplier: "1",
+        status: "active",
+        logoUrl: null,
+        provenance: "robinhood-live-asset-registry"
+      }]
+    },
+    {
+      address: "0x3333333333333333333333333333333333333333",
+      name: "Stock Pair",
+      symbol: "STOCK",
+      priceUsd: 1,
+      liquidityUsd: 50_000,
+      marketCapUsd: 100_000,
+      volume24h: 5_000,
+      priceChange24h: 0,
+      ageMinutes: 2_000,
+      signal: "active",
+      stockAssetRelationships: [{
+        relationship: "paired-market-asset",
+        assetId: "stock",
+        tokenSymbol: "STOCK",
+        tokenName: "Stock",
+        contractAddress: "0x4444444444444444444444444444444444444444",
+        currentMultiplier: "1",
+        status: "active",
+        logoUrl: null,
+        provenance: "robinhood-live-asset-registry"
+      }]
+    }
+  ]
+} as unknown as ExternalMarketResponse);
+const held = new Set([otherAddress.toLowerCase()]);
+const counts = vNextMarketDirectoryViewCounts(categorized, held);
+assert.equal(counts.trending, 1);
+assert.equal(counts.new, 1);
+assert.equal(counts.active, 2);
+assert.equal(counts.rwa, 2);
+assert.equal(counts.held, 1);
+assert.equal(counts.all, 4);
+assert.equal(selectVNextMarketDirectoryView(categorized, "trending", held)[0].symbol, "RMT");
+assert.equal(selectVNextMarketDirectoryView(categorized, "held", held)[0].symbol, "OTH");
+const rwaMarkets = selectVNextMarketDirectoryView(categorized, "rwa", held);
+assert.deepEqual(rwaMarkets.map((market) => market.rwaRelationship), ["canonical-stock-token", "paired-market-asset"]);
+assert.equal(vNextRwaClassificationLabel(rwaMarkets[0].rwaRelationship), "Stock Token");
+assert.equal(vNextRwaClassificationLabel(rwaMarkets[1].rwaRelationship), "RWA Pair");
+assert.equal(vNextRwaClassificationLabel(undefined), null);
 
 const resolution: UniversalMarketResolution = {
   chainId: 4_663,
