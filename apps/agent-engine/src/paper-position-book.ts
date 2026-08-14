@@ -16,6 +16,14 @@ export interface PaperPositionRecord {
   sellFillCount: number;
 }
 
+export interface PaperExternalCostEvent {
+  fillId: string;
+  kind: "FEE" | "GAS";
+  assetId: string;
+  amountAtomic: string;
+  occurredAt: number;
+}
+
 export interface PaperPositionBookRecord {
   schemaVersion: 1;
   accountId: string;
@@ -23,6 +31,7 @@ export interface PaperPositionBookRecord {
   fillCount: number;
   positions: PaperPositionRecord[];
   totalRealizedPnlQuoteAtomic: string;
+  externalCostEvents: PaperExternalCostEvent[];
   externalCostsByAsset: Record<string, string>;
   bookHash: string;
 }
@@ -78,16 +87,32 @@ function assertFillEvidence(fill: PaperFillRecord): void {
   if (evidenceHash !== hashPaperQuoteEvidence(payload)) fail("paper position quote evidence hash mismatch");
 }
 
-function addExternalCost(costs: Map<string, bigint>, assetId: string | undefined, amount: string, quoteAssetId: string, positionAssetId: string): bigint {
-  const value = BigInt(amount);
+function addCost(input: {
+  aggregate: Map<string, bigint>;
+  events: PaperExternalCostEvent[];
+  fill: PaperFillRecord;
+  kind: "FEE" | "GAS";
+  assetId: string | undefined;
+  amount: string;
+  quoteAssetId: string;
+  positionAssetId: string;
+}): bigint {
+  const value = BigInt(input.amount);
   if (value === 0n) return 0n;
-  if (!assetId) fail("paper position non-zero cost omitted asset");
-  assertNonEmptyString(assetId, "paper position cost assetId");
-  if (assetId.toLowerCase() === positionAssetId.toLowerCase()) {
+  if (!input.assetId) fail("paper position non-zero cost omitted asset");
+  assertNonEmptyString(input.assetId, "paper position cost assetId");
+  if (input.assetId.toLowerCase() === input.positionAssetId.toLowerCase()) {
     fail("paper position v1 does not admit non-zero costs paid in the traded position asset");
   }
-  if (assetId.toLowerCase() === quoteAssetId.toLowerCase()) return value;
-  costs.set(assetId, (costs.get(assetId) ?? 0n) + value);
+  if (input.assetId.toLowerCase() === input.quoteAssetId.toLowerCase()) return value;
+  input.aggregate.set(input.assetId, (input.aggregate.get(input.assetId) ?? 0n) + value);
+  input.events.push({
+    fillId: input.fill.fillId,
+    kind: input.kind,
+    assetId: input.assetId,
+    amountAtomic: input.amount,
+    occurredAt: input.fill.filledAt,
+  });
   return 0n;
 }
 
@@ -124,11 +149,29 @@ export function assertPaperPositionBookRecord(record: PaperPositionBookRecord): 
     realized += BigInt(position.realizedPnlQuoteAtomic);
   }
   if (realized.toString() !== record.totalRealizedPnlQuoteAtomic) fail("paper position total realized PnL mismatch");
-  for (const [assetId, amount] of Object.entries(record.externalCostsByAsset)) {
+
+  const eventKeys = new Set<string>();
+  const eventTotals = new Map<string, bigint>();
+  for (const event of record.externalCostEvents) {
+    assertNonEmptyString(event.fillId, "paper position external cost fillId");
+    if (event.kind !== "FEE" && event.kind !== "GAS") fail("paper position external cost kind is invalid");
+    assertNonEmptyString(event.assetId, "paper position external cost assetId");
+    if (event.assetId.toLowerCase() === record.quoteAssetId.toLowerCase()) fail("quote-denominated cost cannot be an external cost event");
+    assertPositiveAtomicAmount(event.amountAtomic, "paper position external cost amount");
+    assertNonNegativeSafeInteger(event.occurredAt, "paper position external cost occurredAt");
+    const eventKey = `${event.fillId}:${event.kind}`;
+    if (eventKeys.has(eventKey)) fail("paper position contains duplicate external cost event");
+    eventKeys.add(eventKey);
+    eventTotals.set(event.assetId, (eventTotals.get(event.assetId) ?? 0n) + BigInt(event.amountAtomic));
+  }
+  const aggregateEntries = Object.entries(record.externalCostsByAsset).sort(([left], [right]) => left.localeCompare(right));
+  for (const [assetId, amount] of aggregateEntries) {
     assertNonEmptyString(assetId, "paper position external cost assetId");
     if (assetId.toLowerCase() === record.quoteAssetId.toLowerCase()) fail("quote-denominated costs must be reflected in position PnL, not external costs");
     assertAtomicAmount(amount, "paper position external cost amount");
+    if ((eventTotals.get(assetId) ?? 0n).toString() !== amount) fail("paper position external cost aggregate differs from events");
   }
+  if (eventTotals.size !== aggregateEntries.length) fail("paper position external cost events contain unaggregated asset");
   if (!/^0x[0-9a-f]{64}$/.test(record.bookHash)) fail("paper position bookHash must be a sha256 hex hash");
   const { bookHash, ...payload } = record;
   if (bookHash !== hashCanonicalPayload(payload)) fail("paper position book hash mismatch");
@@ -144,6 +187,7 @@ export function buildPaperPositionBook(input: {
   const quoteKey = input.quoteAssetId.toLowerCase();
   const positions = new Map<string, MutablePosition>();
   const externalCosts = new Map<string, bigint>();
+  const externalCostEvents: PaperExternalCostEvent[] = [];
   const fills = [...input.fills].sort((left, right) => left.filledAt - right.filledAt || left.fillId.localeCompare(right.fillId));
   const fillIds = new Set<string>();
 
@@ -157,8 +201,8 @@ export function buildPaperPositionBook(input: {
     if (inputIsQuote === outputIsQuote) fail("paper position fill must exchange exactly one quote asset side");
     const positionAssetId = inputIsQuote ? fill.outputAssetId : fill.inputAssetId;
     const position = positionFor(positions, positionAssetId);
-    const quoteFee = addExternalCost(externalCosts, fill.feeAssetId, fill.feeAmountAtomic, input.quoteAssetId, positionAssetId);
-    const quoteGas = addExternalCost(externalCosts, fill.gasAssetId, fill.gasCostAtomic, input.quoteAssetId, positionAssetId);
+    const quoteFee = addCost({ aggregate: externalCosts, events: externalCostEvents, fill, kind: "FEE", assetId: fill.feeAssetId, amount: fill.feeAmountAtomic, quoteAssetId: input.quoteAssetId, positionAssetId });
+    const quoteGas = addCost({ aggregate: externalCosts, events: externalCostEvents, fill, kind: "GAS", assetId: fill.gasAssetId, amount: fill.gasCostAtomic, quoteAssetId: input.quoteAssetId, positionAssetId });
     const quoteCosts = quoteFee + quoteGas;
 
     if (inputIsQuote) {
@@ -197,6 +241,7 @@ export function buildPaperPositionBook(input: {
   const externalCostsByAsset = Object.fromEntries([...externalCosts.entries()]
     .sort(([left], [right]) => left.localeCompare(right))
     .map(([assetId, amount]) => [assetId, amount.toString()]));
+  externalCostEvents.sort((left, right) => left.occurredAt - right.occurredAt || left.fillId.localeCompare(right.fillId) || left.kind.localeCompare(right.kind));
   const payload: Omit<PaperPositionBookRecord, "bookHash"> = {
     schemaVersion: 1,
     accountId: input.accountId,
@@ -204,6 +249,7 @@ export function buildPaperPositionBook(input: {
     fillCount: fills.length,
     positions: positionRecords,
     totalRealizedPnlQuoteAtomic: totalRealized.toString(),
+    externalCostEvents,
     externalCostsByAsset,
   };
   const record: PaperPositionBookRecord = { ...payload, bookHash: hashCanonicalPayload(payload) };
