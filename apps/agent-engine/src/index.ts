@@ -11,6 +11,7 @@ export * from "./human-paper-order-submission.ts";
 export * from "./paper-arena-entry-store.ts";
 export * from "./paper-arena-entry.ts";
 export * from "./paper-arena-leaderboard.ts";
+export * from "./paper-arena-matchup.ts";
 export * from "./paper-arena-net-leaderboard.ts";
 export * from "./paper-arena-net-performance.ts";
 export * from "./paper-arena-performance.ts";
