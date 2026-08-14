@@ -135,8 +135,11 @@ function validateRegistry(snapshot: RobinhoodStockRegistrySnapshotLike): Map<str
   }
   return active;
 }
+function canonicalAssetId(asset: RobinhoodStockAssetLike): string {
+  return `eip155:${ROBINHOOD_CHAIN_ID}/contract:${asset.contractAddress.toLowerCase()}`;
+}
 function identityKeys(asset: RobinhoodStockAssetLike): Set<string> {
-  return new Set([asset.tokenSymbol, asset.assetId, asset.contractAddress, `eip155:${ROBINHOOD_CHAIN_ID}/contract:${asset.contractAddress.toLowerCase()}`].map((value) => value.toLowerCase()));
+  return new Set([asset.tokenSymbol, asset.assetId, asset.contractAddress, canonicalAssetId(asset)].map((value) => value.toLowerCase()));
 }
 function strategyAllowsAsset(strategy: StrategySpec, asset: RobinhoodStockAssetLike): boolean {
   const keys = identityKeys(asset);
@@ -159,7 +162,7 @@ function observationFor(market: DirectoryMarket, asset: RobinhoodStockAssetLike)
   if (market.volume24h !== undefined) features.volume24hUsdAtomic6 = usdAtomic(market.volume24h);
   if (market.marketCapUsd !== undefined) features.marketCapUsdAtomic6 = usdAtomic(market.marketCapUsd);
   return {
-    assetId: asset.tokenSymbol,
+    assetId: canonicalAssetId(asset),
     quoteAssetId: USD_REFERENCE_ASSET_ID,
     referencePriceAtomic: usdAtomic(market.priceUsd),
     referencePriceDecimals: USD_DECIMALS,
