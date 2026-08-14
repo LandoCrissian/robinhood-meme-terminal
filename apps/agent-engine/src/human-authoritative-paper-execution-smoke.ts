@@ -184,14 +184,17 @@ assert.doesNotThrow(() => assertHumanAuthoritativePaperOrderSubmissionRecord(aut
 
 class QuoteReader implements RmtPaperQuoteReader {
   readonly sourceId: string;
-  constructor(
-    private readonly outputAmountAtomic: string,
-    private readonly priceImpact: number,
-    private readonly quotedAtMs: number,
-    suffix: string,
-  ) {
+  private readonly outputAmountAtomic: string;
+  private readonly priceImpact: number;
+  private readonly quotedAtMs: number;
+
+  constructor(outputAmountAtomic: string, priceImpact: number, quotedAtMs: number, suffix: string) {
+    this.outputAmountAtomic = outputAmountAtomic;
+    this.priceImpact = priceImpact;
+    this.quotedAtMs = quotedAtMs;
     this.sourceId = `human-authoritative-${suffix}`;
   }
+
   async compare(input: RmtPaperQuoteReaderInput): Promise<unknown> {
     return {
       requestId: "123e4567-e89b-42d3-a456-426614174000",
