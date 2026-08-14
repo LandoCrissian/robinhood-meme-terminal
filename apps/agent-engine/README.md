@@ -1,8 +1,8 @@
 # RMT Agent Engine
 
-**Status: durable paper-only foundation with Strategy Compiler admission, read-only evaluation runs, verified Robinhood-stock market evidence, controlled scheduling and strictly verified VNext-style paper quote evidence. Not a production service.**
+**Status: durable paper-only foundation with Strategy Compiler admission, read-only evaluation runs, verified Robinhood-stock market evidence, controlled scheduling, replay-auditable VNext-style paper quote evidence and deterministic risk-capacity planning. Not a production service.**
 
-The agent engine now has seven layers:
+The agent engine now has eight layers:
 
 - `AgentEngine`: deterministic paper-domain state machine with immutable strategy versions, seasons, decisions, predictions, accounts, orders, fills, portfolio snapshots, risk events and score snapshots.
 - `DurableAgentEngine`: async persistence wrapper that adds idempotency keys, canonical request hashes, optimistic revisions, restart recovery and stale-worker conflict handling.
@@ -10,7 +10,8 @@ The agent engine now has seven layers:
 - `PaperEvaluationService`: consumes a read-only market-source adapter and an untrusted decision adapter, stores one canonical run per evaluation key, and v1 may write only a decision plus an optional probabilistic prediction. It has no paper-order or live-execution method.
 - `RmtRobinhoodStockMarketSource`: adapts RMT's existing VNext market-directory shape to paper evidence, but admits an RWA only after exact contract-address membership in a complete Robinhood Stock Token registry snapshot. Same-symbol non-registry tokens are excluded.
 - `PaperEvaluationScheduler`: a bounded `runOnce()` scheduler that derives deterministic evaluation slots from each strategy interval, de-duplicates duplicate candidates, caps concurrency and delegates replay protection to the canonical run store. It does not own a hidden timer or background loop.
-- `RmtPaperQuoteService`: converts already-normalized VNext-style quote comparison evidence into hash-bound `VerifiedPaperQuoteEvidence`, requiring a strictly verifiable, fresh, policy-compliant route and using protected output rather than optimistic expected output. It has no order, fill, wallet or transaction method.
+- `RmtPaperQuoteService`: converts already-normalized VNext-style quote comparison evidence into replay-auditable, hash-bound `VerifiedPaperQuoteEvidence`, requiring a strictly verifiable, fresh, policy-compliant route and using protected output rather than optimistic expected output. It has no order, fill, wallet or transaction method.
+- `PaperRiskCapacityPlanner`: pure `BigInt` risk-capacity planning that computes the maximum quote-asset spend allowed by paper NAV, balance, position/portfolio limits and current risk gates. It approves or rejects an explicit requested size but never creates or silently resizes an order.
 
 A model is deliberately behind adapter interfaces. No OpenAI, Anthropic, Gemini or other concrete model SDK/provider is connected by this foundation, and model output is never treated as trusted policy.
 
@@ -81,14 +82,31 @@ The market and quote evidence layers preserve existing RMT security boundaries. 
 
 - `RmtPaperQuoteService` accepts only Robinhood Chain quote comparisons (`chainId = 4663`) and rechecks exact token addresses and input amount;
 - quote attempts remain observation-only and must declare `authorizationReady = false`;
+- indicative quote timestamps must be consistent with the comparison request/completion window under the explicit clock-skew budget;
 - only `indicative` attempts with `strictVerificationAvailable = true` can be selected;
 - selected attempts must be fresh, unexpired and within the configured maximum price-impact policy;
-- price impact is rounded **up** to integer basis points so paper policy never understates impact;
+- price impact is rounded **up** to integer basis points so paper policy never understates impact, including any positive sub-basis-point impact;
 - route ranking uses highest protected output, then lowest latency, then provider ID for deterministic tie-breaking;
 - optimistic expected output is never written as the paper fill amount; evidence uses `protectedOutputAtomic`;
 - input/output paper asset IDs are canonical `eip155:4663/contract:<lowercase-address>` values;
-- `VerifiedPaperQuoteEvidence` and the containing quote result are independently canonical SHA-256 hash-bound;
+- each result retains the full bounded agent-normalized comparison plus `comparisonHash`, the exact `selectedAttemptHash`, quote evidence hash and final `resultHash`;
+- `assertRmtPaperQuoteResult()` recomputes those hashes and cross-checks the selected route against the retained comparison;
 - VNext fee/gas economics are not translated into a separate `PaperExecutionCosts` ledger yet, avoiding double-counting until the cost basis is explicitly proven.
+
+## Paper risk-capacity invariants
+
+- `PaperRiskCapacityPlanner` is a pure planner; it cannot mutate `AgentEngine` state;
+- all quote-denominated capacity arithmetic uses `BigInt`; no floating-point monetary sizing is admitted;
+- per-position and total-portfolio limits are floor-rounded from mark NAV and strategy basis-point limits;
+- capacity is the minimum of available quote balance, remaining per-position headroom and remaining portfolio headroom;
+- daily-loss, drawdown and trades-per-day thresholds are hard gates;
+- maximum-open-position count is a hard gate when the requested asset would open a new position, while an existing admitted position may still use its remaining position headroom;
+- no-leverage paper v1 rejects total exposure above mark NAV and position exposure above total exposure;
+- the risk snapshot is canonical hash-bound, account-bound, non-future and freshness-limited;
+- the strategy remains inside the hard safety envelope and its stored strategy hash is recomputed before risk limits are trusted;
+- strategy scope may match the verified market observation canonical ID or its admitted aliases;
+- an explicit requested amount that exceeds capacity is `BLOCKED`; the planner never silently clamps it to the maximum;
+- the full capacity plan, including account/risk/market snapshots, limits, headroom, reasons and admitted/null amount, is canonical SHA-256 hash-bound.
 
 ## Explicitly absent
 
@@ -99,7 +117,8 @@ There is still:
 - no production worker/cron deployment;
 - no community-asset classification authority in this RWA source;
 - no production VNext quote-reader/provider connection;
-- no paper-order generation from the evaluation runner or scheduler;
+- no automatic target-allocation formula;
+- no paper-order generation from the evaluation runner, scheduler, quote service or capacity planner;
 - no paper-fill integration from `RmtPaperQuoteService`;
 - no proven separate fee/gas cost ledger for simulated fills;
 - no signer or private key;
@@ -110,4 +129,4 @@ There is still:
 - no production database connection or environment change;
 - no pooled capital or autonomous custody.
 
-The next engineering boundary is deterministic **paper order sizing + fill-cost accounting**. It must derive size from the admitted strategy/risk envelope and paper-account state, consume canonical market/quote evidence, and remain separated from wallet submission. Only after that boundary is proven should the evaluation pipeline be allowed to create simulated order intents and fills.
+The next engineering boundary is an immutable **proposed paper-order record** that binds one canonical evaluation run, one admitted capacity plan and one strictly verified paper quote comparison. It must remain non-mutating: no `submitPaperOrder`, fill, wallet submission or live execution until that proposal/replay contract and the separate fill-cost accounting boundary are proven.
