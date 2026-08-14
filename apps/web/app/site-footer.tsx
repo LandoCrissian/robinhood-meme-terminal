@@ -5,6 +5,7 @@ export function SiteFooter() {
   return (
     <footer className="siteFooter">
       <Link href="/robinhood-chain">Robinhood Chain</Link>
+      <Link href="/markets/robinhood-chain">Markets</Link>
       <Link href="/terms">Terms</Link>
       <Link href="/privacy">Privacy</Link>
       <Link href="/experience">Experience controls</Link>
