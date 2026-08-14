@@ -100,15 +100,35 @@ CREATE TABLE IF NOT EXISTS paper_accounts (
   stream_id TEXT NOT NULL,
   account_id TEXT NOT NULL,
   season_id TEXT NOT NULL,
-  participant_type TEXT NOT NULL CHECK (participant_type = 'AGENT'),
+  participant_type TEXT NOT NULL CONSTRAINT paper_accounts_participant_type_check CHECK (participant_type IN ('AGENT','HUMAN')),
   participant_id TEXT NOT NULL,
   balances_json JSONB NOT NULL,
   opened_at_ms BIGINT NOT NULL CHECK (opened_at_ms >= 0),
   PRIMARY KEY (stream_id, account_id),
-  UNIQUE (stream_id, season_id, participant_id),
-  FOREIGN KEY (stream_id, season_id) REFERENCES agent_seasons (stream_id, season_id),
-  FOREIGN KEY (stream_id, participant_id) REFERENCES agents (stream_id, agent_id)
+  CONSTRAINT paper_accounts_participant_identity_key UNIQUE (stream_id, season_id, participant_type, participant_id),
+  FOREIGN KEY (stream_id, season_id) REFERENCES agent_seasons (stream_id, season_id)
 );
+
+-- Development migration from the original AGENT-only projection. The canonical
+-- engine snapshot remains the authority for validating that AGENT participant
+-- IDs actually reference registered agents; HUMAN IDs are canonical wallet addresses.
+ALTER TABLE paper_accounts DROP CONSTRAINT IF EXISTS paper_accounts_participant_type_check;
+ALTER TABLE paper_accounts ADD CONSTRAINT paper_accounts_participant_type_check CHECK (participant_type IN ('AGENT','HUMAN'));
+ALTER TABLE paper_accounts DROP CONSTRAINT IF EXISTS paper_accounts_stream_id_participant_id_fkey;
+ALTER TABLE paper_accounts DROP CONSTRAINT IF EXISTS paper_accounts_stream_id_season_id_participant_id_key;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'paper_accounts_participant_identity_key'
+      AND conrelid = 'paper_accounts'::regclass
+  ) THEN
+    ALTER TABLE paper_accounts
+      ADD CONSTRAINT paper_accounts_participant_identity_key
+      UNIQUE (stream_id, season_id, participant_type, participant_id);
+  END IF;
+END
+$$;
 
 CREATE TABLE IF NOT EXISTS paper_orders (
   stream_id TEXT NOT NULL,
