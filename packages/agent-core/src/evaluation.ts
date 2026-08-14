@@ -1,6 +1,7 @@
 import { hashCanonicalPayload } from "./canonical.ts";
 import {
   assertAtomicAmount,
+  assertBps,
   assertNonEmptyString,
   assertPositiveInteger,
   assertUnitInterval,
@@ -8,7 +9,7 @@ import {
   type StrategySpec,
 } from "./schema.ts";
 
-export type PaperEvaluationAction = "NO_ACTION" | "PREDICTION";
+export type PaperEvaluationAction = "NO_ACTION" | "PREDICTION" | "OPEN_POSITION";
 
 export interface MarketObservationDraft {
   assetId: string;
@@ -37,11 +38,17 @@ export interface PredictionProposal {
   resolvesAt: number;
 }
 
+export interface OpenPositionProposal {
+  assetId: string;
+  requestedPositionBps: number;
+}
+
 export interface AgentEvaluationProposal {
   action: PaperEvaluationAction;
   confidence: number;
   reasoningSummary: string;
   prediction?: PredictionProposal;
+  openPosition?: OpenPositionProposal;
 }
 
 export interface AgentRunRecord {
@@ -110,12 +117,20 @@ function observationIdentityKeys(observation: MarketObservationDraft): Set<strin
   return new Set([observation.assetId, ...(observation.aliases ?? [])].map((value) => value.toLowerCase()));
 }
 
-function predictionObservation(assetId: string, snapshot: AgentMarketSnapshot): MarketObservationDraft {
+function proposalObservation(assetId: string, snapshot: AgentMarketSnapshot, label: string): MarketObservationDraft {
   const key = assetId.trim().toLowerCase();
   const matches = snapshot.observations.filter((observation) => observationIdentityKeys(observation).has(key));
-  if (matches.length === 0) fail("prediction asset is absent from market snapshot");
-  if (matches.length > 1) fail("prediction asset alias is ambiguous in market snapshot");
+  if (matches.length === 0) fail(`${label} asset is absent from market snapshot`);
+  if (matches.length > 1) fail(`${label} asset alias is ambiguous in market snapshot`);
   return matches[0]!;
+}
+
+function assertStrategyAllowsObservation(strategy: StrategySpec, observation: MarketObservationDraft, label: string): void {
+  const identityKeys = observationIdentityKeys(observation);
+  const include = strategy.universe.includeAssets?.map((asset) => asset.toLowerCase());
+  if (include?.length && !include.some((asset) => identityKeys.has(asset))) fail(`${label} asset is outside strategy includeAssets`);
+  const exclude = strategy.universe.excludeAssets?.map((asset) => asset.toLowerCase()) ?? [];
+  if (exclude.some((asset) => identityKeys.has(asset))) fail(`${label} asset is excluded by strategy`);
 }
 
 export function parseMarketObservationDraft(value: unknown, maximumFeatures: number): MarketObservationDraft {
@@ -204,39 +219,76 @@ export function assertAgentMarketSnapshot(snapshot: AgentMarketSnapshot): void {
 export function parseEvaluationProposal(value: unknown, strategy: StrategySpec, evaluatedAt: number): AgentEvaluationProposal {
   assertTimestamp(evaluatedAt, "evaluatedAt");
   if (!isRecord(value)) fail("evaluation proposal must be an object");
-  if (value.action !== "NO_ACTION" && value.action !== "PREDICTION") fail("evaluation action is not admitted in paper runner v1");
+  if (value.action !== "NO_ACTION" && value.action !== "PREDICTION" && value.action !== "OPEN_POSITION") {
+    fail("evaluation action is not admitted in paper runner v1");
+  }
   assertUnitInterval(value.confidence as number, "evaluation confidence");
   const reasoningSummary = assertReasoningSummary(value.reasoningSummary);
   if ((value.confidence as number) < strategy.prediction.minimumConfidence && value.action !== "NO_ACTION") {
     fail("evaluation confidence is below strategy minimum");
   }
   if (value.action === "NO_ACTION") {
-    if (value.prediction !== undefined) fail("NO_ACTION proposal cannot include prediction");
+    if (value.prediction !== undefined || value.openPosition !== undefined) fail("NO_ACTION proposal cannot include action payloads");
+    return { action: "NO_ACTION", confidence: value.confidence as number, reasoningSummary };
+  }
+  if (value.action === "PREDICTION") {
+    if (value.openPosition !== undefined) fail("PREDICTION proposal cannot include openPosition");
+    if (!strategy.prediction.enabled) fail("strategy predictions are disabled");
+    if (!isRecord(value.prediction)) fail("PREDICTION proposal requires prediction object");
+    assertNonEmptyString(value.prediction.assetId as string, "prediction assetId");
+    assertNonEmptyString(value.prediction.condition as string, "prediction condition");
+    if ((value.prediction.condition as string).trim().length > 512) fail("prediction condition exceeds 512 characters");
+    assertUnitInterval(value.prediction.forecastProbability as number, "forecastProbability");
+    const resolvesAt = evaluatedAt + strategy.timeframe.predictionHorizonSeconds * 1_000;
+    if (!Number.isSafeInteger(resolvesAt)) fail("prediction resolution timestamp exceeds safe integer range");
     return {
-      action: "NO_ACTION",
+      action: "PREDICTION",
       confidence: value.confidence as number,
       reasoningSummary,
+      prediction: {
+        assetId: (value.prediction.assetId as string).trim(),
+        condition: (value.prediction.condition as string).trim(),
+        forecastProbability: value.prediction.forecastProbability as number,
+        resolvesAt,
+      },
     };
   }
-  if (!strategy.prediction.enabled) fail("strategy predictions are disabled");
-  if (!isRecord(value.prediction)) fail("PREDICTION proposal requires prediction object");
-  assertNonEmptyString(value.prediction.assetId as string, "prediction assetId");
-  assertNonEmptyString(value.prediction.condition as string, "prediction condition");
-  if ((value.prediction.condition as string).trim().length > 512) fail("prediction condition exceeds 512 characters");
-  assertUnitInterval(value.prediction.forecastProbability as number, "forecastProbability");
-  const resolvesAt = evaluatedAt + strategy.timeframe.predictionHorizonSeconds * 1_000;
-  if (!Number.isSafeInteger(resolvesAt)) fail("prediction resolution timestamp exceeds safe integer range");
+  if (value.prediction !== undefined) fail("OPEN_POSITION proposal cannot include prediction");
+  if (!isRecord(value.openPosition)) fail("OPEN_POSITION proposal requires openPosition object");
+  assertNonEmptyString(value.openPosition.assetId as string, "openPosition assetId");
+  assertBps(value.openPosition.requestedPositionBps as number, "requestedPositionBps");
+  if ((value.openPosition.requestedPositionBps as number) <= 0) fail("requestedPositionBps must be greater than zero");
+  if ((value.openPosition.requestedPositionBps as number) > strategy.risk.maximumPositionBps) {
+    fail("requestedPositionBps exceeds strategy maximumPositionBps");
+  }
   return {
-    action: "PREDICTION",
+    action: "OPEN_POSITION",
     confidence: value.confidence as number,
     reasoningSummary,
-    prediction: {
-      assetId: (value.prediction.assetId as string).trim(),
-      condition: (value.prediction.condition as string).trim(),
-      forecastProbability: value.prediction.forecastProbability as number,
-      resolvesAt,
+    openPosition: {
+      assetId: (value.openPosition.assetId as string).trim(),
+      requestedPositionBps: value.openPosition.requestedPositionBps as number,
     },
   };
+}
+
+export function canonicalizeEvaluationProposalAssets(
+  proposal: AgentEvaluationProposal,
+  strategy: StrategySpec,
+  snapshot: AgentMarketSnapshot,
+): AgentEvaluationProposal {
+  const canonical = structuredClone(proposal);
+  if (canonical.prediction) {
+    const observation = proposalObservation(canonical.prediction.assetId, snapshot, "prediction");
+    assertStrategyAllowsObservation(strategy, observation, "prediction");
+    canonical.prediction.assetId = observation.assetId;
+  }
+  if (canonical.openPosition) {
+    const observation = proposalObservation(canonical.openPosition.assetId, snapshot, "openPosition");
+    assertStrategyAllowsObservation(strategy, observation, "openPosition");
+    canonical.openPosition.assetId = observation.assetId;
+  }
+  return canonical;
 }
 
 export function canonicalizePredictionAsset(
@@ -244,24 +296,11 @@ export function canonicalizePredictionAsset(
   strategy: StrategySpec,
   snapshot: AgentMarketSnapshot,
 ): AgentEvaluationProposal {
-  if (!proposal.prediction) return structuredClone(proposal);
-  const observation = predictionObservation(proposal.prediction.assetId, snapshot);
-  const identityKeys = observationIdentityKeys(observation);
-  const include = strategy.universe.includeAssets?.map((asset) => asset.toLowerCase());
-  if (include?.length && !include.some((asset) => identityKeys.has(asset))) fail("prediction asset is outside strategy includeAssets");
-  const exclude = strategy.universe.excludeAssets?.map((asset) => asset.toLowerCase()) ?? [];
-  if (exclude.some((asset) => identityKeys.has(asset))) fail("prediction asset is excluded by strategy");
-  return {
-    ...structuredClone(proposal),
-    prediction: {
-      ...structuredClone(proposal.prediction),
-      assetId: observation.assetId,
-    },
-  };
+  return canonicalizeEvaluationProposalAssets(proposal, strategy, snapshot);
 }
 
 export function assertPredictionAssetAllowed(proposal: AgentEvaluationProposal, strategy: StrategySpec, snapshot: AgentMarketSnapshot): void {
-  const canonical = canonicalizePredictionAsset(proposal, strategy, snapshot);
+  const canonical = canonicalizeEvaluationProposalAssets(proposal, strategy, snapshot);
   if (proposal.prediction && canonical.prediction?.assetId !== proposal.prediction.assetId) {
     fail("prediction asset must be canonicalized before persistence");
   }
@@ -269,6 +308,13 @@ export function assertPredictionAssetAllowed(proposal: AgentEvaluationProposal, 
 
 export function hashAgentRunPayload(record: Omit<AgentRunRecord, "runHash">): string {
   return hashCanonicalPayload(record);
+}
+
+function assertCanonicalProposalAsset(assetId: string, snapshot: AgentMarketSnapshot, label: string): void {
+  assertNonEmptyString(assetId, `${label} assetId`);
+  const key = assetId.toLowerCase();
+  const exactMatches = snapshot.observations.filter((observation) => observation.assetId.toLowerCase() === key);
+  if (exactMatches.length !== 1) fail(`${label} asset must exactly match one canonical market observation assetId`);
 }
 
 export function assertAgentRunRecord(record: AgentRunRecord): void {
@@ -297,22 +343,26 @@ export function assertAgentRunRecord(record: AgentRunRecord): void {
   assertAgentMarketSnapshot(record.marketSnapshot);
   if (record.marketSourceId !== record.marketSnapshot.sourceId) fail("agent run market source does not match snapshot source");
   if (record.marketSnapshot.capturedAt > record.evaluatedAt) fail("agent run market snapshot is from the future");
-  if (record.proposal.action !== "NO_ACTION" && record.proposal.action !== "PREDICTION") fail("agent run proposal action is invalid");
+  if (record.proposal.action !== "NO_ACTION" && record.proposal.action !== "PREDICTION" && record.proposal.action !== "OPEN_POSITION") {
+    fail("agent run proposal action is invalid");
+  }
   assertUnitInterval(record.proposal.confidence, "run proposal confidence");
   assertReasoningSummary(record.proposal.reasoningSummary);
   if (record.proposal.action === "NO_ACTION") {
-    if (record.proposal.prediction !== undefined) fail("NO_ACTION run cannot include prediction");
-  } else {
-    if (!record.proposal.prediction) fail("PREDICTION run is missing prediction");
-    assertNonEmptyString(record.proposal.prediction.assetId, "run prediction assetId");
+    if (record.proposal.prediction !== undefined || record.proposal.openPosition !== undefined) fail("NO_ACTION run cannot include action payloads");
+  } else if (record.proposal.action === "PREDICTION") {
+    if (!record.proposal.prediction || record.proposal.openPosition !== undefined) fail("PREDICTION run payload is invalid");
     assertNonEmptyString(record.proposal.prediction.condition, "run prediction condition");
     if (record.proposal.prediction.condition.length > 512) fail("run prediction condition exceeds 512 characters");
     assertUnitInterval(record.proposal.prediction.forecastProbability, "run forecastProbability");
     assertTimestamp(record.proposal.prediction.resolvesAt, "run prediction resolvesAt");
     if (record.proposal.prediction.resolvesAt <= record.evaluatedAt) fail("run prediction must resolve after evaluatedAt");
-    const predictionAssetId = record.proposal.prediction.assetId.toLowerCase();
-    const exactMatches = record.marketSnapshot.observations.filter((observation) => observation.assetId.toLowerCase() === predictionAssetId);
-    if (exactMatches.length !== 1) fail("run prediction asset must exactly match one canonical market observation assetId");
+    assertCanonicalProposalAsset(record.proposal.prediction.assetId, record.marketSnapshot, "run prediction");
+  } else {
+    if (!record.proposal.openPosition || record.proposal.prediction !== undefined) fail("OPEN_POSITION run payload is invalid");
+    assertBps(record.proposal.openPosition.requestedPositionBps, "run requestedPositionBps");
+    if (record.proposal.openPosition.requestedPositionBps <= 0) fail("run requestedPositionBps must be greater than zero");
+    assertCanonicalProposalAsset(record.proposal.openPosition.assetId, record.marketSnapshot, "run openPosition");
   }
   if (record.proposalHash !== hashCanonicalPayload(record.proposal)) fail("agent run proposal hash mismatch");
   const { runHash, ...payload } = record;
