@@ -128,6 +128,7 @@ export interface PredictionRecord {
   resolvedAt?: number;
 }
 
+/** Agent-originated intent. Its upstream authority is the admitted strategy/risk chain. */
 export interface PaperOrderIntent {
   agentId: string;
   strategyVersion: number;
@@ -143,6 +144,26 @@ export interface PaperOrderRecord extends PaperOrderIntent {
   orderId: string;
   status: PaperOrderStatus;
 }
+
+/** Human-originated intent. It can only be produced by explicit manual paper admission. */
+export interface HumanPaperOrderIntent {
+  participantType: "HUMAN";
+  participantId: string;
+  manualPolicyVersion: string;
+  accountId: string;
+  inputAssetId: string;
+  outputAssetId: string;
+  inputAmountAtomic: string;
+  maximumSlippageBps: number;
+  createdAt: number;
+}
+
+export interface HumanPaperOrderRecord extends HumanPaperOrderIntent {
+  orderId: string;
+  status: PaperOrderStatus;
+}
+
+export type ParticipantPaperOrderRecord = PaperOrderRecord | HumanPaperOrderRecord;
 
 export interface VerifiedPaperQuoteEvidence {
   quoteId: string;
@@ -184,6 +205,29 @@ export interface PaperFillRecord {
   evidenceHash: string;
   quoteEvidence: VerifiedPaperQuoteEvidence;
 }
+
+export interface HumanPaperFillRecord {
+  fillId: string;
+  orderId: string;
+  quoteId: string;
+  participantType: "HUMAN";
+  participantId: string;
+  accountId: string;
+  inputAssetId: string;
+  outputAssetId: string;
+  inputAmountAtomic: string;
+  outputAmountAtomic: string;
+  providerId: string;
+  feeAssetId?: string;
+  feeAmountAtomic: string;
+  gasAssetId?: string;
+  gasCostAtomic: string;
+  filledAt: number;
+  evidenceHash: string;
+  quoteEvidence: VerifiedPaperQuoteEvidence;
+}
+
+export type ParticipantPaperFillRecord = PaperFillRecord | HumanPaperFillRecord;
 
 export interface PaperAccountRecord {
   accountId: string;
