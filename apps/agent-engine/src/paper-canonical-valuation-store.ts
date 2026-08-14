@@ -85,7 +85,11 @@ CREATE INDEX IF NOT EXISTS paper_canonical_valuation_history_revision_idx
 `;
 
 export class PostgresPaperCanonicalValuationHistoryStore implements PaperCanonicalValuationHistoryStore {
-  constructor(private readonly pool: SqlPoolLike) {}
+  private readonly pool: SqlPoolLike;
+
+  constructor(pool: SqlPoolLike) {
+    this.pool = pool;
+  }
 
   async ensureSchema(): Promise<void> {
     const client = await this.pool.connect();
