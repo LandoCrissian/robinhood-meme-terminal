@@ -1,12 +1,8 @@
-# RMT Human Paper Accounts
+# RMT Human Paper Accounts and Manual Paper Execution
 
-Status: foundation support for canonical Human Arena identity and starting capital. Human paper order execution is intentionally **not** enabled by this slice.
+Status: canonical Human Arena accounts now support **manual paper trading** through the same durable paper state, quote evidence, fill costs, balance mutation, position accounting, liquidation NAV and Arena valuation used by Agent paper trading. This remains PAPER ONLY.
 
-## Purpose
-
-RMT Arena needs Humans and Agents to enter the same competition under the same account and valuation primitives without representing a Human as a fake Agent.
-
-The core participant contract is now:
+## Participant identity
 
 ```text
 ParticipantType = AGENT | HUMAN
@@ -15,67 +11,159 @@ AGENT participantId = existing stable agent ID
 HUMAN participantId = lowercase 20-byte EVM wallet address
 ```
 
-Both types use the same `PaperAccountRecord` and the same season/account snapshot collection.
+Both participant types use the same `PaperAccountRecord`, season collection and canonical engine snapshot.
 
-## Human account path
+`DurableAgentEngine.openHumanPaperAccount()`:
 
-`DurableAgentEngine.openHumanPaperAccount()` now:
-
-1. validates and lowercases the Human wallet address;
+1. validates and canonicalizes the Human wallet address;
 2. requires an existing Arena season;
 3. validates atomic starting balances;
-4. prevents a second HUMAN account for the same wallet and season;
-5. persists the account through the same durable state/revision/idempotency machinery as Agent accounts;
+4. prevents duplicate Human account identity within a season;
+5. persists through the same revision/idempotency state store as Agent accounts;
 6. survives `AgentEngine.fromSnapshot()` restore;
-7. can enter `PaperArenaEntryService` using the same quote-only starting-capital rule.
+7. can enter `PaperArenaEntryService` under the same quote-only starting-capital requirement.
+
+## Separate upstream authorities, shared downstream execution
+
+Agent and Human orders do **not** share upstream authorization.
+
+```text
+AGENT
+  strategy version
+  + model proposal
+  + deterministic risk capacity
+  + Agent order admission
+          │
+          ├──────────────┐
+          │              │
+HUMAN    manual intent   │
+  + Human manual policy  │
+  + current-state admission
+  + stale-state gate     │
+          │              │
+          └──────┬───────┘
+                 ↓
+        canonical PENDING paper order
+                 ↓
+        verified RMT quote evidence
+                 ↓
+        explicit paper fill costs
+                 ↓
+        shared fill/balance mutation
+                 ↓
+        positions / liquidation NAV
+                 ↓
+        Arena performance
+```
+
+The divergence is intentional: Agent-originated orders retain strategy/risk provenance; Human-originated orders retain canonical wallet identity and `manualPolicyVersion` provenance.
+
+## Human manual admission
+
+`HumanPaperOrderAdmissionService` is read-only. It binds one exact persisted state revision/hash to:
+
+- Human account and season;
+- input/output assets;
+- exact atomic input amount;
+- slippage;
+- manual policy version;
+- admission timestamp.
+
+The current manual policy caps:
+
+- maximum slippage;
+- maximum order input as basis points of the **current input-asset balance**.
+
+The amount is rejected when above policy; it is never silently clamped.
+
+## Stale-state gate
+
+`HumanPaperOrderSubmissionGateService` requires the current durable state to remain exactly the state used for admission:
+
+- same revision;
+- same state hash;
+- same account snapshot;
+- same season snapshot.
+
+Any intervening mutation invalidates the old admission. Previous Human trades do **not** block a new trade: after a fill, the Human creates a fresh admission from the new canonical state, then a fresh gate.
+
+## Durable Human order submission
+
+`HumanPaperOrderSubmissionService` requires the complete admission + matching gate. It derives its own idempotency key and calls:
+
+```text
+DurableAgentEngine.submitHumanPaperOrder(intent, key, expectedRevision)
+```
+
+The durable engine checks the required revision before applying the mutation, and the state store independently performs the optimistic revision check during commit. A race after gate evaluation therefore fails instead of committing a stale order.
+
+The resulting order is `PENDING` and must exactly match the admitted Human intent.
+
+## Shared fill mechanics
+
+The canonical `AgentEngine` now stores participant-neutral order/fill history internally. Agent and Human wrappers converge on one `applyPaperFill()` balance mutation.
+
+Both paths enforce:
+
+- PENDING order state;
+- exact quote/order asset and amount identity;
+- canonical quote-evidence hash;
+- paper fill delay;
+- quote expiry;
+- season window;
+- policy price-impact ceiling;
+- exact fee/gas accounting;
+- sufficient paper balances;
+- atomic debit/credit mutation.
+
+Agent fill additionally applies its strategy price-impact ceiling. Human fill applies the global paper safety ceiling.
+
+`HumanPaperFillOrchestrationService` uses the same `RmtPaperQuoteResult` and `PaperFillCostPlan` contract as the Agent fill orchestrator. It refuses unresolved network-gas cost plans and validates the returned Human fill against the admitted order, protected quote output and exact costs.
 
 ## Persistence
 
-The PostgreSQL `paper_accounts` projection now accepts:
+`paper_accounts` accepts `AGENT | HUMAN`.
 
-```text
-participant_type IN ('AGENT','HUMAN')
-```
+`paper_orders` and `paper_fills` are now participant-aware shared projections. Origin constraints require:
 
-Season identity is unique by:
+- AGENT order: Agent ID + strategy version, no manual policy;
+- HUMAN order: Human participant ID + manual policy, no Agent strategy identity;
+- AGENT fill: Agent identity present;
+- HUMAN fill: Agent identity absent.
 
-```text
-(stream_id, season_id, participant_type, participant_id)
-```
+Legacy Agent rows are backfilled into the participant fields by the development migration contained in the schema string.
 
-The legacy projection-level foreign key from every `participant_id` to `agents.agent_id` is removed because it is not valid for Human wallet identities. The **canonical AgentEngine snapshot validator remains authoritative**:
+## Shared accounting and Arena
 
-- AGENT accounts must resolve to a registered Agent;
-- HUMAN accounts must carry a canonical lowercase EVM wallet participant ID.
+`buildPaperPositionBook()` consumes `ParticipantPaperFillRecord[]`, so Human and Agent fills use identical:
 
-The schema string also contains the development migration needed to relax an already-created AGENT-only `paper_accounts` table.
+- cost-basis accounting;
+- realized P&L;
+- external-cost event tracking;
+- liquidation valuation;
+- canonical-state valuation;
+- Arena performance math;
+- net-performance accounting;
+- Human / Agent / Overall leaderboard views.
 
-## Security boundary
+## Remaining fairness gap
 
-Human account support does **not** make the existing agent order model participant-neutral yet.
+Execution mechanics and accounting are shared, but **manual Human risk admission is not yet risk-identical to Agent admission**.
 
-The following remain Agent-only:
+Agents currently have deterministic gates for position exposure, portfolio exposure, open-position count, daily loss, drawdown and trades-per-day. Human manual admission currently enforces current-balance sizing + slippage, while fill-time price impact uses the global safety envelope.
 
-- `PaperOrderIntent.agentId`;
-- `strategyVersion` ownership;
-- `submitPaperOrder()`;
-- `PaperFillRecord.agentId`;
-- Agent risk events and score snapshots.
+Before calling Human-vs-Agent risk conditions identical, Human manual admission should be connected to a participant-neutral risk-capacity policy using the same position/portfolio/drawdown/trade-frequency evidence.
 
-`AgentEngine.submitPaperOrder()` explicitly rejects a HUMAN account even when a valid Agent ID and strategy are supplied alongside that account ID.
+## Explicitly absent
 
-This means a Human can currently establish canonical Arena identity/start state and be valued from that state, but cannot yet place a manual paper trade through the Agent order/fill path.
+None of this adds:
 
-## Next migration
+- a signer or private key;
+- wallet transaction submission;
+- live capital;
+- production exchange authorization;
+- custody;
+- autonomous live trading;
+- contract deployment.
 
-The next execution migration should introduce a shared paper-order participant identity rather than a second Human engine. The target is one order/fill accounting path with two upstream authorities:
-
-```text
-HUMAN manual intent ─┐
-                    ├─> participant-neutral paper order/fill engine
-AGENT admitted intent ┘
-```
-
-Agent strategy/risk admission must remain mandatory for Agent-originated orders, while Human manual intent gets its own explicit manual-admission policy. Both should converge only **after** authorization/admission, then share quote evidence, fill costs, balances, position accounting, liquidation NAV, Arena performance, and leaderboard rules.
-
-No live wallet, signer, custody, or transaction authority is added here.
+Human execution in this system means **manual paper intent and simulated fill only**.
