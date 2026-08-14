@@ -17,11 +17,16 @@ import {
   type AgentDecision,
   type AgentRecord,
   type AgentSafetyEnvelope,
+  type HumanPaperFillRecord,
+  type HumanPaperOrderIntent,
+  type HumanPaperOrderRecord,
   type PaperAccountRecord,
   type PaperExecutionCosts,
   type PaperFillRecord,
   type PaperOrderIntent,
   type PaperOrderRecord,
+  type ParticipantPaperFillRecord,
+  type ParticipantPaperOrderRecord,
   type PortfolioSnapshot,
   type PredictionRecord,
   type RiskEventRecord,
@@ -48,6 +53,25 @@ export interface AgentSummary {
   brierScore: number;
   paperFills: number;
 }
+
+type CommonFillResult = {
+  fillId: string;
+  orderId: string;
+  quoteId: string;
+  accountId: string;
+  inputAssetId: string;
+  outputAssetId: string;
+  inputAmountAtomic: string;
+  outputAmountAtomic: string;
+  providerId: string;
+  feeAssetId?: string;
+  feeAmountAtomic: string;
+  gasAssetId?: string;
+  gasCostAtomic: string;
+  filledAt: number;
+  evidenceHash: string;
+  quoteEvidence: VerifiedPaperQuoteEvidence;
+};
 
 function clone<T>(value: T): T {
   return structuredClone(value);
@@ -96,6 +120,31 @@ function assertAccountOpeningWithinSeason(account: PaperAccountRecord, season: S
   if (season.endsAt !== undefined && account.openedAt > season.endsAt) throw new Error("paper account cannot open after season end");
 }
 
+function isHumanOrder(order: ParticipantPaperOrderRecord): order is HumanPaperOrderRecord {
+  return "participantType" in order && order.participantType === "HUMAN";
+}
+
+function isHumanFill(fill: ParticipantPaperFillRecord): fill is HumanPaperFillRecord {
+  return "participantType" in fill && fill.participantType === "HUMAN";
+}
+
+function assertCommonOrderFields(order: {
+  accountId: string;
+  inputAssetId: string;
+  outputAssetId: string;
+  inputAmountAtomic: string;
+  maximumSlippageBps: number;
+  createdAt: number;
+}): void {
+  assertNonEmptyString(order.accountId, "accountId");
+  assertNonEmptyString(order.inputAssetId, "inputAssetId");
+  assertNonEmptyString(order.outputAssetId, "outputAssetId");
+  if (order.inputAssetId === order.outputAssetId) throw new Error("paper order assets must differ");
+  assertPositiveAtomicAmount(order.inputAmountAtomic, "inputAmountAtomic");
+  assertBps(order.maximumSlippageBps, "maximumSlippageBps");
+  assertNonNegativeTimestamp(order.createdAt, "order createdAt");
+}
+
 export class AgentEngine {
   private readonly config: AgentEngineConfig;
   private readonly seasons = new Map<string, SeasonRecord>();
@@ -104,8 +153,8 @@ export class AgentEngine {
   private readonly accounts = new Map<string, PaperAccountRecord>();
   private readonly decisions = new Map<string, AgentDecision>();
   private readonly predictions = new Map<string, PredictionRecord>();
-  private readonly orders = new Map<string, PaperOrderRecord>();
-  private readonly fills = new Map<string, PaperFillRecord>();
+  private readonly orders = new Map<string, ParticipantPaperOrderRecord>();
+  private readonly fills = new Map<string, ParticipantPaperFillRecord>();
   private readonly portfolioSnapshots = new Map<string, PortfolioSnapshot>();
   private readonly riskEvents = new Map<string, RiskEventRecord>();
   private readonly scoreSnapshots = new Map<string, ScoreSnapshotRecord>();
@@ -309,19 +358,27 @@ export class AgentEngine {
     const strategy = this.requireStrategyVersion(intent.agentId, intent.strategyVersion);
     const account = this.requireAccount(intent.accountId);
     if (account.participantId !== intent.agentId || account.participantType !== "AGENT") throw new Error("paper account does not belong to agent");
-    assertNonEmptyString(intent.inputAssetId, "inputAssetId");
-    assertNonEmptyString(intent.outputAssetId, "outputAssetId");
-    if (intent.inputAssetId === intent.outputAssetId) throw new Error("paper order assets must differ");
-    assertPositiveAtomicAmount(intent.inputAmountAtomic, "inputAmountAtomic");
-    assertBps(intent.maximumSlippageBps, "maximumSlippageBps");
+    assertCommonOrderFields(intent);
     if (intent.maximumSlippageBps > strategy.spec.execution.maximumSlippageBps || intent.maximumSlippageBps > this.config.safetyEnvelope.maximumSlippageBps) {
       throw new Error("paper order slippage exceeds strategy or safety policy");
     }
-    assertNonNegativeTimestamp(intent.createdAt, "order createdAt");
-    const season = this.requireSeason(account.seasonId);
-    if (intent.createdAt < account.openedAt || intent.createdAt < season.startsAt) throw new Error("paper order predates account or season");
-    if (season.endsAt !== undefined && intent.createdAt > season.endsAt) throw new Error("paper order is outside season window");
+    this.assertOrderWithinSeason(intent, account);
     const order: PaperOrderRecord = { ...clone(intent), orderId: randomUUID(), status: "PENDING" };
+    this.orders.set(order.orderId, order);
+    return clone(order);
+  }
+
+  submitHumanPaperOrder(intent: HumanPaperOrderIntent): HumanPaperOrderRecord {
+    if (intent.participantType !== "HUMAN") throw new Error("human paper order requires HUMAN participantType");
+    const canonicalParticipantId = normalizeHumanParticipantId(intent.participantId);
+    if (canonicalParticipantId !== intent.participantId) throw new Error("human paper order participantId must be canonical");
+    assertNonEmptyString(intent.manualPolicyVersion, "human paper manualPolicyVersion");
+    const account = this.requireAccount(intent.accountId);
+    if (account.participantType !== "HUMAN" || account.participantId !== intent.participantId) throw new Error("paper account does not belong to human participant");
+    assertCommonOrderFields(intent);
+    if (intent.maximumSlippageBps > this.config.safetyEnvelope.maximumSlippageBps) throw new Error("human paper order slippage exceeds safety policy");
+    this.assertOrderWithinSeason(intent, account);
+    const order: HumanPaperOrderRecord = { ...clone(intent), orderId: randomUUID(), status: "PENDING" };
     this.orders.set(order.orderId, order);
     return clone(order);
   }
@@ -331,78 +388,27 @@ export class AgentEngine {
     quote: VerifiedPaperQuoteEvidence,
     costs: PaperExecutionCosts = { feeAmountAtomic: "0", gasCostAtomic: "0" },
   ): PaperFillRecord {
-    const order = this.orders.get(orderId);
-    if (!order) throw new Error("unknown paper order");
-    if (order.status !== "PENDING") throw new Error("paper order is not pending");
-    assertPositiveAtomicAmount(quote.outputAmountAtomic, "quote.outputAmountAtomic");
-    assertPositiveAtomicAmount(quote.inputAmountAtomic, "quote.inputAmountAtomic");
-    assertAtomicAmount(costs.feeAmountAtomic, "feeAmountAtomic");
-    assertAtomicAmount(costs.gasCostAtomic, "gasCostAtomic");
-    assertNonEmptyString(quote.quoteId, "quoteId");
-    assertNonEmptyString(quote.providerId, "providerId");
-    assertNonEmptyString(quote.evidenceHash, "evidenceHash");
-    assertHash(quote.evidenceHash, "evidenceHash");
-    assertBps(quote.priceImpactBps, "quote.priceImpactBps");
+    const order = this.requireOrder(orderId);
+    if (isHumanOrder(order)) throw new Error("human paper order must use human fill path");
     const strategy = this.requireStrategyVersion(order.agentId, order.strategyVersion);
-    if (quote.priceImpactBps > strategy.spec.execution.maximumPriceImpactBps || quote.priceImpactBps > this.config.safetyEnvelope.maximumPriceImpactBps) {
-      throw new Error("paper quote price impact exceeds strategy or safety policy");
-    }
-    const { evidenceHash, ...quotePayload } = quote;
-    if (evidenceHash !== hashPaperQuoteEvidence(quotePayload)) throw new Error("paper quote evidence hash mismatch");
-    if (BigInt(costs.feeAmountAtomic) > 0n && !costs.feeAssetId) throw new Error("non-zero fee requires feeAssetId");
-    if (BigInt(costs.gasCostAtomic) > 0n && !costs.gasAssetId) throw new Error("non-zero gas cost requires gasAssetId");
-    if (costs.feeAssetId) assertNonEmptyString(costs.feeAssetId, "feeAssetId");
-    if (costs.gasAssetId) assertNonEmptyString(costs.gasAssetId, "gasAssetId");
-    if (quote.inputAssetId !== order.inputAssetId || quote.outputAssetId !== order.outputAssetId || quote.inputAmountAtomic !== order.inputAmountAtomic) {
-      throw new Error("paper quote does not match order");
-    }
-    const earliestFill = order.createdAt + this.config.paperFillDelayMs;
-    assertNonNegativeTimestamp(quote.observedAt, "quote.observedAt");
-    if (quote.observedAt < earliestFill) throw new Error("paper quote observed before fill-delay boundary");
-    if (quote.expiresAt !== undefined) {
-      assertNonNegativeTimestamp(quote.expiresAt, "quote.expiresAt");
-      if (quote.observedAt > quote.expiresAt) throw new Error("paper quote is expired");
-    }
-    if (quote.quoteBlockNumber !== undefined) assertAtomicAmount(quote.quoteBlockNumber, "quoteBlockNumber");
+    const common = this.applyPaperFill(order, quote, costs, Math.min(strategy.spec.execution.maximumPriceImpactBps, this.config.safetyEnvelope.maximumPriceImpactBps));
+    const fill: PaperFillRecord = { ...common, agentId: order.agentId };
+    this.fills.set(fill.fillId, fill);
+    return clone(fill);
+  }
 
-    const account = this.requireAccount(order.accountId);
-    const season = this.requireSeason(account.seasonId);
-    if (season.endsAt !== undefined && quote.observedAt > season.endsAt) throw new Error("paper fill is outside season window");
-    const nextBalances = new Map<string, bigint>(Object.entries(account.balances).map(([assetId, amount]) => [assetId, BigInt(amount)]));
-    const debit = (assetId: string, amount: bigint, label: string) => {
-      if (amount === 0n) return;
-      const balance = nextBalances.get(assetId) ?? 0n;
-      if (balance < amount) throw new Error(`insufficient paper balance for ${label}`);
-      nextBalances.set(assetId, balance - amount);
-    };
-    const credit = (assetId: string, amount: bigint) => nextBalances.set(assetId, (nextBalances.get(assetId) ?? 0n) + amount);
-
-    debit(order.inputAssetId, BigInt(order.inputAmountAtomic), "trade input");
-    credit(order.outputAssetId, BigInt(quote.outputAmountAtomic));
-    if (costs.feeAssetId) debit(costs.feeAssetId, BigInt(costs.feeAmountAtomic), "simulated fee");
-    if (costs.gasAssetId) debit(costs.gasAssetId, BigInt(costs.gasCostAtomic), "simulated gas");
-
-    account.balances = Object.fromEntries([...nextBalances.entries()].map(([assetId, amount]) => [assetId, amount.toString()]));
-    order.status = "FILLED";
-
-    const fill: PaperFillRecord = {
-      fillId: randomUUID(),
-      orderId: order.orderId,
-      quoteId: quote.quoteId,
-      agentId: order.agentId,
-      accountId: order.accountId,
-      inputAssetId: order.inputAssetId,
-      outputAssetId: order.outputAssetId,
-      inputAmountAtomic: order.inputAmountAtomic,
-      outputAmountAtomic: quote.outputAmountAtomic,
-      providerId: quote.providerId,
-      feeAssetId: costs.feeAssetId,
-      feeAmountAtomic: costs.feeAmountAtomic,
-      gasAssetId: costs.gasAssetId,
-      gasCostAtomic: costs.gasCostAtomic,
-      filledAt: quote.observedAt,
-      evidenceHash: quote.evidenceHash,
-      quoteEvidence: clone(quote),
+  fillHumanPaperOrder(
+    orderId: string,
+    quote: VerifiedPaperQuoteEvidence,
+    costs: PaperExecutionCosts = { feeAmountAtomic: "0", gasCostAtomic: "0" },
+  ): HumanPaperFillRecord {
+    const order = this.requireOrder(orderId);
+    if (!isHumanOrder(order)) throw new Error("agent paper order must use agent fill path");
+    const common = this.applyPaperFill(order, quote, costs, this.config.safetyEnvelope.maximumPriceImpactBps);
+    const fill: HumanPaperFillRecord = {
+      ...common,
+      participantType: "HUMAN",
+      participantId: order.participantId,
     };
     this.fills.set(fill.fillId, fill);
     return clone(fill);
@@ -449,7 +455,7 @@ export class AgentEngine {
     if (input.capturedAt < season.startsAt) throw new Error("score snapshot predates season");
     const inSeason = (timestamp: number) => timestamp >= season.startsAt && (season.endsAt === undefined || timestamp <= season.endsAt) && timestamp <= input.capturedAt;
     const predictions = [...this.predictions.values()].filter((prediction) => prediction.agentId === input.agentId && inSeason(prediction.createdAt));
-    const fills = [...this.fills.values()].filter((fill) => fill.agentId === input.agentId && inSeason(fill.filledAt));
+    const fills = [...this.fills.values()].filter((fill) => !isHumanFill(fill) && fill.agentId === input.agentId && inSeason(fill.filledAt));
     const snapshot: ScoreSnapshotRecord = {
       scoreSnapshotId: randomUUID(),
       agentId: input.agentId,
@@ -476,7 +482,7 @@ export class AgentEngine {
     const agent = this.requireAgent(agentId);
     const strategies = this.strategies.get(agentId) ?? [];
     const predictions = [...this.predictions.values()].filter((prediction) => prediction.agentId === agentId);
-    const fills = [...this.fills.values()].filter((fill) => fill.agentId === agentId);
+    const fills = [...this.fills.values()].filter((fill) => !isHumanFill(fill) && fill.agentId === agentId);
     return {
       agent: clone(agent),
       latestStrategy: strategies.length ? clone(strategies[strategies.length - 1]!) : undefined,
@@ -607,21 +613,22 @@ export class AgentEngine {
     }
 
     for (const order of snapshot.paperOrders) {
-      this.requireAgent(order.agentId);
-      this.requireStrategyVersion(order.agentId, order.strategyVersion);
       const account = this.requireAccount(order.accountId);
-      if (account.participantType !== "AGENT" || account.participantId !== order.agentId) throw new Error("snapshot order account does not belong to agent");
-      assertNonEmptyString(order.inputAssetId, "snapshot inputAssetId");
-      assertNonEmptyString(order.outputAssetId, "snapshot outputAssetId");
-      if (order.inputAssetId === order.outputAssetId) throw new Error("snapshot paper order assets must differ");
-      assertPositiveAtomicAmount(order.inputAmountAtomic, "snapshot inputAmountAtomic");
-      assertBps(order.maximumSlippageBps, "snapshot maximumSlippageBps");
-      const strategy = this.requireStrategyVersion(order.agentId, order.strategyVersion);
-      if (order.maximumSlippageBps > strategy.spec.execution.maximumSlippageBps || order.maximumSlippageBps > this.config.safetyEnvelope.maximumSlippageBps) throw new Error("snapshot paper order slippage exceeds policy");
-      assertNonNegativeTimestamp(order.createdAt, "snapshot order createdAt");
+      assertCommonOrderFields(order);
       const orderSeason = this.requireSeason(account.seasonId);
       if (order.createdAt < account.openedAt || order.createdAt < orderSeason.startsAt || (orderSeason.endsAt !== undefined && order.createdAt > orderSeason.endsAt)) throw new Error("snapshot paper order is outside account or season window");
       if (!["PENDING", "FILLED", "CANCELLED"].includes(order.status)) throw new Error("snapshot order status invalid");
+      if (isHumanOrder(order)) {
+        if (account.participantType !== "HUMAN" || account.participantId !== order.participantId) throw new Error("snapshot human order account identity mismatch");
+        if (normalizeHumanParticipantId(order.participantId) !== order.participantId) throw new Error("snapshot human order participantId is not canonical");
+        assertNonEmptyString(order.manualPolicyVersion, "snapshot human manualPolicyVersion");
+        if (order.maximumSlippageBps > this.config.safetyEnvelope.maximumSlippageBps) throw new Error("snapshot human order slippage exceeds safety policy");
+      } else {
+        this.requireAgent(order.agentId);
+        const strategy = this.requireStrategyVersion(order.agentId, order.strategyVersion);
+        if (account.participantType !== "AGENT" || account.participantId !== order.agentId) throw new Error("snapshot order account does not belong to agent");
+        if (order.maximumSlippageBps > strategy.spec.execution.maximumSlippageBps || order.maximumSlippageBps > this.config.safetyEnvelope.maximumSlippageBps) throw new Error("snapshot paper order slippage exceeds policy");
+      }
       if (this.orders.has(order.orderId)) throw new Error("duplicate order in snapshot");
       this.orders.set(order.orderId, order);
     }
@@ -633,28 +640,15 @@ export class AgentEngine {
       if (filledOrderIds.has(fill.orderId)) throw new Error("snapshot contains multiple fills for order");
       filledOrderIds.add(fill.orderId);
       if (order.status !== "FILLED") throw new Error("snapshot fill references non-filled order");
-      if (fill.agentId !== order.agentId || fill.accountId !== order.accountId || fill.inputAssetId !== order.inputAssetId || fill.outputAssetId !== order.outputAssetId || fill.inputAmountAtomic !== order.inputAmountAtomic) {
+      if (fill.accountId !== order.accountId || fill.inputAssetId !== order.inputAssetId || fill.outputAssetId !== order.outputAssetId || fill.inputAmountAtomic !== order.inputAmountAtomic) {
         throw new Error("snapshot fill does not match order");
       }
-      assertPositiveAtomicAmount(fill.outputAmountAtomic, "snapshot fill outputAmountAtomic");
-      assertAtomicAmount(fill.feeAmountAtomic, "snapshot feeAmountAtomic");
-      assertAtomicAmount(fill.gasCostAtomic, "snapshot gasCostAtomic");
-      assertNonNegativeTimestamp(fill.filledAt, "snapshot filledAt");
-      assertHash(fill.evidenceHash, "snapshot evidenceHash");
-      if (fill.quoteEvidence.evidenceHash !== fill.evidenceHash) throw new Error("snapshot fill evidence hash does not match quote evidence");
-      const { evidenceHash: storedQuoteHash, ...storedQuotePayload } = fill.quoteEvidence;
-      if (storedQuoteHash !== hashPaperQuoteEvidence(storedQuotePayload)) throw new Error("snapshot fill quote evidence hash mismatch");
-      if (
-        fill.quoteEvidence.quoteId !== fill.quoteId ||
-        fill.quoteEvidence.providerId !== fill.providerId ||
-        fill.quoteEvidence.inputAssetId !== fill.inputAssetId ||
-        fill.quoteEvidence.outputAssetId !== fill.outputAssetId ||
-        fill.quoteEvidence.inputAmountAtomic !== fill.inputAmountAtomic ||
-        fill.quoteEvidence.outputAmountAtomic !== fill.outputAmountAtomic ||
-        fill.quoteEvidence.observedAt !== fill.filledAt
-      ) throw new Error("snapshot fill quote evidence does not match fill");
-      if (BigInt(fill.feeAmountAtomic) > 0n && !fill.feeAssetId) throw new Error("snapshot non-zero fee is missing fee asset");
-      if (BigInt(fill.gasCostAtomic) > 0n && !fill.gasAssetId) throw new Error("snapshot non-zero gas cost is missing gas asset");
+      if (isHumanOrder(order)) {
+        if (!isHumanFill(fill) || fill.participantId !== order.participantId) throw new Error("snapshot human fill identity does not match order");
+      } else {
+        if (isHumanFill(fill) || fill.agentId !== order.agentId) throw new Error("snapshot agent fill identity does not match order");
+      }
+      this.assertStoredFillEvidence(fill);
       if (this.fills.has(fill.fillId)) throw new Error("duplicate fill in snapshot");
       this.fills.set(fill.fillId, fill);
     }
@@ -699,6 +693,118 @@ export class AgentEngine {
       if (this.scoreSnapshots.has(score.scoreSnapshotId)) throw new Error("duplicate score snapshot");
       this.scoreSnapshots.set(score.scoreSnapshotId, score);
     }
+  }
+
+  private assertOrderWithinSeason(order: { createdAt: number }, account: PaperAccountRecord): void {
+    const season = this.requireSeason(account.seasonId);
+    if (order.createdAt < account.openedAt || order.createdAt < season.startsAt) throw new Error("paper order predates account or season");
+    if (season.endsAt !== undefined && order.createdAt > season.endsAt) throw new Error("paper order is outside season window");
+  }
+
+  private requireOrder(orderId: string): ParticipantPaperOrderRecord {
+    const order = this.orders.get(orderId);
+    if (!order) throw new Error("unknown paper order");
+    return order;
+  }
+
+  private applyPaperFill(
+    order: ParticipantPaperOrderRecord,
+    quote: VerifiedPaperQuoteEvidence,
+    costs: PaperExecutionCosts,
+    maximumPriceImpactBps: number,
+  ): CommonFillResult {
+    if (order.status !== "PENDING") throw new Error("paper order is not pending");
+    assertPositiveAtomicAmount(quote.outputAmountAtomic, "quote.outputAmountAtomic");
+    assertPositiveAtomicAmount(quote.inputAmountAtomic, "quote.inputAmountAtomic");
+    assertAtomicAmount(costs.feeAmountAtomic, "feeAmountAtomic");
+    assertAtomicAmount(costs.gasCostAtomic, "gasCostAtomic");
+    assertNonEmptyString(quote.quoteId, "quoteId");
+    assertNonEmptyString(quote.providerId, "providerId");
+    assertNonEmptyString(quote.evidenceHash, "evidenceHash");
+    assertHash(quote.evidenceHash, "evidenceHash");
+    assertBps(quote.priceImpactBps, "quote.priceImpactBps");
+    if (quote.priceImpactBps > maximumPriceImpactBps) throw new Error("paper quote price impact exceeds policy");
+    const { evidenceHash, ...quotePayload } = quote;
+    if (evidenceHash !== hashPaperQuoteEvidence(quotePayload)) throw new Error("paper quote evidence hash mismatch");
+    if (BigInt(costs.feeAmountAtomic) > 0n && !costs.feeAssetId) throw new Error("non-zero fee requires feeAssetId");
+    if (BigInt(costs.gasCostAtomic) > 0n && !costs.gasAssetId) throw new Error("non-zero gas cost requires gasAssetId");
+    if (costs.feeAssetId) assertNonEmptyString(costs.feeAssetId, "feeAssetId");
+    if (costs.gasAssetId) assertNonEmptyString(costs.gasAssetId, "gasAssetId");
+    if (quote.inputAssetId !== order.inputAssetId || quote.outputAssetId !== order.outputAssetId || quote.inputAmountAtomic !== order.inputAmountAtomic) {
+      throw new Error("paper quote does not match order");
+    }
+    const earliestFill = order.createdAt + this.config.paperFillDelayMs;
+    assertNonNegativeTimestamp(quote.observedAt, "quote.observedAt");
+    if (quote.observedAt < earliestFill) throw new Error("paper quote observed before fill-delay boundary");
+    if (quote.expiresAt !== undefined) {
+      assertNonNegativeTimestamp(quote.expiresAt, "quote.expiresAt");
+      if (quote.observedAt > quote.expiresAt) throw new Error("paper quote is expired");
+    }
+    if (quote.quoteBlockNumber !== undefined) assertAtomicAmount(quote.quoteBlockNumber, "quoteBlockNumber");
+
+    const account = this.requireAccount(order.accountId);
+    const season = this.requireSeason(account.seasonId);
+    if (isHumanOrder(order)) {
+      if (account.participantType !== "HUMAN" || account.participantId !== order.participantId) throw new Error("human paper fill account identity mismatch");
+    } else if (account.participantType !== "AGENT" || account.participantId !== order.agentId) {
+      throw new Error("agent paper fill account identity mismatch");
+    }
+    if (season.endsAt !== undefined && quote.observedAt > season.endsAt) throw new Error("paper fill is outside season window");
+    const nextBalances = new Map<string, bigint>(Object.entries(account.balances).map(([assetId, amount]) => [assetId, BigInt(amount)]));
+    const debit = (assetId: string, amount: bigint, label: string) => {
+      if (amount === 0n) return;
+      const balance = nextBalances.get(assetId) ?? 0n;
+      if (balance < amount) throw new Error(`insufficient paper balance for ${label}`);
+      nextBalances.set(assetId, balance - amount);
+    };
+    const credit = (assetId: string, amount: bigint) => nextBalances.set(assetId, (nextBalances.get(assetId) ?? 0n) + amount);
+    debit(order.inputAssetId, BigInt(order.inputAmountAtomic), "trade input");
+    credit(order.outputAssetId, BigInt(quote.outputAmountAtomic));
+    if (costs.feeAssetId) debit(costs.feeAssetId, BigInt(costs.feeAmountAtomic), "simulated fee");
+    if (costs.gasAssetId) debit(costs.gasAssetId, BigInt(costs.gasCostAtomic), "simulated gas");
+    account.balances = Object.fromEntries([...nextBalances.entries()].map(([assetId, amount]) => [assetId, amount.toString()]));
+    order.status = "FILLED";
+
+    return {
+      fillId: randomUUID(),
+      orderId: order.orderId,
+      quoteId: quote.quoteId,
+      accountId: order.accountId,
+      inputAssetId: order.inputAssetId,
+      outputAssetId: order.outputAssetId,
+      inputAmountAtomic: order.inputAmountAtomic,
+      outputAmountAtomic: quote.outputAmountAtomic,
+      providerId: quote.providerId,
+      feeAssetId: costs.feeAssetId,
+      feeAmountAtomic: costs.feeAmountAtomic,
+      gasAssetId: costs.gasAssetId,
+      gasCostAtomic: costs.gasCostAtomic,
+      filledAt: quote.observedAt,
+      evidenceHash: quote.evidenceHash,
+      quoteEvidence: clone(quote),
+    };
+  }
+
+  private assertStoredFillEvidence(fill: ParticipantPaperFillRecord): void {
+    assertPositiveAtomicAmount(fill.outputAmountAtomic, "snapshot fill outputAmountAtomic");
+    assertAtomicAmount(fill.feeAmountAtomic, "snapshot feeAmountAtomic");
+    assertAtomicAmount(fill.gasCostAtomic, "snapshot gasCostAtomic");
+    assertNonNegativeTimestamp(fill.filledAt, "snapshot filledAt");
+    assertHash(fill.evidenceHash, "snapshot evidenceHash");
+    if (fill.quoteEvidence.evidenceHash !== fill.evidenceHash) throw new Error("snapshot fill evidence hash does not match quote evidence");
+    const { evidenceHash: storedQuoteHash, ...storedQuotePayload } = fill.quoteEvidence;
+    if (storedQuoteHash !== hashPaperQuoteEvidence(storedQuotePayload)) throw new Error("snapshot fill quote evidence hash mismatch");
+    if (
+      fill.quoteEvidence.quoteId !== fill.quoteId
+      || fill.quoteEvidence.providerId !== fill.providerId
+      || fill.quoteEvidence.inputAssetId !== fill.inputAssetId
+      || fill.quoteEvidence.outputAssetId !== fill.outputAssetId
+      || fill.quoteEvidence.inputAmountAtomic !== fill.inputAmountAtomic
+      || fill.quoteEvidence.outputAmountAtomic !== fill.outputAmountAtomic
+      || fill.quoteEvidence.observedAt !== fill.filledAt
+    ) throw new Error("snapshot fill quote evidence does not match fill");
+    if (BigInt(fill.feeAmountAtomic) > 0n && !fill.feeAssetId) throw new Error("snapshot non-zero fee is missing fee asset");
+    if (BigInt(fill.gasCostAtomic) > 0n && !fill.gasAssetId) throw new Error("snapshot non-zero gas cost is missing gas asset");
   }
 
   private requireSeason(seasonId: string): SeasonRecord {
