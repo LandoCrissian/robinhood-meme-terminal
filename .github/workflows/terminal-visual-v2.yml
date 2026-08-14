@@ -267,7 +267,7 @@ jobs:
               await page.locator(".vnAssetPanel").waitFor({ state: "visible" });
               await page.locator(".rmtMobileDiscovery > summary").click();
             }
-            await page.locator(".vnMarketRow").first().waitFor({ state: "visible" });
+            await page.locator(".rmtMarketItem").first().waitFor({ state: "visible" });
             await page.waitForTimeout(1200);
             const homeAudit = await audit(page, `home-${suffix}`);
             await page.screenshot({ path: `${output}/home-${suffix}.png`, fullPage: false, animations: "disabled", timeout: 30000 });
