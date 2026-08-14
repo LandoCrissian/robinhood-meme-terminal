@@ -1,8 +1,8 @@
 # RMT architecture freeze
 
 **Status: CURRENT — system of record**
-**Effective:** 2026-08-12
-**Baseline:** `main` at or after `35bd37a1d81bcdeb47e7f7dc5c8e310e438a9e7e`
+**Effective:** 2026-08-14
+**Previous baseline:** `main` at or after `35bd37a1d81bcdeb47e7f7dc5c8e310e438a9e7e`
 
 This document records the durable product and system boundaries. It supersedes historical launchpad, V7 creator, profile, community and older terminal-roadmap language. It does not authorize deployment, production configuration changes, provider activation, fees, autonomous execution or destructive migration.
 
@@ -18,6 +18,8 @@ RMT is a Robinhood Chain:
 - RWA market surface.
 
 The core loop is **scan → verify → analyze → execute → reconcile → manage**. New token launches, creator profiles, social profiles, NFT/marketplace creation and community chat are not part of the terminal-completion program.
+
+A paper-only AI-agent evaluation foundation is now an admitted forward domain after the terminal UI/completion track. It does not make autonomous live execution part of the current production terminal.
 
 ## Canonical architecture
 
@@ -40,6 +42,17 @@ user intent
 Observation, strict verification, wallet authorization and production activation are four independent admissions. A provider may safely stop at any level. No provider is required merely to increase provider count.
 
 VNext is served from production `/`. The former `/vnext` address redirects to `/`; it is not a competing terminal. Mature legacy capabilities may still be reused through explicit shared boundaries, while `/market/[address]` and `/portfolio` remain compatibility-only routes that the canonical terminal does not require. Remaining retirement and completion evidence is governed by [`TERMINAL_COMPLETION_GATE.md`](TERMINAL_COMPLETION_GATE.md).
+
+## Agent foundation
+
+The owner has explicitly admitted a paper-only agent foundation under [`agents/ARCHITECTURE.md`](agents/ARCHITECTURE.md).
+
+- `packages/agent-core` owns pure agent schemas, policy validation, state transitions, canonical hashes and deterministic scoring.
+- `apps/agent-engine` owns paper-only agent state/evaluation and must remain a separate domain from `apps/market-indexer`.
+- The initial foundation has no signer, private key, wallet submission, contract-write path, provider/fee activation, production environment mutation or live execution method.
+- Strategy quality and execution authority are independent. The foundation execution mode is only `PAPER_ONLY`.
+- A future live agent may only propose a typed RMT execution intent into the existing VNext verification/authorization/reconciliation lifecycle. It never becomes a second routing stack.
+- Natural-language model orchestration, PostgreSQL persistence, Arena UI, public MCP, delegated signing, onchain identity and revenue buy-and-retire are later independently reviewed phases.
 
 ## Active security identity versus paused profile
 
@@ -67,9 +80,11 @@ Paused source and tests remain available as preservation evidence. Paused worker
 - `apps/indexer`: canonical deployed RMT V6 compatibility and history. It is not the universal ecosystem indexer.
 - `apps/external-origin-indexer`: external project-origin attribution. `source-listed` never implies `token-created`.
 - `apps/market-indexer`: external market discovery and enrichment. It remains read-oriented.
+- `packages/agent-core`: agent schema, policy and deterministic scoring authority; no market or execution authority.
+- `apps/agent-engine`: paper-only agent evaluation authority; no signer, live submission or treasury authority.
 - future execution workers: separate explicit domain; never hidden inside the market indexer.
 
-Project origin, market venue and execution origin are separate dimensions. RMT-originated volume or fees require authoritative RMT session/receipt evidence and may not be inferred from origin, pool, wallet, page view or route observation.
+Project origin, market venue and execution origin are separate dimensions. RMT-originated volume or fees require authoritative RMT session/receipt evidence and may not be inferred from origin, pool, wallet, page view or route observation. Future agent attribution must additionally bind the exact agent and strategy version to the canonical RMT execution ID without weakening that rule.
 
 ## Providers and future sources
 
@@ -96,9 +111,13 @@ policy hash: 0x295c900143405bb585a4d88c3788fadab522fd4313f69242f64e52e39827f141
 
 The policy is explicit and hash-bound; execution logic must never infer 25 basis points as a fallback. Missing treasury, effective boundary or provider settlement admission fails closed. Across funding, wallet transfers and failed executions are ineligible. Deployed V6 70/30 economics remain historical/current protocol facts and are not forward terminal economics. See [`RMT_EXECUTION_REVENUE.md`](RMT_EXECUTION_REVENUE.md).
 
+The agent foundation does not change this policy, activate collection or authorize buyback allocation. Any future RMT buy-and-retire program is a separate versioned revenue-policy decision.
+
 ## Contracts
 
 Contract source presence is not roadmap authority. The current classification is maintained in [`ACTIVE_SYSTEM_MAP.md`](ACTIVE_SYSTEM_MAP.md): deployed/current compatibility, optional terminal security, paused experimental and retired historical. Deployed source is not moved merely for a cleaner directory.
+
+The paper-only agent foundation adds no contract and does not make historical/paused agent, NFT or revenue-router source current authority.
 
 ## Change control
 
@@ -107,4 +126,5 @@ Contract source presence is not roadmap authority. The current classification is
 - No destructive data migrations.
 - Production behavior stays fail closed.
 - Open PRs and research documents remain inputs until explicitly admitted.
+- Agent performance evidence never self-grants execution authority.
 - The architecture changes only through an explicit owner decision recorded here and in the system map.
