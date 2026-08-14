@@ -10,6 +10,7 @@ export const revalidate = 300;
 
 const publicRoutes = [
   ["/", "hourly", 1],
+  ["/robinhood-chain", "daily", 0.9],
   ["/explore", "hourly", 0.9],
   [`/project/${officialToken}`, "hourly", 0.9],
   ["/status", "hourly", 0.8],
