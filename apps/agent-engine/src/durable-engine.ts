@@ -1,6 +1,9 @@
 import type {
   AgentDecision,
   AgentRecord,
+  HumanPaperFillRecord,
+  HumanPaperOrderIntent,
+  HumanPaperOrderRecord,
   PaperAccountRecord,
   PaperExecutionCosts,
   PaperFillRecord,
@@ -143,6 +146,20 @@ export class DurableAgentEngine {
     return this.mutate("submitPaperOrder", intent, idempotencyKey, (engine) => engine.submitPaperOrder(intent));
   }
 
+  async submitHumanPaperOrder(
+    intent: HumanPaperOrderIntent,
+    idempotencyKey: string,
+    expectedRevision: number,
+  ): Promise<HumanPaperOrderRecord> {
+    return this.mutate(
+      "submitHumanPaperOrder",
+      { intent, expectedRevision },
+      idempotencyKey,
+      (engine) => engine.submitHumanPaperOrder(intent),
+      expectedRevision,
+    );
+  }
+
   async fillPaperOrder(
     orderId: string,
     quote: VerifiedPaperQuoteEvidence,
@@ -151,6 +168,16 @@ export class DurableAgentEngine {
   ): Promise<PaperFillRecord> {
     const payload = { orderId, quote, costs };
     return this.mutate("fillPaperOrder", payload, idempotencyKey, (engine) => engine.fillPaperOrder(orderId, quote, costs));
+  }
+
+  async fillHumanPaperOrder(
+    orderId: string,
+    quote: VerifiedPaperQuoteEvidence,
+    idempotencyKey: string,
+    costs: PaperExecutionCosts = { feeAmountAtomic: "0", gasCostAtomic: "0" },
+  ): Promise<HumanPaperFillRecord> {
+    const payload = { orderId, quote, costs };
+    return this.mutate("fillHumanPaperOrder", payload, idempotencyKey, (engine) => engine.fillHumanPaperOrder(orderId, quote, costs));
   }
 
   async recordPortfolioSnapshot(input: PortfolioSnapshot, idempotencyKey: string): Promise<PortfolioSnapshot> {
@@ -176,8 +203,10 @@ export class DurableAgentEngine {
     payload: unknown,
     idempotencyKey: string,
     apply: (engine: AgentEngine) => T,
+    requiredRevision?: number,
   ): Promise<T> {
     if (typeof idempotencyKey !== "string" || idempotencyKey.trim().length === 0) throw new Error("idempotencyKey must be non-empty");
+    if (requiredRevision !== undefined && (!Number.isSafeInteger(requiredRevision) || requiredRevision < 0)) throw new Error("requiredRevision must be a non-negative safe integer");
     const requestHash = hashDurableRequest(operation, payload);
     const prior = await this.store.lookupMutation(this.streamId, idempotencyKey, requestHash);
     if (prior) {
@@ -187,6 +216,9 @@ export class DurableAgentEngine {
       return clone(prior.result as T);
     }
 
+    if (requiredRevision !== undefined && this.revision !== requiredRevision) {
+      throw new Error(`agent engine required revision mismatch: required ${requiredRevision}, local ${this.revision}`);
+    }
     const before = this.engine.exportSnapshot();
     const expectedRevision = this.revision;
     let result: T;
