@@ -13,6 +13,7 @@ export type PaperEvaluationAction = "NO_ACTION" | "PREDICTION";
 export interface MarketObservationDraft {
   assetId: string;
   quoteAssetId: string;
+  aliases?: string[];
   referencePriceAtomic: string;
   referencePriceDecimals: number;
   liquidityUsdAtomic?: string;
@@ -90,13 +91,23 @@ function assertReasoningSummary(value: unknown): string {
   return normalized;
 }
 
-function observationIdentityKeys(observation: MarketObservationDraft): Set<string> {
-  const keys = new Set<string>([observation.assetId.toLowerCase()]);
-  for (const field of ["contractAddress", "registryAssetId", "registrySymbol"] as const) {
-    const value = observation.features?.[field];
-    if (typeof value === "string" && value.trim()) keys.add(value.trim().toLowerCase());
+function parseAliases(value: unknown): string[] | undefined {
+  if (value === undefined) return undefined;
+  if (!Array.isArray(value)) fail("market aliases must be an array");
+  if (value.length > 32) fail("market alias count exceeds 32");
+  const aliases = new Map<string, string>();
+  for (const alias of value) {
+    if (typeof alias !== "string" || !alias.trim()) fail("market alias must be a non-empty string");
+    const normalized = alias.trim();
+    if (normalized.length > 256) fail("market alias exceeds 256 characters");
+    const key = normalized.toLowerCase();
+    if (!aliases.has(key)) aliases.set(key, normalized);
   }
-  return keys;
+  return aliases.size > 0 ? [...aliases.values()] : undefined;
+}
+
+function observationIdentityKeys(observation: MarketObservationDraft): Set<string> {
+  return new Set([observation.assetId, ...(observation.aliases ?? [])].map((value) => value.toLowerCase()));
 }
 
 function predictionObservation(assetId: string, snapshot: AgentMarketSnapshot): MarketObservationDraft {
@@ -115,6 +126,8 @@ export function parseMarketObservationDraft(value: unknown, maximumFeatures: num
   const assetId = (value.assetId as string).trim();
   const quoteAssetId = (value.quoteAssetId as string).trim();
   if (assetId.toLowerCase() === quoteAssetId.toLowerCase()) fail("market assetId and quoteAssetId must differ");
+  const aliases = parseAliases(value.aliases);
+  if (aliases?.some((alias) => alias.toLowerCase() === quoteAssetId.toLowerCase())) fail("market alias cannot equal quoteAssetId");
   assertAtomicAmount(value.referencePriceAtomic as string, "referencePriceAtomic");
   if (BigInt(value.referencePriceAtomic as string) <= 0n) fail("referencePriceAtomic must be greater than zero");
   assertDecimals(value.referencePriceDecimals as number, "referencePriceDecimals");
@@ -143,6 +156,7 @@ export function parseMarketObservationDraft(value: unknown, maximumFeatures: num
   return {
     assetId,
     quoteAssetId,
+    aliases,
     referencePriceAtomic: value.referencePriceAtomic as string,
     referencePriceDecimals: value.referencePriceDecimals as number,
     liquidityUsdAtomic: value.liquidityUsdAtomic as string | undefined,
@@ -296,7 +310,8 @@ export function assertAgentRunRecord(record: AgentRunRecord): void {
     assertUnitInterval(record.proposal.prediction.forecastProbability, "run forecastProbability");
     assertTimestamp(record.proposal.prediction.resolvesAt, "run prediction resolvesAt");
     if (record.proposal.prediction.resolvesAt <= record.evaluatedAt) fail("run prediction must resolve after evaluatedAt");
-    const exactMatches = record.marketSnapshot.observations.filter((observation) => observation.assetId.toLowerCase() === record.proposal.prediction!.assetId.toLowerCase());
+    const predictionAssetId = record.proposal.prediction.assetId.toLowerCase();
+    const exactMatches = record.marketSnapshot.observations.filter((observation) => observation.assetId.toLowerCase() === predictionAssetId);
     if (exactMatches.length !== 1) fail("run prediction asset must exactly match one canonical market observation assetId");
   }
   if (record.proposalHash !== hashCanonicalPayload(record.proposal)) fail("agent run proposal hash mismatch");
