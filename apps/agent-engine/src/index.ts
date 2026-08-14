@@ -19,6 +19,7 @@ export * from "./paper-arena-net-performance.ts";
 export * from "./paper-arena-performance.ts";
 export * from "./paper-arena-public-read-model.ts";
 export * from "./paper-arena-roster.ts";
+export * from "./paper-arena-season-finalization.ts";
 export * from "./paper-canonical-valuation.ts";
 export * from "./paper-evaluation-scheduler.ts";
 export * from "./paper-evaluation.ts";
