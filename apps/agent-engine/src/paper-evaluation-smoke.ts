@@ -101,6 +101,16 @@ const predictionProposal = {
   },
 };
 
+const openPositionProposal = {
+  action: "OPEN_POSITION",
+  confidence: 0.79,
+  reasoningSummary: "NVDA momentum and liquidity satisfy the strategy entry conditions.",
+  openPosition: {
+    assetId: "NVDA",
+    requestedPositionBps: 400,
+  },
+};
+
 class FakeMarketSource implements PaperEvaluationMarketSource {
   readonly sourceId: string;
   calls = 0;
@@ -138,7 +148,7 @@ class FakeDecisionAdapter implements PaperDecisionAdapter {
 
   async evaluate(input: PaperDecisionAdapterInput): Promise<unknown> {
     this.calls += 1;
-    assert.equal(input.outputInstruction, "NO_ACTION_OR_PREDICTION_ONLY");
+    assert.equal(input.outputInstruction, "NO_ACTION_PREDICTION_OR_OPEN_POSITION");
     assert.equal(input.marketSnapshot.chainId, 4663);
     if (this.delayMs) await new Promise((resolve) => setTimeout(resolve, this.delayMs));
     return structuredClone(this.output);
@@ -220,8 +230,6 @@ assert.equal(writer.decisions.length, 1);
 assert.equal(writer.predictions.length, 1);
 assert.equal("submitPaperOrder" in service, false);
 
-// A retry with the same logical evaluation key replays the first canonical run,
-// even though the caller no longer has to reproduce the original evaluatedAt.
 const replay = await service.evaluate({ agentId: agent.id, accountId: account.accountId, evaluationKey: "agent-1:slot-1" });
 assert.equal(replay.run.runId, first.run.runId);
 assert.equal(replay.decision.decisionId, first.decision.decisionId);
@@ -230,6 +238,24 @@ assert.equal(source.calls, 1);
 assert.equal(adapter.calls, 1);
 assert.equal(writer.decisions.length, 1);
 assert.equal(writer.predictions.length, 1);
+
+const tradeWriter = new FakeWriter();
+const tradeService = new PaperEvaluationService({
+  config,
+  marketSource: new FakeMarketSource(baseSnapshot),
+  decisionAdapter: new FakeDecisionAdapter(openPositionProposal),
+  runStore: new InMemoryAgentRunStore(),
+  writer: tradeWriter,
+});
+const trade = await tradeService.evaluate({ agentId: agent.id, accountId: account.accountId, evaluationKey: "agent-1:trade-slot", evaluatedAt: 10_000 });
+assert.equal(trade.run.proposal.action, "OPEN_POSITION");
+assert.equal(trade.run.proposal.openPosition?.assetId, "NVDA");
+assert.equal(trade.run.proposal.openPosition?.requestedPositionBps, 400);
+assert.equal(trade.decision.action, "OPEN_POSITION");
+assert.equal(trade.prediction, undefined);
+assert.equal(tradeWriter.decisions.length, 1);
+assert.equal(tradeWriter.predictions.length, 0);
+assert.equal("submitPaperOrder" in tradeService, false);
 
 async function expectReject(
   marketOutput: unknown,
@@ -258,9 +284,12 @@ async function expectReject(
 await expectReject({ ...baseSnapshot, capturedAt: 7_000 }, predictionProposal, /market snapshot is stale/);
 await expectReject({ ...baseSnapshot, capturedAt: 10_001 }, predictionProposal, /captured in the future/);
 await expectReject({ ...baseSnapshot, chainId: 1 }, predictionProposal, /chainId mismatch/);
-await expectReject(baseSnapshot, { ...predictionProposal, action: "OPEN_POSITION" }, /action is not admitted/);
+await expectReject(baseSnapshot, { ...predictionProposal, action: "CLOSE_POSITION" }, /action is not admitted/);
 await expectReject(baseSnapshot, { ...predictionProposal, confidence: 0.5 }, /below strategy minimum/);
 await expectReject(baseSnapshot, { ...predictionProposal, prediction: { ...predictionProposal.prediction, assetId: "META" } }, /absent from market snapshot/);
+await expectReject(baseSnapshot, { ...openPositionProposal, openPosition: { assetId: "META", requestedPositionBps: 400 } }, /absent from market snapshot/);
+await expectReject(baseSnapshot, { ...openPositionProposal, openPosition: { assetId: "NVDA", requestedPositionBps: 600 } }, /exceeds strategy maximumPositionBps/);
+await expectReject(baseSnapshot, { ...openPositionProposal, prediction: predictionProposal.prediction }, /cannot include prediction/);
 await expectReject(
   { ...baseSnapshot, observations: [{ ...baseSnapshot.observations[0], referencePriceAtomic: "0" }] },
   predictionProposal,
@@ -272,8 +301,6 @@ await expectReject(
   /duplicate market observation/,
 );
 
-// Same evaluation key + same declared source/model identity: the first stored
-// result is canonical even if concurrent model outputs differ.
 const raceStore = new InMemoryAgentRunStore();
 const raceWriter = new FakeWriter();
 const raceSnapshot = { ...baseSnapshot, capturedAt: 19_500 };
