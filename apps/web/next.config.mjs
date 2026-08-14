@@ -13,14 +13,6 @@ const nextConfig = {
       permanent: true
     }];
   },
-  async rewrites() {
-    return {
-      beforeFiles: [{
-        source: "/",
-        destination: "/vnext"
-      }]
-    };
-  },
   webpack(config) {
     // MetaMask probes React Native storage and Privy probes Farcaster's Solana
     // adapter even though this app is an Ethereum-only browser terminal. Mark
