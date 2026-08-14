@@ -45,16 +45,20 @@ VNext is served from production `/`. The former `/vnext` address redirects to `/
 
 ## Agent foundation
 
-The owner has explicitly admitted the durable paper-only agent foundation and Strategy Compiler boundary under [`agents/ARCHITECTURE.md`](agents/ARCHITECTURE.md).
+The owner has explicitly admitted a durable paper-only agent foundation and deterministic Strategy Compiler boundary under [`agents/ARCHITECTURE.md`](agents/ARCHITECTURE.md).
 
 - `packages/agent-core` owns pure agent schemas, Strategy Compiler policy/admission validation, state transitions, canonical hashes and deterministic scoring.
-- `apps/agent-engine` owns paper-only agent state/evaluation, durable persistence, the untrusted model-adapter boundary, compilation persistence and deterministic strategy admission. It remains a separate domain from `apps/market-indexer`.
-- A model may propose a structured strategy draft but cannot raise the RMT safety envelope, remove hard-required prohibitions, bypass compiler policy or grant execution authority.
-- No concrete model provider, SDK or API key is admitted by the compiler foundation. Provider wiring remains a separate reviewed runtime decision.
+- `apps/agent-engine` owns paper-only agent state/evaluation and must remain a separate domain from `apps/market-indexer`.
+- The engine defines seasons, immutable strategy versions, decisions, predictions, paper accounts/orders/fills, portfolio snapshots, risk events and score snapshots.
+- `DurableAgentEngine` adds restart recovery, canonical request hashes, caller-supplied idempotency keys and optimistic revision control around the deterministic engine.
+- `PostgresAgentStateStore` defines an injected PostgreSQL persistence boundary with canonical snapshot hashes, a mutation journal, per-stream advisory transaction locking and normalized query projections. No production database is connected or configured by this admission.
+- The Strategy Compiler accepts only structured model-adapter output as untrusted input, then independently validates schema, allowed asset scope, hard-required prohibitions and the existing RMT safety envelope before strategy-version creation.
+- Strategy compilation persistence is first-writer-wins by request hash so retries or concurrent nondeterministic model responses cannot create competing canonical compilations for the same exact compiler/model/policy fingerprint.
+- No concrete model provider, SDK or API key is admitted by the compiler boundary. Runtime model wiring remains a separate reviewed decision.
 - The foundation has no signer, private key, wallet submission, contract-write path, provider/fee activation, production environment mutation or live execution method.
-- Strategy quality and execution authority are independent. The foundation execution mode is only `PAPER_ONLY`.
+- Strategy quality and execution authority are independent. The admitted execution mode is only `PAPER_ONLY`, and the PostgreSQL state schema repeats that restriction as a database constraint.
 - A future live agent may only propose a typed RMT execution intent into the existing VNext verification/authorization/reconciliation lifecycle. It never becomes a second routing stack.
-- Arena UI, public MCP, delegated signing, onchain identity and revenue buy-and-retire remain later independently reviewed phases.
+- Arena UI, public MCP, delegated signing, onchain identity and revenue buy-and-retire are later independently reviewed phases.
 
 ## Active security identity versus paused profile
 
@@ -83,7 +87,7 @@ Paused source and tests remain available as preservation evidence. Paused worker
 - `apps/external-origin-indexer`: external project-origin attribution. `source-listed` never implies `token-created`.
 - `apps/market-indexer`: external market discovery and enrichment. It remains read-oriented.
 - `packages/agent-core`: agent schema, Strategy Compiler policy/admission and deterministic scoring authority; no market or execution authority.
-- `apps/agent-engine`: paper-only agent evaluation, durability and strategy-compilation authority; no signer, live submission or treasury authority.
+- `apps/agent-engine`: durable paper-only agent evaluation, compilation and admission authority; no signer, live submission or treasury authority.
 - future execution workers: separate explicit domain; never hidden inside the market indexer.
 
 Project origin, market venue and execution origin are separate dimensions. RMT-originated volume or fees require authoritative RMT session/receipt evidence and may not be inferred from origin, pool, wallet, page view or route observation. Future agent attribution must additionally bind the exact agent and strategy version to the canonical RMT execution ID without weakening that rule.
@@ -129,4 +133,5 @@ The paper-only agent foundation adds no contract and does not make historical/pa
 - Production behavior stays fail closed.
 - Open PRs and research documents remain inputs until explicitly admitted.
 - Agent performance evidence or compiler admission never self-grants execution authority.
+- Durable agent persistence must remain restart/replay-safe and idempotent before any production service wiring.
 - The architecture changes only through an explicit owner decision recorded here and in the system map.

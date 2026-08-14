@@ -13,7 +13,7 @@
 | External project origin | `apps/external-origin-indexer` | ACTIVE FOUNDATION | Fail closed; `source-listed` and `token-created` remain distinct. StonkBrokers has candidate identity only: the production launcher contract/event is unverified, no claims are served and activation remains locked. |
 | External markets | `apps/market-indexer` | ACTIVE | Read-oriented discovery/enrichment, including separately identified `up-v2` and `up-cl` shadow sources; no execution or treasury work. Shadow rows are not consumed by the public terminal. |
 | Agent core | `packages/agent-core` | FOUNDATION / PAPER ONLY | Source-only schemas, Strategy Compiler policy/admission validation, safety-envelope checks, state transitions, canonical hashes and deterministic prediction/risk math. No market, wallet, signer or execution authority. |
-| Agent engine | `apps/agent-engine` | FOUNDATION / PAPER ONLY | Durable paper state plus untrusted structured-model adapter boundary, deterministic Strategy Compiler, first-writer-wins compilation persistence and strategy admission. No concrete model provider, live execution, signer, wallet or production configuration. |
+| Agent engine | `apps/agent-engine` | DURABLE FOUNDATION / PAPER ONLY | Deterministic paper state plus restart/replay-safe persistence, untrusted structured-model adapter boundary, deterministic Strategy Compiler, first-writer-wins compilation persistence and strategy admission. No production DB/model wiring, live execution, signer, wallet or production configuration. |
 | Same-chain execution | VNext adapters plus current Sushi/Uniswap verifiers | ACTIVE | Provider admission is capability-specific. `up-v2` and `up-cl` now have strict verification and exact wallet-authorization codecs, but their observation and provider-specific authorization gates default off pending controlled mainnet proof. |
 | Funding/recovery | VNext Across domain and server-side Firebase persistence | RELEASE-GATED | Asynchronous, wallet-bound and non-custodial. |
 | RWA registry/evidence | Robinhood stock-token registry and policy evidence | ACTIVE FOUNDATION | Canonical RWA and RWA-paired markets remain distinct. |
@@ -25,9 +25,11 @@
 
 ## Agent boundary
 
-The agent foundation is admitted only for paper evaluation. `apps/agent-engine` cannot sign, submit, deploy, activate providers/fees or write contracts. `apps/market-indexer` remains read-oriented and is not an agent runtime.
+The agent foundation is admitted only for durable paper evaluation. `apps/agent-engine` cannot sign, submit, deploy, activate providers/fees or write contracts. `apps/market-indexer` remains read-oriented and is not an agent runtime.
 
-The Strategy Compiler is admitted as a deterministic policy boundary, not as authority delegated to an LLM. A concrete model adapter may propose a structured draft, but the compiler independently validates schema, safety envelope, asset scope and required prohibitions. Compilation persistence is keyed by request hash so retries and concurrent model responses cannot create competing admitted strategies for the same exact compiler/model/policy fingerprint.
+`DurableAgentEngine` wraps the deterministic engine with caller-supplied idempotency keys, canonical request hashes, optimistic revisions, restart recovery and stale-worker resynchronization. `PostgresAgentStateStore` is a dependency-injected persistence adapter only; no production PostgreSQL connection or secret is admitted by this map.
+
+The Strategy Compiler is a deterministic policy boundary, not authority delegated to an LLM. A concrete model adapter may propose a structured draft, but the compiler independently validates schema, safety envelope, asset scope and hard-required prohibitions. Compilation persistence is keyed by request hash so retries and concurrent model responses cannot create competing admitted strategies for the same exact compiler/model/policy fingerprint. No concrete model provider or API key is admitted here.
 
 A future live bridge must produce a typed agent/strategy-attributed intent and then enter the existing VNext lifecycle. Agent qualification or compiler admission never bypasses provider verification, wallet/signer policy, fee disclosure, simulation or receipt reconciliation. See [`agents/ARCHITECTURE.md`](agents/ARCHITECTURE.md).
 
@@ -50,10 +52,22 @@ No public Agent Arena, agent-profile, MCP or autonomous-execution route is admit
 
 - `NEXT_PUBLIC_RMT_VNEXT_*` / `RMT_VNEXT_*`: independent shell, provider, authorization, submission and funding gates. Capability does not imply activation. Each up. provider requires its observation gate, its own server authorization gate, both global authorization gates and the wallet-submission gate before an actual wallet prompt.
 - `NEXT_PUBLIC_RMT_LIVE_*`, creator/V7, profile and autonomous Position Guard controls: paused unless required for preserved compatibility tests; must not be newly enabled.
-- Agent foundation: no production signer credentials, wallet authority or agent-live activation gate exists. No concrete strategy-model provider/API key is configured by the compiler foundation; PostgreSQL/model runtime wiring remains unreleased.
+- Agent foundation: no production environment variables, database URL, model-provider API key, signer credentials, wallet authority or agent-live activation gate exists. The current engine remains source-only and paper-only; PostgreSQL/model adapters require explicitly injected runtime dependencies that are not wired here.
 - `RMT_EXECUTION_FEE_ENABLED`: remains `false`; policy implementation approval is not production activation approval.
 - `RMT_EXECUTION_FEE_BPS` and treasury: production examples remain blank and no environment was changed. `RMT_EXECUTION_V1` binds 25 basis points to the verified Safe `0x61700479A4A1F62584Fd3ABA2c2b290EA727d2eC`, block `35041945` and policy hash `0x295c900143405bb585a4d88c3788fadab522fd4313f69242f64e52e39827f141`; production collection remains disabled.
 - Production values are changed only through a separate authorized release action, never by architecture documentation.
+
+## Agent persistence records
+
+The admitted PostgreSQL state schema is transactionally scoped by `stream_id` and contains:
+
+- canonical `agent_engine_state` snapshots with schema version, revision and canonical state hash;
+- `agent_engine_mutations` with unique idempotency key, request hash, result and resulting state hash;
+- normalized seasons, agents, strategy versions, decisions, predictions, paper accounts, paper orders/fills, portfolio snapshots, risk events and score snapshots.
+
+Strategy compilation provenance uses a separate `strategy_compilations` table keyed by `(stream_id, request_hash)`. It stores the full self-hashed compilation record plus an independent database record hash and is protected by a stream/request advisory transaction lock. It precedes strategy admission and does not become wallet or execution state.
+
+Database reads must verify the canonical state hash before hydration. Full verified quote evidence is retained on fills so the evidence hash remains independently recomputable after restart. The database constrains agent execution mode to `PAPER_ONLY`.
 
 ## Contract source classification
 
@@ -82,7 +96,7 @@ The paper-only agent foundation adds no Solidity contract and does not reclassif
 | CURRENT | `ARCHITECTURE_FREEZE.md`, `ACTIVE_SYSTEM_MAP.md`, `TERMINAL_COMPLETION_GATE.md`, `RMT_TERMINAL_VNEXT_ARCHITECTURE.md`, `RMT_TERMINAL_VNEXT_MIGRATION.md`, `RMT_TERMINAL_VNEXT_UI_OWNERSHIP.md`, `agents/ARCHITECTURE.md`, current deployment/security/operations evidence. |
 | HISTORICAL | V4/V5 archives, previous deployment records, historical release handoffs after their baseline. |
 | PAUSED | profile, community/RMT Live, creator media/release/consent, V7, marketplace and autonomous Position Guard expansion documents. |
-| RESEARCH | provider benchmark, NFT research, terminal UX research, external audit inquiry and unadmitted provider research. Agent qualification thresholds, Arena scoring weights, concrete model provider wiring, MCP, live delegated execution and buy-and-retire economics remain research/release-gated until separately admitted. |
+| RESEARCH | provider benchmark, NFT research, terminal UX research, external audit inquiry and unadmitted provider research. Agent qualification thresholds, Arena scoring weights, concrete model-provider wiring, MCP, live delegated execution and buy-and-retire economics remain research until separately admitted. |
 | SUPERSEDED | roadmap language that names V7 launching, creator ecosystem or profiles as the current next phase; `HANDOFF_2026-08-06.md` as a roadmap. |
 
 A more recent deployment/security record can remain factually authoritative for its narrow domain without becoming product-roadmap authority.
