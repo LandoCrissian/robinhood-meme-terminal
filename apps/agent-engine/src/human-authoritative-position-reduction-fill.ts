@@ -107,7 +107,11 @@ export function assertHumanAuthoritativePositionReductionFillRecord(record: Huma
 }
 
 export class HumanAuthoritativePositionReductionFillService {
-  constructor(private readonly writer: HumanPaperFillWriter) {}
+  private readonly writer: HumanPaperFillWriter;
+
+  constructor(writer: HumanPaperFillWriter) {
+    this.writer = writer;
+  }
 
   async fill(input: {
     submission: HumanAuthoritativePositionReductionSubmissionRecord;
