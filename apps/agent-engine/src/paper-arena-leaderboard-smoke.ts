@@ -15,6 +15,7 @@ import { emptyAgentEngineSnapshot } from "./snapshot.ts";
 import { InMemoryAgentStateStore } from "./persistence/store.ts";
 
 const quoteAssetId = "eip155:4663/contract:0x1111111111111111111111111111111111111111";
+const humanWallet = "0x00000000000000000000000000000000000000aa";
 const performancePolicy: PaperArenaPerformancePolicy = {
   policyVersion: "RMT_ARENA_PERFORMANCE_V1",
   minimumValuations: 3,
@@ -98,7 +99,7 @@ const agentHigherDrawdown = await makePerformance({
 });
 const human = await makePerformance({
   participantType: "HUMAN",
-  participantId: "human-a",
+  participantId: humanWallet,
   navs: [{ at: 100, nav: "1000" }, { at: 200, nav: "1030" }, { at: 300, nav: "1030" }],
 });
 const provisional = await makePerformance({
@@ -122,7 +123,7 @@ assert.equal(overall.rankedEntries.length, 3);
 assert.equal(overall.rankedEntries[0]?.participantId, "agent-b");
 assert.equal(overall.rankedEntries[0]?.rank, 1);
 assert.equal(overall.rankedEntries[1]?.participantId, "agent-a");
-assert.equal(overall.rankedEntries[2]?.participantId, "human-a");
+assert.equal(overall.rankedEntries[2]?.participantId, humanWallet);
 assert.equal(overall.provisionalEntries.length, 1);
 assert.equal(overall.provisionalEntries[0]?.participantId, "agent-provisional");
 assert.match(overall.leaderboardHash, /^0x[0-9a-f]{64}$/);
@@ -142,6 +143,7 @@ const humanView = buildPaperArenaLeaderboard({
 });
 assert.equal(humanView.rankedEntries.length, 1);
 assert.equal(humanView.rankedEntries[0]?.participantType, "HUMAN");
+assert.equal(humanView.rankedEntries[0]?.participantId, humanWallet);
 assert.equal(humanView.provisionalEntries.length, 0);
 
 assert.throws(
@@ -184,10 +186,10 @@ assert.throws(
 
 const tamperedRank = structuredClone(overall);
 tamperedRank.rankedEntries[0]!.rank = 2;
-assert.throws(() => assertPaperArenaLeaderboardRecord(tamperedRank), /ranks are not unique\/contiguous|ranks are not contiguous|leaderboard hash mismatch/);
+assert.throws(() => assertPaperArenaLeaderboardRecord(tamperedRank), /ranks are not unique\/contiguous|ranks are not contiguous|payload is not correctly derived|leaderboard hash mismatch/);
 
 const tamperedHash = structuredClone(overall);
 tamperedHash.rankedEntries[0]!.returnBpsExcludingExternalCosts = "9999";
-assert.throws(() => assertPaperArenaLeaderboardRecord(tamperedHash), /leaderboard hash mismatch/);
+assert.throws(() => assertPaperArenaLeaderboardRecord(tamperedHash), /payload is not correctly derived|leaderboard hash mismatch/);
 
 console.log("paper-arena-leaderboard smoke: ok");
