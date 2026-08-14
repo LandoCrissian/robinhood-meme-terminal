@@ -7,6 +7,8 @@ import type {
   UniversalMarketResolution
 } from "../../lib/external-market";
 import type { VNextEcosystemIntelligence } from "../../lib/vnext/ecosystem-intelligence";
+import { VNEXT_CLIENT_REFRESH_POLICY } from "../../lib/vnext/client-refresh-policy";
+import { useVisibilityRefresh } from "./use-visibility-refresh";
 
 export type VNextAssetWorkspaceStatus = "idle" | "loading" | "ready" | "partial" | "stale" | "unavailable";
 
@@ -61,11 +63,11 @@ export function useVNextAssetWorkspace(address?: string, pairAddress?: string) {
     if (pairAddress) workspace.set("pair", pairAddress);
     try {
       const [marketResult, resolutionResult] = await Promise.allSettled([
-        fetch(`/api/markets/external?${lookup}`, { cache: "no-store" }).then(async (response) => ({
+        fetch(`/api/markets/external?${lookup}`).then(async (response) => ({
           ok: response.ok,
           payload: await response.json() as ExternalMarketResponse
         })),
-        fetch(`/api/vnext/asset-workspace?${workspace}`, { cache: "no-store" }).then(async (response) => ({
+        fetch(`/api/vnext/asset-workspace?${workspace}`).then(async (response) => ({
           ok: response.ok,
           payload: await response.json() as WorkspaceResolutionResponse
         }))
@@ -112,15 +114,14 @@ export function useVNextAssetWorkspace(address?: string, pairAddress?: string) {
     }
   }, [address, pairAddress]);
 
-  useEffect(() => {
-    void refresh(false);
-    if (!address) return;
-    const interval = window.setInterval(() => void refresh(true), 30_000);
-    return () => {
-      requestId.current += 1;
-      window.clearInterval(interval);
-    };
-  }, [address, refresh]);
+  useVisibilityRefresh(() => refresh(true), VNEXT_CLIENT_REFRESH_POLICY.assetWorkspaceMs, {
+    enabled: Boolean(address),
+    refreshKey: `${address ?? "none"}:${pairAddress ?? "none"}`
+  });
+
+  useEffect(() => () => {
+    requestId.current += 1;
+  }, [address, pairAddress]);
 
   const snapshotIsCurrent = Boolean(address && currentAddress.current?.toLowerCase() === address.toLowerCase());
   return {

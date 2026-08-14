@@ -12,6 +12,8 @@ import {
   type VNextDirectoryResponse
 } from "../../lib/vnext/market-directory";
 import { ROBINHOOD_RMT_ADDRESS } from "../../lib/vnext/robinhood-assets";
+import { VNEXT_CLIENT_REFRESH_POLICY } from "../../lib/vnext/client-refresh-policy";
+import { useVisibilityRefresh } from "./use-visibility-refresh";
 
 const IDENTITY_LOOKUP_TIMEOUT_MS = 5_000;
 
@@ -95,7 +97,7 @@ export function useVNextMarketDirectory() {
     const timeout = window.setTimeout(() => controller.abort(), IDENTITY_LOOKUP_TIMEOUT_MS);
     try {
       const query = new URLSearchParams({ contract: address });
-      const response = await fetch(`/api/markets/external?${query}`, { cache: "no-store", signal: controller.signal });
+      const response = await fetch(`/api/markets/external?${query}`, { signal: controller.signal });
       const payload = await response.json() as ExternalMarketResponse;
       const discovered = normalizeDirectoryMarkets(payload).find((market) => market.address.toLowerCase() === address.toLowerCase());
       if (!response.ok || !discovered) return false;
@@ -114,7 +116,7 @@ export function useVNextMarketDirectory() {
 
   const refresh = useCallback(async () => {
     try {
-      const response = await fetch("/api/vnext/market-directory", { cache: "no-store" });
+      const response = await fetch("/api/vnext/market-directory");
       const payload = await response.json() as VNextDirectoryResponse;
       const directoryMarkets = normalizeDirectoryMarkets(payload);
       fastDirectoryMarkets.current = directoryMarkets;
@@ -132,7 +134,7 @@ export function useVNextMarketDirectory() {
 
   const refreshEcosystemDirectory = useCallback(async () => {
     try {
-      const response = await fetch("/api/markets/external", { cache: "no-store" });
+      const response = await fetch("/api/markets/external");
       const payload = await response.json() as ExternalMarketResponse;
       if (!response.ok) return;
       ecosystemMarkets.current = normalizeDirectoryMarkets(payload);
@@ -142,16 +144,8 @@ export function useVNextMarketDirectory() {
     }
   }, [publishMarkets]);
 
-  useEffect(() => {
-    void refresh();
-    void refreshEcosystemDirectory();
-    const interval = window.setInterval(() => void refresh(), 30_000);
-    const ecosystemInterval = window.setInterval(() => void refreshEcosystemDirectory(), 60_000);
-    return () => {
-      window.clearInterval(interval);
-      window.clearInterval(ecosystemInterval);
-    };
-  }, [refresh, refreshEcosystemDirectory]);
+  useVisibilityRefresh(refresh, VNEXT_CLIENT_REFRESH_POLICY.marketDirectoryMs);
+  useVisibilityRefresh(refreshEcosystemDirectory, VNEXT_CLIENT_REFRESH_POLICY.ecosystemDirectoryMs);
 
   const selected = useMemo(
     () => markets.find((market) => market.address.toLowerCase() === selectedAddress?.toLowerCase()),
@@ -191,7 +185,7 @@ export function useVNextMarketDirectory() {
       setIdentityStatus("unverified");
     }, IDENTITY_LOOKUP_TIMEOUT_MS);
     const query = new URLSearchParams({ address: selected.address });
-    void fetch(`/api/vnext/asset-identity?${query}`, { cache: "no-store", signal: controller.signal })
+    void fetch(`/api/vnext/asset-identity?${query}`, { signal: controller.signal })
       .then(async (response) => {
         const payload = await response.json() as ExternalMarketResponse;
         if (!response.ok) throw new Error(payload.error ?? "Identity lookup unavailable.");
