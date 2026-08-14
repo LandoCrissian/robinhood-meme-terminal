@@ -30,6 +30,7 @@ export interface HumanPaperOrderSubmissionRecord {
   admission: HumanPaperOrderAdmissionRecord;
   gate: HumanPaperOrderSubmissionGateRecord;
   riskCapacityPlan: HumanPaperRiskCapacityPlan;
+  maximumRiskPlanAgeMs: number;
   idempotencyKey: string;
   order: HumanPaperOrderRecord;
   submissionHash: string;
@@ -61,6 +62,7 @@ function assertRiskPlanMatchesAdmission(
   admission: HumanPaperOrderAdmissionRecord,
   maximumRiskPlanAgeMs: number,
 ): void {
+  assertPositiveAge(maximumRiskPlanAgeMs);
   assertHumanPaperRiskCapacityPlan(plan);
   if (plan.status !== "ADMITTED" || plan.admittedInputAmountAtomic === null) fail("human paper submission requires ADMITTED risk capacity");
   if (plan.participantId !== admission.intent.participantId) fail("human paper risk participant differs from admission");
@@ -97,7 +99,8 @@ export function assertHumanPaperOrderSubmissionRecord(record: HumanPaperOrderSub
   if (record.schemaVersion !== 2) fail("unsupported human paper submission schema version");
   assertHumanPaperOrderAdmissionRecord(record.admission);
   assertHumanPaperOrderSubmissionGateRecord(record.gate);
-  assertRiskPlanMatchesAdmission(record.riskCapacityPlan, record.admission, record.admission.admittedAt - record.riskCapacityPlan.plannedAt + 1);
+  assertPositiveAge(record.maximumRiskPlanAgeMs);
+  assertRiskPlanMatchesAdmission(record.riskCapacityPlan, record.admission, record.maximumRiskPlanAgeMs);
   if (record.gate.streamId !== record.admission.streamId) fail("human paper submission gate stream mismatch");
   if (record.gate.admissionId !== record.admission.admissionId || record.gate.admissionHash !== record.admission.admissionHash) {
     fail("human paper submission gate does not belong to admission");
@@ -151,6 +154,7 @@ export class HumanPaperOrderSubmissionService {
       admission: structuredClone(input.admission),
       gate: structuredClone(input.gate),
       riskCapacityPlan: structuredClone(input.riskCapacityPlan),
+      maximumRiskPlanAgeMs: this.config.maximumRiskPlanAgeMs,
       idempotencyKey,
       order: structuredClone(order),
     };
