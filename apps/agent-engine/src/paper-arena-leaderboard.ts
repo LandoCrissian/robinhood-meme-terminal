@@ -39,6 +39,7 @@ export interface PaperArenaLeaderboardRecord {
   quoteAssetId: string;
   startingNavQuoteAtomic: string;
   view: PaperArenaLeaderboardView;
+  performances: PaperArenaPerformanceRecord[];
   rankedEntries: PaperArenaRankedEntry[];
   provisionalEntries: PaperArenaProvisionalEntry[];
   capturedAt: number;
@@ -121,7 +122,8 @@ function derive(input: {
     if (identities.has(identity)) fail("paper arena leaderboard contains duplicate participant performance");
     identities.add(identity);
   }
-  const visible = input.performances.filter((performance) => viewAllows(input.view, performance.entry.participantType));
+  const performances = input.performances.map((performance) => structuredClone(performance));
+  const visible = performances.filter((performance) => viewAllows(input.view, performance.entry.participantType));
   const eligible = visible.filter((performance) => performance.eligibility === "ELIGIBLE").sort(compareEligible);
   const provisional = visible.filter((performance) => performance.eligibility === "PROVISIONAL").sort(compareProvisional);
   const rankedEntries = eligible.map((performance, index): PaperArenaRankedEntry => ({
@@ -142,7 +144,9 @@ function derive(input: {
     eligibilityReasons: structuredClone(performance.eligibilityReasons),
     capturedAt: performance.capturedAt,
   }));
-  const capturedAt = visible.length > 0 ? Math.max(...visible.map((performance) => performance.capturedAt)) : Math.max(...input.performances.map((performance) => performance.capturedAt));
+  const capturedAt = visible.length > 0
+    ? Math.max(...visible.map((performance) => performance.capturedAt))
+    : Math.max(...performances.map((performance) => performance.capturedAt));
   return {
     schemaVersion: 1,
     leaderboardPolicy: RMT_ARENA_LEADERBOARD_POLICY_V1,
@@ -152,6 +156,7 @@ function derive(input: {
     quoteAssetId: first.entry.quoteAssetId,
     startingNavQuoteAtomic: first.entry.startingNavQuoteAtomic,
     view: input.view,
+    performances,
     rankedEntries,
     provisionalEntries,
     capturedAt,
@@ -169,6 +174,9 @@ export function assertPaperArenaLeaderboardRecord(record: PaperArenaLeaderboardR
   assertNonEmpty(record.quoteAssetId, "paper arena leaderboard quoteAssetId");
   assertAtomic(record.startingNavQuoteAtomic, "paper arena leaderboard starting NAV");
   assertTimestamp(record.capturedAt, "paper arena leaderboard capturedAt");
+  if (!Array.isArray(record.performances) || record.performances.length === 0) fail("paper arena leaderboard requires source performances");
+  record.performances.forEach(assertPaperArenaPerformanceRecord);
+
   const ranks = new Set<number>();
   const identities = new Set<string>();
   for (const entry of record.rankedEntries) {
@@ -188,7 +196,6 @@ export function assertPaperArenaLeaderboardRecord(record: PaperArenaLeaderboardR
     assertAtomic(entry.latestLiquidationNavQuoteAtomic, "paper arena ranked latest NAV");
     assertTimestamp(entry.capturedAt, "paper arena ranked capturedAt");
   }
-  if (record.rankedEntries.length > 0 && ranks.size !== record.rankedEntries.length) fail("paper arena leaderboard rank set is invalid");
   for (let index = 0; index < record.rankedEntries.length; index += 1) {
     if (record.rankedEntries[index]!.rank !== index + 1) fail("paper arena leaderboard ranks are not contiguous");
   }
@@ -203,8 +210,11 @@ export function assertPaperArenaLeaderboardRecord(record: PaperArenaLeaderboardR
     if (entry.eligibilityReasons.length === 0) fail("paper arena provisional entry requires eligibility reasons");
     assertTimestamp(entry.capturedAt, "paper arena provisional capturedAt");
   }
-  if (!/^0x[0-9a-f]{64}$/.test(record.leaderboardHash)) fail("paper arena leaderboardHash must be a sha256 hex hash");
+
+  const rebuilt = derive({ performances: record.performances, view: record.view });
   const { leaderboardHash, ...payload } = record;
+  if (hashCanonicalPayload(rebuilt) !== hashCanonicalPayload(payload)) fail("paper arena leaderboard payload is not correctly derived from source performances");
+  assertHash(leaderboardHash, "paper arena leaderboardHash");
   if (leaderboardHash !== hashCanonicalPayload(payload)) fail("paper arena leaderboard hash mismatch");
 }
 
