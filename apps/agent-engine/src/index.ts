@@ -3,6 +3,7 @@ export * from "./durable-engine.ts";
 export * from "./engine.ts";
 export * from "./paper-evaluation-scheduler.ts";
 export * from "./paper-evaluation.ts";
+export * from "./paper-risk-capacity.ts";
 export * from "./rmt-paper-quote.ts";
 export * from "./rmt-robinhood-stock-market-source.ts";
 export * from "./snapshot.ts";
