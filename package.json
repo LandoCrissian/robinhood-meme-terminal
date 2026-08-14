@@ -13,7 +13,7 @@
     "check:community-readiness": "node scripts/check-rmt-live-readiness.mjs",
     "check:repo": "knip --include files,dependencies",
     "lint": "pnpm --filter web lint",
-    "test:agent-foundation": "node --experimental-strip-types packages/agent-core/src/smoke.ts && node --experimental-strip-types apps/agent-engine/src/smoke.ts",
+    "test:agent-foundation": "node --experimental-strip-types packages/agent-core/src/smoke.ts && node --experimental-strip-types apps/agent-engine/src/smoke.ts && node --experimental-strip-types apps/agent-engine/src/durability-smoke.ts",
     "test:firebase-rules": "firebase emulators:exec --project rmt-rules-test --only firestore \"pnpm --filter web test:firebase-rules:unit\"",
     "test:community-readiness": "node scripts/community-readiness-smoke.mjs",
     "test:terminal-release": "pnpm --filter web test:terminal-release",
@@ -25,7 +25,7 @@
   "devDependencies": {
     "firebase-tools": "15.26.0",
     "knip": "6.29.0",
-    "playwright": "1.55.0"
+    "playwright": "1.55.1"
   },
   "pnpm": {
     "overrides": {

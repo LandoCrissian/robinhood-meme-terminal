@@ -33,6 +33,7 @@ const strategy: StrategySpec = {
 };
 
 const engine = new AgentEngine({ safetyEnvelope, paperFillDelayMs: 1_000, policyVersion: "RMT_AGENT_FOUNDATION_V1" });
+engine.createSeason({ seasonId: "season-1", name: "Smoke", startsAt: 1_000, endsAt: 10_000, createdAt: 900 });
 const agent = engine.registerAgent({
   ownerAddress: "0x0000000000000000000000000000000000000001",
   name: "HoodHound",
@@ -104,4 +105,7 @@ assert.ok(Math.abs(summary.brierScore - 0.04) < 1e-12);
 assert.equal(summary.paperFills, 1);
 assert.equal(summary.agent.executionMode, "PAPER_ONLY");
 assert.equal("executeLive" in engine, false);
+const snapshot = engine.exportSnapshot();
+const restored = AgentEngine.fromSnapshot({ safetyEnvelope, paperFillDelayMs: 1_000, policyVersion: "RMT_AGENT_FOUNDATION_V1" }, snapshot);
+assert.deepEqual(restored.getPaperAccount(account.accountId).balances, updated.balances);
 console.log("agent-engine smoke: ok");

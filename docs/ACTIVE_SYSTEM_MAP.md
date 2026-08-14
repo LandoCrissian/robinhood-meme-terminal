@@ -13,7 +13,7 @@
 | External project origin | `apps/external-origin-indexer` | ACTIVE FOUNDATION | Fail closed; `source-listed` and `token-created` remain distinct. StonkBrokers has candidate identity only: the production launcher contract/event is unverified, no claims are served and activation remains locked. |
 | External markets | `apps/market-indexer` | ACTIVE | Read-oriented discovery/enrichment, including separately identified `up-v2` and `up-cl` shadow sources; no execution or treasury work. Shadow rows are not consumed by the public terminal. |
 | Agent core | `packages/agent-core` | FOUNDATION / PAPER ONLY | Source-only schemas, safety-envelope validation, state transitions, canonical hashes and deterministic prediction/risk math. No market, wallet, signer or execution authority. |
-| Agent engine | `apps/agent-engine` | FOUNDATION / PAPER ONLY | In-memory first slice for immutable strategy versions, auditable decisions, predictions, paper accounts/orders/fills and Brier summaries. No server/database yet; no live execution, signer, wallet or production configuration. |
+| Agent engine | `apps/agent-engine` | DURABLE FOUNDATION / PAPER ONLY | Deterministic paper state plus restart/replay-safe persistence contract: seasons, strategy versions, decisions, predictions, paper accounts/orders/fills, portfolio/risk/score snapshots, idempotency journal, optimistic revisions and PostgreSQL projections. No production DB wiring, live execution, signer, wallet or production configuration. |
 | Same-chain execution | VNext adapters plus current Sushi/Uniswap verifiers | ACTIVE | Provider admission is capability-specific. `up-v2` and `up-cl` now have strict verification and exact wallet-authorization codecs, but their observation and provider-specific authorization gates default off pending controlled mainnet proof. |
 | Funding/recovery | VNext Across domain and server-side Firebase persistence | RELEASE-GATED | Asynchronous, wallet-bound and non-custodial. |
 | RWA registry/evidence | Robinhood stock-token registry and policy evidence | ACTIVE FOUNDATION | Canonical RWA and RWA-paired markets remain distinct. |
@@ -25,7 +25,9 @@
 
 ## Agent boundary
 
-The agent foundation is admitted only for paper evaluation. `apps/agent-engine` cannot sign, submit, deploy, activate providers/fees or write contracts. `apps/market-indexer` remains read-oriented and is not an agent runtime.
+The agent foundation is admitted only for durable paper evaluation. `apps/agent-engine` cannot sign, submit, deploy, activate providers/fees or write contracts. `apps/market-indexer` remains read-oriented and is not an agent runtime.
+
+`DurableAgentEngine` wraps the deterministic engine with caller-supplied idempotency keys, canonical request hashes, optimistic revisions, restart recovery and stale-worker resynchronization. `PostgresAgentStateStore` is a dependency-injected persistence adapter only; no production PostgreSQL connection or secret is admitted by this map.
 
 A future live bridge must produce a typed agent/strategy-attributed intent and then enter the existing VNext lifecycle. Agent qualification never bypasses provider verification, wallet/signer policy, fee disclosure, simulation or receipt reconciliation. See [`agents/ARCHITECTURE.md`](agents/ARCHITECTURE.md).
 
@@ -48,10 +50,20 @@ No public Agent Arena, agent-profile, MCP or autonomous-execution route is admit
 
 - `NEXT_PUBLIC_RMT_VNEXT_*` / `RMT_VNEXT_*`: independent shell, provider, authorization, submission and funding gates. Capability does not imply activation. Each up. provider requires its observation gate, its own server authorization gate, both global authorization gates and the wallet-submission gate before an actual wallet prompt.
 - `NEXT_PUBLIC_RMT_LIVE_*`, creator/V7, profile and autonomous Position Guard controls: paused unless required for preserved compatibility tests; must not be newly enabled.
-- Agent foundation: no production environment variables, signer credentials, wallet authority or agent-live activation gate exists. The current engine is source-only and paper-only.
+- Agent foundation: no production environment variables, database URL, signer credentials, wallet authority or agent-live activation gate exists. The current engine remains source-only and paper-only; the PostgreSQL adapter requires an explicitly injected runtime pool that is not wired here.
 - `RMT_EXECUTION_FEE_ENABLED`: remains `false`; policy implementation approval is not production activation approval.
 - `RMT_EXECUTION_FEE_BPS` and treasury: production examples remain blank and no environment was changed. `RMT_EXECUTION_V1` binds 25 basis points to the verified Safe `0x61700479A4A1F62584Fd3ABA2c2b290EA727d2eC`, block `35041945` and policy hash `0x295c900143405bb585a4d88c3788fadab522fd4313f69242f64e52e39827f141`; production collection remains disabled.
 - Production values are changed only through a separate authorized release action, never by architecture documentation.
+
+## Agent persistence records
+
+The admitted PostgreSQL schema is transactionally scoped by `stream_id` and contains:
+
+- canonical `agent_engine_state` snapshots with schema version, revision and canonical state hash;
+- `agent_engine_mutations` with unique idempotency key, request hash, result and resulting state hash;
+- normalized seasons, agents, strategy versions, decisions, predictions, paper accounts, paper orders/fills, portfolio snapshots, risk events and score snapshots.
+
+Database reads must verify the canonical state hash before hydration. Full verified quote evidence is retained on fills so the evidence hash remains independently recomputable after restart. The database constrains agent execution mode to `PAPER_ONLY`.
 
 ## Contract source classification
 

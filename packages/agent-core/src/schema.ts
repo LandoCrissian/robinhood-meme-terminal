@@ -19,6 +19,7 @@ export type DecisionAction =
   | "OPEN_POSITION"
   | "CLOSE_POSITION";
 export type PaperOrderStatus = "PENDING" | "FILLED" | "CANCELLED";
+export type RiskSeverity = "INFO" | "WARNING" | "CRITICAL";
 
 export interface StrategySignal {
   type: string;
@@ -70,6 +71,14 @@ export interface AgentSafetyEnvelope {
   maximumSlippageBps: number;
   maximumPriceImpactBps: number;
   minimumEvaluationIntervalSeconds: number;
+}
+
+export interface SeasonRecord {
+  seasonId: string;
+  name: string;
+  startsAt: number;
+  endsAt?: number;
+  createdAt: number;
 }
 
 export interface AgentRecord {
@@ -173,6 +182,7 @@ export interface PaperFillRecord {
   gasCostAtomic: string;
   filledAt: number;
   evidenceHash: string;
+  quoteEvidence: VerifiedPaperQuoteEvidence;
 }
 
 export interface PaperAccountRecord {
@@ -190,6 +200,28 @@ export interface PortfolioSnapshot {
   quoteAssetId: string;
   markNavAtomic: string;
   liquidationNavAtomic: string;
+}
+
+export interface RiskEventRecord {
+  riskEventId: string;
+  agentId: string;
+  accountId?: string;
+  type: string;
+  severity: RiskSeverity;
+  detail: string;
+  policyVersion: string;
+  occurredAt: number;
+}
+
+export interface ScoreSnapshotRecord {
+  scoreSnapshotId: string;
+  agentId: string;
+  seasonId: string;
+  brierScore: number;
+  predictionCount: number;
+  resolvedPredictionCount: number;
+  paperFillCount: number;
+  capturedAt: number;
 }
 
 function fail(message: string): never {
