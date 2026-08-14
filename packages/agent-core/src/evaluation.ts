@@ -9,7 +9,7 @@ import {
   type StrategySpec,
 } from "./schema.ts";
 
-export type PaperEvaluationAction = "NO_ACTION" | "PREDICTION" | "OPEN_POSITION";
+export type PaperEvaluationAction = "NO_ACTION" | "PREDICTION" | "OPEN_POSITION" | "CLOSE_POSITION";
 
 export interface MarketObservationDraft {
   assetId: string;
@@ -43,12 +43,18 @@ export interface OpenPositionProposal {
   requestedPositionBps: number;
 }
 
+export interface ClosePositionProposal {
+  assetId: string;
+  requestedReductionBps: number;
+}
+
 export interface AgentEvaluationProposal {
   action: PaperEvaluationAction;
   confidence: number;
   reasoningSummary: string;
   prediction?: PredictionProposal;
   openPosition?: OpenPositionProposal;
+  closePosition?: ClosePositionProposal;
 }
 
 export interface AgentRunRecord {
@@ -219,8 +225,13 @@ export function assertAgentMarketSnapshot(snapshot: AgentMarketSnapshot): void {
 export function parseEvaluationProposal(value: unknown, strategy: StrategySpec, evaluatedAt: number): AgentEvaluationProposal {
   assertTimestamp(evaluatedAt, "evaluatedAt");
   if (!isRecord(value)) fail("evaluation proposal must be an object");
-  if (value.action !== "NO_ACTION" && value.action !== "PREDICTION" && value.action !== "OPEN_POSITION") {
-    fail("evaluation action is not admitted in paper runner v1");
+  if (
+    value.action !== "NO_ACTION"
+    && value.action !== "PREDICTION"
+    && value.action !== "OPEN_POSITION"
+    && value.action !== "CLOSE_POSITION"
+  ) {
+    fail("evaluation action is not admitted in paper runner v2");
   }
   assertUnitInterval(value.confidence as number, "evaluation confidence");
   const reasoningSummary = assertReasoningSummary(value.reasoningSummary);
@@ -228,11 +239,13 @@ export function parseEvaluationProposal(value: unknown, strategy: StrategySpec, 
     fail("evaluation confidence is below strategy minimum");
   }
   if (value.action === "NO_ACTION") {
-    if (value.prediction !== undefined || value.openPosition !== undefined) fail("NO_ACTION proposal cannot include action payloads");
+    if (value.prediction !== undefined || value.openPosition !== undefined || value.closePosition !== undefined) {
+      fail("NO_ACTION proposal cannot include action payloads");
+    }
     return { action: "NO_ACTION", confidence: value.confidence as number, reasoningSummary };
   }
   if (value.action === "PREDICTION") {
-    if (value.openPosition !== undefined) fail("PREDICTION proposal cannot include openPosition");
+    if (value.openPosition !== undefined || value.closePosition !== undefined) fail("PREDICTION proposal cannot include trade payloads");
     if (!strategy.prediction.enabled) fail("strategy predictions are disabled");
     if (!isRecord(value.prediction)) fail("PREDICTION proposal requires prediction object");
     assertNonEmptyString(value.prediction.assetId as string, "prediction assetId");
@@ -253,21 +266,37 @@ export function parseEvaluationProposal(value: unknown, strategy: StrategySpec, 
       },
     };
   }
-  if (value.prediction !== undefined) fail("OPEN_POSITION proposal cannot include prediction");
-  if (!isRecord(value.openPosition)) fail("OPEN_POSITION proposal requires openPosition object");
-  assertNonEmptyString(value.openPosition.assetId as string, "openPosition assetId");
-  assertBps(value.openPosition.requestedPositionBps as number, "requestedPositionBps");
-  if ((value.openPosition.requestedPositionBps as number) <= 0) fail("requestedPositionBps must be greater than zero");
-  if ((value.openPosition.requestedPositionBps as number) > strategy.risk.maximumPositionBps) {
-    fail("requestedPositionBps exceeds strategy maximumPositionBps");
+  if (value.action === "OPEN_POSITION") {
+    if (value.prediction !== undefined || value.closePosition !== undefined) fail("OPEN_POSITION proposal cannot include other action payloads");
+    if (!isRecord(value.openPosition)) fail("OPEN_POSITION proposal requires openPosition object");
+    assertNonEmptyString(value.openPosition.assetId as string, "openPosition assetId");
+    assertBps(value.openPosition.requestedPositionBps as number, "requestedPositionBps");
+    if ((value.openPosition.requestedPositionBps as number) <= 0) fail("requestedPositionBps must be greater than zero");
+    if ((value.openPosition.requestedPositionBps as number) > strategy.risk.maximumPositionBps) {
+      fail("requestedPositionBps exceeds strategy maximumPositionBps");
+    }
+    return {
+      action: "OPEN_POSITION",
+      confidence: value.confidence as number,
+      reasoningSummary,
+      openPosition: {
+        assetId: (value.openPosition.assetId as string).trim(),
+        requestedPositionBps: value.openPosition.requestedPositionBps as number,
+      },
+    };
   }
+  if (value.prediction !== undefined || value.openPosition !== undefined) fail("CLOSE_POSITION proposal cannot include other action payloads");
+  if (!isRecord(value.closePosition)) fail("CLOSE_POSITION proposal requires closePosition object");
+  assertNonEmptyString(value.closePosition.assetId as string, "closePosition assetId");
+  assertBps(value.closePosition.requestedReductionBps as number, "requestedReductionBps");
+  if ((value.closePosition.requestedReductionBps as number) <= 0) fail("requestedReductionBps must be greater than zero");
   return {
-    action: "OPEN_POSITION",
+    action: "CLOSE_POSITION",
     confidence: value.confidence as number,
     reasoningSummary,
-    openPosition: {
-      assetId: (value.openPosition.assetId as string).trim(),
-      requestedPositionBps: value.openPosition.requestedPositionBps as number,
+    closePosition: {
+      assetId: (value.closePosition.assetId as string).trim(),
+      requestedReductionBps: value.closePosition.requestedReductionBps as number,
     },
   };
 }
@@ -287,6 +316,11 @@ export function canonicalizeEvaluationProposalAssets(
     const observation = proposalObservation(canonical.openPosition.assetId, snapshot, "openPosition");
     assertStrategyAllowsObservation(strategy, observation, "openPosition");
     canonical.openPosition.assetId = observation.assetId;
+  }
+  if (canonical.closePosition) {
+    const observation = proposalObservation(canonical.closePosition.assetId, snapshot, "closePosition");
+    assertStrategyAllowsObservation(strategy, observation, "closePosition");
+    canonical.closePosition.assetId = observation.assetId;
   }
   return canonical;
 }
@@ -343,26 +377,42 @@ export function assertAgentRunRecord(record: AgentRunRecord): void {
   assertAgentMarketSnapshot(record.marketSnapshot);
   if (record.marketSourceId !== record.marketSnapshot.sourceId) fail("agent run market source does not match snapshot source");
   if (record.marketSnapshot.capturedAt > record.evaluatedAt) fail("agent run market snapshot is from the future");
-  if (record.proposal.action !== "NO_ACTION" && record.proposal.action !== "PREDICTION" && record.proposal.action !== "OPEN_POSITION") {
-    fail("agent run proposal action is invalid");
-  }
+  if (
+    record.proposal.action !== "NO_ACTION"
+    && record.proposal.action !== "PREDICTION"
+    && record.proposal.action !== "OPEN_POSITION"
+    && record.proposal.action !== "CLOSE_POSITION"
+  ) fail("agent run proposal action is invalid");
   assertUnitInterval(record.proposal.confidence, "run proposal confidence");
   assertReasoningSummary(record.proposal.reasoningSummary);
   if (record.proposal.action === "NO_ACTION") {
-    if (record.proposal.prediction !== undefined || record.proposal.openPosition !== undefined) fail("NO_ACTION run cannot include action payloads");
+    if (record.proposal.prediction !== undefined || record.proposal.openPosition !== undefined || record.proposal.closePosition !== undefined) {
+      fail("NO_ACTION run cannot include action payloads");
+    }
   } else if (record.proposal.action === "PREDICTION") {
-    if (!record.proposal.prediction || record.proposal.openPosition !== undefined) fail("PREDICTION run payload is invalid");
+    if (!record.proposal.prediction || record.proposal.openPosition !== undefined || record.proposal.closePosition !== undefined) {
+      fail("PREDICTION run payload is invalid");
+    }
     assertNonEmptyString(record.proposal.prediction.condition, "run prediction condition");
     if (record.proposal.prediction.condition.length > 512) fail("run prediction condition exceeds 512 characters");
     assertUnitInterval(record.proposal.prediction.forecastProbability, "run forecastProbability");
     assertTimestamp(record.proposal.prediction.resolvesAt, "run prediction resolvesAt");
     if (record.proposal.prediction.resolvesAt <= record.evaluatedAt) fail("run prediction must resolve after evaluatedAt");
     assertCanonicalProposalAsset(record.proposal.prediction.assetId, record.marketSnapshot, "run prediction");
-  } else {
-    if (!record.proposal.openPosition || record.proposal.prediction !== undefined) fail("OPEN_POSITION run payload is invalid");
+  } else if (record.proposal.action === "OPEN_POSITION") {
+    if (!record.proposal.openPosition || record.proposal.prediction !== undefined || record.proposal.closePosition !== undefined) {
+      fail("OPEN_POSITION run payload is invalid");
+    }
     assertBps(record.proposal.openPosition.requestedPositionBps, "run requestedPositionBps");
     if (record.proposal.openPosition.requestedPositionBps <= 0) fail("run requestedPositionBps must be greater than zero");
     assertCanonicalProposalAsset(record.proposal.openPosition.assetId, record.marketSnapshot, "run openPosition");
+  } else {
+    if (!record.proposal.closePosition || record.proposal.prediction !== undefined || record.proposal.openPosition !== undefined) {
+      fail("CLOSE_POSITION run payload is invalid");
+    }
+    assertBps(record.proposal.closePosition.requestedReductionBps, "run requestedReductionBps");
+    if (record.proposal.closePosition.requestedReductionBps <= 0) fail("run requestedReductionBps must be greater than zero");
+    assertCanonicalProposalAsset(record.proposal.closePosition.assetId, record.marketSnapshot, "run closePosition");
   }
   if (record.proposalHash !== hashCanonicalPayload(record.proposal)) fail("agent run proposal hash mismatch");
   const { runHash, ...payload } = record;
