@@ -4,11 +4,15 @@ import {
   type PaperArenaPublicReadModel,
   type PublicArenaLeaderboard,
 } from "../../agent-engine/src/paper-arena-public-read-model.ts";
+import {
+  assertPaperArenaPublicSeasonResult,
+  type PaperArenaPublicSeasonResult,
+} from "../../agent-engine/src/paper-arena-public-season-result.ts";
 import { hashCanonicalPayload } from "../../../packages/agent-core/src/index.ts";
 
 export const RMT_MCP_TOOL_CONTRACT_V1 = "RMT_MCP_TOOL_CONTRACT_V1" as const;
 
-export type RmtMcpToolName = "rmt_arena_matchup" | "rmt_arena_leaderboard";
+export type RmtMcpToolName = "rmt_arena_matchup" | "rmt_arena_leaderboard" | "rmt_arena_season_result";
 export type RmtArenaLeaderboardView = "OVERALL" | "AGENT" | "HUMAN";
 
 export interface RmtMcpToolDescriptor {
@@ -22,6 +26,10 @@ export interface RmtMcpToolDescriptor {
 
 export interface RmtArenaPublicReader {
   read(seasonId: string): Promise<PaperArenaPublicReadModel>;
+}
+
+export interface RmtArenaPublicSeasonResultReader {
+  read(seasonId: string): Promise<PaperArenaPublicSeasonResult | null>;
 }
 
 export interface RmtArenaMatchupToolResult {
@@ -47,7 +55,15 @@ export interface RmtArenaLeaderboardToolResult {
   resultHash: string;
 }
 
-export type RmtMcpToolResult = RmtArenaMatchupToolResult | RmtArenaLeaderboardToolResult;
+export interface RmtArenaSeasonResultToolResult {
+  schemaVersion: 1;
+  tool: "rmt_arena_season_result";
+  contractVersion: typeof RMT_MCP_TOOL_CONTRACT_V1;
+  seasonResult: PaperArenaPublicSeasonResult;
+  resultHash: string;
+}
+
+export type RmtMcpToolResult = RmtArenaMatchupToolResult | RmtArenaLeaderboardToolResult | RmtArenaSeasonResultToolResult;
 
 function fail(message: string): never {
   throw new Error(message);
@@ -63,6 +79,13 @@ function assertRecord(value: unknown, field: string): asserts value is Record<st
 
 function assertHash(value: string, field: string): void {
   if (!/^0x[0-9a-f]{64}$/.test(value)) fail(`${field} must be a sha256 hex hash`);
+}
+
+function assertSeasonOnlyInput(input: Record<string, unknown>, tool: string): string {
+  const keys = Object.keys(input);
+  if (keys.some((key) => key !== "seasonId")) fail(`${tool} input contains unsupported fields`);
+  assertNonEmpty(input.seasonId, `${tool} seasonId`);
+  return input.seasonId.trim();
 }
 
 function arenaLeaderboard(arena: PaperArenaPublicReadModel, view: RmtArenaLeaderboardView): PublicArenaLeaderboard {
@@ -102,6 +125,19 @@ export function rmtMcpReadOnlyToolDescriptors(): RmtMcpToolDescriptor[] {
         },
       },
     },
+    {
+      name: "rmt_arena_season_result",
+      title: "RMT Arena Final Season Result",
+      description: "Read the sanitized immutable finalized result for a completed RMT Arena season.",
+      readOnly: true,
+      destructive: false,
+      inputSchema: {
+        type: "object",
+        additionalProperties: false,
+        required: ["seasonId"],
+        properties: { seasonId: { type: "string", minLength: 1 } },
+      },
+    },
   ];
 }
 
@@ -114,6 +150,10 @@ export function assertRmtMcpToolResult(result: RmtMcpToolResult): void {
     assertPaperArenaPublicReadModel(result.arena);
     return;
   }
+  if (result.tool === "rmt_arena_season_result") {
+    assertPaperArenaPublicSeasonResult(result.seasonResult);
+    return;
+  }
   assertNonEmpty(result.seasonId, "RMT MCP seasonId");
   if (result.view !== "OVERALL" && result.view !== "AGENT" && result.view !== "HUMAN") fail("RMT MCP leaderboard view is invalid");
   assertHash(result.arenaPublicHash, "RMT MCP arenaPublicHash");
@@ -123,10 +163,12 @@ export function assertRmtMcpToolResult(result: RmtMcpToolResult): void {
 }
 
 export class RmtMcpReadOnlyToolService {
-  private readonly reader: RmtArenaPublicReader;
+  private readonly arenaReader: RmtArenaPublicReader;
+  private readonly seasonResultReader?: RmtArenaPublicSeasonResultReader;
 
-  constructor(reader: RmtArenaPublicReader) {
-    this.reader = reader;
+  constructor(input: { arenaReader: RmtArenaPublicReader; seasonResultReader?: RmtArenaPublicSeasonResultReader }) {
+    this.arenaReader = input.arenaReader;
+    this.seasonResultReader = input.seasonResultReader;
   }
 
   listTools(): RmtMcpToolDescriptor[] {
@@ -134,13 +176,14 @@ export class RmtMcpReadOnlyToolService {
   }
 
   async callTool(name: string, input: unknown): Promise<RmtMcpToolResult> {
-    if (name !== "rmt_arena_matchup" && name !== "rmt_arena_leaderboard") fail("unknown or non-admitted RMT MCP tool");
+    if (name !== "rmt_arena_matchup" && name !== "rmt_arena_leaderboard" && name !== "rmt_arena_season_result") {
+      fail("unknown or non-admitted RMT MCP tool");
+    }
     assertRecord(input, "RMT MCP tool input");
-    const keys = Object.keys(input);
+
     if (name === "rmt_arena_matchup") {
-      if (keys.some((key) => key !== "seasonId")) fail("rmt_arena_matchup input contains unsupported fields");
-      assertNonEmpty(input.seasonId, "rmt_arena_matchup seasonId");
-      const arena = await this.reader.read(input.seasonId.trim());
+      const seasonId = assertSeasonOnlyInput(input, "rmt_arena_matchup");
+      const arena = await this.arenaReader.read(seasonId);
       assertPaperArenaPublicReadModel(arena);
       if (arena.apiVersion !== RMT_ARENA_PUBLIC_READ_MODEL_V1) fail("Arena public read-model version mismatch");
       const payload: Omit<RmtArenaMatchupToolResult, "resultHash"> = {
@@ -154,10 +197,28 @@ export class RmtMcpReadOnlyToolService {
       return result;
     }
 
+    if (name === "rmt_arena_season_result") {
+      const seasonId = assertSeasonOnlyInput(input, "rmt_arena_season_result");
+      if (!this.seasonResultReader) fail("RMT MCP finalized-season reader is not configured");
+      const seasonResult = await this.seasonResultReader.read(seasonId);
+      if (!seasonResult) fail("RMT Arena season is not finalized or is unavailable");
+      assertPaperArenaPublicSeasonResult(seasonResult);
+      const payload: Omit<RmtArenaSeasonResultToolResult, "resultHash"> = {
+        schemaVersion: 1,
+        tool: "rmt_arena_season_result",
+        contractVersion: RMT_MCP_TOOL_CONTRACT_V1,
+        seasonResult: structuredClone(seasonResult),
+      };
+      const result: RmtArenaSeasonResultToolResult = { ...payload, resultHash: hashCanonicalPayload(payload) };
+      assertRmtMcpToolResult(result);
+      return result;
+    }
+
+    const keys = Object.keys(input);
     if (keys.some((key) => key !== "seasonId" && key !== "view")) fail("rmt_arena_leaderboard input contains unsupported fields");
     assertNonEmpty(input.seasonId, "rmt_arena_leaderboard seasonId");
     if (input.view !== "OVERALL" && input.view !== "AGENT" && input.view !== "HUMAN") fail("rmt_arena_leaderboard view is invalid");
-    const arena = await this.reader.read(input.seasonId.trim());
+    const arena = await this.arenaReader.read(input.seasonId.trim());
     assertPaperArenaPublicReadModel(arena);
     const payload: Omit<RmtArenaLeaderboardToolResult, "resultHash"> = {
       schemaVersion: 1,
