@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { getAddress, isAddress } from "viem";
 import type { AssetMetadata } from "../../lib/vnext/execution-domain";
 import type { ExternalMarketResponse } from "../../lib/external-market";
 import {
@@ -64,18 +65,61 @@ export function useVNextMarketDirectory() {
   const hasData = useRef(false);
   const marketSnapshot = useRef("");
   const identityCache = useRef(new Map<string, AssetMetadata | null>());
+  const exactLookupMarket = useRef<VNextDirectoryMarket | undefined>(undefined);
+  const fastDirectoryMarkets = useRef<VNextDirectoryMarket[]>([]);
+  const ecosystemMarkets = useRef<VNextDirectoryMarket[]>([]);
+
+  const publishMarkets = useCallback(() => {
+    const byAddress = new Map<string, VNextDirectoryMarket>();
+    for (const market of ecosystemMarkets.current) byAddress.set(market.address.toLowerCase(), market);
+    for (const market of fastDirectoryMarkets.current) byAddress.set(market.address.toLowerCase(), market);
+    if (exactLookupMarket.current) byAddress.set(exactLookupMarket.current.address.toLowerCase(), exactLookupMarket.current);
+    const nextMarkets = [...byAddress.values()].sort((left, right) => right.liquidityUsd - left.liquidityUsd || right.volume24h - left.volume24h);
+    const nextSnapshot = directorySnapshot(nextMarkets);
+    if (nextSnapshot !== marketSnapshot.current) {
+      marketSnapshot.current = nextSnapshot;
+      setMarkets(nextMarkets);
+    }
+    return nextMarkets;
+  }, []);
+
+  const selectAddress = useCallback(async (rawAddress: string) => {
+    const exact = markets.find((market) => market.address.toLowerCase() === rawAddress.toLowerCase());
+    if (exact) {
+      setSelectedAddress(exact.address);
+      return true;
+    }
+    if (!isAddress(rawAddress, { strict: false })) return false;
+    const address = getAddress(rawAddress);
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), IDENTITY_LOOKUP_TIMEOUT_MS);
+    try {
+      const query = new URLSearchParams({ contract: address });
+      const response = await fetch(`/api/markets/external?${query}`, { cache: "no-store", signal: controller.signal });
+      const payload = await response.json() as ExternalMarketResponse;
+      const discovered = normalizeDirectoryMarkets(payload).find((market) => market.address.toLowerCase() === address.toLowerCase());
+      if (!response.ok || !discovered) return false;
+      setMarkets((current) => current.some((market) => market.address.toLowerCase() === address.toLowerCase())
+        ? current
+        : [discovered, ...current]);
+      exactLookupMarket.current = discovered;
+      setSelectedAddress(discovered.address);
+      return true;
+    } catch {
+      return false;
+    } finally {
+      window.clearTimeout(timeout);
+    }
+  }, [markets]);
 
   const refresh = useCallback(async () => {
     try {
       const response = await fetch("/api/vnext/market-directory", { cache: "no-store" });
       const payload = await response.json() as VNextDirectoryResponse;
-      const nextMarkets = normalizeDirectoryMarkets(payload);
+      const directoryMarkets = normalizeDirectoryMarkets(payload);
+      fastDirectoryMarkets.current = directoryMarkets;
+      const nextMarkets = publishMarkets();
       if (!response.ok || nextMarkets.length === 0) throw new Error(payload.error ?? "Market directory unavailable.");
-      const nextSnapshot = directorySnapshot(nextMarkets);
-      if (nextSnapshot !== marketSnapshot.current) {
-        marketSnapshot.current = nextSnapshot;
-        setMarkets(nextMarkets);
-      }
       setSelectedAddress((current) => current && nextMarkets.some((market) => market.address.toLowerCase() === current.toLowerCase())
         ? current
         : nextMarkets.find((market) => market.address === ROBINHOOD_RMT_ADDRESS)?.address ?? nextMarkets[0].address);
@@ -84,13 +128,30 @@ export function useVNextMarketDirectory() {
     } catch {
       setStatus(hasData.current ? "stale" : "error");
     }
-  }, []);
+  }, [publishMarkets]);
+
+  const refreshEcosystemDirectory = useCallback(async () => {
+    try {
+      const response = await fetch("/api/markets/external", { cache: "no-store" });
+      const payload = await response.json() as ExternalMarketResponse;
+      if (!response.ok) return;
+      ecosystemMarkets.current = normalizeDirectoryMarkets(payload);
+      publishMarkets();
+    } catch {
+      // The fast directory remains authoritative for availability when broader discovery is delayed.
+    }
+  }, [publishMarkets]);
 
   useEffect(() => {
     void refresh();
+    void refreshEcosystemDirectory();
     const interval = window.setInterval(() => void refresh(), 30_000);
-    return () => window.clearInterval(interval);
-  }, [refresh]);
+    const ecosystemInterval = window.setInterval(() => void refreshEcosystemDirectory(), 60_000);
+    return () => {
+      window.clearInterval(interval);
+      window.clearInterval(ecosystemInterval);
+    };
+  }, [refresh, refreshEcosystemDirectory]);
 
   const selected = useMemo(
     () => markets.find((market) => market.address.toLowerCase() === selectedAddress?.toLowerCase()),
@@ -154,5 +215,5 @@ export function useVNextMarketDirectory() {
     };
   }, [selected]);
 
-  return { markets, status, selected, selectedAsset, identityStatus, selectedAddress, setSelectedAddress, refresh };
+  return { markets, status, selected, selectedAsset, identityStatus, selectedAddress, setSelectedAddress, selectAddress, refresh };
 }

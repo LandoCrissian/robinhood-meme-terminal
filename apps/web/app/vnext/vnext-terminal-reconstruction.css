@@ -1,0 +1,868 @@
+/* Presentation-only reconstruction. Existing VNext execution component styles remain below this shell. */
+body .rmtTerminal {
+  --rmt-header: 58px;
+  --rmt-divider: rgba(220, 235, 221, 0.12);
+  --rmt-panel: #0f1411;
+  --rmt-panel-2: #121814;
+  --rmt-muted: #8c978e;
+  display: block;
+  min-height: 100svh;
+  background: #090d0b;
+}
+
+.rmtTerminalBrand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 180px;
+  color: var(--vn-text);
+  text-decoration: none;
+}
+
+.rmtTerminalBrand img {
+  border: 1px solid rgba(130, 242, 143, 0.18);
+  border-radius: 8px;
+}
+
+.rmtTerminalBrand > span {
+  display: grid;
+  line-height: 1.05;
+}
+
+.rmtTerminalBrand strong {
+  font-size: 15px;
+  letter-spacing: 0.12em;
+}
+
+.rmtTerminalBrand small {
+  margin-top: 4px;
+  color: var(--rmt-muted);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.rmtTerminalBrand.isCompact {
+  min-width: auto;
+}
+
+.rmtDesktopHeader {
+  position: sticky;
+  z-index: 30;
+  top: 0;
+  display: grid;
+  grid-template-columns: auto auto minmax(240px, 520px) 1fr auto;
+  align-items: center;
+  gap: 22px;
+  height: var(--rmt-header);
+  padding: 0 16px;
+  background: rgba(9, 13, 11, 0.96);
+  border-bottom: 1px solid var(--rmt-divider);
+  backdrop-filter: blur(14px);
+}
+
+.rmtDesktopHeader nav {
+  display: flex;
+  align-items: stretch;
+  height: 100%;
+}
+
+.rmtDesktopHeader nav a {
+  display: grid;
+  min-width: 68px;
+  place-items: center;
+  padding: 0 12px;
+  border-bottom: 2px solid transparent;
+  color: var(--rmt-muted);
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.rmtDesktopHeader nav a:hover,
+.rmtDesktopHeader nav a.isActive {
+  border-bottom-color: var(--vn-accent);
+  color: var(--vn-text);
+}
+
+.rmtMarketSearch {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  min-width: 0;
+  height: 38px;
+  border: 1px solid var(--rmt-divider);
+  border-radius: 7px;
+  background: #111713;
+}
+
+.rmtMarketSearch > span {
+  padding-left: 12px;
+  color: var(--rmt-muted);
+  font-size: 18px;
+}
+
+.rmtMarketSearch input {
+  width: 100%;
+  min-width: 0;
+  height: 36px;
+  padding: 0 10px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--vn-text);
+  font-size: 12px;
+}
+
+.rmtMarketSearch button {
+  height: 36px;
+  margin-right: 0;
+  padding: 0 10px;
+  border: 0;
+  border-left: 1px solid var(--rmt-divider);
+  background: transparent;
+  color: var(--vn-accent);
+  font-size: 10px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.rmtChainState {
+  justify-self: end;
+  color: var(--rmt-muted);
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.rmtChainState i {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 5px;
+  border-radius: 50%;
+  background: var(--vn-accent);
+  box-shadow: 0 0 0 3px rgba(130, 242, 143, 0.1);
+}
+
+.rmtDesktopBalance {
+  border-bottom: 1px solid var(--rmt-divider);
+}
+
+.rmtDesktopBalance .vnBalanceBar {
+  grid-template-columns: minmax(170px, 0.75fr) repeat(2, minmax(150px, 0.65fr)) auto;
+  min-height: 72px;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: #0d120f;
+  box-shadow: none;
+}
+
+.rmtDesktopBalance .vnBalancePrimary,
+.rmtDesktopBalance .vnBalanceMetric,
+.rmtDesktopBalance .vnBalanceActions {
+  min-height: 72px;
+  padding: 10px 18px;
+}
+
+.rmtDesktopBalance .vnBalancePrimary > strong {
+  font-size: 24px;
+}
+
+.rmtDesktopBalance .vnBalanceMetric strong {
+  margin-top: 2px;
+  font-size: 15px;
+}
+
+.rmtDesktopBalance .vnBalancePrimary small,
+.rmtDesktopBalance .vnBalanceMetric small {
+  margin-top: 2px;
+  font-size: 9px;
+}
+
+.rmtDesktopBalance .vnDetectedAssets {
+  padding-bottom: 0;
+}
+
+.rmtDesktopBalance .vnDetectedAssetsBody {
+  display: none;
+}
+
+.rmtDesktopBalance .vnDetectedAssets.isExpanded .vnDetectedAssetsBody {
+  display: block;
+  padding-bottom: 16px;
+}
+
+.rmtDesktopBalance .vnDetectedAssetsToggle {
+  display: inline-flex;
+  align-items: center;
+}
+
+.rmtDesktopWorkstation {
+  display: grid;
+  grid-template-columns: 254px minmax(470px, 1fr) 368px;
+  min-height: calc(100svh - var(--rmt-header) - 73px);
+}
+
+.rmtDesktopMarkets,
+.rmtDesktopExecution {
+  min-width: 0;
+  background: var(--rmt-panel);
+}
+
+.rmtDesktopMarkets {
+  border-right: 1px solid var(--rmt-divider);
+}
+
+.rmtDesktopMarkets > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 52px;
+  padding: 0 13px;
+  border-bottom: 1px solid var(--rmt-divider);
+}
+
+.rmtDesktopMarkets > header h1 {
+  margin: 0;
+  font-size: 15px;
+  letter-spacing: -0.02em;
+}
+
+.rmtDesktopMarkets > header > span {
+  color: var(--rmt-muted);
+  font-size: 10px;
+}
+
+.rmtMarketDirectory.isdesktop {
+  height: calc(100svh - var(--rmt-header) - 73px - 52px);
+  min-height: 520px;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+
+.rmtMarketItem {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  min-width: 0;
+  min-height: 57px;
+  padding: 7px 11px;
+  border: 0;
+  border-bottom: 1px solid rgba(220, 235, 221, 0.065);
+  border-left: 2px solid transparent;
+  background: transparent;
+  color: var(--vn-text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.rmtMarketItem:hover {
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.rmtMarketItem.isSelected {
+  border-left-color: var(--vn-accent);
+  background: rgba(130, 242, 143, 0.065);
+}
+
+.rmtMarketArtwork {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid var(--rmt-divider);
+  border-radius: 50%;
+  background: #172019;
+  color: var(--vn-accent);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.rmtMarketArtwork img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.rmtMarketName,
+.rmtMarketQuote {
+  display: grid;
+  min-width: 0;
+}
+
+.rmtMarketName strong,
+.rmtMarketQuote strong {
+  overflow: hidden;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rmtMarketName small,
+.rmtMarketQuote small {
+  overflow: hidden;
+  color: var(--rmt-muted);
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rmtMarketQuote {
+  justify-items: end;
+}
+
+.rmtDirectoryMessage,
+.rmtEmptyWorkspace {
+  display: grid;
+  place-content: center;
+  gap: 5px;
+  min-height: 180px;
+  padding: 24px;
+  color: var(--rmt-muted);
+  text-align: center;
+}
+
+.rmtDirectoryMessage strong,
+.rmtEmptyWorkspace strong {
+  color: var(--vn-text);
+}
+
+.rmtDirectoryMessage button {
+  min-height: 40px;
+  margin-top: 8px;
+  border: 1px solid var(--rmt-divider);
+  background: var(--rmt-panel-2);
+  color: var(--vn-text);
+}
+
+.rmtDesktopAsset {
+  min-width: 0;
+  background: #0b100d;
+  overflow: hidden;
+}
+
+.rmtDesktopAsset .vnAssetPanel {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.rmtDesktopAsset .vnAssetWorkspace {
+  padding: 14px 18px 20px;
+}
+
+.rmtDesktopAsset .vnAssetWorkspaceHeader {
+  margin-bottom: 4px;
+}
+
+.rmtDesktopAsset .vnAssetWorkspaceHeader h2 {
+  font-size: 18px;
+}
+
+.rmtDesktopAsset .vnAssetPrice {
+  margin-top: 4px;
+}
+
+.rmtDesktopAsset .vnAssetPrice > strong {
+  font-size: 25px;
+}
+
+.rmtDesktopAsset .vnAssetStats {
+  margin: 8px 0 10px;
+  border: 1px solid var(--rmt-divider);
+  border-radius: 5px;
+}
+
+.rmtDesktopAsset .vnChart {
+  min-height: min(45svh, 430px);
+  margin-top: 0;
+  border: 1px solid var(--rmt-divider);
+  border-radius: 5px;
+  background: #0c120e;
+}
+
+.rmtDesktopAsset .vnChartFrame {
+  min-height: clamp(260px, 34svh, 360px);
+}
+
+.rmtWorkspaceTabs {
+  display: flex;
+  gap: 2px;
+  margin-top: 12px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--rmt-divider);
+  scrollbar-width: none;
+}
+
+.rmtWorkspaceTabs::-webkit-scrollbar {
+  display: none;
+}
+
+.rmtWorkspaceTabs button {
+  min-width: max-content;
+  min-height: 38px;
+  padding: 0 12px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--rmt-muted);
+  font-size: 10px;
+  font-weight: 780;
+  cursor: pointer;
+}
+
+.rmtWorkspaceTabs button.isActive {
+  border-bottom-color: var(--vn-accent);
+  color: var(--vn-text);
+}
+
+.rmtWorkspaceIntelligence {
+  padding-top: 10px;
+}
+
+.rmtWorkspaceIntelligence .vnWorkspaceCard {
+  min-height: 160px;
+  border: 1px solid var(--rmt-divider);
+  border-radius: 5px;
+  background: #0f1511;
+  box-shadow: none;
+}
+
+.rmtDesktopExecution {
+  border-left: 1px solid var(--rmt-divider);
+}
+
+.rmtDesktopExecution .vnTradePanel {
+  position: sticky;
+  top: calc(var(--rmt-header) + 10px);
+  width: 100%;
+  max-height: calc(100svh - var(--rmt-header) - 12px);
+  padding: 16px;
+  overflow-y: auto;
+  border: 0;
+  border-radius: 0;
+  background: var(--rmt-panel);
+  box-shadow: none;
+}
+
+.rmtDesktopExecution .vnTradeHeader h2 {
+  font-size: 18px;
+}
+
+.rmtDesktopExecution .vnAmountField,
+.rmtDesktopExecution .vnReceiveField,
+.rmtDesktopExecution .vnRouteCard {
+  border-radius: 6px;
+}
+
+.rmtDesktopExecution .vnReviewButton {
+  min-height: 48px;
+  border-radius: 6px;
+}
+
+/* Mobile is a separate composition, not a CSS-reordered workstation. */
+.rmtMobileTerminal {
+  min-width: 0;
+  padding-bottom: calc(76px + env(safe-area-inset-bottom));
+}
+
+.rmtMobileTerminal button,
+.rmtMobileTerminal summary,
+.rmtMobileTerminal input,
+.rmtMobileTerminal select {
+  min-height: 44px;
+}
+
+.rmtMobileHeader {
+  position: sticky;
+  z-index: 20;
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 56px;
+  padding: 8px 12px;
+  background: rgba(9, 13, 11, 0.96);
+  border-bottom: 1px solid var(--rmt-divider);
+  backdrop-filter: blur(14px);
+}
+
+.rmtMobileSearch {
+  padding: 10px 12px;
+  background: #0d120f;
+  border-bottom: 1px solid var(--rmt-divider);
+}
+
+.rmtMobileSearch .rmtMarketSearch {
+  height: 44px;
+}
+
+.rmtMobileSearch .rmtMarketSearch input {
+  height: 42px;
+  font-size: 16px;
+}
+
+.rmtMobileBalance .vnBalanceBar {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  min-height: 0;
+  margin: 0;
+  border: 0;
+  border-bottom: 1px solid var(--rmt-divider);
+  border-radius: 0;
+  background: #0d120f;
+  box-shadow: none;
+}
+
+.rmtMobileBalance .vnBalancePrimary,
+.rmtMobileBalance .vnBalanceMetric,
+.rmtMobileBalance .vnBalanceActions {
+  min-height: 72px;
+  padding: 11px 12px;
+}
+
+.rmtMobileBalance .vnBalancePrimary > strong {
+  font-size: 23px;
+}
+
+.rmtMobileBalance .vnBalanceMetric strong {
+  margin-top: 4px;
+  font-size: 15px;
+}
+
+.rmtMobileBalance .vnBalanceMetric:nth-of-type(3) {
+  display: none;
+}
+
+.rmtMobileBalance .vnBalanceActions {
+  grid-column: 1 / -1;
+  min-height: 54px;
+  padding: 7px 12px;
+  border-top: 1px solid var(--rmt-divider);
+}
+
+.rmtMobileBalance .vnBalanceActions > * {
+  flex: 1;
+}
+
+.rmtMobileBalance .vnBalanceActions > .fundWalletMenu .fundWalletTrigger,
+.rmtMobileBalance .vnBalanceSend {
+  width: 100%;
+  min-height: 42px;
+  border-radius: 6px;
+}
+
+.rmtMobileBalance .vnDetectedAssets {
+  grid-column: 1 / -1;
+  padding: 0 12px;
+}
+
+.rmtMobileBalance .vnDetectedAssetsBody {
+  display: none;
+}
+
+.rmtMobileBalance .vnDetectedAssets.isExpanded .vnDetectedAssetsBody {
+  display: block;
+  padding-bottom: 12px;
+}
+
+.rmtMobileBalance .vnDetectedAssetsToggle {
+  display: inline-flex;
+  align-items: center;
+}
+
+.rmtMobileDiscovery {
+  border-bottom: 1px solid var(--rmt-divider);
+  background: var(--rmt-panel);
+}
+
+.rmtMobileDiscovery > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 54px;
+  padding: 8px 12px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.rmtMobileDiscovery > summary::-webkit-details-marker {
+  display: none;
+}
+
+.rmtMobileDiscovery > summary span {
+  display: grid;
+}
+
+.rmtMobileDiscovery > summary small {
+  color: var(--rmt-muted);
+  font-size: 9px;
+}
+
+.rmtMarketDirectory.ismobile {
+  max-height: 224px;
+  overflow-y: auto;
+  border-top: 1px solid var(--rmt-divider);
+}
+
+.rmtMarketDirectory.ismobile .rmtMarketItem {
+  grid-template-columns: 38px minmax(0, 1fr) auto;
+  min-height: 58px;
+  padding: 8px 12px;
+}
+
+.rmtMarketDirectory.ismobile .rmtMarketArtwork {
+  width: 34px;
+  height: 34px;
+}
+
+.rmtMobileAsset .vnAssetPanel {
+  padding: 14px 12px 22px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.rmtMobileAsset .vnAssetWorkspaceHeader {
+  align-items: flex-start;
+}
+
+.rmtMobileAsset .vnAssetWorkspaceHeader h2 {
+  font-size: 17px;
+}
+
+.rmtMobileAsset .vnWorkspaceStatus {
+  font-size: 8px;
+}
+
+.rmtMobileAsset .vnAssetPrice {
+  margin-top: 8px;
+}
+
+.rmtMobileAsset .vnAssetPrice > strong {
+  font-size: 27px;
+}
+
+.rmtMobileAsset .vnAssetStats {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 10px 0;
+  border: 1px solid var(--rmt-divider);
+  border-radius: 5px;
+}
+
+.rmtMobileAsset .vnAssetStats > div:last-child {
+  display: none;
+}
+
+.rmtMobileAsset .vnChart {
+  min-height: 310px;
+  margin-top: 0;
+  border: 1px solid var(--rmt-divider);
+  border-radius: 5px;
+  background: #0c120e;
+}
+
+.rmtMobileAsset .vnChartHeader {
+  align-items: flex-start;
+}
+
+.rmtMobileAsset .vnChartControls {
+  align-items: flex-end;
+  flex-direction: column;
+}
+
+.rmtMobileAsset .vnChartFrame {
+  min-height: 224px;
+}
+
+.rmtMobileAsset .rmtWorkspaceTabs {
+  margin-right: -12px;
+  margin-left: -12px;
+  padding: 0 6px;
+}
+
+.rmtMobileAsset .rmtWorkspaceTabs button {
+  min-height: 44px;
+  padding: 0 11px;
+}
+
+.rmtMobileAsset .rmtWorkspaceIntelligence .vnWorkspaceCard {
+  border-radius: 5px;
+}
+
+.rmtMobileTradeDock {
+  position: fixed;
+  z-index: 45;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 9px 12px calc(9px + env(safe-area-inset-bottom));
+  background: rgba(9, 13, 11, 0.96);
+  border-top: 1px solid var(--rmt-divider);
+  backdrop-filter: blur(14px);
+}
+
+.rmtMobileTradeDock button {
+  min-height: 48px;
+  border: 1px solid rgba(130, 242, 143, 0.32);
+  border-radius: 7px;
+  background: var(--vn-accent);
+  color: #061008;
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.rmtMobileTradeDock button.isSell {
+  border-color: var(--rmt-divider);
+  background: #18201a;
+  color: var(--vn-text);
+}
+
+.rmtMobileTradeDock button:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
+.rmtMobileSheetLayer {
+  position: fixed;
+  z-index: 80;
+  inset: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.rmtMobileSheetLayer.isOpen {
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.rmtMobileSheetBackdrop {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  border: 0;
+  background: rgba(0, 0, 0, 0.68);
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+
+.rmtMobileSheetLayer.isOpen .rmtMobileSheetBackdrop {
+  opacity: 1;
+}
+
+.rmtMobileTradeSheet {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  max-height: min(92svh, 820px);
+  padding-bottom: env(safe-area-inset-bottom);
+  overflow: hidden;
+  border: 1px solid var(--rmt-divider);
+  border-bottom: 0;
+  border-radius: 16px 16px 0 0;
+  background: #0e1410;
+  box-shadow: 0 -20px 70px rgba(0, 0, 0, 0.5);
+  transform: translateY(102%);
+  transition: transform 180ms ease;
+}
+
+.rmtMobileSheetLayer.isOpen .rmtMobileTradeSheet {
+  transform: translateY(0);
+}
+
+.rmtMobileTradeSheet > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 48px;
+  padding: 6px 12px 6px 16px;
+  border-bottom: 1px solid var(--rmt-divider);
+  color: var(--rmt-muted);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.rmtMobileTradeSheet > header button {
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 50%;
+  background: #19211b;
+  color: var(--vn-text);
+  font-size: 25px;
+}
+
+.rmtMobileTradeSheetScroll {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.rmtMobileTradeSheet .vnTradePanel {
+  width: 100%;
+  min-height: 0;
+  padding: 14px 12px 22px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.rmtMobileTradeSheet .vnReviewButton {
+  min-height: 50px;
+  border-radius: 7px;
+}
+
+@media (max-width: 1180px) and (min-width: 761px) {
+  .rmtDesktopHeader {
+    grid-template-columns: auto minmax(230px, 1fr) auto;
+    gap: 14px;
+  }
+
+  .rmtDesktopHeader nav,
+  .rmtChainState {
+    display: none;
+  }
+
+  .rmtDesktopWorkstation {
+    grid-template-columns: 220px minmax(400px, 1fr) 330px;
+  }
+
+  .rmtDesktopAsset .vnAssetWorkspace {
+    padding-right: 12px;
+    padding-left: 12px;
+  }
+}
+
+@media (max-width: 760px) {
+  body .rmtTerminal {
+    font-size: 13px;
+  }
+
+  .rmtDesktopTerminal {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rmtMobileSheetBackdrop,
+  .rmtMobileTradeSheet {
+    transition: none;
+  }
+}

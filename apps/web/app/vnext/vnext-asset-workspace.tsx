@@ -318,22 +318,48 @@ function WorkspaceEcosystemIntelligence({ ecosystem }: { ecosystem?: VNextEcosys
 }
 
 export function VNextAssetWorkspace({
+  presentation,
   directoryMarket,
   identityStatus,
   walletAssets,
   onTradeSide
 }: {
+  presentation: "desktop" | "mobile";
   directoryMarket: VNextDirectoryMarket;
   identityStatus: IdentityStatus;
   walletAssets: VNextDetectedWalletAsset[];
   onTradeSide: (side: "buy" | "sell") => void;
 }) {
+  const [section, setSection] = useState<"activity" | "evidence" | "markets" | "origin" | "position" | "ecosystem" | "rwa">("activity");
   const workspace = useVNextAssetWorkspace(directoryMarket.address, directoryMarket.pairAddress);
   const resolution = workspace.resolution ?? workspace.market?.resolution;
   const market = workspace.market ?? fallbackMarketFromResolution(directoryMarket, resolution);
   const selectedPool = market?.pairAddress ?? directoryMarket.pairAddress ?? resolution?.pools[0]?.poolAddress;
 
-  return <section className="vnAssetPanel vnAssetWorkspace" aria-labelledby="vn-asset-heading">
+  const sections = [
+    { id: "activity", label: "Activity" },
+    { id: "evidence", label: "Safety" },
+    { id: "markets", label: "Markets" },
+    { id: "position", label: "Position" },
+    { id: "origin", label: "Origin" },
+    { id: "ecosystem", label: "up." },
+    { id: "rwa", label: "RWA" }
+  ] as const;
+  const intelligence = section === "activity"
+    ? market ? <WorkspaceActivity market={market} /> : <div className="vnWorkspaceCard vnWorkspaceEmpty"><strong>Trade activity loading</strong><span>Exact-pool activity appears only after the selected market is verified.</span></div>
+    : section === "evidence"
+      ? market ? <WorkspaceEvidence market={market} /> : <div className="vnWorkspaceCard vnWorkspaceEmpty"><strong>Market evidence loading</strong><span>Missing contract, liquidity and holder evidence remains unknown.</span></div>
+      : section === "markets"
+        ? <VerifiedMarkets resolution={resolution} selectedPool={selectedPool} />
+        : section === "position"
+          ? <WorkspacePosition directoryMarket={directoryMarket} walletAssets={walletAssets} onTradeSide={onTradeSide} />
+          : section === "origin"
+            ? <WorkspaceOrigin market={market} token={directoryMarket.address} />
+            : section === "ecosystem"
+              ? <WorkspaceEcosystemIntelligence ecosystem={workspace.ecosystem} />
+              : <WorkspaceRwaRelationships market={market} coverage={workspace.stockAssetCoverage} />;
+
+  return <section className={`vnAssetPanel vnAssetWorkspace is${presentation}`} aria-labelledby="vn-asset-heading">
     <header className="vnAssetWorkspaceHeader">
       <div className="vnAssetWorkspaceIdentity"><TokenArtwork className="vnAssetWorkspaceMark" symbol={directoryMarket.symbol} imageUrl={directoryMarket.imageUri} /><span><span className="vnEyebrow">Asset workspace</span><h2 id="vn-asset-heading">{directoryMarket.name} <b>{directoryMarket.symbol}</b></h2><small>Robinhood Chain · {identityStatus === "verified" ? "contract verified" : identityStatus === "checking" ? "identity checking" : "detected asset"}</small></span></div>
       <span className={`vnWorkspaceStatus is${workspace.status}`}><i aria-hidden="true" />{workspace.status === "ready" ? "Live evidence" : workspace.status === "partial" ? "Partial evidence" : workspace.status === "stale" ? "Last verified" : workspace.status === "loading" ? "Loading evidence" : "Evidence unavailable"}</span>
@@ -343,17 +369,9 @@ export function VNextAssetWorkspace({
 
     {selectedPool ? <VNextMarketChart token={directoryMarket.address} pair={selectedPool} symbol={directoryMarket.symbol} /> : <div className="vnChart vnChartEmpty"><strong>Verified pool required</strong><span>RMT will not render invented price history.</span></div>}
 
-    <div className="vnWorkspaceQuickGrid">
-      <WorkspacePosition directoryMarket={directoryMarket} walletAssets={walletAssets} onTradeSide={onTradeSide} />
-      <WorkspaceOrigin market={market} token={directoryMarket.address} />
+    <div className="rmtWorkspaceTabs" role="tablist" aria-label="Asset intelligence">
+      {sections.map((item) => <button key={item.id} type="button" role="tab" aria-selected={section === item.id} className={section === item.id ? "isActive" : ""} onClick={() => setSection(item.id)}>{item.label}</button>)}
     </div>
-
-    <div className="vnWorkspaceEvidenceGrid">
-      {market ? <WorkspaceActivity market={market} /> : <div className="vnWorkspaceCard vnWorkspaceEmpty"><strong>Trade activity loading</strong><span>Exact-pool activity appears only after the selected market is verified.</span></div>}
-      {market ? <WorkspaceEvidence market={market} /> : <div className="vnWorkspaceCard vnWorkspaceEmpty"><strong>Market evidence loading</strong><span>Missing contract, liquidity and holder evidence remains unknown.</span></div>}
-      <WorkspaceEcosystemIntelligence ecosystem={workspace.ecosystem} />
-      <WorkspaceRwaRelationships market={market} coverage={workspace.stockAssetCoverage} />
-      <VerifiedMarkets resolution={resolution} selectedPool={selectedPool} />
-    </div>
+    <div className="rmtWorkspaceIntelligence" role="tabpanel">{intelligence}</div>
   </section>;
 }
