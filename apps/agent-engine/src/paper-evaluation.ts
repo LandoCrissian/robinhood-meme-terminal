@@ -1,9 +1,8 @@
 import { randomUUID } from "node:crypto";
 import {
   assertAgentRunRecord,
-  assertPredictionAssetAllowed,
   buildMarketSnapshot,
-  canonicalizePredictionAsset,
+  canonicalizeEvaluationProposalAssets,
   hashAgentRunPayload,
   hashCanonicalPayload,
   parseEvaluationProposal,
@@ -37,7 +36,7 @@ export interface PaperDecisionAdapterInput {
   strategy: StrategySpec;
   marketSnapshot: AgentMarketSnapshot;
   evaluatedAt: number;
-  outputInstruction: "NO_ACTION_OR_PREDICTION_ONLY";
+  outputInstruction: "NO_ACTION_PREDICTION_OR_OPEN_POSITION";
 }
 
 export interface PaperDecisionAdapter {
@@ -210,11 +209,10 @@ export class PaperEvaluationService {
         strategy: structuredClone(strategy.spec),
         marketSnapshot: structuredClone(marketSnapshot),
         evaluatedAt,
-        outputInstruction: "NO_ACTION_OR_PREDICTION_ONLY",
+        outputInstruction: "NO_ACTION_PREDICTION_OR_OPEN_POSITION",
       });
       const parsedProposal = parseEvaluationProposal(rawProposal, strategy.spec, evaluatedAt);
-      const proposal = canonicalizePredictionAsset(parsedProposal, strategy.spec, marketSnapshot);
-      assertPredictionAssetAllowed(proposal, strategy.spec, marketSnapshot);
+      const proposal = canonicalizeEvaluationProposalAssets(parsedProposal, strategy.spec, marketSnapshot);
       const proposalHash = hashCanonicalPayload(proposal);
       const payload: Omit<AgentRunRecord, "runHash"> = {
         runId: randomUUID(),
