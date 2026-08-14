@@ -1,9 +1,9 @@
 # RMT agent architecture
 
-**Status: CURRENT FOUNDATION — DURABLE PAPER ONLY + STRATEGY COMPILER ADMISSION**
+**Status: CURRENT FOUNDATION — DURABLE PAPER ONLY + STRATEGY COMPILER + READ-ONLY EVALUATION RUNS**
 **Admitted:** 2026-08-14
 
-This document defines the RMT agent-system boundary. It authorizes a durable paper-only evaluation domain and deterministic Strategy Compiler admission boundary inside the existing RMT monorepo. It does not authorize live autonomous execution, wallet signing, fee activation, production configuration, pooled capital, copy trading, contract deployment, ERC-8004 publication, a public MCP server or any concrete model provider/API key.
+This document defines the RMT agent-system boundary. It authorizes a durable paper-only evaluation domain, deterministic Strategy Compiler admission boundary and read-only paper-evaluation run boundary inside the existing RMT monorepo. It does not authorize live autonomous execution, wallet signing, fee activation, production configuration, pooled capital, copy trading, contract deployment, ERC-8004 publication, a public MCP server or any concrete model/market provider credential.
 
 ## Purpose
 
@@ -19,18 +19,19 @@ owner thesis
 → RMT safety/policy admission
 → canonical compilation record
 → immutable admitted StrategySpec version
-→ paper-active agent
-→ auditable decision summary
-→ prediction and/or paper order
-→ delayed verified quote boundary
-→ paper fill and atomic balance accounting
+→ paper-active agent + paper account
+→ read-only market snapshot
+→ untrusted decision adapter
+→ canonical first-writer paper evaluation run
+→ NO_ACTION or probabilistic PREDICTION only
+→ auditable decision / prediction records
 → durable snapshot + mutation journal
 → restart/replay-safe paper state
 → prediction/trading/risk/season metrics
 → future qualification research
 ```
 
-The eventual live boundary remains separate:
+Paper-order creation remains outside the admitted evaluation runner. The eventual live boundary remains deliberately separate:
 
 ```text
 qualified agent
@@ -47,13 +48,13 @@ The agent never becomes the authority for route validity, fee policy, signer per
 
 ## Repository ownership
 
-- `packages/agent-core`: pure TypeScript agent schemas, Strategy Compiler policy/admission validation, safety-envelope validation, state transitions, canonical hashing and deterministic scoring.
-- `apps/agent-engine`: paper-only state machine, durable wrapper, Strategy Compiler adapter/admission layer and persistence contracts. It owns agent-domain state; it does not own market discovery or live execution.
+- `packages/agent-core`: pure TypeScript agent schemas, Strategy Compiler policy/admission validation, read-only market/run evidence schemas, safety-envelope validation, state transitions, canonical hashing and deterministic scoring.
+- `apps/agent-engine`: paper-only state machine, durable wrapper, Strategy Compiler adapter/admission layer, read-only `PaperEvaluationService`, agent-run persistence and persistence contracts. It owns agent-domain state; it does not own market discovery or live execution.
 - `apps/market-indexer`: remains read-oriented external market discovery/enrichment. It is not repurposed into the agent engine.
 - `apps/web`: remains the only terminal UI. Arena and agent surfaces may be added later without creating a second routing stack.
 - future `apps/rmt-mcp`: separate external-agent gateway after the internal paper system is durable and abuse-controlled.
 
-The current implementation still adds no workspace package manifests or third-party runtime dependencies. PostgreSQL adapters accept injected SQL pool contracts, so runtime packaging and actual database connections remain separate release decisions.
+The current implementation still adds no workspace package manifests or third-party runtime dependencies. PostgreSQL adapters accept injected SQL pool contracts, so runtime packaging and actual database connections remain separate release decisions. Market and decision adapters are also injected interfaces; this architecture does not connect a production provider merely by defining its boundary.
 
 ## Two independent state dimensions
 
@@ -116,6 +117,32 @@ Strategy compilation has a separate first-writer-wins persistence boundary becau
 
 The admission service then derives a durable strategy-version idempotency key from the compilation request hash. A crash after compilation persistence but before strategy-version creation is recoverable: the next attempt reuses the canonical compilation and retries the idempotent durable engine mutation.
 
+## Read-only paper evaluation runs
+
+`PaperEvaluationService` is the admitted recurring decision boundary. It consumes two injected, untrusted adapters:
+
+- a `PaperEvaluationMarketSource`, which may provide only read-only market observations;
+- a `PaperDecisionAdapter`, which may propose only `NO_ACTION` or `PREDICTION` in v1.
+
+Before either adapter is called, the service requires a `PAPER_ONLY`, paper-active agent, the latest admitted strategy and an agent-owned paper account. A caller-supplied evaluation key identifies the logical evaluation slot. Its request hash binds the agent/account, exact strategy version/hash, chain, runner policy, market-source identity and decision-adapter/model identity. The wall-clock retry time is deliberately not part of that fingerprint.
+
+`AgentRunStore` is first-writer-wins by `(stream_id, evaluation_key)`. A retry reads the canonical run before calling the market source or model. Concurrent nondeterministic outputs cannot create multiple histories for the same logical evaluation key; the first valid stored run becomes canonical.
+
+Every canonical run retains:
+
+- exact paper-account snapshot and balances seen by the decision adapter;
+- exact market snapshot, source identity, capture time and canonical snapshot hash;
+- exact strategy version/hash;
+- runner, decision-adapter and model identities;
+- normalized proposal and proposal hash;
+- canonical request and run hashes.
+
+Market evidence fails closed. Observations require a positive reference price, bounded decimals and feature values, unique asset/quote identities, the configured chain, and a non-future/non-stale capture time. A prediction must use an asset present in that exact snapshot and allowed by the admitted strategy. Confidence must satisfy the strategy minimum, and `resolvesAt` is derived from the strategy horizon rather than chosen by a model.
+
+`PostgresAgentRunStore` stores the full run plus an independent record hash and protects first-write selection with a stream/evaluation advisory transaction lock. Decisions and optional predictions are then written through durable idempotency keys derived from the canonical run hash.
+
+The v1 evaluation service intentionally has no `submitPaperOrder`, live execution, wallet or signer method. Trade sizing/order generation is a later boundary after a real verified market/quote adapter is admitted and evaluated.
+
 ## Strategy and season model
 
 Every admitted strategy version is immutable and hash-bound. A strategy change or a deliberately different compilation fingerprint creates a new contiguous version. Predictions, decisions and orders reference the exact strategy version that produced them.
@@ -160,13 +187,13 @@ Normalized tables are maintained in the same transaction for queryability:
 - risk events;
 - score snapshots.
 
-Strategy compilation records are intentionally separate from the canonical paper-engine snapshot because they are model/provenance artifacts preceding strategy admission. The admitted immutable strategy version remains part of canonical engine state.
+Strategy compilation records and agent-run records are intentionally separate from the canonical paper-engine snapshot because they are model/market provenance artifacts surrounding deterministic mutations. The admitted immutable strategy, decision and prediction records remain part of canonical engine state.
 
 The snapshot remains the canonical restart boundary for trading/evaluation state in this phase. Normalized tables are transactional projections and may later move to incremental event-specific writes as scale requires.
 
 ## Decisions and reasoning
 
-The system records a concise auditable reasoning summary, model identity, compiler version, policy version, market-snapshot identity and canonical decision hash. It does not request or persist private chain-of-thought.
+The system records a concise auditable reasoning summary, model identity, runner/compiler version, policy version, market-snapshot identity and canonical decision hash. It does not request or persist private chain-of-thought.
 
 ## Prediction versus trading evidence
 
@@ -189,6 +216,7 @@ No fixed production qualification threshold is admitted. The old `14 predictions
 - Simulated fees and gas identify their own assets and are debited atomically with the paper fill.
 - Failed validation leaves balances and order state unchanged.
 - Persisted snapshots are integrity-validated before hydration, including strategy/decision hashes, contiguous versions, references and fill/order/evidence consistency.
+- The evaluation runner cannot create a paper order in v1.
 - The engine exposes no `executeLive` path.
 
 ## Security boundary
@@ -202,12 +230,13 @@ The agent domain must not gain arbitrary target/calldata execution, private-key 
 ## Deferred phases
 
 1. runtime packaging and controlled PostgreSQL service wiring;
-2. concrete structured-model adapter behind the admitted Strategy Compiler boundary;
-3. verified read-only market/quote adapter and recurring durable paper-evaluation runner;
-4. richer NAV, risk, drawdown and season scoring;
-5. Human and Agent Arena plus transparent leaderboards;
-6. public RMT MCP read/paper tools;
-7. research qualification policy based on forward evidence;
-8. typed VNext live-intent bridge, initially review-required;
-9. separately reviewed revenue flywheel and RMT buy-and-retire policy;
-10. optional onchain agent identity/reputation checkpoints.
+2. concrete structured-model adapter behind the admitted Strategy Compiler/decision boundaries;
+3. verified read-only RMT/VNext-compatible market and quote adapter plus controlled evaluation scheduler;
+4. separately gated paper trade sizing/order-generation runner using verified quote evidence;
+5. richer NAV, risk, drawdown and season scoring;
+6. Human and Agent Arena plus transparent leaderboards;
+7. public RMT MCP read/paper tools;
+8. research qualification policy based on forward evidence;
+9. typed VNext live-intent bridge, initially review-required;
+10. separately reviewed revenue flywheel and RMT buy-and-retire policy;
+11. optional onchain agent identity/reputation checkpoints.

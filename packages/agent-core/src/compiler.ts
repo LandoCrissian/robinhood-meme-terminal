@@ -137,8 +137,9 @@ export function parseStrategyModelDraft(value: unknown): StrategyModelDraft {
   if (!isRecord(value.spec)) fail("strategy model output spec must be an object");
   let spec: StrategySpec;
   try {
-    assertStrategySpec(value.spec as StrategySpec);
-    spec = clone(value.spec as StrategySpec);
+    const candidateSpec = value.spec as unknown as StrategySpec;
+    assertStrategySpec(candidateSpec);
+    spec = clone(candidateSpec);
   } catch (error) {
     throw new Error(`strategy model output spec is invalid: ${error instanceof Error ? error.message : String(error)}`);
   }
