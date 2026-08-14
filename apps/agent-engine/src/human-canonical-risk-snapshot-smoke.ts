@@ -114,7 +114,14 @@ await store.commit({
 
 class StaticReader implements RmtPaperQuoteReader {
   readonly sourceId = "canonical-risk-liquidation-reader";
-  constructor(private readonly outputAmountAtomic: string, private readonly quotedAtMs: number) {}
+  private readonly outputAmountAtomic: string;
+  private readonly quotedAtMs: number;
+
+  constructor(outputAmountAtomic: string, quotedAtMs: number) {
+    this.outputAmountAtomic = outputAmountAtomic;
+    this.quotedAtMs = quotedAtMs;
+  }
+
   async compare(input: RmtPaperQuoteReaderInput): Promise<unknown> {
     return {
       requestId: `123e4567-e89b-42d3-a456-${String(this.quotedAtMs).padStart(12, "0")}`,
