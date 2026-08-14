@@ -1,0 +1,36 @@
+name: Agent Arena Public Career Smoke
+
+on:
+  push:
+    branches:
+      - codex/agent-engine-foundation
+    paths:
+      - "apps/agent-engine/src/paper-arena-career-reputation.ts"
+      - "apps/agent-engine/src/paper-arena-career-reputation-smoke.ts"
+      - "apps/agent-engine/src/paper-arena-finalization-archive.ts"
+      - "apps/agent-engine/src/paper-arena-public-career-profile.ts"
+      - "apps/agent-engine/src/paper-arena-public-career-profile-smoke.ts"
+      - "apps/agent-engine/src/paper-arena-season-finalization.ts"
+      - "apps/agent-engine/src/career.ts"
+      - "packages/agent-core/src/**"
+      - ".github/workflows/agent-arena-public-career-smoke.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  public-career:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Run career reputation smoke
+        run: node --experimental-strip-types apps/agent-engine/src/paper-arena-career-reputation-smoke.ts
+      - name: Run public career profile smoke
+        run: node --experimental-strip-types apps/agent-engine/src/paper-arena-public-career-profile-smoke.ts
