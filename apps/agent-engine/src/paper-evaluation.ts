@@ -36,7 +36,9 @@ export interface PaperDecisionAdapterInput {
   strategy: StrategySpec;
   marketSnapshot: AgentMarketSnapshot;
   evaluatedAt: number;
-  outputInstruction: "NO_ACTION_PREDICTION_OPEN_OR_CLOSE_POSITION";
+  /** @deprecated Prefer allowedActions when implementing new adapters. */
+  outputInstruction: "NO_ACTION_PREDICTION_OR_OPEN_POSITION";
+  allowedActions: readonly ["NO_ACTION", "PREDICTION", "OPEN_POSITION", "CLOSE_POSITION"];
 }
 
 export interface PaperDecisionAdapter {
@@ -209,7 +211,8 @@ export class PaperEvaluationService {
         strategy: structuredClone(strategy.spec),
         marketSnapshot: structuredClone(marketSnapshot),
         evaluatedAt,
-        outputInstruction: "NO_ACTION_PREDICTION_OPEN_OR_CLOSE_POSITION",
+        outputInstruction: "NO_ACTION_PREDICTION_OR_OPEN_POSITION",
+        allowedActions: ["NO_ACTION", "PREDICTION", "OPEN_POSITION", "CLOSE_POSITION"],
       });
       const parsedProposal = parseEvaluationProposal(rawProposal, strategy.spec, evaluatedAt);
       const proposal = canonicalizeEvaluationProposalAssets(parsedProposal, strategy.spec, marketSnapshot);
