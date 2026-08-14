@@ -1,8 +1,8 @@
 # RMT Agent Engine
 
-**Status: durable paper-only foundation with Strategy Compiler admission, read-only evaluation runs, verified Robinhood-stock market evidence and a controlled scheduler. Not a production service.**
+**Status: durable paper-only foundation with Strategy Compiler admission, read-only evaluation runs, verified Robinhood-stock market evidence, controlled scheduling and strictly verified VNext-style paper quote evidence. Not a production service.**
 
-The agent engine now has six layers:
+The agent engine now has seven layers:
 
 - `AgentEngine`: deterministic paper-domain state machine with immutable strategy versions, seasons, decisions, predictions, accounts, orders, fills, portfolio snapshots, risk events and score snapshots.
 - `DurableAgentEngine`: async persistence wrapper that adds idempotency keys, canonical request hashes, optimistic revisions, restart recovery and stale-worker conflict handling.
@@ -10,10 +10,11 @@ The agent engine now has six layers:
 - `PaperEvaluationService`: consumes a read-only market-source adapter and an untrusted decision adapter, stores one canonical run per evaluation key, and v1 may write only a decision plus an optional probabilistic prediction. It has no paper-order or live-execution method.
 - `RmtRobinhoodStockMarketSource`: adapts RMT's existing VNext market-directory shape to paper evidence, but admits an RWA only after exact contract-address membership in a complete Robinhood Stock Token registry snapshot. Same-symbol non-registry tokens are excluded.
 - `PaperEvaluationScheduler`: a bounded `runOnce()` scheduler that derives deterministic evaluation slots from each strategy interval, de-duplicates duplicate candidates, caps concurrency and delegates replay protection to the canonical run store. It does not own a hidden timer or background loop.
+- `RmtPaperQuoteService`: converts already-normalized VNext-style quote comparison evidence into hash-bound `VerifiedPaperQuoteEvidence`, requiring a strictly verifiable, fresh, policy-compliant route and using protected output rather than optimistic expected output. It has no order, fill, wallet or transaction method.
 
 A model is deliberately behind adapter interfaces. No OpenAI, Anthropic, Gemini or other concrete model SDK/provider is connected by this foundation, and model output is never treated as trusted policy.
 
-The market-evidence source preserves existing RMT security boundaries. It consumes a read-only market-directory reader plus the existing Robinhood-stock registry snapshot contract; it does **not** call the wallet-authenticated VNext quote route and does not weaken recipient authentication. Executable quote reuse remains a later paper-fill boundary.
+The market and quote evidence layers preserve existing RMT security boundaries. They consume injected read-only readers; they do **not** call or weaken wallet-authenticated VNext trade routes. No production quote reader/provider connection is enabled by this foundation.
 
 ## Persistence invariants
 
@@ -42,11 +43,13 @@ The market-evidence source preserves existing RMT security boundaries. It consum
 - an evaluation key is a logical idempotency boundary. Once a canonical run exists, retries reuse it before calling the market source or decision model again;
 - each run binds the exact strategy version/hash, paper-account snapshot, market snapshot, runner version, market-source identity, decision-adapter identity and model identity;
 - market observations require a positive reference price, bounded decimals/features, unique asset/quote pairs and a non-future, non-stale capture time;
+- market observations may expose bounded source-provided aliases, but the stored observation `assetId` remains the canonical identity;
 - full market snapshots and run records are canonical SHA-256 hash-bound and revalidated when read;
 - `AgentRunStore` is first-writer-wins, and the PostgreSQL implementation adds an advisory transaction lock plus an independent stored-record hash;
 - concurrent nondeterministic model responses for the same evaluation key cannot create multiple canonical histories; the first stored valid run wins;
 - v1 decision output is restricted to `NO_ACTION` or `PREDICTION` only;
 - a prediction must reference an asset present in the stored snapshot and allowed by the admitted strategy;
+- a verified alias may be accepted at proposal time, but it is canonicalized to the observation `assetId` before the proposal/run hash is computed;
 - prediction confidence must satisfy the strategy minimum and prediction resolution time is derived from the strategy horizon;
 - the exact paper-account balances supplied to the decision adapter are retained in the run record so later balance changes cannot rewrite historical decision evidence;
 - decisions and predictions are written through durable idempotency keys derived from the canonical run hash.
@@ -58,7 +61,7 @@ The market-evidence source preserves existing RMT security boundaries. It consum
 - same-symbol non-registry tokens are excluded even when they advertise more liquidity than the verified asset;
 - active duplicate symbols inside the verified registry fail closed instead of being guessed apart;
 - strategy aliases may use the verified symbol, Robinhood registry asset ID, contract address, or canonical chain+contract ID;
-- the market snapshot persists the canonical asset identity as `eip155:4663/contract:<lowercase-address>` and retains the verified symbol/registry ID as evidence aliases;
+- the market snapshot persists the canonical asset identity as `eip155:4663/contract:<lowercase-address>` and retains verified symbol/registry/address aliases separately;
 - a model may propose a verified alias such as `NVDA`, but `PaperEvaluationService` resolves it to the exact canonical market observation ID **before** the proposal/run hash is computed;
 - persisted prediction records must exactly match one canonical observation asset ID in the stored market snapshot;
 - the source consumes VNext directory `priceUsd`, `liquidityUsd`, `volume24h`, `priceChange24h`, market-cap, pair and DEX evidence where available, and converts monetary values to integer six-decimal USD evidence;
@@ -74,6 +77,19 @@ The market-evidence source preserves existing RMT security boundaries. It consum
 - scheduler failures are isolated per candidate and returned as structured fulfilled/rejected results;
 - canonical evaluation-run storage remains the replay/idempotency authority.
 
+## Paper quote evidence invariants
+
+- `RmtPaperQuoteService` accepts only Robinhood Chain quote comparisons (`chainId = 4663`) and rechecks exact token addresses and input amount;
+- quote attempts remain observation-only and must declare `authorizationReady = false`;
+- only `indicative` attempts with `strictVerificationAvailable = true` can be selected;
+- selected attempts must be fresh, unexpired and within the configured maximum price-impact policy;
+- price impact is rounded **up** to integer basis points so paper policy never understates impact;
+- route ranking uses highest protected output, then lowest latency, then provider ID for deterministic tie-breaking;
+- optimistic expected output is never written as the paper fill amount; evidence uses `protectedOutputAtomic`;
+- input/output paper asset IDs are canonical `eip155:4663/contract:<lowercase-address>` values;
+- `VerifiedPaperQuoteEvidence` and the containing quote result are independently canonical SHA-256 hash-bound;
+- VNext fee/gas economics are not translated into a separate `PaperExecutionCosts` ledger yet, avoiding double-counting until the cost basis is explicitly proven.
+
 ## Explicitly absent
 
 There is still:
@@ -82,8 +98,10 @@ There is still:
 - no concrete model provider/API key;
 - no production worker/cron deployment;
 - no community-asset classification authority in this RWA source;
-- no executable VNext quote adapter for paper fills yet;
-- no paper-order creation from the evaluation scheduler;
+- no production VNext quote-reader/provider connection;
+- no paper-order generation from the evaluation runner or scheduler;
+- no paper-fill integration from `RmtPaperQuoteService`;
+- no proven separate fee/gas cost ledger for simulated fills;
 - no signer or private key;
 - no wallet submission;
 - no arbitrary contract-write path;
@@ -92,4 +110,4 @@ There is still:
 - no production database connection or environment change;
 - no pooled capital or autonomous custody.
 
-The next engineering boundary is an executable **paper quote adapter** that reuses VNext's normalized provider quote semantics without calling or weakening the wallet-authenticated trade endpoint. Only after that is proven should the evaluation pipeline be allowed to generate paper order intents and simulated fills.
+The next engineering boundary is deterministic **paper order sizing + fill-cost accounting**. It must derive size from the admitted strategy/risk envelope and paper-account state, consume canonical market/quote evidence, and remain separated from wallet submission. Only after that boundary is proven should the evaluation pipeline be allowed to create simulated order intents and fills.
