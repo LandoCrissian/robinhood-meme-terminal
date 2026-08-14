@@ -180,12 +180,10 @@ export function assertPaperArenaPerformanceRecord(record: PaperArenaPerformanceR
   assertPositiveSafeInteger(record.metrics.valuationCount, "paper arena valuationCount");
   assertNonNegativeSafeInteger(record.metrics.elapsedMs, "paper arena elapsedMs");
   const rebuilt = derive({ entry: record.entry, valuations: record.valuations, policy: record.policy });
-  if (hashCanonicalPayload(rebuilt) !== hashCanonicalPayload(({ performanceHash: _hash, ...payload }) => payload)(record)) {
-    fail("paper arena performance payload mismatch");
-  }
+  const { performanceHash: _performanceHash, ...recordPayload } = record;
+  if (hashCanonicalPayload(rebuilt) !== hashCanonicalPayload(recordPayload)) fail("paper arena performance payload mismatch");
   if (!/^0x[0-9a-f]{64}$/.test(record.performanceHash)) fail("paper arena performanceHash must be a sha256 hex hash");
-  const { performanceHash, ...payload } = record;
-  if (performanceHash !== hashCanonicalPayload(payload)) fail("paper arena performance hash mismatch");
+  if (record.performanceHash !== hashCanonicalPayload(recordPayload)) fail("paper arena performance hash mismatch");
 }
 
 export function buildPaperArenaPerformance(input: {
