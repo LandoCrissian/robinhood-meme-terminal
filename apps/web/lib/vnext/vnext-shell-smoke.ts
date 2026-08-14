@@ -134,6 +134,8 @@ assert.match(shell, /<VNextAssetWorkspace/);
 assert.match(shell, /sideRequest={props\.tradeSideRequest}/);
 assert.match(presentations, /href="#rmt-asset-workspace"/);
 assert.match(presentations, /href="#vnext-portfolio"/);
+assert.match(presentations, /data-terminal-nav="rwa"[\s\S]*href="#rmt-markets" onClick=\{\(\) => props\.onDirectoryViewChange\("rwa"\)\}>RWA<\/a>/);
+assert.doesNotMatch(presentations, /href="\/rwa"/);
 assert.doesNotMatch(shell, /href: "\/portfolio"|href="\/portfolio"/);
 assert.doesNotMatch(shell, /legacyAssetWorkspaceHref|\/market\//);
 assert.doesNotMatch(shell, /Open notifications|vnMarketTabs|vnFilterButton|vnStarButton/);

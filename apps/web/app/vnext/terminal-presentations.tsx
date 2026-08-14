@@ -178,7 +178,11 @@ export function DesktopTerminal(props: TerminalPresentationProps) {
     <a className="vnSkipLink" href="#rmt-asset-workspace">Skip to asset workspace</a>
     <header className="rmtDesktopHeader">
       <RmtBrand />
-      <nav aria-label="Terminal navigation"><a className="isActive" href="#rmt-markets">Markets</a><a href="#vnext-portfolio" onClick={props.onRevealPortfolio}>Portfolio</a><a href="/rwa">RWA</a></nav>
+      <nav aria-label="Terminal navigation">
+        <a data-terminal-nav="markets" className={props.directoryView === "rwa" ? undefined : "isActive"} href="#rmt-markets" onClick={() => props.onDirectoryViewChange("trending")}>Markets</a>
+        <a data-terminal-nav="portfolio" href="#vnext-portfolio" onClick={props.onRevealPortfolio}>Portfolio</a>
+        <a data-terminal-nav="rwa" className={props.directoryView === "rwa" ? "isActive" : undefined} href="#rmt-markets" onClick={() => props.onDirectoryViewChange("rwa")}>RWA</a>
+      </nav>
       <MarketSearch query={props.query} setQuery={props.setQuery} inputRef={props.marketSearch} onSubmit={props.onSearchSubmit} />
       <span className="rmtChainState"><i aria-hidden="true" /> Robinhood · 4663</span>
       <VNextWalletConnection />
