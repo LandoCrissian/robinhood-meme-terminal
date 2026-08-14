@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import type { AgentSafetyEnvelope } from "../../../packages/agent-core/src/index.ts";
+import type { AgentSafetyEnvelope, MarketObservationDraft, PaperAccountRecord } from "../../../packages/agent-core/src/index.ts";
 import { DurableAgentEngine } from "./durable-engine.ts";
 import {
   HumanPaperFillOrchestrationService,
@@ -8,8 +8,10 @@ import {
 import { HumanPaperOrderAdmissionService } from "./human-paper-order-admission.ts";
 import { HumanPaperOrderSubmissionGateService } from "./human-paper-order-submission-gate.ts";
 import { HumanPaperOrderSubmissionService } from "./human-paper-order-submission.ts";
+import { HumanPaperRiskCapacityPlanner } from "./human-paper-risk-capacity.ts";
 import { buildPaperFillCostPlan } from "./paper-fill-cost.ts";
 import { buildPaperPositionBook } from "./paper-position-book.ts";
+import { buildPaperRiskSnapshot } from "./paper-risk-capacity.ts";
 import {
   RmtPaperQuoteService,
   type RmtPaperQuoteReader,
@@ -23,15 +25,32 @@ const inputAssetId = `eip155:4663/contract:${inputAddress}`;
 const outputAssetId = `eip155:4663/contract:${outputAddress}`;
 
 const safetyEnvelope: AgentSafetyEnvelope = {
-  maximumPositionBps: 1_000,
-  maximumPortfolioExposureBps: 5_000,
+  maximumPositionBps: 5_000,
+  maximumPortfolioExposureBps: 8_000,
   maximumOpenPositions: 10,
-  maximumDailyLossBps: 500,
+  maximumDailyLossBps: 1_000,
   maximumDrawdownBps: 2_000,
   maximumTradesPerDay: 50,
   maximumSlippageBps: 200,
   maximumPriceImpactBps: 300,
   minimumEvaluationIntervalSeconds: 30,
+};
+const humanRiskPolicy = {
+  policyVersion: "RMT_HUMAN_RISK_V1",
+  maximumPositionBps: 5_000,
+  maximumPortfolioExposureBps: 8_000,
+  maximumOpenPositions: 5,
+  maximumDailyLossBps: 500,
+  maximumDrawdownBps: 1_000,
+  maximumTradesPerDay: 20,
+  maximumSlippageBps: 75,
+  maximumPriceImpactBps: 250,
+};
+const marketObservation: MarketObservationDraft = {
+  assetId: outputAssetId,
+  quoteAssetId: inputAssetId,
+  referencePriceAtomic: "1000000",
+  referencePriceDecimals: 6,
 };
 const config = { safetyEnvelope, paperFillDelayMs: 1_000, policyVersion: "RMT_AGENT_FOUNDATION_V1" };
 const store = new InMemoryAgentStateStore();
@@ -45,14 +64,59 @@ const human = await engine.openHumanPaperAccount({
   openedAt: 1_100,
 }, "human");
 
+function buildRiskPlan(input: {
+  account: PaperAccountRecord;
+  amount: string;
+  plannedAt: number;
+  currentPortfolioExposureAtomic: string;
+  currentPositionExposureAtomic: string;
+  openPositionCount: number;
+  tradesToday: number;
+}) {
+  return new HumanPaperRiskCapacityPlanner({
+    safetyEnvelope,
+    policy: humanRiskPolicy,
+    maximumRiskSnapshotAgeMs: 1_000,
+  }).plan({
+    account: input.account,
+    riskSnapshot: buildPaperRiskSnapshot({
+      accountId: input.account.accountId,
+      quoteAssetId: inputAssetId,
+      positionAssetId: outputAssetId,
+      markNavAtomic: "1000",
+      currentPortfolioExposureAtomic: input.currentPortfolioExposureAtomic,
+      currentPositionExposureAtomic: input.currentPositionExposureAtomic,
+      openPositionCount: input.openPositionCount,
+      tradesToday: input.tradesToday,
+      dailyLossBps: 0,
+      drawdownBps: 0,
+      capturedAt: input.plannedAt - 50,
+    }),
+    marketObservation,
+    requestedInputAmountAtomic: input.amount,
+    requestedMaximumSlippageBps: 50,
+    plannedAt: input.plannedAt,
+  });
+}
+
 const admissionService = new HumanPaperOrderAdmissionService({
   store,
   streamId,
   policy: { policyVersion: "RMT_HUMAN_MANUAL_V1", maximumSlippageBps: 75, maximumInputBalanceBps: 5_000 },
 });
 const gateService = new HumanPaperOrderSubmissionGateService({ store, streamId });
-const submissionService = new HumanPaperOrderSubmissionService(engine);
+const submissionService = new HumanPaperOrderSubmissionService(engine, { maximumRiskPlanAgeMs: 500 });
 
+const firstRisk = buildRiskPlan({
+  account: human,
+  amount: "200",
+  plannedAt: 1_950,
+  currentPortfolioExposureAtomic: "0",
+  currentPositionExposureAtomic: "0",
+  openPositionCount: 0,
+  tradesToday: 0,
+});
+assert.equal(firstRisk.status, "ADMITTED");
 const admission = await admissionService.admit({
   accountId: human.accountId,
   inputAssetId,
@@ -62,7 +126,7 @@ const admission = await admissionService.admit({
   admittedAt: 2_000,
 });
 const gate = await gateService.check({ admission, checkedAt: 2_050 });
-const submission = await submissionService.submit({ admission, gate });
+const submission = await submissionService.submit({ admission, gate, riskCapacityPlan: firstRisk });
 assert.equal(submission.order.status, "PENDING");
 
 function quoteResponse(inputAmountAtomic: string, outputAmountAtomic: string, quotedAtMs: number) {
@@ -151,6 +215,16 @@ await assert.rejects(
   /stale because engine revision changed/,
 );
 
+const secondRisk = buildRiskPlan({
+  account: accountAfterFill,
+  amount: "100",
+  plannedAt: 3_250,
+  currentPortfolioExposureAtomic: "200",
+  currentPositionExposureAtomic: "200",
+  openPositionCount: 1,
+  tradesToday: 1,
+});
+assert.equal(secondRisk.status, "ADMITTED");
 const secondAdmission = await admissionService.admit({
   accountId: human.accountId,
   inputAssetId,
@@ -160,7 +234,11 @@ const secondAdmission = await admissionService.admit({
   admittedAt: 3_300,
 });
 const secondGate = await gateService.check({ admission: secondAdmission, checkedAt: 3_350 });
-const secondSubmission = await new HumanPaperOrderSubmissionService(restored).submit({ admission: secondAdmission, gate: secondGate });
+const secondSubmission = await new HumanPaperOrderSubmissionService(restored, { maximumRiskPlanAgeMs: 500 }).submit({
+  admission: secondAdmission,
+  gate: secondGate,
+  riskCapacityPlan: secondRisk,
+});
 assert.equal(secondSubmission.order.status, "PENDING");
 assert.notEqual(secondSubmission.order.orderId, submission.order.orderId);
 const finalState = await store.load(streamId);
