@@ -2,8 +2,8 @@ import type {
   AgentDecision,
   AgentRecord,
   PaperAccountRecord,
-  PaperFillRecord,
-  PaperOrderRecord,
+  ParticipantPaperFillRecord,
+  ParticipantPaperOrderRecord,
   PortfolioSnapshot,
   PredictionRecord,
   RiskEventRecord,
@@ -20,8 +20,8 @@ export interface AgentEngineSnapshot {
   paperAccounts: PaperAccountRecord[];
   decisions: AgentDecision[];
   predictions: PredictionRecord[];
-  paperOrders: PaperOrderRecord[];
-  paperFills: PaperFillRecord[];
+  paperOrders: ParticipantPaperOrderRecord[];
+  paperFills: ParticipantPaperFillRecord[];
   portfolioSnapshots: PortfolioSnapshot[];
   riskEvents: RiskEventRecord[];
   scoreSnapshots: ScoreSnapshotRecord[];
