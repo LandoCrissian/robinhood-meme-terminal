@@ -4,6 +4,7 @@ export * from "./engine.ts";
 export * from "./paper-evaluation-scheduler.ts";
 export * from "./paper-evaluation.ts";
 export * from "./paper-fill-cost.ts";
+export * from "./paper-fill-orchestration.ts";
 export * from "./paper-order-admission.ts";
 export * from "./paper-order-submission.ts";
 export * from "./paper-risk-capacity.ts";
