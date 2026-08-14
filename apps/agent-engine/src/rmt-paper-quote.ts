@@ -86,6 +86,9 @@ export interface RmtPaperQuoteResult {
   outputDecimals: number;
   userPaysGas: boolean;
   costState: "NETWORK_FEE_PENDING" | "NO_SEPARATE_COST_LEDGER";
+  comparison: RmtNormalizedPaperQuoteResponse;
+  comparisonHash: string;
+  selectedAttemptHash: string;
   evidence: VerifiedPaperQuoteEvidence;
   resultHash: string;
 }
@@ -105,6 +108,11 @@ function assertNonEmpty(value: unknown, field: string): string {
 
 function assertTimestamp(value: unknown, field: string): number {
   if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 0) fail(`${field} must be a non-negative safe integer`);
+  return value;
+}
+
+function assertHash(value: unknown, field: string): string {
+  if (typeof value !== "string" || !/^0x[0-9a-f]{64}$/.test(value)) fail(`${field} must be a sha256 hex hash`);
   return value;
 }
 
@@ -246,6 +254,12 @@ function parseResponse(value: unknown, input: RmtPaperQuoteReaderInput): RmtNorm
   if (!Array.isArray(value.attempts) || value.attempts.length === 0 || value.attempts.length > 8) fail("paper quote response must contain 1 to 8 attempts");
   const attempts = value.attempts.map((attempt) => parseAttempt(attempt, expected, input.observedAtMs));
   if (new Set(attempts.map((attempt) => attempt.provider)).size !== attempts.length) fail("paper quote response contains duplicate providers");
+  for (const attempt of attempts) {
+    if (attempt.status !== "indicative") continue;
+    if (attempt.quotedAtMs! < requestedAtMs - MAX_CLOCK_SKEW_MS || attempt.quotedAtMs! > completedAtMs + MAX_CLOCK_SKEW_MS) {
+      fail("paper quote attempt timestamp is inconsistent with comparison window");
+    }
+  }
   const decimals = new Set(attempts.filter((attempt) => attempt.status === "indicative").map((attempt) => attempt.outputDecimals));
   if (decimals.size > 1) fail("paper quote attempts disagree on output decimals");
   return {
@@ -261,7 +275,7 @@ function parseResponse(value: unknown, input: RmtPaperQuoteReaderInput): RmtNorm
 }
 
 function priceImpactBps(priceImpact: number): number {
-  const bps = Math.ceil(priceImpact * 10_000 - Number.EPSILON);
+  const bps = Math.ceil(priceImpact * 10_000);
   assertBps(bps, "paper quote priceImpactBps");
   return bps;
 }
@@ -270,7 +284,7 @@ function selectAttempt(response: RmtNormalizedPaperQuoteResponse, policy: RmtPap
   const eligible = response.attempts
     .filter((attempt) => attempt.status === "indicative")
     .filter((attempt) => attempt.strictVerificationAvailable)
-    .filter((attempt) => attempt.quotedAtMs !== null && nowMs - attempt.quotedAtMs <= policy.maximumQuoteAgeMs)
+    .filter((attempt) => attempt.quotedAtMs !== null && Math.max(0, nowMs - attempt.quotedAtMs) <= policy.maximumQuoteAgeMs)
     .filter((attempt) => attempt.priceImpact !== null && priceImpactBps(attempt.priceImpact) <= policy.maximumPriceImpactBps)
     .sort((left, right) => {
       const leftOutput = BigInt(left.protectedOutputAtomic!);
@@ -282,6 +296,37 @@ function selectAttempt(response: RmtNormalizedPaperQuoteResponse, policy: RmtPap
   const selected = eligible[0];
   if (!selected) fail("no strictly verified paper quote satisfies freshness and price-impact policy");
   return selected;
+}
+
+export function assertRmtPaperQuoteResult(result: RmtPaperQuoteResult): void {
+  assertNonEmpty(result.readerSourceId, "paper quote readerSourceId");
+  if (!UUID_PATTERN.test(result.sourceRequestId)) fail("paper quote sourceRequestId must be a UUID");
+  assertHash(result.comparisonHash, "paper quote comparisonHash");
+  assertHash(result.selectedAttemptHash, "paper quote selectedAttemptHash");
+  assertHash(result.resultHash, "paper quote resultHash");
+  assertHash(result.evidence.evidenceHash, "paper quote evidenceHash");
+  if (result.comparison.requestId !== result.sourceRequestId) fail("paper quote comparison requestId mismatch");
+  if (result.comparisonHash !== hashCanonicalPayload(result.comparison)) fail("paper quote comparison hash mismatch");
+  const selected = result.comparison.attempts.filter((attempt) => hashCanonicalPayload(attempt) === result.selectedAttemptHash);
+  if (selected.length !== 1) fail("paper quote selected attempt hash does not identify exactly one comparison attempt");
+  const attempt = selected[0]!;
+  if (attempt.status !== "indicative" || !attempt.strictVerificationAvailable) fail("paper quote selected attempt is not strictly verified indicative evidence");
+  if (attempt.provider !== result.provider) fail("paper quote selected provider mismatch");
+  if (attempt.outputDecimals !== result.outputDecimals) fail("paper quote selected output decimals mismatch");
+  if (attempt.userPaysGas !== result.userPaysGas) fail("paper quote selected gas-payer mismatch");
+  const expectedCostState = attempt.userPaysGas ? "NETWORK_FEE_PENDING" : "NO_SEPARATE_COST_LEDGER";
+  if (result.costState !== expectedCostState) fail("paper quote costState mismatch");
+  if (result.evidence.inputAssetId !== canonicalAssetId(result.comparison.inputAsset)) fail("paper quote evidence input asset mismatch");
+  if (result.evidence.outputAssetId !== canonicalAssetId(result.comparison.outputAsset)) fail("paper quote evidence output asset mismatch");
+  if (result.evidence.inputAmountAtomic !== result.comparison.inputAmountAtomic) fail("paper quote evidence input amount mismatch");
+  if (result.evidence.outputAmountAtomic !== attempt.protectedOutputAtomic) fail("paper quote evidence output amount is not selected protected output");
+  if (result.evidence.providerId !== `rmt-vnext:${attempt.provider}:adapter-v1`) fail("paper quote evidence providerId mismatch");
+  if (result.evidence.priceImpactBps !== priceImpactBps(attempt.priceImpact!)) fail("paper quote evidence price impact mismatch");
+  if (result.evidence.observedAt !== attempt.quotedAtMs || result.evidence.expiresAt !== attempt.expiresAtMs) fail("paper quote evidence timestamps mismatch");
+  const { evidenceHash, ...evidencePayload } = result.evidence;
+  if (evidenceHash !== hashPaperQuoteEvidence(evidencePayload)) fail("paper quote evidence hash mismatch");
+  const { resultHash, ...resultPayload } = result;
+  if (resultHash !== hashCanonicalPayload(resultPayload)) fail("paper quote result hash mismatch");
 }
 
 export class RmtPaperQuoteService {
@@ -315,22 +360,25 @@ export class RmtPaperQuoteService {
       inputAmountAtomic: input.inputAmountAtomic,
       observedAtMs,
     };
-    const response = parseResponse(await this.reader.compare(structuredClone(readerInput)), readerInput);
-    const selected = selectAttempt(response, this.policy, observedAtMs);
+    const comparison = parseResponse(await this.reader.compare(structuredClone(readerInput)), readerInput);
+    const selected = selectAttempt(comparison, this.policy, observedAtMs);
+    const comparisonHash = hashCanonicalPayload(comparison);
+    const selectedAttemptHash = hashCanonicalPayload(selected);
     const inputAssetId = canonicalAssetId(inputAsset);
     const outputAssetId = canonicalAssetId(outputAsset);
     const quotePayload: Omit<VerifiedPaperQuoteEvidence, "evidenceHash"> = {
       quoteId: hashCanonicalPayload({
         schemaVersion: 1,
         sourceId: this.reader.sourceId,
-        requestId: response.requestId,
+        comparisonHash,
+        selectedAttemptHash,
         provider: selected.provider,
         quotedAtMs: selected.quotedAtMs,
         protectedOutputAtomic: selected.protectedOutputAtomic,
       }),
       inputAssetId,
       outputAssetId,
-      inputAmountAtomic: response.inputAmountAtomic,
+      inputAmountAtomic: comparison.inputAmountAtomic,
       outputAmountAtomic: selected.protectedOutputAtomic!,
       providerId: `rmt-vnext:${selected.provider}:adapter-v1`,
       priceImpactBps: priceImpactBps(selected.priceImpact!),
@@ -341,18 +389,23 @@ export class RmtPaperQuoteService {
       ...quotePayload,
       evidenceHash: hashPaperQuoteEvidence(quotePayload),
     };
-    const resultPayload = {
+    const resultPayload: Omit<RmtPaperQuoteResult, "resultHash"> = {
       readerSourceId: this.reader.sourceId,
-      sourceRequestId: response.requestId,
+      sourceRequestId: comparison.requestId,
       provider: selected.provider,
       outputDecimals: selected.outputDecimals!,
       userPaysGas: selected.userPaysGas!,
-      costState: selected.userPaysGas ? "NETWORK_FEE_PENDING" as const : "NO_SEPARATE_COST_LEDGER" as const,
+      costState: selected.userPaysGas ? "NETWORK_FEE_PENDING" : "NO_SEPARATE_COST_LEDGER",
+      comparison: structuredClone(comparison),
+      comparisonHash,
+      selectedAttemptHash,
       evidence,
     };
-    return {
+    const result: RmtPaperQuoteResult = {
       ...resultPayload,
       resultHash: hashCanonicalPayload(resultPayload),
     };
+    assertRmtPaperQuoteResult(result);
+    return result;
   }
 }
