@@ -117,7 +117,7 @@ alteredRisk.riskSnapshot.dailyLossBps = 1;
 alteredRisk.planHash = "0x" + "0".repeat(64);
 await assert.rejects(
   () => service.submit({ admission, gate, riskCapacityPlan: alteredRisk }),
-  /plan hash mismatch/,
+  /paper risk snapshot hash mismatch|plan hash mismatch/,
 );
 
 const secondStore = new InMemoryAgentStateStore();
