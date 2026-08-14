@@ -236,7 +236,7 @@ assert.throws(() => assertPaperArenaPerformanceRecord(tampered), /performance pa
 
 await assert.rejects(
   () => new PaperArenaEntryService({ store, streamId: "paper-default" }).enter({ accountId: account.accountId, quoteAssetId }),
-  /already submitted an order|already traded/,
+  /quote-only positive starting capital|already submitted an order|already traded/,
 );
 
 console.log("paper-arena-performance smoke: ok");
