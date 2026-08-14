@@ -3,14 +3,17 @@ import {
   assertAtomicAmount,
   assertBps,
   assertNonEmptyString,
+  assertPaperAccountParticipantIdentity,
   assertPerformanceTransition,
   assertPositiveAtomicAmount,
   assertPositiveInteger,
   assertStrategyWithinSafetyEnvelope,
+  assertUniquePaperParticipantAccounts,
   assertUnitInterval,
   calculateTimeDecayedBrier,
   hashCanonicalPayload,
   hashPaperQuoteEvidence,
+  normalizeHumanParticipantId,
   type AgentDecision,
   type AgentRecord,
   type AgentSafetyEnvelope,
@@ -74,6 +77,23 @@ function assertHash(value: string, field: string): void {
 
 function sortBy<T>(values: Iterable<T>, selector: (value: T) => string): T[] {
   return [...values].sort((a, b) => selector(a).localeCompare(selector(b)));
+}
+
+function normalizeBalances(initialBalances: Record<string, string>): Record<string, string> {
+  const balances: Record<string, string> = {};
+  for (const [assetId, amount] of Object.entries(initialBalances)) {
+    assertNonEmptyString(assetId, "assetId");
+    assertAtomicAmount(amount, `balance ${assetId}`);
+    balances[assetId] = amount;
+  }
+  if (Object.keys(balances).length === 0) throw new Error("paper account requires at least one starting balance");
+  return balances;
+}
+
+function assertAccountOpeningWithinSeason(account: PaperAccountRecord, season: SeasonRecord): void {
+  assertNonNegativeTimestamp(account.openedAt, "openedAt");
+  if (account.openedAt < season.startsAt) throw new Error("paper account cannot open before season start");
+  if (season.endsAt !== undefined && account.openedAt > season.endsAt) throw new Error("paper account cannot open after season end");
 }
 
 export class AgentEngine {
@@ -195,27 +215,43 @@ export class AgentEngine {
     const agent = this.requirePaperActiveAgent(input.agentId);
     if (agent.executionMode !== "PAPER_ONLY") throw new Error("foundation agent execution must remain PAPER_ONLY");
     const season = this.requireSeason(input.seasonId);
-    const balances: Record<string, string> = {};
-    for (const [assetId, amount] of Object.entries(input.initialBalances)) {
-      assertNonEmptyString(assetId, "assetId");
-      assertAtomicAmount(amount, `balance ${assetId}`);
-      balances[assetId] = amount;
-    }
-    if (Object.keys(balances).length === 0) throw new Error("paper account requires at least one starting balance");
-    const openedAt = input.openedAt ?? Date.now();
-    assertNonNegativeTimestamp(openedAt, "openedAt");
-    if (openedAt < season.startsAt) throw new Error("paper account cannot open before season start");
-    if (season.endsAt !== undefined && openedAt > season.endsAt) throw new Error("paper account cannot open after season end");
-    const existing = [...this.accounts.values()].find((account) => account.participantId === input.agentId && account.seasonId === input.seasonId);
-    if (existing) throw new Error("agent already has a paper account for season");
     const account: PaperAccountRecord = {
       accountId: randomUUID(),
       seasonId: input.seasonId,
       participantType: "AGENT",
       participantId: input.agentId,
-      balances,
-      openedAt,
+      balances: normalizeBalances(input.initialBalances),
+      openedAt: input.openedAt ?? Date.now(),
     };
+    assertAccountOpeningWithinSeason(account, season);
+    if ([...this.accounts.values()].some((candidate) => (
+      candidate.participantType === "AGENT"
+      && candidate.participantId === account.participantId
+      && candidate.seasonId === account.seasonId
+    ))) throw new Error("agent already has a paper account for season");
+    assertPaperAccountParticipantIdentity(account);
+    this.accounts.set(account.accountId, account);
+    return clone(account);
+  }
+
+  openHumanPaperAccount(input: { walletAddress: string; seasonId: string; initialBalances: Record<string, string>; openedAt?: number }): PaperAccountRecord {
+    const participantId = normalizeHumanParticipantId(input.walletAddress);
+    const season = this.requireSeason(input.seasonId);
+    const account: PaperAccountRecord = {
+      accountId: randomUUID(),
+      seasonId: input.seasonId,
+      participantType: "HUMAN",
+      participantId,
+      balances: normalizeBalances(input.initialBalances),
+      openedAt: input.openedAt ?? Date.now(),
+    };
+    assertAccountOpeningWithinSeason(account, season);
+    if ([...this.accounts.values()].some((candidate) => (
+      candidate.participantType === "HUMAN"
+      && candidate.participantId === account.participantId
+      && candidate.seasonId === account.seasonId
+    ))) throw new Error("human already has a paper account for season");
+    assertPaperAccountParticipantIdentity(account);
     this.accounts.set(account.accountId, account);
     return clone(account);
   }
@@ -390,7 +426,7 @@ export class AgentEngine {
     this.requireAgent(input.agentId);
     if (input.accountId) {
       const account = this.requireAccount(input.accountId);
-      if (account.participantId !== input.agentId) throw new Error("risk event account does not belong to agent");
+      if (account.participantType !== "AGENT" || account.participantId !== input.agentId) throw new Error("risk event account does not belong to agent");
     }
     assertNonEmptyString(input.type, "risk event type");
     assertRiskSeverity(input.severity);
@@ -524,17 +560,13 @@ export class AgentEngine {
       }
     }
 
+    assertUniquePaperParticipantAccounts(snapshot.paperAccounts);
     for (const account of snapshot.paperAccounts) {
-      this.requireAgent(account.participantId);
       this.requireSeason(account.seasonId);
-      if (account.participantType !== "AGENT") throw new Error("foundation snapshot only supports AGENT paper accounts");
-      assertNonNegativeTimestamp(account.openedAt, "snapshot account openedAt");
+      assertPaperAccountParticipantIdentity(account);
+      if (account.participantType === "AGENT") this.requireAgent(account.participantId);
       const season = this.requireSeason(account.seasonId);
       if (account.openedAt < season.startsAt || (season.endsAt !== undefined && account.openedAt > season.endsAt)) throw new Error("snapshot account is outside season window");
-      for (const [assetId, amount] of Object.entries(account.balances)) {
-        assertNonEmptyString(assetId, "snapshot balance assetId");
-        assertAtomicAmount(amount, "snapshot balance");
-      }
       if (this.accounts.has(account.accountId)) throw new Error("duplicate paper account in snapshot");
       this.accounts.set(account.accountId, account);
     }
@@ -578,7 +610,7 @@ export class AgentEngine {
       this.requireAgent(order.agentId);
       this.requireStrategyVersion(order.agentId, order.strategyVersion);
       const account = this.requireAccount(order.accountId);
-      if (account.participantId !== order.agentId) throw new Error("snapshot order account does not belong to agent");
+      if (account.participantType !== "AGENT" || account.participantId !== order.agentId) throw new Error("snapshot order account does not belong to agent");
       assertNonEmptyString(order.inputAssetId, "snapshot inputAssetId");
       assertNonEmptyString(order.outputAssetId, "snapshot outputAssetId");
       if (order.inputAssetId === order.outputAssetId) throw new Error("snapshot paper order assets must differ");
@@ -645,7 +677,7 @@ export class AgentEngine {
       this.requireAgent(risk.agentId);
       if (risk.accountId) {
         const account = this.requireAccount(risk.accountId);
-        if (account.participantId !== risk.agentId) throw new Error("snapshot risk account does not belong to agent");
+        if (account.participantType !== "AGENT" || account.participantId !== risk.agentId) throw new Error("snapshot risk account does not belong to agent");
       }
       assertRiskSeverity(risk.severity);
       assertNonEmptyString(risk.type, "snapshot risk type");
