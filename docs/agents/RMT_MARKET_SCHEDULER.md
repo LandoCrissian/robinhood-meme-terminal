@@ -41,7 +41,13 @@ It:
 10. caps the final observation count;
 11. converts USD price/liquidity/volume/market-cap evidence to integer six-decimal atomic values before returning it to `PaperEvaluationService`.
 
-The verified registry symbol is used as the v1 paper decision/prediction identifier for compatibility with natural-language ticker strategies. This does not make symbol the classification authority: the symbol becomes usable only after exact contract-address registry membership and duplicate-symbol checks.
+The canonical paper asset identifier is:
+
+```text
+eip155:4663/contract:<lowercase-token-address>
+```
+
+Natural-language strategies may still use a verified Robinhood symbol such as `NVDA`, the Robinhood registry asset ID, or the contract address as an alias. Those aliases become usable only after exact contract-address registry membership and duplicate-symbol checks. If a decision model returns a verified alias, `PaperEvaluationService` resolves it back to the canonical chain+contract observation ID before the proposal/run hash and prediction record are created.
 
 `COMMUNITY` classification is not inferred as the complement of the stock registry. Mixed or community strategy scope is rejected by this source until a separately admitted community identity authority exists.
 
