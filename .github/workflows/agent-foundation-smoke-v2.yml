@@ -1,0 +1,34 @@
+name: Agent Foundation Smoke V2
+
+on:
+  push:
+    branches:
+      - codex/agent-engine-foundation
+    paths:
+      - "apps/agent-engine/**"
+      - "packages/agent-core/**"
+      - ".github/workflows/agent-foundation-smoke-v2.yml"
+  pull_request:
+    paths:
+      - "apps/agent-engine/**"
+      - "packages/agent-core/**"
+      - ".github/workflows/agent-foundation-smoke-v2.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Run authoritative agent foundation smokes
+        run: node --experimental-strip-types apps/agent-engine/src/all-foundation-smoke-v2.ts
