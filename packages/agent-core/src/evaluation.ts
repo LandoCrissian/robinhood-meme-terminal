@@ -296,7 +296,8 @@ export function assertAgentRunRecord(record: AgentRunRecord): void {
     assertUnitInterval(record.proposal.prediction.forecastProbability, "run forecastProbability");
     assertTimestamp(record.proposal.prediction.resolvesAt, "run prediction resolvesAt");
     if (record.proposal.prediction.resolvesAt <= record.evaluatedAt) fail("run prediction must resolve after evaluatedAt");
-    assertPredictionAssetAllowed(record.proposal, { ...({} as StrategySpec), universe: { assetClasses: [] } } as StrategySpec, record.marketSnapshot);
+    const exactMatches = record.marketSnapshot.observations.filter((observation) => observation.assetId.toLowerCase() === record.proposal.prediction!.assetId.toLowerCase());
+    if (exactMatches.length !== 1) fail("run prediction asset must exactly match one canonical market observation assetId");
   }
   if (record.proposalHash !== hashCanonicalPayload(record.proposal)) fail("agent run proposal hash mismatch");
   const { runHash, ...payload } = record;
