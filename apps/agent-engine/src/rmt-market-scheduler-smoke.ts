@@ -1,5 +1,10 @@
 import assert from "node:assert/strict";
-import type { StrategySpec } from "../../../packages/agent-core/src/index.ts";
+import {
+  buildMarketSnapshot,
+  canonicalizePredictionAsset,
+  type MarketObservationDraft,
+  type StrategySpec,
+} from "../../../packages/agent-core/src/index.ts";
 import { PaperEvaluationScheduler, buildPaperEvaluationKey, paperEvaluationSlotStart, type PaperEvaluationExecutor, type PaperEvaluationScheduleCatalog } from "./paper-evaluation-scheduler.ts";
 import { RmtRobinhoodStockMarketSource, type RobinhoodStockRegistryReader, type VNextMarketDirectoryReader } from "./rmt-robinhood-stock-market-source.ts";
 
@@ -7,6 +12,7 @@ const officialNvda = "0x1111111111111111111111111111111111111111" as const;
 const spoofNvda = "0x2222222222222222222222222222222222222222" as const;
 const officialAmd = "0x3333333333333333333333333333333333333333" as const;
 const pair = "0x4444444444444444444444444444444444444444" as const;
+const canonicalNvdaId = `eip155:4663/contract:${officialNvda}`;
 const strategy: StrategySpec = {
   schemaVersion: 1,
   universe: { assetClasses: ["RWA"], includeAssets: ["NVDA"], minimumLiquidityUsd: 25_000 },
@@ -62,17 +68,36 @@ const registry = new FakeRegistryReader({ entries: [
   [officialAmd, { assetId: "robinhood-amd", tokenSymbol: "AMD", tokenName: "AMD Stock Token", contractAddress: officialAmd, currentMultiplier: "1", status: "active" }],
 ] });
 const source = new RmtRobinhoodStockMarketSource({ directory, stockRegistry: registry, config: { maximumObservations: 16 } });
-const captured = await source.capture({ agentId: "agent-1", accountId: "account-1", strategy, evaluatedAt: Date.parse("2026-08-14T16:34:01.000Z") }) as { chainId: number; capturedAt: number; observations: Array<Record<string, unknown>> };
+const captured = await source.capture({ agentId: "agent-1", accountId: "account-1", strategy, evaluatedAt: Date.parse("2026-08-14T16:34:01.000Z") }) as { chainId: number; capturedAt: number; observations: MarketObservationDraft[] };
 assert.equal(captured.chainId, 4_663);
 assert.equal(captured.observations.length, 1);
-assert.equal(captured.observations[0]?.assetId, "NVDA");
+assert.equal(captured.observations[0]?.assetId, canonicalNvdaId);
 assert.equal(captured.observations[0]?.referencePriceAtomic, "150250000");
 assert.equal(captured.observations[0]?.liquidityUsdAtomic, "1000000000000");
-assert.equal((captured.observations[0]?.features as Record<string, unknown>).contractAddress, officialNvda);
-assert.equal((captured.observations[0]?.features as Record<string, unknown>).registryAssetId, "robinhood-nvda");
-assert.equal((captured.observations[0]?.features as Record<string, unknown>).dexId, "verified-dex");
+assert.equal(captured.observations[0]?.features?.contractAddress, officialNvda);
+assert.equal(captured.observations[0]?.features?.registryAssetId, "robinhood-nvda");
+assert.equal(captured.observations[0]?.features?.dexId, "verified-dex");
 assert.equal(directory.calls, 1);
 assert.equal(registry.calls, 1);
+
+const snapshot = buildMarketSnapshot({
+  chainId: captured.chainId,
+  sourceId: source.sourceId,
+  capturedAt: captured.capturedAt,
+  observations: captured.observations,
+});
+const canonicalized = canonicalizePredictionAsset({
+  action: "PREDICTION",
+  confidence: 0.8,
+  reasoningSummary: "Verified registry alias should resolve to the canonical contract identity.",
+  prediction: {
+    assetId: "NVDA",
+    condition: "price closes above the reference price",
+    forecastProbability: 0.72,
+    resolvesAt: captured.capturedAt + 86_400_000,
+  },
+}, strategy, snapshot);
+assert.equal(canonicalized.prediction?.assetId, canonicalNvdaId);
 
 await assert.rejects(() => new RmtRobinhoodStockMarketSource({ directory: new FakeDirectoryReader({ ...directoryPayload, stale: true }), stockRegistry: registry, config: { maximumObservations: 16 } }).capture({ agentId: "agent-1", accountId: "account-1", strategy, evaluatedAt: Date.now() }), /directory is stale/);
 await assert.rejects(() => new RmtRobinhoodStockMarketSource({ directory, stockRegistry: new FakeRegistryReader({ coverage: "unavailable", entries: [] }), config: { maximumObservations: 16 } }).capture({ agentId: "agent-1", accountId: "account-1", strategy, evaluatedAt: Date.now() }), /registry coverage is unavailable/);
