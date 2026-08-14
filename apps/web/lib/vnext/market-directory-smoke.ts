@@ -3,9 +3,12 @@ import { readFileSync } from "node:fs";
 import type { ExternalMarketResponse, UniversalMarketResolution } from "../external-market";
 import { assetKey } from "./execution-domain";
 import {
+  VNEXT_MARKET_DIRECTORY_MAX_MARKETS,
+  VNEXT_MARKET_DIRECTORY_PAGE_SIZE,
   normalizeDirectoryMarkets,
   resolutionFromLookup,
   selectVNextMarketDirectoryView,
+  visibleVNextMarketDirectoryMarkets,
   verifiedDirectoryAsset,
   vNextRwaClassificationLabel,
   vNextMarketDirectoryViewCounts
@@ -119,6 +122,17 @@ assert.equal(vNextRwaClassificationLabel(rwaMarkets[0].rwaRelationship), "Stock 
 assert.equal(vNextRwaClassificationLabel(rwaMarkets[1].rwaRelationship), "RWA Pair");
 assert.equal(vNextRwaClassificationLabel(undefined), null);
 
+const pagedMarkets = Array.from({ length: 61 }, (_, index) => ({
+  ...categorized[0],
+  address: `0x${(index + 1).toString(16).padStart(40, "0")}`
+}));
+assert.equal(VNEXT_MARKET_DIRECTORY_MAX_MARKETS, 144);
+assert.equal(VNEXT_MARKET_DIRECTORY_PAGE_SIZE, 24);
+assert.equal(visibleVNextMarketDirectoryMarkets(pagedMarkets).length, 24);
+assert.equal(visibleVNextMarketDirectoryMarkets(pagedMarkets, 48).length, 48);
+assert.equal(visibleVNextMarketDirectoryMarkets(pagedMarkets, 200).length, 61);
+assert.equal(visibleVNextMarketDirectoryMarkets(pagedMarkets, Number.NaN).length, 24);
+
 const resolution: UniversalMarketResolution = {
   chainId: 4_663,
   requestedAddress: otherAddress,
@@ -140,6 +154,7 @@ assert.equal(verifiedDirectoryAsset(markets[1], { ...resolution, chainId: 4_663,
 const hook = readFileSync(new URL("../../app/vnext/use-vnext-market-directory.ts", import.meta.url), "utf8");
 const route = readFileSync(new URL("../../app/api/vnext/market-directory/route.ts", import.meta.url), "utf8");
 const identityRoute = readFileSync(new URL("../../app/api/vnext/asset-identity/route.ts", import.meta.url), "utf8");
+const shell = readFileSync(new URL("../../app/vnext/vnext-terminal-shell.tsx", import.meta.url), "utf8");
 assert.match(hook, /fetch\("\/api\/vnext\/market-directory"/);
 assert.match(hook, /fetch\("\/api\/markets\/external"/);
 assert.match(hook, /URLSearchParams\(\{ contract: address \}\)/);
@@ -157,10 +172,17 @@ assert.match(hook, /VNEXT_CLIENT_REFRESH_POLICY\.marketDirectoryMs/);
 assert.match(hook, /VNEXT_CLIENT_REFRESH_POLICY\.ecosystemDirectoryMs/);
 assert.match(route, /token-pairs\/v1/);
 assert.match(route, /Promise\.all\(DIRECTORY_TOKENS/);
+assert.match(route, /\[ROBINHOOD_USDG_ADDRESS, ROBINHOOD_WETH_ADDRESS, ROBINHOOD_RMT_ADDRESS\] as const/);
+assert.match(route, /slice\(0, VNEXT_MARKET_DIRECTORY_MAX_MARKETS\)/);
+assert.equal((route.match(/fetchPairs\(/g) ?? []).length, 2);
 assert.match(route, /address\.toLowerCase\(\) === zeroAddress/);
 assert.match(route, /stale-while-revalidate=60/);
 assert.doesNotMatch(route, /resolveRmtOrigins|external-availability|external-sushi-quote|external-uniswap|router|reactor/);
 assert.match(identityRoute, /readRobinhoodTokenIdentity/);
 assert.doesNotMatch(identityRoute, /discoverPools|fetchRobinhoodStockRegistry|external-availability|quote/);
+assert.match(shell, /visibleVNextMarketDirectoryMarkets\(filteredMarkets, visibleMarketLimit\)/);
+assert.match(shell, /current \+ VNEXT_MARKET_DIRECTORY_PAGE_SIZE/);
+const localPagination = shell.slice(shell.indexOf("const loadMoreMarkets"), shell.indexOf("const requestTradeSide"));
+assert.doesNotMatch(localPagination, /fetch\(|refresh\(|selectAddress\(|quote/i);
 
 console.log("RMT VNext market directory smoke checks passed.");
