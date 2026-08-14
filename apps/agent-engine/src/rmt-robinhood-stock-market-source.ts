@@ -164,6 +164,7 @@ function observationFor(market: DirectoryMarket, asset: RobinhoodStockAssetLike)
   return {
     assetId: canonicalAssetId(asset),
     quoteAssetId: USD_REFERENCE_ASSET_ID,
+    aliases: [asset.tokenSymbol, asset.assetId, asset.contractAddress.toLowerCase()],
     referencePriceAtomic: usdAtomic(market.priceUsd),
     referencePriceDecimals: USD_DECIMALS,
     liquidityUsdAtomic: usdAtomic(market.liquidityUsd),
