@@ -1,5 +1,4 @@
 import {
-  assertAtomicAmount,
   assertBps,
   assertNonEmptyString,
   assertPositiveAtomicAmount,
@@ -18,8 +17,7 @@ export interface PaperOrderSubmissionWriter {
 
 export interface PaperOrderSubmissionRecord {
   schemaVersion: 1;
-  admissionId: string;
-  admissionHash: string;
+  admission: PaperOrderAdmissionRecord;
   idempotencyKey: string;
   order: PaperOrderRecord;
   submissionHash: string;
@@ -72,12 +70,10 @@ export function paperOrderSubmissionIdempotencyKey(admission: PaperOrderAdmissio
 
 export function assertPaperOrderSubmissionRecord(record: PaperOrderSubmissionRecord): void {
   if (record.schemaVersion !== 1) fail("unsupported paper order submission schema version");
-  assertHash(record.admissionId, "paper submission admissionId");
-  assertHash(record.admissionHash, "paper submission admissionHash");
+  assertPaperOrderAdmissionRecord(record.admission);
   assertNonEmptyString(record.idempotencyKey, "paper submission idempotencyKey");
-  if (record.idempotencyKey !== `paper-order-admission:${record.admissionId}`) fail("paper submission idempotency key mismatch");
-  assertNonEmptyString(record.order.orderId, "paper submission orderId");
-  assertAtomicAmount(record.order.inputAmountAtomic, "paper submission order amount");
+  if (record.idempotencyKey !== paperOrderSubmissionIdempotencyKey(record.admission)) fail("paper submission idempotency key mismatch");
+  assertOrderMatchesIntent(record.order, record.admission.intent);
   assertHash(record.submissionHash, "paper submissionHash");
   const { submissionHash, ...payload } = record;
   if (submissionHash !== hashCanonicalPayload(payload)) fail("paper order submission hash mismatch");
@@ -98,8 +94,7 @@ export class PaperOrderSubmissionService {
     assertOrderMatchesIntent(order, intent);
     const payload: Omit<PaperOrderSubmissionRecord, "submissionHash"> = {
       schemaVersion: 1,
-      admissionId: admission.admissionId,
-      admissionHash: admission.admissionHash,
+      admission: structuredClone(admission),
       idempotencyKey,
       order: structuredClone(order),
     };
