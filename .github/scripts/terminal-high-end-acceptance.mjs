@@ -132,7 +132,7 @@ function market(index) {
   };
 }
 
-const markets = Array.from({ length: 24 }, (_, index) => market(index));
+const markets = Array.from({ length: 52 }, (_, index) => market(index));
 const trades = Array.from({ length: 14 }, (_, index) => ({
   id: `fixture-${index}`,
   transactionHash: txHash(index + 300),
@@ -393,6 +393,12 @@ async function inspectDesktop(browser, viewport, label) {
   if (!composition.rail || !composition.workspace || !composition.directory) throw new Error(`${label}: workstation columns are incomplete`);
   if (composition.rail.x < composition.workspace.x + composition.workspace.width - 2) throw new Error(`${label}: execution rail overlaps the asset workspace`);
 
+  const initialRows = page.locator(".rmtDesktopTerminal .rmtMarketItem");
+  if (await initialRows.count() !== 24) throw new Error(`${label}: directory did not start with a bounded 24-market page`);
+  const loadMore = page.getByRole("button", { name: "Load 24 more" });
+  await loadMore.click();
+  if (await initialRows.count() !== 48) throw new Error(`${label}: local market pagination did not reveal the next 24 markets`);
+
   await page.getByRole("button", { name: /^RWA\s+2$/ }).click();
   const rwaRows = page.locator(".rmtMarketItem");
   if (await rwaRows.count() !== 2) throw new Error(`${label}: RWA directory did not preserve both verified classifications`);
@@ -400,6 +406,7 @@ async function inspectDesktop(browser, viewport, label) {
   if (!(await rwaRows.nth(1).textContent())?.includes("RWA Pair")) throw new Error(`${label}: paired market asset was not clearly labeled`);
   await page.screenshot({ path: `${output}/rwa-${label}.png`, fullPage: false, animations: "disabled" });
   await page.getByRole("button", { name: /^Trending\s+/ }).click();
+  if (await page.locator(".rmtDesktopTerminal .rmtMarketItem").count() !== 24) throw new Error(`${label}: changing category did not reset the bounded market page`);
 
   const search = page.getByRole("textbox", { name: "Search Robinhood Chain markets" });
   await search.fill("R02");
@@ -458,6 +465,10 @@ async function inspectMobile(browser, viewport, label) {
   await gotoReady(page, base, ".rmtMobileTerminal #vn-asset-heading");
   await page.locator(".rmtMobileDiscovery > summary").click();
   await page.locator(".rmtMobileTerminal .rmtMarketItem").first().waitFor({ state: "visible" });
+  const initialMobileRows = page.locator(".rmtMobileTerminal .rmtMarketItem");
+  if (await initialMobileRows.count() !== 24) throw new Error(`${label}: mobile directory did not start with a bounded 24-market page`);
+  await page.getByRole("button", { name: "Load 24 more" }).click();
+  if (await initialMobileRows.count() !== 48) throw new Error(`${label}: mobile local pagination did not reveal the next 24 markets`);
   await page.getByRole("button", { name: /^RWA\s+2$/ }).click();
   const mobileRwaRows = page.locator(".rmtMobileTerminal .rmtMarketItem");
   if (await mobileRwaRows.count() !== 2) throw new Error(`${label}: mobile RWA directory lost a verified classification`);

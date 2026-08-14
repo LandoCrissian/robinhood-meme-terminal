@@ -3,7 +3,9 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import type { VNextDetectedWalletAsset } from "../../lib/vnext/wallet-assets";
 import {
+  VNEXT_MARKET_DIRECTORY_PAGE_SIZE,
   selectVNextMarketDirectoryView,
+  visibleVNextMarketDirectoryMarkets,
   vNextMarketDirectoryViewCounts,
   type VNextMarketDirectoryView
 } from "../../lib/vnext/market-directory";
@@ -20,6 +22,7 @@ export function VNextTerminalShell() {
   const [portfolioRevealRequest, setPortfolioRevealRequest] = useState(0);
   const [tradeSideRequest, setTradeSideRequest] = useState<TradeSideRequest>();
   const [directoryView, setDirectoryView] = useState<VNextMarketDirectoryView>("trending");
+  const [visibleMarketLimit, setVisibleMarketLimit] = useState(VNEXT_MARKET_DIRECTORY_PAGE_SIZE);
   const marketSearch = useRef<HTMLInputElement>(null);
   const executionRecovery = useVNextExecutionRecovery();
   const { markets, status, selected, selectedAsset, identityStatus, selectAddress, refresh } = useVNextMarketDirectory();
@@ -31,13 +34,22 @@ export function VNextTerminalShell() {
       `${market.symbol} ${market.name} ${market.address}`.toLowerCase().includes(normalized)
     ) : selectVNextMarketDirectoryView(markets, directoryView, heldAddresses);
   }, [directoryView, heldAddresses, markets, query]);
+  const visibleMarkets = useMemo(
+    () => visibleVNextMarketDirectoryMarkets(filteredMarkets, visibleMarketLimit),
+    [filteredMarkets, visibleMarketLimit]
+  );
 
   const continueTrading = useCallback(() => {
     setQuery("");
+    setVisibleMarketLimit(VNEXT_MARKET_DIRECTORY_PAGE_SIZE);
     window.requestAnimationFrame(() => {
       marketSearch.current?.scrollIntoView({ behavior: "smooth", block: "center" });
       marketSearch.current?.focus({ preventScroll: true });
     });
+  }, []);
+  const updateQuery = useCallback((nextQuery: string) => {
+    setQuery(nextQuery);
+    setVisibleMarketLimit(VNEXT_MARKET_DIRECTORY_PAGE_SIZE);
   }, []);
   const selectMarket = useCallback((address: string) => {
     void selectAddress(address);
@@ -54,17 +66,25 @@ export function VNextTerminalShell() {
   const changeDirectoryView = useCallback((view: VNextMarketDirectoryView) => {
     setDirectoryView(view);
     setQuery("");
+    setVisibleMarketLimit(VNEXT_MARKET_DIRECTORY_PAGE_SIZE);
   }, []);
+  const loadMoreMarkets = useCallback(() => {
+    setVisibleMarketLimit((current) => Math.min(
+      filteredMarkets.length,
+      current + VNEXT_MARKET_DIRECTORY_PAGE_SIZE
+    ));
+  }, [filteredMarkets.length]);
   const requestTradeSide = useCallback((side: "buy" | "sell") => {
     setTradeSideRequest({ side, nonce: Date.now() });
   }, []);
 
   const props: TerminalPresentationProps = {
     query,
-    setQuery,
+    setQuery: updateQuery,
     marketSearch,
     markets,
     filteredMarkets,
+    visibleMarkets,
     directoryView,
     directoryViewCounts,
     searchActive: Boolean(query.trim()),
@@ -84,6 +104,7 @@ export function VNextTerminalShell() {
     onSearchSubmit: submitSearch,
     onRefresh: () => void refresh(),
     onDirectoryViewChange: changeDirectoryView,
+    onLoadMoreMarkets: loadMoreMarkets,
     onRevealPortfolio: revealPortfolio,
     onRequestTradeSide: requestTradeSide,
     onContinueTrading: continueTrading

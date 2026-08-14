@@ -35,6 +35,9 @@ export type VNextRwaRelationship = "canonical-stock-token" | "paired-market-asse
 
 export type VNextMarketDirectoryView = "trending" | "new" | "active" | "rwa" | "held" | "all";
 
+export const VNEXT_MARKET_DIRECTORY_MAX_MARKETS = 144;
+export const VNEXT_MARKET_DIRECTORY_PAGE_SIZE = 24;
+
 export const VNEXT_MARKET_DIRECTORY_VIEWS: ReadonlyArray<{ id: VNextMarketDirectoryView; label: string }> = [
   { id: "trending", label: "Trending" },
   { id: "new", label: "New" },
@@ -164,6 +167,16 @@ export function vNextMarketDirectoryViewCounts(
     held: selectVNextMarketDirectoryView(markets, "held", heldAddresses).length,
     all: markets.length
   };
+}
+
+export function visibleVNextMarketDirectoryMarkets(
+  markets: VNextDirectoryMarket[],
+  visibleCount = VNEXT_MARKET_DIRECTORY_PAGE_SIZE
+) {
+  const boundedCount = Number.isFinite(visibleCount)
+    ? Math.max(0, Math.floor(visibleCount))
+    : VNEXT_MARKET_DIRECTORY_PAGE_SIZE;
+  return markets.slice(0, boundedCount);
 }
 
 function resolutionToken(resolution: UniversalMarketResolution | undefined, expectedAddress: string) {

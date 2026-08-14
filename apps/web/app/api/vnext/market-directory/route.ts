@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { getAddress, isAddress, zeroAddress } from "viem";
 import type { ExternalMarketSignal } from "../../../../lib/external-market-ranking";
-import type { VNextDirectoryMarket, VNextDirectoryResponse } from "../../../../lib/vnext/market-directory";
+import {
+  VNEXT_MARKET_DIRECTORY_MAX_MARKETS,
+  type VNextDirectoryMarket,
+  type VNextDirectoryResponse
+} from "../../../../lib/vnext/market-directory";
 import {
   ROBINHOOD_RMT_ADDRESS,
   ROBINHOOD_USDG_ADDRESS,
@@ -14,7 +18,6 @@ const PAIRS_API = "https://api.dexscreener.com/token-pairs/v1";
 const DIRECTORY_TOKENS = [ROBINHOOD_USDG_ADDRESS, ROBINHOOD_WETH_ADDRESS, ROBINHOOD_RMT_ADDRESS] as const;
 const QUOTE_ASSETS = new Set([ROBINHOOD_USDG_ADDRESS, ROBINHOOD_WETH_ADDRESS].map((address) => address.toLowerCase()));
 const TIMEOUT_MS = 6_000;
-const MAX_MARKETS = 48;
 
 type RawToken = { address?: unknown; name?: unknown; symbol?: unknown };
 type RawPair = {
@@ -132,7 +135,7 @@ export async function GET() {
     }
     const markets = [...preferred.values()]
       .sort((left, right) => right.liquidityUsd - left.liquidityUsd || right.volume24h - left.volume24h)
-      .slice(0, MAX_MARKETS);
+      .slice(0, VNEXT_MARKET_DIRECTORY_MAX_MARKETS);
     if (markets.length === 0) throw new Error("Market directory returned no usable assets.");
     lastSnapshot = { markets, updatedAt: new Date().toISOString() };
     return NextResponse.json(lastSnapshot, {
