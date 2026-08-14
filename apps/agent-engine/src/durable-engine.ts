@@ -150,10 +150,12 @@ export class DurableAgentEngine {
     intent: HumanPaperOrderIntent,
     idempotencyKey: string,
     expectedRevision: number,
+    authorizationHash: string,
   ): Promise<HumanPaperOrderRecord> {
+    if (!/^0x[0-9a-f]{64}$/.test(authorizationHash)) throw new Error("human paper authorizationHash must be a sha256 hex hash");
     return this.mutate(
       "submitHumanPaperOrder",
-      { intent, expectedRevision },
+      { intent, expectedRevision, authorizationHash },
       idempotencyKey,
       (engine) => engine.submitHumanPaperOrder(intent),
       expectedRevision,
