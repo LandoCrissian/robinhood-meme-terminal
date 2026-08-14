@@ -1,3 +1,6 @@
+export * from "./agent-authoritative-position-reduction-fill.ts";
+export * from "./agent-authoritative-position-reduction-submission.ts";
+export * from "./agent-authoritative-position-reduction.ts";
 export * from "./agent-run-store.ts";
 export * from "./durable-engine.ts";
 export * from "./engine.ts";
