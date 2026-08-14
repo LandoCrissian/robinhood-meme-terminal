@@ -15,6 +15,7 @@ The response is treated as untrusted at the agent boundary and is rechecked for:
 - exact input amount;
 - chain ID 4663;
 - bounded request/completion timestamps;
+- indicative quote timestamps consistent with the comparison request/completion window, allowing only the explicit clock-skew budget;
 - 1–8 unique provider attempts;
 - supported VNext providers only;
 - `adapterVersion = 1`;
@@ -55,12 +56,22 @@ The selected VNext observation becomes `VerifiedPaperQuoteEvidence` using:
 - exact requested input amount;
 - **protected** output amount, never optimistic expected output;
 - provider identity `rmt-vnext:<provider>:adapter-v1`;
-- price impact rounded **up** to integer basis points;
+- price impact rounded **up** to integer basis points, including mapping any positive sub-basis-point impact to at least `1 bps`;
 - quote observation and expiry timestamps;
 - deterministic quote ID;
 - canonical SHA-256 evidence hash.
 
-The overall adapter result is independently hash-bound as well.
+## Replay and tamper evidence
+
+A quote result retains the full bounded agent-normalized comparison that was considered, not only the winning route. It records:
+
+- `comparison` — all normalized attempts admitted at the agent boundary;
+- `comparisonHash` — canonical SHA-256 of that comparison;
+- `selectedAttemptHash` — canonical SHA-256 of the exact winning attempt;
+- `evidence.evidenceHash` — hash of the protected-output paper quote evidence;
+- `resultHash` — hash of the complete result excluding only `resultHash` itself.
+
+`assertRmtPaperQuoteResult()` recomputes those hashes and verifies that the selected attempt uniquely exists in the retained comparison and exactly agrees with provider, decimals, gas semantics, canonical asset IDs, amount, protected output, price impact and timestamps. Mutating the retained comparison without recomputing the canonical record therefore fails closed.
 
 ## Cost boundary
 
