@@ -1,6 +1,7 @@
 export * from "./agent-run-store.ts";
 export * from "./durable-engine.ts";
 export * from "./engine.ts";
+export * from "./paper-canonical-valuation.ts";
 export * from "./paper-evaluation-scheduler.ts";
 export * from "./paper-evaluation.ts";
 export * from "./paper-fill-cost.ts";
