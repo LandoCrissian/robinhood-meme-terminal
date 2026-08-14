@@ -52,6 +52,10 @@ function verifyStateRow(row: StateRow): StoredAgentEngineState {
   return { revision: parseRevision(row.revision), snapshot };
 }
 
+function isHumanOrigin(value: object): value is { participantType: "HUMAN"; participantId: string } {
+  return "participantType" in value && (value as { participantType?: unknown }).participantType === "HUMAN";
+}
+
 async function upsertProjection(client: SqlClientLike, streamId: string, snapshot: AgentEngineSnapshot): Promise<void> {
   for (const season of snapshot.seasons) {
     await client.query(
@@ -160,14 +164,23 @@ async function upsertProjection(client: SqlClientLike, streamId: string, snapsho
   }
 
   for (const order of snapshot.paperOrders) {
+    const human = isHumanOrigin(order);
+    const participantType = human ? "HUMAN" : "AGENT";
+    const participantId = human ? order.participantId : order.agentId;
+    const agentId = human ? null : order.agentId;
+    const strategyVersion = human ? null : order.strategyVersion;
+    const manualPolicyVersion = human ? order.manualPolicyVersion : null;
     await client.query(
       `INSERT INTO paper_orders (
-         stream_id, order_id, agent_id, strategy_version, account_id, input_asset_id, output_asset_id,
-         input_amount_atomic, maximum_slippage_bps, created_at_ms, status
-       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+         stream_id, order_id, participant_type, participant_id, agent_id, strategy_version, manual_policy_version,
+         account_id, input_asset_id, output_asset_id, input_amount_atomic, maximum_slippage_bps, created_at_ms, status
+       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
        ON CONFLICT (stream_id, order_id) DO UPDATE SET
+         participant_type = EXCLUDED.participant_type,
+         participant_id = EXCLUDED.participant_id,
          agent_id = EXCLUDED.agent_id,
          strategy_version = EXCLUDED.strategy_version,
+         manual_policy_version = EXCLUDED.manual_policy_version,
          account_id = EXCLUDED.account_id,
          input_asset_id = EXCLUDED.input_asset_id,
          output_asset_id = EXCLUDED.output_asset_id,
@@ -176,22 +189,30 @@ async function upsertProjection(client: SqlClientLike, streamId: string, snapsho
          created_at_ms = EXCLUDED.created_at_ms,
          status = EXCLUDED.status`,
       [
-        streamId, order.orderId, order.agentId, order.strategyVersion, order.accountId, order.inputAssetId,
-        order.outputAssetId, order.inputAmountAtomic, order.maximumSlippageBps, order.createdAt, order.status,
+        streamId, order.orderId, participantType, participantId, agentId, strategyVersion, manualPolicyVersion,
+        order.accountId, order.inputAssetId, order.outputAssetId, order.inputAmountAtomic,
+        order.maximumSlippageBps, order.createdAt, order.status,
       ],
     );
   }
 
   for (const fill of snapshot.paperFills) {
+    const human = isHumanOrigin(fill);
+    const participantType = human ? "HUMAN" : "AGENT";
+    const participantId = human ? fill.participantId : fill.agentId;
+    const agentId = human ? null : fill.agentId;
     await client.query(
       `INSERT INTO paper_fills (
-         stream_id, fill_id, order_id, quote_id, agent_id, account_id, input_asset_id, output_asset_id,
-         input_amount_atomic, output_amount_atomic, provider_id, fee_asset_id, fee_amount_atomic,
-         gas_asset_id, gas_cost_atomic, filled_at_ms, evidence_hash, quote_evidence_json
-       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18::jsonb)
+         stream_id, fill_id, order_id, quote_id, participant_type, participant_id, agent_id,
+         account_id, input_asset_id, output_asset_id, input_amount_atomic, output_amount_atomic,
+         provider_id, fee_asset_id, fee_amount_atomic, gas_asset_id, gas_cost_atomic,
+         filled_at_ms, evidence_hash, quote_evidence_json
+       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20::jsonb)
        ON CONFLICT (stream_id, fill_id) DO UPDATE SET
          order_id = EXCLUDED.order_id,
          quote_id = EXCLUDED.quote_id,
+         participant_type = EXCLUDED.participant_type,
+         participant_id = EXCLUDED.participant_id,
          agent_id = EXCLUDED.agent_id,
          account_id = EXCLUDED.account_id,
          input_asset_id = EXCLUDED.input_asset_id,
@@ -207,10 +228,10 @@ async function upsertProjection(client: SqlClientLike, streamId: string, snapsho
          evidence_hash = EXCLUDED.evidence_hash,
          quote_evidence_json = EXCLUDED.quote_evidence_json`,
       [
-        streamId, fill.fillId, fill.orderId, fill.quoteId, fill.agentId, fill.accountId, fill.inputAssetId,
-        fill.outputAssetId, fill.inputAmountAtomic, fill.outputAmountAtomic, fill.providerId, fill.feeAssetId ?? null,
-        fill.feeAmountAtomic, fill.gasAssetId ?? null, fill.gasCostAtomic, fill.filledAt, fill.evidenceHash,
-        JSON.stringify(fill.quoteEvidence),
+        streamId, fill.fillId, fill.orderId, fill.quoteId, participantType, participantId, agentId,
+        fill.accountId, fill.inputAssetId, fill.outputAssetId, fill.inputAmountAtomic, fill.outputAmountAtomic,
+        fill.providerId, fill.feeAssetId ?? null, fill.feeAmountAtomic, fill.gasAssetId ?? null,
+        fill.gasCostAtomic, fill.filledAt, fill.evidenceHash, JSON.stringify(fill.quoteEvidence),
       ],
     );
   }
