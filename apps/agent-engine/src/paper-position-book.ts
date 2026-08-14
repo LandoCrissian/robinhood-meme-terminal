@@ -4,7 +4,7 @@ import {
   assertPositiveAtomicAmount,
   hashCanonicalPayload,
   hashPaperQuoteEvidence,
-  type PaperFillRecord,
+  type ParticipantPaperFillRecord,
 } from "../../../packages/agent-core/src/index.ts";
 
 export interface PaperPositionRecord {
@@ -57,7 +57,7 @@ function assertNonNegativeSafeInteger(value: number, field: string): void {
   if (!Number.isSafeInteger(value) || value < 0) fail(`${field} must be a non-negative safe integer`);
 }
 
-function assertFillEvidence(fill: PaperFillRecord): void {
+function assertFillEvidence(fill: ParticipantPaperFillRecord): void {
   assertNonEmptyString(fill.fillId, "paper position fillId");
   assertNonEmptyString(fill.orderId, "paper position orderId");
   assertNonEmptyString(fill.quoteId, "paper position quoteId");
@@ -90,7 +90,7 @@ function assertFillEvidence(fill: PaperFillRecord): void {
 function addCost(input: {
   aggregate: Map<string, bigint>;
   events: PaperExternalCostEvent[];
-  fill: PaperFillRecord;
+  fill: ParticipantPaperFillRecord;
   kind: "FEE" | "GAS";
   assetId: string | undefined;
   amount: string;
@@ -180,7 +180,7 @@ export function assertPaperPositionBookRecord(record: PaperPositionBookRecord): 
 export function buildPaperPositionBook(input: {
   accountId: string;
   quoteAssetId: string;
-  fills: PaperFillRecord[];
+  fills: ParticipantPaperFillRecord[];
 }): PaperPositionBookRecord {
   assertNonEmptyString(input.accountId, "paper position accountId");
   assertNonEmptyString(input.quoteAssetId, "paper position quoteAssetId");
