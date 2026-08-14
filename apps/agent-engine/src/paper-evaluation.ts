@@ -119,9 +119,12 @@ function buildRunRequestHash(input: {
   });
 }
 
-function assertCloseProposalCompatibility(value: unknown): void {
-  if (!isRecord(value) || value.action !== "CLOSE_POSITION") return;
-  if (!isRecord(value.closePosition) || value.prediction !== undefined || value.openPosition !== undefined) {
+function assertProposalCompatibility(value: unknown): void {
+  if (!isRecord(value)) return;
+  if (value.action === "OPEN_POSITION" && value.prediction !== undefined) {
+    throw new Error("OPEN_POSITION proposal cannot include prediction");
+  }
+  if (value.action === "CLOSE_POSITION" && (!isRecord(value.closePosition) || value.prediction !== undefined || value.openPosition !== undefined)) {
     throw new Error("evaluation action is not admitted without a valid closePosition-only payload");
   }
 }
@@ -221,7 +224,7 @@ export class PaperEvaluationService {
         outputInstruction: "NO_ACTION_PREDICTION_OR_OPEN_POSITION",
         allowedActions: ["NO_ACTION", "PREDICTION", "OPEN_POSITION", "CLOSE_POSITION"],
       });
-      assertCloseProposalCompatibility(rawProposal);
+      assertProposalCompatibility(rawProposal);
       const parsedProposal = parseEvaluationProposal(rawProposal, strategy.spec, evaluatedAt);
       const proposal = canonicalizeEvaluationProposalAssets(parsedProposal, strategy.spec, marketSnapshot);
       const proposalHash = hashCanonicalPayload(proposal);
