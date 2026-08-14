@@ -92,12 +92,6 @@ export class HumanPaperOrderSubmissionGateService {
     if (hashCanonicalPayload(currentSeasons[0]) !== hashCanonicalPayload(input.admission.seasonSnapshot)) {
       fail("human paper admission season snapshot is stale");
     }
-    if (state.snapshot.paperOrders.some((order) => order.accountId === input.admission.accountSnapshot.accountId)) {
-      fail("human paper submission refuses an account with an existing paper order until participant-neutral order state is active");
-    }
-    if (state.snapshot.paperFills.some((fill) => fill.accountId === input.admission.accountSnapshot.accountId)) {
-      fail("human paper submission refuses an account with an existing paper fill until participant-neutral order state is active");
-    }
 
     const checkedAt = input.checkedAt ?? Date.now();
     assertTimestamp(checkedAt, "human paper submission checkedAt");
