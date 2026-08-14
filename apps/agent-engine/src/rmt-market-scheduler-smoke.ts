@@ -21,15 +21,31 @@ const strategy: StrategySpec = {
 class FakeDirectoryReader implements VNextMarketDirectoryReader {
   readonly sourceId = "rmt-vnext-market-directory-v1";
   calls = 0;
-  constructor(private readonly payload: unknown) {}
-  async read(): Promise<unknown> { this.calls += 1; return structuredClone(this.payload); }
+  private readonly payload: unknown;
+
+  constructor(payload: unknown) {
+    this.payload = payload;
+  }
+
+  async read(): Promise<unknown> {
+    this.calls += 1;
+    return structuredClone(this.payload);
+  }
 }
 
 class FakeRegistryReader implements RobinhoodStockRegistryReader {
   readonly sourceId = "robinhood-live-asset-registry";
   calls = 0;
-  constructor(private readonly input: { coverage?: "complete" | "unavailable"; entries: Array<[string, any]> }) {}
-  async read() { this.calls += 1; return { coverage: this.input.coverage ?? "complete", assetsByAddress: new Map(this.input.entries) }; }
+  private readonly input: { coverage?: "complete" | "unavailable"; entries: Array<[string, any]> };
+
+  constructor(input: { coverage?: "complete" | "unavailable"; entries: Array<[string, any]> }) {
+    this.input = input;
+  }
+
+  async read() {
+    this.calls += 1;
+    return { coverage: this.input.coverage ?? "complete", assetsByAddress: new Map(this.input.entries) };
+  }
 }
 
 const directoryPayload = {
@@ -70,14 +86,17 @@ assert.equal(paperEvaluationSlotStart(125_000, 60), 120_000);
 assert.equal(buildPaperEvaluationKey({ prefix: "paper", agentId: "agent-1", accountId: "account-1", evaluationIntervalSeconds: 60, slotStart: 120_000 }), "paper:agent-1:account-1:60:120000");
 
 class FakeCatalog implements PaperEvaluationScheduleCatalog {
-  async listCandidates() { return [
-    { agentId: "agent-1", accountId: "account-1", evaluationIntervalSeconds: 60 },
-    { agentId: "agent-1", accountId: "account-1", evaluationIntervalSeconds: 60 },
-    { agentId: "agent-2", accountId: "account-2", evaluationIntervalSeconds: 300 },
-  ]; }
+  async listCandidates() {
+    return [
+      { agentId: "agent-1", accountId: "account-1", evaluationIntervalSeconds: 60 },
+      { agentId: "agent-1", accountId: "account-1", evaluationIntervalSeconds: 60 },
+      { agentId: "agent-2", accountId: "account-2", evaluationIntervalSeconds: 300 },
+    ];
+  }
 }
 class FakeExecutor implements PaperEvaluationExecutor {
   calls: Array<{ agentId: string; accountId: string; evaluationKey: string; evaluatedAt?: number }> = [];
+
   async evaluate(input: { agentId: string; accountId: string; evaluationKey: string; evaluatedAt?: number }) {
     this.calls.push(input);
     if (input.agentId === "agent-2") throw new Error("simulated evaluation failure");
