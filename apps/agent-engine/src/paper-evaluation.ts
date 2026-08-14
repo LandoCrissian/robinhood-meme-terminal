@@ -3,6 +3,7 @@ import {
   assertAgentRunRecord,
   assertPredictionAssetAllowed,
   buildMarketSnapshot,
+  canonicalizePredictionAsset,
   hashAgentRunPayload,
   hashCanonicalPayload,
   parseEvaluationProposal,
@@ -211,7 +212,8 @@ export class PaperEvaluationService {
         evaluatedAt,
         outputInstruction: "NO_ACTION_OR_PREDICTION_ONLY",
       });
-      const proposal = parseEvaluationProposal(rawProposal, strategy.spec, evaluatedAt);
+      const parsedProposal = parseEvaluationProposal(rawProposal, strategy.spec, evaluatedAt);
+      const proposal = canonicalizePredictionAsset(parsedProposal, strategy.spec, marketSnapshot);
       assertPredictionAssetAllowed(proposal, strategy.spec, marketSnapshot);
       const proposalHash = hashCanonicalPayload(proposal);
       const payload: Omit<AgentRunRecord, "runHash"> = {
