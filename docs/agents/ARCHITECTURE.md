@@ -1,9 +1,9 @@
 # RMT agent architecture
 
-**Status: CURRENT FOUNDATION — DURABLE PAPER ONLY**
+**Status: CURRENT FOUNDATION — DURABLE PAPER ONLY + STRATEGY COMPILER ADMISSION**
 **Admitted:** 2026-08-14
 
-This document defines the RMT agent-system boundary. It authorizes a durable paper-only evaluation domain inside the existing RMT monorepo. It does not authorize live autonomous execution, wallet signing, fee activation, production configuration, pooled capital, copy trading, contract deployment, ERC-8004 publication or a public MCP server.
+This document defines the RMT agent-system boundary. It authorizes a durable paper-only evaluation domain and deterministic Strategy Compiler admission boundary inside the existing RMT monorepo. It does not authorize live autonomous execution, wallet signing, fee activation, production configuration, pooled capital, copy trading, contract deployment, ERC-8004 publication, a public MCP server or any concrete model provider/API key.
 
 ## Purpose
 
@@ -13,7 +13,12 @@ The admitted flow is:
 
 ```text
 owner thesis
-→ immutable StrategySpec version
+→ untrusted structured model adapter
+→ deterministic Strategy Compiler
+→ candidate StrategySpec
+→ RMT safety/policy admission
+→ canonical compilation record
+→ immutable admitted StrategySpec version
 → paper-active agent
 → auditable decision summary
 → prediction and/or paper order
@@ -42,13 +47,13 @@ The agent never becomes the authority for route validity, fee policy, signer per
 
 ## Repository ownership
 
-- `packages/agent-core`: pure TypeScript agent schemas, safety-envelope validation, state transitions, canonical hashing and deterministic scoring.
-- `apps/agent-engine`: paper-only state machine, durable wrapper and PostgreSQL persistence contract. It owns agent-domain state; it does not own market discovery or live execution.
+- `packages/agent-core`: pure TypeScript agent schemas, Strategy Compiler policy/admission validation, safety-envelope validation, state transitions, canonical hashing and deterministic scoring.
+- `apps/agent-engine`: paper-only state machine, durable wrapper, Strategy Compiler adapter/admission layer and persistence contracts. It owns agent-domain state; it does not own market discovery or live execution.
 - `apps/market-indexer`: remains read-oriented external market discovery/enrichment. It is not repurposed into the agent engine.
 - `apps/web`: remains the only terminal UI. Arena and agent surfaces may be added later without creating a second routing stack.
 - future `apps/rmt-mcp`: separate external-agent gateway after the internal paper system is durable and abuse-controlled.
 
-The current implementation still adds no workspace package manifests or new runtime dependencies. `PostgresAgentStateStore` accepts an injected SQL pool contract, so runtime packaging and an actual database connection remain a separate release decision.
+The current implementation still adds no workspace package manifests or third-party runtime dependencies. PostgreSQL adapters accept injected SQL pool contracts, so runtime packaging and actual database connections remain separate release decisions.
 
 ## Two independent state dimensions
 
@@ -70,11 +75,50 @@ SUSPENDED              (future)
 
 The admitted engine only creates and restores `PAPER_ONLY`. Performance quality never grants live authority by itself. PostgreSQL repeats this invariant with a database constraint so persistence cannot silently admit a live execution mode.
 
+## Strategy Compiler
+
+Free-form prose is not authoritative runtime state. The exact stored agent thesis is normalized and fingerprinted together with:
+
+- agent ID;
+- compiler version;
+- compiler policy version;
+- RMT safety envelope;
+- adapter identity;
+- model identity.
+
+That fingerprint becomes the compilation request hash. A concrete model adapter may only propose a structured draft. The deterministic compiler independently:
+
+1. parses the draft as untrusted runtime data;
+2. validates the `StrategySpec` schema;
+3. bounds asset classes, asset-list sizes, signal count and signal-parameter count;
+4. enforces the RMT safety envelope without allowing the model to raise or silently clamp risk limits;
+5. appends hard-required prohibitions such as `ARBITRARY_CALL` and `UNVERIFIED_VENUE` even when the model omits them;
+6. rejects include/exclude asset conflicts and other policy violations;
+7. hashes the candidate strategy, admitted strategy and complete compilation record independently.
+
+The compiler records only a concise summary, assumptions and warnings from the structured draft. It does not request or persist private chain-of-thought.
+
+No concrete model provider is admitted by this architecture. OpenAI, Anthropic, Gemini or any other provider must implement the same `StrategyModelAdapter` boundary and remains untrusted input to the deterministic compiler.
+
+## Compilation persistence and concurrency
+
+Strategy compilation has a separate first-writer-wins persistence boundary because model output may be nondeterministic.
+
+`StrategyCompilationStore` is keyed by `(stream_id, request_hash)`. On retry, a previously stored canonical compilation is reused before another model call. If two workers race and produce different model proposals for the same request hash, only the first stored compilation becomes canonical; both workers then use that same admitted or rejected record.
+
+`PostgresStrategyCompilationStore`:
+
+- stores the full compilation record plus a canonical SHA-256 record hash;
+- verifies both the compilation's self-hash and database record hash on reads;
+- takes an advisory transaction lock scoped to stream + request hash;
+- exposes an explicit `ensureSchema()`; the base agent tables must exist first so compilation rows can foreign-key to an agent;
+- never writes wallet, execution, treasury or live-order state.
+
+The admission service then derives a durable strategy-version idempotency key from the compilation request hash. A crash after compilation persistence but before strategy-version creation is recoverable: the next attempt reuses the canonical compilation and retries the idempotent durable engine mutation.
+
 ## Strategy and season model
 
-Natural-language strategy compilation is a later adapter. The authoritative runtime object is a versioned `StrategySpec`, not free-form prose.
-
-Every strategy version is immutable and hash-bound. A strategy change creates a new contiguous version. Predictions, decisions and orders reference the exact strategy version that produced them.
+Every admitted strategy version is immutable and hash-bound. A strategy change or a deliberately different compilation fingerprint creates a new contiguous version. Predictions, decisions and orders reference the exact strategy version that produced them.
 
 The user strategy operates inside a separate RMT safety envelope. A strategy cannot raise its own limits above the envelope. The engine validates position, portfolio exposure, drawdown, daily loss, trade-count, slippage, price-impact and evaluation-frequency bounds both when a strategy is created and when persisted state is restored.
 
@@ -116,7 +160,9 @@ Normalized tables are maintained in the same transaction for queryability:
 - risk events;
 - score snapshots.
 
-The snapshot remains the canonical restart boundary in this phase. Normalized tables are transactional projections and may later move to incremental event-specific writes as scale requires.
+Strategy compilation records are intentionally separate from the canonical paper-engine snapshot because they are model/provenance artifacts preceding strategy admission. The admitted immutable strategy version remains part of canonical engine state.
+
+The snapshot remains the canonical restart boundary for trading/evaluation state in this phase. Normalized tables are transactional projections and may later move to incremental event-specific writes as scale requires.
 
 ## Decisions and reasoning
 
@@ -156,8 +202,8 @@ The agent domain must not gain arbitrary target/calldata execution, private-key 
 ## Deferred phases
 
 1. runtime packaging and controlled PostgreSQL service wiring;
-2. natural-language StrategySpec compiler with structured model output;
-3. verified read-only market/quote adapter and durable paper evaluation loop;
+2. concrete structured-model adapter behind the admitted Strategy Compiler boundary;
+3. verified read-only market/quote adapter and recurring durable paper-evaluation runner;
 4. richer NAV, risk, drawdown and season scoring;
 5. Human and Agent Arena plus transparent leaderboards;
 6. public RMT MCP read/paper tools;
