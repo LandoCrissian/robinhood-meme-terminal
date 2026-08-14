@@ -1,0 +1,50 @@
+{
+  "schema": "rmt.physical-commodity-evidence.v0",
+  "environment": "synthetic-testnet",
+  "disclaimer": "Synthetic test fixture only. No commodity, title, custody, redemption, transfer, monetary value, producer relationship, Robinhood relationship, or RMT-token right exists.",
+  "instrument": {
+    "namespace": "RMT_SYNTHETIC_COMMODITY_EVIDENCE_V0",
+    "instrumentIdLabel": "RMT-HE-DEMO-V0",
+    "seriesIdLabel": "RMT-HE-COLORADO-SYNTHETIC-SERIES-V0",
+    "commodityClass": "physical_helium",
+    "rightsType": "no_rights_test_fixture",
+    "transferability": "none",
+    "mintAuthorization": "none"
+  },
+  "batch": {
+    "batchIdLabel": "SYNTHETIC-HE-BATCH-0001",
+    "physicalLotLabel": "SYNTHETIC-HE-LOT-0001",
+    "producer": "synthetic-party-only",
+    "custodian": "synthetic-party-only",
+    "publicRegion": "US-CO-SYNTHETIC",
+    "physicalState": "compressed_gas_synthetic",
+    "quantity": {
+      "value": "170000",
+      "decimals": 0,
+      "unitCode": "SCF_SYNTHETIC",
+      "standard": "SYNTHETIC_STANDARD_TEMPERATURE_PRESSURE_V0",
+      "uncertaintyPpm": 2500
+    },
+    "quality": {
+      "minimumPurity": "99.999% synthetic fixture",
+      "sample": "synthetic-sample-0001",
+      "laboratory": "synthetic-attestor-only"
+    },
+    "title": "synthetic commitment only",
+    "custody": "synthetic commitment only",
+    "encumbrance": "not_applicable_synthetic"
+  },
+  "evidence": {
+    "issuerRole": "synthetic",
+    "custodianRole": "synthetic",
+    "attestorRole": "synthetic",
+    "publicDocuments": [],
+    "privateDocumentCommitment": "synthetic-full-manifest-v0",
+    "unresolvedIssues": []
+  },
+  "redemption": {
+    "available": false,
+    "minimum": null,
+    "delivery": null
+  }
+}
