@@ -1,0 +1,113 @@
+name: Commodity evidence registry
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/commodity-evidence-registry.yml"
+      - "docs/HELIUM_RWA_*"
+      - "packages/contracts/deployments/rmt-commodity-evidence-registry-v0*"
+      - "packages/contracts/script/*CommodityEvidenceRegistryV0*"
+      - "packages/contracts/script/BuildSyntheticCommodityEvidenceV0.s.sol"
+      - "packages/contracts/scripts/*rmt-commodity-evidence-registry-v0*"
+      - "packages/contracts/src/RMTCommodityEvidenceRegistryV0.sol"
+      - "packages/contracts/test/RMTCommodityEvidenceRegistryV0*"
+      - "packages/contracts/test/fixtures/commodity-evidence/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: commodity-evidence-registry-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: packages/contracts
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6.0.2
+      - uses: foundry-rs/foundry-toolchain@b00af27efadbc7b4ca8b82abbd903b17cc874d2a # v1.6.0
+        with:
+          version: stable
+      - name: Install pinned contract dependencies
+        run: bash scripts/install-v4-deps.sh
+      - name: Validate release files
+        run: |
+          python3 -m py_compile scripts/prepare-rmt-commodity-evidence-registry-v0.py
+          python3 -m json.tool deployments/rmt-commodity-evidence-registry-v0.template.json >/dev/null
+          bash -n scripts/verify-rmt-commodity-evidence-registry-v0-deployment.sh
+          bash -n scripts/verify-rmt-commodity-evidence-registry-v0-sources.sh
+      - name: Enforce no-key and undeployed boundaries
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          preparation = Path("scripts/prepare-rmt-commodity-evidence-registry-v0.py").read_text()
+          deployment_verifier = Path(
+              "scripts/verify-rmt-commodity-evidence-registry-v0-deployment.sh"
+          ).read_text()
+          source_verifier = Path(
+              "scripts/verify-rmt-commodity-evidence-registry-v0-sources.sh"
+          ).read_text()
+          template = json.loads(
+              Path("deployments/rmt-commodity-evidence-registry-v0.template.json").read_text()
+          )
+
+          for forbidden in (
+              "startBroadcast",
+              "DEPLOYER_PRIVATE_KEY",
+              "PRIVATE_KEY",
+              "MNEMONIC",
+              "--broadcast",
+          ):
+              if forbidden in preparation:
+                  raise SystemExit(f"forbidden preparation surface: {forbidden}")
+          if preparation.count('"cast", "send"') != 1:
+              raise SystemExit("preparation utility must contain exactly one local cast send")
+          send_index = preparation.index('"cast", "send"')
+          if "local_rpc" not in preparation[send_index : send_index + 500]:
+              raise SystemExit("preparation cast send is not visibly bound to local_rpc")
+          for verifier in (deployment_verifier, source_verifier):
+              if "cast send" in verifier or "--broadcast" in verifier:
+                  raise SystemExit("read-only verifier exposes transaction submission")
+
+          if template.get("status") != "UNDEPLOYED_TEMPLATE":
+              raise SystemExit("deployment template is not undeployed")
+          if any(value is not False for value in template["authorization"].values()):
+              raise SystemExit("deployment template contains enabled authorization")
+          boundaries = template["boundaries"]
+          if boundaries.get("syntheticOnly") is not True:
+              raise SystemExit("synthetic-only boundary is disabled")
+          for key in (
+              "createsToken",
+              "createsCommodityRight",
+              "createsRedemptionRight",
+              "createsTransferRight",
+              "createsRmtTokenRight",
+              "productionEnvironmentChanged",
+              "publicUiChanged",
+              "containsPrivateKey",
+              "remoteTransactionSubmitted",
+          ):
+              if boundaries.get(key) is not False:
+                  raise SystemExit(f"unsafe template boundary: {key}")
+          PY
+      - name: Verify focused formatting
+        run: |
+          forge fmt --check \
+            src/RMTCommodityEvidenceRegistryV0.sol \
+            test/RMTCommodityEvidenceRegistryV0.t.sol \
+            test/RMTCommodityEvidenceRegistryV0Hardening.t.sol \
+            test/RMTCommodityEvidenceRegistryV0Rehearsal.t.sol \
+            test/RMTCommodityEvidenceRegistryV0Create2Readiness.t.sol \
+            test/RMTCommodityEvidenceRegistryV0Postflight.t.sol \
+            script/BuildSyntheticCommodityEvidenceV0.s.sol \
+            script/RehearseSyntheticCommodityEvidenceRegistryV0.s.sol \
+            script/VerifySyntheticCommodityEvidenceRegistryV0.s.sol
+      - name: Run focused contract tests
+        run: |
+          forge test --match-path 'test/RMTCommodityEvidenceRegistryV0*.t.sol' -vvv
