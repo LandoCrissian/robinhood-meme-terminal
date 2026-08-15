@@ -392,6 +392,7 @@ async function inspectDesktop(browser, viewport, label) {
   if (composition.chart < 280) throw new Error(`${label}: chart lacks workstation authority (${composition.chart}px)`);
   if (!composition.rail || !composition.workspace || !composition.directory) throw new Error(`${label}: workstation columns are incomplete`);
   if (composition.rail.x < composition.workspace.x + composition.workspace.width - 2) throw new Error(`${label}: execution rail overlaps the asset workspace`);
+  if (composition.rail.x + composition.rail.width > viewport.width + 2) throw new Error(`${label}: execution rail is clipped by the viewport`);
 
   const initialRows = page.locator(".rmtDesktopTerminal .rmtMarketItem");
   if (await initialRows.count() !== 24) throw new Error(`${label}: directory did not start with a bounded 24-market page`);
@@ -693,6 +694,8 @@ try {
   const desktop = await inspectDesktop(browser, { width: 1_440, height: 900 }, "1440x900");
   const laptop = await inspectDesktop(browser, { width: 1_280, height: 800 }, "1280x800");
   const compact = await inspectDesktop(browser, { width: 1_024, height: 768 }, "1024x768");
+  const windowed = await inspectDesktop(browser, { width: 900, height: 700 }, "900x700");
+  const narrowWindow = await inspectDesktop(browser, { width: 800, height: 700 }, "800x700");
   const marketAudit = await inspectMarket(browser);
   const compatibilityEntries = await inspectCompatibilityEntries(browser);
   const publicRoutes = await inspectCurrentPublicRoutes(browser);
@@ -702,7 +705,7 @@ try {
   const mobile360 = await inspectMobile(browser, { width: 360, height: 800 }, "360x800");
   await writeFile(
     `${output}/report.json`,
-    JSON.stringify({ desktop, laptop, compact, marketAudit, compatibilityEntries, publicRoutes, mobile430, mobile390, mobile375, mobile360 }, null, 2)
+    JSON.stringify({ desktop, laptop, compact, windowed, narrowWindow, marketAudit, compatibilityEntries, publicRoutes, mobile430, mobile390, mobile375, mobile360 }, null, 2)
   );
 } finally {
   await browser.close();
