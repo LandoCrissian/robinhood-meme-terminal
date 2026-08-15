@@ -7,6 +7,7 @@ import { QueryClientProvider, type QueryClient } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { walletChains, walletTransports } from "./wallet-config";
 import { configuredPrivyAppId } from "../lib/privy-config";
+import { rmtExternalWalletOptions } from "../lib/wallet-gateway";
 import { PrivyIdentityBridge } from "./rmt-identity";
 
 const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.rmtlaunch.fun";
@@ -30,7 +31,7 @@ export function SpeedWalletProvider({ children, queryClient }: { children: React
           loginMessage: "Use your wallet or create a user-owned Robinhood Chain wallet in seconds.",
           showWalletLoginFirst: true,
           walletChainType: "ethereum-only",
-          walletList: ["metamask", "coinbase_wallet", "detected_ethereum_wallets", "wallet_connect"]
+          walletList: rmtExternalWalletOptions()
         },
         loginMethods: ["email", "google", "passkey", "wallet"],
         defaultChain: robinhoodChain,
