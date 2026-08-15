@@ -257,7 +257,7 @@ export function MobileTerminal(props: TerminalPresentationProps) {
 
   return <main className="rmtVnext rmtTerminal rmtMobileTerminal">
     <a className="vnSkipLink" href="#rmt-mobile-asset">Skip to selected asset</a>
-    <header className="rmtMobileHeader"><RmtBrand compact /><VNextWalletConnection /></header>
+    <header className="rmtMobileHeader"><RmtBrand compact /><VNextWalletConnection showFunding={false} /></header>
     <div className="rmtMobileSearch"><MarketSearch query={props.query} setQuery={props.setQuery} inputRef={props.marketSearch} onSubmit={props.onSearchSubmit} /></div>
     <section className="rmtMobileBalance"><TerminalBalance {...props} /></section>
     <details className="rmtMobileDiscovery" open={discoveryOpen} onToggle={(event) => setDiscoveryOpen(event.currentTarget.open)}>

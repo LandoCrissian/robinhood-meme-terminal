@@ -626,12 +626,15 @@ async function inspectMobile(browser, viewport, label) {
     const desktop = document.querySelector(".rmtDesktopTerminal");
     const mobile = document.querySelector(".rmtMobileTerminal");
     const mobileDock = document.querySelector(".rmtMobileTradeDock");
+    const mobileWalletControls = [...document.querySelectorAll(".rmtMobileHeader .wallet")]
+      .filter((element) => element instanceof HTMLElement && element.getBoundingClientRect().height > 0);
     return {
       horizontalOverflow: Math.max(0, document.documentElement.scrollWidth - innerWidth),
       marketRowVisible: Boolean(marketRow && marketRow.getBoundingClientRect().height > 0),
       desktopRendered: Boolean(desktop),
       mobileRendered: Boolean(mobile),
       mobileDockVisible: Boolean(mobileDock && mobileDock.getBoundingClientRect().height > 0),
+      mobileWalletControlCount: mobileWalletControls.length,
       chartWidth: document.querySelector(".vnChart")?.getBoundingClientRect().width ?? 0
     };
   });
@@ -641,6 +644,7 @@ async function inspectMobile(browser, viewport, label) {
   if (!homeAudit.marketRowVisible || homeAudit.desktopRendered || !homeAudit.mobileRendered || !homeAudit.mobileDockVisible) {
     throw new Error(`mobile: desktop workstation leaked into mobile layout ${JSON.stringify(homeAudit)}`);
   }
+  if (homeAudit.mobileWalletControlCount !== 1) throw new Error(`${label}: mobile header must expose exactly one wallet control ${JSON.stringify(homeAudit)}`);
   if (homeAudit.chartWidth > viewport.width + 2) throw new Error(`${label}: chart escaped the viewport`);
   await page.screenshot({ path: `${output}/discovery-${label}.png`, fullPage: false, animations: "disabled" });
   await page.locator(".rmtMobileDiscovery > summary").click();
