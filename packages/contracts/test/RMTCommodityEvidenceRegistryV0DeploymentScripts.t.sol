@@ -9,35 +9,41 @@ contract RMTCommodityEvidenceRegistryV0DeploymentScriptsTest {
     CommodityEvidenceDeploymentScriptsVm private constant vm =
         CommodityEvidenceDeploymentScriptsVm(address(uint160(uint256(keccak256("hevm cheat code")))));
 
-    string private constant PREFLIGHT_SCRIPT = "scripts/preflight-commodity-evidence-registry-v0.sh";
-    string private constant FINAL_PLAN_SCRIPT = "scripts/finalize-commodity-evidence-registry-v0-plan.sh";
-    string private constant VERIFY_SCRIPT = "scripts/verify-commodity-evidence-registry-v0-deployment.sh";
-    string private constant READINESS_TEMPLATE =
-        "deployments/rmt-commodity-evidence-registry-v0-readiness.template.json";
+    string private constant PREPARATION_ENTRYPOINT =
+        "scripts/prepare-rmt-commodity-evidence-registry-v0.py";
+    string private constant PREPARATION_IMPLEMENTATION =
+        "scripts/_prepare-rmt-commodity-evidence-registry-v0-impl.py";
+    string private constant DEPLOYMENT_VERIFIER =
+        "scripts/verify-rmt-commodity-evidence-registry-v0-deployment.sh";
+    string private constant SOURCE_VERIFIER =
+        "scripts/verify-rmt-commodity-evidence-registry-v0-sources.sh";
+    string private constant RELEASE_TEMPLATE =
+        "deployments/rmt-commodity-evidence-registry-v0.template.json";
 
-    function testEveryDeploymentShellRemainsNonBroadcastAndSecretFree() public {
-        _assertReadOnlyShell(vm.readFile(PREFLIGHT_SCRIPT));
-        _assertReadOnlyShell(vm.readFile(FINAL_PLAN_SCRIPT));
-        _assertReadOnlyShell(vm.readFile(VERIFY_SCRIPT));
+    function testAuthoritativePreparationIsCreate2OnlyAndRemoteBroadcastFree() public {
+        string memory entrypoint = vm.readFile(PREPARATION_ENTRYPOINT);
+        string memory implementation = vm.readFile(PREPARATION_IMPLEMENTATION);
+
+        require(_contains(implementation, "CREATE2_DEPLOYER"), "CREATE2 deployer missing");
+        require(_contains(implementation, "CREATE2_DEPLOYER_HASH"), "CREATE2 runtime hash missing");
+        require(_contains(implementation, "simulate_create2"), "CREATE2 rehearsal missing");
+        require(_contains(implementation, "local_rpc"), "loopback RPC binding missing");
+        require(_contains(implementation, "predictedAddress"), "predicted address commitment missing");
+        require(_contains(implementation, "expectedDomainSeparator"), "domain commitment missing");
+        require(!_contains(implementation, "eth_getTransactionCount"), "nonce-sensitive CREATE path present");
+        require(!_contains(implementation, "cast compute-address"), "direct CREATE address path present");
+        require(!_contains(implementation, "eth_sendRawTransaction"), "raw transaction submission present");
+        require(!_contains(implementation, "DEPLOYER_PRIVATE_KEY"), "deployer secret input present");
+        require(!_contains(implementation, "MNEMONIC"), "mnemonic input present");
+        require(!_contains(implementation, "--broadcast"), "Foundry broadcast present");
+        require(!_contains(entrypoint, "DEPLOYER_PRIVATE_KEY"), "deployer secret input present");
+        require(!_contains(entrypoint, "--broadcast"), "Foundry broadcast present");
     }
 
-    function testPreflightAndFinalPlanRequireOnlyPublicInputs() public {
-        string memory preflight = vm.readFile(PREFLIGHT_SCRIPT);
-        string memory finalPlan = vm.readFile(FINAL_PLAN_SCRIPT);
+    function testDeploymentVerifierIsReadOnlyAndFailClosed() public {
+        string memory verifier = vm.readFile(DEPLOYMENT_VERIFIER);
 
-        require(_contains(preflight, "RPC_URL"), "preflight missing RPC input");
-        require(_contains(preflight, "ADMINISTRATOR_ADDRESS"), "preflight missing administrator input");
-        require(_contains(finalPlan, "RPC_URL"), "final plan missing RPC input");
-        require(_contains(finalPlan, "ADMINISTRATOR_ADDRESS"), "final plan missing administrator input");
-        require(_contains(finalPlan, "DEPLOYER_ADDRESS"), "final plan missing deployer input");
-        require(_contains(finalPlan, "eth_getTransactionCount"), "final plan missing pending nonce read");
-        require(_contains(finalPlan, "cast code"), "final plan missing predicted-address code check");
-        require(_contains(finalPlan, "mode=simulation-only"), "final plan missing simulation label");
-    }
-
-    function testPostDeploymentVerifierIsReadOnlyAndFailClosed() public {
-        string memory verifier = vm.readFile(VERIFY_SCRIPT);
-
+        _assertNoEvmTransactionSurface(verifier);
         require(_contains(verifier, "EXPECTED_RUNTIME_CODE_HASH"), "runtime commitment missing");
         require(_contains(verifier, "EXPECTED_DOMAIN_SEPARATOR"), "domain commitment missing");
         require(_contains(verifier, "TARGET_CHAIN_ID"), "chain commitment missing");
@@ -47,24 +53,32 @@ contract RMTCommodityEvidenceRegistryV0DeploymentScriptsTest {
         require(!_contains(verifier, "--unlocked"), "unlocked account support present");
     }
 
-    function testReadinessTemplateCannotAccidentallyAuthorizeRelease() public {
-        string memory manifest = vm.readFile(READINESS_TEMPLATE);
+    function testSourceVerifierKeepsPublicationBehindExplicitGate() public {
+        string memory verifier = vm.readFile(SOURCE_VERIFIER);
 
-        require(_contains(manifest, "\"status\": \"UNDEPLOYED\""), "template not undeployed");
-        require(_contains(manifest, "\"deploymentAuthorized\": false"), "deployment authorized");
-        require(_contains(manifest, "\"broadcastAuthorized\": false"), "broadcast authorized");
-        require(_contains(manifest, "\"mergeAuthorized\": false"), "merge authorized");
-        require(_contains(manifest, "\"publicReleaseAuthorized\": false"), "public release authorized");
-        require(_contains(manifest, "\"realInventoryAuthorized\": false"), "real inventory authorized");
-        require(_contains(manifest, "\"tokenIssuanceAuthorized\": false"), "token issuance authorized");
-        require(
-            _contains(manifest, "\"rmtTokenRightsChangeAuthorized\": false"),
-            "RMT token rights change authorized"
-        );
+        _assertNoEvmTransactionSurface(verifier);
+        require(_contains(verifier, "--dry-run"), "source dry-run mode missing");
+        require(_contains(verifier, "SOURCE_PUBLICATION_CONFIRMED"), "publication confirmation missing");
+        require(_contains(verifier, "sourcePublicationAuthorized"), "record authorization missing");
+        require(_contains(verifier, "publishAuthorized"), "publication authorization missing");
     }
 
-    function _assertReadOnlyShell(string memory source) private pure {
-        require(!_contains(source, "--broadcast"), "broadcast flag present");
+    function testReleaseTemplateCannotAccidentallyAuthorizeOrSelectDirectCreate() public {
+        string memory manifest = vm.readFile(RELEASE_TEMPLATE);
+
+        require(_contains(manifest, "\"status\": \"UNDEPLOYED_TEMPLATE\""), "template not undeployed");
+        require(_contains(manifest, "\"testnetDeploymentAuthorized\": false"), "deployment authorized");
+        require(_contains(manifest, "\"broadcastAuthorized\": false"), "broadcast authorized");
+        require(_contains(manifest, "\"mergeAuthorized\": false"), "merge authorized");
+        require(_contains(manifest, "\"realInventoryAuthorized\": false"), "real inventory authorized");
+        require(_contains(manifest, "\"tokenIssuanceAuthorized\": false"), "token issuance authorized");
+        require(_contains(manifest, "\"create2\""), "CREATE2 release section missing");
+        require(_contains(manifest, "0x4e59b44847b379578588920cA78FbF26c0B4956C"), "canonical deployer missing");
+        require(!_contains(manifest, "deployerNonce"), "direct CREATE nonce field present");
+    }
+
+    function _assertNoEvmTransactionSurface(string memory source) private pure {
+        require(!_contains(source, "--broadcast"), "Foundry broadcast present");
         require(!_contains(source, "startBroadcast"), "Foundry broadcast present");
         require(!_contains(source, "vm.broadcast"), "Foundry broadcast present");
         require(!_contains(source, "forge create"), "forge create present");

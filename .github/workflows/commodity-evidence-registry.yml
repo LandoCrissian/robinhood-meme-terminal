@@ -5,6 +5,7 @@ on:
     paths:
       - ".github/workflows/commodity-evidence-registry.yml"
       - "docs/HELIUM_RWA_*"
+      - "packages/contracts/foundry.toml"
       - "packages/contracts/deployments/rmt-commodity-evidence-registry-v0*"
       - "packages/contracts/script/*CommodityEvidenceRegistryV0*"
       - "packages/contracts/script/BuildSyntheticCommodityEvidenceV0.s.sol"
@@ -43,7 +44,7 @@ jobs:
           python3 -m json.tool deployments/rmt-commodity-evidence-registry-v0.template.json >/dev/null
           bash -n scripts/verify-rmt-commodity-evidence-registry-v0-deployment.sh
           bash -n scripts/verify-rmt-commodity-evidence-registry-v0-sources.sh
-      - name: Enforce no-key and undeployed boundaries
+      - name: Enforce one CREATE2 release mechanism and undeployed boundaries
         run: |
           python3 - <<'PY'
           import importlib.util
@@ -65,15 +66,32 @@ jobs:
               Path("deployments/rmt-commodity-evidence-registry-v0.template.json").read_text()
           )
 
+          obsolete_paths = (
+              "deployments/rmt-commodity-evidence-registry-v0-readiness.template.json",
+              "script/PrepareCommodityEvidenceRegistryV0Deployment.s.sol",
+              "script/FinalizeCommodityEvidenceRegistryV0DeploymentPlan.s.sol",
+              "scripts/preflight-commodity-evidence-registry-v0.sh",
+              "scripts/finalize-commodity-evidence-registry-v0-plan.sh",
+              "test/RMTCommodityEvidenceRegistryV0DeploymentReadiness.t.sol",
+              "test/RMTCommodityEvidenceRegistryV0AddressPlan.t.sol",
+          )
+          present = [path for path in obsolete_paths if Path(path).exists()]
+          if present:
+              raise SystemExit("obsolete deployment mechanisms remain: " + ", ".join(present))
+
           for forbidden in (
               "startBroadcast",
               "DEPLOYER_PRIVATE_KEY",
               "PRIVATE_KEY",
               "MNEMONIC",
               "--broadcast",
+              "eth_getTransactionCount",
+              "cast compute-address",
           ):
               if forbidden in entrypoint or forbidden in implementation:
                   raise SystemExit(f"forbidden preparation surface: {forbidden}")
+          if "CREATE2_DEPLOYER" not in implementation or "simulate_create2" not in implementation:
+              raise SystemExit("authoritative CREATE2 preparation is missing")
           if implementation.count('"cast", "send"') != 1:
               raise SystemExit("implementation must contain exactly one local cast send")
           send_index = implementation.index('"cast", "send"')
@@ -99,12 +117,16 @@ jobs:
 
           for verifier in (deployment_verifier, source_verifier):
               if "cast send" in verifier or "--broadcast" in verifier:
-                  raise SystemExit("read-only verifier exposes transaction submission")
+                  raise SystemExit("verifier exposes EVM transaction submission")
 
           if template.get("status") != "UNDEPLOYED_TEMPLATE":
               raise SystemExit("deployment template is not undeployed")
           if any(value is not False for value in template["authorization"].values()):
               raise SystemExit("deployment template contains enabled authorization")
+          if template.get("create2", {}).get("deployer") != "0x4e59b44847b379578588920cA78FbF26c0B4956C":
+              raise SystemExit("canonical CREATE2 deployer is not pinned")
+          if "deployerNonce" in json.dumps(template):
+              raise SystemExit("direct CREATE nonce field remains in the authoritative template")
           boundaries = template["boundaries"]
           if boundaries.get("syntheticOnly") is not True:
               raise SystemExit("synthetic-only boundary is disabled")
@@ -122,20 +144,73 @@ jobs:
               if boundaries.get(key) is not False:
                   raise SystemExit(f"unsafe template boundary: {key}")
           PY
-      - name: Report focused formatting drift
+      - name: Check focused formatting
+        id: focused_format
+        continue-on-error: true
         run: |
-          if ! forge fmt --check \
+          set -o pipefail
+          forge fmt --check \
             src/RMTCommodityEvidenceRegistryV0.sol \
             test/RMTCommodityEvidenceRegistryV0.t.sol \
             test/RMTCommodityEvidenceRegistryV0Hardening.t.sol \
             test/RMTCommodityEvidenceRegistryV0Rehearsal.t.sol \
             test/RMTCommodityEvidenceRegistryV0Create2Readiness.t.sol \
+            test/RMTCommodityEvidenceRegistryV0DeploymentScripts.t.sol \
             test/RMTCommodityEvidenceRegistryV0Postflight.t.sol \
             script/BuildSyntheticCommodityEvidenceV0.s.sol \
             script/RehearseSyntheticCommodityEvidenceRegistryV0.s.sol \
-            script/VerifySyntheticCommodityEvidenceRegistryV0.s.sol; then
-            echo "::warning::The isolated registry sources compile and test but still have forge-format drift."
-          fi
+            script/VerifySyntheticCommodityEvidenceRegistryV0.s.sol \
+            2>&1 | tee commodity-evidence-format.log
+      - name: Capture focused format patch
+        if: steps.focused_format.outcome == 'failure'
+        run: |
+          forge fmt \
+            src/RMTCommodityEvidenceRegistryV0.sol \
+            test/RMTCommodityEvidenceRegistryV0.t.sol \
+            test/RMTCommodityEvidenceRegistryV0Hardening.t.sol \
+            test/RMTCommodityEvidenceRegistryV0Rehearsal.t.sol \
+            test/RMTCommodityEvidenceRegistryV0Create2Readiness.t.sol \
+            test/RMTCommodityEvidenceRegistryV0DeploymentScripts.t.sol \
+            test/RMTCommodityEvidenceRegistryV0Postflight.t.sol \
+            script/BuildSyntheticCommodityEvidenceV0.s.sol \
+            script/RehearseSyntheticCommodityEvidenceRegistryV0.s.sol \
+            script/VerifySyntheticCommodityEvidenceRegistryV0.s.sol
+          git diff -- \
+            src/RMTCommodityEvidenceRegistryV0.sol \
+            test/RMTCommodityEvidenceRegistryV0.t.sol \
+            test/RMTCommodityEvidenceRegistryV0Hardening.t.sol \
+            test/RMTCommodityEvidenceRegistryV0Rehearsal.t.sol \
+            test/RMTCommodityEvidenceRegistryV0Create2Readiness.t.sol \
+            test/RMTCommodityEvidenceRegistryV0DeploymentScripts.t.sol \
+            test/RMTCommodityEvidenceRegistryV0Postflight.t.sol \
+            script/BuildSyntheticCommodityEvidenceV0.s.sol \
+            script/RehearseSyntheticCommodityEvidenceRegistryV0.s.sol \
+            script/VerifySyntheticCommodityEvidenceRegistryV0.s.sol \
+            > commodity-evidence-format.patch
+          git checkout -- \
+            src/RMTCommodityEvidenceRegistryV0.sol \
+            test/RMTCommodityEvidenceRegistryV0.t.sol \
+            test/RMTCommodityEvidenceRegistryV0Hardening.t.sol \
+            test/RMTCommodityEvidenceRegistryV0Rehearsal.t.sol \
+            test/RMTCommodityEvidenceRegistryV0Create2Readiness.t.sol \
+            test/RMTCommodityEvidenceRegistryV0DeploymentScripts.t.sol \
+            test/RMTCommodityEvidenceRegistryV0Postflight.t.sol \
+            script/BuildSyntheticCommodityEvidenceV0.s.sol \
+            script/RehearseSyntheticCommodityEvidenceRegistryV0.s.sol \
+            script/VerifySyntheticCommodityEvidenceRegistryV0.s.sol
+      - name: Upload focused formatting diagnostics
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: commodity-evidence-format
+          path: |
+            packages/contracts/commodity-evidence-format.log
+            packages/contracts/commodity-evidence-format.patch
+          if-no-files-found: ignore
+          retention-days: 3
+      - name: Report focused formatting drift
+        if: steps.focused_format.outcome == 'failure'
+        run: echo "::warning::Focused sources require forge formatting; patch uploaded for this head."
       - name: Run focused contract tests
         run: |
           forge test --match-path 'test/RMTCommodityEvidenceRegistryV0*.t.sol' -vvv
