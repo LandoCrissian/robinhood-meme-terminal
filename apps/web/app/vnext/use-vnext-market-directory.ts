@@ -5,6 +5,7 @@ import { getAddress, isAddress } from "viem";
 import type { AssetMetadata } from "../../lib/vnext/execution-domain";
 import type { ExternalMarketResponse } from "../../lib/external-market";
 import {
+  directoryMarketFromVerifiedIdentity,
   normalizeDirectoryMarkets,
   resolutionFromLookup,
   verifiedDirectoryAsset,
@@ -75,7 +76,15 @@ export function useVNextMarketDirectory() {
     const byAddress = new Map<string, VNextDirectoryMarket>();
     for (const market of ecosystemMarkets.current) byAddress.set(market.address.toLowerCase(), market);
     for (const market of fastDirectoryMarkets.current) byAddress.set(market.address.toLowerCase(), market);
-    if (exactLookupMarket.current) byAddress.set(exactLookupMarket.current.address.toLowerCase(), exactLookupMarket.current);
+    if (exactLookupMarket.current) {
+      const key = exactLookupMarket.current.address.toLowerCase();
+      const existing = byAddress.get(key);
+      byAddress.set(key, existing ? {
+        ...exactLookupMarket.current,
+        ...existing,
+        resolution: existing.resolution ?? exactLookupMarket.current.resolution
+      } : exactLookupMarket.current);
+    }
     const nextMarkets = [...byAddress.values()].sort((left, right) => right.liquidityUsd - left.liquidityUsd || right.volume24h - left.volume24h);
     const nextSnapshot = directorySnapshot(nextMarkets);
     if (nextSnapshot !== marketSnapshot.current) {
@@ -96,13 +105,17 @@ export function useVNextMarketDirectory() {
     const controller = new AbortController();
     const timeout = window.setTimeout(() => controller.abort(), IDENTITY_LOOKUP_TIMEOUT_MS);
     try {
-      const query = new URLSearchParams({ contract: address });
-      const response = await fetch(`/api/markets/external?${query}`, { signal: controller.signal });
+      const query = new URLSearchParams({ address });
+      const response = await fetch(`/api/vnext/asset-identity?${query}`, { signal: controller.signal });
       const payload = await response.json() as ExternalMarketResponse;
-      const discovered = normalizeDirectoryMarkets(payload).find((market) => market.address.toLowerCase() === address.toLowerCase());
+      const discovered = directoryMarketFromVerifiedIdentity(payload, address);
       if (!response.ok || !discovered) return false;
       setMarkets((current) => current.some((market) => market.address.toLowerCase() === address.toLowerCase())
-        ? current
+        ? current.map((market) => market.address.toLowerCase() === address.toLowerCase() ? {
+            ...discovered,
+            ...market,
+            resolution: market.resolution ?? discovered.resolution
+          } : market)
         : [discovered, ...current]);
       exactLookupMarket.current = discovered;
       setSelectedAddress(discovered.address);

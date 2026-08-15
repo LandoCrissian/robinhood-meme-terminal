@@ -5,6 +5,7 @@ import { assetKey } from "./execution-domain";
 import {
   VNEXT_MARKET_DIRECTORY_MAX_MARKETS,
   VNEXT_MARKET_DIRECTORY_PAGE_SIZE,
+  directoryMarketFromVerifiedIdentity,
   normalizeDirectoryMarkets,
   resolutionFromLookup,
   selectVNextMarketDirectoryView,
@@ -150,6 +151,16 @@ assert.equal(verified?.metadataState, "verified");
 assert.equal(verified?.decimals, 18);
 assert.equal(resolutionFromLookup({ resolution }, otherAddress), resolution);
 assert.equal(verifiedDirectoryAsset(markets[1], { ...resolution, chainId: 4_663, token: { ...resolution.token, address: ROBINHOOD_RMT_ADDRESS } }), null);
+const identityOnlyMarket = directoryMarketFromVerifiedIdentity({ resolution }, otherAddress);
+assert.equal(identityOnlyMarket?.address, otherAddress);
+assert.equal(identityOnlyMarket?.symbol, "OTH");
+assert.equal(identityOnlyMarket?.liquidityUsd, 0);
+assert.equal(identityOnlyMarket?.resolution, resolution);
+assert.equal(directoryMarketFromVerifiedIdentity({
+  resolution: { ...resolution, chainId: 1 }
+} as unknown as ExternalMarketResponse, otherAddress), null);
+assert.equal(directoryMarketFromVerifiedIdentity({ resolution: { ...resolution, token: { ...resolution.token, address: ROBINHOOD_RMT_ADDRESS } } }, otherAddress), null);
+assert.equal(directoryMarketFromVerifiedIdentity({ resolution }, "not-an-address"), null);
 
 const hook = readFileSync(new URL("../../app/vnext/use-vnext-market-directory.ts", import.meta.url), "utf8");
 const route = readFileSync(new URL("../../app/api/vnext/market-directory/route.ts", import.meta.url), "utf8");
@@ -157,7 +168,11 @@ const identityRoute = readFileSync(new URL("../../app/api/vnext/asset-identity/r
 const shell = readFileSync(new URL("../../app/vnext/vnext-terminal-shell.tsx", import.meta.url), "utf8");
 assert.match(hook, /fetch\("\/api\/vnext\/market-directory"/);
 assert.match(hook, /fetch\("\/api\/markets\/external"/);
-assert.match(hook, /URLSearchParams\(\{ contract: address \}\)/);
+const selectAddressSource = hook.slice(hook.indexOf("const selectAddress"), hook.indexOf("const refresh ="));
+assert.match(selectAddressSource, /URLSearchParams\(\{ address \}\)/);
+assert.match(selectAddressSource, /\/api\/vnext\/asset-identity/);
+assert.match(selectAddressSource, /directoryMarketFromVerifiedIdentity/);
+assert.doesNotMatch(selectAddressSource, /\/api\/markets\/external/);
 assert.match(hook, /publishMarkets/);
 assert.match(hook, /URLSearchParams\(\{ address: selected\.address \}\)/);
 assert.match(hook, /fetch\(`\/api\/vnext\/asset-identity/);

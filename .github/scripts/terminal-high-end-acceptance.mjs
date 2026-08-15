@@ -11,6 +11,7 @@ const token = address(0x1001);
 const pair = address(0x2001);
 const factory = address(0x3001);
 const creator = address(0x4001);
+const exactIdentityToken = address(0x1ffe);
 
 await mkdir(output, { recursive: true });
 
@@ -219,6 +220,44 @@ async function installRoutes(page) {
       status: 200,
       contentType: "application/json",
       body: JSON.stringify({ markets, updatedAt: now, stale: false })
+    });
+  });
+  await page.route(/\/api\/vnext\/asset-identity(?:\?.*)?$/, async (route) => {
+    const requestedAddress = new URL(route.request().url()).searchParams.get("address")?.toLowerCase();
+    const selected = requestedAddress === exactIdentityToken.toLowerCase()
+      ? { address: exactIdentityToken, name: "Exact Identity Token", symbol: "EXACT" }
+      : markets.find((item) => item.address.toLowerCase() === requestedAddress);
+    if (!selected) {
+      await route.fulfill({
+        status: 404,
+        contentType: "application/json",
+        body: JSON.stringify({ error: "Token identity could not be verified on Robinhood Chain." })
+      });
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        resolution: {
+          chainId: 4_663,
+          requestedAddress: selected.address,
+          requestedKind: "token",
+          status: "token-only",
+          token: {
+            address: selected.address,
+            name: selected.name,
+            symbol: selected.symbol,
+            decimals: 18,
+            totalSupply: "1000000000000000000000000"
+          },
+          pools: [],
+          marketData: "identity-only",
+          execution: "view-only",
+          provenance: "robinhood-chain-contract-reads",
+          resolvedAt: now
+        }
+      })
     });
   });
   await page.route(/\/api\/markets\/external(?:\?.*)?$/, async (route) => {
@@ -474,6 +513,13 @@ async function inspectDesktop(browser, viewport, label) {
   await search.press("Enter");
   await page.locator('.rmtDesktopTerminal[data-terminal-context="asset"] #vn-asset-heading').waitFor({ state: "visible" });
   if (!(await page.locator("#vn-asset-heading").textContent())?.includes(markets[0].symbol)) throw new Error(`${label}: exact-contract search did not enter the matching Asset context`);
+  await page.evaluate(() => window.history.back());
+  await page.locator('.rmtDesktopTerminal[data-terminal-context="markets"] .rmtMarketTable').waitFor({ state: "visible" });
+  await search.fill(exactIdentityToken);
+  await search.press("Enter");
+  await page.locator('.rmtDesktopTerminal[data-terminal-context="asset"] #vn-asset-heading').waitFor({ state: "visible" });
+  if (!(await page.locator("#vn-asset-heading").textContent())?.includes("EXACT")) throw new Error(`${label}: verified identity-only contract did not enter Asset context`);
+  if (new URL(page.url()).searchParams.get("market")?.toLowerCase() !== exactIdentityToken.toLowerCase()) throw new Error(`${label}: verified identity-only contract was not preserved in terminal history`);
   await context.close();
   return { ...audit, marketsComposition, assetComposition };
 }
