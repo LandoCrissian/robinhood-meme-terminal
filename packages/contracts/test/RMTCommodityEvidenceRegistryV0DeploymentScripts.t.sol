@@ -44,9 +44,11 @@ contract RMTCommodityEvidenceRegistryV0DeploymentScriptsTest {
         string memory verifier = vm.readFile(DEPLOYMENT_VERIFIER);
 
         _assertNoEvmTransactionSurface(verifier);
-        require(_contains(verifier, "EXPECTED_RUNTIME_CODE_HASH"), "runtime commitment missing");
-        require(_contains(verifier, "EXPECTED_DOMAIN_SEPARATOR"), "domain commitment missing");
-        require(_contains(verifier, "TARGET_CHAIN_ID"), "chain commitment missing");
+        require(_contains(verifier, "EXPECTED_RUNTIME_HASH"), "runtime commitment missing");
+        require(_contains(verifier, "EXPECTED_DOMAIN"), "domain commitment missing");
+        require(_contains(verifier, "CHAIN_ID"), "chain commitment missing");
+        require(_contains(verifier, "CREATE2_DEPLOYER_RUNTIME_HASH"), "deployer provenance missing");
+        require(_contains(verifier, "cast create2"), "CREATE2 prediction check missing");
         require(_contains(verifier, "cast call"), "read-only contract checks missing");
         require(_contains(verifier, "cast code"), "runtime code check missing");
         require(_contains(verifier, "mint(address,uint256)"), "no-mint probe missing");
