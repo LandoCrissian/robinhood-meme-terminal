@@ -7,7 +7,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Address } from "viem";
 import { useAccount, useDisconnect, useSwitchChain } from "wagmi";
 import { recordExperienceStage } from "../lib/experience-funnel";
-import { metaMaskDappLink, walletBrowserEnvironment } from "../lib/mobile-wallet-link";
+import { metaMaskDappLink, rabbyDappLink, walletBrowserEnvironment } from "../lib/mobile-wallet-link";
 import {
   externalEthereumWallets,
   walletGatewayDisplayName,
@@ -59,6 +59,9 @@ export function PrivyWalletButton({
   });
   const mobileMetaMaskUrl = walletEnvironment === "mobile-browser" && typeof window !== "undefined"
     ? metaMaskDappLink(window.location.href)
+    : "";
+  const mobileRabbyUrl = walletEnvironment === "mobile-browser" && typeof window !== "undefined"
+    ? rabbyDappLink(window.location.href)
     : "";
   const externalWallets = useMemo(() => externalEthereumWallets(wallets), [wallets]);
   const activeExternalWallet = identity.activeWalletKey
@@ -195,6 +198,17 @@ export function PrivyWalletButton({
                   <span>MetaMask</span>
                   <small>Open this exact RMT page in the MetaMask mobile app</small>
                 </a>
+                <a
+                  className="connectorOption"
+                  href={mobileRabbyUrl}
+                  onClick={() => {
+                    recordExperienceStage("wallet_connect_started");
+                    close();
+                  }}
+                >
+                  <span>Rabby Wallet</span>
+                  <small>Open this exact RMT page in the Rabby mobile app</small>
+                </a>
                 <button
                   className="connectorOption"
                   type="button"
@@ -206,8 +220,8 @@ export function PrivyWalletButton({
                     walletFirstTerminal ? identity.connectTradingWallet() : identity.login();
                   }}
                 >
-                  <span>Installed or mobile wallet</span>
-                  <small>Use an EIP-6963 wallet such as Rabby, or WalletConnect</small>
+                  <span>Other wallets</span>
+                  <small>Use WalletConnect or another supported Ethereum wallet</small>
                 </button>
               </div>
             </div>

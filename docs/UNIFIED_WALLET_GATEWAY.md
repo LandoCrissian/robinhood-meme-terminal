@@ -15,7 +15,7 @@ The supported Privy wallet order is centralized as:
 3. detected Ethereum wallets
 4. WalletConnect
 
-`detected_ethereum_wallets` is Privy's EIP-6963 discovery surface. Rabby is admitted through that supported surface; RMT does not use Privy's deprecated `rabby_wallet` identifier. Mobile Safari/Chrome can enter through WalletConnect, while the MetaMask mobile handoff preserves the exact RMT URL.
+`detected_ethereum_wallets` is Privy's EIP-6963 discovery surface. Rabby is admitted through that supported surface on desktop and inside Rabby's mobile browser; RMT does not use Privy's deprecated `rabby_wallet` identifier. A normal mobile Safari/Chrome session has no injected extension, so RMT offers explicit MetaMask and Rabby app handoffs that preserve the exact RMT URL, plus WalletConnect for other supported wallets.
 
 ## Exact active-wallet identity
 
@@ -34,7 +34,8 @@ The preference is browser-session state only. It is not a key, signature, author
 
 - The terminal signer must be an external Ethereum wallet.
 - Privy and Privy V2 embedded wallets are excluded from terminal signing.
-- A newly connected wallet is linked to the current Privy identity before it becomes the selected trading wallet, preserving the server's exact authenticated-recipient check.
+- Terminal connection first connects an external wallet, then requests that exact wallet's SIWE authentication. It does not route traders through email, Google, passkey or embedded-wallet creation.
+- A newly connected wallet is authenticated or linked before it becomes the selected trading wallet, preserving the server's exact authenticated-recipient check.
 - The wallet owner still reviews and signs every approval and trade.
 - Disconnect clears the selected connector, Wagmi connection and Privy session.
 
