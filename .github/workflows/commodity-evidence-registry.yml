@@ -36,7 +36,9 @@ jobs:
         run: bash scripts/install-v4-deps.sh
       - name: Validate release files
         run: |
-          python3 -m py_compile scripts/prepare-rmt-commodity-evidence-registry-v0.py
+          python3 -m py_compile \
+            scripts/prepare-rmt-commodity-evidence-registry-v0.py \
+            scripts/_prepare-rmt-commodity-evidence-registry-v0-impl.py
           python3 -m json.tool deployments/rmt-commodity-evidence-registry-v0.template.json >/dev/null
           bash -n scripts/verify-rmt-commodity-evidence-registry-v0-deployment.sh
           bash -n scripts/verify-rmt-commodity-evidence-registry-v0-sources.sh
@@ -46,7 +48,10 @@ jobs:
           import json
           from pathlib import Path
 
-          preparation = Path("scripts/prepare-rmt-commodity-evidence-registry-v0.py").read_text()
+          entrypoint = Path("scripts/prepare-rmt-commodity-evidence-registry-v0.py").read_text()
+          implementation = Path(
+              "scripts/_prepare-rmt-commodity-evidence-registry-v0-impl.py"
+          ).read_text()
           deployment_verifier = Path(
               "scripts/verify-rmt-commodity-evidence-registry-v0-deployment.sh"
           ).read_text()
@@ -64,13 +69,21 @@ jobs:
               "MNEMONIC",
               "--broadcast",
           ):
-              if forbidden in preparation:
+              if forbidden in entrypoint or forbidden in implementation:
                   raise SystemExit(f"forbidden preparation surface: {forbidden}")
-          if preparation.count('"cast", "send"') != 1:
-              raise SystemExit("preparation utility must contain exactly one local cast send")
-          send_index = preparation.index('"cast", "send"')
-          if "local_rpc" not in preparation[send_index : send_index + 500]:
-              raise SystemExit("preparation cast send is not visibly bound to local_rpc")
+          if implementation.count('"cast", "send"') != 1:
+              raise SystemExit("implementation must contain exactly one local cast send")
+          send_index = implementation.index('"cast", "send"')
+          if "local_rpc" not in implementation[send_index : send_index + 500]:
+              raise SystemExit("implementation cast send is not visibly bound to local_rpc")
+          if 'SYNTHETIC_ATTESTOR_KEY = "0xC0DE"' not in entrypoint:
+              raise SystemExit("canonical public synthetic attestor key is not pinned")
+          if 'LEGACY_SYNTHETIC_ATTESTOR_KEY = "0xC4DE"' not in entrypoint:
+              raise SystemExit("legacy fixture-key redirect is not explicit")
+          if "key = SYNTHETIC_ATTESTOR_KEY" not in entrypoint:
+              raise SystemExit("legacy fixture-key redirect is not enforced")
+          if "preparationImplementationGitBlob" not in entrypoint:
+              raise SystemExit("implementation blob is not committed into release records")
           for verifier in (deployment_verifier, source_verifier):
               if "cast send" in verifier or "--broadcast" in verifier:
                   raise SystemExit("read-only verifier exposes transaction submission")
