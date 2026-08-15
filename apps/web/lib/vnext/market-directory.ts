@@ -205,3 +205,25 @@ export function resolutionFromLookup(payload: ExternalMarketResponse, address: s
   if (typeof payload.resolution?.token.address === "string" && payload.resolution.token.address.toLowerCase() === address.toLowerCase()) return payload.resolution;
   return payload.markets?.find((market) => typeof market.address === "string" && market.address.toLowerCase() === address.toLowerCase())?.resolution;
 }
+
+export function directoryMarketFromVerifiedIdentity(payload: ExternalMarketResponse, expectedAddress: string): VNextDirectoryMarket | null {
+  if (!isAddress(expectedAddress, { strict: false })) return null;
+  const address = getAddress(expectedAddress);
+  const resolution = resolutionFromLookup(payload, address);
+  const token = resolutionToken(resolution, address);
+  if (!token) return null;
+  const symbol = text(token.symbol, 16) || `${address.slice(0, 6)}…${address.slice(-4)}`;
+  return {
+    address,
+    name: text(token.name, 80) || symbol,
+    symbol,
+    priceUsd: 0,
+    liquidityUsd: 0,
+    marketCapUsd: 0,
+    volume24h: 0,
+    priceChange24h: 0,
+    ageMinutes: null,
+    signal: "active",
+    resolution
+  };
+}

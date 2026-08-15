@@ -90,7 +90,7 @@ assert.doesNotMatch(composer, /Check live routes|Verify best route|Prepare walle
 assert.match(composer, /Pay with asset/);
 assert.match(composer, /Receive asset/);
 assert.match(composer, /walletAssets\.flatMap/);
-assert.match(composer, /metadataFromDetectedWalletAsset/);
+assert.match(composer, /paymentMetadataFromDetectedWalletAsset/);
 assert.match(composer, /No different verified wallet-held input asset is detected/);
 assert.match(composer, /ROBINHOOD_USDG, ROBINHOOD_ETH/);
 assert.doesNotMatch(composer, /ROBINHOOD_USDG, ROBINHOOD_WETH/);

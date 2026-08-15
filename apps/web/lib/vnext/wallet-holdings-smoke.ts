@@ -6,6 +6,10 @@ import {
   ROBINHOOD_WETH_ADDRESS
 } from "./robinhood-assets";
 import type { VNextDetectedWalletAsset } from "./wallet-assets";
+import {
+  paymentMetadataFromDetectedWalletAsset,
+  walletAssetCandidates
+} from "./wallet-assets";
 import { walletPortfolioSummary } from "./wallet-portfolio";
 import {
   normalizeWalletDiscoveryResponse,
@@ -78,6 +82,15 @@ const markets: VNextDirectoryMarket[] = [{
   ageMinutes: 60,
   signal: "active"
 }];
+const upgradedCandidates = walletAssetCandidates(markets, 48, [
+  { address: marketToken, symbol: "MKT", name: "Market Token", decimals: 18, identityState: "reported", source: "wallet_index", reputation: "ok", imageUrl: null }
+]);
+assert.equal(upgradedCandidates.find((asset) => asset.address === marketToken)?.source, "live_directory");
+assert.equal(paymentMetadataFromDetectedWalletAsset(assets[0])?.symbol, "USDG");
+assert.equal(paymentMetadataFromDetectedWalletAsset({ ...assets[2], source: "live_directory" })?.symbol, "MKT");
+assert.equal(paymentMetadataFromDetectedWalletAsset(assets[2]), null);
+assert.equal(paymentMetadataFromDetectedWalletAsset(assets[3]), null);
+assert.equal(paymentMetadataFromDetectedWalletAsset({ ...assets[2], source: "canonical" }), null);
 const portfolio = walletPortfolioSummary({
   assets,
   markets,

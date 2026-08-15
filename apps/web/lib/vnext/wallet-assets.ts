@@ -41,6 +41,19 @@ export function metadataFromDetectedWalletAsset(asset: VNextDetectedWalletAsset)
   };
 }
 
+const CANONICAL_PAYMENT_INPUTS = new Set([
+  ROBINHOOD_USDG_ADDRESS,
+  ROBINHOOD_WETH_ADDRESS,
+  ROBINHOOD_RMT_ADDRESS
+].map((address) => address.toLowerCase()));
+
+export function paymentMetadataFromDetectedWalletAsset(asset: VNextDetectedWalletAsset): AssetMetadata | null {
+  const metadata = metadataFromDetectedWalletAsset(asset);
+  if (!metadata || asset.reputation === "suspicious" || asset.source === "wallet_index") return null;
+  if (asset.source === "canonical" && !CANONICAL_PAYMENT_INPUTS.has(asset.address.toLowerCase())) return null;
+  return metadata;
+}
+
 const CANONICAL_CANDIDATES: VNextWalletAssetCandidate[] = [
   {
     address: ROBINHOOD_USDG_ADDRESS,
@@ -127,8 +140,19 @@ export function walletAssetCandidates(
     if (!isAddress(market.address, { strict: false })) continue;
     const address = getAddress(market.address);
     const key = address.toLowerCase();
-    if (candidates.has(key)) continue;
     const symbol = cleanText(market.symbol, 16) || `${address.slice(0, 6)}…${address.slice(-4)}`;
+    const existing = candidates.get(key);
+    if (existing) {
+      if (existing.source === "wallet_index") candidates.set(key, {
+        ...existing,
+        address,
+        symbol,
+        name: cleanText(market.name, 80) || symbol,
+        source: "live_directory",
+        imageUrl: safeTokenArtworkUrl(market.imageUri) ?? existing.imageUrl
+      });
+      continue;
+    }
     candidates.set(key, {
       address,
       symbol,

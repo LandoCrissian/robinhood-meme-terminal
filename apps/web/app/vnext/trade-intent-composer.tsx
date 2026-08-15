@@ -21,7 +21,7 @@ import {
   robinhoodWalletAccount
 } from "../../lib/vnext/robinhood-assets";
 import { deriveVNextVerifiedUsdgOutcome } from "../../lib/vnext/verified-cost-outcome";
-import { metadataFromDetectedWalletAsset, type VNextDetectedWalletAsset } from "../../lib/vnext/wallet-assets";
+import { paymentMetadataFromDetectedWalletAsset, type VNextDetectedWalletAsset } from "../../lib/vnext/wallet-assets";
 import { clearTradeQuoteCache, requestTradeQuote, tradeQuoteFailureFromResponse } from "../../lib/trade-quote-client";
 import { useRmtIdentity } from "../rmt-identity";
 import { FundWalletButton } from "../fund-wallet-button";
@@ -133,7 +133,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
     : "";
   const verifiedWalletAssets = useMemo(
     () => uniqueAssets(walletAssets.flatMap((asset) => {
-      const metadata = metadataFromDetectedWalletAsset(asset);
+      const metadata = paymentMetadataFromDetectedWalletAsset(asset);
       return metadata ? [metadata] : [];
     })),
     [walletAssets]
