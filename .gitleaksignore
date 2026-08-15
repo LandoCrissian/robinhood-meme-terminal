@@ -3,6 +3,9 @@
 # Reviewed 2026-07-28: browser localStorage label, not a credential.
 # Reviewed 2026-08-09: public Robinhood token contract address used by a smoke test.
 # Reviewed 2026-08-12: public RMT token contract address in the preserved Sushi guard fork test.
+# Reviewed 2026-08-15: public ERC-6551 proxy and implementation contract addresses in an isolated read-only research probe.
+e3abde561ab50b9a4de22bcaccb63cbb107be6d6:scripts/ccff00-tba-probe.mjs:generic-api-key:10
+e3abde561ab50b9a4de22bcaccb63cbb107be6d6:scripts/ccff00-tba-probe.mjs:generic-api-key:11
 7e6fc44df9e3cd4be2f9c4a9f94f94f59e5606bd:packages/contracts/test/RMTSushiDeadlineGuardFork.t.sol:generic-api-key:22
 95b03fe84cc52ca62f72715fbfd585d82719b2f6:apps/web/lib/vnext/verified-cost-outcome-smoke.ts:generic-api-key:8
 790650e6a5e38e41907acc2ab481a85cc2b3cc2e:apps/web/lib/referrals.ts:generic-api-key:6

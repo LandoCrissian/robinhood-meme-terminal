@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import {
   RMT_EXTERNAL_WALLET_LIST,
+  RMT_INJECTED_WALLET_LIST,
   externalEthereumWallets,
   isEmbeddedWalletClientType,
   isConnectorSelectionConfirmed,
@@ -42,6 +43,11 @@ assert.deepEqual(
 );
 assert.ok(RMT_EXTERNAL_WALLET_LIST.includes("detected_ethereum_wallets"));
 assert.ok(!RMT_EXTERNAL_WALLET_LIST.includes("rabby_wallet" as never), "The deprecated Rabby identifier must not be admitted.");
+assert.deepEqual(
+  RMT_INJECTED_WALLET_LIST,
+  ["detected_ethereum_wallets"],
+  "A wallet in-app browser must offer only its injected EIP-6963 wallet."
+);
 assert.equal(isEmbeddedWalletClientType("privy"), true);
 assert.equal(isEmbeddedWalletClientType("privy-v2"), true);
 assert.equal(isEmbeddedWalletClientType("metamask"), false);

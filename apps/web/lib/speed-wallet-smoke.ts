@@ -71,6 +71,11 @@ assert.ok(
 );
 assert.match(speedProvider, /rmtExternalWalletOptions\(\)/, "Privy appearance must use the canonical external-wallet registry.");
 assert.match(rmtIdentity, /useConnectWallet/, "All terminal external connections must use Privy's current connection hook.");
+assert.match(
+  rmtIdentity,
+  /environment === "mobile-wallet-browser"[\s\S]*?rmtInjectedWalletOptions\(\)[\s\S]*?: rmtExternalWalletOptions\(\)/,
+  "Wallet in-app browsers must show only their detected injected wallet without narrowing desktop or standard-mobile choices."
+);
 assert.match(rmtIdentity, /if \(!authenticated \|\| !wallet\.linked\) await wallet\.loginOrLink\(\)/, "A newly connected external wallet must authenticate or link through its own SIWE signature.");
 assert.doesNotMatch(
   rmtIdentity.match(/connectTradingWallet:\s*\(\) => \{[\s\S]*?\n\s*\},\n\s*enabled:/)?.[0] ?? "",
