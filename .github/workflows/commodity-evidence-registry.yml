@@ -5,6 +5,7 @@ on:
     paths:
       - ".github/workflows/commodity-evidence-registry.yml"
       - "docs/HELIUM_RWA_*"
+      - "docs/RMT_PHYSICAL_ASSET_*"
       - "packages/contracts/foundry.toml"
       - "packages/contracts/deployments/rmt-commodity-evidence-registry-v0*"
       - "packages/contracts/script/*CommodityEvidenceRegistryV0*"
@@ -208,9 +209,11 @@ jobs:
             packages/contracts/commodity-evidence-format.patch
           if-no-files-found: ignore
           retention-days: 3
-      - name: Report focused formatting drift
+      - name: Reject focused formatting drift
         if: steps.focused_format.outcome == 'failure'
-        run: echo "::warning::Focused sources require forge formatting; patch uploaded for this head."
+        run: |
+          echo "::error::Focused sources require forge formatting; exact patch uploaded for this head."
+          exit 1
       - name: Run focused contract tests
         run: |
           forge test --match-path 'test/RMTCommodityEvidenceRegistryV0*.t.sol' -vvv
