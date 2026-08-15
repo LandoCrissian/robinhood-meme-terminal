@@ -1,8 +1,4 @@
 import type { MetadataRoute } from "next";
-import {
-  publicMarketSitemapPaths
-} from "../lib/public-market-discovery";
-import { fetchPublicMarketCatalog } from "../lib/server/public-market-catalog";
 
 const appUrl = "https://www.rmtlaunch.fun";
 const officialToken = "0xdBa33be56C89CC9fc014c4459028d7e5c7878671";
@@ -30,13 +26,6 @@ export function staticPublicSitemap(): MetadataRoute.Sitemap {
   }));
 }
 
-export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const staticEntries = staticPublicSitemap();
-  const markets = await fetchPublicMarketCatalog();
-  const marketEntries: MetadataRoute.Sitemap = publicMarketSitemapPaths(markets).map((path) => ({
-    url: `${appUrl}${path}`,
-    changeFrequency: "hourly" as const,
-    priority: 0.8
-  }));
-  return [...staticEntries, ...marketEntries];
+export default function sitemap(): MetadataRoute.Sitemap {
+  return staticPublicSitemap();
 }

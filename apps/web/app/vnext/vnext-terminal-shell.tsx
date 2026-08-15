@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { VNextDetectedWalletAsset } from "../../lib/vnext/wallet-assets";
 import {
   VNEXT_MARKET_DIRECTORY_PAGE_SIZE,
@@ -24,6 +24,7 @@ export function VNextTerminalShell() {
   const [directoryView, setDirectoryView] = useState<VNextMarketDirectoryView>("trending");
   const [visibleMarketLimit, setVisibleMarketLimit] = useState(VNEXT_MARKET_DIRECTORY_PAGE_SIZE);
   const marketSearch = useRef<HTMLInputElement>(null);
+  const initialEntryHandled = useRef(false);
   const executionRecovery = useVNextExecutionRecovery();
   const { markets, status, selected, selectedAsset, identityStatus, selectAddress, refresh } = useVNextMarketDirectory();
   const heldAddresses = useMemo(() => new Set(walletAssets.map((asset) => asset.address.toLowerCase())), [walletAssets]);
@@ -77,6 +78,23 @@ export function VNextTerminalShell() {
   const requestTradeSide = useCallback((side: "buy" | "sell") => {
     setTradeSideRequest({ side, nonce: Date.now() });
   }, []);
+
+  useEffect(() => {
+    if (initialEntryHandled.current) return;
+    initialEntryHandled.current = true;
+    const entry = new URLSearchParams(window.location.search);
+    const initialMarket = entry.get("market");
+    const initialSide = entry.get("side");
+    if (entry.get("panel") === "portfolio") {
+      setPortfolioRevealRequest((request) => request + 1);
+    }
+    if (initialMarket) {
+      void selectAddress(initialMarket);
+      if (initialSide === "buy" || initialSide === "sell") {
+        setTradeSideRequest({ side: initialSide, nonce: Date.now() });
+      }
+    }
+  }, [selectAddress]);
 
   const props: TerminalPresentationProps = {
     query,

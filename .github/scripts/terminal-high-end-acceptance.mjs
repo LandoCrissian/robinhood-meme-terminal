@@ -486,6 +486,111 @@ async function inspectMarket(browser) {
   return { candles: true, line: true, crosshair: true };
 }
 
+async function inspectCompatibilityEntries(browser) {
+  const desktopContext = await createContext(browser, {
+    viewport: { width: 1_440, height: 900 },
+    deviceScaleFactor: 1
+  });
+  const desktopPage = await desktopContext.newPage();
+  await desktopPage.emulateMedia({ reducedMotion: "reduce" });
+  await installRoutes(desktopPage);
+  const requestedMarket = markets[1];
+  await gotoReady(
+    desktopPage,
+    `${base}/market/${requestedMarket.address}?side=sell`,
+    ".rmtDesktopTerminal #vn-asset-heading"
+  );
+  await desktopPage.waitForFunction(
+    (symbol) => document.querySelector("#vn-asset-heading")?.textContent?.includes(symbol),
+    requestedMarket.symbol
+  );
+  const desktopSell = desktopPage.locator(".rmtDesktopExecution").getByRole("tab", { name: "Sell" });
+  await desktopPage.waitForFunction(
+    () => document.querySelector('.rmtDesktopExecution [role="tab"][aria-selected="true"]')?.textContent?.trim() === "Sell"
+  );
+  const marketEntry = await desktopPage.evaluate(() => ({
+    pathname: window.location.pathname,
+    market: new URLSearchParams(window.location.search).get("market"),
+    side: new URLSearchParams(window.location.search).get("side"),
+    terminal: Boolean(document.querySelector(".rmtDesktopTerminal")),
+    publicChrome: Boolean(document.querySelector(".publicHeader, .mobileDock")),
+    notFound: Boolean(document.querySelector(".next-error-h1")) || document.body.innerText.includes("This page could not be found")
+  }));
+  if (
+    marketEntry.pathname !== "/"
+    || marketEntry.market?.toLowerCase() !== requestedMarket.address.toLowerCase()
+    || marketEntry.side !== "sell"
+    || !marketEntry.terminal
+    || marketEntry.publicChrome
+    || marketEntry.notFound
+    || await desktopSell.getAttribute("aria-selected") !== "true"
+  ) throw new Error(`market compatibility entry did not restore exact VNext intent ${JSON.stringify(marketEntry)}`);
+  await desktopPage.screenshot({ path: `${output}/compat-market-1440x900.png`, fullPage: false, animations: "disabled" });
+  await desktopContext.close();
+
+  const mobileContext = await createContext(browser, {
+    viewport: { width: 390, height: 844 },
+    deviceScaleFactor: 1,
+    isMobile: true,
+    hasTouch: true
+  });
+  const mobilePage = await mobileContext.newPage();
+  await mobilePage.emulateMedia({ reducedMotion: "reduce" });
+  await installRoutes(mobilePage);
+  await gotoReady(mobilePage, `${base}/portfolio`, ".rmtMobileTerminal #vnext-portfolio");
+  const portfolioEntry = await mobilePage.evaluate(() => ({
+    pathname: window.location.pathname,
+    panel: new URLSearchParams(window.location.search).get("panel"),
+    terminal: Boolean(document.querySelector(".rmtMobileTerminal")),
+    portfolio: Boolean(document.querySelector("#vnext-portfolio")),
+    publicChrome: Boolean(document.querySelector(".publicHeader, .mobileDock")),
+    horizontalOverflow: Math.max(0, document.documentElement.scrollWidth - innerWidth),
+    notFound: Boolean(document.querySelector(".next-error-h1")) || document.body.innerText.includes("This page could not be found")
+  }));
+  if (
+    portfolioEntry.pathname !== "/"
+    || portfolioEntry.panel !== "portfolio"
+    || !portfolioEntry.terminal
+    || !portfolioEntry.portfolio
+    || portfolioEntry.publicChrome
+    || portfolioEntry.horizontalOverflow > 2
+    || portfolioEntry.notFound
+  ) throw new Error(`portfolio compatibility entry did not restore VNext holdings ${JSON.stringify(portfolioEntry)}`);
+  await mobilePage.screenshot({ path: `${output}/compat-portfolio-390x844.png`, fullPage: false, animations: "disabled" });
+  await mobileContext.close();
+  return { marketEntry, portfolioEntry };
+}
+
+async function inspectCurrentPublicRoutes(browser) {
+  const routes = ["/explore", "/status", "/sources", "/sushi", "/support", "/privacy"];
+  const results = [];
+  for (const pathname of routes) {
+    const context = await createContext(browser, { viewport: { width: 1_280, height: 800 }, deviceScaleFactor: 1 });
+    const page = await context.newPage();
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await installRoutes(page);
+    await gotoReady(page, `${base}${pathname}`, "main");
+    const audit = await page.evaluate(() => ({
+      pathname: window.location.pathname,
+      publicChrome: Boolean(document.querySelector(".publicHeader")),
+      terminal: Boolean(document.querySelector(".rmtDesktopTerminal, .rmtMobileTerminal")),
+      horizontalOverflow: Math.max(0, document.documentElement.scrollWidth - innerWidth),
+      notFound: Boolean(document.querySelector(".next-error-h1")) || document.body.innerText.includes("This page could not be found")
+    }));
+    if (audit.pathname !== pathname || !audit.publicChrome || audit.terminal || audit.horizontalOverflow > 2 || audit.notFound) {
+      throw new Error(`${pathname}: public route regressed after legacy CSS retirement ${JSON.stringify(audit)}`);
+    }
+    await page.screenshot({
+      path: `${output}/public-${pathname.slice(1)}-1280x800.png`,
+      fullPage: false,
+      animations: "disabled"
+    });
+    results.push(audit);
+    await context.close();
+  }
+  return results;
+}
+
 async function inspectMobile(browser, viewport, label) {
   const context = await createContext(browser, { viewport, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
   const page = await context.newPage();
@@ -577,13 +682,15 @@ try {
   const laptop = await inspectDesktop(browser, { width: 1_280, height: 800 }, "1280x800");
   const compact = await inspectDesktop(browser, { width: 1_024, height: 768 }, "1024x768");
   const marketAudit = await inspectMarket(browser);
+  const compatibilityEntries = await inspectCompatibilityEntries(browser);
+  const publicRoutes = await inspectCurrentPublicRoutes(browser);
   const mobile430 = await inspectMobile(browser, { width: 430, height: 932 }, "430x932");
   const mobile390 = await inspectMobile(browser, { width: 390, height: 844 }, "390x844");
   const mobile375 = await inspectMobile(browser, { width: 375, height: 812 }, "375x812");
   const mobile360 = await inspectMobile(browser, { width: 360, height: 800 }, "360x800");
   await writeFile(
     `${output}/report.json`,
-    JSON.stringify({ desktop, laptop, compact, marketAudit, mobile430, mobile390, mobile375, mobile360 }, null, 2)
+    JSON.stringify({ desktop, laptop, compact, marketAudit, compatibilityEntries, publicRoutes, mobile430, mobile390, mobile375, mobile360 }, null, 2)
   );
 } finally {
   await browser.close();
