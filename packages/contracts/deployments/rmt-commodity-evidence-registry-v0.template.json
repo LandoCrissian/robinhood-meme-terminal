@@ -24,6 +24,13 @@
     "contractSha256": null,
     "foundryTomlSha256": null,
     "remappingsSha256": null,
+    "installScriptSha256": null,
+    "preparationEntrypointPath": "packages/contracts/scripts/prepare-rmt-commodity-evidence-registry-v0.py",
+    "preparationEntrypointSha256": null,
+    "preparationImplementationPath": "packages/contracts/scripts/_prepare-rmt-commodity-evidence-registry-v0-impl.py",
+    "preparationImplementationSha256": null,
+    "preparationImplementationGitBlob": "85f9f994c4e8ba85f1acedb198bd2a0faf028925",
+    "canonicalSyntheticAttestorKeyLabel": "0xC0DE",
     "publicManifestSha256": null,
     "fullManifestSha256": null
   },
