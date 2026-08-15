@@ -33,11 +33,13 @@ function safeWalletMessage(message: string) {
 
 export function PrivyWalletButton({
   target = "testnet",
-  showFunding = true
+  showFunding = true,
+  compact = false
 }: {
   target?: "testnet" | "mainnet";
   returnTo?: string;
   showFunding?: boolean;
+  compact?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [fundingOpen, setFundingOpen] = useState(false);
@@ -98,7 +100,7 @@ export function PrivyWalletButton({
   }, [close, open]);
 
   if (!ready || (authenticated && !walletsReady)) {
-    return <button className="wallet live connectTrigger" type="button" disabled>Wallet loading…</button>;
+    return <button className="wallet live connectTrigger" type="button" disabled>{compact ? "Loading…" : "Wallet loading…"}</button>;
   }
 
   if (!connectedTradingWallet || !address) {
@@ -114,7 +116,7 @@ export function PrivyWalletButton({
               walletFirstTerminal ? identity.connectTradingWallet() : identity.login();
             }}
           >
-            Connect this wallet
+            {compact ? "Connect" : "Connect this wallet"}
           </button>
           {message && <span className="networkSwitchError" role="alert">{message}</span>}
         </div>
@@ -130,7 +132,7 @@ export function PrivyWalletButton({
             aria-controls="mobile-wallet-entry-dialog"
             onClick={() => setOpen((value) => !value)}
           >
-            Connect wallet
+            {compact ? "Connect" : "Connect wallet"}
           </button>
           {open && <OverlayPortal>
             <button className="walletBackdrop" type="button" aria-label="Close wallet menu" onClick={close} />
@@ -182,7 +184,7 @@ export function PrivyWalletButton({
             walletFirstTerminal ? identity.connectTradingWallet() : identity.login();
           }}
         >
-          {walletFirstTerminal ? "Connect trading wallet" : "Sign in or create wallet"}
+          {compact ? "Connect" : walletFirstTerminal ? "Connect trading wallet" : "Sign in or create wallet"}
         </button>
         {message && <span className="networkSwitchError" role="alert">{message}</span>}
       </div>
@@ -193,7 +195,7 @@ export function PrivyWalletButton({
     return (
       <div className="networkSwitchGroup">
         <button className="wallet network" disabled={isSwitching} onClick={() => { resetSwitch(); switchChain({ chainId: targetChain.id }); }}>
-          {isSwitching ? "Switching…" : `Switch to ${targetChain.name}`}
+          {isSwitching ? "Switching…" : compact ? "Switch network" : `Switch to ${targetChain.name}`}
         </button>
         {switchError && <span className="networkSwitchError" role="alert">{safeWalletMessage(switchError.message)}</span>}
       </div>

@@ -66,7 +66,8 @@ function stateLabel(asset: VNextDetectedWalletAsset, marketFound: boolean) {
   return asset.identityState === "verified" ? "Detected · route not checked" : "Detected · identity reported";
 }
 
-export function SpendBalance({ markets, onAssetsChange, onNativeBalanceChange, onSelectAsset, executionRecord, portfolioRevealRequest = 0 }: {
+export function SpendBalance({ visible = true, markets, onAssetsChange, onNativeBalanceChange, onSelectAsset, executionRecord, portfolioRevealRequest = 0 }: {
+  visible?: boolean;
   markets: VNextDirectoryMarket[];
   onAssetsChange?: (assets: VNextDetectedWalletAsset[]) => void;
   onNativeBalanceChange?: (balance: bigint | undefined) => void;
@@ -188,6 +189,8 @@ export function SpendBalance({ markets, onAssetsChange, onNativeBalanceChange, o
       setImportMessage(error instanceof Error ? error.message : "The token could not be verified.");
     }
   }
+
+  if (!visible) return null;
 
   return (
     <section id="vnext-portfolio" className="vnBalanceBar" aria-labelledby="vn-balance-heading" aria-busy={status === "loading"}>
