@@ -31,12 +31,9 @@ assert.equal(normalizeWatchlistAlertEvents(Array.from({ length: 120 }, (_, index
 }))).length, MAXIMUM_WATCHLIST_ALERT_EVENTS);
 
 const watchlistSource = readFileSync(new URL("../app/watchlist-panel.tsx", import.meta.url), "utf8");
-const protectionDeskSource = readFileSync(new URL("../app/market-protection-desk.tsx", import.meta.url), "utf8");
 const historySource = readFileSync(new URL("../app/watchlist-alert-history.tsx", import.meta.url), "utf8");
 assert.match(watchlistSource, /recordWatchlistAlertEvent\(/);
-assert.match(protectionDeskSource, /recordWatchlistAlertEvent\(/);
 assert.match(watchlistSource, /alertMatchStateRef\.current\.get\(evaluation\.alert\.id\) === false/);
-assert.match(protectionDeskSource, /alertMatchStateRef\.current\.get\(alert\.id\) === false/);
 assert.match(historySource, /History does not prove execution or investment performance/);
 
 console.log("Watchlist alert history remains bounded and evidence-shaped.");

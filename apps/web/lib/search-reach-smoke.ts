@@ -24,7 +24,7 @@ assert.match(pageSource, /"@type": "BreadcrumbList"/);
 assert.match(pageSource, /independent Robinhood Chain terminal/);
 assert.match(pageSource, /project origin, trading venue, RWA identity, and RMT-originated execution as separate facts/);
 assert.match(pageSource, /Search by the contract, then verify before signing/);
-assert.match(pageSource, /does not imply endorsement by Robinhood/);
+assert.match(pageSource, /do not\s+imply endorsement by Robinhood/);
 
 assert.match(sitemapSource, /\["\/robinhood-chain", "daily", 0\.9\]/);
 assert.match(footerSource, /href="\/robinhood-chain">Robinhood Chain/);

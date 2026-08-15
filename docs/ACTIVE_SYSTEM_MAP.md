@@ -8,7 +8,7 @@
 | Domain | Authority | Status | Notes |
 | --- | --- | --- | --- |
 | Production terminal | `apps/web/lib/vnext/*`, `apps/web/lib/server/vnext-*`, `/` | ACTIVE / CANONICAL | VNext owns the public root. The selected-asset workspace independently checks exact displayed and USDG/WETH up. pools, live fees and gauge state without treating venue evidence as project origin. |
-| Legacy terminal source and routes | legacy root feed source, `/market/[address]`, `/portfolio` | PRESERVED COMPATIBILITY | Not used by the canonical root workflow; retire or redirect only through separate reviewed changes. |
+| Retired terminal presentation | former root feed, market workspace and portfolio trees | RETIRED | Replaced market and portfolio URLs restore intent inside VNext; no second terminal shell or V7–V12 global cascade remains active. |
 | V6 protocol history | `apps/indexer` | ACTIVE COMPATIBILITY | Canonical deployed V6 launches, trades, graduation, fees and origin only. |
 | External project origin | `apps/external-origin-indexer` | ACTIVE FOUNDATION | Fail closed; `source-listed` and `token-created` remain distinct. StonkBrokers has candidate identity only: the production launcher contract/event is unverified, no claims are served and activation remains locked. |
 | External markets | `apps/market-indexer` | ACTIVE | Read-oriented discovery/enrichment, including separately identified `up-v2` and `up-cl` shadow sources; no execution or treasury work. Shadow rows are not consumed by the public terminal. |
@@ -27,8 +27,8 @@
 | --- | --- |
 | `/` | Canonical production VNext terminal. |
 | `/vnext` | Permanent compatibility redirect to `/`. |
-| `/market/[address]` | Preserved production compatibility route; VNext no longer depends on or navigates to it. Retirement/redirect is a separate reviewed change. |
-| `/portfolio` | Preserved compatibility route. VNext owns authoritative wallet discovery, confirmed Spend Balance, known-value portfolio estimates, gas separation and receive/send entry points; active VNext navigation has no dependency on this route. |
+| `/market/[address]` | Compatibility redirect to the exact market inside `/`; optional Buy/Sell intent is preserved. |
+| `/portfolio` | Compatibility redirect to the wallet-held portfolio inside `/`. |
 | `/profile` | Paused; preserved source/data, not promoted by active navigation. |
 | `/launch` | Paused product notice; must not promise a V7 reopening roadmap. |
 | `/explore` | Allowed only as ecosystem/market discovery; creator-platform promotion is paused. |
