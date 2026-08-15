@@ -44,6 +44,8 @@ assert.match(privyWalletButton, /identity\.connectTradingWallet\(\)/, "VNext mus
 assert.doesNotMatch(privyWalletButton, /useConnectOrCreateWallet|connectOrCreateWallet\(/, "RMT must not open a connection-only flow before wallet authentication.");
 assert.match(privyWalletButton, /mobileMetaMaskUrl/, "Mobile traders must have a direct MetaMask app handoff outside blocked embedded-browser connection modals.");
 assert.match(privyWalletButton, /Connect this wallet/, "A mobile wallet browser must offer its injected wallet directly.");
+assert.match(privyWalletButton, /aria-controls="mobile-wallet-entry-dialog"/, "A normal mobile browser must expose one top-level wallet entry control.");
+assert.match(privyWalletButton, /aria-label="Choose a mobile wallet"/, "Mobile wallet choices must open in an explicit accessible dialog.");
 assert.match(privyWalletButton, /Rabby \/ other/, "Mobile traders must have a clear Rabby and WalletConnect fallback.");
 assert.match(rmtIdentity, /supportsOAuth \? \["email", "google", "passkey", "wallet"\] : \["wallet"\]/, "Wallet browsers must not offer OAuth flows that cannot leave their embedded browser.");
 assert.doesNotMatch(privyFundingActions, /onClick=\{login\}/, "Funding entry points must use RMT's environment-aware Privy login.");

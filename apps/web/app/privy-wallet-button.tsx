@@ -123,25 +123,50 @@ export function PrivyWalletButton({
     if (mobileMetaMaskUrl) {
       return (
         <div className="walletMenu mobileWalletEntry">
-          <a
-            className="wallet live connectTrigger mobileMetaMaskTrigger"
-            href={mobileMetaMaskUrl}
-            onClick={() => recordExperienceStage("wallet_connect_started")}
-          >
-            MetaMask
-          </a>
           <button
-            className="wallet mobileOtherWalletTrigger"
+            className="wallet live connectTrigger"
             type="button"
-            aria-label="Use Rabby or another external wallet"
-            onClick={() => {
-              setMessage("");
-              recordExperienceStage("wallet_connect_started");
-              walletFirstTerminal ? identity.connectTradingWallet() : identity.login();
-            }}
+            aria-expanded={open}
+            aria-controls="mobile-wallet-entry-dialog"
+            onClick={() => setOpen((value) => !value)}
           >
-            Rabby / other
+            Connect wallet
           </button>
+          {open && <OverlayPortal>
+            <button className="walletBackdrop" type="button" aria-label="Close wallet menu" onClick={close} />
+            <div className="walletPopover walletOverlayPopover mobileWalletChoice" id="mobile-wallet-entry-dialog" role="dialog" aria-modal="true" aria-label="Choose a mobile wallet">
+              <div className="walletPopoverHeader">
+                <div><strong>Choose your wallet</strong><span>RMT connects to an external wallet you control.</span></div>
+                <button type="button" aria-label="Close wallet menu" onClick={close}>×</button>
+              </div>
+              <div className="connectorList">
+                <a
+                  className="connectorOption"
+                  href={mobileMetaMaskUrl}
+                  onClick={() => {
+                    recordExperienceStage("wallet_connect_started");
+                    close();
+                  }}
+                >
+                  <span>MetaMask</span>
+                  <small>Open this exact RMT page in the MetaMask mobile app</small>
+                </a>
+                <button
+                  className="connectorOption"
+                  type="button"
+                  onClick={() => {
+                    close();
+                    setMessage("");
+                    recordExperienceStage("wallet_connect_started");
+                    walletFirstTerminal ? identity.connectTradingWallet() : identity.login();
+                  }}
+                >
+                  <span>Rabby / other</span>
+                  <small>Use Privy's external-wallet picker or WalletConnect</small>
+                </button>
+              </div>
+            </div>
+          </OverlayPortal>}
           {message && <span className="networkSwitchError" role="alert">{message}</span>}
         </div>
       );
