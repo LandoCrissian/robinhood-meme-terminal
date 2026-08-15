@@ -11,9 +11,15 @@ on:
       - "apps/agent-engine/src/agent-canonical-risk-snapshot.ts"
       - "apps/agent-engine/src/agent-canonical-open-position-admission.ts"
       - "apps/agent-engine/src/agent-authoritative-open-position-admission.ts"
+      - "apps/agent-engine/src/agent-authoritative-open-position-submission.ts"
+      - "apps/agent-engine/src/agent-authoritative-open-position-fill.ts"
       - "apps/agent-engine/src/agent-authoritative-open-position-admission-smoke.ts"
+      - "apps/agent-engine/src/agent-authoritative-open-position-execution-smoke.ts"
       - "apps/agent-engine/src/agent-authoritative-open-position-index-smoke.ts"
       - "apps/agent-engine/src/paper-open-position-admission.ts"
+      - "apps/agent-engine/src/paper-order-submission.ts"
+      - "apps/agent-engine/src/paper-fill-orchestration.ts"
+      - "apps/agent-engine/src/paper-fill-cost.ts"
       - "apps/agent-engine/src/paper-risk-capacity.ts"
       - "apps/agent-engine/src/paper-trade-capacity.ts"
       - "apps/agent-engine/src/paper-trade-request.ts"
@@ -44,5 +50,7 @@ jobs:
         run: node --experimental-strip-types apps/agent-engine/src/paper-open-position-admission-smoke.ts
       - name: Run authoritative Agent admission smoke
         run: node --experimental-strip-types apps/agent-engine/src/agent-authoritative-open-position-admission-smoke.ts
+      - name: Run authoritative Agent execution smoke
+        run: node --experimental-strip-types apps/agent-engine/src/agent-authoritative-open-position-execution-smoke.ts
       - name: Run authoritative Agent export smoke
         run: node --experimental-strip-types apps/agent-engine/src/agent-authoritative-open-position-index-smoke.ts
