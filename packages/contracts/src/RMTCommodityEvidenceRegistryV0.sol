@@ -6,8 +6,8 @@ import {SignatureChecker} from "@openzeppelin/contracts/utils/cryptography/Signa
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 /// @notice Synthetic-only, append-only evidence registry for a physical-commodity testnet demonstration.
-/// @dev This contract creates no token, commodity entitlement, price, custody right, transfer right, mint authority,
-///      fee, treasury relationship or RMT-token right. It is permanently bound to Robinhood Chain testnet.
+/// @dev Creates no token, commodity entitlement, price, custody right, transfer right, mint authority,
+/// fee, treasury relationship, or RMT-token right. Permanently bound to Robinhood Chain testnet.
 contract RMTCommodityEvidenceRegistryV0 is EIP712, ReentrancyGuard {
     uint256 public constant TARGET_CHAIN_ID = 46_630;
     bool public constant SYNTHETIC_ONLY = true;
@@ -30,11 +30,9 @@ contract RMTCommodityEvidenceRegistryV0 is EIP712, ReentrancyGuard {
     bytes32 public constant QUANTITY_CLAIM_TYPEHASH = keccak256(
         "QuantityClaim(uint256 value,uint8 decimals,bytes32 unitCode,bytes32 quantityStandardHash,uint32 uncertaintyPpm)"
     );
-
     bytes32 public constant EVIDENCE_ENVELOPE_TYPEHASH = keccak256(
         "EvidenceEnvelope(bytes32 schemaHash,bytes32 instrumentId,bytes32 seriesId,bytes32 batchId,bytes32 physicalLotKey,uint64 evidenceVersion,QuantityClaim quantity,bytes32 commoditySpecHash,bytes32 publicRegionHash,bytes32 titleEvidenceHash,bytes32 custodyEvidenceHash,bytes32 qualityEvidenceHash,bytes32 calibrationEvidenceHash,bytes32 encumbranceStatementHash,uint8 encumbranceStatus,bytes32 publicManifestHash,bytes32 fullManifestHash,bytes32 publicManifestUriHash,bytes32 rightsVersionHash,bytes32 transferPolicyHash,uint64 measuredAt,uint64 validFrom,uint64 validUntil,uint256 nonce)QuantityClaim(uint256 value,uint8 decimals,bytes32 unitCode,bytes32 quantityStandardHash,uint32 uncertaintyPpm)"
     );
-
     bytes32 private constant EVIDENCE_ID_DOMAIN = keccak256("RMT_COMMODITY_EVIDENCE_ID_V0");
 
     enum PartyStatus {
@@ -171,14 +169,12 @@ contract RMTCommodityEvidenceRegistryV0 is EIP712, ReentrancyGuard {
         uint64 validFrom,
         uint64 validUntil
     );
-
     event PartyStatusChanged(
         bytes32 indexed partyId,
         PartyStatus previousStatus,
         PartyStatus newStatus,
         bytes32 reasonCode
     );
-
     event InstrumentConfigured(
         bytes32 indexed instrumentId,
         bytes32 indexed schemaHash,
@@ -189,7 +185,6 @@ contract RMTCommodityEvidenceRegistryV0 is EIP712, ReentrancyGuard {
         bytes32 attestorPartyId,
         uint64 maxValidityDuration
     );
-
     event EvidencePublished(
         bytes32 indexed evidenceId,
         bytes32 indexed instrumentId,
@@ -204,7 +199,6 @@ contract RMTCommodityEvidenceRegistryV0 is EIP712, ReentrancyGuard {
         uint64 validUntil,
         address publisher
     );
-
     event EvidenceStatusChanged(
         bytes32 indexed evidenceId,
         EvidenceStatus previousStatus,
@@ -214,7 +208,6 @@ contract RMTCommodityEvidenceRegistryV0 is EIP712, ReentrancyGuard {
         bytes32 supportingUriHash,
         address reporter
     );
-
     event EvidenceSuperseded(
         bytes32 indexed previousEvidenceId,
         bytes32 indexed newEvidenceId,
@@ -266,8 +259,9 @@ contract RMTCommodityEvidenceRegistryV0 is EIP712, ReentrancyGuard {
     ) external onlyAdministrator onlyTargetChain {
         if (
             partyId == bytes32(0) || signingAccount == address(0) || roleBitmap == 0
-                || roleBitmap & ~ALL_ROLE_BITMAPS != 0 || validFrom > block.timestamp || validUntil <= block.timestamp
-                || validUntil <= validFrom || _parties[partyId].status != PartyStatus.Unregistered
+                || (roleBitmap & ~ALL_ROLE_BITMAPS) != 0 || validFrom > block.timestamp
+                || validUntil <= block.timestamp || validUntil <= validFrom
+                || _parties[partyId].status != PartyStatus.Unregistered
                 || partyBySigningAccount[signingAccount] != bytes32(0)
         ) revert InvalidParty();
 
@@ -280,7 +274,6 @@ contract RMTCommodityEvidenceRegistryV0 is EIP712, ReentrancyGuard {
             status: PartyStatus.Active
         });
         partyBySigningAccount[signingAccount] = partyId;
-
         emit PartyRegistered(partyId, signingAccount, 1, roleBitmap, validFrom, validUntil);
     }
 
@@ -335,7 +328,6 @@ contract RMTCommodityEvidenceRegistryV0 is EIP712, ReentrancyGuard {
             maxValidityDuration: maxValidityDuration,
             configured: true
         });
-
         emit InstrumentConfigured(
             instrumentId,
             schemaHash,
@@ -370,9 +362,18 @@ contract RMTCommodityEvidenceRegistryV0 is EIP712, ReentrancyGuard {
             revert DuplicatePhysicalLot(envelope.physicalLotKey, existingBatchKey);
         }
 
+        bytes32 previousEvidenceId;
+        if (envelope.evidenceVersion > 1) {
+            previousEvidenceId = _evidenceIdByVersion[batchKey][envelope.evidenceVersion - 1];
+            EvidenceStatus previousStoredStatus = _evidence[previousEvidenceId].storedStatus;
+            if (
+                previousEvidenceId == bytes32(0) || previousStoredStatus == EvidenceStatus.Closed
+                    || previousStoredStatus == EvidenceStatus.Superseded
+            ) revert InvalidStatusTransition();
+        }
+
         bytes32 digest = evidenceDigest(envelope);
         if (consumedDigest[digest]) revert DigestAlreadyConsumed();
-
         _validateRoleSignature(
             issuerSignature, ROLE_ISSUER, instrument.issuerPartyId, ROLE_ISSUER_BITMAP, digest
         );
@@ -404,14 +405,8 @@ contract RMTCommodityEvidenceRegistryV0 is EIP712, ReentrancyGuard {
         _evidenceIdByVersion[batchKey][envelope.evidenceVersion] = evidenceId;
         if (existingBatchKey == bytes32(0)) lotOwnerBatchKey[envelope.physicalLotKey] = batchKey;
 
-        if (envelope.evidenceVersion > 1) {
-            bytes32 previousEvidenceId = _evidenceIdByVersion[batchKey][envelope.evidenceVersion - 1];
+        if (previousEvidenceId != bytes32(0)) {
             EvidenceRecord storage previousRecord = _evidence[previousEvidenceId];
-            if (
-                previousEvidenceId == bytes32(0) || previousRecord.storedStatus == EvidenceStatus.Closed
-                    || previousRecord.storedStatus == EvidenceStatus.Superseded
-            ) revert InvalidStatusTransition();
-
             EvidenceStatus previousStatus = previousRecord.storedStatus;
             previousRecord.storedStatus = EvidenceStatus.Superseded;
             previousRecord.statusReasonCode = REASON_EVIDENCE_SUPERSEDED;
@@ -462,7 +457,6 @@ contract RMTCommodityEvidenceRegistryV0 is EIP712, ReentrancyGuard {
             record.storedStatus != EvidenceStatus.Verified || reasonCode == bytes32(0)
                 || supportingManifestHash == bytes32(0) || supportingUriHash == bytes32(0)
         ) revert InvalidStatusTransition();
-
         _changeEvidenceStatus(
             evidenceId,
             record,
@@ -486,7 +480,6 @@ contract RMTCommodityEvidenceRegistryV0 is EIP712, ReentrancyGuard {
                 && record.storedStatus != EvidenceStatus.Disputed
         ) revert InvalidStatusTransition();
         if (reasonCode == bytes32(0)) revert InvalidStatusTransition();
-
         _changeEvidenceStatus(
             evidenceId,
             record,
@@ -508,7 +501,6 @@ contract RMTCommodityEvidenceRegistryV0 is EIP712, ReentrancyGuard {
         if (record.storedStatus == EvidenceStatus.Closed || reasonCode == bytes32(0)) {
             revert InvalidStatusTransition();
         }
-
         _changeEvidenceStatus(
             evidenceId,
             record,
@@ -519,7 +511,7 @@ contract RMTCommodityEvidenceRegistryV0 is EIP712, ReentrancyGuard {
         );
     }
 
-    function evidenceDigest(EvidenceEnvelope calldata envelope) public view returns (bytes32) {
+    function evidenceDigest(EvidenceEnvelope memory envelope) public view returns (bytes32) {
         bytes32 quantityHash = keccak256(
             abi.encode(
                 QUANTITY_CLAIM_TYPEHASH,
@@ -530,7 +522,6 @@ contract RMTCommodityEvidenceRegistryV0 is EIP712, ReentrancyGuard {
                 envelope.quantity.uncertaintyPpm
             )
         );
-
         bytes32 structHash = keccak256(
             abi.encode(
                 EVIDENCE_ENVELOPE_TYPEHASH,
@@ -603,7 +594,6 @@ contract RMTCommodityEvidenceRegistryV0 is EIP712, ReentrancyGuard {
     function getEffectiveStatus(bytes32 evidenceId) public view returns (EffectiveStatus) {
         EvidenceRecord storage record = _evidence[evidenceId];
         if (record.digest == bytes32(0)) return EffectiveStatus.None;
-
         if (record.storedStatus == EvidenceStatus.Closed) return EffectiveStatus.Closed;
         if (record.storedStatus == EvidenceStatus.Suspended) return EffectiveStatus.Suspended;
         if (record.storedStatus == EvidenceStatus.Disputed) return EffectiveStatus.Disputed;
@@ -647,13 +637,11 @@ contract RMTCommodityEvidenceRegistryV0 is EIP712, ReentrancyGuard {
                 || envelope.rightsVersionHash != NO_RIGHTS_VERSION_HASH
                 || envelope.transferPolicyHash != NON_TRANSFERABLE_POLICY_HASH || envelope.nonce == 0
         ) revert InvalidEnvelope();
-
         if (
             envelope.quantity.value == 0 || envelope.quantity.decimals > 18
                 || envelope.quantity.unitCode == bytes32(0) || envelope.quantity.quantityStandardHash == bytes32(0)
                 || envelope.quantity.uncertaintyPpm > 1_000_000
         ) revert InvalidEnvelope();
-
         if (
             envelope.validUntil <= envelope.validFrom || envelope.validFrom > block.timestamp
                 || envelope.validUntil < block.timestamp
@@ -664,10 +652,9 @@ contract RMTCommodityEvidenceRegistryV0 is EIP712, ReentrancyGuard {
         ) revert InvalidValidityWindow();
 
         bytes memory uriBytes = bytes(publicManifestURI);
-        if (
-            uriBytes.length == 0 || uriBytes.length > 512
-                || keccak256(uriBytes) != envelope.publicManifestUriHash
-        ) revert InvalidEnvelope();
+        if (uriBytes.length == 0 || uriBytes.length > 512 || keccak256(uriBytes) != envelope.publicManifestUriHash) {
+            revert InvalidEnvelope();
+        }
     }
 
     function _validateRoleSignature(
@@ -691,7 +678,7 @@ contract RMTCommodityEvidenceRegistryV0 is EIP712, ReentrancyGuard {
         Party storage party = _parties[partyId];
         if (
             effectivePartyStatus(partyId) != PartyStatus.Active || party.signingAccount == address(0)
-                || party.roleBitmap & expectedRoleBitmap == 0
+                || (party.roleBitmap & expectedRoleBitmap) == 0
         ) revert InvalidParty();
     }
 
