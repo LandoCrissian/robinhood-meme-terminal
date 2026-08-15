@@ -4,25 +4,31 @@ Status: source-only foundation. No MCP SDK dependency, network listener, API key
 
 ## Purpose
 
-`apps/rmt-mcp` is the external AI boundary for RMT. The first admitted capability is intentionally narrow: expose sanitized Arena intelligence without exposing Agent Engine internals.
+`apps/rmt-mcp` is the external AI boundary for RMT. The admitted capability is intentionally narrow: expose sanitized Arena intelligence without exposing Agent Engine internals.
 
-The current tool contract contains exactly:
+The composed read registry contains exactly:
 
 ```text
+rmt_arena_seasons
 rmt_arena_matchup
 rmt_arena_leaderboard
+rmt_arena_participant
+rmt_arena_career
+rmt_arena_season_result
 ```
 
-Both tools are read-only and consume `PaperArenaPublicReadModel`, not raw Agent Engine records.
+All six tools are read-only. They consume sanitized public Arena models, never raw Agent Engine records.
 
 ## Data boundary
 
 The MCP read path may expose:
 
-- season identity;
+- public season identity and status;
 - Human / Agent roster counts;
 - matchup status and winner when finalizable;
 - sanitized ranked/provisional leaderboard entries;
+- sanitized participant and cross-season career profiles;
+- immutable finalized-season results;
 - exact net performance display fields;
 - drawdown / fill-count display fields;
 - public proof hashes.
@@ -41,10 +47,10 @@ Human Arena participant IDs may be public canonical wallet identities because th
 
 ## Security model
 
-Unknown tool names fail closed. Tool inputs reject unsupported fields. No write-capable tool is admitted merely because a caller knows a name.
+Unknown tool names fail closed. Tool inputs reject unsupported fields. Reader results are validated against their requested season or participant identity and their canonical public hashes. No write-capable tool is admitted merely because a caller knows a name.
 
 Future tools such as agent creation or paper-order mutation require separate architecture admission and authorization contracts. Live execution is explicitly out of scope.
 
 ## Transport
 
-This slice intentionally does not choose or start an MCP transport. A later runtime can bind this contract to Streamable HTTP after authentication, rate limiting, deployment, and operational policy are specified.
+This slice intentionally does not choose or start an MCP transport. A later runtime can bind this contract to Streamable HTTP only after authentication, authorization, rate limiting, request limits, audit logging, deployment, and operational policy are specified.

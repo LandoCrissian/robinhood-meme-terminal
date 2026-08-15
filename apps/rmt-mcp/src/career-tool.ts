@@ -66,10 +66,10 @@ export function assertRmtArenaCareerToolResult(record: RmtArenaCareerToolResult)
   if (record.schemaVersion !== 1 || record.tool !== "rmt_arena_career" || record.contractVersion !== RMT_MCP_CAREER_TOOL_V1) {
     fail("unsupported RMT MCP career tool-result version");
   }
-  assertPaperArenaPublicCareerProfile(record.profile);
   assertHash(record.resultHash, "RMT MCP career resultHash");
   const { resultHash, ...payload } = record;
   if (resultHash !== hashCanonicalPayload(payload)) fail("RMT MCP career result hash mismatch");
+  assertPaperArenaPublicCareerProfile(record.profile);
 }
 
 export class RmtMcpCareerReadToolService {
