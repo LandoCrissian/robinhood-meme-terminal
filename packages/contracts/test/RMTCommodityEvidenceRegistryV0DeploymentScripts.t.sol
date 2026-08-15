@@ -15,6 +15,8 @@ contract RMTCommodityEvidenceRegistryV0DeploymentScriptsTest {
         "scripts/_prepare-rmt-commodity-evidence-registry-v0-impl.py";
     string private constant DEPLOYMENT_VERIFIER =
         "scripts/verify-rmt-commodity-evidence-registry-v0-deployment.sh";
+    string private constant POSTFLIGHT_IMPLEMENTATION =
+        "script/VerifySyntheticCommodityEvidenceRegistryV0.s.sol";
     string private constant SOURCE_VERIFIER =
         "scripts/verify-rmt-commodity-evidence-registry-v0-sources.sh";
     string private constant RELEASE_TEMPLATE =
@@ -42,6 +44,7 @@ contract RMTCommodityEvidenceRegistryV0DeploymentScriptsTest {
 
     function testDeploymentVerifierIsReadOnlyAndFailClosed() public {
         string memory verifier = vm.readFile(DEPLOYMENT_VERIFIER);
+        string memory postflight = vm.readFile(POSTFLIGHT_IMPLEMENTATION);
 
         _assertNoEvmTransactionSurface(verifier);
         require(_contains(verifier, "EXPECTED_RUNTIME_HASH"), "runtime commitment missing");
@@ -51,7 +54,12 @@ contract RMTCommodityEvidenceRegistryV0DeploymentScriptsTest {
         require(_contains(verifier, "cast create2"), "CREATE2 prediction check missing");
         require(_contains(verifier, "cast call"), "read-only contract checks missing");
         require(_contains(verifier, "cast code"), "runtime code check missing");
-        require(_contains(verifier, "mint(address,uint256)"), "no-mint probe missing");
+        require(
+            _contains(verifier, "VerifySyntheticCommodityEvidenceRegistryV0"),
+            "postflight implementation not invoked"
+        );
+        require(_contains(postflight, "mint(address,uint256)"), "no-mint probe missing");
+        require(_contains(postflight, "totalSupply()"), "no-supply probe missing");
         require(!_contains(verifier, "--unlocked"), "unlocked account support present");
     }
 
