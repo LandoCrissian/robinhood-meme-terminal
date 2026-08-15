@@ -132,9 +132,11 @@ jobs:
           node --experimental-strip-types apps/agent-engine/src/paper-arena-roster-smoke.ts
           node --experimental-strip-types apps/agent-engine/src/paper-arena-matchup-smoke.ts
           node --experimental-strip-types apps/agent-engine/src/paper-arena-authoritative-matchup-smoke.ts
-      - name: Run sanitized public model and immutable finalization
+      - name: Run sanitized public models and immutable finalization
         run: |
           node --experimental-strip-types apps/agent-engine/src/paper-arena-public-read-model-smoke.ts
+          node --experimental-strip-types apps/agent-engine/src/paper-arena-public-season-catalog-smoke.ts
+          node --experimental-strip-types apps/agent-engine/src/paper-arena-public-participant-profile-smoke.ts
           node --experimental-strip-types apps/agent-engine/src/paper-arena-season-finalization-smoke.ts
 
   career-reputation:
