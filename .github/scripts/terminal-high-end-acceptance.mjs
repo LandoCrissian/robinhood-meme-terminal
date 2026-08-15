@@ -221,6 +221,42 @@ async function installRoutes(page) {
       body: JSON.stringify({ markets, updatedAt: now, stale: false })
     });
   });
+  await page.route(/\/api\/vnext\/asset-identity(?:\?.*)?$/, async (route) => {
+    const requestedAddress = new URL(route.request().url()).searchParams.get("address")?.toLowerCase();
+    const selected = markets.find((item) => item.address.toLowerCase() === requestedAddress);
+    if (!selected) {
+      await route.fulfill({
+        status: 404,
+        contentType: "application/json",
+        body: JSON.stringify({ error: "Token identity could not be verified on Robinhood Chain." })
+      });
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        resolution: {
+          chainId: 4_663,
+          requestedAddress: selected.address,
+          requestedKind: "token",
+          status: "token-only",
+          token: {
+            address: selected.address,
+            name: selected.name,
+            symbol: selected.symbol,
+            decimals: 18,
+            totalSupply: "1000000000000000000000000"
+          },
+          pools: [],
+          marketData: "identity-only",
+          execution: "view-only",
+          provenance: "robinhood-chain-contract-reads",
+          resolvedAt: now
+        }
+      })
+    });
+  });
   await page.route(/\/api\/markets\/external(?:\?.*)?$/, async (route) => {
     const url = new URL(route.request().url());
     const contract = url.searchParams.get("contract")?.toLowerCase();
