@@ -13,7 +13,8 @@ on:
       - "package.json"
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
-      - ".github/workflows/agent-arena-stabilization.yml"
+      - ".github/workflows/agent-*.yml"
+      - ".github/workflows/rmt-mcp-*.yml"
   workflow_dispatch:
 
 permissions:
