@@ -12,7 +12,8 @@ contract RMTCommodityEvidenceRegistryV0DeploymentScriptsTest {
     string private constant PREPARATION_ENTRYPOINT = "scripts/prepare-rmt-commodity-evidence-registry-v0.py";
     string private constant PREPARATION_IMPLEMENTATION = "scripts/_prepare-rmt-commodity-evidence-registry-v0-impl.py";
     string private constant DEPLOYMENT_VERIFIER = "scripts/verify-rmt-commodity-evidence-registry-v0-deployment.sh";
-    string private constant OBSOLETE_DEPLOYMENT_VERIFIER = "scripts/verify-commodity-evidence-registry-v0-deployment.sh";
+    string private constant OBSOLETE_DEPLOYMENT_VERIFIER =
+        "scripts/verify-commodity-evidence-registry-v0-deployment.sh";
     string private constant POSTFLIGHT_IMPLEMENTATION = "script/VerifySyntheticCommodityEvidenceRegistryV0.s.sol";
     string private constant SOURCE_VERIFIER = "scripts/verify-rmt-commodity-evidence-registry-v0-sources.sh";
     string private constant RELEASE_TEMPLATE = "deployments/rmt-commodity-evidence-registry-v0.template.json";
@@ -38,11 +39,12 @@ contract RMTCommodityEvidenceRegistryV0DeploymentScriptsTest {
     }
 
     function testObsoleteDeploymentVerifierIsAbsent() public {
-        (bool readable,) = address(vm).call(
-            abi.encodeWithSelector(
-                CommodityEvidenceDeploymentScriptsVm.readFile.selector, OBSOLETE_DEPLOYMENT_VERIFIER
-            )
-        );
+        (bool readable,) = address(vm)
+            .call(
+                abi.encodeWithSelector(
+                    CommodityEvidenceDeploymentScriptsVm.readFile.selector, OBSOLETE_DEPLOYMENT_VERIFIER
+                )
+            );
         require(!readable, "obsolete deployment verifier present");
     }
 
