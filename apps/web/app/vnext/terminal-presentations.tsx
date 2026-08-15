@@ -1,8 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
-import { useCallback, useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type RefObject } from "react";
+import { useCallback, useEffect, useRef, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent, type RefObject } from "react";
 import type { AssetMetadata } from "../../lib/vnext/execution-domain";
 import type { VNextExecutionRecord } from "../../lib/vnext/execution-recovery";
 import {
@@ -14,6 +13,7 @@ import {
 } from "../../lib/vnext/market-directory";
 import type { VNextDetectedWalletAsset } from "../../lib/vnext/wallet-assets";
 import { SpendBalance } from "./spend-balance";
+import { formatTerminalAge, formatTerminalCompactUsd, formatTerminalPercent, formatTerminalPrice } from "./terminal-format";
 import { TokenArtwork } from "./token-artwork";
 import { TradeIntentComposer } from "./trade-intent-composer";
 import type { DirectoryStatus, IdentityStatus } from "./use-vnext-market-directory";
@@ -21,9 +21,12 @@ import { VNextAssetWorkspace } from "./vnext-asset-workspace";
 import { VNextExecutionRecoveryBanner } from "./vnext-execution-recovery-banner";
 import { VNextWalletConnection } from "./vnext-wallet-connection";
 
+export type TerminalContext = "markets" | "asset" | "portfolio";
 export type TradeSideRequest = { side: "buy" | "sell"; nonce: number };
 
 export type TerminalPresentationProps = {
+  context: TerminalContext;
+  tradeOpen: boolean;
   query: string;
   setQuery: (query: string) => void;
   marketSearch: RefObject<HTMLInputElement | null>;
@@ -50,94 +53,161 @@ export type TerminalPresentationProps = {
   onRefresh: () => void;
   onDirectoryViewChange: (view: VNextMarketDirectoryView) => void;
   onLoadMoreMarkets: () => void;
-  onRevealPortfolio: () => void;
+  onShowMarkets: () => void;
+  onShowPortfolio: () => void;
+  onShowRwa: () => void;
   onRequestTradeSide: (side: "buy" | "sell") => void;
+  onCloseTrade: () => void;
   onContinueTrading: () => void;
 };
 
 function formatUsd(value: number) {
-  if (!Number.isFinite(value) || value <= 0) return "—";
-  if (value >= 1) return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(value);
-  return `$${value.toLocaleString("en-US", { maximumSignificantDigits: 4 })}`;
-}
-
-function formatChange(value: number) {
-  if (!Number.isFinite(value)) return "—";
-  return `${value > 0 ? "+" : value < 0 ? "−" : ""}${Math.abs(value).toFixed(1)}%`;
+  return formatTerminalPrice(value);
 }
 
 function compactUsd(value: number) {
-  if (!Number.isFinite(value) || value <= 0) return "—";
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", notation: "compact", maximumFractionDigits: 1 }).format(value);
+  return formatTerminalCompactUsd(value);
 }
 
-function RmtBrand({ compact = false }: { compact?: boolean }) {
-  return <Link className={`rmtTerminalBrand${compact ? " isCompact" : ""}`} href="/" aria-label="RMT Terminal home">
-    <Image src="/brand/rmt-master-logo.png" alt="" width={compact ? 34 : 38} height={compact ? 34 : 38} priority />
-    <span><strong>RMT</strong>{!compact && <small>Robinhood Terminal</small>}</span>
-  </Link>;
+function formatChange(value: number) {
+  return formatTerminalPercent(value);
 }
 
-function MarketSearch({ query, setQuery, inputRef, onSubmit }: {
+function formatAge(ageMinutes: number | null) {
+  return formatTerminalAge(ageMinutes);
+}
+
+function changeClass(value: number) {
+  return value > 0 ? "vnPositive" : value < 0 ? "vnNegative" : "";
+}
+
+function RmtBrand({ compact = false, onActivate }: { compact?: boolean; onActivate: () => void }) {
+  const handleClick = (event: MouseEvent<HTMLAnchorElement>) => {
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    onActivate();
+  };
+  return <a className={`rmtTerminalBrand${compact ? " isCompact" : ""}`} href="/" aria-label="RMT Markets" onClick={handleClick}>
+    <Image src="/brand/rmt-master-logo.png" alt="" width={compact ? 32 : 34} height={compact ? 32 : 34} priority />
+    <span><strong>RMT</strong></span>
+  </a>;
+}
+
+function MarketSearch({ query, setQuery, inputRef, onSubmit, id }: {
   query: string;
   setQuery: (query: string) => void;
   inputRef: RefObject<HTMLInputElement | null>;
   onSubmit: () => void;
+  id: string;
 }) {
   return <form className="rmtMarketSearch" role="search" onSubmit={(event) => { event.preventDefault(); onSubmit(); }}>
     <span aria-hidden="true">⌕</span>
-    <label className="vnSrOnly" htmlFor="rmt-market-search">Search Robinhood Chain markets</label>
-    <input id="rmt-market-search" ref={inputRef} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search token or paste contract" autoComplete="off" spellCheck={false} />
-    <button type="submit">Find</button>
+    <label className="vnSrOnly" htmlFor={id}>Search Robinhood Chain markets</label>
+    <input id={id} ref={inputRef} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search token or contract" autoComplete="off" spellCheck={false} />
+    {query ? <button className="rmtSearchClear" type="button" aria-label="Clear market search" onClick={() => setQuery("")}>×</button> : null}
+    <button className="rmtSearchSubmit" type="submit">Find</button>
   </form>;
 }
 
-function MarketDirectory({ mode, markets, totalMatches, selected, status, view, viewCounts, searchActive, onSelect, onRefresh, onViewChange, onLoadMore }: {
-  mode: "desktop" | "mobile";
-  markets: VNextDirectoryMarket[];
-  totalMatches: number;
-  selected?: VNextDirectoryMarket;
-  status: DirectoryStatus;
+function MarketCategoryNav({ view, counts, searchActive, onChange }: {
   view: VNextMarketDirectoryView;
-  viewCounts: Record<VNextMarketDirectoryView, number>;
+  counts: Record<VNextMarketDirectoryView, number>;
   searchActive: boolean;
-  onSelect: (address: string) => void;
-  onRefresh: () => void;
-  onViewChange: (view: VNextMarketDirectoryView) => void;
-  onLoadMore: () => void;
+  onChange: (view: VNextMarketDirectoryView) => void;
 }) {
-  const remaining = Math.max(0, totalMatches - markets.length);
-  const nextPageSize = Math.min(VNEXT_MARKET_DIRECTORY_PAGE_SIZE, remaining);
-  return <div className={`rmtMarketDirectory is${mode}`} aria-live="polite">
-    <nav className="rmtMarketViews" aria-label="Market categories">
-      {VNEXT_MARKET_DIRECTORY_VIEWS.map((candidate) => <button
-        className={!searchActive && candidate.id === view ? "isActive" : ""}
-        type="button"
-        key={candidate.id}
-        aria-pressed={!searchActive && candidate.id === view}
-        onClick={() => onViewChange(candidate.id)}
-      ><span>{candidate.label}</span><small>{viewCounts[candidate.id]}</small></button>)}
-    </nav>
-    <div className="rmtMarketViewStatus"><strong>{searchActive ? "Search results" : VNEXT_MARKET_DIRECTORY_VIEWS.find((candidate) => candidate.id === view)?.label}</strong><span>{!searchActive && view === "rwa" ? "Stock Tokens first · RWA Pairs labeled" : `${markets.length} of ${totalMatches} markets · routes on demand`}</span></div>
-    {status === "loading" && markets.length === 0 && <div className="rmtDirectoryMessage"><strong>Syncing markets</strong><span>Loading directory data without prechecking routes.</span></div>}
-    {status === "error" && markets.length === 0 && <div className="rmtDirectoryMessage"><strong>Directory unavailable</strong><span>No asset has been marked untradeable.</span><button type="button" onClick={onRefresh}>Try again</button></div>}
-    {markets.map((market) => <button
-      className={`rmtMarketItem${selected?.address === market.address ? " isSelected" : ""}`}
-      key={market.address}
+  return <nav className="rmtMarketViews" aria-label="Market categories">
+    {VNEXT_MARKET_DIRECTORY_VIEWS.map((candidate) => <button
+      className={!searchActive && candidate.id === view ? "isActive" : ""}
       type="button"
-      aria-pressed={selected?.address === market.address}
-      onClick={() => onSelect(market.address)}
-    >
-      <TokenArtwork className="rmtMarketArtwork" symbol={market.symbol} imageUrl={market.imageUri} />
-      <span className="rmtMarketName">
-        <span className="rmtMarketIdentity"><strong>{market.symbol}</strong>{vNextRwaClassificationLabel(market.rwaRelationship) ? <em className={`rmtRwaClassification is${market.rwaRelationship === "canonical-stock-token" ? "Stock" : "Pair"}`}>{vNextRwaClassificationLabel(market.rwaRelationship)}</em> : null}</span>
-        <small>{mode === "desktop" ? market.name : compactUsd(market.volume24h) + " vol"}</small>
-      </span>
-      <span className="rmtMarketQuote"><strong>{formatUsd(market.priceUsd)}</strong><small className={market.priceChange24h > 0 ? "vnPositive" : market.priceChange24h < 0 ? "vnNegative" : ""}>{formatChange(market.priceChange24h)}</small></span>
-    </button>)}
-    {remaining > 0 && <div className="rmtMarketLoadMore"><button type="button" onClick={onLoadMore}>Load {nextPageSize} more</button><span>{remaining} remaining in this view</span></div>}
-    {status !== "loading" && markets.length === 0 && <div className="rmtDirectoryMessage"><strong>{searchActive ? "No matching markets" : `No ${view === "held" ? "wallet-held" : view} markets yet`}</strong><span>{searchActive ? "Search by name, symbol, or a complete contract address." : "Choose another category or use exact contract search. No asset was marked unavailable."}</span></div>}
+      key={candidate.id}
+      aria-pressed={!searchActive && candidate.id === view}
+      onClick={() => onChange(candidate.id)}
+    ><span>{candidate.label}</span><small>{counts[candidate.id]}</small></button>)}
+  </nav>;
+}
+
+function DirectoryMessage({ status, count, searchActive, view, onRefresh }: {
+  status: DirectoryStatus;
+  count: number;
+  searchActive: boolean;
+  view: VNextMarketDirectoryView;
+  onRefresh: () => void;
+}) {
+  if (status === "loading" && count === 0) return <div className="rmtDirectoryMessage"><strong>Syncing markets…</strong><span>Loading verified directory data without prechecking routes.</span></div>;
+  if (status === "error" && count === 0) return <div className="rmtDirectoryMessage"><strong>Market data delayed</strong><span>No asset has been marked untradeable.</span><button type="button" onClick={onRefresh}>Try again</button></div>;
+  if (count === 0) return <div className="rmtDirectoryMessage"><strong>{searchActive ? "No matching markets" : `No ${view === "held" ? "wallet-held" : view} markets yet`}</strong><span>{searchActive ? "Search by name, symbol, or a complete contract address." : "Choose another category or use exact contract search."}</span></div>;
+  return null;
+}
+
+function LoadMore({ visibleCount, totalCount, onLoadMore }: { visibleCount: number; totalCount: number; onLoadMore: () => void }) {
+  const remaining = Math.max(0, totalCount - visibleCount);
+  if (!remaining) return null;
+  return <button className="rmtMarketLoadMore" type="button" onClick={onLoadMore}>Load {Math.min(VNEXT_MARKET_DIRECTORY_PAGE_SIZE, remaining)} more <span>{remaining} remaining</span></button>;
+}
+
+function RwaLabel({ market }: { market: VNextDirectoryMarket }) {
+  const label = vNextRwaClassificationLabel(market.rwaRelationship);
+  return label ? <em className={`rmtRwaClassification is${market.rwaRelationship === "canonical-stock-token" ? "Stock" : "Pair"}`}>{label}</em> : null;
+}
+
+function DesktopMarketTable(props: TerminalPresentationProps) {
+  return <div className="rmtMarketTable" role="table" aria-label="Robinhood Chain markets">
+    <div className="rmtMarketTableHead" role="row">
+      <span role="columnheader">Token</span><span role="columnheader">Price</span><span role="columnheader">24h</span><span role="columnheader">MCap</span><span role="columnheader">Volume</span><span role="columnheader">Liquidity</span><span role="columnheader">Age</span><span role="columnheader">Type</span>
+    </div>
+    <div className="rmtMarketTableBody" role="rowgroup">
+      {props.visibleMarkets.map((market) => <button className="rmtMarketTableRow" type="button" role="row" key={market.address} onClick={() => props.onSelectMarket(market.address)}>
+        <span className="rmtMarketTokenCell" role="cell"><TokenArtwork className="rmtMarketArtwork" symbol={market.symbol} imageUrl={market.imageUri} /><span><strong>{market.symbol}</strong><small>{market.name}</small></span></span>
+        <strong role="cell">{formatUsd(market.priceUsd)}</strong>
+        <strong className={changeClass(market.priceChange24h)} role="cell">{formatChange(market.priceChange24h)}</strong>
+        <span role="cell">{compactUsd(market.marketCapUsd)}</span>
+        <span role="cell">{compactUsd(market.volume24h)}</span>
+        <span role="cell">{compactUsd(market.liquidityUsd)}</span>
+        <span role="cell">{formatAge(market.ageMinutes)}</span>
+        <span role="cell"><RwaLabel market={market} /></span>
+      </button>)}
+    </div>
+    <DirectoryMessage status={props.directoryStatus} count={props.visibleMarkets.length} searchActive={props.searchActive} view={props.directoryView} onRefresh={props.onRefresh} />
+    <LoadMore visibleCount={props.visibleMarkets.length} totalCount={props.filteredMarkets.length} onLoadMore={props.onLoadMoreMarkets} />
   </div>;
+}
+
+function CompactMarketNavigator(props: TerminalPresentationProps) {
+  return <aside className="rmtAssetNavigator" aria-label="Market navigator">
+    <header><strong>Markets</strong><button type="button" onClick={props.onShowMarkets}>Full scanner</button></header>
+    <MarketCategoryNav view={props.directoryView} counts={props.directoryViewCounts} searchActive={props.searchActive} onChange={props.onDirectoryViewChange} />
+    <div className="rmtCompactMarketList">
+      {props.visibleMarkets.map((market) => <button className={props.selected?.address === market.address ? "isSelected" : ""} type="button" key={market.address} aria-pressed={props.selected?.address === market.address} onClick={() => props.onSelectMarket(market.address)}>
+        <TokenArtwork className="rmtMarketArtwork" symbol={market.symbol} imageUrl={market.imageUri} />
+        <span><strong>{market.symbol}</strong><small>{formatUsd(market.priceUsd)}</small></span>
+        <b className={changeClass(market.priceChange24h)}>{formatChange(market.priceChange24h)}</b>
+      </button>)}
+    </div>
+    <DirectoryMessage status={props.directoryStatus} count={props.visibleMarkets.length} searchActive={props.searchActive} view={props.directoryView} onRefresh={props.onRefresh} />
+  </aside>;
+}
+
+function MobileMarketList(props: TerminalPresentationProps) {
+  return <div className="rmtMobileMarketList">
+    {props.visibleMarkets.map((market) => <button className="rmtMobileMarketRow" type="button" key={market.address} onClick={() => props.onSelectMarket(market.address)}>
+      <TokenArtwork className="rmtMarketArtwork" symbol={market.symbol} imageUrl={market.imageUri} />
+      <span className="rmtMobileMarketIdentity"><span><strong>{market.symbol}</strong><RwaLabel market={market} /></span><small>{market.name}</small></span>
+      <span className="rmtMobileMarketPrice"><strong>{formatUsd(market.priceUsd)}</strong><small className={changeClass(market.priceChange24h)}>{formatChange(market.priceChange24h)}</small></span>
+      <span className="rmtMobileMarketMeta">M {compactUsd(market.marketCapUsd)} · V {compactUsd(market.volume24h)} · {formatAge(market.ageMinutes)}</span>
+    </button>)}
+    <DirectoryMessage status={props.directoryStatus} count={props.visibleMarkets.length} searchActive={props.searchActive} view={props.directoryView} onRefresh={props.onRefresh} />
+    <LoadMore visibleCount={props.visibleMarkets.length} totalCount={props.filteredMarkets.length} onLoadMore={props.onLoadMoreMarkets} />
+  </div>;
+}
+
+function MarketSummary({ markets }: { markets: VNextDirectoryMarket[] }) {
+  const volume = markets.reduce((total, market) => total + (Number.isFinite(market.volume24h) ? Math.max(0, market.volume24h) : 0), 0);
+  const canonicalRwa = markets.filter((market) => market.rwaRelationship === "canonical-stock-token").length;
+  return <dl className="rmtMarketSummary">
+    <div><dt>Loaded markets</dt><dd>{markets.length}</dd></div>
+    <div><dt>Observed 24h volume</dt><dd>{compactUsd(volume)}</dd></div>
+    <div><dt>Verified Stock Tokens</dt><dd>{canonicalRwa}</dd></div>
+  </dl>;
 }
 
 function TradeComposer(props: TerminalPresentationProps) {
@@ -153,9 +223,10 @@ function TradeComposer(props: TerminalPresentationProps) {
   />;
 }
 
-function TerminalBalance(props: TerminalPresentationProps) {
+function PortfolioController({ visible, ...props }: TerminalPresentationProps & { visible: boolean }) {
   return <>
     <SpendBalance
+      visible={visible}
       markets={props.markets}
       onAssetsChange={props.onAssetsChange}
       onNativeBalanceChange={props.onNativeBalanceChange}
@@ -163,41 +234,70 @@ function TerminalBalance(props: TerminalPresentationProps) {
       executionRecord={props.executionRecord}
       portfolioRevealRequest={props.portfolioRevealRequest}
     />
-    <VNextExecutionRecoveryBanner record={props.executionRecord} status={props.executionStatus} />
+    {visible ? <VNextExecutionRecoveryBanner record={props.executionRecord} status={props.executionStatus} /> : null}
   </>;
 }
 
-export function DesktopTerminal(props: TerminalPresentationProps) {
-  const selectMarket = useCallback((address: string) => props.onSelectMarket(address), [props]);
-  const requestTrade = useCallback((side: "buy" | "sell") => {
+function RecoveryStatus(props: TerminalPresentationProps) {
+  return props.context !== "portfolio" && props.executionRecord
+    ? <VNextExecutionRecoveryBanner record={props.executionRecord} status={props.executionStatus} />
+    : null;
+}
+
+function DesktopHeader(props: TerminalPresentationProps) {
+  return <header className="rmtDesktopHeader">
+    <RmtBrand onActivate={props.onShowMarkets} />
+    <nav aria-label="Terminal navigation">
+      <button data-terminal-nav="markets" className={props.context === "markets" && props.directoryView !== "rwa" ? "isActive" : ""} type="button" onClick={props.onShowMarkets}>Markets</button>
+      <button data-terminal-nav="portfolio" className={props.context === "portfolio" ? "isActive" : ""} type="button" onClick={props.onShowPortfolio}>Portfolio</button>
+      <button data-terminal-nav="rwa" className={props.context === "markets" && props.directoryView === "rwa" ? "isActive" : ""} type="button" onClick={props.onShowRwa}>RWA</button>
+    </nav>
+    <MarketSearch id="rmt-desktop-market-search" query={props.query} setQuery={props.setQuery} inputRef={props.marketSearch} onSubmit={props.onSearchSubmit} />
+    <span className="rmtChainState"><i aria-hidden="true" /> Robinhood · 4663</span>
+    <VNextWalletConnection />
+  </header>;
+}
+
+function DesktopMarkets(props: TerminalPresentationProps) {
+  return <section className="rmtDesktopMarketsView" id="rmt-markets" aria-labelledby="rmt-market-directory-heading">
+    <header className="rmtMarketsHeading"><div><h1 id="rmt-market-directory-heading">Markets</h1><p>Robinhood Chain market intelligence</p></div><span className={`rmtDirectoryFreshness is${props.directoryStatus}`}><i aria-hidden="true" />{props.directoryStatus === "ready" ? "Directory ready" : props.directoryStatus === "stale" ? "Last verified data" : props.directoryStatus === "loading" ? "Syncing" : "Delayed"}</span></header>
+    <MarketSummary markets={props.markets} />
+    <div className="rmtScannerControls"><MarketCategoryNav view={props.directoryView} counts={props.directoryViewCounts} searchActive={props.searchActive} onChange={props.onDirectoryViewChange} /><span>{props.filteredMarkets.length} in view · routes checked on demand</span></div>
+    <DesktopMarketTable {...props} />
+  </section>;
+}
+
+function DesktopAsset(props: TerminalPresentationProps) {
+  const requestTrade = (side: "buy" | "sell") => {
     props.onRequestTradeSide(side);
     window.requestAnimationFrame(() => document.getElementById("vnext-trade-ticket")?.scrollIntoView({ behavior: "smooth", block: "nearest" }));
-  }, [props]);
-
-  return <main className="rmtVnext rmtTerminal rmtDesktopTerminal">
-    <a className="vnSkipLink" href="#rmt-asset-workspace">Skip to asset workspace</a>
-    <header className="rmtDesktopHeader">
-      <RmtBrand />
-      <nav aria-label="Terminal navigation">
-        <a data-terminal-nav="markets" className={props.directoryView === "rwa" ? undefined : "isActive"} href="#rmt-markets" onClick={() => props.onDirectoryViewChange("trending")}>Markets</a>
-        <a data-terminal-nav="portfolio" href="#vnext-portfolio" onClick={props.onRevealPortfolio}>Portfolio</a>
-        <a data-terminal-nav="rwa" className={props.directoryView === "rwa" ? "isActive" : undefined} href="#rmt-markets" onClick={() => props.onDirectoryViewChange("rwa")}>RWA</a>
-      </nav>
-      <MarketSearch query={props.query} setQuery={props.setQuery} inputRef={props.marketSearch} onSubmit={props.onSearchSubmit} />
-      <span className="rmtChainState"><i aria-hidden="true" /> Robinhood · 4663</span>
-      <VNextWalletConnection />
-    </header>
-    <section className="rmtDesktopBalance"><TerminalBalance {...props} /></section>
+  };
+  return <section className="rmtDesktopAssetView" id="rmt-asset-workspace">
+    <div className="rmtAssetContextBar"><button type="button" onClick={props.onShowMarkets}>← Markets</button><span>{props.selected ? `${props.selected.symbol} · Robinhood Chain` : "Select a market"}</span></div>
     <div className="rmtDesktopWorkstation">
-      <aside className="rmtDesktopMarkets" id="rmt-markets" aria-labelledby="rmt-market-directory-heading">
-        <header><div><span className="vnEyebrow">Discover</span><h1 id="rmt-market-directory-heading">Markets</h1></div><span>{props.filteredMarkets.length}/{props.markets.length}</span></header>
-        <MarketDirectory mode="desktop" markets={props.visibleMarkets} totalMatches={props.filteredMarkets.length} selected={props.selected} status={props.directoryStatus} view={props.directoryView} viewCounts={props.directoryViewCounts} searchActive={props.searchActive} onSelect={selectMarket} onRefresh={props.onRefresh} onViewChange={props.onDirectoryViewChange} onLoadMore={props.onLoadMoreMarkets} />
-      </aside>
-      <section className="rmtDesktopAsset" id="rmt-asset-workspace">
+      <CompactMarketNavigator {...props} />
+      <section className="rmtDesktopAsset">
         {props.selected ? <VNextAssetWorkspace presentation="desktop" directoryMarket={props.selected} identityStatus={props.identityStatus} walletAssets={props.walletAssets} onTradeSide={requestTrade} /> : <div className="rmtEmptyWorkspace"><strong>Select a market</strong><span>RMT does not invent asset or route data.</span></div>}
       </section>
-      <aside className="rmtDesktopExecution" aria-label="Persistent trade execution"><TradeComposer {...props} /></aside>
+      <aside className="rmtDesktopExecution" aria-label="Persistent verified execution"><TradeComposer {...props} /></aside>
     </div>
+  </section>;
+}
+
+function DesktopPortfolio(props: TerminalPresentationProps) {
+  return <section className="rmtPortfolioSurface" aria-labelledby="rmt-portfolio-heading">
+    <header className="rmtMarketsHeading"><div><h1 id="rmt-portfolio-heading">Portfolio</h1><p>Confirmed Robinhood Chain balances and wallet-held assets</p></div></header>
+    <PortfolioController {...props} visible />
+  </section>;
+}
+
+export function DesktopTerminal(props: TerminalPresentationProps) {
+  return <main className="rmtVnext rmtTerminal rmtDesktopTerminal" data-terminal-context={props.context}>
+    <a className="vnSkipLink" href={props.context === "markets" ? "#rmt-markets" : props.context === "portfolio" ? "#vnext-portfolio" : "#rmt-asset-workspace"}>Skip to terminal content</a>
+    <DesktopHeader {...props} />
+    <RecoveryStatus {...props} />
+    {props.context !== "portfolio" ? <PortfolioController {...props} visible={false} /> : null}
+    {props.context === "markets" ? <DesktopMarkets {...props} /> : props.context === "portfolio" ? <DesktopPortfolio {...props} /> : <DesktopAsset {...props} />}
   </main>;
 }
 
@@ -205,23 +305,54 @@ function focusableElements(container: HTMLElement) {
   return [...container.querySelectorAll<HTMLElement>('button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), details summary, [tabindex]:not([tabindex="-1"])')].filter((element) => !element.hasAttribute("hidden"));
 }
 
+function MobileHeader(props: TerminalPresentationProps) {
+  return <>
+    <header className="rmtMobileHeader"><RmtBrand compact onActivate={props.onShowMarkets} /><span className="rmtMobileChain"><i aria-hidden="true" /> 4663</span><VNextWalletConnection showFunding={false} compact /></header>
+    <nav className="rmtMobilePrimaryNav" aria-label="Terminal navigation">
+      <button className={props.context !== "portfolio" ? "isActive" : ""} type="button" onClick={props.onShowMarkets}>Markets</button>
+      <button className={props.context === "portfolio" ? "isActive" : ""} type="button" onClick={props.onShowPortfolio}>Portfolio</button>
+    </nav>
+  </>;
+}
+
+function MobileMarkets(props: TerminalPresentationProps) {
+  return <section className="rmtMobileMarketsView" id="rmt-mobile-markets" aria-labelledby="rmt-mobile-markets-heading">
+    <header className="rmtMobileContextHeading"><div><h1 id="rmt-mobile-markets-heading">Markets</h1><p>Robinhood Chain</p></div><span>{props.directoryStatus === "ready" ? "Directory ready" : props.directoryStatus === "stale" ? "Last verified" : props.directoryStatus === "loading" ? "Syncing" : "Delayed"}</span></header>
+    <MarketSummary markets={props.markets} />
+    <MarketCategoryNav view={props.directoryView} counts={props.directoryViewCounts} searchActive={props.searchActive} onChange={props.onDirectoryViewChange} />
+    <MarketSearch id="rmt-mobile-market-search" query={props.query} setQuery={props.setQuery} inputRef={props.marketSearch} onSubmit={props.onSearchSubmit} />
+    <MobileMarketList {...props} />
+  </section>;
+}
+
+function MobileAsset(props: TerminalPresentationProps) {
+  return <section className="rmtMobileAssetView" id="rmt-mobile-asset">
+    <div className="rmtMobileAssetBack"><button type="button" onClick={props.onShowMarkets}>← Markets</button><span>{props.selected?.symbol ?? "Asset"}</span></div>
+    {props.selected ? <VNextAssetWorkspace presentation="mobile" directoryMarket={props.selected} identityStatus={props.identityStatus} walletAssets={props.walletAssets} onTradeSide={props.onRequestTradeSide} /> : <div className="rmtEmptyWorkspace"><strong>Select a market</strong><span>Live market intelligence will appear here.</span></div>}
+  </section>;
+}
+
+function MobilePortfolio(props: TerminalPresentationProps) {
+  return <section className="rmtPortfolioSurface isMobile" aria-labelledby="rmt-mobile-portfolio-heading">
+    <header className="rmtMobileContextHeading"><div><h1 id="rmt-mobile-portfolio-heading">Portfolio</h1><p>Confirmed wallet state</p></div></header>
+    <PortfolioController {...props} visible />
+  </section>;
+}
+
 export function MobileTerminal(props: TerminalPresentationProps) {
-  const [sheetOpen, setSheetOpen] = useState(false);
-  const [discoveryOpen, setDiscoveryOpen] = useState(false);
   const sheet = useRef<HTMLDivElement>(null);
   const returnFocus = useRef<HTMLElement | null>(null);
   const selectedHolding = props.selected && props.walletAssets.find((asset) => asset.address.toLowerCase() === props.selected?.address.toLowerCase());
   const canSell = Boolean(selectedHolding && BigInt(selectedHolding.balanceAtomic) > 0n);
 
-  const closeSheet = useCallback(() => setSheetOpen(false), []);
+  const closeSheet = useCallback(() => props.onCloseTrade(), [props.onCloseTrade]);
   const openTrade = useCallback((side: "buy" | "sell") => {
     returnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     props.onRequestTradeSide(side);
-    setSheetOpen(true);
-  }, [props]);
+  }, [props.onRequestTradeSide]);
 
   useEffect(() => {
-    if (!sheetOpen) return;
+    if (!props.tradeOpen) return;
     const bodyOverflow = document.body.style.overflow;
     const rootOverflow = document.documentElement.style.overflow;
     document.body.style.overflow = "hidden";
@@ -249,30 +380,25 @@ export function MobileTerminal(props: TerminalPresentationProps) {
       document.documentElement.style.overflow = rootOverflow;
       window.requestAnimationFrame(() => returnFocus.current?.focus());
     };
-  }, [closeSheet, sheetOpen]);
+  }, [closeSheet, props.tradeOpen]);
 
   const preventEscapePropagation = (event: ReactKeyboardEvent) => {
     if (event.key === "Escape") event.stopPropagation();
   };
 
-  return <main className="rmtVnext rmtTerminal rmtMobileTerminal">
-    <a className="vnSkipLink" href="#rmt-mobile-asset">Skip to selected asset</a>
-    <header className="rmtMobileHeader"><RmtBrand compact /><VNextWalletConnection showFunding={false} /></header>
-    <div className="rmtMobileSearch"><MarketSearch query={props.query} setQuery={props.setQuery} inputRef={props.marketSearch} onSubmit={props.onSearchSubmit} /></div>
-    <section className="rmtMobileBalance"><TerminalBalance {...props} /></section>
-    <details className="rmtMobileDiscovery" open={discoveryOpen} onToggle={(event) => setDiscoveryOpen(event.currentTarget.open)}>
-      <summary><span><b>Markets</b><small>{props.visibleMarkets.length} of {props.filteredMarkets.length} shown · routes on demand</small></span><i aria-hidden="true">⌄</i></summary>
-      <MarketDirectory mode="mobile" markets={props.visibleMarkets} totalMatches={props.filteredMarkets.length} selected={props.selected} status={props.directoryStatus} view={props.directoryView} viewCounts={props.directoryViewCounts} searchActive={props.searchActive} onSelect={(address) => { props.onSelectMarket(address); setDiscoveryOpen(false); }} onRefresh={props.onRefresh} onViewChange={props.onDirectoryViewChange} onLoadMore={props.onLoadMoreMarkets} />
-    </details>
-    <section id="rmt-mobile-asset" className="rmtMobileAsset">
-      {props.selected ? <VNextAssetWorkspace presentation="mobile" directoryMarket={props.selected} identityStatus={props.identityStatus} walletAssets={props.walletAssets} onTradeSide={openTrade} /> : <div className="rmtEmptyWorkspace"><strong>Select a market</strong><span>Live market intelligence will appear here.</span></div>}
-    </section>
-    {props.selected && <nav className="rmtMobileTradeDock" aria-label={`Trade ${props.selected.symbol}`}>
-      <button type="button" className="isBuy" onClick={() => openTrade("buy")}>Buy {props.selected.symbol}</button>
-      <button type="button" className="isSell" disabled={!canSell} onClick={() => openTrade("sell")}>Sell</button>
-    </nav>}
-    <div className={`rmtMobileSheetLayer${sheetOpen ? " isOpen" : ""}`} aria-hidden={!sheetOpen}>
-      <button className="rmtMobileSheetBackdrop" type="button" aria-label="Close trade sheet" tabIndex={sheetOpen ? 0 : -1} onClick={closeSheet} />
+  return <main className="rmtVnext rmtTerminal rmtMobileTerminal" data-terminal-context={props.context}>
+    <a className="vnSkipLink" href={props.context === "markets" ? "#rmt-mobile-markets" : props.context === "portfolio" ? "#vnext-portfolio" : "#rmt-mobile-asset"}>Skip to terminal content</a>
+    <MobileHeader {...props} />
+    <RecoveryStatus {...props} />
+    {props.context !== "portfolio" ? <PortfolioController {...props} visible={false} /> : null}
+    {props.context === "markets" ? <MobileMarkets {...props} /> : props.context === "portfolio" ? <MobilePortfolio {...props} /> : <MobileAsset {...props} />}
+    {props.context === "asset" && props.selected ? <nav className="rmtMobileTradeDock" aria-label={`Trade ${props.selected.symbol}`}>
+      <button type="button" className="isBuy" onClick={() => openTrade("buy")}>Buy</button>
+      <button type="button" className="isSell" disabled={!canSell} aria-describedby={!canSell ? "rmt-sell-unavailable" : undefined} onClick={() => openTrade("sell")}>Sell</button>
+      {!canSell ? <span className="vnSrOnly" id="rmt-sell-unavailable">No confirmed balance available to sell.</span> : null}
+    </nav> : null}
+    <div className={`rmtMobileSheetLayer${props.tradeOpen ? " isOpen" : ""}`} aria-hidden={!props.tradeOpen}>
+      <button className="rmtMobileSheetBackdrop" type="button" aria-label="Close trade sheet" tabIndex={props.tradeOpen ? 0 : -1} onClick={closeSheet} />
       <div className="rmtMobileTradeSheet" ref={sheet} role="dialog" aria-modal="true" aria-label={props.selected ? `Trade ${props.selected.symbol}` : "Trade selected asset"} onKeyDown={preventEscapePropagation}>
         <header><span>Verified trade</span><button type="button" aria-label="Close trade sheet" onClick={closeSheet}>×</button></header>
         <div className="rmtMobileTradeSheetScroll"><TradeComposer {...props} /></div>

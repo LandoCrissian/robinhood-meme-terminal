@@ -77,26 +77,21 @@ Tokens express intent, not component history. Names such as `--terminal-v10-gree
 
 ## Responsive behavior
 
-### Mobile: 360–760 pixels
+### Touch/mobile composition: below 1024 pixels
 
-- available and pending balance at the top;
-- market discovery as concise cards;
-- bottom or sheet-based trade composition;
+- Markets is the default first-class scanner rather than a collapsed disclosure;
+- selecting a market replaces the scanner with a focused Asset context;
+- Portfolio replaces the primary body instead of occupying permanent scanner space;
+- Buy/Sell is a safe-area-aware dock in Asset context and opens the verified trade sheet;
 - at least 44-pixel primary interaction targets;
 - no document-level horizontal scrolling;
 - execution evidence scrolls inside its sheet, never behind a fixed action;
 - one primary action per visible region.
 
-### Tablet/small workstation: 761–1099 pixels
+### Desktop workstation: 1024–1599 pixels
 
-- the dedicated workstation presentation in a compact two-zone layout;
-- discovery remains readable without desktop-density columns;
-- trade composer can become a side sheet when width permits;
-- no replacement with a separate state or execution implementation.
-
-### Desktop: 1100–1599 pixels
-
-- discovery, workspace, and execution rail can coexist;
+- Markets opens as a dense scanner, with lower-priority columns removed as width contracts;
+- Asset uses a compact navigator, dominant workspace, and persistent execution rail;
 - the execution rail remains viewport-bound and independently scrollable;
 - primary market labels remain at normal reading size;
 - secondary evidence uses disclosure and tooltips rather than additional tiny columns.
@@ -143,7 +138,7 @@ This table is the review boundary for the VNext ownership migration. A dependenc
 | Full asset workspace | VNext `VNextAssetWorkspace`, `VNextMarketChart`, and VNext-owned `.vn*` presentation | VNext-owned with shared evidence infrastructure | Chart, activity, evidence, origin, liquidity, holders, position, verified markets, and RWA relationships stay inside VNext. `/market/[address]` redirects exact market and optional Buy/Sell intent into that workspace. |
 | Market directory and identity | `/api/vnext/market-directory`, `/api/vnext/asset-identity`, `/api/vnext/asset-workspace`, shared resolver/data contracts | VNext API with shared data infrastructure | Preserve the resolver, exact-pool OHLCV/trade streams, holder/risk evidence, and stock registry as shared services; do not introduce a second resolver or duplicate provider graph. |
 | Quote, verification and authorization | `/api/vnext/quotes`, `/api/vnext/verify`, `/api/vnext/authorize` using the shared bounded quote transport | VNext-owned orchestration with shared transport | Keep the transport generic. No legacy terminal route selection is imported into VNext. |
-| Styling | `vnext-terminal.css` and `vnext-workstation.css` own the `.rmtVnext`/`.vn*` namespace | VNext-owned | Retired V7–V12 terminal generations are absent from the global root. Shared public-route styles remain only for active compatibility and public product routes. |
+| Styling | `vnext-terminal.css` is the sole owner of the `.rmtVnext`/`.vn*` namespace and the final Markets/Asset/Portfolio compositions | VNext-owned | Retired V7–V12 generations and the temporary reconstruction override are absent. Shared public-route styles remain only for active compatibility and public product routes. |
 
 The executable ownership smoke enforces the route, import, and selector boundaries. It rejects direct VNext links to `/portfolio` or `/market/*`, promotion of paused `/profile` or `/launch` routes, unclassified shared imports, extra VNext stylesheets, and legacy global selectors that reach inside the VNext namespace.
 

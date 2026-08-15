@@ -44,11 +44,13 @@ function walletErrorMessage(message: string) {
 function LegacyWalletButton({
   target = "testnet",
   returnTo,
-  showFunding = true
+  showFunding = true,
+  compact = false
 }: {
   target?: "testnet" | "mainnet";
   returnTo?: string;
   showFunding?: boolean;
+  compact?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [pendingConnectorUid, setPendingConnectorUid] = useState<string>();
@@ -98,7 +100,7 @@ function LegacyWalletButton({
     return (
       <div className="walletMenu">
         <button className="wallet live connectTrigger" type="button" aria-expanded={open} aria-controls="wallet-connect-dialog" onClick={() => open ? closeMenu() : setOpen(true)}>
-          Connect wallet
+          {compact ? "Connect" : "Connect wallet"}
         </button>
         {open && <OverlayPortal><button className="walletBackdrop" type="button" aria-label="Close wallet menu" onClick={closeMenu} /><div className="walletPopover walletOverlayPopover" id="wallet-connect-dialog" role="dialog" aria-modal="true" aria-label="Connect a wallet">
           <div className="walletPopoverHeader"><div><strong>Choose your wallet</strong><span>RMT never sees your recovery phrase.</span></div><button type="button" aria-label="Close wallet menu" onClick={closeMenu}>×</button></div>
@@ -136,7 +138,7 @@ function LegacyWalletButton({
     return (
       <div className="networkSwitchGroup">
         <button className="wallet network" disabled={isSwitching} onClick={() => { resetSwitch(); switchChain({ chainId: targetChain.id }); }}>
-          {isSwitching ? "Switching…" : `Switch to ${targetChain.name}`}
+          {isSwitching ? "Switching…" : compact ? "Switch network" : `Switch to ${targetChain.name}`}
         </button>
         {switchError && <span className="networkSwitchError" role="alert">{walletErrorMessage(switchError.message)} <a href="https://docs.robinhood.com/chain/add-network-to-wallet/" target="_blank" rel="noreferrer">Open setup guide ↗</a></span>}
       </div>
@@ -157,6 +159,7 @@ export function WalletButton(props: {
   target?: "testnet" | "mainnet";
   returnTo?: string;
   showFunding?: boolean;
+  compact?: boolean;
 }) {
   if (speedWalletEnabled) return <PrivyWalletButton {...props} />;
   return <LegacyWalletButton {...props} />;

@@ -58,7 +58,7 @@ assert.match(shell, /new URLSearchParams\(window\.location\.search\)/);
 assert.match(shell, /entry\.get\("market"\)/);
 assert.match(shell, /entry\.get\("panel"\) === "portfolio"/);
 assert.match(shell, /initialSide === "buy" \|\| initialSide === "sell"/);
-assert.match(shell, /void selectAddress\(initialMarket\)/);
+assert.match(shell, /void selectAddressRef\.current\(initialMarket\)/);
 
 assert.match(marketCompatibilityRoute, /redirect\(`\/\?\$\{query\}`\)/);
 assert.match(marketCompatibilityRoute, /new URLSearchParams\(\{ market: getAddress\(address\) \}\)/);
