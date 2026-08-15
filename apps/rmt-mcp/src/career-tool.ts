@@ -2,7 +2,7 @@ import { hashCanonicalPayload } from "../../../packages/agent-core/src/index.ts"
 import {
   assertPaperArenaPublicCareerProfile,
   type PaperArenaPublicCareerProfile,
-} from "../../agent-engine/src/paper-arena-public-career-profile.ts";
+} from "../../agent-engine/src/public.ts";
 
 export const RMT_MCP_CAREER_TOOL_V1 = "RMT_MCP_CAREER_TOOL_V1" as const;
 

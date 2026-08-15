@@ -1,28 +1,22 @@
 import {
+  RMT_ARENA_PUBLIC_PARTICIPANT_PROFILE_V1,
+  RMT_ARENA_PUBLIC_READ_MODEL_V1,
+  RMT_ARENA_PUBLIC_SEASON_CATALOG_V1,
+  RMT_ARENA_PUBLIC_SEASON_RESULT_V1,
+  assertPaperArenaPublicParticipantProfile,
+  assertPaperArenaPublicReadModel,
+  assertPaperArenaPublicSeasonCatalog,
+  assertPaperArenaPublicSeasonResult,
+  type PaperArenaPublicParticipantProfile,
+  type PaperArenaPublicReadModel,
+  type PaperArenaPublicSeasonCatalog,
+  type PaperArenaPublicSeasonResult,
+  type PublicArenaLeaderboard,
+} from "../../agent-engine/src/public.ts";
+import {
   hashCanonicalPayload,
   normalizeHumanParticipantId,
 } from "../../../packages/agent-core/src/index.ts";
-import {
-  RMT_ARENA_PUBLIC_PARTICIPANT_PROFILE_V1,
-  assertPaperArenaPublicParticipantProfile,
-  type PaperArenaPublicParticipantProfile,
-} from "../../agent-engine/src/paper-arena-public-participant-profile.ts";
-import {
-  RMT_ARENA_PUBLIC_READ_MODEL_V1,
-  assertPaperArenaPublicReadModel,
-  type PaperArenaPublicReadModel,
-  type PublicArenaLeaderboard,
-} from "../../agent-engine/src/paper-arena-public-read-model.ts";
-import {
-  RMT_ARENA_PUBLIC_SEASON_CATALOG_V1,
-  assertPaperArenaPublicSeasonCatalog,
-  type PaperArenaPublicSeasonCatalog,
-} from "../../agent-engine/src/paper-arena-public-season-catalog.ts";
-import {
-  RMT_ARENA_PUBLIC_SEASON_RESULT_V1,
-  assertPaperArenaPublicSeasonResult,
-  type PaperArenaPublicSeasonResult,
-} from "../../agent-engine/src/paper-arena-public-season-result.ts";
 
 export const RMT_MCP_TOOL_CONTRACT_V1 = "RMT_MCP_TOOL_CONTRACT_V1" as const;
 

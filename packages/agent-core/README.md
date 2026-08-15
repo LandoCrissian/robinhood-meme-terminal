@@ -20,4 +20,4 @@ The compiler never grants itself wider risk limits. Candidate strategies that ex
 
 Paper evaluation also fails closed: a prediction must use an asset present in the exact stored market snapshot and permitted by the admitted strategy, while prediction resolution time is derived from the strategy horizon rather than chosen by a model.
 
-This foundation remains source-only and has no package manifest or third-party runtime dependency. It runs under the repository's Node 22 target with TypeScript stripping. Concrete model and market-data providers are deliberately outside `agent-core`; adapters are untrusted inputs to deterministic compiler/evaluation boundaries.
+This foundation is the private, source-first `@rmt/agent-core` workspace package. Its root export is `src/index.ts`; its package-scoped TypeScript project checks all source and smoke files. It has no runtime package dependency and runs under the repository's Node 22 target with TypeScript stripping. Concrete model and market-data providers are deliberately outside `agent-core`; adapters are untrusted inputs to deterministic compiler/evaluation boundaries.

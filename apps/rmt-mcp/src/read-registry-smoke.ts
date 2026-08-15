@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
 import { hashCanonicalPayload } from "../../../packages/agent-core/src/index.ts";
-import type { PaperArenaPublicCareerProfile } from "../../agent-engine/src/paper-arena-public-career-profile.ts";
-import type { PaperArenaPublicParticipantProfile } from "../../agent-engine/src/paper-arena-public-participant-profile.ts";
-import type { PaperArenaPublicReadModel } from "../../agent-engine/src/paper-arena-public-read-model.ts";
-import type { PaperArenaPublicSeasonCatalog } from "../../agent-engine/src/paper-arena-public-season-catalog.ts";
-import type { PaperArenaPublicSeasonResult } from "../../agent-engine/src/paper-arena-public-season-result.ts";
+import type {
+  PaperArenaPublicCareerProfile,
+  PaperArenaPublicParticipantProfile,
+  PaperArenaPublicReadModel,
+  PaperArenaPublicSeasonCatalog,
+  PaperArenaPublicSeasonResult,
+} from "../../agent-engine/src/public.ts";
 import { RmtMcpReadRegistry, RMT_MCP_READ_REGISTRY_V1 } from "./read-registry.ts";
 
 const h = (char: string) => `0x${char.repeat(64)}`;

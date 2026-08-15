@@ -52,9 +52,9 @@ The agent never becomes the authority for route validity, fee policy, signer per
 - `apps/agent-engine`: paper-only state machine, durable wrapper, Strategy Compiler adapter/admission layer, read-only `PaperEvaluationService`, agent-run persistence and persistence contracts. It owns agent-domain state; it does not own market discovery or live execution.
 - `apps/market-indexer`: remains read-oriented external market discovery/enrichment. It is not repurposed into the agent engine.
 - `apps/web`: remains the only terminal UI. Arena and agent surfaces may be added later without creating a second routing stack.
-- future `apps/rmt-mcp`: separate external-agent gateway after the internal paper system is durable and abuse-controlled.
+- `apps/rmt-mcp`: source-only, read-only external-agent boundary over sanitized public Arena models. Transport and write capabilities remain unadmitted.
 
-The current implementation still adds no workspace package manifests or third-party runtime dependencies. PostgreSQL adapters accept injected SQL pool contracts, so runtime packaging and actual database connections remain separate release decisions. Market and decision adapters are also injected interfaces; this architecture does not connect a production provider merely by defining its boundary.
+The three Agent domains are private, source-first workspace packages with package-scoped strict TypeScript projects. Dependency direction is checked as `agent-core ← agent-engine ← rmt-mcp`, with MCP additionally permitted to use Agent Core utilities and types. MCP may consume Agent Engine only through its explicit sanitized `public` export. The manifests add no third-party runtime dependency: PostgreSQL adapters still accept injected SQL pool contracts, and actual database connections remain separate release decisions. Market and decision adapters are also injected interfaces; this architecture does not connect a production provider merely by defining its boundary.
 
 ## Two independent state dimensions
 

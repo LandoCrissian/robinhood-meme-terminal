@@ -4,6 +4,12 @@
 
 The agent engine is intentionally split into narrow evidence and mutation boundaries rather than one autonomous trading function.
 
+## Workspace boundary
+
+`apps/agent-engine` is the private, source-first `@rmt/agent-engine` workspace package. It declares only `@rmt/agent-core` as a runtime package dependency and has a package-scoped strict TypeScript project.
+
+The root package export owns the paper engine implementation. The separate `@rmt/agent-engine/public` export is deliberately smaller: it exposes only the sanitized Arena model constants, validators, and data types admitted for read consumers. It does not export engine state, accounts, persistence adapters, strategies, prompts, quote evidence, wallet state, or transaction capabilities.
+
 ## Current layers
 
 - `AgentEngine`: deterministic paper-domain state machine with immutable strategy versions, seasons, decisions, predictions, paper accounts, orders, fills, portfolio snapshots, risk events and score snapshots.

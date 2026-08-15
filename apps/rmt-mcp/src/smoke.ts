@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
 import { hashCanonicalPayload } from "../../../packages/agent-core/src/index.ts";
-import type { PaperArenaPublicParticipantProfile } from "../../agent-engine/src/paper-arena-public-participant-profile.ts";
-import type { PaperArenaPublicReadModel } from "../../agent-engine/src/paper-arena-public-read-model.ts";
-import type { PaperArenaPublicSeasonCatalog } from "../../agent-engine/src/paper-arena-public-season-catalog.ts";
-import type { PaperArenaPublicSeasonResult } from "../../agent-engine/src/paper-arena-public-season-result.ts";
+import type {
+  PaperArenaPublicParticipantProfile,
+  PaperArenaPublicReadModel,
+  PaperArenaPublicSeasonCatalog,
+  PaperArenaPublicSeasonResult,
+} from "../../agent-engine/src/public.ts";
 import {
   RmtMcpReadOnlyToolService,
   assertRmtMcpToolResult,

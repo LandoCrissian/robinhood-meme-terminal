@@ -1,0 +1,25 @@
+{
+  "name": "@rmt/rmt-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "test": "node --experimental-strip-types src/smoke.ts && node --experimental-strip-types src/career-smoke.ts && node --experimental-strip-types src/read-registry-smoke.ts",
+    "test:exports": "node --experimental-strip-types src/package-exports-check.ts",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@rmt/agent-core": "workspace:*",
+    "@rmt/agent-engine": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.1",
+    "typescript": "5.9.3"
+  }
+}

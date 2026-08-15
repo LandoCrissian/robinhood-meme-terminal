@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { hashCanonicalPayload } from "../../../packages/agent-core/src/index.ts";
-import type { PaperArenaPublicCareerProfile } from "../../agent-engine/src/paper-arena-public-career-profile.ts";
+import type { PaperArenaPublicCareerProfile } from "../../agent-engine/src/public.ts";
 import {
   RmtMcpCareerReadToolService,
   assertRmtArenaCareerToolResult,

@@ -19,6 +19,12 @@ rmt_arena_season_result
 
 All six tools are read-only. They consume sanitized public Arena models, never raw Agent Engine records.
 
+## Workspace boundary
+
+`apps/rmt-mcp` is the private, source-first `@rmt/rmt-mcp` workspace package. Its only runtime package dependencies are `@rmt/agent-core` and `@rmt/agent-engine`. Every Agent Engine import is routed through `@rmt/agent-engine/public` (or its source-equivalent barrel during direct source smoke execution); private Engine modules are rejected by the checked-in dependency-direction audit.
+
+The package manifest adds no MCP SDK or transport dependency. The root export remains the source-only read-contract surface described here.
+
 ## Data boundary
 
 The MCP read path may expose:
