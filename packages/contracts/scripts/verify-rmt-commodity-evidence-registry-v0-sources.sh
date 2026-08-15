@@ -58,7 +58,7 @@ command -v cast >/dev/null 2>&1 || fail "cast is unavailable."
 command -v python3 >/dev/null 2>&1 || fail "python3 is unavailable."
 
 # This must pass before compiler input is produced or any public source publication is attempted.
-"$SCRIPT_DIR/verify-rmt-commodity-evidence-registry-v0-deployment.sh" "$RECORD"
+bash "$SCRIPT_DIR/verify-rmt-commodity-evidence-registry-v0-deployment.sh" "$RECORD"
 
 REGISTRY="$(json_value contract.address)"
 ADMINISTRATOR="$(json_value administrator.address)"
