@@ -81,13 +81,7 @@ for (const requiredExport of ["./tool-contract.ts", "./career-tool.ts", "./read-
   if (!mcpIndex.includes(requiredExport)) failures.push(`apps/rmt-mcp/src/index.ts does not export ${requiredExport}`);
 }
 
-const allowedMcpPublicModels = new Set([
-  "paper-arena-public-career-profile.ts",
-  "paper-arena-public-participant-profile.ts",
-  "paper-arena-public-read-model.ts",
-  "paper-arena-public-season-catalog.ts",
-  "paper-arena-public-season-result.ts",
-]);
+const allowedMcpPublicModels = new Set(["public.ts"]);
 for (const filePath of sourceFiles.filter((candidate) => candidate.includes(`${path.sep}apps${path.sep}rmt-mcp${path.sep}src${path.sep}`))) {
   const content = await readFile(filePath, "utf8");
   for (const match of content.matchAll(/from\s+["']\.\.\/\.\.\/agent-engine\/src\/([^"']+)["']/g)) {

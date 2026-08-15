@@ -10,6 +10,7 @@ on:
       - "apps/rmt-mcp/**"
       - "apps/web/**"
       - "scripts/agent-arena-branch-audit.mjs"
+      - "scripts/check-agent-package-boundaries.mjs"
       - "package.json"
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
@@ -38,6 +39,8 @@ jobs:
           node-version: "22"
       - name: Audit Agent, Arena, and MCP source boundaries
         run: node scripts/agent-arena-branch-audit.mjs
+      - name: Enforce Agent package dependency direction
+        run: node scripts/check-agent-package-boundaries.mjs
       - name: Verify patch whitespace
         run: git diff --check
 
@@ -194,6 +197,8 @@ jobs:
           node-version: "22"
       - name: Frozen workspace install
         run: pnpm install --frozen-lockfile
+      - name: Verify Agent workspace package exports
+        run: pnpm --filter @rmt/rmt-mcp test:exports
       - name: Run terminal release verification
         run: pnpm test:terminal-release
       - name: Run package-permitted TypeScript check

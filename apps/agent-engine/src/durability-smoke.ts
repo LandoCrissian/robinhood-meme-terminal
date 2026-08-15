@@ -9,7 +9,11 @@ import { DurableAgentEngine } from "./durable-engine.ts";
 import { AgentEngine, type AgentEngineConfig } from "./engine.ts";
 import { emptyAgentEngineSnapshot } from "./snapshot.ts";
 import { agentEngineSchemaSql } from "./persistence/schema.ts";
-import { PostgresAgentStateStore } from "./persistence/postgres-store.ts";
+import {
+  PostgresAgentStateStore,
+  type SqlClientLike,
+  type SqlQueryResult,
+} from "./persistence/postgres-store.ts";
 import { InMemoryAgentStateStore } from "./persistence/store.ts";
 
 const safetyEnvelope: AgentSafetyEnvelope = {
@@ -50,7 +54,7 @@ const strategy: StrategySpec = {
 
 assert.equal(typeof PostgresAgentStateStore, "function", "Postgres store must load without importing pg at module scope");
 
-class RecordingSqlClient {
+class RecordingSqlClient implements SqlClientLike {
   readonly queries: string[] = [];
   private readonly stateRows: Array<{ revision: string | number; state_json: ReturnType<typeof emptyAgentEngineSnapshot>; state_hash: string }>;
   private readonly mutationRows: Array<{ operation: string; request_hash: string; result_json: unknown }>;
@@ -63,10 +67,10 @@ class RecordingSqlClient {
     this.mutationRows = input.mutationRows ?? [];
   }
 
-  async query(text: string): Promise<{ rows: unknown[] }> {
+  async query<Row = Record<string, unknown>>(text: string): Promise<SqlQueryResult<Row>> {
     this.queries.push(text);
-    if (text.includes("FROM agent_engine_state")) return { rows: structuredClone(this.stateRows) };
-    if (text.includes("FROM agent_engine_mutations")) return { rows: structuredClone(this.mutationRows) };
+    if (text.includes("FROM agent_engine_state")) return { rows: structuredClone(this.stateRows) as Row[] };
+    if (text.includes("FROM agent_engine_mutations")) return { rows: structuredClone(this.mutationRows) as Row[] };
     return { rows: [] };
   }
 
