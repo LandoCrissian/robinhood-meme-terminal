@@ -1,62 +1,58 @@
-# RMT terminal UI reconstruction
+# RMT terminal presentation freeze
 
-Status: CURRENT implementation note for the presentation-only reconstruction.
+Status: CURRENT implementation note for the final presentation architecture.
 
-## Problem and regression
+## Baseline defect report
 
-VNext correctly became the canonical production terminal, but `VNextTerminalShell` currently owns both terminal state and one visual tree. Desktop receives a large card-oriented dashboard, while the `<=760px` rules hide the sidebar, reorder the same market/workspace/trade elements, and place the full desktop trade rail above mobile market content.
+The VNext brain is correct, but the current shell opens directly into a selected-asset workstation and keeps the Spend Balance/portfolio banner above every surface. Market discovery is therefore secondary on desktop and hidden inside a disclosure above the asset on mobile. The 761px breakpoint also forces the three-column workstation into 768–1023px viewports: at 1023px the market navigator, chart and trade rail are cramped, and at 820px the document overflows horizontally.
 
-Before the VNext cutover, `responsive-external-market-feed.tsx` selected a dedicated mobile presentation at 760px. The mobile workspace provided concise market rows, persistent Buy/Sell actions, and an accessible execution sheet with a backdrop, focus containment, scroll locking, and explicit close behavior. The cutover replaced acceptance coverage for those behaviors with checks that the shared `vnMarketRow` and reordered `vnTradePanel` fit the viewport. That test change allowed the mobile regression.
+The current mobile composition is not a first-class scanner. It starts in Asset mode, requires expanding Markets, retains the large balance/funding block, and places discovery above the selected asset. Portfolio is a reveal state rather than a dedicated terminal context. The execution sheet itself retains the correct modal, backdrop, focus, scroll-lock and safe-area foundations and should be preserved.
 
-The market presentation also hides valid directory results: the API currently discovers a bounded USDG/WETH/RMT-anchored set, while the shell further truncates that response to eight rows. This reconstruction removes the UI truncation and provides exact-address selection without claiming that the current API is a complete chain index.
+Baseline screenshots were opened and inspected at desktop, constrained-workstation and phone sizes. The defects are structural rather than spacing-only, so this work replaces the presentation composition instead of adding a CSS patch layer.
 
-## Architecture
+## Final product architecture
 
-One shared terminal controller owns:
+One shared `VNextTerminalShell` controller continues to own directory data, selected market, wallet state, confirmed balances, recovery and execution requests. It exposes three presentation contexts:
 
-- market directory, search and selected asset;
-- connected-wallet assets, native gas balance and Spend Balance inputs;
-- execution recovery;
-- trade side requests and continue-trading behavior;
-- device presentation selection at the established 760px boundary.
+- `markets`: the default scanner and RWA discovery preset;
+- `asset`: the selected-market intelligence workspace and contextual trade entry;
+- `portfolio`: wallet balances and holdings.
 
-It renders exactly one presentation composition:
+The controller renders exactly one device composition:
 
-- `DesktopTerminal`: compact navigation and market directory, dominant asset/chart workspace, persistent execution rail, and progressively disclosed intelligence.
-- `MobileTerminal`: focused asset workspace, compact discovery, persistent Buy/Sell dock, and a dialog execution sheet.
+```text
+shared VNext state, services and execution infrastructure
+├── DesktopTerminal (>= 1024px)
+│   ├── Markets
+│   ├── Asset workstation
+│   └── Portfolio
+└── MobileTerminal (< 1024px)
+    ├── Markets
+    ├── Asset
+    ├── Portfolio
+    └── verified trade sheet
+```
 
-The presentations consume the same VNext hooks and services. They do not create separate quote, routing, verification, authorization, submission, or recovery systems. `TradeIntentComposer` remains the shared execution surface; desktop places it in the rail and mobile places it in the dedicated sheet.
+Desktop Markets is a dense scanner. Desktop Asset uses a compact navigator, dominant chart/intelligence workspace and persistent execution rail. Mobile Markets is a first-class screen; selecting a row enters Mobile Asset, whose fixed Buy/Sell dock opens the existing verified execution sheet. Portfolio replaces the current body rather than occupying permanent space above it.
 
-## Composition and ownership
+The canonical path remains `/`. Query parameters preserve compatible deep links: `market` enters Asset, `side` opens or focuses execution for that asset, and `panel=portfolio` enters Portfolio. Browser history restores contexts without recreating terminal state. Returning to Markets preserves the active category, local pagination and scroll where practical.
 
-- The terminal shell/controller owns device selection and shared state.
-- Desktop and mobile presentation components own only layout, navigation and interaction composition.
-- Market directory rows have distinct desktop and mobile markup fed by the same filtered results.
-- The asset workspace fetches evidence once for the rendered presentation and uses presentation-specific composition for chart, key statistics and secondary intelligence.
-- Mobile execution-sheet behavior owns dialog semantics, backdrop, safe-area layout, focus return/trapping, Escape handling and page scroll locking.
+## Ownership and migration
+
+Presentation components own layout, navigation, formatting and interaction composition only. Existing VNext hooks, `VNextAssetWorkspace`, `TradeIntentComposer`, `SpendBalance`, wallet controls and execution recovery remain shared. Mobile and desktop never create independent trading engines.
+
+The final responsive boundary is 1024px because the evidence shows the workstation cannot preserve readable navigator, chart and trade-rail geometry below that width. The seam is validated at 1025, 1024, 1023, 1000 and 960 pixels.
+
+`vnext-terminal.css` becomes the single authoritative terminal stylesheet. Intentional current rules are consolidated into it, superseded presentation DOM and reconstruction overrides are removed, and no additional terminal stylesheet is introduced.
 
 ## Execution invariants
 
-This work does not change quote calculation, provider ranking, strict verification, contract/runtime allowlists, approvals, calldata construction, slippage protection, wallet authorization, fee policy, settlement, recovery, funding, or Robinhood Chain configuration. Wallet signing remains explicit. If presentation work requires changing any of those boundaries, implementation stops for a separate security review.
+This work does not change quote math, route ranking, provider admission, strict verification, runtime pins, calldata validation, approvals, slippage, wallet authorization, transaction construction, submission, fee policy, treasury, settlement, reconciliation, recovery, funding or Robinhood Chain configuration. Wallet review and signing remain explicit. Any requirement to change those boundaries stops this UI phase for separate review.
 
-## Responsive boundary
+## Validation and rollback
 
-- Mobile composition: viewport width `<=760px`.
-- Desktop composition: viewport width `>=761px`, with workstation proportions tuned at 1024×768, 1280×800 and 1440×900.
+Acceptance must prove Markets is the default on desktop and mobile, Asset is entered by selection or deep link, Portfolio is separate, RWA remains an in-terminal preset, mobile never renders the workstation, the Buy/Sell dock exists only in Asset, and the trade sheet preserves accessibility and verification visibility.
 
-The selector uses a subscription-backed media query so server rendering is deterministic and the client renders one device composition, rather than rendering both and hiding one with CSS.
+The exploratory visual matrix covers 1920, 1440, 1280, 1025, 1024, 1023, 1000, 960, 900, 820, 768, 430, 414, 390, 375 and 360 pixel widths across Markets, Asset, Portfolio, RWA, Buy and Sell states. Permanent CI keeps a smaller stable matrix. Every primary screenshot is opened and inspected; P1/P2 defects block completion.
 
-## Migration and testing
-
-1. Formalize the shared terminal controller without changing its services.
-2. Introduce the desktop workstation composition.
-3. Introduce the mobile composition and execution sheet.
-4. Replace acceptance assertions that encode CSS reordering with behavioral desktop/mobile assertions.
-5. Capture deterministic visual evidence at 1440×900, 1280×800, 1024×768, 430×932, 390×844 and 360×800.
-6. Run focused VNext checks, terminal release checks, typecheck and production build.
-
-Rollback is a single presentation commit/PR reversal. The VNext service and execution layers remain unchanged, so rollback does not require contract, provider, data or environment changes.
-
-## Known directory boundary
-
-This PR can display all markets returned by the current directory and resolve an exact contract lookup. It will not turn the web shell into a chain-wide indexer. Complete Robinhood Chain token coverage must ultimately come from the authoritative market-intelligence service, with truthful coverage/staleness metadata, in a separately scoped integration.
+Rollback is one focused presentation PR reversal. No contract, provider, database or environment rollback is required because functional VNext infrastructure remains unchanged.

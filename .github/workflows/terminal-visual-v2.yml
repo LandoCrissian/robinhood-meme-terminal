@@ -263,19 +263,17 @@ jobs:
             await page.goto(base, { waitUntil: "domcontentloaded", timeout: 60000 });
             const isMobile = suffix === "mobile";
             await page.locator(isMobile ? ".rmtMobileTerminal" : ".rmtDesktopTerminal").waitFor({ state: "visible" });
-            if (isMobile) {
-              await page.locator(".vnAssetPanel").waitFor({ state: "visible" });
-              await page.locator(".rmtMobileDiscovery > summary").click();
-            }
-            await page.locator(".rmtMarketItem").first().waitFor({ state: "visible" });
+            const marketRow = page.locator(isMobile ? ".rmtMobileMarketRow" : ".rmtMarketTableRow").first();
+            await marketRow.waitFor({ state: "visible" });
             await page.waitForTimeout(1200);
             const homeAudit = await audit(page, `home-${suffix}`);
             await page.screenshot({ path: `${output}/home-${suffix}.png`, fullPage: false, animations: "disabled", timeout: 30000 });
             const homeChrome = await hideFixedChrome(page);
             await page.locator(".rmtVnext").screenshot({ path: `${output}/scanner-${suffix}.png`, animations: "disabled", timeout: 30000 });
             await homeChrome.evaluate((style) => style.remove());
-            if (isMobile) await page.locator(".rmtMobileDiscovery > summary").click();
 
+            await marketRow.click();
+            await page.locator(isMobile ? ".rmtMobileAssetView" : ".rmtDesktopAssetView").waitFor({ state: "visible" });
             await page.locator(".vnAssetPanel").waitFor({ state: "visible" });
             await page.waitForTimeout(1200);
             const marketAudit = await audit(page, `market-${suffix}`);
@@ -283,9 +281,17 @@ jobs:
             const marketChrome = await hideFixedChrome(page, true);
             const chart = page.locator(".vnChartFrame");
             if (await chart.isVisible()) await chart.screenshot({ path: `${output}/chart-${suffix}.png`, animations: "disabled", timeout: 30000 });
-            const tradeRail = page.locator(".vnTradePanel");
-            if (await tradeRail.isVisible()) await tradeRail.screenshot({ path: `${output}/trade-${suffix}.png`, animations: "disabled", timeout: 30000 });
-            await marketChrome.evaluate((style) => style.remove());
+            if (isMobile) {
+              await marketChrome.evaluate((style) => style.remove());
+              await page.locator(".rmtMobileTradeDock .isBuy").click();
+              const tradeSheet = page.locator(".rmtMobileTradeSheet");
+              await tradeSheet.waitFor({ state: "visible" });
+              await tradeSheet.screenshot({ path: `${output}/trade-${suffix}.png`, animations: "disabled", timeout: 30000 });
+            } else {
+              const tradeRail = page.locator(".vnTradePanel");
+              if (await tradeRail.isVisible()) await tradeRail.screenshot({ path: `${output}/trade-${suffix}.png`, animations: "disabled", timeout: 30000 });
+              await marketChrome.evaluate((style) => style.remove());
+            }
             await browser.close();
             return { homeAudit, marketAudit };
           }

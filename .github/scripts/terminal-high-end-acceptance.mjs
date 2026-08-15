@@ -328,7 +328,20 @@ async function createContext(browser, options) {
 
 async function gotoReady(page, url, selector) {
   await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60_000 });
-  await page.locator(selector).first().waitFor({ state: "visible", timeout: 30_000 });
+  try {
+    await page.locator(selector).first().waitFor({ state: "visible", timeout: 30_000 });
+  } catch (error) {
+    const diagnostic = await page.evaluate(() => ({
+      url: window.location.href,
+      title: document.title,
+      body: document.body.innerText.slice(0, 1_500),
+      desktop: Boolean(document.querySelector(".rmtDesktopTerminal")),
+      mobile: Boolean(document.querySelector(".rmtMobileTerminal")),
+      context: document.querySelector(".rmtTerminal")?.getAttribute("data-terminal-context") ?? null,
+      rows: document.querySelectorAll(".rmtMarketTableRow, .rmtMobileMarketRow").length
+    }));
+    throw new Error(`Terminal did not reach ${selector}: ${JSON.stringify(diagnostic)}`, { cause: error });
+  }
   await page.waitForTimeout(900);
 }
 
@@ -354,7 +367,7 @@ function visibleAudit() {
   return {
     viewport: { width: innerWidth, height: innerHeight },
     horizontalOverflow: Math.max(0, document.documentElement.scrollWidth - innerWidth),
-    marketRowsAboveFold: [...document.querySelectorAll(".rmtMarketItem")]
+    marketRowsAboveFold: [...document.querySelectorAll(".rmtMarketTableRow, .rmtMobileMarketRow")]
       .filter(visible)
       .filter((element) => {
         const rect = element.getBoundingClientRect();
@@ -369,7 +382,7 @@ async function inspectDesktop(browser, viewport, label) {
   const page = await context.newPage();
   await page.emulateMedia({ reducedMotion: "reduce" });
   await installRoutes(page);
-  await gotoReady(page, base, ".rmtDesktopTerminal .rmtMarketItem");
+  await gotoReady(page, base, ".rmtDesktopTerminal .rmtMarketTableRow");
 
   const audit = await page.evaluate(visibleAudit);
   if (audit.horizontalOverflow > 2) throw new Error(`${label}: page horizontal overflow ${audit.horizontalOverflow}px`);
@@ -380,22 +393,22 @@ async function inspectDesktop(browser, viewport, label) {
     throw new Error(`${label}: undersized controls ${JSON.stringify(audit.controlsUnder32)}`);
   }
 
-  const composition = await page.evaluate(() => ({
+  const marketsComposition = await page.evaluate(() => ({
     desktop: Boolean(document.querySelector(".rmtDesktopTerminal")),
     mobile: Boolean(document.querySelector(".rmtMobileTerminal")),
-    chart: document.querySelector(".vnChart")?.getBoundingClientRect().height ?? 0,
-    rail: document.querySelector(".rmtDesktopExecution")?.getBoundingClientRect(),
-    workspace: document.querySelector(".rmtDesktopAsset")?.getBoundingClientRect(),
-    directory: document.querySelector(".rmtDesktopMarkets")?.getBoundingClientRect()
+    context: document.querySelector(".rmtDesktopTerminal")?.getAttribute("data-terminal-context"),
+    scanner: Boolean(document.querySelector(".rmtMarketTable")),
+    workstation: Boolean(document.querySelector(".rmtDesktopWorkstation")),
+    portfolio: Boolean(document.querySelector(".rmtPortfolioSurface"))
   }));
-  if (!composition.desktop || composition.mobile) throw new Error(`${label}: dedicated desktop composition was not selected`);
-  if (composition.chart < 280) throw new Error(`${label}: chart lacks workstation authority (${composition.chart}px)`);
-  if (!composition.rail || !composition.workspace || !composition.directory) throw new Error(`${label}: workstation columns are incomplete`);
-  if (composition.rail.x < composition.workspace.x + composition.workspace.width - 2) throw new Error(`${label}: execution rail overlaps the asset workspace`);
+  if (!marketsComposition.desktop || marketsComposition.mobile || marketsComposition.context !== "markets" || !marketsComposition.scanner || marketsComposition.workstation || marketsComposition.portfolio) {
+    throw new Error(`${label}: default desktop context is not the dedicated Markets scanner ${JSON.stringify(marketsComposition)}`);
+  }
 
-  const initialRows = page.locator(".rmtDesktopTerminal .rmtMarketItem");
+  const initialRows = page.locator(".rmtDesktopTerminal .rmtMarketTableRow");
   if (await initialRows.count() !== 24) throw new Error(`${label}: directory did not start with a bounded 24-market page`);
-  const loadMore = page.getByRole("button", { name: "Load 24 more" });
+  await page.screenshot({ path: `${output}/markets-${label}.png`, fullPage: false, animations: "disabled" });
+  const loadMore = page.getByRole("button", { name: /^Load 24 more/ });
   await loadMore.click();
   if (await initialRows.count() !== 48) throw new Error(`${label}: local market pagination did not reveal the next 24 markets`);
 
@@ -404,52 +417,65 @@ async function inspectDesktop(browser, viewport, label) {
   const headerPortfolio = headerNavigation.locator('[data-terminal-nav="portfolio"]');
   const headerRwa = headerNavigation.locator('[data-terminal-nav="rwa"]');
   const search = page.getByRole("textbox", { name: "Search Robinhood Chain markets" });
-  const headerNavigationVisible = await headerNavigation.isVisible();
-  if (viewport.width > 1_180 && !headerNavigationVisible) throw new Error(`${label}: desktop header navigation is unexpectedly hidden`);
-  if (headerNavigationVisible) {
-    await headerMarkets.click();
-    if (new URL(page.url()).pathname !== "/" || await page.locator(".rmtDesktopTerminal").count() !== 1) throw new Error(`${label}: Markets header control left the canonical terminal`);
-    await headerPortfolio.click();
-    if (new URL(page.url()).pathname !== "/" || await page.locator("#vnext-portfolio").count() !== 1) throw new Error(`${label}: Portfolio header control left the canonical terminal or lost its target`);
-    await search.fill("R02");
-    await headerRwa.click();
-    await page.waitForTimeout(100);
-    const rwaNavigation = await page.evaluate(() => ({
-      pathname: window.location.pathname,
-      terminalActive: Boolean(document.querySelector(".rmtDesktopTerminal")),
-      publicChromePresent: Boolean(document.querySelector(".publicHeader, .mobileDock")),
-      notFound: Boolean(document.querySelector(".next-error-h1")) || document.body.innerText.includes("This page could not be found"),
-      activeCategory: document.querySelector('.rmtMarketViews button[aria-pressed="true"] span')?.textContent ?? "",
-      searchValue: document.querySelector("#rmt-market-search")?.value ?? null
-    }));
-    if (rwaNavigation.pathname !== "/") throw new Error(`${label}: RWA header control navigated away from /`);
-    if (!rwaNavigation.terminalActive || rwaNavigation.publicChromePresent || rwaNavigation.notFound) throw new Error(`${label}: RWA header control escaped the canonical terminal ${JSON.stringify(rwaNavigation)}`);
-    if (rwaNavigation.activeCategory !== "RWA" || rwaNavigation.searchValue !== "") throw new Error(`${label}: RWA header control did not activate the RWA view and clear stale search ${JSON.stringify(rwaNavigation)}`);
-  } else {
-    await page.getByRole("button", { name: /^RWA\s+2$/ }).click();
-  }
-  const rwaRows = page.locator(".rmtMarketItem");
+  if (!(await headerNavigation.isVisible())) throw new Error(`${label}: desktop header navigation is unexpectedly hidden`);
+  await headerMarkets.click();
+  if (new URL(page.url()).pathname !== "/" || await page.locator('.rmtDesktopTerminal[data-terminal-context="markets"]').count() !== 1) throw new Error(`${label}: Markets header control left the canonical terminal`);
+  await headerPortfolio.click();
+  if (new URL(page.url()).pathname !== "/" || new URL(page.url()).searchParams.get("panel") !== "portfolio" || await page.locator('.rmtDesktopTerminal[data-terminal-context="portfolio"] #vnext-portfolio').count() !== 1) throw new Error(`${label}: Portfolio header control did not enter the dedicated terminal context`);
+  await page.screenshot({ path: `${output}/portfolio-${label}.png`, fullPage: false, animations: "disabled" });
+  await headerMarkets.click();
+  await search.fill("R02");
+  await headerRwa.click();
+  await page.waitForTimeout(100);
+  const rwaNavigation = await page.evaluate(() => ({
+    pathname: window.location.pathname,
+    terminalActive: Boolean(document.querySelector('.rmtDesktopTerminal[data-terminal-context="markets"]')),
+    publicChromePresent: Boolean(document.querySelector(".publicHeader, .mobileDock")),
+    notFound: Boolean(document.querySelector(".next-error-h1")) || document.body.innerText.includes("This page could not be found"),
+    activeCategory: document.querySelector('.rmtMarketViews button[aria-pressed="true"] span')?.textContent ?? "",
+    searchValue: document.querySelector("#rmt-desktop-market-search")?.value ?? null
+  }));
+  if (rwaNavigation.pathname !== "/") throw new Error(`${label}: RWA header control navigated away from /`);
+  if (!rwaNavigation.terminalActive || rwaNavigation.publicChromePresent || rwaNavigation.notFound) throw new Error(`${label}: RWA header control escaped the canonical terminal ${JSON.stringify(rwaNavigation)}`);
+  if (rwaNavigation.activeCategory !== "RWA" || rwaNavigation.searchValue !== "") throw new Error(`${label}: RWA header control did not activate the RWA view and clear stale search ${JSON.stringify(rwaNavigation)}`);
+  const rwaRows = page.locator(".rmtMarketTableRow");
   if (await rwaRows.count() !== 2) throw new Error(`${label}: RWA directory did not preserve both verified classifications`);
   if (!(await rwaRows.nth(0).textContent())?.includes("Stock Token")) throw new Error(`${label}: canonical Stock Token was not first or clearly labeled`);
   if (!(await rwaRows.nth(1).textContent())?.includes("RWA Pair")) throw new Error(`${label}: paired market asset was not clearly labeled`);
   await page.screenshot({ path: `${output}/rwa-${label}.png`, fullPage: false, animations: "disabled" });
-  if (headerNavigationVisible) await headerMarkets.click();
-  else await page.getByRole("button", { name: /^Trending\s+/ }).click();
+  await headerMarkets.click();
+  await page.getByRole("button", { name: /^Trending\s+/ }).click();
   if (await page.getByRole("button", { name: /^Trending\s+/ }).getAttribute("aria-pressed") !== "true") throw new Error(`${label}: Markets navigation did not restore the default market view`);
-  if (await page.locator(".rmtDesktopTerminal .rmtMarketItem").count() !== 24) throw new Error(`${label}: changing category did not reset the bounded market page`);
+  if (await page.locator(".rmtDesktopTerminal .rmtMarketTableRow").count() !== 24) throw new Error(`${label}: changing category did not reset the bounded market page`);
 
   await search.fill("R02");
   await page.waitForTimeout(100);
-  if (await page.locator(".rmtMarketItem").count() !== 1) throw new Error(`${label}: market search did not narrow the directory`);
-  if (!(await page.locator(".rmtMarketItem").first().textContent())?.includes("R02")) throw new Error(`${label}: market search returned the wrong asset`);
-  await page.locator(".rmtMarketItem").first().click();
+  if (await page.locator(".rmtMarketTableRow").count() !== 1) throw new Error(`${label}: market search did not narrow the directory`);
+  if (!(await page.locator(".rmtMarketTableRow").first().textContent())?.includes("R02")) throw new Error(`${label}: market search returned the wrong asset`);
+  await page.locator(".rmtMarketTableRow").first().click();
+  await page.locator('.rmtDesktopTerminal[data-terminal-context="asset"]').waitFor({ state: "visible" });
   if (!(await page.locator("#vn-asset-heading").textContent())?.includes("R02")) throw new Error(`${label}: selected asset did not update the VNext workspace`);
-  await search.fill("");
-  await page.waitForTimeout(100);
+  const assetComposition = await page.evaluate(() => ({
+    chart: document.querySelector(".vnChart")?.getBoundingClientRect().height ?? 0,
+    rail: document.querySelector(".rmtDesktopExecution")?.getBoundingClientRect().toJSON(),
+    workspace: document.querySelector(".rmtDesktopAsset")?.getBoundingClientRect().toJSON(),
+    navigator: document.querySelector(".rmtAssetNavigator")?.getBoundingClientRect().toJSON(),
+    overflow: Math.max(0, document.documentElement.scrollWidth - innerWidth)
+  }));
+  if (assetComposition.chart < 280) throw new Error(`${label}: chart lacks workstation authority (${assetComposition.chart}px)`);
+  if (!assetComposition.rail || !assetComposition.workspace || !assetComposition.navigator || assetComposition.overflow > 2) throw new Error(`${label}: Asset workstation is incomplete ${JSON.stringify(assetComposition)}`);
+  if (assetComposition.rail.x < assetComposition.workspace.x + assetComposition.workspace.width - 2) throw new Error(`${label}: execution rail overlaps the asset workspace`);
+  await page.screenshot({ path: `${output}/asset-${label}.png`, fullPage: false, animations: "disabled" });
 
-  await page.screenshot({ path: `${output}/home-${label}.png`, fullPage: false, animations: "disabled" });
+  await page.evaluate(() => window.history.back());
+  await page.locator('.rmtDesktopTerminal[data-terminal-context="markets"] .rmtMarketTable').waitFor({ state: "visible" });
+  if (await search.inputValue() !== "R02") throw new Error(`${label}: browser Back did not preserve the market search`);
+  await search.fill(markets[0].address);
+  await search.press("Enter");
+  await page.locator('.rmtDesktopTerminal[data-terminal-context="asset"] #vn-asset-heading').waitFor({ state: "visible" });
+  if (!(await page.locator("#vn-asset-heading").textContent())?.includes(markets[0].symbol)) throw new Error(`${label}: exact-contract search did not enter the matching Asset context`);
   await context.close();
-  return { ...audit, composition };
+  return { ...audit, marketsComposition, assetComposition };
 }
 
 async function inspectMarket(browser) {
@@ -460,7 +486,7 @@ async function inspectMarket(browser) {
   const page = await context.newPage();
   await page.emulateMedia({ reducedMotion: "reduce" });
   await installRoutes(page);
-  await gotoReady(page, base, ".vnChartFrame svg");
+  await gotoReady(page, `${base}/?market=${token}`, ".vnChartFrame svg");
 
   const candlesButton = page.getByRole("button", { name: "Candles" });
   const lineButton = page.getByRole("button", { name: "Line" });
@@ -608,21 +634,34 @@ async function inspectMobile(browser, viewport, label) {
   const page = await context.newPage();
   await page.emulateMedia({ reducedMotion: "reduce" });
   await installRoutes(page);
-  await gotoReady(page, base, ".rmtMobileTerminal #vn-asset-heading");
-  await page.locator(".rmtMobileDiscovery > summary").click();
-  await page.locator(".rmtMobileTerminal .rmtMarketItem").first().waitFor({ state: "visible" });
-  const initialMobileRows = page.locator(".rmtMobileTerminal .rmtMarketItem");
+  await gotoReady(page, base, ".rmtMobileTerminal .rmtMobileMarketRow");
+  const initialMobileRows = page.locator(".rmtMobileTerminal .rmtMobileMarketRow");
   if (await initialMobileRows.count() !== 24) throw new Error(`${label}: mobile directory did not start with a bounded 24-market page`);
-  await page.getByRole("button", { name: "Load 24 more" }).click();
+  const defaultContext = await page.evaluate(() => ({
+    context: document.querySelector(".rmtMobileTerminal")?.getAttribute("data-terminal-context"),
+    scanner: Boolean(document.querySelector(".rmtMobileMarketsView")),
+    asset: Boolean(document.querySelector(".rmtMobileAssetView")),
+    dock: Boolean(document.querySelector(".rmtMobileTradeDock")),
+    desktop: Boolean(document.querySelector(".rmtDesktopTerminal"))
+  }));
+  if (defaultContext.context !== "markets" || !defaultContext.scanner || defaultContext.asset || defaultContext.dock || defaultContext.desktop) {
+    throw new Error(`${label}: mobile does not default to the dedicated Markets screen ${JSON.stringify(defaultContext)}`);
+  }
+  await page.screenshot({ path: `${output}/markets-${label}.png`, fullPage: false, animations: "disabled" });
+  await page.getByRole("button", { name: /^Load 24 more/ }).click();
   if (await initialMobileRows.count() !== 48) throw new Error(`${label}: mobile local pagination did not reveal the next 24 markets`);
   await page.getByRole("button", { name: /^RWA\s+2$/ }).click();
-  const mobileRwaRows = page.locator(".rmtMobileTerminal .rmtMarketItem");
+  const mobileRwaRows = page.locator(".rmtMobileTerminal .rmtMobileMarketRow");
   if (await mobileRwaRows.count() !== 2) throw new Error(`${label}: mobile RWA directory lost a verified classification`);
   if (!(await mobileRwaRows.nth(0).textContent())?.includes("Stock Token")) throw new Error(`${label}: mobile canonical Stock Token is not first or clearly labeled`);
   if (!(await mobileRwaRows.nth(1).textContent())?.includes("RWA Pair")) throw new Error(`${label}: mobile paired market asset is not clearly labeled`);
 
-  const homeAudit = await page.evaluate(() => {
-    const marketRow = document.querySelector(".rmtMarketDirectory.ismobile .rmtMarketItem");
+  await page.screenshot({ path: `${output}/rwa-${label}.png`, fullPage: false, animations: "disabled" });
+  await page.getByRole("button", { name: /^Trending\s+/ }).click();
+  await page.getByRole("button", { name: /^Load 24 more/ }).click();
+  if (await page.locator(".rmtMobileMarketRow").count() !== 48) throw new Error(`${label}: mobile page depth was not established for navigation restoration`);
+  const marketsAudit = await page.evaluate(() => {
+    const marketRow = document.querySelector(".rmtMobileMarketRow");
     const desktop = document.querySelector(".rmtDesktopTerminal");
     const mobile = document.querySelector(".rmtMobileTerminal");
     const mobileDock = document.querySelector(".rmtMobileTradeDock");
@@ -635,23 +674,41 @@ async function inspectMobile(browser, viewport, label) {
       mobileRendered: Boolean(mobile),
       mobileDockVisible: Boolean(mobileDock && mobileDock.getBoundingClientRect().height > 0),
       mobileWalletControlCount: mobileWalletControls.length,
-      chartWidth: document.querySelector(".vnChart")?.getBoundingClientRect().width ?? 0
+      assetPresent: Boolean(document.querySelector(".rmtMobileAssetView"))
     };
   });
-  if (homeAudit.horizontalOverflow > 2) {
-    throw new Error(`mobile: horizontal overflow ${homeAudit.horizontalOverflow}px`);
+  if (marketsAudit.horizontalOverflow > 2) {
+    throw new Error(`mobile: horizontal overflow ${marketsAudit.horizontalOverflow}px`);
   }
-  if (!homeAudit.marketRowVisible || homeAudit.desktopRendered || !homeAudit.mobileRendered || !homeAudit.mobileDockVisible) {
-    throw new Error(`mobile: desktop workstation leaked into mobile layout ${JSON.stringify(homeAudit)}`);
+  if (!marketsAudit.marketRowVisible || marketsAudit.desktopRendered || !marketsAudit.mobileRendered || marketsAudit.mobileDockVisible || marketsAudit.assetPresent) {
+    throw new Error(`mobile: Markets composition is not isolated from Asset/workstation UI ${JSON.stringify(marketsAudit)}`);
   }
-  if (homeAudit.mobileWalletControlCount !== 1) throw new Error(`${label}: mobile header must expose exactly one wallet control ${JSON.stringify(homeAudit)}`);
-  if (homeAudit.chartWidth > viewport.width + 2) throw new Error(`${label}: chart escaped the viewport`);
-  await page.screenshot({ path: `${output}/discovery-${label}.png`, fullPage: false, animations: "disabled" });
-  await page.locator(".rmtMobileDiscovery > summary").click();
-  await page.screenshot({ path: `${output}/home-${label}.png`, fullPage: false, animations: "disabled" });
+  if (marketsAudit.mobileWalletControlCount !== 1) throw new Error(`${label}: mobile header must expose exactly one wallet control ${JSON.stringify(marketsAudit)}`);
+
+  await page.locator(".rmtMobileMarketRow").first().click();
+  await page.locator('.rmtMobileTerminal[data-terminal-context="asset"] #vn-asset-heading').waitFor({ state: "visible" });
+  const assetAudit = await page.evaluate(() => ({
+    horizontalOverflow: Math.max(0, document.documentElement.scrollWidth - innerWidth),
+    scannerPresent: Boolean(document.querySelector(".rmtMobileMarketsView")),
+    assetPresent: Boolean(document.querySelector(".rmtMobileAssetView")),
+    dockVisible: Boolean(document.querySelector(".rmtMobileTradeDock")),
+    chartWidth: document.querySelector(".vnChart")?.getBoundingClientRect().width ?? 0,
+    pathname: window.location.pathname,
+    market: new URLSearchParams(window.location.search).get("market")
+  }));
+  if (assetAudit.horizontalOverflow > 2 || assetAudit.scannerPresent || !assetAudit.assetPresent || !assetAudit.dockVisible || assetAudit.chartWidth > viewport.width + 2 || assetAudit.pathname !== "/" || !assetAudit.market) {
+    throw new Error(`${label}: mobile Asset context is incomplete ${JSON.stringify(assetAudit)}`);
+  }
+  await page.screenshot({ path: `${output}/asset-${label}.png`, fullPage: false, animations: "disabled" });
+
+  await page.evaluate(() => window.history.back());
+  await page.locator('.rmtMobileTerminal[data-terminal-context="markets"] .rmtMobileMarketList').waitFor({ state: "visible" });
+  if (await page.locator(".rmtMobileMarketRow").count() !== 48) throw new Error(`${label}: browser Back did not preserve the loaded market page depth`);
+  await page.evaluate(() => window.history.forward());
+  await page.locator('.rmtMobileTerminal[data-terminal-context="asset"] #vn-asset-heading').waitFor({ state: "visible" });
 
   const mobileBuyAction = page.locator(".rmtMobileTradeDock .isBuy");
-  const selectedSymbol = (await mobileBuyAction.textContent())?.replace(/^Buy\s+/, "").trim();
+  const selectedSymbol = (await page.locator("#vn-asset-heading b").innerText()).trim();
   if (!selectedSymbol) throw new Error(`${label}: selected asset symbol is unavailable`);
   await mobileBuyAction.click();
   const mobileDialog = page.getByRole("dialog", { name: `Trade ${selectedSymbol}` });
@@ -685,8 +742,26 @@ async function inspectMobile(browser, viewport, label) {
   const unlocked = await page.evaluate(() => document.body.style.overflow === "" && document.documentElement.style.overflow === "");
   if (!unlocked) throw new Error(`${label}: page scroll did not unlock after closing the sheet`);
   if (!(await mobileBuyAction.evaluate((button) => document.activeElement === button))) throw new Error(`${label}: focus did not return to the Buy action`);
+  await mobileBuyAction.click();
+  await mobileDialog.waitFor({ state: "visible" });
+  await page.locator(".rmtMobileSheetBackdrop").click({ position: { x: 4, y: 4 } });
+  await mobileDialog.waitFor({ state: "hidden" });
+  if (!(await page.evaluate(() => document.body.style.overflow === "" && document.documentElement.style.overflow === ""))) throw new Error(`${label}: backdrop close did not restore page scrolling`);
+  if (!(await mobileBuyAction.evaluate((button) => document.activeElement === button))) throw new Error(`${label}: backdrop close did not return focus to the Buy action`);
+  await page.getByRole("button", { name: "Portfolio", exact: true }).click();
+  await page.locator('.rmtMobileTerminal[data-terminal-context="portfolio"] #vnext-portfolio').waitFor({ state: "visible" });
+  const portfolioAudit = await page.evaluate(() => ({
+    pathname: window.location.pathname,
+    panel: new URLSearchParams(window.location.search).get("panel"),
+    scanner: Boolean(document.querySelector(".rmtMobileMarketsView")),
+    asset: Boolean(document.querySelector(".rmtMobileAssetView")),
+    dock: Boolean(document.querySelector(".rmtMobileTradeDock")),
+    overflow: Math.max(0, document.documentElement.scrollWidth - innerWidth)
+  }));
+  if (portfolioAudit.pathname !== "/" || portfolioAudit.panel !== "portfolio" || portfolioAudit.scanner || portfolioAudit.asset || portfolioAudit.dock || portfolioAudit.overflow > 2) throw new Error(`${label}: mobile Portfolio is not a dedicated context ${JSON.stringify(portfolioAudit)}`);
+  await page.screenshot({ path: `${output}/portfolio-${label}.png`, fullPage: false, animations: "disabled" });
   await context.close();
-  return { home: homeAudit, tradePanel: tradeAudit };
+  return { markets: marketsAudit, asset: assetAudit, tradePanel: tradeAudit, portfolio: portfolioAudit };
 }
 
 const browser = await chromium.launch({
@@ -694,19 +769,37 @@ const browser = await chromium.launch({
   ...(process.platform === "darwin" ? { channel: "chrome" } : {})
 });
 try {
-  const desktop = await inspectDesktop(browser, { width: 1_440, height: 900 }, "1440x900");
-  const laptop = await inspectDesktop(browser, { width: 1_280, height: 800 }, "1280x800");
-  const compact = await inspectDesktop(browser, { width: 1_024, height: 768 }, "1024x768");
-  const marketAudit = await inspectMarket(browser);
-  const compatibilityEntries = await inspectCompatibilityEntries(browser);
-  const publicRoutes = await inspectCurrentPublicRoutes(browser);
+  const mobileOnly = process.env.RMT_ACCEPTANCE_ONLY_MOBILE === "true";
+  const exploratory = process.env.RMT_ACCEPTANCE_EXPLORATORY === "true";
+  const desktop = mobileOnly ? null : await inspectDesktop(browser, { width: 1_440, height: 900 }, "1440x900");
+  const laptop = mobileOnly ? null : await inspectDesktop(browser, { width: 1_280, height: 800 }, "1280x800");
+  const compact = mobileOnly ? null : await inspectDesktop(browser, { width: 1_024, height: 768 }, "1024x768");
+  const wide = !mobileOnly && exploratory ? await inspectDesktop(browser, { width: 1_920, height: 1_080 }, "1920x1080") : null;
+  const seamDesktop = !mobileOnly && exploratory ? await inspectDesktop(browser, { width: 1_025, height: 900 }, "1025x900") : null;
+  const marketAudit = mobileOnly ? null : await inspectMarket(browser);
+  const compatibilityEntries = mobileOnly ? null : await inspectCompatibilityEntries(browser);
+  const publicRoutes = process.env.RMT_ACCEPTANCE_SKIP_PUBLIC_ROUTES === "true"
+    ? []
+    : await inspectCurrentPublicRoutes(browser);
   const mobile430 = await inspectMobile(browser, { width: 430, height: 932 }, "430x932");
+  const touch1023 = await inspectMobile(browser, { width: 1_023, height: 900 }, "1023x900");
   const mobile390 = await inspectMobile(browser, { width: 390, height: 844 }, "390x844");
   const mobile375 = await inspectMobile(browser, { width: 375, height: 812 }, "375x812");
   const mobile360 = await inspectMobile(browser, { width: 360, height: 800 }, "360x800");
+  const exploratoryTouch = {};
+  if (exploratory) {
+    for (const [entryLabel, entryViewport] of [
+      ["1000x900", { width: 1_000, height: 900 }],
+      ["960x900", { width: 960, height: 900 }],
+      ["900x900", { width: 900, height: 900 }],
+      ["820x900", { width: 820, height: 900 }],
+      ["768x900", { width: 768, height: 900 }],
+      ["414x896", { width: 414, height: 896 }]
+    ]) exploratoryTouch[entryLabel] = await inspectMobile(browser, entryViewport, entryLabel);
+  }
   await writeFile(
     `${output}/report.json`,
-    JSON.stringify({ desktop, laptop, compact, marketAudit, compatibilityEntries, publicRoutes, mobile430, mobile390, mobile375, mobile360 }, null, 2)
+    JSON.stringify({ desktop, laptop, compact, wide, seamDesktop, marketAudit, compatibilityEntries, publicRoutes, touch1023, mobile430, mobile390, mobile375, mobile360, exploratoryTouch }, null, 2)
   );
 } finally {
   await browser.close();
