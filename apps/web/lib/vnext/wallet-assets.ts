@@ -13,6 +13,7 @@ import {
   ROBINHOOD_WETH,
   ROBINHOOD_WETH_ADDRESS
 } from "./robinhood-assets";
+import { trustedPaymentAsset } from "./trusted-asset-registry";
 
 export type VNextWalletAssetCandidate = {
   address: Address;
@@ -30,13 +31,23 @@ export type VNextDetectedWalletAsset = VNextWalletAssetCandidate & {
   routeState: AssetRouteState;
 };
 
-export function metadataFromDetectedWalletAsset(asset: VNextDetectedWalletAsset): AssetMetadata | null {
-  if (asset.identityState !== "verified" || asset.decimals === null) return null;
+export function trustedPaymentMetadataFromDetectedWalletAsset(asset: VNextDetectedWalletAsset): AssetMetadata | null {
+  const trusted = trustedPaymentAsset(ROBINHOOD_MAINNET_CHAIN_ID, asset.address);
+  if (
+    !trusted
+    || !trusted.userVisible
+    || asset.source !== "canonical"
+    || asset.identityState !== "verified"
+    || asset.reputation !== "ok"
+    || asset.decimals !== trusted.decimals
+    || !/^(?:0|[1-9][0-9]*)$/.test(asset.balanceAtomic)
+    || BigInt(asset.balanceAtomic) <= 0n
+  ) return null;
   return {
-    id: evmAsset(ROBINHOOD_MAINNET_CHAIN_ID, asset.address),
-    symbol: asset.symbol,
-    name: asset.name,
-    decimals: asset.decimals,
+    id: evmAsset(ROBINHOOD_MAINNET_CHAIN_ID, trusted.address),
+    symbol: trusted.symbol,
+    name: trusted.name,
+    decimals: trusted.decimals,
     metadataState: "verified"
   };
 }

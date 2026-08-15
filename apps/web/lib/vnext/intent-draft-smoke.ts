@@ -90,8 +90,11 @@ assert.doesNotMatch(composer, /Check live routes|Verify best route|Prepare walle
 assert.match(composer, /Pay with asset/);
 assert.match(composer, /Receive asset/);
 assert.match(composer, /walletAssets\.flatMap/);
-assert.match(composer, /metadataFromDetectedWalletAsset/);
-assert.match(composer, /No different verified wallet-held input asset is detected/);
+assert.match(composer, /trustedPaymentMetadataFromDetectedWalletAsset/);
+assert.match(composer, /No trusted payment asset/);
+assert.match(composer, /ETH · Native/);
+assert.match(composer, /Canonical/);
+assert.match(composer, /No different trusted payment asset is available in this wallet/);
 assert.match(composer, /ROBINHOOD_USDG, ROBINHOOD_ETH/);
 assert.doesNotMatch(composer, /ROBINHOOD_USDG, ROBINHOOD_WETH/);
 assert.match(composer, /ETH \(native\)/);
