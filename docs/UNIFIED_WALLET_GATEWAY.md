@@ -15,7 +15,7 @@ The supported Privy wallet order is centralized as:
 3. detected Ethereum wallets
 4. WalletConnect
 
-`detected_ethereum_wallets` is Privy's EIP-6963 discovery surface. Rabby is admitted through that supported surface on desktop and inside Rabby's mobile browser; RMT does not use Privy's deprecated `rabby_wallet` identifier. A normal mobile Safari/Chrome session has no injected extension, so RMT offers explicit MetaMask and Rabby app handoffs that preserve the exact RMT URL, plus WalletConnect for other supported wallets.
+`detected_ethereum_wallets` is Privy's EIP-6963 discovery surface. Rabby is admitted through that supported surface on desktop and inside Rabby's mobile browser; RMT does not use Privy's deprecated `rabby_wallet` identifier. A wallet in-app browser narrows its connection prompt to the injected EIP-6963 wallet instead of reopening the general wallet catalog. A normal mobile Safari/Chrome session has no injected extension, so RMT offers explicit MetaMask and Rabby app handoffs that preserve the exact RMT URL, plus WalletConnect for other supported wallets.
 
 ## Exact active-wallet identity
 

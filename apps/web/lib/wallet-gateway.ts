@@ -14,8 +14,16 @@ export const RMT_EXTERNAL_WALLET_LIST = [
   "wallet_connect"
 ] as const satisfies readonly WalletListEntry[];
 
+export const RMT_INJECTED_WALLET_LIST = [
+  "detected_ethereum_wallets"
+] as const satisfies readonly WalletListEntry[];
+
 export function rmtExternalWalletOptions(): WalletListEntry[] {
   return [...RMT_EXTERNAL_WALLET_LIST];
+}
+
+export function rmtInjectedWalletOptions(): WalletListEntry[] {
+  return [...RMT_INJECTED_WALLET_LIST];
 }
 
 export const RMT_ACTIVE_WALLET_SESSION_KEY = "rmt:active-trading-wallet:v1";

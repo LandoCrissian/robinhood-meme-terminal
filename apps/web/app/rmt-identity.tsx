@@ -13,6 +13,7 @@ import {
   matchingExternalWallets,
   resolveActiveExternalWallet,
   rmtExternalWalletOptions,
+  rmtInjectedWalletOptions,
   requiresExplicitWalletSelection,
   walletGatewayDisplayName,
   walletGatewayKey
@@ -222,7 +223,9 @@ export function PrivyIdentityBridge({ children }: { children: ReactNode }) {
       openExternalWalletConnect({
         description: "Connect the external Ethereum wallet RMT should use for trading.",
         walletChainType: "ethereum-only",
-        walletList: rmtExternalWalletOptions()
+        walletList: environment === "mobile-wallet-browser"
+          ? rmtInjectedWalletOptions()
+          : rmtExternalWalletOptions()
       });
     },
     enabled: true,
