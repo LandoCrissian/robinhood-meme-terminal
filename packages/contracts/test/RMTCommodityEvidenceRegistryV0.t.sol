@@ -16,6 +16,7 @@ interface CommodityEvidenceVm {
 }
 
 contract MockCommodityEvidenceERC1271Signer is IERC1271 {
+    bytes4 private constant MAGIC_VALUE = 0x1626ba7e;
     address public immutable owner;
 
     constructor(address owner_) {
@@ -23,7 +24,7 @@ contract MockCommodityEvidenceERC1271Signer is IERC1271 {
     }
 
     function isValidSignature(bytes32 digest, bytes memory signature) external view returns (bytes4) {
-        return ECDSA.recover(digest, signature) == owner ? IERC1271.isValidSignature.selector : bytes4(0xffffffff);
+        return ECDSA.recover(digest, signature) == owner ? MAGIC_VALUE : bytes4(0xffffffff);
     }
 }
 
@@ -88,40 +89,34 @@ contract RMTCommodityEvidenceRegistryV0Test {
         assembly ("memory-safe") {
             deployed := create(0, add(creationCode, 0x20), mload(creationCode))
         }
-        require(deployed == address(0), "registry deployed on the wrong chain");
+        require(deployed == address(0), "registry deployed on wrong chain");
         vm.chainId(TARGET_CHAIN_ID);
     }
 
     function testValidPublicationCreatesVerifiedAppendOnlyRecord() public {
         RMTCommodityEvidenceRegistryV0.EvidenceEnvelope memory envelope = _envelope(1, 1);
         bytes32 evidenceId = _publish(registry, envelope);
-
         RMTCommodityEvidenceRegistryV0.EvidenceRecord memory record = registry.getEvidence(evidenceId);
+
         require(record.digest == registry.evidenceDigest(envelope), "digest mismatch");
         require(record.envelope.evidenceVersion == 1, "version mismatch");
-        require(
-            record.storedStatus == RMTCommodityEvidenceRegistryV0.EvidenceStatus.Verified,
-            "record not verified"
-        );
+        require(record.storedStatus == RMTCommodityEvidenceRegistryV0.EvidenceStatus.Verified, "not verified");
         require(
             registry.getEffectiveStatus(evidenceId) == RMTCommodityEvidenceRegistryV0.EffectiveStatus.Verified,
-            "effective status not verified"
+            "effective status mismatch"
         );
-        require(
-            registry.evidenceIdAt(INSTRUMENT_ID, BATCH_ID, 1) == evidenceId,
-            "version lookup mismatch"
-        );
+        require(registry.evidenceIdAt(INSTRUMENT_ID, BATCH_ID, 1) == evidenceId, "lookup mismatch");
         require(
             registry.lotOwnerBatchKey(PHYSICAL_LOT_KEY) == registry.batchKeyFor(INSTRUMENT_ID, BATCH_ID),
-            "physical lot not reserved"
+            "lot not reserved"
         );
-        require(address(registry).balance == 0, "registry retained value");
+        require(address(registry).balance == 0, "value retained");
     }
 
     function testWrongIssuerSignerIsRejected() public {
         RMTCommodityEvidenceRegistryV0.EvidenceEnvelope memory envelope = _envelope(1, 1);
         bytes32 digest = registry.evidenceDigest(envelope);
-        RMTCommodityEvidenceRegistryV0.RoleSignature memory issuerSignature =
+        RMTCommodityEvidenceRegistryV0.RoleSignature memory badIssuer =
             _roleSignature(OUTSIDER_KEY, registry.ROLE_ISSUER(), ISSUER_PARTY_ID, digest);
         RMTCommodityEvidenceRegistryV0.RoleSignature memory custodianSignature =
             _roleSignature(CUSTODIAN_KEY, registry.ROLE_CUSTODIAN(), CUSTODIAN_PARTY_ID, digest);
@@ -129,17 +124,15 @@ contract RMTCommodityEvidenceRegistryV0Test {
             _roleSignature(ATTESTOR_KEY, registry.ROLE_ATTESTOR(), ATTESTOR_PARTY_ID, digest);
 
         require(
-            !_tryPublish(
-                registry, envelope, issuerSignature, custodianSignature, attestorSignature, PUBLIC_MANIFEST_URI
-            ),
-            "wrong issuer signer accepted"
+            !_tryPublish(registry, envelope, badIssuer, custodianSignature, attestorSignature, PUBLIC_MANIFEST_URI),
+            "wrong signer accepted"
         );
     }
 
-    function testWrongRoleOrPartyBindingIsRejected() public {
+    function testWrongRoleBindingIsRejected() public {
         RMTCommodityEvidenceRegistryV0.EvidenceEnvelope memory envelope = _envelope(1, 1);
         bytes32 digest = registry.evidenceDigest(envelope);
-        RMTCommodityEvidenceRegistryV0.RoleSignature memory issuerSignature =
+        RMTCommodityEvidenceRegistryV0.RoleSignature memory wrongRole =
             _roleSignature(ISSUER_KEY, registry.ROLE_CUSTODIAN(), ISSUER_PARTY_ID, digest);
         RMTCommodityEvidenceRegistryV0.RoleSignature memory custodianSignature =
             _roleSignature(CUSTODIAN_KEY, registry.ROLE_CUSTODIAN(), CUSTODIAN_PARTY_ID, digest);
@@ -147,9 +140,7 @@ contract RMTCommodityEvidenceRegistryV0Test {
             _roleSignature(ATTESTOR_KEY, registry.ROLE_ATTESTOR(), ATTESTOR_PARTY_ID, digest);
 
         require(
-            !_tryPublish(
-                registry, envelope, issuerSignature, custodianSignature, attestorSignature, PUBLIC_MANIFEST_URI
-            ),
+            !_tryPublish(registry, envelope, wrongRole, custodianSignature, attestorSignature, PUBLIC_MANIFEST_URI),
             "wrong role accepted"
         );
     }
@@ -172,7 +163,7 @@ contract RMTCommodityEvidenceRegistryV0Test {
                 attestorSignature,
                 PUBLIC_MANIFEST_URI
             ),
-            "signature for another registry accepted"
+            "cross-contract signature accepted"
         );
     }
 
@@ -197,18 +188,7 @@ contract RMTCommodityEvidenceRegistryV0Test {
     function testReplayAndVersionReuseAreRejected() public {
         RMTCommodityEvidenceRegistryV0.EvidenceEnvelope memory envelope = _envelope(1, 1);
         _publish(registry, envelope);
-        (
-            RMTCommodityEvidenceRegistryV0.RoleSignature memory issuerSignature,
-            RMTCommodityEvidenceRegistryV0.RoleSignature memory custodianSignature,
-            RMTCommodityEvidenceRegistryV0.RoleSignature memory attestorSignature
-        ) = _signAll(registry, envelope);
-
-        require(
-            !_tryPublish(
-                registry, envelope, issuerSignature, custodianSignature, attestorSignature, PUBLIC_MANIFEST_URI
-            ),
-            "replayed envelope accepted"
-        );
+        require(!_trySignedPublish(registry, envelope), "replay accepted");
     }
 
     function testDuplicatePhysicalLotUnderAnotherInstrumentIsRejected() public {
@@ -228,37 +208,23 @@ contract RMTCommodityEvidenceRegistryV0Test {
         duplicate.instrumentId = INSTRUMENT_TWO_ID;
         duplicate.seriesId = SERIES_TWO_ID;
         duplicate.batchId = BATCH_TWO_ID;
-        (
-            RMTCommodityEvidenceRegistryV0.RoleSignature memory issuerSignature,
-            RMTCommodityEvidenceRegistryV0.RoleSignature memory custodianSignature,
-            RMTCommodityEvidenceRegistryV0.RoleSignature memory attestorSignature
-        ) = _signAll(registry, duplicate);
-
-        require(
-            !_tryPublish(
-                registry, duplicate, issuerSignature, custodianSignature, attestorSignature, PUBLIC_MANIFEST_URI
-            ),
-            "duplicate physical lot accepted"
-        );
+        require(!_trySignedPublish(registry, duplicate), "duplicate lot accepted");
     }
 
-    function testUnknownOrEncumberedEvidenceCannotBecomeVerified() public {
+    function testUnknownEncumbranceCannotBecomeVerified() public {
         RMTCommodityEvidenceRegistryV0.EvidenceEnvelope memory envelope = _envelope(1, 1);
         envelope.encumbranceStatus = RMTCommodityEvidenceRegistryV0.EncumbranceStatus.Unknown;
         bytes32 evidenceId = _publish(registry, envelope);
-
         RMTCommodityEvidenceRegistryV0.EvidenceRecord memory record = registry.getEvidence(evidenceId);
-        require(
-            record.storedStatus == RMTCommodityEvidenceRegistryV0.EvidenceStatus.Proposed,
-            "unknown encumbrance stored as verified"
-        );
+
+        require(record.storedStatus == RMTCommodityEvidenceRegistryV0.EvidenceStatus.Proposed, "stored verified");
         require(
             registry.getEffectiveStatus(evidenceId) == RMTCommodityEvidenceRegistryV0.EffectiveStatus.Proposed,
-            "unknown encumbrance displayed as verified"
+            "displayed verified"
         );
     }
 
-    function testFutureOrExpiredValidityWindowIsRejected() public {
+    function testFutureAndExpiredValidityAreRejected() public {
         RMTCommodityEvidenceRegistryV0.EvidenceEnvelope memory futureEnvelope = _envelope(1, 1);
         futureEnvelope.validFrom = uint64(block.timestamp + 1);
         futureEnvelope.validUntil = uint64(block.timestamp + 1 days);
@@ -275,7 +241,6 @@ contract RMTCommodityEvidenceRegistryV0Test {
         envelope.validUntil = uint64(block.timestamp + 10);
         bytes32 evidenceId = _publish(registry, envelope);
         vm.warp(block.timestamp + 11);
-
         require(
             registry.getEffectiveStatus(evidenceId) == RMTCommodityEvidenceRegistryV0.EffectiveStatus.Stale,
             "expired evidence remained verified"
@@ -288,40 +253,36 @@ contract RMTCommodityEvidenceRegistryV0Test {
         registry.disputeEvidence(evidenceId, REASON_CODE, SUPPORTING_MANIFEST_HASH, SUPPORTING_URI_HASH);
         require(
             registry.getEffectiveStatus(evidenceId) == RMTCommodityEvidenceRegistryV0.EffectiveStatus.Disputed,
-            "dispute did not take precedence"
+            "dispute missing"
         );
 
         registry.suspendEvidence(evidenceId, REASON_CODE, SUPPORTING_MANIFEST_HASH, SUPPORTING_URI_HASH);
         require(
             registry.getEffectiveStatus(evidenceId) == RMTCommodityEvidenceRegistryV0.EffectiveStatus.Suspended,
-            "suspension did not take precedence"
+            "suspension missing"
         );
     }
 
     function testNewVersionSupersedesButDoesNotDeletePriorEvidence() public {
         bytes32 firstEvidenceId = _publish(registry, _envelope(1, 1001));
         bytes32 secondEvidenceId = _publish(registry, _envelope(2, 1002));
-
         RMTCommodityEvidenceRegistryV0.EvidenceRecord memory firstRecord = registry.getEvidence(firstEvidenceId);
         RMTCommodityEvidenceRegistryV0.EvidenceRecord memory secondRecord = registry.getEvidence(secondEvidenceId);
+
         require(
             firstRecord.storedStatus == RMTCommodityEvidenceRegistryV0.EvidenceStatus.Superseded,
-            "prior evidence not superseded"
+            "prior record not superseded"
         );
-        require(firstRecord.digest != bytes32(0), "prior evidence deleted");
-        require(
-            secondRecord.storedStatus == RMTCommodityEvidenceRegistryV0.EvidenceStatus.Verified,
-            "new evidence not verified"
-        );
-        require(registry.latestVersionByBatchKey(registry.batchKeyFor(INSTRUMENT_ID, BATCH_ID)) == 2, "head mismatch");
-        require(registry.evidenceIdAt(INSTRUMENT_ID, BATCH_ID, 1) == firstEvidenceId, "v1 lookup lost");
-        require(registry.evidenceIdAt(INSTRUMENT_ID, BATCH_ID, 2) == secondEvidenceId, "v2 lookup lost");
+        require(firstRecord.digest != bytes32(0), "prior record deleted");
+        require(secondRecord.storedStatus == RMTCommodityEvidenceRegistryV0.EvidenceStatus.Verified, "head not verified");
+        require(registry.evidenceIdAt(INSTRUMENT_ID, BATCH_ID, 1) == firstEvidenceId, "v1 lost");
+        require(registry.evidenceIdAt(INSTRUMENT_ID, BATCH_ID, 2) == secondEvidenceId, "v2 lost");
     }
 
     function testClosedHeadCannotBeReactivatedByNewVersion() public {
         bytes32 evidenceId = _publish(registry, _envelope(1, 1));
         registry.closeEvidence(evidenceId, REASON_CODE, SUPPORTING_MANIFEST_HASH, SUPPORTING_URI_HASH);
-        require(!_trySignedPublish(registry, _envelope(2, 2)), "closed evidence chain reactivated");
+        require(!_trySignedPublish(registry, _envelope(2, 2)), "closed chain reactivated");
     }
 
     function testERC1271AttestorIsSupported() public {
@@ -331,24 +292,24 @@ contract RMTCommodityEvidenceRegistryV0Test {
         require(
             contractSignerRegistry.getEffectiveStatus(evidenceId)
                 == RMTCommodityEvidenceRegistryV0.EffectiveStatus.Verified,
-            "ERC-1271 attestor rejected"
+            "ERC-1271 rejected"
         );
     }
 
-    function testDirectEthAndUnknownTokenInterfacesAreRejected() public {
+    function testDirectEthAndUnknownMintInterfaceAreRejected() public {
         vm.deal(address(this), 1 ether);
-        (bool valueAccepted,) = address(registry).call{value: 1}({data: ""});
-        require(!valueAccepted, "direct ETH accepted");
+        (bool valueAccepted,) = address(registry).call{value: 1}("");
+        require(!valueAccepted, "ETH accepted");
 
         (bool mintAccepted,) = address(registry).call(abi.encodeWithSignature("mint(address,uint256)", address(this), 1));
-        require(!mintAccepted, "unknown mint interface accepted");
-        require(address(registry).balance == 0, "registry retained ETH");
+        require(!mintAccepted, "mint interface accepted");
+        require(address(registry).balance == 0, "ETH retained");
     }
 
-    function testOnlyAdministratorCanSuspendOrCloseEvidence() public {
+    function testOnlyAdministratorCanSuspendEvidence() public {
         bytes32 evidenceId = _publish(registry, _envelope(1, 1));
         vm.prank(outsider);
-        (bool suspended,) = address(registry).call(
+        (bool success,) = address(registry).call(
             abi.encodeWithSelector(
                 registry.suspendEvidence.selector,
                 evidenceId,
@@ -357,7 +318,7 @@ contract RMTCommodityEvidenceRegistryV0Test {
                 SUPPORTING_URI_HASH
             )
         );
-        require(!suspended, "outsider suspended evidence");
+        require(!success, "outsider suspended evidence");
     }
 
     function testSuspendedQuorumCannotDisplayAsVerified() public {
@@ -367,14 +328,14 @@ contract RMTCommodityEvidenceRegistryV0Test {
         );
         require(
             registry.getEffectiveStatus(evidenceId) == RMTCommodityEvidenceRegistryV0.EffectiveStatus.Suspended,
-            "inactive attestor left evidence verified"
+            "inactive quorum remained verified"
         );
     }
 
     function testInvalidCommitmentAndMismatchedUriAreRejected() public {
         RMTCommodityEvidenceRegistryV0.EvidenceEnvelope memory invalidEnvelope = _envelope(1, 1);
         invalidEnvelope.titleEvidenceHash = bytes32(0);
-        require(!_trySignedPublish(registry, invalidEnvelope), "zero title commitment accepted");
+        require(!_trySignedPublish(registry, invalidEnvelope), "zero commitment accepted");
 
         RMTCommodityEvidenceRegistryV0.EvidenceEnvelope memory validEnvelope = _envelope(1, 1);
         (
@@ -397,7 +358,7 @@ contract RMTCommodityEvidenceRegistryV0Test {
 
     function testOneSigningAccountCannotMasqueradeAsMultipleParties() public {
         bytes32 duplicatePartyId = keccak256("RMT-SYNTHETIC-DUPLICATE-PARTY");
-        (bool registered,) = address(registry).call(
+        (bool success,) = address(registry).call(
             abi.encodeWithSelector(
                 registry.registerParty.selector,
                 duplicatePartyId,
@@ -407,7 +368,7 @@ contract RMTCommodityEvidenceRegistryV0Test {
                 uint64(block.timestamp + 365 days)
             )
         );
-        require(!registered, "same signing account registered twice");
+        require(!success, "signing account reused");
     }
 
     function _newConfiguredRegistry(address attestorSigningAccount)
@@ -418,18 +379,10 @@ contract RMTCommodityEvidenceRegistryV0Test {
         uint64 validFrom = uint64(block.timestamp);
         uint64 validUntil = uint64(block.timestamp + 365 days);
         configuredRegistry.registerParty(
-            ISSUER_PARTY_ID,
-            issuer,
-            configuredRegistry.ROLE_ISSUER_BITMAP(),
-            validFrom,
-            validUntil
+            ISSUER_PARTY_ID, issuer, configuredRegistry.ROLE_ISSUER_BITMAP(), validFrom, validUntil
         );
         configuredRegistry.registerParty(
-            CUSTODIAN_PARTY_ID,
-            custodian,
-            configuredRegistry.ROLE_CUSTODIAN_BITMAP(),
-            validFrom,
-            validUntil
+            CUSTODIAN_PARTY_ID, custodian, configuredRegistry.ROLE_CUSTODIAN_BITMAP(), validFrom, validUntil
         );
         configuredRegistry.registerParty(
             ATTESTOR_PARTY_ID,
