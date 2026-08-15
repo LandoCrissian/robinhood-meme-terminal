@@ -1,7 +1,6 @@
 "use client";
 
 import { usePrivy, useWallets } from "@privy-io/react-auth";
-import { useSetActiveWallet } from "@privy-io/wagmi";
 import { robinhoodChain, robinhoodChainTestnet } from "@rmt/shared/chains";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -9,6 +8,11 @@ import type { Address } from "viem";
 import { useAccount, useDisconnect, useSwitchChain } from "wagmi";
 import { recordExperienceStage } from "../lib/experience-funnel";
 import { metaMaskDappLink, walletBrowserEnvironment } from "../lib/mobile-wallet-link";
+import {
+  externalEthereumWallets,
+  walletGatewayDisplayName,
+  walletGatewayKey
+} from "../lib/wallet-gateway";
 import { FundWalletButton } from "./fund-wallet-button";
 import { WalletReceiveDialog } from "./wallet-receive-dialog";
 import { WalletTransferDialog } from "./wallet-transfer-dialog";
@@ -17,12 +21,6 @@ import { useRmtIdentity } from "./rmt-identity";
 
 function shortAddress(address: string) {
   return `${address.slice(0, 6)}…${address.slice(-4)}`;
-}
-
-function walletName(walletClientType: string) {
-  if (walletClientType === "privy") return "RMT Wallet";
-  if (walletClientType === "wallet_connect") return "Mobile wallet";
-  return walletClientType.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 function safeWalletMessage(message: string) {
@@ -49,9 +47,8 @@ export function PrivyWalletButton({
   const pathname = usePathname();
   const walletFirstTerminal = pathname === "/" || pathname === "/vnext" || pathname.startsWith("/vnext/");
   const identity = useRmtIdentity();
-  const { ready, authenticated, logout, connectWallet } = usePrivy();
+  const { ready, authenticated } = usePrivy();
   const { wallets, ready: walletsReady } = useWallets();
-  const { setActiveWallet } = useSetActiveWallet();
   const { address, chainId, isConnected } = useAccount();
   const { disconnect: disconnectWagmi } = useDisconnect();
   const targetChain = target === "mainnet" ? robinhoodChain : robinhoodChainTestnet;
@@ -63,27 +60,21 @@ export function PrivyWalletButton({
   const mobileMetaMaskUrl = walletEnvironment === "mobile-browser" && typeof window !== "undefined"
     ? metaMaskDappLink(window.location.href)
     : "";
-  const activeWallet = wallets.find((wallet) => wallet.address.toLowerCase() === address?.toLowerCase());
-  const externalWallets = useMemo(
-    () => wallets.filter((wallet) => wallet.walletClientType !== "privy"),
-    [wallets]
-  );
+  const externalWallets = useMemo(() => externalEthereumWallets(wallets), [wallets]);
+  const activeExternalWallet = identity.activeWalletKey
+    ? externalWallets.find((wallet) => walletGatewayKey(wallet) === identity.activeWalletKey)
+    : undefined;
+  const activeWallet = walletFirstTerminal
+    ? activeExternalWallet
+    : wallets.find((wallet) => wallet.address.toLowerCase() === address?.toLowerCase());
   const displayedWallets = walletFirstTerminal ? externalWallets : wallets;
   const connectedTradingWallet = Boolean(
-    isConnected
+    authenticated
+    && isConnected
     && address
-    && (!walletFirstTerminal || activeWallet?.walletClientType !== "privy")
+    && (!walletFirstTerminal || identity.activeWalletKind === "external")
   );
   const close = useCallback(() => setOpen(false), []);
-
-  useEffect(() => {
-    if (!walletFirstTerminal || !walletsReady || activeWallet?.walletClientType !== "privy") return;
-    const preferredExternalWallet = externalWallets[0];
-    if (!preferredExternalWallet) return;
-    void setActiveWallet(preferredExternalWallet).catch((error) => {
-      setMessage(safeWalletMessage(error instanceof Error ? error.message : ""));
-    });
-  }, [activeWallet?.walletClientType, externalWallets, setActiveWallet, walletFirstTerminal, walletsReady]);
 
   useEffect(() => {
     if (!open) return;
@@ -103,7 +94,57 @@ export function PrivyWalletButton({
     return <button className="wallet live connectTrigger" type="button" disabled>{compact ? "Loading…" : "Wallet loading…"}</button>;
   }
 
+  const chooseWallet = async (walletKey: string) => {
+    setMessage("");
+    identity.clearWalletConnectionError();
+    try {
+      await identity.selectTradingWallet(walletKey);
+      close();
+    } catch (error) {
+      setMessage(safeWalletMessage(error instanceof Error ? error.message : ""));
+    }
+  };
+
   if (!connectedTradingWallet || !address) {
+    if (walletFirstTerminal && identity.walletSelectionRequired) {
+      return (
+        <div className="walletMenu">
+          <button
+            className="wallet live connectTrigger"
+            type="button"
+            aria-expanded={open}
+            aria-controls="trading-wallet-choice-dialog"
+            onClick={() => setOpen((value) => !value)}
+          >
+            {compact ? "Choose wallet" : "Choose trading wallet"}
+          </button>
+          {open && <OverlayPortal>
+            <button className="walletBackdrop" type="button" aria-label="Close wallet menu" onClick={close} />
+            <div className="walletPopover walletOverlayPopover privyWalletPopover" id="trading-wallet-choice-dialog" role="dialog" aria-modal="true" aria-label="Choose the active trading wallet">
+              <div className="walletPopoverHeader">
+                <div><strong>Choose the signing wallet</strong><span>More than one wallet exposes this address. RMT will not guess.</span></div>
+                <button type="button" aria-label="Close wallet menu" onClick={close}>×</button>
+              </div>
+              <div className="privyWalletList" role="list">
+                {externalWallets.map((wallet) => {
+                  const walletKey = walletGatewayKey(wallet);
+                  return <button
+                    type="button"
+                    role="listitem"
+                    key={walletKey}
+                    onClick={() => void chooseWallet(walletKey)}
+                  >
+                    <span><strong>{walletGatewayDisplayName(wallet)}</strong><small>{shortAddress(wallet.address)}</small></span>
+                    <em>USE</em>
+                  </button>;
+                })}
+              </div>
+              {(message || identity.walletConnectionError) && <p className="walletError" role="status">{message || identity.walletConnectionError}</p>}
+            </div>
+          </OverlayPortal>}
+        </div>
+      );
+    }
     if (walletEnvironment === "mobile-wallet-browser") {
       return (
         <div className="walletMenu">
@@ -112,13 +153,14 @@ export function PrivyWalletButton({
             type="button"
             onClick={() => {
               setMessage("");
+              identity.clearWalletConnectionError();
               recordExperienceStage("wallet_connect_started");
               walletFirstTerminal ? identity.connectTradingWallet() : identity.login();
             }}
           >
             {compact ? "Connect" : "Connect this wallet"}
           </button>
-          {message && <span className="networkSwitchError" role="alert">{message}</span>}
+          {(message || identity.walletConnectionError) && <span className="networkSwitchError" role="alert">{message || identity.walletConnectionError}</span>}
         </div>
       );
     }
@@ -159,17 +201,18 @@ export function PrivyWalletButton({
                   onClick={() => {
                     close();
                     setMessage("");
+                    identity.clearWalletConnectionError();
                     recordExperienceStage("wallet_connect_started");
                     walletFirstTerminal ? identity.connectTradingWallet() : identity.login();
                   }}
                 >
-                  <span>Rabby / other</span>
-                  <small>Use Privy's external-wallet picker or WalletConnect</small>
+                  <span>Installed or mobile wallet</span>
+                  <small>Use an EIP-6963 wallet such as Rabby, or WalletConnect</small>
                 </button>
               </div>
             </div>
           </OverlayPortal>}
-          {message && <span className="networkSwitchError" role="alert">{message}</span>}
+          {(message || identity.walletConnectionError) && <span className="networkSwitchError" role="alert">{message || identity.walletConnectionError}</span>}
         </div>
       );
     }
@@ -180,13 +223,14 @@ export function PrivyWalletButton({
           type="button"
           onClick={() => {
             setMessage("");
+            identity.clearWalletConnectionError();
             recordExperienceStage("wallet_connect_started");
             walletFirstTerminal ? identity.connectTradingWallet() : identity.login();
           }}
         >
           {compact ? "Connect" : walletFirstTerminal ? "Connect trading wallet" : "Sign in or create wallet"}
         </button>
-        {message && <span className="networkSwitchError" role="alert">{message}</span>}
+        {(message || identity.walletConnectionError) && <span className="networkSwitchError" role="alert">{message || identity.walletConnectionError}</span>}
       </div>
     );
   }
@@ -206,12 +250,11 @@ export function PrivyWalletButton({
     setMessage("");
     try {
       await Promise.allSettled(
-        wallets
-          .filter((wallet) => wallet.walletClientType !== "privy")
-          .map((wallet) => Promise.resolve(wallet.disconnect()))
+        externalWallets.map((wallet) => Promise.resolve(wallet.disconnect()))
       );
       disconnectWagmi();
-      if (authenticated) await logout();
+      identity.clearTradingWalletPreference();
+      if (authenticated) await identity.logout();
       setFundingOpen(false);
       setReceiveOpen(false);
       setTransferOpen(false);
@@ -238,7 +281,7 @@ export function PrivyWalletButton({
                 <button type="button" aria-label="Close wallet menu" onClick={close}>×</button>
               </div>
               <div className="privyActiveWalletSummary">
-                <span><small>ACTIVE WALLET</small><strong>{walletName(activeWallet?.walletClientType ?? "wallet")} · {targetChain.name}</strong></span>
+                <span><small>ACTIVE WALLET</small><strong>{activeWallet ? walletGatewayDisplayName(activeWallet) : "External wallet"} · {targetChain.name}</strong></span>
                 <code title={address}>{address}</code>
               </div>
               <div className="privyAssetActions" aria-label="Wallet actions">
@@ -249,32 +292,34 @@ export function PrivyWalletButton({
               </div>
               <div className="privyWalletList" role="list">
                 {displayedWallets.map((wallet) => {
-                  const active = wallet.address.toLowerCase() === address.toLowerCase();
+                  const walletKey = walletGatewayKey(wallet);
+                  const active = walletFirstTerminal
+                    ? walletKey === identity.activeWalletKey
+                    : wallet.address.toLowerCase() === address.toLowerCase();
                   return <button
                     type="button"
                     role="listitem"
                     className={active ? "active" : ""}
-                    key={`${wallet.walletClientType}:${wallet.address}`}
+                    key={walletKey}
                     disabled={active}
-                    onClick={() => void setActiveWallet(wallet).then(close).catch((error) => setMessage(safeWalletMessage(error instanceof Error ? error.message : "")))}
+                    onClick={() => void chooseWallet(walletKey)}
                   >
-                    <span><strong>{walletName(wallet.walletClientType)}</strong><small>{shortAddress(wallet.address)}</small></span>
+                    <span><strong>{walletGatewayDisplayName(wallet)}</strong><small>{shortAddress(wallet.address)}</small></span>
                     <em>{active ? "ACTIVE" : "USE"}</em>
                   </button>;
                 })}
               </div>
               <div className="privyWalletActions">
-                <button type="button" onClick={() => connectWallet({
-                  description: "Connect an external wallet for RMT trading.",
-                  walletChainType: "ethereum-only",
-                  walletList: ["metamask", "coinbase_wallet", "detected_ethereum_wallets", "wallet_connect"]
-                })}>Add another wallet</button>
+                <button type="button" onClick={() => {
+                  identity.clearWalletConnectionError();
+                  identity.connectTradingWallet();
+                }}>Add another wallet</button>
                 <button type="button" onClick={() => void signOut()}>Disconnect from RMT</button>
               </div>
               {!walletFirstTerminal && <p className="privyProfileBoundary">
                 Your authenticated wallet session protects exact recipient binding for RMT trading. No social profile is required, you choose the active wallet, and RMT never receives its private key.
               </p>}
-              {message && <p className="walletError" role="status">{message}</p>}
+              {(message || identity.walletConnectionError) && <p className="walletError" role="status">{message || identity.walletConnectionError}</p>}
             </div>
           </OverlayPortal>}
         </div>
