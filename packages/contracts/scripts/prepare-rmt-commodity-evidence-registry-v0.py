@@ -94,7 +94,7 @@ def _clean_git_state(repo: Path) -> tuple[str, str]:
 
 def _hardened_release_material(admin: str, rpc: str) -> tuple[dict[str, Any], str]:
     record, deployment_data = _original_release_material(admin, rpc)
-    _, contracts = impl.roots()
+    repo, contracts = impl.roots()
     expected_attestor = _original_address_from_test_key(contracts, SYNTHETIC_ATTESTOR_KEY)
     actual_attestor = record["syntheticParties"]["attestor"]["signingAddress"]
     if actual_attestor.lower() != expected_attestor.lower():
@@ -103,9 +103,9 @@ def _hardened_release_material(admin: str, rpc: str) -> tuple[dict[str, Any], st
         )
 
     source = record.setdefault("source", {})
-    source["preparationEntrypointPath"] = str(ENTRYPOINT.relative_to(impl.roots()[0]))
+    source["preparationEntrypointPath"] = str(ENTRYPOINT.relative_to(repo))
     source["preparationEntrypointSha256"] = _sha256(ENTRYPOINT)
-    source["preparationImplementationPath"] = str(IMPLEMENTATION.relative_to(impl.roots()[0]))
+    source["preparationImplementationPath"] = str(IMPLEMENTATION.relative_to(repo))
     source["preparationImplementationSha256"] = _sha256(IMPLEMENTATION)
     source["preparationImplementationGitBlob"] = _git_blob_sha(IMPLEMENTATION)
     install_script = contracts / "scripts/install-v4-deps.sh"
@@ -116,11 +116,13 @@ def _hardened_release_material(admin: str, rpc: str) -> tuple[dict[str, Any], st
 
 def _hardened_verify(record_path: Path, calldata_path: Path, rpc: str) -> None:
     record = json.loads(record_path.read_text(encoding="utf-8"))
+    _, contracts = impl.roots()
     source = record.get("source", {})
     expected = {
         "preparationEntrypointSha256": _sha256(ENTRYPOINT),
         "preparationImplementationSha256": _sha256(IMPLEMENTATION),
         "preparationImplementationGitBlob": _git_blob_sha(IMPLEMENTATION),
+        "installScriptSha256": _sha256(contracts / "scripts/install-v4-deps.sh"),
         "canonicalSyntheticAttestorKeyLabel": SYNTHETIC_ATTESTOR_KEY,
     }
     for key, value in expected.items():
