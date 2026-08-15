@@ -1,0 +1,203 @@
+name: Agent Arena Stabilization Matrix
+
+on:
+  push:
+    branches:
+      - codex/agent-engine-foundation
+    paths:
+      - "packages/agent-core/**"
+      - "apps/agent-engine/**"
+      - "apps/rmt-mcp/**"
+      - "apps/web/**"
+      - "scripts/agent-arena-branch-audit.mjs"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - ".github/workflows/agent-arena-stabilization.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: agent-arena-stabilization-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  quality-boundaries:
+    name: Quality and authority boundaries
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Setup Node 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+      - name: Audit Agent, Arena, and MCP source boundaries
+        run: node scripts/agent-arena-branch-audit.mjs
+      - name: Verify patch whitespace
+        run: git diff --check
+
+  agent-core:
+    name: Agent Core smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Setup Node 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+      - name: Run Agent Core domain smoke
+        run: node --experimental-strip-types packages/agent-core/src/smoke.ts
+      - name: Run participant identity smoke
+        run: node --experimental-strip-types packages/agent-core/src/participant-smoke.ts
+
+  foundation-v1:
+    name: Agent Foundation Smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Setup Node 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+      - name: Run foundation V1 aggregate
+        run: node --experimental-strip-types apps/agent-engine/src/all-foundation-smoke.ts
+
+  foundation-v2:
+    name: Agent Foundation Smoke V2
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Setup Node 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+      - name: Run authoritative foundation V2 aggregate
+        run: node --experimental-strip-types apps/agent-engine/src/all-foundation-smoke-v2.ts
+
+  authoritative-execution:
+    name: Authoritative paper execution
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Setup Node 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+      - name: Run Human authoritative execution
+        run: node --experimental-strip-types apps/agent-engine/src/human-authoritative-paper-execution-smoke.ts
+      - name: Run Human authoritative position reduction
+        run: node --experimental-strip-types apps/agent-engine/src/human-authoritative-position-reduction-smoke.ts
+      - name: Run Agent authoritative position reduction
+        run: node --experimental-strip-types apps/agent-engine/src/agent-authoritative-position-reduction-smoke.ts
+      - name: Run Agent authoritative open-position execution
+        run: node --experimental-strip-types apps/agent-engine/src/agent-authoritative-open-position-execution-smoke.ts
+      - name: Run canonical valuation scheduler
+        run: node --experimental-strip-types apps/agent-engine/src/paper-canonical-valuation-scheduler-smoke.ts
+
+  arena-evidence:
+    name: Arena performance, matchup, and finalization
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Setup Node 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+      - name: Run gross Arena performance
+        run: node --experimental-strip-types apps/agent-engine/src/paper-arena-performance-smoke.ts
+      - name: Run external-cost valuation
+        run: node --experimental-strip-types apps/agent-engine/src/paper-external-cost-valuation-smoke.ts
+      - name: Run net Arena performance
+        run: node --experimental-strip-types apps/agent-engine/src/paper-arena-net-performance-smoke.ts
+      - name: Run gross and net leaderboards
+        run: |
+          node --experimental-strip-types apps/agent-engine/src/paper-arena-leaderboard-smoke.ts
+          node --experimental-strip-types apps/agent-engine/src/paper-arena-net-leaderboard-smoke.ts
+      - name: Run roster and Human-vs-Agent matchup
+        run: |
+          node --experimental-strip-types apps/agent-engine/src/paper-arena-roster-smoke.ts
+          node --experimental-strip-types apps/agent-engine/src/paper-arena-matchup-smoke.ts
+          node --experimental-strip-types apps/agent-engine/src/paper-arena-authoritative-matchup-smoke.ts
+      - name: Run sanitized public model and immutable finalization
+        run: |
+          node --experimental-strip-types apps/agent-engine/src/paper-arena-public-read-model-smoke.ts
+          node --experimental-strip-types apps/agent-engine/src/paper-arena-season-finalization-smoke.ts
+
+  career-reputation:
+    name: Career reputation and public profile
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Setup Node 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+      - name: Run career reputation smoke
+        run: node --experimental-strip-types apps/agent-engine/src/paper-arena-career-reputation-smoke.ts
+      - name: Run public career profile smoke
+        run: node --experimental-strip-types apps/agent-engine/src/paper-arena-public-career-profile-smoke.ts
+
+  mcp-read-boundary:
+    name: MCP sanitized read boundary
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Setup Node 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+      - name: Run five-tool Arena read contract smoke
+        run: node --experimental-strip-types apps/rmt-mcp/src/smoke.ts
+      - name: Run career read contract smoke
+        run: node --experimental-strip-types apps/rmt-mcp/src/career-smoke.ts
+      - name: Run composed six-tool registry smoke
+        run: node --experimental-strip-types apps/rmt-mcp/src/read-registry-smoke.ts
+
+  web-integration:
+    name: Frozen install, terminal verification, typecheck, and production build
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+      NODE_OPTIONS: "--max-old-space-size=6144"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Setup pnpm 10.12.1
+        uses: pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a # v4.4.0
+        with:
+          version: 10.12.1
+      - name: Setup Node 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+      - name: Frozen workspace install
+        run: pnpm install --frozen-lockfile
+      - name: Run terminal release verification
+        run: pnpm test:terminal-release
+      - name: Run package-permitted TypeScript check
+        run: pnpm typecheck
+      - name: Build production web bundle
+        run: pnpm build
+      - name: Verify build did not modify tracked source
+        run: |
+          git diff --check
+          git diff --exit-code
