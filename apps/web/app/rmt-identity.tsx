@@ -153,7 +153,7 @@ export function PrivyIdentityBridge({ children }: { children: ReactNode }) {
   const activateTradingWallet = useCallback(async (walletKey: string) => {
     const wallet = externalWallets.find((candidate) => walletGatewayKey(candidate) === walletKey);
     if (!wallet) throw new Error("The selected external wallet is no longer connected.");
-    if (authenticated && !wallet.linked) await wallet.loginOrLink();
+    if (!authenticated || !wallet.linked) await wallet.loginOrLink();
     await setActiveWallet(wallet);
     lastAppliedWalletKey.current = walletKey;
     setAppliedWalletKey(walletKey);
@@ -219,15 +219,11 @@ export function PrivyIdentityBridge({ children }: { children: ReactNode }) {
     clearTradingWalletPreference,
     clearWalletConnectionError: () => setWalletConnectionError(""),
     connectTradingWallet: () => {
-      if (authenticated) {
-        openExternalWalletConnect({
-          description: "Connect the external wallet RMT should use for trading.",
-          walletChainType: "ethereum-only",
-          walletList: rmtExternalWalletOptions()
-        });
-        return;
-      }
-      openPrivyLogin({ loginMethods: ["wallet"], walletChainType: "ethereum-only" });
+      openExternalWalletConnect({
+        description: "Connect the external Ethereum wallet RMT should use for trading.",
+        walletChainType: "ethereum-only",
+        walletList: rmtExternalWalletOptions()
+      });
     },
     enabled: true,
     environment,

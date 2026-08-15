@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { normalizePrivyAppId } from "./privy-config";
-import { isMobileWebUserAgent, metaMaskDappLink, walletBrowserEnvironment } from "./mobile-wallet-link";
+import { isMobileWebUserAgent, metaMaskDappLink, rabbyDappLink, walletBrowserEnvironment } from "./mobile-wallet-link";
 
 const appRoot = fileURLToPath(new URL("../app/", import.meta.url));
 const providers = readFileSync(`${appRoot}providers.tsx`, "utf8");
@@ -26,11 +26,22 @@ assert.equal(isMobileWebUserAgent("Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like 
 assert.equal(isMobileWebUserAgent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)"), false);
 assert.equal(walletBrowserEnvironment("Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Mobile", true), "mobile-wallet-browser");
 assert.equal(walletBrowserEnvironment("Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Mobile", false), "mobile-browser");
+assert.equal(walletBrowserEnvironment("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)", true), "desktop");
 assert.equal(
   metaMaskDappLink("https://www.rmtlaunch.fun/?asset=RMT"),
   "https://link.metamask.io/dapp/www.rmtlaunch.fun/?asset=RMT",
   "Mobile MetaMask must open the exact RMT route through MetaMask's current universal link."
 );
+const rabbyUrl = new URL(rabbyDappLink("https://www.rmtlaunch.fun/?market=0x1234&side=buy#quote"));
+assert.equal(rabbyUrl.origin, "https://go.rabby.io", "Mobile Rabby must use its official production universal-link host.");
+assert.equal(rabbyUrl.pathname, "/mobile/", "Mobile Rabby must use its official production link path.");
+assert.equal(rabbyUrl.searchParams.get("_cmd"), "open-dapp", "Mobile Rabby must receive the open-dapp command.");
+assert.equal(
+  decodeURIComponent(rabbyUrl.searchParams.get("dapp") ?? ""),
+  "https://www.rmtlaunch.fun/?market=0x1234&side=buy#quote",
+  "Mobile Rabby must open the exact RMT route, including query and hash state."
+);
+assert.throws(() => rabbyDappLink("javascript:alert(1)"), /HTTP\(S\)/, "Rabby handoff must reject non-web destinations.");
 assert.match(providers, /speedWalletEnabled/, "Speed Wallet must remain environment-gated.");
 assert.match(walletConfig, /function createLegacyWalletConnectors/, "Legacy connectors must be initialized only when the legacy provider renders.");
 assert.match(providers, /connectors:\s*createLegacyWalletConnectors\(\)/, "The legacy provider must own legacy connector initialization.");
@@ -38,17 +49,20 @@ assert.doesNotMatch(speedProvider, /createLegacyWalletConnectors/, "Privy must n
 assert.match(speedProvider, /@privy-io\/wagmi/, "Embedded wallets must use Privy's official Wagmi adapter.");
 assert.match(speedProvider, /createOnLogin:\s*"users-without-wallets"/, "Privy must not create a second wallet for a trader who already has an external wallet.");
 assert.match(speedProvider, /showWalletLoginFirst:\s*true/, "Privy must prioritize the wallet already available to a trader.");
+assert.match(speedProvider, /Use an external Ethereum wallet you control/, "Privy trading-wallet copy must describe the external-wallet boundary.");
+assert.doesNotMatch(speedProvider, /create a user-owned Robinhood Chain wallet/, "Trading-wallet copy must not advertise embedded-wallet creation.");
 assert.match(walletButton, /if \(speedWalletEnabled\) return <PrivyWalletButton/, "Privy must own the wallet entry point whenever validly configured.");
 assert.match(privyWalletButton, /"Connect trading wallet"/, "VNext must lead with a trading-wallet connection rather than a profile login.");
 assert.match(privyWalletButton, /pathname === "\/" \|\| pathname === "\/vnext"/, "The production root must retain VNext's external-wallet-only boundary.");
 assert.match(privyWalletButton, /identity\.connectTradingWallet\(\)/, "VNext must use the external-wallet-only Privy flow.");
 assert.doesNotMatch(privyWalletButton, /useConnectOrCreateWallet|connectOrCreateWallet\(/, "RMT must not open a connection-only flow before wallet authentication.");
 assert.match(privyWalletButton, /mobileMetaMaskUrl/, "Mobile traders must have a direct MetaMask app handoff outside blocked embedded-browser connection modals.");
+assert.match(privyWalletButton, /mobileRabbyUrl/, "Mobile traders must have a direct Rabby app handoff from a normal browser.");
 assert.match(privyWalletButton, /Connect this wallet/, "A mobile wallet browser must offer its injected wallet directly.");
 assert.match(privyWalletButton, /aria-controls="mobile-wallet-entry-dialog"/, "A normal mobile browser must expose one top-level wallet entry control.");
 assert.match(privyWalletButton, /aria-label="Choose a mobile wallet"/, "Mobile wallet choices must open in an explicit accessible dialog.");
-assert.match(privyWalletButton, /Installed or mobile wallet/, "Mobile traders must have one truthful EIP-6963 and WalletConnect fallback.");
-assert.match(privyWalletButton, /EIP-6963 wallet such as Rabby/, "Rabby must be discovered through the supported EIP-6963 path.");
+assert.match(privyWalletButton, /Other wallets/, "Mobile traders must have one truthful WalletConnect fallback.");
+assert.match(privyWalletButton, /Use WalletConnect or another supported Ethereum wallet/, "The normal mobile-browser fallback must not imply extension injection.");
 assert.match(rmtIdentity, /supportsOAuth \? \["email", "google", "passkey", "wallet"\] : \["wallet"\]/, "Wallet browsers must not offer OAuth flows that cannot leave their embedded browser.");
 assert.doesNotMatch(privyFundingActions, /onClick=\{login\}/, "Funding entry points must use RMT's environment-aware Privy login.");
 assert.ok(
@@ -56,7 +70,13 @@ assert.ok(
   "A trader must be able to create or recover the wallet before provider funding availability is evaluated."
 );
 assert.match(speedProvider, /rmtExternalWalletOptions\(\)/, "Privy appearance must use the canonical external-wallet registry.");
-assert.match(rmtIdentity, /useConnectWallet/, "Authenticated external connections must use Privy's current connection hook.");
+assert.match(rmtIdentity, /useConnectWallet/, "All terminal external connections must use Privy's current connection hook.");
+assert.match(rmtIdentity, /if \(!authenticated \|\| !wallet\.linked\) await wallet\.loginOrLink\(\)/, "A newly connected external wallet must authenticate or link through its own SIWE signature.");
+assert.doesNotMatch(
+  rmtIdentity.match(/connectTradingWallet:\s*\(\) => \{[\s\S]*?\n\s*\},\n\s*enabled:/)?.[0] ?? "",
+  /openPrivyLogin/,
+  "Terminal wallet connection must not enter Privy's social, passkey, or embedded-wallet login chooser."
+);
 assert.match(rmtIdentity, /useSetActiveWallet/, "The identity boundary must bind the exact selected connector into Wagmi.");
 assert.match(rmtIdentity, /walletGatewayKey/, "Trading identity must be connector-qualified rather than address-only.");
 assert.match(privyWalletButton, /identity\.selectTradingWallet\(walletKey\)/, "The wallet menu must activate an exact gateway identity.");

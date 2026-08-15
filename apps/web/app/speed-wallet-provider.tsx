@@ -27,8 +27,8 @@ export function SpeedWalletProvider({ children, queryClient }: { children: React
           theme: "dark",
           accentColor: "#35ef73",
           logo: `${appUrl}/brand/rmt-master-logo.png`,
-          landingHeader: "Your RMT trading wallet",
-          loginMessage: "Use your wallet or create a user-owned Robinhood Chain wallet in seconds.",
+          landingHeader: "Connect your RMT trading wallet",
+          loginMessage: "Use an external Ethereum wallet you control. RMT never receives its private key.",
           showWalletLoginFirst: true,
           walletChainType: "ethereum-only",
           walletList: rmtExternalWalletOptions()
