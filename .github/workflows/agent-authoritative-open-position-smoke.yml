@@ -1,0 +1,44 @@
+name: Agent Authoritative Open Position Smoke
+
+on:
+  push:
+    branches:
+      - codex/agent-engine-foundation
+    paths:
+      - "apps/agent-engine/src/paper-canonical-risk-snapshot.ts"
+      - "apps/agent-engine/src/human-canonical-risk-snapshot.ts"
+      - "apps/agent-engine/src/agent-canonical-risk-snapshot.ts"
+      - "apps/agent-engine/src/agent-canonical-open-position-admission.ts"
+      - "apps/agent-engine/src/agent-authoritative-open-position-admission.ts"
+      - "apps/agent-engine/src/agent-authoritative-open-position-admission-smoke.ts"
+      - "apps/agent-engine/src/paper-open-position-admission.ts"
+      - "apps/agent-engine/src/paper-risk-capacity.ts"
+      - "apps/agent-engine/src/paper-trade-capacity.ts"
+      - "apps/agent-engine/src/paper-trade-request.ts"
+      - "apps/agent-engine/src/paper-order-admission.ts"
+      - "apps/agent-engine/src/paper-canonical-valuation.ts"
+      - "apps/agent-engine/src/paper-canonical-valuation-store.ts"
+      - "packages/agent-core/src/**"
+      - ".github/workflows/agent-authoritative-open-position-smoke.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Run shared Human canonical risk smoke
+        run: node --experimental-strip-types apps/agent-engine/src/human-canonical-risk-snapshot-smoke.ts
+      - name: Run legacy Agent admission smoke
+        run: node --experimental-strip-types apps/agent-engine/src/paper-open-position-admission-smoke.ts
+      - name: Run authoritative Agent admission smoke
+        run: node --experimental-strip-types apps/agent-engine/src/agent-authoritative-open-position-admission-smoke.ts
