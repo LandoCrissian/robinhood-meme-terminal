@@ -1,6 +1,6 @@
 # RMT commodity evidence registry V0 implementation
 
-**Status:** IMPLEMENTATION PROOF — NOT ARCHITECTURE AUTHORITY  
+**Status:** IMPLEMENTATION AND NON-BROADCAST REHEARSAL PROOF — NOT ARCHITECTURE AUTHORITY  
 **Network boundary:** Robinhood Chain testnet only (`chainId 46630`)  
 **Evidence boundary:** checked-in synthetic helium fixtures only  
 **Deployment status:** not deployed  
@@ -8,13 +8,13 @@
 
 ## Purpose
 
-This tranche implements the smallest testable proof from the helium RWA research: a non-token registry that can bind independently signed issuer, custodian, and attestor claims to an exact synthetic physical lot, evidence version, chain, verifying contract, validity window, and set of document commitments.
+This tranche implements the smallest testable proof from the helium RWA research: a non-token registry that can bind separately signed issuer, custodian, and attestor claims to an exact synthetic physical lot, evidence version, chain, verifying contract, validity window, and set of document commitments.
 
 It is designed to answer one narrow technical question:
 
 > Can RMT publish an append-only, adversarially testable record of what a physical-commodity evidence package claims without creating a token or pretending the claim is a real commodity right?
 
-The answer is implemented only for synthetic test data. This work does not establish title, custody, reserves, legal rights, redemption, regulatory compliance, producer participation, Robinhood endorsement, or market value.
+The answer is implemented only for synthetic test data. This work does not establish title, custody, reserves, legal rights, redemption, regulatory compliance, producer participation, Robinhood endorsement, organizational independence, or market value.
 
 ## Explicit non-capabilities
 
@@ -37,23 +37,19 @@ Direct native-value transfers and unknown fallback calls revert.
   - testnet-chain-bound registry;
   - EIP-712 evidence digest;
   - EOA and ERC-1271 signature verification;
-  - separate issuer, custodian, and attestor identities;
+  - separate issuer, custodian, and attestor role identities;
   - append-only versions and nonce monotonicity;
   - physical-lot collision prevention;
   - proposed, verified, stale, disputed, suspended, closed, and superseded states;
   - evidence and party liveness read methods.
 
 - `packages/contracts/test/RMTCommodityEvidenceRegistryV0.t.sol`
-  - valid synthetic publication;
-  - wrong signer and wrong role rejection;
-  - chain and verifying-contract replay boundaries;
-  - duplicate physical-lot rejection;
-  - unknown encumbrance fail-closed behavior;
-  - validity and stale-state behavior;
-  - dispute, suspension, closure, and supersession;
-  - ERC-1271 support;
-  - no-value and no-mint-interface checks;
-  - party-quorum and identity-separation checks.
+  - primary valid-path and adversarial coverage.
+
+- `packages/contracts/test/RMTCommodityEvidenceRegistryV0Hardening.t.sol`
+  - proves a suspended batch head cannot be bypassed with a new evidence version;
+  - proves a superseded record cannot be relabeled closed;
+  - proves a disputed head can still be corrected by a newly signed evidence version.
 
 - `packages/contracts/test/fixtures/commodity-evidence/synthetic-helium-public-manifest-v0.json`
   - public synthetic fixture with an explicit no-rights disclaimer.
@@ -62,10 +58,24 @@ Direct native-value transfers and unknown fallback calls revert.
   - expanded synthetic fixture used only to prove separate public/full document commitments.
 
 - `packages/contracts/script/BuildSyntheticCommodityEvidenceV0.s.sol`
-  - read-only Foundry utility;
+  - read-only Foundry signing utility;
   - uses public synthetic fixture keys;
   - reads the checked-in fixtures, builds the envelope, computes the registry-specific digest, and produces three role signatures;
   - contains no broadcast, deployment, publication, environment-secret, or transaction-submission call.
+
+- `packages/contracts/script/RehearseSyntheticCommodityEvidenceRegistryV0.s.sol`
+  - deterministic simulation-only deployment and configuration rehearsal;
+  - deploys a registry inside the Foundry simulation, registers the three public synthetic signing addresses, configures the synthetic instrument, and verifies the resulting state;
+  - has no `startBroadcast`, `broadcast`, environment-secret, wallet, or transaction-submission interface.
+
+- `packages/contracts/test/RMTCommodityEvidenceRegistryV0Rehearsal.t.sol`
+  - verifies the complete synthetic rehearsal configuration;
+  - verifies the rehearsal refuses every chain other than `46630`.
+
+- `packages/contracts/deployments/rmt-commodity-evidence-registry-v0.template.json`
+  - deliberately undeployed manifest template;
+  - all addresses, transaction hashes, block numbers, and runtime hashes remain unset;
+  - every deployment, broadcast, merge, real-inventory, and token authorization flag defaults to `false`.
 
 ## Core invariants
 
@@ -91,9 +101,11 @@ Each evidence digest is bound through EIP-712 to:
 
 A signature created for another chain or another registry instance must fail.
 
-### Independent role binding
+### Role separation and its limit
 
-The configured issuer, custodian, and attestor must be distinct party identities with distinct registered signing accounts. Each signature carries an explicit role and party ID. EOA and ERC-1271 signing accounts are supported.
+The configured issuer, custodian, and attestor must use distinct registered party IDs and distinct registered signing addresses. Each signature carries an explicit role and party ID. EOA and ERC-1271 signing addresses are supported.
+
+This is protocol-surface role separation only. It does **not** prove that the signing addresses have different beneficial owners, different organizations, different personnel, independent judgment, independent key custody, or independent devices. A real-world pilot would require offchain identity, authority, conflict, and key-control verification that this contract cannot perform.
 
 ### Append-only evidence history
 
@@ -103,7 +115,11 @@ For each instrument/batch key:
 - nonces increase monotonically;
 - the previous version remains readable;
 - a new version marks the prior version superseded rather than deleting it;
-- a closed or already superseded head cannot be silently reactivated.
+- a closed, suspended, or already superseded head cannot be silently reactivated;
+- a superseded historical record cannot later be relabeled closed;
+- a disputed head may be corrected by a newly signed evidence version, preserving both the dispute and replacement history.
+
+A stored suspension is intentionally fail-closed in V0. There is no resume function. A future revision would require an explicit, reviewed transition rather than allowing signers to bypass an administrator-recorded suspension by incrementing the version.
 
 ### Physical-lot collision prevention
 
@@ -131,13 +147,40 @@ cd packages/contracts
 forge fmt --check \
   src/RMTCommodityEvidenceRegistryV0.sol \
   test/RMTCommodityEvidenceRegistryV0.t.sol \
-  script/BuildSyntheticCommodityEvidenceV0.s.sol
+  test/RMTCommodityEvidenceRegistryV0Hardening.t.sol \
+  test/RMTCommodityEvidenceRegistryV0Rehearsal.t.sol \
+  script/BuildSyntheticCommodityEvidenceV0.s.sol \
+  script/RehearseSyntheticCommodityEvidenceRegistryV0.s.sol
 forge test --match-path test/RMTCommodityEvidenceRegistryV0.t.sol -vvv
+forge test --match-path test/RMTCommodityEvidenceRegistryV0Hardening.t.sol -vvv
+forge test --match-path test/RMTCommodityEvidenceRegistryV0Rehearsal.t.sol -vvv
 forge test -vvv
 forge build
 ```
 
 The repository-wide CI, contract suite, static analysis, secret scan, and diff checks remain the authority for pull-request validation. No passing status should be claimed until the latest PR head is green.
+
+## Non-broadcast rehearsal
+
+A local Anvil rehearsal must use the target chain ID and must omit every broadcast flag:
+
+Terminal one:
+
+```bash
+anvil --chain-id 46630
+```
+
+Terminal two:
+
+```bash
+cd packages/contracts
+forge script script/RehearseSyntheticCommodityEvidenceRegistryV0.s.sol:RehearseSyntheticCommodityEvidenceRegistryV0 \
+  --rpc-url http://127.0.0.1:8545 \
+  --sig "run()" \
+  -vvv
+```
+
+The rehearsal script has no broadcast function and reads no private environment value. It creates only simulated state. A command containing `--broadcast` is outside this tranche and is not authorized.
 
 ## Signing utility boundary
 
@@ -147,15 +190,17 @@ It may only be used against a separately authorized registry instance on Robinho
 
 ## Future testnet deployment gate
 
-A later testnet deployment would require a separate explicit owner authorization and, before any broadcast:
+A later testnet deployment requires a separate explicit owner authorization and, before any broadcast:
 
 1. green latest-head CI and contract tests;
-2. final source and runtime review;
-3. deterministic deployment/rehearsal evidence;
-4. explicit administrator identity and revocation procedure;
+2. final source, state-machine, bytecode-size, and runtime review;
+3. successful deterministic non-broadcast rehearsal evidence;
+4. an explicitly approved administrator address and revocation procedure;
 5. proof that only synthetic fixtures and public test keys are used;
-6. explorer verification plan;
-7. no production environment or UI change.
+6. a completed deployment manifest with expected creation/runtime hashes and expected address;
+7. an explorer source-verification plan;
+8. a funded testnet-only deployer whose key is never committed or shared;
+9. no production environment, mainnet, token, or UI change.
 
 A testnet deployment would still create no real commodity right and would not authorize a token.
 
@@ -165,6 +210,8 @@ No part of this implementation is admitted for real inventory. A real pilot rema
 
 ## Codex coexistence
 
-This branch was created from current `main` and changes only the isolated contract, focused tests, synthetic fixtures, read-only signing utility, and this implementation note. It does not modify VNext, web routes, wallet behavior, providers, execution, fees, indexers, CI configuration, environment files, search distribution, production health, `ARCHITECTURE_FREEZE.md`, or `ACTIVE_SYSTEM_MAP.md`.
+This branch was synchronized with current `main` before the hardening and rehearsal tranche. Its changes remain confined to the isolated registry contract, focused contract tests, synthetic fixtures, non-broadcast Foundry utilities, undeployed manifest template, and this implementation note.
+
+It does not modify VNext, web routes, wallet behavior, providers, execution, fees, indexers, CI configuration, environment files, search distribution, production health, `ARCHITECTURE_FREEZE.md`, or `ACTIVE_SYSTEM_MAP.md`.
 
 No merge, deployment, UI integration, public announcement, producer outreach, custodian outreach, Robinhood outreach, or token issuance is authorized by this document.
