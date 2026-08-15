@@ -39,16 +39,19 @@ jobs:
           python3 -m py_compile \
             scripts/prepare-rmt-commodity-evidence-registry-v0.py \
             scripts/_prepare-rmt-commodity-evidence-registry-v0-impl.py
+          python3 scripts/prepare-rmt-commodity-evidence-registry-v0.py --help >/dev/null
           python3 -m json.tool deployments/rmt-commodity-evidence-registry-v0.template.json >/dev/null
           bash -n scripts/verify-rmt-commodity-evidence-registry-v0-deployment.sh
           bash -n scripts/verify-rmt-commodity-evidence-registry-v0-sources.sh
       - name: Enforce no-key and undeployed boundaries
         run: |
           python3 - <<'PY'
+          import importlib.util
           import json
           from pathlib import Path
 
-          entrypoint = Path("scripts/prepare-rmt-commodity-evidence-registry-v0.py").read_text()
+          entrypoint_path = Path("scripts/prepare-rmt-commodity-evidence-registry-v0.py")
+          entrypoint = entrypoint_path.read_text()
           implementation = Path(
               "scripts/_prepare-rmt-commodity-evidence-registry-v0-impl.py"
           ).read_text()
@@ -84,6 +87,16 @@ jobs:
               raise SystemExit("legacy fixture-key redirect is not enforced")
           if "preparationImplementationGitBlob" not in entrypoint:
               raise SystemExit("implementation blob is not committed into release records")
+
+          spec = importlib.util.spec_from_file_location("release_entrypoint", entrypoint_path)
+          if spec is None or spec.loader is None:
+              raise SystemExit("could not load hardened release entrypoint")
+          module = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(module)
+          module._original_address_from_test_key = lambda _contracts, key: key
+          if module._reviewed_address_from_test_key(Path("."), "0xC4DE") != "0xC0DE":
+              raise SystemExit("legacy attestor fixture key did not map to canonical 0xC0DE")
+
           for verifier in (deployment_verifier, source_verifier):
               if "cast send" in verifier or "--broadcast" in verifier:
                   raise SystemExit("read-only verifier exposes transaction submission")
