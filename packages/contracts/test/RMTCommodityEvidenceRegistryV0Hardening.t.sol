@@ -104,6 +104,26 @@ contract RMTCommodityEvidenceRegistryV0HardeningTest {
         );
     }
 
+    function testSupersessionPersistsReplacementSupportCommitments() public {
+        bytes32 firstEvidenceId = _publish(_envelope(1, 1));
+        RMTCommodityEvidenceRegistryV0.EvidenceEnvelope memory replacement = _envelope(2, 2);
+        _publish(replacement);
+
+        RMTCommodityEvidenceRegistryV0.EvidenceRecord memory firstRecord = registry.getEvidence(firstEvidenceId);
+        require(
+            firstRecord.statusReasonCode == registry.REASON_EVIDENCE_SUPERSEDED(),
+            "supersession reason missing"
+        );
+        require(
+            firstRecord.statusSupportingManifestHash == replacement.publicManifestHash,
+            "replacement manifest commitment missing"
+        );
+        require(
+            firstRecord.statusSupportingUriHash == replacement.publicManifestUriHash,
+            "replacement URI commitment missing"
+        );
+    }
+
     function testDisputedHeadCanBeCorrectedByNewSignedEvidence() public {
         bytes32 firstEvidenceId = _publish(_envelope(1, 1));
         vm.prank(issuer);
@@ -146,8 +166,8 @@ contract RMTCommodityEvidenceRegistryV0HardeningTest {
         envelope.calibrationEvidenceHash = keccak256("SYNTHETIC-CALIBRATION-COMMITMENT-0001");
         envelope.encumbranceStatementHash = keccak256("NOT_APPLICABLE_SYNTHETIC");
         envelope.encumbranceStatus = RMTCommodityEvidenceRegistryV0.EncumbranceStatus.NotApplicableSynthetic;
-        envelope.publicManifestHash = keccak256("SYNTHETIC_PUBLIC_MANIFEST_BYTES");
-        envelope.fullManifestHash = keccak256("SYNTHETIC_FULL_MANIFEST_BYTES");
+        envelope.publicManifestHash = keccak256(abi.encode("SYNTHETIC_PUBLIC_MANIFEST_BYTES", version));
+        envelope.fullManifestHash = keccak256(abi.encode("SYNTHETIC_FULL_MANIFEST_BYTES", version));
         envelope.publicManifestUriHash = keccak256(bytes(PUBLIC_MANIFEST_URI));
         envelope.rightsVersionHash = registry.NO_RIGHTS_VERSION_HASH();
         envelope.transferPolicyHash = registry.NON_TRANSFERABLE_POLICY_HASH();
