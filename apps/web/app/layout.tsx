@@ -6,33 +6,16 @@ import "./reward-vault.css";
 import "./wallet.css";
 import "./brand.css";
 import "./legal.css";
-import "./terminal-v7.css";
 import "./profile.css";
 import "./sushi-lab.css";
 import "./rescue-lab.css";
 import "./mobile-polish.css";
 import "./desktop-polish.css";
-import "./external-workspace.css";
 import "./trading-terms.css";
 import "./watchlist-alerts.css";
-import "./professional-terminal.css";
 import "./community.css";
 import "./experience.css";
 import "./interface-polish.css";
-import "./terminal-v8.css";
-import "./workspace-v8.css";
-import "./automation-v8.css";
-import "./chart-guard-v8.css";
-import "./automation-safety-v8.css";
-import "./terminal-readability-v8.css";
-import "./terminal-completion-v8.css";
-import "./terminal-acceptance-critical.css";
-import "./terminal-desktop-v9.css";
-import "./terminal-high-end-v10.css";
-import "./terminal-high-end-v10-final.css";
-import "./terminal-minor-fixes-v10.css";
-import "./execution-reliability-v11.css";
-import "./terminal-trader-control-v12.css";
 import { Providers } from "./providers";
 import { PublicChrome } from "./public-chrome";
 import { TradingTermsGate } from "./trading-terms-gate";
@@ -42,6 +25,7 @@ import {
   RMT_SITE_DESCRIPTION,
   RMT_SITE_NAME,
   RMT_SITE_URL,
+  rmtWebApplicationStructuredData,
   rmtWebsiteStructuredData
 } from "../lib/site-identity";
 
@@ -94,9 +78,11 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <meta property="og:site_name" content={RMT_SITE_NAME} />
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify(rmtWebsiteStructuredData).replace(/</g, "\\u003c")
-          }}
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(rmtWebsiteStructuredData).replace(/</g, "\\u003c") }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(rmtWebApplicationStructuredData).replace(/</g, "\\u003c") }}
         />
       </head>
       <body>

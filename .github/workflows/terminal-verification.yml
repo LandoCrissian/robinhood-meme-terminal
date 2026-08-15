@@ -8,7 +8,7 @@ on:
       - "apps/web/lib/position-guard*"
       - "apps/web/lib/protection-center-smoke.ts"
       - "apps/web/lib/market-protection*"
-      - "apps/web/lib/terminal-workstation-smoke.ts"
+      - "apps/web/lib/vnext/legacy-frontend-retirement-smoke.ts"
       - "apps/web/package.json"
       - "firestore.indexes.json"
       - "package.json"
@@ -38,8 +38,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Verify production dependency boundary
         run: pnpm audit:production
-      - name: Verify terminal workstation controls
-        run: pnpm --filter web test:terminal-workstation
+      - name: Verify canonical frontend ownership
+        run: pnpm --filter web test:legacy-retirement
       - name: Verify local Position Guard math
         run: pnpm --filter web test:position-guard
       - name: Verify bounded automatic execution

@@ -1,38 +1,24 @@
 import type { Metadata } from "next";
-import { ExternalMarketWorkspace } from "../../external-market-workspace";
-import { MobileTradeViewportGuard } from "../../mobile-trade-viewport-guard";
-import {
-  buildPublicMarketMetadata,
-  publicMarketStructuredData
-} from "../../../lib/public-market-discovery";
-import { fetchPublicMarket } from "../../../lib/server/public-market-catalog";
+import { redirect } from "next/navigation";
+import { getAddress, isAddress } from "viem";
 
 type MarketRouteProps = {
   params: Promise<{ address: string }>;
+  searchParams: Promise<{ side?: string }>;
 };
 
-export async function generateMetadata({ params }: MarketRouteProps): Promise<Metadata> {
-  const { address } = await params;
-  const market = await fetchPublicMarket(address);
-  return buildPublicMarketMetadata(address, market);
-}
+export const metadata: Metadata = {
+  title: "Open market in RMT Terminal",
+  description: "This compatibility URL opens the selected Robinhood Chain market in the canonical RMT terminal.",
+  robots: { index: false, follow: true },
+  alternates: { canonical: "/" }
+};
 
-export default async function ExternalMarketPage({ params }: MarketRouteProps) {
+export default async function ExternalMarketPage({ params, searchParams }: MarketRouteProps) {
   const { address } = await params;
-  const market = await fetchPublicMarket(address);
-  const structuredData = market ? publicMarketStructuredData(market) : null;
-  return (
-    <>
-      {structuredData && (
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify(structuredData).replace(/</g, "\\u003c")
-          }}
-        />
-      )}
-      <MobileTradeViewportGuard />
-      <ExternalMarketWorkspace initialMarket={market ?? undefined} />
-    </>
-  );
+  if (!isAddress(address, { strict: false })) redirect("/");
+  const query = new URLSearchParams({ market: getAddress(address) });
+  const { side } = await searchParams;
+  if (side === "buy" || side === "sell") query.set("side", side);
+  redirect(`/?${query}`);
 }

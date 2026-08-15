@@ -2,7 +2,7 @@
 
 **Status: CURRENT — system of record**
 **Effective:** 2026-08-14
-**Previous baseline:** `main` at or after `35bd37a1d81bcdeb47e7f7dc5c8e310e438a9e7e`
+**Baseline:** `main` at or after `ec1763f9ddadf3a6661fda7e6a1496ed6c545b1c`, with the paper-only Agent/Arena foundation preserved on `codex/agent-engine-foundation`
 
 This document records the durable product and system boundaries. It supersedes historical launchpad, V7 creator, profile, community and older terminal-roadmap language. It does not authorize deployment, production configuration changes, provider activation, fees, autonomous execution or destructive migration.
 
@@ -19,7 +19,7 @@ RMT is a Robinhood Chain:
 
 The core loop is **scan → verify → analyze → execute → reconcile → manage**. New token launches, creator profiles, social profiles, NFT/marketplace creation and community chat are not part of the terminal-completion program.
 
-A durable paper-only AI-agent evaluation foundation and deterministic Strategy Compiler admission boundary are now admitted forward domains after the terminal UI/completion track. They do not make autonomous live execution or any concrete model provider part of the current production terminal.
+A durable paper-only AI-agent evaluation foundation and deterministic Strategy Compiler admission boundary are admitted forward domains after the terminal UI/completion track. They do not make autonomous live execution or any concrete model provider part of the current production terminal.
 
 ## Canonical architecture
 
@@ -41,7 +41,7 @@ user intent
 
 Observation, strict verification, wallet authorization and production activation are four independent admissions. A provider may safely stop at any level. No provider is required merely to increase provider count.
 
-VNext is served from production `/`. The former `/vnext` address redirects to `/`; it is not a competing terminal. Mature legacy capabilities may still be reused through explicit shared boundaries, while `/market/[address]` and `/portfolio` remain compatibility-only routes that the canonical terminal does not require. Remaining retirement and completion evidence is governed by [`TERMINAL_COMPLETION_GATE.md`](TERMINAL_COMPLETION_GATE.md).
+VNext is served from production `/`. The former `/vnext` address redirects to `/`; it is not a competing terminal. Replaced `/market/[address]` and `/portfolio` presentation routes restore their intent inside `/` instead of mounting the retired frontend. Mature shared capabilities remain reusable through explicit boundaries, but they do not own a second terminal shell. Remaining retirement and completion evidence is governed by [`LEGACY_FRONTEND_RETIREMENT.md`](LEGACY_FRONTEND_RETIREMENT.md) and [`TERMINAL_COMPLETION_GATE.md`](TERMINAL_COMPLETION_GATE.md).
 
 ## Agent foundation
 
@@ -58,7 +58,7 @@ The owner has explicitly admitted a durable paper-only agent foundation and dete
 - The foundation has no signer, private key, wallet submission, contract-write path, provider/fee activation, production environment mutation or live execution method.
 - Strategy quality and execution authority are independent. The admitted execution mode is only `PAPER_ONLY`, and the PostgreSQL state schema repeats that restriction as a database constraint.
 - A future live agent may only propose a typed RMT execution intent into the existing VNext verification/authorization/reconciliation lifecycle. It never becomes a second routing stack.
-- Arena UI, public MCP, delegated signing, onchain identity and revenue buy-and-retire are later independently reviewed phases.
+- Arena UI, public MCP transport, delegated signing, onchain identity and revenue buy-and-retire are later independently reviewed phases.
 
 ## Active security identity versus paused profile
 
@@ -88,6 +88,7 @@ Paused source and tests remain available as preservation evidence. Paused worker
 - `apps/market-indexer`: external market discovery and enrichment. It remains read-oriented.
 - `packages/agent-core`: agent schema, Strategy Compiler policy/admission and deterministic scoring authority; no market or execution authority.
 - `apps/agent-engine`: durable paper-only agent evaluation, compilation and admission authority; no signer, live submission or treasury authority.
+- `apps/rmt-mcp`: source-only read boundary over sanitized public Arena models; no transport, mutation, signer or execution authority.
 - future execution workers: separate explicit domain; never hidden inside the market indexer.
 
 Project origin, market venue and execution origin are separate dimensions. RMT-originated volume or fees require authoritative RMT session/receipt evidence and may not be inferred from origin, pool, wallet, page view or route observation. Future agent attribution must additionally bind the exact agent and strategy version to the canonical RMT execution ID without weakening that rule.

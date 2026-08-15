@@ -6,7 +6,7 @@ Status: **CURRENT — production root cut over; compatibility retirement incompl
 
 Move RMT from a Robinhood ETH↔token, displayed-pair-centered terminal to a chain-aware account, portfolio, asset-to-asset execution, and settlement architecture without interrupting live Sushi or Uniswap trading.
 
-This was not a big-bang rewrite. VNext now serves production `/`; preserved compatibility routes remain available while their remaining dependencies are retired through separate reviewed changes.
+This was not a big-bang rewrite. VNext now serves production `/`; replaced market and portfolio compatibility URLs restore their intent inside VNext, and their former presentation trees are retired.
 
 ## Branch and release isolation
 
@@ -220,7 +220,7 @@ Controls default off until their release slice is complete. Position Guard remai
 Migration is complete only when:
 
 1. mobile and desktop use one terminal component tree;
-2. legacy terminal stylesheet generations have no production references;
+2. legacy terminal stylesheet generations have no production references; **complete**;
 3. portfolio detects owned assets independently of the V6 launch directory;
 4. USDG Spend Balance distinguishes settled and pending value;
 5. input/output assets are explicit throughout quote and authorization;

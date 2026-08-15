@@ -516,6 +516,20 @@
 @media(max-width:360px){.runnerTabs button{flex-direction:column;gap:2px;padding:5px 3px;font-size:.64rem}.runnerTabs button span{height:17px;min-width:17px}}
 
 /* Protected RMT runner discovery */
+.feed.panel.rmtDiscovery{padding:0;overflow:hidden}
+.rmtDiscovery .feedHeading{display:flex;min-height:86px;align-items:center;justify-content:space-between;gap:16px;padding:16px 20px;border-bottom:1px solid #202c24}
+.rmtDiscovery .feedHeading .sectionCopy{max-width:760px;margin:6px 0 0;color:#839087;font-size:.72rem;line-height:1.45}
+.terminalTape{display:flex;min-height:42px;align-items:center;overflow-x:auto;border-bottom:1px solid #202c24;background:#060a07;color:#758179;font-size:.6rem;font-weight:800;white-space:nowrap}
+.terminalTape span{display:flex;align-items:center;gap:4px;padding:0 14px;border-right:1px solid #202c24}
+.terminalTape b{color:#b9c3bc;font-size:.58rem;letter-spacing:.06em}
+.rmtControlDeck{display:grid;grid-template-columns:minmax(280px,1fr) auto;align-items:center;gap:12px;padding:12px 14px;border-bottom:1px solid #202c24;background:#080d0a}
+.rmtDiscovery .rmtDiscoverySearch{margin:0}
+.rmtDiscovery .discoveryToolbar{margin:0}
+.rmtDiscovery .discoveryLaunchLink{color:#819087;font-size:.64rem;font-weight:800;white-space:nowrap}
+.rmtColumnHeader{display:grid;grid-template-columns:minmax(300px,1.35fr) repeat(4,minmax(92px,.55fr)) 176px;min-height:36px;align-items:center;border-bottom:1px solid #202c24;background:#070b08;color:#748078;font-size:.55rem;font-weight:850;letter-spacing:.05em;text-transform:uppercase}
+.rmtColumnHeader span{padding:0 12px;text-align:right}
+.rmtColumnHeader span:first-child{text-align:left}
+.rmtColumnHeader span:last-child{text-align:center}
 .rmtDiscoverySearch{position:relative;display:flex;align-items:center;margin:15px 0 2px}
 .rmtDiscoverySearch input{width:100%;min-height:46px;padding:0 72px 0 14px;border:1px solid #2d3b32;border-radius:12px;outline:0;background:#080d0a;color:#e4ebe6;font:inherit;font-size:.82rem;font-weight:750}
 .rmtDiscoverySearch input::placeholder{color:#69756d}
@@ -554,6 +568,9 @@
   .rmtDiscoveryActions{padding:7px}
 }
 @media(max-width:760px){
+  .rmtDiscovery .feedHeading{min-height:0;align-items:flex-start;padding:14px}
+  .rmtControlDeck{grid-template-columns:1fr;padding:10px}
+  .rmtColumnHeader{display:none}
   .rmtDiscovery .discoveryToolbar{align-items:stretch;flex-direction:column}
   .rmtDiscovery .discoveryTabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:100%}
   .rmtDiscovery .discoveryTabs button{min-width:0;padding:4px 8px}

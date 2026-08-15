@@ -8,8 +8,8 @@
 ## Product ownership
 
 - [x] VNext is served from production `/` and no competing terminal architecture remains active.
-- [ ] Legacy routes are compatibility-only, redirected or retired after their VNext replacement is proven.
-- [ ] One VNext component/design-system ownership model serves mobile and desktop.
+- [x] Legacy routes are compatibility-only, redirected or retired after their VNext replacement is proven.
+- [x] One VNext state/execution and design-system ownership model serves dedicated mobile and desktop presentations.
 
 ## Discovery and workspace
 
@@ -66,12 +66,12 @@
 - [ ] Required CI, health checks and monitoring reflect the canonical terminal.
 - [ ] No paused-product worker remains actively scheduled.
 - [ ] README, `AGENTS.md`, architecture docs, status docs, env examples and implementation agree.
-- [ ] Legacy global CSS/runtime layers are isolated or retired as their routes migrate.
+- [x] Legacy terminal CSS/runtime layers are retired; shared public-route styles remain outside the scoped VNext design system.
 - [ ] Final cutover evidence is reviewed and the owner explicitly marks this document complete.
 
 ## Current known gaps
 
-VNext is the production root and `/vnext` redirects to `/`. Its asset workspace and authoritative wallet holdings do not depend on `/market/[address]` or `/portfolio`, while both routes remain preserved for compatibility; legacy CSS is still globally loaded. The selected-asset workspace independently verifies exact displayed and USDG/WETH up. pools, live fees and gauge state directly onchain, while broader up-v2/up-cl discovery still requires shadow backfill evidence. Shadow market-indexer rows do not influence the public terminal. up. authorization remains default-off pending controlled proof. StonkBrokers remains a fail-closed candidate without production launcher evidence or authoritative claims. Across public funding remains incomplete and disabled. Profiles/community/creator source remains preserved and paused. Production fee collection remains disabled.
+VNext is the production root and `/vnext`, `/market/[address]` and `/portfolio` converge on that canonical terminal. Retired terminal CSS generations are no longer globally loaded. External-wallet reliability still requires supported-device acceptance. The selected-asset workspace independently verifies exact displayed and USDG/WETH up. pools, live fees and gauge state directly onchain, while broader up-v2/up-cl discovery still requires shadow backfill evidence. Shadow market-indexer rows do not influence the public terminal. up. authorization remains default-off pending controlled proof. StonkBrokers remains a fail-closed candidate without production launcher evidence or authoritative claims. Across public funding remains incomplete and disabled. Profiles/community/creator source remains preserved and paused. Production fee collection remains disabled.
 
 ## Explicit completion decision
 

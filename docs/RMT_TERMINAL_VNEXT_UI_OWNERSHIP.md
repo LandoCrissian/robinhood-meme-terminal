@@ -1,50 +1,39 @@
 # RMT Terminal VNext UI Ownership
 
-Status: **CURRENT — canonical UI migration contract; production-root compatibility remains**
+Status: **CURRENT — canonical production UI ownership contract**
 
 ## Problem
 
-The current responsive terminal is not one product adapting to screen size. At 761 pixels it swaps between two independent React feed implementations:
+The retired responsive terminal swapped between two independent React feed implementations at 761 pixels:
 
 - `ExternalMarketFeed` on mobile;
 - `ExternalMarketFeedV10` on desktop.
 
-The root layout also imports terminal stylesheet generations from V7 through V12 plus professional, desktop, mobile, workspace, and interface-polish layers. Later files can override earlier ownership without changing the component that introduced the original rule.
+The root layout also imported terminal stylesheet generations from V7 through V12 plus professional, desktop, mobile, workspace, and interface-polish layers. Later files could override earlier ownership without changing the component that introduced the original rule.
 
-This explains the current inconsistency: mobile received a focused card-and-action experience while desktop accumulated workstation density, older visual assumptions, and cascade patches.
+That architecture explained the former inconsistency: mobile received a focused card-and-action experience while desktop accumulated workstation density, older visual assumptions, and cascade patches.
 
-VNext will not add another stylesheet generation or a third terminal component.
+VNext does not add another stylesheet generation or a second execution architecture.
 
 ## Decision
 
-One semantic component tree owns mobile and desktop. Layout changes through explicit component variants, container/media queries, and design tokens. Business state, accessibility names, route states, and execution state remain identical across breakpoints.
+One shared terminal state and execution boundary owns mobile and desktop. Dedicated `DesktopTerminal` and `MobileTerminal` presentations consume the same controller state, business rules, accessibility vocabulary, route state and security-critical execution state. They may compose that state differently for workstation and touch interaction; they may not fork the trading engine.
 
 ```text
-TerminalShell
-├── AccountSummary
-│   ├── AvailableBalance
-│   ├── PendingBalance
-│   └── DepositAction
-├── DiscoveryWorkspace
-│   ├── MarketSearch
-│   ├── DiscoveryFilters
-│   └── MarketCollection
-│       └── MarketItem (card or row presentation)
-├── AssetWorkspace
-│   ├── AssetIdentity
-│   ├── Chart
-│   ├── PositionSummary
-│   └── EvidenceSummary
-└── TradeComposer
-    ├── AssetInput
-    ├── AmountPresets
-    ├── QuoteProgress
-    ├── CandidateComparison
-    ├── AuthorizationReview
-    └── SettlementStatus
+VNextTerminalShell
+├── shared terminal controller/state
+│   ├── account and confirmed balances
+│   ├── directory and selected market
+│   ├── asset workspace intelligence
+│   ├── quote and verification state
+│   └── authorization, settlement and recovery
+├── DesktopTerminal
+│   └── workstation discovery + chart + persistent execution rail
+└── MobileTerminal
+    └── touch discovery + selected asset + modal execution sheet
 ```
 
-Mobile and desktop may arrange these modules differently. They may not implement their state logic separately.
+Mobile and desktop intentionally arrange these modules differently. They do not implement their state or execution logic separately.
 
 ## Visual product principles
 
@@ -98,12 +87,12 @@ Tokens express intent, not component history. Names such as `--terminal-v10-gree
 - execution evidence scrolls inside its sheet, never behind a fixed action;
 - one primary action per visible region.
 
-### Tablet: 761–1099 pixels
+### Tablet/small workstation: 761–1099 pixels
 
-- one component tree in a two-zone layout;
+- the dedicated workstation presentation in a compact two-zone layout;
 - discovery remains readable without desktop-density columns;
 - trade composer can become a side sheet when width permits;
-- no abrupt replacement with a separate terminal implementation.
+- no replacement with a separate state or execution implementation.
 
 ### Desktop: 1100–1599 pixels
 
@@ -150,11 +139,11 @@ This table is the review boundary for the VNext ownership migration. A dependenc
 | Wallet connection | VNext-owned `VNextWalletConnection` delegates to the mature shared external-wallet button | Shared security runtime | Preserve exact wallet authentication and connector behavior; migrate presentation only when it can remain one implementation. |
 | Funding and transfer controls | Shared `FundWalletButton` and `WalletTransferDialog` | Shared terminal infrastructure | Keep one receive/funding implementation and one reviewed native-transfer boundary; do not fork wallet actions into VNext. |
 | Trading wallet identity | Shared `useRmtIdentity` | Shared security runtime | This is exact-wallet session binding, not the paused profile product. |
-| Wallet holdings | VNext `SpendBalance`, wallet-address discovery, and independent onchain balance reads | VNext-owned | VNext owns confirmed USDG Spend Balance, known-value portfolio estimates, gas separation, full held-asset visibility, receive, and native ETH send. `/portfolio` remains a preserved compatibility route but is no longer a VNext navigation dependency. |
-| Full asset workspace | VNext `VNextAssetWorkspace`, `VNextMarketChart`, and VNext-owned `.vn*` presentation | VNext-owned with shared evidence infrastructure | Chart, activity, evidence, origin, liquidity, holders, position, verified markets, and RWA relationships stay inside VNext. The legacy public market route remains compatibility-only and is no longer a VNext navigation dependency. |
+| Wallet holdings | VNext `SpendBalance`, wallet-address discovery, and independent onchain balance reads | VNext-owned | VNext owns confirmed USDG Spend Balance, known-value portfolio estimates, gas separation, full held-asset visibility, receive, and native ETH send. `/portfolio` redirects to that canonical portfolio surface. |
+| Full asset workspace | VNext `VNextAssetWorkspace`, `VNextMarketChart`, and VNext-owned `.vn*` presentation | VNext-owned with shared evidence infrastructure | Chart, activity, evidence, origin, liquidity, holders, position, verified markets, and RWA relationships stay inside VNext. `/market/[address]` redirects exact market and optional Buy/Sell intent into that workspace. |
 | Market directory and identity | `/api/vnext/market-directory`, `/api/vnext/asset-identity`, `/api/vnext/asset-workspace`, shared resolver/data contracts | VNext API with shared data infrastructure | Preserve the resolver, exact-pool OHLCV/trade streams, holder/risk evidence, and stock registry as shared services; do not introduce a second resolver or duplicate provider graph. |
 | Quote, verification and authorization | `/api/vnext/quotes`, `/api/vnext/verify`, `/api/vnext/authorize` using the shared bounded quote transport | VNext-owned orchestration with shared transport | Keep the transport generic. No legacy terminal route selection is imported into VNext. |
-| Styling | `vnext-terminal.css` owns the `.rmtVnext`/`.vn*` namespace; root layout still loads legacy global styles | VNext-owned selectors with inherited global-load debt | Keep legacy styles from reaching into the VNext namespace. Isolate route-specific global imports incrementally after the routes they serve migrate. |
+| Styling | `vnext-terminal.css` and `vnext-workstation.css` own the `.rmtVnext`/`.vn*` namespace | VNext-owned | Retired V7–V12 terminal generations are absent from the global root. Shared public-route styles remain only for active compatibility and public product routes. |
 
 The executable ownership smoke enforces the route, import, and selector boundaries. It rejects direct VNext links to `/portfolio` or `/market/*`, promotion of paused `/profile` or `/launch` routes, unclassified shared imports, extra VNext stylesheets, and legacy global selectors that reach inside the VNext namespace.
 
@@ -163,8 +152,8 @@ The executable ownership smoke enforces the route, import, and selector boundari
 1. Keep the current VNext shell and execution orchestration unchanged while enforcing the ownership boundary.
 2. The selected-asset workspace is now VNext-owned and no longer constructs `/market/*` links. Preserve its real-data and fail-closed evidence boundaries as it is accepted visually.
 3. Authoritative wallet holdings are now VNext-owned. Preserve exact canonical-asset identity, indexer-plus-onchain reconciliation, and pending-versus-spendable semantics.
-4. Isolate legacy route CSS from the root load as each compatibility route is retired. Do not remove generations in one mass cascade rewrite.
-5. Production `/` now resolves to VNext. Redirect or retire replaced compatibility routes only through separate reviewed changes.
+4. **Complete:** retired terminal presentation CSS is no longer loaded from the root layout.
+5. **Complete:** production `/` resolves to VNext; replaced `/market/[address]` and `/portfolio` URLs restore intent inside the canonical terminal.
 
 ## Acceptance matrix
 
@@ -181,4 +170,4 @@ The executable ownership smoke enforces the route, import, and selector boundari
 
 ## Definition of visually complete
 
-VNext is visually complete when mobile and desktop are recognizably the same product, share the same state and component ownership, and differ only where the physical interaction model benefits. A cleaner screenshot is insufficient if the cascade still has multiple owners or desktop and mobile can disagree about execution state.
+VNext is visually complete when mobile and desktop are recognizably the same product, share state and execution ownership, and use dedicated presentation composition where the physical interaction model benefits. A cleaner screenshot is insufficient if the cascade still has multiple owners or desktop and mobile can disagree about execution state.
