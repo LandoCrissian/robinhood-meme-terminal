@@ -6,11 +6,22 @@ on:
       - codex/agent-engine-foundation
     paths:
       - "apps/agent-engine/src/human-authoritative-position-reduction*.ts"
+      - "apps/agent-engine/src/human-paper-risk-capacity.ts"
+      - "apps/agent-engine/src/paper-arena-entry.ts"
+      - "apps/agent-engine/src/paper-canonical-valuation*.ts"
+      - "apps/agent-engine/src/persistence/store.ts"
+      - "packages/agent-core/src/**"
       - ".github/workflows/agent-human-reduction-smoke.yml"
   pull_request:
     paths:
       - "apps/agent-engine/src/human-authoritative-position-reduction*.ts"
+      - "apps/agent-engine/src/human-paper-risk-capacity.ts"
+      - "apps/agent-engine/src/paper-arena-entry.ts"
+      - "apps/agent-engine/src/paper-canonical-valuation*.ts"
+      - "apps/agent-engine/src/persistence/store.ts"
+      - "packages/agent-core/src/**"
       - ".github/workflows/agent-human-reduction-smoke.yml"
+  workflow_dispatch:
 
 permissions:
   contents: read
