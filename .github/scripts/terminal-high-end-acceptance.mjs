@@ -562,7 +562,19 @@ async function inspectCompatibilityEntries(browser) {
 }
 
 async function inspectCurrentPublicRoutes(browser) {
-  const routes = ["/explore", "/status", "/sources", "/sushi", "/support", "/privacy"];
+  const routes = [
+    "/robinhood-chain",
+    "/markets/robinhood-chain",
+    "/markets/robinhood-chain/trending",
+    "/markets/robinhood-chain/new",
+    "/markets/robinhood-chain/active",
+    "/explore",
+    "/status",
+    "/sources",
+    "/sushi",
+    "/support",
+    "/privacy"
+  ];
   const results = [];
   for (const pathname of routes) {
     const context = await createContext(browser, { viewport: { width: 1_280, height: 800 }, deviceScaleFactor: 1 });
@@ -581,7 +593,7 @@ async function inspectCurrentPublicRoutes(browser) {
       throw new Error(`${pathname}: public route regressed after legacy CSS retirement ${JSON.stringify(audit)}`);
     }
     await page.screenshot({
-      path: `${output}/public-${pathname.slice(1)}-1280x800.png`,
+      path: `${output}/public-${pathname.slice(1).replaceAll("/", "-")}-1280x800.png`,
       fullPage: false,
       animations: "disabled"
     });
