@@ -1,4 +1,4 @@
-name: CCFF00 TBA read-only probe
+name: CCFF00 public TBA read-only audit
 
 on:
   push:
@@ -25,16 +25,15 @@ jobs:
           npm init -y >/dev/null
           npm install --ignore-scripts --no-audit --no-fund viem@2.55.5
           ln -s /tmp/ccff00-probe/node_modules "$GITHUB_WORKSPACE/node_modules"
-      - name: Resolve complete CCFF00 token-bound-account snapshot
-        run: node scripts/ccff00-tba-snapshot-v2.mjs
-      - name: Archive read-only snapshot
+      - name: Audit public CCFF00 token-bound accounts
+        run: node scripts/ccff00-public-tba-audit.mjs
+      - name: Archive public read-only audit
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: ccff00-tba-snapshot
+          name: ccff00-public-tba-audit
           path: |
-            tmp/ccff00-tba-snapshot.json
-            tmp/ccff00-tba-snapshot.csv
-            tmp/ccff00-tba-summary.json
+            tmp/ccff00-public-tba-audit.json
+            tmp/ccff00-public-tba-audit.csv
           if-no-files-found: warn
           retention-days: 7
