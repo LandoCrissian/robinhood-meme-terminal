@@ -40,7 +40,10 @@ function assertHash(value: string, field: string): void {
   if (!/^0x[0-9a-f]{64}$/.test(value)) fail(`${field} must be a sha256 hex hash`);
 }
 
-function historyDigest(record: AgentCanonicalOpenPositionAdmissionRecord): string {
+export function agentOpenPositionValuationHistoryDigest(
+  record: AgentCanonicalOpenPositionAdmissionRecord,
+): string {
+  assertAgentCanonicalOpenPositionAdmissionRecord(record);
   return hashCanonicalPayload(record.riskSource.valuations.map((valuation) => ({
     valuedAt: valuation.valuation.valuedAt,
     revision: valuation.revision,
@@ -74,8 +77,10 @@ function assertCadence(input: {
     if (gap > input.maximumValuationGapMs) fail("agent authoritative valuation history contains a gap above policy");
   }
   const latest = valuations[valuations.length - 1]!;
-  if (latest.valuation.valuedAt > input.requestedAt) fail("agent authoritative latest valuation is from the future");
-  if (input.requestedAt - latest.valuation.valuedAt > input.maximumLatestValuationAgeMs) {
+  const orderAdmission = input.canonicalAdmission.admission.orderAdmission;
+  const freshnessAt = orderAdmission?.admittedAt ?? input.requestedAt;
+  if (latest.valuation.valuedAt > freshnessAt) fail("agent authoritative latest valuation is from the future");
+  if (freshnessAt - latest.valuation.valuedAt > input.maximumLatestValuationAgeMs) {
     fail("agent authoritative latest valuation is stale");
   }
   if (input.canonicalAdmission.admission.tradeRequest.requestedAt !== input.requestedAt) {
@@ -95,7 +100,7 @@ export function assertAgentAuthoritativeOpenPositionAdmissionRecord(
     requestedAt: record.requestedAt,
   });
   assertHash(record.valuationHistoryDigest, "agent authoritative valuationHistoryDigest");
-  if (record.valuationHistoryDigest !== historyDigest(record.canonicalAdmission)) {
+  if (record.valuationHistoryDigest !== agentOpenPositionValuationHistoryDigest(record.canonicalAdmission)) {
     fail("agent authoritative valuation history digest mismatch");
   }
   assertHash(record.resultHash, "agent authoritative admission resultHash");
@@ -152,7 +157,7 @@ export class AgentAuthoritativeOpenPositionAdmissionService {
       canonicalAdmission,
       maximumValuationGapMs: this.config.maximumValuationGapMs,
       maximumLatestValuationAgeMs: this.config.maximumLatestValuationAgeMs,
-      valuationHistoryDigest: historyDigest(canonicalAdmission),
+      valuationHistoryDigest: agentOpenPositionValuationHistoryDigest(canonicalAdmission),
       requestedAt,
     };
     const record: AgentAuthoritativeOpenPositionAdmissionRecord = {
