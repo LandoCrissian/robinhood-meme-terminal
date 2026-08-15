@@ -982,7 +982,7 @@ body .rmtVnext {
   padding: 0 18px;
   color: var(--vn-text-muted);
   border-top: 1px solid var(--vn-border);
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 680;
   letter-spacing: .04em;
   text-transform: uppercase;
@@ -1027,7 +1027,7 @@ body .rmtVnext {
 
 .vnWorkspaceCardHead > span {
   color: var(--vn-text-muted);
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 720;
   text-align: right;
   text-transform: uppercase;
@@ -1036,7 +1036,7 @@ body .rmtVnext {
 .vnWorkspaceCard footer {
   margin-top: 12px;
   color: var(--vn-text-muted);
-  font-size: 8px;
+  font-size: 9px;
   line-height: 1.45;
 }
 
@@ -1070,7 +1070,7 @@ body .rmtVnext {
 .vnActivitySummary small,
 .vnEvidenceGrid small {
   color: var(--vn-text-muted);
-  font-size: 8px;
+  font-size: 9px;
   text-transform: uppercase;
 }
 
@@ -1162,14 +1162,14 @@ body .rmtVnext {
 
 .vnMarketFlow b {
   color: var(--vn-accent);
-  font-size: 8px;
+  font-size: 9px;
   text-transform: uppercase;
 }
 
 .vnMarketFlow small {
   overflow: hidden;
   color: var(--vn-text-muted);
-  font-size: 8px;
+  font-size: 9px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -3292,6 +3292,8 @@ body .rmtTerminal button {
 .rmtAssetContextBar button,
 .rmtAssetNavigator > header button,
 .rmtMobileAssetBack button {
+  min-height: 32px;
+  padding: 0 4px;
   border: 0;
   color: var(--rmt-text-soft);
   background: transparent;
@@ -3537,6 +3539,10 @@ body .rmtTerminal button {
   border-radius: 6px;
 }
 
+.rmtDesktopExecution .vnAmountField input {
+  min-height: 32px;
+}
+
 .rmtDesktopExecution .vnReviewButton {
   min-height: 48px;
   border-radius: 6px;
@@ -3696,7 +3702,7 @@ body .rmtTerminal button {
 }
 
 .rmtMobileMarketsView .rmtMarketSummary dt {
-  font-size: 8px;
+  font-size: 10px;
 }
 
 .rmtMobileMarketsView .rmtMarketSummary dd {
@@ -3826,7 +3832,7 @@ body .rmtTerminal button {
 }
 
 .rmtMobileAssetBack button {
-  padding: 0;
+  min-height: 44px;
   font-size: 12px;
 }
 
