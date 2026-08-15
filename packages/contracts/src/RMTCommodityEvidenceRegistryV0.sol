@@ -368,6 +368,7 @@ contract RMTCommodityEvidenceRegistryV0 is EIP712, ReentrancyGuard {
             EvidenceStatus previousStoredStatus = _evidence[previousEvidenceId].storedStatus;
             if (
                 previousEvidenceId == bytes32(0) || previousStoredStatus == EvidenceStatus.Closed
+                    || previousStoredStatus == EvidenceStatus.Suspended
                     || previousStoredStatus == EvidenceStatus.Superseded
             ) revert InvalidStatusTransition();
         }
@@ -498,9 +499,10 @@ contract RMTCommodityEvidenceRegistryV0 is EIP712, ReentrancyGuard {
     ) external onlyAdministrator onlyTargetChain {
         EvidenceRecord storage record = _evidence[evidenceId];
         if (record.digest == bytes32(0)) revert EvidenceNotFound();
-        if (record.storedStatus == EvidenceStatus.Closed || reasonCode == bytes32(0)) {
-            revert InvalidStatusTransition();
-        }
+        if (
+            record.storedStatus == EvidenceStatus.Closed || record.storedStatus == EvidenceStatus.Superseded
+                || reasonCode == bytes32(0)
+        ) revert InvalidStatusTransition();
         _changeEvidenceStatus(
             evidenceId,
             record,
