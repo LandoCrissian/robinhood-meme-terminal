@@ -411,6 +411,8 @@ contract RMTCommodityEvidenceRegistryV0 is EIP712, ReentrancyGuard {
             EvidenceStatus previousStatus = previousRecord.storedStatus;
             previousRecord.storedStatus = EvidenceStatus.Superseded;
             previousRecord.statusReasonCode = REASON_EVIDENCE_SUPERSEDED;
+            previousRecord.statusSupportingManifestHash = envelope.publicManifestHash;
+            previousRecord.statusSupportingUriHash = envelope.publicManifestUriHash;
             emit EvidenceStatusChanged(
                 previousEvidenceId,
                 previousStatus,
