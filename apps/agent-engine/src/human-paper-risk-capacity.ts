@@ -97,7 +97,10 @@ function thresholdReached(current: number, maximum: number): boolean {
   return maximum === 0 ? current > 0 : current >= maximum;
 }
 
-function assertPolicyWithinSafety(policy: HumanPaperRiskPolicy, safety: AgentSafetyEnvelope): void {
+export function assertHumanPaperRiskPolicyWithinSafety(
+  policy: HumanPaperRiskPolicy,
+  safety: AgentSafetyEnvelope,
+): void {
   assertNonEmptyString(policy.policyVersion, "human paper risk policyVersion");
   assertBps(policy.maximumPositionBps, "human maximumPositionBps");
   assertBps(policy.maximumPortfolioExposureBps, "human maximumPortfolioExposureBps");
@@ -141,7 +144,7 @@ export class HumanPaperRiskCapacityPlanner {
   constructor(config: HumanPaperRiskCapacityPlannerConfig) {
     this.config = structuredClone(config);
     assertSafetyEnvelope(this.config.safetyEnvelope);
-    assertPolicyWithinSafety(this.config.policy, this.config.safetyEnvelope);
+    assertHumanPaperRiskPolicyWithinSafety(this.config.policy, this.config.safetyEnvelope);
     if (!Number.isSafeInteger(this.config.maximumRiskSnapshotAgeMs) || this.config.maximumRiskSnapshotAgeMs <= 0) {
       fail("human maximumRiskSnapshotAgeMs must be a positive safe integer");
     }
