@@ -51,9 +51,7 @@ contract RMTCommodityEvidenceRegistryV0HardeningTest {
         uint64 validFrom = uint64(block.timestamp);
         uint64 validUntil = uint64(block.timestamp + 365 days);
         registry.registerParty(ISSUER_PARTY_ID, issuer, registry.ROLE_ISSUER_BITMAP(), validFrom, validUntil);
-        registry.registerParty(
-            CUSTODIAN_PARTY_ID, custodian, registry.ROLE_CUSTODIAN_BITMAP(), validFrom, validUntil
-        );
+        registry.registerParty(CUSTODIAN_PARTY_ID, custodian, registry.ROLE_CUSTODIAN_BITMAP(), validFrom, validUntil);
         registry.registerParty(ATTESTOR_PARTY_ID, attestor, registry.ROLE_ATTESTOR_BITMAP(), validFrom, validUntil);
         registry.configureInstrument(
             INSTRUMENT_ID,
@@ -86,15 +84,16 @@ contract RMTCommodityEvidenceRegistryV0HardeningTest {
         bytes32 firstEvidenceId = _publish(_envelope(1, 1));
         _publish(_envelope(2, 2));
 
-        (bool success,) = address(registry).call(
-            abi.encodeWithSelector(
-                registry.closeEvidence.selector,
-                firstEvidenceId,
-                REASON_CODE,
-                SUPPORTING_MANIFEST_HASH,
-                SUPPORTING_URI_HASH
-            )
-        );
+        (bool success,) = address(registry)
+            .call(
+                abi.encodeWithSelector(
+                    registry.closeEvidence.selector,
+                    firstEvidenceId,
+                    REASON_CODE,
+                    SUPPORTING_MANIFEST_HASH,
+                    SUPPORTING_URI_HASH
+                )
+            );
         require(!success, "superseded record was relabeled closed");
 
         RMTCommodityEvidenceRegistryV0.EvidenceRecord memory firstRecord = registry.getEvidence(firstEvidenceId);
@@ -110,10 +109,7 @@ contract RMTCommodityEvidenceRegistryV0HardeningTest {
         _publish(replacement);
 
         RMTCommodityEvidenceRegistryV0.EvidenceRecord memory firstRecord = registry.getEvidence(firstEvidenceId);
-        require(
-            firstRecord.statusReasonCode == registry.REASON_EVIDENCE_SUPERSEDED(),
-            "supersession reason missing"
-        );
+        require(firstRecord.statusReasonCode == registry.REASON_EVIDENCE_SUPERSEDED(), "supersession reason missing");
         require(
             firstRecord.statusSupportingManifestHash == replacement.publicManifestHash,
             "replacement manifest commitment missing"
@@ -200,16 +196,17 @@ contract RMTCommodityEvidenceRegistryV0HardeningTest {
             RMTCommodityEvidenceRegistryV0.RoleSignature memory custodianSignature,
             RMTCommodityEvidenceRegistryV0.RoleSignature memory attestorSignature
         ) = _signAll(envelope);
-        (success,) = address(registry).call(
-            abi.encodeWithSelector(
-                registry.publishEvidence.selector,
-                envelope,
-                issuerSignature,
-                custodianSignature,
-                attestorSignature,
-                PUBLIC_MANIFEST_URI
-            )
-        );
+        (success,) = address(registry)
+            .call(
+                abi.encodeWithSelector(
+                    registry.publishEvidence.selector,
+                    envelope,
+                    issuerSignature,
+                    custodianSignature,
+                    attestorSignature,
+                    PUBLIC_MANIFEST_URI
+                )
+            );
     }
 
     function _signAll(RMTCommodityEvidenceRegistryV0.EvidenceEnvelope memory envelope)
@@ -232,9 +229,7 @@ contract RMTCommodityEvidenceRegistryV0HardeningTest {
     {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, digest);
         roleSignature = RMTCommodityEvidenceRegistryV0.RoleSignature({
-            role: role,
-            partyId: partyId,
-            signature: abi.encodePacked(r, s, v)
+            role: role, partyId: partyId, signature: abi.encodePacked(r, s, v)
         });
     }
 }

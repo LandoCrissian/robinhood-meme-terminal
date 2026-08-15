@@ -109,18 +109,12 @@ contract RMTCommodityEvidenceRegistryV0Create2ReadinessTest {
         return abi.encodePacked(type(RMTCommodityEvidenceRegistryV0).creationCode, abi.encode(administrator));
     }
 
-    function _create2Address(address deployer, bytes32 salt, bytes32 initCodeHash)
-        private
-        pure
-        returns (address)
-    {
+    function _create2Address(address deployer, bytes32 salt, bytes32 initCodeHash) private pure returns (address) {
         return address(uint160(uint256(keccak256(abi.encodePacked(bytes1(0xff), deployer, salt, initCodeHash)))));
     }
 
     function _domainSeparator(address verifyingContract) private view returns (bytes32) {
-        return keccak256(
-            abi.encode(EIP712_DOMAIN_TYPEHASH, NAME_HASH, VERSION_HASH, block.chainid, verifyingContract)
-        );
+        return keccak256(abi.encode(EIP712_DOMAIN_TYPEHASH, NAME_HASH, VERSION_HASH, block.chainid, verifyingContract));
     }
 
     function _addressFromReturnData(bytes memory result) private pure returns (address deployed) {

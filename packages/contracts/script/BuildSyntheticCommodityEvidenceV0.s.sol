@@ -70,8 +70,7 @@ contract BuildSyntheticCommodityEvidenceV0 {
         envelope = buildEnvelope(registry, uint64(block.timestamp), 1, 1);
         digest = registry.evidenceDigest(envelope);
         issuerSignature = _sign(SYNTHETIC_ISSUER_KEY, registry.ROLE_ISSUER(), ISSUER_PARTY_ID, digest);
-        custodianSignature =
-            _sign(SYNTHETIC_CUSTODIAN_KEY, registry.ROLE_CUSTODIAN(), CUSTODIAN_PARTY_ID, digest);
+        custodianSignature = _sign(SYNTHETIC_CUSTODIAN_KEY, registry.ROLE_CUSTODIAN(), CUSTODIAN_PARTY_ID, digest);
         attestorSignature = _sign(SYNTHETIC_ATTESTOR_KEY, registry.ROLE_ATTESTOR(), ATTESTOR_PARTY_ID, digest);
 
         emit SyntheticEvidencePackageBuilt(
@@ -95,10 +94,7 @@ contract BuildSyntheticCommodityEvidenceV0 {
         uint64 measuredAt,
         uint64 evidenceVersion,
         uint256 nonce
-    )
-        public
-        returns (RMTCommodityEvidenceRegistryV0.EvidenceEnvelope memory envelope)
-    {
+    ) public returns (RMTCommodityEvidenceRegistryV0.EvidenceEnvelope memory envelope) {
         if (address(registry).code.length == 0 || measuredAt == 0 || evidenceVersion == 0 || nonce == 0) {
             revert InvalidRegistry();
         }
@@ -147,9 +143,7 @@ contract BuildSyntheticCommodityEvidenceV0 {
     {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, digest);
         roleSignature = RMTCommodityEvidenceRegistryV0.RoleSignature({
-            role: role,
-            partyId: partyId,
-            signature: abi.encodePacked(r, s, v)
+            role: role, partyId: partyId, signature: abi.encodePacked(r, s, v)
         });
     }
 }

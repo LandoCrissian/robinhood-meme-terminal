@@ -9,18 +9,12 @@ contract RMTCommodityEvidenceRegistryV0DeploymentScriptsTest {
     CommodityEvidenceDeploymentScriptsVm private constant vm =
         CommodityEvidenceDeploymentScriptsVm(address(uint160(uint256(keccak256("hevm cheat code")))));
 
-    string private constant PREPARATION_ENTRYPOINT =
-        "scripts/prepare-rmt-commodity-evidence-registry-v0.py";
-    string private constant PREPARATION_IMPLEMENTATION =
-        "scripts/_prepare-rmt-commodity-evidence-registry-v0-impl.py";
-    string private constant DEPLOYMENT_VERIFIER =
-        "scripts/verify-rmt-commodity-evidence-registry-v0-deployment.sh";
-    string private constant POSTFLIGHT_IMPLEMENTATION =
-        "script/VerifySyntheticCommodityEvidenceRegistryV0.s.sol";
-    string private constant SOURCE_VERIFIER =
-        "scripts/verify-rmt-commodity-evidence-registry-v0-sources.sh";
-    string private constant RELEASE_TEMPLATE =
-        "deployments/rmt-commodity-evidence-registry-v0.template.json";
+    string private constant PREPARATION_ENTRYPOINT = "scripts/prepare-rmt-commodity-evidence-registry-v0.py";
+    string private constant PREPARATION_IMPLEMENTATION = "scripts/_prepare-rmt-commodity-evidence-registry-v0-impl.py";
+    string private constant DEPLOYMENT_VERIFIER = "scripts/verify-rmt-commodity-evidence-registry-v0-deployment.sh";
+    string private constant POSTFLIGHT_IMPLEMENTATION = "script/VerifySyntheticCommodityEvidenceRegistryV0.s.sol";
+    string private constant SOURCE_VERIFIER = "scripts/verify-rmt-commodity-evidence-registry-v0-sources.sh";
+    string private constant RELEASE_TEMPLATE = "deployments/rmt-commodity-evidence-registry-v0.template.json";
 
     function testAuthoritativePreparationIsCreate2OnlyAndRemoteBroadcastFree() public {
         string memory entrypoint = vm.readFile(PREPARATION_ENTRYPOINT);
@@ -55,8 +49,7 @@ contract RMTCommodityEvidenceRegistryV0DeploymentScriptsTest {
         require(_contains(verifier, "cast call"), "read-only contract checks missing");
         require(_contains(verifier, "cast code"), "runtime code check missing");
         require(
-            _contains(verifier, "VerifySyntheticCommodityEvidenceRegistryV0"),
-            "postflight implementation not invoked"
+            _contains(verifier, "VerifySyntheticCommodityEvidenceRegistryV0"), "postflight implementation not invoked"
         );
         require(_contains(postflight, "mint(address,uint256)"), "no-mint probe missing");
         require(_contains(postflight, "totalSupply()"), "no-supply probe missing");

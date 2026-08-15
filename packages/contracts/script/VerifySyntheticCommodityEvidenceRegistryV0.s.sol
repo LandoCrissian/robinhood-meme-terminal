@@ -21,8 +21,7 @@ contract VerifySyntheticCommodityEvidenceRegistryV0 {
     bytes32 public constant SCHEMA_HASH = keccak256("rmt.physical-commodity-evidence.v0.schema");
     bytes32 public constant INSTRUMENT_ID = keccak256("RMT-HE-DEMO-V0");
     bytes32 public constant SERIES_ID = keccak256("RMT-HE-COLORADO-SYNTHETIC-SERIES-V0");
-    bytes32 public constant GOVERNING_INSTRUMENT_HASH =
-        keccak256("RMT_SYNTHETIC_NO_RIGHTS_GOVERNING_TEXT_V0");
+    bytes32 public constant GOVERNING_INSTRUMENT_HASH = keccak256("RMT_SYNTHETIC_NO_RIGHTS_GOVERNING_TEXT_V0");
     bytes32 public constant ISSUER_PARTY_ID = keccak256("RMT-SYNTHETIC-ISSUER-0001");
     bytes32 public constant CUSTODIAN_PARTY_ID = keccak256("RMT-SYNTHETIC-CUSTODIAN-0001");
     bytes32 public constant ATTESTOR_PARTY_ID = keccak256("RMT-SYNTHETIC-ATTESTOR-0001");
@@ -44,7 +43,9 @@ contract VerifySyntheticCommodityEvidenceRegistryV0 {
         uint64 expectedPartyValidFrom,
         uint64 expectedPartyValidUntil
     ) external returns (bytes32 domainSeparator) {
-        if (block.chainid != TARGET_CHAIN_ID) revert WrongChain(block.chainid, TARGET_CHAIN_ID);
+        if (block.chainid != TARGET_CHAIN_ID) {
+            revert WrongChain(block.chainid, TARGET_CHAIN_ID);
+        }
         if (
             registryAddress == address(0) || expectedAdministrator == address(0)
                 || expectedRuntimeCodeHash == bytes32(0) || expectedPartyValidFrom == 0
@@ -67,10 +68,9 @@ contract VerifySyntheticCommodityEvidenceRegistryV0 {
         if (registry.NO_RIGHTS_VERSION_HASH() != keccak256("RMT_SYNTHETIC_NO_RIGHTS_V0")) {
             revert VerificationFailed("NO_RIGHTS_HASH");
         }
-        if (
-            registry.NON_TRANSFERABLE_POLICY_HASH()
-                != keccak256("RMT_SYNTHETIC_NON_TRANSFERABLE_V0")
-        ) revert VerificationFailed("NON_TRANSFER_POLICY");
+        if (registry.NON_TRANSFERABLE_POLICY_HASH() != keccak256("RMT_SYNTHETIC_NON_TRANSFERABLE_V0")) {
+            revert VerificationFailed("NON_TRANSFER_POLICY");
+        }
 
         address issuer = vm.addr(SYNTHETIC_ISSUER_KEY);
         address custodian = vm.addr(SYNTHETIC_CUSTODIAN_KEY);
@@ -103,16 +103,12 @@ contract VerifySyntheticCommodityEvidenceRegistryV0 {
             "ATTESTOR_PARTY"
         );
 
-        RMTCommodityEvidenceRegistryV0.InstrumentConfig memory instrument =
-            registry.getInstrument(INSTRUMENT_ID);
+        RMTCommodityEvidenceRegistryV0.InstrumentConfig memory instrument = registry.getInstrument(INSTRUMENT_ID);
         if (
-            !instrument.configured || instrument.schemaHash != SCHEMA_HASH
-                || instrument.seriesId != SERIES_ID
+            !instrument.configured || instrument.schemaHash != SCHEMA_HASH || instrument.seriesId != SERIES_ID
                 || instrument.governingInstrumentHash != GOVERNING_INSTRUMENT_HASH
-                || instrument.issuerPartyId != ISSUER_PARTY_ID
-                || instrument.custodianPartyId != CUSTODIAN_PARTY_ID
-                || instrument.attestorPartyId != ATTESTOR_PARTY_ID
-                || instrument.maxValidityDuration != 7 days
+                || instrument.issuerPartyId != ISSUER_PARTY_ID || instrument.custodianPartyId != CUSTODIAN_PARTY_ID
+                || instrument.attestorPartyId != ATTESTOR_PARTY_ID || instrument.maxValidityDuration != 7 days
         ) revert VerificationFailed("INSTRUMENT_CONFIG");
 
         bytes32 batchKey = registry.batchKeyFor(INSTRUMENT_ID, BATCH_ID);
@@ -123,26 +119,16 @@ contract VerifySyntheticCommodityEvidenceRegistryV0 {
             revert VerificationFailed("UNEXPECTED_NONCE");
         }
 
-        domainSeparator = keccak256(
-            abi.encode(
-                EIP712_DOMAIN_TYPEHASH,
-                NAME_HASH,
-                VERSION_HASH,
-                block.chainid,
-                registryAddress
-            )
-        );
+        domainSeparator =
+            keccak256(abi.encode(EIP712_DOMAIN_TYPEHASH, NAME_HASH, VERSION_HASH, block.chainid, registryAddress));
         if (registry.domainSeparator() != domainSeparator) {
             revert VerificationFailed("DOMAIN_SEPARATOR");
         }
 
-        (bool mintSurface,) = registryAddress.staticcall(
-            abi.encodeWithSignature("mint(address,uint256)", address(this), 1)
-        );
+        (bool mintSurface,) =
+            registryAddress.staticcall(abi.encodeWithSignature("mint(address,uint256)", address(this), 1));
         if (mintSurface) revert VerificationFailed("MINT_SURFACE");
-        (bool supplySurface,) = registryAddress.staticcall(
-            abi.encodeWithSignature("totalSupply()")
-        );
+        (bool supplySurface,) = registryAddress.staticcall(abi.encodeWithSignature("totalSupply()"));
         if (supplySurface) revert VerificationFailed("SUPPLY_SURFACE");
     }
 
@@ -157,13 +143,11 @@ contract VerifySyntheticCommodityEvidenceRegistryV0 {
     ) private view {
         RMTCommodityEvidenceRegistryV0.Party memory party = registry.getParty(partyId);
         if (
-            party.signingAccount != signingAccount || party.keyVersion != 1
-                || party.validFrom != expectedValidFrom || party.validUntil != expectedValidUntil
-                || party.roleBitmap != roleBitmap
+            party.signingAccount != signingAccount || party.keyVersion != 1 || party.validFrom != expectedValidFrom
+                || party.validUntil != expectedValidUntil || party.roleBitmap != roleBitmap
                 || party.status != RMTCommodityEvidenceRegistryV0.PartyStatus.Active
                 || registry.partyBySigningAccount(signingAccount) != partyId
-                || registry.effectivePartyStatus(partyId)
-                    != RMTCommodityEvidenceRegistryV0.PartyStatus.Active
+                || registry.effectivePartyStatus(partyId) != RMTCommodityEvidenceRegistryV0.PartyStatus.Active
         ) revert VerificationFailed(check);
     }
 }

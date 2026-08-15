@@ -2,7 +2,9 @@
 pragma solidity ^0.8.26;
 
 import {RMTCommodityEvidenceRegistryV0} from "../src/RMTCommodityEvidenceRegistryV0.sol";
-import {RehearseSyntheticCommodityEvidenceRegistryV0} from "../script/RehearseSyntheticCommodityEvidenceRegistryV0.s.sol";
+import {
+    RehearseSyntheticCommodityEvidenceRegistryV0
+} from "../script/RehearseSyntheticCommodityEvidenceRegistryV0.s.sol";
 
 interface CommodityEvidenceRehearsalTestVm {
     function chainId(uint256 newChainId) external;
@@ -21,8 +23,7 @@ contract RMTCommodityEvidenceRegistryV0RehearsalTest {
     }
 
     function testRehearsalDeploysAndVerifiesSyntheticConfigurationWithoutBroadcast() public {
-        RehearseSyntheticCommodityEvidenceRegistryV0 rehearsal =
-            new RehearseSyntheticCommodityEvidenceRegistryV0();
+        RehearseSyntheticCommodityEvidenceRegistryV0 rehearsal = new RehearseSyntheticCommodityEvidenceRegistryV0();
         RMTCommodityEvidenceRegistryV0 registry = rehearsal.run();
         (address issuer, address custodian, address attestor) = rehearsal.syntheticParties();
 
@@ -32,8 +33,7 @@ contract RMTCommodityEvidenceRegistryV0RehearsalTest {
         require(registry.SYNTHETIC_ONLY(), "synthetic boundary missing");
         require(address(registry).balance == 0, "registry retained value");
         require(
-            registry.partyBySigningAccount(issuer) == rehearsal.ISSUER_PARTY_ID(),
-            "issuer account binding mismatch"
+            registry.partyBySigningAccount(issuer) == rehearsal.ISSUER_PARTY_ID(), "issuer account binding mismatch"
         );
         require(
             registry.partyBySigningAccount(custodian) == rehearsal.CUSTODIAN_PARTY_ID(),
@@ -50,25 +50,19 @@ contract RMTCommodityEvidenceRegistryV0RehearsalTest {
         require(instrument.schemaHash == rehearsal.SCHEMA_HASH(), "schema mismatch");
         require(instrument.seriesId == rehearsal.SERIES_ID(), "series mismatch");
         require(
-            instrument.governingInstrumentHash == rehearsal.GOVERNING_INSTRUMENT_HASH(),
-            "governing instrument mismatch"
+            instrument.governingInstrumentHash == rehearsal.GOVERNING_INSTRUMENT_HASH(), "governing instrument mismatch"
         );
         require(instrument.issuerPartyId == rehearsal.ISSUER_PARTY_ID(), "issuer party mismatch");
         require(instrument.custodianPartyId == rehearsal.CUSTODIAN_PARTY_ID(), "custodian party mismatch");
         require(instrument.attestorPartyId == rehearsal.ATTESTOR_PARTY_ID(), "attestor party mismatch");
-        require(
-            instrument.maxValidityDuration == rehearsal.MAX_EVIDENCE_VALIDITY(),
-            "validity policy mismatch"
-        );
+        require(instrument.maxValidityDuration == rehearsal.MAX_EVIDENCE_VALIDITY(), "validity policy mismatch");
     }
 
     function testRehearsalRefusesAnyOtherChainDomain() public {
-        RehearseSyntheticCommodityEvidenceRegistryV0 rehearsal =
-            new RehearseSyntheticCommodityEvidenceRegistryV0();
+        RehearseSyntheticCommodityEvidenceRegistryV0 rehearsal = new RehearseSyntheticCommodityEvidenceRegistryV0();
         vm.chainId(TARGET_CHAIN_ID + 1);
-        (bool success,) = address(rehearsal).call(
-            abi.encodeWithSelector(RehearseSyntheticCommodityEvidenceRegistryV0.run.selector)
-        );
+        (bool success,) =
+            address(rehearsal).call(abi.encodeWithSelector(RehearseSyntheticCommodityEvidenceRegistryV0.run.selector));
         require(!success, "wrong-chain rehearsal succeeded");
         vm.chainId(TARGET_CHAIN_ID);
     }

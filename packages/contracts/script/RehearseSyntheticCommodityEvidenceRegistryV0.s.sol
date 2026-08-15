@@ -59,9 +59,7 @@ contract RehearseSyntheticCommodityEvidenceRegistryV0 {
 
         registry = new RMTCommodityEvidenceRegistryV0(address(this));
         registry.registerParty(ISSUER_PARTY_ID, issuer, registry.ROLE_ISSUER_BITMAP(), validFrom, validUntil);
-        registry.registerParty(
-            CUSTODIAN_PARTY_ID, custodian, registry.ROLE_CUSTODIAN_BITMAP(), validFrom, validUntil
-        );
+        registry.registerParty(CUSTODIAN_PARTY_ID, custodian, registry.ROLE_CUSTODIAN_BITMAP(), validFrom, validUntil);
         registry.registerParty(ATTESTOR_PARTY_ID, attestor, registry.ROLE_ATTESTOR_BITMAP(), validFrom, validUntil);
         registry.configureInstrument(
             INSTRUMENT_ID,
@@ -99,14 +97,7 @@ contract RehearseSyntheticCommodityEvidenceRegistryV0 {
         );
 
         emit SyntheticCommodityEvidenceRegistryRehearsed(
-            address(registry),
-            address(this),
-            configurationHash,
-            issuer,
-            custodian,
-            attestor,
-            validFrom,
-            validUntil
+            address(registry), address(this), configurationHash, issuer, custodian, attestor, validFrom, validUntil
         );
     }
 
@@ -136,8 +127,7 @@ contract RehearseSyntheticCommodityEvidenceRegistryV0 {
                 || attestorParty.status != RMTCommodityEvidenceRegistryV0.PartyStatus.Active || !instrument.configured
                 || instrument.schemaHash != SCHEMA_HASH || instrument.seriesId != SERIES_ID
                 || instrument.governingInstrumentHash != GOVERNING_INSTRUMENT_HASH
-                || instrument.issuerPartyId != ISSUER_PARTY_ID
-                || instrument.custodianPartyId != CUSTODIAN_PARTY_ID
+                || instrument.issuerPartyId != ISSUER_PARTY_ID || instrument.custodianPartyId != CUSTODIAN_PARTY_ID
                 || instrument.attestorPartyId != ATTESTOR_PARTY_ID
                 || instrument.maxValidityDuration != MAX_EVIDENCE_VALIDITY || address(registry).balance != 0
         ) revert RehearsalVerificationFailed();

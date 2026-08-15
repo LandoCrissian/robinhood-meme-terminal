@@ -170,10 +170,7 @@ contract RMTCommodityEvidenceRegistryV0 is EIP712, ReentrancyGuard {
         uint64 validUntil
     );
     event PartyStatusChanged(
-        bytes32 indexed partyId,
-        PartyStatus previousStatus,
-        PartyStatus newStatus,
-        bytes32 reasonCode
+        bytes32 indexed partyId, PartyStatus previousStatus, PartyStatus newStatus, bytes32 reasonCode
     );
     event InstrumentConfigured(
         bytes32 indexed instrumentId,
@@ -259,9 +256,8 @@ contract RMTCommodityEvidenceRegistryV0 is EIP712, ReentrancyGuard {
     ) external onlyAdministrator onlyTargetChain {
         if (
             partyId == bytes32(0) || signingAccount == address(0) || roleBitmap == 0
-                || (roleBitmap & ~ALL_ROLE_BITMAPS) != 0 || validFrom > block.timestamp
-                || validUntil <= block.timestamp || validUntil <= validFrom
-                || _parties[partyId].status != PartyStatus.Unregistered
+                || (roleBitmap & ~ALL_ROLE_BITMAPS) != 0 || validFrom > block.timestamp || validUntil <= block.timestamp
+                || validUntil <= validFrom || _parties[partyId].status != PartyStatus.Unregistered
                 || partyBySigningAccount[signingAccount] != bytes32(0)
         ) revert InvalidParty();
 
@@ -308,9 +304,8 @@ contract RMTCommodityEvidenceRegistryV0 is EIP712, ReentrancyGuard {
         if (
             instrumentId == bytes32(0) || schemaHash == bytes32(0) || seriesId == bytes32(0)
                 || governingInstrumentHash == bytes32(0) || issuerPartyId == bytes32(0)
-                || custodianPartyId == bytes32(0) || attestorPartyId == bytes32(0)
-                || issuerPartyId == custodianPartyId || issuerPartyId == attestorPartyId
-                || custodianPartyId == attestorPartyId || maxValidityDuration == 0
+                || custodianPartyId == bytes32(0) || attestorPartyId == bytes32(0) || issuerPartyId == custodianPartyId
+                || issuerPartyId == attestorPartyId || custodianPartyId == attestorPartyId || maxValidityDuration == 0
                 || maxValidityDuration > MAX_ALLOWED_VALIDITY || _instruments[instrumentId].configured
         ) revert InvalidInstrument();
 
@@ -375,9 +370,7 @@ contract RMTCommodityEvidenceRegistryV0 is EIP712, ReentrancyGuard {
 
         bytes32 digest = evidenceDigest(envelope);
         if (consumedDigest[digest]) revert DigestAlreadyConsumed();
-        _validateRoleSignature(
-            issuerSignature, ROLE_ISSUER, instrument.issuerPartyId, ROLE_ISSUER_BITMAP, digest
-        );
+        _validateRoleSignature(issuerSignature, ROLE_ISSUER, instrument.issuerPartyId, ROLE_ISSUER_BITMAP, digest);
         _validateRoleSignature(
             custodianSignature, ROLE_CUSTODIAN, instrument.custodianPartyId, ROLE_CUSTODIAN_BITMAP, digest
         );
@@ -423,11 +416,7 @@ contract RMTCommodityEvidenceRegistryV0 is EIP712, ReentrancyGuard {
                 msg.sender
             );
             emit EvidenceSuperseded(
-                previousEvidenceId,
-                evidenceId,
-                batchKey,
-                envelope.evidenceVersion - 1,
-                envelope.evidenceVersion
+                previousEvidenceId, evidenceId, batchKey, envelope.evidenceVersion - 1, envelope.evidenceVersion
             );
         }
 
@@ -461,12 +450,7 @@ contract RMTCommodityEvidenceRegistryV0 is EIP712, ReentrancyGuard {
                 || supportingManifestHash == bytes32(0) || supportingUriHash == bytes32(0)
         ) revert InvalidStatusTransition();
         _changeEvidenceStatus(
-            evidenceId,
-            record,
-            EvidenceStatus.Disputed,
-            reasonCode,
-            supportingManifestHash,
-            supportingUriHash
+            evidenceId, record, EvidenceStatus.Disputed, reasonCode, supportingManifestHash, supportingUriHash
         );
     }
 
@@ -484,12 +468,7 @@ contract RMTCommodityEvidenceRegistryV0 is EIP712, ReentrancyGuard {
         ) revert InvalidStatusTransition();
         if (reasonCode == bytes32(0)) revert InvalidStatusTransition();
         _changeEvidenceStatus(
-            evidenceId,
-            record,
-            EvidenceStatus.Suspended,
-            reasonCode,
-            supportingManifestHash,
-            supportingUriHash
+            evidenceId, record, EvidenceStatus.Suspended, reasonCode, supportingManifestHash, supportingUriHash
         );
     }
 
@@ -506,12 +485,7 @@ contract RMTCommodityEvidenceRegistryV0 is EIP712, ReentrancyGuard {
                 || reasonCode == bytes32(0)
         ) revert InvalidStatusTransition();
         _changeEvidenceStatus(
-            evidenceId,
-            record,
-            EvidenceStatus.Closed,
-            reasonCode,
-            supportingManifestHash,
-            supportingUriHash
+            evidenceId, record, EvidenceStatus.Closed, reasonCode, supportingManifestHash, supportingUriHash
         );
     }
 
@@ -634,17 +608,16 @@ contract RMTCommodityEvidenceRegistryV0 is EIP712, ReentrancyGuard {
                 || envelope.evidenceVersion == 0 || envelope.commoditySpecHash == bytes32(0)
                 || envelope.publicRegionHash == bytes32(0) || envelope.titleEvidenceHash == bytes32(0)
                 || envelope.custodyEvidenceHash == bytes32(0) || envelope.qualityEvidenceHash == bytes32(0)
-                || envelope.calibrationEvidenceHash == bytes32(0)
-                || envelope.encumbranceStatementHash == bytes32(0) || envelope.publicManifestHash == bytes32(0)
-                || envelope.fullManifestHash == bytes32(0) || envelope.publicManifestUriHash == bytes32(0)
+                || envelope.calibrationEvidenceHash == bytes32(0) || envelope.encumbranceStatementHash == bytes32(0)
+                || envelope.publicManifestHash == bytes32(0) || envelope.fullManifestHash == bytes32(0)
+                || envelope.publicManifestUriHash == bytes32(0)
                 || envelope.publicManifestHash == envelope.fullManifestHash
                 || envelope.rightsVersionHash != NO_RIGHTS_VERSION_HASH
                 || envelope.transferPolicyHash != NON_TRANSFERABLE_POLICY_HASH || envelope.nonce == 0
         ) revert InvalidEnvelope();
         if (
-            envelope.quantity.value == 0 || envelope.quantity.decimals > 18
-                || envelope.quantity.unitCode == bytes32(0) || envelope.quantity.quantityStandardHash == bytes32(0)
-                || envelope.quantity.uncertaintyPpm > 1_000_000
+            envelope.quantity.value == 0 || envelope.quantity.decimals > 18 || envelope.quantity.unitCode == bytes32(0)
+                || envelope.quantity.quantityStandardHash == bytes32(0) || envelope.quantity.uncertaintyPpm > 1_000_000
         ) revert InvalidEnvelope();
         if (
             envelope.validUntil <= envelope.validFrom || envelope.validFrom > block.timestamp
@@ -715,13 +688,7 @@ contract RMTCommodityEvidenceRegistryV0 is EIP712, ReentrancyGuard {
         record.statusSupportingManifestHash = supportingManifestHash;
         record.statusSupportingUriHash = supportingUriHash;
         emit EvidenceStatusChanged(
-            evidenceId,
-            previousStatus,
-            newStatus,
-            reasonCode,
-            supportingManifestHash,
-            supportingUriHash,
-            msg.sender
+            evidenceId, previousStatus, newStatus, reasonCode, supportingManifestHash, supportingUriHash, msg.sender
         );
     }
 
