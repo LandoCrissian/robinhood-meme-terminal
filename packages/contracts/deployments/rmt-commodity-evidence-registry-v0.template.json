@@ -1,0 +1,77 @@
+{
+  "schema": "rmt.synthetic-commodity-evidence-registry-deployment.v0",
+  "status": "UNDEPLOYED",
+  "generatedAt": null,
+  "authorization": {
+    "sourceReviewComplete": false,
+    "testnetDeploymentAuthorized": false,
+    "broadcastAuthorized": false,
+    "mergeAuthorized": false,
+    "realInventoryAuthorized": false,
+    "tokenIssuanceAuthorized": false
+  },
+  "network": {
+    "name": "Robinhood Chain Testnet",
+    "chainId": 46630,
+    "rpcUrlRecorded": false
+  },
+  "contract": {
+    "name": "RMTCommodityEvidenceRegistryV0",
+    "sourcePath": "packages/contracts/src/RMTCommodityEvidenceRegistryV0.sol",
+    "address": "0x0000000000000000000000000000000000000000",
+    "deploymentTransactionHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+    "deploymentBlock": null,
+    "creationCodeHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+    "runtimeCodeHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+    "explorerVerification": "NOT_STARTED"
+  },
+  "administrator": {
+    "address": "0x0000000000000000000000000000000000000000",
+    "authorizationEvidenceHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+    "note": "A real testnet administrator requires separate owner approval. The non-broadcast rehearsal uses the rehearsal script contract only."
+  },
+  "instrument": {
+    "instrumentIdLabel": "RMT-HE-DEMO-V0",
+    "schemaLabel": "rmt.physical-commodity-evidence.v0.schema",
+    "seriesIdLabel": "RMT-HE-COLORADO-SYNTHETIC-SERIES-V0",
+    "governingInstrumentLabel": "RMT_SYNTHETIC_NO_RIGHTS_GOVERNING_TEXT_V0",
+    "maximumEvidenceValiditySeconds": 604800,
+    "configured": false
+  },
+  "syntheticParties": {
+    "issuer": {
+      "partyIdLabel": "RMT-SYNTHETIC-ISSUER-0001",
+      "signingAddress": "0x0000000000000000000000000000000000000000",
+      "publicTestKeyOnly": true
+    },
+    "custodian": {
+      "partyIdLabel": "RMT-SYNTHETIC-CUSTODIAN-0001",
+      "signingAddress": "0x0000000000000000000000000000000000000000",
+      "publicTestKeyOnly": true
+    },
+    "attestor": {
+      "partyIdLabel": "RMT-SYNTHETIC-ATTESTOR-0001",
+      "signingAddress": "0x0000000000000000000000000000000000000000",
+      "publicTestKeyOnly": true
+    },
+    "validFrom": null,
+    "validUntil": null
+  },
+  "evidence": {
+    "published": false,
+    "evidenceId": "0x0000000000000000000000000000000000000000000000000000000000000000",
+    "publicManifestHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+    "fullManifestHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+    "publicationTransactionHash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "boundaries": {
+    "syntheticOnly": true,
+    "createsToken": false,
+    "createsCommodityRight": false,
+    "createsRedemptionRight": false,
+    "createsTransferRight": false,
+    "createsRmtTokenRight": false,
+    "productionEnvironmentChanged": false,
+    "publicUiChanged": false
+  }
+}
