@@ -1,4 +1,6 @@
 export * from "./agent-authoritative-open-position-admission.ts";
+export * from "./agent-authoritative-open-position-fill.ts";
+export * from "./agent-authoritative-open-position-submission.ts";
 export * from "./agent-authoritative-position-reduction-fill.ts";
 export * from "./agent-authoritative-position-reduction-submission.ts";
 export * from "./agent-authoritative-position-reduction.ts";
