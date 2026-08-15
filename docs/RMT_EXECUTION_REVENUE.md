@@ -82,7 +82,9 @@ These identifiers describe bounded settlement families, not active providers. Un
 
 ## Uniswap V3 atomic fee executor
 
-`packages/contracts/src/RMTUniswapV3FeeExecutorV1.sol` is the first provider-specific onchain settlement primitive. It is deployed at `0x843a4D8BEa13037c5706eA005d336aE735BB0eD4` through the reviewed CREATE2 factory in transaction `0xdc0129e313187dd5d28516dbd67df8ac907ae47d083e8c30b0d909fc2eb5bcbd` at block `35070206`. Its exact runtime hash is `0x86cc453830da2f44aa6d236b55ad9a9b1054cfdac25f09f7335a3eca8414b224`. Deployment does not constitute wallet routing or production fee activation.
+`packages/contracts/src/RMTUniswapV3FeeExecutorV1.sol` is the first provider-specific onchain settlement primitive. The corrected executor is deployed at `0xcB9c00524848038D211921e0f3975190D7Aa1e8f` through the reviewed CREATE2 factory in transaction `0x367e8dd5d87bc09a94f99decbb9eda62c132f52822733a465804fa8c20a62b2b` at Robinhood L2 block `35142528`. Its exact immutable-filled runtime hash is `0xc6d54277c89993410fa71ad24c7a6cea0072a4f0f20a8759a04d9e4a4c37813d`. Deployment does not constitute wallet routing or production fee activation.
+
+The first deployment at `0x843a4D8BEa13037c5706eA005d336aE735BB0eD4` is permanently inactive because its policy boundary used Solidity `block.number`, which resolves to the parent L1 block on this Arbitrum-derived chain. It never settled a trade or fee. The corrected executor reads the canonical Robinhood L2 block from the ArbSys precompile and otherwise preserves the reviewed immutable policy and execution boundary. The deployment manifest retains the superseded deployment identity and fail-closed reason.
 
 The executor is non-upgradeable and has no owner, proxy, mutable router, mutable treasury, arbitrary target, arbitrary calldata, delegatecall, sweep or rescue method. One deployment immutably binds:
 
@@ -213,7 +215,7 @@ forge build --root packages/contracts --contracts src/RMTUniswapV3FeeExecutorV1.
 pnpm --filter web readiness:vnext-uniswap-fee-deployment
 ```
 
-The command reconstructs the deployment from the compiled artifact, re-verifies the Safe ownership and runtime, re-verifies Router02/factory/WETH/USDG identities, verifies the exact deployment transaction and live executor runtime, and reports confirmation evidence. Before deployment it also simulates the constructor/CREATE2 path and reports gas sufficiency; after deployment it never attempts the consumed CREATE2 salt again. It never signs or submits. Fee activation remains unauthorized. Server authorization, client disclosure, receipt reconciliation and controlled proof remain separate default-off phases after deployment.
+The command reconstructs the deployment from the compiled artifact, re-verifies the Safe ownership and runtime, re-verifies Router02/factory/WETH/USDG identities, verifies the exact deployment transaction and live executor runtime, and reports confirmation evidence. Before deployment it also simulates the constructor/CREATE2 path and reports gas sufficiency; after deployment it never attempts the consumed CREATE2 salt again. It never signs or submits. Fee activation remains unauthorized. Server authorization, client disclosure and receipt reconciliation are implemented but default off; controlled proof remains the release prerequisite.
 
 ## Review sequence
 
@@ -231,7 +233,7 @@ Production revenue is not booked from a quote or plan. It exists only after a su
 - Policy implementation: foundation present.
 - Production treasury: approved Safe deployed and independently verified; production environment remains unconfigured.
 - Policy identity: exact hash and block boundary recorded; collection remains disabled.
-- Fee executor: deployed at `0x843a4D8BEa13037c5706eA005d336aE735BB0eD4`; exact transaction and runtime verified.
+- Fee executor: corrected deployment at `0xcB9c00524848038D211921e0f3975190D7Aa1e8f`; exact transaction, immutable-filled runtime and canonical Robinhood L2 policy-block source verified. The first deployment is recorded as permanently inactive.
 - Fee-bearing authorization: implemented and independently gated off.
 - Fee disclosure: implemented; unreachable without an admitted deployment/policy.
 - Fee settlement reconciliation: implemented for the canonical event; no production settlement exists.

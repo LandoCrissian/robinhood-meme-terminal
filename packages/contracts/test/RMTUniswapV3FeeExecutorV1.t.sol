@@ -3,7 +3,7 @@ pragma solidity ^0.8.26;
 
 import {Test} from "forge-std/Test.sol";
 import {Vm} from "forge-std/Vm.sol";
-import {RMTUniswapV3FeeExecutorV1, IRMTUniswapSwapRouter02V1} from "../src/RMTUniswapV3FeeExecutorV1.sol";
+import {RMTUniswapV3FeeExecutorV1, IRMTArbSysV1, IRMTUniswapSwapRouter02V1} from "../src/RMTUniswapV3FeeExecutorV1.sol";
 
 contract FeeExecutorToken {
     mapping(address account => uint256 amount) public balanceOf;
@@ -268,6 +268,9 @@ contract RMTUniswapV3FeeExecutorV1Test is Test {
         vm.chainId(4_663);
         vm.roll(100);
         vm.warp(1_000_000);
+        vm.mockCall(
+            address(100), abi.encodeWithSelector(IRMTArbSysV1.arbBlockNumber.selector), abi.encode(uint256(100))
+        );
         input = new FeeExecutorToken();
         output = new FeeExecutorToken();
         weth = new FeeExecutorToken();
@@ -907,6 +910,19 @@ contract RMTUniswapV3FeeExecutorV1Test is Test {
         vm.expectRevert(RMTUniswapV3FeeExecutorV1.PolicyInactive.selector);
         vm.prank(TRADER);
         future.executeInputFee(authorization, route);
+    }
+
+    function testPolicyBoundaryUsesRobinhoodL2BlockNumber() public {
+        assertEq(executor.currentPolicyBlock(), 100);
+        vm.roll(1);
+        assertEq(block.number, 1);
+        assertEq(executor.currentPolicyBlock(), 100);
+
+        RMTUniswapV3FeeExecutorV1.Route memory route = _directRoute();
+        RMTUniswapV3FeeExecutorV1.FeeAuthorization memory authorization =
+            _inputAuthorization(route, 40_000, keccak256("l2-policy-block"));
+        vm.prank(TRADER);
+        executor.executeInputFee(authorization, route);
     }
 
     function testFeeMathBoundariesMatchReviewedFloorFormula() public view {

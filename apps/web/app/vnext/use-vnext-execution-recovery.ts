@@ -60,13 +60,13 @@ export function useVNextExecutionRecovery() {
       || receipt.data.transactionHash.toLowerCase() !== record.txHash.toLowerCase()
     ) return;
     const state = receipt.data.status === "success" ? "confirmed" : "reverted";
-    const feeSettlement = state === "confirmed" && record.feeSettlement
+    const feeSettlement = state === "confirmed" && record.kind === "swap" && record.feeSettlement
       ? settledVNextFeeExecution(record, receipt.data.logs)
       : null;
     const outputAmountAtomic = state === "confirmed"
-      ? feeSettlement?.outputAmountAtomic ?? (record.feeSettlement ? null : settledVNextOutputAtomic(record, receipt.data.logs))
+      ? feeSettlement?.outputAmountAtomic ?? (record.kind === "swap" && record.feeSettlement ? null : settledVNextOutputAtomic(record, receipt.data.logs))
       : null;
-    if (state === "confirmed" && record.feeSettlement && !feeSettlement) {
+    if (state === "confirmed" && record.kind === "swap" && record.feeSettlement && !feeSettlement) {
       setReconciliationFailed(true);
       return;
     }
