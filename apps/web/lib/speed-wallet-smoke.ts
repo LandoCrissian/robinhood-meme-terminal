@@ -7,7 +7,6 @@ import { isMobileWebUserAgent, metaMaskDappLink, walletBrowserEnvironment } from
 const appRoot = fileURLToPath(new URL("../app/", import.meta.url));
 const providers = readFileSync(`${appRoot}providers.tsx`, "utf8");
 const speedProvider = readFileSync(`${appRoot}speed-wallet-provider.tsx`, "utf8");
-const speedEntry = readFileSync(`${appRoot}speed-wallet-entry.tsx`, "utf8");
 const walletConfig = readFileSync(`${appRoot}wallet-config.ts`, "utf8");
 const walletButton = readFileSync(`${appRoot}wallet-button.tsx`, "utf8");
 const privyWalletButton = readFileSync(`${appRoot}privy-wallet-button.tsx`, "utf8");
@@ -17,7 +16,7 @@ const walletReceiveDialog = readFileSync(`${appRoot}wallet-receive-dialog.tsx`, 
 const privyFundingActions = readFileSync(`${appRoot}privy-funding-actions.tsx`, "utf8");
 const fundWalletButton = readFileSync(`${appRoot}fund-wallet-button.tsx`, "utf8");
 const overlayPortal = readFileSync(`${appRoot}overlay-portal.tsx`, "utf8");
-const combined = `${providers}\n${speedProvider}\n${speedEntry}\n${walletButton}\n${privyWalletButton}\n${walletTransferDialog}\n${walletReceiveDialog}\n${fundWalletButton}\n${overlayPortal}`;
+const combined = `${providers}\n${speedProvider}\n${walletButton}\n${privyWalletButton}\n${walletTransferDialog}\n${walletReceiveDialog}\n${fundWalletButton}\n${overlayPortal}`;
 
 assert.equal(normalizePrivyAppId("a".repeat(25)), "a".repeat(25), "A valid Privy app ID must activate Speed Wallet.");
 assert.equal(normalizePrivyAppId("too-short"), undefined, "An invalid Privy app ID must fail closed.");
@@ -38,10 +37,6 @@ assert.doesNotMatch(speedProvider, /createLegacyWalletConnectors/, "Privy must n
 assert.match(speedProvider, /@privy-io\/wagmi/, "Embedded wallets must use Privy's official Wagmi adapter.");
 assert.match(speedProvider, /createOnLogin:\s*"users-without-wallets"/, "Privy must not create a second wallet for a trader who already has an external wallet.");
 assert.match(speedProvider, /showWalletLoginFirst:\s*true/, "Privy must prioritize the wallet already available to a trader.");
-assert.match(speedEntry, /useExportWallet/, "The user-owned wallet must expose recovery/export controls.");
-assert.match(speedEntry, /useSetWalletRecovery/, "The user-owned wallet must expose cross-device recovery controls.");
-assert.match(speedEntry, /useMfaEnrollment/, "The user-owned wallet must expose MFA enrollment controls.");
-assert.match(speedEntry, /Session permissions remain off/, "Signer permissions must be visibly fail-closed.");
 assert.match(walletButton, /if \(speedWalletEnabled\) return <PrivyWalletButton/, "Privy must own the wallet entry point whenever validly configured.");
 assert.match(privyWalletButton, /"Connect trading wallet"/, "VNext must lead with a trading-wallet connection rather than a profile login.");
 assert.match(privyWalletButton, /pathname === "\/" \|\| pathname === "\/vnext"/, "The production root must retain VNext's external-wallet-only boundary.");
@@ -51,7 +46,7 @@ assert.match(privyWalletButton, /mobileMetaMaskUrl/, "Mobile traders must have a
 assert.match(privyWalletButton, /Connect this wallet/, "A mobile wallet browser must offer its injected wallet directly.");
 assert.match(privyWalletButton, /Rabby \/ other/, "Mobile traders must have a clear Rabby and WalletConnect fallback.");
 assert.match(rmtIdentity, /supportsOAuth \? \["email", "google", "passkey", "wallet"\] : \["wallet"\]/, "Wallet browsers must not offer OAuth flows that cannot leave their embedded browser.");
-assert.doesNotMatch(`${speedEntry}\n${privyFundingActions}`, /onClick=\{login\}/, "Wallet and funding entry points must use RMT's environment-aware Privy login.");
+assert.doesNotMatch(privyFundingActions, /onClick=\{login\}/, "Funding entry points must use RMT's environment-aware Privy login.");
 assert.ok(
   privyFundingActions.indexOf("if (!authenticated)") < privyFundingActions.indexOf("if (!funding.enabled)"),
   "A trader must be able to create or recover the wallet before provider funding availability is evaluated."
@@ -84,4 +79,4 @@ assert.match(walletTransferDialog, /<OverlayPortal>/, "Transfer controls must st
 assert.match(walletReceiveDialog, /<OverlayPortal>/, "Receive controls must stay inside the visual viewport.");
 assert.match(overlayPortal, /createPortal\(children, document\.body\)/, "Wallet sheets must render above transformed navigation and community layers.");
 
-console.log("Speed Wallet remains optional, user-owned, exportable, and signer-disabled by default.");
+console.log("VNext wallet entry remains external-first, exact-wallet bound, and signer-disabled by default.");

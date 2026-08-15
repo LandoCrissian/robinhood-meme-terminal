@@ -18,7 +18,6 @@ const evaluatorRoute = readFileSync(
   "utf8"
 );
 const publicChrome = readFileSync(new URL("../app/public-chrome.tsx", import.meta.url), "utf8");
-const localGuardPanel = readFileSync(new URL("../app/position-guard-panel.tsx", import.meta.url), "utf8");
 const liveGuardControls = readFileSync(new URL("../app/live-position-guard-controls.tsx", import.meta.url), "utf8");
 const runtimePolicy = readFileSync(new URL("./live-position-guard.ts", import.meta.url), "utf8");
 const reviewPolicy = readFileSync(new URL("./live-position-guard-review.ts", import.meta.url), "utf8");
@@ -82,8 +81,6 @@ const evaluatorIndex = firestoreIndexes.indexes?.find((index) => (
 ));
 assert.ok(evaluatorIndex, "Automatic Position Guard requires the fair-scheduling Firestore index.");
 
-assert.match(localGuardPanel, /armingEnabled=\{false\}/);
-assert.match(localGuardPanel, /Server-backed automatic permissions must be managed separately in Protection Center/);
 assert.match(liveGuardControls, /candidate\.address\.toLowerCase\(\) === wallet\.toLowerCase\(\)/);
 assert.match(liveGuardControls, /armingEnabled && configuration\.enabled/);
 assert.match(liveGuardControls, /already-authorized transaction may still confirm/);
