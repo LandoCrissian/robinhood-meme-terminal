@@ -21,7 +21,7 @@ import {
   robinhoodWalletAccount
 } from "../../lib/vnext/robinhood-assets";
 import { deriveVNextVerifiedUsdgOutcome } from "../../lib/vnext/verified-cost-outcome";
-import { metadataFromDetectedWalletAsset, type VNextDetectedWalletAsset } from "../../lib/vnext/wallet-assets";
+import { trustedPaymentMetadataFromDetectedWalletAsset, type VNextDetectedWalletAsset } from "../../lib/vnext/wallet-assets";
 import { clearTradeQuoteCache, requestTradeQuote, tradeQuoteFailureFromResponse } from "../../lib/trade-quote-client";
 import { useRmtIdentity } from "../rmt-identity";
 import { FundWalletButton } from "../fund-wallet-button";
@@ -131,22 +131,22 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
         DEFAULT_NATIVE_BUY_AMOUNT
       )
     : "";
-  const verifiedWalletAssets = useMemo(
+  const trustedPaymentAssets = useMemo(
     () => uniqueAssets(walletAssets.flatMap((asset) => {
-      const metadata = metadataFromDetectedWalletAsset(asset);
+      const metadata = trustedPaymentMetadataFromDetectedWalletAsset(asset);
       return metadata ? [metadata] : [];
     })),
     [walletAssets]
   );
   const buyInputs = useMemo(() => {
     const eligibleContracts = marketAsset
-      ? verifiedWalletAssets.filter((asset) => assetKey(asset.id) !== assetKey(marketAsset.id))
-      : verifiedWalletAssets;
+      ? trustedPaymentAssets.filter((asset) => assetKey(asset.id) !== assetKey(marketAsset.id))
+      : trustedPaymentAssets;
     const usdg = eligibleContracts.filter((asset) => assetKey(asset.id) === assetKey(ROBINHOOD_USDG.id));
     const others = eligibleContracts.filter((asset) => assetKey(asset.id) !== assetKey(ROBINHOOD_USDG.id));
     const native = nativeBalance && nativeBalance > NATIVE_GAS_RESERVE_ATOMIC ? [ROBINHOOD_ETH] : [];
     return uniqueAssets([...usdg, ...native, ...others]);
-  }, [marketAsset, nativeBalance, verifiedWalletAssets]);
+  }, [marketAsset, nativeBalance, trustedPaymentAssets]);
   const defaultBuyInput = buyInputs.find((asset) => assetKey(asset.id) === assetKey(ROBINHOOD_USDG.id))
     ?? buyInputs.find((asset) => assetKey(asset.id) === assetKey(ROBINHOOD_ETH.id))
     ?? buyInputs[0];
@@ -191,7 +191,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
     if (!marketAsset) return { intent: null, message: "This preview asset has no verified chain-qualified contract identity." };
     if (!address || !isConnected || identity.activeWalletKind !== "external") return { intent: null, message: "Connect an external trading wallet to bind the source account and recipient." };
     if (!onRobinhood) return { intent: null, message: "Switch to Robinhood Chain before creating an intent." };
-    if (!pair) return { intent: null, message: side === "buy" ? "No different verified wallet-held input asset is detected." : "No supported settlement asset is available." };
+    if (!pair) return { intent: null, message: side === "buy" ? "No different trusted payment asset is available in this wallet." : "No supported settlement asset is available." };
     try {
       const account = robinhoodWalletAccount(address as Address);
       return {
@@ -767,7 +767,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
               setBuyInputKey(nextKey);
             }}
           >
-            {displayedBuyInputs.length === 0 ? <option value="">No held asset</option> : displayedBuyInputs.map((asset) => <option value={assetKey(asset.id)} key={assetKey(asset.id)}>{asset.symbol ?? "Asset"}</option>)}
+            {displayedBuyInputs.length === 0 ? <option value="">No trusted payment asset</option> : displayedBuyInputs.map((asset) => <option value={assetKey(asset.id)} key={assetKey(asset.id)}>{asset.id.locator.kind === "native" ? "ETH · Native" : `${asset.symbol ?? "Asset"} · Canonical`}</option>)}
           </select> : <button type="button" disabled>{inputSymbol}</button>}
         </div>
       </label>

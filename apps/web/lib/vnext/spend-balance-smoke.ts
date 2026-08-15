@@ -11,7 +11,12 @@ import {
   confirmedBalanceSnapshot,
   robinhoodWalletAccount
 } from "./robinhood-assets";
-import { detectedWalletAssets, importedWalletCandidate, metadataFromDetectedWalletAsset, walletAssetCandidates } from "./wallet-assets";
+import {
+  detectedWalletAssets,
+  importedWalletCandidate,
+  trustedPaymentMetadataFromDetectedWalletAsset,
+  walletAssetCandidates
+} from "./wallet-assets";
 
 const component = readFileSync(new URL("../../app/vnext/spend-balance.tsx", import.meta.url), "utf8");
 const hook = readFileSync(new URL("../../app/vnext/use-vnext-wallet-assets.ts", import.meta.url), "utf8");
@@ -74,15 +79,42 @@ assert.deepEqual(detectedWalletAssets([
 ]).map((asset) => ({ symbol: asset.symbol, balance: asset.balanceAtomic, routeState: asset.routeState })), [
   { symbol: "LIVE", balance: "42", routeState: "detected" }
 ]);
-const detectedMetadata = metadataFromDetectedWalletAsset({
+const canonicalPayment = trustedPaymentMetadataFromDetectedWalletAsset({
+  ...candidates[0],
+  balanceAtomic: "1000000",
+  routeState: "detected"
+});
+assert.equal(canonicalPayment?.symbol, "USDG");
+assert.equal(canonicalPayment?.decimals, 6);
+assert.equal(trustedPaymentMetadataFromDetectedWalletAsset({
+  ...candidates[1],
+  balanceAtomic: "1000000000000000000",
+  routeState: "detected"
+})?.symbol, "WETH");
+assert.equal(trustedPaymentMetadataFromDetectedWalletAsset({
+  ...candidates[0],
+  reputation: "suspicious",
+  balanceAtomic: "1000000",
+  routeState: "detected"
+}), null);
+assert.equal(trustedPaymentMetadataFromDetectedWalletAsset({
   ...candidates[3],
   decimals: 18,
   identityState: "verified",
   balanceAtomic: "42",
   routeState: "detected"
-});
-assert.equal(detectedMetadata?.metadataState, "verified");
-assert.equal(detectedMetadata?.decimals, 18);
+}), null);
+assert.equal(trustedPaymentMetadataFromDetectedWalletAsset({
+  ...candidates[0],
+  address: "0x4444444444444444444444444444444444444444",
+  symbol: "USDG",
+  name: "Counterfeit USDG",
+  source: "wallet_index",
+  decimals: 6,
+  identityState: "verified",
+  balanceAtomic: "1000000",
+  routeState: "detected"
+}), null);
 assert.match(component, /Confirmed wallet-held USDG/);
 assert.match(component, /<FundWalletButton variant="inline" label="Add funds" target="mainnet" \/>/);
 assert.doesNotMatch(component, /Verify USDG/);
@@ -101,6 +133,9 @@ assert.match(component, /functionName: "balanceOf"/);
 assert.match(component, /balance <= 0n/);
 assert.match(component, /Its execution route has not been checked/);
 assert.match(hook, /publicClient\.multicall/);
+assert.match(hook, /balanceRequestId/);
+assert.match(hook, /discoveryRequestId/);
+assert.doesNotMatch(hook, /const requestId = useRef/);
 assert.match(hook, /functionName: "balanceOf"/);
 assert.match(hook, /getBalance/);
 assert.match(hook, /\/api\/vnext\/wallet-assets/);

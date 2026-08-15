@@ -38,7 +38,8 @@ export function useVNextWalletAssets(markets: VNextDirectoryMarket[], imported: 
   const [status, setStatus] = useState<VNextWalletAssetStatus>("idle");
   const [discoveryStatus, setDiscoveryStatus] = useState<VNextWalletDiscoveryStatus>("idle");
   const [observedAtMs, setObservedAtMs] = useState<number>();
-  const requestId = useRef(0);
+  const balanceRequestId = useRef(0);
+  const discoveryRequestId = useRef(0);
   const snapshotWallet = useRef<string | null>(null);
   const discoveryWallet = useRef<string | null>(null);
   const discoveredAssets = useRef<VNextWalletDiscoveryAsset[]>([]);
@@ -47,8 +48,9 @@ export function useVNextWalletAssets(markets: VNextDirectoryMarket[], imported: 
   const enabled = Boolean(address && isConnected && onRobinhood && publicClient);
 
   const refresh = useCallback(async (forceDiscovery = true) => {
-    const currentRequest = ++requestId.current;
+    const currentBalanceRequest = ++balanceRequestId.current;
     if (!address || !publicClient || !isConnected || !onRobinhood) {
+      discoveryRequestId.current += 1;
       setAssets([]);
       setNativeBalance(undefined);
       setObservedAtMs(undefined);
@@ -129,6 +131,7 @@ export function useVNextWalletAssets(markets: VNextDirectoryMarket[], imported: 
     const discoveryDue = forceDiscovery
       || lastDiscoveryAt.current === null
       || Date.now() - lastDiscoveryAt.current >= VNEXT_CLIENT_REFRESH_POLICY.walletDiscoveryMs;
+    const currentDiscoveryRequest = discoveryDue ? ++discoveryRequestId.current : null;
     if (discoveryDue) lastDiscoveryAt.current = Date.now();
     const discoveryRequest = discoveryDue
       ? fetch(`/api/vnext/wallet-assets?${new URLSearchParams({ wallet: address })}`, { cache: "no-store" })
@@ -144,46 +147,55 @@ export function useVNextWalletAssets(markets: VNextDirectoryMarket[], imported: 
         publicClient.getBalance({ address }),
         readCandidates(initialCandidates)
       ]);
-      if (currentRequest !== requestId.current) return;
-      snapshotWallet.current = walletKey;
-      setAssets(detected);
-      setNativeBalance(native);
-      setObservedAtMs(Date.now());
-      setStatus("ready");
-
-      if (!discoveryRequest) return;
-      const discovery = await discoveryRequest;
-      if (currentRequest !== requestId.current) return;
-      if (!discovery.ok || !discovery.payload) {
-        setDiscoveryStatus(discoveredAssets.current.length > 0 ? "stale" : "unavailable");
-        return;
+      if (currentBalanceRequest === balanceRequestId.current && discoveryWallet.current === walletKey) {
+        snapshotWallet.current = walletKey;
+        setAssets(detected);
+        setNativeBalance(native);
+        setObservedAtMs(Date.now());
+        setStatus("ready");
       }
-      discoveredAssets.current = discovery.payload.assets;
-      discoveryWallet.current = walletKey;
-      setDiscoveryStatus(discovery.payload.complete ? "ready" : "partial");
-      const finalCandidates = walletAssetCandidates(markets, 48, [
-        ...imported,
-        ...discovery.payload.assets.map(walletDiscoveryCandidate)
-      ]);
-      if (sameCandidateAddresses(initialCandidates, finalCandidates)) return;
+    } catch {
+      if (currentBalanceRequest === balanceRequestId.current && discoveryWallet.current === walletKey) {
+        const currentWallet = snapshotWallet.current === walletKey;
+        if (!currentWallet) {
+          setAssets([]);
+          setNativeBalance(undefined);
+        }
+        setStatus(currentWallet ? "stale" : "error");
+      }
+    }
+
+    if (!discoveryRequest || currentDiscoveryRequest === null) return;
+    const discovery = await discoveryRequest;
+    if (currentDiscoveryRequest !== discoveryRequestId.current || discoveryWallet.current !== walletKey) return;
+    if (!discovery.ok || !discovery.payload) {
+      setDiscoveryStatus(discoveredAssets.current.length > 0 ? "stale" : "unavailable");
+      return;
+    }
+    discoveredAssets.current = discovery.payload.assets;
+    setDiscoveryStatus(discovery.payload.complete ? "ready" : "partial");
+    const finalCandidates = walletAssetCandidates(markets, 48, [
+      ...imported,
+      ...discovery.payload.assets.map(walletDiscoveryCandidate)
+    ]);
+    if (sameCandidateAddresses(initialCandidates, finalCandidates)) return;
+    const finalBalanceRequest = ++balanceRequestId.current;
+    try {
       const completeDetected = await readCandidates(finalCandidates);
-      if (currentRequest !== requestId.current) return;
+      if (finalBalanceRequest !== balanceRequestId.current || discoveryWallet.current !== walletKey) return;
+      snapshotWallet.current = walletKey;
       setAssets(completeDetected);
       setObservedAtMs(Date.now());
+      setStatus("ready");
     } catch {
-      if (currentRequest !== requestId.current) return;
-      const currentWallet = snapshotWallet.current === walletKey;
-      if (!currentWallet) {
-        setAssets([]);
-        setNativeBalance(undefined);
-      }
-      setStatus(currentWallet ? "stale" : "error");
+      if (finalBalanceRequest === balanceRequestId.current && snapshotWallet.current === walletKey) setStatus("stale");
     }
   }, [address, imported, isConnected, markets, onRobinhood, publicClient]);
 
   useEffect(() => {
     if (!enabled) {
-      requestId.current += 1;
+      balanceRequestId.current += 1;
+      discoveryRequestId.current += 1;
       setAssets([]);
       setNativeBalance(undefined);
       setObservedAtMs(undefined);
