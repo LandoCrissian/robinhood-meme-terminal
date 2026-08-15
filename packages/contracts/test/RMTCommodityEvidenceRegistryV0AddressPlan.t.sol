@@ -26,15 +26,16 @@ contract RMTCommodityEvidenceRegistryV0AddressPlanTest {
     }
 
     function testCreateAddressMatchesFoundryAcrossRlpBoundaries() public view {
-        uint256[8] memory nonces = [
+        uint256[9] memory nonces = [
             uint256(0),
             uint256(1),
             uint256(0x7f),
             uint256(0x80),
             uint256(0xff),
             uint256(0x100),
-            uint256(type(uint64).max),
-            uint256(type(uint128).max)
+            uint256(0xffff),
+            uint256(0x1_0000),
+            uint256(type(uint64).max)
         ];
 
         for (uint256 i = 0; i < nonces.length; i++) {
