@@ -42,7 +42,7 @@ Before the audit, read and obey:
 2. `docs/ARCHITECTURE_FREEZE.md`;
 3. `docs/ACTIVE_SYSTEM_MAP.md`;
 4. the terminal completion/release gate documents required by `AGENTS.md`;
-5. `docs/RMT_AGENT_CONTROL_PLANE.md` from branch `ops/nemohermes-control-plane` if it is not yet merged;
+5. `docs/RMT_AGENT_CONTROL_PLANE.md` from branch `ops/nemohermes-control-plane-v2` if it is not yet merged;
 6. `ops/nemohermes/MACOS.md` from that branch.
 
 Do not treat historical roadmap text or chat memory as stronger authority than the current repository.
@@ -69,7 +69,7 @@ Use the checked-in sanitized audit helper when available:
 
 `ops/nemohermes/export-source-mac-handoff.sh`
 
-If the current checkout does not contain that file, read it from `ops/nemohermes-control-plane` without switching the owner's checkout. A temporary copy outside the repository is acceptable. Do not execute an unreviewed internet copy.
+If the current checkout does not contain that file, read it from `ops/nemohermes-control-plane-v2` without switching the owner's checkout. A temporary copy outside the repository is acceptable. Do not execute an unreviewed internet copy.
 
 The helper intentionally does not read secret values. Preserve that property.
 
