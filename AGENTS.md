@@ -13,7 +13,7 @@ Working rules:
 - VNext (`apps/web/lib/vnext/*`, `apps/web/lib/server/vnext-*`) is the canonical forward terminal architecture. Do not create another terminal or routing framework.
 - Profiles, referrals, community/RMT Live, creator/V7, NFT, marketplace and new-launch product work are paused. Preserve their source, tests, rules and stored data unless a separate project explicitly authorizes a change.
 - `apps/indexer` is deployed V6 compatibility. `apps/external-origin-indexer` owns external project origin. `apps/market-indexer` owns external market intelligence. Origin, venue and RMT execution attribution are independent.
-- No forward RMT terminal fee percentage or treasury policy is approved. Fee capability must remain disabled and unapproved.
+- `RMT_EXECUTION_V1` is the only approved forward terminal fee policy: 25 basis points, explicitly hash-bound and publicly active only for the admitted Uniswap V3 executor path. Never infer a fee, treasury or provider eligibility outside that policy; preserve the independent release gates and fail closed.
 - Preserve exact recipient binding, narrow approvals, pinned deployment/runtime evidence, provider-specific verification and fail-closed unknown-field behavior.
 - Do not deploy contracts, change production environment values, enable providers/fees/automation, merge, or delete user data unless explicitly requested.
 - Read the relevant domain document before changing execution, funding, indexers or contracts. Research and open PRs are not roadmap authority.

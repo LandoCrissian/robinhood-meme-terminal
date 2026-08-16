@@ -95,22 +95,10 @@ The completed production sequence was:
 
 ## Revenue boundary
 
-Privy's wallet-action swap fee does not automatically accrue to RMT. Privy documents a fee of up to 0.25% for its swap action, requires application gas sponsorship, and offers custom developer revenue arrangements only for negotiated cross-chain swap or transfer flows. Therefore RMT must not replace its same-chain routes with Privy swaps merely to add monetization.
+Privy's wallet-action swap economics do not define RMT revenue policy. RMT must not replace its independently admitted same-chain routes merely to add monetization.
 
-RMT now has a disabled-by-default execution-fee path for independently built Uniswap v3 and v4 trades. When enabled, the router atomically pays the configured treasury from successful swap output and sends the remainder to the trader. On buys the treasury receives the purchased token; on sells it receives ETH. RMT does not custody the order input, and a reverted or failed trade pays no RMT fee.
+The earlier generic fee-path description in this document is superseded by the provider-specific [`RMT_EXECUTION_V1` architecture](RMT_EXECUTION_REVENUE.md). The approved 25-bps policy is publicly active only for admitted Uniswap V3 fee-executor routes. The fee is disclosed before wallet confirmation, bound into independently decoded execution economics and atomically settled to the approved treasury only when the trade succeeds. There is no implicit fallback fee, no public Uniswap V4 fee activation and no fee inheritance by Privy, transfers, funding or other providers.
 
-The implementation:
-
-- is visible before wallet confirmation as its own line item;
-- is encoded into and independently decoded from the exact transaction;
-- has a server-only treasury destination and a hard 100-basis-point software ceiling;
-- cannot be changed by a browser environment variable;
-- is included when calculating minimum received and price impact; and
-- fails closed when the treasury or rate is invalid; and
-- remains disabled until the final treasury controls, staged route simulations and public disclosures are complete.
-
-The browser receives net quoted output, net protected minimum, the gross values, the rate, estimated fee and treasury. Before wallet review, RMT independently decodes the v3 fee payout function or v4 `PAY_PORTION` command and rejects any mismatch. Route comparison therefore ranks what the user keeps after the RMT fee rather than advertising a higher gross value.
-
-No RMT terminal execution-fee percentage or treasury policy is approved. The existing transaction-integrity capability remains disabled and carries no default percentage. Any future fee requires a separate, versioned policy decision, complete pre-authorization disclosure, route-specific verification, updated terms, and explicit release approval.
+The current policy, executor, exact fee math, release boundary, reconciliation rules and monitoring procedure are authoritative in [`RMT_EXECUTION_REVENUE.md`](RMT_EXECUTION_REVENUE.md) and [`PRODUCTION_MONITORING.md`](PRODUCTION_MONITORING.md#uniswap-v3-fee-settlement-monitoring).
 
 The next phase requires a registered authorization-key quorum and a non-empty policy ID. RMT must never attach a signer with an empty policy list.

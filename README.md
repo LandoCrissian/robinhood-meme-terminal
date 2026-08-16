@@ -45,7 +45,7 @@ RMT provides:
 
 RMT never receives a private key or recovery phrase. A provider quote is not permission to execute. Strict verification, wallet authorization and production activation are independently admitted.
 
-RMT has approved implementation support for the explicit, versioned `RMT_EXECUTION_V1` policy (25 basis points, floor rounding, no minimum and 100% RMT operations). Production fee collection remains disabled. The independently runtime-verified Uniswap V3 executor is deployed, but wallet routing and every fee activation gate remain off; no current provider route collects an RMT fee. Venue fees, price impact, slippage, approvals and network gas remain separately visible.
+RMT's explicit, versioned `RMT_EXECUTION_V1` policy is live for admitted public Uniswap V3 executions: 25 basis points (0.25%), floor rounding, no minimum and 100% RMT operations. The wallet shows the fee before review, the user remains the only signer, and the non-upgradeable provider-specific executor settles a fee only when the swap succeeds. Other providers, funding, transfers and failed transactions do not inherit this fee. Venue fees, price impact, slippage, approvals and network gas remain separately visible. See the [execution revenue record](docs/RMT_EXECUTION_REVENUE.md) and [read-only monitoring runbook](docs/PRODUCTION_MONITORING.md#uniswap-v3-fee-settlement-monitoring).
 
 ## Paused product systems
 
