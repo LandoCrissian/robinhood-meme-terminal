@@ -345,7 +345,14 @@ export function MobileTerminal(props: TerminalPresentationProps) {
   const selectedHolding = props.selected && props.walletAssets.find((asset) => asset.address.toLowerCase() === props.selected?.address.toLowerCase());
   const canSell = Boolean(selectedHolding && BigInt(selectedHolding.balanceAtomic) > 0n);
 
-  const closeSheet = useCallback(() => props.onCloseTrade(), [props.onCloseTrade]);
+  const restoreTradeFocus = useCallback(() => {
+    const fallback = document.querySelector<HTMLElement>(".rmtMobileTradeDock .isBuy") ?? document.querySelector<HTMLElement>(".rmtMobileTradeDock .isSell");
+    (returnFocus.current ?? fallback)?.focus({ preventScroll: true });
+  }, []);
+
+  const closeSheet = useCallback(() => {
+    props.onCloseTrade();
+  }, [props.onCloseTrade]);
   const openTrade = useCallback((side: "buy" | "sell") => {
     returnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     props.onRequestTradeSide(side);
@@ -378,9 +385,9 @@ export function MobileTerminal(props: TerminalPresentationProps) {
       document.removeEventListener("keydown", handleKey);
       document.body.style.overflow = bodyOverflow;
       document.documentElement.style.overflow = rootOverflow;
-      window.requestAnimationFrame(() => returnFocus.current?.focus());
+      window.requestAnimationFrame(restoreTradeFocus);
     };
-  }, [closeSheet, props.tradeOpen]);
+  }, [closeSheet, props.tradeOpen, restoreTradeFocus]);
 
   const preventEscapePropagation = (event: ReactKeyboardEvent) => {
     if (event.key === "Escape") event.stopPropagation();
