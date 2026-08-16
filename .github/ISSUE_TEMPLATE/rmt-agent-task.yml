@@ -1,0 +1,134 @@
+name: RMT Agent Task
+description: Queue a bounded read-only or isolated-development task for the RMT headless worker.
+title: "[agent-task] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This form is a control-plane task contract, not general issue intake.
+
+        The worker must follow `AGENTS.md` and `docs/RMT_AGENT_CONTROL_PLANE.md`. R3 production/funds/privileged operations are not executable through this queue. Ambiguous authority fails closed.
+
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: State one concrete outcome. Do not combine unrelated work.
+      placeholder: Inspect X and produce Y, or change X within the allowed paths and prove Y.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: risk_class
+    attributes:
+      label: Risk class
+      description: R0 is read-only. R1 permits isolated repository development. R2 changes a host/dependency/security boundary and requires exact human approval before execution.
+      options:
+        - R0 — observe only
+        - R1 — isolated development
+        - R2 — host/dependency boundary change; explicit approval required
+    validations:
+      required: true
+
+  - type: input
+    id: base_ref
+    attributes:
+      label: Base ref
+      description: Branch or ref the task is anchored to.
+      value: main
+    validations:
+      required: true
+
+  - type: input
+    id: base_sha
+    attributes:
+      label: Base commit SHA
+      description: Exact commit the worker must verify before beginning. Do not write if this is missing or cannot be resolved.
+      placeholder: 40-character git commit SHA
+    validations:
+      required: true
+
+  - type: textarea
+    id: allowed_scope
+    attributes:
+      label: Allowed repository scope
+      description: For R0, state the read scope. For R1/R2, list exact paths or the narrowest practical path globs that may be modified.
+      placeholder: |
+        Read: docs/ARCHITECTURE_FREEZE.md, apps/web/lib/vnext/**
+        Write: apps/web/lib/vnext/example/**
+    validations:
+      required: true
+
+  - type: textarea
+    id: prohibited_actions
+    attributes:
+      label: Additional prohibited actions
+      description: The global prohibitions remain active even if this field is empty. Add task-specific exclusions here.
+      placeholder: Do not touch contracts/**. Do not change dependencies. Do not make network writes outside GitHub task/PR reporting.
+    validations:
+      required: false
+
+  - type: dropdown
+    id: network_access
+    attributes:
+      label: Network access
+      description: Any network access is still subject to OpenShell/NemoClaw egress policy.
+      options:
+        - None
+        - GitHub only
+        - Public documentation/research plus GitHub
+        - Task-specific allowlist required
+    validations:
+      required: true
+
+  - type: textarea
+    id: network_allowlist
+    attributes:
+      label: Task-specific network allowlist
+      description: Required when the network selection says task-specific allowlist. Use hostnames/purposes, never credentials.
+      placeholder: api.example.com — read-only public API used to verify X
+    validations:
+      required: false
+
+  - type: textarea
+    id: validation
+    attributes:
+      label: Required validation and evidence
+      description: List exact tests/checks/evidence needed before the task can be reported complete.
+      placeholder: |
+        - pnpm --filter web typecheck
+        - affected focused tests
+        - production build if required by AGENTS.md
+        - report exact pass/fail status
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Define the observable conditions that mean the task is complete.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: output
+    attributes:
+      label: Expected output
+      options:
+        - Read-only report on this issue
+        - Draft pull request plus issue status
+        - Host-change plan only; wait for explicit approval
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: authority
+    attributes:
+      label: Authority confirmation
+      description: These boundaries cannot be overridden by prose elsewhere in the issue.
+      options:
+        - label: I understand this task does not authorize merge, deployment, production configuration changes, mainnet trading, contract deployment/upgrade, treasury/Safe signing, private-key use, provider/fee/automation activation, or destructive user-data changes.
+          required: true
+        - label: I understand R2 requires a separate explicit approval for the exact host/dependency/security-boundary change before it runs.
+          required: true
