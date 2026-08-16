@@ -37,6 +37,8 @@ import {
   marketFromUniversalResolution,
   resolveUniversalMarketAddress
 } from "../../../../lib/server/universal-market-resolver";
+import { readCompleteV6OriginTokensFromChain } from "../../../../lib/server/launch-feed";
+import { VNEXT_MARKET_DIRECTORY_MAX_MARKETS } from "../../../../lib/vnext/market-directory";
 
 const CHAIN_SLUG = "robinhood";
 const DEXSCREENER_TOKEN_PAIRS_API = "https://api.dexscreener.com/token-pairs/v1";
@@ -53,7 +55,6 @@ const CANONICAL_MARKET_TOKENS = [
 ] as const;
 const OFFICIAL_RMT_V6_TOKEN = "0xdBa33be56C89CC9fc014c4459028d7e5c7878671";
 const EXCLUDED_TOKENS = new Set(CANONICAL_MARKET_TOKENS.map((address) => address.toLowerCase()));
-const MAX_MARKETS = 48;
 const DEX_BATCH_SIZE = 30;
 const DEX_TIMEOUT_MS = 8_000;
 const INDEXER_TIMEOUT_MS = (() => {
@@ -301,7 +302,7 @@ async function resolveRmtOrigins(
   const baseUrl = process.env.RMT_INDEXER_URL?.trim().replace(/\/+$/, "");
   if (!baseUrl) {
     return await resolvePreviewRmtOrigins(addresses, verifiedExternalTokens)
-      ?? { coverage: "unavailable", tokens: known };
+      ?? await resolveDirectRmtOrigins(known);
   }
   const readToken = process.env.RMT_INDEXER_READ_TOKEN?.trim();
 
@@ -309,7 +310,7 @@ async function resolveRmtOrigins(
     const claims = await fetchRmtOriginBatch(baseUrl, readToken, addresses.slice(index, index + 100));
     if (!claims) {
       return await resolvePreviewRmtOrigins(addresses, verifiedExternalTokens)
-        ?? { coverage: "unavailable", tokens: known };
+        ?? await resolveDirectRmtOrigins(known);
     }
     for (const claim of claims) {
       const token = asText(claim.token, 42);
@@ -324,6 +325,15 @@ async function resolveRmtOrigins(
     }
   }
   return { coverage: "complete", tokens: known };
+}
+
+async function resolveDirectRmtOrigins(known: Set<string>): Promise<RmtOriginResolution> {
+  try {
+    const snapshot = await readCompleteV6OriginTokensFromChain();
+    return { coverage: "complete", tokens: new Set([...known, ...snapshot.tokens]) };
+  } catch {
+    return { coverage: "unavailable", tokens: known };
+  }
 }
 
 function staleResponse() {
@@ -578,7 +588,7 @@ export async function GET(request: Request) {
         )
       : [...marketsByToken.values()]
           .sort(compareExternalMarketRank)
-          .slice(0, MAX_MARKETS);
+          .slice(0, VNEXT_MARKET_DIRECTORY_MAX_MARKETS);
     let markets = rankedMarkets;
     let resolution;
     if (requestedContract && markets.length === 0) {

@@ -1,4 +1,4 @@
-import { createPublicClient, getAddress, http, isAddress, keccak256, toHex, type Address } from "viem";
+import { createPublicClient, getAddress, http, isAddress, keccak256, toHex, zeroAddress, type Address, type Hex } from "viem";
 import {
   getFactoryAddress,
   isFreshMainnetVersionRegistryConfigured,
@@ -64,15 +64,17 @@ const publicClient = createPublicClient({
 const V6_VERSION = keccak256(toHex("RMT_FACTORY_V6"));
 const FIXED_TOKEN_SUPPLY = 1_000_000_000n * 10n ** 18n;
 const MINIMAL_PROXY_RUNTIME = /^0x363d3d373d3d3d363d73[0-9a-f]{40}5af43d82803e903d91602b57fd5bf3$/i;
+export const MAX_DIRECT_V6_ORIGIN_RECORDS = 128n;
 
-export async function resolveActiveFactory() {
+export async function resolveActiveFactory(blockNumber?: bigint) {
   if (!isMainnetRelease) {
     const address = getFactoryAddress();
     if (!address) return null;
     const protocolVersion = await publicClient.readContract({
       address,
       abi: rmtLaunchFactoryV6Abi,
-      functionName: "protocolVersion"
+      functionName: "protocolVersion",
+      blockNumber
     }).catch(() => null);
     return { address, version: Number(protocolVersion) === 6 ? 6 : 5 } as const;
   }
@@ -81,12 +83,14 @@ export async function resolveActiveFactory() {
     publicClient.readContract({
       address: publicMainnetVersionRegistryAddress,
       abi: versionRegistryAbi,
-      functionName: "activeFactory"
+      functionName: "activeFactory",
+      blockNumber
     }),
     publicClient.readContract({
       address: publicMainnetVersionRegistryAddress,
       abi: versionRegistryAbi,
-      functionName: "activeVersion"
+      functionName: "activeVersion",
+      blockNumber
     })
   ]);
   if (!isAddress(registered)) return null;
@@ -99,6 +103,96 @@ export async function resolveActiveFactory() {
       && isFactoryStartBlockConfigurationValid
   ) return { address, version: 6 } as const;
   return null;
+}
+
+type V6OriginLaunchRecord = { token: unknown };
+
+export function validateCompleteV6OriginRecords(
+  launchCount: bigint,
+  records: readonly V6OriginLaunchRecord[],
+  tokenBytecodes: readonly (Hex | undefined)[]
+) {
+  if (launchCount < 0n || launchCount > MAX_DIRECT_V6_ORIGIN_RECORDS) {
+    throw new Error("The live V6 launch count exceeds the bounded origin fallback.");
+  }
+  if (BigInt(records.length) !== launchCount || tokenBytecodes.length !== records.length) {
+    throw new Error("The bounded V6 origin snapshot is incomplete.");
+  }
+
+  const tokens = new Set<string>();
+  for (let index = 0; index < records.length; index += 1) {
+    const token = records[index]?.token;
+    const bytecode = tokenBytecodes[index];
+    if (typeof token !== "string" || !isAddress(token) || getAddress(token) === zeroAddress) {
+      throw new Error("The bounded V6 origin snapshot contains an invalid token.");
+    }
+    if (!bytecode || !MINIMAL_PROXY_RUNTIME.test(bytecode)) {
+      throw new Error("The bounded V6 origin snapshot contains an unexpected token runtime.");
+    }
+    const canonicalToken = getAddress(token).toLowerCase();
+    if (tokens.has(canonicalToken)) {
+      throw new Error("The bounded V6 origin snapshot contains a duplicate token.");
+    }
+    tokens.add(canonicalToken);
+  }
+  return tokens;
+}
+
+/**
+ * Enumerates the small, paused V6 launch set from pinned factory state.
+ * This fail-closed serverless fallback only supports origin de-duplication;
+ * it does not replace the canonical indexer's historical/event authority.
+ */
+export async function readCompleteV6OriginTokensFromChain() {
+  if (!isMainnetRelease) throw new Error("The mainnet V6 origin fallback is unavailable off mainnet.");
+
+  const blockNumber = await publicClient.getBlockNumber();
+  const activeFactory = await resolveActiveFactory(blockNumber);
+  if (
+    !activeFactory
+    || activeFactory.version !== 6
+    || getAddress(activeFactory.address) !== publicMainnetV6FactoryAddress
+  ) throw new Error("The exact live V6 factory is unavailable.");
+
+  const [factoryCode, protocolVersion, launchCount] = await Promise.all([
+    publicClient.getBytecode({ address: publicMainnetV6FactoryAddress, blockNumber }),
+    publicClient.readContract({
+      address: publicMainnetV6FactoryAddress,
+      abi: rmtLaunchFactoryV6Abi,
+      functionName: "protocolVersion",
+      blockNumber
+    }),
+    publicClient.readContract({
+      address: publicMainnetV6FactoryAddress,
+      abi: rmtLaunchFactoryV6Abi,
+      functionName: "launchCount",
+      blockNumber
+    })
+  ]);
+  if (!factoryCode || Number(protocolVersion) !== 6) {
+    throw new Error("The exact live V6 factory runtime is unavailable.");
+  }
+  if (launchCount > MAX_DIRECT_V6_ORIGIN_RECORDS) {
+    throw new Error("The live V6 launch count exceeds the bounded origin fallback.");
+  }
+
+  const launchIds = Array.from({ length: Number(launchCount) }, (_, index) => BigInt(index));
+  const records = await Promise.all(launchIds.map((launchId) => publicClient.readContract({
+    address: publicMainnetV6FactoryAddress,
+    abi: rmtLaunchFactoryV6Abi,
+    functionName: "getLaunch",
+    args: [launchId],
+    blockNumber
+  })));
+  const tokenBytecodes = await Promise.all(records.map((record) => publicClient.getBytecode({
+    address: getAddress(record.token),
+    blockNumber
+  })));
+
+  return {
+    tokens: validateCompleteV6OriginRecords(launchCount, records, tokenBytecodes),
+    blockNumber
+  };
 }
 
 export async function readV6LaunchOriginFromChain(token: Address, afterIndexedBlock?: bigint) {
