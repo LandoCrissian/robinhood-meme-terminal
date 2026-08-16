@@ -10,4 +10,5 @@ paths = [
   '''^apps/web/lib/external-trades-smoke\.ts$''',
   '''^apps/web/lib/server/circus-curve-feed-smoke\.ts$''',
   '''^apps/web/lib/server/external-project-metadata-smoke\.ts$''',
+  '''^apps/web/lib/vnext/fixtures/ccff00-public-audit-37451763\.json$''',
 ]
