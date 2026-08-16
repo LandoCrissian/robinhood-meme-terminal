@@ -180,7 +180,7 @@ printf '\nStarting Codex handoff. Transcript: %s\n' "$run_dir/codex.log"
 set +e
 (
   cd "$worktree"
-  "$codex_bin" exec --ephemeral < "$prompt_file"
+  "$codex_bin" exec --ephemeral --sandbox workspace-write < "$prompt_file"
 ) 2>&1 | tee "$run_dir/codex.log"
 codex_status=${PIPESTATUS[0]}
 set -e
