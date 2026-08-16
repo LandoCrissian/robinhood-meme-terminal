@@ -1,6 +1,6 @@
 # RMT execution revenue
 
-**Status: CURRENT — controlled proof complete; public collection disabled**
+**Status: CURRENT — 25-bps Uniswap V3 public release active**
 
 ## Approved policy direction
 
@@ -17,7 +17,7 @@ The owner has approved implementation support for the first forward terminal exe
 | Eligible origin | independently proven RMT-originated executions only |
 | Initial settlement assets | canonical Robinhood USDG and WETH/native-compatible settlement, subject to exact provider admission |
 
-This policy direction does **not** activate public collection. The treasury and policy boundary are fixed, the provider-specific executor is deployed and the controlled proof is complete, but public routing remains disabled until the separate public authorization gate receives an explicit release action.
+The provider-specific public release action completed on 2026-08-16. `RMT_EXECUTION_V1` is active only for admitted public Uniswap V3 fee-executor routes. The activation boundary is Robinhood block `37805030` (`0xdfb2560bb21f75c08e2ddaeac71075fb71523f45a543149018891c5fa673b9b2`, timestamp `2026-08-16T07:42:40Z`). The policy does not make another provider, route or transaction class fee-bearing.
 
 Across funding, wallet transfers, failed transactions, quote requests and unrelated transactions are not eligible. V6 economics, Stonk/up allocations, PoH allocations, subscriptions, hidden spread, positive-slippage capture and automatic fee-conversion swaps are not part of this policy.
 
@@ -40,7 +40,7 @@ The approved treasury is the independently verified one-owner Safe at `0x6170047
 
 That confirmed treasury-deployment block is the immutable V1 policy `fromBlock`. It anchors the policy identity; it does not activate collection or make transactions before the executor deployment fee-bearing. With canonical WETH, USDG and native Robinhood ETH as the reviewed settlement identities, the exact policy hash is `0x295c900143405bb585a4d88c3788fadab522fd4313f69242f64e52e39827f141`. A runtime configuration missing or changing any of these values still fails closed.
 
-Every indicative provider observation now carries explicit net economics. While collection is disabled, its commitment is structurally `disabled`, exposes no policy or treasury authority, carries zero expected/maximum fee and leaves gross/provider/net amounts unchanged. A bare hard-coded zero is not accepted as the normalized RMT fee model.
+Every indicative provider observation carries explicit net economics. An admitted Uniswap V3 fee route carries the exact active policy commitment. Every ineligible or disabled route remains structurally `disabled`, exposes no policy or treasury authority, carries zero expected/maximum fee and leaves gross/provider/net amounts unchanged. A bare hard-coded zero is not accepted as the normalized RMT fee model.
 
 ## Net execution math
 
@@ -82,7 +82,7 @@ These identifiers describe bounded settlement families, not active providers. Un
 
 ## Uniswap V3 atomic fee executor
 
-`packages/contracts/src/RMTUniswapV3FeeExecutorV1.sol` is the first provider-specific onchain settlement primitive. The corrected executor is deployed at `0xcB9c00524848038D211921e0f3975190D7Aa1e8f` through the reviewed CREATE2 factory in transaction `0x367e8dd5d87bc09a94f99decbb9eda62c132f52822733a465804fa8c20a62b2b` at Robinhood L2 block `35142528`. Its exact immutable-filled runtime hash is `0xc6d54277c89993410fa71ad24c7a6cea0072a4f0f20a8759a04d9e4a4c37813d`. Deployment does not constitute wallet routing or production fee activation.
+`packages/contracts/src/RMTUniswapV3FeeExecutorV1.sol` is the first provider-specific onchain settlement primitive. The corrected executor is deployed at `0xcB9c00524848038D211921e0f3975190D7Aa1e8f` through the reviewed CREATE2 factory in transaction `0x367e8dd5d87bc09a94f99decbb9eda62c132f52822733a465804fa8c20a62b2b` at Robinhood L2 block `35142528`. Its exact immutable-filled runtime hash is `0xc6d54277c89993410fa71ad24c7a6cea0072a4f0f20a8759a04d9e4a4c37813d`. Deployment alone did not activate fees; the later controlled proof and explicit public release did.
 
 The first deployment at `0x843a4D8BEa13037c5706eA005d336aE735BB0eD4` is permanently inactive because its policy boundary used Solidity `block.number`, which resolves to the parent L1 block on this Arbitrum-derived chain. It never settled a trade or fee. The corrected executor reads the canonical Robinhood L2 block from the ArbSys precompile and otherwise preserves the reviewed immutable policy and execution boundary. The deployment manifest retains the superseded deployment identity and fail-closed reason.
 
@@ -154,7 +154,7 @@ event RMTUniswapV3FeeSettled(
 );
 ```
 
-## Default-off VNext authorization integration
+## VNext authorization and public release
 
 VNext now has a typed client/server codec for the executor, but the path cannot
 become active from a single setting. Fee-bearing Uniswap V3 execution requires
@@ -184,11 +184,13 @@ canonical settlement event, raw token transfers, gas accounting, executor zero
 balances, cleared router allowance and consumed execution ID were independently
 reconciled.
 
-After this reviewed release code is merged, fee-bearing economics remain
-restricted to the exact authenticated proof wallet until the new public gate is
-explicitly enabled. Every other recipient continues through the existing
-fee-disabled Uniswap V3 path. Readiness reports `proof-wallet`, `public`,
-`blocked` or `disabled` without exposing the configured address.
+PR #385 completed the separate public release. Production readiness now reports
+`public` only while the exact policy, executor, runtime, controlled-proof binding,
+client/server authorization and wallet-submission gates all agree. The source
+configuration remains default-off so preview, local or future environments do
+not inherit production activation. Disabling the public gate stops new
+fee-bearing authorizations without changing other provider paths or historical
+settlement evidence.
 
 When the policy is active and the input settlement asset is eligible, RMT quotes
 the provider using the post-fee provider input. When the output settlement asset
@@ -229,40 +231,49 @@ pnpm --filter web readiness:vnext-uniswap-fee
 It reports public contract/policy identities and exact blockers. It never signs,
 deploys, approves, submits or changes environment configuration.
 
-### Deployment record and remaining release prerequisites
+### Deployment and release records
 
-The exact public treasury, policy hash/effective block and eligible settlement assets are recorded in `packages/contracts/deployments/rmt-uniswap-v3-fee-executor-v1.json`. The same manifest pins the verified CREATE2 factory, constructor bytecode, constructor arguments, init code, expected runtime, executor address and canonical deployment receipt. Run:
+The exact public treasury, policy hash/effective block and eligible settlement assets are recorded in `packages/contracts/deployments/rmt-uniswap-v3-fee-executor-v1.json`. The same manifest pins the verified CREATE2 factory, constructor bytecode, constructor arguments, init code, expected runtime, executor address and canonical deployment receipt. Its deployment-time activation fields are historical deployment evidence, not the current production release state. Current activation is proven by production readiness plus the independently recorded release boundary. Run:
 
 ```text
 forge build --root packages/contracts --contracts src/RMTUniswapV3FeeExecutorV1.sol
 pnpm --filter web readiness:vnext-uniswap-fee-deployment
 ```
 
-The command reconstructs the deployment from the compiled artifact, re-verifies the Safe ownership and runtime, re-verifies Router02/factory/WETH/USDG identities, verifies the exact deployment transaction and live executor runtime, and reports confirmation evidence. Before deployment it also simulates the constructor/CREATE2 path and reports gas sufficiency; after deployment it never attempts the consumed CREATE2 salt again. It never signs or submits. Fee activation remains unauthorized. Server authorization, client disclosure and receipt reconciliation are implemented but default off; controlled proof remains the release prerequisite.
+The command reconstructs the deployment from the compiled artifact, re-verifies the Safe ownership and runtime, re-verifies Router02/factory/WETH/USDG identities, verifies the exact deployment transaction and live executor runtime, and reports confirmation evidence. Before deployment it also simulates the constructor/CREATE2 path and reports gas sufficiency; after deployment it never attempts the consumed CREATE2 salt again. It never signs or submits.
+
+For ongoing production settlement checks, run the free read-only command:
+
+```text
+pnpm monitor:uniswap-v3-fees
+```
+
+It checks production readiness, the release block/hash, live executor runtime, confirmed canonical settlement events and receipts, executor residual balances, router allowances and treasury token balances. It uses only public HTTPS reads and never signs, approves or submits. See [`PRODUCTION_MONITORING.md`](PRODUCTION_MONITORING.md#uniswap-v3-fee-settlement-monitoring).
 
 ## Review sequence
 
 1. Versioned policy, normalized commitment and net math — no collection.
 2. Narrow non-upgradeable Uniswap V3 fee executor and adversarial/fork tests — no deployment.
-3. Server quote, strict verification and fee-bearing authorization — implemented, gates off.
-4. Client pre-sign verification and fee disclosure — implemented, gates off.
+3. Server quote, strict verification and fee-bearing authorization — implemented and publicly active for the admitted Uniswap V3 path.
+4. Client pre-sign verification and fee disclosure — implemented and publicly active for the admitted Uniswap V3 path.
 5. Canonical receipt reconciliation and exactly-once settlement proof — complete for the controlled mainnet proof.
-6. Deployment and controlled-proof verification complete; public activation remains separately gated and unauthorized.
+6. Deployment and controlled-proof verification complete; public activation explicitly released at Robinhood block `37805030`.
 
 Production revenue is not booked from a quote or plan. It exists only after a successful, final, unambiguous settlement proves exactly one authorized fee to the exact treasury.
 
 ## Current release state
 
-- Policy implementation: foundation present.
+- Policy implementation: active for admitted public Uniswap V3 fee-executor routes.
 - Production treasury: approved Safe deployed and independently verified.
-- Policy identity: exact hash and block boundary recorded; public collection remains disabled.
+- Policy identity: exact hash, policy boundary and public release boundary recorded.
 - Fee executor: corrected deployment at `0xcB9c00524848038D211921e0f3975190D7Aa1e8f`; exact transaction, immutable-filled runtime and canonical Robinhood L2 policy-block source verified. The first deployment is recorded as permanently inactive.
-- Fee-bearing authorization: implemented and independently gated.
-- Fee disclosure: implemented and proven through the controlled wallet.
-- Fee settlement reconciliation: implemented and proven for the canonical event.
-- Provider fee gates: present and default off.
+- Fee-bearing authorization: publicly active for the admitted Uniswap V3 path and independently gated.
+- Fee disclosure: implemented and proven through the controlled wallet; remains required before every wallet review.
+- Fee settlement reconciliation: implemented and proven for the canonical event; the public monitor independently binds confirmed events to successful receipts.
+- Provider fee gates: present; source defaults remain off while the explicit production override is on.
 - Controlled proof: complete and independently reconciled at Robinhood block `37772345`.
-- Production fee collection: restricted to the proof wallet; public collection remains disabled.
-- Public fee-routing mode: implemented behind a separate server-only gate that defaults off; no production environment was changed by this release.
+- Production fee collection: public for eligible Uniswap V3 fee-executor routes since block `37805030`.
+- Public fee-routing mode: active only while every policy, proof-binding, authorization and wallet-submission gate agrees; it fails closed on mismatch.
+- Initial public monitoring baseline: no confirmed public settlement events observed through block `37836628` at `2026-08-16T08:35:42Z`; executor balances and router allowances were zero. This is an observation, not a promise that the count remains zero.
 
 The older disabled Uniswap fee capability is compatibility code, not authorization to activate revenue and not the canonical VNext revenue architecture.

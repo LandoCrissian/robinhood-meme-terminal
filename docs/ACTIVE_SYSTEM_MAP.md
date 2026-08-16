@@ -13,7 +13,7 @@
 | V6 protocol history | `apps/indexer` | ACTIVE COMPATIBILITY | Canonical deployed V6 launches, trades, graduation, fees and origin only. |
 | External project origin | `apps/external-origin-indexer` | ACTIVE FOUNDATION | Fail closed; `source-listed` and `token-created` remain distinct. StonkBrokers has candidate identity only: the production launcher contract/event is unverified, no claims are served and activation remains locked. |
 | External markets | `apps/market-indexer` | ACTIVE | Read-oriented discovery/enrichment, including separately identified `up-v2` and `up-cl` shadow sources; no execution or treasury work. Shadow rows are not consumed by the public terminal. |
-| Same-chain execution | VNext adapters plus current Sushi/Uniswap verifiers | ACTIVE | Provider admission is capability-specific. `up-v2` and `up-cl` now have strict verification and exact wallet-authorization codecs, but their observation and provider-specific authorization gates default off pending controlled mainnet proof. |
+| Same-chain execution | VNext adapters plus current Sushi/Uniswap verifiers | ACTIVE | Provider admission is capability-specific. Public Uniswap V3 fee-executor routing is active under `RMT_EXECUTION_V1`; every other provider retains its independently reviewed activation state. `up-v2` and `up-cl` have strict verification and exact wallet-authorization codecs, but their observation and provider-specific authorization gates default off pending controlled mainnet proof. |
 | Funding/recovery | VNext Across domain and server-side Firebase persistence | RELEASE-GATED | Asynchronous, wallet-bound and non-custodial. |
 | RWA registry/evidence | Robinhood stock-token registry and policy evidence | ACTIVE FOUNDATION | Canonical RWA and RWA-paired markets remain distinct. |
 | Profiles/referrals | preserved web source, Firebase records and rules | PAUSED | Not active terminal product; data is preserved. |
@@ -40,7 +40,7 @@
 - `NEXT_PUBLIC_RMT_VNEXT_*` / `RMT_VNEXT_*`: independent shell, provider, authorization, submission and funding gates. Capability does not imply activation. Each up. provider requires its observation gate, its own server authorization gate, both global authorization gates and the wallet-submission gate before an actual wallet prompt.
 - `NEXT_PUBLIC_RMT_LIVE_*`, creator/V7, profile and autonomous execution controls: paused unless required for preserved compatibility tests; must not be newly enabled.
 - `RMT_EXECUTION_FEE_ENABLED`: remains the disabled legacy fee setting; it is not the canonical VNext revenue gate.
-- `RMT_EXECUTION_V1` binds 25 basis points to the verified Safe `0x61700479A4A1F62584Fd3ABA2c2b290EA727d2eC`, block `35041945` and policy hash `0x295c900143405bb585a4d88c3788fadab522fd4313f69242f64e52e39827f141`. The exact-wallet controlled proof completed at block `37772345`. Public routing additionally requires `RMT_VNEXT_UNISWAP_V3_FEE_PUBLIC_AUTHORIZATION_ENABLED=true`; this gate defaults off and no environment is changed by the release code.
+- `RMT_EXECUTION_V1` binds 25 basis points to the verified Safe `0x61700479A4A1F62584Fd3ABA2c2b290EA727d2eC`, block `35041945` and policy hash `0x295c900143405bb585a4d88c3788fadab522fd4313f69242f64e52e39827f141`. The exact-wallet controlled proof completed at block `37772345`. The separate production release action enabled public Uniswap V3 fee routing at block `37805030` on 2026-08-16; readiness must continue to prove the policy, provider, public authorization, proof binding and wallet-submission gates. Source defaults remain off so another environment cannot activate by inheritance.
 - Production values are changed only through a separate authorized release action, never by architecture documentation.
 
 ## Contract source classification
@@ -51,7 +51,7 @@ V6 governance, registry, gate, policy, factory, bootstrap, official migration, c
 
 ### B. Terminal security / optional execution
 
-Position Guard source, the separate Sushi deadline-guard track and the corrected deployed `RMTUniswapV3FeeExecutorV1` atomic settlement primitive at `0xcB9c00524848038D211921e0f3975190D7Aa1e8f`. Its exact immutable-filled runtime, canonical Robinhood L2 policy block, deployment receipt and first controlled settlement are verified. The first executor deployment is permanently inactive and retained only as historical evidence. Public routing remains separately gated and default off.
+Position Guard source, the separate Sushi deadline-guard track and the corrected deployed `RMTUniswapV3FeeExecutorV1` atomic settlement primitive at `0xcB9c00524848038D211921e0f3975190D7Aa1e8f`. Its exact immutable-filled runtime, canonical Robinhood L2 policy block, deployment receipt, controlled settlement and public release boundary are verified. The first executor deployment is permanently inactive and retained only as historical evidence. Public routing is active only through the independent Uniswap V3 fee gates and can be disabled without changing other execution providers.
 
 ### C. Paused experimental
 
@@ -76,6 +76,7 @@ A more recent deployment/security record can remain factually authoritative for 
 ## Open PR classification at freeze
 
 - #340: newer correct UniswapX verification-plan foundation; preserve and review separately.
+- #357: SUPERSEDED / CLOSED 2026-08-16. Its Uniswap V3 fee-proof preparation was replaced by merged #383, #384 and the public release in #385; it must not be used as current fee-release guidance.
 - #313: separate Sushi deadline-guard security/deployment track.
 - #309: research/documentation, not runtime truth.
 - #302: temporary Terminal V11 diagnostics; stale owner decision pending.

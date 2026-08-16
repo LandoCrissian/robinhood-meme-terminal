@@ -83,19 +83,20 @@ Across remains an asynchronous funding domain: external payment asset → confir
 
 ## Economics
 
-The owner has approved implementation support for the versioned `RMT_EXECUTION_V1` policy: 25 basis points, floor rounding, no minimum fee and 100% allocation to RMT operations. This decision supersedes the earlier unapproved-percentage state but does not authorize production activation.
+The owner approved and explicitly released the versioned `RMT_EXECUTION_V1` policy for admitted public Uniswap V3 executions: 25 basis points, floor rounding, no minimum fee and 100% allocation to RMT operations. This supersedes the earlier unapproved/disabled state only for that provider-specific path; no other provider or transaction class inherits the fee.
 
 ```text
 fee policy: RMT_EXECUTION_V1 / version 1
 fee bps: 25
-public routing enabled: false
+public routing enabled: true for admitted Uniswap V3 fee-executor routes
 controlled proof: complete at Robinhood block 37772345
+public release boundary: Robinhood block 37805030 / 2026-08-16T07:42:40Z
 treasury: 0x61700479A4A1F62584Fd3ABA2c2b290EA727d2eC (verified 1-of-1 Safe)
 policy from block: 35041945
 policy hash: 0x295c900143405bb585a4d88c3788fadab522fd4313f69242f64e52e39827f141
 ```
 
-The policy is explicit and hash-bound; execution logic must never infer 25 basis points as a fallback. The first exact-wallet controlled proof settled successfully, but public routing remains behind a separate default-off gate. Missing treasury, effective boundary, proof binding or provider settlement admission fails closed. Across funding, wallet transfers and failed executions are ineligible. Deployed V6 70/30 economics remain historical/current protocol facts and are not forward terminal economics. See [`RMT_EXECUTION_REVENUE.md`](RMT_EXECUTION_REVENUE.md).
+The policy is explicit and hash-bound; execution logic must never infer 25 basis points as a fallback. The first exact-wallet controlled proof settled successfully, and the separately reviewed public release gate was enabled at Robinhood block `37805030` after PR #385. Missing treasury, effective boundary, proof binding, runtime identity or provider settlement admission still fails closed. Across funding, wallet transfers, failed executions and every provider without a separately admitted settlement path remain ineligible. Deployed V6 70/30 economics remain historical/current protocol facts and are not forward terminal economics. See [`RMT_EXECUTION_REVENUE.md`](RMT_EXECUTION_REVENUE.md).
 
 ## Contracts
 
