@@ -69,9 +69,10 @@ redact_url() {
 
 cmd_version() {
   label="$1"
-  shift
-  if command -v "$1" >/dev/null 2>&1; then
-    value="$($@ 2>/dev/null | head -n 1 || true)"
+  command_name="$2"
+  shift 2
+  if command -v "$command_name" >/dev/null 2>&1; then
+    value="$("$@" 2>/dev/null | head -n 1 || true)"
     printf -- '- %s: `%s`\n' "$label" "${value:-available}"
   else
     printf -- '- %s: `NOT FOUND`\n' "$label"
