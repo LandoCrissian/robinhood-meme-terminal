@@ -14,7 +14,8 @@ export const vNextUniswapV3Adapter: VNextQuoteProviderAdapter = {
       const result = await quoteVNextUniswapForUser({
         inputAsset: request.inputAsset,
         outputAsset: request.outputAsset,
-        userGrossInput: request.amountIn
+        userGrossInput: request.amountIn,
+        recipient: request.recipient
       });
       if (!result) return unavailableVNextQuoteAttempt({
         adapter: vNextUniswapV3Adapter,

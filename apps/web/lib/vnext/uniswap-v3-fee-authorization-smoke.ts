@@ -24,6 +24,7 @@ import {
 } from "./uniswap-v3-fee-executor";
 import {
   configuredVNextUniswapFeeExecutor,
+  isVNextUniswapFeeProofRecipient,
   ROBINHOOD_WETH_RUNTIME_HASH
 } from "../server/vnext-uniswap-fee-executor";
 import { settledVNextFeeExecution, type VNextExecutionRecord } from "./execution-recovery";
@@ -148,17 +149,41 @@ const config = configuredVNextUniswapFeeExecutor({
   RMT_VNEXT_UNISWAP_V3_FEE_AUTHORIZATION_ENABLED: "true",
   RMT_VNEXT_UNISWAP_V3_FEE_EXECUTOR_ADDRESS: executor,
   RMT_VNEXT_UNISWAP_V3_FEE_EXECUTOR_RUNTIME_HASH: runtimeHash,
+  RMT_VNEXT_UNISWAP_V3_FEE_PROOF_WALLET: trader,
   RMT_VNEXT_EXECUTION_FEE_TREASURY: treasury,
   RMT_VNEXT_EXECUTION_FEE_POLICY_FROM_BLOCK: "123456",
   RMT_VNEXT_EXECUTION_FEE_SETTLEMENT_ASSET_IDS: usdgId
 } as unknown as NodeJS.ProcessEnv);
 assert.equal(config?.executor, executor);
 assert.equal(config?.policy.policyHash, policy.policyHash);
+assert.equal(config?.proofWallet, trader);
+assert.equal(isVNextUniswapFeeProofRecipient(config!, trader), true);
+assert.equal(isVNextUniswapFeeProofRecipient(config!, token), false);
 assert.throws(() => configuredVNextUniswapFeeExecutor({
   RMT_VNEXT_EXECUTION_FEE_POLICY_ENABLED: "true",
   RMT_VNEXT_UNISWAP_V3_FEE_AUTHORIZATION_ENABLED: "true",
   RMT_VNEXT_UNISWAP_V3_FEE_EXECUTOR_ADDRESS: executor,
   RMT_VNEXT_UNISWAP_V3_FEE_EXECUTOR_RUNTIME_HASH: runtimeHash,
+  RMT_VNEXT_EXECUTION_FEE_TREASURY: treasury,
+  RMT_VNEXT_EXECUTION_FEE_POLICY_FROM_BLOCK: "123456",
+  RMT_VNEXT_EXECUTION_FEE_SETTLEMENT_ASSET_IDS: usdgId
+} as unknown as NodeJS.ProcessEnv), /PROOF_WALLET/);
+assert.throws(() => configuredVNextUniswapFeeExecutor({
+  RMT_VNEXT_EXECUTION_FEE_POLICY_ENABLED: "true",
+  RMT_VNEXT_UNISWAP_V3_FEE_AUTHORIZATION_ENABLED: "true",
+  RMT_VNEXT_UNISWAP_V3_FEE_EXECUTOR_ADDRESS: executor,
+  RMT_VNEXT_UNISWAP_V3_FEE_EXECUTOR_RUNTIME_HASH: runtimeHash,
+  RMT_VNEXT_UNISWAP_V3_FEE_PROOF_WALLET: zeroAddress,
+  RMT_VNEXT_EXECUTION_FEE_TREASURY: treasury,
+  RMT_VNEXT_EXECUTION_FEE_POLICY_FROM_BLOCK: "123456",
+  RMT_VNEXT_EXECUTION_FEE_SETTLEMENT_ASSET_IDS: usdgId
+} as unknown as NodeJS.ProcessEnv), /proof-wallet identity/);
+assert.throws(() => configuredVNextUniswapFeeExecutor({
+  RMT_VNEXT_EXECUTION_FEE_POLICY_ENABLED: "true",
+  RMT_VNEXT_UNISWAP_V3_FEE_AUTHORIZATION_ENABLED: "true",
+  RMT_VNEXT_UNISWAP_V3_FEE_EXECUTOR_ADDRESS: executor,
+  RMT_VNEXT_UNISWAP_V3_FEE_EXECUTOR_RUNTIME_HASH: runtimeHash,
+  RMT_VNEXT_UNISWAP_V3_FEE_PROOF_WALLET: trader,
   RMT_VNEXT_EXECUTION_FEE_TREASURY: treasury,
   RMT_VNEXT_EXECUTION_FEE_POLICY_FROM_BLOCK: "123456",
   RMT_VNEXT_EXECUTION_FEE_SETTLEMENT_ASSET_IDS: "eip155:4663/contract:0x9999999999999999999999999999999999999999,USDC"

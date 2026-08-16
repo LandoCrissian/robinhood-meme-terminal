@@ -162,10 +162,19 @@ all of the following independently:
 
 - `RMT_VNEXT_EXECUTION_FEE_POLICY_ENABLED=true`;
 - `RMT_VNEXT_UNISWAP_V3_FEE_AUTHORIZATION_ENABLED=true`;
+- one exact server-only `RMT_VNEXT_UNISWAP_V3_FEE_PROOF_WALLET` recipient;
 - an exact deployed executor address and runtime hash;
 - the exact treasury, policy start/end boundary and chain-qualified settlement-asset registry;
 - both existing VNext client/server authorization gates;
 - the existing wallet-submission gate before a prompt can open.
+
+Until the controlled mainnet proof is complete, fee-bearing economics are
+restricted to that exact authenticated proof-wallet recipient. Every other
+recipient continues through the existing fee-disabled Uniswap V3 path even
+while the proof gates are enabled. The public readiness response reports the
+restriction without exposing the configured address. This release contains no
+configuration-only path that can remove the proof-wallet restriction; public
+fee routing requires a separate reviewed release after the proof succeeds.
 
 When the policy is active and the input settlement asset is eligible, RMT quotes
 the provider using the post-fee provider input. When the output settlement asset
@@ -239,5 +248,6 @@ Production revenue is not booked from a quote or plan. It exists only after a su
 - Fee settlement reconciliation: implemented for the canonical event; no production settlement exists.
 - Provider fee gates: present and default off.
 - Production fee collection: disabled.
+- Controlled-proof scope: exact-wallet restriction implemented; no public fee-routing mode exists yet.
 
 The older disabled Uniswap fee capability is compatibility code, not authorization to activate revenue and not the canonical VNext revenue architecture.
