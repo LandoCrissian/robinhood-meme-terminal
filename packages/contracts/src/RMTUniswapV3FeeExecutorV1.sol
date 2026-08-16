@@ -14,6 +14,10 @@ interface IRMTUniswapV3PoolV1 {
     function token1() external view returns (address);
 }
 
+interface IRMTArbSysV1 {
+    function arbBlockNumber() external view returns (uint256);
+}
+
 interface IRMTUniswapSwapRouter02V1 {
     struct ExactInputSingleParams {
         address tokenIn;
@@ -48,6 +52,7 @@ contract RMTUniswapV3FeeExecutorV1 is ReentrancyGuard {
     uint256 public constant BPS_DENOMINATOR = 10_000;
     uint16 public constant MAX_FEE_BPS = 100;
     uint256 public constant MAX_DEADLINE_WINDOW = 5 minutes;
+    address public constant ARBSYS = address(100);
     uint256 private constant EXECUTION_CALLDATA_LENGTH = 4 + (24 * 32);
     bytes32 public constant PROVIDER_ID = keccak256("RMT_UNISWAP_V3_ROUTER02_V1");
     bytes32 private constant ROUTE_DOMAIN = keccak256("RMT_UNISWAP_V3_ROUTE_V1");
@@ -364,12 +369,25 @@ contract RMTUniswapV3FeeExecutorV1 is ReentrancyGuard {
         );
     }
 
+    /// @notice Robinhood Chain's canonical L2 block number used by policy boundaries.
+    /// @dev Solidity block.number on Arbitrum chains reports the L1 block and must not
+    ///      be compared with Robinhood L2 deployment/checkpoint block numbers.
+    function currentPolicyBlock() public view returns (uint256 l2BlockNumber) {
+        try IRMTArbSysV1(ARBSYS).arbBlockNumber() returns (uint256 currentL2Block) {
+            if (currentL2Block == 0) revert RuntimeIdentityChanged();
+            return currentL2Block;
+        } catch {
+            revert RuntimeIdentityChanged();
+        }
+    }
+
     function _validateCommon(FeeAuthorization calldata authorization, Route calldata route, FeeSide expectedSide)
         private
         view
     {
         _assertRuntimeIdentity();
-        if (block.number < policyFromBlock || (policyBeforeBlock != 0 && block.number >= policyBeforeBlock)) {
+        uint256 policyBlock = currentPolicyBlock();
+        if (policyBlock < policyFromBlock || (policyBeforeBlock != 0 && policyBlock >= policyBeforeBlock)) {
             revert PolicyInactive();
         }
         if (executionConsumed[authorization.executionId]) revert ExecutionAlreadyConsumed();

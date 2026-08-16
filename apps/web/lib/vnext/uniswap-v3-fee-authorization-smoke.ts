@@ -7,6 +7,7 @@ import {
   keccak256,
   parseAbiParameters,
   zeroAddress,
+  type Address,
   type Hex
 } from "viem";
 import {
@@ -196,26 +197,149 @@ const record: VNextExecutionRecord = {
 const actualGross = 101_000_000n;
 const actualFee = BigInt(sell.maximumFeeAtomic);
 const actualNet = actualGross - actualFee;
-const topics = encodeEventTopics({
-  abi: rmtUniswapV3FeeExecutorAbi,
-  eventName: "RMTUniswapV3FeeSettled",
-  args: { executionId: sell.executionId, policyHash: sell.policyHash, trader }
-}).flatMap((topic) => typeof topic === "string" ? [topic as Hex] : []);
-const data = encodeAbiParameters(parseAbiParameters(
+const settlementDataParameters = parseAbiParameters(
   "bytes32 policyIdHash, uint256 policyVersion, bytes32 providerId, address router, bytes32 routeIdentity, address feeAsset, uint16 feeBps, uint8 feeSide, uint256 userGrossInput, uint256 providerInput, uint256 grossActualOutput, uint256 actualRmtFee, uint256 actualUserNetOutput, address treasury"
-), [
-  sell.policyIdHash, BigInt(sell.policyVersion), RMT_UNISWAP_V3_PROVIDER_ID, ROBINHOOD_SWAP_ROUTER_02,
-  sell.routeIdentity, usdg, sell.feeBps, 1, BigInt(sell.userGrossInputAtomic), BigInt(sell.providerInputAtomic),
-  actualGross, actualFee, actualNet, treasury
-]);
-const settlement = settledVNextFeeExecution(record, [{ address: executor, topics, data }]);
+);
+type SettlementEventValues = {
+  emitter: Address;
+  executionId: Hex;
+  policyHash: Hex;
+  trader: Address;
+  policyIdHash: Hex;
+  policyVersion: bigint;
+  providerId: Hex;
+  router: Address;
+  routeIdentity: Hex;
+  feeAsset: Address;
+  feeBps: number;
+  feeSide: number;
+  userGrossInput: bigint;
+  providerInput: bigint;
+  grossActualOutput: bigint;
+  actualRmtFee: bigint;
+  actualUserNetOutput: bigint;
+  treasury: Address;
+};
+const canonicalSettlementValues: SettlementEventValues = {
+  emitter: executor,
+  executionId: sell.executionId,
+  policyHash: sell.policyHash,
+  trader,
+  policyIdHash: sell.policyIdHash,
+  policyVersion: BigInt(sell.policyVersion),
+  providerId: RMT_UNISWAP_V3_PROVIDER_ID,
+  router: ROBINHOOD_SWAP_ROUTER_02,
+  routeIdentity: sell.routeIdentity,
+  feeAsset: usdg,
+  feeBps: sell.feeBps,
+  feeSide: 1,
+  userGrossInput: BigInt(sell.userGrossInputAtomic),
+  providerInput: BigInt(sell.providerInputAtomic),
+  grossActualOutput: actualGross,
+  actualRmtFee: actualFee,
+  actualUserNetOutput: actualNet,
+  treasury
+};
+function settlementLog(overrides: Partial<SettlementEventValues> = {}) {
+  const values = { ...canonicalSettlementValues, ...overrides };
+  const topics = encodeEventTopics({
+    abi: rmtUniswapV3FeeExecutorAbi,
+    eventName: "RMTUniswapV3FeeSettled",
+    args: { executionId: values.executionId, policyHash: values.policyHash, trader: values.trader }
+  }).flatMap((topic) => typeof topic === "string" ? [topic as Hex] : []);
+  const data = encodeAbiParameters(settlementDataParameters, [
+    values.policyIdHash, values.policyVersion, values.providerId, values.router,
+    values.routeIdentity, values.feeAsset, values.feeBps, values.feeSide,
+    values.userGrossInput, values.providerInput, values.grossActualOutput,
+    values.actualRmtFee, values.actualUserNetOutput, values.treasury
+  ]);
+  return { address: values.emitter, topics, data };
+}
+const canonicalSettlementLog = settlementLog();
+const settlement = settledVNextFeeExecution(record, [canonicalSettlementLog]);
 assert.deepEqual(settlement, {
   outputAmountAtomic: actualNet.toString(),
   actualFeeAtomic: actualFee.toString(),
   grossActualOutputAtomic: actualGross.toString()
 });
-assert.equal(settledVNextFeeExecution(record, [{ address: executor, topics, data }, { address: executor, topics, data }]), null);
-assert.equal(settledVNextFeeExecution({ ...record, wallet: token }, [{ address: executor, topics, data }]), null);
+assert.equal(settledVNextFeeExecution(record, [canonicalSettlementLog, canonicalSettlementLog]), null);
+assert.equal(settledVNextFeeExecution({ ...record, wallet: token }, [canonicalSettlementLog]), null);
+const settlementMutations: Partial<SettlementEventValues>[] = [
+  { emitter: token },
+  { executionId: `0x${"1".repeat(64)}` as Hex },
+  { policyHash: `0x${"2".repeat(64)}` as Hex },
+  { trader: token },
+  { policyIdHash: `0x${"3".repeat(64)}` as Hex },
+  { policyVersion: 2n },
+  { providerId: `0x${"4".repeat(64)}` as Hex },
+  { router: token },
+  { routeIdentity: `0x${"5".repeat(64)}` as Hex },
+  { feeAsset: token },
+  { feeBps: 26 },
+  { feeSide: 0 },
+  { userGrossInput: canonicalSettlementValues.userGrossInput + 1n },
+  { providerInput: canonicalSettlementValues.providerInput + 1n },
+  { grossActualOutput: actualGross + 1n },
+  { actualRmtFee: actualFee + 1n },
+  { actualUserNetOutput: actualNet - 1n },
+  { treasury: token }
+];
+settlementMutations.forEach((mutation) => {
+  assert.equal(settledVNextFeeExecution(record, [settlementLog(mutation)]), null);
+});
+
+const buyRecord: VNextExecutionRecord = {
+  ...record,
+  inputAsset: usdg,
+  outputAsset: token,
+  inputAmountAtomic: buy.userGrossInputAtomic,
+  feeSettlement: {
+    executor,
+    executionId: buy.executionId,
+    policyIdHash: buy.policyIdHash,
+    policyHash: buy.policyHash,
+    policyVersion: buy.policyVersion,
+    treasury,
+    feeAsset: usdg,
+    feeBps: buy.feeBps,
+    feeSide: buy.feeSide,
+    routeIdentity: buy.routeIdentity,
+    providerInputAtomic: buy.providerInputAtomic,
+    protectedUserNetOutputAtomic: buy.protectedUserNetOutputAtomic,
+    maximumFeeAtomic: buy.maximumFeeAtomic
+  }
+};
+const buyGrossOutput = BigInt(buy.providerGrossExpectedOutputAtomic);
+const buyFee = BigInt(buy.maximumFeeAtomic);
+const buySettlement = settlementLog({
+  executionId: buy.executionId,
+  policyHash: buy.policyHash,
+  policyIdHash: buy.policyIdHash,
+  routeIdentity: buy.routeIdentity,
+  feeSide: 0,
+  userGrossInput: BigInt(buy.userGrossInputAtomic),
+  providerInput: BigInt(buy.providerInputAtomic),
+  grossActualOutput: buyGrossOutput,
+  actualRmtFee: buyFee,
+  actualUserNetOutput: buyGrossOutput
+});
+assert.deepEqual(settledVNextFeeExecution(buyRecord, [buySettlement]), {
+  outputAmountAtomic: buyGrossOutput.toString(),
+  actualFeeAtomic: buyFee.toString(),
+  grossActualOutputAtomic: buyGrossOutput.toString()
+});
+assert.equal(settledVNextFeeExecution(buyRecord, [settlementLog({
+  executionId: buy.executionId,
+  policyHash: buy.policyHash,
+  policyIdHash: buy.policyIdHash,
+  routeIdentity: buy.routeIdentity,
+  feeSide: 0,
+  userGrossInput: BigInt(buy.userGrossInputAtomic),
+  providerInput: BigInt(buy.providerInputAtomic),
+  grossActualOutput: buyGrossOutput,
+  actualRmtFee: buyFee,
+  actualUserNetOutput: buyGrossOutput - 1n
+})]), null);
 
 assert.notEqual(ROBINHOOD_WETH, zeroAddress);
 assert.equal(
