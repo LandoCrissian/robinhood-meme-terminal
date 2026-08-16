@@ -4,6 +4,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 const base = process.env.RMT_ACCEPTANCE_BASE_URL ?? "http://127.0.0.1:3000";
 const output = process.env.RMT_ACCEPTANCE_OUTPUT
   ?? `${process.env.GITHUB_WORKSPACE}/terminal-high-end-evidence`;
+const focusDebug = process.env.RMT_ACCEPTANCE_FOCUS_DEBUG === "true";
 const now = new Date().toISOString();
 const address = (seed) => `0x${seed.toString(16).padStart(40, "0")}`;
 const txHash = (seed) => `0x${seed.toString(16).repeat(64).slice(0, 64)}`;
@@ -793,7 +794,31 @@ async function inspectMobile(browser, viewport, label) {
   await page.locator(".rmtMobileSheetBackdrop").click({ position: { x: 4, y: 4 } });
   await mobileDialog.waitFor({ state: "hidden" });
   if (!(await page.evaluate(() => document.body.style.overflow === "" && document.documentElement.style.overflow === ""))) throw new Error(`${label}: backdrop close did not restore page scrolling`);
-  if (!(await mobileBuyAction.evaluate((button) => document.activeElement === button))) throw new Error(`${label}: backdrop close did not return focus to the Buy action`);
+  const returnedToBuyAfterBackdrop = await mobileBuyAction.evaluate((button) => document.activeElement === button);
+  if (!returnedToBuyAfterBackdrop) {
+    if (focusDebug) {
+      const activeElement = await page.evaluate(() => {
+        const active = document.activeElement;
+        if (!active) return { tag: "none", id: null, text: "" };
+
+        return {
+          tag: active.tagName,
+          id: active.id || null,
+          text: (active.textContent || "").trim().slice(0, 120)
+        };
+      });
+
+      if (output) {
+        await page.screenshot({
+          path: `${output}/focus-failure-${label}-backdrop-close.png`,
+          fullPage: true
+        });
+      }
+
+      console.error(`${label}: backdrop close did not return focus to the Buy action`, activeElement);
+    }
+    throw new Error(`${label}: backdrop close did not return focus to the Buy action`);
+  }
   await page.getByRole("button", { name: "Portfolio", exact: true }).click();
   await page.locator('.rmtMobileTerminal[data-terminal-context="portfolio"] #vnext-portfolio').waitFor({ state: "visible" });
   const portfolioAudit = await page.evaluate(() => ({
