@@ -182,9 +182,12 @@ jobs:
             src/VersionedFactoryRegistry.sol \
             src/OfficialRMTIdentityMigration.sol \
             src/DirectLaunchFeeSplitter.sol \
+            src/RMTDistributionEngineV1.sol \
+            src/RMTRetirementSinkV1.sol \
             src/RMTUniswapV3FeeExecutorV1.sol \
             src/RMTTestnetSushiV3RehearsalStack.sol \
             src/clone/CloneBondingCurveMarketV6.sol \
+            src/interfaces/IRMTDistributionEngineV1.sol \
             src/V5GraduationHook.sol \
             src/V4GraduationAdapter.sol \
             test/MainnetReleaseConfig.t.sol \
@@ -196,9 +199,15 @@ jobs:
             test/RMTLaunchPolicyRegistry.t.sol \
             test/RMTLaunchFactoryV6.t.sol \
             test/DirectLaunchFeeSplitter.t.sol \
+            test/RMTDistributionEngineV1.t.sol \
+            test/RMTDistributionEngineV1Fork.t.sol \
+            test/RMTDistributionEngineV1Gas.t.sol \
+            test/RMTDistributionEngineV1Invariant.t.sol \
+            test/RMTRetirementSinkV1.t.sol \
             test/RMTUniswapV3FeeExecutorV1.t.sol \
             test/RMTUniswapV3FeeExecutorV1Fork.t.sol \
             test/RMTTestnetSushiV3RehearsalStack.t.sol \
+            test/mocks/RMTDistributionEngineV1Mocks.sol \
             test/V4GraduationAdapter.t.sol \
             test/V6MainnetFork.t.sol \
             test/V6UniversalRouterFork.t.sol \

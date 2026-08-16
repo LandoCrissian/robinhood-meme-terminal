@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "status": "historical_partial_audit",
+  "manifestEligible": false,
+  "chainId": 4663,
+  "snapshotBlock": "37451763",
+  "snapshotBlockHash": "0xbfbff107fb35cb352a2a8e58fa3abd198f2c800c032ebe57b747958a992113dc",
+  "collection": "0x505A22Ffed8d37ebE580FfD98d2Cdb0021189146",
+  "ccff00Token": "0x73CB777311Dc5e464C53Ddafb4496Fd87fE0eC97",
+  "rmtToken": "0xdBa33be56C89CC9fc014c4459028d7e5c7878671",
+  "publicMinted": "482",
+  "reserveMinted": "250",
+  "totalSupply": "732",
+  "uniquePublicTokenBoundAccounts": "482",
+  "uniquePublicOwners": "164",
+  "activatedPublicTokenBoundAccounts": "24",
+  "counterfactualPublicTokenBoundAccounts": "458",
+  "exactConfiguredCcff00Accounts": "482",
+  "rmtHoldingAccounts": "0",
+  "canaries": [
+    {
+      "tokenId": "470",
+      "owner": "0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA",
+      "tokenBoundAccount": "0xFd1fDC1d3aA3AeEA37b265C691C7D367cBb20a6e",
+      "activated": false,
+      "ccff00BalanceAtomic": "10000000000000000000000",
+      "rmtBalanceAtomic": "0"
+    },
+    {
+      "tokenId": "471",
+      "owner": "0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA",
+      "tokenBoundAccount": "0xF26b9c1ecA9489A1AdCe201fB82630889cfe6246",
+      "activated": false,
+      "ccff00BalanceAtomic": "10000000000000000000000",
+      "rmtBalanceAtomic": "0"
+    },
+    {
+      "tokenId": "472",
+      "owner": "0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA",
+      "tokenBoundAccount": "0x3b71916De0aE9a4e2303dD6fCe66A8f6555c83D5",
+      "activated": false,
+      "ccff00BalanceAtomic": "10000000000000000000000",
+      "rmtBalanceAtomic": "0"
+    }
+  ]
+}

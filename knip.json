@@ -16,13 +16,21 @@
     "apps/indexer": {
       "entry": [
         "src/**/*-smoke.ts"
-      ]
+      ],
+      "ignoreDependencies": ["tsx"]
     },
     "apps/external-origin-indexer": {
       "entry": [
         "src/**/*-smoke.ts",
         "shadow/**/*-smoke.ts"
-      ]
+      ],
+      "ignoreDependencies": ["tsx"]
+    },
+    "apps/market-indexer": {
+      "entry": [
+        "src/**/*-smoke.ts"
+      ],
+      "ignoreDependencies": ["tsx"]
     }
   }
 }
