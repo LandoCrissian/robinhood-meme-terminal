@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { getAddress, type Hex } from "viem";
 import type { ExternalMarketResponse, UniversalMarketResolution } from "../external-market";
+import {
+  MAX_DIRECT_V6_ORIGIN_RECORDS,
+  validateCompleteV6OriginRecords
+} from "../server/launch-feed";
 import { assetKey } from "./execution-domain";
 import {
   VNEXT_MARKET_DIRECTORY_MAX_MARKETS,
@@ -164,6 +169,7 @@ assert.equal(directoryMarketFromVerifiedIdentity({ resolution }, "not-an-address
 
 const hook = readFileSync(new URL("../../app/vnext/use-vnext-market-directory.ts", import.meta.url), "utf8");
 const route = readFileSync(new URL("../../app/api/vnext/market-directory/route.ts", import.meta.url), "utf8");
+const ecosystemRoute = readFileSync(new URL("../../app/api/markets/external/route.ts", import.meta.url), "utf8");
 const identityRoute = readFileSync(new URL("../../app/api/vnext/asset-identity/route.ts", import.meta.url), "utf8");
 const shell = readFileSync(new URL("../../app/vnext/vnext-terminal-shell.tsx", import.meta.url), "utf8");
 assert.match(hook, /fetch\("\/api\/vnext\/market-directory"/);
@@ -193,6 +199,38 @@ assert.equal((route.match(/fetchPairs\(/g) ?? []).length, 2);
 assert.match(route, /address\.toLowerCase\(\) === zeroAddress/);
 assert.match(route, /stale-while-revalidate=60/);
 assert.doesNotMatch(route, /resolveRmtOrigins|external-availability|external-sushi-quote|external-uniswap|router|reactor/);
+assert.match(ecosystemRoute, /import \{ VNEXT_MARKET_DIRECTORY_MAX_MARKETS \} from "\.\.\/\.\.\/\.\.\/\.\.\/lib\/vnext\/market-directory"/);
+assert.match(ecosystemRoute, /slice\(0, VNEXT_MARKET_DIRECTORY_MAX_MARKETS\)/);
+assert.doesNotMatch(ecosystemRoute, /const MAX_MARKETS = 48/);
+assert.match(ecosystemRoute, /readCompleteV6OriginTokensFromChain/);
+assert.match(ecosystemRoute, /resolveDirectRmtOrigins/);
+assert.match(ecosystemRoute, /coverage: "complete", tokens: new Set\(\[\.\.\.known, \.\.\.snapshot\.tokens\]\)/);
+
+const firstV6Token = getAddress("0x1111111111111111111111111111111111111111");
+const secondV6Token = getAddress("0x2222222222222222222222222222222222222222");
+const minimalProxy = "0x363d3d373d3d3d363d7311111111111111111111111111111111111111115af43d82803e903d91602b57fd5bf3" as Hex;
+const completeV6Tokens = validateCompleteV6OriginRecords(
+  2n,
+  [{ token: firstV6Token }, { token: secondV6Token }],
+  [minimalProxy, minimalProxy]
+);
+assert.deepEqual([...completeV6Tokens], [firstV6Token.toLowerCase(), secondV6Token.toLowerCase()]);
+assert.throws(
+  () => validateCompleteV6OriginRecords(2n, [{ token: firstV6Token }], [minimalProxy]),
+  /incomplete/
+);
+assert.throws(
+  () => validateCompleteV6OriginRecords(2n, [{ token: firstV6Token }, { token: firstV6Token }], [minimalProxy, minimalProxy]),
+  /duplicate/
+);
+assert.throws(
+  () => validateCompleteV6OriginRecords(1n, [{ token: firstV6Token }], ["0x6000" as Hex]),
+  /unexpected token runtime/
+);
+assert.throws(
+  () => validateCompleteV6OriginRecords(MAX_DIRECT_V6_ORIGIN_RECORDS + 1n, [], []),
+  /exceeds the bounded origin fallback/
+);
 assert.match(identityRoute, /readRobinhoodTokenIdentity/);
 assert.doesNotMatch(identityRoute, /discoverPools|fetchRobinhoodStockRegistry|external-availability|quote/);
 assert.match(shell, /visibleVNextMarketDirectoryMarkets\(filteredMarkets, visibleMarketLimit\)/);
