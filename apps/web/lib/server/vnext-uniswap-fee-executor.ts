@@ -17,6 +17,11 @@ import {
   type RmtExecutionFeePolicy
 } from "../vnext/execution-fee-policy";
 import { rmtUniswapV3PolicyIdHash } from "../vnext/uniswap-v3-fee-executor";
+import {
+  RMT_UNISWAP_V3_FEE_MAINNET_PROOF,
+  RMT_UNISWAP_V3_FEE_MAINNET_PROOF_COMPLETE,
+  assertRmtUniswapV3FeeMainnetProof
+} from "../vnext/uniswap-v3-fee-mainnet-proof";
 
 export const ROBINHOOD_UNISWAP_ROUTER_RUNTIME_HASH = "0x6f36c378e272c6324c48f045182bcb54bd8ad654cf9ebd42e8893d52c4cb25dc" as Hex;
 export const ROBINHOOD_UNISWAP_FACTORY_RUNTIME_HASH = "0xec72b1abd1f2faee020cfea9c646bd8994f9fb389054f6e574f103a895091739" as Hex;
@@ -48,6 +53,7 @@ export type VNextUniswapFeeExecutorConfig = {
   executor: Address;
   executorRuntimeHash: Hex;
   proofWallet: Address;
+  releaseScope: "proof-wallet" | "public";
   policy: RmtExecutionFeePolicy;
 };
 
@@ -69,6 +75,10 @@ export function configuredVNextUniswapFeeExecutor(
 ): VNextUniswapFeeExecutorConfig | null {
   const policyEnabled = env.RMT_VNEXT_EXECUTION_FEE_POLICY_ENABLED === "true";
   const providerEnabled = env.RMT_VNEXT_UNISWAP_V3_FEE_AUTHORIZATION_ENABLED === "true";
+  const publicReleaseEnabled = env.RMT_VNEXT_UNISWAP_V3_FEE_PUBLIC_AUTHORIZATION_ENABLED === "true";
+  if (publicReleaseEnabled && (!policyEnabled || !providerEnabled)) {
+    throw new Error("RMT public fee release requires both the policy and provider authorization gates.");
+  }
   if (!policyEnabled && !providerEnabled) return null;
   if (!policyEnabled || !providerEnabled) {
     throw new Error("RMT fee execution requires both the policy and provider authorization gates.");
@@ -99,10 +109,26 @@ export function configuredVNextUniswapFeeExecutor(
     eligibleSettlementAssetIds: assetIds
   });
   assertRmtExecutionFeePolicy(policy);
+  if (publicReleaseEnabled) {
+    assertRmtUniswapV3FeeMainnetProof(RMT_UNISWAP_V3_FEE_MAINNET_PROOF);
+    if (!RMT_UNISWAP_V3_FEE_MAINNET_PROOF_COMPLETE) {
+      throw new Error("RMT public fee release requires the admitted mainnet proof.");
+    }
+    if (
+      getAddress(executorValue) !== RMT_UNISWAP_V3_FEE_MAINNET_PROOF.executor
+      || runtimeHash.toLowerCase() !== RMT_UNISWAP_V3_FEE_MAINNET_PROOF.executorRuntimeHash.toLowerCase()
+      || getAddress(proofWalletValue) !== RMT_UNISWAP_V3_FEE_MAINNET_PROOF.trader
+      || policy.policyHash.toLowerCase() !== RMT_UNISWAP_V3_FEE_MAINNET_PROOF.policyHash.toLowerCase()
+      || policy.treasury !== RMT_UNISWAP_V3_FEE_MAINNET_PROOF.treasury
+    ) {
+      throw new Error("RMT public fee release does not match the admitted mainnet proof.");
+    }
+  }
   return {
     executor: getAddress(executorValue),
     executorRuntimeHash: runtimeHash.toLowerCase() as Hex,
     proofWallet: getAddress(proofWalletValue),
+    releaseScope: publicReleaseEnabled ? "public" : "proof-wallet",
     policy
   };
 }
@@ -112,6 +138,13 @@ export function isVNextUniswapFeeProofRecipient(
   recipient: Address
 ) {
   return getAddress(recipient) === config.proofWallet;
+}
+
+export function isVNextUniswapFeeRecipientEligible(
+  config: VNextUniswapFeeExecutorConfig,
+  recipient: Address
+) {
+  return config.releaseScope === "public" || isVNextUniswapFeeProofRecipient(config, recipient);
 }
 
 function contractAddressFromAssetId(assetId: string) {

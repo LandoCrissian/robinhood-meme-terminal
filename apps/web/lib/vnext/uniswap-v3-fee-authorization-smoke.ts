@@ -24,6 +24,7 @@ import {
 } from "./uniswap-v3-fee-executor";
 import {
   configuredVNextUniswapFeeExecutor,
+  isVNextUniswapFeeRecipientEligible,
   isVNextUniswapFeeProofRecipient,
   ROBINHOOD_WETH_RUNTIME_HASH
 } from "../server/vnext-uniswap-fee-executor";
@@ -157,8 +158,11 @@ const config = configuredVNextUniswapFeeExecutor({
 assert.equal(config?.executor, executor);
 assert.equal(config?.policy.policyHash, policy.policyHash);
 assert.equal(config?.proofWallet, trader);
+assert.equal(config?.releaseScope, "proof-wallet");
 assert.equal(isVNextUniswapFeeProofRecipient(config!, trader), true);
 assert.equal(isVNextUniswapFeeProofRecipient(config!, token), false);
+assert.equal(isVNextUniswapFeeRecipientEligible(config!, trader), true);
+assert.equal(isVNextUniswapFeeRecipientEligible(config!, token), false);
 assert.throws(() => configuredVNextUniswapFeeExecutor({
   RMT_VNEXT_EXECUTION_FEE_POLICY_ENABLED: "true",
   RMT_VNEXT_UNISWAP_V3_FEE_AUTHORIZATION_ENABLED: "true",

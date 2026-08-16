@@ -1,6 +1,6 @@
 # RMT execution revenue
 
-**Status: CURRENT — implementation program; production collection disabled**
+**Status: CURRENT — controlled proof complete; public collection disabled**
 
 ## Approved policy direction
 
@@ -17,7 +17,7 @@ The owner has approved implementation support for the first forward terminal exe
 | Eligible origin | independently proven RMT-originated executions only |
 | Initial settlement assets | canonical Robinhood USDG and WETH/native-compatible settlement, subject to exact provider admission |
 
-This policy direction does **not** activate collection. The treasury and policy boundary are now fixed, but production remains disabled until the provider-specific settlement deployment, complete wallet disclosure, settlement proof and explicit release authorization all exist.
+This policy direction does **not** activate public collection. The treasury and policy boundary are fixed, the provider-specific executor is deployed and the controlled proof is complete, but public routing remains disabled until the separate public authorization gate receives an explicit release action.
 
 Across funding, wallet transfers, failed transactions, quote requests and unrelated transactions are not eligible. V6 economics, Stonk/up allocations, PoH allocations, subscriptions, hidden spread, positive-slippage capture and automatic fee-conversion swaps are not part of this policy.
 
@@ -168,13 +168,27 @@ all of the following independently:
 - both existing VNext client/server authorization gates;
 - the existing wallet-submission gate before a prompt can open.
 
-Until the controlled mainnet proof is complete, fee-bearing economics are
-restricted to that exact authenticated proof-wallet recipient. Every other
-recipient continues through the existing fee-disabled Uniswap V3 path even
-while the proof gates are enabled. The public readiness response reports the
-restriction without exposing the configured address. This release contains no
-configuration-only path that can remove the proof-wallet restriction; public
-fee routing requires a separate reviewed release after the proof succeeds.
+Public fee-bearing routing additionally requires:
+
+- the code-reviewed controlled-proof record to match the exact executor, policy, treasury and proof wallet;
+- `RMT_VNEXT_UNISWAP_V3_FEE_PUBLIC_AUTHORIZATION_ENABLED=true`;
+- every pre-existing policy, provider, client, server and wallet-submission gate above.
+
+The public gate defaults off and cannot activate collection alone.
+
+The controlled mainnet proof completed successfully in transaction
+`0xf2998e49b08e0d0bc4aeb4256c9e84bfeee888aae67db6262bfb94b4a8d9a6fb`
+at Robinhood block `37772345`. The exact 0.10 USDG input settled 0.00025 USDG
+to the approved treasury and 0.000053073785359108 WETH to the trader. The
+canonical settlement event, raw token transfers, gas accounting, executor zero
+balances, cleared router allowance and consumed execution ID were independently
+reconciled.
+
+After this reviewed release code is merged, fee-bearing economics remain
+restricted to the exact authenticated proof wallet until the new public gate is
+explicitly enabled. Every other recipient continues through the existing
+fee-disabled Uniswap V3 path. Readiness reports `proof-wallet`, `public`,
+`blocked` or `disabled` without exposing the configured address.
 
 When the policy is active and the input settlement asset is eligible, RMT quotes
 the provider using the post-fee provider input. When the output settlement asset
@@ -232,22 +246,23 @@ The command reconstructs the deployment from the compiled artifact, re-verifies 
 2. Narrow non-upgradeable Uniswap V3 fee executor and adversarial/fork tests — no deployment.
 3. Server quote, strict verification and fee-bearing authorization — implemented, gates off.
 4. Client pre-sign verification and fee disclosure — implemented, gates off.
-5. Canonical receipt reconciliation and exactly-once settlement proof — implemented; deployment finality/proof evidence pending.
-6. Deployment verification complete; controlled proof tooling and public activation remain gated.
+5. Canonical receipt reconciliation and exactly-once settlement proof — complete for the controlled mainnet proof.
+6. Deployment and controlled-proof verification complete; public activation remains separately gated and unauthorized.
 
 Production revenue is not booked from a quote or plan. It exists only after a successful, final, unambiguous settlement proves exactly one authorized fee to the exact treasury.
 
 ## Current release state
 
 - Policy implementation: foundation present.
-- Production treasury: approved Safe deployed and independently verified; production environment remains unconfigured.
-- Policy identity: exact hash and block boundary recorded; collection remains disabled.
+- Production treasury: approved Safe deployed and independently verified.
+- Policy identity: exact hash and block boundary recorded; public collection remains disabled.
 - Fee executor: corrected deployment at `0xcB9c00524848038D211921e0f3975190D7Aa1e8f`; exact transaction, immutable-filled runtime and canonical Robinhood L2 policy-block source verified. The first deployment is recorded as permanently inactive.
-- Fee-bearing authorization: implemented and independently gated off.
-- Fee disclosure: implemented; unreachable without an admitted deployment/policy.
-- Fee settlement reconciliation: implemented for the canonical event; no production settlement exists.
+- Fee-bearing authorization: implemented and independently gated.
+- Fee disclosure: implemented and proven through the controlled wallet.
+- Fee settlement reconciliation: implemented and proven for the canonical event.
 - Provider fee gates: present and default off.
-- Production fee collection: disabled.
-- Controlled-proof scope: exact-wallet restriction implemented; no public fee-routing mode exists yet.
+- Controlled proof: complete and independently reconciled at Robinhood block `37772345`.
+- Production fee collection: restricted to the proof wallet; public collection remains disabled.
+- Public fee-routing mode: implemented behind a separate server-only gate that defaults off; no production environment was changed by this release.
 
 The older disabled Uniswap fee capability is compatibility code, not authorization to activate revenue and not the canonical VNext revenue architecture.

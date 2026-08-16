@@ -1,4 +1,8 @@
 import { vnextShellAvailable, vnextShellMode, type VNextShellEnvironment } from "./vnext-shell-access";
+import {
+  RMT_UNISWAP_V3_FEE_MAINNET_PROOF,
+  RMT_UNISWAP_V3_FEE_MAINNET_PROOF_COMPLETE
+} from "./uniswap-v3-fee-mainnet-proof";
 
 export type VNextReleaseEnvironment = VNextShellEnvironment & Partial<Pick<
   NodeJS.ProcessEnv,
@@ -29,6 +33,7 @@ export type VNextReleaseEnvironment = VNextShellEnvironment & Partial<Pick<
   | "RMT_VNEXT_UP_CL_AUTHORIZATION_ENABLED"
   | "RMT_VNEXT_EXECUTION_FEE_POLICY_ENABLED"
   | "RMT_VNEXT_UNISWAP_V3_FEE_AUTHORIZATION_ENABLED"
+  | "RMT_VNEXT_UNISWAP_V3_FEE_PUBLIC_AUTHORIZATION_ENABLED"
   | "RMT_VNEXT_UNISWAP_V3_FEE_EXECUTOR_ADDRESS"
   | "RMT_VNEXT_UNISWAP_V3_FEE_EXECUTOR_RUNTIME_HASH"
   | "RMT_VNEXT_UNISWAP_V3_FEE_PROOF_WALLET"
@@ -109,6 +114,7 @@ export function readVNextReleaseReadiness(env: VNextReleaseEnvironment) {
   const upClAuthorizationEnabled = enabled(env.RMT_VNEXT_UP_CL_AUTHORIZATION_ENABLED);
   const feePolicyRequested = enabled(env.RMT_VNEXT_EXECUTION_FEE_POLICY_ENABLED);
   const uniswapFeeAuthorizationRequested = enabled(env.RMT_VNEXT_UNISWAP_V3_FEE_AUTHORIZATION_ENABLED);
+  const uniswapFeePublicAuthorizationRequested = enabled(env.RMT_VNEXT_UNISWAP_V3_FEE_PUBLIC_AUTHORIZATION_ENABLED);
   const feeProofWalletConfigured = /^0x[0-9a-fA-F]{40}$/.test(env.RMT_VNEXT_UNISWAP_V3_FEE_PROOF_WALLET?.trim() ?? "")
     && !/^0x0{40}$/i.test(env.RMT_VNEXT_UNISWAP_V3_FEE_PROOF_WALLET?.trim() ?? "");
   const feeExecutorConfigured = /^0x[0-9a-fA-F]{40}$/.test(env.RMT_VNEXT_UNISWAP_V3_FEE_EXECUTOR_ADDRESS?.trim() ?? "")
@@ -119,6 +125,21 @@ export function readVNextReleaseReadiness(env: VNextReleaseEnvironment) {
       || /^[1-9][0-9]*$/.test(env.RMT_VNEXT_EXECUTION_FEE_POLICY_BEFORE_BLOCK.trim()))
     && Boolean(env.RMT_VNEXT_EXECUTION_FEE_SETTLEMENT_ASSET_IDS?.trim())
     && feeProofWalletConfigured;
+  const configuredFeeAssetIds = new Set((env.RMT_VNEXT_EXECUTION_FEE_SETTLEMENT_ASSET_IDS ?? "")
+    .split(",").map((value) => value.trim().toLowerCase()).filter(Boolean));
+  const publicFeeProofBindingValid = feeExecutorConfigured
+    && env.RMT_VNEXT_UNISWAP_V3_FEE_EXECUTOR_ADDRESS?.trim().toLowerCase() === RMT_UNISWAP_V3_FEE_MAINNET_PROOF.executor.toLowerCase()
+    && env.RMT_VNEXT_UNISWAP_V3_FEE_EXECUTOR_RUNTIME_HASH?.trim().toLowerCase() === RMT_UNISWAP_V3_FEE_MAINNET_PROOF.executorRuntimeHash
+    && env.RMT_VNEXT_UNISWAP_V3_FEE_PROOF_WALLET?.trim().toLowerCase() === RMT_UNISWAP_V3_FEE_MAINNET_PROOF.trader.toLowerCase()
+    && env.RMT_VNEXT_EXECUTION_FEE_TREASURY?.trim().toLowerCase() === RMT_UNISWAP_V3_FEE_MAINNET_PROOF.treasury.toLowerCase()
+    && env.RMT_VNEXT_EXECUTION_FEE_POLICY_FROM_BLOCK?.trim() === "35041945"
+    && !env.RMT_VNEXT_EXECUTION_FEE_POLICY_BEFORE_BLOCK?.trim()
+    && configuredFeeAssetIds.size === 3
+    && [
+      "eip155:4663/contract:0x0bd7d308f8e1639fab988df18a8011f41eacad73",
+      "eip155:4663/contract:0x5fc5360d0400a0fd4f2af552add042d716f1d168",
+      "eip155:4663/native"
+    ].every((assetId) => configuredFeeAssetIds.has(assetId));
   const acrossConfigurationValid = (!acrossQuotesRequested || acrossConfigured)
     && (!acrossAuthorizationRequested || (acrossConfigured && acrossQuotesRequested));
   const authorizationConsistent = authorizationClientEnabled === authorizationServerEnabled;
@@ -127,7 +148,14 @@ export function readVNextReleaseReadiness(env: VNextReleaseEnvironment) {
   const upAuthorizationValid = (!upV2AuthorizationEnabled || (upV2ObservationEnabled && authorizationClientEnabled && authorizationServerEnabled))
     && (!upClAuthorizationEnabled || (upClObservationEnabled && authorizationClientEnabled && authorizationServerEnabled));
   const feeAuthorizationValid = feePolicyRequested === uniswapFeeAuthorizationRequested
-    && (!feePolicyRequested || (feeExecutorConfigured && authorizationClientEnabled && authorizationServerEnabled));
+    && (!feePolicyRequested || (feeExecutorConfigured && authorizationClientEnabled && authorizationServerEnabled))
+    && (!uniswapFeePublicAuthorizationRequested || (
+      feePolicyRequested
+      && uniswapFeeAuthorizationRequested
+      && feeExecutorConfigured
+      && publicFeeProofBindingValid
+      && RMT_UNISWAP_V3_FEE_MAINNET_PROOF_COMPLETE
+    ));
   const configurationConsistent = authorizationConsistent && sushiConsistent && walletSubmissionValid && acrossConfigurationValid && upAuthorizationValid && feeAuthorizationValid;
 
   let mode: VNextReleaseMode = "disabled";
@@ -169,14 +197,22 @@ export function readVNextReleaseReadiness(env: VNextReleaseEnvironment) {
         configured: feeExecutorConfigured,
         proofWalletConfigured: feeProofWalletConfigured,
         releaseScope: feePolicyRequested && uniswapFeeAuthorizationRequested && feeExecutorConfigured
-          ? "proof-wallet" as const
+          ? uniswapFeePublicAuthorizationRequested
+            ? publicFeeProofBindingValid
+              ? "public" as const
+              : "blocked" as const
+            : "proof-wallet" as const
           : "disabled" as const,
         strictVerificationAvailable: true,
         walletAuthorizationAvailable: true,
         authorizationEnabled: feePolicyRequested && uniswapFeeAuthorizationRequested
           && feeExecutorConfigured && authorizationClientEnabled && authorizationServerEnabled,
-        deployedAndVerified: false,
-        mainnetProofComplete: false
+        publicAuthorizationEnabled: feePolicyRequested && uniswapFeeAuthorizationRequested
+          && uniswapFeePublicAuthorizationRequested && feeExecutorConfigured
+          && publicFeeProofBindingValid && authorizationClientEnabled && authorizationServerEnabled,
+        publicProofBindingValid: publicFeeProofBindingValid,
+        deployedAndVerified: true,
+        mainnetProofComplete: RMT_UNISWAP_V3_FEE_MAINNET_PROOF_COMPLETE
       },
       acrossFunding: {
         configured: acrossConfigured,
