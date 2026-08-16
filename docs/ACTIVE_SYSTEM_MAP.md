@@ -39,8 +39,8 @@
 
 - `NEXT_PUBLIC_RMT_VNEXT_*` / `RMT_VNEXT_*`: independent shell, provider, authorization, submission and funding gates. Capability does not imply activation. Each up. provider requires its observation gate, its own server authorization gate, both global authorization gates and the wallet-submission gate before an actual wallet prompt.
 - `NEXT_PUBLIC_RMT_LIVE_*`, creator/V7, profile and autonomous execution controls: paused unless required for preserved compatibility tests; must not be newly enabled.
-- `RMT_EXECUTION_FEE_ENABLED`: remains `false`; policy implementation approval is not production activation approval.
-- `RMT_EXECUTION_FEE_BPS` and treasury: production examples remain blank and no environment was changed. `RMT_EXECUTION_V1` now binds 25 basis points to the verified Safe `0x61700479A4A1F62584Fd3ABA2c2b290EA727d2eC`, block `35041945` and policy hash `0x295c900143405bb585a4d88c3788fadab522fd4313f69242f64e52e39827f141`; no provider settlement deployment or collection gate is active.
+- `RMT_EXECUTION_FEE_ENABLED`: remains the disabled legacy fee setting; it is not the canonical VNext revenue gate.
+- `RMT_EXECUTION_V1` binds 25 basis points to the verified Safe `0x61700479A4A1F62584Fd3ABA2c2b290EA727d2eC`, block `35041945` and policy hash `0x295c900143405bb585a4d88c3788fadab522fd4313f69242f64e52e39827f141`. The exact-wallet controlled proof completed at block `37772345`. Public routing additionally requires `RMT_VNEXT_UNISWAP_V3_FEE_PUBLIC_AUTHORIZATION_ENABLED=true`; this gate defaults off and no environment is changed by the release code.
 - Production values are changed only through a separate authorized release action, never by architecture documentation.
 
 ## Contract source classification
@@ -51,7 +51,7 @@ V6 governance, registry, gate, policy, factory, bootstrap, official migration, c
 
 ### B. Terminal security / optional execution
 
-Position Guard source, the separate Sushi deadline-guard track and the corrected deployed `RMTUniswapV3FeeExecutorV1` atomic settlement primitive at `0xcB9c00524848038D211921e0f3975190D7Aa1e8f`. Its exact immutable-filled runtime, canonical Robinhood L2 policy block and receipt are verified. The first executor deployment is permanently inactive and retained only as historical evidence. Deployment does not imply wallet routing or production fee activation; all production fee/provider gates remain disabled.
+Position Guard source, the separate Sushi deadline-guard track and the corrected deployed `RMTUniswapV3FeeExecutorV1` atomic settlement primitive at `0xcB9c00524848038D211921e0f3975190D7Aa1e8f`. Its exact immutable-filled runtime, canonical Robinhood L2 policy block, deployment receipt and first controlled settlement are verified. The first executor deployment is permanently inactive and retained only as historical evidence. Public routing remains separately gated and default off.
 
 ### C. Paused experimental
 

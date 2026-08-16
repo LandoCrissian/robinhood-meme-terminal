@@ -30,7 +30,7 @@ import {
   ROBINHOOD_UNISWAP_FACTORY_RUNTIME_HASH,
   ROBINHOOD_UNISWAP_ROUTER_RUNTIME_HASH,
   configuredVNextUniswapFeeExecutor,
-  isVNextUniswapFeeProofRecipient,
+  isVNextUniswapFeeRecipientEligible,
   verifyConfiguredVNextUniswapFeeExecutor,
   vNextFeeAssetId
 } from "./vnext-uniswap-fee-executor";
@@ -237,7 +237,7 @@ async function vNextUniswapFeeContext(input: {
 }) {
   const configured = configuredVNextUniswapFeeExecutor();
   if (!configured) return null;
-  if (!isVNextUniswapFeeProofRecipient(configured, input.recipient)) return null;
+  if (!isVNextUniswapFeeRecipientEligible(configured, input.recipient)) return null;
   const verified = await verifyConfiguredVNextUniswapFeeExecutor(configured);
   const inputAssetId = vNextFeeAssetId(input.routedInputAsset, isRobinhoodNativeAsset(input.requestedInputAsset));
   const outputAssetId = vNextFeeAssetId(input.routedOutputAsset, isRobinhoodNativeAsset(input.requestedOutputAsset));

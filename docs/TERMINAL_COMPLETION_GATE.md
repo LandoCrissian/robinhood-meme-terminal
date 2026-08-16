@@ -50,7 +50,7 @@
 ## Economics
 
 - [ ] No hidden RMT fee or implicit 25-bps fallback exists; the approved 25-bps policy is explicit, versioned and hash-bound.
-- [ ] `RMT_EXECUTION_V1` remains disabled until the deployed, runtime-verified Uniswap V3 executor and every other admitted provider settlement path have approved disclosure, reconciliation, treasury and release gates.
+- [ ] `RMT_EXECUTION_V1` public routing remains disabled until the deployed, runtime-verified Uniswap V3 executor and every other admitted provider settlement path have approved disclosure, reconciliation, treasury and release gates. The exact-wallet Uniswap V3 controlled proof is complete.
 - [ ] No historical V6 split is reused as forward terminal policy.
 
 ## Quality, reliability and security
@@ -71,7 +71,7 @@
 
 ## Current known gaps
 
-VNext is the production root and `/vnext`, `/market/[address]` and `/portfolio` converge on that canonical terminal. Retired terminal CSS generations are no longer globally loaded. External-wallet reliability still requires supported-device acceptance. The selected-asset workspace independently verifies exact displayed and USDG/WETH up. pools, live fees and gauge state directly onchain, while broader up-v2/up-cl discovery still requires shadow backfill evidence. Shadow market-indexer rows do not influence the public terminal. up. authorization remains default-off pending controlled proof. StonkBrokers remains a fail-closed candidate without production launcher evidence or authoritative claims. Across public funding remains incomplete and disabled. Profiles/community/creator source remains preserved and paused. Production fee collection remains disabled.
+VNext is the production root and `/vnext`, `/market/[address]` and `/portfolio` converge on that canonical terminal. Retired terminal CSS generations are no longer globally loaded. External-wallet reliability still requires supported-device acceptance. The selected-asset workspace independently verifies exact displayed and USDG/WETH up. pools, live fees and gauge state directly onchain, while broader up-v2/up-cl discovery still requires shadow backfill evidence. Shadow market-indexer rows do not influence the public terminal. up. authorization remains default-off pending controlled proof. StonkBrokers remains a fail-closed candidate without production launcher evidence or authoritative claims. Across public funding remains incomplete and disabled. Profiles/community/creator source remains preserved and paused. The exact-wallet Uniswap V3 fee proof is complete and reconciled; public fee routing remains disabled behind its separate release gate.
 
 ## Explicit completion decision
 

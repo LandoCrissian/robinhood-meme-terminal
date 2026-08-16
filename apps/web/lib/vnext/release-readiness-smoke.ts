@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { readVNextReleaseReadiness } from "./release-readiness";
+import { RMT_UNISWAP_V3_FEE_MAINNET_PROOF } from "./uniswap-v3-fee-mainnet-proof";
 
 const disabled = readVNextReleaseReadiness({
   NODE_ENV: "production",
@@ -84,7 +85,8 @@ const invalidFeeAuthorization = readVNextReleaseReadiness({
 });
 assert.equal(invalidFeeAuthorization.mode, "misconfigured");
 assert.equal(invalidFeeAuthorization.providers.uniswapV3FeeExecutor.authorizationEnabled, false);
-assert.equal(invalidFeeAuthorization.providers.uniswapV3FeeExecutor.mainnetProofComplete, false);
+assert.equal(invalidFeeAuthorization.providers.uniswapV3FeeExecutor.deployedAndVerified, true);
+assert.equal(invalidFeeAuthorization.providers.uniswapV3FeeExecutor.mainnetProofComplete, true);
 
 const feeProofConfiguration = {
   RMT_VNEXT_EXECUTION_FEE_POLICY_ENABLED: "true",
@@ -123,7 +125,46 @@ assert.equal(feeProofReady.configurationConsistent, true);
 assert.equal(feeProofReady.providers.uniswapV3FeeExecutor.proofWalletConfigured, true);
 assert.equal(feeProofReady.providers.uniswapV3FeeExecutor.releaseScope, "proof-wallet");
 assert.equal(feeProofReady.providers.uniswapV3FeeExecutor.authorizationEnabled, true);
-assert.equal(feeProofReady.providers.uniswapV3FeeExecutor.mainnetProofComplete, false);
+assert.equal(feeProofReady.providers.uniswapV3FeeExecutor.publicAuthorizationEnabled, false);
+assert.equal(feeProofReady.providers.uniswapV3FeeExecutor.mainnetProofComplete, true);
+
+const feePublicReady = readVNextReleaseReadiness({
+  NODE_ENV: "production",
+  VERCEL_ENV: "production",
+  RMT_VNEXT_SHELL_ENABLED: "true",
+  NEXT_PUBLIC_RMT_VNEXT_AUTHORIZATION_ENABLED: "true",
+  RMT_VNEXT_AUTHORIZATION_ENABLED: "true",
+  NEXT_PUBLIC_RMT_VNEXT_WALLET_SUBMISSION_ENABLED: "true",
+  RMT_VNEXT_UNISWAP_V3_FEE_EXECUTOR_ADDRESS: RMT_UNISWAP_V3_FEE_MAINNET_PROOF.executor,
+  RMT_VNEXT_UNISWAP_V3_FEE_EXECUTOR_RUNTIME_HASH: RMT_UNISWAP_V3_FEE_MAINNET_PROOF.executorRuntimeHash,
+  RMT_VNEXT_UNISWAP_V3_FEE_PROOF_WALLET: RMT_UNISWAP_V3_FEE_MAINNET_PROOF.trader,
+  RMT_VNEXT_EXECUTION_FEE_TREASURY: RMT_UNISWAP_V3_FEE_MAINNET_PROOF.treasury,
+  RMT_VNEXT_EXECUTION_FEE_POLICY_FROM_BLOCK: "35041945",
+  RMT_VNEXT_EXECUTION_FEE_SETTLEMENT_ASSET_IDS: [
+    "eip155:4663/contract:0x0bd7d308f8e1639fab988df18a8011f41eacad73",
+    "eip155:4663/contract:0x5fc5360d0400a0fd4f2af552add042d716f1d168",
+    "eip155:4663/native"
+  ].join(","),
+  RMT_VNEXT_EXECUTION_FEE_POLICY_ENABLED: "true",
+  RMT_VNEXT_UNISWAP_V3_FEE_AUTHORIZATION_ENABLED: "true",
+  RMT_VNEXT_UNISWAP_V3_FEE_PUBLIC_AUTHORIZATION_ENABLED: "true",
+});
+assert.equal(feePublicReady.mode, "interactive");
+assert.equal(feePublicReady.configurationConsistent, true);
+assert.equal(feePublicReady.providers.uniswapV3FeeExecutor.releaseScope, "public");
+assert.equal(feePublicReady.providers.uniswapV3FeeExecutor.publicAuthorizationEnabled, true);
+assert.equal(feePublicReady.providers.uniswapV3FeeExecutor.publicProofBindingValid, true);
+assert.equal(feePublicReady.providers.uniswapV3FeeExecutor.mainnetProofComplete, true);
+
+const invalidFeePublicGate = readVNextReleaseReadiness({
+  NODE_ENV: "production",
+  VERCEL_ENV: "production",
+  RMT_VNEXT_SHELL_ENABLED: "true",
+  RMT_VNEXT_UNISWAP_V3_FEE_PUBLIC_AUTHORIZATION_ENABLED: "true"
+});
+assert.equal(invalidFeePublicGate.mode, "misconfigured");
+assert.equal(invalidFeePublicGate.configurationConsistent, false);
+assert.equal(invalidFeePublicGate.providers.uniswapV3FeeExecutor.publicAuthorizationEnabled, false);
 
 const mismatchedSushi = readVNextReleaseReadiness({
   NODE_ENV: "production",
@@ -196,6 +237,7 @@ assert.match(route, /private, no-store, max-age=0/);
 assert.match(route, /noindex, nofollow/);
 assert.doesNotMatch(route, /RMT_INDEXER_READ_TOKEN|RMT_ZEROX_API_KEY|RMT_UNISWAP_API_KEY|PRIVY_APP_SECRET/);
 assert.match(envExample, /^RMT_VNEXT_SHELL_ENABLED=false$/m);
+assert.match(envExample, /^RMT_VNEXT_UNISWAP_V3_FEE_PUBLIC_AUTHORIZATION_ENABLED=false$/m);
 assert.doesNotMatch(envExample, /^NEXT_PUBLIC_RMT_VNEXT_SHELL_ENABLED=/m);
 
 console.log("RMT VNext production release-readiness smoke checks passed.");
