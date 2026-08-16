@@ -31,6 +31,7 @@ export type VNextReleaseEnvironment = VNextShellEnvironment & Partial<Pick<
   | "RMT_VNEXT_UNISWAP_V3_FEE_AUTHORIZATION_ENABLED"
   | "RMT_VNEXT_UNISWAP_V3_FEE_EXECUTOR_ADDRESS"
   | "RMT_VNEXT_UNISWAP_V3_FEE_EXECUTOR_RUNTIME_HASH"
+  | "RMT_VNEXT_UNISWAP_V3_FEE_PROOF_WALLET"
   | "RMT_VNEXT_EXECUTION_FEE_TREASURY"
   | "RMT_VNEXT_EXECUTION_FEE_POLICY_FROM_BLOCK"
   | "RMT_VNEXT_EXECUTION_FEE_POLICY_BEFORE_BLOCK"
@@ -108,13 +109,16 @@ export function readVNextReleaseReadiness(env: VNextReleaseEnvironment) {
   const upClAuthorizationEnabled = enabled(env.RMT_VNEXT_UP_CL_AUTHORIZATION_ENABLED);
   const feePolicyRequested = enabled(env.RMT_VNEXT_EXECUTION_FEE_POLICY_ENABLED);
   const uniswapFeeAuthorizationRequested = enabled(env.RMT_VNEXT_UNISWAP_V3_FEE_AUTHORIZATION_ENABLED);
+  const feeProofWalletConfigured = /^0x[0-9a-fA-F]{40}$/.test(env.RMT_VNEXT_UNISWAP_V3_FEE_PROOF_WALLET?.trim() ?? "")
+    && !/^0x0{40}$/i.test(env.RMT_VNEXT_UNISWAP_V3_FEE_PROOF_WALLET?.trim() ?? "");
   const feeExecutorConfigured = /^0x[0-9a-fA-F]{40}$/.test(env.RMT_VNEXT_UNISWAP_V3_FEE_EXECUTOR_ADDRESS?.trim() ?? "")
     && /^0x[0-9a-fA-F]{64}$/.test(env.RMT_VNEXT_UNISWAP_V3_FEE_EXECUTOR_RUNTIME_HASH?.trim() ?? "")
     && /^0x[0-9a-fA-F]{40}$/.test(env.RMT_VNEXT_EXECUTION_FEE_TREASURY?.trim() ?? "")
     && /^[1-9][0-9]*$/.test(env.RMT_VNEXT_EXECUTION_FEE_POLICY_FROM_BLOCK?.trim() ?? "")
     && (!env.RMT_VNEXT_EXECUTION_FEE_POLICY_BEFORE_BLOCK?.trim()
       || /^[1-9][0-9]*$/.test(env.RMT_VNEXT_EXECUTION_FEE_POLICY_BEFORE_BLOCK.trim()))
-    && Boolean(env.RMT_VNEXT_EXECUTION_FEE_SETTLEMENT_ASSET_IDS?.trim());
+    && Boolean(env.RMT_VNEXT_EXECUTION_FEE_SETTLEMENT_ASSET_IDS?.trim())
+    && feeProofWalletConfigured;
   const acrossConfigurationValid = (!acrossQuotesRequested || acrossConfigured)
     && (!acrossAuthorizationRequested || (acrossConfigured && acrossQuotesRequested));
   const authorizationConsistent = authorizationClientEnabled === authorizationServerEnabled;
@@ -163,6 +167,10 @@ export function readVNextReleaseReadiness(env: VNextReleaseEnvironment) {
       uniswapV3FeeExecutor: {
         policyEnabled: feePolicyRequested,
         configured: feeExecutorConfigured,
+        proofWalletConfigured: feeProofWalletConfigured,
+        releaseScope: feePolicyRequested && uniswapFeeAuthorizationRequested && feeExecutorConfigured
+          ? "proof-wallet" as const
+          : "disabled" as const,
         strictVerificationAvailable: true,
         walletAuthorizationAvailable: true,
         authorizationEnabled: feePolicyRequested && uniswapFeeAuthorizationRequested

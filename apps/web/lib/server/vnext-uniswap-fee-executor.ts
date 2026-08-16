@@ -47,6 +47,7 @@ const routerDependencyAbi = parseAbi([
 export type VNextUniswapFeeExecutorConfig = {
   executor: Address;
   executorRuntimeHash: Hex;
+  proofWallet: Address;
   policy: RmtExecutionFeePolicy;
 };
 
@@ -75,6 +76,7 @@ export function configuredVNextUniswapFeeExecutor(
   const executorValue = required(env, "RMT_VNEXT_UNISWAP_V3_FEE_EXECUTOR_ADDRESS");
   const runtimeHash = required(env, "RMT_VNEXT_UNISWAP_V3_FEE_EXECUTOR_RUNTIME_HASH");
   const treasury = required(env, "RMT_VNEXT_EXECUTION_FEE_TREASURY");
+  const proofWalletValue = required(env, "RMT_VNEXT_UNISWAP_V3_FEE_PROOF_WALLET");
   const fromBlock = blockValue(required(env, "RMT_VNEXT_EXECUTION_FEE_POLICY_FROM_BLOCK"), "policy start block");
   const beforeRaw = env.RMT_VNEXT_EXECUTION_FEE_POLICY_BEFORE_BLOCK?.trim();
   const beforeBlock = beforeRaw ? blockValue(beforeRaw, "policy end block") : null;
@@ -82,6 +84,9 @@ export function configuredVNextUniswapFeeExecutor(
     .split(",").map((value) => value.trim().toLowerCase()).filter(Boolean);
   if (!isAddress(executorValue, { strict: false }) || getAddress(executorValue) === zeroAddress || !HASH.test(runtimeHash)) {
     throw new Error("RMT fee execution has an invalid executor identity.");
+  }
+  if (!isAddress(proofWalletValue, { strict: false }) || getAddress(proofWalletValue) === zeroAddress) {
+    throw new Error("RMT fee execution has an invalid proof-wallet identity.");
   }
   if (assetIds.length === 0 || assetIds.some((assetId) => !ASSET_ID.test(assetId))) {
     throw new Error("RMT fee execution has an invalid chain-qualified settlement-asset registry.");
@@ -97,8 +102,16 @@ export function configuredVNextUniswapFeeExecutor(
   return {
     executor: getAddress(executorValue),
     executorRuntimeHash: runtimeHash.toLowerCase() as Hex,
+    proofWallet: getAddress(proofWalletValue),
     policy
   };
+}
+
+export function isVNextUniswapFeeProofRecipient(
+  config: VNextUniswapFeeExecutorConfig,
+  recipient: Address
+) {
+  return getAddress(recipient) === config.proofWallet;
 }
 
 function contractAddressFromAssetId(assetId: string) {

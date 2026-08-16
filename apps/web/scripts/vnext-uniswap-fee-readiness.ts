@@ -45,6 +45,7 @@ async function main() {
     feeBps: configured?.policy.feeBps ?? null,
     effectiveBoundary: configured?.policy.effectiveBoundary ?? null,
     eligibleSettlementAssetIds: configured?.policy.eligibleSettlementAssetIds ?? [],
+    proofWalletRestricted: configured !== null,
     infrastructure,
     deploymentVerifiedAtBlock: deployment?.verifiedAtBlock ?? null,
     gates: { policyGate, providerGate, globalServerGate, globalClientGate, walletSubmissionGate },

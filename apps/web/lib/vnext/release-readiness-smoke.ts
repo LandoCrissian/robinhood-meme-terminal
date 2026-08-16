@@ -86,6 +86,45 @@ assert.equal(invalidFeeAuthorization.mode, "misconfigured");
 assert.equal(invalidFeeAuthorization.providers.uniswapV3FeeExecutor.authorizationEnabled, false);
 assert.equal(invalidFeeAuthorization.providers.uniswapV3FeeExecutor.mainnetProofComplete, false);
 
+const feeProofConfiguration = {
+  RMT_VNEXT_EXECUTION_FEE_POLICY_ENABLED: "true",
+  RMT_VNEXT_UNISWAP_V3_FEE_AUTHORIZATION_ENABLED: "true",
+  RMT_VNEXT_UNISWAP_V3_FEE_EXECUTOR_ADDRESS: `0x${"1".repeat(40)}`,
+  RMT_VNEXT_UNISWAP_V3_FEE_EXECUTOR_RUNTIME_HASH: `0x${"2".repeat(64)}`,
+  RMT_VNEXT_EXECUTION_FEE_TREASURY: `0x${"3".repeat(40)}`,
+  RMT_VNEXT_EXECUTION_FEE_POLICY_FROM_BLOCK: "35041945",
+  RMT_VNEXT_EXECUTION_FEE_SETTLEMENT_ASSET_IDS: `eip155:4663/contract:0x${"4".repeat(40)}`
+};
+const feeMissingProofWallet = readVNextReleaseReadiness({
+  NODE_ENV: "production",
+  VERCEL_ENV: "production",
+  RMT_VNEXT_SHELL_ENABLED: "true",
+  NEXT_PUBLIC_RMT_VNEXT_AUTHORIZATION_ENABLED: "true",
+  RMT_VNEXT_AUTHORIZATION_ENABLED: "true",
+  NEXT_PUBLIC_RMT_VNEXT_WALLET_SUBMISSION_ENABLED: "true",
+  ...feeProofConfiguration
+});
+assert.equal(feeMissingProofWallet.mode, "misconfigured");
+assert.equal(feeMissingProofWallet.providers.uniswapV3FeeExecutor.proofWalletConfigured, false);
+assert.equal(feeMissingProofWallet.providers.uniswapV3FeeExecutor.authorizationEnabled, false);
+
+const feeProofReady = readVNextReleaseReadiness({
+  NODE_ENV: "production",
+  VERCEL_ENV: "production",
+  RMT_VNEXT_SHELL_ENABLED: "true",
+  NEXT_PUBLIC_RMT_VNEXT_AUTHORIZATION_ENABLED: "true",
+  RMT_VNEXT_AUTHORIZATION_ENABLED: "true",
+  NEXT_PUBLIC_RMT_VNEXT_WALLET_SUBMISSION_ENABLED: "true",
+  RMT_VNEXT_UNISWAP_V3_FEE_PROOF_WALLET: `0x${"5".repeat(40)}`,
+  ...feeProofConfiguration
+});
+assert.equal(feeProofReady.mode, "interactive");
+assert.equal(feeProofReady.configurationConsistent, true);
+assert.equal(feeProofReady.providers.uniswapV3FeeExecutor.proofWalletConfigured, true);
+assert.equal(feeProofReady.providers.uniswapV3FeeExecutor.releaseScope, "proof-wallet");
+assert.equal(feeProofReady.providers.uniswapV3FeeExecutor.authorizationEnabled, true);
+assert.equal(feeProofReady.providers.uniswapV3FeeExecutor.mainnetProofComplete, false);
+
 const mismatchedSushi = readVNextReleaseReadiness({
   NODE_ENV: "production",
   VERCEL_ENV: "production",

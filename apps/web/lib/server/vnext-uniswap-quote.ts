@@ -30,6 +30,7 @@ import {
   ROBINHOOD_UNISWAP_FACTORY_RUNTIME_HASH,
   ROBINHOOD_UNISWAP_ROUTER_RUNTIME_HASH,
   configuredVNextUniswapFeeExecutor,
+  isVNextUniswapFeeProofRecipient,
   verifyConfiguredVNextUniswapFeeExecutor,
   vNextFeeAssetId
 } from "./vnext-uniswap-fee-executor";
@@ -232,9 +233,11 @@ async function vNextUniswapFeeContext(input: {
   requestedOutputAsset: Address;
   routedOutputAsset: Address;
   userGrossInput: bigint;
+  recipient: Address;
 }) {
   const configured = configuredVNextUniswapFeeExecutor();
   if (!configured) return null;
+  if (!isVNextUniswapFeeProofRecipient(configured, input.recipient)) return null;
   const verified = await verifyConfiguredVNextUniswapFeeExecutor(configured);
   const inputAssetId = vNextFeeAssetId(input.routedInputAsset, isRobinhoodNativeAsset(input.requestedInputAsset));
   const outputAssetId = vNextFeeAssetId(input.routedOutputAsset, isRobinhoodNativeAsset(input.requestedOutputAsset));
@@ -256,6 +259,7 @@ export async function quoteVNextUniswapForUser(input: {
   inputAsset: Address;
   outputAsset: Address;
   userGrossInput: bigint;
+  recipient: Address;
 }) {
   const requestedInputAsset = getAddress(input.inputAsset);
   const requestedOutputAsset = getAddress(input.outputAsset);
@@ -266,7 +270,8 @@ export async function quoteVNextUniswapForUser(input: {
     routedInputAsset,
     requestedOutputAsset,
     routedOutputAsset,
-    userGrossInput: input.userGrossInput
+    userGrossInput: input.userGrossInput,
+    recipient: getAddress(input.recipient)
   });
   const providerInput = feeContext?.feeSide ? feeContext.providerInput : input.userGrossInput;
   const quote = await quoteVNextUniswapDirect({ inputAsset: routedInputAsset, outputAsset: routedOutputAsset, amountIn: providerInput });
@@ -323,7 +328,12 @@ async function evaluateVNextUniswapRoute(input: {
   const transactionValue = nativeInput ? input.amountIn : 0n;
   const nowMs = input.nowMs ?? Date.now();
   const [quoted, routerRuntimeHash] = await Promise.all([
-    quoteVNextUniswapForUser({ inputAsset: requestedInputAsset, outputAsset: input.outputAsset, userGrossInput: input.amountIn }),
+    quoteVNextUniswapForUser({
+      inputAsset: requestedInputAsset,
+      outputAsset: input.outputAsset,
+      userGrossInput: input.amountIn,
+      recipient
+    }),
     requireRuntimeHash(ROBINHOOD_SWAP_ROUTER_02, ROUTER_RUNTIME_HASH, "Uniswap router")
   ]);
   if (!quoted) throw new Error("No canonical Uniswap V3 route is available for exact verification.");
