@@ -5,9 +5,8 @@ set -euo pipefail
 # from one Mac to another. This script installs nothing, changes no git refs,
 # performs no network calls, and never reads secret values.
 #
-# It writes only metadata needed to prove that the source Mac is safe to retire:
-# git state, local-only commits/worktrees/stashes, tool versions, and the presence
-# (not contents) of likely local configuration files.
+# It writes only metadata needed to prove that the source Mac is safe to retire
+# and to reconstruct its RMT development toolchain cleanly on the destination Mac.
 
 usage() {
   cat <<'EOF'
@@ -22,6 +21,7 @@ Security:
   - Secret FILE CONTENTS are never read.
   - Environment values are never printed.
   - Remote URL userinfo/query strings are redacted.
+  - Tool/package manifests are metadata only and remain local by default.
   - The report is local by default. Review it before putting any portion on
     GitHub or into a chat.
 EOF
@@ -76,6 +76,20 @@ cmd_version() {
     printf -- '- %s: `%s`\n' "$label" "${value:-available}"
   else
     printf -- '- %s: `NOT FOUND`\n' "$label"
+  fi
+}
+
+manifest_block() {
+  label="$1"
+  command_name="$2"
+  shift 2
+  printf '\n### %s\n\n' "$label"
+  if command -v "$command_name" >/dev/null 2>&1; then
+    printf '```text\n'
+    "$@" 2>/dev/null || true
+    printf '```\n'
+  else
+    printf '`NOT INSTALLED`\n'
   fi
 }
 
@@ -144,22 +158,109 @@ cmd_version() {
     | sort || true
   printf '```\n'
 
-  printf '\n## Toolchain\n\n'
+  printf '\n## RMT development toolchain versions\n\n'
   cmd_version 'git' git git --version
   cmd_version 'Codex CLI' codex codex --version
+  cmd_version 'Claude Code' claude claude --version
   cmd_version 'Node.js' node node --version
   cmd_version 'pnpm' pnpm pnpm --version
   cmd_version 'npm' npm npm --version
+  cmd_version 'Corepack' corepack corepack --version
   cmd_version 'Homebrew' brew brew --version
   cmd_version 'Docker' docker docker --version
   cmd_version 'Colima' colima colima version
   cmd_version 'GitHub CLI' gh gh --version
+  cmd_version 'Python 3' python3 python3 --version
+  cmd_version 'pipx' pipx pipx --version
+  cmd_version 'uv' uv uv --version
+  cmd_version 'Rust' rustc rustc --version
+  cmd_version 'Cargo' cargo cargo --version
+  cmd_version 'Foundry forge' forge forge --version
+  cmd_version 'Foundry cast' cast cast --version
+  cmd_version 'Foundry anvil' anvil anvil --version
+  cmd_version 'solc' solc solc --version
+  cmd_version 'Go' go go version
+  cmd_version 'Bun' bun bun --version
+  cmd_version 'Deno' deno deno --version
+  cmd_version 'Yarn' yarn yarn --version
+  cmd_version 'jq' jq jq --version
+  cmd_version 'ripgrep' rg rg --version
+  cmd_version 'VS Code CLI' code code --version
+  cmd_version 'Cursor CLI' cursor cursor --version
+  cmd_version 'NemoHermes' nemohermes nemohermes --version
+  cmd_version 'OpenShell' openshell openshell --version
+  cmd_version 'Hermes' hermes hermes --version
+
+  printf '\n## Clean-reinstall manifests for installed development tools\n\n'
+  printf 'These manifests are for reconstruction only. Reinstall packages on the destination Mac; do not copy package-manager directories or binaries wholesale.\n'
+
+  if command -v brew >/dev/null 2>&1; then
+    printf '\n### Homebrew prefix / taps / formulae / casks\n\n```text\n'
+    printf 'prefix: %s\n' "$(brew --prefix 2>/dev/null || true)"
+    printf '\n[taps]\n'
+    brew tap 2>/dev/null || true
+    printf '\n[formulae]\n'
+    brew list --formula --versions 2>/dev/null || true
+    printf '\n[casks]\n'
+    brew list --cask --versions 2>/dev/null || true
+    printf '```\n'
+  else
+    printf '\n### Homebrew\n\n`NOT INSTALLED`\n'
+  fi
+
+  manifest_block 'npm global packages' npm npm -g ls --depth=0
+  manifest_block 'pnpm global packages' pnpm pnpm -g ls --depth=0
+  manifest_block 'pipx applications' pipx pipx list --short
+
+  printf '\n### Python user/base packages\n\n'
+  if command -v python3 >/dev/null 2>&1; then
+    printf '```text\n'
+    python3 -m pip list --format=freeze 2>/dev/null || true
+    printf '```\n'
+  else
+    printf '`NOT INSTALLED`\n'
+  fi
+
+  manifest_block 'Rustup toolchains' rustup rustup toolchain list
+  manifest_block 'Cargo-installed binaries' cargo cargo install --list
+  manifest_block 'VS Code extensions' code code --list-extensions --show-versions
+  manifest_block 'Cursor extensions' cursor cursor --list-extensions --show-versions
+
+  printf '\n### Docker/Colima runtime metadata\n\n'
+  printf 'Do not copy Docker VM/image storage to the destination Mac. Rebuild or re-pull from declared sources.\n\n```text\n'
+  if command -v docker >/dev/null 2>&1; then
+    docker context ls 2>/dev/null || true
+  else
+    printf 'docker: NOT INSTALLED\n'
+  fi
+  if command -v colima >/dev/null 2>&1; then
+    colima list 2>/dev/null || true
+  else
+    printf 'colima: NOT INSTALLED\n'
+  fi
+  printf '```\n'
+
+  printf '\n## Shell/tool-manager presence (paths only; no file contents)\n\n```text\n'
+  for path in \
+    "$HOME/.zshrc" "$HOME/.zprofile" "$HOME/.bashrc" "$HOME/.bash_profile" \
+    "$HOME/.gitconfig" "$HOME/.npmrc" "$HOME/.config/pnpm" "$HOME/.nvm" \
+    "$HOME/.fnm" "$HOME/.volta" "$HOME/.asdf" "$HOME/.cargo" "$HOME/.rustup" \
+    "$HOME/.foundry" "$HOME/.docker" "$HOME/.colima" "$HOME/.config/gh" \
+    "$HOME/.codex"; do
+    if [ -e "$path" ]; then
+      printf 'PRESENT %s\n' "$path"
+    fi
+  done
+  printf '```\n'
+  printf 'Presence does not mean copy wholesale. The destination session must classify each item as REINSTALL, RECREATE, TRANSFER OUT-OF-BAND, or NOT REQUIRED. Secret-bearing content must never enter the handoff.\n'
 
   printf '\n## Source-Mac retirement gates\n\n'
   printf -- '- [ ] Working tree is clean OR every intentional dirty file is explicitly preserved.\n'
   printf -- '- [ ] No required local-only commit remains unpushed/untransferred.\n'
   printf -- '- [ ] No required stash remains only on this Mac.\n'
   printf -- '- [ ] Every active worktree/branch has been reviewed.\n'
+  printf -- '- [ ] RMT development toolchain/package-manager manifests were captured and reviewed.\n'
+  printf -- '- [ ] Each required tool is classified for clean reinstall/recreation on the destination Mac.\n'
   printf -- '- [ ] Required secret/config files have been identified for OUT-OF-BAND transfer; values were not put in this report.\n'
   printf -- '- [ ] New Mac has a fresh clone from the canonical GitHub remote.\n'
   printf -- '- [ ] New Mac reaches the intended exact branch/commit and passes the baseline checks.\n'
