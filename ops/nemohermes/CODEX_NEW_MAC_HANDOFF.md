@@ -18,6 +18,7 @@ Allowed:
 - inspect local git branches, worktrees, stashes, remote-tracking state, and unpushed commits;
 - inspect non-secret tool/version metadata;
 - inspect the current Codex task/session state and summarize it;
+- inspect the current GitHub state of the active review boundary;
 - generate a sanitized local handoff document;
 - run read-only git diagnostics;
 - fetch remote refs only if necessary to distinguish local-only work from pushed work, provided doing so does not switch branches or rewrite local state.
@@ -27,6 +28,8 @@ Not allowed:
 - changing RMT product code;
 - committing, pushing, merging, rebasing, resetting, cleaning, stashing, deleting, or force-updating anything merely to make the handoff look clean;
 - resolving dirty/unpushed state without explicit owner authorization;
+- fixing a failing product/acceptance check during this migration task;
+- approving utility rates or making an economic decision;
 - modifying production configuration;
 - deployment, signing, trading, treasury/wallet access, or provider/fee/automation activation;
 - printing, copying, or uploading secret values;
@@ -46,6 +49,72 @@ Before the audit, read and obey:
 6. `ops/nemohermes/MACOS.md` from that branch.
 
 Do not treat historical roadmap text or chat memory as stronger authority than the current repository.
+
+## Verified active Codex review boundary
+
+The owner has explicitly stated that the current Codex work stopped at the review boundary. GitHub state was independently verified when this handoff contract was updated.
+
+Use the following as the **expected active-work anchor**, then refresh GitHub/remote state read-only before generating the final handoff in case anything changed after this contract was written:
+
+- Draft PR: **#390 — `feat(distribution): add deployment readiness gate`**
+- PR state: open, draft, unmerged
+- Branch: `codex/rmt-distribution-deployment-readiness`
+- Exact head SHA: `c78f50e1c10ce2341241af4fb6833780a9c00e9c`
+- Base branch: `main`
+- Base SHA: `664db02b5948428ea94a7f5528e8b077f954aafa`
+- One commit in PR; seven changed files:
+  - `.gitleaks.toml`
+  - `apps/web/lib/vnext/distribution-deployment-readiness-smoke.ts`
+  - `apps/web/lib/vnext/distribution-deployment-readiness.ts`
+  - `apps/web/package.json`
+  - `apps/web/scripts/vnext-distribution-deployment-readiness.ts`
+  - `docs/RMT_DISTRIBUTION_ENGINE_V1.md`
+  - `packages/contracts/script/RehearseRMTDistributionDeploymentV1.s.sol`
+
+The PR's declared safety/readiness boundary is part of the continuation state and must not be weakened during migration:
+
+- utility rates remain structurally `unapproved` / `null`;
+- deployer, deployment method, addresses, and transaction identity remain `null`;
+- activation, wallet submission, and server submission remain hard-disabled;
+- `safeForLiveDeployment: false`;
+- `releaseReady: false`;
+- `transactionCapability: false`;
+- no production utility rates approved;
+- no private key or wallet input;
+- no broadcast capability;
+- no contract deployment;
+- no approvals, signatures, transactions, or production-environment mutation.
+
+The PR reports local validation passed, including focused distribution/sink tests, Robinhood mainnet-fork rehearsal, focused Solidity build/formatting, VNext distribution tests, web typecheck/build, terminal release checks, repository checks, production audit, Gitleaks, and `git diff --check`.
+
+### Current GitHub CI state at handoff-contract update
+
+The current PR head has completed these checks successfully:
+
+- Secret scan;
+- Terminal visual v2;
+- Terminal verification;
+- Mainnet readiness;
+- CI;
+- Smart contract security analysis.
+
+`Terminal high-end acceptance` completed with **failure**. The failing step was the workstation/mobile acceptance check, with the exact reported assertion:
+
+`430x932: backdrop close did not return focus to the Buy action`
+
+The build and type verification inside that workflow passed before the acceptance assertion failed.
+
+Do **not** attempt to fix that failure as part of the migration audit. Preserve it in the final continuation packet. After the destination baseline is accepted, the first engineering action is to refresh PR #390 and its checks at the exact current head, then reproduce/triage that acceptance failure and determine whether it is caused by PR #390, an existing baseline behavior, or a nondeterministic acceptance issue. Do not assume the cause merely because the seven PR files are focused on distribution readiness.
+
+The owner stopped Codex at the review boundary. Therefore:
+
+- do not merge PR #390 during migration;
+- do not approve utility rates;
+- do not deploy or activate anything;
+- do not manufacture a new economic decision;
+- preserve the exact review boundary for the destination session.
+
+If PR #390, its head SHA, or CI state changes before the source-Mac audit completes, record both this expected anchor and the newly verified state. Do not silently substitute a different branch/commit.
 
 ## Phase 1 — prove the source Mac state
 
@@ -75,15 +144,20 @@ The helper intentionally does not read secret values. Preserve that property.
 
 ## Phase 2 — capture the active Codex continuation state
 
+Start from the verified PR #390 anchor above, then prove the local/session-specific details rather than assuming them.
+
 Produce a concise engineering continuation record for the destination session. It must answer:
 
-- What was Codex working on immediately before this migration task?
-- What branch/worktree was that work using?
+- Was the source Mac actually on `codex/rmt-distribution-deployment-readiness` at `c78f50e1c10ce2341241af4fb6833780a9c00e9c` when audited? If not, explain the discrepancy.
+- Is the working tree clean, or is there additional uncommitted Codex work beyond PR #390?
+- What branch/worktree was the active Codex session using?
 - What exact commit was it based on?
-- What files were changed, if any?
-- What validations/tests were already run, and what were their exact results?
-- What remains unfinished?
-- What assumptions or unresolved decisions are still open?
+- Are the seven PR files the complete pushed change set?
+- What validations/tests were already run locally, and what were their exact results?
+- What is the latest GitHub CI/check state for PR #390?
+- Is the current `Terminal high-end acceptance` failure still present, and what exact failure does the latest run report?
+- What remains unfinished at the review boundary?
+- Which decisions remain explicitly human-owned, especially utility-rate approval?
 - What is the safest next engineering action after the destination baseline is established?
 
 Do not fabricate an answer from chat history. Derive it from the current session, local repository, and GitHub state. If something cannot be proven, label it `UNKNOWN`.
@@ -129,9 +203,10 @@ The handoff must require all of these before the old Mac is retired:
 10. `ops/nemohermes/preflight-macos.sh` run once the control-plane branch/files are available locally;
 11. required secret/config files recreated or transferred out-of-band without exposing values to chat/GitHub;
 12. baseline typecheck/tests/builds appropriate to the active branch run and their exact results captured;
-13. no source-Mac-only commits, stash entries, dirty files, or active worktrees remain unaccounted for;
-14. destination Codex starts from the verified repository state, not from copied Codex session/auth storage;
-15. owner explicitly declares the destination Mac the sole active RMT development host.
+13. PR #390 and its exact current GitHub head/check state revalidated before continuation;
+14. no source-Mac-only commits, stash entries, dirty files, or active worktrees remain unaccounted for;
+15. destination Codex starts from the verified repository state, not from copied Codex session/auth storage;
+16. owner explicitly declares the destination Mac the sole active RMT development host.
 
 Until those conditions are met, the source Mac remains a temporary recovery source and should not be wiped.
 
@@ -146,7 +221,7 @@ The file must have these sections in this order:
 1. `HANDOFF STATUS` — `READY` or `BLOCKED`;
 2. `SOURCE MAC PROOF`;
 3. `CANONICAL GITHUB STATE`;
-4. `ACTIVE CODEX WORK CONTINUATION`;
+4. `ACTIVE CODEX WORK CONTINUATION — PR #390 REVIEW BOUNDARY`;
 5. `LOCAL-ONLY STATE THAT MUST NOT BE LOST`;
 6. `TOOLCHAIN / MACHINE REQUIREMENTS`;
 7. `SECRET/CONFIG MIGRATION — NAMES/PURPOSE ONLY, NO VALUES`;
@@ -182,11 +257,12 @@ Your first responsibility is migration verification, NOT feature development.
 7. Install/verify the official Codex client and authenticate independently on this Mac using the supported ChatGPT/OpenAI sign-in flow. Never request that Codex auth files or API credentials be pasted into chat.
 8. Recreate required local configuration only through secure/out-of-band transfer. Never request secret values in ChatGPT or GitHub.
 9. Run the RMT macOS preflight and the baseline validations required for the active branch. Report exact pass/fail results.
-10. Create a NEW Codex work session rooted in the verified clean repository/worktree. Do not resume by copying old Codex session state.
-11. Before feature work, report: machine architecture, repo path, branch, exact HEAD SHA, working-tree cleanliness, Codex version/auth readiness, dependency install result, baseline validation result, and any remaining migration blocker.
-12. Do not merge, deploy, mutate production configuration, sign transactions, use wallet/treasury secrets, or enable providers/fees/autonomous execution during migration.
+10. Revalidate draft PR #390, branch `codex/rmt-distribution-deployment-readiness`, against the exact source-handoff SHA/check state before continuing it. Do not silently move to another commit.
+11. Create a NEW Codex work session rooted in the verified clean repository/worktree. Do not resume by copying old Codex session state.
+12. Before feature work, report: machine architecture, repo path, branch, exact HEAD SHA, working-tree cleanliness, Codex version/auth readiness, dependency install result, baseline validation result, latest PR #390 check state, and any remaining migration blocker.
+13. Preserve the source review boundary: do not approve utility rates, merge, deploy, mutate production configuration, sign transactions, use wallet/treasury secrets, or enable providers/fees/autonomous execution during migration.
 
-Once every destination acceptance gate passes, declare NEW MAC BASELINE READY and identify the exact first engineering task from the handoff. Do not retire the source Mac until the owner explicitly accepts this baseline.
+Once every destination acceptance gate passes, declare NEW MAC BASELINE READY. The first engineering task is to refresh/reproduce/triage the outstanding PR #390 review/check state — including the `Terminal high-end acceptance` failure if it still exists — before any decision to modify product code. Do not retire the source Mac until the owner explicitly accepts this baseline.
 ```
 
 Append the source audit's exact active-work facts immediately after this starter so the new session has the proven continuation state.
@@ -202,6 +278,7 @@ When finished, respond with only:
 - count of local-only commits detected;
 - count of stashes detected;
 - count of other worktrees detected;
+- latest PR #390 head SHA and check summary;
 - one-line description of any blocker;
 - the complete `NEW CHAT STARTER` from the generated file.
 
