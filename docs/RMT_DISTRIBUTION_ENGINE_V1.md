@@ -305,6 +305,26 @@ Unknown fields, missing code, proxy drift or any identity/rate mismatch fail clo
 
 No production distribution deployment manifest exists yet. No fallback, predicted, guessed or symbol-derived address is accepted.
 
+## Predeployment readiness packet
+
+The read-only command below creates a deterministic predeployment packet from the current source commit and compiled engine/sink artifacts:
+
+```bash
+pnpm --filter web readiness:vnext-distribution-deployment
+```
+
+The packet is deliberately restricted to `predeployment_unapproved`. It records creation-code hashes, the source commit, compiler settings and canonical RMT identity while requiring all production utility rates, the deployer, deployment method, contract addresses and transaction identity to remain `null`. Public UI, wallet submission and server submission remain hard-disabled. Any attempt to insert a rate, deployer, transaction, activation flag or unknown field is rejected.
+
+`RehearseRMTDistributionDeploymentV1.s.sol` can exercise the exact sink-to-engine constructor topology on a local Robinhood mainnet fork. It accepts no private key, contains no broadcast cheatcode and uses visibly synthetic `1/2/3 RMT` rates that are not production policy. Run it only with the explicit rehearsal flag:
+
+```bash
+RMT_DISTRIBUTION_DEPLOYMENT_REHEARSAL=true \
+  forge script script/RehearseRMTDistributionDeploymentV1.s.sol:RehearseRMTDistributionDeploymentV1 \
+  --fork-url robinhood_mainnet -vv
+```
+
+The rehearsal does not authorize or construct a live deployment. A production deployment script and manifest cannot be finalized until the owner separately approves exact immutable per-recipient rates and a deployment operator/method.
+
 ## Authorization-plan fixtures
 
 Deterministic UI fixtures exercise all four typed actions: equal ERC-20, custom ERC-20, ERC-721 and ERC-1155. Each fixture decodes back to its one admitted engine selector, exact sender/asset/batch, zero native value and explicit approval topology. They remain planning fixtures only; wallet and server submission are hard-disabled.
