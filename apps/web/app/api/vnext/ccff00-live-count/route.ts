@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createPublicClient, parseAbi, http } from "viem";
 import { robinhoodChain } from "@rmt/shared/chains";
+import { ROBINHOOD_MAINNET_CHAIN_ID } from "../../../../lib/vnext/trusted-asset-registry";
+import { acrossRpcEndpoint } from "../../../../lib/server/vnext-across-rpc";
 import { CCFF00_COLLECTION } from "../../../../lib/vnext/distribution-ccff00";
 
 export const dynamic = "force-dynamic";
@@ -17,7 +19,7 @@ const collectionAbi = parseAbi([
 
 const client = createPublicClient({
   chain: robinhoodChain,
-  transport: http(process.env.RMT_RPC_URL ?? process.env.NEXT_PUBLIC_RMT_RPC_URL ?? robinhoodChain.rpcUrls.default.http[0], {
+  transport: http(acrossRpcEndpoint(ROBINHOOD_MAINNET_CHAIN_ID), {
     retryCount: 3,
     timeout: 12_000
   })
@@ -25,19 +27,33 @@ const client = createPublicClient({
 
 export async function GET() {
   try {
-    const [latestBlock, totalSupply, publicMinted, reserveMinted] = await Promise.all([
-      client.getBlock(),
-      client.readContract({ address: CCFF00_COLLECTION, abi: collectionAbi, functionName: "totalSupply" }),
-      client.readContract({ address: CCFF00_COLLECTION, abi: collectionAbi, functionName: "publicMinted" }),
-      client.readContract({ address: CCFF00_COLLECTION, abi: collectionAbi, functionName: "reserveMinted" })
-    ]);
-
+    const latestBlock = await client.getBlock({ includeTransactions: false });
     if (!latestBlock || latestBlock.number === undefined || !latestBlock.hash) {
       return NextResponse.json({ error: "LIVE COUNT UNAVAILABLE" }, {
         status: 503,
         headers: HEADERS
       });
     }
+    const [totalSupply, publicMinted, reserveMinted] = await Promise.all([
+      client.readContract({
+        address: CCFF00_COLLECTION,
+        abi: collectionAbi,
+        functionName: "totalSupply",
+        blockNumber: latestBlock.number
+      }),
+      client.readContract({
+        address: CCFF00_COLLECTION,
+        abi: collectionAbi,
+        functionName: "publicMinted",
+        blockNumber: latestBlock.number
+      }),
+      client.readContract({
+        address: CCFF00_COLLECTION,
+        abi: collectionAbi,
+        functionName: "reserveMinted",
+        blockNumber: latestBlock.number
+      })
+    ]);
 
     return NextResponse.json({
         status: "ready",

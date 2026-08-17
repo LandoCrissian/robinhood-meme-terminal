@@ -145,11 +145,12 @@ export function VNextDistributionPlanner() {
   const isPresetMode = activePreset !== null;
   const snapshotPublicMinted = isPresetMode ? parsePositiveBigInt(activePreset.publicMinted) : 0n;
   const liveSnapshot = ccff00LiveCount.data;
-  const livePublicMinted = liveSnapshot ? parsePositiveBigInt(liveSnapshot.publicMinted) : snapshotPublicMinted;
-  const canaryEpochProgress = livePublicMinted >= snapshotPublicMinted
+  const livePublicMinted = liveSnapshot ? parsePositiveBigInt(liveSnapshot.publicMinted) : 0n;
+  const canaryEpochProgress = isPresetMode && liveSnapshot !== null
     ? livePublicMinted - snapshotPublicMinted
-    : 0n;
-  const ccff00EpochProgress = isPresetMode ? summarizeCcff00EpochState({
+    : null;
+  const hasChainAuditInconsistency = isPresetMode && canaryEpochProgress !== null && canaryEpochProgress < 0n;
+  const ccff00EpochProgress = isPresetMode && !hasChainAuditInconsistency && canaryEpochProgress !== null ? summarizeCcff00EpochState({
     epochId: ccff00Epoch.epochId,
     livePublicMinted,
     servedTokenIds: ccff00Epoch.servedTokenIds
@@ -162,6 +163,13 @@ export function VNextDistributionPlanner() {
     : ccff00LiveCount.status === "ready" && ccff00LiveCount.data
       ? ccff00LiveCount.data.publicMinted
       : "LIVE COUNT UNAVAILABLE";
+  const canaryDeltaLabel = !isPresetMode
+    ? "Preset not selected"
+    : ccff00LiveCount.status !== "ready" || !liveSnapshot
+      ? "LIVE COUNT UNAVAILABLE"
+      : hasChainAuditInconsistency
+        ? "CHAIN/AUDIT INCONSISTENCY"
+        : canaryEpochProgress?.toString() ?? "0";
   const refreshStatusLabel = !isPresetMode
     ? "not tracking"
     : ccff00LiveCount.lastRefreshedAt === null
@@ -337,17 +345,18 @@ export function VNextDistributionPlanner() {
       <span>RMT Utility Rate: <strong>{DISTRIBUTION_PLANNER_NOT_APPROVED_LABEL}</strong></span>
       <span>Final eligible manifest: <strong>NOT YET VERIFIED</strong></span>
       <span>BATCH/GAS EVIDENCE: <strong>NOT YET ADMITTED</strong></span>
-      {ccff00EpochProgress ? <>
+      {isPresetMode ? <>
         <span>Live public count: <strong>{liveCountStatus}</strong></span>
-        <span>Last verified snapshot public count: <strong>{activePreset?.publicMinted ?? "not available"}</strong></span>
-        <span>New since verified snapshot: <strong>{ccff00LiveCount.data ? canaryEpochProgress.toString() : "LIVE COUNT UNAVAILABLE"}</strong></span>
-        <span>Live observation block: <strong>{liveSnapshot?.blockNumber ?? "LIVE COUNT UNAVAILABLE"}</strong></span>
-        <span>Current epoch: <strong>{ccff00EpochProgress.epochId}</strong></span>
-        <span>Canary cohort: <strong>{ccff00EpochProgress.canaryCohort}</strong></span>
-        <span>Served this epoch: <strong>{ccff00EpochProgress.servedThisEpoch}</strong></span>
-        <span>Pending this epoch: <strong>{ccff00EpochProgress.pendingThisEpoch}</strong></span>
+        <span>Historical audit snapshot public count: <strong>{activePreset?.publicMinted ?? "not available"}</strong></span>
+        <span>Delta since audit snapshot: <strong>{canaryDeltaLabel}</strong></span>
+        <span>Live chain public count observation: <strong>{liveSnapshot?.blockNumber ?? "LIVE COUNT UNAVAILABLE"}</strong></span>
+        <span>Current epoch: <strong>{ccff00EpochProgress?.epochId ?? "—"}</strong></span>
+        <span>Canary cohort: <strong>{CCFF00_CANARY_COUNT}</strong></span>
+        <span>Served this epoch: <strong>{ccff00EpochProgress?.servedThisEpoch ?? "—"}</strong></span>
+        <span>Pending this epoch: <strong>{ccff00EpochProgress?.pendingThisEpoch ?? "—"}</strong></span>
         <span>Snapshot status: <strong>{activePreset?.sourceStatus ?? "not available"}</strong></span>
         <span>Refresh: <strong>{refreshStatusLabel}</strong></span>
+        {hasChainAuditInconsistency ? <span>Consistency check: <strong>CHAIN/AUDIT INCONSISTENCY</strong></span> : null}
       </> : null}
     </div>
 
@@ -488,10 +497,11 @@ export function VNextDistributionPlanner() {
             <div><dt>Evidence source</dt><dd>{activePreset?.sourceLabel ?? "Manual planner inputs"}</dd></div>
             <div><dt>Evidence status</dt><dd>{activePreset?.sourceStatus ?? "manual input"}</dd></div>
             <div><dt>Snapshot block</dt><dd>{activePreset?.sourceBlock ?? "not provided"}</dd></div>
-            <div><dt>Last verified snapshot public count</dt><dd>{activePreset?.publicMinted ?? "not available"}</dd></div>
+            <div><dt>Historical audit snapshot public count</dt><dd>{activePreset?.publicMinted ?? "not available"}</dd></div>
             <div><dt>Live public count</dt><dd>{liveCountStatus}</dd></div>
-            <div><dt>New since verified snapshot</dt><dd>{ccff00LiveCount.data ? canaryEpochProgress.toString() : "LIVE COUNT UNAVAILABLE"}</dd></div>
+            <div><dt>Delta since audit snapshot</dt><dd>{canaryDeltaLabel}</dd></div>
             <div><dt>Live chain public count observation</dt><dd>{liveSnapshot ? liveSnapshot.blockNumber : "LIVE COUNT UNAVAILABLE"}</dd></div>
+            <div><dt>Live chain block hash</dt><dd>{liveSnapshot ? liveSnapshot.blockHash : "not available"}</dd></div>
             <div><dt>Current epoch</dt><dd>{ccff00EpochProgress?.epochId ?? "—"}</dd></div>
             <div><dt>Canary cohort</dt><dd>{CCFF00_CANARY_COUNT}</dd></div>
             <div><dt>Served this epoch</dt><dd>{ccff00EpochProgress?.servedThisEpoch ?? "—"}</dd></div>
