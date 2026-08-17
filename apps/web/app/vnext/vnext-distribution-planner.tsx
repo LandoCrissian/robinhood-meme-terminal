@@ -11,7 +11,12 @@ import {
   summarizePlannerReadyState
 } from "../../lib/vnext/distribution-planner";
 import { atomicToDecimal } from "../../lib/vnext/distribution-domain";
-import { CCFF00_RMT_TOKEN } from "../../lib/vnext/distribution-ccff00";
+import {
+  CCFF00_CANARY_COUNT,
+  CCFF00_RMT_TOKEN,
+  summarizeCcff00EpochState,
+  type Ccff00EpochState
+} from "../../lib/vnext/distribution-ccff00";
 import ccff00HistoricalAudit from "../../lib/vnext/fixtures/ccff00-public-audit-37451763.json";
 
 const ACTION_OPTIONS: { value: DistributionPlannerActionKind; label: string }[] = [
@@ -45,7 +50,7 @@ type Ccff00DistributionPreset = {
   sourceLabel: string;
   sourceStatus: string;
   sourceBlock?: string;
-  eligibleRecipients: number;
+  publicMinted: string;
   excludedRecipients: number;
   rows: readonly Ccff00HistoricRow[];
   csvTemplate: string;
@@ -68,7 +73,7 @@ const HOODSTREET_CCFF00_PRESET: Ccff00DistributionPreset = {
   sourceLabel: "ccff00-public-audit-37451763.json",
   sourceStatus: CCFF00_PRESET_SOURCE.status,
   sourceBlock: CCFF00_PRESET_SOURCE.snapshotBlock,
-  eligibleRecipients: CCFF00_PRESET_ROWS.length,
+  publicMinted: CCFF00_PRESET_SOURCE.publicMinted,
   excludedRecipients: parseInteger(CCFF00_PRESET_SOURCE.reserveMinted ?? "0"),
   rows: CCFF00_PRESET_ROWS,
   csvTemplate: `recipient\n${CCFF00_PRESET_ROWS.map((row) => row.tokenBoundAccount).join("\n")}\n`
@@ -93,6 +98,15 @@ function formatAtomicToDecimal(atomic: string, decimals: number | null) {
   return atomicToDecimal(atomic, decimals);
 }
 
+function parsePositiveBigInt(value: string): bigint {
+  try {
+    const parsed = BigInt(value);
+    return parsed > 0n ? parsed : 0n;
+  } catch {
+    return 0n;
+  }
+}
+
 export function VNextDistributionPlanner() {
   const [presetId, setPresetId] = useState<PresetId>("manual");
   const [actionKind, setActionKind] = useState<DistributionPlannerActionKind>("erc20_equal");
@@ -102,9 +116,15 @@ export function VNextDistributionPlanner() {
   const [equalAmount, setEqualAmount] = useState("1");
   const [csv, setCsv] = useState(csvTemplateForKind("erc20_equal"));
   const [uploadError, setUploadError] = useState("");
+  const [ccff00Epoch, setCcff00Epoch] = useState<Ccff00EpochState>({ epochId: "1", servedTokenIds: [] });
 
   const activePreset = presetId === "hoodstreet-ccff00" ? HOODSTREET_CCFF00_PRESET : null;
   const isPresetMode = activePreset !== null;
+  const ccff00EpochProgress = isPresetMode ? summarizeCcff00EpochState({
+    epochId: ccff00Epoch.epochId,
+    livePublicMinted: parsePositiveBigInt(activePreset.publicMinted),
+    servedTokenIds: ccff00Epoch.servedTokenIds
+  }) : null;
 
   const preview = useMemo(() => buildDistributionPlannerPreview({
     actionKind,
@@ -121,11 +141,15 @@ export function VNextDistributionPlanner() {
   const rowsToPreview = isReady ? preview.rowsPreview : [];
 
   const setManualMode = () => {
-    if (presetId !== "manual") setPresetId("manual");
+    if (presetId !== "manual") {
+      setPresetId("manual");
+      setCcff00Epoch({ epochId: "1", servedTokenIds: [] });
+    }
   };
 
   const onPresetChange = (nextPresetId: PresetId) => {
     setUploadError("");
+    setCcff00Epoch({ epochId: "1", servedTokenIds: [] });
     if (nextPresetId === "manual") {
       setPresetId("manual");
       setActionKind("erc20_equal");
@@ -186,6 +210,13 @@ export function VNextDistributionPlanner() {
     onPresetChange("manual");
   };
 
+  const onStartEpoch = () => {
+    setCcff00Epoch({
+      epochId: (BigInt(ccff00Epoch.epochId) + 1n).toString(),
+      servedTokenIds: []
+    });
+  };
+
   const onDownloadPlannedCsv = () => {
     if (!isReady) return;
     const fileBlob = new Blob([preview.canonicalCsv], { type: "text/csv;charset=utf-8;" });
@@ -225,6 +256,14 @@ export function VNextDistributionPlanner() {
       <span>RMT Utility Rate: <strong>{DISTRIBUTION_PLANNER_NOT_APPROVED_LABEL}</strong></span>
       <span>Manifest: <strong>NOT AVAILABLE</strong></span>
       <span>BATCH/GAS EVIDENCE: <strong>NOT YET ADMITTED</strong></span>
+      {ccff00EpochProgress ? <>
+        <span>Live public count: <strong>{ccff00EpochProgress.livePublicMinted}</strong></span>
+        <span>Current epoch: <strong>{ccff00EpochProgress.epochId}</strong></span>
+        <span>Canary cohort: <strong>{ccff00EpochProgress.canaryCohort}</strong></span>
+        <span>Served this epoch: <strong>{ccff00EpochProgress.servedThisEpoch}</strong></span>
+        <span>Pending this epoch: <strong>{ccff00EpochProgress.pendingThisEpoch}</strong></span>
+        <span>Snapshot status: <strong>{activePreset?.sourceStatus ?? "not available"}</strong></span>
+      </> : null}
     </div>
 
     <form className="rmtDistributionControls" onSubmit={(event) => event.preventDefault()}>
@@ -244,6 +283,10 @@ export function VNextDistributionPlanner() {
         <span>Source/evidence</span>
         <p>{presetSnapshotEvidence}</p>
         {isPresetMode ? <small>Rows loaded from read-only fixture evidence; submission remains disabled.</small> : null}
+        {isPresetMode ? <div>
+          <small>Current snapshot is live to the visible evidence fixture until refreshed.</small>
+          <button type="button" className="rmtDistributionSubmit" onClick={onStartEpoch}>Start new epoch</button>
+        </div> : null}
       </div>
 
       <div className="rmtDistributionField">
@@ -296,7 +339,7 @@ export function VNextDistributionPlanner() {
           value={equalAmount}
           onChange={(event) => {
             if (isPresetMode) {
-              setPresetId("manual");
+              setManualMode();
             }
             setEqualAmount(event.target.value);
           }}
@@ -358,8 +401,14 @@ export function VNextDistributionPlanner() {
             <div><dt>Evidence source</dt><dd>{activePreset?.sourceLabel ?? "Manual planner inputs"}</dd></div>
             <div><dt>Evidence status</dt><dd>{activePreset?.sourceStatus ?? "manual input"}</dd></div>
             <div><dt>Snapshot block</dt><dd>{activePreset?.sourceBlock ?? "not provided"}</dd></div>
+            <div><dt>Live public count</dt><dd>{ccff00EpochProgress?.livePublicMinted ?? "not loaded"}</dd></div>
+            <div><dt>Current epoch</dt><dd>{ccff00EpochProgress?.epochId ?? "—"}</dd></div>
+            <div><dt>Canary cohort</dt><dd>{CCFF00_CANARY_COUNT}</dd></div>
+            <div><dt>Served this epoch</dt><dd>{ccff00EpochProgress?.servedThisEpoch ?? "—"}</dd></div>
+            <div><dt>Pending this epoch</dt><dd>{ccff00EpochProgress?.pendingThisEpoch ?? "—"}</dd></div>
+            <div><dt>Snapshot status</dt><dd>{activePreset?.sourceStatus ?? "manual input"}</dd></div>
             {activePreset ? <>
-              <div><dt>Eligible recipients</dt><dd>{activePreset.eligibleRecipients}</dd></div>
+              <div><dt>Eligible recipients</dt><dd>{activePreset.publicMinted}</dd></div>
               <div><dt>Excluded/reserve</dt><dd>{activePreset.excludedRecipients}</dd></div>
             </> : null}
           </dl>

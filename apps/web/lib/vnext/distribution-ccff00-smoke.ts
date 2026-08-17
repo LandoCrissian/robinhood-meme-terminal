@@ -12,6 +12,7 @@ import {
   CCFF00_TOKEN,
   CCFF00_TOKENS_PER_NFT_ATOMIC,
   buildCcff00RmtDropManifestV1,
+  summarizeCcff00EpochState,
   parseCcff00PublicSnapshotV1,
   readCcff00PublicSnapshotV1,
   validateCcff00Canaries,
@@ -137,6 +138,35 @@ assert.equal(canaryStatus.blockers.length, 3);
 const fullSnapshot = await readCcff00PublicSnapshotV1(fakeClient("full"), { coverage: "full_public" });
 assert.deepEqual(fullSnapshot.rows.map((row) => row.tokenId), ["1", "2", "3"]);
 assert.equal(new Set(fullSnapshot.rows.map((row) => row.tokenBoundAccount)).size, 3);
+const servedInitialEpoch = summarizeCcff00EpochState({
+  epochId: "1",
+  livePublicMinted: 482n,
+  servedTokenIds: []
+});
+assert.equal(servedInitialEpoch.canaryCohort, 3);
+assert.equal(servedInitialEpoch.servedThisEpoch, "0");
+assert.equal(servedInitialEpoch.pendingThisEpoch, "482");
+const servedAllEpoch = summarizeCcff00EpochState({
+  epochId: "1",
+  livePublicMinted: 482n,
+  servedTokenIds: Array.from({ length: 482 }, (_, index) => String(index + 1))
+});
+assert.equal(servedAllEpoch.servedThisEpoch, "482");
+assert.equal(servedAllEpoch.pendingThisEpoch, "0");
+const grownEpoch = summarizeCcff00EpochState({
+  epochId: "1",
+  livePublicMinted: 582n,
+  servedTokenIds: Array.from({ length: 482 }, (_, index) => String(index + 1))
+});
+assert.equal(grownEpoch.servedThisEpoch, "482");
+assert.equal(grownEpoch.pendingThisEpoch, "100");
+const newEpoch = summarizeCcff00EpochState({
+  epochId: "2",
+  livePublicMinted: 582n,
+  servedTokenIds: []
+});
+assert.equal(newEpoch.servedThisEpoch, "0");
+assert.equal(newEpoch.pendingThisEpoch, "582");
 assert.throws(() => buildCcff00RmtDropManifestV1({
   snapshot: canarySnapshot,
   sender,

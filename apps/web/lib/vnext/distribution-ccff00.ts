@@ -26,6 +26,7 @@ export const CCFF00_ACCOUNT_IMPLEMENTATION = getAddress("0x03dA8C9df253a4401b086
 export const CCFF00_ERC6551_SALT = "0x448cc5ed5a52db42393a3d48476af932464724d8262648ad18b66d2ffef1a8e0" as Hex;
 export const CCFF00_TOKENS_PER_NFT_ATOMIC = 10_000n * 10n ** 18n;
 export const CCFF00_CANARY_TOKEN_IDS = [470n, 471n, 472n] as const;
+export const CCFF00_CANARY_COUNT = CCFF00_CANARY_TOKEN_IDS.length;
 
 const PUBLIC_START_ID = 1n;
 const PUBLIC_SUPPLY = 9_750n;
@@ -119,6 +120,67 @@ export type Ccff00ReadClient = {
     blockNumber: bigint;
   }): Promise<unknown>;
 };
+
+export type Ccff00EpochProgress = {
+  epochId: string;
+  livePublicMinted: string;
+  canaryCohort: number;
+  servedThisEpoch: string;
+  pendingThisEpoch: string;
+};
+
+export type Ccff00EpochState = {
+  epochId: string;
+  servedTokenIds: readonly string[];
+};
+
+export type Ccff00EpochInput = {
+  epochId: string;
+  livePublicMinted: string | bigint;
+  servedTokenIds: readonly string[];
+};
+
+function parseEpochTokenId(value: unknown): bigint | null {
+  try {
+    const parsed = unsigned(value, "served token ID");
+    if (parsed < PUBLIC_START_ID) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function uniqueSortedBigints(values: readonly bigint[]): bigint[] {
+  const seen = new Set<string>();
+  const output: bigint[] = [];
+  for (const value of values) {
+    const key = value.toString();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    output.push(value);
+  }
+  return output;
+}
+
+export function summarizeCcff00EpochState(input: Ccff00EpochInput): Ccff00EpochProgress {
+  const livePublicMinted = unsigned(input.livePublicMinted, "live public minted", false);
+  const validServedTokenIds = uniqueSortedBigints(
+    input.servedTokenIds
+      .map((tokenId) => parseEpochTokenId(tokenId))
+      .filter((tokenId): tokenId is bigint => tokenId !== null)
+  );
+  const servedThisEpoch = validServedTokenIds.filter((tokenId) => tokenId <= livePublicMinted).length;
+  return {
+    epochId: input.epochId,
+    livePublicMinted: livePublicMinted.toString(),
+    canaryCohort: CCFF00_CANARY_COUNT,
+    servedThisEpoch: String(servedThisEpoch),
+    pendingThisEpoch: (livePublicMinted > BigInt(servedThisEpoch)
+      ? livePublicMinted - BigInt(servedThisEpoch)
+      : 0n
+    ).toString()
+  };
+}
 
 const rowSchema = z.object({
   tokenId: z.string(), owner: z.string(), tokenBoundAccount: z.string(), activated: z.boolean(),
