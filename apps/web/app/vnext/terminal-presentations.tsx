@@ -329,7 +329,7 @@ function MobileHeader(props: TerminalPresentationProps) {
   return <>
     <header className="rmtMobileHeader"><RmtBrand compact onActivate={props.onShowMarkets} /><span className="rmtMobileChain"><i aria-hidden="true" /> 4663</span><VNextWalletConnection showFunding={false} compact /></header>
     <nav className="rmtMobilePrimaryNav" aria-label="Terminal navigation">
-      <button className={props.context === "markets" ? "isActive" : ""} type="button" onClick={props.onShowMarkets}>Markets</button>
+      <button className={props.context === "markets" || props.context === "asset" ? "isActive" : ""} type="button" onClick={props.onShowMarkets}>Markets</button>
       <button className={props.context === "portfolio" ? "isActive" : ""} type="button" onClick={props.onShowPortfolio}>Portfolio</button>
       <button className={props.context === "distribution" ? "isActive" : ""} type="button" onClick={props.onShowDistribution}>Distribution</button>
     </nav>

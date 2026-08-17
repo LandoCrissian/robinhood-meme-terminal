@@ -2,15 +2,11 @@
 
 import { useMemo, useState, type ChangeEvent } from "react";
 import {
-  DISTRIBUTION_PLANNER_DEFAULT_ASSET,
   DISTRIBUTION_PLANNER_DEFAULT_ASSET_DECIMALS,
-  DISTRIBUTION_PLANNER_DEFAULT_SENDER,
   DISTRIBUTION_PLANNER_MODE,
   DISTRIBUTION_PLANNER_NOT_APPROVED_LABEL,
-  DISTRIBUTION_PLANNER_RATE,
   type DistributionPlannerActionKind,
   buildDistributionPlannerPreview,
-  describeGasEvidence,
   formatDistributionPreviewAmount,
   summarizePlannerReadyState
 } from "../../lib/vnext/distribution-planner";
@@ -31,9 +27,9 @@ function csvTemplateForKind(actionKind: DistributionPlannerActionKind) {
 
 export function VNextDistributionPlanner() {
   const [actionKind, setActionKind] = useState<DistributionPlannerActionKind>("erc20_equal");
-  const [assetAddress, setAssetAddress] = useState<string>(DISTRIBUTION_PLANNER_DEFAULT_ASSET);
+  const [assetAddress, setAssetAddress] = useState<string>("");
   const [assetDecimals, setAssetDecimals] = useState(String(DISTRIBUTION_PLANNER_DEFAULT_ASSET_DECIMALS));
-  const [senderAddress, setSenderAddress] = useState<string>(DISTRIBUTION_PLANNER_DEFAULT_SENDER);
+  const [senderAddress, setSenderAddress] = useState<string>("");
   const [equalAmount, setEqualAmount] = useState("1");
   const [csv, setCsv] = useState(csvTemplateForKind("erc20_equal"));
   const [uploadError, setUploadError] = useState("");
@@ -86,18 +82,18 @@ export function VNextDistributionPlanner() {
 
   const onResetDefaults = () => {
     setActionKind("erc20_equal");
-    setAssetAddress(DISTRIBUTION_PLANNER_DEFAULT_ASSET);
+    setAssetAddress("");
     setAssetDecimals(String(DISTRIBUTION_PLANNER_DEFAULT_ASSET_DECIMALS));
-    setSenderAddress(DISTRIBUTION_PLANNER_DEFAULT_SENDER);
+    setSenderAddress("");
     setEqualAmount("1");
     setCsv(csvTemplateForKind("erc20_equal"));
     setUploadError("");
   };
 
-  return <section className="rmtDistributionPanel" aria-labelledby="rmt-distribution-heading" aria-live="polite">
+  return <section className="rmtDistributionPanel" aria-labelledby="rmt-distribution-planner-heading" aria-live="polite">
     <header className="rmtDistributionHeading">
       <div>
-        <h2 id="rmt-distribution-heading">Distribution Studio (planning)</h2>
+        <h2 id="rmt-distribution-planner-heading">Distribution Studio (planning)</h2>
         <p>Build a deterministic manifest-only preview before wallet submission can ever happen.</p>
       </div>
     </header>
@@ -105,7 +101,8 @@ export function VNextDistributionPlanner() {
     <div className="rmtDistributionStatus" role="status">
       <span>Mode: <strong>{DISTRIBUTION_PLANNER_MODE}</strong></span>
       <span>RMT Utility Rate: <strong>{DISTRIBUTION_PLANNER_NOT_APPROVED_LABEL}</strong></span>
-      <span>Gas evidence: <strong>{DISTRIBUTION_PLANNER_RATE.erc20}/{DISTRIBUTION_PLANNER_RATE.erc721}/{DISTRIBUTION_PLANNER_RATE.erc1155} (placeholders)</strong></span>
+      <span>Manifest: <strong>NOT AVAILABLE</strong></span>
+      <span>BATCH/GAS EVIDENCE: <strong>NOT YET ADMITTED</strong></span>
     </div>
 
     <form className="rmtDistributionControls" onSubmit={(event) => event.preventDefault()}>
@@ -122,7 +119,7 @@ export function VNextDistributionPlanner() {
       </div>
       <label className="rmtDistributionField" htmlFor="distribution-asset-address">
         <span>Token contract</span>
-        <input id="distribution-asset-address" value={assetAddress} onChange={(event) => setAssetAddress(event.target.value)} inputMode="text" autoComplete="off" spellCheck={false} />
+        <input id="distribution-asset-address" value={assetAddress} onChange={(event: ChangeEvent<HTMLInputElement>) => setAssetAddress(event.target.value)} inputMode="text" autoComplete="off" spellCheck={false} required />
       </label>
       <label className={`rmtDistributionField${isErc20 ? "" : " isDisabled"}`} htmlFor="distribution-token-decimals">
         <span>Token decimals</span>
@@ -152,7 +149,7 @@ export function VNextDistributionPlanner() {
       </label>
       <label className="rmtDistributionField" htmlFor="distribution-sender-address">
         <span>Planner sender</span>
-        <input id="distribution-sender-address" value={senderAddress} onChange={(event) => setSenderAddress(event.target.value)} inputMode="text" autoComplete="off" spellCheck={false} />
+        <input id="distribution-sender-address" value={senderAddress} onChange={(event: ChangeEvent<HTMLInputElement>) => setSenderAddress(event.target.value)} inputMode="text" autoComplete="off" spellCheck={false} required />
       </label>
       <label className="rmtDistributionField" htmlFor="distribution-csv">
         <span>Recipient CSV</span>
@@ -180,18 +177,18 @@ export function VNextDistributionPlanner() {
         <article>
           <h3>Manifest snapshot</h3>
           <dl>
-            <div><dt>Manifest</dt><dd>{summary?.manifestHash}</dd></div>
+            <div><dt>Manifest</dt><dd>NOT AVAILABLE</dd></div>
             <div><dt>Asset</dt><dd>{preview.assetAddress}</dd></div>
             <div><dt>Rows</dt><dd>{summary?.rows}</dd></div>
-            <div><dt>Batches</dt><dd>{summary?.batches}</dd></div>
+            <div><dt>Batches</dt><dd>NOT YET ADMITTED</dd></div>
           </dl>
         </article>
         <article>
           <h3>Estimated totals</h3>
           <dl>
             <div><dt>Total amount (atomic)</dt><dd>{preview.estimatedAssetAmountAtomic}</dd></div>
-            <div><dt>Utility retirement (atomic)</dt><dd>{preview.estimatedUtilityCostAtomic}</dd></div>
-            <div><dt>Gas evidence</dt><dd>{describeGasEvidence(actionKind, preview.manifest.gasEvidence)}</dd></div>
+            <div><dt>Utility retirement (atomic)</dt><dd>NOT YET ADMITTED</dd></div>
+            <div><dt>Gas evidence</dt><dd>NOT YET ADMITTED</dd></div>
           </dl>
         </article>
         <article>
@@ -218,12 +215,7 @@ export function VNextDistributionPlanner() {
 
       <section aria-labelledby="distribution-batches" className="rmtDistributionPreview">
         <h3 id="distribution-batches">Batches</h3>
-        <ol>
-          {preview.batches.map((batch) => <li key={batch.batchId}>
-            <strong>Batch {batch.batchIndex + 1}</strong>
-            <small>{batch.recipientCount} rows · Gas cap {batch.conservativeGasEstimate} · Utility {batch.utilityCostAtomic}</small>
-          </li>)}
-        </ol>
+        <p>Canonical execution batches are not yet admitted.</p>
       </section>
     </> : null}
 
