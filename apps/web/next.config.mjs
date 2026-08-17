@@ -7,11 +7,18 @@ const appDirectory = path.dirname(fileURLToPath(import.meta.url));
 const nextConfig = {
   outputFileTracingRoot: path.resolve(appDirectory, "../.."),
   async redirects() {
-    return [{
-      source: "/vnext",
-      destination: "/",
-      permanent: true
-    }];
+    return [
+      {
+        source: "/terminal.html",
+        destination: "/",
+        permanent: true
+      },
+      {
+        source: "/vnext",
+        destination: "/",
+        permanent: true
+      }
+    ];
   },
   webpack(config) {
     // MetaMask probes React Native storage and Privy probes Farcaster's Solana
