@@ -11,6 +11,7 @@ on:
       - apps/web/app/public-chrome.tsx
       - apps/web/app/site-footer.tsx
       - apps/web/app/sitemap.ts
+      - apps/web/app/rmt/**
       - apps/web/app/robinhood-chain/**
       - apps/web/app/markets/robinhood-chain/**
       - apps/web/app/explore/**
