@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import {
-  RMT_BRAND_LOGO_URL,
   RMT_SITE_DESCRIPTION,
   RMT_SITE_NAME,
   RMT_SITE_URL
@@ -183,7 +182,6 @@ export default function RmtIdentityPage() {
       </section>
 
       <aside className={styles.independence}>
-        <img src={RMT_BRAND_LOGO_URL} alt="" width="36" height="36" />
         Robinhood Meme Terminal is independent software. It is not Robinhood Markets, Inc., and references to Robinhood or Robinhood Chain do not imply endorsement by Robinhood.
       </aside>
 
