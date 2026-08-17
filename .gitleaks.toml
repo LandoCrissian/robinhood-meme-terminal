@@ -13,3 +13,10 @@ paths = [
   '''^apps/web/lib/vnext/fixtures/ccff00-public-audit-37451763\.json$''',
   '''^apps/web/lib/vnext/distribution-deployment-readiness\.ts$''',
 ]
+
+[[allowlists]]
+description = "Public EVM addresses on the canonical RMT identity and provenance page"
+condition = "AND"
+targetRules = ["generic-api-key"]
+regexes = ['''^0x[0-9A-Fa-f]{40}$''']
+paths = ['''^apps/web/app/rmt/page\.tsx$''']
