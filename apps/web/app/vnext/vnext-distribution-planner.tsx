@@ -254,10 +254,10 @@ export function VNextDistributionPlanner() {
     <div className="rmtDistributionStatus" role="status">
       <span>Mode: <strong>{DISTRIBUTION_PLANNER_MODE}</strong></span>
       <span>RMT Utility Rate: <strong>{DISTRIBUTION_PLANNER_NOT_APPROVED_LABEL}</strong></span>
-      <span>Manifest: <strong>NOT AVAILABLE</strong></span>
+      <span>Final eligible manifest: <strong>NOT YET VERIFIED</strong></span>
       <span>BATCH/GAS EVIDENCE: <strong>NOT YET ADMITTED</strong></span>
       {ccff00EpochProgress ? <>
-        <span>Live public count: <strong>{ccff00EpochProgress.livePublicMinted}</strong></span>
+        <span>Last verified snapshot public count: <strong>{ccff00EpochProgress.livePublicMinted}</strong></span>
         <span>Current epoch: <strong>{ccff00EpochProgress.epochId}</strong></span>
         <span>Canary cohort: <strong>{ccff00EpochProgress.canaryCohort}</strong></span>
         <span>Served this epoch: <strong>{ccff00EpochProgress.servedThisEpoch}</strong></span>
@@ -285,7 +285,8 @@ export function VNextDistributionPlanner() {
         {isPresetMode ? <small>Rows loaded from read-only fixture evidence; submission remains disabled.</small> : null}
         {isPresetMode ? <div>
           <small>Current snapshot is live to the visible evidence fixture until refreshed.</small>
-          <button type="button" className="rmtDistributionSubmit" onClick={onStartEpoch}>Start new epoch</button>
+          <button type="button" className="rmtDistributionSubmit" onClick={onStartEpoch}>Preview next epoch</button>
+          <small>Session-only planning state — not persisted and does not authorize a distribution.</small>
         </div> : null}
       </div>
 
@@ -401,14 +402,14 @@ export function VNextDistributionPlanner() {
             <div><dt>Evidence source</dt><dd>{activePreset?.sourceLabel ?? "Manual planner inputs"}</dd></div>
             <div><dt>Evidence status</dt><dd>{activePreset?.sourceStatus ?? "manual input"}</dd></div>
             <div><dt>Snapshot block</dt><dd>{activePreset?.sourceBlock ?? "not provided"}</dd></div>
-            <div><dt>Live public count</dt><dd>{ccff00EpochProgress?.livePublicMinted ?? "not loaded"}</dd></div>
+            <div><dt>Last verified snapshot public count</dt><dd>{ccff00EpochProgress?.livePublicMinted ?? "not loaded"}</dd></div>
             <div><dt>Current epoch</dt><dd>{ccff00EpochProgress?.epochId ?? "—"}</dd></div>
             <div><dt>Canary cohort</dt><dd>{CCFF00_CANARY_COUNT}</dd></div>
             <div><dt>Served this epoch</dt><dd>{ccff00EpochProgress?.servedThisEpoch ?? "—"}</dd></div>
             <div><dt>Pending this epoch</dt><dd>{ccff00EpochProgress?.pendingThisEpoch ?? "—"}</dd></div>
             <div><dt>Snapshot status</dt><dd>{activePreset?.sourceStatus ?? "manual input"}</dd></div>
             {activePreset ? <>
-              <div><dt>Eligible recipients</dt><dd>{activePreset.publicMinted}</dd></div>
+              <div><dt>Public TBAs at snapshot</dt><dd>{activePreset.publicMinted}</dd></div>
               <div><dt>Excluded/reserve</dt><dd>{activePreset.excludedRecipients}</dd></div>
             </> : null}
           </dl>
@@ -416,7 +417,7 @@ export function VNextDistributionPlanner() {
         <article>
           <h3>Manifest snapshot</h3>
           <dl>
-            <div><dt>Manifest</dt><dd>NOT AVAILABLE</dd></div>
+            <div><dt>Manifest</dt><dd>NOT YET VERIFIED</dd></div>
             <div><dt>Asset</dt><dd>{preview.assetAddress}</dd></div>
             <div><dt>Rows</dt><dd>{summary?.rows}</dd></div>
             <div><dt>Proposed RMT per recipient</dt><dd>{estimatedPerRecipient}</dd></div>
