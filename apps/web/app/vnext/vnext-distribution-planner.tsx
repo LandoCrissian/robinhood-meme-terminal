@@ -349,7 +349,6 @@ export function VNextDistributionPlanner() {
       <span>Mode: <strong>{DISTRIBUTION_PLANNER_MODE}</strong></span>
       <span>RMT Utility Rate: <strong>{DISTRIBUTION_PLANNER_NOT_APPROVED_LABEL}</strong></span>
       <span>Final eligible manifest: <strong>NOT YET VERIFIED</strong></span>
-      <span>BATCH/GAS EVIDENCE: <strong>NOT YET ADMITTED</strong></span>
       {isPresetMode ? <span>Source: <strong>{presetSnapshotEvidence}</strong></span> : null}
       {isPresetMode ? <span>Live chain state: <strong>{ccff00LiveCount.status === "ready" ? "observed" : "not observed"}</strong></span> : null}
       {hasChainAuditInconsistency ? <span>Consistency check: <strong>CHAIN/AUDIT INCONSISTENCY</strong></span> : null}
@@ -490,7 +489,7 @@ export function VNextDistributionPlanner() {
         <article>
           <h3>LIVE NETWORK STATE</h3>
           <dl>
-            <div><dt>Live public TBA count</dt><dd>{ccff00LiveCount.status === "ready" && liveSnapshot ? liveSnapshot.publicMinted : "LIVE COUNT UNAVAILABLE"}</dd></div>
+            <div><dt>Live public memberships</dt><dd>{ccff00LiveCount.status === "ready" && liveSnapshot ? liveSnapshot.publicMinted : "LIVE COUNT UNAVAILABLE"}</dd></div>
             <div><dt>Reserve count</dt><dd>{reserveCount ?? "LIVE COUNT UNAVAILABLE"}</dd></div>
             <div><dt>Exact observation block</dt><dd>{liveSnapshot ? liveSnapshot.blockHash ? `${liveSnapshot.blockNumber} (${liveSnapshot.blockHash})` : liveSnapshot.blockNumber : "LIVE COUNT UNAVAILABLE"}</dd></div>
             <div><dt>Refresh</dt><dd>{refreshStatusLabel}</dd></div>
@@ -525,10 +524,17 @@ export function VNextDistributionPlanner() {
             <div><dt>Rows</dt><dd>{summary?.rows}</dd></div>
             <div><dt>Proposed RMT per recipient</dt><dd>{estimatedPerRecipient}</dd></div>
             <div><dt>Total required</dt><dd>{estimatedAsset}</dd></div>
-            <div><dt>BATCH/GAS EVIDENCE</dt><dd>NOT YET ADMITTED</dd></div>
+          </dl>
+        </article>
+        <article>
+          <h3>READINESS GATE</h3>
+          <dl>
             <div><dt>Wallet submission</dt><dd className="rmtReadinessFail">disabled</dd></div>
             <div><dt>Server submission</dt><dd className="rmtReadinessFail">disabled</dd></div>
+            <div><dt>Approval workflow</dt><dd>preview only</dd></div>
           </dl>
+          <button type="button" className="rmtDistributionSubmit" disabled>Submission disabled</button>
+          <small>Canonical execution batches are not yet admitted.</small>
         </article>
       </section>
 

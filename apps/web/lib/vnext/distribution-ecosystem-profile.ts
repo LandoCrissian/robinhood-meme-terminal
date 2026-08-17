@@ -12,7 +12,8 @@ export type EcosystemProjectProfile = {
   projectName: string;
   collectionLabel: string;
   networkName: string;
-  description: string;
+  projectDescription: string;
+  collectionDescription: string;
   collectionAddress: Address;
   explorerAddressUrl: string;
   xProfiles: readonly EcosystemProjectLink[];
@@ -33,7 +34,8 @@ export const HOODSTREET_CCFF00_PROFILE: EcosystemProjectProfile = {
   projectName: "HoodStreet",
   collectionLabel: "CCFF00 Membership",
   networkName: "Robinhood Chain",
-  description: "CCFF00 planning support for distribution recipient review and manifest pre-checks.",
+  projectDescription: "Onchain market infrastructure for humans and AI agents on Robinhood Chain.",
+  collectionDescription: "ERC-6551 token-bound membership collection from HoodStreet.",
   collectionAddress: CCFF00_COLLECTION,
   explorerAddressUrl: `${EXPLORER_BASE_URL}/address/${CCFF00_COLLECTION}`,
   xProfiles: [
