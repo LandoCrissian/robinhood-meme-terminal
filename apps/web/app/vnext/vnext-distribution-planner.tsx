@@ -163,12 +163,12 @@ export function VNextDistributionPlanner() {
     </form>
 
     <div className={`rmtDistributionStateBanner${preview.status === "error" ? " isError" : ""}`}>
-      <strong>{preview.status === "ready" ? "Planning output ready" : "Planning input check"}</strong>
-      <span>
-        {preview.status === "ready"
-          ? `${preview.totalRows} rows · ${preview.validRows} valid · ${preview.invalidRows} invalid · ${preview.batches.length} batch${preview.batches.length === 1 ? "" : "es"}`
+        <strong>{preview.status === "ready" ? "Planning output ready" : "Planning input check"}</strong>
+        <span>
+          {preview.status === "ready"
+          ? `${preview.totalRows} rows · ${preview.validRows} valid · ${preview.invalidRows} invalid`
           : preview.message}
-      </span>
+        </span>
       {uploadError ? <small>{uploadError}</small> : null}
     </div>
 

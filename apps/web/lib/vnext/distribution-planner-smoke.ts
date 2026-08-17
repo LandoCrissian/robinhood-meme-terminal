@@ -34,6 +34,11 @@ assert.equal(validEqual.status, "ready");
 assert.equal(validEqual.totalRows, BASE_ROWS.length);
 assert.equal(validEqual.validRows, BASE_ROWS.length);
 assert.equal(validEqual.invalidRows, 0);
+assert.equal("manifest" in validEqual, false);
+assert.equal("batches" in validEqual, false);
+assert.equal("estimatedUtilityCostAtomic" in validEqual, false);
+assert.equal("rowsPreview" in validEqual, true);
+assert.equal("estimatedAssetAmountAtomic" in validEqual, true);
 assert.equal(formatDistributionPreviewAmount("erc20_equal", validEqual.decimals, validEqual.rowsPreview[0]), "1");
 
 const validCustom = buildDistributionPlannerPreview({
