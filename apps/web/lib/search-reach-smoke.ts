@@ -25,6 +25,7 @@ assert.equal(rmtWebApplicationStructuredData["@type"], "WebApplication");
 assert.equal(rmtWebApplicationStructuredData.url, `${RMT_SITE_URL}/`);
 assert.equal(rmtWebApplicationStructuredData.applicationCategory, "FinanceApplication");
 assert.equal(rmtWebApplicationStructuredData.publisher["@id"], `${RMT_SITE_URL}/#organization`);
+assert.equal(rmtWebApplicationStructuredData.author["@id"], `${RMT_SITE_URL}/#organization`);
 assert.ok(RMT_PUBLIC_IDENTITY_URLS.includes("https://x.com/RMTLaunch"));
 assert.ok(RMT_PUBLIC_IDENTITY_URLS.includes("https://github.com/LandoCrissian/robinhood-meme-terminal"));
 
