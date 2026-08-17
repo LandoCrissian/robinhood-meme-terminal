@@ -12,12 +12,17 @@ import {
 } from "../../lib/vnext/distribution-planner";
 import { atomicToDecimal } from "../../lib/vnext/distribution-domain";
 import {
-  CCFF00_CANARY_COUNT,
+  HOODSTREET_CCFF00_PROGRAM,
+  HOODSTREET_CCFF00_PROFILE,
+  type EcosystemProjectProfile
+} from "../../lib/vnext/distribution-ecosystem-profile";
+import {
   CCFF00_RMT_TOKEN,
   summarizeCcff00EpochState,
   type Ccff00EpochState
 } from "../../lib/vnext/distribution-ccff00";
 import ccff00HistoricalAudit from "../../lib/vnext/fixtures/ccff00-public-audit-37451763.json";
+import { DistributionEcosystemProjectProfile } from "./distribution-ecosystem-project-profile";
 
 const ACTION_OPTIONS: { value: DistributionPlannerActionKind; label: string }[] = [
   { value: "erc20_equal", label: "ERC-20 Equal" },
@@ -158,11 +163,11 @@ export function VNextDistributionPlanner() {
   const canRefreshLiveCount = ccff00LiveCount.lastRefreshedAt === null
     ? true
     : (Date.now() - ccff00LiveCount.lastRefreshedAt) >= LIVE_CCFF00_REFRESH_INTERVAL_MS;
-  const liveCountStatus = !isPresetMode
-    ? "Preset not selected"
-    : ccff00LiveCount.status === "ready" && ccff00LiveCount.data
-      ? ccff00LiveCount.data.publicMinted
-      : "LIVE COUNT UNAVAILABLE";
+  const projectProfile: EcosystemProjectProfile | null = isPresetMode ? HOODSTREET_CCFF00_PROFILE : null;
+  const historicalAuditBlock = isPresetMode ? activePreset?.sourceBlock ?? "not available" : "not available";
+  const historicalAuditPublicCount = isPresetMode ? activePreset?.publicMinted ?? "not available" : "not available";
+  const snapshotExcludeCount = isPresetMode ? activePreset?.excludedRecipients ?? 0 : 0;
+  const reserveCount = liveSnapshot ? liveSnapshot.reserveMinted : undefined;
   const canaryDeltaLabel = !isPresetMode
     ? "Preset not selected"
     : ccff00LiveCount.status !== "ready" || !liveSnapshot
@@ -345,19 +350,9 @@ export function VNextDistributionPlanner() {
       <span>RMT Utility Rate: <strong>{DISTRIBUTION_PLANNER_NOT_APPROVED_LABEL}</strong></span>
       <span>Final eligible manifest: <strong>NOT YET VERIFIED</strong></span>
       <span>BATCH/GAS EVIDENCE: <strong>NOT YET ADMITTED</strong></span>
-      {isPresetMode ? <>
-        <span>Live public count: <strong>{liveCountStatus}</strong></span>
-        <span>Historical audit snapshot public count: <strong>{activePreset?.publicMinted ?? "not available"}</strong></span>
-        <span>Delta since audit snapshot: <strong>{canaryDeltaLabel}</strong></span>
-        <span>Live chain public count observation: <strong>{liveSnapshot?.blockNumber ?? "LIVE COUNT UNAVAILABLE"}</strong></span>
-        <span>Current epoch: <strong>{ccff00EpochProgress?.epochId ?? "—"}</strong></span>
-        <span>Canary cohort: <strong>{CCFF00_CANARY_COUNT}</strong></span>
-        <span>Served this epoch: <strong>{ccff00EpochProgress?.servedThisEpoch ?? "—"}</strong></span>
-        <span>Pending this epoch: <strong>{ccff00EpochProgress?.pendingThisEpoch ?? "—"}</strong></span>
-        <span>Snapshot status: <strong>{activePreset?.sourceStatus ?? "not available"}</strong></span>
-        <span>Refresh: <strong>{refreshStatusLabel}</strong></span>
-        {hasChainAuditInconsistency ? <span>Consistency check: <strong>CHAIN/AUDIT INCONSISTENCY</strong></span> : null}
-      </> : null}
+      {isPresetMode ? <span>Source: <strong>{presetSnapshotEvidence}</strong></span> : null}
+      {isPresetMode ? <span>Live chain state: <strong>{ccff00LiveCount.status === "ready" ? "observed" : "not observed"}</strong></span> : null}
+      {hasChainAuditInconsistency ? <span>Consistency check: <strong>CHAIN/AUDIT INCONSISTENCY</strong></span> : null}
     </div>
 
     <form className="rmtDistributionControls" onSubmit={(event) => event.preventDefault()}>
@@ -491,48 +486,49 @@ export function VNextDistributionPlanner() {
 
     {preview.status === "ready" ? <>
       <section className="rmtDistributionCards" aria-label="Planning evidence">
+        {projectProfile ? <DistributionEcosystemProjectProfile profile={projectProfile} /> : null}
         <article>
-          <h3>Source evidence</h3>
+          <h3>LIVE NETWORK STATE</h3>
           <dl>
-            <div><dt>Evidence source</dt><dd>{activePreset?.sourceLabel ?? "Manual planner inputs"}</dd></div>
-            <div><dt>Evidence status</dt><dd>{activePreset?.sourceStatus ?? "manual input"}</dd></div>
-            <div><dt>Snapshot block</dt><dd>{activePreset?.sourceBlock ?? "not provided"}</dd></div>
-            <div><dt>Historical audit snapshot public count</dt><dd>{activePreset?.publicMinted ?? "not available"}</dd></div>
-            <div><dt>Live public count</dt><dd>{liveCountStatus}</dd></div>
-            <div><dt>Delta since audit snapshot</dt><dd>{canaryDeltaLabel}</dd></div>
-            <div><dt>Live chain public count observation</dt><dd>{liveSnapshot ? liveSnapshot.blockNumber : "LIVE COUNT UNAVAILABLE"}</dd></div>
-            <div><dt>Live chain block hash</dt><dd>{liveSnapshot ? liveSnapshot.blockHash : "not available"}</dd></div>
-            <div><dt>Current epoch</dt><dd>{ccff00EpochProgress?.epochId ?? "—"}</dd></div>
-            <div><dt>Canary cohort</dt><dd>{CCFF00_CANARY_COUNT}</dd></div>
-            <div><dt>Served this epoch</dt><dd>{ccff00EpochProgress?.servedThisEpoch ?? "—"}</dd></div>
-            <div><dt>Pending this epoch</dt><dd>{ccff00EpochProgress?.pendingThisEpoch ?? "—"}</dd></div>
-            <div><dt>Snapshot status</dt><dd>{activePreset?.sourceStatus ?? "manual input"}</dd></div>
-            <div><dt>Refresh status</dt><dd>{refreshStatusLabel}</dd></div>
-            {activePreset ? <>
-              <div><dt>Public TBAs at snapshot</dt><dd>{activePreset.publicMinted}</dd></div>
-              <div><dt>Excluded/reserve</dt><dd>{activePreset.excludedRecipients}</dd></div>
-            </> : null}
+            <div><dt>Live public TBA count</dt><dd>{ccff00LiveCount.status === "ready" && liveSnapshot ? liveSnapshot.publicMinted : "LIVE COUNT UNAVAILABLE"}</dd></div>
+            <div><dt>Reserve count</dt><dd>{reserveCount ?? "LIVE COUNT UNAVAILABLE"}</dd></div>
+            <div><dt>Exact observation block</dt><dd>{liveSnapshot ? liveSnapshot.blockHash ? `${liveSnapshot.blockNumber} (${liveSnapshot.blockHash})` : liveSnapshot.blockNumber : "LIVE COUNT UNAVAILABLE"}</dd></div>
+            <div><dt>Refresh</dt><dd>{refreshStatusLabel}</dd></div>
           </dl>
         </article>
         <article>
-          <h3>Manifest snapshot</h3>
+          <h3>DISTRIBUTION PROGRAM</h3>
           <dl>
-            <div><dt>Manifest</dt><dd>NOT YET VERIFIED</dd></div>
+            <div><dt>Program</dt><dd>{HOODSTREET_CCFF00_PROGRAM.programLabel}</dd></div>
+            <div><dt>Canary status</dt><dd>{HOODSTREET_CCFF00_PROGRAM.canaryStatus}</dd></div>
+            <div><dt>Canary cohort</dt><dd>{HOODSTREET_CCFF00_PROGRAM.canaryCohort}</dd></div>
+            <div><dt>Current epoch</dt><dd>{ccff00EpochProgress?.epochId ?? "—"}</dd></div>
+            <div><dt>Served</dt><dd>{ccff00EpochProgress?.servedThisEpoch ?? "—"}</dd></div>
+            <div><dt>Pending</dt><dd>{ccff00EpochProgress?.pendingThisEpoch ?? "—"}</dd></div>
+            <div><dt>Delta since audit snapshot</dt><dd>{canaryDeltaLabel}</dd></div>
+          </dl>
+        </article>
+        <article>
+          <h3>EVIDENCE</h3>
+          <dl>
+            <div><dt>Historical audit block</dt><dd>{historicalAuditBlock}</dd></div>
+            <div><dt>Audit public count</dt><dd>{historicalAuditPublicCount}</dd></div>
+            <div><dt>Final eligible manifest</dt><dd>NOT YET VERIFIED</dd></div>
+            <div><dt>Snapshot status</dt><dd>{activePreset?.sourceStatus ?? "manual input"}</dd></div>
+            <div><dt>Excluded/reserve</dt><dd>{snapshotExcludeCount}</dd></div>
+          </dl>
+        </article>
+        <article>
+          <h3>MANIFEST SNAPSHOT</h3>
+          <dl>
             <div><dt>Asset</dt><dd>{preview.assetAddress}</dd></div>
             <div><dt>Rows</dt><dd>{summary?.rows}</dd></div>
             <div><dt>Proposed RMT per recipient</dt><dd>{estimatedPerRecipient}</dd></div>
             <div><dt>Total required</dt><dd>{estimatedAsset}</dd></div>
-            <div><dt>Batches</dt><dd>NOT YET ADMITTED</dd></div>
-          </dl>
-        </article>
-        <article>
-          <h3>Readiness gate</h3>
-          <dl>
+            <div><dt>BATCH/GAS EVIDENCE</dt><dd>NOT YET ADMITTED</dd></div>
             <div><dt>Wallet submission</dt><dd className="rmtReadinessFail">disabled</dd></div>
             <div><dt>Server submission</dt><dd className="rmtReadinessFail">disabled</dd></div>
-            <div><dt>Approval workflow</dt><dd>preview only</dd></div>
           </dl>
-          <button type="button" className="rmtDistributionSubmit" disabled>Submission disabled</button>
         </article>
       </section>
 
@@ -545,14 +541,9 @@ export function VNextDistributionPlanner() {
             {rowsToPreview.map((entry, index) => <li key={`${entry.recipient}-${index}`}>
               <span>{index + 1}</span>
               <strong>{entry.recipient}</strong>
-              <small>{formatDistributionPreviewAmount(actionKind, plannedDecimals, entry)}</small>
+            <small>{formatDistributionPreviewAmount(actionKind, plannedDecimals, entry)}</small>
             </li>)}
         </ul>
-      </section>
-
-      <section aria-labelledby="distribution-batches" className="rmtDistributionPreview">
-        <h3 id="distribution-batches">Batches</h3>
-        <p>Canonical execution batches are not yet admitted.</p>
       </section>
     </> : null}
 
