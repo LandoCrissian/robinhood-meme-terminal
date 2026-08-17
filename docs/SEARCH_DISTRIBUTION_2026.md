@@ -168,7 +168,7 @@ Track progress with search-engine data, not vanity keyword counts:
 1. Apply each isolated search tranche on its own branch from current `main`.
 2. Run `pnpm --filter web exec tsx lib/search-reach-smoke.ts`.
 3. Run `pnpm --filter web exec tsx lib/server/indexnow-smoke.ts`.
-4. Run `pnpm --filter web test:public-discovery` and `pnpm --filter web test:market-reach` when that command exists on the branch.
+4. Run the relevant public-discovery/search smokes that exist on the branch.
 5. Run the terminal release lane, web typecheck, production build, production dependency audit, repo hygiene and secret scan required by `AGENTS.md`.
 6. Review new public authority pages at desktop and mobile widths.
 7. Merge/deploy only after explicit owner authorization and green review.
