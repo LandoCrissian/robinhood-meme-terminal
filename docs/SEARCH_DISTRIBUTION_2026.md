@@ -38,7 +38,7 @@ Primary references:
 
 RMT may notify IndexNow when a canonical public URL is added, materially updated or deleted. Ownership is proven with the public key file at the canonical RMT origin. The submission helper must reject foreign hosts and non-public RMT routes.
 
-Do not schedule indiscriminate repeated full-sitemap submissions. Use the full sitemap as a controlled initial/release seed; move to incremental notifications when the canonical market-directory lifecycle can supply trustworthy changed-URL events.
+Do not schedule indiscriminate repeated full-sitemap submissions. Use the full sitemap as a controlled initial/release seed; use incremental notifications for known public static search surfaces when repository changes identify the affected canonical URLs, and later extend the same discipline to trustworthy market-directory lifecycle events.
 
 Primary reference:
 
@@ -99,6 +99,19 @@ The first implementation tranche is intentionally outside Codex's active VNext m
 
 No VNext market-directory, quote, execution, wallet, provider, fee, contract or environment file is changed in this tranche.
 
+## Phase 1B — brand identity and incremental refresh
+
+The next non-overlapping tranche strengthens free distribution without changing the terminal runtime:
+
+1. Publish a canonical `Organization` entity for Robinhood Meme Terminal and connect the existing `WebSite` and `WebApplication` entities to it.
+2. Publish `/rmt` as a substantive identity/provenance page that distinguishes the canonical RMT website, official V6 token, official V6 compatibility market and legacy provenance anchor by exact address.
+3. Link `/rmt` through ordinary public navigation and add it to the sitemap.
+4. Preserve the successful one-time full-sitemap IndexNow seed as historical release evidence.
+5. Add a push-to-main incremental IndexNow workflow limited to known public search files. It maps changed files to affected canonical URLs and does not schedule repeated full-sitemap submissions.
+6. Keep private routes and `/vnext` excluded through the existing fail-closed IndexNow canonicalization guard.
+
+The `/rmt` page is an identity and anti-impersonation authority surface, not a token promotion or doorway page. It must not imply that a matching ticker, third-party listing or pool proves official RMT identity.
+
 ## Phase 2 — canonical market search surfaces after the active directory work settles
 
 Do not implement this by editing around an active Codex PR. After the canonical VNext directory change is merged or otherwise resolved:
@@ -152,17 +165,17 @@ Track progress with search-engine data, not vanity keyword counts:
 
 ## Release sequence
 
-1. Apply the isolated Phase 1 patch on its own branch from current `main`.
+1. Apply each isolated search tranche on its own branch from current `main`.
 2. Run `pnpm --filter web exec tsx lib/search-reach-smoke.ts`.
 3. Run `pnpm --filter web exec tsx lib/server/indexnow-smoke.ts`.
-4. Run `pnpm --filter web test:public-discovery` and `pnpm --filter web test:market-reach`.
+4. Run the relevant public-discovery/search smokes that exist on the branch.
 5. Run the terminal release lane, web typecheck, production build, production dependency audit, repo hygiene and secret scan required by `AGENTS.md`.
-6. Review the `/robinhood-chain` page at desktop and mobile widths.
+6. Review new public authority pages at desktop and mobile widths.
 7. Merge/deploy only after explicit owner authorization and green review.
-8. After production is confirmed, run the IndexNow seed once against the live sitemap; do not turn it into a repeated full-sitemap cron.
+8. After production is confirmed, verify any search-notification workflow against the deployed proof file and canonical URLs.
 9. Configure/verify Search Console and Bing Webmaster Tools using owner-authenticated accounts.
-10. After deployment, promote the new route/application checks into production-health verification in a release-aware follow-up.
+10. Promote stable new route/application checks into production-health verification in a release-aware follow-up where appropriate.
 
 ## Codex coexistence rule
 
-Before each search-distribution tranche, inspect the current open PR set and changed filenames. If Codex is editing a target file, defer that file and move the search work to a non-overlapping layer. Search growth must never force a conflict into canonical terminal work merely to ship faster.
+Before each search-distribution tranche, inspect the current open PR set and changed filenames. If Codex or Sparks is editing a target file, defer that file and move the search work to a non-overlapping layer. Search growth must never force a conflict into canonical terminal work merely to ship faster.

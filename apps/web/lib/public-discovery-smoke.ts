@@ -35,7 +35,7 @@ assert.ok(publicRule?.disallow?.includes("/profile"));
 assert.ok(!publicRule?.disallow?.includes("/deploy-mainnet"), "robots.txt must not advertise hidden operator routes");
 
 const sitemapUrls = staticPublicSitemap().map((entry) => entry.url);
-for (const route of ["/", "/explore", `/project/${OFFICIAL_RMT_V6_TOKEN}`, "/status", "/sources", "/sushi", "/experience"]) {
+for (const route of ["/", "/rmt", "/explore", `/project/${OFFICIAL_RMT_V6_TOKEN}`, "/status", "/sources", "/sushi", "/experience"]) {
   assert.ok(sitemapUrls.includes(`${appUrl}${route}`), `Sitemap must include ${route}`);
 }
 for (const route of ["/api/health", "/deploy-mainnet", "/profile", "/portfolio", "/watchlist", "/launch", "/rescue"]) {
@@ -63,7 +63,8 @@ assert.deepEqual(rmtWebsiteStructuredData, {
   name: "Robinhood Meme Terminal",
   alternateName: "RMT",
   description: rmtWebsiteStructuredData.description,
-  inLanguage: "en-US"
+  inLanguage: "en-US",
+  publisher: { "@id": `${appUrl}/#organization` }
 });
 
 const homeSource = readFileSync(new URL("../app/page.tsx", import.meta.url), "utf8");
