@@ -25,6 +25,7 @@ import {
   RMT_SITE_DESCRIPTION,
   RMT_SITE_NAME,
   RMT_SITE_URL,
+  rmtOrganizationStructuredData,
   rmtWebApplicationStructuredData,
   rmtWebsiteStructuredData
 } from "../lib/site-identity";
@@ -76,6 +77,10 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="en">
       <head>
         <meta property="og:site_name" content={RMT_SITE_NAME} />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(rmtOrganizationStructuredData).replace(/</g, "\\u003c") }}
+        />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(rmtWebsiteStructuredData).replace(/</g, "\\u003c") }}
