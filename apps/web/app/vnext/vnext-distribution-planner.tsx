@@ -1,6 +1,6 @@
  "use client";
 
-import { useMemo, useState, type ChangeEvent } from "react";
+import { useEffect, useMemo, useState, type ChangeEvent } from "react";
 import {
   DISTRIBUTION_PLANNER_DEFAULT_ASSET_DECIMALS,
   DISTRIBUTION_PLANNER_NOT_APPROVED_LABEL,
@@ -55,6 +55,23 @@ type Ccff00DistributionPreset = {
   rows: readonly Ccff00HistoricRow[];
   csvTemplate: string;
 };
+
+type Ccff00LiveChainCount = {
+  blockNumber: string;
+  blockHash: string;
+  publicMinted: string;
+  reserveMinted: string;
+  totalSupply: string;
+};
+
+type Ccff00LiveCountState = {
+  status: "idle" | "loading" | "ready" | "unavailable";
+  data: Ccff00LiveChainCount | null;
+  error: string | null;
+  lastRefreshedAt: number | null;
+};
+
+const LIVE_CCFF00_REFRESH_INTERVAL_MS = 60_000;
 
 const CCFF00_PRESET_SOURCE = ccff00HistoricalAudit as Ccff00HistoricFixture;
 
@@ -117,14 +134,77 @@ export function VNextDistributionPlanner() {
   const [csv, setCsv] = useState(csvTemplateForKind("erc20_equal"));
   const [uploadError, setUploadError] = useState("");
   const [ccff00Epoch, setCcff00Epoch] = useState<Ccff00EpochState>({ epochId: "1", servedTokenIds: [] });
+  const [ccff00LiveCount, setCcff00LiveCount] = useState<Ccff00LiveCountState>({
+    status: "idle",
+    data: null,
+    error: null,
+    lastRefreshedAt: null
+  });
 
   const activePreset = presetId === "hoodstreet-ccff00" ? HOODSTREET_CCFF00_PRESET : null;
   const isPresetMode = activePreset !== null;
+  const snapshotPublicMinted = isPresetMode ? parsePositiveBigInt(activePreset.publicMinted) : 0n;
+  const liveSnapshot = ccff00LiveCount.data;
+  const livePublicMinted = liveSnapshot ? parsePositiveBigInt(liveSnapshot.publicMinted) : snapshotPublicMinted;
+  const canaryEpochProgress = livePublicMinted >= snapshotPublicMinted
+    ? livePublicMinted - snapshotPublicMinted
+    : 0n;
   const ccff00EpochProgress = isPresetMode ? summarizeCcff00EpochState({
     epochId: ccff00Epoch.epochId,
-    livePublicMinted: parsePositiveBigInt(activePreset.publicMinted),
+    livePublicMinted,
     servedTokenIds: ccff00Epoch.servedTokenIds
   }) : null;
+  const canRefreshLiveCount = ccff00LiveCount.lastRefreshedAt === null
+    ? true
+    : (Date.now() - ccff00LiveCount.lastRefreshedAt) >= LIVE_CCFF00_REFRESH_INTERVAL_MS;
+  const liveCountStatus = !isPresetMode
+    ? "Preset not selected"
+    : ccff00LiveCount.status === "ready" && ccff00LiveCount.data
+      ? ccff00LiveCount.data.publicMinted
+      : "LIVE COUNT UNAVAILABLE";
+  const refreshStatusLabel = !isPresetMode
+    ? "not tracking"
+    : ccff00LiveCount.lastRefreshedAt === null
+      ? "not yet refreshed"
+      : ccff00LiveCount.status === "unavailable"
+        ? `error (${ccff00LiveCount.error ?? "LIVE COUNT UNAVAILABLE"})`
+        : `last updated ${new Date(ccff00LiveCount.lastRefreshedAt).toISOString()}`;
+  const refreshLiveCcff00Count = async (force = false) => {
+    if (!isPresetMode) return;
+    if (!force && !canRefreshLiveCount) return;
+    if (ccff00LiveCount.status === "loading") return;
+    setCcff00LiveCount({ status: "loading", data: null, error: null, lastRefreshedAt: ccff00LiveCount.lastRefreshedAt });
+    try {
+      const response = await fetch("/api/vnext/ccff00-live-count", { cache: "no-store" });
+      const payload = await response.json().catch(() => ({ error: "LIVE COUNT UNAVAILABLE" })) as {
+        status?: string;
+        liveChainState?: Ccff00LiveChainCount;
+        error?: string;
+      };
+      if (!response.ok || payload.status !== "ready" || !payload.liveChainState) {
+        throw new Error(payload.error ?? "LIVE COUNT UNAVAILABLE");
+      }
+      setCcff00LiveCount({
+        status: "ready",
+        data: payload.liveChainState,
+        error: null,
+        lastRefreshedAt: Date.now()
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "LIVE COUNT UNAVAILABLE";
+      setCcff00LiveCount({
+        status: "unavailable",
+        data: null,
+        error: message.includes("LIVE COUNT UNAVAILABLE") ? "LIVE COUNT UNAVAILABLE" : message,
+        lastRefreshedAt: Date.now()
+      });
+    }
+  };
+
+  useEffect(() => {
+    if (!isPresetMode) return;
+    void refreshLiveCcff00Count(true);
+  }, [isPresetMode]);
 
   const preview = useMemo(() => buildDistributionPlannerPreview({
     actionKind,
@@ -149,6 +229,7 @@ export function VNextDistributionPlanner() {
 
   const onPresetChange = (nextPresetId: PresetId) => {
     setUploadError("");
+    setCcff00LiveCount({ status: "idle", data: null, error: null, lastRefreshedAt: null });
     setCcff00Epoch({ epochId: "1", servedTokenIds: [] });
     if (nextPresetId === "manual") {
       setPresetId("manual");
@@ -257,12 +338,16 @@ export function VNextDistributionPlanner() {
       <span>Final eligible manifest: <strong>NOT YET VERIFIED</strong></span>
       <span>BATCH/GAS EVIDENCE: <strong>NOT YET ADMITTED</strong></span>
       {ccff00EpochProgress ? <>
-        <span>Last verified snapshot public count: <strong>{ccff00EpochProgress.livePublicMinted}</strong></span>
+        <span>Live public count: <strong>{liveCountStatus}</strong></span>
+        <span>Last verified snapshot public count: <strong>{activePreset?.publicMinted ?? "not available"}</strong></span>
+        <span>New since verified snapshot: <strong>{ccff00LiveCount.data ? canaryEpochProgress.toString() : "LIVE COUNT UNAVAILABLE"}</strong></span>
+        <span>Live observation block: <strong>{liveSnapshot?.blockNumber ?? "LIVE COUNT UNAVAILABLE"}</strong></span>
         <span>Current epoch: <strong>{ccff00EpochProgress.epochId}</strong></span>
         <span>Canary cohort: <strong>{ccff00EpochProgress.canaryCohort}</strong></span>
         <span>Served this epoch: <strong>{ccff00EpochProgress.servedThisEpoch}</strong></span>
         <span>Pending this epoch: <strong>{ccff00EpochProgress.pendingThisEpoch}</strong></span>
         <span>Snapshot status: <strong>{activePreset?.sourceStatus ?? "not available"}</strong></span>
+        <span>Refresh: <strong>{refreshStatusLabel}</strong></span>
       </> : null}
     </div>
 
@@ -284,7 +369,8 @@ export function VNextDistributionPlanner() {
         <p>{presetSnapshotEvidence}</p>
         {isPresetMode ? <small>Rows loaded from read-only fixture evidence; submission remains disabled.</small> : null}
         {isPresetMode ? <div>
-          <small>Current snapshot is live to the visible evidence fixture until refreshed.</small>
+          <small>Current snapshot is read-only fixture evidence until refreshed from live chain state.</small>
+          <button type="button" onClick={() => void refreshLiveCcff00Count()} disabled={ccff00LiveCount.status === "loading" || !canRefreshLiveCount}>Manual refresh</button>
           <button type="button" className="rmtDistributionSubmit" onClick={onStartEpoch}>Preview next epoch</button>
           <small>Session-only planning state — not persisted and does not authorize a distribution.</small>
         </div> : null}
@@ -402,12 +488,16 @@ export function VNextDistributionPlanner() {
             <div><dt>Evidence source</dt><dd>{activePreset?.sourceLabel ?? "Manual planner inputs"}</dd></div>
             <div><dt>Evidence status</dt><dd>{activePreset?.sourceStatus ?? "manual input"}</dd></div>
             <div><dt>Snapshot block</dt><dd>{activePreset?.sourceBlock ?? "not provided"}</dd></div>
-            <div><dt>Last verified snapshot public count</dt><dd>{ccff00EpochProgress?.livePublicMinted ?? "not loaded"}</dd></div>
+            <div><dt>Last verified snapshot public count</dt><dd>{activePreset?.publicMinted ?? "not available"}</dd></div>
+            <div><dt>Live public count</dt><dd>{liveCountStatus}</dd></div>
+            <div><dt>New since verified snapshot</dt><dd>{ccff00LiveCount.data ? canaryEpochProgress.toString() : "LIVE COUNT UNAVAILABLE"}</dd></div>
+            <div><dt>Live chain public count observation</dt><dd>{liveSnapshot ? liveSnapshot.blockNumber : "LIVE COUNT UNAVAILABLE"}</dd></div>
             <div><dt>Current epoch</dt><dd>{ccff00EpochProgress?.epochId ?? "—"}</dd></div>
             <div><dt>Canary cohort</dt><dd>{CCFF00_CANARY_COUNT}</dd></div>
             <div><dt>Served this epoch</dt><dd>{ccff00EpochProgress?.servedThisEpoch ?? "—"}</dd></div>
             <div><dt>Pending this epoch</dt><dd>{ccff00EpochProgress?.pendingThisEpoch ?? "—"}</dd></div>
             <div><dt>Snapshot status</dt><dd>{activePreset?.sourceStatus ?? "manual input"}</dd></div>
+            <div><dt>Refresh status</dt><dd>{refreshStatusLabel}</dd></div>
             {activePreset ? <>
               <div><dt>Public TBAs at snapshot</dt><dd>{activePreset.publicMinted}</dd></div>
               <div><dt>Excluded/reserve</dt><dd>{activePreset.excludedRecipients}</dd></div>
