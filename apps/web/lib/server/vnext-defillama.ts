@@ -7,9 +7,20 @@ export const DEFILLAMA_BASE_URL = "https://api.llama.fi";
 
 const TIMEOUT_MS = 8_000;
 
-type MarketFetch = (input: string | URL, init?: RequestInit) => Promise<Response>;
+const DEFILLAMA_CHAIN_ID = "4663";
 
 export type DefiLlamaStatus = "ready" | "unavailable";
+
+type MarketFetch = (input: string | URL, init?: RequestInit) => Promise<Response>;
+
+type NumericLike = number | string | null | undefined;
+
+type FeeDataType = "dailyFees" | "dailyRevenue" | "dailyProtocolRevenue";
+
+type DefiLlamaDependencies = {
+  fetch?: MarketFetch;
+  timeoutMs?: number;
+};
 
 export type DefiLlamaChainTvl = {
   source: typeof DEFILLAMA_SOURCE;
@@ -35,6 +46,13 @@ export type DefiLlamaDexOverview = {
   change7dPct?: number;
 };
 
+export type DefiLlamaFeeComponentResult = {
+  status: DefiLlamaStatus;
+  reason?: string;
+  total24hUsd?: number;
+  total7dUsd?: number;
+};
+
 export type DefiLlamaFeeOverview = {
   source: typeof DEFILLAMA_SOURCE;
   metric: "chain_fees_revenue";
@@ -48,6 +66,11 @@ export type DefiLlamaFeeOverview = {
   revenue7dUsd?: number;
   protocolRevenue24hUsd?: number;
   protocolRevenue7dUsd?: number;
+  components: {
+    dailyFees: DefiLlamaFeeComponentResult;
+    dailyRevenue: DefiLlamaFeeComponentResult;
+    dailyProtocolRevenue: DefiLlamaFeeComponentResult;
+  };
 };
 
 type DefiLlamaUnavailable = {
@@ -57,29 +80,29 @@ type DefiLlamaUnavailable = {
   status: "unavailable";
   observedAt: string;
   reason: string;
+  chain?: string;
+  components?: {
+    dailyFees: DefiLlamaFeeComponentResult;
+    dailyRevenue: DefiLlamaFeeComponentResult;
+    dailyProtocolRevenue: DefiLlamaFeeComponentResult;
+  };
 };
 
 export type DefiLlamaChainTvlResult = DefiLlamaChainTvl | DefiLlamaUnavailable;
 export type DefiLlamaDexOverviewResult = DefiLlamaDexOverview | DefiLlamaUnavailable;
 export type DefiLlamaFeeOverviewResult = DefiLlamaFeeOverview | DefiLlamaUnavailable;
 
-type DefiLlamaDependencies = {
-  fetch?: MarketFetch;
-  timeoutMs?: number;
-};
-
-type NumericLike = number | string | null | undefined;
-
-type FeeDataType = "dailyFees" | "dailyRevenue" | "dailyProtocolRevenue";
-
-type DefiLlamaFeesRead = {
+type FeeComponentReadResult = {
+  status: DefiLlamaStatus;
+  reason?: string;
   chain?: string;
   total24hUsd?: number;
   total7dUsd?: number;
 };
 
 const chainSchema = z.object({
-  chain: z.string(),
+  chain: z.string().optional(),
+  name: z.string(),
   tvl: z.union([z.number(), z.string()]),
   chainId: z.union([z.string(), z.number()]).optional(),
   chainIdV2: z.union([z.string(), z.number()]).optional(),
@@ -169,13 +192,13 @@ async function fetchWithTimeout(
   } catch (cause) {
     if (cause instanceof Error) {
       if (cause.name === "AbortError") {
-        throw new Error(makeTimeoutErrorMessage());
+        return Promise.reject(new Error(makeTimeoutErrorMessage()));
       }
       if (cause.message === makeTimeoutErrorMessage()) {
-        throw cause;
+        return Promise.reject(cause);
       }
     }
-    throw cause;
+    return Promise.reject(cause);
   } finally {
     if (timeoutHandle) {
       clearTimeout(timeoutHandle);
@@ -184,10 +207,7 @@ async function fetchWithTimeout(
   }
 }
 
-async function parseJsonOrUnavailable<T>(
-  response: Response,
-  schema: z.ZodType<T>
-): Promise<T | null> {
+async function parseJsonOrUnavailable<T>(response: Response, schema: z.ZodType<T>): Promise<T | null> {
   try {
     const rawText = await response.text();
     const parsedJson = JSON.parse(rawText);
@@ -236,7 +256,7 @@ export async function readVNextDefiLlamaChainTvl(
     return unavailable("chain_tvl", "v2-chains", "malformed_upstream");
   }
 
-  const match = parsed.find((entry) => entry.chain === DEFILLAMA_CHAIN_NAME);
+  const match = parsed.find((entry) => entry.name === DEFILLAMA_CHAIN_NAME);
   if (!match) {
     return unavailable("chain_tvl", "v2-chains", "missing_chain");
   }
@@ -246,14 +266,19 @@ export async function readVNextDefiLlamaChainTvl(
     return unavailable("chain_tvl", "v2-chains", "malformed_upstream");
   }
 
+  const chainId = toStringId(match.chainId) ?? toStringId(match.chainIdV2);
+  if (chainId && chainId !== DEFILLAMA_CHAIN_ID) {
+    return unavailable("chain_tvl", "v2-chains", "wrong_chain_id");
+  }
+
   return {
     source: DEFILLAMA_SOURCE,
     metric: "chain_tvl",
     dataset: "v2-chains",
     status: "ready",
     observedAt,
-    chain: match.chain,
-    chainId: toStringId(match.chainId) ?? toStringId(match.chainIdV2) ?? toStringId(match.cmcId),
+    chain: DEFILLAMA_CHAIN_NAME,
+    chainId,
     tvlUsd
   };
 }
@@ -323,14 +348,18 @@ function buildDefiLlamaFeesUrl(dataType: FeeDataType): string {
   return url.toString();
 }
 
+function hasNumericValue(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
 async function readVNextDefiLlamaFeesByDataType(
   dataType: FeeDataType,
   dependencies: DefiLlamaDependencies
-): Promise<DefiLlamaFeesRead> {
+): Promise<FeeComponentReadResult> {
   const fetchImpl = dependencies.fetch ?? fetch;
   const request = buildDefiLlamaFeesUrl(dataType);
-
   let response: Response;
+
   try {
     response = await fetchWithTimeout(
       request,
@@ -341,28 +370,93 @@ async function readVNextDefiLlamaFeesByDataType(
       dependencies.timeoutMs ?? TIMEOUT_MS,
       fetchImpl
     );
-  } catch {
-    return {};
+  } catch (cause) {
+    const reason = cause instanceof Error ? cause.message : "request_failed";
+    return { status: "unavailable", reason };
   }
 
   if (!response.ok) {
-    return {};
+    return { status: "unavailable", reason: `http_${response.status}` };
   }
 
   const parsed = await parseJsonOrUnavailable(response, feeSchema);
   if (!parsed) {
-    return {};
+    return { status: "unavailable", reason: "malformed_upstream" };
   }
 
   if (parsed.chain !== DEFILLAMA_CHAIN_NAME) {
-    return {};
+    return {
+      status: "unavailable",
+      reason: "wrong_chain",
+      chain: parsed.chain
+    };
+  }
+
+  const total24hUsd = normalizeNumber(parsed.total24h);
+  const total7dUsd = normalizeNumber(parsed.total7d);
+
+  if (!hasNumericValue(total24hUsd) && !hasNumericValue(total7dUsd)) {
+    return {
+      status: "unavailable",
+      reason: "missing_meaningful_fee_data",
+      chain: parsed.chain
+    };
   }
 
   return {
+    status: "ready",
     chain: parsed.chain,
-    total24hUsd: normalizeNumber(parsed.total24h),
-    total7dUsd: normalizeNumber(parsed.total7d)
+    total24hUsd,
+    total7dUsd
   };
+}
+
+function buildFeeComponentProvenance(result: FeeComponentReadResult): DefiLlamaFeeComponentResult {
+  return {
+    status: result.status,
+    reason: result.reason,
+    total24hUsd: result.total24hUsd,
+    total7dUsd: result.total7dUsd
+  };
+}
+
+function applyFeeValues(
+  target: DefiLlamaFeeOverview,
+  result: FeeComponentReadResult,
+  dataType: FeeDataType
+) {
+  if (result.status !== "ready") {
+    return;
+  }
+
+  if (dataType === "dailyFees") {
+    if (hasNumericValue(result.total24hUsd)) {
+      target.fees24hUsd = result.total24hUsd;
+    }
+    if (hasNumericValue(result.total7dUsd)) {
+      target.fees7dUsd = result.total7dUsd;
+    }
+    return;
+  }
+
+  if (dataType === "dailyRevenue") {
+    if (hasNumericValue(result.total24hUsd)) {
+      target.revenue24hUsd = result.total24hUsd;
+    }
+    if (hasNumericValue(result.total7dUsd)) {
+      target.revenue7dUsd = result.total7dUsd;
+    }
+    return;
+  }
+
+  if (dataType === "dailyProtocolRevenue") {
+    if (hasNumericValue(result.total24hUsd)) {
+      target.protocolRevenue24hUsd = result.total24hUsd;
+    }
+    if (hasNumericValue(result.total7dUsd)) {
+      target.protocolRevenue7dUsd = result.total7dUsd;
+    }
+  }
 }
 
 export async function readVNextDefiLlamaFeesOverview(
@@ -374,48 +468,67 @@ export async function readVNextDefiLlamaFeesOverview(
     readVNextDefiLlamaFeesByDataType("dailyProtocolRevenue", dependencies)
   ]);
 
+  const components = {
+    dailyFees: buildFeeComponentProvenance(fees),
+    dailyRevenue: buildFeeComponentProvenance(revenue),
+    dailyProtocolRevenue: buildFeeComponentProvenance(protocolRevenue)
+  };
+
+  const allComponentsUnavailable =
+    fees.status === "unavailable" &&
+    revenue.status === "unavailable" &&
+    protocolRevenue.status === "unavailable";
+
   const chain = fees.chain ?? revenue.chain ?? protocolRevenue.chain;
   if (!chain) {
     return unavailable("chain_fees_revenue", "overview-fees", "missing_chain");
   }
 
-  const observedAt = new Date().toISOString();
+  const allWrongChain =
+    fees.reason === "wrong_chain" &&
+    revenue.reason === "wrong_chain" &&
+    protocolRevenue.reason === "wrong_chain";
+
+  if (allComponentsUnavailable && allWrongChain) {
+    return unavailable("chain_fees_revenue", "overview-fees", "missing_chain");
+  }
+
+  if (allComponentsUnavailable) {
+    return {
+      source: DEFILLAMA_SOURCE,
+      metric: "chain_fees_revenue",
+      dataset: "overview-fees",
+      status: "unavailable",
+      observedAt: new Date().toISOString(),
+      reason: "all_components_unavailable",
+      chain: DEFILLAMA_CHAIN_NAME,
+      components
+    };
+  }
+
   const normalized: DefiLlamaFeeOverview = {
     source: DEFILLAMA_SOURCE,
     metric: "chain_fees_revenue",
     dataset: "overview-fees",
     status: "ready",
-    observedAt,
-    chain
+    observedAt: new Date().toISOString(),
+    chain,
+    components
   };
 
-  if (fees.total24hUsd !== undefined) {
-    normalized.fees24hUsd = fees.total24hUsd;
-  }
-  if (fees.total7dUsd !== undefined) {
-    normalized.fees7dUsd = fees.total7dUsd;
-  }
-  if (revenue.total24hUsd !== undefined) {
-    normalized.revenue24hUsd = revenue.total24hUsd;
-  }
-  if (revenue.total7dUsd !== undefined) {
-    normalized.revenue7dUsd = revenue.total7dUsd;
-  }
-  if (protocolRevenue.total24hUsd !== undefined) {
-    normalized.protocolRevenue24hUsd = protocolRevenue.total24hUsd;
-  }
-  if (protocolRevenue.total7dUsd !== undefined) {
-    normalized.protocolRevenue7dUsd = protocolRevenue.total7dUsd;
-  }
+  applyFeeValues(normalized, fees, "dailyFees");
+  applyFeeValues(normalized, revenue, "dailyRevenue");
+  applyFeeValues(normalized, protocolRevenue, "dailyProtocolRevenue");
 
-  if (
-    normalized.fees24hUsd === undefined
-    && normalized.fees7dUsd === undefined
-    && normalized.revenue24hUsd === undefined
-    && normalized.revenue7dUsd === undefined
-    && normalized.protocolRevenue24hUsd === undefined
-    && normalized.protocolRevenue7dUsd === undefined
-  ) {
+  const hasAnyValue =
+    normalized.fees24hUsd !== undefined ||
+    normalized.fees7dUsd !== undefined ||
+    normalized.revenue24hUsd !== undefined ||
+    normalized.revenue7dUsd !== undefined ||
+    normalized.protocolRevenue24hUsd !== undefined ||
+    normalized.protocolRevenue7dUsd !== undefined;
+
+  if (!hasAnyValue) {
     return unavailable("chain_fees_revenue", "overview-fees", "missing_meaningful_fee_data");
   }
 
