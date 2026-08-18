@@ -354,6 +354,60 @@ export function VNextDistributionPlanner() {
       {hasChainAuditInconsistency ? <span>Consistency check: <strong>CHAIN/AUDIT INCONSISTENCY</strong></span> : null}
     </div>
 
+    {isPresetMode ? <section className="rmtDistributionCards" aria-label="Planning evidence">
+      {projectProfile ? <DistributionEcosystemProjectProfile profile={projectProfile} /> : null}
+      <article>
+        <h3>LIVE NETWORK STATE</h3>
+        <dl>
+          <div><dt>Live public memberships</dt><dd>{ccff00LiveCount.status === "ready" && liveSnapshot ? liveSnapshot.publicMinted : "LIVE COUNT UNAVAILABLE"}</dd></div>
+          <div><dt>Reserve count</dt><dd>{reserveCount ?? "LIVE COUNT UNAVAILABLE"}</dd></div>
+          <div><dt>Exact observation block</dt><dd>{liveSnapshot ? liveSnapshot.blockHash ? `${liveSnapshot.blockNumber} (${liveSnapshot.blockHash})` : liveSnapshot.blockNumber : "LIVE COUNT UNAVAILABLE"}</dd></div>
+          <div><dt>Refresh</dt><dd>{refreshStatusLabel}</dd></div>
+        </dl>
+      </article>
+      <article>
+        <h3>DISTRIBUTION PROGRAM</h3>
+        <dl>
+          <div><dt>Program</dt><dd>{HOODSTREET_CCFF00_PROGRAM.programLabel}</dd></div>
+          <div><dt>Canary status</dt><dd>{HOODSTREET_CCFF00_PROGRAM.canaryStatus}</dd></div>
+          <div><dt>Canary cohort</dt><dd>{HOODSTREET_CCFF00_PROGRAM.canaryCohort}</dd></div>
+          <div><dt>Current epoch</dt><dd>{ccff00EpochProgress?.epochId ?? "—"}</dd></div>
+          <div><dt>Served</dt><dd>{ccff00EpochProgress?.servedThisEpoch ?? "—"}</dd></div>
+          <div><dt>Pending</dt><dd>{ccff00EpochProgress?.pendingThisEpoch ?? "—"}</dd></div>
+          <div><dt>Delta since audit snapshot</dt><dd>{canaryDeltaLabel}</dd></div>
+        </dl>
+      </article>
+      <article>
+        <h3>EVIDENCE</h3>
+        <dl>
+          <div><dt>Historical audit block</dt><dd>{historicalAuditBlock}</dd></div>
+          <div><dt>Audit public count</dt><dd>{historicalAuditPublicCount}</dd></div>
+          <div><dt>Final eligible manifest</dt><dd>NOT YET VERIFIED</dd></div>
+          <div><dt>Snapshot status</dt><dd>{activePreset?.sourceStatus ?? "manual input"}</dd></div>
+          <div><dt>Excluded/reserve</dt><dd>{snapshotExcludeCount}</dd></div>
+        </dl>
+      </article>
+      <article>
+        <h3>READINESS GATE</h3>
+        <dl>
+          <div><dt>Wallet submission</dt><dd className="rmtReadinessFail">disabled</dd></div>
+          <div><dt>Server submission</dt><dd className="rmtReadinessFail">disabled</dd></div>
+          <div><dt>Approval workflow</dt><dd>preview only</dd></div>
+        </dl>
+        <button type="button" className="rmtDistributionSubmit" disabled>Submission disabled</button>
+        <small>Canonical execution batches are not yet admitted.</small>
+      </article>
+      {preview.status === "ready" ? <article>
+        <h3>MANIFEST SNAPSHOT</h3>
+        <dl>
+          <div><dt>Asset</dt><dd>{preview.assetAddress}</dd></div>
+          <div><dt>Rows</dt><dd>{summary?.rows}</dd></div>
+          <div><dt>Proposed RMT per recipient</dt><dd>{estimatedPerRecipient}</dd></div>
+          <div><dt>Total required</dt><dd>{estimatedAsset}</dd></div>
+        </dl>
+      </article> : null}
+    </section> : null}
+
     <form className="rmtDistributionControls" onSubmit={(event) => event.preventDefault()}>
       <label className="rmtDistributionField">
         <span>Planning preset</span>
@@ -482,60 +536,6 @@ export function VNextDistributionPlanner() {
       </span>
       {uploadError ? <small>{uploadError}</small> : null}
     </div>
-
-    {isPresetMode ? <section className="rmtDistributionCards" aria-label="Planning evidence">
-      {projectProfile ? <DistributionEcosystemProjectProfile profile={projectProfile} /> : null}
-      <article>
-        <h3>LIVE NETWORK STATE</h3>
-        <dl>
-          <div><dt>Live public memberships</dt><dd>{ccff00LiveCount.status === "ready" && liveSnapshot ? liveSnapshot.publicMinted : "LIVE COUNT UNAVAILABLE"}</dd></div>
-          <div><dt>Reserve count</dt><dd>{reserveCount ?? "LIVE COUNT UNAVAILABLE"}</dd></div>
-          <div><dt>Exact observation block</dt><dd>{liveSnapshot ? liveSnapshot.blockHash ? `${liveSnapshot.blockNumber} (${liveSnapshot.blockHash})` : liveSnapshot.blockNumber : "LIVE COUNT UNAVAILABLE"}</dd></div>
-          <div><dt>Refresh</dt><dd>{refreshStatusLabel}</dd></div>
-        </dl>
-      </article>
-      <article>
-        <h3>DISTRIBUTION PROGRAM</h3>
-        <dl>
-          <div><dt>Program</dt><dd>{HOODSTREET_CCFF00_PROGRAM.programLabel}</dd></div>
-          <div><dt>Canary status</dt><dd>{HOODSTREET_CCFF00_PROGRAM.canaryStatus}</dd></div>
-          <div><dt>Canary cohort</dt><dd>{HOODSTREET_CCFF00_PROGRAM.canaryCohort}</dd></div>
-          <div><dt>Current epoch</dt><dd>{ccff00EpochProgress?.epochId ?? "—"}</dd></div>
-          <div><dt>Served</dt><dd>{ccff00EpochProgress?.servedThisEpoch ?? "—"}</dd></div>
-          <div><dt>Pending</dt><dd>{ccff00EpochProgress?.pendingThisEpoch ?? "—"}</dd></div>
-          <div><dt>Delta since audit snapshot</dt><dd>{canaryDeltaLabel}</dd></div>
-        </dl>
-      </article>
-      <article>
-        <h3>EVIDENCE</h3>
-        <dl>
-          <div><dt>Historical audit block</dt><dd>{historicalAuditBlock}</dd></div>
-          <div><dt>Audit public count</dt><dd>{historicalAuditPublicCount}</dd></div>
-          <div><dt>Final eligible manifest</dt><dd>NOT YET VERIFIED</dd></div>
-          <div><dt>Snapshot status</dt><dd>{activePreset?.sourceStatus ?? "manual input"}</dd></div>
-          <div><dt>Excluded/reserve</dt><dd>{snapshotExcludeCount}</dd></div>
-        </dl>
-      </article>
-      <article>
-        <h3>READINESS GATE</h3>
-        <dl>
-          <div><dt>Wallet submission</dt><dd className="rmtReadinessFail">disabled</dd></div>
-          <div><dt>Server submission</dt><dd className="rmtReadinessFail">disabled</dd></div>
-          <div><dt>Approval workflow</dt><dd>preview only</dd></div>
-        </dl>
-        <button type="button" className="rmtDistributionSubmit" disabled>Submission disabled</button>
-        <small>Canonical execution batches are not yet admitted.</small>
-      </article>
-      {preview.status === "ready" ? <article>
-        <h3>MANIFEST SNAPSHOT</h3>
-        <dl>
-          <div><dt>Asset</dt><dd>{preview.assetAddress}</dd></div>
-          <div><dt>Rows</dt><dd>{summary?.rows}</dd></div>
-          <div><dt>Proposed RMT per recipient</dt><dd>{estimatedPerRecipient}</dd></div>
-          <div><dt>Total required</dt><dd>{estimatedAsset}</dd></div>
-        </dl>
-      </article> : null}
-    </section> : null}
 
     {preview.status === "ready" ? <section aria-labelledby="distribution-preview-rows" className="rmtDistributionPreview">
       <h3 id="distribution-preview-rows">
