@@ -4249,8 +4249,14 @@ body .rmtTerminal button {
 
 .rmtDistributionCards {
   display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: start;
+}
+
+.rmtDistributionCards article {
+  display: grid;
   gap: 10px;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 }
 
 .rmtDistributionCards article {
@@ -4258,6 +4264,19 @@ body .rmtTerminal button {
   border-radius: 10px;
   border: 1px solid var(--vn-border);
   background: rgba(255, 255, 255, 0.02);
+}
+
+.rmtDistributionCards article:first-child {
+  grid-column: span 2;
+}
+
+.rmtDistributionCards h3 {
+  margin: 0;
+  letter-spacing: 0.04em;
+  font-size: 12px;
+  line-height: 1.3;
+  text-transform: uppercase;
+  color: var(--vn-text-soft);
 }
 
 .rmtDistributionCards dl,
@@ -4277,6 +4296,45 @@ body .rmtTerminal button {
 
 .rmtDistributionCards dd {
   font-size: 13px;
+  color: var(--vn-text);
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.rmtDistributionCards article > div {
+  display: grid;
+  grid-template-columns: minmax(120px, 150px) minmax(0, 1fr);
+  column-gap: 10px;
+  align-items: baseline;
+  row-gap: 6px;
+  overflow: hidden;
+}
+
+.rmtDistributionCards dt {
+  color: var(--vn-text-muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.rmtDistributionCards a {
+  color: var(--vn-accent);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
+.rmtDistributionCards a:visited {
+  color: var(--vn-accent);
+}
+
+.rmtDistributionCards a:hover {
+  color: var(--vn-accent-strong);
+}
+
+.rmtDistributionCards a:focus-visible {
+  outline: 3px solid var(--vn-focus);
+  outline-offset: 2px;
+  border-radius: 4px;
 }
 
 .rmtDistributionPreview {
@@ -4327,6 +4385,40 @@ body .rmtTerminal button {
 .rmtDistributionSubmit:disabled {
   opacity: 0.65;
   cursor: not-allowed;
+}
+
+@media (max-width: 1279px) and (min-width: 641px) {
+  .rmtDistributionCards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .rmtDistributionCards article:first-child {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 640px) {
+  .rmtDistributionCards {
+    grid-template-columns: 1fr;
+  }
+
+  .rmtDistributionCards article {
+    grid-column: 1 / -1;
+  }
+
+  .rmtDistributionCards article > div {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .rmtDistributionCards dt {
+    font-size: 10px;
+  }
+
+  .rmtDistributionCards dd {
+    line-height: 1.45;
+    white-space: normal;
+  }
 }
 
 @media (max-width: 1279px) and (min-width: 1024px) {
