@@ -4301,7 +4301,7 @@ body .rmtTerminal button {
   word-break: break-word;
 }
 
-.rmtDistributionCards article > div {
+.rmtDistributionCards dl > div {
   display: grid;
   grid-template-columns: minmax(120px, 150px) minmax(0, 1fr);
   column-gap: 10px;
@@ -4406,7 +4406,7 @@ body .rmtTerminal button {
     grid-column: 1 / -1;
   }
 
-  .rmtDistributionCards article > div {
+  .rmtDistributionCards dl > div {
     grid-template-columns: 1fr;
     align-items: stretch;
   }
