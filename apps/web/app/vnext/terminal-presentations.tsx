@@ -299,7 +299,7 @@ function DesktopDistribution(props: TerminalPresentationProps) {
     <header className="rmtMarketsHeading">
       <div><h1 id="rmt-distribution-heading">Distribution Center</h1><p>Plan deterministic, auditable value distribution.</p></div>
     </header>
-    <VNextDistributionPlanner />
+    <VNextDistributionPlanner presentation="desktop" />
   </section>;
 }
 
@@ -363,7 +363,7 @@ function MobilePortfolio(props: TerminalPresentationProps) {
 function MobileDistribution(props: TerminalPresentationProps) {
   return <section className="rmtDistributionSurface isMobile" id="rmt-mobile-distribution" aria-labelledby="rmt-mobile-distribution-heading">
     <header className="rmtMobileContextHeading"><div><h1 id="rmt-mobile-distribution-heading">Distribution Center</h1><p>Plan deterministic, auditable value distribution.</p></div></header>
-    <VNextDistributionPlanner />
+    <VNextDistributionPlanner presentation="mobile" />
   </section>;
 }
 

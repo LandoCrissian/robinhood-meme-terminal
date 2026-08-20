@@ -31,6 +31,15 @@ const CCFF00_EXTERNAL_LINKS = [
   { label: "HoodStreet on X", href: CCFF00_OFFICIAL_LINKS.hoodstreetX }
 ] as const;
 
+const MOBILE_SECTIONS = [
+  { value: "community", label: "Genesis" },
+  { value: "planner", label: "Planner" },
+  { value: "evidence", label: "Evidence" }
+] as const;
+
+type DistributionPresentation = "desktop" | "mobile";
+type MobileDistributionSection = (typeof MOBILE_SECTIONS)[number]["value"];
+
 function csvTemplateForKind(actionKind: DistributionPlannerActionKind) {
   if (actionKind === "erc20_equal") return "recipient\\n";
   if (actionKind === "erc20_custom") return "recipient,amount\\n";
@@ -38,7 +47,7 @@ function csvTemplateForKind(actionKind: DistributionPlannerActionKind) {
   return "recipient,tokenId,amount\\n";
 }
 
-export function VNextDistributionPlanner() {
+export function VNextDistributionPlanner({ presentation = "desktop" }: { presentation?: DistributionPresentation }) {
   const [actionKind, setActionKind] = useState<DistributionPlannerActionKind>("erc20_equal");
   const [assetAddress, setAssetAddress] = useState<string>("");
   const [assetDecimals, setAssetDecimals] = useState(String(DISTRIBUTION_PLANNER_DEFAULT_ASSET_DECIMALS));
@@ -46,6 +55,8 @@ export function VNextDistributionPlanner() {
   const [equalAmount, setEqualAmount] = useState("1");
   const [csv, setCsv] = useState(csvTemplateForKind("erc20_equal"));
   const [uploadError, setUploadError] = useState("");
+  const [mobileSection, setMobileSection] = useState<MobileDistributionSection>("community");
+  const idPrefix = presentation === "mobile" ? "rmt-mobile-distribution" : "rmt-desktop-distribution";
 
   const preview = useMemo(() => buildDistributionPlannerPreview({
     actionKind,
@@ -103,15 +114,37 @@ export function VNextDistributionPlanner() {
     setUploadError("");
   };
 
-  return <section className="rmtDistributionPanel" aria-labelledby="rmt-distribution-planner-heading" aria-live="polite">
+  return <section
+    className="rmtDistributionPanel"
+    aria-labelledby={`${idPrefix}-planner-heading`}
+    aria-live="polite"
+    data-presentation={presentation}
+    data-mobile-section={mobileSection}
+  >
     <header className="rmtDistributionHeading">
       <div>
-        <h2 id="rmt-distribution-planner-heading">Deterministic planner</h2>
+        <h2 id={`${idPrefix}-planner-heading`}>Deterministic planner</h2>
         <p>Plan deterministic, auditable value distribution without creating an executable manifest.</p>
       </div>
     </header>
 
-    <div className="rmtDistributionStatus" role="status">
+    {presentation === "mobile" ? <nav className="rmtDistributionMobileTabs" aria-label="Distribution workspace sections">
+      {MOBILE_SECTIONS.map((section) => <button
+        key={section.value}
+        type="button"
+        aria-pressed={mobileSection === section.value}
+        className={mobileSection === section.value ? "isActive" : ""}
+        onClick={(event) => {
+          setMobileSection(section.value);
+          event.currentTarget.closest(".rmtDistributionPanel")?.scrollIntoView({ block: "start" });
+        }}
+      >{section.label}{section.value === "evidence" ? <span>{preview.status === "ready" ? "READY" : "CHECK"}</span> : null}</button>)}
+    </nav> : null}
+
+    <div
+      className="rmtDistributionStatus rmtDistributionEvidenceOnly"
+      role="status"
+    >
       <span><strong>PLANNING ONLY</strong> · {DISTRIBUTION_PLANNER_MODE}</span>
       <span><strong>NO WALLET SUBMISSION</strong></span>
       <span><strong>NO SERVER SUBMISSION</strong></span>
@@ -120,11 +153,14 @@ export function VNextDistributionPlanner() {
       <span>BATCH/GAS EVIDENCE: <strong>NOT YET ADMITTED</strong></span>
     </div>
 
-    <section className="rmtCcff00Genesis" aria-labelledby="distribution-source-ccff00">
+    <section
+      className="rmtCcff00Genesis rmtDistributionCommunityOnly"
+      aria-labelledby={`${idPrefix}-source-ccff00`}
+    >
       <header className="rmtCcff00GenesisHeader">
         <div>
           <span className="rmtCcff00Eyebrow">Supported ecosystem · read-only</span>
-          <h3 id="distribution-source-ccff00"><strong>CCFF00</strong><span>Genesis Community</span></h3>
+          <h3 id={`${idPrefix}-source-ccff00`}><strong>CCFF00</strong><span>Genesis Community</span></h3>
         </div>
         <span className="rmtCcff00ProofState">{CCFF00_PRESENTATION_EVIDENCE.status}</span>
       </header>
@@ -175,10 +211,13 @@ export function VNextDistributionPlanner() {
       <small className="rmtCcff00ReleaseBoundary">Fresh full-public evidence, canary receipt/control proofs, reconciliation, a small batch, and separate engine deployment/activation authorization remain mandatory before any future execution. CCFF00 is never required to use RMT.</small>
     </section>
 
-    <form className="rmtDistributionControls" onSubmit={(event) => event.preventDefault()}>
+    <form
+      className="rmtDistributionControls rmtDistributionPlannerOnly"
+      onSubmit={(event) => event.preventDefault()}
+    >
       <div className="rmtDistributionFieldRow">
-        <label htmlFor="distribution-kind">Distribution kind</label>
-        <div>
+        <label htmlFor={`${idPrefix}-kind`}>Distribution kind</label>
+        <div id={`${idPrefix}-kind`}>
           {ACTION_OPTIONS.map((option) => <button
             key={option.value}
             type="button"
@@ -187,14 +226,14 @@ export function VNextDistributionPlanner() {
           >{option.label}</button>)}
         </div>
       </div>
-      <label className="rmtDistributionField" htmlFor="distribution-asset-address">
+      <label className="rmtDistributionField" htmlFor={`${idPrefix}-asset-address`}>
         <span>Token contract</span>
-        <input id="distribution-asset-address" value={assetAddress} onChange={(event: ChangeEvent<HTMLInputElement>) => setAssetAddress(event.target.value)} inputMode="text" autoComplete="off" spellCheck={false} required />
+        <input id={`${idPrefix}-asset-address`} value={assetAddress} onChange={(event: ChangeEvent<HTMLInputElement>) => setAssetAddress(event.target.value)} inputMode="text" autoComplete="off" spellCheck={false} required />
       </label>
-      <label className={`rmtDistributionField${isErc20 ? "" : " isDisabled"}`} htmlFor="distribution-token-decimals">
+      <label className={`rmtDistributionField rmtDistributionFieldCompact${isErc20 ? "" : " isDisabled"}`} htmlFor={`${idPrefix}-token-decimals`}>
         <span>Token decimals</span>
         <input
-          id="distribution-token-decimals"
+          id={`${idPrefix}-token-decimals`}
           value={assetDecimals}
           onChange={(event) => setAssetDecimals(event.target.value)}
           inputMode="numeric"
@@ -204,10 +243,10 @@ export function VNextDistributionPlanner() {
           aria-disabled={!isErc20}
         />
       </label>
-      <label className={`rmtDistributionField${actionKind === "erc20_equal" ? "" : " isDisabled"}`} htmlFor="distribution-equal-amount">
+      <label className={`rmtDistributionField rmtDistributionFieldCompact${actionKind === "erc20_equal" ? "" : " isDisabled"}`} htmlFor={`${idPrefix}-equal-amount`}>
         <span>Equal amount</span>
         <input
-          id="distribution-equal-amount"
+          id={`${idPrefix}-equal-amount`}
           value={equalAmount}
           onChange={(event) => setEqualAmount(event.target.value)}
           inputMode="decimal"
@@ -217,13 +256,13 @@ export function VNextDistributionPlanner() {
           aria-disabled={actionKind !== "erc20_equal"}
         />
       </label>
-      <label className="rmtDistributionField" htmlFor="distribution-sender-address">
+      <label className="rmtDistributionField" htmlFor={`${idPrefix}-sender-address`}>
         <span>Planner sender</span>
-        <input id="distribution-sender-address" value={senderAddress} onChange={(event: ChangeEvent<HTMLInputElement>) => setSenderAddress(event.target.value)} inputMode="text" autoComplete="off" spellCheck={false} required />
+        <input id={`${idPrefix}-sender-address`} value={senderAddress} onChange={(event: ChangeEvent<HTMLInputElement>) => setSenderAddress(event.target.value)} inputMode="text" autoComplete="off" spellCheck={false} required />
       </label>
-      <label className="rmtDistributionField" htmlFor="distribution-csv">
+      <label className="rmtDistributionField" htmlFor={`${idPrefix}-csv`}>
         <span>Recipient CSV</span>
-        <textarea id="distribution-csv" value={csv} onChange={onPasteCsv} spellCheck={false} rows={14} />
+        <textarea id={`${idPrefix}-csv`} value={csv} onChange={onPasteCsv} spellCheck={false} rows={presentation === "mobile" ? 8 : 14} />
       </label>
       <div className="rmtDistributionUploadBar">
         <label className="rmtDistributionUpload"><input type="file" accept=".csv,text/csv" onChange={onUploadCsv} />Upload CSV</label>
@@ -232,7 +271,7 @@ export function VNextDistributionPlanner() {
       <button type="button" className="rmtDistributionSubmit" onClick={onResetDefaults}>Reset planner</button>
     </form>
 
-    <div className={`rmtDistributionStateBanner${preview.status === "error" ? " isError" : ""}`}>
+    <div className={`rmtDistributionStateBanner rmtDistributionPlannerEvidence${preview.status === "error" ? " isError" : ""}`}>
         <strong>{preview.status === "ready" ? "Planning output ready" : "Planning input check"}</strong>
         <span>
           {preview.status === "ready"
@@ -242,6 +281,7 @@ export function VNextDistributionPlanner() {
       {uploadError ? <small>{uploadError}</small> : null}
     </div>
 
+    <div className="rmtDistributionEvidenceOnly rmtDistributionEvidenceStack">
     {preview.status === "ready" ? <>
       <section className="rmtDistributionCards" aria-label="Planning evidence">
         <article>
@@ -272,8 +312,8 @@ export function VNextDistributionPlanner() {
         </article>
       </section>
 
-      <section aria-labelledby="distribution-preview-rows" className="rmtDistributionPreview">
-        <h3 id="distribution-preview-rows">Recipient preview (first {rowsToPreview.length})</h3>
+      <section aria-labelledby={`${idPrefix}-preview-rows`} className="rmtDistributionPreview">
+        <h3 id={`${idPrefix}-preview-rows`}>Recipient preview (first {rowsToPreview.length})</h3>
         <ul>
           {rowsToPreview.map((entry, index) => <li key={`${entry.recipient}-${index}`}>
             <span>{index + 1}</span>
@@ -283,16 +323,20 @@ export function VNextDistributionPlanner() {
         </ul>
       </section>
 
-      <section aria-labelledby="distribution-batches" className="rmtDistributionPreview">
-        <h3 id="distribution-batches">Batches</h3>
+      <section aria-labelledby={`${idPrefix}-batches`} className="rmtDistributionPreview">
+        <h3 id={`${idPrefix}-batches`}>Batches</h3>
         <p>Canonical execution batches are not yet admitted.</p>
       </section>
-    </> : null}
+    </> : <section className="rmtDistributionEmptyEvidence" aria-label="Planning evidence status">
+      <strong>Evidence awaits valid planner input</strong>
+      <p>Complete the Planner section, then return here for the deterministic preview and readiness boundary.</p>
+    </section>}
 
     <section className="rmtDistributionFooter">
       <strong>Execution boundary</strong>
       <p>All actions above are intentionally read-only planning. A send/confirm flow is not implemented, and cannot execute from this screen.</p>
       <p>Utility policy, wallet submission, server submission, canary transactions, and deployment remain unapproved and unavailable in this view.</p>
     </section>
+    </div>
   </section>;
 }

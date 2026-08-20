@@ -216,7 +216,13 @@ assert.match(plannerPresentationSource, /Independent ecosystem support by RMT\. 
 assert.match(plannerPresentationSource, /Wallet submission <strong>DISABLED<\/strong>/);
 assert.match(plannerPresentationSource, /Server submission <strong>DISABLED<\/strong>/);
 assert.match(plannerPresentationSource, /Mass distribution <strong>NOT AUTHORIZED<\/strong>/);
+assert.match(plannerPresentationSource, /data-mobile-section=/);
+assert.match(plannerPresentationSource, /Genesis[\s\S]*Planner[\s\S]*Evidence/);
 assert.doesNotMatch(plannerPresentationSource, /writeContract|sendTransaction|signMessage|signTypedData|walletClient/);
+
+const terminalPresentationSource = readFileSync(new URL("../../app/vnext/terminal-presentations.tsx", import.meta.url), "utf8");
+assert.match(terminalPresentationSource, /VNextDistributionPlanner presentation="desktop"/);
+assert.match(terminalPresentationSource, /VNextDistributionPlanner presentation="mobile"/);
 
 console.log("RMT CCFF00 read-only snapshot, canary, and generic distribution-planner checks passed.");
 }
