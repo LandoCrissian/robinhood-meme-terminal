@@ -119,9 +119,10 @@ assert.match(presentations, /imageUrl=\{market\.imageUri\}/);
 assert.match(artwork, /safeTokenArtworkUrl/);
 assert.match(artwork, /onError=\{\(\) => setFailedImage\(safeImage\)\}/);
 assert.match(artwork, /symbol\.trim\(\)\.slice\(0, 1\)/);
-assert.match(marketRoute, /canonicalAddress\.toLowerCase\(\) === baseAddress/);
+assert.match(marketRoute, /evidence\.assetSide !== "BASE"/);
+assert.match(marketRoute, /normalizeProviderPairForAsset/);
 assert.match(marketRoute, /canonicalAddress\.toLowerCase\(\) === ROBINHOOD_RMT_ADDRESS\.toLowerCase\(\)/);
-assert.match(marketRoute, /imageUri: market\.imageUri \?\? existing\.imageUri/);
+assert.match(marketRoute, /candidate\.imageUri \?\? evidenceList/);
 assert.doesNotMatch(component, /href="\/portfolio"|href=\{"\/portfolio"\}/);
 assert.doesNotMatch(component, /\$428\.16|\$1,862\.34|mock|fixture/i);
 

@@ -84,6 +84,7 @@ function fallbackMarketFromResolution(
   const dexId = directory.dexId ?? pool?.venue ?? "DEX";
   const url = directory.url ?? `${EXPLORER}/address/${pairAddress}`;
   return {
+    assetId: directory.assetId,
     address: directory.address,
     name: directory.name,
     symbol: directory.symbol,
@@ -114,8 +115,20 @@ function fallbackMarketFromResolution(
     momentumScore: 0,
     buyPressureBps: 0,
     signal: directory.signal,
-    riskFlags: []
+    riskFlags: [],
+    primaryMarket: directory.primaryMarket,
+    verifiedMarkets: directory.verifiedMarkets
   };
+}
+
+function chartPoolForMarket(market: Pick<ExternalMarket, "pairAddress" | "primaryMarket"> | VNextDirectoryMarket | undefined) {
+  if (!market) return undefined;
+  if (market.primaryMarket) {
+    return market.primaryMarket.chartEligibility === "eligible" && market.primaryMarket.pool.kind === "evm-address"
+      ? market.primaryMarket.pool.value
+      : undefined;
+  }
+  return market.pairAddress;
 }
 
 function WorkspacePosition({
@@ -334,7 +347,11 @@ export function VNextAssetWorkspace({
   const workspace = useVNextAssetWorkspace(directoryMarket.address, directoryMarket.pairAddress);
   const resolution = workspace.resolution ?? workspace.market?.resolution;
   const market = workspace.market ?? fallbackMarketFromResolution(directoryMarket, resolution);
-  const selectedPool = market?.pairAddress ?? directoryMarket.pairAddress ?? resolution?.pools[0]?.poolAddress;
+  const workspacePool = chartPoolForMarket(market);
+  const directoryPool = chartPoolForMarket(directoryMarket);
+  const selectedPool = workspacePool && directoryPool && workspacePool.toLowerCase() !== directoryPool.toLowerCase()
+    ? undefined
+    : workspacePool ?? directoryPool;
 
   const sections = [
     { id: "activity", label: "Activity" },

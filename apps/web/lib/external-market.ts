@@ -3,6 +3,42 @@ import type { ExternalMarketRiskFlag, ExternalMarketSignal } from "./external-ma
 
 export type ExternalMarketVenue = Extract<MarketVenue, { kind: "dex" | "external-launchpad" }>;
 
+export type ExternalMarketAssetSide = "BASE" | "QUOTE";
+
+export type ExternalPoolIdentity =
+  | { kind: "evm-address"; value: string }
+  | { kind: "bytes32"; value: string };
+
+export type AssetMarketEvidence = {
+  chainId: 4663;
+  assetId: string;
+  token: { address: string; name: string; symbol: string };
+  venue: string;
+  protocolVersion: 2 | 3 | 4 | null;
+  pool: ExternalPoolIdentity;
+  baseToken: { address: string; name: string; symbol: string };
+  quoteToken: { address: string; name: string; symbol: string };
+  assetSide: ExternalMarketAssetSide;
+  displayEligibility: "eligible" | "invalid-token-perspective" | "unsupported-quote" | "missing-price";
+  chartEligibility: "eligible" | "unavailable";
+  executionEligibility: "view-only";
+  provenance: "dexscreener-token-pairs" | "dexscreener-token-batch";
+  priceUsd: number | null;
+  liquidityUsd: number | null;
+  marketCapUsd: number | null;
+  fdvUsd: number | null;
+  volume24h: number | null;
+  priceChange24h: number | null;
+  pairCreatedAt: number | null;
+};
+
+export type AssetMarketRecord = {
+  assetId: string;
+  token: AssetMarketEvidence["token"];
+  primaryMarket: AssetMarketEvidence | null;
+  verifiedMarkets: AssetMarketEvidence[];
+};
+
 export type ExternalSocialLinks = {
   x: string | null;
   telegram: string | null;
@@ -98,6 +134,7 @@ export function externalProjectProvenanceDescription(project: ExternalProjectMet
 }
 
 export type ExternalMarket = {
+  assetId?: string;
   address: string;
   name: string;
   symbol: string;
@@ -147,10 +184,13 @@ export type ExternalMarket = {
   buyPressureBps: number;
   signal: ExternalMarketSignal;
   riskFlags: ExternalMarketRiskFlag[];
+  primaryMarket?: AssetMarketEvidence;
+  verifiedMarkets?: AssetMarketEvidence[];
 };
 
 export type ExternalMarketResponse = {
   markets?: ExternalMarket[];
+  assetRecords?: AssetMarketRecord[];
   resolution?: UniversalMarketResolution;
   source?: string;
   rankingVersion?: string;
@@ -163,6 +203,61 @@ export type ExternalMarketResponse = {
   stale?: boolean;
   error?: string;
 };
+
+function marketEvidenceKey(market: AssetMarketEvidence) {
+  return `${market.venue.toLowerCase()}:${market.pool.kind}:${market.pool.value.toLowerCase()}`;
+}
+
+function comparePrimaryEvidence(left: AssetMarketEvidence, right: AssetMarketEvidence) {
+  const eligibilityRank = (market: AssetMarketEvidence) => market.displayEligibility === "eligible" && market.assetSide === "BASE" ? 0 : 1;
+  const eligibilityDifference = eligibilityRank(left) - eligibilityRank(right);
+  if (eligibilityDifference !== 0) return eligibilityDifference;
+  const leftLiquidity = left.liquidityUsd ?? -1;
+  const rightLiquidity = right.liquidityUsd ?? -1;
+  if (leftLiquidity !== rightLiquidity) return rightLiquidity - leftLiquidity;
+  const leftVolume = left.volume24h ?? -1;
+  const rightVolume = right.volume24h ?? -1;
+  if (leftVolume !== rightVolume) return rightVolume - leftVolume;
+  return marketEvidenceKey(left).localeCompare(marketEvidenceKey(right));
+}
+
+export function selectPrimaryAssetMarket(
+  markets: readonly AssetMarketEvidence[],
+  options: { requireChart?: boolean } = {}
+) {
+  const assetIds = new Set(markets.map((market) => market.assetId.toLowerCase()));
+  if (assetIds.size > 1) return null;
+  const eligible = markets.filter((market) => (
+    market.displayEligibility === "eligible"
+    && market.assetSide === "BASE"
+    && market.priceUsd !== null
+    && market.priceUsd > 0
+    && (!options.requireChart || market.chartEligibility === "eligible")
+  ));
+  return [...eligible].sort(comparePrimaryEvidence)[0] ?? null;
+}
+
+export function buildAssetMarketRecord(
+  markets: readonly AssetMarketEvidence[],
+  options: { requireChart?: boolean } = {}
+): AssetMarketRecord | null {
+  if (markets.length === 0) return null;
+  const assetId = markets[0].assetId;
+  if (markets.some((market) => market.assetId.toLowerCase() !== assetId.toLowerCase())) return null;
+  const deduplicated = new Map<string, AssetMarketEvidence>();
+  for (const market of markets) {
+    const key = marketEvidenceKey(market);
+    const existing = deduplicated.get(key);
+    if (!existing || comparePrimaryEvidence(market, existing) < 0) deduplicated.set(key, market);
+  }
+  const verifiedMarkets = [...deduplicated.values()].sort((left, right) => marketEvidenceKey(left).localeCompare(marketEvidenceKey(right)));
+  return {
+    assetId,
+    token: markets[0].token,
+    primaryMarket: selectPrimaryAssetMarket(verifiedMarkets, options),
+    verifiedMarkets
+  };
+}
 
 type LifecycleComparableMarket = Pick<
   ExternalMarket,
