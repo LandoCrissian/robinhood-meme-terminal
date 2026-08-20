@@ -15,7 +15,8 @@ type MarketInventoryProps = {
   description: string;
 };
 
-function compactUsd(value: number) {
+function compactUsd(value: number | null) {
+  if (value === null) return "Unavailable";
   if (!Number.isFinite(value) || value <= 0) return "—";
   return "$" + value.toLocaleString("en-US", {
     notation: value >= 1_000_000 ? "compact" : "standard",
@@ -23,7 +24,8 @@ function compactUsd(value: number) {
   });
 }
 
-function priceUsd(value: number) {
+function priceUsd(value: number | null) {
+  if (value === null) return "Unavailable";
   if (!Number.isFinite(value) || value <= 0) return "—";
   if (value < 0.000001) return "<$0.000001";
   return "$" + value.toLocaleString("en-US", {
@@ -31,7 +33,8 @@ function priceUsd(value: number) {
   });
 }
 
-function percent(value: number) {
+function percent(value: number | null) {
+  if (value === null) return "Unavailable";
   if (!Number.isFinite(value)) return "—";
   if (value === 0) return "0.00%";
   return `${value > 0 ? "+" : ""}${value.toFixed(2)}%`;

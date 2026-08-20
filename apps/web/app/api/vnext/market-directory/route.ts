@@ -92,6 +92,7 @@ function marketFromPair(pair: RawPair, evidence: AssetMarketEvidence): VNextDire
     priceChange24h: evidence.priceChange24h ?? 0,
     ageMinutes: pairCreatedAt > 0 ? Math.max(0, (Date.now() - pairCreatedAt) / 60_000) : null,
     signal: signalFor(pair),
+    marketDataState: "live",
     imageUri: canonicalAddress.toLowerCase() === ROBINHOOD_RMT_ADDRESS.toLowerCase()
       ? RMT_TOKEN_ARTWORK
       : safeTokenArtworkUrl(pair.info?.imageUrl) ?? undefined,
@@ -152,7 +153,7 @@ export async function GET() {
         verifiedMarkets: record.verifiedMarkets
       }];
     })
-      .sort((left, right) => right.liquidityUsd - left.liquidityUsd || right.volume24h - left.volume24h)
+      .sort((left, right) => (right.liquidityUsd ?? -1) - (left.liquidityUsd ?? -1) || (right.volume24h ?? -1) - (left.volume24h ?? -1))
       .slice(0, VNEXT_MARKET_DIRECTORY_MAX_MARKETS);
     if (markets.length === 0) throw new Error("Market directory returned no usable assets.");
     lastSnapshot = { markets, updatedAt: new Date().toISOString() };

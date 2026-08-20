@@ -12,7 +12,8 @@ const COMPACT_USD_FORMAT = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 2
 });
 
-export function formatTerminalPrice(value: number) {
+export function formatTerminalPrice(value: number | null) {
+  if (value === null) return "Unavailable";
   if (!Number.isFinite(value) || value < 0) return "—";
   if (value === 0) return "$0";
   if (value >= 1) return PRICE_FORMAT.format(value);
@@ -20,13 +21,15 @@ export function formatTerminalPrice(value: number) {
   return `$${value.toLocaleString("en-US", { maximumSignificantDigits: 4 })}`;
 }
 
-export function formatTerminalCompactUsd(value: number) {
+export function formatTerminalCompactUsd(value: number | null) {
+  if (value === null) return "Unavailable";
   if (!Number.isFinite(value) || value < 0) return "—";
   if (value === 0) return "$0";
   return COMPACT_USD_FORMAT.format(value);
 }
 
-export function formatTerminalPercent(value: number) {
+export function formatTerminalPercent(value: number | null) {
+  if (value === null) return "Unavailable";
   if (!Number.isFinite(value)) return "—";
   const normalized = Math.abs(value) < 0.05 ? 0 : value;
   return `${normalized > 0 ? "+" : normalized < 0 ? "−" : ""}${Math.abs(normalized).toFixed(1)}%`;

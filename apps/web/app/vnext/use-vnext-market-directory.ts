@@ -5,6 +5,7 @@ import { getAddress, isAddress } from "viem";
 import type { AssetMetadata } from "../../lib/vnext/execution-domain";
 import type { ExternalMarketResponse } from "../../lib/external-market";
 import {
+  directoryMarketFromExactLookup,
   directoryMarketFromVerifiedIdentity,
   normalizeDirectoryMarkets,
   resolutionFromLookup,
@@ -37,6 +38,10 @@ function directorySnapshot(markets: VNextDirectoryMarket[]) {
     market.pairAddress,
     market.dexId,
     market.url,
+    market.marketDataState,
+    market.primaryMarket?.pool.kind,
+    market.primaryMarket?.pool.value,
+    market.verifiedMarkets?.map((evidence) => `${evidence.venue}:${evidence.pool.kind}:${evidence.pool.value}`).join("|"),
     market.resolution?.token.address,
     market.resolution?.token.name,
     market.resolution?.token.symbol,
@@ -79,13 +84,14 @@ export function useVNextMarketDirectory() {
     if (exactLookupMarket.current) {
       const key = exactLookupMarket.current.address.toLowerCase();
       const existing = byAddress.get(key);
-      byAddress.set(key, existing ? {
-        ...exactLookupMarket.current,
+      const preferExact = exactLookupMarket.current.marketDataState !== "identity-only" || !existing?.primaryMarket;
+      byAddress.set(key, existing && preferExact ? {
         ...existing,
-        resolution: existing.resolution ?? exactLookupMarket.current.resolution
-      } : exactLookupMarket.current);
+        ...exactLookupMarket.current,
+        resolution: exactLookupMarket.current.resolution ?? existing.resolution
+      } : existing ?? exactLookupMarket.current);
     }
-    const nextMarkets = [...byAddress.values()].sort((left, right) => right.liquidityUsd - left.liquidityUsd || right.volume24h - left.volume24h);
+    const nextMarkets = [...byAddress.values()].sort((left, right) => (right.liquidityUsd ?? -1) - (left.liquidityUsd ?? -1) || (right.volume24h ?? -1) - (left.volume24h ?? -1));
     const nextSnapshot = directorySnapshot(nextMarkets);
     if (nextSnapshot !== marketSnapshot.current) {
       marketSnapshot.current = nextSnapshot;
@@ -96,7 +102,7 @@ export function useVNextMarketDirectory() {
 
   const selectAddress = useCallback(async (rawAddress: string) => {
     const exact = markets.find((market) => market.address.toLowerCase() === rawAddress.toLowerCase());
-    if (exact) {
+    if (exact?.marketDataState !== "identity-only" && exact?.primaryMarket) {
       setSelectedAddress(exact.address);
       return true;
     }
@@ -105,20 +111,35 @@ export function useVNextMarketDirectory() {
     const controller = new AbortController();
     const timeout = window.setTimeout(() => controller.abort(), IDENTITY_LOOKUP_TIMEOUT_MS);
     try {
-      const query = new URLSearchParams({ address });
-      const response = await fetch(`/api/vnext/asset-identity?${query}`, { signal: controller.signal });
-      const payload = await response.json() as ExternalMarketResponse;
-      const discovered = directoryMarketFromVerifiedIdentity(payload, address);
-      if (!response.ok || !discovered) return false;
+      const marketQuery = new URLSearchParams({ contract: address });
+      const identityQuery = new URLSearchParams({ address });
+      const readJson = async (url: string) => {
+        const response = await fetch(url, { signal: controller.signal });
+        const payload = await response.json() as ExternalMarketResponse;
+        return response.ok ? payload : null;
+      };
+      const [marketResult, identityResult] = await Promise.allSettled([
+        readJson(`/api/markets/external?${marketQuery}`),
+        readJson(`/api/vnext/asset-identity?${identityQuery}`)
+      ]);
+      const marketPayload = marketResult.status === "fulfilled" ? marketResult.value : null;
+      const identityPayload = identityResult.status === "fulfilled" ? identityResult.value : null;
+      const discovered = marketPayload
+        ? directoryMarketFromExactLookup(marketPayload, address)
+        : null;
+      const fallback = discovered ?? (identityPayload
+        ? directoryMarketFromVerifiedIdentity(identityPayload, address)
+        : null);
+      if (!fallback) return false;
       setMarkets((current) => current.some((market) => market.address.toLowerCase() === address.toLowerCase())
-        ? current.map((market) => market.address.toLowerCase() === address.toLowerCase() ? {
-            ...discovered,
-            ...market,
-            resolution: market.resolution ?? discovered.resolution
-          } : market)
-        : [discovered, ...current]);
-      exactLookupMarket.current = discovered;
-      setSelectedAddress(discovered.address);
+        ? current.map((market) => {
+            if (market.address.toLowerCase() !== address.toLowerCase()) return market;
+            if (fallback.marketDataState === "identity-only" && market.primaryMarket) return market;
+            return { ...market, ...fallback, resolution: fallback.resolution ?? market.resolution };
+          })
+        : [fallback, ...current]);
+      exactLookupMarket.current = fallback;
+      setSelectedAddress(fallback.address);
       return true;
     } catch {
       return false;

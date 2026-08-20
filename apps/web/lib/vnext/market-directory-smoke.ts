@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { getAddress, type Hex } from "viem";
 import type { ExternalMarketResponse, UniversalMarketResolution } from "../external-market";
+import { buildAssetMarketRecord } from "../external-market";
+import { normalizeProviderPairForAsset } from "../external-market-identity";
 import {
   MAX_DIRECT_V6_ORIGIN_RECORDS,
   validateCompleteV6OriginRecords
@@ -10,6 +12,7 @@ import { assetKey } from "./execution-domain";
 import {
   VNEXT_MARKET_DIRECTORY_MAX_MARKETS,
   VNEXT_MARKET_DIRECTORY_PAGE_SIZE,
+  directoryMarketFromExactLookup,
   directoryMarketFromVerifiedIdentity,
   normalizeDirectoryMarkets,
   resolutionFromLookup,
@@ -55,9 +58,9 @@ const payload = {
 
 const markets = normalizeDirectoryMarkets(payload);
 assert.equal(markets.length, 2);
-assert.equal(markets[1].priceUsd, 0);
+assert.equal(markets[1].priceUsd, null);
 assert.equal(markets[1].liquidityUsd, 0);
-assert.equal(markets[1].priceChange24h, 0);
+assert.equal(markets[1].priceChange24h, null);
 assert.equal(assetKey(verifiedDirectoryAsset(markets[0])!.id), assetKey(ROBINHOOD_RMT.id));
 assert.equal(verifiedDirectoryAsset(markets[1]), null);
 
@@ -159,13 +162,96 @@ assert.equal(verifiedDirectoryAsset(markets[1], { ...resolution, chainId: 4_663,
 const identityOnlyMarket = directoryMarketFromVerifiedIdentity({ resolution }, otherAddress);
 assert.equal(identityOnlyMarket?.address, otherAddress);
 assert.equal(identityOnlyMarket?.symbol, "OTH");
-assert.equal(identityOnlyMarket?.liquidityUsd, 0);
+assert.equal(identityOnlyMarket?.marketDataState, "identity-only");
+assert.equal(identityOnlyMarket?.priceUsd, null);
+assert.equal(identityOnlyMarket?.liquidityUsd, null);
+assert.equal(identityOnlyMarket?.volume24h, null);
+assert.equal(identityOnlyMarket?.marketCapUsd, null);
 assert.equal(identityOnlyMarket?.resolution, resolution);
 assert.equal(directoryMarketFromVerifiedIdentity({
   resolution: { ...resolution, chainId: 1 }
 } as unknown as ExternalMarketResponse, otherAddress), null);
 assert.equal(directoryMarketFromVerifiedIdentity({ resolution: { ...resolution, token: { ...resolution.token, address: ROBINHOOD_RMT_ADDRESS } } }, otherAddress), null);
 assert.equal(directoryMarketFromVerifiedIdentity({ resolution }, "not-an-address"), null);
+
+const exactAddress = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+const otherExactAddress = "0xdddddddddddddddddddddddddddddddddddddddd";
+const poolA = "0x1111111111111111111111111111111111111111";
+const poolB = "0x2222222222222222222222222222222222222222";
+const quoteAddress = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+const pair = (overrides: Record<string, unknown> = {}) => ({
+  chainId: "robinhood",
+  pairAddress: poolA,
+  dexId: "uniswap-v3",
+  baseToken: { address: exactAddress, name: "Exact Token", symbol: "SAME" },
+  quoteToken: { address: quoteAddress, name: "Wrapped Ether", symbol: "WETH" },
+  priceUsd: "0.014",
+  liquidity: { usd: 20_000 },
+  marketCap: 1_000_000,
+  volume: { h24: 8_000 },
+  priceChange: { h24: 2 },
+  ...overrides
+});
+const evidenceOptions = {
+  chainId: 4_663 as const,
+  chainSlug: "robinhood",
+  canonicalQuoteAddresses: new Set([quoteAddress]),
+  provenance: "dexscreener-token-pairs" as const
+};
+const firstEvidence = normalizeProviderPairForAsset(pair(), exactAddress, evidenceOptions)!;
+const secondEvidence = normalizeProviderPairForAsset(pair({
+  pairAddress: poolB,
+  liquidity: { usd: 30_000 },
+  volume: { h24: 9_000 }
+}), exactAddress, evidenceOptions)!;
+const malformedQuoteEvidence = normalizeProviderPairForAsset(pair({
+  pairAddress: "0x3333333333333333333333333333333333333333",
+  baseToken: { address: quoteAddress, name: "Wrapped Ether", symbol: "WETH" },
+  quoteToken: { address: exactAddress, name: "Exact Token", symbol: "SAME" },
+  priceUsd: "500",
+  liquidity: { usd: 999_999_999 }
+}), exactAddress, evidenceOptions)!;
+const exactRecord = buildAssetMarketRecord([firstEvidence, secondEvidence, malformedQuoteEvidence], { requireChart: true })!;
+const exactLookupPayload = {
+  markets: [{
+    address: exactAddress,
+    name: "Exact Token",
+    symbol: "SAME",
+    priceUsd: exactRecord.primaryMarket?.priceUsd,
+    liquidityUsd: exactRecord.primaryMarket?.liquidityUsd,
+    marketCapUsd: exactRecord.primaryMarket?.marketCapUsd,
+    volume24h: exactRecord.primaryMarket?.volume24h,
+    priceChange24h: exactRecord.primaryMarket?.priceChange24h,
+    ageMinutes: null,
+    signal: "active",
+    pairAddress: exactRecord.primaryMarket?.pool.value,
+    primaryMarket: exactRecord.primaryMarket,
+    verifiedMarkets: exactRecord.verifiedMarkets,
+    resolution
+  }]
+} as unknown as ExternalMarketResponse;
+const exactLookup = directoryMarketFromExactLookup(exactLookupPayload, exactAddress);
+assert.equal(exactLookup?.address, getAddress(exactAddress));
+assert.equal(exactLookup?.primaryMarket?.pool.value, poolB);
+assert.equal(exactLookup?.pairAddress, poolB);
+assert.equal(exactLookup?.priceUsd, secondEvidence.priceUsd);
+assert.equal(exactLookup?.verifiedMarkets?.length, 3, "Exact search must preserve admitted alternate markets");
+assert.equal(exactLookup?.primaryMarket?.assetSide, "BASE", "Malformed quote-side evidence must not hijack exact search");
+assert.equal(directoryMarketFromExactLookup(exactLookupPayload, otherExactAddress), null, "A returned market for the wrong contract must fail closed");
+const wrongAssetEvidence = normalizeProviderPairForAsset(pair({
+  baseToken: { address: otherExactAddress, name: "Imposter", symbol: "SAME" }
+}), otherExactAddress, evidenceOptions)!;
+assert.equal(directoryMarketFromExactLookup({ markets: [{
+  ...(exactLookupPayload.markets?.[0] ?? {}),
+  pairAddress: wrongAssetEvidence.pool.value,
+  verifiedMarkets: [wrongAssetEvidence]
+}] } as unknown as ExternalMarketResponse, exactAddress), null, "Mismatched market evidence must not be attached to the searched contract");
+assert.equal(directoryMarketFromExactLookup({ markets: [{ address: "malformed" }] } as unknown as ExternalMarketResponse, exactAddress), null);
+const sameSymbolDifferentContract = normalizeDirectoryMarkets({ markets: [
+  ...(exactLookupPayload.markets ?? []),
+  { ...(exactLookupPayload.markets?.[0] ?? {}), address: otherExactAddress, assetId: undefined, pairAddress: "0x4444444444444444444444444444444444444444", primaryMarket: undefined, verifiedMarkets: undefined }
+] } as unknown as ExternalMarketResponse);
+assert.equal(sameSymbolDifferentContract.length, 2, "Different contracts sharing a symbol/name must remain separate assets");
 
 const hook = readFileSync(new URL("../../app/vnext/use-vnext-market-directory.ts", import.meta.url), "utf8");
 const route = readFileSync(new URL("../../app/api/vnext/market-directory/route.ts", import.meta.url), "utf8");
@@ -176,9 +262,12 @@ assert.match(hook, /fetch\("\/api\/vnext\/market-directory"/);
 assert.match(hook, /fetch\("\/api\/markets\/external"/);
 const selectAddressSource = hook.slice(hook.indexOf("const selectAddress"), hook.indexOf("const refresh ="));
 assert.match(selectAddressSource, /URLSearchParams\(\{ address \}\)/);
+assert.match(selectAddressSource, /URLSearchParams\(\{ contract: address \}\)/);
 assert.match(selectAddressSource, /\/api\/vnext\/asset-identity/);
 assert.match(selectAddressSource, /directoryMarketFromVerifiedIdentity/);
-assert.doesNotMatch(selectAddressSource, /\/api\/markets\/external/);
+assert.match(selectAddressSource, /\/api\/markets\/external/);
+assert.match(selectAddressSource, /directoryMarketFromExactLookup/);
+assert.match(selectAddressSource, /Promise\.allSettled/);
 assert.match(hook, /publishMarkets/);
 assert.match(hook, /URLSearchParams\(\{ address: selected\.address \}\)/);
 assert.match(hook, /fetch\(`\/api\/vnext\/asset-identity/);
