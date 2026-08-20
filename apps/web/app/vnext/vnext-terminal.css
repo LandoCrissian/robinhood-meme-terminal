@@ -4108,6 +4108,44 @@ body .rmtTerminal button {
   background: rgba(12, 18, 14, 0.72);
 }
 
+.rmtDistributionPanel[data-presentation="desktop"] {
+  grid-template-columns: minmax(0, 1.08fr) minmax(420px, .92fr);
+  align-items: start;
+}
+
+.rmtDistributionPanel[data-presentation="desktop"] > .rmtDistributionHeading,
+.rmtDistributionPanel[data-presentation="desktop"] > .rmtDistributionEvidenceStack {
+  grid-column: 1 / -1;
+}
+
+.rmtDistributionPanel[data-presentation="desktop"] > .rmtDistributionStatus {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.rmtDistributionPanel[data-presentation="desktop"] > .rmtDistributionControls {
+  grid-column: 1;
+  grid-row: 3;
+}
+
+.rmtDistributionPanel[data-presentation="desktop"] > .rmtDistributionStateBanner {
+  grid-column: 1;
+  grid-row: 4;
+}
+
+.rmtDistributionPanel[data-presentation="desktop"] > .rmtCcff00Genesis {
+  grid-column: 2;
+  grid-row: 2 / span 3;
+}
+
+.rmtDistributionPanel[data-presentation="desktop"] .rmtCcff00Metrics {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.rmtDistributionMobileTabs {
+  display: none;
+}
+
 .rmtDistributionHeading {
   display: flex;
   align-items: baseline;
@@ -4445,6 +4483,32 @@ body .rmtTerminal button {
   color: #ffc9ce;
 }
 
+.rmtDistributionEvidenceStack {
+  display: grid;
+  gap: 12px;
+}
+
+.rmtDistributionEmptyEvidence {
+  display: grid;
+  gap: 5px;
+  min-height: 110px;
+  align-content: center;
+  padding: 14px;
+  border: 1px dashed var(--vn-border-strong);
+  border-radius: 12px;
+  color: var(--vn-text-muted);
+  background: rgba(255, 255, 255, 0.018);
+}
+
+.rmtDistributionEmptyEvidence strong {
+  color: var(--vn-text-secondary);
+}
+
+.rmtDistributionEmptyEvidence p {
+  margin: 0;
+  font-size: 12px;
+}
+
 .rmtDistributionCards {
   display: grid;
   gap: 10px;
@@ -4594,8 +4658,139 @@ body .rmtTerminal button {
     justify-self: start;
   }
 
-  .rmtCcff00Metrics {
+  .rmtDistributionPanel[data-presentation="mobile"] {
+    gap: 10px;
+    padding: 10px;
+    border-radius: 10px;
+  }
+
+  .rmtDistributionPanel[data-presentation="mobile"] .rmtDistributionHeading {
+    padding: 2px 2px 0;
+  }
+
+  .rmtDistributionPanel[data-presentation="mobile"] .rmtDistributionHeading h2 {
+    font-size: 15px;
+  }
+
+  .rmtDistributionPanel[data-presentation="mobile"] .rmtDistributionHeading p {
+    margin-top: 3px;
+    line-height: 1.4;
+  }
+
+  .rmtDistributionMobileTabs {
+    position: sticky;
+    z-index: 20;
+    top: 100px;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 4px;
+    padding: 4px;
+    border: 1px solid var(--vn-border);
+    border-radius: 10px;
+    background: rgba(7, 11, 8, .96);
+    backdrop-filter: blur(12px);
+  }
+
+  .rmtDistributionMobileTabs button {
+    display: grid;
+    place-items: center;
+    gap: 2px;
+    min-width: 0;
+    min-height: 42px;
+    padding: 5px 7px;
+    border: 1px solid transparent;
+    border-radius: 7px;
+    color: var(--vn-text-muted);
+    background: transparent;
+    font-size: 11px;
+    font-weight: 750;
+  }
+
+  .rmtDistributionMobileTabs button span {
+    font-size: 8px;
+    letter-spacing: .04em;
+  }
+
+  .rmtDistributionMobileTabs button.isActive {
+    border-color: rgba(130, 242, 143, .34);
+    color: var(--vn-text);
+    background: rgba(130, 242, 143, .1);
+  }
+
+  .rmtDistributionPanel[data-presentation="mobile"][data-mobile-section="community"] > .rmtDistributionPlannerOnly,
+  .rmtDistributionPanel[data-presentation="mobile"][data-mobile-section="community"] > .rmtDistributionEvidenceOnly,
+  .rmtDistributionPanel[data-presentation="mobile"][data-mobile-section="community"] > .rmtDistributionPlannerEvidence,
+  .rmtDistributionPanel[data-presentation="mobile"][data-mobile-section="planner"] > .rmtDistributionCommunityOnly,
+  .rmtDistributionPanel[data-presentation="mobile"][data-mobile-section="planner"] > .rmtDistributionEvidenceOnly,
+  .rmtDistributionPanel[data-presentation="mobile"][data-mobile-section="evidence"] > .rmtDistributionCommunityOnly,
+  .rmtDistributionPanel[data-presentation="mobile"][data-mobile-section="evidence"] > .rmtDistributionPlannerOnly {
+    display: none;
+  }
+
+  .rmtDistributionPanel[data-presentation="mobile"] .rmtCcff00Genesis {
+    gap: 12px;
+    padding: 13px;
+  }
+
+  .rmtDistributionPanel[data-presentation="mobile"] .rmtCcff00Story {
+    font-size: 12px;
+    line-height: 1.5;
+  }
+
+  .rmtDistributionPanel[data-presentation="mobile"] .rmtCcff00Metrics {
+    grid-template-columns: none;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(138px, 44vw);
+    overflow-x: auto;
+    padding-bottom: 3px;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+  }
+
+  .rmtDistributionPanel[data-presentation="mobile"] .rmtCcff00Metrics::-webkit-scrollbar,
+  .rmtDistributionPanel[data-presentation="mobile"] .rmtCcff00Links::-webkit-scrollbar {
+    display: none;
+  }
+
+  .rmtDistributionPanel[data-presentation="mobile"] .rmtCcff00Metrics article {
+    min-height: 78px;
+    scroll-snap-align: start;
+  }
+
+  .rmtDistributionPanel[data-presentation="mobile"] .rmtCcff00Links {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 3px;
+    scrollbar-width: none;
+  }
+
+  .rmtDistributionPanel[data-presentation="mobile"] .rmtCcff00Links a {
+    flex: 0 0 auto;
+  }
+
+  .rmtDistributionPanel[data-presentation="mobile"] .rmtDistributionField textarea {
+    min-height: 132px;
+    height: 148px;
+  }
+
+  .rmtDistributionPanel[data-presentation="mobile"] .rmtDistributionControls {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .rmtDistributionPanel[data-presentation="mobile"] .rmtDistributionControls > * {
+    grid-column: 1 / -1;
+  }
+
+  .rmtDistributionPanel[data-presentation="mobile"] .rmtDistributionControls > .rmtDistributionFieldCompact {
+    grid-column: auto;
+  }
+
+  .rmtDistributionPanel[data-presentation="mobile"] .rmtDistributionCards {
+    grid-template-columns: 1fr;
+  }
+
+  .rmtDistributionPanel[data-presentation="mobile"] .rmtDistributionFooter {
+    padding-bottom: 2px;
   }
 }
 
@@ -4624,17 +4819,8 @@ body .rmtTerminal button {
     font-size: 9px;
   }
 
-  .rmtCcff00Genesis {
-    padding: 13px;
-  }
-
-  .rmtCcff00Metrics {
-    grid-template-columns: 1fr;
-  }
-
-  .rmtCcff00Links a {
-    width: 100%;
-    justify-content: space-between;
+  .rmtDistributionPanel[data-presentation="mobile"] .rmtCcff00Metrics {
+    grid-auto-columns: minmax(132px, 76vw);
   }
 }
 
