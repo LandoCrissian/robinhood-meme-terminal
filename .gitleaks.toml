@@ -20,3 +20,10 @@ condition = "AND"
 targetRules = ["generic-api-key"]
 regexes = ['''^0x[0-9A-Fa-f]{40}$''']
 paths = ['''^apps/web/app/rmt/page\.tsx$''']
+
+[[allowlists]]
+description = "Public CCFF00 EVM addresses in read-only presentation evidence"
+condition = "AND"
+targetRules = ["generic-api-key"]
+regexes = ['''^0x[0-9A-Fa-f]{40}$''']
+paths = ['''^apps/web/lib/vnext/distribution-ccff00-presentation\.ts$''']

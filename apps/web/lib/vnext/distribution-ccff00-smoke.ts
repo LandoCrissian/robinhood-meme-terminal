@@ -204,10 +204,18 @@ assert.match(adapterSource, /getTokenBoundAccount/);
 assert.match(adapterSource, /publicMinted/);
 assert.match(adapterSource, /coverage !== "full_public"/);
 
-assert.equal(CCFF00_PRESENTATION_EVIDENCE.snapshotBlock, "41423445");
+assert.equal(CCFF00_PRESENTATION_EVIDENCE.snapshotBlock, "41538389");
 assert.equal(CCFF00_PRESENTATION_EVIDENCE.publicMinted + CCFF00_PRESENTATION_EVIDENCE.reserveMinted, CCFF00_PRESENTATION_EVIDENCE.totalSupply);
 assert.equal(CCFF00_PRESENTATION_EVIDENCE.tokenBoundIdentitiesDiscovered, CCFF00_PRESENTATION_EVIDENCE.publicMinted);
 assert.deepEqual(CCFF00_PRESENTATION_EVIDENCE.canaries, { verified: 3, total: 3, activated: 0, rmtDeposited: 0 });
+assert.deepEqual(CCFF00_PRESENTATION_EVIDENCE.canaryRows.map((row) => row.tokenId), ["470", "471", "472"]);
+for (const row of CCFF00_PRESENTATION_EVIDENCE.canaryRows) {
+  assert.equal(row.owner, owner);
+  assert.equal(row.tokenBoundAccount, canaryTbas.get(row.tokenId));
+  assert.equal(row.ccff00Balance, "10,000");
+  assert.equal(row.rmtBalance, "0");
+  assert.equal(row.activated, false);
+}
 assert.equal(CCFF00_OFFICIAL_LINKS.myNeon, "https://hoodstreet.capital/my-neon");
 assert.equal(CCFF00_OFFICIAL_LINKS.openSea, "https://opensea.io/collection/ccff00-161927574");
 
@@ -215,9 +223,11 @@ const plannerPresentationSource = readFileSync(new URL("../../app/vnext/vnext-di
 assert.match(plannerPresentationSource, /Independent ecosystem support by RMT\. No affiliation or endorsement implied\./);
 assert.match(plannerPresentationSource, /Wallet submission <strong>DISABLED<\/strong>/);
 assert.match(plannerPresentationSource, /Server submission <strong>DISABLED<\/strong>/);
-assert.match(plannerPresentationSource, /Mass distribution <strong>NOT AUTHORIZED<\/strong>/);
-assert.match(plannerPresentationSource, /data-mobile-section=/);
-assert.match(plannerPresentationSource, /Genesis[\s\S]*Planner[\s\S]*Evidence/);
+assert.match(plannerPresentationSource, /data-workspace=/);
+assert.match(plannerPresentationSource, /Community[\s\S]*Planner/);
+assert.match(plannerPresentationSource, /Overview[\s\S]*Program[\s\S]*Proof[\s\S]*Links/);
+assert.match(plannerPresentationSource, /#470 · Activate → 1 RMT → owner-controlled return/);
+assert.match(plannerPresentationSource, /No mass distribution/);
 assert.doesNotMatch(plannerPresentationSource, /writeContract|sendTransaction|signMessage|signTypedData|walletClient/);
 
 const terminalPresentationSource = readFileSync(new URL("../../app/vnext/terminal-presentations.tsx", import.meta.url), "utf8");
