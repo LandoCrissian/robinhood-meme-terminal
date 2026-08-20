@@ -52,6 +52,7 @@ export function VNextTerminalShell() {
     url.searchParams.delete("side");
     url.searchParams.delete("panel");
     if (nextContext === "portfolio") url.searchParams.set("panel", "portfolio");
+    if (nextContext === "distribution") url.searchParams.set("panel", "distribution");
     if (nextContext === "asset" && market) {
       url.searchParams.set("market", market);
       if (side) url.searchParams.set("side", side);
@@ -100,6 +101,11 @@ export function VNextTerminalShell() {
     setTradeOpen(false);
     writeLocation("portfolio");
   }, [writeLocation]);
+  const showDistribution = useCallback(() => {
+    setContext("distribution");
+    setTradeOpen(false);
+    writeLocation("distribution");
+  }, [writeLocation]);
   const changeDirectoryView = useCallback((view: VNextMarketDirectoryView) => {
     setDirectoryView(view);
     setQuery("");
@@ -136,6 +142,11 @@ export function VNextTerminalShell() {
       if (entry.get("panel") === "portfolio") {
         setPortfolioRevealRequest((request) => request + 1);
         setContext("portfolio");
+        setTradeOpen(false);
+        return;
+      }
+      if (entry.get("panel") === "distribution") {
+        setContext("distribution");
         setTradeOpen(false);
         return;
       }
@@ -191,6 +202,7 @@ export function VNextTerminalShell() {
     onLoadMoreMarkets: loadMoreMarkets,
     onShowMarkets: showMarkets,
     onShowPortfolio: showPortfolio,
+    onShowDistribution: showDistribution,
     onShowRwa: showRwa,
     onRequestTradeSide: requestTradeSide,
     onCloseTrade: closeTrade,

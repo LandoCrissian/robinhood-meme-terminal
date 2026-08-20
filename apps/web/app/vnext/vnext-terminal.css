@@ -3631,7 +3631,7 @@ body .rmtTerminal button {
   top: 56px;
   display: grid;
   height: 44px;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   border-bottom: 1px solid var(--rmt-border);
   background: rgba(7, 11, 8, .98);
 }
@@ -4084,6 +4084,280 @@ body .rmtTerminal button {
 
 .rmtPortfolioSurface.isMobile .vnDetectedAssets {
   grid-column: 1 / -1;
+}
+
+.rmtDistributionSurface {
+  grid-column: 1 / -1;
+  min-width: 0;
+  display: grid;
+  gap: 12px;
+  padding: 0 22px 24px;
+}
+
+.rmtDistributionSurface.isMobile {
+  padding-inline: 14px;
+  padding-bottom: 18px;
+}
+
+.rmtDistributionPanel {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--vn-border);
+  border-radius: 14px;
+  background: rgba(12, 18, 14, 0.72);
+}
+
+.rmtDistributionHeading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.rmtDistributionHeading h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.rmtDistributionHeading p,
+.rmtDistributionStatus {
+  margin: 0;
+  color: var(--vn-text-muted);
+  font-size: 12px;
+}
+
+.rmtDistributionStatus {
+  display: grid;
+  gap: 3px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(130, 242, 143, 0.06);
+  border: 1px solid rgba(130, 242, 143, 0.24);
+}
+
+.rmtDistributionSource {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid var(--vn-border-strong);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.rmtDistributionSource h3,
+.rmtDistributionSource p {
+  margin: 0;
+}
+
+.rmtDistributionSource span,
+.rmtDistributionSource small {
+  color: var(--vn-text-muted);
+}
+
+.rmtDistributionSource span {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.rmtDistributionControls {
+  display: grid;
+  gap: 10px;
+}
+
+.rmtDistributionFieldRow {
+  display: grid;
+  gap: 6px;
+}
+
+.rmtDistributionFieldRow > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.rmtDistributionFieldRow button {
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--vn-border-strong);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--vn-text-secondary);
+}
+
+.rmtDistributionFieldRow button.isActive {
+  border-color: var(--vn-accent);
+  color: #0a120d;
+  background: var(--vn-accent);
+}
+
+.rmtDistributionField {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+}
+
+.rmtDistributionField > span {
+  color: var(--vn-text-soft);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .04em;
+}
+
+.rmtDistributionField input,
+.rmtDistributionField textarea {
+  min-height: 40px;
+  width: 100%;
+  border: 1px solid var(--vn-border);
+  border-radius: 12px;
+  color: var(--vn-text);
+  background: rgba(5, 10, 8, 0.84);
+  padding: 10px 12px;
+}
+
+.rmtDistributionField textarea {
+  min-height: 160px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  resize: vertical;
+}
+
+.rmtDistributionField.isDisabled {
+  opacity: 0.65;
+}
+
+.rmtDistributionUploadBar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.rmtDistributionUpload {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  padding: 0 12px;
+  border: 1px dashed var(--vn-accent);
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.rmtDistributionUpload input {
+  display: none;
+}
+
+.rmtDistributionSubmit {
+  justify-self: start;
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid var(--vn-border-strong);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--vn-text-secondary);
+}
+
+.rmtDistributionStateBanner {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--vn-border-strong);
+  background: rgba(17, 24, 18, 0.75);
+}
+
+.rmtDistributionStateBanner.isError {
+  border-color: rgba(245, 139, 145, 0.6);
+  background: rgba(245, 139, 145, 0.12);
+  color: #ffc9ce;
+}
+
+.rmtDistributionCards {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.rmtDistributionCards article {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--vn-border);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.rmtDistributionCards dl,
+.rmtDistributionPreview dl {
+  display: grid;
+  gap: 6px;
+  margin: 8px 0 0;
+}
+
+.rmtDistributionCards dt,
+.rmtDistributionCards dd,
+.rmtDistributionPreview dt,
+.rmtDistributionPreview dd {
+  margin: 0;
+  min-width: 0;
+}
+
+.rmtDistributionCards dd {
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.rmtDistributionPreview {
+  border: 1px solid var(--vn-border);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.rmtDistributionPreview ul,
+.rmtDistributionPreview ol {
+  margin: 0.5rem 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 8px;
+  max-height: 250px;
+  overflow: auto;
+}
+
+.rmtDistributionPreview li {
+  display: grid;
+  gap: 3px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--vn-border);
+  background: rgba(255, 255, 255, 0.02);
+  overflow: hidden;
+}
+
+.rmtDistributionPreview li span {
+  font-size: 10px;
+  color: var(--vn-text-muted);
+}
+
+.rmtDistributionPreview li strong {
+  overflow-wrap: anywhere;
+}
+
+.rmtDistributionFooter {
+  border-top: 1px solid var(--vn-border);
+  padding-top: 10px;
+  color: var(--vn-text-muted);
+  display: grid;
+  gap: 6px;
+}
+
+.rmtReadinessFail {
+  color: var(--vn-warning);
+}
+
+.rmtDistributionSubmit:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
 }
 
 @media (max-width: 1279px) and (min-width: 1024px) {

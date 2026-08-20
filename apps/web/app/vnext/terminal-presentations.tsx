@@ -18,10 +18,11 @@ import { TokenArtwork } from "./token-artwork";
 import { TradeIntentComposer } from "./trade-intent-composer";
 import type { DirectoryStatus, IdentityStatus } from "./use-vnext-market-directory";
 import { VNextAssetWorkspace } from "./vnext-asset-workspace";
+import { VNextDistributionPlanner } from "./vnext-distribution-planner";
 import { VNextExecutionRecoveryBanner } from "./vnext-execution-recovery-banner";
 import { VNextWalletConnection } from "./vnext-wallet-connection";
 
-export type TerminalContext = "markets" | "asset" | "portfolio";
+export type TerminalContext = "markets" | "asset" | "portfolio" | "distribution";
 export type TradeSideRequest = { side: "buy" | "sell"; nonce: number };
 
 export type TerminalPresentationProps = {
@@ -55,6 +56,7 @@ export type TerminalPresentationProps = {
   onLoadMoreMarkets: () => void;
   onShowMarkets: () => void;
   onShowPortfolio: () => void;
+  onShowDistribution: () => void;
   onShowRwa: () => void;
   onRequestTradeSide: (side: "buy" | "sell") => void;
   onCloseTrade: () => void;
@@ -250,6 +252,7 @@ function DesktopHeader(props: TerminalPresentationProps) {
     <nav aria-label="Terminal navigation">
       <button data-terminal-nav="markets" className={props.context === "markets" && props.directoryView !== "rwa" ? "isActive" : ""} type="button" onClick={props.onShowMarkets}>Markets</button>
       <button data-terminal-nav="portfolio" className={props.context === "portfolio" ? "isActive" : ""} type="button" onClick={props.onShowPortfolio}>Portfolio</button>
+      <button data-terminal-nav="distribution" className={props.context === "distribution" ? "isActive" : ""} type="button" onClick={props.onShowDistribution}>Distribution</button>
       <button data-terminal-nav="rwa" className={props.context === "markets" && props.directoryView === "rwa" ? "isActive" : ""} type="button" onClick={props.onShowRwa}>RWA</button>
     </nav>
     <MarketSearch id="rmt-desktop-market-search" query={props.query} setQuery={props.setQuery} inputRef={props.marketSearch} onSubmit={props.onSearchSubmit} />
@@ -291,13 +294,30 @@ function DesktopPortfolio(props: TerminalPresentationProps) {
   </section>;
 }
 
+function DesktopDistribution(props: TerminalPresentationProps) {
+  return <section className="rmtDistributionSurface" id="rmt-distribution" aria-labelledby="rmt-distribution-heading">
+    <header className="rmtMarketsHeading">
+      <div><h1 id="rmt-distribution-heading">Distribution Center</h1><p>Plan deterministic, auditable value distribution.</p></div>
+    </header>
+    <VNextDistributionPlanner />
+  </section>;
+}
+
 export function DesktopTerminal(props: TerminalPresentationProps) {
   return <main className="rmtVnext rmtTerminal rmtDesktopTerminal" data-terminal-context={props.context}>
-    <a className="vnSkipLink" href={props.context === "markets" ? "#rmt-markets" : props.context === "portfolio" ? "#vnext-portfolio" : "#rmt-asset-workspace"}>Skip to terminal content</a>
+    <a className="vnSkipLink" href={
+      props.context === "markets" ? "#rmt-markets"
+      : props.context === "portfolio" ? "#vnext-portfolio"
+      : props.context === "distribution" ? "#rmt-distribution"
+      : "#rmt-asset-workspace"
+    }>Skip to terminal content</a>
     <DesktopHeader {...props} />
     <RecoveryStatus {...props} />
     {props.context !== "portfolio" ? <PortfolioController {...props} visible={false} /> : null}
-    {props.context === "markets" ? <DesktopMarkets {...props} /> : props.context === "portfolio" ? <DesktopPortfolio {...props} /> : <DesktopAsset {...props} />}
+    {props.context === "markets" ? <DesktopMarkets {...props} />
+      : props.context === "portfolio" ? <DesktopPortfolio {...props} />
+      : props.context === "distribution" ? <DesktopDistribution {...props} />
+      : <DesktopAsset {...props} />}
   </main>;
 }
 
@@ -309,8 +329,9 @@ function MobileHeader(props: TerminalPresentationProps) {
   return <>
     <header className="rmtMobileHeader"><RmtBrand compact onActivate={props.onShowMarkets} /><span className="rmtMobileChain"><i aria-hidden="true" /> 4663</span><VNextWalletConnection showFunding={false} compact /></header>
     <nav className="rmtMobilePrimaryNav" aria-label="Terminal navigation">
-      <button className={props.context !== "portfolio" ? "isActive" : ""} type="button" onClick={props.onShowMarkets}>Markets</button>
+      <button className={props.context === "markets" || props.context === "asset" ? "isActive" : ""} type="button" onClick={props.onShowMarkets}>Markets</button>
       <button className={props.context === "portfolio" ? "isActive" : ""} type="button" onClick={props.onShowPortfolio}>Portfolio</button>
+      <button className={props.context === "distribution" ? "isActive" : ""} type="button" onClick={props.onShowDistribution}>Distribution</button>
     </nav>
   </>;
 }
@@ -336,6 +357,13 @@ function MobilePortfolio(props: TerminalPresentationProps) {
   return <section className="rmtPortfolioSurface isMobile" aria-labelledby="rmt-mobile-portfolio-heading">
     <header className="rmtMobileContextHeading"><div><h1 id="rmt-mobile-portfolio-heading">Portfolio</h1><p>Confirmed wallet state</p></div></header>
     <PortfolioController {...props} visible />
+  </section>;
+}
+
+function MobileDistribution(props: TerminalPresentationProps) {
+  return <section className="rmtDistributionSurface isMobile" id="rmt-mobile-distribution" aria-labelledby="rmt-mobile-distribution-heading">
+    <header className="rmtMobileContextHeading"><div><h1 id="rmt-mobile-distribution-heading">Distribution Center</h1><p>Plan deterministic, auditable value distribution.</p></div></header>
+    <VNextDistributionPlanner />
   </section>;
 }
 
@@ -394,11 +422,19 @@ export function MobileTerminal(props: TerminalPresentationProps) {
   };
 
   return <main className="rmtVnext rmtTerminal rmtMobileTerminal" data-terminal-context={props.context}>
-    <a className="vnSkipLink" href={props.context === "markets" ? "#rmt-mobile-markets" : props.context === "portfolio" ? "#vnext-portfolio" : "#rmt-mobile-asset"}>Skip to terminal content</a>
+    <a className="vnSkipLink" href={
+      props.context === "markets" ? "#rmt-mobile-markets"
+      : props.context === "portfolio" ? "#vnext-portfolio"
+      : props.context === "distribution" ? "#rmt-mobile-distribution"
+      : "#rmt-mobile-asset"
+    }>Skip to terminal content</a>
     <MobileHeader {...props} />
     <RecoveryStatus {...props} />
     {props.context !== "portfolio" ? <PortfolioController {...props} visible={false} /> : null}
-    {props.context === "markets" ? <MobileMarkets {...props} /> : props.context === "portfolio" ? <MobilePortfolio {...props} /> : <MobileAsset {...props} />}
+    {props.context === "markets" ? <MobileMarkets {...props} />
+      : props.context === "portfolio" ? <MobilePortfolio {...props} />
+      : props.context === "distribution" ? <MobileDistribution {...props} />
+      : <MobileAsset {...props} />}
     {props.context === "asset" && props.selected ? <nav className="rmtMobileTradeDock" aria-label={`Trade ${props.selected.symbol}`}>
       <button type="button" className="isBuy" onClick={() => openTrade("buy")}>Buy</button>
       <button type="button" className="isSell" disabled={!canSell} aria-describedby={!canSell ? "rmt-sell-unavailable" : undefined} onClick={() => openTrade("sell")}>Sell</button>
