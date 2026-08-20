@@ -1,13 +1,16 @@
 import { NextResponse } from "next/server";
 import type { OriginCoverage } from "@rmt/shared/market-origin";
 import {
-  selectPreferredLifecycleMarket,
+  buildAssetMarketRecord,
+  type AssetMarketRecord,
+  type AssetMarketEvidence,
   type ExternalMarket,
   type ExternalMarketResponse
 } from "../../../../lib/external-market";
 import {
   canonicalExternalMarketLookupAddress,
   isNonzeroEvmAddress,
+  normalizeProviderPairForAsset,
   selectExternalPairBaseTokenWithAssetQuotes
 } from "../../../../lib/external-market-identity";
 import {
@@ -113,6 +116,7 @@ type SuccessfulMarketSnapshot = Required<Pick<
   ExternalMarketResponse,
   "markets" | "source" | "rankingVersion" | "updatedAt"
 >> & {
+  assetRecords: AssetMarketRecord[];
   originCoverage: OriginCoverage;
   rmtOriginCoverage: OriginCoverage;
   stockAssetCoverage: "complete" | "unavailable";
@@ -144,6 +148,20 @@ function tokenFromPair(pair: RawPair, stockTokenAddresses: ReadonlySet<string>) 
     EXCLUDED_TOKENS,
     stockTokenAddresses
   );
+}
+
+function requestedTokenFromPair(
+  pair: RawPair,
+  requestedContract: string | null,
+  stockTokenAddresses: ReadonlySet<string>
+) {
+  if (requestedContract) {
+    const baseAddress = asText(pair.baseToken?.address, 42).toLowerCase();
+    const quoteAddress = asText(pair.quoteToken?.address, 42).toLowerCase();
+    if (baseAddress === requestedContract) return pair.baseToken;
+    if (quoteAddress === requestedContract) return pair.quoteToken;
+  }
+  return tokenFromPair(pair, stockTokenAddresses);
 }
 
 async function fetchPublicDiscoveryTokens() {
@@ -431,7 +449,7 @@ export async function GET(request: Request) {
     }
 
     const candidateAddresses = [...new Set(pairs.flatMap((pair) => {
-      const address = asText(tokenFromPair(pair, stockTokenAddresses)?.address, 42);
+      const address = asText(requestedTokenFromPair(pair, requestedContract, stockTokenAddresses)?.address, 42);
       return isNonzeroEvmAddress(address) ? [address.toLowerCase()] : [];
     }))];
     const rmtOrigins = await resolveRmtOrigins(
@@ -446,7 +464,8 @@ export async function GET(request: Request) {
       }
     }
 
-    const marketsByToken = new Map<string, ExternalMarket>();
+    const evidenceByToken = new Map<string, AssetMarketEvidence[]>();
+    const marketCandidatesByToken = new Map<string, ExternalMarket[]>();
 
     for (const pair of pairs) {
       if (pair.chainId !== CHAIN_SLUG) continue;
@@ -454,7 +473,7 @@ export async function GET(request: Request) {
       const url = asText(pair.url, 300);
       if (!url.startsWith(DEXSCREENER_PAGE)) continue;
 
-      const token = tokenFromPair(pair, stockTokenAddresses);
+      const token = requestedTokenFromPair(pair, requestedContract, stockTokenAddresses);
       const address = asText(token?.address, 42);
       const name = asText(token?.name);
       const symbol = asText(token?.symbol, 20);
@@ -462,22 +481,35 @@ export async function GET(request: Request) {
       const dexId = asText(pair.dexId, 30) || "DEX";
       const baseTokenAddress = asText(pair.baseToken?.address, 42);
       const quoteTokenAddress = asText(pair.quoteToken?.address, 42);
-      const liquidityUsd = asNumber(pair.liquidity?.usd);
-      const marketCapUsd = Math.max(0, asNumber(pair.marketCap));
-      const fdvUsd = Math.max(0, asNumber(pair.fdv));
+      if (!isNonzeroEvmAddress(address) || !name || !symbol || !pairAddress) continue;
+      if (rmtOrigins.tokens.has(address.toLowerCase())) continue;
+      const evidence = normalizeProviderPairForAsset(pair, address, {
+        chainId: 4_663,
+        chainSlug: CHAIN_SLUG,
+        canonicalQuoteAddresses: EXCLUDED_TOKENS,
+        assetQuoteAddresses: stockTokenAddresses,
+        provenance: requestedContract ? "dexscreener-token-pairs" : "dexscreener-token-batch"
+      });
+      if (!evidence) continue;
+      const evidenceList = evidenceByToken.get(address.toLowerCase()) ?? [];
+      evidenceList.push(evidence);
+      evidenceByToken.set(address.toLowerCase(), evidenceList);
+      if (evidence.displayEligibility !== "eligible" || evidence.pool.kind !== "evm-address") continue;
+
+      const liquidityUsd = evidence.liquidityUsd ?? 0;
+      const marketCapUsd = evidence.marketCapUsd ?? 0;
+      const fdvUsd = evidence.fdvUsd ?? 0;
       const volume5m = Math.max(0, asNumber(pair.volume?.m5));
       const volume1h = Math.max(0, asNumber(pair.volume?.h1));
-      const volume24h = Math.max(0, asNumber(pair.volume?.h24));
+      const volume24h = evidence.volume24h ?? 0;
       const priceChange5m = asNumber(pair.priceChange?.m5);
       const priceChange1h = asNumber(pair.priceChange?.h1);
-      const priceChange24h = asNumber(pair.priceChange?.h24);
+      const priceChange24h = evidence.priceChange24h ?? 0;
       const transactions5m = transactionWindow(pair, "m5");
       const transactions1h = transactionWindow(pair, "h1");
       const transactions24h = transactionWindow(pair, "h24");
       const pairCreatedAt = asNumber(pair.pairCreatedAt) || null;
 
-      if (!isNonzeroEvmAddress(address) || !name || !symbol || !pairAddress) continue;
-      if (rmtOrigins.tokens.has(address.toLowerCase())) continue;
       const exactContractLookup = requestedContract === address.toLowerCase()
         || requestedContract === pairAddress.toLowerCase();
       if (
@@ -502,6 +534,7 @@ export async function GET(request: Request) {
 
       const discoveryMetadata = publicDiscoverySnapshot.metadata.get(address.toLowerCase());
       const market: ExternalMarket = {
+        assetId: evidence.assetId,
         address,
         name,
         symbol,
@@ -531,7 +564,7 @@ export async function GET(request: Request) {
           url,
           execution: "read-only"
         },
-        priceUsd: asNumber(pair.priceUsd),
+        priceUsd: evidence.priceUsd ?? 0,
         liquidityUsd,
         marketCapUsd,
         fdvUsd,
@@ -564,20 +597,31 @@ export async function GET(request: Request) {
         : market;
 
       const key = address.toLowerCase();
-      const existing = marketsByToken.get(key);
-      const preferred = selectPreferredLifecycleMarket(existing, attributedMarket);
-      const stockAssetRelationships = [...new Map([
-        ...(existing?.stockAssetRelationships ?? []),
-        ...(attributedMarket.stockAssetRelationships ?? [])
-      ].map((relationship) => [
+      marketCandidatesByToken.set(key, [...(marketCandidatesByToken.get(key) ?? []), attributedMarket]);
+    }
+
+    const assetRecords = [...evidenceByToken.values()].flatMap((evidence) => {
+      const record = buildAssetMarketRecord(evidence, { requireChart: true });
+      return record ? [record] : [];
+    });
+    const marketsByToken = new Map<string, ExternalMarket>();
+    for (const record of assetRecords) {
+      if (!record.primaryMarket) continue;
+      const key = record.token.address.toLowerCase();
+      const candidates = marketCandidatesByToken.get(key) ?? [];
+      const primary = candidates.find((candidate) => candidate.pairAddress.toLowerCase() === record.primaryMarket?.pool.value.toLowerCase());
+      if (!primary) continue;
+      const stockAssetRelationships = [...new Map(candidates.flatMap((candidate) => candidate.stockAssetRelationships ?? []).map((relationship) => [
         `${relationship.relationship}:${relationship.contractAddress.toLowerCase()}`,
         relationship
       ])).values()];
       marketsByToken.set(key, {
-        ...preferred,
-        imageUri: preferred.imageUri ?? existing?.imageUri ?? attributedMarket.imageUri,
-        socials: preferred.socials ?? existing?.socials ?? attributedMarket.socials,
-        stockAssetRelationships
+        ...primary,
+        imageUri: primary.imageUri ?? candidates.map((candidate) => candidate.imageUri).find(Boolean),
+        socials: primary.socials ?? candidates.map((candidate) => candidate.socials).find(Boolean),
+        stockAssetRelationships,
+        primaryMarket: record.primaryMarket,
+        verifiedMarkets: record.verifiedMarkets
       });
     }
 
@@ -600,6 +644,7 @@ export async function GET(request: Request) {
     }
     const snapshot: SuccessfulMarketSnapshot = {
       markets,
+      assetRecords,
       source: "DEX Screener markets + GeckoTerminal newest pools + public discovery + verified Sushi Launch metadata + Robinhood Stock Token registry",
       rankingVersion: "rmt-discovery-v6",
       thresholds: RUNNER_THRESHOLDS,

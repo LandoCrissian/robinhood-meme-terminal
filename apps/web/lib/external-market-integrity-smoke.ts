@@ -1,15 +1,21 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import "./server/sushi-launch-feed-smoke";
 import "./server/gecko-new-pool-feed-smoke";
 import "./server/dex-discovery-metadata-smoke";
 import {
   externalProjectProvenanceDescription,
   externalProjectProvenanceLabel,
+  buildAssetMarketRecord,
+  selectPrimaryAssetMarket,
   selectPreferredLifecycleMarket
 } from "./external-market";
 import {
+  canonicalExternalAssetId,
+  canonicalExternalPoolIdentity,
   canonicalExternalMarketLookupAddress,
   isNonzeroEvmAddress,
+  normalizeProviderPairForAsset,
   selectExternalPairBaseToken,
   selectExternalPairBaseTokenWithAssetQuotes
 } from "./external-market-identity";
@@ -30,6 +36,110 @@ const external = { address: syntheticAddress("b"), name: "External token" };
 const excluded = new Set([wrappedNative.address.toLowerCase()]);
 const stockToken = { address: syntheticAddress("c"), name: "Canonical Stock Token" };
 const stockTokens = new Set([stockToken.address.toLowerCase()]);
+const otherExternal = { address: syntheticAddress("d"), name: external.name, symbol: "SAME" };
+const poolA = syntheticAddress("1");
+const poolB = syntheticAddress("2");
+const bytes32Pool = `0x${"3".repeat(64)}`;
+
+function pair(overrides: Record<string, unknown> = {}) {
+  return {
+    chainId: "robinhood",
+    pairAddress: poolA,
+    dexId: "uniswap-v3",
+    baseToken: { ...external, symbol: "SAME" },
+    quoteToken: { ...wrappedNative, symbol: "WETH" },
+    priceUsd: "0.014",
+    liquidity: { usd: 20_000 },
+    marketCap: 1_000_000,
+    fdv: 1_100_000,
+    volume: { h24: 8_000 },
+    priceChange: { h24: 2 },
+    pairCreatedAt: 1_700_000_000_000,
+    ...overrides
+  };
+}
+
+const evidenceOptions = {
+  chainId: 4_663 as const,
+  chainSlug: "robinhood",
+  canonicalQuoteAddresses: excluded,
+  provenance: "dexscreener-token-pairs" as const
+};
+
+const baseEvidence = normalizeProviderPairForAsset(pair(), external.address, evidenceOptions)!;
+assert.equal(baseEvidence.assetSide, "BASE");
+assert.equal(baseEvidence.displayEligibility, "eligible");
+assert.equal(baseEvidence.priceUsd, 0.014);
+assert.equal(baseEvidence.pool.kind, "evm-address");
+assert.equal(baseEvidence.executionEligibility, "view-only");
+assert.equal(baseEvidence.assetId, canonicalExternalAssetId(4_663, external.address));
+
+const quoteEvidence = normalizeProviderPairForAsset(pair({
+  baseToken: { ...wrappedNative, symbol: "WETH" },
+  quoteToken: { ...external, symbol: "SAME" },
+  priceUsd: "500",
+  liquidity: { usd: 999_999_999 },
+  marketCap: 9_999_999_999,
+  fdv: 9_999_999_999,
+  priceChange: { h24: 500 }
+}), external.address, evidenceOptions)!;
+assert.equal(quoteEvidence.assetSide, "QUOTE");
+assert.equal(quoteEvidence.displayEligibility, "invalid-token-perspective");
+assert.equal(quoteEvidence.priceUsd, null, "Base-token price must never be assigned to the requested quote token");
+assert.equal(quoteEvidence.marketCapUsd, null);
+assert.equal(quoteEvidence.fdvUsd, null);
+assert.equal(quoteEvidence.priceChange24h, null);
+assert.equal(quoteEvidence.liquidityUsd, 999_999_999, "Pair-level liquidity remains market evidence, not asset valuation");
+assert.equal(selectPrimaryAssetMarket([quoteEvidence, baseEvidence], { requireChart: true }), baseEvidence, "Malformed quote-side magnitude cannot hijack primary selection");
+
+const secondEvidence = normalizeProviderPairForAsset(pair({ pairAddress: poolB, liquidity: { usd: 30_000 }, volume: { h24: 9_000 } }), external.address, evidenceOptions)!;
+assert.equal(selectPrimaryAssetMarket([baseEvidence, secondEvidence], { requireChart: true }), secondEvidence);
+const multiPoolRecord = buildAssetMarketRecord([baseEvidence, quoteEvidence, secondEvidence, secondEvidence], { requireChart: true })!;
+assert.equal(multiPoolRecord.verifiedMarkets.length, 2, "Duplicate venue/pool evidence must be rejected deterministically");
+assert.equal(multiPoolRecord.verifiedMarkets.find((market) => market.pool.value === poolA)?.assetSide, "BASE", "Valid token perspective wins contradictory duplicate provider evidence");
+assert.equal(multiPoolRecord.primaryMarket?.pool.value, secondEvidence.pool.value);
+
+const v4Evidence = normalizeProviderPairForAsset(pair({
+  pairAddress: bytes32Pool,
+  dexId: "uniswap",
+  quoteToken: { address: zero.address, name: "Ether", symbol: "ETH" },
+  liquidity: { usd: 3_000_000 }
+}), external.address, evidenceOptions)!;
+assert.equal(v4Evidence.pool.kind, "bytes32");
+assert.equal(v4Evidence.protocolVersion, 4);
+assert.equal(v4Evidence.chartEligibility, "unavailable");
+assert.equal(selectPrimaryAssetMarket([v4Evidence, baseEvidence])?.pool.value, bytes32Pool);
+assert.equal(selectPrimaryAssetMarket([v4Evidence, baseEvidence], { requireChart: true }), baseEvidence, "Address-only chart support must not silently receive a bytes32 pool ID");
+assert.equal(canonicalExternalPoolIdentity(bytes32Pool)?.kind, "bytes32");
+assert.equal(canonicalExternalPoolIdentity("0x1234"), null);
+assert.equal(normalizeProviderPairForAsset(pair({ chainId: "ethereum" }), external.address, evidenceOptions), null);
+assert.equal(normalizeProviderPairForAsset(pair({ pairAddress: "malformed" }), external.address, evidenceOptions), null);
+
+const missingPrice = normalizeProviderPairForAsset(pair({ priceUsd: undefined }), external.address, evidenceOptions)!;
+assert.equal(missingPrice.displayEligibility, "missing-price");
+assert.equal(selectPrimaryAssetMarket([missingPrice]), null);
+const missingLiquidity = normalizeProviderPairForAsset(pair({ liquidity: {} }), external.address, evidenceOptions)!;
+assert.equal(missingLiquidity.liquidityUsd, null);
+assert.equal(selectPrimaryAssetMarket([missingLiquidity]), missingLiquidity);
+
+const tiedHigh = normalizeProviderPairForAsset(pair({ pairAddress: poolB }), external.address, evidenceOptions)!;
+assert.equal(selectPrimaryAssetMarket([tiedHigh, baseEvidence])?.pool.value, poolA, "Pool identity is the deterministic final tie-break");
+
+const sameSymbolDifferentContract = normalizeProviderPairForAsset(pair({
+  pairAddress: syntheticAddress("4"),
+  baseToken: otherExternal
+}), otherExternal.address, evidenceOptions)!;
+assert.notEqual(baseEvidence.assetId, sameSymbolDifferentContract.assetId);
+assert.equal(buildAssetMarketRecord([baseEvidence, sameSymbolDifferentContract]), null, "Different contracts sharing a symbol/name must never merge");
+
+const workspaceHook = readFileSync(new URL("../app/vnext/use-vnext-asset-workspace.ts", import.meta.url), "utf8");
+const workspaceView = readFileSync(new URL("../app/vnext/vnext-asset-workspace.tsx", import.meta.url), "utf8");
+const executionDiscovery = readFileSync(new URL("server/external-trade-venues.ts", import.meta.url), "utf8");
+assert.match(workspaceHook, /primaryPair\.toLowerCase\(\) === expectedPair\.toLowerCase\(\)/, "Workspace market evidence must match the directory primary pool");
+assert.doesNotMatch(workspaceView, /resolution\?\.pools\[0\]\?\.poolAddress/, "Chart selection must not silently fall back to an unrelated resolver pool");
+assert.match(workspaceView, /chartEligibility === "eligible"/);
+assert.match(executionDiscovery, /verifyUniswapV4/);
+assert.doesNotMatch(executionDiscovery, /primaryMarket|selectPrimaryAssetMarket/, "Display primary must not grant execution authority");
 
 assert.equal(isNonzeroEvmAddress(zero.address), false, "The native zero-address sentinel is not an ERC-20 trade target");
 assert.equal(isNonzeroEvmAddress(external.address), true);

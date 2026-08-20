@@ -20,8 +20,12 @@ type WorkspaceResolutionResponse = {
   error?: string;
 };
 
-function exactMarket(payload: ExternalMarketResponse, address: string) {
-  return payload.markets?.find((market) => market.address.toLowerCase() === address.toLowerCase());
+function exactMarket(payload: ExternalMarketResponse, address: string, expectedPair?: string) {
+  const market = payload.markets?.find((candidate) => candidate.address.toLowerCase() === address.toLowerCase());
+  if (!market || !expectedPair) return market;
+  const primaryPool = market.primaryMarket?.pool;
+  const primaryPair = primaryPool?.kind === "evm-address" ? primaryPool.value : market.pairAddress;
+  return primaryPair.toLowerCase() === expectedPair.toLowerCase() ? market : undefined;
 }
 
 function validResolution(payload: WorkspaceResolutionResponse, address: string) {
@@ -74,7 +78,7 @@ export function useVNextAssetWorkspace(address?: string, pairAddress?: string) {
       ]);
       if (id !== requestId.current) return;
       const nextMarket = marketResult.status === "fulfilled" && marketResult.value.ok
-        ? exactMarket(marketResult.value.payload, address)
+        ? exactMarket(marketResult.value.payload, address, pairAddress)
         : undefined;
       const nextResolution = resolutionResult.status === "fulfilled" && resolutionResult.value.ok
         ? validResolution(resolutionResult.value.payload, address)

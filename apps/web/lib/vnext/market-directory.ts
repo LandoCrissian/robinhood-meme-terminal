@@ -1,5 +1,10 @@
 import { getAddress, isAddress } from "viem";
-import type { ExternalMarket, ExternalMarketResponse, UniversalMarketResolution } from "../external-market";
+import {
+  buildAssetMarketRecord,
+  type ExternalMarket,
+  type ExternalMarketResponse,
+  type UniversalMarketResolution
+} from "../external-market";
 import type { AssetMetadata } from "./execution-domain";
 import { evmAsset } from "./execution-domain";
 import {
@@ -24,6 +29,9 @@ export type VNextDirectoryMarket = Pick<ExternalMarket,
   | "signal"
   | "imageUri"
   | "resolution"
+  | "assetId"
+  | "primaryMarket"
+  | "verifiedMarkets"
 > & {
   pairAddress?: string;
   dexId?: string;
@@ -78,17 +86,14 @@ function rwaRelationship(market: ExternalMarket | VNextDirectoryMarket) {
 
 export function normalizeDirectoryMarkets(payload: Pick<ExternalMarketResponse, "markets"> | VNextDirectoryResponse) {
   if (!Array.isArray(payload.markets)) return [];
-  const seen = new Set<string>();
-  return payload.markets.flatMap((market): VNextDirectoryMarket[] => {
+  const normalized = payload.markets.flatMap((market): VNextDirectoryMarket[] => {
     if (!isAddress(market.address, { strict: false })) return [];
     const address = getAddress(market.address);
-    const key = address.toLowerCase();
-    if (seen.has(key)) return [];
-    seen.add(key);
     const symbol = text(market.symbol, 16) || `${address.slice(0, 6)}…${address.slice(-4)}`;
     const name = text(market.name, 80) || symbol;
     return [{
       address,
+      assetId: market.assetId,
       name,
       symbol,
       priceUsd: Math.max(0, finite(market.priceUsd)),
@@ -105,9 +110,29 @@ export function normalizeDirectoryMarkets(payload: Pick<ExternalMarketResponse, 
         : undefined,
       dexId: text(market.dexId, 30) || undefined,
       url: typeof market.url === "string" && market.url.startsWith("https://") ? market.url.slice(0, 300) : undefined,
-      rwaRelationship: rwaRelationship(market)
+      rwaRelationship: rwaRelationship(market),
+      primaryMarket: market.primaryMarket,
+      verifiedMarkets: market.verifiedMarkets
     }];
   });
+  const byAsset = new Map<string, VNextDirectoryMarket[]>();
+  for (const market of normalized) {
+    const key = market.address.toLowerCase();
+    byAsset.set(key, [...(byAsset.get(key) ?? []), market]);
+  }
+  return [...byAsset.values()].map((candidates) => {
+    const evidence = candidates.flatMap((candidate) => candidate.verifiedMarkets ?? []);
+    const record = buildAssetMarketRecord(evidence, { requireChart: true });
+    const chosen = record?.primaryMarket
+      ? candidates.find((candidate) => candidate.pairAddress?.toLowerCase() === record.primaryMarket?.pool.value.toLowerCase())
+      : [...candidates].sort((left, right) => (left.pairAddress ?? "~").toLowerCase().localeCompare((right.pairAddress ?? "~").toLowerCase()))[0];
+    return record && chosen ? {
+      ...chosen,
+      assetId: record.assetId,
+      primaryMarket: record.primaryMarket ?? undefined,
+      verifiedMarkets: record.verifiedMarkets
+    } : chosen;
+  }).filter((market): market is VNextDirectoryMarket => Boolean(market));
 }
 
 function compareVolume(left: VNextDirectoryMarket, right: VNextDirectoryMarket) {

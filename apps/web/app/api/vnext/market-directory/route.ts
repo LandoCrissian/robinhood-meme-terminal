@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getAddress, isAddress, zeroAddress } from "viem";
 import type { ExternalMarketSignal } from "../../../../lib/external-market-ranking";
+import { buildAssetMarketRecord, type AssetMarketEvidence } from "../../../../lib/external-market";
+import { normalizeProviderPairForAsset } from "../../../../lib/external-market-identity";
 import {
   VNEXT_MARKET_DIRECTORY_MAX_MARKETS,
   type VNextDirectoryMarket,
@@ -66,34 +68,33 @@ function signalFor(pair: RawPair): ExternalMarketSignal {
   return "early";
 }
 
-function marketFromPair(pair: RawPair): VNextDirectoryMarket | null {
+function marketFromPair(pair: RawPair, evidence: AssetMarketEvidence): VNextDirectoryMarket | null {
   if (pair.chainId !== CHAIN_SLUG) return null;
-  const token = selectedToken(pair);
-  const address = text(token?.address, 42);
+  if (evidence.displayEligibility !== "eligible" || evidence.assetSide !== "BASE") return null;
+  const token = evidence.token;
+  const address = token.address;
   if (!isAddress(address, { strict: false }) || address.toLowerCase() === zeroAddress) return null;
   const canonicalAddress = getAddress(address);
-  const pairAddress = text(pair.pairAddress, 42);
-  if (!isAddress(pairAddress, { strict: false }) || pairAddress.toLowerCase() === zeroAddress) return null;
+  if (evidence.pool.kind !== "evm-address") return null;
+  const pairAddress = evidence.pool.value;
   const symbol = text(token?.symbol, 16) || `${canonicalAddress.slice(0, 6)}…${canonicalAddress.slice(-4)}`;
   const name = text(token?.name, 80) || symbol;
   const pairCreatedAt = number(pair.pairCreatedAt);
-  const baseAddress = text(pair.baseToken?.address, 42).toLowerCase();
   return {
+    assetId: evidence.assetId,
     address: canonicalAddress,
     name,
     symbol,
-    priceUsd: Math.max(0, number(pair.priceUsd)),
-    liquidityUsd: Math.max(0, number(pair.liquidity?.usd)),
-    marketCapUsd: Math.max(0, number(pair.marketCap) || number(pair.fdv)),
-    volume24h: Math.max(0, number(pair.volume?.h24)),
-    priceChange24h: number(pair.priceChange?.h24),
+    priceUsd: evidence.priceUsd ?? 0,
+    liquidityUsd: evidence.liquidityUsd ?? 0,
+    marketCapUsd: evidence.marketCapUsd ?? evidence.fdvUsd ?? 0,
+    volume24h: evidence.volume24h ?? 0,
+    priceChange24h: evidence.priceChange24h ?? 0,
     ageMinutes: pairCreatedAt > 0 ? Math.max(0, (Date.now() - pairCreatedAt) / 60_000) : null,
     signal: signalFor(pair),
     imageUri: canonicalAddress.toLowerCase() === ROBINHOOD_RMT_ADDRESS.toLowerCase()
       ? RMT_TOKEN_ARTWORK
-      : canonicalAddress.toLowerCase() === baseAddress
-        ? safeTokenArtworkUrl(pair.info?.imageUrl) ?? undefined
-        : undefined,
+      : safeTokenArtworkUrl(pair.info?.imageUrl) ?? undefined,
     pairAddress: getAddress(pairAddress),
     dexId: text(pair.dexId, 30) || "DEX",
     url: text(pair.url, 300) || undefined
@@ -117,23 +118,40 @@ export async function GET() {
   const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
     const batches = await Promise.all(DIRECTORY_TOKENS.map((address) => fetchPairs(address, controller.signal).catch(() => [])));
-    const preferred = new Map<string, VNextDirectoryMarket>();
+    const evidenceByAsset = new Map<string, AssetMarketEvidence[]>();
+    const candidatesByPool = new Map<string, VNextDirectoryMarket>();
     for (const pair of batches.flat()) {
-      const market = marketFromPair(pair);
-      if (!market) continue;
-      const key = market.address.toLowerCase();
-      const existing = preferred.get(key);
-      if (!existing) preferred.set(key, market);
-      else if (market.liquidityUsd > existing.liquidityUsd) preferred.set(key, {
-        ...market,
-        imageUri: market.imageUri ?? existing.imageUri
+      const token = selectedToken(pair);
+      const tokenAddress = text(token?.address, 42);
+      if (!isAddress(tokenAddress, { strict: false }) || tokenAddress.toLowerCase() === zeroAddress) continue;
+      const evidence = normalizeProviderPairForAsset(pair, tokenAddress, {
+        chainId: 4_663,
+        chainSlug: CHAIN_SLUG,
+        canonicalQuoteAddresses: QUOTE_ASSETS,
+        provenance: "dexscreener-token-pairs"
       });
-      else if (!existing.imageUri && market.imageUri) preferred.set(key, {
-        ...existing,
-        imageUri: market.imageUri
-      });
+      if (!evidence) continue;
+      const evidenceList = evidenceByAsset.get(evidence.assetId) ?? [];
+      evidenceList.push(evidence);
+      evidenceByAsset.set(evidence.assetId, evidenceList);
+      const market = marketFromPair(pair, evidence);
+      if (market) candidatesByPool.set(`${evidence.assetId}:${evidence.pool.value.toLowerCase()}`, market);
     }
-    const markets = [...preferred.values()]
+    const markets = [...evidenceByAsset.values()].flatMap((evidenceList): VNextDirectoryMarket[] => {
+      const record = buildAssetMarketRecord(evidenceList, { requireChart: true });
+      if (!record?.primaryMarket) return [];
+      const candidate = candidatesByPool.get(`${record.assetId}:${record.primaryMarket.pool.value.toLowerCase()}`);
+      if (!candidate) return [];
+      const imageUri = candidate.imageUri ?? evidenceList
+        .map((evidence) => candidatesByPool.get(`${record.assetId}:${evidence.pool.value.toLowerCase()}`)?.imageUri)
+        .find(Boolean);
+      return [{
+        ...candidate,
+        imageUri,
+        primaryMarket: record.primaryMarket,
+        verifiedMarkets: record.verifiedMarkets
+      }];
+    })
       .sort((left, right) => right.liquidityUsd - left.liquidityUsd || right.volume24h - left.volume24h)
       .slice(0, VNEXT_MARKET_DIRECTORY_MAX_MARKETS);
     if (markets.length === 0) throw new Error("Market directory returned no usable assets.");
