@@ -1,0 +1,110 @@
+.chainPulseCard {
+  border: 1px solid var(--vn-border);
+  border-radius: var(--vn-radius-lg);
+  padding: 0.9rem;
+  background: var(--vn-surface-soft);
+  color: var(--vn-text);
+  display: grid;
+  gap: 0.6rem;
+}
+
+.cardHeader {
+  border-radius: var(--vn-radius-md);
+  padding: 0.45rem 0.55rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  background: color-mix(in srgb, var(--vn-accent-soft) 62%, transparent);
+  border: 1px solid var(--vn-accent-soft);
+}
+
+.cardTitle {
+  margin: 0;
+  font-size: 0.8rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--vn-text-muted);
+}
+
+.cardSubLabel {
+  margin: 0.25rem 0 0;
+  font-size: 0.8rem;
+  color: var(--vn-text-muted);
+}
+
+.cardStatus {
+  font-size: 0.76rem;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--vn-text);
+  border: 1px solid var(--vn-border);
+  border-radius: 999px;
+  padding: 0.25rem 0.55rem;
+  white-space: nowrap;
+}
+
+.metrics {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+
+.metric {
+  border: 1px solid var(--vn-border);
+  border-radius: var(--vn-radius-md);
+  padding: 0.5rem;
+  min-width: 0;
+  background: var(--vn-surface);
+  display: grid;
+  gap: 0.25rem;
+}
+
+.metric dt {
+  margin: 0;
+  color: var(--vn-text-muted);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.metric dd {
+  margin: 0;
+  color: var(--vn-text);
+  font-size: 0.94rem;
+  font-weight: 560;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cardFooter {
+  margin: 0;
+  border-top: 1px dashed var(--vn-border);
+  padding-top: 0.5rem;
+  color: var(--vn-text-secondary);
+  font-size: 0.76rem;
+  letter-spacing: 0.04em;
+}
+
+@media (min-width: 1024px) {
+  .metrics {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .chainPulseCard {
+    padding: 0.75rem;
+  }
+
+  .metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .metric dd {
+    white-space: normal;
+  }
+}

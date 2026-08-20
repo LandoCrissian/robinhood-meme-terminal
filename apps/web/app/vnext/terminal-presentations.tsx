@@ -18,6 +18,7 @@ import { TokenArtwork } from "./token-artwork";
 import { TradeIntentComposer } from "./trade-intent-composer";
 import type { DirectoryStatus, IdentityStatus } from "./use-vnext-market-directory";
 import { VNextAssetWorkspace } from "./vnext-asset-workspace";
+import { VNextChainPulseCard } from "./vnext-chain-pulse-card";
 import { VNextDistributionPlanner } from "./vnext-distribution-planner";
 import { VNextExecutionRecoveryBanner } from "./vnext-execution-recovery-banner";
 import { VNextWalletConnection } from "./vnext-wallet-connection";
@@ -265,6 +266,7 @@ function DesktopHeader(props: TerminalPresentationProps) {
 function DesktopMarkets(props: TerminalPresentationProps) {
   return <section className="rmtDesktopMarketsView" id="rmt-markets" aria-labelledby="rmt-market-directory-heading">
     <header className="rmtMarketsHeading"><div><h1 id="rmt-market-directory-heading">Markets</h1><p>Robinhood Chain market intelligence</p></div><span className={`rmtDirectoryFreshness is${props.directoryStatus}`}><i aria-hidden="true" />{props.directoryStatus === "ready" ? "Directory ready" : props.directoryStatus === "stale" ? "Last verified data" : props.directoryStatus === "loading" ? "Syncing" : "Delayed"}</span></header>
+    <VNextChainPulseCard />
     <MarketSummary markets={props.markets} />
     <div className="rmtScannerControls"><MarketCategoryNav view={props.directoryView} counts={props.directoryViewCounts} searchActive={props.searchActive} onChange={props.onDirectoryViewChange} /><span>{props.filteredMarkets.length} in view · routes checked on demand</span></div>
     <DesktopMarketTable {...props} />
@@ -340,6 +342,7 @@ function MobileHeader(props: TerminalPresentationProps) {
 function MobileMarkets(props: TerminalPresentationProps) {
   return <section className="rmtMobileMarketsView" id="rmt-mobile-markets" aria-labelledby="rmt-mobile-markets-heading">
     <header className="rmtMobileContextHeading"><div><h1 id="rmt-mobile-markets-heading">Markets</h1><p>Robinhood Chain</p></div><span>{props.directoryStatus === "ready" ? "Directory ready" : props.directoryStatus === "stale" ? "Last verified" : props.directoryStatus === "loading" ? "Syncing" : "Delayed"}</span></header>
+    <VNextChainPulseCard />
     <MarketSummary markets={props.markets} />
     <MarketCategoryNav view={props.directoryView} counts={props.directoryViewCounts} searchActive={props.searchActive} onChange={props.onDirectoryViewChange} />
     <MarketSearch id="rmt-mobile-market-search" query={props.query} setQuery={props.setQuery} inputRef={props.marketSearch} onSubmit={props.onSearchSubmit} />
