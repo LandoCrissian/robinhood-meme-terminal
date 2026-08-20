@@ -76,13 +76,51 @@ jobs:
             const marketPair = index === 0 ? pair : address(0x2001 + index);
             const sourceId = index % 3 === 0 ? "sushi" : index % 3 === 1 ? "lemon" : "pons";
             const sourceName = sourceId === "sushi" ? "Sushi Launch" : sourceId === "lemon" ? "Lemon" : "Pons";
+            const dexId = index % 2 === 0 ? "sushiswap" : "uniswap-v3";
+            const protocolVersion = index % 2 === 0 ? 2 : 3;
+            const quoteToken = {
+              address: "0x5555555555555555555555555555555555555555",
+              name: "Wrapped Ether",
+              symbol: "WETH"
+            };
+            const assetId = `eip155:4663/contract:${marketToken}`;
+            const priceUsd = prices[index];
+            const liquidityUsd = 69000 + index * 31000;
+            const marketCapUsd = 470000 + index * 260000;
+            const fdvUsd = 560000 + index * 310000;
+            const volume24h = 392000 + index * 112000;
+            const priceChange24h = changes[index] * 2.1;
+            const pairCreatedAt = Date.now() - (index + 1) * 5400000;
+            const primaryMarket = {
+              chainId: 4663,
+              assetId,
+              token: { address: marketToken, name: names[index], symbol: symbols[index] },
+              venue: dexId,
+              protocolVersion,
+              pool: { kind: "evm-address", value: marketPair },
+              baseToken: { address: marketToken, name: names[index], symbol: symbols[index] },
+              quoteToken,
+              assetSide: "BASE",
+              displayEligibility: "eligible",
+              chartEligibility: "eligible",
+              executionEligibility: "view-only",
+              provenance: "dexscreener-token-pairs",
+              priceUsd,
+              liquidityUsd,
+              marketCapUsd,
+              fdvUsd,
+              volume24h,
+              priceChange24h,
+              pairCreatedAt
+            };
             return {
+              assetId,
               address: marketToken,
               name: names[index],
               symbol: symbols[index],
               pairAddress: marketPair,
               url: `https://robinhoodchain.blockscout.com/address/${marketPair}`,
-              dexId: index % 2 === 0 ? "sushiswap" : "uniswap-v3",
+              dexId,
               project: {
                 sourceId,
                 sourceName,
@@ -104,29 +142,31 @@ jobs:
                 coverage: "complete",
                 claim: { claimKind: "token-created", sourceId, sourceName, factory, transactionHash: tx, blockNumber: String(12345000 + index), evidenceHash: evidence }
               },
-              venue: { kind: "dex", dexId: index % 2 === 0 ? "sushiswap" : "uniswap-v3", pairAddress: marketPair, url: `https://robinhoodchain.blockscout.com/address/${marketPair}`, execution: "read-only" },
-              priceUsd: prices[index],
-              liquidityUsd: 69000 + index * 31000,
-              marketCapUsd: 470000 + index * 260000,
-              fdvUsd: 560000 + index * 310000,
+              venue: { kind: "dex", dexId, pairAddress: marketPair, url: `https://robinhoodchain.blockscout.com/address/${marketPair}`, execution: "read-only" },
+              priceUsd,
+              liquidityUsd,
+              marketCapUsd,
+              fdvUsd,
               volume5m: 4250 + index * 1350,
               volume1h: 40700 + index * 9700,
-              volume24h: 392000 + index * 112000,
+              volume24h,
               priceChange5m: changes[index] / 4,
               priceChange1h: changes[index],
-              priceChange24h: changes[index] * 2.1,
+              priceChange24h,
               buys5m: 20 + index * 4,
               sells5m: 9 + index * 2,
               buys1h: 121 + index * 19,
               sells1h: 72 + index * 11,
               buys24h: 983 + index * 103,
               sells24h: 587 + index * 71,
-              pairCreatedAt: Date.now() - (index + 1) * 5400000,
+              pairCreatedAt,
               ageMinutes: 85 + index * 190,
               momentumScore: 73 + index * 4,
               buyPressureBps: 6350 + index * 140,
               signal: changes[index] > 12 ? "moving" : index < 2 ? "early" : "active",
-              riskFlags: index === 5 ? ["thin-liquidity"] : []
+              riskFlags: index === 5 ? ["thin-liquidity"] : [],
+              primaryMarket,
+              verifiedMarkets: [primaryMarket]
             };
           }
 
