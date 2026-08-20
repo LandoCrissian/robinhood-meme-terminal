@@ -16,6 +16,7 @@ import {
   type BuildDistributionManifestInput,
   type DistributionManifestV1
 } from "./distribution-domain";
+import { verifyCcff00OwnerWithdrawalProofV1 } from "./distribution-ccff00-owner-withdrawal-proof";
 
 export const CCFF00_ADAPTER_ID = "ccff00_public_tba_v1" as const;
 export const CCFF00_COLLECTION = getAddress("0x505A22Ffed8d37ebE580FfD98d2Cdb0021189146");
@@ -389,7 +390,12 @@ export function parseCcff00PublicSnapshotV1(value: unknown): Ccff00PublicSnapsho
   return normalized;
 }
 
-export function validateCcff00Canaries(snapshotValue: unknown) {
+export function validateCcff00Canaries(snapshotValue: unknown, options: {
+  ownerWithdrawalProof?: unknown;
+  approvedReturnAddress?: string;
+  consumedProofHashes?: readonly string[];
+  consumedTransactionHashes?: readonly string[];
+} = {}) {
   const snapshot = parseCcff00PublicSnapshotV1(snapshotValue);
   const expected = new Map<string, Address>([
     ["470", getAddress("0xFd1fDC1d3aA3AeEA37b265C691C7D367cBb20a6e")],
@@ -403,17 +409,45 @@ export function validateCcff00Canaries(snapshotValue: unknown) {
     if (BigInt(row.ccff00BalanceAtomic) !== CCFF00_TOKENS_PER_NFT_ATOMIC) reject(`canary #${tokenId} CCFF00 funding is inconsistent`);
     return row;
   });
+  let verifiedOwnerWithdrawalTokenId: string | null = null;
+  if (options.ownerWithdrawalProof !== undefined) {
+    if (!options.approvedReturnAddress) reject("an approved return address is required for owner-withdrawal evidence");
+    const verified = verifyCcff00OwnerWithdrawalProofV1({
+      proof: options.ownerWithdrawalProof,
+      snapshot,
+      configuration: {
+        collection: CCFF00_COLLECTION,
+        registry: CCFF00_ERC6551_REGISTRY,
+        accountImplementation: CCFF00_ACCOUNT_IMPLEMENTATION,
+        salt: CCFF00_ERC6551_SALT,
+        accountChainId: RMT_DISTRIBUTION_CHAIN_ID,
+        ccff00Token: CCFF00_TOKEN,
+        rmtToken: CCFF00_RMT_TOKEN,
+        admittedCanaryTokenIds: CCFF00_CANARY_TOKEN_IDS
+      },
+      approvedReturnAddress: options.approvedReturnAddress,
+      consumedProofHashes: options.consumedProofHashes,
+      consumedTransactionHashes: options.consumedTransactionHashes
+    });
+    verifiedOwnerWithdrawalTokenId = verified.tokenId;
+  }
+  const ownerControlProofs = rows.map((row) => ({
+    tokenId: row.tokenId,
+    verified: row.tokenId === verifiedOwnerWithdrawalTokenId
+  }));
+  const ownerWithdrawalProofVerified = ownerControlProofs.some((proof) => proof.verified);
   const blockers: string[] = [];
   if (!rows.every((row) => BigInt(row.rmtBalanceAtomic) >= 10n ** 18n)) blockers.push("three 1-RMT canary deposits are not proven");
   if (!rows.some((row) => row.activated)) blockers.push("no canary token-bound account is activated");
-  blockers.push("owner-controlled RMT withdrawal proof has not been admitted");
+  if (!ownerWithdrawalProofVerified) blockers.push("owner-controlled RMT withdrawal proof has not been admitted");
   return {
     canaries: rows,
     exactAddressesVerified: true,
     exactCcff00FundingVerified: true,
     oneRmtEachVerified: rows.every((row) => BigInt(row.rmtBalanceAtomic) >= 10n ** 18n),
     activatedCanaryCount: rows.filter((row) => row.activated).length,
-    ownerWithdrawalProofVerified: false,
+    ownerWithdrawalProofVerified,
+    ownerControlProofs,
     massDistributionEligible: false,
     blockers
   };

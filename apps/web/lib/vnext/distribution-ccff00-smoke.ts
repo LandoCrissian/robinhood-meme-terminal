@@ -1,6 +1,14 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { getAddress, keccak256, type Address, type Hex } from "viem";
+import {
+  encodeAbiParameters,
+  encodeEventTopics,
+  encodeFunctionData,
+  getAddress,
+  keccak256,
+  type Address,
+  type Hex
+} from "viem";
 import {
   CCFF00_ACCOUNT_IMPLEMENTATION,
   CCFF00_ADAPTER_ID,
@@ -19,6 +27,16 @@ import {
 } from "./distribution-ccff00";
 import { parseDistributionManifestV1 } from "./distribution-domain";
 import { CCFF00_OFFICIAL_LINKS, CCFF00_PRESENTATION_EVIDENCE } from "./distribution-ccff00-presentation";
+import {
+  CCFF00_CANARY_RMT_AMOUNT_ATOMIC,
+  buildCcff00OwnerWithdrawalProofV1,
+  expectedCcff00TokenBoundRuntimeHashV1,
+  verifyCcff00OwnerWithdrawalProofV1,
+  type Ccff00OwnerWithdrawalConfigurationV1,
+  type Ccff00OwnerWithdrawalProofCoreV1,
+  type Ccff00ProofReceiptLogV1,
+  type Ccff00ProofTransactionV1
+} from "./distribution-ccff00-owner-withdrawal-proof";
 
 const blockNumber = 37_451_763n;
 const blockHash = "0xbfbff107fb35cb352a2a8e58fa3abd198f2c800c032ebe57b747958a992113dc" as Hex;
@@ -28,6 +46,10 @@ const sink = getAddress("0x3333333333333333333333333333333333333333");
 const owner = getAddress("0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA");
 const HASH_A = `0x${"a".repeat(64)}` as Hex;
 const HASH_B = `0x${"b".repeat(64)}` as Hex;
+const HASH_C = `0x${"c".repeat(64)}` as Hex;
+const HASH_D = `0x${"d".repeat(64)}` as Hex;
+const HASH_E = `0x${"e".repeat(64)}` as Hex;
+const HASH_F = `0x${"f".repeat(64)}` as Hex;
 const canaryTbas = new Map<string, Address>([
   ["470", getAddress("0xFd1fDC1d3aA3AeEA37b265C691C7D367cBb20a6e")],
   ["471", getAddress("0xF26b9c1ecA9489A1AdCe201fB82630889cfe6246")],
@@ -45,6 +67,96 @@ const bytecodes = new Map<string, Hex>([
   [CCFF00_TOKEN.toLowerCase(), "0x6004"],
   [CCFF00_RMT_TOKEN.toLowerCase(), "0x6005"]
 ]);
+
+const registryProofAbi = [{
+  type: "function",
+  name: "createAccount",
+  stateMutability: "nonpayable",
+  inputs: [
+    { name: "implementation", type: "address" },
+    { name: "salt", type: "bytes32" },
+    { name: "chainId", type: "uint256" },
+    { name: "tokenContract", type: "address" },
+    { name: "tokenId", type: "uint256" }
+  ],
+  outputs: [{ name: "account", type: "address" }]
+}, {
+  type: "event",
+  name: "ERC6551AccountCreated",
+  anonymous: false,
+  inputs: [
+    { name: "account", type: "address", indexed: false },
+    { name: "implementation", type: "address", indexed: true },
+    { name: "salt", type: "bytes32", indexed: false },
+    { name: "chainId", type: "uint256", indexed: false },
+    { name: "tokenContract", type: "address", indexed: true },
+    { name: "tokenId", type: "uint256", indexed: true }
+  ]
+}] as const;
+
+const erc20ProofAbi = [{
+  type: "function",
+  name: "transfer",
+  stateMutability: "nonpayable",
+  inputs: [{ name: "to", type: "address" }, { name: "amount", type: "uint256" }],
+  outputs: [{ name: "success", type: "bool" }]
+}, {
+  type: "event",
+  name: "Transfer",
+  anonymous: false,
+  inputs: [
+    { name: "from", type: "address", indexed: true },
+    { name: "to", type: "address", indexed: true },
+    { name: "value", type: "uint256", indexed: false }
+  ]
+}] as const;
+
+const accountProofAbi = [{
+  type: "function",
+  name: "execute",
+  stateMutability: "payable",
+  inputs: [
+    { name: "to", type: "address" },
+    { name: "value", type: "uint256" },
+    { name: "data", type: "bytes" },
+    { name: "operation", type: "uint8" }
+  ],
+  outputs: [{ name: "result", type: "bytes" }]
+}] as const;
+
+function proofTransaction(input: Omit<Ccff00ProofTransactionV1, "chainId" | "status" | "valueAtomic">): Ccff00ProofTransactionV1 {
+  return { ...input, chainId: 4_663, status: "success", valueAtomic: "0" };
+}
+
+function registryCreatedLog(tba: Address, logIndex: number): Ccff00ProofReceiptLogV1 {
+  return {
+    address: CCFF00_ERC6551_REGISTRY,
+    topics: encodeEventTopics({
+      abi: registryProofAbi,
+      eventName: "ERC6551AccountCreated",
+      args: {
+        implementation: CCFF00_ACCOUNT_IMPLEMENTATION,
+        tokenContract: CCFF00_COLLECTION,
+        tokenId: 470n
+      }
+    }).flatMap((topic) => typeof topic === "string" ? [topic] : []),
+    data: encodeAbiParameters(
+      [{ type: "address" }, { type: "bytes32" }, { type: "uint256" }],
+      [tba, CCFF00_ERC6551_SALT, 4_663n]
+    ),
+    logIndex
+  };
+}
+
+function rmtTransferLog(from: Address, to: Address, amount: bigint, logIndex: number): Ccff00ProofReceiptLogV1 {
+  return {
+    address: CCFF00_RMT_TOKEN,
+    topics: encodeEventTopics({ abi: erc20ProofAbi, eventName: "Transfer", args: { from, to } })
+      .flatMap((topic) => typeof topic === "string" ? [topic] : []),
+    data: encodeAbiParameters([{ type: "uint256" }], [amount]),
+    logIndex
+  };
+}
 
 function fakeClient(mode: "canaries" | "full", overrides: {
   registry?: Address;
@@ -132,8 +244,249 @@ assert.equal(canaryStatus.exactCcff00FundingVerified, true);
 assert.equal(canaryStatus.oneRmtEachVerified, false);
 assert.equal(canaryStatus.activatedCanaryCount, 0);
 assert.equal(canaryStatus.ownerWithdrawalProofVerified, false);
+assert.deepEqual(canaryStatus.ownerControlProofs, [
+  { tokenId: "470", verified: false },
+  { tokenId: "471", verified: false },
+  { tokenId: "472", verified: false }
+]);
 assert.equal(canaryStatus.massDistributionEligible, false);
 assert.equal(canaryStatus.blockers.length, 3);
+
+const proofTba = canaryTbas.get("470")!;
+const proofConfiguration: Ccff00OwnerWithdrawalConfigurationV1 = {
+  collection: CCFF00_COLLECTION,
+  registry: CCFF00_ERC6551_REGISTRY,
+  accountImplementation: CCFF00_ACCOUNT_IMPLEMENTATION,
+  salt: CCFF00_ERC6551_SALT,
+  accountChainId: 4_663,
+  ccff00Token: CCFF00_TOKEN,
+  rmtToken: CCFF00_RMT_TOKEN,
+  admittedCanaryTokenIds: CCFF00_CANARY_TOKEN_IDS
+};
+const activationInput = encodeFunctionData({
+  abi: registryProofAbi,
+  functionName: "createAccount",
+  args: [CCFF00_ACCOUNT_IMPLEMENTATION, CCFF00_ERC6551_SALT, 4_663n, CCFF00_COLLECTION, 470n]
+});
+const fundingInput = encodeFunctionData({
+  abi: erc20ProofAbi,
+  functionName: "transfer",
+  args: [proofTba, CCFF00_CANARY_RMT_AMOUNT_ATOMIC]
+});
+const returnInput = encodeFunctionData({
+  abi: erc20ProofAbi,
+  functionName: "transfer",
+  args: [sink, CCFF00_CANARY_RMT_AMOUNT_ATOMIC]
+});
+const withdrawalInput = encodeFunctionData({
+  abi: accountProofAbi,
+  functionName: "execute",
+  args: [CCFF00_RMT_TOKEN, 0n, returnInput, 0]
+});
+const proofCore: Ccff00OwnerWithdrawalProofCoreV1 = {
+  schemaVersion: 1,
+  chainId: 4_663,
+  tokenId: "470",
+  collection: CCFF00_COLLECTION,
+  tokenBoundAccount: proofTba,
+  sourceSnapshot: {
+    blockNumber: canarySnapshot.snapshotBlock,
+    blockHash: canarySnapshot.snapshotBlockHash,
+    snapshotHash: canarySnapshot.snapshotHash,
+    currentOwner: owner,
+    collectionReturnedTokenBoundAccount: proofTba
+  },
+  infrastructure: {
+    registry: CCFF00_ERC6551_REGISTRY,
+    registryRuntimeHash: canarySnapshot.erc6551RegistryRuntimeHash,
+    accountImplementation: CCFF00_ACCOUNT_IMPLEMENTATION,
+    implementationRuntimeHash: canarySnapshot.accountImplementationRuntimeHash,
+    salt: CCFF00_ERC6551_SALT,
+    accountChainId: 4_663,
+    deployedTbaRuntimeHash: expectedCcff00TokenBoundRuntimeHashV1(proofConfiguration, 470n)
+  },
+  assets: {
+    ccff00Token: CCFF00_TOKEN,
+    ccff00RuntimeHash: canarySnapshot.ccff00RuntimeHash,
+    rmtToken: CCFF00_RMT_TOKEN,
+    rmtRuntimeHash: canarySnapshot.rmtRuntimeHash
+  },
+  activation: {
+    transaction: proofTransaction({
+      transactionHash: HASH_C,
+      blockNumber: (blockNumber + 1n).toString(),
+      blockHash: HASH_D,
+      transactionIndex: 1,
+      from: engine,
+      to: CCFF00_ERC6551_REGISTRY,
+      input: activationInput,
+      logs: [registryCreatedLog(proofTba, 3)]
+    }),
+    accountCreatedLogIndex: 3,
+    resultingTokenBoundAccount: proofTba,
+    ownerAfterActivation: owner,
+    tokenBinding: { chainId: 4_663, collection: CCFF00_COLLECTION, tokenId: "470" }
+  },
+  funding: {
+    transaction: proofTransaction({
+      transactionHash: HASH_D,
+      blockNumber: (blockNumber + 2n).toString(),
+      blockHash: HASH_E,
+      transactionIndex: 2,
+      from: sender,
+      to: CCFF00_RMT_TOKEN,
+      input: fundingInput,
+      logs: [rmtTransferLog(sender, proofTba, CCFF00_CANARY_RMT_AMOUNT_ATOMIC, 7)]
+    }),
+    sender,
+    amountAtomic: CCFF00_CANARY_RMT_AMOUNT_ATOMIC.toString(),
+    transferLogIndex: 7,
+    tbaRmtBalanceBeforeAtomic: "0",
+    tbaRmtBalanceAfterAtomic: CCFF00_CANARY_RMT_AMOUNT_ATOMIC.toString()
+  },
+  withdrawal: {
+    transaction: proofTransaction({
+      transactionHash: HASH_E,
+      blockNumber: (blockNumber + 3n).toString(),
+      blockHash: HASH_F,
+      transactionIndex: 3,
+      from: owner,
+      to: proofTba,
+      input: withdrawalInput,
+      logs: [rmtTransferLog(proofTba, sink, CCFF00_CANARY_RMT_AMOUNT_ATOMIC, 11)]
+    }),
+    caller: owner,
+    returnRecipient: sink,
+    amountAtomic: CCFF00_CANARY_RMT_AMOUNT_ATOMIC.toString(),
+    transferLogIndex: 11,
+    tbaRmtBalanceBeforeAtomic: CCFF00_CANARY_RMT_AMOUNT_ATOMIC.toString(),
+    tbaRmtBalanceAfterAtomic: "0",
+    recipientRmtBalanceBeforeAtomic: "100",
+    recipientRmtBalanceAfterAtomic: (100n + CCFF00_CANARY_RMT_AMOUNT_ATOMIC).toString()
+  },
+  unchangedAssets: {
+    ccff00BalanceBeforeAtomic: CCFF00_TOKENS_PER_NFT_ATOMIC.toString(),
+    ccff00BalanceAfterAtomic: CCFF00_TOKENS_PER_NFT_ATOMIC.toString()
+  }
+};
+const ownerWithdrawalProof = buildCcff00OwnerWithdrawalProofV1(proofCore);
+const verifiedOwnerWithdrawal = verifyCcff00OwnerWithdrawalProofV1({
+  proof: ownerWithdrawalProof,
+  snapshot: canarySnapshot,
+  configuration: proofConfiguration,
+  approvedReturnAddress: sink
+});
+assert.equal(verifiedOwnerWithdrawal.verified, true);
+assert.equal(verifiedOwnerWithdrawal.tokenId, "470");
+assert.equal(verifiedOwnerWithdrawal.tokenBoundAccount, proofTba);
+assert.equal(verifiedOwnerWithdrawal.currentOwner, owner);
+assert.equal(verifiedOwnerWithdrawal.returnRecipient, sink);
+
+const canaryStatusWithProof = validateCcff00Canaries(canarySnapshot, {
+  ownerWithdrawalProof,
+  approvedReturnAddress: sink
+});
+assert.equal(canaryStatusWithProof.ownerWithdrawalProofVerified, true);
+assert.deepEqual(canaryStatusWithProof.ownerControlProofs, [
+  { tokenId: "470", verified: true },
+  { tokenId: "471", verified: false },
+  { tokenId: "472", verified: false }
+]);
+assert.equal(canaryStatusWithProof.oneRmtEachVerified, false);
+assert.equal(canaryStatusWithProof.activatedCanaryCount, 0);
+assert.equal(canaryStatusWithProof.massDistributionEligible, false);
+assert.equal(canaryStatusWithProof.blockers.length, 2);
+
+function rebuiltProof(mutate: (candidate: Record<string, any>) => void) {
+  const candidate = structuredClone(ownerWithdrawalProof) as Record<string, any>;
+  delete candidate.proofHash;
+  mutate(candidate);
+  return buildCcff00OwnerWithdrawalProofV1(candidate as Ccff00OwnerWithdrawalProofCoreV1);
+}
+
+function rejectProofMutation(mutate: (candidate: Record<string, any>) => void, pattern: RegExp) {
+  assert.throws(() => verifyCcff00OwnerWithdrawalProofV1({
+    proof: rebuiltProof(mutate),
+    snapshot: canarySnapshot,
+    configuration: proofConfiguration,
+    approvedReturnAddress: sink
+  }), pattern);
+}
+
+rejectProofMutation((value) => { value.chainId = 1; }, /schema|chain/);
+rejectProofMutation((value) => { value.tokenId = "999"; }, /admitted canary|source snapshot/);
+rejectProofMutation((value) => { value.sourceSnapshot.currentOwner = sender; }, /current owner/);
+rejectProofMutation((value) => { value.tokenBoundAccount = sender; }, /canonical TBA/);
+rejectProofMutation((value) => { value.infrastructure.registry = sender; }, /registry/);
+rejectProofMutation((value) => { value.infrastructure.registryRuntimeHash = HASH_A; }, /registry runtime/);
+rejectProofMutation((value) => { value.infrastructure.accountImplementation = sender; }, /implementation/);
+rejectProofMutation((value) => { value.infrastructure.implementationRuntimeHash = HASH_A; }, /implementation runtime/);
+rejectProofMutation((value) => { value.infrastructure.deployedTbaRuntimeHash = HASH_A; }, /deployed TBA runtime/);
+rejectProofMutation((value) => { value.assets.rmtToken = sender; }, /RMT token/);
+rejectProofMutation((value) => { value.activation.transaction.logs = []; }, /account-creation event/);
+rejectProofMutation((value) => { value.activation.ownerAfterActivation = sender; }, /owner after activation/);
+rejectProofMutation((value) => { value.activation.tokenBinding.tokenId = "471"; }, /token binding/);
+rejectProofMutation((value) => { value.funding.amountAtomic = (2n * CCFF00_CANARY_RMT_AMOUNT_ATOMIC).toString(); }, /exactly 1 RMT/);
+rejectProofMutation((value) => { value.funding.sender = engine; }, /funding transaction sender/);
+rejectProofMutation((value) => {
+  value.funding.transaction.input = encodeFunctionData({
+    abi: erc20ProofAbi,
+    functionName: "transfer",
+    args: [sink, CCFF00_CANARY_RMT_AMOUNT_ATOMIC]
+  });
+}, /funding calldata recipient/);
+rejectProofMutation((value) => { value.funding.transaction.logs = []; }, /exactly one RMT Transfer/);
+rejectProofMutation((value) => { value.funding.transferLogIndex = 99; }, /log index/);
+rejectProofMutation((value) => { value.withdrawal.caller = sender; }, /withdrawal caller/);
+rejectProofMutation((value) => { value.withdrawal.returnRecipient = sender; }, /return recipient/);
+rejectProofMutation((value) => {
+  const wrongInner = encodeFunctionData({
+    abi: erc20ProofAbi,
+    functionName: "transfer",
+    args: [sender, CCFF00_CANARY_RMT_AMOUNT_ATOMIC]
+  });
+  value.withdrawal.transaction.input = encodeFunctionData({
+    abi: accountProofAbi,
+    functionName: "execute",
+    args: [CCFF00_RMT_TOKEN, 0n, wrongInner, 0]
+  });
+}, /withdrawal calldata recipient/);
+rejectProofMutation((value) => { value.withdrawal.amountAtomic = (2n * CCFF00_CANARY_RMT_AMOUNT_ATOMIC).toString(); }, /exactly 1 RMT/);
+rejectProofMutation((value) => { value.funding.tbaRmtBalanceAfterAtomic = "1"; }, /funding TBA balance delta/);
+rejectProofMutation((value) => { value.withdrawal.recipientRmtBalanceAfterAtomic = "101"; }, /return-recipient balance delta/);
+rejectProofMutation((value) => { value.unchangedAssets.ccff00BalanceAfterAtomic = "1"; }, /CCFF00 balance changed/);
+rejectProofMutation((value) => { value.withdrawal.transaction.status = "reverted"; }, /schema/);
+rejectProofMutation((value) => { value.funding.transaction.transactionHash = value.activation.transaction.transactionHash; }, /duplicated or replayed/);
+
+const mutatedBlock = structuredClone(ownerWithdrawalProof);
+mutatedBlock.activation.transaction.blockHash = HASH_A;
+assert.throws(() => verifyCcff00OwnerWithdrawalProofV1({
+  proof: mutatedBlock,
+  snapshot: canarySnapshot,
+  configuration: proofConfiguration,
+  approvedReturnAddress: sink
+}), /proof hash/);
+const mutatedProofHash = { ...ownerWithdrawalProof, proofHash: HASH_A };
+assert.throws(() => verifyCcff00OwnerWithdrawalProofV1({
+  proof: mutatedProofHash,
+  snapshot: canarySnapshot,
+  configuration: proofConfiguration,
+  approvedReturnAddress: sink
+}), /proof hash/);
+assert.throws(() => verifyCcff00OwnerWithdrawalProofV1({
+  proof: ownerWithdrawalProof,
+  snapshot: canarySnapshot,
+  configuration: proofConfiguration,
+  approvedReturnAddress: sink,
+  consumedProofHashes: [ownerWithdrawalProof.proofHash]
+}), /already been consumed/);
+assert.throws(() => verifyCcff00OwnerWithdrawalProofV1({
+  proof: ownerWithdrawalProof,
+  snapshot: canarySnapshot,
+  configuration: proofConfiguration,
+  approvedReturnAddress: sink,
+  consumedTransactionHashes: [ownerWithdrawalProof.funding.transaction.transactionHash]
+}), /already been consumed/);
 
 const fullSnapshot = await readCcff00PublicSnapshotV1(fakeClient("full"), { coverage: "full_public" });
 assert.deepEqual(fullSnapshot.rows.map((row) => row.tokenId), ["1", "2", "3"]);
@@ -203,6 +556,14 @@ assert.doesNotMatch(adapterSource, /writeContract|sendTransaction|signMessage|si
 assert.match(adapterSource, /getTokenBoundAccount/);
 assert.match(adapterSource, /publicMinted/);
 assert.match(adapterSource, /coverage !== "full_public"/);
+const ownerWithdrawalProofSource = readFileSync(
+  new URL("./distribution-ccff00-owner-withdrawal-proof.ts", import.meta.url),
+  "utf8"
+);
+assert.doesNotMatch(ownerWithdrawalProofSource, /writeContract|sendTransaction|signMessage|signTypedData|walletClient/);
+assert.match(ownerWithdrawalProofSource, /decodeFunctionData/);
+assert.match(ownerWithdrawalProofSource, /decodeEventLog/);
+assert.match(ownerWithdrawalProofSource, /canonicalDistributionJson/);
 
 assert.equal(CCFF00_PRESENTATION_EVIDENCE.snapshotBlock, "41538389");
 assert.equal(CCFF00_PRESENTATION_EVIDENCE.publicMinted + CCFF00_PRESENTATION_EVIDENCE.reserveMinted, CCFF00_PRESENTATION_EVIDENCE.totalSupply);
