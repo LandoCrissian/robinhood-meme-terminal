@@ -10,6 +10,10 @@ import {
   formatDistributionPreviewAmount,
   summarizePlannerReadyState
 } from "../../lib/vnext/distribution-planner";
+import {
+  CCFF00_OFFICIAL_LINKS,
+  CCFF00_PRESENTATION_EVIDENCE
+} from "../../lib/vnext/distribution-ccff00-presentation";
 
 const ACTION_OPTIONS: { value: DistributionPlannerActionKind; label: string }[] = [
   { value: "erc20_equal", label: "ERC-20 Equal" },
@@ -17,6 +21,15 @@ const ACTION_OPTIONS: { value: DistributionPlannerActionKind; label: string }[] 
   { value: "erc721", label: "ERC-721" },
   { value: "erc1155", label: "ERC-1155" }
 ];
+
+const CCFF00_EXTERNAL_LINKS = [
+  { label: "Explore CCFF00", href: CCFF00_OFFICIAL_LINKS.ccff00 },
+  { label: "HoodStreet", href: CCFF00_OFFICIAL_LINKS.hoodstreet },
+  { label: "My Neon", href: CCFF00_OFFICIAL_LINKS.myNeon },
+  { label: "OpenSea", href: CCFF00_OFFICIAL_LINKS.openSea },
+  { label: "CCFF00 on X", href: CCFF00_OFFICIAL_LINKS.ccff00X },
+  { label: "HoodStreet on X", href: CCFF00_OFFICIAL_LINKS.hoodstreetX }
+] as const;
 
 function csvTemplateForKind(actionKind: DistributionPlannerActionKind) {
   if (actionKind === "erc20_equal") return "recipient\\n";
@@ -107,14 +120,59 @@ export function VNextDistributionPlanner() {
       <span>BATCH/GAS EVIDENCE: <strong>NOT YET ADMITTED</strong></span>
     </div>
 
-    <section className="rmtDistributionSource" aria-labelledby="distribution-source-ccff00">
-      <div>
-        <span>Supported ecosystem source</span>
-        <h3 id="distribution-source-ccff00">Genesis Community / CCFF00</h3>
+    <section className="rmtCcff00Genesis" aria-labelledby="distribution-source-ccff00">
+      <header className="rmtCcff00GenesisHeader">
+        <div>
+          <span className="rmtCcff00Eyebrow">Supported ecosystem · read-only</span>
+          <h3 id="distribution-source-ccff00"><strong>CCFF00</strong><span>Genesis Community</span></h3>
+        </div>
+        <span className="rmtCcff00ProofState">{CCFF00_PRESENTATION_EVIDENCE.status}</span>
+      </header>
+
+      <div className="rmtCcff00Story">
+        <p>CCFF00 is HoodStreet&apos;s founding membership collection on Robinhood Chain. Each CCFF00 Square has a deterministic ERC-6551 token-bound account—an onchain wallet and identity attached to the NFT.</p>
+        <p>RMT is using CCFF00 as the first supported community to prove deterministic recipient discovery, token-bound identity, auditable distribution planning, and owner-controlled settlement.</p>
+        <p className="rmtCcff00Disclosure">Independent ecosystem support by RMT. No affiliation or endorsement implied.</p>
       </div>
-      <p>Optional read-only recipient evidence for the first identity + settlement proof. CCFF00 is never required to use RMT.</p>
-      <p><strong>Independent ecosystem support by RMT. No affiliation or endorsement implied.</strong></p>
-      <small>Fresh full-public snapshot, canary receipt/control proofs, reconciliation, a small batch, and separate engine deployment/activation authorization remain mandatory before any future execution.</small>
+
+      <div className="rmtCcff00Metrics" aria-label="Latest CCFF00 read-only evidence">
+        <article><span>Public identities discovered</span><strong>{CCFF00_PRESENTATION_EVIDENCE.publicMinted}</strong></article>
+        <article><span>Token-bound identities</span><strong>{CCFF00_PRESENTATION_EVIDENCE.tokenBoundIdentitiesDiscovered}</strong></article>
+        <article><span>CCFF00 per Square</span><strong>{CCFF00_PRESENTATION_EVIDENCE.ccff00PerSquare}</strong></article>
+        <article><span>Canary TBAs verified</span><strong>{CCFF00_PRESENTATION_EVIDENCE.canaries.verified} / {CCFF00_PRESENTATION_EVIDENCE.canaries.total}</strong></article>
+        <article><span>Canary activation</span><strong>{CCFF00_PRESENTATION_EVIDENCE.canaries.activated} / {CCFF00_PRESENTATION_EVIDENCE.canaries.total}</strong></article>
+        <article><span>Canary RMT deposits</span><strong>{CCFF00_PRESENTATION_EVIDENCE.canaries.rmtDeposited} / {CCFF00_PRESENTATION_EVIDENCE.canaries.total}</strong></article>
+      </div>
+
+      <div className="rmtCcff00EvidenceMeta">
+        <span>Latest RMT evidence · block {Number(CCFF00_PRESENTATION_EVIDENCE.snapshotBlock).toLocaleString("en-US")}</span>
+        <span>Supply at snapshot · {CCFF00_PRESENTATION_EVIDENCE.publicMinted} public + {CCFF00_PRESENTATION_EVIDENCE.reserveMinted} reserve = {CCFF00_PRESENTATION_EVIDENCE.totalSupply} total</span>
+      </div>
+
+      <details className="rmtCcff00Education">
+        <summary>Why token-bound accounts? <span>Your NFT is the wallet</span></summary>
+        <p>The NFT has its own deterministic account address, and that account can hold supported assets. Under the current CCFF00 implementation, the NFT&apos;s current owner controls the account. If ownership changes, the account address and its assets remain in place while control follows the NFT&apos;s current owner.</p>
+      </details>
+
+      <nav className="rmtCcff00Links" aria-label="Official CCFF00 and HoodStreet links">
+        {CCFF00_EXTERNAL_LINKS.map((link) => <a
+          key={link.label}
+          href={link.href}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={`${link.label} (opens in a new tab)`}
+        >{link.label}<span aria-hidden="true">↗</span></a>)}
+      </nav>
+
+      <div className="rmtCcff00Safety" aria-label="CCFF00 execution safety status">
+        <span>Planning / read-only <strong>ACTIVE</strong></span>
+        <span>Wallet submission <strong>DISABLED</strong></span>
+        <span>Server submission <strong>DISABLED</strong></span>
+        <span>Mass distribution <strong>NOT AUTHORIZED</strong></span>
+        <span>Canary proof <strong>IN PROGRESS</strong></span>
+      </div>
+
+      <small className="rmtCcff00ReleaseBoundary">Fresh full-public evidence, canary receipt/control proofs, reconciliation, a small batch, and separate engine deployment/activation authorization remain mandatory before any future execution. CCFF00 is never required to use RMT.</small>
     </section>
 
     <form className="rmtDistributionControls" onSubmit={(event) => event.preventDefault()}>

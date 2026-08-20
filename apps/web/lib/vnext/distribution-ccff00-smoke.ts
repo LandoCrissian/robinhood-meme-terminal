@@ -18,6 +18,7 @@ import {
   type Ccff00ReadClient
 } from "./distribution-ccff00";
 import { parseDistributionManifestV1 } from "./distribution-domain";
+import { CCFF00_OFFICIAL_LINKS, CCFF00_PRESENTATION_EVIDENCE } from "./distribution-ccff00-presentation";
 
 const blockNumber = 37_451_763n;
 const blockHash = "0xbfbff107fb35cb352a2a8e58fa3abd198f2c800c032ebe57b747958a992113dc" as Hex;
@@ -202,6 +203,20 @@ assert.doesNotMatch(adapterSource, /writeContract|sendTransaction|signMessage|si
 assert.match(adapterSource, /getTokenBoundAccount/);
 assert.match(adapterSource, /publicMinted/);
 assert.match(adapterSource, /coverage !== "full_public"/);
+
+assert.equal(CCFF00_PRESENTATION_EVIDENCE.snapshotBlock, "41423445");
+assert.equal(CCFF00_PRESENTATION_EVIDENCE.publicMinted + CCFF00_PRESENTATION_EVIDENCE.reserveMinted, CCFF00_PRESENTATION_EVIDENCE.totalSupply);
+assert.equal(CCFF00_PRESENTATION_EVIDENCE.tokenBoundIdentitiesDiscovered, CCFF00_PRESENTATION_EVIDENCE.publicMinted);
+assert.deepEqual(CCFF00_PRESENTATION_EVIDENCE.canaries, { verified: 3, total: 3, activated: 0, rmtDeposited: 0 });
+assert.equal(CCFF00_OFFICIAL_LINKS.myNeon, "https://hoodstreet.capital/my-neon");
+assert.equal(CCFF00_OFFICIAL_LINKS.openSea, "https://opensea.io/collection/ccff00-161927574");
+
+const plannerPresentationSource = readFileSync(new URL("../../app/vnext/vnext-distribution-planner.tsx", import.meta.url), "utf8");
+assert.match(plannerPresentationSource, /Independent ecosystem support by RMT\. No affiliation or endorsement implied\./);
+assert.match(plannerPresentationSource, /Wallet submission <strong>DISABLED<\/strong>/);
+assert.match(plannerPresentationSource, /Server submission <strong>DISABLED<\/strong>/);
+assert.match(plannerPresentationSource, /Mass distribution <strong>NOT AUTHORIZED<\/strong>/);
+assert.doesNotMatch(plannerPresentationSource, /writeContract|sendTransaction|signMessage|signTypedData|walletClient/);
 
 console.log("RMT CCFF00 read-only snapshot, canary, and generic distribution-planner checks passed.");
 }
