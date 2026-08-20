@@ -13,7 +13,7 @@ export type VNextWalletAssetValuation = {
   source: "canonical_usdg" | "eth_spot" | "live_directory" | "unavailable";
 };
 
-function finitePositive(value: number | undefined) {
+function finitePositive(value: number | null | undefined) {
   return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : null;
 }
 
@@ -35,8 +35,9 @@ export function walletPortfolioSummary(input: {
     if (priceUsd === null) continue;
     const key = market.address.toLowerCase();
     const existing = marketPrices.get(key);
-    if (!existing || market.liquidityUsd > existing.liquidityUsd) {
-      marketPrices.set(key, { priceUsd, liquidityUsd: market.liquidityUsd });
+    const liquidityUsd = market.liquidityUsd ?? 0;
+    if (!existing || liquidityUsd > existing.liquidityUsd) {
+      marketPrices.set(key, { priceUsd, liquidityUsd });
     }
   }
 

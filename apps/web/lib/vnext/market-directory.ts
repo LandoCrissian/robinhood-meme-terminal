@@ -5,6 +5,7 @@ import {
   type ExternalMarketResponse,
   type UniversalMarketResolution
 } from "../external-market";
+import { canonicalExternalAssetId } from "../external-market-identity";
 import type { AssetMetadata } from "./execution-domain";
 import { evmAsset } from "./execution-domain";
 import {
@@ -16,7 +17,9 @@ import {
 } from "./robinhood-assets";
 import { safeTokenArtworkUrl } from "./token-artwork";
 
-export type VNextDirectoryMarket = Pick<ExternalMarket,
+type VNextDirectoryMetric = number | null;
+
+export type VNextDirectoryMarket = Omit<Pick<ExternalMarket,
   | "address"
   | "name"
   | "symbol"
@@ -32,7 +35,13 @@ export type VNextDirectoryMarket = Pick<ExternalMarket,
   | "assetId"
   | "primaryMarket"
   | "verifiedMarkets"
-> & {
+>, "priceUsd" | "liquidityUsd" | "marketCapUsd" | "volume24h" | "priceChange24h"> & {
+  priceUsd: VNextDirectoryMetric;
+  liquidityUsd: VNextDirectoryMetric;
+  marketCapUsd: VNextDirectoryMetric;
+  volume24h: VNextDirectoryMetric;
+  priceChange24h: VNextDirectoryMetric;
+  marketDataState?: "live" | "identity-only";
   pairAddress?: string;
   dexId?: string;
   url?: string;
@@ -62,8 +71,13 @@ export type VNextDirectoryResponse = {
   error?: string;
 };
 
-function finite(value: number) {
-  return Number.isFinite(value) ? value : 0;
+function finite(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function nonNegative(value: unknown) {
+  const normalized = finite(value);
+  return normalized === null ? null : Math.max(0, normalized);
 }
 
 function text(value: unknown, maximumLength: number) {
@@ -96,13 +110,14 @@ export function normalizeDirectoryMarkets(payload: Pick<ExternalMarketResponse, 
       assetId: market.assetId,
       name,
       symbol,
-      priceUsd: Math.max(0, finite(market.priceUsd)),
-      liquidityUsd: Math.max(0, finite(market.liquidityUsd)),
-      marketCapUsd: Math.max(0, finite(market.marketCapUsd)),
-      volume24h: Math.max(0, finite(market.volume24h)),
+      priceUsd: nonNegative(market.priceUsd),
+      liquidityUsd: nonNegative(market.liquidityUsd),
+      marketCapUsd: nonNegative(market.marketCapUsd),
+      volume24h: nonNegative(market.volume24h),
       priceChange24h: finite(market.priceChange24h),
-      ageMinutes: market.ageMinutes === null ? null : Math.max(0, finite(market.ageMinutes)),
+      ageMinutes: market.ageMinutes === null ? null : nonNegative(market.ageMinutes),
       signal: market.signal,
+      marketDataState: "live",
       imageUri: safeTokenArtworkUrl(market.imageUri) ?? undefined,
       resolution: market.resolution,
       pairAddress: typeof market.pairAddress === "string" && isAddress(market.pairAddress, { strict: false })
@@ -136,11 +151,11 @@ export function normalizeDirectoryMarkets(payload: Pick<ExternalMarketResponse, 
 }
 
 function compareVolume(left: VNextDirectoryMarket, right: VNextDirectoryMarket) {
-  return right.volume24h - left.volume24h || right.liquidityUsd - left.liquidityUsd;
+  return (right.volume24h ?? -1) - (left.volume24h ?? -1) || (right.liquidityUsd ?? -1) - (left.liquidityUsd ?? -1);
 }
 
 function compareLiquidity(left: VNextDirectoryMarket, right: VNextDirectoryMarket) {
-  return right.liquidityUsd - left.liquidityUsd || right.volume24h - left.volume24h;
+  return (right.liquidityUsd ?? -1) - (left.liquidityUsd ?? -1) || (right.volume24h ?? -1) - (left.volume24h ?? -1);
 }
 
 function compareRwaClassification(left: VNextDirectoryMarket, right: VNextDirectoryMarket) {
@@ -169,7 +184,7 @@ export function selectVNextMarketDirectoryView(
       .sort((left, right) => (left.ageMinutes ?? Number.MAX_SAFE_INTEGER) - (right.ageMinutes ?? Number.MAX_SAFE_INTEGER) || compareVolume(left, right));
   }
   if (view === "active") {
-    return markets.filter((market) => market.signal === "active" && market.volume24h > 0).sort(compareVolume);
+    return markets.filter((market) => market.signal === "active" && (market.volume24h ?? 0) > 0).sort(compareVolume);
   }
   if (view === "rwa") {
     return markets.filter((market) => Boolean(market.rwaRelationship)).sort(compareRwaClassification);
@@ -245,13 +260,34 @@ export function directoryMarketFromVerifiedIdentity(
     address,
     name: text(token.name, 80) || symbol,
     symbol,
-    priceUsd: 0,
-    liquidityUsd: 0,
-    marketCapUsd: 0,
-    volume24h: 0,
-    priceChange24h: 0,
+    priceUsd: null,
+    liquidityUsd: null,
+    marketCapUsd: null,
+    volume24h: null,
+    priceChange24h: null,
     ageMinutes: null,
     signal: "active",
+    marketDataState: "identity-only",
     resolution
   };
+}
+
+export function directoryMarketFromExactLookup(
+  payload: ExternalMarketResponse,
+  expectedAddress: string
+): VNextDirectoryMarket | null {
+  if (!isAddress(expectedAddress, { strict: false })) return null;
+  const address = getAddress(expectedAddress);
+  const exactMarkets = (payload.markets ?? []).filter((market) => (
+    isAddress(market.address, { strict: false })
+    && getAddress(market.address) === address
+  ));
+  const exact = normalizeDirectoryMarkets({ markets: exactMarkets })
+    .find((market) => market.address === address);
+  const expectedAssetId = canonicalExternalAssetId(ROBINHOOD_MAINNET_CHAIN_ID, address);
+  if (!exact?.primaryMarket
+    || exact.priceUsd === null
+    || exact.assetId !== expectedAssetId
+    || exact.primaryMarket.assetId !== expectedAssetId) return null;
+  return exact;
 }

@@ -73,7 +73,9 @@ export function isPublicVNextInventoryMarket(
     && isAddress(market.pairAddress, { strict: false })
     && hasText(market.name)
     && hasText(market.symbol)
+    && market.liquidityUsd !== null
     && market.liquidityUsd >= PUBLIC_VNEXT_MARKET_MINIMUM_LIQUIDITY_USD
+    && market.volume24h !== null
     && market.volume24h >= PUBLIC_VNEXT_MARKET_MINIMUM_VOLUME_24H_USD
   );
 }

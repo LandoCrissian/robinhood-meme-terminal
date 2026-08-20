@@ -28,13 +28,15 @@ function shortAddress(value: string) {
   return `${value.slice(0, 6)}…${value.slice(-4)}`;
 }
 
-function formatUsd(value: number) {
+function formatUsd(value: number | null) {
+  if (value === null) return "Unavailable";
   if (!Number.isFinite(value) || value <= 0) return "—";
   if (value >= 1) return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(value);
   return `$${value.toLocaleString("en-US", { maximumSignificantDigits: 5 })}`;
 }
 
-function compactUsd(value: number) {
+function compactUsd(value: number | null) {
+  if (value === null) return "Unavailable";
   if (!Number.isFinite(value) || value <= 0) return "—";
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", notation: "compact", maximumFractionDigits: 1 }).format(value);
 }
@@ -80,7 +82,12 @@ function fallbackMarketFromResolution(
 ): ExternalMarket | undefined {
   const pool = resolution?.pools[0];
   const pairAddress = directory.pairAddress ?? pool?.poolAddress;
-  if (!pairAddress) return undefined;
+  if (!pairAddress || directory.marketDataState === "identity-only"
+    || directory.priceUsd === null
+    || directory.liquidityUsd === null
+    || directory.marketCapUsd === null
+    || directory.volume24h === null
+    || directory.priceChange24h === null) return undefined;
   const dexId = directory.dexId ?? pool?.venue ?? "DEX";
   const url = directory.url ?? `${EXPLORER}/address/${pairAddress}`;
   return {
@@ -143,7 +150,7 @@ function WorkspacePosition({
   const { address, isConnected } = useAccount();
   const holding = walletAssets.find((asset) => asset.address.toLowerCase() === directoryMarket.address.toLowerCase());
   const units = holding?.decimals === null || !holding ? null : Number(formatUnits(BigInt(holding.balanceAtomic), holding.decimals));
-  const positionValue = units !== null && Number.isFinite(units) ? units * directoryMarket.priceUsd : null;
+  const positionValue = units !== null && Number.isFinite(units) && directoryMarket.priceUsd !== null ? units * directoryMarket.priceUsd : null;
   const hasPosition = units !== null && units > 0;
 
   return <section className="vnWorkspaceCard vnPositionCard" aria-labelledby="vn-position-heading">
@@ -381,7 +388,7 @@ export function VNextAssetWorkspace({
       <div className="vnAssetWorkspaceIdentity"><TokenArtwork className="vnAssetWorkspaceMark" symbol={directoryMarket.symbol} imageUrl={directoryMarket.imageUri} /><span><span className="vnEyebrow">Asset workspace</span><h2 id="vn-asset-heading">{directoryMarket.name} <b>{directoryMarket.symbol}</b></h2><small>Robinhood Chain · {identityStatus === "verified" ? "contract verified" : identityStatus === "checking" ? "identity checking" : "detected asset"}</small></span></div>
       <span className={`vnWorkspaceStatus is${workspace.status}`}><i aria-hidden="true" />{workspace.status === "ready" ? "Live evidence" : workspace.status === "partial" ? "Partial evidence" : workspace.status === "stale" ? "Last verified" : workspace.status === "loading" ? "Loading evidence" : "Evidence unavailable"}</span>
     </header>
-    <div className="vnAssetPrice"><strong>{formatUsd(directoryMarket.priceUsd)}</strong><span className={directoryMarket.priceChange24h > 0 ? "vnPositive" : directoryMarket.priceChange24h < 0 ? "vnNegative" : ""}>{directoryMarket.priceChange24h > 0 ? "+" : ""}{directoryMarket.priceChange24h.toFixed(1)}% <small>24h</small></span></div>
+    <div className="vnAssetPrice"><strong>{formatUsd(directoryMarket.priceUsd)}</strong><span className={directoryMarket.priceChange24h !== null && directoryMarket.priceChange24h > 0 ? "vnPositive" : directoryMarket.priceChange24h !== null && directoryMarket.priceChange24h < 0 ? "vnNegative" : ""}>{directoryMarket.priceChange24h === null ? "Unavailable" : `${directoryMarket.priceChange24h > 0 ? "+" : ""}${directoryMarket.priceChange24h.toFixed(1)}%`} <small>24h</small></span></div>
     <dl className="vnAssetStats"><div><dt>Market cap</dt><dd>{compactUsd(directoryMarket.marketCapUsd)}</dd></div><div><dt>Liquidity</dt><dd>{compactUsd(directoryMarket.liquidityUsd)}</dd></div><div><dt>24h volume</dt><dd>{compactUsd(directoryMarket.volume24h)}</dd></div><div><dt>Market age</dt><dd>{formatAge(directoryMarket.ageMinutes)}</dd></div></dl>
 
     {selectedPool ? <VNextMarketChart token={directoryMarket.address} pair={selectedPool} symbol={directoryMarket.symbol} /> : <div className="vnChart vnChartEmpty"><strong>Verified pool required</strong><span>RMT will not render invented price history.</span></div>}

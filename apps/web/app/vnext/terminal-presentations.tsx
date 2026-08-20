@@ -63,15 +63,15 @@ export type TerminalPresentationProps = {
   onContinueTrading: () => void;
 };
 
-function formatUsd(value: number) {
+function formatUsd(value: number | null) {
   return formatTerminalPrice(value);
 }
 
-function compactUsd(value: number) {
+function compactUsd(value: number | null) {
   return formatTerminalCompactUsd(value);
 }
 
-function formatChange(value: number) {
+function formatChange(value: number | null) {
   return formatTerminalPercent(value);
 }
 
@@ -79,7 +79,8 @@ function formatAge(ageMinutes: number | null) {
   return formatTerminalAge(ageMinutes);
 }
 
-function changeClass(value: number) {
+function changeClass(value: number | null) {
+  if (value === null) return "";
   return value > 0 ? "vnPositive" : value < 0 ? "vnNegative" : "";
 }
 
@@ -203,7 +204,7 @@ function MobileMarketList(props: TerminalPresentationProps) {
 }
 
 function MarketSummary({ markets }: { markets: VNextDirectoryMarket[] }) {
-  const volume = markets.reduce((total, market) => total + (Number.isFinite(market.volume24h) ? Math.max(0, market.volume24h) : 0), 0);
+  const volume = markets.reduce((total, market) => total + (market.volume24h !== null && Number.isFinite(market.volume24h) ? Math.max(0, market.volume24h) : 0), 0);
   const canonicalRwa = markets.filter((market) => market.rwaRelationship === "canonical-stock-token").length;
   return <dl className="rmtMarketSummary">
     <div><dt>Loaded markets</dt><dd>{markets.length}</dd></div>
