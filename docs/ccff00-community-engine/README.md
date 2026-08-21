@@ -37,7 +37,7 @@ Do not create parallel frameworks for capabilities already present:
 - `apps/web/lib/vnext/distribution-ccff00-owner-withdrawal-proof.ts` — owner control of the CCFF00 token-bound account and RMT movement proof domain.
 - `apps/web/lib/vnext/distribution-domain.ts` — deterministic manifests, ERC-721/1155 distribution representation, hashing and batching patterns.
 - `packages/contracts/src/RMTDistributionEngineV1.sol` — security reference for sender-bound, replay-protected NFT transfer logic. Do **not** reuse its current RMT-per-recipient economics for the gas-only Collector.
-- `apps/indexer` — existing confirmed-chain, checkpoint, reorg rollback and idempotent replay patterns. Do not create a second universal indexer.
+- `apps/indexer` is **not** a CCFF00 data store; repository authority reserves it for deployed V6 compatibility/history. Reuse its reorg/idempotency patterns conceptually, but do not extend its domain without a separate architecture decision. V1 census/provenance should use bounded read-only CCFF00 chain reads/logs first.
 - `scripts/metamask-agent-wallet-preflight.mjs` — signer capability evidence. Current transaction use remains intentionally unauthorized.
 - `packages/contracts/src/RMTRetirementSinkV1.sol` — existing legacy retirement primitive remains untouched; RMT Pay V1 uses the conventional dead address for simpler public burn optics.
 - `packages/contracts/src/ProtocolPurposeVault.sol` and revenue-router patterns — references for a later explicitly authorized gas-funding path, not authority to modify current economics.
