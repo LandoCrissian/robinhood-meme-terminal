@@ -53,10 +53,12 @@ Future Codex work should treat this directory as one specification set rather th
 - [`ARCHITECTURE_V1.md`](ARCHITECTURE_V1.md) — system boundaries, census semantics, acquisition/distribution lifecycle and release gates.
 - [`DATA_MODEL_V1.md`](DATA_MODEL_V1.md) — canonical evidence/state schemas, idempotency, ownership drift and durable-state requirements.
 - [`MINT_ADAPTERS_V1.md`](MINT_ADAPTERS_V1.md) — positive-allowlist mint adapter model, SeaDrop candidate semantics and postconditions.
+- [`QUALITY_POLICY_V1.md`](QUALITY_POLICY_V1.md) — separate curated-project evidence policy so transaction-safe spam does not automatically consume community gas.
 - [`FAIRNESS_RANDOMNESS_V1.md`](FAIRNESS_RANDOMNESS_V1.md) — normative V1 allocation algorithm, acquisition-block census anchor, deterministic future drand round and reproducibility rules.
 - [`OPERATIONS_FAILURES_V1.md`](OPERATIONS_FAILURES_V1.md) — START/STOP, submission ambiguity, retries, auto-pause, recovery and failure semantics.
 - [`GAS_FUNDING_V1.md`](GAS_FUNDING_V1.md) — community ETH funding boundary and evidence-driven future gas-vault design.
 - [`RMT_PAY_V1.md`](RMT_PAY_V1.md) — RMT utility-payment and dead-address burn semantics, gas abstraction boundary and accounting.
+- [`RMT_PAY_COMPATIBILITY_V1.md`](RMT_PAY_COMPATIBILITY_V1.md) — wallet/account-abstraction compatibility matrix and zero-ETH atomicity preflight; no provider is preselected.
 - [`CODEX_HANDOFF.md`](CODEX_HANDOFF.md) — sequential bounded work packages for OpenAI Codex after the current completion lane is cleared.
 
 Where a specialized V1 document gives a more precise rule than the broad architecture overview, the specialized document governs that specific domain. No planning document authorizes runtime activation.
@@ -68,7 +70,8 @@ Use external infrastructure as adapters, never as sole truth where onchain evide
 - OpenSea Drops API is a candidate discovery/mint-transaction builder. Its live Robinhood capability must be probed before admission; a provider response is never a substitute for local verification.
 - OpenSea's open-source SeaDrop implementation is a concrete first mint-family reference, but an actual Robinhood deployment/runtime must be independently discovered and admitted before use.
 - Robinhood Chain is EVM-compatible and advertises ERC-4337 account abstraction/gas sponsorship support.
-- Alchemy currently lists Robinhood Mainnet/Testnet support for bundling, gas sponsorship and ERC-20 gas payments. RMT Pay V1 nevertheless keeps RMT burn settlement separate from native gas sponsorship so no RMT sale is required.
+- Alchemy currently lists Robinhood Mainnet/Testnet support for bundling, gas sponsorship and ERC-20 gas payments. RMT Pay V1 nevertheless keeps RMT burn settlement separate from native gas sponsorship so no RMT sale is required, and its exact connector compatibility must be proven rather than assumed.
+- MetaMask currently documents its own EIP-7702/smart-account path. RMT Pay must preserve RMT's existing wallet-gateway authority and prove the exact supported-wallet composition before use.
 - Blockscout/Robinhood explorer evidence can enrich contract verification, but exact chain reads/runtime hashes and local simulation remain authoritative.
 - The first public randomness candidate is drand Quicknet. The batch's future round is derived from the immutable acquisition-block timestamp plus a fixed policy lead; the beacon must be cryptographically verified against pinned network identity rather than trusted from one HTTP response.
 
