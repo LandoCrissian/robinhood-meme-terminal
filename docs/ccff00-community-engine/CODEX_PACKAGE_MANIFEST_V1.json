@@ -11,17 +11,19 @@
     "docs/TERMINAL_COMPLETION_GATE.md"
   ],
   "planningAuthority": [
-    "README.md",
+    "HANDOFF_INDEX_V1.md",
+    "CODEX_START_HERE_V1.md",
     "DECISION_REGISTER_V1.md",
     "SPEC_CONSISTENCY_V1.md",
-    "CODEX_START_HERE_V1.md",
-    "CODEX_HANDOFF_FINAL_V1.md"
+    "CODEX_PROMPTS_V1.md"
   ],
   "lockedRules": {
-    "seatIdentity": "one current owner address holding at least one admitted public CCFF00 equals one seat",
+    "seatIdentity": "one current owner address holding at least one admitted public CCFF00 equals one V1 seat",
+    "oneHumanOneSeatClaim": false,
     "squareWeight": 0,
     "donorWeight": 0,
     "identityHeuristics": "forbidden",
+    "currentOwnershipBeatsOriginalMintHistory": true,
     "fairness": "least_served_first",
     "mintRunCrossesServiceLevel": false,
     "allocationCensusAnchor": "confirmed acquisition transaction block",
@@ -30,11 +32,17 @@
     "nftValueWeighting": "forbidden",
     "unknownMintCalldataAutomation": "forbidden",
     "automaticMintNativeValue": "0",
+    "defaultAcquisitionRecipient": "isolated community collector",
+    "directMintToWinnerTbaV1": false,
+    "inventoryCommittedBeforeWinnerTokenPairing": true,
+    "deliveryRepair": "deterministic committed square preference then original-cohort standby then mechanically anchored repair allocation",
+    "operatorReplacementWinner": "forbidden",
     "burnDestination": "0x000000000000000000000000000000000000dEaD",
     "automaticRmtToEthSale": "forbidden",
     "rmtRedeployRequired": false,
     "appsIndexerCommunityData": "forbidden_without_new_architecture_decision",
-    "appsMarketIndexerExecution": "forbidden"
+    "appsMarketIndexerExecution": "forbidden",
+    "fairnessDatabaseResetOnLoss": "forbidden"
   },
   "packages": [
     {
@@ -45,7 +53,8 @@
       "requiredSpecs": [
         "DATA_MODEL_V1.md",
         "REFERENCE_INTERFACES_V1.md",
-        "ACCEPTANCE_MATRIX_V1.md"
+        "ACCEPTANCE_MATRIX_V1.md",
+        "IDENTITY_SYBIL_V1.md"
       ],
       "liveTransaction": false,
       "contractDeployment": false,
@@ -60,7 +69,9 @@
       "implementationPacket": "PACKAGE_A_B_IMPLEMENTATION_V1.md",
       "requiredSpecs": [
         "DATA_MODEL_V1.md",
-        "ACCEPTANCE_MATRIX_V1.md"
+        "ACCEPTANCE_MATRIX_V1.md",
+        "IDENTITY_SYBIL_V1.md",
+        "OPERATIONS_FAILURES_V1.md"
       ],
       "liveTransaction": false,
       "contractDeployment": false,
@@ -70,19 +81,21 @@
     },
     {
       "id": "C",
-      "name": "Observer Mode NFT discovery",
+      "name": "Observer Mode NFT discovery and quality calibration",
       "dependsOn": ["A", "B"],
       "implementationPacket": "PACKAGE_C_D_IMPLEMENTATION_V1.md",
       "requiredSpecs": [
+        "DISCOVERY_SOURCES_V1.md",
+        "UPSTREAM_REUSE_V1.md",
         "MINT_ADAPTERS_V1.md",
         "QUALITY_POLICY_V1.md",
-        "UPSTREAM_REUSE_V1.md",
+        "QUALITY_CALIBRATION_V1.md",
         "OPERATIONS_FAILURES_V1.md"
       ],
       "liveTransaction": false,
       "contractDeployment": false,
       "productionMutation": false,
-      "allowedOutcome": "normalized Robinhood free-mint candidates and observer decisions",
+      "allowedOutcome": "normalized Robinhood free-mint candidates, source capability evidence and quality calibration cases",
       "stopAfter": true
     },
     {
@@ -93,6 +106,9 @@
       "requiredSpecs": [
         "MINT_ADAPTERS_V1.md",
         "QUALITY_POLICY_V1.md",
+        "QUALITY_CALIBRATION_V1.md",
+        "ACQUISITION_INVENTORY_V1.md",
+        "GAS_COST_MODEL_V1.md",
         "THREAT_MODEL_V1.md",
         "REFERENCE_INTERFACES_V1.md",
         "ERROR_CODES_V1.md"
@@ -111,6 +127,9 @@
       "requiredSpecs": [
         "FAIRNESS_RANDOMNESS_V1.md",
         "FAIRNESS_VECTORS_V1.md",
+        "DELIVERY_REPAIR_V1.md",
+        "IDENTITY_SYBIL_V1.md",
+        "ACQUISITION_INVENTORY_V1.md",
         "DATA_MODEL_V1.md",
         "REFERENCE_INTERFACES_V1.md",
         "SPEC_CONSISTENCY_V1.md"
@@ -118,7 +137,7 @@
       "liveTransaction": false,
       "contractDeployment": false,
       "productionMutation": false,
-      "allowedOutcome": "reproducible allocation commitments/results from verified test/public randomness",
+      "allowedOutcome": "reproducible allocation commitments/results and deterministic standby/repair ordering from verified test/public randomness",
       "stopAfter": true
     },
     {
@@ -127,6 +146,8 @@
       "dependsOn": ["E"],
       "implementationPacket": "PACKAGE_E_F_IMPLEMENTATION_V1.md",
       "requiredSpecs": [
+        "ACQUISITION_INVENTORY_V1.md",
+        "DELIVERY_REPAIR_V1.md",
         "THREAT_MODEL_V1.md",
         "OPERATIONS_FAILURES_V1.md",
         "REFERENCE_INTERFACES_V1.md"
@@ -143,10 +164,12 @@
       "dependsOn": ["F"],
       "implementationPacket": "PACKAGE_G_H_IMPLEMENTATION_V1.md",
       "requiredSpecs": [
+        "ACQUISITION_INVENTORY_V1.md",
         "MINT_ADAPTERS_V1.md",
         "QUALITY_POLICY_V1.md",
         "THREAT_MODEL_V1.md",
         "OPERATIONS_FAILURES_V1.md",
+        "GAS_COST_MODEL_V1.md",
         "GAS_FUNDING_V1.md"
       ],
       "liveTransaction": "explicit_owner_authorization_required",
@@ -162,17 +185,23 @@
       "implementationPacket": "PACKAGE_G_H_IMPLEMENTATION_V1.md",
       "requiredSpecs": [
         "DATA_MODEL_V1.md",
+        "STATE_RECONSTRUCTION_V1.md",
         "OPERATIONS_FAILURES_V1.md",
         "THREAT_MODEL_V1.md",
         "FAIRNESS_RANDOMNESS_V1.md",
+        "DELIVERY_REPAIR_V1.md",
+        "IDENTITY_SYBIL_V1.md",
+        "ACQUISITION_INVENTORY_V1.md",
         "MINT_ADAPTERS_V1.md",
         "QUALITY_POLICY_V1.md",
+        "QUALITY_CALIBRATION_V1.md",
+        "GAS_COST_MODEL_V1.md",
         "PUBLIC_PROOFS_V1.md"
       ],
       "liveTransaction": "explicit_owner_authorization_required",
       "contractDeployment": false,
       "productionMutation": "limited_release_only_after_new_service_ownership_architecture_decision",
-      "allowedOutcome": "single-writer capped runtime with START/STOP/WATCH and deterministic recovery",
+      "allowedOutcome": "single-writer capped runtime with START/STOP/WATCH, deterministic repair and reconstructable state",
       "stopAfter": true
     },
     {
@@ -182,6 +211,7 @@
       "implementationPacket": "PACKAGE_I_J_K_IMPLEMENTATION_V1.md",
       "requiredSpecs": [
         "GAS_FUNDING_V1.md",
+        "GAS_COST_MODEL_V1.md",
         "THREAT_MODEL_V1.md",
         "OPERATIONS_FAILURES_V1.md"
       ],
@@ -217,13 +247,14 @@
         "RMT_PAY_V1.md",
         "RMT_PAY_COMPATIBILITY_V1.md",
         "DATA_MODEL_V1.md",
+        "STATE_RECONSTRUCTION_V1.md",
         "PUBLIC_PROOFS_V1.md",
         "THREAT_MODEL_V1.md"
       ],
       "liveTransaction": "separate_product_economics_and_release_authorization_required",
       "contractDeployment": "only_if_approved_implementation_requires_it_and_separately_authorized",
       "productionMutation": "explicit_release_required",
-      "allowedOutcome": "exact admitted burn-to-use utility with separate sponsored gas",
+      "allowedOutcome": "exact admitted burn-to-use utility with separate sponsored gas and reconstructable receipts",
       "stopAfter": true
     }
   ],
@@ -236,11 +267,13 @@
     "arbitrary mint calldata signing",
     "burner wallets to bypass creator limits",
     "operator-selected recipients",
+    "operator-selected replacement winners",
     "operator-selected randomness",
     "donor-weighted allocation",
     "Square-count-weighted allocation",
     "RMT-to-ETH automatic sale",
     "implicit RMT_EXECUTION_V1 economics change",
-    "identity clustering by funding/IP/behavior"
+    "identity clustering by funding/IP/behavior",
+    "fairness reset after database loss"
   ]
 }
