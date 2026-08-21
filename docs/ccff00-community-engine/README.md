@@ -49,11 +49,13 @@ Do not create parallel frameworks for capabilities already present:
 
 Future Codex work should treat this directory as one specification set rather than reading only the original architecture file:
 
+- [`DECISION_REGISTER_V1.md`](DECISION_REGISTER_V1.md) — locked owner decisions, deliberately deferred decisions and rejected shortcuts.
 - [`ARCHITECTURE_V1.md`](ARCHITECTURE_V1.md) — system boundaries, census semantics, acquisition/distribution lifecycle and release gates.
 - [`DATA_MODEL_V1.md`](DATA_MODEL_V1.md) — canonical evidence/state schemas, idempotency, ownership drift and durable-state requirements.
 - [`MINT_ADAPTERS_V1.md`](MINT_ADAPTERS_V1.md) — positive-allowlist mint adapter model, SeaDrop candidate semantics and postconditions.
 - [`FAIRNESS_RANDOMNESS_V1.md`](FAIRNESS_RANDOMNESS_V1.md) — normative V1 allocation algorithm, acquisition-block census anchor, deterministic future drand round and reproducibility rules.
 - [`OPERATIONS_FAILURES_V1.md`](OPERATIONS_FAILURES_V1.md) — START/STOP, submission ambiguity, retries, auto-pause, recovery and failure semantics.
+- [`GAS_FUNDING_V1.md`](GAS_FUNDING_V1.md) — community ETH funding boundary and evidence-driven future gas-vault design.
 - [`RMT_PAY_V1.md`](RMT_PAY_V1.md) — RMT utility-payment and dead-address burn semantics, gas abstraction boundary and accounting.
 - [`CODEX_HANDOFF.md`](CODEX_HANDOFF.md) — sequential bounded work packages for OpenAI Codex after the current completion lane is cleared.
 
