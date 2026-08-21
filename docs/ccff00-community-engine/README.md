@@ -45,56 +45,24 @@ Do not create parallel frameworks for capabilities already present:
 - `packages/contracts/src/RMTRetirementSinkV1.sol` — existing legacy retirement primitive remains untouched; RMT Pay V1 uses the conventional dead address for simpler public burn optics.
 - `packages/contracts/src/ProtocolPurposeVault.sol` and revenue-router patterns — references for a later explicitly authorized gas-funding path, not authority to modify current economics.
 
-## Specification precedence
-
-If wording ever appears to conflict, use this order:
-
-1. current repository authority (`AGENTS.md`, architecture freeze/system map/completion gate);
-2. explicit later owner decisions;
-3. [`DECISION_REGISTER_V1.md`](DECISION_REGISTER_V1.md);
-4. specialized V1 domain spec for the exact topic;
-5. broad [`ARCHITECTURE_V1.md`](ARCHITECTURE_V1.md) overview;
-6. examples/non-normative commentary.
-
-For fairness specifically, [`FAIRNESS_RANDOMNESS_V1.md`](FAIRNESS_RANDOMNESS_V1.md) and [`FAIRNESS_VECTORS_V1.md`](FAIRNESS_VECTORS_V1.md) govern. The locked V1 rule is **one mint run stays inside one current fairness-floor cohort**; no batch may spill into a second service level.
-
 ## Planning specification set
 
-### Start/authority
+Future Codex work should treat this directory as one specification set rather than reading only the original architecture file:
 
 - [`DECISION_REGISTER_V1.md`](DECISION_REGISTER_V1.md) — locked owner decisions, deliberately deferred decisions and rejected shortcuts.
-- [`CODEX_START_HERE_V1.md`](CODEX_START_HERE_V1.md) — minimal read order, spec precedence and package-specific context for Codex.
-- [`CODEX_HANDOFF.md`](CODEX_HANDOFF.md) — sequential bounded work packages for OpenAI Codex after the current completion lane is cleared.
-
-### Architecture/data/integration
-
-- [`ARCHITECTURE_V1.md`](ARCHITECTURE_V1.md) — broad system boundaries, census semantics, acquisition/distribution lifecycle and release gates.
+- [`ARCHITECTURE_V1.md`](ARCHITECTURE_V1.md) — system boundaries, census semantics, acquisition/distribution lifecycle and release gates.
 - [`DATA_MODEL_V1.md`](DATA_MODEL_V1.md) — canonical evidence/state schemas, idempotency, ownership drift and durable-state requirements.
-- [`INTEGRATION_MAP_V1.md`](INTEGRATION_MAP_V1.md) — exact existing RMT primitives to extend, suggested future file layout and explicit non-target services.
-
-### Acquisition/quality/safety
-
 - [`MINT_ADAPTERS_V1.md`](MINT_ADAPTERS_V1.md) — positive-allowlist mint adapter model, SeaDrop candidate semantics and postconditions.
 - [`QUALITY_POLICY_V1.md`](QUALITY_POLICY_V1.md) — separate curated-project evidence policy so transaction-safe spam does not automatically consume community gas.
-- [`THREAT_MODEL_V1.md`](THREAT_MODEL_V1.md) — attacker classes, protected assets, security invariants and compromise/recovery posture.
-
-### Fairness/randomness
-
 - [`FAIRNESS_RANDOMNESS_V1.md`](FAIRNESS_RANDOMNESS_V1.md) — normative V1 allocation algorithm, acquisition-block census anchor, deterministic future drand round and reproducibility rules.
-- [`FAIRNESS_VECTORS_V1.md`](FAIRNESS_VECTORS_V1.md) — deterministic synthetic vectors/property tests, including whale/donor/value neutrality and failure recovery.
-
-### Runtime/funding/payment
-
 - [`OPERATIONS_FAILURES_V1.md`](OPERATIONS_FAILURES_V1.md) — START/STOP, submission ambiguity, retries, auto-pause, recovery and failure semantics.
 - [`GAS_FUNDING_V1.md`](GAS_FUNDING_V1.md) — community ETH funding boundary and evidence-driven future gas-vault design.
 - [`RMT_PAY_V1.md`](RMT_PAY_V1.md) — RMT utility-payment and dead-address burn semantics, gas abstraction boundary and accounting.
 - [`RMT_PAY_COMPATIBILITY_V1.md`](RMT_PAY_COMPATIBILITY_V1.md) — wallet/account-abstraction compatibility matrix and zero-ETH atomicity preflight; no provider is preselected.
+- [`CODEX_HANDOFF_FINAL_V1.md`](CODEX_HANDOFF_FINAL_V1.md) — **authoritative future Codex entrypoint**, package-to-spec matrix, universal stop/report contract and exact Package A kickoff prompt.
+- [`CODEX_HANDOFF.md`](CODEX_HANDOFF.md) — original detailed package decomposition retained as supporting planning history/details.
 
-### Acceptance
-
-- [`ACCEPTANCE_MATRIX_V1.md`](ACCEPTANCE_MATRIX_V1.md) — package-by-package pass/fail evidence and mandatory stop conditions.
-
-Where a specialized V1 document gives a more precise rule than the broad architecture overview, the specialized document governs that specific domain. No planning document authorizes runtime activation.
+Where a specialized V1 document gives a more precise rule than the broad architecture overview, the specialized document governs that specific domain. `CODEX_HANDOFF_FINAL_V1.md` is the entrypoint for implementation. No planning document authorizes runtime activation.
 
 ## External infrastructure posture
 
