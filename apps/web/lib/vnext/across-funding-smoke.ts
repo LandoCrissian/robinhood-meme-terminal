@@ -11,6 +11,7 @@ import {
   type AcrossFundingRequest
 } from "../server/vnext-across-funding";
 import { acrossDedicatedRpcConfigured, acrossRpcEndpoint, acrossRpcHeaders } from "../server/vnext-across-rpc";
+import { ACROSS_FUNDING_DEPLOYMENT_V1 } from "./across-funding-deployment";
 import {
   BASE_MAINNET_CHAIN_ID,
   ROBINHOOD_MAINNET_CHAIN_ID,
@@ -293,11 +294,15 @@ const deploymentEnvironment = {
   FIREBASE_ADMIN_PROJECT_ID: "rmt-live",
   FIREBASE_ADMIN_CLIENT_EMAIL: "rmt@rmt-live.iam.gserviceaccount.com",
   FIREBASE_ADMIN_PRIVATE_KEY: "-----BEGIN PRIVATE KEY-----\ntest\n-----END PRIVATE KEY-----",
-  ...Object.fromEntries(["ETHEREUM", "ARBITRUM", "BASE", "ROBINHOOD"].flatMap((chain) => [
-    [`RMT_ACROSS_${chain}_SPOKE_POOL_PROXY_CODE_HASH`, runtimeHash],
-    [`RMT_ACROSS_${chain}_SPOKE_POOL_IMPLEMENTATION_ADDRESS`, implementationAddress],
-    [`RMT_ACROSS_${chain}_SPOKE_POOL_IMPLEMENTATION_CODE_HASH`, implementationHash]
-  ]))
+  ...Object.fromEntries((["ETHEREUM", "ARBITRUM", "BASE", "ROBINHOOD"] as const).flatMap((chain, index) => {
+    const chainId = [1, 42161, 8453, 4663][index] as keyof typeof ACROSS_FUNDING_DEPLOYMENT_V1;
+    const admitted = ACROSS_FUNDING_DEPLOYMENT_V1[chainId];
+    return [
+      [`RMT_ACROSS_${chain}_SPOKE_POOL_PROXY_CODE_HASH`, admitted.proxyRuntimeHash],
+      [`RMT_ACROSS_${chain}_SPOKE_POOL_IMPLEMENTATION_ADDRESS`, admitted.implementationAddress],
+      [`RMT_ACROSS_${chain}_SPOKE_POOL_IMPLEMENTATION_CODE_HASH`, admitted.implementationRuntimeHash]
+    ];
+  }))
 } as unknown as NodeJS.ProcessEnv;
 const disabled = acrossFundingOperationalState(deploymentEnvironment);
 assert.equal(acrossDedicatedRpcConfigured(deploymentEnvironment), true);
@@ -334,5 +339,9 @@ const missingRpcCredential = {
 assert.equal(acrossDedicatedRpcConfigured(missingRpcCredential), false);
 assert.equal(acrossFundingOperationalState(missingRpcCredential).configured, false);
 assert.equal(acrossFundingConfiguration({} as NodeJS.ProcessEnv), null);
+assert.equal(acrossFundingConfiguration({
+  ...deploymentEnvironment,
+  RMT_ACROSS_BASE_SPOKE_POOL_IMPLEMENTATION_ADDRESS: implementationAddress
+} as NodeJS.ProcessEnv), null, "well-formed but unreviewed deployment pins must fail closed");
 
 console.log("RMT Across funding adapter and strict quote-verifier smoke checks passed.");

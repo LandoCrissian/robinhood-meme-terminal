@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { readVNextReleaseReadiness } from "./release-readiness";
 import { RMT_UNISWAP_V3_FEE_MAINNET_PROOF } from "./uniswap-v3-fee-mainnet-proof";
+import { ACROSS_FUNDING_DEPLOYMENT_V1 } from "./across-funding-deployment";
 
 const disabled = readVNextReleaseReadiness({
   NODE_ENV: "production",
@@ -195,11 +196,15 @@ assert.equal(acrossCredentialsOnly.providers.acrossFunding.credentialsConfigured
 assert.equal(acrossCredentialsOnly.providers.acrossFunding.deploymentPinsConfigured, false);
 assert.equal(acrossCredentialsOnly.providers.acrossFunding.configured, false);
 
-const acrossPins = Object.fromEntries(["ETHEREUM", "ARBITRUM", "BASE", "ROBINHOOD"].flatMap((chain) => [
-  [`RMT_ACROSS_${chain}_SPOKE_POOL_PROXY_CODE_HASH`, `0x${"1".repeat(64)}`],
-  [`RMT_ACROSS_${chain}_SPOKE_POOL_IMPLEMENTATION_ADDRESS`, `0x${"2".repeat(40)}`],
-  [`RMT_ACROSS_${chain}_SPOKE_POOL_IMPLEMENTATION_CODE_HASH`, `0x${"3".repeat(64)}`]
-]));
+const acrossPins = Object.fromEntries((["ETHEREUM", "ARBITRUM", "BASE", "ROBINHOOD"] as const).flatMap((chain, index) => {
+  const chainId = [1, 42161, 8453, 4663][index] as keyof typeof ACROSS_FUNDING_DEPLOYMENT_V1;
+  const admitted = ACROSS_FUNDING_DEPLOYMENT_V1[chainId];
+  return [
+    [`RMT_ACROSS_${chain}_SPOKE_POOL_PROXY_CODE_HASH`, admitted.proxyRuntimeHash],
+    [`RMT_ACROSS_${chain}_SPOKE_POOL_IMPLEMENTATION_ADDRESS`, admitted.implementationAddress],
+    [`RMT_ACROSS_${chain}_SPOKE_POOL_IMPLEMENTATION_CODE_HASH`, admitted.implementationRuntimeHash]
+  ];
+}));
 const acrossReady = readVNextReleaseReadiness({
   NODE_ENV: "production",
   VERCEL_ENV: "production",

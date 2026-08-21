@@ -3,6 +3,7 @@ import {
   RMT_UNISWAP_V3_FEE_MAINNET_PROOF,
   RMT_UNISWAP_V3_FEE_MAINNET_PROOF_COMPLETE
 } from "./uniswap-v3-fee-mainnet-proof";
+import { acrossReviewedDeploymentPins } from "./across-funding-deployment";
 
 export type VNextReleaseEnvironment = VNextShellEnvironment & Partial<Pick<
   NodeJS.ProcessEnv,
@@ -89,12 +90,7 @@ export function readVNextReleaseReadiness(env: VNextReleaseEnvironment) {
   const sushiServerEnabled = enabled(env.RMT_SUSHI_QUOTES_ENABLED);
   const acrossCredentialsConfigured = Boolean(env.RMT_ACROSS_API_KEY?.trim())
     && /^0x[0-9a-fA-F]{4}$/.test(env.RMT_ACROSS_INTEGRATOR_ID?.trim() ?? "");
-  const acrossDeploymentPinsConfigured = ["ETHEREUM", "ARBITRUM", "BASE", "ROBINHOOD"].every((chain) => {
-      const values = env as Record<string, string | undefined>;
-      return /^0x[0-9a-fA-F]{64}$/.test(values[`RMT_ACROSS_${chain}_SPOKE_POOL_PROXY_CODE_HASH`]?.trim() ?? "")
-        && /^0x[0-9a-fA-F]{40}$/.test(values[`RMT_ACROSS_${chain}_SPOKE_POOL_IMPLEMENTATION_ADDRESS`]?.trim() ?? "")
-        && /^0x[0-9a-fA-F]{64}$/.test(values[`RMT_ACROSS_${chain}_SPOKE_POOL_IMPLEMENTATION_CODE_HASH`]?.trim() ?? "");
-    });
+  const acrossDeploymentPinsConfigured = Boolean(acrossReviewedDeploymentPins(env));
   const acrossRpcConfigured = [
     [env.RMT_ETHEREUM_RPC_URL, env.RMT_ETHEREUM_RPC_AUTH_TOKEN],
     [env.RMT_ARBITRUM_RPC_URL, env.RMT_ARBITRUM_RPC_AUTH_TOKEN],

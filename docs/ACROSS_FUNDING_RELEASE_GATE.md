@@ -22,6 +22,12 @@ It does not compose a destination trade, submit a transaction from the server, e
 - If Across returns both legacy and current transaction-hash fields, every populated alias must agree exactly.
 - The server never submits the deposit.
 
+Deployment values are not admitted by shape alone. `ACROSS_FUNDING_DEPLOYMENT_V1` binds each supported chain to the reviewed SpokePool proxy/runtime, EIP-1967 implementation/runtime, and pinned block/hash evidence. Environment pins must match that manifest exactly. Quote preparation also performs a fresh hash-rechecked runtime observation.
+
+Wallet readiness is two-stage. The inexpensive pre-quote gate proves source-token balance and nonzero native balance. After strict Swap API verification, RMT estimates the exact replacement approval (when required) and exact returned deposit transaction against one source-chain block, applies a documented 25% fee-cap margin, and fails closed if estimation is unavailable, stale, or definitely underfunded. This is an upper-bound readiness estimate, not a guaranteed wallet gas price.
+
+RMT supplies the integrator ID only as the Swap API query parameter and sends returned `swapTx` calldata unchanged. The decoder tolerates only canonical calldata and the narrow, known suffix/marker forms returned by Across; unknown trailing bytes are rejected. Legacy `/available-routes` data is never release authority.
+
 ## Lifecycle and availability
 
 The persisted lifecycle is:

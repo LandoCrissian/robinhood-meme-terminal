@@ -755,6 +755,8 @@ async function inspectMobile(browser, viewport, label) {
   await page.locator('.rmtMobileTerminal[data-terminal-context="asset"] #vn-asset-heading').waitFor({ state: "visible" });
 
   const mobileBuyAction = page.locator(".rmtMobileTradeDock .isBuy");
+  const mobileBuyActionHandle = await mobileBuyAction.elementHandle();
+  if (!mobileBuyActionHandle) throw new Error(`${label}: mobile Buy action was unavailable`);
   const selectedSymbol = (await page.locator("#vn-asset-heading b").innerText()).trim();
   if (!selectedSymbol) throw new Error(`${label}: selected asset symbol is unavailable`);
   await mobileBuyAction.click();
@@ -794,7 +796,13 @@ async function inspectMobile(browser, viewport, label) {
   await page.locator(".rmtMobileSheetBackdrop").click({ position: { x: 4, y: 4 } });
   await mobileDialog.waitFor({ state: "hidden" });
   if (!(await page.evaluate(() => document.body.style.overflow === "" && document.documentElement.style.overflow === ""))) throw new Error(`${label}: backdrop close did not restore page scrolling`);
-  const returnedToBuyAfterBackdrop = await mobileBuyAction.evaluate((button) => document.activeElement === button);
+  let returnedToBuyAfterBackdrop = false;
+  try {
+    await page.waitForFunction((button) => document.activeElement === button, mobileBuyActionHandle, { timeout: 1_000 });
+    returnedToBuyAfterBackdrop = true;
+  } catch (error) {
+    if (!(error instanceof Error) || error.name !== "TimeoutError") throw error;
+  }
   if (!returnedToBuyAfterBackdrop) {
     if (focusDebug) {
       const activeElement = await page.evaluate(() => {
