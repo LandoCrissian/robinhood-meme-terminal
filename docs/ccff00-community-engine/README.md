@@ -18,16 +18,19 @@ This planning track does **not** override `docs/ARCHITECTURE_FREEZE.md`, `docs/A
 5. **Public community supply is the default V1 census.** The existing CCFF00 adapter's public-mint range is authoritative; founder/project reserve IDs do not create V1 community seats without a later explicit owner decision.
 6. **Contributing ETH buys no entitlement.** Gas contributors and non-contributors are allocation-equal. Funding data must never be an input to the allocation algorithm.
 7. **Fairness before randomness.** The least-served active seats are eligible first. Randomness chooses among equally served seats; nobody advances to allocation level `N+1` while an eligible seat remains at `N`.
-8. **NFT assignment is blind to value.** Floor price, rarity, token price movement, social hype, or operator preference never influence recipient assignment.
-9. **No cherry-picking after acquisition.** Every successfully acquired NFT admitted by a mint run is committed to an inventory manifest before recipient randomness is known.
-10. **The engine only auto-executes known mint adapters.** Unknown/custom calldata can be observed and reported but is not automatically signed.
-11. **Free means zero mint value.** Automatic Collector V1 requires the exact mint transaction native `value` to equal zero; only network gas may be spent.
-12. **One collector identity; no wallet-limit evasion.** The engine respects project per-wallet and allowlist rules and does not create burner wallets to bypass creator limits.
-13. **Operator control stays narrow.** The intended operator controls are `START`, `STOP`, and `WATCH PROJECT`/allowlist input. Watching a project never overrides safety policy.
-14. **Dedicated execution boundary.** The collector signer must never be an RMT treasury/admin wallet and must not hold RMT, CCFF00, user assets, or valuable NFTs beyond transient acquired inventory. It carries only a capped gas balance.
-15. **RMT Pay does not sell RMT.** Approved future RMT utility payments send RMT to the conventional dead address `0x000000000000000000000000000000000000dEaD`; the system does not swap collected RMT for ETH.
-16. **Gas funding is separate from RMT burn accounting.** Community ETH and, only after a later explicit economics decision, RMT terminal revenue may fund gas. Burned RMT never needs to be sold to replenish gas.
-17. **No RMT redeployment is required by this design.** The current token's ordinary `transfer`/`approve`/`transferFrom` surface is sufficient for the planned utility path; native `burn()`/`permit()` are not prerequisites.
+8. **One mint run = one V1 allocation batch.** Acquisition quantity is bounded to the current fairness-floor cohort so one project run does not jump across service levels.
+9. **Allocation anchor is onchain, not operator-selected.** The confirmed acquisition transaction block anchors the historical CCFF00 census for that batch. A fixed versioned lead-time policy deterministically chooses a future verified randomness round from that block timestamp.
+10. **NFT assignment is blind to value.** Floor price, rarity, token price movement, social hype, bids or operator preference never influence recipient assignment.
+11. **No cherry-picking after acquisition.** Every successfully acquired NFT admitted by a mint run is committed to its inventory before recipient randomness exists.
+12. **The engine only auto-executes known mint adapters.** Unknown/custom calldata can be observed and reported but is not automatically signed.
+13. **Free means zero mint value.** Automatic Collector V1 requires the exact mint transaction native `value` to equal zero; only network gas may be spent.
+14. **One collector identity; no wallet-limit evasion.** The engine respects project per-wallet and allowlist rules and does not create burner wallets to bypass creator limits.
+15. **Operator control stays narrow.** The intended operator controls are `START`, `STOP`, and `WATCH PROJECT`/allowlist input. Watching a project never overrides safety policy.
+16. **Dedicated execution boundary.** The collector signer must never be an RMT treasury/admin wallet and must not hold RMT, CCFF00, user assets, or valuable NFTs beyond transient acquired inventory. It carries only a capped gas balance.
+17. **RMT Pay does not sell RMT.** Approved future RMT utility payments send RMT to the conventional dead address `0x000000000000000000000000000000000000dEaD`; the system does not swap collected RMT for ETH.
+18. **Gas funding is separate from RMT burn accounting.** Community ETH and, only after a later explicit economics decision, RMT terminal revenue may fund collector gas. Burned RMT never needs to be sold to replenish gas.
+19. **Collector gas and gasless RMT Pay sponsorship are separate rails.** A future onchain collector gas vault does not automatically fund a third-party account-abstraction sponsor's billing account.
+20. **No RMT redeployment is required by this design.** The current token's ordinary `transfer`/`approve`/`transferFrom` surface is sufficient for the planned utility path; native `burn()`/`permit()` are not prerequisites.
 
 ## Existing RMT primitives to reuse
 
@@ -42,21 +45,32 @@ Do not create parallel frameworks for capabilities already present:
 - `packages/contracts/src/RMTRetirementSinkV1.sol` — existing legacy retirement primitive remains untouched; RMT Pay V1 uses the conventional dead address for simpler public burn optics.
 - `packages/contracts/src/ProtocolPurposeVault.sol` and revenue-router patterns — references for a later explicitly authorized gas-funding path, not authority to modify current economics.
 
-## Planned documents
+## Planning specification set
 
-- [`ARCHITECTURE_V1.md`](ARCHITECTURE_V1.md) — complete system architecture, state machines, census semantics, fairness algorithm, safety policy and funding boundaries.
-- [`RMT_PAY_V1.md`](RMT_PAY_V1.md) — RMT utility-payment and burn semantics, gas abstraction boundary and accounting.
+Future Codex work should treat this directory as one specification set rather than reading only the original architecture file:
+
+- [`ARCHITECTURE_V1.md`](ARCHITECTURE_V1.md) — system boundaries, census semantics, acquisition/distribution lifecycle and release gates.
+- [`DATA_MODEL_V1.md`](DATA_MODEL_V1.md) — canonical evidence/state schemas, idempotency, ownership drift and durable-state requirements.
+- [`MINT_ADAPTERS_V1.md`](MINT_ADAPTERS_V1.md) — positive-allowlist mint adapter model, SeaDrop candidate semantics and postconditions.
+- [`FAIRNESS_RANDOMNESS_V1.md`](FAIRNESS_RANDOMNESS_V1.md) — normative V1 allocation algorithm, acquisition-block census anchor, deterministic future drand round and reproducibility rules.
+- [`OPERATIONS_FAILURES_V1.md`](OPERATIONS_FAILURES_V1.md) — START/STOP, submission ambiguity, retries, auto-pause, recovery and failure semantics.
+- [`RMT_PAY_V1.md`](RMT_PAY_V1.md) — RMT utility-payment and dead-address burn semantics, gas abstraction boundary and accounting.
 - [`CODEX_HANDOFF.md`](CODEX_HANDOFF.md) — sequential bounded work packages for OpenAI Codex after the current completion lane is cleared.
+
+Where a specialized V1 document gives a more precise rule than the broad architecture overview, the specialized document governs that specific domain. No planning document authorizes runtime activation.
 
 ## External infrastructure posture
 
 Use external infrastructure as adapters, never as sole truth where onchain evidence exists.
 
 - OpenSea Drops API is a candidate discovery/mint-transaction builder. Its live Robinhood capability must be probed before admission; a provider response is never a substitute for local verification.
+- OpenSea's open-source SeaDrop implementation is a concrete first mint-family reference, but an actual Robinhood deployment/runtime must be independently discovered and admitted before use.
 - Robinhood Chain is EVM-compatible and advertises ERC-4337 account abstraction/gas sponsorship support.
 - Alchemy currently lists Robinhood Mainnet/Testnet support for bundling, gas sponsorship and ERC-20 gas payments. RMT Pay V1 nevertheless keeps RMT burn settlement separate from native gas sponsorship so no RMT sale is required.
 - Blockscout/Robinhood explorer evidence can enrich contract verification, but exact chain reads/runtime hashes and local simulation remain authoritative.
-- Public randomness should use a future, precommitted external beacon/admitted VRF adapter; never operator-chosen randomness or `Math.random()`.
+- The first public randomness candidate is drand Quicknet. The batch's future round is derived from the immutable acquisition-block timestamp plus a fixed policy lead; the beacon must be cryptographically verified against pinned network identity rather than trusted from one HTTP response.
+
+Provider/network support can change. Every external dependency is re-probed/revalidated by the applicable Codex package before it can become execution authority.
 
 ## Hard boundary
 
