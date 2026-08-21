@@ -41,7 +41,7 @@ If wording appears to conflict:
 6. broad [`ARCHITECTURE_V1.md`](ARCHITECTURE_V1.md) overview;
 7. examples/non-normative commentary.
 
-For fairness, [`FAIRNESS_RANDOMNESS_V1.md`](FAIRNESS_RANDOMNESS_V1.md) and [`FAIRNESS_VECTORS_V1.md`](FAIRNESS_VECTORS_V1.md) are normative.
+For fairness, [`FAIRNESS_RANDOMNESS_V1.md`](FAIRNESS_RANDOMNESS_V1.md), [`FAIRNESS_VECTORS_V1.md`](FAIRNESS_VECTORS_V1.md), and [`DELIVERY_REPAIR_V1.md`](DELIVERY_REPAIR_V1.md) govern.
 
 ## Locked product rules
 
@@ -49,6 +49,7 @@ The detailed authority is [`DECISION_REGISTER_V1.md`](DECISION_REGISTER_V1.md). 
 
 ```text
 one current owner address = one V1 seat
+V1 is address-fair, not one-human-one-seat
 multiple Squares do not multiply allocation odds
 current ownership beats original mint history
 no inferred same-human wallet clustering
@@ -59,15 +60,19 @@ one mint run stays inside one fairness-floor cohort
 acquisition block anchors the allocation census
 future randomness round is mechanically derived from fixed policy
 NFT price/rarity/hype never affects recipient/token assignment
+mint into isolated collector first
+commit exact acquired inventory before winner/token-ID pairing
 no post-acquisition cherry-picking
 known positive mint adapters only
 automatic mint transaction native value must equal 0
 one isolated collector; no burner-wallet limit evasion
 operator controls are START / STOP / WATCH PROJECT
+delivery repair is deterministic; operator cannot pick replacement winner
 RMT Pay utility sends RMT to 0x000000000000000000000000000000000000dEaD
 no automatic RMT→ETH sale
 collector gas and RMT Pay sponsorship are separate accounting rails
 no RMT redeployment merely for missing burn()/permit()
+no fairness reset because a database was lost
 ```
 
 ## Existing RMT primitives to reuse
@@ -88,7 +93,7 @@ Do not put CCFF00/community data into `apps/indexer` without a new architecture 
 ```text
 A  Read-only current-owner CCFF00 census
 B  Read-only original mint provenance
-C  Observer free-mint discovery
+C  Observer free-mint discovery + curation calibration
 D  Known ERC-721 mint adapter + unsigned safety plans
 E  Deterministic Fair Allocation / verified randomness
 F  Exact CCFF00 TBA external-NFT custody proof
@@ -109,26 +114,40 @@ Passing a package never auto-authorizes the next.
 - G/H: [`PACKAGE_G_H_IMPLEMENTATION_V1.md`](PACKAGE_G_H_IMPLEMENTATION_V1.md)
 - I/J/K: [`PACKAGE_I_J_K_IMPLEMENTATION_V1.md`](PACKAGE_I_J_K_IMPLEMENTATION_V1.md)
 
-## Architecture/data/interfaces
+## Architecture/data/interfaces/recovery
 
 - [`ARCHITECTURE_V1.md`](ARCHITECTURE_V1.md) — broad system lifecycle/boundaries.
 - [`DATA_MODEL_V1.md`](DATA_MODEL_V1.md) — deterministic evidence and durable-state schemas.
 - [`REFERENCE_INTERFACES_V1.md`](REFERENCE_INTERFACES_V1.md) — implementation-shaped TypeScript/function boundaries.
 - [`INTEGRATION_MAP_V1.md`](INTEGRATION_MAP_V1.md) — where future code should extend current RMT and explicit non-target services.
+- [`STATE_RECONSTRUCTION_V1.md`](STATE_RECONSTRUCTION_V1.md) — rebuild fairness/inventory/history from receipts + hash-bound evidence; database loss cannot reset community fairness.
 - [`ERROR_CODES_V1.md`](ERROR_CODES_V1.md) — stable machine-classifiable failure/status taxonomy.
 
-## Discovery/mint/quality
+## Discovery/mint/quality/acquisition
 
 - [`DISCOVERY_SOURCES_V1.md`](DISCOVERY_SOURCES_V1.md) — OpenSea, HoodMint, WATCH, Blockscout/onchain source map.
 - [`UPSTREAM_REUSE_V1.md`](UPSTREAM_REUSE_V1.md) — reuse/reference/reject ledger for external tech.
 - [`MINT_ADAPTERS_V1.md`](MINT_ADAPTERS_V1.md) — positive-allowlist mint-family semantics/postconditions.
 - [`QUALITY_POLICY_V1.md`](QUALITY_POLICY_V1.md) — quality vs hard-safety separation.
 - [`QUALITY_CALIBRATION_V1.md`](QUALITY_CALIBRATION_V1.md) — deterministic evidence routes/calibration before autonomous curation.
+- [`ACQUISITION_INVENTORY_V1.md`](ACQUISITION_INVENTORY_V1.md) — transient isolated-collector custody; exact inventory is receipt-derived and committed before allocation.
 
-## Fairness/randomness
+V1 normally does **not** mint directly to a winning TBA even if a protocol supports a separate recipient. The extra transfer preserves a cleaner proof boundary:
+
+```text
+acquire exact token IDs
+→ commit inventory
+→ verified randomness
+→ assign
+→ deliver
+```
+
+## Fairness/randomness/identity/repair
 
 - [`FAIRNESS_RANDOMNESS_V1.md`](FAIRNESS_RANDOMNESS_V1.md) — normative one-run/one-floor allocation and acquisition-block/drand design.
 - [`FAIRNESS_VECTORS_V1.md`](FAIRNESS_VECTORS_V1.md) — deterministic examples/property-test expectations.
+- [`IDENTITY_SYBIL_V1.md`](IDENTITY_SYBIL_V1.md) — address-seat truth boundary, contract-owner cases and residual Sybil risk; no funding/IP/device heuristics.
+- [`DELIVERY_REPAIR_V1.md`](DELIVERY_REPAIR_V1.md) — deterministic Square fallback, original-cohort standby order, then mechanically anchored public repair allocation if necessary.
 
 Key rule:
 
@@ -145,9 +164,11 @@ No mint run spills into a second service level.
 - [`ACCEPTANCE_MATRIX_V1.md`](ACCEPTANCE_MATRIX_V1.md) — package pass/fail gates.
 - [`PUBLIC_PROOFS_V1.md`](PUBLIC_PROOFS_V1.md) — public reproducibility/transparency evidence.
 
+An RPC timeout after possible send is `TX_UNCERTAIN`, not proof of failure. Blind duplicate mint/delivery retries are forbidden.
+
 ## Gas funding/economics
 
-- [`GAS_COST_MODEL_V1.md`](GAS_COST_MODEL_V1.md) — measured native-gas accounting/caps/runway; reserve delivery budget before acquisition.
+- [`GAS_COST_MODEL_V1.md`](GAS_COST_MODEL_V1.md) — measured native-gas accounting/caps/runway; reserve delivery/activation budget before acquisition.
 - [`GAS_FUNDING_V1.md`](GAS_FUNDING_V1.md) — voluntary ETH funding and future vault boundary.
 
 Community contribution amount never enters the allocation function.
