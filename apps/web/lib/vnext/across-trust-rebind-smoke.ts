@@ -32,6 +32,10 @@ assert.equal(verifyAcrossFundingDeploymentAdmission(mutated(1, { implementationA
 assert.equal(verifyAcrossFundingDeploymentAdmission(mutated(1, { implementationRuntimeHash: `0x${"2".repeat(64)}` })), false);
 assert.equal(verifyAcrossFundingDeploymentAdmission(mutated(1, { evidenceBlockHash: `0x${"3".repeat(64)}` })), false);
 assert.equal(verifyAcrossFundingDeploymentAdmission(mutated(1, { chainId: 42161 })), false);
+for (const chainId of chainIds) {
+  const evidenceBlock = (BigInt(ACROSS_FUNDING_DEPLOYMENT_V1[chainId].evidenceBlock) + 1n).toString();
+  assert.equal(verifyAcrossFundingDeploymentAdmission(mutated(chainId, { evidenceBlock })), false);
+}
 
 const prefixes = [[1, "ETHEREUM"], [42161, "ARBITRUM"], [8453, "BASE"], [4663, "ROBINHOOD"]] as const;
 const manifestEnvironment = Object.fromEntries(prefixes.flatMap(([chainId, prefix]) => {
