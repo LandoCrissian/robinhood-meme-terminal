@@ -87,7 +87,7 @@ const firebaseFailed = await handleAcrossInfrastructurePreflightRequest(new Requ
 }), {
   env: enabledEnv,
   runPreflight: async () => {
-    throw new AcrossInfrastructurePreflightError("FIREBASE_ADMIN_READ", "PERMISSION_DENIED");
+    throw new AcrossInfrastructurePreflightError("FIREBASE_ADMIN_READ", "PERMISSION_DENIED", "FIRESTORE_READ");
   }
 });
 assert.equal(firebaseFailed.status, 503);
@@ -100,6 +100,7 @@ assert.deepEqual(await firebaseFailed.json(), {
   classification: "FIREBASE_ADMIN_READ",
   sanitizedMessage: "Firebase Admin read-only connectivity could not be verified.",
   firebaseAdminFailure: "PERMISSION_DENIED",
+  firebaseAdminStage: "FIRESTORE_READ",
   walletUsed: false,
   quoteRequested: false,
   transactionAttempted: false

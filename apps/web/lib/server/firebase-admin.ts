@@ -45,3 +45,10 @@ export function getRmtAdminAuth() {
   const app = getRmtLiveAdminApp();
   return app ? getAuth(app) : null;
 }
+
+export async function verifyRmtAdminAccessToken() {
+  const app = getRmtLiveAdminApp();
+  const credential = app?.options.credential;
+  if (!credential) throw new Error("Firebase Admin credential is unavailable.");
+  await credential.getAccessToken();
+}
