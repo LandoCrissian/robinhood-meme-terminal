@@ -41,16 +41,13 @@ Use VNext and existing RMT primitives. Do not create another terminal architectu
   - canonical JSON/hashes;
   - deterministic distribution manifests;
   - ERC-721/1155 identity and batching patterns.
-- `apps/indexer`
-  - confirmation depth;
-  - block-hash checkpoints;
-  - reorg rollback;
-  - idempotent event replay.
 - existing VNext transaction simulation, authorization and fail-closed verification patterns.
 
-### Reuse as security reference, not economic behavior
+### Reuse as design/security reference only
 
 `packages/contracts/src/RMTDistributionEngineV1.sol` provides useful patterns for replay protection, sender binding, exact asset ownership checks, post-transfer verification and absence of arbitrary-call/custody surfaces. The Collector must **not** inherit its current per-recipient RMT retirement economics. Collector acquisition/distribution is gas-funded and allocation-neutral.
+
+`apps/indexer` has strong confirmation/reorg/idempotency patterns, but repository authority reserves that service for deployed RMT V6 compatibility/history. Do **not** extend it with CCFF00/community data merely for convenience. V1 should use bounded read-only CCFF00 RPC/log evidence. A dedicated persistent community-engine service requires a later explicit architecture decision only if scale proves it necessary.
 
 ## 3. Community census and identity semantics
 
@@ -85,13 +82,13 @@ If one original minter minted three Squares and later sold two to independent bu
 
 ### 3.4 Original mint provenance
 
-The indexer should separately record the canonical ERC-721 creation event:
+A bounded read-only provenance reader should reconstruct the canonical ERC-721 creation event:
 
 ```text
 Transfer(from = zeroAddress, to = initialRecipient, tokenId)
 ```
 
-Store at least:
+Store/hash at least:
 
 - `tokenId`;
 - `initialRecipient`;
@@ -102,6 +99,8 @@ Store at least:
 - `logIndex`.
 
 The initial recipient, not blindly `transaction.from`, is the original-mint identity because a relayer/agent may submit a transaction for another recipient.
+
+For V1 scale, provenance can be produced by chunked logs scoped to the exact CCFF00 collection and an admitted collection-start boundary, then committed into a deterministic artifact. Original-mint events are immutable after finality, so the reader can incrementally extend a prior proven checkpoint without a new always-on indexer. If future scale requires durable service ownership, define that service separately rather than overloading `apps/indexer`.
 
 Original-mint clustering is analytics and anti-abuse evidence only. It never permanently overrides current ownership.
 
@@ -149,6 +148,7 @@ summary:
   fivePlus
   maxSquaresPerOwner
 provenanceCheckpoint
+provenanceHash
 censusHash
 ```
 
@@ -156,7 +156,7 @@ Canonicalize token IDs numerically and addresses by checksummed value with lower
 
 ## 5. Persistent fairness state
 
-The census is a snapshot; fairness state persists between snapshots.
+The census is a snapshot; fairness state persists between snapshots once execution is authorized.
 
 ### Seat state
 
@@ -550,6 +550,8 @@ A process restart, duplicate webhook, RPC retry or scheduler retry must never mi
 
 Use confirmed receipts plus deterministic keys; never treat “request returned an error” as proof a transaction was not submitted.
 
+Persisting this state does not itself authorize a new universal indexer. Start with the narrowest storage already appropriate to the future engine runtime; define a separate service only when implementation authority and operational need are explicit.
+
 ## 20. Gas funding
 
 ### V1 principle
@@ -607,13 +609,14 @@ Provider support can change; live probes are part of admission and provider fail
 Implementation remains sequential:
 
 1. read-only live census;
-2. observer-only mint discovery/evidence;
-3. deterministic fairness simulator;
-4. external ERC-721 CCFF00 receipt/withdrawal canary;
-5. isolated low-balance collector canary;
-6. limited production acquisition/distribution with explicit owner authorization;
-7. gas vault only after operational evidence;
-8. RMT Pay compatibility preflight;
-9. RMT Pay utility activation only after separate authorization.
+2. read-only mint provenance artifact;
+3. observer-only mint discovery/evidence;
+4. deterministic fairness simulator;
+5. external ERC-721 CCFF00 receipt/withdrawal canary;
+6. isolated low-balance collector canary;
+7. limited production acquisition/distribution with explicit owner authorization;
+8. gas vault only after operational evidence;
+9. RMT Pay compatibility preflight;
+10. RMT Pay utility activation only after separate authorization.
 
 No later gate inherits approval from an earlier gate.
