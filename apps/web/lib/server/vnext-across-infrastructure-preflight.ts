@@ -8,7 +8,11 @@ import {
   type AcrossObservedSpokePoolDeployment,
   type AcrossSpokePoolDeploymentPin
 } from "./vnext-across-funding";
-import { getRmtAdminFirestore, hasRmtAdminConfiguration } from "./firebase-admin";
+import {
+  getRmtAdminFirestore,
+  hasRmtAdminConfiguration,
+  verifyRmtAdminAccessToken
+} from "./firebase-admin";
 import { acrossDedicatedRpcConfigured } from "./vnext-across-rpc";
 import { verifyAcrossReleaseDiscovery } from "./vnext-across-release-discovery";
 import {
@@ -68,8 +72,22 @@ export type FirebaseAdminFailureDiagnostic =
   | "DEADLINE_EXCEEDED"
   | "INVALID_CREDENTIAL"
   | "INVALID_ARGUMENT"
+  | "INVALID_APP_OPTIONS"
+  | "INVALID_APP_NAME"
+  | "APP_DELETED"
+  | "DUPLICATE_APP"
+  | "NO_APP"
+  | "NETWORK_ERROR"
+  | "NETWORK_TIMEOUT"
+  | "INTERNAL_ERROR"
+  | "UNABLE_TO_PARSE_RESPONSE"
   | "RESOURCE_EXHAUSTED"
   | "UNKNOWN";
+
+export type FirebaseAdminFailureStage =
+  | "CLIENT_INITIALIZATION"
+  | "ACCESS_TOKEN"
+  | "FIRESTORE_READ";
 
 const firebaseAdminFailureDiagnosticValues = new Set<string>([
   "PERMISSION_DENIED",
@@ -80,12 +98,31 @@ const firebaseAdminFailureDiagnosticValues = new Set<string>([
   "DEADLINE_EXCEEDED",
   "INVALID_CREDENTIAL",
   "INVALID_ARGUMENT",
+  "INVALID_APP_OPTIONS",
+  "INVALID_APP_NAME",
+  "APP_DELETED",
+  "DUPLICATE_APP",
+  "NO_APP",
+  "NETWORK_ERROR",
+  "NETWORK_TIMEOUT",
+  "INTERNAL_ERROR",
+  "UNABLE_TO_PARSE_RESPONSE",
   "RESOURCE_EXHAUSTED",
   "UNKNOWN"
 ]);
 
+const firebaseAdminFailureStageValues = new Set<string>([
+  "CLIENT_INITIALIZATION",
+  "ACCESS_TOKEN",
+  "FIRESTORE_READ"
+]);
+
 function isFirebaseAdminFailureDiagnostic(value: unknown): value is FirebaseAdminFailureDiagnostic {
   return typeof value === "string" && firebaseAdminFailureDiagnosticValues.has(value);
+}
+
+function isFirebaseAdminFailureStage(value: unknown): value is FirebaseAdminFailureStage {
+  return typeof value === "string" && firebaseAdminFailureStageValues.has(value);
 }
 
 const sanitizedMessages: Record<AcrossInfrastructurePreflightFailureClassification, string> = {
@@ -107,16 +144,21 @@ const sanitizedMessages: Record<AcrossInfrastructurePreflightFailureClassificati
 export class AcrossInfrastructurePreflightError extends Error {
   readonly classification: AcrossInfrastructurePreflightFailureClassification;
   readonly firebaseAdminFailure?: FirebaseAdminFailureDiagnostic;
+  readonly firebaseAdminStage?: FirebaseAdminFailureStage;
 
   constructor(
     classification: AcrossInfrastructurePreflightFailureClassification,
-    firebaseAdminFailure?: FirebaseAdminFailureDiagnostic
+    firebaseAdminFailure?: FirebaseAdminFailureDiagnostic,
+    firebaseAdminStage?: FirebaseAdminFailureStage
   ) {
     super(sanitizedMessages[classification]);
     this.name = "AcrossInfrastructurePreflightError";
     this.classification = classification;
     this.firebaseAdminFailure = classification === "FIREBASE_ADMIN_READ" && firebaseAdminFailure !== undefined
       ? isFirebaseAdminFailureDiagnostic(firebaseAdminFailure) ? firebaseAdminFailure : "UNKNOWN"
+      : undefined;
+    this.firebaseAdminStage = classification === "FIREBASE_ADMIN_READ" && firebaseAdminStage !== undefined
+      ? isFirebaseAdminFailureStage(firebaseAdminStage) ? firebaseAdminStage : undefined
       : undefined;
   }
 }
@@ -164,6 +206,7 @@ export type AcrossInfrastructurePreflightFailure = {
   classification: AcrossInfrastructurePreflightFailureClassification;
   sanitizedMessage: string;
   firebaseAdminFailure?: FirebaseAdminFailureDiagnostic;
+  firebaseAdminStage?: FirebaseAdminFailureStage;
   walletUsed: false;
   quoteRequested: false;
   transactionAttempted: false;
@@ -177,6 +220,8 @@ export type AcrossInfrastructurePreflightDependencies = {
     expected: AcrossSpokePoolDeploymentPin;
     env: NodeJS.ProcessEnv;
   }) => Promise<PublicDeploymentEvidence>;
+  firebaseAdminInitialize?: (env: NodeJS.ProcessEnv) => Promise<void> | void;
+  firebaseAdminAccessToken?: (env: NodeJS.ProcessEnv) => Promise<void>;
   firebaseAdminRead?: (env: NodeJS.ProcessEnv) => Promise<void>;
 };
 
@@ -192,7 +237,18 @@ const grpcFirebaseFailureDiagnostics = new Map<number, FirebaseAdminFailureDiagn
 
 const namedFirebaseFailureDiagnostics = new Map<string, FirebaseAdminFailureDiagnostic>([
   ["app/invalid-credential", "INVALID_CREDENTIAL"],
-  ["app/invalid-app-argument", "INVALID_ARGUMENT"],
+  ["app/invalid-argument", "INVALID_ARGUMENT"],
+  ["app/invalid-app-options", "INVALID_APP_OPTIONS"],
+  ["app/invalid-app-name", "INVALID_APP_NAME"],
+  ["app/app-deleted", "APP_DELETED"],
+  ["app/duplicate-app", "DUPLICATE_APP"],
+  ["app/no-app", "NO_APP"],
+  ["app/network-error", "NETWORK_ERROR"],
+  ["app/network-timeout", "NETWORK_TIMEOUT"],
+  ["app/internal-error", "INTERNAL_ERROR"],
+  ["app/unable-to-parse-response", "UNABLE_TO_PARSE_RESPONSE"],
+  ["invalid-credential", "INVALID_CREDENTIAL"],
+  ["invalid-argument", "INVALID_ARGUMENT"],
   ["deadline-exceeded", "DEADLINE_EXCEEDED"],
   ["not-found", "NOT_FOUND"],
   ["permission-denied", "PERMISSION_DENIED"],
@@ -237,10 +293,14 @@ function preflightError(cause: unknown, fallback: AcrossInfrastructurePreflightF
   return new AcrossInfrastructurePreflightError(fallback);
 }
 
-function firebasePreflightError(cause: unknown) {
+function firebasePreflightError(cause: unknown, stage: FirebaseAdminFailureStage) {
+  if (cause instanceof AcrossInfrastructurePreflightError && cause.classification === "FIREBASE_ADMIN_READ") {
+    return cause;
+  }
   return new AcrossInfrastructurePreflightError(
     "FIREBASE_ADMIN_READ",
-    classifyFirebaseAdminFailure(cause)
+    classifyFirebaseAdminFailure(cause),
+    stage
   );
 }
 
@@ -284,6 +344,9 @@ export function acrossInfrastructurePreflightFailure(
   const firebaseAdminFailure = isFirebaseAdminFailureDiagnostic(error.firebaseAdminFailure)
     ? error.firebaseAdminFailure
     : undefined;
+  const firebaseAdminStage = isFirebaseAdminFailureStage(error.firebaseAdminStage)
+    ? error.firebaseAdminStage
+    : undefined;
   return assertSanitizedAcrossInfrastructurePreflightResult({
     schemaVersion: ACROSS_INFRASTRUCTURE_PREFLIGHT_SCHEMA,
     status: "across_infrastructure_preflight_failed",
@@ -291,6 +354,9 @@ export function acrossInfrastructurePreflightFailure(
     sanitizedMessage: error.message,
     ...(error.classification === "FIREBASE_ADMIN_READ" && firebaseAdminFailure
       ? { firebaseAdminFailure }
+      : {}),
+    ...(error.classification === "FIREBASE_ADMIN_READ" && firebaseAdminStage
+      ? { firebaseAdminStage }
       : {}),
     walletUsed: false,
     quoteRequested: false,
@@ -364,10 +430,31 @@ async function defaultObserveDeployment(input: {
   };
 }
 
+function defaultFirebaseAdminInitialize() {
+  const database = getRmtAdminFirestore();
+  if (!database) throw new Error("Firebase Admin client initialization failed.");
+}
+
+async function defaultFirebaseAdminAccessToken() {
+  await verifyRmtAdminAccessToken();
+}
+
 async function defaultFirebaseAdminRead() {
   const database = getRmtAdminFirestore();
-  if (!database) throw new AcrossInfrastructurePreflightError("CONFIGURATION");
+  if (!database) throw new Error("Firebase Admin Firestore client is unavailable.");
   await database.collection("__rmt_preflight__").doc("across-infrastructure").get();
+}
+
+async function runFirebaseAdminStage(
+  stage: FirebaseAdminFailureStage,
+  operation: (env: NodeJS.ProcessEnv) => Promise<void> | void,
+  env: NodeJS.ProcessEnv
+) {
+  try {
+    await operation(env);
+  } catch (cause) {
+    throw firebasePreflightError(cause, stage);
+  }
 }
 
 async function fetchReleaseRecord(
@@ -445,12 +532,12 @@ export async function runAcrossInfrastructurePreflight(input: {
     }
   }));
 
+  const firebaseAdminInitialize = input.dependencies?.firebaseAdminInitialize ?? defaultFirebaseAdminInitialize;
+  const firebaseAdminAccessToken = input.dependencies?.firebaseAdminAccessToken ?? defaultFirebaseAdminAccessToken;
   const firebaseAdminRead = input.dependencies?.firebaseAdminRead ?? defaultFirebaseAdminRead;
-  try {
-    await firebaseAdminRead(env);
-  } catch (cause) {
-    throw firebasePreflightError(cause);
-  }
+  await runFirebaseAdminStage("CLIENT_INITIALIZATION", firebaseAdminInitialize, env);
+  await runFirebaseAdminStage("ACCESS_TOKEN", firebaseAdminAccessToken, env);
+  await runFirebaseAdminStage("FIRESTORE_READ", firebaseAdminRead, env);
 
   return assertSanitizedAcrossInfrastructurePreflightResult({
     schemaVersion: ACROSS_INFRASTRUCTURE_PREFLIGHT_SCHEMA,

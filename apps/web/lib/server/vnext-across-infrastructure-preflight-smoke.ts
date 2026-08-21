@@ -10,6 +10,7 @@ import {
   verifyAcrossInfrastructureDeploymentEvidence,
   type AcrossInfrastructurePreflightFailureClassification,
   type FirebaseAdminFailureDiagnostic,
+  type FirebaseAdminFailureStage,
   type AcrossInfrastructureRpcObservation
 } from "./vnext-across-infrastructure-preflight";
 import { ACROSS_FUNDING_DEPLOYMENT_V1 } from "../vnext/across-funding-deployment";
@@ -106,14 +107,27 @@ function dependencies(input: {
   failChain?: number;
   failCause?: unknown;
   firebaseFailure?: unknown;
+  firebaseFailureStage?: FirebaseAdminFailureStage;
+  firebaseStageCalls?: FirebaseAdminFailureStage[];
 } = {}) {
+  const shouldFail = (stage: FirebaseAdminFailureStage) =>
+    input.firebaseFailureStage === stage && Object.prototype.hasOwnProperty.call(input, "firebaseFailure");
   return {
     observeDeployment: async ({ chain }: { chain: { chainId: typeof chainIds[number] } }) => {
       if (input.failChain === chain.chainId) throw input.failCause ?? new Error("wrong chain identity");
       return observation(chain.chainId);
     },
+    firebaseAdminInitialize: async () => {
+      input.firebaseStageCalls?.push("CLIENT_INITIALIZATION");
+      if (shouldFail("CLIENT_INITIALIZATION")) throw input.firebaseFailure;
+    },
+    firebaseAdminAccessToken: async () => {
+      input.firebaseStageCalls?.push("ACCESS_TOKEN");
+      if (shouldFail("ACCESS_TOKEN")) throw input.firebaseFailure;
+    },
     firebaseAdminRead: async () => {
-      if (Object.prototype.hasOwnProperty.call(input, "firebaseFailure")) throw input.firebaseFailure;
+      input.firebaseStageCalls?.push("FIRESTORE_READ");
+      if (shouldFail("FIRESTORE_READ")) throw input.firebaseFailure;
     }
   };
 }
@@ -132,17 +146,19 @@ async function expectFailure(
 
 async function expectFirebaseFailure(
   cause: unknown,
-  diagnostic: FirebaseAdminFailureDiagnostic
+  diagnostic: FirebaseAdminFailureDiagnostic,
+  stage: FirebaseAdminFailureStage = "FIRESTORE_READ"
 ) {
   let captured: AcrossInfrastructurePreflightError | undefined;
   await assert.rejects(() => runAcrossInfrastructurePreflight({
     env,
     fetchImplementation: releaseFetch,
-    dependencies: dependencies({ firebaseFailure: cause })
+    dependencies: dependencies({ firebaseFailure: cause, firebaseFailureStage: stage })
   }), (error: unknown) => {
     assert.ok(error instanceof AcrossInfrastructurePreflightError);
     assert.equal(error.classification, "FIREBASE_ADMIN_READ");
     assert.equal(error.firebaseAdminFailure, diagnostic);
+    assert.equal(error.firebaseAdminStage, stage);
     captured = error;
     return true;
   });
@@ -150,12 +166,14 @@ async function expectFirebaseFailure(
   const failure = acrossInfrastructurePreflightFailure(captured, secretFixtures);
   assert.equal(failure.classification, "FIREBASE_ADMIN_READ");
   assert.equal(failure.firebaseAdminFailure, diagnostic);
+  assert.equal(failure.firebaseAdminStage, stage);
   assert.equal(failure.sanitizedMessage, "Firebase Admin read-only connectivity could not be verified.");
   return failure;
 }
 
 async function main() {
 const requestedPaths: string[] = [];
+const successfulFirebaseStages: FirebaseAdminFailureStage[] = [];
 const success = await runAcrossInfrastructurePreflight({
   env,
   observedAtMs: 1_700_000_000_000,
@@ -166,7 +184,7 @@ const success = await runAcrossInfrastructurePreflight({
     assert.equal(new Headers(init?.headers).get("authorization"), `Bearer ${API_KEY_FIXTURE}`);
     return releaseFetch(input);
   },
-  dependencies: dependencies()
+  dependencies: dependencies({ firebaseStageCalls: successfulFirebaseStages })
 });
 assert.equal(success.schemaVersion, ACROSS_INFRASTRUCTURE_PREFLIGHT_SCHEMA);
 assert.equal(success.status, "across_infrastructure_preflight_passed");
@@ -174,6 +192,7 @@ assert.deepEqual(requestedPaths.sort(), ["/api/swap/chains", "/api/swap/tokens"]
 assert.equal(success.authenticatedApiVerified, true);
 assert.equal(success.robinhoodChainSupported, true);
 assert.equal(success.persistence.firebaseAdminReadVerified, true);
+assert.deepEqual(successfulFirebaseStages, ["CLIENT_INITIALIZATION", "ACCESS_TOKEN", "FIRESTORE_READ"]);
 assert.equal(success.rpcObservations.length, 4);
 assert.deepEqual(success.rpcObservations.map((item) => item.chainId), [...chainIds]);
 assert.ok(success.rpcObservations.every((item) => item.rpcIdentityVerified && item.pinnedBlockHashRereadVerified));
@@ -280,7 +299,21 @@ const firebaseVectors: readonly [unknown, FirebaseAdminFailureDiagnostic][] = [
   [{ code: 4 }, "DEADLINE_EXCEEDED"],
   [{ code: 8 }, "RESOURCE_EXHAUSTED"],
   [{ errorInfo: { code: "app/invalid-credential" } }, "INVALID_CREDENTIAL"],
-  [{ errorInfo: { code: "app/invalid-app-argument" } }, "INVALID_ARGUMENT"],
+  [{ errorInfo: { code: "app/invalid-argument" } }, "INVALID_ARGUMENT"],
+  [{ code: "app/invalid-app-options" }, "INVALID_APP_OPTIONS"],
+  [{ code: "app/invalid-app-name" }, "INVALID_APP_NAME"],
+  [{ code: "app/app-deleted" }, "APP_DELETED"],
+  [{ code: "app/duplicate-app" }, "DUPLICATE_APP"],
+  [{ code: "app/no-app" }, "NO_APP"],
+  [{ code: "app/network-error" }, "NETWORK_ERROR"],
+  [{ code: "app/network-timeout" }, "NETWORK_TIMEOUT"],
+  [{ code: "app/internal-error" }, "INTERNAL_ERROR"],
+  [{ code: "app/unable-to-parse-response" }, "UNABLE_TO_PARSE_RESPONSE"],
+  [{ code: "invalid-credential" }, "INVALID_CREDENTIAL"],
+  [{ code: "invalid-argument" }, "INVALID_ARGUMENT"],
+  [{ code: "7" }, "UNKNOWN"],
+  [{ code: "firestore/permission-denied" }, "UNKNOWN"],
+  [{ code: "app/invalid-app-argument" }, "UNKNOWN"],
   [{ code: 99 }, "UNKNOWN"],
   [{ code: "unknown/structured-code" }, "UNKNOWN"],
   [new Error(`credential-looking text must remain opaque: ${FIREBASE_KEY_FIXTURE}`), "UNKNOWN"]
@@ -290,12 +323,55 @@ for (const [cause, diagnostic] of firebaseVectors) {
   await expectFirebaseFailure(cause, diagnostic);
 }
 
+const stagedFirebaseFailures: readonly FirebaseAdminFailureStage[] = [
+  "CLIENT_INITIALIZATION",
+  "ACCESS_TOKEN",
+  "FIRESTORE_READ"
+];
+for (const stage of stagedFirebaseFailures) {
+  const stageCalls: FirebaseAdminFailureStage[] = [];
+  let captured: AcrossInfrastructurePreflightError | undefined;
+  await assert.rejects(() => runAcrossInfrastructurePreflight({
+    env,
+    fetchImplementation: releaseFetch,
+    dependencies: dependencies({
+      firebaseFailure: { code: 7 },
+      firebaseFailureStage: stage,
+      firebaseStageCalls: stageCalls
+    })
+  }), (error: unknown) => {
+    assert.ok(error instanceof AcrossInfrastructurePreflightError);
+    assert.equal(error.classification, "FIREBASE_ADMIN_READ");
+    assert.equal(error.firebaseAdminFailure, "PERMISSION_DENIED");
+    assert.equal(error.firebaseAdminStage, stage);
+    captured = error;
+    return true;
+  });
+  assert.ok(captured);
+  const expectedCalls = stagedFirebaseFailures.slice(0, stagedFirebaseFailures.indexOf(stage) + 1);
+  assert.deepEqual(stageCalls, expectedCalls);
+  const stagedFailure = acrossInfrastructurePreflightFailure(captured, secretFixtures);
+  assert.equal(stagedFailure.firebaseAdminStage, stage);
+  assert.equal(stagedFailure.firebaseAdminFailure, "PERMISSION_DENIED");
+}
+
+await expectFirebaseFailure(
+  new AcrossInfrastructurePreflightError("FIREBASE_ADMIN_READ", "UNAUTHENTICATED", "ACCESS_TOKEN"),
+  "UNAUTHENTICATED",
+  "ACCESS_TOKEN"
+);
+
 const secretBearingFirebaseCause = {
   code: 7,
   message: `Authorization: Bearer ${PREFLIGHT_TOKEN_FIXTURE}`,
   stack: `synthetic stack ${API_KEY_FIXTURE}`,
   details: { privateKey: FIREBASE_KEY_FIXTURE },
   metadata: { authToken: RPC_TOKEN_FIXTURE },
+  cause: { apiKey: API_KEY_FIXTURE },
+  errorInfo: {
+    code: "app/invalid-credential",
+    adjacentSecret: PREFLIGHT_TOKEN_FIXTURE
+  },
   nested: { apiKey: API_KEY_FIXTURE, process: "process.env" }
 };
 const secretBearingFirebaseFailure = await expectFirebaseFailure(
@@ -306,7 +382,7 @@ const serializedFirebaseFailure = JSON.stringify(secretBearingFirebaseFailure);
 for (const secret of secretFixtures) assert.equal(serializedFirebaseFailure.includes(secret), false);
 assert.doesNotMatch(
   serializedFirebaseFailure,
-  /Authorization:|process\.env|privateKey|apiKey|authToken|details|metadata|nested|synthetic stack/i
+  /Authorization:|process\.env|privateKey|apiKey|authToken|details|metadata|cause|adjacentSecret|nested|synthetic stack/i
 );
 await expectFailure(() => runAcrossInfrastructurePreflight({
   env,
