@@ -109,7 +109,11 @@ exists, the service stops instead of guessing.
 - `GET /v1/status` requires the internal bearer token and returns the detailed
   per-source telemetry snapshot used for private shadow verification.
 - `GET /v1/pools` requires the internal bearer token and carries the same
-  non-authoritative label.
+  non-authoritative label. Its optional `source=<sourceId>`,
+  `token=<20-byte address>` and `poolKey=<20-byte address or bytes32 PoolId>`
+  filters are exact, may be combined with AND semantics, and are applied in
+  PostgreSQL before the bounded result limit. V2/V3 pool keys remain pool
+  addresses; V4 pool keys remain PoolIds with a null `poolAddress`.
 
 The external-origin indexer remains separate. Pool existence is market evidence;
 it is not proof that a launchpad created a token.
