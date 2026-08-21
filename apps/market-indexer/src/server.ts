@@ -11,6 +11,32 @@ import {
 import type { MarketIndexerWorker } from "./worker.js";
 import type { PositionGuardHeartbeat } from "./position-guard-heartbeat.js";
 
+const EVM_ADDRESS_PATTERN = /^0x[0-9a-fA-F]{40}$/;
+const POOL_KEY_PATTERN = /^0x(?:[0-9a-fA-F]{40}|[0-9a-fA-F]{64})$/;
+const ZERO_ADDRESS = `0x${"0".repeat(40)}`;
+const ZERO_POOL_ID = `0x${"0".repeat(64)}`;
+
+function exactToken(value: string | null) {
+  if (value === null) return null;
+  if (!EVM_ADDRESS_PATTERN.test(value) || value.toLowerCase() === ZERO_ADDRESS) {
+    return undefined;
+  }
+  return value.toLowerCase();
+}
+
+function exactPoolKey(value: string | null) {
+  if (value === null) return null;
+  const normalized = value.toLowerCase();
+  if (
+    !POOL_KEY_PATTERN.test(value) ||
+    normalized === ZERO_ADDRESS ||
+    normalized === ZERO_POOL_ID
+  ) {
+    return undefined;
+  }
+  return normalized;
+}
+
 function json(response: ServerResponse, status: number, body: unknown) {
   response.writeHead(status, {
     "content-type": "application/json; charset=utf-8",
@@ -169,6 +195,18 @@ export function createMarketIndexerServer(
           json(response, 400, { error: "unsupported source" });
           return;
         }
+        const token = exactToken(url.searchParams.get("token"));
+        if (token === undefined) {
+          json(response, 400, { error: "token must be a nonzero EVM address" });
+          return;
+        }
+        const poolKey = exactPoolKey(url.searchParams.get("poolKey"));
+        if (poolKey === undefined) {
+          json(response, 400, {
+            error: "poolKey must be a nonzero EVM address or bytes32 PoolId"
+          });
+          return;
+        }
         const result = await pool.query(
           `SELECT pools.source_id AS "sourceId", pools.protocol,
                   pools.protocol_version AS "version", pools.pool_key AS "poolKey",
@@ -193,10 +231,13 @@ export function createMarketIndexerServer(
              ON state.chain_id = pools.chain_id
             AND state.source_id = pools.source_id
             AND state.pool_key = pools.pool_key
-           WHERE pools.chain_id = $1 AND ($2::text IS NULL OR pools.source_id = $2)
+           WHERE pools.chain_id = $1
+             AND ($2::text IS NULL OR pools.source_id = $2)
+             AND ($3::text IS NULL OR pools.token0 = $3 OR pools.token1 = $3)
+             AND ($4::text IS NULL OR pools.pool_key = $4)
            ORDER BY pools.block_number DESC, pools.transaction_index DESC, pools.log_index DESC
-           LIMIT $3`,
-          [MARKET_INDEXER_CHAIN_ID, source, limit]
+           LIMIT $5`,
+          [MARKET_INDEXER_CHAIN_ID, source, token, poolKey, limit]
         );
         json(response, 200, {
           chainId: MARKET_INDEXER_CHAIN_ID,

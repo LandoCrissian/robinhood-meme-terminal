@@ -74,8 +74,87 @@ const worker = {
     }
   }
 } as unknown as MarketIndexerWorker;
+
+const stonkBrokerAddress = "0xe934e36a439c94017b64a3fece66af12099abf50";
+const v2Pool = {
+  sourceId: "uniswap-v2",
+  protocol: "uniswap",
+  version: 2,
+  poolKey: "0x2222222222222222222222222222222222222222",
+  poolAddress: "0x2222222222222222222222222222222222222222",
+  token0: "0x3333333333333333333333333333333333333333",
+  token1: "0x4444444444444444444444444444444444444444",
+  stable: null,
+  fee: null,
+  tickSpacing: null,
+  hooks: null,
+  transactionHash: `0x${"21".repeat(32)}`,
+  blockNumber: "101",
+  blockHash: `0x${"31".repeat(32)}`,
+  stateStatus: null,
+  liveFee: null,
+  feeDenominator: null,
+  gaugeAddress: null,
+  gaugeAlive: null,
+  gaugeWeight: null,
+  gaugeClaimable: null,
+  feesAddress: null,
+  bribeAddress: null,
+  stateError: null,
+  stateObservedBlock: null,
+  stateObservedBlockHash: null
+};
+const v3Pool = {
+  ...v2Pool,
+  sourceId: "uniswap-v3",
+  version: 3,
+  poolKey: "0x5555555555555555555555555555555555555555",
+  poolAddress: "0x5555555555555555555555555555555555555555",
+  token0: "0x6666666666666666666666666666666666666666",
+  token1: "0x7777777777777777777777777777777777777777",
+  fee: 3_000,
+  tickSpacing: 60,
+  transactionHash: `0x${"22".repeat(32)}`,
+  blockNumber: "102",
+  blockHash: `0x${"32".repeat(32)}`
+};
+const v4Pool = {
+  ...v2Pool,
+  sourceId: "uniswap-v4",
+  version: 4,
+  poolKey: `0x${"42".repeat(32)}`,
+  poolAddress: null,
+  token0: "0x1111111111111111111111111111111111111111",
+  token1: stonkBrokerAddress,
+  fee: 3_000,
+  tickSpacing: 60,
+  hooks: "0x8888888888888888888888888888888888888888",
+  transactionHash: `0x${"23".repeat(32)}`,
+  blockNumber: "99",
+  blockHash: `0x${"33".repeat(32)}`
+};
+const indexedPools = [v3Pool, v2Pool, v4Pool];
+const poolQueries: Array<{ text: string; values: unknown[] }> = [];
 const pool = {
-  query: async () => ({ rows: [] })
+  query: async (text: string, values: unknown[]) => {
+    poolQueries.push({ text, values });
+    const [chainId, sourceId, token, poolKey, limit] = values as [
+      number,
+      string | null,
+      string | null,
+      string | null,
+      number
+    ];
+    assert.equal(chainId, 4_663);
+    const rows = indexedPools
+      .filter((row) => sourceId === null || row.sourceId === sourceId)
+      .filter(
+        (row) => token === null || row.token0 === token || row.token1 === token
+      )
+      .filter((row) => poolKey === null || row.poolKey === poolKey)
+      .slice(0, limit);
+    return { rows };
+  }
 } as unknown as Pool;
 const server = createMarketIndexerServer(pool, config, worker);
 await new Promise<void>((resolve, reject) => {
@@ -132,6 +211,112 @@ try {
   assert.equal(status.telemetry.totalPools, totalPools);
   assert.equal(statusText.includes(readToken), false);
   assert.equal(statusText.includes(config.databaseUrl), false);
+
+  const unauthorizedPools = await fetch(`${origin}/v1/pools`);
+  assert.equal(unauthorizedPools.status, 401);
+  const poolHeaders = { authorization: `Bearer ${readToken}` };
+  const allPoolsResponse = await fetch(`${origin}/v1/pools`, {
+    headers: poolHeaders
+  });
+  const allPools = (await allPoolsResponse.json()) as {
+    mode: string;
+    authoritative: boolean;
+    pools: typeof indexedPools;
+  };
+  assert.equal(allPoolsResponse.status, 200);
+  assert.equal(allPools.mode, "shadow");
+  assert.equal(allPools.authoritative, false);
+  assert.deepEqual(allPools.pools, indexedPools);
+  const unfilteredQuery = poolQueries.at(-1)!;
+  assert.deepEqual(unfilteredQuery.values, [4_663, null, null, null, 100]);
+  assert.ok(
+    unfilteredQuery.text.indexOf("pools.token0 = $3") <
+      unfilteredQuery.text.indexOf("LIMIT $5")
+  );
+  assert.ok(
+    unfilteredQuery.text.indexOf("pools.pool_key = $4") <
+      unfilteredQuery.text.indexOf("LIMIT $5")
+  );
+
+  const tokenResponse = await fetch(
+    `${origin}/v1/pools?limit=1&token=0x${stonkBrokerAddress.slice(2).toUpperCase()}`,
+    { headers: poolHeaders }
+  );
+  const tokenResult = (await tokenResponse.json()) as {
+    pools: typeof indexedPools;
+  };
+  assert.equal(tokenResponse.status, 200);
+  assert.equal(tokenResult.pools.length, 1);
+  assert.deepEqual(tokenResult.pools[0], v4Pool);
+  assert.equal(tokenResult.pools[0]?.poolAddress, null);
+  assert.equal("chart" in tokenResult.pools[0]!, false);
+  assert.equal("liquidity" in tokenResult.pools[0]!, false);
+  assert.equal("volume" in tokenResult.pools[0]!, false);
+  assert.equal("executionRoute" in tokenResult.pools[0]!, false);
+  assert.equal(poolQueries.at(-1)!.values[2], stonkBrokerAddress);
+  assert.equal(poolQueries.at(-1)!.values[4], 1);
+
+  for (const expected of [v2Pool, v3Pool]) {
+    const poolKeyResponse = await fetch(
+      `${origin}/v1/pools?poolKey=${expected.poolKey}`,
+      { headers: poolHeaders }
+    );
+    const poolKeyResult = (await poolKeyResponse.json()) as {
+      pools: typeof indexedPools;
+    };
+    assert.equal(poolKeyResponse.status, 200);
+    assert.deepEqual(poolKeyResult.pools, [expected]);
+  }
+
+  const v4PoolKeyResponse = await fetch(
+    `${origin}/v1/pools?poolKey=${v4Pool.poolKey.toUpperCase().replace("0X", "0x")}`,
+    { headers: poolHeaders }
+  );
+  const v4PoolKeyResult = (await v4PoolKeyResponse.json()) as {
+    pools: typeof indexedPools;
+  };
+  assert.equal(v4PoolKeyResponse.status, 200);
+  assert.deepEqual(v4PoolKeyResult.pools, [v4Pool]);
+  assert.equal(v4PoolKeyResult.pools[0]?.poolAddress, null);
+  assert.equal(poolQueries.at(-1)!.values[3], v4Pool.poolKey);
+
+  const combinedMatch = await fetch(
+    `${origin}/v1/pools?source=uniswap-v4&token=${stonkBrokerAddress}&poolKey=${v4Pool.poolKey}`,
+    { headers: poolHeaders }
+  );
+  assert.deepEqual(
+    ((await combinedMatch.json()) as { pools: typeof indexedPools }).pools,
+    [v4Pool]
+  );
+  const combinedMismatch = await fetch(
+    `${origin}/v1/pools?token=${stonkBrokerAddress}&poolKey=${v2Pool.poolKey}`,
+    { headers: poolHeaders }
+  );
+  assert.deepEqual(
+    ((await combinedMismatch.json()) as { pools: typeof indexedPools }).pools,
+    []
+  );
+
+  const queryCountBeforeInvalidRequests = poolQueries.length;
+  const invalidQueries = [
+    "token=not-an-address",
+    `token=0x${"0".repeat(40)}`,
+    `token=0x${"1".repeat(42)}`,
+    "poolKey=not-a-pool-key",
+    `poolKey=0x${"0".repeat(40)}`,
+    `poolKey=0x${"0".repeat(64)}`,
+    `poolKey=0x${"1".repeat(62)}`,
+    "source=unsupported",
+    "limit=0",
+    "limit=501"
+  ];
+  for (const query of invalidQueries) {
+    const invalidResponse = await fetch(`${origin}/v1/pools?${query}`, {
+      headers: poolHeaders
+    });
+    assert.equal(invalidResponse.status, 400, query);
+  }
+  assert.equal(poolQueries.length, queryCountBeforeInvalidRequests);
 } finally {
   await new Promise<void>((resolve, reject) =>
     server.close((error) => (error ? reject(error) : resolve()))
