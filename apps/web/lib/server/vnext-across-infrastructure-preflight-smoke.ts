@@ -5,9 +5,11 @@ import {
   AcrossInfrastructurePreflightError,
   acrossInfrastructurePreflightFailure,
   assertSanitizedAcrossInfrastructurePreflightResult,
+  classifyFirebaseAdminFailure,
   runAcrossInfrastructurePreflight,
   verifyAcrossInfrastructureDeploymentEvidence,
   type AcrossInfrastructurePreflightFailureClassification,
+  type FirebaseAdminFailureDiagnostic,
   type AcrossInfrastructureRpcObservation
 } from "./vnext-across-infrastructure-preflight";
 import { ACROSS_FUNDING_DEPLOYMENT_V1 } from "../vnext/across-funding-deployment";
@@ -103,7 +105,7 @@ function observation(chainId: typeof chainIds[number]) {
 function dependencies(input: {
   failChain?: number;
   failCause?: unknown;
-  firebaseFailure?: boolean;
+  firebaseFailure?: unknown;
 } = {}) {
   return {
     observeDeployment: async ({ chain }: { chain: { chainId: typeof chainIds[number] } }) => {
@@ -111,7 +113,7 @@ function dependencies(input: {
       return observation(chain.chainId);
     },
     firebaseAdminRead: async () => {
-      if (input.firebaseFailure) throw new Error(FIREBASE_KEY_FIXTURE);
+      if (Object.prototype.hasOwnProperty.call(input, "firebaseFailure")) throw input.firebaseFailure;
     }
   };
 }
@@ -126,6 +128,30 @@ async function expectFailure(
     assert.doesNotMatch(cause.message, /synthetic|authorization|privateKey|apiKey|authToken/i);
     return true;
   });
+}
+
+async function expectFirebaseFailure(
+  cause: unknown,
+  diagnostic: FirebaseAdminFailureDiagnostic
+) {
+  let captured: AcrossInfrastructurePreflightError | undefined;
+  await assert.rejects(() => runAcrossInfrastructurePreflight({
+    env,
+    fetchImplementation: releaseFetch,
+    dependencies: dependencies({ firebaseFailure: cause })
+  }), (error: unknown) => {
+    assert.ok(error instanceof AcrossInfrastructurePreflightError);
+    assert.equal(error.classification, "FIREBASE_ADMIN_READ");
+    assert.equal(error.firebaseAdminFailure, diagnostic);
+    captured = error;
+    return true;
+  });
+  assert.ok(captured);
+  const failure = acrossInfrastructurePreflightFailure(captured, secretFixtures);
+  assert.equal(failure.classification, "FIREBASE_ADMIN_READ");
+  assert.equal(failure.firebaseAdminFailure, diagnostic);
+  assert.equal(failure.sanitizedMessage, "Firebase Admin read-only connectivity could not be verified.");
+  return failure;
 }
 
 async function main() {
@@ -245,11 +271,43 @@ await expectFailure(() => runAcrossInfrastructurePreflight({
     failCause: new Error("RMT rejected replaced Across deployment evidence.")
   })
 }), "PINNED_BLOCK_REPLACEMENT");
-await expectFailure(() => runAcrossInfrastructurePreflight({
-  env,
-  fetchImplementation: releaseFetch,
-  dependencies: dependencies({ firebaseFailure: true })
-}), "FIREBASE_ADMIN_READ");
+const firebaseVectors: readonly [unknown, FirebaseAdminFailureDiagnostic][] = [
+  [{ code: 7 }, "PERMISSION_DENIED"],
+  [{ code: 16 }, "UNAUTHENTICATED"],
+  [{ code: 5 }, "NOT_FOUND"],
+  [{ code: 9 }, "FAILED_PRECONDITION"],
+  [{ code: 14 }, "UNAVAILABLE"],
+  [{ code: 4 }, "DEADLINE_EXCEEDED"],
+  [{ code: 8 }, "RESOURCE_EXHAUSTED"],
+  [{ errorInfo: { code: "app/invalid-credential" } }, "INVALID_CREDENTIAL"],
+  [{ errorInfo: { code: "app/invalid-app-argument" } }, "INVALID_ARGUMENT"],
+  [{ code: 99 }, "UNKNOWN"],
+  [{ code: "unknown/structured-code" }, "UNKNOWN"],
+  [new Error(`credential-looking text must remain opaque: ${FIREBASE_KEY_FIXTURE}`), "UNKNOWN"]
+];
+for (const [cause, diagnostic] of firebaseVectors) {
+  assert.equal(classifyFirebaseAdminFailure(cause), diagnostic);
+  await expectFirebaseFailure(cause, diagnostic);
+}
+
+const secretBearingFirebaseCause = {
+  code: 7,
+  message: `Authorization: Bearer ${PREFLIGHT_TOKEN_FIXTURE}`,
+  stack: `synthetic stack ${API_KEY_FIXTURE}`,
+  details: { privateKey: FIREBASE_KEY_FIXTURE },
+  metadata: { authToken: RPC_TOKEN_FIXTURE },
+  nested: { apiKey: API_KEY_FIXTURE, process: "process.env" }
+};
+const secretBearingFirebaseFailure = await expectFirebaseFailure(
+  secretBearingFirebaseCause,
+  "PERMISSION_DENIED"
+);
+const serializedFirebaseFailure = JSON.stringify(secretBearingFirebaseFailure);
+for (const secret of secretFixtures) assert.equal(serializedFirebaseFailure.includes(secret), false);
+assert.doesNotMatch(
+  serializedFirebaseFailure,
+  /Authorization:|process\.env|privateKey|apiKey|authToken|details|metadata|nested|synthetic stack/i
+);
 await expectFailure(() => runAcrossInfrastructurePreflight({
   env,
   fetchImplementation: async () => {

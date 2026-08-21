@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
   ACROSS_INFRASTRUCTURE_PREFLIGHT_SCHEMA,
+  AcrossInfrastructurePreflightError,
   handleAcrossInfrastructurePreflightRequest,
   type AcrossInfrastructurePreflightSuccess
 } from "./vnext-across-infrastructure-preflight";
@@ -73,9 +74,36 @@ const failed = await handleAcrossInfrastructurePreflightRequest(new Request("htt
   }
 });
 assert.equal(failed.status, 503);
+assert.equal(failed.headers.get("cache-control"), "private, no-store, max-age=0");
+assert.equal(failed.headers.get("x-robots-tag"), "noindex, nofollow");
+assert.equal(failed.headers.get("x-content-type-options"), "nosniff");
 const failedText = await failed.text();
 assert.equal(failedText.includes(testBearer), false);
 assert.doesNotMatch(failedText, /Authorization:|privateKey|apiKey|authToken|process\.env/i);
+
+const firebaseFailed = await handleAcrossInfrastructurePreflightRequest(new Request("https://rmt.invalid", {
+  method: "POST",
+  headers: { Authorization: `Bearer ${testBearer}` }
+}), {
+  env: enabledEnv,
+  runPreflight: async () => {
+    throw new AcrossInfrastructurePreflightError("FIREBASE_ADMIN_READ", "PERMISSION_DENIED");
+  }
+});
+assert.equal(firebaseFailed.status, 503);
+assert.equal(firebaseFailed.headers.get("cache-control"), "private, no-store, max-age=0");
+assert.equal(firebaseFailed.headers.get("x-robots-tag"), "noindex, nofollow");
+assert.equal(firebaseFailed.headers.get("x-content-type-options"), "nosniff");
+assert.deepEqual(await firebaseFailed.json(), {
+  schemaVersion: ACROSS_INFRASTRUCTURE_PREFLIGHT_SCHEMA,
+  status: "across_infrastructure_preflight_failed",
+  classification: "FIREBASE_ADMIN_READ",
+  sanitizedMessage: "Firebase Admin read-only connectivity could not be verified.",
+  firebaseAdminFailure: "PERMISSION_DENIED",
+  walletUsed: false,
+  quoteRequested: false,
+  transactionAttempted: false
+});
 
 const moduleSource = readFileSync(new URL("./vnext-across-infrastructure-preflight.ts", import.meta.url), "utf8");
 const routeSource = readFileSync(new URL("../../app/api/vnext/readiness/across-infrastructure/route.ts", import.meta.url), "utf8");

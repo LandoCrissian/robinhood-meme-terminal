@@ -59,6 +59,35 @@ export type AcrossInfrastructurePreflightFailureClassification =
   | "NETWORK_TIMEOUT"
   | "UNKNOWN";
 
+export type FirebaseAdminFailureDiagnostic =
+  | "PERMISSION_DENIED"
+  | "UNAUTHENTICATED"
+  | "NOT_FOUND"
+  | "FAILED_PRECONDITION"
+  | "UNAVAILABLE"
+  | "DEADLINE_EXCEEDED"
+  | "INVALID_CREDENTIAL"
+  | "INVALID_ARGUMENT"
+  | "RESOURCE_EXHAUSTED"
+  | "UNKNOWN";
+
+const firebaseAdminFailureDiagnosticValues = new Set<string>([
+  "PERMISSION_DENIED",
+  "UNAUTHENTICATED",
+  "NOT_FOUND",
+  "FAILED_PRECONDITION",
+  "UNAVAILABLE",
+  "DEADLINE_EXCEEDED",
+  "INVALID_CREDENTIAL",
+  "INVALID_ARGUMENT",
+  "RESOURCE_EXHAUSTED",
+  "UNKNOWN"
+]);
+
+function isFirebaseAdminFailureDiagnostic(value: unknown): value is FirebaseAdminFailureDiagnostic {
+  return typeof value === "string" && firebaseAdminFailureDiagnosticValues.has(value);
+}
+
 const sanitizedMessages: Record<AcrossInfrastructurePreflightFailureClassification, string> = {
   CONFIGURATION: "Required production infrastructure configuration is unavailable or unadmitted.",
   ACROSS_API_AUTH: "Across API authentication could not be verified.",
@@ -77,11 +106,18 @@ const sanitizedMessages: Record<AcrossInfrastructurePreflightFailureClassificati
 
 export class AcrossInfrastructurePreflightError extends Error {
   readonly classification: AcrossInfrastructurePreflightFailureClassification;
+  readonly firebaseAdminFailure?: FirebaseAdminFailureDiagnostic;
 
-  constructor(classification: AcrossInfrastructurePreflightFailureClassification) {
+  constructor(
+    classification: AcrossInfrastructurePreflightFailureClassification,
+    firebaseAdminFailure?: FirebaseAdminFailureDiagnostic
+  ) {
     super(sanitizedMessages[classification]);
     this.name = "AcrossInfrastructurePreflightError";
     this.classification = classification;
+    this.firebaseAdminFailure = classification === "FIREBASE_ADMIN_READ" && firebaseAdminFailure !== undefined
+      ? isFirebaseAdminFailureDiagnostic(firebaseAdminFailure) ? firebaseAdminFailure : "UNKNOWN"
+      : undefined;
   }
 }
 
@@ -127,6 +163,7 @@ export type AcrossInfrastructurePreflightFailure = {
   status: "across_infrastructure_preflight_failed";
   classification: AcrossInfrastructurePreflightFailureClassification;
   sanitizedMessage: string;
+  firebaseAdminFailure?: FirebaseAdminFailureDiagnostic;
   walletUsed: false;
   quoteRequested: false;
   transactionAttempted: false;
@@ -143,6 +180,52 @@ export type AcrossInfrastructurePreflightDependencies = {
   firebaseAdminRead?: (env: NodeJS.ProcessEnv) => Promise<void>;
 };
 
+const grpcFirebaseFailureDiagnostics = new Map<number, FirebaseAdminFailureDiagnostic>([
+  [4, "DEADLINE_EXCEEDED"],
+  [5, "NOT_FOUND"],
+  [7, "PERMISSION_DENIED"],
+  [8, "RESOURCE_EXHAUSTED"],
+  [9, "FAILED_PRECONDITION"],
+  [14, "UNAVAILABLE"],
+  [16, "UNAUTHENTICATED"]
+]);
+
+const namedFirebaseFailureDiagnostics = new Map<string, FirebaseAdminFailureDiagnostic>([
+  ["app/invalid-credential", "INVALID_CREDENTIAL"],
+  ["app/invalid-app-argument", "INVALID_ARGUMENT"],
+  ["deadline-exceeded", "DEADLINE_EXCEEDED"],
+  ["not-found", "NOT_FOUND"],
+  ["permission-denied", "PERMISSION_DENIED"],
+  ["resource-exhausted", "RESOURCE_EXHAUSTED"],
+  ["failed-precondition", "FAILED_PRECONDITION"],
+  ["unavailable", "UNAVAILABLE"],
+  ["unauthenticated", "UNAUTHENTICATED"]
+]);
+
+function structuredField(value: unknown, field: string) {
+  if (typeof value !== "object" || value === null) return undefined;
+  try {
+    return (value as Record<string, unknown>)[field];
+  } catch {
+    return undefined;
+  }
+}
+
+function diagnosticFromStructuredCode(value: unknown) {
+  if (typeof value === "number" && Number.isInteger(value)) {
+    return grpcFirebaseFailureDiagnostics.get(value);
+  }
+  if (typeof value === "string") return namedFirebaseFailureDiagnostics.get(value);
+  return undefined;
+}
+
+export function classifyFirebaseAdminFailure(cause: unknown): FirebaseAdminFailureDiagnostic {
+  const direct = diagnosticFromStructuredCode(structuredField(cause, "code"));
+  if (direct) return direct;
+  const errorInfo = structuredField(cause, "errorInfo");
+  return diagnosticFromStructuredCode(structuredField(errorInfo, "code")) ?? "UNKNOWN";
+}
+
 function timeoutFailure(cause: unknown) {
   return cause instanceof DOMException && (cause.name === "AbortError" || cause.name === "TimeoutError")
     || cause instanceof Error && /timed?\s*out|timeout/i.test(cause.message);
@@ -152,6 +235,13 @@ function preflightError(cause: unknown, fallback: AcrossInfrastructurePreflightF
   if (cause instanceof AcrossInfrastructurePreflightError) return cause;
   if (timeoutFailure(cause)) return new AcrossInfrastructurePreflightError("NETWORK_TIMEOUT");
   return new AcrossInfrastructurePreflightError(fallback);
+}
+
+function firebasePreflightError(cause: unknown) {
+  return new AcrossInfrastructurePreflightError(
+    "FIREBASE_ADMIN_READ",
+    classifyFirebaseAdminFailure(cause)
+  );
 }
 
 function configuredSecretValues(env: NodeJS.ProcessEnv) {
@@ -191,11 +281,17 @@ export function acrossInfrastructurePreflightFailure(
   forbiddenValues: readonly string[] = []
 ): AcrossInfrastructurePreflightFailure {
   const error = preflightError(cause, "UNKNOWN");
+  const firebaseAdminFailure = isFirebaseAdminFailureDiagnostic(error.firebaseAdminFailure)
+    ? error.firebaseAdminFailure
+    : undefined;
   return assertSanitizedAcrossInfrastructurePreflightResult({
     schemaVersion: ACROSS_INFRASTRUCTURE_PREFLIGHT_SCHEMA,
     status: "across_infrastructure_preflight_failed",
     classification: error.classification,
     sanitizedMessage: error.message,
+    ...(error.classification === "FIREBASE_ADMIN_READ" && firebaseAdminFailure
+      ? { firebaseAdminFailure }
+      : {}),
     walletUsed: false,
     quoteRequested: false,
     transactionAttempted: false
@@ -353,7 +449,7 @@ export async function runAcrossInfrastructurePreflight(input: {
   try {
     await firebaseAdminRead(env);
   } catch (cause) {
-    throw preflightError(cause, "FIREBASE_ADMIN_READ");
+    throw firebasePreflightError(cause);
   }
 
   return assertSanitizedAcrossInfrastructurePreflightResult({
