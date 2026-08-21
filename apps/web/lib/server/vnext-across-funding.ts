@@ -18,6 +18,11 @@ import {
   trustedSettlementAsset,
   type TrustedAssetChainId
 } from "../vnext/trusted-asset-registry";
+import {
+  ACROSS_EIP1967_IMPLEMENTATION_SLOT,
+  ACROSS_FUNDING_DEPLOYMENT_V1,
+  acrossReviewedDeploymentPins
+} from "../vnext/across-funding-deployment";
 import { hasRmtAdminConfiguration } from "./firebase-admin";
 import { acrossDedicatedRpcConfigured, acrossRpcEndpoint, acrossRpcHeaders } from "./vnext-across-rpc";
 
@@ -27,13 +32,12 @@ const MAX_QUOTE_AGE_SECONDS = 10 * 60;
 const MAX_QUOTE_LIFETIME_SECONDS = 6 * 60 * 60;
 const INTEGRATOR_DELIMITER = "1dc0de";
 const SWAP_API_CALLDATA_MARKER = "73c0de";
-const EIP1967_IMPLEMENTATION_SLOT = "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc";
 
 export const ACROSS_SPOKE_POOLS = {
-  [ETHEREUM_MAINNET_CHAIN_ID]: getAddress("0x5c7BCd6E7De5423a257D81B442095A1a6ced35C5"),
-  [ARBITRUM_MAINNET_CHAIN_ID]: getAddress("0xe35e9842fceaCA96570B734083f4a58e8F7C5f2A"),
-  [BASE_MAINNET_CHAIN_ID]: getAddress("0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64"),
-  [ROBINHOOD_MAINNET_CHAIN_ID]: getAddress("0xD29C85F15DF544bA632C9E25829fd29d767d7978")
+  [ETHEREUM_MAINNET_CHAIN_ID]: ACROSS_FUNDING_DEPLOYMENT_V1[ETHEREUM_MAINNET_CHAIN_ID].proxyAddress,
+  [ARBITRUM_MAINNET_CHAIN_ID]: ACROSS_FUNDING_DEPLOYMENT_V1[ARBITRUM_MAINNET_CHAIN_ID].proxyAddress,
+  [BASE_MAINNET_CHAIN_ID]: ACROSS_FUNDING_DEPLOYMENT_V1[BASE_MAINNET_CHAIN_ID].proxyAddress,
+  [ROBINHOOD_MAINNET_CHAIN_ID]: ACROSS_FUNDING_DEPLOYMENT_V1[ROBINHOOD_MAINNET_CHAIN_ID].proxyAddress
 } as const;
 
 export type AcrossFundingSourceChainId =
@@ -127,6 +131,8 @@ export type AcrossObservedSpokePoolDeployment = {
   proxyRuntimeCode: Hex;
   implementationAddress: Address;
   implementationRuntimeCode: Hex;
+  observedBlockNumber?: string;
+  observedBlockHash?: Hex;
 };
 
 type AcrossFundingConfiguration = {
@@ -295,36 +301,13 @@ function decodedDeposit(data: Hex, integratorId: `0x${string}`) {
   return parsed;
 }
 
-function runtimeHash(value: string | undefined) {
-  const normalized = value?.trim();
-  return normalized && /^0x[0-9a-fA-F]{64}$/.test(normalized) ? normalized.toLowerCase() as Hex : null;
-}
-
-function deploymentPin(env: NodeJS.ProcessEnv, prefix: string): AcrossSpokePoolDeploymentPin | null {
-  const proxyRuntimeHash = runtimeHash(env[`${prefix}_PROXY_CODE_HASH`]);
-  const implementationAddress = env[`${prefix}_IMPLEMENTATION_ADDRESS`]?.trim();
-  const implementationRuntimeHash = runtimeHash(env[`${prefix}_IMPLEMENTATION_CODE_HASH`]);
-  if (!proxyRuntimeHash || !implementationAddress || !isAddress(implementationAddress, { strict: false }) || !implementationRuntimeHash) return null;
-  return { proxyRuntimeHash, implementationAddress: getAddress(implementationAddress), implementationRuntimeHash };
-}
-
 function acrossCredentialsConfigured(env: NodeJS.ProcessEnv) {
   return Boolean(env.RMT_ACROSS_API_KEY?.trim())
     && /^0x[0-9a-fA-F]{4}$/.test(env.RMT_ACROSS_INTEGRATOR_ID?.trim() ?? "");
 }
 
 function acrossDeploymentPins(env: NodeJS.ProcessEnv) {
-  const ethereum = deploymentPin(env, "RMT_ACROSS_ETHEREUM_SPOKE_POOL");
-  const arbitrum = deploymentPin(env, "RMT_ACROSS_ARBITRUM_SPOKE_POOL");
-  const base = deploymentPin(env, "RMT_ACROSS_BASE_SPOKE_POOL");
-  const robinhood = deploymentPin(env, "RMT_ACROSS_ROBINHOOD_SPOKE_POOL");
-  if (!ethereum || !arbitrum || !base || !robinhood) return null;
-  return {
-    [ETHEREUM_MAINNET_CHAIN_ID]: ethereum,
-    [ARBITRUM_MAINNET_CHAIN_ID]: arbitrum,
-    [BASE_MAINNET_CHAIN_ID]: base,
-    [ROBINHOOD_MAINNET_CHAIN_ID]: robinhood
-  } as const;
+  return acrossReviewedDeploymentPins(env);
 }
 
 export function acrossFundingConfiguration(env: NodeJS.ProcessEnv = process.env): AcrossFundingConfiguration | null {
@@ -620,7 +603,7 @@ export function verifyAcrossFundingQuoteResponse(input: {
   };
 }
 
-async function rpcResult(
+async function rpcAnyResult(
   chainId: AcrossFundingSourceChainId | typeof ROBINHOOD_MAINNET_CHAIN_ID,
   method: string,
   params: unknown[],
@@ -634,10 +617,21 @@ async function rpcResult(
     signal: AbortSignal.timeout(ACROSS_TIMEOUT_MS)
   });
   const body: unknown = await response.json().catch(() => null);
-  if (!response.ok || !isObject(body) || body.error !== undefined || typeof body.result !== "string" || !isHex(body.result)) {
+  if (!response.ok || !isObject(body) || body.error !== undefined || body.result === undefined) {
     throw new Error("RMT could not read the required Across chain state.");
   }
-  return body.result as Hex;
+  return body.result;
+}
+
+async function rpcResult(
+  chainId: AcrossFundingSourceChainId | typeof ROBINHOOD_MAINNET_CHAIN_ID,
+  method: string,
+  params: unknown[],
+  env: NodeJS.ProcessEnv = process.env
+) {
+  const result = await rpcAnyResult(chainId, method, params, env);
+  if (typeof result !== "string" || !isHex(result)) throw new Error("RMT could not read the required Across chain state.");
+  return result as Hex;
 }
 
 export async function readAcrossSpokePoolDeployment(
@@ -645,17 +639,35 @@ export async function readAcrossSpokePoolDeployment(
   contract: Address,
   env: NodeJS.ProcessEnv = process.env
 ): Promise<AcrossObservedSpokePoolDeployment> {
+  const chainIdentity = await rpcResult(chainId, "eth_chainId", [], env);
+  if (BigInt(chainIdentity) !== BigInt(chainId)) throw new Error("RMT rejected an Across RPC with the wrong chain identity.");
+  const blockNumber = await rpcResult(chainId, "eth_blockNumber", [], env);
+  const block = await rpcAnyResult(chainId, "eth_getBlockByNumber", [blockNumber, false], env);
+  if (!isObject(block) || typeof block.hash !== "string" || !/^0x[0-9a-fA-F]{64}$/.test(block.hash)) {
+    throw new Error("RMT could not pin the Across deployment evidence block.");
+  }
+  const observedBlockHash = block.hash.toLowerCase() as Hex;
   const [proxyRuntimeCode, implementationWord] = await Promise.all([
-    rpcResult(chainId, "eth_getCode", [contract, "latest"], env),
-    rpcResult(chainId, "eth_getStorageAt", [contract, EIP1967_IMPLEMENTATION_SLOT, "latest"], env)
+    rpcResult(chainId, "eth_getCode", [contract, blockNumber], env),
+    rpcResult(chainId, "eth_getStorageAt", [contract, ACROSS_EIP1967_IMPLEMENTATION_SLOT, blockNumber], env)
   ]);
   if (!/^0x[0-9a-fA-F]{64}$/.test(implementationWord)) throw new Error("RMT could not resolve the Across SpokePool implementation.");
   const implementationAddress = getAddress(`0x${implementationWord.slice(-40)}`);
   if (implementationAddress === getAddress("0x0000000000000000000000000000000000000000")) {
     throw new Error("RMT rejected an Across SpokePool without an EIP-1967 implementation.");
   }
-  const implementationRuntimeCode = await rpcResult(chainId, "eth_getCode", [implementationAddress, "latest"], env);
-  return { proxyRuntimeCode, implementationAddress, implementationRuntimeCode };
+  const implementationRuntimeCode = await rpcResult(chainId, "eth_getCode", [implementationAddress, blockNumber], env);
+  const reread = await rpcAnyResult(chainId, "eth_getBlockByNumber", [blockNumber, false], env);
+  if (!isObject(reread) || typeof reread.hash !== "string" || reread.hash.toLowerCase() !== observedBlockHash) {
+    throw new Error("RMT rejected replaced Across deployment evidence.");
+  }
+  return {
+    proxyRuntimeCode,
+    implementationAddress,
+    implementationRuntimeCode,
+    observedBlockNumber: BigInt(blockNumber).toString(),
+    observedBlockHash
+  };
 }
 
 export function evaluateAcrossFundingWalletReadiness(input: {

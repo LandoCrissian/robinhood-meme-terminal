@@ -6,6 +6,7 @@ import {
 } from "../lib/server/vnext-across-funding";
 import { hasRmtAdminConfiguration } from "../lib/server/firebase-admin";
 import { acrossDedicatedRpcConfigured, acrossRpcEndpoint, acrossRpcHeaders } from "../lib/server/vnext-across-rpc";
+import { verifyAcrossReleaseDiscovery } from "../lib/server/vnext-across-release-discovery";
 import {
   ARBITRUM_MAINNET_CHAIN_ID,
   BASE_MAINNET_CHAIN_ID,
@@ -29,14 +30,6 @@ const chains = [{
   chainId: ROBINHOOD_MAINNET_CHAIN_ID,
   chainName: "Robinhood Chain"
 }] as const;
-
-function containsChainId(value: unknown, expectedChainId: number): boolean {
-  if (Array.isArray(value)) return value.some((item) => containsChainId(item, expectedChainId));
-  if (!value || typeof value !== "object") return false;
-  const object = value as Record<string, unknown>;
-  if (object.chainId === expectedChainId || object.chainId === String(expectedChainId)) return true;
-  return Object.values(object).some((item) => containsChainId(item, expectedChainId));
-}
 
 async function rpcChainId(chainId: typeof chains[number]["chainId"]) {
   const response = await fetch(acrossRpcEndpoint(chainId), {
@@ -78,23 +71,25 @@ async function main() {
     };
   }));
 
-  const chainsUrl = new URL("/api/swap/chains", ACROSS_API_URL);
-  chainsUrl.searchParams.set("integratorId", configuration.integratorId);
-  const apiResponse = await fetch(chainsUrl, {
-    headers: { Accept: "application/json", Authorization: `Bearer ${configuration.apiKey}` },
-    cache: "no-store",
-    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)
-  });
-  const apiBody: unknown = await apiResponse.json().catch(() => null);
-  if (!apiResponse.ok) throw new Error(`Across credential validation failed with ${apiResponse.status}.`);
-  if (!containsChainId(apiBody, ROBINHOOD_MAINNET_CHAIN_ID)) {
-    throw new Error("Authenticated Across chain discovery did not include Robinhood Chain 4663.");
-  }
+  const discovery = await Promise.all(["/api/swap/chains", "/api/swap/tokens"].map(async (path) => {
+    const url = new URL(path, ACROSS_API_URL);
+    url.searchParams.set("integratorId", configuration.integratorId);
+    const response = await fetch(url, {
+      headers: { Accept: "application/json", Authorization: `Bearer ${configuration.apiKey}` },
+      cache: "no-store",
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)
+    });
+    const body: unknown = await response.json().catch(() => null);
+    if (!response.ok) throw new Error(`Across credential validation failed with ${response.status}.`);
+    return body;
+  }));
+  const releaseDiscovery = verifyAcrossReleaseDiscovery({ chains: discovery[0], tokens: discovery[1] });
 
   console.log(JSON.stringify({
     status: "across_infrastructure_preflight_passed",
     authenticatedApiVerified: true,
     robinhoodChainSupported: true,
+    releaseDiscovery,
     persistenceConfigured: true,
     rpcObservations,
     walletUsed: false,

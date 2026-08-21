@@ -5,6 +5,7 @@ import {
   readAcrossFundingWalletReadiness,
   trustedAcrossFundingPair
 } from "../lib/server/vnext-across-funding";
+import { readAcrossPostQuoteGasReadiness } from "../lib/server/vnext-across-gas-readiness";
 
 async function main() {
   const chainId = acrossFundingSourceChain(Number(process.env.RMT_ACROSS_PREFLIGHT_SOURCE_CHAIN_ID));
@@ -45,6 +46,10 @@ async function main() {
     recipient,
     requestedAtMs: Date.now()
   });
+  const gasReadiness = await readAcrossPostQuoteGasReadiness({ prepared, wallet: recipient });
+  if (gasReadiness.status !== "sufficient") {
+    throw new Error(`Exact post-quote gas readiness is ${gasReadiness.status}.`);
+  }
   console.log(JSON.stringify({
     status: "strict_read_only_preflight_passed",
     sourceChainId: prepared.evidence.sourceChainId,
@@ -68,6 +73,7 @@ async function main() {
     destinationSpokePool: prepared.evidence.destinationSpokePool,
     destinationImplementation: prepared.evidence.destinationSpokePoolImplementation,
     approvalRequired: prepared.approvalRequired,
+    gasReadiness,
     userAuthorizationRequired: true,
     serverSubmissionEnabled: false
   }, null, 2));

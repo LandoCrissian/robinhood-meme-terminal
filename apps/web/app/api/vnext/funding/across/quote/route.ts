@@ -9,6 +9,7 @@ import {
   readAcrossFundingWalletReadiness,
   trustedAcrossFundingPair
 } from "../../../../../../lib/server/vnext-across-funding";
+import { readAcrossPostQuoteGasReadiness } from "../../../../../../lib/server/vnext-across-gas-readiness";
 import { saveCrossChainFundingSession } from "../../../../../../lib/server/vnext-cross-chain-funding-store";
 import {
   createCrossChainFundingSession,
@@ -70,6 +71,16 @@ export async function POST(request: Request) {
       recipient,
       requestedAtMs: Date.now()
     });
+    const gasReadiness = await readAcrossPostQuoteGasReadiness({ prepared, wallet: recipient });
+    if (gasReadiness.status !== "sufficient") {
+      return Response.json({
+        error: gasReadiness.status === "insufficient"
+          ? "This wallet does not have enough native gas for the verified Across transactions."
+          : "RMT could not verify native gas readiness for the exact Across transactions.",
+        gasReadiness,
+        transactionAttempted: false
+      }, { status: 422, headers: noStore });
+    }
     const session = createCrossChainFundingSession({ sessionId: randomUUID(), evidence: prepared.evidence, nowMs: Date.now() });
     await saveCrossChainFundingSession(session);
     return Response.json({
@@ -77,6 +88,7 @@ export async function POST(request: Request) {
       disclosure: crossChainFundingDisclosure(session),
       approvalTransaction: prepared.approvalTransaction,
       depositTransaction: prepared.depositTransaction,
+      gasReadiness,
       userAuthorizationRequired: true,
       serverSubmissionEnabled: false
     }, { headers: noStore });
