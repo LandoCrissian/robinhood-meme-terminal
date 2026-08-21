@@ -1,0 +1,246 @@
+{
+  "schemaVersion": 1,
+  "project": "CCFF00 Community Engine",
+  "status": "planning_only",
+  "planningBranch": "planning/ccff00-community-engine-v1",
+  "runtimeBaseRule": "Every implementation package starts from latest main on a fresh bounded branch. Never use the planning branch as the runtime base.",
+  "repositoryAuthorityFirst": [
+    "AGENTS.md",
+    "docs/ARCHITECTURE_FREEZE.md",
+    "docs/ACTIVE_SYSTEM_MAP.md",
+    "docs/TERMINAL_COMPLETION_GATE.md"
+  ],
+  "planningAuthority": [
+    "README.md",
+    "DECISION_REGISTER_V1.md",
+    "SPEC_CONSISTENCY_V1.md",
+    "CODEX_START_HERE_V1.md",
+    "CODEX_HANDOFF_FINAL_V1.md"
+  ],
+  "lockedRules": {
+    "seatIdentity": "one current owner address holding at least one admitted public CCFF00 equals one seat",
+    "squareWeight": 0,
+    "donorWeight": 0,
+    "identityHeuristics": "forbidden",
+    "fairness": "least_served_first",
+    "mintRunCrossesServiceLevel": false,
+    "allocationCensusAnchor": "confirmed acquisition transaction block",
+    "randomnessRoundSelection": "derived from acquisition block timestamp plus fixed versioned lead policy",
+    "operatorRandomness": "forbidden",
+    "nftValueWeighting": "forbidden",
+    "unknownMintCalldataAutomation": "forbidden",
+    "automaticMintNativeValue": "0",
+    "burnDestination": "0x000000000000000000000000000000000000dEaD",
+    "automaticRmtToEthSale": "forbidden",
+    "rmtRedeployRequired": false,
+    "appsIndexerCommunityData": "forbidden_without_new_architecture_decision",
+    "appsMarketIndexerExecution": "forbidden"
+  },
+  "packages": [
+    {
+      "id": "A",
+      "name": "Read-only CCFF00 Community Census",
+      "dependsOn": [],
+      "implementationPacket": "PACKAGE_A_B_IMPLEMENTATION_V1.md",
+      "requiredSpecs": [
+        "DATA_MODEL_V1.md",
+        "REFERENCE_INTERFACES_V1.md",
+        "ACCEPTANCE_MATRIX_V1.md"
+      ],
+      "liveTransaction": false,
+      "contractDeployment": false,
+      "productionMutation": false,
+      "allowedOutcome": "deterministic pinned-block current-owner census",
+      "stopAfter": true
+    },
+    {
+      "id": "B",
+      "name": "Read-only original mint provenance",
+      "dependsOn": ["A"],
+      "implementationPacket": "PACKAGE_A_B_IMPLEMENTATION_V1.md",
+      "requiredSpecs": [
+        "DATA_MODEL_V1.md",
+        "ACCEPTANCE_MATRIX_V1.md"
+      ],
+      "liveTransaction": false,
+      "contractDeployment": false,
+      "productionMutation": false,
+      "allowedOutcome": "deterministic zero-address Transfer provenance artifact",
+      "stopAfter": true
+    },
+    {
+      "id": "C",
+      "name": "Observer Mode NFT discovery",
+      "dependsOn": ["A", "B"],
+      "implementationPacket": "PACKAGE_C_D_IMPLEMENTATION_V1.md",
+      "requiredSpecs": [
+        "MINT_ADAPTERS_V1.md",
+        "QUALITY_POLICY_V1.md",
+        "UPSTREAM_REUSE_V1.md",
+        "OPERATIONS_FAILURES_V1.md"
+      ],
+      "liveTransaction": false,
+      "contractDeployment": false,
+      "productionMutation": false,
+      "allowedOutcome": "normalized Robinhood free-mint candidates and observer decisions",
+      "stopAfter": true
+    },
+    {
+      "id": "D",
+      "name": "ERC-721 mint safety/admission plans",
+      "dependsOn": ["C"],
+      "implementationPacket": "PACKAGE_C_D_IMPLEMENTATION_V1.md",
+      "requiredSpecs": [
+        "MINT_ADAPTERS_V1.md",
+        "QUALITY_POLICY_V1.md",
+        "THREAT_MODEL_V1.md",
+        "REFERENCE_INTERFACES_V1.md",
+        "ERROR_CODES_V1.md"
+      ],
+      "liveTransaction": false,
+      "contractDeployment": false,
+      "productionMutation": false,
+      "allowedOutcome": "unsigned hash-bound WOULD_MINT plans or deterministic rejection",
+      "stopAfter": true
+    },
+    {
+      "id": "E",
+      "name": "Deterministic Fair Allocation V1",
+      "dependsOn": ["D"],
+      "implementationPacket": "PACKAGE_E_F_IMPLEMENTATION_V1.md",
+      "requiredSpecs": [
+        "FAIRNESS_RANDOMNESS_V1.md",
+        "FAIRNESS_VECTORS_V1.md",
+        "DATA_MODEL_V1.md",
+        "REFERENCE_INTERFACES_V1.md",
+        "SPEC_CONSISTENCY_V1.md"
+      ],
+      "liveTransaction": false,
+      "contractDeployment": false,
+      "productionMutation": false,
+      "allowedOutcome": "reproducible allocation commitments/results from verified test/public randomness",
+      "stopAfter": true
+    },
+    {
+      "id": "F",
+      "name": "CCFF00 external ERC-721 custody canary harness",
+      "dependsOn": ["E"],
+      "implementationPacket": "PACKAGE_E_F_IMPLEMENTATION_V1.md",
+      "requiredSpecs": [
+        "THREAT_MODEL_V1.md",
+        "OPERATIONS_FAILURES_V1.md",
+        "REFERENCE_INTERFACES_V1.md"
+      ],
+      "liveTransaction": "separate_explicit_authorization_only",
+      "contractDeployment": false,
+      "productionMutation": false,
+      "allowedOutcome": "fork/test proof of exact TBA NFT receipt and owner-controlled withdrawal; optional separately authorized live canary",
+      "stopAfter": true
+    },
+    {
+      "id": "G",
+      "name": "Isolated collector one-mint canary",
+      "dependsOn": ["F"],
+      "implementationPacket": "PACKAGE_G_H_IMPLEMENTATION_V1.md",
+      "requiredSpecs": [
+        "MINT_ADAPTERS_V1.md",
+        "QUALITY_POLICY_V1.md",
+        "THREAT_MODEL_V1.md",
+        "OPERATIONS_FAILURES_V1.md",
+        "GAS_FUNDING_V1.md"
+      ],
+      "liveTransaction": "explicit_owner_authorization_required",
+      "contractDeployment": false,
+      "productionMutation": "canary_only_if_explicitly_authorized",
+      "allowedOutcome": "one isolated zero-price mint canary and exact reconciliation",
+      "stopAfter": true
+    },
+    {
+      "id": "H",
+      "name": "Limited autonomous Community Engine runtime",
+      "dependsOn": ["G"],
+      "implementationPacket": "PACKAGE_G_H_IMPLEMENTATION_V1.md",
+      "requiredSpecs": [
+        "DATA_MODEL_V1.md",
+        "OPERATIONS_FAILURES_V1.md",
+        "THREAT_MODEL_V1.md",
+        "FAIRNESS_RANDOMNESS_V1.md",
+        "MINT_ADAPTERS_V1.md",
+        "QUALITY_POLICY_V1.md",
+        "PUBLIC_PROOFS_V1.md"
+      ],
+      "liveTransaction": "explicit_owner_authorization_required",
+      "contractDeployment": false,
+      "productionMutation": "limited_release_only_after_new_service_ownership_architecture_decision",
+      "allowedOutcome": "single-writer capped runtime with START/STOP/WATCH and deterministic recovery",
+      "stopAfter": true
+    },
+    {
+      "id": "I",
+      "name": "Community ETH gas funding vault",
+      "dependsOn": ["H"],
+      "implementationPacket": "PACKAGE_I_J_K_IMPLEMENTATION_V1.md",
+      "requiredSpecs": [
+        "GAS_FUNDING_V1.md",
+        "THREAT_MODEL_V1.md",
+        "OPERATIONS_FAILURES_V1.md"
+      ],
+      "liveTransaction": false,
+      "contractDeployment": "separate_explicit_authorization_required",
+      "productionMutation": false,
+      "allowedOutcome": "defer vault or produce security-tested deployment-ready purpose-bound vault",
+      "stopAfter": true
+    },
+    {
+      "id": "J",
+      "name": "RMT Pay compatibility preflight",
+      "dependsOn": ["H"],
+      "implementationPacket": "PACKAGE_I_J_K_IMPLEMENTATION_V1.md",
+      "requiredSpecs": [
+        "RMT_PAY_V1.md",
+        "RMT_PAY_COMPATIBILITY_V1.md",
+        "THREAT_MODEL_V1.md",
+        "REFERENCE_INTERFACES_V1.md"
+      ],
+      "liveTransaction": "only_if_separately_authorized_for_compatibility_test",
+      "contractDeployment": false,
+      "productionMutation": false,
+      "allowedOutcome": "RMT_PAY_COMPATIBLE_PATH_FOUND or RMT_PAY_NOT_CURRENTLY_SAFE",
+      "stopAfter": true
+    },
+    {
+      "id": "K",
+      "name": "RMT Pay V1 utility",
+      "dependsOn": ["J"],
+      "implementationPacket": "PACKAGE_I_J_K_IMPLEMENTATION_V1.md",
+      "requiredSpecs": [
+        "RMT_PAY_V1.md",
+        "RMT_PAY_COMPATIBILITY_V1.md",
+        "DATA_MODEL_V1.md",
+        "PUBLIC_PROOFS_V1.md",
+        "THREAT_MODEL_V1.md"
+      ],
+      "liveTransaction": "separate_product_economics_and_release_authorization_required",
+      "contractDeployment": "only_if_approved_implementation_requires_it_and_separately_authorized",
+      "productionMutation": "explicit_release_required",
+      "allowedOutcome": "exact admitted burn-to-use utility with separate sponsored gas",
+      "stopAfter": true
+    }
+  ],
+  "universalForbiddenWithoutExactAuthorization": [
+    "merge",
+    "deploy",
+    "production env mutation",
+    "private key introduction",
+    "admin/treasury/deployer wallet used as collector",
+    "arbitrary mint calldata signing",
+    "burner wallets to bypass creator limits",
+    "operator-selected recipients",
+    "operator-selected randomness",
+    "donor-weighted allocation",
+    "Square-count-weighted allocation",
+    "RMT-to-ETH automatic sale",
+    "implicit RMT_EXECUTION_V1 economics change",
+    "identity clustering by funding/IP/behavior"
+  ]
+}
