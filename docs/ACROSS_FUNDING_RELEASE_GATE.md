@@ -79,3 +79,22 @@ All of the following must be complete before external USDC becomes visible:
 9. Operators separately enable quote and authorization gates. Public asset selection requires a later reviewed code change; it is hard-disabled in this milestone.
 
 Do not begin Relay direct bridge-and-buy until this milestone is proven and reported.
+
+## Production-runtime infrastructure preflight
+
+The production-runtime infrastructure preflight is a server-only, read-only diagnostic. Its `POST /api/vnext/readiness/across-infrastructure` route is unavailable unless the deployment is Production, `RMT_ACROSS_INFRASTRUCTURE_PREFLIGHT_ENABLED` is exactly `true`, and the request presents the separately configured one-time bearer token. It never requests a quote, uses a wallet, requests an approval, or submits a transaction. Success and failure responses contain only sanitized infrastructure evidence.
+
+Activation is a separate, explicitly authorized operation:
+
+1. Merge and deploy the endpoint with its enable flag absent or false.
+2. Generate a one-time token locally from at least 32 random bytes.
+3. Add the token as a Sensitive Production variable without logging or exporting it.
+4. Set `RMT_ACROSS_INFRASTRUCTURE_PREFLIGHT_ENABLED=true` in Production.
+5. Redeploy the exact reviewed commit while Across quote and authorization flags remain off.
+6. Send one authenticated `POST` request.
+7. Capture only the sanitized result.
+8. Immediately set `RMT_ACROSS_INFRASTRUCTURE_PREFLIGHT_ENABLED=false`.
+9. Remove the one-time Production token.
+10. Redeploy the same reviewed code with the diagnostic disabled.
+11. Verify the endpoint returns `404`.
+12. Verify Across quote, authorization, public asset selection, and server submission remain disabled.
