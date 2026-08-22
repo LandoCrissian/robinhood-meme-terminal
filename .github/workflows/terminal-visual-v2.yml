@@ -208,9 +208,54 @@ jobs:
             checkedAt: now
           };
 
+          function canonicalDirectoryMarket(market) {
+            const version = market.primaryMarket.protocolVersion;
+            const poolKey = market.primaryMarket.pool.value.toLowerCase();
+            return {
+              address: market.address,
+              assetId: market.assetId,
+              name: market.name,
+              symbol: market.symbol,
+              priceUsd: null,
+              liquidityUsd: null,
+              marketCapUsd: null,
+              volume24h: null,
+              priceChange24h: null,
+              ageMinutes: null,
+              signal: null,
+              canonicalMarkets: [{
+                sourceId: version === 2 ? "sushiswap-v2" : "uniswap-v3",
+                protocol: version === 2 ? "sushiswap" : "uniswap",
+                version,
+                poolKey,
+                poolAddress: poolKey,
+                token0: market.address.toLowerCase(),
+                token1: market.primaryMarket.quoteToken.address.toLowerCase(),
+                stable: null,
+                fee: version === 2 ? null : 3_000,
+                tickSpacing: version === 2 ? null : 60,
+                hooks: null,
+                transactionHash: tx,
+                blockNumber: "100",
+                blockHash: evidence,
+                stateStatus: null,
+                liveFee: null,
+                feeDenominator: null,
+                gaugeAddress: null,
+                gaugeAlive: null,
+                gaugeWeight: null,
+                gaugeClaimable: null,
+                feesAddress: null,
+                bribeAddress: null,
+                stateObservedBlock: null,
+                stateObservedBlockHash: null
+              }]
+            };
+          }
+
           async function routes(page) {
             await page.route(/\/api\/vnext\/market-directory(?:\?.*)?$/, async (route) => {
-              await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ markets, updatedAt: now, stale: false }) });
+              await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ canonical: true, coverage: "complete", nextCursor: null, markets: markets.map(canonicalDirectoryMarket), updatedAt: now }) });
             });
             await page.route(/\/api\/markets\/external(?:\?.*)?$/, async (route) => {
               const url = new URL(route.request().url());
