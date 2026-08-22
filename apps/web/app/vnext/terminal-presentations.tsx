@@ -12,6 +12,7 @@ import {
   type VNextMarketDirectoryView
 } from "../../lib/vnext/market-directory";
 import type { VNextDetectedWalletAsset } from "../../lib/vnext/wallet-assets";
+import type { VNextUniversalMarketSearchStatus } from "../../lib/vnext/universal-market-search-contract";
 import { SpendBalance } from "./spend-balance";
 import { formatTerminalAge, formatTerminalCompactUsd, formatTerminalPercent, formatTerminalPrice } from "./terminal-format";
 import { TokenArtwork } from "./token-artwork";
@@ -38,6 +39,8 @@ export type TerminalPresentationProps = {
   directoryView: VNextMarketDirectoryView;
   directoryViewCounts: Record<VNextMarketDirectoryView, number>;
   searchActive: boolean;
+  searchStatus: VNextUniversalMarketSearchStatus;
+  verifiedSearchResultCount: number;
   directoryStatus: DirectoryStatus;
   selected?: VNextDirectoryMarket;
   selectedAsset?: AssetMetadata;
@@ -97,20 +100,32 @@ function RmtBrand({ compact = false, onActivate }: { compact?: boolean; onActiva
   </a>;
 }
 
-function MarketSearch({ query, setQuery, inputRef, onSubmit, id }: {
+function MarketSearch({ query, setQuery, inputRef, onSubmit, searchStatus, id }: {
   query: string;
   setQuery: (query: string) => void;
   inputRef: RefObject<HTMLInputElement | null>;
   onSubmit: () => void;
+  searchStatus: VNextUniversalMarketSearchStatus;
   id: string;
 }) {
   return <form className="rmtMarketSearch" role="search" onSubmit={(event) => { event.preventDefault(); onSubmit(); }}>
     <span aria-hidden="true">⌕</span>
     <label className="vnSrOnly" htmlFor={id}>Search Robinhood Chain markets</label>
-    <input id={id} ref={inputRef} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search token or contract" autoComplete="off" spellCheck={false} />
+    <input id={id} ref={inputRef} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search token, contract or pool" autoComplete="off" spellCheck={false} />
     {query ? <button className="rmtSearchClear" type="button" aria-label="Clear market search" onClick={() => setQuery("")}>×</button> : null}
-    <button className="rmtSearchSubmit" type="submit">Find</button>
+    <button className="rmtSearchSubmit" type="submit" disabled={searchStatus === "searching"}>{searchStatus === "searching" ? "Finding…" : "Find"}</button>
   </form>;
+}
+
+function SearchStatusMessage({ status, count }: { status: VNextUniversalMarketSearchStatus; count: number }) {
+  if (status === "idle") return null;
+  if (status === "searching") return <div className="rmtSearchStatus" role="status">Searching verified Robinhood Chain markets…</div>;
+  if (status === "found") return <div className="rmtSearchStatus" role="status">{count === 1 ? "Verified market found." : `${count} verified contracts found. Choose one.`}</div>;
+  if (status === "not_found") return <div className="rmtSearchStatus" role="status">No verified market found.</div>;
+  if (status === "inventory_unavailable") return <div className="rmtSearchStatus isDelayed" role="status">Expanded search unavailable: canonical inventory is delayed.</div>;
+  if (status === "candidate_discovery_unavailable") return <div className="rmtSearchStatus isDelayed" role="status">Expanded text search unavailable. Loaded markets remain available.</div>;
+  if (status === "invalid_query") return <div className="rmtSearchStatus isDelayed" role="status">Enter a valid token, contract, or pool identity.</div>;
+  return <div className="rmtSearchStatus isDelayed" role="status">Expanded search unavailable. Loaded markets remain available.</div>;
 }
 
 function MarketCategoryNav({ view, counts, searchActive, onChange }: {
@@ -139,7 +154,7 @@ function DirectoryMessage({ status, count, searchActive, view, onRefresh }: {
 }) {
   if (status === "loading" && count === 0) return <div className="rmtDirectoryMessage"><strong>Syncing markets…</strong><span>Loading verified directory data without prechecking routes.</span></div>;
   if (status === "error" && count === 0) return <div className="rmtDirectoryMessage"><strong>Market data delayed</strong><span>No asset has been marked untradeable.</span><button type="button" onClick={onRefresh}>Try again</button></div>;
-  if (count === 0) return <div className="rmtDirectoryMessage"><strong>{searchActive ? "No matching markets" : `No ${view === "held" ? "wallet-held" : view} markets yet`}</strong><span>{searchActive ? "Search by name, symbol, or a complete contract address." : "Choose another category or use exact contract search."}</span></div>;
+  if (count === 0) return <div className="rmtDirectoryMessage"><strong>{searchActive ? "No matching markets" : `No ${view === "held" ? "wallet-held" : view} markets yet`}</strong><span>{searchActive ? "Search by name, symbol, token contract, pool contract, or V4 PoolId." : "Choose another category or use exact contract search."}</span></div>;
   return null;
 }
 
@@ -161,7 +176,7 @@ function DesktopMarketTable(props: TerminalPresentationProps) {
     </div>
     <div className="rmtMarketTableBody" role="rowgroup">
       {props.visibleMarkets.map((market) => <button className="rmtMarketTableRow" type="button" role="row" key={market.address} onClick={() => props.onSelectMarket(market.address)}>
-        <span className="rmtMarketTokenCell" role="cell"><TokenArtwork className="rmtMarketArtwork" symbol={market.symbol} imageUrl={market.imageUri} /><span><strong>{market.symbol}</strong><small>{market.name}</small></span></span>
+        <span className="rmtMarketTokenCell" role="cell"><TokenArtwork className="rmtMarketArtwork" symbol={market.symbol} imageUrl={market.imageUri} /><span><strong>{market.symbol}</strong><small>{market.name}</small>{props.searchActive ? <code className="rmtSearchContract">{market.address}</code> : null}</span></span>
         <strong role="cell">{formatUsd(market.priceUsd)}</strong>
         <strong className={changeClass(market.priceChange24h)} role="cell">{formatChange(market.priceChange24h)}</strong>
         <span role="cell">{compactUsd(market.marketCapUsd)}</span>
@@ -171,6 +186,7 @@ function DesktopMarketTable(props: TerminalPresentationProps) {
         <span role="cell"><RwaLabel market={market} /></span>
       </button>)}
     </div>
+    <SearchStatusMessage status={props.searchStatus} count={props.verifiedSearchResultCount} />
     <DirectoryMessage status={props.directoryStatus} count={props.visibleMarkets.length} searchActive={props.searchActive} view={props.directoryView} onRefresh={props.onRefresh} />
     <LoadMore visibleCount={props.visibleMarkets.length} totalCount={props.filteredMarkets.length} onLoadMore={props.onLoadMoreMarkets} />
   </div>;
@@ -187,6 +203,7 @@ function CompactMarketNavigator(props: TerminalPresentationProps) {
         <b className={changeClass(market.priceChange24h)}>{formatChange(market.priceChange24h)}</b>
       </button>)}
     </div>
+    <SearchStatusMessage status={props.searchStatus} count={props.verifiedSearchResultCount} />
     <DirectoryMessage status={props.directoryStatus} count={props.visibleMarkets.length} searchActive={props.searchActive} view={props.directoryView} onRefresh={props.onRefresh} />
   </aside>;
 }
@@ -195,10 +212,11 @@ function MobileMarketList(props: TerminalPresentationProps) {
   return <div className="rmtMobileMarketList">
     {props.visibleMarkets.map((market) => <button className="rmtMobileMarketRow" type="button" key={market.address} onClick={() => props.onSelectMarket(market.address)}>
       <TokenArtwork className="rmtMarketArtwork" symbol={market.symbol} imageUrl={market.imageUri} />
-      <span className="rmtMobileMarketIdentity"><span><strong>{market.symbol}</strong><RwaLabel market={market} /></span><small>{market.name}</small></span>
+      <span className="rmtMobileMarketIdentity"><span><strong>{market.symbol}</strong><RwaLabel market={market} /></span><small>{market.name}</small>{props.searchActive ? <code className="rmtSearchContract">{market.address}</code> : null}</span>
       <span className="rmtMobileMarketPrice"><strong>{formatUsd(market.priceUsd)}</strong><small className={changeClass(market.priceChange24h)}>{formatChange(market.priceChange24h)}</small></span>
       <span className="rmtMobileMarketMeta">M {compactUsd(market.marketCapUsd)} · V {compactUsd(market.volume24h)} · {formatAge(market.ageMinutes)}</span>
     </button>)}
+    <SearchStatusMessage status={props.searchStatus} count={props.verifiedSearchResultCount} />
     <DirectoryMessage status={props.directoryStatus} count={props.visibleMarkets.length} searchActive={props.searchActive} view={props.directoryView} onRefresh={props.onRefresh} />
     <LoadMore visibleCount={props.visibleMarkets.length} totalCount={props.filteredMarkets.length} onLoadMore={props.onLoadMoreMarkets} />
   </div>;
@@ -257,7 +275,7 @@ function DesktopHeader(props: TerminalPresentationProps) {
       <button data-terminal-nav="distribution" className={props.context === "distribution" ? "isActive" : ""} type="button" onClick={props.onShowDistribution}>Distribution</button>
       <button data-terminal-nav="rwa" className={props.context === "markets" && props.directoryView === "rwa" ? "isActive" : ""} type="button" onClick={props.onShowRwa}>RWA</button>
     </nav>
-    <MarketSearch id="rmt-desktop-market-search" query={props.query} setQuery={props.setQuery} inputRef={props.marketSearch} onSubmit={props.onSearchSubmit} />
+    <MarketSearch id="rmt-desktop-market-search" query={props.query} setQuery={props.setQuery} inputRef={props.marketSearch} onSubmit={props.onSearchSubmit} searchStatus={props.searchStatus} />
     <span className="rmtChainState"><i aria-hidden="true" /> Robinhood · 4663</span>
     <VNextWalletConnection />
   </header>;
@@ -345,7 +363,7 @@ function MobileMarkets(props: TerminalPresentationProps) {
     <VNextChainPulseCard />
     <MarketSummary markets={props.markets} />
     <MarketCategoryNav view={props.directoryView} counts={props.directoryViewCounts} searchActive={props.searchActive} onChange={props.onDirectoryViewChange} />
-    <MarketSearch id="rmt-mobile-market-search" query={props.query} setQuery={props.setQuery} inputRef={props.marketSearch} onSubmit={props.onSearchSubmit} />
+    <MarketSearch id="rmt-mobile-market-search" query={props.query} setQuery={props.setQuery} inputRef={props.marketSearch} onSubmit={props.onSearchSubmit} searchStatus={props.searchStatus} />
     <MobileMarketList {...props} />
   </section>;
 }

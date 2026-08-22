@@ -6,6 +6,7 @@ import {
   type UniversalMarketResolution
 } from "../external-market";
 import { canonicalExternalAssetId } from "../external-market-identity";
+import type { ExternalMarketSignal } from "../external-market-ranking";
 import type { AssetMetadata } from "./execution-domain";
 import { evmAsset } from "./execution-domain";
 import {
@@ -16,6 +17,11 @@ import {
   ROBINHOOD_WETH_ADDRESS
 } from "./robinhood-assets";
 import { safeTokenArtworkUrl } from "./token-artwork";
+import type {
+  VNextUniversalMarketSearchPool,
+  VNextUniversalMarketSearchResultItem,
+  VNextUniversalMarketSearchStatus
+} from "./universal-market-search-contract";
 
 type VNextDirectoryMetric = number | null;
 
@@ -35,17 +41,25 @@ export type VNextDirectoryMarket = Omit<Pick<ExternalMarket,
   | "assetId"
   | "primaryMarket"
   | "verifiedMarkets"
->, "priceUsd" | "liquidityUsd" | "marketCapUsd" | "volume24h" | "priceChange24h"> & {
+>, "priceUsd" | "liquidityUsd" | "marketCapUsd" | "volume24h" | "priceChange24h" | "signal"> & {
   priceUsd: VNextDirectoryMetric;
   liquidityUsd: VNextDirectoryMetric;
   marketCapUsd: VNextDirectoryMetric;
   volume24h: VNextDirectoryMetric;
   priceChange24h: VNextDirectoryMetric;
-  marketDataState?: "live" | "identity-only";
+  signal: ExternalMarketSignal | null;
+  marketDataState?: "live" | "identity-only" | "canonical-only";
   pairAddress?: string;
   dexId?: string;
   url?: string;
   rwaRelationship?: VNextRwaRelationship;
+  canonicalMarkets?: VNextUniversalMarketSearchPool[];
+  verifiedIdentity?: {
+    address: string;
+    name: string;
+    symbol: string;
+    decimals: number;
+  };
 };
 
 export type VNextRwaRelationship = "canonical-stock-token" | "paired-market-asset";
@@ -230,6 +244,19 @@ function resolutionToken(resolution: UniversalMarketResolution | undefined, expe
 export function verifiedDirectoryAsset(market: VNextDirectoryMarket, resolution = market.resolution): AssetMetadata | null {
   if (getAddress(market.address) === ROBINHOOD_RMT_ADDRESS) return ROBINHOOD_RMT;
   if (getAddress(market.address) === ROBINHOOD_WETH_ADDRESS) return ROBINHOOD_WETH;
+  if (market.verifiedIdentity
+    && getAddress(market.verifiedIdentity.address) === getAddress(market.address)
+    && Number.isSafeInteger(market.verifiedIdentity.decimals)
+    && market.verifiedIdentity.decimals >= 0
+    && market.verifiedIdentity.decimals <= 255) {
+    return {
+      id: evmAsset(ROBINHOOD_MAINNET_CHAIN_ID, market.verifiedIdentity.address),
+      symbol: text(market.verifiedIdentity.symbol, 16) || market.symbol,
+      name: text(market.verifiedIdentity.name, 80) || market.name,
+      decimals: market.verifiedIdentity.decimals,
+      metadataState: "verified"
+    };
+  }
   const token = resolutionToken(resolution, market.address);
   if (!token) return null;
   return {
@@ -239,6 +266,99 @@ export function verifiedDirectoryAsset(market: VNextDirectoryMarket, resolution 
     decimals: token.decimals,
     metadataState: "verified"
   };
+}
+
+function normalizedSearchText(value: string) {
+  const trimmed = value.trim();
+  const withoutLeadingDollar = trimmed.startsWith("$") && !trimmed.slice(1).startsWith("$")
+    ? trimmed.slice(1)
+    : trimmed;
+  return withoutLeadingDollar.toLowerCase().replace(/[\s_-]+/g, "");
+}
+
+export function filterVNextLocalDirectoryMarkets(markets: VNextDirectoryMarket[], rawQuery: string) {
+  const trimmed = rawQuery.trim();
+  if (!trimmed) return [];
+  const normalized = normalizedSearchText(trimmed);
+  if (!normalized) return [];
+  const identity = trimmed.toLowerCase();
+  return markets.filter((market) => {
+    if (market.address.toLowerCase() === identity) return true;
+    if (market.canonicalMarkets?.some((evidence) => evidence.poolKey === identity)) return true;
+    return normalizedSearchText(market.symbol).includes(normalized)
+      || normalizedSearchText(market.name).includes(normalized);
+  });
+}
+
+export function exactVNextLocalDirectoryMatches(markets: VNextDirectoryMarket[], rawQuery: string) {
+  const trimmed = rawQuery.trim();
+  if (!trimmed) return [];
+  const exactIdentity = trimmed.toLowerCase();
+  const exactText = trimmed.startsWith("$") && !trimmed.slice(1).startsWith("$")
+    ? trimmed.slice(1).trim().toLowerCase()
+    : trimmed.toLowerCase();
+  return markets.filter((market) => (
+    market.address.toLowerCase() === exactIdentity
+    || market.symbol.trim().toLowerCase() === exactText
+    || market.name.trim().toLowerCase() === exactText
+  ));
+}
+
+export function shouldUseExactAddressDegradedFallback(
+  rawQuery: string,
+  status: VNextUniversalMarketSearchStatus
+) {
+  if (status !== "inventory_unavailable" && status !== "unavailable") return false;
+  if (!isAddress(rawQuery, { strict: false })) return false;
+  return getAddress(rawQuery) !== "0x0000000000000000000000000000000000000000";
+}
+
+export function directoryMarketFromUniversalSearchResult(
+  result: VNextUniversalMarketSearchResultItem
+): VNextDirectoryMarket {
+  const address = getAddress(result.address);
+  const symbol = text(result.symbol, 16) || `${address.slice(0, 6)}…${address.slice(-4)}`;
+  const name = text(result.name, 80) || symbol;
+  return {
+    address,
+    name,
+    symbol,
+    priceUsd: null,
+    liquidityUsd: null,
+    marketCapUsd: null,
+    volume24h: null,
+    priceChange24h: null,
+    ageMinutes: null,
+    signal: null,
+    marketDataState: "canonical-only",
+    canonicalMarkets: result.markets,
+    verifiedIdentity: {
+      address,
+      name,
+      symbol,
+      decimals: result.decimals
+    }
+  };
+}
+
+export function mergeVNextDirectoryAndSearchMarkets(
+  directoryMarkets: VNextDirectoryMarket[],
+  searchMarkets: VNextDirectoryMarket[]
+) {
+  const byAddress = new Map<string, VNextDirectoryMarket>();
+  for (const market of directoryMarkets) byAddress.set(market.address.toLowerCase(), market);
+  for (const market of searchMarkets) {
+    const key = market.address.toLowerCase();
+    const existing = byAddress.get(key);
+    byAddress.set(key, existing ? {
+      ...market,
+      ...existing,
+      canonicalMarkets: market.canonicalMarkets ?? existing.canonicalMarkets,
+      verifiedIdentity: market.verifiedIdentity ?? existing.verifiedIdentity,
+      resolution: existing.resolution ?? market.resolution
+    } : market);
+  }
+  return [...byAddress.values()];
 }
 
 export function resolutionFromLookup(payload: ExternalMarketResponse, address: string) {

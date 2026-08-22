@@ -87,7 +87,8 @@ function fallbackMarketFromResolution(
     || directory.liquidityUsd === null
     || directory.marketCapUsd === null
     || directory.volume24h === null
-    || directory.priceChange24h === null) return undefined;
+    || directory.priceChange24h === null
+    || directory.signal === null) return undefined;
   const dexId = directory.dexId ?? pool?.venue ?? "DEX";
   const url = directory.url ?? `${EXPLORER}/address/${pairAddress}`;
   return {
@@ -351,7 +352,11 @@ export function VNextAssetWorkspace({
   onTradeSide: (side: "buy" | "sell") => void;
 }) {
   const [section, setSection] = useState<"activity" | "evidence" | "markets" | "origin" | "position" | "ecosystem" | "rwa">("activity");
-  const workspace = useVNextAssetWorkspace(directoryMarket.address, directoryMarket.pairAddress);
+  const workspace = useVNextAssetWorkspace(
+    directoryMarket.address,
+    directoryMarket.pairAddress,
+    directoryMarket.marketDataState !== "canonical-only"
+  );
   const resolution = workspace.resolution ?? workspace.market?.resolution;
   const market = workspace.market ?? fallbackMarketFromResolution(directoryMarket, resolution);
   const workspacePool = chartPoolForMarket(market);

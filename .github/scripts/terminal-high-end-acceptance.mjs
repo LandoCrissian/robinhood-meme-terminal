@@ -13,6 +13,7 @@ const pair = address(0x2001);
 const factory = address(0x3001);
 const creator = address(0x4001);
 const exactIdentityToken = address(0x1ffe);
+const universalSearchQueries = new WeakMap();
 
 await mkdir(output, { recursive: true });
 
@@ -258,6 +259,21 @@ async function installRoutes(page) {
           provenance: "robinhood-chain-contract-reads",
           resolvedAt: now
         }
+      })
+    });
+  });
+  await page.route(/\/api\/vnext\/market-search(?:\?.*)?$/, async (route) => {
+    const query = new URL(route.request().url()).searchParams.get("q") ?? "";
+    const exactIdentityUnavailable = query.toLowerCase() === exactIdentityToken.toLowerCase();
+    universalSearchQueries.set(page, [...(universalSearchQueries.get(page) ?? []), query]);
+    await route.fulfill({
+      status: exactIdentityUnavailable ? 503 : 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        query,
+        queryKind: "token-or-pool-address",
+        status: exactIdentityUnavailable ? "inventory_unavailable" : "not_found",
+        results: []
       })
     });
   });
@@ -514,6 +530,7 @@ async function inspectDesktop(browser, viewport, label) {
   await search.press("Enter");
   await page.locator('.rmtDesktopTerminal[data-terminal-context="asset"] #vn-asset-heading').waitFor({ state: "visible" });
   if (!(await page.locator("#vn-asset-heading").textContent())?.includes(markets[0].symbol)) throw new Error(`${label}: exact-contract search did not enter the matching Asset context`);
+  if ((universalSearchQueries.get(page) ?? []).length !== 0) throw new Error(`${label}: loaded exact contract unexpectedly used universal search`);
   await page.evaluate(() => window.history.back());
   await page.locator('.rmtDesktopTerminal[data-terminal-context="markets"] .rmtMarketTable').waitFor({ state: "visible" });
   await search.fill(exactIdentityToken);
@@ -521,6 +538,8 @@ async function inspectDesktop(browser, viewport, label) {
   await page.locator('.rmtDesktopTerminal[data-terminal-context="asset"] #vn-asset-heading').waitFor({ state: "visible" });
   if (!(await page.locator("#vn-asset-heading").textContent())?.includes("EXACT")) throw new Error(`${label}: verified identity-only contract did not enter Asset context`);
   if (new URL(page.url()).searchParams.get("market")?.toLowerCase() !== exactIdentityToken.toLowerCase()) throw new Error(`${label}: verified identity-only contract was not preserved in terminal history`);
+  const exactIdentityQueries = universalSearchQueries.get(page) ?? [];
+  if (exactIdentityQueries.length !== 1 || exactIdentityQueries[0]?.toLowerCase() !== exactIdentityToken.toLowerCase()) throw new Error(`${label}: identity-only fallback did not follow exactly one universal inventory attempt`);
   await context.close();
   return { ...audit, marketsComposition, assetComposition };
 }

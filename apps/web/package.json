@@ -60,7 +60,7 @@
     "test:vnext-across": "tsx lib/vnext/across-funding-smoke.ts && tsx lib/vnext/across-trust-rebind-smoke.ts && pnpm test:vnext-across-runtime-preflight",
     "test:vnext-across-runtime-preflight": "tsx lib/server/vnext-across-infrastructure-preflight-smoke.ts && tsx lib/server/vnext-across-infrastructure-preflight-route-smoke.ts",
     "test:vnext-cross-chain": "tsx lib/vnext/cross-chain-funding-smoke.ts",
-    "test:vnext-shell": "tsx lib/vnext/vnext-shell-smoke.ts",
+    "test:vnext-shell": "tsx lib/vnext/vnext-shell-smoke.ts && tsx lib/vnext/terminal-universal-search-integration-smoke.ts",
     "test:vnext-ownership": "tsx lib/vnext/vnext-ownership-boundary-smoke.ts",
     "test:vnext-release-readiness": "tsx lib/vnext/release-readiness-smoke.ts",
     "test:vnext-efficiency": "tsx lib/vnext/client-efficiency-smoke.ts",
