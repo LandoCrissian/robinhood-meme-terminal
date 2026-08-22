@@ -2,10 +2,12 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
   directoryMarketFromUniversalSearchResult,
+  directoryMarketFromVerifiedIdentity,
   exactVNextLocalDirectoryMatches,
   filterVNextLocalDirectoryMarkets,
   mergeVNextDirectoryAndSearchMarkets,
   selectVNextMarketDirectoryView,
+  shouldUseExactAddressDegradedFallback,
   verifiedDirectoryAsset,
   type VNextDirectoryMarket
 } from "./market-directory";
@@ -137,6 +139,39 @@ assert.deepEqual(filterVNextLocalDirectoryMarkets([richDirectory], STONKBROKER).
 assert.deepEqual(filterVNextLocalDirectoryMarkets([richDirectory], V4_POOL).map((market) => market.address.toLowerCase()), [STONKBROKER]);
 assert.equal(exactVNextLocalDirectoryMatches([richDirectory], "STONKBROKER").length, 1);
 
+assert.equal(shouldUseExactAddressDegradedFallback(STONKBROKER, "inventory_unavailable"), true);
+assert.equal(shouldUseExactAddressDegradedFallback(STONKBROKER, "unavailable"), true);
+assert.equal(shouldUseExactAddressDegradedFallback(STONKBROKER, "not_found"), false);
+assert.equal(shouldUseExactAddressDegradedFallback(STONKBROKER, "invalid_query"), false);
+assert.equal(shouldUseExactAddressDegradedFallback("STONKBROKER", "inventory_unavailable"), false);
+assert.equal(shouldUseExactAddressDegradedFallback(V4_POOL, "inventory_unavailable"), false);
+assert.equal(shouldUseExactAddressDegradedFallback(`0x${"0".repeat(40)}`, "inventory_unavailable"), false);
+
+const identityOnly = directoryMarketFromVerifiedIdentity({
+  resolution: {
+    chainId: 4_663,
+    requestedAddress: TOKEN_THREE,
+    requestedKind: "token",
+    status: "token-only",
+    token: {
+      address: TOKEN_THREE,
+      name: "Identity Only",
+      symbol: "IDENTITY",
+      decimals: 18,
+      totalSupply: "1000000000000000000"
+    },
+    pools: [],
+    marketData: "identity-only",
+    execution: "view-only",
+    provenance: "robinhood-chain-contract-reads",
+    resolvedAt: new Date(0).toISOString()
+  }
+}, TOKEN_THREE);
+assert.ok(identityOnly);
+assert.equal(identityOnly.canonicalMarkets, undefined);
+assert.deepEqual(selectVNextMarketDirectoryView([identityOnly], "trending"), []);
+assert.deepEqual(selectVNextMarketDirectoryView([identityOnly], "active"), []);
+
 const duplicateName = directoryMarketFromUniversalSearchResult({
   ...parseVNextUniversalMarketSearchResult(response("STONKBROKER", "symbol"))!.results[0],
   address: TOKEN_THREE,
@@ -163,6 +198,7 @@ const shell = readFileSync(new URL("../../app/vnext/vnext-terminal-shell.tsx", i
 const presentation = readFileSync(new URL("../../app/vnext/terminal-presentations.tsx", import.meta.url), "utf8");
 const workspace = readFileSync(new URL("../../app/vnext/vnext-asset-workspace.tsx", import.meta.url), "utf8");
 const workspaceHook = readFileSync(new URL("../../app/vnext/use-vnext-asset-workspace.ts", import.meta.url), "utf8");
+const serverSearch = readFileSync(new URL("../server/vnext-universal-market-search.ts", import.meta.url), "utf8");
 
 const updateQuery = shell.slice(shell.indexOf("const updateQuery"), shell.indexOf("const selectMarket"));
 assert.doesNotMatch(updateQuery, /fetch\(|submitUniversalSearch/);
@@ -171,6 +207,10 @@ assert.match(presentation, /onSubmit=\{\(event\) => \{ event\.preventDefault\(\)
 assert.match(shell, /exactVNextLocalDirectoryMatches/);
 assert.match(shell, /exactLocalMatches\.length === 1/);
 assert.match(shell, /submitUniversalSearch\(submitted\)/);
+const submitSearch = shell.slice(shell.indexOf("const submitSearch"), shell.indexOf("const showPortfolio"));
+assert.ok(submitSearch.indexOf("submitUniversalSearch(submitted)") < submitSearch.indexOf("shouldUseExactAddressDegradedFallback"));
+assert.match(submitSearch, /shouldUseExactAddressDegradedFallback\(submitted, result\.status\)/);
+assert.match(submitSearch, /selectMarket\(submitted\)/);
 assert.match(shell, /result\.markets\.length === 1/);
 assert.match(hook, /new AbortController\(\)/);
 assert.match(hook, /searchController\.current\?\.abort\(\)/);
@@ -184,8 +224,15 @@ assert.match(shell, /mergeVNextDirectoryAndSearchMarkets/);
 assert.match(shell, /clearUniversalSearch\(\);[\s\S]*setQuery\(nextQuery\)/);
 assert.match(presentation, /Search token, contract or pool/);
 assert.match(presentation, /rmtSearchContract/);
+assert.match(presentation, /count=\{props\.verifiedSearchResultCount\}/);
+assert.doesNotMatch(presentation, /SearchStatusMessage status=\{props\.searchStatus\} count=\{props\.filteredMarkets\.length\}/);
+assert.match(shell, /verifiedSearchResultCount:[\s\S]*searchMarkets\.length/);
 assert.match(workspace, /marketDataState !== "canonical-only"/);
 assert.match(workspaceHook, /externalMarketLookup\s*\?/);
+assert.match(serverSearch, /from "\.\.\/vnext\/universal-market-search-contract"/);
+assert.match(serverSearch, /function publicMarket/);
+assert.doesNotMatch(serverSearch, /export type VNextUniversalMarketSearchResult\s*=/);
+assert.doesNotMatch(serverSearch, /stateError: pool\.stateError/);
 assert.doesNotMatch(hook + shell + presentation, /rmt-market-indexer-shadow-production|RMT_MARKET_INDEXER_READ_TOKEN|sendTransaction|signTransaction|writeContract/);
 
 console.log("VNext Terminal universal search integration preserves local-first filtering, canonical evidence, null metrics, ambiguity, and race-safe explicit submission.");

@@ -19,7 +19,8 @@ import {
 import { safeTokenArtworkUrl } from "./token-artwork";
 import type {
   VNextUniversalMarketSearchPool,
-  VNextUniversalMarketSearchResultItem
+  VNextUniversalMarketSearchResultItem,
+  VNextUniversalMarketSearchStatus
 } from "./universal-market-search-contract";
 
 type VNextDirectoryMetric = number | null;
@@ -301,6 +302,15 @@ export function exactVNextLocalDirectoryMatches(markets: VNextDirectoryMarket[],
     || market.symbol.trim().toLowerCase() === exactText
     || market.name.trim().toLowerCase() === exactText
   ));
+}
+
+export function shouldUseExactAddressDegradedFallback(
+  rawQuery: string,
+  status: VNextUniversalMarketSearchStatus
+) {
+  if (status !== "inventory_unavailable" && status !== "unavailable") return false;
+  if (!isAddress(rawQuery, { strict: false })) return false;
+  return getAddress(rawQuery) !== "0x0000000000000000000000000000000000000000";
 }
 
 export function directoryMarketFromUniversalSearchResult(

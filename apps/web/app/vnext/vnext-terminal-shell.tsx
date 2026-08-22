@@ -8,6 +8,7 @@ import {
   filterVNextLocalDirectoryMarkets,
   mergeVNextDirectoryAndSearchMarkets,
   selectVNextMarketDirectoryView,
+  shouldUseExactAddressDegradedFallback,
   visibleVNextMarketDirectoryMarkets,
   vNextMarketDirectoryViewCounts,
   type VNextMarketDirectoryView
@@ -125,6 +126,10 @@ export function VNextTerminalShell() {
         selectMarket(result.markets[0].address);
         return;
       }
+      if (shouldUseExactAddressDegradedFallback(submitted, result.status)) {
+        selectMarket(submitted);
+        return;
+      }
       setContext("markets");
       setTradeOpen(false);
       writeLocation("markets");
@@ -220,6 +225,9 @@ export function VNextTerminalShell() {
     directoryViewCounts,
     searchActive: Boolean(query.trim()),
     searchStatus,
+    verifiedSearchResultCount: submittedSearchQuery.trim().toLowerCase() === query.trim().toLowerCase()
+      ? searchMarkets.length
+      : 0,
     directoryStatus: status,
     selected,
     selectedAsset,

@@ -10,6 +10,19 @@ import {
   ROBINHOOD_USDG_ADDRESS,
   ROBINHOOD_WETH_ADDRESS
 } from "../vnext/robinhood-assets";
+import type {
+  VNextUniversalMarketSearchMatchedBy,
+  VNextUniversalMarketSearchPool,
+  VNextUniversalMarketSearchResult,
+  VNextUniversalMarketSearchResultItem
+} from "../vnext/universal-market-search-contract";
+
+export type {
+  VNextUniversalMarketSearchMatchedBy,
+  VNextUniversalMarketSearchPool,
+  VNextUniversalMarketSearchResult,
+  VNextUniversalMarketSearchResultItem
+} from "../vnext/universal-market-search-contract";
 
 const DEX_SCREENER_SEARCH_URL = "https://api.dexscreener.com/latest/dex/search";
 const ROBINHOOD_CHAIN_SLUG = "robinhood";
@@ -52,37 +65,6 @@ export type VNextUniversalMarketSearchDependencies = {
   readIdentity?: IdentityReader;
   fetch?: SearchFetch;
   timeoutMs?: number;
-};
-
-export type VNextUniversalMarketSearchMatchedBy =
-  | "token"
-  | "pool"
-  | "pool-id"
-  | "symbol"
-  | "name"
-  | "normalized-symbol"
-  | "normalized-name"
-  | "plural-alias";
-
-export type VNextUniversalMarketSearchResultItem = {
-  address: string;
-  name: string;
-  symbol: string;
-  decimals: number;
-  matchedBy: VNextUniversalMarketSearchMatchedBy;
-  markets: VNextCanonicalMarketInventoryPool[];
-};
-
-export type VNextUniversalMarketSearchResult = {
-  query: string;
-  queryKind: "token-or-pool-address" | "v4-pool-id" | "text";
-  status:
-    | "found"
-    | "not_found"
-    | "invalid_query"
-    | "inventory_unavailable"
-    | "candidate_discovery_unavailable";
-  results: VNextUniversalMarketSearchResultItem[];
 };
 
 type CandidatePair = {
@@ -198,6 +180,36 @@ function settlementPriority(address: string) {
     : 0;
 }
 
+function publicMarket(pool: VNextCanonicalMarketInventoryPool): VNextUniversalMarketSearchPool {
+  return {
+    sourceId: pool.sourceId,
+    protocol: pool.protocol,
+    version: pool.version,
+    poolKey: pool.poolKey,
+    poolAddress: pool.poolAddress,
+    token0: pool.token0,
+    token1: pool.token1,
+    stable: pool.stable,
+    fee: pool.fee,
+    tickSpacing: pool.tickSpacing,
+    hooks: pool.hooks,
+    transactionHash: pool.transactionHash,
+    blockNumber: pool.blockNumber,
+    blockHash: pool.blockHash,
+    stateStatus: pool.stateStatus,
+    liveFee: pool.liveFee,
+    feeDenominator: pool.feeDenominator,
+    gaugeAddress: pool.gaugeAddress,
+    gaugeAlive: pool.gaugeAlive,
+    gaugeWeight: pool.gaugeWeight,
+    gaugeClaimable: pool.gaugeClaimable,
+    feesAddress: pool.feesAddress,
+    bribeAddress: pool.bribeAddress,
+    stateObservedBlock: pool.stateObservedBlock,
+    stateObservedBlockHash: pool.stateObservedBlockHash
+  };
+}
+
 function normalizeVerifiedIdentity(identity: TokenIdentity, expectedAddress: string) {
   const address = normalizeAddress(identity.address);
   const name = typeof identity.name === "string" ? identity.name.trim() : "";
@@ -221,7 +233,7 @@ function normalizeVerifiedIdentity(identity: TokenIdentity, expectedAddress: str
 
 async function verifiedIdentityResult(
   address: string,
-  markets: VNextCanonicalMarketInventoryPool[],
+  markets: VNextUniversalMarketSearchPool[],
   matchedBy: VNextUniversalMarketSearchMatchedBy,
   readIdentity: IdentityReader
 ): Promise<VNextUniversalMarketSearchResultItem | null> {
@@ -274,7 +286,7 @@ async function exactAddressSearch(
       [...candidates.entries()].map(([candidate, evidence]) =>
         verifiedIdentityResult(
           candidate,
-          evidence.markets,
+          evidence.markets.map(publicMarket),
           evidence.matchedBy,
           dependencies.readIdentity
         )
@@ -318,7 +330,7 @@ async function exactPoolIdSearch(
       [...candidates.entries()].map(([address, markets]) =>
         verifiedIdentityResult(
           address,
-          markets,
+          markets.map(publicMarket),
           "pool-id",
           dependencies.readIdentity
         )
@@ -472,7 +484,7 @@ async function textSearch(
           symbol: identity.symbol,
           decimals: identity.decimals,
           matchedBy: match.matchedBy,
-          markets: inventory.pools
+          markets: inventory.pools.map(publicMarket)
         } satisfies VNextUniversalMarketSearchResultItem
       };
     })

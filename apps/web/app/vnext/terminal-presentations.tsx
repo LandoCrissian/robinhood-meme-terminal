@@ -40,6 +40,7 @@ export type TerminalPresentationProps = {
   directoryViewCounts: Record<VNextMarketDirectoryView, number>;
   searchActive: boolean;
   searchStatus: VNextUniversalMarketSearchStatus;
+  verifiedSearchResultCount: number;
   directoryStatus: DirectoryStatus;
   selected?: VNextDirectoryMarket;
   selectedAsset?: AssetMetadata;
@@ -185,7 +186,7 @@ function DesktopMarketTable(props: TerminalPresentationProps) {
         <span role="cell"><RwaLabel market={market} /></span>
       </button>)}
     </div>
-    <SearchStatusMessage status={props.searchStatus} count={props.filteredMarkets.length} />
+    <SearchStatusMessage status={props.searchStatus} count={props.verifiedSearchResultCount} />
     <DirectoryMessage status={props.directoryStatus} count={props.visibleMarkets.length} searchActive={props.searchActive} view={props.directoryView} onRefresh={props.onRefresh} />
     <LoadMore visibleCount={props.visibleMarkets.length} totalCount={props.filteredMarkets.length} onLoadMore={props.onLoadMoreMarkets} />
   </div>;
@@ -202,7 +203,7 @@ function CompactMarketNavigator(props: TerminalPresentationProps) {
         <b className={changeClass(market.priceChange24h)}>{formatChange(market.priceChange24h)}</b>
       </button>)}
     </div>
-    <SearchStatusMessage status={props.searchStatus} count={props.filteredMarkets.length} />
+    <SearchStatusMessage status={props.searchStatus} count={props.verifiedSearchResultCount} />
     <DirectoryMessage status={props.directoryStatus} count={props.visibleMarkets.length} searchActive={props.searchActive} view={props.directoryView} onRefresh={props.onRefresh} />
   </aside>;
 }
@@ -215,7 +216,7 @@ function MobileMarketList(props: TerminalPresentationProps) {
       <span className="rmtMobileMarketPrice"><strong>{formatUsd(market.priceUsd)}</strong><small className={changeClass(market.priceChange24h)}>{formatChange(market.priceChange24h)}</small></span>
       <span className="rmtMobileMarketMeta">M {compactUsd(market.marketCapUsd)} · V {compactUsd(market.volume24h)} · {formatAge(market.ageMinutes)}</span>
     </button>)}
-    <SearchStatusMessage status={props.searchStatus} count={props.filteredMarkets.length} />
+    <SearchStatusMessage status={props.searchStatus} count={props.verifiedSearchResultCount} />
     <DirectoryMessage status={props.directoryStatus} count={props.visibleMarkets.length} searchActive={props.searchActive} view={props.directoryView} onRefresh={props.onRefresh} />
     <LoadMore visibleCount={props.visibleMarkets.length} totalCount={props.filteredMarkets.length} onLoadMore={props.onLoadMoreMarkets} />
   </div>;

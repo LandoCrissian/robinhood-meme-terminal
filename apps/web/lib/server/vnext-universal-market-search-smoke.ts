@@ -63,7 +63,8 @@ const v2Market = pool({
   poolKey: v2PoolAddress,
   poolAddress: v2PoolAddress,
   token0: stonkBrokerAddress,
-  token1: ROBINHOOD_WETH_ADDRESS.toLowerCase()
+  token1: ROBINHOOD_WETH_ADDRESS.toLowerCase(),
+  stateError: "internal diagnostic must not cross public search boundary"
 });
 const v3Market = pool({
   sourceId: "sushiswap-v3",
@@ -253,6 +254,7 @@ async function assertExactSearchesNeverUseProvider() {
     assert.equal(result.results[0]?.address, stonkBrokerAddress);
     assert.equal(result.results[0]?.matchedBy, "pool");
     assert.equal(result.results[0]?.markets[0]?.version, expectedVersion);
+    assert.equal("stateError" in result.results[0]!.markets[0]!, false);
     assert.equal(result.results.at(-1)?.address.toLowerCase(), expectedVersion === 2
       ? ROBINHOOD_WETH_ADDRESS.toLowerCase()
       : ROBINHOOD_USDG_ADDRESS.toLowerCase());
