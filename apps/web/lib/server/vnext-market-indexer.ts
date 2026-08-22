@@ -14,6 +14,8 @@ const BYTES32_PATTERN = /^0x[0-9a-f]{64}$/;
 const POOL_KEY_INPUT_PATTERN = /^0x(?:[0-9a-fA-F]{40}|[0-9a-fA-F]{64})$/;
 const SOURCE_ID_PATTERN = /^[a-z0-9]+(?:[._-][a-z0-9]+)*$/;
 const CANONICAL_INTEGER_PATTERN = /^(?:0|[1-9][0-9]*)$/;
+const OPAQUE_CURSOR_PATTERN = /^[A-Za-z0-9_-]+$/;
+const MAXIMUM_CURSOR_LENGTH = 1_024;
 const ZERO_ADDRESS = `0x${"0".repeat(40)}`;
 const ZERO_BYTES32 = `0x${"0".repeat(64)}`;
 
@@ -30,6 +32,11 @@ const canonicalIntegerSchema = z
   .max(78)
   .regex(CANONICAL_INTEGER_PATTERN);
 const sourceIdSchema = z.string().min(1).max(64).regex(SOURCE_ID_PATTERN);
+const opaqueCursorSchema = z
+  .string()
+  .min(1)
+  .max(MAXIMUM_CURSOR_LENGTH)
+  .regex(OPAQUE_CURSOR_PATTERN);
 const stateErrorSchema = z
   .string()
   .min(1)
@@ -211,17 +218,52 @@ const marketPoolSchema = z
     }
   });
 
+const marketInventoryCoverageSchema = z
+  .object({
+    complete: z.boolean(),
+    finalizedHead: canonicalIntegerSchema.nullable(),
+    sources: z.array(
+      z.object({
+        sourceId: sourceIdSchema,
+        status: z.enum(["backfilling", "shadow-ready", "error", "missing"]),
+        indexedThrough: canonicalIntegerSchema.nullable()
+      }).strict()
+    ).max(64)
+  })
+  .strict()
+  .superRefine((coverage, context) => {
+    const sourceIds = new Set(coverage.sources.map((source) => source.sourceId));
+    if (sourceIds.size !== coverage.sources.length) {
+      context.addIssue({ code: "custom", message: "duplicate coverage source" });
+    }
+    if (
+      coverage.complete &&
+      (coverage.finalizedHead === null ||
+        coverage.sources.length === 0 ||
+        coverage.sources.some((source) =>
+          source.status !== "shadow-ready" ||
+          source.indexedThrough === null ||
+          BigInt(source.indexedThrough) < BigInt(coverage.finalizedHead!)
+        ))
+    ) {
+      context.addIssue({ code: "custom", message: "invalid complete coverage" });
+    }
+  });
+
 const marketInventoryResponseSchema = z
   .object({
     chainId: z.literal(MARKET_INDEXER_CHAIN_ID),
     mode: z.literal("shadow"),
     authoritative: z.literal(false),
     sourceManifestHash: nonzeroBytes32Schema,
+    coverage: marketInventoryCoverageSchema,
+    nextCursor: opaqueCursorSchema.nullable(),
     pools: z.array(marketPoolSchema).max(MAXIMUM_MARKET_INVENTORY_LIMIT)
   })
   .strict();
 
 export type VNextCanonicalMarketInventoryPool = z.infer<typeof marketPoolSchema>;
+export type VNextCanonicalMarketInventoryCoverage = z.infer<typeof marketInventoryCoverageSchema>;
 
 export type VNextCanonicalMarketInventoryResult =
   | {
@@ -230,6 +272,8 @@ export type VNextCanonicalMarketInventoryResult =
       mode: "shadow";
       authoritative: false;
       sourceManifestHash: string;
+      coverage: VNextCanonicalMarketInventoryCoverage;
+      nextCursor: string | null;
       pools: VNextCanonicalMarketInventoryPool[];
     }
   | {
@@ -242,7 +286,12 @@ export type VNextCanonicalMarketInventoryResult =
     }
   | {
       status: "invalid_query";
-      reason: "invalid_token" | "invalid_pool_key" | "invalid_source" | "invalid_limit";
+      reason:
+        | "invalid_token"
+        | "invalid_pool_key"
+        | "invalid_source"
+        | "invalid_limit"
+        | "invalid_cursor";
     }
   | {
       status: "upstream_unavailable";
@@ -263,6 +312,7 @@ export type VNextCanonicalMarketInventoryQuery = {
   poolKey?: string;
   source?: string;
   limit?: number;
+  cursor?: string;
 };
 
 type MarketIndexerFetch = (
@@ -283,6 +333,7 @@ type NormalizedQuery = {
   poolKey: string | null;
   source: string | null;
   limit: number;
+  cursor: string | null;
 };
 
 type MarketIndexerConfiguration = {
@@ -339,7 +390,12 @@ function normalizeQuery(
     return invalidQuery("invalid_limit");
   }
 
-  return { token, poolKey, source, limit };
+  const cursor = query.cursor ?? null;
+  if (cursor !== null && !opaqueCursorSchema.safeParse(cursor).success) {
+    return invalidQuery("invalid_cursor");
+  }
+
+  return { token, poolKey, source, limit, cursor };
 }
 
 function configuredValue(env: MarketIndexerEnvironment, name: string) {
@@ -493,6 +549,7 @@ export async function readVNextCanonicalMarketInventory(
   }
   if (normalizedQuery.source !== null) search.set("source", normalizedQuery.source);
   search.set("limit", String(normalizedQuery.limit));
+  if (normalizedQuery.cursor !== null) search.set("cursor", normalizedQuery.cursor);
 
   const requestUrl = new URL(configuration.endpoint);
   requestUrl.search = search.toString();
@@ -551,6 +608,8 @@ export async function readVNextCanonicalMarketInventory(
     mode: parsed.data.mode,
     authoritative: parsed.data.authoritative,
     sourceManifestHash: parsed.data.sourceManifestHash,
+    coverage: parsed.data.coverage,
+    nextCursor: parsed.data.nextCursor,
     pools: parsed.data.pools
   };
   if (containsConfiguredSecret(result, configuration)) {

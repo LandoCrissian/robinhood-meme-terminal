@@ -133,25 +133,60 @@ const v4Pool = {
   blockNumber: "99",
   blockHash: `0x${"33".repeat(32)}`
 };
-const indexedPools = [v3Pool, v2Pool, v4Pool];
+const olderV4Pool = {
+  ...v4Pool,
+  poolKey: `0x${"43".repeat(32)}`,
+  poolAddress: null,
+  transactionHash: `0x${"24".repeat(32)}`,
+  blockNumber: "98",
+  blockHash: `0x${"34".repeat(32)}`
+};
+const indexedPools = [v3Pool, v2Pool, v4Pool, olderV4Pool];
+const indexedRows = [
+  { ...v3Pool, transactionIndex: 2, logIndex: 0 },
+  { ...v2Pool, transactionIndex: 1, logIndex: 4 },
+  { ...v4Pool, transactionIndex: 3, logIndex: 2 },
+  { ...olderV4Pool, transactionIndex: 0, logIndex: 1 }
+];
 const poolQueries: Array<{ text: string; values: unknown[] }> = [];
 const pool = {
   query: async (text: string, values: unknown[]) => {
     poolQueries.push({ text, values });
-    const [chainId, sourceId, token, poolKey, limit] = values as [
+    const [
+      chainId,
+      sourceId,
+      token,
+      poolKey,
+      cursorBlock,
+      cursorTransactionIndex,
+      cursorLogIndex,
+      limit
+    ] = values as [
       number,
       string | null,
       string | null,
       string | null,
+      string | null,
+      number | null,
+      number | null,
       number
     ];
     assert.equal(chainId, 4_663);
-    const rows = indexedPools
+    const rows = indexedRows
       .filter((row) => sourceId === null || row.sourceId === sourceId)
       .filter(
         (row) => token === null || row.token0 === token || row.token1 === token
       )
       .filter((row) => poolKey === null || row.poolKey === poolKey)
+      .filter((row) => {
+        if (cursorBlock === null) return true;
+        const blockDifference = BigInt(row.blockNumber) - BigInt(cursorBlock);
+        if (blockDifference !== 0n) return blockDifference < 0n;
+        if (row.transactionIndex !== cursorTransactionIndex) {
+          return row.transactionIndex < cursorTransactionIndex!;
+        }
+        return row.logIndex < cursorLogIndex!;
+      })
       .slice(0, limit);
     return { rows };
   }
@@ -215,6 +250,8 @@ try {
   const unauthorizedPools = await fetch(`${origin}/v1/pools`);
   assert.equal(unauthorizedPools.status, 401);
   const poolHeaders = { authorization: `Bearer ${readToken}` };
+  const cursorFor = (value: Record<string, unknown>) =>
+    Buffer.from(JSON.stringify(value), "utf8").toString("base64url");
   const allPoolsResponse = await fetch(`${origin}/v1/pools`, {
     headers: poolHeaders
   });
@@ -222,21 +259,92 @@ try {
     mode: string;
     authoritative: boolean;
     pools: typeof indexedPools;
+    nextCursor: string | null;
+    coverage: {
+      complete: boolean;
+      finalizedHead: string | null;
+      sources: Array<{
+        sourceId: string;
+        status: string;
+        indexedThrough: string | null;
+      }>;
+    };
   };
   assert.equal(allPoolsResponse.status, 200);
   assert.equal(allPools.mode, "shadow");
   assert.equal(allPools.authoritative, false);
   assert.deepEqual(allPools.pools, indexedPools);
+  assert.equal(allPools.nextCursor, null);
+  assert.equal(allPools.coverage.complete, false);
+  assert.equal(allPools.coverage.finalizedHead, "110");
+  assert.equal(allPools.coverage.sources.length, marketSources.length);
+  assert.equal(
+    allPools.pools.some((row) => "transactionIndex" in row || "logIndex" in row),
+    false
+  );
   const unfilteredQuery = poolQueries.at(-1)!;
-  assert.deepEqual(unfilteredQuery.values, [4_663, null, null, null, 100]);
+  assert.deepEqual(unfilteredQuery.values, [
+    4_663,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    101
+  ]);
   assert.ok(
     unfilteredQuery.text.indexOf("pools.token0 = $3") <
-      unfilteredQuery.text.indexOf("LIMIT $5")
+      unfilteredQuery.text.indexOf("LIMIT $8")
   );
   assert.ok(
     unfilteredQuery.text.indexOf("pools.pool_key = $4") <
-      unfilteredQuery.text.indexOf("LIMIT $5")
+      unfilteredQuery.text.indexOf("LIMIT $8")
   );
+  assert.ok(
+    unfilteredQuery.text.indexOf("pools.block_number, pools.transaction_index, pools.log_index") <
+      unfilteredQuery.text.indexOf("LIMIT $8")
+  );
+
+  const firstPageResponse = await fetch(`${origin}/v1/pools?limit=2`, {
+    headers: poolHeaders
+  });
+  const firstPage = (await firstPageResponse.json()) as {
+    pools: typeof indexedPools;
+    nextCursor: string | null;
+  };
+  assert.equal(firstPageResponse.status, 200);
+  assert.deepEqual(firstPage.pools, [v3Pool, v2Pool]);
+  assert.match(firstPage.nextCursor ?? "", /^[A-Za-z0-9_-]+$/);
+  assert.equal(poolQueries.at(-1)!.values[7], 3);
+
+  const secondPageResponse = await fetch(
+    `${origin}/v1/pools?limit=2&cursor=${firstPage.nextCursor}`,
+    { headers: poolHeaders }
+  );
+  const secondPage = (await secondPageResponse.json()) as {
+    pools: typeof indexedPools;
+    nextCursor: string | null;
+  };
+  assert.equal(secondPageResponse.status, 200);
+  assert.deepEqual(secondPage.pools, [v4Pool, olderV4Pool]);
+  assert.equal(secondPage.nextCursor, null);
+  assert.equal(
+    firstPage.pools.some((first) =>
+      secondPage.pools.some(
+        (second) =>
+          first.sourceId === second.sourceId && first.poolKey === second.poolKey
+      )
+    ),
+    false
+  );
+  assert.equal(secondPage.pools[0]?.poolAddress, null);
+  assert.equal(secondPage.pools[1]?.poolAddress, null);
+
+  const repeatedFirstPage = (await (
+    await fetch(`${origin}/v1/pools?limit=2`, { headers: poolHeaders })
+  ).json()) as { pools: typeof indexedPools; nextCursor: string | null };
+  assert.deepEqual(repeatedFirstPage, firstPage);
 
   const tokenResponse = await fetch(
     `${origin}/v1/pools?limit=1&token=0x${stonkBrokerAddress.slice(2).toUpperCase()}`,
@@ -254,7 +362,73 @@ try {
   assert.equal("volume" in tokenResult.pools[0]!, false);
   assert.equal("executionRoute" in tokenResult.pools[0]!, false);
   assert.equal(poolQueries.at(-1)!.values[2], stonkBrokerAddress);
-  assert.equal(poolQueries.at(-1)!.values[4], 1);
+  assert.equal(poolQueries.at(-1)!.values[7], 2);
+
+  const tokenFirst = tokenResult as typeof tokenResult & {
+    nextCursor: string | null;
+  };
+  assert.notEqual(tokenFirst.nextCursor, null);
+  const tokenSecond = (await (
+    await fetch(
+      `${origin}/v1/pools?limit=1&token=${stonkBrokerAddress}&cursor=${tokenFirst.nextCursor}`,
+      { headers: poolHeaders }
+    )
+  ).json()) as { pools: typeof indexedPools; nextCursor: string | null };
+  assert.deepEqual(tokenSecond.pools, [olderV4Pool]);
+  assert.equal(tokenSecond.nextCursor, null);
+
+  const sourceFirst = (await (
+    await fetch(`${origin}/v1/pools?limit=1&source=uniswap-v4`, {
+      headers: poolHeaders
+    })
+  ).json()) as { pools: typeof indexedPools; nextCursor: string | null };
+  assert.deepEqual(sourceFirst.pools, [v4Pool]);
+  assert.notEqual(sourceFirst.nextCursor, null);
+  const sourceSecond = (await (
+    await fetch(
+      `${origin}/v1/pools?limit=1&source=uniswap-v4&cursor=${sourceFirst.nextCursor}`,
+      { headers: poolHeaders }
+    )
+  ).json()) as { pools: typeof indexedPools; nextCursor: string | null };
+  assert.deepEqual(sourceSecond.pools, [olderV4Pool]);
+  assert.equal(sourceSecond.nextCursor, null);
+
+  const filteredFirstResponse = await fetch(
+    `${origin}/v1/pools?source=uniswap-v4&token=${stonkBrokerAddress}&limit=1`,
+    { headers: poolHeaders }
+  );
+  const filteredFirst = (await filteredFirstResponse.json()) as {
+    pools: typeof indexedPools;
+    nextCursor: string | null;
+  };
+  assert.deepEqual(filteredFirst.pools, [v4Pool]);
+  assert.notEqual(filteredFirst.nextCursor, null);
+  const filteredSecondResponse = await fetch(
+    `${origin}/v1/pools?source=uniswap-v4&token=${stonkBrokerAddress}&limit=1&cursor=${filteredFirst.nextCursor}`,
+    { headers: poolHeaders }
+  );
+  const filteredSecond = (await filteredSecondResponse.json()) as {
+    pools: typeof indexedPools;
+    nextCursor: string | null;
+  };
+  assert.deepEqual(filteredSecond.pools, [olderV4Pool]);
+  assert.equal(filteredSecond.nextCursor, null);
+
+  const mismatchedFilteredCursor = await fetch(
+    `${origin}/v1/pools?token=${stonkBrokerAddress}&limit=1&cursor=${filteredFirst.nextCursor}`,
+    { headers: poolHeaders }
+  );
+  assert.equal(mismatchedFilteredCursor.status, 400);
+  const mismatchedSourceCursor = await fetch(
+    `${origin}/v1/pools?source=uniswap-v3&limit=1&cursor=${sourceFirst.nextCursor}`,
+    { headers: poolHeaders }
+  );
+  assert.equal(mismatchedSourceCursor.status, 400);
+  const mismatchedPoolKeyCursor = await fetch(
+    `${origin}/v1/pools?poolKey=${v4Pool.poolKey}&limit=1&cursor=${firstPage.nextCursor}`,
+    { headers: poolHeaders }
+  );
+  assert.equal(mismatchedPoolKeyCursor.status, 400);
 
   for (const expected of [v2Pool, v3Pool]) {
     const poolKeyResponse = await fetch(
@@ -297,6 +471,17 @@ try {
     []
   );
 
+  const cursorTemplate = {
+    v: 1,
+    chainId: 4_663,
+    source: null,
+    token: null,
+    poolKey: null,
+    blockNumber: "101",
+    transactionIndex: 1,
+    logIndex: 4
+  };
+
   const queryCountBeforeInvalidRequests = poolQueries.length;
   const invalidQueries = [
     "token=not-an-address",
@@ -308,7 +493,14 @@ try {
     `poolKey=0x${"1".repeat(62)}`,
     "source=unsupported",
     "limit=0",
-    "limit=501"
+    "limit=501",
+    "cursor=not+base64url",
+    `cursor=${"a".repeat(1_025)}`,
+    `cursor=${cursorFor({ ...cursorTemplate, v: 2 })}`,
+    `cursor=${cursorFor({ ...cursorTemplate, chainId: 1 })}`,
+    `cursor=${cursorFor({ ...cursorTemplate, blockNumber: "01" })}`,
+    `cursor=${cursorFor({ ...cursorTemplate, transactionIndex: -1 })}`,
+    `token=${stonkBrokerAddress}&cursor=${cursorFor(cursorTemplate)}`
   ];
   for (const query of invalidQueries) {
     const invalidResponse = await fetch(`${origin}/v1/pools?${query}`, {
@@ -317,6 +509,82 @@ try {
     assert.equal(invalidResponse.status, 400, query);
   }
   assert.equal(poolQueries.length, queryCountBeforeInvalidRequests);
+
+  const originalTelemetry = worker.status.telemetry;
+  const originalLastError = worker.status.lastError;
+  const originalCompletedAt = worker.status.lastCycleCompletedAt;
+
+  worker.status.telemetry = null;
+  const missingTelemetryCoverage = (await (
+    await fetch(`${origin}/v1/pools?limit=1`, { headers: poolHeaders })
+  ).json()) as { coverage: typeof allPools.coverage };
+  assert.equal(missingTelemetryCoverage.coverage.complete, false);
+  assert.equal(
+    missingTelemetryCoverage.coverage.sources.every(
+      (source) => source.status === "missing" && source.indexedThrough === null
+    ),
+    true
+  );
+
+  worker.status.telemetry = originalTelemetry;
+  worker.status.lastCycleCompletedAt = "2026-01-01T00:00:00.000Z";
+  const staleCoverage = (await (
+    await fetch(`${origin}/v1/pools?limit=1`, { headers: poolHeaders })
+  ).json()) as { coverage: typeof allPools.coverage };
+  assert.equal(staleCoverage.coverage.complete, false);
+
+  worker.status.lastCycleCompletedAt = originalCompletedAt;
+  worker.status.lastError = "synthetic worker failure";
+  const workerErrorCoverage = (await (
+    await fetch(`${origin}/v1/pools?limit=1`, { headers: poolHeaders })
+  ).json()) as { coverage: typeof allPools.coverage };
+  assert.equal(workerErrorCoverage.coverage.complete, false);
+
+  worker.status.lastError = originalLastError;
+  worker.status.telemetry = {
+    ...originalTelemetry!,
+    sources: originalTelemetry!.sources.map((source, index) => ({
+      ...source,
+      status: index === 0 ? "error" : "shadow-ready",
+      error: index === 0 ? "synthetic source failure" : null,
+      indexedThrough: "110",
+      finalizedHead: "110",
+      lagBlocks: "0",
+      lastSyncAt: now
+    }))
+  };
+  const sourceErrorCoverage = (await (
+    await fetch(`${origin}/v1/pools?limit=1`, { headers: poolHeaders })
+  ).json()) as { coverage: typeof allPools.coverage };
+  assert.equal(sourceErrorCoverage.coverage.complete, false);
+
+  worker.status.telemetry = {
+    ...originalTelemetry!,
+    sources: originalTelemetry!.sources.map((source) => ({
+      ...source,
+      status: "shadow-ready" as const,
+      error: null,
+      indexedThrough: "110",
+      finalizedHead: "110",
+      lagBlocks: "0",
+      lastSyncAt: now
+    }))
+  };
+  const completeCoverage = (await (
+    await fetch(`${origin}/v1/pools?limit=1`, { headers: poolHeaders })
+  ).json()) as { coverage: typeof allPools.coverage };
+  assert.equal(completeCoverage.coverage.complete, true);
+  assert.equal(
+    completeCoverage.coverage.sources.every(
+      (source) =>
+        source.status === "shadow-ready" && source.indexedThrough === "110"
+    ),
+    true
+  );
+
+  worker.status.telemetry = originalTelemetry;
+  worker.status.lastError = originalLastError;
+  worker.status.lastCycleCompletedAt = originalCompletedAt;
 } finally {
   await new Promise<void>((resolve, reject) =>
     server.close((error) => (error ? reject(error) : resolve()))

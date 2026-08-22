@@ -20,6 +20,8 @@ const configuredEnvironment = {
   RMT_MARKET_INDEXER_TIMEOUT_MS: "5000"
 };
 const sourceManifestHash = `0x${"ab".repeat(32)}`;
+const requestCursor = "eyJ2IjoxfQ";
+const responseCursor = "bmV4dC1jdXJzb3I";
 const stonkBrokerAddress = "0xe934e36a439c94017b64a3fece66af12099abf50";
 const stateFields = {
   stateStatus: null,
@@ -100,13 +102,29 @@ const upV2Pool = {
   stateObservedBlockHash: `0x${"35".repeat(32)}`
 };
 
-function inventoryResponse(pools: unknown[]) {
+const completeCoverage = {
+  complete: true,
+  finalizedHead: "200",
+  sources: [{
+    sourceId: "uniswap-v4",
+    status: "shadow-ready",
+    indexedThrough: "200"
+  }]
+} as const;
+
+function inventoryResponse(
+  pools: unknown[],
+  additions: Record<string, unknown> = {}
+) {
   return {
     chainId: 4_663,
     mode: "shadow",
     authoritative: false,
     sourceManifestHash,
-    pools
+    coverage: completeCoverage,
+    nextCursor: null,
+    pools,
+    ...additions
   };
 }
 
@@ -153,6 +171,8 @@ assert.equal(tokenResult.chainId, 4_663);
 assert.equal(tokenResult.mode, "shadow");
 assert.equal(tokenResult.authoritative, false);
 assert.equal(tokenResult.sourceManifestHash, sourceManifestHash);
+assert.deepEqual(tokenResult.coverage, completeCoverage);
+assert.equal(tokenResult.nextCursor, null);
 assert.deepEqual(tokenResult.pools, [v4Pool]);
 assert.equal(tokenResult.pools[0]?.token1, stonkBrokerAddress);
 assert.equal(tokenResult.pools[0]?.poolAddress, null);
@@ -204,6 +224,8 @@ assert.deepEqual(emptyResult, {
   mode: "shadow",
   authoritative: false,
   sourceManifestHash,
+  coverage: completeCoverage,
+  nextCursor: null,
   pools: []
 });
 
@@ -213,17 +235,21 @@ const combinedResult = await readFixture(
     token: stonkBrokerAddress,
     poolKey: v4Pool.poolKey,
     source: v4Pool.sourceId,
-    limit: 25
+    limit: 25,
+    cursor: requestCursor
   },
-  inventoryResponse([v4Pool]),
+  inventoryResponse([v4Pool], { nextCursor: responseCursor }),
   combinedCaptured
 );
 assert.equal(combinedResult.status, "verified_shadow");
+if (combinedResult.status !== "verified_shadow") throw new Error("unreachable");
+assert.equal(combinedResult.nextCursor, responseCursor);
 const combinedSearch = combinedCaptured[0]!.url.searchParams;
 assert.equal(combinedSearch.get("token"), stonkBrokerAddress);
 assert.equal(combinedSearch.get("poolKey"), v4Pool.poolKey);
 assert.equal(combinedSearch.get("source"), v4Pool.sourceId);
 assert.equal(combinedSearch.get("limit"), "25");
+assert.equal(combinedSearch.get("cursor"), requestCursor);
 
 let rejectedCallerFetches = 0;
 const rejectedCallerDependencies = {
@@ -235,7 +261,12 @@ const rejectedCallerDependencies = {
 };
 const invalidQueries: Array<{
   query: VNextCanonicalMarketInventoryQuery;
-  reason: "invalid_token" | "invalid_pool_key" | "invalid_source" | "invalid_limit";
+  reason:
+    | "invalid_token"
+    | "invalid_pool_key"
+    | "invalid_source"
+    | "invalid_limit"
+    | "invalid_cursor";
 }> = [
   { query: { token: "malformed" }, reason: "invalid_token" },
   { query: { token: `0x${"0".repeat(40)}` }, reason: "invalid_token" },
@@ -245,7 +276,9 @@ const invalidQueries: Array<{
   { query: { source: "UNSAFE SOURCE" }, reason: "invalid_source" },
   { query: { limit: 0 }, reason: "invalid_limit" },
   { query: { limit: 501 }, reason: "invalid_limit" },
-  { query: { limit: 1.5 }, reason: "invalid_limit" }
+  { query: { limit: 1.5 }, reason: "invalid_limit" },
+  { query: { cursor: "not+base64url" }, reason: "invalid_cursor" },
+  { query: { cursor: "a".repeat(1_025) }, reason: "invalid_cursor" }
 ];
 for (const vector of invalidQueries) {
   assert.deepEqual(
@@ -362,6 +395,52 @@ async function expectSchemaRejection(body: unknown) {
 await expectSchemaRejection({ ...inventoryResponse([]), chainId: 1 });
 await expectSchemaRejection({ ...inventoryResponse([]), authoritative: true });
 await expectSchemaRejection({ ...inventoryResponse([]), mode: "production" });
+await expectSchemaRejection({
+  ...inventoryResponse([]),
+  nextCursor: "not+base64url"
+});
+await expectSchemaRejection({
+  ...inventoryResponse([]),
+  coverage: { ...completeCoverage, unexpected: true }
+});
+await expectSchemaRejection({
+  ...inventoryResponse([]),
+  coverage: { ...completeCoverage, complete: true, finalizedHead: null }
+});
+await expectSchemaRejection({
+  ...inventoryResponse([]),
+  coverage: {
+    ...completeCoverage,
+    sources: [
+      completeCoverage.sources[0],
+      completeCoverage.sources[0]
+    ]
+  }
+});
+await expectSchemaRejection({
+  ...inventoryResponse([]),
+  coverage: {
+    complete: true,
+    finalizedHead: "200",
+    sources: [{
+      sourceId: "uniswap-v4",
+      status: "backfilling",
+      indexedThrough: "100"
+    }]
+  }
+});
+await expectSchemaRejection({
+  ...inventoryResponse([]),
+  coverage: {
+    complete: true,
+    finalizedHead: "200",
+    sources: [{
+      sourceId: "uniswap-v4",
+      status: "shadow-ready",
+      indexedThrough: "199"
+    }]
+  }
+});
 await expectSchemaRejection({
   ...inventoryResponse([]),
   sourceManifestHash: `0x${"0".repeat(64)}`
