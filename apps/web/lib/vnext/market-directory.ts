@@ -6,7 +6,10 @@ import {
   type UniversalMarketResolution
 } from "../external-market";
 import { canonicalExternalAssetId } from "../external-market-identity";
-import type { ExternalMarketSignal } from "../external-market-ranking";
+import type {
+  ExternalMarketRiskFlag,
+  ExternalMarketSignal
+} from "../external-market-ranking";
 import type { AssetMetadata } from "./execution-domain";
 import { evmAsset } from "./execution-domain";
 import {
@@ -46,8 +49,22 @@ export type VNextDirectoryMarket = Omit<Pick<ExternalMarket,
   priceUsd: VNextDirectoryMetric;
   liquidityUsd: VNextDirectoryMetric;
   marketCapUsd: VNextDirectoryMetric;
+  volume5m: VNextDirectoryMetric;
+  volume1h: VNextDirectoryMetric;
   volume24h: VNextDirectoryMetric;
+  priceChange5m: VNextDirectoryMetric;
+  priceChange1h: VNextDirectoryMetric;
   priceChange24h: VNextDirectoryMetric;
+  buys5m: VNextDirectoryMetric;
+  sells5m: VNextDirectoryMetric;
+  buys1h: VNextDirectoryMetric;
+  sells1h: VNextDirectoryMetric;
+  buys24h: VNextDirectoryMetric;
+  sells24h: VNextDirectoryMetric;
+  pairCreatedAt: VNextDirectoryMetric;
+  momentumScore: VNextDirectoryMetric;
+  buyPressureBps: VNextDirectoryMetric;
+  riskFlags: ExternalMarketRiskFlag[] | null;
   signal: ExternalMarketSignal | null;
   pairAddress?: string;
   dexId?: string;
@@ -139,9 +156,23 @@ export function directoryMarketsFromCanonicalPools(
         priceUsd: null,
         liquidityUsd: null,
         marketCapUsd: null,
+        volume5m: null,
+        volume1h: null,
         volume24h: null,
+        priceChange5m: null,
+        priceChange1h: null,
         priceChange24h: null,
+        buys5m: null,
+        sells5m: null,
+        buys1h: null,
+        sells1h: null,
+        buys24h: null,
+        sells24h: null,
+        pairCreatedAt: null,
         ageMinutes: null,
+        momentumScore: null,
+        buyPressureBps: null,
+        riskFlags: null,
         signal: null,
         canonicalMarkets: [...evidence.values()].sort((left, right) =>
           canonicalMarketIdentity(left).localeCompare(canonicalMarketIdentity(right)))
@@ -174,9 +205,23 @@ export function parseVNextCanonicalDirectoryResponse(value: unknown): VNextCanon
       market.priceUsd !== null ||
       market.liquidityUsd !== null ||
       market.marketCapUsd !== null ||
+      market.volume5m !== null ||
+      market.volume1h !== null ||
       market.volume24h !== null ||
+      market.priceChange5m !== null ||
+      market.priceChange1h !== null ||
       market.priceChange24h !== null ||
+      market.buys5m !== null ||
+      market.sells5m !== null ||
+      market.buys1h !== null ||
+      market.sells1h !== null ||
+      market.buys24h !== null ||
+      market.sells24h !== null ||
+      market.pairCreatedAt !== null ||
       market.ageMinutes !== null ||
+      market.momentumScore !== null ||
+      market.buyPressureBps !== null ||
+      market.riskFlags !== null ||
       market.signal !== null
     ) return [];
     if (!Array.isArray(market.canonicalMarkets) || market.canonicalMarkets.length < 1 || market.canonicalMarkets.length > VNEXT_CANONICAL_DIRECTORY_PAGE_LIMIT) return [];
@@ -201,9 +246,23 @@ export function parseVNextCanonicalDirectoryResponse(value: unknown): VNextCanon
       priceUsd: null,
       liquidityUsd: null,
       marketCapUsd: null,
+      volume5m: null,
+      volume1h: null,
       volume24h: null,
+      priceChange5m: null,
+      priceChange1h: null,
       priceChange24h: null,
+      buys5m: null,
+      sells5m: null,
+      buys1h: null,
+      sells1h: null,
+      buys24h: null,
+      sells24h: null,
+      pairCreatedAt: null,
       ageMinutes: null,
+      momentumScore: null,
+      buyPressureBps: null,
+      riskFlags: null,
       signal: null,
       canonicalMarkets: canonicalMarkets as VNextUniversalMarketSearchPool[]
     }];
@@ -228,6 +287,27 @@ function finite(value: unknown) {
 function nonNegative(value: unknown) {
   const normalized = finite(value);
   return normalized !== null && normalized >= 0 ? normalized : null;
+}
+
+function nonNegativeInteger(value: unknown) {
+  const normalized = nonNegative(value);
+  return normalized !== null && Number.isSafeInteger(normalized) ? normalized : null;
+}
+
+const RISK_FLAGS = new Set<ExternalMarketRiskFlag>([
+  "thin-liquidity",
+  "extreme-price-spike",
+  "high-volume-low-trades",
+  "very-new-low-activity",
+  "one-sided-activity"
+]);
+
+function riskFlags(value: unknown): ExternalMarketRiskFlag[] | null {
+  if (!Array.isArray(value)) return null;
+  const flags = value.filter((flag): flag is ExternalMarketRiskFlag => (
+    typeof flag === "string" && RISK_FLAGS.has(flag as ExternalMarketRiskFlag)
+  ));
+  return flags.length === value.length ? flags : null;
 }
 
 function text(value: unknown, maximumLength: number) {
@@ -264,9 +344,23 @@ export function normalizeDirectoryMarkets(payload: Pick<ExternalMarketResponse, 
       priceUsd: nonNegative(market.priceUsd),
       liquidityUsd: nonNegative(market.liquidityUsd),
       marketCapUsd: nonNegative(market.marketCapUsd),
+      volume5m: nonNegative(directoryMarket.volume5m),
+      volume1h: nonNegative(directoryMarket.volume1h),
       volume24h: nonNegative(market.volume24h),
+      priceChange5m: finite(directoryMarket.priceChange5m),
+      priceChange1h: finite(directoryMarket.priceChange1h),
       priceChange24h: finite(market.priceChange24h),
+      buys5m: nonNegativeInteger(directoryMarket.buys5m),
+      sells5m: nonNegativeInteger(directoryMarket.sells5m),
+      buys1h: nonNegativeInteger(directoryMarket.buys1h),
+      sells1h: nonNegativeInteger(directoryMarket.sells1h),
+      buys24h: nonNegativeInteger(directoryMarket.buys24h),
+      sells24h: nonNegativeInteger(directoryMarket.sells24h),
+      pairCreatedAt: nonNegative(directoryMarket.pairCreatedAt),
       ageMinutes: market.ageMinutes === null ? null : nonNegative(market.ageMinutes),
+      momentumScore: nonNegative(directoryMarket.momentumScore),
+      buyPressureBps: nonNegative(directoryMarket.buyPressureBps),
+      riskFlags: riskFlags(directoryMarket.riskFlags),
       signal: market.signal === "moving" || market.signal === "early" || market.signal === "active"
         ? market.signal
         : null,
@@ -317,6 +411,43 @@ function compareVolume(left: VNextDirectoryMarket, right: VNextDirectoryMarket) 
   return (right.volume24h ?? -1) - (left.volume24h ?? -1) || (right.liquidityUsd ?? -1) - (left.liquidityUsd ?? -1);
 }
 
+function oneHourTradeCount(market: VNextDirectoryMarket) {
+  return market.buys1h !== null && market.sells1h !== null
+    ? market.buys1h + market.sells1h
+    : null;
+}
+
+function deterministicMarketIdentity(market: VNextDirectoryMarket) {
+  const canonicalPool = market.canonicalMarkets
+    ?.map((evidence) => `${evidence.sourceId}:${evidence.poolKey}`)
+    .sort()[0];
+  return `${market.address.toLowerCase()}:${market.pairAddress?.toLowerCase() ?? canonicalPool ?? "~"}`;
+}
+
+export function hasVNextObservedRecentActivity(market: VNextDirectoryMarket) {
+  const trades1h = oneHourTradeCount(market);
+  return (market.volume1h !== null && market.volume1h > 0)
+    || (trades1h !== null && trades1h > 0);
+}
+
+function compareActiveActivity(left: VNextDirectoryMarket, right: VNextDirectoryMarket) {
+  return (oneHourTradeCount(right) ?? -1) - (oneHourTradeCount(left) ?? -1)
+    || (right.volume1h ?? -1) - (left.volume1h ?? -1)
+    || (right.volume5m ?? -1) - (left.volume5m ?? -1)
+    || (right.momentumScore ?? -1) - (left.momentumScore ?? -1)
+    || (right.liquidityUsd ?? -1) - (left.liquidityUsd ?? -1)
+    || deterministicMarketIdentity(left).localeCompare(deterministicMarketIdentity(right));
+}
+
+function compareTrendingMomentum(left: VNextDirectoryMarket, right: VNextDirectoryMarket) {
+  return (right.momentumScore ?? -1) - (left.momentumScore ?? -1)
+    || (right.volume5m ?? -1) - (left.volume5m ?? -1)
+    || (right.volume1h ?? -1) - (left.volume1h ?? -1)
+    || (oneHourTradeCount(right) ?? -1) - (oneHourTradeCount(left) ?? -1)
+    || (right.liquidityUsd ?? -1) - (left.liquidityUsd ?? -1)
+    || deterministicMarketIdentity(left).localeCompare(deterministicMarketIdentity(right));
+}
+
 function compareLiquidity(left: VNextDirectoryMarket, right: VNextDirectoryMarket) {
   return (right.liquidityUsd ?? -1) - (left.liquidityUsd ?? -1) || (right.volume24h ?? -1) - (left.volume24h ?? -1);
 }
@@ -339,7 +470,7 @@ export function selectVNextMarketDirectoryView(
   heldAddresses: ReadonlySet<string> = new Set()
 ) {
   if (view === "trending") {
-    return markets.filter((market) => market.signal === "moving" || market.signal === "early").sort(compareVolume);
+    return markets.filter((market) => market.signal === "moving" || market.signal === "early").sort(compareTrendingMomentum);
   }
   if (view === "new") {
     return markets
@@ -347,7 +478,7 @@ export function selectVNextMarketDirectoryView(
       .sort((left, right) => (left.ageMinutes ?? Number.MAX_SAFE_INTEGER) - (right.ageMinutes ?? Number.MAX_SAFE_INTEGER) || compareVolume(left, right));
   }
   if (view === "active") {
-    return markets.filter((market) => market.signal === "active" && (market.volume24h ?? 0) > 0).sort(compareVolume);
+    return markets.filter(hasVNextObservedRecentActivity).sort(compareActiveActivity);
   }
   if (view === "rwa") {
     return markets.filter((market) => Boolean(market.rwaRelationship)).sort(compareRwaClassification);
@@ -517,9 +648,23 @@ export function directoryMarketFromUniversalSearchResult(
     priceUsd: null,
     liquidityUsd: null,
     marketCapUsd: null,
+    volume5m: null,
+    volume1h: null,
     volume24h: null,
+    priceChange5m: null,
+    priceChange1h: null,
     priceChange24h: null,
+    buys5m: null,
+    sells5m: null,
+    buys1h: null,
+    sells1h: null,
+    buys24h: null,
+    sells24h: null,
+    pairCreatedAt: null,
     ageMinutes: null,
+    momentumScore: null,
+    buyPressureBps: null,
+    riskFlags: null,
     signal: null,
     canonicalMarkets: result.markets,
     verifiedIdentity: {
@@ -558,9 +703,23 @@ export function mergeVNextDirectoryAndSearchMarkets(
       priceUsd: existing.priceUsd ?? market.priceUsd,
       liquidityUsd: existing.liquidityUsd ?? market.liquidityUsd,
       marketCapUsd: existing.marketCapUsd ?? market.marketCapUsd,
+      volume5m: existing.volume5m ?? market.volume5m,
+      volume1h: existing.volume1h ?? market.volume1h,
       volume24h: existing.volume24h ?? market.volume24h,
+      priceChange5m: existing.priceChange5m ?? market.priceChange5m,
+      priceChange1h: existing.priceChange1h ?? market.priceChange1h,
       priceChange24h: existing.priceChange24h ?? market.priceChange24h,
+      buys5m: existing.buys5m ?? market.buys5m,
+      sells5m: existing.sells5m ?? market.sells5m,
+      buys1h: existing.buys1h ?? market.buys1h,
+      sells1h: existing.sells1h ?? market.sells1h,
+      buys24h: existing.buys24h ?? market.buys24h,
+      sells24h: existing.sells24h ?? market.sells24h,
+      pairCreatedAt: existing.pairCreatedAt ?? market.pairCreatedAt,
       ageMinutes: existing.ageMinutes ?? market.ageMinutes,
+      momentumScore: existing.momentumScore ?? market.momentumScore,
+      buyPressureBps: existing.buyPressureBps ?? market.buyPressureBps,
+      riskFlags: existing.riskFlags ?? market.riskFlags,
       signal: existing.signal ?? market.signal,
       primaryMarket: existing.primaryMarket ?? market.primaryMarket,
       verifiedMarkets: verifiedMarkets.size ? [...verifiedMarkets.values()] : undefined,
@@ -609,9 +768,23 @@ export function directoryMarketFromVerifiedIdentity(
     priceUsd: null,
     liquidityUsd: null,
     marketCapUsd: null,
+    volume5m: null,
+    volume1h: null,
     volume24h: null,
+    priceChange5m: null,
+    priceChange1h: null,
     priceChange24h: null,
+    buys5m: null,
+    sells5m: null,
+    buys1h: null,
+    sells1h: null,
+    buys24h: null,
+    sells24h: null,
+    pairCreatedAt: null,
     ageMinutes: null,
+    momentumScore: null,
+    buyPressureBps: null,
+    riskFlags: null,
     signal: null,
     resolution
   };

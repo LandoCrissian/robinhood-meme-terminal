@@ -27,6 +27,7 @@ import {
   deriveVNextMarketState,
   directoryMarketFromExactLookup,
   directoryMarketFromVerifiedIdentity,
+  hasVNextObservedRecentActivity,
   isVNextDirectoryMarketSelectable,
   mergeVNextCanonicalBrowseMarkets,
   mergeVNextDirectoryAndSearchMarkets,
@@ -93,7 +94,10 @@ const categorized = normalizeDirectoryMarkets({
       priceUsd: 20,
       liquidityUsd: 40_000,
       marketCapUsd: 2_000_000,
+      volume1h: 400,
       volume24h: 4_000,
+      buys1h: 5,
+      sells1h: 4,
       priceChange24h: 0,
       ageMinutes: 2_000,
       signal: "active",
@@ -116,7 +120,10 @@ const categorized = normalizeDirectoryMarkets({
       priceUsd: 1,
       liquidityUsd: 50_000,
       marketCapUsd: 100_000,
+      volume1h: 500,
       volume24h: 5_000,
+      buys1h: 6,
+      sells1h: 5,
       priceChange24h: 0,
       ageMinutes: 2_000,
       signal: "active",
@@ -149,6 +156,137 @@ assert.deepEqual(rwaMarkets.map((market) => market.rwaRelationship), ["canonical
 assert.equal(vNextRwaClassificationLabel(rwaMarkets[0].rwaRelationship), "Stock Token");
 assert.equal(vNextRwaClassificationLabel(rwaMarkets[1].rwaRelationship), "RWA Pair");
 assert.equal(vNextRwaClassificationLabel(undefined), null);
+
+const activityMarkets = normalizeDirectoryMarkets({ markets: [
+  {
+    address: "0x6000000000000000000000000000000000000001",
+    name: "Moving Activity",
+    symbol: "MOVE",
+    priceUsd: 1,
+    liquidityUsd: 80_000,
+    marketCapUsd: 1_000_000,
+    volume5m: 250,
+    volume1h: 5_000,
+    volume24h: 50_000,
+    priceChange5m: 3,
+    priceChange1h: 8,
+    priceChange24h: 12,
+    buys5m: 8,
+    sells5m: 4,
+    buys1h: 18,
+    sells1h: 12,
+    buys24h: 100,
+    sells24h: 90,
+    pairCreatedAt: 1_700_000_000_000,
+    ageMinutes: 120,
+    momentumScore: 70,
+    buyPressureBps: 6_000,
+    riskFlags: ["one-sided-activity"],
+    signal: "moving"
+  },
+  {
+    address: "0x6000000000000000000000000000000000000002",
+    name: "Early Activity",
+    symbol: "EARLY",
+    priceUsd: 1,
+    liquidityUsd: 60_000,
+    marketCapUsd: 800_000,
+    volume5m: 200,
+    volume1h: 4_000,
+    volume24h: 40_000,
+    priceChange5m: 2,
+    priceChange1h: 6,
+    priceChange24h: 9,
+    buys5m: 5,
+    sells5m: 3,
+    buys1h: 12,
+    sells1h: 8,
+    buys24h: 80,
+    sells24h: 70,
+    pairCreatedAt: 1_700_000_100_000,
+    ageMinutes: 90,
+    momentumScore: 80,
+    buyPressureBps: 6_000,
+    riskFlags: [],
+    signal: "early"
+  },
+  {
+    address: "0x6000000000000000000000000000000000000003",
+    name: "Ordinary Activity",
+    symbol: "ACTIVE",
+    priceUsd: 1,
+    liquidityUsd: 50_000,
+    marketCapUsd: 700_000,
+    volume5m: 100,
+    volume1h: 3_000,
+    volume24h: 30_000,
+    priceChange5m: 0,
+    priceChange1h: 1,
+    priceChange24h: 2,
+    buys5m: 3,
+    sells5m: 2,
+    buys1h: 6,
+    sells1h: 4,
+    buys24h: 60,
+    sells24h: 50,
+    pairCreatedAt: 1_700_000_200_000,
+    ageMinutes: 60,
+    momentumScore: 20,
+    buyPressureBps: 6_000,
+    riskFlags: [],
+    signal: "active"
+  },
+  {
+    address: "0x6000000000000000000000000000000000000004",
+    name: "No Recent Activity",
+    symbol: "QUIET",
+    priceUsd: 1,
+    liquidityUsd: 100_000,
+    marketCapUsd: 2_000_000,
+    volume5m: 0,
+    volume1h: 0,
+    volume24h: 100_000,
+    priceChange5m: 0,
+    priceChange1h: 0,
+    priceChange24h: 0,
+    buys5m: 0,
+    sells5m: 0,
+    buys1h: 0,
+    sells1h: 0,
+    buys24h: 200,
+    sells24h: 200,
+    pairCreatedAt: 1_700_000_300_000,
+    ageMinutes: 30,
+    momentumScore: 0,
+    buyPressureBps: 0,
+    riskFlags: [],
+    signal: "active"
+  }
+] } as unknown as ExternalMarketResponse);
+const activeActivity = selectVNextMarketDirectoryView(activityMarkets, "active");
+assert.deepEqual(activeActivity.map((market) => market.symbol), ["MOVE", "EARLY", "ACTIVE"]);
+assert.equal(hasVNextObservedRecentActivity(activityMarkets[0]), true);
+assert.equal(hasVNextObservedRecentActivity(activityMarkets[3]), false);
+assert.deepEqual(
+  selectVNextMarketDirectoryView(activityMarkets, "active").map((market) => market.address),
+  activeActivity.map((market) => market.address),
+  "Active ordering must be deterministic"
+);
+const trendingMomentum = selectVNextMarketDirectoryView(activityMarkets, "trending");
+assert.deepEqual(trendingMomentum.map((market) => market.symbol), ["EARLY", "MOVE"]);
+assert.deepEqual(
+  selectVNextMarketDirectoryView(activityMarkets, "trending").map((market) => market.address),
+  trendingMomentum.map((market) => market.address),
+  "Trending ordering must be deterministic"
+);
+assert.equal(trendingMomentum.some((market) => market.symbol === "ACTIVE"), false);
+assert.equal(activityMarkets[0].volume5m, 250);
+assert.equal(activityMarkets[0].volume1h, 5_000);
+assert.equal(activityMarkets[0].buys1h, 18);
+assert.equal(activityMarkets[0].sells1h, 12);
+assert.equal(activityMarkets[0].momentumScore, 70);
+assert.equal(activityMarkets[0].buyPressureBps, 6_000);
+assert.deepEqual(activityMarkets[0].riskFlags, ["one-sided-activity"]);
 
 const pagedMarkets = Array.from({ length: 61 }, (_, index) => ({
   ...categorized[0],
@@ -215,8 +353,13 @@ const pair = (overrides: Record<string, unknown> = {}) => ({
   priceUsd: "0.014",
   liquidity: { usd: 20_000 },
   marketCap: 1_000_000,
-  volume: { h24: 8_000 },
-  priceChange: { h24: 2 },
+  volume: { m5: 250, h1: 2_000, h24: 8_000 },
+  priceChange: { m5: 1, h1: 2, h24: 2 },
+  txns: {
+    m5: { buys: 4, sells: 2 },
+    h1: { buys: 12, sells: 8 },
+    h24: { buys: 60, sells: 50 }
+  },
   ...overrides
 });
 const evidenceOptions = {
@@ -269,6 +412,13 @@ assert.deepEqual(deriveVNextMarketState(observedWithoutMetrics), {
 });
 assert.equal(observedWithoutMetrics.priceUsd, null);
 assert.equal(observedWithoutMetrics.liquidityUsd, null);
+assert.equal(observedWithoutMetrics.volume5m, null);
+assert.equal(observedWithoutMetrics.volume1h, null);
+assert.equal(observedWithoutMetrics.buys1h, null);
+assert.equal(observedWithoutMetrics.sells1h, null);
+assert.equal(observedWithoutMetrics.momentumScore, null);
+assert.equal(observedWithoutMetrics.buyPressureBps, null);
+assert.equal(observedWithoutMetrics.riskFlags, null);
 assert.equal(observedWithoutMetrics.signal, null);
 assert.equal(isVNextDirectoryMarketSelectable(observedWithoutMetrics), true);
 
@@ -525,6 +675,12 @@ async function verifyCanonicalBrowsePages() {
   })) as typeof fetch);
   assert.equal(legacyFixture.status, 200);
   assert.ok((legacyFixture.body.markets?.length ?? 0) > 0, "The factored legacy browse must remain usable while the gate is off");
+  const legacyActivity = legacyFixture.body.markets?.[0];
+  assert.equal(legacyActivity?.volume5m, 250);
+  assert.equal(legacyActivity?.volume1h, 2_000);
+  assert.equal(legacyActivity?.buys1h, 12);
+  assert.equal(legacyActivity?.sells1h, 8);
+  assert.equal(typeof legacyActivity?.momentumScore, "number");
 
   const calls: Array<string | undefined> = [];
   const readInventory = async (query: { cursor?: string }) => {
@@ -563,6 +719,9 @@ async function verifyCanonicalBrowsePages() {
   assert.equal(stonk?.canonicalMarkets?.[0].sourceId, "uniswap-v4");
   assert.equal(stonk?.canonicalMarkets?.[0].protocol, "uniswap");
   assert.equal(stonk?.canonicalMarkets?.[0].version, 4);
+  assert.equal(selectVNextMarketDirectoryView([stonk!], "all").length, 1);
+  assert.equal(selectVNextMarketDirectoryView([stonk!], "active").length, 0);
+  assert.equal(selectVNextMarketDirectoryView([stonk!], "trending").length, 0);
 
   const providerOnly = { ...categorized[0], address: getAddress("0x9999999999999999999999999999999999999999") };
   const omitted = mergeVNextCanonicalBrowseMarkets(combined, []);

@@ -108,6 +108,11 @@ assert.equal(v4Directory.canonicalMarkets?.[0].poolAddress, null);
 assert.equal(v4Directory.canonicalMarkets?.[0].hooks, "0x0000000000000000000000000000000000000000");
 assert.equal(v4Directory.priceUsd, null);
 assert.equal(v4Directory.liquidityUsd, null);
+assert.equal(v4Directory.volume5m, null);
+assert.equal(v4Directory.volume1h, null);
+assert.equal(v4Directory.buys1h, null);
+assert.equal(v4Directory.sells1h, null);
+assert.equal(v4Directory.momentumScore, null);
 assert.equal(v4Directory.volume24h, null);
 assert.equal(v4Directory.marketCapUsd, null);
 assert.equal(v4Directory.priceChange24h, null);
@@ -130,15 +135,32 @@ const richDirectory: VNextDirectoryMarket = {
   priceUsd: 1.25,
   liquidityUsd: 20_000,
   marketCapUsd: 1_000_000,
+  volume5m: 250,
+  volume1h: 2_000,
   volume24h: 5_000,
+  priceChange5m: 1,
+  priceChange1h: 2,
   priceChange24h: 2,
+  buys5m: 4,
+  sells5m: 2,
+  buys1h: 12,
+  sells1h: 8,
+  buys24h: 60,
+  sells24h: 50,
+  pairCreatedAt: 1_700_000_000_000,
   ageMinutes: 60,
+  momentumScore: 70,
+  buyPressureBps: 6_000,
+  riskFlags: [],
   signal: "moving"
 };
 const merged = mergeVNextDirectoryAndSearchMarkets([richDirectory], [v4Directory]);
 assert.equal(merged.length, 1);
 assert.equal(merged[0].priceUsd, 1.25);
 assert.equal(merged[0].liquidityUsd, 20_000);
+assert.equal(merged[0].volume1h, 2_000);
+assert.equal(merged[0].buys1h, 12);
+assert.equal(merged[0].momentumScore, 70);
 assert.equal(merged[0].canonicalMarkets?.[0].poolKey, V4_POOL);
 assert.equal(deriveVNextMarketState(merged[0]).market, "canonical");
 assert.equal(deriveVNextMarketState(merged[0]).metrics, "complete");
