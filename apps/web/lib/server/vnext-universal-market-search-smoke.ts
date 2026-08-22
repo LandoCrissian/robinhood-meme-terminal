@@ -21,6 +21,9 @@ const unrelatedAddress = "0x3333333333333333333333333333333333333333";
 const v2PoolAddress = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 const v3PoolAddress = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
 const v4PoolId = `0x${"c".repeat(64)}`;
+const nativeV4PoolId = `0x${"d".repeat(64)}`;
+const nativeV4TokenAddress = "0x7777777777777777777777777777777777777777";
+const zeroAddress = `0x${"0".repeat(40)}`;
 const manifestHash = `0x${"1".repeat(64)}`;
 const blockHash = `0x${"2".repeat(64)}`;
 const transactionHash = `0x${"3".repeat(64)}`;
@@ -98,6 +101,18 @@ const v4Market = pool({
   tickSpacing: 60,
   hooks: "0x0000000000000000000000000000000000000000"
 });
+const nativeV4Market = pool({
+  sourceId: "uniswap-v4",
+  protocol: "uniswap",
+  version: 4,
+  poolKey: nativeV4PoolId,
+  poolAddress: null,
+  token0: zeroAddress,
+  token1: nativeV4TokenAddress,
+  fee: 3_000,
+  tickSpacing: 60,
+  hooks: zeroAddress
+});
 const sameSymbolMarketA = pool({
   sourceId: "uniswap-v2",
   protocol: "uniswap",
@@ -122,6 +137,12 @@ const identities = new Map<string, { address: string; name: string; symbol: stri
   [sameSymbolAddressA, { address: sameSymbolAddressA, name: "Same Asset", symbol: "SAME", decimals: 18 }],
   [sameSymbolAddressB, { address: sameSymbolAddressB, name: "Same Asset", symbol: "SAME", decimals: 6 }],
   [unrelatedAddress, { address: unrelatedAddress, name: "Unrelated", symbol: "OTHER", decimals: 18 }],
+  [nativeV4TokenAddress, {
+    address: nativeV4TokenAddress,
+    name: "Native Pair Token",
+    symbol: "NATIVEPAIR",
+    decimals: 18
+  }],
   [ROBINHOOD_WETH_ADDRESS.toLowerCase(), {
     address: ROBINHOOD_WETH_ADDRESS,
     name: "Wrapped Ether",
@@ -140,6 +161,7 @@ const markets = [
   v2Market,
   v3Market,
   v4Market,
+  nativeV4Market,
   sameSymbolMarketA,
   sameSymbolMarketB
 ];
@@ -289,6 +311,44 @@ async function assertExactSearchesNeverUseProvider() {
   assert.equal(v4.results[0]?.markets[0]?.poolAddress, null);
   assert.equal(v4.results[0]?.markets[0]?.poolKey, v4PoolId);
   assert.equal(providerCalls, 0);
+}
+
+async function assertNativeCurrencyV4Searches() {
+  const identityCalls: string[] = [];
+  const nativeDependencies = {
+    readInventory: inventoryReader,
+    readIdentity: async (address: Address) => {
+      identityCalls.push(address.toLowerCase());
+      return identityReader(address);
+    }
+  };
+
+  const exactToken = await searchVNextUniversalMarkets(
+    nativeV4TokenAddress,
+    nativeDependencies
+  );
+  assert.equal(exactToken.status, "found");
+  assert.equal(exactToken.results.length, 1);
+  assert.equal(exactToken.results[0]?.address, nativeV4TokenAddress);
+  assert.equal(exactToken.results[0]?.markets[0]?.token0, zeroAddress);
+  assert.equal(exactToken.results[0]?.markets[0]?.token1, nativeV4TokenAddress);
+  assert.equal(exactToken.results[0]?.markets[0]?.poolKey, nativeV4PoolId);
+  assert.equal(exactToken.results[0]?.markets[0]?.poolAddress, null);
+  assert.deepEqual(identityCalls, [nativeV4TokenAddress]);
+
+  identityCalls.length = 0;
+  const exactPool = await searchVNextUniversalMarkets(
+    nativeV4PoolId,
+    nativeDependencies
+  );
+  assert.equal(exactPool.status, "found");
+  assert.equal(exactPool.results.length, 1);
+  assert.equal(exactPool.results[0]?.address, nativeV4TokenAddress);
+  assert.equal(exactPool.results[0]?.markets[0]?.token0, zeroAddress);
+  assert.equal(exactPool.results[0]?.markets[0]?.poolKey, nativeV4PoolId);
+  assert.equal(exactPool.results[0]?.markets[0]?.poolAddress, null);
+  assert.deepEqual(identityCalls, [nativeV4TokenAddress]);
+  assert.equal(identityCalls.includes(zeroAddress), false);
 }
 
 async function assertInvalidExactIdentitiesFailClosed() {
@@ -522,6 +582,7 @@ async function assertTimeoutIsUnavailable() {
 async function main() {
   await assertStonkBrokerTextSearches();
   await assertExactSearchesNeverUseProvider();
+  await assertNativeCurrencyV4Searches();
   await assertInvalidExactIdentitiesFailClosed();
   await assertSameIdentityContractsRemainDistinct();
   await assertProviderCannotCreateAuthority();

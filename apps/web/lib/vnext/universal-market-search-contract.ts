@@ -124,7 +124,7 @@ export function parseVNextUniversalMarketSearchPool(value: unknown): VNextUniver
     ? candidate.protocol
     : null;
   const version = candidate.version === 2 || candidate.version === 3 || candidate.version === 4 ? candidate.version : null;
-  const token0 = address(candidate.token0);
+  const token0 = canonicalAddress(candidate.token0);
   const token1 = address(candidate.token1);
   const transactionHash = bytes32(candidate.transactionHash);
   const blockHash = bytes32(candidate.blockHash);
@@ -132,6 +132,10 @@ export function parseVNextUniversalMarketSearchPool(value: unknown): VNextUniver
     ? candidate.blockNumber
     : null;
   if (!sourceId || !protocol || !version || !token0 || !token1 || token0 === token1 || !transactionHash || !blockHash || blockNumber === null) return null;
+  if (
+    token0 === ZERO_ADDRESS &&
+    !(sourceId === "uniswap-v4" && protocol === "uniswap" && version === 4)
+  ) return null;
 
   let poolKey: string;
   let poolAddress: string | null;
