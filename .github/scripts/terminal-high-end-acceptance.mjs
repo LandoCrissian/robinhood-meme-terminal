@@ -16,6 +16,7 @@ const exactIdentityToken = address(0x1ffe);
 const stonkBrokerToken = `0x${["e934e36a", "439c9401", "7b64a3fe", "ce66af12", "099abf50"].join("")}`;
 const stonkBrokerPoolId = `0x${"ab".repeat(32)}`;
 const universalSearchQueries = new WeakMap();
+const chainPulseRequests = new WeakMap();
 
 await mkdir(output, { recursive: true });
 
@@ -372,6 +373,32 @@ function stonkBrokerSearchResponse(query) {
 }
 
 async function installRoutes(page) {
+  chainPulseRequests.set(page, 0);
+  await page.route(/\/api\/vnext\/chain-pulse(?:\?.*)?$/, async (route) => {
+    chainPulseRequests.set(page, (chainPulseRequests.get(page) ?? 0) + 1);
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        chainId: 4_663,
+        chain: "Robinhood Chain",
+        source: "DEFILLAMA",
+        authoritative: false,
+        status: "ready",
+        tvlUsd: 583_000_000,
+        dexVolume24hUsd: 644_000_000,
+        dexVolume7dUsd: 3_460_000_000,
+        dexChange1dPct: 33.4,
+        dexChange7dPct: 18.2,
+        fees24hUsd: 1_920_000,
+        fees7dUsd: 9_840_000,
+        revenue24hUsd: 642_000,
+        revenue7dUsd: 3_120_000,
+        protocolRevenue24hUsd: 214_000,
+        protocolRevenue7dUsd: 1_080_000
+      })
+    });
+  });
   await page.route(/\/api\/vnext\/market-directory(?:\?.*)?$/, async (route) => {
     await route.fulfill({
       status: 200,
@@ -593,6 +620,144 @@ function visibleAudit() {
       }).length,
     controlsUnder32
   };
+}
+
+async function inspectMarketsHierarchy(browser, phase) {
+  const mobileContext = await createContext(browser, {
+    viewport: { width: 390, height: 844 },
+    deviceScaleFactor: 1,
+    isMobile: true,
+    hasTouch: true
+  });
+  const mobilePage = await mobileContext.newPage();
+  await mobilePage.emulateMedia({ reducedMotion: "reduce" });
+  await installRoutes(mobilePage);
+  await gotoReady(mobilePage, base, ".rmtMobileTerminal .rmtMobileMarketRow");
+  const measure = () => {
+    const content = document.querySelector(".rmtMobileMarketsView");
+    const tabs = document.querySelector(".rmtMobileMarketsView .rmtMarketViews");
+    const search = document.querySelector(".rmtMobileMarketsView .rmtMarketSearch");
+    const firstRow = document.querySelector(".rmtMobileMarketRow");
+    const pulse = document.querySelector('[aria-label="Robinhood chain pulse"]');
+    const pulseControl = pulse?.querySelector('button[aria-expanded]');
+    if (!content || !tabs || !search || !firstRow || !pulse) return null;
+    const contentTop = content.getBoundingClientRect().top;
+    const relativeTop = (element) => Math.round(element.getBoundingClientRect().top - contentTop);
+    const rowRect = firstRow.getBoundingClientRect();
+    return {
+      viewportHeight: innerHeight,
+      tabY: relativeTop(tabs),
+      searchY: relativeTop(search),
+      firstRowY: relativeTop(firstRow),
+      pulseY: relativeTop(pulse),
+      pulseHeight: Math.round(pulse.getBoundingClientRect().height),
+      firstMarketRowVisibleWithoutScroll: rowRect.top < innerHeight && rowRect.bottom > 0,
+      pulseExpanded: pulseControl?.getAttribute("aria-expanded") ?? null,
+      pulseControlLabel: pulseControl?.getAttribute("aria-label") ?? null,
+      pulseText: pulse.textContent?.replace(/\s+/g, " ").trim() ?? ""
+    };
+  };
+  const collapsed = await mobilePage.evaluate(measure);
+  if (!collapsed) throw new Error(`${phase}: mobile Markets hierarchy could not be measured`);
+  await mobilePage.screenshot({
+    path: `${output}/markets-hierarchy-${phase}-mobile-390x844.png`,
+    fullPage: false,
+    animations: "disabled"
+  });
+
+  let expanded = null;
+  let statePreserved = null;
+  if (phase === "after") {
+    if (collapsed.pulseExpanded !== "false") throw new Error(`mobile Chain Pulse is not collapsed by default ${JSON.stringify(collapsed)}`);
+    if (!(collapsed.tabY < collapsed.searchY && collapsed.searchY < collapsed.firstRowY && collapsed.firstRowY < collapsed.pulseY)) {
+      throw new Error(`mobile Markets hierarchy is not categories -> search -> rows -> Pulse ${JSON.stringify(collapsed)}`);
+    }
+    if (!collapsed.firstMarketRowVisibleWithoutScroll) throw new Error(`mobile first market row is below the first viewport ${JSON.stringify(collapsed)}`);
+    if (collapsed.pulseHeight < 48 || collapsed.pulseHeight > 72) throw new Error(`mobile collapsed Chain Pulse footprint is outside 48-72px ${JSON.stringify(collapsed)}`);
+
+    const search = mobilePage.getByRole("textbox", { name: "Search Robinhood Chain markets" });
+    await mobilePage.getByRole("button", { name: /^Trending\s+/ }).click();
+    await search.fill("RMT");
+    const rowCountBefore = await mobilePage.locator(".rmtMobileMarketRow").count();
+    const requestsBefore = chainPulseRequests.get(mobilePage) ?? 0;
+    const disclosure = mobilePage.getByRole("button", { name: "Expand Robinhood Chain Pulse details" });
+    await disclosure.scrollIntoViewIfNeeded();
+    await mobilePage.screenshot({
+      path: `${output}/markets-hierarchy-after-mobile-collapsed-pulse-390x844.png`,
+      fullPage: false,
+      animations: "disabled"
+    });
+    await disclosure.click();
+    await mobilePage.getByRole("button", { name: "Collapse Robinhood Chain Pulse details" }).waitFor({ state: "visible" });
+    expanded = await mobilePage.evaluate(measure);
+    const metricLabels = await mobilePage.locator('[aria-label="Robinhood chain pulse"] dt').allTextContents();
+    const provenance = await mobilePage.locator('[aria-label="Robinhood chain pulse"] footer').textContent();
+    const rowCountAfter = await mobilePage.locator(".rmtMobileMarketRow").count();
+    const searchValueAfterExpansion = await search.inputValue();
+    await search.fill("");
+    const trendingRestoredAfterClearingSearch = await mobilePage.getByRole("button", { name: /^Trending\s+/ }).getAttribute("aria-pressed");
+    statePreserved = {
+      trendingRestoredAfterClearingSearch,
+      searchValueAfterExpansion,
+      rowCountBefore,
+      rowCountAfter,
+      chainPulseRequestsBefore: requestsBefore,
+      chainPulseRequestsAfter: chainPulseRequests.get(mobilePage) ?? 0
+    };
+    const requiredMetrics = [
+      "TVL",
+      "DEX volume 24h",
+      "DEX volume 7d",
+      "DEX change 24h",
+      "DEX change 7d",
+      "Fees 24h",
+      "Revenue 24h",
+      "Protocol revenue 24h"
+    ];
+    if (JSON.stringify(metricLabels) !== JSON.stringify(requiredMetrics)) throw new Error(`expanded Chain Pulse lost metrics ${JSON.stringify(metricLabels)}`);
+    if (!provenance?.includes("Third-party market context") || !provenance.includes("Non-authoritative")) throw new Error(`expanded Chain Pulse lost provenance ${provenance}`);
+    if (statePreserved.trendingRestoredAfterClearingSearch !== "true" || statePreserved.searchValueAfterExpansion !== "RMT" || rowCountBefore !== rowCountAfter || statePreserved.chainPulseRequestsAfter !== requestsBefore) {
+      throw new Error(`Chain Pulse expansion reset/refetched market state ${JSON.stringify(statePreserved)}`);
+    }
+    await mobilePage.screenshot({
+      path: `${output}/markets-hierarchy-after-mobile-expanded-390x844.png`,
+      fullPage: false,
+      animations: "disabled"
+    });
+  }
+  await mobileContext.close();
+
+  const desktopContext = await createContext(browser, { viewport: { width: 1_440, height: 900 }, deviceScaleFactor: 1 });
+  const desktopPage = await desktopContext.newPage();
+  await desktopPage.emulateMedia({ reducedMotion: "reduce" });
+  await installRoutes(desktopPage);
+  await gotoReady(desktopPage, base, ".rmtDesktopTerminal .rmtMarketTableRow");
+  const desktop = await desktopPage.evaluate(() => {
+    const content = document.querySelector(".rmtDesktopMarketsView");
+    const tabs = document.querySelector(".rmtDesktopMarketsView .rmtMarketViews");
+    const firstRow = document.querySelector(".rmtMarketTableRow");
+    const pulse = document.querySelector('[aria-label="Robinhood chain pulse"]');
+    if (!content || !tabs || !firstRow || !pulse) return null;
+    const contentTop = content.getBoundingClientRect().top;
+    return {
+      tabY: Math.round(tabs.getBoundingClientRect().top - contentTop),
+      firstRowY: Math.round(firstRow.getBoundingClientRect().top - contentTop),
+      pulseY: Math.round(pulse.getBoundingClientRect().top - contentTop),
+      pulseHeight: Math.round(pulse.getBoundingClientRect().height),
+      firstRowVisible: firstRow.getBoundingClientRect().top < innerHeight
+    };
+  });
+  if (!desktop) throw new Error(`${phase}: desktop Markets hierarchy could not be measured`);
+  if (phase === "after" && !(desktop.tabY < desktop.firstRowY && desktop.firstRowY < desktop.pulseY && desktop.firstRowVisible)) {
+    throw new Error(`desktop Markets do not precede Chain Pulse context ${JSON.stringify(desktop)}`);
+  }
+  await desktopPage.screenshot({
+    path: `${output}/markets-hierarchy-${phase}-desktop-1440x900.png`,
+    fullPage: false,
+    animations: "disabled"
+  });
+  await desktopContext.close();
+  return { phase, mobile: { collapsed, expanded, statePreserved }, desktop };
 }
 
 async function inspectDesktop(browser, viewport, label) {
@@ -1138,6 +1303,13 @@ const browser = await chromium.launch({
 try {
   const mobileOnly = process.env.RMT_ACCEPTANCE_ONLY_MOBILE === "true";
   const exploratory = process.env.RMT_ACCEPTANCE_EXPLORATORY === "true";
+  const hierarchyPhase = process.env.RMT_ACCEPTANCE_LAYOUT_PHASE === "before" ? "before" : "after";
+  const marketsHierarchy = await inspectMarketsHierarchy(browser, hierarchyPhase);
+  if (process.env.RMT_ACCEPTANCE_ONLY_MARKETS_HIERARCHY === "true") {
+    await writeFile(`${output}/report.json`, JSON.stringify({ marketsHierarchy }, null, 2));
+    console.log(`Terminal Markets hierarchy acceptance passed: ${JSON.stringify(marketsHierarchy)}`);
+    process.exitCode = 0;
+  } else {
   const discoveryDesktop = mobileOnly ? null : await inspectDiscoveryAcceptance(
     browser,
     { viewport: { width: 1_440, height: 900 }, deviceScaleFactor: 1 },
@@ -1178,9 +1350,10 @@ try {
   }
   await writeFile(
     `${output}/report.json`,
-    JSON.stringify({ productAcceptanceEvidence, discoveryDesktop, discoveryMobile, desktop, laptop, compact, wide, seamDesktop, marketAudit, compatibilityEntries, publicRoutes, touch1023, mobile430, mobile390, mobile375, mobile360, exploratoryTouch }, null, 2)
+    JSON.stringify({ productAcceptanceEvidence, marketsHierarchy, discoveryDesktop, discoveryMobile, desktop, laptop, compact, wide, seamDesktop, marketAudit, compatibilityEntries, publicRoutes, touch1023, mobile430, mobile390, mobile375, mobile360, exploratoryTouch }, null, 2)
   );
   console.log(`Terminal active discovery product acceptance passed: ${JSON.stringify(productAcceptanceEvidence)}`);
+  }
 } finally {
   await browser.close();
 }

@@ -2992,47 +2992,6 @@ body .rmtTerminal button {
   padding: 12px 24px 32px;
 }
 
-.rmtMarketSummary {
-  display: grid;
-  min-height: 58px;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  margin: 0;
-  border-block: 1px solid var(--rmt-border);
-}
-
-.rmtMarketSummary div {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 0 16px;
-  border-right: 1px solid var(--rmt-border);
-}
-
-.rmtMarketSummary div:first-child {
-  padding-left: 0;
-}
-
-.rmtMarketSummary div:last-child {
-  border-right: 0;
-}
-
-.rmtMarketSummary dt {
-  color: var(--rmt-text-muted);
-  font-size: 9px;
-  font-weight: 750;
-  letter-spacing: .1em;
-  text-transform: uppercase;
-}
-
-.rmtMarketSummary dd {
-  margin: 0;
-  color: var(--rmt-text);
-  font-size: 14px;
-  font-weight: 800;
-}
-
 .rmtScannerControls {
   display: flex;
   min-height: 56px;
@@ -3706,30 +3665,6 @@ body .rmtTerminal button {
 .rmtMobileContextHeading > span {
   color: var(--rmt-text-muted);
   font-size: 10px;
-}
-
-.rmtMobileMarketsView .rmtMarketSummary {
-  min-height: 54px;
-}
-
-.rmtMobileMarketsView .rmtMarketSummary div {
-  display: grid;
-  align-content: center;
-  justify-content: start;
-  gap: 4px;
-  padding: 0 8px;
-}
-
-.rmtMobileMarketsView .rmtMarketSummary div:first-child {
-  padding-left: 0;
-}
-
-.rmtMobileMarketsView .rmtMarketSummary dt {
-  font-size: 10px;
-}
-
-.rmtMobileMarketsView .rmtMarketSummary dd {
-  font-size: 12px;
 }
 
 .rmtMobileMarketsView .rmtMarketViews {
