@@ -223,16 +223,6 @@ function MobileMarketList(props: TerminalPresentationProps) {
   </div>;
 }
 
-function MarketSummary({ markets }: { markets: VNextDirectoryMarket[] }) {
-  const volume = markets.reduce((total, market) => total + (market.volume24h !== null && Number.isFinite(market.volume24h) ? Math.max(0, market.volume24h) : 0), 0);
-  const canonicalRwa = markets.filter((market) => market.rwaRelationship === "canonical-stock-token").length;
-  return <dl className="rmtMarketSummary">
-    <div><dt>Loaded markets</dt><dd>{markets.length}</dd></div>
-    <div><dt>Observed 24h volume</dt><dd>{compactUsd(volume)}</dd></div>
-    <div><dt>Verified Stock Tokens</dt><dd>{canonicalRwa}</dd></div>
-  </dl>;
-}
-
 function TradeComposer(props: TerminalPresentationProps) {
   return <TradeIntentComposer
     marketName={props.selected?.name ?? "No market selected"}
@@ -285,10 +275,9 @@ function DesktopHeader(props: TerminalPresentationProps) {
 function DesktopMarkets(props: TerminalPresentationProps) {
   return <section className="rmtDesktopMarketsView" id="rmt-markets" aria-labelledby="rmt-market-directory-heading">
     <header className="rmtMarketsHeading"><div><h1 id="rmt-market-directory-heading">Markets</h1><p>Robinhood Chain market intelligence</p></div><span className={`rmtDirectoryFreshness is${props.directoryStatus}`}><i aria-hidden="true" />{props.directoryStatus === "ready" ? "Directory ready" : props.directoryStatus === "stale" ? "Last verified data" : props.directoryStatus === "loading" ? "Syncing" : "Delayed"}</span></header>
-    <VNextChainPulseCard />
-    <MarketSummary markets={props.markets} />
     <div className="rmtScannerControls"><MarketCategoryNav view={props.directoryView} counts={props.directoryViewCounts} searchActive={props.searchActive} onChange={props.onDirectoryViewChange} /><span>{props.filteredMarkets.length} in view · routes checked on demand</span></div>
     <DesktopMarketTable {...props} />
+    <VNextChainPulseCard />
   </section>;
 }
 
@@ -361,11 +350,10 @@ function MobileHeader(props: TerminalPresentationProps) {
 function MobileMarkets(props: TerminalPresentationProps) {
   return <section className="rmtMobileMarketsView" id="rmt-mobile-markets" aria-labelledby="rmt-mobile-markets-heading">
     <header className="rmtMobileContextHeading"><div><h1 id="rmt-mobile-markets-heading">Markets</h1><p>Robinhood Chain</p></div><span>{props.directoryStatus === "ready" ? "Directory ready" : props.directoryStatus === "stale" ? "Last verified" : props.directoryStatus === "loading" ? "Syncing" : "Delayed"}</span></header>
-    <VNextChainPulseCard />
-    <MarketSummary markets={props.markets} />
     <MarketCategoryNav view={props.directoryView} counts={props.directoryViewCounts} searchActive={props.searchActive} onChange={props.onDirectoryViewChange} />
     <MarketSearch id="rmt-mobile-market-search" query={props.query} setQuery={props.setQuery} inputRef={props.marketSearch} onSubmit={props.onSearchSubmit} searchStatus={props.searchStatus} />
     <MobileMarketList {...props} />
+    <VNextChainPulseCard />
   </section>;
 }
 

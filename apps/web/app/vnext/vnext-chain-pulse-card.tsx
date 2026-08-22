@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import {
   formatTerminalCompactUsd,
   formatTerminalPercent
@@ -104,8 +104,18 @@ function buildMetrics(pulse: ChainPulseCardPayload | undefined): CardMetric[] {
   ];
 }
 
+function buildSummary(pulse: ChainPulseCardPayload | undefined) {
+  return [
+    `24h volume ${formatUsd(pulse?.dexVolume24hUsd ?? null)}`,
+    formatPct(pulse?.dexChange1dPct ?? null),
+    `TVL ${formatUsd(pulse?.tvlUsd ?? null)}`
+  ].join(" · ");
+}
+
 export function VNextChainPulseCard() {
   const [state, setState] = useState<CardState>({ status: "loading", pulse: undefined });
+  const [expanded, setExpanded] = useState(false);
+  const detailsId = useId();
 
   useEffect(() => {
     const controller = new AbortController();
@@ -140,27 +150,47 @@ export function VNextChainPulseCard() {
 
   const status = state.status === "error" ? "unavailable" : state.status;
   const metrics = buildMetrics(state.pulse);
+  const summary = buildSummary(state.pulse);
 
   return (
-    <section className={styles.chainPulseCard} aria-label="Robinhood chain pulse" aria-live="polite">
-      <header className={styles.cardHeader}>
-        <div>
-          <h2 className={styles.cardTitle}>ROBINHOOD CHAIN PULSE</h2>
-          <p className={styles.cardSubLabel}>Market intelligence · DefiLlama</p>
-        </div>
-        <span className={styles.cardStatus}>
-          {status === "loading" ? "CHECKING" : STATUS_LABELS[status]}
+    <section className={styles.chainPulseCard} aria-label="Robinhood chain pulse" aria-live="polite" data-chain-pulse-expanded={expanded}>
+      <button
+        className={styles.disclosure}
+        type="button"
+        aria-expanded={expanded}
+        aria-controls={detailsId}
+        aria-label={`${expanded ? "Collapse" : "Expand"} Robinhood Chain Pulse details`}
+        onClick={() => setExpanded((current) => !current)}
+      >
+        <span className={styles.summaryIdentity}>
+          <strong>Chain Pulse</strong>
+          <span>{summary}</span>
         </span>
-      </header>
-      <dl className={styles.metrics}>
-        {metrics.map((metric) => (
-          <div key={metric.label} className={styles.metric}>
-            <dt>{metric.label}</dt>
-            <dd>{metric.value}</dd>
+        <span className={styles.disclosureMeta}>
+          <small>{status === "loading" ? "CHECKING" : STATUS_LABELS[status]}</small>
+          <span className={styles.chevron} aria-hidden="true">⌄</span>
+        </span>
+      </button>
+      {expanded ? <div className={styles.details} id={detailsId}>
+        <header className={styles.cardHeader}>
+          <div>
+            <h2 className={styles.cardTitle}>ROBINHOOD CHAIN PULSE</h2>
+            <p className={styles.cardSubLabel}>Market intelligence · DefiLlama</p>
           </div>
-        ))}
-      </dl>
-      <footer className={styles.cardFooter}><small>Third-party market context · Non-authoritative</small></footer>
+          <span className={styles.cardStatus}>
+            {status === "loading" ? "CHECKING" : STATUS_LABELS[status]}
+          </span>
+        </header>
+        <dl className={styles.metrics}>
+          {metrics.map((metric) => (
+            <div key={metric.label} className={styles.metric}>
+              <dt>{metric.label}</dt>
+              <dd>{metric.value}</dd>
+            </div>
+          ))}
+        </dl>
+        <footer className={styles.cardFooter}><small>Third-party market context · Non-authoritative</small></footer>
+      </div> : null}
     </section>
   );
 }

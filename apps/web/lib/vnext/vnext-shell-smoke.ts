@@ -9,6 +9,8 @@ const rootPage = readFileSync(new URL("../../app/page.tsx", import.meta.url), "u
 const nextConfig = readFileSync(new URL("../../next.config.mjs", import.meta.url), "utf8");
 const shellController = readFileSync(new URL("../../app/vnext/vnext-terminal-shell.tsx", import.meta.url), "utf8");
 const presentations = readFileSync(new URL("../../app/vnext/terminal-presentations.tsx", import.meta.url), "utf8");
+const chainPulse = readFileSync(new URL("../../app/vnext/vnext-chain-pulse-card.tsx", import.meta.url), "utf8");
+const chainPulseStyles = readFileSync(new URL("../../app/vnext/vnext-chain-pulse-card.module.css", import.meta.url), "utf8");
 const presentationBoundary = readFileSync(new URL("../../app/vnext/use-terminal-presentation.ts", import.meta.url), "utf8");
 const shell = `${shellController}\n${presentations}`;
 const composer = readFileSync(new URL("../../app/vnext/trade-intent-composer.tsx", import.meta.url), "utf8");
@@ -157,6 +159,19 @@ assert.match(presentations, /className="rmtDesktopAssetView"/);
 assert.match(presentations, /className="rmtPortfolioSurface"/);
 assert.match(presentations, /className="rmtMobileMarketsView"/);
 assert.match(presentations, /className="rmtMobileAssetView"/);
+assert.match(presentations, /function DesktopMarkets[\s\S]*rmtScannerControls[\s\S]*<DesktopMarketTable[\s\S]*<VNextChainPulseCard/);
+assert.match(presentations, /function MobileMarkets[\s\S]*<MarketCategoryNav[\s\S]*<MarketSearch[\s\S]*<MobileMarketList[\s\S]*<VNextChainPulseCard/);
+assert.doesNotMatch(presentations, /MarketSummary|rmtMarketSummary/);
+assert.match(chainPulse, /useState\(false\)/);
+assert.match(chainPulse, /aria-expanded=\{expanded\}/);
+assert.match(chainPulse, /aria-controls=\{detailsId\}/);
+assert.match(chainPulse, /Expand"} Robinhood Chain Pulse details/);
+assert.match(chainPulse, /Third-party market context · Non-authoritative/);
+for (const metric of ["TVL", "DEX volume 24h", "DEX volume 7d", "DEX change 24h", "DEX change 7d", "Fees 24h", "Revenue 24h", "Protocol revenue 24h"]) {
+  assert.match(chainPulse, new RegExp(metric));
+}
+assert.match(chainPulseStyles, /\.disclosure:focus-visible/);
+assert.match(chainPulseStyles, /min-height: 60px/);
 assert.match(presentations, /data-terminal-nav="rwa"[\s\S]*onClick=\{props\.onShowRwa\}>RWA<\/button>/);
 assert.doesNotMatch(presentations, /<details className="rmtMobileDiscovery"/);
 assert.doesNotMatch(presentations, /href="\/rwa"/);
