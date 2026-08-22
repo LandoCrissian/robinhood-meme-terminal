@@ -3195,6 +3195,16 @@ body .rmtTerminal button {
   white-space: nowrap;
 }
 
+.rmtSearchContract {
+  overflow-wrap: anywhere;
+  color: var(--rmt-text-muted);
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 8px;
+  font-weight: 500;
+  line-height: 1.25;
+  white-space: normal;
+}
+
 .rmtRwaClassification {
   display: inline-flex;
   width: max-content;
@@ -3275,6 +3285,19 @@ body .rmtTerminal button {
   color: var(--rmt-text);
   background: transparent;
   cursor: pointer;
+}
+
+.rmtSearchStatus {
+  padding: 9px 12px;
+  border-top: 1px solid var(--rmt-border);
+  color: var(--rmt-text-soft);
+  background: #0a0f0b;
+  font-size: 10px;
+  text-align: center;
+}
+
+.rmtSearchStatus.isDelayed {
+  color: var(--rmt-text-muted);
 }
 
 .rmtAssetContextBar {

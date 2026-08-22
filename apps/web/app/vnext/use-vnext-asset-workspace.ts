@@ -36,7 +36,7 @@ function validResolution(payload: WorkspaceResolutionResponse, address: string) 
     : undefined;
 }
 
-export function useVNextAssetWorkspace(address?: string, pairAddress?: string) {
+export function useVNextAssetWorkspace(address?: string, pairAddress?: string, externalMarketLookup = true) {
   const [market, setMarket] = useState<ExternalMarket>();
   const [resolution, setResolution] = useState<UniversalMarketResolution>();
   const [ecosystem, setEcosystem] = useState<VNextEcosystemIntelligence>();
@@ -67,10 +67,12 @@ export function useVNextAssetWorkspace(address?: string, pairAddress?: string) {
     if (pairAddress) workspace.set("pair", pairAddress);
     try {
       const [marketResult, resolutionResult] = await Promise.allSettled([
-        fetch(`/api/markets/external?${lookup}`).then(async (response) => ({
-          ok: response.ok,
-          payload: await response.json() as ExternalMarketResponse
-        })),
+        externalMarketLookup
+          ? fetch(`/api/markets/external?${lookup}`).then(async (response) => ({
+              ok: response.ok,
+              payload: await response.json() as ExternalMarketResponse
+            }))
+          : Promise.resolve({ ok: false, payload: {} as ExternalMarketResponse }),
         fetch(`/api/vnext/asset-workspace?${workspace}`).then(async (response) => ({
           ok: response.ok,
           payload: await response.json() as WorkspaceResolutionResponse
@@ -116,7 +118,7 @@ export function useVNextAssetWorkspace(address?: string, pairAddress?: string) {
       if (id !== requestId.current) return;
       setStatus(sameAsset && hasSnapshot.current ? "stale" : "unavailable");
     }
-  }, [address, pairAddress]);
+  }, [address, externalMarketLookup, pairAddress]);
 
   useVisibilityRefresh(() => refresh(true), VNEXT_CLIENT_REFRESH_POLICY.assetWorkspaceMs, {
     enabled: Boolean(address),
