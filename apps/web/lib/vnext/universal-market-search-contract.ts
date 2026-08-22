@@ -114,7 +114,7 @@ function nullableNumber(value: unknown) {
   return value === null ? null : typeof value === "number" && Number.isSafeInteger(value) && value >= 0 ? value : undefined;
 }
 
-function parsePool(value: unknown): VNextUniversalMarketSearchPool | null {
+export function parseVNextUniversalMarketSearchPool(value: unknown): VNextUniversalMarketSearchPool | null {
   const candidate = record(value);
   if (!candidate) return null;
   const sourceId = typeof candidate.sourceId === "string" && candidate.sourceId.length <= 64 && SOURCE_ID_PATTERN.test(candidate.sourceId)
@@ -219,7 +219,7 @@ export function parseVNextUniversalMarketSearchResult(value: unknown): VNextUniv
     const matchedBy = item?.matchedBy;
     const allowedMatches: VNextUniversalMarketSearchMatchedBy[] = ["token", "pool", "pool-id", "symbol", "name", "normalized-symbol", "normalized-name", "plural-alias"];
     if (!item || !tokenAddress || typeof item.name !== "string" || item.name.length > 160 || typeof item.symbol !== "string" || item.symbol.length > 64 || !Number.isSafeInteger(item.decimals) || Number(item.decimals) < 0 || Number(item.decimals) > 255 || typeof matchedBy !== "string" || !allowedMatches.includes(matchedBy as VNextUniversalMarketSearchMatchedBy) || !Array.isArray(item.markets) || item.markets.length === 0 || item.markets.length > 500) return [];
-    const markets = item.markets.map(parsePool);
+    const markets = item.markets.map(parseVNextUniversalMarketSearchPool);
     if (markets.some((market) => market === null)) return [];
     return [{
       address: tokenAddress,

@@ -1,5 +1,6 @@
 import { getAddress, type Address } from "viem";
 import {
+  publicVNextCanonicalMarketInventoryPool,
   readVNextCanonicalMarketInventory,
   type VNextCanonicalMarketInventoryPool,
   type VNextCanonicalMarketInventoryQuery,
@@ -185,33 +186,7 @@ function settlementPriority(address: string) {
 }
 
 function publicMarket(pool: VNextCanonicalMarketInventoryPool): VNextUniversalMarketSearchPool {
-  return {
-    sourceId: pool.sourceId,
-    protocol: pool.protocol,
-    version: pool.version,
-    poolKey: pool.poolKey,
-    poolAddress: pool.poolAddress,
-    token0: pool.token0,
-    token1: pool.token1,
-    stable: pool.stable,
-    fee: pool.fee,
-    tickSpacing: pool.tickSpacing,
-    hooks: pool.hooks,
-    transactionHash: pool.transactionHash,
-    blockNumber: pool.blockNumber,
-    blockHash: pool.blockHash,
-    stateStatus: pool.stateStatus,
-    liveFee: pool.liveFee,
-    feeDenominator: pool.feeDenominator,
-    gaugeAddress: pool.gaugeAddress,
-    gaugeAlive: pool.gaugeAlive,
-    gaugeWeight: pool.gaugeWeight,
-    gaugeClaimable: pool.gaugeClaimable,
-    feesAddress: pool.feesAddress,
-    bribeAddress: pool.bribeAddress,
-    stateObservedBlock: pool.stateObservedBlock,
-    stateObservedBlockHash: pool.stateObservedBlockHash
-  };
+  return publicVNextCanonicalMarketInventoryPool(pool);
 }
 
 function normalizeVerifiedIdentity(identity: TokenIdentity, expectedAddress: string) {

@@ -27,7 +27,7 @@ export function VNextTerminalShell() {
   const [nativeBalance, setNativeBalance] = useState<bigint>();
   const [portfolioRevealRequest, setPortfolioRevealRequest] = useState(0);
   const [tradeSideRequest, setTradeSideRequest] = useState<TradeSideRequest>();
-  const [directoryView, setDirectoryView] = useState<VNextMarketDirectoryView>("trending");
+  const [directoryView, setDirectoryView] = useState<VNextMarketDirectoryView>("active");
   const [visibleMarketLimit, setVisibleMarketLimit] = useState(VNEXT_MARKET_DIRECTORY_PAGE_SIZE);
   const marketSearch = useRef<HTMLInputElement>(null);
   const executionRecovery = useVNextExecutionRecovery();
@@ -39,6 +39,8 @@ export function VNextTerminalShell() {
     identityStatus,
     selectAddress,
     refresh,
+    loadNextCanonicalPage,
+    hasMoreCanonicalMarkets,
     searchMarkets,
     searchStatus,
     submittedSearchQuery,
@@ -159,11 +161,19 @@ export function VNextTerminalShell() {
     writeLocation("markets");
   }, [changeDirectoryView, writeLocation]);
   const loadMoreMarkets = useCallback(() => {
-    setVisibleMarketLimit((current) => Math.min(
-      filteredMarkets.length,
-      current + VNEXT_MARKET_DIRECTORY_PAGE_SIZE
-    ));
-  }, [filteredMarkets.length]);
+    if (visibleMarketLimit < filteredMarkets.length) {
+      setVisibleMarketLimit((current) => Math.min(
+        filteredMarkets.length,
+        current + VNEXT_MARKET_DIRECTORY_PAGE_SIZE
+      ));
+      return;
+    }
+    if (!query.trim() && hasMoreCanonicalMarkets) {
+      void loadNextCanonicalPage().then((loaded) => {
+        if (loaded) setVisibleMarketLimit((current) => current + VNEXT_MARKET_DIRECTORY_PAGE_SIZE);
+      });
+    }
+  }, [filteredMarkets.length, hasMoreCanonicalMarkets, loadNextCanonicalPage, query, visibleMarketLimit]);
   const requestTradeSide = useCallback((side: "buy" | "sell") => {
     setTradeSideRequest({ side, nonce: Date.now() });
     setContext("asset");
@@ -229,6 +239,7 @@ export function VNextTerminalShell() {
       ? searchMarkets.length
       : 0,
     directoryStatus: status,
+    hasMoreDirectoryMarkets: !query.trim() && hasMoreCanonicalMarkets,
     selected,
     selectedAsset,
     identityStatus,

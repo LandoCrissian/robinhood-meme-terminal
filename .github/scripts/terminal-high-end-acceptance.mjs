@@ -154,7 +154,7 @@ function market(index) {
     ageMinutes: 52 + index * 83,
     momentumScore: 58 + (index * 7) % 39,
     buyPressureBps: 6_400 + index * 75,
-    signal: "moving",
+    signal: "active",
     riskFlags: index % 7 === 0 ? ["thin-liquidity"] : [],
     primaryMarket: marketEvidence,
     verifiedMarkets: [marketEvidence],
@@ -243,12 +243,63 @@ const riskPayload = {
   checkedAt: now
 };
 
+function canonicalDirectoryMarket(market) {
+  const version = market.primaryMarket.protocolVersion;
+  const poolKey = market.primaryMarket.pool.value.toLowerCase();
+  return {
+    address: market.address,
+    assetId: market.assetId,
+    name: market.name,
+    symbol: market.symbol,
+    priceUsd: null,
+    liquidityUsd: null,
+    marketCapUsd: null,
+    volume24h: null,
+    priceChange24h: null,
+    ageMinutes: null,
+    signal: null,
+    canonicalMarkets: [{
+      sourceId: version === 2 ? "sushiswap-v2" : "uniswap-v3",
+      protocol: version === 2 ? "sushiswap" : "uniswap",
+      version,
+      poolKey,
+      poolAddress: poolKey,
+      token0: market.address.toLowerCase(),
+      token1: market.primaryMarket.quoteToken.address.toLowerCase(),
+      stable: null,
+      fee: version === 2 ? null : 3_000,
+      tickSpacing: version === 2 ? null : 60,
+      hooks: null,
+      transactionHash: market.origin.claim.transactionHash,
+      blockNumber: "100",
+      blockHash: market.origin.claim.evidenceHash,
+      stateStatus: null,
+      liveFee: null,
+      feeDenominator: null,
+      gaugeAddress: null,
+      gaugeAlive: null,
+      gaugeWeight: null,
+      gaugeClaimable: null,
+      feesAddress: null,
+      bribeAddress: null,
+      stateObservedBlock: null,
+      stateObservedBlockHash: null
+    }]
+  };
+}
+
 async function installRoutes(page) {
   await page.route(/\/api\/vnext\/market-directory(?:\?.*)?$/, async (route) => {
     await route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: JSON.stringify({ markets, updatedAt: now, stale: false })
+      body: JSON.stringify({
+        canonical: true,
+        coverage: "complete",
+        nextCursor: null,
+        markets: markets.map(canonicalDirectoryMarket),
+        updatedAt: now
+      })
     });
   });
   await page.route(/\/api\/vnext\/asset-identity(?:\?.*)?$/, async (route) => {
@@ -527,8 +578,8 @@ async function inspectDesktop(browser, viewport, label) {
   if (!(await rwaRows.nth(1).textContent())?.includes("RWA Pair")) throw new Error(`${label}: paired market asset was not clearly labeled`);
   await page.screenshot({ path: `${output}/rwa-${label}.png`, fullPage: false, animations: "disabled" });
   await headerMarkets.click();
-  await page.getByRole("button", { name: /^Trending\s+/ }).click();
-  if (await page.getByRole("button", { name: /^Trending\s+/ }).getAttribute("aria-pressed") !== "true") throw new Error(`${label}: Markets navigation did not restore the default market view`);
+  await page.getByRole("button", { name: /^Active\s+/ }).click();
+  if (await page.getByRole("button", { name: /^Active\s+/ }).getAttribute("aria-pressed") !== "true") throw new Error(`${label}: Markets navigation did not restore the default market view`);
   if (await page.locator(".rmtDesktopTerminal .rmtMarketTableRow").count() !== 24) throw new Error(`${label}: changing category did not reset the bounded market page`);
 
   await search.fill("R02");
@@ -750,7 +801,7 @@ async function inspectMobile(browser, viewport, label) {
   if (!(await mobileRwaRows.nth(1).textContent())?.includes("RWA Pair")) throw new Error(`${label}: mobile paired market asset is not clearly labeled`);
 
   await page.screenshot({ path: `${output}/rwa-${label}.png`, fullPage: false, animations: "disabled" });
-  await page.getByRole("button", { name: /^Trending\s+/ }).click();
+  await page.getByRole("button", { name: /^Active\s+/ }).click();
   await page.getByRole("button", { name: /^Load 24 more/ }).click();
   if (await page.locator(".rmtMobileMarketRow").count() !== 48) throw new Error(`${label}: mobile page depth was not established for navigation restoration`);
   const marketsAudit = await page.evaluate(() => {

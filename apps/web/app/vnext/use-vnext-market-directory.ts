@@ -9,8 +9,10 @@ import {
   directoryMarketFromUniversalSearchResult,
   directoryMarketFromVerifiedIdentity,
   isVNextDirectoryMarketSelectable,
+  mergeVNextCanonicalBrowseMarkets,
   mergeVNextDirectoryAndSearchMarkets,
   normalizeDirectoryMarkets,
+  parseVNextCanonicalDirectoryResponse,
   resolutionFromLookup,
   verifiedDirectoryAsset,
   type VNextDirectoryMarket,
@@ -29,6 +31,12 @@ const UNIVERSAL_SEARCH_TIMEOUT_MS = 5_000;
 
 export type DirectoryStatus = "loading" | "ready" | "stale" | "error";
 export type IdentityStatus = "idle" | "checking" | "verified" | "unverified";
+type DirectoryServingMode = "unknown" | "legacy" | "canonical";
+
+function claimsCanonicalDirectory(value: unknown) {
+  return value !== null && typeof value === "object" && !Array.isArray(value)
+    && (value as { canonical?: unknown }).canonical === true;
+}
 
 function directorySnapshot(markets: VNextDirectoryMarket[]) {
   return JSON.stringify(markets.map((market) => [
@@ -86,20 +94,33 @@ export function useVNextMarketDirectory() {
   const [searchMarkets, setSearchMarkets] = useState<VNextDirectoryMarket[]>([]);
   const [searchStatus, setSearchStatus] = useState<VNextUniversalMarketSearchStatus>("idle");
   const [submittedSearchQuery, setSubmittedSearchQuery] = useState("");
+  const [hasMoreCanonicalMarkets, setHasMoreCanonicalMarkets] = useState(false);
   const hasData = useRef(false);
   const marketSnapshot = useRef("");
   const identityCache = useRef(new Map<string, AssetMetadata | null>());
   const exactLookupMarket = useRef<VNextDirectoryMarket | undefined>(undefined);
-  const fastDirectoryMarkets = useRef<VNextDirectoryMarket[]>([]);
-  const ecosystemMarkets = useRef<VNextDirectoryMarket[]>([]);
+  const directoryServingMode = useRef<DirectoryServingMode>("unknown");
+  const legacyDirectoryMarkets = useRef<VNextDirectoryMarket[]>([]);
+  const canonicalDirectoryMarkets = useRef<VNextDirectoryMarket[]>([]);
+  const providerEnrichmentMarkets = useRef<VNextDirectoryMarket[]>([]);
+  const canonicalNextCursor = useRef<string | null>(null);
+  const canonicalRequestSequence = useRef(0);
+  const canonicalPageLoading = useRef(false);
   const searchController = useRef<AbortController | undefined>(undefined);
   const searchSequence = useRef(0);
   const searchMarketsRef = useRef<VNextDirectoryMarket[]>([]);
 
   const publishMarkets = useCallback(() => {
     const byAddress = new Map<string, VNextDirectoryMarket>();
-    for (const market of ecosystemMarkets.current) byAddress.set(market.address.toLowerCase(), market);
-    for (const market of fastDirectoryMarkets.current) byAddress.set(market.address.toLowerCase(), market);
+    if (directoryServingMode.current === "canonical") {
+      for (const market of mergeVNextCanonicalBrowseMarkets(
+        canonicalDirectoryMarkets.current,
+        providerEnrichmentMarkets.current
+      )) byAddress.set(market.address.toLowerCase(), market);
+    } else if (directoryServingMode.current === "legacy") {
+      for (const market of providerEnrichmentMarkets.current) byAddress.set(market.address.toLowerCase(), market);
+      for (const market of legacyDirectoryMarkets.current) byAddress.set(market.address.toLowerCase(), market);
+    }
     if (exactLookupMarket.current) {
       const key = exactLookupMarket.current.address.toLowerCase();
       const existing = byAddress.get(key);
@@ -247,20 +268,87 @@ export function useVNextMarketDirectory() {
   }, []);
 
   const refresh = useCallback(async () => {
+    const requestSequence = canonicalRequestSequence.current + 1;
+    canonicalRequestSequence.current = requestSequence;
     try {
-      const response = await fetch("/api/vnext/market-directory");
-      const payload = await response.json() as VNextDirectoryResponse;
-      const directoryMarkets = normalizeDirectoryMarkets(payload);
-      fastDirectoryMarkets.current = directoryMarkets;
+      const response = await fetch("/api/vnext/market-directory", {
+        method: "GET",
+        headers: { Accept: "application/json" }
+      });
+      const rawPayload: unknown = await response.json();
+      if (claimsCanonicalDirectory(rawPayload)) {
+        directoryServingMode.current = "canonical";
+        legacyDirectoryMarkets.current = [];
+        const payload = parseVNextCanonicalDirectoryResponse(rawPayload);
+        if (!response.ok || !payload || requestSequence !== canonicalRequestSequence.current) {
+          canonicalDirectoryMarkets.current = [];
+          canonicalNextCursor.current = null;
+          setHasMoreCanonicalMarkets(false);
+          publishMarkets();
+          throw new Error("Canonical market directory unavailable.");
+        }
+        const canonicalMarkets = payload.markets ?? [];
+        if (canonicalMarkets.length === 0) throw new Error("Canonical market directory returned no markets.");
+        canonicalDirectoryMarkets.current = canonicalMarkets;
+        canonicalNextCursor.current = payload.nextCursor;
+        setHasMoreCanonicalMarkets(payload.nextCursor !== null);
+      } else {
+        directoryServingMode.current = "legacy";
+        canonicalDirectoryMarkets.current = [];
+        canonicalNextCursor.current = null;
+        setHasMoreCanonicalMarkets(false);
+        const payload = rawPayload as VNextDirectoryResponse;
+        const legacyMarkets = normalizeDirectoryMarkets(payload);
+        if (!response.ok || legacyMarkets.length === 0 || requestSequence !== canonicalRequestSequence.current) {
+          throw new Error(payload.error ?? "Market directory unavailable.");
+        }
+        legacyDirectoryMarkets.current = legacyMarkets;
+      }
       const nextMarkets = publishMarkets();
-      if (!response.ok || nextMarkets.length === 0) throw new Error(payload.error ?? "Market directory unavailable.");
       setSelectedAddress((current) => current && nextMarkets.some((market) => market.address.toLowerCase() === current.toLowerCase())
         ? current
         : nextMarkets.find((market) => market.address === ROBINHOOD_RMT_ADDRESS)?.address ?? nextMarkets[0].address);
       hasData.current = true;
-      setStatus(payload.stale ? "stale" : "ready");
+      setStatus(!claimsCanonicalDirectory(rawPayload) && (rawPayload as VNextDirectoryResponse).stale ? "stale" : "ready");
     } catch {
       setStatus(hasData.current ? "stale" : "error");
+    }
+  }, [publishMarkets]);
+
+  const loadNextCanonicalPage = useCallback(async () => {
+    const cursor = canonicalNextCursor.current;
+    if (directoryServingMode.current !== "canonical" || !cursor || canonicalPageLoading.current) return false;
+    canonicalPageLoading.current = true;
+    const requestSequence = canonicalRequestSequence.current;
+    try {
+      const parameters = new URLSearchParams({ cursor });
+      const response = await fetch(`/api/vnext/market-directory?${parameters}`, {
+        method: "GET",
+        headers: { Accept: "application/json" }
+      });
+      const payload = parseVNextCanonicalDirectoryResponse(await response.json());
+      if (
+        !response.ok ||
+        !payload ||
+        payload.nextCursor === cursor ||
+        requestSequence !== canonicalRequestSequence.current ||
+        cursor !== canonicalNextCursor.current
+      ) return false;
+      canonicalDirectoryMarkets.current = mergeVNextDirectoryAndSearchMarkets(
+        canonicalDirectoryMarkets.current,
+        payload.markets ?? []
+      );
+      canonicalNextCursor.current = payload.nextCursor;
+      setHasMoreCanonicalMarkets(payload.nextCursor !== null);
+      publishMarkets();
+      hasData.current = true;
+      setStatus("ready");
+      return true;
+    } catch {
+      setStatus(hasData.current ? "stale" : "error");
+      return false;
+    } finally {
+      canonicalPageLoading.current = false;
     }
   }, [publishMarkets]);
 
@@ -269,10 +357,10 @@ export function useVNextMarketDirectory() {
       const response = await fetch("/api/markets/external");
       const payload = await response.json() as ExternalMarketResponse;
       if (!response.ok) return;
-      ecosystemMarkets.current = normalizeDirectoryMarkets(payload);
+      providerEnrichmentMarkets.current = normalizeDirectoryMarkets(payload);
       publishMarkets();
     } catch {
-      // The fast directory remains authoritative for availability when broader discovery is delayed.
+      // The selected serving mode retains its last-good browse inventory.
     }
   }, [publishMarkets]);
 
@@ -352,6 +440,8 @@ export function useVNextMarketDirectory() {
     setSelectedAddress,
     selectAddress,
     refresh,
+    loadNextCanonicalPage,
+    hasMoreCanonicalMarkets,
     searchMarkets,
     searchStatus,
     submittedSearchQuery,
