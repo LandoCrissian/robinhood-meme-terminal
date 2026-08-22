@@ -1,12 +1,15 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
+  deriveVNextMarketState,
   directoryMarketFromUniversalSearchResult,
   directoryMarketFromVerifiedIdentity,
   exactVNextLocalDirectoryMatches,
   filterVNextLocalDirectoryMarkets,
+  isVNextDirectoryMarketSelectable,
   mergeVNextDirectoryAndSearchMarkets,
   selectVNextMarketDirectoryView,
+  shouldRequestVNextExternalWorkspaceMarket,
   shouldUseExactAddressDegradedFallback,
   verifiedDirectoryAsset,
   type VNextDirectoryMarket
@@ -110,7 +113,15 @@ assert.equal(v4Directory.marketCapUsd, null);
 assert.equal(v4Directory.priceChange24h, null);
 assert.equal(v4Directory.ageMinutes, null);
 assert.equal(v4Directory.signal, null);
-assert.equal(v4Directory.marketDataState, "canonical-only");
+assert.deepEqual(deriveVNextMarketState(v4Directory), {
+  asset: "verified",
+  market: "canonical",
+  metrics: "unavailable",
+  chart: "unavailable",
+  execution: "not-evaluated"
+});
+assert.equal(shouldRequestVNextExternalWorkspaceMarket(v4Directory), false);
+assert.equal(isVNextDirectoryMarketSelectable(v4Directory), true);
 assert.deepEqual(selectVNextMarketDirectoryView([v4Directory], "trending"), []);
 assert.deepEqual(selectVNextMarketDirectoryView([v4Directory], "active"), []);
 
@@ -122,14 +133,15 @@ const richDirectory: VNextDirectoryMarket = {
   volume24h: 5_000,
   priceChange24h: 2,
   ageMinutes: 60,
-  signal: "moving",
-  marketDataState: "live"
+  signal: "moving"
 };
 const merged = mergeVNextDirectoryAndSearchMarkets([richDirectory], [v4Directory]);
 assert.equal(merged.length, 1);
 assert.equal(merged[0].priceUsd, 1.25);
 assert.equal(merged[0].liquidityUsd, 20_000);
 assert.equal(merged[0].canonicalMarkets?.[0].poolKey, V4_POOL);
+assert.equal(deriveVNextMarketState(merged[0]).market, "canonical");
+assert.equal(deriveVNextMarketState(merged[0]).metrics, "complete");
 assert.deepEqual(mergeVNextDirectoryAndSearchMarkets([richDirectory], []), [richDirectory]);
 
 assert.deepEqual(filterVNextLocalDirectoryMarkets([richDirectory], "STONKBROKER").map((market) => market.address.toLowerCase()), [STONKBROKER]);
@@ -227,7 +239,13 @@ assert.match(presentation, /rmtSearchContract/);
 assert.match(presentation, /count=\{props\.verifiedSearchResultCount\}/);
 assert.doesNotMatch(presentation, /SearchStatusMessage status=\{props\.searchStatus\} count=\{props\.filteredMarkets\.length\}/);
 assert.match(shell, /verifiedSearchResultCount:[\s\S]*searchMarkets\.length/);
-assert.match(workspace, /marketDataState !== "canonical-only"/);
+assert.match(workspace, /shouldRequestVNextExternalWorkspaceMarket\(directoryMarket\)/);
+assert.doesNotMatch(workspace, /fallbackMarketFromResolution/);
+assert.doesNotMatch(workspace, /volume5m:\s*0|buys5m:\s*0|sells5m:\s*0|momentumScore:\s*0|buyPressureBps:\s*0/);
+assert.match(workspace, /canonicalMarkets=\{directoryMarket\.canonicalMarkets\}/);
+assert.match(workspace, /PoolId \$\{shortAddress\(pool\.poolKey\)\}/);
+assert.doesNotMatch(workspace, /address\/\$\{pool\.poolKey\}/);
+assert.ok(workspace.indexOf("if (canonicalMarkets?.length)") < workspace.indexOf("No canonical pool found"));
 assert.match(workspaceHook, /externalMarketLookup\s*\?/);
 assert.match(serverSearch, /from "\.\.\/vnext\/universal-market-search-contract"/);
 assert.match(serverSearch, /function publicMarket/);

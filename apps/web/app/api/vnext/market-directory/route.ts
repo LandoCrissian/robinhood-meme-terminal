@@ -45,9 +45,18 @@ function text(value: unknown, maximumLength: number) {
   return typeof value === "string" ? value.trim().slice(0, maximumLength) : "";
 }
 
-function number(value: unknown) {
-  const parsed = typeof value === "number" ? value : typeof value === "string" ? Number(value) : Number.NaN;
-  return Number.isFinite(parsed) ? parsed : 0;
+function finiteNumber(value: unknown) {
+  const parsed = typeof value === "number"
+    ? value
+    : typeof value === "string" && value.trim()
+      ? Number(value)
+      : Number.NaN;
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function nonNegativeNumber(value: unknown) {
+  const parsed = finiteNumber(value);
+  return parsed !== null && parsed >= 0 ? parsed : null;
 }
 
 function selectedToken(pair: RawPair) {
@@ -60,9 +69,12 @@ function selectedToken(pair: RawPair) {
   return null;
 }
 
-function signalFor(pair: RawPair): ExternalMarketSignal {
-  const change = Math.abs(number(pair.priceChange?.h24));
-  const volume = Math.max(0, number(pair.volume?.h24));
+function signalFor(pair: RawPair): ExternalMarketSignal | null {
+  const rawChange = finiteNumber(pair.priceChange?.h24);
+  const rawVolume = finiteNumber(pair.volume?.h24);
+  if (rawChange === null || rawVolume === null || rawVolume < 0) return null;
+  const change = Math.abs(rawChange);
+  const volume = rawVolume;
   if (change >= 10 && volume >= 10_000) return "moving";
   if (change >= 4 || volume >= 25_000) return "active";
   return "early";
@@ -70,33 +82,33 @@ function signalFor(pair: RawPair): ExternalMarketSignal {
 
 function marketFromPair(pair: RawPair, evidence: AssetMarketEvidence): VNextDirectoryMarket | null {
   if (pair.chainId !== CHAIN_SLUG) return null;
-  if (evidence.displayEligibility !== "eligible" || evidence.assetSide !== "BASE") return null;
+  if ((evidence.displayEligibility !== "eligible" && evidence.displayEligibility !== "missing-price")
+    || evidence.assetSide !== "BASE") return null;
   const token = evidence.token;
   const address = token.address;
   if (!isAddress(address, { strict: false }) || address.toLowerCase() === zeroAddress) return null;
   const canonicalAddress = getAddress(address);
-  if (evidence.pool.kind !== "evm-address") return null;
-  const pairAddress = evidence.pool.value;
+  const pairAddress = evidence.pool.kind === "evm-address" ? getAddress(evidence.pool.value) : undefined;
   const symbol = text(token?.symbol, 16) || `${canonicalAddress.slice(0, 6)}…${canonicalAddress.slice(-4)}`;
   const name = text(token?.name, 80) || symbol;
-  const pairCreatedAt = number(pair.pairCreatedAt);
+  const pairCreatedAt = finiteNumber(pair.pairCreatedAt);
+  const priceUsd = finiteNumber(pair.priceUsd);
   return {
     assetId: evidence.assetId,
     address: canonicalAddress,
     name,
     symbol,
-    priceUsd: evidence.priceUsd ?? 0,
-    liquidityUsd: evidence.liquidityUsd ?? 0,
-    marketCapUsd: evidence.marketCapUsd ?? evidence.fdvUsd ?? 0,
-    volume24h: evidence.volume24h ?? 0,
-    priceChange24h: evidence.priceChange24h ?? 0,
-    ageMinutes: pairCreatedAt > 0 ? Math.max(0, (Date.now() - pairCreatedAt) / 60_000) : null,
+    priceUsd: priceUsd !== null && priceUsd > 0 ? priceUsd : null,
+    liquidityUsd: nonNegativeNumber(pair.liquidity?.usd),
+    marketCapUsd: nonNegativeNumber(pair.marketCap) ?? nonNegativeNumber(pair.fdv),
+    volume24h: nonNegativeNumber(pair.volume?.h24),
+    priceChange24h: finiteNumber(pair.priceChange?.h24),
+    ageMinutes: pairCreatedAt !== null && pairCreatedAt > 0 ? Math.max(0, (Date.now() - pairCreatedAt) / 60_000) : null,
     signal: signalFor(pair),
-    marketDataState: "live",
     imageUri: canonicalAddress.toLowerCase() === ROBINHOOD_RMT_ADDRESS.toLowerCase()
       ? RMT_TOKEN_ARTWORK
       : safeTokenArtworkUrl(pair.info?.imageUrl) ?? undefined,
-    pairAddress: getAddress(pairAddress),
+    pairAddress,
     dexId: text(pair.dexId, 30) || "DEX",
     url: text(pair.url, 300) || undefined
   };
@@ -139,9 +151,13 @@ export async function GET() {
       if (market) candidatesByPool.set(`${evidence.assetId}:${evidence.pool.value.toLowerCase()}`, market);
     }
     const markets = [...evidenceByAsset.values()].flatMap((evidenceList): VNextDirectoryMarket[] => {
-      const record = buildAssetMarketRecord(evidenceList, { requireChart: true });
-      if (!record?.primaryMarket) return [];
-      const candidate = candidatesByPool.get(`${record.assetId}:${record.primaryMarket.pool.value.toLowerCase()}`);
+      const record = buildAssetMarketRecord(evidenceList);
+      if (!record) return [];
+      const candidate = record.primaryMarket
+        ? candidatesByPool.get(`${record.assetId}:${record.primaryMarket.pool.value.toLowerCase()}`)
+        : record.verifiedMarkets
+            .map((evidence) => candidatesByPool.get(`${record.assetId}:${evidence.pool.value.toLowerCase()}`))
+            .find(Boolean);
       if (!candidate) return [];
       const imageUri = candidate.imageUri ?? evidenceList
         .map((evidence) => candidatesByPool.get(`${record.assetId}:${evidence.pool.value.toLowerCase()}`)?.imageUri)
@@ -149,7 +165,7 @@ export async function GET() {
       return [{
         ...candidate,
         imageUri,
-        primaryMarket: record.primaryMarket,
+        primaryMarket: record.primaryMarket ?? undefined,
         verifiedMarkets: record.verifiedMarkets
       }];
     })

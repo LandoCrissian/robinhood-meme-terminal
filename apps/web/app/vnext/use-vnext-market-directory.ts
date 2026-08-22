@@ -8,6 +8,7 @@ import {
   directoryMarketFromExactLookup,
   directoryMarketFromUniversalSearchResult,
   directoryMarketFromVerifiedIdentity,
+  isVNextDirectoryMarketSelectable,
   mergeVNextDirectoryAndSearchMarkets,
   normalizeDirectoryMarkets,
   resolutionFromLookup,
@@ -45,7 +46,6 @@ function directorySnapshot(markets: VNextDirectoryMarket[]) {
     market.pairAddress,
     market.dexId,
     market.url,
-    market.marketDataState,
     market.primaryMarket?.pool.kind,
     market.primaryMarket?.pool.value,
     market.verifiedMarkets?.map((evidence) => `${evidence.venue}:${evidence.pool.kind}:${evidence.pool.value}`).join("|"),
@@ -103,12 +103,9 @@ export function useVNextMarketDirectory() {
     if (exactLookupMarket.current) {
       const key = exactLookupMarket.current.address.toLowerCase();
       const existing = byAddress.get(key);
-      const preferExact = exactLookupMarket.current.marketDataState !== "identity-only" || !existing?.primaryMarket;
-      byAddress.set(key, existing && preferExact ? {
-        ...existing,
-        ...exactLookupMarket.current,
-        resolution: exactLookupMarket.current.resolution ?? existing.resolution
-      } : existing ?? exactLookupMarket.current);
+      byAddress.set(key, existing
+        ? mergeVNextDirectoryAndSearchMarkets([existing], [exactLookupMarket.current])[0]
+        : exactLookupMarket.current);
     }
     const nextMarkets = [...byAddress.values()].sort((left, right) => (right.liquidityUsd ?? -1) - (left.liquidityUsd ?? -1) || (right.volume24h ?? -1) - (left.volume24h ?? -1));
     const nextSnapshot = directorySnapshot(nextMarkets);
@@ -125,7 +122,7 @@ export function useVNextMarketDirectory() {
     const exact = exactDirectory && exactSearch
       ? mergeVNextDirectoryAndSearchMarkets([exactDirectory], [exactSearch])[0]
       : exactDirectory ?? exactSearch;
-    if (exact?.marketDataState !== "identity-only" && (exact?.primaryMarket || exact?.canonicalMarkets?.length)) {
+    if (exact && isVNextDirectoryMarketSelectable(exact)) {
       setSelectedSearchMarket(exactSearch ? exact : undefined);
       setSelectedAddress(exact.address);
       return true;
@@ -158,8 +155,7 @@ export function useVNextMarketDirectory() {
       setMarkets((current) => current.some((market) => market.address.toLowerCase() === address.toLowerCase())
         ? current.map((market) => {
             if (market.address.toLowerCase() !== address.toLowerCase()) return market;
-            if (fallback.marketDataState === "identity-only" && market.primaryMarket) return market;
-            return { ...market, ...fallback, resolution: fallback.resolution ?? market.resolution };
+            return mergeVNextDirectoryAndSearchMarkets([market], [fallback])[0];
           })
         : [fallback, ...current]);
       exactLookupMarket.current = fallback;

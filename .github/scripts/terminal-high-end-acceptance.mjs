@@ -26,6 +26,31 @@ function market(index) {
   const change1h = ((index * 11) % 43) - 9;
   const liquidity = 58_000 + index * 19_000;
   const volume1h = 46_000 + index * 7_300;
+  const priceUsd = 0.00072 + index * 0.000083;
+  const volume24h = 420_000 + index * 97_000;
+  const priceChange24h = change1h * 1.9;
+  const marketEvidence = {
+    chainId: 4_663,
+    assetId: `eip155:4663/contract:${marketToken}`,
+    token: { address: marketToken, name: `RMT Market ${String(index + 1).padStart(2, "0")}`, symbol: `R${String(index + 1).padStart(2, "0")}` },
+    venue: index % 2 === 0 ? "sushiswap" : "uniswap-v3",
+    protocolVersion: index % 2 === 0 ? 2 : 3,
+    pool: { kind: "evm-address", value: marketPair },
+    baseToken: { address: marketToken, name: `RMT Market ${String(index + 1).padStart(2, "0")}`, symbol: `R${String(index + 1).padStart(2, "0")}` },
+    quoteToken: { address: address(0x9002), name: "Wrapped Ether", symbol: "WETH" },
+    assetSide: "BASE",
+    displayEligibility: "eligible",
+    chartEligibility: "eligible",
+    executionEligibility: "view-only",
+    provenance: "dexscreener-token-pairs",
+    priceUsd,
+    liquidityUsd: liquidity,
+    marketCapUsd: 390_000 + index * 235_000,
+    fdvUsd: 480_000 + index * 280_000,
+    volume24h,
+    priceChange24h,
+    pairCreatedAt: Date.now() - (index + 1) * 3_600_000
+  };
   const stockAssetRelationships = index === 0
     ? [{
         relationship: "canonical-stock-token",
@@ -109,16 +134,16 @@ function market(index) {
       url: `https://robinhoodchain.blockscout.com/address/${marketPair}`,
       execution: "read-only"
     },
-    priceUsd: 0.00072 + index * 0.000083,
+    priceUsd,
     liquidityUsd: liquidity,
     marketCapUsd: 390_000 + index * 235_000,
     fdvUsd: 480_000 + index * 280_000,
     volume5m: Math.max(12_000, volume1h * 0.36),
     volume1h,
-    volume24h: 420_000 + index * 97_000,
+    volume24h,
     priceChange5m: change5m,
     priceChange1h: change1h,
-    priceChange24h: change1h * 1.9,
+    priceChange24h,
     buys5m: 24 + index,
     sells5m: 8 + index % 5,
     buys1h: 138 + index * 7,
@@ -131,6 +156,8 @@ function market(index) {
     buyPressureBps: 6_400 + index * 75,
     signal: "moving",
     riskFlags: index % 7 === 0 ? ["thin-liquidity"] : [],
+    primaryMarket: marketEvidence,
+    verifiedMarkets: [marketEvidence],
     stockAssetRelationships
   };
 }

@@ -14,8 +14,13 @@ import { formatOwnershipBps } from "../../lib/token-risk-evidence";
 import { useExternalMarketStream } from "../../lib/use-external-market-stream";
 import { useTokenRiskEvidence } from "../../lib/use-token-risk-evidence";
 import { useWalletConstellation } from "../../lib/use-wallet-constellation";
-import type { VNextDirectoryMarket } from "../../lib/vnext/market-directory";
+import {
+  selectVNextChartPool,
+  shouldRequestVNextExternalWorkspaceMarket,
+  type VNextDirectoryMarket
+} from "../../lib/vnext/market-directory";
 import type { VNextEcosystemIntelligence, VNextUpMarketIntelligence } from "../../lib/vnext/ecosystem-intelligence";
+import type { VNextUniversalMarketSearchPool } from "../../lib/vnext/universal-market-search-contract";
 import type { VNextDetectedWalletAsset } from "../../lib/vnext/wallet-assets";
 import type { IdentityStatus } from "./use-vnext-market-directory";
 import { TokenArtwork } from "./token-artwork";
@@ -74,69 +79,6 @@ function riskFlagLabel(flag: ExternalMarket["riskFlags"][number]) {
     "one-sided-activity": "One-sided activity"
   };
   return labels[flag];
-}
-
-function fallbackMarketFromResolution(
-  directory: VNextDirectoryMarket,
-  resolution?: UniversalMarketResolution
-): ExternalMarket | undefined {
-  const pool = resolution?.pools[0];
-  const pairAddress = directory.pairAddress ?? pool?.poolAddress;
-  if (!pairAddress || directory.marketDataState === "identity-only"
-    || directory.priceUsd === null
-    || directory.liquidityUsd === null
-    || directory.marketCapUsd === null
-    || directory.volume24h === null
-    || directory.priceChange24h === null
-    || directory.signal === null) return undefined;
-  const dexId = directory.dexId ?? pool?.venue ?? "DEX";
-  const url = directory.url ?? `${EXPLORER}/address/${pairAddress}`;
-  return {
-    assetId: directory.assetId,
-    address: directory.address,
-    name: directory.name,
-    symbol: directory.symbol,
-    pairAddress,
-    url,
-    dexId,
-    resolution,
-    origin: { kind: "external", state: "unknown", coverage: "unavailable" },
-    venue: { kind: "dex", dexId, pairAddress, url, execution: "read-only" },
-    priceUsd: directory.priceUsd,
-    liquidityUsd: directory.liquidityUsd,
-    marketCapUsd: directory.marketCapUsd,
-    fdvUsd: directory.marketCapUsd,
-    volume5m: 0,
-    volume1h: 0,
-    volume24h: directory.volume24h,
-    priceChange5m: 0,
-    priceChange1h: 0,
-    priceChange24h: directory.priceChange24h,
-    buys5m: 0,
-    sells5m: 0,
-    buys1h: 0,
-    sells1h: 0,
-    buys24h: 0,
-    sells24h: 0,
-    pairCreatedAt: null,
-    ageMinutes: directory.ageMinutes,
-    momentumScore: 0,
-    buyPressureBps: 0,
-    signal: directory.signal,
-    riskFlags: [],
-    primaryMarket: directory.primaryMarket,
-    verifiedMarkets: directory.verifiedMarkets
-  };
-}
-
-function chartPoolForMarket(market: Pick<ExternalMarket, "pairAddress" | "primaryMarket"> | VNextDirectoryMarket | undefined) {
-  if (!market) return undefined;
-  if (market.primaryMarket) {
-    return market.primaryMarket.chartEligibility === "eligible" && market.primaryMarket.pool.kind === "evm-address"
-      ? market.primaryMarket.pool.value
-      : undefined;
-  }
-  return market.pairAddress;
 }
 
 function WorkspacePosition({
@@ -286,7 +228,37 @@ function WorkspaceEvidence({ market }: { market: ExternalMarket }) {
   </section>;
 }
 
-function VerifiedMarkets({ resolution, selectedPool }: { resolution?: UniversalMarketResolution; selectedPool?: string }) {
+function canonicalVenueLabel(pool: VNextUniversalMarketSearchPool) {
+  return `${pool.protocol === "uniswap" ? "Uniswap" : pool.protocol === "sushiswap" ? "Sushi" : "up."} V${pool.version}`;
+}
+
+function VerifiedMarkets({
+  canonicalMarkets,
+  resolution,
+  selectedPool
+}: {
+  canonicalMarkets?: VNextUniversalMarketSearchPool[];
+  resolution?: UniversalMarketResolution;
+  selectedPool?: string;
+}) {
+  if (canonicalMarkets?.length) {
+    return <section className="vnWorkspaceCard vnMarketsCard" aria-labelledby="vn-verified-markets-heading">
+      <header className="vnWorkspaceCardHead"><div><span className="vnEyebrow">Canonical inventory</span><h3 id="vn-verified-markets-heading">All verified markets</h3></div><span>{canonicalMarkets.length} found</span></header>
+      <div className="vnVerifiedMarkets">{canonicalMarkets.map((pool) => {
+        const selected = Boolean(pool.poolAddress && selectedPool?.toLowerCase() === pool.poolAddress.toLowerCase());
+        const identity = pool.poolAddress ?? pool.poolKey;
+        const href = pool.poolAddress
+          ? `${EXPLORER}/address/${pool.poolAddress}`
+          : `${EXPLORER}/tx/${pool.transactionHash}`;
+        return <a href={href} target="_blank" rel="noopener noreferrer" className={selected ? "isSelected" : ""} key={`${pool.sourceId}:${pool.poolKey}`}>
+          <span><strong>{canonicalVenueLabel(pool)}{selected ? " · displayed" : ""}</strong><small>{pool.version === 4 ? `PoolId ${shortAddress(pool.poolKey)}` : `Pool ${shortAddress(identity)}`} · tokens {shortAddress(pool.token0)} / {shortAddress(pool.token1)}</small></span>
+          <b>Canonical inventory</b>
+          <i aria-hidden="true">↗</i>
+        </a>;
+      })}</div>
+      <footer>Canonical market existence does not imply chart coverage or execution availability. The execution engine evaluates routes only when the trader asks.</footer>
+    </section>;
+  }
   const pools = resolution?.pools ?? [];
   return <section className="vnWorkspaceCard vnMarketsCard" aria-labelledby="vn-verified-markets-heading">
     <header className="vnWorkspaceCardHead"><div><span className="vnEyebrow">Onchain resolution</span><h3 id="vn-verified-markets-heading">All verified markets</h3></div><span>{pools.length} found</span></header>
@@ -355,15 +327,13 @@ export function VNextAssetWorkspace({
   const workspace = useVNextAssetWorkspace(
     directoryMarket.address,
     directoryMarket.pairAddress,
-    directoryMarket.marketDataState !== "canonical-only"
+    shouldRequestVNextExternalWorkspaceMarket(directoryMarket)
   );
   const resolution = workspace.resolution ?? workspace.market?.resolution;
-  const market = workspace.market ?? fallbackMarketFromResolution(directoryMarket, resolution);
-  const workspacePool = chartPoolForMarket(market);
-  const directoryPool = chartPoolForMarket(directoryMarket);
-  const selectedPool = workspacePool && directoryPool && workspacePool.toLowerCase() !== directoryPool.toLowerCase()
-    ? undefined
-    : workspacePool ?? directoryPool;
+  const market = workspace.market;
+  const workspacePool = market ? selectVNextChartPool(market) : undefined;
+  const directoryPool = selectVNextChartPool(directoryMarket);
+  const selectedPool = workspacePool ?? directoryPool;
 
   const sections = [
     { id: "activity", label: "Activity" },
@@ -379,7 +349,7 @@ export function VNextAssetWorkspace({
     : section === "evidence"
       ? market ? <WorkspaceEvidence market={market} /> : <div className="vnWorkspaceCard vnWorkspaceEmpty"><strong>Market evidence loading</strong><span>Missing contract, liquidity and holder evidence remains unknown.</span></div>
       : section === "markets"
-        ? <VerifiedMarkets resolution={resolution} selectedPool={selectedPool} />
+        ? <VerifiedMarkets canonicalMarkets={directoryMarket.canonicalMarkets} resolution={resolution} selectedPool={selectedPool} />
         : section === "position"
           ? <WorkspacePosition directoryMarket={directoryMarket} walletAssets={walletAssets} onTradeSide={onTradeSide} />
           : section === "origin"
