@@ -168,8 +168,8 @@ backfill and coverage measurement only.
 
 `MARKET_INDEXER_STORAGE_MODE` defaults to `durable`, which creates ordinary
 PostgreSQL tables and is required for any production candidate. A disposable
-shadow backfill may instead use `rebuildable`, which creates all three indexer
-tables as PostgreSQL `UNLOGGED` tables. This sharply reduces write-ahead-log
+shadow backfill may instead use `rebuildable`, which creates all indexer
+relations as PostgreSQL `UNLOGGED` tables. This sharply reduces write-ahead-log
 pressure on constrained rehearsal databases because every stored row can be
 reconstructed from the pinned chain history.
 
@@ -203,6 +203,21 @@ the hosting volume's operating files, write-ahead logs, backups, snapshots, or
 other provider overhead. Railway volume usage must therefore be monitored
 separately. The logical cap cannot guarantee that a small provider volume will
 not fill.
+
+### Compact schema v3 migration boundary
+
+Schema v3 uses the reviewed manifest-bound binary pool representation and
+retains only the newest 64 sync points per source. Existing schema-v2 databases
+are never auto-migrated at startup. The worker refuses v2 and the intermediate
+migration marker, so a future operational migration must keep the writer
+stopped until old relations are removed and logical storage reclamation is
+verified.
+
+`pnpm --filter market-indexer migrate:compact-schema` is preflight-only unless
+the separately reviewed execution and old-relation cleanup acknowledgements
+are present. The migration plan and disposable-Postgres evidence are recorded
+in
+[`../../docs/MARKET_INDEXER_COMPACT_SCHEMA_LOW_PEAK_MIGRATION_2026-08-22.md`](../../docs/MARKET_INDEXER_COMPACT_SCHEMA_LOW_PEAK_MIGRATION_2026-08-22.md).
 
 ### Optional Position Guard heartbeat
 

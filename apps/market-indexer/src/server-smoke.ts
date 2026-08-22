@@ -151,36 +151,31 @@ const olderV4Pool = {
 };
 const indexedPools = [v3Pool, v2Pool, alternateV2Pool, v4Pool, olderV4Pool];
 const indexedRows = [
-  { ...v3Pool, transactionIndex: 2, logIndex: 0 },
-  { ...v2Pool, transactionIndex: 1, logIndex: 4 },
-  { ...alternateV2Pool, transactionIndex: 0, logIndex: 3 },
-  { ...v4Pool, transactionIndex: 3, logIndex: 2 },
-  { ...olderV4Pool, transactionIndex: 0, logIndex: 1 }
+  { ...v3Pool, logIndex: 0 },
+  { ...v2Pool, logIndex: 4 },
+  { ...alternateV2Pool, logIndex: 3 },
+  { ...v4Pool, logIndex: 2 },
+  { ...olderV4Pool, logIndex: 1 }
 ];
 const poolQueries: Array<{ text: string; values: unknown[] }> = [];
 const pool = {
   query: async (text: string, values: unknown[]) => {
     poolQueries.push({ text, values });
     const [
-      chainId,
       sourceId,
       token,
       poolKey,
       cursorBlock,
-      cursorTransactionIndex,
       cursorLogIndex,
       limit
     ] = values as [
-      number,
       string | null,
       string | null,
       string | null,
       string | null,
-      number | null,
       number | null,
       number
     ];
-    assert.equal(chainId, 4_663);
     const rows = indexedRows
       .filter((row) => sourceId === null || row.sourceId === sourceId)
       .filter(
@@ -191,9 +186,6 @@ const pool = {
         if (cursorBlock === null) return true;
         const blockDifference = BigInt(row.blockNumber) - BigInt(cursorBlock);
         if (blockDifference !== 0n) return blockDifference < 0n;
-        if (row.transactionIndex !== cursorTransactionIndex) {
-          return row.transactionIndex < cursorTransactionIndex!;
-        }
         return row.logIndex < cursorLogIndex!;
       })
       .slice(0, limit);
@@ -293,8 +285,6 @@ try {
   );
   const unfilteredQuery = poolQueries.at(-1)!;
   assert.deepEqual(unfilteredQuery.values, [
-    4_663,
-    null,
     null,
     null,
     null,
@@ -303,16 +293,16 @@ try {
     101
   ]);
   assert.ok(
-    unfilteredQuery.text.indexOf("pools.token0 = $3") <
-      unfilteredQuery.text.indexOf("LIMIT $8")
+    unfilteredQuery.text.indexOf("pools.token0 = decode(substring($2") <
+      unfilteredQuery.text.indexOf("LIMIT $6")
   );
   assert.ok(
-    unfilteredQuery.text.indexOf("pools.pool_key = $4") <
-      unfilteredQuery.text.indexOf("LIMIT $8")
+    unfilteredQuery.text.indexOf("pools.pool_key = decode(substring($3") <
+      unfilteredQuery.text.indexOf("LIMIT $6")
   );
   assert.ok(
-    unfilteredQuery.text.indexOf("pools.block_number, pools.transaction_index, pools.log_index") <
-      unfilteredQuery.text.indexOf("LIMIT $8")
+    unfilteredQuery.text.indexOf("pools.block_number, pools.log_index") <
+      unfilteredQuery.text.indexOf("LIMIT $6")
   );
 
   const firstPageResponse = await fetch(`${origin}/v1/pools?limit=2`, {
@@ -325,7 +315,7 @@ try {
   assert.equal(firstPageResponse.status, 200);
   assert.deepEqual(firstPage.pools, [v3Pool, v2Pool]);
   assert.match(firstPage.nextCursor ?? "", /^[A-Za-z0-9_-]+$/);
-  assert.equal(poolQueries.at(-1)!.values[7], 3);
+  assert.equal(poolQueries.at(-1)!.values[5], 3);
 
   const secondPageResponse = await fetch(
     `${origin}/v1/pools?limit=2&cursor=${firstPage.nextCursor}`,
@@ -390,8 +380,8 @@ try {
   assert.equal("liquidity" in tokenResult.pools[0]!, false);
   assert.equal("volume" in tokenResult.pools[0]!, false);
   assert.equal("executionRoute" in tokenResult.pools[0]!, false);
-  assert.equal(poolQueries.at(-1)!.values[2], stonkBrokerAddress);
-  assert.equal(poolQueries.at(-1)!.values[7], 2);
+  assert.equal(poolQueries.at(-1)!.values[1], stonkBrokerAddress);
+  assert.equal(poolQueries.at(-1)!.values[5], 2);
 
   const tokenFirst = tokenResult as typeof tokenResult & {
     nextCursor: string | null;
@@ -498,7 +488,7 @@ try {
   assert.equal(v4PoolKeyResponse.status, 200);
   assert.deepEqual(v4PoolKeyResult.pools, [v4Pool]);
   assert.equal(v4PoolKeyResult.pools[0]?.poolAddress, null);
-  assert.equal(poolQueries.at(-1)!.values[3], v4Pool.poolKey);
+  assert.equal(poolQueries.at(-1)!.values[2], v4Pool.poolKey);
 
   const combinedMatch = await fetch(
     `${origin}/v1/pools?source=uniswap-v4&token=${stonkBrokerAddress}&poolKey=${v4Pool.poolKey}`,
@@ -518,13 +508,12 @@ try {
   );
 
   const cursorTemplate = {
-    v: 1,
+    v: 2,
     chainId: 4_663,
     source: null,
     token: null,
     poolKey: null,
     blockNumber: "101",
-    transactionIndex: 1,
     logIndex: 4
   };
 
@@ -542,10 +531,10 @@ try {
     "limit=501",
     "cursor=not+base64url",
     `cursor=${"a".repeat(1_025)}`,
-    `cursor=${cursorFor({ ...cursorTemplate, v: 2 })}`,
+    `cursor=${cursorFor({ ...cursorTemplate, v: 1 })}`,
     `cursor=${cursorFor({ ...cursorTemplate, chainId: 1 })}`,
     `cursor=${cursorFor({ ...cursorTemplate, blockNumber: "01" })}`,
-    `cursor=${cursorFor({ ...cursorTemplate, transactionIndex: -1 })}`,
+    `cursor=${cursorFor({ ...cursorTemplate, logIndex: -1 })}`,
     `token=${stonkBrokerAddress}&cursor=${cursorFor(cursorTemplate)}`
   ];
   for (const query of invalidQueries) {

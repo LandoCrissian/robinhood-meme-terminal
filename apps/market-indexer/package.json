@@ -16,7 +16,9 @@
     "test:server": "tsx src/server-smoke.ts",
     "test:up-enrichment": "tsx src/up-enrichment-smoke.ts",
     "test:position-guard": "tsx src/position-guard-heartbeat-smoke.ts",
-    "benchmark:compact-schema": "tsx src/compact-schema-benchmark.ts"
+    "test:compact-migration": "tsx src/compact-schema-migration-smoke.ts",
+    "benchmark:compact-schema": "tsx src/compact-schema-benchmark.ts",
+    "migrate:compact-schema": "tsx src/compact-schema-migration-cli.ts"
   },
   "dependencies": {
     "pg": "8.22.0",
