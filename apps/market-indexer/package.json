@@ -15,7 +15,8 @@
     "test:telemetry": "tsx src/telemetry-smoke.ts",
     "test:server": "tsx src/server-smoke.ts",
     "test:up-enrichment": "tsx src/up-enrichment-smoke.ts",
-    "test:position-guard": "tsx src/position-guard-heartbeat-smoke.ts"
+    "test:position-guard": "tsx src/position-guard-heartbeat-smoke.ts",
+    "benchmark:compact-schema": "tsx src/compact-schema-benchmark.ts"
   },
   "dependencies": {
     "pg": "8.22.0",
