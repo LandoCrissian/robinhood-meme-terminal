@@ -436,9 +436,58 @@ async function assertIncompleteCoverageSemantics() {
     },
     timeoutMs: 500
   });
-  assert.equal(incompleteText.status, "inventory_unavailable");
-  assert.equal(providerCalls, 0);
-  assert.equal(identityCalls, 0);
+  assert.equal(incompleteText.status, "found", "Positive canonical evidence must remain usable during incomplete backfill");
+  assert.equal(incompleteText.results.length, 1);
+  assert.equal(incompleteText.results[0]?.address, stonkBrokerAddress);
+  assert.equal(incompleteText.results[0]?.markets.some((market) => market.poolKey === v4PoolId), true);
+  assert.equal(incompleteText.results[0]?.markets.find((market) => market.poolKey === v4PoolId)?.poolAddress, null);
+  assert.equal(providerCalls, 1);
+  assert.equal(identityCalls, 2, "Both canonically indexed sides of the provider pair may receive identity verification");
+
+  let absentIdentityCalls = 0;
+  const absentTextIncomplete = await searchVNextUniversalMarkets("MISSING", {
+    readInventory: incompleteReader,
+    readIdentity: async (address) => {
+      absentIdentityCalls += 1;
+      return identityReader(address);
+    },
+    fetch: providerFetch([providerPair(absentAddress, "not-an-address")]),
+    timeoutMs: 500
+  });
+  assert.equal(absentTextIncomplete.status, "inventory_unavailable");
+  assert.equal(absentIdentityCalls, 0, "Provider-only candidates must not trigger identity authority without canonical evidence");
+
+  const absentTextComplete = await searchVNextUniversalMarkets("MISSING", {
+    readInventory: async (query) => query.token === undefined
+      ? verifiedInventory(markets.slice(0, 1))
+      : verifiedInventory([]),
+    readIdentity: identityReader,
+    fetch: providerFetch([providerPair(absentAddress, "not-an-address")]),
+    timeoutMs: 500
+  });
+  assert.equal(absentTextComplete.status, "not_found");
+
+  const identityMismatch = await searchVNextUniversalMarkets("STONKBROKER", {
+    readInventory: async (query) => query.token === sameSymbolAddressA
+      ? verifiedInventory([sameSymbolMarketA])
+      : verifiedInventory(markets.slice(0, 1)),
+    readIdentity: identityReader,
+    fetch: providerFetch([providerPair(sameSymbolAddressA)]),
+    timeoutMs: 500
+  });
+  assert.equal(identityMismatch.status, "not_found", "Verified identity must match the text query");
+
+  const duplicateCandidates = await searchVNextUniversalMarkets("STONKBROKER", {
+    readInventory: incompleteReader,
+    readIdentity: identityReader,
+    fetch: providerFetch([
+      providerPair(stonkBrokerAddress, "not-an-address"),
+      providerPair(stonkBrokerAddress, "not-an-address")
+    ]),
+    timeoutMs: 500
+  });
+  assert.equal(duplicateCandidates.status, "found");
+  assert.equal(duplicateCandidates.results.length, 1, "Duplicate provider suggestions must not duplicate verified results");
 }
 
 async function assertProviderWorkIsBounded() {

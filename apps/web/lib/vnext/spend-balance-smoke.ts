@@ -44,9 +44,23 @@ const candidates = walletAssetCandidates([{
   priceUsd: 1,
   liquidityUsd: 1,
   marketCapUsd: 1,
+  volume5m: null,
+  volume1h: null,
   volume24h: 1,
+  priceChange5m: null,
+  priceChange1h: null,
   priceChange24h: 0,
+  buys5m: null,
+  sells5m: null,
+  buys1h: null,
+  sells1h: null,
+  buys24h: null,
+  sells24h: null,
+  pairCreatedAt: null,
   ageMinutes: 1,
+  momentumScore: null,
+  buyPressureBps: null,
+  riskFlags: null,
   signal: "active"
 }]);
 assert.equal(candidates.length, 4);

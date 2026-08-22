@@ -73,9 +73,23 @@ const markets: VNextDirectoryMarket[] = [{
   priceUsd: 3,
   liquidityUsd: 10_000,
   marketCapUsd: 100_000,
+  volume5m: null,
+  volume1h: null,
   volume24h: 5_000,
+  priceChange5m: null,
+  priceChange1h: null,
   priceChange24h: 1,
+  buys5m: null,
+  sells5m: null,
+  buys1h: null,
+  sells1h: null,
+  buys24h: null,
+  sells24h: null,
+  pairCreatedAt: null,
   ageMinutes: 60,
+  momentumScore: null,
+  buyPressureBps: null,
+  riskFlags: null,
   signal: "active"
 }];
 const portfolio = walletPortfolioSummary({

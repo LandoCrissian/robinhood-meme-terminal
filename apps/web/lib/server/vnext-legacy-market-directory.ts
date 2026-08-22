@@ -1,5 +1,5 @@
 import { getAddress, isAddress, zeroAddress } from "viem";
-import type { ExternalMarketSignal } from "../external-market-ranking";
+import { rankExternalMarket } from "../external-market-ranking";
 import { buildAssetMarketRecord, type AssetMarketEvidence } from "../external-market";
 import { normalizeProviderPairForAsset } from "../external-market-identity";
 import {
@@ -32,8 +32,13 @@ type RawPair = {
   liquidity?: { usd?: unknown };
   marketCap?: unknown;
   fdv?: unknown;
-  volume?: { h24?: unknown };
-  priceChange?: { h24?: unknown };
+  volume?: { m5?: unknown; h1?: unknown; h24?: unknown };
+  priceChange?: { m5?: unknown; h1?: unknown; h24?: unknown };
+  txns?: {
+    m5?: { buys?: unknown; sells?: unknown };
+    h1?: { buys?: unknown; sells?: unknown };
+    h24?: { buys?: unknown; sells?: unknown };
+  };
   pairCreatedAt?: unknown;
   info?: { imageUrl?: unknown };
 };
@@ -76,14 +81,51 @@ function selectedToken(pair: RawPair) {
   return null;
 }
 
-function signalFor(pair: RawPair): ExternalMarketSignal | null {
-  const rawChange = finiteNumber(pair.priceChange?.h24);
-  const rawVolume = finiteNumber(pair.volume?.h24);
-  if (rawChange === null || rawVolume === null || rawVolume < 0) return null;
-  const change = Math.abs(rawChange);
-  if (change >= 10 && rawVolume >= 10_000) return "moving";
-  if (change >= 4 || rawVolume >= 25_000) return "active";
-  return "early";
+function nonNegativeInteger(value: unknown) {
+  const parsed = nonNegativeNumber(value);
+  return parsed !== null && Number.isSafeInteger(parsed) ? parsed : null;
+}
+
+function rankingFor(pair: RawPair) {
+  const liquidityUsd = nonNegativeNumber(pair.liquidity?.usd);
+  const marketCapUsd = nonNegativeNumber(pair.marketCap) ?? nonNegativeNumber(pair.fdv);
+  const volume5m = nonNegativeNumber(pair.volume?.m5);
+  const volume1h = nonNegativeNumber(pair.volume?.h1);
+  const volume24h = nonNegativeNumber(pair.volume?.h24);
+  const priceChange5m = finiteNumber(pair.priceChange?.m5);
+  const priceChange1h = finiteNumber(pair.priceChange?.h1);
+  const buys5m = nonNegativeInteger(pair.txns?.m5?.buys);
+  const sells5m = nonNegativeInteger(pair.txns?.m5?.sells);
+  const buys1h = nonNegativeInteger(pair.txns?.h1?.buys);
+  const sells1h = nonNegativeInteger(pair.txns?.h1?.sells);
+  if ([
+    liquidityUsd,
+    marketCapUsd,
+    volume5m,
+    volume1h,
+    volume24h,
+    priceChange5m,
+    priceChange1h,
+    buys5m,
+    sells5m,
+    buys1h,
+    sells1h
+  ].some((value) => value === null)) return null;
+  const pairCreatedAt = nonNegativeNumber(pair.pairCreatedAt);
+  return rankExternalMarket({
+    liquidityUsd: liquidityUsd!,
+    marketCapUsd: marketCapUsd!,
+    volume5m: volume5m!,
+    volume1h: volume1h!,
+    volume24h: volume24h!,
+    priceChange5m: priceChange5m!,
+    priceChange1h: priceChange1h!,
+    buys5m: buys5m!,
+    sells5m: sells5m!,
+    buys1h: buys1h!,
+    sells1h: sells1h!,
+    pairCreatedAt
+  });
 }
 
 function marketFromPair(pair: RawPair, evidence: AssetMarketEvidence): VNextDirectoryMarket | null {
@@ -98,6 +140,7 @@ function marketFromPair(pair: RawPair, evidence: AssetMarketEvidence): VNextDire
   const name = text(evidence.token.name, 80) || symbol;
   const pairCreatedAt = finiteNumber(pair.pairCreatedAt);
   const priceUsd = finiteNumber(pair.priceUsd);
+  const ranking = rankingFor(pair);
   return {
     assetId: evidence.assetId,
     address: canonicalAddress,
@@ -106,10 +149,24 @@ function marketFromPair(pair: RawPair, evidence: AssetMarketEvidence): VNextDire
     priceUsd: priceUsd !== null && priceUsd > 0 ? priceUsd : null,
     liquidityUsd: nonNegativeNumber(pair.liquidity?.usd),
     marketCapUsd: nonNegativeNumber(pair.marketCap) ?? nonNegativeNumber(pair.fdv),
+    volume5m: nonNegativeNumber(pair.volume?.m5),
+    volume1h: nonNegativeNumber(pair.volume?.h1),
     volume24h: nonNegativeNumber(pair.volume?.h24),
+    priceChange5m: finiteNumber(pair.priceChange?.m5),
+    priceChange1h: finiteNumber(pair.priceChange?.h1),
     priceChange24h: finiteNumber(pair.priceChange?.h24),
+    buys5m: nonNegativeInteger(pair.txns?.m5?.buys),
+    sells5m: nonNegativeInteger(pair.txns?.m5?.sells),
+    buys1h: nonNegativeInteger(pair.txns?.h1?.buys),
+    sells1h: nonNegativeInteger(pair.txns?.h1?.sells),
+    buys24h: nonNegativeInteger(pair.txns?.h24?.buys),
+    sells24h: nonNegativeInteger(pair.txns?.h24?.sells),
+    pairCreatedAt: pairCreatedAt !== null && pairCreatedAt > 0 ? pairCreatedAt : null,
     ageMinutes: pairCreatedAt !== null && pairCreatedAt > 0 ? Math.max(0, (Date.now() - pairCreatedAt) / 60_000) : null,
-    signal: signalFor(pair),
+    momentumScore: ranking?.momentumScore ?? null,
+    buyPressureBps: ranking?.buyPressureBps ?? null,
+    riskFlags: ranking?.riskFlags ?? null,
+    signal: ranking?.signal ?? null,
     imageUri: canonicalAddress.toLowerCase() === ROBINHOOD_RMT_ADDRESS.toLowerCase()
       ? RMT_TOKEN_ARTWORK
       : safeTokenArtworkUrl(pair.info?.imageUrl) ?? undefined,
