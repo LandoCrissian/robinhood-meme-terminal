@@ -15,6 +15,7 @@ import {
   type VNextDirectoryMarket
 } from "./market-directory";
 import {
+  parseVNextUniversalMarketSearchPool,
   parseVNextUniversalMarketSearchResult,
   type VNextUniversalMarketSearchMatchedBy,
   type VNextUniversalMarketSearchPool
@@ -27,6 +28,7 @@ const V2_POOL = "0x3333333333333333333333333333333333333333";
 const V3_POOL = "0x4444444444444444444444444444444444444444";
 const V4_POOL = `0x${"55".repeat(32)}`;
 const HASH = `0x${"66".repeat(32)}`;
+const ZERO_ADDRESS = `0x${"0".repeat(40)}`;
 
 function pool(version: 2 | 3 | 4): VNextUniversalMarketSearchPool {
   return {
@@ -99,6 +101,51 @@ for (const version of [2, 3, 4] as const) {
   ));
   assert.equal(parsed?.results[0].markets[0].version, version);
 }
+
+const nativeV4Pool = {
+  ...pool(4),
+  token0: ZERO_ADDRESS,
+  token1: STONKBROKER
+};
+const parsedNativeV4Pool = parseVNextUniversalMarketSearchPool(nativeV4Pool);
+assert.ok(parsedNativeV4Pool);
+assert.equal(parsedNativeV4Pool.token0, ZERO_ADDRESS);
+assert.equal(parsedNativeV4Pool.token1, STONKBROKER);
+assert.equal(parsedNativeV4Pool.poolKey, V4_POOL);
+assert.equal(parsedNativeV4Pool.poolAddress, null);
+assert.equal(parseVNextUniversalMarketSearchPool({ ...nativeV4Pool, token1: ZERO_ADDRESS }), null);
+assert.equal(
+  parseVNextUniversalMarketSearchPool({ ...nativeV4Pool, sourceId: "uniswap-v3" }),
+  null
+);
+assert.equal(
+  parseVNextUniversalMarketSearchPool({ ...nativeV4Pool, protocol: "sushiswap" }),
+  null
+);
+for (const version of [2, 3] as const) {
+  assert.equal(
+    parseVNextUniversalMarketSearchPool({ ...pool(version), token0: ZERO_ADDRESS }),
+    null
+  );
+  assert.equal(
+    parseVNextUniversalMarketSearchPool({ ...pool(version), token1: ZERO_ADDRESS }),
+    null
+  );
+}
+assert.equal(
+  parseVNextUniversalMarketSearchPool({
+    ...nativeV4Pool,
+    sourceId: "sushiswap-v3",
+    protocol: "sushiswap",
+    version: 3,
+    poolKey: V3_POOL,
+    poolAddress: V3_POOL,
+    fee: 3_000,
+    tickSpacing: 60,
+    hooks: null
+  }),
+  null
+);
 
 const v4Directory = directoryMarketFromUniversalSearchResult(
   parseVNextUniversalMarketSearchResult(response(V4_POOL, "pool-id"))!.results[0]

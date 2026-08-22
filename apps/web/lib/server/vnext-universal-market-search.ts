@@ -108,6 +108,10 @@ function normalizePoolId(value: string) {
   return normalized === ZERO_BYTES32 ? null : normalized;
 }
 
+function isErc20IdentityCandidate(address: string) {
+  return address !== ZERO_ADDRESS;
+}
+
 function normalizeSearchText(value: string) {
   const trimmed = value.trim();
   const withoutLeadingDollar = trimmed.startsWith("$")
@@ -252,6 +256,7 @@ async function exactAddressSearch(
   }
   for (const market of poolInventory.pools) {
     for (const tokenAddress of [market.token0, market.token1]) {
+      if (!isErc20IdentityCandidate(tokenAddress)) continue;
       const current = candidates.get(tokenAddress);
       candidates.set(tokenAddress, {
         markets: mergeMarkets(current?.markets ?? [], [market]),
@@ -307,6 +312,7 @@ async function exactPoolIdSearch(
   const candidates = new Map<string, VNextCanonicalMarketInventoryPool[]>();
   for (const market of inventory.pools) {
     for (const address of [market.token0, market.token1]) {
+      if (!isErc20IdentityCandidate(address)) continue;
       candidates.set(address, mergeMarkets(candidates.get(address) ?? [], [market]));
     }
   }

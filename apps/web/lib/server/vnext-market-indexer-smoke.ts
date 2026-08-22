@@ -23,6 +23,7 @@ const sourceManifestHash = `0x${"ab".repeat(32)}`;
 const requestCursor = "eyJ2IjoxfQ";
 const responseCursor = "bmV4dC1jdXJzb3I";
 const stonkBrokerAddress = "0xe934e36a439c94017b64a3fece66af12099abf50";
+const zeroAddress = `0x${"0".repeat(40)}`;
 const canonicalSourceIds = [
   "sushiswap-v2",
   "sushiswap-v3",
@@ -93,6 +94,11 @@ const v4Pool = {
   transactionHash: `0x${"23".repeat(32)}`,
   blockNumber: "102",
   blockHash: `0x${"33".repeat(32)}`
+};
+const nativeV4Pool = {
+  ...v4Pool,
+  token0: zeroAddress,
+  token1: stonkBrokerAddress
 };
 const upV2Pool = {
   ...v2Pool,
@@ -223,6 +229,17 @@ for (const pool of [v2Pool, v3Pool, v4Pool]) {
   assert.deepEqual(result.pools, [pool]);
   if (pool.version === 4) assert.equal(result.pools[0]?.poolAddress, null);
 }
+
+const nativeV4Result = await readFixture(
+  { token: stonkBrokerAddress },
+  inventoryResponse([nativeV4Pool])
+);
+assert.equal(nativeV4Result.status, "verified_shadow");
+if (nativeV4Result.status !== "verified_shadow") throw new Error("unreachable");
+assert.equal(nativeV4Result.pools[0]?.token0, zeroAddress);
+assert.equal(nativeV4Result.pools[0]?.token1, stonkBrokerAddress);
+assert.equal(nativeV4Result.pools[0]?.poolKey, v4Pool.poolKey);
+assert.equal(nativeV4Result.pools[0]?.poolAddress, null);
 
 const stateResult = await readFixture({}, inventoryResponse([upV2Pool]));
 assert.equal(stateResult.status, "verified_shadow");
@@ -500,7 +517,30 @@ await expectSchemaRejection({
 });
 await expectSchemaRejection({ ...inventoryResponse([]), sourceManifestHash: "bad" });
 await expectSchemaRejection(
-  inventoryResponse([{ ...v2Pool, token0: `0x${"0".repeat(40)}` }])
+  inventoryResponse([{ ...v4Pool, token1: zeroAddress }])
+);
+await expectSchemaRejection(
+  inventoryResponse([{ ...v3Pool, token0: zeroAddress }])
+);
+await expectSchemaRejection(
+  inventoryResponse([{ ...v3Pool, token1: zeroAddress }])
+);
+await expectSchemaRejection(
+  inventoryResponse([{ ...v2Pool, token0: zeroAddress }])
+);
+await expectSchemaRejection(
+  inventoryResponse([{ ...v2Pool, token1: zeroAddress }])
+);
+await expectSchemaRejection(
+  inventoryResponse([{ ...upV2Pool, token0: zeroAddress }])
+);
+await expectSchemaRejection(
+  inventoryResponse([{
+    ...v3Pool,
+    sourceId: "sushiswap-v3",
+    protocol: "sushiswap",
+    token0: zeroAddress
+  }])
 );
 await expectSchemaRejection(
   inventoryResponse([{ ...v2Pool, poolAddress: v3Pool.poolAddress }])

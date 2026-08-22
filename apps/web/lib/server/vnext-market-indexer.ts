@@ -69,7 +69,7 @@ const marketPoolSchema = z
     version: z.union([z.literal(2), z.literal(3), z.literal(4)]),
     poolKey: z.string(),
     poolAddress: canonicalAddressSchema.nullable(),
-    token0: nonzeroAddressSchema,
+    token0: canonicalAddressSchema,
     token1: nonzeroAddressSchema,
     stable: z.boolean().nullable(),
     fee: z.number().int().min(0).max(16_777_215).nullable(),
@@ -106,6 +106,20 @@ const marketPoolSchema = z
 
     if (pool.token0 === pool.token1) {
       context.addIssue({ code: "custom", message: "token identities must differ" });
+    }
+
+    if (
+      pool.token0 === ZERO_ADDRESS &&
+      !(
+        pool.sourceId === "uniswap-v4" &&
+        pool.protocol === "uniswap" &&
+        pool.version === 4
+      )
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "native token0 is only valid for Uniswap V4"
+      });
     }
 
     if (pool.version === 2 || pool.version === 3) {
