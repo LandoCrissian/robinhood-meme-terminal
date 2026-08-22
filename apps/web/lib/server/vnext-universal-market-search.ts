@@ -157,6 +157,10 @@ function inventoryUnavailable(result: VNextCanonicalMarketInventoryResult) {
   return result.status !== "verified_shadow";
 }
 
+function inventoryIncomplete(result: VNextCanonicalMarketInventoryResult) {
+  return result.status === "verified_shadow" && !result.coverage.complete;
+}
+
 function marketIdentity(pool: VNextCanonicalMarketInventoryPool) {
   return `${pool.sourceId}:${pool.poolKey}`;
 }
@@ -299,6 +303,12 @@ async function exactAddressSearch(
         settlementPriority(left.address) - settlementPriority(right.address) ||
         left.address.localeCompare(right.address)
     );
+  if (
+    results.length === 0 &&
+    (inventoryIncomplete(tokenInventory) || inventoryIncomplete(poolInventory))
+  ) {
+    return emptyResult(query, "token-or-pool-address", "inventory_unavailable");
+  }
   return {
     query,
     queryKind: "token-or-pool-address",
@@ -343,6 +353,9 @@ async function exactPoolIdSearch(
         settlementPriority(left.address) - settlementPriority(right.address) ||
         left.address.localeCompare(right.address)
     );
+  if (results.length === 0 && inventoryIncomplete(inventory)) {
+    return emptyResult(query, "v4-pool-id", "inventory_unavailable");
+  }
   return {
     query,
     queryKind: "v4-pool-id",
@@ -443,6 +456,11 @@ async function textSearch(
   query: string,
   dependencies: Required<VNextUniversalMarketSearchDependencies>
 ): Promise<VNextUniversalMarketSearchResult> {
+  const coverageProbe = await dependencies.readInventory({ limit: 1 });
+  if (inventoryUnavailable(coverageProbe) || inventoryIncomplete(coverageProbe)) {
+    return emptyResult(query, "text", "inventory_unavailable");
+  }
+
   const discovery = await discoverCandidates(
     query,
     dependencies.fetch,
@@ -461,7 +479,9 @@ async function textSearch(
       })
     }))
   );
-  if (inventories.some(({ inventory }) => inventoryUnavailable(inventory))) {
+  if (inventories.some(({ inventory }) =>
+    inventoryUnavailable(inventory) || inventoryIncomplete(inventory)
+  )) {
     return emptyResult(query, "text", "inventory_unavailable");
   }
 

@@ -13,8 +13,29 @@ import type { PositionGuardHeartbeat } from "./position-guard-heartbeat.js";
 
 const EVM_ADDRESS_PATTERN = /^0x[0-9a-fA-F]{40}$/;
 const POOL_KEY_PATTERN = /^0x(?:[0-9a-fA-F]{40}|[0-9a-fA-F]{64})$/;
+const CANONICAL_INTEGER_PATTERN = /^(?:0|[1-9][0-9]*)$/;
+const CURSOR_PATTERN = /^[A-Za-z0-9_-]+$/;
+const CURSOR_VERSION = 1 as const;
+const MAX_CURSOR_LENGTH = 1_024;
 const ZERO_ADDRESS = `0x${"0".repeat(40)}`;
 const ZERO_POOL_ID = `0x${"0".repeat(64)}`;
+
+type PoolCursor = {
+  v: typeof CURSOR_VERSION;
+  chainId: typeof MARKET_INDEXER_CHAIN_ID;
+  source: string | null;
+  token: string | null;
+  poolKey: string | null;
+  blockNumber: string;
+  transactionIndex: number;
+  logIndex: number;
+};
+
+type PoolRow = Record<string, unknown> & {
+  blockNumber: string;
+  transactionIndex: number;
+  logIndex: number;
+};
 
 function exactToken(value: string | null) {
   if (value === null) return null;
@@ -35,6 +56,107 @@ function exactPoolKey(value: string | null) {
     return undefined;
   }
   return normalized;
+}
+
+function canonicalCoordinate(value: unknown) {
+  return typeof value === "string" && CANONICAL_INTEGER_PATTERN.test(value)
+    ? value
+    : null;
+}
+
+function coordinateAtOrAfter(value: unknown, minimum: string) {
+  const coordinate = canonicalCoordinate(value);
+  return coordinate !== null && BigInt(coordinate) >= BigInt(minimum);
+}
+
+function nonnegativeIndex(value: unknown) {
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0
+    ? value
+    : null;
+}
+
+function cursorKeys(value: Record<string, unknown>) {
+  return Object.keys(value).sort().join(",");
+}
+
+const EXPECTED_CURSOR_KEYS = [
+  "blockNumber",
+  "chainId",
+  "logIndex",
+  "poolKey",
+  "source",
+  "token",
+  "transactionIndex",
+  "v"
+].sort().join(",");
+
+function decodeCursor(value: string | null): PoolCursor | null | undefined {
+  if (value === null) return null;
+  if (
+    value.length === 0 ||
+    value.length > MAX_CURSOR_LENGTH ||
+    !CURSOR_PATTERN.test(value)
+  ) return undefined;
+
+  let parsed: unknown;
+  try {
+    const bytes = Buffer.from(value, "base64url");
+    if (bytes.toString("base64url") !== value) return undefined;
+    parsed = JSON.parse(bytes.toString("utf8"));
+  } catch {
+    return undefined;
+  }
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+    return undefined;
+  }
+  const candidate = parsed as Record<string, unknown>;
+  if (
+    cursorKeys(candidate) !== EXPECTED_CURSOR_KEYS ||
+    candidate.v !== CURSOR_VERSION ||
+    candidate.chainId !== MARKET_INDEXER_CHAIN_ID ||
+    (candidate.source !== null &&
+      (typeof candidate.source !== "string" ||
+        !marketSources.some((source) => source.id === candidate.source))) ||
+    (candidate.token !== null &&
+      (typeof candidate.token !== "string" || exactToken(candidate.token) !== candidate.token)) ||
+    (candidate.poolKey !== null &&
+      (typeof candidate.poolKey !== "string" || exactPoolKey(candidate.poolKey) !== candidate.poolKey)) ||
+    canonicalCoordinate(candidate.blockNumber) === null ||
+    nonnegativeIndex(candidate.transactionIndex) === null ||
+    nonnegativeIndex(candidate.logIndex) === null
+  ) return undefined;
+
+  return candidate as PoolCursor;
+}
+
+function encodeCursor(
+  source: string | null,
+  token: string | null,
+  poolKey: string | null,
+  row: PoolRow
+) {
+  const blockNumber = canonicalCoordinate(row.blockNumber);
+  const transactionIndex = nonnegativeIndex(row.transactionIndex);
+  const logIndex = nonnegativeIndex(row.logIndex);
+  if (blockNumber === null || transactionIndex === null || logIndex === null) {
+    throw new Error("PostgreSQL returned invalid pagination coordinates");
+  }
+  const cursor: PoolCursor = {
+    v: CURSOR_VERSION,
+    chainId: MARKET_INDEXER_CHAIN_ID,
+    source,
+    token,
+    poolKey,
+    blockNumber,
+    transactionIndex,
+    logIndex
+  };
+  return Buffer.from(JSON.stringify(cursor), "utf8").toString("base64url");
+}
+
+function publicPool(row: PoolRow) {
+  const { transactionIndex: _transactionIndex, logIndex: _logIndex, ...pool } = row;
+  return pool;
 }
 
 function json(response: ServerResponse, status: number, body: unknown) {
@@ -73,6 +195,65 @@ function heartbeat(worker: MarketIndexerWorker, config: MarketIndexerConfig) {
     staleAfterMs,
     stale: ageMs !== null && ageMs > staleAfterMs
   };
+}
+
+function inventoryCoverage(
+  worker: MarketIndexerWorker,
+  config: MarketIndexerConfig
+) {
+  const workerHeartbeat = heartbeat(worker, config);
+  const telemetry = worker.status.telemetry;
+  const finalizedHead = canonicalCoordinate(telemetry?.finalizedHead) ?? null;
+  const telemetryBySource = new Map(
+    telemetry?.sources.map((source) => [source.sourceId, source]) ?? []
+  );
+  const sources = marketSources.map((configuredSource) => {
+    const source = telemetryBySource.get(configuredSource.id);
+    return source
+      ? {
+          sourceId: configuredSource.id,
+          status: source.status,
+          indexedThrough: canonicalCoordinate(source.indexedThrough)
+        }
+      : {
+          sourceId: configuredSource.id,
+          status: "missing" as const,
+          indexedThrough: null
+        };
+  });
+  const expectedSources = new Set(marketSources.map((source) => source.id));
+  const observedSources = new Set(telemetry?.sources.map((source) => source.sourceId) ?? []);
+  const exactSourceSet = Boolean(
+    telemetry &&
+    telemetry.sources.length === expectedSources.size &&
+    observedSources.size === expectedSources.size &&
+    [...observedSources].every((sourceId) => expectedSources.has(sourceId))
+  );
+  const exactVerifiedSet =
+    worker.status.verifiedSources.length === expectedSources.size &&
+    new Set(worker.status.verifiedSources).size === expectedSources.size &&
+    worker.status.verifiedSources.every((sourceId) => expectedSources.has(sourceId));
+  const complete = Boolean(
+    telemetry &&
+    finalizedHead !== null &&
+    worker.status.lastFinalizedHead === finalizedHead &&
+    worker.status.lastError === null &&
+    worker.status.cycleSequence > 0 &&
+    workerHeartbeat.ageMs !== null &&
+    Number.isFinite(workerHeartbeat.ageMs) &&
+    !workerHeartbeat.stale &&
+    exactSourceSet &&
+    exactVerifiedSet &&
+    telemetry.sources.every((source) =>
+      source.status === "shadow-ready" &&
+      source.error === null &&
+      source.lastSyncAt !== null &&
+      source.finalizedHead === finalizedHead &&
+      source.lagBlocks === "0" &&
+      coordinateAtOrAfter(source.indexedThrough, finalizedHead)
+    )
+  );
+  return { complete, finalizedHead, sources };
 }
 
 export function createMarketIndexerServer(
@@ -207,6 +388,18 @@ export function createMarketIndexerServer(
           });
           return;
         }
+        const cursor = decodeCursor(url.searchParams.get("cursor"));
+        if (cursor === undefined) {
+          json(response, 400, { error: "cursor is malformed" });
+          return;
+        }
+        if (
+          cursor !== null &&
+          (cursor.source !== source || cursor.token !== token || cursor.poolKey !== poolKey)
+        ) {
+          json(response, 400, { error: "cursor does not match query" });
+          return;
+        }
         const result = await pool.query(
           `SELECT pools.source_id AS "sourceId", pools.protocol,
                   pools.protocol_version AS "version", pools.pool_key AS "poolKey",
@@ -214,6 +407,8 @@ export function createMarketIndexerServer(
                   pools.stable, pools.fee, pools.tick_spacing AS "tickSpacing",
                   pools.hooks, pools.transaction_hash AS "transactionHash",
                   pools.block_number AS "blockNumber", pools.block_hash AS "blockHash",
+                  pools.transaction_index AS "transactionIndex",
+                  pools.log_index AS "logIndex",
                   state.status AS "stateStatus",
                   state.live_fee AS "liveFee",
                   state.fee_denominator AS "feeDenominator",
@@ -235,16 +430,36 @@ export function createMarketIndexerServer(
              AND ($2::text IS NULL OR pools.source_id = $2)
              AND ($3::text IS NULL OR pools.token0 = $3 OR pools.token1 = $3)
              AND ($4::text IS NULL OR pools.pool_key = $4)
+             AND ($5::bigint IS NULL OR
+               (pools.block_number, pools.transaction_index, pools.log_index) <
+               ($5::bigint, $6::integer, $7::integer))
            ORDER BY pools.block_number DESC, pools.transaction_index DESC, pools.log_index DESC
-           LIMIT $5`,
-          [MARKET_INDEXER_CHAIN_ID, source, token, poolKey, limit]
+           LIMIT $8`,
+          [
+            MARKET_INDEXER_CHAIN_ID,
+            source,
+            token,
+            poolKey,
+            cursor?.blockNumber ?? null,
+            cursor?.transactionIndex ?? null,
+            cursor?.logIndex ?? null,
+            limit + 1
+          ]
         );
+        const rows = result.rows as PoolRow[];
+        const hasNextPage = rows.length > limit;
+        const page = rows.slice(0, limit);
+        const lastRow = page.at(-1);
         json(response, 200, {
           chainId: MARKET_INDEXER_CHAIN_ID,
           mode: "shadow",
           authoritative: false,
           sourceManifestHash: MARKET_SOURCE_MANIFEST_HASH,
-          pools: result.rows
+          coverage: inventoryCoverage(worker, config),
+          nextCursor: hasNextPage && lastRow
+            ? encodeCursor(source, token, poolKey, lastRow)
+            : null,
+          pools: page.map(publicPool)
         });
         return;
       }

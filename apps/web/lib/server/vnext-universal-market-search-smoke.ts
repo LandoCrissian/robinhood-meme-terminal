@@ -24,6 +24,15 @@ const v4PoolId = `0x${"c".repeat(64)}`;
 const manifestHash = `0x${"1".repeat(64)}`;
 const blockHash = `0x${"2".repeat(64)}`;
 const transactionHash = `0x${"3".repeat(64)}`;
+const canonicalSourceIds = [
+  "sushiswap-v2",
+  "sushiswap-v3",
+  "uniswap-v2",
+  "uniswap-v3",
+  "uniswap-v4",
+  "up-v2",
+  "up-cl"
+] as const;
 
 function pool(
   input: Partial<VNextCanonicalMarketInventoryPool> &
@@ -135,13 +144,26 @@ const markets = [
   sameSymbolMarketB
 ];
 
-function verifiedInventory(pools: VNextCanonicalMarketInventoryPool[]): VNextCanonicalMarketInventoryResult {
+function verifiedInventory(
+  pools: VNextCanonicalMarketInventoryPool[],
+  complete = true
+): VNextCanonicalMarketInventoryResult {
   return {
     status: "verified_shadow",
     chainId: 4_663,
     mode: "shadow",
     authoritative: false,
     sourceManifestHash: manifestHash,
+    coverage: {
+      complete,
+      finalizedHead: "12345",
+      sources: canonicalSourceIds.map((sourceId, index) => ({
+        sourceId,
+        status: complete || index > 0 ? "shadow-ready" : "backfilling",
+        indexedThrough: complete || index > 0 ? "12345" : "12000"
+      }))
+    },
+    nextCursor: null,
     pools
   };
 }
@@ -336,11 +358,16 @@ async function assertFailureSemantics() {
   });
   assert.equal(exactUnavailable.status, "inventory_unavailable");
 
+  let providerFailureCalls = 0;
   const providerUnavailable = await searchVNextUniversalMarkets("STONKBROKER", {
     ...dependencies(),
-    fetch: async () => jsonResponse({}, 503)
+    fetch: async () => {
+      providerFailureCalls += 1;
+      return jsonResponse({}, 503);
+    }
   });
   assert.equal(providerUnavailable.status, "candidate_discovery_unavailable");
+  assert.equal(providerFailureCalls, 1);
 
   const malformedProvider = await searchVNextUniversalMarkets("STONKBROKER", {
     ...dependencies(),
@@ -358,6 +385,62 @@ async function assertFailureSemantics() {
   assert.equal(notFound.status, "not_found");
 }
 
+async function assertIncompleteCoverageSemantics() {
+  const incompleteReader = async (
+    query: VNextCanonicalMarketInventoryQuery
+  ): Promise<VNextCanonicalMarketInventoryResult> => {
+    const matching = markets.filter((market) =>
+      (query.token === undefined || market.token0 === query.token || market.token1 === query.token) &&
+      (query.poolKey === undefined || market.poolKey === query.poolKey)
+    );
+    return verifiedInventory(matching.slice(0, query.limit ?? matching.length), false);
+  };
+  const found = await searchVNextUniversalMarkets(stonkBrokerAddress, {
+    readInventory: incompleteReader,
+    readIdentity: identityReader
+  });
+  assert.equal(found.status, "found");
+  assert.equal(found.results[0]?.address, stonkBrokerAddress);
+
+  const absentAddress = "0x9999999999999999999999999999999999999999";
+  const absentIncomplete = await searchVNextUniversalMarkets(absentAddress, {
+    readInventory: incompleteReader,
+    readIdentity: identityReader
+  });
+  assert.equal(absentIncomplete.status, "inventory_unavailable");
+
+  const absentComplete = await searchVNextUniversalMarkets(absentAddress, {
+    readInventory: async () => verifiedInventory([]),
+    readIdentity: identityReader
+  });
+  assert.equal(absentComplete.status, "not_found");
+
+  const missingPoolId = `0x${"9".repeat(64)}`;
+  const absentV4 = await searchVNextUniversalMarkets(missingPoolId, {
+    readInventory: incompleteReader,
+    readIdentity: identityReader
+  });
+  assert.equal(absentV4.status, "inventory_unavailable");
+
+  let identityCalls = 0;
+  let providerCalls = 0;
+  const incompleteText = await searchVNextUniversalMarkets("STONKBROKER", {
+    readInventory: incompleteReader,
+    readIdentity: async (address) => {
+      identityCalls += 1;
+      return identityReader(address);
+    },
+    fetch: async () => {
+      providerCalls += 1;
+      return jsonResponse({ pairs: [providerPair(stonkBrokerAddress)] });
+    },
+    timeoutMs: 500
+  });
+  assert.equal(incompleteText.status, "inventory_unavailable");
+  assert.equal(providerCalls, 0);
+  assert.equal(identityCalls, 0);
+}
+
 async function assertProviderWorkIsBounded() {
   const candidateAddresses = Array.from({ length: 40 }, (_, index) =>
     `0x${(index + 100).toString(16).padStart(40, "0")}`
@@ -373,7 +456,7 @@ async function assertProviderWorkIsBounded() {
     timeoutMs: 500
   });
   assert.equal(result.status, "not_found");
-  assert.equal(inventoryCalls, 12);
+  assert.equal(inventoryCalls, 13);
 }
 
 async function assertTimeoutIsUnavailable() {
@@ -394,6 +477,7 @@ async function main() {
   await assertSameIdentityContractsRemainDistinct();
   await assertProviderCannotCreateAuthority();
   await assertFailureSemantics();
+  await assertIncompleteCoverageSemantics();
   await assertProviderWorkIsBounded();
   await assertTimeoutIsUnavailable();
 
