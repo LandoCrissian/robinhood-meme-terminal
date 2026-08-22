@@ -281,6 +281,10 @@ try {
   } finally {
     cleanedClient.release();
   }
+  await assert.rejects(
+    runCompactMigrationRecovery(pool, safety, "ROLLBACK_TO_V2"),
+    /rollback to v2 is impossible after old-relation cleanup/
+  );
   assert.equal((await runCompactMigrationRecovery(pool, safety, "FINALIZE_CLEANED_V3")).phase, "V3_FINALIZED");
   assert.equal((await runCompactMigrationRecovery(pool, safety, "FINALIZE_CLEANED_V3")).phase, "V3_FINALIZED");
 
