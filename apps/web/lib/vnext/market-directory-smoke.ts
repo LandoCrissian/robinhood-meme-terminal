@@ -5,6 +5,11 @@ import type { ExternalMarketResponse, UniversalMarketResolution } from "../exter
 import { buildAssetMarketRecord } from "../external-market";
 import { normalizeProviderPairForAsset } from "../external-market-identity";
 import { readVNextCanonicalMarketDirectoryPage } from "../server/vnext-canonical-market-directory";
+import { readVNextLegacyMarketDirectoryPage } from "../server/vnext-legacy-market-directory";
+import {
+  readVNextMarketDirectoryRequest,
+  vNextCanonicalBrowseEnabled
+} from "../server/vnext-market-directory-route";
 import type {
   VNextCanonicalMarketInventoryCoverage,
   VNextCanonicalMarketInventoryPool,
@@ -380,6 +385,9 @@ assert.equal(sameSymbolDifferentContract.length, 2, "Different contracts sharing
 const hook = readFileSync(new URL("../../app/vnext/use-vnext-market-directory.ts", import.meta.url), "utf8");
 const route = readFileSync(new URL("../../app/api/vnext/market-directory/route.ts", import.meta.url), "utf8");
 const canonicalDirectoryServer = readFileSync(new URL("../server/vnext-canonical-market-directory.ts", import.meta.url), "utf8");
+const legacyDirectoryServer = readFileSync(new URL("../server/vnext-legacy-market-directory.ts", import.meta.url), "utf8");
+const directoryRouteServer = readFileSync(new URL("../server/vnext-market-directory-route.ts", import.meta.url), "utf8");
+const envExample = readFileSync(new URL("../../.env.example", import.meta.url), "utf8");
 const ecosystemRoute = readFileSync(new URL("../../app/api/markets/external/route.ts", import.meta.url), "utf8");
 const identityRoute = readFileSync(new URL("../../app/api/vnext/asset-identity/route.ts", import.meta.url), "utf8");
 const shell = readFileSync(new URL("../../app/vnext/vnext-terminal-shell.tsx", import.meta.url), "utf8");
@@ -395,6 +403,10 @@ assert.match(selectAddressSource, /\/api\/markets\/external/);
 assert.match(selectAddressSource, /directoryMarketFromExactLookup/);
 assert.match(selectAddressSource, /Promise\.allSettled/);
 assert.match(hook, /mergeVNextCanonicalBrowseMarkets/);
+assert.match(hook, /DirectoryServingMode = "unknown" \| "legacy" \| "canonical"/);
+assert.match(hook, /claimsCanonicalDirectory/);
+assert.match(hook, /directoryServingMode\.current === "canonical"/);
+assert.match(hook, /directoryServingMode\.current === "legacy"/);
 assert.match(hook, /canonicalNextCursor/);
 assert.match(hook, /loadNextCanonicalPage/);
 assert.match(hook, /URLSearchParams\(\{ address: selected\.address \}\)/);
@@ -408,13 +420,17 @@ assert.equal((hook.match(/setInterval/g) ?? []).length, 0);
 assert.equal((hook.match(/useVisibilityRefresh/g) ?? []).length, 3);
 assert.match(hook, /VNEXT_CLIENT_REFRESH_POLICY\.marketDirectoryMs/);
 assert.match(hook, /VNEXT_CLIENT_REFRESH_POLICY\.ecosystemDirectoryMs/);
-assert.match(route, /readVNextCanonicalMarketDirectoryPage/);
-assert.match(route, /private, no-store, max-age=0/);
+assert.match(route, /readVNextMarketDirectoryRequest/);
+assert.match(directoryRouteServer, /RMT_CANONICAL_BROWSE_ENABLED === "true"/);
+assert.match(directoryRouteServer, /private, no-store, max-age=0/);
+assert.match(envExample, /RMT_CANONICAL_BROWSE_ENABLED=false/);
 assert.match(canonicalDirectoryServer, /readVNextCanonicalMarketInventory/);
 assert.match(canonicalDirectoryServer, /coverage\.complete/);
 assert.match(canonicalDirectoryServer, /VNEXT_CANONICAL_DIRECTORY_PAGE_LIMIT/);
 assert.match(canonicalDirectoryServer, /cursor/);
-assert.doesNotMatch(`${route}\n${canonicalDirectoryServer}`, /dexscreener|DIRECTORY_TOKENS|fetchPairs|ROBINHOOD_USDG_ADDRESS|ROBINHOOD_RMT_ADDRESS/i);
+assert.doesNotMatch(canonicalDirectoryServer, /dexscreener|DIRECTORY_TOKENS|fetchPairs|ROBINHOOD_USDG_ADDRESS|ROBINHOOD_RMT_ADDRESS/i);
+assert.match(legacyDirectoryServer, /DIRECTORY_TOKENS/);
+assert.match(legacyDirectoryServer, /dexscreener/);
 assert.doesNotMatch(canonicalDirectoryServer, /slice\(0, VNEXT_MARKET_DIRECTORY_MAX_MARKETS\)/);
 assert.doesNotMatch(canonicalDirectoryServer, /resolveRmtOrigins|external-availability|external-sushi-quote|external-uniswap|router|reactor/);
 assert.deepEqual(VNEXT_MARKET_DIRECTORY_VIEWS.slice(0, 2).map((view) => view.id), ["active", "trending"]);
@@ -495,7 +511,21 @@ const canonicalResult = (
   pools
 });
 
+assert.equal(vNextCanonicalBrowseEnabled({}), false, "A missing canonical browse gate must default off");
+assert.equal(vNextCanonicalBrowseEnabled({ RMT_CANONICAL_BROWSE_ENABLED: "false" }), false);
+assert.equal(vNextCanonicalBrowseEnabled({ RMT_CANONICAL_BROWSE_ENABLED: "TRUE" }), false);
+assert.equal(vNextCanonicalBrowseEnabled({ RMT_CANONICAL_BROWSE_ENABLED: "true" }), true);
+
 async function verifyCanonicalBrowsePages() {
+  const legacyFixture = await readVNextLegacyMarketDirectoryPage((async () => new Response(JSON.stringify([pair({
+    quoteToken: { address: ROBINHOOD_WETH_ADDRESS, name: "Wrapped Ether", symbol: "WETH" }
+  })]), {
+    status: 200,
+    headers: { "Content-Type": "application/json" }
+  })) as typeof fetch);
+  assert.equal(legacyFixture.status, 200);
+  assert.ok((legacyFixture.body.markets?.length ?? 0) > 0, "The factored legacy browse must remain usable while the gate is off");
+
   const calls: Array<string | undefined> = [];
   const readInventory = async (query: { cursor?: string }) => {
     calls.push(query.cursor);
@@ -554,6 +584,87 @@ async function verifyCanonicalBrowsePages() {
     })
   );
   assert.equal(incompleteResponse.status, 503, "Incomplete canonical inventory must fail closed for browse absence");
+  assert.deepEqual(incompleteResponse.body, {
+    canonical: true,
+    error: "Canonical market directory is not ready."
+  });
+
+  let legacyCalls = 0;
+  let canonicalCalls = 0;
+  const gatedDependencies = {
+    readLegacy: async () => {
+      legacyCalls += 1;
+      return legacyFixture;
+    },
+    readCanonical: async (requestUrl: string) => {
+      canonicalCalls += 1;
+      return readVNextCanonicalMarketDirectoryPage(requestUrl, async () => canonicalResult(firstCanonicalPage, "next_page"));
+    }
+  };
+  const missingGate = await readVNextMarketDirectoryRequest(
+    "http://localhost/api/vnext/market-directory",
+    {},
+    gatedDependencies
+  );
+  assert.equal(missingGate.status, 200);
+  assert.equal("canonical" in missingGate.body, false, "A missing gate must preserve the legacy response");
+  const falseGate = await readVNextMarketDirectoryRequest(
+    "http://localhost/api/vnext/market-directory",
+    { RMT_CANONICAL_BROWSE_ENABLED: "false" },
+    gatedDependencies
+  );
+  assert.equal(falseGate.status, 200);
+  assert.equal("canonical" in falseGate.body, false, "Complete coverage must not auto-activate canonical browse");
+  assert.equal(canonicalCalls, 0);
+  assert.equal(legacyCalls, 2);
+
+  const enabledGate = await readVNextMarketDirectoryRequest(
+    "http://localhost/api/vnext/market-directory",
+    { RMT_CANONICAL_BROWSE_ENABLED: "true" },
+    gatedDependencies
+  );
+  assert.equal(enabledGate.status, 200);
+  assert.equal("canonical" in enabledGate.body && enabledGate.body.canonical, true);
+  assert.equal(canonicalCalls, 1);
+  assert.equal(legacyCalls, 2);
+
+  let failClosedLegacyCalls = 0;
+  const incompleteGate = await readVNextMarketDirectoryRequest(
+    "http://localhost/api/vnext/market-directory",
+    { RMT_CANONICAL_BROWSE_ENABLED: "true" },
+    {
+      readLegacy: async () => {
+        failClosedLegacyCalls += 1;
+        return legacyFixture;
+      },
+      readCanonical: async (requestUrl) => readVNextCanonicalMarketDirectoryPage(requestUrl, async () => canonicalResult([], null, {
+        ...completeCoverage,
+        complete: false,
+        sources: completeCoverage.sources.map((source) => ({ ...source, status: "backfilling" as const }))
+      }))
+    }
+  );
+  assert.equal(incompleteGate.status, 503);
+  assert.equal("canonical" in incompleteGate.body && incompleteGate.body.canonical, true);
+  assert.equal(failClosedLegacyCalls, 0, "Enabled incomplete canonical browse must not fall back to legacy authority");
+
+  const unavailableGate = await readVNextMarketDirectoryRequest(
+    "http://localhost/api/vnext/market-directory",
+    { RMT_CANONICAL_BROWSE_ENABLED: "true" },
+    {
+      readLegacy: async () => {
+        failClosedLegacyCalls += 1;
+        return legacyFixture;
+      },
+      readCanonical: async (requestUrl) => readVNextCanonicalMarketDirectoryPage(requestUrl, async () => ({
+        status: "upstream_unavailable",
+        reason: "request_failed"
+      }))
+    }
+  );
+  assert.equal(unavailableGate.status, 503);
+  assert.equal("canonical" in unavailableGate.body && unavailableGate.body.canonical, true);
+  assert.equal(failClosedLegacyCalls, 0, "Enabled unavailable canonical browse must not fall back to legacy authority");
 }
 assert.match(ecosystemRoute, /import \{ VNEXT_MARKET_DIRECTORY_MAX_MARKETS \} from "\.\.\/\.\.\/\.\.\/\.\.\/lib\/vnext\/market-directory"/);
 assert.match(ecosystemRoute, /slice\(0, VNEXT_MARKET_DIRECTORY_MAX_MARKETS\)/);

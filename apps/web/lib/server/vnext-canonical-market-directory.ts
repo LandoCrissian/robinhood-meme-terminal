@@ -16,7 +16,7 @@ type CanonicalInventoryReader = (
 
 export type VNextCanonicalMarketDirectoryPage =
   | { status: 200; body: VNextCanonicalDirectoryResponse }
-  | { status: 400 | 503; body: { error: string } };
+  | { status: 400 | 503; body: { canonical: true; error: string } };
 
 export async function readVNextCanonicalMarketDirectoryPage(
   requestUrl: string,
@@ -30,14 +30,14 @@ export async function readVNextCanonicalMarketDirectoryPage(
       cursor
     });
   } catch {
-    return { status: 503, body: { error: "Canonical market directory is not ready." } };
+    return { status: 503, body: { canonical: true, error: "Canonical market directory is not ready." } };
   }
 
   if (inventory.status === "invalid_query") {
-    return { status: 400, body: { error: "Invalid canonical market directory cursor." } };
+    return { status: 400, body: { canonical: true, error: "Invalid canonical market directory cursor." } };
   }
   if (inventory.status !== "verified_shadow" || !inventory.coverage.complete) {
-    return { status: 503, body: { error: "Canonical market directory is not ready." } };
+    return { status: 503, body: { canonical: true, error: "Canonical market directory is not ready." } };
   }
 
   return {

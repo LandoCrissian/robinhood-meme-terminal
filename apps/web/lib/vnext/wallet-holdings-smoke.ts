@@ -97,6 +97,7 @@ const presentations = readFileSync(new URL("../../app/vnext/terminal-presentatio
 const artwork = readFileSync(new URL("../../app/vnext/token-artwork.tsx", import.meta.url), "utf8");
 const marketRoute = readFileSync(new URL("../../app/api/vnext/market-directory/route.ts", import.meta.url), "utf8");
 const canonicalDirectoryServer = readFileSync(new URL("../server/vnext-canonical-market-directory.ts", import.meta.url), "utf8");
+const marketDirectoryRouteServer = readFileSync(new URL("../server/vnext-market-directory-route.ts", import.meta.url), "utf8");
 
 assert.match(route, /https:\/\/robinhoodchain\.blockscout\.com/);
 assert.match(route, /token-balances/);
@@ -120,7 +121,9 @@ assert.match(presentations, /imageUrl=\{market\.imageUri\}/);
 assert.match(artwork, /safeTokenArtworkUrl/);
 assert.match(artwork, /onError=\{\(\) => setFailedImage\(safeImage\)\}/);
 assert.match(artwork, /symbol\.trim\(\)\.slice\(0, 1\)/);
-assert.match(marketRoute, /readVNextCanonicalMarketDirectoryPage/);
+assert.match(marketRoute, /readVNextMarketDirectoryRequest/);
+assert.match(marketDirectoryRouteServer, /RMT_CANONICAL_BROWSE_ENABLED === "true"/);
+assert.match(marketDirectoryRouteServer, /readVNextCanonicalMarketDirectoryPage/);
 assert.match(canonicalDirectoryServer, /readVNextCanonicalMarketInventory/);
 assert.match(canonicalDirectoryServer, /inventory\.coverage\.complete/);
 assert.match(canonicalDirectoryServer, /directoryMarketsFromCanonicalPools/);

@@ -15,7 +15,8 @@ import {
   parseVNextCanonicalDirectoryResponse,
   resolutionFromLookup,
   verifiedDirectoryAsset,
-  type VNextDirectoryMarket
+  type VNextDirectoryMarket,
+  type VNextDirectoryResponse
 } from "../../lib/vnext/market-directory";
 import { ROBINHOOD_RMT_ADDRESS } from "../../lib/vnext/robinhood-assets";
 import { VNEXT_CLIENT_REFRESH_POLICY } from "../../lib/vnext/client-refresh-policy";
@@ -30,6 +31,12 @@ const UNIVERSAL_SEARCH_TIMEOUT_MS = 5_000;
 
 export type DirectoryStatus = "loading" | "ready" | "stale" | "error";
 export type IdentityStatus = "idle" | "checking" | "verified" | "unverified";
+type DirectoryServingMode = "unknown" | "legacy" | "canonical";
+
+function claimsCanonicalDirectory(value: unknown) {
+  return value !== null && typeof value === "object" && !Array.isArray(value)
+    && (value as { canonical?: unknown }).canonical === true;
+}
 
 function directorySnapshot(markets: VNextDirectoryMarket[]) {
   return JSON.stringify(markets.map((market) => [
@@ -92,6 +99,8 @@ export function useVNextMarketDirectory() {
   const marketSnapshot = useRef("");
   const identityCache = useRef(new Map<string, AssetMetadata | null>());
   const exactLookupMarket = useRef<VNextDirectoryMarket | undefined>(undefined);
+  const directoryServingMode = useRef<DirectoryServingMode>("unknown");
+  const legacyDirectoryMarkets = useRef<VNextDirectoryMarket[]>([]);
   const canonicalDirectoryMarkets = useRef<VNextDirectoryMarket[]>([]);
   const providerEnrichmentMarkets = useRef<VNextDirectoryMarket[]>([]);
   const canonicalNextCursor = useRef<string | null>(null);
@@ -103,10 +112,15 @@ export function useVNextMarketDirectory() {
 
   const publishMarkets = useCallback(() => {
     const byAddress = new Map<string, VNextDirectoryMarket>();
-    for (const market of mergeVNextCanonicalBrowseMarkets(
-      canonicalDirectoryMarkets.current,
-      providerEnrichmentMarkets.current
-    )) byAddress.set(market.address.toLowerCase(), market);
+    if (directoryServingMode.current === "canonical") {
+      for (const market of mergeVNextCanonicalBrowseMarkets(
+        canonicalDirectoryMarkets.current,
+        providerEnrichmentMarkets.current
+      )) byAddress.set(market.address.toLowerCase(), market);
+    } else if (directoryServingMode.current === "legacy") {
+      for (const market of providerEnrichmentMarkets.current) byAddress.set(market.address.toLowerCase(), market);
+      for (const market of legacyDirectoryMarkets.current) byAddress.set(market.address.toLowerCase(), market);
+    }
     if (exactLookupMarket.current) {
       const key = exactLookupMarket.current.address.toLowerCase();
       const existing = byAddress.get(key);
@@ -261,21 +275,41 @@ export function useVNextMarketDirectory() {
         method: "GET",
         headers: { Accept: "application/json" }
       });
-      const payload = parseVNextCanonicalDirectoryResponse(await response.json());
-      if (!response.ok || !payload || requestSequence !== canonicalRequestSequence.current) {
-        throw new Error("Canonical market directory unavailable.");
+      const rawPayload: unknown = await response.json();
+      if (claimsCanonicalDirectory(rawPayload)) {
+        directoryServingMode.current = "canonical";
+        legacyDirectoryMarkets.current = [];
+        const payload = parseVNextCanonicalDirectoryResponse(rawPayload);
+        if (!response.ok || !payload || requestSequence !== canonicalRequestSequence.current) {
+          canonicalDirectoryMarkets.current = [];
+          canonicalNextCursor.current = null;
+          setHasMoreCanonicalMarkets(false);
+          publishMarkets();
+          throw new Error("Canonical market directory unavailable.");
+        }
+        const canonicalMarkets = payload.markets ?? [];
+        if (canonicalMarkets.length === 0) throw new Error("Canonical market directory returned no markets.");
+        canonicalDirectoryMarkets.current = canonicalMarkets;
+        canonicalNextCursor.current = payload.nextCursor;
+        setHasMoreCanonicalMarkets(payload.nextCursor !== null);
+      } else {
+        directoryServingMode.current = "legacy";
+        canonicalDirectoryMarkets.current = [];
+        canonicalNextCursor.current = null;
+        setHasMoreCanonicalMarkets(false);
+        const payload = rawPayload as VNextDirectoryResponse;
+        const legacyMarkets = normalizeDirectoryMarkets(payload);
+        if (!response.ok || legacyMarkets.length === 0 || requestSequence !== canonicalRequestSequence.current) {
+          throw new Error(payload.error ?? "Market directory unavailable.");
+        }
+        legacyDirectoryMarkets.current = legacyMarkets;
       }
-      const canonicalMarkets = payload.markets ?? [];
-      if (canonicalMarkets.length === 0) throw new Error("Canonical market directory returned no markets.");
-      canonicalDirectoryMarkets.current = canonicalMarkets;
-      canonicalNextCursor.current = payload.nextCursor;
-      setHasMoreCanonicalMarkets(payload.nextCursor !== null);
       const nextMarkets = publishMarkets();
       setSelectedAddress((current) => current && nextMarkets.some((market) => market.address.toLowerCase() === current.toLowerCase())
         ? current
         : nextMarkets.find((market) => market.address === ROBINHOOD_RMT_ADDRESS)?.address ?? nextMarkets[0].address);
       hasData.current = true;
-      setStatus("ready");
+      setStatus(!claimsCanonicalDirectory(rawPayload) && (rawPayload as VNextDirectoryResponse).stale ? "stale" : "ready");
     } catch {
       setStatus(hasData.current ? "stale" : "error");
     }
@@ -283,7 +317,7 @@ export function useVNextMarketDirectory() {
 
   const loadNextCanonicalPage = useCallback(async () => {
     const cursor = canonicalNextCursor.current;
-    if (!cursor || canonicalPageLoading.current) return false;
+    if (directoryServingMode.current !== "canonical" || !cursor || canonicalPageLoading.current) return false;
     canonicalPageLoading.current = true;
     const requestSequence = canonicalRequestSequence.current;
     try {
@@ -326,7 +360,7 @@ export function useVNextMarketDirectory() {
       providerEnrichmentMarkets.current = normalizeDirectoryMarkets(payload);
       publishMarkets();
     } catch {
-      // Canonical inventory remains visible when optional provider enrichment is delayed.
+      // The selected serving mode retains its last-good browse inventory.
     }
   }, [publishMarkets]);
 
