@@ -737,11 +737,30 @@ export function mergeVNextCanonicalBrowseMarkets(
   canonicalMarkets: VNextDirectoryMarket[],
   enrichmentMarkets: VNextDirectoryMarket[]
 ) {
-  const observedMarkets = enrichmentMarkets.map((market) => ({
-    ...market,
-    canonicalMarkets: undefined
-  }));
-  return mergeVNextDirectoryAndSearchMarkets(canonicalMarkets, observedMarkets);
+  const enrichmentByAddress = new Map(enrichmentMarkets.map((market) => [
+    market.address.toLowerCase(),
+    { ...market, canonicalMarkets: undefined }
+  ]));
+  const canonicalAddresses = new Set(canonicalMarkets.map((market) => market.address.toLowerCase()));
+  const mergedCanonicalMarkets = canonicalMarkets.map((canonicalMarket) => {
+    const enrichment = enrichmentByAddress.get(canonicalMarket.address.toLowerCase());
+    if (!enrichment) return canonicalMarket;
+    const merged = mergeVNextDirectoryAndSearchMarkets([enrichment], [canonicalMarket])[0]!;
+    return canonicalMarket.verifiedIdentity
+      ? {
+          ...merged,
+          name: canonicalMarket.verifiedIdentity.name,
+          symbol: canonicalMarket.verifiedIdentity.symbol,
+          verifiedIdentity: canonicalMarket.verifiedIdentity
+        }
+      : merged;
+  });
+  return [
+    ...mergedCanonicalMarkets,
+    ...[...enrichmentByAddress.entries()]
+      .filter(([address]) => !canonicalAddresses.has(address))
+      .map(([, market]) => market)
+  ];
 }
 
 export function resolutionFromLookup(payload: ExternalMarketResponse, address: string) {

@@ -789,18 +789,57 @@ async function verifyCanonicalBrowsePages() {
   assert.equal(selectVNextMarketDirectoryView(enriched, "all").some((market) => market.address === providerOnly.address), true);
   assert.equal(selectVNextMarketDirectoryView(enriched, "active").some((market) => market.address === providerOnly.address), true, "Real activity, not liquidity, controls Active membership");
   assert.deepEqual(visibleProviderOnly?.riskFlags, ["thin-liquidity"], "Risk remains informational");
-  const canonicalTarget = combined[0]!;
+  const ponsProvider = {
+    ...providerOnly,
+    address: ponsAddress,
+    assetId: pons!.assetId,
+    name: "Pons",
+    symbol: "PONS",
+    imageUri: "https://cdn.example.test/pons.png",
+    pairAddress: addressFor(98_001),
+    dexId: "fixture-dex",
+    url: `https://dexscreener.com/robinhood/${addressFor(98_001).toLowerCase()}`,
+    liquidityUsd: 25_000,
+    volume1h: 4_200
+  };
   const mergedEvidence = mergeVNextCanonicalBrowseMarkets(combined, [{
+    ...ponsProvider
+  }, providerOnly]);
+  assert.equal(mergedEvidence.length, combined.length + 1, "Canonical + provider identity must merge once while provider-only markets remain visible");
+  assert.equal(mergedEvidence.filter((market) => market.address.toLowerCase() === ponsAddress).length, 1);
+  const mergedTarget = mergedEvidence.find((market) => market.address.toLowerCase() === ponsAddress);
+  assert.equal(mergedTarget?.name, "Pons", "Provider presentation name must replace the canonical address placeholder");
+  assert.equal(mergedTarget?.symbol, "PONS", "Provider presentation symbol must replace the canonical address placeholder");
+  assert.equal(mergedTarget?.imageUri, ponsProvider.imageUri);
+  assert.equal(mergedTarget?.pairAddress, ponsProvider.pairAddress);
+  assert.equal(mergedTarget?.dexId, ponsProvider.dexId);
+  assert.equal(mergedTarget?.url, ponsProvider.url);
+  assert.equal(deriveVNextMarketState(mergedTarget!).market, "canonical");
+  assert.equal(mergedTarget?.liquidityUsd, 25_000);
+  assert.equal(mergedTarget?.volume1h, 4_200);
+  assert.equal(mergedTarget?.canonicalMarkets?.length, pons?.canonicalMarkets?.length);
+  const canonicalTarget = combined[0]!;
+  const verifiedCanonicalTarget = {
+    ...canonicalTarget,
+    name: "Verified Canonical Name",
+    symbol: "VCN",
+    verifiedIdentity: {
+      address: canonicalTarget.address,
+      name: "Verified Canonical Name",
+      symbol: "VCN",
+      decimals: 18
+    }
+  };
+  const verifiedIdentityMerge = mergeVNextCanonicalBrowseMarkets([verifiedCanonicalTarget], [{
     ...providerOnly,
     address: canonicalTarget.address,
     assetId: canonicalTarget.assetId,
-    verifiedMarkets: undefined
-  }]);
-  assert.equal(mergedEvidence.length, combined.length, "Canonical + provider identity must merge once by contract");
-  const mergedTarget = mergedEvidence.find((market) => market.address === canonicalTarget.address);
-  assert.equal(deriveVNextMarketState(mergedTarget!).market, "canonical");
-  assert.equal(mergedTarget?.liquidityUsd, 10);
-  assert.equal(mergedTarget?.canonicalMarkets?.length, canonicalTarget.canonicalMarkets?.length);
+    name: "Unverified Provider Label",
+    symbol: "UPL"
+  }])[0]!;
+  assert.equal(verifiedIdentityMerge.name, "Verified Canonical Name");
+  assert.equal(verifiedIdentityMerge.symbol, "VCN");
+  assert.equal(verifiedIdentityMerge.verifiedIdentity, verifiedCanonicalTarget.verifiedIdentity);
   const legacySeedOnly = mergeVNextCanonicalBrowseMarkets(combined, [categorized[0]]);
   assert.equal(legacySeedOnly.some((market) => market.address === categorized[0].address), true);
 
