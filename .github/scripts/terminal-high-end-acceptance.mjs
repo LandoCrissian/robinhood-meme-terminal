@@ -13,6 +13,8 @@ const pair = address(0x2001);
 const factory = address(0x3001);
 const creator = address(0x4001);
 const exactIdentityToken = address(0x1ffe);
+const stonkBrokerToken = `0x${["e934e36a", "439c9401", "7b64a3fe", "ce66af12", "099abf50"].join("")}`;
+const stonkBrokerPoolId = `0x${"ab".repeat(32)}`;
 const universalSearchQueries = new WeakMap();
 
 await mkdir(output, { recursive: true });
@@ -25,7 +27,9 @@ function market(index) {
   const change5m = ((index * 17) % 31) - 12;
   const change1h = ((index * 11) % 43) - 9;
   const liquidity = 58_000 + index * 19_000;
-  const volume1h = 46_000 + index * 7_300;
+  const recentlyQuiet = index === 51;
+  const momentumSignal = index < 2 ? "moving" : index < 4 ? "early" : "active";
+  const volume1h = recentlyQuiet ? 0 : index < 4 ? 920_000 - index * 20_000 : 46_000 + index * 7_300;
   const priceUsd = 0.00072 + index * 0.000083;
   const volume24h = 420_000 + index * 97_000;
   const priceChange24h = change1h * 1.9;
@@ -138,23 +142,23 @@ function market(index) {
     liquidityUsd: liquidity,
     marketCapUsd: 390_000 + index * 235_000,
     fdvUsd: 480_000 + index * 280_000,
-    volume5m: Math.max(12_000, volume1h * 0.36),
+    volume5m: recentlyQuiet ? 0 : Math.max(12_000, volume1h * 0.36),
     volume1h,
     volume24h,
     priceChange5m: change5m,
     priceChange1h: change1h,
     priceChange24h,
-    buys5m: 24 + index,
-    sells5m: 8 + index % 5,
-    buys1h: 138 + index * 7,
-    sells1h: 67 + index * 3,
+    buys5m: recentlyQuiet ? 0 : index < 4 ? 1_300 - index * 40 : 24 + index,
+    sells5m: recentlyQuiet ? 0 : index < 4 ? 420 - index * 15 : 8 + index % 5,
+    buys1h: recentlyQuiet ? 0 : index < 4 ? 5_000 - index * 100 : 138 + index * 7,
+    sells1h: recentlyQuiet ? 0 : index < 4 ? 2_000 - index * 50 : 67 + index * 3,
     buys24h: 1_120 + index * 31,
     sells24h: 610 + index * 19,
     pairCreatedAt: Date.now() - (index + 1) * 3_600_000,
     ageMinutes: 52 + index * 83,
     momentumScore: 58 + (index * 7) % 39,
     buyPressureBps: 6_400 + index * 75,
-    signal: "active",
+    signal: momentumSignal,
     riskFlags: index % 7 === 0 ? ["thin-liquidity"] : [],
     primaryMarket: marketEvidence,
     verifiedMarkets: [marketEvidence],
@@ -163,6 +167,24 @@ function market(index) {
 }
 
 const markets = Array.from({ length: 52 }, (_, index) => market(index));
+const legacyActiveMarkets = markets.filter((item) => item.signal === "active" && item.volume24h > 0);
+const correctedActiveMarkets = markets.filter((item) => item.volume1h > 0 || item.buys1h + item.sells1h > 0);
+const legacyTrendingMarkets = markets.filter((item) => item.signal === "moving" || item.signal === "early");
+const correctedTrendingMarkets = [...legacyTrendingMarkets];
+const productAcceptanceEvidence = {
+  activeCountBefore: legacyActiveMarkets.length,
+  activeCountAfter: correctedActiveMarkets.length,
+  trendingCountBefore: legacyTrendingMarkets.length,
+  trendingCountAfter: correctedTrendingMarkets.length,
+  searchStonkBrokerBefore: "inventory_unavailable",
+  searchStonkBrokerAfter: "found",
+  movingWithRealActivityVisibleInActiveBefore: legacyActiveMarkets.some((item) => item.signal === "moving"),
+  movingWithRealActivityVisibleInActiveAfter: correctedActiveMarkets.some((item) => item.signal === "moving"),
+  earlyWithRealActivityVisibleInActiveBefore: legacyActiveMarkets.some((item) => item.signal === "early"),
+  earlyWithRealActivityVisibleInActiveAfter: correctedActiveMarkets.some((item) => item.signal === "early"),
+  zeroActivityMarketsInActiveBefore: legacyActiveMarkets.filter((item) => item.volume1h === 0 && item.buys1h + item.sells1h === 0).length,
+  zeroActivityMarketsInActiveAfter: correctedActiveMarkets.filter((item) => item.volume1h === 0 && item.buys1h + item.sells1h === 0).length
+};
 const trades = Array.from({ length: 14 }, (_, index) => ({
   id: `fixture-${index}`,
   transactionHash: txHash(index + 300),
@@ -254,9 +276,23 @@ function canonicalDirectoryMarket(market) {
     priceUsd: null,
     liquidityUsd: null,
     marketCapUsd: null,
+    volume5m: null,
+    volume1h: null,
     volume24h: null,
+    priceChange5m: null,
+    priceChange1h: null,
     priceChange24h: null,
+    buys5m: null,
+    sells5m: null,
+    buys1h: null,
+    sells1h: null,
+    buys24h: null,
+    sells24h: null,
+    pairCreatedAt: null,
     ageMinutes: null,
+    momentumScore: null,
+    buyPressureBps: null,
+    riskFlags: null,
     signal: null,
     canonicalMarkets: [{
       sourceId: version === 2 ? "sushiswap-v2" : "uniswap-v3",
@@ -284,6 +320,53 @@ function canonicalDirectoryMarket(market) {
       bribeAddress: null,
       stateObservedBlock: null,
       stateObservedBlockHash: null
+    }]
+  };
+}
+
+function stonkBrokerSearchResponse(query) {
+  const normalized = query.trim().replace(/^\$/, "").toLowerCase().replace(/[\s_-]+/g, "");
+  const isAddress = query.trim().toLowerCase() === stonkBrokerToken;
+  const isPoolId = query.trim().toLowerCase() === stonkBrokerPoolId;
+  const isText = normalized === "stonkbroker" || normalized === "stonkbrokers";
+  if (!isAddress && !isPoolId && !isText) return null;
+  return {
+    query,
+    queryKind: isPoolId ? "v4-pool-id" : isAddress ? "token-or-pool-address" : "text",
+    status: "found",
+    results: [{
+      address: stonkBrokerToken,
+      name: "StonkBroker",
+      symbol: "STONKBROKER",
+      decimals: 18,
+      matchedBy: isPoolId ? "pool-id" : isAddress ? "token" : "symbol",
+      markets: [{
+        sourceId: "uniswap-v4",
+        protocol: "uniswap",
+        version: 4,
+        poolKey: stonkBrokerPoolId,
+        poolAddress: null,
+        token0: stonkBrokerToken,
+        token1: address(0x9002),
+        stable: null,
+        fee: 3_000,
+        tickSpacing: 60,
+        hooks: address(0x9003),
+        transactionHash: txHash(0x5151),
+        blockNumber: "12451515",
+        blockHash: txHash(0x6161),
+        stateStatus: null,
+        liveFee: null,
+        feeDenominator: null,
+        gaugeAddress: null,
+        gaugeAlive: null,
+        gaugeWeight: null,
+        gaugeClaimable: null,
+        feesAddress: null,
+        bribeAddress: null,
+        stateObservedBlock: null,
+        stateObservedBlockHash: null
+      }]
     }]
   };
 }
@@ -343,11 +426,12 @@ async function installRoutes(page) {
   await page.route(/\/api\/vnext\/market-search(?:\?.*)?$/, async (route) => {
     const query = new URL(route.request().url()).searchParams.get("q") ?? "";
     const exactIdentityUnavailable = query.toLowerCase() === exactIdentityToken.toLowerCase();
+    const stonkBrokerResult = stonkBrokerSearchResponse(query);
     universalSearchQueries.set(page, [...(universalSearchQueries.get(page) ?? []), query]);
     await route.fulfill({
       status: exactIdentityUnavailable ? 503 : 200,
       contentType: "application/json",
-      body: JSON.stringify({
+      body: JSON.stringify(stonkBrokerResult ?? {
         query,
         queryKind: "token-or-pool-address",
         status: exactIdentityUnavailable ? "inventory_unavailable" : "not_found",
@@ -620,6 +704,113 @@ async function inspectDesktop(browser, viewport, label) {
   if (exactIdentityQueries.length !== 1 || exactIdentityQueries[0]?.toLowerCase() !== exactIdentityToken.toLowerCase()) throw new Error(`${label}: identity-only fallback did not follow exactly one universal inventory attempt`);
   await context.close();
   return { ...audit, marketsComposition, assetComposition };
+}
+
+async function inspectDiscoveryAcceptance(browser, options, label, mobile) {
+  const context = await createContext(browser, options);
+  const page = await context.newPage();
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await installRoutes(page);
+  const terminalSelector = mobile ? ".rmtMobileTerminal" : ".rmtDesktopTerminal";
+  const rowSelector = mobile ? ".rmtMobileMarketRow" : ".rmtMarketTableRow";
+  await gotoReady(page, base, `${terminalSelector} ${rowSelector}`);
+
+  await page.waitForFunction(({ terminalSelector, activeCount, trendingCount }) => {
+    const counts = Object.fromEntries([...document.querySelectorAll(`${terminalSelector} .rmtMarketViews button`)].map((button) => [
+      button.querySelector("span")?.textContent?.trim(),
+      Number(button.querySelector("small")?.textContent)
+    ]));
+    return counts.Active === activeCount && counts.Trending === trendingCount;
+  }, {
+    terminalSelector,
+    activeCount: productAcceptanceEvidence.activeCountAfter,
+    trendingCount: productAcceptanceEvidence.trendingCountAfter
+  });
+
+  const navigation = page.locator(`${terminalSelector} .rmtMarketViews button`);
+  const labels = await navigation.locator("span").allTextContents();
+  if (labels[0] !== "Active" || labels[1] !== "Trending") {
+    throw new Error(`${label}: Active is not before Trending ${JSON.stringify(labels)}`);
+  }
+  const activeButton = page.locator(terminalSelector).getByRole("button", { name: new RegExp(`^Active\\s+${productAcceptanceEvidence.activeCountAfter}$`) });
+  const trendingButton = page.locator(terminalSelector).getByRole("button", { name: new RegExp(`^Trending\\s+${productAcceptanceEvidence.trendingCountAfter}$`) });
+  if (await activeButton.getAttribute("aria-pressed") !== "true") throw new Error(`${label}: Active is not the default browse view`);
+
+  const activeRows = page.locator(`${terminalSelector} ${rowSelector}`);
+  const activeSymbols = (await activeRows.allTextContents()).map((value) => value.match(/R\d{2}/)?.[0]).filter(Boolean);
+  const expectedActiveLeaders = ["R01", "R02", "R03", "R04"];
+  if (JSON.stringify(activeSymbols.slice(0, 4)) !== JSON.stringify(expectedActiveLeaders)) {
+    throw new Error(`${label}: Active ordering did not preserve hottest moving/early markets ${JSON.stringify(activeSymbols.slice(0, 6))}`);
+  }
+  await page.screenshot({ path: `${output}/discovery-active-${label}.png`, fullPage: false, animations: "disabled" });
+
+  await trendingButton.click();
+  await page.waitForFunction(({ terminalSelector, rowSelector, count }) => (
+    document.querySelectorAll(`${terminalSelector} ${rowSelector}`).length === count
+  ), { terminalSelector, rowSelector, count: productAcceptanceEvidence.trendingCountAfter });
+  if (await trendingButton.getAttribute("aria-pressed") !== "true") throw new Error(`${label}: Trending did not become active`);
+  const trendingSymbols = (await page.locator(`${terminalSelector} ${rowSelector}`).allTextContents())
+    .map((value) => value.match(/R\d{2}/)?.[0]).filter(Boolean);
+  const expectedTrending = ["R04", "R03", "R02", "R01"];
+  if (JSON.stringify(trendingSymbols) !== JSON.stringify(expectedTrending)) {
+    throw new Error(`${label}: Trending momentum order regressed ${JSON.stringify(trendingSymbols)}`);
+  }
+  await page.screenshot({ path: `${output}/discovery-trending-${label}.png`, fullPage: false, animations: "disabled" });
+
+  await activeButton.click();
+  await page.waitForFunction(({ terminalSelector, rowSelector }) => (
+    document.querySelectorAll(`${terminalSelector} ${rowSelector}`).length === 24
+  ), { terminalSelector, rowSelector });
+  if (await activeButton.getAttribute("aria-pressed") !== "true") throw new Error(`${label}: Active did not restore after Trending`);
+
+  const search = page.getByRole("textbox", { name: "Search Robinhood Chain markets" });
+  await search.fill("STONKBROKER");
+  await search.press("Enter");
+  await page.locator(`${terminalSelector}[data-terminal-context="asset"] #vn-asset-heading`).waitFor({ state: "visible" });
+  if (!(await page.locator("#vn-asset-heading").textContent())?.includes("STONKBROKER")) throw new Error(`${label}: STONKBROKER search did not open Asset context`);
+  if (new URL(page.url()).searchParams.get("market")?.toLowerCase() !== stonkBrokerToken) throw new Error(`${label}: STONKBROKER selection did not preserve its exact contract`);
+  await page.getByRole("tab", { name: "Markets", exact: true }).click();
+  await page.locator(".vnMarketsCard").waitFor({ state: "visible" });
+  const poolEvidence = await page.evaluate(({ poolId, transactionHash }) => {
+    const shortPoolId = `${poolId.slice(0, 6)}…${poolId.slice(-4)}`;
+    const canonicalLink = [...document.querySelectorAll("a")].find((link) => link.textContent?.includes(`PoolId ${shortPoolId}`));
+    return {
+      poolVisible: Boolean(canonicalLink),
+      transactionEvidenceLink: canonicalLink?.getAttribute("href")?.toLowerCase().endsWith(`/tx/${transactionHash}`) ?? false,
+      fakeAddressLink: [...document.querySelectorAll("a")].some((link) => link.getAttribute("href")?.toLowerCase().includes(`/address/${poolId}`)),
+      marketsText: document.querySelector(".vnMarketsCard")?.textContent?.trim().slice(0, 500) ?? null
+    };
+  }, { poolId: stonkBrokerPoolId, transactionHash: txHash(0x5151) });
+  await page.screenshot({ path: `${output}/discovery-stonkbroker-${label}.png`, fullPage: false, animations: "disabled" });
+  if (!poolEvidence.poolVisible || !poolEvidence.transactionEvidenceLink || poolEvidence.fakeAddressLink) throw new Error(`${label}: STONKBROKER V4 evidence was not preserved ${JSON.stringify(poolEvidence)}`);
+  await page.locator(".vnMarketsCard").screenshot({ path: `${output}/discovery-stonkbroker-evidence-${label}.png`, animations: "disabled" });
+
+  await page.evaluate(() => window.history.back());
+  await page.locator(`${terminalSelector}[data-terminal-context="markets"] ${rowSelector}`).first().waitFor({ state: "visible" });
+  await search.fill("");
+  await page.waitForTimeout(50);
+  await search.fill(stonkBrokerPoolId);
+  await search.press("Enter");
+  await page.locator(`${terminalSelector}[data-terminal-context="asset"] #vn-asset-heading`).waitFor({ state: "visible" });
+  if (new URL(page.url()).searchParams.get("market")?.toLowerCase() !== stonkBrokerToken) throw new Error(`${label}: V4 PoolId search did not select STONKBROKER`);
+  const submittedQueries = universalSearchQueries.get(page) ?? [];
+  if (!submittedQueries.includes("STONKBROKER") || !submittedQueries.includes(stonkBrokerPoolId)) {
+    throw new Error(`${label}: explicit text and V4 PoolId searches did not use the same-origin universal route ${JSON.stringify(submittedQueries)}`);
+  }
+  await page.screenshot({ path: `${output}/discovery-poolid-${label}.png`, fullPage: false, animations: "disabled" });
+
+  const result = {
+    activeDefault: true,
+    activeBeforeTrending: true,
+    activeSymbols: activeSymbols.slice(0, 4),
+    trendingSymbols,
+    stonkBrokerTextResult: "found",
+    stonkBrokerSelectedAddress: stonkBrokerToken,
+    v4PoolId: stonkBrokerPoolId,
+    v4PoolAddress: null
+  };
+  await context.close();
+  return result;
 }
 
 async function inspectMarket(browser) {
@@ -947,6 +1138,18 @@ const browser = await chromium.launch({
 try {
   const mobileOnly = process.env.RMT_ACCEPTANCE_ONLY_MOBILE === "true";
   const exploratory = process.env.RMT_ACCEPTANCE_EXPLORATORY === "true";
+  const discoveryDesktop = mobileOnly ? null : await inspectDiscoveryAcceptance(
+    browser,
+    { viewport: { width: 1_440, height: 900 }, deviceScaleFactor: 1 },
+    "desktop-1440x900",
+    false
+  );
+  const discoveryMobile = await inspectDiscoveryAcceptance(
+    browser,
+    { viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, isMobile: true, hasTouch: true },
+    "mobile-390x844",
+    true
+  );
   const desktop = mobileOnly ? null : await inspectDesktop(browser, { width: 1_440, height: 900 }, "1440x900");
   const laptop = mobileOnly ? null : await inspectDesktop(browser, { width: 1_280, height: 800 }, "1280x800");
   const compact = mobileOnly ? null : await inspectDesktop(browser, { width: 1_024, height: 768 }, "1024x768");
@@ -975,8 +1178,9 @@ try {
   }
   await writeFile(
     `${output}/report.json`,
-    JSON.stringify({ desktop, laptop, compact, wide, seamDesktop, marketAudit, compatibilityEntries, publicRoutes, touch1023, mobile430, mobile390, mobile375, mobile360, exploratoryTouch }, null, 2)
+    JSON.stringify({ productAcceptanceEvidence, discoveryDesktop, discoveryMobile, desktop, laptop, compact, wide, seamDesktop, marketAudit, compatibilityEntries, publicRoutes, touch1023, mobile430, mobile390, mobile375, mobile360, exploratoryTouch }, null, 2)
   );
+  console.log(`Terminal active discovery product acceptance passed: ${JSON.stringify(productAcceptanceEvidence)}`);
 } finally {
   await browser.close();
 }
