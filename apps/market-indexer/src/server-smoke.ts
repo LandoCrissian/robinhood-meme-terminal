@@ -118,6 +118,14 @@ const v3Pool = {
   blockNumber: "102",
   blockHash: `0x${"32".repeat(32)}`
 };
+const alternateV2Pool = {
+  ...v2Pool,
+  sourceId: "sushiswap-v2",
+  protocol: "sushiswap",
+  transactionHash: `0x${"25".repeat(32)}`,
+  blockNumber: "100",
+  blockHash: `0x${"35".repeat(32)}`
+};
 const v4Pool = {
   ...v2Pool,
   sourceId: "uniswap-v4",
@@ -141,10 +149,11 @@ const olderV4Pool = {
   blockNumber: "98",
   blockHash: `0x${"34".repeat(32)}`
 };
-const indexedPools = [v3Pool, v2Pool, v4Pool, olderV4Pool];
+const indexedPools = [v3Pool, v2Pool, alternateV2Pool, v4Pool, olderV4Pool];
 const indexedRows = [
   { ...v3Pool, transactionIndex: 2, logIndex: 0 },
   { ...v2Pool, transactionIndex: 1, logIndex: 4 },
+  { ...alternateV2Pool, transactionIndex: 0, logIndex: 3 },
   { ...v4Pool, transactionIndex: 3, logIndex: 2 },
   { ...olderV4Pool, transactionIndex: 0, logIndex: 1 }
 ];
@@ -327,8 +336,8 @@ try {
     nextCursor: string | null;
   };
   assert.equal(secondPageResponse.status, 200);
-  assert.deepEqual(secondPage.pools, [v4Pool, olderV4Pool]);
-  assert.equal(secondPage.nextCursor, null);
+  assert.deepEqual(secondPage.pools, [alternateV2Pool, v4Pool]);
+  assert.notEqual(secondPage.nextCursor, null);
   assert.equal(
     firstPage.pools.some((first) =>
       secondPage.pools.some(
@@ -338,8 +347,28 @@ try {
     ),
     false
   );
-  assert.equal(secondPage.pools[0]?.poolAddress, null);
   assert.equal(secondPage.pools[1]?.poolAddress, null);
+
+  const finalPageResponse = await fetch(
+    `${origin}/v1/pools?limit=2&cursor=${secondPage.nextCursor}`,
+    { headers: poolHeaders }
+  );
+  const finalPage = (await finalPageResponse.json()) as {
+    pools: typeof indexedPools;
+    nextCursor: string | null;
+  };
+  assert.deepEqual(finalPage.pools, [olderV4Pool]);
+  assert.equal(finalPage.nextCursor, null);
+  assert.equal(finalPage.pools[0]?.poolAddress, null);
+  assert.equal(
+    secondPage.pools.some((second) =>
+      finalPage.pools.some(
+        (final) =>
+          second.sourceId === final.sourceId && second.poolKey === final.poolKey
+      )
+    ),
+    false
+  );
 
   const repeatedFirstPage = (await (
     await fetch(`${origin}/v1/pools?limit=2`, { headers: poolHeaders })
@@ -430,17 +459,34 @@ try {
   );
   assert.equal(mismatchedPoolKeyCursor.status, 400);
 
-  for (const expected of [v2Pool, v3Pool]) {
-    const poolKeyResponse = await fetch(
-      `${origin}/v1/pools?poolKey=${expected.poolKey}`,
+  const v2PoolKeyResponse = await fetch(
+    `${origin}/v1/pools?limit=1&poolKey=${v2Pool.poolKey}`,
+    { headers: poolHeaders }
+  );
+  const v2PoolKeyResult = (await v2PoolKeyResponse.json()) as {
+    pools: typeof indexedPools;
+    nextCursor: string | null;
+  };
+  assert.deepEqual(v2PoolKeyResult.pools, [v2Pool]);
+  assert.notEqual(v2PoolKeyResult.nextCursor, null);
+  const v2PoolKeyContinuation = (await (
+    await fetch(
+      `${origin}/v1/pools?limit=1&poolKey=${v2Pool.poolKey}&cursor=${v2PoolKeyResult.nextCursor}`,
       { headers: poolHeaders }
-    );
-    const poolKeyResult = (await poolKeyResponse.json()) as {
-      pools: typeof indexedPools;
-    };
-    assert.equal(poolKeyResponse.status, 200);
-    assert.deepEqual(poolKeyResult.pools, [expected]);
-  }
+    )
+  ).json()) as { pools: typeof indexedPools; nextCursor: string | null };
+  assert.deepEqual(v2PoolKeyContinuation.pools, [alternateV2Pool]);
+  assert.equal(v2PoolKeyContinuation.nextCursor, null);
+
+  const v3PoolKeyResponse = await fetch(
+    `${origin}/v1/pools?poolKey=${v3Pool.poolKey}`,
+    { headers: poolHeaders }
+  );
+  const v3PoolKeyResult = (await v3PoolKeyResponse.json()) as {
+    pools: typeof indexedPools;
+  };
+  assert.equal(v3PoolKeyResponse.status, 200);
+  assert.deepEqual(v3PoolKeyResult.pools, [v3Pool]);
 
   const v4PoolKeyResponse = await fetch(
     `${origin}/v1/pools?poolKey=${v4Pool.poolKey.toUpperCase().replace("0X", "0x")}`,
