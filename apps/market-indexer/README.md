@@ -215,7 +215,15 @@ verified.
 
 `pnpm --filter market-indexer migrate:compact-schema` is preflight-only unless
 the separately reviewed execution and old-relation cleanup acknowledgements
-are present. The migration plan and disposable-Postgres evidence are recorded
+are present. `MARKET_INDEXER_COMPACT_MIGRATION_STATUS=READ_ONLY` reports only
+the detected persisted phase, schema version, logical bytes, pool count,
+relation-presence flags, checkpoint equality, and restart eligibility.
+Interrupted runs require one explicit reviewed recovery value:
+`RESUME_PRE_CUTOVER`, `ROLLBACK_TO_V2`, `RESUME_VALIDATED_CUTOVER`, or
+`FINALIZE_CLEANED_V3`. Every recovery keeps the advisory lock and all writer,
+shadow, authority, traffic, activation-lock, and database-limit acknowledgements.
+Unknown or internally inconsistent catalog states fail closed. The migration
+plan and disposable-Postgres evidence are recorded
 in
 [`../../docs/MARKET_INDEXER_COMPACT_SCHEMA_LOW_PEAK_MIGRATION_2026-08-22.md`](../../docs/MARKET_INDEXER_COMPACT_SCHEMA_LOW_PEAK_MIGRATION_2026-08-22.md).
 

@@ -1,9 +1,12 @@
 import pg from "pg";
 import {
+  inspectCompactMigrationStatus,
   migrationDatabaseUrl,
   preflightCompactMigration,
   REVIEWED_DATABASE_LIMIT_BYTES,
+  runCompactMigrationRecovery,
   runCompactPreserveProgressMigration,
+  type CompactMigrationRecoveryMode,
   type CompactMigrationSafety
 } from "./compact-schema-migration.js";
 
@@ -30,7 +33,22 @@ exact("MARKET_INDEXER_COMPACT_MIGRATION_AUTHORITATIVE", "NO");
 exact("MARKET_INDEXER_COMPACT_MIGRATION_PRODUCTION_TRAFFIC", "NO");
 exact("MARKET_INDEXER_COMPACT_MIGRATION_ACTIVATION_LOCKED", "YES");
 const execute = process.env.MARKET_INDEXER_COMPACT_MIGRATION_EXECUTE === "LOW_PEAK_V3";
-if (execute) {
+const statusMode = process.env.MARKET_INDEXER_COMPACT_MIGRATION_STATUS === "READ_ONLY";
+const recoveryValue = process.env.MARKET_INDEXER_COMPACT_MIGRATION_RECOVERY;
+const recoveryModes: readonly CompactMigrationRecoveryMode[] = [
+  "RESUME_PRE_CUTOVER",
+  "ROLLBACK_TO_V2",
+  "RESUME_VALIDATED_CUTOVER",
+  "FINALIZE_CLEANED_V3"
+];
+const recoveryMode = recoveryModes.includes(recoveryValue as CompactMigrationRecoveryMode)
+  ? recoveryValue as CompactMigrationRecoveryMode
+  : null;
+if (recoveryValue && !recoveryMode) throw new Error("MARKET_INDEXER_COMPACT_MIGRATION_RECOVERY is invalid");
+if ([execute, statusMode, recoveryMode !== null].filter(Boolean).length > 1) {
+  throw new Error("compact migration execute, recovery, and status modes are mutually exclusive");
+}
+if (execute || (recoveryMode !== null && recoveryMode !== "ROLLBACK_TO_V2")) {
   exact("MARKET_INDEXER_COMPACT_MIGRATION_CLEANUP", "DROP_OLD_AFTER_VALIDATION");
 }
 
@@ -51,12 +69,30 @@ const pool = new pg.Pool({
 });
 
 try {
-  if (execute) {
+  if (statusMode) {
+    const client = await pool.connect();
+    try {
+      console.info(JSON.stringify({
+        status: "compact_migration_status",
+        ...await inspectCompactMigrationStatus(client)
+      }));
+    } finally {
+      client.release();
+    }
+  } else if (recoveryMode) {
+    const status = await runCompactMigrationRecovery(pool, safety, recoveryMode);
+    console.info(JSON.stringify({
+      status: "compact_migration_recovery_complete",
+      recoveryMode,
+      ...status
+    }));
+  } else if (execute) {
     const result = await runCompactPreserveProgressMigration(pool, safety);
     console.info(JSON.stringify({
       status: "compact_migration_complete",
       writerRestartEligible: true,
       preflight: result.preflight,
+      preparedBytes: result.preparedBytes,
       afterPredropBytes: result.afterPredropBytes,
       stagedBytes: result.stagedBytes,
       postCleanupBytes: result.postCleanupBytes,

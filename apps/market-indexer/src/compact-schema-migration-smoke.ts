@@ -2,8 +2,10 @@ import assert from "node:assert/strict";
 import type { AddressInfo } from "node:net";
 import pg from "pg";
 import {
+  inspectCompactMigrationStatus,
   localMigrationTestDatabaseUrl,
   preflightCompactMigration,
+  runCompactMigrationRecovery,
   runCompactPreserveProgressMigration,
   TEMP_WAL_SAFETY_RESERVE_BYTES,
   type CompactMigrationSafety
@@ -69,6 +71,7 @@ const token1 = `substring(md5('token1:'||(i/5+100000000)::text)||md5('token1:b:'
 
 async function resetV2Fixture(rows: number) {
   await pool.query(`DROP TABLE IF EXISTS
+    market_indexer_compact_migration_state,
     market_pool_state_compact_v3,market_indexer_sync_points_compact_v3,market_pools_compact_v3,
     market_pool_state_v2_old,market_indexer_sync_points_v2_old,market_pools_v2_old,
     market_pool_state,market_pools,market_indexer_sync_points,market_indexer_source_state CASCADE`);
@@ -144,7 +147,8 @@ async function v2Restored(expectedRows: number) {
       (SELECT MIN(schema_version) FROM market_indexer_source_state) AS version,
       EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name='market_indexer_source_state' AND column_name='source_code') AS source_code,
       (SELECT COUNT(*) FROM pg_indexes WHERE tablename='market_pools')::text AS indexes,
-      (SELECT COUNT(*) FROM pg_class WHERE relname LIKE '%compact_v3' OR relname LIKE '%v2_old')::text AS artifacts`);
+      (SELECT COUNT(*) FROM pg_class WHERE relname LIKE '%compact_v3' OR relname LIKE '%v2_old'
+        OR relname='market_indexer_compact_migration_state')::text AS artifacts`);
   assert.equal(result.rows[0]?.rows, String(expectedRows));
   assert.equal(result.rows[0]?.version, 2);
   assert.equal(result.rows[0]?.source_code, false);
@@ -153,6 +157,161 @@ async function v2Restored(expectedRows: number) {
 }
 
 try {
+  await resetV2Fixture(2_000);
+  await assert.rejects(
+    runCompactPreserveProgressMigration(pool, safety, {
+      failurePoint: "after-source-code-addition",
+      abruptLoss: true
+    }),
+    /synthetic abrupt loss after source code addition/
+  );
+  const afterUncommittedSourceCode = await pool.connect();
+  try {
+    assert.equal((await inspectCompactMigrationStatus(afterUncommittedSourceCode)).phase, "V2_CLEAN");
+  } finally {
+    afterUncommittedSourceCode.release();
+  }
+  assert.equal((await runCompactMigrationRecovery(pool, safety, "ROLLBACK_TO_V2")).phase, "V2_CLEAN");
+  assert.equal((await runCompactMigrationRecovery(pool, safety, "ROLLBACK_TO_V2")).phase, "V2_CLEAN");
+
+  await resetV2Fixture(2_000);
+  await assert.rejects(
+    runCompactPreserveProgressMigration(pool, safety, {
+      failurePoint: "after-empty-stage",
+      abruptLoss: true
+    }),
+    /synthetic abrupt loss after empty stage/
+  );
+  const preparedClient = await pool.connect();
+  try {
+    const prepared = await inspectCompactMigrationStatus(preparedClient);
+    assert.equal(prepared.phase, "V3_STAGING_PREPARED");
+    assert.equal(prepared.restartEligible, false);
+    const protections = await preparedClient.query<{ old_pk: boolean; compact_pk: boolean; compact_event: boolean }>(`
+      SELECT
+        EXISTS(SELECT 1 FROM pg_constraint WHERE conname='market_pools_pkey') AS old_pk,
+        EXISTS(SELECT 1 FROM pg_constraint WHERE conname='market_pools_compact_v3_pkey') AS compact_pk,
+        EXISTS(SELECT 1 FROM pg_constraint WHERE conname='market_pools_compact_v3_event_key') AS compact_event`);
+    assert.equal(protections.rows[0]?.old_pk, true);
+    assert.equal(protections.rows[0]?.compact_pk, true);
+    assert.equal(protections.rows[0]?.compact_event, true);
+  } finally {
+    preparedClient.release();
+  }
+  assert.equal((await runCompactMigrationRecovery(pool, safety, "ROLLBACK_TO_V2")).phase, "V2_CLEAN");
+  await v2Restored(2_000);
+
+  await resetV2Fixture(2_000);
+  await assert.rejects(
+    runCompactPreserveProgressMigration(pool, safety, { failurePoint: "after-predrop", abruptLoss: true }),
+    /synthetic abrupt loss after predrop/
+  );
+  const predroppedClient = await pool.connect();
+  try {
+    assert.equal((await inspectCompactMigrationStatus(predroppedClient)).phase, "V2_INDEXES_PREDROPPED");
+  } finally {
+    predroppedClient.release();
+  }
+  assert.equal((await runCompactMigrationRecovery(pool, safety, "RESUME_PRE_CUTOVER")).phase, "V3_FINALIZED");
+
+  await resetV2Fixture(2_000);
+  await assert.rejects(
+    runCompactPreserveProgressMigration(pool, safety, { failurePoint: "after-populate", abruptLoss: true }),
+    /synthetic abrupt loss after populate/
+  );
+  const populatedClient = await pool.connect();
+  try {
+    assert.equal((await inspectCompactMigrationStatus(populatedClient)).phase, "V3_STAGING_POPULATED");
+  } finally {
+    populatedClient.release();
+  }
+  assert.equal((await runCompactMigrationRecovery(pool, safety, "RESUME_PRE_CUTOVER")).phase, "V3_FINALIZED");
+
+  await resetV2Fixture(2_000);
+  await assert.rejects(
+    runCompactPreserveProgressMigration(pool, safety, { failurePoint: "after-cutover", abruptLoss: true }),
+    /synthetic abrupt loss after cutover/
+  );
+  const cutoverClient = await pool.connect();
+  try {
+    assert.equal((await inspectCompactMigrationStatus(cutoverClient)).phase, "V3_CUTOVER_MARKER_3001");
+  } finally {
+    cutoverClient.release();
+  }
+  assert.equal((await runCompactMigrationRecovery(pool, safety, "ROLLBACK_TO_V2")).phase, "V2_CLEAN");
+  await v2Restored(2_000);
+
+  await resetV2Fixture(2_000);
+  await assert.rejects(
+    runCompactPreserveProgressMigration(pool, safety, { failurePoint: "after-cutover", abruptLoss: true }),
+    /synthetic abrupt loss after cutover/
+  );
+  assert.equal((await runCompactMigrationRecovery(pool, safety, "RESUME_VALIDATED_CUTOVER")).phase, "V3_FINALIZED");
+
+  await resetV2Fixture(2_000);
+  await assert.rejects(
+    runCompactPreserveProgressMigration(pool, safety, {
+      failurePoint: "after-cutover-validation",
+      abruptLoss: true
+    }),
+    /synthetic abrupt loss after cutover validation/
+  );
+  const oldPresentClient = await pool.connect();
+  try {
+    assert.equal((await inspectCompactMigrationStatus(oldPresentClient)).phase, "V3_OLD_RELATIONS_PRESENT");
+  } finally {
+    oldPresentClient.release();
+  }
+  assert.equal((await runCompactMigrationRecovery(pool, safety, "RESUME_VALIDATED_CUTOVER")).phase, "V3_FINALIZED");
+
+  await resetV2Fixture(2_000);
+  await assert.rejects(
+    runCompactPreserveProgressMigration(pool, safety, { failurePoint: "after-old-cleanup", abruptLoss: true }),
+    /synthetic abrupt loss after old cleanup/
+  );
+  const cleanedClient = await pool.connect();
+  try {
+    const cleaned = await inspectCompactMigrationStatus(cleanedClient);
+    assert.equal(cleaned.phase, "V3_OLD_RELATIONS_CLEANED");
+    assert.equal(cleaned.oldRelationsPresent, false);
+    assert.equal(cleaned.restartEligible, false);
+    const sanitizedStatus = JSON.stringify(cleaned);
+    assert.equal(sanitizedStatus.includes("postgresql://"), false);
+    assert.equal(sanitizedStatus.includes("MARKET_INDEXER_READ_TOKEN"), false);
+  } finally {
+    cleanedClient.release();
+  }
+  assert.equal((await runCompactMigrationRecovery(pool, safety, "FINALIZE_CLEANED_V3")).phase, "V3_FINALIZED");
+  assert.equal((await runCompactMigrationRecovery(pool, safety, "FINALIZE_CLEANED_V3")).phase, "V3_FINALIZED");
+
+  await resetV2Fixture(2_000);
+  await assert.rejects(
+    runCompactPreserveProgressMigration(pool, safety, { failurePoint: "after-empty-stage", abruptLoss: true }),
+    /synthetic abrupt loss/
+  );
+  await pool.query("DROP TABLE market_pool_state_compact_v3");
+  const corruptClient = await pool.connect();
+  try {
+    assert.equal((await inspectCompactMigrationStatus(corruptClient)).phase, "UNKNOWN_UNSAFE");
+  } finally {
+    corruptClient.release();
+  }
+  await assert.rejects(
+    runCompactMigrationRecovery(pool, safety, "ROLLBACK_TO_V2"),
+    /UNKNOWN_UNSAFE/
+  );
+
+  await resetV2Fixture(2_000);
+  await assert.rejects(
+    runCompactPreserveProgressMigration(pool, safety, { failurePoint: "after-predrop", abruptLoss: true }),
+    /synthetic abrupt loss/
+  );
+  await pool.query("UPDATE market_indexer_source_state SET next_block=next_block+1 WHERE source_id='uniswap-v4'");
+  await assert.rejects(
+    runCompactMigrationRecovery(pool, safety, "RESUME_PRE_CUTOVER"),
+    /UNKNOWN_UNSAFE|checkpoints moved/
+  );
+
   await resetV2Fixture(10_000);
   await assert.rejects(
     runCompactPreserveProgressMigration(pool, {
@@ -200,6 +359,7 @@ try {
   const result = await runCompactPreserveProgressMigration(pool, safety);
   assert.equal(result.poolCount, representativeRows);
   assert(result.preflight.safe);
+  assert(result.preparedBytes >= result.preflight.logicalBytes);
   assert(result.stagedBytes + TEMP_WAL_SAFETY_RESERVE_BYTES <= result.preflight.warningThresholdBytes);
   assert(result.postCleanupBytes < result.preflight.logicalBytes);
   assert(result.reclaimedBytes > 0);
@@ -365,6 +525,7 @@ try {
     status: "compact schema low-peak migration smoke passed",
     representativeRows,
     preflight: result.preflight,
+    preparedBytes: result.preparedBytes,
     afterPredropBytes: result.afterPredropBytes,
     stagedBytes: result.stagedBytes,
     postCleanupBytes: result.postCleanupBytes,

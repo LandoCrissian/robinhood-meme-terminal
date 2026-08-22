@@ -54,9 +54,12 @@ Schema version `3` is written only after all of the following succeed:
 5. PostgreSQL proves those old relations are absent;
 6. `pg_database_size` proves actual reclamation and the hard-limit reserve.
 
-The future writer must not restart between any of these steps. The one-shot
-executable deliberately owns the whole boundary so an operator cannot
-accidentally restart between cutover and reclamation.
+The future writer must not restart between any of these steps. Each committed
+boundary is recorded in a small logged migration-state relation and
+cross-checked against PostgreSQL relation layouts, constraints, source
+bindings, checkpoints, row counts, and evidence fingerprints. Process death
+therefore leaves a deterministic recovery phase rather than relying on local
+process memory.
 
 ## Low-peak sequence
 
@@ -67,25 +70,53 @@ The writer-stopped sequence is:
 2. refuse unless the projected peak, including a 32 MiB temp/WAL reserve, is
    below the 80% warning threshold and retains at least that same reserve below
    the hard guard;
-3. drop the old pool-state FK and its refresh index, both old pool uniqueness
-   constraints/indexes, the old composite token index, and the old block index;
-4. add the seven-row source-code binding;
-5. create and populate compact staging pool/state/sync relations;
-6. validate full row, per-source, key, event, provenance, pagination-order,
+3. transactionally add the seven-row source-code binding and create empty
+   compact staging pool/state/sync relations with compact primary key, event
+   uniqueness, foreign keys, and checks already enforced;
+4. validate the empty staging catalog and persist `V3_STAGING_PREPARED`;
+5. drop the old pool-state FK and refresh index, both old pool uniqueness
+   constraints/indexes, the old composite token index, and the old block index,
+   then persist `V2_INDEXES_PREDROPPED`;
+6. populate compact staging in one transaction and persist
+   `V3_STAGING_POPULATED`;
+7. validate full row, per-source, key, event, provenance, pagination-order,
    checkpoint, V2/V3/V4, and STONKBROKER equivalence;
-7. transactionally lock, recheck checkpoints, swap names, and set marker 3001;
-8. validate current compact counts;
-9. under the separate cleanup acknowledgement, drop the old relations and
+8. transactionally lock, recheck checkpoints, swap names, and set marker 3001;
+9. validate current compact counts/evidence and persist
+   `V3_OLD_RELATIONS_PRESENT`;
+10. under the separate cleanup acknowledgement, drop the old relations and
    read back physical logical-database reclamation;
-10. set schema version 3, which is the first restart-eligible state.
+11. persist `V3_OLD_RELATIONS_CLEANED`, validate the compact evidence
+    fingerprint, checkpoint equality, actual reclamation, and reserve again;
+12. set schema version 3 and atomically remove the migration-state relation,
+    which is the first restart-eligible state.
 
 All pre-dropped v2 objects have exact rollback DDL. Before cutover, rollback
 drops staging/source-code additions and reconstructs the six old indexes or
 constraints. After a cutover failure but before cleanup, rollback swaps the old
 relations back, restores schema version 2, drops compact staging, removes the
-source-code addition, and rebuilds the v2 objects. Once cleanup begins, the
-marker remains fail-closed on any failure; automatic rollback cannot recreate
-relations that were intentionally reclaimed.
+source-code addition, and rebuilds the v2 objects. After old-relation cleanup,
+rollback is impossible by design. The only allowed recovery is
+`FINALIZE_CLEANED_V3`, which revalidates compact relations, checkpoints,
+evidence fingerprint, actual reclamation, and guard reserve before schema
+version 3. Failure leaves marker 3001 and the writer stopped.
+
+## Crash recovery and status
+
+The read-only status mode recognizes `V2_CLEAN`, `V3_STAGING_PREPARED`,
+`V2_INDEXES_PREDROPPED`, the recoverable internal
+`V2_ROLLBACK_INDEXES_REQUIRED` boundary, `V3_STAGING_POPULATED`,
+`V3_CUTOVER_MARKER_3001`, `V3_OLD_RELATIONS_PRESENT`,
+`V3_OLD_RELATIONS_CLEANED`, `V3_FINALIZED`, and `UNKNOWN_UNSAFE`.
+`UNKNOWN_UNSAFE` never mutates the database.
+
+Pre-cutover phases may explicitly resume or roll back. Marker 3001 with all old
+relations present may explicitly resume the validated cutover or roll back to
+v2 after revalidating both representations. Once old relations are absent,
+finalization is the only permitted recovery. Repeated clean-v2 rollback and
+valid-v3 finalization commands are safe no-ops. All staging and cleanup
+operations use the exact reviewed artifact names, and each phase transition
+shares a transaction with the DDL it describes.
 
 ## Fresh-preflight calculation
 
@@ -94,11 +125,14 @@ authority:
 
 ```text
 projected peak =
-  current logical bytes
-  - all old market_pools index bytes
-  + compact copy at measured 268.30848 bytes/pool with 10% build allowance
-  + max(current state/sync bytes, 1 MiB)
-  + 32 MiB temp/WAL safety reserve
+  max(
+    current logical bytes + 1 MiB empty-staging allowance,
+    current logical bytes
+      - all old market_pools index bytes
+      + compact copy at measured 268.30848 bytes/pool with 10% build allowance
+      + max(current state/sync bytes, 1 MiB)
+      + 32 MiB temp/WAL safety reserve
+  )
 ```
 
 The latest issue input was 260,568,767 logical bytes and 256,599 pools. Using
@@ -112,10 +146,12 @@ is:
 | Compact copy plus 10% build allowance | 75,732,457 |
 | Support copy allowance | 1,048,576 |
 | Temp/WAL safety reserve | 33,554,432 |
-| **Projected migration peak** | **254,336,976** |
-| Hard-guard headroom | 112,664,624 |
+| Empty-staging allowance | 1,048,576 |
+| Copy-phase estimate | 254,336,976 |
+| **Projected migration peak** | **261,617,343** |
+| Hard-guard headroom | 105,384,257 |
 
-That is 69.30% of the 367,001,600-byte guard and below its 293,601,280-byte
+That is 71.29% of the 367,001,600-byte guard and below its 293,601,280-byte
 warning threshold. This extrapolation is design evidence only. Production must
 use the executable's fresh exact index sizes and refuse if they do not pass.
 
@@ -126,17 +162,23 @@ reviewed seven-source mixture and test-only STONKBROKER V4 evidence.
 
 | Phase | Logical database bytes |
 | --- | ---: |
-| v2 baseline | 241,596,083 |
-| after old-index reclamation | 123,426,483 |
-| full compact staging present | 193,107,635 |
-| after old-relation cleanup | 78,730,931 |
+| v2 baseline | 243,734,195 |
+| empty constrained compact staging prepared | 243,947,187 |
+| after old-index reclamation | 125,777,587 |
+| full compact staging present | 195,278,515 |
+| after old-relation cleanup | 80,901,811 |
 
-The actual maximum was the starting database, not a migration phase. Compact
-staging plus the explicit reserve was 226,662,067 bytes (61.76% of the guard).
-The completed compact database reclaimed 162,865,152 logical bytes.
+The actual measured maximum was the empty-staging phase, only 212,992 bytes
+above the starting database and still below the warning threshold. Compact
+staging plus the explicit reserve was 228,832,947 bytes (62.35% of the guard).
+The completed compact database reclaimed 162,832,384 logical bytes.
 
-The same harness proves rollback after staging and rollback after the committed
-cutover. It also proves checkpoint equality, seven-source binding, canonical
+The same harness proves abrupt connection/process-loss recovery after the
+source-code transaction, empty staging, old-index predrop, staging population,
+cutover marker, cutover validation, and old-relation cleanup. It proves both
+pre/post-cutover rollback and resume, repeated finalization, checkpoint-motion
+refusal, and corrupt-artifact fail-closed behavior. It also proves checkpoint
+equality, seven-source binding, canonical
 and event uniqueness, exact token/pool lookup, pagination ordering, V4 and
 STONKBROKER evidence, restart admission only at schema v3, source rollback,
 and 64-point retention.
