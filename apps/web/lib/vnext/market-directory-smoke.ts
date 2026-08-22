@@ -4,6 +4,7 @@ import { getAddress, type Hex } from "viem";
 import type { ExternalMarketResponse, UniversalMarketResolution } from "../external-market";
 import { buildAssetMarketRecord } from "../external-market";
 import { normalizeProviderPairForAsset } from "../external-market-identity";
+import { GET as readFastMarketDirectory } from "../../app/api/vnext/market-directory/route";
 import {
   MAX_DIRECT_V6_ORIGIN_RECORDS,
   validateCompleteV6OriginRecords
@@ -12,17 +13,22 @@ import { assetKey } from "./execution-domain";
 import {
   VNEXT_MARKET_DIRECTORY_MAX_MARKETS,
   VNEXT_MARKET_DIRECTORY_PAGE_SIZE,
+  deriveVNextMarketState,
   directoryMarketFromExactLookup,
   directoryMarketFromVerifiedIdentity,
+  isVNextDirectoryMarketSelectable,
   normalizeDirectoryMarkets,
   resolutionFromLookup,
+  selectVNextChartPool,
   selectVNextMarketDirectoryView,
   visibleVNextMarketDirectoryMarkets,
   verifiedDirectoryAsset,
+  shouldRequestVNextExternalWorkspaceMarket,
   vNextRwaClassificationLabel,
-  vNextMarketDirectoryViewCounts
+  vNextMarketDirectoryViewCounts,
+  type VNextDirectoryResponse
 } from "./market-directory";
-import { ROBINHOOD_RMT, ROBINHOOD_RMT_ADDRESS } from "./robinhood-assets";
+import { ROBINHOOD_RMT, ROBINHOOD_RMT_ADDRESS, ROBINHOOD_WETH_ADDRESS } from "./robinhood-assets";
 
 const otherAddress = "0x2222222222222222222222222222222222222222";
 const payload = {
@@ -59,7 +65,7 @@ const payload = {
 const markets = normalizeDirectoryMarkets(payload);
 assert.equal(markets.length, 2);
 assert.equal(markets[1].priceUsd, null);
-assert.equal(markets[1].liquidityUsd, 0);
+assert.equal(markets[1].liquidityUsd, null);
 assert.equal(markets[1].priceChange24h, null);
 assert.equal(assetKey(verifiedDirectoryAsset(markets[0])!.id), assetKey(ROBINHOOD_RMT.id));
 assert.equal(verifiedDirectoryAsset(markets[1]), null);
@@ -162,12 +168,20 @@ assert.equal(verifiedDirectoryAsset(markets[1], { ...resolution, chainId: 4_663,
 const identityOnlyMarket = directoryMarketFromVerifiedIdentity({ resolution }, otherAddress);
 assert.equal(identityOnlyMarket?.address, otherAddress);
 assert.equal(identityOnlyMarket?.symbol, "OTH");
-assert.equal(identityOnlyMarket?.marketDataState, "identity-only");
 assert.equal(identityOnlyMarket?.priceUsd, null);
 assert.equal(identityOnlyMarket?.liquidityUsd, null);
 assert.equal(identityOnlyMarket?.volume24h, null);
 assert.equal(identityOnlyMarket?.marketCapUsd, null);
 assert.equal(identityOnlyMarket?.resolution, resolution);
+assert.deepEqual(deriveVNextMarketState(identityOnlyMarket!), {
+  asset: "verified",
+  market: "none",
+  metrics: "unavailable",
+  chart: "unavailable",
+  execution: "not-evaluated"
+});
+assert.equal(isVNextDirectoryMarketSelectable(identityOnlyMarket!), true);
+assert.equal(shouldRequestVNextExternalWorkspaceMarket(identityOnlyMarket!), true);
 assert.equal(directoryMarketFromVerifiedIdentity({
   resolution: { ...resolution, chainId: 1 }
 } as unknown as ExternalMarketResponse, otherAddress), null);
@@ -211,6 +225,90 @@ const malformedQuoteEvidence = normalizeProviderPairForAsset(pair({
   priceUsd: "500",
   liquidity: { usd: 999_999_999 }
 }), exactAddress, evidenceOptions)!;
+const missingMetricsEvidence = normalizeProviderPairForAsset(pair({
+  priceUsd: undefined,
+  liquidity: { usd: undefined },
+  marketCap: undefined,
+  fdv: undefined,
+  volume: { h24: undefined },
+  priceChange: { h24: undefined }
+}), exactAddress, evidenceOptions)!;
+const observedWithoutMetrics = normalizeDirectoryMarkets({ markets: [{
+  address: exactAddress,
+  name: "Observed Token",
+  symbol: "OBS",
+  priceUsd: null,
+  liquidityUsd: null,
+  marketCapUsd: null,
+  volume24h: null,
+  priceChange24h: null,
+  ageMinutes: null,
+  signal: null,
+  verifiedMarkets: [missingMetricsEvidence]
+}] } as unknown as ExternalMarketResponse)[0];
+assert.ok(observedWithoutMetrics, "Provider-observed markets must survive without summary metrics");
+assert.deepEqual(deriveVNextMarketState(observedWithoutMetrics), {
+  asset: "observed",
+  market: "observed",
+  metrics: "unavailable",
+  chart: "available",
+  execution: "not-evaluated"
+});
+assert.equal(observedWithoutMetrics.priceUsd, null);
+assert.equal(observedWithoutMetrics.liquidityUsd, null);
+assert.equal(observedWithoutMetrics.signal, null);
+assert.equal(isVNextDirectoryMarketSelectable(observedWithoutMetrics), true);
+
+const partialMetrics = { ...observedWithoutMetrics, priceUsd: 0, volume24h: 25 };
+assert.equal(deriveVNextMarketState(partialMetrics).metrics, "partial");
+assert.equal(partialMetrics.priceUsd, 0, "An observed zero remains a real metric");
+const completeMetrics = {
+  ...partialMetrics,
+  liquidityUsd: 0,
+  marketCapUsd: 100,
+  priceChange24h: 0
+};
+assert.equal(deriveVNextMarketState(completeMetrics).metrics, "complete");
+
+const v4PoolId = `0x${"44".repeat(32)}`;
+const v4Evidence = normalizeProviderPairForAsset(pair({
+  pairAddress: v4PoolId,
+  dexId: "uniswap-v4",
+  priceUsd: undefined,
+  liquidity: { usd: undefined },
+  marketCap: undefined,
+  fdv: undefined,
+  volume: { h24: undefined },
+  priceChange: { h24: undefined }
+}), exactAddress, evidenceOptions)!;
+const v4Observed = normalizeDirectoryMarkets({ markets: [{
+  address: exactAddress,
+  assetId: v4Evidence.assetId,
+  name: "V4 Observed",
+  symbol: "V4O",
+  priceUsd: null,
+  liquidityUsd: null,
+  marketCapUsd: null,
+  volume24h: null,
+  priceChange24h: null,
+  ageMinutes: null,
+  signal: null,
+  pairAddress: undefined,
+  verifiedMarkets: [v4Evidence]
+}] } as unknown as ExternalMarketResponse)[0];
+assert.equal(v4Observed.pairAddress, undefined);
+assert.equal(v4Observed.verifiedMarkets?.[0].pool.kind, "bytes32");
+assert.equal(v4Observed.verifiedMarkets?.[0].pool.value, v4PoolId);
+assert.equal(deriveVNextMarketState(v4Observed).market, "observed");
+assert.equal(deriveVNextMarketState(v4Observed).chart, "unavailable");
+
+const nonChartPrimaryWithChartAlternative = {
+  ...v4Observed,
+  primaryMarket: v4Evidence,
+  verifiedMarkets: [v4Evidence, firstEvidence]
+};
+assert.equal(deriveVNextMarketState(nonChartPrimaryWithChartAlternative).chart, "available");
+assert.equal(selectVNextChartPool(nonChartPrimaryWithChartAlternative), poolA);
 const exactRecord = buildAssetMarketRecord([firstEvidence, secondEvidence, malformedQuoteEvidence], { requireChart: true })!;
 const exactLookupPayload = {
   markets: [{
@@ -237,6 +335,24 @@ assert.equal(exactLookup?.pairAddress, poolB);
 assert.equal(exactLookup?.priceUsd, secondEvidence.priceUsd);
 assert.equal(exactLookup?.verifiedMarkets?.length, 3, "Exact search must preserve admitted alternate markets");
 assert.equal(exactLookup?.primaryMarket?.assetSide, "BASE", "Malformed quote-side evidence must not hijack exact search");
+const exactV4Lookup = directoryMarketFromExactLookup({ markets: [{
+  address: exactAddress,
+  assetId: v4Evidence.assetId,
+  name: "V4 Exact",
+  symbol: "V4E",
+  priceUsd: null,
+  liquidityUsd: null,
+  marketCapUsd: null,
+  volume24h: null,
+  priceChange24h: null,
+  ageMinutes: null,
+  signal: null,
+  pairAddress: undefined,
+  verifiedMarkets: [v4Evidence]
+}] } as unknown as ExternalMarketResponse, exactAddress);
+assert.ok(exactV4Lookup, "An exact provider V4 PoolId must survive without a chart address or metrics");
+assert.equal(exactV4Lookup?.primaryMarket, undefined);
+assert.equal(exactV4Lookup?.verifiedMarkets?.[0].pool.value, v4PoolId);
 assert.equal(directoryMarketFromExactLookup(exactLookupPayload, otherExactAddress), null, "A returned market for the wrong contract must fail closed");
 const wrongAssetEvidence = normalizeProviderPairForAsset(pair({
   baseToken: { address: otherExactAddress, name: "Imposter", symbol: "SAME" }
@@ -282,7 +398,10 @@ assert.match(hook, /VNEXT_CLIENT_REFRESH_POLICY\.marketDirectoryMs/);
 assert.match(hook, /VNEXT_CLIENT_REFRESH_POLICY\.ecosystemDirectoryMs/);
 assert.match(route, /token-pairs\/v1/);
 assert.match(route, /Promise\.all\(DIRECTORY_TOKENS/);
-assert.match(route, /buildAssetMarketRecord\(evidenceList, \{ requireChart: true \}\)/);
+assert.match(route, /buildAssetMarketRecord\(evidenceList\)/);
+assert.doesNotMatch(route, /requireChart: true/);
+assert.doesNotMatch(route, /evidence\.(?:priceUsd|liquidityUsd|marketCapUsd|volume24h|priceChange24h) \?\? 0/);
+assert.match(route, /evidence\.pool\.kind === "evm-address" \? getAddress\(evidence\.pool\.value\) : undefined/);
 assert.match(route, /normalizeProviderPairForAsset/);
 assert.doesNotMatch(route, /market\.liquidityUsd > existing\.liquidityUsd/);
 assert.match(route, /\[ROBINHOOD_USDG_ADDRESS, ROBINHOOD_WETH_ADDRESS, ROBINHOOD_RMT_ADDRESS\] as const/);
@@ -291,6 +410,39 @@ assert.equal((route.match(/fetchPairs\(/g) ?? []).length, 2);
 assert.match(route, /address\.toLowerCase\(\) === zeroAddress/);
 assert.match(route, /stale-while-revalidate=60/);
 assert.doesNotMatch(route, /resolveRmtOrigins|external-availability|external-sushi-quote|external-uniswap|router|reactor/);
+
+async function verifyFastDirectoryV4WithoutMetrics() {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response(JSON.stringify([{
+    chainId: "robinhood",
+    pairAddress: v4PoolId,
+    dexId: "uniswap-v4",
+    baseToken: { address: exactAddress, name: "V4 Missing Metrics", symbol: "V4NULL" },
+    quoteToken: { address: ROBINHOOD_WETH_ADDRESS, name: "Wrapped Ether", symbol: "WETH" },
+    priceUsd: undefined,
+    liquidity: {},
+    volume: {},
+    priceChange: {}
+  }]), { status: 200, headers: { "Content-Type": "application/json" } });
+  try {
+    const fastDirectoryResponse = await readFastMarketDirectory();
+    assert.equal(fastDirectoryResponse.status, 200);
+    const fastDirectoryPayload = await fastDirectoryResponse.json() as VNextDirectoryResponse;
+    const v4MissingMetrics = fastDirectoryPayload.markets?.find((market) => market.address.toLowerCase() === exactAddress);
+    assert.ok(v4MissingMetrics, "The fast directory must retain a provider-observed V4 market with no metrics");
+    assert.equal(v4MissingMetrics.pairAddress, undefined);
+    assert.equal(v4MissingMetrics.priceUsd, null);
+    assert.equal(v4MissingMetrics.liquidityUsd, null);
+    assert.equal(v4MissingMetrics.marketCapUsd, null);
+    assert.equal(v4MissingMetrics.volume24h, null);
+    assert.equal(v4MissingMetrics.priceChange24h, null);
+    assert.equal(v4MissingMetrics.signal, null);
+    assert.equal(v4MissingMetrics.verifiedMarkets?.[0].pool.kind, "bytes32");
+    assert.equal(v4MissingMetrics.verifiedMarkets?.[0].pool.value, v4PoolId);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+}
 assert.match(ecosystemRoute, /import \{ VNEXT_MARKET_DIRECTORY_MAX_MARKETS \} from "\.\.\/\.\.\/\.\.\/\.\.\/lib\/vnext\/market-directory"/);
 assert.match(ecosystemRoute, /slice\(0, VNEXT_MARKET_DIRECTORY_MAX_MARKETS\)/);
 assert.doesNotMatch(ecosystemRoute, /const MAX_MARKETS = 48/);
@@ -330,4 +482,6 @@ assert.match(shell, /current \+ VNEXT_MARKET_DIRECTORY_PAGE_SIZE/);
 const localPagination = shell.slice(shell.indexOf("const loadMoreMarkets"), shell.indexOf("const requestTradeSide"));
 assert.doesNotMatch(localPagination, /fetch\(|refresh\(|selectAddress\(|quote/i);
 
-console.log("RMT VNext market directory smoke checks passed.");
+void verifyFastDirectoryV4WithoutMetrics().then(() => {
+  console.log("RMT VNext market directory smoke checks passed.");
+});

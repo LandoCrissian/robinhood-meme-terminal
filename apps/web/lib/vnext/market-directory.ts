@@ -48,7 +48,6 @@ export type VNextDirectoryMarket = Omit<Pick<ExternalMarket,
   volume24h: VNextDirectoryMetric;
   priceChange24h: VNextDirectoryMetric;
   signal: ExternalMarketSignal | null;
-  marketDataState?: "live" | "identity-only" | "canonical-only";
   pairAddress?: string;
   dexId?: string;
   url?: string;
@@ -60,6 +59,14 @@ export type VNextDirectoryMarket = Omit<Pick<ExternalMarket,
     symbol: string;
     decimals: number;
   };
+};
+
+export type VNextMarketState = {
+  asset: "verified" | "observed";
+  market: "canonical" | "observed" | "none";
+  metrics: "complete" | "partial" | "unavailable";
+  chart: "available" | "unavailable";
+  execution: "not-evaluated";
 };
 
 export type VNextRwaRelationship = "canonical-stock-token" | "paired-market-asset";
@@ -91,7 +98,7 @@ function finite(value: unknown) {
 
 function nonNegative(value: unknown) {
   const normalized = finite(value);
-  return normalized === null ? null : Math.max(0, normalized);
+  return normalized !== null && normalized >= 0 ? normalized : null;
 }
 
 function text(value: unknown, maximumLength: number) {
@@ -119,6 +126,7 @@ export function normalizeDirectoryMarkets(payload: Pick<ExternalMarketResponse, 
     const address = getAddress(market.address);
     const symbol = text(market.symbol, 16) || `${address.slice(0, 6)}…${address.slice(-4)}`;
     const name = text(market.name, 80) || symbol;
+    const directoryMarket = market as VNextDirectoryMarket;
     return [{
       address,
       assetId: market.assetId,
@@ -130,8 +138,9 @@ export function normalizeDirectoryMarkets(payload: Pick<ExternalMarketResponse, 
       volume24h: nonNegative(market.volume24h),
       priceChange24h: finite(market.priceChange24h),
       ageMinutes: market.ageMinutes === null ? null : nonNegative(market.ageMinutes),
-      signal: market.signal,
-      marketDataState: "live",
+      signal: market.signal === "moving" || market.signal === "early" || market.signal === "active"
+        ? market.signal
+        : null,
       imageUri: safeTokenArtworkUrl(market.imageUri) ?? undefined,
       resolution: market.resolution,
       pairAddress: typeof market.pairAddress === "string" && isAddress(market.pairAddress, { strict: false })
@@ -141,7 +150,9 @@ export function normalizeDirectoryMarkets(payload: Pick<ExternalMarketResponse, 
       url: typeof market.url === "string" && market.url.startsWith("https://") ? market.url.slice(0, 300) : undefined,
       rwaRelationship: rwaRelationship(market),
       primaryMarket: market.primaryMarket,
-      verifiedMarkets: market.verifiedMarkets
+      verifiedMarkets: market.verifiedMarkets,
+      canonicalMarkets: directoryMarket.canonicalMarkets,
+      verifiedIdentity: directoryMarket.verifiedIdentity
     }];
   });
   const byAsset = new Map<string, VNextDirectoryMarket[]>();
@@ -151,10 +162,19 @@ export function normalizeDirectoryMarkets(payload: Pick<ExternalMarketResponse, 
   }
   return [...byAsset.values()].map((candidates) => {
     const evidence = candidates.flatMap((candidate) => candidate.verifiedMarkets ?? []);
-    const record = buildAssetMarketRecord(evidence, { requireChart: true });
+    const record = buildAssetMarketRecord(evidence);
     const chosen = record?.primaryMarket
-      ? candidates.find((candidate) => candidate.pairAddress?.toLowerCase() === record.primaryMarket?.pool.value.toLowerCase())
-      : [...candidates].sort((left, right) => (left.pairAddress ?? "~").toLowerCase().localeCompare((right.pairAddress ?? "~").toLowerCase()))[0];
+      ? candidates.find((candidate) => (
+          candidate.pairAddress?.toLowerCase() === record.primaryMarket?.pool.value.toLowerCase()
+          || candidate.verifiedMarkets?.some((market) => (
+            market.pool.kind === record.primaryMarket?.pool.kind
+            && market.pool.value.toLowerCase() === record.primaryMarket.pool.value.toLowerCase()
+          ))
+        ))
+      : [...candidates].sort((left, right) => (
+          `${left.pairAddress ?? "~"}:${left.dexId ?? "~"}`.toLowerCase()
+            .localeCompare(`${right.pairAddress ?? "~"}:${right.dexId ?? "~"}`.toLowerCase())
+        ))[0];
     return record && chosen ? {
       ...chosen,
       assetId: record.assetId,
@@ -268,6 +288,48 @@ export function verifiedDirectoryAsset(market: VNextDirectoryMarket, resolution 
   };
 }
 
+export function deriveVNextMarketState(market: VNextDirectoryMarket): VNextMarketState {
+  const summaryMetrics = [
+    market.priceUsd,
+    market.liquidityUsd,
+    market.marketCapUsd,
+    market.volume24h,
+    market.priceChange24h
+  ];
+  const availableMetricCount = summaryMetrics.filter((value) => typeof value === "number" && Number.isFinite(value)).length;
+  const chartAvailable = Boolean(selectVNextChartPool(market));
+  return {
+    asset: verifiedDirectoryAsset(market) ? "verified" : "observed",
+    market: market.canonicalMarkets?.length
+      ? "canonical"
+      : market.verifiedMarkets?.length
+        ? "observed"
+        : "none",
+    metrics: availableMetricCount === summaryMetrics.length
+      ? "complete"
+      : availableMetricCount > 0
+        ? "partial"
+        : "unavailable",
+    chart: chartAvailable ? "available" : "unavailable",
+    execution: "not-evaluated"
+  };
+}
+
+export function selectVNextChartPool(market: Pick<VNextDirectoryMarket, "verifiedMarkets">) {
+  return market.verifiedMarkets?.find((evidence) => (
+    evidence.chartEligibility === "eligible" && evidence.pool.kind === "evm-address"
+  ))?.pool.value;
+}
+
+export function isVNextDirectoryMarketSelectable(market: VNextDirectoryMarket) {
+  const state = deriveVNextMarketState(market);
+  return state.asset === "verified" || state.market !== "none";
+}
+
+export function shouldRequestVNextExternalWorkspaceMarket(market: VNextDirectoryMarket) {
+  return !market.canonicalMarkets?.length || Boolean(market.verifiedMarkets?.length || market.primaryMarket);
+}
+
 function normalizedSearchText(value: string) {
   const trimmed = value.trim();
   const withoutLeadingDollar = trimmed.startsWith("$") && !trimmed.slice(1).startsWith("$")
@@ -330,7 +392,6 @@ export function directoryMarketFromUniversalSearchResult(
     priceChange24h: null,
     ageMinutes: null,
     signal: null,
-    marketDataState: "canonical-only",
     canonicalMarkets: result.markets,
     verifiedIdentity: {
       address,
@@ -350,13 +411,34 @@ export function mergeVNextDirectoryAndSearchMarkets(
   for (const market of searchMarkets) {
     const key = market.address.toLowerCase();
     const existing = byAddress.get(key);
-    byAddress.set(key, existing ? {
+    if (!existing) {
+      byAddress.set(key, market);
+      continue;
+    }
+    const canonicalMarkets = new Map<string, VNextUniversalMarketSearchPool>();
+    for (const evidence of [...(existing.canonicalMarkets ?? []), ...(market.canonicalMarkets ?? [])]) {
+      canonicalMarkets.set(`${evidence.sourceId}:${evidence.poolKey}`, evidence);
+    }
+    const verifiedMarkets = new Map<string, NonNullable<VNextDirectoryMarket["verifiedMarkets"]>[number]>();
+    for (const evidence of [...(existing.verifiedMarkets ?? []), ...(market.verifiedMarkets ?? [])]) {
+      verifiedMarkets.set(`${evidence.venue}:${evidence.pool.kind}:${evidence.pool.value}`.toLowerCase(), evidence);
+    }
+    byAddress.set(key, {
       ...market,
       ...existing,
-      canonicalMarkets: market.canonicalMarkets ?? existing.canonicalMarkets,
+      priceUsd: existing.priceUsd ?? market.priceUsd,
+      liquidityUsd: existing.liquidityUsd ?? market.liquidityUsd,
+      marketCapUsd: existing.marketCapUsd ?? market.marketCapUsd,
+      volume24h: existing.volume24h ?? market.volume24h,
+      priceChange24h: existing.priceChange24h ?? market.priceChange24h,
+      ageMinutes: existing.ageMinutes ?? market.ageMinutes,
+      signal: existing.signal ?? market.signal,
+      primaryMarket: existing.primaryMarket ?? market.primaryMarket,
+      verifiedMarkets: verifiedMarkets.size ? [...verifiedMarkets.values()] : undefined,
+      canonicalMarkets: canonicalMarkets.size ? [...canonicalMarkets.values()] : undefined,
       verifiedIdentity: market.verifiedIdentity ?? existing.verifiedIdentity,
       resolution: existing.resolution ?? market.resolution
-    } : market);
+    });
   }
   return [...byAddress.values()];
 }
@@ -386,8 +468,7 @@ export function directoryMarketFromVerifiedIdentity(
     volume24h: null,
     priceChange24h: null,
     ageMinutes: null,
-    signal: "active",
-    marketDataState: "identity-only",
+    signal: null,
     resolution
   };
 }
@@ -405,9 +486,9 @@ export function directoryMarketFromExactLookup(
   const exact = normalizeDirectoryMarkets({ markets: exactMarkets })
     .find((market) => market.address === address);
   const expectedAssetId = canonicalExternalAssetId(ROBINHOOD_MAINNET_CHAIN_ID, address);
-  if (!exact?.primaryMarket
-    || exact.priceUsd === null
+  if (!exact
     || exact.assetId !== expectedAssetId
-    || exact.primaryMarket.assetId !== expectedAssetId) return null;
+    || !exact.verifiedMarkets?.length
+    || exact.verifiedMarkets.some((market) => market.assetId !== expectedAssetId)) return null;
   return exact;
 }
