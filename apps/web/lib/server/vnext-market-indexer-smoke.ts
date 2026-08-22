@@ -23,6 +23,15 @@ const sourceManifestHash = `0x${"ab".repeat(32)}`;
 const requestCursor = "eyJ2IjoxfQ";
 const responseCursor = "bmV4dC1jdXJzb3I";
 const stonkBrokerAddress = "0xe934e36a439c94017b64a3fece66af12099abf50";
+const canonicalSourceIds = [
+  "sushiswap-v2",
+  "sushiswap-v3",
+  "uniswap-v2",
+  "uniswap-v3",
+  "uniswap-v4",
+  "up-v2",
+  "up-cl"
+] as const;
 const stateFields = {
   stateStatus: null,
   liveFee: null,
@@ -102,15 +111,20 @@ const upV2Pool = {
   stateObservedBlockHash: `0x${"35".repeat(32)}`
 };
 
-const completeCoverage = {
-  complete: true,
-  finalizedHead: "200",
-  sources: [{
-    sourceId: "uniswap-v4",
-    status: "shadow-ready",
-    indexedThrough: "200"
-  }]
-} as const;
+function coverage(complete: boolean) {
+  return {
+    complete,
+    finalizedHead: "200",
+    sources: canonicalSourceIds.map((sourceId, index) => ({
+      sourceId,
+      status: complete || index > 0 ? "shadow-ready" : "backfilling",
+      indexedThrough: complete || index > 0 ? "200" : "199"
+    }))
+  };
+}
+
+const completeCoverage = coverage(true);
+const incompleteCoverage = coverage(false);
 
 function inventoryResponse(
   pools: unknown[],
@@ -172,6 +186,10 @@ assert.equal(tokenResult.mode, "shadow");
 assert.equal(tokenResult.authoritative, false);
 assert.equal(tokenResult.sourceManifestHash, sourceManifestHash);
 assert.deepEqual(tokenResult.coverage, completeCoverage);
+assert.deepEqual(
+  tokenResult.coverage.sources.map(({ sourceId }) => sourceId).sort(),
+  [...canonicalSourceIds].sort()
+);
 assert.equal(tokenResult.nextCursor, null);
 assert.deepEqual(tokenResult.pools, [v4Pool]);
 assert.equal(tokenResult.pools[0]?.token1, stonkBrokerAddress);
@@ -228,6 +246,15 @@ assert.deepEqual(emptyResult, {
   nextCursor: null,
   pools: []
 });
+
+const incompleteResult = await readFixture(
+  {},
+  inventoryResponse([], { coverage: incompleteCoverage })
+);
+assert.equal(incompleteResult.status, "verified_shadow");
+if (incompleteResult.status !== "verified_shadow") throw new Error("unreachable");
+assert.equal(incompleteResult.coverage.complete, false);
+assert.equal(incompleteResult.coverage.sources.length, canonicalSourceIds.length);
 
 const combinedCaptured: CapturedRequest[] = [];
 const combinedResult = await readFixture(
@@ -411,8 +438,29 @@ await expectSchemaRejection({
   ...inventoryResponse([]),
   coverage: {
     ...completeCoverage,
+    sources: completeCoverage.sources.slice(0, -1)
+  }
+});
+await expectSchemaRejection({
+  ...inventoryResponse([]),
+  coverage: {
+    ...completeCoverage,
     sources: [
-      completeCoverage.sources[0],
+      ...completeCoverage.sources,
+      {
+        sourceId: "bogus-source",
+        status: "shadow-ready",
+        indexedThrough: "200"
+      }
+    ]
+  }
+});
+await expectSchemaRejection({
+  ...inventoryResponse([]),
+  coverage: {
+    ...completeCoverage,
+    sources: [
+      ...completeCoverage.sources.slice(0, -1),
       completeCoverage.sources[0]
     ]
   }
@@ -420,13 +468,8 @@ await expectSchemaRejection({
 await expectSchemaRejection({
   ...inventoryResponse([]),
   coverage: {
-    complete: true,
-    finalizedHead: "200",
-    sources: [{
-      sourceId: "uniswap-v4",
-      status: "backfilling",
-      indexedThrough: "100"
-    }]
+    ...incompleteCoverage,
+    sources: incompleteCoverage.sources.slice(0, -1)
   }
 });
 await expectSchemaRejection({
@@ -434,11 +477,21 @@ await expectSchemaRejection({
   coverage: {
     complete: true,
     finalizedHead: "200",
-    sources: [{
-      sourceId: "uniswap-v4",
-      status: "shadow-ready",
-      indexedThrough: "199"
-    }]
+    sources: completeCoverage.sources.map((source, index) =>
+      index === 0
+        ? { ...source, status: "backfilling", indexedThrough: "100" }
+        : source
+    )
+  }
+});
+await expectSchemaRejection({
+  ...inventoryResponse([]),
+  coverage: {
+    complete: true,
+    finalizedHead: "200",
+    sources: completeCoverage.sources.map((source, index) =>
+      index === 0 ? { ...source, indexedThrough: "199" } : source
+    )
   }
 });
 await expectSchemaRejection({
@@ -457,6 +510,18 @@ await expectSchemaRejection(
 );
 await expectSchemaRejection(
   inventoryResponse([{ ...v4Pool, poolAddress: v2Pool.poolAddress }])
+);
+await expectSchemaRejection(
+  inventoryResponse([{ ...v2Pool, sourceId: "bogus-source" }])
+);
+await expectSchemaRejection(
+  inventoryResponse([{ ...v2Pool, sourceId: "uniswap-v2" }])
+);
+await expectSchemaRejection(
+  inventoryResponse([{ ...v3Pool, sourceId: "uniswap-v2" }])
+);
+await expectSchemaRejection(
+  inventoryResponse([{ ...v4Pool, sourceId: "uniswap-v3" }])
 );
 await expectSchemaRejection(
   inventoryResponse([{ ...v2Pool, liveFee: 30 }])

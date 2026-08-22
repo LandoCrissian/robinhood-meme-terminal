@@ -24,6 +24,15 @@ const v4PoolId = `0x${"c".repeat(64)}`;
 const manifestHash = `0x${"1".repeat(64)}`;
 const blockHash = `0x${"2".repeat(64)}`;
 const transactionHash = `0x${"3".repeat(64)}`;
+const canonicalSourceIds = [
+  "sushiswap-v2",
+  "sushiswap-v3",
+  "uniswap-v2",
+  "uniswap-v3",
+  "uniswap-v4",
+  "up-v2",
+  "up-cl"
+] as const;
 
 function pool(
   input: Partial<VNextCanonicalMarketInventoryPool> &
@@ -148,11 +157,11 @@ function verifiedInventory(
     coverage: {
       complete,
       finalizedHead: "12345",
-      sources: [{
-        sourceId: "uniswap-v4",
-        status: complete ? "shadow-ready" : "backfilling",
-        indexedThrough: complete ? "12345" : "12000"
-      }]
+      sources: canonicalSourceIds.map((sourceId, index) => ({
+        sourceId,
+        status: complete || index > 0 ? "shadow-ready" : "backfilling",
+        indexedThrough: complete || index > 0 ? "12345" : "12000"
+      }))
     },
     nextCursor: null,
     pools
@@ -349,11 +358,16 @@ async function assertFailureSemantics() {
   });
   assert.equal(exactUnavailable.status, "inventory_unavailable");
 
+  let providerFailureCalls = 0;
   const providerUnavailable = await searchVNextUniversalMarkets("STONKBROKER", {
     ...dependencies(),
-    fetch: async () => jsonResponse({}, 503)
+    fetch: async () => {
+      providerFailureCalls += 1;
+      return jsonResponse({}, 503);
+    }
   });
   assert.equal(providerUnavailable.status, "candidate_discovery_unavailable");
+  assert.equal(providerFailureCalls, 1);
 
   const malformedProvider = await searchVNextUniversalMarkets("STONKBROKER", {
     ...dependencies(),
@@ -409,16 +423,21 @@ async function assertIncompleteCoverageSemantics() {
   assert.equal(absentV4.status, "inventory_unavailable");
 
   let identityCalls = 0;
+  let providerCalls = 0;
   const incompleteText = await searchVNextUniversalMarkets("STONKBROKER", {
     readInventory: incompleteReader,
     readIdentity: async (address) => {
       identityCalls += 1;
       return identityReader(address);
     },
-    fetch: providerFetch([providerPair(stonkBrokerAddress)]),
+    fetch: async () => {
+      providerCalls += 1;
+      return jsonResponse({ pairs: [providerPair(stonkBrokerAddress)] });
+    },
     timeoutMs: 500
   });
   assert.equal(incompleteText.status, "inventory_unavailable");
+  assert.equal(providerCalls, 0);
   assert.equal(identityCalls, 0);
 }
 

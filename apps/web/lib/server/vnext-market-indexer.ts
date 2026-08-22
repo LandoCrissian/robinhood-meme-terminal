@@ -19,6 +19,23 @@ const MAXIMUM_CURSOR_LENGTH = 1_024;
 const ZERO_ADDRESS = `0x${"0".repeat(40)}`;
 const ZERO_BYTES32 = `0x${"0".repeat(64)}`;
 
+const CANONICAL_MARKET_SOURCES = {
+  "sushiswap-v2": { protocol: "sushiswap", version: 2 },
+  "sushiswap-v3": { protocol: "sushiswap", version: 3 },
+  "uniswap-v2": { protocol: "uniswap", version: 2 },
+  "uniswap-v3": { protocol: "uniswap", version: 3 },
+  "uniswap-v4": { protocol: "uniswap", version: 4 },
+  "up-v2": { protocol: "up", version: 2 },
+  "up-cl": { protocol: "up", version: 3 }
+} as const;
+type CanonicalMarketSourceId = keyof typeof CANONICAL_MARKET_SOURCES;
+const CANONICAL_MARKET_SOURCE_IDS = Object.keys(
+  CANONICAL_MARKET_SOURCES
+) as [CanonicalMarketSourceId, ...CanonicalMarketSourceId[]];
+const CANONICAL_MARKET_SOURCE_SET = new Set<string>(
+  CANONICAL_MARKET_SOURCE_IDS
+);
+
 const canonicalAddressSchema = z.string().regex(ADDRESS_PATTERN);
 const nonzeroAddressSchema = canonicalAddressSchema.refine(
   (value) => value !== ZERO_ADDRESS
@@ -32,6 +49,7 @@ const canonicalIntegerSchema = z
   .max(78)
   .regex(CANONICAL_INTEGER_PATTERN);
 const sourceIdSchema = z.string().min(1).max(64).regex(SOURCE_ID_PATTERN);
+const canonicalMarketSourceIdSchema = z.enum(CANONICAL_MARKET_SOURCE_IDS);
 const opaqueCursorSchema = z
   .string()
   .min(1)
@@ -45,7 +63,7 @@ const stateErrorSchema = z
 
 const marketPoolSchema = z
   .object({
-    sourceId: sourceIdSchema,
+    sourceId: canonicalMarketSourceIdSchema,
     protocol: z.enum(["sushiswap", "uniswap", "up"]),
     version: z.union([z.literal(2), z.literal(3), z.literal(4)]),
     poolKey: z.string(),
@@ -74,6 +92,17 @@ const marketPoolSchema = z
   })
   .strict()
   .superRefine((pool, context) => {
+    const expectedSource = CANONICAL_MARKET_SOURCES[pool.sourceId];
+    if (
+      pool.protocol !== expectedSource.protocol ||
+      pool.version !== expectedSource.version
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "pool source identity does not match protocol and version"
+      });
+    }
+
     if (pool.token0 === pool.token1) {
       context.addIssue({ code: "custom", message: "token identities must differ" });
     }
@@ -224,7 +253,7 @@ const marketInventoryCoverageSchema = z
     finalizedHead: canonicalIntegerSchema.nullable(),
     sources: z.array(
       z.object({
-        sourceId: sourceIdSchema,
+        sourceId: canonicalMarketSourceIdSchema,
         status: z.enum(["backfilling", "shadow-ready", "error", "missing"]),
         indexedThrough: canonicalIntegerSchema.nullable()
       }).strict()
@@ -235,6 +264,14 @@ const marketInventoryCoverageSchema = z
     const sourceIds = new Set(coverage.sources.map((source) => source.sourceId));
     if (sourceIds.size !== coverage.sources.length) {
       context.addIssue({ code: "custom", message: "duplicate coverage source" });
+    }
+    if (
+      coverage.sources.length !== CANONICAL_MARKET_SOURCE_IDS.length ||
+      sourceIds.size !== CANONICAL_MARKET_SOURCE_IDS.length ||
+      CANONICAL_MARKET_SOURCE_IDS.some((sourceId) => !sourceIds.has(sourceId)) ||
+      [...sourceIds].some((sourceId) => !CANONICAL_MARKET_SOURCE_SET.has(sourceId))
+    ) {
+      context.addIssue({ code: "custom", message: "coverage source set mismatch" });
     }
     if (
       coverage.complete &&

@@ -456,6 +456,11 @@ async function textSearch(
   query: string,
   dependencies: Required<VNextUniversalMarketSearchDependencies>
 ): Promise<VNextUniversalMarketSearchResult> {
+  const coverageProbe = await dependencies.readInventory({ limit: 1 });
+  if (inventoryUnavailable(coverageProbe) || inventoryIncomplete(coverageProbe)) {
+    return emptyResult(query, "text", "inventory_unavailable");
+  }
+
   const discovery = await discoverCandidates(
     query,
     dependencies.fetch,
@@ -463,11 +468,6 @@ async function textSearch(
   );
   if (discovery.status === "unavailable") {
     return emptyResult(query, "text", "candidate_discovery_unavailable");
-  }
-
-  const coverageProbe = await dependencies.readInventory({ limit: 1 });
-  if (inventoryUnavailable(coverageProbe) || inventoryIncomplete(coverageProbe)) {
-    return emptyResult(query, "text", "inventory_unavailable");
   }
 
   const inventories = await Promise.all(
