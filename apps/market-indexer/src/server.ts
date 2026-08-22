@@ -15,7 +15,7 @@ const EVM_ADDRESS_PATTERN = /^0x[0-9a-fA-F]{40}$/;
 const POOL_KEY_PATTERN = /^0x(?:[0-9a-fA-F]{40}|[0-9a-fA-F]{64})$/;
 const CANONICAL_INTEGER_PATTERN = /^(?:0|[1-9][0-9]*)$/;
 const CURSOR_PATTERN = /^[A-Za-z0-9_-]+$/;
-const CURSOR_VERSION = 1 as const;
+const CURSOR_VERSION = 2 as const;
 const MAX_CURSOR_LENGTH = 1_024;
 const ZERO_ADDRESS = `0x${"0".repeat(40)}`;
 const ZERO_POOL_ID = `0x${"0".repeat(64)}`;
@@ -27,13 +27,11 @@ type PoolCursor = {
   token: string | null;
   poolKey: string | null;
   blockNumber: string;
-  transactionIndex: number;
   logIndex: number;
 };
 
 type PoolRow = Record<string, unknown> & {
   blockNumber: string;
-  transactionIndex: number;
   logIndex: number;
 };
 
@@ -86,7 +84,6 @@ const EXPECTED_CURSOR_KEYS = [
   "poolKey",
   "source",
   "token",
-  "transactionIndex",
   "v"
 ].sort().join(",");
 
@@ -122,7 +119,6 @@ function decodeCursor(value: string | null): PoolCursor | null | undefined {
     (candidate.poolKey !== null &&
       (typeof candidate.poolKey !== "string" || exactPoolKey(candidate.poolKey) !== candidate.poolKey)) ||
     canonicalCoordinate(candidate.blockNumber) === null ||
-    nonnegativeIndex(candidate.transactionIndex) === null ||
     nonnegativeIndex(candidate.logIndex) === null
   ) return undefined;
 
@@ -136,9 +132,8 @@ function encodeCursor(
   row: PoolRow
 ) {
   const blockNumber = canonicalCoordinate(row.blockNumber);
-  const transactionIndex = nonnegativeIndex(row.transactionIndex);
   const logIndex = nonnegativeIndex(row.logIndex);
-  if (blockNumber === null || transactionIndex === null || logIndex === null) {
+  if (blockNumber === null || logIndex === null) {
     throw new Error("PostgreSQL returned invalid pagination coordinates");
   }
   const cursor: PoolCursor = {
@@ -148,14 +143,13 @@ function encodeCursor(
     token,
     poolKey,
     blockNumber,
-    transactionIndex,
     logIndex
   };
   return Buffer.from(JSON.stringify(cursor), "utf8").toString("base64url");
 }
 
 function publicPool(row: PoolRow) {
-  const { transactionIndex: _transactionIndex, logIndex: _logIndex, ...pool } = row;
+  const { logIndex: _logIndex, ...pool } = row;
   return pool;
 }
 
@@ -401,47 +395,72 @@ export function createMarketIndexerServer(
           return;
         }
         const result = await pool.query(
-          `SELECT pools.source_id AS "sourceId", pools.protocol,
-                  pools.protocol_version AS "version", pools.pool_key AS "poolKey",
-                  pools.pool_address AS "poolAddress", pools.token0, pools.token1,
-                  pools.stable, pools.fee, pools.tick_spacing AS "tickSpacing",
-                  pools.hooks, pools.transaction_hash AS "transactionHash",
-                  pools.block_number AS "blockNumber", pools.block_hash AS "blockHash",
-                  pools.transaction_index AS "transactionIndex",
+          `SELECT manifest.source_id AS "sourceId", manifest.protocol,
+                  manifest.protocol_version AS "version",
+                  '0x' || encode(pools.pool_key, 'hex') AS "poolKey",
+                  CASE WHEN pools.source_code = 5 THEN NULL
+                       ELSE '0x' || encode(pools.pool_key, 'hex') END AS "poolAddress",
+                  '0x' || encode(pools.token0, 'hex') AS token0,
+                  '0x' || encode(pools.token1, 'hex') AS token1,
+                  CASE WHEN pools.source_code = 6
+                       THEN get_byte(pools.attributes, 0) = 1 ELSE NULL END AS stable,
+                  CASE WHEN pools.source_code IN (2, 4, 5)
+                       THEN get_byte(pools.attributes, 0) * 65536
+                          + get_byte(pools.attributes, 1) * 256
+                          + get_byte(pools.attributes, 2)
+                       ELSE NULL END AS fee,
+                  CASE
+                    WHEN pools.source_code IN (2, 4, 5) THEN
+                      get_byte(pools.attributes, 3) * 256 + get_byte(pools.attributes, 4)
+                      - CASE WHEN get_byte(pools.attributes, 3) >= 128 THEN 65536 ELSE 0 END
+                    WHEN pools.source_code = 7 THEN
+                      get_byte(pools.attributes, 0) * 256 + get_byte(pools.attributes, 1)
+                      - CASE WHEN get_byte(pools.attributes, 0) >= 128 THEN 65536 ELSE 0 END
+                    ELSE NULL
+                  END AS "tickSpacing",
+                  CASE WHEN pools.source_code = 5
+                       THEN '0x' || encode(substring(pools.attributes FROM 6 FOR 20), 'hex')
+                       ELSE NULL END AS hooks,
+                  '0x' || encode(substring(pools.provenance FROM 1 FOR 32), 'hex') AS "transactionHash",
+                  pools.block_number::text AS "blockNumber",
+                  '0x' || encode(substring(pools.provenance FROM 33 FOR 32), 'hex') AS "blockHash",
                   pools.log_index AS "logIndex",
                   state.status AS "stateStatus",
                   state.live_fee AS "liveFee",
                   state.fee_denominator AS "feeDenominator",
-                  state.gauge_address AS "gaugeAddress",
+                  CASE WHEN state.gauge_address IS NULL THEN NULL
+                       ELSE '0x' || encode(state.gauge_address, 'hex') END AS "gaugeAddress",
                   state.gauge_alive AS "gaugeAlive",
                   state.gauge_weight AS "gaugeWeight",
                   state.gauge_claimable AS "gaugeClaimable",
-                  state.fees_address AS "feesAddress",
-                  state.bribe_address AS "bribeAddress",
+                  CASE WHEN state.fees_address IS NULL THEN NULL
+                       ELSE '0x' || encode(state.fees_address, 'hex') END AS "feesAddress",
+                  CASE WHEN state.bribe_address IS NULL THEN NULL
+                       ELSE '0x' || encode(state.bribe_address, 'hex') END AS "bribeAddress",
                   state.last_error AS "stateError",
-                  state.observed_block AS "stateObservedBlock",
-                  state.observed_block_hash AS "stateObservedBlockHash"
+                  state.observed_block::text AS "stateObservedBlock",
+                  CASE WHEN state.observed_block_hash IS NULL THEN NULL
+                       ELSE '0x' || encode(state.observed_block_hash, 'hex') END AS "stateObservedBlockHash"
            FROM market_pools AS pools
+           JOIN market_indexer_source_state AS manifest
+             ON manifest.source_code = pools.source_code
            LEFT JOIN market_pool_state AS state
-             ON state.chain_id = pools.chain_id
-            AND state.source_id = pools.source_id
+             ON state.source_code = pools.source_code
             AND state.pool_key = pools.pool_key
-           WHERE pools.chain_id = $1
-             AND ($2::text IS NULL OR pools.source_id = $2)
-             AND ($3::text IS NULL OR pools.token0 = $3 OR pools.token1 = $3)
-             AND ($4::text IS NULL OR pools.pool_key = $4)
-             AND ($5::bigint IS NULL OR
-               (pools.block_number, pools.transaction_index, pools.log_index) <
-               ($5::bigint, $6::integer, $7::integer))
-           ORDER BY pools.block_number DESC, pools.transaction_index DESC, pools.log_index DESC
-           LIMIT $8`,
+           WHERE ($1::text IS NULL OR manifest.source_id = $1)
+             AND ($2::text IS NULL OR
+               pools.token0 = decode(substring($2 FROM 3), 'hex') OR
+               pools.token1 = decode(substring($2 FROM 3), 'hex'))
+             AND ($3::text IS NULL OR pools.pool_key = decode(substring($3 FROM 3), 'hex'))
+             AND ($4::integer IS NULL OR
+               (pools.block_number, pools.log_index) < ($4::integer, $5::integer))
+           ORDER BY pools.block_number DESC, pools.log_index DESC
+           LIMIT $6`,
           [
-            MARKET_INDEXER_CHAIN_ID,
             source,
             token,
             poolKey,
             cursor?.blockNumber ?? null,
-            cursor?.transactionIndex ?? null,
             cursor?.logIndex ?? null,
             limit + 1
           ]

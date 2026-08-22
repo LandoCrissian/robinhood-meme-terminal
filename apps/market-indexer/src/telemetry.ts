@@ -137,11 +137,9 @@ export async function readMarketIndexerTelemetry(
                 AS state_error_count
        FROM market_indexer_source_state AS state
        LEFT JOIN market_pools AS pools
-         ON pools.chain_id = state.chain_id
-       AND pools.source_id = state.source_id
+         ON pools.source_code = state.source_code
        LEFT JOIN market_pool_state AS pool_state
-         ON pool_state.chain_id = pools.chain_id
-        AND pool_state.source_id = pools.source_id
+         ON pool_state.source_code = pools.source_code
         AND pool_state.pool_key = pools.pool_key
        WHERE state.chain_id = $1
        GROUP BY state.chain_id, state.source_id, state.status, state.start_block,

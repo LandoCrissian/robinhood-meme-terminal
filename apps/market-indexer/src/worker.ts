@@ -10,9 +10,21 @@ import {
   type PublicClient
 } from "viem";
 import type { MarketIndexerConfig } from "./config.js";
+import {
+  compactBlockNumber,
+  hexBytes,
+  packPoolAttributes,
+  packPoolProvenance,
+  packSyncProvenance,
+  sourceCodeForId
+} from "./compact-storage.js";
 import type { RawMarketLog } from "./decoder.js";
 import { findReorgAncestor, replayMarketLogs, type SyncPoint } from "./replay.js";
-import { migrateMarketIndexer, rollbackSourceAfter } from "./schema.js";
+import {
+  migrateMarketIndexer,
+  retainLatestSourceSyncPoints,
+  rollbackSourceAfter
+} from "./schema.js";
 import {
   MARKET_INDEXER_CHAIN_ID,
   marketSources,
@@ -97,33 +109,26 @@ async function insertPool(
 ) {
   const result = await client.query(
     `INSERT INTO market_pools (
-       chain_id, source_id, protocol, protocol_version, pool_key, pool_address,
-       token0, token1, stable, fee, tick_spacing, hooks, transaction_hash,
-       transaction_index, log_index, block_number, block_hash
-     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
-     ON CONFLICT (chain_id, source_id, pool_key) DO UPDATE SET
-       pool_address = EXCLUDED.pool_address
-     WHERE market_pools.transaction_hash = EXCLUDED.transaction_hash
-       AND market_pools.log_index = EXCLUDED.log_index
-       AND market_pools.block_hash = EXCLUDED.block_hash`,
+       source_code, pool_key, token0, token1, attributes, provenance,
+       block_number, log_index
+     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+     ON CONFLICT (source_code, pool_key) DO UPDATE SET
+       pool_key = EXCLUDED.pool_key
+     WHERE market_pools.token0 = EXCLUDED.token0
+       AND market_pools.token1 = EXCLUDED.token1
+       AND market_pools.attributes IS NOT DISTINCT FROM EXCLUDED.attributes
+       AND market_pools.provenance = EXCLUDED.provenance
+       AND market_pools.block_number = EXCLUDED.block_number
+       AND market_pools.log_index = EXCLUDED.log_index`,
     [
-      MARKET_INDEXER_CHAIN_ID,
-      pool.sourceId,
-      pool.protocol,
-      pool.version,
-      pool.poolKey,
-      pool.poolAddress,
-      pool.token0,
-      pool.token1,
-      pool.stable,
-      pool.fee,
-      pool.tickSpacing,
-      pool.hooks,
-      pool.transactionHash,
-      pool.transactionIndex,
+      sourceCodeForId(pool.sourceId),
+      hexBytes(pool.poolKey, pool.version === 4 ? 32 : 20, "pool key"),
+      hexBytes(pool.token0, 20, "token0"),
+      hexBytes(pool.token1, 20, "token1"),
+      packPoolAttributes(pool),
+      packPoolProvenance(pool.transactionHash, pool.blockHash),
+      compactBlockNumber(pool.blockNumber),
       pool.logIndex,
-      pool.blockNumber.toString(),
-      pool.blockHash
     ]
   );
   if (result.rowCount !== 1) {
@@ -290,21 +295,22 @@ export class MarketIndexerWorker {
       pool_address: string;
       stable: boolean | null;
     }>(
-      `SELECT pools.source_id, pools.pool_address, pools.stable
+      `SELECT manifest.source_id,
+              '0x' || encode(pools.pool_key, 'hex') AS pool_address,
+              CASE WHEN pools.source_code = 6 THEN get_byte(pools.attributes, 0) = 1 ELSE NULL END AS stable
        FROM market_pools AS pools
+       JOIN market_indexer_source_state AS manifest
+         ON manifest.source_code = pools.source_code
        LEFT JOIN market_pool_state AS state
-         ON state.chain_id = pools.chain_id
-        AND state.source_id = pools.source_id
+         ON state.source_code = pools.source_code
         AND state.pool_key = pools.pool_key
-       WHERE pools.chain_id = $1
-         AND pools.source_id IN ('up-v2', 'up-cl')
-         AND pools.pool_address IS NOT NULL
+       WHERE pools.source_code IN (6, 7)
        ORDER BY state.observed_block ASC NULLS FIRST,
                 state.observed_at ASC NULLS FIRST,
                 pools.block_number ASC,
                 pools.log_index ASC
-       LIMIT $2`,
-      [MARKET_INDEXER_CHAIN_ID, this.config.enrichmentBatchSize]
+       LIMIT $1`,
+      [this.config.enrichmentBatchSize]
     );
     let firstFailure: Error | null = null;
     for (const row of result.rows) {
@@ -326,12 +332,12 @@ export class MarketIndexerWorker {
         );
         await this.pool.query(
           `INSERT INTO market_pool_state (
-             chain_id, source_id, pool_key, status, live_fee, fee_denominator,
+             source_code, pool_key, status, live_fee, fee_denominator,
              gauge_address, gauge_alive, gauge_weight, gauge_claimable,
              fees_address, bribe_address, last_error, observed_block,
              observed_block_hash, observed_at
-           ) VALUES ($1,$2,$3,'ready',$4,$5,$6,$7,$8,$9,$10,$11,NULL,$12,$13,NOW())
-           ON CONFLICT (chain_id, source_id, pool_key) DO UPDATE SET
+           ) VALUES ($1,$2,'ready',$3,$4,$5,$6,$7,$8,$9,$10,NULL,$11,$12,NOW())
+           ON CONFLICT (source_code, pool_key) DO UPDATE SET
              status = EXCLUDED.status,
              live_fee = EXCLUDED.live_fee,
              fee_denominator = EXCLUDED.fee_denominator,
@@ -346,19 +352,18 @@ export class MarketIndexerWorker {
              observed_block_hash = EXCLUDED.observed_block_hash,
              observed_at = NOW()`,
           [
-            MARKET_INDEXER_CHAIN_ID,
-            evidence.sourceId,
-            evidence.poolAddress,
+            sourceCodeForId(evidence.sourceId),
+            hexBytes(evidence.poolAddress, 20, "up pool address"),
             evidence.liveFee,
             evidence.feeDenominator,
-            evidence.gaugeAddress,
+            evidence.gaugeAddress === null ? null : hexBytes(evidence.gaugeAddress, 20, "gauge address"),
             evidence.gaugeAlive,
             evidence.gaugeWeight,
             evidence.gaugeClaimable,
-            evidence.feesAddress,
-            evidence.bribeAddress,
-            evidence.observedBlock.toString(),
-            evidence.observedBlockHash
+            evidence.feesAddress === null ? null : hexBytes(evidence.feesAddress, 20, "fees address"),
+            evidence.bribeAddress === null ? null : hexBytes(evidence.bribeAddress, 20, "bribe address"),
+            compactBlockNumber(evidence.observedBlock),
+            hexBytes(evidence.observedBlockHash, 32, "observed block hash")
           ]
         );
       } catch (error) {
@@ -366,12 +371,12 @@ export class MarketIndexerWorker {
         firstFailure ??= new Error(`${source.id}:${poolAddress}: ${message}`);
         await this.pool.query(
           `INSERT INTO market_pool_state (
-             chain_id, source_id, pool_key, status, live_fee, fee_denominator,
+             source_code, pool_key, status, live_fee, fee_denominator,
              gauge_address, gauge_alive, gauge_weight, gauge_claimable,
              fees_address, bribe_address, last_error, observed_block,
              observed_block_hash, observed_at
-           ) VALUES ($1,$2,$3,'error',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,$4,$5,$6,NOW())
-           ON CONFLICT (chain_id, source_id, pool_key) DO UPDATE SET
+           ) VALUES ($1,$2,'error',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,$3,$4,$5,NOW())
+           ON CONFLICT (source_code, pool_key) DO UPDATE SET
              status = EXCLUDED.status,
              live_fee = NULL,
              fee_denominator = NULL,
@@ -386,12 +391,11 @@ export class MarketIndexerWorker {
              observed_block_hash = EXCLUDED.observed_block_hash,
              observed_at = NOW()`,
           [
-            MARKET_INDEXER_CHAIN_ID,
-            source.id,
-            poolAddress.toLowerCase(),
+            sourceCodeForId(source.id),
+            hexBytes(poolAddress.toLowerCase(), 20, "up pool address"),
             message,
-            finalizedHead.toString(),
-            finalizedHash.toLowerCase()
+            compactBlockNumber(finalizedHead),
+            hexBytes(finalizedHash.toLowerCase(), 32, "finalized block hash")
           ]
         );
       }
@@ -404,12 +408,13 @@ export class MarketIndexerWorker {
       block_number: string;
       block_hash: string;
     }>(
-      `SELECT block_number, block_hash
+      `SELECT block_number::text,
+              '0x' || encode(substring(provenance FROM 1 FOR 32), 'hex') AS block_hash
        FROM market_indexer_sync_points
-       WHERE chain_id = $1 AND source_id = $2
+       WHERE source_code = $1
        ORDER BY block_number DESC
        LIMIT 64`,
-      [MARKET_INDEXER_CHAIN_ID, source.id]
+      [sourceCodeForId(source.id)]
     );
     const points: SyncPoint[] = result.rows.map((row) => ({
       blockNumber: BigInt(row.block_number),
@@ -482,17 +487,16 @@ export class MarketIndexerWorker {
       for (const pool of decoded) await insertPool(client, pool);
       await client.query(
         `INSERT INTO market_indexer_sync_points (
-           chain_id, source_id, block_number, block_hash, parent_hash
-         ) VALUES ($1,$2,$3,$4,$5)
-         ON CONFLICT (chain_id, source_id, block_number) DO NOTHING`,
+           source_code, block_number, provenance
+         ) VALUES ($1,$2,$3)
+         ON CONFLICT (source_code, block_number) DO NOTHING`,
         [
-          MARKET_INDEXER_CHAIN_ID,
-          source.id,
-          toBlock.toString(),
-          block.hash.toLowerCase(),
-          block.parentHash.toLowerCase()
+          sourceCodeForId(source.id),
+          compactBlockNumber(toBlock),
+          packSyncProvenance(block.hash.toLowerCase(), block.parentHash.toLowerCase())
         ]
       );
+      await retainLatestSourceSyncPoints(client, source.id);
       await client.query(
         `UPDATE market_indexer_source_state
          SET next_block = $3, status = $4, last_sync_at = NOW(),

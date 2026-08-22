@@ -9,7 +9,8 @@ import {
 } from "viem";
 
 export const MARKET_INDEXER_CHAIN_ID = 4663 as const;
-export const MARKET_INDEXER_SCHEMA_VERSION = 2 as const;
+export const MARKET_INDEXER_SCHEMA_VERSION = 3 as const;
+export const MARKET_INDEXER_MIGRATION_SCHEMA_VERSION = 3_001 as const;
 export const MARKET_INDEXER_ACTIVATION_LOCKED = true as const;
 
 export type MarketSourceKind =
