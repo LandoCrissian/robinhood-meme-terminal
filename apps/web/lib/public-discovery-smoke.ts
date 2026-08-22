@@ -165,7 +165,11 @@ const externalMarketRouteSource = readFileSync(new URL("../app/api/markets/exter
 const externalMarketSocialsSource = readFileSync(new URL("./external-market-socials.ts", import.meta.url), "utf8");
 const launchpadNetworkSource = readFileSync(new URL("../app/launchpad-network.tsx", import.meta.url), "utf8");
 assert.match(externalMarketRouteSource, /searchParams\.get\("contract"\)/);
-assert.match(externalMarketRouteSource, /exactContractLookup/);
+assert.match(externalMarketRouteSource, /fetchPairByAddress\(requestedContract\)/);
+assert.doesNotMatch(
+  externalMarketRouteSource,
+  /liquidityUsd < RUNNER_THRESHOLDS\.minimumDisplayLiquidityUsd \|\| volume24h <= 0/
+);
 assert.match(externalMarketRouteSource, /externalMarketSocialsFromPairInfo\(pair\.info\)/);
 assert.match(externalMarketSocialsSource, /provenance: "dex-pair-metadata"/);
 assert.match(externalMarketSocialsSource, /url\.protocol !== "https:"/);

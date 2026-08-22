@@ -295,10 +295,6 @@ export function useVNextMarketDirectory() {
         legacyDirectoryMarkets.current = [];
         const payload = parseVNextCanonicalDirectoryResponse(rawPayload);
         if (!response.ok || !payload || requestSequence !== canonicalRequestSequence.current) {
-          canonicalDirectoryMarkets.current = [];
-          canonicalNextCursor.current = null;
-          setHasMoreCanonicalMarkets(false);
-          publishMarkets();
           throw new Error("Canonical market directory unavailable.");
         }
         const canonicalMarkets = payload.markets ?? [];

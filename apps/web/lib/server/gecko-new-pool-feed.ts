@@ -1,11 +1,27 @@
-import { isAddress } from "viem";
+import { getAddress, isAddress, zeroAddress } from "viem";
 import { z } from "zod";
+import { canonicalExternalPoolIdentity } from "../external-market-identity";
 
-const GECKO_NEW_POOLS_API =
-  "https://api.geckoterminal.com/api/v2/networks/robinhood/new_pools?include=base_token,quote_token,dex&page=1";
+const GECKO_POOLS_API = "https://api.geckoterminal.com/api/v2/networks/robinhood";
 const DEXSCREENER_PAGE = "https://dexscreener.com/robinhood/";
 const TIMEOUT_MS = 7_000;
-const MAX_POOLS = 20;
+const MAX_POOLS_PER_PAGE = 20;
+const MAX_INCLUDED_PER_PAGE = 80;
+
+export type GeckoPoolFeedId = "new" | "top" | "trending-5m" | "trending-1h" | "trending-24h";
+
+export const GECKO_POOL_FEEDS: ReadonlyArray<{
+  id: GeckoPoolFeedId;
+  endpoint: "new_pools" | "pools" | "trending_pools";
+  pages: readonly number[];
+  duration?: "5m" | "1h" | "24h";
+}> = [
+  { id: "new", endpoint: "new_pools", pages: [1, 2] },
+  { id: "top", endpoint: "pools", pages: [1, 2, 3] },
+  { id: "trending-5m", endpoint: "trending_pools", duration: "5m", pages: [1] },
+  { id: "trending-1h", endpoint: "trending_pools", duration: "1h", pages: [1, 2, 3] },
+  { id: "trending-24h", endpoint: "trending_pools", duration: "24h", pages: [1, 2] }
+];
 
 const relationshipSchema = z.object({
   data: z.object({ id: z.string().max(160), type: z.string().max(40) })
@@ -16,6 +32,7 @@ const poolSchema = z.object({
   attributes: z.object({
     address: z.string().max(80),
     base_token_price_usd: z.string().nullable().optional(),
+    quote_token_price_usd: z.string().nullable().optional(),
     pool_created_at: z.string().nullable().optional(),
     fdv_usd: z.string().nullable().optional(),
     market_cap_usd: z.string().nullable().optional(),
@@ -44,58 +61,89 @@ const includedSchema = z.object({
   }).passthrough()
 });
 const payloadSchema = z.object({
-  data: z.array(poolSchema).max(MAX_POOLS),
-  included: z.array(includedSchema).max(80).optional()
+  data: z.array(poolSchema).max(MAX_POOLS_PER_PAGE),
+  included: z.array(includedSchema).max(MAX_INCLUDED_PER_PAGE).optional()
 });
 
 type FetchLike = (input: string | URL, init?: RequestInit) => Promise<Response>;
 
-export type GeckoNewPoolPair = {
+export type GeckoPoolPair = {
   chainId: "robinhood";
   dexId: string;
   url: string;
   pairAddress: string;
   baseToken: { address: string; name: string; symbol: string };
   quoteToken: { address: string; name: string; symbol: string };
-  priceUsd: number;
-  txns: Record<string, { buys: number; sells: number }>;
-  volume: Record<string, number>;
-  priceChange: Record<string, number>;
-  liquidity: { usd: number };
-  fdv: number;
-  marketCap: number;
-  pairCreatedAt: number;
+  priceUsd: number | null;
+  txns: Record<string, { buys: number | null; sells: number | null }>;
+  volume: Record<string, number | null>;
+  priceChange: Record<string, number | null>;
+  liquidity: { usd: number | null };
+  fdv: number | null;
+  marketCap: number | null;
+  pairCreatedAt: number | null;
   info?: { imageUrl?: string };
+  discoveryFeeds: GeckoPoolFeedId[];
 };
 
-export type GeckoNewPoolSnapshot = {
-  pairs: GeckoNewPoolPair[];
+export type GeckoPoolSnapshot = {
+  pairs: GeckoPoolPair[];
   delayed: boolean;
+  delayedFeeds: GeckoPoolFeedId[];
 };
 
 function finite(value: unknown) {
-  const number = typeof value === "number" ? value : typeof value === "string" ? Number(value) : Number.NaN;
-  return Number.isFinite(number) ? number : 0;
+  const number = typeof value === "number"
+    ? value
+    : typeof value === "string" && value.trim()
+      ? Number(value)
+      : Number.NaN;
+  return Number.isFinite(number) ? number : null;
+}
+
+function nonNegative(value: unknown) {
+  const number = finite(value);
+  return number !== null && number >= 0 ? number : null;
+}
+
+function nonNegativeInteger(value: unknown) {
+  const number = nonNegative(value);
+  return number !== null && Number.isSafeInteger(number) ? number : null;
 }
 
 function resourceAddress(id: string) {
   const separator = id.indexOf("_");
   const address = separator >= 0 ? id.slice(separator + 1) : "";
-  return isAddress(address) ? address : null;
+  return isAddress(address, { strict: false }) ? getAddress(address) : null;
 }
 
 function numberRecord(value: Record<string, string | null> | undefined) {
   return Object.fromEntries(Object.entries(value ?? {}).map(([key, entry]) => [key, finite(entry)]));
 }
 
-export function parseGeckoNewPoolPairs(payload: unknown): GeckoNewPoolPair[] {
+function tokenLabel(address: string) {
+  return `${address.slice(0, 6)}…${address.slice(-4)}`;
+}
+
+export function geckoPoolFeedUrl(
+  feed: (typeof GECKO_POOL_FEEDS)[number],
+  page: number
+) {
+  const url = new URL(`${GECKO_POOLS_API}/${feed.endpoint}`);
+  url.searchParams.set("include", "base_token,quote_token,dex");
+  url.searchParams.set("page", String(page));
+  if (feed.duration) url.searchParams.set("duration", feed.duration);
+  return url;
+}
+
+export function parseGeckoPoolPairs(payload: unknown, feed: GeckoPoolFeedId): GeckoPoolPair[] {
   const parsed = payloadSchema.safeParse(payload);
   if (!parsed.success) return [];
   const included = new Map(parsed.data.included?.map((item) => [item.id, item]) ?? []);
-  const pairs: GeckoNewPoolPair[] = [];
+  const pairs: GeckoPoolPair[] = [];
 
   for (const pool of parsed.data.data) {
-    const pairAddress = pool.attributes.address;
+    const pairAddress = pool.attributes.address.trim();
     const baseId = pool.relationships.base_token.data.id;
     const quoteId = pool.relationships.quote_token.data.id;
     const baseAddress = resourceAddress(baseId);
@@ -103,77 +151,109 @@ export function parseGeckoNewPoolPairs(payload: unknown): GeckoNewPoolPair[] {
     const base = included.get(baseId);
     const quote = included.get(quoteId);
     const dexId = pool.relationships.dex.data.id.trim().toLowerCase();
-    const createdAt = Date.parse(pool.attributes.pool_created_at ?? "");
     if (
-      !isAddress(pairAddress)
+      !canonicalExternalPoolIdentity(pairAddress)
       || !baseAddress
       || !quoteAddress
-      || !base
-      || !quote
-      || !base.attributes.name?.trim()
-      || !base.attributes.symbol?.trim()
-      || !quote.attributes.name?.trim()
-      || !quote.attributes.symbol?.trim()
+      || (baseAddress.toLowerCase() === zeroAddress && quoteAddress.toLowerCase() === zeroAddress)
       || !dexId
-      || !Number.isFinite(createdAt)
     ) continue;
 
+    const nativeCurrencyIsBase = baseAddress.toLowerCase() === zeroAddress;
+    const directoryBaseAddress = nativeCurrencyIsBase ? quoteAddress : baseAddress;
+    const directoryQuoteAddress = nativeCurrencyIsBase ? baseAddress : quoteAddress;
+    const directoryBase = nativeCurrencyIsBase ? quote : base;
+    const directoryQuote = nativeCurrencyIsBase ? base : quote;
+    const baseLabel = tokenLabel(directoryBaseAddress);
+    const quoteLabel = tokenLabel(directoryQuoteAddress);
     const transactions = Object.fromEntries(Object.entries(pool.attributes.transactions ?? {}).map(
       ([key, value]) => [key, {
-        buys: Math.max(0, Math.trunc(finite(value.buys))),
-        sells: Math.max(0, Math.trunc(finite(value.sells)))
+        buys: nonNegativeInteger(value.buys),
+        sells: nonNegativeInteger(value.sells)
       }]
     ));
-    const imageUrl = base.attributes.image_url?.trim();
+    const imageUrl = directoryBase?.attributes.image_url?.trim();
+    const createdAt = Date.parse(pool.attributes.pool_created_at ?? "");
     pairs.push({
       chainId: "robinhood",
       dexId: dexId.slice(0, 30),
       url: DEXSCREENER_PAGE + pairAddress.toLowerCase(),
       pairAddress,
       baseToken: {
-        address: baseAddress,
-        name: base.attributes.name.trim().slice(0, 80),
-        symbol: base.attributes.symbol.trim().slice(0, 20)
+        address: directoryBaseAddress,
+        name: directoryBase?.attributes.name?.trim().slice(0, 80) || baseLabel,
+        symbol: directoryBase?.attributes.symbol?.trim().slice(0, 20) || baseLabel
       },
       quoteToken: {
-        address: quoteAddress,
-        name: quote.attributes.name.trim().slice(0, 80),
-        symbol: quote.attributes.symbol.trim().slice(0, 20)
+        address: directoryQuoteAddress,
+        name: directoryQuote?.attributes.name?.trim().slice(0, 80) || quoteLabel,
+        symbol: directoryQuote?.attributes.symbol?.trim().slice(0, 20) || quoteLabel
       },
-      priceUsd: finite(pool.attributes.base_token_price_usd),
+      priceUsd: finite(nativeCurrencyIsBase
+        ? pool.attributes.quote_token_price_usd
+        : pool.attributes.base_token_price_usd),
       txns: transactions,
       volume: numberRecord(pool.attributes.volume_usd),
       priceChange: numberRecord(pool.attributes.price_change_percentage),
-      liquidity: { usd: Math.max(0, finite(pool.attributes.reserve_in_usd)) },
-      fdv: Math.max(0, finite(pool.attributes.fdv_usd)),
-      marketCap: Math.max(0, finite(pool.attributes.market_cap_usd)),
-      pairCreatedAt: createdAt,
-      ...(imageUrl ? { info: { imageUrl } } : {})
+      liquidity: { usd: nonNegative(pool.attributes.reserve_in_usd) },
+      fdv: nonNegative(pool.attributes.fdv_usd),
+      marketCap: nonNegative(pool.attributes.market_cap_usd),
+      pairCreatedAt: Number.isFinite(createdAt) ? createdAt : null,
+      ...(imageUrl ? { info: { imageUrl } } : {}),
+      discoveryFeeds: [feed]
     });
   }
   return pairs;
 }
 
-export async function fetchGeckoNewPoolSnapshot(
-  dependencies: { fetch?: FetchLike } = {}
-): Promise<GeckoNewPoolSnapshot> {
-  const fetcher = dependencies.fetch ?? fetch;
+async function fetchGeckoPoolPage(
+  feed: (typeof GECKO_POOL_FEEDS)[number],
+  page: number,
+  fetcher: FetchLike
+) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
-    const response = await fetcher(GECKO_NEW_POOLS_API, {
+    const response = await fetcher(geckoPoolFeedUrl(feed, page), {
       headers: { Accept: "application/json" },
       next: { revalidate: 60 },
       signal: controller.signal
     });
-    if (!response.ok) return { pairs: [], delayed: true };
+    if (!response.ok) return null;
     const payload: unknown = await response.json();
-    if (!payloadSchema.safeParse(payload).success) return { pairs: [], delayed: true };
-    const pairs = parseGeckoNewPoolPairs(payload);
-    return { pairs, delayed: false };
+    return payloadSchema.safeParse(payload).success
+      ? parseGeckoPoolPairs(payload, feed.id)
+      : null;
   } catch {
-    return { pairs: [], delayed: true };
+    return null;
   } finally {
     clearTimeout(timeout);
   }
+}
+
+export async function fetchGeckoPoolSnapshot(
+  dependencies: { fetch?: FetchLike } = {}
+): Promise<GeckoPoolSnapshot> {
+  const fetcher = dependencies.fetch ?? fetch;
+  const requests = GECKO_POOL_FEEDS.flatMap((feed) => feed.pages.map((page) => ({ feed, page })));
+  const responses = await Promise.all(requests.map(async ({ feed, page }) => ({
+    feed,
+    pairs: await fetchGeckoPoolPage(feed, page, fetcher)
+  })));
+  const delayedFeeds = [...new Set(responses.flatMap(({ feed, pairs }) => pairs === null ? [feed.id] : []))];
+  const byPool = new Map<string, GeckoPoolPair>();
+  for (const { pairs } of responses) {
+    for (const pair of pairs ?? []) {
+      const key = `${pair.chainId}:${pair.pairAddress.toLowerCase()}`;
+      const existing = byPool.get(key);
+      byPool.set(key, existing
+        ? { ...existing, discoveryFeeds: [...new Set([...existing.discoveryFeeds, ...pair.discoveryFeeds])] }
+        : pair);
+    }
+  }
+  return {
+    pairs: [...byPool.values()],
+    delayed: delayedFeeds.length > 0,
+    delayedFeeds
+  };
 }

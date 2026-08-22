@@ -22,7 +22,7 @@ export type AssetMarketEvidence = {
   displayEligibility: "eligible" | "invalid-token-perspective" | "unsupported-quote" | "missing-price";
   chartEligibility: "eligible" | "unavailable";
   executionEligibility: "view-only";
-  provenance: "dexscreener-token-pairs" | "dexscreener-token-batch";
+  provenance: "dexscreener-token-pairs" | "dexscreener-token-batch" | "geckoterminal-pool-feed";
   priceUsd: number | null;
   liquidityUsd: number | null;
   marketCapUsd: number | null;

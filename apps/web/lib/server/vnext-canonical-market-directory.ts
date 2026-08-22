@@ -36,7 +36,7 @@ export async function readVNextCanonicalMarketDirectoryPage(
   if (inventory.status === "invalid_query") {
     return { status: 400, body: { canonical: true, error: "Invalid canonical market directory cursor." } };
   }
-  if (inventory.status !== "verified_shadow" || !inventory.coverage.complete) {
+  if (inventory.status !== "verified_shadow") {
     return { status: 503, body: { canonical: true, error: "Canonical market directory is not ready." } };
   }
 
@@ -44,7 +44,7 @@ export async function readVNextCanonicalMarketDirectoryPage(
     status: 200,
     body: {
       canonical: true,
-      coverage: "complete",
+      coverage: inventory.coverage.complete ? "complete" : "partial",
       nextCursor: inventory.nextCursor,
       updatedAt: new Date().toISOString(),
       markets: directoryMarketsFromCanonicalPools(
