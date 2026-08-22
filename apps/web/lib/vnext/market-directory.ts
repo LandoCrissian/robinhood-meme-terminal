@@ -22,6 +22,7 @@ import type {
   VNextUniversalMarketSearchResultItem,
   VNextUniversalMarketSearchStatus
 } from "./universal-market-search-contract";
+import { parseVNextUniversalMarketSearchPool } from "./universal-market-search-contract";
 
 type VNextDirectoryMetric = number | null;
 
@@ -75,11 +76,12 @@ export type VNextMarketDirectoryView = "trending" | "new" | "active" | "rwa" | "
 
 export const VNEXT_MARKET_DIRECTORY_MAX_MARKETS = 144;
 export const VNEXT_MARKET_DIRECTORY_PAGE_SIZE = 24;
+export const VNEXT_CANONICAL_DIRECTORY_PAGE_LIMIT = 100;
 
 export const VNEXT_MARKET_DIRECTORY_VIEWS: ReadonlyArray<{ id: VNextMarketDirectoryView; label: string }> = [
+  { id: "active", label: "Active" },
   { id: "trending", label: "Trending" },
   { id: "new", label: "New" },
-  { id: "active", label: "Active" },
   { id: "rwa", label: "RWA" },
   { id: "held", label: "Held" },
   { id: "all", label: "All" }
@@ -91,6 +93,133 @@ export type VNextDirectoryResponse = {
   stale?: boolean;
   error?: string;
 };
+
+export type VNextCanonicalDirectoryResponse = VNextDirectoryResponse & {
+  canonical: true;
+  coverage: "complete";
+  nextCursor: string | null;
+};
+
+const OPAQUE_CURSOR_PATTERN = /^[A-Za-z0-9_-]+$/;
+const MAXIMUM_CURSOR_LENGTH = 1_024;
+
+function record(value: unknown): Record<string, unknown> | null {
+  return value !== null && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
+}
+
+function canonicalMarketIdentity(market: VNextUniversalMarketSearchPool) {
+  return `${market.sourceId}:${market.poolKey}`;
+}
+
+export function directoryMarketsFromCanonicalPools(
+  pools: VNextUniversalMarketSearchPool[]
+): VNextDirectoryMarket[] {
+  const byAddress = new Map<string, Map<string, VNextUniversalMarketSearchPool>>();
+  for (const pool of pools) {
+    for (const address of [pool.token0, pool.token1]) {
+      const key = address.toLowerCase();
+      const evidence = byAddress.get(key) ?? new Map<string, VNextUniversalMarketSearchPool>();
+      evidence.set(canonicalMarketIdentity(pool), pool);
+      byAddress.set(key, evidence);
+    }
+  }
+
+  return [...byAddress.entries()]
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([rawAddress, evidence]) => {
+      const address = getAddress(rawAddress);
+      const label = `${address.slice(0, 6)}…${address.slice(-4)}`;
+      return {
+        address,
+        assetId: canonicalExternalAssetId(4_663, address) ?? undefined,
+        name: label,
+        symbol: label,
+        priceUsd: null,
+        liquidityUsd: null,
+        marketCapUsd: null,
+        volume24h: null,
+        priceChange24h: null,
+        ageMinutes: null,
+        signal: null,
+        canonicalMarkets: [...evidence.values()].sort((left, right) =>
+          canonicalMarketIdentity(left).localeCompare(canonicalMarketIdentity(right)))
+      };
+    });
+}
+
+export function parseVNextCanonicalDirectoryResponse(value: unknown): VNextCanonicalDirectoryResponse | null {
+  const candidate = record(value);
+  if (
+    !candidate ||
+    candidate.canonical !== true ||
+    candidate.coverage !== "complete" ||
+    typeof candidate.updatedAt !== "string" ||
+    !Number.isFinite(Date.parse(candidate.updatedAt)) ||
+    (candidate.nextCursor !== null && (
+      typeof candidate.nextCursor !== "string" ||
+      candidate.nextCursor.length < 1 ||
+      candidate.nextCursor.length > MAXIMUM_CURSOR_LENGTH ||
+      !OPAQUE_CURSOR_PATTERN.test(candidate.nextCursor)
+    )) ||
+    !Array.isArray(candidate.markets) ||
+    candidate.markets.length > VNEXT_CANONICAL_DIRECTORY_PAGE_LIMIT * 2
+  ) return null;
+
+  const markets = candidate.markets.flatMap((value): VNextDirectoryMarket[] => {
+    const market = record(value);
+    if (!market || !isAddress(String(market.address ?? ""), { strict: false })) return [];
+    if (
+      market.priceUsd !== null ||
+      market.liquidityUsd !== null ||
+      market.marketCapUsd !== null ||
+      market.volume24h !== null ||
+      market.priceChange24h !== null ||
+      market.ageMinutes !== null ||
+      market.signal !== null
+    ) return [];
+    if (!Array.isArray(market.canonicalMarkets) || market.canonicalMarkets.length < 1 || market.canonicalMarkets.length > VNEXT_CANONICAL_DIRECTORY_PAGE_LIMIT) return [];
+    const canonicalMarkets = market.canonicalMarkets.map(parseVNextUniversalMarketSearchPool);
+    if (canonicalMarkets.some((entry) => entry === null)) return [];
+    const address = getAddress(String(market.address));
+    const identities = new Set<string>();
+    for (const evidence of canonicalMarkets as VNextUniversalMarketSearchPool[]) {
+      if (evidence.token0 !== address.toLowerCase() && evidence.token1 !== address.toLowerCase()) return [];
+      const identity = canonicalMarketIdentity(evidence);
+      if (identities.has(identity)) return [];
+      identities.add(identity);
+    }
+    const name = text(market.name, 80);
+    const symbol = text(market.symbol, 16);
+    if (!name || !symbol) return [];
+    return [{
+      address,
+      assetId: canonicalExternalAssetId(4_663, address) ?? undefined,
+      name,
+      symbol,
+      priceUsd: null,
+      liquidityUsd: null,
+      marketCapUsd: null,
+      volume24h: null,
+      priceChange24h: null,
+      ageMinutes: null,
+      signal: null,
+      canonicalMarkets: canonicalMarkets as VNextUniversalMarketSearchPool[]
+    }];
+  });
+  if (
+    markets.length !== candidate.markets.length ||
+    new Set(markets.map((market) => market.address.toLowerCase())).size !== markets.length
+  ) return null;
+  return {
+    canonical: true,
+    coverage: "complete",
+    nextCursor: candidate.nextCursor as string | null,
+    updatedAt: candidate.updatedAt,
+    markets
+  };
+}
 
 function finite(value: unknown) {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
@@ -441,6 +570,21 @@ export function mergeVNextDirectoryAndSearchMarkets(
     });
   }
   return [...byAddress.values()];
+}
+
+export function mergeVNextCanonicalBrowseMarkets(
+  canonicalMarkets: VNextDirectoryMarket[],
+  enrichmentMarkets: VNextDirectoryMarket[]
+) {
+  const enrichmentByAddress = new Map(
+    enrichmentMarkets.map((market) => [market.address.toLowerCase(), market])
+  );
+  return canonicalMarkets.map((canonicalMarket) => {
+    const enrichment = enrichmentByAddress.get(canonicalMarket.address.toLowerCase());
+    if (!enrichment) return canonicalMarket;
+    const enrichmentOnly = { ...enrichment, canonicalMarkets: undefined };
+    return mergeVNextDirectoryAndSearchMarkets([enrichmentOnly], [canonicalMarket])[0];
+  });
 }
 
 export function resolutionFromLookup(payload: ExternalMarketResponse, address: string) {

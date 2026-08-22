@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { VNextUniversalMarketSearchPool } from "../vnext/universal-market-search-contract";
 
 const MARKET_INDEXER_CHAIN_ID = 4_663 as const;
 const DEFAULT_MARKET_INDEXER_TIMEOUT_MS = 5_000;
@@ -351,6 +352,38 @@ export type VNextCanonicalMarketInventoryQuery = {
   limit?: number;
   cursor?: string;
 };
+
+export function publicVNextCanonicalMarketInventoryPool(
+  pool: VNextCanonicalMarketInventoryPool
+): VNextUniversalMarketSearchPool {
+  return {
+    sourceId: pool.sourceId,
+    protocol: pool.protocol,
+    version: pool.version,
+    poolKey: pool.poolKey,
+    poolAddress: pool.poolAddress,
+    token0: pool.token0,
+    token1: pool.token1,
+    stable: pool.stable,
+    fee: pool.fee,
+    tickSpacing: pool.tickSpacing,
+    hooks: pool.hooks,
+    transactionHash: pool.transactionHash,
+    blockNumber: pool.blockNumber,
+    blockHash: pool.blockHash,
+    stateStatus: pool.stateStatus,
+    liveFee: pool.liveFee,
+    feeDenominator: pool.feeDenominator,
+    gaugeAddress: pool.gaugeAddress,
+    gaugeAlive: pool.gaugeAlive,
+    gaugeWeight: pool.gaugeWeight,
+    gaugeClaimable: pool.gaugeClaimable,
+    feesAddress: pool.feesAddress,
+    bribeAddress: pool.bribeAddress,
+    stateObservedBlock: pool.stateObservedBlock,
+    stateObservedBlockHash: pool.stateObservedBlockHash
+  };
+}
 
 type MarketIndexerFetch = (
   input: string | URL,

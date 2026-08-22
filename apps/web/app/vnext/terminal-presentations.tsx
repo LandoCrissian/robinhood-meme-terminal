@@ -42,6 +42,7 @@ export type TerminalPresentationProps = {
   searchStatus: VNextUniversalMarketSearchStatus;
   verifiedSearchResultCount: number;
   directoryStatus: DirectoryStatus;
+  hasMoreDirectoryMarkets: boolean;
   selected?: VNextDirectoryMarket;
   selectedAsset?: AssetMetadata;
   identityStatus: IdentityStatus;
@@ -158,10 +159,10 @@ function DirectoryMessage({ status, count, searchActive, view, onRefresh }: {
   return null;
 }
 
-function LoadMore({ visibleCount, totalCount, onLoadMore }: { visibleCount: number; totalCount: number; onLoadMore: () => void }) {
+function LoadMore({ visibleCount, totalCount, hasMore, onLoadMore }: { visibleCount: number; totalCount: number; hasMore: boolean; onLoadMore: () => void }) {
   const remaining = Math.max(0, totalCount - visibleCount);
-  if (!remaining) return null;
-  return <button className="rmtMarketLoadMore" type="button" onClick={onLoadMore}>Load {Math.min(VNEXT_MARKET_DIRECTORY_PAGE_SIZE, remaining)} more <span>{remaining} remaining</span></button>;
+  if (!remaining && !hasMore) return null;
+  return <button className="rmtMarketLoadMore" type="button" onClick={onLoadMore}>{remaining ? `Load ${Math.min(VNEXT_MARKET_DIRECTORY_PAGE_SIZE, remaining)} more` : "Load more markets"} <span>{remaining ? `${remaining} remaining` : "Continue canonical inventory"}</span></button>;
 }
 
 function RwaLabel({ market }: { market: VNextDirectoryMarket }) {
@@ -188,7 +189,7 @@ function DesktopMarketTable(props: TerminalPresentationProps) {
     </div>
     <SearchStatusMessage status={props.searchStatus} count={props.verifiedSearchResultCount} />
     <DirectoryMessage status={props.directoryStatus} count={props.visibleMarkets.length} searchActive={props.searchActive} view={props.directoryView} onRefresh={props.onRefresh} />
-    <LoadMore visibleCount={props.visibleMarkets.length} totalCount={props.filteredMarkets.length} onLoadMore={props.onLoadMoreMarkets} />
+    <LoadMore visibleCount={props.visibleMarkets.length} totalCount={props.filteredMarkets.length} hasMore={props.hasMoreDirectoryMarkets} onLoadMore={props.onLoadMoreMarkets} />
   </div>;
 }
 
@@ -218,7 +219,7 @@ function MobileMarketList(props: TerminalPresentationProps) {
     </button>)}
     <SearchStatusMessage status={props.searchStatus} count={props.verifiedSearchResultCount} />
     <DirectoryMessage status={props.directoryStatus} count={props.visibleMarkets.length} searchActive={props.searchActive} view={props.directoryView} onRefresh={props.onRefresh} />
-    <LoadMore visibleCount={props.visibleMarkets.length} totalCount={props.filteredMarkets.length} onLoadMore={props.onLoadMoreMarkets} />
+    <LoadMore visibleCount={props.visibleMarkets.length} totalCount={props.filteredMarkets.length} hasMore={props.hasMoreDirectoryMarkets} onLoadMore={props.onLoadMoreMarkets} />
   </div>;
 }
 
