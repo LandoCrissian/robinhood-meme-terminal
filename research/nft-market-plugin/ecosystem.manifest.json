@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "researchDate": "2026-08-23",
+  "status": "research_only",
+  "thesis": "RMT integrates external capabilities through evidence-bound adapters; HoodStreet supplies project identity; external protocols retain ownership and settlement authority.",
+  "coreLayers": {
+    "hoodStreet": "project identity and capability presentation",
+    "rmt": "asset, market, claim, agent and action resolver with strict verification",
+    "externalProtocols": "contract and settlement authority",
+    "distributionCenter": "explicit post-settlement ERC20/ERC721/ERC1155 distribution",
+    "claimLayer": "read-only-first pending/claimable/refundable lifecycle"
+  },
+  "novelConcepts": [
+    {
+      "id": "hoodstreet-market-building-v1",
+      "status": "read_only_first",
+      "description": "Controller-migration-only project identity/passport whose floors are independently verified external capabilities.",
+      "financialRights": "none",
+      "safetyEndorsement": false,
+      "paidRanking": false,
+      "regulatedAssetCustodyBypass": false
+    },
+    {
+      "id": "rmt-universal-claim-layer-v1",
+      "status": "read_only_first",
+      "description": "Normalized escrow, vesting, distribution, refund and asynchronous-vault claims alongside spot assets.",
+      "tradeFeeInherited": false,
+      "transferableClaimWrapper": "not_admitted"
+    }
+  ],
+  "externalProjectExamples": [
+    { "id": "givest", "capabilities": ["stock_token_swap", "escrow_claim", "refund", "gasless_claim"], "posture": "adapter_candidate" },
+    { "id": "stonkbrokers", "capabilities": ["erc721", "erc6551", "nft_amm", "stock_token_portfolio", "agent"], "posture": "multi_adapter_candidate" },
+    { "id": "hoodsea", "capabilities": ["erc1155", "nft_market", "erc20_factory", "v3_v4_liquidity", "reward_claim"], "posture": "multi_adapter_candidate" },
+    { "id": "hoodclaw", "capabilities": ["api_payment", "operator_registry", "invoice_settlement"], "posture": "service_adapter_candidate" },
+    { "id": "bowyer", "capabilities": ["agent_business", "mcp_endpoint", "subscription", "onchain_payment"], "posture": "agent_service_candidate" }
+  ],
+  "standardRadar": [
+    "ERC-6551",
+    "ERC-7496",
+    "ERC-3525",
+    "ERC-5725",
+    "ERC-7540",
+    "ERC-7575",
+    "ERC-7943",
+    "ERC-8004",
+    "ERC-8199-draft",
+    "ERC-8226-draft",
+    "ERC-8325-draft",
+    "ERC-8056",
+    "ERC-6909",
+    "ERC-7649",
+    "ERC-7651",
+    "ERC-7765"
+  ],
+  "feeBoundary": {
+    "rmtTradeFeeBps": 25,
+    "eligibleActions": ["buy", "sell"],
+    "nonExecutionActions": "no implicit RMT trade fee",
+    "externalFees": "preserved and attributed to external provider"
+  },
+  "validation": {
+    "typecheck": "PASS",
+    "smoke": "RMT_ECOSYSTEM_FLYWHEEL_SMOKE: PASS"
+  },
+  "productionMutation": false
+}
