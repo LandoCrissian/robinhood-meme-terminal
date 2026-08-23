@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { VNextWalletFeeDisclosure } from "../../app/vnext/vnext-wallet-review";
 import {
   FEE_V2_SMOKE_APPROVAL_DATA,
   FEE_V2_SMOKE_APPROVAL_EVIDENCE,
@@ -43,9 +46,49 @@ assert.equal(missingGas.ready, false);
 assert.equal(missingGas.shortfallWei, 100_000n);
 
 const component = readFileSync(new URL("../../app/vnext/vnext-wallet-review.tsx", import.meta.url), "utf8");
+const composer = readFileSync(new URL("../../app/vnext/trade-intent-composer.tsx", import.meta.url), "utf8");
 const helper = readFileSync(new URL("./wallet-submission.ts", import.meta.url), "utf8");
 assert.match(component, /useSendTransaction/);
 assert.match(component, /prepareVNextWalletTransaction/);
+assert.match(component, /feeV2Economics/);
+assert.match(component, /feeV2Settlement/);
+assert.match(component, /RMT execution fee on this approval: 0/);
+assert.match(component, /Planned trade fee:/);
+assert.match(component, /Gross input/);
+assert.match(component, /Exact fee \/ asset/);
+assert.match(component, /Provider input/);
+assert.match(component, /Protected minimum/);
+assert.match(component, /Atomic with swap/);
+assert.match(composer, /aria-label="RMT execution fee summary"/);
+assert.match(composer, /bestQuote\.feeV2Economics\.expectedFeeAtomic/);
+assert.match(composer, /bestQuote\.feeV2Economics\.providerInputAtomic/);
+
+const approvalDisclosure = renderToStaticMarkup(createElement(VNextWalletFeeDisclosure, {
+  planKind: "erc20_approval",
+  evidence: FEE_V2_SMOKE_APPROVAL_EVIDENCE,
+  inputSymbol: "USDG",
+  outputSymbol: "TOKEN",
+  inputDecimals: 6,
+  outputDecimals: 18
+}));
+assert.match(approvalDisclosure, /RMT execution fee on this approval: 0/);
+assert.match(approvalDisclosure, /Planned trade fee:.*0\.25% of gross trade input/);
+assert.match(approvalDisclosure, /1 USDG/);
+assert.match(approvalDisclosure, /0\.9975 USDG/);
+assert.match(approvalDisclosure, /Atomic with swap/);
+
+const swapDisclosure = renderToStaticMarkup(createElement(VNextWalletFeeDisclosure, {
+  planKind: "swap",
+  evidence: FEE_V2_SMOKE_APPROVAL_EVIDENCE,
+  inputSymbol: "USDG",
+  outputSymbol: "TOKEN",
+  inputDecimals: 6,
+  outputDecimals: 18
+}));
+assert.match(swapDisclosure, /RMT execution fee: 0\.0025 USDG \(0\.25%\)/);
+assert.match(swapDisclosure, /Gross input/);
+assert.match(swapDisclosure, /Exact fee \/ asset/);
+assert.match(swapDisclosure, /Protected minimum/);
 assert.match(helper, /parseVNextAuthorizationPlan/);
 assert.match(helper, /connectedChainId !== ROBINHOOD_MAINNET_CHAIN_ID/);
 assert.doesNotMatch(helper, /fetch\s*\(|sendTransaction|writeContract|signTypedData/);

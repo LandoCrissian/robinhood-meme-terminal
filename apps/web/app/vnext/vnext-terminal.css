@@ -1749,6 +1749,41 @@ body .rmtVnext {
   font-size: 10px;
 }
 
+.vnFeeV2Summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  margin: 10px 0 12px;
+  overflow: hidden;
+  border: 1px solid rgba(130, 242, 143, 0.2);
+  border-radius: 10px;
+  background: rgba(130, 242, 143, 0.08);
+}
+
+.vnFeeV2Summary > span {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 9px 10px;
+  background: var(--vn-surface-raised);
+}
+
+.vnFeeV2Summary small {
+  color: var(--vn-text-muted);
+  font-size: 8px;
+  font-weight: 760;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.vnFeeV2Summary strong {
+  overflow: hidden;
+  color: var(--vn-text-secondary);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .vnIntentHint,
 .vnIntentStatus,
 .vnTradeSafety {
@@ -2087,6 +2122,53 @@ body .rmtVnext {
   color: var(--vn-text-muted);
   font-size: 8px;
   line-height: 1.45;
+}
+
+.vnWalletFeeDisclosure {
+  display: grid;
+  gap: 6px;
+  padding: 9px;
+  border: 1px solid rgba(130, 242, 143, 0.2);
+  border-radius: 9px;
+  background: rgba(130, 242, 143, 0.05);
+}
+
+.vnWalletFeeDisclosure > strong {
+  color: var(--vn-text-secondary);
+  font-size: 10px;
+}
+
+.vnWalletFeeDisclosure > small {
+  color: var(--vn-text-muted);
+  font-size: 8px;
+  line-height: 1.45;
+}
+
+.vnWalletFeeDisclosure dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px 10px;
+  margin: 0;
+}
+
+.vnWalletFeeDisclosure dl div {
+  min-width: 0;
+}
+
+.vnWalletFeeDisclosure dt,
+.vnWalletFeeDisclosure dd {
+  margin: 0;
+  font-size: 8px;
+}
+
+.vnWalletFeeDisclosure dt {
+  color: var(--vn-text-muted);
+}
+
+.vnWalletFeeDisclosure dd {
+  overflow-wrap: anywhere;
+  color: var(--vn-text-secondary);
+  font-weight: 700;
 }
 
 .vnWalletSubmission > a {

@@ -9,7 +9,14 @@ import {
   RMT_UNISWAP_V3_V2_IMPLEMENTATION_ID
 } from "../server/vnext-uniswap-fee-executor-v2";
 import { vNextUniswapV3Adapter } from "../server/vnext-uniswap-v3-adapter";
-import { vNextUniswapV3V2Capability } from "../server/vnext-uniswap-v3-v2-execution";
+import {
+  requiresExactV2TraderApproval,
+  vNextUniswapV3V2Capability
+} from "../server/vnext-uniswap-v3-v2-execution";
+import {
+  assertCanonicalWethImplementationSlot,
+  ROBINHOOD_WETH_IMPLEMENTATION
+} from "../server/vnext-uniswap-fee-executor";
 import { ROBINHOOD_SWAP_ROUTER_02 } from "../uniswap-v4";
 import {
   createRmtExecutionFeeV2Policy,
@@ -230,6 +237,33 @@ assert.equal(prepared.transaction.target, executor);
 assert.notEqual(prepared.transaction.target, ROBINHOOD_SWAP_ROUTER_02);
 assert.equal(prepared.evidence.approvalSpender, executor);
 assert.equal(prepared.evidence.feeV2Economics?.expectedFeeAtomic, "100");
+
+await assert.rejects(() => vNextUniswapV3Adapter.prepareAuthorization!({
+  chainId: 4_663,
+  inputAsset,
+  outputAsset,
+  inputAmountAtomic: "40000",
+  amountIn: 40_000n,
+  recipient: trader,
+  indicativeProtectedOutputFloorAtomic: 980n,
+  protectedOutputFloorAtomic: 990n,
+  deadlineSeconds: deadline,
+  nowMs: Date.now(),
+  executionId
+}), /quote-only until V2 atomic fee settlement is admitted/);
+
+assert.equal(requiresExactV2TraderApproval({ nativeInput: false, allowance: 40_000n, userGrossInput: 40_000n }), false);
+assert.equal(requiresExactV2TraderApproval({ nativeInput: false, allowance: 39_999n, userGrossInput: 40_000n }), true);
+assert.equal(requiresExactV2TraderApproval({ nativeInput: false, allowance: 40_001n, userGrossInput: 40_000n }), true);
+assert.equal(requiresExactV2TraderApproval({ nativeInput: false, allowance: (1n << 256n) - 1n, userGrossInput: 40_000n }), true);
+assert.equal(requiresExactV2TraderApproval({ nativeInput: true, allowance: (1n << 256n) - 1n, userGrossInput: 40_000n }), false);
+
+const canonicalWethSlot = `0x${"0".repeat(24)}${ROBINHOOD_WETH_IMPLEMENTATION.slice(2).toLowerCase()}` as Hex;
+assert.equal(assertCanonicalWethImplementationSlot(canonicalWethSlot), ROBINHOOD_WETH_IMPLEMENTATION);
+assert.throws(
+  () => assertCanonicalWethImplementationSlot(`0x${"0".repeat(24)}${treasury.slice(2).toLowerCase()}` as Hex),
+  /canonical WETH implementation address changed/
+);
 
 assert.equal(VNEXT_PROVIDER_FEE_SETTLEMENT_REGISTRY["uniswap-v3"].state, "QUOTE_ONLY");
 assert.equal(vNextUniswapV3Adapter.capabilities.walletAuthorization, false);

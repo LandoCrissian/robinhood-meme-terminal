@@ -450,8 +450,13 @@ contract RMTUniswapV3FeeExecutorV2 is ReentrancyGuard {
     // slither-disable-start reentrancy-balance
     function _pullExact(address token, uint256 amount) private returns (uint256 balanceBefore) {
         IERC20 asset = IERC20(token);
+        // Exact wallet authority is a contract invariant, not merely a UI
+        // convention. Wider and infinite approvals are unsupported because
+        // they leave reusable authority after this one execution.
+        if (asset.allowance(msg.sender, address(this)) != amount) revert UnsupportedTransferBehavior();
         balanceBefore = asset.balanceOf(address(this));
         asset.safeTransferFrom(msg.sender, address(this), amount);
+        if (asset.allowance(msg.sender, address(this)) != 0) revert UnsupportedTransferBehavior();
         uint256 balanceAfter = asset.balanceOf(address(this));
         if (balanceAfter < balanceBefore || balanceAfter - balanceBefore != amount) {
             revert UnsupportedTransferBehavior();
@@ -501,6 +506,10 @@ contract RMTUniswapV3FeeExecutorV2 is ReentrancyGuard {
     }
 
     function _assertRuntimeIdentity() private view {
+        // The executor can pin both code identities but cannot read another
+        // contract's EIP-1967 storage. A fresh pre-sign server check binds the
+        // canonical WETH proxy's current implementation slot to this pinned
+        // implementation; see verifyVNextUniswapFeeInfrastructure().
         if (
             router.code.length == 0 || factory.code.length == 0 || weth.code.length == 0
                 || wethImplementation.code.length == 0 || router.codehash != routerRuntimeHash

@@ -246,7 +246,7 @@ contract RMTUniswapV3FeeExecutorV2Test is Test {
 
         authorization = _authorization(route, address(input), address(output), 40_000, keccak256("replay"));
         vm.prank(TRADER);
-        input.approve(address(executor), 80_000);
+        input.approve(address(executor), 40_000);
         vm.prank(TRADER);
         executor.execute(authorization, route);
         vm.expectRevert(RMTUniswapV3FeeExecutorV2.ExecutionAlreadyConsumed.selector);
@@ -303,7 +303,7 @@ contract RMTUniswapV3FeeExecutorV2Test is Test {
         RMTUniswapV3FeeExecutorV2.FeeAuthorization memory authorization =
             _authorization(route, address(input), address(output), 40_000, keccak256("swap-failure"));
         vm.prank(TRADER);
-        input.approve(address(executor), 120_000);
+        input.approve(address(executor), 40_000);
         router.setBehavior(true, false, true, false, false);
         vm.expectRevert();
         vm.prank(TRADER);
@@ -356,6 +356,35 @@ contract RMTUniswapV3FeeExecutorV2Test is Test {
         executor.execute(outer, route);
         assertFalse(executor.executionConsumed(nested.executionId));
         assertTrue(executor.executionConsumed(outer.executionId));
+    }
+
+    function testExactTraderAllowanceIsRequiredAndConsumed() public {
+        RMTUniswapV3FeeExecutorV2.Route memory route =
+            _directRoute(address(input), address(output), address(directPool));
+
+        RMTUniswapV3FeeExecutorV2.FeeAuthorization memory exact =
+            _authorization(route, address(input), address(output), 40_000, keccak256("exact-allowance"));
+        vm.prank(TRADER);
+        input.approve(address(executor), 40_000);
+        vm.prank(TRADER);
+        executor.execute(exact, route);
+        assertEq(input.allowance(TRADER, address(executor)), 0, "trader allowance retained");
+
+        RMTUniswapV3FeeExecutorV2.FeeAuthorization memory widened =
+            _authorization(route, address(input), address(output), 40_000, keccak256("widened-allowance"));
+        vm.prank(TRADER);
+        input.approve(address(executor), 40_001);
+        vm.expectRevert(RMTUniswapV3FeeExecutorV2.UnsupportedTransferBehavior.selector);
+        vm.prank(TRADER);
+        executor.execute(widened, route);
+
+        RMTUniswapV3FeeExecutorV2.FeeAuthorization memory unlimited =
+            _authorization(route, address(input), address(output), 40_000, keccak256("unlimited-allowance"));
+        vm.prank(TRADER);
+        input.approve(address(executor), type(uint256).max);
+        vm.expectRevert(RMTUniswapV3FeeExecutorV2.UnsupportedTransferBehavior.selector);
+        vm.prank(TRADER);
+        executor.execute(unlimited, route);
     }
 
     function testNoAdminUpgradeRescueArbitraryCallOrDirectRouterBypassSurface() public {

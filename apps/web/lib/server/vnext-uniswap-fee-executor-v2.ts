@@ -95,6 +95,9 @@ export async function verifyConfiguredVNextUniswapFeeExecutorV2(
   config: VNextUniswapFeeExecutorV2Config
 ) {
   assertRmtExecutionFeeV2Policy(config.policy);
+  // The infrastructure verifier performs the fresh EIP-1967 slot read that
+  // binds the WETH proxy to the expected implementation. The executor itself
+  // pins both runtimes but cannot read another contract's storage.
   const [infrastructure, code] = await Promise.all([
     verifyVNextUniswapFeeInfrastructure(),
     client.getBytecode({ address: config.executor })

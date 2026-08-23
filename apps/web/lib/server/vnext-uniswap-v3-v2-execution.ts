@@ -40,6 +40,14 @@ const MAX_AUTHORIZATION_WINDOW_SECONDS = 300n;
 const WALLET_FEE_CEILING_MULTIPLIER = 3n;
 const QUOTER_RUNTIME_HASH = "0x3db0868d945e9304c9bc6a8b2181948109ea617647142f3c4083e14393496a28" as Hex;
 
+export function requiresExactV2TraderApproval(input: {
+  nativeInput: boolean;
+  allowance: bigint;
+  userGrossInput: bigint;
+}) {
+  return !input.nativeInput && input.allowance !== input.userGrossInput;
+}
+
 export type VerifiedVNextUniswapFeeExecutorV2Config = VNextUniswapFeeExecutorV2Config & {
   verifiedAtBlock: string;
 };
@@ -184,8 +192,12 @@ export async function evaluateVNextUniswapRouteV2(input: {
   const balance = nativeInput ? nativeBalance : tokenState.balance;
   const allowance = tokenState.allowance;
   const sufficientBalance = balance >= input.amountIn;
-  const approvalRequired = !nativeInput && allowance < input.amountIn;
-  let status: "verified" | "approval_required" | "insufficient_balance" | "insufficient_gas" | "gas_unavailable" | "simulation_failed";
+  const approvalRequired = requiresExactV2TraderApproval({
+    nativeInput,
+    allowance,
+    userGrossInput: input.amountIn
+  });
+  let status: "verified" | "approval_required" | "approval_simulation_failed" | "insufficient_balance" | "insufficient_gas" | "gas_unavailable" | "simulation_failed";
   let nextAction: "approval" | "swap" | null = null;
   let nextActionTarget: Address | null = null;
   let nextActionData: Hex | null = null;
@@ -203,9 +215,17 @@ export async function evaluateVNextUniswapRouteV2(input: {
       args: [config.executor, input.amountIn]
     });
     try {
-      estimatedGasUnits = await client.estimateGas({ account: recipient, to: requestedInputAsset, data: nextActionData, value: 0n });
+      // Tokens that cannot replace an existing nonzero allowance with the
+      // exact requested amount fail closed here. RMT never proceeds with
+      // widened authority and never manufactures an unlimited approval.
+      await client.call({ account: recipient, to: requestedInputAsset, data: nextActionData, value: 0n });
+      try {
+        estimatedGasUnits = await client.estimateGas({ account: recipient, to: requestedInputAsset, data: nextActionData, value: 0n });
+      } catch {
+        status = "gas_unavailable";
+      }
     } catch {
-      status = "gas_unavailable";
+      status = "approval_simulation_failed";
     }
   } else {
     nextAction = "swap";

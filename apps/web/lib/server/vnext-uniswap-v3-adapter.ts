@@ -1,4 +1,4 @@
-import { prepareVNextUniswapAuthorization, quoteVNextUniswapForUser, verifyVNextUniswapRoute } from "./vnext-uniswap-quote";
+import { quoteVNextUniswapForUser, verifyVNextUniswapRoute } from "./vnext-uniswap-quote";
 import { unavailableVNextQuoteAttempt, type VNextQuoteProviderAdapter } from "./vnext-provider-adapter";
 import {
   evaluateVNextUniswapRouteV2,
@@ -120,38 +120,27 @@ export function createVNextUniswapV3Adapter(input: {
     }) };
   },
   async prepareAuthorization(request) {
-    if (walletAuthorization) {
-      if (!request.executionId) throw new Error("Uniswap V3 V2 authorization requires an execution ID.");
-      const prepared = await prepareVNextUniswapAuthorizationV2({
-        inputAsset: request.inputAsset,
-        outputAsset: request.outputAsset,
-        amountIn: request.amountIn,
-        recipient: request.recipient,
-        executionId: request.executionId,
-        deadlineSeconds: request.deadlineSeconds,
-        protectedOutputFloorAtomic: request.protectedOutputFloorAtomic,
-        indicativeProtectedOutputFloorAtomic: request.indicativeProtectedOutputFloorAtomic,
-        nowMs: request.nowMs,
-        ...(input.v2Config !== undefined ? { config: input.v2Config } : {})
-      });
-      return {
-        evidence: prepared.evidence,
-        feeV2Authorization: prepared.feeV2Authorization,
-        transaction: prepared.transaction
-      };
+    if (!walletAuthorization) {
+      throw new Error("Uniswap V3 is quote-only until V2 atomic fee settlement is admitted.");
     }
-    const prepared = await prepareVNextUniswapAuthorization({
+    if (!request.executionId) throw new Error("Uniswap V3 V2 authorization requires an execution ID.");
+    const prepared = await prepareVNextUniswapAuthorizationV2({
       inputAsset: request.inputAsset,
       outputAsset: request.outputAsset,
       amountIn: request.amountIn,
       recipient: request.recipient,
+      executionId: request.executionId,
       deadlineSeconds: request.deadlineSeconds,
       protectedOutputFloorAtomic: request.protectedOutputFloorAtomic,
       indicativeProtectedOutputFloorAtomic: request.indicativeProtectedOutputFloorAtomic,
       nowMs: request.nowMs,
-      executionId: request.executionId
+      ...(input.v2Config !== undefined ? { config: input.v2Config } : {})
     });
-    return { evidence: { ...prepared.evidence }, transaction: prepared.transaction };
+    return {
+      evidence: prepared.evidence,
+      feeV2Authorization: prepared.feeV2Authorization,
+      transaction: prepared.transaction
+    };
   }
   };
   return adapter;

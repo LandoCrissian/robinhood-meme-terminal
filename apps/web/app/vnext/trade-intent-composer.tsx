@@ -822,6 +822,10 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
         <div className="vnOutputProtection"><span>Protected minimum</span><strong>{protectedOutput ? `${protectedOutput} ${outputSymbol}` : "Set when you trade"}</strong></div>
         <small>{protectedOutput ? `Best observed: ${bestQuote?.providerLabel}. Quotes update quietly; RMT verifies the executable route when you trade.` : "RMT sets and verifies the protected minimum during the one-tap execution check."}</small>
       </div>
+      {bestQuote?.feeV2Economics && pair ? <div className="vnFeeV2Summary" role="note" aria-label="RMT execution fee summary">
+        <span><small>RMT execution fee</small><strong>{bestQuote.feeV2Economics.feeBps / 100}% · {formatAtomicDisplay(bestQuote.feeV2Economics.expectedFeeAtomic, pair.inputAsset.decimals ?? 18)} {inputSymbol}</strong></span>
+        <span><small>Provider input</small><strong>{formatAtomicDisplay(bestQuote.feeV2Economics.providerInputAtomic, pair.inputAsset.decimals ?? 18)} {inputSymbol}</strong></span>
+      </div> : null}
       <button
         className="vnReviewButton"
         type="button"
@@ -925,6 +929,10 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
               <div><dt>RMT fee</dt><dd>{verifiedRmtFeeLabel}</dd></div>
               {visibleVerification.feeExecution ? <div><dt>Fee treasury</dt><dd>{shortAddress(visibleVerification.feeExecution.treasury)}</dd></div> : null}
               {visibleVerification.feeExecution ? <div><dt>Settlement</dt><dd>Atomic with swap · policy v{visibleVerification.feeExecution.policyVersion}</dd></div> : null}
+              {visibleVerification.feeV2Economics ? <div><dt>Gross input</dt><dd>{formatAtomicDisplay(visibleVerification.feeV2Economics.userGrossInputAtomic, pair?.inputAsset.decimals ?? 18)} {inputSymbol}</dd></div> : null}
+              {visibleVerification.feeV2Economics ? <div><dt>Provider input</dt><dd>{formatAtomicDisplay(visibleVerification.feeV2Economics.providerInputAtomic, pair?.inputAsset.decimals ?? 18)} {inputSymbol}</dd></div> : null}
+              {visibleVerification.feeV2Economics ? <div><dt>Fee treasury</dt><dd>{shortAddress(visibleVerification.feeV2Economics.treasury)}</dd></div> : null}
+              {visibleVerification.feeV2Settlement ? <div><dt>Settlement</dt><dd>Atomic with swap · RMT V2 executor {shortAddress(visibleVerification.feeV2Settlement.executionTarget)}</dd></div> : null}
               <div><dt>Calldata</dt><dd>{shortAddress(visibleVerification.calldataHash)}</dd></div>
             </dl>
             {visibleVerification.status === "insufficient_gas" ? <div className="vnGasRecovery" role="status">
