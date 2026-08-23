@@ -10,6 +10,8 @@ V1 remains immutable historical policy and deployment evidence. V2 does not chan
 
 V2 deliberately has no per-token registry. A standard Robinhood Chain asset is bound and validated at execution time. Unsupported transfer behavior fails verification; it never creates a fee exemption.
 
+The final V2 treasury and effective block are owner-reserved activation inputs, not foundation defaults. A candidate V2 policy requires a valid nonzero treasury that is not a Universal Router sentinel, and its policy hash binds that exact configured treasury and effective boundary. Missing activation configuration returns no active policy; partial or mismatched enabled configuration fails closed. The historical V1 treasury and artifacts remain unchanged and do not implicitly select the V2 treasury.
+
 ## Current executable-provider inventory
 
 | Provider | Adapter | Quote | Strict verification | Wallet authorization after this foundation | Exact current wallet target | Current fee commitment / settlement | Atomic RMT fee in exact wallet transaction | Current bypass class | Required V2 implementation |

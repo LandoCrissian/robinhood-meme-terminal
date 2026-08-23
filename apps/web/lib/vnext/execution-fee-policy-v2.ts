@@ -21,12 +21,15 @@ export const RMT_EXECUTION_V2_DESCRIPTOR = Object.freeze({
   allowedSettlementModes: Object.freeze(["v2-atomic-input-fee"] as const)
 });
 
-export const RMT_EXECUTION_V2_TREASURY = getAddress("0x61700479A4A1F62584Fd3ABA2c2b290EA727d2eC");
 export const RMT_EXECUTION_V2_BPS_DENOMINATOR = 10_000n;
 const POLICY_HASH_DOMAIN = "RMT_EXECUTION_FEE_POLICY_V2";
 const ATOMIC = /^(0|[1-9][0-9]*)$/;
 const ASSET_ID = /^eip155:4663\/(?:native|contract:0x[0-9a-f]{40})$/;
 const HASH = /^0x[0-9a-fA-F]{64}$/;
+const UNIVERSAL_ROUTER_SENTINELS = new Set([
+  "0x0000000000000000000000000000000000000001",
+  "0x0000000000000000000000000000000000000002"
+]);
 
 export type RmtExecutionFeeV2SettlementMode = "v2-atomic-input-fee";
 
@@ -96,10 +99,16 @@ function assetId(value: string, label: string) {
   return normalized;
 }
 
+function treasuryAddress(value: string) {
+  invariant(isAddress(value, { strict: false }), "treasury must be a valid EVM address");
+  const treasury = getAddress(value);
+  invariant(treasury !== zeroAddress, "treasury cannot be the zero address");
+  invariant(!UNIVERSAL_ROUTER_SENTINELS.has(treasury.toLowerCase()), "treasury cannot use a Universal Router sentinel address");
+  return treasury;
+}
+
 function checkedPolicyFields(input: CreatePolicyInput) {
-  invariant(isAddress(input.treasury, { strict: false }), "treasury must be an exact EVM address");
-  const treasury = getAddress(input.treasury);
-  invariant(treasury === RMT_EXECUTION_V2_TREASURY && treasury !== zeroAddress, "treasury changed from the owner-approved RMT operations Safe");
+  const treasury = treasuryAddress(input.treasury);
   const fromBlock = atomic(input.fromBlock, "effective start block");
   const beforeBlock = input.beforeBlock == null ? null : atomic(input.beforeBlock, "effective end block");
   invariant(beforeBlock === null || beforeBlock > fromBlock, "effective end must follow the start block");
@@ -162,7 +171,7 @@ export function configuredRmtExecutionFeeV2Policy(env: NodeJS.ProcessEnv = proce
   const enabled = env.RMT_VNEXT_EXECUTION_V2_POLICY_ENABLED;
   if (enabled === undefined || enabled === "false") return null;
   invariant(enabled === "true", "policy gate must be exact lowercase true or false");
-  invariant(env.RMT_VNEXT_EXECUTION_V2_TREASURY === RMT_EXECUTION_V2_TREASURY, "configured treasury is missing or changed");
+  invariant(Boolean(env.RMT_VNEXT_EXECUTION_V2_TREASURY), "treasury is not configured");
   invariant(Boolean(env.RMT_VNEXT_EXECUTION_V2_EFFECTIVE_BLOCK), "effective block is not configured");
   invariant(Boolean(env.RMT_VNEXT_EXECUTION_V2_POLICY_HASH), "policy hash is not configured");
   const policy = createRmtExecutionFeeV2Policy({
@@ -248,7 +257,7 @@ export function assertRmtExecutionFeeV2Economics(economics: RmtExecutionFeeV2Eco
   invariant(economics.settlementMode === "v2-atomic-input-fee", "settlement mode changed");
   invariant(inputAsset !== outputAsset, "trade assets must differ");
   invariant(assetId(economics.feeAsset, "fee asset") === inputAsset, "fee asset must equal the exact input asset");
-  invariant(isAddress(economics.treasury) && getAddress(economics.treasury) === RMT_EXECUTION_V2_TREASURY, "treasury changed");
+  treasuryAddress(economics.treasury);
   invariant(feeBasis === grossInput, "fee basis must equal gross user input");
   invariant(expectedFee === BigInt(calculateRmtExecutionFeeV2Floor(grossInput.toString())), "expected fee changed from floor math");
   invariant(maximumFee === expectedFee, "maximum fee changed from the exact input-side fee");

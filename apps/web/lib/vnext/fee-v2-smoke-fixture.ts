@@ -2,7 +2,6 @@ import { encodeFunctionData, erc20Abi, getAddress, keccak256, type Hex } from "v
 import { ROBINHOOD_SWAP_ROUTER_02 } from "../uniswap-v4";
 import { authorizationPayloadHash, type VNextAuthorizationPlan } from "./authorization-plan";
 import {
-  RMT_EXECUTION_V2_TREASURY,
   createRmtExecutionFeeV2Policy,
   normalizeRmtExecutionFeeV2Input
 } from "./execution-fee-policy-v2";
@@ -17,6 +16,7 @@ export const FEE_V2_SMOKE_INPUT = getAddress("0x11111111111111111111111111111111
 export const FEE_V2_SMOKE_OUTPUT = getAddress("0x2222222222222222222222222222222222222222");
 export const FEE_V2_SMOKE_RECIPIENT = getAddress("0x3333333333333333333333333333333333333333");
 export const FEE_V2_SMOKE_EXECUTOR = getAddress("0x5555555555555555555555555555555555555555");
+export const FEE_V2_SMOKE_TREASURY = getAddress("0x7777777777777777777777777777777777777777");
 export const FEE_V2_SMOKE_SWAP_DATA = "0x12345678" as Hex;
 export const FEE_V2_SMOKE_APPROVAL_DATA = encodeFunctionData({
   abi: erc20Abi,
@@ -25,7 +25,7 @@ export const FEE_V2_SMOKE_APPROVAL_DATA = encodeFunctionData({
 });
 
 const policy = createRmtExecutionFeeV2Policy({
-  treasury: RMT_EXECUTION_V2_TREASURY,
+  treasury: FEE_V2_SMOKE_TREASURY,
   fromBlock: "40000000"
 });
 const economics = normalizeRmtExecutionFeeV2Input({

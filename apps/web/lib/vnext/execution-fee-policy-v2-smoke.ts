@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import {
-  RMT_EXECUTION_V2_TREASURY,
   assertRmtExecutionFeeV2EconomicsMatchesPolicy,
   assertRmtExecutionFeeV2Policy,
   calculateRmtExecutionFeeV2Floor,
@@ -16,8 +15,11 @@ import { createRmtExecutionV1Policy, RMT_EXECUTION_V1_DESCRIPTOR } from "./execu
 
 const inputAssetId = "eip155:4663/contract:0x1111111111111111111111111111111111111111";
 const outputAssetId = "eip155:4663/contract:0x2222222222222222222222222222222222222222";
+const candidateTreasury = "0x7777777777777777777777777777777777777777";
+const alternateCandidateTreasury = "0x8888888888888888888888888888888888888888";
+const historicalV1Treasury = "0x61700479A4A1F62584Fd3ABA2c2b290EA727d2eC";
 const policy = createRmtExecutionFeeV2Policy({
-  treasury: RMT_EXECUTION_V2_TREASURY,
+  treasury: candidateTreasury,
   fromBlock: "40000000"
 });
 
@@ -91,7 +93,15 @@ mutatedEconomics("treasury", "0x3333333333333333333333333333333333333333");
 mutatedEconomics("policyVersion", 3);
 mutatedEconomics("policyHash", `0x${"1".repeat(64)}`);
 
-assert.throws(() => createRmtExecutionFeeV2Policy({ treasury: "0x3333333333333333333333333333333333333333", fromBlock: "40000000" }), /treasury changed/);
+const alternateTreasuryPolicy = createRmtExecutionFeeV2Policy({
+  treasury: alternateCandidateTreasury,
+  fromBlock: "40000000"
+});
+assert.equal(alternateTreasuryPolicy.treasury, alternateCandidateTreasury);
+assert.notEqual(alternateTreasuryPolicy.policyHash, policy.policyHash, "the exact configured treasury must change the V2 policy hash");
+assert.throws(() => createRmtExecutionFeeV2Policy({ treasury: "0x0000000000000000000000000000000000000000", fromBlock: "40000000" }), /zero address/);
+assert.throws(() => createRmtExecutionFeeV2Policy({ treasury: "0x0000000000000000000000000000000000000001", fromBlock: "40000000" }), /sentinel/);
+assert.throws(() => createRmtExecutionFeeV2Policy({ treasury: "0x0000000000000000000000000000000000000002", fromBlock: "40000000" }), /sentinel/);
 assert.throws(() => assertRmtExecutionFeeV2Policy({ ...policy, chainId: 1 } as unknown as RmtExecutionFeeV2Policy), /chain changed/);
 assert.throws(() => assertRmtExecutionFeeV2Policy({ ...policy, version: 3 } as unknown as RmtExecutionFeeV2Policy), /version changed/);
 assert.throws(() => assertRmtExecutionFeeV2Policy({ ...policy, policyHash: `0x${"2".repeat(64)}` }), /policy hash/);
@@ -100,15 +110,30 @@ assert.equal(configuredRmtExecutionFeeV2Policy({} as NodeJS.ProcessEnv), null);
 assert.equal(configuredRmtExecutionFeeV2Policy({ RMT_VNEXT_EXECUTION_V2_POLICY_ENABLED: "false" } as unknown as NodeJS.ProcessEnv), null);
 assert.throws(() => configuredRmtExecutionFeeV2Policy({ RMT_VNEXT_EXECUTION_V2_POLICY_ENABLED: "TRUE" } as unknown as NodeJS.ProcessEnv), /exact lowercase/);
 assert.throws(() => configuredRmtExecutionFeeV2Policy({ RMT_VNEXT_EXECUTION_V2_POLICY_ENABLED: "true" } as unknown as NodeJS.ProcessEnv), /treasury/);
+assert.throws(() => configuredRmtExecutionFeeV2Policy({
+  RMT_VNEXT_EXECUTION_V2_POLICY_ENABLED: "true",
+  RMT_VNEXT_EXECUTION_V2_TREASURY: candidateTreasury
+} as unknown as NodeJS.ProcessEnv), /effective block/);
+assert.throws(() => configuredRmtExecutionFeeV2Policy({
+  RMT_VNEXT_EXECUTION_V2_POLICY_ENABLED: "true",
+  RMT_VNEXT_EXECUTION_V2_TREASURY: candidateTreasury,
+  RMT_VNEXT_EXECUTION_V2_EFFECTIVE_BLOCK: "40000000"
+} as unknown as NodeJS.ProcessEnv), /policy hash/);
 assert.equal(configuredRmtExecutionFeeV2Policy({
   RMT_VNEXT_EXECUTION_V2_POLICY_ENABLED: "true",
-  RMT_VNEXT_EXECUTION_V2_TREASURY: RMT_EXECUTION_V2_TREASURY,
+  RMT_VNEXT_EXECUTION_V2_TREASURY: candidateTreasury,
   RMT_VNEXT_EXECUTION_V2_EFFECTIVE_BLOCK: "40000000",
   RMT_VNEXT_EXECUTION_V2_POLICY_HASH: policy.policyHash
 } as unknown as NodeJS.ProcessEnv)?.policyHash, policy.policyHash);
+assert.throws(() => configuredRmtExecutionFeeV2Policy({
+  RMT_VNEXT_EXECUTION_V2_POLICY_ENABLED: "true",
+  RMT_VNEXT_EXECUTION_V2_TREASURY: candidateTreasury,
+  RMT_VNEXT_EXECUTION_V2_EFFECTIVE_BLOCK: "40000000",
+  RMT_VNEXT_EXECUTION_V2_POLICY_HASH: alternateTreasuryPolicy.policyHash
+} as unknown as NodeJS.ProcessEnv), /configured policy hash changed/);
 
 const v1 = createRmtExecutionV1Policy({
-  treasury: RMT_EXECUTION_V2_TREASURY,
+  treasury: historicalV1Treasury,
   chainId: 4_663,
   fromBlock: "35041945",
   eligibleSettlementAssetIds: [
@@ -118,6 +143,7 @@ const v1 = createRmtExecutionV1Policy({
   ]
 });
 assert.equal(RMT_EXECUTION_V1_DESCRIPTOR.policyId, "RMT_EXECUTION_V1");
+assert.equal(v1.treasury, historicalV1Treasury, "the historical V1 treasury must remain unchanged");
 assert.equal(v1.policyHash, "0x295c900143405bb585a4d88c3788fadab522fd4313f69242f64e52e39827f141", "V1 history and policy hash must remain unchanged");
 
 console.log("RMT universal execution fee V2 policy foundation smoke checks passed.");

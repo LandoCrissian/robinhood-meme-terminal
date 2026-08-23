@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { getAddress } from "viem";
 import {
-  RMT_EXECUTION_V2_TREASURY,
   createRmtExecutionFeeV2Policy,
   normalizeRmtExecutionFeeV2Input
 } from "./execution-fee-policy-v2";
@@ -25,7 +24,7 @@ assert.equal(hasVNextWalletAuthorizationCodec("up-v2"), true);
 assert.equal(hasVNextWalletAuthorizationCodec("up-cl"), true);
 assert.equal(hasVNextWalletAuthorizationCodec("sushi"), false, "PR #427 remains separate and draft");
 
-const policy = createRmtExecutionFeeV2Policy({ treasury: RMT_EXECUTION_V2_TREASURY, fromBlock: "40000000" });
+const policy = createRmtExecutionFeeV2Policy({ treasury: getAddress("0x7777777777777777777777777777777777777777"), fromBlock: "40000000" });
 const economics = normalizeRmtExecutionFeeV2Input({
   policy,
   inputAssetId: "eip155:4663/contract:0x1111111111111111111111111111111111111111",
