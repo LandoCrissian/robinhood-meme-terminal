@@ -5,6 +5,10 @@ import {
   type RmtNetExecutionEconomics
 } from "./execution-fee-policy";
 import {
+  assertRmtExecutionFeeV2Economics,
+  type RmtExecutionFeeV2Economics
+} from "./execution-fee-policy-v2";
+import {
   hasVNextWalletAuthorizationCodec,
   isVNextWalletFeeSettlementAdmitted
 } from "./provider-fee-settlement";
@@ -59,6 +63,7 @@ export type VNextQuoteAttempt = {
   gasSponsorshipFeeAtomic: string | null;
   explicitProviderFeeOutputAtomic: string | null;
   netEconomics: RmtNetExecutionEconomics | null;
+  feeV2Economics?: RmtExecutionFeeV2Economics;
   networkFeeNativeAtomic: string | null;
   networkFeeNativeSymbol: "ETH" | null;
   protectedNetOutputAtomic: string | null;
@@ -114,6 +119,7 @@ const attemptSchema = z.object({
   gasSponsorshipFeeAtomic: z.string().nullable(),
   explicitProviderFeeOutputAtomic: z.string().nullable(),
   netEconomics: z.unknown().nullable(),
+  feeV2Economics: z.unknown().optional(),
   networkFeeNativeAtomic: z.string().nullable(),
   networkFeeNativeSymbol: z.literal("ETH").nullable(),
   protectedNetOutputAtomic: z.string().nullable(),
@@ -198,17 +204,35 @@ export function assertVNextQuoteAttempt(
     }
     const providerFee = attempt.providerFeeAtomic === null ? null : atomic(attempt.providerFeeAtomic);
     const gasSponsorshipFee = attempt.gasSponsorshipFeeAtomic === null ? null : atomic(attempt.gasSponsorshipFeeAtomic);
-    if (!attempt.netEconomics) throw new Error("Indicative quote omitted explicit RMT fee economics.");
-    assertRmtNetExecutionEconomics(attempt.netEconomics);
+    if (attempt.feeV2Economics) {
+      assertRmtExecutionFeeV2Economics(attempt.feeV2Economics);
+      if (
+        attempt.netEconomics !== null
+        || attempt.feeV2Economics.inputAsset !== (isRobinhoodNativeAssetForQuote(attempt.inputAsset)
+          ? "eip155:4663/native"
+          : `eip155:4663/contract:${getAddress(attempt.inputAsset).toLowerCase()}`)
+        || attempt.feeV2Economics.outputAsset !== (isRobinhoodNativeAssetForQuote(attempt.outputAsset)
+          ? "eip155:4663/native"
+          : `eip155:4663/contract:${getAddress(attempt.outputAsset).toLowerCase()}`)
+        || attempt.feeV2Economics.userGrossInputAtomic !== attempt.inputAmountAtomic
+        || attempt.feeV2Economics.expectedUserNetOutputAtomic !== attempt.expectedOutputAtomic
+        || attempt.feeV2Economics.protectedUserNetOutputAtomic !== attempt.protectedOutputAtomic
+      ) throw new Error("Indicative quote exposed inconsistent V2 fee economics.");
+    } else {
+      if (!attempt.netEconomics) throw new Error("Indicative quote omitted explicit RMT fee economics.");
+      assertRmtNetExecutionEconomics(attempt.netEconomics);
+    }
     if (
       (attempt.providerFeeAsset === null) !== (attempt.providerFeeAtomic === null)
       || (attempt.providerFeeAsset !== null && (!isAddress(attempt.providerFeeAsset) || providerFee === null))
       || (attempt.gasSponsorshipFeeAsset === null) !== (attempt.gasSponsorshipFeeAtomic === null)
       || (attempt.gasSponsorshipFeeAsset !== null && (!isAddress(attempt.gasSponsorshipFeeAsset) || gasSponsorshipFee === null))
       || attempt.explicitProviderFeeOutputAtomic !== (attempt.providerFeeAsset !== null && getAddress(attempt.providerFeeAsset) === getAddress(attempt.outputAsset) ? attempt.providerFeeAtomic : null)
-      || attempt.netEconomics.userGrossInputAtomic !== attempt.inputAmountAtomic
-      || attempt.netEconomics.expectedUserNetOutputAtomic !== attempt.expectedOutputAtomic
-      || attempt.netEconomics.protectedUserNetOutputAtomic !== attempt.protectedOutputAtomic
+      || (attempt.netEconomics !== null && (
+        attempt.netEconomics.userGrossInputAtomic !== attempt.inputAmountAtomic
+        || attempt.netEconomics.expectedUserNetOutputAtomic !== attempt.expectedOutputAtomic
+        || attempt.netEconomics.protectedUserNetOutputAtomic !== attempt.protectedOutputAtomic
+      ))
     ) throw new Error("Indicative quote exposed incomplete or inconsistent fee economics.");
     if (attempt.userPaysGas === true) {
       if (
@@ -258,6 +282,10 @@ export function assertVNextQuoteAttempt(
     throw new Error("Unavailable quote attempt exposed partial economics.");
   }
   return true;
+}
+
+function isRobinhoodNativeAssetForQuote(address: string) {
+  return getAddress(address) === "0x0000000000000000000000000000000000000000";
 }
 
 export function bestIndicativeAttempt(attempts: VNextQuoteAttempt[]) {

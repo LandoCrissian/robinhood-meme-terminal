@@ -324,16 +324,18 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
   const protectedOutput = bestQuote && bestQuote.outputDecimals !== null
     ? formatAtomicDisplay(bestQuote.protectedOutputAtomic!, bestQuote.outputDecimals)
     : null;
-  const bestRmtFee = bestQuote?.netEconomics?.rmtFee.state === "planned" ? bestQuote.netEconomics.rmtFee : null;
+  const bestRmtFee = bestQuote?.feeV2Economics
+    ?? (bestQuote?.netEconomics?.rmtFee.state === "planned" ? bestQuote.netEconomics.rmtFee : null);
   const bestRmtFeeLabel = bestRmtFee && pair
     ? `${formatAtomicDisplay(
         bestRmtFee.expectedFeeAtomic,
         bestRmtFee.feeSide === "input" ? pair.inputAsset.decimals ?? 18 : pair.outputAsset.decimals ?? 18
       )} ${bestRmtFee.feeSide === "input" ? inputSymbol : outputSymbol} · ${bestRmtFee.feeBps / 100}%`
     : "Not enabled";
-  const verifiedRmtFee = visibleVerification?.netEconomics?.rmtFee.state === "planned"
-    ? visibleVerification.netEconomics.rmtFee
-    : null;
+  const verifiedRmtFee = visibleVerification?.feeV2Economics
+    ?? (visibleVerification?.netEconomics?.rmtFee.state === "planned"
+      ? visibleVerification.netEconomics.rmtFee
+      : null);
   const verifiedRmtFeeLabel = verifiedRmtFee && pair
     ? `${formatAtomicDisplay(
         verifiedRmtFee.expectedFeeAtomic,
