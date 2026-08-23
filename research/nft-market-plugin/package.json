@@ -1,0 +1,12 @@
+{
+  "name": "rmt-nft-market-plugin-research",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Research-only, non-runtime NFT market integration contract for RMT/Codex handoff.",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --experimental-strip-types test/smoke.ts",
+    "validate": "npm run typecheck && npm test"
+  }
+}

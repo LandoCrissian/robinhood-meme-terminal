@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "pluginId": "rmt.nft-market.research-v1",
+  "status": "research_only_not_runtime",
+  "baseCommit": "cb4ab9b1af7200aa941bc7534795e3d43ac8dda4",
+  "chain": { "name": "Robinhood Chain", "chainId": 4663 },
+  "workspaceIncluded": false,
+  "productionActivation": false,
+  "executionEnabled": false,
+  "signerPresent": false,
+  "custodyPresent": false,
+  "firstVerificationReadyVenue": "opensea-seaport",
+  "admissionStages": [
+    "research",
+    "shadow_indexer",
+    "read_only_terminal",
+    "quote_observation",
+    "strict_verification",
+    "authorization",
+    "wallet_submission",
+    "execution"
+  ],
+  "forbiddenUntilExplicitAdmission": [
+    "production routes",
+    "RMT fee inheritance",
+    "NFT minting or creator marketplace revival",
+    "wallet prompts",
+    "contract deployment",
+    "Railway or Vercel mutation"
+  ]
+}
