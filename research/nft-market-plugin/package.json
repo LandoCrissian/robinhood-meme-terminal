@@ -1,12 +1,12 @@
 {
   "name": "rmt-nft-market-plugin-research",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
-  "description": "Research-only, non-runtime NFT market integration and payment-side execution-fee contract for RMT/Codex handoff.",
+  "description": "Research-only NFT market, payment-side execution-fee, external project capability, HoodStreet identity and universal claims contract for RMT/Codex handoff.",
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node --experimental-strip-types test/smoke.ts && node --experimental-strip-types test/fee-smoke.ts",
+    "test": "node --experimental-strip-types test/smoke.ts && node --experimental-strip-types test/fee-smoke.ts && node --experimental-strip-types test/ecosystem-smoke.ts",
     "validate": "npm run typecheck && npm test"
   }
 }
