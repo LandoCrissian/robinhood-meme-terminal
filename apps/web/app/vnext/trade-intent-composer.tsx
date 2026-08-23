@@ -5,7 +5,7 @@ import { formatUnits, parseUnits, type Address } from "viem";
 import { useAccount } from "wagmi";
 import type { AssetMetadata } from "../../lib/vnext/execution-domain";
 import { assetKey } from "../../lib/vnext/execution-domain";
-import type { VNextExecutionRecord } from "../../lib/vnext/execution-recovery";
+import { vNextExecutionProviderLabel, type VNextExecutionRecord } from "../../lib/vnext/execution-recovery";
 import { affordableDefaultAmount, createExactInputIntent, percentageOfAtomic, type TradeSide } from "../../lib/vnext/intent-draft";
 import { parseVNextQuoteResponse, selectVNextRoute, type VNextQuoteResponse } from "../../lib/vnext/quote-observation";
 import { parseVNextPreSignEvidence, type VNextPreSignEvidence } from "../../lib/vnext/pre-sign-evidence";
@@ -381,6 +381,19 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
     && pair?.outputAsset.decimals !== undefined
       ? formatAtomicDisplay(executionRecord.outputAmountAtomic, pair.outputAsset.decimals)
       : null;
+  const confirmedV2Fee = executionRecord?.feeV2Settlement?.actualRmtFeeAtomic;
+  const confirmedLegacyFee = executionRecord?.feeSettlement?.actualFeeAtomic;
+  const confirmedFeeDisplay = confirmedV2Fee !== undefined
+    ? `${formatAtomicDisplay(confirmedV2Fee, pair?.inputAsset.decimals ?? 18)} ${inputSymbol} · 0.25%`
+    : confirmedLegacyFee !== undefined && executionRecord?.feeSettlement
+      ? `${formatAtomicDisplay(
+          confirmedLegacyFee,
+          executionRecord.feeSettlement.feeSide === "input" ? pair?.inputAsset.decimals ?? 18 : pair?.outputAsset.decimals ?? 18
+        )} ${executionRecord.feeSettlement.feeSide === "input" ? inputSymbol : outputSymbol}`
+      : null;
+  const confirmedProvider = executionRecord
+    ? vNextExecutionProviderLabel(executionRecord.provider ?? (executionRecord.feeSettlement || executionRecord.feeV2Settlement ? "uniswap-v3" : undefined))
+    : null;
 
   const useBalancePercentage = (basisPoints: number) => {
     if (!inputBalanceAtomic || pair?.inputAsset.decimals === null || pair?.inputAsset.decimals === undefined) return;
@@ -997,11 +1010,8 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
             <dl>
               <div><dt>{side === "buy" ? "Paid" : "Sold"}</dt><dd>{confirmedInputDisplay ? `${confirmedInputDisplay} ${inputSymbol}` : `${inputSymbol} confirmed`}</dd></div>
               <div><dt>{side === "buy" ? "Asset received" : "Proceeds"}</dt><dd>{confirmedOutputDisplay ? `${confirmedOutputDisplay} ${outputSymbol}` : `${outputSymbol} · confirmed onchain`}</dd></div>
-              {executionRecord.feeSettlement?.actualFeeAtomic !== undefined ? <div><dt>RMT fee settled</dt><dd>{formatAtomicDisplay(
-                executionRecord.feeSettlement.actualFeeAtomic,
-                executionRecord.feeSettlement.feeSide === "input" ? pair?.inputAsset.decimals ?? 18 : pair?.outputAsset.decimals ?? 18
-              )} {executionRecord.feeSettlement.feeSide === "input" ? inputSymbol : outputSymbol}</dd></div> : null}
-              {executionRecord.feeSettlement ? <div><dt>Provider</dt><dd>Uniswap V3 · RMT atomic settlement</dd></div> : null}
+              {confirmedFeeDisplay ? <div><dt>RMT fee settled</dt><dd>{confirmedFeeDisplay}</dd></div> : null}
+              {confirmedProvider ? <div><dt>Provider</dt><dd>{confirmedProvider}{executionRecord.feeSettlement || executionRecord.feeV2Settlement ? " · RMT atomic settlement" : ""}</dd></div> : null}
               <div><dt>Transaction</dt><dd>{shortAddress(executionRecord.txHash)}</dd></div>
             </dl>
             <button ref={receiptAction} className="vnTradeReceiptContinue" type="button" onClick={continueTrading}>Continue trading</button>

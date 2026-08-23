@@ -24,7 +24,7 @@ import {
 import type { VNextEcosystemIntelligence, VNextUpMarketIntelligence } from "../../lib/vnext/ecosystem-intelligence";
 import type { VNextUniversalMarketSearchPool } from "../../lib/vnext/universal-market-search-contract";
 import type { VNextDetectedWalletAsset } from "../../lib/vnext/wallet-assets";
-import { safeExternalNavigationUrl } from "../../lib/vnext/external-navigation";
+import { safeExternalNavigationUrl, safeExternalSocialNavigationUrl } from "../../lib/vnext/external-navigation";
 import type { IdentityStatus } from "./use-vnext-market-directory";
 import { CopyAddress, ExplorerLink, ExternalProjectLink } from "./terminal-links";
 import { TokenArtwork } from "./token-artwork";
@@ -46,7 +46,9 @@ const SOCIAL_LABELS: Record<keyof ExternalSocialLinks, string> = {
 function safeSocialEntries(links?: ExternalSocialLinks) {
   if (!links) return [];
   return (Object.keys(SOCIAL_LABELS) as Array<keyof ExternalSocialLinks>).flatMap((kind) => {
-    const href = safeExternalNavigationUrl(links[kind]);
+    const href = kind === "website"
+      ? safeExternalNavigationUrl(links[kind])
+      : safeExternalSocialNavigationUrl(links[kind], kind);
     return href ? [{ kind, label: SOCIAL_LABELS[kind], href }] : [];
   });
 }
@@ -158,11 +160,11 @@ function WorkspaceQuickLinks({
     </div>
     {projectLinks.length ? <div className="vnProjectLinkGroup">
       <small>Project links · {market?.project ? externalProjectProvenanceLabel(market.project) : "cross-checked metadata"}</small>
-      <div>{projectLinks.map((link) => <ExternalProjectLink href={link.href} accessibleName={`Open ${directoryMarket.symbol} project ${link.label}`} key={`${link.kind}:${link.href}`}>{link.label} ↗</ExternalProjectLink>)}</div>
+      <div>{projectLinks.map((link) => <ExternalProjectLink href={link.href} socialKind={link.kind === "website" ? undefined : link.kind} accessibleName={`Open ${directoryMarket.symbol} project ${link.label}`} key={`${link.kind}:${link.href}`}>{link.label} ↗</ExternalProjectLink>)}</div>
     </div> : null}
     {observedLinks.length ? <div className="vnProjectLinkGroup isObserved">
       <small>Project links · market metadata</small>
-      <div>{observedLinks.map((link) => <ExternalProjectLink href={link.href} accessibleName={`Open ${directoryMarket.symbol} ${link.label} from market metadata`} key={`${link.kind}:${link.href}`}>{link.label} ↗</ExternalProjectLink>)}</div>
+      <div>{observedLinks.map((link) => <ExternalProjectLink href={link.href} socialKind={link.kind === "website" ? undefined : link.kind} accessibleName={`Open ${directoryMarket.symbol} ${link.label} from market metadata`} key={`${link.kind}:${link.href}`}>{link.label} ↗</ExternalProjectLink>)}</div>
       <p>Reported by DEX market metadata; RMT does not guarantee project control of these destinations.</p>
     </div> : null}
   </section>;

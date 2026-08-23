@@ -38,8 +38,8 @@ export function VNextWalletFeeDisclosure({
       <div><dt>Protected minimum</dt><dd>{formatUnits(BigInt(feeV2.protectedUserNetOutputAtomic), outputDecimals)} {outputSymbol}</dd></div>
       <div><dt>Provider</dt><dd>Uniswap V3</dd></div>
       <div><dt>Settlement</dt><dd>Atomic with swap</dd></div>
-      <div><dt>Treasury</dt><dd>{feeV2.treasury.slice(0, 6)}…{feeV2.treasury.slice(-4)}</dd></div>
-      <div><dt>Execution target</dt><dd>RMT V2 executor · {evidence.feeV2Settlement.executionTarget.slice(0, 6)}…{evidence.feeV2Settlement.executionTarget.slice(-4)}</dd></div>
+      <div><dt>Treasury</dt><dd><ExplorerLink kind="address" value={feeV2.treasury} accessibleName="Open RMT V2 fee treasury in Robinhood Chain explorer">{feeV2.treasury.slice(0, 6)}…{feeV2.treasury.slice(-4)} ↗</ExplorerLink></dd></div>
+      <div><dt>Execution target</dt><dd><ExplorerLink kind="address" value={evidence.feeV2Settlement.executionTarget} accessibleName="Open RMT V2 executor in Robinhood Chain explorer">RMT V2 executor · {evidence.feeV2Settlement.executionTarget.slice(0, 6)}…{evidence.feeV2Settlement.executionTarget.slice(-4)} ↗</ExplorerLink></dd></div>
     </dl>
     <small>Gas and DEX/provider fees are separate. The protected receive amount is bound independently.</small>
   </div>;

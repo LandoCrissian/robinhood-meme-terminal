@@ -1,5 +1,14 @@
 const MAX_EXTERNAL_URL_LENGTH = 500;
 
+export type ExternalSocialNavigationKind = "x" | "telegram" | "discord" | "farcaster";
+
+const EXTERNAL_SOCIAL_HOSTS: Record<ExternalSocialNavigationKind, ReadonlySet<string>> = {
+  x: new Set(["x.com", "www.x.com", "twitter.com", "www.twitter.com"]),
+  telegram: new Set(["t.me", "telegram.me", "www.telegram.me"]),
+  discord: new Set(["discord.gg", "discord.com", "www.discord.com"]),
+  farcaster: new Set(["warpcast.com", "www.warpcast.com", "farcaster.xyz", "www.farcaster.xyz"])
+};
+
 function privateIpv4(hostname: string) {
   const parts = hostname.split(".");
   if (parts.length !== 4 || parts.some((part) => !/^\d{1,3}$/.test(part) || Number(part) > 255)) return false;
@@ -32,4 +41,10 @@ export function safeExternalNavigationUrl(value: unknown) {
   } catch {
     return null;
   }
+}
+
+export function safeExternalSocialNavigationUrl(value: unknown, kind: ExternalSocialNavigationKind) {
+  const safe = safeExternalNavigationUrl(value);
+  if (!safe) return null;
+  return EXTERNAL_SOCIAL_HOSTS[kind].has(new URL(safe).hostname.toLowerCase()) ? safe : null;
 }

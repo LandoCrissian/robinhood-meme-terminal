@@ -17,6 +17,7 @@ import {
   type RmtExecutionFeeV2Policy
 } from "../vnext/execution-fee-policy-v2";
 import { RMT_UNISWAP_V3_V2_POLICY_ID_HASH } from "../vnext/uniswap-v3-fee-executor-v2";
+export { RMT_UNISWAP_V3_V2_IMPLEMENTATION_ID } from "../vnext/uniswap-v3-fee-executor-v2";
 import {
   ROBINHOOD_UNISWAP_FACTORY_RUNTIME_HASH,
   ROBINHOOD_UNISWAP_ROUTER_RUNTIME_HASH,
@@ -37,8 +38,6 @@ const executorViewAbi = parseAbi([
   "function currentPolicyBlock() view returns (uint256)", "function POLICY_ID_HASH() view returns (bytes32)",
   "function POLICY_VERSION() view returns (uint256)", "function FEE_BPS() view returns (uint16)"
 ]);
-
-export const RMT_UNISWAP_V3_V2_IMPLEMENTATION_ID = "rmt-uniswap-v3-fee-executor-v2";
 
 export type VNextUniswapFeeExecutorV2Config = {
   executor: Address;

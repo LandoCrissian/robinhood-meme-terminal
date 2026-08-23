@@ -2,7 +2,7 @@ import type {
   ExternalMarketSocials,
   ExternalSocialLinks
 } from "./external-market";
-import { safeExternalNavigationUrl } from "./vnext/external-navigation";
+import { safeExternalNavigationUrl, safeExternalSocialNavigationUrl } from "./vnext/external-navigation";
 
 type SocialKind = keyof ExternalSocialLinks;
 
@@ -15,22 +15,12 @@ type RawSocial = {
   url?: unknown;
 };
 
-const SOCIAL_HOSTS: Record<Exclude<SocialKind, "website">, ReadonlySet<string>> = {
-  x: new Set(["x.com", "www.x.com", "twitter.com", "www.twitter.com"]),
-  telegram: new Set(["t.me", "telegram.me", "www.telegram.me"]),
-  discord: new Set(["discord.gg", "discord.com", "www.discord.com"]),
-  farcaster: new Set(["warpcast.com", "www.warpcast.com", "farcaster.xyz", "www.farcaster.xyz"])
-};
-
 function httpsUrl(value: unknown) {
   return safeExternalNavigationUrl(value);
 }
 
 function socialUrl(value: unknown, kind: Exclude<SocialKind, "website">) {
-  const safe = httpsUrl(value);
-  if (!safe) return null;
-  const url = new URL(safe);
-  return SOCIAL_HOSTS[kind].has(url.hostname.toLowerCase()) ? safe : null;
+  return safeExternalSocialNavigationUrl(value, kind);
 }
 
 function socialKind(value: unknown): Exclude<SocialKind, "website"> | null {

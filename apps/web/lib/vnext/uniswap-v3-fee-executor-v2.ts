@@ -19,6 +19,7 @@ import { ROBINHOOD_WETH_ADDRESS, isRobinhoodNativeAsset } from "./robinhood-asse
 
 export const RMT_UNISWAP_V3_V2_PROVIDER_ID = keccak256(stringToHex("RMT_UNISWAP_V3_ROUTER02_V2"));
 export const RMT_UNISWAP_V3_V2_POLICY_ID_HASH = keccak256(stringToHex("RMT_EXECUTION_V2"));
+export const RMT_UNISWAP_V3_V2_IMPLEMENTATION_ID = "rmt-uniswap-v3-fee-executor-v2";
 const ROUTE_DOMAIN = keccak256(stringToHex("RMT_UNISWAP_V3_ROUTE_V2"));
 
 export const rmtUniswapV3FeeExecutorV2Abi = [{
@@ -42,6 +43,28 @@ export const rmtUniswapV3FeeExecutorV2Abi = [{
     { name: "pool1", type: "address" }
   ] }],
   outputs: [{ name: "actualProviderOutput", type: "uint256" }, { name: "actualRmtFee", type: "uint256" }]
+}, {
+  type: "event", name: "RMTUniswapV3FeeSettledV2", anonymous: false,
+  inputs: [
+    { indexed: true, name: "executionId", type: "bytes32" },
+    { indexed: true, name: "policyHash", type: "bytes32" },
+    { indexed: true, name: "trader", type: "address" },
+    { indexed: false, name: "policyIdHash", type: "bytes32" },
+    { indexed: false, name: "policyVersion", type: "uint256" },
+    { indexed: false, name: "providerId", type: "bytes32" },
+    { indexed: false, name: "router", type: "address" },
+    { indexed: false, name: "routeIdentity", type: "bytes32" },
+    { indexed: false, name: "requestedInputAsset", type: "address" },
+    { indexed: false, name: "requestedOutputAsset", type: "address" },
+    { indexed: false, name: "feeAsset", type: "address" },
+    { indexed: false, name: "feeBps", type: "uint16" },
+    { indexed: false, name: "feeSide", type: "uint8" },
+    { indexed: false, name: "userGrossInput", type: "uint256" },
+    { indexed: false, name: "providerInput", type: "uint256" },
+    { indexed: false, name: "actualProviderOutput", type: "uint256" },
+    { indexed: false, name: "actualRmtFee", type: "uint256" },
+    { indexed: false, name: "treasury", type: "address" }
+  ]
 }] as const;
 
 export type RmtUniswapV3FeeRouteV2 = {
@@ -239,6 +262,39 @@ export function encodeRmtUniswapV3FeeExecutionV2(execution: RmtUniswapV3FeeExecu
     functionName: "execute",
     args: [authorizationTuple(execution), execution.route]
   });
+}
+
+export function decodeRmtUniswapV3FeeAuthorizationV2(data: Hex) {
+  const decoded = decodeFunctionData({ abi: rmtUniswapV3FeeExecutorV2Abi, data });
+  invariant(decoded.functionName === "execute", "execution method changed");
+  const [authorization, decodedRoute] = decoded.args;
+  invariant(decodedRoute.kind === 0 || decodedRoute.kind === 1, "decoded route kind changed");
+  const route: RmtUniswapV3FeeRouteV2 = {
+    kind: decodedRoute.kind,
+    tokenIn: getAddress(decodedRoute.tokenIn),
+    tokenOut: getAddress(decodedRoute.tokenOut),
+    fee0: decodedRoute.fee0,
+    fee1: decodedRoute.fee1,
+    pool0: getAddress(decodedRoute.pool0),
+    pool1: getAddress(decodedRoute.pool1)
+  };
+  invariant(
+    authorization.routeIdentity.toLowerCase() === rmtUniswapV3RouteIdentityV2(route).toLowerCase(),
+    "decoded route identity changed"
+  );
+  return {
+    authorization: {
+      ...authorization,
+      feeAsset: getAddress(authorization.feeAsset),
+      treasury: getAddress(authorization.treasury),
+      trader: getAddress(authorization.trader),
+      requestedInputAsset: getAddress(authorization.requestedInputAsset),
+      requestedOutputAsset: getAddress(authorization.requestedOutputAsset),
+      routedInputAsset: getAddress(authorization.routedInputAsset),
+      routedOutputAsset: getAddress(authorization.routedOutputAsset)
+    },
+    route
+  } as const;
 }
 
 export function assertRmtUniswapV3FeeCalldataV2(

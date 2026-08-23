@@ -6,7 +6,7 @@ import {
   robinhoodExplorerToken,
   robinhoodExplorerTransaction
 } from "./robinhood-chain-links";
-import { safeExternalNavigationUrl } from "./external-navigation";
+import { safeExternalNavigationUrl, safeExternalSocialNavigationUrl } from "./external-navigation";
 import { parseVNextTerminalLocation } from "./terminal-location";
 import { VNEXT_MARKET_DIRECTORY_VIEWS } from "./market-directory";
 import { externalMarketSocialsFromPairInfo } from "../external-market-socials";
@@ -43,6 +43,12 @@ assert.equal(projectSocials?.discord, "https://discord.gg/project");
 assert.equal(projectSocials?.farcaster, "https://warpcast.com/project");
 assert.equal(projectSocials?.provenance, "dex-pair-metadata", "DEX_METADATA_LINK_NOT_OVERCLAIMED");
 assert.equal(externalMarketSocialsFromPairInfo({ websites: [], socials: [] }), undefined, "MISSING_SOCIAL_LINK_OMITTED");
+assert.equal(safeExternalSocialNavigationUrl("https://x.com/project", "x"), "https://x.com/project");
+assert.equal(safeExternalSocialNavigationUrl("https://t.me/project", "telegram"), "https://t.me/project");
+assert.equal(safeExternalSocialNavigationUrl("https://discord.gg/project", "discord"), "https://discord.gg/project");
+assert.equal(safeExternalSocialNavigationUrl("https://warpcast.com/project", "farcaster"), "https://warpcast.com/project");
+assert.equal(safeExternalSocialNavigationUrl("https://example.org/not-x", "x"), null, "PROJECT_SOCIAL_HOST_LABEL");
+assert.equal(safeExternalSocialNavigationUrl("https://x.com/not-telegram", "telegram"), null, "PROJECT_SOCIAL_HOST_LABEL");
 
 assert.deepEqual(parseVNextTerminalLocation(`?market=${address}`), {
   context: "asset", market: "0x39dBED3a2bd333467115dE45665cC57F813C4571"

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import React, { useState, type ReactNode } from "react";
 import {
   canonicalRobinhoodAddress,
   robinhoodExplorerAddress,
@@ -9,7 +9,11 @@ import {
   robinhoodExplorerToken,
   robinhoodExplorerTransaction
 } from "../../lib/vnext/robinhood-chain-links";
-import { safeExternalNavigationUrl } from "../../lib/vnext/external-navigation";
+import {
+  safeExternalNavigationUrl,
+  safeExternalSocialNavigationUrl,
+  type ExternalSocialNavigationKind
+} from "../../lib/vnext/external-navigation";
 
 type ExplorerKind = "token" | "address" | "pool" | "transaction" | "block";
 
@@ -37,13 +41,16 @@ export function ExplorerLink({ kind, value, children, className, accessibleName 
   return <a href={href} className={className} target="_blank" rel="noopener noreferrer" aria-label={accessibleName}>{children}</a>;
 }
 
-export function ExternalProjectLink({ href: rawHref, children, className, accessibleName }: {
+export function ExternalProjectLink({ href: rawHref, children, className, accessibleName, socialKind }: {
   href: unknown;
   children: ReactNode;
   className?: string;
   accessibleName?: string;
+  socialKind?: ExternalSocialNavigationKind;
 }) {
-  const href = safeExternalNavigationUrl(rawHref);
+  const href = socialKind
+    ? safeExternalSocialNavigationUrl(rawHref, socialKind)
+    : safeExternalNavigationUrl(rawHref);
   if (!href) return null;
   return <a href={href} className={className} target="_blank" rel="noopener noreferrer" aria-label={accessibleName}>{children}</a>;
 }

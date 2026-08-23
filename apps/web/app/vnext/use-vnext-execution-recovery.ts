@@ -7,6 +7,7 @@ import {
   readVNextExecutionJournal,
   resolveVNextExecution,
   settledVNextFeeExecution,
+  settledVNextFeeExecutionV2,
   settledVNextOutputAtomic,
   VNEXT_EXECUTION_EVENT,
   VNEXT_EXECUTION_STORAGE_KEY,
@@ -23,7 +24,7 @@ export function useVNextExecutionRecovery() {
   const receipt = useWaitForTransactionReceipt({
     hash: receiptRequired ? record?.txHash : undefined,
     chainId: ROBINHOOD_MAINNET_CHAIN_ID,
-    confirmations: record?.feeSettlement ? 2 : 1
+    confirmations: record?.feeSettlement || record?.feeV2Settlement ? 2 : 1
   });
 
   useEffect(() => {
@@ -60,13 +61,23 @@ export function useVNextExecutionRecovery() {
       || receipt.data.transactionHash.toLowerCase() !== record.txHash.toLowerCase()
     ) return;
     const state = receipt.data.status === "success" ? "confirmed" : "reverted";
+    const feeV2Settlement = state === "confirmed" && record.kind === "swap" && record.feeV2Settlement
+      ? settledVNextFeeExecutionV2(record, receipt.data.logs)
+      : null;
     const feeSettlement = state === "confirmed" && record.kind === "swap" && record.feeSettlement
       ? settledVNextFeeExecution(record, receipt.data.logs)
       : null;
     const outputAmountAtomic = state === "confirmed"
-      ? feeSettlement?.outputAmountAtomic ?? (record.kind === "swap" && record.feeSettlement ? null : settledVNextOutputAtomic(record, receipt.data.logs))
+      ? feeV2Settlement?.outputAmountAtomic
+        ?? feeSettlement?.outputAmountAtomic
+        ?? (record.kind === "swap" && (record.feeSettlement || record.feeV2Settlement)
+          ? null
+          : settledVNextOutputAtomic(record, receipt.data.logs))
       : null;
-    if (state === "confirmed" && record.kind === "swap" && record.feeSettlement && !feeSettlement) {
+    if (state === "confirmed" && record.kind === "swap" && (
+      record.feeV2Settlement && !feeV2Settlement
+      || record.feeSettlement && !feeSettlement
+    )) {
       setReconciliationFailed(true);
       return;
     }
@@ -81,6 +92,10 @@ export function useVNextExecutionRecovery() {
         ...(feeSettlement ? {
           actualFeeAtomic: feeSettlement.actualFeeAtomic,
           grossActualOutputAtomic: feeSettlement.grossActualOutputAtomic
+        } : {}),
+        ...(feeV2Settlement ? {
+          actualRmtFeeAtomic: feeV2Settlement.actualRmtFeeAtomic,
+          actualProviderOutputAtomic: feeV2Settlement.actualProviderOutputAtomic
         } : {})
       } : undefined
     ) ?? { ...record, state, ...(outputAmountAtomic ? { outputAmountAtomic } : {}), updatedAtMs: Date.now() };
