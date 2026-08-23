@@ -1,4 +1,4 @@
-import { getAddress, isAddress } from "viem";
+import { getAddress, isAddress, zeroAddress } from "viem";
 import {
   buildAssetMarketRecord,
   type ExternalMarket,
@@ -113,7 +113,7 @@ export type VNextDirectoryResponse = {
 
 export type VNextCanonicalDirectoryResponse = VNextDirectoryResponse & {
   canonical: true;
-  coverage: "complete";
+  coverage: "partial" | "complete";
   nextCursor: string | null;
 };
 
@@ -137,6 +137,7 @@ export function directoryMarketsFromCanonicalPools(
   for (const pool of pools) {
     for (const address of [pool.token0, pool.token1]) {
       const key = address.toLowerCase();
+      if (key === zeroAddress) continue;
       const evidence = byAddress.get(key) ?? new Map<string, VNextUniversalMarketSearchPool>();
       evidence.set(canonicalMarketIdentity(pool), pool);
       byAddress.set(key, evidence);
@@ -185,7 +186,7 @@ export function parseVNextCanonicalDirectoryResponse(value: unknown): VNextCanon
   if (
     !candidate ||
     candidate.canonical !== true ||
-    candidate.coverage !== "complete" ||
+    (candidate.coverage !== "partial" && candidate.coverage !== "complete") ||
     typeof candidate.updatedAt !== "string" ||
     !Number.isFinite(Date.parse(candidate.updatedAt)) ||
     (candidate.nextCursor !== null && (
@@ -228,6 +229,7 @@ export function parseVNextCanonicalDirectoryResponse(value: unknown): VNextCanon
     const canonicalMarkets = market.canonicalMarkets.map(parseVNextUniversalMarketSearchPool);
     if (canonicalMarkets.some((entry) => entry === null)) return [];
     const address = getAddress(String(market.address));
+    if (address.toLowerCase() === zeroAddress) return [];
     const identities = new Set<string>();
     for (const evidence of canonicalMarkets as VNextUniversalMarketSearchPool[]) {
       if (evidence.token0 !== address.toLowerCase() && evidence.token1 !== address.toLowerCase()) return [];
@@ -273,7 +275,7 @@ export function parseVNextCanonicalDirectoryResponse(value: unknown): VNextCanon
   ) return null;
   return {
     canonical: true,
-    coverage: "complete",
+    coverage: candidate.coverage,
     nextCursor: candidate.nextCursor as string | null,
     updatedAt: candidate.updatedAt,
     markets
@@ -735,15 +737,30 @@ export function mergeVNextCanonicalBrowseMarkets(
   canonicalMarkets: VNextDirectoryMarket[],
   enrichmentMarkets: VNextDirectoryMarket[]
 ) {
-  const enrichmentByAddress = new Map(
-    enrichmentMarkets.map((market) => [market.address.toLowerCase(), market])
-  );
-  return canonicalMarkets.map((canonicalMarket) => {
+  const enrichmentByAddress = new Map(enrichmentMarkets.map((market) => [
+    market.address.toLowerCase(),
+    { ...market, canonicalMarkets: undefined }
+  ]));
+  const canonicalAddresses = new Set(canonicalMarkets.map((market) => market.address.toLowerCase()));
+  const mergedCanonicalMarkets = canonicalMarkets.map((canonicalMarket) => {
     const enrichment = enrichmentByAddress.get(canonicalMarket.address.toLowerCase());
     if (!enrichment) return canonicalMarket;
-    const enrichmentOnly = { ...enrichment, canonicalMarkets: undefined };
-    return mergeVNextDirectoryAndSearchMarkets([enrichmentOnly], [canonicalMarket])[0];
+    const merged = mergeVNextDirectoryAndSearchMarkets([enrichment], [canonicalMarket])[0]!;
+    return canonicalMarket.verifiedIdentity
+      ? {
+          ...merged,
+          name: canonicalMarket.verifiedIdentity.name,
+          symbol: canonicalMarket.verifiedIdentity.symbol,
+          verifiedIdentity: canonicalMarket.verifiedIdentity
+        }
+      : merged;
   });
+  return [
+    ...mergedCanonicalMarkets,
+    ...[...enrichmentByAddress.entries()]
+      .filter(([address]) => !canonicalAddresses.has(address))
+      .map(([, market]) => market)
+  ];
 }
 
 export function resolutionFromLookup(payload: ExternalMarketResponse, address: string) {

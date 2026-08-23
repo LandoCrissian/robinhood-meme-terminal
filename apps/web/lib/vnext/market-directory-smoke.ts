@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { getAddress, type Hex } from "viem";
+import { getAddress, zeroAddress, type Hex } from "viem";
 import type { ExternalMarketResponse, UniversalMarketResolution } from "../external-market";
 import { buildAssetMarketRecord } from "../external-market";
 import { normalizeProviderPairForAsset } from "../external-market-identity";
@@ -343,6 +343,7 @@ const exactAddress = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
 const otherExactAddress = "0xdddddddddddddddddddddddddddddddddddddddd";
 const poolA = "0x1111111111111111111111111111111111111111";
 const poolB = "0x2222222222222222222222222222222222222222";
+const nativeV4PoolIdentity = `0x${"a".repeat(64)}`;
 const quoteAddress = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 const pair = (overrides: Record<string, unknown> = {}) => ({
   chainId: "robinhood",
@@ -374,6 +375,17 @@ const secondEvidence = normalizeProviderPairForAsset(pair({
   liquidity: { usd: 30_000 },
   volume: { h24: 9_000 }
 }), exactAddress, evidenceOptions)!;
+const nativeQuoteEvidence = normalizeProviderPairForAsset(pair({
+  pairAddress: nativeV4PoolIdentity,
+  quoteToken: { address: zeroAddress, name: "Ether", symbol: "ETH" }
+}), exactAddress, evidenceOptions)!;
+assert.equal(nativeQuoteEvidence.assetSide, "BASE");
+assert.equal(nativeQuoteEvidence.quoteToken.address.toLowerCase(), zeroAddress);
+assert.equal(nativeQuoteEvidence.displayEligibility, "eligible");
+const invalidNativeQuoteEvidence = normalizeProviderPairForAsset(pair({
+  quoteToken: { address: zeroAddress, name: "Ether", symbol: "ETH" }
+}), exactAddress, evidenceOptions)!;
+assert.equal(invalidNativeQuoteEvidence.displayEligibility, "unsupported-quote");
 const malformedQuoteEvidence = normalizeProviderPairForAsset(pair({
   pairAddress: "0x3333333333333333333333333333333333333333",
   baseToken: { address: quoteAddress, name: "Wrapped Ether", symbol: "WETH" },
@@ -539,6 +551,7 @@ const legacyDirectoryServer = readFileSync(new URL("../server/vnext-legacy-marke
 const directoryRouteServer = readFileSync(new URL("../server/vnext-market-directory-route.ts", import.meta.url), "utf8");
 const envExample = readFileSync(new URL("../../.env.example", import.meta.url), "utf8");
 const ecosystemRoute = readFileSync(new URL("../../app/api/markets/external/route.ts", import.meta.url), "utf8");
+const geckoFeed = readFileSync(new URL("../server/gecko-new-pool-feed.ts", import.meta.url), "utf8");
 const identityRoute = readFileSync(new URL("../../app/api/vnext/asset-identity/route.ts", import.meta.url), "utf8");
 const shell = readFileSync(new URL("../../app/vnext/vnext-terminal-shell.tsx", import.meta.url), "utf8");
 assert.match(hook, /fetch\("\/api\/vnext\/market-directory"/);
@@ -565,6 +578,12 @@ assert.match(hook, /setIdentityStatus\("checking"\)/);
 assert.match(hook, /directorySnapshot/);
 assert.match(hook, /identityCache/);
 assert.match(hook, /nextSnapshot !== marketSnapshot\.current/);
+const canonicalRefreshFailure = hook.slice(
+  hook.indexOf('if (!response.ok || !payload || requestSequence !== canonicalRequestSequence.current)'),
+  hook.indexOf('const canonicalMarkets = payload.markets ?? []')
+);
+assert.doesNotMatch(canonicalRefreshFailure, /canonicalDirectoryMarkets\.current = \[\]|canonicalNextCursor\.current = null|publishMarkets\(\)/);
+assert.match(hook, /The selected serving mode retains its last-good browse inventory/);
 assert.doesNotMatch(hook, /external-availability|external-sushi-quote|external-uniswap/);
 assert.equal((hook.match(/setInterval/g) ?? []).length, 0);
 assert.equal((hook.match(/useVisibilityRefresh/g) ?? []).length, 3);
@@ -598,6 +617,11 @@ const completeCoverage: VNextCanonicalMarketInventoryCoverage = {
   complete: true,
   finalizedHead: "100",
   sources: canonicalSources.map((sourceId) => ({ sourceId, status: "shadow-ready" as const, indexedThrough: "100" }))
+};
+const partialCoverage: VNextCanonicalMarketInventoryCoverage = {
+  complete: false,
+  finalizedHead: "100",
+  sources: canonicalSources.map((sourceId) => ({ sourceId, status: "backfilling" as const, indexedThrough: "50" }))
 };
 const addressFor = (value: number) => `0x${value.toString(16).padStart(40, "0")}`;
 const hashFor = (value: number) => `0x${value.toString(16).padStart(64, "0")}`;
@@ -644,8 +668,17 @@ const stonkBrokerV4Pool: VNextCanonicalMarketInventoryPool = {
   tickSpacing: 60,
   hooks: `0x${"0".repeat(40)}`
 };
+const ponsAddress = "0x39dbed3a2bd333467115de45665cc57f813c4571";
+const nativeV4Pool: VNextCanonicalMarketInventoryPool = {
+  ...stonkBrokerV4Pool,
+  poolKey: `0x${"cd".repeat(32)}`,
+  token0: zeroAddress,
+  token1: ponsAddress,
+  transactionHash: hashFor(40_001),
+  blockHash: hashFor(40_002)
+};
 const firstCanonicalPage = Array.from({ length: 73 }, (_, index) => v2CanonicalPool(index));
-const secondCanonicalPage = [firstCanonicalPage[0], v2CanonicalPool(74), stonkBrokerV4Pool];
+const secondCanonicalPage = [firstCanonicalPage[0], v2CanonicalPool(74), stonkBrokerV4Pool, nativeV4Pool];
 const canonicalResult = (
   pools: VNextCanonicalMarketInventoryPool[],
   nextCursor: string | null,
@@ -698,6 +731,7 @@ async function verifyCanonicalBrowsePages() {
   assert.ok(firstPayload);
   assert.ok((firstPayload.markets?.length ?? 0) > VNEXT_MARKET_DIRECTORY_MAX_MARKETS, "Canonical browse must exceed the legacy 144-market cap");
   assert.equal(firstPayload.nextCursor, "next_page");
+  assert.equal(firstPayload.coverage, "complete");
 
   const secondResponse = await readVNextCanonicalMarketDirectoryPage(
     "http://localhost/api/vnext/market-directory?cursor=next_page",
@@ -723,30 +757,121 @@ async function verifyCanonicalBrowsePages() {
   assert.equal(selectVNextMarketDirectoryView([stonk!], "active").length, 0);
   assert.equal(selectVNextMarketDirectoryView([stonk!], "trending").length, 0);
 
-  const providerOnly = { ...categorized[0], address: getAddress("0x9999999999999999999999999999999999999999") };
+  assert.equal(combined.some((market) => market.address.toLowerCase() === zeroAddress), false);
+  const pons = combined.find((market) => market.address.toLowerCase() === ponsAddress);
+  assert.ok(pons, "A native/ERC20 V4 pool must emit the ERC20 directory row");
+  assert.equal(pons?.canonicalMarkets?.some((market) => (
+    market.token0 === zeroAddress
+    && market.token1 === ponsAddress
+    && market.poolKey === nativeV4Pool.poolKey
+    && market.poolAddress === null
+  )), true, "Native V4 pool evidence must remain truthful on the ERC20 row");
+
+  const providerOnly = {
+    ...observedWithoutMetrics,
+    liquidityUsd: 10,
+    volume1h: 5,
+    volume24h: 0,
+    buys1h: 1,
+    sells1h: 0,
+    riskFlags: ["thin-liquidity" as const]
+  };
   const omitted = mergeVNextCanonicalBrowseMarkets(combined, []);
   const providerFailure = mergeVNextCanonicalBrowseMarkets(combined, []);
   const enriched = mergeVNextCanonicalBrowseMarkets(combined, [providerOnly]);
   assert.equal(omitted.length, combined.length, "Provider omission must not erase canonical markets");
   assert.deepEqual(providerFailure, omitted, "Provider failure must leave the canonical universe intact");
-  assert.equal(enriched.length, combined.length, "Provider-only output must not create canonical existence");
-  assert.equal(enriched.some((market) => market.address === providerOnly.address), false);
+  assert.equal(enriched.length, combined.length + 1, "Provider-only observations must remain visible");
+  const visibleProviderOnly = enriched.find((market) => market.address === providerOnly.address);
+  assert.ok(visibleProviderOnly);
+  assert.equal(deriveVNextMarketState(visibleProviderOnly!).market, "observed");
+  assert.equal(visibleProviderOnly?.canonicalMarkets, undefined, "Provider evidence cannot fabricate canonical status");
+  assert.equal(selectVNextMarketDirectoryView(enriched, "all").some((market) => market.address === providerOnly.address), true);
+  assert.equal(selectVNextMarketDirectoryView(enriched, "active").some((market) => market.address === providerOnly.address), true, "Real activity, not liquidity, controls Active membership");
+  assert.deepEqual(visibleProviderOnly?.riskFlags, ["thin-liquidity"], "Risk remains informational");
+  const ponsProvider = {
+    ...providerOnly,
+    address: ponsAddress,
+    assetId: pons!.assetId,
+    name: "Pons",
+    symbol: "PONS",
+    imageUri: "https://cdn.example.test/pons.png",
+    pairAddress: addressFor(98_001),
+    dexId: "fixture-dex",
+    url: `https://dexscreener.com/robinhood/${addressFor(98_001).toLowerCase()}`,
+    liquidityUsd: 25_000,
+    volume1h: 4_200
+  };
+  const mergedEvidence = mergeVNextCanonicalBrowseMarkets(combined, [{
+    ...ponsProvider
+  }, providerOnly]);
+  assert.equal(mergedEvidence.length, combined.length + 1, "Canonical + provider identity must merge once while provider-only markets remain visible");
+  assert.equal(mergedEvidence.filter((market) => market.address.toLowerCase() === ponsAddress).length, 1);
+  const mergedTarget = mergedEvidence.find((market) => market.address.toLowerCase() === ponsAddress);
+  assert.equal(mergedTarget?.name, "Pons", "Provider presentation name must replace the canonical address placeholder");
+  assert.equal(mergedTarget?.symbol, "PONS", "Provider presentation symbol must replace the canonical address placeholder");
+  assert.equal(mergedTarget?.imageUri, ponsProvider.imageUri);
+  assert.equal(mergedTarget?.pairAddress, ponsProvider.pairAddress);
+  assert.equal(mergedTarget?.dexId, ponsProvider.dexId);
+  assert.equal(mergedTarget?.url, ponsProvider.url);
+  assert.equal(deriveVNextMarketState(mergedTarget!).market, "canonical");
+  assert.equal(mergedTarget?.liquidityUsd, 25_000);
+  assert.equal(mergedTarget?.volume1h, 4_200);
+  assert.equal(mergedTarget?.canonicalMarkets?.length, pons?.canonicalMarkets?.length);
+  const canonicalTarget = combined[0]!;
+  const verifiedCanonicalTarget = {
+    ...canonicalTarget,
+    name: "Verified Canonical Name",
+    symbol: "VCN",
+    verifiedIdentity: {
+      address: canonicalTarget.address,
+      name: "Verified Canonical Name",
+      symbol: "VCN",
+      decimals: 18
+    }
+  };
+  const verifiedIdentityMerge = mergeVNextCanonicalBrowseMarkets([verifiedCanonicalTarget], [{
+    ...providerOnly,
+    address: canonicalTarget.address,
+    assetId: canonicalTarget.assetId,
+    name: "Unverified Provider Label",
+    symbol: "UPL"
+  }])[0]!;
+  assert.equal(verifiedIdentityMerge.name, "Verified Canonical Name");
+  assert.equal(verifiedIdentityMerge.symbol, "VCN");
+  assert.equal(verifiedIdentityMerge.verifiedIdentity, verifiedCanonicalTarget.verifiedIdentity);
   const legacySeedOnly = mergeVNextCanonicalBrowseMarkets(combined, [categorized[0]]);
-  assert.equal(legacySeedOnly.some((market) => market.address === categorized[0].address), combined.some((market) => market.address === categorized[0].address));
+  assert.equal(legacySeedOnly.some((market) => market.address === categorized[0].address), true);
 
+  const partialCalls: Array<string | undefined> = [];
+  const partialReader = async (query: { cursor?: string }) => {
+    partialCalls.push(query.cursor);
+    return query.cursor === "partial_next"
+      ? canonicalResult(secondCanonicalPage, null, partialCoverage)
+      : canonicalResult(firstCanonicalPage, "partial_next", partialCoverage);
+  };
   const incompleteResponse = await readVNextCanonicalMarketDirectoryPage(
     "http://localhost/api/vnext/market-directory",
-    async () => canonicalResult([], null, {
-      ...completeCoverage,
-      complete: false,
-      sources: completeCoverage.sources.map((source) => ({ ...source, status: "backfilling" as const }))
-    })
+    partialReader
   );
-  assert.equal(incompleteResponse.status, 503, "Incomplete canonical inventory must fail closed for browse absence");
-  assert.deepEqual(incompleteResponse.body, {
-    canonical: true,
-    error: "Canonical market directory is not ready."
-  });
+  assert.equal(incompleteResponse.status, 200, "Positive canonical evidence remains visible during partial backfill");
+  const incompletePayload = parseVNextCanonicalDirectoryResponse(incompleteResponse.body);
+  assert.equal(incompletePayload?.coverage, "partial");
+  assert.equal(incompletePayload?.nextCursor, "partial_next");
+  assert.ok((incompletePayload?.markets?.length ?? 0) > VNEXT_MARKET_DIRECTORY_MAX_MARKETS);
+  const partialSecondResponse = await readVNextCanonicalMarketDirectoryPage(
+    "http://localhost/api/vnext/market-directory?cursor=partial_next",
+    partialReader
+  );
+  const partialSecondPayload = parseVNextCanonicalDirectoryResponse(partialSecondResponse.body);
+  assert.equal(partialSecondPayload?.coverage, "partial");
+  assert.equal(partialSecondPayload?.nextCursor, null);
+  assert.deepEqual(partialCalls, [undefined, "partial_next"]);
+  const invalidCursor = await readVNextCanonicalMarketDirectoryPage(
+    "http://localhost/api/vnext/market-directory?cursor=malformed",
+    async () => ({ status: "invalid_query" as const, reason: "invalid_cursor" })
+  );
+  assert.equal(invalidCursor.status, 400);
 
   let legacyCalls = 0;
   let canonicalCalls = 0;
@@ -797,15 +922,14 @@ async function verifyCanonicalBrowsePages() {
         return legacyFixture;
       },
       readCanonical: async (requestUrl) => readVNextCanonicalMarketDirectoryPage(requestUrl, async () => canonicalResult([], null, {
-        ...completeCoverage,
-        complete: false,
-        sources: completeCoverage.sources.map((source) => ({ ...source, status: "backfilling" as const }))
+        ...partialCoverage
       }))
     }
   );
-  assert.equal(incompleteGate.status, 503);
+  assert.equal(incompleteGate.status, 200);
   assert.equal("canonical" in incompleteGate.body && incompleteGate.body.canonical, true);
-  assert.equal(failClosedLegacyCalls, 0, "Enabled incomplete canonical browse must not fall back to legacy authority");
+  assert.equal("coverage" in incompleteGate.body && incompleteGate.body.coverage, "partial");
+  assert.equal(failClosedLegacyCalls, 0, "Enabled partial canonical browse must not fall back to legacy authority");
 
   const unavailableGate = await readVNextMarketDirectoryRequest(
     "http://localhost/api/vnext/market-directory",
@@ -828,6 +952,15 @@ async function verifyCanonicalBrowsePages() {
 assert.match(ecosystemRoute, /import \{ VNEXT_MARKET_DIRECTORY_MAX_MARKETS \} from "\.\.\/\.\.\/\.\.\/\.\.\/lib\/vnext\/market-directory"/);
 assert.match(ecosystemRoute, /slice\(0, VNEXT_MARKET_DIRECTORY_MAX_MARKETS\)/);
 assert.doesNotMatch(ecosystemRoute, /const MAX_MARKETS = 48/);
+assert.doesNotMatch(ecosystemRoute, /liquidityUsd < RUNNER_THRESHOLDS\.minimumDisplayLiquidityUsd \|\| volume24h <= 0/);
+assert.doesNotMatch(ecosystemRoute, /buildAssetMarketRecord\(evidence, \{ requireChart: true \}\)/);
+assert.doesNotMatch(ecosystemRoute, /throw new Error\("Exact RMT V6 origin coverage is unavailable\."\)/);
+assert.match(ecosystemRoute, /fetchGeckoPoolSnapshot/);
+assert.match(geckoFeed, /endpoint: "new_pools"/);
+assert.match(geckoFeed, /endpoint: "pools"/);
+assert.match(geckoFeed, /duration: "5m"/);
+assert.match(geckoFeed, /duration: "1h"/);
+assert.match(geckoFeed, /duration: "24h"/);
 assert.match(ecosystemRoute, /readCompleteV6OriginTokensFromChain/);
 assert.match(ecosystemRoute, /resolveDirectRmtOrigins/);
 assert.match(ecosystemRoute, /coverage: "complete", tokens: new Set\(\[\.\.\.known, \.\.\.snapshot\.tokens\]\)/);

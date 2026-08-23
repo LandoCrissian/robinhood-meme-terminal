@@ -25,8 +25,9 @@ import {
   type SushiLaunchSnapshot
 } from "../../../../lib/server/sushi-launch-feed";
 import {
-  fetchGeckoNewPoolSnapshot,
-  type GeckoNewPoolPair
+  fetchGeckoPoolSnapshot,
+  type GeckoPoolFeedId,
+  type GeckoPoolPair
 } from "../../../../lib/server/gecko-new-pool-feed";
 import {
   parseDexDiscoveryMetadata,
@@ -42,6 +43,7 @@ import {
 } from "../../../../lib/server/universal-market-resolver";
 import { readCompleteV6OriginTokensFromChain } from "../../../../lib/server/launch-feed";
 import { VNEXT_MARKET_DIRECTORY_MAX_MARKETS } from "../../../../lib/vnext/market-directory";
+import type { VNextDirectoryMarket } from "../../../../lib/vnext/market-directory";
 
 const CHAIN_SLUG = "robinhood";
 const DEXSCREENER_TOKEN_PAIRS_API = "https://api.dexscreener.com/token-pairs/v1";
@@ -93,6 +95,7 @@ type RawPair = {
     websites?: unknown;
     socials?: unknown;
   };
+  discoveryFeeds?: unknown;
 };
 
 type RmtOriginClaim = {
@@ -112,10 +115,19 @@ type RmtOriginResolution = {
   tokens: Set<string>;
 };
 
-type SuccessfulMarketSnapshot = Required<Pick<
-  ExternalMarketResponse,
-  "markets" | "source" | "rankingVersion" | "updatedAt"
->> & {
+type ProviderDirectoryMarket = VNextDirectoryMarket & Pick<ExternalMarket, "origin" | "venue"> & {
+  pairAddress: string;
+  fdvUsd: number | null;
+  stockAssetRelationships?: ExternalMarket["stockAssetRelationships"];
+  project?: ExternalMarket["project"];
+  socials?: ExternalMarket["socials"];
+};
+
+type SuccessfulMarketSnapshot = {
+  markets: Array<ProviderDirectoryMarket | ExternalMarket>;
+  source: string;
+  rankingVersion: string;
+  updatedAt: string;
   assetRecords: AssetMarketRecord[];
   originCoverage: OriginCoverage;
   rmtOriginCoverage: OriginCoverage;
@@ -129,16 +141,82 @@ function asText(value: unknown, maximumLength = 80) {
   return typeof value === "string" ? value.trim().slice(0, maximumLength) : "";
 }
 
-function asNumber(value: unknown) {
+function finiteNumber(value: unknown) {
   const number = typeof value === "number" ? value : typeof value === "string" ? Number(value) : Number.NaN;
-  return Number.isFinite(number) ? number : 0;
+  return Number.isFinite(number) ? number : null;
+}
+
+function nonNegativeNumber(value: unknown) {
+  const number = finiteNumber(value);
+  return number !== null && number >= 0 ? number : null;
+}
+
+function nonNegativeInteger(value: unknown) {
+  const number = nonNegativeNumber(value);
+  return number !== null && Number.isSafeInteger(number) ? number : null;
 }
 
 function transactionWindow(pair: RawPair, window: string) {
   return {
-    buys: Math.max(0, Math.trunc(asNumber(pair.txns?.[window]?.buys))),
-    sells: Math.max(0, Math.trunc(asNumber(pair.txns?.[window]?.sells)))
+    buys: nonNegativeInteger(pair.txns?.[window]?.buys),
+    sells: nonNegativeInteger(pair.txns?.[window]?.sells)
   };
+}
+
+function rankingFor(pair: RawPair, evidence: AssetMarketEvidence) {
+  const volume5m = nonNegativeNumber(pair.volume?.m5);
+  const volume1h = nonNegativeNumber(pair.volume?.h1);
+  const priceChange5m = finiteNumber(pair.priceChange?.m5);
+  const priceChange1h = finiteNumber(pair.priceChange?.h1);
+  const transactions5m = transactionWindow(pair, "m5");
+  const transactions1h = transactionWindow(pair, "h1");
+  if ([
+    evidence.liquidityUsd,
+    volume5m,
+    volume1h,
+    priceChange5m,
+    priceChange1h,
+    transactions5m.buys,
+    transactions5m.sells,
+    transactions1h.buys,
+    transactions1h.sells
+  ].some((value) => value === null)) return null;
+  return rankExternalMarket({
+    liquidityUsd: evidence.liquidityUsd!,
+    marketCapUsd: evidence.marketCapUsd ?? evidence.fdvUsd ?? 0,
+    volume5m: volume5m!,
+    volume1h: volume1h!,
+    volume24h: evidence.volume24h ?? 0,
+    priceChange5m: priceChange5m!,
+    priceChange1h: priceChange1h!,
+    buys5m: transactions5m.buys!,
+    sells5m: transactions5m.sells!,
+    buys1h: transactions1h.buys!,
+    sells1h: transactions1h.sells!,
+    pairCreatedAt: evidence.pairCreatedAt
+  });
+}
+
+function fullyRankedMarket(market: ProviderDirectoryMarket) {
+  return market.signal !== null
+    && market.momentumScore !== null
+    && market.volume5m !== null
+    && market.volume1h !== null
+    && market.liquidityUsd !== null;
+}
+
+function compareProviderDirectoryMarket(left: ProviderDirectoryMarket, right: ProviderDirectoryMarket) {
+  if (fullyRankedMarket(left) && fullyRankedMarket(right)) {
+    return compareExternalMarketRank(
+      left as ExternalMarket,
+      right as ExternalMarket
+    );
+  }
+  if (fullyRankedMarket(left) !== fullyRankedMarket(right)) return fullyRankedMarket(left) ? -1 : 1;
+  return (right.liquidityUsd ?? -1) - (left.liquidityUsd ?? -1)
+    || (right.volume24h ?? -1) - (left.volume24h ?? -1)
+    || left.address.toLowerCase().localeCompare(right.address.toLowerCase())
+    || (left.pairAddress ?? "~").toLowerCase().localeCompare((right.pairAddress ?? "~").toLowerCase());
 }
 
 function tokenFromPair(pair: RawPair, stockTokenAddresses: ReadonlySet<string>) {
@@ -385,28 +463,28 @@ export async function GET(request: Request) {
       : null;
     let sushiLaunchSnapshot: SushiLaunchSnapshot;
     let publicDiscoverySnapshot: PublicDiscoverySnapshot;
-    let geckoNewPoolPairs: GeckoNewPoolPair[];
-    let geckoNewPoolsDelayed: boolean;
+    let geckoPoolPairs: GeckoPoolPair[];
+    let geckoDelayedFeeds: GeckoPoolFeedId[];
     let stockRegistry: Awaited<ReturnType<typeof fetchRobinhoodStockRegistry>>;
     if (requestedContract) {
       sushiLaunchSnapshot = { projects: new Map(), candidateAddresses: [], delayed: false };
       publicDiscoverySnapshot = { tokenAddresses: [], metadata: new Map() };
-      geckoNewPoolPairs = [];
-      geckoNewPoolsDelayed = false;
+      geckoPoolPairs = [];
+      geckoDelayedFeeds = [];
       stockRegistry = await fetchRobinhoodStockRegistry();
     } else {
-      [sushiLaunchSnapshot, publicDiscoverySnapshot, stockRegistry, { pairs: geckoNewPoolPairs, delayed: geckoNewPoolsDelayed }] = await Promise.all([
+      [sushiLaunchSnapshot, publicDiscoverySnapshot, stockRegistry, { pairs: geckoPoolPairs, delayedFeeds: geckoDelayedFeeds }] = await Promise.all([
         fetchSushiLaunchSnapshot(),
         fetchPublicDiscoveryTokens().catch(() => ({ tokenAddresses: [], metadata: new Map() })),
         fetchRobinhoodStockRegistry(),
-        fetchGeckoNewPoolSnapshot()
+        fetchGeckoPoolSnapshot()
       ]);
     }
     const stockTokenAddresses = new Set(stockRegistry.assetsByAddress.keys());
     const requestedTokens = [...new Set(
       [
         ...sushiLaunchSnapshot.candidateAddresses.map((address) => address.toLowerCase()),
-        ...geckoNewPoolPairs.map((pair) => pair.baseToken.address.toLowerCase()),
+        ...geckoPoolPairs.map((pair) => pair.baseToken.address.toLowerCase()),
         ...publicDiscoverySnapshot.tokenAddresses,
         ...(requestedContract ? [requestedContract] : [])
       ]
@@ -421,7 +499,7 @@ export async function GET(request: Request) {
           ...CANONICAL_MARKET_TOKENS.map((address) => fetchCanonicalTokenPairs(address).catch(() => [])),
           ...tokenBatches.map((addresses) => fetchTokenBatch(addresses).catch(() => []))
         ]);
-    const pairs: RawPair[] = [...results.flat(), ...geckoNewPoolPairs];
+    const pairs: RawPair[] = [...results.flat(), ...geckoPoolPairs];
     if (pairs.length === 0) {
       if (requestedContract) {
         const resolution = await resolveUniversalMarketAddress(requestedContract, stockRegistry);
@@ -456,16 +534,8 @@ export async function GET(request: Request) {
       candidateAddresses,
       new Set(sushiLaunchSnapshot.projects.keys())
     );
-    if (rmtOrigins.coverage !== "complete") {
-      const stale = requestedContract ? null : staleResponse();
-      if (stale) return stale;
-      if (!requestedContract) {
-        throw new Error("Exact RMT V6 origin coverage is unavailable.");
-      }
-    }
-
     const evidenceByToken = new Map<string, AssetMarketEvidence[]>();
-    const marketCandidatesByToken = new Map<string, ExternalMarket[]>();
+    const marketCandidatesByToken = new Map<string, ProviderDirectoryMarket[]>();
 
     for (const pair of pairs) {
       if (pair.chainId !== CHAIN_SLUG) continue;
@@ -488,52 +558,36 @@ export async function GET(request: Request) {
         chainSlug: CHAIN_SLUG,
         canonicalQuoteAddresses: EXCLUDED_TOKENS,
         assetQuoteAddresses: stockTokenAddresses,
-        provenance: requestedContract ? "dexscreener-token-pairs" : "dexscreener-token-batch"
+        provenance: requestedContract
+          ? "dexscreener-token-pairs"
+          : Array.isArray(pair.discoveryFeeds)
+            ? "geckoterminal-pool-feed"
+            : "dexscreener-token-batch"
       });
       if (!evidence) continue;
       const evidenceList = evidenceByToken.get(address.toLowerCase()) ?? [];
       evidenceList.push(evidence);
       evidenceByToken.set(address.toLowerCase(), evidenceList);
-      if (evidence.displayEligibility !== "eligible" || evidence.pool.kind !== "evm-address") continue;
+      if ((evidence.displayEligibility !== "eligible" && evidence.displayEligibility !== "missing-price")
+        || evidence.assetSide !== "BASE") continue;
 
-      const liquidityUsd = evidence.liquidityUsd ?? 0;
-      const marketCapUsd = evidence.marketCapUsd ?? 0;
-      const fdvUsd = evidence.fdvUsd ?? 0;
-      const volume5m = Math.max(0, asNumber(pair.volume?.m5));
-      const volume1h = Math.max(0, asNumber(pair.volume?.h1));
-      const volume24h = evidence.volume24h ?? 0;
-      const priceChange5m = asNumber(pair.priceChange?.m5);
-      const priceChange1h = asNumber(pair.priceChange?.h1);
-      const priceChange24h = evidence.priceChange24h ?? 0;
+      const liquidityUsd = evidence.liquidityUsd;
+      const marketCapUsd = evidence.marketCapUsd ?? evidence.fdvUsd;
+      const fdvUsd = evidence.fdvUsd;
+      const volume5m = nonNegativeNumber(pair.volume?.m5);
+      const volume1h = nonNegativeNumber(pair.volume?.h1);
+      const volume24h = evidence.volume24h;
+      const priceChange5m = finiteNumber(pair.priceChange?.m5);
+      const priceChange1h = finiteNumber(pair.priceChange?.h1);
+      const priceChange24h = evidence.priceChange24h;
       const transactions5m = transactionWindow(pair, "m5");
       const transactions1h = transactionWindow(pair, "h1");
       const transactions24h = transactionWindow(pair, "h24");
-      const pairCreatedAt = asNumber(pair.pairCreatedAt) || null;
-
-      const exactContractLookup = requestedContract === address.toLowerCase()
-        || requestedContract === pairAddress.toLowerCase();
-      if (
-        !exactContractLookup
-        && (liquidityUsd < RUNNER_THRESHOLDS.minimumDisplayLiquidityUsd || volume24h <= 0)
-      ) continue;
-
-      const ranking = rankExternalMarket({
-        liquidityUsd,
-        marketCapUsd,
-        volume5m,
-        volume1h,
-        volume24h,
-        priceChange5m,
-        priceChange1h,
-        buys5m: transactions5m.buys,
-        sells5m: transactions5m.sells,
-        buys1h: transactions1h.buys,
-        sells1h: transactions1h.sells,
-        pairCreatedAt
-      });
+      const pairCreatedAt = nonNegativeNumber(pair.pairCreatedAt);
+      const ranking = rankingFor(pair, evidence);
 
       const discoveryMetadata = publicDiscoverySnapshot.metadata.get(address.toLowerCase());
-      const market: ExternalMarket = {
+      const market: ProviderDirectoryMarket = {
         assetId: evidence.assetId,
         address,
         name,
@@ -564,7 +618,7 @@ export async function GET(request: Request) {
           url,
           execution: "read-only"
         },
-        priceUsd: evidence.priceUsd ?? 0,
+        priceUsd: evidence.priceUsd,
         liquidityUsd,
         marketCapUsd,
         fdvUsd,
@@ -581,7 +635,11 @@ export async function GET(request: Request) {
         buys24h: transactions24h.buys,
         sells24h: transactions24h.sells,
         pairCreatedAt,
-        ...ranking
+        ageMinutes: ranking?.ageMinutes ?? null,
+        momentumScore: ranking?.momentumScore ?? null,
+        buyPressureBps: ranking?.buyPressureBps ?? null,
+        signal: ranking?.signal ?? null,
+        riskFlags: ranking?.riskFlags ?? null
       };
       const sushiLaunchProject = sushiLaunchSnapshot.projects.get(address.toLowerCase());
       const matchingProject = sushiLaunchProject?.launchPool.toLowerCase() === pairAddress.toLowerCase()
@@ -601,15 +659,18 @@ export async function GET(request: Request) {
     }
 
     const assetRecords = [...evidenceByToken.values()].flatMap((evidence) => {
-      const record = buildAssetMarketRecord(evidence, { requireChart: true });
+      const record = buildAssetMarketRecord(evidence);
       return record ? [record] : [];
     });
-    const marketsByToken = new Map<string, ExternalMarket>();
+    const marketsByToken = new Map<string, ProviderDirectoryMarket>();
     for (const record of assetRecords) {
-      if (!record.primaryMarket) continue;
       const key = record.token.address.toLowerCase();
       const candidates = marketCandidatesByToken.get(key) ?? [];
-      const primary = candidates.find((candidate) => candidate.pairAddress.toLowerCase() === record.primaryMarket?.pool.value.toLowerCase());
+      const primary = record.primaryMarket
+        ? candidates.find((candidate) => candidate.pairAddress.toLowerCase() === record.primaryMarket?.pool.value.toLowerCase())
+        : record.verifiedMarkets
+            .map((evidence) => candidates.find((candidate) => candidate.pairAddress.toLowerCase() === evidence.pool.value.toLowerCase()))
+            .find(Boolean);
       if (!primary) continue;
       const stockAssetRelationships = [...new Map(candidates.flatMap((candidate) => candidate.stockAssetRelationships ?? []).map((relationship) => [
         `${relationship.relationship}:${relationship.contractAddress.toLowerCase()}`,
@@ -620,7 +681,7 @@ export async function GET(request: Request) {
         imageUri: primary.imageUri ?? candidates.map((candidate) => candidate.imageUri).find(Boolean),
         socials: primary.socials ?? candidates.map((candidate) => candidate.socials).find(Boolean),
         stockAssetRelationships,
-        primaryMarket: record.primaryMarket,
+        primaryMarket: record.primaryMarket ?? undefined,
         verifiedMarkets: record.verifiedMarkets
       });
     }
@@ -631,7 +692,7 @@ export async function GET(request: Request) {
           || market.pairAddress.toLowerCase() === requestedContract
         )
       : [...marketsByToken.values()]
-          .sort(compareExternalMarketRank)
+          .sort(compareProviderDirectoryMarket)
           .slice(0, VNEXT_MARKET_DIRECTORY_MAX_MARKETS);
     let markets = rankedMarkets;
     let resolution;
@@ -645,7 +706,7 @@ export async function GET(request: Request) {
     const snapshot: SuccessfulMarketSnapshot = {
       markets,
       assetRecords,
-      source: "DEX Screener markets + GeckoTerminal newest pools + public discovery + verified Sushi Launch metadata + Robinhood Stock Token registry",
+      source: "DEX Screener markets + GeckoTerminal new/top/trending pools + public discovery + verified Sushi Launch metadata + Robinhood Stock Token registry",
       rankingVersion: "rmt-discovery-v6",
       thresholds: RUNNER_THRESHOLDS,
       originCoverage: "unavailable",
@@ -657,7 +718,8 @@ export async function GET(request: Request) {
 
     const delayedSources = [
       ...(sushiLaunchSnapshot.delayed ? ["sushi-launch-metadata"] : []),
-      ...(geckoNewPoolsDelayed ? ["geckoterminal-new-pools"] : [])
+      ...geckoDelayedFeeds.map((feed) => `geckoterminal-${feed}`),
+      ...(rmtOrigins.coverage !== "complete" ? ["rmt-origin"] : [])
     ];
 
     return NextResponse.json(

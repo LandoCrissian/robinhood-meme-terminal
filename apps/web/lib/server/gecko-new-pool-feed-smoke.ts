@@ -1,5 +1,11 @@
 import assert from "node:assert/strict";
-import { fetchGeckoNewPoolSnapshot, parseGeckoNewPoolPairs } from "./gecko-new-pool-feed";
+import { zeroAddress } from "viem";
+import {
+  GECKO_POOL_FEEDS,
+  fetchGeckoPoolSnapshot,
+  geckoPoolFeedUrl,
+  parseGeckoPoolPairs
+} from "./gecko-new-pool-feed";
 
 const base = "0x1111111111111111111111111111111111111111";
 const quote = "0x2222222222222222222222222222222222222222";
@@ -32,46 +38,103 @@ const payload = {
   ]
 };
 
-const parsed = parseGeckoNewPoolPairs(payload);
+const parsed = parseGeckoPoolPairs(payload, "new");
 assert.equal(parsed.length, 1);
-assert.equal(parsed[0]?.baseToken.address, base);
+assert.equal(parsed[0]?.baseToken.address.toLowerCase(), base);
 assert.equal(parsed[0]?.pairAddress, pair);
 assert.equal(parsed[0]?.dexId, "uniswap-v3-robinhood");
 assert.equal(parsed[0]?.txns.m5?.buys, 9);
 assert.equal(parsed[0]?.liquidity.usd, 9493);
 assert.equal(parsed[0]?.pairCreatedAt, Date.parse("2026-08-03T15:49:16Z"));
 assert.match(parsed[0]?.info?.imageUrl ?? "", /coin-images\.coingecko\.com/);
-assert.deepEqual(parseGeckoNewPoolPairs({ malformed: true }), []);
+assert.deepEqual(parsed[0]?.discoveryFeeds, ["new"]);
+assert.deepEqual(parseGeckoPoolPairs({ malformed: true }, "new"), []);
+
+const missingMetrics = {
+  ...payload,
+  data: [{
+    ...payload.data[0]!,
+    attributes: {
+      ...payload.data[0]!.attributes,
+      base_token_price_usd: null,
+      market_cap_usd: null,
+      volume_usd: { m5: null, h1: null, h24: null },
+      reserve_in_usd: null
+    }
+  }]
+};
+const withoutMetrics = parseGeckoPoolPairs(missingMetrics, "top")[0];
+assert.equal(withoutMetrics?.priceUsd, null);
+assert.equal(withoutMetrics?.volume.h1, null);
+assert.equal(withoutMetrics?.liquidity.usd, null);
+
+const nativeV4Payload = {
+  ...payload,
+  data: [{
+    ...payload.data[0]!,
+    attributes: {
+      ...payload.data[0]!.attributes,
+      base_token_price_usd: "3200",
+      quote_token_price_usd: "0.00012"
+    },
+    relationships: {
+      ...payload.data[0]!.relationships,
+      base_token: { data: { id: `robinhood_${zeroAddress}`, type: "token" } },
+      quote_token: { data: { id: `robinhood_${base}`, type: "token" } }
+    }
+  }],
+  included: [
+    { id: `robinhood_${zeroAddress}`, type: "token", attributes: { address: zeroAddress, name: "Ether", symbol: "ETH", image_url: null } },
+    payload.included[0]!,
+    payload.included[2]!
+  ]
+};
+const nativeV4 = parseGeckoPoolPairs(nativeV4Payload, "trending-1h")[0];
+assert.equal(nativeV4?.baseToken.address.toLowerCase(), base);
+assert.equal(nativeV4?.quoteToken.address.toLowerCase(), zeroAddress);
+assert.equal(nativeV4?.priceUsd, 0.00012);
+
+const expectedRequests = GECKO_POOL_FEEDS.reduce((total, feed) => total + feed.pages.length, 0);
+assert.equal(expectedRequests, 11, "The broad provider fan-in must remain explicitly bounded");
+for (const feed of GECKO_POOL_FEEDS) {
+  for (const page of feed.pages) {
+    const url = geckoPoolFeedUrl(feed, page);
+    assert.equal(url.searchParams.get("include"), "base_token,quote_token,dex");
+    assert.equal(url.searchParams.get("page"), String(page));
+    assert.equal(url.searchParams.get("duration"), feed.duration ?? null);
+  }
+}
 
 async function main() {
-  let requested = "";
-  const snapshot = await fetchGeckoNewPoolSnapshot({
+  const requested: string[] = [];
+  const snapshot = await fetchGeckoPoolSnapshot({
     fetch: async (input) => {
-      requested = String(input);
+      const url = new URL(String(input));
+      requested.push(url.toString());
+      if (url.pathname.endsWith("/trending_pools") && url.searchParams.get("duration") === "5m") {
+        return new Response("delayed", { status: 503 });
+      }
       return Response.json(payload);
     }
   });
-  assert.match(requested, /\/networks\/robinhood\/new_pools/);
-  assert.equal(snapshot.delayed, false);
-  assert.equal(snapshot.pairs.length, 1);
+  assert.equal(requested.length, expectedRequests);
+  assert.equal(requested.filter((url) => url.includes("/new_pools?")).length, 2);
+  assert.equal(requested.filter((url) => url.includes("/pools?") && !url.includes("trending_pools")).length, 3);
+  assert.equal(requested.filter((url) => url.includes("duration=5m")).length, 1);
+  assert.equal(requested.filter((url) => url.includes("duration=1h")).length, 3);
+  assert.equal(requested.filter((url) => url.includes("duration=24h")).length, 2);
+  assert.equal(snapshot.delayed, true);
+  assert.deepEqual(snapshot.delayedFeeds, ["trending-5m"]);
+  assert.equal(snapshot.pairs.length, 1, "Duplicate chain + pool observations must collapse deterministically");
+  assert.deepEqual(snapshot.pairs[0]?.discoveryFeeds, ["new", "top", "trending-1h", "trending-24h"]);
 
-  const validEmpty = await fetchGeckoNewPoolSnapshot({
-    fetch: async () => Response.json({ data: [], included: [] })
-  });
-  assert.equal(validEmpty.delayed, false, "A valid response with no address-based pools is not an outage");
-  assert.deepEqual(validEmpty.pairs, []);
-
-  const malformed = await fetchGeckoNewPoolSnapshot({
-    fetch: async () => Response.json({ malformed: true })
-  });
-  assert.equal(malformed.delayed, true);
-
-  const delayed = await fetchGeckoNewPoolSnapshot({
+  const allDelayed = await fetchGeckoPoolSnapshot({
     fetch: async () => new Response("delayed", { status: 503 })
   });
-  assert.equal(delayed.delayed, true);
-  assert.deepEqual(delayed.pairs, []);
-  console.info("GeckoTerminal new-pool feed smoke passed");
+  assert.equal(allDelayed.delayed, true);
+  assert.deepEqual(allDelayed.pairs, []);
+  assert.deepEqual(new Set(allDelayed.delayedFeeds), new Set(GECKO_POOL_FEEDS.map((feed) => feed.id)));
+  console.info("GeckoTerminal broad pool feed smoke passed");
 }
 
 void main();

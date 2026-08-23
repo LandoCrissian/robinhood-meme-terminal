@@ -93,7 +93,7 @@ export function normalizeProviderPairForAsset(
   ].map((address) => address.toLowerCase()));
   const quoteSupported = assetSide === "BASE" && (
     quoteSet.has(quoteToken.address.toLowerCase())
-    || quoteToken.address === ZERO_EVM_ADDRESS
+    || (quoteToken.address === ZERO_EVM_ADDRESS && pool.kind === "bytes32")
   );
   const rawPrice = finite(pair.priceUsd);
   const priceUsd = assetSide === "BASE" && quoteSupported && rawPrice !== null && rawPrice > 0 ? rawPrice : null;
@@ -158,9 +158,17 @@ export function selectExternalPairBaseTokenWithAssetQuotes<T extends PairToken>(
   canonicalQuoteAddresses: ReadonlySet<string>,
   assetQuoteAddresses: ReadonlySet<string>
 ) {
+  const baseAddress = typeof baseToken?.address === "string" ? baseToken.address.trim() : "";
+  const quoteAddress = typeof quoteToken?.address === "string" ? quoteToken.address.trim().toLowerCase() : "";
+  const excludedAddresses = new Set([...canonicalQuoteAddresses, ...assetQuoteAddresses].map((address) => address.toLowerCase()));
+  if (
+    isNonzeroEvmAddress(baseAddress)
+    && !excludedAddresses.has(baseAddress.toLowerCase())
+    && quoteAddress === ZERO_EVM_ADDRESS
+  ) return baseToken;
   return selectExternalPairBaseToken(
     baseToken,
     quoteToken,
-    new Set([...canonicalQuoteAddresses, ...assetQuoteAddresses])
+    excludedAddresses
   ) ?? selectExternalPairBaseToken(baseToken, quoteToken, canonicalQuoteAddresses);
 }
