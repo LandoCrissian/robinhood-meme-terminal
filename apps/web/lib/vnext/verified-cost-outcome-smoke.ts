@@ -5,7 +5,7 @@ import { deriveVNextVerifiedUsdgOutcome } from "./verified-cost-outcome";
 
 const now = 1_786_000_000_000;
 const usdg = "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168";
-const tradeAsset = "0xdBa33be56C89CC9fc014c4459028d7e5c7878671";
+const tradeAsset = "0xe934e36A439C94017B64a3FecE66AF12099aBF50";
 const evidence = {
   inputAsset: usdg,
   outputAsset: tradeAsset,

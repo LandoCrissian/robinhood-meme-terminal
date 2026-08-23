@@ -3249,11 +3249,11 @@ export function V6ReleaseConsole() {
         <p><span>Pending factory</span><code>{pendingFactory && pendingFactory !== ZERO_ADDRESS ? short(pendingFactory) : "None"}</code></p>
         <p><span>Registry activation</span><code>{timeLabel(pendingActivationTime)}</code></p>
         <p><span>Launch gate</span><code>{isOpen ? "Open" : "Paused"}</code></p>
-        <p><span>One-time bootstrap</span><code>{bootstrapState === 0 ? "Unused" : bootstrapState === 1 ? "Official RMT + smoke pending" : bootstrapState === 2 ? "Permanently complete" : bootstrapState === 3 ? "Aborted" : "Reading…"}</code></p>
+        <p><span>Historical one-time bootstrap</span><code>{bootstrapState === 0 ? "Unused" : bootstrapState === 1 ? "Historical launch + smoke pending" : bootstrapState === 2 ? "Permanently complete" : bootstrapState === 3 ? "Aborted" : "Reading…"}</code></p>
         <p><span>Bootstrap expiry</span><code>{timeLabel(bootstrapExpiresAt)}</code></p>
       <p><span>V6 + critical dependency sources</span><code>{deployment.sourceVerified ? `Verified ${deployment.sourceVerifiedAt ? new Date(deployment.sourceVerifiedAt).toLocaleString() : "live"}` : deployment.verified ? "Required before activation" : "Waiting for deployment"}</code></p>
-        <p><span>Official RMT V6 migration</span><code>{officialMigrationConsumed === true ? "Launched" : isActive ? "Required before reopening" : "Available after activation"}</code></p>
-        {officialToken && <p><span>Official RMT V6 token</span><code>{short(officialToken)}</code></p>}
+        <p><span>Historical V6 launch migration</span><code>{officialMigrationConsumed === true ? "Recorded" : isActive ? "Historical step incomplete" : "Historical state unavailable"}</code></p>
+        {officialToken && <p><span>Historical V6 launch token</span><code>{short(officialToken)}</code></p>}
         {officialSmokeFees !== undefined && <p><span>Confirmed official curve fees</span><code>{formatEther(officialSmokeFees)} ETH</code></p>}
         <p><span>Gate reopening</span><code>{timeLabel(onchainUnpauseTime || deployment.readyAt.unpause)}</code></p>
       </div>
@@ -3267,9 +3267,9 @@ export function V6ReleaseConsole() {
       {nextAction === "bootstrap-activate" && <button className="deploy-stack-button" disabled={!isOperator || busy} onClick={activateBootstrapFoundation}>{busy ? status : "Activate verified V6 while launches stay paused"}</button>}
       {nextAction === "cutover" && <div className="deployment-safety"><p>Update production and redeploy it with these public values before launching RMT:</p><p><code>NEXT_PUBLIC_VERSION_REGISTRY_ADDRESS={deployment.addresses.registry}</code><br /><code>NEXT_PUBLIC_FACTORY_START_BLOCK={deployment.factoryStartBlock ?? "read confirmed factory receipt"}</code></p></div>}
       {nextAction === "cutover" && <button className="deploy-stack-button" disabled={!isOperator || busy} onClick={verifyProductionCutover}>{busy ? status : "Verify live V6 production cutover"}</button>}
-      {nextAction === "official" && <a className="deploy-stack-button" href="/launch?official=v6">Open the prefilled official RMT launch →</a>}
+      {nextAction === "official" && <a className="deploy-stack-button" href="/launch?official=v6">Open the historical V6 launch workflow →</a>}
       {nextAction === "smoke" && officialToken && <p className="deployment-safety">RMT launched at <code>{officialToken}</code>. Wait one block for Fair Start, make one small buy on its token page, and return here. The controller requires a real fully settled curve fee; sending ETH directly cannot satisfy it.</p>}
-      {nextAction === "smoke" && officialToken && <a className="deploy-stack-button" href={`/project/${officialToken}?launch=0`}>Open official RMT and make the smoke buy →</a>}
+      {nextAction === "smoke" && officialToken && <a className="deploy-stack-button" href={`/project/${officialToken}?launch=0`}>Open the historical launch record →</a>}
       {nextAction === "bootstrap-open" && <button className="deploy-stack-button" disabled={!isOperator || busy} onClick={openAfterOfficialSmoke}>{busy ? status : "Recheck everything and open public token creation"}</button>}
       {nextAction === "reading" && <p className="deployment-safety">Reading the exact V6 bootstrap state from mainnet…</p>}
       {nextAction === "aborted" && <p className="deployment-error">The expedited bootstrap is permanently aborted or expired. Public launches remain paused; only the normal delayed governance path can continue this deployment.</p>}

@@ -13,7 +13,6 @@ import {
 } from "../lib/creator-application";
 import { subscribeToPublicProjects } from "../lib/creator-application-cloud";
 import { filterGameProjects, sortGameProjects } from "../lib/game-discovery";
-import { OFFICIAL_RMT_V6_TOKEN } from "../lib/project-page";
 import { ipfsToHttp } from "../lib/token-metadata";
 import { publicCommunityProjectPagesEnabled } from "../lib/public-project-visibility";
 
@@ -151,7 +150,6 @@ export function ApprovedProjectDirectory() {
 
   const visibleProjects = useMemo(() => projects
     .filter(() => publicCommunityProjectPagesEnabled)
-    .filter((project) => project.tokenAddress.toLowerCase() !== OFFICIAL_RMT_V6_TOKEN.toLowerCase())
     .sort((left, right) => publishedTime(right.publishedAt) - publishedTime(left.publishedAt)
       || left.name.localeCompare(right.name)), [projects]);
   const gamingProjects = useMemo(() => sortGameProjects([...visibleProjects]), [visibleProjects]);
@@ -165,21 +163,10 @@ export function ApprovedProjectDirectory() {
           <h2 id="approved-directory-title">The RMT ecosystem</h2>
           <p>Official RMT infrastructure is live. Community project publishing returns with the reviewed V7 creator system.</p>
         </div>
-        <span>{1 + visibleProjects.length} PROJECT{visibleProjects.length === 0 ? "" : "S"}</span>
+        <span>{visibleProjects.length} PROJECT{visibleProjects.length === 1 ? "" : "S"}</span>
       </header>
 
       <div className="approvedProjectGrid">
-        <Link className="approvedDirectoryCard official" href={`/project/${OFFICIAL_RMT_V6_TOKEN}`}>
-          <div className="approvedDirectoryMark"><img src="/brand/rmt-master-logo.png" alt="" /></div>
-          <div className="approvedDirectoryIdentity">
-            <span>OFFICIAL RMT · FACTORY VERIFIED</span>
-            <h3>Robinhood Meme Terminal</h3>
-            <p>RMT&apos;s live protocol identity, verified token contract and current onchain project modules.</p>
-          </div>
-          <div className="approvedDirectoryModules"><span>Token</span><span>Protocol</span><span>Trading</span></div>
-          <strong>Open project →</strong>
-        </Link>
-
         {visibleProjects.map((project) => (
           <Link className="approvedDirectoryCard" href={`/project/${project.slug}`} key={project.slug}>
             <ProjectDirectoryMark project={project} />

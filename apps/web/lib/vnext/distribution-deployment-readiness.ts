@@ -2,8 +2,10 @@ import { isHash, keccak256, toBytes, type Hex } from "viem";
 import { z } from "zod";
 import { canonicalDistributionJson, RMT_DISTRIBUTION_CHAIN_ID } from "./distribution-domain";
 
-export const OFFICIAL_RMT_DISTRIBUTION_TOKEN = "0xdBa33be56C89CC9fc014c4459028d7e5c7878671" as const;
-export const OFFICIAL_RMT_DISTRIBUTION_RUNTIME_HASH =
+// Historical fork/rehearsal fixture only. Launch 0 is retired and this packet
+// is deliberately ineligible for live deployment or current-token binding.
+export const HISTORICAL_LAUNCH_ZERO_DISTRIBUTION_FIXTURE_TOKEN = "0xdBa33be56C89CC9fc014c4459028d7e5c7878671" as const;
+export const HISTORICAL_LAUNCH_ZERO_DISTRIBUTION_FIXTURE_RUNTIME_HASH =
   "0x49cd48d0204b35d27e6fca131febe8ce5aff6cd0c2fb6c5c21d5f0ad616e99e9" as const;
 
 const DEPLOYMENT_BLOCKERS = [
@@ -29,8 +31,8 @@ export type DistributionDeploymentReadinessPacketV1 = {
     retirementSinkRuntimeHash: Hex;
   };
   dependency: {
-    rmtToken: typeof OFFICIAL_RMT_DISTRIBUTION_TOKEN;
-    rmtRuntimeHash: typeof OFFICIAL_RMT_DISTRIBUTION_RUNTIME_HASH;
+    rmtToken: typeof HISTORICAL_LAUNCH_ZERO_DISTRIBUTION_FIXTURE_TOKEN;
+    rmtRuntimeHash: typeof HISTORICAL_LAUNCH_ZERO_DISTRIBUTION_FIXTURE_RUNTIME_HASH;
   };
   utilityPolicy: {
     status: "unapproved";
@@ -87,8 +89,8 @@ const readinessSchema = z.object({
     retirementSinkRuntimeHash: hash
   }).strict(),
   dependency: z.object({
-    rmtToken: z.literal(OFFICIAL_RMT_DISTRIBUTION_TOKEN),
-    rmtRuntimeHash: z.literal(OFFICIAL_RMT_DISTRIBUTION_RUNTIME_HASH)
+    rmtToken: z.literal(HISTORICAL_LAUNCH_ZERO_DISTRIBUTION_FIXTURE_TOKEN),
+    rmtRuntimeHash: z.literal(HISTORICAL_LAUNCH_ZERO_DISTRIBUTION_FIXTURE_RUNTIME_HASH)
   }).strict(),
   utilityPolicy: z.object({
     status: z.literal("unapproved"),
@@ -154,8 +156,8 @@ function packetCore(input: ReadinessInput) {
       retirementSinkRuntimeHash: codeHash(input.retirementSinkRuntimeCode, "retirement sink runtime")
     },
     dependency: {
-      rmtToken: OFFICIAL_RMT_DISTRIBUTION_TOKEN,
-      rmtRuntimeHash: OFFICIAL_RMT_DISTRIBUTION_RUNTIME_HASH
+      rmtToken: HISTORICAL_LAUNCH_ZERO_DISTRIBUTION_FIXTURE_TOKEN,
+      rmtRuntimeHash: HISTORICAL_LAUNCH_ZERO_DISTRIBUTION_FIXTURE_RUNTIME_HASH
     },
     utilityPolicy: {
       status: "unapproved" as const,

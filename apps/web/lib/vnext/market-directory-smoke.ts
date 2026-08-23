@@ -42,15 +42,15 @@ import {
   vNextRwaClassificationLabel,
   vNextMarketDirectoryViewCounts
 } from "./market-directory";
-import { ROBINHOOD_RMT, ROBINHOOD_RMT_ADDRESS, ROBINHOOD_WETH_ADDRESS } from "./robinhood-assets";
+import { ROBINHOOD_WETH, ROBINHOOD_WETH_ADDRESS } from "./robinhood-assets";
 
 const otherAddress = "0x2222222222222222222222222222222222222222";
 const payload = {
   markets: [
     {
-      address: ROBINHOOD_RMT_ADDRESS,
-      name: "Robinhood Meme Terminal",
-      symbol: "RMT",
+      address: ROBINHOOD_WETH_ADDRESS,
+      name: "Wrapped Ether",
+      symbol: "WETH",
       priceUsd: 0.004,
       liquidityUsd: 100_000,
       marketCapUsd: 1_000_000,
@@ -81,7 +81,7 @@ assert.equal(markets.length, 2);
 assert.equal(markets[1].priceUsd, null);
 assert.equal(markets[1].liquidityUsd, null);
 assert.equal(markets[1].priceChange24h, null);
-assert.equal(assetKey(verifiedDirectoryAsset(markets[0])!.id), assetKey(ROBINHOOD_RMT.id));
+assert.equal(assetKey(verifiedDirectoryAsset(markets[0])!.id), assetKey(ROBINHOOD_WETH.id));
 assert.equal(verifiedDirectoryAsset(markets[1]), null);
 
 const categorized = normalizeDirectoryMarkets({
@@ -149,7 +149,7 @@ assert.equal(counts.active, 2);
 assert.equal(counts.rwa, 2);
 assert.equal(counts.held, 1);
 assert.equal(counts.all, 4);
-assert.equal(selectVNextMarketDirectoryView(categorized, "trending", held)[0].symbol, "RMT");
+assert.equal(selectVNextMarketDirectoryView(categorized, "trending", held)[0].symbol, "WETH");
 assert.equal(selectVNextMarketDirectoryView(categorized, "held", held)[0].symbol, "OTH");
 const rwaMarkets = selectVNextMarketDirectoryView(categorized, "rwa", held);
 assert.deepEqual(rwaMarkets.map((market) => market.rwaRelationship), ["canonical-stock-token", "paired-market-asset"]);
@@ -315,7 +315,7 @@ const verified = verifiedDirectoryAsset(markets[1], resolution);
 assert.equal(verified?.metadataState, "verified");
 assert.equal(verified?.decimals, 18);
 assert.equal(resolutionFromLookup({ resolution }, otherAddress), resolution);
-assert.equal(verifiedDirectoryAsset(markets[1], { ...resolution, chainId: 4_663, token: { ...resolution.token, address: ROBINHOOD_RMT_ADDRESS } }), null);
+assert.equal(verifiedDirectoryAsset(markets[1], { ...resolution, chainId: 4_663, token: { ...resolution.token, address: ROBINHOOD_WETH_ADDRESS } }), null);
 const identityOnlyMarket = directoryMarketFromVerifiedIdentity({ resolution }, otherAddress);
 assert.equal(identityOnlyMarket?.address, otherAddress);
 assert.equal(identityOnlyMarket?.symbol, "OTH");
@@ -336,7 +336,7 @@ assert.equal(shouldRequestVNextExternalWorkspaceMarket(identityOnlyMarket!), tru
 assert.equal(directoryMarketFromVerifiedIdentity({
   resolution: { ...resolution, chainId: 1 }
 } as unknown as ExternalMarketResponse, otherAddress), null);
-assert.equal(directoryMarketFromVerifiedIdentity({ resolution: { ...resolution, token: { ...resolution.token, address: ROBINHOOD_RMT_ADDRESS } } }, otherAddress), null);
+assert.equal(directoryMarketFromVerifiedIdentity({ resolution: { ...resolution, token: { ...resolution.token, address: ROBINHOOD_WETH_ADDRESS } } }, otherAddress), null);
 assert.equal(directoryMarketFromVerifiedIdentity({ resolution }, "not-an-address"), null);
 
 const exactAddress = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";

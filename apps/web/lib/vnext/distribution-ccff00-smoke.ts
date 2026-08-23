@@ -16,7 +16,7 @@ import {
   CCFF00_COLLECTION,
   CCFF00_ERC6551_REGISTRY,
   CCFF00_ERC6551_SALT,
-  CCFF00_RMT_TOKEN,
+  CCFF00_HISTORICAL_LAUNCH_ZERO_TOKEN,
   CCFF00_TOKEN,
   CCFF00_TOKENS_PER_NFT_ATOMIC,
   buildCcff00RmtDropManifestV1,
@@ -65,7 +65,7 @@ const bytecodes = new Map<string, Hex>([
   [CCFF00_ERC6551_REGISTRY.toLowerCase(), "0x6002"],
   [CCFF00_ACCOUNT_IMPLEMENTATION.toLowerCase(), "0x6003"],
   [CCFF00_TOKEN.toLowerCase(), "0x6004"],
-  [CCFF00_RMT_TOKEN.toLowerCase(), "0x6005"]
+  [CCFF00_HISTORICAL_LAUNCH_ZERO_TOKEN.toLowerCase(), "0x6005"]
 ]);
 
 const registryProofAbi = [{
@@ -150,7 +150,7 @@ function registryCreatedLog(tba: Address, logIndex: number): Ccff00ProofReceiptL
 
 function rmtTransferLog(from: Address, to: Address, amount: bigint, logIndex: number): Ccff00ProofReceiptLogV1 {
   return {
-    address: CCFF00_RMT_TOKEN,
+    address: CCFF00_HISTORICAL_LAUNCH_ZERO_TOKEN,
     topics: encodeEventTopics({ abi: erc20ProofAbi, eventName: "Transfer", args: { from, to } })
       .flatMap((topic) => typeof topic === "string" ? [topic] : []),
     data: encodeAbiParameters([{ type: "uint256" }], [amount]),
@@ -204,7 +204,7 @@ function fakeClient(mode: "canaries" | "full", overrides: {
       }
       if (functionName === "balanceOf") {
         if (address === CCFF00_TOKEN) return CCFF00_TOKENS_PER_NFT_ATOMIC;
-        if (address === CCFF00_RMT_TOKEN) return 0n;
+        if (address === CCFF00_HISTORICAL_LAUNCH_ZERO_TOKEN) return 0n;
       }
       throw new Error(`Unexpected read ${address}:${functionName}`);
     }
@@ -260,7 +260,7 @@ const proofConfiguration: Ccff00OwnerWithdrawalConfigurationV1 = {
   salt: CCFF00_ERC6551_SALT,
   accountChainId: 4_663,
   ccff00Token: CCFF00_TOKEN,
-  rmtToken: CCFF00_RMT_TOKEN,
+  rmtToken: CCFF00_HISTORICAL_LAUNCH_ZERO_TOKEN,
   admittedCanaryTokenIds: CCFF00_CANARY_TOKEN_IDS
 };
 const activationInput = encodeFunctionData({
@@ -281,7 +281,7 @@ const returnInput = encodeFunctionData({
 const withdrawalInput = encodeFunctionData({
   abi: accountProofAbi,
   functionName: "execute",
-  args: [CCFF00_RMT_TOKEN, 0n, returnInput, 0]
+  args: [CCFF00_HISTORICAL_LAUNCH_ZERO_TOKEN, 0n, returnInput, 0]
 });
 const proofCore: Ccff00OwnerWithdrawalProofCoreV1 = {
   schemaVersion: 1,
@@ -308,7 +308,7 @@ const proofCore: Ccff00OwnerWithdrawalProofCoreV1 = {
   assets: {
     ccff00Token: CCFF00_TOKEN,
     ccff00RuntimeHash: canarySnapshot.ccff00RuntimeHash,
-    rmtToken: CCFF00_RMT_TOKEN,
+    rmtToken: CCFF00_HISTORICAL_LAUNCH_ZERO_TOKEN,
     rmtRuntimeHash: canarySnapshot.rmtRuntimeHash
   },
   activation: {
@@ -334,7 +334,7 @@ const proofCore: Ccff00OwnerWithdrawalProofCoreV1 = {
       blockHash: HASH_E,
       transactionIndex: 2,
       from: sender,
-      to: CCFF00_RMT_TOKEN,
+      to: CCFF00_HISTORICAL_LAUNCH_ZERO_TOKEN,
       input: fundingInput,
       logs: [rmtTransferLog(sender, proofTba, CCFF00_CANARY_RMT_AMOUNT_ATOMIC, 7)]
     }),
@@ -448,7 +448,7 @@ rejectProofMutation((value) => {
   value.withdrawal.transaction.input = encodeFunctionData({
     abi: accountProofAbi,
     functionName: "execute",
-    args: [CCFF00_RMT_TOKEN, 0n, wrongInner, 0]
+    args: [CCFF00_HISTORICAL_LAUNCH_ZERO_TOKEN, 0n, wrongInner, 0]
   });
 }, /withdrawal calldata recipient/);
 rejectProofMutation((value) => { value.withdrawal.amountAtomic = (2n * CCFF00_CANARY_RMT_AMOUNT_ATOMIC).toString(); }, /exactly 1 RMT/);
@@ -497,7 +497,7 @@ assert.throws(() => buildCcff00RmtDropManifestV1({
   rmtPerTokenBoundAccount: "500",
   infrastructure: {
     engine, engineRuntimeHash: HASH_A, retirementSink: sink, retirementSinkRuntimeHash: HASH_B,
-    rmtToken: CCFF00_RMT_TOKEN, rmtTokenRuntimeHash: canarySnapshot.rmtRuntimeHash,
+    rmtToken: CCFF00_HISTORICAL_LAUNCH_ZERO_TOKEN, rmtTokenRuntimeHash: canarySnapshot.rmtRuntimeHash,
     utilityPolicyVersion: 1, erc20CostPerRecipientAtomic: "7", erc721CostPerRecipientAtomic: "11", erc1155CostPerRecipientAtomic: "13"
   },
   gasEvidence: {
@@ -512,7 +512,7 @@ const planned = buildCcff00RmtDropManifestV1({
   rmtPerTokenBoundAccount: "500",
   infrastructure: {
     engine, engineRuntimeHash: HASH_A, retirementSink: sink, retirementSinkRuntimeHash: HASH_B,
-    rmtToken: CCFF00_RMT_TOKEN, rmtTokenRuntimeHash: fullSnapshot.rmtRuntimeHash,
+    rmtToken: CCFF00_HISTORICAL_LAUNCH_ZERO_TOKEN, rmtTokenRuntimeHash: fullSnapshot.rmtRuntimeHash,
     utilityPolicyVersion: 1, erc20CostPerRecipientAtomic: "7", erc721CostPerRecipientAtomic: "11", erc1155CostPerRecipientAtomic: "13"
   },
   gasEvidence: {
@@ -521,7 +521,7 @@ const planned = buildCcff00RmtDropManifestV1({
     samples: [{ recipientCount: 1, gasUsed: "200" }, { recipientCount: 2, gasUsed: "400" }, { recipientCount: 3, gasUsed: "700" }]
   }
 });
-assert.equal(planned.manifest.asset.address, CCFF00_RMT_TOKEN);
+assert.equal(planned.manifest.asset.address, CCFF00_HISTORICAL_LAUNCH_ZERO_TOKEN);
 assert.equal(planned.manifest.asset.decimals, 18);
 assert.equal(planned.manifest.entries.length, 3);
 assert.equal(planned.manifest.expectedTotalDistributionAtomic, (1_500n * 10n ** 18n).toString());
@@ -542,7 +542,7 @@ assert.throws(() => buildCcff00RmtDropManifestV1({
   rmtPerTokenBoundAccount: "500",
   infrastructure: {
     engine, engineRuntimeHash: HASH_A, retirementSink: sink, retirementSinkRuntimeHash: HASH_B,
-    rmtToken: CCFF00_RMT_TOKEN, rmtTokenRuntimeHash: HASH_A,
+    rmtToken: CCFF00_HISTORICAL_LAUNCH_ZERO_TOKEN, rmtTokenRuntimeHash: HASH_A,
     utilityPolicyVersion: 1, erc20CostPerRecipientAtomic: "7", erc721CostPerRecipientAtomic: "11", erc1155CostPerRecipientAtomic: "13"
   },
   gasEvidence: {

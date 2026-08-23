@@ -4,7 +4,6 @@ import robots from "../app/robots";
 import { staticPublicSitemap } from "../app/sitemap";
 import {
   buildVerifiedTokenProject,
-  OFFICIAL_RMT_V6_TOKEN,
   PROJECT_PAGE_SCHEMA_VERSION
 } from "./project-page";
 import { parsePublicProject } from "./creator-application";
@@ -35,13 +34,13 @@ assert.ok(publicRule?.disallow?.includes("/profile"));
 assert.ok(!publicRule?.disallow?.includes("/deploy-mainnet"), "robots.txt must not advertise hidden operator routes");
 
 const sitemapUrls = staticPublicSitemap().map((entry) => entry.url);
-for (const route of ["/", "/rmt", "/explore", `/project/${OFFICIAL_RMT_V6_TOKEN}`, "/status", "/sources", "/sushi", "/experience"]) {
+for (const route of ["/", "/rmt", "/explore", "/status", "/sources", "/sushi", "/experience"]) {
   assert.ok(sitemapUrls.includes(`${appUrl}${route}`), `Sitemap must include ${route}`);
 }
 for (const route of ["/api/health", "/deploy-mainnet", "/profile", "/portfolio", "/watchlist", "/launch", "/rescue"]) {
   assert.ok(!sitemapUrls.includes(`${appUrl}${route}`), `Sitemap must not publish ${route}`);
 }
-assert.ok(!sitemapUrls.includes(`${appUrl}/token/${OFFICIAL_RMT_V6_TOKEN}`), "Legacy token URL must defer to the canonical Project URL");
+assert.ok(!sitemapUrls.some((url) => url.includes("/project/0x") || url.includes("/token/0x")), "Retired launchpad tokens must not be static sitemap entries");
 
 const layoutSource = readFileSync(new URL("../app/layout.tsx", import.meta.url), "utf8");
 assert.doesNotMatch(layoutSource, /alternates:\s*\{\s*canonical:\s*"\/"/);
@@ -83,12 +82,12 @@ assert.match(exploreSource, /<FreshLaunchFeed \/>/);
 assert.doesNotMatch(exploreSource, /<ApprovedProjectDirectory \/>/);
 assert.doesNotMatch(exploreSource, /<ExternalMarketFeed \/>/);
 assert.match(exploreSource, /RMT markets and onchain evidence/);
-assert.equal(publicRmtProjectVisibility, "official-only");
+assert.equal(publicRmtProjectVisibility, "retired");
 assert.equal(publicCommunityProjectPagesEnabled, false);
 assert.deepEqual(publicRmtNativeLaunches([
-  { token: OFFICIAL_RMT_V6_TOKEN },
+  { token: "0x2222222222222222222222222222222222222222" },
   { token: "0x0000000000000000000000000000000000000001" }
-] as Parameters<typeof publicRmtNativeLaunches>[0]).map((launch) => launch.token), [OFFICIAL_RMT_V6_TOKEN]);
+] as unknown as Parameters<typeof publicRmtNativeLaunches>[0]), []);
 const freshLaunchFeedSource = readFileSync(new URL("../app/fresh-launch-feed.tsx", import.meta.url), "utf8");
 assert.match(freshLaunchFeedSource, /publicRmtNativeLaunches\(result\.launches\)/);
 assert.match(freshLaunchFeedSource, /<b>NEW<\/b> CREATION CLOSED/);
@@ -141,7 +140,8 @@ const projectPageSource = readFileSync(new URL("../app/project/[address]/project
 const projectRouteSource = readFileSync(new URL("../app/project/[address]/page.tsx", import.meta.url), "utf8");
 const tokenPageSource = readFileSync(new URL("../app/token/[address]/page.tsx", import.meta.url), "utf8");
 assert.match(projectPageSource, /ProjectModuleGrid/);
-assert.match(projectPageSource, /OFFICIAL RMT · PROJECT VERIFIED/);
+assert.match(projectPageSource, /RMT V6 · HISTORICAL PROJECT EVIDENCE/);
+assert.doesNotMatch(projectPageSource, /OFFICIAL RMT · PROJECT VERIFIED/);
 assert.match(projectPageSource, /MarketPanel/);
 assert.match(projectPageSource, /RMT-NATIVE TOOLKIT/);
 assert.match(projectPageSource, /Creator risk/);
@@ -181,23 +181,23 @@ assert.match(projectRouteSource, /if \(!isAddress\(address\)\) redirect\("\/expl
 assert.doesNotMatch(projectRouteSource, /ApprovedProjectPage/);
 assert.match(tokenPageSource, /ProjectDetailPage/);
 
-const officialProject = buildVerifiedTokenProject({
+const historicalProject = buildVerifiedTokenProject({
   chainId: 4663,
-  token: OFFICIAL_RMT_V6_TOKEN,
+  token: "0x2222222222222222222222222222222222222222",
   creator: "0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA",
   officialMigration: true
 });
-assert.equal(officialProject.schemaVersion, PROJECT_PAGE_SCHEMA_VERSION);
-assert.equal(officialProject.official, true);
-assert.equal(officialProject.controllerStatus, "review-required");
-assert.equal(officialProject.modules.find((module) => module.id === "token")?.status, "live");
+assert.equal(historicalProject.schemaVersion, PROJECT_PAGE_SCHEMA_VERSION);
+assert.equal(historicalProject.official, false);
+assert.equal(historicalProject.controllerStatus, "review-required");
+assert.equal(historicalProject.modules.find((module) => module.id === "token")?.status, "live");
 for (const moduleId of ["nft", "marketplace", "music"] as const) {
-  assert.equal(officialProject.modules.find((module) => module.id === moduleId)?.status, "planned");
+  assert.equal(historicalProject.modules.find((module) => module.id === moduleId)?.status, "planned");
 }
 assert.equal(buildVerifiedTokenProject({
-  chainId: officialProject.chainId,
-  token: officialProject.token,
-  creator: officialProject.onchainCreator,
+  chainId: historicalProject.chainId,
+  token: historicalProject.token,
+  creator: historicalProject.onchainCreator,
   officialMigration: false
 }).official, false);
 

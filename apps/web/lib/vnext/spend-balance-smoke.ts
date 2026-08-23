@@ -63,7 +63,7 @@ const candidates = walletAssetCandidates([{
   riskFlags: null,
   signal: "active"
 }]);
-assert.equal(candidates.length, 4);
+assert.equal(candidates.length, 3);
 const imported = importedWalletCandidate({
   resolution: {
     chainId: 4_663,
@@ -89,7 +89,7 @@ assert.equal(imported?.decimals, 8);
 assert.equal(importedWalletCandidate({} as ExternalMarketResponse, "0x3333333333333333333333333333333333333333"), null);
 assert.deepEqual(detectedWalletAssets([
   { candidate: candidates[0], balance: 0n },
-  { candidate: candidates[3], balance: 42n, decimals: 18, symbol: "LIVE", name: "Live directory token" }
+  { candidate: candidates[2], balance: 42n, decimals: 18, symbol: "LIVE", name: "Live directory token" }
 ]).map((asset) => ({ symbol: asset.symbol, balance: asset.balanceAtomic, routeState: asset.routeState })), [
   { symbol: "LIVE", balance: "42", routeState: "detected" }
 ]);
@@ -112,7 +112,7 @@ assert.equal(trustedPaymentMetadataFromDetectedWalletAsset({
   routeState: "detected"
 }), null);
 assert.equal(trustedPaymentMetadataFromDetectedWalletAsset({
-  ...candidates[3],
+  ...candidates[2],
   decimals: 18,
   identityState: "verified",
   balanceAtomic: "42",

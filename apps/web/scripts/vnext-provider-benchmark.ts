@@ -2,7 +2,6 @@ import { getAddress, isAddress, isHex, keccak256, parseUnits, type Address, type
 import { quoteSushiAssetRoute } from "../lib/server/sushi-trade";
 import { readRobinhoodTokenIdentity } from "../lib/server/universal-market-resolver";
 import { quoteVNextUniswapDirect } from "../lib/server/vnext-uniswap-quote";
-import { ROBINHOOD_RMT_ADDRESS } from "../lib/vnext/robinhood-assets";
 
 const CHAIN_ID = 4663;
 const RPC_URL = process.env.RMT_RPC_URL ?? "https://rpc.mainnet.chain.robinhood.com/";
@@ -270,6 +269,8 @@ async function probePcsx(name: string, tokenOut: string, symbol: string, amount 
   }
 }
 
+const STONKBROKER_CONTROL = getAddress("0xe934e36A439C94017B64a3FecE66AF12099aBF50");
+
 type BaselinePair = {
   name: string;
   inputSymbol: string;
@@ -278,12 +279,12 @@ type BaselinePair = {
   outputAsset: Address;
   amountIn: bigint;
   notionalUsd?: number;
-  segment: "pre_graduation_control" | "core" | "liquid_dynamic";
+  segment: "current_control" | "core" | "liquid_dynamic";
 };
 
 const baselinePairs: BaselinePair[] = [
-  { name: "usd-g-to-rmt", inputSymbol: "USDG", outputSymbol: "RMT", inputAsset: USDG, outputAsset: ROBINHOOD_RMT_ADDRESS, amountIn: 1_000_000n, segment: "pre_graduation_control" },
-  { name: "rmt-to-usd-g", inputSymbol: "RMT", outputSymbol: "USDG", inputAsset: ROBINHOOD_RMT_ADDRESS, outputAsset: USDG, amountIn: 1_000_000_000_000_000_000n, segment: "pre_graduation_control" },
+  { name: "usd-g-to-stonkbroker", inputSymbol: "USDG", outputSymbol: "STONKBROKER", inputAsset: USDG, outputAsset: STONKBROKER_CONTROL, amountIn: 1_000_000n, segment: "current_control" },
+  { name: "stonkbroker-to-usd-g", inputSymbol: "STONKBROKER", outputSymbol: "USDG", inputAsset: STONKBROKER_CONTROL, outputAsset: USDG, amountIn: 1_000_000_000_000_000_000n, segment: "current_control" },
   { name: "usd-g-to-weth", inputSymbol: "USDG", outputSymbol: "WETH", inputAsset: USDG, outputAsset: WETH, amountIn: 1_000_000n, segment: "core" },
   { name: "weth-to-usd-g", inputSymbol: "WETH", outputSymbol: "USDG", inputAsset: WETH, outputAsset: USDG, amountIn: 1_000_000_000_000_000n, segment: "core" }
 ];
@@ -301,7 +302,7 @@ async function discoverLiquidBaseline(): Promise<{ probe: Probe; pairs: Baseline
       if (!response.ok || !Array.isArray(body)) throw new Error("directory_unavailable");
       return body;
     }));
-    const excluded = new Set([USDG, WETH, ROBINHOOD_RMT_ADDRESS].map((address) => address.toLowerCase()));
+    const excluded = new Set([USDG, WETH, STONKBROKER_CONTROL].map((address) => address.toLowerCase()));
     const candidates = snapshots.flat().flatMap((pair) => {
       if (!isObject(pair) || pair.chainId !== "robinhood") return [];
       const baseToken = isObject(pair.baseToken) ? pair.baseToken : null;
@@ -877,7 +878,7 @@ async function main() {
   }
 
   const zeroXProbes: Probe[] = [await probeZeroX("liquidity-sources", "/sources", { chainId: String(CHAIN_ID) }, apiKey)];
-  const zeroXBenchmarkPairs = activeBaselinePairs.filter((pair) => pair.segment !== "pre_graduation_control");
+  const zeroXBenchmarkPairs = activeBaselinePairs.filter((pair) => pair.segment !== "current_control");
   for (const pair of zeroXBenchmarkPairs) {
     const common = {
       chainId: String(CHAIN_ID),

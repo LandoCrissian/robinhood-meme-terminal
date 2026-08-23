@@ -1,8 +1,10 @@
 # RMT V6 external security review handoff
 
+> Historical scope notice: this handoff describes the retired V6 launchpad. Launch 0 is dead and is not the current RMT token, a current Terminal market, or a release acceptance control.
+
 ## Engagement objective
 
-Independently assess the live V6 deployment, review remediations, and verify the exact deployed bytecode, source build, receipts, governance history, and immutable configuration while public launches remain open.
+Independently assess the historical V6 deployment record, review its remediations, and verify the exact deployed bytecode, source build, receipts, governance history, and immutable configuration.
 
 Automated tests, Slither, fuzzing, fork rehearsals, and internal review are evidence inputs—not substitutes for independent judgment.
 
@@ -18,7 +20,7 @@ Automated tests, Slither, fuzzing, fork rehearsals, and internal review are evid
 - V6 governance/treasury: `0x52c43239df8965eb27f26e115cc5ead11b35d5c3`
 - V6 registry: `0x27c0269e16209eee149e2738d0819a2633f44246`
 - V6 factory: `0x8e75c57079a01ce2094bc4187b78710887547651`
-- Official V6 RMT token: `0xdBa33be56C89CC9fc014c4459028d7e5c7878671`
+- Retired V6 launchpad launch 0 token (historical evidence only): `0xdBa33be56C89CC9fc014c4459028d7e5c7878671`
 - Deployment record: [MAINNET_V6_DEPLOYMENT.md](MAINNET_V6_DEPLOYMENT.md)
 
 The deployment is live but not independently audited. Exact Blockscout source publication is incomplete and must be verified from the canonical compiler settings and deployed bytecode rather than inferred from an explorer label.

@@ -2,8 +2,6 @@ import { pathToFileURL } from "node:url";
 import { submitIndexNowUrls } from "../lib/server/indexnow";
 import { RMT_SITE_URL } from "../lib/site-identity";
 
-const OFFICIAL_RMT_PROJECT_ROUTE = "/project/0xdBa33be56C89CC9fc014c4459028d7e5c7878671";
-
 const ALL_MARKET_DIRECTORY_ROUTES = [
   "/markets/robinhood-chain",
   "/markets/robinhood-chain/trending",
@@ -17,7 +15,6 @@ const ALL_STATIC_PUBLIC_ROUTES = [
   "/robinhood-chain",
   ...ALL_MARKET_DIRECTORY_ROUTES,
   "/explore",
-  OFFICIAL_RMT_PROJECT_ROUTE,
   "/status",
   "/sources",
   "/sushi",

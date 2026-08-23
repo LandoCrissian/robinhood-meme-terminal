@@ -21,15 +21,13 @@ export const metadata: Metadata = {
 };
 
 const checks = [
-  ["01", "Live RMT origin", "Native RMT V6 controls require an active launch recorded by the canonical factory.", "LIVE"],
-  ["02", "Native RMT trade", "Curve buy and sell execution is live; graduation uses RMT's canonical Uniswap v4 adapter path.", "LIVE"],
+  ["01", "Terminal discovery", "Robinhood Chain markets remain visible from canonical and provider evidence.", "LIVE"],
+  ["02", "Route evidence", "Provider observations remain distinct from canonical market identity.", "LIVE"],
   ["03", "Sushi deployments", "Pinned Sushi source publishes Robinhood V3 and RedSnwapper addresses.", "SOURCE PINNED"],
   ["04", "Guarded Sushi execution", "RMT validates Sushi calldata, contract bytecode, minimum output and simulation before wallet submission.", "LIVE"],
   ["05", "Future provider admission", "Any additional Sushi execution capability remains a separate architecture and security-review track.", "RESEARCH"]
 ] as const;
 
-const officialToken = "0xdBa33be56C89CC9fc014c4459028d7e5c7878671";
-const officialMarket = "0xb26Fb775c0ac365d369BEe9ac2E044C5D90FfBee";
 const rmtFactory = "0x8E75C57079a01ce2094bc4187B78710887547651";
 const sushiFactory = "0xE51960F1B45f1C9Fb6D166e6A884f866fc70433B";
 const sushiPositionManager = "0x51D0E5188Afe12D502e29d982D20c190e7816107";
@@ -46,7 +44,7 @@ export default function SushiIntegrationPage() {
           <h1>Sushi trading is live inside RMT.</h1>
           <p>Users can now trade qualified external Sushi markets without leaving Terminal. RMT re-verifies the displayed pool, decodes and validates the route, requires simulation, uses exact sell approvals and keeps final authority in the user&apos;s wallet.</p>
           <div className="sushiLabActions">
-            <Link className="sushiLabPrimary" href={`/project/${officialToken}?launch=0#trade`}>Inspect live RMT project</Link>
+            <Link className="sushiLabPrimary" href="/vnext">Open RMT Terminal</Link>
             <Link href="/status">Verify system health</Link>
             <a href="https://github.com/sushi-labs/sushi/issues/501" target="_blank" rel="noreferrer">Open engineering questions ↗</a>
           </div>
@@ -74,7 +72,7 @@ export default function SushiIntegrationPage() {
         </div>
         <div className="sushiFairSignals">
           <div><span>01</span><strong>Fixed supply</strong><p>No post-launch mint, proxy upgrade, blacklist or transfer tax.</p></div>
-          <div><span>02</span><strong>Native origin</strong><p>Every native RMT V6 trading control checks the active factory record.</p></div>
+          <div><span>02</span><strong>Origin evidence</strong><p>RMT reports proven origin separately from provider-observed market evidence.</p></div>
           <div><span>03</span><strong>Onchain heuristics</strong><p>RMT surfaces activity, liquidity, origin and automated risk signals where available.</p></div>
           <div><span>04</span><strong>Wallet authority</strong><p>Users retain their keys and confirm transactions; protocol contracts hold disclosed market assets.</p></div>
         </div>
@@ -111,19 +109,17 @@ export default function SushiIntegrationPage() {
       </section>
 
       <section className="sushiLiveProof">
-        <div className="sushiSectionHeading"><p className="eyebrow">LIVE RMT MAINNET PROOF</p><h2>Inspect the product, not a pitch deck.</h2><p>Every address below is live on Robinhood Chain mainnet. They prove the RMT product—not a Sushi route, Sushi pool or Sushi approval.</p></div>
+        <div className="sushiSectionHeading"><p className="eyebrow">HISTORICAL V6 PROTOCOL EVIDENCE</p><h2>Inspect the boundary, not a pitch deck.</h2><p>The retained factory address documents the retired launchpad protocol. It is not a current token or market acceptance control, and it does not prove a Sushi route, pool, or approval.</p></div>
         <div className="sushiProofRows">
-          <a href={`${explorer}${officialToken}`} target="_blank" rel="noreferrer"><small>OFFICIAL RMT V6 TOKEN</small><strong>{officialToken}</strong><span>Open explorer ↗</span></a>
-          <a href={`${explorer}${officialMarket}`} target="_blank" rel="noreferrer"><small>LIVE RMT MARKET</small><strong>{officialMarket}</strong><span>Open explorer ↗</span></a>
-          <a href={`${explorer}${rmtFactory}`} target="_blank" rel="noreferrer"><small>ACTIVE V6 FACTORY</small><strong>{rmtFactory}</strong><span>Open explorer ↗</span></a>
+          <a href={`${explorer}${rmtFactory}`} target="_blank" rel="noreferrer"><small>RETIRED V6 LAUNCHPAD FACTORY</small><strong>{rmtFactory}</strong><span>Open explorer ↗</span></a>
         </div>
       </section>
 
       <section className="sushiLabPromise">
         <p className="eyebrow">WHY THIS MATTERS</p>
         <h2>One Terminal. More verified routes.</h2>
-        <p>External Sushi markets can execute inside RMT with visible evidence and wallet control. The deployed RMT-native V6 market still uses its own curve and canonical Uniswap v4 graduation path; new launch work is outside the current terminal roadmap.</p>
-        <div><Link href={`/project/${officialToken}?launch=0#trade`}>Inspect live RMT</Link><Link href="/status">Verify production</Link><a href={`${sushiSource}/red-snwapper.ts`} target="_blank" rel="noreferrer">Inspect pinned Sushi source ↗</a></div>
+        <p>External Sushi markets can execute inside RMT with visible evidence and wallet control. The retired launchpad phase is historical; new launch work is outside the current terminal roadmap.</p>
+        <div><Link href="/vnext">Open RMT Terminal</Link><Link href="/status">Verify production</Link><a href={`${sushiSource}/red-snwapper.ts`} target="_blank" rel="noreferrer">Inspect pinned Sushi source ↗</a></div>
       </section>
 
       <p className="sushiLabDisclosure">Robinhood Meme Terminal is independent, unaffiliated software and does not claim sponsorship, endorsement or an approved partnership with Sushi or Robinhood. External Sushi execution is live through Sushi&apos;s public Robinhood Chain contracts and API; RMT does not custody funds or guarantee token safety. RedSnwapper has no onchain deadline and the current executor is not source-verified on Robinhood Chain. Trading can result in loss.</p>

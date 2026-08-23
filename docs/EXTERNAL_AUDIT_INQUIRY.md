@@ -1,12 +1,14 @@
 # Independent smart-contract review inquiry
 
+> Historical scope notice: this inquiry describes the retired V6 launchpad. Launch 0 is dead and is not the current RMT token, a current Terminal market, or a release acceptance control.
+
 ## Subject
 
 RMT V6 live-deployment review — bonding curve, Fair Start, governance, and Uniswap V4 fee flywheel
 
 ## Inquiry
 
-Robinhood Meme Terminal (RMT) is seeking an independent security review of its live V6 deployment on Robinhood Chain mainnet. Public creation is open; the engagement must review canonical source, reproduce the build, exact-match deployed bytecode and configuration, assess the protocol and economics, and verify remediations.
+This archived inquiry sought an independent security review of the historical V6 deployment on Robinhood Chain mainnet. Any review of that record should reproduce the build, exact-match deployed bytecode and configuration, assess the former protocol and economics, and verify remediations without treating launch 0 as a current product requirement.
 
 V6 includes fixed-supply clone launches, policy-bound bonding-curve markets, optional Fair Start controls, exact-target graduation with nonblocking overpayment refunds, one-time migration into a permanently locked Uniswap V4 full-range position, permissionless V4 fee realization, fixed 70/30 creator/protocol percentages for both fee currencies, fee-source binding, donation rejection, a shared launch gate, active-factory enforcement, one fresh delayed governance contract that also holds protocol fees, and a fresh version registry governed by it and initialized to V5. V6 governance starts 1-of-1; any added or replacement signer must prove control and give expiring consent bound to the current epoch, exact add-or-replace action, affected signer, and next threshold, may revoke unconsumed consent before execution, and the first added wallet creates 2-of-2 quorum rather than a backup key. Creators cannot authorize, propose, choose, or directly change the fee recipient. The RMT signer may propose only an evidence-linked, replay-protected move between the immutable original creator and V6 governance treasury; any account may relay the exact approved call after the delay, and stale-nonce invalidation also requires governance approval. A narrow exact-identity/operator-only route launches a new official RMT token while ordinary launches remain paused and does not reopen the gate; it creates a new address and new one-billion-token supply and does not copy, swap, credit, or migrate old-holder balances.
 
@@ -23,7 +25,7 @@ V6 includes fixed-supply clone launches, policy-bound bonding-curve markets, opt
 - V6 governance/treasury: `0x52c43239df8965eb27f26e115cc5ead11b35d5c3`
 - V6 registry: `0x27c0269e16209eee149e2738d0819a2633f44246`
 - V6 factory: `0x8e75c57079a01ce2094bc4187b78710887547651`
-- Official V6 RMT token: `0xdBa33be56C89CC9fc014c4459028d7e5c7878671`
+- Retired V6 launchpad launch 0 token (historical audit scope only): `0xdBa33be56C89CC9fc014c4459028d7e5c7878671`
 - Deployment record: [MAINNET_V6_DEPLOYMENT.md](MAINNET_V6_DEPLOYMENT.md)
 - Full handoff: [EXTERNAL_AUDIT_HANDOFF.md](EXTERNAL_AUDIT_HANDOFF.md)
 - Threat model: [SECURITY_REVIEW_SCOPE.md](SECURITY_REVIEW_SCOPE.md)

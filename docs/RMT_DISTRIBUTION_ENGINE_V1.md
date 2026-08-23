@@ -258,24 +258,24 @@ This proves why `482` must never be a live constant. Run `pnpm --filter web read
 
 For comparison only, applying the historical 500-RMT proposal to the observed 519 public accounts would produce a 259,500-RMT distribution total before the separate immutable utility cost. That arithmetic is not an approved allocation, spending authority or final manifest.
 
-### Manifest integration and canary gate
+### Historical manifest integration and canary fixture
 
-A complete snapshot can feed the generic ERC-20 equal-distribution planner. The resulting manifest distributes the exact official RMT contract to the exact frozen TBA set and binds the CCFF00 snapshot hash as source evidence. The proposed 500-RMT historical allocation remains caller-supplied fixture data, not adapter policy.
+A complete snapshot can feed the generic ERC-20 equal-distribution planner. The retained research fixture uses retired launchpad launch 0 against the exact frozen TBA set and binds the CCFF00 snapshot hash as source evidence. Launch 0 is not the current RMT token or a deployment candidate. The proposed 500-unit historical allocation remains caller-supplied fixture data, not adapter policy.
 
 The adapter always returns explicit release blockers. Mass distribution remains ineligible until separate evidence proves all three 1-RMT canary deposits, at least one account activation/runtime binding, and owner-controlled withdrawal. The engine must also be deployed and reviewed separately. Neither the readiness command nor adapter contains wallet, signer, approval, submission or transaction capability.
 
 ## Robinhood fork and adversarial evidence
 
-The opt-in Foundry rehearsal uses a Robinhood mainnet fork and never broadcasts. At fork block `38088963`, it independently verified the official RMT contract at `0xdBa33be56C89CC9fc014c4459028d7e5c7878671`, including runtime hash `0x49cd48d0204b35d27e6fca131febe8ce5aff6cd0c2fb6c5c21d5f0ad616e99e9`, then locally deployed the sink and engine against that exact token.
+The opt-in Foundry rehearsal uses a Robinhood mainnet fork and never broadcasts. At fork block `38088963`, it independently verified the historical launch-zero fixture at `0xdBa33be56C89CC9fc014c4459028d7e5c7878671`, including runtime hash `0x49cd48d0204b35d27e6fca131febe8ce5aff6cd0c2fb6c5c21d5f0ad616e99e9`, then locally deployed the sink and engine against that exact retired token solely as historical test evidence.
 
 The fork proved:
 
 - exact combined approval when RMT is both the distributed asset and retirement asset;
-- direct official-RMT sender-to-recipient delivery;
-- exact official-RMT retirement into the local sink;
+- direct historical-fixture sender-to-recipient delivery;
+- exact historical-fixture retirement into the local sink;
 - zero engine balance after success;
 - a later distribution failure rolls back the earlier RMT retirement and replay consumption;
-- realistic official-RMT gas samples without live writes.
+- realistic historical-fixture gas samples without live writes.
 
 | Recipients | Fork gas used |
 | ---: | ---: |
@@ -291,7 +291,7 @@ The focused adversarial suite covers false-return, reverting, no-return, fee-on-
 
 ## Deployment and runtime verification boundary
 
-`distribution-runtime.ts` defines the strict future deployment-manifest and live-read boundary. A valid manifest must record the exact source commit, Solidity `0.8.26` optimizer/via-IR settings, constructor arguments, deployer, deployment transaction/block, engine and sink addresses/runtime hashes, official RMT runtime hash and a hard-disabled activation state.
+`distribution-runtime.ts` defines the strict future deployment-manifest and live-read boundary. Historical tests record the retired launch-zero fixture runtime hash and a hard-disabled activation state. A future deployment would require a separately owner-authorized current token identity; this historical fixture cannot supply it.
 
 Immediately before any future wallet authorization, a reader must freeze one canonical Robinhood block and independently verify:
 
@@ -313,7 +313,7 @@ The read-only command below creates a deterministic predeployment packet from th
 pnpm --filter web readiness:vnext-distribution-deployment
 ```
 
-The packet is deliberately restricted to `predeployment_unapproved`. It records creation-code hashes, the source commit, compiler settings and canonical RMT identity while requiring all production utility rates, the deployer, deployment method, contract addresses and transaction identity to remain `null`. Public UI, wallet submission and server submission remain hard-disabled. Any attempt to insert a rate, deployer, transaction, activation flag or unknown field is rejected.
+The packet is deliberately restricted to `predeployment_unapproved`. It records creation-code hashes, the source commit, compiler settings and a clearly labeled historical launch-zero fixture while requiring all production utility rates, the deployer, deployment method, contract addresses and transaction identity to remain `null`. It is not a current-token binding. Public UI, wallet submission and server submission remain hard-disabled. Any attempt to insert a rate, deployer, transaction, activation flag or unknown field is rejected.
 
 `RehearseRMTDistributionDeploymentV1.s.sol` can exercise the exact sink-to-engine constructor topology on a local Robinhood mainnet fork. It accepts no private key, contains no broadcast cheatcode and uses visibly synthetic `1/2/3 RMT` rates that are not production policy. Run it only with the explicit rehearsal flag:
 

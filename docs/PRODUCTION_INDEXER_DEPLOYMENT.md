@@ -85,14 +85,14 @@ After reconciliation:
 
 Trading remains wallet-to-contract and must never depend on the indexer being available.
 
-## Current production cutover
+## Historical launchpad indexer cutover
 
 - **Railway indexer:** https://robinhood-meme-terminal-production.up.railway.app
 - **Public market-data boundary:** `https://www.rmtlaunch.fun/api/markets/{market}/trades`
-- **Official RMT V6 token:** `0xdBa33be56C89CC9fc014c4459028d7e5c7878671`
-- **Official RMT V6 market:** `0xb26Fb775c0ac365d369BEe9ac2E044C5D90FfBee`
+- **Retired launch 0 token (historical evidence):** `0xdBa33be56C89CC9fc014c4459028d7e5c7878671`
+- **Retired launch 0 market (historical evidence):** `0xb26Fb775c0ac365d369BEe9ac2E044C5D90FfBee`
 - **Edge protection:** exact-host and exact-route-shape Vercel Firewall observation rule; wallet and contract traffic are outside the rule
-- **Independent monitoring:** GitHub Actions requests validation of the canonical domain, protocol health, V6 launch feed, Railway health and lag, official-token trade data, indexer source header, and shared-cache policy every five minutes; an external uptime provider supplies dependable 1–5 minute alerting
+- **Independent monitoring:** current Terminal release health uses live canonical market-search controls. Launch 0 is not a release acceptance fixture. Historical V6 launch-feed/indexer checks remain separate protocol evidence.
 
 The public trade proxy can fall back to bounded verified direct-chain reads when the indexer is unavailable. RMT launch discovery instead retains the last confirmed indexed snapshot so a service delay does not create a new full-history RPC scan per visitor. Trading remains wallet-to-contract and does not pass through Railway, PostgreSQL, or the market-data proxy.
 

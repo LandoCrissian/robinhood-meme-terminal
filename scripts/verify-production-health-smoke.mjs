@@ -63,13 +63,25 @@ try {
     lastSyncAt: new Date(now - 5_000).toISOString()
   });
 
-  writeJson("trades.json", {
-    market: "0xb26fb775c0ac365d369bee9ac2e044c5d90ffbee",
-    token: "0xdba33be56c89cc9fc014c4459028d7e5c7878671",
-    trades: [{}],
-    syncedAt: new Date(now - 5_000).toISOString()
+  const controls = [
+    ["stonkbroker", "0xe934e36a439c94017b64a3fece66af12099abf50"],
+    ["pons", "0x39dbed3a2bd333467115de45665cc57f813c4571"],
+    ["pipedog", "0x5cb6f181081301b44905f3ae15419112ecabd8a6"],
+    ["cashcat", "0x020bfc650a365f8bb26819deaabf3e21291018b4"],
+    ["lemon", "0xf0e17e54239cd945cd7bea471a3a2ca6a8c7f7a3"]
+  ];
+  for (const [name, address] of controls) {
+    writeJson(`search-${name}.json`, {
+      queryKind: "token-or-pool-address",
+      status: "found",
+      results: [{ address }]
+    });
+  }
+  writeJson("search-stonkbroker-text.json", {
+    queryKind: "text",
+    status: "found",
+    results: [{ address: controls[0][1] }]
   });
-  writeHeaders("trades.headers", 5, "x-rmt-data-source: indexer\r\n");
 
   const healthy = spawnSync(process.execPath, [script, directory], { encoding: "utf8" });
   assert.equal(healthy.status, 0, healthy.stderr);

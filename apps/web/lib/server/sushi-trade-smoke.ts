@@ -10,7 +10,7 @@ import {
 import { SUSHI_RED_SNWAPPER } from "../sushi";
 import { quoteAndBuildSushiSwap, quoteSushiRoute, sushiQuotesEnabled } from "./sushi-trade";
 
-const token = getAddress("0xdBa33be56C89CC9fc014c4459028d7e5c7878671");
+const token = getAddress("0xe934e36A439C94017B64a3FecE66AF12099aBF50");
 const recipient = getAddress("0x1111111111111111111111111111111111111111");
 const amountIn = 1_000_000_000_000_000n;
 const nativeToken = getAddress("0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE");

@@ -1,10 +1,10 @@
 # RMT V6 mainnet release
 
-Current production status: **V6 is deployed and active for existing-market trading; new launches are closed because RMT's current product is the terminal, not a launchpad.** This document remains authoritative for deployed V6 compatibility, not forward roadmap.
+Current production status: **the launchpad is retired; launch 0 and its market are dead historical evidence and are not current Terminal requirements.** This document is an archived operator record, not a current release, market, search, or execution specification.
 
 The live addresses and transaction receipts are recorded in [MAINNET_V6_DEPLOYMENT.md](MAINNET_V6_DEPLOYMENT.md). The remainder of this document is the historical release and recovery plan, not proof that every planned gate was completed; future operators must not read its pre-deployment language or source-verification requirements as the current production state.
 
-This is the operator handoff for the policy-driven V6 release. Deployment, activation, the official RMT launch, and public reopening remain separate wallet-confirmed boundaries.
+The sections below preserve the historical operator handoff for the former policy-driven V6 release. References to the official launch describe its role at that historical point in time only.
 
 ## Current mainnet dependencies
 

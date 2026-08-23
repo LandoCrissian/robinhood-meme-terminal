@@ -15,9 +15,15 @@ const protocolHeaders = read("protocol.headers");
 const launches = JSON.parse(read("launches.json"));
 const launchHeaders = read("launches.headers");
 const indexer = JSON.parse(read("indexer.json"));
-const trades = JSON.parse(read("trades.json"));
-const tradeHeaders = read("trades.headers");
 const now = Date.now();
+
+const currentMarketControls = [
+  ["stonkbroker", "0xe934e36a439c94017b64a3fece66af12099abf50"],
+  ["pons", "0x39dbed3a2bd333467115de45665cc57f813c4571"],
+  ["pipedog", "0x5cb6f181081301b44905f3ae15419112ecabd8a6"],
+  ["cashcat", "0x020bfc650a365f8bb26819deaabf3e21291018b4"],
+  ["lemon", "0xf0e17e54239cd945cd7bea471a3a2ca6a8c7f7a3"]
+];
 
 const expected = {
   chainId: 4663,
@@ -25,9 +31,7 @@ const expected = {
   factory: "0x8e75c57079a01ce2094bc4187b78710887547651",
   factoryStartBlock: "10248855",
   policyRegistry: "0x70177a46a38c981480fee9586ccbe281ee70dfcf",
-  governance: "0x52c43239df8965eb27f26e115cc5ead11b35d5c3",
-  market: "0xb26fb775c0ac365d369bee9ac2e044c5d90ffbee",
-  token: "0xdba33be56c89cc9fc014c4459028d7e5c7878671"
+  governance: "0x52c43239df8965eb27f26e115cc5ead11b35d5c3"
 };
 const lower = (value) => typeof value === "string" ? value.toLowerCase() : "";
 const timestamp = (value, label) => {
@@ -150,25 +154,30 @@ if (checkpointDrift > maximumCheckpointDrift) {
   );
 }
 
+for (const [name, address] of currentMarketControls) {
+  const result = JSON.parse(read(`search-${name}.json`));
+  if (
+    result.status !== "found"
+    || result.queryKind !== "token-or-pool-address"
+    || !Array.isArray(result.results)
+    || !result.results.some((market) => lower(market.address) === address)
+  ) {
+    throw new Error(`Current ${name} exact-search control is invalid.`);
+  }
+}
+const stonkbrokerText = JSON.parse(read("search-stonkbroker-text.json"));
 if (
-  lower(trades.market) !== expected.market
-  || lower(trades.token) !== expected.token
-  || !Array.isArray(trades.trades)
-  || trades.trades.length < 1
-  || !trades.syncedAt
+  stonkbrokerText.status !== "found"
+  || stonkbrokerText.queryKind !== "text"
+  || !Array.isArray(stonkbrokerText.results)
+  || !stonkbrokerText.results.some((market) => lower(market.address) === currentMarketControls[0][1])
 ) {
-  throw new Error("Official RMT indexed trade response is invalid.");
-}
-if (!tradeHeaders.toLowerCase().includes("x-rmt-data-source: indexer")) {
-  throw new Error("Public trade route is not serving the production indexer.");
-}
-if (!hasSharedCachePolicy(tradeHeaders, 5)) {
-  throw new Error("Public trade route is missing its five-second shared-cache policy.");
+  throw new Error("Current STONKBROKER text-search control is invalid.");
 }
 
 console.info(
   `Healthy at block ${protocol.latestBlock}; ${launches.launches.length} launches; `
     + `indexer lag ${lagBlocks}/${maximumLagBlocks} blocks; `
     + `launch drift ${checkpointDrift}/${maximumCheckpointDrift} blocks; `
-    + `${trades.trades.length} official RMT trade sampled.`
+    + `${currentMarketControls.length} current exact-search controls and STONKBROKER text search passed.`
 );

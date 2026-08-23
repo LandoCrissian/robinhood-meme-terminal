@@ -1,6 +1,6 @@
-# Robinhood Chain canonical V6 deployment
+# Robinhood Chain historical V6 launchpad deployment
 
-Status: **live mainnet beta compatibility, existing official market active, new launches closed**
+Status: **historical evidence only; launchpad retired; launch 0 dead; no current Terminal market or release requirement**
 
 - Public application: https://www.rmtlaunch.fun
 - Live status: https://www.rmtlaunch.fun/status
@@ -28,15 +28,17 @@ The adapter was bound to the hook in transaction [`0x9aaa9a745dd0e1ef60bc3b2a782
 
 This is the reconstructed top-level foundation record, not yet a complete fifteen-contract release archive. The exact addresses or receipts for the two bootstrap verifier children, factory-created token implementation, fee-splitter implementation, official identity migration helper, V6 activation/opening, and the official RMT launch and splitter still need to be recovered from confirmed onchain state/events and added here. Their absence from this document is not evidence that those steps did not occur; it means the repository record is incomplete and must not be described as a complete audit trail.
 
-## Official V6 RMT launch
+## Retired launchpad launch 0
+
+This section preserves truthful onchain deployment evidence from the former launchpad phase. Launch 0 is a dead user-created token. It is not the current RMT token, an active RMT product market, a canonical Terminal requirement, or a vNext execution market.
 
 | Component | Address |
 | --- | --- |
-| Official RMT V6 token | [`0xdBa33be56C89CC9fc014c4459028d7e5c7878671`](https://robinhoodchain.blockscout.com/address/0xdBa33be56C89CC9fc014c4459028d7e5c7878671) |
-| Official RMT V6 market | [`0xb26Fb775c0ac365d369BEe9ac2E044C5D90FfBee`](https://robinhoodchain.blockscout.com/address/0xb26Fb775c0ac365d369BEe9ac2E044C5D90FfBee) |
+| Historical launch 0 token | [`0xdBa33be56C89CC9fc014c4459028d7e5c7878671`](https://robinhoodchain.blockscout.com/address/0xdBa33be56C89CC9fc014c4459028d7e5c7878671) |
+| Historical launch 0 market | [`0xb26Fb775c0ac365d369BEe9ac2E044C5D90FfBee`](https://robinhoodchain.blockscout.com/address/0xb26Fb775c0ac365d369BEe9ac2E044C5D90FfBee) |
 | Legacy provenance anchor | [`0xaB374D24aFBD943a134AdB381D9646e71C6f6C0C`](https://robinhoodchain.blockscout.com/address/0xaB374D24aFBD943a134AdB381D9646e71C6f6C0C) |
 
-The official token is V6 launch `0`. It has a new fixed one-billion-token supply. The legacy address is a provenance anchor only; legacy balances were not copied, swapped, or migrated.
+The retired token is V6 launch `0`. Its historical fixed one-billion-token supply and market address remain recorded for provenance. The legacy address is also a provenance anchor only; legacy balances were not copied, swapped, or migrated.
 
 ## Immutable launch economics
 

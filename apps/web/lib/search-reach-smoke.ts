@@ -41,7 +41,10 @@ assert.match(rmtIdentitySource, /RMT \| Official Robinhood Meme Terminal Identit
 assert.match(rmtIdentitySource, /0xdBa33be56C89CC9fc014c4459028d7e5c7878671/);
 assert.match(rmtIdentitySource, /0xb26Fb775c0ac365d369BEe9ac2E044C5D90FfBee/);
 assert.match(rmtIdentitySource, /0xaB374D24aFBD943a134AdB381D9646e71C6f6C0C/);
-assert.match(rmtIdentitySource, /Token names and tickers can be duplicated/);
+assert.match(rmtIdentitySource, /Retired launchpad launch 0 token/);
+assert.match(rmtIdentitySource, /not the current RMT token or a Terminal release requirement/);
+assert.doesNotMatch(rmtIdentitySource, /Official RMT V6 token/);
+assert.doesNotMatch(rmtIdentitySource, /existing official V6 market/);
 assert.match(rmtIdentitySource, /"@type": "AboutPage"/);
 
 assert.match(sitemapSource, /\["\/rmt", "monthly", 0\.9\]/);
@@ -61,6 +64,6 @@ const globalRefreshUrls = indexNowUrlsForChangedStaticFiles(["apps/web/lib/site-
 assert.ok(globalRefreshUrls.includes(`${RMT_SITE_URL}/`));
 assert.ok(globalRefreshUrls.includes(`${RMT_SITE_URL}/rmt`));
 assert.ok(globalRefreshUrls.includes(`${RMT_SITE_URL}/robinhood-chain`));
-assert.ok(globalRefreshUrls.includes(`${RMT_SITE_URL}/project/0xdBa33be56C89CC9fc014c4459028d7e5c7878671`));
+assert.ok(!globalRefreshUrls.some((url) => url.includes("/project/0xdBa33be56C89CC9fc014c4459028d7e5c7878671")));
 
 console.info("Search reach, RMT identity, and incremental IndexNow smoke test passed");

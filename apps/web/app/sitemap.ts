@@ -1,7 +1,6 @@
 import type { MetadataRoute } from "next";
 
 const appUrl = "https://www.rmtlaunch.fun";
-const officialToken = "0xdBa33be56C89CC9fc014c4459028d7e5c7878671";
 export const revalidate = 300;
 
 const publicRoutes = [
@@ -13,7 +12,6 @@ const publicRoutes = [
   ["/markets/robinhood-chain/new", "hourly", 0.8],
   ["/markets/robinhood-chain/active", "hourly", 0.8],
   ["/explore", "hourly", 0.9],
-  [`/project/${officialToken}`, "hourly", 0.9],
   ["/status", "hourly", 0.8],
   ["/sources", "daily", 0.7],
   ["/sushi", "daily", 0.8],

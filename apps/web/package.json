@@ -69,7 +69,7 @@
     "test:vnext-wallet-holdings": "tsx lib/vnext/wallet-holdings-smoke.ts",
     "test:vnext-intent": "tsx lib/vnext/intent-draft-smoke.ts",
     "test:vnext-market-inventory": "tsx lib/server/vnext-market-indexer-smoke.ts",
-    "test:vnext-market-search": "tsx lib/server/vnext-universal-market-search-smoke.ts && tsx lib/server/vnext-universal-market-search-route-smoke.ts",
+    "test:vnext-market-search": "tsx lib/server/vnext-universal-market-search-smoke.ts && tsx lib/server/vnext-universal-market-search-route-smoke.ts && tsx lib/vnext/launch-zero-retirement-smoke.ts",
     "test:vnext-directory": "tsx lib/vnext/market-directory-smoke.ts && pnpm test:vnext-market-inventory && pnpm test:vnext-market-search && pnpm test:vnext-defillama",
     "test:vnext-defillama": "tsx lib/server/vnext-defillama-smoke.ts && tsx lib/server/vnext-defillama-chain-pulse-smoke.ts && tsx lib/server/vnext-defillama-chain-pulse-route-smoke.ts",
     "test:vnext-ecosystem": "tsx lib/vnext/ecosystem-intelligence-smoke.ts",

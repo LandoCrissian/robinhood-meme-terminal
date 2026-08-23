@@ -21,7 +21,9 @@ import { verifyCcff00OwnerWithdrawalProofV1 } from "./distribution-ccff00-owner-
 export const CCFF00_ADAPTER_ID = "ccff00_public_tba_v1" as const;
 export const CCFF00_COLLECTION = getAddress("0x505A22Ffed8d37ebE580FfD98d2Cdb0021189146");
 export const CCFF00_TOKEN = getAddress("0x73CB777311Dc5e464C53Ddafb4496Fd87fE0eC97");
-export const CCFF00_RMT_TOKEN = getAddress("0xdBa33be56C89CC9fc014c4459028d7e5c7878671");
+// Historical research fixture only: retired launchpad launch 0 is not the
+// current RMT token and this binding is not eligible for production release.
+export const CCFF00_HISTORICAL_LAUNCH_ZERO_TOKEN = getAddress("0xdBa33be56C89CC9fc014c4459028d7e5c7878671");
 export const CCFF00_ERC6551_REGISTRY = getAddress("0x000000006551c19487814612e58FE06813775758");
 export const CCFF00_ACCOUNT_IMPLEMENTATION = getAddress("0x03dA8C9df253a4401b08629a6F50E4c4E8e248cC");
 export const CCFF00_ERC6551_SALT = "0x448cc5ed5a52db42393a3d48476af932464724d8262648ad18b66d2ffef1a8e0" as Hex;
@@ -229,7 +231,7 @@ export async function readCcff00PublicSnapshotV1(
     read(client, "TOKENS_PER_NFT", blockNumber),
     client.getBytecode({ address: CCFF00_COLLECTION, blockNumber }), client.getBytecode({ address: CCFF00_ERC6551_REGISTRY, blockNumber }),
     client.getBytecode({ address: CCFF00_ACCOUNT_IMPLEMENTATION, blockNumber }), client.getBytecode({ address: CCFF00_TOKEN, blockNumber }),
-    client.getBytecode({ address: CCFF00_RMT_TOKEN, blockNumber })
+    client.getBytecode({ address: CCFF00_HISTORICAL_LAUNCH_ZERO_TOKEN, blockNumber })
   ]);
 
   const totalSupply = unsigned(totalSupplyValue, "total supply");
@@ -265,7 +267,7 @@ export async function readCcff00PublicSnapshotV1(
     const [code, ccff00Balance, rmtBalance] = await Promise.all([
       client.getBytecode({ address: tokenBoundAccount, blockNumber }),
       client.readContract({ address: CCFF00_TOKEN, abi: erc20BalanceAbi, functionName: "balanceOf", args: [tokenBoundAccount], blockNumber }),
-      client.readContract({ address: CCFF00_RMT_TOKEN, abi: erc20BalanceAbi, functionName: "balanceOf", args: [tokenBoundAccount], blockNumber })
+      client.readContract({ address: CCFF00_HISTORICAL_LAUNCH_ZERO_TOKEN, abi: erc20BalanceAbi, functionName: "balanceOf", args: [tokenBoundAccount], blockNumber })
     ]);
     return {
       tokenId: tokenId.toString(),
@@ -289,7 +291,7 @@ export async function readCcff00PublicSnapshotV1(
     collectionRuntimeHash: runtimeHash(collectionCode, "CCFF00 collection"),
     ccff00Token: CCFF00_TOKEN,
     ccff00RuntimeHash: runtimeHash(ccff00Code, "CCFF00 token"),
-    rmtToken: CCFF00_RMT_TOKEN,
+    rmtToken: CCFF00_HISTORICAL_LAUNCH_ZERO_TOKEN,
     rmtRuntimeHash: runtimeHash(rmtCode, "RMT token"),
     erc6551Registry: CCFF00_ERC6551_REGISTRY,
     erc6551RegistryRuntimeHash: runtimeHash(registryCode, "ERC-6551 registry"),
@@ -356,7 +358,7 @@ export function parseCcff00PublicSnapshotV1(value: unknown): Ccff00PublicSnapsho
   };
   assertExact("collection", normalized.collection, CCFF00_COLLECTION);
   assertExact("CCFF00 token", normalized.ccff00Token, CCFF00_TOKEN);
-  assertExact("RMT token", normalized.rmtToken, CCFF00_RMT_TOKEN);
+  assertExact("historical launch-zero token fixture", normalized.rmtToken, CCFF00_HISTORICAL_LAUNCH_ZERO_TOKEN);
   assertExact("registry", normalized.erc6551Registry, CCFF00_ERC6551_REGISTRY);
   assertExact("account implementation", normalized.accountImplementation, CCFF00_ACCOUNT_IMPLEMENTATION);
   assertExact("salt", normalized.erc6551Salt, CCFF00_ERC6551_SALT);
@@ -422,7 +424,7 @@ export function validateCcff00Canaries(snapshotValue: unknown, options: {
         salt: CCFF00_ERC6551_SALT,
         accountChainId: RMT_DISTRIBUTION_CHAIN_ID,
         ccff00Token: CCFF00_TOKEN,
-        rmtToken: CCFF00_RMT_TOKEN,
+        rmtToken: CCFF00_HISTORICAL_LAUNCH_ZERO_TOKEN,
         admittedCanaryTokenIds: CCFF00_CANARY_TOKEN_IDS
       },
       approvedReturnAddress: options.approvedReturnAddress,

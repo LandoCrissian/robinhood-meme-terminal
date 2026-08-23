@@ -422,7 +422,7 @@ export function FreshLaunchFeed() {
     <section className="feed panel rmtDiscovery" id="explore" aria-labelledby="rmt-discovery-title">
       <div className="sectionTitle feedHeading">
         <div>
-          <p className="eyebrow">OFFICIAL RMT PROJECT</p>
+          <p className="eyebrow">HISTORICAL RMT LAUNCHPAD RECORDS</p>
           <h2 id="rmt-discovery-title">{viewCopy.title}</h2>
           <p className="sectionCopy">{viewCopy.description}</p>
         </div>
@@ -432,7 +432,7 @@ export function FreshLaunchFeed() {
       </div>
 
       <div className="terminalTape" aria-label="Terminal data controls">
-        <span><b>{launches.length}</b> PUBLIC RMT PROJECT{launches.length === 1 ? "" : "S"}</span>
+        <span><b>{launches.length}</b> CURRENT LAUNCHPAD PROJECT{launches.length === 1 ? "" : "S"}</span>
         <span><b>30S</b> CHAIN REFRESH</span>
         <span><b>60S</b> RANK WINDOW</span>
         <span><b>NEW</b> CREATION CLOSED</span>

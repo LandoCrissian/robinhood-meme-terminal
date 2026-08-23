@@ -8,15 +8,14 @@ import {
   type VNextDirectoryResponse
 } from "../vnext/market-directory";
 import {
-  ROBINHOOD_RMT_ADDRESS,
   ROBINHOOD_USDG_ADDRESS,
   ROBINHOOD_WETH_ADDRESS
 } from "../vnext/robinhood-assets";
-import { RMT_TOKEN_ARTWORK, safeTokenArtworkUrl } from "../vnext/token-artwork";
+import { safeTokenArtworkUrl } from "../vnext/token-artwork";
 
 const CHAIN_SLUG = "robinhood";
 const PAIRS_API = "https://api.dexscreener.com/token-pairs/v1";
-const DIRECTORY_TOKENS = [ROBINHOOD_USDG_ADDRESS, ROBINHOOD_WETH_ADDRESS, ROBINHOOD_RMT_ADDRESS] as const;
+const DIRECTORY_TOKENS = [ROBINHOOD_USDG_ADDRESS, ROBINHOOD_WETH_ADDRESS] as const;
 const QUOTE_ASSETS = new Set([ROBINHOOD_USDG_ADDRESS, ROBINHOOD_WETH_ADDRESS].map((address) => address.toLowerCase()));
 const TIMEOUT_MS = 6_000;
 
@@ -76,8 +75,6 @@ function selectedToken(pair: RawPair) {
   const quote = text(pair.quoteToken?.address, 42).toLowerCase();
   if (QUOTE_ASSETS.has(quote) && !QUOTE_ASSETS.has(base)) return pair.baseToken;
   if (QUOTE_ASSETS.has(base) && !QUOTE_ASSETS.has(quote)) return pair.quoteToken;
-  if (base === ROBINHOOD_RMT_ADDRESS.toLowerCase()) return pair.baseToken;
-  if (quote === ROBINHOOD_RMT_ADDRESS.toLowerCase()) return pair.quoteToken;
   return null;
 }
 
@@ -167,9 +164,7 @@ function marketFromPair(pair: RawPair, evidence: AssetMarketEvidence): VNextDire
     buyPressureBps: ranking?.buyPressureBps ?? null,
     riskFlags: ranking?.riskFlags ?? null,
     signal: ranking?.signal ?? null,
-    imageUri: canonicalAddress.toLowerCase() === ROBINHOOD_RMT_ADDRESS.toLowerCase()
-      ? RMT_TOKEN_ARTWORK
-      : safeTokenArtworkUrl(pair.info?.imageUrl) ?? undefined,
+    imageUri: safeTokenArtworkUrl(pair.info?.imageUrl) ?? undefined,
     pairAddress,
     dexId: text(pair.dexId, 30) || "DEX",
     url: text(pair.url, 300) || undefined

@@ -1,7 +1,6 @@
 import { getAddress, type Address } from "viem";
 
 export const PROJECT_PAGE_SCHEMA_VERSION = 1 as const;
-export const OFFICIAL_RMT_V6_TOKEN = getAddress("0xdBa33be56C89CC9fc014c4459028d7e5c7878671");
 
 export type ProjectModuleId = "token" | "nft" | "marketplace" | "music";
 export type ProjectModuleStatus = "live" | "planned";
@@ -59,9 +58,9 @@ export function buildVerifiedTokenProject(input: {
   officialMigration: boolean;
 }): VerifiedTokenProject {
   const token = getAddress(input.token);
-  const official = input.chainId === 4663
-    && input.officialMigration
-    && token === OFFICIAL_RMT_V6_TOKEN;
+  // A historical launchpad migration flag is provenance, not a current
+  // Terminal endorsement or a distinguished product-market identity.
+  const official = false;
 
   return Object.freeze({
     projectId: `rmt:${input.chainId}:${token.toLowerCase()}`,

@@ -18,7 +18,6 @@ import {
   type VNextDirectoryMarket,
   type VNextDirectoryResponse
 } from "../../lib/vnext/market-directory";
-import { ROBINHOOD_RMT_ADDRESS } from "../../lib/vnext/robinhood-assets";
 import { VNEXT_CLIENT_REFRESH_POLICY } from "../../lib/vnext/client-refresh-policy";
 import { useVisibilityRefresh } from "./use-visibility-refresh";
 import {
@@ -320,7 +319,7 @@ export function useVNextMarketDirectory() {
       const nextMarkets = publishMarkets();
       setSelectedAddress((current) => current && nextMarkets.some((market) => market.address.toLowerCase() === current.toLowerCase())
         ? current
-        : nextMarkets.find((market) => market.address === ROBINHOOD_RMT_ADDRESS)?.address ?? nextMarkets[0].address);
+        : nextMarkets[0].address);
       hasData.current = true;
       setStatus(!claimsCanonicalDirectory(rawPayload) && (rawPayload as VNextDirectoryResponse).stale ? "stale" : "ready");
     } catch {
