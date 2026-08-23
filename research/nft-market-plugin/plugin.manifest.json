@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "pluginId": "rmt.nft-market.research-v1",
   "status": "research_only_not_runtime",
   "baseCommit": "cb4ab9b1af7200aa941bc7534795e3d43ac8dda4",
@@ -10,19 +10,34 @@
   "signerPresent": false,
   "custodyPresent": false,
   "firstVerificationReadyVenue": "opensea-seaport",
+  "feeSettlementResearch": {
+    "policyId": "RMT_NFT_EXECUTION_V1",
+    "productionAdmitted": false,
+    "feeBps": 25,
+    "feeBasis": "venue_gross_payment",
+    "rounding": "floor",
+    "minimumFee": "none",
+    "buySettlement": "nft-v1-atomic-buyer-surcharge",
+    "sellSettlement": "nft-v1-atomic-seller-proceeds",
+    "nonExecutionFee": "zero",
+    "failedOrRevertedFee": "zero",
+    "requiredHandoff": "CODEX_FEE_HANDOFF.md"
+  },
   "admissionStages": [
     "research",
     "shadow_indexer",
     "read_only_terminal",
     "quote_observation",
     "strict_verification",
+    "fee_settlement_verification",
     "authorization",
     "wallet_submission",
     "execution"
   ],
   "forbiddenUntilExplicitAdmission": [
     "production routes",
-    "RMT fee inheritance",
+    "production NFT fee collection",
+    "fungible fee-policy inheritance without reconciliation",
     "NFT minting or creator marketplace revival",
     "wallet prompts",
     "contract deployment",

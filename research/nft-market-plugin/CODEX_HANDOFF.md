@@ -2,263 +2,176 @@
 
 ## Read this first
 
-This package is intentionally **not** a drop-in runtime patch. It is a reviewed research contract designed to prevent Codex from spending usage rediscovering the domain or colliding with the active VNext execution track.
+This package is an isolated research contract, not a drop-in runtime patch. It exists so Codex can implement from a reviewed domain instead of rediscovering NFT market structure while active VNext execution work is changing.
 
-Research base: `cb4ab9b1af7200aa941bc7534795e3d43ac8dda4`
+Research base: `cb4ab9b1af7200aa941bc7534795e3d43ac8dda4`.
 
-Before implementation, re-read the then-current:
+Before any implementation, re-read current `AGENTS.md`, architecture freeze/system map/completion gate and every open PR touching VNext execution, fees, authorization or wallet submission. This branch never overrides system-of-record architecture docs by itself.
 
-- `AGENTS.md`
-- `docs/ARCHITECTURE_FREEZE.md`
-- `docs/ACTIVE_SYSTEM_MAP.md`
-- `docs/TERMINAL_COMPLETION_GATE.md`
-- current open PRs touching VNext execution/authorization/wallet submission
+## Owner intent captured
 
-Do not infer that the existence of this branch overrides the system-of-record architecture docs.
+RMT should discover, analyze and eventually trade **existing NFT assets** in the same VNext terminal. Do not revive creator/V7 minting, drops or an RMT-owned NFT marketplace.
 
-## Owner intent captured by this research
+Product principle: **RMT informs. The trader decides.** Broad visibility may be permissive; wallet authorization remains strict.
 
-Build toward the ability for RMT to discover/analyze/trade **existing NFT assets** through the same VNext terminal. Do not revive NFT minting, creator/V7, drops, or an RMT-owned marketplace. RMT should aggregate external NFT liquidity and eventually route to provider-specific execution after strict verification.
+Owner economic direction captured 2026-08-23: successful RMT-originated NFT **buys and sells carry 25 bps / 0.25%**, with the separate NFT settlement semantics defined in `FEE_SETTLEMENT.md` and `CODEX_FEE_HANDOFF.md`.
 
-Product principle:
+This research decision is not production activation.
 
-> RMT informs. The trader decides.
+## Current collision boundary
 
-This means broad/permissive visibility is acceptable with truthful risk evidence. It does **not** mean arbitrary or unverified calldata can reach the wallet.
+Treat `src/integration.ts::CURRENT_CODEX_RED_ZONES` as research-time collision guidance. Reconcile current fungible fee policy/settlement code before porting NFT economics. Do not modify active VNext execution files from this research branch.
 
-## Do not touch while active Codex execution work overlaps
+## Tranche 0 — reconcile
 
-At the research base, PR #427/#428 overlap these families and must be treated as red zones until reconciled:
-
-- VNext authorization route;
-- provider adapters;
-- quote observation;
-- pre-sign evidence;
-- authorization plan;
-- execution authority;
-- wallet submission;
-- trade-intent composer / wallet review;
-- web package scripts;
-- architecture/system-map/completion docs while another branch edits them.
-
-`src/integration.ts` contains the exact research-time red-zone list.
-
-## Tranche 0 — reconcile, do not code blindly
-
-1. Refresh exact main.
-2. Inspect all open VNext execution PRs and changed filenames.
-3. Re-run this plugin's smoke/typecheck against the research package.
-4. Verify external facts that can drift: OpenSea SDK/chain support, Seaport deployment/runtime, source registry states.
-5. If any source identity changed, update research evidence first.
+1. refresh exact main and open PR state;
+2. inspect final `RMT_EXECUTION_V2`/successor semantics;
+3. rerun this plugin's validation;
+4. reverify driftable external facts: OpenSea chain/API support, Seaport runtime/conduit, venue registry states;
+5. update evidence first if identities changed.
 
 No production mutation.
 
-## Tranche 1 — architecture admission only
+## Tranche 1 — architecture admission
 
-Only after an explicit owner decision:
+Explicitly distinguish:
 
-Record a narrow architecture distinction:
+- candidate active domain: analysis/trading of already-existing NFTs;
+- still paused: NFT minting, creator/V7, drops and RMT marketplace creation.
 
-- **active candidate:** analysis/trading of already-existing NFT assets as part of terminal asset coverage;
-- **still paused:** creator/V7 NFT minting, drops and RMT marketplace creation.
-
-Do not combine this decision with runtime code or provider activation.
+Do not combine architecture admission with provider activation.
 
 ## Tranche 2 — shadow NFT indexer
 
-Create future `apps/nft-market-indexer` only after Tranche 1.
+Use `INDEXER_BLUEPRINT.md` and proven `apps/market-indexer` operational patterns:
 
-Use `INDEXER_BLUEPRINT.md` and operational patterns from `apps/market-indexer`:
-
-- dedicated database;
+- dedicated PostgreSQL;
 - no signer;
-- shadow-only activation lock;
-- chain ID 4663 exact;
-- dual independent RPC/archive backfill;
-- reorg checkpoints/rollback;
-- ERC-721 + ERC-1155 + ERC-2309 coverage;
-- metadata worker isolated from RPC/indexer process;
-- bearer-protected detail APIs;
-- no public VNext consumption.
+- shadow-only lock;
+- chain 4663 exact;
+- dual RPC/archive backfill;
+- reorg checkpoint/rollback;
+- ERC-721, ERC-1155 and ERC-2309;
+- isolated hostile-metadata worker;
+- provenance/coverage states;
+- no public VNext authority yet.
 
-Acceptance must include cross-provider ownership equivalence, ERC-2309 regression, reorg rehearsal and metadata SSRF/oversize tests.
+## Tranche 3 — read-only VNext integration
 
-## Tranche 3 — read-only domain integration
+Do not mutate fungible `AssetId` first. Add parallel NFT identity:
 
-Do **not** mutate the existing fungible `AssetId` first.
+`chainId + contract + tokenId + standard + quantity semantics`.
 
-Add a parallel internal NFT identity:
+Use the one VNext shell:
 
-```text
-chainId + contract + tokenId + standard + quantity semantics
-```
+`Tokens | NFTs`, then NFT `Active | Trending | New | All`.
 
-Then integrate into the **one VNext shell**, not `/nft-terminal` or another frontend.
-
-Future directory hierarchy:
-
-```text
-Tokens | NFTs
-
-NFTs:
-Active | Trending | New | All
-```
-
-Required truthful states:
-
-- identity `verified/reported/conflicting/unknown`;
-- inventory coverage `complete/partial/unavailable`;
-- market evidence `current/stale/partial/unavailable`;
-- no fake zeroes for missing floor/bid/volume.
+Identity, inventory coverage and market evidence preserve verified/reported/conflicting/unknown and current/stale/partial/unavailable states rather than fake zeros.
 
 ## Tranche 4 — quote observation
 
-First source: OpenSea/Seaport.
+OpenSea/Seaport first.
 
-Server-only OpenSea API key. Current collection-based endpoints, not removed generic order-list endpoints.
-
-Normalize:
-
-- unique-token best ask;
-- item offers;
-- collection offers;
-- trait offers;
-- actual payment asset;
-- required vs optional creator fee;
-- marketplace fee;
-- gross buyer cost;
-- seller proceeds;
-- order expiry/status;
-- source reference/provenance.
-
-Important: OpenSea best listings are not guaranteed unique by token ID. Dedupe before floor/sweep.
+Normalize unique best asks, item/collection/trait offers, payment asset, venue gross payment, actual marketplace fees, required/optional royalties, buyer debit, seller proceeds, order status/expiry and provenance. Dedupe duplicate listings per token before floor/sweep.
 
 No wallet authorization.
 
-## Tranche 5 — strict Seaport verifier
+## Tranche 5 — strict provider verification
 
-Implement a provider-specific verifier from `SEAPORT_STRICT_VERIFICATION_CHECKLIST`.
+Build the provider-specific Seaport verifier before execution. Require exact chain/runtime/order hash/counter/signature/time/zone/conduit/item/criteria/ownership/approval/payment/consideration/recipient/calldata and fresh simulation.
 
-Required safety:
+OpenSea fulfillment data is not proof by itself.
 
-- exact chain/protocol/runtime;
-- exact order hash;
-- counter/cancellation/fill state;
-- signature/EIP-1271;
-- exact item type/contract/tokenId/quantity;
-- exact criteria proof;
-- zone semantics;
-- conduit resolution;
-- live ownership/balance and approval;
-- live payment balance/allowance;
-- every consideration transfer explained;
-- required/optional royalties disclosed;
-- exact recipient;
-- exact target/value/selector;
-- reject unknown extra calls;
-- fresh simulation;
-- expiry/checkpoint freshness.
+## Tranche 6 — NFT fee settlement verification
 
-OpenSea fulfillment data is a provider artifact, not the proof itself.
+Read `FEE_SETTLEMENT.md` and `CODEX_FEE_HANDOFF.md`.
 
-## Tranche 6 — Anvil candidate research
+Canonical research economics:
 
-The Anvil AMM is not Seaport. Build a separate provider family.
+- 25 bps;
+- basis = normalized venue gross NFT payment;
+- floor rounding;
+- no minimum;
+- buy = buyer surcharge in payment asset;
+- sell = seller proceeds deduction;
+- non-execution actions = zero;
+- failed/reverted execution = zero;
+- provider order/consideration preserved;
+- provider fill and RMT fee atomic;
+- revenue exists only after receipt proof.
 
-Pinned candidate identities from current official docs:
+For Seaport V1 research design:
 
-- collection `0x539cdd042c2f3d93ebc5be7dfff0c79f3b4fabf0`;
-- STONKBROKER `0xe934e36a439c94017b64a3fece66af12099abf50`;
-- vault `0xe302733accf4800146e55fc45b46b4e4ffc032d2`.
+- listing buy -> pinned RMT executor + decoded `fulfillAdvancedOrder`, authenticated user as NFT recipient;
+- offer sell -> unchanged buyer order + fee-bound seller counter-order + decoded `matchAdvancedOrders`;
+- no direct Seaport wallet fallback for a fee-admitted RMT execution;
+- no generic arbitrary-call executor;
+- no temporary custody of seller NFT as a shortcut.
 
-Before quote observation:
+The Solidity interface under `contracts/` is semantic reference only, not deployable production approval.
 
-1. pin creation tx/start block;
-2. pin current runtime hash;
-3. fetch/verify deployed ABI/source;
-4. prove collection/token bindings;
-5. enumerate buy/sell/snipe events/state;
-6. derive **live** principal/fee math from the contract instead of copying UI prose;
-7. adversarially test vault inventory races and approvals;
-8. only then define a normalized quote adapter.
+## Tranche 7 — Anvil candidate
 
-Keep project origin and AMM venue independent.
+Stonk Anvil is a separate provider family, not Seaport. Before quote/execution admission independently pin deployment block, runtime hash, verified ABI/source, constructor/immutable bindings, buy/sell/snipe semantics, live fee math, events, inventory race behavior and fork/adversarial simulations.
 
-## Tranche 7 — wallet execution
+Current candidate identities remain in `src/venues/stonk-anvil.ts` and must be reverified at implementation time.
 
-Only after the current fungible VNext execution architecture is stable and the NFT strict verifier has controlled proof.
+## Tranche 8 — authorization and wallet execution
 
-NFT execution needs its own intent semantics. Do not fake an NFT as an ERC-20 amount.
+Only after current fungible VNext execution stabilizes and NFT provider + fee proof have controlled evidence.
 
-At minimum:
+NFT intent binds exact item vs collection/trait criteria, ERC-1155 quantity, max spend/min proceeds, recipient, approvals, provider/order, venue fees/royalties, RMT 25 bps, total/net economics, expiry, verified payload hash, policy hash, execution ID and receipt reconciliation.
 
-- exact item vs collection/trait intent;
-- ERC-1155 quantity;
-- user max spend / min proceeds;
-- exact recipient;
-- approval plan/operator disclosure;
-- selected provider/order;
-- fee breakdown;
-- quote expiry;
-- verified payload hash;
-- receipt reconciliation;
-- uncertain transaction recovery.
+Wallet target for fee-admitted execution is the pinned NFT executor, never an unverified direct provider fallback.
 
-## RMT fee boundary
+## Tranche 9 — reconciliation/release
 
-There is **no admitted NFT RMT fee** in this research package. Do not inherit 25 bps or any draft fungible settlement policy.
+Receipt proves independently:
 
-If the owner later wants an NFT execution fee, define a separate versioned policy and prove atomic settlement per execution family.
+- NFT transfer;
+- venue/provider execution;
+- seller/buyer economics;
+- exact RMT fee transfer;
+- treasury;
+- execution origin;
+- order/execution IDs;
+- transaction and block evidence.
 
-## Portfolio / ERC-6551 later layer
+Project/collection origin, market venue and RMT execution attribution remain separate.
 
-After ordinary NFTs are correct, add token-bound-account enrichment:
+No release without explicit owner decision, provider admission, runtime pinning, policy hash, controlled proofs, monitoring and a production effective boundary.
 
-- discover account via ERC-6551 registry/implementation/salt evidence;
-- enumerate assets held by the TBA;
-- value them independently;
-- prevent recursive/double-counted ownership graphs;
-- display `contained NAV` separately from executable NFT bid/ask;
-- never claim the NAV is guaranteed sale proceeds.
+## ERC-6551 later layer
 
-StonkBrokers is the first useful real-world acceptance fixture.
+After ordinary NFT execution is correct, enrich token-bound accounts. Reconcile the existing `research/ccff00-tba-probe` branch rather than duplicating it. Contained NAV remains separate from executable NFT market value and must be refreshed before settlement-sensitive use.
 
-## Required tests before any public execution
+## Minimum adversarial suite before public execution
 
-- ERC-721 exact identity and same-name collision;
-- ERC-1155 quantities/partial fills;
-- ERC-2309 large-mint coverage;
-- reorg rollback;
-- metadata SSRF, redirect rebinding, oversize and unsafe SVG;
-- stale listing after transfer/revoked approval;
-- Seaport cancellation/counter/partial fill/expiry;
-- collection/trait criteria mismatch;
-- malicious zone/conduit/consideration injection;
+- ERC-721/1155 identity and quantities;
+- ERC-2309 coverage and reorg rollback;
+- hostile metadata SSRF/redirect/oversize/SVG;
+- stale ownership/approval/order/counter/expiry;
+- criteria mismatch;
+- malicious zone/conduit/consideration;
 - EIP-1271 maker;
-- royalty required vs optional;
-- exact recipient;
-- no hidden NFT RMT fee;
-- duplicate listings for one token do not distort floor/sweep;
-- best sell ranks seller proceeds rather than gross bid;
-- sweep is bounded, unique-item and budget constrained;
-- stale provider API cannot authorize;
-- wallet rejection/revert/unknown receipt recovery;
-- mobile + desktop single-shell acceptance.
+- required vs optional royalties;
+- duplicate listing dedupe and bounded sweep;
+- best sell ranked by net seller proceeds;
+- exact 25-bps floor vectors including zero-rounded tiny trades;
+- buyer fee double-count prevention;
+- seller fee/net underflow rejection;
+- fee recipient/treasury substitution;
+- policy hash substitution;
+- direct-provider fee bypass;
+- partial fill fee math;
+- ERC-20 residual allowance;
+- reentrancy/malicious token behavior;
+- provider success + fee failure atomic revert;
+- provider failure + zero fee;
+- successful receipt without fee evidence rejected;
+- uncertain transaction recovery;
+- mobile/desktop wallet review acceptance.
 
-## Completion signal for Codex
+## Completion signal
 
-A tranche is complete only when it reports:
-
-- exact base/head SHA;
-- exact files changed;
-- source/identity bindings;
-- tests and evidence;
-- unresolved blockers;
-- production mutation = NO unless separately authorized;
-- next tranche recommendation.
-
-Never merge or deploy automatically.
-
-## Existing TBA research to reconcile
-
-The repository already contains `research/ccff00-tba-probe`. Do not overwrite or blindly merge it. When the ERC-6551/TBA tranche begins, inspect that branch at its then-current SHA, compare it with this plugin's TBA model, reuse proven CCFF00/TBA evidence, and keep any superseded assumptions explicitly classified as research rather than runtime truth.
+Each Codex tranche reports exact base/head SHA, files changed, source/identity bindings, tests/evidence, unresolved blockers, production mutation status and next recommended tranche. Never merge or deploy automatically.

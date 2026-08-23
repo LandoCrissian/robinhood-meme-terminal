@@ -1,156 +1,114 @@
 # NFT market threat model
 
-NFT trading has a different failure surface from fungible swaps. A visually correct floor price is not sufficient evidence for a safe transaction.
+NFT trading has a different failure surface from fungible swaps. A correct-looking floor price is not authorization evidence.
 
-## 1. Identity and spoofing
+## Identity and chain truth
 
 - Canonical item key is `(chainId, contract, tokenId)`, never name/symbol/slug.
-- ERC-721 token IDs are black-box uint256 values; no sequential assumption.
-- ERC-1155 token ID and quantity must both be exact.
-- Same-name collections remain distinct.
-- Market source, collection/project origin and RMT execution attribution stay separate.
+- ERC-721 token IDs are uint256 black boxes; no sequential assumption.
+- ERC-1155 token ID and quantity are both exact.
+- Handle ERC-2309 `ConsecutiveTransfer` and ERC-1155 batch events.
+- Reorgs roll back ownership and derived market state.
+- Preserve Robinhood rollup and L1/Solidity block clocks separately when semantics require it.
 
-## 2. Missing mint/ownership evidence
+## Hostile metadata
 
-- Handle ERC-2309 `ConsecutiveTransfer` in addition to ERC-721 `Transfer`.
-- Handle ERC-1155 single and batch transfers transactionally.
-- Constructor-minted ERC-721 edge cases may require contract-specific supply discovery; absence of a mint log alone is not proof of nonexistence.
-- Reorgs must rollback ownership and derived market state.
+NFT metadata is attacker-controlled. Reject/isolate private-network URLs, redirect rebinding, credential URLs, unsupported schemes, decompression bombs, oversized responses, executable HTML/script, unsafe SVG behavior, MIME mismatches, malformed/recursive JSON and similar SSRF/XSS/resource-exhaustion paths.
 
-## 3. Malicious metadata
+Exact-contract search may still surface spam/phishing NFTs with warnings; heuristics must not fabricate nonexistence.
 
-Token metadata is attacker-controlled input.
+## Stale orders
 
-Reject or isolate:
+`observed != fillable`.
 
-- localhost/private/link-local/multicast URLs;
-- redirect-to-private-network chains;
-- credential-bearing URLs;
-- unsupported schemes;
-- unbounded response bodies/decompression bombs;
-- executable HTML/script;
-- unsafe SVG behavior;
-- malformed JSON and recursive objects;
-- media MIME mismatch.
+Reverify immediately before authorization:
 
-Never let token metadata become server-side request forgery or browser script execution.
-
-## 4. Phishing/spam collections
-
-A permissionless chain will contain airdropped lure NFTs. Risk signals may warn/de-rank, but should not fabricate nonexistence. Search may still return the exact contract with an explicit warning.
-
-Useful signals include multiple independent indicators: suspicious URLs, lure language, symbol/title duplication, unusual punctuation/emoji, mass unsolicited distribution and known malicious destinations. Treat heuristic output as evidence, not a verdict.
-
-## 5. Stale listings/offers
-
-An observed order can become invalid because of:
-
-- NFT transfer/burn;
-- ERC-1155 balance change;
-- approval revocation;
-- payment balance/allowance change;
-- Seaport cancellation;
-- Seaport counter increment;
-- partial fill;
-- expiry;
+- NFT owner/balance/burn state;
+- NFT approval/operator;
+- payment balance/allowance;
+- Seaport cancellation/counter/fill/expiry;
 - zone policy;
-- protocol pause/change;
-- reorg.
+- criteria proof;
+- provider deployment/runtime;
+- quote/checkpoint freshness;
+- full outer-transaction simulation.
 
-Therefore `observed` != `fillable`. Verification and a fresh simulation happen immediately before authorization.
+## Seaport verification
 
-## 6. Seaport-specific verification
+For every execution candidate independently verify chain 4663, pinned Seaport runtime, exact order hash, signature/EIP-1271, status/counter, time, zone, conduit, NFT type/contract/tokenId/quantity, criteria proof, ownership, approvals, payment asset/amount, every consideration recipient/amount, optional-vs-required creator fee, exact NFT recipient, target/value/selector/calldata structure, no unexplained calls, fresh simulation and receipt reconciliation.
 
-For the first verification-ready venue, independently check:
+Marketplace fulfillment data is provider input, never the proof itself.
 
-1. chain ID 4663;
-2. pinned Seaport 1.6 target/runtime;
-3. exact order hash and protocol address;
-4. current order status, filled amount, cancellation/counter state;
-5. maker signature or EIP-1271 result;
-6. start/end time;
-7. zone + zoneHash semantics;
-8. conduit key resolved to the actual transfer spender;
-9. offered/considered NFT contract, token ID, quantity and item type;
-10. criteria root/proof for collection/trait orders;
-11. current owner/ERC-1155 balance;
-12. exact NFT operator approval;
-13. payment token, amount and native value;
-14. buyer WETH balance/allowance for offers where applicable;
-15. every consideration recipient and amount;
-16. optional vs required creator fees;
-17. exact recipient;
-18. transaction target/value/function selector and calldata structure;
-19. reject unaccounted extra calls/consideration;
-20. fresh `eth_call`/trace simulation;
-21. quote/checkpoint freshness;
-22. receipt reconciliation after submission.
+## Approvals
 
-Do not blindly forward calldata returned by a marketplace API.
+- Prefer least privilege.
+- `setApprovalForAll` is materially broader than an ERC-20 exact allowance and must be disclosed.
+- Never approve an unverified conduit/operator/executor.
+- Approval success is not trade success and settles zero RMT fee.
+- Executor-created ERC-20 approvals must not leave reusable residual allowance without separate admission.
 
-## 7. Criteria orders
+## Royalties and marketplace fees
 
-Collection and trait bids can use criteria roots/proofs. RMT must prove the selected token satisfies the exact criteria included in the signed order. A UI label such as “collection offer” is not sufficient.
+ERC-2981 is advisory; the actual venue/order determines whether a royalty is required or optional.
 
-## 8. Approvals
+Never derive the RMT fee by summing marketplace and royalty lines. Canonical RMT NFT fee basis is the normalized **venue gross payment** exactly once.
 
-- Prefer exact/least privilege where protocol mechanics allow it.
-- `setApprovalForAll` is materially broader than ERC-20 exact allowance and must be disclosed as such.
-- Never approve an unverified conduit/operator.
-- Approval success is not trade success and settles no RMT fee.
-- Approval recovery/revocation must be independently manageable.
+## RMT NFT execution fee security
 
-## 9. Royalties and fees
+Research economic rule: 25 bps, floor rounding, no minimum, successful authenticated RMT buys and sells only.
 
-ERC-2981 reports royalty information; it does not itself force marketplaces to pay it. Quote economics must reflect what the **actual order/venue** requires or optionally includes.
+Hard invariants:
 
-No NFT RMT fee exists in this research package. Do not inherit fungible execution fee policy by name or percentage.
+- NFT is never the fee asset;
+- fee asset equals the trade payment asset;
+- buy fee is a buyer-side payment surcharge;
+- sell fee is deducted from seller payment proceeds;
+- signed external maker order is not modified;
+- exact venue consideration remains preserved;
+- fee amount, treasury, policy hash, order hash, item, recipient, payment asset and deadline are pre-sign bound;
+- provider fill and fee transfer are one atomic outcome;
+- approvals/signatures/cancellations settle zero;
+- failed/reverted execution settles zero;
+- successful receipt without atomic fee proof fails closed;
+- direct-provider wallet fallback cannot be labeled an RMT fee-admitted execution;
+- marketplace-observed trades never become RMT revenue by indexing alone.
 
-## 10. ERC-1155 partial fills
+### Seaport listing buy
 
-Quantities, remaining units, per-unit economics and partial fill state must be exact. A token ID can have many owners simultaneously; ERC-721 ownership assumptions do not apply.
+Use a pinned RMT executor as fulfiller and explicit user NFT recipient. Preserve exact Seaport consideration and transfer the separate RMT fee in the same outer transaction. Restrict to decoded/allowlisted provider function semantics; no generic arbitrary-call executor.
 
-## 11. Token-bound accounts (ERC-6551)
+### Seaport offer sell
 
-An NFT may control one or more token-bound accounts. Treat TBA holdings as optional portfolio enrichment with explicit registry/implementation/salt identity. Threats include:
+Do not require temporary custody of seller NFT as a shortcut. Use the unchanged maker offer plus a seller counter-order whose signed consideration explicitly binds seller net, required venue/royalty recipients and exact RMT fee. Match atomically with side-specific verification.
 
-- recursive ownership graphs;
-- NFT owning another NFT that points back to the first;
-- duplicate TBA implementations for one token;
-- assets leaving between valuation and purchase;
-- double-counting TBA assets already in wallet portfolio;
-- assuming an NFT sale automatically conveys every external right associated with held assets.
+## Partial fills / criteria
 
-TBA NAV is not guaranteed sale value.
+ERC-1155 quantities and Seaport partial fractions must divide exactly. Collection/trait orders require the selected item to satisfy the exact signed criteria root/proof. UI labels are not proof.
 
-## 12. Wash/manipulated activity
+## ERC-6551
 
-Do not call activity “wash-free.” RMT can expose structural evidence such as self-trades, rapid round trips, repeated counterparty pairs, concentration, buyer/seller diversity, spread and backed bid depth. Keep the score explainable and label uncertainty.
+TBA holdings are optional enrichment. Protect against recursive ownership graphs, duplicate accounts/implementations, assets moving between valuation and purchase and double-counted wallet holdings. Contained NAV is not guaranteed sale value.
 
-## 13. Source/API compromise
+## Manipulated activity
 
-- Marketplace APIs are evidence sources, not chain authority.
+Do not claim “wash-free.” Expose structural signals such as self-trades, rapid round trips, repeated counterparties, concentration, buyer/seller diversity, spread and backed depth with explicit uncertainty.
+
+## Source/API compromise
+
+- APIs are evidence sources, not chain authority.
 - Pin protocol/deployment identity independently.
-- Bound response size, schemas, timeouts and cursors.
-- Reject unknown fields at the strict verification boundary when they affect authorization.
-- Preserve last-good read-only snapshots as stale where safe; never preserve stale authorization.
+- Bound schemas, sizes, timeouts and cursors.
+- Unknown authorization-affecting fields fail closed.
+- Stale read-only snapshots may remain visible where truthful; stale authorization never survives.
 
-## 14. Robinhood dual clocks
+## Runtime separation
 
-Do not compare rollup `eth_blockNumber` with a contract value based on Solidity `block.number`. Persist both clocks when semantics require it.
+Indexer: read-only, no keys/signing.  
+Quote observer: server credentials only.  
+Verifier: deterministic/provider-specific.  
+Fee verifier: deterministic policy + atomic settlement proof.  
+Authorization codec: reviewed payload kinds only.  
+Wallet submission: user-controlled signer.  
+Reconciler: proves provider execution and fee settlement after submission.
 
-## 15. Runtime separation
-
-Indexer: read-only, no keys.
-
-Quote observer: server-side credentials only, no signing.
-
-Verifier: deterministic, provider-specific, no signing.
-
-Authorization codec: constructs only reviewed payload kinds.
-
-Wallet submission: user-controlled self-custody signer.
-
-Reconciler: proves what happened after submission.
-
-No layer is allowed to “helpfully” absorb the next layer's authority.
+No layer may absorb the next layer's authority for convenience.
