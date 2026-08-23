@@ -418,6 +418,10 @@ contract RMTUniswapV3FeeExecutorV2 is ReentrancyGuard {
         private
         returns (uint256 amountOut)
     {
+        // slither-disable-start arbitrary-send-eth
+        // Both calls send only the exact authorized provider input to immutable,
+        // runtime-verified Router02. The recipient is either the validated trader
+        // or this executor for the bound native-output unwrap path.
         if (route.kind == RouteKind.EXACT_INPUT_SINGLE) {
             amountOut = IRMTUniswapSwapRouter02V2(router).exactInputSingle{value: value}(
                 IRMTUniswapSwapRouter02V2.ExactInputSingleParams({
@@ -440,6 +444,7 @@ contract RMTUniswapV3FeeExecutorV2 is ReentrancyGuard {
                 })
             );
         }
+        // slither-disable-end arbitrary-send-eth
     }
 
     // slither-disable-start reentrancy-balance
@@ -485,6 +490,10 @@ contract RMTUniswapV3FeeExecutorV2 is ReentrancyGuard {
 
     function _sendNative(address recipient, uint256 amount) private {
         uint256 recipientBefore = recipient.balance;
+        // The only callers supply either the authorization-bound trader or the
+        // immutable treasury, and execute() is nonReentrant. Failure reverts the
+        // swap and therefore the fee atomically.
+        // slither-disable-next-line arbitrary-send-eth,low-level-calls
         (bool success,) = recipient.call{value: amount}("");
         if (!success || recipient.balance < recipientBefore || recipient.balance - recipientBefore != amount) {
             revert NativeTransferFailed();
