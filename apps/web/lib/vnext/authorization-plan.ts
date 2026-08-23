@@ -15,6 +15,8 @@ import { isRobinhoodNativeAsset } from "./robinhood-assets";
 import { assertUpSwapCalldata, UP_CL_EXECUTION_ROUTER, UP_V2_EXECUTION_ROUTER, type UpAuthorizationEvidence } from "./up-authorization-codec";
 import type { RmtNetExecutionEconomics } from "./execution-fee-policy";
 import { assertRmtUniswapV3FeeCalldata, type RmtUniswapV3FeeExecution } from "./uniswap-v3-fee-executor";
+import { SUSHI_RED_SNWAPPER } from "../sushi";
+import { assertSushiSwapCalldata } from "./sushi-authorization-codec";
 
 const MAX_CLOCK_SKEW_MS = 5_000;
 
@@ -56,7 +58,7 @@ export type VNextAuthorizationPlan = {
   planId: string;
   sourceQuoteRequestId: string;
   sourceVerificationId: string;
-  provider: "uniswap-v3" | "up-v2" | "up-cl";
+  provider: "sushi" | "uniswap-v3" | "up-v2" | "up-cl";
   kind: "erc20_approval" | "swap";
   chainId: 4_663;
   target: string;
@@ -82,7 +84,7 @@ export type VNextAuthorizationPlan = {
 const atomic = z.string().regex(/^(0|[1-9][0-9]*)$/);
 const planSchema = z.object({
   planId: z.string().uuid(), sourceQuoteRequestId: z.string().uuid(), sourceVerificationId: z.string().uuid(),
-  provider: z.enum(["uniswap-v3", "up-v2", "up-cl"]), kind: z.enum(["erc20_approval", "swap"]), chainId: z.literal(4_663),
+  provider: z.enum(["sushi", "uniswap-v3", "up-v2", "up-cl"]), kind: z.enum(["erc20_approval", "swap"]), chainId: z.literal(4_663),
   target: z.string(), data: z.string().regex(/^0x[0-9a-fA-F]+$/), value: atomic, gasLimit: atomic,
   payloadHash: z.string().regex(/^0x[0-9a-fA-F]{64}$/), inputAsset: z.string(), outputAsset: z.string(),
   inputAmountAtomic: atomic, protectedOutputAtomic: atomic, recipient: z.string(), router: z.string(), deadline: atomic,
@@ -125,7 +127,7 @@ export function parseVNextAuthorizationPlan(value: unknown, evidence: VNextPreSi
     || getAddress(plan.outputAsset) !== getAddress(evidence.outputAsset)
     || getAddress(plan.recipient) !== getAddress(evidence.recipient)
     || plan.provider !== evidence.provider
-    || getAddress(plan.router) !== getAddress(evidence.provider === "uniswap-v3" ? ROBINHOOD_SWAP_ROUTER_02 : evidence.provider === "up-v2" ? UP_V2_EXECUTION_ROUTER : UP_CL_EXECUTION_ROUTER)
+    || getAddress(plan.router) !== getAddress(evidence.provider === "sushi" ? SUSHI_RED_SNWAPPER : evidence.provider === "uniswap-v3" ? ROBINHOOD_SWAP_ROUTER_02 : evidence.provider === "up-v2" ? UP_V2_EXECUTION_ROUTER : UP_CL_EXECUTION_ROUTER)
     || plan.inputAmountAtomic !== evidence.inputAmountAtomic
     || plan.protectedOutputAtomic !== evidence.protectedOutputAtomic
     || plan.value !== evidence.transactionValueAtomic
@@ -162,6 +164,17 @@ export function parseVNextAuthorizationPlan(value: unknown, evidence: VNextPreSi
   }
   if (evidence.provider === "up-v2" || evidence.provider === "up-cl") {
     assertUpSwapCalldata(plan.data, evidence as UpAuthorizationEvidence);
+    return plan;
+  }
+  if (evidence.provider === "sushi") {
+    assertSushiSwapCalldata(plan.data, {
+      inputAsset: evidence.inputAsset,
+      outputAsset: evidence.outputAsset,
+      inputAmountAtomic: evidence.inputAmountAtomic,
+      protectedOutputAtomic: evidence.protectedOutputAtomic,
+      recipient: evidence.recipient,
+      transactionValueAtomic: plan.value
+    });
     return plan;
   }
   if (evidence.rmtFeeEnabled) {

@@ -53,3 +53,14 @@ export type SushiExecutableQuote = Omit<SushiIndicativeQuote, "executable"> & {
   executable: true;
   onchainDeadline: false;
 };
+
+export type SushiAssetExecutableQuote = Omit<SushiAssetIndicativeQuote, "executable"> & {
+  recipient: Address;
+  router: Address;
+  executor: Address;
+  calldata: Hex;
+  value: string;
+  quoteExpiresAt: string;
+  executable: true;
+  onchainDeadline: false;
+};

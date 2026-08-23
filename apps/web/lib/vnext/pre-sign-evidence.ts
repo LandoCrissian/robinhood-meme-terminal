@@ -3,6 +3,8 @@ import { z } from "zod";
 import { ROBINHOOD_SWAP_ROUTER_02 } from "../uniswap-v4";
 import { isRobinhoodNativeAsset } from "./robinhood-assets";
 import { UP_CL_EXECUTION_ROUTER, UP_V2_EXECUTION_ROUTER } from "./up-authorization-codec";
+import { SUSHI_RED_SNWAPPER } from "../sushi";
+import { SUSHI_RED_SNWAPPER_CODE_HASH, SUSHI_ROUTE_EXECUTOR, SUSHI_ROUTE_EXECUTOR_CODE_HASH } from "./sushi-authorization-codec";
 import { assertRmtNetExecutionEconomics, type RmtNetExecutionEconomics } from "./execution-fee-policy";
 import { assertRmtUniswapV3FeeExecution, encodeRmtUniswapV3FeeExecution, type RmtUniswapV3FeeExecution } from "./uniswap-v3-fee-executor";
 
@@ -11,7 +13,7 @@ const MAX_CLOCK_SKEW_MS = 5_000;
 export type VNextPreSignEvidence = {
   verificationId: string;
   sourceQuoteRequestId: string;
-  provider: "uniswap-v3" | "up-v2" | "up-cl";
+  provider: "sushi" | "uniswap-v3" | "up-v2" | "up-cl";
   status: "verified" | "approval_required" | "approval_simulation_failed" | "insufficient_balance" | "insufficient_gas" | "gas_unavailable" | "simulation_failed";
   chainId: 4_663;
   inputAsset: string;
@@ -27,7 +29,7 @@ export type VNextPreSignEvidence = {
   sufficientBalance: boolean;
   allowanceAtomic: string;
   balanceAtomic: string;
-  route: "direct" | "weth_hop";
+  route: "direct" | "weth_hop" | "aggregated";
   fees: number[];
   pools: string[];
   stableFlags?: boolean[];
@@ -52,8 +54,12 @@ export type VNextPreSignEvidence = {
   networkCostValuationExpiresAtMs: number | null;
   gasState: "sufficient" | "insufficient" | "unavailable" | "not_checked";
   routerRuntimeHash: string;
-  factoryRuntimeHash: string;
-  quoterRuntimeHash: string;
+  factoryRuntimeHash: string | null;
+  quoterRuntimeHash: string | null;
+  executor?: string | null;
+  executorRuntimeHash?: string | null;
+  onchainDeadline?: boolean;
+  freshnessKind?: "onchain_deadline" | "server_authorization_expiry";
   exactSimulationPassed: boolean;
   userPaysGas: true;
   rmtFeeEnabled: boolean;
@@ -69,7 +75,7 @@ const hash = z.string().regex(/^0x[0-9a-fA-F]{64}$/);
 const evidenceSchema = z.object({
   verificationId: z.string().uuid(),
   sourceQuoteRequestId: z.string().uuid(),
-  provider: z.enum(["uniswap-v3", "up-v2", "up-cl"]),
+  provider: z.enum(["sushi", "uniswap-v3", "up-v2", "up-cl"]),
   status: z.enum(["verified", "approval_required", "approval_simulation_failed", "insufficient_balance", "insufficient_gas", "gas_unavailable", "simulation_failed"]),
   chainId: z.literal(4_663),
   inputAsset: z.string(),
@@ -85,9 +91,9 @@ const evidenceSchema = z.object({
   sufficientBalance: z.boolean(),
   allowanceAtomic: atomic,
   balanceAtomic: atomic,
-  route: z.enum(["direct", "weth_hop"]),
-  fees: z.array(z.number().int().positive()).min(1).max(2),
-  pools: z.array(z.string()).min(1).max(2),
+  route: z.enum(["direct", "weth_hop", "aggregated"]),
+  fees: z.array(z.number().int().positive()).max(2),
+  pools: z.array(z.string()).max(2),
   stableFlags: z.array(z.boolean()).min(1).max(2).optional(),
   tickSpacings: z.array(z.number().int().positive().max(16_383)).min(1).max(2).optional(),
   quoteBlock: atomic.optional(),
@@ -110,8 +116,12 @@ const evidenceSchema = z.object({
   networkCostValuationExpiresAtMs: z.number().int().positive().nullable(),
   gasState: z.enum(["sufficient", "insufficient", "unavailable", "not_checked"]),
   routerRuntimeHash: hash,
-  factoryRuntimeHash: hash,
-  quoterRuntimeHash: hash,
+  factoryRuntimeHash: hash.nullable(),
+  quoterRuntimeHash: hash.nullable(),
+  executor: z.string().nullable().optional(),
+  executorRuntimeHash: hash.nullable().optional(),
+  onchainDeadline: z.boolean().optional(),
+  freshnessKind: z.enum(["onchain_deadline", "server_authorization_expiry"]).optional(),
   exactSimulationPassed: z.boolean(),
   userPaysGas: z.literal(true),
   rmtFeeEnabled: z.boolean(),
@@ -127,7 +137,7 @@ export function parseVNextPreSignEvidence(value: unknown, expected: {
   inputAsset: string;
   outputAsset: string;
   inputAmountAtomic: string;
-  provider: "uniswap-v3" | "up-v2" | "up-cl";
+  provider: "sushi" | "uniswap-v3" | "up-v2" | "up-cl";
   protectedOutputFloorAtomic: string;
   recipient: string;
 }, nowMs: number): VNextPreSignEvidence {
@@ -147,7 +157,7 @@ export function parseVNextPreSignEvidence(value: unknown, expected: {
     || BigInt(evidence.protectedOutputAtomic) < BigInt(expected.protectedOutputFloorAtomic)
     || !isAddress(evidence.recipient)
     || getAddress(evidence.recipient) !== getAddress(expected.recipient)
-    || getAddress(evidence.router) !== getAddress(evidence.provider === "uniswap-v3" ? ROBINHOOD_SWAP_ROUTER_02 : evidence.provider === "up-v2" ? UP_V2_EXECUTION_ROUTER : UP_CL_EXECUTION_ROUTER)
+    || getAddress(evidence.router) !== getAddress(evidence.provider === "sushi" ? SUSHI_RED_SNWAPPER : evidence.provider === "uniswap-v3" ? ROBINHOOD_SWAP_ROUTER_02 : evidence.provider === "up-v2" ? UP_V2_EXECUTION_ROUTER : UP_CL_EXECUTION_ROUTER)
     || evidence.protectedOutputAtomic === "0"
     || BigInt(evidence.protectedOutputAtomic) > BigInt(evidence.expectedOutputAtomic)
     || evidence.verifiedAtMs > nowMs + MAX_CLOCK_SKEW_MS
@@ -185,6 +195,16 @@ export function parseVNextPreSignEvidence(value: unknown, expected: {
   }
   if (evidence.route === "direct" && (evidence.fees.length !== 1 || evidence.pools.length !== 1)) throw new Error("RMT rejected an inconsistent direct route.");
   if (evidence.route === "weth_hop" && (evidence.fees.length !== 2 || evidence.pools.length !== 2)) throw new Error("RMT rejected an inconsistent multihop route.");
+  if (evidence.provider === "sushi" && (
+    evidence.route !== "aggregated" || evidence.fees.length !== 0 || evidence.pools.length !== 0
+    || evidence.stableFlags !== undefined || evidence.tickSpacings !== undefined
+    || evidence.quoteBlock !== undefined || evidence.quoteBlockHash !== undefined
+    || evidence.routerRuntimeHash.toLowerCase() !== SUSHI_RED_SNWAPPER_CODE_HASH
+    || !evidence.executor || getAddress(evidence.executor) !== SUSHI_ROUTE_EXECUTOR
+    || evidence.executorRuntimeHash?.toLowerCase() !== SUSHI_ROUTE_EXECUTOR_CODE_HASH
+    || evidence.factoryRuntimeHash !== null || evidence.quoterRuntimeHash !== null
+    || evidence.onchainDeadline !== false || evidence.freshnessKind !== "server_authorization_expiry"
+  )) throw new Error("RMT rejected incomplete Sushi execution evidence.");
   if (evidence.provider === "up-v2" && (
     evidence.stableFlags?.length !== evidence.pools.length || evidence.tickSpacings !== undefined
     || evidence.quoteBlock === undefined || evidence.quoteBlockHash === undefined
@@ -196,6 +216,12 @@ export function parseVNextPreSignEvidence(value: unknown, expected: {
   if (evidence.provider === "uniswap-v3" && (evidence.stableFlags !== undefined || evidence.tickSpacings !== undefined || evidence.quoteBlock !== undefined || evidence.quoteBlockHash !== undefined)) {
     throw new Error("RMT rejected foreign route evidence on Uniswap.");
   }
+  if (evidence.provider !== "sushi" && (
+    evidence.route === "aggregated" || evidence.executor != null || evidence.executorRuntimeHash != null
+    || evidence.factoryRuntimeHash === null || evidence.quoterRuntimeHash === null
+    || (evidence.onchainDeadline !== undefined && evidence.onchainDeadline !== true)
+    || (evidence.freshnessKind !== undefined && evidence.freshnessKind !== "onchain_deadline")
+  )) throw new Error("RMT rejected inconsistent onchain-deadline execution evidence.");
   evidence.pools.forEach((pool) => {
     if (!isAddress(pool)) throw new Error("RMT rejected an invalid route pool.");
   });

@@ -4,6 +4,8 @@ import { encodeFunctionData, erc20Abi, keccak256, zeroAddress, type Hex } from "
 import { ROBINHOOD_SWAP_ROUTER_02, ROBINHOOD_WETH } from "../uniswap-v4";
 import { authorizationPayloadHash, parseVNextAuthorizationBundle, parseVNextAuthorizationPlan, type VNextAuthorizationPlan } from "./authorization-plan";
 import type { VNextPreSignEvidence } from "./pre-sign-evidence";
+import { SUSHI_RED_SNWAPPER } from "../sushi";
+import { SUSHI_RED_SNWAPPER_CODE_HASH, SUSHI_ROUTE_EXECUTOR, SUSHI_ROUTE_EXECUTOR_CODE_HASH, sushiRedSnwapperAbi } from "./sushi-authorization-codec";
 
 const routerAbi = [{
   type: "function", name: "exactInputSingle", stateMutability: "payable",
@@ -203,10 +205,58 @@ assert.throws(() => parseVNextAuthorizationBundle({
   recipient
 }, now + 1), /weakened protection/);
 
+const sushiSwapData = encodeFunctionData({
+  abi: sushiRedSnwapperAbi,
+  functionName: "snwap",
+  args: [inputAsset, 1_000_000n, recipient, outputAsset, 990n, SUSHI_ROUTE_EXECUTOR, "0x6be92b8900"]
+});
+const sushiEvidence: VNextPreSignEvidence = {
+  ...verifiedEvidence,
+  provider: "sushi",
+  router: SUSHI_RED_SNWAPPER,
+  approvalSpender: SUSHI_RED_SNWAPPER,
+  route: "aggregated",
+  fees: [],
+  pools: [],
+  calldataHash: keccak256(sushiSwapData),
+  nextActionTarget: SUSHI_RED_SNWAPPER,
+  nextActionCalldataHash: keccak256(sushiSwapData),
+  routerRuntimeHash: SUSHI_RED_SNWAPPER_CODE_HASH,
+  factoryRuntimeHash: null,
+  quoterRuntimeHash: null,
+  executor: SUSHI_ROUTE_EXECUTOR,
+  executorRuntimeHash: SUSHI_ROUTE_EXECUTOR_CODE_HASH,
+  onchainDeadline: false,
+  freshnessKind: "server_authorization_expiry"
+};
+const sushiPlan = planWithHash({
+  ...swapPlan,
+  planId: "88888888-8888-4888-8888-888888888888",
+  provider: "sushi",
+  target: SUSHI_RED_SNWAPPER,
+  router: SUSHI_RED_SNWAPPER,
+  data: sushiSwapData
+});
+assert.equal(parseVNextAuthorizationPlan(sushiPlan, sushiEvidence, now + 1).provider, "sushi");
+const changedSushiMinimum = encodeFunctionData({
+  abi: sushiRedSnwapperAbi,
+  functionName: "snwap",
+  args: [inputAsset, 1_000_000n, recipient, outputAsset, 989n, SUSHI_ROUTE_EXECUTOR, "0x6be92b8900"]
+});
+assert.throws(() => parseVNextAuthorizationPlan(planWithHash({ ...sushiPlan, data: changedSushiMinimum }), sushiEvidence, now + 1), /minimum received|strict evidence/);
+const changedSushiAmount = encodeFunctionData({
+  abi: sushiRedSnwapperAbi,
+  functionName: "snwap",
+  args: [inputAsset, 999_999n, recipient, outputAsset, 990n, SUSHI_ROUTE_EXECUTOR, "0x6be92b8900"]
+});
+assert.throws(() => parseVNextAuthorizationPlan(planWithHash({ ...sushiPlan, data: changedSushiAmount }), sushiEvidence, now + 1), /input amount|strict evidence/);
+
 const endpoint = readFileSync(new URL("../../app/api/vnext/authorize/route.ts", import.meta.url), "utf8");
 const parser = readFileSync(new URL("./authorization-plan.ts", import.meta.url), "utf8");
 const composer = readFileSync(new URL("../../app/vnext/trade-intent-composer.tsx", import.meta.url), "utf8");
 assert.match(endpoint, /RMT_VNEXT_AUTHORIZATION_ENABLED !== "true"/);
+assert.match(endpoint, /hasVNextWalletAuthorizationCodec\(prepared\.evidence\.provider\)/);
+assert.doesNotMatch(endpoint, /prepared\.evidence\.provider !== "uniswap-v3"/);
 assert.match(endpoint, /requireAuthenticatedTradeWallet/);
 assert.match(endpoint, /readVNextVerifiedAssetIdentity/);
 assert.match(endpoint, /prepareRobinhoodVNextAuthorization/);

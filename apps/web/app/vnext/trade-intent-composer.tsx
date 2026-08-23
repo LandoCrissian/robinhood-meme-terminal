@@ -7,7 +7,7 @@ import type { AssetMetadata } from "../../lib/vnext/execution-domain";
 import { assetKey } from "../../lib/vnext/execution-domain";
 import type { VNextExecutionRecord } from "../../lib/vnext/execution-recovery";
 import { affordableDefaultAmount, createExactInputIntent, percentageOfAtomic, type TradeSide } from "../../lib/vnext/intent-draft";
-import { parseVNextQuoteResponse, selectVNextRoute, type VNextQuoteResponse } from "../../lib/vnext/quote-observation";
+import { hasVNextWalletAuthorizationCodec, parseVNextQuoteResponse, selectVNextRoute, type VNextQuoteResponse } from "../../lib/vnext/quote-observation";
 import { parseVNextPreSignEvidence, type VNextPreSignEvidence } from "../../lib/vnext/pre-sign-evidence";
 import { postApprovalVerificationOutcome, resolvedVNextExecutionOutcome } from "../../lib/vnext/post-approval";
 import { parseVNextAuthorizationBundle, type VNextAuthorizationPlan } from "../../lib/vnext/authorization-plan";
@@ -497,7 +497,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
       || !identity.identityToken
       || !identity.userId
       || !winningQuote
-      || (winningQuote.provider !== "uniswap-v3" && winningQuote.provider !== "up-v2" && winningQuote.provider !== "up-cl")
+      || !hasVNextWalletAuthorizationCodec(winningQuote.provider)
       || !winningQuote.protectedOutputAtomic
     ) throw new Error("No observed route is supported by a strict verifier yet.");
     const expected = {
@@ -910,11 +910,14 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
               ? "Last verified evidence remains stable while its replacement is checked"
               : authorizationEnabled ? "RMT completed the internal checks from your single trade action" : "Authorization remains disabled in this preview"}</small></span>
             <dl>
-              <div><dt>Route</dt><dd>{visibleVerification.route === "direct" ? "Direct V3" : "V3 via WETH"}</dd></div>
+              <div><dt>Provider</dt><dd>{verificationQuote?.providerLabel ?? visibleVerification.provider}</dd></div>
+              <div><dt>Route</dt><dd>{visibleVerification.route === "aggregated" ? "Sushi aggregated route" : visibleVerification.route === "direct" ? "Direct V3" : "V3 via WETH"}</dd></div>
               <div><dt>Protected</dt><dd>{formatAtomicDisplay(visibleVerification.protectedOutputAtomic, verificationQuote?.outputDecimals ?? 18)} {outputSymbol}</dd></div>
               <div><dt>Quote continuity</dt><dd>{describeProtectedOutputContinuity(visibleVerification.protectedOutputAtomic, visibleVerification.indicativeProtectedOutputFloorAtomic)}</dd></div>
               <div><dt>Simulation</dt><dd>{visibleVerification.exactSimulationPassed ? "Passed" : "Not passed"}</dd></div>
               <div><dt>Next action</dt><dd>{visibleVerification.nextAction === "approval" ? "Exact approval" : visibleVerification.nextAction === "swap" ? "Verified swap" : "Blocked"}</dd></div>
+              <div><dt>Approval</dt><dd>{visibleVerification.approvalRequired ? "Exact amount required" : "Not required"}</dd></div>
+              <div><dt>Freshness</dt><dd>{visibleVerification.expiresAtMs > Date.now() ? "Fresh" : "Expired"}</dd></div>
               <div><dt>Gas</dt><dd>{visibleVerification.gasState}</dd></div>
               <div><dt>Gas reserve</dt><dd>{visibleVerification.estimatedNetworkCostWei ? `${formatAtomicDisplay(visibleVerification.estimatedNetworkCostWei, 18)} ETH` : "Unavailable"}</dd></div>
               <div><dt>Gas reserve value</dt><dd>{freshVerifiedNetworkCostUsdgAtomic ? `${formatAtomicDisplay(freshVerifiedNetworkCostUsdgAtomic, 6)} USDG equivalent` : "Unavailable"}</dd></div>
@@ -925,6 +928,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
               {visibleVerification.feeExecution ? <div><dt>Settlement</dt><dd>Atomic with swap · policy v{visibleVerification.feeExecution.policyVersion}</dd></div> : null}
               <div><dt>Calldata</dt><dd>{shortAddress(visibleVerification.calldataHash)}</dd></div>
             </dl>
+            {visibleVerification.provider === "sushi" ? <p className="vnExecutionDisclosure" role="note">Minimum received is enforced onchain. RMT expires this wallet authorization before signing; the Sushi transaction itself has no onchain deadline.</p> : null}
             {visibleVerification.status === "insufficient_gas" ? <div className="vnGasRecovery" role="status">
               <span><strong>Robinhood ETH is required only for network gas</strong><small>Add it to the exact active wallet, then press Buy or Sell once. RMT will quietly recheck the route, balance, and gas reserve.</small></span>
               <FundWalletButton directReceive variant="inline" label="Add Robinhood ETH" />

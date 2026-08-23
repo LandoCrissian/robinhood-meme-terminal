@@ -121,11 +121,19 @@ assert.equal(backupSelection.bestObserved?.provider, "sushi");
 assert.equal(backupSelection.verificationCandidate?.provider, "uniswap-v3");
 assert.equal(backupSelection.usesVerifiedBackup, true);
 assert.equal(hasVNextWalletAuthorizationCodec("uniswap-v3"), true);
+assert.equal(hasVNextWalletAuthorizationCodec("sushi"), true);
 assert.equal(hasVNextWalletAuthorizationCodec("zero-x-swap"), false);
 assert.equal(hasVNextWalletAuthorizationCodec("zero-x-gasless"), false);
 assert.equal(hasVNextWalletAuthorizationCodec("uniswapx"), false);
 assert.equal(hasVNextWalletAuthorizationCodec("up-v2"), true);
 assert.equal(hasVNextWalletAuthorizationCodec("up-cl"), true);
+const executableSushiSelection = selectVNextRoute(parseVNextQuoteResponse({
+  ...response,
+  attempts: [{ ...response.attempts[0], strictVerificationAvailable: true }]
+}, expected, now).attempts);
+assert.equal(executableSushiSelection.bestObserved?.provider, "sushi");
+assert.equal(executableSushiSelection.verificationCandidate?.provider, "sushi");
+assert.equal(executableSushiSelection.usesVerifiedBackup, false);
 
 const uniswapXAttempt = {
   ...response.attempts[0],
@@ -229,6 +237,9 @@ assert.match(engine, /authorizationReady: false/);
 assert.match(engine, /networkFeeNativeAtomic: null/);
 assert.match(sushiAdapter, /quoteSushiAssetRoute/);
 assert.match(sushiAdapter, /isRobinhoodNativeAsset\(request\.outputAsset\)/);
+assert.match(sushiAdapter, /capabilities: \{ strictVerification: true, walletAuthorization: true \}/);
+assert.match(sushiAdapter, /verifyVNextSushiRoute/);
+assert.match(sushiAdapter, /prepareVNextSushiAuthorization/);
 assert.match(uniswapAdapter, /quoteVNextUniswapForUser/);
 assert.match(uniswap, /unwrapWETH9/);
 assert.match(composer, /ROBINHOOD_NATIVE_ASSET_ADDRESS/);
@@ -246,6 +257,8 @@ assert.match(sushi, /quoteSushiAssetRoute/);
 assert.match(uniswap, /quoteExactInputSingle/);
 assert.match(composer, /\/api\/vnext\/quotes/);
 assert.match(composer, /One tap checks the best route and opens the final wallet confirmation/);
+assert.match(composer, /hasVNextWalletAuthorizationCodec\(winningQuote\.provider\)/);
+assert.doesNotMatch(composer, /winningQuote\.provider !== "uniswap-v3"/);
 assert.match(composer, /Protected output before network fee/);
 assert.match(composer, /attempt\.userPaysGas === null \? "gas unknown"/);
 assert.doesNotMatch(composer, /writeContract|sendTransaction|signTypedData/);

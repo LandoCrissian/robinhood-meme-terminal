@@ -5,6 +5,7 @@ import { requireAuthenticatedTradeWallet, tradeIdentityErrorResponse } from "../
 import { readVNextVerifiedAssetIdentity } from "../../../../lib/server/vnext-asset-identity";
 import { prepareRobinhoodVNextAuthorization } from "../../../../lib/server/vnext-execution-engine";
 import { authorizationPayloadHash, type VNextAuthorizationPlan } from "../../../../lib/vnext/authorization-plan";
+import { hasVNextWalletAuthorizationCodec } from "../../../../lib/vnext/quote-observation";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -63,7 +64,7 @@ export async function POST(request: Request) {
       nowMs: preparedAtMs,
       ...(parsed.data.executionId ? { executionId: parsed.data.executionId as Hex } : {})
     });
-    if (prepared.evidence.provider !== "uniswap-v3" && prepared.evidence.provider !== "up-v2" && prepared.evidence.provider !== "up-cl") {
+    if (!hasVNextWalletAuthorizationCodec(prepared.evidence.provider)) {
       return Response.json({ error: "This provider does not have a supported wallet-plan codec yet." }, { status: 422, headers: noStore });
     }
     const evidenceChanged = prepared.evidence.status !== parsed.data.expectedStatus

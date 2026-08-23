@@ -8,6 +8,7 @@ import {
 const MAX_CLOCK_SKEW_MS = 5_000;
 
 export type VNextQuoteProvider = "sushi" | "uniswap-v3" | "uniswapx" | "zero-x-swap" | "zero-x-gasless" | "up-v2" | "up-cl";
+export type VNextWalletAuthorizationProvider = Extract<VNextQuoteProvider, "sushi" | "uniswap-v3" | "up-v2" | "up-cl">;
 
 export type VNextLiquidityFeeEvidence = {
   source: "up-v2-factory" | "up-cl-pool";
@@ -25,14 +26,15 @@ export type VNextLiquidityFeeEvidence = {
 // a reviewed pre-sign evidence parser and wallet-plan codec for that provider.
 // Keep this local allowlist fail closed so a server capability change cannot
 // silently promote an observation-only provider into wallet preparation.
-const VNEXT_WALLET_AUTHORIZATION_CODECS: ReadonlySet<VNextQuoteProvider> = new Set([
+const VNEXT_WALLET_AUTHORIZATION_CODECS: ReadonlySet<VNextWalletAuthorizationProvider> = new Set([
+  "sushi",
   "uniswap-v3",
   "up-v2",
   "up-cl"
 ]);
 
-export function hasVNextWalletAuthorizationCodec(provider: VNextQuoteProvider) {
-  return VNEXT_WALLET_AUTHORIZATION_CODECS.has(provider);
+export function hasVNextWalletAuthorizationCodec(provider: VNextQuoteProvider): provider is VNextWalletAuthorizationProvider {
+  return VNEXT_WALLET_AUTHORIZATION_CODECS.has(provider as VNextWalletAuthorizationProvider);
 }
 
 export type VNextQuoteAttemptStatus =

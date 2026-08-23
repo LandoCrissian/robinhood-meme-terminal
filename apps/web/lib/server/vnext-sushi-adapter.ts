@@ -2,6 +2,7 @@ import { quoteSushiAssetRoute } from "./sushi-trade";
 import { SUSHI_NATIVE_TOKEN } from "../sushi";
 import { isRobinhoodNativeAsset } from "../vnext/robinhood-assets";
 import { disabledVNextFeeEconomics, unavailableVNextQuoteAttempt, type VNextQuoteProviderAdapter } from "./vnext-provider-adapter";
+import { prepareVNextSushiAuthorization, verifyVNextSushiRoute } from "./vnext-sushi-execution";
 
 export const vNextSushiAdapter: VNextQuoteProviderAdapter = {
   provider: "sushi",
@@ -9,7 +10,7 @@ export const vNextSushiAdapter: VNextQuoteProviderAdapter = {
   providerFamily: "sushi",
   adapterVersion: 1,
   executionKind: "aggregator",
-  capabilities: { strictVerification: false, walletAuthorization: false },
+  capabilities: { strictVerification: true, walletAuthorization: true },
   async quote(request) {
     const startedAtMs = Date.now();
     try {
@@ -44,7 +45,7 @@ export const vNextSushiAdapter: VNextQuoteProviderAdapter = {
         expiresAtMs: quotedAtMs + 30_000,
         latencyMs: quotedAtMs - startedAtMs,
         executionKind: "aggregator",
-        strictVerificationAvailable: false,
+        strictVerificationAvailable: true,
         userPaysGas: true,
         providerFeeAsset: null,
         providerFeeAtomic: null,
@@ -75,5 +76,7 @@ export const vNextSushiAdapter: VNextQuoteProviderAdapter = {
         startedAtMs
       });
     }
-  }
+  },
+  verify: verifyVNextSushiRoute,
+  prepareAuthorization: prepareVNextSushiAuthorization
 };

@@ -13,14 +13,16 @@ import {
   SUSHI_NATIVE_TOKEN,
   SUSHI_QUOTE_SLIPPAGE_BPS,
   SUSHI_RED_SNWAPPER,
+  type SushiAssetExecutableQuote,
   type SushiAssetIndicativeQuote,
   type SushiExecutableQuote,
   type SushiIndicativeQuote,
   type SushiTokenMetadata
 } from "../sushi";
+import { isRobinhoodNativeAsset } from "../vnext/robinhood-assets";
 import { PRICE_IMPACT_BLOCK } from "../trade-ticket";
 import {
-  auditSushiSwapCandidate,
+  auditSushiAssetSwapCandidate,
   hashSushiContractCode
 } from "./sushi-swap-validation";
 
@@ -217,15 +219,55 @@ export async function quoteAndBuildSushiSwap(
     codeHash?: (address: Address) => Promise<`0x${string}`>;
   } = {}
 ): Promise<SushiExecutableQuote> {
+  if (params.maxPriceImpact !== undefined && (!Number.isFinite(params.maxPriceImpact) || params.maxPriceImpact <= 0 || params.maxPriceImpact > 1)) {
+    throw new Error("The selected maximum price impact is invalid.");
+  }
+  const generic = await quoteAndBuildSushiAssetSwap({
+    inputAsset: params.side === "buy" ? zeroAddress : params.token,
+    outputAsset: params.side === "buy" ? params.token : zeroAddress,
+    recipient: params.recipient,
+    amountIn: params.amountIn,
+    maxPriceImpact: params.maxPriceImpact ?? PRICE_IMPACT_BLOCK
+  }, dependencies);
+  return {
+    ...generic,
+    token: getAddress(params.token),
+    side: params.side
+  };
+}
+
+export async function quoteAndBuildSushiAssetSwap(
+  params: {
+    inputAsset: Address;
+    outputAsset: Address;
+    recipient: Address;
+    amountIn: bigint;
+    protectedOutputFloorAtomic?: bigint;
+    maxPriceImpact?: number;
+  },
+  dependencies: {
+    fetch?: SushiFetch;
+    enabled?: boolean;
+    timeoutMs?: number;
+    chainId?: number;
+    now?: () => number;
+    codeHash?: (address: Address) => Promise<`0x${string}`>;
+  } = {}
+): Promise<SushiAssetExecutableQuote> {
   const chainId = dependencies.chainId ?? activeChain.id;
   if (chainId !== 4663) throw new Error("Sushi execution is available only on Robinhood Chain mainnet.");
   if (!(dependencies.enabled ?? sushiQuotesEnabled())) throw new Error("Sushi quote discovery is not enabled.");
   if (params.amountIn <= 0n || params.amountIn > MAX_UINT256) throw new Error("Trade amount is outside the supported range.");
   if (params.recipient.toLowerCase() === zeroAddress) throw new Error("A valid wallet recipient is required.");
 
-  const tokenIn = params.side === "buy" ? SUSHI_NATIVE_TOKEN : params.token;
-  const tokenOut = params.side === "buy" ? params.token : SUSHI_NATIVE_TOKEN;
-  const maxPriceImpact = params.maxPriceImpact ?? PRICE_IMPACT_BLOCK;
+  const inputAsset = getAddress(params.inputAsset);
+  const outputAsset = getAddress(params.outputAsset);
+  if (inputAsset === outputAsset) throw new Error("Sushi input and output assets must differ.");
+  const tokenIn = isRobinhoodNativeAsset(inputAsset) ? SUSHI_NATIVE_TOKEN : inputAsset;
+  const tokenOut = isRobinhoodNativeAsset(outputAsset) ? SUSHI_NATIVE_TOKEN : outputAsset;
+  // Legacy callers may retain an explicit user-selected limit. VNext passes no
+  // limit and uses the provider domain maximum so price impact is informational.
+  const maxPriceImpact = params.maxPriceImpact ?? 1;
   if (!Number.isFinite(maxPriceImpact) || maxPriceImpact <= 0 || maxPriceImpact > 1) {
     throw new Error("The selected maximum price impact is invalid.");
   }
@@ -258,7 +300,13 @@ export async function quoteAndBuildSushiSwap(
   }
   if (!response.ok) throw new Error("Sushi could not simulate this trade.");
   const payload = await response.json();
-  const audit = await auditSushiSwapCandidate(params, payload, {
+  const audit = await auditSushiAssetSwapCandidate({
+    inputAsset,
+    outputAsset,
+    recipient: params.recipient,
+    amountIn: params.amountIn,
+    protectedOutputFloorAtomic: params.protectedOutputFloorAtomic
+  }, payload, {
     codeHash: dependencies.codeHash ?? (async (address) => {
       const code = await client.getBytecode({ address });
       if (!code) throw new Error("Sushi contract bytecode is unavailable.");
@@ -279,9 +327,9 @@ export async function quoteAndBuildSushiSwap(
     chainId,
     venue: "sushi-aggregator",
     protocol: "SUSHI",
-    token: getAddress(params.token),
+    inputAsset,
+    outputAsset,
     recipient: getAddress(params.recipient),
-    side: params.side,
     amountIn: audit.amountIn.toString(),
     quoteOut: audit.assumedAmountOut.toString(),
     minimumOut: audit.minimumOut.toString(),

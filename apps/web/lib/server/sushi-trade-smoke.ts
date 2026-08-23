@@ -8,7 +8,7 @@ import {
   sushiRedSnwapperAbi
 } from "./sushi-swap-validation";
 import { SUSHI_RED_SNWAPPER } from "../sushi";
-import { quoteAndBuildSushiSwap, quoteSushiRoute, sushiQuotesEnabled } from "./sushi-trade";
+import { quoteAndBuildSushiAssetSwap, quoteAndBuildSushiSwap, quoteSushiRoute, sushiQuotesEnabled } from "./sushi-trade";
 
 const token = getAddress("0xdBa33be56C89CC9fc014c4459028d7e5c7878671");
 const recipient = getAddress("0x1111111111111111111111111111111111111111");
@@ -238,6 +238,20 @@ async function main() {
   assert.equal(auditedSell.executable, true);
 
   const badAddress = getAddress("0x2222222222222222222222222222222222222222");
+  const erc20ToNative = await quoteAndBuildSushiAssetSwap(
+    { inputAsset: token, outputAsset: getAddress("0x0000000000000000000000000000000000000000"), recipient, amountIn },
+    { enabled: true, chainId: 4663, now: () => 1_000_000, codeHash: approvedCodeHash, fetch: async () => Response.json(swapCandidate({ tokenIn: token, tokenOut: nativeToken, value: 0n })) }
+  );
+  assert.equal(erc20ToNative.inputAsset, token);
+  assert.equal(erc20ToNative.outputAsset, getAddress("0x0000000000000000000000000000000000000000"));
+  assert.equal(erc20ToNative.value, "0");
+  const erc20ToErc20 = await quoteAndBuildSushiAssetSwap(
+    { inputAsset: token, outputAsset: badAddress, recipient, amountIn },
+    { enabled: true, chainId: 4663, now: () => 1_000_000, codeHash: approvedCodeHash, fetch: async () => Response.json(swapCandidate({ tokenIn: token, tokenOut: badAddress, value: 0n })) }
+  );
+  assert.equal(erc20ToErc20.inputAsset, token);
+  assert.equal(erc20ToErc20.outputAsset, badAddress);
+  assert.equal(erc20ToErc20.value, "0");
   await assert.rejects(auditSushiSwapCandidate({ token, recipient, side: "buy", amountIn }, swapCandidate({ sender: badAddress }), { codeHash: approvedCodeHash }), /transaction sender/);
   await assert.rejects(auditSushiSwapCandidate({ token, recipient, side: "buy", amountIn }, swapCandidate({ router: badAddress }), { codeHash: approvedCodeHash }), /execution router/);
   await assert.rejects(auditSushiSwapCandidate({ token, recipient, side: "buy", amountIn }, swapCandidate({ tokenIn: badAddress }), { codeHash: approvedCodeHash }), /input token/);
@@ -250,6 +264,11 @@ async function main() {
   await assert.rejects(auditSushiSwapCandidate({ token, recipient, side: "buy", amountIn }, swapCandidate({ value: 0n }), { codeHash: approvedCodeHash }), /native transaction value/);
   await assert.rejects(auditSushiSwapCandidate({ token, recipient, side: "buy", amountIn }, swapCandidate({ responseAmountIn: 2n }), { codeHash: approvedCodeHash }), /executable input amount/);
   await assert.rejects(auditSushiSwapCandidate({ token, recipient, side: "buy", amountIn }, swapCandidate(), { codeHash: async () => "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" }), /router bytecode/);
+  await assert.rejects(auditSushiSwapCandidate({ token, recipient, side: "buy", amountIn }, swapCandidate(), {
+    codeHash: async (address) => address.toLowerCase() === SUSHI_RED_SNWAPPER.toLowerCase()
+      ? SUSHI_RED_SNWAPPER_CODE_HASH
+      : "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  }), /executor bytecode/);
 
   console.log("Sushi Robinhood Chain quote, execution, and fail-closed validation passed.");
 }

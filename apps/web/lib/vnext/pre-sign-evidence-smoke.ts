@@ -3,6 +3,8 @@ import { readFileSync } from "node:fs";
 import { parseVNextPreSignEvidence, type VNextPreSignEvidence } from "./pre-sign-evidence";
 import { zeroAddress } from "viem";
 import { ROBINHOOD_SWAP_ROUTER_02 } from "../uniswap-v4";
+import { SUSHI_RED_SNWAPPER } from "../sushi";
+import { SUSHI_RED_SNWAPPER_CODE_HASH, SUSHI_ROUTE_EXECUTOR, SUSHI_ROUTE_EXECUTOR_CODE_HASH } from "./sushi-authorization-codec";
 
 const now = 1_786_000_000_000;
 const evidence: VNextPreSignEvidence = {
@@ -119,6 +121,28 @@ assert.throws(() => parseVNextPreSignEvidence({
   ...evidence,
   networkCostValuationExpiresAtMs: now
 }, expected, now), /stale or inconsistent network-cost valuation/);
+const sushiEvidence: VNextPreSignEvidence = {
+  ...evidence,
+  provider: "sushi",
+  router: SUSHI_RED_SNWAPPER,
+  approvalSpender: SUSHI_RED_SNWAPPER,
+  nextActionTarget: SUSHI_RED_SNWAPPER,
+  route: "aggregated",
+  fees: [],
+  pools: [],
+  routerRuntimeHash: SUSHI_RED_SNWAPPER_CODE_HASH,
+  factoryRuntimeHash: null,
+  quoterRuntimeHash: null,
+  executor: SUSHI_ROUTE_EXECUTOR,
+  executorRuntimeHash: SUSHI_ROUTE_EXECUTOR_CODE_HASH,
+  onchainDeadline: false,
+  freshnessKind: "server_authorization_expiry"
+};
+const sushiExpected = { ...expected, provider: "sushi" as const };
+assert.equal(parseVNextPreSignEvidence(sushiEvidence, sushiExpected, now).provider, "sushi");
+assert.throws(() => parseVNextPreSignEvidence({ ...sushiEvidence, onchainDeadline: true }, sushiExpected, now), /Sushi execution evidence/);
+assert.throws(() => parseVNextPreSignEvidence({ ...sushiEvidence, executor: evidence.recipient }, sushiExpected, now), /Sushi execution evidence/);
+assert.throws(() => parseVNextPreSignEvidence({ ...sushiEvidence, routerRuntimeHash: evidence.routerRuntimeHash }, sushiExpected, now), /Sushi execution evidence/);
 
 const route = readFileSync(new URL("../../app/api/vnext/verify/route.ts", import.meta.url), "utf8");
 const verifier = readFileSync(new URL("../server/vnext-uniswap-quote.ts", import.meta.url), "utf8");

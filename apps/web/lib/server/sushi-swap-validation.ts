@@ -1,34 +1,20 @@
-import {
-  decodeFunctionData,
-  getAddress,
-  isAddress,
-  keccak256,
-  type Address,
-  type Hex
-} from "viem";
+import { getAddress, isAddress, keccak256, type Address, type Hex } from "viem";
 import { z } from "zod";
-import { SUSHI_NATIVE_TOKEN, SUSHI_QUOTE_SLIPPAGE_BPS, SUSHI_RED_SNWAPPER } from "../sushi";
+import { SUSHI_QUOTE_SLIPPAGE_BPS, SUSHI_RED_SNWAPPER } from "../sushi";
+import {
+  assertSushiSwapCalldata,
+  SUSHI_RED_SNWAPPER_CODE_HASH,
+  SUSHI_ROUTE_EXECUTOR,
+  SUSHI_ROUTE_EXECUTOR_CODE_HASH
+} from "../vnext/sushi-authorization-codec";
 
-export const SUSHI_RED_SNWAPPER_CODE_HASH = "0x4b299d0674c86f701924420b3c90e4eb8efcc49f7865cc9680ee631ec7048b97" as Hex;
-export const SUSHI_ROUTE_EXECUTOR = getAddress("0x0e867974275cd31c25015c2753c9d75f9f355379");
-export const SUSHI_ROUTE_EXECUTOR_CODE_HASH = "0x57d45a1dce631a859bd1780826e0fbb9a7489650453406e0dc593724eca6cb6b" as Hex;
-export const SUSHI_ROUTE_EXECUTOR_ENTRYPOINT = "0x6be92b89" as Hex;
-
-export const sushiRedSnwapperAbi = [{
-  type: "function",
-  name: "snwap",
-  stateMutability: "payable",
-  inputs: [
-    { name: "tokenIn", type: "address" },
-    { name: "amountIn", type: "uint256" },
-    { name: "recipient", type: "address" },
-    { name: "tokenOut", type: "address" },
-    { name: "amountOutMin", type: "uint256" },
-    { name: "executor", type: "address" },
-    { name: "executorData", type: "bytes" }
-  ],
-  outputs: [{ name: "amountOut", type: "uint256" }]
-}] as const;
+export {
+  SUSHI_RED_SNWAPPER_CODE_HASH,
+  SUSHI_ROUTE_EXECUTOR,
+  SUSHI_ROUTE_EXECUTOR_CODE_HASH,
+  SUSHI_ROUTE_EXECUTOR_ENTRYPOINT,
+  sushiRedSnwapperAbi
+} from "../vnext/sushi-authorization-codec";
 
 const decimalString = z.string().regex(/^\d+$/);
 const hexData = z.string().regex(/^0x(?:[0-9a-fA-F]{2})+$/);
@@ -65,12 +51,13 @@ export type SushiSwapAudit = {
   onchainDeadline: false;
 };
 
-export async function auditSushiSwapCandidate(
+export async function auditSushiAssetSwapCandidate(
   params: {
-    token: Address;
+    inputAsset: Address;
+    outputAsset: Address;
     recipient: Address;
-    side: "buy" | "sell";
     amountIn: bigint;
+    protectedOutputFloorAtomic?: bigint;
   },
   response: unknown,
   dependencies: { codeHash: (address: Address) => Promise<Hex> }
@@ -86,34 +73,25 @@ export async function auditSushiSwapCandidate(
   if (!sameAddress(router, SUSHI_RED_SNWAPPER)) throw new Error("Sushi returned an unapproved execution router.");
   if (BigInt(payload.amountIn) !== params.amountIn) throw new Error("Sushi changed the executable input amount.");
 
-  const expectedTokenIn = params.side === "buy" ? SUSHI_NATIVE_TOKEN : params.token;
-  const expectedTokenOut = params.side === "buy" ? params.token : SUSHI_NATIVE_TOKEN;
-  const decoded = (() => {
-    try {
-      return decodeFunctionData({ abi: sushiRedSnwapperAbi, data: payload.tx.data as Hex });
-    } catch {
-      throw new Error("Sushi returned undecodable execution calldata.");
-    }
-  })();
-  if (decoded.functionName !== "snwap") throw new Error("Sushi returned an unsupported execution function.");
-
-  const [tokenIn, calldataAmountIn, recipient, tokenOut, minimumOut, executor, executorData] = decoded.args;
-  if (!sameAddress(tokenIn, expectedTokenIn)) throw new Error("Sushi changed the input token.");
-  if (calldataAmountIn !== params.amountIn) throw new Error("Sushi calldata changed the input amount.");
-  if (!sameAddress(recipient, params.recipient)) throw new Error("Sushi changed the output recipient.");
-  if (!sameAddress(tokenOut, expectedTokenOut)) throw new Error("Sushi changed the output token.");
-  if (!sameAddress(executor, SUSHI_ROUTE_EXECUTOR)) throw new Error("Sushi returned an unapproved route executor.");
-  if (!executorData.toLowerCase().startsWith(SUSHI_ROUTE_EXECUTOR_ENTRYPOINT)) throw new Error("Sushi returned an unsupported executor entrypoint.");
-
   const assumedAmountOut = BigInt(payload.assumedAmountOut);
   const expectedMinimumOut = assumedAmountOut * BigInt(10_000 - SUSHI_QUOTE_SLIPPAGE_BPS) / 10_000n;
-  if (assumedAmountOut <= 0n || expectedMinimumOut <= 0n || minimumOut !== expectedMinimumOut) {
-    throw new Error("Sushi calldata changed the minimum received amount.");
+  if (
+    assumedAmountOut <= 0n
+    || expectedMinimumOut <= 0n
+    || expectedMinimumOut < (params.protectedOutputFloorAtomic ?? 0n)
+  ) {
+    throw new Error("Sushi executable minimum received moved below the protected floor.");
   }
 
   const value = BigInt(payload.tx.value);
-  const expectedValue = params.side === "buy" ? params.amountIn : 0n;
-  if (value !== expectedValue) throw new Error("Sushi returned an invalid native transaction value.");
+  const calldata = assertSushiSwapCalldata(payload.tx.data as Hex, {
+    inputAsset: params.inputAsset,
+    outputAsset: params.outputAsset,
+    inputAmountAtomic: params.amountIn.toString(),
+    protectedOutputAtomic: expectedMinimumOut.toString(),
+    recipient: params.recipient,
+    transactionValueAtomic: value.toString()
+  });
 
   const [routerCodeHash, executorCodeHash] = await Promise.all([
     dependencies.codeHash(SUSHI_RED_SNWAPPER),
@@ -124,19 +102,32 @@ export async function auditSushiSwapCandidate(
 
   return {
     router,
-    executor: getAddress(executor),
+    executor: calldata.executor,
     sender,
-    recipient: getAddress(recipient),
-    tokenIn: getAddress(tokenIn),
-    tokenOut: getAddress(tokenOut),
+    recipient: calldata.recipient,
+    tokenIn: calldata.tokenIn,
+    tokenOut: calldata.tokenOut,
     amountIn: params.amountIn,
     assumedAmountOut,
-    minimumOut,
+    minimumOut: expectedMinimumOut,
     value,
     calldata: payload.tx.data as Hex,
     executable: true,
     onchainDeadline: false
   };
+}
+
+export function auditSushiSwapCandidate(
+  params: { token: Address; recipient: Address; side: "buy" | "sell"; amountIn: bigint },
+  response: unknown,
+  dependencies: { codeHash: (address: Address) => Promise<Hex> }
+) {
+  return auditSushiAssetSwapCandidate({
+    inputAsset: params.side === "buy" ? getAddress("0x0000000000000000000000000000000000000000") : params.token,
+    outputAsset: params.side === "buy" ? params.token : getAddress("0x0000000000000000000000000000000000000000"),
+    recipient: params.recipient,
+    amountIn: params.amountIn
+  }, response, dependencies);
 }
 
 export function hashSushiContractCode(code: Hex) {

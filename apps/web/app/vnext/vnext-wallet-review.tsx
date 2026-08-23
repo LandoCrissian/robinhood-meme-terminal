@@ -133,7 +133,11 @@ export function VNextWalletReview({
       <small>Maximum: {formatUnits(BigInt(fee.maximumFeeAtomic), feeDecimals)} {feeSymbol}. It settles atomically to {evidence.feeExecution.treasury.slice(0, 6)}…{evidence.feeExecution.treasury.slice(-4)} only if the swap succeeds.</small>
       <small>Positive slippage cannot raise the fee above this maximum. Your protected amount is net of the fee.</small>
     </div> : null}
-    {plan.kind === "erc20_approval" ? <small>Standard ERC-20 approvals have no onchain expiry. This request is limited to the exact input amount, and RMT requires fresh verification before the swap.</small> : <small>The verified swap calldata enforces its onchain deadline and protected output.</small>}
+    {plan.kind === "erc20_approval"
+      ? <small>Standard ERC-20 approvals have no onchain expiry. This request is limited to the exact input amount, and RMT requires fresh verification before the swap.</small>
+      : evidence.provider === "sushi"
+        ? <small>Minimum received is enforced onchain. RMT expires this authorization before signing; the Sushi transaction has no onchain deadline.</small>
+        : <small>The verified swap calldata enforces its onchain deadline and protected output.</small>}
     {localError ? <p className="vnAuthorizationError" role="status">{localError}</p> : null}
     {gasShortfall ? <FundWalletButton directReceive variant="inline" label="Add Robinhood ETH" /> : null}
     {submission.data ? <a href={`${EXPLORER}/tx/${submission.data}`} target="_blank" rel="noreferrer">View transaction ↗</a> : null}
