@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { VNextDetectedWalletAsset } from "../../lib/vnext/wallet-assets";
+import { parseVNextTerminalLocation } from "../../lib/vnext/terminal-location";
 import {
   VNEXT_MARKET_DIRECTORY_PAGE_SIZE,
   exactVNextLocalDirectoryMatches,
@@ -30,6 +31,7 @@ export function VNextTerminalShell() {
   const [directoryView, setDirectoryView] = useState<VNextMarketDirectoryView>("active");
   const [visibleMarketLimit, setVisibleMarketLimit] = useState(VNEXT_MARKET_DIRECTORY_PAGE_SIZE);
   const marketSearch = useRef<HTMLInputElement>(null);
+  const locationSyncEpoch = useRef(0);
   const executionRecovery = useVNextExecutionRecovery();
   const {
     markets,
@@ -187,26 +189,30 @@ export function VNextTerminalShell() {
 
   useEffect(() => {
     const synchronizeFromLocation = () => {
-      const entry = new URLSearchParams(window.location.search);
-      const initialMarket = entry.get("market");
-      const initialSide = entry.get("side");
-      if (entry.get("panel") === "portfolio") {
+      const epoch = ++locationSyncEpoch.current;
+      const location = parseVNextTerminalLocation(window.location.search);
+      if (location.context === "portfolio") {
         setPortfolioRevealRequest((request) => request + 1);
         setContext("portfolio");
         setTradeOpen(false);
         return;
       }
-      if (entry.get("panel") === "distribution") {
+      if (location.context === "distribution") {
         setContext("distribution");
         setTradeOpen(false);
         return;
       }
-      if (initialMarket) {
-        void selectAddressRef.current(initialMarket).then((selectedMarket) => {
-          if (!selectedMarket) return;
+      if (location.context === "asset") {
+        void selectAddressRef.current(location.market).then((selectedMarket) => {
+          if (locationSyncEpoch.current !== epoch) return;
+          if (!selectedMarket) {
+            setContext("markets");
+            setTradeOpen(false);
+            return;
+          }
           setContext("asset");
-          if (initialSide === "buy" || initialSide === "sell") {
-            setTradeSideRequest({ side: initialSide, nonce: Date.now() });
+          if (location.side) {
+            setTradeSideRequest({ side: location.side, nonce: Date.now() });
             setTradeOpen(true);
           } else {
             setTradeOpen(false);
@@ -235,7 +241,7 @@ export function VNextTerminalShell() {
     directoryViewCounts,
     searchActive: Boolean(query.trim()),
     searchStatus,
-    verifiedSearchResultCount: submittedSearchQuery.trim().toLowerCase() === query.trim().toLowerCase()
+    expandedSearchResultCount: submittedSearchQuery.trim().toLowerCase() === query.trim().toLowerCase()
       ? searchMarkets.length
       : 0,
     directoryStatus: status,

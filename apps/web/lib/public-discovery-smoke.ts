@@ -172,7 +172,7 @@ assert.doesNotMatch(
 );
 assert.match(externalMarketRouteSource, /externalMarketSocialsFromPairInfo\(pair\.info\)/);
 assert.match(externalMarketSocialsSource, /provenance: "dex-pair-metadata"/);
-assert.match(externalMarketSocialsSource, /url\.protocol !== "https:"/);
+assert.match(externalMarketSocialsSource, /safeExternalNavigationUrl/);
 assert.match(launchpadNetworkSource, /Uniswap Launches/);
 assert.match(launchpadNetworkSource, /Sushi Launch/);
 assert.match(launchpadNetworkSource, /Individual beta-feed inclusion is never assumed/);

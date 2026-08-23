@@ -2,6 +2,7 @@ import type {
   ExternalMarketSocials,
   ExternalSocialLinks
 } from "./external-market";
+import { safeExternalNavigationUrl } from "./vnext/external-navigation";
 
 type SocialKind = keyof ExternalSocialLinks;
 
@@ -22,15 +23,7 @@ const SOCIAL_HOSTS: Record<Exclude<SocialKind, "website">, ReadonlySet<string>> 
 };
 
 function httpsUrl(value: unknown) {
-  const text = typeof value === "string" ? value.trim().slice(0, 500) : "";
-  if (!text) return null;
-  try {
-    const url = new URL(text);
-    if (url.protocol !== "https:" || url.username || url.password) return null;
-    return url.href.slice(0, 500);
-  } catch {
-    return null;
-  }
+  return safeExternalNavigationUrl(value);
 }
 
 function socialUrl(value: unknown, kind: Exclude<SocialKind, "website">) {

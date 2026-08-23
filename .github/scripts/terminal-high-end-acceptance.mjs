@@ -622,6 +622,37 @@ function visibleAudit() {
   };
 }
 
+async function inspectAssetQuickLinks(page, label) {
+  const links = page.locator(".vnAssetQuickLinks");
+  await links.waitFor({ state: "visible" });
+  await links.locator(".vnProjectLinkGroup").first().waitFor({ state: "visible", timeout: 5_000 });
+  const audit = await links.evaluate((root) => {
+    const market = new URLSearchParams(window.location.search).get("market")?.toLowerCase() ?? null;
+    const anchors = [...root.querySelectorAll("a[href]")];
+    return {
+      market,
+      fullContractVisible: Boolean(market && root.textContent?.toLowerCase().includes(market)),
+      copyAvailable: Boolean(root.querySelector('button[aria-label^="Copy full token contract"]')),
+      provenance: [...root.querySelectorAll("small")].map((entry) => entry.textContent?.trim()).filter(Boolean),
+      anchors: anchors.map((anchor) => ({
+        href: anchor.getAttribute("href"),
+        target: anchor.getAttribute("target"),
+        rel: anchor.getAttribute("rel"),
+        name: anchor.getAttribute("aria-label") ?? anchor.textContent?.trim()
+      }))
+    };
+  });
+  if (!audit.fullContractVisible || !audit.copyAvailable) throw new Error(`${label}: selected asset contract is not fully accessible/copyable ${JSON.stringify(audit)}`);
+  if (!audit.provenance.some((entry) => entry?.startsWith("Project links ·"))) throw new Error(`${label}: project-link provenance is missing ${JSON.stringify(audit)}`);
+  if (audit.anchors.length < 3) throw new Error(`${label}: selected asset quick links are unexpectedly sparse ${JSON.stringify(audit)}`);
+  for (const anchor of audit.anchors) {
+    if (!anchor.href?.startsWith("https://") || anchor.target !== "_blank" || !anchor.rel?.includes("noopener") || !anchor.rel?.includes("noreferrer") || !anchor.name) {
+      throw new Error(`${label}: unsafe or inaccessible external quick link ${JSON.stringify(anchor)}`);
+    }
+  }
+  return audit;
+}
+
 async function inspectMarketsHierarchy(browser, phase) {
   const mobileContext = await createContext(browser, {
     viewport: { width: 390, height: 844 },
@@ -838,6 +869,7 @@ async function inspectDesktop(browser, viewport, label) {
   await page.locator(".rmtMarketTableRow").first().click();
   await page.locator('.rmtDesktopTerminal[data-terminal-context="asset"]').waitFor({ state: "visible" });
   if (!(await page.locator("#vn-asset-heading").textContent())?.includes("R02")) throw new Error(`${label}: selected asset did not update the VNext workspace`);
+  const assetQuickLinks = await inspectAssetQuickLinks(page, label);
   const assetComposition = await page.evaluate(() => ({
     chart: document.querySelector(".vnChart")?.getBoundingClientRect().height ?? 0,
     rail: document.querySelector(".rmtDesktopExecution")?.getBoundingClientRect().toJSON(),
@@ -868,7 +900,7 @@ async function inspectDesktop(browser, viewport, label) {
   const exactIdentityQueries = universalSearchQueries.get(page) ?? [];
   if (exactIdentityQueries.length !== 1 || exactIdentityQueries[0]?.toLowerCase() !== exactIdentityToken.toLowerCase()) throw new Error(`${label}: identity-only fallback did not follow exactly one universal inventory attempt`);
   await context.close();
-  return { ...audit, marketsComposition, assetComposition };
+  return { ...audit, marketsComposition, assetComposition, assetQuickLinks };
 }
 
 async function inspectDiscoveryAcceptance(browser, options, label, mobile) {
@@ -1002,6 +1034,7 @@ async function inspectMarket(browser) {
   }
   await candlesButton.click();
   const chart = page.locator(".vnChartFrame svg");
+  await chart.scrollIntoViewIfNeeded();
   const chartBox = await chart.boundingBox();
   if (!chartBox) throw new Error("Chart bounds are unavailable");
   await page.mouse.move(chartBox.x + chartBox.width * 0.5, chartBox.y + chartBox.height * 0.4);
@@ -1187,6 +1220,7 @@ async function inspectMobile(browser, viewport, label) {
 
   await page.locator(".rmtMobileMarketRow").first().click();
   await page.locator('.rmtMobileTerminal[data-terminal-context="asset"] #vn-asset-heading').waitFor({ state: "visible" });
+  const assetQuickLinks = await inspectAssetQuickLinks(page, label);
   const assetAudit = await page.evaluate(() => ({
     horizontalOverflow: Math.max(0, document.documentElement.scrollWidth - innerWidth),
     scannerPresent: Boolean(document.querySelector(".rmtMobileMarketsView")),
@@ -1293,7 +1327,7 @@ async function inspectMobile(browser, viewport, label) {
   if (portfolioAudit.pathname !== "/" || portfolioAudit.panel !== "portfolio" || portfolioAudit.scanner || portfolioAudit.asset || portfolioAudit.dock || portfolioAudit.overflow > 2) throw new Error(`${label}: mobile Portfolio is not a dedicated context ${JSON.stringify(portfolioAudit)}`);
   await page.screenshot({ path: `${output}/portfolio-${label}.png`, fullPage: false, animations: "disabled" });
   await context.close();
-  return { markets: marketsAudit, asset: assetAudit, tradePanel: tradeAudit, portfolio: portfolioAudit };
+  return { markets: marketsAudit, asset: assetAudit, assetQuickLinks, tradePanel: tradeAudit, portfolio: portfolioAudit };
 }
 
 const browser = await chromium.launch({
@@ -1324,8 +1358,9 @@ try {
   );
   const desktop = mobileOnly ? null : await inspectDesktop(browser, { width: 1_440, height: 900 }, "1440x900");
   const laptop = mobileOnly ? null : await inspectDesktop(browser, { width: 1_280, height: 800 }, "1280x800");
+  const laptop720 = mobileOnly ? null : await inspectDesktop(browser, { width: 1_280, height: 720 }, "1280x720");
   const compact = mobileOnly ? null : await inspectDesktop(browser, { width: 1_024, height: 768 }, "1024x768");
-  const wide = !mobileOnly && exploratory ? await inspectDesktop(browser, { width: 1_920, height: 1_080 }, "1920x1080") : null;
+  const wide = mobileOnly ? null : await inspectDesktop(browser, { width: 1_920, height: 1_080 }, "1920x1080");
   const seamDesktop = !mobileOnly && exploratory ? await inspectDesktop(browser, { width: 1_025, height: 900 }, "1025x900") : null;
   const marketAudit = mobileOnly ? null : await inspectMarket(browser);
   const compatibilityEntries = mobileOnly ? null : await inspectCompatibilityEntries(browser);
@@ -1335,6 +1370,7 @@ try {
   const mobile430 = await inspectMobile(browser, { width: 430, height: 932 }, "430x932");
   const touch1023 = await inspectMobile(browser, { width: 1_023, height: 900 }, "1023x900");
   const mobile390 = await inspectMobile(browser, { width: 390, height: 844 }, "390x844");
+  const mobile393 = await inspectMobile(browser, { width: 393, height: 852 }, "393x852");
   const mobile375 = await inspectMobile(browser, { width: 375, height: 812 }, "375x812");
   const mobile360 = await inspectMobile(browser, { width: 360, height: 800 }, "360x800");
   const exploratoryTouch = {};
@@ -1350,7 +1386,7 @@ try {
   }
   await writeFile(
     `${output}/report.json`,
-    JSON.stringify({ productAcceptanceEvidence, marketsHierarchy, discoveryDesktop, discoveryMobile, desktop, laptop, compact, wide, seamDesktop, marketAudit, compatibilityEntries, publicRoutes, touch1023, mobile430, mobile390, mobile375, mobile360, exploratoryTouch }, null, 2)
+    JSON.stringify({ productAcceptanceEvidence, marketsHierarchy, discoveryDesktop, discoveryMobile, desktop, laptop, laptop720, compact, wide, seamDesktop, marketAudit, compatibilityEntries, publicRoutes, touch1023, mobile430, mobile393, mobile390, mobile375, mobile360, exploratoryTouch }, null, 2)
   );
   console.log(`Terminal active discovery product acceptance passed: ${JSON.stringify(productAcceptanceEvidence)}`);
   }

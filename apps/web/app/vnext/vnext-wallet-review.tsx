@@ -9,8 +9,7 @@ import { findUnresolvedVNextExecution, recordSubmittedVNextExecution } from "../
 import type { VNextPreSignEvidence } from "../../lib/vnext/pre-sign-evidence";
 import { ROBINHOOD_MAINNET_CHAIN_ID } from "../../lib/vnext/robinhood-assets";
 import { assessVNextWalletGasReadiness, prepareVNextWalletTransaction } from "../../lib/vnext/wallet-submission";
-
-const EXPLORER = "https://robinhoodchain.blockscout.com";
+import { ExplorerLink } from "./terminal-links";
 
 export function VNextWalletFeeDisclosure({
   planKind,
@@ -88,7 +87,7 @@ export function VNextWalletReview({
     setGasShortfall("");
     if (!submissionEnabled) return;
     if (!isConnected || !address || chainId !== ROBINHOOD_MAINNET_CHAIN_ID) {
-      setLocalError("Connect the verified wallet on Robinhood Chain before continuing.");
+      setLocalError("Connect your external trading wallet on Robinhood Chain before continuing.");
       return;
     }
     if (!publicClient) {
@@ -180,6 +179,6 @@ export function VNextWalletReview({
     {plan.kind === "erc20_approval" ? <small>Standard ERC-20 approvals have no onchain expiry. This request is limited to the exact input amount, and RMT requires fresh verification before the swap.</small> : <small>The verified swap calldata enforces its onchain deadline and protected output.</small>}
     {localError ? <p className="vnAuthorizationError" role="status">{localError}</p> : null}
     {gasShortfall ? <FundWalletButton directReceive variant="inline" label="Add Robinhood ETH" /> : null}
-    {submission.data ? <a href={`${EXPLORER}/tx/${submission.data}`} target="_blank" rel="noreferrer">View transaction ↗</a> : null}
+    {submission.data ? <ExplorerLink kind="transaction" value={submission.data} accessibleName="Open submitted transaction in Robinhood Chain explorer">View transaction ↗</ExplorerLink> : null}
   </div>;
 }

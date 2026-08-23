@@ -156,16 +156,16 @@ assert.equal(canonicalExternalMarketLookupAddress("0x1234"), null);
 assert.equal(canonicalExternalMarketLookupAddress(zero.address), null);
 
 const discoveredSocials = externalMarketSocialsFromPairInfo({
-  websites: [{ url: "https://runner.example/" }, { url: "javascript:alert(1)" }],
+  websites: [{ url: "https://runner.example.com/" }, { url: "javascript:alert(1)" }],
   socials: [
     { type: "twitter", url: "https://x.com/runner" },
     { type: "telegram", url: "https://t.me/runner" },
-    { type: "discord", url: "https://evil.example/invite" },
+    { type: "discord", url: "https://evil.example.com/invite" },
     { type: "warpcast", url: "https://warpcast.com/runner" }
   ]
 });
 assert.deepEqual(discoveredSocials, {
-  website: "https://runner.example/",
+  website: "https://runner.example.com/",
   x: "https://x.com/runner",
   telegram: "https://t.me/runner",
   discord: null,
@@ -174,7 +174,7 @@ assert.deepEqual(discoveredSocials, {
 });
 assert.equal(externalMarketSocialsFromPairInfo({
   websites: [{ url: "http://runner.example" }],
-  socials: [{ type: "twitter", url: "https://evil.example/runner" }]
+  socials: [{ type: "twitter", url: "https://evil.example.com/runner" }]
 }), undefined, "Unsafe or mislabeled social links must fail closed");
 assert.deepEqual(mergeExternalSocialLinks({
   website: null,
@@ -183,7 +183,7 @@ assert.deepEqual(mergeExternalSocialLinks({
   discord: null,
   farcaster: null
 }, discoveredSocials), {
-  website: "https://runner.example/",
+  website: "https://runner.example.com/",
   x: "https://x.com/verified",
   telegram: "https://t.me/runner",
   discord: null,

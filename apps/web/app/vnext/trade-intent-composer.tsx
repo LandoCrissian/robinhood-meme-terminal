@@ -26,6 +26,7 @@ import { clearTradeQuoteCache, requestTradeQuote, tradeQuoteFailureFromResponse 
 import { useRmtIdentity } from "../rmt-identity";
 import { FundWalletButton } from "../fund-wallet-button";
 import { VNextWalletReview } from "./vnext-wallet-review";
+import { ExplorerLink } from "./terminal-links";
 
 function shortAddress(address: string) {
   return `${address.slice(0, 6)}…${address.slice(-4)}`;
@@ -111,6 +112,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
   const lastReadyQuote = useRef<VNextCachedQuote | undefined>(undefined);
   const lastReadyVerification = useRef<VNextPreSignEvidence | undefined>(undefined);
   const receiptAction = useRef<HTMLButtonElement>(null);
+  const receiptDialog = useRef<HTMLElement>(null);
   const { address, chainId, isConnected } = useAccount();
   const identity = useRmtIdentity();
   const onRobinhood = chainId === ROBINHOOD_MAINNET_CHAIN_ID;
@@ -279,15 +281,27 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
   useEffect(() => {
     if (postExecutionState.state !== "swap_confirmed") return;
     const previousOverflow = document.body.style.overflow;
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setPostExecutionState({ state: "idle" });
+    const handleReceiptKeyboard = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        setPostExecutionState({ state: "idle" });
+        return;
+      }
+      if (event.key !== "Tab" || !receiptDialog.current) return;
+      const focusable = [...receiptDialog.current.querySelectorAll<HTMLElement>('button:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])')];
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
     };
     document.body.style.overflow = "hidden";
-    window.addEventListener("keydown", closeOnEscape);
+    document.addEventListener("keydown", handleReceiptKeyboard, true);
     window.requestAnimationFrame(() => receiptAction.current?.focus());
     return () => {
       document.body.style.overflow = previousOverflow;
-      window.removeEventListener("keydown", closeOnEscape);
+      document.removeEventListener("keydown", handleReceiptKeyboard, true);
     };
   }, [postExecutionState.state]);
   const visibleQuote = cachedQuote;
@@ -966,6 +980,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
       {postExecutionState.state === "swap_confirmed" && executionRecord?.kind === "swap" && executionRecord.state === "confirmed" ? (
         <div className="vnTradeReceiptBackdrop" role="presentation">
           <section
+            ref={receiptDialog}
             className="vnTradeReceipt"
             role="dialog"
             aria-modal="true"
@@ -975,7 +990,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
             <button className="vnTradeReceiptClose" type="button" aria-label="Close trade confirmation" onClick={() => setPostExecutionState({ state: "idle" })}>×</button>
             <span className="vnTradeReceiptMark" aria-hidden="true">✓</span>
             <span className="vnEyebrow">Robinhood Chain · confirmed</span>
-            <h3 id="vn-trade-receipt-heading">{side === "buy" ? "Purchase confirmed" : "Sale confirmed"}</h3>
+            <h3 id="vn-trade-receipt-heading">{side === "buy" ? "Buy confirmed" : "Sell confirmed"}</h3>
             <p id="vn-trade-receipt-detail">{side === "buy"
               ? `You bought ${outputSymbol} with ${inputSymbol}.`
               : `You sold ${inputSymbol} for ${outputSymbol}.`}</p>
@@ -986,10 +1001,11 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
                 executionRecord.feeSettlement.actualFeeAtomic,
                 executionRecord.feeSettlement.feeSide === "input" ? pair?.inputAsset.decimals ?? 18 : pair?.outputAsset.decimals ?? 18
               )} {executionRecord.feeSettlement.feeSide === "input" ? inputSymbol : outputSymbol}</dd></div> : null}
+              {executionRecord.feeSettlement ? <div><dt>Provider</dt><dd>Uniswap V3 · RMT atomic settlement</dd></div> : null}
               <div><dt>Transaction</dt><dd>{shortAddress(executionRecord.txHash)}</dd></div>
             </dl>
             <button ref={receiptAction} className="vnTradeReceiptContinue" type="button" onClick={continueTrading}>Continue trading</button>
-            <a href={`https://robinhoodchain.blockscout.com/tx/${executionRecord.txHash}`} target="_blank" rel="noreferrer">View confirmed transaction ↗</a>
+            <ExplorerLink kind="transaction" value={executionRecord.txHash} accessibleName="Open confirmed trade transaction in Robinhood Chain explorer">View confirmed transaction ↗</ExplorerLink>
           </section>
         </div>
       ) : null}

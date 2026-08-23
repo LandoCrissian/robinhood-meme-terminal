@@ -122,6 +122,7 @@ export function useVNextMarketDirectory() {
   const canonicalPageLoading = useRef(false);
   const searchController = useRef<AbortController | undefined>(undefined);
   const searchSequence = useRef(0);
+  const selectionSequence = useRef(0);
   const searchMarketsRef = useRef<VNextDirectoryMarket[]>([]);
 
   const publishMarkets = useCallback(() => {
@@ -152,6 +153,8 @@ export function useVNextMarketDirectory() {
   }, []);
 
   const selectAddress = useCallback(async (rawAddress: string) => {
+    const requestSequence = selectionSequence.current + 1;
+    selectionSequence.current = requestSequence;
     const exactDirectory = markets.find((market) => market.address.toLowerCase() === rawAddress.toLowerCase());
     const exactSearch = searchMarketsRef.current.find((market) => market.address.toLowerCase() === rawAddress.toLowerCase());
     const exact = exactDirectory && exactSearch
@@ -186,7 +189,7 @@ export function useVNextMarketDirectory() {
       const fallback = discovered ?? (identityPayload
         ? directoryMarketFromVerifiedIdentity(identityPayload, address)
         : null);
-      if (!fallback) return false;
+      if (!fallback || requestSequence !== selectionSequence.current) return false;
       setMarkets((current) => current.some((market) => market.address.toLowerCase() === address.toLowerCase())
         ? current.map((market) => {
             if (market.address.toLowerCase() !== address.toLowerCase()) return market;

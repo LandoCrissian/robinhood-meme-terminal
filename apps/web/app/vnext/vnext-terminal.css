@@ -612,6 +612,137 @@ body .rmtVnext {
   font-weight: 750;
 }
 
+.vnAssetIdentityFacts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--vn-border);
+  border-radius: 12px;
+  background: var(--vn-border);
+}
+
+.vnAssetIdentityFacts > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 10px;
+  background: rgba(8, 13, 9, .94);
+}
+
+.vnAssetIdentityFacts dt,
+.vnAssetContractIdentity small,
+.vnProjectLinkGroup > small {
+  color: var(--vn-text-muted);
+  font-size: 8px;
+  font-weight: 780;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.vnAssetIdentityFacts dd {
+  overflow: hidden;
+  margin: 0;
+  font-size: 10px;
+  font-weight: 720;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vnAssetQuickLinks {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid rgba(130, 242, 143, .18);
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(130, 242, 143, .055), rgba(255, 255, 255, .012));
+}
+
+.vnAssetContractIdentity {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.vnAssetContractIdentity > span {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.vnCopyAddress {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 7px;
+}
+
+.vnCopyAddress code {
+  overflow: hidden;
+  color: var(--vn-text-secondary);
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Consolas, monospace);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vnCopyAddress button,
+.vnAssetQuickLinks a {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 10px;
+  border: 1px solid var(--vn-border-strong);
+  border-radius: 9px;
+  color: var(--vn-accent);
+  background: rgba(255, 255, 255, .015);
+  font-size: 9px;
+  font-weight: 780;
+  text-decoration: none;
+}
+
+.vnCopyAddress button {
+  flex: 0 0 auto;
+  color: var(--vn-text-secondary);
+}
+
+.vnAssetQuickLinkRows,
+.vnProjectLinkGroup > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.vnProjectLinkGroup {
+  display: grid;
+  gap: 7px;
+  padding-top: 10px;
+  border-top: 1px solid var(--vn-border);
+}
+
+.vnProjectLinkGroup.isObserved > small {
+  color: var(--vn-warning);
+}
+
+.vnProjectLinkGroup p {
+  margin: 0;
+  color: var(--vn-text-muted);
+  font-size: 9px;
+  line-height: 1.45;
+}
+
+.vnAssetQuickLinks a:hover,
+.vnAssetQuickLinks a:focus-visible,
+.vnCopyAddress button:focus-visible {
+  border-color: var(--vn-accent);
+  background: rgba(130, 242, 143, .08);
+  outline: 2px solid rgba(130, 242, 143, .28);
+  outline-offset: 2px;
+}
+
 .vnAssetWorkspace {
   display: grid;
   align-content: start;
@@ -5537,4 +5668,18 @@ body .rmtTerminal button {
 @media (max-width: 639px) {
   .rmtDistributionSurface.isMobile { min-height: calc(100dvh - 92px); padding-inline: 10px; }
   .rmtDistributionPanel[data-presentation="mobile"] { min-height: calc(100dvh - 130px); align-content: start; }
+
+  .vnAssetIdentityFacts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .vnAssetContractIdentity { align-items: stretch; flex-direction: column; }
+  .vnAssetContractIdentity > a { align-self: flex-start; }
+  .vnCopyAddress { align-items: stretch; flex-direction: column; }
+  .vnCopyAddress code {
+    overflow: visible;
+    font-size: 10px;
+    overflow-wrap: anywhere;
+    text-overflow: clip;
+    white-space: normal;
+  }
+  .vnCopyAddress button { align-self: flex-start; min-height: 44px; }
+  .vnAssetQuickLinks a { min-height: 44px; }
 }

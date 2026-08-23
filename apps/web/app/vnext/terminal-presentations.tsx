@@ -40,7 +40,7 @@ export type TerminalPresentationProps = {
   directoryViewCounts: Record<VNextMarketDirectoryView, number>;
   searchActive: boolean;
   searchStatus: VNextUniversalMarketSearchStatus;
-  verifiedSearchResultCount: number;
+  expandedSearchResultCount: number;
   directoryStatus: DirectoryStatus;
   hasMoreDirectoryMarkets: boolean;
   selected?: VNextDirectoryMarket;
@@ -120,9 +120,9 @@ function MarketSearch({ query, setQuery, inputRef, onSubmit, searchStatus, id }:
 
 function SearchStatusMessage({ status, count }: { status: VNextUniversalMarketSearchStatus; count: number }) {
   if (status === "idle") return null;
-  if (status === "searching") return <div className="rmtSearchStatus" role="status">Searching verified Robinhood Chain markets…</div>;
-  if (status === "found") return <div className="rmtSearchStatus" role="status">{count === 1 ? "Verified market found." : `${count} verified contracts found. Choose one.`}</div>;
-  if (status === "not_found") return <div className="rmtSearchStatus" role="status">No verified market found.</div>;
+  if (status === "searching") return <div className="rmtSearchStatus" role="status">Searching Robinhood Chain markets…</div>;
+  if (status === "found") return <div className="rmtSearchStatus" role="status">{count === 1 ? "Market found." : `${count} market matches found. Choose one.`}</div>;
+  if (status === "not_found") return <div className="rmtSearchStatus" role="status">No additional market match found.</div>;
   if (status === "inventory_unavailable") return <div className="rmtSearchStatus isDelayed" role="status">Expanded search unavailable: canonical inventory is delayed.</div>;
   if (status === "candidate_discovery_unavailable") return <div className="rmtSearchStatus isDelayed" role="status">Expanded text search unavailable. Loaded markets remain available.</div>;
   if (status === "invalid_query") return <div className="rmtSearchStatus isDelayed" role="status">Enter a valid token, contract, or pool identity.</div>;
@@ -153,7 +153,7 @@ function DirectoryMessage({ status, count, searchActive, view, onRefresh }: {
   view: VNextMarketDirectoryView;
   onRefresh: () => void;
 }) {
-  if (status === "loading" && count === 0) return <div className="rmtDirectoryMessage"><strong>Syncing markets…</strong><span>Loading verified directory data without prechecking routes.</span></div>;
+  if (status === "loading" && count === 0) return <div className="rmtDirectoryMessage"><strong>Syncing markets…</strong><span>Loading Robinhood Chain directory data without prechecking routes.</span></div>;
   if (status === "error" && count === 0) return <div className="rmtDirectoryMessage"><strong>Market data delayed</strong><span>No asset has been marked untradeable.</span><button type="button" onClick={onRefresh}>Try again</button></div>;
   if (count === 0) return <div className="rmtDirectoryMessage"><strong>{searchActive ? "No matching markets" : `No ${view === "held" ? "wallet-held" : view} markets yet`}</strong><span>{searchActive ? "Search by name, symbol, token contract, pool contract, or V4 PoolId." : "Choose another category or use exact contract search."}</span></div>;
   return null;
@@ -187,7 +187,7 @@ function DesktopMarketTable(props: TerminalPresentationProps) {
         <span role="cell"><RwaLabel market={market} /></span>
       </button>)}
     </div>
-    <SearchStatusMessage status={props.searchStatus} count={props.verifiedSearchResultCount} />
+    <SearchStatusMessage status={props.searchStatus} count={props.expandedSearchResultCount} />
     <DirectoryMessage status={props.directoryStatus} count={props.visibleMarkets.length} searchActive={props.searchActive} view={props.directoryView} onRefresh={props.onRefresh} />
     <LoadMore visibleCount={props.visibleMarkets.length} totalCount={props.filteredMarkets.length} hasMore={props.hasMoreDirectoryMarkets} onLoadMore={props.onLoadMoreMarkets} />
   </div>;
@@ -204,7 +204,7 @@ function CompactMarketNavigator(props: TerminalPresentationProps) {
         <b className={changeClass(market.priceChange24h)}>{formatChange(market.priceChange24h)}</b>
       </button>)}
     </div>
-    <SearchStatusMessage status={props.searchStatus} count={props.verifiedSearchResultCount} />
+    <SearchStatusMessage status={props.searchStatus} count={props.expandedSearchResultCount} />
     <DirectoryMessage status={props.directoryStatus} count={props.visibleMarkets.length} searchActive={props.searchActive} view={props.directoryView} onRefresh={props.onRefresh} />
   </aside>;
 }
@@ -217,7 +217,7 @@ function MobileMarketList(props: TerminalPresentationProps) {
       <span className="rmtMobileMarketPrice"><strong>{formatUsd(market.priceUsd)}</strong><small className={changeClass(market.priceChange24h)}>{formatChange(market.priceChange24h)}</small></span>
       <span className="rmtMobileMarketMeta">M {compactUsd(market.marketCapUsd)} · V {compactUsd(market.volume24h)} · {formatAge(market.ageMinutes)}</span>
     </button>)}
-    <SearchStatusMessage status={props.searchStatus} count={props.verifiedSearchResultCount} />
+    <SearchStatusMessage status={props.searchStatus} count={props.expandedSearchResultCount} />
     <DirectoryMessage status={props.directoryStatus} count={props.visibleMarkets.length} searchActive={props.searchActive} view={props.directoryView} onRefresh={props.onRefresh} />
     <LoadMore visibleCount={props.visibleMarkets.length} totalCount={props.filteredMarkets.length} hasMore={props.hasMoreDirectoryMarkets} onLoadMore={props.onLoadMoreMarkets} />
   </div>;
@@ -274,7 +274,7 @@ function DesktopHeader(props: TerminalPresentationProps) {
 
 function DesktopMarkets(props: TerminalPresentationProps) {
   return <section className="rmtDesktopMarketsView" id="rmt-markets" aria-labelledby="rmt-market-directory-heading">
-    <header className="rmtMarketsHeading"><div><h1 id="rmt-market-directory-heading">Markets</h1><p>Robinhood Chain market intelligence</p></div><span className={`rmtDirectoryFreshness is${props.directoryStatus}`}><i aria-hidden="true" />{props.directoryStatus === "ready" ? "Directory ready" : props.directoryStatus === "stale" ? "Last verified data" : props.directoryStatus === "loading" ? "Syncing" : "Delayed"}</span></header>
+    <header className="rmtMarketsHeading"><div><h1 id="rmt-market-directory-heading">Markets</h1><p>Robinhood Chain market intelligence</p></div><span className={`rmtDirectoryFreshness is${props.directoryStatus}`}><i aria-hidden="true" />{props.directoryStatus === "ready" ? "Directory ready" : props.directoryStatus === "stale" ? "Last loaded data" : props.directoryStatus === "loading" ? "Syncing" : "Delayed"}</span></header>
     <div className="rmtScannerControls"><MarketCategoryNav view={props.directoryView} counts={props.directoryViewCounts} searchActive={props.searchActive} onChange={props.onDirectoryViewChange} /><span>{props.filteredMarkets.length} in view · routes checked on demand</span></div>
     <DesktopMarketTable {...props} />
     <VNextChainPulseCard />
@@ -349,7 +349,7 @@ function MobileHeader(props: TerminalPresentationProps) {
 
 function MobileMarkets(props: TerminalPresentationProps) {
   return <section className="rmtMobileMarketsView" id="rmt-mobile-markets" aria-labelledby="rmt-mobile-markets-heading">
-    <header className="rmtMobileContextHeading"><div><h1 id="rmt-mobile-markets-heading">Markets</h1><p>Robinhood Chain</p></div><span>{props.directoryStatus === "ready" ? "Directory ready" : props.directoryStatus === "stale" ? "Last verified" : props.directoryStatus === "loading" ? "Syncing" : "Delayed"}</span></header>
+    <header className="rmtMobileContextHeading"><div><h1 id="rmt-mobile-markets-heading">Markets</h1><p>Robinhood Chain</p></div><span>{props.directoryStatus === "ready" ? "Directory ready" : props.directoryStatus === "stale" ? "Last loaded" : props.directoryStatus === "loading" ? "Syncing" : "Delayed"}</span></header>
     <MarketCategoryNav view={props.directoryView} counts={props.directoryViewCounts} searchActive={props.searchActive} onChange={props.onDirectoryViewChange} />
     <MarketSearch id="rmt-mobile-market-search" query={props.query} setQuery={props.setQuery} inputRef={props.marketSearch} onSubmit={props.onSearchSubmit} searchStatus={props.searchStatus} />
     <MobileMarketList {...props} />

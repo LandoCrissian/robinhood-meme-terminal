@@ -1,8 +1,7 @@
 "use client";
 
 import type { VNextExecutionRecord } from "../../lib/vnext/execution-recovery";
-
-const EXPLORER = "https://robinhoodchain.blockscout.com";
+import { ExplorerLink } from "./terminal-links";
 
 export function VNextExecutionRecoveryBanner({ record, status }: {
   record: VNextExecutionRecord | null;
@@ -35,6 +34,6 @@ export function VNextExecutionRecoveryBanner({ record, status }: {
           : "No proceeds are credited. Verify fresh route and wallet state before retrying.";
   return <section className={`vnRecoveryBanner is${status}`} role="status">
     <span><strong>{title}</strong><small>{detail}</small></span>
-    <a href={`${EXPLORER}/tx/${record.txHash}`} target="_blank" rel="noreferrer">View transaction ↗</a>
+    <ExplorerLink kind="transaction" value={record.txHash} accessibleName="Open unresolved transaction in Robinhood Chain explorer">View transaction ↗</ExplorerLink>
   </section>;
 }
