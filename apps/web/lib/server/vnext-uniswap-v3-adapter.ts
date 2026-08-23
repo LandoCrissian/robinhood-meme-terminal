@@ -7,7 +7,7 @@ export const vNextUniswapV3Adapter: VNextQuoteProviderAdapter = {
   providerFamily: "uniswap",
   adapterVersion: 1,
   executionKind: "direct_amm",
-  capabilities: { strictVerification: true, walletAuthorization: true },
+  capabilities: { strictVerification: true, walletAuthorization: false },
   async quote(request) {
     const startedAtMs = Date.now();
     try {

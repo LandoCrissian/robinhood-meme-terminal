@@ -49,8 +49,9 @@
 
 ## Economics
 
-- [x] No hidden RMT fee or implicit 25-bps fallback exists; the approved 25-bps policy is explicit, versioned, hash-bound and limited to separately admitted routes.
+- [x] No hidden RMT fee or implicit fee-free wallet fallback exists; V2 is exactly 25 bps on gross input for every wallet-executable RMT trade and providers without registered atomic V2 settlement remain quote-only.
 - [x] `RMT_EXECUTION_V1` is publicly active for the deployed, runtime-verified Uniswap V3 executor after approved disclosure, reconciliation, treasury, controlled-proof and release gates. No other provider inherits that activation.
+- [ ] Every wallet-executable provider has a separately reviewed, deployed, runtime-verified and registered `RMT_EXECUTION_V2` atomic settlement mode; foundation types alone do not satisfy this gate.
 - [ ] No historical V6 split is reused as forward terminal policy.
 
 ## Quality, reliability and security

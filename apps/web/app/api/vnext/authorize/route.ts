@@ -93,6 +93,8 @@ export async function POST(request: Request) {
       router: prepared.evidence.router,
       ...(prepared.evidence.netEconomics ? { netEconomics: prepared.evidence.netEconomics } : {}),
       ...(prepared.evidence.feeExecution !== undefined ? { feeExecution: prepared.evidence.feeExecution } : {}),
+      ...(prepared.evidence.feeV2Economics ? { feeV2Economics: prepared.evidence.feeV2Economics } : {}),
+      ...(prepared.feeV2Authorization ? { feeV2Authorization: prepared.feeV2Authorization } : {}),
       deadline: prepared.evidence.deadline,
       preparedAtMs,
       expiresAtMs,

@@ -1,5 +1,7 @@
-import { getAddress, isAddress, isHash, type Hex } from "viem";
+import { getAddress, isAddress, isHash, keccak256, type Hex } from "viem";
 import type { VNextAuthorizationPlan } from "./authorization-plan";
+import { assertRmtExecutionFeeV2Economics } from "./execution-fee-policy-v2";
+import { assertVNextAtomicFeeAuthorizationBinding } from "./provider-fee-settlement";
 
 const PRIVY_RESOURCE_ID = /^[A-Za-z0-9_-]{8,160}$/;
 const SELECTOR = /^0x[0-9a-fA-F]{8}$/;
@@ -129,6 +131,23 @@ export function vnextSpotTradeInstruction(plan: VNextAuthorizationPlan): VNextEx
   if (!plan.userAuthorizationRequired || plan.serverSubmissionEnabled) {
     throw new Error("RMT rejected a spot plan that bypasses wallet authorization.");
   }
+  if (!plan.feeV2Economics || !plan.feeV2Authorization) {
+    throw new Error("RMT rejected spot execution authority without complete V2 fee settlement.");
+  }
+  assertRmtExecutionFeeV2Economics(plan.feeV2Economics);
+  assertVNextAtomicFeeAuthorizationBinding(
+    plan.feeV2Authorization,
+    plan.feeV2Economics,
+    plan.feeV2Authorization
+  );
+  if (
+    getAddress(plan.feeV2Authorization.recipient) !== getAddress(plan.recipient)
+    || getAddress(plan.feeV2Authorization.executionTarget) !== getAddress(plan.target)
+    || plan.feeV2Authorization.calldataHash.toLowerCase() !== keccak256(plan.data).toLowerCase()
+    || plan.feeV2Authorization.deadline !== plan.deadline
+    || plan.feeV2Economics.userGrossInputAtomic !== plan.inputAmountAtomic
+    || plan.feeV2Economics.protectedUserNetOutputAtomic !== plan.protectedOutputAtomic
+  ) throw new Error("RMT rejected changed V2 spot execution authority.");
   return {
     purpose: "spot_trade",
     chainId: plan.chainId,

@@ -1,6 +1,18 @@
 import { getAddress, isAddress, keccak256, type Address, type Hex } from "viem";
 import { assertVNextQuoteAttempt, type VNextQuoteAttempt, type VNextQuoteAttemptStatus, type VNextQuoteProvider } from "../vnext/quote-observation";
 import { normalizeDisabledRmtFee, type RmtNetExecutionEconomics } from "../vnext/execution-fee-policy";
+import {
+  configuredRmtExecutionFeeV2Policy,
+  type RmtExecutionFeeV2Economics,
+  type RmtExecutionFeeV2Policy
+} from "../vnext/execution-fee-policy-v2";
+import {
+  VNEXT_PROVIDER_FEE_SETTLEMENT_REGISTRY,
+  assertVNextWalletFeeAdmission,
+  type VNextAtomicFeeAuthorizationBinding,
+  type VNextAtomicFeeSettlementProof,
+  type VNextProviderFeeSettlement
+} from "../vnext/provider-fee-settlement";
 import type { RmtUniswapV3FeeExecution } from "../vnext/uniswap-v3-fee-executor";
 
 export type VNextVerifiedTokenIdentity = {
@@ -49,6 +61,8 @@ export type VNextProviderVerificationEvidence = Record<string, unknown> & {
   networkCostValuationExpiresAtMs: number | null;
   netEconomics?: RmtNetExecutionEconomics;
   feeExecution?: RmtUniswapV3FeeExecution | null;
+  feeV2Economics?: RmtExecutionFeeV2Economics;
+  feeV2Settlement?: VNextAtomicFeeSettlementProof;
 };
 
 export type VNextProviderAuthorizationRequest = VNextProviderVerificationRequest & {
@@ -59,6 +73,7 @@ export type VNextProviderAuthorizationRequest = VNextProviderVerificationRequest
 
 export type VNextPreparedProviderAuthorization = {
   evidence: VNextProviderVerificationEvidence;
+  feeV2Authorization?: VNextAtomicFeeAuthorizationBinding;
   transaction: {
     kind: "erc20_approval" | "swap";
     target: Address;
@@ -66,6 +81,11 @@ export type VNextPreparedProviderAuthorization = {
     value: string;
     gasLimit: string;
   };
+};
+
+export type VNextWalletFeeAdmissionContext = {
+  policy?: RmtExecutionFeeV2Policy | null;
+  capability?: VNextProviderFeeSettlement;
 };
 
 export type VNextQuoteProviderAdapter = {
@@ -238,7 +258,8 @@ export async function verifyVNextExecutionProvider(
 export async function prepareVNextProviderAuthorization(
   provider: VNextQuoteProvider,
   request: VNextProviderAuthorizationRequest,
-  adapters: readonly VNextQuoteProviderAdapter[]
+  adapters: readonly VNextQuoteProviderAdapter[],
+  feeAdmission: VNextWalletFeeAdmissionContext = {}
 ) {
   if (
     request.protectedOutputFloorAtomic <= 0n
@@ -246,11 +267,25 @@ export async function prepareVNextProviderAuthorization(
     || request.indicativeProtectedOutputFloorAtomic > request.protectedOutputFloorAtomic
   ) throw new Error("RMT rejected an invalid protected output floor.");
   const adapter = adapterForProvider(provider, adapters);
+  const capability = feeAdmission.capability ?? VNEXT_PROVIDER_FEE_SETTLEMENT_REGISTRY[provider];
+  if (capability.state !== "V2_ATOMIC_INPUT_FEE") {
+    throw new Error(`${adapter.providerLabel} wallet authorization is quote-only until its V2 atomic fee settlement is admitted.`);
+  }
+  const policy = feeAdmission.policy === undefined ? configuredRmtExecutionFeeV2Policy() : feeAdmission.policy;
+  if (!policy) throw new Error(`${adapter.providerLabel} wallet authorization requires the active RMT_EXECUTION_V2 policy.`);
   if (!adapter.capabilities.walletAuthorization || !adapter.prepareAuthorization) {
     throw new Error(`${adapter.providerLabel} wallet authorization is not available yet.`);
   }
   const prepared = await adapter.prepareAuthorization(request);
   assertVerificationEvidence(prepared.evidence, adapter, request);
+  assertVNextWalletFeeAdmission({
+    provider,
+    policy,
+    economics: prepared.evidence.feeV2Economics,
+    verification: prepared.evidence.feeV2Settlement,
+    authorization: prepared.feeV2Authorization,
+    capability
+  });
   if (
     prepared.evidence.deadline !== request.deadlineSeconds.toString()
     || BigInt(prepared.evidence.protectedOutputAtomic) < request.protectedOutputFloorAtomic

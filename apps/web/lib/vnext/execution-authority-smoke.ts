@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { toFunctionSelector } from "viem";
-import type { VNextAuthorizationPlan } from "./authorization-plan";
+import { FEE_V2_SMOKE_SWAP_PLAN } from "./fee-v2-smoke-fixture";
 import {
   decideVNextExecutionAuthority,
   vnextSpotTradeInstruction,
@@ -66,36 +66,18 @@ assert.deepEqual(decideVNextExecutionAuthority({
   nowMs: now
 }), { status: "blocked", reason: "delegation_expired" });
 
-const spotPlan = {
-  planId: "11111111-1111-4111-8111-111111111111",
-  sourceQuoteRequestId: "22222222-2222-4222-8222-222222222222",
-  sourceVerificationId: "33333333-3333-4333-8333-333333333333",
-  provider: "uniswap-v3",
-  kind: "swap",
-  chainId: 4_663,
-  target: "0x4444444444444444444444444444444444444444",
-  data: `0x12345678${"00".repeat(32)}`,
-  value: "0",
-  gasLimit: "100000",
-  payloadHash: `0x${"b".repeat(64)}`,
-  inputAsset: "0x5555555555555555555555555555555555555555",
-  outputAsset: "0x6666666666666666666666666666666666666666",
-  inputAmountAtomic: "100",
-  protectedOutputAtomic: "95",
-  recipient: wallet,
-  router: "0x4444444444444444444444444444444444444444",
-  deadline: "1800000060",
-  preparedAtMs: now,
-  expiresAtMs: now + 30_000,
-  userAuthorizationRequired: true,
-  serverSubmissionEnabled: false
-} satisfies VNextAuthorizationPlan;
+const spotPlan = { ...FEE_V2_SMOKE_SWAP_PLAN, expiresAtMs: now + 30_000 };
 const spotInstruction = vnextSpotTradeInstruction(spotPlan);
 assert.equal(spotInstruction.purpose, "spot_trade");
 assert.deepEqual(decideVNextExecutionAuthority({
-  authority: delegate,
+  authority: { ...delegate, account: spotPlan.recipient },
   instruction: spotInstruction,
   nowMs: now
 }), { status: "blocked", reason: "purpose_not_delegated" });
+assert.throws(() => vnextSpotTradeInstruction({
+  ...spotPlan,
+  feeV2Economics: undefined,
+  feeV2Authorization: undefined
+}), /without complete V2 fee settlement/);
 
 console.log("RMT VNext execution-authority boundary smoke checks passed.");

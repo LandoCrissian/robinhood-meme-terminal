@@ -4,6 +4,12 @@ import {
   assertRmtNetExecutionEconomics,
   type RmtNetExecutionEconomics
 } from "./execution-fee-policy";
+import {
+  hasVNextWalletAuthorizationCodec,
+  isVNextWalletFeeSettlementAdmitted
+} from "./provider-fee-settlement";
+
+export { hasVNextWalletAuthorizationCodec } from "./provider-fee-settlement";
 
 const MAX_CLOCK_SKEW_MS = 5_000;
 
@@ -19,21 +25,6 @@ export type VNextLiquidityFeeEvidence = {
   observedBlock: string;
   observedBlockHash: `0x${string}`;
 };
-
-// Strict verification and wallet authorization are deliberately separate
-// capabilities. A provider-specific verifier may be implemented before RMT has
-// a reviewed pre-sign evidence parser and wallet-plan codec for that provider.
-// Keep this local allowlist fail closed so a server capability change cannot
-// silently promote an observation-only provider into wallet preparation.
-const VNEXT_WALLET_AUTHORIZATION_CODECS: ReadonlySet<VNextQuoteProvider> = new Set([
-  "uniswap-v3",
-  "up-v2",
-  "up-cl"
-]);
-
-export function hasVNextWalletAuthorizationCodec(provider: VNextQuoteProvider) {
-  return VNEXT_WALLET_AUTHORIZATION_CODECS.has(provider);
-}
 
 export type VNextQuoteAttemptStatus =
   | "indicative"
@@ -293,6 +284,7 @@ export function selectVNextRoute(attempts: VNextQuoteAttempt[]): VNextRouteSelec
     attempts.filter((attempt) => (
       attempt.strictVerificationAvailable
       && hasVNextWalletAuthorizationCodec(attempt.provider)
+      && isVNextWalletFeeSettlementAdmitted(attempt.provider)
     ))
   );
   return {
