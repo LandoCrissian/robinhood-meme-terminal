@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
   acceptExternalPoolTradesPayload,
+  externalMarketTelemetryIdentity,
   externalTradeSnapshotSignature,
   externalTradesRequestUrl,
   parseExternalPoolTrades,
@@ -52,6 +53,35 @@ const snapshot: ExternalPoolTradesPayload = {
 assert.equal(acceptExternalPoolTradesPayload(snapshot, token, pair), snapshot);
 assert.equal(acceptExternalPoolTradesPayload({ ...snapshot, pair: weth }, token, pair), null);
 assert.match(externalTradeSnapshotSignature(snapshot), /trade-1/);
+const telemetryMarket = {
+  address: token,
+  pairAddress: pair,
+  verifiedMarkets: [{
+    chainId: 4_663,
+    assetId: `eip155:4663/contract:${token}`,
+    token: { address: token, name: "Token", symbol: "TKN" },
+    venue: "uniswap-v3",
+    protocolVersion: 3,
+    pool: { kind: "evm-address", value: pair },
+    baseToken: { address: token, name: "Token", symbol: "TKN" },
+    quoteToken: { address: weth, name: "Wrapped Ether", symbol: "WETH" },
+    assetSide: "BASE",
+    displayEligibility: "eligible",
+    chartEligibility: "eligible",
+    executionEligibility: "view-only",
+    provenance: "dexscreener-token-pairs",
+    priceUsd: 1,
+    liquidityUsd: 1,
+    marketCapUsd: 1,
+    fdvUsd: 1,
+    volume24h: 1,
+    priceChange24h: 0,
+    pairCreatedAt: 1
+  }]
+};
+assert.deepEqual(externalMarketTelemetryIdentity(telemetryMarket as never), { token, pair });
+assert.equal(externalMarketTelemetryIdentity({ ...telemetryMarket, pairAddress: `0x${"ab".repeat(32)}` } as never), null, "A V4 PoolId is never a telemetry pair");
+assert.equal(externalMarketTelemetryIdentity({ ...telemetryMarket, verifiedMarkets: [] } as never), null, "Unverified pair identity must not start telemetry");
 const streamRoute = readFileSync(new URL("../app/api/markets/external-stream/route.ts", import.meta.url), "utf8");
 assert.match(streamRoute, /text\/event-stream/);
 assert.match(streamRoute, /event\("snapshot", payload\)/);
@@ -61,6 +91,7 @@ const streamHook = readFileSync(new URL("use-external-market-stream.ts", import.
 assert.match(streamHook, /addEventListener\("rotate"/);
 assert.match(streamHook, /addEventListener\("visibilitychange"/);
 assert.match(streamHook, /Date\.now\(\) - lastEventAt > 20_000/);
+assert.match(streamHook, /setStatus\("unsupported"\)/);
 
 const secondTrader = "0x2222222222222222222222222222222222222222";
 const actorSummary = summarizeExternalTradeActors([

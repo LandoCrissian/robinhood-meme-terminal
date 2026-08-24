@@ -3,7 +3,7 @@
 import { useConnectWallet, useIdentityToken, usePrivy, useWallets } from "@privy-io/react-auth";
 import { useSetActiveWallet } from "@privy-io/wagmi";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { useAccount } from "wagmi";
+import { useAccount, useConnect } from "wagmi";
 import { walletBrowserEnvironment, type WalletBrowserEnvironment } from "../lib/mobile-wallet-link";
 import {
   RMT_ACTIVE_WALLET_SESSION_KEY,
@@ -84,6 +84,56 @@ const unavailableIdentity: RmtIdentityContextValue = {
 };
 
 const RmtIdentityContext = createContext<RmtIdentityContextValue>(unavailableIdentity);
+
+function isLoopbackAcceptanceHost() {
+  return typeof window !== "undefined"
+    && (window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost");
+}
+
+export function BrowserAcceptanceIdentityBridge({ children }: { children: ReactNode }) {
+  const { address, isConnected } = useAccount();
+  const { connect, connectors } = useConnect();
+  const acceptanceEnabled = process.env.NEXT_PUBLIC_RMT_BROWSER_ACCEPTANCE_PROFILE === "true" && isLoopbackAcceptanceHost();
+  const connector = connectors.find((candidate) => candidate.id === "injected" || candidate.type === "injected");
+  const connectTradingWallet = useCallback(() => {
+    if (acceptanceEnabled && connector) connect({ connector, chainId: 4_663 });
+  }, [acceptanceEnabled, connect, connector]);
+
+  useEffect(() => {
+    if (acceptanceEnabled && !isConnected && connector) connect({ connector, chainId: 4_663 });
+  }, [acceptanceEnabled, connect, connector, isConnected]);
+
+  const value = useMemo<RmtIdentityContextValue>(() => acceptanceEnabled ? {
+    authenticated: isConnected,
+    activeWalletKey: isConnected ? "browser-acceptance-injected" : null,
+    activeWalletKind: isConnected ? "external" : null,
+    activeWalletName: isConnected ? "Deterministic browser wallet" : null,
+    clearTradingWalletPreference: () => undefined,
+    clearWalletConnectionError: () => undefined,
+    connectTradingWallet,
+    enabled: true,
+    environment: "desktop",
+    externalWalletCount: 1,
+    identityToken: isConnected ? "deterministic-browser-acceptance-token" : null,
+    linkEmail: () => undefined,
+    linkGoogle: () => undefined,
+    linkPasskey: () => undefined,
+    linkPhone: () => undefined,
+    linkWallet: connectTradingWallet,
+    linked: { email: false, google: false, passkey: false, phone: false, wallet: isConnected },
+    login: connectTradingWallet,
+    logout: async () => undefined,
+    phoneLast4: "",
+    ready: true,
+    selectTradingWallet: async () => connectTradingWallet(),
+    supportsOAuth: false,
+    userId: isConnected && address ? `browser-acceptance:${address.toLowerCase()}` : "",
+    walletConnectionError: "",
+    walletSelectionRequired: false
+  } : unavailableIdentity, [acceptanceEnabled, address, connectTradingWallet, isConnected]);
+
+  return <RmtIdentityContext.Provider value={value}>{children}</RmtIdentityContext.Provider>;
+}
 
 export function PrivyIdentityBridge({ children }: { children: ReactNode }) {
   const {

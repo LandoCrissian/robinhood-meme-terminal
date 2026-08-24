@@ -28,7 +28,7 @@ import { safeExternalNavigationUrl, safeExternalSocialNavigationUrl } from "../.
 import type { IdentityStatus } from "./use-vnext-market-directory";
 import { CopyAddress, ExplorerLink, ExternalProjectLink } from "./terminal-links";
 import { TokenArtwork } from "./token-artwork";
-import { useVNextAssetWorkspace } from "./use-vnext-asset-workspace";
+import { useVNextAssetWorkspace, workspaceTokenPresentation } from "./use-vnext-asset-workspace";
 import { VNextMarketChart } from "./vnext-market-chart";
 
 function shortAddress(value: string) {
@@ -210,7 +210,7 @@ function WorkspaceActivity({ market }: { market: ExternalMarket }) {
     { label: "24h", buys: market.buys24h, sells: market.sells24h, volume: market.volume24h }
   ];
   return <section className="vnWorkspaceCard vnActivityCard" aria-labelledby="vn-activity-heading">
-    <header className="vnWorkspaceCardHead"><div><span className="vnEyebrow">Confirmed activity</span><h3 id="vn-activity-heading">Market flow &amp; trade tape</h3></div><span className={`vnLiveState is${stream.status}`}><i aria-hidden="true" />{stream.status === "live" ? "Streaming" : stream.status === "fallback" ? "Fallback live" : stream.status === "connecting" ? "Connecting" : "Reconnecting"}</span></header>
+    <header className="vnWorkspaceCardHead"><div><span className="vnEyebrow">Confirmed activity</span><h3 id="vn-activity-heading">Market flow &amp; trade tape</h3></div><span className={`vnLiveState is${stream.status}`}><i aria-hidden="true" />{stream.status === "live" ? "Streaming" : stream.status === "fallback" ? "Fallback live" : stream.status === "connecting" ? "Connecting" : stream.status === "unsupported" ? "Unavailable" : "Reconnecting"}</span></header>
     <div className="vnMarketFlow" aria-label="Market activity by time window">{windows.map((window) => <span key={window.label}><b>{window.label}</b><small>{window.buys.toLocaleString()} buys · {window.sells.toLocaleString()} sells</small><strong>{compactUsd(window.volume)}</strong></span>)}</div>
     <div className="vnActivitySummary">
       <span><small>Swaps shown</small><strong>{trades.length}</strong></span>
@@ -224,7 +224,7 @@ function WorkspaceActivity({ market }: { market: ExternalMarket }) {
         <span><strong>{trade.tokenAmount.toLocaleString(undefined, { maximumFractionDigits: 4 })} {market.symbol}</strong><small>{shortAddress(trade.trader)}</small></span>
         <span><strong>{compactUsd(trade.volumeUsd)}</strong><small>{relativeTime(trade.timestamp)} ago ↗</small></span>
       </ExplorerLink>)}
-    </div></details> : <div className="vnWorkspaceEmpty"><strong>{stream.status === "connecting" ? "Opening exact-pool stream" : "No recent swaps"}</strong><span>New confirmed swaps appear without resetting the workspace.</span></div>}
+    </div></details> : <div className="vnWorkspaceEmpty"><strong>{stream.status === "unsupported" ? "Exact-pool activity unavailable" : stream.status === "connecting" ? "Opening exact-pool stream" : "No recent swaps"}</strong><span>{stream.status === "unsupported" ? "This market representation does not expose a conventional verified EVM pool address. The canonical market remains visible." : "New confirmed swaps appear without resetting the workspace."}</span></div>}
     <footer>Exact pool only · confirmed swaps · visible wallet flow is not identity, P&amp;L, or a copy signal.</footer>
   </section>;
 }
@@ -330,11 +330,10 @@ function VerifiedMarkets({
   </section>;
 }
 
-function WorkspaceRwaRelationships({ market, coverage }: { market?: ExternalMarket; coverage?: "complete" | "unavailable" }) {
-  const relationships = market?.stockAssetRelationships ?? [];
+function WorkspaceRwaRelationships({ relationships, coverage }: { relationships: NonNullable<ExternalMarket["stockAssetRelationships"]>; coverage?: "complete" | "unavailable" }) {
   return <section className="vnWorkspaceCard vnRwaCard" aria-labelledby="vn-rwa-heading">
     <header className="vnWorkspaceCardHead"><div><span className="vnEyebrow">RWA relationship</span><h3 id="vn-rwa-heading">Stock-token classification</h3></div><span>{relationships.length ? "Registry verified" : coverage === "complete" ? "No match" : "Coverage unknown"}</span></header>
-    {relationships.length ? <div>{relationships.map((relationship) => <span key={`${relationship.relationship}:${relationship.contractAddress}`}><strong>{relationship.tokenSymbol} · {relationship.relationship === "canonical-stock-token" ? "Canonical stock token" : "Paired market asset"}</strong><small>{relationship.tokenName} · {relationship.status} · multiplier {relationship.currentMultiplier}</small><ExplorerLink kind="token" value={relationship.contractAddress}>Registry contract {shortAddress(relationship.contractAddress)} ↗</ExplorerLink></span>)}</div> : <p className="vnEvidenceCaution">{coverage === "complete" ? "The current Robinhood registry has no canonical stock-token relationship for this market." : "Registry coverage is unavailable. RMT does not infer RWA status from a name, symbol, or trading pair."}</p>}
+    {relationships.length ? <div>{relationships.map((relationship) => <span key={`${relationship.relationship}:${relationship.contractAddress}`}><strong>{relationship.tokenSymbol} · {relationship.relationship === "canonical-stock-token" ? "Canonical stock token" : "Paired market asset"}</strong><small>{relationship.tokenName} · {relationship.status} · multiplier {relationship.currentMultiplier}</small><small>Provenance · Robinhood live asset registry</small><ExplorerLink kind="token" value={relationship.contractAddress}>Registry contract {shortAddress(relationship.contractAddress)} ↗</ExplorerLink></span>)}</div> : <p className="vnEvidenceCaution">{coverage === "complete" ? "The current Robinhood registry has no canonical stock-token relationship for this market." : "Registry coverage is unavailable. RMT does not infer RWA status from a name, symbol, or trading pair."}</p>}
     <footer>A project token paired with a canonical stock token is not itself classified as an RWA. Policy eligibility remains separate from route availability.</footer>
   </section>;
 }
@@ -387,6 +386,19 @@ export function VNextAssetWorkspace({
   );
   const resolution = workspace.resolution ?? workspace.market?.resolution;
   const market = workspace.market;
+  const presentationIdentity = workspaceTokenPresentation({
+    address: directoryMarket.address,
+    resolution,
+    canonicalIdentity: directoryMarket.verifiedIdentity,
+    provider: market,
+    fallback: directoryMarket
+  });
+  const displayName = presentationIdentity.name;
+  const displaySymbol = presentationIdentity.symbol;
+  const canonicalStockRelationship = workspace.stockAssetRelationships.find((relationship) => (
+    relationship.relationship === "canonical-stock-token"
+    && relationship.contractAddress.toLowerCase() === directoryMarket.address.toLowerCase()
+  ));
   const workspacePool = market ? selectVNextChartPool(market) : undefined;
   const directoryPool = selectVNextChartPool(directoryMarket);
   const selectedPool = workspacePool ?? directoryPool;
@@ -418,11 +430,11 @@ export function VNextAssetWorkspace({
             ? <WorkspaceOrigin market={market} token={directoryMarket.address} />
             : section === "ecosystem"
               ? <WorkspaceEcosystemIntelligence ecosystem={workspace.ecosystem} />
-              : <WorkspaceRwaRelationships market={market} coverage={workspace.stockAssetCoverage} />;
+              : <WorkspaceRwaRelationships relationships={workspace.stockAssetRelationships} coverage={workspace.stockAssetCoverage} />;
 
   return <section className={`vnAssetPanel vnAssetWorkspace is${presentation}`} aria-labelledby="vn-asset-heading">
     <header className="vnAssetWorkspaceHeader">
-      <div className="vnAssetWorkspaceIdentity"><TokenArtwork className="vnAssetWorkspaceMark" symbol={directoryMarket.symbol} imageUrl={directoryMarket.imageUri} /><span><span className="vnEyebrow">Asset workspace</span><h2 id="vn-asset-heading">{directoryMarket.name} <b>{directoryMarket.symbol}</b></h2><small>Robinhood Chain · {identityStatus === "verified" ? "onchain token identity proven" : identityStatus === "checking" ? "identity checking" : "identity evidence unavailable"}</small></span></div>
+      <div className="vnAssetWorkspaceIdentity"><TokenArtwork className="vnAssetWorkspaceMark" symbol={displaySymbol} imageUrl={directoryMarket.imageUri ?? canonicalStockRelationship?.logoUrl ?? undefined} /><span><span className="vnEyebrow">Asset workspace</span><h2 id="vn-asset-heading">{displayName} <b>{displaySymbol}</b></h2><small>Robinhood Chain · {presentationIdentity.verified || identityStatus === "verified" ? "onchain token identity proven" : identityStatus === "checking" ? "identity checking" : "identity evidence unavailable"}</small></span></div>
       <span className={`vnWorkspaceStatus is${workspace.status}`}><i aria-hidden="true" />{workspace.status === "ready" ? "Live evidence" : workspace.status === "partial" ? "Partial evidence" : workspace.status === "stale" ? "Last loaded" : workspace.status === "loading" ? "Loading evidence" : "Evidence unavailable"}</span>
     </header>
     <div className="vnAssetPrice"><strong>{formatUsd(directoryMarket.priceUsd)}</strong><span className={directoryMarket.priceChange24h !== null && directoryMarket.priceChange24h > 0 ? "vnPositive" : directoryMarket.priceChange24h !== null && directoryMarket.priceChange24h < 0 ? "vnNegative" : ""}>{directoryMarket.priceChange24h === null ? "Unavailable" : `${directoryMarket.priceChange24h > 0 ? "+" : ""}${directoryMarket.priceChange24h.toFixed(1)}%`} <small>24h</small></span></div>
@@ -432,7 +444,7 @@ export function VNextAssetWorkspace({
       <div><dt>Chain</dt><dd>Robinhood Chain · 4663</dd></div>
       <div><dt>Primary venue</dt><dd>{directoryMarket.dexId ?? "Unknown"}</dd></div>
       <div><dt>Project origin</dt><dd>{originState}</dd></div>
-      <div><dt>RWA relationship</dt><dd>{directoryMarket.rwaRelationship === "canonical-stock-token" ? "Canonical stock token" : directoryMarket.rwaRelationship === "paired-market-asset" ? "RWA-paired market" : "Not reported"}</dd></div>
+      <div><dt>RWA relationship</dt><dd>{canonicalStockRelationship ? "Canonical stock token" : workspace.stockAssetRelationships.some((relationship) => relationship.relationship === "paired-market-asset") || directoryMarket.rwaRelationship === "paired-market-asset" ? "RWA-paired market" : "Not reported"}</dd></div>
     </dl>
     <WorkspaceQuickLinks directoryMarket={directoryMarket} market={market} primaryPool={selectedPool} />
 

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import {
   parseRobinhoodStockAssets,
   stockAssetRelationshipsForPair,
+  stockAssetRelationshipsForToken,
   stockTokenExecutionPolicyFromSnapshot
 } from "./robinhood-stock-token-registry";
 
@@ -41,6 +42,11 @@ const registry = parseRobinhoodStockAssets({
 
 assert.equal(registry.size, 2);
 assert.equal(registry.get(stockToken.toLowerCase())?.tokenSymbol, "AAPL");
+const selectedTokenRelationship = stockAssetRelationshipsForToken(stockToken, registry);
+assert.equal(selectedTokenRelationship.length, 1);
+assert.equal(selectedTokenRelationship[0]?.relationship, "canonical-stock-token");
+assert.equal(selectedTokenRelationship[0]?.provenance, "robinhood-live-asset-registry");
+assert.equal(stockAssetRelationshipsForToken(launchToken, registry).length, 0);
 
 const paired = stockAssetRelationshipsForPair(launchToken, launchToken, stockToken, registry);
 assert.equal(paired.length, 1);

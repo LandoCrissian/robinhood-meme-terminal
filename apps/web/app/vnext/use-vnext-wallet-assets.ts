@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { erc20Abi } from "viem";
 import { useAccount, usePublicClient } from "wagmi";
 import type { VNextDirectoryMarket } from "../../lib/vnext/market-directory";
-import { ROBINHOOD_MAINNET_CHAIN_ID } from "../../lib/vnext/robinhood-assets";
+import { ROBINHOOD_MAINNET_CHAIN_ID, ROBINHOOD_USDG_ADDRESS } from "../../lib/vnext/robinhood-assets";
 import {
   normalizeWalletDiscoveryResponse,
   type VNextWalletDiscoveryAsset
@@ -23,6 +23,29 @@ export type VNextWalletAssetStatus = "idle" | "loading" | "ready" | "stale" | "e
 export type VNextWalletDiscoveryStatus = "idle" | "loading" | "ready" | "partial" | "stale" | "unavailable";
 
 const EMPTY_WALLET_ASSETS: VNextDetectedWalletAsset[] = [];
+
+function browserAcceptanceWalletSnapshot() {
+  if (
+    process.env.NEXT_PUBLIC_RMT_BROWSER_ACCEPTANCE_PROFILE !== "true"
+    || typeof window === "undefined"
+    || !["localhost", "127.0.0.1"].includes(window.location.hostname)
+  ) return null;
+  return {
+    assets: [{
+      address: ROBINHOOD_USDG_ADDRESS,
+      symbol: "USDG",
+      name: "Global Dollar",
+      decimals: 6,
+      balanceAtomic: "100000000",
+      identityState: "verified" as const,
+      source: "canonical" as const,
+      reputation: "ok" as const,
+      imageUrl: null,
+      routeState: "detected" as const
+    }],
+    nativeBalance: 10_000_000_000_000_000_000n
+  };
+}
 
 function sameCandidateAddresses(left: VNextWalletAssetCandidate[], right: VNextWalletAssetCandidate[]) {
   if (left.length !== right.length) return false;
@@ -45,7 +68,8 @@ export function useVNextWalletAssets(markets: VNextDirectoryMarket[], imported: 
   const discoveredAssets = useRef<VNextWalletDiscoveryAsset[]>([]);
   const lastDiscoveryAt = useRef<number | null>(null);
   const onRobinhood = chainId === ROBINHOOD_MAINNET_CHAIN_ID;
-  const enabled = Boolean(address && isConnected && onRobinhood && publicClient);
+  const acceptanceSnapshot = browserAcceptanceWalletSnapshot();
+  const enabled = Boolean(address && isConnected && onRobinhood && publicClient && !acceptanceSnapshot);
 
   const refresh = useCallback(async (forceDiscovery = true) => {
     const currentBalanceRequest = ++balanceRequestId.current;
@@ -216,12 +240,12 @@ export function useVNextWalletAssets(markets: VNextDirectoryMarket[], imported: 
 
   const snapshotIsCurrent = Boolean(address && snapshotWallet.current === address.toLowerCase());
   return {
-    assets: snapshotIsCurrent ? assets : EMPTY_WALLET_ASSETS,
-    nativeBalance: snapshotIsCurrent ? nativeBalance : undefined,
-    status,
-    discoveryStatus,
-    observedAtMs: snapshotIsCurrent ? observedAtMs : undefined,
-    enabled,
+    assets: acceptanceSnapshot?.assets ?? (snapshotIsCurrent ? assets : EMPTY_WALLET_ASSETS),
+    nativeBalance: acceptanceSnapshot?.nativeBalance ?? (snapshotIsCurrent ? nativeBalance : undefined),
+    status: acceptanceSnapshot ? "ready" as const : status,
+    discoveryStatus: acceptanceSnapshot ? "ready" as const : discoveryStatus,
+    observedAtMs: acceptanceSnapshot ? Date.now() : snapshotIsCurrent ? observedAtMs : undefined,
+    enabled: Boolean(acceptanceSnapshot) || enabled,
     onRobinhood,
     refresh
   };

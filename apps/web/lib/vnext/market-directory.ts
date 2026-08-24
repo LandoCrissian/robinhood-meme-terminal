@@ -125,7 +125,7 @@ function record(value: unknown): Record<string, unknown> | null {
 }
 
 function canonicalMarketIdentity(market: VNextUniversalMarketSearchPool) {
-  return `${market.sourceId}:${market.poolKey}`;
+  return `${market.sourceId}:${market.poolKey}`.toLowerCase();
 }
 
 export function directoryMarketsFromCanonicalPools(
@@ -690,7 +690,7 @@ export function mergeVNextDirectoryAndSearchMarkets(
     }
     const canonicalMarkets = new Map<string, VNextUniversalMarketSearchPool>();
     for (const evidence of [...(existing.canonicalMarkets ?? []), ...(market.canonicalMarkets ?? [])]) {
-      canonicalMarkets.set(`${evidence.sourceId}:${evidence.poolKey}`, evidence);
+      canonicalMarkets.set(canonicalMarketIdentity(evidence), evidence);
     }
     const verifiedMarkets = new Map<string, NonNullable<VNextDirectoryMarket["verifiedMarkets"]>[number]>();
     for (const evidence of [...(existing.verifiedMarkets ?? []), ...(market.verifiedMarkets ?? [])]) {
@@ -728,6 +728,50 @@ export function mergeVNextDirectoryAndSearchMarkets(
     });
   }
   return [...byAddress.values()];
+}
+
+export function mergeVNextExplicitSelectionMarket(input: {
+  existing?: VNextDirectoryMarket;
+  canonical?: VNextDirectoryMarket | null;
+  identity?: VNextDirectoryMarket | null;
+  provider?: VNextDirectoryMarket | null;
+}) {
+  const candidates = [input.existing, input.canonical ?? undefined, input.identity ?? undefined, input.provider ?? undefined]
+    .filter((market): market is VNextDirectoryMarket => Boolean(market));
+  if (!candidates.length) return null;
+  const expectedAddress = candidates[0]!.address.toLowerCase();
+  if (candidates.some((market) => market.address.toLowerCase() !== expectedAddress)) return null;
+
+  const providerBase = input.provider ?? input.existing ?? input.canonical ?? input.identity;
+  if (!providerBase) return null;
+  const merged = mergeVNextDirectoryAndSearchMarkets(
+    [providerBase],
+    candidates.filter((market) => market !== providerBase)
+  )[0]!;
+  const directToken = resolutionToken(input.identity?.resolution, merged.address);
+  const verifiedIdentity = input.canonical?.verifiedIdentity
+    ?? input.existing?.verifiedIdentity
+    ?? input.provider?.verifiedIdentity
+    ?? merged.verifiedIdentity;
+  return {
+    ...merged,
+    name: directToken?.name.trim().slice(0, 80)
+      || verifiedIdentity?.name
+      || input.provider?.name
+      || input.existing?.name
+      || merged.name,
+    symbol: directToken?.symbol.trim().slice(0, 16)
+      || verifiedIdentity?.symbol
+      || input.provider?.symbol
+      || input.existing?.symbol
+      || merged.symbol,
+    verifiedIdentity,
+    resolution: input.identity?.resolution
+      ?? input.canonical?.resolution
+      ?? input.existing?.resolution
+      ?? input.provider?.resolution
+      ?? merged.resolution
+  } satisfies VNextDirectoryMarket;
 }
 
 export function mergeVNextCanonicalBrowseMarkets(

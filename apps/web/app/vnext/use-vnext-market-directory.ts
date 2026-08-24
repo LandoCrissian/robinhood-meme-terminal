@@ -11,6 +11,7 @@ import {
   isVNextDirectoryMarketSelectable,
   mergeVNextCanonicalBrowseMarkets,
   mergeVNextDirectoryAndSearchMarkets,
+  mergeVNextExplicitSelectionMarket,
   normalizeDirectoryMarkets,
   parseVNextCanonicalDirectoryResponse,
   resolutionFromLookup,
@@ -103,7 +104,6 @@ export function useVNextMarketDirectory() {
   const [selectedAddress, setSelectedAddress] = useState<string | null>(null);
   const [selectedAsset, setSelectedAsset] = useState<AssetMetadata>();
   const [identityStatus, setIdentityStatus] = useState<IdentityStatus>("idle");
-  const [selectedSearchMarket, setSelectedSearchMarket] = useState<VNextDirectoryMarket>();
   const [searchMarkets, setSearchMarkets] = useState<VNextDirectoryMarket[]>([]);
   const [searchStatus, setSearchStatus] = useState<VNextUniversalMarketSearchStatus>("idle");
   const [submittedSearchQuery, setSubmittedSearchQuery] = useState("");
@@ -122,6 +122,9 @@ export function useVNextMarketDirectory() {
   const searchController = useRef<AbortController | undefined>(undefined);
   const searchSequence = useRef(0);
   const selectionSequence = useRef(0);
+  const completedExplicitSelections = useRef(new Set<string>());
+  const completedCanonicalExactQueries = useRef(new Set<string>());
+  const explicitSelectionRequests = useRef(new Map<string, Promise<boolean>>());
   const searchMarketsRef = useRef<VNextDirectoryMarket[]>([]);
 
   const publishMarkets = useCallback(() => {
@@ -152,59 +155,99 @@ export function useVNextMarketDirectory() {
   }, []);
 
   const selectAddress = useCallback(async (rawAddress: string) => {
-    const requestSequence = selectionSequence.current + 1;
-    selectionSequence.current = requestSequence;
     const exactDirectory = markets.find((market) => market.address.toLowerCase() === rawAddress.toLowerCase());
     const exactSearch = searchMarketsRef.current.find((market) => market.address.toLowerCase() === rawAddress.toLowerCase());
     const exact = exactDirectory && exactSearch
       ? mergeVNextDirectoryAndSearchMarkets([exactDirectory], [exactSearch])[0]
       : exactDirectory ?? exactSearch;
-    if (exact && isVNextDirectoryMarketSelectable(exact)) {
-      setSelectedSearchMarket(exactSearch ? exact : undefined);
+    if (exact?.canonicalMarkets?.length && isVNextDirectoryMarketSelectable(exact)) {
+      selectionSequence.current += 1;
+      exactLookupMarket.current = mergeVNextExplicitSelectionMarket({
+        existing: exactLookupMarket.current,
+        canonical: exact
+      }) ?? exact;
+      publishMarkets();
       setSelectedAddress(exact.address);
       return true;
     }
     if (!isAddress(rawAddress, { strict: false })) return false;
     const address = getAddress(rawAddress);
-    const controller = new AbortController();
-    const timeout = window.setTimeout(() => controller.abort(), IDENTITY_LOOKUP_TIMEOUT_MS);
-    try {
-      const marketQuery = new URLSearchParams({ contract: address });
-      const identityQuery = new URLSearchParams({ address });
-      const readJson = async (url: string) => {
-        const response = await fetch(url, { signal: controller.signal });
-        const payload = await response.json() as ExternalMarketResponse;
-        return response.ok ? payload : null;
-      };
-      const [marketResult, identityResult] = await Promise.allSettled([
-        readJson(`/api/markets/external?${marketQuery}`),
-        readJson(`/api/vnext/asset-identity?${identityQuery}`)
-      ]);
-      const marketPayload = marketResult.status === "fulfilled" ? marketResult.value : null;
-      const identityPayload = identityResult.status === "fulfilled" ? identityResult.value : null;
-      const discovered = marketPayload
-        ? directoryMarketFromExactLookup(marketPayload, address)
-        : null;
-      const fallback = discovered ?? (identityPayload
-        ? directoryMarketFromVerifiedIdentity(identityPayload, address)
-        : null);
-      if (!fallback || requestSequence !== selectionSequence.current) return false;
-      setMarkets((current) => current.some((market) => market.address.toLowerCase() === address.toLowerCase())
-        ? current.map((market) => {
-            if (market.address.toLowerCase() !== address.toLowerCase()) return market;
-            return mergeVNextDirectoryAndSearchMarkets([market], [fallback])[0];
-          })
-        : [fallback, ...current]);
-      exactLookupMarket.current = fallback;
-      setSelectedSearchMarket(undefined);
-      setSelectedAddress(fallback.address);
+    const selectionKey = address.toLowerCase();
+    if (completedExplicitSelections.current.has(selectionKey) && exact && isVNextDirectoryMarketSelectable(exact)) {
+      setSelectedAddress(exact.address);
       return true;
-    } catch {
-      return false;
-    } finally {
-      window.clearTimeout(timeout);
     }
-  }, [markets]);
+    const inFlight = explicitSelectionRequests.current.get(selectionKey);
+    if (inFlight) return inFlight;
+    const requestSequence = selectionSequence.current + 1;
+    selectionSequence.current = requestSequence;
+    const selectionRequest = (async () => {
+      const controller = new AbortController();
+      const timeout = window.setTimeout(() => controller.abort(), IDENTITY_LOOKUP_TIMEOUT_MS);
+      try {
+        const marketQuery = new URLSearchParams({ contract: address });
+        const identityQuery = new URLSearchParams({ address });
+        const searchQuery = new URLSearchParams({ q: address });
+        const readExternalJson = async (url: string) => {
+          const response = await fetch(url, { signal: controller.signal });
+          const payload = await response.json() as ExternalMarketResponse;
+          return response.ok ? payload : null;
+        };
+        const readCanonicalJson = async () => {
+          const response = await fetch(`/api/vnext/market-search?${searchQuery}`, {
+            headers: { Accept: "application/json" },
+            signal: controller.signal
+          });
+          const payload = parseVNextUniversalMarketSearchResult(await response.json());
+          return response.ok && payload?.status === "found" ? payload : null;
+        };
+        const [canonicalResult, marketResult, identityResult] = await Promise.allSettled([
+          completedCanonicalExactQueries.current.has(selectionKey) ? Promise.resolve(null) : readCanonicalJson(),
+          readExternalJson(`/api/markets/external?${marketQuery}`),
+          readExternalJson(`/api/vnext/asset-identity?${identityQuery}`)
+        ]);
+        if (requestSequence === selectionSequence.current) completedExplicitSelections.current.add(selectionKey);
+        const canonicalPayload = canonicalResult.status === "fulfilled" ? canonicalResult.value : null;
+        const marketPayload = marketResult.status === "fulfilled" ? marketResult.value : null;
+        const identityPayload = identityResult.status === "fulfilled" ? identityResult.value : null;
+        const canonical = canonicalPayload?.results
+          .find((result) => result.address.toLowerCase() === address.toLowerCase());
+        const canonicalMarket = canonical ? directoryMarketFromUniversalSearchResult(canonical) : null;
+        const providerMarket = marketPayload
+          ? directoryMarketFromExactLookup(marketPayload, address)
+          : null;
+        const identityMarket = identityPayload
+          ? directoryMarketFromVerifiedIdentity(identityPayload, address)
+          : null;
+        const fallback = mergeVNextExplicitSelectionMarket({
+          existing: exact,
+          canonical: canonicalMarket,
+          identity: identityMarket,
+          provider: providerMarket
+        });
+        if (!fallback || requestSequence !== selectionSequence.current) return false;
+        exactLookupMarket.current = mergeVNextExplicitSelectionMarket({
+          existing: exactLookupMarket.current,
+          canonical: fallback
+        }) ?? fallback;
+        publishMarkets();
+        setSelectedAddress(fallback.address);
+        return true;
+      } catch {
+        return false;
+      } finally {
+        window.clearTimeout(timeout);
+      }
+    })();
+    explicitSelectionRequests.current.set(selectionKey, selectionRequest);
+    try {
+      return await selectionRequest;
+    } finally {
+      if (explicitSelectionRequests.current.get(selectionKey) === selectionRequest) {
+        explicitSelectionRequests.current.delete(selectionKey);
+      }
+    }
+  }, [markets, publishMarkets]);
 
   const clearUniversalSearch = useCallback(() => {
     searchSequence.current += 1;
@@ -261,6 +304,9 @@ export function useVNextMarketDirectory() {
         searchMarketsRef.current = [];
         setSearchMarkets([]);
         return { status: "unavailable" as const, markets: [] as VNextDirectoryMarket[] };
+      }
+      if (isAddress(query, { strict: false })) {
+        completedCanonicalExactQueries.current.add(getAddress(query).toLowerCase());
       }
       const nextMarkets = payload.status === "found"
         ? payload.results.map(directoryMarketFromUniversalSearchResult)
@@ -380,9 +426,8 @@ export function useVNextMarketDirectory() {
   useVisibilityRefresh(refreshEcosystemDirectory, VNEXT_CLIENT_REFRESH_POLICY.ecosystemDirectoryMs);
 
   const selected = useMemo(
-    () => (selectedSearchMarket?.address.toLowerCase() === selectedAddress?.toLowerCase() ? selectedSearchMarket : undefined)
-      ?? markets.find((market) => market.address.toLowerCase() === selectedAddress?.toLowerCase()),
-    [markets, selectedAddress, selectedSearchMarket]
+    () => markets.find((market) => market.address.toLowerCase() === selectedAddress?.toLowerCase()),
+    [markets, selectedAddress]
   );
 
   useEffect(() => {

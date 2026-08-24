@@ -1,4 +1,6 @@
 import { getAddress, isAddress } from "viem";
+import type { ExternalMarket } from "./external-market";
+import { canonicalExternalAssetId } from "./external-market-identity";
 
 export type ExternalPoolTrade = {
   id: string;
@@ -20,7 +22,30 @@ export type ExternalPoolTradesPayload = {
   trades: ExternalPoolTrade[];
 };
 
-export type ExternalMarketStreamStatus = "connecting" | "live" | "reconnecting" | "fallback";
+export type ExternalMarketStreamStatus = "unsupported" | "connecting" | "live" | "reconnecting" | "fallback";
+
+export function externalMarketTelemetryIdentity(
+  market: Pick<ExternalMarket, "address" | "pairAddress" | "verifiedMarkets">
+) {
+  if (
+    !isAddress(market.address, { strict: false })
+    || !isAddress(market.pairAddress, { strict: false })
+    || /^0x0{40}$/i.test(market.address)
+    || /^0x0{40}$/i.test(market.pairAddress)
+  ) return null;
+  const token = getAddress(market.address);
+  const pair = getAddress(market.pairAddress);
+  const expectedAssetId = canonicalExternalAssetId(4_663, token);
+  const verifiedPair = market.verifiedMarkets?.some((evidence) => (
+    evidence.assetId === expectedAssetId
+    && evidence.pool.kind === "evm-address"
+    && evidence.pool.value.toLowerCase() === pair.toLowerCase()
+    && (evidence.token.address.toLowerCase() === token.toLowerCase()
+      || evidence.baseToken.address.toLowerCase() === token.toLowerCase()
+      || evidence.quoteToken.address.toLowerCase() === token.toLowerCase())
+  ));
+  return verifiedPair ? { token, pair } : null;
+}
 
 export type ExternalTradeActor = {
   trader: `0x${string}`;

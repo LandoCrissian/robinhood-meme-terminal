@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import type { ExternalMarket } from "./external-market";
 import {
   acceptExternalPoolTradesPayload,
+  externalMarketTelemetryIdentity,
   externalTradeSnapshotSignature,
   type ExternalMarketStreamStatus,
   type ExternalPoolTradesPayload
@@ -16,10 +17,17 @@ export type ExternalMarketStream = {
 
 export function useExternalMarketStream(market?: ExternalMarket): ExternalMarketStream {
   const [payload, setPayload] = useState<ExternalPoolTradesPayload>();
-  const [status, setStatus] = useState<ExternalMarketStreamStatus>("connecting");
+  const [status, setStatus] = useState<ExternalMarketStreamStatus>("unsupported");
+  const telemetry = market ? externalMarketTelemetryIdentity(market) : null;
+  const telemetryToken = telemetry?.token;
+  const telemetryPair = telemetry?.pair;
 
   useEffect(() => {
-    if (!market) return;
+    if (!telemetryToken || !telemetryPair) {
+      setPayload(undefined);
+      setStatus("unsupported");
+      return;
+    }
     let active = true;
     let source: EventSource | undefined;
     let reconnectTimer: number | undefined;
@@ -29,9 +37,9 @@ export function useExternalMarketStream(market?: ExternalMarket): ExternalMarket
     let lastSignature = "";
     let lastEventAt = Date.now();
     let reconnectAttempt = 0;
-    const query = new URLSearchParams({ token: market.address, pair: market.pairAddress });
+    const query = new URLSearchParams({ token: telemetryToken, pair: telemetryPair });
     const accept = (value: unknown) => {
-      const next = acceptExternalPoolTradesPayload(value, market.address, market.pairAddress);
+      const next = acceptExternalPoolTradesPayload(value, telemetryToken, telemetryPair);
       if (!next) return false;
       const signature = externalTradeSnapshotSignature(next);
       if (signature !== lastSignature) {
@@ -166,7 +174,7 @@ export function useExternalMarketStream(market?: ExternalMarket): ExternalMarket
       window.removeEventListener("offline", handleOffline);
       document.removeEventListener("visibilitychange", handleVisibility);
     };
-  }, [market?.address, market?.pairAddress]);
+  }, [telemetryPair, telemetryToken]);
 
   return { payload, status };
 }

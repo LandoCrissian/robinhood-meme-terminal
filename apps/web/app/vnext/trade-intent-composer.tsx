@@ -1008,7 +1008,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
               ? `You bought ${outputSymbol} with ${inputSymbol}.`
               : `You sold ${inputSymbol} for ${outputSymbol}.`}</p>
             <dl>
-              <div><dt>{side === "buy" ? "Paid" : "Sold"}</dt><dd>{confirmedInputDisplay ? `${confirmedInputDisplay} ${inputSymbol}` : `${inputSymbol} confirmed`}</dd></div>
+              <div><dt>{executionRecord.feeV2Settlement ? "Gross input" : side === "buy" ? "Paid" : "Sold"}</dt><dd>{confirmedInputDisplay ? `${confirmedInputDisplay} ${inputSymbol}` : `${inputSymbol} confirmed`}</dd></div>
               <div><dt>{side === "buy" ? "Asset received" : "Proceeds"}</dt><dd>{confirmedOutputDisplay ? `${confirmedOutputDisplay} ${outputSymbol}` : `${outputSymbol} · confirmed onchain`}</dd></div>
               {confirmedFeeDisplay ? <div><dt>RMT fee settled</dt><dd>{confirmedFeeDisplay}</dd></div> : null}
               {confirmedProvider ? <div><dt>Provider</dt><dd>{confirmedProvider}{executionRecord.feeSettlement || executionRecord.feeV2Settlement ? " · RMT atomic settlement" : ""}</dd></div> : null}

@@ -26,11 +26,13 @@ import {
   VNEXT_MARKET_DIRECTORY_VIEWS,
   deriveVNextMarketState,
   directoryMarketFromExactLookup,
+  directoryMarketFromUniversalSearchResult,
   directoryMarketFromVerifiedIdentity,
   hasVNextObservedRecentActivity,
   isVNextDirectoryMarketSelectable,
   mergeVNextCanonicalBrowseMarkets,
   mergeVNextDirectoryAndSearchMarkets,
+  mergeVNextExplicitSelectionMarket,
   normalizeDirectoryMarkets,
   parseVNextCanonicalDirectoryResponse,
   resolutionFromLookup,
@@ -476,6 +478,65 @@ assert.equal(v4Observed.verifiedMarkets?.[0].pool.kind, "bytes32");
 assert.equal(v4Observed.verifiedMarkets?.[0].pool.value, v4PoolId);
 assert.equal(deriveVNextMarketState(v4Observed).market, "observed");
 assert.equal(deriveVNextMarketState(v4Observed).chart, "unavailable");
+
+const v4Canonical = directoryMarketFromUniversalSearchResult({
+  address: exactAddress,
+  name: "Canonical V4 Token",
+  symbol: "CV4",
+  decimals: 18,
+  matchedBy: "token",
+  markets: [{
+    sourceId: "uniswap-v4",
+    protocol: "uniswap",
+    version: 4,
+    poolKey: v4PoolId,
+    poolAddress: null,
+    token0: zeroAddress,
+    token1: exactAddress,
+    stable: null,
+    fee: 3_000,
+    tickSpacing: 60,
+    hooks: zeroAddress,
+    transactionHash: `0x${"12".repeat(32)}`,
+    blockNumber: "123",
+    blockHash: `0x${"34".repeat(32)}`,
+    stateStatus: null,
+    liveFee: null,
+    feeDenominator: null,
+    gaugeAddress: null,
+    gaugeAlive: null,
+    gaugeWeight: null,
+    gaugeClaimable: null,
+    feesAddress: null,
+    bribeAddress: null,
+    stateObservedBlock: null,
+    stateObservedBlockHash: null
+  }]
+});
+const exactResolution = {
+  ...resolution,
+  requestedAddress: exactAddress,
+  token: { ...resolution.token, address: exactAddress, name: "Verified V4 Token", symbol: "VV4" }
+};
+const v4Identity = directoryMarketFromVerifiedIdentity({ resolution: exactResolution }, exactAddress)!;
+const explicitV4Selection = mergeVNextExplicitSelectionMarket({
+  existing: v4Observed,
+  canonical: v4Canonical,
+  identity: v4Identity,
+  provider: { ...v4Observed, name: "Provider V4", symbol: "PV4" }
+})!;
+assert.equal(explicitV4Selection.name, "Verified V4 Token", "Verified direct identity must precede provider presentation");
+assert.equal(explicitV4Selection.symbol, "VV4");
+assert.equal(explicitV4Selection.canonicalMarkets?.length, 1, "Direct canonical lookup must survive provider enrichment");
+assert.equal(explicitV4Selection.canonicalMarkets?.[0]?.poolKey, v4PoolId);
+assert.equal(explicitV4Selection.canonicalMarkets?.[0]?.poolAddress, null);
+assert.equal(explicitV4Selection.canonicalMarkets?.[0]?.token0, zeroAddress);
+const refreshedV4Selection = mergeVNextExplicitSelectionMarket({
+  existing: explicitV4Selection,
+  provider: { ...v4Observed, name: "Refreshed provider", symbol: "RPV4" }
+})!;
+assert.equal(refreshedV4Selection.canonicalMarkets?.[0]?.poolKey, v4PoolId, "Refresh must not erase canonical PoolId evidence");
+assert.equal(refreshedV4Selection.canonicalMarkets?.[0]?.poolAddress, null);
 
 const nonChartPrimaryWithChartAlternative = {
   ...v4Observed,

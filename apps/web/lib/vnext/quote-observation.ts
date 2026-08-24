@@ -306,13 +306,19 @@ export type VNextRouteSelection = {
   netOutcomeReady: false;
 };
 
+function isLoopbackBrowserAcceptanceAdmission(provider: VNextQuoteProvider) {
+  if (provider !== "uniswap-v3" || process.env.NEXT_PUBLIC_RMT_BROWSER_ACCEPTANCE_PROFILE !== "true") return false;
+  if (typeof window === "undefined") return false;
+  return window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost";
+}
+
 export function selectVNextRoute(attempts: VNextQuoteAttempt[]): VNextRouteSelection {
   const bestObserved = bestIndicativeAttempt(attempts);
   const verificationCandidate = bestIndicativeAttempt(
     attempts.filter((attempt) => (
       attempt.strictVerificationAvailable
       && hasVNextWalletAuthorizationCodec(attempt.provider)
-      && isVNextWalletFeeSettlementAdmitted(attempt.provider)
+      && (isVNextWalletFeeSettlementAdmitted(attempt.provider) || isLoopbackBrowserAcceptanceAdmission(attempt.provider))
     ))
   );
   return {

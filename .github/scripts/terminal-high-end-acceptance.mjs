@@ -1,5 +1,5 @@
 import { chromium, devices } from "playwright";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 
 const base = process.env.RMT_ACCEPTANCE_BASE_URL ?? "http://127.0.0.1:3000";
 const output = process.env.RMT_ACCEPTANCE_OUTPUT
@@ -15,8 +15,11 @@ const creator = address(0x4001);
 const exactIdentityToken = address(0x1ffe);
 const stonkBrokerToken = `0x${["e934e36a", "439c9401", "7b64a3fe", "ce66af12", "099abf50"].join("")}`;
 const stonkBrokerPoolId = `0x${"ab".repeat(32)}`;
+const spcxToken = ["0x4a0e65a3", "eccec6db", "e60ae065", "f2e7bb85", "fae35eea"].join("");
+const nvdaToken = ["0xd0601ce1", "57db5bdc", "3162bbac", "2a2c8af5", "320d9eec"].join("");
 const universalSearchQueries = new WeakMap();
 const chainPulseRequests = new WeakMap();
+const telemetryRequests = new WeakMap();
 
 await mkdir(output, { recursive: true });
 
@@ -374,6 +377,7 @@ function stonkBrokerSearchResponse(query) {
 
 async function installRoutes(page) {
   chainPulseRequests.set(page, 0);
+  telemetryRequests.set(page, 0);
   await page.route(/\/api\/vnext\/chain-pulse(?:\?.*)?$/, async (route) => {
     chainPulseRequests.set(page, (chainPulseRequests.get(page) ?? 0) + 1);
     await route.fulfill({
@@ -535,15 +539,18 @@ async function installRoutes(page) {
       })
     });
   });
-  await page.route(/\/api\/markets\/external-trades(?:\?.*)?$/, (route) => route.fulfill({
-    status: 200,
-    contentType: "application/json",
-    body: JSON.stringify({ token, pair, source: "GeckoTerminal", updatedAt: now, trades })
-  }));
-  await page.route(/\/api\/markets\/external-stream(?:\?.*)?$/, (route) => route.fulfill({
-    status: 204,
-    body: ""
-  }));
+  await page.route(/\/api\/markets\/external-trades(?:\?.*)?$/, (route) => {
+    telemetryRequests.set(page, (telemetryRequests.get(page) ?? 0) + 1);
+    return route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ token, pair, source: "GeckoTerminal", updatedAt: now, trades })
+    });
+  });
+  await page.route(/\/api\/markets\/external-stream(?:\?.*)?$/, (route) => {
+    telemetryRequests.set(page, (telemetryRequests.get(page) ?? 0) + 1);
+    return route.fulfill({ status: 204, body: "" });
+  });
   await page.route(/\/api\/markets\/token-risk(?:\?.*)?$/, (route) => route.fulfill({
     status: 200,
     contentType: "application/json",
@@ -898,7 +905,7 @@ async function inspectDesktop(browser, viewport, label) {
   if (!(await page.locator("#vn-asset-heading").textContent())?.includes("EXACT")) throw new Error(`${label}: verified identity-only contract did not enter Asset context`);
   if (new URL(page.url()).searchParams.get("market")?.toLowerCase() !== exactIdentityToken.toLowerCase()) throw new Error(`${label}: verified identity-only contract was not preserved in terminal history`);
   const exactIdentityQueries = universalSearchQueries.get(page) ?? [];
-  if (exactIdentityQueries.length !== 1 || exactIdentityQueries[0]?.toLowerCase() !== exactIdentityToken.toLowerCase()) throw new Error(`${label}: identity-only fallback did not follow exactly one universal inventory attempt`);
+  if (exactIdentityQueries.length !== 1 || exactIdentityQueries[0]?.toLowerCase() !== exactIdentityToken.toLowerCase()) throw new Error(`${label}: identity-only fallback did not follow exactly one universal inventory attempt ${JSON.stringify(exactIdentityQueries)}`);
   await context.close();
   return { ...audit, marketsComposition, assetComposition, assetQuickLinks };
 }
@@ -1186,6 +1193,389 @@ async function inspectCurrentPublicRoutes(browser) {
   return results;
 }
 
+async function createWalletAcceptanceContext(browser, options) {
+  const context = await createContext(browser, options);
+  await context.addInitScript(({ wallet }) => {
+    const listeners = new Map();
+    let pendingWalletRequest = null;
+    const emit = (event, value) => {
+      for (const listener of listeners.get(event) ?? []) listener(value);
+    };
+    window.__RMT_ACCEPTANCE_RELEASE_WALLET__ = (mode = "approve") => {
+      if (!pendingWalletRequest) return false;
+      const request = pendingWalletRequest;
+      pendingWalletRequest = null;
+      if (mode === "cancel") request.reject(new Error("User rejected the request"));
+      else request.resolve(request.hash);
+      return true;
+    };
+    window.ethereum = {
+      isMetaMask: true,
+      on(event, listener) {
+        const entries = listeners.get(event) ?? [];
+        entries.push(listener);
+        listeners.set(event, entries);
+      },
+      removeListener(event, listener) {
+        listeners.set(event, (listeners.get(event) ?? []).filter((entry) => entry !== listener));
+      },
+      async request({ method, params }) {
+        if (method === "eth_chainId") return "0x1237";
+        if (method === "eth_accounts" || method === "eth_requestAccounts") {
+          emit("accountsChanged", [wallet]);
+          return [wallet];
+        }
+        if (method === "wallet_switchEthereumChain" || method === "wallet_addEthereumChain") {
+          emit("chainChanged", "0x1237");
+          return null;
+        }
+        if (method === "eth_sendTransaction") {
+          const transaction = params?.[0] ?? {};
+          const approval = String(transaction.to ?? "").toLowerCase() !== "0x5555555555555555555555555555555555555555";
+          const canonicalHash = `0x${(approval ? "b" : "c").repeat(64)}`;
+          return await new Promise((resolve, reject) => {
+            pendingWalletRequest = { resolve, reject, hash: canonicalHash };
+          });
+        }
+        if (method === "eth_getBlockByNumber") return { number: "0x2faf090", baseFeePerGas: "0x3b9aca00" };
+        if (method === "eth_getTransactionCount") return "0x1";
+        if (method === "eth_estimateGas") return "0x1d4c0";
+        return null;
+      }
+    };
+  }, { wallet: "0x3333333333333333333333333333333333333333" });
+  return context;
+}
+
+function rpcReceipt(hash, fixture, state) {
+  const approval = hash.toLowerCase() === `0x${"b".repeat(64)}`;
+  if (!state.receiptsAvailable) return null;
+  const logs = approval || state.missingSettlementEvent ? [] : [{
+    ...fixture.erc20.settlementLog,
+    blockHash: `0x${"d".repeat(64)}`,
+    blockNumber: "0x2faf080",
+    logIndex: "0x0",
+    transactionHash: hash,
+    transactionIndex: "0x0",
+    removed: false
+  }];
+  return {
+    blockHash: `0x${"d".repeat(64)}`,
+    blockNumber: "0x2faf080",
+    contractAddress: null,
+    cumulativeGasUsed: "0x30d40",
+    effectiveGasPrice: "0x3b9aca00",
+    from: fixture.wallet,
+    gasUsed: approval ? "0xc350" : "0x186a0",
+    logs,
+    logsBloom: `0x${"0".repeat(512)}`,
+    status: "0x1",
+    to: approval ? fixture.erc20.approvalPlan.target : fixture.executor,
+    transactionHash: hash,
+    transactionIndex: "0x0",
+    type: "0x2"
+  };
+}
+
+async function installV2WalletAcceptanceRoutes(page, fixture, state) {
+  const freshQuote = (quote) => {
+    const now = Date.now();
+    return {
+      ...quote,
+      requestedAtMs: now,
+      completedAtMs: now + 1,
+      attempts: quote.attempts.map((attempt) => ({ ...attempt, quotedAtMs: now, expiresAtMs: now + 1_800_000 }))
+    };
+  };
+  const freshEvidence = (evidence) => {
+    const now = Date.now();
+    return { ...evidence, verifiedAtMs: now, expiresAtMs: Math.min(now + 300_000, Number(BigInt(evidence.deadline) * 1_000n)) };
+  };
+  const freshPlan = (plan) => {
+    const now = Date.now();
+    return { ...plan, preparedAtMs: now, expiresAtMs: Math.min(now + 60_000, Number(BigInt(plan.deadline) * 1_000n)) };
+  };
+  await page.route("https://browser-acceptance.invalid/**", async (route) => {
+    const requests = route.request().postDataJSON();
+    const respond = (request) => {
+      const method = request?.method;
+      state.rpcMethods = [...(state.rpcMethods ?? []), method].slice(-40);
+      const hash = String(request?.params?.[0] ?? "");
+      let result = null;
+      if (method === "eth_chainId") result = "0x1237";
+      else if (method === "eth_getBalance") result = "0x8ac7230489e80000";
+      else if (method === "eth_gasPrice") result = "0x3b9aca00";
+      else if (method === "eth_blockNumber") {
+        state.blockNumber += 1;
+        result = `0x${state.blockNumber.toString(16)}`;
+      }
+      else if (method === "eth_getTransactionReceipt") result = rpcReceipt(hash, fixture, state);
+      else if (method === "eth_getTransactionByHash") {
+        const approval = hash.toLowerCase() === `0x${"b".repeat(64)}`;
+        result = {
+          blockHash: `0x${"d".repeat(64)}`,
+          blockNumber: "0x2faf080",
+          chainId: "0x1237",
+          from: fixture.wallet,
+          gas: approval ? "0xea60" : "0x1d4c0",
+          gasPrice: "0x3b9aca00",
+          hash,
+          input: approval ? fixture.erc20.approvalPlan.data : fixture.erc20.swapPlan.data,
+          nonce: approval ? "0x1" : "0x2",
+          to: approval ? fixture.erc20.approvalPlan.target : fixture.executor,
+          transactionIndex: "0x0",
+          type: "0x0",
+          value: "0x0",
+          v: "0x1b",
+          r: `0x${"1".repeat(64)}`,
+          s: `0x${"2".repeat(64)}`
+        };
+      }
+      else if (method === "eth_getBlockByNumber") result = { number: "0x2faf090", baseFeePerGas: "0x3b9aca00", timestamp: "0x68a00000" };
+      else if (method === "eth_call") result = "0x";
+      return { jsonrpc: "2.0", id: request?.id ?? 1, result };
+    };
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(Array.isArray(requests) ? requests.map(respond) : respond(requests))
+    });
+  });
+  await page.route(/\/api\/vnext\/quotes$/, async (route) => {
+    state.quotes = (state.quotes ?? 0) + 1;
+    const request = route.request().postDataJSON();
+    const selected = String(request.inputAsset).toLowerCase() === fixture.native.quote.inputAsset.toLowerCase()
+      ? fixture.native
+      : fixture.erc20;
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(freshQuote(selected.quote)) });
+  });
+  await page.route(/\/api\/vnext\/verify$/, async (route) => {
+    state.verifications = (state.verifications ?? 0) + 1;
+    const request = route.request().postDataJSON();
+    const nativeInput = String(request.inputAsset).toLowerCase() === fixture.native.quote.inputAsset.toLowerCase();
+    const evidence = nativeInput
+      ? fixture.native.swapEvidence
+      : state.approved ? fixture.erc20.swapEvidence : fixture.erc20.approvalEvidence;
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(freshEvidence(evidence)) });
+  });
+  await page.route(/\/api\/vnext\/authorize$/, async (route) => {
+    state.authorizations = (state.authorizations ?? 0) + 1;
+    const request = route.request().postDataJSON();
+    const nativeInput = String(request.inputAsset).toLowerCase() === fixture.native.quote.inputAsset.toLowerCase();
+    const evidence = nativeInput
+      ? fixture.native.swapEvidence
+      : state.approved ? fixture.erc20.swapEvidence : fixture.erc20.approvalEvidence;
+    const plan = nativeInput
+      ? fixture.native.swapPlan
+      : state.approved ? fixture.erc20.swapPlan : fixture.erc20.approvalPlan;
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ evidence: freshEvidence(evidence), plan: freshPlan(plan) }) });
+  });
+}
+
+async function openFixtureTrade(page, nativeInput = false) {
+  await installRoutes(page);
+  await gotoReady(page, `${base}/?market=${token}&side=buy`, ".vnTradePanel");
+  if (nativeInput) await page.getByLabel("Pay with asset").selectOption("eip155:4663/native");
+  await page.locator(".vnReviewButton").click();
+}
+
+async function inspectV2WalletBrowserJourney(browser, fixture, options, label, mode) {
+  const state = { approved: mode === "native" || mode === "missing-event" || mode === "cancel", receiptsAvailable: false, missingSettlementEvent: mode === "missing-event", quotes: 0, verifications: 0, authorizations: 0, rpcMethods: [], blockNumber: 50_000_016 };
+  const context = await createWalletAcceptanceContext(browser, options);
+  const page = await context.newPage();
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await installV2WalletAcceptanceRoutes(page, fixture, state);
+  await openFixtureTrade(page, mode === "native");
+  await page.locator(".vnRouteCard summary").click();
+  try {
+    await page.locator(".vnWalletFeeDisclosure").last().waitFor({ state: "visible", timeout: 30_000 });
+  } catch (error) {
+    const advanced = page.locator(".vnRouteCard");
+    if (await advanced.count()) await advanced.evaluate((element) => { element.open = true; });
+    const diagnostic = await page.evaluate(() => ({
+      url: location.href,
+      body: document.body.innerText.slice(-4_000),
+      buttons: [...document.querySelectorAll("button")].map((entry) => entry.textContent?.trim()).filter(Boolean).slice(-30)
+    }));
+    await page.screenshot({ path: `${output}/v2-wallet-diagnostic-${label}.png`, fullPage: true });
+    throw new Error(`${label}: V2 wallet review did not render ${JSON.stringify({ ...diagnostic, requests: state })}`, { cause: error });
+  }
+  const review = page.locator(".vnWalletFeeDisclosure").last();
+  const reviewText = await review.innerText();
+  for (const required of ["Gross input", "Exact fee / asset", "Provider input", "Expected receive", "Protected minimum", "Uniswap V3", "Atomic with swap", "Treasury", "Execution target"]) {
+    if (!reviewText.includes(required)) throw new Error(`${label}: V2 wallet review omitted ${required}`);
+  }
+  await page.getByText("Your wallet displays and authorizes this exact request. RMT cannot sign or submit it for you.", { exact: true }).waitFor({ state: "visible" });
+
+  if (mode === "native") {
+    await page.screenshot({ path: `${output}/v2-wallet-review-${label}.png`, fullPage: false, animations: "disabled" });
+    await page.evaluate(() => window.__RMT_ACCEPTANCE_RELEASE_WALLET__("cancel"));
+    await page.getByText("Wallet review was cancelled. Nothing was submitted.", { exact: true }).waitFor({ state: "visible" });
+    await context.close();
+    return { nativeReview: true, cancellation: true };
+  }
+
+  if (mode === "cancel") {
+    await page.evaluate(() => window.__RMT_ACCEPTANCE_RELEASE_WALLET__("cancel"));
+    await page.getByText("Wallet review was cancelled. Nothing was submitted.", { exact: true }).waitFor({ state: "visible" });
+    await context.close();
+    return { cancellation: true };
+  }
+
+  if (!state.approved) {
+    const approvalText = await page.locator(".vnWalletFeeDisclosure").last().innerText();
+    for (const required of ["RMT execution fee on this approval: 0", "Planned trade fee: 0.25%", "It is not collected during approval"]) {
+      if (!approvalText.includes(required)) throw new Error(`${label}: approval review omitted ${required}`);
+    }
+    if (/unlimited/i.test(approvalText)) throw new Error(`${label}: approval review mentions unlimited authority`);
+    await page.screenshot({ path: `${output}/v2-approval-review-${label}.png`, fullPage: false, animations: "disabled" });
+    await page.evaluate(() => window.__RMT_ACCEPTANCE_RELEASE_WALLET__("approve"));
+    await page.getByText("Transaction submitted · confirmation pending", { exact: true }).waitFor({ state: "visible" });
+    state.approved = true;
+    state.receiptsAvailable = true;
+    try {
+      await page.getByText("Exact approval confirmed", { exact: true }).waitFor({ state: "visible", timeout: 30_000 });
+    } catch (error) {
+      const body = await page.locator("body").innerText();
+      throw new Error(`${label}: approval receipt did not resolve ${JSON.stringify({ body: body.slice(-2500), state })}`, { cause: error });
+    }
+    await page.locator(".vnWalletFeeDisclosure").last().waitFor({ state: "visible", timeout: 30_000 });
+    await page.screenshot({ path: `${output}/v2-wallet-review-${label}.png`, fullPage: false, animations: "disabled" });
+  }
+
+  state.receiptsAvailable = false;
+  await page.evaluate(() => window.__RMT_ACCEPTANCE_RELEASE_WALLET__("approve"));
+  await page.getByText("Transaction submitted · confirmation pending", { exact: true }).waitFor({ state: "visible" });
+  state.receiptsAvailable = true;
+  if (mode === "missing-event") {
+    await page.getByText("Settlement evidence requires review", { exact: true }).waitFor({ state: "visible", timeout: 30_000 });
+    const failureText = await page.locator(".vnRecoveryBanner.isreconciliation_failed").innerText();
+    if (!failureText.includes("Do not resubmit") || !failureText.includes("View transaction")) throw new Error(`${label}: reconciliation failure guidance is incomplete`);
+    if (await page.getByRole("dialog", { name: /confirmed/i }).count()) throw new Error(`${label}: invalid settlement rendered a success receipt`);
+    await page.screenshot({ path: `${output}/v2-reconciliation-failed-${label}.png`, fullPage: false, animations: "disabled" });
+    await context.close();
+    return { reconciliationFailed: true, duplicateBlocked: true };
+  }
+
+  try {
+    await page.getByRole("dialog", { name: "Buy confirmed" }).waitFor({ state: "visible", timeout: 30_000 });
+  } catch (error) {
+    const body = await page.locator("body").innerText();
+    throw new Error(`${label}: V2 receipt did not render ${JSON.stringify({ body: body.slice(-2800), state })}`, { cause: error });
+  }
+  const receiptText = await page.getByRole("dialog", { name: "Buy confirmed" }).innerText();
+  for (const required of ["Gross input", "Asset received", "RMT fee", "0.25%", "Uniswap V3", "View confirmed transaction"]) {
+    if (!receiptText.toLowerCase().includes(required.toLowerCase())) throw new Error(`${label}: receipt omitted ${required}: ${JSON.stringify(receiptText)}`);
+  }
+  await page.screenshot({ path: `${output}/v2-confirmed-receipt-${label}.png`, fullPage: false, animations: "disabled" });
+  await context.close();
+  return { approval: true, swap: true, receipt: true };
+}
+
+async function inspectV4PoolIdWorkspace(browser) {
+  const context = await createContext(browser, { viewport: { width: 1_440, height: 900 }, deviceScaleFactor: 1 });
+  const page = await context.newPage();
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await installRoutes(page);
+  await gotoReady(page, `${base}/?market=${stonkBrokerToken}`, ".rmtDesktopTerminal #vn-asset-heading");
+  if (!(await page.locator("#vn-asset-heading").innerText()).includes("STONKBROKER")) throw new Error("V4 deep link did not preserve the canonical token identity");
+  await page.locator(".rmtWorkspaceTabs").getByRole("tab", { name: "Markets", exact: true }).click();
+  const evidence = await page.locator(".rmtWorkspaceIntelligence").innerText();
+  const shortPoolId = `${stonkBrokerPoolId.slice(0, 6)}…${stonkBrokerPoolId.slice(-4)}`;
+  if (!/Uniswap V4/i.test(evidence) || !/PoolId/i.test(evidence) || !evidence.includes(shortPoolId)) {
+    throw new Error(`V4 Markets tab omitted canonical PoolId evidence: ${evidence}`);
+  }
+  if (/0 canonical markets|primary pool ↗/i.test(evidence)) throw new Error(`V4 Markets tab fabricated or erased canonical evidence: ${evidence}`);
+  await page.waitForTimeout(1_500);
+  const requests = telemetryRequests.get(page) ?? 0;
+  if (requests !== 0) throw new Error(`V4 PoolId-only workspace started ${requests} unsupported telemetry requests`);
+  await page.screenshot({ path: `${output}/v4-pool-id-workspace-desktop-1440x900.png`, fullPage: false, animations: "disabled" });
+  await context.close();
+  return { token: stonkBrokerToken, poolId: stonkBrokerPoolId, telemetryRequests: requests };
+}
+
+function stockWorkspaceFixture(contractAddress, tokenName, tokenSymbol, currentMultiplier, index) {
+  const baseMarket = market(index);
+  const relationship = {
+    relationship: "canonical-stock-token",
+    assetId: `stock:${tokenSymbol.toLowerCase()}`,
+    tokenSymbol,
+    tokenName,
+    contractAddress,
+    currentMultiplier,
+    status: "active",
+    logoUrl: null,
+    provenance: "robinhood-live-asset-registry"
+  };
+  const primaryMarket = {
+    ...baseMarket.primaryMarket,
+    assetId: `eip155:4663/contract:${contractAddress}`,
+    token: { address: contractAddress, name: tokenName, symbol: tokenSymbol },
+    baseToken: { address: contractAddress, name: tokenName, symbol: tokenSymbol },
+    executionEligibility: "view-only"
+  };
+  return {
+    ...baseMarket,
+    address: contractAddress,
+    assetId: `eip155:4663/contract:${contractAddress}`,
+    name: tokenName,
+    symbol: tokenSymbol,
+    primaryMarket,
+    verifiedMarkets: [primaryMarket],
+    stockAssetRelationships: [relationship],
+    rwaRelationship: "canonical-stock-token"
+  };
+}
+
+async function inspectStockWorkspace(browser, control) {
+  const context = await createContext(browser, { viewport: { width: 1_440, height: 900 }, deviceScaleFactor: 1 });
+  const page = await context.newPage();
+  const fixtureMarket = stockWorkspaceFixture(control.address, control.name, control.symbol, control.multiplier, control.index);
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await installRoutes(page);
+  await page.route(/\/api\/vnext\/market-directory(?:\?.*)?$/, (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({ canonical: true, coverage: "complete", nextCursor: null, markets: [canonicalDirectoryMarket(fixtureMarket)], updatedAt: now })
+  }));
+  await page.route(/\/api\/markets\/external(?:\?.*)?$/, (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({ markets: [fixtureMarket], source: "stock-workspace-acceptance", rankingVersion: "terminal-v10", thresholds: {}, stockAssetCoverage: "complete", delayedSources: [], updatedAt: now, stale: false })
+  }));
+  const resolution = {
+    chainId: 4_663,
+    requestedAddress: control.address,
+    requestedKind: "token",
+    status: "token-only",
+    token: { address: control.address, name: control.name, symbol: control.symbol, decimals: 18, totalSupply: "1000000000000000000000000" },
+    pools: [],
+    marketData: "identity-only",
+    execution: "view-only",
+    provenance: "robinhood-chain-contract-reads",
+    resolvedAt: now
+  };
+  await page.route(/\/api\/vnext\/asset-identity(?:\?.*)?$/, (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ resolution }) }));
+  await page.route(/\/api\/vnext\/asset-workspace(?:\?.*)?$/, (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({ resolution, stockAssetRelationships: fixtureMarket.stockAssetRelationships, stockAssetCoverage: "complete", updatedAt: now })
+  }));
+  await gotoReady(page, `${base}/?market=${control.address}`, ".rmtDesktopTerminal #vn-asset-heading");
+  const heading = await page.locator("#vn-asset-heading").innerText();
+  if (!heading.includes(control.name) || !heading.includes(control.symbol) || heading.includes(`${control.address.slice(0, 6)}…`)) throw new Error(`${control.symbol}: verified workspace identity did not win ${heading}`);
+  await page.locator(".rmtWorkspaceTabs").getByRole("tab", { name: "RWA", exact: true }).click();
+  const rwa = await page.locator(".rmtWorkspaceIntelligence").innerText();
+  for (const expected of ["Canonical stock token", control.name, control.symbol, control.multiplier, "Robinhood live asset registry", "Active"]) {
+    if (!rwa.toLowerCase().includes(expected.toLowerCase())) throw new Error(`${control.symbol}: RWA workspace omitted ${expected}: ${rwa}`);
+  }
+  const multiplierOccurrences = rwa.split(control.multiplier).length - 1;
+  if (multiplierOccurrences !== 1) throw new Error(`${control.symbol}: multiplier rendered ${multiplierOccurrences} times`);
+  await page.screenshot({ path: `${output}/${control.symbol.toLowerCase()}-stock-workspace-desktop-1440x900.png`, fullPage: false, animations: "disabled" });
+  await context.close();
+  return { symbol: control.symbol, address: control.address, multiplier: control.multiplier, viewOnly: resolution.execution === "view-only" };
+}
+
 async function inspectMobile(browser, viewport, label) {
   const context = await createContext(browser, { viewport, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
   const page = await context.newPage();
@@ -1362,6 +1752,24 @@ try {
   const mobileOnly = process.env.RMT_ACCEPTANCE_ONLY_MOBILE === "true";
   const exploratory = process.env.RMT_ACCEPTANCE_EXPLORATORY === "true";
   const hierarchyPhase = process.env.RMT_ACCEPTANCE_LAYOUT_PHASE === "before" ? "before" : "after";
+  const v2BrowserEvidence = process.env.NEXT_PUBLIC_RMT_BROWSER_ACCEPTANCE_PROFILE === "true"
+    ? await (async () => {
+        const fixture = JSON.parse(await readFile(`${output}/v2-fixture.json`, "utf8"));
+        return {
+          desktopNative: mobileOnly ? null : await inspectV2WalletBrowserJourney(browser, fixture, { viewport: { width: 1_440, height: 900 } }, "desktop-1440x900-native", "native"),
+          desktopSuccess: mobileOnly ? null : await inspectV2WalletBrowserJourney(browser, fixture, { viewport: { width: 1_440, height: 900 } }, "desktop-1440x900", "success"),
+          desktopFailure: mobileOnly ? null : await inspectV2WalletBrowserJourney(browser, fixture, { viewport: { width: 1_440, height: 900 } }, "desktop-1440x900", "missing-event"),
+          desktopCancellation: mobileOnly ? null : await inspectV2WalletBrowserJourney(browser, fixture, { viewport: { width: 1_440, height: 900 } }, "desktop-1440x900-cancel", "cancel"),
+          mobileSuccess: await inspectV2WalletBrowserJourney(browser, fixture, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true }, "mobile-390x844", "success"),
+          mobileFailure: await inspectV2WalletBrowserJourney(browser, fixture, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true }, "mobile-390x844", "missing-event")
+        };
+      })()
+    : null;
+  const workspaceEvidence = mobileOnly ? null : {
+    v4: await inspectV4PoolIdWorkspace(browser),
+    spcx: await inspectStockWorkspace(browser, { address: spcxToken, name: "SpaceX Stock Token", symbol: "SPCX", multiplier: "1", index: 6 }),
+    nvda: await inspectStockWorkspace(browser, { address: nvdaToken, name: "NVIDIA Stock Token", symbol: "NVDA", multiplier: "1", index: 8 })
+  };
   const marketsHierarchy = await inspectMarketsHierarchy(browser, hierarchyPhase);
   if (process.env.RMT_ACCEPTANCE_ONLY_MARKETS_HIERARCHY === "true") {
     await writeFile(`${output}/report.json`, JSON.stringify({ marketsHierarchy }, null, 2));
@@ -1410,7 +1818,7 @@ try {
   }
   await writeFile(
     `${output}/report.json`,
-    JSON.stringify({ productAcceptanceEvidence, marketsHierarchy, discoveryDesktop, discoveryMobile, desktop, laptop, laptop720, compact, wide, seamDesktop, marketAudit, compatibilityEntries, publicRoutes, touch1023, mobile430, mobile393, mobile390, mobile375, mobile360, exploratoryTouch }, null, 2)
+    JSON.stringify({ productAcceptanceEvidence, workspaceEvidence, marketsHierarchy, discoveryDesktop, discoveryMobile, desktop, laptop, laptop720, compact, wide, seamDesktop, marketAudit, compatibilityEntries, publicRoutes, touch1023, mobile430, mobile393, mobile390, mobile375, mobile360, v2BrowserEvidence, exploratoryTouch }, null, 2)
   );
   console.log(`Terminal active discovery product acceptance passed: ${JSON.stringify(productAcceptanceEvidence)}`);
   }

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type {
   ExternalMarket,
   ExternalMarketResponse,
+  RobinhoodStockAssetRelationship,
   UniversalMarketResolution
 } from "../../lib/external-market";
 import type { VNextEcosystemIntelligence } from "../../lib/vnext/ecosystem-intelligence";
@@ -15,17 +16,63 @@ export type VNextAssetWorkspaceStatus = "idle" | "loading" | "ready" | "partial"
 type WorkspaceResolutionResponse = {
   resolution?: UniversalMarketResolution;
   ecosystem?: VNextEcosystemIntelligence;
+  stockAssetRelationships?: RobinhoodStockAssetRelationship[];
   stockAssetCoverage?: "complete" | "unavailable";
   updatedAt?: string;
   error?: string;
 };
 
-function exactMarket(payload: ExternalMarketResponse, address: string, expectedPair?: string) {
+export function mergeWorkspaceStockAssetRelationships(
+  selectedToken: string,
+  tokenRelationships: RobinhoodStockAssetRelationship[] | undefined,
+  exactPairMarket: ExternalMarket | undefined
+) {
+  const selected = selectedToken.toLowerCase();
+  const relationships = [
+    ...(tokenRelationships ?? []).filter((relationship) => (
+      relationship.relationship === "canonical-stock-token"
+      && relationship.contractAddress.toLowerCase() === selected
+      && relationship.provenance === "robinhood-live-asset-registry"
+    )),
+    ...(exactPairMarket?.stockAssetRelationships ?? []).filter((relationship) => (
+      relationship.provenance === "robinhood-live-asset-registry"
+      && (relationship.relationship === "paired-market-asset"
+        || relationship.contractAddress.toLowerCase() === selected)
+    ))
+  ];
+  return [...new Map(relationships.map((relationship) => [
+    `${relationship.relationship}:${relationship.contractAddress.toLowerCase()}`,
+    relationship
+  ])).values()];
+}
+
+export function exactWorkspaceMarket(payload: ExternalMarketResponse, address: string, expectedPair?: string) {
   const market = payload.markets?.find((candidate) => candidate.address.toLowerCase() === address.toLowerCase());
   if (!market || !expectedPair) return market;
   const primaryPool = market.primaryMarket?.pool;
   const primaryPair = primaryPool?.kind === "evm-address" ? primaryPool.value : market.pairAddress;
   return primaryPair.toLowerCase() === expectedPair.toLowerCase() ? market : undefined;
+}
+
+export function workspaceTokenPresentation(input: {
+  address: string;
+  resolution?: UniversalMarketResolution;
+  canonicalIdentity?: { address: string; name: string; symbol: string };
+  provider?: Pick<ExternalMarket, "name" | "symbol">;
+  fallback: { name: string; symbol: string };
+}) {
+  const direct = input.resolution?.chainId === 4_663
+    && input.resolution.token.address.toLowerCase() === input.address.toLowerCase()
+    ? input.resolution.token
+    : undefined;
+  const canonical = input.canonicalIdentity?.address.toLowerCase() === input.address.toLowerCase()
+    ? input.canonicalIdentity
+    : undefined;
+  return {
+    name: direct?.name || canonical?.name || input.provider?.name || input.fallback.name,
+    symbol: direct?.symbol || canonical?.symbol || input.provider?.symbol || input.fallback.symbol,
+    verified: Boolean(direct || canonical)
+  };
 }
 
 function validResolution(payload: WorkspaceResolutionResponse, address: string) {
@@ -40,6 +87,7 @@ export function useVNextAssetWorkspace(address?: string, pairAddress?: string, e
   const [market, setMarket] = useState<ExternalMarket>();
   const [resolution, setResolution] = useState<UniversalMarketResolution>();
   const [ecosystem, setEcosystem] = useState<VNextEcosystemIntelligence>();
+  const [stockAssetRelationships, setStockAssetRelationships] = useState<RobinhoodStockAssetRelationship[]>([]);
   const [stockAssetCoverage, setStockAssetCoverage] = useState<"complete" | "unavailable">();
   const [status, setStatus] = useState<VNextAssetWorkspaceStatus>(address ? "loading" : "idle");
   const [observedAt, setObservedAt] = useState<string>();
@@ -54,6 +102,7 @@ export function useVNextAssetWorkspace(address?: string, pairAddress?: string, e
       setEcosystem(undefined);
       setObservedAt(undefined);
       setStockAssetCoverage(undefined);
+      setStockAssetRelationships([]);
       setStatus("idle");
       currentAddress.current = undefined;
       hasSnapshot.current = false;
@@ -80,12 +129,19 @@ export function useVNextAssetWorkspace(address?: string, pairAddress?: string, e
       ]);
       if (id !== requestId.current) return;
       const nextMarket = marketResult.status === "fulfilled" && marketResult.value.ok
-        ? exactMarket(marketResult.value.payload, address, pairAddress)
+        ? exactWorkspaceMarket(marketResult.value.payload, address, pairAddress)
         : undefined;
       const nextResolution = resolutionResult.status === "fulfilled" && resolutionResult.value.ok
         ? validResolution(resolutionResult.value.payload, address)
         : undefined;
-      if (!nextMarket && !nextResolution) throw new Error("Asset workspace unavailable.");
+      const nextStockAssetRelationships = resolutionResult.status === "fulfilled" && resolutionResult.value.ok
+        ? mergeWorkspaceStockAssetRelationships(
+            address,
+            resolutionResult.value.payload.stockAssetRelationships,
+            nextMarket
+          )
+        : [];
+      if (!nextMarket && !nextResolution && !nextStockAssetRelationships.length) throw new Error("Asset workspace unavailable.");
       currentAddress.current = address;
       hasSnapshot.current = true;
       if (nextMarket) setMarket(nextMarket);
@@ -99,8 +155,10 @@ export function useVNextAssetWorkspace(address?: string, pairAddress?: string, e
       }
       if (resolutionResult.status === "fulfilled" && resolutionResult.value.ok) {
         setStockAssetCoverage(resolutionResult.value.payload.stockAssetCoverage);
+        setStockAssetRelationships(nextStockAssetRelationships);
       } else if (!sameAsset) {
         setStockAssetCoverage(undefined);
+        setStockAssetRelationships([]);
       }
       setObservedAt(
         marketResult.status === "fulfilled" ? marketResult.value.payload.updatedAt
@@ -137,6 +195,7 @@ export function useVNextAssetWorkspace(address?: string, pairAddress?: string, e
     status,
     observedAt: snapshotIsCurrent ? observedAt : undefined,
     stockAssetCoverage: snapshotIsCurrent ? stockAssetCoverage : undefined,
+    stockAssetRelationships: snapshotIsCurrent ? stockAssetRelationships : [],
     refresh
   };
 }

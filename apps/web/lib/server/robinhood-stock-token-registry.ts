@@ -163,6 +163,15 @@ function relationship(
   };
 }
 
+export function stockAssetRelationshipsForToken(
+  selectedToken: string,
+  assetsByAddress: ReadonlyMap<string, RobinhoodStockAsset>
+) {
+  if (!isAddress(selectedToken, { strict: false })) return [];
+  const asset = assetsByAddress.get(getAddress(selectedToken).toLowerCase());
+  return asset ? [relationship(asset, "canonical-stock-token")] : [];
+}
+
 export function stockAssetRelationshipsForPair(
   displayedToken: string,
   baseToken: string,
@@ -172,9 +181,9 @@ export function stockAssetRelationshipsForPair(
   const displayed = displayedToken.toLowerCase();
   const base = assetsByAddress.get(baseToken.toLowerCase());
   const quote = assetsByAddress.get(quoteToken.toLowerCase());
-  const canonical = assetsByAddress.get(displayed);
-  const relationships: RobinhoodStockAssetRelationship[] = [];
-  if (canonical) relationships.push(relationship(canonical, "canonical-stock-token"));
+  const relationships: RobinhoodStockAssetRelationship[] = [
+    ...stockAssetRelationshipsForToken(displayedToken, assetsByAddress)
+  ];
   for (const asset of [base, quote]) {
     if (!asset || asset.contractAddress.toLowerCase() === displayed) continue;
     relationships.push(relationship(asset, "paired-market-asset"));
