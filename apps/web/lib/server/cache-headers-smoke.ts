@@ -28,7 +28,9 @@ assert.match(healthRoute, /await readFreshSystemHealth\(\)/);
 assert.doesNotMatch(healthRoute, /await readSystemHealth\(\)/);
 
 const systemHealth = fs.readFileSync(new URL("./system-health.ts", import.meta.url), "utf8");
-assert.match(systemHealth, /observedLatestBlock = latestBlock/);
-assert.match(systemHealth, /latestBlock: observedLatestBlock\?\.toString\(\) \?\? "unavailable"/);
+assert.match(systemHealth, /latestBlock = blockNumber\.toString\(\)/);
+assert.match(systemHealth, /schemaVersion: 2/);
+assert.match(systemHealth, /product: "rmt-terminal"/);
+assert.match(systemHealth, /readInventory\(\{ limit: 1 \}\)/);
 
 console.info("Web cache header smoke test passed");

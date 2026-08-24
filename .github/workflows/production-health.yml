@@ -14,18 +14,17 @@ concurrency:
 
 jobs:
   verify:
-    name: Verify live protocol and data
+    name: Verify live Terminal and data
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Check canonical domain, protocol, and application health
+      - name: Check canonical domain, Terminal, and application health
         shell: bash
         run: |
           set -euo pipefail
           apex="https://rmtlaunch.fun"
           base="https://www.rmtlaunch.fun"
-          indexer="https://robinhood-meme-terminal-production.up.railway.app"
           mkdir -p health-artifacts
 
           redirect="$(curl --silent --show-error --head --max-time 25 "$apex" | tr -d '\r' | awk 'BEGIN{IGNORECASE=1} /^location:/{print $2; exit}')"
@@ -53,9 +52,16 @@ jobs:
             return 1
           }
 
-          check_endpoint protocol "$base/api/health" "health-artifacts/protocol.headers"
-          check_endpoint launches "$base/api/launches" "health-artifacts/launches.headers"
-          check_endpoint indexer "$indexer/health"
+          check_endpoint health "$base/api/health" "health-artifacts/health.headers"
+          check_endpoint directory "$base/api/vnext/market-directory" "health-artifacts/directory.headers"
+          cursor="$(node -e '
+            const fs = require("node:fs");
+            const body = JSON.parse(fs.readFileSync("health-artifacts/directory.json", "utf8"));
+            if (typeof body.nextCursor !== "string" || body.nextCursor.length === 0) process.exit(1);
+            process.stdout.write(body.nextCursor);
+          ')"
+          encoded_cursor="$(node -e 'process.stdout.write(encodeURIComponent(process.argv[1]))' "$cursor")"
+          check_endpoint directory-next "$base/api/vnext/market-directory?cursor=$encoded_cursor" "health-artifacts/directory-next.headers"
           while read -r name address; do
             check_endpoint "search-$name" "$base/api/vnext/market-search?q=$address"
           done <<'MARKET_CONTROLS'
@@ -70,6 +76,12 @@ jobs:
             --user-agent "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/127.0.0.0 Safari/537.36" \
             --dump-header "health-artifacts/home.headers" "$base/" --output "health-artifacts/home.html"; then
             echo "Public home page is unavailable to a standard Windows browser." >&2
+            exit 1
+          fi
+          if ! curl --silent --show-error --fail --location --max-time 25 \
+            --user-agent "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/127.0.0.0 Safari/537.36" \
+            --dump-header "health-artifacts/vnext.headers" "$base/vnext" --output "health-artifacts/vnext.html"; then
+            echo "The supported /vnext compatibility route is unavailable." >&2
             exit 1
           fi
           check_endpoint robots "$base/robots.txt"

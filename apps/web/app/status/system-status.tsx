@@ -33,7 +33,7 @@ export function SystemStatus({ initialReport }: { initialReport: SystemHealthRep
         <div className={report.ok ? "statusPulse operational" : "statusPulse degraded"} aria-hidden="true" />
         <div>
           <p className="eyebrow">SYSTEM STATUS</p>
-          <h1>{report.ok ? "Protocol checks healthy" : "Some systems need review"}</h1>
+          <h1>{report.ok ? "Terminal systems healthy" : "Some Terminal systems need review"}</h1>
           <p>{report.network} · Block {report.latestBlock}</p>
           <small>Checked {statusTimeFormatter.format(new Date(report.checkedAt))} UTC · {report.latencyMs}ms verification · Refreshes every 15 seconds</small>
         </div>
@@ -46,7 +46,7 @@ export function SystemStatus({ initialReport }: { initialReport: SystemHealthRep
         <span><b>REFRESH</b>15S</span>
       </div>
 
-      <section className="statusGrid" aria-label="Live protocol checks">
+      <section className="statusGrid" aria-label="Live Terminal checks">
         {report.checks.map((item) => (
           <article className="panel statusCard" key={item.key}>
             <div><span className={`statusDot ${item.state}`} aria-hidden="true" /><strong>{item.label}</strong></div>
@@ -54,6 +54,12 @@ export function SystemStatus({ initialReport }: { initialReport: SystemHealthRep
             <p>{item.detail}</p>
           </article>
         ))}
+      </section>
+
+      <section className="panel safeguardPanel">
+        <p className="eyebrow">EXECUTION AVAILABILITY</p>
+        <h2>Wallet execution remains owner-gated</h2>
+        <p className="safeguardLead">Public wallet execution remains unavailable until the reviewed executor deployment and activation are explicitly authorized. This is informational and does not make market discovery unhealthy.</p>
       </section>
 
       <section className="panel safeguardPanel">
