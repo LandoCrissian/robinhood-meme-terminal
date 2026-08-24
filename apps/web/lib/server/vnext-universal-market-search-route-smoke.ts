@@ -44,7 +44,14 @@ async function main() {
     query: queryAddress,
     queryKind: "token-or-pool-address",
     status: "found",
-    results: []
+    results: [{
+      address: queryAddress,
+      name: "StonkBroker",
+      symbol: "STONKBROKER",
+      decimals: 18,
+      matchedBy: "token",
+      markets: []
+    }]
   };
   const found = await invoke(
     `https://rmtlaunch.fun/api/vnext/market-search?q=${queryAddress}`,

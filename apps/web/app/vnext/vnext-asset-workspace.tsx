@@ -134,6 +134,9 @@ function WorkspacePosition({
     {executionState === "stock-token-view-only" ? <>
       <div className="vnPositionActions isViewOnly"><button type="button" disabled>View only</button></div>
       <p className="vnStockTokenViewOnlyPolicy">Official Robinhood Stock Tokens are view-only in RMT until jurisdiction controls are available.</p>
+    </> : executionState === "asset-only" ? <>
+      <div className="vnPositionActions isViewOnly"><button type="button" disabled>Asset only</button></div>
+      <p className="vnStockTokenViewOnlyPolicy">Onchain identity is verified. No supported market evidence is attached, so execution is not evaluated.</p>
     </> : <div className="vnPositionActions"><button type="button" onClick={() => onTradeSide("buy")}>{executionUiState === "preview-only" ? "Buy quote" : "Buy"}</button><button type="button" disabled={!hasPosition} onClick={() => onTradeSide("sell")}>{executionUiState === "preview-only" ? "Sell quote" : "Sell"}</button></div>}
     <footer>Exact connected-wallet balance. Cost basis and P&amp;L remain hidden until complete wallet history can be proven.</footer>
   </section>;
@@ -334,7 +337,7 @@ function VerifiedMarkets({
         <b>{pool.execution === "route-check-required" ? "Quote on demand" : "View only"}</b>
         <i aria-hidden="true">↗</i>
       </ExplorerLink>;
-    })}</div> : <div className="vnWorkspaceEmpty"><strong>No canonical pool found</strong><span>Identity may still be verified. RMT will not imply an executable route.</span></div>}
+    })}</div> : <div className="vnWorkspaceEmpty"><strong>No canonical market evidence attached</strong><span>Verified asset identity remains available. Metrics, chart activity, and execution are not evaluated without a supported market.</span></div>}
     <footer>Displayed price source, project origin and selected execution venue remain independent. The execution engine compares eligible routes only when the trader asks.</footer>
   </section>;
 }

@@ -185,7 +185,7 @@ export function VNextTerminalShell() {
     }
   }, [filteredMarkets.length, hasMoreCanonicalMarkets, loadNextCanonicalPage, query, visibleMarketLimit]);
   const requestTradeSide = useCallback((side: "buy" | "sell") => {
-    if (selectedExecutionState === "stock-token-view-only") return;
+    if (selectedExecutionState !== "normal") return;
     setTradeSideRequest({ side, nonce: Date.now() });
     setContext("asset");
     setTradeOpen(true);
@@ -197,7 +197,7 @@ export function VNextTerminalShell() {
   }, [selected, writeLocation]);
 
   useEffect(() => {
-    if (selectedExecutionState !== "stock-token-view-only" || !tradeOpen) return;
+    if (selectedExecutionState === "normal" || !tradeOpen) return;
     setTradeOpen(false);
     if (selected) writeLocation("asset", selected.address, undefined, true);
   }, [selected, selectedExecutionState, tradeOpen, writeLocation]);
