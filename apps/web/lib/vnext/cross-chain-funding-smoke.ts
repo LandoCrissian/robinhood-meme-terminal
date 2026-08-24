@@ -476,12 +476,8 @@ assert.equal(applyAcrossFundingObservation(sourceConfirmed, refundObservation, n
 
 const quoteRoute = readFileSync(new URL("../../app/api/vnext/funding/across/quote/route.ts", import.meta.url), "utf8");
 const sessionsRoute = readFileSync(new URL("../../app/api/vnext/funding/sessions/route.ts", import.meta.url), "utf8");
-assert.match(quoteRoute, /if \(!operational\.authorizationEnabled\)/);
-assert.match(quoteRoute, /requireAuthenticatedTradeWallet\(request, recipient\)/);
-assert.match(quoteRoute, /fundingReadiness\.fundedPreflightReady/);
-assert.match(quoteRoute, /userAuthorizationRequired: true/);
-assert.match(quoteRoute, /serverSubmissionEnabled: false/);
-assert.doesNotMatch(quoteRoute, /sendTransaction|writeContract|privateKey/);
+assert.match(quoteRoute, /retiredTransactionPreparationResponse/);
+assert.doesNotMatch(quoteRoute, /approvalTransaction|depositTransaction|requireAuthenticatedTradeWallet|sendTransaction|writeContract|privateKey/);
 assert.match(sessionsRoute, /requireAuthenticatedTradeWallet\(request, wallet\)/);
 assert.match(sessionsRoute, /verifyAcrossSourceTransaction/);
 assert.match(sessionsRoute, /refreshAcrossFundingSession/);

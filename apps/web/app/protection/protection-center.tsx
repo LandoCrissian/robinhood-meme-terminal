@@ -225,7 +225,7 @@ export function ProtectionCenter() {
         <div>
           <p className="eyebrow">RMT · AUTOMATIC POSITION GUARD</p>
           <h1>Protection Center</h1>
-          <p>Every server-backed automatic exit tied to your RMT identity, including orders that this browser has never seen and positions whose remaining token balance is zero.</p>
+          <p>Prior automatic-exit records tied to your RMT identity, including records that this browser has never seen and positions whose remaining token balance is zero.</p>
         </div>
         <div className="protectionCenterIntroActions">
           <button type="button" disabled={refreshing} onClick={() => void load(undefined, true)}>{refreshing ? "Refreshing…" : "Refresh status"}</button>
@@ -258,7 +258,7 @@ export function ProtectionCenter() {
         <header>
           <div>
             <p className="eyebrow">CONTINUING PERMISSIONS AND EXECUTION STATE</p>
-            <h2>Automatic orders</h2>
+            <h2>Prior automatic orders</h2>
           </div>
           <nav className="protectionTabs" aria-label="Protection order filters">
             {(["active", "attention", "history", "all"] as const).map((item) => (

@@ -143,8 +143,9 @@ async function main() {
   const engine = readFileSync(new URL("./vnext-execution-engine.ts", import.meta.url), "utf8");
   assert.match(verifyRoute, /stockTokenExecutionPolicyErrorResponse/);
   assert.match(authorizeRoute, /stockTokenExecutionPolicyErrorResponse/);
-  for (const guardedTransactionRoute of [legacyV4Route, externalUniswapRoute, externalUniswapV4Route, externalSushiRoute]) {
-    assert.match(guardedTransactionRoute, /requireStockTokenExecutionEligible/);
+  for (const retiredTransactionRoute of [legacyV4Route, externalUniswapRoute, externalUniswapV4Route, externalSushiRoute]) {
+    assert.match(retiredTransactionRoute, /retiredTransactionPreparationResponse/);
+    assert.doesNotMatch(retiredTransactionRoute, /requireStockTokenExecutionEligible|requireAuthenticatedTradeWallet|quoteAndBuild|calldata/);
   }
   assert.match(engine, /quoteRobinhoodVNextExecution[\s\S]*quoteVNextExecutionProviders/);
   assert.match(engine, /prepareRobinhoodVNextUniswapXIntent[\s\S]*prepareVNextUniswapXIntent\(input, protectedOutputFloorAtomic, requireAdmission\)/);

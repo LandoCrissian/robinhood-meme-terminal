@@ -80,7 +80,7 @@ function VisiblePublicChrome({ pathname }: { pathname: string }) {
                   <span>Markets &amp; evidence</span>
                   <PublicLink href="/markets/robinhood-chain">Robinhood Chain markets<small>Discovery and market evidence inside the RMT Terminal</small></PublicLink>
                   <PublicLink href="/?panel=portfolio">Portfolio<small>Your connected-wallet holdings in Terminal</small></PublicLink>
-                  <PublicLink href="/protection">Protection Center<small>Automatic orders, permission cleanup, and execution history</small></PublicLink>
+                  <PublicLink href="/protection">Protection Center<small>Prior permissions, recovery, and execution history</small></PublicLink>
                   <PublicLink href="/watchlist">Watchlist<small>Tokens saved on this device</small></PublicLink>
                   <PublicLink href="/sources">Sources<small>Origin, venue, and market-evidence boundaries</small></PublicLink>
                 </div>

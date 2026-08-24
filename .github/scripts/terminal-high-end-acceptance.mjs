@@ -1412,6 +1412,7 @@ async function inspectV2WalletBrowserJourney(browser, fixture, options, label, m
 
   if (mode === "native") {
     await page.screenshot({ path: `${output}/v2-wallet-review-${label}.png`, fullPage: false, animations: "disabled" });
+    await page.waitForFunction(() => window.__RMT_ACCEPTANCE_WALLET_METHODS__.includes("eth_sendTransaction"));
     await page.evaluate(() => window.__RMT_ACCEPTANCE_RELEASE_WALLET__("cancel"));
     await page.getByText("Wallet review was cancelled. Nothing was submitted.", { exact: true }).waitFor({ state: "visible" });
     await context.close();
@@ -1419,6 +1420,7 @@ async function inspectV2WalletBrowserJourney(browser, fixture, options, label, m
   }
 
   if (mode === "cancel") {
+    await page.waitForFunction(() => window.__RMT_ACCEPTANCE_WALLET_METHODS__.includes("eth_sendTransaction"));
     await page.evaluate(() => window.__RMT_ACCEPTANCE_RELEASE_WALLET__("cancel"));
     await page.getByText("Wallet review was cancelled. Nothing was submitted.", { exact: true }).waitFor({ state: "visible" });
     await context.close();
@@ -1432,6 +1434,7 @@ async function inspectV2WalletBrowserJourney(browser, fixture, options, label, m
     }
     if (/unlimited/i.test(approvalText)) throw new Error(`${label}: approval review mentions unlimited authority`);
     await page.screenshot({ path: `${output}/v2-approval-review-${label}.png`, fullPage: false, animations: "disabled" });
+    await page.waitForFunction(() => window.__RMT_ACCEPTANCE_WALLET_METHODS__.includes("eth_sendTransaction"));
     await page.evaluate(() => window.__RMT_ACCEPTANCE_RELEASE_WALLET__("approve"));
     await page.getByText("Transaction submitted · confirmation pending", { exact: true }).waitFor({ state: "visible" });
     state.approved = true;
@@ -1447,6 +1450,7 @@ async function inspectV2WalletBrowserJourney(browser, fixture, options, label, m
   }
 
   state.receiptsAvailable = false;
+  await page.waitForFunction(() => window.__RMT_ACCEPTANCE_WALLET_METHODS__.includes("eth_sendTransaction"));
   await page.evaluate(() => window.__RMT_ACCEPTANCE_RELEASE_WALLET__("approve"));
   await page.getByText("Transaction submitted · confirmation pending", { exact: true }).waitFor({ state: "visible" });
   state.receiptsAvailable = true;

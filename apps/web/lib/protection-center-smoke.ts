@@ -46,7 +46,7 @@ assert.match(protectionCenter, /rawBalance=\{protectedAmount\(order\.amountIn\)\
 assert.match(protectionCenter, /walletCleanupReported === false/);
 assert.match(protectionCenter, /revocationPending/);
 assert.match(protectionCenter, /already-submitted transaction cannot settle/);
-assert.match(protectionCenter, /server-backed automatic exit/);
+assert.match(protectionCenter, /Prior automatic-exit records/);
 assert.match(protectionCenter, /positions whose remaining token balance is zero/);
 assert.match(protectionCenter, /livePositionGuardReviewMessage/);
 
@@ -57,16 +57,12 @@ assert.match(protectionInventoryRoute, /reviewReason: livePositionGuardReviewRea
 assert.doesNotMatch(protectionInventoryRoute, /walletId\s*:/);
 assert.doesNotMatch(protectionInventoryRoute, /authorizationId\s*:/);
 
-assert.match(protectionOrderRoute, /livePositionGuardAuthorityMatchesPlan/);
-assert.match(protectionOrderRoute, /livePositionGuardCanReplaceOrder/);
-assert.match(protectionOrderRoute, /database\.runTransaction/);
-assert.match(protectionOrderRoute, /allowance equal to the protected amount/);
-assert.match(protectionOrderRoute, /must be cleared or reconciled/);
-assert.match(evaluatorRoute, /livePositionGuardRuntimeAuthority/);
-assert.match(evaluatorRoute, /const amountIn = amountLimit/);
-assert.match(evaluatorRoute, /transaction_receipt_timeout/);
-assert.match(evaluatorRoute, /\.orderBy\("lastEvaluatedAt", "asc"\)/);
-assert.match(evaluatorRoute, /Promise\.all\(orders\.docs\.map/);
+assert.match(protectionOrderRoute, /input\.action === "arm"/);
+assert.match(protectionOrderRoute, /retiredTransactionPreparationResponse/);
+assert.match(protectionOrderRoute, /livePositionGuardCancellationDisposition/);
+assert.doesNotMatch(protectionOrderRoute, /quoteAndBuildExternalUniswapSwap|livePositionGuardServerConfiguration|database\.runTransaction|sendTransaction/);
+assert.match(evaluatorRoute, /retiredTransactionPreparationResponse/);
+assert.doesNotMatch(evaluatorRoute, /livePositionGuardRuntimeAuthority|quoteAndBuildExternalUniswapSwap|sendLivePositionGuardTransaction/);
 assert.match(runtimePolicy, /balance_below_order_limit/);
 assert.match(runtimePolicy, /residual executor allowance/);
 assert.match(reviewPolicy, /allowance_exceeds_order_limit/);
@@ -86,6 +82,7 @@ assert.match(liveGuardControls, /armingEnabled && configuration\.enabled/);
 assert.match(liveGuardControls, /already-authorized transaction may still confirm/);
 
 assert.match(publicChrome, /<PublicLink href="\/protection">Protection<\/PublicLink>/);
+assert.match(publicChrome, /Prior permissions, recovery, and execution history/);
 assert.match(publicChrome, /<PublicLink href="\/watchlist"><span aria-hidden="true">☆<\/span>Watchlist<\/PublicLink>/);
 assert.match(publicChrome, /<PublicLink href="\/protection"><span aria-hidden="true">◇<\/span>Protection<\/PublicLink>/);
 
