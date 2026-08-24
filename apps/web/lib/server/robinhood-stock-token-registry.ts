@@ -1,4 +1,4 @@
-import { getAddress, isAddress } from "viem";
+import { getAddress, isAddress, zeroAddress } from "viem";
 import { z } from "zod";
 import type { RobinhoodStockAssetRelationship } from "../external-market";
 
@@ -39,6 +39,13 @@ export type RobinhoodStockRegistrySnapshot = {
   coverage: "complete" | "unavailable";
   assetsByAddress: Map<string, RobinhoodStockAsset>;
 };
+
+export type VNextStockTokenExecutionAssets = {
+  inputAsset: string;
+  outputAsset: string;
+};
+
+export type RobinhoodStockRegistryReader = () => Promise<RobinhoodStockRegistrySnapshot>;
 
 export type StockTokenExecutionPolicy =
   | { status: "eligible" }
@@ -142,6 +149,33 @@ export async function requireStockTokenExecutionEligible(token: string) {
     );
   }
   return policy;
+}
+
+export async function requireVNextStockTokenExecutionEligible(
+  assets: VNextStockTokenExecutionAssets,
+  readSnapshot: RobinhoodStockRegistryReader = fetchRobinhoodStockRegistry
+) {
+  const snapshot = await readSnapshot();
+  if (snapshot.coverage !== "complete") {
+    throw new StockTokenExecutionPolicyError(
+      "Robinhood Stock Token identity verification is temporarily unavailable.",
+      503
+    );
+  }
+  const exactTradeAssets = [...new Set([
+    getAddress(assets.inputAsset),
+    getAddress(assets.outputAsset)
+  ].filter((asset) => asset !== zeroAddress))];
+  for (const asset of exactTradeAssets) {
+    const policy = stockTokenExecutionPolicyFromSnapshot(asset, snapshot);
+    if (policy.status === "view-only") {
+      throw new StockTokenExecutionPolicyError(
+        "Official Robinhood Stock Tokens are view-only in RMT until jurisdiction controls are available.",
+        451
+      );
+    }
+  }
+  return { status: "eligible" as const };
 }
 
 export function stockTokenExecutionPolicyErrorResponse(cause: unknown) {

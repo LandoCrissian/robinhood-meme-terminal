@@ -835,6 +835,24 @@ body .rmtVnext {
   text-transform: uppercase;
 }
 
+.vnWorkspaceStatusGroup {
+  display: grid;
+  flex: 0 0 auto;
+  gap: 6px;
+  justify-items: end;
+}
+
+.vnStockTokenViewOnlyBadge {
+  padding: 5px 8px;
+  border: 1px solid rgba(255, 202, 87, .24);
+  border-radius: 999px;
+  color: var(--vn-warning);
+  background: rgba(255, 202, 87, .07);
+  font-size: 9px;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
 .vnWorkspaceStatus i,
 .vnLiveState i,
 .vnChartState i {
@@ -1244,6 +1262,24 @@ body .rmtVnext {
   cursor: not-allowed;
 }
 
+.vnPositionActions.isViewOnly {
+  grid-template-columns: 1fr;
+}
+
+.vnPositionActions.isViewOnly button:last-child {
+  color: var(--vn-warning);
+  border-color: rgba(255, 202, 87, .24);
+  background: rgba(255, 202, 87, .07);
+  opacity: 1;
+}
+
+.vnStockTokenViewOnlyPolicy {
+  margin: 8px 0 0;
+  color: var(--vn-text-muted);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
 .vnOriginCard p,
 .vnEvidenceCaution {
   margin: 14px 0 0;
@@ -1632,6 +1668,12 @@ body .rmtVnext {
   border-radius: 999px;
   font-size: 9px;
   font-weight: 780;
+}
+
+.vnFixtureBadge.isViewOnly {
+  color: var(--vn-warning);
+  border-color: rgba(255, 202, 87, .24);
+  background: rgba(255, 202, 87, .07);
 }
 
 .vnTradeHeader small {
@@ -4121,6 +4163,17 @@ body .rmtTerminal button {
   border-color: var(--rmt-border);
   color: var(--rmt-text-muted);
   background: #111713;
+}
+
+.rmtMobileTradeDock.isViewOnly {
+  grid-template-columns: 1fr;
+}
+
+.rmtMobileTradeDock button.isViewOnly:disabled {
+  color: var(--vn-warning);
+  border-color: rgba(255, 202, 87, .24);
+  background: rgba(255, 202, 87, .07);
+  opacity: 1;
 }
 
 .rmtMobileSheetLayer {

@@ -37,6 +37,7 @@ import {
   parseVNextCanonicalDirectoryResponse,
   resolutionFromLookup,
   selectVNextChartPool,
+  vNextSelectedMarketExecutionState,
   selectVNextMarketDirectoryView,
   visibleVNextMarketDirectoryMarkets,
   verifiedDirectoryAsset,
@@ -155,6 +156,9 @@ assert.equal(selectVNextMarketDirectoryView(categorized, "trending", held)[0].sy
 assert.equal(selectVNextMarketDirectoryView(categorized, "held", held)[0].symbol, "OTH");
 const rwaMarkets = selectVNextMarketDirectoryView(categorized, "rwa", held);
 assert.deepEqual(rwaMarkets.map((market) => market.rwaRelationship), ["canonical-stock-token", "paired-market-asset"]);
+assert.equal(vNextSelectedMarketExecutionState(rwaMarkets[0]), "stock-token-view-only");
+assert.equal(vNextSelectedMarketExecutionState(rwaMarkets[1]), "normal");
+assert.equal(vNextSelectedMarketExecutionState(undefined), "normal");
 assert.equal(vNextRwaClassificationLabel(rwaMarkets[0].rwaRelationship), "Stock Token");
 assert.equal(vNextRwaClassificationLabel(rwaMarkets[1].rwaRelationship), "RWA Pair");
 assert.equal(vNextRwaClassificationLabel(undefined), null);

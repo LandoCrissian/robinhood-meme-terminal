@@ -59,7 +59,7 @@ function market(index) {
     priceChange24h,
     pairCreatedAt: Date.now() - (index + 1) * 3_600_000
   };
-  const stockAssetRelationships = index === 0
+  const stockAssetRelationships = index === 2
     ? [{
         relationship: "canonical-stock-token",
         assetId: "fixture-stock",
@@ -298,6 +298,7 @@ function canonicalDirectoryMarket(market) {
     buyPressureBps: null,
     riskFlags: null,
     signal: null,
+    stockAssetRelationships: market.stockAssetRelationships,
     canonicalMarkets: [{
       sourceId: version === 2 ? "sushiswap-v2" : "uniswap-v3",
       protocol: version === 2 ? "sushiswap" : "uniswap",
@@ -1198,6 +1199,7 @@ async function createWalletAcceptanceContext(browser, options) {
   await context.addInitScript(({ wallet }) => {
     const listeners = new Map();
     let pendingWalletRequest = null;
+    window.__RMT_ACCEPTANCE_WALLET_METHODS__ = [];
     const emit = (event, value) => {
       for (const listener of listeners.get(event) ?? []) listener(value);
     };
@@ -1220,6 +1222,7 @@ async function createWalletAcceptanceContext(browser, options) {
         listeners.set(event, (listeners.get(event) ?? []).filter((entry) => entry !== listener));
       },
       async request({ method, params }) {
+        window.__RMT_ACCEPTANCE_WALLET_METHODS__.push(method);
         if (method === "eth_chainId") return "0x1237";
         if (method === "eth_accounts" || method === "eth_requestAccounts") {
           emit("accountsChanged", [wallet]);
@@ -1527,12 +1530,24 @@ function stockWorkspaceFixture(contractAddress, tokenName, tokenSymbol, currentM
   };
 }
 
-async function inspectStockWorkspace(browser, control) {
-  const context = await createContext(browser, { viewport: { width: 1_440, height: 900 }, deviceScaleFactor: 1 });
+async function inspectStockWorkspace(browser, control, mobile = false) {
+  const contextOptions = mobile
+    ? { viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, isMobile: true, hasTouch: true }
+    : { viewport: { width: 1_440, height: 900 }, deviceScaleFactor: 1 };
+  const context = await createContext(browser, contextOptions);
   const page = await context.newPage();
   const fixtureMarket = stockWorkspaceFixture(control.address, control.name, control.symbol, control.multiplier, control.index);
+  const state = { approved: true, receiptsAvailable: false, missingSettlementEvent: false, quotes: 0, verifications: 0, authorizations: 0, rpcMethods: [], blockNumber: 50_000_016 };
   await page.emulateMedia({ reducedMotion: "reduce" });
   await installRoutes(page);
+  await page.route(/\/api\/vnext\/verify$/, async (route) => {
+    state.verifications += 1;
+    await route.fulfill({ status: 451, contentType: "application/json", body: JSON.stringify({ error: "View only" }) });
+  });
+  await page.route(/\/api\/vnext\/authorize$/, async (route) => {
+    state.authorizations += 1;
+    await route.fulfill({ status: 451, contentType: "application/json", body: JSON.stringify({ error: "View only" }) });
+  });
   await page.route(/\/api\/vnext\/market-directory(?:\?.*)?$/, (route) => route.fulfill({
     status: 200,
     contentType: "application/json",
@@ -1561,7 +1576,7 @@ async function inspectStockWorkspace(browser, control) {
     contentType: "application/json",
     body: JSON.stringify({ resolution, stockAssetRelationships: fixtureMarket.stockAssetRelationships, stockAssetCoverage: "complete", updatedAt: now })
   }));
-  await gotoReady(page, `${base}/?market=${control.address}`, ".rmtDesktopTerminal #vn-asset-heading");
+  await gotoReady(page, `${base}/?market=${control.address}&side=buy`, `${mobile ? ".rmtMobileTerminal" : ".rmtDesktopTerminal"} #vn-asset-heading`);
   const heading = await page.locator("#vn-asset-heading").innerText();
   if (!heading.includes(control.name) || !heading.includes(control.symbol) || heading.includes(`${control.address.slice(0, 6)}…`)) throw new Error(`${control.symbol}: verified workspace identity did not win ${heading}`);
   await page.locator(".rmtWorkspaceTabs").getByRole("tab", { name: "RWA", exact: true }).click();
@@ -1571,9 +1586,52 @@ async function inspectStockWorkspace(browser, control) {
   }
   const multiplierOccurrences = rwa.split(control.multiplier).length - 1;
   if (multiplierOccurrences !== 1) throw new Error(`${control.symbol}: multiplier rendered ${multiplierOccurrences} times`);
-  await page.screenshot({ path: `${output}/${control.symbol.toLowerCase()}-stock-workspace-desktop-1440x900.png`, fullPage: false, animations: "disabled" });
+  const viewOnlyBadges = page.getByText("View only", { exact: true });
+  if (await viewOnlyBadges.count() === 0) throw new Error(`${control.symbol}: stock-token view-only badge is absent`);
+  const body = await page.locator("body").innerText();
+  if (/Live trading|Connect & buy|Connect & sell/i.test(body)) throw new Error(`${control.symbol}: executable stock-token language remains visible`);
+  if (await page.locator(".vnWalletReview").count()) throw new Error(`${control.symbol}: stock token opened wallet review`);
+  if (mobile) {
+    const mobileAction = page.locator(".rmtMobileTradeDock button");
+    if (await mobileAction.count() !== 1 || (await mobileAction.innerText()) !== "View only" || !(await mobileAction.isDisabled())) {
+      throw new Error(`${control.symbol}: mobile stock-token dock still exposes an executable action`);
+    }
+  } else {
+    const reviewAction = page.locator(".vnReviewButton");
+    if ((await reviewAction.innerText()) !== "View only" || !(await reviewAction.isDisabled())) throw new Error(`${control.symbol}: persistent composer is not view-only`);
+    await page.locator(".rmtWorkspaceTabs").getByRole("tab", { name: "Position", exact: true }).click();
+    if (await page.getByRole("button", { name: /^(Buy|Sell)$/ }).count()) throw new Error(`${control.symbol}: workspace position exposes stock execution actions`);
+    await page.locator(".rmtWorkspaceTabs").getByRole("tab", { name: "RWA", exact: true }).click();
+  }
+  if (!mobile) {
+    await page.getByRole("tab", { name: "Sell quote", exact: true }).click();
+    await page.getByRole("tab", { name: "Buy quote", exact: true }).click();
+  }
+  await page.waitForTimeout(750);
+  if (state.quotes > 0 && await page.locator(".vnQuoteAttempts .isReady").count() === 0) {
+    throw new Error(`${control.symbol}: an observed stock quote was not rendered informationally`);
+  }
+  if (state.verifications !== 0 || state.authorizations !== 0) throw new Error(`${control.symbol}: stock selection called execution APIs ${JSON.stringify(state)}`);
+  const walletSideEffects = await page.evaluate(() => ({
+    walletProviderPresent: Boolean(window.ethereum),
+    walletReview: Boolean(document.querySelector(".vnWalletReview, .vnWalletReviewOverlay"))
+  }));
+  if (walletSideEffects.walletProviderPresent || walletSideEffects.walletReview) {
+    throw new Error(`${control.symbol}: stock informational controls caused a wallet side effect ${JSON.stringify(walletSideEffects)}`);
+  }
+  const viewportLabel = mobile ? "mobile-390x844" : "desktop-1440x900";
+  await page.screenshot({ path: `${output}/${control.symbol.toLowerCase()}-stock-workspace-${viewportLabel}.png`, fullPage: false, animations: "disabled" });
   await context.close();
-  return { symbol: control.symbol, address: control.address, multiplier: control.multiplier, viewOnly: resolution.execution === "view-only" };
+  return {
+    symbol: control.symbol,
+    address: control.address,
+    multiplier: control.multiplier,
+    viewOnly: resolution.execution === "view-only",
+    quoteRequests: state.quotes,
+    verificationRequests: state.verifications,
+    authorizationRequests: state.authorizations,
+    mobile
+  };
 }
 
 async function inspectMobile(browser, viewport, label) {
@@ -1752,23 +1810,26 @@ try {
   const mobileOnly = process.env.RMT_ACCEPTANCE_ONLY_MOBILE === "true";
   const exploratory = process.env.RMT_ACCEPTANCE_EXPLORATORY === "true";
   const hierarchyPhase = process.env.RMT_ACCEPTANCE_LAYOUT_PHASE === "before" ? "before" : "after";
-  const v2BrowserEvidence = process.env.NEXT_PUBLIC_RMT_BROWSER_ACCEPTANCE_PROFILE === "true"
+  const browserAcceptanceFixture = process.env.NEXT_PUBLIC_RMT_BROWSER_ACCEPTANCE_PROFILE === "true"
+    ? JSON.parse(await readFile(`${output}/v2-fixture.json`, "utf8"))
+    : null;
+  const v2BrowserEvidence = browserAcceptanceFixture
     ? await (async () => {
-        const fixture = JSON.parse(await readFile(`${output}/v2-fixture.json`, "utf8"));
         return {
-          desktopNative: mobileOnly ? null : await inspectV2WalletBrowserJourney(browser, fixture, { viewport: { width: 1_440, height: 900 } }, "desktop-1440x900-native", "native"),
-          desktopSuccess: mobileOnly ? null : await inspectV2WalletBrowserJourney(browser, fixture, { viewport: { width: 1_440, height: 900 } }, "desktop-1440x900", "success"),
-          desktopFailure: mobileOnly ? null : await inspectV2WalletBrowserJourney(browser, fixture, { viewport: { width: 1_440, height: 900 } }, "desktop-1440x900", "missing-event"),
-          desktopCancellation: mobileOnly ? null : await inspectV2WalletBrowserJourney(browser, fixture, { viewport: { width: 1_440, height: 900 } }, "desktop-1440x900-cancel", "cancel"),
-          mobileSuccess: await inspectV2WalletBrowserJourney(browser, fixture, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true }, "mobile-390x844", "success"),
-          mobileFailure: await inspectV2WalletBrowserJourney(browser, fixture, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true }, "mobile-390x844", "missing-event")
+          desktopNative: mobileOnly ? null : await inspectV2WalletBrowserJourney(browser, browserAcceptanceFixture, { viewport: { width: 1_440, height: 900 } }, "desktop-1440x900-native", "native"),
+          desktopSuccess: mobileOnly ? null : await inspectV2WalletBrowserJourney(browser, browserAcceptanceFixture, { viewport: { width: 1_440, height: 900 } }, "desktop-1440x900", "success"),
+          desktopFailure: mobileOnly ? null : await inspectV2WalletBrowserJourney(browser, browserAcceptanceFixture, { viewport: { width: 1_440, height: 900 } }, "desktop-1440x900", "missing-event"),
+          desktopCancellation: mobileOnly ? null : await inspectV2WalletBrowserJourney(browser, browserAcceptanceFixture, { viewport: { width: 1_440, height: 900 } }, "desktop-1440x900-cancel", "cancel"),
+          mobileSuccess: await inspectV2WalletBrowserJourney(browser, browserAcceptanceFixture, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true }, "mobile-390x844", "success"),
+          mobileFailure: await inspectV2WalletBrowserJourney(browser, browserAcceptanceFixture, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true }, "mobile-390x844", "missing-event")
         };
       })()
     : null;
   const workspaceEvidence = mobileOnly ? null : {
     v4: await inspectV4PoolIdWorkspace(browser),
     spcx: await inspectStockWorkspace(browser, { address: spcxToken, name: "SpaceX Stock Token", symbol: "SPCX", multiplier: "1", index: 6 }),
-    nvda: await inspectStockWorkspace(browser, { address: nvdaToken, name: "NVIDIA Stock Token", symbol: "NVDA", multiplier: "1", index: 8 })
+    nvda: await inspectStockWorkspace(browser, { address: nvdaToken, name: "NVIDIA Stock Token", symbol: "NVDA", multiplier: "1", index: 8 }),
+    spcxMobile: await inspectStockWorkspace(browser, { address: spcxToken, name: "SpaceX Stock Token", symbol: "SPCX", multiplier: "1", index: 6 }, true)
   };
   const marketsHierarchy = await inspectMarketsHierarchy(browser, hierarchyPhase);
   if (process.env.RMT_ACCEPTANCE_ONLY_MARKETS_HIERARCHY === "true") {

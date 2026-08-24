@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
 import {
   parseRobinhoodStockAssets,
+  requireVNextStockTokenExecutionEligible,
   stockAssetRelationshipsForPair,
   stockAssetRelationshipsForToken,
+  stockTokenExecutionPolicyErrorResponse,
   stockTokenExecutionPolicyFromSnapshot
 } from "./robinhood-stock-token-registry";
 
@@ -76,4 +78,40 @@ assert.equal(stockTokenExecutionPolicyFromSnapshot(launchToken, {
   assetsByAddress: new Map()
 }).status, "verification-unavailable");
 
-console.log("Robinhood Stock Token relationships remain canonical, support multiple assets, and stay view-only.");
+async function rejectionStatus(inputAsset: string, outputAsset: string, coverage: "complete" | "unavailable") {
+  try {
+    await requireVNextStockTokenExecutionEligible({ inputAsset, outputAsset }, async () => ({
+      coverage,
+      assetsByAddress: coverage === "complete" ? registry : new Map()
+    }));
+    assert.fail("Expected stock-token execution admission to fail closed.");
+  } catch (cause) {
+    const response = stockTokenExecutionPolicyErrorResponse(cause);
+    assert.ok(response);
+    return response.status;
+  }
+}
+
+async function main() {
+  let reads = 0;
+  assert.equal(await rejectionStatus(stockToken, launchToken, "complete"), 451);
+  assert.equal(await rejectionStatus(launchToken, stockToken, "complete"), 451);
+  assert.equal(await rejectionStatus("0x0000000000000000000000000000000000000000", stockToken, "complete"), 451);
+  assert.equal(await rejectionStatus(stockToken, "0x0000000000000000000000000000000000000000", "complete"), 451);
+  assert.equal(await rejectionStatus(launchToken, anotherStockToken, "unavailable"), 503);
+  assert.equal((await requireVNextStockTokenExecutionEligible({
+    inputAsset: launchToken,
+    outputAsset: "0x4444444444444444444444444444444444444444"
+  }, async () => {
+    reads += 1;
+    return { coverage: "complete", assetsByAddress: registry };
+  })).status, "eligible");
+  assert.equal(reads, 1);
+
+  console.log("Robinhood Stock Token relationships and exact two-asset VNext execution admission remain canonical and fail closed.");
+}
+
+void main().catch((cause) => {
+  console.error(cause);
+  process.exitCode = 1;
+});

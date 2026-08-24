@@ -87,6 +87,16 @@ export type VNextMarketState = {
 
 export type VNextRwaRelationship = "canonical-stock-token" | "paired-market-asset";
 
+export type VNextSelectedMarketExecutionState = "normal" | "stock-token-view-only";
+
+export function vNextSelectedMarketExecutionState(
+  market: Pick<VNextDirectoryMarket, "rwaRelationship"> | undefined
+): VNextSelectedMarketExecutionState {
+  return market?.rwaRelationship === "canonical-stock-token"
+    ? "stock-token-view-only"
+    : "normal";
+}
+
 export type VNextMarketDirectoryView = "trending" | "new" | "active" | "rwa" | "held" | "all";
 
 export const VNEXT_MARKET_DIRECTORY_MAX_MARKETS = 144;

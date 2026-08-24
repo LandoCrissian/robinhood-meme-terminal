@@ -19,7 +19,8 @@ import { useWalletConstellation } from "../../lib/use-wallet-constellation";
 import {
   selectVNextChartPool,
   shouldRequestVNextExternalWorkspaceMarket,
-  type VNextDirectoryMarket
+  type VNextDirectoryMarket,
+  type VNextSelectedMarketExecutionState
 } from "../../lib/vnext/market-directory";
 import type { VNextEcosystemIntelligence, VNextUpMarketIntelligence } from "../../lib/vnext/ecosystem-intelligence";
 import type { VNextUniversalMarketSearchPool } from "../../lib/vnext/universal-market-search-contract";
@@ -104,10 +105,12 @@ function riskFlagLabel(flag: ExternalMarket["riskFlags"][number]) {
 function WorkspacePosition({
   directoryMarket,
   walletAssets,
+  executionState,
   onTradeSide
 }: {
   directoryMarket: VNextDirectoryMarket;
   walletAssets: VNextDetectedWalletAsset[];
+  executionState: VNextSelectedMarketExecutionState;
   onTradeSide: (side: "buy" | "sell") => void;
 }) {
   const { address, isConnected } = useAccount();
@@ -125,7 +128,10 @@ function WorkspacePosition({
       <span><small>Holdings</small><strong>{!isConnected ? "Connect wallet" : hasPosition ? `${units.toLocaleString(undefined, { maximumFractionDigits: 6 })} ${directoryMarket.symbol}` : "No detected balance"}</strong></span>
       <span><small>Current value</small><strong>{positionValue === null ? "—" : formatUsd(positionValue)}</strong></span>
     </div>
-    <div className="vnPositionActions"><button type="button" onClick={() => onTradeSide("buy")}>Buy</button><button type="button" disabled={!hasPosition} onClick={() => onTradeSide("sell")}>Sell</button></div>
+    {executionState === "stock-token-view-only" ? <>
+      <div className="vnPositionActions isViewOnly"><button type="button" disabled>View only</button></div>
+      <p className="vnStockTokenViewOnlyPolicy">Official Robinhood Stock Tokens are view-only in RMT until jurisdiction controls are available.</p>
+    </> : <div className="vnPositionActions"><button type="button" onClick={() => onTradeSide("buy")}>Buy</button><button type="button" disabled={!hasPosition} onClick={() => onTradeSide("sell")}>Sell</button></div>}
     <footer>Exact connected-wallet balance. Cost basis and P&amp;L remain hidden until complete wallet history can be proven.</footer>
   </section>;
 }
@@ -370,12 +376,14 @@ export function VNextAssetWorkspace({
   directoryMarket,
   identityStatus,
   walletAssets,
+  executionState,
   onTradeSide
 }: {
   presentation: "desktop" | "mobile";
   directoryMarket: VNextDirectoryMarket;
   identityStatus: IdentityStatus;
   walletAssets: VNextDetectedWalletAsset[];
+  executionState: VNextSelectedMarketExecutionState;
   onTradeSide: (side: "buy" | "sell") => void;
 }) {
   const [section, setSection] = useState<"activity" | "evidence" | "markets" | "origin" | "position" | "ecosystem" | "rwa">("activity");
@@ -425,7 +433,7 @@ export function VNextAssetWorkspace({
       : section === "markets"
         ? <VerifiedMarkets canonicalMarkets={directoryMarket.canonicalMarkets} resolution={resolution} selectedPool={selectedPool} />
         : section === "position"
-          ? <WorkspacePosition directoryMarket={directoryMarket} walletAssets={walletAssets} onTradeSide={onTradeSide} />
+          ? <WorkspacePosition directoryMarket={directoryMarket} walletAssets={walletAssets} executionState={executionState} onTradeSide={onTradeSide} />
           : section === "origin"
             ? <WorkspaceOrigin market={market} token={directoryMarket.address} />
             : section === "ecosystem"
@@ -435,7 +443,7 @@ export function VNextAssetWorkspace({
   return <section className={`vnAssetPanel vnAssetWorkspace is${presentation}`} aria-labelledby="vn-asset-heading">
     <header className="vnAssetWorkspaceHeader">
       <div className="vnAssetWorkspaceIdentity"><TokenArtwork className="vnAssetWorkspaceMark" symbol={displaySymbol} imageUrl={directoryMarket.imageUri ?? canonicalStockRelationship?.logoUrl ?? undefined} /><span><span className="vnEyebrow">Asset workspace</span><h2 id="vn-asset-heading">{displayName} <b>{displaySymbol}</b></h2><small>Robinhood Chain · {presentationIdentity.verified || identityStatus === "verified" ? "onchain token identity proven" : identityStatus === "checking" ? "identity checking" : "identity evidence unavailable"}</small></span></div>
-      <span className={`vnWorkspaceStatus is${workspace.status}`}><i aria-hidden="true" />{workspace.status === "ready" ? "Live evidence" : workspace.status === "partial" ? "Partial evidence" : workspace.status === "stale" ? "Last loaded" : workspace.status === "loading" ? "Loading evidence" : "Evidence unavailable"}</span>
+      <div className="vnWorkspaceStatusGroup">{executionState === "stock-token-view-only" ? <strong className="vnStockTokenViewOnlyBadge">View only</strong> : null}<span className={`vnWorkspaceStatus is${workspace.status}`}><i aria-hidden="true" />{workspace.status === "ready" ? "Live evidence" : workspace.status === "partial" ? "Partial evidence" : workspace.status === "stale" ? "Last loaded" : workspace.status === "loading" ? "Loading evidence" : "Evidence unavailable"}</span></div>
     </header>
     <div className="vnAssetPrice"><strong>{formatUsd(directoryMarket.priceUsd)}</strong><span className={directoryMarket.priceChange24h !== null && directoryMarket.priceChange24h > 0 ? "vnPositive" : directoryMarket.priceChange24h !== null && directoryMarket.priceChange24h < 0 ? "vnNegative" : ""}>{directoryMarket.priceChange24h === null ? "Unavailable" : `${directoryMarket.priceChange24h > 0 ? "+" : ""}${directoryMarket.priceChange24h.toFixed(1)}%`} <small>24h</small></span></div>
     <dl className="vnAssetStats"><div><dt>Market cap</dt><dd>{compactUsd(directoryMarket.marketCapUsd)}</dd></div><div><dt>Liquidity</dt><dd>{compactUsd(directoryMarket.liquidityUsd)}</dd></div><div><dt>24h volume</dt><dd>{compactUsd(directoryMarket.volume24h)}</dd></div><div><dt>Market age</dt><dd>{formatAge(directoryMarket.ageMinutes)}</dd></div></dl>

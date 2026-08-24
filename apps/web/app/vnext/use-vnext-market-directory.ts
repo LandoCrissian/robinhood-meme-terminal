@@ -124,7 +124,7 @@ export function useVNextMarketDirectory() {
   const selectionSequence = useRef(0);
   const completedExplicitSelections = useRef(new Set<string>());
   const completedCanonicalExactQueries = useRef(new Set<string>());
-  const explicitSelectionRequests = useRef(new Map<string, Promise<boolean>>());
+  const explicitSelectionRequests = useRef(new Map<string, Promise<VNextDirectoryMarket | undefined>>());
   const searchMarketsRef = useRef<VNextDirectoryMarket[]>([]);
 
   const publishMarkets = useCallback(() => {
@@ -168,14 +168,14 @@ export function useVNextMarketDirectory() {
       }) ?? exact;
       publishMarkets();
       setSelectedAddress(exact.address);
-      return true;
+      return exactLookupMarket.current;
     }
-    if (!isAddress(rawAddress, { strict: false })) return false;
+    if (!isAddress(rawAddress, { strict: false })) return undefined;
     const address = getAddress(rawAddress);
     const selectionKey = address.toLowerCase();
     if (completedExplicitSelections.current.has(selectionKey) && exact && isVNextDirectoryMarketSelectable(exact)) {
       setSelectedAddress(exact.address);
-      return true;
+      return exact;
     }
     const inFlight = explicitSelectionRequests.current.get(selectionKey);
     if (inFlight) return inFlight;
@@ -225,16 +225,16 @@ export function useVNextMarketDirectory() {
           identity: identityMarket,
           provider: providerMarket
         });
-        if (!fallback || requestSequence !== selectionSequence.current) return false;
+        if (!fallback || requestSequence !== selectionSequence.current) return undefined;
         exactLookupMarket.current = mergeVNextExplicitSelectionMarket({
           existing: exactLookupMarket.current,
           canonical: fallback
         }) ?? fallback;
         publishMarkets();
         setSelectedAddress(fallback.address);
-        return true;
+        return exactLookupMarket.current;
       } catch {
-        return false;
+        return undefined;
       } finally {
         window.clearTimeout(timeout);
       }

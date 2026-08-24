@@ -50,7 +50,7 @@
     "test:trade-speed": "tsx lib/trade-speed-smoke.ts && tsx lib/trade-execution-reliability-smoke.ts && tsx lib/trade-diagnostic-sanitize-smoke.ts && tsx lib/wallet-gateway-smoke.ts && tsx lib/speed-wallet-smoke.ts && tsx lib/privy-funding-smoke.ts && tsx lib/wallet-transfer-smoke.ts",
     "test:wallet-gateway": "tsx lib/wallet-gateway-smoke.ts && tsx lib/speed-wallet-smoke.ts",
     "test:trade-identity": "tsx lib/server/rmt-trade-identity-smoke.ts",
-    "test:stock-assets": "tsx lib/server/robinhood-stock-token-registry-smoke.ts",
+    "test:stock-assets": "tsx lib/server/robinhood-stock-token-registry-smoke.ts && tsx lib/server/vnext-stock-token-execution-admission-smoke.ts",
     "test:live-signals": "tsx lib/live-signal-engine-smoke.ts",
     "test:transaction-integrity": "tsx lib/uniswap-transaction-integrity-smoke.ts && tsx lib/server/rmt-execution-fee-smoke.ts",
     "test:vnext-domain": "tsx lib/vnext/execution-domain-smoke.ts && tsx lib/vnext/execution-fee-policy-smoke.ts && tsx lib/vnext/execution-fee-policy-v2-smoke.ts && tsx lib/vnext/provider-fee-settlement-smoke.ts && tsx lib/vnext/uniswap-v3-fee-executor-v2-smoke.ts && tsx lib/vnext/uniswap-v3-fee-executor-differential-smoke.ts && tsx lib/vnext/uniswap-v3-fee-authorization-smoke.ts && tsx lib/vnext/uniswap-v3-fee-public-release-smoke.ts && tsx lib/vnext/uniswap-v3-fee-deployment-manifest-smoke.ts",

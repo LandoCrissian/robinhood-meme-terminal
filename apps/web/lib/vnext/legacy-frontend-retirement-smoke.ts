@@ -57,7 +57,7 @@ for (const stylesheet of globalCssImports) {
 assert.match(shell, /parseVNextTerminalLocation\(window\.location\.search\)/);
 assert.match(shell, /location\.context === "asset"/);
 assert.match(shell, /location\.context === "portfolio"/);
-assert.match(shell, /if \(location\.side\)/);
+assert.match(shell, /if \(location\.side && vNextSelectedMarketExecutionState\(selectedMarket\) === "normal"\)/);
 assert.match(shell, /void selectAddressRef\.current\(location\.market\)/);
 
 assert.match(marketCompatibilityRoute, /redirect\(`\/\?\$\{query\}`\)/);
