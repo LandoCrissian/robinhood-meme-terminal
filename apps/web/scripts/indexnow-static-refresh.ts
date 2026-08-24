@@ -14,10 +14,8 @@ const ALL_STATIC_PUBLIC_ROUTES = [
   "/rmt",
   "/robinhood-chain",
   ...ALL_MARKET_DIRECTORY_ROUTES,
-  "/explore",
   "/status",
   "/sources",
-  "/sushi",
   "/support",
   "/risks",
   "/terms",
@@ -48,14 +46,6 @@ const staticRules = [
   {
     matches: (file: string) => file.startsWith("apps/web/app/markets/robinhood-chain/"),
     routes: ALL_MARKET_DIRECTORY_ROUTES
-  },
-  {
-    matches: (file: string) => file.startsWith("apps/web/app/explore/"),
-    routes: ["/explore"] as const
-  },
-  {
-    matches: (file: string) => file.startsWith("apps/web/app/sushi/"),
-    routes: ["/sushi"] as const
   },
   {
     matches: (file: string) => file.startsWith("apps/web/app/sources/"),

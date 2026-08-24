@@ -180,11 +180,11 @@ assert.equal(normalizeWatchlistEntry({ ...watchedToken, address: "not-an-address
 assert.equal(normalizeWatchlist([{ ...watchedToken }, { ...watchedToken, addedAt: 900 }]).length, 1);
 assert.equal(
   watchlistEntryHref(normalizeWatchlistEntry(watchedToken)!),
-  "/project/0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa?launch=42"
+  "/?market=0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 );
 assert.equal(
   watchlistEntryHref(normalizeWatchlistEntry({ ...watchedToken, launchId: undefined })!),
-  "/market/0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  "/?market=0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 );
 
 const cloudState = parseCloudUserState({
@@ -383,7 +383,7 @@ const creatorControlSource = readFileSync(new URL("../app/project-creator-contro
 const creatorApplicationSource = readFileSync(new URL("../app/creator-application-panel.tsx", import.meta.url), "utf8");
 const creatorMediaSource = readFileSync(new URL("../app/creator-media-upload.tsx", import.meta.url), "utf8");
 assert.match(creatorApplicationSource, /RMT CREATOR STUDIO/);
-assert.match(creatorApplicationSource, /Open Creator Studio/);
+assert.match(creatorApplicationSource, /Open in Terminal/);
 assert.match(creatorApplicationSource, /does not deploy a contract, charge a fee or activate a marketplace automatically/);
 assert.match(creatorControlSource, /Save public identity/);
 assert.match(creatorControlSource, /id="creator-studio"/);
@@ -399,11 +399,6 @@ assert.match(creatorMediaSource, /uploads are public and may be permanent/);
 assert.equal(validateCreatorImage({ type: "image/png", size: 5_000_000 }), null);
 assert.match(validateCreatorImage({ type: "image/gif", size: 1_000 }) ?? "", /JPG, PNG, or WebP/);
 assert.match(validateCreatorImage({ type: "image/webp", size: 5_000_001 }) ?? "", /5 MB/);
-const approvedProjectSource = readFileSync(new URL("../app/project/[address]/approved-project-page.tsx", import.meta.url), "utf8");
-assert.match(approvedProjectSource, /GAME CREATOR SHOWCASE/);
-assert.match(approvedProjectSource, /GAMEPLAY GALLERY/);
-assert.match(approvedProjectSource, /GameReleaseUpdates/);
-assert.match(approvedProjectSource, /ProjectAudienceControls/);
 const projectAudienceSource = readFileSync(new URL("../app/project-audience-controls.tsx", import.meta.url), "utf8");
 assert.match(projectAudienceSource, /PEOPLE WATCHING/);
 assert.match(projectAudienceSource, /Follower identities stay private/);

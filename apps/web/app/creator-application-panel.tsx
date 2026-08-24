@@ -163,8 +163,7 @@ export function CreatorApplicationPanel() {
             {application.requestedModules.map((module) => <span key={module}>{MODULE_LABELS[module]}</span>)}
           </div>
           <nav aria-label={`${application.projectName} creator actions`}>
-            <Link className="creatorStudioPrimary" href={`/project/${application.projectSlug}#creator-studio`}>Open Creator Studio →</Link>
-            <Link href={`/project/${application.projectSlug}`}>View public page</Link>
+            <Link className="creatorStudioPrimary" href={application.tokenAddress ? `/?market=${application.tokenAddress.toLowerCase()}` : "/"}>Open in Terminal →</Link>
           </nav>
           <p className="creatorStudioBoundary">Page editing never grants wallet authority. Module review does not deploy a contract, charge a fee or activate a marketplace automatically.</p>
         </div>

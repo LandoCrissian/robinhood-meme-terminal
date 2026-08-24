@@ -1127,11 +1127,13 @@ async function inspectCurrentPublicRoutes(browser) {
     "/markets/robinhood-chain/trending",
     "/markets/robinhood-chain/new",
     "/markets/robinhood-chain/active",
-    "/explore",
+    "/rmt",
     "/status",
     "/sources",
-    "/sushi",
     "/support",
+    "/risks",
+    "/terms",
+    "/experience",
     "/privacy"
   ];
   const results = [];
@@ -1156,6 +1158,28 @@ async function inspectCurrentPublicRoutes(browser) {
       fullPage: false,
       animations: "disabled"
     });
+    results.push(audit);
+    await context.close();
+  }
+
+  for (const pathname of ["/explore", "/launch", "/sushi", "/rescue", "/deploy-mainnet"]) {
+    const context = await createContext(browser, { viewport: { width: 1_280, height: 800 }, deviceScaleFactor: 1 });
+    const page = await context.newPage();
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await installRoutes(page);
+    await gotoReady(page, `${base}${pathname}?launch=0&official=true`, ".rmtDesktopTerminal, .rmtMobileTerminal");
+    const audit = await page.evaluate(() => ({
+      requestedLegacyPath: true,
+      pathname: window.location.pathname,
+      query: window.location.search,
+      terminal: Boolean(document.querySelector(".rmtDesktopTerminal, .rmtMobileTerminal")),
+      publicChrome: Boolean(document.querySelector(".publicHeader, .mobileDock")),
+      horizontalOverflow: Math.max(0, document.documentElement.scrollWidth - innerWidth),
+      notFound: Boolean(document.querySelector(".next-error-h1")) || document.body.innerText.includes("This page could not be found")
+    }));
+    if (audit.pathname !== "/" || audit.query || !audit.terminal || audit.publicChrome || audit.horizontalOverflow > 2 || audit.notFound) {
+      throw new Error(`${pathname}: legacy product route did not resolve cleanly to the Terminal ${JSON.stringify(audit)}`);
+    }
     results.push(audit);
     await context.close();
   }

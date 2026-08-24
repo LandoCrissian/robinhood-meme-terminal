@@ -4,7 +4,7 @@ import { MarketInventory } from "./market-inventory";
 
 const title = "Robinhood Chain Markets, Tokens, Liquidity & Volume | RMT";
 const description =
-  "Browse qualified Robinhood Chain markets from RMT's canonical VNext directory with exact contracts, venues, liquidity, 24-hour volume, prices and market age.";
+  "Browse canonical and provider-observed Robinhood Chain markets with exact contracts, venues, liquidity, 24-hour volume, prices and market age when available.";
 
 export const revalidate = 300;
 

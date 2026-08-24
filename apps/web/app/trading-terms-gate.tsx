@@ -5,11 +5,7 @@ import { usePathname } from "next/navigation";
 import { useTradingTermsAcceptance } from "../lib/use-trading-terms";
 
 function isTradingSurface(pathname: string) {
-  return pathname === "/"
-    || pathname === "/explore"
-    || pathname.startsWith("/market/")
-    || pathname.startsWith("/project/")
-    || pathname.startsWith("/token/");
+  return pathname === "/" || pathname.startsWith("/market/");
 }
 
 export function TradingTermsGate() {

@@ -4,9 +4,9 @@ export default function PrivacyPage() {
   return (
     <LegalShell eyebrow="DATA TRANSPARENCY" title="Privacy Notice" updated="August 11, 2026">
       <div className="legalNotice"><strong>Core principle:</strong> RMT never asks for or stores private keys or recovery phrases.</div>
-      <div className="legalNotice"><strong>Paused systems:</strong> Profiles, referrals, phone-profile alerts, creator uploads and RMT Live are paused during terminal completion. Existing records and their access protections are preserved; the descriptions below explain data that earlier product versions may have collected.</div>
+      <div className="legalNotice"><strong>Optional systems:</strong> Profiles, referrals, alerts, uploads, and community records are not required to use the Terminal. Where unavailable, existing access protections remain in force.</div>
       <h2>Information visible onchain</h2>
-      <p>Wallet addresses, token launches, trades, balances, approvals, reward claims, contract interactions, and transaction hashes are public blockchain data. That information may be permanent and can be analyzed by anyone.</p>
+      <p>Wallet addresses, trades, balances, approvals, contract interactions, and transaction hashes are public blockchain data. That information may be permanent and can be analyzed by anyone.</p>
       <h2>Information handled by the interface</h2>
       <p>When you connect a wallet, the interface reads its public address, network, balances, positions, and claimable rewards. This information is used to render the requested experience and is not treated as a secret.</p>
       <h2>RMT account and secure sign-in</h2>
@@ -27,7 +27,7 @@ export default function PrivacyPage() {
       <p>Signed-in members and pseudonymous guests may privately report a visible message using a structured safety reason. A report stores a limited snapshot of the reported public message, keyed pseudonymous reporter and author identifiers, its review status, and timestamps. Only the verified RMT administrator can access the report queue through the server. Moderation decisions may hide a message or temporarily restrict that community identity from posting and create a private audit record. These actions do not control a wallet, alter a profile, rank a token, or affect trading.</p>
       <p>RMT Live also accepts structured product feedback. The selected category, title, description, pseudonymous identity key, review state, and timestamps remain in a server-private feedback record. A separate public marker may show only the feedback identifier, broad category, timestamps, and submitted, under review, planned, shipped, or closed status. The submitting browser can save the random receipt identifier and use it to follow that public marker under Updates. It does not expose the description, reviewer note, wallet, email, profile, or reporter identity. Anyone who learns a receipt identifier can read the same limited marker, so it must not be treated as an authentication secret. The authenticated identity that created a submission can withdraw it: RMT deletes the private feedback record, closes the public marker, and retains a minimal private audit event without the feedback text or identity key. Feedback does not authorize transactions or automatically commit RMT to a feature.</p>
       <h2>Uploads and permanent metadata</h2>
-      <p>Token artwork, creator-project logos, banners, galleries, update images, descriptions, and social links may be uploaded to IPFS through an external pinning provider. Creator media uploads require a verified profile assigned to that project. IPFS content may be public, copied, and difficult or impossible to remove. Do not upload personal, confidential, or unlawful information.</p>
+      <p>Artwork, logos, images, descriptions, and social links handled by optional metadata tools may be uploaded to IPFS through an external pinning provider. IPFS content may be public, copied, and difficult or impossible to remove. Do not upload personal, confidential, or unlawful information.</p>
       <h2>Infrastructure data</h2>
       <p>Hosting, database, authentication, RPC, wallet-connection, security, and content-delivery providers may process IP address, device, request, and diagnostic information to deliver and protect their services. To enforce shared community request limits, RMT derives a secret-keyed HMAC from the validated network address and operation type. Firestore stores that non-reversible bucket identifier with a bounded count and expiration time, not the raw network address. RMT does not sell personal information.</p>
       <h2>External market data and links</h2>
@@ -35,7 +35,7 @@ export default function PrivacyPage() {
       <h2>Access and deletion requests</h2>
       <p>You can edit terminal preferences at any time. To reduce impersonation and rapid identity switching, changes to display name, handle, and desk note receive a 10-minute correction window and then a 24-hour protection period. An RMT Live feedback receipt offers self-service withdrawal while the original authenticated identity remains available in that browser or account. To request deletion of the associated cloud profile or other eligible private records, use the private project contact on the Support page from the same email account used to sign in. Public blockchain and IPFS records cannot be deleted by RMT.</p>
       <h2>Children and restricted users</h2>
-      <p>RMT is not intended for anyone under 18. Do not use the service if local law prohibits access to blockchain trading or token-creation tools.</p>
+      <p>RMT is not intended for anyone under 18. Do not use the service if local law prohibits access to blockchain trading tools.</p>
       <h2>Questions</h2>
       <p>Use the Support page for the current privacy contact. Never send a private key, seed phrase, or recovery phrase in a support request.</p>
     </LegalShell>

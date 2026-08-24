@@ -9,10 +9,10 @@ const currentProductFiles = [
   "../../app/api/markets/external/route.ts",
   "../../app/sitemap.ts",
   "../../app/sushi/page.tsx",
-  "../../app/approved-project-directory.tsx",
-  "../project-page.ts",
-  "../public-project-discovery.ts",
-  "../public-project-visibility.ts",
+  "../../app/page.tsx",
+  "../../app/public-chrome.tsx",
+  "../../app/sources/page.tsx",
+  "../../app/rmt/page.tsx",
   "./robinhood-assets.ts",
   "./wallet-assets.ts",
   "./market-directory.ts",
@@ -48,10 +48,9 @@ for (const currentControl of [
 assert.match(healthVerifier, /search-stonkbroker-text\.json/);
 
 const rmtIdentityPage = read("../../app/rmt/page.tsx");
-assert.match(rmtIdentityPage, retiredToken);
-assert.match(rmtIdentityPage, retiredMarket);
-assert.match(rmtIdentityPage, /Retired launchpad launch 0 token/);
-assert.match(rmtIdentityPage, /not the current RMT token or a Terminal release requirement/);
+assert.doesNotMatch(rmtIdentityPage, retiredToken);
+assert.doesNotMatch(rmtIdentityPage, retiredMarket);
+assert.doesNotMatch(rmtIdentityPage, /Retired launchpad launch 0 token/);
 assert.doesNotMatch(rmtIdentityPage, /Official RMT V6 token/);
 assert.doesNotMatch(rmtIdentityPage, /existing official V6 market/);
 

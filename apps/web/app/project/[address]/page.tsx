@@ -1,24 +1,11 @@
-import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { isAddress } from "viem";
-import { ProjectDetailPage } from "./project-detail-page";
-import { buildPublicProjectMetadata } from "../../../lib/public-project-discovery";
+import { legacyTerminalMarketRedirect } from "../../../lib/vnext/legacy-terminal-routes";
 
 type ProjectRouteProps = {
   params: Promise<{ address: string }>;
 };
 
-export async function generateMetadata({ params }: ProjectRouteProps): Promise<Metadata> {
+export default async function LegacyProjectCompatibilityPage({ params }: ProjectRouteProps) {
   const { address } = await params;
-  if (!isAddress(address)) return {
-    title: "Project pages are paused | RMT",
-    robots: { index: false, follow: false }
-  };
-  return buildPublicProjectMetadata(address);
-}
-
-export default async function ProjectPage({ params }: ProjectRouteProps) {
-  const { address } = await params;
-  if (!isAddress(address)) redirect("/explore");
-  return <ProjectDetailPage />;
+  redirect(legacyTerminalMarketRedirect(address));
 }

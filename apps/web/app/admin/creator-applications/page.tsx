@@ -156,7 +156,7 @@ export default function CreatorApplicationAdminPage() {
                 <article className={`adminApplicationCard status-${application.status}`} key={application.userId}>
                   <header>
                     <div><span>{application.status.replace("_", " ")}</span><h2>{application.projectName}</h2><p>{application.projectType} · {application.contactEmail}</p></div>
-                    {application.projectSlug && <Link href={`/project/${application.projectSlug}`}>Public page ↗</Link>}
+                    {application.projectSlug && <Link href="/">Terminal ↗</Link>}
                   </header>
                   <p className="adminApplicationSummary">{application.summary}</p>
                   <dl>

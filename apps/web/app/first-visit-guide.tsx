@@ -11,11 +11,7 @@ import {
 import { useTradingTermsAcceptance } from "../lib/use-trading-terms";
 
 function isGuidedSurface(pathname: string) {
-  return pathname === "/"
-    || pathname === "/explore"
-    || pathname.startsWith("/market/")
-    || pathname.startsWith("/project/")
-    || pathname.startsWith("/token/");
+  return pathname === "/" || pathname.startsWith("/market/");
 }
 
 export function FirstVisitGuide() {

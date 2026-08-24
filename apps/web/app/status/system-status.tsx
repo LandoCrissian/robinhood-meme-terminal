@@ -58,17 +58,17 @@ export function SystemStatus({ initialReport }: { initialReport: SystemHealthRep
 
       <section className="panel safeguardPanel">
         <p className="eyebrow">BUILT-IN SAFEGUARDS</p>
-        <h2>Fair Start is the protected default</h2>
-        <p className="safeguardLead">Creators may keep the reviewed Fair Start default or explicitly choose the open policy. Fair Start is a brief opening window, not a permanent trading restriction. It limits large early buys so bots or insiders cannot capture most of a launch before everyone else can react.</p>
+        <h2>The Terminal separates discovery from execution authority</h2>
+        <p className="safeguardLead">Markets stay visible when RMT has valid evidence. Wallet execution remains unavailable unless RMT can construct and independently verify the exact transaction the trader is asked to sign.</p>
         <div className="safeguardGrid">
-          <div><strong>1-block opening delay</strong><span>Trading cannot be captured in the same block as launch.</span></div>
-          <div><strong>10 protected blocks</strong><span>The temporary limits cover only the opening window.</span></div>
-          <div><strong>1% maximum per buy</strong><span>No single opening purchase can take more than 1% of supply.</span></div>
-          <div><strong>3% maximum per wallet</strong><span>Each wallet has a temporary opening allowance.</span></div>
-          <div><strong>One buy per block</strong><span>A wallet cannot stack multiple buys into the same block.</span></div>
-          <div><strong>Automatic expiry</strong><span>Normal buying begins automatically when the countdown ends. Once trading opens, selling remains available.</span></div>
+          <div><strong>Exact chain</strong><span>Execution evidence is bound to Robinhood Chain ID 4663.</span></div>
+          <div><strong>Exact assets</strong><span>Input and output contracts must match the selected trade.</span></div>
+          <div><strong>Protected output</strong><span>The transaction must enforce the trader&apos;s reviewed minimum received.</span></div>
+          <div><strong>Exact recipient</strong><span>Verified output is bound to the submitting wallet.</span></div>
+          <div><strong>Evidence boundaries</strong><span>Provider observations inform markets without fabricating canonical status.</span></div>
+          <div><strong>Self-custody</strong><span>The connected wallet remains the only signing authority.</span></div>
         </div>
-        <p className="statusFineprint">Protected buys must send tokens back to the buying wallet, preventing alternate-recipient workarounds. These controls reduce common launch-sniping advantages; they do not promise bot-free trading or eliminate market risk.</p>
+        <p className="statusFineprint">These checks protect transaction integrity. They do not guarantee a market&apos;s legitimacy, liquidity, future value, or availability.</p>
       </section>
     </>
   );

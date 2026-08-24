@@ -24,7 +24,7 @@ import { SmsAlertEnrollment } from "../sms-alert-enrollment";
 const MODES: Array<{ id: TraderMode; label: string; copy: string }> = [
   { id: "scout", label: "Scout", copy: "Discovery first. Surface risk and origin before speed." },
   { id: "momentum", label: "Momentum", copy: "Prioritize movement, flow, liquidity, and fast execution." },
-  { id: "builder", label: "Builder", copy: "Keep launches, creator health, and graduation progress close." }
+  { id: "builder", label: "Builder", copy: "Keep project capabilities and market evidence close." }
 ];
 
 const DENSITIES: Array<{ id: TerminalDensity; label: string; copy: string }> = [
@@ -349,7 +349,7 @@ export default function ProfilePage() {
             <p className="eyebrow">YOUR WORKSPACE</p>
             <Link href="/watchlist"><span>Watchlist</span><b>{watchCount} saved →</b></Link>
             <Link href="/portfolio"><span>Portfolio</span><b>Onchain holdings →</b></Link>
-            <Link href="/explore"><span>Explore markets</span><b>Find movement →</b></Link>
+            <Link href="/"><span>Open Terminal</span><b>Find markets →</b></Link>
           </nav>
 
           <section className="profilePrivacy">
