@@ -95,8 +95,8 @@ export type RobinhoodStockAssetRelationship = {
 };
 
 export type ExternalProjectMetadata = {
-  sourceId: "pons" | "lemon" | "noxa" | "circus" | "sushi";
-  sourceName: "Pons" | "Lemon" | "Noxa" | "Circus" | "Sushi Launch";
+  sourceId: "pons" | "pons-v2" | "lemon" | "noxa" | "circus" | "sushi" | "stonkbrokers-safe-launch";
+  sourceName: "Pons" | "Pons V2" | "Lemon" | "Lemon.fun" | "Noxa" | "Circus" | "Sushi Launch" | "StonkBrokers Smart/Safe Launch";
   provenance:
     | "factory-and-token-cross-checked"
     | "launchpad-and-token-cross-checked"
@@ -108,6 +108,37 @@ export type ExternalProjectMetadata = {
   description: string;
   imageUri: string | null;
   socials: ExternalSocialLinks;
+};
+
+export type LaunchpadLifecycleEvidence = {
+  sourceId: "stonkbrokers-safe-launch" | "sushi-launch" | "pons-v1" | "pons-v2" | "lemon-fun" | "circus";
+  sourceName: "StonkBrokers Smart/Safe Launch" | "Sushi Launch" | "Pons V1" | "Pons V2" | "Lemon.fun" | "Circus";
+  version: "v1" | "v2" | "current";
+  factory: string;
+  creator: string;
+  launchId: string | null;
+  launchBlock: string | null;
+  launchTransactionHash: string | null;
+  state: "created" | "curve-live" | "armed" | "swept" | "graduated" | "aborted";
+  current: boolean;
+  metricsState: "observed" | "unavailable";
+  venue: {
+    kind: "bonding-curve" | "source-market" | "canonical-pool" | "launch-pending" | "unavailable";
+    address: string | null;
+    poolId: string | null;
+  };
+  activity: {
+    buys1h: number | null;
+    sells1h: number | null;
+    buys24h: number | null;
+    sells24h: number | null;
+    volumeQuote24h: number | null;
+    lastActivityAt: string | null;
+  };
+  provenance:
+    | "verified-contract-state-and-events"
+    | "verified-factory-and-token-state"
+    | "verified-public-feed-and-contract-state";
 };
 
 export function externalProjectProvenanceLabel(project: ExternalProjectMetadata) {
@@ -144,6 +175,7 @@ export type ExternalMarket = {
   dexId: string;
   stockAssetRelationships?: RobinhoodStockAssetRelationship[];
   project?: ExternalProjectMetadata;
+  launchpadEvidence?: LaunchpadLifecycleEvidence[];
   socials?: ExternalMarketSocials;
   resolution?: UniversalMarketResolution;
   origin: TokenOrigin;

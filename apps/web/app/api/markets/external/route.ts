@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
+import { createPublicClient, getAddress, http } from "viem";
 import type { OriginCoverage } from "@rmt/shared/market-origin";
+import { robinhoodChain } from "@rmt/shared/chains";
 import {
   buildAssetMarketRecord,
   type AssetMarketRecord,
@@ -20,10 +22,9 @@ import {
 } from "../../../../lib/external-market-ranking";
 import { safeDexImageUri } from "../../../../lib/server/external-market-media";
 import { externalMarketSocialsFromPairInfo } from "../../../../lib/external-market-socials";
-import {
-  fetchSushiLaunchSnapshot,
-  type SushiLaunchSnapshot
-} from "../../../../lib/server/sushi-launch-feed";
+import type { SushiLaunchSnapshot } from "../../../../lib/server/sushi-launch-feed";
+import { fetchCurrentLaunchpadSnapshot, type CurrentLaunchpadSnapshot } from "../../../../lib/server/current-launchpad-feed";
+import { mergeLaunchpadEvidenceOntoMarket } from "../../../../lib/launchpad-lifecycle";
 import {
   fetchGeckoPoolSnapshot,
   type GeckoPoolFeedId,
@@ -114,7 +115,7 @@ type RmtOriginResolution = {
   tokens: Set<string>;
 };
 
-type ProviderDirectoryMarket = VNextDirectoryMarket & Pick<ExternalMarket, "origin" | "venue"> & {
+type ProviderDirectoryMarket = VNextDirectoryMarket & Pick<ExternalMarket, "origin" | "venue" | "launchpadEvidence"> & {
   pairAddress: string;
   fdvUsd: number | null;
   stockAssetRelationships?: ExternalMarket["stockAssetRelationships"];
@@ -135,6 +136,20 @@ type SuccessfulMarketSnapshot = {
 };
 
 let lastSuccessfulSnapshot: SuccessfulMarketSnapshot | undefined;
+
+const robinhoodClient = createPublicClient({
+  chain: robinhoodChain,
+  transport: http(process.env.RMT_RPC_URL ?? process.env.NEXT_PUBLIC_RMT_RPC_URL ?? robinhoodChain.rpcUrls.default.http[0])
+});
+
+function emptyCurrentLaunchpadSnapshot(): CurrentLaunchpadSnapshot {
+  return {
+    markets: [],
+    sushi: { projects: new Map(), lifecycle: new Map(), candidateAddresses: [], delayed: true },
+    delayedSources: ["current-launchpad-discovery"],
+    coverage: "unavailable"
+  };
+}
 
 function asText(value: unknown, maximumLength = 80) {
   return typeof value === "string" ? value.trim().slice(0, maximumLength) : "";
@@ -460,28 +475,34 @@ export async function GET(request: Request) {
         ])
       : null;
     let sushiLaunchSnapshot: SushiLaunchSnapshot;
+    let currentLaunchpadSnapshot: CurrentLaunchpadSnapshot;
     let publicDiscoverySnapshot: PublicDiscoverySnapshot;
     let geckoPoolPairs: GeckoPoolPair[];
     let geckoDelayedFeeds: GeckoPoolFeedId[];
     let stockRegistry: Awaited<ReturnType<typeof fetchRobinhoodStockRegistry>>;
     if (requestedContract) {
-      sushiLaunchSnapshot = { projects: new Map(), candidateAddresses: [], delayed: false };
+      [stockRegistry, currentLaunchpadSnapshot] = await Promise.all([
+        fetchRobinhoodStockRegistry(),
+        fetchCurrentLaunchpadSnapshot(robinhoodClient, { token: getAddress(requestedContract) }).catch(emptyCurrentLaunchpadSnapshot)
+      ]);
+      sushiLaunchSnapshot = currentLaunchpadSnapshot.sushi;
       publicDiscoverySnapshot = { tokenAddresses: [], metadata: new Map() };
       geckoPoolPairs = [];
       geckoDelayedFeeds = [];
-      stockRegistry = await fetchRobinhoodStockRegistry();
     } else {
-      [sushiLaunchSnapshot, publicDiscoverySnapshot, stockRegistry, { pairs: geckoPoolPairs, delayedFeeds: geckoDelayedFeeds }] = await Promise.all([
-        fetchSushiLaunchSnapshot(),
+      [currentLaunchpadSnapshot, publicDiscoverySnapshot, stockRegistry, { pairs: geckoPoolPairs, delayedFeeds: geckoDelayedFeeds }] = await Promise.all([
+        fetchCurrentLaunchpadSnapshot(robinhoodClient).catch(emptyCurrentLaunchpadSnapshot),
         fetchPublicDiscoveryTokens().catch(() => ({ tokenAddresses: [], metadata: new Map() })),
         fetchRobinhoodStockRegistry(),
         fetchGeckoPoolSnapshot()
       ]);
+      sushiLaunchSnapshot = currentLaunchpadSnapshot.sushi;
     }
     const stockTokenAddresses = new Set(stockRegistry.assetsByAddress.keys());
     const requestedTokens = [...new Set(
       [
         ...sushiLaunchSnapshot.candidateAddresses.map((address) => address.toLowerCase()),
+        ...currentLaunchpadSnapshot.markets.map((market) => market.address.toLowerCase()),
         ...geckoPoolPairs.map((pair) => pair.baseToken.address.toLowerCase()),
         ...publicDiscoverySnapshot.tokenAddresses,
         ...(requestedContract ? [requestedContract] : [])
@@ -498,7 +519,7 @@ export async function GET(request: Request) {
           ...tokenBatches.map((addresses) => fetchTokenBatch(addresses).catch(() => []))
         ]);
     const pairs: RawPair[] = [...results.flat(), ...geckoPoolPairs];
-    if (pairs.length === 0) {
+    if (pairs.length === 0 && currentLaunchpadSnapshot.markets.length === 0) {
       if (requestedContract) {
         const resolution = await resolveUniversalMarketAddress(requestedContract, stockRegistry);
         const resolvedMarket = resolution
@@ -527,13 +548,14 @@ export async function GET(request: Request) {
     const candidateAddresses = [...new Set(pairs.flatMap((pair) => {
       const address = asText(requestedTokenFromPair(pair, requestedContract, stockTokenAddresses)?.address, 42);
       return isNonzeroEvmAddress(address) ? [address.toLowerCase()] : [];
-    }))];
+    }).concat(currentLaunchpadSnapshot.markets.map((market) => market.address.toLowerCase())))];
     const rmtOrigins = await resolveRmtOrigins(
       candidateAddresses,
       new Set(sushiLaunchSnapshot.projects.keys())
     );
     const evidenceByToken = new Map<string, AssetMarketEvidence[]>();
     const marketCandidatesByToken = new Map<string, ProviderDirectoryMarket[]>();
+    const launchpadMarketsByToken = new Map(currentLaunchpadSnapshot.markets.map((market) => [market.address.toLowerCase(), market]));
 
     for (const pair of pairs) {
       if (pair.chainId !== CHAIN_SLUG) continue;
@@ -639,20 +661,22 @@ export async function GET(request: Request) {
         signal: ranking?.signal ?? null,
         riskFlags: ranking?.riskFlags ?? null
       };
-      const sushiLaunchProject = sushiLaunchSnapshot.projects.get(address.toLowerCase());
-      const matchingProject = sushiLaunchProject?.launchPool.toLowerCase() === pairAddress.toLowerCase()
-        ? sushiLaunchProject
-        : undefined;
-      const attributedMarket = matchingProject
+      const key = address.toLowerCase();
+      const sushiLaunchProject = sushiLaunchSnapshot.projects.get(key);
+      const launchpadMarket = launchpadMarketsByToken.get(key);
+      const project = launchpadMarket?.project ?? sushiLaunchProject;
+      const launchpadEvidence = [
+        ...(launchpadMarket?.launchpadEvidence ?? []),
+        ...(sushiLaunchSnapshot.lifecycle.get(key) ? [sushiLaunchSnapshot.lifecycle.get(key)!] : [])
+      ];
+      const attributedMarket = project || launchpadEvidence.length > 0
         ? {
             ...market,
-            name: matchingProject.name,
-            symbol: matchingProject.symbol,
-            project: matchingProject
+            project,
+            launchpadEvidence
           }
         : market;
 
-      const key = address.toLowerCase();
       marketCandidatesByToken.set(key, [...(marketCandidatesByToken.get(key) ?? []), attributedMarket]);
     }
 
@@ -684,6 +708,14 @@ export async function GET(request: Request) {
       });
     }
 
+    for (const launchpadMarket of currentLaunchpadSnapshot.markets) {
+      const key = launchpadMarket.address.toLowerCase();
+      const existing = marketsByToken.get(key);
+      marketsByToken.set(key, existing
+        ? mergeLaunchpadEvidenceOntoMarket(existing, launchpadMarket)
+        : launchpadMarket as ProviderDirectoryMarket);
+    }
+
     const rankedMarkets = requestedContract
       ? [...marketsByToken.values()].filter((market) =>
           market.address.toLowerCase() === requestedContract
@@ -692,22 +724,27 @@ export async function GET(request: Request) {
       : [...marketsByToken.values()]
           .sort(compareProviderDirectoryMarket)
           .slice(0, VNEXT_MARKET_DIRECTORY_MAX_MARKETS);
-    let markets = rankedMarkets;
-    let resolution;
-    if (requestedContract && markets.length === 0) {
+    let markets: Array<ProviderDirectoryMarket | ExternalMarket> = rankedMarkets;
+    let resolution: Awaited<ReturnType<typeof resolveUniversalMarketAddress>> = null;
+    if (requestedContract) {
       resolution = await resolveUniversalMarketAddress(requestedContract, stockRegistry);
-      const resolvedMarket = resolution
-        ? marketFromUniversalResolution(resolution, stockRegistry)
-        : null;
-      if (resolvedMarket) markets = [resolvedMarket];
+      if (resolution) {
+        const exactResolution = resolution;
+        const resolvedMarket = marketFromUniversalResolution(resolution, stockRegistry);
+        markets = markets.length > 0
+          ? markets.map((market) => market.address.toLowerCase() === exactResolution.token.address.toLowerCase()
+              ? { ...market, assetId: resolvedMarket?.assetId, resolution: exactResolution }
+              : market)
+          : resolvedMarket ? [resolvedMarket] : [];
+      }
     }
     const snapshot: SuccessfulMarketSnapshot = {
       markets,
       assetRecords,
-      source: "DEX Screener markets + GeckoTerminal new/top/trending pools + public discovery + verified Sushi Launch metadata + Robinhood Stock Token registry",
-      rankingVersion: "rmt-discovery-v6",
+      source: "Canonical DEX markets + bounded current launchpad discovery + provider observations + Robinhood Stock Token registry",
+      rankingVersion: "rmt-discovery-v7-lifecycle",
       thresholds: RUNNER_THRESHOLDS,
-      originCoverage: "unavailable",
+      originCoverage: currentLaunchpadSnapshot.coverage,
       rmtOriginCoverage: rmtOrigins.coverage,
       stockAssetCoverage: stockRegistry.coverage,
       updatedAt: new Date().toISOString()
@@ -716,6 +753,7 @@ export async function GET(request: Request) {
 
     const delayedSources = [
       ...(sushiLaunchSnapshot.delayed ? ["sushi-launch-metadata"] : []),
+      ...currentLaunchpadSnapshot.delayedSources,
       ...geckoDelayedFeeds.map((feed) => `geckoterminal-${feed}`),
       ...(rmtOrigins.coverage !== "complete" ? ["rmt-origin"] : [])
     ];

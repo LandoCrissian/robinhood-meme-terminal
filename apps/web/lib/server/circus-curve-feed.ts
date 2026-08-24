@@ -9,7 +9,9 @@ import type { ExternalMarket, ExternalProjectMetadata } from "../external-market
 import { safePonsImageUri, safePonsSocialUrl } from "./pons-project-metadata";
 
 export const CIRCUS_LAUNCHPAD = getAddress("0xb7fa26c6fcb8801cabc538b82a6e80ae1c43cb00");
+export const CIRCUS_IMPLEMENTATION = getAddress("0x6c458aE384835c92BD09acEA429dC1B915B9E5D4");
 export const CIRCUS_WETH = getAddress("0x0bd7d308f8e1639fab988df18a8011f41eacad73");
+const EIP1967_IMPLEMENTATION_SLOT = "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc" as const;
 const CIRCUS_FEED = "https://circus.trade/api/launches?mode=real";
 const CIRCUS_PAGE = "https://circus.trade/coin/";
 const MAX_RESPONSE_BYTES = 2_000_000;
@@ -299,6 +301,29 @@ async function crossCheckCandidate(client: PublicClient, candidate: Candidate): 
     url: CIRCUS_PAGE + token.toLowerCase(),
     dexId: "circus-curve",
     project,
+    launchpadEvidence: [{
+      sourceId: "circus",
+      sourceName: "Circus",
+      version: "current",
+      factory: CIRCUS_LAUNCHPAD,
+      creator: candidate.creator,
+      launchId: null,
+      launchBlock: null,
+      launchTransactionHash: null,
+      state: "curve-live",
+      current: true,
+      metricsState: "observed",
+      venue: { kind: "bonding-curve", address: CIRCUS_LAUNCHPAD, poolId: null },
+      activity: {
+        buys1h: null,
+        sells1h: null,
+        buys24h: null,
+        sells24h: null,
+        volumeQuote24h: candidate.volumeQuoteEth,
+        lastActivityAt: candidate.lastTradeAt > 0 ? new Date(candidate.lastTradeAt * 1_000).toISOString() : null
+      },
+      provenance: "verified-public-feed-and-contract-state"
+    }],
     origin: { kind: "external", state: "unknown", coverage: "unavailable" },
     venue: { kind: "external-launchpad", sourceId: "circus", market: token, execution: "read-only" },
     curve: {
@@ -344,6 +369,13 @@ export async function fetchCircusCurveMarkets(
   client: PublicClient,
   fetchImpl: typeof fetch = fetch
 ) {
+  const implementationSlot = await client.getStorageAt({
+    address: CIRCUS_LAUNCHPAD,
+    slot: EIP1967_IMPLEMENTATION_SLOT
+  });
+  if (!implementationSlot || getAddress(`0x${implementationSlot.slice(-40)}`) !== CIRCUS_IMPLEMENTATION) {
+    throw new Error("Circus launchpad implementation identity changed");
+  }
   const candidates = parseCircusCurveFeed(await fetchPayload(fetchImpl));
   const markets: ExternalMarket[] = [];
   const concurrency = 3;
