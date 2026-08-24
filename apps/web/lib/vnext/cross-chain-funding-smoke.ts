@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import type { Firestore } from "firebase-admin/firestore";
 import {
   encodeAbiParameters,
   encodeEventTopics,
@@ -25,6 +26,9 @@ import {
   assertCrossChainFundingSessionWrite,
   crossChainFundingOwnerKey,
   crossChainFundingStoragePath,
+  listCrossChainFundingSessions,
+  readCrossChainFundingSession,
+  saveCrossChainFundingSession,
   serializableCrossChainFundingSession
 } from "../server/vnext-cross-chain-funding-store";
 import {
@@ -40,6 +44,7 @@ import {
   unresolvedCrossChainFunding,
   writeCrossChainFundingSession,
   CROSS_CHAIN_FUNDING_STORAGE_KEY,
+  type CrossChainFundingSession,
   type CrossChainFundingStorage
 } from "./cross-chain-funding";
 import { ACROSS_SPOKE_POOLS } from "../server/vnext-across-funding";
@@ -207,6 +212,128 @@ const refundProof = crossChainFundingProofRecord(refund);
 assert.equal(refundProof.proofStatus, "refunded");
 assert.equal(refundProof.refund.transactionHash, refundTxHash);
 assert.equal(refundProof.availability.availableOutputAtomic, "0");
+
+const stateSeed = () => createCrossChainFundingSession({
+  sessionId: "55555555-5555-4555-8555-555555555555",
+  evidence,
+  nowMs: now
+});
+const statePending = transitionCrossChainFundingSession(stateSeed(), { type: "source_submission_requested" }, now + 1);
+const stateSubmitted = transitionCrossChainFundingSession(statePending, { type: "source_submitted", sourceTxHash }, now + 2);
+const stateDeposit = transitionCrossChainFundingSession(stateSubmitted, { type: "deposit_confirmed", depositId: "50" }, now + 3);
+const stateBridging = transitionCrossChainFundingSession(stateDeposit, { type: "bridging" }, now + 4);
+const stateFillPending = transitionCrossChainFundingSession(stateBridging, { type: "fill_pending" }, now + 5);
+const stateDestination = transitionCrossChainFundingSession(stateFillPending, {
+  type: "destination_confirmed",
+  destinationTxHash,
+  destinationOutputAtomic: evidence.protectedOutputAtomic
+}, now + 6);
+const stateCompleted = transitionCrossChainFundingSession(stateDestination, { type: "completed" }, now + 7);
+const stateExpired = transitionCrossChainFundingSession(stateDeposit, { type: "expired" }, now + 4);
+const stateRefundEligible = transitionCrossChainFundingSession(stateExpired, { type: "refund_eligible" }, now + 5);
+const stateRefundPending = transitionCrossChainFundingSession(stateRefundEligible, { type: "refund_pending" }, now + 6);
+const stateRefunded = transitionCrossChainFundingSession(stateRefundPending, { type: "refunded", refundTxHash }, now + 7);
+const stateFailed = transitionCrossChainFundingSession(stateSeed(), { type: "failed", failureCode: "provider_unavailable" }, now + 1);
+const stateRecoveryRequired = transitionCrossChainFundingSession(stateFailed, { type: "recovery_required", failureCode: "manual_review" }, now + 2);
+const recoveryMatrix = [
+  stateSeed(),
+  statePending,
+  stateSubmitted,
+  stateDeposit,
+  stateBridging,
+  stateFillPending,
+  stateDestination,
+  stateCompleted,
+  stateExpired,
+  stateRefundEligible,
+  stateRefundPending,
+  stateRefunded,
+  stateFailed,
+  stateRecoveryRequired
+];
+assert.deepEqual(recoveryMatrix.map((entry) => entry.state), [
+  "quote_ready",
+  "source_submission_pending",
+  "source_submitted",
+  "deposit_confirmed",
+  "bridging",
+  "fill_pending",
+  "destination_confirmed",
+  "completed",
+  "expired",
+  "refund_eligible",
+  "refund_pending",
+  "refunded",
+  "failed",
+  "recovery_required"
+]);
+for (const recoveryState of recoveryMatrix) {
+  const disclosure = crossChainFundingDisclosure(recoveryState);
+  const proof = crossChainFundingProofRecord(recoveryState);
+  assert.equal(disclosure.currentState, recoveryState.state, `${recoveryState.state} remains readable`);
+  assert.equal(disclosure.recipient, wallet, `${recoveryState.state} remains owner-bound`);
+  assert.equal(proof.sessionId, recoveryState.sessionId, `${recoveryState.state} retains manual-review evidence`);
+  assert.equal(proof.serverSubmittedFunds, false, `${recoveryState.state} cannot claim server submission`);
+  assert.doesNotMatch(JSON.stringify({ disclosure, proof }), /"approvalTransaction"|"depositTransaction"|"calldata"|"transactionTarget"|privateKey|apiKey/);
+}
+assert.equal(pendingCrossChainFundingOutput(stateSeed()), "0", "quote-ready does not claim funds in transit");
+assert.equal(stateRecoveryRequired.failureCode, "manual_review", "manual-review evidence remains readable");
+
+const firestoreValues = new Map<string, CrossChainFundingSession>();
+const firestore = {
+  doc(path: string) {
+    return {
+      async get() {
+        const value = firestoreValues.get(path);
+        return { exists: Boolean(value), data: () => value };
+      }
+    };
+  },
+  async runTransaction(callback: (transaction: {
+    get: (reference: { get: () => Promise<unknown> }) => Promise<unknown>;
+    set: (_reference: unknown, value: CrossChainFundingSession) => void;
+  }) => Promise<void>) {
+    await callback({
+      get: (reference) => reference.get(),
+      set: (_reference, value) => firestoreValues.set(crossChainFundingStoragePath(value.wallet, value.sessionId), value)
+    });
+  },
+  collection() {
+    return {
+      doc(owner: string) {
+        return {
+          collection() {
+            return {
+              orderBy() {
+                return {
+                  limit() {
+                    return {
+                      async get() {
+                        const prefix = `vnextCrossChainFundingOwners/${owner}/sessions/`;
+                        const values = [...firestoreValues.entries()]
+                          .filter(([path]) => path.startsWith(prefix))
+                          .map(([, value]) => value)
+                          .sort((left, right) => right.updatedAtMs - left.updatedAtMs);
+                        return { docs: values.map((value) => ({ data: () => value })) };
+                      }
+                    };
+                  }
+                };
+              }
+            };
+          }
+        };
+      }
+    };
+  }
+} as unknown as Firestore;
+const ownerBoundStoreProof = (async () => {
+  await saveCrossChainFundingSession(stateSubmitted, firestore);
+  assert.equal((await readCrossChainFundingSession(wallet as Address, stateSubmitted.sessionId, firestore))?.state, "source_submitted");
+  assert.equal(await readCrossChainFundingSession("0x4444444444444444444444444444444444444444", stateSubmitted.sessionId, firestore), null);
+  assert.equal((await listCrossChainFundingSessions(wallet as Address, firestore)).length, 1);
+  assert.equal((await listCrossChainFundingSessions("0x4444444444444444444444444444444444444444", firestore)).length, 0);
+})();
 
 const values = new Map<string, string>();
 const storage: CrossChainFundingStorage = {
@@ -483,4 +610,9 @@ assert.match(sessionsRoute, /verifyAcrossSourceTransaction/);
 assert.match(sessionsRoute, /refreshAcrossFundingSession/);
 assert.doesNotMatch(sessionsRoute, /sendTransaction|writeContract|privateKey/);
 
-console.log("RMT cross-chain funding lifecycle and local recovery smoke checks passed.");
+void ownerBoundStoreProof.then(() => {
+  console.log("RMT cross-chain funding lifecycle and local recovery smoke checks passed.");
+}).catch((cause) => {
+  console.error(cause);
+  process.exitCode = 1;
+});

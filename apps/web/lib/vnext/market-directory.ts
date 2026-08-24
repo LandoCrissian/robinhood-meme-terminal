@@ -89,12 +89,22 @@ export type VNextRwaRelationship = "canonical-stock-token" | "paired-market-asse
 
 export type VNextSelectedMarketExecutionState = "normal" | "stock-token-view-only";
 
+export type VNextExecutionUiState = "live-execution" | "preview-only" | "stock-token-view-only";
+
 export function vNextSelectedMarketExecutionState(
   market: Pick<VNextDirectoryMarket, "rwaRelationship"> | undefined
 ): VNextSelectedMarketExecutionState {
   return market?.rwaRelationship === "canonical-stock-token"
     ? "stock-token-view-only"
     : "normal";
+}
+
+export function vNextExecutionUiState(
+  executionState: VNextSelectedMarketExecutionState,
+  authorizationEnabled: boolean
+): VNextExecutionUiState {
+  if (executionState === "stock-token-view-only") return "stock-token-view-only";
+  return authorizationEnabled ? "live-execution" : "preview-only";
 }
 
 export type VNextMarketDirectoryView = "trending" | "new" | "active" | "rwa" | "held" | "all";

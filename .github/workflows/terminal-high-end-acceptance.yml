@@ -29,6 +29,68 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      NEXT_PUBLIC_RMT_NETWORK: mainnet
+      RMT_VNEXT_SHELL_ENABLED: "true"
+      NEXT_PUBLIC_RMT_BROWSER_ACCEPTANCE_PROFILE: "true"
+      NEXT_PUBLIC_RMT_RPC_URL: "https://browser-acceptance.invalid"
+      NEXT_PUBLIC_RMT_VNEXT_AUTHORIZATION_ENABLED: "false"
+      NEXT_PUBLIC_RMT_VNEXT_WALLET_SUBMISSION_ENABLED: "false"
+      RMT_ACCEPTANCE_PREVIEW_ONLY: "true"
+      RMT_ACCEPTANCE_OUTPUT: "${{ github.workspace }}/terminal-preview-evidence"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a # v4.4.0
+        with:
+          version: 10.12.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+      - run: pnpm install --frozen-lockfile
+      - name: Verify terminal types
+        run: pnpm --filter web typecheck
+      - name: Build Preview-only production terminal
+        run: pnpm --filter web build
+      - name: Start production build
+        run: |
+          nohup pnpm --filter web exec next start -p 3000 > /tmp/rmt-preview.log 2>&1 &
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:3000/ >/dev/null; then exit 0; fi
+            sleep 2
+          done
+          cat /tmp/rmt-preview.log
+          exit 1
+      - name: Install isolated Chromium
+        run: |
+          mkdir -p /tmp/rmt-preview terminal-preview-evidence
+          cd /tmp/rmt-preview
+          npm init -y
+          npm install --save-exact --no-package-lock playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Verify Preview mode has zero wallet side effects
+        shell: bash
+        run: |
+          pnpm --filter web test:vnext-browser-fixture -- "$GITHUB_WORKSPACE/terminal-preview-evidence/v2-fixture.json"
+          cp .github/scripts/terminal-high-end-acceptance.mjs /tmp/rmt-preview/acceptance.mjs
+          set +e
+          node /tmp/rmt-preview/acceptance.mjs 2>&1 | tee /tmp/terminal-preview.log
+          status=${PIPESTATUS[0]}
+          echo "--- Preview acceptance tail ---"
+          tail -n 160 /tmp/terminal-preview.log
+          echo "--- server tail ---"
+          tail -n 100 /tmp/rmt-preview.log || true
+          exit $status
+      - name: Upload Preview evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v6.0.0
+        with:
+          name: terminal-preview-evidence
+          path: terminal-preview-evidence
+          retention-days: 7
+
   acceptance:
     runs-on: ubuntu-latest
     timeout-minutes: 40

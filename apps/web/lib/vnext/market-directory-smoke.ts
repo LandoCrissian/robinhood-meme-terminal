@@ -37,6 +37,7 @@ import {
   parseVNextCanonicalDirectoryResponse,
   resolutionFromLookup,
   selectVNextChartPool,
+  vNextExecutionUiState,
   vNextSelectedMarketExecutionState,
   selectVNextMarketDirectoryView,
   visibleVNextMarketDirectoryMarkets,
@@ -159,6 +160,10 @@ assert.deepEqual(rwaMarkets.map((market) => market.rwaRelationship), ["canonical
 assert.equal(vNextSelectedMarketExecutionState(rwaMarkets[0]), "stock-token-view-only");
 assert.equal(vNextSelectedMarketExecutionState(rwaMarkets[1]), "normal");
 assert.equal(vNextSelectedMarketExecutionState(undefined), "normal");
+assert.equal(vNextExecutionUiState("normal", true), "live-execution");
+assert.equal(vNextExecutionUiState("normal", false), "preview-only");
+assert.equal(vNextExecutionUiState("stock-token-view-only", true), "stock-token-view-only");
+assert.equal(vNextExecutionUiState("stock-token-view-only", false), "stock-token-view-only");
 assert.equal(vNextRwaClassificationLabel(rwaMarkets[0].rwaRelationship), "Stock Token");
 assert.equal(vNextRwaClassificationLabel(rwaMarkets[1].rwaRelationship), "RWA Pair");
 assert.equal(vNextRwaClassificationLabel(undefined), null);

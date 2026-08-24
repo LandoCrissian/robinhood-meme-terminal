@@ -11,6 +11,7 @@ import {
   selectVNextMarketDirectoryView,
   shouldUseExactAddressDegradedFallback,
   visibleVNextMarketDirectoryMarkets,
+  vNextExecutionUiState,
   vNextSelectedMarketExecutionState,
   vNextMarketDirectoryViewCounts,
   type VNextMarketDirectoryView
@@ -51,6 +52,10 @@ export function VNextTerminalShell() {
     clearUniversalSearch
   } = useVNextMarketDirectory();
   const selectedExecutionState = vNextSelectedMarketExecutionState(selected);
+  const executionUiState = vNextExecutionUiState(
+    selectedExecutionState,
+    process.env.NEXT_PUBLIC_RMT_VNEXT_AUTHORIZATION_ENABLED === "true"
+  );
   const effectiveTradeOpen = tradeOpen && selectedExecutionState === "normal";
   const selectAddressRef = useRef(selectAddress);
   const heldAddresses = useMemo(() => new Set(walletAssets.map((asset) => asset.address.toLowerCase())), [walletAssets]);
@@ -258,6 +263,7 @@ export function VNextTerminalShell() {
     hasMoreDirectoryMarkets: !query.trim() && hasMoreCanonicalMarkets,
     selected,
     selectedExecutionState,
+    executionUiState,
     selectedAsset,
     identityStatus,
     walletAssets,

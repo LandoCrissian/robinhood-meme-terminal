@@ -20,6 +20,7 @@ import {
   selectVNextChartPool,
   shouldRequestVNextExternalWorkspaceMarket,
   type VNextDirectoryMarket,
+  type VNextExecutionUiState,
   type VNextSelectedMarketExecutionState
 } from "../../lib/vnext/market-directory";
 import type { VNextEcosystemIntelligence, VNextUpMarketIntelligence } from "../../lib/vnext/ecosystem-intelligence";
@@ -106,11 +107,13 @@ function WorkspacePosition({
   directoryMarket,
   walletAssets,
   executionState,
+  executionUiState,
   onTradeSide
 }: {
   directoryMarket: VNextDirectoryMarket;
   walletAssets: VNextDetectedWalletAsset[];
   executionState: VNextSelectedMarketExecutionState;
+  executionUiState: VNextExecutionUiState;
   onTradeSide: (side: "buy" | "sell") => void;
 }) {
   const { address, isConnected } = useAccount();
@@ -131,7 +134,7 @@ function WorkspacePosition({
     {executionState === "stock-token-view-only" ? <>
       <div className="vnPositionActions isViewOnly"><button type="button" disabled>View only</button></div>
       <p className="vnStockTokenViewOnlyPolicy">Official Robinhood Stock Tokens are view-only in RMT until jurisdiction controls are available.</p>
-    </> : <div className="vnPositionActions"><button type="button" onClick={() => onTradeSide("buy")}>Buy</button><button type="button" disabled={!hasPosition} onClick={() => onTradeSide("sell")}>Sell</button></div>}
+    </> : <div className="vnPositionActions"><button type="button" onClick={() => onTradeSide("buy")}>{executionUiState === "preview-only" ? "Buy quote" : "Buy"}</button><button type="button" disabled={!hasPosition} onClick={() => onTradeSide("sell")}>{executionUiState === "preview-only" ? "Sell quote" : "Sell"}</button></div>}
     <footer>Exact connected-wallet balance. Cost basis and P&amp;L remain hidden until complete wallet history can be proven.</footer>
   </section>;
 }
@@ -377,6 +380,7 @@ export function VNextAssetWorkspace({
   identityStatus,
   walletAssets,
   executionState,
+  executionUiState,
   onTradeSide
 }: {
   presentation: "desktop" | "mobile";
@@ -384,6 +388,7 @@ export function VNextAssetWorkspace({
   identityStatus: IdentityStatus;
   walletAssets: VNextDetectedWalletAsset[];
   executionState: VNextSelectedMarketExecutionState;
+  executionUiState: VNextExecutionUiState;
   onTradeSide: (side: "buy" | "sell") => void;
 }) {
   const [section, setSection] = useState<"activity" | "evidence" | "markets" | "origin" | "position" | "ecosystem" | "rwa">("activity");
@@ -433,7 +438,7 @@ export function VNextAssetWorkspace({
       : section === "markets"
         ? <VerifiedMarkets canonicalMarkets={directoryMarket.canonicalMarkets} resolution={resolution} selectedPool={selectedPool} />
         : section === "position"
-          ? <WorkspacePosition directoryMarket={directoryMarket} walletAssets={walletAssets} executionState={executionState} onTradeSide={onTradeSide} />
+          ? <WorkspacePosition directoryMarket={directoryMarket} walletAssets={walletAssets} executionState={executionState} executionUiState={executionUiState} onTradeSide={onTradeSide} />
           : section === "origin"
             ? <WorkspaceOrigin market={market} token={directoryMarket.address} />
             : section === "ecosystem"

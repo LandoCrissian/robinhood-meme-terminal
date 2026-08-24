@@ -5,6 +5,7 @@ const base = process.env.RMT_ACCEPTANCE_BASE_URL ?? "http://127.0.0.1:3000";
 const output = process.env.RMT_ACCEPTANCE_OUTPUT
   ?? `${process.env.GITHUB_WORKSPACE}/terminal-high-end-evidence`;
 const focusDebug = process.env.RMT_ACCEPTANCE_FOCUS_DEBUG === "true";
+const previewOnly = process.env.RMT_ACCEPTANCE_PREVIEW_ONLY === "true";
 const now = new Date().toISOString();
 const address = (seed) => `0x${seed.toString(16).padStart(40, "0")}`;
 const txHash = (seed) => `0x${seed.toString(16).repeat(64).slice(0, 64)}`;
@@ -1382,6 +1383,78 @@ async function openFixtureTrade(page, nativeInput = false) {
   await page.locator(".vnReviewButton").click();
 }
 
+async function inspectPreviewMode(browser, fixture, options, label, connected) {
+  const state = { approved: false, receiptsAvailable: false, missingSettlementEvent: false, quotes: 0, verifications: 0, authorizations: 0, rpcMethods: [], blockNumber: 50_000_016 };
+  const context = connected
+    ? await createWalletAcceptanceContext(browser, options)
+    : await createContext(browser, options);
+  const page = await context.newPage();
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await installRoutes(page);
+  await installV2WalletAcceptanceRoutes(page, fixture, state);
+  await gotoReady(page, `${base}/?market=${token}&side=buy`, ".vnTradePanel");
+
+  if (connected) {
+    await page.waitForFunction(() => Array.isArray(window.__RMT_ACCEPTANCE_WALLET_METHODS__)
+      && window.__RMT_ACCEPTANCE_WALLET_METHODS__.includes("eth_accounts"));
+  }
+  state.verifications = 0;
+  state.authorizations = 0;
+  state.quotes = 0;
+  await page.evaluate(() => {
+    if (Array.isArray(window.__RMT_ACCEPTANCE_WALLET_METHODS__)) window.__RMT_ACCEPTANCE_WALLET_METHODS__ = [];
+  });
+
+  const panel = page.locator(".vnTradePanel").last();
+  await panel.getByText("Preview mode", { exact: true }).waitFor({ state: "visible" });
+  const primary = panel.locator(".vnReviewButton");
+  if (!(await primary.isDisabled())) throw new Error(`${label}: Preview primary action remained executable`);
+  if ((await primary.innerText()).trim() !== "Trading activation pending") throw new Error(`${label}: Preview primary action copy was not truthful`);
+  const body = await page.locator("body").innerText();
+  if (/Connect & buy|Connect & sell|Live trading|Complete review in wallet/i.test(body)) {
+    throw new Error(`${label}: executable language remained visible in Preview mode`);
+  }
+  await panel.getByRole("tab", { name: "Sell quote" }).click();
+  await panel.getByRole("tab", { name: "Buy quote" }).click();
+  if (connected) await panel.getByLabel("Pay with asset").selectOption("eip155:4663/native");
+  await panel.getByLabel("Exact input amount").fill("1");
+  if (connected) {
+    for (let attempt = 0; attempt < 20 && state.quotes === 0; attempt += 1) await page.waitForTimeout(250);
+    if (state.quotes === 0) throw new Error(`${label}: connected Preview mode did not preserve passive quote observation`);
+  } else {
+    await page.waitForTimeout(500);
+  }
+
+  const walletMethods = await page.evaluate(() => Array.isArray(window.__RMT_ACCEPTANCE_WALLET_METHODS__)
+    ? window.__RMT_ACCEPTANCE_WALLET_METHODS__
+    : []);
+  const forbiddenWalletMethods = walletMethods.filter((method) => [
+    "eth_requestAccounts",
+    "wallet_requestPermissions",
+    "wallet_switchEthereumChain",
+    "eth_sendTransaction"
+  ].includes(method));
+  if (forbiddenWalletMethods.length) throw new Error(`${label}: Preview interaction invoked wallet methods ${forbiddenWalletMethods.join(", ")}`);
+  if (state.verifications !== 0 || state.authorizations !== 0) {
+    throw new Error(`${label}: Preview interaction reached execution APIs ${JSON.stringify(state)}`);
+  }
+  if (await page.locator(".vnWalletReview").count()) throw new Error(`${label}: Preview mode rendered wallet review`);
+  const horizontalOverflow = await page.evaluate(() => Math.max(0, document.documentElement.scrollWidth - innerWidth));
+  if (horizontalOverflow > 2) throw new Error(`${label}: Preview mode has ${horizontalOverflow}px horizontal overflow`);
+  await page.screenshot({ path: `${output}/preview-${label}.png`, fullPage: false, animations: "disabled" });
+  await context.close();
+  return {
+    connected,
+    primaryAction: "disabled",
+    walletConnectCalls: forbiddenWalletMethods.filter((method) => method === "eth_requestAccounts").length,
+    verifyRequests: state.verifications,
+    authorizeRequests: state.authorizations,
+    ethSendTransaction: forbiddenWalletMethods.filter((method) => method === "eth_sendTransaction").length,
+    informationalQuoteRequests: state.quotes,
+    horizontalOverflow
+  };
+}
+
 async function inspectV2WalletBrowserJourney(browser, fixture, options, label, mode) {
   const state = { approved: mode === "native" || mode === "missing-event" || mode === "cancel", receiptsAvailable: false, missingSettlementEvent: mode === "missing-event", quotes: 0, verifications: 0, authorizations: 0, rpcMethods: [], blockNumber: 50_000_016 };
   const context = await createWalletAcceptanceContext(browser, options);
@@ -1817,6 +1890,17 @@ try {
   const browserAcceptanceFixture = process.env.NEXT_PUBLIC_RMT_BROWSER_ACCEPTANCE_PROFILE === "true"
     ? JSON.parse(await readFile(`${output}/v2-fixture.json`, "utf8"))
     : null;
+  if (previewOnly) {
+    if (!browserAcceptanceFixture) throw new Error("Preview acceptance requires the loopback-only browser fixture profile.");
+    const previewEvidence = {
+      desktopDisconnected: await inspectPreviewMode(browser, browserAcceptanceFixture, { viewport: { width: 1_440, height: 900 } }, "desktop-1440x900-disconnected", false),
+      desktopConnected: await inspectPreviewMode(browser, browserAcceptanceFixture, { viewport: { width: 1_440, height: 900 } }, "desktop-1440x900-connected", true),
+      mobileDisconnected: await inspectPreviewMode(browser, browserAcceptanceFixture, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true }, "mobile-390x844-disconnected", false),
+      mobileConnected: await inspectPreviewMode(browser, browserAcceptanceFixture, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true }, "mobile-390x844-connected", true)
+    };
+    await writeFile(`${output}/report.json`, JSON.stringify({ previewEvidence }, null, 2));
+    console.log(`Terminal Preview-mode acceptance passed: ${JSON.stringify(previewEvidence)}`);
+  } else {
   const v2BrowserEvidence = browserAcceptanceFixture
     ? await (async () => {
         return {
@@ -1886,6 +1970,7 @@ try {
     JSON.stringify({ productAcceptanceEvidence, workspaceEvidence, marketsHierarchy, discoveryDesktop, discoveryMobile, desktop, laptop, laptop720, compact, wide, seamDesktop, marketAudit, compatibilityEntries, publicRoutes, touch1023, mobile430, mobile393, mobile390, mobile375, mobile360, v2BrowserEvidence, exploratoryTouch }, null, 2)
   );
   console.log(`Terminal active discovery product acceptance passed: ${JSON.stringify(productAcceptanceEvidence)}`);
+  }
   }
 } finally {
   await browser.close();

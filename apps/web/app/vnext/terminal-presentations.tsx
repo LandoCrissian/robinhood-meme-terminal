@@ -9,6 +9,7 @@ import {
   VNEXT_MARKET_DIRECTORY_VIEWS,
   vNextRwaClassificationLabel,
   type VNextDirectoryMarket,
+  type VNextExecutionUiState,
   type VNextMarketDirectoryView,
   type VNextSelectedMarketExecutionState
 } from "../../lib/vnext/market-directory";
@@ -46,6 +47,7 @@ export type TerminalPresentationProps = {
   hasMoreDirectoryMarkets: boolean;
   selected?: VNextDirectoryMarket;
   selectedExecutionState: VNextSelectedMarketExecutionState;
+  executionUiState: VNextExecutionUiState;
   selectedAsset?: AssetMetadata;
   identityStatus: IdentityStatus;
   walletAssets: VNextDetectedWalletAsset[];
@@ -236,6 +238,7 @@ function TradeComposer(props: TerminalPresentationProps) {
     onContinueTrading={props.onContinueTrading}
     sideRequest={props.tradeSideRequest}
     executionState={props.selectedExecutionState}
+    executionUiState={props.executionUiState}
   />;
 }
 
@@ -294,7 +297,7 @@ function DesktopAsset(props: TerminalPresentationProps) {
     <div className="rmtDesktopWorkstation">
       <CompactMarketNavigator {...props} />
       <section className="rmtDesktopAsset">
-        {props.selected ? <VNextAssetWorkspace presentation="desktop" directoryMarket={props.selected} identityStatus={props.identityStatus} walletAssets={props.walletAssets} executionState={props.selectedExecutionState} onTradeSide={requestTrade} /> : <div className="rmtEmptyWorkspace"><strong>Select a market</strong><span>RMT does not invent asset or route data.</span></div>}
+        {props.selected ? <VNextAssetWorkspace presentation="desktop" directoryMarket={props.selected} identityStatus={props.identityStatus} walletAssets={props.walletAssets} executionState={props.selectedExecutionState} executionUiState={props.executionUiState} onTradeSide={requestTrade} /> : <div className="rmtEmptyWorkspace"><strong>Select a market</strong><span>RMT does not invent asset or route data.</span></div>}
       </section>
       <aside className="rmtDesktopExecution" aria-label="Persistent verified execution"><TradeComposer {...props} /></aside>
     </div>
@@ -363,7 +366,7 @@ function MobileMarkets(props: TerminalPresentationProps) {
 function MobileAsset(props: TerminalPresentationProps) {
   return <section className="rmtMobileAssetView" id="rmt-mobile-asset">
     <div className="rmtMobileAssetBack"><button type="button" onClick={props.onShowMarkets}>← Markets</button><span>{props.selected?.symbol ?? "Asset"}</span></div>
-    {props.selected ? <VNextAssetWorkspace presentation="mobile" directoryMarket={props.selected} identityStatus={props.identityStatus} walletAssets={props.walletAssets} executionState={props.selectedExecutionState} onTradeSide={props.onRequestTradeSide} /> : <div className="rmtEmptyWorkspace"><strong>Select a market</strong><span>Live market intelligence will appear here.</span></div>}
+    {props.selected ? <VNextAssetWorkspace presentation="mobile" directoryMarket={props.selected} identityStatus={props.identityStatus} walletAssets={props.walletAssets} executionState={props.selectedExecutionState} executionUiState={props.executionUiState} onTradeSide={props.onRequestTradeSide} /> : <div className="rmtEmptyWorkspace"><strong>Select a market</strong><span>Live market intelligence will appear here.</span></div>}
   </section>;
 }
 
@@ -449,20 +452,20 @@ export function MobileTerminal(props: TerminalPresentationProps) {
       : props.context === "portfolio" ? <MobilePortfolio {...props} />
       : props.context === "distribution" ? <MobileDistribution {...props} />
       : <MobileAsset {...props} />}
-    {props.context === "asset" && props.selected ? <nav className={`rmtMobileTradeDock${props.selectedExecutionState === "stock-token-view-only" ? " isViewOnly" : ""}`} aria-label={props.selectedExecutionState === "stock-token-view-only" ? `${props.selected.symbol} execution policy` : `Trade ${props.selected.symbol}`}>
-      {props.selectedExecutionState === "stock-token-view-only" ? <>
+    {props.context === "asset" && props.selected ? <nav className={`rmtMobileTradeDock${props.executionUiState === "stock-token-view-only" ? " isViewOnly" : ""}`} aria-label={props.executionUiState === "stock-token-view-only" ? `${props.selected.symbol} execution policy` : props.executionUiState === "preview-only" ? `Preview ${props.selected.symbol} routes` : `Trade ${props.selected.symbol}`}>
+      {props.executionUiState === "stock-token-view-only" ? <>
         <button type="button" className="isViewOnly" disabled aria-describedby="rmt-stock-token-view-only">View only</button>
         <span className="vnSrOnly" id="rmt-stock-token-view-only">Official Robinhood Stock Tokens are view-only in RMT until jurisdiction controls are available.</span>
       </> : <>
-        <button type="button" className="isBuy" onClick={() => openTrade("buy")}>Buy</button>
-        <button type="button" className="isSell" disabled={!canSell} aria-describedby={!canSell ? "rmt-sell-unavailable" : undefined} onClick={() => openTrade("sell")}>Sell</button>
+        <button type="button" className="isBuy" onClick={() => openTrade("buy")}>{props.executionUiState === "preview-only" ? "Buy quote" : "Buy"}</button>
+        <button type="button" className="isSell" disabled={!canSell} aria-describedby={!canSell ? "rmt-sell-unavailable" : undefined} onClick={() => openTrade("sell")}>{props.executionUiState === "preview-only" ? "Sell quote" : "Sell"}</button>
         {!canSell ? <span className="vnSrOnly" id="rmt-sell-unavailable">No confirmed balance available to sell.</span> : null}
       </>}
     </nav> : null}
     <div className={`rmtMobileSheetLayer${props.tradeOpen ? " isOpen" : ""}`} aria-hidden={!props.tradeOpen}>
       <button className="rmtMobileSheetBackdrop" type="button" aria-label="Close trade sheet" tabIndex={props.tradeOpen ? 0 : -1} onClick={closeSheet} />
-      <div className="rmtMobileTradeSheet" ref={sheet} role="dialog" aria-modal="true" aria-label={props.selected ? `Trade ${props.selected.symbol}` : "Trade selected asset"} onKeyDown={preventEscapePropagation}>
-        <header><span>Verified trade</span><button type="button" aria-label="Close trade sheet" onClick={closeSheet}>×</button></header>
+      <div className="rmtMobileTradeSheet" ref={sheet} role="dialog" aria-modal="true" aria-label={props.selected ? `${props.executionUiState === "preview-only" ? "Preview" : "Trade"} ${props.selected.symbol}` : "Trade selected asset"} onKeyDown={preventEscapePropagation}>
+        <header><span>{props.executionUiState === "preview-only" ? "Trade preview" : "Verified trade"}</span><button type="button" aria-label="Close trade sheet" onClick={closeSheet}>×</button></header>
         <div className="rmtMobileTradeSheetScroll"><TradeComposer {...props} /></div>
       </div>
     </div>

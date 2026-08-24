@@ -12,7 +12,7 @@ import { parseVNextPreSignEvidence, type VNextPreSignEvidence } from "../../lib/
 import { postApprovalVerificationOutcome, resolvedVNextExecutionOutcome } from "../../lib/vnext/post-approval";
 import { parseVNextAuthorizationBundle, type VNextAuthorizationPlan } from "../../lib/vnext/authorization-plan";
 import { cachedVNextQuoteForRequest, isVNextQuoteReusableForTrade, VNEXT_BACKGROUND_QUOTE_DEBOUNCE_MS, VNEXT_BACKGROUND_QUOTE_REFRESH_MS, type VNextCachedQuote } from "../../lib/vnext/background-quote";
-import type { VNextSelectedMarketExecutionState } from "../../lib/vnext/market-directory";
+import type { VNextExecutionUiState, VNextSelectedMarketExecutionState } from "../../lib/vnext/market-directory";
 import {
   ROBINHOOD_ETH,
   ROBINHOOD_MAINNET_CHAIN_ID,
@@ -61,7 +61,7 @@ const DEFAULT_BUY_AMOUNT = "25";
 const DEFAULT_NATIVE_BUY_AMOUNT = "0.0005";
 const NATIVE_GAS_RESERVE_ATOMIC = 100_000_000_000_000n;
 
-export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, walletAssets, nativeBalance, executionRecord, onContinueTrading, sideRequest, executionState }: {
+export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, walletAssets, nativeBalance, executionRecord, onContinueTrading, sideRequest, executionState, executionUiState }: {
   marketName: string;
   marketSymbol: string;
   marketAsset?: AssetMetadata;
@@ -71,6 +71,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
   onContinueTrading: () => void;
   sideRequest?: { side: TradeSide; nonce: number };
   executionState: VNextSelectedMarketExecutionState;
+  executionUiState: VNextExecutionUiState;
 }) {
   const [side, setSide] = useState<TradeSide>("buy");
   const [amount, setAmount] = useState(DEFAULT_BUY_AMOUNT);
@@ -118,7 +119,8 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
   const { address, chainId, isConnected } = useAccount();
   const identity = useRmtIdentity();
   const onRobinhood = chainId === ROBINHOOD_MAINNET_CHAIN_ID;
-  const authorizationEnabled = process.env.NEXT_PUBLIC_RMT_VNEXT_AUTHORIZATION_ENABLED === "true";
+  const authorizationEnabled = executionUiState === "live-execution";
+  const previewOnly = executionUiState === "preview-only";
   const stockTokenViewOnly = executionState === "stock-token-view-only";
   const confirmedUsdgBalance = walletAssets.find((asset) => (
     asset.address.toLowerCase() === ROBINHOOD_USDG_ADDRESS.toLowerCase()
@@ -522,6 +524,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
   ]);
 
   const requestStrictVerification = async (quoteResponse: VNextQuoteResponse) => {
+    if (!authorizationEnabled) throw new Error("Wallet execution remains disabled in this build.");
     if (stockTokenViewOnly) throw new Error("Official Robinhood Stock Tokens are view-only in RMT until jurisdiction controls are available.");
     const selectedRoute = selectVNextRoute(quoteResponse.attempts);
     const winningQuote = selectedRoute.verificationCandidate;
@@ -611,7 +614,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
   };
 
   const startTrade = async () => {
-    if (stockTokenViewOnly || !draft.intent || amountExceedsBalance) return;
+    if (!authorizationEnabled || stockTokenViewOnly || !draft.intent || amountExceedsBalance) return;
     backgroundQuoteEpoch.current += 1;
     const cachedQuoteForTrade = cachedVNextQuoteForRequest(lastReadyQuote.current, requestKey);
     const reusableQuote = isVNextQuoteReusableForTrade(cachedQuoteForTrade, Date.now())
@@ -642,10 +645,6 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
         });
         return;
       }
-      if (!authorizationEnabled) {
-        setAuthorizationState({ state: "error", message: "Wallet execution remains disabled in this build." });
-        return;
-      }
       stage = "authorization";
       const authorization = await requestAuthorizationPlan(freshEvidence);
       lastReadyVerification.current = authorization.evidence;
@@ -667,7 +666,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
   };
 
   const continueAfterApproval = async () => {
-    if (stockTokenViewOnly) return;
+    if (!authorizationEnabled || stockTokenViewOnly) return;
     backgroundQuoteEpoch.current += 1;
     setPostExecutionState({ state: "refreshing", message: "Approval confirmed. RMT is refreshing and verifying the swap automatically…" });
     setQuoteState({ state: "loading" });
@@ -697,14 +696,15 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
   };
 
   useEffect(() => {
-    if (stockTokenViewOnly || !identity.authenticated || !address || identity.activeWalletKind !== "external" || !draft.intent || !pendingTradeAfterLogin.current) return;
+    if (!authorizationEnabled || stockTokenViewOnly || !identity.authenticated || !address || identity.activeWalletKind !== "external" || !draft.intent || !pendingTradeAfterLogin.current) return;
     pendingTradeAfterLogin.current = false;
     void startTrade();
-  }, [address, draft.intent, identity.activeWalletKind, identity.authenticated, stockTokenViewOnly]);
+  }, [address, authorizationEnabled, draft.intent, identity.activeWalletKind, identity.authenticated, stockTokenViewOnly]);
 
   useEffect(() => {
     if (
-      stockTokenViewOnly
+      !authorizationEnabled
+      || stockTokenViewOnly
       ||
       postExecutionState.state !== "approval_confirmed"
       || !executionRecord
@@ -713,7 +713,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
     ) return;
     continuedApproval.current = executionRecord.txHash;
     void continueAfterApproval();
-  }, [executionRecord, postExecutionState.state, stockTokenViewOnly]);
+  }, [authorizationEnabled, executionRecord, postExecutionState.state, stockTokenViewOnly]);
 
   const verificationLabel = visibleVerification
     ? visibleVerification.status === "verified"
@@ -752,7 +752,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
   const walletPlanActive = authorizationState.state === "ready";
   const transactionPending = executionRecord?.state === "submitted";
   const triggerPrimaryAction = () => {
-    if (stockTokenViewOnly) return;
+    if (!authorizationEnabled || stockTokenViewOnly) return;
     if (!identity.enabled) return;
     if (!identity.authenticated || !address || identity.activeWalletKind !== "external") {
       pendingTradeAfterLogin.current = true;
@@ -781,12 +781,12 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
   return (
     <aside className="vnTradePanel" id="vnext-trade-ticket" aria-labelledby="vn-trade-heading">
       <div className="vnTradeHeader">
-        <div><span className="vnEyebrow">{stockTokenViewOnly ? "Market context" : "Trade"}</span><h2 id="vn-trade-heading">{marketSymbol === "—" ? "Select an asset" : stockTokenViewOnly ? `View ${marketSymbol}` : `Trade ${marketSymbol}`}</h2><small>{marketName}</small></div>
+        <div><span className="vnEyebrow">{stockTokenViewOnly ? "Market context" : previewOnly ? "Route preview" : "Trade"}</span><h2 id="vn-trade-heading">{marketSymbol === "—" ? "Select an asset" : stockTokenViewOnly ? `View ${marketSymbol}` : previewOnly ? `Preview ${marketSymbol}` : `Trade ${marketSymbol}`}</h2><small>{marketName}</small></div>
         <span className={`vnFixtureBadge${stockTokenViewOnly ? " isViewOnly" : ""}`}>{stockTokenViewOnly ? "View only" : authorizationEnabled ? "Live trading" : "Preview mode"}</span>
       </div>
       <div className="vnSideTabs" role="tablist" aria-label="Trade side">
-        <button className={side === "buy" ? "isActive" : ""} onClick={() => chooseSide("buy")} type="button" role="tab" aria-selected={side === "buy"}>{stockTokenViewOnly ? "Buy quote" : "Buy"}</button>
-        <button className={side === "sell" ? "isActive" : ""} onClick={() => chooseSide("sell")} type="button" role="tab" aria-selected={side === "sell"}>{stockTokenViewOnly ? "Sell quote" : "Sell"}</button>
+        <button className={side === "buy" ? "isActive" : ""} onClick={() => chooseSide("buy")} type="button" role="tab" aria-selected={side === "buy"}>{stockTokenViewOnly || previewOnly ? "Buy quote" : "Buy"}</button>
+        <button className={side === "sell" ? "isActive" : ""} onClick={() => chooseSide("sell")} type="button" role="tab" aria-selected={side === "sell"}>{stockTokenViewOnly || previewOnly ? "Sell quote" : "Sell"}</button>
       </div>
       <div className="vnAvailableLine"><span>{side === "buy" ? "Pay with" : "Receive"}</span><strong>{pair ? `${inputSymbol} → ${outputSymbol}` : "Verified pair required"}</strong></div>
       <label className="vnAmountField">
@@ -868,11 +868,13 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
       <button
         className="vnReviewButton"
         type="button"
-        disabled={stockTokenViewOnly || flowBusy || walletPlanActive || transactionPending || amountExceedsBalance || !identity.enabled || !identity.ready || Boolean(identity.authenticated && address && identity.activeWalletKind === "external" && !draft.intent)}
-        aria-describedby={stockTokenViewOnly ? "vn-stock-token-execution-policy" : undefined}
+        disabled={!authorizationEnabled || stockTokenViewOnly || flowBusy || walletPlanActive || transactionPending || amountExceedsBalance || !identity.enabled || !identity.ready || Boolean(identity.authenticated && address && identity.activeWalletKind === "external" && !draft.intent)}
+        aria-describedby={stockTokenViewOnly ? "vn-stock-token-execution-policy" : previewOnly ? "vn-preview-execution-policy" : undefined}
         onClick={triggerPrimaryAction}
       >{stockTokenViewOnly
         ? "View only"
+        : previewOnly
+          ? "Trading activation pending"
         : postExecutionState.state === "refreshing"
         ? "Preparing verified swap…"
         : transactionPending
@@ -887,9 +889,11 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
               ? `${side === "buy" ? "Connect & buy" : "Connect & sell"} ${marketSymbol}`
             : !identity.authenticated
               ? `${side === "buy" ? "Connect & buy" : "Connect & sell"} ${marketSymbol}`
-              : `${authorizationEnabled ? "" : "Preview "}${side === "buy" ? "Buy" : "Sell"} ${marketSymbol}`}</button>
-      <p className="vnTradeSafety" id={stockTokenViewOnly ? "vn-stock-token-execution-policy" : undefined}>{stockTokenViewOnly
+              : `${side === "buy" ? "Buy" : "Sell"} ${marketSymbol}`}</button>
+      <p className="vnTradeSafety" id={stockTokenViewOnly ? "vn-stock-token-execution-policy" : previewOnly ? "vn-preview-execution-policy" : undefined}>{stockTokenViewOnly
         ? "Official Robinhood Stock Tokens are view-only in RMT until jurisdiction controls are available. Indicative market and route information remains available."
+        : previewOnly
+          ? "Preview mode shows informational routes only. RMT will not connect your wallet or prepare a transaction until verified execution is activated."
         : identity.enabled
           ? "One tap checks the best route and opens the final wallet confirmation."
         : "Trading identity is not configured in this environment. RMT will not request a quote or prepare a wallet transaction."}</p>
