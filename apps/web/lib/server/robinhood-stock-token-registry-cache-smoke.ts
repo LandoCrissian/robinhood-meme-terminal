@@ -77,10 +77,17 @@ async function main() {
   assert.equal(networkCalls, 2);
 
   now += 2;
+  mode = "failure";
+  // NEW_STOCK is absent from the expired snapshot. A failed refresh must not
+  // classify that unseen address as an ordinary executable asset.
+  assert.equal(await status(() => requireStockTokenExecutionEligible(newStock, cache.readForExecution)), 503);
+  assert.equal(networkCalls, 3);
+
+  mode = "success";
   liveSnapshot = complete([knownStock, newStock]);
   assert.equal(await status(() => requireStockTokenExecutionEligible(ordinaryAsset, cache.readForExecution)), 200);
   assert.equal(await status(() => requireVNextStockTokenExecutionEligible({ inputAsset: ordinaryAsset, outputAsset: newStock }, cache.readForExecution)), 451);
-  assert.equal(networkCalls, 3);
+  assert.equal(networkCalls, 4);
 
   now += ttlMs + 1;
   mode = "failure";
@@ -88,21 +95,21 @@ async function main() {
   assert.equal(await status(() => requireStockTokenExecutionEligible(knownStock, cache.readForExecution)), 503);
   assert.equal(await status(() => requireVNextStockTokenExecutionEligible({ inputAsset: ordinaryAsset, outputAsset: newStock }, cache.readForExecution)), 503);
   const callsAfterThreeFailedRefreshes = networkCalls;
-  assert.equal(callsAfterThreeFailedRefreshes, 6);
+  assert.equal(callsAfterThreeFailedRefreshes, 7);
 
   const stalePresentation = await cache.readForPresentation();
   assert.equal(stalePresentation.coverage, "stale");
   assert.ok(stalePresentation.assetsByAddress.has(newStock.toLowerCase()));
-  assert.equal(networkCalls, 7);
+  assert.equal(networkCalls, 8);
 
   // A failed refresh did not extend the TTL: the very next execution read retries.
   assert.equal(await status(() => requireStockTokenExecutionEligible(ordinaryAsset, cache.readForExecution)), 503);
-  assert.equal(networkCalls, 8);
+  assert.equal(networkCalls, 9);
 
   mode = "success";
   liveSnapshot = complete([knownStock, newStock]);
   assert.equal(await status(() => requireStockTokenExecutionEligible(newStock, cache.readForExecution)), 451);
-  assert.equal(networkCalls, 9);
+  assert.equal(networkCalls, 10);
 
   const oneReadSnapshots: RobinhoodStockRegistrySnapshot[] = [];
   const oneRead: RobinhoodStockRegistryReader = async () => {
