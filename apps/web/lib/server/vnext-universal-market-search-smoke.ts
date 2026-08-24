@@ -18,6 +18,7 @@ const stonkBrokerAddress = "0xe934e36a439c94017b64a3fece66af12099abf50";
 const sameSymbolAddressA = "0x1111111111111111111111111111111111111111";
 const sameSymbolAddressB = "0x2222222222222222222222222222222222222222";
 const unrelatedAddress = "0x3333333333333333333333333333333333333333";
+const tokenOnlyAddress = "0x6666666666666666666666666666666666666666";
 const v2PoolAddress = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 const v3PoolAddress = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
 const v4PoolId = `0x${"c".repeat(64)}`;
@@ -137,6 +138,8 @@ const identities = new Map<string, { address: string; name: string; symbol: stri
   [sameSymbolAddressA, { address: sameSymbolAddressA, name: "Same Asset", symbol: "SAME", decimals: 18 }],
   [sameSymbolAddressB, { address: sameSymbolAddressB, name: "Same Asset", symbol: "SAME", decimals: 6 }],
   [unrelatedAddress, { address: unrelatedAddress, name: "Unrelated", symbol: "OTHER", decimals: 18 }],
+  [tokenOnlyAddress, { address: tokenOnlyAddress, name: "Identity Only", symbol: "IDENTITY", decimals: 18 }],
+  [v2PoolAddress, { address: v2PoolAddress, name: "Uniswap V2 LP", symbol: "UNI-V2", decimals: 18 }],
   [nativeV4TokenAddress, {
     address: nativeV4TokenAddress,
     name: "Native Pair Token",
@@ -232,12 +235,49 @@ function providerPair(
 function providerFetch(pairs: unknown[]) {
   return async (input: string | URL, init?: RequestInit) => {
     const url = new URL(input.toString());
-    assert.equal(url.origin + url.pathname, "https://api.dexscreener.com/latest/dex/search");
     assert.ok(url.searchParams.has("q"));
     assert.equal(init?.method, "GET");
     assert.equal(new Headers(init?.headers).get("Accept"), "application/json");
     assert.equal(init?.cache, "no-store");
-    return jsonResponse({ pairs });
+    if (url.origin + url.pathname === "https://api.dexscreener.com/latest/dex/search") {
+      return jsonResponse({ pairs });
+    }
+    assert.equal(url.origin + url.pathname, "https://robinhoodchain.blockscout.com/api/v2/search");
+    return jsonResponse({ items: [] });
+  };
+}
+
+function blockscoutCandidate(
+  address: unknown,
+  additions: Record<string, unknown> = {}
+) {
+  return {
+    type: "token",
+    token_type: "ERC-20",
+    address_hash: address,
+    name: "PROVIDER MUST NOT WIN",
+    symbol: "FAKE",
+    ...additions
+  };
+}
+
+function candidateFetch(input: {
+  pairs?: unknown[];
+  items?: unknown[];
+  dexStatus?: number;
+  blockscoutStatus?: number;
+}) {
+  return async (requested: string | URL, init?: RequestInit) => {
+    const url = new URL(requested.toString());
+    assert.ok(url.searchParams.has("q"));
+    assert.equal(init?.method, "GET");
+    assert.equal(new Headers(init?.headers).get("Accept"), "application/json");
+    assert.equal(init?.cache, "no-store");
+    if (url.origin + url.pathname === "https://api.dexscreener.com/latest/dex/search") {
+      return jsonResponse({ pairs: input.pairs ?? [] }, input.dexStatus ?? 200);
+    }
+    assert.equal(url.origin + url.pathname, "https://robinhoodchain.blockscout.com/api/v2/search");
+    return jsonResponse({ items: input.items ?? [] }, input.blockscoutStatus ?? 200);
   };
 }
 
@@ -302,6 +342,11 @@ async function assertExactSearchesNeverUseProvider() {
     assert.equal(result.results.at(-1)?.address.toLowerCase(), expectedVersion === 2
       ? ROBINHOOD_WETH_ADDRESS.toLowerCase()
       : ROBINHOOD_USDG_ADDRESS.toLowerCase());
+    assert.equal(
+      result.results.some((item) => item.address === poolKey),
+      false,
+      "A canonical pool address must not be misclassified as its ERC-20-compatible LP token"
+    );
   }
 
   const v4 = await searchVNextUniversalMarkets(v4PoolId, exactDependencies);
@@ -311,6 +356,18 @@ async function assertExactSearchesNeverUseProvider() {
   assert.equal(v4.results[0]?.markets[0]?.poolAddress, null);
   assert.equal(v4.results[0]?.markets[0]?.poolKey, v4PoolId);
   assert.equal(providerCalls, 0);
+}
+
+async function assertTokenOnlyExactIdentityIsFound() {
+  const result = await searchVNextUniversalMarkets(tokenOnlyAddress, {
+    readInventory: async () => verifiedInventory([]),
+    readIdentity: identityReader
+  });
+  assert.equal(result.status, "found");
+  assert.equal(result.results.length, 1);
+  assert.equal(result.results[0]?.address, tokenOnlyAddress);
+  assert.equal(result.results[0]?.matchedBy, "token");
+  assert.deepEqual(result.results[0]?.markets, []);
 }
 
 async function assertNativeCurrencyV4Searches() {
@@ -416,7 +473,8 @@ async function assertFailureSemantics() {
       throw new Error("provider must not run");
     }
   });
-  assert.equal(exactUnavailable.status, "inventory_unavailable");
+  assert.equal(exactUnavailable.status, "found");
+  assert.deepEqual(exactUnavailable.results[0]?.markets, []);
 
   let providerFailureCalls = 0;
   const providerUnavailable = await searchVNextUniversalMarkets("STONKBROKER", {
@@ -427,7 +485,7 @@ async function assertFailureSemantics() {
     }
   });
   assert.equal(providerUnavailable.status, "candidate_discovery_unavailable");
-  assert.equal(providerFailureCalls, 1);
+  assert.equal(providerFailureCalls, 2);
 
   const malformedProvider = await searchVNextUniversalMarkets("STONKBROKER", {
     ...dependencies(),
@@ -501,7 +559,7 @@ async function assertIncompleteCoverageSemantics() {
   assert.equal(incompleteText.results[0]?.address, stonkBrokerAddress);
   assert.equal(incompleteText.results[0]?.markets.some((market) => market.poolKey === v4PoolId), true);
   assert.equal(incompleteText.results[0]?.markets.find((market) => market.poolKey === v4PoolId)?.poolAddress, null);
-  assert.equal(providerCalls, 1);
+  assert.equal(providerCalls, 2);
   assert.equal(identityCalls, 2, "Both canonically indexed sides of the provider pair may receive identity verification");
 
   let absentIdentityCalls = 0;
@@ -514,8 +572,8 @@ async function assertIncompleteCoverageSemantics() {
     fetch: providerFetch([providerPair(absentAddress, "not-an-address")]),
     timeoutMs: 500
   });
-  assert.equal(absentTextIncomplete.status, "inventory_unavailable");
-  assert.equal(absentIdentityCalls, 0, "Provider-only candidates must not trigger identity authority without canonical evidence");
+  assert.equal(absentTextIncomplete.status, "not_found");
+  assert.equal(absentIdentityCalls, 1, "Candidate addresses must be checked against exact onchain identity independently of market evidence");
 
   const absentTextComplete = await searchVNextUniversalMarkets("MISSING", {
     readInventory: async (query) => query.token === undefined
@@ -565,7 +623,107 @@ async function assertProviderWorkIsBounded() {
     timeoutMs: 500
   });
   assert.equal(result.status, "not_found");
-  assert.equal(inventoryCalls, 13);
+  assert.equal(inventoryCalls, 12);
+}
+
+async function assertChainFilteringPrecedesCandidateBound() {
+  const nonRobinhoodPairs = Array.from({ length: 35 }, (_, index) =>
+    providerPair(
+      `0x${(index + 1_000).toString(16).padStart(40, "0")}`,
+      ROBINHOOD_WETH_ADDRESS,
+      "ethereum"
+    )
+  );
+  const result = await searchVNextUniversalMarkets("STONKBROKER", {
+    ...dependencies(),
+    fetch: candidateFetch({
+      pairs: [...nonRobinhoodPairs, providerPair(stonkBrokerAddress)]
+    })
+  });
+  assert.equal(result.status, "found");
+  assert.equal(result.results.some(({ address }) => address === stonkBrokerAddress), true);
+}
+
+async function assertIndependentCandidateSources() {
+  const unrelatedExplorerCandidates = Array.from({ length: 25 }, (_, index) =>
+    blockscoutCandidate(
+      `0x${(index + 2_000).toString(16).padStart(40, "0")}`,
+      { name: `Other ${index}`, symbol: `OTHER${index}` }
+    )
+  );
+  const blockscoutOnly = await searchVNextUniversalMarkets("IDENTITY", {
+    readInventory: async () => verifiedInventory([]),
+    readIdentity: identityReader,
+    fetch: candidateFetch({
+      pairs: [],
+      items: [
+        ...unrelatedExplorerCandidates,
+        blockscoutCandidate(tokenOnlyAddress, {
+          name: "Identity Only",
+          symbol: "IDENTITY"
+        })
+      ]
+    }),
+    timeoutMs: 500
+  });
+  assert.equal(blockscoutOnly.status, "found");
+  assert.equal(blockscoutOnly.results[0]?.address, tokenOnlyAddress);
+  assert.deepEqual(blockscoutOnly.results[0]?.markets, []);
+
+  const dexScreenerOnly = await searchVNextUniversalMarkets("IDENTITY", {
+    readInventory: async () => verifiedInventory([]),
+    readIdentity: identityReader,
+    fetch: candidateFetch({ pairs: [providerPair(tokenOnlyAddress)], items: [] }),
+    timeoutMs: 500
+  });
+  assert.equal(dexScreenerOnly.status, "found");
+  assert.equal(dexScreenerOnly.results[0]?.address, tokenOnlyAddress);
+
+  const dexScreenerDown = await searchVNextUniversalMarkets("IDENTITY", {
+    readInventory: async () => verifiedInventory([]),
+    readIdentity: identityReader,
+    fetch: candidateFetch({
+      dexStatus: 503,
+      items: [blockscoutCandidate(tokenOnlyAddress)]
+    }),
+    timeoutMs: 500
+  });
+  assert.equal(dexScreenerDown.status, "found");
+
+  const blockscoutDown = await searchVNextUniversalMarkets("IDENTITY", {
+    readInventory: async () => verifiedInventory([]),
+    readIdentity: identityReader,
+    fetch: candidateFetch({
+      pairs: [providerPair(tokenOnlyAddress)],
+      blockscoutStatus: 503
+    }),
+    timeoutMs: 500
+  });
+  assert.equal(blockscoutDown.status, "found");
+
+  const bothDown = await searchVNextUniversalMarkets("IDENTITY", {
+    readInventory: async () => verifiedInventory([]),
+    readIdentity: identityReader,
+    fetch: candidateFetch({ dexStatus: 503, blockscoutStatus: 503 }),
+    timeoutMs: 500
+  });
+  assert.equal(bothDown.status, "candidate_discovery_unavailable");
+}
+
+async function assertProviderIdentityClaimsNeverWin() {
+  const result = await searchVNextUniversalMarkets("STONKBROKER", {
+    readInventory: async () => verifiedInventory([]),
+    readIdentity: identityReader,
+    fetch: candidateFetch({
+      items: [blockscoutCandidate(unrelatedAddress, {
+        name: "StonkBroker",
+        symbol: "STONKBROKER"
+      })]
+    }),
+    timeoutMs: 500
+  });
+  assert.equal(result.status, "not_found");
+  assert.deepEqual(result.results, []);
 }
 
 async function assertTimeoutIsUnavailable() {
@@ -582,6 +740,7 @@ async function assertTimeoutIsUnavailable() {
 async function main() {
   await assertStonkBrokerTextSearches();
   await assertExactSearchesNeverUseProvider();
+  await assertTokenOnlyExactIdentityIsFound();
   await assertNativeCurrencyV4Searches();
   await assertInvalidExactIdentitiesFailClosed();
   await assertSameIdentityContractsRemainDistinct();
@@ -589,6 +748,9 @@ async function main() {
   await assertFailureSemantics();
   await assertIncompleteCoverageSemantics();
   await assertProviderWorkIsBounded();
+  await assertChainFilteringPrecedesCandidateBound();
+  await assertIndependentCandidateSources();
+  await assertProviderIdentityClaimsNeverWin();
   await assertTimeoutIsUnavailable();
 
   console.log(

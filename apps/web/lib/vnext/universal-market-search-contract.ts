@@ -221,14 +221,16 @@ export function parseVNextUniversalMarketSearchResult(value: unknown): VNextUniv
     const item = record(value);
     const tokenAddress = address(item?.address);
     const matchedBy = item?.matchedBy;
+    const name = typeof item?.name === "string" ? item.name.trim() : "";
+    const symbol = typeof item?.symbol === "string" ? item.symbol.trim() : "";
     const allowedMatches: VNextUniversalMarketSearchMatchedBy[] = ["token", "pool", "pool-id", "symbol", "name", "normalized-symbol", "normalized-name", "plural-alias"];
-    if (!item || !tokenAddress || typeof item.name !== "string" || item.name.length > 160 || typeof item.symbol !== "string" || item.symbol.length > 64 || !Number.isSafeInteger(item.decimals) || Number(item.decimals) < 0 || Number(item.decimals) > 255 || typeof matchedBy !== "string" || !allowedMatches.includes(matchedBy as VNextUniversalMarketSearchMatchedBy) || !Array.isArray(item.markets) || item.markets.length === 0 || item.markets.length > 500) return [];
+    if (!item || !tokenAddress || !name || name.length > 80 || !symbol || symbol.length > 20 || /[\u0000-\u001f\u007f]/.test(name) || /[\u0000-\u001f\u007f]/.test(symbol) || !Number.isSafeInteger(item.decimals) || Number(item.decimals) < 0 || Number(item.decimals) > 36 || typeof matchedBy !== "string" || !allowedMatches.includes(matchedBy as VNextUniversalMarketSearchMatchedBy) || !Array.isArray(item.markets) || item.markets.length > 500 || ((matchedBy === "pool" || matchedBy === "pool-id") && item.markets.length === 0)) return [];
     const markets = item.markets.map(parseVNextUniversalMarketSearchPool);
     if (markets.some((market) => market === null)) return [];
     return [{
       address: tokenAddress,
-      name: item.name.trim().slice(0, 160),
-      symbol: item.symbol.trim().slice(0, 64),
+      name,
+      symbol,
       decimals: Number(item.decimals),
       matchedBy: matchedBy as VNextUniversalMarketSearchMatchedBy,
       markets: markets as VNextUniversalMarketSearchPool[]

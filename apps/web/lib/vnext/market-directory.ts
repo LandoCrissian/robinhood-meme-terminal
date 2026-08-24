@@ -87,16 +87,18 @@ export type VNextMarketState = {
 
 export type VNextRwaRelationship = "canonical-stock-token" | "paired-market-asset";
 
-export type VNextSelectedMarketExecutionState = "normal" | "stock-token-view-only";
+export type VNextSelectedMarketExecutionState = "normal" | "stock-token-view-only" | "asset-only";
 
-export type VNextExecutionUiState = "live-execution" | "preview-only" | "stock-token-view-only";
+export type VNextExecutionUiState = "live-execution" | "preview-only" | "stock-token-view-only" | "asset-only";
 
 export function vNextSelectedMarketExecutionState(
-  market: Pick<VNextDirectoryMarket, "rwaRelationship"> | undefined
+  market: VNextDirectoryMarket | undefined
 ): VNextSelectedMarketExecutionState {
-  return market?.rwaRelationship === "canonical-stock-token"
-    ? "stock-token-view-only"
-    : "normal";
+  if (market?.rwaRelationship === "canonical-stock-token") return "stock-token-view-only";
+  if (market && isVNextDirectoryMarketSelectable(market) && deriveVNextMarketState(market).market === "none") {
+    return "asset-only";
+  }
+  return "normal";
 }
 
 export function vNextExecutionUiState(
@@ -104,6 +106,7 @@ export function vNextExecutionUiState(
   authorizationEnabled: boolean
 ): VNextExecutionUiState {
   if (executionState === "stock-token-view-only") return "stock-token-view-only";
+  if (executionState === "asset-only") return "asset-only";
   return authorizationEnabled ? "live-execution" : "preview-only";
 }
 

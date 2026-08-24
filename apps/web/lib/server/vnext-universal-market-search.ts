@@ -26,13 +26,13 @@ export type {
 } from "../vnext/universal-market-search-contract";
 
 const DEX_SCREENER_SEARCH_URL = "https://api.dexscreener.com/latest/dex/search";
+const BLOCKSCOUT_SEARCH_URL = "https://robinhoodchain.blockscout.com/api/v2/search";
 const ROBINHOOD_CHAIN_SLUG = "robinhood";
 const DEFAULT_SEARCH_TIMEOUT_MS = 5_000;
 const MINIMUM_SEARCH_TIMEOUT_MS = 250;
 const MAXIMUM_SEARCH_TIMEOUT_MS = 10_000;
 const MAXIMUM_SEARCH_QUERY_LENGTH = 160;
 const MAXIMUM_PROVIDER_RESPONSE_BYTES = 1_000_000;
-const MAXIMUM_PROVIDER_PAIRS = 30;
 const MAXIMUM_CANDIDATE_TOKENS = 12;
 const MAXIMUM_RESULTS = 12;
 const INVENTORY_LIMIT = 100;
@@ -72,6 +72,15 @@ type CandidatePair = {
   chainId?: unknown;
   baseToken?: { address?: unknown };
   quoteToken?: { address?: unknown };
+};
+
+type BlockscoutCandidate = {
+  type?: unknown;
+  token_type?: unknown;
+  address_hash?: unknown;
+  address?: unknown;
+  name?: unknown;
+  symbol?: unknown;
 };
 
 type CandidateDiscoveryResult =
@@ -239,34 +248,43 @@ async function exactAddressSearch(
   address: string,
   dependencies: Required<Pick<VNextUniversalMarketSearchDependencies, "readInventory" | "readIdentity">>
 ): Promise<VNextUniversalMarketSearchResult> {
-  const [tokenInventory, poolInventory] = await Promise.all([
+  const [tokenInventoryRead, poolInventoryRead] = await Promise.allSettled([
     dependencies.readInventory({ token: address, limit: INVENTORY_LIMIT }),
     dependencies.readInventory({ poolKey: address, limit: INVENTORY_LIMIT })
   ]);
-  if (inventoryUnavailable(tokenInventory) || inventoryUnavailable(poolInventory)) {
-    return emptyResult(query, "token-or-pool-address", "inventory_unavailable");
-  }
+  const tokenInventory = tokenInventoryRead.status === "fulfilled"
+    ? tokenInventoryRead.value
+    : null;
+  const poolInventory = poolInventoryRead.status === "fulfilled"
+    ? poolInventoryRead.value
+    : null;
 
   const candidates = new Map<
     string,
     { markets: VNextCanonicalMarketInventoryPool[]; matchedBy: "token" | "pool" }
   >();
-  if (tokenInventory.pools.length > 0) {
-    candidates.set(address, { markets: tokenInventory.pools, matchedBy: "token" });
-  }
-  for (const market of poolInventory.pools) {
-    for (const tokenAddress of [market.token0, market.token1]) {
-      if (!isErc20IdentityCandidate(tokenAddress)) continue;
-      const current = candidates.get(tokenAddress);
-      candidates.set(tokenAddress, {
-        markets: mergeMarkets(current?.markets ?? [], [market]),
-        matchedBy: current?.matchedBy ?? "pool"
-      });
+  const canonicalPoolEvidence = poolInventory?.status === "verified_shadow"
+    ? poolInventory.pools
+    : [];
+  if (canonicalPoolEvidence.length > 0) {
+    for (const market of canonicalPoolEvidence) {
+      for (const tokenAddress of [market.token0, market.token1]) {
+        if (!isErc20IdentityCandidate(tokenAddress)) continue;
+        const current = candidates.get(tokenAddress);
+        candidates.set(tokenAddress, {
+          markets: mergeMarkets(current?.markets ?? [], [market]),
+          matchedBy: current?.matchedBy ?? "pool"
+        });
+      }
     }
+  } else {
+    const tokenMarkets = tokenInventory?.status === "verified_shadow"
+      ? tokenInventory.pools
+      : [];
+    candidates.set(address, { markets: tokenMarkets, matchedBy: "token" });
   }
 
-  const results = (
-    await Promise.all(
+  const identityReads = await Promise.allSettled(
       [...candidates.entries()].map(([candidate, evidence]) =>
         verifiedIdentityResult(
           candidate,
@@ -275,8 +293,9 @@ async function exactAddressSearch(
           dependencies.readIdentity
         )
       )
-    )
-  )
+  );
+  const results = identityReads
+    .flatMap((read) => read.status === "fulfilled" ? [read.value] : [])
     .filter((result): result is VNextUniversalMarketSearchResultItem => result !== null)
     .sort(
       (left, right) =>
@@ -285,7 +304,14 @@ async function exactAddressSearch(
     );
   if (
     results.length === 0 &&
-    (inventoryIncomplete(tokenInventory) || inventoryIncomplete(poolInventory))
+    (
+      tokenInventory === null ||
+      poolInventory === null ||
+      inventoryUnavailable(tokenInventory) ||
+      inventoryUnavailable(poolInventory) ||
+      inventoryIncomplete(tokenInventory) ||
+      inventoryIncomplete(poolInventory)
+    )
   ) {
     return emptyResult(query, "token-or-pool-address", "inventory_unavailable");
   }
@@ -378,57 +404,109 @@ async function discoverCandidates(
   fetchImplementation: SearchFetch,
   timeoutMs: number
 ): Promise<CandidateDiscoveryResult> {
-  const requestUrl = new URL(DEX_SCREENER_SEARCH_URL);
-  requestUrl.search = new URLSearchParams({ q: query }).toString();
-
-  let response: Response;
-  try {
-    response = await fetchWithTimeout(requestUrl, timeoutMs, fetchImplementation);
-  } catch {
-    return { status: "unavailable" };
-  }
-  if (!response.ok) return { status: "unavailable" };
-  const contentLength = Number(response.headers.get("content-length"));
-  if (
-    Number.isFinite(contentLength) &&
-    contentLength > MAXIMUM_PROVIDER_RESPONSE_BYTES
-  ) {
-    return { status: "unavailable" };
-  }
-
-  let body: unknown;
-  try {
-    const text = await response.text();
-    if (Buffer.byteLength(text, "utf8") > MAXIMUM_PROVIDER_RESPONSE_BYTES) {
-      return { status: "unavailable" };
+  const readBoundedJson = async (requestUrl: URL) => {
+    let response: Response;
+    try {
+      response = await fetchWithTimeout(requestUrl, timeoutMs, fetchImplementation);
+    } catch {
+      return null;
     }
-    body = JSON.parse(text);
-  } catch {
-    return { status: "unavailable" };
-  }
-  if (
-    typeof body !== "object" ||
-    body === null ||
-    !("pairs" in body) ||
-    !Array.isArray((body as { pairs: unknown }).pairs)
-  ) {
-    return { status: "unavailable" };
+    if (!response.ok) return null;
+    const contentLength = Number(response.headers.get("content-length"));
+    if (
+      Number.isFinite(contentLength) &&
+      contentLength > MAXIMUM_PROVIDER_RESPONSE_BYTES
+    ) {
+      return null;
+    }
+
+    try {
+      const text = await response.text();
+      if (Buffer.byteLength(text, "utf8") > MAXIMUM_PROVIDER_RESPONSE_BYTES) {
+        return null;
+      }
+      return JSON.parse(text) as unknown;
+    } catch {
+      return null;
+    }
+  };
+
+  const dexScreenerUrl = new URL(DEX_SCREENER_SEARCH_URL);
+  dexScreenerUrl.search = new URLSearchParams({ q: query }).toString();
+  const blockscoutUrl = new URL(BLOCKSCOUT_SEARCH_URL);
+  blockscoutUrl.search = new URLSearchParams({ q: query }).toString();
+  const [dexScreenerBody, blockscoutBody] = await Promise.all([
+    readBoundedJson(dexScreenerUrl),
+    readBoundedJson(blockscoutUrl)
+  ]);
+
+  const dexScreenerReady = typeof dexScreenerBody === "object" &&
+    dexScreenerBody !== null &&
+    "pairs" in dexScreenerBody &&
+    Array.isArray((dexScreenerBody as { pairs: unknown }).pairs);
+  const blockscoutReady = typeof blockscoutBody === "object" &&
+    blockscoutBody !== null &&
+    "items" in blockscoutBody &&
+    Array.isArray((blockscoutBody as { items: unknown }).items);
+  if (!dexScreenerReady && !blockscoutReady) return { status: "unavailable" };
+
+  const dexScreenerAddresses = new Set<string>();
+  if (dexScreenerReady) {
+    for (const rawPair of (dexScreenerBody as { pairs: unknown[] }).pairs) {
+      if (typeof rawPair !== "object" || rawPair === null) continue;
+      const pair = rawPair as CandidatePair;
+      if (pair.chainId !== ROBINHOOD_CHAIN_SLUG) continue;
+      for (const rawAddress of [pair.baseToken?.address, pair.quoteToken?.address]) {
+        if (typeof rawAddress !== "string") continue;
+        const address = normalizeAddress(rawAddress);
+        if (!address) continue;
+        dexScreenerAddresses.add(address);
+        if (dexScreenerAddresses.size === MAXIMUM_CANDIDATE_TOKENS) break;
+      }
+      if (dexScreenerAddresses.size === MAXIMUM_CANDIDATE_TOKENS) break;
+    }
   }
 
-  const addresses = new Set<string>();
-  const pairs = (body as { pairs: unknown[] }).pairs.slice(0, MAXIMUM_PROVIDER_PAIRS);
-  for (const rawPair of pairs) {
-    if (typeof rawPair !== "object" || rawPair === null) continue;
-    const pair = rawPair as CandidatePair;
-    if (pair.chainId !== ROBINHOOD_CHAIN_SLUG) continue;
-    for (const rawAddress of [pair.baseToken?.address, pair.quoteToken?.address]) {
+  const blockscoutAddresses = new Set<string>();
+  if (blockscoutReady) {
+    const rankedItems = (blockscoutBody as { items: unknown[] }).items
+      .flatMap((rawItem, index) => {
+        if (typeof rawItem !== "object" || rawItem === null) return [];
+        const item = rawItem as BlockscoutCandidate;
+        if (item.type !== "token" || item.token_type !== "ERC-20") return [];
+        const hint = matchIdentity(query, {
+          address: ZERO_ADDRESS,
+          name: typeof item.name === "string" ? item.name : "",
+          symbol: typeof item.symbol === "string" ? item.symbol : "",
+          decimals: 0
+        });
+        return [{ item, index, priority: hint?.priority ?? Number.MAX_SAFE_INTEGER }];
+      })
+      .sort((left, right) => left.priority - right.priority || left.index - right.index);
+    for (const { item } of rankedItems) {
+      const rawAddress = typeof item.address_hash === "string"
+        ? item.address_hash
+        : item.address;
       if (typeof rawAddress !== "string") continue;
       const address = normalizeAddress(rawAddress);
       if (!address) continue;
+      blockscoutAddresses.add(address);
+      if (blockscoutAddresses.size === MAXIMUM_CANDIDATE_TOKENS) break;
+    }
+  }
+
+  const sources = [[...dexScreenerAddresses], [...blockscoutAddresses]];
+  const addresses = new Set<string>();
+  for (let index = 0; addresses.size < MAXIMUM_CANDIDATE_TOKENS; index += 1) {
+    let advanced = false;
+    for (const source of sources) {
+      const address = source[index];
+      if (!address) continue;
+      advanced = true;
       addresses.add(address);
       if (addresses.size === MAXIMUM_CANDIDATE_TOKENS) break;
     }
-    if (addresses.size === MAXIMUM_CANDIDATE_TOKENS) break;
+    if (!advanced) break;
   }
   return { status: "ready", addresses: [...addresses] };
 }
@@ -437,12 +515,6 @@ async function textSearch(
   query: string,
   dependencies: Required<VNextUniversalMarketSearchDependencies>
 ): Promise<VNextUniversalMarketSearchResult> {
-  const coverageProbe = await dependencies.readInventory({ limit: 1 });
-  if (inventoryUnavailable(coverageProbe)) {
-    return emptyResult(query, "text", "inventory_unavailable");
-  }
-  const coverageIncomplete = inventoryIncomplete(coverageProbe);
-
   const discovery = await discoverCandidates(
     query,
     dependencies.fetch,
@@ -452,30 +524,22 @@ async function textSearch(
     return emptyResult(query, "text", "candidate_discovery_unavailable");
   }
 
-  const inventories = await Promise.all(
-    discovery.addresses.map(async (address) => ({
-      address,
-      inventory: await dependencies.readInventory({
-        token: address,
-        limit: INVENTORY_LIMIT
-      })
-    }))
-  );
-  const exactInventoryUncertain = inventories.some(({ inventory }) =>
-    inventoryUnavailable(inventory) || inventoryIncomplete(inventory)
-  );
-
   const candidates = await Promise.all(
-    inventories.map(async ({ address, inventory }) => {
-      if (inventory.status !== "verified_shadow" || inventory.pools.length === 0) {
-        return null;
-      }
-      const rawIdentity = await dependencies.readIdentity(getAddress(address));
-      if (!rawIdentity) return null;
+    discovery.addresses.map(async (address) => {
+      const [identityRead, inventoryRead] = await Promise.allSettled([
+        dependencies.readIdentity(getAddress(address)),
+        dependencies.readInventory({ token: address, limit: INVENTORY_LIMIT })
+      ]);
+      if (identityRead.status !== "fulfilled" || !identityRead.value) return null;
+      const rawIdentity = identityRead.value;
       const identity = normalizeVerifiedIdentity(rawIdentity, address);
       if (!identity) return null;
       const match = matchIdentity(query, identity);
       if (!match) return null;
+      const inventory = inventoryRead.status === "fulfilled" &&
+        inventoryRead.value.status === "verified_shadow"
+        ? inventoryRead.value
+        : null;
       return {
         priority: match.priority,
         result: {
@@ -484,7 +548,7 @@ async function textSearch(
           symbol: identity.symbol,
           decimals: identity.decimals,
           matchedBy: match.matchedBy,
-          markets: inventory.pools.map(publicMarket)
+          markets: (inventory?.pools ?? []).map(publicMarket)
         } satisfies VNextUniversalMarketSearchResultItem
       };
     })
@@ -498,9 +562,6 @@ async function textSearch(
     )
     .slice(0, MAXIMUM_RESULTS)
     .map(({ result }) => result);
-  if (results.length === 0 && (coverageIncomplete || exactInventoryUncertain)) {
-    return emptyResult(query, "text", "inventory_unavailable");
-  }
   return {
     query,
     queryKind: "text",

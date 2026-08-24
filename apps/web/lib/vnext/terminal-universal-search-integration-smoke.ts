@@ -12,6 +12,8 @@ import {
   shouldRequestVNextExternalWorkspaceMarket,
   shouldUseExactAddressDegradedFallback,
   verifiedDirectoryAsset,
+  vNextExecutionUiState,
+  vNextSelectedMarketExecutionState,
   type VNextDirectoryMarket
 } from "./market-directory";
 import {
@@ -92,6 +94,29 @@ for (const [query, matchedBy] of parsedVariants) {
   assert.equal(directory.address.toLowerCase(), STONKBROKER);
   assert.equal(verifiedDirectoryAsset(directory)?.id.locator.kind, "contract");
 }
+
+const parsedTokenOnly = parseVNextUniversalMarketSearchResult(
+  response(TOKEN_THREE, "token", [])
+);
+assert.equal(parsedTokenOnly?.status, "found");
+assert.equal(parsedTokenOnly?.results.length, 1);
+assert.deepEqual(parsedTokenOnly?.results[0].markets, []);
+const tokenOnlyDirectory = directoryMarketFromUniversalSearchResult(
+  parsedTokenOnly!.results[0]
+);
+assert.equal(isVNextDirectoryMarketSelectable(tokenOnlyDirectory), true);
+assert.deepEqual(deriveVNextMarketState(tokenOnlyDirectory), {
+  asset: "verified",
+  market: "none",
+  metrics: "unavailable",
+  chart: "unavailable",
+  execution: "not-evaluated"
+});
+assert.equal(vNextSelectedMarketExecutionState(tokenOnlyDirectory), "asset-only");
+assert.equal(vNextExecutionUiState("asset-only", true), "asset-only");
+assert.equal(vNextExecutionUiState("asset-only", false), "asset-only");
+assert.equal(parseVNextUniversalMarketSearchResult(response(V2_POOL, "pool", [])), null);
+assert.equal(parseVNextUniversalMarketSearchResult(response(V4_POOL, "pool-id", [])), null);
 
 for (const version of [2, 3, 4] as const) {
   const parsed = parseVNextUniversalMarketSearchResult(response(
@@ -314,7 +339,13 @@ assert.doesNotMatch(workspace, /volume5m:\s*0|buys5m:\s*0|sells5m:\s*0|momentumS
 assert.match(workspace, /canonicalMarkets=\{directoryMarket\.canonicalMarkets\}/);
 assert.match(workspace, /PoolId \$\{shortAddress\(pool\.poolKey\)\}/);
 assert.doesNotMatch(workspace, /address\/\$\{pool\.poolKey\}/);
-assert.ok(workspace.indexOf("if (canonicalMarkets?.length)") < workspace.indexOf("No canonical pool found"));
+assert.ok(workspace.indexOf("if (canonicalMarkets?.length)") < workspace.indexOf("No canonical market evidence attached"));
+assert.match(workspace, /executionState === "asset-only"/);
+assert.match(workspace, /No supported market evidence is attached, so execution is not evaluated/);
+assert.match(presentation, /executionUiState === "asset-only"/);
+assert.match(presentation, /Market evidence unavailable/);
+assert.match(presentation, /<button type="button" className="isViewOnly" disabled aria-describedby="rmt-asset-only">Asset only<\/button>/);
+assert.match(shell, /if \(selectedExecutionState !== "normal"\) return/);
 assert.match(workspaceHook, /externalMarketLookup\s*\?/);
 assert.match(serverSearch, /from "\.\.\/vnext\/universal-market-search-contract"/);
 assert.match(serverSearch, /function publicMarket/);

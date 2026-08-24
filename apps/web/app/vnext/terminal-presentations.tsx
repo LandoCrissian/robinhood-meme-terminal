@@ -228,6 +228,15 @@ function MobileMarketList(props: TerminalPresentationProps) {
 }
 
 function TradeComposer(props: TerminalPresentationProps) {
+  if (props.executionUiState === "asset-only") {
+    return <aside className="vnTradePanel" id="vnext-trade-ticket" aria-labelledby="vn-trade-heading">
+      <div className="vnTradeHeader">
+        <div><span className="vnEyebrow">Asset identity</span><h2 id="vn-trade-heading">Market evidence unavailable</h2><small>{props.selected?.name ?? "Verified Robinhood Chain asset"}</small></div>
+        <span className="vnFixtureBadge isViewOnly">Asset only</span>
+      </div>
+      <p className="vnTradeSafety">RMT verified this asset onchain, but no supported market evidence is attached. Metrics, chart activity, and execution are not evaluated.</p>
+    </aside>;
+  }
   return <TradeIntentComposer
     marketName={props.selected?.name ?? "No market selected"}
     marketSymbol={props.selected?.symbol ?? "—"}
@@ -452,10 +461,13 @@ export function MobileTerminal(props: TerminalPresentationProps) {
       : props.context === "portfolio" ? <MobilePortfolio {...props} />
       : props.context === "distribution" ? <MobileDistribution {...props} />
       : <MobileAsset {...props} />}
-    {props.context === "asset" && props.selected ? <nav className={`rmtMobileTradeDock${props.executionUiState === "stock-token-view-only" ? " isViewOnly" : ""}`} aria-label={props.executionUiState === "stock-token-view-only" ? `${props.selected.symbol} execution policy` : props.executionUiState === "preview-only" ? `Preview ${props.selected.symbol} routes` : `Trade ${props.selected.symbol}`}>
+    {props.context === "asset" && props.selected ? <nav className={`rmtMobileTradeDock${props.executionUiState === "stock-token-view-only" || props.executionUiState === "asset-only" ? " isViewOnly" : ""}`} aria-label={props.executionUiState === "stock-token-view-only" ? `${props.selected.symbol} execution policy` : props.executionUiState === "asset-only" ? `${props.selected.symbol} market evidence` : props.executionUiState === "preview-only" ? `Preview ${props.selected.symbol} routes` : `Trade ${props.selected.symbol}`}>
       {props.executionUiState === "stock-token-view-only" ? <>
         <button type="button" className="isViewOnly" disabled aria-describedby="rmt-stock-token-view-only">View only</button>
         <span className="vnSrOnly" id="rmt-stock-token-view-only">Official Robinhood Stock Tokens are view-only in RMT until jurisdiction controls are available.</span>
+      </> : props.executionUiState === "asset-only" ? <>
+        <button type="button" className="isViewOnly" disabled aria-describedby="rmt-asset-only">Asset only</button>
+        <span className="vnSrOnly" id="rmt-asset-only">Onchain identity is verified. No supported market evidence is attached, so execution is not evaluated.</span>
       </> : <>
         <button type="button" className="isBuy" onClick={() => openTrade("buy")}>{props.executionUiState === "preview-only" ? "Buy quote" : "Buy"}</button>
         <button type="button" className="isSell" disabled={!canSell} aria-describedby={!canSell ? "rmt-sell-unavailable" : undefined} onClick={() => openTrade("sell")}>{props.executionUiState === "preview-only" ? "Sell quote" : "Sell"}</button>
