@@ -197,7 +197,7 @@ export type ExternalMarketResponse = {
   thresholds?: Record<string, number>;
   originCoverage?: OriginCoverage;
   rmtOriginCoverage?: OriginCoverage;
-  stockAssetCoverage?: "complete" | "unavailable";
+  stockAssetCoverage?: "complete" | "stale" | "unavailable";
   delayedSources?: string[];
   updatedAt?: string;
   stale?: boolean;

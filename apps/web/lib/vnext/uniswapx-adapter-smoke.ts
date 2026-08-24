@@ -200,7 +200,8 @@ async function run() {
     return Response.json(quoteResponse());
   };
 
-  const preparedIntent = await prepareVNextUniswapXIntent(request, 514_800_000_000_000_000n);
+  const allowExecution = async () => ({ status: "eligible" as const });
+  const preparedIntent = await prepareVNextUniswapXIntent(request, 514_800_000_000_000_000n, allowExecution);
   assert.equal(preparedIntent.provider, "uniswapx");
   assert.equal(preparedIntent.orderId, orderId);
   assert.equal(preparedIntent.deadline, "2000000000");
@@ -215,7 +216,7 @@ async function run() {
   assert.equal(preparedIntent.submissionPayload.routing, "DUTCH_V3");
   assert.equal(preparedIntent.submissionPayload.quote.encodedOrder, encodedOrder);
   await assert.rejects(
-    prepareVNextUniswapXIntent(request, 514_800_000_000_000_001n),
+    prepareVNextUniswapXIntent(request, 514_800_000_000_000_001n, allowExecution),
     /below the protected-output floor/
   );
 

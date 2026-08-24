@@ -130,7 +130,7 @@ type SuccessfulMarketSnapshot = {
   assetRecords: AssetMarketRecord[];
   originCoverage: OriginCoverage;
   rmtOriginCoverage: OriginCoverage;
-  stockAssetCoverage: "complete" | "unavailable";
+  stockAssetCoverage: "complete" | "stale" | "unavailable";
   thresholds: typeof RUNNER_THRESHOLDS;
 };
 

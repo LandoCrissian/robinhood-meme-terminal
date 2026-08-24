@@ -43,7 +43,8 @@ export function prepareRobinhoodVNextAuthorization(provider: VNextQuoteProvider,
 
 export function prepareRobinhoodVNextUniswapXIntent(
   input: Parameters<typeof prepareVNextUniswapXIntent>[0],
-  protectedOutputFloorAtomic: bigint
+  protectedOutputFloorAtomic: bigint,
+  requireAdmission: typeof requireVNextStockTokenExecutionEligible = requireVNextStockTokenExecutionEligible
 ) {
-  return prepareVNextUniswapXIntent(input, protectedOutputFloorAtomic);
+  return prepareVNextUniswapXIntent(input, protectedOutputFloorAtomic, requireAdmission);
 }

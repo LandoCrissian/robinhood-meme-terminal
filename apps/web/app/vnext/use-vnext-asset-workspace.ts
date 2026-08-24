@@ -17,7 +17,7 @@ type WorkspaceResolutionResponse = {
   resolution?: UniversalMarketResolution;
   ecosystem?: VNextEcosystemIntelligence;
   stockAssetRelationships?: RobinhoodStockAssetRelationship[];
-  stockAssetCoverage?: "complete" | "unavailable";
+  stockAssetCoverage?: "complete" | "stale" | "unavailable";
   updatedAt?: string;
   error?: string;
 };
@@ -88,7 +88,7 @@ export function useVNextAssetWorkspace(address?: string, pairAddress?: string, e
   const [resolution, setResolution] = useState<UniversalMarketResolution>();
   const [ecosystem, setEcosystem] = useState<VNextEcosystemIntelligence>();
   const [stockAssetRelationships, setStockAssetRelationships] = useState<RobinhoodStockAssetRelationship[]>([]);
-  const [stockAssetCoverage, setStockAssetCoverage] = useState<"complete" | "unavailable">();
+  const [stockAssetCoverage, setStockAssetCoverage] = useState<"complete" | "stale" | "unavailable">();
   const [status, setStatus] = useState<VNextAssetWorkspaceStatus>(address ? "loading" : "idle");
   const [observedAt, setObservedAt] = useState<string>();
   const requestId = useRef(0);

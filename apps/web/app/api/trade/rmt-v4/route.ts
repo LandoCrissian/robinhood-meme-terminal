@@ -4,6 +4,7 @@ import { quoteAndBuildRmtV4Swap } from "../../../../lib/server/rmt-v4-trade";
 import { ROBINHOOD_UNIVERSAL_ROUTER } from "../../../../lib/uniswap-v4";
 import { activeChain } from "../../../../lib/network";
 import { requireAuthenticatedTradeWallet, tradeIdentityErrorResponse } from "../../../../lib/server/rmt-trade-identity";
+import { requireStockTokenExecutionEligible, stockTokenExecutionPolicyErrorResponse } from "../../../../lib/server/robinhood-stock-token-registry";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -36,6 +37,7 @@ export async function POST(request: Request) {
     const params = parsed.data;
     const recipient = getAddress(params.recipient);
     const authorization = await requireAuthenticatedTradeWallet(request, recipient);
+    await requireStockTokenExecutionEligible(params.token);
     const result = await quoteAndBuildRmtV4Swap({
       launchId: BigInt(params.launchId),
       token: getAddress(params.token),
@@ -61,6 +63,8 @@ export async function POST(request: Request) {
   } catch (cause) {
     const identityResponse = tradeIdentityErrorResponse(cause);
     if (identityResponse) return identityResponse;
+    const stockTokenResponse = stockTokenExecutionPolicyErrorResponse(cause);
+    if (stockTokenResponse) return stockTokenResponse;
     const message = cause instanceof Error && publicTradeErrors.has(cause.message)
       ? cause.message
       : "Unable to prepare the canonical Uniswap v4 trade.";

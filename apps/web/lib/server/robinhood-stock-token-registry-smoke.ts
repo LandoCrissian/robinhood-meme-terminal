@@ -77,6 +77,10 @@ assert.equal(stockTokenExecutionPolicyFromSnapshot(launchToken, {
   coverage: "unavailable",
   assetsByAddress: new Map()
 }).status, "verification-unavailable");
+assert.equal(stockTokenExecutionPolicyFromSnapshot(stockToken, {
+  coverage: "stale",
+  assetsByAddress: registry
+}).status, "verification-unavailable");
 
 async function rejectionStatus(inputAsset: string, outputAsset: string, coverage: "complete" | "unavailable") {
   try {
