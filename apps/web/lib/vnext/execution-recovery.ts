@@ -1,7 +1,16 @@
-import { decodeEventLog, getAddress, isAddress, isHash, type Address, type Hash, type Hex } from "viem";
-import type { VNextAuthorizationPlan } from "./authorization-plan";
+import { decodeEventLog, getAddress, isAddress, isHash, keccak256, type Address, type Hash, type Hex } from "viem";
+import { authorizationPayloadHash, type VNextAuthorizationPlan } from "./authorization-plan";
 import { calculateRmtFeeFloor } from "./execution-fee-policy";
+import { assertRmtExecutionFeeV2Economics } from "./execution-fee-policy-v2";
+import { assertVNextAtomicFeeAuthorizationBinding } from "./provider-fee-settlement";
 import { RMT_UNISWAP_V3_PROVIDER_ID, rmtUniswapV3FeeExecutorAbi } from "./uniswap-v3-fee-executor";
+import {
+  decodeRmtUniswapV3FeeAuthorizationV2,
+  RMT_UNISWAP_V3_V2_IMPLEMENTATION_ID,
+  RMT_UNISWAP_V3_V2_POLICY_ID_HASH,
+  RMT_UNISWAP_V3_V2_PROVIDER_ID,
+  rmtUniswapV3FeeExecutorV2Abi
+} from "./uniswap-v3-fee-executor-v2";
 import { ROBINHOOD_SWAP_ROUTER_02, ROBINHOOD_WETH } from "../uniswap-v4";
 import { isRobinhoodNativeAsset } from "./robinhood-assets";
 import { UP_CL_EXECUTION_ROUTER, UP_V2_EXECUTION_ROUTER } from "./up-authorization-codec";
@@ -37,6 +46,7 @@ export type VNextExecutionRecord = {
   schemaVersion: typeof SCHEMA_VERSION;
   chainId: 4_663;
   wallet: Address;
+  provider?: VNextAuthorizationPlan["provider"];
   kind: "erc20_approval" | "swap";
   inputAsset: Address;
   outputAsset: Address;
@@ -59,6 +69,33 @@ export type VNextExecutionRecord = {
     actualFeeAtomic?: string;
     grossActualOutputAtomic?: string;
   };
+  feeV2Settlement?: {
+    provider: "uniswap-v3";
+    implementationId: string;
+    executor: Address;
+    executionTarget: Address;
+    providerTarget: Address;
+    executionId: Hex;
+    policyIdHash: Hex;
+    policyHash: Hex;
+    policyVersion: 2;
+    providerId: Hex;
+    treasury: Address;
+    requestedInputAsset: Address;
+    requestedOutputAsset: Address;
+    feeAsset: Address;
+    feeBps: 25;
+    feeSide: "input";
+    userGrossInputAtomic: string;
+    expectedFeeAtomic: string;
+    maximumFeeAtomic: string;
+    providerInputAtomic: string;
+    protectedOutputAtomic: string;
+    routeIdentity: Hex;
+    calldataHash: Hex;
+    actualRmtFeeAtomic?: string;
+    actualProviderOutputAtomic?: string;
+  };
   planId: string;
   payloadHash: Hex;
   txHash: Hash;
@@ -76,6 +113,15 @@ function targetStorage(storage?: VNextExecutionStorage) {
 
 function normalizeTimestamp(value: unknown) {
   return typeof value === "number" && Number.isSafeInteger(value) && value > 0 ? value : null;
+}
+
+const JOURNAL_PROVIDERS = new Set<VNextAuthorizationPlan["provider"]>(["uniswap-v3", "up-v2", "up-cl"]);
+
+export function vNextExecutionProviderLabel(provider?: VNextExecutionRecord["provider"]) {
+  if (provider === "uniswap-v3") return "Uniswap V3";
+  if (provider === "up-v2") return "UP V2";
+  if (provider === "up-cl") return "UP CL";
+  return null;
 }
 
 function normalizeRecord(value: unknown): VNextExecutionRecord | null {
@@ -121,6 +167,85 @@ function normalizeRecord(value: unknown): VNextExecutionRecord | null {
       ...(feeCandidate.grossActualOutputAtomic !== undefined ? { grossActualOutputAtomic: feeCandidate.grossActualOutputAtomic } : {})
     };
   })();
+  const feeV2Candidate = candidate.kind === "swap" ? candidate.feeV2Settlement : undefined;
+  const feeV2Settlement = feeV2Candidate === undefined ? undefined : (() => {
+    const actualRmtFeeAtomic = feeV2Candidate?.actualRmtFeeAtomic;
+    const actualProviderOutputAtomic = feeV2Candidate?.actualProviderOutputAtomic;
+    if (
+      !feeV2Candidate || feeV2Candidate.provider !== "uniswap-v3"
+      || typeof feeV2Candidate.implementationId !== "string" || !feeV2Candidate.implementationId.trim()
+      || !isAddress(feeV2Candidate.executor, { strict: false })
+      || !isAddress(feeV2Candidate.executionTarget, { strict: false })
+      || getAddress(feeV2Candidate.executor) !== getAddress(feeV2Candidate.executionTarget)
+      || !isAddress(feeV2Candidate.providerTarget, { strict: false })
+      || getAddress(feeV2Candidate.providerTarget) !== getAddress(ROBINHOOD_SWAP_ROUTER_02)
+      || !isHash(feeV2Candidate.executionId) || !isHash(feeV2Candidate.policyIdHash)
+      || feeV2Candidate.policyIdHash.toLowerCase() !== RMT_UNISWAP_V3_V2_POLICY_ID_HASH.toLowerCase()
+      || !isHash(feeV2Candidate.policyHash) || feeV2Candidate.policyVersion !== 2
+      || !isHash(feeV2Candidate.providerId)
+      || feeV2Candidate.providerId.toLowerCase() !== RMT_UNISWAP_V3_V2_PROVIDER_ID.toLowerCase()
+      || !isAddress(feeV2Candidate.treasury, { strict: false })
+      || !isAddress(feeV2Candidate.requestedInputAsset, { strict: false })
+      || !isAddress(feeV2Candidate.requestedOutputAsset, { strict: false })
+      || !isAddress(feeV2Candidate.feeAsset, { strict: false })
+      || !isAddress(candidate.inputAsset ?? "", { strict: false })
+      || !isAddress(candidate.outputAsset ?? "", { strict: false })
+      || feeV2Candidate.feeBps !== 25 || feeV2Candidate.feeSide !== "input"
+      || !/^[1-9][0-9]*$/.test(feeV2Candidate.userGrossInputAtomic)
+      || !/^(0|[1-9][0-9]*)$/.test(feeV2Candidate.expectedFeeAtomic)
+      || !/^(0|[1-9][0-9]*)$/.test(feeV2Candidate.maximumFeeAtomic)
+      || !/^[1-9][0-9]*$/.test(feeV2Candidate.providerInputAtomic)
+      || !/^[1-9][0-9]*$/.test(feeV2Candidate.protectedOutputAtomic)
+      || !isHash(feeV2Candidate.routeIdentity) || !isHash(feeV2Candidate.calldataHash)
+      || (actualRmtFeeAtomic !== undefined && !/^(0|[1-9][0-9]*)$/.test(actualRmtFeeAtomic))
+      || (actualProviderOutputAtomic !== undefined && !/^[1-9][0-9]*$/.test(actualProviderOutputAtomic))
+      || ((actualRmtFeeAtomic !== undefined || actualProviderOutputAtomic !== undefined)
+        && (!actualRmtFeeAtomic || !actualProviderOutputAtomic || candidate.state !== "confirmed"
+          || outputAmountAtomic !== actualProviderOutputAtomic))
+    ) return null;
+    const grossInput = BigInt(feeV2Candidate.userGrossInputAtomic);
+    const expectedFee = BigInt(calculateRmtFeeFloor(feeV2Candidate.userGrossInputAtomic, 25));
+    if (
+      getAddress(feeV2Candidate.requestedInputAsset) !== getAddress(candidate.inputAsset ?? "")
+      || getAddress(feeV2Candidate.requestedOutputAsset) !== getAddress(candidate.outputAsset ?? "")
+      || getAddress(feeV2Candidate.feeAsset) !== getAddress(feeV2Candidate.requestedInputAsset)
+      || BigInt(feeV2Candidate.expectedFeeAtomic) !== expectedFee
+      || BigInt(feeV2Candidate.maximumFeeAtomic) !== expectedFee
+      || BigInt(feeV2Candidate.providerInputAtomic) !== grossInput - expectedFee
+      || (actualRmtFeeAtomic !== undefined && BigInt(actualRmtFeeAtomic) !== expectedFee)
+      || (actualProviderOutputAtomic !== undefined && BigInt(actualProviderOutputAtomic) < BigInt(feeV2Candidate.protectedOutputAtomic))
+    ) return null;
+    return {
+      provider: "uniswap-v3" as const,
+      implementationId: feeV2Candidate.implementationId,
+      executor: getAddress(feeV2Candidate.executor),
+      executionTarget: getAddress(feeV2Candidate.executionTarget),
+      providerTarget: getAddress(feeV2Candidate.providerTarget),
+      executionId: feeV2Candidate.executionId.toLowerCase() as Hex,
+      policyIdHash: feeV2Candidate.policyIdHash.toLowerCase() as Hex,
+      policyHash: feeV2Candidate.policyHash.toLowerCase() as Hex,
+      policyVersion: 2 as const,
+      providerId: feeV2Candidate.providerId.toLowerCase() as Hex,
+      treasury: getAddress(feeV2Candidate.treasury),
+      requestedInputAsset: getAddress(feeV2Candidate.requestedInputAsset),
+      requestedOutputAsset: getAddress(feeV2Candidate.requestedOutputAsset),
+      feeAsset: getAddress(feeV2Candidate.feeAsset),
+      feeBps: 25 as const,
+      feeSide: "input" as const,
+      userGrossInputAtomic: feeV2Candidate.userGrossInputAtomic,
+      expectedFeeAtomic: feeV2Candidate.expectedFeeAtomic,
+      maximumFeeAtomic: feeV2Candidate.maximumFeeAtomic,
+      providerInputAtomic: feeV2Candidate.providerInputAtomic,
+      protectedOutputAtomic: feeV2Candidate.protectedOutputAtomic,
+      routeIdentity: feeV2Candidate.routeIdentity.toLowerCase() as Hex,
+      calldataHash: feeV2Candidate.calldataHash.toLowerCase() as Hex,
+      ...(actualRmtFeeAtomic !== undefined ? { actualRmtFeeAtomic } : {}),
+      ...(actualProviderOutputAtomic !== undefined ? { actualProviderOutputAtomic } : {})
+    };
+  })();
+  const provider = candidate.provider === undefined
+    ? undefined
+    : JOURNAL_PROVIDERS.has(candidate.provider) ? candidate.provider : null;
   if (
     candidate.schemaVersion !== SCHEMA_VERSION || candidate.chainId !== 4_663
     || !candidate.wallet || !isAddress(candidate.wallet, { strict: false })
@@ -132,7 +257,9 @@ function normalizeRecord(value: unknown): VNextExecutionRecord | null {
     || !candidate.planId || !/^[0-9a-f-]{36}$/i.test(candidate.planId)
     || !candidate.inputAmountAtomic || !/^[1-9][0-9]*$/.test(candidate.inputAmountAtomic)
     || outputAmountAtomic === null
-    || feeSettlement === null
+    || feeSettlement === null || feeV2Settlement === null || provider === null
+    || (feeSettlement !== undefined && feeV2Settlement !== undefined)
+    || (feeV2Settlement !== undefined && provider !== "uniswap-v3")
     || !submittedAtMs || !updatedAtMs || updatedAtMs < submittedAtMs
     || !["erc20_approval", "swap"].includes(candidate.kind ?? "")
     || !["submitted", "confirmed", "reverted"].includes(candidate.state ?? "")
@@ -142,12 +269,14 @@ function normalizeRecord(value: unknown): VNextExecutionRecord | null {
     schemaVersion: SCHEMA_VERSION,
     chainId: 4_663,
     wallet: getAddress(candidate.wallet),
+    ...(provider ? { provider } : {}),
     kind: candidate.kind as VNextExecutionRecord["kind"],
     inputAsset: getAddress(candidate.inputAsset),
     outputAsset: getAddress(candidate.outputAsset),
     inputAmountAtomic: candidate.inputAmountAtomic,
     ...(outputAmountAtomic ? { outputAmountAtomic } : {}),
     ...(feeSettlement ? { feeSettlement } : {}),
+    ...(feeV2Settlement ? { feeV2Settlement } : {}),
     planId: candidate.planId,
     payloadHash: candidate.payloadHash.toLowerCase() as Hex,
     txHash: candidate.txHash.toLowerCase() as Hash,
@@ -202,6 +331,81 @@ export function findUnresolvedVNextExecution(wallet: string, storage?: VNextExec
   ) ?? null;
 }
 
+function v2SettlementFromPlan(plan: VNextAuthorizationPlan, wallet: Address): VNextExecutionRecord["feeV2Settlement"] | null {
+  if (plan.kind !== "swap" || !plan.feeV2Economics || !plan.feeV2Authorization || plan.provider !== "uniswap-v3") return null;
+  try {
+    const economics = plan.feeV2Economics;
+    const binding = plan.feeV2Authorization;
+    assertRmtExecutionFeeV2Economics(economics);
+    assertVNextAtomicFeeAuthorizationBinding(binding, economics, binding);
+    const decoded = decodeRmtUniswapV3FeeAuthorizationV2(plan.data);
+    const authorization = decoded.authorization;
+    const calldataHash = keccak256(plan.data);
+    const expectedValue = isRobinhoodNativeAsset(authorization.requestedInputAsset)
+      ? authorization.userGrossInput
+      : 0n;
+    if (
+      binding.provider !== "uniswap-v3" || binding.verificationState !== "verified_atomic"
+      || binding.settlementMode !== "v2-atomic-input-fee"
+      || binding.implementationId !== RMT_UNISWAP_V3_V2_IMPLEMENTATION_ID
+      || binding.atomicFeeSettlement !== true || binding.revertsAtomically !== true
+      || authorizationPayloadHash(plan).toLowerCase() !== plan.payloadHash.toLowerCase()
+      || calldataHash.toLowerCase() !== binding.calldataHash.toLowerCase()
+      || getAddress(plan.target) !== getAddress(binding.executionTarget)
+      || getAddress(binding.recipient) !== wallet
+      || getAddress(authorization.trader) !== wallet
+      || getAddress(binding.providerTarget) !== getAddress(plan.router)
+      || getAddress(plan.router) !== getAddress(ROBINHOOD_SWAP_ROUTER_02)
+      || binding.executionId.toLowerCase() !== authorization.executionId.toLowerCase()
+      || authorization.policyIdHash.toLowerCase() !== RMT_UNISWAP_V3_V2_POLICY_ID_HASH.toLowerCase()
+      || authorization.policyHash.toLowerCase() !== economics.policyHash.toLowerCase()
+      || authorization.policyVersion !== 2n
+      || authorization.feeBps !== 25 || authorization.feeSide !== 0
+      || getAddress(authorization.treasury) !== getAddress(economics.treasury)
+      || getAddress(authorization.requestedInputAsset) !== getAddress(plan.inputAsset)
+      || getAddress(authorization.requestedOutputAsset) !== getAddress(plan.outputAsset)
+      || getAddress(authorization.feeAsset) !== getAddress(plan.inputAsset)
+      || authorization.userGrossInput !== BigInt(plan.inputAmountAtomic)
+      || authorization.userGrossInput !== BigInt(economics.userGrossInputAtomic)
+      || authorization.expectedFeeAtomic !== BigInt(economics.expectedFeeAtomic)
+      || authorization.maximumFeeAtomic !== BigInt(economics.maximumFeeAtomic)
+      || authorization.providerInput !== BigInt(economics.providerInputAtomic)
+      || authorization.protectedOutput !== BigInt(plan.protectedOutputAtomic)
+      || authorization.protectedOutput !== BigInt(economics.providerProtectedOutputAtomic)
+      || authorization.deadline !== BigInt(plan.deadline)
+      || authorization.deadline !== BigInt(binding.deadline)
+      || BigInt(plan.value) !== expectedValue
+    ) return null;
+    return {
+      provider: "uniswap-v3",
+      implementationId: binding.implementationId,
+      executor: getAddress(plan.target),
+      executionTarget: getAddress(binding.executionTarget),
+      providerTarget: getAddress(binding.providerTarget),
+      executionId: authorization.executionId.toLowerCase() as Hex,
+      policyIdHash: authorization.policyIdHash.toLowerCase() as Hex,
+      policyHash: authorization.policyHash.toLowerCase() as Hex,
+      policyVersion: 2,
+      providerId: RMT_UNISWAP_V3_V2_PROVIDER_ID,
+      treasury: getAddress(authorization.treasury),
+      requestedInputAsset: getAddress(authorization.requestedInputAsset),
+      requestedOutputAsset: getAddress(authorization.requestedOutputAsset),
+      feeAsset: getAddress(authorization.feeAsset),
+      feeBps: 25,
+      feeSide: "input",
+      userGrossInputAtomic: authorization.userGrossInput.toString(),
+      expectedFeeAtomic: authorization.expectedFeeAtomic.toString(),
+      maximumFeeAtomic: authorization.maximumFeeAtomic.toString(),
+      providerInputAtomic: authorization.providerInput.toString(),
+      protectedOutputAtomic: authorization.protectedOutput.toString(),
+      routeIdentity: authorization.routeIdentity.toLowerCase() as Hex,
+      calldataHash: calldataHash.toLowerCase() as Hex
+    };
+  } catch {
+    return null;
+  }
+}
+
 export function recordSubmittedVNextExecution(input: {
   wallet: string;
   plan: VNextAuthorizationPlan;
@@ -214,10 +418,17 @@ export function recordSubmittedVNextExecution(input: {
   const normalizedHash = input.txHash.toLowerCase() as Hash;
   const existing = current.find((record) => record.txHash === normalizedHash);
   if (existing) return existing;
+  const carriesV2Authority = Boolean(input.plan.feeV2Economics || input.plan.feeV2Authorization);
+  if (carriesV2Authority && input.plan.feeExecution) return null;
+  const feeV2Settlement = input.plan.kind === "swap" && carriesV2Authority
+    ? v2SettlementFromPlan(input.plan, wallet)
+    : undefined;
+  if (input.plan.kind === "swap" && carriesV2Authority && !feeV2Settlement) return null;
   const record: VNextExecutionRecord = {
     schemaVersion: SCHEMA_VERSION,
     chainId: 4_663,
     wallet,
+    provider: input.plan.provider,
     kind: input.plan.kind,
     inputAsset: getAddress(input.plan.inputAsset),
     outputAsset: getAddress(input.plan.outputAsset),
@@ -237,6 +448,7 @@ export function recordSubmittedVNextExecution(input: {
       protectedUserNetOutputAtomic: input.plan.feeExecution.protectedUserNetOutputAtomic,
       maximumFeeAtomic: input.plan.feeExecution.maximumFeeAtomic
     } } : {}),
+    ...(feeV2Settlement ? { feeV2Settlement } : {}),
     planId: input.plan.planId,
     payloadHash: input.plan.payloadHash.toLowerCase() as Hex,
     txHash: normalizedHash,
@@ -304,12 +516,70 @@ export function settledVNextFeeExecution(record: VNextExecutionRecord, logs: rea
   };
 }
 
+export function settledVNextFeeExecutionV2(record: VNextExecutionRecord, logs: readonly {
+  address: string;
+  data: Hex;
+  topics: readonly Hex[];
+}[]) {
+  const expected = record.feeV2Settlement;
+  if (record.kind !== "swap" || !expected || expected.provider !== "uniswap-v3") return null;
+  const emitterLogs = logs.filter((log) =>
+    isAddress(log.address, { strict: false }) && getAddress(log.address) === expected.executionTarget
+  );
+  if (emitterLogs.length !== 1 || emitterLogs[0].topics.length === 0) return null;
+  try {
+    const decoded = decodeEventLog({
+      abi: rmtUniswapV3FeeExecutorV2Abi,
+      eventName: "RMTUniswapV3FeeSettledV2",
+      data: emitterLogs[0].data,
+      topics: emitterLogs[0].topics as [Hex, ...Hex[]]
+    });
+    if (decoded.eventName !== "RMTUniswapV3FeeSettledV2") return null;
+    const event = decoded.args;
+    const exactFee = BigInt(calculateRmtFeeFloor(expected.userGrossInputAtomic, 25));
+    if (
+      getAddress(emitterLogs[0].address) !== expected.executor
+      || expected.executor !== expected.executionTarget
+      || event.executionId.toLowerCase() !== expected.executionId.toLowerCase()
+      || event.policyIdHash.toLowerCase() !== expected.policyIdHash.toLowerCase()
+      || event.policyHash.toLowerCase() !== expected.policyHash.toLowerCase()
+      || event.policyVersion !== 2n
+      || getAddress(event.trader) !== record.wallet
+      || event.providerId.toLowerCase() !== expected.providerId.toLowerCase()
+      || event.providerId.toLowerCase() !== RMT_UNISWAP_V3_V2_PROVIDER_ID.toLowerCase()
+      || getAddress(event.router) !== expected.providerTarget
+      || getAddress(event.router) !== getAddress(ROBINHOOD_SWAP_ROUTER_02)
+      || event.routeIdentity.toLowerCase() !== expected.routeIdentity.toLowerCase()
+      || getAddress(event.requestedInputAsset) !== expected.requestedInputAsset
+      || getAddress(event.requestedOutputAsset) !== expected.requestedOutputAsset
+      || getAddress(event.feeAsset) !== expected.feeAsset
+      || Number(event.feeBps) !== 25 || Number(event.feeSide) !== 0
+      || event.userGrossInput !== BigInt(expected.userGrossInputAtomic)
+      || event.userGrossInput !== BigInt(record.inputAmountAtomic)
+      || event.providerInput !== BigInt(expected.providerInputAtomic)
+      || event.actualRmtFee !== exactFee
+      || event.actualRmtFee !== BigInt(expected.expectedFeeAtomic)
+      || event.actualRmtFee > BigInt(expected.maximumFeeAtomic)
+      || event.actualProviderOutput < BigInt(expected.protectedOutputAtomic)
+      || getAddress(event.treasury) !== expected.treasury
+    ) return null;
+    return {
+      outputAmountAtomic: event.actualProviderOutput.toString(),
+      actualRmtFeeAtomic: event.actualRmtFee.toString(),
+      actualProviderOutputAtomic: event.actualProviderOutput.toString()
+    };
+  } catch {
+    return null;
+  }
+}
+
 export function settledVNextOutputAtomic(record: VNextExecutionRecord, logs: readonly {
   address: string;
   data: Hex;
   topics: readonly Hex[];
 }[]) {
   if (record.kind !== "swap") return null;
+  if (record.feeV2Settlement) return null;
   if (isRobinhoodNativeAsset(record.outputAsset)) {
     const withdrawals = logs.flatMap((log) => {
       if (!isAddress(log.address, { strict: false }) || getAddress(log.address) !== getAddress(ROBINHOOD_WETH) || log.topics.length === 0) return [];
@@ -352,7 +622,13 @@ export function resolveVNextExecution(
   state: "confirmed" | "reverted",
   storage?: VNextExecutionStorage,
   nowMs = Date.now(),
-  settlement?: { outputAmountAtomic: string; actualFeeAtomic?: string; grossActualOutputAtomic?: string }
+  settlement?: {
+    outputAmountAtomic: string;
+    actualFeeAtomic?: string;
+    grossActualOutputAtomic?: string;
+    actualRmtFeeAtomic?: string;
+    actualProviderOutputAtomic?: string;
+  }
 ) {
   if (!isHash(txHash)) return null;
   const normalizedHash = txHash.toLowerCase();
@@ -362,6 +638,12 @@ export function resolveVNextExecution(
   const outputAmountAtomic = settlement?.outputAmountAtomic;
   if (outputAmountAtomic !== undefined && (
     state !== "confirmed" || existing.kind !== "swap" || !/^[1-9][0-9]*$/.test(outputAmountAtomic)
+  )) return null;
+  if (state === "confirmed" && existing.feeV2Settlement && (
+    !settlement?.actualRmtFeeAtomic || !settlement.actualProviderOutputAtomic
+    || settlement.outputAmountAtomic !== settlement.actualProviderOutputAtomic
+    || settlement.actualRmtFeeAtomic !== existing.feeV2Settlement.expectedFeeAtomic
+    || !/^[1-9][0-9]*$/.test(settlement.actualProviderOutputAtomic)
   )) return null;
   const resolved: VNextExecutionRecord = {
     ...existing,
@@ -374,6 +656,15 @@ export function resolveVNextExecution(
       ...(state === "confirmed" && settlement?.actualFeeAtomic !== undefined && settlement.grossActualOutputAtomic !== undefined
         ? { actualFeeAtomic: settlement.actualFeeAtomic, grossActualOutputAtomic: settlement.grossActualOutputAtomic }
         : { actualFeeAtomic: undefined, grossActualOutputAtomic: undefined })
+    } } : {}),
+    ...(existing.feeV2Settlement ? { feeV2Settlement: {
+      ...existing.feeV2Settlement,
+      ...(state === "confirmed" && settlement?.actualRmtFeeAtomic !== undefined && settlement.actualProviderOutputAtomic !== undefined
+        ? {
+            actualRmtFeeAtomic: settlement.actualRmtFeeAtomic,
+            actualProviderOutputAtomic: settlement.actualProviderOutputAtomic
+          }
+        : { actualRmtFeeAtomic: undefined, actualProviderOutputAtomic: undefined })
     } } : {}),
     updatedAtMs: nowMs
   };

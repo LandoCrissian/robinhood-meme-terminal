@@ -111,7 +111,7 @@ export function FollowedProjectsHub() {
         <div className="followedProjectsState">
           <strong>Your Following desk is ready.</strong>
           <p>Open any approved project page and choose Follow project to add it here.</p>
-          <Link href="/explore">Explore approved projects →</Link>
+          <Link href="/">Open the Terminal →</Link>
         </div>
       ) : (
         <div className="followedProjectsGrid">
@@ -128,7 +128,7 @@ export function FollowedProjectsHub() {
                 ))}
               </div>
               <div className="followedProjectActions">
-                <Link href={`/project/${project.slug}`}>Open page →</Link>
+                <Link href={project.tokenAddress ? `/?market=${project.tokenAddress.toLowerCase()}` : "/"}>Open in Terminal →</Link>
                 <button type="button" disabled={Boolean(removing)} onClick={() => void unfollow(project)}>
                   {removing === project.slug ? "Removing…" : "Unfollow"}
                 </button>

@@ -483,9 +483,9 @@ assert.match(communityStyles, /body:has\(\.universalTradeRail\.mobileOpen\)/);
 assert.match(communityStyles, /\.communityLivePanel textarea,\.communityFeedbackForm input,\.communityFeedbackForm select\{font-size:16px\}/);
 
 const termsSource = readFileSync(new URL("../app/terms/page.tsx", import.meta.url), "utf8");
-assert.match(termsSource, /RMT Live community/);
-assert.match(termsSource, /market manipulation/);
-assert.match(termsSource, /recovery words/);
+assert.doesNotMatch(termsSource, /RMT Live community/);
+assert.match(termsSource, /Market information/);
+assert.match(termsSource, /RMT informs; the trader decides/);
 
 const profileProviderSource = readFileSync(new URL("../app/profile-provider.tsx", import.meta.url), "utf8");
 assert.match(profileProviderSource, /!nextUser\.isAnonymous/);

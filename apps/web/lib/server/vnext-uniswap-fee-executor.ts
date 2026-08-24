@@ -184,6 +184,15 @@ function requireIdentity(actual: string, expected: string, label: string) {
   }
 }
 
+export function assertCanonicalWethImplementationSlot(implementationSlot: Hex | undefined) {
+  if (!implementationSlot || implementationSlot === `0x${"0".repeat(64)}`) {
+    throw new Error("Canonical WETH proxy implementation is unavailable.");
+  }
+  const implementation = getAddress(`0x${implementationSlot.slice(-40)}`);
+  requireIdentity(implementation, ROBINHOOD_WETH_IMPLEMENTATION, "canonical WETH implementation address");
+  return implementation;
+}
+
 export async function verifyVNextUniswapFeeInfrastructure() {
   const [routerCode, factoryCode, wethCode, implementationSlot, routerFactory, routerWeth, currentBlock] = await Promise.all([
     client.getBytecode({ address: ROBINHOOD_SWAP_ROUTER_02 }),
@@ -194,15 +203,14 @@ export async function verifyVNextUniswapFeeInfrastructure() {
     client.readContract({ address: ROBINHOOD_SWAP_ROUTER_02, abi: routerDependencyAbi, functionName: "WETH9" }),
     client.getBlockNumber()
   ]);
-  if (!implementationSlot || implementationSlot === `0x${"0".repeat(64)}`) {
-    throw new Error("Canonical WETH proxy implementation is unavailable.");
-  }
-  const wethImplementation = getAddress(`0x${implementationSlot.slice(-40)}`);
+  // eth_getStorageAt is the pre-sign authority for the proxy-to-
+  // implementation link. The proxy exposes no trustworthy non-admin getter;
+  // the executor independently pins both runtime identities onchain.
+  const wethImplementation = assertCanonicalWethImplementationSlot(implementationSlot);
   const implementationCode = await client.getBytecode({ address: wethImplementation });
   requireIdentity(runtimeHash(routerCode, "Uniswap Router02"), ROBINHOOD_UNISWAP_ROUTER_RUNTIME_HASH, "Uniswap Router02 runtime");
   requireIdentity(runtimeHash(factoryCode, "Uniswap V3 factory"), ROBINHOOD_UNISWAP_FACTORY_RUNTIME_HASH, "Uniswap V3 factory runtime");
   requireIdentity(runtimeHash(wethCode, "canonical WETH proxy"), ROBINHOOD_WETH_RUNTIME_HASH, "canonical WETH proxy runtime");
-  requireIdentity(wethImplementation, ROBINHOOD_WETH_IMPLEMENTATION, "canonical WETH implementation address");
   requireIdentity(
     runtimeHash(implementationCode, "canonical WETH implementation"),
     ROBINHOOD_WETH_IMPLEMENTATION_RUNTIME_HASH,

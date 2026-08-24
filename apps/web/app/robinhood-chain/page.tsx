@@ -113,7 +113,7 @@ export default function RobinhoodChainPage() {
         </p>
         <div className={styles.actions}>
           <Link className={styles.primaryAction} href="/">Open RMT Terminal</Link>
-          <Link className={styles.secondaryAction} href="/explore">Explore verified RMT history</Link>
+          <Link className={styles.secondaryAction} href="/markets/robinhood-chain">Browse Robinhood Chain markets</Link>
         </div>
       </section>
 
@@ -162,7 +162,7 @@ export default function RobinhoodChainPage() {
         <nav className={styles.linkGrid} aria-label="Robinhood Chain research links">
           <Link href="/">Live terminal<span>Scan markets and exact contracts</span></Link>
           <Link href="/sources">Sources<span>Origin and venue boundaries</span></Link>
-          <Link href="/sushi">Sushi integration<span>Verified routing boundary</span></Link>
+          <Link href="/status">Terminal status<span>Current network and market controls</span></Link>
           <Link href="/status">System status<span>Network and protocol checks</span></Link>
           <Link href="/risks">Risks<span>Read before signing</span></Link>
           <Link href="/support">Support<span>Transaction and incident help</span></Link>

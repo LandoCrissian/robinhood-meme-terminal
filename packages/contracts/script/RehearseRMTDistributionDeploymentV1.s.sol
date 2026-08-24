@@ -14,8 +14,9 @@ contract RehearseRMTDistributionDeploymentV1 {
     DistributionRehearsalVm private constant vm =
         DistributionRehearsalVm(address(uint160(uint256(keccak256("hevm cheat code")))));
 
-    address private constant OFFICIAL_RMT = 0xdBa33be56C89CC9fc014c4459028d7e5c7878671;
-    bytes32 private constant OFFICIAL_RMT_RUNTIME_HASH =
+    // Retired launchpad launch-zero fixture retained only for historical fork evidence.
+    address private constant HISTORICAL_LAUNCH_ZERO_ASSET = 0xdBa33be56C89CC9fc014c4459028d7e5c7878671;
+    bytes32 private constant HISTORICAL_LAUNCH_ZERO_RUNTIME_HASH =
         0x49cd48d0204b35d27e6fca131febe8ce5aff6cd0c2fb6c5c21d5f0ad616e99e9;
 
     // Rehearsal-only values. They are deliberately not production policy.
@@ -25,7 +26,7 @@ contract RehearseRMTDistributionDeploymentV1 {
 
     error RehearsalModeRequired();
     error WrongChain(uint256 actualChainId);
-    error OfficialRmtRuntimeChanged(bytes32 actualRuntimeHash);
+    error HistoricalLaunchZeroRuntimeChanged(bytes32 actualRuntimeHash);
     error TopologyVerificationFailed();
 
     event DistributionDeploymentRehearsed(
@@ -41,18 +42,18 @@ contract RehearseRMTDistributionDeploymentV1 {
     function run() external returns (RMTDistributionEngineV1 engine, RMTRetirementSinkV1 sink) {
         if (!vm.envOr("RMT_DISTRIBUTION_DEPLOYMENT_REHEARSAL", false)) revert RehearsalModeRequired();
         if (block.chainid != 4_663) revert WrongChain(block.chainid);
-        if (OFFICIAL_RMT.codehash != OFFICIAL_RMT_RUNTIME_HASH) {
-            revert OfficialRmtRuntimeChanged(OFFICIAL_RMT.codehash);
+        if (HISTORICAL_LAUNCH_ZERO_ASSET.codehash != HISTORICAL_LAUNCH_ZERO_RUNTIME_HASH) {
+            revert HistoricalLaunchZeroRuntimeChanged(HISTORICAL_LAUNCH_ZERO_ASSET.codehash);
         }
 
         sink = new RMTRetirementSinkV1();
         engine = new RMTDistributionEngineV1(
-            OFFICIAL_RMT, address(sink), SYNTHETIC_ERC20_RATE, SYNTHETIC_ERC721_RATE, SYNTHETIC_ERC1155_RATE
+            HISTORICAL_LAUNCH_ZERO_ASSET, address(sink), SYNTHETIC_ERC20_RATE, SYNTHETIC_ERC721_RATE, SYNTHETIC_ERC1155_RATE
         );
 
         if (
-            engine.CHAIN_ID() != 4_663 || engine.rmtToken() != OFFICIAL_RMT
-                || engine.rmtTokenRuntimeHash() != OFFICIAL_RMT_RUNTIME_HASH || engine.retirementSink() != address(sink)
+            engine.CHAIN_ID() != 4_663 || engine.rmtToken() != HISTORICAL_LAUNCH_ZERO_ASSET
+                || engine.rmtTokenRuntimeHash() != HISTORICAL_LAUNCH_ZERO_RUNTIME_HASH || engine.retirementSink() != address(sink)
                 || engine.retirementSinkRuntimeHash() != address(sink).codehash
                 || engine.erc20CostPerRecipient() != SYNTHETIC_ERC20_RATE
                 || engine.erc721CostPerRecipient() != SYNTHETIC_ERC721_RATE

@@ -90,8 +90,8 @@ const quoteRoute = readFileSync(new URL("../../app/api/vnext/funding/across/quot
 const spendBalance = readFileSync(new URL("../../app/vnext/spend-balance.tsx", import.meta.url), "utf8");
 assert.doesNotMatch(fundingSource, /swapTx\.data\s*[+]=|swapTx\.data\s*=\s*`\$\{.*1dc0de/);
 assert.doesNotMatch(infrastructure, /available-routes/);
-assert.match(quoteRoute, /readAcrossPostQuoteGasReadiness/);
-assert.match(quoteRoute, /gasReadiness\.status !== "sufficient"/);
+assert.match(quoteRoute, /retiredTransactionPreparationResponse/);
+assert.doesNotMatch(quoteRoute, /readAcrossPostQuoteGasReadiness|approvalTransaction|depositTransaction/);
 for (const field of ["expectedOutputAtomic", "protectedOutputAtomic", "pendingCrossChainFundingOutput", "availableCrossChainFundingOutput"]) {
   assert.equal(spendBalance.includes(field), false, `${field} must never create wallet spend balance`);
 }

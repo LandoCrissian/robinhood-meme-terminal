@@ -1,10 +1,11 @@
 import { chromium, devices } from "playwright";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 
 const base = process.env.RMT_ACCEPTANCE_BASE_URL ?? "http://127.0.0.1:3000";
 const output = process.env.RMT_ACCEPTANCE_OUTPUT
   ?? `${process.env.GITHUB_WORKSPACE}/terminal-high-end-evidence`;
 const focusDebug = process.env.RMT_ACCEPTANCE_FOCUS_DEBUG === "true";
+const previewOnly = process.env.RMT_ACCEPTANCE_PREVIEW_ONLY === "true";
 const now = new Date().toISOString();
 const address = (seed) => `0x${seed.toString(16).padStart(40, "0")}`;
 const txHash = (seed) => `0x${seed.toString(16).repeat(64).slice(0, 64)}`;
@@ -15,8 +16,11 @@ const creator = address(0x4001);
 const exactIdentityToken = address(0x1ffe);
 const stonkBrokerToken = `0x${["e934e36a", "439c9401", "7b64a3fe", "ce66af12", "099abf50"].join("")}`;
 const stonkBrokerPoolId = `0x${"ab".repeat(32)}`;
+const spcxToken = ["0x4a0e65a3", "eccec6db", "e60ae065", "f2e7bb85", "fae35eea"].join("");
+const nvdaToken = ["0xd0601ce1", "57db5bdc", "3162bbac", "2a2c8af5", "320d9eec"].join("");
 const universalSearchQueries = new WeakMap();
 const chainPulseRequests = new WeakMap();
+const telemetryRequests = new WeakMap();
 
 await mkdir(output, { recursive: true });
 
@@ -56,7 +60,7 @@ function market(index) {
     priceChange24h,
     pairCreatedAt: Date.now() - (index + 1) * 3_600_000
   };
-  const stockAssetRelationships = index === 0
+  const stockAssetRelationships = index === 2
     ? [{
         relationship: "canonical-stock-token",
         assetId: "fixture-stock",
@@ -295,6 +299,7 @@ function canonicalDirectoryMarket(market) {
     buyPressureBps: null,
     riskFlags: null,
     signal: null,
+    stockAssetRelationships: market.stockAssetRelationships,
     canonicalMarkets: [{
       sourceId: version === 2 ? "sushiswap-v2" : "uniswap-v3",
       protocol: version === 2 ? "sushiswap" : "uniswap",
@@ -374,6 +379,7 @@ function stonkBrokerSearchResponse(query) {
 
 async function installRoutes(page) {
   chainPulseRequests.set(page, 0);
+  telemetryRequests.set(page, 0);
   await page.route(/\/api\/vnext\/chain-pulse(?:\?.*)?$/, async (route) => {
     chainPulseRequests.set(page, (chainPulseRequests.get(page) ?? 0) + 1);
     await route.fulfill({
@@ -535,15 +541,18 @@ async function installRoutes(page) {
       })
     });
   });
-  await page.route(/\/api\/markets\/external-trades(?:\?.*)?$/, (route) => route.fulfill({
-    status: 200,
-    contentType: "application/json",
-    body: JSON.stringify({ token, pair, source: "GeckoTerminal", updatedAt: now, trades })
-  }));
-  await page.route(/\/api\/markets\/external-stream(?:\?.*)?$/, (route) => route.fulfill({
-    status: 204,
-    body: ""
-  }));
+  await page.route(/\/api\/markets\/external-trades(?:\?.*)?$/, (route) => {
+    telemetryRequests.set(page, (telemetryRequests.get(page) ?? 0) + 1);
+    return route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ token, pair, source: "GeckoTerminal", updatedAt: now, trades })
+    });
+  });
+  await page.route(/\/api\/markets\/external-stream(?:\?.*)?$/, (route) => {
+    telemetryRequests.set(page, (telemetryRequests.get(page) ?? 0) + 1);
+    return route.fulfill({ status: 204, body: "" });
+  });
   await page.route(/\/api\/markets\/token-risk(?:\?.*)?$/, (route) => route.fulfill({
     status: 200,
     contentType: "application/json",
@@ -620,6 +629,37 @@ function visibleAudit() {
       }).length,
     controlsUnder32
   };
+}
+
+async function inspectAssetQuickLinks(page, label) {
+  const links = page.locator(".vnAssetQuickLinks");
+  await links.waitFor({ state: "visible" });
+  await links.locator(".vnProjectLinkGroup").first().waitFor({ state: "visible", timeout: 5_000 });
+  const audit = await links.evaluate((root) => {
+    const market = new URLSearchParams(window.location.search).get("market")?.toLowerCase() ?? null;
+    const anchors = [...root.querySelectorAll("a[href]")];
+    return {
+      market,
+      fullContractVisible: Boolean(market && root.textContent?.toLowerCase().includes(market)),
+      copyAvailable: Boolean(root.querySelector('button[aria-label^="Copy full token contract"]')),
+      provenance: [...root.querySelectorAll("small")].map((entry) => entry.textContent?.trim()).filter(Boolean),
+      anchors: anchors.map((anchor) => ({
+        href: anchor.getAttribute("href"),
+        target: anchor.getAttribute("target"),
+        rel: anchor.getAttribute("rel"),
+        name: anchor.getAttribute("aria-label") ?? anchor.textContent?.trim()
+      }))
+    };
+  });
+  if (!audit.fullContractVisible || !audit.copyAvailable) throw new Error(`${label}: selected asset contract is not fully accessible/copyable ${JSON.stringify(audit)}`);
+  if (!audit.provenance.some((entry) => entry?.startsWith("Project links ·"))) throw new Error(`${label}: project-link provenance is missing ${JSON.stringify(audit)}`);
+  if (audit.anchors.length < 3) throw new Error(`${label}: selected asset quick links are unexpectedly sparse ${JSON.stringify(audit)}`);
+  for (const anchor of audit.anchors) {
+    if (!anchor.href?.startsWith("https://") || anchor.target !== "_blank" || !anchor.rel?.includes("noopener") || !anchor.rel?.includes("noreferrer") || !anchor.name) {
+      throw new Error(`${label}: unsafe or inaccessible external quick link ${JSON.stringify(anchor)}`);
+    }
+  }
+  return audit;
 }
 
 async function inspectMarketsHierarchy(browser, phase) {
@@ -838,6 +878,7 @@ async function inspectDesktop(browser, viewport, label) {
   await page.locator(".rmtMarketTableRow").first().click();
   await page.locator('.rmtDesktopTerminal[data-terminal-context="asset"]').waitFor({ state: "visible" });
   if (!(await page.locator("#vn-asset-heading").textContent())?.includes("R02")) throw new Error(`${label}: selected asset did not update the VNext workspace`);
+  const assetQuickLinks = await inspectAssetQuickLinks(page, label);
   const assetComposition = await page.evaluate(() => ({
     chart: document.querySelector(".vnChart")?.getBoundingClientRect().height ?? 0,
     rail: document.querySelector(".rmtDesktopExecution")?.getBoundingClientRect().toJSON(),
@@ -866,9 +907,9 @@ async function inspectDesktop(browser, viewport, label) {
   if (!(await page.locator("#vn-asset-heading").textContent())?.includes("EXACT")) throw new Error(`${label}: verified identity-only contract did not enter Asset context`);
   if (new URL(page.url()).searchParams.get("market")?.toLowerCase() !== exactIdentityToken.toLowerCase()) throw new Error(`${label}: verified identity-only contract was not preserved in terminal history`);
   const exactIdentityQueries = universalSearchQueries.get(page) ?? [];
-  if (exactIdentityQueries.length !== 1 || exactIdentityQueries[0]?.toLowerCase() !== exactIdentityToken.toLowerCase()) throw new Error(`${label}: identity-only fallback did not follow exactly one universal inventory attempt`);
+  if (exactIdentityQueries.length !== 1 || exactIdentityQueries[0]?.toLowerCase() !== exactIdentityToken.toLowerCase()) throw new Error(`${label}: identity-only fallback did not follow exactly one universal inventory attempt ${JSON.stringify(exactIdentityQueries)}`);
   await context.close();
-  return { ...audit, marketsComposition, assetComposition };
+  return { ...audit, marketsComposition, assetComposition, assetQuickLinks };
 }
 
 async function inspectDiscoveryAcceptance(browser, options, label, mobile) {
@@ -1002,6 +1043,7 @@ async function inspectMarket(browser) {
   }
   await candlesButton.click();
   const chart = page.locator(".vnChartFrame svg");
+  await chart.scrollIntoViewIfNeeded();
   const chartBox = await chart.boundingBox();
   if (!chartBox) throw new Error("Chart bounds are unavailable");
   await page.mouse.move(chartBox.x + chartBox.width * 0.5, chartBox.y + chartBox.height * 0.4);
@@ -1094,11 +1136,13 @@ async function inspectCurrentPublicRoutes(browser) {
     "/markets/robinhood-chain/trending",
     "/markets/robinhood-chain/new",
     "/markets/robinhood-chain/active",
-    "/explore",
+    "/rmt",
     "/status",
     "/sources",
-    "/sushi",
     "/support",
+    "/risks",
+    "/terms",
+    "/experience",
     "/privacy"
   ];
   const results = [];
@@ -1126,7 +1170,545 @@ async function inspectCurrentPublicRoutes(browser) {
     results.push(audit);
     await context.close();
   }
+
+  for (const pathname of ["/explore", "/launch", "/sushi", "/rescue", "/deploy-mainnet"]) {
+    const context = await createContext(browser, { viewport: { width: 1_280, height: 800 }, deviceScaleFactor: 1 });
+    const page = await context.newPage();
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await installRoutes(page);
+    await gotoReady(page, `${base}${pathname}?launch=0&official=true`, ".rmtDesktopTerminal, .rmtMobileTerminal");
+    const audit = await page.evaluate(() => ({
+      requestedLegacyPath: true,
+      pathname: window.location.pathname,
+      query: window.location.search,
+      terminal: Boolean(document.querySelector(".rmtDesktopTerminal, .rmtMobileTerminal")),
+      publicChrome: Boolean(document.querySelector(".publicHeader, .mobileDock")),
+      horizontalOverflow: Math.max(0, document.documentElement.scrollWidth - innerWidth),
+      notFound: Boolean(document.querySelector(".next-error-h1")) || document.body.innerText.includes("This page could not be found")
+    }));
+    if (audit.pathname !== "/" || audit.query || !audit.terminal || audit.publicChrome || audit.horizontalOverflow > 2 || audit.notFound) {
+      throw new Error(`${pathname}: legacy product route did not resolve cleanly to the Terminal ${JSON.stringify(audit)}`);
+    }
+    results.push(audit);
+    await context.close();
+  }
   return results;
+}
+
+async function createWalletAcceptanceContext(browser, options) {
+  const context = await createContext(browser, options);
+  await context.addInitScript(({ wallet }) => {
+    const listeners = new Map();
+    let pendingWalletRequest = null;
+    window.__RMT_ACCEPTANCE_WALLET_METHODS__ = [];
+    const emit = (event, value) => {
+      for (const listener of listeners.get(event) ?? []) listener(value);
+    };
+    window.__RMT_ACCEPTANCE_RELEASE_WALLET__ = (mode = "approve") => {
+      if (!pendingWalletRequest) return false;
+      const request = pendingWalletRequest;
+      pendingWalletRequest = null;
+      if (mode === "cancel") request.reject(new Error("User rejected the request"));
+      else request.resolve(request.hash);
+      return true;
+    };
+    window.ethereum = {
+      isMetaMask: true,
+      on(event, listener) {
+        const entries = listeners.get(event) ?? [];
+        entries.push(listener);
+        listeners.set(event, entries);
+      },
+      removeListener(event, listener) {
+        listeners.set(event, (listeners.get(event) ?? []).filter((entry) => entry !== listener));
+      },
+      async request({ method, params }) {
+        window.__RMT_ACCEPTANCE_WALLET_METHODS__.push(method);
+        if (method === "eth_chainId") return "0x1237";
+        if (method === "eth_accounts" || method === "eth_requestAccounts") {
+          emit("accountsChanged", [wallet]);
+          return [wallet];
+        }
+        if (method === "wallet_switchEthereumChain" || method === "wallet_addEthereumChain") {
+          emit("chainChanged", "0x1237");
+          return null;
+        }
+        if (method === "eth_sendTransaction") {
+          const transaction = params?.[0] ?? {};
+          const approval = String(transaction.to ?? "").toLowerCase() !== "0x5555555555555555555555555555555555555555";
+          const canonicalHash = `0x${(approval ? "b" : "c").repeat(64)}`;
+          return await new Promise((resolve, reject) => {
+            pendingWalletRequest = { resolve, reject, hash: canonicalHash };
+          });
+        }
+        if (method === "eth_getBlockByNumber") return { number: "0x2faf090", baseFeePerGas: "0x3b9aca00" };
+        if (method === "eth_getTransactionCount") return "0x1";
+        if (method === "eth_estimateGas") return "0x1d4c0";
+        return null;
+      }
+    };
+  }, { wallet: "0x3333333333333333333333333333333333333333" });
+  return context;
+}
+
+function rpcReceipt(hash, fixture, state) {
+  const approval = hash.toLowerCase() === `0x${"b".repeat(64)}`;
+  if (!state.receiptsAvailable) return null;
+  const logs = approval || state.missingSettlementEvent ? [] : [{
+    ...fixture.erc20.settlementLog,
+    blockHash: `0x${"d".repeat(64)}`,
+    blockNumber: "0x2faf080",
+    logIndex: "0x0",
+    transactionHash: hash,
+    transactionIndex: "0x0",
+    removed: false
+  }];
+  return {
+    blockHash: `0x${"d".repeat(64)}`,
+    blockNumber: "0x2faf080",
+    contractAddress: null,
+    cumulativeGasUsed: "0x30d40",
+    effectiveGasPrice: "0x3b9aca00",
+    from: fixture.wallet,
+    gasUsed: approval ? "0xc350" : "0x186a0",
+    logs,
+    logsBloom: `0x${"0".repeat(512)}`,
+    status: "0x1",
+    to: approval ? fixture.erc20.approvalPlan.target : fixture.executor,
+    transactionHash: hash,
+    transactionIndex: "0x0",
+    type: "0x2"
+  };
+}
+
+async function installV2WalletAcceptanceRoutes(page, fixture, state) {
+  const freshQuote = (quote) => {
+    const now = Date.now();
+    return {
+      ...quote,
+      requestedAtMs: now,
+      completedAtMs: now + 1,
+      attempts: quote.attempts.map((attempt) => ({ ...attempt, quotedAtMs: now, expiresAtMs: now + 1_800_000 }))
+    };
+  };
+  const freshEvidence = (evidence) => {
+    const now = Date.now();
+    return { ...evidence, verifiedAtMs: now, expiresAtMs: Math.min(now + 300_000, Number(BigInt(evidence.deadline) * 1_000n)) };
+  };
+  const freshPlan = (plan) => {
+    const now = Date.now();
+    return { ...plan, preparedAtMs: now, expiresAtMs: Math.min(now + 60_000, Number(BigInt(plan.deadline) * 1_000n)) };
+  };
+  await page.route("https://browser-acceptance.invalid/**", async (route) => {
+    const requests = route.request().postDataJSON();
+    const respond = (request) => {
+      const method = request?.method;
+      state.rpcMethods = [...(state.rpcMethods ?? []), method].slice(-40);
+      const hash = String(request?.params?.[0] ?? "");
+      let result = null;
+      if (method === "eth_chainId") result = "0x1237";
+      else if (method === "eth_getBalance") result = "0x8ac7230489e80000";
+      else if (method === "eth_gasPrice") result = "0x3b9aca00";
+      else if (method === "eth_blockNumber") {
+        state.blockNumber += 1;
+        result = `0x${state.blockNumber.toString(16)}`;
+      }
+      else if (method === "eth_getTransactionReceipt") result = rpcReceipt(hash, fixture, state);
+      else if (method === "eth_getTransactionByHash") {
+        const approval = hash.toLowerCase() === `0x${"b".repeat(64)}`;
+        result = {
+          blockHash: `0x${"d".repeat(64)}`,
+          blockNumber: "0x2faf080",
+          chainId: "0x1237",
+          from: fixture.wallet,
+          gas: approval ? "0xea60" : "0x1d4c0",
+          gasPrice: "0x3b9aca00",
+          hash,
+          input: approval ? fixture.erc20.approvalPlan.data : fixture.erc20.swapPlan.data,
+          nonce: approval ? "0x1" : "0x2",
+          to: approval ? fixture.erc20.approvalPlan.target : fixture.executor,
+          transactionIndex: "0x0",
+          type: "0x0",
+          value: "0x0",
+          v: "0x1b",
+          r: `0x${"1".repeat(64)}`,
+          s: `0x${"2".repeat(64)}`
+        };
+      }
+      else if (method === "eth_getBlockByNumber") result = { number: "0x2faf090", baseFeePerGas: "0x3b9aca00", timestamp: "0x68a00000" };
+      else if (method === "eth_call") result = "0x";
+      return { jsonrpc: "2.0", id: request?.id ?? 1, result };
+    };
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(Array.isArray(requests) ? requests.map(respond) : respond(requests))
+    });
+  });
+  await page.route(/\/api\/vnext\/quotes$/, async (route) => {
+    state.quotes = (state.quotes ?? 0) + 1;
+    const request = route.request().postDataJSON();
+    const selected = String(request.inputAsset).toLowerCase() === fixture.native.quote.inputAsset.toLowerCase()
+      ? fixture.native
+      : fixture.erc20;
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(freshQuote(selected.quote)) });
+  });
+  await page.route(/\/api\/vnext\/verify$/, async (route) => {
+    state.verifications = (state.verifications ?? 0) + 1;
+    const request = route.request().postDataJSON();
+    const nativeInput = String(request.inputAsset).toLowerCase() === fixture.native.quote.inputAsset.toLowerCase();
+    const evidence = nativeInput
+      ? fixture.native.swapEvidence
+      : state.approved ? fixture.erc20.swapEvidence : fixture.erc20.approvalEvidence;
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(freshEvidence(evidence)) });
+  });
+  await page.route(/\/api\/vnext\/authorize$/, async (route) => {
+    state.authorizations = (state.authorizations ?? 0) + 1;
+    const request = route.request().postDataJSON();
+    const nativeInput = String(request.inputAsset).toLowerCase() === fixture.native.quote.inputAsset.toLowerCase();
+    const evidence = nativeInput
+      ? fixture.native.swapEvidence
+      : state.approved ? fixture.erc20.swapEvidence : fixture.erc20.approvalEvidence;
+    const plan = nativeInput
+      ? fixture.native.swapPlan
+      : state.approved ? fixture.erc20.swapPlan : fixture.erc20.approvalPlan;
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ evidence: freshEvidence(evidence), plan: freshPlan(plan) }) });
+  });
+}
+
+async function openFixtureTrade(page, nativeInput = false) {
+  await installRoutes(page);
+  await gotoReady(page, `${base}/?market=${token}&side=buy`, ".vnTradePanel");
+  if (nativeInput) await page.getByLabel("Pay with asset").selectOption("eip155:4663/native");
+  await page.locator(".vnReviewButton").click();
+}
+
+async function inspectPreviewMode(browser, fixture, options, label, connected) {
+  const state = { approved: false, receiptsAvailable: false, missingSettlementEvent: false, quotes: 0, verifications: 0, authorizations: 0, rpcMethods: [], blockNumber: 50_000_016 };
+  const context = connected
+    ? await createWalletAcceptanceContext(browser, options)
+    : await createContext(browser, options);
+  const page = await context.newPage();
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await installRoutes(page);
+  await installV2WalletAcceptanceRoutes(page, fixture, state);
+  await gotoReady(page, `${base}/?market=${token}&side=buy`, ".vnTradePanel");
+
+  if (connected) {
+    await page.waitForFunction(() => Array.isArray(window.__RMT_ACCEPTANCE_WALLET_METHODS__)
+      && window.__RMT_ACCEPTANCE_WALLET_METHODS__.includes("eth_accounts"));
+  }
+  state.verifications = 0;
+  state.authorizations = 0;
+  state.quotes = 0;
+  await page.evaluate(() => {
+    if (Array.isArray(window.__RMT_ACCEPTANCE_WALLET_METHODS__)) window.__RMT_ACCEPTANCE_WALLET_METHODS__ = [];
+  });
+
+  const panel = page.locator(".vnTradePanel").last();
+  await panel.getByText("Preview mode", { exact: true }).waitFor({ state: "visible" });
+  const primary = panel.locator(".vnReviewButton");
+  if (!(await primary.isDisabled())) throw new Error(`${label}: Preview primary action remained executable`);
+  if ((await primary.innerText()).trim() !== "Trading activation pending") throw new Error(`${label}: Preview primary action copy was not truthful`);
+  const body = await page.locator("body").innerText();
+  if (/Connect & buy|Connect & sell|Live trading|Complete review in wallet/i.test(body)) {
+    throw new Error(`${label}: executable language remained visible in Preview mode`);
+  }
+  await panel.getByRole("tab", { name: "Sell quote" }).click();
+  await panel.getByRole("tab", { name: "Buy quote" }).click();
+  if (connected) await panel.getByLabel("Pay with asset").selectOption("eip155:4663/native");
+  await panel.getByLabel("Exact input amount").fill("1");
+  if (connected) {
+    for (let attempt = 0; attempt < 20 && state.quotes === 0; attempt += 1) await page.waitForTimeout(250);
+    if (state.quotes === 0) throw new Error(`${label}: connected Preview mode did not preserve passive quote observation`);
+  } else {
+    await page.waitForTimeout(500);
+  }
+
+  const walletMethods = await page.evaluate(() => Array.isArray(window.__RMT_ACCEPTANCE_WALLET_METHODS__)
+    ? window.__RMT_ACCEPTANCE_WALLET_METHODS__
+    : []);
+  const forbiddenWalletMethods = walletMethods.filter((method) => [
+    "eth_requestAccounts",
+    "wallet_requestPermissions",
+    "wallet_switchEthereumChain",
+    "eth_sendTransaction"
+  ].includes(method));
+  if (forbiddenWalletMethods.length) throw new Error(`${label}: Preview interaction invoked wallet methods ${forbiddenWalletMethods.join(", ")}`);
+  if (state.verifications !== 0 || state.authorizations !== 0) {
+    throw new Error(`${label}: Preview interaction reached execution APIs ${JSON.stringify(state)}`);
+  }
+  if (await page.locator(".vnWalletReview").count()) throw new Error(`${label}: Preview mode rendered wallet review`);
+  const horizontalOverflow = await page.evaluate(() => Math.max(0, document.documentElement.scrollWidth - innerWidth));
+  if (horizontalOverflow > 2) throw new Error(`${label}: Preview mode has ${horizontalOverflow}px horizontal overflow`);
+  await page.screenshot({ path: `${output}/preview-${label}.png`, fullPage: false, animations: "disabled" });
+  await context.close();
+  return {
+    connected,
+    primaryAction: "disabled",
+    walletConnectCalls: forbiddenWalletMethods.filter((method) => method === "eth_requestAccounts").length,
+    verifyRequests: state.verifications,
+    authorizeRequests: state.authorizations,
+    ethSendTransaction: forbiddenWalletMethods.filter((method) => method === "eth_sendTransaction").length,
+    informationalQuoteRequests: state.quotes,
+    horizontalOverflow
+  };
+}
+
+async function inspectV2WalletBrowserJourney(browser, fixture, options, label, mode) {
+  const state = { approved: mode === "native" || mode === "missing-event" || mode === "cancel", receiptsAvailable: false, missingSettlementEvent: mode === "missing-event", quotes: 0, verifications: 0, authorizations: 0, rpcMethods: [], blockNumber: 50_000_016 };
+  const context = await createWalletAcceptanceContext(browser, options);
+  const page = await context.newPage();
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await installV2WalletAcceptanceRoutes(page, fixture, state);
+  await openFixtureTrade(page, mode === "native");
+  await page.locator(".vnRouteCard summary").click();
+  try {
+    await page.locator(".vnWalletFeeDisclosure").last().waitFor({ state: "visible", timeout: 30_000 });
+  } catch (error) {
+    const advanced = page.locator(".vnRouteCard");
+    if (await advanced.count()) await advanced.evaluate((element) => { element.open = true; });
+    const diagnostic = await page.evaluate(() => ({
+      url: location.href,
+      body: document.body.innerText.slice(-4_000),
+      buttons: [...document.querySelectorAll("button")].map((entry) => entry.textContent?.trim()).filter(Boolean).slice(-30)
+    }));
+    await page.screenshot({ path: `${output}/v2-wallet-diagnostic-${label}.png`, fullPage: true });
+    throw new Error(`${label}: V2 wallet review did not render ${JSON.stringify({ ...diagnostic, requests: state })}`, { cause: error });
+  }
+  const review = page.locator(".vnWalletFeeDisclosure").last();
+  const reviewText = await review.innerText();
+  for (const required of ["Gross input", "Exact fee / asset", "Provider input", "Expected receive", "Protected minimum", "Uniswap V3", "Atomic with swap", "Treasury", "Execution target"]) {
+    if (!reviewText.includes(required)) throw new Error(`${label}: V2 wallet review omitted ${required}`);
+  }
+  await page.getByText("Your wallet displays and authorizes this exact request. RMT cannot sign or submit it for you.", { exact: true }).waitFor({ state: "visible" });
+
+  if (mode === "native") {
+    await page.screenshot({ path: `${output}/v2-wallet-review-${label}.png`, fullPage: false, animations: "disabled" });
+    await page.waitForFunction(() => window.__RMT_ACCEPTANCE_WALLET_METHODS__.includes("eth_sendTransaction"));
+    await page.evaluate(() => window.__RMT_ACCEPTANCE_RELEASE_WALLET__("cancel"));
+    await page.getByText("Wallet review was cancelled. Nothing was submitted.", { exact: true }).waitFor({ state: "visible" });
+    await context.close();
+    return { nativeReview: true, cancellation: true };
+  }
+
+  if (mode === "cancel") {
+    await page.waitForFunction(() => window.__RMT_ACCEPTANCE_WALLET_METHODS__.includes("eth_sendTransaction"));
+    await page.evaluate(() => window.__RMT_ACCEPTANCE_RELEASE_WALLET__("cancel"));
+    await page.getByText("Wallet review was cancelled. Nothing was submitted.", { exact: true }).waitFor({ state: "visible" });
+    await context.close();
+    return { cancellation: true };
+  }
+
+  if (!state.approved) {
+    const approvalText = await page.locator(".vnWalletFeeDisclosure").last().innerText();
+    for (const required of ["RMT execution fee on this approval: 0", "Planned trade fee: 0.25%", "It is not collected during approval"]) {
+      if (!approvalText.includes(required)) throw new Error(`${label}: approval review omitted ${required}`);
+    }
+    if (/unlimited/i.test(approvalText)) throw new Error(`${label}: approval review mentions unlimited authority`);
+    await page.screenshot({ path: `${output}/v2-approval-review-${label}.png`, fullPage: false, animations: "disabled" });
+    await page.waitForFunction(() => window.__RMT_ACCEPTANCE_WALLET_METHODS__.includes("eth_sendTransaction"));
+    await page.evaluate(() => window.__RMT_ACCEPTANCE_RELEASE_WALLET__("approve"));
+    await page.getByText("Transaction submitted · confirmation pending", { exact: true }).waitFor({ state: "visible" });
+    state.approved = true;
+    state.receiptsAvailable = true;
+    try {
+      await page.getByText("Exact approval confirmed", { exact: true }).waitFor({ state: "visible", timeout: 30_000 });
+    } catch (error) {
+      const body = await page.locator("body").innerText();
+      throw new Error(`${label}: approval receipt did not resolve ${JSON.stringify({ body: body.slice(-2500), state })}`, { cause: error });
+    }
+    await page.locator(".vnWalletFeeDisclosure").last().waitFor({ state: "visible", timeout: 30_000 });
+    await page.screenshot({ path: `${output}/v2-wallet-review-${label}.png`, fullPage: false, animations: "disabled" });
+  }
+
+  state.receiptsAvailable = false;
+  await page.waitForFunction(() => window.__RMT_ACCEPTANCE_WALLET_METHODS__.includes("eth_sendTransaction"));
+  await page.evaluate(() => window.__RMT_ACCEPTANCE_RELEASE_WALLET__("approve"));
+  await page.getByText("Transaction submitted · confirmation pending", { exact: true }).waitFor({ state: "visible" });
+  state.receiptsAvailable = true;
+  if (mode === "missing-event") {
+    await page.getByText("Settlement evidence requires review", { exact: true }).waitFor({ state: "visible", timeout: 30_000 });
+    const failureText = await page.locator(".vnRecoveryBanner.isreconciliation_failed").innerText();
+    if (!failureText.includes("Do not resubmit") || !failureText.includes("View transaction")) throw new Error(`${label}: reconciliation failure guidance is incomplete`);
+    if (await page.getByRole("dialog", { name: /confirmed/i }).count()) throw new Error(`${label}: invalid settlement rendered a success receipt`);
+    await page.screenshot({ path: `${output}/v2-reconciliation-failed-${label}.png`, fullPage: false, animations: "disabled" });
+    await context.close();
+    return { reconciliationFailed: true, duplicateBlocked: true };
+  }
+
+  try {
+    await page.getByRole("dialog", { name: "Buy confirmed" }).waitFor({ state: "visible", timeout: 30_000 });
+  } catch (error) {
+    const body = await page.locator("body").innerText();
+    throw new Error(`${label}: V2 receipt did not render ${JSON.stringify({ body: body.slice(-2800), state })}`, { cause: error });
+  }
+  const receiptText = await page.getByRole("dialog", { name: "Buy confirmed" }).innerText();
+  for (const required of ["Gross input", "Asset received", "RMT fee", "0.25%", "Uniswap V3", "View confirmed transaction"]) {
+    if (!receiptText.toLowerCase().includes(required.toLowerCase())) throw new Error(`${label}: receipt omitted ${required}: ${JSON.stringify(receiptText)}`);
+  }
+  await page.screenshot({ path: `${output}/v2-confirmed-receipt-${label}.png`, fullPage: false, animations: "disabled" });
+  await context.close();
+  return { approval: true, swap: true, receipt: true };
+}
+
+async function inspectV4PoolIdWorkspace(browser) {
+  const context = await createContext(browser, { viewport: { width: 1_440, height: 900 }, deviceScaleFactor: 1 });
+  const page = await context.newPage();
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await installRoutes(page);
+  await gotoReady(page, `${base}/?market=${stonkBrokerToken}`, ".rmtDesktopTerminal #vn-asset-heading");
+  if (!(await page.locator("#vn-asset-heading").innerText()).includes("STONKBROKER")) throw new Error("V4 deep link did not preserve the canonical token identity");
+  await page.locator(".rmtWorkspaceTabs").getByRole("tab", { name: "Markets", exact: true }).click();
+  const evidence = await page.locator(".rmtWorkspaceIntelligence").innerText();
+  const shortPoolId = `${stonkBrokerPoolId.slice(0, 6)}…${stonkBrokerPoolId.slice(-4)}`;
+  if (!/Uniswap V4/i.test(evidence) || !/PoolId/i.test(evidence) || !evidence.includes(shortPoolId)) {
+    throw new Error(`V4 Markets tab omitted canonical PoolId evidence: ${evidence}`);
+  }
+  if (/0 canonical markets|primary pool ↗/i.test(evidence)) throw new Error(`V4 Markets tab fabricated or erased canonical evidence: ${evidence}`);
+  await page.waitForTimeout(1_500);
+  const requests = telemetryRequests.get(page) ?? 0;
+  if (requests !== 0) throw new Error(`V4 PoolId-only workspace started ${requests} unsupported telemetry requests`);
+  await page.screenshot({ path: `${output}/v4-pool-id-workspace-desktop-1440x900.png`, fullPage: false, animations: "disabled" });
+  await context.close();
+  return { token: stonkBrokerToken, poolId: stonkBrokerPoolId, telemetryRequests: requests };
+}
+
+function stockWorkspaceFixture(contractAddress, tokenName, tokenSymbol, currentMultiplier, index) {
+  const baseMarket = market(index);
+  const relationship = {
+    relationship: "canonical-stock-token",
+    assetId: `stock:${tokenSymbol.toLowerCase()}`,
+    tokenSymbol,
+    tokenName,
+    contractAddress,
+    currentMultiplier,
+    status: "active",
+    logoUrl: null,
+    provenance: "robinhood-live-asset-registry"
+  };
+  const primaryMarket = {
+    ...baseMarket.primaryMarket,
+    assetId: `eip155:4663/contract:${contractAddress}`,
+    token: { address: contractAddress, name: tokenName, symbol: tokenSymbol },
+    baseToken: { address: contractAddress, name: tokenName, symbol: tokenSymbol },
+    executionEligibility: "view-only"
+  };
+  return {
+    ...baseMarket,
+    address: contractAddress,
+    assetId: `eip155:4663/contract:${contractAddress}`,
+    name: tokenName,
+    symbol: tokenSymbol,
+    primaryMarket,
+    verifiedMarkets: [primaryMarket],
+    stockAssetRelationships: [relationship],
+    rwaRelationship: "canonical-stock-token"
+  };
+}
+
+async function inspectStockWorkspace(browser, control, mobile = false) {
+  const contextOptions = mobile
+    ? { viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, isMobile: true, hasTouch: true }
+    : { viewport: { width: 1_440, height: 900 }, deviceScaleFactor: 1 };
+  const context = await createContext(browser, contextOptions);
+  const page = await context.newPage();
+  const fixtureMarket = stockWorkspaceFixture(control.address, control.name, control.symbol, control.multiplier, control.index);
+  const state = { approved: true, receiptsAvailable: false, missingSettlementEvent: false, quotes: 0, verifications: 0, authorizations: 0, rpcMethods: [], blockNumber: 50_000_016 };
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await installRoutes(page);
+  await page.route(/\/api\/vnext\/verify$/, async (route) => {
+    state.verifications += 1;
+    await route.fulfill({ status: 451, contentType: "application/json", body: JSON.stringify({ error: "View only" }) });
+  });
+  await page.route(/\/api\/vnext\/authorize$/, async (route) => {
+    state.authorizations += 1;
+    await route.fulfill({ status: 451, contentType: "application/json", body: JSON.stringify({ error: "View only" }) });
+  });
+  await page.route(/\/api\/vnext\/market-directory(?:\?.*)?$/, (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({ canonical: true, coverage: "complete", nextCursor: null, markets: [canonicalDirectoryMarket(fixtureMarket)], updatedAt: now })
+  }));
+  await page.route(/\/api\/markets\/external(?:\?.*)?$/, (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({ markets: [fixtureMarket], source: "stock-workspace-acceptance", rankingVersion: "terminal-v10", thresholds: {}, stockAssetCoverage: "complete", delayedSources: [], updatedAt: now, stale: false })
+  }));
+  const resolution = {
+    chainId: 4_663,
+    requestedAddress: control.address,
+    requestedKind: "token",
+    status: "token-only",
+    token: { address: control.address, name: control.name, symbol: control.symbol, decimals: 18, totalSupply: "1000000000000000000000000" },
+    pools: [],
+    marketData: "identity-only",
+    execution: "view-only",
+    provenance: "robinhood-chain-contract-reads",
+    resolvedAt: now
+  };
+  await page.route(/\/api\/vnext\/asset-identity(?:\?.*)?$/, (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ resolution }) }));
+  await page.route(/\/api\/vnext\/asset-workspace(?:\?.*)?$/, (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({ resolution, stockAssetRelationships: fixtureMarket.stockAssetRelationships, stockAssetCoverage: "complete", updatedAt: now })
+  }));
+  await gotoReady(page, `${base}/?market=${control.address}&side=buy`, `${mobile ? ".rmtMobileTerminal" : ".rmtDesktopTerminal"} #vn-asset-heading`);
+  const heading = await page.locator("#vn-asset-heading").innerText();
+  if (!heading.includes(control.name) || !heading.includes(control.symbol) || heading.includes(`${control.address.slice(0, 6)}…`)) throw new Error(`${control.symbol}: verified workspace identity did not win ${heading}`);
+  await page.locator(".rmtWorkspaceTabs").getByRole("tab", { name: "RWA", exact: true }).click();
+  const rwa = await page.locator(".rmtWorkspaceIntelligence").innerText();
+  for (const expected of ["Canonical stock token", control.name, control.symbol, control.multiplier, "Robinhood live asset registry", "Active"]) {
+    if (!rwa.toLowerCase().includes(expected.toLowerCase())) throw new Error(`${control.symbol}: RWA workspace omitted ${expected}: ${rwa}`);
+  }
+  const multiplierOccurrences = rwa.split(control.multiplier).length - 1;
+  if (multiplierOccurrences !== 1) throw new Error(`${control.symbol}: multiplier rendered ${multiplierOccurrences} times`);
+  const viewOnlyBadges = page.getByText("View only", { exact: true });
+  if (await viewOnlyBadges.count() === 0) throw new Error(`${control.symbol}: stock-token view-only badge is absent`);
+  const body = await page.locator("body").innerText();
+  if (/Live trading|Connect & buy|Connect & sell/i.test(body)) throw new Error(`${control.symbol}: executable stock-token language remains visible`);
+  if (await page.locator(".vnWalletReview").count()) throw new Error(`${control.symbol}: stock token opened wallet review`);
+  if (mobile) {
+    const mobileAction = page.locator(".rmtMobileTradeDock button");
+    if (await mobileAction.count() !== 1 || (await mobileAction.innerText()) !== "View only" || !(await mobileAction.isDisabled())) {
+      throw new Error(`${control.symbol}: mobile stock-token dock still exposes an executable action`);
+    }
+  } else {
+    const reviewAction = page.locator(".vnReviewButton");
+    if ((await reviewAction.innerText()) !== "View only" || !(await reviewAction.isDisabled())) throw new Error(`${control.symbol}: persistent composer is not view-only`);
+    await page.locator(".rmtWorkspaceTabs").getByRole("tab", { name: "Position", exact: true }).click();
+    if (await page.getByRole("button", { name: /^(Buy|Sell)$/ }).count()) throw new Error(`${control.symbol}: workspace position exposes stock execution actions`);
+    await page.locator(".rmtWorkspaceTabs").getByRole("tab", { name: "RWA", exact: true }).click();
+  }
+  if (!mobile) {
+    await page.getByRole("tab", { name: "Sell quote", exact: true }).click();
+    await page.getByRole("tab", { name: "Buy quote", exact: true }).click();
+  }
+  await page.waitForTimeout(750);
+  if (state.quotes > 0 && await page.locator(".vnQuoteAttempts .isReady").count() === 0) {
+    throw new Error(`${control.symbol}: an observed stock quote was not rendered informationally`);
+  }
+  if (state.verifications !== 0 || state.authorizations !== 0) throw new Error(`${control.symbol}: stock selection called execution APIs ${JSON.stringify(state)}`);
+  const walletSideEffects = await page.evaluate(() => ({
+    walletProviderPresent: Boolean(window.ethereum),
+    walletReview: Boolean(document.querySelector(".vnWalletReview, .vnWalletReviewOverlay"))
+  }));
+  if (walletSideEffects.walletProviderPresent || walletSideEffects.walletReview) {
+    throw new Error(`${control.symbol}: stock informational controls caused a wallet side effect ${JSON.stringify(walletSideEffects)}`);
+  }
+  const viewportLabel = mobile ? "mobile-390x844" : "desktop-1440x900";
+  await page.screenshot({ path: `${output}/${control.symbol.toLowerCase()}-stock-workspace-${viewportLabel}.png`, fullPage: false, animations: "disabled" });
+  await context.close();
+  return {
+    symbol: control.symbol,
+    address: control.address,
+    multiplier: control.multiplier,
+    viewOnly: resolution.execution === "view-only",
+    quoteRequests: state.quotes,
+    verificationRequests: state.verifications,
+    authorizationRequests: state.authorizations,
+    mobile
+  };
 }
 
 async function inspectMobile(browser, viewport, label) {
@@ -1187,6 +1769,7 @@ async function inspectMobile(browser, viewport, label) {
 
   await page.locator(".rmtMobileMarketRow").first().click();
   await page.locator('.rmtMobileTerminal[data-terminal-context="asset"] #vn-asset-heading').waitFor({ state: "visible" });
+  const assetQuickLinks = await inspectAssetQuickLinks(page, label);
   const assetAudit = await page.evaluate(() => ({
     horizontalOverflow: Math.max(0, document.documentElement.scrollWidth - innerWidth),
     scannerPresent: Boolean(document.querySelector(".rmtMobileMarketsView")),
@@ -1293,7 +1876,7 @@ async function inspectMobile(browser, viewport, label) {
   if (portfolioAudit.pathname !== "/" || portfolioAudit.panel !== "portfolio" || portfolioAudit.scanner || portfolioAudit.asset || portfolioAudit.dock || portfolioAudit.overflow > 2) throw new Error(`${label}: mobile Portfolio is not a dedicated context ${JSON.stringify(portfolioAudit)}`);
   await page.screenshot({ path: `${output}/portfolio-${label}.png`, fullPage: false, animations: "disabled" });
   await context.close();
-  return { markets: marketsAudit, asset: assetAudit, tradePanel: tradeAudit, portfolio: portfolioAudit };
+  return { markets: marketsAudit, asset: assetAudit, assetQuickLinks, tradePanel: tradeAudit, portfolio: portfolioAudit };
 }
 
 const browser = await chromium.launch({
@@ -1304,6 +1887,38 @@ try {
   const mobileOnly = process.env.RMT_ACCEPTANCE_ONLY_MOBILE === "true";
   const exploratory = process.env.RMT_ACCEPTANCE_EXPLORATORY === "true";
   const hierarchyPhase = process.env.RMT_ACCEPTANCE_LAYOUT_PHASE === "before" ? "before" : "after";
+  const browserAcceptanceFixture = process.env.NEXT_PUBLIC_RMT_BROWSER_ACCEPTANCE_PROFILE === "true"
+    ? JSON.parse(await readFile(`${output}/v2-fixture.json`, "utf8"))
+    : null;
+  if (previewOnly) {
+    if (!browserAcceptanceFixture) throw new Error("Preview acceptance requires the loopback-only browser fixture profile.");
+    const previewEvidence = {
+      desktopDisconnected: await inspectPreviewMode(browser, browserAcceptanceFixture, { viewport: { width: 1_440, height: 900 } }, "desktop-1440x900-disconnected", false),
+      desktopConnected: await inspectPreviewMode(browser, browserAcceptanceFixture, { viewport: { width: 1_440, height: 900 } }, "desktop-1440x900-connected", true),
+      mobileDisconnected: await inspectPreviewMode(browser, browserAcceptanceFixture, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true }, "mobile-390x844-disconnected", false),
+      mobileConnected: await inspectPreviewMode(browser, browserAcceptanceFixture, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true }, "mobile-390x844-connected", true)
+    };
+    await writeFile(`${output}/report.json`, JSON.stringify({ previewEvidence }, null, 2));
+    console.log(`Terminal Preview-mode acceptance passed: ${JSON.stringify(previewEvidence)}`);
+  } else {
+  const v2BrowserEvidence = browserAcceptanceFixture
+    ? await (async () => {
+        return {
+          desktopNative: mobileOnly ? null : await inspectV2WalletBrowserJourney(browser, browserAcceptanceFixture, { viewport: { width: 1_440, height: 900 } }, "desktop-1440x900-native", "native"),
+          desktopSuccess: mobileOnly ? null : await inspectV2WalletBrowserJourney(browser, browserAcceptanceFixture, { viewport: { width: 1_440, height: 900 } }, "desktop-1440x900", "success"),
+          desktopFailure: mobileOnly ? null : await inspectV2WalletBrowserJourney(browser, browserAcceptanceFixture, { viewport: { width: 1_440, height: 900 } }, "desktop-1440x900", "missing-event"),
+          desktopCancellation: mobileOnly ? null : await inspectV2WalletBrowserJourney(browser, browserAcceptanceFixture, { viewport: { width: 1_440, height: 900 } }, "desktop-1440x900-cancel", "cancel"),
+          mobileSuccess: await inspectV2WalletBrowserJourney(browser, browserAcceptanceFixture, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true }, "mobile-390x844", "success"),
+          mobileFailure: await inspectV2WalletBrowserJourney(browser, browserAcceptanceFixture, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true }, "mobile-390x844", "missing-event")
+        };
+      })()
+    : null;
+  const workspaceEvidence = mobileOnly ? null : {
+    v4: await inspectV4PoolIdWorkspace(browser),
+    spcx: await inspectStockWorkspace(browser, { address: spcxToken, name: "SpaceX Stock Token", symbol: "SPCX", multiplier: "1", index: 6 }),
+    nvda: await inspectStockWorkspace(browser, { address: nvdaToken, name: "NVIDIA Stock Token", symbol: "NVDA", multiplier: "1", index: 8 }),
+    spcxMobile: await inspectStockWorkspace(browser, { address: spcxToken, name: "SpaceX Stock Token", symbol: "SPCX", multiplier: "1", index: 6 }, true)
+  };
   const marketsHierarchy = await inspectMarketsHierarchy(browser, hierarchyPhase);
   if (process.env.RMT_ACCEPTANCE_ONLY_MARKETS_HIERARCHY === "true") {
     await writeFile(`${output}/report.json`, JSON.stringify({ marketsHierarchy }, null, 2));
@@ -1324,8 +1939,9 @@ try {
   );
   const desktop = mobileOnly ? null : await inspectDesktop(browser, { width: 1_440, height: 900 }, "1440x900");
   const laptop = mobileOnly ? null : await inspectDesktop(browser, { width: 1_280, height: 800 }, "1280x800");
+  const laptop720 = mobileOnly ? null : await inspectDesktop(browser, { width: 1_280, height: 720 }, "1280x720");
   const compact = mobileOnly ? null : await inspectDesktop(browser, { width: 1_024, height: 768 }, "1024x768");
-  const wide = !mobileOnly && exploratory ? await inspectDesktop(browser, { width: 1_920, height: 1_080 }, "1920x1080") : null;
+  const wide = mobileOnly ? null : await inspectDesktop(browser, { width: 1_920, height: 1_080 }, "1920x1080");
   const seamDesktop = !mobileOnly && exploratory ? await inspectDesktop(browser, { width: 1_025, height: 900 }, "1025x900") : null;
   const marketAudit = mobileOnly ? null : await inspectMarket(browser);
   const compatibilityEntries = mobileOnly ? null : await inspectCompatibilityEntries(browser);
@@ -1335,6 +1951,7 @@ try {
   const mobile430 = await inspectMobile(browser, { width: 430, height: 932 }, "430x932");
   const touch1023 = await inspectMobile(browser, { width: 1_023, height: 900 }, "1023x900");
   const mobile390 = await inspectMobile(browser, { width: 390, height: 844 }, "390x844");
+  const mobile393 = await inspectMobile(browser, { width: 393, height: 852 }, "393x852");
   const mobile375 = await inspectMobile(browser, { width: 375, height: 812 }, "375x812");
   const mobile360 = await inspectMobile(browser, { width: 360, height: 800 }, "360x800");
   const exploratoryTouch = {};
@@ -1350,9 +1967,10 @@ try {
   }
   await writeFile(
     `${output}/report.json`,
-    JSON.stringify({ productAcceptanceEvidence, marketsHierarchy, discoveryDesktop, discoveryMobile, desktop, laptop, compact, wide, seamDesktop, marketAudit, compatibilityEntries, publicRoutes, touch1023, mobile430, mobile390, mobile375, mobile360, exploratoryTouch }, null, 2)
+    JSON.stringify({ productAcceptanceEvidence, workspaceEvidence, marketsHierarchy, discoveryDesktop, discoveryMobile, desktop, laptop, laptop720, compact, wide, seamDesktop, marketAudit, compatibilityEntries, publicRoutes, touch1023, mobile430, mobile393, mobile390, mobile375, mobile360, v2BrowserEvidence, exploratoryTouch }, null, 2)
   );
   console.log(`Terminal active discovery product acceptance passed: ${JSON.stringify(productAcceptanceEvidence)}`);
+  }
   }
 } finally {
   await browser.close();

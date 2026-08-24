@@ -16,6 +16,8 @@ function inspectRoute(calldata: Hex) {
   return { commands, routeDeadline, actions, takeCurrency, takeRecipient, takeAmount, sweepCurrency, sweepRecipient };
 }
 
+// Historical calldata fixture only; this does not make launch 0 a current
+// market, search control, or release requirement.
 const token = getAddress("0xdBa33be56C89CC9fc014c4459028d7e5c7878671");
 const recipient = getAddress("0x1111111111111111111111111111111111111111");
 const amountIn = 1_000_000_000_000_000n;

@@ -191,6 +191,7 @@ jobs:
             src/RMTDistributionEngineV1.sol \
             src/RMTRetirementSinkV1.sol \
             src/RMTUniswapV3FeeExecutorV1.sol \
+            src/RMTUniswapV3FeeExecutorV2.sol \
             src/RMTTestnetSushiV3RehearsalStack.sol \
             src/clone/CloneBondingCurveMarketV6.sol \
             src/interfaces/IRMTDistributionEngineV1.sol \
@@ -212,6 +213,8 @@ jobs:
             test/RMTRetirementSinkV1.t.sol \
             test/RMTUniswapV3FeeExecutorV1.t.sol \
             test/RMTUniswapV3FeeExecutorV1Fork.t.sol \
+            test/RMTUniswapV3FeeExecutorV2.t.sol \
+            test/RMTUniswapV3FeeExecutorV2Fork.t.sol \
             test/RMTTestnetSushiV3RehearsalStack.t.sol \
             test/mocks/RMTDistributionEngineV1Mocks.sol \
             test/V4GraduationAdapter.t.sol \

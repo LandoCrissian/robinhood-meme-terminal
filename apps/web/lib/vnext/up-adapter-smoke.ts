@@ -99,9 +99,9 @@ async function run() {
   assert.deepEqual(attempts[1].liquidityFeeEvidence.map((evidence) => evidence.tickSpacing), [60, 60]);
   assert(attempts.every((attempt) => attempt.liquidityFeeEvidence.every((evidence) => evidence.observedBlock === snapshot.blockNumber.toString())));
   assert.equal(adapters.v2.capabilities.strictVerification, true);
-  assert.equal(adapters.v2.capabilities.walletAuthorization, true);
+  assert.equal(adapters.v2.capabilities.walletAuthorization, false);
   assert.equal(adapters.cl.capabilities.strictVerification, true);
-  assert.equal(adapters.cl.capabilities.walletAuthorization, true);
+  assert.equal(adapters.cl.capabilities.walletAuthorization, false);
 
   const poisoned = createVNextUpAdapters({
     async quoteV2() {

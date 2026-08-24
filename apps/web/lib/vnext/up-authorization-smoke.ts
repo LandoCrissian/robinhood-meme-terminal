@@ -88,7 +88,11 @@ const unsignedV2Plan: Omit<VNextAuthorizationPlan, "payloadHash"> = {
 };
 const v2Plan: VNextAuthorizationPlan = { ...unsignedV2Plan, payloadHash: authorizationPayloadHash(unsignedV2Plan) };
 const planEvidence = { ...completeV2Evidence, calldataHash: keccak256(v2Data), nextActionCalldataHash: keccak256(v2Data) };
-assert.equal(parseVNextAuthorizationPlan(v2Plan, planEvidence, now + 1).provider, "up-v2");
+assert.throws(
+  () => parseVNextAuthorizationPlan(v2Plan, planEvidence, now + 1),
+  /without complete V2 fee authority/,
+  "audited UP calldata remains quote-verifiable but cannot authorize a fee-free direct router transaction"
+);
 assert.throws(() => parseVNextAuthorizationPlan({ ...v2Plan, provider: "up-cl" }, planEvidence, now + 1));
 assert.throws(() => parseVNextAuthorizationPlan({ ...v2Plan, router: UP_CL_EXECUTION_ROUTER }, planEvidence, now + 1));
 

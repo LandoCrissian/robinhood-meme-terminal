@@ -119,9 +119,7 @@ export function isWatched(address: string) {
 }
 
 export function watchlistEntryHref(entry: WatchlistEntry) {
-  return entry.launchId
-    ? `/project/${entry.address}?launch=${entry.launchId}`
-    : `/market/${entry.address}`;
+  return `/?market=${entry.address}`;
 }
 
 export function addToWatchlist(entry: WatchlistEntry) {

@@ -58,7 +58,6 @@ const CANONICAL_MARKET_TOKENS = [
   "0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73",
   "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168"
 ] as const;
-const OFFICIAL_RMT_V6_TOKEN = "0xdBa33be56C89CC9fc014c4459028d7e5c7878671";
 const EXCLUDED_TOKENS = new Set(CANONICAL_MARKET_TOKENS.map((address) => address.toLowerCase()));
 const DEX_BATCH_SIZE = 30;
 const DEX_TIMEOUT_MS = 8_000;
@@ -131,7 +130,7 @@ type SuccessfulMarketSnapshot = {
   assetRecords: AssetMarketRecord[];
   originCoverage: OriginCoverage;
   rmtOriginCoverage: OriginCoverage;
-  stockAssetCoverage: "complete" | "unavailable";
+  stockAssetCoverage: "complete" | "stale" | "unavailable";
   thresholds: typeof RUNNER_THRESHOLDS;
 };
 
@@ -375,7 +374,6 @@ async function resolvePreviewRmtOrigins(
     return {
       coverage: "complete",
       tokens: new Set([
-        OFFICIAL_RMT_V6_TOKEN.toLowerCase(),
         ...addresses
           .map((address) => address.toLowerCase())
           .filter((address) => !allowedExternalTokens.has(address) && !verifiedExternalTokens.has(address))
@@ -392,7 +390,7 @@ async function resolveRmtOrigins(
   addresses: string[],
   verifiedExternalTokens = new Set<string>()
 ): Promise<RmtOriginResolution> {
-  const known = new Set([OFFICIAL_RMT_V6_TOKEN.toLowerCase()]);
+  const known = new Set<string>();
   if (addresses.length === 0) return { coverage: "complete", tokens: known };
 
   const baseUrl = process.env.RMT_INDEXER_URL?.trim().replace(/\/+$/, "");

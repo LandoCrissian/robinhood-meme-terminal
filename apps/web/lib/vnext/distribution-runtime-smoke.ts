@@ -12,7 +12,7 @@ import {
 
 const engine = getAddress("0x2222222222222222222222222222222222222222");
 const sink = getAddress("0x3333333333333333333333333333333333333333");
-const rmt = getAddress("0xdBa33be56C89CC9fc014c4459028d7e5c7878671");
+const rmt = getAddress("0x4444444444444444444444444444444444444444");
 const HASH_A = `0x${"a".repeat(64)}` as Hex;
 const HASH_B = `0x${"b".repeat(64)}` as Hex;
 const RMT_HASH = "0x49cd48d0204b35d27e6fca131febe8ce5aff6cd0c2fb6c5c21d5f0ad616e99e9" as Hex;

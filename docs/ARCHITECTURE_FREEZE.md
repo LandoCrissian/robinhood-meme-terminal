@@ -83,7 +83,9 @@ Across remains an asynchronous funding domain: external payment asset → confir
 
 ## Economics
 
-The owner approved and explicitly released the versioned `RMT_EXECUTION_V1` policy for admitted public Uniswap V3 executions: 25 basis points, floor rounding, no minimum fee and 100% allocation to RMT operations. This supersedes the earlier unapproved/disabled state only for that provider-specific path; no other provider or transaction class inherits the fee.
+The owner approved and explicitly released the versioned `RMT_EXECUTION_V1` policy for admitted public Uniswap V3 executions: 25 basis points, floor rounding, no minimum fee and 100% allocation to RMT operations. V1 remains immutable historical/public settlement evidence.
+
+The additive forward architecture is `RMT_EXECUTION_V2`: exactly 25 basis points on gross input for every successfully executed RMT wallet trade, without a static per-token allowlist. The provider is quoted with post-fee input; the fee and swap must revert atomically; approvals and failed swaps settle zero. A provider without an explicitly registered V2 atomic settlement implementation is quote-only, and configuration failure cannot expose a fee-free direct-router fallback. V2 foundation does not select an effective block, deploy a contract, or activate collection.
 
 ```text
 fee policy: RMT_EXECUTION_V1 / version 1

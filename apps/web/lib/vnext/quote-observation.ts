@@ -4,6 +4,16 @@ import {
   assertRmtNetExecutionEconomics,
   type RmtNetExecutionEconomics
 } from "./execution-fee-policy";
+import {
+  assertRmtExecutionFeeV2Economics,
+  type RmtExecutionFeeV2Economics
+} from "./execution-fee-policy-v2";
+import {
+  hasVNextWalletAuthorizationCodec,
+  isVNextWalletFeeSettlementAdmitted
+} from "./provider-fee-settlement";
+
+export { hasVNextWalletAuthorizationCodec } from "./provider-fee-settlement";
 
 const MAX_CLOCK_SKEW_MS = 5_000;
 
@@ -19,21 +29,6 @@ export type VNextLiquidityFeeEvidence = {
   observedBlock: string;
   observedBlockHash: `0x${string}`;
 };
-
-// Strict verification and wallet authorization are deliberately separate
-// capabilities. A provider-specific verifier may be implemented before RMT has
-// a reviewed pre-sign evidence parser and wallet-plan codec for that provider.
-// Keep this local allowlist fail closed so a server capability change cannot
-// silently promote an observation-only provider into wallet preparation.
-const VNEXT_WALLET_AUTHORIZATION_CODECS: ReadonlySet<VNextQuoteProvider> = new Set([
-  "uniswap-v3",
-  "up-v2",
-  "up-cl"
-]);
-
-export function hasVNextWalletAuthorizationCodec(provider: VNextQuoteProvider) {
-  return VNEXT_WALLET_AUTHORIZATION_CODECS.has(provider);
-}
 
 export type VNextQuoteAttemptStatus =
   | "indicative"
@@ -68,6 +63,7 @@ export type VNextQuoteAttempt = {
   gasSponsorshipFeeAtomic: string | null;
   explicitProviderFeeOutputAtomic: string | null;
   netEconomics: RmtNetExecutionEconomics | null;
+  feeV2Economics?: RmtExecutionFeeV2Economics;
   networkFeeNativeAtomic: string | null;
   networkFeeNativeSymbol: "ETH" | null;
   protectedNetOutputAtomic: string | null;
@@ -123,6 +119,7 @@ const attemptSchema = z.object({
   gasSponsorshipFeeAtomic: z.string().nullable(),
   explicitProviderFeeOutputAtomic: z.string().nullable(),
   netEconomics: z.unknown().nullable(),
+  feeV2Economics: z.unknown().optional(),
   networkFeeNativeAtomic: z.string().nullable(),
   networkFeeNativeSymbol: z.literal("ETH").nullable(),
   protectedNetOutputAtomic: z.string().nullable(),
@@ -207,17 +204,35 @@ export function assertVNextQuoteAttempt(
     }
     const providerFee = attempt.providerFeeAtomic === null ? null : atomic(attempt.providerFeeAtomic);
     const gasSponsorshipFee = attempt.gasSponsorshipFeeAtomic === null ? null : atomic(attempt.gasSponsorshipFeeAtomic);
-    if (!attempt.netEconomics) throw new Error("Indicative quote omitted explicit RMT fee economics.");
-    assertRmtNetExecutionEconomics(attempt.netEconomics);
+    if (attempt.feeV2Economics) {
+      assertRmtExecutionFeeV2Economics(attempt.feeV2Economics);
+      if (
+        attempt.netEconomics !== null
+        || attempt.feeV2Economics.inputAsset !== (isRobinhoodNativeAssetForQuote(attempt.inputAsset)
+          ? "eip155:4663/native"
+          : `eip155:4663/contract:${getAddress(attempt.inputAsset).toLowerCase()}`)
+        || attempt.feeV2Economics.outputAsset !== (isRobinhoodNativeAssetForQuote(attempt.outputAsset)
+          ? "eip155:4663/native"
+          : `eip155:4663/contract:${getAddress(attempt.outputAsset).toLowerCase()}`)
+        || attempt.feeV2Economics.userGrossInputAtomic !== attempt.inputAmountAtomic
+        || attempt.feeV2Economics.expectedUserNetOutputAtomic !== attempt.expectedOutputAtomic
+        || attempt.feeV2Economics.protectedUserNetOutputAtomic !== attempt.protectedOutputAtomic
+      ) throw new Error("Indicative quote exposed inconsistent V2 fee economics.");
+    } else {
+      if (!attempt.netEconomics) throw new Error("Indicative quote omitted explicit RMT fee economics.");
+      assertRmtNetExecutionEconomics(attempt.netEconomics);
+    }
     if (
       (attempt.providerFeeAsset === null) !== (attempt.providerFeeAtomic === null)
       || (attempt.providerFeeAsset !== null && (!isAddress(attempt.providerFeeAsset) || providerFee === null))
       || (attempt.gasSponsorshipFeeAsset === null) !== (attempt.gasSponsorshipFeeAtomic === null)
       || (attempt.gasSponsorshipFeeAsset !== null && (!isAddress(attempt.gasSponsorshipFeeAsset) || gasSponsorshipFee === null))
       || attempt.explicitProviderFeeOutputAtomic !== (attempt.providerFeeAsset !== null && getAddress(attempt.providerFeeAsset) === getAddress(attempt.outputAsset) ? attempt.providerFeeAtomic : null)
-      || attempt.netEconomics.userGrossInputAtomic !== attempt.inputAmountAtomic
-      || attempt.netEconomics.expectedUserNetOutputAtomic !== attempt.expectedOutputAtomic
-      || attempt.netEconomics.protectedUserNetOutputAtomic !== attempt.protectedOutputAtomic
+      || (attempt.netEconomics !== null && (
+        attempt.netEconomics.userGrossInputAtomic !== attempt.inputAmountAtomic
+        || attempt.netEconomics.expectedUserNetOutputAtomic !== attempt.expectedOutputAtomic
+        || attempt.netEconomics.protectedUserNetOutputAtomic !== attempt.protectedOutputAtomic
+      ))
     ) throw new Error("Indicative quote exposed incomplete or inconsistent fee economics.");
     if (attempt.userPaysGas === true) {
       if (
@@ -269,6 +284,10 @@ export function assertVNextQuoteAttempt(
   return true;
 }
 
+function isRobinhoodNativeAssetForQuote(address: string) {
+  return getAddress(address) === "0x0000000000000000000000000000000000000000";
+}
+
 export function bestIndicativeAttempt(attempts: VNextQuoteAttempt[]) {
   const ready = attempts.filter((attempt) => attempt.status === "indicative");
   return [...ready].sort((left, right) => {
@@ -287,12 +306,19 @@ export type VNextRouteSelection = {
   netOutcomeReady: false;
 };
 
+function isLoopbackBrowserAcceptanceAdmission(provider: VNextQuoteProvider) {
+  if (provider !== "uniswap-v3" || process.env.NEXT_PUBLIC_RMT_BROWSER_ACCEPTANCE_PROFILE !== "true") return false;
+  if (typeof window === "undefined") return false;
+  return window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost";
+}
+
 export function selectVNextRoute(attempts: VNextQuoteAttempt[]): VNextRouteSelection {
   const bestObserved = bestIndicativeAttempt(attempts);
   const verificationCandidate = bestIndicativeAttempt(
     attempts.filter((attempt) => (
       attempt.strictVerificationAvailable
       && hasVNextWalletAuthorizationCodec(attempt.provider)
+      && (isVNextWalletFeeSettlementAdmitted(attempt.provider) || isLoopbackBrowserAcceptanceAdmission(attempt.provider))
     ))
   );
   return {

@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { getAddress, isAddress, zeroAddress } from "viem";
-import { fetchRobinhoodStockRegistry } from "../../../../lib/server/robinhood-stock-token-registry";
+import {
+  fetchRobinhoodStockRegistry,
+  stockAssetRelationshipsForToken
+} from "../../../../lib/server/robinhood-stock-token-registry";
 import { readVNextEcosystemIntelligence } from "../../../../lib/server/vnext-ecosystem-intelligence";
 import { resolveUniversalMarketAddress } from "../../../../lib/server/universal-market-resolver";
 import { unavailableVNextEcosystemIntelligence } from "../../../../lib/vnext/ecosystem-intelligence";
@@ -23,12 +26,13 @@ export async function GET(request: Request) {
     ? [getAddress(rawPair)]
     : [];
   const stockRegistry = await fetchRobinhoodStockRegistry();
+  const stockAssetRelationships = stockAssetRelationshipsForToken(address, stockRegistry.assetsByAddress);
   const [resolution, ecosystem] = await Promise.all([
     resolveUniversalMarketAddress(address, stockRegistry),
     readVNextEcosystemIntelligence(address, undefined, undefined, displayedPools)
       .catch(() => unavailableVNextEcosystemIntelligence(address))
   ]);
-  if (!resolution || resolution.token.address.toLowerCase() !== address.toLowerCase()) {
+  if ((!resolution || resolution.token.address.toLowerCase() !== address.toLowerCase()) && !stockAssetRelationships.length) {
     return NextResponse.json({ error: "Asset workspace identity could not be verified on Robinhood Chain." }, {
       status: 404,
       headers: { "Cache-Control": "no-store" }
@@ -36,8 +40,9 @@ export async function GET(request: Request) {
   }
 
   return NextResponse.json({
-    resolution,
+    ...(resolution && resolution.token.address.toLowerCase() === address.toLowerCase() ? { resolution } : {}),
     ecosystem,
+    stockAssetRelationships,
     stockAssetCoverage: stockRegistry.coverage,
     updatedAt: new Date().toISOString()
   }, {

@@ -1,4 +1,4 @@
-import { getAddress, isAddress } from "viem";
+import { getAddress, isAddress, zeroAddress } from "viem";
 import { z } from "zod";
 import type { RobinhoodStockAssetRelationship } from "../external-market";
 
@@ -36,8 +36,23 @@ export type RobinhoodStockAsset = {
 };
 
 export type RobinhoodStockRegistrySnapshot = {
-  coverage: "complete" | "unavailable";
+  coverage: "complete" | "stale" | "unavailable";
   assetsByAddress: Map<string, RobinhoodStockAsset>;
+};
+
+export type VNextStockTokenExecutionAssets = {
+  inputAsset: string;
+  outputAsset: string;
+};
+
+export type RobinhoodStockRegistryReader = () => Promise<RobinhoodStockRegistrySnapshot>;
+
+type CompleteRobinhoodStockRegistrySnapshot = RobinhoodStockRegistrySnapshot & { coverage: "complete" };
+
+export type RobinhoodStockRegistryCacheDependencies = {
+  nowMs: () => number;
+  readLiveSnapshot: () => Promise<CompleteRobinhoodStockRegistrySnapshot>;
+  ttlMs?: number;
 };
 
 export type StockTokenExecutionPolicy =
@@ -54,8 +69,6 @@ export class StockTokenExecutionPolicyError extends Error {
     this.name = "StockTokenExecutionPolicyError";
   }
 }
-
-let cached: { expiresAt: number; snapshot: RobinhoodStockRegistrySnapshot } | undefined;
 
 function safeRobinhoodLogo(value: string | undefined) {
   if (!value) return null;
@@ -88,30 +101,74 @@ export function parseRobinhoodStockAssets(payload: unknown) {
   return assets;
 }
 
-export async function fetchRobinhoodStockRegistry(): Promise<RobinhoodStockRegistrySnapshot> {
-  const now = Date.now();
-  if (cached && cached.expiresAt > now) return cached.snapshot;
+function unavailableRobinhoodStockRegistry(): RobinhoodStockRegistrySnapshot {
+  return { coverage: "unavailable", assetsByAddress: new Map() };
+}
+
+async function readLiveRobinhoodStockRegistry(): Promise<CompleteRobinhoodStockRegistrySnapshot> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 5_000);
   try {
     const response = await fetch(ROBINHOOD_STOCK_ASSET_REGISTRY, {
       headers: { Accept: "application/json" },
-      next: { revalidate: 300 },
+      cache: "no-store",
       signal: controller.signal
     });
     if (!response.ok) throw new Error(`Robinhood Stock Token registry returned ${response.status}.`);
-    const snapshot = {
+    return {
       coverage: "complete" as const,
       assetsByAddress: parseRobinhoodStockAssets(await response.json())
     };
-    cached = { expiresAt: now + CACHE_MS, snapshot };
-    return snapshot;
-  } catch {
-    if (cached) return cached.snapshot;
-    return { coverage: "unavailable", assetsByAddress: new Map() };
   } finally {
     clearTimeout(timeout);
   }
+}
+
+export function createRobinhoodStockRegistryCache({
+  nowMs,
+  readLiveSnapshot,
+  ttlMs = CACHE_MS
+}: RobinhoodStockRegistryCacheDependencies) {
+  let cached: { expiresAt: number; snapshot: CompleteRobinhoodStockRegistrySnapshot } | undefined;
+
+  const readFresh = async (): Promise<RobinhoodStockRegistrySnapshot> => {
+    const now = nowMs();
+    if (cached && cached.expiresAt > now) return cached.snapshot;
+    try {
+      const snapshot = await readLiveSnapshot();
+      cached = { expiresAt: now + ttlMs, snapshot };
+      return snapshot;
+    } catch {
+      // A failed refresh never extends the expired entry and never returns it
+      // as current execution authority. A later request retries the live read.
+      return unavailableRobinhoodStockRegistry();
+    }
+  };
+
+  return {
+    readForExecution: readFresh,
+    async readForPresentation(): Promise<RobinhoodStockRegistrySnapshot> {
+      const lastKnown = cached?.snapshot;
+      const current = await readFresh();
+      if (current.coverage === "complete" || !lastKnown) return current;
+      return { coverage: "stale", assetsByAddress: lastKnown.assetsByAddress };
+    }
+  };
+}
+
+const robinhoodStockRegistryCache = createRobinhoodStockRegistryCache({
+  nowMs: Date.now,
+  readLiveSnapshot: readLiveRobinhoodStockRegistry
+});
+
+/** Presentation reader. Last-known data is retained only with explicit stale coverage. */
+export function fetchRobinhoodStockRegistry() {
+  return robinhoodStockRegistryCache.readForPresentation();
+}
+
+/** Execution reader. Expired data is never returned as complete authority. */
+export function fetchRobinhoodStockRegistryForExecution() {
+  return robinhoodStockRegistryCache.readForExecution();
 }
 
 export function stockTokenExecutionPolicyFromSnapshot(
@@ -123,12 +180,18 @@ export function stockTokenExecutionPolicyFromSnapshot(
   return asset ? { status: "view-only", asset } : { status: "eligible" };
 }
 
-export async function stockTokenExecutionPolicy(token: string): Promise<StockTokenExecutionPolicy> {
-  return stockTokenExecutionPolicyFromSnapshot(token, await fetchRobinhoodStockRegistry());
+export async function stockTokenExecutionPolicy(
+  token: string,
+  readSnapshot: RobinhoodStockRegistryReader = fetchRobinhoodStockRegistryForExecution
+): Promise<StockTokenExecutionPolicy> {
+  return stockTokenExecutionPolicyFromSnapshot(token, await readSnapshot());
 }
 
-export async function requireStockTokenExecutionEligible(token: string) {
-  const policy = await stockTokenExecutionPolicy(token);
+export async function requireStockTokenExecutionEligible(
+  token: string,
+  readSnapshot: RobinhoodStockRegistryReader = fetchRobinhoodStockRegistryForExecution
+) {
+  const policy = await stockTokenExecutionPolicy(token, readSnapshot);
   if (policy.status === "verification-unavailable") {
     throw new StockTokenExecutionPolicyError(
       "Robinhood Stock Token identity verification is temporarily unavailable.",
@@ -142,6 +205,33 @@ export async function requireStockTokenExecutionEligible(token: string) {
     );
   }
   return policy;
+}
+
+export async function requireVNextStockTokenExecutionEligible(
+  assets: VNextStockTokenExecutionAssets,
+  readSnapshot: RobinhoodStockRegistryReader = fetchRobinhoodStockRegistryForExecution
+) {
+  const snapshot = await readSnapshot();
+  if (snapshot.coverage !== "complete") {
+    throw new StockTokenExecutionPolicyError(
+      "Robinhood Stock Token identity verification is temporarily unavailable.",
+      503
+    );
+  }
+  const exactTradeAssets = [...new Set([
+    getAddress(assets.inputAsset),
+    getAddress(assets.outputAsset)
+  ].filter((asset) => asset !== zeroAddress))];
+  for (const asset of exactTradeAssets) {
+    const policy = stockTokenExecutionPolicyFromSnapshot(asset, snapshot);
+    if (policy.status === "view-only") {
+      throw new StockTokenExecutionPolicyError(
+        "Official Robinhood Stock Tokens are view-only in RMT until jurisdiction controls are available.",
+        451
+      );
+    }
+  }
+  return { status: "eligible" as const };
 }
 
 export function stockTokenExecutionPolicyErrorResponse(cause: unknown) {
@@ -163,6 +253,15 @@ function relationship(
   };
 }
 
+export function stockAssetRelationshipsForToken(
+  selectedToken: string,
+  assetsByAddress: ReadonlyMap<string, RobinhoodStockAsset>
+) {
+  if (!isAddress(selectedToken, { strict: false })) return [];
+  const asset = assetsByAddress.get(getAddress(selectedToken).toLowerCase());
+  return asset ? [relationship(asset, "canonical-stock-token")] : [];
+}
+
 export function stockAssetRelationshipsForPair(
   displayedToken: string,
   baseToken: string,
@@ -172,9 +271,9 @@ export function stockAssetRelationshipsForPair(
   const displayed = displayedToken.toLowerCase();
   const base = assetsByAddress.get(baseToken.toLowerCase());
   const quote = assetsByAddress.get(quoteToken.toLowerCase());
-  const canonical = assetsByAddress.get(displayed);
-  const relationships: RobinhoodStockAssetRelationship[] = [];
-  if (canonical) relationships.push(relationship(canonical, "canonical-stock-token"));
+  const relationships: RobinhoodStockAssetRelationship[] = [
+    ...stockAssetRelationshipsForToken(displayedToken, assetsByAddress)
+  ];
   for (const asset of [base, quote]) {
     if (!asset || asset.contractAddress.toLowerCase() === displayed) continue;
     relationships.push(relationship(asset, "paired-market-asset"));

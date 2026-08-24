@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { getAddress, isAddress, type Hex } from "viem";
 import { z } from "zod";
 import { requireAuthenticatedTradeWallet, tradeIdentityErrorResponse } from "../../../../lib/server/rmt-trade-identity";
+import { stockTokenExecutionPolicyErrorResponse } from "../../../../lib/server/robinhood-stock-token-registry";
 import { readVNextVerifiedAssetIdentity } from "../../../../lib/server/vnext-asset-identity";
 import { prepareRobinhoodVNextAuthorization } from "../../../../lib/server/vnext-execution-engine";
 import { authorizationPayloadHash, type VNextAuthorizationPlan } from "../../../../lib/vnext/authorization-plan";
@@ -93,6 +94,8 @@ export async function POST(request: Request) {
       router: prepared.evidence.router,
       ...(prepared.evidence.netEconomics ? { netEconomics: prepared.evidence.netEconomics } : {}),
       ...(prepared.evidence.feeExecution !== undefined ? { feeExecution: prepared.evidence.feeExecution } : {}),
+      ...(prepared.evidence.feeV2Economics ? { feeV2Economics: prepared.evidence.feeV2Economics } : {}),
+      ...(prepared.feeV2Authorization ? { feeV2Authorization: prepared.feeV2Authorization } : {}),
       deadline: prepared.evidence.deadline,
       preparedAtMs,
       expiresAtMs,
@@ -114,6 +117,8 @@ export async function POST(request: Request) {
   } catch (cause) {
     const identityResponse = tradeIdentityErrorResponse(cause);
     if (identityResponse) return identityResponse;
+    const stockTokenResponse = stockTokenExecutionPolicyErrorResponse(cause);
+    if (stockTokenResponse) return stockTokenResponse;
     const message = cause instanceof Error && /deadline is stale|exact next action is not ready|wallet authorization is not available/.test(cause.message)
       ? cause.message
       : "Unable to prepare an exact wallet-review payload.";

@@ -1,5 +1,4 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
 import { getAddress } from "viem";
 import {
   requireAuthenticatedTradeWallet,
@@ -8,18 +7,6 @@ import {
 
 const wallet = getAddress("0x1111111111111111111111111111111111111111");
 const otherWallet = getAddress("0x2222222222222222222222222222222222222222");
-
-for (const route of [
-  "../../app/api/trade/external-uniswap/route.ts",
-  "../../app/api/trade/external-uniswap-v4/route.ts",
-  "../../app/api/trade/external-sushi-quote/route.ts",
-  "../../app/api/trade/rmt-v4/route.ts",
-  "../../app/api/trade/sushi-quote/route.ts"
-]) {
-  const source = readFileSync(new URL(route, import.meta.url), "utf8");
-  assert.match(source, /requireAuthenticatedTradeWallet\(request, recipient\)/);
-  assert.match(source, /tradeIdentityErrorResponse\(cause\)/);
-}
 
 function request(token = "identity-token") {
   return new Request("https://rmtlaunch.fun/api/trade", {

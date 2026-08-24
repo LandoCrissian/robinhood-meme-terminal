@@ -1,6 +1,6 @@
 # Robinhood Meme Terminal V6 mainnet release checklist
 
-Current production status: **the official V6 market is live; new V6 token creation is closed under RMT's terminal product direction**. This is the historical go/no-go plan, not a completed attestation. Its unchecked items remain unchecked deliberately. Canonical live addresses and receipts are in [MAINNET_V6_DEPLOYMENT.md](MAINNET_V6_DEPLOYMENT.md); exact source publication and the independent audit remain open.
+Current production status: **the launchpad is retired; launch 0 and its market are dead historical evidence and are not current Terminal requirements**. This is the historical go/no-go plan, not a completed attestation or a current release checklist. Its unchecked items remain unchecked deliberately. Historical addresses and receipts are in [MAINNET_V6_DEPLOYMENT.md](MAINNET_V6_DEPLOYMENT.md).
 
 ## Canonical live dependencies
 

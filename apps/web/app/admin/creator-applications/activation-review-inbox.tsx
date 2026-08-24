@@ -107,7 +107,7 @@ export function ActivationReviewInbox({ admin }: { admin: User }) {
               <article className={`adminActivationCard request-${request.status}`} key={key}>
                 <header>
                   <div><span>{request.status}</span><h3>{MODULE_LABELS[request.module]}</h3><p>{request.projectSlug}</p></div>
-                  <Link href={`/project/${request.projectSlug}`}>Project page ↗</Link>
+                  <Link href="/">Terminal ↗</Link>
                 </header>
                 <label>Private review note<textarea maxLength={600} disabled={request.status === "ready" || request.status === "declined"} value={notes[key] ?? ""} onChange={(event) => setNotes((current) => ({ ...current, [key]: event.target.value }))} placeholder="Configuration requirements, rights checks, or reason for decision" /></label>
                 {request.status === "requested" && (

@@ -14,8 +14,6 @@ import type { AssetMetadata } from "./execution-domain";
 import { evmAsset } from "./execution-domain";
 import {
   ROBINHOOD_MAINNET_CHAIN_ID,
-  ROBINHOOD_RMT,
-  ROBINHOOD_RMT_ADDRESS,
   ROBINHOOD_WETH,
   ROBINHOOD_WETH_ADDRESS
 } from "./robinhood-assets";
@@ -89,6 +87,26 @@ export type VNextMarketState = {
 
 export type VNextRwaRelationship = "canonical-stock-token" | "paired-market-asset";
 
+export type VNextSelectedMarketExecutionState = "normal" | "stock-token-view-only";
+
+export type VNextExecutionUiState = "live-execution" | "preview-only" | "stock-token-view-only";
+
+export function vNextSelectedMarketExecutionState(
+  market: Pick<VNextDirectoryMarket, "rwaRelationship"> | undefined
+): VNextSelectedMarketExecutionState {
+  return market?.rwaRelationship === "canonical-stock-token"
+    ? "stock-token-view-only"
+    : "normal";
+}
+
+export function vNextExecutionUiState(
+  executionState: VNextSelectedMarketExecutionState,
+  authorizationEnabled: boolean
+): VNextExecutionUiState {
+  if (executionState === "stock-token-view-only") return "stock-token-view-only";
+  return authorizationEnabled ? "live-execution" : "preview-only";
+}
+
 export type VNextMarketDirectoryView = "trending" | "new" | "active" | "rwa" | "held" | "all";
 
 export const VNEXT_MARKET_DIRECTORY_MAX_MARKETS = 144;
@@ -127,7 +145,7 @@ function record(value: unknown): Record<string, unknown> | null {
 }
 
 function canonicalMarketIdentity(market: VNextUniversalMarketSearchPool) {
-  return `${market.sourceId}:${market.poolKey}`;
+  return `${market.sourceId}:${market.poolKey}`.toLowerCase();
 }
 
 export function directoryMarketsFromCanonicalPools(
@@ -524,7 +542,6 @@ function resolutionToken(resolution: UniversalMarketResolution | undefined, expe
 }
 
 export function verifiedDirectoryAsset(market: VNextDirectoryMarket, resolution = market.resolution): AssetMetadata | null {
-  if (getAddress(market.address) === ROBINHOOD_RMT_ADDRESS) return ROBINHOOD_RMT;
   if (getAddress(market.address) === ROBINHOOD_WETH_ADDRESS) return ROBINHOOD_WETH;
   if (market.verifiedIdentity
     && getAddress(market.verifiedIdentity.address) === getAddress(market.address)
@@ -693,7 +710,7 @@ export function mergeVNextDirectoryAndSearchMarkets(
     }
     const canonicalMarkets = new Map<string, VNextUniversalMarketSearchPool>();
     for (const evidence of [...(existing.canonicalMarkets ?? []), ...(market.canonicalMarkets ?? [])]) {
-      canonicalMarkets.set(`${evidence.sourceId}:${evidence.poolKey}`, evidence);
+      canonicalMarkets.set(canonicalMarketIdentity(evidence), evidence);
     }
     const verifiedMarkets = new Map<string, NonNullable<VNextDirectoryMarket["verifiedMarkets"]>[number]>();
     for (const evidence of [...(existing.verifiedMarkets ?? []), ...(market.verifiedMarkets ?? [])]) {
@@ -731,6 +748,50 @@ export function mergeVNextDirectoryAndSearchMarkets(
     });
   }
   return [...byAddress.values()];
+}
+
+export function mergeVNextExplicitSelectionMarket(input: {
+  existing?: VNextDirectoryMarket;
+  canonical?: VNextDirectoryMarket | null;
+  identity?: VNextDirectoryMarket | null;
+  provider?: VNextDirectoryMarket | null;
+}) {
+  const candidates = [input.existing, input.canonical ?? undefined, input.identity ?? undefined, input.provider ?? undefined]
+    .filter((market): market is VNextDirectoryMarket => Boolean(market));
+  if (!candidates.length) return null;
+  const expectedAddress = candidates[0]!.address.toLowerCase();
+  if (candidates.some((market) => market.address.toLowerCase() !== expectedAddress)) return null;
+
+  const providerBase = input.provider ?? input.existing ?? input.canonical ?? input.identity;
+  if (!providerBase) return null;
+  const merged = mergeVNextDirectoryAndSearchMarkets(
+    [providerBase],
+    candidates.filter((market) => market !== providerBase)
+  )[0]!;
+  const directToken = resolutionToken(input.identity?.resolution, merged.address);
+  const verifiedIdentity = input.canonical?.verifiedIdentity
+    ?? input.existing?.verifiedIdentity
+    ?? input.provider?.verifiedIdentity
+    ?? merged.verifiedIdentity;
+  return {
+    ...merged,
+    name: directToken?.name.trim().slice(0, 80)
+      || verifiedIdentity?.name
+      || input.provider?.name
+      || input.existing?.name
+      || merged.name,
+    symbol: directToken?.symbol.trim().slice(0, 16)
+      || verifiedIdentity?.symbol
+      || input.provider?.symbol
+      || input.existing?.symbol
+      || merged.symbol,
+    verifiedIdentity,
+    resolution: input.identity?.resolution
+      ?? input.canonical?.resolution
+      ?? input.existing?.resolution
+      ?? input.provider?.resolution
+      ?? merged.resolution
+  } satisfies VNextDirectoryMarket;
 }
 
 export function mergeVNextCanonicalBrowseMarkets(

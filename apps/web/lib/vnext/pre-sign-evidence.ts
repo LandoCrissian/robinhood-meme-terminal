@@ -4,9 +4,17 @@ import { ROBINHOOD_SWAP_ROUTER_02 } from "../uniswap-v4";
 import { isRobinhoodNativeAsset } from "./robinhood-assets";
 import { UP_CL_EXECUTION_ROUTER, UP_V2_EXECUTION_ROUTER } from "./up-authorization-codec";
 import { assertRmtNetExecutionEconomics, type RmtNetExecutionEconomics } from "./execution-fee-policy";
+import { assertRmtExecutionFeeV2Economics, type RmtExecutionFeeV2Economics } from "./execution-fee-policy-v2";
+import type { VNextAtomicFeeSettlementProof } from "./provider-fee-settlement";
 import { assertRmtUniswapV3FeeExecution, encodeRmtUniswapV3FeeExecution, type RmtUniswapV3FeeExecution } from "./uniswap-v3-fee-executor";
 
 const MAX_CLOCK_SKEW_MS = 5_000;
+
+function feeAssetIdentity(address: string) {
+  return isRobinhoodNativeAsset(address)
+    ? "eip155:4663/native"
+    : `eip155:4663/contract:${getAddress(address).toLowerCase()}`;
+}
 
 export type VNextPreSignEvidence = {
   verificationId: string;
@@ -59,6 +67,8 @@ export type VNextPreSignEvidence = {
   rmtFeeEnabled: boolean;
   netEconomics?: RmtNetExecutionEconomics;
   feeExecution?: RmtUniswapV3FeeExecution | null;
+  feeV2Economics?: RmtExecutionFeeV2Economics;
+  feeV2Settlement?: VNextAtomicFeeSettlementProof;
   verifiedAtMs: number;
   expiresAtMs: number;
   authorizationReady: false;
@@ -117,6 +127,8 @@ const evidenceSchema = z.object({
   rmtFeeEnabled: z.boolean(),
   netEconomics: z.unknown().optional(),
   feeExecution: z.unknown().nullable().optional(),
+  feeV2Economics: z.unknown().optional(),
+  feeV2Settlement: z.unknown().optional(),
   verifiedAtMs: z.number().int().positive(),
   expiresAtMs: z.number().int().positive(),
   authorizationReady: z.literal(false)
@@ -155,6 +167,30 @@ export function parseVNextPreSignEvidence(value: unknown, expected: {
     || evidence.expiresAtMs - evidence.verifiedAtMs > 300_000
     || evidence.authorizationReady !== false
   ) throw new Error("RMT rejected inconsistent pre-sign evidence.");
+  const hasV2Economics = evidence.feeV2Economics !== undefined;
+  const hasV2Settlement = evidence.feeV2Settlement !== undefined;
+  if (hasV2Economics !== hasV2Settlement) throw new Error("RMT rejected incomplete V2 fee-settlement evidence.");
+  if (evidence.feeV2Economics && evidence.feeV2Settlement) {
+    assertRmtExecutionFeeV2Economics(evidence.feeV2Economics);
+    if (
+      evidence.feeV2Settlement.verificationState !== "verified_atomic"
+      || evidence.feeV2Settlement.provider !== evidence.provider
+      || evidence.feeV2Settlement.settlementMode !== evidence.feeV2Economics.settlementMode
+      || evidence.feeV2Economics.inputAsset !== feeAssetIdentity(evidence.inputAsset)
+      || evidence.feeV2Economics.outputAsset !== feeAssetIdentity(evidence.outputAsset)
+      || evidence.feeV2Economics.userGrossInputAtomic !== evidence.inputAmountAtomic
+      || evidence.feeV2Economics.expectedUserNetOutputAtomic !== evidence.expectedOutputAtomic
+      || evidence.feeV2Economics.protectedUserNetOutputAtomic !== evidence.protectedOutputAtomic
+      || !isAddress(evidence.feeV2Settlement.executionTarget)
+      || !isAddress(evidence.feeV2Settlement.providerTarget)
+      || getAddress(evidence.feeV2Settlement.providerTarget) !== getAddress(evidence.router)
+      || evidence.feeV2Settlement.calldataHash.toLowerCase() !== evidence.calldataHash.toLowerCase()
+      || getAddress(evidence.feeV2Settlement.recipient) !== getAddress(evidence.recipient)
+      || evidence.feeV2Settlement.deadline !== evidence.deadline
+      || evidence.feeV2Settlement.atomicFeeSettlement !== true
+      || evidence.feeV2Settlement.revertsAtomically !== true
+    ) throw new Error("RMT rejected inconsistent V2 fee-settlement evidence.");
+  }
   if (evidence.rmtFeeEnabled) {
     if (evidence.provider !== "uniswap-v3" || !evidence.netEconomics || !evidence.feeExecution) {
       throw new Error("RMT rejected incomplete fee-executor evidence.");
@@ -179,7 +215,9 @@ export function parseVNextPreSignEvidence(value: unknown, expected: {
   } else if (
     evidence.feeExecution != null
     || (evidence.netEconomics && evidence.netEconomics.rmtFee.state !== "disabled")
-    || getAddress(evidence.approvalSpender) !== getAddress(evidence.router)
+    || getAddress(evidence.approvalSpender) !== getAddress(
+      evidence.feeV2Settlement?.executionTarget ?? evidence.router
+    )
   ) {
     throw new Error("RMT rejected hidden or inconsistent fee authority.");
   }

@@ -54,11 +54,11 @@ for (const stylesheet of globalCssImports) {
   );
 }
 
-assert.match(shell, /new URLSearchParams\(window\.location\.search\)/);
-assert.match(shell, /entry\.get\("market"\)/);
-assert.match(shell, /entry\.get\("panel"\) === "portfolio"/);
-assert.match(shell, /initialSide === "buy" \|\| initialSide === "sell"/);
-assert.match(shell, /void selectAddressRef\.current\(initialMarket\)/);
+assert.match(shell, /parseVNextTerminalLocation\(window\.location\.search\)/);
+assert.match(shell, /location\.context === "asset"/);
+assert.match(shell, /location\.context === "portfolio"/);
+assert.match(shell, /if \(location\.side && vNextSelectedMarketExecutionState\(selectedMarket\) === "normal"\)/);
+assert.match(shell, /void selectAddressRef\.current\(location\.market\)/);
 
 assert.match(marketCompatibilityRoute, /redirect\(`\/\?\$\{query\}`\)/);
 assert.match(marketCompatibilityRoute, /new URLSearchParams\(\{ market: getAddress\(address\) \}\)/);

@@ -24,7 +24,7 @@ const response = {
 assert.equal(VNEXT_BACKGROUND_QUOTE_REFRESH_MS, 4_000);
 assert.equal(cachedVNextQuoteForRequest({ requestKey: "wallet:buy:1:usdg:token", response }, "wallet:buy:1:usdg:token"), response);
 assert.equal(cachedVNextQuoteForRequest({ requestKey: "wallet:buy:1:usdg:token", response }, "wallet:buy:2:usdg:token"), undefined);
-assert.equal(isVNextQuoteReusableForTrade(response, now), true);
+assert.equal(isVNextQuoteReusableForTrade(response, now), false, "quote-only providers cannot become reusable wallet routes without V2 settlement admission");
 assert.equal(isVNextQuoteReusableForTrade({
   ...response,
   attempts: [{ ...response.attempts[0], quotedAtMs: now - VNEXT_TRADE_QUOTE_MAX_AGE_MS - 1 }]

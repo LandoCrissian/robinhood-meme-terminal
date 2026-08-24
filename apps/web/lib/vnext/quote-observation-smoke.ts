@@ -5,7 +5,7 @@ import { normalizeDisabledRmtFee } from "./execution-fee-policy";
 
 const now = 1_786_000_000_000;
 const inputAsset = "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168";
-const outputAsset = "0xdBa33be56C89CC9fc014c4459028d7e5c7878671";
+const outputAsset = "0xe934e36A439C94017B64a3FecE66AF12099aBF50";
 const expected = { inputAsset, outputAsset, inputAmountAtomic: "100000000" };
 const response: VNextQuoteResponse = {
   requestId: "11111111-1111-4111-8111-111111111111",
@@ -118,8 +118,8 @@ const withVerifiedBackup = parseVNextQuoteResponse({
 }, expected, now);
 const backupSelection = selectVNextRoute(withVerifiedBackup.attempts);
 assert.equal(backupSelection.bestObserved?.provider, "sushi");
-assert.equal(backupSelection.verificationCandidate?.provider, "uniswap-v3");
-assert.equal(backupSelection.usesVerifiedBackup, true);
+assert.equal(backupSelection.verificationCandidate, undefined, "quote-visible providers remain non-executable until V2 settlement is admitted");
+assert.equal(backupSelection.usesVerifiedBackup, false);
 assert.equal(hasVNextWalletAuthorizationCodec("uniswap-v3"), true);
 assert.equal(hasVNextWalletAuthorizationCodec("zero-x-swap"), false);
 assert.equal(hasVNextWalletAuthorizationCodec("zero-x-gasless"), false);
@@ -143,8 +143,8 @@ const uniswapXSelection = selectVNextRoute(parseVNextQuoteResponse({
   attempts: [uniswapXAttempt, withVerifiedBackup.attempts[1]]
 }, expected, now).attempts);
 assert.equal(uniswapXSelection.bestObserved?.provider, "uniswapx");
-assert.equal(uniswapXSelection.verificationCandidate?.provider, "uniswap-v3");
-assert.equal(uniswapXSelection.usesVerifiedBackup, true);
+assert.equal(uniswapXSelection.verificationCandidate, undefined);
+assert.equal(uniswapXSelection.usesVerifiedBackup, false);
 
 const strictOnlyZeroX = parseVNextQuoteResponse({
   ...response,
@@ -160,6 +160,21 @@ const strictOnlySelection = selectVNextRoute(strictOnlyZeroX.attempts);
 assert.equal(strictOnlySelection.bestObserved?.provider, "zero-x-swap");
 assert.equal(strictOnlySelection.verificationCandidate, undefined);
 assert.equal(strictOnlySelection.usesVerifiedBackup, false);
+
+const feeCoveredProviderUnavailable = parseVNextQuoteResponse({
+  ...response,
+  attempts: [{
+    ...response.attempts[1],
+    status: "temporarily_unavailable",
+    detail: "The separately fee-covered implementation failed closed."
+  }, {
+    ...response.attempts[0],
+    strictVerificationAvailable: true
+  }]
+}, expected, now);
+const noFeeFreePromotion = selectVNextRoute(feeCoveredProviderUnavailable.attempts);
+assert.equal(noFeeFreePromotion.bestObserved?.provider, "sushi", "fee-free providers remain quote-visible");
+assert.equal(noFeeFreePromotion.verificationCandidate, undefined, "a fee-covered provider failure cannot promote a fee-free fallback");
 
 assert.equal(parseVNextQuoteResponse({
   ...response,

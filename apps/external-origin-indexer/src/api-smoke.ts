@@ -19,7 +19,7 @@ import type { ExternalOriginStoreLike } from "./origin-store.js";
 import { createExternalOriginServer } from "./server.js";
 
 const readToken = "shadow-api-smoke-token-0000000000000001";
-const address = "0xdBa33be56C89CC9fc014c4459028d7e5c7878671";
+const address = "0x2222222222222222222222222222222222222222";
 
 const manifestInput: ExternalOriginAdapterManifestInput = {
   adapterId: "smoke-v1",

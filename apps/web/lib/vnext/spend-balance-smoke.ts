@@ -63,7 +63,7 @@ const candidates = walletAssetCandidates([{
   riskFlags: null,
   signal: "active"
 }]);
-assert.equal(candidates.length, 4);
+assert.equal(candidates.length, 3);
 const imported = importedWalletCandidate({
   resolution: {
     chainId: 4_663,
@@ -89,7 +89,7 @@ assert.equal(imported?.decimals, 8);
 assert.equal(importedWalletCandidate({} as ExternalMarketResponse, "0x3333333333333333333333333333333333333333"), null);
 assert.deepEqual(detectedWalletAssets([
   { candidate: candidates[0], balance: 0n },
-  { candidate: candidates[3], balance: 42n, decimals: 18, symbol: "LIVE", name: "Live directory token" }
+  { candidate: candidates[2], balance: 42n, decimals: 18, symbol: "LIVE", name: "Live directory token" }
 ]).map((asset) => ({ symbol: asset.symbol, balance: asset.balanceAtomic, routeState: asset.routeState })), [
   { symbol: "LIVE", balance: "42", routeState: "detected" }
 ]);
@@ -112,7 +112,7 @@ assert.equal(trustedPaymentMetadataFromDetectedWalletAsset({
   routeState: "detected"
 }), null);
 assert.equal(trustedPaymentMetadataFromDetectedWalletAsset({
-  ...candidates[3],
+  ...candidates[2],
   decimals: 18,
   identityState: "verified",
   balanceAtomic: "42",
@@ -157,8 +157,10 @@ assert.match(hook, /normalizeWalletDiscoveryResponse/);
 assert.match(hook, /walletDiscoveryCandidate/);
 assert.match(hook, /positive\.filter/);
 assert.match(hook, /const EMPTY_WALLET_ASSETS: VNextDetectedWalletAsset\[\] = \[\]/);
-assert.match(hook, /assets: snapshotIsCurrent \? assets : EMPTY_WALLET_ASSETS/);
+assert.match(hook, /assets: acceptanceSnapshot\?\.assets \?\? \(snapshotIsCurrent \? assets : EMPTY_WALLET_ASSETS\)/);
 assert.doesNotMatch(hook, /assets: snapshotIsCurrent \? assets : \[\]/);
+assert.match(hook, /NEXT_PUBLIC_RMT_BROWSER_ACCEPTANCE_PROFILE/);
+assert.match(hook, /\["localhost", "127\.0\.0\.1"\]\.includes\(window\.location\.hostname\)/);
 assert.doesNotMatch(hook, /\/api\/trade|\/api\/vnext\/quotes/);
 assert.doesNotMatch(component, /writeContract|sendTransaction|signTypedData|useSendTransaction/);
 assert.doesNotMatch(hook, /writeContract|sendTransaction|signTypedData|useSendTransaction/);

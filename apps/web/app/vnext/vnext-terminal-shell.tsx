@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { VNextDetectedWalletAsset } from "../../lib/vnext/wallet-assets";
+import { parseVNextTerminalLocation } from "../../lib/vnext/terminal-location";
 import {
   VNEXT_MARKET_DIRECTORY_PAGE_SIZE,
   exactVNextLocalDirectoryMatches,
@@ -10,6 +11,8 @@ import {
   selectVNextMarketDirectoryView,
   shouldUseExactAddressDegradedFallback,
   visibleVNextMarketDirectoryMarkets,
+  vNextExecutionUiState,
+  vNextSelectedMarketExecutionState,
   vNextMarketDirectoryViewCounts,
   type VNextMarketDirectoryView
 } from "../../lib/vnext/market-directory";
@@ -30,6 +33,7 @@ export function VNextTerminalShell() {
   const [directoryView, setDirectoryView] = useState<VNextMarketDirectoryView>("active");
   const [visibleMarketLimit, setVisibleMarketLimit] = useState(VNEXT_MARKET_DIRECTORY_PAGE_SIZE);
   const marketSearch = useRef<HTMLInputElement>(null);
+  const locationSyncEpoch = useRef(0);
   const executionRecovery = useVNextExecutionRecovery();
   const {
     markets,
@@ -47,6 +51,12 @@ export function VNextTerminalShell() {
     submitUniversalSearch,
     clearUniversalSearch
   } = useVNextMarketDirectory();
+  const selectedExecutionState = vNextSelectedMarketExecutionState(selected);
+  const executionUiState = vNextExecutionUiState(
+    selectedExecutionState,
+    process.env.NEXT_PUBLIC_RMT_VNEXT_AUTHORIZATION_ENABLED === "true"
+  );
+  const effectiveTradeOpen = tradeOpen && selectedExecutionState === "normal";
   const selectAddressRef = useRef(selectAddress);
   const heldAddresses = useMemo(() => new Set(walletAssets.map((asset) => asset.address.toLowerCase())), [walletAssets]);
   const directoryViewCounts = useMemo(() => vNextMarketDirectoryViewCounts(markets, heldAddresses), [heldAddresses, markets]);
@@ -175,38 +185,49 @@ export function VNextTerminalShell() {
     }
   }, [filteredMarkets.length, hasMoreCanonicalMarkets, loadNextCanonicalPage, query, visibleMarketLimit]);
   const requestTradeSide = useCallback((side: "buy" | "sell") => {
+    if (selectedExecutionState === "stock-token-view-only") return;
     setTradeSideRequest({ side, nonce: Date.now() });
     setContext("asset");
     setTradeOpen(true);
     if (selected) writeLocation("asset", selected.address, side);
-  }, [selected, writeLocation]);
+  }, [selected, selectedExecutionState, writeLocation]);
   const closeTrade = useCallback(() => {
     setTradeOpen(false);
     if (selected) writeLocation("asset", selected.address, undefined, true);
   }, [selected, writeLocation]);
 
   useEffect(() => {
+    if (selectedExecutionState !== "stock-token-view-only" || !tradeOpen) return;
+    setTradeOpen(false);
+    if (selected) writeLocation("asset", selected.address, undefined, true);
+  }, [selected, selectedExecutionState, tradeOpen, writeLocation]);
+
+  useEffect(() => {
     const synchronizeFromLocation = () => {
-      const entry = new URLSearchParams(window.location.search);
-      const initialMarket = entry.get("market");
-      const initialSide = entry.get("side");
-      if (entry.get("panel") === "portfolio") {
+      const epoch = ++locationSyncEpoch.current;
+      const location = parseVNextTerminalLocation(window.location.search);
+      if (location.context === "portfolio") {
         setPortfolioRevealRequest((request) => request + 1);
         setContext("portfolio");
         setTradeOpen(false);
         return;
       }
-      if (entry.get("panel") === "distribution") {
+      if (location.context === "distribution") {
         setContext("distribution");
         setTradeOpen(false);
         return;
       }
-      if (initialMarket) {
-        void selectAddressRef.current(initialMarket).then((selectedMarket) => {
-          if (!selectedMarket) return;
+      if (location.context === "asset") {
+        void selectAddressRef.current(location.market).then((selectedMarket) => {
+          if (locationSyncEpoch.current !== epoch) return;
+          if (!selectedMarket) {
+            setContext("markets");
+            setTradeOpen(false);
+            return;
+          }
           setContext("asset");
-          if (initialSide === "buy" || initialSide === "sell") {
-            setTradeSideRequest({ side: initialSide, nonce: Date.now() });
+          if (location.side && vNextSelectedMarketExecutionState(selectedMarket) === "normal") {
+            setTradeSideRequest({ side: location.side, nonce: Date.now() });
             setTradeOpen(true);
           } else {
             setTradeOpen(false);
@@ -224,7 +245,7 @@ export function VNextTerminalShell() {
 
   const props: TerminalPresentationProps = {
     context,
-    tradeOpen,
+    tradeOpen: effectiveTradeOpen,
     query,
     setQuery: updateQuery,
     marketSearch,
@@ -235,12 +256,14 @@ export function VNextTerminalShell() {
     directoryViewCounts,
     searchActive: Boolean(query.trim()),
     searchStatus,
-    verifiedSearchResultCount: submittedSearchQuery.trim().toLowerCase() === query.trim().toLowerCase()
+    expandedSearchResultCount: submittedSearchQuery.trim().toLowerCase() === query.trim().toLowerCase()
       ? searchMarkets.length
       : 0,
     directoryStatus: status,
     hasMoreDirectoryMarkets: !query.trim() && hasMoreCanonicalMarkets,
     selected,
+    selectedExecutionState,
+    executionUiState,
     selectedAsset,
     identityStatus,
     walletAssets,

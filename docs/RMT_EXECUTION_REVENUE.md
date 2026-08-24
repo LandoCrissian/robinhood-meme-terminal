@@ -1,6 +1,6 @@
 # RMT execution revenue
 
-**Status: CURRENT — 25-bps Uniswap V3 public release active**
+**Status: V1 HISTORY ACTIVE; UNIVERSAL V2 FOUNDATION IN PROGRESS**
 
 ## Approved policy direction
 
@@ -18,6 +18,8 @@ The owner has approved implementation support for the first forward terminal exe
 | Initial settlement assets | canonical Robinhood USDG and WETH/native-compatible settlement, subject to exact provider admission |
 
 The provider-specific public release action completed on 2026-08-16. `RMT_EXECUTION_V1` is active only for admitted public Uniswap V3 fee-executor routes. The activation boundary is Robinhood block `37805030` (`0xdfb2560bb21f75c08e2ddaeac71075fb71523f45a543149018891c5fa673b9b2`, timestamp `2026-08-16T07:42:40Z`). The policy does not make another provider, route or transaction class fee-bearing.
+
+The owner has since established the additive forward `RMT_EXECUTION_V2` architecture: exactly 25 basis points on gross input for every successful wallet-executable RMT trade, without a static per-token allowlist or fee-free provider fallback. V1 artifacts and receipts remain immutable. V2 provider settlement, deployment and production activation are separate future tranches; see [`RMT_UNIVERSAL_EXECUTION_FEE_V2_FOUNDATION.md`](RMT_UNIVERSAL_EXECUTION_FEE_V2_FOUNDATION.md).
 
 Across funding, wallet transfers, failed transactions, quote requests and unrelated transactions are not eligible. V6 economics, Stonk/up allocations, PoH allocations, subscriptions, hidden spread, positive-slippage capture and automatic fee-conversion swaps are not part of this policy.
 

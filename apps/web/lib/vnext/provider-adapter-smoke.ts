@@ -85,10 +85,9 @@ const executableAdapter: VNextQuoteProviderAdapter = {
     };
   }
 };
-const prepared = await prepareVNextProviderAuthorization("uniswap-v3", {
+await assert.rejects(() => prepareVNextProviderAuthorization("uniswap-v3", {
   ...request, deadlineSeconds, indicativeProtectedOutputFloorAtomic: 980n, protectedOutputFloorAtomic: 990n, nowMs: Date.now()
-}, [executableAdapter]);
-assert.equal(prepared.transaction.data, actionData);
+}, [executableAdapter]), /quote-only until its V2 atomic fee settlement is admitted/);
 await assert.rejects(() => verifyVNextExecutionProvider("uniswap-v3", {
   ...request, indicativeProtectedOutputFloorAtomic: 0n
 }, [executableAdapter]), /invalid indicative protected-output floor/);
@@ -98,17 +97,6 @@ await assert.rejects(() => prepareVNextProviderAuthorization("uniswap-v3", {
 await assert.rejects(() => prepareVNextProviderAuthorization("uniswap-v3", {
   ...request, deadlineSeconds, indicativeProtectedOutputFloorAtomic: 991n, protectedOutputFloorAtomic: 990n, nowMs: Date.now()
 }, [executableAdapter]), /invalid protected output floor/);
-const tamperedAdapter: VNextQuoteProviderAdapter = {
-  ...executableAdapter,
-  async prepareAuthorization(input) {
-    const valid = await executableAdapter.prepareAuthorization!(input);
-    return { ...valid, transaction: { ...valid.transaction, data: "0x5678" } };
-  }
-};
-await assert.rejects(() => prepareVNextProviderAuthorization("uniswap-v3", {
-  ...request, deadlineSeconds, indicativeProtectedOutputFloorAtomic: 980n, protectedOutputFloorAtomic: 990n, nowMs: Date.now()
-}, [tamperedAdapter]), /invalid Uniswap v3 wallet request/);
-
 const route = readFileSync(new URL("../../app/api/vnext/quotes/route.ts", import.meta.url), "utf8");
 const registry = readFileSync(new URL("../server/vnext-execution-engine.ts", import.meta.url), "utf8");
 const boundary = readFileSync(new URL("../server/vnext-provider-adapter.ts", import.meta.url), "utf8");

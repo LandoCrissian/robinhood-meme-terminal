@@ -7,7 +7,7 @@ import { isMainnetRelease } from "../lib/network";
 import { WalletButton } from "./wallet-button";
 
 const HIDDEN_PREFIXES = ["/activate-consent-testnet", "/admin", "/deploy-consent-testnet", "/deploy-mainnet", "/deploy-testnet", "/mainnet-smoke", "/vnext"];
-const MORE_PREFIXES = ["/portfolio", "/protection", "/sources", "/sushi", "/support", "/experience", "/risks"];
+const MORE_PREFIXES = ["/portfolio", "/protection", "/sources", "/support", "/experience", "/risks"];
 
 function currentPage(pathname: string, href: string) {
   if (href === "/") return pathname === "/";
@@ -66,7 +66,7 @@ function VisiblePublicChrome({ pathname }: { pathname: string }) {
 
           <div className="publicNavLinks">
             <PublicLink href="/">Terminal</PublicLink>
-            <PublicLink href="/explore">Explore</PublicLink>
+            <PublicLink href="/markets/robinhood-chain">Markets</PublicLink>
             <PublicLink href="/protection">Protection</PublicLink>
             <PublicLink href="/watchlist">Watchlist</PublicLink>
             <span className="networkPulse" aria-label={`${isMainnetRelease ? "Robinhood Chain Mainnet" : "Robinhood Chain Testnet"} live`}><i aria-hidden="true" />RHC <b>{isMainnetRelease ? "MAINNET" : "TESTNET"}</b></span>
@@ -78,15 +78,11 @@ function VisiblePublicChrome({ pathname }: { pathname: string }) {
               <div className="publicMenu">
                 <div>
                   <span>Markets &amp; evidence</span>
-                  <PublicLink href="/explore">Explore RMT markets<small>Verified RMT history and Robinhood Chain market evidence</small></PublicLink>
+                  <PublicLink href="/markets/robinhood-chain">Robinhood Chain markets<small>Discovery and market evidence inside the RMT Terminal</small></PublicLink>
                   <PublicLink href="/?panel=portfolio">Portfolio<small>Your connected-wallet holdings in Terminal</small></PublicLink>
-                  <PublicLink href="/protection">Protection Center<small>Automatic orders, permission cleanup, and execution history</small></PublicLink>
+                  <PublicLink href="/protection">Protection Center<small>Prior permissions, recovery, and execution history</small></PublicLink>
                   <PublicLink href="/watchlist">Watchlist<small>Tokens saved on this device</small></PublicLink>
                   <PublicLink href="/sources">Sources<small>Origin, venue, and market-evidence boundaries</small></PublicLink>
-                </div>
-                <div>
-                  <span>Protocol &amp; research</span>
-                  <PublicLink href="/sushi">Sushi integration<small>Verified routing and execution boundary</small></PublicLink>
                 </div>
                 <div>
                   <span>Help &amp; safety</span>
@@ -104,9 +100,9 @@ function VisiblePublicChrome({ pathname }: { pathname: string }) {
         </nav>
       </header>
 
-      <nav className={`mobileDock${pathname.startsWith("/token/") || pathname.startsWith("/project/") ? " tokenRouteDock" : ""}`} aria-label="Mobile navigation">
+      <nav className="mobileDock" aria-label="Mobile navigation">
         <PublicLink href="/"><span aria-hidden="true">◉</span>Terminal</PublicLink>
-        <PublicLink href="/explore"><span aria-hidden="true">⌕</span>Explore</PublicLink>
+        <PublicLink href="/markets/robinhood-chain"><span aria-hidden="true">⌕</span>Markets</PublicLink>
         <PublicLink href="/watchlist"><span aria-hidden="true">☆</span>Watchlist</PublicLink>
         <PublicLink href="/protection"><span aria-hidden="true">◇</span>Protection</PublicLink>
         <PublicLink href="/sources"><span aria-hidden="true">◎</span>Sources</PublicLink>

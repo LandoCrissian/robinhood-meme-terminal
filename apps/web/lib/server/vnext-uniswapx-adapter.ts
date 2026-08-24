@@ -1,6 +1,7 @@
 import { getAddress, isAddress, type Hex } from "viem";
 import { isRobinhoodNativeAsset } from "../vnext/robinhood-assets";
 import { disabledVNextFeeEconomics, unavailableVNextQuoteAttempt, type VNextProviderQuoteRequest, type VNextQuoteProviderAdapter } from "./vnext-provider-adapter";
+import { requireVNextStockTokenExecutionEligible } from "./robinhood-stock-token-registry";
 import {
   ROBINHOOD_UNISWAPX_V3_REACTOR,
   UniswapXV3OrderVerificationError,
@@ -159,8 +160,10 @@ export type PreparedVNextUniswapXIntent = {
  */
 export async function prepareVNextUniswapXIntent(
   request: VNextProviderQuoteRequest,
-  protectedOutputFloorAtomic: bigint
+  protectedOutputFloorAtomic: bigint,
+  requireExecutionAdmission: typeof requireVNextStockTokenExecutionEligible = requireVNextStockTokenExecutionEligible
 ): Promise<PreparedVNextUniswapXIntent> {
+  await requireExecutionAdmission(request);
   if (isRobinhoodNativeAsset(request.inputAsset)) {
     throw new Error("UniswapX native ETH authorization is not enabled.");
   }

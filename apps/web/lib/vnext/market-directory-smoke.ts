@@ -26,15 +26,19 @@ import {
   VNEXT_MARKET_DIRECTORY_VIEWS,
   deriveVNextMarketState,
   directoryMarketFromExactLookup,
+  directoryMarketFromUniversalSearchResult,
   directoryMarketFromVerifiedIdentity,
   hasVNextObservedRecentActivity,
   isVNextDirectoryMarketSelectable,
   mergeVNextCanonicalBrowseMarkets,
   mergeVNextDirectoryAndSearchMarkets,
+  mergeVNextExplicitSelectionMarket,
   normalizeDirectoryMarkets,
   parseVNextCanonicalDirectoryResponse,
   resolutionFromLookup,
   selectVNextChartPool,
+  vNextExecutionUiState,
+  vNextSelectedMarketExecutionState,
   selectVNextMarketDirectoryView,
   visibleVNextMarketDirectoryMarkets,
   verifiedDirectoryAsset,
@@ -42,15 +46,15 @@ import {
   vNextRwaClassificationLabel,
   vNextMarketDirectoryViewCounts
 } from "./market-directory";
-import { ROBINHOOD_RMT, ROBINHOOD_RMT_ADDRESS, ROBINHOOD_WETH_ADDRESS } from "./robinhood-assets";
+import { ROBINHOOD_WETH, ROBINHOOD_WETH_ADDRESS } from "./robinhood-assets";
 
 const otherAddress = "0x2222222222222222222222222222222222222222";
 const payload = {
   markets: [
     {
-      address: ROBINHOOD_RMT_ADDRESS,
-      name: "Robinhood Meme Terminal",
-      symbol: "RMT",
+      address: ROBINHOOD_WETH_ADDRESS,
+      name: "Wrapped Ether",
+      symbol: "WETH",
       priceUsd: 0.004,
       liquidityUsd: 100_000,
       marketCapUsd: 1_000_000,
@@ -81,7 +85,7 @@ assert.equal(markets.length, 2);
 assert.equal(markets[1].priceUsd, null);
 assert.equal(markets[1].liquidityUsd, null);
 assert.equal(markets[1].priceChange24h, null);
-assert.equal(assetKey(verifiedDirectoryAsset(markets[0])!.id), assetKey(ROBINHOOD_RMT.id));
+assert.equal(assetKey(verifiedDirectoryAsset(markets[0])!.id), assetKey(ROBINHOOD_WETH.id));
 assert.equal(verifiedDirectoryAsset(markets[1]), null);
 
 const categorized = normalizeDirectoryMarkets({
@@ -149,10 +153,17 @@ assert.equal(counts.active, 2);
 assert.equal(counts.rwa, 2);
 assert.equal(counts.held, 1);
 assert.equal(counts.all, 4);
-assert.equal(selectVNextMarketDirectoryView(categorized, "trending", held)[0].symbol, "RMT");
+assert.equal(selectVNextMarketDirectoryView(categorized, "trending", held)[0].symbol, "WETH");
 assert.equal(selectVNextMarketDirectoryView(categorized, "held", held)[0].symbol, "OTH");
 const rwaMarkets = selectVNextMarketDirectoryView(categorized, "rwa", held);
 assert.deepEqual(rwaMarkets.map((market) => market.rwaRelationship), ["canonical-stock-token", "paired-market-asset"]);
+assert.equal(vNextSelectedMarketExecutionState(rwaMarkets[0]), "stock-token-view-only");
+assert.equal(vNextSelectedMarketExecutionState(rwaMarkets[1]), "normal");
+assert.equal(vNextSelectedMarketExecutionState(undefined), "normal");
+assert.equal(vNextExecutionUiState("normal", true), "live-execution");
+assert.equal(vNextExecutionUiState("normal", false), "preview-only");
+assert.equal(vNextExecutionUiState("stock-token-view-only", true), "stock-token-view-only");
+assert.equal(vNextExecutionUiState("stock-token-view-only", false), "stock-token-view-only");
 assert.equal(vNextRwaClassificationLabel(rwaMarkets[0].rwaRelationship), "Stock Token");
 assert.equal(vNextRwaClassificationLabel(rwaMarkets[1].rwaRelationship), "RWA Pair");
 assert.equal(vNextRwaClassificationLabel(undefined), null);
@@ -315,7 +326,7 @@ const verified = verifiedDirectoryAsset(markets[1], resolution);
 assert.equal(verified?.metadataState, "verified");
 assert.equal(verified?.decimals, 18);
 assert.equal(resolutionFromLookup({ resolution }, otherAddress), resolution);
-assert.equal(verifiedDirectoryAsset(markets[1], { ...resolution, chainId: 4_663, token: { ...resolution.token, address: ROBINHOOD_RMT_ADDRESS } }), null);
+assert.equal(verifiedDirectoryAsset(markets[1], { ...resolution, chainId: 4_663, token: { ...resolution.token, address: ROBINHOOD_WETH_ADDRESS } }), null);
 const identityOnlyMarket = directoryMarketFromVerifiedIdentity({ resolution }, otherAddress);
 assert.equal(identityOnlyMarket?.address, otherAddress);
 assert.equal(identityOnlyMarket?.symbol, "OTH");
@@ -336,7 +347,7 @@ assert.equal(shouldRequestVNextExternalWorkspaceMarket(identityOnlyMarket!), tru
 assert.equal(directoryMarketFromVerifiedIdentity({
   resolution: { ...resolution, chainId: 1 }
 } as unknown as ExternalMarketResponse, otherAddress), null);
-assert.equal(directoryMarketFromVerifiedIdentity({ resolution: { ...resolution, token: { ...resolution.token, address: ROBINHOOD_RMT_ADDRESS } } }, otherAddress), null);
+assert.equal(directoryMarketFromVerifiedIdentity({ resolution: { ...resolution, token: { ...resolution.token, address: ROBINHOOD_WETH_ADDRESS } } }, otherAddress), null);
 assert.equal(directoryMarketFromVerifiedIdentity({ resolution }, "not-an-address"), null);
 
 const exactAddress = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
@@ -476,6 +487,65 @@ assert.equal(v4Observed.verifiedMarkets?.[0].pool.kind, "bytes32");
 assert.equal(v4Observed.verifiedMarkets?.[0].pool.value, v4PoolId);
 assert.equal(deriveVNextMarketState(v4Observed).market, "observed");
 assert.equal(deriveVNextMarketState(v4Observed).chart, "unavailable");
+
+const v4Canonical = directoryMarketFromUniversalSearchResult({
+  address: exactAddress,
+  name: "Canonical V4 Token",
+  symbol: "CV4",
+  decimals: 18,
+  matchedBy: "token",
+  markets: [{
+    sourceId: "uniswap-v4",
+    protocol: "uniswap",
+    version: 4,
+    poolKey: v4PoolId,
+    poolAddress: null,
+    token0: zeroAddress,
+    token1: exactAddress,
+    stable: null,
+    fee: 3_000,
+    tickSpacing: 60,
+    hooks: zeroAddress,
+    transactionHash: `0x${"12".repeat(32)}`,
+    blockNumber: "123",
+    blockHash: `0x${"34".repeat(32)}`,
+    stateStatus: null,
+    liveFee: null,
+    feeDenominator: null,
+    gaugeAddress: null,
+    gaugeAlive: null,
+    gaugeWeight: null,
+    gaugeClaimable: null,
+    feesAddress: null,
+    bribeAddress: null,
+    stateObservedBlock: null,
+    stateObservedBlockHash: null
+  }]
+});
+const exactResolution = {
+  ...resolution,
+  requestedAddress: exactAddress,
+  token: { ...resolution.token, address: exactAddress, name: "Verified V4 Token", symbol: "VV4" }
+};
+const v4Identity = directoryMarketFromVerifiedIdentity({ resolution: exactResolution }, exactAddress)!;
+const explicitV4Selection = mergeVNextExplicitSelectionMarket({
+  existing: v4Observed,
+  canonical: v4Canonical,
+  identity: v4Identity,
+  provider: { ...v4Observed, name: "Provider V4", symbol: "PV4" }
+})!;
+assert.equal(explicitV4Selection.name, "Verified V4 Token", "Verified direct identity must precede provider presentation");
+assert.equal(explicitV4Selection.symbol, "VV4");
+assert.equal(explicitV4Selection.canonicalMarkets?.length, 1, "Direct canonical lookup must survive provider enrichment");
+assert.equal(explicitV4Selection.canonicalMarkets?.[0]?.poolKey, v4PoolId);
+assert.equal(explicitV4Selection.canonicalMarkets?.[0]?.poolAddress, null);
+assert.equal(explicitV4Selection.canonicalMarkets?.[0]?.token0, zeroAddress);
+const refreshedV4Selection = mergeVNextExplicitSelectionMarket({
+  existing: explicitV4Selection,
+  provider: { ...v4Observed, name: "Refreshed provider", symbol: "RPV4" }
+})!;
+assert.equal(refreshedV4Selection.canonicalMarkets?.[0]?.poolKey, v4PoolId, "Refresh must not erase canonical PoolId evidence");
+assert.equal(refreshedV4Selection.canonicalMarkets?.[0]?.poolAddress, null);
 
 const nonChartPrimaryWithChartAlternative = {
   ...v4Observed,

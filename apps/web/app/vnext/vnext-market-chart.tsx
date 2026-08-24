@@ -169,7 +169,7 @@ export function VNextMarketChart({ token, pair, symbol }: {
         <div className="vnChartHeadline">
           <span className="vnEyebrow">Verified pool chart</span>
           <div><strong id="vn-chart-title">{formatPrice(hovered?.close ?? latest)}</strong><span className={positive ? "vnPositive" : "vnNegative"}>{positive ? "+" : "−"}{Math.abs(change).toFixed(2)}%</span></div>
-          <small>{hovered ? timeLabel(hovered.timestamp, range) : `${symbol} · ${range}`} · {status === "stale" ? "Last verified snapshot" : "GeckoTerminal OHLCV"}</small>
+          <small>{hovered ? timeLabel(hovered.timestamp, range) : `${symbol} · ${range}`} · {status === "stale" ? "Last loaded snapshot" : "GeckoTerminal OHLCV"}</small>
         </div>
         <div className="vnChartControls">
           <div className="vnChartModes" role="group" aria-label="Chart display">
@@ -217,7 +217,7 @@ export function VNextMarketChart({ token, pair, symbol }: {
           })}
           {hoveredPoint && <g className="vnChartCrosshair"><line x1={hoveredPoint.x} x2={hoveredPoint.x} y1={geometry.top} y2={geometry.volumeBottom} /><line x1={geometry.left} x2={geometry.width - geometry.right + 8} y1={hoveredPoint.y} y2={hoveredPoint.y} /><circle cx={hoveredPoint.x} cy={hoveredPoint.y} r="4" /></g>}
           {latestPoint && <g className="vnChartLatest"><line x1={latestPoint.x} x2={geometry.width - geometry.right + 8} y1={latestPoint.y} y2={latestPoint.y} /><circle cx={latestPoint.x} cy={latestPoint.y} r="4" /></g>}
-        </svg> : <div className="vnChartEmpty" role="status"><strong>{status === "loading" ? "Loading verified price history" : "Chart temporarily unavailable"}</strong><span>{status === "loading" ? "The rest of the terminal remains usable while OHLCV loads." : "RMT will retry quietly. No price history is being invented."}</span></div>}
+        </svg> : <div className="vnChartEmpty" role="status"><strong>{status === "loading" ? "Loading price history" : "Chart temporarily unavailable"}</strong><span>{status === "loading" ? "The rest of the terminal remains usable while OHLCV loads." : "RMT will retry quietly. No price history is being invented."}</span></div>}
       </div>
       <footer className="vnChartFooter"><span>{candles[0] ? timeLabel(candles[0].timestamp, range) : "—"}</span><span>Volume {formatVolume(totalVolume)}</span><span>{candles.at(-1) ? timeLabel(candles.at(-1)!.timestamp, range) : "—"}</span></footer>
     </section>

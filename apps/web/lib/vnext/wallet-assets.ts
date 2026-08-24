@@ -3,11 +3,9 @@ import { evmAsset, type AssetMetadata, type AssetRouteState } from "./execution-
 import type { ExternalMarketResponse } from "../external-market";
 import type { VNextDirectoryMarket } from "./market-directory";
 import type { VNextWalletDiscoveryAsset } from "./wallet-discovery";
-import { RMT_TOKEN_ARTWORK, safeTokenArtworkUrl } from "./token-artwork";
+import { safeTokenArtworkUrl } from "./token-artwork";
 import {
   ROBINHOOD_MAINNET_CHAIN_ID,
-  ROBINHOOD_RMT,
-  ROBINHOOD_RMT_ADDRESS,
   ROBINHOOD_USDG,
   ROBINHOOD_USDG_ADDRESS,
   ROBINHOOD_WETH,
@@ -72,16 +70,6 @@ const CANONICAL_CANDIDATES: VNextWalletAssetCandidate[] = [
     source: "canonical",
     reputation: "ok",
     imageUrl: null
-  },
-  {
-    address: ROBINHOOD_RMT_ADDRESS,
-    symbol: ROBINHOOD_RMT.symbol ?? "RMT",
-    name: ROBINHOOD_RMT.name ?? "Robinhood Meme Terminal",
-    decimals: ROBINHOOD_RMT.decimals,
-    identityState: "verified",
-    source: "canonical",
-    reputation: "ok",
-    imageUrl: RMT_TOKEN_ARTWORK
   }
 ];
 

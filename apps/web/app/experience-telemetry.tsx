@@ -10,11 +10,7 @@ import {
 } from "../lib/experience-funnel";
 
 function publicTradingSurface(pathname: string) {
-  return pathname === "/"
-    || pathname === "/explore"
-    || pathname.startsWith("/market/")
-    || pathname.startsWith("/project/")
-    || pathname.startsWith("/token/");
+  return pathname === "/" || pathname.startsWith("/market/");
 }
 
 export function ExperienceTelemetry() {
@@ -32,8 +28,7 @@ export function ExperienceTelemetry() {
     if (!readExperiencePreferences().diagnosticsEnabled || !publicTradingSurface(pathname)) return;
     recordExperienceStage("visit_started");
     if (pathname === "/") recordExperienceStage("terminal_opened");
-    if (pathname === "/explore") recordExperienceStage("discovery_used");
-    if (pathname.startsWith("/market/") || pathname.startsWith("/project/") || pathname.startsWith("/token/")) {
+    if (pathname.startsWith("/market/")) {
       recordExperienceStage("market_opened");
     }
   }, [pathname, preferenceRevision]);

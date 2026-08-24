@@ -75,7 +75,6 @@ assert.match(adminSource, /once-per-browser-session milestones/);
 for (const path of [
   "../app/wallet-button.tsx",
   "../app/privy-wallet-button.tsx",
-  "../app/fresh-launch-feed.tsx",
   "../app/market-panel.tsx"
 ]) {
   assert.match(readFileSync(new URL(path, import.meta.url), "utf8"), /recordExperienceStage/);

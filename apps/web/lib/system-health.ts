@@ -1,25 +1,25 @@
 export type SystemHealthState = "operational" | "degraded";
 
 export type SystemHealthCheck = {
-  key: "rpc" | "registry" | "factory" | "economics" | "trading" | "graduation";
+  key: "rpc" | "market-indexer" | "canonical-inventory";
   label: string;
   state: SystemHealthState;
   detail: string;
 };
 
-export type SystemHealthReleaseEvidence = {
-  mode: "testnet" | "configuration-error" | "v6-cutover";
-  registryAddress: string | null;
-  factoryAddress: string | null;
-  factoryVersion: string | null;
-  factoryStartBlock: string;
-  registryConfiguredExplicitly: boolean;
-  registryConfigurationValid: boolean;
-  factoryStartBlockConfiguredExplicitly: boolean;
-  factoryStartBlockConfigurationValid: boolean;
+export type TerminalInventoryStatus = "ready" | "partial" | "unavailable";
+export type TerminalCanonicalCoverage = "complete" | "partial" | "unavailable";
+
+export type TerminalHealthEvidence = {
+  canonicalBrowseEnabled: boolean;
+  marketIndexerConfigured: boolean;
+  inventoryStatus: TerminalInventoryStatus;
+  canonicalCoverage: TerminalCanonicalCoverage;
 };
 
 export type SystemHealthReport = {
+  schemaVersion: 2;
+  product: "rmt-terminal";
   ok: boolean;
   network: string;
   chainId: number;
@@ -27,6 +27,6 @@ export type SystemHealthReport = {
   blockAgeSeconds: number | null;
   latencyMs: number;
   checkedAt: string;
-  releaseEvidence: SystemHealthReleaseEvidence;
+  terminalEvidence: TerminalHealthEvidence;
   checks: SystemHealthCheck[];
 };

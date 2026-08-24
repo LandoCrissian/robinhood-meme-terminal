@@ -2,9 +2,16 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { assetKey, evmAsset, evmChain, type AssetMetadata, type WalletAccount } from "./execution-domain";
 import { affordableDefaultAmount, assetsForSide, createExactInputIntent, decimalToAtomic, percentageOfAtomic } from "./intent-draft";
-import { ROBINHOOD_RMT, ROBINHOOD_USDG, robinhoodWalletAccount } from "./robinhood-assets";
+import { ROBINHOOD_USDG, robinhoodWalletAccount } from "./robinhood-assets";
 
 const wallet = robinhoodWalletAccount("0x1111111111111111111111111111111111111111");
+const currentMarketControl: AssetMetadata = {
+  id: evmAsset(4_663, "0xe934e36A439C94017B64a3FecE66AF12099aBF50"),
+  symbol: "STONKBROKER",
+  name: "StonkBroker",
+  decimals: 18,
+  metadataState: "verified"
+};
 
 assert.equal(decimalToAtomic("100", 6), "100000000");
 assert.equal(decimalToAtomic("1.25", 6), "1250000");
@@ -24,12 +31,12 @@ assert.equal(affordableDefaultAmount("1", 6, "25"), "0.000001");
 assert.equal(affordableDefaultAmount("0", 6, "25"), "");
 assert.throws(() => affordableDefaultAmount("-1", 6, "25"), /unsigned atomic/);
 
-const buy = assetsForSide("buy", ROBINHOOD_RMT, ROBINHOOD_USDG);
+const buy = assetsForSide("buy", currentMarketControl, ROBINHOOD_USDG);
 assert.equal(assetKey(buy.inputAsset.id), assetKey(ROBINHOOD_USDG.id));
-assert.equal(assetKey(buy.outputAsset.id), assetKey(ROBINHOOD_RMT.id));
+assert.equal(assetKey(buy.outputAsset.id), assetKey(currentMarketControl.id));
 
-const sell = assetsForSide("sell", ROBINHOOD_RMT, ROBINHOOD_USDG);
-assert.equal(assetKey(sell.inputAsset.id), assetKey(ROBINHOOD_RMT.id));
+const sell = assetsForSide("sell", currentMarketControl, ROBINHOOD_USDG);
+assert.equal(assetKey(sell.inputAsset.id), assetKey(currentMarketControl.id));
 assert.equal(assetKey(sell.outputAsset.id), assetKey(ROBINHOOD_USDG.id));
 
 const intent = createExactInputIntent({
@@ -45,7 +52,7 @@ assert.equal(intent.amountAtomic, "25500000");
 assert.equal(intent.tradeType, "exact_input");
 assert.equal(intent.recipient.address, wallet.address);
 
-const reportedAsset: AssetMetadata = { ...ROBINHOOD_RMT, metadataState: "reported" };
+const reportedAsset: AssetMetadata = { ...currentMarketControl, metadataState: "reported" };
 assert.throws(() => createExactInputIntent({
   intentId: "smoke:reported",
   sourceAccount: wallet,
@@ -62,7 +69,7 @@ assert.throws(() => createExactInputIntent({
   sourceAccount: ethereumWallet,
   recipient: wallet,
   inputAsset: ROBINHOOD_USDG,
-  outputAsset: ROBINHOOD_RMT,
+  outputAsset: currentMarketControl,
   amount: "1",
   requestedAtMs: 1
 }), /different chains/);

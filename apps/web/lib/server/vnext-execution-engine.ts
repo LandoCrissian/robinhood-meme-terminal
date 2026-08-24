@@ -1,4 +1,5 @@
 import type { VNextQuoteProvider } from "../vnext/quote-observation";
+import { requireVNextStockTokenExecutionEligible, type VNextStockTokenExecutionAssets } from "./robinhood-stock-token-registry";
 import type { VNextProviderAuthorizationRequest, VNextProviderVerificationRequest, VNextQuoteProviderAdapter } from "./vnext-provider-adapter";
 import { prepareVNextProviderAuthorization, quoteVNextExecutionProviders, verifyVNextExecutionProvider } from "./vnext-provider-adapter";
 import { vNextSushiAdapter } from "./vnext-sushi-adapter";
@@ -19,17 +20,31 @@ export function quoteRobinhoodVNextExecution(input: Parameters<typeof quoteVNext
   return quoteVNextExecutionProviders(input, robinhoodVNextQuoteAdapters);
 }
 
+export async function withVNextStockTokenExecutionAdmission<T>(
+  assets: VNextStockTokenExecutionAssets,
+  operation: () => Promise<T>,
+  requireAdmission: typeof requireVNextStockTokenExecutionEligible = requireVNextStockTokenExecutionEligible
+) {
+  await requireAdmission(assets);
+  return operation();
+}
+
 export function verifyRobinhoodVNextExecution(provider: VNextQuoteProvider, input: VNextProviderVerificationRequest) {
-  return verifyVNextExecutionProvider(provider, input, robinhoodVNextQuoteAdapters);
+  return withVNextStockTokenExecutionAdmission(input, () => (
+    verifyVNextExecutionProvider(provider, input, robinhoodVNextQuoteAdapters)
+  ));
 }
 
 export function prepareRobinhoodVNextAuthorization(provider: VNextQuoteProvider, input: VNextProviderAuthorizationRequest) {
-  return prepareVNextProviderAuthorization(provider, input, robinhoodVNextQuoteAdapters);
+  return withVNextStockTokenExecutionAdmission(input, () => (
+    prepareVNextProviderAuthorization(provider, input, robinhoodVNextQuoteAdapters)
+  ));
 }
 
 export function prepareRobinhoodVNextUniswapXIntent(
   input: Parameters<typeof prepareVNextUniswapXIntent>[0],
-  protectedOutputFloorAtomic: bigint
+  protectedOutputFloorAtomic: bigint,
+  requireAdmission: typeof requireVNextStockTokenExecutionEligible = requireVNextStockTokenExecutionEligible
 ) {
-  return prepareVNextUniswapXIntent(input, protectedOutputFloorAtomic);
+  return prepareVNextUniswapXIntent(input, protectedOutputFloorAtomic, requireAdmission);
 }

@@ -10,6 +10,7 @@ import { ExperienceTelemetry } from "./experience-telemetry";
 import { createLegacyWalletConnectors, walletChains, walletTransports } from "./wallet-config";
 import { speedWalletEnabled } from "../lib/privy-config";
 import { RecoveryBoundary } from "./recovery-boundary";
+import { BrowserAcceptanceIdentityBridge } from "./rmt-identity";
 
 let legacyWalletConfig: ReturnType<typeof createConfig> | undefined;
 
@@ -52,6 +53,10 @@ export function Providers({ children }: { children: ReactNode }) {
     : terminal;
 
   const legacyApplication = <LegacyWalletProvider queryClient={queryClient}>{application}</LegacyWalletProvider>;
+
+  if (process.env.NEXT_PUBLIC_RMT_BROWSER_ACCEPTANCE_PROFILE === "true") {
+    return <LegacyWalletProvider queryClient={queryClient}><BrowserAcceptanceIdentityBridge>{application}</BrowserAcceptanceIdentityBridge></LegacyWalletProvider>;
+  }
 
   if (speedWalletEnabled) {
     return (
