@@ -15,7 +15,8 @@ import type { RmtNetExecutionEconomics } from "./execution-fee-policy";
 import { assertRmtExecutionFeeV2Economics, type RmtExecutionFeeV2Economics } from "./execution-fee-policy-v2";
 import {
   assertVNextAtomicFeeAuthorizationBinding,
-  type VNextAtomicFeeAuthorizationBinding
+  type VNextAtomicFeeAuthorizationBinding,
+  type VNextAtomicFeeSettlementProof
 } from "./provider-fee-settlement";
 import type { RmtUniswapV3FeeExecution } from "./uniswap-v3-fee-executor";
 import {
@@ -121,6 +122,8 @@ export function parseVNextAuthorizationPlan(value: unknown, evidence: VNextPreSi
   if (evidence.rmtFeeEnabled || evidence.feeExecution != null || plan.feeExecution != null) {
     throw new Error("RMT_EXECUTION_V1 evidence is historical and cannot authorize a universal V2 wallet trade.");
   }
+  let validatedV2Authorization: VNextAtomicFeeAuthorizationBinding | null = null;
+  let validatedV2Settlement: VNextAtomicFeeSettlementProof | null = null;
   if (plan.settlementMode === VNEXT_DIRECT_NO_RMT_FEE) {
     assertVNextDirectNoRmtFeeSettlement(plan.directNoRmtFee, plan.inputAmountAtomic);
     assertVNextDirectNoRmtFeeSettlement(evidence.directNoRmtFee, evidence.inputAmountAtomic);
@@ -147,14 +150,38 @@ export function parseVNextAuthorizationPlan(value: unknown, evidence: VNextPreSi
       || evidence.feeV2Economics !== undefined
       || evidence.feeV2Settlement !== undefined
     ) throw new Error("RMT rejected hidden V2 authority in DIRECT_NO_RMT_FEE mode.");
-  } else if (
-    !plan.feeV2Economics
-    || !plan.feeV2Authorization
-    || !evidence.feeV2Economics
-    || !evidence.feeV2Settlement
-  ) throw new Error("RMT rejected a wallet plan without complete V2 fee authority.");
-  if (plan.settlementMode !== VNEXT_DIRECT_NO_RMT_FEE && plan.directAuthorization !== undefined) {
-    throw new Error("RMT rejected fee-free execution authority in a fee-bearing mode.");
+  } else {
+    if (
+      !plan.feeV2Economics
+      || !plan.feeV2Authorization
+      || !evidence.feeV2Economics
+      || !evidence.feeV2Settlement
+    ) throw new Error("RMT rejected a wallet plan without complete V2 fee authority.");
+    if (plan.directAuthorization !== undefined) {
+      throw new Error("RMT rejected fee-free execution authority in a fee-bearing mode.");
+    }
+    assertRmtExecutionFeeV2Economics(plan.feeV2Economics);
+    assertRmtExecutionFeeV2Economics(evidence.feeV2Economics);
+    assertVNextAtomicFeeAuthorizationBinding(plan.feeV2Authorization, plan.feeV2Economics, evidence.feeV2Settlement);
+    const v2Fields: (keyof RmtExecutionFeeV2Economics)[] = [
+      "state", "inputAsset", "outputAsset", "userGrossInputAtomic", "feeBasisAtomic", "feeBps", "expectedFeeAtomic", "maximumFeeAtomic",
+      "feeAsset", "feeSide", "providerInputAtomic", "providerGrossExpectedOutputAtomic", "providerProtectedOutputAtomic",
+      "expectedUserNetOutputAtomic", "protectedUserNetOutputAtomic", "treasury", "policyId", "policyVersion",
+      "policyHash", "roundingMode", "settlementMode", "executionOrigin"
+    ];
+    for (const field of v2Fields) {
+      if (plan.feeV2Economics[field] !== evidence.feeV2Economics[field]) {
+        throw new Error(`RMT rejected changed V2 fee field ${field}.`);
+      }
+    }
+    if (
+      plan.feeV2Authorization.provider !== plan.provider
+      || getAddress(plan.feeV2Authorization.recipient) !== getAddress(plan.recipient)
+      || getAddress(plan.feeV2Authorization.providerTarget) !== getAddress(plan.router)
+      || plan.feeV2Authorization.deadline !== plan.deadline
+    ) throw new Error("RMT rejected changed V2 provider, recipient, or deadline authority.");
+    validatedV2Authorization = plan.feeV2Authorization;
+    validatedV2Settlement = evidence.feeV2Settlement;
   }
 
   if (plan.kind === "erc20_approval") {
@@ -166,7 +193,7 @@ export function parseVNextAuthorizationPlan(value: unknown, evidence: VNextPreSi
     const [spender, amount] = decoded.args;
     const requiredSpender = plan.settlementMode === VNEXT_DIRECT_NO_RMT_FEE
       ? evidence.router
-      : evidence.feeV2Settlement!.executionTarget;
+      : validatedV2Settlement!.executionTarget;
     if (
       getAddress(spender) !== getAddress(evidence.approvalSpender)
       || getAddress(spender) !== getAddress(requiredSpender)
@@ -186,37 +213,12 @@ export function parseVNextAuthorizationPlan(value: unknown, evidence: VNextPreSi
     return plan;
   }
 
-  const planV2Economics = plan.feeV2Economics!;
-  const evidenceV2Economics = evidence.feeV2Economics!;
-  const planV2Authorization = plan.feeV2Authorization!;
-  const evidenceV2Settlement = evidence.feeV2Settlement!;
-  assertRmtExecutionFeeV2Economics(planV2Economics);
-  assertRmtExecutionFeeV2Economics(evidenceV2Economics);
-  assertVNextAtomicFeeAuthorizationBinding(planV2Authorization, planV2Economics, evidenceV2Settlement);
-  const v2Fields: (keyof RmtExecutionFeeV2Economics)[] = [
-    "state", "inputAsset", "outputAsset", "userGrossInputAtomic", "feeBasisAtomic", "feeBps", "expectedFeeAtomic", "maximumFeeAtomic",
-    "feeAsset", "feeSide", "providerInputAtomic", "providerGrossExpectedOutputAtomic", "providerProtectedOutputAtomic",
-    "expectedUserNetOutputAtomic", "protectedUserNetOutputAtomic", "treasury", "policyId", "policyVersion",
-    "policyHash", "roundingMode", "settlementMode", "executionOrigin"
-  ];
-  for (const field of v2Fields) {
-    if (planV2Economics[field] !== evidenceV2Economics[field]) {
-      throw new Error(`RMT rejected changed V2 fee field ${field}.`);
-    }
-  }
-  if (
-    planV2Authorization.provider !== plan.provider
-    || getAddress(planV2Authorization.recipient) !== getAddress(plan.recipient)
-    || getAddress(planV2Authorization.providerTarget) !== getAddress(plan.router)
-    || planV2Authorization.deadline !== plan.deadline
-  ) throw new Error("RMT rejected changed V2 provider, recipient, or deadline authority.");
-
   if (
     evidence.status !== "verified"
-    || getAddress(plan.target) !== getAddress(evidenceV2Settlement.executionTarget)
-    || getAddress(planV2Authorization.executionTarget) !== getAddress(evidenceV2Settlement.executionTarget)
+    || getAddress(plan.target) !== getAddress(validatedV2Settlement!.executionTarget)
+    || getAddress(validatedV2Authorization!.executionTarget) !== getAddress(validatedV2Settlement!.executionTarget)
     || keccak256(plan.data) !== evidence.calldataHash
-    || keccak256(plan.data).toLowerCase() !== planV2Authorization.calldataHash.toLowerCase()
+    || keccak256(plan.data).toLowerCase() !== validatedV2Authorization!.calldataHash.toLowerCase()
   ) {
     throw new Error("RMT rejected a swap plan that does not match strict evidence.");
   }

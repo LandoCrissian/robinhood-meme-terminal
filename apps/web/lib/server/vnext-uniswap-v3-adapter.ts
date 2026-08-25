@@ -141,6 +141,6 @@ export function createVNextUniswapV3Adapter(input: {
   return adapter;
 }
 
-// Production remains quote-only until a reviewed V2 deployment and policy are
-// explicitly admitted. Tests inject the same adapter with wallet authority on.
+// Production wallet authorization remains disabled until explicit reviewed
+// provider execution admission. Tests inject the same adapter with wallet authority on.
 export const vNextUniswapV3Adapter = createVNextUniswapV3Adapter();
