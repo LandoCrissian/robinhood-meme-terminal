@@ -18,6 +18,7 @@ import {
   ROBINHOOD_WETH_IMPLEMENTATION
 } from "../server/vnext-uniswap-fee-executor";
 import { ROBINHOOD_SWAP_ROUTER_02 } from "../uniswap-v4";
+import { VNEXT_V2_ATOMIC_INPUT_FEE } from "./execution-settlement";
 import {
   createRmtExecutionFeeV2Policy,
   normalizeRmtExecutionFeeV2Input
@@ -208,7 +209,8 @@ const adapter: VNextQuoteProviderAdapter = {
       networkCostValuedAtMs: null,
       networkCostValuationExpiresAtMs: null,
       feeV2Economics: economics,
-      feeV2Settlement: proof
+      feeV2Settlement: proof,
+      settlementMode: VNEXT_V2_ATOMIC_INPUT_FEE
     };
   },
   async prepareAuthorization(request) {
@@ -231,7 +233,8 @@ const prepared = await prepareVNextProviderAuthorization("uniswap-v3", {
   protectedOutputFloorAtomic: 990n,
   deadlineSeconds: deadline,
   nowMs: Date.now(),
-  executionId
+  executionId,
+  settlementMode: VNEXT_V2_ATOMIC_INPUT_FEE
 }, [adapter], { policy, capability });
 assert.equal(prepared.transaction.target, executor);
 assert.notEqual(prepared.transaction.target, ROBINHOOD_SWAP_ROUTER_02);
@@ -250,7 +253,7 @@ await assert.rejects(() => vNextUniswapV3Adapter.prepareAuthorization!({
   deadlineSeconds: deadline,
   nowMs: Date.now(),
   executionId
-}), /quote-only until V2 atomic fee settlement is admitted/);
+}), /wallet authorization is not available yet/);
 
 assert.equal(requiresExactV2TraderApproval({ nativeInput: false, allowance: 40_000n, userGrossInput: 40_000n }), false);
 assert.equal(requiresExactV2TraderApproval({ nativeInput: false, allowance: 39_999n, userGrossInput: 40_000n }), true);

@@ -1,9 +1,9 @@
-import { quoteVNextUniswapForUser, verifyVNextUniswapRoute } from "./vnext-uniswap-quote";
+import { prepareVNextUniswapAuthorization, quoteVNextUniswapForUser, verifyVNextUniswapRoute } from "./vnext-uniswap-quote";
+import { VNEXT_DIRECT_NO_RMT_FEE, VNEXT_V2_ATOMIC_INPUT_FEE } from "../vnext/execution-settlement";
 import { unavailableVNextQuoteAttempt, type VNextQuoteProviderAdapter } from "./vnext-provider-adapter";
 import {
   evaluateVNextUniswapRouteV2,
   prepareVNextUniswapAuthorizationV2,
-  quoteVNextUniswapForUserV2,
   type VerifiedVNextUniswapFeeExecutorV2Config
 } from "./vnext-uniswap-v3-v2-execution";
 
@@ -22,13 +22,7 @@ export function createVNextUniswapV3Adapter(input: {
   async quote(request) {
     const startedAtMs = Date.now();
     try {
-      const v2Result = await quoteVNextUniswapForUserV2({
-        inputAsset: request.inputAsset,
-        outputAsset: request.outputAsset,
-        userGrossInput: request.amountIn,
-        ...(input.v2Config !== undefined ? { config: input.v2Config } : {})
-      });
-      const result = v2Result ?? await quoteVNextUniswapForUser({
+      const result = await quoteVNextUniswapForUser({
         inputAsset: request.inputAsset,
         outputAsset: request.outputAsset,
         userGrossInput: request.amountIn,
@@ -42,12 +36,8 @@ export function createVNextUniswapV3Adapter(input: {
         startedAtMs
       });
       const { quote } = result;
-      const expectedOutputAtomic = "economics" in result
-        ? result.economics.expectedUserNetOutputAtomic
-        : result.netEconomics.expectedUserNetOutputAtomic;
-      const protectedOutputAtomic = "economics" in result
-        ? result.economics.protectedUserNetOutputAtomic
-        : result.netEconomics.protectedUserNetOutputAtomic;
+      const expectedOutputAtomic = result.netEconomics.expectedUserNetOutputAtomic;
+      const protectedOutputAtomic = result.netEconomics.protectedUserNetOutputAtomic;
       const quotedAtMs = Date.now();
       return {
         provider: "uniswap-v3",
@@ -75,16 +65,13 @@ export function createVNextUniswapV3Adapter(input: {
         gasSponsorshipFeeAsset: null,
         gasSponsorshipFeeAtomic: null,
         explicitProviderFeeOutputAtomic: null,
-        netEconomics: "netEconomics" in result ? result.netEconomics : null,
-        ...(v2Result ? { feeV2Economics: v2Result.economics } : {}),
+        netEconomics: result.netEconomics,
         networkFeeNativeAtomic: null,
         networkFeeNativeSymbol: "ETH",
         protectedNetOutputAtomic: null,
         costState: "network_fee_pending",
         authorizationReady: false,
-        detail: "economics" in result
-          ? "Live Uniswap V3 quote using provider input after the exact RMT_EXECUTION_V2 fee."
-          : "Live direct-pool quote. Price impact and executable verification have not run."
+        detail: "Live direct-pool quote with no RMT platform fee. Price impact and executable verification have not run."
       };
     } catch {
       return unavailableVNextQuoteAttempt({
@@ -97,7 +84,8 @@ export function createVNextUniswapV3Adapter(input: {
     }
   },
   async verify(request) {
-    if (walletAuthorization) {
+    const settlementMode = request.settlementMode ?? VNEXT_DIRECT_NO_RMT_FEE;
+    if (settlementMode === VNEXT_V2_ATOMIC_INPUT_FEE) {
       if (!request.executionId) throw new Error("Uniswap V3 V2 verification requires an execution ID.");
       return (await evaluateVNextUniswapRouteV2({
         inputAsset: request.inputAsset,
@@ -121,19 +109,26 @@ export function createVNextUniswapV3Adapter(input: {
   },
   async prepareAuthorization(request) {
     if (!walletAuthorization) {
-      throw new Error("Uniswap V3 is quote-only until V2 atomic fee settlement is admitted.");
+      throw new Error("Uniswap V3 wallet authorization is not available yet.");
     }
-    if (!request.executionId) throw new Error("Uniswap V3 V2 authorization requires an execution ID.");
-    const prepared = await prepareVNextUniswapAuthorizationV2({
+    const settlementMode = request.settlementMode ?? VNEXT_DIRECT_NO_RMT_FEE;
+    const common = {
       inputAsset: request.inputAsset,
       outputAsset: request.outputAsset,
       amountIn: request.amountIn,
       recipient: request.recipient,
-      executionId: request.executionId,
       deadlineSeconds: request.deadlineSeconds,
       protectedOutputFloorAtomic: request.protectedOutputFloorAtomic,
       indicativeProtectedOutputFloorAtomic: request.indicativeProtectedOutputFloorAtomic,
-      nowMs: request.nowMs,
+      nowMs: request.nowMs
+    };
+    if (settlementMode === VNEXT_DIRECT_NO_RMT_FEE) {
+      return prepareVNextUniswapAuthorization({ ...common, executionId: request.executionId });
+    }
+    if (!request.executionId) throw new Error("Uniswap V3 V2 authorization requires an execution ID.");
+    const prepared = await prepareVNextUniswapAuthorizationV2({
+      ...common,
+      executionId: request.executionId,
       ...(input.v2Config !== undefined ? { config: input.v2Config } : {})
     });
     return {
@@ -146,6 +141,6 @@ export function createVNextUniswapV3Adapter(input: {
   return adapter;
 }
 
-// Production remains quote-only until a reviewed V2 deployment and policy are
-// explicitly admitted. Tests inject the same adapter with wallet authority on.
+// Production wallet authorization remains disabled until explicit reviewed
+// provider execution admission. Tests inject the same adapter with wallet authority on.
 export const vNextUniswapV3Adapter = createVNextUniswapV3Adapter();

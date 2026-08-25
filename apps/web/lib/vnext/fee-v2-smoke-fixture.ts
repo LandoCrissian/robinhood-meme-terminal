@@ -10,6 +10,7 @@ import {
   type VNextAtomicFeeSettlementProof
 } from "./provider-fee-settlement";
 import type { VNextPreSignEvidence } from "./pre-sign-evidence";
+import { VNEXT_V2_ATOMIC_INPUT_FEE } from "./execution-settlement";
 
 export const FEE_V2_SMOKE_NOW_MS = 1_786_000_000_000;
 export const FEE_V2_SMOKE_INPUT = getAddress("0x1111111111111111111111111111111111111111");
@@ -98,6 +99,7 @@ export const FEE_V2_SMOKE_APPROVAL_EVIDENCE: VNextPreSignEvidence = {
   exactSimulationPassed: false,
   userPaysGas: true,
   rmtFeeEnabled: false,
+  settlementMode: VNEXT_V2_ATOMIC_INPUT_FEE,
   netEconomics: undefined,
   feeExecution: null,
   feeV2Economics: economics,
@@ -128,6 +130,7 @@ export const FEE_V2_SMOKE_APPROVAL_PLAN = planWithHash({
   protectedOutputAtomic: "990",
   recipient: FEE_V2_SMOKE_RECIPIENT,
   router: ROBINHOOD_SWAP_ROUTER_02,
+  settlementMode: VNEXT_V2_ATOMIC_INPUT_FEE,
   feeV2Economics: economics,
   feeV2Authorization: authorization,
   deadline: proof.deadline,

@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { parseVNextPreSignEvidence, type VNextPreSignEvidence } from "./pre-sign-evidence";
 import { zeroAddress } from "viem";
 import { ROBINHOOD_SWAP_ROUTER_02 } from "../uniswap-v4";
+import { directNoRmtFeeSettlement, VNEXT_DIRECT_NO_RMT_FEE } from "./execution-settlement";
 
 const now = 1_786_000_000_000;
 const evidence: VNextPreSignEvidence = {
@@ -50,6 +51,8 @@ const evidence: VNextPreSignEvidence = {
   exactSimulationPassed: true,
   userPaysGas: true,
   rmtFeeEnabled: false,
+  settlementMode: VNEXT_DIRECT_NO_RMT_FEE,
+  directNoRmtFee: directNoRmtFeeSettlement("1000000"),
   verifiedAtMs: now - 1_000,
   expiresAtMs: now + 299_000,
   authorizationReady: false
@@ -76,6 +79,7 @@ const nativeEvidence = {
   ...evidence,
   inputAsset: zeroAddress,
   inputAmountAtomic: "100000000000000",
+  directNoRmtFee: directNoRmtFeeSettlement("100000000000000"),
   transactionValueAtomic: "100000000000000",
   balanceAtomic: evidence.nativeBalanceWei
 };

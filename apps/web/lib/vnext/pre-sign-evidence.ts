@@ -6,6 +6,14 @@ import { UP_CL_EXECUTION_ROUTER, UP_V2_EXECUTION_ROUTER } from "./up-authorizati
 import { assertRmtNetExecutionEconomics, type RmtNetExecutionEconomics } from "./execution-fee-policy";
 import { assertRmtExecutionFeeV2Economics, type RmtExecutionFeeV2Economics } from "./execution-fee-policy-v2";
 import type { VNextAtomicFeeSettlementProof } from "./provider-fee-settlement";
+import {
+  assertVNextDirectNoRmtFeeSettlement,
+  VNEXT_DIRECT_NO_RMT_FEE,
+  VNEXT_LEGACY_V1_FEE,
+  VNEXT_V2_ATOMIC_INPUT_FEE,
+  type VNextDirectNoRmtFeeSettlement,
+  type VNextExecutionSettlementMode
+} from "./execution-settlement";
 import { assertRmtUniswapV3FeeExecution, encodeRmtUniswapV3FeeExecution, type RmtUniswapV3FeeExecution } from "./uniswap-v3-fee-executor";
 
 const MAX_CLOCK_SKEW_MS = 5_000;
@@ -65,6 +73,8 @@ export type VNextPreSignEvidence = {
   exactSimulationPassed: boolean;
   userPaysGas: true;
   rmtFeeEnabled: boolean;
+  settlementMode: VNextExecutionSettlementMode;
+  directNoRmtFee?: VNextDirectNoRmtFeeSettlement;
   netEconomics?: RmtNetExecutionEconomics;
   feeExecution?: RmtUniswapV3FeeExecution | null;
   feeV2Economics?: RmtExecutionFeeV2Economics;
@@ -125,6 +135,8 @@ const evidenceSchema = z.object({
   exactSimulationPassed: z.boolean(),
   userPaysGas: z.literal(true),
   rmtFeeEnabled: z.boolean(),
+  settlementMode: z.enum([VNEXT_DIRECT_NO_RMT_FEE, VNEXT_V2_ATOMIC_INPUT_FEE, VNEXT_LEGACY_V1_FEE]),
+  directNoRmtFee: z.unknown().optional(),
   netEconomics: z.unknown().optional(),
   feeExecution: z.unknown().nullable().optional(),
   feeV2Economics: z.unknown().optional(),
@@ -170,6 +182,26 @@ export function parseVNextPreSignEvidence(value: unknown, expected: {
   const hasV2Economics = evidence.feeV2Economics !== undefined;
   const hasV2Settlement = evidence.feeV2Settlement !== undefined;
   if (hasV2Economics !== hasV2Settlement) throw new Error("RMT rejected incomplete V2 fee-settlement evidence.");
+  if (evidence.settlementMode === VNEXT_DIRECT_NO_RMT_FEE) {
+    assertVNextDirectNoRmtFeeSettlement(evidence.directNoRmtFee, evidence.inputAmountAtomic);
+    if (
+      evidence.rmtFeeEnabled
+      || evidence.feeExecution != null
+      || hasV2Economics
+      || evidence.netEconomics?.rmtFee.state === "planned"
+    ) throw new Error("RMT rejected hidden fee authority in DIRECT_NO_RMT_FEE evidence.");
+  } else if (evidence.directNoRmtFee !== undefined) {
+    throw new Error("RMT rejected fee-free settlement fields in a fee-bearing mode.");
+  }
+  if (evidence.settlementMode === VNEXT_V2_ATOMIC_INPUT_FEE && (!hasV2Economics || !hasV2Settlement)) {
+    throw new Error("RMT rejected incomplete V2 fee-settlement evidence.");
+  }
+  if (evidence.settlementMode !== VNEXT_V2_ATOMIC_INPUT_FEE && hasV2Economics) {
+    throw new Error("RMT rejected V2 fee evidence outside V2_ATOMIC_INPUT_FEE mode.");
+  }
+  if (evidence.settlementMode === VNEXT_LEGACY_V1_FEE && !evidence.rmtFeeEnabled) {
+    throw new Error("RMT rejected incomplete historical V1 fee evidence.");
+  }
   if (evidence.feeV2Economics && evidence.feeV2Settlement) {
     assertRmtExecutionFeeV2Economics(evidence.feeV2Economics);
     if (

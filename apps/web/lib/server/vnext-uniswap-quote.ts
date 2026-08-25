@@ -13,6 +13,7 @@ import {
 import { robinhoodChain } from "@rmt/shared/chains";
 import { ROBINHOOD_SWAP_ROUTER_02, ROBINHOOD_V3_FACTORY, ROBINHOOD_V3_QUOTER, ROBINHOOD_WETH } from "../uniswap-v4";
 import { ROBINHOOD_USDG_ADDRESS, isRobinhoodNativeAsset } from "../vnext/robinhood-assets";
+import { directNoRmtFeeSettlement, VNEXT_DIRECT_NO_RMT_FEE, VNEXT_LEGACY_V1_FEE } from "../vnext/execution-settlement";
 import {
   calculateRmtFeeFloor,
   normalizeDisabledRmtFee,
@@ -260,19 +261,22 @@ export async function quoteVNextUniswapForUser(input: {
   outputAsset: Address;
   userGrossInput: bigint;
   recipient: Address;
+  settlementMode?: typeof VNEXT_DIRECT_NO_RMT_FEE | typeof VNEXT_LEGACY_V1_FEE;
 }) {
   const requestedInputAsset = getAddress(input.inputAsset);
   const requestedOutputAsset = getAddress(input.outputAsset);
   const routedInputAsset = isRobinhoodNativeAsset(requestedInputAsset) ? ROBINHOOD_WETH : requestedInputAsset;
   const routedOutputAsset = isRobinhoodNativeAsset(requestedOutputAsset) ? ROBINHOOD_WETH : requestedOutputAsset;
-  const feeContext = await vNextUniswapFeeContext({
-    requestedInputAsset,
-    routedInputAsset,
-    requestedOutputAsset,
-    routedOutputAsset,
-    userGrossInput: input.userGrossInput,
-    recipient: getAddress(input.recipient)
-  });
+  const feeContext = input.settlementMode === VNEXT_LEGACY_V1_FEE
+    ? await vNextUniswapFeeContext({
+        requestedInputAsset,
+        routedInputAsset,
+        requestedOutputAsset,
+        routedOutputAsset,
+        userGrossInput: input.userGrossInput,
+        recipient: getAddress(input.recipient)
+      })
+    : null;
   const providerInput = feeContext?.feeSide ? feeContext.providerInput : input.userGrossInput;
   const quote = await quoteVNextUniswapDirect({ inputAsset: routedInputAsset, outputAsset: routedOutputAsset, amountIn: providerInput });
   if (!quote) return null;
@@ -583,6 +587,8 @@ async function evaluateVNextUniswapRoute(input: {
     exactSimulationPassed: simulationPassed,
     userPaysGas: true,
     rmtFeeEnabled: feeExecution !== null,
+    settlementMode: feeExecution === null ? VNEXT_DIRECT_NO_RMT_FEE : VNEXT_LEGACY_V1_FEE,
+    ...(feeExecution === null ? { directNoRmtFee: directNoRmtFeeSettlement(grossInput.toString()) } : {}),
     netEconomics: finalEconomics,
     feeExecution,
     verifiedAtMs: nowMs,

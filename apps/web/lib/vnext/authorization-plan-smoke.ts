@@ -3,6 +3,12 @@ import { readFileSync } from "node:fs";
 import { authorizationPayloadHash, parseVNextAuthorizationBundle, parseVNextAuthorizationPlan } from "./authorization-plan";
 import { plannedRmtExecutionFeeV2ForWalletAction } from "./execution-fee-policy-v2";
 import {
+  DIRECT_SMOKE_APPROVAL_EVIDENCE,
+  DIRECT_SMOKE_APPROVAL_PLAN,
+  DIRECT_SMOKE_SWAP_EVIDENCE,
+  DIRECT_SMOKE_SWAP_PLAN
+} from "./direct-no-rmt-fee-smoke-fixture";
+import {
   FEE_V2_SMOKE_APPROVAL_EVIDENCE,
   FEE_V2_SMOKE_APPROVAL_PLAN,
   FEE_V2_SMOKE_NOW_MS,
@@ -13,6 +19,8 @@ import {
 const now = FEE_V2_SMOKE_NOW_MS + 1;
 assert.equal(parseVNextAuthorizationPlan(FEE_V2_SMOKE_APPROVAL_PLAN, FEE_V2_SMOKE_APPROVAL_EVIDENCE, now).kind, "erc20_approval");
 assert.equal(parseVNextAuthorizationPlan(FEE_V2_SMOKE_SWAP_PLAN, FEE_V2_SMOKE_SWAP_EVIDENCE, now).kind, "swap");
+assert.equal(parseVNextAuthorizationPlan(DIRECT_SMOKE_APPROVAL_PLAN, DIRECT_SMOKE_APPROVAL_EVIDENCE, now).kind, "erc20_approval");
+assert.equal(parseVNextAuthorizationPlan(DIRECT_SMOKE_SWAP_PLAN, DIRECT_SMOKE_SWAP_EVIDENCE, now).kind, "swap");
 assert.equal(plannedRmtExecutionFeeV2ForWalletAction("erc20_approval", FEE_V2_SMOKE_APPROVAL_PLAN.feeV2Economics!), "0");
 assert.equal(plannedRmtExecutionFeeV2ForWalletAction("swap", FEE_V2_SMOKE_SWAP_PLAN.feeV2Economics!), "2500");
 
@@ -26,6 +34,42 @@ assert.throws(() => parseVNextAuthorizationPlan(FEE_V2_SMOKE_SWAP_PLAN, {
   feeV2Economics: undefined,
   feeV2Settlement: undefined
 }, now), /without complete V2 fee authority/);
+assert.throws(() => parseVNextAuthorizationPlan({
+  ...FEE_V2_SMOKE_APPROVAL_PLAN,
+  feeV2Economics: undefined,
+  feeV2Authorization: undefined
+}, FEE_V2_SMOKE_APPROVAL_EVIDENCE, now), /without complete V2 fee authority/);
+
+function changedApprovalFee(field: keyof NonNullable<typeof FEE_V2_SMOKE_APPROVAL_PLAN.feeV2Economics>, value: unknown) {
+  assert.throws(() => parseVNextAuthorizationPlan({
+    ...FEE_V2_SMOKE_APPROVAL_PLAN,
+    feeV2Economics: { ...FEE_V2_SMOKE_APPROVAL_PLAN.feeV2Economics!, [field]: value }
+  }, FEE_V2_SMOKE_APPROVAL_EVIDENCE, now));
+}
+
+function changedApprovalAuthorization(field: keyof NonNullable<typeof FEE_V2_SMOKE_APPROVAL_PLAN.feeV2Authorization>, value: unknown) {
+  assert.throws(() => parseVNextAuthorizationPlan({
+    ...FEE_V2_SMOKE_APPROVAL_PLAN,
+    feeV2Authorization: { ...FEE_V2_SMOKE_APPROVAL_PLAN.feeV2Authorization!, [field]: value }
+  }, FEE_V2_SMOKE_APPROVAL_EVIDENCE, now));
+}
+
+assert.throws(() => parseVNextAuthorizationPlan({
+  ...FEE_V2_SMOKE_APPROVAL_PLAN,
+  feeV2Economics: {}
+}, FEE_V2_SMOKE_APPROVAL_EVIDENCE, now));
+assert.throws(() => parseVNextAuthorizationPlan({
+  ...FEE_V2_SMOKE_APPROVAL_PLAN,
+  feeV2Authorization: {}
+}, FEE_V2_SMOKE_APPROVAL_EVIDENCE, now));
+changedApprovalFee("policyHash", `0x${"9".repeat(64)}`);
+changedApprovalFee("expectedFeeAtomic", "2499");
+changedApprovalFee("maximumFeeAtomic", "2501");
+changedApprovalFee("providerInputAtomic", "997501");
+changedApprovalFee("treasury", "0x8888888888888888888888888888888888888888");
+changedApprovalAuthorization("recipient", "0x8888888888888888888888888888888888888888");
+changedApprovalAuthorization("providerTarget", "0x8888888888888888888888888888888888888888");
+changedApprovalAuthorization("deadline", "1786000299");
 
 function changedFee(field: keyof NonNullable<typeof FEE_V2_SMOKE_SWAP_PLAN.feeV2Economics>, value: unknown) {
   assert.throws(() => parseVNextAuthorizationPlan({

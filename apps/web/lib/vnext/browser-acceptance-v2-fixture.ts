@@ -23,6 +23,7 @@ import {
   rmtUniswapV3FeeExecutorV2Abi
 } from "./uniswap-v3-fee-executor-v2";
 import { ROBINHOOD_SWAP_ROUTER_02 } from "../uniswap-v4";
+import { VNEXT_V2_ATOMIC_INPUT_FEE } from "./execution-settlement";
 
 const wallet = "0x3333333333333333333333333333333333333333" as Address;
 const token = "0x0000000000000000000000000000000000001001" as Address;
@@ -123,6 +124,7 @@ function buildScenario(input: {
     networkCostValuationExpiresAtMs: null,
     userPaysGas: true as const,
     rmtFeeEnabled: false,
+    settlementMode: VNEXT_V2_ATOMIC_INPUT_FEE,
     feeExecution: null,
     feeV2Economics: economics,
     feeV2Settlement: proof,
@@ -166,6 +168,7 @@ function buildScenario(input: {
     protectedOutputAtomic: input.protectedOutput,
     recipient: wallet,
     router: ROBINHOOD_SWAP_ROUTER_02,
+    settlementMode: VNEXT_V2_ATOMIC_INPUT_FEE,
     feeV2Economics: economics,
     feeV2Authorization: feeAuthorization,
     deadline,

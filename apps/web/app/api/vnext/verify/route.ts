@@ -9,6 +9,7 @@ import {
   projectIdentityAdmissionErrorResponse,
   requireProjectIdentityDirectoryAdmitted
 } from "../../../../lib/server/project-identity-admission";
+import { VNEXT_DIRECT_NO_RMT_FEE } from "../../../../lib/vnext/execution-settlement";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -52,6 +53,7 @@ export async function POST(request: Request) {
       inputAmountAtomic: parsed.data.inputAmountAtomic,
       recipient,
       indicativeProtectedOutputFloorAtomic: BigInt(parsed.data.protectedOutputFloorAtomic),
+      settlementMode: VNEXT_DIRECT_NO_RMT_FEE,
       executionId
     });
     return Response.json({

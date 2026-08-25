@@ -10,6 +10,7 @@ import {
   projectIdentityAdmissionErrorResponse,
   requireProjectIdentityDirectoryAdmitted
 } from "../../../../lib/server/project-identity-admission";
+import { directExecutionBinding, VNEXT_DIRECT_NO_RMT_FEE } from "../../../../lib/vnext/execution-settlement";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -70,6 +71,7 @@ export async function POST(request: Request) {
       indicativeProtectedOutputFloorAtomic: BigInt(parsed.data.indicativeProtectedOutputFloorAtomic),
       protectedOutputFloorAtomic: BigInt(parsed.data.expectedProtectedOutputAtomic),
       nowMs: preparedAtMs,
+      settlementMode: VNEXT_DIRECT_NO_RMT_FEE,
       ...(parsed.data.executionId ? { executionId: parsed.data.executionId as Hex } : {})
     });
     if (prepared.evidence.provider !== "uniswap-v3" && prepared.evidence.provider !== "up-v2" && prepared.evidence.provider !== "up-cl") {
@@ -100,6 +102,25 @@ export async function POST(request: Request) {
       protectedOutputAtomic: prepared.evidence.protectedOutputAtomic,
       recipient: prepared.evidence.recipient,
       router: prepared.evidence.router,
+      settlementMode: VNEXT_DIRECT_NO_RMT_FEE,
+      ...(prepared.evidence.directNoRmtFee ? { directNoRmtFee: prepared.evidence.directNoRmtFee } : {}),
+      directAuthorization: directExecutionBinding({
+        provider: prepared.evidence.provider,
+        kind: prepared.transaction.kind,
+        chainId: 4_663,
+        inputAsset: prepared.evidence.inputAsset,
+        outputAsset: prepared.evidence.outputAsset,
+        inputAmountAtomic: prepared.evidence.inputAmountAtomic,
+        protectedOutputAtomic: prepared.evidence.protectedOutputAtomic,
+        recipient: prepared.evidence.recipient,
+        providerTarget: prepared.evidence.router,
+        executionTarget: prepared.transaction.target,
+        approvalSpender: prepared.evidence.approvalSpender,
+        approvalAmountAtomic: prepared.evidence.inputAmountAtomic,
+        data: prepared.transaction.data,
+        valueAtomic: prepared.transaction.value,
+        deadline: prepared.evidence.deadline
+      }),
       ...(prepared.evidence.netEconomics ? { netEconomics: prepared.evidence.netEconomics } : {}),
       ...(prepared.evidence.feeExecution !== undefined ? { feeExecution: prepared.evidence.feeExecution } : {}),
       ...(prepared.evidence.feeV2Economics ? { feeV2Economics: prepared.evidence.feeV2Economics } : {}),
