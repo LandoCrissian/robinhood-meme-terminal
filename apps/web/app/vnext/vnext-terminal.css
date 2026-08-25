@@ -835,6 +835,17 @@ body .rmtVnext {
   text-transform: uppercase;
 }
 
+.vnProjectLinkGroup summary {
+  color: var(--vn-text-muted);
+  cursor: pointer;
+  font-size: 8px;
+  font-weight: 780;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.vnProjectLinkGroup[open] summary { margin-bottom: 7px; }
+
 .vnWorkspaceStatusGroup {
   display: grid;
   flex: 0 0 auto;
@@ -5750,16 +5761,18 @@ body .rmtTerminal button {
   .rmtDistributionPanel[data-presentation="mobile"] { min-height: calc(100dvh - 130px); align-content: start; }
 
   .vnAssetIdentityFacts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .vnAssetContractIdentity { align-items: stretch; flex-direction: column; }
-  .vnAssetContractIdentity > a { align-self: flex-start; }
-  .vnCopyAddress { align-items: stretch; flex-direction: column; }
+  .vnAssetQuickLinks { gap: 6px; padding: 8px; }
+  .vnAssetContractIdentity { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 7px; }
+  .vnAssetContractIdentity > a { align-self: end; }
+  .vnCopyAddress { flex-direction: row; }
   .vnCopyAddress code {
-    overflow: visible;
+    overflow: hidden;
     font-size: 10px;
-    overflow-wrap: anywhere;
-    text-overflow: clip;
-    white-space: normal;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
-  .vnCopyAddress button { align-self: flex-start; min-height: 44px; }
+  .vnCopyAddress button { min-height: 44px; }
   .vnAssetQuickLinks a { min-height: 44px; }
+  .vnAssetQuickLinkRows { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+  .vnProjectLinkGroup { padding-top: 6px; }
 }

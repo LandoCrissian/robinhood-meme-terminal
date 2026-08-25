@@ -7,6 +7,7 @@ import type { VNextExecutionRecord } from "../../lib/vnext/execution-recovery";
 import {
   VNEXT_MARKET_DIRECTORY_PAGE_SIZE,
   VNEXT_MARKET_DIRECTORY_VIEWS,
+  selectVNextCanonicalMarket,
   vNextRwaClassificationLabel,
   type VNextDirectoryMarket,
   type VNextExecutionUiState,
@@ -249,6 +250,7 @@ function TradeComposer(props: TerminalPresentationProps) {
     sideRequest={props.tradeSideRequest}
     executionState={props.selectedExecutionState}
     executionUiState={props.executionUiState}
+    canonicalMarket={props.selected ? selectVNextCanonicalMarket(props.selected) : undefined}
   />;
 }
 

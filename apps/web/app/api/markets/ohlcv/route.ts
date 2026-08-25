@@ -3,14 +3,9 @@ import {
   externalChartRefreshMs,
   externalOhlcvRequestUrl,
   isExternalChartRange,
-  mergeConfirmedTradesIntoOhlcv,
   parseExternalOhlcvList,
   type ExternalChartRange
 } from "../../../../lib/external-ohlcv";
-import {
-  externalTradesRequestUrl,
-  parseExternalPoolTrades
-} from "../../../../lib/external-trades";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -34,7 +29,7 @@ function metadataAddress(value: unknown) {
 async function fetchOhlcv(pair: string, range: ExternalChartRange, tokenSide: "base" | "quote") {
   const request = externalOhlcvRequestUrl(pair, range, tokenSide);
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 8_000);
+  const timeout = setTimeout(() => controller.abort(), 4_000);
   try {
     const response = await fetch(request.url, {
       headers: { Accept: "application/json" },
@@ -54,16 +49,6 @@ async function fetchOhlcv(pair: string, range: ExternalChartRange, tokenSide: "b
   }
 }
 
-async function fetchRecentTrades(pair: string, token: string, revalidate: number) {
-  const response = await fetch(externalTradesRequestUrl(pair, token), {
-    headers: { Accept: "application/json" },
-    next: { revalidate },
-    signal: AbortSignal.timeout(8_000)
-  });
-  if (!response.ok) return [];
-  return parseExternalPoolTrades(await response.json(), token, 50);
-}
-
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const token = url.searchParams.get("token") ?? "";
@@ -79,33 +64,33 @@ export async function GET(request: Request) {
   try {
     const canonicalToken = getAddress(token);
     const canonicalPair = getAddress(pair);
-    let result = await fetchOhlcv(canonicalPair, range, "base");
-    if (result.base?.toLowerCase() !== canonicalToken.toLowerCase()) {
-      if (result.quote?.toLowerCase() !== canonicalToken.toLowerCase()) {
-        throw new Error("The chart provider returned a different token pair.");
-      }
-      result = await fetchOhlcv(canonicalPair, range, "quote");
-    }
+    const result = await Promise.any([
+      fetchOhlcv(canonicalPair, range, "base").then((candidate) => {
+        if (candidate.base?.toLowerCase() !== canonicalToken.toLowerCase()) {
+          throw new Error("Token is not the base side.");
+        }
+        return candidate;
+      }),
+      fetchOhlcv(canonicalPair, range, "quote").then((candidate) => {
+        if (candidate.quote?.toLowerCase() !== canonicalToken.toLowerCase()) {
+          throw new Error("Token is not the quote side.");
+        }
+        return candidate;
+      })
+    ]).catch(() => null);
+    if (!result) throw new Error("The chart provider returned a different token pair.");
     if (result.candles.length < 2) throw new Error("Price history is not available for this range.");
     const refreshMs = externalChartRefreshMs(range);
-    const shouldMergeConfirmedTrades = range === "LIVE" || range === "5M" || range === "15M" || range === "1H";
-    const recentTrades = shouldMergeConfirmedTrades
-      ? await fetchRecentTrades(canonicalPair, canonicalToken, Math.max(1, Math.floor(refreshMs / 1_000)))
-      : [];
-    const candles = shouldMergeConfirmedTrades
-      ? mergeConfirmedTradesIntoOhlcv(result.candles, recentTrades)
-      : result.candles;
-    const lastTradeAt = recentTrades[0]?.timestamp ?? null;
 
     return Response.json(
       {
         token: canonicalToken,
         pair: canonicalPair,
         range,
-        candles,
+        candles: result.candles,
         source: "GeckoTerminal",
         updatedAt: new Date().toISOString(),
-        lastTradeAt,
+        lastTradeAt: null,
         refreshMs
       },
       {

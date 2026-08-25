@@ -266,6 +266,8 @@ function candidateFetch(input: {
   items?: unknown[];
   dexStatus?: number;
   blockscoutStatus?: number;
+  dexDelayMs?: number;
+  blockscoutDelayMs?: number;
 }) {
   return async (requested: string | URL, init?: RequestInit) => {
     const url = new URL(requested.toString());
@@ -273,10 +275,19 @@ function candidateFetch(input: {
     assert.equal(init?.method, "GET");
     assert.equal(new Headers(init?.headers).get("Accept"), "application/json");
     assert.equal(init?.cache, "no-store");
+    const delay = (milliseconds: number) => new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(resolve, milliseconds);
+      init?.signal?.addEventListener("abort", () => {
+        clearTimeout(timeout);
+        reject(new Error("provider aborted"));
+      }, { once: true });
+    });
     if (url.origin + url.pathname === "https://api.dexscreener.com/latest/dex/search") {
+      if (input.dexDelayMs) await delay(input.dexDelayMs);
       return jsonResponse({ pairs: input.pairs ?? [] }, input.dexStatus ?? 200);
     }
     assert.equal(url.origin + url.pathname, "https://robinhoodchain.blockscout.com/api/v2/search");
+    if (input.blockscoutDelayMs) await delay(input.blockscoutDelayMs);
     return jsonResponse({ items: input.items ?? [] }, input.blockscoutStatus ?? 200);
   };
 }
@@ -708,6 +719,36 @@ async function assertIndependentCandidateSources() {
     timeoutMs: 500
   });
   assert.equal(bothDown.status, "candidate_discovery_unavailable");
+
+  const blockscoutReadyAt = Date.now();
+  const dexSlow = await searchVNextUniversalMarkets("IDENTITY", {
+    readInventory: async () => verifiedInventory([]),
+    readIdentity: identityReader,
+    fetch: candidateFetch({
+      pairs: [providerPair(unrelatedAddress)],
+      dexDelayMs: 450,
+      items: [blockscoutCandidate(tokenOnlyAddress)]
+    }),
+    timeoutMs: 500
+  });
+  assert.equal(dexSlow.status, "found", "A slow DexScreener request must not block a ready Blockscout candidate");
+  assert.equal(dexSlow.results[0]?.address, tokenOnlyAddress);
+  assert.ok(Date.now() - blockscoutReadyAt < 400, "Ready Blockscout discovery must return before the slow optional provider");
+
+  const dexReadyAt = Date.now();
+  const blockscoutSlow = await searchVNextUniversalMarkets("IDENTITY", {
+    readInventory: async () => verifiedInventory([]),
+    readIdentity: identityReader,
+    fetch: candidateFetch({
+      pairs: [providerPair(tokenOnlyAddress)],
+      blockscoutDelayMs: 450,
+      items: [blockscoutCandidate(unrelatedAddress)]
+    }),
+    timeoutMs: 500
+  });
+  assert.equal(blockscoutSlow.status, "found", "A slow Blockscout request must not block a ready DexScreener candidate");
+  assert.equal(blockscoutSlow.results[0]?.address, tokenOnlyAddress);
+  assert.ok(Date.now() - dexReadyAt < 400, "Ready DexScreener discovery must return before the slow optional provider");
 }
 
 async function assertProviderIdentityClaimsNeverWin() {

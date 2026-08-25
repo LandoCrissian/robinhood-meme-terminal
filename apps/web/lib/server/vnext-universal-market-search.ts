@@ -32,7 +32,9 @@ export type {
 const DEX_SCREENER_SEARCH_URL = "https://api.dexscreener.com/latest/dex/search";
 const BLOCKSCOUT_SEARCH_URL = "https://robinhoodchain.blockscout.com/api/v2/search";
 const ROBINHOOD_CHAIN_SLUG = "robinhood";
-const DEFAULT_SEARCH_TIMEOUT_MS = 5_000;
+const DEFAULT_SEARCH_TIMEOUT_MS = 1_800;
+const SERVER_INTERNAL_DEADLINE_MS = 4_000;
+const PROVIDER_SETTLE_GRACE_MS = 125;
 const MINIMUM_SEARCH_TIMEOUT_MS = 250;
 const MAXIMUM_SEARCH_TIMEOUT_MS = 10_000;
 const MAXIMUM_SEARCH_QUERY_LENGTH = 160;
@@ -458,9 +460,28 @@ async function discoverCandidates(
   dexScreenerUrl.search = new URLSearchParams({ q: query }).toString();
   const blockscoutUrl = new URL(BLOCKSCOUT_SEARCH_URL);
   blockscoutUrl.search = new URLSearchParams({ q: query }).toString();
-  const [dexScreenerBody, blockscoutBody] = await Promise.all([
-    readBoundedJson(dexScreenerUrl),
-    readBoundedJson(blockscoutUrl)
+  let dexScreenerBody: unknown = null;
+  let blockscoutBody: unknown = null;
+  const providerReady = (body: unknown, key: "pairs" | "items") => (
+    typeof body === "object" && body !== null && key in body
+    && Array.isArray((body as Record<string, unknown>)[key])
+  );
+  const dexScreenerRead = readBoundedJson(dexScreenerUrl).then((body) => {
+    dexScreenerBody = body;
+    if (!providerReady(body, "pairs")) throw new Error("DexScreener candidate discovery unavailable.");
+  });
+  const blockscoutRead = readBoundedJson(blockscoutUrl).then((body) => {
+    blockscoutBody = body;
+    if (!providerReady(body, "items")) throw new Error("Blockscout candidate discovery unavailable.");
+  });
+  const allProviders = Promise.allSettled([dexScreenerRead, blockscoutRead]);
+  const firstReady = Promise.any([dexScreenerRead, blockscoutRead]).catch(() => undefined);
+  await Promise.race([
+    allProviders,
+    firstReady.then(() => new Promise<void>((resolve) => setTimeout(resolve, Math.min(
+      PROVIDER_SETTLE_GRACE_MS,
+      Math.max(1, Math.floor(timeoutMs / 4))
+    ))))
   ]);
 
   const dexScreenerReady = typeof dexScreenerBody === "object" &&
@@ -647,7 +668,21 @@ export async function searchVNextUniversalMarkets(
     fetch: dependencies.fetch ?? fetch,
     timeoutMs
   };
-  return textSearch(query, resolvedDependencies);
+  let deadline: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      textSearch(query, resolvedDependencies),
+      new Promise<VNextUniversalMarketSearchResult>((resolve) => {
+        deadline = setTimeout(() => resolve(emptyResult(
+          query,
+          "text",
+          "candidate_discovery_unavailable"
+        )), SERVER_INTERNAL_DEADLINE_MS);
+      })
+    ]);
+  } finally {
+    if (deadline !== undefined) clearTimeout(deadline);
+  }
 }
 
 const NO_STORE_HEADERS = {

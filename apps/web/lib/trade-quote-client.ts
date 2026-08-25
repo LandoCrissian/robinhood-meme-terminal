@@ -88,7 +88,7 @@ async function responsePayload(response: Response) {
 
 async function requestOnce(
   endpoint: string,
-  body: Record<string, string | number>,
+  body: Record<string, unknown>,
   identityToken: string | null | undefined,
   timeoutMs: number,
   attempt: number
@@ -131,7 +131,7 @@ async function requestOnce(
 
 async function requestWithRetry(
   endpoint: string,
-  body: Record<string, string | number>,
+  body: Record<string, unknown>,
   options: TradeQuoteRequestOptions
 ) {
   const timeoutMs = positiveInteger(options.timeoutMs, 8_000, 30_000);
@@ -170,7 +170,7 @@ export function clearTradeQuoteCache() {
 
 export function requestTradeQuote(
   endpoint: string,
-  body: Record<string, string | number>,
+  body: Record<string, unknown>,
   options: TradeQuoteRequestOptions = {}
 ) {
   const now = options.now ?? Date.now();

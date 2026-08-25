@@ -3,27 +3,37 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ExternalMarket } from "./external-market";
 import type { TokenRiskEvidence, TokenRiskEvidenceState } from "./token-risk-evidence";
+import type { VNextUniversalMarketSearchPool } from "./vnext/universal-market-search-contract";
 
-export function useTokenRiskEvidence(market: ExternalMarket): TokenRiskEvidenceState {
+export function useTokenRiskEvidence(
+  market?: ExternalMarket,
+  canonicalMarket?: VNextUniversalMarketSearchPool
+): TokenRiskEvidenceState {
   const [state, setState] = useState<TokenRiskEvidenceState>({ status: "loading" });
-  const venue = market.dexId.toLowerCase().includes("sushi")
+  const venue = canonicalMarket?.protocol === "sushiswap"
     ? "sushi"
-    : market.dexId.toLowerCase().startsWith("uniswap")
+    : canonicalMarket?.protocol === "uniswap"
       ? "uniswap"
       : null;
+  const pair = canonicalMarket && canonicalMarket.version !== 4
+    ? canonicalMarket.poolKey
+    : null;
+  const token = market?.address;
+  const creator = market?.project?.creator;
+  const sourceId = market?.project?.sourceId;
   const url = useMemo(() => {
-    if (!venue) return null;
+    if (!venue || !pair || !token) return null;
     const params = new URLSearchParams({
-      token: market.address,
-      pair: market.pairAddress,
+      token,
+      pair,
       venue
     });
-    if (market.project?.creator) params.set("creator", market.project.creator);
-    if (market.project?.sourceId === "pons" || market.project?.sourceId === "noxa") {
-      params.set("sourceId", market.project.sourceId);
+    if (creator) params.set("creator", creator);
+    if (sourceId === "pons" || sourceId === "noxa") {
+      params.set("sourceId", sourceId);
     }
     return `/api/markets/token-risk?${params}`;
-  }, [market.address, market.pairAddress, market.project?.creator, market.project?.sourceId, venue]);
+  }, [creator, pair, sourceId, token, venue]);
 
   useEffect(() => {
     if (!url) {
@@ -38,8 +48,10 @@ export function useTokenRiskEvidence(market: ExternalMarket): TokenRiskEvidenceS
         const evidence = await response.json() as TokenRiskEvidence;
         if (
           evidence.marketVerified !== true
-          || evidence.token.toLowerCase() !== market.address.toLowerCase()
-          || evidence.pair.toLowerCase() !== market.pairAddress.toLowerCase()
+          || !token
+          || !pair
+          || evidence.token.toLowerCase() !== token.toLowerCase()
+          || evidence.pair.toLowerCase() !== pair.toLowerCase()
         ) {
           throw new Error("Risk evidence does not match this market.");
         }
@@ -49,7 +61,7 @@ export function useTokenRiskEvidence(market: ExternalMarket): TokenRiskEvidenceS
         if (!controller.signal.aborted) setState({ status: "unavailable" });
       });
     return () => controller.abort();
-  }, [market.address, market.pairAddress, url]);
+  }, [pair, token, url]);
 
   return state;
 }

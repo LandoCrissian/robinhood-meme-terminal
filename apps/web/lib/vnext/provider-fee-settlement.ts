@@ -34,6 +34,12 @@ export const VNEXT_PROVIDER_FEE_SETTLEMENT_REGISTRY: Readonly<Record<VNextQuoteP
     currentSettlement: "RMT_EXECUTION_V1 is atomic only for admitted settlement assets; direct Router02 fallback is fee-free.",
     requiredImplementation: "Universal Uniswap V3 atomic input-fee executor V2 without a per-token allowlist."
   }),
+  "uniswap-v4": Object.freeze({
+    state: "QUOTE_ONLY", requiredMode: "v2-atomic-input-fee", implementationId: null,
+    walletCodecImplemented: false,
+    currentSettlement: "Canonical PoolKey quote observation only; no wallet calldata or authorization codec.",
+    requiredImplementation: "A separately audited Uniswap V4 atomic input-fee settlement path."
+  }),
   "up-v2": Object.freeze({
     state: "QUOTE_ONLY", requiredMode: "v2-atomic-input-fee", implementationId: null,
     walletCodecImplemented: true,

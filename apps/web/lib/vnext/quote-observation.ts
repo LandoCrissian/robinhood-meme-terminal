@@ -17,7 +17,7 @@ export { hasVNextWalletAuthorizationCodec } from "./provider-fee-settlement";
 
 const MAX_CLOCK_SKEW_MS = 5_000;
 
-export type VNextQuoteProvider = "sushi" | "uniswap-v3" | "uniswapx" | "zero-x-swap" | "zero-x-gasless" | "up-v2" | "up-cl";
+export type VNextQuoteProvider = "sushi" | "uniswap-v3" | "uniswap-v4" | "uniswapx" | "zero-x-swap" | "zero-x-gasless" | "up-v2" | "up-cl";
 
 export type VNextLiquidityFeeEvidence = {
   source: "up-v2-factory" | "up-cl-pool";
@@ -69,6 +69,19 @@ export type VNextQuoteAttempt = {
   protectedNetOutputAtomic: string | null;
   costState: "network_fee_pending" | null;
   authorizationReady: false;
+  v4Evidence?: {
+    poolId: `0x${string}`;
+    currency0: string;
+    currency1: string;
+    fee: number;
+    tickSpacing: number;
+    hooks: string;
+    recipient: string;
+    provenance: "canonical-market-indexer+uniswap-v4-quoter+robinhood-rpc";
+    observedBlock: string;
+    observedBlockHash: `0x${string}`;
+    observedAtMs: number;
+  };
   detail: string;
 };
 
@@ -84,7 +97,7 @@ export type VNextQuoteResponse = {
 };
 
 const attemptSchema = z.object({
-  provider: z.enum(["sushi", "uniswap-v3", "uniswapx", "zero-x-swap", "zero-x-gasless", "up-v2", "up-cl"]),
+  provider: z.enum(["sushi", "uniswap-v3", "uniswap-v4", "uniswapx", "zero-x-swap", "zero-x-gasless", "up-v2", "up-cl"]),
   providerLabel: z.string().min(1).max(40),
   providerFamily: z.enum(["sushi", "uniswap", "uniswapx", "zeroex", "up"]),
   adapterVersion: z.literal(1),
@@ -125,6 +138,15 @@ const attemptSchema = z.object({
   protectedNetOutputAtomic: z.string().nullable(),
   costState: z.literal("network_fee_pending").nullable(),
   authorizationReady: z.literal(false),
+  v4Evidence: z.object({
+    poolId: z.string().regex(/^0x[0-9a-fA-F]{64}$/),
+    currency0: z.string(), currency1: z.string(), fee: z.number().int(), tickSpacing: z.number().int(), hooks: z.string(),
+    recipient: z.string(),
+    provenance: z.literal("canonical-market-indexer+uniswap-v4-quoter+robinhood-rpc"),
+    observedBlock: z.string().regex(/^[1-9][0-9]*$/),
+    observedBlockHash: z.string().regex(/^0x[0-9a-fA-F]{64}$/),
+    observedAtMs: z.number().int().positive()
+  }).optional(),
   detail: z.string().min(1).max(240)
 });
 
@@ -151,7 +173,7 @@ export function assertVNextQuoteAttempt(
   if (attempt.chainId !== 4_663) throw new Error("Quote attempt chain changed.");
   const expectedProviderFamily = attempt.provider === "sushi"
     ? "sushi"
-    : attempt.provider === "uniswap-v3"
+    : attempt.provider === "uniswap-v3" || attempt.provider === "uniswap-v4"
       ? "uniswap"
       : attempt.provider === "uniswapx"
         ? "uniswapx"
@@ -201,6 +223,20 @@ export function assertVNextQuoteAttempt(
     )) throw new Error("up CL quote omitted live fee evidence.");
     if (attempt.provider !== "up-v2" && attempt.provider !== "up-cl" && attempt.liquidityFeeEvidence.length !== 0) {
       throw new Error("Non-up quote exposed unexpected up liquidity-fee evidence.");
+    }
+    if (attempt.provider === "uniswap-v4") {
+      const evidence = attempt.v4Evidence;
+      if (!evidence
+        || !isAddress(evidence.currency0)
+        || !isAddress(evidence.currency1)
+        || !isAddress(evidence.hooks)
+        || !isAddress(evidence.recipient)
+        || evidence.currency0.toLowerCase() === evidence.currency1.toLowerCase()
+        || !Number.isSafeInteger(evidence.fee) || evidence.fee < 0 || evidence.fee > 16_777_215
+        || !Number.isSafeInteger(evidence.tickSpacing) || evidence.tickSpacing <= 0 || evidence.tickSpacing > 32_767
+      ) throw new Error("Uniswap v4 quote omitted canonical PoolKey evidence.");
+    } else if (attempt.v4Evidence !== undefined) {
+      throw new Error("Non-v4 quote exposed V4 PoolKey evidence.");
     }
     const providerFee = attempt.providerFeeAtomic === null ? null : atomic(attempt.providerFeeAtomic);
     const gasSponsorshipFee = attempt.gasSponsorshipFeeAtomic === null ? null : atomic(attempt.gasSponsorshipFeeAtomic);

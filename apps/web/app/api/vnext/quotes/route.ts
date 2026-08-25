@@ -18,7 +18,11 @@ const requestSchema = z.object({
   inputAsset: z.string().refine((value) => isAddress(value, { strict: false })),
   outputAsset: z.string().refine((value) => isAddress(value, { strict: false })),
   inputAmountAtomic: z.string().regex(/^[1-9][0-9]*$/),
-  recipient: z.string().refine((value) => isAddress(value, { strict: false }))
+  recipient: z.string().refine((value) => isAddress(value, { strict: false })),
+  canonicalMarket: z.object({
+    sourceId: z.literal("uniswap-v4"),
+    poolId: z.string().regex(/^0x[0-9a-fA-F]{64}$/)
+  }).optional()
 });
 
 export async function POST(request: Request) {
@@ -55,7 +59,13 @@ export async function POST(request: Request) {
       amountIn: BigInt(parsed.data.inputAmountAtomic),
       recipient,
       inputIdentity,
-      outputIdentity
+      outputIdentity,
+      ...(parsed.data.canonicalMarket ? {
+        canonicalMarket: {
+          sourceId: parsed.data.canonicalMarket.sourceId,
+          poolId: parsed.data.canonicalMarket.poolId as `0x${string}`
+        }
+      } : {})
     });
     const response: VNextQuoteResponse = {
       requestId: randomUUID(),

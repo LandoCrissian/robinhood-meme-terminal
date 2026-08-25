@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { ExternalMarket } from "./external-market";
+import type { VNextUniversalMarketSearchPool } from "./vnext/universal-market-search-contract";
 import type { WalletConstellationGraph } from "./wallet-constellation";
 
 export type WalletConstellationState =
@@ -10,36 +11,36 @@ export type WalletConstellationState =
   | { status: "unavailable"; graph?: undefined };
 
 export function useWalletConstellation(
-  market: ExternalMarket
+  market?: ExternalMarket,
+  canonicalMarket?: VNextUniversalMarketSearchPool
 ): WalletConstellationState {
-  const venue = market.dexId.toLowerCase().includes("sushi")
+  const venue = canonicalMarket?.protocol === "sushiswap"
     ? "sushi"
-    : market.dexId.toLowerCase() === "uniswap"
-      || market.dexId.toLowerCase().startsWith("uniswap-")
+    : canonicalMarket?.protocol === "uniswap"
       ? "uniswap"
       : null;
+  const pair = canonicalMarket && canonicalMarket.version !== 4
+    ? canonicalMarket.poolKey
+    : null;
+  const token = market?.address;
+  const creator = market?.project?.creator;
+  const sourceId = market?.project?.sourceId;
   const url = useMemo(() => {
-    if (!venue) return null;
+    if (!venue || !pair || !token) return null;
     const query = new URLSearchParams({
-      token: market.address,
-      pair: market.pairAddress,
+      token,
+      pair,
       venue
     });
-    if (market.project?.creator) query.set("creator", market.project.creator);
+    if (creator) query.set("creator", creator);
     if (
-      market.project?.sourceId === "pons"
-      || market.project?.sourceId === "noxa"
+      sourceId === "pons"
+      || sourceId === "noxa"
     ) {
-      query.set("sourceId", market.project.sourceId);
+      query.set("sourceId", sourceId);
     }
     return `/api/markets/wallet-constellation?${query}`;
-  }, [
-    market.address,
-    market.pairAddress,
-    market.project?.creator,
-    market.project?.sourceId,
-    venue
-  ]);
+  }, [creator, pair, sourceId, token, venue]);
   const [state, setState] = useState<WalletConstellationState>({
     status: "loading"
   });
@@ -59,8 +60,10 @@ export function useWalletConstellation(
         const graph = await response.json() as WalletConstellationGraph;
         if (
           graph.schemaVersion !== 1
-          || graph.token.toLowerCase() !== market.address.toLowerCase()
-          || graph.pair.toLowerCase() !== market.pairAddress.toLowerCase()
+          || !token
+          || !pair
+          || graph.token.toLowerCase() !== token.toLowerCase()
+          || graph.pair.toLowerCase() !== pair.toLowerCase()
           || !Array.isArray(graph.nodes)
           || !Array.isArray(graph.edges)
         ) {
@@ -79,7 +82,7 @@ export function useWalletConstellation(
       controller.abort();
       window.clearTimeout(timeout);
     };
-  }, [market.address, market.pairAddress, url]);
+  }, [pair, token, url]);
 
   return state;
 }

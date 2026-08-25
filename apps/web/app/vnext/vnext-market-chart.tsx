@@ -90,7 +90,7 @@ export function VNextMarketChart({ token, pair, symbol }: {
       setHoveredIndex(null);
     }
     const controller = new AbortController();
-    const timeout = window.setTimeout(() => controller.abort(), 9_000);
+    const timeout = window.setTimeout(() => controller.abort(), 5_500);
     try {
       const query = new URLSearchParams({ token, pair, range });
       const response = await fetch(`/api/markets/ohlcv?${query}`, { signal: controller.signal });

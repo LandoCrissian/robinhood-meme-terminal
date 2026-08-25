@@ -71,7 +71,8 @@ assert.match(shell, /useState<VNextMarketDirectoryView>\("active"\)/, "DEFAULT_V
 assert.match(shell, /parseVNextTerminalLocation/, "deep links use one validated parser");
 assert.match(directoryHook, /requestSequence !== selectionSequence\.current/, "BACK_FORWARD_NAVIGATION selection races must fail closed");
 assert.doesNotMatch(presentation, /Searching verified Robinhood Chain markets|Verified market found|No verified market found/i, "SEARCH_COPY_DOES_NOT_CALL_EXISTENCE_VERIFIED");
-assert.match(workspace, /Project links · market metadata/);
+assert.match(workspace, /Project links · \{market\?\.project \? externalProjectProvenanceLabel/);
+assert.match(workspace, /Observed links · market metadata/);
 assert.match(workspace, /CopyAddress/);
 assert.match(workspace, /Unknown|Unavailable|Not reported/, "PARTIAL_METADATA_REMAINS_VISIBLE");
 assert.match(receipt, /vnFeeV2Summary[\s\S]*RMT execution fee/, "V2_FEE_VISIBLE_MAIN_SURFACE");

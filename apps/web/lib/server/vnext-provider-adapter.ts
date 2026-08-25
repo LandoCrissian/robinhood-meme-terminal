@@ -30,6 +30,7 @@ export type VNextProviderQuoteRequest = {
   recipient: Address;
   inputIdentity: VNextVerifiedTokenIdentity;
   outputIdentity: VNextVerifiedTokenIdentity;
+  canonicalMarket?: { sourceId: "uniswap-v4"; poolId: Hex };
 };
 
 export type VNextProviderVerificationRequest = Pick<VNextProviderQuoteRequest,

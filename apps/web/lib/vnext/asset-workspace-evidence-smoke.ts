@@ -69,9 +69,19 @@ assert.deepEqual(workspaceTokenPresentation({
 }), { name: "Verified NVIDIA Token", symbol: "NVDA", verified: true });
 
 const workspaceSource = readFileSync(new URL("../../app/vnext/vnext-asset-workspace.tsx", import.meta.url), "utf8");
+const riskHookSource = readFileSync(new URL("../use-token-risk-evidence.ts", import.meta.url), "utf8");
+const constellationHookSource = readFileSync(new URL("../use-wallet-constellation.ts", import.meta.url), "utf8");
 assert.equal((workspaceSource.match(/currentMultiplier/g) ?? []).length, 1, "Stock multiplier must be displayed exactly once");
 assert.doesNotMatch(workspaceSource, /priceUsd\s*\*\s*[^\n]*currentMultiplier|currentMultiplier\s*\*\s*[^\n]*priceUsd/);
 assert.match(workspaceSource, /last known, non-authoritative/, "Stale registry presentation must be explicitly non-authoritative");
+assert.match(workspaceSource, /V4 chart coverage unavailable/);
+assert.match(workspaceSource, /No authoritative PoolId OHLCV source is attached/);
+for (const source of [riskHookSource, constellationHookSource]) {
+  assert.match(source, /canonicalMarket && canonicalMarket\.version !== 4/,
+    "PoolId-only V4 markets must not call address-pool findings routes");
+  assert.doesNotMatch(source, /dexId\.toLowerCase/,
+    "market findings must use explicit canonical protocol evidence instead of display strings");
+}
 const policySource = readFileSync(new URL("../server/robinhood-stock-token-registry.ts", import.meta.url), "utf8");
 assert.match(policySource, /asset \? \{ status: "view-only", asset \}/, "Canonical stock tokens must remain view-only");
 
