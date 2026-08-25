@@ -341,7 +341,7 @@ function evidenceWarnings(evidence: Omit<TokenRiskEvidence, "warnings">) {
   if (controls.activeLaunchRestrictions) {
     warnings.push("Onchain launch restrictions are currently active and may limit buys or wallet balances.");
   }
-  if (evidence.liquidity.controlStatus === "not-proven") {
+  if (evidence.marketVerified && evidence.liquidity.controlStatus === "not-proven") {
     warnings.push("Pool-held token supply does not prove the liquidity position is locked or outside creator control.");
   } else if (evidence.liquidity.controlStatus === "creator-controlled") {
     warnings.push("The reported creator can currently transfer the verified liquidity-position NFT.");
@@ -352,10 +352,12 @@ function evidenceWarnings(evidence: Omit<TokenRiskEvidence, "warnings">) {
   } else if (evidence.liquidity.controlStatus === "burn-address") {
     warnings.push("The verified liquidity-position NFT is currently held by the standard burn address.");
   }
-  if (evidence.liquidity.approvedOperator) {
+  if (evidence.marketVerified && evidence.liquidity.approvedOperator) {
     warnings.push("The verified liquidity-position NFT has an approved transfer operator.");
   }
-  if (evidence.sellSimulation.status === "blocked") {
+  if (!evidence.marketVerified) {
+    // Token-scoped evidence does not imply an address-pool sell path.
+  } else if (evidence.sellSimulation.status === "blocked") {
     warnings.push("A read-only holder-to-pool transfer simulation failed. RMT has blocked buys for this market.");
   } else if (evidence.sellSimulation.status === "unavailable") {
     warnings.push("Sell-direction transfer simulation is temporarily unavailable. Treat sellability as unknown.");
@@ -364,11 +366,13 @@ function evidenceWarnings(evidence: Omit<TokenRiskEvidence, "warnings">) {
   } else {
     warnings.push("A read-only holder-to-pool transfer passed now; this does not guarantee a future sale, output amount, tax, or unchanged token behavior.");
   }
-  const largest = evidence.holders.largestNonPoolHolder?.shareBps;
+  const largest = evidence.marketVerified
+    ? evidence.holders.largestNonPoolHolder?.shareBps
+    : evidence.holders.largestHolder?.shareBps;
   if (largest !== undefined && largest >= 2_000) {
-    warnings.push("One non-pool address controls at least 20% of the token supply.");
+    warnings.push(`One ${evidence.marketVerified ? "non-pool address" : "visible holder"} controls at least 20% of the token supply.`);
   } else if (largest !== undefined && largest >= 1_000) {
-    warnings.push("One non-pool address controls at least 10% of the token supply.");
+    warnings.push(`One ${evidence.marketVerified ? "non-pool address" : "visible holder"} controls at least 10% of the token supply.`);
   }
   const creator = evidence.holders.creatorShareBps;
   if (creator !== null && creator >= 2_000) {
@@ -382,7 +386,7 @@ function evidenceWarnings(evidence: Omit<TokenRiskEvidence, "warnings">) {
 export async function fetchTokenRiskEvidence(
   params: {
     token: Address;
-    pair: Address;
+    pair?: Address;
     creator?: Address;
     sourceId?: RegisteredLiquiditySource;
   },
@@ -405,12 +409,23 @@ export async function fetchTokenRiskEvidence(
     params.creator
       ? (dependencies.readCreatorBalance ?? readCreatorBalance)(params.token, params.creator)
       : Promise.resolve(null),
-    (dependencies.readLiquidityPosition ?? resolveRegisteredLiquidityPosition)({
-      token: params.token,
-      pair: params.pair,
-      creator: params.creator,
-      sourceId: params.sourceId
-    })
+    params.pair
+      ? (dependencies.readLiquidityPosition ?? resolveRegisteredLiquidityPosition)({
+          token: params.token,
+          pair: params.pair,
+          creator: params.creator,
+          sourceId: params.sourceId
+        })
+      : Promise.resolve({
+          controlStatus: "not-proven" as const,
+          evidenceSource: "none" as const,
+          positionManager: null,
+          positionId: null,
+          owner: null,
+          approvedOperator: null,
+          creatorCanTransfer: null,
+          positionLiquidity: null
+        })
   ]);
   const token = tokenSchema.safeParse(rawToken);
   const holders = holdersSchema.safeParse(rawHolders);
@@ -431,12 +446,14 @@ export async function fetchTokenRiskEvidence(
 
   const ignored = new Set([
     zeroAddress.toLowerCase(),
-    DEAD_ADDRESS,
-    params.pair.toLowerCase()
+    DEAD_ADDRESS
   ]);
+  const pair = params.pair?.toLowerCase() ?? null;
   let poolShareBps: number | null = null;
   let largestNonPoolHolder: TokenRiskEvidence["holders"]["largestNonPoolHolder"] = null;
   const topNonPoolHolders: TokenRiskEvidence["holders"]["topNonPoolHolders"] = [];
+  const topHolders: TokenRiskEvidence["holders"]["topHolders"] = [];
+  let largestHolder: TokenRiskEvidence["holders"]["largestHolder"] = null;
   let sellProbeCandidate: { address: Address; value: bigint } | null = null;
   const creatorShareBps = rawCreatorBalance === null
     ? null
@@ -446,13 +463,21 @@ export async function fetchTokenRiskEvidence(
     if (!address) continue;
     const value = BigInt(holder.value);
     const normalized = address.toLowerCase();
-    if (normalized === params.pair.toLowerCase()) poolShareBps = shareBps(value, totalSupply);
+    if (normalized === pair) poolShareBps = shareBps(value, totalSupply);
     if (!ignored.has(normalized)) {
       const candidate = { address, shareBps: shareBps(value, totalSupply) };
-      topNonPoolHolders.push({
+      const holderEvidence = {
         ...candidate,
         isContract: holder.address.is_contract === true,
         isScam: holder.address.is_scam === true
+      };
+      topHolders.push(holderEvidence);
+      if (!largestHolder || candidate.shareBps > largestHolder.shareBps) {
+        largestHolder = candidate;
+      }
+      if (normalized === pair) continue;
+      topNonPoolHolders.push({
+        ...holderEvidence
       });
       if (!largestNonPoolHolder || candidate.shareBps > largestNonPoolHolder.shareBps) {
         largestNonPoolHolder = candidate;
@@ -467,6 +492,13 @@ export async function fetchTokenRiskEvidence(
       }
     }
   }
+  topHolders.sort((left, right) =>
+    right.shareBps - left.shareBps || left.address.localeCompare(right.address)
+  );
+  const visibleTopHolders = topHolders.slice(0, 10);
+  const topHolderShareBps = visibleTopHolders.length
+    ? Math.min(10_000, visibleTopHolders.reduce((total, holder) => total + holder.shareBps, 0))
+    : null;
   topNonPoolHolders.sort((left, right) =>
     right.shareBps - left.shareBps || left.address.localeCompare(right.address)
   );
@@ -478,7 +510,7 @@ export async function fetchTokenRiskEvidence(
     ? [sellProbeCandidate.value, totalSupply / 1_000_000n || 1n]
         .reduce((smallest, value) => value < smallest ? value : smallest)
     : null;
-  const sellSimulation = sellProbeCandidate && probeAmount
+  const sellSimulation = params.pair && sellProbeCandidate && probeAmount
     ? await (dependencies.simulateSellTransfer ?? simulateSellDirectionTransfer)(
         params.token,
         sellProbeCandidate.address,
@@ -563,18 +595,21 @@ export async function fetchTokenRiskEvidence(
         bytecodeChanged: null,
         controls: controlsEvidence
       };
-  const partial = poolShareBps === null
-    || largestNonPoolHolder === null
+  const partial = largestHolder === null
     || token.data.holders_count === null
     || token.data.holders_count === undefined
     || contractDetailsUnavailable
     || abiUnavailable
-    || sellSimulation.status === "unavailable"
-    || sellSimulation.status === "not-run";
+    || (Boolean(params.pair) && (
+      poolShareBps === null
+      || largestNonPoolHolder === null
+      || sellSimulation.status === "unavailable"
+      || sellSimulation.status === "not-run"
+    ));
   const base = {
     token: getAddress(params.token),
-    pair: getAddress(params.pair),
-    marketVerified: true as const,
+    pair: params.pair ? getAddress(params.pair) : null,
+    marketVerified: Boolean(params.pair),
     coverage: partial ? "partial" as const : "complete" as const,
     contract: contractEvidence,
     liquidity,
@@ -584,6 +619,9 @@ export async function fetchTokenRiskEvidence(
       topNonPoolShareBps,
       topNonPoolHolders: visibleTopNonPoolHolders,
       largestNonPoolHolder,
+      topHolderShareBps,
+      topHolders: visibleTopHolders,
+      largestHolder,
       creator: params.creator ? getAddress(params.creator) : null,
       creatorShareBps
     },

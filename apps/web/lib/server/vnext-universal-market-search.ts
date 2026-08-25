@@ -34,7 +34,6 @@ const BLOCKSCOUT_SEARCH_URL = "https://robinhoodchain.blockscout.com/api/v2/sear
 const ROBINHOOD_CHAIN_SLUG = "robinhood";
 const DEFAULT_SEARCH_TIMEOUT_MS = 1_800;
 const SERVER_INTERNAL_DEADLINE_MS = 4_000;
-const PROVIDER_SETTLE_GRACE_MS = 125;
 const MINIMUM_SEARCH_TIMEOUT_MS = 250;
 const MAXIMUM_SEARCH_TIMEOUT_MS = 10_000;
 const MAXIMUM_SEARCH_QUERY_LENGTH = 160;
@@ -474,15 +473,10 @@ async function discoverCandidates(
     blockscoutBody = body;
     if (!providerReady(body, "items")) throw new Error("Blockscout candidate discovery unavailable.");
   });
-  const allProviders = Promise.allSettled([dexScreenerRead, blockscoutRead]);
-  const firstReady = Promise.any([dexScreenerRead, blockscoutRead]).catch(() => undefined);
-  await Promise.race([
-    allProviders,
-    firstReady.then(() => new Promise<void>((resolve) => setTimeout(resolve, Math.min(
-      PROVIDER_SETTLE_GRACE_MS,
-      Math.max(1, Math.floor(timeoutMs / 4))
-    ))))
-  ]);
+  // A ready-but-empty (or irrelevant) provider cannot prove that the other
+  // independently bounded provider has no relevant candidate. Let both
+  // parallel reads settle or reach their own deadline before finalizing.
+  await Promise.allSettled([dexScreenerRead, blockscoutRead]);
 
   const dexScreenerReady = typeof dexScreenerBody === "object" &&
     dexScreenerBody !== null &&

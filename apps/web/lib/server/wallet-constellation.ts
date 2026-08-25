@@ -204,6 +204,9 @@ export function buildWalletConstellationGraph(input: {
   hasMoreTransfers: boolean;
   now?: number;
 }): WalletConstellationGraph {
+  if (!input.evidence.marketVerified || !input.evidence.pair) {
+    throw new Error("Wallet constellation evidence requires a verified address-style market.");
+  }
   const token = getAddress(input.evidence.token);
   const pair = getAddress(input.evidence.pair);
   const creator = input.evidence.holders.creator

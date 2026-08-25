@@ -284,11 +284,29 @@ type EvidenceTab = "holders" | "liquidity" | "risk";
 function WorkspaceEvidence({ market, directoryMarket }: { market?: ExternalMarket; directoryMarket: VNextDirectoryMarket }) {
   const [tab, setTab] = useState<EvidenceTab>("holders");
   const canonicalMarket = selectVNextCanonicalMarket(directoryMarket);
-  const risk = useTokenRiskEvidence(market, canonicalMarket);
+  const risk = useTokenRiskEvidence(directoryMarket.address, market, canonicalMarket);
   const constellation = useWalletConstellation(market, canonicalMarket);
   const evidence = risk.evidence;
   const graph = constellation.graph;
-  const holders = graph?.nodes.filter((node) => node.holderRank !== null).sort((left, right) => (left.holderRank ?? 999) - (right.holderRank ?? 999)) ?? [];
+  const graphHolders = graph?.nodes.filter((node) => node.holderRank !== null).sort((left, right) => (left.holderRank ?? 999) - (right.holderRank ?? 999)) ?? [];
+  const evidenceHolderRows = evidence?.marketVerified
+    ? evidence.holders.topNonPoolHolders
+    : evidence?.holders.topHolders;
+  const evidenceHolders = evidenceHolderRows?.map((holder, index) => ({
+    address: holder.address,
+    holderRank: index + 1,
+    supplyShareBps: holder.shareBps,
+    isFlagged: holder.isScam,
+    isContract: holder.isContract,
+    role: evidence?.holders.creator?.toLowerCase() === holder.address.toLowerCase() ? "creator" : "holder"
+  })) ?? [];
+  const holders = graphHolders.length > 0 ? graphHolders : evidenceHolders;
+  const evidenceTopShare = evidence?.marketVerified
+    ? evidence.holders.topNonPoolShareBps
+    : evidence?.holders.topHolderShareBps;
+  const evidenceLargestShare = evidence?.marketVerified
+    ? evidence.holders.largestNonPoolHolder?.shareBps
+    : evidence?.holders.largestHolder?.shareBps;
   const canonicalAddressPool = canonicalMarket && canonicalMarket.version !== 4
     ? canonicalMarket.poolKey
     : undefined;
@@ -306,11 +324,11 @@ function WorkspaceEvidence({ market, directoryMarket }: { market?: ExternalMarke
     {tab === "holders" && <div className="vnEvidencePane" role="tabpanel">
       <div className="vnEvidenceGrid">
         <span><small>Known holders</small><strong>{graph?.holderSnapshot.count?.toLocaleString() ?? evidence?.holders.count?.toLocaleString() ?? "—"}</strong></span>
-        <span><small>Top 10 · no pool</small><strong>{formatOwnershipBps(graph?.holderSnapshot.topNonPoolShareBps ?? evidence?.holders.topNonPoolShareBps ?? null)}</strong></span>
-        <span><small>Largest wallet</small><strong>{formatOwnershipBps(graph?.holderSnapshot.largestNonPoolShareBps ?? evidence?.holders.largestNonPoolHolder?.shareBps ?? null)}</strong></span>
+        <span><small>{graph || evidence?.marketVerified ? "Top 10 · no pool" : "Top 10 visible"}</small><strong>{formatOwnershipBps(graph?.holderSnapshot.topNonPoolShareBps ?? evidenceTopShare ?? null)}</strong></span>
+        <span><small>{graph || evidence?.marketVerified ? "Largest wallet" : "Largest visible"}</small><strong>{formatOwnershipBps(graph?.holderSnapshot.largestNonPoolShareBps ?? evidenceLargestShare ?? null)}</strong></span>
         <span><small>Creator reported</small><strong>{formatOwnershipBps(graph?.holderSnapshot.creatorShareBps ?? evidence?.holders.creatorShareBps ?? null)}</strong></span>
       </div>
-      {holders.length > 0 ? <><div className="vnConcentrationTrack" aria-label={`Visible top-holder concentration ${formatOwnershipBps(graph?.holderSnapshot.topNonPoolShareBps ?? null)}`}>{holders.slice(0, 6).map((holder, index) => <i className={holder.isFlagged ? "isFlagged" : holder.isContract ? "isContract" : ""} style={{ width: `${Math.max(.75, (holder.supplyShareBps ?? 0) / 100)}%` }} title={`${shortAddress(holder.address)} · ${formatOwnershipBps(holder.supplyShareBps)}`} key={holder.address} data-rank={index + 1} />)}</div><div className="vnHolderList">{holders.slice(0, 8).map((holder, index) => <ExplorerLink kind="address" value={holder.address} accessibleName={`Open holder ${shortAddress(holder.address)} in Robinhood Chain explorer`} key={holder.address}><b>{index + 1}</b><span><strong>{shortAddress(holder.address)}</strong><small>{holder.role === "creator" ? "Reported creator" : holder.isFlagged ? "Explorer flagged" : holder.isContract ? "Contract" : "Wallet"}</small></span><strong>{formatOwnershipBps(holder.supplyShareBps)}</strong><i aria-hidden="true">↗</i></ExplorerLink>)}</div></> : <p className="vnEvidenceCaution">Holder rows are unavailable. Missing concentration data remains unknown, never safe.</p>}
+      {holders.length > 0 ? <><div className="vnConcentrationTrack" aria-label={`Visible top-holder concentration ${formatOwnershipBps(graph?.holderSnapshot.topNonPoolShareBps ?? evidenceTopShare ?? null)}`}>{holders.slice(0, 6).map((holder, index) => <i className={holder.isFlagged ? "isFlagged" : holder.isContract ? "isContract" : ""} style={{ width: `${Math.max(.75, (holder.supplyShareBps ?? 0) / 100)}%` }} title={`${shortAddress(holder.address)} · ${formatOwnershipBps(holder.supplyShareBps)}`} key={holder.address} data-rank={index + 1} />)}</div><div className="vnHolderList">{holders.slice(0, 8).map((holder, index) => <ExplorerLink kind="address" value={holder.address} accessibleName={`Open holder ${shortAddress(holder.address)} in Robinhood Chain explorer`} key={holder.address}><b>{index + 1}</b><span><strong>{shortAddress(holder.address)}</strong><small>{holder.role === "creator" ? "Reported creator" : holder.isFlagged ? "Explorer flagged" : holder.isContract ? "Contract" : "Wallet"}</small></span><strong>{formatOwnershipBps(holder.supplyShareBps)}</strong><i aria-hidden="true">↗</i></ExplorerLink>)}</div></> : <p className="vnEvidenceCaution">Holder rows are unavailable. Missing concentration data remains unknown, never safe.</p>}
       {graph?.signals.length ? <details className="vnEvidenceDetails"><summary>Observed wallet relationships <b>{graph.signals.length}</b></summary><div>{graph.signals.slice(0, 4).map((signal) => <span className={signal.severity} key={`${signal.code}:${signal.relatedAddresses.join(":")}`}><strong>{signal.label}</strong><small>{signal.relatedAddresses.map(shortAddress).join(" ↔ ")}</small><small>{signal.description}</small></span>)}</div></details> : null}
       {graph && <p className="vnCoverageNote">{graph.coverage.description} · {graph.coverage.sampledTransfers} transfers sampled.</p>}
     </div>}
