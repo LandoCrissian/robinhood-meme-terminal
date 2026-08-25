@@ -31,7 +31,7 @@
     "test:after-buy-protection": "tsx lib/after-buy-protection-smoke.ts",
     "test:public-discovery": "tsx lib/public-discovery-smoke.ts",
     "test:market-discovery": "tsx lib/external-market-discovery-smoke.ts && tsx lib/server/gecko-new-pool-feed-smoke.ts",
-    "test:launchpad-discovery": "tsx lib/server/current-launchpad-lifecycle-smoke.ts && tsx lib/server/sushi-launch-feed-smoke.ts && tsx lib/server/circus-curve-feed-smoke.ts",
+    "test:launchpad-discovery": "tsx lib/server/current-launchpad-lifecycle-smoke.ts && tsx lib/server/sushi-launch-feed-smoke.ts",
     "test:market-media": "tsx lib/server/external-market-media-smoke.ts",
     "test:external-market-integrity": "tsx lib/external-market-integrity-smoke.ts",
     "test:legacy-retirement": "tsx lib/vnext/legacy-frontend-retirement-smoke.ts",

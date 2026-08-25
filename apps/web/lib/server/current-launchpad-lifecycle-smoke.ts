@@ -4,6 +4,7 @@ import type { ExternalMarket, LaunchpadLifecycleEvidence } from "../external-mar
 import { launchpadEvidenceIsBrowseRelevant } from "../launchpad-lifecycle";
 import { normalizeDirectoryMarkets, selectVNextMarketDirectoryView } from "../vnext/market-directory";
 import {
+  assembleCurrentLaunchpadSnapshot,
   CURRENT_LAUNCHPAD_SOURCE_MANIFEST,
   mergeCurrentLaunchpadMarkets
 } from "./current-launchpad-feed";
@@ -107,13 +108,31 @@ function log(method: string, parameters: Record<string, string>, minutesAgo: num
 async function main() {
 assert.deepEqual(
   CURRENT_LAUNCHPAD_SOURCE_MANIFEST.map((source) => source.sourceId),
-  ["stonkbrokers-safe-launch", "sushi-launch", "pons-v1", "pons-v2", "lemon-fun", "circus"]
+  ["stonkbrokers-safe-launch", "sushi-launch", "pons-v1", "pons-v2", "lemon-fun"]
 );
-assert.equal(new Set(CURRENT_LAUNCHPAD_SOURCE_MANIFEST.map((source) => `${source.sourceId}:${source.version}`)).size, 6);
+assert.equal(new Set(CURRENT_LAUNCHPAD_SOURCE_MANIFEST.map((source) => `${source.sourceId}:${source.version}`)).size, 5);
+assert.equal(
+  CURRENT_LAUNCHPAD_SOURCE_MANIFEST.some((source) => (source.sourceId as string) === "circus"),
+  false,
+  "Circus current runtime scope must remain absent"
+);
 assert.deepEqual(
   CURRENT_LAUNCHPAD_SOURCE_MANIFEST.find((source) => source.sourceId === "lemon-fun"),
   { sourceId: "lemon-fun", version: "v1+current", browse: "bounded-current-lifecycle-feed-cross-checked-onchain" }
 );
+const isolatedWatcherFailure = assembleCurrentLaunchpadSnapshot({
+  stonk: { status: "fulfilled", value: [market(lifecycle())] },
+  ponsV1: { status: "rejected", reason: new Error("bounded upstream delay") },
+  ponsV2: { status: "fulfilled", value: [] },
+  lemon: { status: "fulfilled", value: [] },
+  sushi: {
+    status: "fulfilled",
+    value: { projects: new Map(), lifecycle: new Map(), candidateAddresses: [], delayed: false }
+  }
+});
+assert.equal(isolatedWatcherFailure.coverage, "partial");
+assert.deepEqual(isolatedWatcherFailure.delayedSources, ["pons-v1"]);
+assert.equal(isolatedWatcherFailure.markets.length, 1, "one delayed watcher must not erase healthy launchpad markets");
 assert.equal(STONKBROKERS_SAFE_LAUNCH_DEPLOY_BLOCK, 38_814_054n);
 assert.equal(STONKBROKERS_SAFE_LAUNCHPAD, getAddress("0xEcA5726dae1e53365c37fFc02369d947A91d71f9"));
 assert.equal(
