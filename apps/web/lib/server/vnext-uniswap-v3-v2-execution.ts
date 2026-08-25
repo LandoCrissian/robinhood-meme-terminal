@@ -11,6 +11,7 @@ import {
 import { robinhoodChain } from "@rmt/shared/chains";
 import { ROBINHOOD_SWAP_ROUTER_02, ROBINHOOD_WETH } from "../uniswap-v4";
 import { normalizeDisabledRmtFee } from "../vnext/execution-fee-policy";
+import { VNEXT_V2_ATOMIC_INPUT_FEE } from "../vnext/execution-settlement";
 import {
   normalizeRmtExecutionFeeV2Input,
   type RmtExecutionFeeV2Policy
@@ -311,6 +312,7 @@ export async function evaluateVNextUniswapRouteV2(input: {
     exactSimulationPassed,
     userPaysGas: true as const,
     rmtFeeEnabled: false,
+    settlementMode: VNEXT_V2_ATOMIC_INPUT_FEE,
     netEconomics: normalizeDisabledRmtFee({
       userGrossInputAtomic: input.amountIn.toString(),
       providerGrossExpectedOutputAtomic: economics.providerGrossExpectedOutputAtomic,

@@ -15,6 +15,7 @@ import {
 import { ROBINHOOD_WETH_ADDRESS } from "./robinhood-assets";
 import { parseVNextPreSignEvidence, type VNextPreSignEvidence } from "./pre-sign-evidence";
 import { authorizationPayloadHash, parseVNextAuthorizationPlan, type VNextAuthorizationPlan } from "./authorization-plan";
+import { directExecutionBinding, directNoRmtFeeSettlement, VNEXT_DIRECT_NO_RMT_FEE } from "./execution-settlement";
 
 const input = getAddress("0x1111111111111111111111111111111111111111");
 const output = getAddress("0x2222222222222222222222222222222222222222");
@@ -57,6 +58,7 @@ const completeV2Evidence: VNextPreSignEvidence = {
   networkCostValuedAtMs: null, networkCostValuationExpiresAtMs: null, gasState: "sufficient",
   routerRuntimeHash: `0x${"c".repeat(64)}`, factoryRuntimeHash: `0x${"d".repeat(64)}`, quoterRuntimeHash: `0x${"e".repeat(64)}`,
   exactSimulationPassed: true, userPaysGas: true, rmtFeeEnabled: false,
+  settlementMode: VNEXT_DIRECT_NO_RMT_FEE, directNoRmtFee: directNoRmtFeeSettlement("1000000"),
   verifiedAtMs: now, expiresAtMs: now + 300_000, authorizationReady: false
 };
 const expectedV2 = {
@@ -83,16 +85,20 @@ const unsignedV2Plan: Omit<VNextAuthorizationPlan, "payloadHash"> = {
   sourceVerificationId: completeV2Evidence.verificationId, provider: "up-v2", kind: "swap", chainId: 4_663,
   target: UP_V2_EXECUTION_ROUTER, data: v2Data, value: "0", gasLimit: "120000", inputAsset: input, outputAsset: output,
   inputAmountAtomic: "1000000", protectedOutputAtomic: "990", recipient, router: UP_V2_EXECUTION_ROUTER,
+  settlementMode: VNEXT_DIRECT_NO_RMT_FEE, directNoRmtFee: directNoRmtFeeSettlement("1000000"),
+  directAuthorization: directExecutionBinding({
+    provider: "up-v2", kind: "swap", chainId: 4_663, inputAsset: input, outputAsset: output,
+    inputAmountAtomic: "1000000", protectedOutputAtomic: "990", recipient,
+    providerTarget: UP_V2_EXECUTION_ROUTER, executionTarget: UP_V2_EXECUTION_ROUTER,
+    approvalSpender: UP_V2_EXECUTION_ROUTER, approvalAmountAtomic: "1000000", data: v2Data,
+    valueAtomic: "0", deadline: deadline.toString()
+  }),
   deadline: deadline.toString(), preparedAtMs: now, expiresAtMs: now + 60_000,
   userAuthorizationRequired: true, serverSubmissionEnabled: false
 };
 const v2Plan: VNextAuthorizationPlan = { ...unsignedV2Plan, payloadHash: authorizationPayloadHash(unsignedV2Plan) };
 const planEvidence = { ...completeV2Evidence, calldataHash: keccak256(v2Data), nextActionCalldataHash: keccak256(v2Data) };
-assert.throws(
-  () => parseVNextAuthorizationPlan(v2Plan, planEvidence, now + 1),
-  /without complete V2 fee authority/,
-  "audited UP calldata remains quote-verifiable but cannot authorize a fee-free direct router transaction"
-);
+assert.equal(parseVNextAuthorizationPlan(v2Plan, planEvidence, now + 1).settlementMode, VNEXT_DIRECT_NO_RMT_FEE);
 assert.throws(() => parseVNextAuthorizationPlan({ ...v2Plan, provider: "up-cl" }, planEvidence, now + 1));
 assert.throws(() => parseVNextAuthorizationPlan({ ...v2Plan, router: UP_CL_EXECUTION_ROUTER }, planEvidence, now + 1));
 

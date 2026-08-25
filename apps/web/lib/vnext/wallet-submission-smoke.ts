@@ -11,6 +11,7 @@ import {
   FEE_V2_SMOKE_RECIPIENT
 } from "./fee-v2-smoke-fixture";
 import { assessVNextWalletGasReadiness, prepareVNextWalletTransaction } from "./wallet-submission";
+import { DIRECT_SMOKE_APPROVAL_EVIDENCE } from "./direct-no-rmt-fee-smoke-fixture";
 
 const transaction = prepareVNextWalletTransaction({
   plan: FEE_V2_SMOKE_APPROVAL_PLAN,
@@ -89,6 +90,17 @@ assert.match(swapDisclosure, /RMT execution fee: 0\.0025 USDG \(0\.25%\)/);
 assert.match(swapDisclosure, /Gross input/);
 assert.match(swapDisclosure, /Exact fee \/ asset/);
 assert.match(swapDisclosure, /Protected minimum/);
+const directDisclosure = renderToStaticMarkup(createElement(VNextWalletFeeDisclosure, {
+  planKind: "swap",
+  evidence: DIRECT_SMOKE_APPROVAL_EVIDENCE,
+  inputSymbol: "USDG",
+  outputSymbol: "TOKEN",
+  inputDecimals: 6,
+  outputDecimals: 18
+}));
+assert.match(directDisclosure, /RMT platform fee: 0/);
+assert.match(directDisclosure, /Direct · no RMT platform fee/);
+assert.match(directDisclosure, /receives no treasury transfer/);
 assert.match(helper, /parseVNextAuthorizationPlan/);
 assert.match(helper, /connectedChainId !== ROBINHOOD_MAINNET_CHAIN_ID/);
 assert.doesNotMatch(helper, /fetch\s*\(|sendTransaction|writeContract|signTypedData/);

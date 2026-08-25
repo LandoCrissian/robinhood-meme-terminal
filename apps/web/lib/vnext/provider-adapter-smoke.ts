@@ -9,6 +9,7 @@ import {
   type VNextProviderQuoteRequest,
   type VNextQuoteProviderAdapter
 } from "../server/vnext-provider-adapter";
+import { directNoRmtFeeSettlement, VNEXT_DIRECT_NO_RMT_FEE, VNEXT_V2_ATOMIC_INPUT_FEE } from "./execution-settlement";
 
 const inputAsset = getAddress("0x1111111111111111111111111111111111111111");
 const outputAsset = getAddress("0x2222222222222222222222222222222222222222");
@@ -75,7 +76,9 @@ const executableAdapter: VNextQuoteProviderAdapter = {
       deadline: deadlineSeconds.toString(), calldataHash: actionHash, nextAction: "swap",
       nextActionTarget: recipient, nextActionCalldataHash: actionHash, transactionValueAtomic: "0", gasLimitUnits: "120000",
       estimatedNetworkCostUsdgAtomic: null, networkCostValuationSource: null,
-      networkCostValuedAtMs: null, networkCostValuationExpiresAtMs: null
+      networkCostValuedAtMs: null, networkCostValuationExpiresAtMs: null,
+      settlementMode: VNEXT_DIRECT_NO_RMT_FEE,
+      directNoRmtFee: directNoRmtFeeSettlement(input.inputAmountAtomic)
     };
   },
   async prepareAuthorization(input) {
@@ -85,9 +88,14 @@ const executableAdapter: VNextQuoteProviderAdapter = {
     };
   }
 };
-await assert.rejects(() => prepareVNextProviderAuthorization("uniswap-v3", {
+const directPrepared = await prepareVNextProviderAuthorization("uniswap-v3", {
   ...request, deadlineSeconds, indicativeProtectedOutputFloorAtomic: 980n, protectedOutputFloorAtomic: 990n, nowMs: Date.now()
-}, [executableAdapter]), /quote-only until its V2 atomic fee settlement is admitted/);
+}, [executableAdapter]);
+assert.equal(directPrepared.evidence.settlementMode, VNEXT_DIRECT_NO_RMT_FEE);
+await assert.rejects(() => prepareVNextProviderAuthorization("uniswap-v3", {
+  ...request, deadlineSeconds, indicativeProtectedOutputFloorAtomic: 980n, protectedOutputFloorAtomic: 990n,
+  nowMs: Date.now(), settlementMode: VNEXT_V2_ATOMIC_INPUT_FEE
+}, [executableAdapter]), /inconsistent Uniswap v3 verification evidence/);
 await assert.rejects(() => verifyVNextExecutionProvider("uniswap-v3", {
   ...request, indicativeProtectedOutputFloorAtomic: 0n
 }, [executableAdapter]), /invalid indicative protected-output floor/);

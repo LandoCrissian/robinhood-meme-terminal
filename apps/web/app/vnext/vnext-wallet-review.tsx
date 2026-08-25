@@ -44,6 +44,17 @@ export function VNextWalletFeeDisclosure({
     <small>Gas and DEX/provider fees are separate. The protected receive amount is bound independently.</small>
   </div>;
 
+  if (evidence.settlementMode === "DIRECT_NO_RMT_FEE" && evidence.directNoRmtFee) return <div className="vnWalletFeeDisclosure" role="note">
+    <strong>RMT platform fee: 0</strong>
+    <dl>
+      <div><dt>Gross input</dt><dd>{formatUnits(BigInt(evidence.directNoRmtFee.userGrossInputAtomic), inputDecimals)} {inputSymbol}</dd></div>
+      <div><dt>Provider input</dt><dd>{formatUnits(BigInt(evidence.directNoRmtFee.providerInputAtomic), inputDecimals)} {inputSymbol}</dd></div>
+      <div><dt>Protected minimum</dt><dd>{formatUnits(BigInt(evidence.protectedOutputAtomic), outputDecimals)} {outputSymbol}</dd></div>
+      <div><dt>Settlement</dt><dd>Direct · no RMT platform fee</dd></div>
+    </dl>
+    <small>Gas and DEX/provider fees remain separate. RMT receives no treasury transfer from this trade.</small>
+  </div>;
+
   const legacyFee = evidence.netEconomics?.rmtFee.state === "planned" ? evidence.netEconomics.rmtFee : null;
   if (!legacyFee || !evidence.feeExecution) return null;
   const feeSymbol = legacyFee.feeSide === "input" ? inputSymbol : outputSymbol;

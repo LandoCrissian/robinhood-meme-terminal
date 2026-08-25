@@ -31,6 +31,7 @@ import {
 import { settledVNextFeeExecution, type VNextExecutionRecord } from "./execution-recovery";
 import { ROBINHOOD_SWAP_ROUTER_02, ROBINHOOD_WETH } from "../uniswap-v4";
 import { parseVNextPreSignEvidence, type VNextPreSignEvidence } from "./pre-sign-evidence";
+import { VNEXT_LEGACY_V1_FEE } from "./execution-settlement";
 
 const treasury = "0x1111111111111111111111111111111111111111";
 const executor = "0x2222222222222222222222222222222222222222";
@@ -101,7 +102,7 @@ const feeEvidence: VNextPreSignEvidence = {
   networkCostValuedAtMs: null, networkCostValuationExpiresAtMs: null, gasState: "sufficient",
   routerRuntimeHash: `0x${"1".repeat(64)}`, factoryRuntimeHash: `0x${"2".repeat(64)}`,
   quoterRuntimeHash: `0x${"3".repeat(64)}`, exactSimulationPassed: false, userPaysGas: true,
-  rmtFeeEnabled: true, netEconomics: buyEconomics, feeExecution: buy,
+  rmtFeeEnabled: true, settlementMode: VNEXT_LEGACY_V1_FEE, netEconomics: buyEconomics, feeExecution: buy,
   verifiedAtMs: now, expiresAtMs: Number(BigInt(buy.deadline) * 1_000n), authorizationReady: false
 };
 const feeExpected = {

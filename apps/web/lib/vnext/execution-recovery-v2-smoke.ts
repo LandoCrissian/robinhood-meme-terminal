@@ -12,6 +12,7 @@ import {
   type Hex
 } from "viem";
 import { authorizationPayloadHash, type VNextAuthorizationPlan } from "./authorization-plan";
+import { VNEXT_V2_ATOMIC_INPUT_FEE } from "./execution-settlement";
 import {
   normalizeVNextExecutionJournal,
   readVNextExecutionJournal,
@@ -119,6 +120,7 @@ function fixture(requestedOutputAsset: Address, id: Hex) {
     protectedOutputAtomic: economics.providerProtectedOutputAtomic,
     recipient: wallet,
     router: ROBINHOOD_SWAP_ROUTER_02,
+    settlementMode: VNEXT_V2_ATOMIC_INPUT_FEE,
     feeV2Economics: economics,
     feeV2Authorization: authorization,
     deadline: execution.deadline,

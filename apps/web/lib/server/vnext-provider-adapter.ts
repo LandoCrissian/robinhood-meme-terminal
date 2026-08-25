@@ -14,6 +14,13 @@ import {
   type VNextProviderFeeSettlement
 } from "../vnext/provider-fee-settlement";
 import type { RmtUniswapV3FeeExecution } from "../vnext/uniswap-v3-fee-executor";
+import {
+  assertVNextDirectNoRmtFeeSettlement,
+  VNEXT_DIRECT_NO_RMT_FEE,
+  VNEXT_V2_ATOMIC_INPUT_FEE,
+  type VNextDirectNoRmtFeeSettlement,
+  type VNextExecutionSettlementMode
+} from "../vnext/execution-settlement";
 
 export type VNextVerifiedTokenIdentity = {
   address: Address;
@@ -33,9 +40,17 @@ export type VNextProviderQuoteRequest = {
   canonicalMarket?: { sourceId: "uniswap-v4"; poolId: Hex };
 };
 
+export type VNextProviderSettlementSelection =
+  | typeof VNEXT_DIRECT_NO_RMT_FEE
+  | typeof VNEXT_V2_ATOMIC_INPUT_FEE;
+
 export type VNextProviderVerificationRequest = Pick<VNextProviderQuoteRequest,
   "chainId" | "inputAsset" | "outputAsset" | "inputAmountAtomic" | "amountIn" | "recipient"
-> & { indicativeProtectedOutputFloorAtomic: bigint; executionId?: Hex };
+> & {
+  indicativeProtectedOutputFloorAtomic: bigint;
+  executionId?: Hex;
+  settlementMode?: VNextProviderSettlementSelection;
+};
 
 export type VNextProviderVerificationEvidence = Record<string, unknown> & {
   provider: VNextQuoteProvider;
@@ -64,6 +79,8 @@ export type VNextProviderVerificationEvidence = Record<string, unknown> & {
   feeExecution?: RmtUniswapV3FeeExecution | null;
   feeV2Economics?: RmtExecutionFeeV2Economics;
   feeV2Settlement?: VNextAtomicFeeSettlementProof;
+  settlementMode: VNextExecutionSettlementMode;
+  directNoRmtFee?: VNextDirectNoRmtFeeSettlement;
 };
 
 export type VNextProviderAuthorizationRequest = VNextProviderVerificationRequest & {
@@ -230,6 +247,7 @@ function assertVerificationEvidence(
     || getAddress(evidence.recipient) !== getAddress(request.recipient)
     || !isAddress(evidence.router)
     || !isAddress(evidence.approvalSpender)
+    || evidence.settlementMode !== (request.settlementMode ?? VNEXT_DIRECT_NO_RMT_FEE)
     || !/^[1-9][0-9]*$/.test(evidence.protectedOutputAtomic)
     || BigInt(evidence.protectedOutputAtomic) < request.indicativeProtectedOutputFloorAtomic
     || !/^[1-9][0-9]*$/.test(evidence.deadline)
@@ -268,25 +286,36 @@ export async function prepareVNextProviderAuthorization(
     || request.indicativeProtectedOutputFloorAtomic > request.protectedOutputFloorAtomic
   ) throw new Error("RMT rejected an invalid protected output floor.");
   const adapter = adapterForProvider(provider, adapters);
-  const capability = feeAdmission.capability ?? VNEXT_PROVIDER_FEE_SETTLEMENT_REGISTRY[provider];
-  if (capability.state !== "V2_ATOMIC_INPUT_FEE") {
-    throw new Error(`${adapter.providerLabel} wallet authorization is quote-only until its V2 atomic fee settlement is admitted.`);
-  }
-  const policy = feeAdmission.policy === undefined ? configuredRmtExecutionFeeV2Policy() : feeAdmission.policy;
-  if (!policy) throw new Error(`${adapter.providerLabel} wallet authorization requires the active RMT_EXECUTION_V2 policy.`);
   if (!adapter.capabilities.walletAuthorization || !adapter.prepareAuthorization) {
     throw new Error(`${adapter.providerLabel} wallet authorization is not available yet.`);
   }
   const prepared = await adapter.prepareAuthorization(request);
   assertVerificationEvidence(prepared.evidence, adapter, request);
-  assertVNextWalletFeeAdmission({
-    provider,
-    policy,
-    economics: prepared.evidence.feeV2Economics,
-    verification: prepared.evidence.feeV2Settlement,
-    authorization: prepared.feeV2Authorization,
-    capability
-  });
+  const settlementMode = request.settlementMode ?? VNEXT_DIRECT_NO_RMT_FEE;
+  if (settlementMode === VNEXT_DIRECT_NO_RMT_FEE) {
+    if (prepared.evidence.settlementMode !== VNEXT_DIRECT_NO_RMT_FEE || prepared.feeV2Authorization !== undefined) {
+      throw new Error(`${adapter.providerLabel} returned fee authority for a fee-free wallet request.`);
+    }
+    assertVNextDirectNoRmtFeeSettlement(prepared.evidence.directNoRmtFee, request.inputAmountAtomic);
+  } else {
+    const capability = feeAdmission.capability ?? VNEXT_PROVIDER_FEE_SETTLEMENT_REGISTRY[provider];
+    if (capability.state !== "V2_ATOMIC_INPUT_FEE") {
+      throw new Error(`${adapter.providerLabel} wallet authorization is quote-only until its V2 atomic fee settlement is admitted.`);
+    }
+    const policy = feeAdmission.policy === undefined ? configuredRmtExecutionFeeV2Policy() : feeAdmission.policy;
+    if (!policy) throw new Error(`${adapter.providerLabel} wallet authorization requires the active RMT_EXECUTION_V2 policy.`);
+    if (prepared.evidence.settlementMode !== VNEXT_V2_ATOMIC_INPUT_FEE) {
+      throw new Error(`${adapter.providerLabel} did not return V2 atomic fee evidence.`);
+    }
+    assertVNextWalletFeeAdmission({
+      provider,
+      policy,
+      economics: prepared.evidence.feeV2Economics,
+      verification: prepared.evidence.feeV2Settlement,
+      authorization: prepared.feeV2Authorization,
+      capability
+    });
+  }
   if (
     prepared.evidence.deadline !== request.deadlineSeconds.toString()
     || BigInt(prepared.evidence.protectedOutputAtomic) < request.protectedOutputFloorAtomic

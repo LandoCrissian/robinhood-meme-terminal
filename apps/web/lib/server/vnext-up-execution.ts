@@ -12,6 +12,7 @@ import {
 } from "viem";
 import { robinhoodChain } from "@rmt/shared/chains";
 import { ROBINHOOD_USDG_ADDRESS, ROBINHOOD_WETH_ADDRESS, isRobinhoodNativeAsset } from "../vnext/robinhood-assets";
+import { directNoRmtFeeSettlement, VNEXT_DIRECT_NO_RMT_FEE } from "../vnext/execution-settlement";
 import {
   assertUpSwapCalldata,
   UP_CL_EXECUTION_ROUTER,
@@ -257,6 +258,8 @@ async function evaluateUpRoute(provider: "up-v2" | "up-cl", input: {
     quoterRuntimeHash: provider === "up-v2" ? UP_V2_ROUTER_RUNTIME_HASH : UP_CL_QUOTER_RUNTIME_HASH,
     quoteBlock: quote.snapshot.blockNumber.toString(), quoteBlockHash: quote.snapshot.blockHash,
     exactSimulationPassed, userPaysGas: true as const, rmtFeeEnabled: false as const,
+    settlementMode: VNEXT_DIRECT_NO_RMT_FEE,
+    directNoRmtFee: directNoRmtFeeSettlement(input.amountIn.toString()),
     verifiedAtMs: nowMs, expiresAtMs: Number(deadline) * 1_000, authorizationReady: false as const
   };
   return { evidence, payloads: { swapCalldata: built.data, approvalCalldata } };
