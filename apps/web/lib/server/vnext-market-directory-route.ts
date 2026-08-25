@@ -6,13 +6,19 @@ import {
   readVNextLegacyMarketDirectoryPage,
   type VNextLegacyMarketDirectoryPage
 } from "./vnext-legacy-market-directory";
+import {
+  applyProjectIdentityDirectoryAdmission,
+  type ProjectIdentityAdmissionCandidate
+} from "./project-identity-admission";
 
 type CanonicalReader = (requestUrl: string) => Promise<VNextCanonicalMarketDirectoryPage>;
 type LegacyReader = () => Promise<VNextLegacyMarketDirectoryPage>;
+type ProjectAdmissionFilter = <T extends ProjectIdentityAdmissionCandidate>(candidates: readonly T[]) => Promise<T[]>;
 
 type VNextMarketDirectoryRouteDependencies = {
   readCanonical: CanonicalReader;
   readLegacy: LegacyReader;
+  admitProjectIdentities?: ProjectAdmissionFilter;
 };
 
 export type VNextMarketDirectoryRouteResult = {
@@ -23,7 +29,10 @@ export type VNextMarketDirectoryRouteResult = {
 
 const defaultDependencies: VNextMarketDirectoryRouteDependencies = {
   readCanonical: readVNextCanonicalMarketDirectoryPage,
-  readLegacy: readVNextLegacyMarketDirectoryPage
+  readLegacy: readVNextLegacyMarketDirectoryPage,
+  admitProjectIdentities: async <T extends ProjectIdentityAdmissionCandidate>(candidates: readonly T[]) => (
+    await applyProjectIdentityDirectoryAdmission(candidates)
+  ).admitted
 };
 
 export function vNextCanonicalBrowseEnabled(
@@ -39,8 +48,15 @@ export async function readVNextMarketDirectoryRequest(
 ): Promise<VNextMarketDirectoryRouteResult> {
   if (!vNextCanonicalBrowseEnabled(env)) return dependencies.readLegacy();
   const result = await dependencies.readCanonical(requestUrl);
+  const body = result.status === 200
+    ? {
+        ...result.body,
+        markets: await (dependencies.admitProjectIdentities ?? defaultDependencies.admitProjectIdentities!)(result.body.markets ?? [])
+      }
+    : result.body;
   return {
     ...result,
+    body,
     headers: { "Cache-Control": "private, no-store, max-age=0" }
   };
 }

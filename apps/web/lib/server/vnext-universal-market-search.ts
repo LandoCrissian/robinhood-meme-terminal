@@ -17,6 +17,10 @@ import type {
   VNextUniversalMarketSearchResult,
   VNextUniversalMarketSearchResultItem
 } from "../vnext/universal-market-search-contract";
+import {
+  applyProjectIdentityDirectoryAdmission,
+  type ProjectIdentityAdmissionCandidate
+} from "./project-identity-admission";
 
 export type {
   VNextUniversalMarketSearchMatchedBy,
@@ -61,11 +65,20 @@ type SearchFetch = (
   init?: RequestInit
 ) => Promise<Response>;
 
+type ProjectAdmissionFilter = <T extends ProjectIdentityAdmissionCandidate>(candidates: readonly T[]) => Promise<T[]>;
+
+async function defaultProjectAdmissionFilter<T extends ProjectIdentityAdmissionCandidate>(
+  candidates: readonly T[]
+) {
+  return (await applyProjectIdentityDirectoryAdmission(candidates)).admitted;
+}
+
 export type VNextUniversalMarketSearchDependencies = {
   readInventory?: InventoryReader;
   readIdentity?: IdentityReader;
   fetch?: SearchFetch;
   timeoutMs?: number;
+  admitProjectIdentities?: ProjectAdmissionFilter;
 };
 
 type CandidatePair = {
@@ -246,7 +259,7 @@ async function verifiedIdentityResult(
 async function exactAddressSearch(
   query: string,
   address: string,
-  dependencies: Required<Pick<VNextUniversalMarketSearchDependencies, "readInventory" | "readIdentity">>
+  dependencies: Required<Pick<VNextUniversalMarketSearchDependencies, "readInventory" | "readIdentity" | "admitProjectIdentities">>
 ): Promise<VNextUniversalMarketSearchResult> {
   const [tokenInventoryRead, poolInventoryRead] = await Promise.allSettled([
     dependencies.readInventory({ token: address, limit: INVENTORY_LIMIT }),
@@ -294,7 +307,7 @@ async function exactAddressSearch(
         )
       )
   );
-  const results = identityReads
+  const verifiedResults = identityReads
     .flatMap((read) => read.status === "fulfilled" ? [read.value] : [])
     .filter((result): result is VNextUniversalMarketSearchResultItem => result !== null)
     .sort(
@@ -302,8 +315,12 @@ async function exactAddressSearch(
         settlementPriority(left.address) - settlementPriority(right.address) ||
         left.address.localeCompare(right.address)
     );
+  const results = await dependencies.admitProjectIdentities(verifiedResults.map((result) => ({
+    ...result,
+    verifiedIdentity: result
+  })));
   if (
-    results.length === 0 &&
+    verifiedResults.length === 0 &&
     (
       tokenInventory === null ||
       poolInventory === null ||
@@ -318,15 +335,17 @@ async function exactAddressSearch(
   return {
     query,
     queryKind: "token-or-pool-address",
-    status: results.length > 0 ? "found" : "not_found",
-    results
+    status: results.length > 0
+      ? "found"
+      : verifiedResults.length > 0 ? "not_admitted" : "not_found",
+    results: results.map(({ verifiedIdentity: _verifiedIdentity, ...result }) => result)
   };
 }
 
 async function exactPoolIdSearch(
   query: string,
   poolId: string,
-  dependencies: Required<Pick<VNextUniversalMarketSearchDependencies, "readInventory" | "readIdentity">>
+  dependencies: Required<Pick<VNextUniversalMarketSearchDependencies, "readInventory" | "readIdentity" | "admitProjectIdentities">>
 ): Promise<VNextUniversalMarketSearchResult> {
   const inventory = await dependencies.readInventory({
     poolKey: poolId,
@@ -342,7 +361,7 @@ async function exactPoolIdSearch(
       candidates.set(address, mergeMarkets(candidates.get(address) ?? [], [market]));
     }
   }
-  const results = (
+  const verifiedResults = (
     await Promise.all(
       [...candidates.entries()].map(([address, markets]) =>
         verifiedIdentityResult(
@@ -360,14 +379,18 @@ async function exactPoolIdSearch(
         settlementPriority(left.address) - settlementPriority(right.address) ||
         left.address.localeCompare(right.address)
     );
-  if (results.length === 0 && inventoryIncomplete(inventory)) {
+  if (verifiedResults.length === 0 && inventoryIncomplete(inventory)) {
     return emptyResult(query, "v4-pool-id", "inventory_unavailable");
   }
+  const results = await dependencies.admitProjectIdentities(verifiedResults.map((result) => ({
+    ...result,
+    verifiedIdentity: result
+  })));
   return {
     query,
     queryKind: "v4-pool-id",
     status: results.length > 0 ? "found" : "not_found",
-    results
+    results: results.map(({ verifiedIdentity: _verifiedIdentity, ...result }) => result)
   };
 }
 
@@ -553,13 +576,19 @@ async function textSearch(
       };
     })
   );
-  const results = candidates
+  const matchedCandidates = candidates
     .filter((candidate): candidate is NonNullable<typeof candidate> => candidate !== null)
     .sort(
       (left, right) =>
         left.priority - right.priority ||
         left.result.address.localeCompare(right.result.address)
-    )
+    );
+  const admittedCandidates = await dependencies.admitProjectIdentities(matchedCandidates.map((candidate) => ({
+    ...candidate,
+    address: candidate.result.address,
+    verifiedIdentity: candidate.result
+  })));
+  const results = admittedCandidates
     .slice(0, MAXIMUM_RESULTS)
     .map(({ result }) => result);
   return {
@@ -595,7 +624,8 @@ export async function searchVNextUniversalMarkets(
       dependencies.readInventory ??
       ((inventoryQuery: VNextCanonicalMarketInventoryQuery) =>
         readVNextCanonicalMarketInventory(inventoryQuery)),
-    readIdentity: dependencies.readIdentity ?? readRobinhoodTokenIdentity
+    readIdentity: dependencies.readIdentity ?? readRobinhoodTokenIdentity,
+    admitProjectIdentities: dependencies.admitProjectIdentities ?? defaultProjectAdmissionFilter
   };
   if (exactAddress) {
     return exactAddressSearch(query, exactAddress, readDependencies);

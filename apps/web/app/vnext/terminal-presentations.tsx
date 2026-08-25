@@ -126,6 +126,7 @@ function SearchStatusMessage({ status, count }: { status: VNextUniversalMarketSe
   if (status === "idle") return null;
   if (status === "searching") return <div className="rmtSearchStatus" role="status">Searching Robinhood Chain markets…</div>;
   if (status === "found") return <div className="rmtSearchStatus" role="status">{count === 1 ? "Market found." : `${count} market matches found. Choose one.`}</div>;
+  if (status === "not_admitted") return <div className="rmtSearchStatus isDelayed" role="status">Not admitted to the RMT directory.</div>;
   if (status === "not_found") return <div className="rmtSearchStatus" role="status">No additional market match found.</div>;
   if (status === "inventory_unavailable") return <div className="rmtSearchStatus isDelayed" role="status">Expanded search unavailable: canonical inventory is delayed.</div>;
   if (status === "candidate_discovery_unavailable") return <div className="rmtSearchStatus isDelayed" role="status">Expanded text search unavailable. Loaded markets remain available.</div>;

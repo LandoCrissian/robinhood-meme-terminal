@@ -945,6 +945,7 @@ async function verifyCanonicalBrowsePages() {
 
   let legacyCalls = 0;
   let canonicalCalls = 0;
+  const admitAllProjectIdentities = async <T extends { address: string }>(candidates: readonly T[]) => [...candidates];
   const gatedDependencies = {
     readLegacy: async () => {
       legacyCalls += 1;
@@ -953,7 +954,8 @@ async function verifyCanonicalBrowsePages() {
     readCanonical: async (requestUrl: string) => {
       canonicalCalls += 1;
       return readVNextCanonicalMarketDirectoryPage(requestUrl, async () => canonicalResult(firstCanonicalPage, "next_page"));
-    }
+    },
+    admitProjectIdentities: admitAllProjectIdentities
   };
   const missingGate = await readVNextMarketDirectoryRequest(
     "http://localhost/api/vnext/market-directory",
@@ -979,8 +981,24 @@ async function verifyCanonicalBrowsePages() {
   );
   assert.equal(enabledGate.status, 200);
   assert.equal("canonical" in enabledGate.body && enabledGate.body.canonical, true);
+  const enabledMarketCount = "markets" in enabledGate.body ? enabledGate.body.markets?.length ?? 0 : 0;
   assert.equal(canonicalCalls, 1);
   assert.equal(legacyCalls, 2);
+
+  const quarantinedDirectory = await readVNextMarketDirectoryRequest(
+    "http://localhost/api/vnext/market-directory",
+    { RMT_CANONICAL_BROWSE_ENABLED: "true" },
+    {
+      ...gatedDependencies,
+      admitProjectIdentities: async (candidates) => candidates.slice(1)
+    }
+  );
+  assert.equal(quarantinedDirectory.status, 200);
+  assert.equal(
+    "markets" in quarantinedDirectory.body ? quarantinedDirectory.body.markets?.length : undefined,
+    Math.max(0, enabledMarketCount - 1),
+    "Project admission must remove conflicts from the canonical directory response"
+  );
 
   let failClosedLegacyCalls = 0;
   const incompleteGate = await readVNextMarketDirectoryRequest(
@@ -993,7 +1011,8 @@ async function verifyCanonicalBrowsePages() {
       },
       readCanonical: async (requestUrl) => readVNextCanonicalMarketDirectoryPage(requestUrl, async () => canonicalResult([], null, {
         ...partialCoverage
-      }))
+      })),
+      admitProjectIdentities: admitAllProjectIdentities
     }
   );
   assert.equal(incompleteGate.status, 200);
@@ -1012,7 +1031,8 @@ async function verifyCanonicalBrowsePages() {
       readCanonical: async (requestUrl) => readVNextCanonicalMarketDirectoryPage(requestUrl, async () => ({
         status: "upstream_unavailable",
         reason: "request_failed"
-      }))
+      })),
+      admitProjectIdentities: admitAllProjectIdentities
     }
   );
   assert.equal(unavailableGate.status, 503);

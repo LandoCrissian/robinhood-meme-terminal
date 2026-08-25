@@ -737,6 +737,29 @@ async function assertTimeoutIsUnavailable() {
   assert.equal(result.status, "candidate_discovery_unavailable");
 }
 
+async function assertProjectAdmissionPrecedesPresentationAndResultBounds() {
+  let exactAdmissionCalls = 0;
+  const exact = await searchVNextUniversalMarkets(stonkBrokerAddress, {
+    ...dependencies(),
+    admitProjectIdentities: async (candidates) => {
+      exactAdmissionCalls += 1;
+      return candidates.filter((candidate) => candidate.address.toLowerCase() !== stonkBrokerAddress);
+    }
+  });
+  assert.equal(exact.status, "not_admitted");
+  assert.deepEqual(exact.results, []);
+  assert.equal(exactAdmissionCalls, 1);
+
+  const text = await searchVNextUniversalMarkets("STONKBROKER", {
+    ...dependencies(),
+    admitProjectIdentities: async (candidates) => candidates.filter(
+      (candidate) => candidate.address.toLowerCase() !== stonkBrokerAddress
+    )
+  });
+  assert.equal(text.status, "not_found");
+  assert.deepEqual(text.results, []);
+}
+
 async function main() {
   await assertStonkBrokerTextSearches();
   await assertExactSearchesNeverUseProvider();
@@ -752,6 +775,7 @@ async function main() {
   await assertIndependentCandidateSources();
   await assertProviderIdentityClaimsNeverWin();
   await assertTimeoutIsUnavailable();
+  await assertProjectAdmissionPrecedesPresentationAndResultBounds();
 
   console.log(
     "Universal market search preserves first-party inventory and onchain identity authority across exact and bounded text queries."

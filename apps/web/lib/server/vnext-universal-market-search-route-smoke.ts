@@ -62,6 +62,15 @@ async function main() {
   assert.equal(found.payload.status, "found");
   assertSecurityHeaders(found.response);
 
+  const notAdmitted = await invoke(
+    `https://rmtlaunch.fun/api/vnext/market-search?q=${queryAddress}`,
+    { query: queryAddress, queryKind: "token-or-pool-address", status: "not_admitted", results: [] }
+  );
+  assert.equal(notAdmitted.response.status, 200);
+  assert.equal(notAdmitted.payload.status, "not_admitted");
+  assert.deepEqual(notAdmitted.payload.results, []);
+  assertSecurityHeaders(notAdmitted.response);
+
   const invalid = await invoke(
     "https://rmtlaunch.fun/api/vnext/market-search?q=0x1234",
     {

@@ -45,6 +45,7 @@ import {
 import { readCompleteV6OriginTokensFromChain } from "../../../../lib/server/launch-feed";
 import { VNEXT_MARKET_DIRECTORY_MAX_MARKETS } from "../../../../lib/vnext/market-directory";
 import type { VNextDirectoryMarket } from "../../../../lib/vnext/market-directory";
+import { applyProjectIdentityDirectoryAdmission } from "../../../../lib/server/project-identity-admission";
 
 const CHAIN_SLUG = "robinhood";
 const DEXSCREENER_TOKEN_PAIRS_API = "https://api.dexscreener.com/token-pairs/v1";
@@ -129,6 +130,7 @@ type SuccessfulMarketSnapshot = {
   rankingVersion: string;
   updatedAt: string;
   assetRecords: AssetMarketRecord[];
+  directoryAdmission: "admitted";
   originCoverage: OriginCoverage;
   rmtOriginCoverage: OriginCoverage;
   stockAssetCoverage: "complete" | "stale" | "unavailable";
@@ -457,6 +459,19 @@ function staleResponse() {
   );
 }
 
+function notAdmittedResponse() {
+  return NextResponse.json(
+    {
+      markets: [],
+      assetRecords: [],
+      directoryAdmission: "not_admitted",
+      source: "RMT directory admission",
+      updatedAt: new Date().toISOString()
+    },
+    { headers: { "Cache-Control": "private, no-store, max-age=0" } }
+  );
+}
+
 export async function GET(request: Request) {
   const lookupParameter = new URL(request.url).searchParams.get("contract");
   const requestedContract = canonicalExternalMarketLookupAddress(lookupParameter);
@@ -525,6 +540,10 @@ export async function GET(request: Request) {
         const resolvedMarket = resolution
           ? marketFromUniversalResolution(resolution, stockRegistry)
           : null;
+        if (resolvedMarket) {
+          const admission = await applyProjectIdentityDirectoryAdmission([resolvedMarket]);
+          if (admission.admitted.length === 0) return notAdmittedResponse();
+        }
         return NextResponse.json(
           {
             markets: resolvedMarket ? [resolvedMarket] : [],
@@ -716,12 +735,15 @@ export async function GET(request: Request) {
         : launchpadMarket as ProviderDirectoryMarket);
     }
 
+    const directoryAdmission = await applyProjectIdentityDirectoryAdmission([...marketsByToken.values()]);
+    const admittedAddresses = new Set(directoryAdmission.admitted.map((market) => market.address.toLowerCase()));
+    const admittedAssetRecords = assetRecords.filter((record) => admittedAddresses.has(record.token.address.toLowerCase()));
     const rankedMarkets = requestedContract
-      ? [...marketsByToken.values()].filter((market) =>
+      ? directoryAdmission.admitted.filter((market) =>
           market.address.toLowerCase() === requestedContract
           || market.pairAddress.toLowerCase() === requestedContract
         )
-      : [...marketsByToken.values()]
+      : directoryAdmission.admitted
           .sort(compareProviderDirectoryMarket)
           .slice(0, VNEXT_MARKET_DIRECTORY_MAX_MARKETS);
     let markets: Array<ProviderDirectoryMarket | ExternalMarket> = rankedMarkets;
@@ -737,10 +759,14 @@ export async function GET(request: Request) {
               : market)
           : resolvedMarket ? [resolvedMarket] : [];
       }
+      const exactAdmission = await applyProjectIdentityDirectoryAdmission(markets);
+      if (markets.length > 0 && exactAdmission.admitted.length === 0) return notAdmittedResponse();
+      markets = exactAdmission.admitted;
     }
     const snapshot: SuccessfulMarketSnapshot = {
       markets,
-      assetRecords,
+      assetRecords: admittedAssetRecords,
+      directoryAdmission: "admitted",
       source: "Canonical DEX markets + bounded current launchpad discovery + provider observations + Robinhood Stock Token registry",
       rankingVersion: "rmt-discovery-v7-lifecycle",
       thresholds: RUNNER_THRESHOLDS,

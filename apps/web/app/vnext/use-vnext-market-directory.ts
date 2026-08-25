@@ -200,7 +200,7 @@ export function useVNextMarketDirectory() {
             signal: controller.signal
           });
           const payload = parseVNextUniversalMarketSearchResult(await response.json());
-          return response.ok && payload?.status === "found" ? payload : null;
+          return response.ok ? payload : null;
         };
         const [canonicalResult, marketResult, identityResult] = await Promise.allSettled([
           completedCanonicalExactQueries.current.has(selectionKey) ? Promise.resolve(null) : readCanonicalJson(),
@@ -211,6 +211,19 @@ export function useVNextMarketDirectory() {
         const canonicalPayload = canonicalResult.status === "fulfilled" ? canonicalResult.value : null;
         const marketPayload = marketResult.status === "fulfilled" ? marketResult.value : null;
         const identityPayload = identityResult.status === "fulfilled" ? identityResult.value : null;
+        if (
+          canonicalPayload?.status === "not_admitted"
+          || marketPayload?.directoryAdmission === "not_admitted"
+        ) {
+          if (requestSequence === selectionSequence.current) {
+            exactLookupMarket.current = undefined;
+            searchMarketsRef.current = [];
+            setSearchMarkets([]);
+            setSelectedAddress(null);
+            setSearchStatus("not_admitted");
+          }
+          return undefined;
+        }
         const canonical = canonicalPayload?.results
           .find((result) => result.address.toLowerCase() === address.toLowerCase());
         const canonicalMarket = canonical ? directoryMarketFromUniversalSearchResult(canonical) : null;

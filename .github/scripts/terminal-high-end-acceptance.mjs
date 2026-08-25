@@ -18,6 +18,7 @@ const stonkBrokerToken = `0x${["e934e36a", "439c9401", "7b64a3fe", "ce66af12", "
 const stonkBrokerPoolId = `0x${"ab".repeat(32)}`;
 const spcxToken = ["0x4a0e65a3", "eccec6db", "e60ae065", "f2e7bb85", "fae35eea"].join("");
 const nvdaToken = ["0xd0601ce1", "57db5bdc", "3162bbac", "2a2c8af5", "320d9eec"].join("");
+const conflictingDtfToken = ["0xee5576fa", "1bcaa380", "e591d012", "45f406f3", "f384eb01"].join("");
 const universalSearchQueries = new WeakMap();
 const chainPulseRequests = new WeakMap();
 const telemetryRequests = new WeakMap();
@@ -459,12 +460,18 @@ async function installRoutes(page) {
   await page.route(/\/api\/vnext\/market-search(?:\?.*)?$/, async (route) => {
     const query = new URL(route.request().url()).searchParams.get("q") ?? "";
     const exactIdentityUnavailable = query.toLowerCase() === exactIdentityToken.toLowerCase();
+    const conflictingProjectIdentity = query.toLowerCase() === conflictingDtfToken;
     const stonkBrokerResult = stonkBrokerSearchResponse(query);
     universalSearchQueries.set(page, [...(universalSearchQueries.get(page) ?? []), query]);
     await route.fulfill({
       status: exactIdentityUnavailable ? 503 : 200,
       contentType: "application/json",
-      body: JSON.stringify(stonkBrokerResult ?? {
+      body: JSON.stringify(conflictingProjectIdentity ? {
+        query,
+        queryKind: "token-or-pool-address",
+        status: "not_admitted",
+        results: []
+      } : stonkBrokerResult ?? {
         query,
         queryKind: "token-or-pool-address",
         status: exactIdentityUnavailable ? "inventory_unavailable" : "not_found",
@@ -475,6 +482,20 @@ async function installRoutes(page) {
   await page.route(/\/api\/markets\/external(?:\?.*)?$/, async (route) => {
     const url = new URL(route.request().url());
     const contract = url.searchParams.get("contract")?.toLowerCase();
+    if (contract === conflictingDtfToken) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          markets: [],
+          assetRecords: [],
+          directoryAdmission: "not_admitted",
+          source: "RMT directory admission",
+          updatedAt: now
+        })
+      });
+      return;
+    }
     const selected = contract
       ? markets.filter((item) => (
           item.address.toLowerCase() === contract
@@ -1193,6 +1214,44 @@ async function inspectCurrentPublicRoutes(browser) {
     await context.close();
   }
   return results;
+}
+
+async function inspectProjectIdentityQuarantine(browser) {
+  const context = await createContext(browser, {
+    viewport: { width: 1_440, height: 900 },
+    deviceScaleFactor: 1
+  });
+  const page = await context.newPage();
+  const executionRequests = { quotes: 0, verifications: 0, authorizations: 0 };
+  page.on("request", (request) => {
+    const pathname = new URL(request.url()).pathname;
+    if (pathname === "/api/vnext/quotes") executionRequests.quotes += 1;
+    if (pathname === "/api/vnext/verify") executionRequests.verifications += 1;
+    if (pathname === "/api/vnext/authorize") executionRequests.authorizations += 1;
+  });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await installRoutes(page);
+  await gotoReady(page, base, ".rmtDesktopTerminal .rmtMarketTableRow");
+  const search = page.getByRole("textbox", { name: "Search Robinhood Chain markets" });
+  await search.fill(conflictingDtfToken);
+  await search.press("Enter");
+  await page.getByText("Not admitted to the RMT directory.", { exact: true }).waitFor({ state: "visible" });
+  const state = await page.evaluate((address) => ({
+    context: document.querySelector(".rmtDesktopTerminal")?.getAttribute("data-terminal-context") ?? null,
+    assetWorkspace: Boolean(document.querySelector(".rmtDesktopTerminal .rmtAssetWorkspace")),
+    candidateVisible: document.body.innerText.toLowerCase().includes(address),
+    executionCopy: /connect\s*&\s*buy|connect\s*&\s*sell|buy quote|sell quote/i.test(document.body.innerText),
+    marketParameter: new URL(window.location.href).searchParams.get("market")
+  }), conflictingDtfToken);
+  if (state.context !== "markets" || state.assetWorkspace || state.candidateVisible || state.executionCopy || state.marketParameter) {
+    throw new Error(`conflicting project identity reached a normal asset or quote surface ${JSON.stringify(state)}`);
+  }
+  if (executionRequests.quotes !== 0 || executionRequests.verifications !== 0 || executionRequests.authorizations !== 0) {
+    throw new Error(`conflicting project identity initiated execution requests ${JSON.stringify(executionRequests)}`);
+  }
+  await page.screenshot({ path: `${output}/project-identity-quarantine-desktop-1440x900.png`, fullPage: false, animations: "disabled" });
+  await context.close();
+  return { exactContractWorkspace: "absent", quoteSurfaces: 0, ...executionRequests };
 }
 
 async function createWalletAcceptanceContext(browser, options) {
@@ -1937,6 +1996,7 @@ try {
     "mobile-390x844",
     true
   );
+  const projectIdentityQuarantine = mobileOnly ? null : await inspectProjectIdentityQuarantine(browser);
   const desktop = mobileOnly ? null : await inspectDesktop(browser, { width: 1_440, height: 900 }, "1440x900");
   const laptop = mobileOnly ? null : await inspectDesktop(browser, { width: 1_280, height: 800 }, "1280x800");
   const laptop720 = mobileOnly ? null : await inspectDesktop(browser, { width: 1_280, height: 720 }, "1280x720");
@@ -1967,7 +2027,7 @@ try {
   }
   await writeFile(
     `${output}/report.json`,
-    JSON.stringify({ productAcceptanceEvidence, workspaceEvidence, marketsHierarchy, discoveryDesktop, discoveryMobile, desktop, laptop, laptop720, compact, wide, seamDesktop, marketAudit, compatibilityEntries, publicRoutes, touch1023, mobile430, mobile393, mobile390, mobile375, mobile360, v2BrowserEvidence, exploratoryTouch }, null, 2)
+    JSON.stringify({ productAcceptanceEvidence, workspaceEvidence, marketsHierarchy, discoveryDesktop, discoveryMobile, projectIdentityQuarantine, desktop, laptop, laptop720, compact, wide, seamDesktop, marketAudit, compatibilityEntries, publicRoutes, touch1023, mobile430, mobile393, mobile390, mobile375, mobile360, v2BrowserEvidence, exploratoryTouch }, null, 2)
   );
   console.log(`Terminal active discovery product acceptance passed: ${JSON.stringify(productAcceptanceEvidence)}`);
   }
