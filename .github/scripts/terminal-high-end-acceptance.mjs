@@ -663,7 +663,9 @@ async function inspectAssetQuickLinks(page, label) {
       market,
       fullContractVisible: Boolean(market && root.textContent?.toLowerCase().includes(market)),
       copyAvailable: Boolean(root.querySelector('button[aria-label^="Copy full token contract"]')),
-      provenance: [...root.querySelectorAll("small")].map((entry) => entry.textContent?.trim()).filter(Boolean),
+      provenance: [...root.querySelectorAll("small, .vnProjectLinkGroup > summary")]
+        .map((entry) => entry.textContent?.trim())
+        .filter(Boolean),
       anchors: anchors.map((anchor) => ({
         href: anchor.getAttribute("href"),
         target: anchor.getAttribute("target"),
