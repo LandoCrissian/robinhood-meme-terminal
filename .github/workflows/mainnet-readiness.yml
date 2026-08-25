@@ -15,6 +15,50 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  terminal-v4-execution-fork:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: packages/contracts
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: foundry-rs/foundry-toolchain@b00af27efadbc7b4ca8b82abbd903b17cc874d2a # v1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+      - run: bash scripts/install-v4-deps.sh
+      - name: Prove the Terminal V4 fork test is independent from launchpad infrastructure
+        run: |
+          if grep -Eq \
+            'RMTLaunchFactoryV6|RMTV6Bootstrap|V4GraduationAdapter|V4GraduationHook|DeployMainnetV6OfficialMigration|V6MainnetForkTest|V6UniversalRouterForkTest' \
+            test/RMTUniswapV4FeeExecutorV2Fork.t.sol; then
+            echo "Terminal V4 fork proof depends on launchpad or graduation infrastructure." >&2
+            exit 1
+          fi
+      - name: Execute mandatory Terminal V4 atomic execution fork proof
+        env:
+          RMT_RUN_TERMINAL_V4_FORK: "true"
+          ROBINHOOD_MAINNET_RPC_URL: https://rpc.mainnet.chain.robinhood.com/
+        run: |
+          if [[ -z "${ROBINHOOD_MAINNET_RPC_URL:-}" ]]; then
+            echo "ROBINHOOD_MAINNET_RPC_URL is mandatory for the Terminal V4 fork proof." >&2
+            exit 1
+          fi
+          for attempt in 1 2; do
+            echo "Terminal V4 execution fork attempt $attempt of 2"
+            if timeout --signal=TERM --kill-after=20s 8m \
+              forge test --match-contract RMTUniswapV4FeeExecutorV2ForkTest -vvv; then
+              exit 0
+            fi
+            if [[ "$attempt" -lt 2 ]]; then
+              echo "Terminal V4 fork proof was rate-limited or timed out; cooling down for 30 seconds."
+              sleep 30
+            fi
+          done
+          echo "Mandatory Terminal V4 execution fork proof failed after two bounded attempts." >&2
+          exit 1
+
   robinhood-mainnet-fork:
     runs-on: ubuntu-latest
     timeout-minutes: 30
