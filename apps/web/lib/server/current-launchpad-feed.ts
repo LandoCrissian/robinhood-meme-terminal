@@ -13,7 +13,7 @@ export const CURRENT_LAUNCHPAD_SOURCE_MANIFEST = Object.freeze([
   { sourceId: "sushi-launch", version: "current", browse: "bounded-production-graphql" },
   { sourceId: "pons-v1", version: "v1", browse: "canonical-market-enrichment" },
   { sourceId: "pons-v2", version: "v2", browse: "bounded-state-and-event" },
-  { sourceId: "lemon-fun", version: "current", browse: "bounded-public-feed-cross-checked-onchain" },
+  { sourceId: "lemon-fun", version: "v1+current", browse: "bounded-current-lifecycle-feed-cross-checked-onchain" },
   { sourceId: "circus", version: "current", browse: "bounded-live-curve-feed-cross-checked-onchain" }
 ] as const);
 

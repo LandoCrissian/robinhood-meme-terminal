@@ -1,4 +1,5 @@
 import {
+  formatUnits,
   getAddress,
   isAddress,
   zeroAddress,
@@ -135,9 +136,9 @@ function eventId(log: VerifiedContractLog) {
   return value && /^\d+$/.test(value) ? BigInt(value) : null;
 }
 
-function eventAmount(log: VerifiedContractLog, name: "ethIn" | "ethOut") {
+function eventAmountWei(log: VerifiedContractLog, name: "ethIn" | "ethOut" | "taxPaid") {
   const value = log.parameters.get(name);
-  return value && /^\d+$/.test(value) ? Number(BigInt(value)) / 1e18 : 0;
+  return value && /^\d+$/.test(value) ? BigInt(value) : 0n;
 }
 
 export function stonkSafeLaunchActivity(logs: readonly VerifiedContractLog[], id: bigint, nowMs: number) {
@@ -145,7 +146,7 @@ export function stonkSafeLaunchActivity(logs: readonly VerifiedContractLog[], id
   let sells1h = 0;
   let buys24h = 0;
   let sells24h = 0;
-  let volumeQuote24h = 0;
+  let volumeQuoteWei24h = 0n;
   let lastActivityAt: string | null = null;
   let launchBlock: string | null = null;
   let launchTransactionHash: string | null = null;
@@ -162,11 +163,22 @@ export function stonkSafeLaunchActivity(logs: readonly VerifiedContractLog[], id
     if (ageMs <= 60 * 60 * 1_000) buy ? buys1h += 1 : sells1h += 1;
     if (ageMs <= 24 * 60 * 60 * 1_000) {
       buy ? buys24h += 1 : sells24h += 1;
-      volumeQuote24h += eventAmount(log, buy ? "ethIn" : "ethOut");
+      volumeQuoteWei24h += buy
+        ? eventAmountWei(log, "ethIn")
+        : eventAmountWei(log, "ethOut") + eventAmountWei(log, "taxPaid");
     }
     if (!lastActivityAt || Date.parse(log.blockTimestamp) > Date.parse(lastActivityAt)) lastActivityAt = log.blockTimestamp;
   }
-  return { buys1h, sells1h, buys24h, sells24h, volumeQuote24h, lastActivityAt, launchBlock, launchTransactionHash };
+  return {
+    buys1h,
+    sells1h,
+    buys24h,
+    sells24h,
+    volumeQuote24h: Number(formatUnits(volumeQuoteWei24h, 18)),
+    lastActivityAt,
+    launchBlock,
+    launchTransactionHash
+  };
 }
 
 async function readLaunch(client: PublicClient, id: bigint) {
