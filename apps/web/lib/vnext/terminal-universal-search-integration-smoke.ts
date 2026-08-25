@@ -324,7 +324,13 @@ assert.match(hook, /requestSequence !== searchSequence\.current/);
 assert.match(hook, /searchMarketsRef\.current = nextMarkets/);
 assert.match(hook, /\/api\/vnext\/market-search\?\$\{parameters\}/);
 assert.doesNotMatch(hook, /cache: "no-store"/);
-assert.match(hook, /UNIVERSAL_SEARCH_TIMEOUT_MS = 5_000/);
+assert.match(hook, /UNIVERSAL_SEARCH_TIMEOUT_MS = 6_000/);
+assert.match(serverSearch, /SERVER_INTERNAL_DEADLINE_MS = 4_000/);
+assert.ok(
+  serverSearch.indexOf("SERVER_INTERNAL_DEADLINE_MS = 4_000") >= 0
+  && hook.indexOf("UNIVERSAL_SEARCH_TIMEOUT_MS = 6_000") >= 0,
+  "the bounded server search deadline must leave a meaningful margin before the client aborts"
+);
 assert.match(hook, /status: "aborted"/);
 assert.match(hook, /canonicalPayload\?\.status === "not_admitted"/);
 assert.match(hook, /marketPayload\?\.directoryAdmission === "not_admitted"/);

@@ -61,41 +61,46 @@ function reviewFindings(evidence: TokenRiskEvidence): TokenRiskFinding[] {
       label: "Privileged token controls require review"
     });
   }
-  if (
+  if (evidence.marketVerified && (
     evidence.sellSimulation.status === "unavailable"
     || evidence.sellSimulation.status === "not-run"
-  ) {
+  )) {
     add({
       code: "sell-direction-unknown",
       severity: "review",
       label: "Sell-direction evidence is unavailable"
     });
   }
-  if (evidence.liquidity.controlStatus === "creator-controlled") {
+  if (evidence.marketVerified && evidence.liquidity.controlStatus === "creator-controlled") {
     add({
       code: "liquidity-creator-controlled",
       severity: "review",
       label: "Creator can transfer the verified liquidity position"
     });
-  } else if (evidence.liquidity.controlStatus === "not-proven") {
+  } else if (evidence.marketVerified && evidence.liquidity.controlStatus === "not-proven") {
     add({
       code: "liquidity-control-unproven",
       severity: "review",
       label: "Liquidity-position control is not proven"
     });
   }
-  if (evidence.liquidity.approvedOperator) {
+  if (evidence.marketVerified && evidence.liquidity.approvedOperator) {
     add({
       code: "liquidity-operator-approved",
       severity: "review",
       label: "Liquidity position has an approved transfer operator"
     });
   }
-  if ((evidence.holders.largestNonPoolHolder?.shareBps ?? 0) >= 1_000) {
+  const largestHolderShare = evidence.marketVerified
+    ? evidence.holders.largestNonPoolHolder?.shareBps
+    : evidence.holders.largestHolder?.shareBps;
+  if ((largestHolderShare ?? 0) >= 1_000) {
     add({
       code: "holder-concentration",
       severity: "review",
-      label: "One non-pool wallet controls at least 10% of supply"
+      label: evidence.marketVerified
+        ? "One non-pool wallet controls at least 10% of supply"
+        : "One visible holder controls at least 10% of supply"
     });
   }
   if ((evidence.holders.creatorShareBps ?? 0) >= 1_000) {
@@ -105,7 +110,10 @@ function reviewFindings(evidence: TokenRiskEvidence): TokenRiskFinding[] {
       label: "Reported creator controls at least 10% of supply"
     });
   }
-  if (evidence.holders.topNonPoolHolders.some((holder) => holder.isScam)) {
+  const visibleHolders = evidence.marketVerified
+    ? evidence.holders.topNonPoolHolders
+    : evidence.holders.topHolders;
+  if (visibleHolders.some((holder) => holder.isScam)) {
     add({
       code: "flagged-holder",
       severity: "review",
@@ -124,7 +132,7 @@ function reviewFindings(evidence: TokenRiskEvidence): TokenRiskFinding[] {
 
 function blockedFindings(evidence: TokenRiskEvidence): TokenRiskFinding[] {
   const findings: TokenRiskFinding[] = [];
-  if (evidence.sellSimulation.status === "blocked") {
+  if (evidence.marketVerified && evidence.sellSimulation.status === "blocked") {
     findings.push({
       code: "sell-direction-blocked",
       severity: "blocked",

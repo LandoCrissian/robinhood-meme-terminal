@@ -1,7 +1,7 @@
 export type TokenRiskEvidence = {
   token: string;
-  pair: string;
-  marketVerified: true;
+  pair: string | null;
+  marketVerified: boolean;
   coverage: "complete" | "partial";
   contract: {
     sourcePublished: boolean | null;
@@ -51,6 +51,17 @@ export type TokenRiskEvidence = {
       isScam: boolean;
     }>;
     largestNonPoolHolder: {
+      address: string;
+      shareBps: number;
+    } | null;
+    topHolderShareBps: number | null;
+    topHolders: Array<{
+      address: string;
+      shareBps: number;
+      isContract: boolean;
+      isScam: boolean;
+    }>;
+    largestHolder: {
       address: string;
       shareBps: number;
     } | null;

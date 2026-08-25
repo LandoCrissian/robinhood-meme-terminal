@@ -27,7 +27,7 @@ import {
 } from "../../lib/vnext/universal-market-search-contract";
 
 const IDENTITY_LOOKUP_TIMEOUT_MS = 5_000;
-const UNIVERSAL_SEARCH_TIMEOUT_MS = 5_000;
+const UNIVERSAL_SEARCH_TIMEOUT_MS = 6_000;
 
 export type DirectoryStatus = "loading" | "ready" | "stale" | "error";
 export type IdentityStatus = "idle" | "checking" | "verified" | "unverified";
@@ -186,6 +186,7 @@ export function useVNextMarketDirectory() {
       const controller = new AbortController();
       const timeout = window.setTimeout(() => controller.abort(), IDENTITY_LOOKUP_TIMEOUT_MS);
       try {
+        const canonicalAlreadyRead = completedCanonicalExactQueries.current.has(selectionKey);
         const marketQuery = new URLSearchParams({ contract: address });
         const identityQuery = new URLSearchParams({ address });
         const searchQuery = new URLSearchParams({ q: address });
@@ -203,7 +204,7 @@ export function useVNextMarketDirectory() {
           return response.ok ? payload : null;
         };
         const [canonicalResult, marketResult, identityResult] = await Promise.allSettled([
-          completedCanonicalExactQueries.current.has(selectionKey) ? Promise.resolve(null) : readCanonicalJson(),
+          canonicalAlreadyRead ? Promise.resolve(null) : readCanonicalJson(),
           readExternalJson(`/api/markets/external?${marketQuery}`),
           readExternalJson(`/api/vnext/asset-identity?${identityQuery}`)
         ]);

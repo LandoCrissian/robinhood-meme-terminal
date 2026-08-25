@@ -311,6 +311,12 @@ const clearEvidence: TokenRiskEvidence = {
       address: "0x4444444444444444444444444444444444444444",
       shareBps: 900
     },
+    topHolderShareBps: 900,
+    topHolders: [],
+    largestHolder: {
+      address: "0x4444444444444444444444444444444444444444",
+      shareBps: 900
+    },
     creator: null,
     creatorShareBps: null
   },

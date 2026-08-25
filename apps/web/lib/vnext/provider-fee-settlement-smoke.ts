@@ -14,12 +14,13 @@ import {
   type VNextAtomicFeeSettlementProof
 } from "./provider-fee-settlement";
 
-const providers = ["sushi", "uniswap-v3", "uniswapx", "zero-x-swap", "zero-x-gasless", "up-v2", "up-cl"] as const;
+const providers = ["sushi", "uniswap-v3", "uniswap-v4", "uniswapx", "zero-x-swap", "zero-x-gasless", "up-v2", "up-cl"] as const;
 for (const provider of providers) {
   assert.equal(VNEXT_PROVIDER_FEE_SETTLEMENT_REGISTRY[provider].state, "QUOTE_ONLY");
   assert.equal(isVNextWalletFeeSettlementAdmitted(provider), false);
 }
 assert.equal(hasVNextWalletAuthorizationCodec("uniswap-v3"), true);
+assert.equal(hasVNextWalletAuthorizationCodec("uniswap-v4"), false, "V4 remains quote-only without a wallet codec");
 assert.equal(hasVNextWalletAuthorizationCodec("up-v2"), true);
 assert.equal(hasVNextWalletAuthorizationCodec("up-cl"), true);
 assert.equal(hasVNextWalletAuthorizationCodec("sushi"), false, "PR #427 remains separate and draft");

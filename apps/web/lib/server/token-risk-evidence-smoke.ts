@@ -151,6 +151,37 @@ async function main() {
   assert.match(evidence.warnings.join(" "), /does not prove the liquidity position is locked/);
   assert.equal(evidence.checkedAt, "2026-07-27T12:00:00.000Z");
 
+  let tokenOnlyLiquidityCalls = 0;
+  let tokenOnlySellCalls = 0;
+  const tokenOnly = await fetchTokenRiskEvidence(
+    { token, creator },
+    {
+      fetch: mockFetch(),
+      readCreatorBalance: async () => 120n,
+      readLiquidityPosition: async () => {
+        tokenOnlyLiquidityCalls += 1;
+        throw new Error("Token-only evidence must not inspect an address-style liquidity position.");
+      },
+      simulateSellTransfer: async () => {
+        tokenOnlySellCalls += 1;
+        throw new Error("Token-only evidence must not simulate an address-pool transfer.");
+      },
+      now: () => Date.parse("2026-07-27T12:00:00.000Z")
+    }
+  );
+  assert.equal(tokenOnly.marketVerified, false);
+  assert.equal(tokenOnly.pair, null);
+  assert.equal(tokenOnlyLiquidityCalls, 0);
+  assert.equal(tokenOnlySellCalls, 0);
+  assert.equal(tokenOnly.contract.sourcePublished, true);
+  assert.equal(tokenOnly.contract.isProxy, false);
+  assert.equal(tokenOnly.holders.count, 92);
+  assert.equal(tokenOnly.holders.topHolderShareBps, 9_000);
+  assert.equal(tokenOnly.holders.largestHolder?.address, pair);
+  assert.equal(tokenOnly.holders.largestHolder?.shareBps, 7_000);
+  assert.equal(tokenOnly.sellSimulation.status, "not-run");
+  assert.doesNotMatch(tokenOnly.warnings.join(" "), /liquidity position|holder-to-pool|sellability/);
+
   const opaque = await fetchTokenRiskEvidence(
     { token, pair },
     {

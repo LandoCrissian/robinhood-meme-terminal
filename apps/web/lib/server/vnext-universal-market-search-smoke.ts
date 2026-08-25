@@ -266,6 +266,8 @@ function candidateFetch(input: {
   items?: unknown[];
   dexStatus?: number;
   blockscoutStatus?: number;
+  dexDelayMs?: number;
+  blockscoutDelayMs?: number;
 }) {
   return async (requested: string | URL, init?: RequestInit) => {
     const url = new URL(requested.toString());
@@ -273,10 +275,19 @@ function candidateFetch(input: {
     assert.equal(init?.method, "GET");
     assert.equal(new Headers(init?.headers).get("Accept"), "application/json");
     assert.equal(init?.cache, "no-store");
+    const delay = (milliseconds: number) => new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(resolve, milliseconds);
+      init?.signal?.addEventListener("abort", () => {
+        clearTimeout(timeout);
+        reject(new Error("provider aborted"));
+      }, { once: true });
+    });
     if (url.origin + url.pathname === "https://api.dexscreener.com/latest/dex/search") {
+      if (input.dexDelayMs) await delay(input.dexDelayMs);
       return jsonResponse({ pairs: input.pairs ?? [] }, input.dexStatus ?? 200);
     }
     assert.equal(url.origin + url.pathname, "https://robinhoodchain.blockscout.com/api/v2/search");
+    if (input.blockscoutDelayMs) await delay(input.blockscoutDelayMs);
     return jsonResponse({ items: input.items ?? [] }, input.blockscoutStatus ?? 200);
   };
 }
@@ -708,6 +719,46 @@ async function assertIndependentCandidateSources() {
     timeoutMs: 500
   });
   assert.equal(bothDown.status, "candidate_discovery_unavailable");
+
+  const bothReadyEmpty = await searchVNextUniversalMarkets("IDENTITY", {
+    readInventory: async () => verifiedInventory([]),
+    readIdentity: identityReader,
+    fetch: candidateFetch({ pairs: [], items: [] }),
+    timeoutMs: 500
+  });
+  assert.equal(bothReadyEmpty.status, "not_found");
+
+  const cases = [
+    {
+      name: "fast-empty DexScreener and slow-hit Blockscout",
+      input: { pairs: [], items: [blockscoutCandidate(tokenOnlyAddress)], dexDelayMs: 50, blockscoutDelayMs: 300 }
+    },
+    {
+      name: "fast-empty Blockscout and slow-hit DexScreener",
+      input: { pairs: [providerPair(tokenOnlyAddress)], items: [], dexDelayMs: 300, blockscoutDelayMs: 50 }
+    },
+    {
+      name: "fast-irrelevant DexScreener and slow-hit Blockscout",
+      input: { pairs: [providerPair(unrelatedAddress)], items: [blockscoutCandidate(tokenOnlyAddress)], dexDelayMs: 50, blockscoutDelayMs: 300 }
+    },
+    {
+      name: "fast-irrelevant Blockscout and slow-hit DexScreener",
+      input: { pairs: [providerPair(tokenOnlyAddress)], items: [blockscoutCandidate(unrelatedAddress)], dexDelayMs: 300, blockscoutDelayMs: 50 }
+    }
+  ];
+
+  for (const testCase of cases) {
+    const startedAt = Date.now();
+    const result = await searchVNextUniversalMarkets("IDENTITY", {
+      readInventory: async () => verifiedInventory([]),
+      readIdentity: identityReader,
+      fetch: candidateFetch(testCase.input),
+      timeoutMs: 500
+    });
+    assert.equal(result.status, "found", testCase.name);
+    assert.equal(result.results[0]?.address, tokenOnlyAddress, testCase.name);
+    assert.ok(Date.now() - startedAt < 500, `${testCase.name} must remain within the bounded provider deadline`);
+  }
 }
 
 async function assertProviderIdentityClaimsNeverWin() {

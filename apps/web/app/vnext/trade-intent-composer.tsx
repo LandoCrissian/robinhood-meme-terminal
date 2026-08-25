@@ -13,6 +13,7 @@ import { postApprovalVerificationOutcome, resolvedVNextExecutionOutcome } from "
 import { parseVNextAuthorizationBundle, type VNextAuthorizationPlan } from "../../lib/vnext/authorization-plan";
 import { cachedVNextQuoteForRequest, isVNextQuoteReusableForTrade, VNEXT_BACKGROUND_QUOTE_DEBOUNCE_MS, VNEXT_BACKGROUND_QUOTE_REFRESH_MS, type VNextCachedQuote } from "../../lib/vnext/background-quote";
 import type { VNextExecutionUiState, VNextSelectedMarketExecutionState } from "../../lib/vnext/market-directory";
+import type { VNextUniversalMarketSearchPool } from "../../lib/vnext/universal-market-search-contract";
 import {
   ROBINHOOD_ETH,
   ROBINHOOD_MAINNET_CHAIN_ID,
@@ -61,7 +62,7 @@ const DEFAULT_BUY_AMOUNT = "25";
 const DEFAULT_NATIVE_BUY_AMOUNT = "0.0005";
 const NATIVE_GAS_RESERVE_ATOMIC = 100_000_000_000_000n;
 
-export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, walletAssets, nativeBalance, executionRecord, onContinueTrading, sideRequest, executionState, executionUiState }: {
+export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, walletAssets, nativeBalance, executionRecord, onContinueTrading, sideRequest, executionState, executionUiState, canonicalMarket }: {
   marketName: string;
   marketSymbol: string;
   marketAsset?: AssetMetadata;
@@ -72,6 +73,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
   sideRequest?: { side: TradeSide; nonce: number };
   executionState: VNextSelectedMarketExecutionState;
   executionUiState: VNextExecutionUiState;
+  canonicalMarket?: VNextUniversalMarketSearchPool;
 }) {
   const [side, setSide] = useState<TradeSide>("buy");
   const [amount, setAmount] = useState(DEFAULT_BUY_AMOUNT);
@@ -239,7 +241,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
     : pair?.outputAsset.id.locator.kind === "native"
       ? ROBINHOOD_NATIVE_ASSET_ADDRESS
       : null;
-  const requestKey = `${address ?? ""}:${side}:${amount}:${inputAddress ?? ""}:${outputAddress ?? ""}`;
+  const requestKey = `${address ?? ""}:${side}:${amount}:${inputAddress ?? ""}:${outputAddress ?? ""}:${canonicalMarket?.poolKey ?? "auto"}`;
   const cachedQuote = cachedVNextQuoteForRequest(lastReadyQuote.current, requestKey);
   useEffect(() => {
     backgroundQuoteEpoch.current += 1;
@@ -426,7 +428,13 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
       inputAsset: inputAddress,
       outputAsset: outputAddress,
       inputAmountAtomic: draft.intent.amountAtomic,
-      recipient: address
+      recipient: address,
+      ...(canonicalMarket?.sourceId === "uniswap-v4"
+        && canonicalMarket.version === 4
+        && ((canonicalMarket.token0 === inputAddress.toLowerCase() && canonicalMarket.token1 === outputAddress.toLowerCase())
+          || (canonicalMarket.token0 === outputAddress.toLowerCase() && canonicalMarket.token1 === inputAddress.toLowerCase()))
+        ? { canonicalMarket: { sourceId: "uniswap-v4", poolId: canonicalMarket.poolKey } }
+        : {})
     }, {
       identityScope: identity.userId,
       identityToken: identity.identityToken,
@@ -509,6 +517,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
   }, [
     address,
     authorizationState.state,
+    canonicalMarket,
     draft.intent,
     executionRecord?.state,
     identity.authenticated,

@@ -55,6 +55,12 @@ const evidence: TokenRiskEvidence = {
       { address: holder, shareBps: 600, isContract: false, isScam: false }
     ],
     largestNonPoolHolder: { address: creator, shareBps: 900 },
+    topHolderShareBps: 1_500,
+    topHolders: [
+      { address: creator, shareBps: 900, isContract: false, isScam: false },
+      { address: holder, shareBps: 600, isContract: false, isScam: false }
+    ],
+    largestHolder: { address: creator, shareBps: 900 },
     creator,
     creatorShareBps: 900
   },

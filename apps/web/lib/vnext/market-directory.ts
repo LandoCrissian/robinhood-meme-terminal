@@ -608,10 +608,40 @@ export function deriveVNextMarketState(market: VNextDirectoryMarket): VNextMarke
   };
 }
 
-export function selectVNextChartPool(market: Pick<VNextDirectoryMarket, "verifiedMarkets">) {
-  return market.verifiedMarkets?.find((evidence) => (
+export function selectVNextCanonicalMarket(
+  market: Pick<VNextDirectoryMarket, "address" | "canonicalMarkets" | "primaryMarket" | "launchpadEvidence">
+) {
+  const token = market.address.toLowerCase();
+  const candidates = (market.canonicalMarkets ?? []).filter((evidence) => (
+    evidence.token0 === token || evidence.token1 === token
+  ));
+  const lifecyclePoolIds = new Set((market.launchpadEvidence ?? [])
+    .map((evidence) => evidence.venue.poolId?.toLowerCase())
+    .filter((value): value is string => Boolean(value)));
+  const primaryIdentity = market.primaryMarket?.pool.value.toLowerCase();
+  return [...candidates].sort((left, right) => {
+    const rank = (candidate: VNextUniversalMarketSearchPool) => (
+      candidate.poolKey === primaryIdentity ? 0
+        : lifecyclePoolIds.has(candidate.poolKey) ? 1
+          : candidate.poolAddress ? 2
+            : 3
+    );
+    return rank(left) - rank(right)
+      || left.sourceId.localeCompare(right.sourceId)
+      || left.poolKey.localeCompare(right.poolKey);
+  })[0];
+}
+
+export function selectVNextChartPool(market: Pick<VNextDirectoryMarket, "address" | "verifiedMarkets" | "canonicalMarkets">) {
+  const verified = market.verifiedMarkets?.find((evidence) => (
     evidence.chartEligibility === "eligible" && evidence.pool.kind === "evm-address"
   ))?.pool.value;
+  if (verified) return verified;
+  const token = market.address.toLowerCase();
+  return market.canonicalMarkets?.find((evidence) => (
+    evidence.poolAddress !== null
+    && (evidence.token0 === token || evidence.token1 === token)
+  ))?.poolAddress ?? undefined;
 }
 
 export function isVNextDirectoryMarketSelectable(market: VNextDirectoryMarket) {
