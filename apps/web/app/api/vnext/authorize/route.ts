@@ -6,6 +6,10 @@ import { stockTokenExecutionPolicyErrorResponse } from "../../../../lib/server/r
 import { readVNextVerifiedAssetIdentity } from "../../../../lib/server/vnext-asset-identity";
 import { prepareRobinhoodVNextAuthorization } from "../../../../lib/server/vnext-execution-engine";
 import { authorizationPayloadHash, type VNextAuthorizationPlan } from "../../../../lib/vnext/authorization-plan";
+import {
+  projectIdentityAdmissionErrorResponse,
+  requireProjectIdentityDirectoryAdmitted
+} from "../../../../lib/server/project-identity-admission";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -49,6 +53,10 @@ export async function POST(request: Request) {
     if (!inputIdentity || !outputIdentity) {
       return Response.json({ error: "Both assets require verified Robinhood Chain identity before wallet review." }, { status: 422, headers: noStore });
     }
+    await requireProjectIdentityDirectoryAdmitted([
+      { address: inputAsset },
+      { address: outputAsset }
+    ]);
 
     const preparedAtMs = Date.now();
     const prepared = await prepareRobinhoodVNextAuthorization(parsed.data.provider, {
@@ -117,6 +125,8 @@ export async function POST(request: Request) {
   } catch (cause) {
     const identityResponse = tradeIdentityErrorResponse(cause);
     if (identityResponse) return identityResponse;
+    const projectIdentityResponse = projectIdentityAdmissionErrorResponse(cause);
+    if (projectIdentityResponse) return projectIdentityResponse;
     const stockTokenResponse = stockTokenExecutionPolicyErrorResponse(cause);
     if (stockTokenResponse) return stockTokenResponse;
     const message = cause instanceof Error && /deadline is stale|exact next action is not ready|wallet authorization is not available/.test(cause.message)

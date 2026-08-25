@@ -5,6 +5,10 @@ import { quoteRobinhoodVNextExecution } from "../../../../lib/server/vnext-execu
 import { requireAuthenticatedTradeWallet, tradeIdentityErrorResponse } from "../../../../lib/server/rmt-trade-identity";
 import { readVNextVerifiedAssetIdentity } from "../../../../lib/server/vnext-asset-identity";
 import type { VNextQuoteResponse } from "../../../../lib/vnext/quote-observation";
+import {
+  projectIdentityAdmissionErrorResponse,
+  requireProjectIdentityDirectoryAdmitted
+} from "../../../../lib/server/project-identity-admission";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -37,6 +41,10 @@ export async function POST(request: Request) {
     if (!inputIdentity || !outputIdentity) {
       return Response.json({ error: "Both quote assets require verified Robinhood Chain identity and decimals." }, { status: 422, headers: { "Cache-Control": "no-store" } });
     }
+    await requireProjectIdentityDirectoryAdmitted([
+      { address: inputAsset },
+      { address: outputAsset }
+    ]);
 
     const requestedAtMs = Date.now();
     const attempts = await quoteRobinhoodVNextExecution({
@@ -63,6 +71,8 @@ export async function POST(request: Request) {
   } catch (cause) {
     const identityResponse = tradeIdentityErrorResponse(cause);
     if (identityResponse) return identityResponse;
+    const projectIdentityResponse = projectIdentityAdmissionErrorResponse(cause);
+    if (projectIdentityResponse) return projectIdentityResponse;
     return Response.json({ error: "Unable to compare live VNext routes." }, { status: 422, headers: { "Cache-Control": "no-store" } });
   }
 }

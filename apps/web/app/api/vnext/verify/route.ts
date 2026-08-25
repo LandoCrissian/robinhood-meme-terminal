@@ -5,6 +5,10 @@ import { requireAuthenticatedTradeWallet, tradeIdentityErrorResponse } from "../
 import { stockTokenExecutionPolicyErrorResponse } from "../../../../lib/server/robinhood-stock-token-registry";
 import { readVNextVerifiedAssetIdentity } from "../../../../lib/server/vnext-asset-identity";
 import { verifyRobinhoodVNextExecution } from "../../../../lib/server/vnext-execution-engine";
+import {
+  projectIdentityAdmissionErrorResponse,
+  requireProjectIdentityDirectoryAdmitted
+} from "../../../../lib/server/project-identity-admission";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -35,6 +39,10 @@ export async function POST(request: Request) {
     if (!inputIdentity || !outputIdentity) {
       return Response.json({ error: "Both assets require verified Robinhood Chain identity before route verification." }, { status: 422, headers: { "Cache-Control": "no-store" } });
     }
+    await requireProjectIdentityDirectoryAdmitted([
+      { address: inputAsset },
+      { address: outputAsset }
+    ]);
     const executionId = `0x${randomBytes(32).toString("hex")}` as const;
     const evidence = await verifyRobinhoodVNextExecution(parsed.data.provider, {
       chainId: 4_663,
@@ -54,6 +62,8 @@ export async function POST(request: Request) {
   } catch (cause) {
     const identityResponse = tradeIdentityErrorResponse(cause);
     if (identityResponse) return identityResponse;
+    const projectIdentityResponse = projectIdentityAdmissionErrorResponse(cause);
+    if (projectIdentityResponse) return projectIdentityResponse;
     const stockTokenResponse = stockTokenExecutionPolicyErrorResponse(cause);
     if (stockTokenResponse) return stockTokenResponse;
     const message = cause instanceof Error && /No canonical Uniswap|No up-|runtime bytecode is not approved|dependencies changed|strict verification is not available|moved below the indicative protected-output floor|quote block was reorganized/.test(cause.message)

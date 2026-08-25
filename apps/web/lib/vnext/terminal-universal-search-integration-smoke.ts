@@ -287,7 +287,7 @@ assert.equal(exactVNextLocalDirectoryMatches([v4Directory, duplicateName], "STON
 assert.equal(exactVNextLocalDirectoryMatches([v4Directory, duplicateName], "StonkBroker").length, 2);
 assert.equal(mergeVNextDirectoryAndSearchMarkets([], [v4Directory, duplicateName]).length, 2);
 
-for (const status of ["not_found", "inventory_unavailable", "candidate_discovery_unavailable", "invalid_query"] as const) {
+for (const status of ["not_found", "not_admitted", "inventory_unavailable", "candidate_discovery_unavailable", "invalid_query"] as const) {
   const parsed = parseVNextUniversalMarketSearchResult({
     query: "missing",
     queryKind: "text",
@@ -326,11 +326,14 @@ assert.match(hook, /\/api\/vnext\/market-search\?\$\{parameters\}/);
 assert.doesNotMatch(hook, /cache: "no-store"/);
 assert.match(hook, /UNIVERSAL_SEARCH_TIMEOUT_MS = 5_000/);
 assert.match(hook, /status: "aborted"/);
+assert.match(hook, /canonicalPayload\?\.status === "not_admitted"/);
+assert.match(hook, /marketPayload\?\.directoryAdmission === "not_admitted"/);
 assert.match(shell, /mergeVNextDirectoryAndSearchMarkets/);
 assert.match(shell, /clearUniversalSearch\(\);[\s\S]*setQuery\(nextQuery\)/);
 assert.match(presentation, /Search token, contract or pool/);
 assert.match(presentation, /rmtSearchContract/);
 assert.match(presentation, /count=\{props\.expandedSearchResultCount\}/);
+assert.match(presentation, /Not admitted to the RMT directory\./);
 assert.doesNotMatch(presentation, /SearchStatusMessage status=\{props\.searchStatus\} count=\{props\.filteredMarkets\.length\}/);
 assert.match(shell, /expandedSearchResultCount:[\s\S]*searchMarkets\.length/);
 assert.match(workspace, /shouldRequestVNextExternalWorkspaceMarket\(directoryMarket\)/);

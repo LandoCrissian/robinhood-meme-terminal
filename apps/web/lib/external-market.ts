@@ -223,6 +223,7 @@ export type ExternalMarket = {
 export type ExternalMarketResponse = {
   markets?: ExternalMarket[];
   assetRecords?: AssetMarketRecord[];
+  directoryAdmission?: "admitted" | "not_admitted";
   resolution?: UniversalMarketResolution;
   source?: string;
   rankingVersion?: string;
