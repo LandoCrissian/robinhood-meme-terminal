@@ -1,5 +1,5 @@
-import { getAddress, isAddress, zeroAddress, type Address } from "viem";
-import { readRobinhoodTokenIdentity } from "./universal-market-resolver";
+import { createPublicClient, erc20Abi, getAddress, http, isAddress, zeroAddress, type Address } from "viem";
+import { robinhoodChain } from "@rmt/shared/chains";
 
 const COINGECKO_PROJECT_REGISTRY_URL = "https://api.coingecko.com/api/v3/coins/list?include_platform=true&status=active";
 const ROBINHOOD_PLATFORM_ID = "robinhood";
@@ -7,8 +7,11 @@ const REGISTRY_TIMEOUT_MS = 4_000;
 const MAXIMUM_REGISTRY_RESPONSE_BYTES = 5_000_000;
 const MAXIMUM_REGISTRY_ENTRIES = 25_000;
 const REGISTRY_CACHE_TTL_MS = 5 * 60_000;
+const REGISTRY_FAILURE_BACKOFF_MS = 15_000;
 const IDENTITY_CACHE_TTL_MS = 5 * 60_000;
-const IDENTITY_READ_CONCURRENCY = 8;
+const MAXIMUM_BATCH_IDENTITIES = 256;
+const IDENTITIES_PER_MULTICALL = 100;
+const ROBINHOOD_MULTICALL3 = getAddress("0xcA11bde05977b3631167028862bE2a173976CA11");
 
 export type ProjectTokenIdentity = {
   address: string;
@@ -47,6 +50,13 @@ export type ProjectIdentityAdmissionCandidate = {
 export type ProjectIdentityAdmissionDependencies = {
   readAuthority?: () => Promise<ProjectIdentityAuthoritySnapshot>;
   readIdentity?: (address: Address) => Promise<ProjectTokenIdentity | null>;
+  readIdentities?: (addresses: readonly Address[]) => Promise<ReadonlyMap<string, ProjectTokenIdentity>>;
+};
+
+export type ProjectIdentityAuthorityReaderDependencies = {
+  fetch?: typeof fetch;
+  now?: () => number;
+  timeoutMs?: number;
 };
 
 type CoinGeckoRegistryItem = {
@@ -58,16 +68,26 @@ type CoinGeckoRegistryItem = {
 
 type CachedAuthority = {
   expiresAt: number;
-  snapshot: ProjectIdentityAuthoritySnapshot;
+  observedAt: number;
+  snapshot: Extract<ProjectIdentityAuthoritySnapshot, { status: "ready" }>;
 };
 
 type CachedIdentity = {
   expiresAt: number;
-  identity: Promise<ProjectTokenIdentity | null>;
+  identity: ProjectTokenIdentity;
 };
 
-let cachedAuthority: CachedAuthority | undefined;
 const identityCache = new Map<string, CachedIdentity>();
+
+const identityClient = createPublicClient({
+  chain: robinhoodChain,
+  transport: http(
+    process.env.RMT_MAINNET_RPC_URL
+      ?? process.env.ROBINHOOD_MAINNET_RPC_URL
+      ?? robinhoodChain.rpcUrls.default.http[0],
+    { retryCount: 0, timeout: 2_000 }
+  )
+});
 
 export class ConflictingProjectIdentityError extends Error {
   readonly code = "CONFLICTING_PROJECT_IDENTITY";
@@ -98,6 +118,12 @@ function projectInitialism(value: string) {
     .join("");
 }
 
+function isBoundedInitialismExtension(value: string, base: string) {
+  return value.startsWith(base)
+    && value.length > base.length
+    && value.length <= base.length + 2;
+}
+
 function materiallyConfusableProjectIdentity(
   candidate: ProjectTokenIdentity,
   established: AuthoritativeProjectIdentity
@@ -109,8 +135,16 @@ function materiallyConfusableProjectIdentity(
   const establishedName = projectText(established.name);
   if (candidateName && candidateName === establishedName) return true;
   if (candidateSymbol.length < 2 || candidateSymbol.length > 10) return false;
-  return projectInitialism(candidate.name) === candidateSymbol
-    && projectInitialism(established.name) === establishedSymbol;
+  const candidateInitialism = projectInitialism(candidate.name);
+  const establishedInitialism = projectInitialism(established.name);
+  if (candidateInitialism === candidateSymbol && establishedInitialism === establishedSymbol) return true;
+  return (
+    establishedInitialism === establishedSymbol
+    && isBoundedInitialismExtension(candidateInitialism, candidateSymbol)
+  ) || (
+    candidateInitialism === candidateSymbol
+    && isBoundedInitialismExtension(establishedInitialism, establishedSymbol)
+  );
 }
 
 function canonicalAddress(value: unknown) {
@@ -143,56 +177,111 @@ export function parseProjectIdentityAuthoritySnapshot(value: unknown): ProjectId
       authority: "coingecko-robinhood-contract-registry"
     });
   }
-  return { status: "ready", entries: [...entries.values()] };
+  return entries.size > 0
+    ? { status: "ready", entries: [...entries.values()] }
+    : { status: "unavailable", entries: [] };
 }
 
-async function fetchAuthoritySnapshot(): Promise<ProjectIdentityAuthoritySnapshot> {
+export function createProjectIdentityAuthorityReader(
+  dependencies: ProjectIdentityAuthorityReaderDependencies = {}
+) {
+  let cachedAuthority: CachedAuthority | undefined;
+  let failureBackoffUntil = 0;
+  const fetchImplementation = dependencies.fetch ?? fetch;
+  const now = dependencies.now ?? Date.now;
+  const timeoutMs = dependencies.timeoutMs ?? REGISTRY_TIMEOUT_MS;
+
+  return async (): Promise<ProjectIdentityAuthoritySnapshot> => {
+    const requestedAt = now();
+    if (cachedAuthority && cachedAuthority.expiresAt > requestedAt) return cachedAuthority.snapshot;
+    if (failureBackoffUntil > requestedAt) return { status: "unavailable", entries: [] };
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const response = await fetchImplementation(COINGECKO_PROJECT_REGISTRY_URL, {
+        method: "GET",
+        headers: { Accept: "application/json" },
+        cache: "no-store",
+        signal: controller.signal
+      });
+      const contentLength = Number(response.headers.get("content-length"));
+      if (!response.ok || (Number.isFinite(contentLength) && contentLength > MAXIMUM_REGISTRY_RESPONSE_BYTES)) {
+        failureBackoffUntil = requestedAt + REGISTRY_FAILURE_BACKOFF_MS;
+        return { status: "unavailable", entries: [] };
+      }
+      const text = await response.text();
+      if (Buffer.byteLength(text, "utf8") > MAXIMUM_REGISTRY_RESPONSE_BYTES) {
+        failureBackoffUntil = requestedAt + REGISTRY_FAILURE_BACKOFF_MS;
+        return { status: "unavailable", entries: [] };
+      }
+      const snapshot = parseProjectIdentityAuthoritySnapshot(JSON.parse(text) as unknown);
+      if (snapshot.status !== "ready") {
+        failureBackoffUntil = requestedAt + REGISTRY_FAILURE_BACKOFF_MS;
+        return snapshot;
+      }
+      cachedAuthority = {
+        expiresAt: requestedAt + REGISTRY_CACHE_TTL_MS,
+        observedAt: requestedAt,
+        snapshot
+      };
+      failureBackoffUntil = 0;
+      return snapshot;
+    } catch {
+      failureBackoffUntil = requestedAt + REGISTRY_FAILURE_BACKOFF_MS;
+      return { status: "unavailable", entries: [] };
+    } finally {
+      clearTimeout(timeout);
+    }
+  };
+}
+
+const fetchAuthoritySnapshot = createProjectIdentityAuthorityReader();
+
+function boundedIdentityText(value: unknown, maximum: number) {
+  return typeof value === "string" ? boundedText(value, maximum) : null;
+}
+
+async function readBatchedIdentities(addresses: readonly Address[]) {
   const now = Date.now();
-  if (cachedAuthority && cachedAuthority.expiresAt > now) return cachedAuthority.snapshot;
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), REGISTRY_TIMEOUT_MS);
-  try {
-    const response = await fetch(COINGECKO_PROJECT_REGISTRY_URL, {
-      method: "GET",
-      headers: { Accept: "application/json" },
-      cache: "no-store",
-      signal: controller.signal
-    });
-    const contentLength = Number(response.headers.get("content-length"));
-    if (!response.ok || (Number.isFinite(contentLength) && contentLength > MAXIMUM_REGISTRY_RESPONSE_BYTES)) {
-      return { status: "unavailable", entries: [] };
-    }
-    const text = await response.text();
-    if (Buffer.byteLength(text, "utf8") > MAXIMUM_REGISTRY_RESPONSE_BYTES) {
-      return { status: "unavailable", entries: [] };
-    }
-    const snapshot = parseProjectIdentityAuthoritySnapshot(JSON.parse(text) as unknown);
-    if (snapshot.status === "ready") {
-      cachedAuthority = { expiresAt: now + REGISTRY_CACHE_TTL_MS, snapshot };
-    }
-    return snapshot;
-  } catch {
-    return { status: "unavailable", entries: [] };
-  } finally {
-    clearTimeout(timeout);
+  const unique = [...new Map(addresses.slice(0, MAXIMUM_BATCH_IDENTITIES).map((address) => {
+    const normalized = getAddress(address);
+    return [normalized.toLowerCase(), normalized] as const;
+  })).values()];
+  const identities = new Map<string, ProjectTokenIdentity>();
+  const missing: Address[] = [];
+  for (const address of unique) {
+    const cached = identityCache.get(address.toLowerCase());
+    if (cached && cached.expiresAt > now) identities.set(address.toLowerCase(), cached.identity);
+    else missing.push(address);
   }
+  if (missing.length > 0) {
+    for (let offset = 0; offset < missing.length; offset += IDENTITIES_PER_MULTICALL) {
+      const batch = missing.slice(offset, offset + IDENTITIES_PER_MULTICALL);
+      const results = await identityClient.multicall({
+        allowFailure: true,
+        multicallAddress: ROBINHOOD_MULTICALL3,
+        contracts: batch.flatMap((address) => [
+          { address, abi: erc20Abi, functionName: "name" as const },
+          { address, abi: erc20Abi, functionName: "symbol" as const }
+        ])
+      }).catch(() => []);
+      batch.forEach((address, index) => {
+        const nameResult = results[index * 2];
+        const symbolResult = results[index * 2 + 1];
+        const name = boundedIdentityText(nameResult?.status === "success" ? nameResult.result : null, 80);
+        const symbol = boundedIdentityText(symbolResult?.status === "success" ? symbolResult.result : null, 20);
+        if (!name || !symbol) return;
+        const identity = { address, name, symbol };
+        identities.set(address.toLowerCase(), identity);
+        identityCache.set(address.toLowerCase(), { expiresAt: now + IDENTITY_CACHE_TTL_MS, identity });
+      });
+    }
+  }
+  return identities;
 }
 
 async function cachedIdentity(address: Address) {
-  const key = address.toLowerCase();
-  const now = Date.now();
-  const cached = identityCache.get(key);
-  if (cached && cached.expiresAt > now) return cached.identity;
-  const identity = readRobinhoodTokenIdentity(address).then((result) => result ? {
-    address: result.address,
-    name: result.name,
-    symbol: result.symbol
-  } : null);
-  identityCache.set(key, { expiresAt: now + IDENTITY_CACHE_TTL_MS, identity });
-  void identity.then((result) => {
-    if (!result && identityCache.get(key)?.identity === identity) identityCache.delete(key);
-  });
-  return identity;
+  return (await readBatchedIdentities([address])).get(address.toLowerCase()) ?? null;
 }
 
 function registryBindingForAddress(snapshot: ProjectIdentityAuthoritySnapshot, address: string) {
@@ -246,30 +335,13 @@ export async function evaluateProjectIdentityAdmission(
   return { status: "admitted", authorityState: "no-conflict" };
 }
 
-async function mapWithConcurrency<T, R>(
-  values: readonly T[],
-  concurrency: number,
-  mapper: (value: T) => Promise<R>
-) {
-  const results = new Array<R>(values.length);
-  let nextIndex = 0;
-  const workers = Array.from({ length: Math.min(concurrency, values.length) }, async () => {
-    while (nextIndex < values.length) {
-      const index = nextIndex;
-      nextIndex += 1;
-      results[index] = await mapper(values[index]!);
-    }
-  });
-  await Promise.all(workers);
-  return results;
-}
-
 export async function applyProjectIdentityDirectoryAdmission<T extends ProjectIdentityAdmissionCandidate>(
   candidates: readonly T[],
   dependencies: ProjectIdentityAdmissionDependencies = {}
 ) {
   const readAuthority = dependencies.readAuthority ?? fetchAuthoritySnapshot;
   const readIdentity = dependencies.readIdentity ?? cachedIdentity;
+  const readIdentities = dependencies.readIdentities ?? (dependencies.readIdentity ? undefined : readBatchedIdentities);
   const snapshot = await readAuthority().catch((): ProjectIdentityAuthoritySnapshot => ({ status: "unavailable", entries: [] }));
   if (snapshot.status !== "ready") {
     return {
@@ -278,10 +350,33 @@ export async function applyProjectIdentityDirectoryAdmission<T extends ProjectId
       authorityStatus: "unavailable" as const
     };
   }
-  const decisions = await mapWithConcurrency(candidates, IDENTITY_READ_CONCURRENCY, async (candidate) => ({
+  const prefetchedIdentities = new Map<string, ProjectTokenIdentity>();
+  if (readIdentities) {
+    const candidateAddresses = candidates.flatMap((candidate) => {
+      const address = canonicalAddress(candidate.address);
+      return address && !candidate.verifiedIdentity && !registryBindingForAddress(snapshot, address) ? [address] : [];
+    });
+    const candidateIdentities = await readIdentities(candidateAddresses);
+    for (const [address, identity] of candidateIdentities) prefetchedIdentities.set(address, identity);
+    const establishedAddresses = candidates.flatMap((candidate) => {
+      const address = canonicalAddress(candidate.address);
+      const identity = candidate.verifiedIdentity ?? (address ? candidateIdentities.get(address.toLowerCase()) : undefined);
+      if (!address || !identity) return [];
+      return snapshot.entries.flatMap((entry) => (
+        entry.contractAddress.toLowerCase() !== address.toLowerCase()
+        && materiallyConfusableProjectIdentity(identity, entry)
+      ) ? [getAddress(entry.contractAddress)] : []);
+    });
+    const establishedIdentities = await readIdentities(establishedAddresses);
+    for (const [address, identity] of establishedIdentities) prefetchedIdentities.set(address, identity);
+  }
+  const decisionIdentityReader = async (address: Address) => (
+    prefetchedIdentities.get(address.toLowerCase()) ?? readIdentity(address)
+  );
+  const decisions = await Promise.all(candidates.map(async (candidate) => ({
     candidate,
-    admission: await evaluateProjectIdentityAdmission(candidate, snapshot, readIdentity)
-  }));
+    admission: await evaluateProjectIdentityAdmission(candidate, snapshot, decisionIdentityReader)
+  })));
   return {
     admitted: decisions.filter(({ admission }) => admission.status === "admitted").map(({ candidate }) => candidate),
     quarantined: decisions.flatMap(({ candidate, admission }) => admission.status === "conflicting-project-identity"
@@ -303,6 +398,6 @@ export function projectIdentityAdmissionErrorResponse(cause: unknown) {
   if (!(cause instanceof ConflictingProjectIdentityError)) return null;
   return Response.json(
     { error: cause.message },
-    { status: 451, headers: { "Cache-Control": "private, no-store, max-age=0" } }
+    { status: 409, headers: { "Cache-Control": "private, no-store, max-age=0" } }
   );
 }
