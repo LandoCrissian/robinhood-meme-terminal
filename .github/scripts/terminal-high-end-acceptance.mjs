@@ -15,13 +15,18 @@ const factory = address(0x3001);
 const creator = address(0x4001);
 const exactIdentityToken = address(0x1ffe);
 const stonkBrokerToken = `0x${["e934e36a", "439c9401", "7b64a3fe", "ce66af12", "099abf50"].join("")}`;
-const stonkBrokerPoolId = `0x${"ab".repeat(32)}`;
+const nativeAsset = address(0);
+const stonkBrokerHooks = address(0x9003);
+const stonkBrokerPoolId = "0xadc81b7cc584d4576c944baa1f6128c4d80e636b0e1efa7ce2248c56c9614a49";
+const acceptanceWallet = "0x3333333333333333333333333333333333333333";
 const spcxToken = ["0x4a0e65a3", "eccec6db", "e60ae065", "f2e7bb85", "fae35eea"].join("");
 const nvdaToken = ["0xd0601ce1", "57db5bdc", "3162bbac", "2a2c8af5", "320d9eec"].join("");
 const conflictingDtfToken = ["0xee5576fa", "1bcaa380", "e591d012", "45f406f3", "f384eb01"].join("");
 const universalSearchQueries = new WeakMap();
 const chainPulseRequests = new WeakMap();
 const telemetryRequests = new WeakMap();
+const ohlcvRequests = new WeakMap();
+const tokenRiskRequests = new WeakMap();
 
 await mkdir(output, { recursive: true });
 
@@ -271,6 +276,65 @@ const riskPayload = {
   checkedAt: now
 };
 
+const stonkBrokerTokenRiskPayload = {
+  token: stonkBrokerToken,
+  pair: null,
+  marketVerified: false,
+  coverage: "partial",
+  contract: {
+    sourcePublished: true,
+    isProxy: false,
+    bytecodeChanged: false,
+    controls: {
+      assessment: "review-required",
+      detected: [{ category: "supply", functionName: "mint(address,uint256)" }],
+      customWriteFunctions: [],
+      administrator: null,
+      activeLaunchRestrictions: false,
+      restrictionEndBlock: null,
+      maxTransactionBps: null,
+      maxWalletBps: null
+    }
+  },
+  liquidity: {
+    controlStatus: "not-proven",
+    evidenceSource: "none",
+    positionManager: null,
+    positionId: null,
+    owner: null,
+    approvedOperator: null,
+    creatorCanTransfer: null,
+    positionLiquidity: null
+  },
+  holders: {
+    count: 1_842,
+    poolShareBps: null,
+    topNonPoolShareBps: null,
+    topNonPoolHolders: [],
+    largestNonPoolHolder: null,
+    topHolderShareBps: 740,
+    topHolders: [
+      { address: address(0x7101), shareBps: 210, isContract: false, isScam: false },
+      { address: address(0x7102), shareBps: 180, isContract: true, isScam: false },
+      { address: address(0x7103), shareBps: 150, isContract: false, isScam: false },
+      { address: address(0x7104), shareBps: 120, isContract: false, isScam: false },
+      { address: address(0x7105), shareBps: 80, isContract: false, isScam: false }
+    ],
+    largestHolder: { address: address(0x7101), shareBps: 210 },
+    creator: null,
+    creatorShareBps: null
+  },
+  sellSimulation: {
+    status: "not-run",
+    method: "holder-to-pool-transfer",
+    holder: null,
+    amount: null,
+    returnStyle: null
+  },
+  warnings: ["Published token controls require review; no address-pool sell evidence was inferred."],
+  checkedAt: now
+};
+
 function canonicalDirectoryMarket(market) {
   const version = market.primaryMarket.protocolVersion;
   const poolKey = market.primaryMarket.pool.value.toLowerCase();
@@ -353,12 +417,12 @@ function stonkBrokerSearchResponse(query) {
         version: 4,
         poolKey: stonkBrokerPoolId,
         poolAddress: null,
-        token0: stonkBrokerToken,
-        token1: address(0x9002),
+        token0: nativeAsset,
+        token1: stonkBrokerToken,
         stable: null,
         fee: 3_000,
         tickSpacing: 60,
-        hooks: address(0x9003),
+        hooks: stonkBrokerHooks,
         transactionHash: txHash(0x5151),
         blockNumber: "12451515",
         blockHash: txHash(0x6161),
@@ -381,6 +445,8 @@ function stonkBrokerSearchResponse(query) {
 async function installRoutes(page) {
   chainPulseRequests.set(page, 0);
   telemetryRequests.set(page, 0);
+  ohlcvRequests.set(page, 0);
+  tokenRiskRequests.set(page, []);
   await page.route(/\/api\/vnext\/chain-pulse(?:\?.*)?$/, async (route) => {
     chainPulseRequests.set(page, (chainPulseRequests.get(page) ?? 0) + 1);
     await route.fulfill({
@@ -545,6 +611,7 @@ async function installRoutes(page) {
     })
   }));
   await page.route(/\/api\/markets\/ohlcv(?:\?.*)?$/, async (route) => {
+    ohlcvRequests.set(page, (ohlcvRequests.get(page) ?? 0) + 1);
     const query = new URL(route.request().url()).searchParams;
     const range = query.get("range") ?? "LIVE";
     await route.fulfill({
@@ -574,11 +641,22 @@ async function installRoutes(page) {
     telemetryRequests.set(page, (telemetryRequests.get(page) ?? 0) + 1);
     return route.fulfill({ status: 204, body: "" });
   });
-  await page.route(/\/api\/markets\/token-risk(?:\?.*)?$/, (route) => route.fulfill({
-    status: 200,
-    contentType: "application/json",
-    body: JSON.stringify(riskPayload)
-  }));
+  await page.route(/\/api\/markets\/token-risk(?:\?.*)?$/, (route) => {
+    const query = new URL(route.request().url()).searchParams;
+    const request = {
+      token: query.get("token"),
+      pair: query.get("pair"),
+      venue: query.get("venue")
+    };
+    tokenRiskRequests.set(page, [...(tokenRiskRequests.get(page) ?? []), request]);
+    return route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(request.token?.toLowerCase() === stonkBrokerToken
+        ? stonkBrokerTokenRiskPayload
+        : riskPayload)
+    });
+  });
 }
 
 async function createContext(browser, options) {
@@ -1308,7 +1386,7 @@ async function createWalletAcceptanceContext(browser, options) {
         return null;
       }
     };
-  }, { wallet: "0x3333333333333333333333333333333333333333" });
+  }, { wallet: acceptanceWallet });
   return context;
 }
 
@@ -1513,6 +1591,275 @@ async function inspectPreviewMode(browser, fixture, options, label, connected) {
     ethSendTransaction: forbiddenWalletMethods.filter((method) => method === "eth_sendTransaction").length,
     informationalQuoteRequests: state.quotes,
     horizontalOverflow
+  };
+}
+
+async function inspectV4PreviewUserJourney(browser, fixture) {
+  const state = {
+    approved: true,
+    receiptsAvailable: false,
+    missingSettlementEvent: false,
+    quotes: 0,
+    verifications: 0,
+    authorizations: 0,
+    rpcMethods: [],
+    blockNumber: 50_000_016,
+    quoteRequests: []
+  };
+  const context = await createWalletAcceptanceContext(browser, {
+    viewport: { width: 1_440, height: 900 },
+    deviceScaleFactor: 1
+  });
+  const page = await context.newPage();
+  const requestCounts = { walletConstellation: 0 };
+  page.on("request", (request) => {
+    if (new URL(request.url()).pathname === "/api/markets/wallet-constellation") {
+      requestCounts.walletConstellation += 1;
+    }
+  });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await installRoutes(page);
+  await installV2WalletAcceptanceRoutes(page, fixture, state);
+  await page.route(/\/api\/vnext\/quotes$/, async (route) => {
+    const request = route.request().postDataJSON();
+    state.quotes += 1;
+    state.quoteRequests.push(request);
+    const quotedAtMs = Date.now();
+    const exactV4Pair = String(request.inputAsset).toLowerCase() === nativeAsset
+      && String(request.outputAsset).toLowerCase() === stonkBrokerToken
+      && request.canonicalMarket?.sourceId === "uniswap-v4"
+      && request.canonicalMarket?.poolId === stonkBrokerPoolId;
+    const expectedOutputAtomic = "25000000000000000000000";
+    const protectedOutputAtomic = "24750000000000000000000";
+    const common = {
+      provider: "uniswap-v4",
+      providerLabel: "Uniswap V4",
+      providerFamily: "uniswap",
+      adapterVersion: 1,
+      chainId: 4_663,
+      inputAsset: request.inputAsset,
+      outputAsset: request.outputAsset,
+      inputAmountAtomic: request.inputAmountAtomic,
+      liquidityFeeEvidence: [],
+      latencyMs: 18,
+      executionKind: "direct_amm",
+      strictVerificationAvailable: false,
+      providerFeeAsset: null,
+      providerFeeAtomic: null,
+      gasSponsorshipFeeAsset: null,
+      gasSponsorshipFeeAtomic: null,
+      explicitProviderFeeOutputAtomic: null,
+      networkFeeNativeAtomic: null,
+      authorizationReady: false
+    };
+    const attempt = exactV4Pair ? {
+      ...common,
+      status: "indicative",
+      expectedOutputAtomic,
+      protectedOutputAtomic,
+      outputDecimals: 18,
+      priceImpact: null,
+      quotedAtMs,
+      expiresAtMs: quotedAtMs + 60_000,
+      userPaysGas: true,
+      netEconomics: {
+        userGrossInputAtomic: request.inputAmountAtomic,
+        providerInputAtomic: request.inputAmountAtomic,
+        providerGrossExpectedOutputAtomic: expectedOutputAtomic,
+        providerProtectedOutputAtomic: protectedOutputAtomic,
+        expectedUserNetOutputAtomic: expectedOutputAtomic,
+        protectedUserNetOutputAtomic: protectedOutputAtomic,
+        rmtFee: {
+          state: "disabled",
+          reason: "provider_not_admitted",
+          feePolicyId: null,
+          feePolicyVersion: null,
+          feePolicyHash: null,
+          feeBps: 0,
+          feeSide: "none",
+          feeAssetId: null,
+          expectedFeeAtomic: "0",
+          maximumFeeAtomic: "0",
+          roundingMode: "floor",
+          settlementMode: "none",
+          treasury: null
+        }
+      },
+      networkFeeNativeSymbol: "ETH",
+      protectedNetOutputAtomic: null,
+      costState: "network_fee_pending",
+      v4Evidence: {
+        poolId: stonkBrokerPoolId,
+        currency0: nativeAsset,
+        currency1: stonkBrokerToken,
+        fee: 3_000,
+        tickSpacing: 60,
+        hooks: stonkBrokerHooks,
+        recipient: request.recipient,
+        provenance: "canonical-market-indexer+uniswap-v4-quoter+robinhood-rpc",
+        observedBlock: "50000017",
+        observedBlockHash: txHash(0x8181),
+        observedAtMs: quotedAtMs
+      },
+      detail: "Canonical PoolKey quote only. No wallet calldata or authorization codec exists."
+    } : {
+      ...common,
+      status: "no_route",
+      expectedOutputAtomic: null,
+      protectedOutputAtomic: null,
+      outputDecimals: null,
+      priceImpact: null,
+      quotedAtMs: null,
+      expiresAtMs: null,
+      userPaysGas: null,
+      netEconomics: null,
+      networkFeeNativeSymbol: null,
+      protectedNetOutputAtomic: null,
+      costState: null,
+      detail: "The selected assets do not match the canonical V4 PoolKey."
+    };
+    for (const forbidden of ["calldata", "data", "target", "transaction", "approval", "approvalSpender"]) {
+      if (forbidden in attempt) throw new Error(`V4 quote fixture exposed executable ${forbidden}`);
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        requestId: "44444444-4444-4444-8444-444444444444",
+        chainId: 4_663,
+        inputAsset: request.inputAsset,
+        outputAsset: request.outputAsset,
+        inputAmountAtomic: request.inputAmountAtomic,
+        requestedAtMs: quotedAtMs,
+        completedAtMs: quotedAtMs + 1,
+        attempts: [attempt]
+      })
+    });
+  });
+
+  await gotoReady(page, base, ".rmtDesktopTerminal .rmtMarketTableRow");
+  const search = page.getByRole("textbox", { name: "Search Robinhood Chain markets" });
+  await search.fill("STONKBROKER");
+  await search.press("Enter");
+  await page.locator('.rmtDesktopTerminal[data-terminal-context="asset"] #vn-asset-heading').waitFor({ state: "visible" });
+  const heading = await page.locator("#vn-asset-heading").innerText();
+  if (!heading.includes("STONKBROKER") || new URL(page.url()).searchParams.get("market")?.toLowerCase() !== stonkBrokerToken) {
+    throw new Error(`V4 Preview journey did not preserve exact token identity: ${heading}`);
+  }
+  const chartText = await page.locator(".vnChart").innerText();
+  if (!chartText.includes("V4 chart coverage unavailable") || !chartText.includes("No authoritative PoolId OHLCV source")) {
+    throw new Error(`V4 Preview journey did not render truthful chart coverage: ${chartText}`);
+  }
+  if ((ohlcvRequests.get(page) ?? 0) !== 0) throw new Error("V4 Preview journey fabricated an address-pool OHLCV request");
+
+  await page.getByRole("tab", { name: "Markets", exact: true }).click();
+  const marketsCard = page.locator(".vnMarketsCard");
+  await marketsCard.waitFor({ state: "visible" });
+  const marketEvidence = await page.evaluate(({ poolId }) => ({
+    text: document.querySelector(".vnMarketsCard")?.textContent ?? "",
+    fakeAddressLink: [...document.querySelectorAll("a")].some((link) =>
+      link.getAttribute("href")?.toLowerCase().includes(`/address/${poolId}`)
+    )
+  }), { poolId: stonkBrokerPoolId });
+  if (!marketEvidence.text.includes("Uniswap V4") || !marketEvidence.text.includes(`${stonkBrokerPoolId.slice(0, 6)}…${stonkBrokerPoolId.slice(-4)}`)) {
+    throw new Error(`V4 Preview journey omitted canonical PoolId evidence: ${marketEvidence.text}`);
+  }
+  if (marketEvidence.fakeAddressLink || stonkBrokerSearchResponse("STONKBROKER").results[0].markets[0].poolAddress !== null) {
+    throw new Error("V4 Preview journey fabricated an EVM pool address");
+  }
+
+  await page.getByRole("tab", { name: "Safety", exact: true }).click();
+  await page.locator("#vn-evidence-heading").waitFor({ state: "visible" });
+  await page.waitForFunction(() => document.querySelector(".vnEvidenceDeck")?.textContent?.includes("1,842"));
+  const riskRequest = (tokenRiskRequests.get(page) ?? []).find((request) => request.token?.toLowerCase() === stonkBrokerToken);
+  if (!riskRequest || riskRequest.pair !== null || riskRequest.venue !== null) {
+    throw new Error(`V4 token findings request was not token-only: ${JSON.stringify(riskRequest)}`);
+  }
+  const holdersText = await page.locator(".vnEvidencePane").innerText();
+  for (const required of ["Known holders", "1,842", "Top 10 visible", "7.4%", "Largest visible", "2.1%"] ) {
+    if (!holdersText.toLowerCase().includes(required.toLowerCase())) throw new Error(`V4 token findings omitted ${required}: ${holdersText}`);
+  }
+  if (/Top 10 · no pool|Largest wallet/i.test(holdersText)) throw new Error(`V4 findings fabricated pool-excluded concentration: ${holdersText}`);
+
+  await page.locator(".vnEvidenceTabs").getByRole("tab", { name: "liquidity", exact: true }).click();
+  const liquidityText = await page.locator(".vnEvidencePane").innerText();
+  for (const required of ["V4 PoolId", "Pool token share", "Unavailable", "Liquidity control", "not proven", "Evidence source", "none"] ) {
+    if (!liquidityText.toLowerCase().includes(required.toLowerCase())) throw new Error(`V4 liquidity findings omitted ${required}: ${liquidityText}`);
+  }
+  if (/contract held|creator controlled|third party wallet|burn address/i.test(liquidityText)) {
+    throw new Error(`V4 findings fabricated address-pool ownership: ${liquidityText}`);
+  }
+
+  await page.locator(".vnEvidenceTabs").getByRole("tab", { name: "risk", exact: true }).click();
+  const riskText = await page.locator(".vnEvidencePane").innerText();
+  for (const required of ["Token identity", "Onchain verified", "Market evidence", "Uniswap V4 canonical", "Source published", "Yes", "Proxy", "Not detected", "Contract controls", "review required", "Sell evidence", "not run"] ) {
+    if (!riskText.toLowerCase().includes(required.toLowerCase())) throw new Error(`V4 token risk findings omitted ${required}: ${riskText}`);
+  }
+  if (/holder-to-pool.*passed|holder-to-pool.*blocked/i.test(riskText)) throw new Error(`V4 findings fabricated sell-direction evidence: ${riskText}`);
+  if (requestCounts.walletConstellation !== 0) throw new Error("V4 Preview journey started address-pool wallet constellation calls");
+
+  await page.waitForFunction(() => Array.isArray(window.__RMT_ACCEPTANCE_WALLET_METHODS__)
+    && window.__RMT_ACCEPTANCE_WALLET_METHODS__.includes("eth_accounts"));
+  const panel = page.locator(".vnTradePanel").last();
+  await panel.getByText("Preview mode", { exact: true }).waitFor({ state: "visible" });
+  await panel.getByLabel("Pay with asset").selectOption("eip155:4663/native");
+  state.quoteRequests = [];
+  state.quotes = 0;
+  state.verifications = 0;
+  state.authorizations = 0;
+  await page.evaluate(() => {
+    if (Array.isArray(window.__RMT_ACCEPTANCE_WALLET_METHODS__)) window.__RMT_ACCEPTANCE_WALLET_METHODS__ = [];
+  });
+  await panel.getByLabel("Exact input amount").fill("0.01");
+  await page.waitForFunction(() => document.querySelector(".vnQuoteAttempts")?.textContent?.includes("Uniswap V4"));
+  const quoteText = await panel.innerText();
+  if (!quoteText.includes("Best observed: Uniswap V4") || !quoteText.includes("Uniswap V4")) {
+    throw new Error(`V4 observed provider was not visible in the Terminal: ${quoteText}`);
+  }
+  const quoteRequest = state.quoteRequests.find((request) =>
+    String(request.inputAsset).toLowerCase() === nativeAsset
+    && String(request.outputAsset).toLowerCase() === stonkBrokerToken
+    && request.canonicalMarket?.sourceId === "uniswap-v4"
+    && request.canonicalMarket?.poolId === stonkBrokerPoolId
+  );
+  if (!quoteRequest
+    || quoteRequest.chainId !== 4_663
+    || String(quoteRequest.recipient).toLowerCase() !== acceptanceWallet
+  ) throw new Error(`V4 passive quote request lost canonical binding: ${JSON.stringify(state.quoteRequests)}`);
+
+  const walletMethods = await page.evaluate(() => Array.isArray(window.__RMT_ACCEPTANCE_WALLET_METHODS__)
+    ? window.__RMT_ACCEPTANCE_WALLET_METHODS__
+    : []);
+  const forbiddenWalletMethods = walletMethods.filter((method) =>
+    method === "eth_sendTransaction"
+    || method === "eth_sign"
+    || method === "personal_sign"
+    || method === "wallet_requestPermissions"
+    || method.startsWith("eth_signTypedData")
+  );
+  if (state.verifications !== 0 || state.authorizations !== 0 || forbiddenWalletMethods.length !== 0) {
+    throw new Error(`V4 Preview journey crossed the quote-only boundary: ${JSON.stringify({ state, forbiddenWalletMethods })}`);
+  }
+  if (await page.locator(".vnWalletReview, .vnWalletFeeDisclosure").count()) {
+    throw new Error("V4 Preview journey rendered a wallet transaction review");
+  }
+  await page.screenshot({ path: `${output}/v4-preview-user-path-desktop-1440x900.png`, fullPage: false, animations: "disabled" });
+  await context.close();
+  return {
+    textSearch: "pass",
+    selectedToken: stonkBrokerToken,
+    canonicalMarket: "uniswap-v4",
+    poolId: stonkBrokerPoolId,
+    poolAddress: null,
+    ohlcvRequests: ohlcvRequests.get(page) ?? 0,
+    tokenRiskRequest: riskRequest,
+    quoteRequest,
+    quoteProvider: "uniswap-v4",
+    verifyRequests: state.verifications,
+    authorizeRequests: state.authorizations,
+    ethSendTransaction: forbiddenWalletMethods.filter((method) => method === "eth_sendTransaction").length,
+    signingRequests: forbiddenWalletMethods.filter((method) => method.includes("sign")).length,
+    walletReview: "absent"
   };
 }
 
@@ -1959,8 +2306,9 @@ try {
       mobileDisconnected: await inspectPreviewMode(browser, browserAcceptanceFixture, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true }, "mobile-390x844-disconnected", false),
       mobileConnected: await inspectPreviewMode(browser, browserAcceptanceFixture, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true }, "mobile-390x844-connected", true)
     };
-    await writeFile(`${output}/report.json`, JSON.stringify({ previewEvidence }, null, 2));
-    console.log(`Terminal Preview-mode acceptance passed: ${JSON.stringify(previewEvidence)}`);
+    const v4PreviewEvidence = await inspectV4PreviewUserJourney(browser, browserAcceptanceFixture);
+    await writeFile(`${output}/report.json`, JSON.stringify({ previewEvidence, v4PreviewEvidence }, null, 2));
+    console.log(`Terminal Preview-mode acceptance passed: ${JSON.stringify({ previewEvidence, v4PreviewEvidence })}`);
   } else {
   const v2BrowserEvidence = browserAcceptanceFixture
     ? await (async () => {
