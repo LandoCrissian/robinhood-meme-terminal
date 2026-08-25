@@ -1670,6 +1670,33 @@ body .rmtVnext {
   font-weight: 780;
 }
 
+.vnLaunchpadLifecycle {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.vnLaunchpadLifecycle article {
+  padding: 10px;
+  border: 1px solid var(--vn-border);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, .015);
+}
+
+.vnLaunchpadLifecycle article > div:first-child {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--vn-text-secondary);
+  font-size: 9px;
+}
+
+.vnLaunchpadLifecycle article > div:first-child span { color: var(--vn-text-muted); text-align: right; }
+.vnLaunchpadLifecycle dl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin: 9px 0 0; }
+.vnLaunchpadLifecycle dl div { display: grid; gap: 3px; min-width: 0; }
+.vnLaunchpadLifecycle dt { color: var(--vn-text-muted); font-size: 8px; }
+.vnLaunchpadLifecycle dd { margin: 0; color: var(--vn-text-secondary); font-size: 9px; overflow-wrap: anywhere; }
+
 .vnFixtureBadge.isViewOnly {
   color: var(--vn-warning);
   border-color: rgba(255, 202, 87, .24);

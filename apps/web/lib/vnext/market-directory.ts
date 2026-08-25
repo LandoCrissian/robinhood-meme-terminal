@@ -43,6 +43,8 @@ export type VNextDirectoryMarket = Omit<Pick<ExternalMarket,
   | "assetId"
   | "primaryMarket"
   | "verifiedMarkets"
+  | "project"
+  | "launchpadEvidence"
 >, "priceUsd" | "liquidityUsd" | "marketCapUsd" | "volume24h" | "priceChange24h" | "signal"> & {
   priceUsd: VNextDirectoryMetric;
   liquidityUsd: VNextDirectoryMetric;
@@ -67,6 +69,8 @@ export type VNextDirectoryMarket = Omit<Pick<ExternalMarket,
   pairAddress?: string;
   dexId?: string;
   url?: string;
+  origin?: ExternalMarket["origin"];
+  venue?: ExternalMarket["venue"];
   rwaRelationship?: VNextRwaRelationship;
   canonicalMarkets?: VNextUniversalMarketSearchPool[];
   verifiedIdentity?: {
@@ -359,20 +363,23 @@ export function normalizeDirectoryMarkets(payload: Pick<ExternalMarketResponse, 
     const symbol = text(market.symbol, 16) || `${address.slice(0, 6)}…${address.slice(-4)}`;
     const name = text(market.name, 80) || symbol;
     const directoryMarket = market as VNextDirectoryMarket;
+    const launchpadOnlyMetricsUnavailable = market.venue?.kind === "external-launchpad"
+      && Boolean(market.launchpadEvidence?.length)
+      && market.launchpadEvidence?.every((evidence) => evidence.metricsState === "unavailable");
     return [{
       address,
       assetId: market.assetId,
       name,
       symbol,
-      priceUsd: nonNegative(market.priceUsd),
-      liquidityUsd: nonNegative(market.liquidityUsd),
-      marketCapUsd: nonNegative(market.marketCapUsd),
+      priceUsd: launchpadOnlyMetricsUnavailable ? null : nonNegative(market.priceUsd),
+      liquidityUsd: launchpadOnlyMetricsUnavailable ? null : nonNegative(market.liquidityUsd),
+      marketCapUsd: launchpadOnlyMetricsUnavailable ? null : nonNegative(market.marketCapUsd),
       volume5m: nonNegative(directoryMarket.volume5m),
       volume1h: nonNegative(directoryMarket.volume1h),
-      volume24h: nonNegative(market.volume24h),
+      volume24h: launchpadOnlyMetricsUnavailable ? null : nonNegative(market.volume24h),
       priceChange5m: finite(directoryMarket.priceChange5m),
       priceChange1h: finite(directoryMarket.priceChange1h),
-      priceChange24h: finite(market.priceChange24h),
+      priceChange24h: launchpadOnlyMetricsUnavailable ? null : finite(market.priceChange24h),
       buys5m: nonNegativeInteger(directoryMarket.buys5m),
       sells5m: nonNegativeInteger(directoryMarket.sells5m),
       buys1h: nonNegativeInteger(directoryMarket.buys1h),
@@ -398,7 +405,11 @@ export function normalizeDirectoryMarkets(payload: Pick<ExternalMarketResponse, 
       primaryMarket: market.primaryMarket,
       verifiedMarkets: market.verifiedMarkets,
       canonicalMarkets: directoryMarket.canonicalMarkets,
-      verifiedIdentity: directoryMarket.verifiedIdentity
+      verifiedIdentity: directoryMarket.verifiedIdentity,
+      project: market.project,
+      origin: market.origin,
+      venue: market.venue,
+      launchpadEvidence: market.launchpadEvidence
     }];
   });
   const byAsset = new Map<string, VNextDirectoryMarket[]>();
@@ -719,6 +730,10 @@ export function mergeVNextDirectoryAndSearchMarkets(
     for (const evidence of [...(existing.verifiedMarkets ?? []), ...(market.verifiedMarkets ?? [])]) {
       verifiedMarkets.set(`${evidence.venue}:${evidence.pool.kind}:${evidence.pool.value}`.toLowerCase(), evidence);
     }
+    const launchpadEvidence = new Map<string, NonNullable<VNextDirectoryMarket["launchpadEvidence"]>[number]>();
+    for (const evidence of [...(existing.launchpadEvidence ?? []), ...(market.launchpadEvidence ?? [])]) {
+      launchpadEvidence.set(`${evidence.sourceId}:${evidence.version}:${evidence.factory}`.toLowerCase(), evidence);
+    }
     byAddress.set(key, {
       ...market,
       ...existing,
@@ -746,6 +761,7 @@ export function mergeVNextDirectoryAndSearchMarkets(
       primaryMarket: existing.primaryMarket ?? market.primaryMarket,
       verifiedMarkets: verifiedMarkets.size ? [...verifiedMarkets.values()] : undefined,
       canonicalMarkets: canonicalMarkets.size ? [...canonicalMarkets.values()] : undefined,
+      launchpadEvidence: launchpadEvidence.size ? [...launchpadEvidence.values()] : undefined,
       verifiedIdentity: market.verifiedIdentity ?? existing.verifiedIdentity,
       resolution: existing.resolution ?? market.resolution
     });
@@ -886,7 +902,7 @@ export function directoryMarketFromExactLookup(
   const expectedAssetId = canonicalExternalAssetId(ROBINHOOD_MAINNET_CHAIN_ID, address);
   if (!exact
     || exact.assetId !== expectedAssetId
-    || !exact.verifiedMarkets?.length
-    || exact.verifiedMarkets.some((market) => market.assetId !== expectedAssetId)) return null;
+    || (!exact.verifiedMarkets?.length && resolutionToken(exact.resolution, address) === null)
+    || exact.verifiedMarkets?.some((market) => market.assetId !== expectedAssetId)) return null;
   return exact;
 }

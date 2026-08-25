@@ -79,7 +79,8 @@ function directorySnapshot(markets: VNextDirectoryMarket[]) {
     market.verifiedIdentity?.name,
     market.verifiedIdentity?.symbol,
     market.verifiedIdentity?.decimals,
-    market.canonicalMarkets?.map((evidence) => `${evidence.sourceId}:${evidence.version}:${evidence.poolKey}`).join("|")
+    market.canonicalMarkets?.map((evidence) => `${evidence.sourceId}:${evidence.version}:${evidence.poolKey}`).join("|"),
+    market.launchpadEvidence?.map((evidence) => `${evidence.sourceId}:${evidence.version}:${evidence.state}:${evidence.activity.lastActivityAt ?? "none"}`).join("|")
   ]));
 }
 

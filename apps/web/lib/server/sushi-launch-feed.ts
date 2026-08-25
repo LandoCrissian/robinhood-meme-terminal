@@ -1,9 +1,9 @@
 import { getAddress, isAddress } from "viem";
 import { z } from "zod";
-import type { ExternalProjectMetadata } from "../external-market";
+import type { ExternalProjectMetadata, LaunchpadLifecycleEvidence } from "../external-market";
 
-const SUSHI_DATA_API = "https://production.data-gcp.sushi.com/api/graphql";
-const SUSHI_LAUNCHPAD = "0x104F1Ab42674565EC3DF0BFEbCcC4186f72fA7ED";
+export const SUSHI_LAUNCH_DATA_API = "https://production.data-gcp.sushi.com/api/graphql";
+export const SUSHI_LAUNCHPAD = "0x104F1Ab42674565EC3DF0BFEbCcC4186f72fA7ED";
 const ROBINHOOD_CHAIN_ID = 4663;
 const TIMEOUT_MS = 7_000;
 const RESULTS_PER_LENS = 30;
@@ -69,6 +69,7 @@ type FetchLike = (input: string | URL, init?: RequestInit) => Promise<Response>;
 
 export type SushiLaunchSnapshot = {
   projects: Map<string, ExternalProjectMetadata>;
+  lifecycle: Map<string, LaunchpadLifecycleEvidence>;
   candidateAddresses: string[];
   delayed: boolean;
 };
@@ -104,6 +105,7 @@ function eligibleNode(node: SushiLaunchNode) {
 
 export function parseSushiLaunchProjects(payloads: unknown[]) {
   const projects = new Map<string, ExternalProjectMetadata>();
+  const lifecycle = new Map<string, LaunchpadLifecycleEvidence>();
   const candidateAddresses: string[] = [];
   const seen = new Set<string>();
 
@@ -133,6 +135,23 @@ export function parseSushiLaunchProjects(payloads: unknown[]) {
             farcaster: socialUrl(node, ["farcaster"])
           })
         }));
+        const lifecycleEvidence: LaunchpadLifecycleEvidence = {
+          sourceId: "sushi-launch",
+          sourceName: "Sushi Launch",
+          version: "current",
+          factory: getAddress(node.factoryAddress),
+          creator: getAddress(node.creator),
+          launchId: null,
+          launchBlock: null,
+          launchTransactionHash: null,
+          state: "graduated",
+          current: true,
+          metricsState: "unavailable",
+          venue: { kind: "source-market", address: getAddress(node.pool.address), poolId: null },
+          activity: { buys1h: null, sells1h: null, buys24h: null, sells24h: null, volumeQuote24h: null, lastActivityAt: null },
+          provenance: "verified-public-feed-and-contract-state"
+        };
+        lifecycle.set(key, Object.freeze(lifecycleEvidence));
       }
       if (!seen.has(key) && candidateAddresses.length < MAX_CANDIDATES) {
         seen.add(key);
@@ -141,14 +160,14 @@ export function parseSushiLaunchProjects(payloads: unknown[]) {
     }
   }
 
-  return { projects, candidateAddresses };
+  return { projects, lifecycle, candidateAddresses };
 }
 
 async function fetchLens(sortBy: "CREATED_AT" | "VOLUME_24H" | "CURRENT_TVL", fetcher: FetchLike) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
-    const response = await fetcher(SUSHI_DATA_API, {
+    const response = await fetcher(SUSHI_LAUNCH_DATA_API, {
       method: "POST",
       headers: {
         Accept: "application/json",

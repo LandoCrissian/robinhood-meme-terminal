@@ -7,6 +7,7 @@ import {
   externalProjectProvenanceLabel,
   externalProjectProvenanceDescription,
   type ExternalMarket,
+  type LaunchpadLifecycleEvidence,
   type ExternalSocialLinks,
   type UniversalMarketPool,
   type UniversalMarketResolution
@@ -182,15 +183,32 @@ function WorkspaceQuickLinks({
   </section>;
 }
 
-function WorkspaceOrigin({ market, token }: { market?: ExternalMarket; token: string }) {
+function lifecycleStateLabel(state: LaunchpadLifecycleEvidence["state"]) {
+  return state.split("-").map((part) => `${part.slice(0, 1).toUpperCase()}${part.slice(1)}`).join(" ");
+}
+
+function WorkspaceOrigin({
+  market,
+  token,
+  launchpadEvidence
+}: {
+  market?: ExternalMarket;
+  token: string;
+  launchpadEvidence: LaunchpadLifecycleEvidence[];
+}) {
   const origin = market?.origin;
-  const verified = origin?.kind === "rmt-v6" || origin?.state === "attributed";
-  const label = origin?.kind === "rmt-v6" ? "RMT V6 verified"
+  const verified = launchpadEvidence.length > 0 || origin?.kind === "rmt-v6" || origin?.state === "attributed";
+  const label = launchpadEvidence.length === 1
+    ? `${launchpadEvidence[0]!.sourceName} · ${lifecycleStateLabel(launchpadEvidence[0]!.state)}`
+    : launchpadEvidence.length > 1 ? "Multiple verified launch sources"
+      : origin?.kind === "rmt-v6" ? "RMT V6 verified"
     : origin?.state === "attributed" ? origin.sourceName
       : origin?.state === "disputed" ? "Origin disputed"
         : origin?.state === "unattributed" ? "Origin unattributed"
           : origin ? "Origin unknown" : "Origin checking";
-  const detail = origin?.kind === "rmt-v6" ? `Creation proven at launch block ${origin.launchBlock}.`
+  const detail = launchpadEvidence.length
+    ? "Token-level launch provenance and lifecycle are independently verified. Current market venue evidence remains separate."
+    : origin?.kind === "rmt-v6" ? `Creation proven at launch block ${origin.launchBlock}.`
     : origin?.state === "attributed" ? `${origin.claim.claimKind.replace("-", " ")} · independently indexed from ${origin.coverage} coverage.`
       : origin?.state === "disputed" ? `${origin.claims.length} incompatible claims require review; RMT does not choose one.`
         : origin?.state === "unattributed" ? "Complete indexed coverage found no verified creator source."
@@ -203,6 +221,22 @@ function WorkspaceOrigin({ market, token }: { market?: ExternalMarket; token: st
     <header className="vnWorkspaceCardHead"><div><span className="vnEyebrow">Project origin</span><h3 id="vn-origin-heading">{label}</h3></div><span>{verified ? "Verified" : "Not inferred"}</span></header>
     <p>{detail}</p>
     {market?.project && <p className="vnOriginProject">{externalProjectProvenanceDescription(market.project)}</p>}
+    {launchpadEvidence.length ? <div className="vnLaunchpadLifecycle" aria-label="Launch venue and lifecycle evidence">
+      {launchpadEvidence.map((evidence) => <article key={`${evidence.sourceId}:${evidence.version}:${evidence.factory}`}>
+        <div><strong>{evidence.sourceName}</strong><span>{evidence.version} · {lifecycleStateLabel(evidence.state)} · {evidence.current ? "Current" : "Historical"}</span></div>
+        <dl>
+          <div><dt>Origin venue</dt><dd>{evidence.sourceName}</dd></div>
+          <div><dt>Current venue</dt><dd>{evidence.venue.kind === "canonical-pool" ? evidence.venue.poolId ? "Canonical V4 PoolId" : "Canonical pool" : evidence.venue.kind === "source-market" ? "Launch-source market" : evidence.venue.kind === "bonding-curve" ? "Live bonding curve" : evidence.venue.kind === "launch-pending" ? "Launch pending" : "Unavailable"}</dd></div>
+          <div><dt>Recent activity</dt><dd>{evidence.activity.buys24h === null || evidence.activity.sells24h === null ? "Unavailable" : `${evidence.activity.buys24h} buys · ${evidence.activity.sells24h} sells`}</dd></div>
+        </dl>
+        <div className="vnOriginLinks">
+          <ExplorerLink kind="address" value={evidence.factory}>{evidence.sourceName} contract ↗</ExplorerLink>
+          {evidence.creator ? <ExplorerLink kind="address" value={evidence.creator}>Creator {shortAddress(evidence.creator)} ↗</ExplorerLink> : null}
+          {evidence.launchTransactionHash ? <ExplorerLink kind="transaction" value={evidence.launchTransactionHash}>Launch transaction ↗</ExplorerLink> : null}
+          {evidence.venue.address ? <ExplorerLink kind={evidence.venue.kind === "canonical-pool" || evidence.venue.kind === "source-market" ? "pool" : "address"} value={evidence.venue.address}>{evidence.venue.kind === "canonical-pool" || evidence.venue.kind === "source-market" ? "Current pool" : "Current venue"} ↗</ExplorerLink> : null}
+        </div>
+      </article>)}
+    </div> : <p>No independently verified launch-venue lifecycle evidence is attached.</p>}
     <div className="vnOriginLinks">
       <ExplorerLink kind="token" value={token}>Contract {shortAddress(token)} ↗</ExplorerLink>
       {evidenceTransaction && <ExplorerLink kind="transaction" value={evidenceTransaction}>Creation evidence ↗</ExplorerLink>}
@@ -418,7 +452,14 @@ export function VNextAssetWorkspace({
   const workspacePool = market ? selectVNextChartPool(market) : undefined;
   const directoryPool = selectVNextChartPool(directoryMarket);
   const selectedPool = workspacePool ?? directoryPool;
-  const originState = market?.origin?.kind === "rmt-v6"
+  const lifecycleBySource = new Map<string, LaunchpadLifecycleEvidence>();
+  for (const evidence of [...(directoryMarket.launchpadEvidence ?? []), ...(market?.launchpadEvidence ?? [])]) {
+    lifecycleBySource.set(`${evidence.sourceId}:${evidence.version}:${evidence.factory}`.toLowerCase(), evidence);
+  }
+  const launchpadEvidence = [...lifecycleBySource.values()];
+  const originState = launchpadEvidence.length
+    ? launchpadEvidence.map((evidence) => `${evidence.sourceName} ${lifecycleStateLabel(evidence.state)}`).join(" · ")
+    : market?.origin?.kind === "rmt-v6"
     ? "RMT V6 creation proven"
     : market?.origin?.state === "attributed" ? `${market.origin.sourceName} attributed`
       : market?.origin?.state === "disputed" ? "Disputed"
@@ -443,7 +484,7 @@ export function VNextAssetWorkspace({
         : section === "position"
           ? <WorkspacePosition directoryMarket={directoryMarket} walletAssets={walletAssets} executionState={executionState} executionUiState={executionUiState} onTradeSide={onTradeSide} />
           : section === "origin"
-            ? <WorkspaceOrigin market={market} token={directoryMarket.address} />
+            ? <WorkspaceOrigin market={market} token={directoryMarket.address} launchpadEvidence={launchpadEvidence} />
             : section === "ecosystem"
               ? <WorkspaceEcosystemIntelligence ecosystem={workspace.ecosystem} />
               : <WorkspaceRwaRelationships relationships={workspace.stockAssetRelationships} coverage={workspace.stockAssetCoverage} />;
@@ -458,7 +499,7 @@ export function VNextAssetWorkspace({
 
     <dl className="vnAssetIdentityFacts" aria-label="Selected market identity">
       <div><dt>Chain</dt><dd>Robinhood Chain · 4663</dd></div>
-      <div><dt>Primary venue</dt><dd>{directoryMarket.dexId ?? "Unknown"}</dd></div>
+      <div><dt>Primary venue</dt><dd>{market?.dexId ?? directoryMarket.dexId ?? "Unknown"}</dd></div>
       <div><dt>Project origin</dt><dd>{originState}</dd></div>
       <div><dt>RWA relationship</dt><dd>{canonicalStockRelationship ? "Canonical stock token" : workspace.stockAssetRelationships.some((relationship) => relationship.relationship === "paired-market-asset") || directoryMarket.rwaRelationship === "paired-market-asset" ? "RWA-paired market" : "Not reported"}</dd></div>
     </dl>
