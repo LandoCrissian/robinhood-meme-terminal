@@ -8,8 +8,10 @@ import { readVNextCanonicalMarketDirectoryPage } from "../server/vnext-canonical
 import { readVNextLegacyMarketDirectoryPage } from "../server/vnext-legacy-market-directory";
 import {
   readVNextMarketDirectoryRequest,
+  VNEXT_DIRECTORY_PRESENTATION_CACHE_MAX_ENTRIES,
   vNextCanonicalBrowseEnabled
 } from "../server/vnext-market-directory-route";
+import { applyProjectIdentityDirectoryAdmission } from "../server/project-identity-admission";
 import type {
   VNextCanonicalMarketInventoryCoverage,
   VNextCanonicalMarketInventoryPool,
@@ -971,6 +973,7 @@ async function verifyCanonicalBrowsePages() {
   );
   assert.equal(falseGate.status, 200);
   assert.equal("canonical" in falseGate.body, false, "Complete coverage must not auto-activate canonical browse");
+  assert.equal(falseGate.headers["Cache-Control"], "private, no-store, max-age=0");
   assert.equal(canonicalCalls, 0);
   assert.equal(legacyCalls, 2);
 
@@ -1078,7 +1081,128 @@ async function verifyCanonicalBrowsePages() {
     performanceDependencies as never
   );
   assert.equal(warmPerformance.headers["X-RMT-Directory-Cache"], "HIT");
+  assert.equal(warmPerformance.headers["Cache-Control"], "private, no-store, max-age=0");
   assert.equal(coalescedCanonicalReads, 1, "a warm browse read must reuse the verified admitted snapshot");
+
+  for (const irrelevantQuery of ["foo=1", "foo=2", "bar=random"]) {
+    const irrelevantResult = await readVNextMarketDirectoryRequest(
+      `http://localhost/api/vnext/market-directory?${irrelevantQuery}`,
+      { RMT_CANONICAL_BROWSE_ENABLED: "true" },
+      performanceDependencies as never
+    );
+    assert.equal(irrelevantResult.headers["X-RMT-Directory-Cache"], "HIT");
+  }
+  assert.equal(coalescedCanonicalReads, 1, "irrelevant query parameters must share the normalized root-page cache identity");
+
+  const readsBeforeInvalidCursors = coalescedCanonicalReads;
+  for (let index = 0; index < 24; index += 1) {
+    await readVNextMarketDirectoryRequest(
+      `http://localhost/api/vnext/market-directory?cursor=${encodeURIComponent(`invalid!${index}`)}`,
+      { RMT_CANONICAL_BROWSE_ENABLED: "true" },
+      performanceDependencies as never
+    );
+  }
+  assert.equal(
+    coalescedCanonicalReads,
+    readsBeforeInvalidCursors + 24,
+    "invalid cursors must bypass rather than populate the presentation cache"
+  );
+  const rootAfterInvalidCursors = await readVNextMarketDirectoryRequest(
+    "http://localhost/api/vnext/market-directory?ignored=after-invalid-cursors",
+    { RMT_CANONICAL_BROWSE_ENABLED: "true" },
+    performanceDependencies as never
+  );
+  assert.equal(rootAfterInvalidCursors.headers["X-RMT-Directory-Cache"], "HIT");
+
+  for (let index = 0; index <= VNEXT_DIRECTORY_PRESENTATION_CACHE_MAX_ENTRIES; index += 1) {
+    await readVNextMarketDirectoryRequest(
+      `http://localhost/api/vnext/market-directory?cursor=bounded_${index}`,
+      { RMT_CANONICAL_BROWSE_ENABLED: "true" },
+      performanceDependencies as never
+    );
+  }
+  const readsBeforeEvictedRoot = coalescedCanonicalReads;
+  const evictedRoot = await readVNextMarketDirectoryRequest(
+    "http://localhost/api/vnext/market-directory?irrelevant=root",
+    { RMT_CANONICAL_BROWSE_ENABLED: "true" },
+    performanceDependencies as never
+  );
+  assert.equal(evictedRoot.headers["X-RMT-Directory-Cache"], "MISS");
+  assert.equal(coalescedCanonicalReads, readsBeforeEvictedRoot + 1, "the LRU page cache must remain hard bounded");
+
+  const conflictingAddress = getAddress("0x6666666666666666666666666666666666666601");
+  const establishedAddress = getAddress("0x6666666666666666666666666666666666666602");
+  const conflictingPage = [{
+    ...firstCanonicalPage[0],
+    address: conflictingAddress,
+    name: "Verified Project",
+    symbol: "VPROJ"
+  }];
+  let quarantineNow = 10_000;
+  let quarantineCanonicalReads = 0;
+  const quarantineDependencies = {
+    presentationCache: true,
+    now: () => quarantineNow,
+    readLegacy: async () => legacyFixture,
+    readCanonical: async () => {
+      quarantineCanonicalReads += 1;
+      return {
+        status: 200 as const,
+        body: {
+          canonical: true as const,
+          coverage: "complete" as const,
+          nextCursor: null,
+          updatedAt: new Date(0).toISOString(),
+          markets: conflictingPage
+        }
+      };
+    },
+    admitProjectIdentities: async <T,>(candidates: readonly T[]) => [...candidates]
+  };
+  const admittedBeforeConflict = await readVNextMarketDirectoryRequest(
+    "http://localhost/api/vnext/market-directory?before=conflict",
+    { RMT_CANONICAL_BROWSE_ENABLED: "true" },
+    quarantineDependencies as never
+  );
+  assert.equal("markets" in admittedBeforeConflict.body ? admittedBeforeConflict.body.markets?.length : 0, 1);
+  await applyProjectIdentityDirectoryAdmission([{ address: conflictingAddress }], {
+    readAuthority: async () => ({
+      status: "ready",
+      entries: [{
+        projectId: "verified-project",
+        name: "Verified Project",
+        symbol: "VPROJ",
+        contractAddress: establishedAddress,
+        authority: "coingecko-robinhood-contract-registry"
+      }]
+    }),
+    readIdentity: async (address) => ({
+      address,
+      name: "Verified Project",
+      symbol: "VPROJ"
+    })
+  });
+  const quarantinedCacheHit = await readVNextMarketDirectoryRequest(
+    "http://localhost/api/vnext/market-directory?after=conflict",
+    { RMT_CANONICAL_BROWSE_ENABLED: "true" },
+    quarantineDependencies as never
+  );
+  assert.equal(quarantinedCacheHit.headers["X-RMT-Directory-Cache"], "HIT");
+  assert.equal("markets" in quarantinedCacheHit.body ? quarantinedCacheHit.body.markets?.length : 0, 0);
+  assert.equal(quarantineCanonicalReads, 1, "known positive quarantine must filter an otherwise warm cache hit");
+
+  const unavailableAuthority = await applyProjectIdentityDirectoryAdmission([{ address: conflictingAddress }], {
+    readAuthority: async () => ({ status: "unavailable", entries: [] })
+  });
+  assert.equal(unavailableAuthority.admitted.length, 0, "temporary authority failure must preserve known positive quarantine");
+  quarantineNow += 15_001;
+  const quarantinedStaleCache = await readVNextMarketDirectoryRequest(
+    "http://localhost/api/vnext/market-directory?stale=conflict",
+    { RMT_CANONICAL_BROWSE_ENABLED: "true" },
+    quarantineDependencies as never
+  );
+  assert.equal(quarantinedStaleCache.headers["X-RMT-Directory-Cache"], "STALE");
+  assert.equal("markets" in quarantinedStaleCache.body ? quarantinedStaleCache.body.markets?.length : 0, 0);
 }
 assert.match(ecosystemRoute, /import \{ VNEXT_MARKET_DIRECTORY_MAX_MARKETS \} from "\.\.\/\.\.\/\.\.\/\.\.\/lib\/vnext\/market-directory"/);
 assert.match(ecosystemRoute, /slice\(0, VNEXT_MARKET_DIRECTORY_MAX_MARKETS\)/);

@@ -56,6 +56,10 @@ const opaqueCursorSchema = z
   .min(1)
   .max(MAXIMUM_CURSOR_LENGTH)
   .regex(OPAQUE_CURSOR_PATTERN);
+
+export function isVNextCanonicalMarketInventoryCursor(value: string) {
+  return opaqueCursorSchema.safeParse(value).success;
+}
 const stateErrorSchema = z
   .string()
   .min(1)

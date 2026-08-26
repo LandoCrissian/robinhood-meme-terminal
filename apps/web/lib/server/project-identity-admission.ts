@@ -92,6 +92,15 @@ type CachedIdentity = {
 const identityCache = new Map<string, CachedIdentity>();
 const positiveQuarantineCache = new Map<string, Extract<ProjectIdentityAdmission, { status: "conflicting-project-identity" }>>();
 
+export function excludeKnownPositiveProjectIdentityQuarantines<T extends ProjectIdentityAdmissionCandidate>(
+  candidates: readonly T[]
+) {
+  return candidates.filter((candidate) => (
+    typeof candidate.address !== "string"
+    || !positiveQuarantineCache.has(candidate.address.toLowerCase())
+  ));
+}
+
 const identityClient = createPublicClient({
   chain: robinhoodChain,
   transport: http(

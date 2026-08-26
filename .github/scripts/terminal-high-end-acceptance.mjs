@@ -21,6 +21,8 @@ const stonkBrokerPoolId = "0xadc81b7cc584d4576c944baa1f6128c4d80e636b0e1efa7ce22
 const cannaCatToken = "0x1139d423c1706bdead91f03507f521635591ed92";
 const cannaCatHooks = "0xe5e702641ea86f4ae6cc3cdaed2b886f976be044";
 const cannaCatPoolId = "0x5f5ec0e1016bae2f04c122bbcd2c141a4177cc681d7c2e4463a1d172ed8430b3";
+const peepToken = ["0xf0821f2b", "f570ca4e", "7499a9ed", "9db7c788", "fed9946f"].join("");
+const peepPair = ["0xe70dd154", "81ba143f", "145fbe23", "e8916236", "d554d3c7"].join("");
 const acceptanceWallet = "0x3333333333333333333333333333333333333333";
 const spcxToken = ["0x4a0e65a3", "eccec6db", "e60ae065", "f2e7bb85", "fae35eea"].join("");
 const nvdaToken = ["0xd0601ce1", "57db5bdc", "3162bbac", "2a2c8af5", "320d9eec"].join("");
@@ -181,6 +183,37 @@ function market(index) {
 }
 
 const markets = Array.from({ length: 52 }, (_, index) => market(index));
+const peepMarket = (() => {
+  const fixture = market(60);
+  const tokenIdentity = { address: peepToken, name: "PEEP", symbol: "PEEP" };
+  const primaryMarket = {
+    ...fixture.primaryMarket,
+    assetId: `eip155:4663/contract:${peepToken}`,
+    token: tokenIdentity,
+    venue: "uniswap-v2",
+    protocolVersion: 2,
+    pool: { kind: "evm-address", value: peepPair },
+    baseToken: tokenIdentity,
+    executionEligibility: "view-only"
+  };
+  return {
+    ...fixture,
+    address: peepToken,
+    name: "PEEP",
+    symbol: "PEEP",
+    pairAddress: peepPair,
+    url: `https://robinhoodchain.blockscout.com/address/${peepPair}`,
+    dexId: "uniswap-v2",
+    primaryMarket,
+    verifiedMarkets: [primaryMarket],
+    venue: {
+      ...fixture.venue,
+      dexId: "uniswap-v2",
+      pairAddress: peepPair,
+      url: `https://robinhoodchain.blockscout.com/address/${peepPair}`
+    }
+  };
+})();
 const legacyActiveMarkets = markets.filter((item) => item.signal === "active" && item.volume24h > 0);
 const correctedActiveMarkets = markets.filter((item) => item.volume1h > 0 || item.buys1h + item.sells1h > 0);
 const legacyTrendingMarkets = markets.filter((item) => item.signal === "moving" || item.signal === "early");
@@ -697,6 +730,44 @@ async function installRoutes(page) {
         : riskPayload)
     });
   });
+}
+
+function peepCanonicalDirectoryMarket() {
+  const canonical = canonicalDirectoryMarket(peepMarket);
+  return {
+    ...canonical,
+    canonicalMarkets: [{
+      ...canonical.canonicalMarkets[0],
+      sourceId: "uniswap-v2",
+      protocol: "uniswap",
+      version: 2,
+      poolKey: peepPair,
+      poolAddress: peepPair,
+      token0: peepToken,
+      fee: null,
+      tickSpacing: null
+    }]
+  };
+}
+
+function peepSearchResponse(query) {
+  const normalized = query.trim().toLowerCase();
+  const isAddress = normalized === peepToken;
+  const isText = normalized.replace(/^\$/, "") === "peep";
+  if (!isAddress && !isText) return null;
+  return {
+    query,
+    queryKind: isAddress ? "token-or-pool-address" : "text",
+    status: "found",
+    results: [{
+      address: peepToken,
+      name: "PEEP",
+      symbol: "PEEP",
+      decimals: 18,
+      matchedBy: isAddress ? "token" : "symbol",
+      markets: peepCanonicalDirectoryMarket().canonicalMarkets
+    }]
+  };
 }
 
 async function createContext(browser, options) {
@@ -1405,6 +1476,9 @@ async function inspectMarketLoadPerformance(browser, options, label, directoryDe
   await installRoutes(page);
   await page.unroute(/\/api\/vnext\/market-directory(?:\?.*)?$/);
   await page.unroute(/\/api\/markets\/external(?:\?.*)?$/);
+  await page.unroute(/\/api\/vnext\/market-search(?:\?.*)?$/);
+  await page.unroute(/\/api\/vnext\/asset-identity(?:\?.*)?$/);
+  await page.unroute(/\/api\/vnext\/asset-workspace(?:\?.*)?$/);
   let enrichmentStarted = false;
   let enrichmentResolved = false;
   await page.route(/\/api\/vnext\/market-directory(?:\?.*)?$/, async (route) => {
@@ -1416,15 +1490,57 @@ async function inspectMarketLoadPerformance(browser, options, label, directoryDe
         canonical: true,
         coverage: "complete",
         nextCursor: null,
-        markets: markets.map(canonicalDirectoryMarket),
+        markets: [peepCanonicalDirectoryMarket(), ...markets.map(canonicalDirectoryMarket)],
         updatedAt: now
       })
     });
   });
+  await page.route(/\/api\/vnext\/market-search(?:\?.*)?$/, async (route) => {
+    const query = new URL(route.request().url()).searchParams.get("q") ?? "";
+    universalSearchQueries.set(page, [...(universalSearchQueries.get(page) ?? []), query]);
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(peepSearchResponse(query) ?? {
+        query,
+        queryKind: "text",
+        status: "not_found",
+        results: []
+      })
+    });
+  });
+  const fulfillPeepIdentity = async (route, workspace) => {
+    const requestedAddress = new URL(route.request().url()).searchParams.get("address")?.toLowerCase();
+    if (requestedAddress !== peepToken) {
+      await route.fulfill({ status: 404, contentType: "application/json", body: JSON.stringify({ error: "Asset unavailable." }) });
+      return;
+    }
+    const resolution = {
+      chainId: 4_663,
+      requestedAddress: peepToken,
+      requestedKind: "token",
+      status: "token-only",
+      token: { address: peepToken, name: "PEEP", symbol: "PEEP", decimals: 18, totalSupply: "1000000000000000000000000" },
+      pools: [],
+      marketData: "identity-only",
+      execution: "view-only",
+      provenance: "robinhood-chain-contract-reads",
+      resolvedAt: now
+    };
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(workspace
+        ? { resolution, stockAssetRelationships: [], stockAssetCoverage: "complete", updatedAt: now }
+        : { resolution })
+    });
+  };
+  await page.route(/\/api\/vnext\/asset-identity(?:\?.*)?$/, (route) => fulfillPeepIdentity(route, false));
+  await page.route(/\/api\/vnext\/asset-workspace(?:\?.*)?$/, (route) => fulfillPeepIdentity(route, true));
   await page.route(/\/api\/markets\/external(?:\?.*)?$/, async (route) => {
     const contract = new URL(route.request().url()).searchParams.get("contract")?.toLowerCase();
     if (contract) {
-      const selected = markets.filter((item) => item.address.toLowerCase() === contract || item.pairAddress.toLowerCase() === contract);
+      const selected = [peepMarket, ...markets].filter((item) => item.address.toLowerCase() === contract || item.pairAddress.toLowerCase() === contract);
       await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ markets: selected, updatedAt: now }) });
       return;
     }
@@ -1434,7 +1550,7 @@ async function inspectMarketLoadPerformance(browser, options, label, directoryDe
     await route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: JSON.stringify({ markets, updatedAt: now, source: "delayed-optional-acceptance" })
+      body: JSON.stringify({ markets: [peepMarket, ...markets], updatedAt: now, source: "delayed-optional-acceptance" })
     });
   });
   const navigationStartedAt = performance.now();
@@ -1454,10 +1570,35 @@ async function inspectMarketLoadPerformance(browser, options, label, directoryDe
   const active = page.getByRole("button", { name: /^Active\s+/ });
   if (await active.getAttribute("aria-pressed") !== "true") throw new Error(`${label}: Active is not the default view`);
   const search = page.getByRole("textbox", { name: "Search Robinhood Chain markets" });
-  await search.fill("R01");
+  let peepEvidence = null;
+  if (label === "desktop-cold") {
+    await search.fill("PEEP");
+    await search.press("Enter");
+    await page.waitForFunction((tokenAddress) => new URL(location.href).searchParams.get("market")?.toLowerCase() === tokenAddress, peepToken);
+    await page.getByText("Uniswap V2", { exact: false }).first().waitFor({ state: "visible" });
+    const peepVisibleBeforeEnrichment = !enrichmentResolved;
+    await page.getByRole("button", { name: "Markets", exact: true }).click();
+    await page.waitForFunction(() => !new URL(location.href).searchParams.has("market"));
+    await search.fill(peepToken);
+    await search.press("Enter");
+    await page.waitForFunction((tokenAddress) => new URL(location.href).searchParams.get("market")?.toLowerCase() === tokenAddress, peepToken);
+    await page.getByText("Uniswap V2", { exact: false }).first().waitFor({ state: "visible" });
+    peepEvidence = {
+      textSearch: true,
+      exactSearch: true,
+      selectable: new URL(page.url()).searchParams.get("market")?.toLowerCase() === peepToken,
+      canonicalV2Evidence: true,
+      visibleBeforeEnrichment: peepVisibleBeforeEnrichment
+    };
+    if (!Object.values(peepEvidence).every(Boolean)) throw new Error(`${label}: PEEP acceptance failed ${JSON.stringify(peepEvidence)}`);
+    await page.getByRole("button", { name: "Markets", exact: true }).click();
+    await page.waitForFunction(() => !new URL(location.href).searchParams.has("market"));
+  } else {
+    await search.fill("R01");
+  }
   await page.locator(rowSelector).first().waitFor({ state: "visible" });
   await search.fill("");
-  await page.locator(rowSelector).first().click();
+  if (!new URL(page.url()).searchParams.has("market")) await page.locator(rowSelector).first().click();
   await page.waitForFunction(() => new URL(location.href).searchParams.has("market"), undefined, { timeout: 5_000 });
   const selectedBeforeEnrichment = new URL(page.url()).searchParams.get("market")?.toLowerCase();
   await page.waitForFunction(() => performance.getEntriesByName("rmt:market-enrichment:request-publish").length > 0, undefined, { timeout: 10_000 });
@@ -1489,7 +1630,8 @@ async function inspectMarketLoadPerformance(browser, options, label, directoryDe
     searchDuringEnrichment: true,
     selectionDuringEnrichment: true,
     duplicateMarkets: 0,
-    tokenIdentityDrift: "none"
+    tokenIdentityDrift: "none",
+    ...(peepEvidence ? { peep: peepEvidence } : {})
   };
 }
 
