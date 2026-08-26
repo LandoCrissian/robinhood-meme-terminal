@@ -63,12 +63,21 @@ export function externalChartRefreshMs(range: ExternalChartRange) {
   return RANGE_REFRESH_MS[range];
 }
 
+export function isExternalPoolIdentity(value: string) {
+  return isAddress(value) || /^0x[0-9a-fA-F]{64}$/.test(value);
+}
+
+export function normalizeExternalPoolIdentity(value: string) {
+  if (!isExternalPoolIdentity(value)) throw new Error("Invalid pool identity.");
+  return value.toLowerCase();
+}
+
 export function externalOhlcvRequestUrl(
   pair: string,
   range: ExternalChartRange,
   tokenSide: "base" | "quote"
 ) {
-  if (!isAddress(pair)) throw new Error("Invalid pool address.");
+  if (!isExternalPoolIdentity(pair)) throw new Error("Invalid pool identity.");
   const config = RANGE_CONFIG[range];
   const url = new URL(
     `https://api.geckoterminal.com/api/v2/networks/robinhood/pools/${pair}/ohlcv/${config.timeframe}`

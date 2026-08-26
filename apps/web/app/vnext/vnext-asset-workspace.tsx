@@ -537,7 +537,9 @@ export function VNextAssetWorkspace({
     </dl>
     <WorkspaceQuickLinks directoryMarket={directoryMarket} market={market} primaryPool={selectedPool} canonicalMarket={selectedCanonicalMarket} />
 
-    {selectedPool ? <VNextMarketChart token={directoryMarket.address} pair={selectedPool} symbol={directoryMarket.symbol} /> : selectedCanonicalMarket?.version === 4 ? <div className="vnChart vnChartEmpty" role="status"><strong>V4 chart coverage unavailable</strong><span>Canonical PoolId {shortAddress(selectedCanonicalMarket.poolKey)} is verified. No authoritative PoolId OHLCV source is attached, so RMT will not invent price history.</span></div> : <div className="vnChart vnChartEmpty"><strong>Chart coverage unavailable</strong><span>No supported address-pool OHLCV source is attached. RMT will not render invented price history.</span></div>}
+    {selectedPool || selectedCanonicalMarket?.version === 4
+      ? <VNextMarketChart token={directoryMarket.address} pair={selectedPool ?? selectedCanonicalMarket!.poolKey} symbol={directoryMarket.symbol} />
+      : <div className="vnChart vnChartEmpty"><strong>Chart coverage unavailable</strong><span>No supported canonical-market OHLCV source is attached. RMT will not render invented price history.</span></div>}
 
     <div className="rmtWorkspaceTabs" role="tablist" aria-label="Asset intelligence">
       {sections.map((item) => <button key={item.id} type="button" role="tab" aria-selected={section === item.id} className={section === item.id ? "isActive" : ""} onClick={() => setSection(item.id)}>{item.label}</button>)}

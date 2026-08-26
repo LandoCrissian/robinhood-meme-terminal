@@ -23,6 +23,8 @@ const cannaCatHooks = "0xe5e702641ea86f4ae6cc3cdaed2b886f976be044";
 const cannaCatPoolId = "0x5f5ec0e1016bae2f04c122bbcd2c141a4177cc681d7c2e4463a1d172ed8430b3";
 const peepToken = ["0xf0821f2b", "f570ca4e", "7499a9ed", "9db7c788", "fed9946f"].join("");
 const peepPair = ["0xe70dd154", "81ba143f", "145fbe23", "e8916236", "d554d3c7"].join("");
+const hopiumToken = ["0xb6ce5192", "5c2e397e", "bf1a443b", "343d1926", "7b3d4225"].join("");
+const hopiumPoolId = "0xc1dbd75280b6d117b4ac1e27fcd00c6dccb1a2b2fbfa9923a2c492711299d337";
 const acceptanceWallet = "0x3333333333333333333333333333333333333333";
 const spcxToken = ["0x4a0e65a3", "eccec6db", "e60ae065", "f2e7bb85", "fae35eea"].join("");
 const nvdaToken = ["0xd0601ce1", "57db5bdc", "3162bbac", "2a2c8af5", "320d9eec"].join("");
@@ -770,6 +772,51 @@ function peepSearchResponse(query) {
   };
 }
 
+function hopiumCanonicalDirectoryMarket() {
+  return {
+    ...peepCanonicalDirectoryMarket(),
+    address: hopiumToken,
+    assetId: `eip155:4663/contract:${hopiumToken}`,
+    name: "Hopium Machines",
+    symbol: "HOPIUM",
+    pairAddress: null,
+    verifiedIdentity: { address: hopiumToken, name: "Hopium Machines", symbol: "HOPIUM" },
+    canonicalMarkets: [{
+      ...peepCanonicalDirectoryMarket().canonicalMarkets[0],
+      sourceId: "uniswap-v4",
+      protocol: "uniswap",
+      version: 4,
+      poolKey: hopiumPoolId,
+      poolAddress: null,
+      token0: nativeAsset,
+      token1: hopiumToken,
+      fee: 0,
+      tickSpacing: 200,
+      hooks: cannaCatHooks
+    }]
+  };
+}
+
+function hopiumSearchResponse(query) {
+  const normalized = query.trim().toLowerCase();
+  const isAddress = normalized === hopiumToken;
+  const isText = normalized.replace(/^\$/, "") === "hopium";
+  if (!isAddress && !isText) return null;
+  return {
+    query,
+    queryKind: isAddress ? "token-or-pool-address" : "text",
+    status: "found",
+    results: [{
+      address: hopiumToken,
+      name: "Hopium Machines",
+      symbol: "HOPIUM",
+      decimals: 18,
+      matchedBy: isAddress ? "token" : "symbol",
+      markets: hopiumCanonicalDirectoryMarket().canonicalMarkets
+    }]
+  };
+}
+
 async function createContext(browser, options) {
   const context = await browser.newContext(options);
   await context.addInitScript(() => {
@@ -1490,7 +1537,7 @@ async function inspectMarketLoadPerformance(browser, options, label, directoryDe
         canonical: true,
         coverage: "complete",
         nextCursor: null,
-        markets: [peepCanonicalDirectoryMarket(), ...markets.map(canonicalDirectoryMarket)],
+        markets: [peepCanonicalDirectoryMarket(), hopiumCanonicalDirectoryMarket(), ...markets.map(canonicalDirectoryMarket)],
         updatedAt: now
       })
     });
@@ -1501,7 +1548,7 @@ async function inspectMarketLoadPerformance(browser, options, label, directoryDe
     await route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: JSON.stringify(peepSearchResponse(query) ?? {
+      body: JSON.stringify(peepSearchResponse(query) ?? hopiumSearchResponse(query) ?? {
         query,
         queryKind: "text",
         status: "not_found",
@@ -1509,18 +1556,19 @@ async function inspectMarketLoadPerformance(browser, options, label, directoryDe
       })
     });
   });
-  const fulfillPeepIdentity = async (route, workspace) => {
+  const fulfillControlIdentity = async (route, workspace) => {
     const requestedAddress = new URL(route.request().url()).searchParams.get("address")?.toLowerCase();
-    if (requestedAddress !== peepToken) {
+    if (requestedAddress !== peepToken && requestedAddress !== hopiumToken) {
       await route.fulfill({ status: 404, contentType: "application/json", body: JSON.stringify({ error: "Asset unavailable." }) });
       return;
     }
+    const isHopium = requestedAddress === hopiumToken;
     const resolution = {
       chainId: 4_663,
-      requestedAddress: peepToken,
+      requestedAddress,
       requestedKind: "token",
       status: "token-only",
-      token: { address: peepToken, name: "PEEP", symbol: "PEEP", decimals: 18, totalSupply: "1000000000000000000000000" },
+      token: { address: requestedAddress, name: isHopium ? "Hopium Machines" : "PEEP", symbol: isHopium ? "HOPIUM" : "PEEP", decimals: 18, totalSupply: "1000000000000000000000000" },
       pools: [],
       marketData: "identity-only",
       execution: "view-only",
@@ -1535,8 +1583,8 @@ async function inspectMarketLoadPerformance(browser, options, label, directoryDe
         : { resolution })
     });
   };
-  await page.route(/\/api\/vnext\/asset-identity(?:\?.*)?$/, (route) => fulfillPeepIdentity(route, false));
-  await page.route(/\/api\/vnext\/asset-workspace(?:\?.*)?$/, (route) => fulfillPeepIdentity(route, true));
+  await page.route(/\/api\/vnext\/asset-identity(?:\?.*)?$/, (route) => fulfillControlIdentity(route, false));
+  await page.route(/\/api\/vnext\/asset-workspace(?:\?.*)?$/, (route) => fulfillControlIdentity(route, true));
   await page.route(/\/api\/markets\/external(?:\?.*)?$/, async (route) => {
     const contract = new URL(route.request().url()).searchParams.get("contract")?.toLowerCase();
     if (contract) {
@@ -1571,6 +1619,7 @@ async function inspectMarketLoadPerformance(browser, options, label, directoryDe
   if (await active.getAttribute("aria-pressed") !== "true") throw new Error(`${label}: Active is not the default view`);
   const search = page.getByRole("textbox", { name: "Search Robinhood Chain markets" });
   let peepEvidence = null;
+  let hopiumEvidence = null;
   if (label === "desktop-cold") {
     await search.fill("PEEP");
     await search.press("Enter");
@@ -1591,6 +1640,19 @@ async function inspectMarketLoadPerformance(browser, options, label, directoryDe
       visibleBeforeEnrichment: peepVisibleBeforeEnrichment
     };
     if (!Object.values(peepEvidence).every(Boolean)) throw new Error(`${label}: PEEP acceptance failed ${JSON.stringify(peepEvidence)}`);
+    await page.getByRole("button", { name: "Markets", exact: true }).click();
+    await page.waitForFunction(() => !new URL(location.href).searchParams.has("market"));
+    await search.fill("HOPIUM");
+    await search.press("Enter");
+    await page.waitForFunction((tokenAddress) => new URL(location.href).searchParams.get("market")?.toLowerCase() === tokenAddress, hopiumToken);
+    await page.getByText("Uniswap V4", { exact: false }).first().waitFor({ state: "visible" });
+    hopiumEvidence = {
+      textSearch: true,
+      selectable: new URL(page.url()).searchParams.get("market")?.toLowerCase() === hopiumToken,
+      canonicalV4Evidence: true,
+      poolIdPreserved: (await page.locator("body").innerText()).includes(`${hopiumPoolId.slice(0, 6)}…${hopiumPoolId.slice(-4)}`)
+    };
+    if (!Object.values(hopiumEvidence).every(Boolean)) throw new Error(`${label}: HOPIUM acceptance failed ${JSON.stringify(hopiumEvidence)}`);
     await page.getByRole("button", { name: "Markets", exact: true }).click();
     await page.waitForFunction(() => !new URL(location.href).searchParams.has("market"));
   } else {
@@ -1631,7 +1693,8 @@ async function inspectMarketLoadPerformance(browser, options, label, directoryDe
     selectionDuringEnrichment: true,
     duplicateMarkets: 0,
     tokenIdentityDrift: "none",
-    ...(peepEvidence ? { peep: peepEvidence } : {})
+    ...(peepEvidence ? { peep: peepEvidence } : {}),
+    ...(hopiumEvidence ? { hopium: hopiumEvidence } : {})
   };
 }
 
@@ -2071,11 +2134,12 @@ async function inspectV4PreviewUserJourney(browser, fixture) {
   if (!heading.includes("STONKBROKER") || new URL(page.url()).searchParams.get("market")?.toLowerCase() !== stonkBrokerToken) {
     throw new Error(`V4 Preview journey did not preserve exact token identity: ${heading}`);
   }
+  await page.locator('.vnChartState').getByText("Live data", { exact: true }).waitFor({ state: "visible" });
   const chartText = await page.locator(".vnChart").innerText();
-  if (!chartText.includes("V4 chart coverage unavailable") || !chartText.includes("No authoritative PoolId OHLCV source")) {
-    throw new Error(`V4 Preview journey did not render truthful chart coverage: ${chartText}`);
+  if (!chartText.includes("GeckoTerminal OHLCV")) {
+    throw new Error(`V4 Preview journey did not render authoritative PoolId chart coverage: ${chartText}`);
   }
-  if ((ohlcvRequests.get(page) ?? 0) !== 0) throw new Error("V4 Preview journey fabricated an address-pool OHLCV request");
+  if ((ohlcvRequests.get(page) ?? 0) < 1) throw new Error("V4 Preview journey did not request exact PoolId OHLCV coverage");
 
   await page.getByRole("tab", { name: "Markets", exact: true }).click();
   const marketsCard = page.locator(".vnMarketsCard");

@@ -2,7 +2,9 @@ import { getAddress, isAddress } from "viem";
 import {
   externalChartRefreshMs,
   externalOhlcvRequestUrl,
+  isExternalPoolIdentity,
   isExternalChartRange,
+  normalizeExternalPoolIdentity,
   parseExternalOhlcvList,
   type ExternalChartRange
 } from "../../../../lib/external-ohlcv";
@@ -54,7 +56,7 @@ export async function GET(request: Request) {
   const token = url.searchParams.get("token") ?? "";
   const pair = url.searchParams.get("pair") ?? "";
   const range = url.searchParams.get("range") ?? "";
-  if (!isAddress(token) || !isAddress(pair) || !isExternalChartRange(range)) {
+  if (!isAddress(token) || !isExternalPoolIdentity(pair) || !isExternalChartRange(range)) {
     return Response.json(
       { error: "Invalid external chart request." },
       { status: 400, headers: { "Cache-Control": "no-store" } }
@@ -63,7 +65,7 @@ export async function GET(request: Request) {
 
   try {
     const canonicalToken = getAddress(token);
-    const canonicalPair = getAddress(pair);
+    const canonicalPair = normalizeExternalPoolIdentity(pair);
     const result = await Promise.any([
       fetchOhlcv(canonicalPair, range, "base").then((candidate) => {
         if (candidate.base?.toLowerCase() !== canonicalToken.toLowerCase()) {

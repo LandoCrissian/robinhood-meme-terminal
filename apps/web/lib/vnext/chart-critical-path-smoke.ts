@@ -4,6 +4,7 @@ import { GET } from "../../app/api/markets/ohlcv/route";
 const token = "0x1111111111111111111111111111111111111111";
 const quoteToken = "0x2222222222222222222222222222222222222222";
 const pair = "0x3333333333333333333333333333333333333333";
+const poolId = `0x${"44".repeat(32)}`;
 const originalFetch = globalThis.fetch;
 let ohlcvRequests = 0;
 let tradeRequests = 0;
@@ -38,6 +39,14 @@ async function main() {
     assert.ok(elapsed < 300, `The useful quote-side OHLCV response was blocked for ${elapsed}ms`);
     assert.equal(ohlcvRequests, 2, "Base and quote orientation reads start together");
     assert.equal(tradeRequests, 0, "Optional trade enrichment is not on first render");
+
+    const v4Response = await GET(new Request(
+      `http://localhost/api/markets/ohlcv?token=${token}&pair=${poolId}&range=1H`
+    ));
+    const v4Body = await v4Response.json() as { pair?: unknown; candles?: unknown[] };
+    assert.equal(v4Response.status, 200, "A canonical V4 PoolId must be accepted as a chart identity");
+    assert.equal(v4Body.pair, poolId);
+    assert.equal(v4Body.candles?.length, 2);
   } finally {
     globalThis.fetch = originalFetch;
   }
