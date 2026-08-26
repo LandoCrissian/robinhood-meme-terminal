@@ -74,6 +74,7 @@ async function resetV2Fixture(rows: number) {
     market_indexer_compact_migration_state,
     market_pool_state_compact_v3,market_indexer_sync_points_compact_v3,market_pools_compact_v3,
     market_pool_state_v2_old,market_indexer_sync_points_v2_old,market_pools_v2_old,
+    market_token_identity_catalog_state,market_token_identity_shard,
     market_pool_state,market_pools,market_indexer_sync_points,market_indexer_source_state CASCADE`);
   await pool.query(`
     CREATE UNLOGGED TABLE market_indexer_source_state(
@@ -405,6 +406,7 @@ try {
       confirmations: 20,
       batchSize: 5_000,
       enrichmentBatchSize: 25,
+      tokenIdentityBatchSize: 250,
       pollIntervalMs: 5_000,
       heartbeatIntervalMs: 60_000,
       databasePoolSize: 2,

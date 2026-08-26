@@ -132,6 +132,25 @@ CREATE ${persistence}TABLE IF NOT EXISTS market_pool_state (
 
 CREATE INDEX IF NOT EXISTS market_pool_state_refresh_idx
   ON market_pool_state (observed_block ASC, observed_at ASC);
+
+CREATE ${persistence}TABLE IF NOT EXISTS market_token_identity_shard (
+  shard SMALLINT PRIMARY KEY CHECK (shard BETWEEN 0 AND 255),
+  payload BYTEA NOT NULL CHECK (octet_length(payload) BETWEEN 2 AND 8388608),
+  entry_count INTEGER NOT NULL CHECK (entry_count >= 0),
+  verified_count INTEGER NOT NULL CHECK (verified_count BETWEEN 0 AND entry_count),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE ${persistence}TABLE IF NOT EXISTS market_token_identity_catalog_state (
+  singleton BOOLEAN PRIMARY KEY DEFAULT TRUE CHECK (singleton),
+  total_canonical_markets INTEGER NOT NULL CHECK (total_canonical_markets >= 0),
+  total_unique_tokens INTEGER NOT NULL CHECK (total_unique_tokens >= 0),
+  evaluated_tokens INTEGER NOT NULL CHECK (evaluated_tokens BETWEEN 0 AND total_unique_tokens),
+  verified_tokens INTEGER NOT NULL CHECK (verified_tokens BETWEEN 0 AND evaluated_tokens),
+  complete BOOLEAN NOT NULL,
+  observed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CHECK (complete = (evaluated_tokens = total_unique_tokens))
+);
 `;
 }
 
@@ -139,7 +158,9 @@ const EXPECTED_TABLES = [
   "market_indexer_source_state",
   "market_indexer_sync_points",
   "market_pools",
-  "market_pool_state"
+  "market_pool_state",
+  "market_token_identity_shard",
+  "market_token_identity_catalog_state"
 ] as const;
 
 async function assertDedicatedDatabaseBeforeDdl(client: PoolClient) {

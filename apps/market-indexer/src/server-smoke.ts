@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import type { AddressInfo } from "node:net";
+import { gzipSync } from "node:zlib";
 import type { Pool } from "pg";
 import { loadMarketIndexerConfig } from "./config.js";
 import { createMarketIndexerServer } from "./server.js";
@@ -161,6 +162,26 @@ const poolQueries: Array<{ text: string; values: unknown[] }> = [];
 const pool = {
   query: async (text: string, values: unknown[]) => {
     poolQueries.push({ text, values });
+    if (text.includes("market_token_identity_shard")) {
+      return { rows: [{
+        shard: Number.parseInt(stonkBrokerAddress.slice(2, 4), 16),
+        payload: gzipSync(Buffer.from(JSON.stringify([[
+          stonkBrokerAddress.slice(2), "r", "StonkBrokers", "STONKBROKER", 18
+        ]]), "utf8"))
+      }] };
+    }
+    if (text.includes("market_token_identity_catalog_state")) {
+      return { rows: [{
+        total_canonical_markets: 4_001,
+        total_unique_tokens: 1,
+        evaluated_tokens: 1,
+        verified_tokens: 1,
+        complete: true
+      }] };
+    }
+    if (text.includes("FROM matched_pools AS pools")) {
+      return { rows: [{ ...v4Pool, matchedToken: stonkBrokerAddress, logIndex: 2 }] };
+    }
     const [
       sourceId,
       token,
@@ -251,6 +272,28 @@ try {
   const unauthorizedPools = await fetch(`${origin}/v1/pools`);
   assert.equal(unauthorizedPools.status, 401);
   const poolHeaders = { authorization: `Bearer ${readToken}` };
+
+  const unauthorizedTokenSearch = await fetch(`${origin}/v1/token-identities/search?q=STONKBROKER`);
+  assert.equal(unauthorizedTokenSearch.status, 401);
+  const tokenSearchResponse = await fetch(
+    `${origin}/v1/token-identities/search?q=STONKBROKER&limit=64`,
+    { headers: poolHeaders }
+  );
+  const tokenSearch = (await tokenSearchResponse.json()) as {
+    capacity: { complete: boolean; totalCanonicalMarkets: number; totalUniqueCanonicalTokens: number };
+    entries: Array<{ address: string; markets: typeof indexedPools }>;
+  };
+  assert.equal(tokenSearchResponse.status, 200);
+  assert.equal(tokenSearch.capacity.complete, true);
+  assert.equal(tokenSearch.capacity.totalCanonicalMarkets, 4_001);
+  assert.equal(tokenSearch.capacity.totalUniqueCanonicalTokens, 1);
+  assert.equal(tokenSearch.entries[0]?.address.toLowerCase(), stonkBrokerAddress);
+  assert.deepEqual(tokenSearch.entries[0]?.markets, [v4Pool]);
+  assert.match(
+    poolQueries.find((query) => query.text.includes("FROM matched_pools AS pools"))?.text ?? "",
+    /token_rank <= 16/
+  );
+
   const cursorFor = (value: Record<string, unknown>) =>
     Buffer.from(JSON.stringify(value), "utf8").toString("base64url");
   const allPoolsResponse = await fetch(`${origin}/v1/pools`, {

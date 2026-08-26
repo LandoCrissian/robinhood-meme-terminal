@@ -8,6 +8,7 @@ export type MarketIndexerConfig = Readonly<{
   confirmations: number;
   batchSize: number;
   enrichmentBatchSize: number;
+  tokenIdentityBatchSize: number;
   pollIntervalMs: number;
   heartbeatIntervalMs: number;
   databasePoolSize: number;
@@ -203,6 +204,13 @@ export function loadMarketIndexerConfig(
       25,
       1,
       250,
+      env
+    ),
+    tokenIdentityBatchSize: integer(
+      "MARKET_INDEXER_TOKEN_IDENTITY_BATCH_SIZE",
+      250,
+      25,
+      1_000,
       env
     ),
     pollIntervalMs: integer(

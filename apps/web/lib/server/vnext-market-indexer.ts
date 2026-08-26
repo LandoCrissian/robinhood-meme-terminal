@@ -423,6 +423,50 @@ type MarketIndexerDependencies = {
   onTiming?: (timing: VNextMarketIndexerTiming) => void;
 };
 
+export type VNextCanonicalTokenIdentitySearchResult =
+  | {
+      status: "ready";
+      sourceManifestHash: string;
+      coverageComplete: boolean;
+      capacity: {
+        totalCanonicalMarkets: number;
+        totalUniqueCanonicalTokens: number;
+        totalVerifiedErc20Identities: number;
+        indexedSearchTokenIdentities: number;
+        unresolvedTokenIdentities: number;
+        complete: boolean;
+      };
+      entries: Array<{
+        address: string;
+        name: string;
+        symbol: string;
+        decimals: number;
+        markets: VNextCanonicalMarketInventoryPool[];
+      }>;
+    }
+  | { status: "unavailable"; entries: [] };
+
+const tokenIdentitySearchResponseSchema = z.object({
+  chainId: z.literal(MARKET_INDEXER_CHAIN_ID),
+  sourceManifestHash: bytes32Schema,
+  coverage: marketInventoryResponseSchema.shape.coverage,
+  capacity: z.object({
+    totalCanonicalMarkets: z.number().int().nonnegative(),
+    totalUniqueCanonicalTokens: z.number().int().nonnegative(),
+    totalVerifiedErc20Identities: z.number().int().nonnegative(),
+    indexedSearchTokenIdentities: z.number().int().nonnegative(),
+    unresolvedTokenIdentities: z.number().int().nonnegative(),
+    complete: z.boolean()
+  }).strict(),
+  entries: z.array(z.object({
+    address: nonzeroAddressSchema,
+    name: z.string().trim().min(1).max(80),
+    symbol: z.string().trim().min(1).max(20),
+    decimals: z.number().int().min(0).max(36),
+    markets: z.array(marketPoolSchema).max(16)
+  }).strict()).max(64)
+}).strict();
+
 type NormalizedQuery = {
   token: string | null;
   poolKey: string | null;
@@ -731,4 +775,47 @@ export async function readVNextCanonicalMarketInventory(
     return { status: "invalid_upstream_response", reason: "sensitive_echo" };
   }
   return result;
+}
+
+export async function searchVNextCanonicalTokenIdentities(
+  requestedQuery: string,
+  dependencies: MarketIndexerDependencies = {}
+): Promise<VNextCanonicalTokenIdentitySearchResult> {
+  const query = requestedQuery.trim();
+  if (query.length < 1 || query.length > 160) return { status: "unavailable", entries: [] };
+  const configuration = resolveConfiguration(dependencies.env ?? process.env, dependencies.timeoutMs);
+  if ("status" in configuration) return { status: "unavailable", entries: [] };
+  const requestUrl = new URL(configuration.baseUrl);
+  requestUrl.pathname = `${requestUrl.pathname.replace(/\/+$/, "")}/v1/token-identities/search`;
+  requestUrl.search = new URLSearchParams({ q: query, limit: "64" }).toString();
+  try {
+    const response = await fetchWithTimeout(requestUrl, {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+        Authorization: `Bearer ${configuration.readCredential}`
+      },
+      cache: "no-store"
+    }, configuration.timeoutMs, dependencies.fetch ?? fetch);
+    if (!response.ok) return { status: "unavailable", entries: [] };
+    const text = await response.text();
+    if (Buffer.byteLength(text, "utf8") > MAXIMUM_RESPONSE_BYTES) {
+      return { status: "unavailable", entries: [] };
+    }
+    const parsed = tokenIdentitySearchResponseSchema.safeParse(JSON.parse(text));
+    if (!parsed.success) return { status: "unavailable", entries: [] };
+    const serialized = JSON.stringify(parsed.data);
+    if (serialized.includes(configuration.readCredential)) {
+      return { status: "unavailable", entries: [] };
+    }
+    return {
+      status: "ready",
+      sourceManifestHash: parsed.data.sourceManifestHash,
+      coverageComplete: parsed.data.coverage.complete,
+      capacity: parsed.data.capacity,
+      entries: parsed.data.entries
+    };
+  } catch {
+    return { status: "unavailable", entries: [] };
+  }
 }

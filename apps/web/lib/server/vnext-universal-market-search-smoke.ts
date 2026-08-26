@@ -974,6 +974,85 @@ async function assertCanonicalInventoryIsAnIndependentTextCandidateLane() {
   assert.deepEqual(duplicateSymbol.results.map(({ address }) => address), [sameSymbolAddressA, sameSymbolAddressB]);
 }
 
+async function assertCanonicalSearchSurvivesTheRetiredCatalogBounds() {
+  const afterOldLimitAddress = "0x0000000000000000000000000000000000000801";
+  const firstPageAddress = "0x0000000000000000000000000000000000000001";
+  const afterOldLimitMarket = pool({
+    sourceId: "uniswap-v4",
+    protocol: "uniswap",
+    version: 4,
+    poolKey: `0x${"9".repeat(64)}`,
+    poolAddress: null,
+    token0: zeroAddress,
+    token1: afterOldLimitAddress,
+    fee: 0,
+    tickSpacing: 200,
+    hooks: zeroAddress
+  });
+  const firstPageMarket = pool({
+    sourceId: "uniswap-v2",
+    protocol: "uniswap",
+    version: 2,
+    poolKey: "0x0000000000000000000000000000000000001001",
+    poolAddress: "0x0000000000000000000000000000000000001001",
+    token0: firstPageAddress,
+    token1: ROBINHOOD_WETH_ADDRESS.toLowerCase()
+  });
+  const indexedEntries = [
+    {
+      address: afterOldLimitAddress,
+      name: "After Old Boundary",
+      symbol: "POSTBOUND",
+      decimals: 18,
+      totalSupply: "1000000000000000000",
+      markets: [afterOldLimitMarket]
+    },
+    {
+      address: firstPageAddress,
+      name: "First Page Control",
+      symbol: "FIRSTPAGE",
+      decimals: 18,
+      totalSupply: "1000000000000000000",
+      markets: [firstPageMarket]
+    }
+  ];
+  const capacity = {
+    totalCanonicalMarkets: 4_001,
+    totalUniqueCanonicalTokens: 2_049,
+    totalVerifiedErc20Identities: 2_049,
+    indexedSearchTokenIdentities: 2_049,
+    unresolvedTokenIdentities: 0,
+    complete: true
+  };
+  const searchCanonicalTokens = async (query: string) => ({
+    status: "ready" as const,
+    sourceManifestHash: manifestHash,
+    coverageComplete: true,
+    capacity,
+    entries: indexedEntries.filter((entry) =>
+      [entry.name, entry.symbol].some((value) =>
+        value.toLowerCase().replace(/[\s_-]+/g, "") === query.toLowerCase().replace(/[\s_-]+/g, "")
+      )
+    )
+  });
+  const common: VNextUniversalMarketSearchDependencies = {
+    readInventory: async () => verifiedInventory([]),
+    readIdentity: async () => null,
+    fetch: candidateFetch({ pairs: [], items: [] }),
+    searchCanonicalTokens,
+    admitProjectIdentities: async <T>(candidates: readonly T[]) => [...candidates],
+    timeoutMs: 500
+  };
+  for (const query of ["POSTBOUND", "After Old Boundary", "after-old_boundary"]) {
+    const result = await searchVNextUniversalMarkets(query, common);
+    assert.equal(result.status, "found", query);
+    assert.equal(result.results[0]?.address, afterOldLimitAddress, query);
+    assert.equal(result.results[0]?.markets[0]?.poolKey, afterOldLimitMarket.poolKey, query);
+  }
+  const first = await searchVNextUniversalMarkets("FIRSTPAGE", common);
+  assert.equal(first.results[0]?.address, firstPageAddress);
+}
+
 async function main() {
   await assertStonkBrokerTextSearches();
   await assertExactSearchesNeverUseProvider();
@@ -991,6 +1070,7 @@ async function main() {
   await assertTimeoutIsUnavailable();
   await assertProjectAdmissionPrecedesPresentationAndResultBounds();
   await assertCanonicalInventoryIsAnIndependentTextCandidateLane();
+  await assertCanonicalSearchSurvivesTheRetiredCatalogBounds();
 
   console.log(
     "Universal market search preserves first-party inventory and onchain identity authority across exact and bounded text queries."

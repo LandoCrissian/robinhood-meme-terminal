@@ -10,6 +10,10 @@ import {
 } from "./sources.js";
 import type { MarketIndexerWorker } from "./worker.js";
 import type { PositionGuardHeartbeat } from "./position-guard-heartbeat.js";
+import {
+  readCanonicalTokenIdentityIndexStats,
+  searchCanonicalTokenIdentityIndex
+} from "./token-identity-index.js";
 
 const EVM_ADDRESS_PATTERN = /^0x[0-9a-fA-F]{40}$/;
 const POOL_KEY_PATTERN = /^0x(?:[0-9a-fA-F]{40}|[0-9a-fA-F]{64})$/;
@@ -479,6 +483,84 @@ export function createMarketIndexerServer(
             ? encodeCursor(source, token, poolKey, lastRow)
             : null,
           pools: page.map(publicPool)
+        });
+        return;
+      }
+      if (request.method === "GET" && url.pathname === "/v1/token-identities/search") {
+        if (!bearer(request, config.readToken)) {
+          json(response, 401, { error: "unauthorized" });
+          return;
+        }
+        const query = url.searchParams.get("q")?.trim() ?? "";
+        const rawLimit = url.searchParams.get("limit") ?? "256";
+        if (query.length < 1 || query.length > 160 || !/^[1-9][0-9]*$/.test(rawLimit)) {
+          json(response, 400, { error: "invalid token identity search query" });
+          return;
+        }
+        const limit = Number(rawLimit);
+        if (!Number.isSafeInteger(limit) || limit < 1 || limit > 512) {
+          json(response, 400, { error: "limit must be between 1 and 512" });
+          return;
+        }
+        const [identities, capacity] = await Promise.all([
+          searchCanonicalTokenIdentityIndex(pool, query, limit),
+          readCanonicalTokenIdentityIndexStats(pool)
+        ]);
+        const tokenBuffers = identities.map((entry) => Buffer.from(entry.address.slice(2), "hex"));
+        const marketRows = tokenBuffers.length === 0 ? [] : (await pool.query(
+          `WITH candidate_pools AS (
+             SELECT pools.token0 AS matched_token, pools.*,
+                    ROW_NUMBER() OVER (PARTITION BY pools.token0 ORDER BY pools.block_number DESC,pools.log_index DESC) AS token_rank
+             FROM market_pools AS pools WHERE pools.token0=ANY($1::bytea[])
+             UNION ALL
+             SELECT pools.token1 AS matched_token, pools.*,
+                    ROW_NUMBER() OVER (PARTITION BY pools.token1 ORDER BY pools.block_number DESC,pools.log_index DESC) AS token_rank
+             FROM market_pools AS pools WHERE pools.token1=ANY($1::bytea[])
+           ),
+           matched_pools AS (
+             SELECT * FROM candidate_pools WHERE token_rank <= 16
+           )
+           SELECT manifest.source_id AS "sourceId", manifest.protocol,
+                  manifest.protocol_version AS "version",
+                  '0x' || encode(pools.matched_token, 'hex') AS "matchedToken",
+                  '0x' || encode(pools.pool_key, 'hex') AS "poolKey",
+                  CASE WHEN pools.source_code = 5 THEN NULL ELSE '0x' || encode(pools.pool_key, 'hex') END AS "poolAddress",
+                  '0x' || encode(pools.token0, 'hex') AS token0,
+                  '0x' || encode(pools.token1, 'hex') AS token1,
+                  CASE WHEN pools.source_code = 6 THEN get_byte(pools.attributes, 0) = 1 ELSE NULL END AS stable,
+                  CASE WHEN pools.source_code IN (2,4,5) THEN get_byte(pools.attributes,0)*65536+get_byte(pools.attributes,1)*256+get_byte(pools.attributes,2) ELSE NULL END AS fee,
+                  CASE WHEN pools.source_code IN (2,4,5) THEN get_byte(pools.attributes,3)*256+get_byte(pools.attributes,4)-CASE WHEN get_byte(pools.attributes,3)>=128 THEN 65536 ELSE 0 END
+                       WHEN pools.source_code=7 THEN get_byte(pools.attributes,0)*256+get_byte(pools.attributes,1)-CASE WHEN get_byte(pools.attributes,0)>=128 THEN 65536 ELSE 0 END ELSE NULL END AS "tickSpacing",
+                  CASE WHEN pools.source_code=5 THEN '0x'||encode(substring(pools.attributes FROM 6 FOR 20),'hex') ELSE NULL END AS hooks,
+                  '0x'||encode(substring(pools.provenance FROM 1 FOR 32),'hex') AS "transactionHash",
+                  pools.block_number::text AS "blockNumber",
+                  '0x'||encode(substring(pools.provenance FROM 33 FOR 32),'hex') AS "blockHash",
+                  pools.log_index AS "logIndex",
+                  state.status AS "stateStatus", state.live_fee AS "liveFee", state.fee_denominator AS "feeDenominator",
+                  CASE WHEN state.gauge_address IS NULL THEN NULL ELSE '0x'||encode(state.gauge_address,'hex') END AS "gaugeAddress",
+                  state.gauge_alive AS "gaugeAlive", state.gauge_weight AS "gaugeWeight", state.gauge_claimable AS "gaugeClaimable",
+                  CASE WHEN state.fees_address IS NULL THEN NULL ELSE '0x'||encode(state.fees_address,'hex') END AS "feesAddress",
+                  CASE WHEN state.bribe_address IS NULL THEN NULL ELSE '0x'||encode(state.bribe_address,'hex') END AS "bribeAddress",
+                  state.last_error AS "stateError", state.observed_block::text AS "stateObservedBlock",
+                  CASE WHEN state.observed_block_hash IS NULL THEN NULL ELSE '0x'||encode(state.observed_block_hash,'hex') END AS "stateObservedBlockHash"
+           FROM matched_pools AS pools
+           JOIN market_indexer_source_state AS manifest ON manifest.source_code=pools.source_code
+           LEFT JOIN market_pool_state AS state ON state.source_code=pools.source_code AND state.pool_key=pools.pool_key
+           ORDER BY pools.block_number DESC, pools.log_index DESC`,
+          [tokenBuffers]
+        )).rows as Array<PoolRow & { matchedToken: string }>;
+        const entries = identities.map((identity) => ({
+          ...identity,
+          markets: marketRows
+            .filter((market) => market.matchedToken === identity.address.toLowerCase())
+            .map(({ matchedToken: _matchedToken, ...market }) => publicPool(market))
+        })).filter((identity) => identity.markets.length > 0);
+        json(response, 200, {
+          chainId: MARKET_INDEXER_CHAIN_ID,
+          sourceManifestHash: MARKET_SOURCE_MANIFEST_HASH,
+          coverage: inventoryCoverage(worker, config),
+          capacity,
+          entries
         });
         return;
       }
