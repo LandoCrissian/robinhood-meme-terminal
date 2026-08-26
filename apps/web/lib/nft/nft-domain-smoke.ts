@@ -6,9 +6,11 @@ import {
   activeRmtCuratedNftProjects,
   defineRmtCuratedNftProject,
   rmtCuratedNftProject,
-  type RmtNftCollectionRegistryEntry
+  type RmtNftCollectionRegistryEntry,
+  type RmtNftProjectTokenRegistryEntry
 } from "./project-registry";
 import { verifyRmtNftCollection } from "./collection-verification";
+import { verifyRmtNftProjectToken } from "./project-token-verification";
 
 const CCFF00_COLLECTION = "0x505A22Ffed8d37ebE580FfD98d2Cdb0021189146" as const;
 
@@ -139,5 +141,22 @@ const standardMismatch = await verifyRmtNftCollection(collection, {
 });
 assert.equal(standardMismatch.status, "REJECTED");
 if (standardMismatch.status === "REJECTED") assert.equal(standardMismatch.verification.reason, "DECLARED_STANDARD_MISMATCH");
+
+const exampleProjectToken: RmtNftProjectTokenRegistryEntry = {
+  chainId: RMT_NFT_CHAIN_ID,
+  contractAddress: "0x2222222222222222222222222222222222222222",
+  association: "OWNER_CONFIRMED_PROJECT_TOKEN",
+  ownerConfirmedAt: "2026-08-26T12:00:00.000Z",
+  verificationStatus: "PENDING"
+};
+const verifiedProjectToken = await verifyRmtNftProjectToken(exampleProjectToken, {
+  readIdentity: async (address) => ({ address, symbol: "EXAMPLE", decimals: 18, native: false }),
+  now: () => new Date("2026-08-26T12:00:00.000Z")
+});
+assert.equal(verifiedProjectToken.status, "VERIFIED");
+if (verifiedProjectToken.status === "VERIFIED") {
+  assert.equal(verifiedProjectToken.verification.association, "OWNER_CONFIRMED_PROJECT_TOKEN");
+  assert.equal(verifiedProjectToken.verification.symbol, "EXAMPLE");
+}
 
 console.log("RMT NFT domain keeps curated admission, technical collection identity, and project-token association separate.");
