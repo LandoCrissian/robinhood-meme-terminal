@@ -187,12 +187,10 @@ function movement(tokenId: bigint, amount: bigint, from: Address, to: Address): 
   };
 }
 
-export function decodeRmtNftActivityLog(
+export function decodeVerifiedRmtNftActivityLog(
   log: RmtNftRawLog,
-  verifiedStandard: RmtNftCollectionStandard
+  collection: RmtNftActivityCollectionContext
 ): RmtNftActivityDecodeResult {
-  const collection = resolveRmtNftActivityCollection(log.address, verifiedStandard);
-  if (!collection) return { status: "IGNORED", reason: "COLLECTION_NOT_ADMITTED" };
   if (log.chainId !== RMT_NFT_CHAIN_ID) return { status: "IGNORED", reason: "WRONG_CHAIN" };
   if (!isAddressEqual(log.address, collection.collectionAddress)) {
     return { status: "IGNORED", reason: "WRONG_COLLECTION" };
@@ -206,7 +204,7 @@ export function decodeRmtNftActivityLog(
   if (!topic0) return { status: "IGNORED", reason: "UNSUPPORTED_TOPIC" };
 
   if (topic0 === ERC721_TRANSFER_TOPIC) {
-    if (verifiedStandard !== "ERC721") return { status: "IGNORED", reason: "STANDARD_EVENT_MISMATCH" };
+    if (collection.standard !== "ERC721") return { status: "IGNORED", reason: "STANDARD_EVENT_MISMATCH" };
     try {
       const decoded = decodeEventLog({
         abi: ERC721_TRANSFER_ABI,
@@ -222,7 +220,7 @@ export function decodeRmtNftActivityLog(
           schemaVersion: 1,
           chainId: RMT_NFT_CHAIN_ID,
           projectId: collection.projectId,
-          collectionAddress: collection.collectionAddress,
+          collectionAddress: canonicalAddress(collection.collectionAddress),
           standard: "ERC721",
           ...identity,
           sourceEvent: "TRANSFER",
@@ -239,7 +237,7 @@ export function decodeRmtNftActivityLog(
   }
 
   if (topic0 === ERC1155_TRANSFER_SINGLE_TOPIC) {
-    if (verifiedStandard !== "ERC1155") return { status: "IGNORED", reason: "STANDARD_EVENT_MISMATCH" };
+    if (collection.standard !== "ERC1155") return { status: "IGNORED", reason: "STANDARD_EVENT_MISMATCH" };
     try {
       const decoded = decodeEventLog({
         abi: ERC1155_TRANSFER_SINGLE_ABI,
@@ -255,7 +253,7 @@ export function decodeRmtNftActivityLog(
           schemaVersion: 1,
           chainId: RMT_NFT_CHAIN_ID,
           projectId: collection.projectId,
-          collectionAddress: collection.collectionAddress,
+          collectionAddress: canonicalAddress(collection.collectionAddress),
           standard: "ERC1155",
           ...identity,
           sourceEvent: "TRANSFER_SINGLE",
@@ -270,7 +268,7 @@ export function decodeRmtNftActivityLog(
   }
 
   if (topic0 === ERC1155_TRANSFER_BATCH_TOPIC) {
-    if (verifiedStandard !== "ERC1155") return { status: "IGNORED", reason: "STANDARD_EVENT_MISMATCH" };
+    if (collection.standard !== "ERC1155") return { status: "IGNORED", reason: "STANDARD_EVENT_MISMATCH" };
     try {
       const decoded = decodeEventLog({
         abi: ERC1155_TRANSFER_BATCH_ABI,
@@ -295,7 +293,7 @@ export function decodeRmtNftActivityLog(
           schemaVersion: 1,
           chainId: RMT_NFT_CHAIN_ID,
           projectId: collection.projectId,
-          collectionAddress: collection.collectionAddress,
+          collectionAddress: canonicalAddress(collection.collectionAddress),
           standard: "ERC1155",
           ...identity,
           sourceEvent: "TRANSFER_BATCH",
@@ -310,6 +308,15 @@ export function decodeRmtNftActivityLog(
   }
 
   return { status: "IGNORED", reason: "UNSUPPORTED_TOPIC" };
+}
+
+export function decodeRmtNftActivityLog(
+  log: RmtNftRawLog,
+  verifiedStandard: RmtNftCollectionStandard
+): RmtNftActivityDecodeResult {
+  const collection = resolveRmtNftActivityCollection(log.address, verifiedStandard);
+  if (!collection) return { status: "IGNORED", reason: "COLLECTION_NOT_ADMITTED" };
+  return decodeVerifiedRmtNftActivityLog(log, collection);
 }
 
 export function rmtNftActivityEventKey(event: RmtNftActivityEvent) {
