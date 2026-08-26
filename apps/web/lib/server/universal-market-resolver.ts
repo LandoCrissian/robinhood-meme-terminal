@@ -17,6 +17,7 @@ import type {
 import { rankExternalMarket } from "../external-market-ranking";
 import { ROBINHOOD_V3_FACTORY, ROBINHOOD_WETH } from "../uniswap-v4";
 import type { RobinhoodStockRegistrySnapshot } from "./robinhood-stock-token-registry";
+import { ROBINHOOD_MULTICALL3 } from "./project-identity-admission";
 
 export const ROBINHOOD_USDC = "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168" as Address;
 export const ROBINHOOD_UNISWAP_V2_FACTORY = "0x8bcEaA40B9AcdfAedF85AdF4FF01F5Ad6517937f" as Address;
@@ -24,6 +25,9 @@ export const ROBINHOOD_SUSHI_V2_FACTORY = "0xE52abd50ad151ecDf56427effD715E70369
 export const ROBINHOOD_SUSHI_V3_FACTORY = "0xE51960f1B45f1C9FB6D166E6a884F866fC70433B" as Address;
 
 const V3_FEES = [100, 500, 3_000, 10_000] as const;
+const MAXIMUM_BATCH_TOKEN_IDENTITIES = 2_048;
+const TOKEN_IDENTITIES_PER_MULTICALL = 100;
+const TOKEN_IDENTITY_BATCH_DEADLINE_MS = 1_800;
 const BLOCKSCOUT = robinhoodChain.blockExplorers?.default.url ?? "https://explorer.mainnet.chain.robinhood.com";
 const factoryV2Abi = [{
   type: "function",
@@ -68,6 +72,74 @@ const client = createPublicClient({
 function safeText(value: string, fallback: string, maximum: number) {
   const normalized = value.trim().replace(/[\u0000-\u001f\u007f]/g, "").slice(0, maximum);
   return normalized || fallback;
+}
+
+function strictIdentityText(value: unknown, maximum: number) {
+  if (typeof value !== "string") return null;
+  const normalized = value.trim().replace(/[\u0000-\u001f\u007f]/g, "").slice(0, maximum);
+  return normalized || null;
+}
+
+export async function readRobinhoodTokenIdentities(addresses: readonly Address[]) {
+  const unique = [...new Map(addresses.slice(0, MAXIMUM_BATCH_TOKEN_IDENTITIES).map((address) => {
+    const normalized = getAddress(address);
+    return [normalized.toLowerCase(), normalized] as const;
+  })).values()];
+  const batches = Array.from(
+    { length: Math.ceil(unique.length / TOKEN_IDENTITIES_PER_MULTICALL) },
+    (_, index) => unique.slice(
+      index * TOKEN_IDENTITIES_PER_MULTICALL,
+      (index + 1) * TOKEN_IDENTITIES_PER_MULTICALL
+    )
+  );
+  const resultsByBatch = await Promise.all(batches.map(async (batch) => {
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+    try {
+      const results = await Promise.race([
+        client.multicall({
+          allowFailure: true,
+          multicallAddress: ROBINHOOD_MULTICALL3,
+          contracts: batch.flatMap((address) => [
+            { address, abi: erc20Abi, functionName: "name" as const },
+            { address, abi: erc20Abi, functionName: "symbol" as const },
+            { address, abi: erc20Abi, functionName: "decimals" as const },
+            { address, abi: erc20Abi, functionName: "totalSupply" as const }
+          ])
+        }).catch(() => []),
+        new Promise<never>((_resolve, reject) => {
+          timeout = setTimeout(() => reject(new Error("Token identity batch timed out.")), TOKEN_IDENTITY_BATCH_DEADLINE_MS);
+        })
+      ]).catch(() => []);
+      return { batch, results };
+    } finally {
+      if (timeout !== undefined) clearTimeout(timeout);
+    }
+  }));
+  const identities = new Map<string, TokenIdentity>();
+  for (const { batch, results } of resultsByBatch) {
+    batch.forEach((address, index) => {
+      const nameResult = results[index * 4];
+      const symbolResult = results[index * 4 + 1];
+      const decimalsResult = results[index * 4 + 2];
+      const supplyResult = results[index * 4 + 3];
+      const name = strictIdentityText(nameResult?.status === "success" ? nameResult.result : null, 80);
+      const symbol = strictIdentityText(symbolResult?.status === "success" ? symbolResult.result : null, 20);
+      const decimals = decimalsResult?.status === "success" ? decimalsResult.result : null;
+      const totalSupply = supplyResult?.status === "success" ? supplyResult.result : null;
+      if (
+        !name || !symbol || typeof decimals !== "number" || decimals < 0 || decimals > 36
+        || typeof totalSupply !== "bigint" || totalSupply <= 0n
+      ) return;
+      identities.set(address.toLowerCase(), {
+        address,
+        name,
+        symbol,
+        decimals,
+        totalSupply: totalSupply.toString()
+      });
+    });
+  }
+  return identities;
 }
 
 export async function readRobinhoodTokenIdentity(address: Address): Promise<TokenIdentity | null> {
