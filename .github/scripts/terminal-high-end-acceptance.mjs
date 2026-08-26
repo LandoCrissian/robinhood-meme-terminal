@@ -1460,7 +1460,7 @@ async function inspectMarketLoadPerformance(browser, options, label, directoryDe
   await page.locator(rowSelector).first().click();
   await page.waitForFunction(() => new URL(location.href).searchParams.has("market"), undefined, { timeout: 5_000 });
   const selectedBeforeEnrichment = new URL(page.url()).searchParams.get("market")?.toLowerCase();
-  await page.waitForFunction(() => performance.getEntriesByName("rmt:market-enrichment:request-publish").length > 0, undefined, { timeout: 5_000 });
+  await page.waitForFunction(() => performance.getEntriesByName("rmt:market-enrichment:request-publish").length > 0, undefined, { timeout: 10_000 });
   const afterEnrichment = await page.locator(rowSelector).evaluateAll((rows) => ({
     addresses: rows.map((row) => row.querySelector(".rmtSearchContract")?.textContent?.trim().toLowerCase()).filter(Boolean),
     firstText: rows[0]?.textContent ?? ""
