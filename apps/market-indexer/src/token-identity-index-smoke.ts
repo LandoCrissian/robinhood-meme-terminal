@@ -80,7 +80,7 @@ const fallbackPool = {
 const fallbackRpc = {
   multicall: async () => Array.from({ length: 4 }, () => ({
     status: "failure" as const,
-    error: new Error("HTTP request failed")
+    error: Object.assign(new Error("HTTP request failed"), { status: 429 })
   })),
   call: async ({ data }: { data: `0x${string}` }) => {
     const { functionName } = decodeFunctionData({ abi: erc20Abi, data });

@@ -61,8 +61,24 @@ function cleanIdentityText(value: unknown, maximum: number) {
 }
 
 function isTransientReadFailure(error: unknown) {
-  const message = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
-  return /http|network|fetch|timeout|timed out|rate.?limit|429|502|503|504|socket|connection/i.test(message);
+  const descriptions: string[] = [];
+  let current = error;
+  for (let depth = 0; depth < 5 && current; depth += 1) {
+    if (typeof current !== "object") {
+      descriptions.push(String(current));
+      break;
+    }
+    const record = current as Record<string, unknown>;
+    for (const field of ["name", "message", "shortMessage", "details"]) {
+      if (typeof record[field] === "string") descriptions.push(record[field]);
+    }
+    const status = Number(record.status ?? record.statusCode);
+    if (status === 408 || status === 425 || status === 429 || status >= 500) return true;
+    current = record.cause;
+  }
+  return /network|fetch failed|timeout|timed out|rate.?limit|\b429\b|\b50[0-9]\b|socket|connection/i.test(
+    descriptions.join(" ")
+  );
 }
 
 async function readIdentityIndividually(rpc: PublicClient, address: Address, blockNumber: bigint) {
