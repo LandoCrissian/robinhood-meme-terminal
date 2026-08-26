@@ -216,7 +216,13 @@ async function main() {
   }
   assert.doesNotMatch(implementation, /dexscreener|blockscout|twitter|telegram|verified source/i, "non-authoritative metadata must not be promoted into project identity authority");
   assert.match(universalSearch, /applyProjectIdentityDirectoryAdmission/);
-  assert.ok(universalSearch.indexOf("admitProjectIdentities(matchedCandidates") < universalSearch.indexOf(".slice(0, MAXIMUM_RESULTS)"), "quarantine must happen before result limits");
+  const combinedAdmission = universalSearch.indexOf("admitProjectIdentities(matchedCandidates");
+  const combinedLimit = universalSearch.indexOf(".slice(0, MAXIMUM_RESULTS)", combinedAdmission);
+  assert.ok(
+    universalSearch.indexOf("[...canonicalMatches, ...providerCandidates]") < combinedAdmission,
+    "canonical and supplemental candidates must be combined before quarantine"
+  );
+  assert.ok(combinedAdmission >= 0 && combinedAdmission < combinedLimit, "quarantine must happen before result limits");
   assert.match(canonicalDirectory, /applyProjectIdentityDirectoryAdmission/);
   assert.match(providerDirectory, /directoryAdmission: "not_admitted"/);
   assert.match(providerDirectory, /applyProjectIdentityDirectoryAdmission/);

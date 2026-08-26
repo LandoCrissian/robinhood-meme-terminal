@@ -16,6 +16,7 @@ import {
 } from "../uniswap-v4";
 import { parseVNextPreSignEvidence, type VNextPreSignEvidence } from "./pre-sign-evidence";
 import { UP_CL_EXECUTION_ROUTER, UP_V2_EXECUTION_ROUTER } from "./up-authorization-codec";
+import { ROBINHOOD_UNISWAP_V2_ROUTER } from "./uniswap-v2-authorization-codec";
 import type { RmtNetExecutionEconomics } from "./execution-fee-policy";
 import { assertRmtExecutionFeeV2Economics, type RmtExecutionFeeV2Economics } from "./execution-fee-policy-v2";
 import {
@@ -41,7 +42,7 @@ export type VNextAuthorizationPlan = {
   planId: string;
   sourceQuoteRequestId: string;
   sourceVerificationId: string;
-  provider: "uniswap-v3" | "uniswap-v4" | "up-v2" | "up-cl";
+  provider: "uniswap-v2" | "uniswap-v3" | "uniswap-v4" | "up-v2" | "up-cl";
   kind: "erc20_approval" | "swap";
   chainId: 4_663;
   target: string;
@@ -73,7 +74,7 @@ export type VNextAuthorizationPlan = {
 const atomic = z.string().regex(/^(0|[1-9][0-9]*)$/);
 const planSchema = z.object({
   planId: z.string().uuid(), sourceQuoteRequestId: z.string().uuid(), sourceVerificationId: z.string().uuid(),
-  provider: z.enum(["uniswap-v3", "uniswap-v4", "up-v2", "up-cl"]), kind: z.enum(["erc20_approval", "swap"]), chainId: z.literal(4_663),
+  provider: z.enum(["uniswap-v2", "uniswap-v3", "uniswap-v4", "up-v2", "up-cl"]), kind: z.enum(["erc20_approval", "swap"]), chainId: z.literal(4_663),
   target: z.string(), data: z.string().regex(/^0x[0-9a-fA-F]+$/), value: atomic, gasLimit: atomic,
   payloadHash: z.string().regex(/^0x[0-9a-fA-F]{64}$/), inputAsset: z.string(), outputAsset: z.string(),
   inputAmountAtomic: atomic, protectedOutputAtomic: atomic, recipient: z.string(), router: z.string(), deadline: atomic,
@@ -108,7 +109,7 @@ export function parseVNextAuthorizationPlan(value: unknown, evidence: VNextPreSi
     || getAddress(plan.outputAsset) !== getAddress(evidence.outputAsset)
     || getAddress(plan.recipient) !== getAddress(evidence.recipient)
     || plan.provider !== evidence.provider
-    || getAddress(plan.router) !== getAddress(evidence.provider === "uniswap-v3" ? ROBINHOOD_SWAP_ROUTER_02 : evidence.provider === "uniswap-v4" ? ROBINHOOD_UNIVERSAL_ROUTER : evidence.provider === "up-v2" ? UP_V2_EXECUTION_ROUTER : UP_CL_EXECUTION_ROUTER)
+    || getAddress(plan.router) !== getAddress(evidence.provider === "uniswap-v2" ? ROBINHOOD_UNISWAP_V2_ROUTER : evidence.provider === "uniswap-v3" ? ROBINHOOD_SWAP_ROUTER_02 : evidence.provider === "uniswap-v4" ? ROBINHOOD_UNIVERSAL_ROUTER : evidence.provider === "up-v2" ? UP_V2_EXECUTION_ROUTER : UP_CL_EXECUTION_ROUTER)
     || plan.inputAmountAtomic !== evidence.inputAmountAtomic
     || plan.protectedOutputAtomic !== evidence.protectedOutputAtomic
     || plan.value !== evidence.transactionValueAtomic

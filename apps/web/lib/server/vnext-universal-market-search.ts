@@ -21,6 +21,11 @@ import {
   applyProjectIdentityDirectoryAdmission,
   type ProjectIdentityAdmissionCandidate
 } from "./project-identity-admission";
+import {
+  createVNextCanonicalSearchCatalogReader,
+  readVNextCanonicalSearchCatalog,
+  type VNextCanonicalSearchCatalog
+} from "./vnext-canonical-search-catalog";
 
 export type {
   VNextUniversalMarketSearchMatchedBy,
@@ -41,6 +46,7 @@ const MAXIMUM_PROVIDER_RESPONSE_BYTES = 1_000_000;
 const MAXIMUM_CANDIDATE_TOKENS = 12;
 const MAXIMUM_RESULTS = 12;
 const INVENTORY_LIMIT = 100;
+const CANONICAL_PROVIDER_SUPPLEMENT_GRACE_MS = 150;
 
 const ADDRESS_INPUT_PATTERN = /^0x[0-9a-fA-F]{40}$/;
 const BYTES32_INPUT_PATTERN = /^0x[0-9a-fA-F]{64}$/;
@@ -67,6 +73,7 @@ type SearchFetch = (
 ) => Promise<Response>;
 
 type ProjectAdmissionFilter = <T extends ProjectIdentityAdmissionCandidate>(candidates: readonly T[]) => Promise<T[]>;
+type CanonicalCatalogReader = () => Promise<VNextCanonicalSearchCatalog>;
 
 async function defaultProjectAdmissionFilter<T extends ProjectIdentityAdmissionCandidate>(
   candidates: readonly T[]
@@ -80,6 +87,7 @@ export type VNextUniversalMarketSearchDependencies = {
   fetch?: SearchFetch;
   timeoutMs?: number;
   admitProjectIdentities?: ProjectAdmissionFilter;
+  readCanonicalCatalog?: CanonicalCatalogReader;
 };
 
 type CandidatePair = {
@@ -553,49 +561,93 @@ async function textSearch(
   query: string,
   dependencies: Required<VNextUniversalMarketSearchDependencies>
 ): Promise<VNextUniversalMarketSearchResult> {
-  const discovery = await discoverCandidates(
+  const discoveryPromise = discoverCandidates(
     query,
     dependencies.fetch,
     dependencies.timeoutMs
+  ).catch((): CandidateDiscoveryResult => ({ status: "unavailable" }));
+  const catalog = await dependencies.readCanonicalCatalog().catch(
+    (): VNextCanonicalSearchCatalog => ({ status: "unavailable", entries: [] })
   );
-  if (discovery.status === "unavailable") {
+  const canonicalMatches = catalog.status === "ready"
+    ? catalog.entries.flatMap((entry) => {
+        const match = matchIdentity(query, entry.identity);
+        return match ? [{
+          priority: match.priority,
+          result: {
+            address: entry.identity.address.toLowerCase(),
+            name: entry.identity.name,
+            symbol: entry.identity.symbol,
+            decimals: entry.identity.decimals,
+            matchedBy: match.matchedBy,
+            markets: entry.markets.map(publicMarket)
+          } satisfies VNextUniversalMarketSearchResultItem
+        }] : [];
+      }).sort(
+        (left, right) => left.priority - right.priority || left.result.address.localeCompare(right.result.address)
+      )
+    : [];
+  let supplementTimeout: ReturnType<typeof setTimeout> | undefined;
+  const discovery = canonicalMatches.length === 0
+    ? await discoveryPromise
+    : await Promise.race([
+        discoveryPromise,
+        new Promise<CandidateDiscoveryResult>((resolve) => {
+          supplementTimeout = setTimeout(
+            () => resolve({ status: "ready", addresses: [] }),
+            CANONICAL_PROVIDER_SUPPLEMENT_GRACE_MS
+          );
+        })
+      ]).finally(() => {
+        if (supplementTimeout !== undefined) clearTimeout(supplementTimeout);
+      });
+  if (canonicalMatches.length === 0 && discovery.status === "unavailable") {
     return emptyResult(query, "text", "candidate_discovery_unavailable");
   }
-
-  const candidates = await Promise.all(
-    discovery.addresses.map(async (address) => {
-      const [identityRead, inventoryRead] = await Promise.allSettled([
-        dependencies.readIdentity(getAddress(address)),
-        dependencies.readInventory({ token: address, limit: INVENTORY_LIMIT })
-      ]);
-      if (identityRead.status !== "fulfilled" || !identityRead.value) return null;
-      const rawIdentity = identityRead.value;
-      const identity = normalizeVerifiedIdentity(rawIdentity, address);
-      if (!identity) return null;
-      const match = matchIdentity(query, identity);
-      if (!match) return null;
-      const inventory = inventoryRead.status === "fulfilled" &&
-        inventoryRead.value.status === "verified_shadow"
-        ? inventoryRead.value
-        : null;
-      return {
-        priority: match.priority,
-        result: {
-          address,
-          name: identity.name,
-          symbol: identity.symbol,
-          decimals: identity.decimals,
-          matchedBy: match.matchedBy,
-          markets: (inventory?.pools ?? []).map(publicMarket)
-        } satisfies VNextUniversalMarketSearchResultItem
-      };
-    })
-  );
-  const matchedCandidates = candidates
-    .filter((candidate): candidate is NonNullable<typeof candidate> => candidate !== null)
+  const providerCandidates = discovery.status === "ready"
+    ? (await Promise.all(
+        discovery.addresses.map(async (address) => {
+          const [identityRead, inventoryRead] = await Promise.allSettled([
+            dependencies.readIdentity(getAddress(address)),
+            dependencies.readInventory({ token: address, limit: INVENTORY_LIMIT })
+          ]);
+          if (identityRead.status !== "fulfilled" || !identityRead.value) return null;
+          const identity = normalizeVerifiedIdentity(identityRead.value, address);
+          if (!identity) return null;
+          const match = matchIdentity(query, identity);
+          if (!match) return null;
+          const inventory = inventoryRead.status === "fulfilled" &&
+            inventoryRead.value.status === "verified_shadow"
+            ? inventoryRead.value
+            : null;
+          return {
+            priority: match.priority,
+            result: {
+              address,
+              name: identity.name,
+              symbol: identity.symbol,
+              decimals: identity.decimals,
+              matchedBy: match.matchedBy,
+              markets: (inventory?.pools ?? []).map(publicMarket)
+            } satisfies VNextUniversalMarketSearchResultItem
+          };
+        })
+      )).filter((candidate): candidate is NonNullable<typeof candidate> => candidate !== null)
+    : [];
+  const matchedCandidates = [...new Map(
+    [...canonicalMatches, ...providerCandidates]
+      .sort(
+        (left, right) =>
+          left.priority - right.priority ||
+          Number(right.result.markets.length > 0) - Number(left.result.markets.length > 0) ||
+          left.result.address.localeCompare(right.result.address)
+      )
+      .map((candidate) => [candidate.result.address, candidate] as const)
+  ).values()]
     .sort(
       (left, right) =>
         left.priority - right.priority ||
+        Number(right.result.markets.length > 0) - Number(left.result.markets.length > 0) ||
         left.result.address.localeCompare(right.result.address)
     );
   const admittedCandidates = await dependencies.admitProjectIdentities(matchedCandidates.map((candidate) => ({
@@ -660,7 +712,21 @@ export async function searchVNextUniversalMarkets(
   const resolvedDependencies = {
     ...readDependencies,
     fetch: dependencies.fetch ?? fetch,
-    timeoutMs
+    timeoutMs,
+    readCanonicalCatalog: dependencies.readCanonicalCatalog ?? (
+      dependencies.readInventory || dependencies.readIdentity
+        ? createVNextCanonicalSearchCatalogReader({
+            readInventory: readDependencies.readInventory,
+            readIdentities: async (addresses) => {
+              const reads = await Promise.all(addresses.map(async (address) => [
+                address.toLowerCase(),
+                await readDependencies.readIdentity(address)
+              ] as const));
+              return new Map(reads.flatMap(([address, identity]) => identity ? [[address, identity]] : []));
+            }
+          })
+        : readVNextCanonicalSearchCatalog
+    )
   };
   let deadline: ReturnType<typeof setTimeout> | undefined;
   try {

@@ -17,7 +17,7 @@ export const runtime = "nodejs";
 const requestSchema = z.object({
   chainId: z.literal(4_663),
   quoteRequestId: z.string().uuid(),
-  provider: z.enum(["sushi", "uniswap-v3", "uniswap-v4", "up-v2", "up-cl"]),
+  provider: z.enum(["sushi", "uniswap-v2", "uniswap-v3", "uniswap-v4", "up-v2", "up-cl"]),
   inputAsset: z.string().refine((value) => isAddress(value, { strict: false })),
   outputAsset: z.string().refine((value) => isAddress(value, { strict: false })),
   inputAmountAtomic: z.string().regex(/^[1-9][0-9]*$/),

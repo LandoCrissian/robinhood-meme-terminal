@@ -13,6 +13,7 @@ import {
   ROBINHOOD_USDG_ADDRESS,
   ROBINHOOD_WETH_ADDRESS
 } from "../vnext/robinhood-assets";
+import type { VNextCanonicalSearchCatalog } from "./vnext-canonical-search-catalog";
 
 const stonkBrokerAddress = "0xe934e36a439c94017b64a3fece66af12099abf50";
 const sameSymbolAddressA = "0x1111111111111111111111111111111111111111";
@@ -24,6 +25,13 @@ const v3PoolAddress = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
 const v4PoolId = `0x${"c".repeat(64)}`;
 const nativeV4PoolId = `0x${"d".repeat(64)}`;
 const nativeV4TokenAddress = "0x7777777777777777777777777777777777777777";
+const peepAddress = "0xf0821f2bf570ca4e7499a9ed9db7c788fed9946f";
+const peepPairAddress = "0xe70dd15481ba143f145fbe23e8916236d554d3c7";
+const cannaCatAddress = "0x1139d423c1706bdead91f03507f521635591ed92";
+const cannaCatPoolId = "0x5f5ec0e1016bae2f04c122bbcd2c141a4177cc681d7c2e4463a1d172ed8430b3";
+const hopiumAddress = "0xb6ce51925c2e397ebf1a443b343d19267b3d4225";
+const hopiumPoolId = "0xc1dbd75280b6d117b4ac1e27fcd00c6dccb1a2b2fbfa9923a2c492711299d337";
+const supplementalPeepAddress = "0x0dadc46063c8a4ece0a2c1d7c65f4363053c66b2";
 const zeroAddress = `0x${"0".repeat(40)}`;
 const manifestHash = `0x${"1".repeat(64)}`;
 const blockHash = `0x${"2".repeat(64)}`;
@@ -467,7 +475,11 @@ async function assertProviderCannotCreateAuthority() {
     }),
     providerPair("0x6666666666666666666666666666666666666666")
   ];
-  const result = await searchVNextUniversalMarkets("STONKBROKER", dependencies(pairs));
+  const result = await searchVNextUniversalMarkets("STONKBROKER", {
+    ...dependencies(pairs),
+    readInventory: async () => verifiedInventory([]),
+    readCanonicalCatalog: async () => ({ status: "unavailable", entries: [] })
+  });
   assert.equal(result.status, "not_found");
   assert.deepEqual(result.results, []);
   const serialized = JSON.stringify(result);
@@ -495,20 +507,23 @@ async function assertFailureSemantics() {
       return jsonResponse({}, 503);
     }
   });
-  assert.equal(providerUnavailable.status, "candidate_discovery_unavailable");
+  assert.equal(providerUnavailable.status, "found");
+  assert.equal(providerUnavailable.results[0]?.address, stonkBrokerAddress);
   assert.equal(providerFailureCalls, 2);
 
   const malformedProvider = await searchVNextUniversalMarkets("STONKBROKER", {
     ...dependencies(),
     fetch: async () => jsonResponse({ wrong: [] })
   });
-  assert.equal(malformedProvider.status, "candidate_discovery_unavailable");
+  assert.equal(malformedProvider.status, "found");
+  assert.equal(malformedProvider.results[0]?.address, stonkBrokerAddress);
 
   const malformedJson = await searchVNextUniversalMarkets("STONKBROKER", {
     ...dependencies(),
     fetch: async () => new Response("not-json", { status: 200 })
   });
-  assert.equal(malformedJson.status, "candidate_discovery_unavailable");
+  assert.equal(malformedJson.status, "found");
+  assert.equal(malformedJson.results[0]?.address, stonkBrokerAddress);
 
   const notFound = await searchVNextUniversalMarkets("MISSING", dependencies([]));
   assert.equal(notFound.status, "not_found");
@@ -571,7 +586,11 @@ async function assertIncompleteCoverageSemantics() {
   assert.equal(incompleteText.results[0]?.markets.some((market) => market.poolKey === v4PoolId), true);
   assert.equal(incompleteText.results[0]?.markets.find((market) => market.poolKey === v4PoolId)?.poolAddress, null);
   assert.equal(providerCalls, 2);
-  assert.equal(identityCalls, 2, "Both canonically indexed sides of the provider pair may receive identity verification");
+  assert.equal(
+    identityCalls,
+    new Set(markets.flatMap((market) => [market.token0, market.token1]).filter((address) => address !== zeroAddress)).size + 2,
+    "The canonical catalog must deduplicate indexed identities while both supplemental provider candidates remain independently verified"
+  );
 
   let absentIdentityCalls = 0;
   const absentTextIncomplete = await searchVNextUniversalMarkets("MISSING", {
@@ -584,7 +603,11 @@ async function assertIncompleteCoverageSemantics() {
     timeoutMs: 500
   });
   assert.equal(absentTextIncomplete.status, "not_found");
-  assert.equal(absentIdentityCalls, 1, "Candidate addresses must be checked against exact onchain identity independently of market evidence");
+  assert.equal(
+    absentIdentityCalls,
+    new Set(markets.flatMap((market) => [market.token0, market.token1]).filter((address) => address !== zeroAddress)).size + 1,
+    "Canonical and supplemental candidate addresses must each receive exact onchain identity verification"
+  );
 
   const absentTextComplete = await searchVNextUniversalMarkets("MISSING", {
     readInventory: async (query) => query.token === undefined
@@ -602,7 +625,8 @@ async function assertIncompleteCoverageSemantics() {
       : verifiedInventory(markets.slice(0, 1)),
     readIdentity: identityReader,
     fetch: providerFetch([providerPair(sameSymbolAddressA)]),
-    timeoutMs: 500
+    timeoutMs: 500,
+    readCanonicalCatalog: async () => ({ status: "unavailable", entries: [] })
   });
   assert.equal(identityMismatch.status, "not_found", "Verified identity must match the text query");
 
@@ -634,7 +658,7 @@ async function assertProviderWorkIsBounded() {
     timeoutMs: 500
   });
   assert.equal(result.status, "not_found");
-  assert.equal(inventoryCalls, 12);
+  assert.equal(inventoryCalls, 13, "One bounded catalog page plus twelve supplemental candidates is the maximum for this fixture");
 }
 
 async function assertChainFilteringPrecedesCandidateBound() {
@@ -783,7 +807,8 @@ async function assertTimeoutIsUnavailable() {
     fetch: async (_input, init) => new Promise<Response>((_resolve, reject) => {
       init?.signal?.addEventListener("abort", () => reject(new Error("aborted")));
     }),
-    timeoutMs: 250
+    timeoutMs: 250,
+    readCanonicalCatalog: async () => ({ status: "unavailable", entries: [] })
   });
   assert.equal(result.status, "candidate_discovery_unavailable");
 }
@@ -811,6 +836,134 @@ async function assertProjectAdmissionPrecedesPresentationAndResultBounds() {
   assert.deepEqual(text.results, []);
 }
 
+async function assertCanonicalInventoryIsAnIndependentTextCandidateLane() {
+  const peepMarket = pool({
+    sourceId: "uniswap-v2",
+    protocol: "uniswap",
+    version: 2,
+    poolKey: peepPairAddress,
+    poolAddress: peepPairAddress,
+    token0: ROBINHOOD_WETH_ADDRESS.toLowerCase(),
+    token1: peepAddress
+  });
+  const cannaCatMarket = pool({
+    sourceId: "uniswap-v4",
+    protocol: "uniswap",
+    version: 4,
+    poolKey: cannaCatPoolId,
+    poolAddress: null,
+    token0: zeroAddress,
+    token1: cannaCatAddress,
+    fee: 0,
+    tickSpacing: 200,
+    hooks: "0xe5e702641ea86f4ae6cc3cdaed2b886f976be044"
+  });
+  const hopiumMarket = pool({
+    sourceId: "uniswap-v4",
+    protocol: "uniswap",
+    version: 4,
+    poolKey: hopiumPoolId,
+    poolAddress: null,
+    token0: zeroAddress,
+    token1: hopiumAddress,
+    fee: 0,
+    tickSpacing: 200,
+    hooks: "0xe5e702641ea86f4ae6cc3cdaed2b886f976be044"
+  });
+  const catalog = (entries: Extract<VNextCanonicalSearchCatalog, { status: "ready" }>["entries"]): VNextCanonicalSearchCatalog => ({
+    status: "ready",
+    freshness: "current",
+    observedAtMs: Date.now(),
+    sourceManifestHash: manifestHash,
+    entries
+  });
+  const base = {
+    readInventory: async () => verifiedInventory([]),
+    readIdentity: async () => {
+      throw new Error("A warmed canonical catalog must not repeat token identity reads per query.");
+    },
+    admitProjectIdentities: async <T>(candidates: readonly T[]) => [...candidates],
+    timeoutMs: 500
+  };
+
+  const peep = await searchVNextUniversalMarkets("PEEP", {
+    ...base,
+    fetch: candidateFetch({ pairs: [providerPair(supplementalPeepAddress)], items: [] }),
+    readIdentity: async (address) => address.toLowerCase() === supplementalPeepAddress
+      ? { address, name: "PEEP Community", symbol: "PEEP", decimals: 18 }
+      : null,
+    readCanonicalCatalog: async () => catalog([{
+      identity: { address: peepAddress, name: "PEEP", symbol: "PEEP", decimals: 18 },
+      markets: [peepMarket]
+    }])
+  });
+  assert.equal(peep.status, "found");
+  assert.equal(peep.results[0]?.address, peepAddress);
+  assert.equal(peep.results[0]?.markets[0]?.sourceId, "uniswap-v2");
+  assert.equal(peep.results[0]?.markets[0]?.poolAddress, peepPairAddress);
+  assert.equal(
+    peep.results.some(({ address }) => address === supplementalPeepAddress),
+    true,
+    "Fast supplemental matches may remain visible without outranking exact canonical market evidence"
+  );
+
+  const globalDistractors = Array.from({ length: 24 }, (_, index) => providerPair(
+    `0x${(index + 4_000).toString(16).padStart(40, "0")}`,
+    ROBINHOOD_WETH_ADDRESS,
+    "ethereum"
+  ));
+  const cannaCat = await searchVNextUniversalMarkets("CANNACAT", {
+    ...base,
+    fetch: candidateFetch({
+      pairs: globalDistractors,
+      items: Array.from({ length: 24 }, (_, index) => blockscoutCandidate(
+        `0x${(index + 5_000).toString(16).padStart(40, "0")}`,
+        { name: `Distractor ${index}`, symbol: `WRONG${index}` }
+      ))
+    }),
+    readCanonicalCatalog: async () => catalog([{
+      identity: { address: cannaCatAddress, name: "CannaCat", symbol: "CANNACAT", decimals: 18 },
+      markets: [cannaCatMarket]
+    }])
+  });
+  assert.equal(cannaCat.status, "found");
+  assert.equal(cannaCat.results[0]?.markets[0]?.poolKey, cannaCatPoolId);
+  assert.equal(cannaCat.results[0]?.markets[0]?.poolAddress, null);
+  assert.equal(cannaCat.results[0]?.markets[0]?.token0, zeroAddress);
+
+  const hopium = await searchVNextUniversalMarkets("HOPIUM", {
+    ...base,
+    fetch: candidateFetch({
+      pairs: [],
+      items: [{
+        type: "token",
+        token_type: "ERC-721",
+        address_hash: unrelatedAddress,
+        name: "Hopium Machines",
+        symbol: "HOPIUM"
+      }]
+    }),
+    readCanonicalCatalog: async () => catalog([{
+      identity: { address: hopiumAddress, name: "Hopium Machines", symbol: "HOPIUM", decimals: 18 },
+      markets: [hopiumMarket]
+    }])
+  });
+  assert.equal(hopium.status, "found");
+  assert.equal(hopium.results[0]?.address, hopiumAddress);
+  assert.equal(hopium.results[0]?.markets[0]?.sourceId, "uniswap-v4");
+  assert.equal(hopium.results[0]?.markets[0]?.poolKey, hopiumPoolId);
+
+  const duplicateSymbol = await searchVNextUniversalMarkets("SAME", {
+    ...base,
+    fetch: candidateFetch({ pairs: [], items: [] }),
+    readCanonicalCatalog: async () => catalog([
+      { identity: identities.get(sameSymbolAddressA)!, markets: [sameSymbolMarketA] },
+      { identity: identities.get(sameSymbolAddressB)!, markets: [sameSymbolMarketB] }
+    ])
+  });
+  assert.deepEqual(duplicateSymbol.results.map(({ address }) => address), [sameSymbolAddressA, sameSymbolAddressB]);
+}
+
 async function main() {
   await assertStonkBrokerTextSearches();
   await assertExactSearchesNeverUseProvider();
@@ -827,6 +980,7 @@ async function main() {
   await assertProviderIdentityClaimsNeverWin();
   await assertTimeoutIsUnavailable();
   await assertProjectAdmissionPrecedesPresentationAndResultBounds();
+  await assertCanonicalInventoryIsAnIndependentTextCandidateLane();
 
   console.log(
     "Universal market search preserves first-party inventory and onchain identity authority across exact and bounded text queries."

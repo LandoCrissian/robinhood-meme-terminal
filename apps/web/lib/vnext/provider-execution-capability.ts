@@ -12,6 +12,7 @@ export type VNextProviderExecutionCapability = Readonly<{
  * its fee-settlement registry remains QUOTE_ONLY.
  */
 export const VNEXT_PROVIDER_EXECUTION_CAPABILITY_REGISTRY: Readonly<Record<VNextQuoteProvider, VNextProviderExecutionCapability>> = Object.freeze({
+  "uniswap-v2": Object.freeze({ state: "WALLET_EXECUTION", strictVerificationImplemented: true, walletAuthorizationCodecImplemented: true }),
   "uniswap-v3": Object.freeze({ state: "WALLET_EXECUTION", strictVerificationImplemented: true, walletAuthorizationCodecImplemented: true }),
   "uniswap-v4": Object.freeze({ state: "WALLET_EXECUTION", strictVerificationImplemented: true, walletAuthorizationCodecImplemented: true }),
   "up-v2": Object.freeze({ state: "WALLET_EXECUTION", strictVerificationImplemented: true, walletAuthorizationCodecImplemented: true }),

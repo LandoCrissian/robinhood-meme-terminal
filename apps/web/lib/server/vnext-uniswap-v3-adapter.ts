@@ -141,6 +141,6 @@ export function createVNextUniswapV3Adapter(input: {
   return adapter;
 }
 
-// Production wallet authorization remains disabled until explicit reviewed
-// provider execution admission. Tests inject the same adapter with wallet authority on.
-export const vNextUniswapV3Adapter = createVNextUniswapV3Adapter();
+// Provider execution is admitted; the global VNext authorization boundary still
+// controls whether an interactive wallet plan can be issued.
+export const vNextUniswapV3Adapter = createVNextUniswapV3Adapter({ walletAuthorization: true });

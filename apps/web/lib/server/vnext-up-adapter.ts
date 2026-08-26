@@ -37,7 +37,7 @@ export function createVNextUpAdapters(dependencies: UpQuoteDependencies = liveDe
       providerFamily: "up",
       adapterVersion: 1,
       executionKind: "direct_amm",
-      capabilities: { strictVerification: true, walletAuthorization: false },
+      capabilities: { strictVerification: true, walletAuthorization: true },
       async quote(request) {
         const startedAtMs = Date.now();
         try {

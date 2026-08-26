@@ -136,9 +136,10 @@ function normalizeTimestamp(value: unknown) {
   return typeof value === "number" && Number.isSafeInteger(value) && value > 0 ? value : null;
 }
 
-const JOURNAL_PROVIDERS = new Set<VNextAuthorizationPlan["provider"]>(["uniswap-v3", "uniswap-v4", "up-v2", "up-cl"]);
+const JOURNAL_PROVIDERS = new Set<VNextAuthorizationPlan["provider"]>(["uniswap-v2", "uniswap-v3", "uniswap-v4", "up-v2", "up-cl"]);
 
 export function vNextExecutionProviderLabel(provider?: VNextExecutionRecord["provider"]) {
+  if (provider === "uniswap-v2") return "Uniswap V2";
   if (provider === "uniswap-v3") return "Uniswap V3";
   if (provider === "uniswap-v4") return "Uniswap V4";
   if (provider === "up-v2") return "UP V2";

@@ -11,6 +11,7 @@ import { uniswapV4PoolId } from "../uniswap-transaction-integrity";
 import type { VNextUniswapV4ExecutionEvidence } from "../server/vnext-uniswap-v4-execution";
 import { isRobinhoodNativeAsset } from "./robinhood-assets";
 import { UP_CL_EXECUTION_ROUTER, UP_V2_EXECUTION_ROUTER } from "./up-authorization-codec";
+import { ROBINHOOD_UNISWAP_V2_ROUTER } from "./uniswap-v2-authorization-codec";
 import { assertRmtNetExecutionEconomics, type RmtNetExecutionEconomics } from "./execution-fee-policy";
 import { assertRmtExecutionFeeV2Economics, type RmtExecutionFeeV2Economics } from "./execution-fee-policy-v2";
 import type { VNextAtomicFeeSettlementProof } from "./provider-fee-settlement";
@@ -35,7 +36,7 @@ function feeAssetIdentity(address: string) {
 export type VNextPreSignEvidence = {
   verificationId: string;
   sourceQuoteRequestId: string;
-  provider: "uniswap-v3" | "uniswap-v4" | "up-v2" | "up-cl";
+  provider: "uniswap-v2" | "uniswap-v3" | "uniswap-v4" | "up-v2" | "up-cl";
   status: "verified" | "approval_required" | "approval_simulation_failed" | "insufficient_balance" | "insufficient_gas" | "gas_unavailable" | "simulation_failed";
   chainId: 4_663;
   inputAsset: string;
@@ -99,7 +100,7 @@ const hash = z.string().regex(/^0x[0-9a-fA-F]{64}$/);
 const evidenceSchema = z.object({
   verificationId: z.string().uuid(),
   sourceQuoteRequestId: z.string().uuid(),
-  provider: z.enum(["uniswap-v3", "uniswap-v4", "up-v2", "up-cl"]),
+  provider: z.enum(["uniswap-v2", "uniswap-v3", "uniswap-v4", "up-v2", "up-cl"]),
   status: z.enum(["verified", "approval_required", "approval_simulation_failed", "insufficient_balance", "insufficient_gas", "gas_unavailable", "simulation_failed"]),
   chainId: z.literal(4_663),
   inputAsset: z.string(),
@@ -163,7 +164,7 @@ export function parseVNextPreSignEvidence(value: unknown, expected: {
   inputAsset: string;
   outputAsset: string;
   inputAmountAtomic: string;
-  provider: "uniswap-v3" | "uniswap-v4" | "up-v2" | "up-cl";
+  provider: "uniswap-v2" | "uniswap-v3" | "uniswap-v4" | "up-v2" | "up-cl";
   protectedOutputFloorAtomic: string;
   recipient: string;
 }, nowMs: number): VNextPreSignEvidence {
@@ -183,7 +184,7 @@ export function parseVNextPreSignEvidence(value: unknown, expected: {
     || BigInt(evidence.protectedOutputAtomic) < BigInt(expected.protectedOutputFloorAtomic)
     || !isAddress(evidence.recipient)
     || getAddress(evidence.recipient) !== getAddress(expected.recipient)
-    || getAddress(evidence.router) !== getAddress(evidence.provider === "uniswap-v3" ? ROBINHOOD_SWAP_ROUTER_02 : evidence.provider === "uniswap-v4" ? ROBINHOOD_UNIVERSAL_ROUTER : evidence.provider === "up-v2" ? UP_V2_EXECUTION_ROUTER : UP_CL_EXECUTION_ROUTER)
+    || getAddress(evidence.router) !== getAddress(evidence.provider === "uniswap-v2" ? ROBINHOOD_UNISWAP_V2_ROUTER : evidence.provider === "uniswap-v3" ? ROBINHOOD_SWAP_ROUTER_02 : evidence.provider === "uniswap-v4" ? ROBINHOOD_UNIVERSAL_ROUTER : evidence.provider === "up-v2" ? UP_V2_EXECUTION_ROUTER : UP_CL_EXECUTION_ROUTER)
     || evidence.protectedOutputAtomic === "0"
     || BigInt(evidence.protectedOutputAtomic) > BigInt(evidence.expectedOutputAtomic)
     || evidence.verifiedAtMs > nowMs + MAX_CLOCK_SKEW_MS
@@ -274,6 +275,11 @@ export function parseVNextPreSignEvidence(value: unknown, expected: {
     evidence.stableFlags?.length !== evidence.pools.length || evidence.tickSpacings !== undefined
     || evidence.quoteBlock === undefined || evidence.quoteBlockHash === undefined
   )) throw new Error("RMT rejected incomplete up v2 route evidence.");
+  if (evidence.provider === "uniswap-v2" && (
+    evidence.fees.some((fee) => fee !== 30)
+    || evidence.stableFlags !== undefined || evidence.tickSpacings !== undefined
+    || evidence.quoteBlock === undefined || evidence.quoteBlockHash === undefined
+  )) throw new Error("RMT rejected incomplete Uniswap V2 route evidence.");
   if (evidence.provider === "up-cl" && (
     evidence.tickSpacings?.length !== evidence.pools.length || evidence.stableFlags !== undefined
     || evidence.quoteBlock === undefined || evidence.quoteBlockHash === undefined

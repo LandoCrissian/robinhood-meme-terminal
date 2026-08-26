@@ -203,7 +203,7 @@ export async function quoteVNextExecutionProviders(
     throw new Error("RMT rejected an inconsistent provider quote request.");
   }
   if (getAddress(request.inputAsset) === getAddress(request.outputAsset)) throw new Error("Input and output assets must differ.");
-  if (adapters.length === 0 || adapters.length > 8 || new Set(adapters.map((adapter) => adapter.provider)).size !== adapters.length) {
+  if (adapters.length === 0 || adapters.length > 9 || new Set(adapters.map((adapter) => adapter.provider)).size !== adapters.length) {
     throw new Error("RMT rejected an invalid provider adapter registry.");
   }
   const attempts = await Promise.all(adapters.map(async (adapter) => {

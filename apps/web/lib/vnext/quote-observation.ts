@@ -17,10 +17,10 @@ export { hasVNextWalletAuthorizationCodec } from "./provider-execution-capabilit
 
 const MAX_CLOCK_SKEW_MS = 5_000;
 
-export type VNextQuoteProvider = "sushi" | "uniswap-v3" | "uniswap-v4" | "uniswapx" | "zero-x-swap" | "zero-x-gasless" | "up-v2" | "up-cl";
+export type VNextQuoteProvider = "sushi" | "uniswap-v2" | "uniswap-v3" | "uniswap-v4" | "uniswapx" | "zero-x-swap" | "zero-x-gasless" | "up-v2" | "up-cl";
 
 export type VNextLiquidityFeeEvidence = {
-  source: "up-v2-factory" | "up-cl-pool";
+  source: "uniswap-v2-factory" | "up-v2-factory" | "up-cl-pool";
   poolAddress: string;
   fee: number;
   denominator: 10_000 | 1_000_000;
@@ -97,7 +97,7 @@ export type VNextQuoteResponse = {
 };
 
 const attemptSchema = z.object({
-  provider: z.enum(["sushi", "uniswap-v3", "uniswap-v4", "uniswapx", "zero-x-swap", "zero-x-gasless", "up-v2", "up-cl"]),
+  provider: z.enum(["sushi", "uniswap-v2", "uniswap-v3", "uniswap-v4", "uniswapx", "zero-x-swap", "zero-x-gasless", "up-v2", "up-cl"]),
   providerLabel: z.string().min(1).max(40),
   providerFamily: z.enum(["sushi", "uniswap", "uniswapx", "zeroex", "up"]),
   adapterVersion: z.literal(1),
@@ -111,7 +111,7 @@ const attemptSchema = z.object({
   outputDecimals: z.number().nullable(),
   priceImpact: z.number().nullable(),
   liquidityFeeEvidence: z.array(z.object({
-    source: z.enum(["up-v2-factory", "up-cl-pool"]),
+    source: z.enum(["uniswap-v2-factory", "up-v2-factory", "up-cl-pool"]),
     poolAddress: z.string(),
     fee: z.number(),
     denominator: z.union([z.literal(10_000), z.literal(1_000_000)]),
@@ -158,7 +158,7 @@ const responseSchema = z.object({
   inputAmountAtomic: z.string(),
   requestedAtMs: z.number(),
   completedAtMs: z.number(),
-  attempts: z.array(attemptSchema).min(1).max(8)
+  attempts: z.array(attemptSchema).min(1).max(9)
 });
 
 function atomic(value: string) {
@@ -173,7 +173,7 @@ export function assertVNextQuoteAttempt(
   if (attempt.chainId !== 4_663) throw new Error("Quote attempt chain changed.");
   const expectedProviderFamily = attempt.provider === "sushi"
     ? "sushi"
-    : attempt.provider === "uniswap-v3" || attempt.provider === "uniswap-v4"
+    : attempt.provider === "uniswap-v2" || attempt.provider === "uniswap-v3" || attempt.provider === "uniswap-v4"
       ? "uniswap"
       : attempt.provider === "uniswapx"
         ? "uniswapx"
@@ -213,6 +213,13 @@ export function assertVNextQuoteAttempt(
         || evidence.stable === null || evidence.tickSpacing !== null
       ))
     )) throw new Error("up v2 quote omitted live fee evidence.");
+    if (attempt.provider === "uniswap-v2" && (
+      attempt.liquidityFeeEvidence.length === 0
+      || attempt.liquidityFeeEvidence.some((evidence) => (
+        evidence.source !== "uniswap-v2-factory" || evidence.denominator !== 10_000 || evidence.fee !== 30
+        || evidence.stable !== null || evidence.tickSpacing !== null
+      ))
+    )) throw new Error("Uniswap V2 quote omitted canonical pair fee evidence.");
     if (attempt.provider === "up-cl" && (
       attempt.liquidityFeeEvidence.length === 0
       || attempt.liquidityFeeEvidence.some((evidence) => (
@@ -221,7 +228,7 @@ export function assertVNextQuoteAttempt(
         || evidence.tickSpacing! <= 0 || evidence.tickSpacing! > 16_383
       ))
     )) throw new Error("up CL quote omitted live fee evidence.");
-    if (attempt.provider !== "up-v2" && attempt.provider !== "up-cl" && attempt.liquidityFeeEvidence.length !== 0) {
+    if (attempt.provider !== "uniswap-v2" && attempt.provider !== "up-v2" && attempt.provider !== "up-cl" && attempt.liquidityFeeEvidence.length !== 0) {
       throw new Error("Non-up quote exposed unexpected up liquidity-fee evidence.");
     }
     if (attempt.provider === "uniswap-v4") {
