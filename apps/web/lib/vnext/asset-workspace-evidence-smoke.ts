@@ -76,8 +76,10 @@ const constellationHookSource = readFileSync(new URL("../use-wallet-constellatio
 assert.equal((workspaceSource.match(/currentMultiplier/g) ?? []).length, 1, "Stock multiplier must be displayed exactly once");
 assert.doesNotMatch(workspaceSource, /priceUsd\s*\*\s*[^\n]*currentMultiplier|currentMultiplier\s*\*\s*[^\n]*priceUsd/);
 assert.match(workspaceSource, /last known, non-authoritative/, "Stale registry presentation must be explicitly non-authoritative");
-assert.match(workspaceSource, /V4 chart coverage unavailable/);
-assert.match(workspaceSource, /No authoritative PoolId OHLCV source is attached/);
+assert.match(workspaceSource, /selectedPool \?\? selectedCanonicalMarket!\.poolKey/,
+  "PoolId-only V4 markets must use their exact canonical identity for OHLCV coverage");
+assert.doesNotMatch(workspaceSource, /PoolManager.*VNextMarketChart|poolAddress.*selectedCanonicalMarket.*poolKey/,
+  "V4 chart coverage must not fabricate an address-style pool");
 const canonicalPool = (version: 2 | 3 | 4, protocol: "uniswap" | "sushiswap") => ({
   protocol,
   version,

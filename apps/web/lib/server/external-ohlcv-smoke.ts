@@ -8,6 +8,7 @@ import {
 } from "../external-ohlcv";
 
 const pair = "0x9870C395bfA68C9F23D7c232fA5a37BF063aae35";
+const poolId = `0x${"ab".repeat(32)}`;
 const request = externalOhlcvRequestUrl(pair, "24H", "base");
 const url = new URL(request.url);
 
@@ -30,6 +31,11 @@ assert.equal(liveUrl.pathname, `/api/v2/networks/robinhood/pools/${pair}/ohlcv/m
 assert.equal(liveUrl.searchParams.get("aggregate"), "1");
 assert.equal(liveUrl.searchParams.get("limit"), "15");
 assert.equal(liveRequest.revalidate, 3);
+
+const v4Request = externalOhlcvRequestUrl(poolId, "1H", "quote");
+const v4Url = new URL(v4Request.url);
+assert.equal(v4Url.pathname, `/api/v2/networks/robinhood/pools/${poolId}/ohlcv/minute`);
+assert.equal(v4Url.searchParams.get("token"), "quote");
 
 const candles = parseExternalOhlcvList([
   [200, "2", 2.5, 1.8, 2.2, "100"],
@@ -75,6 +81,6 @@ const idempotentMerge = mergeConfirmedTradesIntoOhlcv(merged, [{
 }]);
 assert.equal(idempotentMerge.at(-1)?.volume, 110, "replayed snapshots must not inflate volume");
 assert.throws(() => parseExternalOhlcvList({}), /malformed/);
-assert.throws(() => externalOhlcvRequestUrl("not-an-address", "1H", "base"), /Invalid pool/);
+assert.throws(() => externalOhlcvRequestUrl("not-a-pool", "1H", "base"), /Invalid pool/);
 
 console.log("External OHLCV parsing and fixed-host request construction passed.");

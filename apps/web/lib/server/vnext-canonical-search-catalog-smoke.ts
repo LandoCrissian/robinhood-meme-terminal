@@ -119,6 +119,7 @@ async function assertRefreshCoalescingAndLastGoodFallback() {
 async function assertCatalogBounds() {
   const pools = Array.from({ length: 2_050 }, (_, index) => market(index + 1));
   let maximumIdentityRequest = 0;
+  let observedCapacity: { tokenCount: number; marketCount: number; truncated: boolean } | undefined;
   const reader = createVNextCanonicalSearchCatalogReader({
     readInventory: async (query) => {
       const page = query.cursor ? Number(query.cursor.slice(1)) : 0;
@@ -130,12 +131,21 @@ async function assertCatalogBounds() {
     readIdentities: async (addresses) => {
       maximumIdentityRequest = Math.max(maximumIdentityRequest, addresses.length);
       return identities(addresses);
+    },
+    observeCapacity: (capacity) => {
+      observedCapacity = capacity;
     }
   });
   const snapshot = await reader();
   assert.equal(snapshot.status, "ready");
   assert.equal(maximumIdentityRequest, CANONICAL_SEARCH_CATALOG_MAX_ENTRIES);
   assert.equal(snapshot.status === "ready" ? snapshot.entries.length : 0, CANONICAL_SEARCH_CATALOG_MAX_ENTRIES);
+  assert.equal(snapshot.status === "ready" ? snapshot.capacity.marketCount : 0, pools.length);
+  assert.equal(snapshot.status === "ready" ? snapshot.capacity.candidateTokenCount : 0, pools.length + 1);
+  assert.equal(snapshot.status === "ready" ? snapshot.capacity.tokenCount : 0, CANONICAL_SEARCH_CATALOG_MAX_ENTRIES);
+  assert.equal(snapshot.status === "ready" ? snapshot.capacity.truncated : false, true);
+  assert.deepEqual(observedCapacity, snapshot.status === "ready" ? snapshot.capacity : undefined,
+    "Catalog capacity must be available to bounded operational observability");
   assert.equal(CANONICAL_SEARCH_CATALOG_MAX_MARKETS, 4_000);
   assert.equal(CANONICAL_SEARCH_CATALOG_BUILD_DEADLINE_MS, 2_800);
 }

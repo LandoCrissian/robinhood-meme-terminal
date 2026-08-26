@@ -875,6 +875,16 @@ async function assertCanonicalInventoryIsAnIndependentTextCandidateLane() {
     freshness: "current",
     observedAtMs: Date.now(),
     sourceManifestHash: manifestHash,
+    capacity: {
+      tokenCount: entries.length,
+      candidateTokenCount: entries.length,
+      marketCount: new Set(entries.flatMap(({ markets }) => markets.map((market) => `${market.sourceId}:${market.poolKey}`))).size,
+      pageCount: 1,
+      maximumTokens: 2_048,
+      maximumMarkets: 4_000,
+      maximumPages: 8,
+      truncated: false
+    },
     entries
   });
   const base = {
