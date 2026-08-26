@@ -526,6 +526,43 @@ async function installRoutes(page) {
       })
     });
   });
+  await page.route(/\/api\/vnext\/asset-workspace(?:\?.*)?$/, async (route) => {
+    const requestedAddress = new URL(route.request().url()).searchParams.get("address")?.toLowerCase();
+    const selected = requestedAddress === exactIdentityToken.toLowerCase()
+      ? { address: exactIdentityToken, name: "Exact Identity Token", symbol: "EXACT", stockAssetRelationships: [] }
+      : markets.find((item) => item.address.toLowerCase() === requestedAddress);
+    if (!selected) {
+      await route.fulfill({ status: 404, contentType: "application/json", body: JSON.stringify({ error: "Asset workspace unavailable." }) });
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        resolution: {
+          chainId: 4_663,
+          requestedAddress: selected.address,
+          requestedKind: "token",
+          status: "token-only",
+          token: {
+            address: selected.address,
+            name: selected.name,
+            symbol: selected.symbol,
+            decimals: 18,
+            totalSupply: "1000000000000000000000000"
+          },
+          pools: [],
+          marketData: "identity-only",
+          execution: "view-only",
+          provenance: "robinhood-chain-contract-reads",
+          resolvedAt: now
+        },
+        stockAssetRelationships: selected.stockAssetRelationships ?? [],
+        stockAssetCoverage: "complete",
+        updatedAt: now
+      })
+    });
+  });
   await page.route(/\/api\/vnext\/market-search(?:\?.*)?$/, async (route) => {
     const query = new URL(route.request().url()).searchParams.get("q") ?? "";
     const exactIdentityUnavailable = query.toLowerCase() === exactIdentityToken.toLowerCase();
@@ -766,6 +803,18 @@ async function inspectAssetQuickLinks(page, label) {
   return audit;
 }
 
+async function waitForSelectedMarketEnrichment(page, row, label) {
+  const contract = (await row.locator(".rmtSearchContract").textContent())?.trim().toLowerCase();
+  if (!contract) throw new Error(`${label}: selected market enrichment guard lost the exact contract identity`);
+  await page.waitForFunction((expectedContract) => {
+    const candidate = [...document.querySelectorAll(".rmtMarketTableRow")].find((entry) => (
+      entry.querySelector(".rmtSearchContract")?.textContent?.trim().toLowerCase() === expectedContract
+    ));
+    const price = candidate?.querySelectorAll('[role="cell"]')[1]?.textContent?.trim();
+    return Boolean(price && price !== "—" && price !== "Unavailable");
+  }, contract, { timeout: 5_000 });
+}
+
 async function inspectMarketsHierarchy(browser, phase) {
   const mobileContext = await createContext(browser, {
     viewport: { width: 390, height: 844 },
@@ -979,7 +1028,9 @@ async function inspectDesktop(browser, viewport, label) {
   await page.waitForTimeout(100);
   if (await page.locator(".rmtMarketTableRow").count() !== 1) throw new Error(`${label}: market search did not narrow the directory`);
   if (!(await page.locator(".rmtMarketTableRow").first().textContent())?.includes("R02")) throw new Error(`${label}: market search returned the wrong asset`);
-  await page.locator(".rmtMarketTableRow").first().click();
+  const selectedRow = page.locator(".rmtMarketTableRow").first();
+  await waitForSelectedMarketEnrichment(page, selectedRow, label);
+  await selectedRow.click();
   await page.locator('.rmtDesktopTerminal[data-terminal-context="asset"]').waitFor({ state: "visible" });
   if (!(await page.locator("#vn-asset-heading").textContent())?.includes("R02")) throw new Error(`${label}: selected asset did not update the VNext workspace`);
   const assetQuickLinks = await inspectAssetQuickLinks(page, label);
