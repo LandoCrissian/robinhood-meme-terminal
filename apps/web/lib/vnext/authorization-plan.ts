@@ -8,7 +8,12 @@ import {
   type Hex
 } from "viem";
 import { z } from "zod";
-import { ROBINHOOD_SWAP_ROUTER_02 } from "../uniswap-v4";
+import {
+  PERMIT2_ADDRESS,
+  ROBINHOOD_SWAP_ROUTER_02,
+  ROBINHOOD_UNIVERSAL_ROUTER,
+  permit2Abi
+} from "../uniswap-v4";
 import { parseVNextPreSignEvidence, type VNextPreSignEvidence } from "./pre-sign-evidence";
 import { UP_CL_EXECUTION_ROUTER, UP_V2_EXECUTION_ROUTER } from "./up-authorization-codec";
 import type { RmtNetExecutionEconomics } from "./execution-fee-policy";
@@ -19,6 +24,7 @@ import {
   type VNextAtomicFeeSettlementProof
 } from "./provider-fee-settlement";
 import type { RmtUniswapV3FeeExecution } from "./uniswap-v3-fee-executor";
+import type { VNextUniswapV4ExecutionEvidence } from "../server/vnext-uniswap-v4-execution";
 import {
   assertVNextDirectNoRmtFeeSettlement,
   assertVNextDirectExecutionBinding,
@@ -35,7 +41,7 @@ export type VNextAuthorizationPlan = {
   planId: string;
   sourceQuoteRequestId: string;
   sourceVerificationId: string;
-  provider: "uniswap-v3" | "up-v2" | "up-cl";
+  provider: "uniswap-v3" | "uniswap-v4" | "up-v2" | "up-cl";
   kind: "erc20_approval" | "swap";
   chainId: 4_663;
   target: string;
@@ -56,6 +62,7 @@ export type VNextAuthorizationPlan = {
   feeExecution?: RmtUniswapV3FeeExecution | null;
   feeV2Economics?: RmtExecutionFeeV2Economics;
   feeV2Authorization?: VNextAtomicFeeAuthorizationBinding;
+  v4Execution?: VNextUniswapV4ExecutionEvidence;
   deadline: string;
   preparedAtMs: number;
   expiresAtMs: number;
@@ -66,7 +73,7 @@ export type VNextAuthorizationPlan = {
 const atomic = z.string().regex(/^(0|[1-9][0-9]*)$/);
 const planSchema = z.object({
   planId: z.string().uuid(), sourceQuoteRequestId: z.string().uuid(), sourceVerificationId: z.string().uuid(),
-  provider: z.enum(["uniswap-v3", "up-v2", "up-cl"]), kind: z.enum(["erc20_approval", "swap"]), chainId: z.literal(4_663),
+  provider: z.enum(["uniswap-v3", "uniswap-v4", "up-v2", "up-cl"]), kind: z.enum(["erc20_approval", "swap"]), chainId: z.literal(4_663),
   target: z.string(), data: z.string().regex(/^0x[0-9a-fA-F]+$/), value: atomic, gasLimit: atomic,
   payloadHash: z.string().regex(/^0x[0-9a-fA-F]{64}$/), inputAsset: z.string(), outputAsset: z.string(),
   inputAmountAtomic: atomic, protectedOutputAtomic: atomic, recipient: z.string(), router: z.string(), deadline: atomic,
@@ -74,6 +81,7 @@ const planSchema = z.object({
   directNoRmtFee: z.unknown().optional(), directAuthorization: z.unknown().optional(),
   netEconomics: z.unknown().optional(), feeExecution: z.unknown().nullable().optional(),
   feeV2Economics: z.unknown().optional(), feeV2Authorization: z.unknown().optional(),
+  v4Execution: z.unknown().optional(),
   preparedAtMs: z.number().int().positive(), expiresAtMs: z.number().int().positive(),
   userAuthorizationRequired: z.literal(true), serverSubmissionEnabled: z.literal(false)
 });
@@ -100,7 +108,7 @@ export function parseVNextAuthorizationPlan(value: unknown, evidence: VNextPreSi
     || getAddress(plan.outputAsset) !== getAddress(evidence.outputAsset)
     || getAddress(plan.recipient) !== getAddress(evidence.recipient)
     || plan.provider !== evidence.provider
-    || getAddress(plan.router) !== getAddress(evidence.provider === "uniswap-v3" ? ROBINHOOD_SWAP_ROUTER_02 : evidence.provider === "up-v2" ? UP_V2_EXECUTION_ROUTER : UP_CL_EXECUTION_ROUTER)
+    || getAddress(plan.router) !== getAddress(evidence.provider === "uniswap-v3" ? ROBINHOOD_SWAP_ROUTER_02 : evidence.provider === "uniswap-v4" ? ROBINHOOD_UNIVERSAL_ROUTER : evidence.provider === "up-v2" ? UP_V2_EXECUTION_ROUTER : UP_CL_EXECUTION_ROUTER)
     || plan.inputAmountAtomic !== evidence.inputAmountAtomic
     || plan.protectedOutputAtomic !== evidence.protectedOutputAtomic
     || plan.value !== evidence.transactionValueAtomic
@@ -108,6 +116,8 @@ export function parseVNextAuthorizationPlan(value: unknown, evidence: VNextPreSi
     || plan.settlementMode !== evidence.settlementMode
     || plan.gasLimit !== evidence.gasLimitUnits
     || Boolean(plan.feeExecution) !== evidence.rmtFeeEnabled
+    || (plan.provider === "uniswap-v4" && plan.v4Execution?.poolId !== evidence.v4Execution?.poolId)
+    || (plan.provider !== "uniswap-v4" && plan.v4Execution !== undefined)
     || (evidence.rmtFeeEnabled && (
       plan.feeExecution?.executionId !== evidence.feeExecution?.executionId
       || plan.feeExecution?.policyHash !== evidence.feeExecution?.policyHash
@@ -118,6 +128,29 @@ export function parseVNextAuthorizationPlan(value: unknown, evidence: VNextPreSi
     || plan.expiresAtMs - plan.preparedAtMs > 60_000
     || plan.expiresAtMs > Number(BigInt(plan.deadline) * 1_000n)
   ) throw new Error("RMT rejected an inconsistent authorization plan.");
+
+  if (plan.provider === "uniswap-v4") {
+    const planned = plan.v4Execution;
+    const verified = evidence.v4Execution;
+    if (!planned || !verified
+      || planned.poolId !== verified.poolId
+      || getAddress(planned.poolKey.currency0) !== getAddress(verified.poolKey.currency0)
+      || getAddress(planned.poolKey.currency1) !== getAddress(verified.poolKey.currency1)
+      || planned.poolKey.fee !== verified.poolKey.fee
+      || planned.poolKey.tickSpacing !== verified.poolKey.tickSpacing
+      || getAddress(planned.poolKey.hooks) !== getAddress(verified.poolKey.hooks)
+      || getAddress(planned.poolManager) !== getAddress(verified.poolManager)
+      || getAddress(planned.quoter) !== getAddress(verified.quoter)
+      || getAddress(planned.universalRouter) !== getAddress(verified.universalRouter)
+      || getAddress(planned.permit2) !== getAddress(verified.permit2)
+      || planned.commands !== verified.commands
+      || planned.hookData !== "0x"
+      || planned.quoteObservedBlockHash !== verified.quoteObservedBlockHash
+      || planned.simulationBlockHash !== verified.simulationBlockHash
+      || planned.rmtFeeAtomic !== "0"
+      || planned.treasuryTransferAtomic !== "0"
+    ) throw new Error("RMT rejected changed V4 execution authority.");
+  }
 
   if (evidence.rmtFeeEnabled || evidence.feeExecution != null || plan.feeExecution != null) {
     throw new Error("RMT_EXECUTION_V1 evidence is historical and cannot authorize a universal V2 wallet trade.");
@@ -185,14 +218,31 @@ export function parseVNextAuthorizationPlan(value: unknown, evidence: VNextPreSi
   }
 
   if (plan.kind === "erc20_approval") {
-    if (plan.value !== "0" || evidence.status !== "approval_required" || getAddress(plan.target) !== getAddress(evidence.inputAsset) || keccak256(plan.data) !== evidence.nextActionCalldataHash) {
+    if (plan.value !== "0" || evidence.status !== "approval_required" || keccak256(plan.data) !== evidence.nextActionCalldataHash) {
       throw new Error("RMT rejected an approval plan that does not match strict evidence.");
+    }
+    if (plan.provider === "uniswap-v4" && evidence.approvalKind === "permit2_to_router") {
+      if (getAddress(plan.target) !== getAddress(PERMIT2_ADDRESS)) throw new Error("RMT rejected changed Permit2 approval target.");
+      const decoded = decodeFunctionData({ abi: permit2Abi, data: plan.data });
+      if (decoded.functionName !== "approve") throw new Error("RMT rejected a non-approval Permit2 call.");
+      const [token, spender, amount, expiration] = decoded.args;
+      if (
+        getAddress(token) !== getAddress(evidence.inputAsset)
+        || getAddress(spender) !== getAddress(ROBINHOOD_UNIVERSAL_ROUTER)
+        || getAddress(evidence.approvalSpender) !== getAddress(ROBINHOOD_UNIVERSAL_ROUTER)
+        || amount !== BigInt(evidence.inputAmountAtomic)
+        || BigInt(expiration) !== BigInt(evidence.deadline)
+      ) throw new Error("RMT rejected broadened Permit2 authority.");
+      return plan;
+    }
+    if (getAddress(plan.target) !== getAddress(evidence.inputAsset)) {
+      throw new Error("RMT rejected changed ERC20 approval target.");
     }
     const decoded = decodeFunctionData({ abi: erc20Abi, data: plan.data });
     if (decoded.functionName !== "approve") throw new Error("RMT rejected a non-approval token call.");
     const [spender, amount] = decoded.args;
     const requiredSpender = plan.settlementMode === VNEXT_DIRECT_NO_RMT_FEE
-      ? evidence.router
+      ? plan.provider === "uniswap-v4" ? PERMIT2_ADDRESS : evidence.router
       : validatedV2Settlement!.executionTarget;
     if (
       getAddress(spender) !== getAddress(evidence.approvalSpender)
@@ -254,6 +304,9 @@ export function parseVNextAuthorizationBundle(value: unknown, priorEvidence: VNe
     || evidence.feeV2Economics?.maximumFeeAtomic !== priorEvidence.feeV2Economics?.maximumFeeAtomic
     || evidence.feeV2Settlement?.executionId !== priorEvidence.feeV2Settlement?.executionId
     || evidence.feeV2Settlement?.calldataHash !== priorEvidence.feeV2Settlement?.calldataHash
+    || evidence.v4Execution?.poolId !== priorEvidence.v4Execution?.poolId
+    || evidence.v4Execution?.commands !== priorEvidence.v4Execution?.commands
+    || evidence.v4Execution?.simulationBlockHash !== priorEvidence.v4Execution?.simulationBlockHash
     || (priorEvidence.rmtFeeEnabled && (
       evidence.feeExecution?.executionId !== priorEvidence.feeExecution?.executionId
       || evidence.feeExecution?.policyHash !== priorEvidence.feeExecution?.policyHash

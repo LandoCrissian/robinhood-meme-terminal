@@ -118,9 +118,10 @@ const withVerifiedBackup = parseVNextQuoteResponse({
 }, expected, now);
 const backupSelection = selectVNextRoute(withVerifiedBackup.attempts);
 assert.equal(backupSelection.bestObserved?.provider, "sushi");
-assert.equal(backupSelection.verificationCandidate, undefined, "quote-visible providers remain non-executable until V2 settlement is admitted");
-assert.equal(backupSelection.usesVerifiedBackup, false);
+assert.equal(backupSelection.verificationCandidate?.provider, "uniswap-v3", "fee-free execution admission is independent from dormant fee settlement");
+assert.equal(backupSelection.usesVerifiedBackup, true);
 assert.equal(hasVNextWalletAuthorizationCodec("uniswap-v3"), true);
+assert.equal(hasVNextWalletAuthorizationCodec("uniswap-v4"), true);
 assert.equal(hasVNextWalletAuthorizationCodec("zero-x-swap"), false);
 assert.equal(hasVNextWalletAuthorizationCodec("zero-x-gasless"), false);
 assert.equal(hasVNextWalletAuthorizationCodec("uniswapx"), false);
@@ -143,8 +144,8 @@ const uniswapXSelection = selectVNextRoute(parseVNextQuoteResponse({
   attempts: [uniswapXAttempt, withVerifiedBackup.attempts[1]]
 }, expected, now).attempts);
 assert.equal(uniswapXSelection.bestObserved?.provider, "uniswapx");
-assert.equal(uniswapXSelection.verificationCandidate, undefined);
-assert.equal(uniswapXSelection.usesVerifiedBackup, false);
+assert.equal(uniswapXSelection.verificationCandidate?.provider, "uniswap-v3");
+assert.equal(uniswapXSelection.usesVerifiedBackup, true);
 
 const strictOnlyZeroX = parseVNextQuoteResponse({
   ...response,

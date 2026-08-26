@@ -20,7 +20,7 @@ for (const provider of providers) {
   assert.equal(isVNextWalletFeeSettlementAdmitted(provider), false);
 }
 assert.equal(hasVNextWalletAuthorizationCodec("uniswap-v3"), true);
-assert.equal(hasVNextWalletAuthorizationCodec("uniswap-v4"), false, "V4 remains quote-only without a wallet codec");
+assert.equal(hasVNextWalletAuthorizationCodec("uniswap-v4"), true, "V4 has a fee-independent wallet codec while fee settlement remains quote-only");
 assert.equal(hasVNextWalletAuthorizationCodec("up-v2"), true);
 assert.equal(hasVNextWalletAuthorizationCodec("up-cl"), true);
 assert.equal(hasVNextWalletAuthorizationCodec("sushi"), false, "PR #427 remains separate and draft");

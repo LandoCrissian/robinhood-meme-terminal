@@ -219,7 +219,7 @@ function verifyEnvelope(
   } else {
     requireValue(grossQuoteOut === quoteOut && grossMinimumOut === minimumOut, "undisclosed RMT fee detected");
   }
-  requireValue(Number.isInteger(quote.fee) && quote.fee > 0 && quote.fee < 1_000_000, "pool fee is invalid");
+  requireValue(Number.isInteger(quote.fee) && quote.fee >= 0 && quote.fee < 1_000_000, "pool fee is invalid");
   requireValue(
     Number.isInteger(quote.inputToken.decimals)
       && quote.inputToken.decimals >= 0
@@ -241,6 +241,7 @@ function verifyV3(
   expected: { token: Address; recipient: Address; side: "buy" | "sell"; amountIn: bigint; nowSeconds: number }
 ) {
   const envelope = verifyEnvelope(quote, expected);
+  requireValue(quote.fee > 0, "v3 pool fee is invalid");
   requireAddress(quote.router, ROBINHOOD_SWAP_ROUTER_02, "router");
   requireAddress(quote.inputToken.address, expected.side === "buy" ? ROBINHOOD_WETH : expected.token, "input token");
   requireAddress(quote.outputToken.address, expected.side === "buy" ? expected.token : ROBINHOOD_WETH, "output token");

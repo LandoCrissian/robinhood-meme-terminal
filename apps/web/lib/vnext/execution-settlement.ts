@@ -26,7 +26,7 @@ export type VNextDirectNoRmtFeeSettlement = {
 
 export type VNextDirectExecutionBinding = {
   mode: typeof VNEXT_DIRECT_NO_RMT_FEE;
-  provider: "uniswap-v3" | "up-v2" | "up-cl";
+  provider: "uniswap-v3" | "uniswap-v4" | "up-v2" | "up-cl";
   kind: "erc20_approval" | "swap";
   chainId: 4_663;
   inputAsset: string;

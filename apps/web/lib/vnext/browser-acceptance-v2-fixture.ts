@@ -4,6 +4,7 @@ import {
   encodeEventTopics,
   encodeFunctionData,
   erc20Abi,
+  getAddress,
   keccak256,
   parseAbiParameters,
   zeroAddress,
@@ -23,7 +24,20 @@ import {
   rmtUniswapV3FeeExecutorV2Abi
 } from "./uniswap-v3-fee-executor-v2";
 import { ROBINHOOD_SWAP_ROUTER_02 } from "../uniswap-v4";
-import { VNEXT_V2_ATOMIC_INPUT_FEE } from "./execution-settlement";
+import {
+  MAX_UINT160,
+  ROBINHOOD_UNIVERSAL_ROUTER
+} from "../uniswap-v4";
+import {
+  prepareVNextUniswapV4Authorization,
+  type VNextUniswapV4ExecutionDependencies
+} from "../server/vnext-uniswap-v4-execution";
+import type { VNextCanonicalMarketInventoryResult } from "../server/vnext-market-indexer";
+import {
+  directExecutionBinding,
+  VNEXT_DIRECT_NO_RMT_FEE,
+  VNEXT_V2_ATOMIC_INPUT_FEE
+} from "./execution-settlement";
 
 const wallet = "0x3333333333333333333333333333333333333333" as Address;
 const token = "0x0000000000000000000000000000000000001001" as Address;
@@ -34,6 +48,19 @@ const runtimeHash = `0x${"8".repeat(64)}` as Hex;
 const policy = createRmtExecutionFeeV2Policy({ treasury, fromBlock: "40000000" });
 const generatedAtMs = Date.now();
 const deadline = Math.floor((generatedAtMs + 300_000) / 1_000).toString();
+
+const v4Token = getAddress("0x1139d423C1706BDeaD91f03507F521635591eD92");
+const v4Hooks = getAddress("0xE5e702641Ea86F4ae6cC3cDaeD2B886f976Be044");
+const v4PoolId = "0x5f5ec0e1016bae2f04c122bbcd2c141a4177cc681d7c2e4463a1d172ed8430b3" as Hex;
+const v4QuoteBlockHash = `0x${"5".repeat(64)}` as Hex;
+const v4SimulationBlockHash = `0x${"6".repeat(64)}` as Hex;
+const v4PoolKey = {
+  currency0: zeroAddress,
+  currency1: v4Token,
+  fee: 0,
+  tickSpacing: 200,
+  hooks: v4Hooks
+};
 
 function uuid(seed: string) {
   return `${seed.repeat(8)}-${seed.repeat(4)}-4${seed.repeat(3)}-8${seed.repeat(3)}-${seed.repeat(12)}`;
@@ -302,44 +329,285 @@ const settlementLog = {
   ])
 };
 
+async function buildV4BrowserScenario() {
+  const sourceQuoteRequestId = uuid("b");
+  const verificationId = uuid("c");
+  const planId = uuid("d");
+  const inputAmountAtomic = "10000000000000000";
+  const expectedOutputAtomic = "25000000000000000000000";
+  const protectedOutputAtomic = "24750000000000000000000";
+  const v4Deadline = BigInt(Math.floor(generatedAtMs / 1_000) + 240);
+  const inventory: VNextCanonicalMarketInventoryResult = {
+    status: "verified_shadow",
+    chainId: 4_663,
+    mode: "shadow",
+    authoritative: false,
+    sourceManifestHash: `0x${"1".repeat(64)}`,
+    coverage: {
+      complete: true,
+      finalizedHead: "50000000",
+      sources: [{ sourceId: "uniswap-v4", status: "shadow-ready", indexedThrough: "50000000" }]
+    },
+    nextCursor: null,
+    pools: [{
+      sourceId: "uniswap-v4",
+      protocol: "uniswap",
+      version: 4,
+      poolKey: v4PoolId,
+      poolAddress: null,
+      token0: zeroAddress,
+      token1: v4Token.toLowerCase(),
+      stable: null,
+      fee: v4PoolKey.fee,
+      tickSpacing: v4PoolKey.tickSpacing,
+      hooks: v4Hooks.toLowerCase(),
+      transactionHash: `0x${"2".repeat(64)}`,
+      blockNumber: "49000000",
+      blockHash: `0x${"3".repeat(64)}`,
+      stateStatus: "ready",
+      liveFee: 0,
+      feeDenominator: 1_000_000,
+      gaugeAddress: null,
+      gaugeAlive: null,
+      gaugeWeight: null,
+      gaugeClaimable: null,
+      feesAddress: null,
+      bribeAddress: null,
+      stateError: null,
+      stateObservedBlock: "50000000",
+      stateObservedBlockHash: `0x${"4".repeat(64)}`
+    }]
+  };
+  const dependencies: VNextUniswapV4ExecutionDependencies = {
+    readInventory: async () => inventory,
+    quote: async () => BigInt(expectedOutputAtomic),
+    readBlock: async (blockNumber) => blockNumber === 50_000_001n
+      ? { number: 50_000_001n, hash: v4QuoteBlockHash, timestamp: BigInt(Math.floor(generatedAtMs / 1_000) - 1) }
+      : { number: 50_000_002n, hash: v4SimulationBlockHash, timestamp: BigInt(Math.floor(generatedAtMs / 1_000)) },
+    getBytecode: async () => "0x60006000",
+    getNativeBalance: async () => 10n ** 20n,
+    getTokenState: async () => ({ balance: 10n ** 24n, permit2Allowance: MAX_UINT160 }),
+    getPermit2Allowance: async () => ({ amount: MAX_UINT160, expiration: v4Deadline + 1_000n }),
+    call: async () => undefined,
+    estimateGas: async () => 200_000n,
+    getGasPrice: async () => 1_000_000_000n,
+    now: () => generatedAtMs
+  };
+  const quoteEvidence = {
+    poolId: v4PoolId,
+    currency0: zeroAddress,
+    currency1: v4Token,
+    fee: v4PoolKey.fee,
+    tickSpacing: v4PoolKey.tickSpacing,
+    hooks: v4Hooks,
+    recipient: wallet,
+    observedBlock: "50000001",
+    observedBlockHash: v4QuoteBlockHash,
+    observedAtMs: generatedAtMs - 1_000,
+    quotedAtMs: generatedAtMs - 900,
+    expiresAtMs: generatedAtMs + 29_000
+  };
+  const prepared = await prepareVNextUniswapV4Authorization({
+    chainId: 4_663,
+    inputAsset: zeroAddress,
+    outputAsset: v4Token,
+    inputAmountAtomic,
+    amountIn: BigInt(inputAmountAtomic),
+    recipient: wallet,
+    indicativeProtectedOutputFloorAtomic: BigInt(protectedOutputAtomic),
+    canonicalMarket: { sourceId: "uniswap-v4", poolId: v4PoolId },
+    v4QuoteEvidence: quoteEvidence,
+    deadlineSeconds: v4Deadline,
+    protectedOutputFloorAtomic: BigInt(protectedOutputAtomic),
+    nowMs: generatedAtMs
+  }, dependencies);
+  const evidence = {
+    verificationId,
+    sourceQuoteRequestId,
+    ...prepared.evidence
+  } as unknown as VNextPreSignEvidence;
+  const planWithoutHash: Omit<VNextAuthorizationPlan, "payloadHash"> = {
+    planId,
+    sourceQuoteRequestId,
+    sourceVerificationId: verificationId,
+    provider: "uniswap-v4",
+    kind: "swap",
+    chainId: 4_663,
+    target: prepared.transaction.target,
+    data: prepared.transaction.data,
+    value: prepared.transaction.value,
+    gasLimit: prepared.transaction.gasLimit,
+    inputAsset: zeroAddress,
+    outputAsset: v4Token,
+    inputAmountAtomic,
+    protectedOutputAtomic: evidence.protectedOutputAtomic,
+    recipient: wallet,
+    router: ROBINHOOD_UNIVERSAL_ROUTER,
+    settlementMode: VNEXT_DIRECT_NO_RMT_FEE,
+    directNoRmtFee: evidence.directNoRmtFee,
+    directAuthorization: directExecutionBinding({
+      provider: "uniswap-v4",
+      kind: "swap",
+      chainId: 4_663,
+      inputAsset: zeroAddress,
+      outputAsset: v4Token,
+      inputAmountAtomic,
+      protectedOutputAtomic: evidence.protectedOutputAtomic,
+      recipient: wallet,
+      providerTarget: ROBINHOOD_UNIVERSAL_ROUTER,
+      executionTarget: prepared.transaction.target,
+      approvalSpender: evidence.approvalSpender,
+      approvalAmountAtomic: inputAmountAtomic,
+      data: prepared.transaction.data,
+      valueAtomic: prepared.transaction.value,
+      deadline: evidence.deadline
+    }),
+    netEconomics: evidence.netEconomics,
+    feeExecution: null,
+    v4Execution: evidence.v4Execution,
+    deadline: evidence.deadline,
+    preparedAtMs: generatedAtMs,
+    expiresAtMs: generatedAtMs + 60_000,
+    userAuthorizationRequired: true,
+    serverSubmissionEnabled: false
+  };
+  const plan: VNextAuthorizationPlan = { ...planWithoutHash, payloadHash: authorizationPayloadHash(planWithoutHash) };
+  const quote = {
+    requestId: sourceQuoteRequestId,
+    chainId: 4_663,
+    inputAsset: zeroAddress,
+    outputAsset: v4Token,
+    inputAmountAtomic,
+    requestedAtMs: generatedAtMs,
+    completedAtMs: generatedAtMs + 1,
+    attempts: [{
+      provider: "uniswap-v4",
+      providerLabel: "Uniswap V4",
+      providerFamily: "uniswap",
+      adapterVersion: 1,
+      status: "indicative",
+      chainId: 4_663,
+      inputAsset: zeroAddress,
+      outputAsset: v4Token,
+      inputAmountAtomic,
+      expectedOutputAtomic,
+      protectedOutputAtomic,
+      outputDecimals: 18,
+      priceImpact: null,
+      liquidityFeeEvidence: [],
+      quotedAtMs: generatedAtMs,
+      expiresAtMs: generatedAtMs + 60_000,
+      latencyMs: 14,
+      executionKind: "direct_amm",
+      strictVerificationAvailable: true,
+      userPaysGas: true,
+      providerFeeAsset: null,
+      providerFeeAtomic: null,
+      gasSponsorshipFeeAsset: null,
+      gasSponsorshipFeeAtomic: null,
+      explicitProviderFeeOutputAtomic: null,
+      netEconomics: evidence.netEconomics,
+      networkFeeNativeAtomic: null,
+      networkFeeNativeSymbol: "ETH",
+      protectedNetOutputAtomic: null,
+      costState: "network_fee_pending",
+      authorizationReady: false,
+      v4Evidence: {
+        poolId: v4PoolId,
+        currency0: zeroAddress,
+        currency1: v4Token,
+        fee: v4PoolKey.fee,
+        tickSpacing: v4PoolKey.tickSpacing,
+        hooks: v4Hooks,
+        recipient: wallet,
+        provenance: "canonical-market-indexer+uniswap-v4-quoter+robinhood-rpc",
+        observedBlock: quoteEvidence.observedBlock,
+        observedBlockHash: quoteEvidence.observedBlockHash,
+        observedAtMs: quoteEvidence.observedAtMs
+      },
+      detail: "Canonical Uniswap V4 PoolKey quote. Exact Universal Router simulation is required before wallet review."
+    }]
+  } as const;
+  parseVNextQuoteResponse(quote, {
+    inputAsset: zeroAddress,
+    outputAsset: v4Token,
+    inputAmountAtomic
+  }, generatedAtMs);
+  const parsedEvidence = parseVNextPreSignEvidence(evidence, {
+    quoteRequestId: sourceQuoteRequestId,
+    inputAsset: zeroAddress,
+    outputAsset: v4Token,
+    inputAmountAtomic,
+    provider: "uniswap-v4",
+    protectedOutputFloorAtomic: protectedOutputAtomic,
+    recipient: wallet
+  }, generatedAtMs + 1);
+  parseVNextAuthorizationBundle({ evidence, plan }, parsedEvidence, {
+    quoteRequestId: sourceQuoteRequestId,
+    inputAsset: zeroAddress,
+    outputAsset: v4Token,
+    inputAmountAtomic,
+    recipient: wallet
+  }, generatedAtMs + 1);
+  return {
+    token: v4Token,
+    hooks: v4Hooks,
+    poolId: v4PoolId,
+    poolKey: v4PoolKey,
+    quoteEvidence,
+    expectedOutputAtomic,
+    protectedOutputAtomic,
+    quote,
+    evidence,
+    plan
+  };
+}
+
 const destination = process.argv.slice(2).find((argument) => argument !== "--");
 if (!destination) throw new Error("Browser acceptance fixture destination is required.");
-parseVNextQuoteResponse(erc20.quote, {
-  inputAsset: ROBINHOOD_USDG_ADDRESS,
-  outputAsset: token,
-  inputAmountAtomic: "25000000"
-}, generatedAtMs);
-parseVNextQuoteResponse(native.quote, {
-  inputAsset: ROBINHOOD_NATIVE_ASSET_ADDRESS,
-  outputAsset: token,
-  inputAmountAtomic: "500000000000000"
-}, generatedAtMs);
-const parsedApprovalEvidence = parseVNextPreSignEvidence(approvalEvidence, {
-  quoteRequestId: erc20.quote.requestId,
-  inputAsset: ROBINHOOD_USDG_ADDRESS,
-  outputAsset: token,
-  inputAmountAtomic: "25000000",
-  provider: "uniswap-v3",
-  protectedOutputFloorAtomic: erc20.economics.protectedUserNetOutputAtomic,
-  recipient: wallet
-}, generatedAtMs);
-parseVNextAuthorizationBundle({ evidence: approvalEvidence, plan: approvalPlan }, parsedApprovalEvidence, {
-  quoteRequestId: erc20.quote.requestId,
-  inputAsset: ROBINHOOD_USDG_ADDRESS,
-  outputAsset: token,
-  inputAmountAtomic: "25000000",
-  recipient: wallet
-}, generatedAtMs);
-void writeFile(destination, JSON.stringify({
-  generatedAtMs,
-  wallet,
-  token,
-  executor,
-  treasury,
-  router: ROBINHOOD_SWAP_ROUTER_02,
-  erc20: { ...erc20, approvalEvidence, approvalPlan, settlementLog },
-  native
-}, null, 2)).catch((error: unknown) => {
+const fixtureDestination = destination;
+async function writeBrowserFixture() {
+  parseVNextQuoteResponse(erc20.quote, {
+    inputAsset: ROBINHOOD_USDG_ADDRESS,
+    outputAsset: token,
+    inputAmountAtomic: "25000000"
+  }, generatedAtMs);
+  parseVNextQuoteResponse(native.quote, {
+    inputAsset: ROBINHOOD_NATIVE_ASSET_ADDRESS,
+    outputAsset: token,
+    inputAmountAtomic: "500000000000000"
+  }, generatedAtMs);
+  const parsedApprovalEvidence = parseVNextPreSignEvidence(approvalEvidence, {
+    quoteRequestId: erc20.quote.requestId,
+    inputAsset: ROBINHOOD_USDG_ADDRESS,
+    outputAsset: token,
+    inputAmountAtomic: "25000000",
+    provider: "uniswap-v3",
+    protectedOutputFloorAtomic: erc20.economics.protectedUserNetOutputAtomic,
+    recipient: wallet
+  }, generatedAtMs);
+  parseVNextAuthorizationBundle({ evidence: approvalEvidence, plan: approvalPlan }, parsedApprovalEvidence, {
+    quoteRequestId: erc20.quote.requestId,
+    inputAsset: ROBINHOOD_USDG_ADDRESS,
+    outputAsset: token,
+    inputAmountAtomic: "25000000",
+    recipient: wallet
+  }, generatedAtMs);
+  const v4 = await buildV4BrowserScenario();
+  await writeFile(fixtureDestination, JSON.stringify({
+    generatedAtMs,
+    wallet,
+    token,
+    executor,
+    treasury,
+    router: ROBINHOOD_SWAP_ROUTER_02,
+    erc20: { ...erc20, approvalEvidence, approvalPlan, settlementLog },
+    native,
+    v4
+  }, null, 2));
+}
+
+void writeBrowserFixture().catch((error: unknown) => {
   console.error(error instanceof Error ? error.message : "Browser acceptance fixture could not be written.");
   process.exitCode = 1;
 });

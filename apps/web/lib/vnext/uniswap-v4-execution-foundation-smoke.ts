@@ -266,7 +266,7 @@ async function main() {
   assert.equal(reconcileRmtUniswapV4SettlementV2(execution, { ...receipt, logs: [receipt.logs[0], receipt.logs[0]] }), null);
 
   assert.equal(VNEXT_PROVIDER_FEE_SETTLEMENT_REGISTRY["uniswap-v4"].state, "QUOTE_ONLY");
-  assert.equal(VNEXT_PROVIDER_FEE_SETTLEMENT_REGISTRY["uniswap-v4"].walletCodecImplemented, false);
+  assert.equal(VNEXT_PROVIDER_FEE_SETTLEMENT_REGISTRY["uniswap-v4"].walletCodecImplemented, true);
   console.log("Uniswap V4 atomic execution, strict-simulation, authorization-continuity, and settlement foundations passed.");
 }
 

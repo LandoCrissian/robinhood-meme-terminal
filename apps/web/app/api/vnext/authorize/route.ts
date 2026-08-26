@@ -19,7 +19,7 @@ const requestSchema = z.object({
   chainId: z.literal(4_663),
   quoteRequestId: z.string().uuid(),
   verificationId: z.string().uuid(),
-  provider: z.enum(["sushi", "uniswap-v3", "up-v2", "up-cl"]),
+  provider: z.enum(["sushi", "uniswap-v3", "uniswap-v4", "up-v2", "up-cl"]),
   inputAsset: z.string().refine((value) => isAddress(value, { strict: false })),
   outputAsset: z.string().refine((value) => isAddress(value, { strict: false })),
   inputAmountAtomic: z.string().regex(/^[1-9][0-9]*$/),
@@ -28,7 +28,22 @@ const requestSchema = z.object({
   expectedStatus: z.enum(["approval_required", "verified"]),
   indicativeProtectedOutputFloorAtomic: z.string().regex(/^[1-9][0-9]*$/),
   expectedProtectedOutputAtomic: z.string().regex(/^[1-9][0-9]*$/),
-  executionId: z.string().regex(/^0x[0-9a-fA-F]{64}$/).optional()
+  executionId: z.string().regex(/^0x[0-9a-fA-F]{64}$/).optional(),
+  canonicalMarket: z.object({ sourceId: z.literal("uniswap-v4"), poolId: z.string().regex(/^0x[0-9a-fA-F]{64}$/) }).optional(),
+  v4QuoteEvidence: z.object({
+    poolId: z.string().regex(/^0x[0-9a-fA-F]{64}$/),
+    currency0: z.string().refine((value) => isAddress(value, { strict: false })),
+    currency1: z.string().refine((value) => isAddress(value, { strict: false })),
+    fee: z.number().int().nonnegative().max(16_777_215),
+    tickSpacing: z.number().int().positive().max(32_767),
+    hooks: z.string().refine((value) => isAddress(value, { strict: false })),
+    recipient: z.string().refine((value) => isAddress(value, { strict: false })),
+    observedBlock: z.string().regex(/^[1-9][0-9]*$/),
+    observedBlockHash: z.string().regex(/^0x[0-9a-fA-F]{64}$/),
+    observedAtMs: z.number().int().positive(),
+    quotedAtMs: z.number().int().positive(),
+    expiresAtMs: z.number().int().positive()
+  }).optional()
 });
 
 const noStore = { "Cache-Control": "no-store" };
@@ -40,6 +55,10 @@ export async function POST(request: Request) {
   try {
     const parsed = requestSchema.safeParse(await request.json());
     if (!parsed.success) return Response.json({ error: "Invalid VNext authorization request." }, { status: 400, headers: noStore });
+    const hasCompleteV4Binding = Boolean(parsed.data.canonicalMarket && parsed.data.v4QuoteEvidence);
+    if ((parsed.data.provider === "uniswap-v4") !== hasCompleteV4Binding) {
+      return Response.json({ error: "Invalid VNext V4 authorization binding." }, { status: 400, headers: noStore });
+    }
     if (BigInt(parsed.data.indicativeProtectedOutputFloorAtomic) > BigInt(parsed.data.expectedProtectedOutputAtomic)) {
       return Response.json({ error: "Invalid VNext quote-continuity floor." }, { status: 400, headers: noStore });
     }
@@ -72,9 +91,11 @@ export async function POST(request: Request) {
       protectedOutputFloorAtomic: BigInt(parsed.data.expectedProtectedOutputAtomic),
       nowMs: preparedAtMs,
       settlementMode: VNEXT_DIRECT_NO_RMT_FEE,
+      ...(parsed.data.canonicalMarket ? { canonicalMarket: parsed.data.canonicalMarket as { sourceId: "uniswap-v4"; poolId: `0x${string}` } } : {}),
+      ...(parsed.data.v4QuoteEvidence ? { v4QuoteEvidence: parsed.data.v4QuoteEvidence as typeof parsed.data.v4QuoteEvidence & { poolId: `0x${string}`; observedBlockHash: `0x${string}` } } : {}),
       ...(parsed.data.executionId ? { executionId: parsed.data.executionId as Hex } : {})
     });
-    if (prepared.evidence.provider !== "uniswap-v3" && prepared.evidence.provider !== "up-v2" && prepared.evidence.provider !== "up-cl") {
+    if (prepared.evidence.provider !== "uniswap-v3" && prepared.evidence.provider !== "uniswap-v4" && prepared.evidence.provider !== "up-v2" && prepared.evidence.provider !== "up-cl") {
       return Response.json({ error: "This provider does not have a supported wallet-plan codec yet." }, { status: 422, headers: noStore });
     }
     const evidenceChanged = prepared.evidence.status !== parsed.data.expectedStatus
@@ -125,6 +146,7 @@ export async function POST(request: Request) {
       ...(prepared.evidence.feeExecution !== undefined ? { feeExecution: prepared.evidence.feeExecution } : {}),
       ...(prepared.evidence.feeV2Economics ? { feeV2Economics: prepared.evidence.feeV2Economics } : {}),
       ...(prepared.feeV2Authorization ? { feeV2Authorization: prepared.feeV2Authorization } : {}),
+      ...(prepared.evidence.v4Execution ? { v4Execution: prepared.evidence.v4Execution } : {}),
       deadline: prepared.evidence.deadline,
       preparedAtMs,
       expiresAtMs,
@@ -150,7 +172,7 @@ export async function POST(request: Request) {
     if (projectIdentityResponse) return projectIdentityResponse;
     const stockTokenResponse = stockTokenExecutionPolicyErrorResponse(cause);
     if (stockTokenResponse) return stockTokenResponse;
-    const message = cause instanceof Error && /deadline is stale|exact next action is not ready|wallet authorization is not available/.test(cause.message)
+    const message = cause instanceof Error && /deadline is stale|exact next action is not ready|wallet authorization is not available|rejected Uniswap V4 execution/.test(cause.message)
       ? cause.message
       : "Unable to prepare an exact wallet-review payload.";
     return Response.json({ error: message }, { status: 422, headers: noStore });

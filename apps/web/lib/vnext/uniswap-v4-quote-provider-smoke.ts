@@ -87,7 +87,7 @@ assert.equal(buy?.v4Evidence?.hooks, hooks);
 assert.equal(buy?.v4Evidence?.recipient, recipient);
 assert.equal(buy?.v4Evidence?.provenance, "canonical-market-indexer+uniswap-v4-quoter+robinhood-rpc");
 assert.equal(buy?.authorizationReady, false);
-assert.equal(buy?.strictVerificationAvailable, false);
+assert.equal(buy?.strictVerificationAvailable, true);
 assert.equal("calldata" in (buy ?? {}), false);
 assert.equal("transaction" in (buy ?? {}), false);
 assert.equal("target" in (buy ?? {}), false);
@@ -105,9 +105,9 @@ assert.equal(sell?.provider, "uniswap-v4");
 assert.equal(sell?.status, "indicative");
 assert.equal(sell?.v4Evidence?.poolId, poolId);
 assert.equal(VNEXT_PROVIDER_FEE_SETTLEMENT_REGISTRY["uniswap-v4"].state, "QUOTE_ONLY");
-assert.equal(hasVNextWalletAuthorizationCodec("uniswap-v4"), false);
+assert.equal(hasVNextWalletAuthorizationCodec("uniswap-v4"), true);
 
-console.log("Generic canonical Uniswap V4 quote-only provider checks passed.");
+console.log("Generic canonical Uniswap V4 quote and fee-independent execution-capability checks passed.");
 }
 
 void main().catch((cause) => {

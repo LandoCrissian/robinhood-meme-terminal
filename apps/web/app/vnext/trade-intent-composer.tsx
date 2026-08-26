@@ -545,7 +545,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
       || !identity.identityToken
       || !identity.userId
       || !winningQuote
-      || (winningQuote.provider !== "uniswap-v3" && winningQuote.provider !== "up-v2" && winningQuote.provider !== "up-cl")
+      || (winningQuote.provider !== "uniswap-v3" && winningQuote.provider !== "uniswap-v4" && winningQuote.provider !== "up-v2" && winningQuote.provider !== "up-cl")
       || !winningQuote.protectedOutputAtomic
     ) throw new Error("No observed route is supported by a strict verifier yet.");
     const expected = {
@@ -555,7 +555,17 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
       inputAmountAtomic: draft.intent.amountAtomic,
       provider: winningQuote.provider,
       protectedOutputFloorAtomic: winningQuote.protectedOutputAtomic,
-      recipient: address
+      recipient: address,
+      ...(winningQuote.provider === "uniswap-v4" && winningQuote.v4Evidence && winningQuote.quotedAtMs && winningQuote.expiresAtMs
+        ? {
+            canonicalMarket: { sourceId: "uniswap-v4", poolId: winningQuote.v4Evidence.poolId },
+            v4QuoteEvidence: {
+              ...winningQuote.v4Evidence,
+              quotedAtMs: winningQuote.quotedAtMs,
+              expiresAtMs: winningQuote.expiresAtMs
+            }
+          }
+        : {})
     };
     const response = await requestTradeQuote("/api/vnext/verify", {
       chainId: ROBINHOOD_MAINNET_CHAIN_ID,
@@ -565,7 +575,17 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
       outputAsset: outputAddress,
       inputAmountAtomic: draft.intent.amountAtomic,
       protectedOutputFloorAtomic: winningQuote.protectedOutputAtomic,
-      recipient: address
+      recipient: address,
+      ...(winningQuote.provider === "uniswap-v4" && winningQuote.v4Evidence && winningQuote.quotedAtMs && winningQuote.expiresAtMs
+        ? {
+            canonicalMarket: { sourceId: "uniswap-v4", poolId: winningQuote.v4Evidence.poolId },
+            v4QuoteEvidence: {
+              ...winningQuote.v4Evidence,
+              quotedAtMs: winningQuote.quotedAtMs,
+              expiresAtMs: winningQuote.expiresAtMs
+            }
+          }
+        : {})
     }, {
       identityScope: identity.userId,
       identityToken: identity.identityToken,
@@ -604,6 +624,21 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
       expectedStatus: evidence.status,
       indicativeProtectedOutputFloorAtomic: evidence.indicativeProtectedOutputFloorAtomic,
       expectedProtectedOutputAtomic: evidence.protectedOutputAtomic,
+      ...(evidence.provider === "uniswap-v4" && evidence.v4Execution
+        ? {
+            canonicalMarket: { sourceId: "uniswap-v4", poolId: evidence.v4Execution.poolId },
+            v4QuoteEvidence: {
+              poolId: evidence.v4Execution.poolId,
+              ...evidence.v4Execution.poolKey,
+              recipient: evidence.recipient,
+              observedBlock: evidence.v4Execution.quoteObservedBlock,
+              observedBlockHash: evidence.v4Execution.quoteObservedBlockHash,
+              observedAtMs: evidence.v4Execution.quoteObservedAtMs,
+              quotedAtMs: evidence.v4Execution.quotedAtMs,
+              expiresAtMs: evidence.v4Execution.quoteExpiresAtMs
+            }
+          }
+        : {}),
       ...(evidence.feeExecution ? { executionId: evidence.feeExecution.executionId } : {})
     }, {
       identityScope: identity.userId,
@@ -975,7 +1010,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
               ? "Last verified evidence remains stable while its replacement is checked"
               : authorizationEnabled ? "RMT completed the internal checks from your single trade action" : "Authorization remains disabled in this preview"}</small></span>
             <dl>
-              <div><dt>Route</dt><dd>{visibleVerification.route === "direct" ? "Direct V3" : "V3 via WETH"}</dd></div>
+              <div><dt>Route</dt><dd>{visibleVerification.route === "v4_pool" ? "Canonical V4 PoolKey" : visibleVerification.route === "direct" ? "Direct V3" : "V3 via WETH"}</dd></div>
               <div><dt>Protected</dt><dd>{formatAtomicDisplay(visibleVerification.protectedOutputAtomic, verificationQuote?.outputDecimals ?? 18)} {outputSymbol}</dd></div>
               <div><dt>Quote continuity</dt><dd>{describeProtectedOutputContinuity(visibleVerification.protectedOutputAtomic, visibleVerification.indicativeProtectedOutputFloorAtomic)}</dd></div>
               <div><dt>Simulation</dt><dd>{visibleVerification.exactSimulationPassed ? "Passed" : "Not passed"}</dd></div>

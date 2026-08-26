@@ -11,6 +11,10 @@ import { robinhoodChain } from "@rmt/shared/chains";
 import { ROBINHOOD_V4_QUOTER } from "../uniswap-v4";
 import { readVNextCanonicalMarketInventory } from "./vnext-market-indexer";
 import {
+  prepareVNextUniswapV4Authorization,
+  verifyVNextUniswapV4Route
+} from "./vnext-uniswap-v4-execution";
+import {
   disabledVNextFeeEconomics,
   unavailableVNextQuoteAttempt,
   type VNextQuoteProviderAdapter
@@ -68,6 +72,8 @@ type V4QuoteDependencies = {
   }) => Promise<bigint>;
   readFreshness?: () => Promise<{ blockNumber: bigint; blockHash: Hex; timestamp: bigint }>;
   now?: () => number;
+  verify?: typeof verifyVNextUniswapV4Route;
+  prepareAuthorization?: typeof prepareVNextUniswapV4Authorization;
 };
 
 export function createVNextUniswapV4Adapter(
@@ -79,7 +85,7 @@ export function createVNextUniswapV4Adapter(
     providerFamily: "uniswap",
     adapterVersion: 1,
     executionKind: "direct_amm",
-    capabilities: { strictVerification: false, walletAuthorization: false },
+    capabilities: { strictVerification: true, walletAuthorization: true },
     async quote(request) {
       const startedAtMs = dependencies.now?.() ?? Date.now();
       try {
@@ -171,7 +177,7 @@ export function createVNextUniswapV4Adapter(
           expiresAtMs: quotedAtMs + QUOTE_TTL_MS,
           latencyMs: Math.max(0, quotedAtMs - startedAtMs),
           executionKind: "direct_amm",
-          strictVerificationAvailable: false,
+          strictVerificationAvailable: true,
           userPaysGas: true,
           providerFeeAsset: null,
           providerFeeAtomic: null,
@@ -201,7 +207,7 @@ export function createVNextUniswapV4Adapter(
             observedBlockHash: freshness.blockHash,
             observedAtMs: Number(freshness.timestamp * 1_000n)
           },
-          detail: "Canonical PoolKey quote only. No wallet calldata or authorization codec exists."
+          detail: "Canonical PoolKey quote. Wallet execution requires a fresh exact-call verification."
         };
       } catch {
         return unavailableVNextQuoteAttempt({
@@ -209,6 +215,12 @@ export function createVNextUniswapV4Adapter(
           detail: "Uniswap v4 quote evidence is temporarily unavailable.", startedAtMs
         });
       }
+    },
+    verify(request) {
+      return (dependencies.verify ?? verifyVNextUniswapV4Route)(request);
+    },
+    prepareAuthorization(request) {
+      return (dependencies.prepareAuthorization ?? prepareVNextUniswapV4Authorization)(request);
     }
   };
   return adapter;
