@@ -29,6 +29,12 @@ export type VNextAdmittedFeeSettlement = {
 export type VNextProviderFeeSettlement = VNextQuoteOnlyFeeSettlement | VNextAdmittedFeeSettlement;
 
 export const VNEXT_PROVIDER_FEE_SETTLEMENT_REGISTRY: Readonly<Record<VNextQuoteProvider, VNextProviderFeeSettlement>> = Object.freeze({
+  "uniswap-v2": Object.freeze({
+    state: "QUOTE_ONLY", requiredMode: "v2-atomic-input-fee", implementationId: null,
+    walletCodecImplemented: true,
+    currentSettlement: "DIRECT_NO_RMT_FEE uses the official Uniswap V2 Router02; RMT fee settlement remains disabled.",
+    requiredImplementation: "A separately audited Uniswap V2 atomic input-fee settlement path."
+  }),
   "uniswap-v3": Object.freeze({
     state: "QUOTE_ONLY", requiredMode: "v2-atomic-input-fee", implementationId: null,
     walletCodecImplemented: true,

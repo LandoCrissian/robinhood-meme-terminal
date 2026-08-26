@@ -14,7 +14,7 @@ import {
   type VNextAtomicFeeSettlementProof
 } from "./provider-fee-settlement";
 
-const providers = ["sushi", "uniswap-v3", "uniswap-v4", "uniswapx", "zero-x-swap", "zero-x-gasless", "up-v2", "up-cl"] as const;
+const providers = ["sushi", "uniswap-v2", "uniswap-v3", "uniswap-v4", "uniswapx", "zero-x-swap", "zero-x-gasless", "up-v2", "up-cl"] as const;
 for (const provider of providers) {
   assert.equal(VNEXT_PROVIDER_FEE_SETTLEMENT_REGISTRY[provider].state, "QUOTE_ONLY");
   assert.equal(isVNextWalletFeeSettlementAdmitted(provider), false);

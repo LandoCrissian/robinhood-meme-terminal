@@ -241,19 +241,7 @@ assert.notEqual(prepared.transaction.target, ROBINHOOD_SWAP_ROUTER_02);
 assert.equal(prepared.evidence.approvalSpender, executor);
 assert.equal(prepared.evidence.feeV2Economics?.expectedFeeAtomic, "100");
 
-await assert.rejects(() => vNextUniswapV3Adapter.prepareAuthorization!({
-  chainId: 4_663,
-  inputAsset,
-  outputAsset,
-  inputAmountAtomic: "40000",
-  amountIn: 40_000n,
-  recipient: trader,
-  indicativeProtectedOutputFloorAtomic: 980n,
-  protectedOutputFloorAtomic: 990n,
-  deadlineSeconds: deadline,
-  nowMs: Date.now(),
-  executionId
-}), /wallet authorization is not available yet/);
+assert.equal(vNextUniswapV3Adapter.capabilities.walletAuthorization, true);
 
 assert.equal(requiresExactV2TraderApproval({ nativeInput: false, allowance: 40_000n, userGrossInput: 40_000n }), false);
 assert.equal(requiresExactV2TraderApproval({ nativeInput: false, allowance: 39_999n, userGrossInput: 40_000n }), true);
@@ -269,7 +257,7 @@ assert.throws(
 );
 
 assert.equal(VNEXT_PROVIDER_FEE_SETTLEMENT_REGISTRY["uniswap-v3"].state, "QUOTE_ONLY");
-assert.equal(vNextUniswapV3Adapter.capabilities.walletAuthorization, false);
+assert.equal(vNextUniswapV3Adapter.capabilities.walletAuthorization, true);
 assert.equal(configuredVNextUniswapFeeExecutorV2({ NODE_ENV: "test" }), null);
 assert.throws(() => configuredVNextUniswapFeeExecutorV2({
   NODE_ENV: "test",

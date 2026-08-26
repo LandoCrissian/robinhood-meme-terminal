@@ -3,6 +3,7 @@ import { requireVNextStockTokenExecutionEligible, type VNextStockTokenExecutionA
 import type { VNextProviderAuthorizationRequest, VNextProviderVerificationRequest, VNextQuoteProviderAdapter } from "./vnext-provider-adapter";
 import { prepareVNextProviderAuthorization, quoteVNextExecutionProviders, verifyVNextExecutionProvider } from "./vnext-provider-adapter";
 import { vNextSushiAdapter } from "./vnext-sushi-adapter";
+import { vNextUniswapV2Adapter } from "./vnext-uniswap-v2-adapter";
 import { vNextUniswapV3Adapter } from "./vnext-uniswap-v3-adapter";
 import { vNextUniswapV4Adapter } from "./vnext-uniswap-v4-adapter";
 import { configuredVNextUniswapXAdapters, prepareVNextUniswapXIntent } from "./vnext-uniswapx-adapter";
@@ -11,6 +12,7 @@ import { configuredVNextUpAdapters } from "./vnext-up-adapter";
 
 export const robinhoodVNextQuoteAdapters: readonly VNextQuoteProviderAdapter[] = [
   vNextSushiAdapter,
+  vNextUniswapV2Adapter,
   vNextUniswapV3Adapter,
   vNextUniswapV4Adapter,
   ...configuredVNextUniswapXAdapters(),

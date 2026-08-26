@@ -19,7 +19,7 @@ const requestSchema = z.object({
   chainId: z.literal(4_663),
   quoteRequestId: z.string().uuid(),
   verificationId: z.string().uuid(),
-  provider: z.enum(["sushi", "uniswap-v3", "uniswap-v4", "up-v2", "up-cl"]),
+  provider: z.enum(["sushi", "uniswap-v2", "uniswap-v3", "uniswap-v4", "up-v2", "up-cl"]),
   inputAsset: z.string().refine((value) => isAddress(value, { strict: false })),
   outputAsset: z.string().refine((value) => isAddress(value, { strict: false })),
   inputAmountAtomic: z.string().regex(/^[1-9][0-9]*$/),
@@ -95,7 +95,7 @@ export async function POST(request: Request) {
       ...(parsed.data.v4QuoteEvidence ? { v4QuoteEvidence: parsed.data.v4QuoteEvidence as typeof parsed.data.v4QuoteEvidence & { poolId: `0x${string}`; observedBlockHash: `0x${string}` } } : {}),
       ...(parsed.data.executionId ? { executionId: parsed.data.executionId as Hex } : {})
     });
-    if (prepared.evidence.provider !== "uniswap-v3" && prepared.evidence.provider !== "uniswap-v4" && prepared.evidence.provider !== "up-v2" && prepared.evidence.provider !== "up-cl") {
+    if (prepared.evidence.provider !== "uniswap-v2" && prepared.evidence.provider !== "uniswap-v3" && prepared.evidence.provider !== "uniswap-v4" && prepared.evidence.provider !== "up-v2" && prepared.evidence.provider !== "up-cl") {
       return Response.json({ error: "This provider does not have a supported wallet-plan codec yet." }, { status: 422, headers: noStore });
     }
     const evidenceChanged = prepared.evidence.status !== parsed.data.expectedStatus
