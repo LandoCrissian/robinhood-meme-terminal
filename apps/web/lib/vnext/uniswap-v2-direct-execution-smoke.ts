@@ -61,6 +61,28 @@ for (const changed of [
   }), /changed Uniswap V2 swap economics or path/);
 }
 
+assert.throws(() => assertUniswapV2SwapCalldata(buy, {
+  inputAsset: zeroAddress, outputAsset: tokenA, inputAmountAtomic: amountIn.toString(),
+  protectedOutputAtomic: minimumOut.toString(), recipient, deadline: deadline.toString(),
+  transactionValueAtomic: (amountIn - 1n).toString(), route: "direct", pools: [pool]
+}), /changed Uniswap V2 transaction value/);
+
+assert.throws(() => assertUniswapV2SwapCalldata(erc20ToErc20, {
+  inputAsset: tokenA, outputAsset: tokenB, inputAmountAtomic: amountIn.toString(),
+  protectedOutputAtomic: minimumOut.toString(), recipient, deadline: deadline.toString(),
+  transactionValueAtomic: "0", route: "weth_hop", pools: [pool]
+}), /incomplete Uniswap V2 pool evidence/);
+
+const changedPath = encodeFunctionData({
+  abi: uniswapV2RouterAbi, functionName: "swapExactTokensForETH",
+  args: [amountIn, minimumOut, [tokenB, ROBINHOOD_WETH_ADDRESS], recipient, deadline]
+});
+assert.throws(() => assertUniswapV2SwapCalldata(changedPath, {
+  inputAsset: tokenA, outputAsset: zeroAddress, inputAmountAtomic: amountIn.toString(),
+  protectedOutputAtomic: minimumOut.toString(), recipient, deadline: deadline.toString(),
+  transactionValueAtomic: "0", route: "direct", pools: [pool]
+}), /changed Uniswap V2 swap economics or path/);
+
 assert.equal(ROBINHOOD_UNISWAP_V2_ROUTER, getAddress("0x89e5db8b5aa49aa85ac63f691524311aeb649eba"));
 assert.deepEqual(VNEXT_PROVIDER_EXECUTION_CAPABILITY_REGISTRY["uniswap-v2"], {
   state: "WALLET_EXECUTION", strictVerificationImplemented: true, walletAuthorizationCodecImplemented: true
