@@ -12,6 +12,8 @@ const pool = new Pool({
 });
 
 async function dropIndexerTables() {
+  await pool.query("DROP TABLE IF EXISTS market_token_identity_catalog_state CASCADE");
+  await pool.query("DROP TABLE IF EXISTS market_token_identity_shard CASCADE");
   await pool.query("DROP TABLE IF EXISTS market_pool_state CASCADE");
   await pool.query("DROP TABLE IF EXISTS market_pools CASCADE");
   await pool.query("DROP TABLE IF EXISTS market_indexer_sync_points CASCADE");
@@ -30,7 +32,7 @@ try {
     `SELECT c.relname,c.relpersistence FROM pg_class c
      JOIN pg_namespace n ON n.oid=c.relnamespace
      WHERE n.nspname='public' AND c.relname=ANY($1::text[]) ORDER BY c.relname`,
-    [["market_indexer_source_state", "market_indexer_sync_points", "market_pools", "market_pool_state"]]
+    [["market_indexer_source_state", "market_indexer_sync_points", "market_pools", "market_pool_state", "market_token_identity_catalog_state", "market_token_identity_shard"]]
   );
   assert(durable.rows.every((row) => row.relpersistence === "p"), JSON.stringify(durable.rows));
   await assert.rejects(migrateMarketIndexer(pool, "rebuildable"), /storage mode drift/);
@@ -109,9 +111,9 @@ try {
     `SELECT c.relname,c.relpersistence FROM pg_class c
      JOIN pg_namespace n ON n.oid=c.relnamespace
      WHERE n.nspname='public' AND c.relname=ANY($1::text[]) ORDER BY c.relname`,
-    [["market_indexer_source_state", "market_indexer_sync_points", "market_pools", "market_pool_state"]]
+    [["market_indexer_source_state", "market_indexer_sync_points", "market_pools", "market_pool_state", "market_token_identity_catalog_state", "market_token_identity_shard"]]
   );
-  assert.equal(rebuildable.rows.length, 4);
+  assert.equal(rebuildable.rows.length, 6);
   assert(rebuildable.rows.every((row) => row.relpersistence === "u"));
   console.info("market indexer compact schema smoke passed");
 } finally {

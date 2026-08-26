@@ -2,10 +2,12 @@ import { getAddress, type Address } from "viem";
 import {
   publicVNextCanonicalMarketInventoryPool,
   readVNextCanonicalMarketInventory,
+  searchVNextCanonicalTokenIdentities,
   type VNextCanonicalMarketInventoryPool,
   type VNextCanonicalMarketInventoryQuery,
   type VNextCanonicalMarketInventoryResult
 } from "./vnext-market-indexer";
+import type { VNextCanonicalTokenIdentitySearchResult } from "./vnext-market-indexer";
 import { readRobinhoodTokenIdentity } from "./universal-market-resolver";
 import {
   ROBINHOOD_USDG_ADDRESS,
@@ -74,6 +76,7 @@ type SearchFetch = (
 
 type ProjectAdmissionFilter = <T extends ProjectIdentityAdmissionCandidate>(candidates: readonly T[]) => Promise<T[]>;
 type CanonicalCatalogReader = () => Promise<VNextCanonicalSearchCatalog>;
+type CanonicalTokenSearchReader = (query: string) => Promise<VNextCanonicalTokenIdentitySearchResult>;
 
 async function defaultProjectAdmissionFilter<T extends ProjectIdentityAdmissionCandidate>(
   candidates: readonly T[]
@@ -88,6 +91,7 @@ export type VNextUniversalMarketSearchDependencies = {
   timeoutMs?: number;
   admitProjectIdentities?: ProjectAdmissionFilter;
   readCanonicalCatalog?: CanonicalCatalogReader;
+  searchCanonicalTokens?: CanonicalTokenSearchReader;
 };
 
 type CandidatePair = {
@@ -566,11 +570,34 @@ async function textSearch(
     dependencies.fetch,
     dependencies.timeoutMs
   ).catch((): CandidateDiscoveryResult => ({ status: "unavailable" }));
-  const catalog = await dependencies.readCanonicalCatalog().catch(
-    (): VNextCanonicalSearchCatalog => ({ status: "unavailable", entries: [] })
+  const canonicalSearch = await dependencies.searchCanonicalTokens(query).catch(
+    (): VNextCanonicalTokenIdentitySearchResult => ({ status: "unavailable", entries: [] })
   );
-  const canonicalMatches = catalog.status === "ready"
-    ? catalog.entries.flatMap((entry) => {
+  let canonicalMatches = canonicalSearch.status === "ready"
+    ? canonicalSearch.entries.flatMap((entry) => {
+        const match = matchIdentity(query, entry);
+        return match ? [{
+          priority: match.priority,
+          result: {
+            address: entry.address.toLowerCase(),
+            name: entry.name,
+            symbol: entry.symbol,
+            decimals: entry.decimals,
+            matchedBy: match.matchedBy,
+            markets: entry.markets.map(publicMarket)
+          } satisfies VNextUniversalMarketSearchResultItem
+        }] : [];
+      }).sort(
+        (left, right) => left.priority - right.priority || left.result.address.localeCompare(right.result.address)
+      )
+    : [];
+  if (canonicalMatches.length === 0 &&
+      (canonicalSearch.status === "unavailable" || !canonicalSearch.capacity.complete)) {
+    const fallbackCatalog = await dependencies.readCanonicalCatalog().catch(
+      (): VNextCanonicalSearchCatalog => ({ status: "unavailable", entries: [] })
+    );
+    if (fallbackCatalog.status === "ready") {
+      canonicalMatches = fallbackCatalog.entries.flatMap((entry) => {
         const match = matchIdentity(query, entry.identity);
         return match ? [{
           priority: match.priority,
@@ -585,8 +612,9 @@ async function textSearch(
         }] : [];
       }).sort(
         (left, right) => left.priority - right.priority || left.result.address.localeCompare(right.result.address)
-      )
-    : [];
+      );
+    }
+  }
   let supplementTimeout: ReturnType<typeof setTimeout> | undefined;
   const discovery = canonicalMatches.length === 0
     ? await discoveryPromise
@@ -713,9 +741,11 @@ export async function searchVNextUniversalMarkets(
     ...readDependencies,
     fetch: dependencies.fetch ?? fetch,
     timeoutMs,
-    readCanonicalCatalog: dependencies.readCanonicalCatalog ?? (
-      dependencies.readInventory || dependencies.readIdentity
-        ? createVNextCanonicalSearchCatalogReader({
+    readCanonicalCatalog: dependencies.readCanonicalCatalog ?? readVNextCanonicalSearchCatalog,
+    searchCanonicalTokens: dependencies.searchCanonicalTokens ?? (
+      dependencies.readCanonicalCatalog || dependencies.readInventory || dependencies.readIdentity
+        ? async (textQuery: string): Promise<VNextCanonicalTokenIdentitySearchResult> => {
+            const reader = dependencies.readCanonicalCatalog ?? createVNextCanonicalSearchCatalogReader({
             readInventory: readDependencies.readInventory,
             readIdentities: async (addresses) => {
               const reads = await Promise.all(addresses.map(async (address) => [
@@ -724,8 +754,29 @@ export async function searchVNextUniversalMarkets(
               ] as const));
               return new Map(reads.flatMap(([address, identity]) => identity ? [[address, identity]] : []));
             }
-          })
-        : readVNextCanonicalSearchCatalog
+            });
+            const catalog = await reader();
+            return catalog.status === "ready"
+              ? {
+                  status: "ready",
+                  sourceManifestHash: catalog.sourceManifestHash,
+                  coverageComplete: true,
+                  capacity: {
+                    totalCanonicalMarkets: catalog.capacity.marketCount,
+                    totalUniqueCanonicalTokens: catalog.capacity.candidateTokenCount,
+                    totalVerifiedErc20Identities: catalog.capacity.tokenCount,
+                    indexedSearchTokenIdentities: catalog.capacity.tokenCount,
+                    unresolvedTokenIdentities: Math.max(catalog.capacity.candidateTokenCount - catalog.capacity.tokenCount, 0),
+                    complete: !catalog.capacity.truncated
+                  },
+                  entries: catalog.entries.map((entry) => ({
+                    ...entry.identity,
+                    markets: entry.markets
+                  }))
+                }
+              : { status: "unavailable", entries: [] };
+          }
+        : searchVNextCanonicalTokenIdentities
     )
   };
   let deadline: ReturnType<typeof setTimeout> | undefined;

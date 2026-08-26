@@ -13,7 +13,7 @@
     "test:replay": "tsx src/replay-smoke.ts",
     "test:schema": "tsx src/schema-smoke.ts",
     "test:telemetry": "tsx src/telemetry-smoke.ts",
-    "test:server": "tsx src/server-smoke.ts",
+    "test:server": "tsx src/token-identity-index-smoke.ts && tsx src/server-smoke.ts",
     "test:up-enrichment": "tsx src/up-enrichment-smoke.ts",
     "test:position-guard": "tsx src/position-guard-heartbeat-smoke.ts",
     "test:compact-migration": "tsx src/compact-schema-migration-smoke.ts",

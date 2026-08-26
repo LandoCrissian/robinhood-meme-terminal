@@ -230,6 +230,15 @@ const CURRENT_RELATIONS = [
   "market_pools",
   "market_pool_state"
 ] as const;
+const CURRENT_ADDITIVE_RELATIONS = [
+  "market_token_identity_catalog_state",
+  "market_token_identity_shard"
+] as const;
+
+async function finalizedPublicRelationsAreExact(client: PoolClient) {
+  return await publicRelationsAreExact(client, CURRENT_RELATIONS) ||
+    await publicRelationsAreExact(client, [...CURRENT_RELATIONS, ...CURRENT_ADDITIVE_RELATIONS]);
+}
 
 async function sourceCodeColumnPresent(client: PoolClient) {
   const result = await client.query<{ present: boolean }>(
@@ -890,7 +899,7 @@ async function detectedPhase(client: PoolClient): Promise<{
       }
       if (schemaVersion === MARKET_INDEXER_SCHEMA_VERSION && layout === "compact" && sourceCodes &&
           artifactNames.length === 0 && await currentCompactRelationsValid(client) &&
-          await publicRelationsAreExact(client, CURRENT_RELATIONS)) {
+          await finalizedPublicRelationsAreExact(client)) {
         await assertExactSourceManifest(client, MARKET_INDEXER_SCHEMA_VERSION, true);
         return { phase: "V3_FINALIZED", state, checkpointEquality: true };
       }

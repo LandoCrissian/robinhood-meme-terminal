@@ -38,6 +38,10 @@ import {
   type MarketIndexerTelemetry
 } from "./telemetry.js";
 import { isUpSource, readUpPoolEvidence } from "./up-enrichment.js";
+import {
+  enqueueCanonicalTokenIdentityCandidates,
+  refreshCanonicalTokenIdentityIndex
+} from "./token-identity-index.js";
 
 export type WorkerStatus = {
   running: boolean;
@@ -510,6 +514,13 @@ export class MarketIndexerWorker {
         ]
       );
       await client.query("COMMIT");
+      if (decoded.length > 0) {
+        await enqueueCanonicalTokenIdentityCandidates(
+          this.pool,
+          decoded.flatMap((market) => [market.token0, market.token1]),
+          decoded.length
+        );
+      }
       this.status.indexedThrough[source.id] = toBlock.toString();
       this.status.lastSyncAt = new Date().toISOString();
     } catch (error) {
@@ -652,6 +663,17 @@ export class MarketIndexerWorker {
         await this.refreshUpPoolEvidence(finalizedHead, finalizedBlock.hash);
       } catch (error) {
         failure ??= new Error(`up enrichment: ${errorText(error)}`);
+      }
+      try {
+        await refreshCanonicalTokenIdentityIndex(
+          this.pool,
+          this.rpc,
+          this.config.tokenIdentityBatchSize,
+          finalizedHead,
+          finalizedBlock.hash
+        );
+      } catch (error) {
+        failure ??= new Error(`token identity index: ${errorText(error)}`);
       }
       this.status.lastError = failure?.message ?? null;
     } catch (error) {
