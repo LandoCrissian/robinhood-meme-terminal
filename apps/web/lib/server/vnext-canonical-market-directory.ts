@@ -2,7 +2,8 @@ import {
   publicVNextCanonicalMarketInventoryPool,
   readVNextCanonicalMarketInventory,
   type VNextCanonicalMarketInventoryQuery,
-  type VNextCanonicalMarketInventoryResult
+  type VNextCanonicalMarketInventoryResult,
+  type VNextMarketIndexerTiming
 } from "./vnext-market-indexer";
 import {
   VNEXT_CANONICAL_DIRECTORY_PAGE_LIMIT,
@@ -20,15 +21,21 @@ export type VNextCanonicalMarketDirectoryPage =
 
 export async function readVNextCanonicalMarketDirectoryPage(
   requestUrl: string,
-  readInventory: CanonicalInventoryReader = readVNextCanonicalMarketInventory
+  readInventory: CanonicalInventoryReader = readVNextCanonicalMarketInventory,
+  onTiming?: (timing: VNextMarketIndexerTiming) => void
 ): Promise<VNextCanonicalMarketDirectoryPage> {
   const cursor = new URL(requestUrl).searchParams.get("cursor") ?? undefined;
   let inventory: VNextCanonicalMarketInventoryResult;
   try {
-    inventory = await readInventory({
-      limit: VNEXT_CANONICAL_DIRECTORY_PAGE_LIMIT,
-      cursor
-    });
+    inventory = readInventory === readVNextCanonicalMarketInventory
+      ? await readVNextCanonicalMarketInventory({
+          limit: VNEXT_CANONICAL_DIRECTORY_PAGE_LIMIT,
+          cursor
+        }, { onTiming })
+      : await readInventory({
+          limit: VNEXT_CANONICAL_DIRECTORY_PAGE_LIMIT,
+          cursor
+        });
   } catch {
     return { status: 503, body: { canonical: true, error: "Canonical market directory is not ready." } };
   }

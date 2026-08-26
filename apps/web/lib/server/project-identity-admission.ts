@@ -11,6 +11,7 @@ const REGISTRY_FAILURE_BACKOFF_MS = 15_000;
 const IDENTITY_CACHE_TTL_MS = 5 * 60_000;
 const MAXIMUM_BATCH_IDENTITIES = 256;
 const IDENTITIES_PER_MULTICALL = 100;
+const MAXIMUM_POSITIVE_QUARANTINE_CACHE_ENTRIES = 1_024;
 const ROBINHOOD_MULTICALL3 = getAddress("0xcA11bde05977b3631167028862bE2a173976CA11");
 
 export type ProjectTokenIdentity = {
@@ -28,8 +29,18 @@ export type AuthoritativeProjectIdentity = {
 };
 
 export type ProjectIdentityAuthoritySnapshot =
-  | { status: "ready"; entries: AuthoritativeProjectIdentity[] }
+  | { status: "ready"; entries: AuthoritativeProjectIdentity[]; freshness?: "current" | "last-known" }
   | { status: "unavailable"; entries: [] };
+
+export type ProjectIdentityAdmissionTiming = {
+  authorityMs: number;
+  candidateIdentityMs: number;
+  establishedIdentityMs: number;
+  admissionTotalMs: number;
+  candidateIdentityCount: number;
+  establishedIdentityCount: number;
+  identityNetworkBatches: number;
+};
 
 export type ProjectIdentityAdmission =
   | {
@@ -51,6 +62,7 @@ export type ProjectIdentityAdmissionDependencies = {
   readAuthority?: () => Promise<ProjectIdentityAuthoritySnapshot>;
   readIdentity?: (address: Address) => Promise<ProjectTokenIdentity | null>;
   readIdentities?: (addresses: readonly Address[]) => Promise<ReadonlyMap<string, ProjectTokenIdentity>>;
+  onTiming?: (timing: ProjectIdentityAdmissionTiming) => void;
 };
 
 export type ProjectIdentityAuthorityReaderDependencies = {
@@ -78,6 +90,7 @@ type CachedIdentity = {
 };
 
 const identityCache = new Map<string, CachedIdentity>();
+const positiveQuarantineCache = new Map<string, Extract<ProjectIdentityAdmission, { status: "conflicting-project-identity" }>>();
 
 const identityClient = createPublicClient({
   chain: robinhoodChain,
@@ -187,14 +200,17 @@ export function createProjectIdentityAuthorityReader(
 ) {
   let cachedAuthority: CachedAuthority | undefined;
   let failureBackoffUntil = 0;
+  let inFlight: Promise<ProjectIdentityAuthoritySnapshot> | undefined;
   const fetchImplementation = dependencies.fetch ?? fetch;
   const now = dependencies.now ?? Date.now;
   const timeoutMs = dependencies.timeoutMs ?? REGISTRY_TIMEOUT_MS;
 
-  return async (): Promise<ProjectIdentityAuthoritySnapshot> => {
+  const readFresh = async (): Promise<ProjectIdentityAuthoritySnapshot> => {
     const requestedAt = now();
     if (cachedAuthority && cachedAuthority.expiresAt > requestedAt) return cachedAuthority.snapshot;
-    if (failureBackoffUntil > requestedAt) return { status: "unavailable", entries: [] };
+    if (failureBackoffUntil > requestedAt) return cachedAuthority
+      ? { ...cachedAuthority.snapshot, freshness: "last-known" }
+      : { status: "unavailable", entries: [] };
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
     try {
@@ -207,31 +223,46 @@ export function createProjectIdentityAuthorityReader(
       const contentLength = Number(response.headers.get("content-length"));
       if (!response.ok || (Number.isFinite(contentLength) && contentLength > MAXIMUM_REGISTRY_RESPONSE_BYTES)) {
         failureBackoffUntil = requestedAt + REGISTRY_FAILURE_BACKOFF_MS;
-        return { status: "unavailable", entries: [] };
+        return cachedAuthority
+          ? { ...cachedAuthority.snapshot, freshness: "last-known" }
+          : { status: "unavailable", entries: [] };
       }
       const text = await response.text();
       if (Buffer.byteLength(text, "utf8") > MAXIMUM_REGISTRY_RESPONSE_BYTES) {
         failureBackoffUntil = requestedAt + REGISTRY_FAILURE_BACKOFF_MS;
-        return { status: "unavailable", entries: [] };
+        return cachedAuthority
+          ? { ...cachedAuthority.snapshot, freshness: "last-known" }
+          : { status: "unavailable", entries: [] };
       }
       const snapshot = parseProjectIdentityAuthoritySnapshot(JSON.parse(text) as unknown);
       if (snapshot.status !== "ready") {
         failureBackoffUntil = requestedAt + REGISTRY_FAILURE_BACKOFF_MS;
-        return snapshot;
+        return cachedAuthority
+          ? { ...cachedAuthority.snapshot, freshness: "last-known" }
+          : snapshot;
       }
       cachedAuthority = {
         expiresAt: requestedAt + REGISTRY_CACHE_TTL_MS,
         observedAt: requestedAt,
-        snapshot
+        snapshot: { ...snapshot, freshness: "current" }
       };
       failureBackoffUntil = 0;
-      return snapshot;
+      return cachedAuthority.snapshot;
     } catch {
       failureBackoffUntil = requestedAt + REGISTRY_FAILURE_BACKOFF_MS;
-      return { status: "unavailable", entries: [] };
+      return cachedAuthority
+        ? { ...cachedAuthority.snapshot, freshness: "last-known" }
+        : { status: "unavailable", entries: [] };
     } finally {
       clearTimeout(timeout);
     }
+  };
+  return async () => {
+    if (inFlight) return inFlight;
+    inFlight = readFresh().finally(() => {
+      inFlight = undefined;
+    });
+    return inFlight;
   };
 }
 
@@ -255,16 +286,22 @@ async function readBatchedIdentities(addresses: readonly Address[]) {
     else missing.push(address);
   }
   if (missing.length > 0) {
-    for (let offset = 0; offset < missing.length; offset += IDENTITIES_PER_MULTICALL) {
-      const batch = missing.slice(offset, offset + IDENTITIES_PER_MULTICALL);
-      const results = await identityClient.multicall({
+    const batches = Array.from(
+      { length: Math.ceil(missing.length / IDENTITIES_PER_MULTICALL) },
+      (_, index) => missing.slice(index * IDENTITIES_PER_MULTICALL, (index + 1) * IDENTITIES_PER_MULTICALL)
+    );
+    const batchResults = await Promise.all(batches.map(async (batch) => ({
+      batch,
+      results: await identityClient.multicall({
         allowFailure: true,
         multicallAddress: ROBINHOOD_MULTICALL3,
         contracts: batch.flatMap((address) => [
           { address, abi: erc20Abi, functionName: "name" as const },
           { address, abi: erc20Abi, functionName: "symbol" as const }
         ])
-      }).catch(() => []);
+      }).catch(() => [])
+    })));
+    for (const { batch, results } of batchResults) {
       batch.forEach((address, index) => {
         const nameResult = results[index * 2];
         const symbolResult = results[index * 2 + 1];
@@ -339,14 +376,33 @@ export async function applyProjectIdentityDirectoryAdmission<T extends ProjectId
   candidates: readonly T[],
   dependencies: ProjectIdentityAdmissionDependencies = {}
 ) {
+  const admissionStartedAt = performance.now();
+  const timing: ProjectIdentityAdmissionTiming = {
+    authorityMs: 0,
+    candidateIdentityMs: 0,
+    establishedIdentityMs: 0,
+    admissionTotalMs: 0,
+    candidateIdentityCount: 0,
+    establishedIdentityCount: 0,
+    identityNetworkBatches: 0
+  };
   const readAuthority = dependencies.readAuthority ?? fetchAuthoritySnapshot;
   const readIdentity = dependencies.readIdentity ?? cachedIdentity;
   const readIdentities = dependencies.readIdentities ?? (dependencies.readIdentity ? undefined : readBatchedIdentities);
+  const authorityStartedAt = performance.now();
   const snapshot = await readAuthority().catch((): ProjectIdentityAuthoritySnapshot => ({ status: "unavailable", entries: [] }));
+  timing.authorityMs = performance.now() - authorityStartedAt;
   if (snapshot.status !== "ready") {
+    const quarantined = candidates.flatMap((candidate) => {
+      const admission = positiveQuarantineCache.get(candidate.address.toLowerCase());
+      return admission ? [{ candidate, admission }] : [];
+    });
+    const quarantinedAddresses = new Set(quarantined.map(({ candidate }) => candidate.address.toLowerCase()));
+    timing.admissionTotalMs = performance.now() - admissionStartedAt;
+    dependencies.onTiming?.(timing);
     return {
-      admitted: [...candidates],
-      quarantined: [] as Array<{ candidate: T; admission: Extract<ProjectIdentityAdmission, { status: "conflicting-project-identity" }> }>,
+      admitted: candidates.filter((candidate) => !quarantinedAddresses.has(candidate.address.toLowerCase())),
+      quarantined,
       authorityStatus: "unavailable" as const
     };
   }
@@ -356,7 +412,11 @@ export async function applyProjectIdentityDirectoryAdmission<T extends ProjectId
       const address = canonicalAddress(candidate.address);
       return address && !candidate.verifiedIdentity && !registryBindingForAddress(snapshot, address) ? [address] : [];
     });
+    timing.candidateIdentityCount = new Set(candidateAddresses.map((address) => address.toLowerCase())).size;
+    timing.identityNetworkBatches += Math.ceil(timing.candidateIdentityCount / IDENTITIES_PER_MULTICALL);
+    const candidateStartedAt = performance.now();
     const candidateIdentities = await readIdentities(candidateAddresses);
+    timing.candidateIdentityMs = performance.now() - candidateStartedAt;
     for (const [address, identity] of candidateIdentities) prefetchedIdentities.set(address, identity);
     const establishedAddresses = candidates.flatMap((candidate) => {
       const address = canonicalAddress(candidate.address);
@@ -367,7 +427,11 @@ export async function applyProjectIdentityDirectoryAdmission<T extends ProjectId
         && materiallyConfusableProjectIdentity(identity, entry)
       ) ? [getAddress(entry.contractAddress)] : []);
     });
+    timing.establishedIdentityCount = new Set(establishedAddresses.map((address) => address.toLowerCase())).size;
+    timing.identityNetworkBatches += Math.ceil(timing.establishedIdentityCount / IDENTITIES_PER_MULTICALL);
+    const establishedStartedAt = performance.now();
     const establishedIdentities = await readIdentities(establishedAddresses);
+    timing.establishedIdentityMs = performance.now() - establishedStartedAt;
     for (const [address, identity] of establishedIdentities) prefetchedIdentities.set(address, identity);
   }
   const decisionIdentityReader = async (address: Address) => (
@@ -377,6 +441,19 @@ export async function applyProjectIdentityDirectoryAdmission<T extends ProjectId
     candidate,
     admission: await evaluateProjectIdentityAdmission(candidate, snapshot, decisionIdentityReader)
   })));
+  for (const { candidate, admission } of decisions) {
+    const key = candidate.address.toLowerCase();
+    if (admission.status === "conflicting-project-identity") {
+      if (!positiveQuarantineCache.has(key) && positiveQuarantineCache.size >= MAXIMUM_POSITIVE_QUARANTINE_CACHE_ENTRIES) {
+        const oldest = positiveQuarantineCache.keys().next().value;
+        if (oldest) positiveQuarantineCache.delete(oldest);
+      }
+      positiveQuarantineCache.set(key, admission);
+    }
+    else positiveQuarantineCache.delete(key);
+  }
+  timing.admissionTotalMs = performance.now() - admissionStartedAt;
+  dependencies.onTiming?.(timing);
   return {
     admitted: decisions.filter(({ admission }) => admission.status === "admitted").map(({ candidate }) => candidate),
     quarantined: decisions.flatMap(({ candidate, admission }) => admission.status === "conflicting-project-identity"

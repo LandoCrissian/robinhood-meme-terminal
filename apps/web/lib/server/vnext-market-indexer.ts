@@ -406,10 +406,17 @@ type MarketIndexerFetch = (
 
 type MarketIndexerEnvironment = Record<string, string | undefined>;
 
+export type VNextMarketIndexerTiming = {
+  indexerReadMs: number;
+  inventoryJsonMs: number;
+  inventorySchemaMs: number;
+};
+
 type MarketIndexerDependencies = {
   env?: MarketIndexerEnvironment;
   fetch?: MarketIndexerFetch;
   timeoutMs?: number;
+  onTiming?: (timing: VNextMarketIndexerTiming) => void;
 };
 
 type NormalizedQuery = {
@@ -617,6 +624,11 @@ export async function readVNextCanonicalMarketInventory(
   query: VNextCanonicalMarketInventoryQuery = {},
   dependencies: MarketIndexerDependencies = {}
 ): Promise<VNextCanonicalMarketInventoryResult> {
+  const timing: VNextMarketIndexerTiming = {
+    indexerReadMs: 0,
+    inventoryJsonMs: 0,
+    inventorySchemaMs: 0
+  };
   const normalizedQuery = normalizeQuery(query);
   if ("status" in normalizedQuery) return normalizedQuery;
 
@@ -639,6 +651,7 @@ export async function readVNextCanonicalMarketInventory(
   requestUrl.search = search.toString();
 
   let response: Response;
+  const indexerStartedAt = performance.now();
   try {
     response = await fetchWithTimeout(
       requestUrl,
@@ -654,31 +667,45 @@ export async function readVNextCanonicalMarketInventory(
       dependencies.fetch ?? fetch
     );
   } catch (cause) {
+    timing.indexerReadMs = performance.now() - indexerStartedAt;
+    dependencies.onTiming?.(timing);
     return cause instanceof MarketIndexerTimeoutError
       ? { status: "upstream_unavailable", reason: "timeout" }
       : { status: "upstream_unavailable", reason: "request_failed" };
   }
+  timing.indexerReadMs = performance.now() - indexerStartedAt;
 
   if (!response.ok) {
+    dependencies.onTiming?.(timing);
     return { status: "upstream_unavailable", reason: "http_failure" };
   }
   const contentLength = Number(response.headers.get("content-length"));
   if (Number.isFinite(contentLength) && contentLength > MAXIMUM_RESPONSE_BYTES) {
+    dependencies.onTiming?.(timing);
     return { status: "invalid_upstream_response", reason: "response_too_large" };
   }
 
   let body: unknown;
+  const jsonStartedAt = performance.now();
   try {
     const text = await response.text();
     if (Buffer.byteLength(text, "utf8") > MAXIMUM_RESPONSE_BYTES) {
+      timing.inventoryJsonMs = performance.now() - jsonStartedAt;
+      dependencies.onTiming?.(timing);
       return { status: "invalid_upstream_response", reason: "response_too_large" };
     }
     body = JSON.parse(text);
   } catch {
+    timing.inventoryJsonMs = performance.now() - jsonStartedAt;
+    dependencies.onTiming?.(timing);
     return { status: "invalid_upstream_response", reason: "malformed_json" };
   }
+  timing.inventoryJsonMs = performance.now() - jsonStartedAt;
 
+  const schemaStartedAt = performance.now();
   const parsed = marketInventoryResponseSchema.safeParse(body);
+  timing.inventorySchemaMs = performance.now() - schemaStartedAt;
+  dependencies.onTiming?.(timing);
   if (!parsed.success) {
     return { status: "invalid_upstream_response", reason: "schema_mismatch" };
   }

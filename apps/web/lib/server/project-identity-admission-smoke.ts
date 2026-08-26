@@ -138,8 +138,12 @@ async function main() {
   });
   assert.equal((await recoveryReader()).status, "ready");
   recoveryNow += 5 * 60_000 + 1;
-  assert.equal((await recoveryReader()).status, "unavailable", "an expired last-known snapshot must not be presented as freshly authoritative after refresh failure");
-  assert.equal((await recoveryReader()).status, "unavailable");
+  const lastKnown = await recoveryReader();
+  assert.equal(lastKnown.status, "ready", "an expired verified authority snapshot must remain available during refresh failure");
+  assert.equal(lastKnown.status === "ready" ? lastKnown.freshness : undefined, "last-known", "stale authority must be labeled last-known");
+  const backoffSnapshot = await recoveryReader();
+  assert.equal(backoffSnapshot.status, "ready");
+  assert.equal(backoffSnapshot.status === "ready" ? backoffSnapshot.freshness : undefined, "last-known");
   assert.equal(recoveryFetchCalls, 2, "failed refresh must enter backoff rather than waterfall");
   recoveryNow += 15_001;
   assert.equal((await recoveryReader()).status, "ready", "authority must recover after bounded backoff");
@@ -150,10 +154,14 @@ async function main() {
     }),
     /Not admitted to the RMT directory/
   );
-  await requireProjectIdentityDirectoryAdmitted([{ address: CONFLICTING }], {
-    readAuthority: async () => ({ status: "unavailable", entries: [] }),
-    readIdentity
-  });
+  await assert.rejects(
+    requireProjectIdentityDirectoryAdmitted([{ address: CONFLICTING }], {
+      readAuthority: async () => ({ status: "unavailable", entries: [] }),
+      readIdentity
+    }),
+    /Not admitted to the RMT directory/,
+    "a cached positive quarantine must survive a temporary authority outage"
+  );
   const conflictResponse = projectIdentityAdmissionErrorResponse(
     await requireProjectIdentityDirectoryAdmitted([{ address: CONFLICTING }], {
       readAuthority: async () => registry,

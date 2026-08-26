@@ -1038,6 +1038,47 @@ async function verifyCanonicalBrowsePages() {
   assert.equal(unavailableGate.status, 503);
   assert.equal("canonical" in unavailableGate.body && unavailableGate.body.canonical, true);
   assert.equal(failClosedLegacyCalls, 0, "Enabled unavailable canonical browse must not fall back to legacy authority");
+
+  let coalescedCanonicalReads = 0;
+  let coalescedAdmissionReads = 0;
+  const performanceUrl = "http://localhost/api/vnext/market-directory?performance_coalescing=1";
+  const performanceDependencies = {
+    presentationCache: true,
+    readLegacy: async () => legacyFixture,
+    readCanonical: async () => {
+      coalescedCanonicalReads += 1;
+      await new Promise((resolve) => setTimeout(resolve, 30));
+      return {
+        status: 200 as const,
+        body: {
+          canonical: true as const,
+          coverage: "complete" as const,
+          nextCursor: null,
+          updatedAt: new Date(0).toISOString(),
+          markets: firstCanonicalPage
+        }
+      };
+    },
+    admitProjectIdentities: async <T,>(candidates: readonly T[]) => {
+      coalescedAdmissionReads += 1;
+      return [...candidates];
+    }
+  };
+  const [coalescedLeft, coalescedRight] = await Promise.all([
+    readVNextMarketDirectoryRequest(performanceUrl, { RMT_CANONICAL_BROWSE_ENABLED: "true" }, performanceDependencies as never),
+    readVNextMarketDirectoryRequest(performanceUrl, { RMT_CANONICAL_BROWSE_ENABLED: "true" }, performanceDependencies as never)
+  ]);
+  assert.equal(coalescedLeft.status, 200);
+  assert.equal(coalescedRight.status, 200);
+  assert.equal(coalescedCanonicalReads, 1, "simultaneous browse reads must share one canonical request");
+  assert.equal(coalescedAdmissionReads, 1, "simultaneous browse reads must share one admission pass");
+  const warmPerformance = await readVNextMarketDirectoryRequest(
+    performanceUrl,
+    { RMT_CANONICAL_BROWSE_ENABLED: "true" },
+    performanceDependencies as never
+  );
+  assert.equal(warmPerformance.headers["X-RMT-Directory-Cache"], "HIT");
+  assert.equal(coalescedCanonicalReads, 1, "a warm browse read must reuse the verified admitted snapshot");
 }
 assert.match(ecosystemRoute, /import \{ VNEXT_MARKET_DIRECTORY_MAX_MARKETS \} from "\.\.\/\.\.\/\.\.\/\.\.\/lib\/vnext\/market-directory"/);
 assert.match(ecosystemRoute, /slice\(0, VNEXT_MARKET_DIRECTORY_MAX_MARKETS\)/);

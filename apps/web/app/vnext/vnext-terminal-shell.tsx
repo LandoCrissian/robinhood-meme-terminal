@@ -38,6 +38,7 @@ export function VNextTerminalShell() {
   const {
     markets,
     status,
+    enrichmentStatus,
     selected,
     selectedAsset,
     identityStatus,
@@ -60,10 +61,13 @@ export function VNextTerminalShell() {
   const selectAddressRef = useRef(selectAddress);
   const heldAddresses = useMemo(() => new Set(walletAssets.map((asset) => asset.address.toLowerCase())), [walletAssets]);
   const directoryViewCounts = useMemo(() => vNextMarketDirectoryViewCounts(markets, heldAddresses), [heldAddresses, markets]);
-  const localFilteredMarkets = useMemo(() => query.trim()
-    ? filterVNextLocalDirectoryMarkets(markets, query)
-    : selectVNextMarketDirectoryView(markets, directoryView, heldAddresses),
-  [directoryView, heldAddresses, markets, query]);
+  const localFilteredMarkets = useMemo(() => {
+    if (query.trim()) return filterVNextLocalDirectoryMarkets(markets, query);
+    const selectedView = selectVNextMarketDirectoryView(markets, directoryView, heldAddresses);
+    return directoryView === "active" && enrichmentStatus === "pending" && selectedView.length === 0
+      ? markets
+      : selectedView;
+  }, [directoryView, enrichmentStatus, heldAddresses, markets, query]);
   const filteredMarkets = useMemo(() => {
     if (!query.trim()) return localFilteredMarkets;
     const submittedQueryIsCurrent = submittedSearchQuery.trim().toLowerCase() === query.trim().toLowerCase();
@@ -260,6 +264,7 @@ export function VNextTerminalShell() {
       ? searchMarkets.length
       : 0,
     directoryStatus: status,
+    activityCoveragePending: enrichmentStatus === "pending",
     hasMoreDirectoryMarkets: !query.trim() && hasMoreCanonicalMarkets,
     selected,
     selectedExecutionState,

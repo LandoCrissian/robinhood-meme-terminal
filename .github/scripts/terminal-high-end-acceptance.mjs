@@ -1227,10 +1227,20 @@ async function inspectCompatibilityEntries(browser) {
     (symbol) => document.querySelector("#vn-asset-heading")?.textContent?.includes(symbol),
     requestedMarket.symbol
   );
-  const desktopSell = desktopPage.locator(".rmtDesktopExecution").getByRole("tab", { name: "Sell" });
-  await desktopPage.waitForFunction(
-    () => document.querySelector('.rmtDesktopExecution [role="tab"][aria-selected="true"]')?.textContent?.trim() === "Sell"
-  );
+  const desktopSell = desktopPage.locator(".rmtDesktopExecution").getByRole("tab", { name: "Sell quote", exact: true });
+  try {
+    await desktopPage.waitForFunction(
+      () => document.querySelector('.rmtDesktopExecution [role="tab"][aria-selected="true"]')?.textContent?.trim() === "Sell quote"
+    );
+  } catch (error) {
+    const diagnostic = await desktopPage.evaluate(() => ({
+      url: location.href,
+      selectedTab: document.querySelector('.rmtDesktopExecution [role="tab"][aria-selected="true"]')?.textContent?.trim() ?? null,
+      executionState: document.querySelector(".rmtDesktopExecution")?.textContent?.replace(/\s+/g, " ").trim().slice(0, 500) ?? null,
+      heading: document.querySelector("#vn-asset-heading")?.textContent?.trim() ?? null
+    }));
+    throw new Error(`market compatibility sell intent was not restored ${JSON.stringify(diagnostic)}`, { cause: error });
+  }
   const marketEntry = await desktopPage.evaluate(() => ({
     pathname: window.location.pathname,
     market: new URLSearchParams(window.location.search).get("market"),
@@ -1386,6 +1396,110 @@ async function inspectProjectIdentityQuarantine(browser) {
   await page.screenshot({ path: `${output}/project-identity-quarantine-desktop-1440x900.png`, fullPage: false, animations: "disabled" });
   await context.close();
   return { exactContractWorkspace: "absent", quoteSurfaces: 0, ...executionRequests };
+}
+
+async function inspectMarketLoadPerformance(browser, options, label, directoryDelayMs) {
+  const context = await createContext(browser, options);
+  const page = await context.newPage();
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await installRoutes(page);
+  await page.unroute(/\/api\/vnext\/market-directory(?:\?.*)?$/);
+  await page.unroute(/\/api\/markets\/external(?:\?.*)?$/);
+  let enrichmentStarted = false;
+  let enrichmentResolved = false;
+  await page.route(/\/api\/vnext\/market-directory(?:\?.*)?$/, async (route) => {
+    if (directoryDelayMs > 0) await new Promise((resolve) => setTimeout(resolve, directoryDelayMs));
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        canonical: true,
+        coverage: "complete",
+        nextCursor: null,
+        markets: markets.map(canonicalDirectoryMarket),
+        updatedAt: now
+      })
+    });
+  });
+  await page.route(/\/api\/markets\/external(?:\?.*)?$/, async (route) => {
+    const contract = new URL(route.request().url()).searchParams.get("contract")?.toLowerCase();
+    if (contract) {
+      const selected = markets.filter((item) => item.address.toLowerCase() === contract || item.pairAddress.toLowerCase() === contract);
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ markets: selected, updatedAt: now }) });
+      return;
+    }
+    enrichmentStarted = true;
+    await new Promise((resolve) => setTimeout(resolve, 5_000));
+    enrichmentResolved = true;
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ markets, updatedAt: now, source: "delayed-optional-acceptance" })
+    });
+  });
+  const navigationStartedAt = performance.now();
+  await page.goto(base, { waitUntil: "domcontentloaded", timeout: 60_000 });
+  const shellSelector = options.isMobile ? ".rmtMobileTerminal" : ".rmtDesktopTerminal";
+  const rowSelector = options.isMobile ? ".rmtMobileMarketRow" : ".rmtMarketTableRow";
+  await page.locator(shellSelector).waitFor({ state: "visible", timeout: 10_000 });
+  const shellMs = Math.round(performance.now() - navigationStartedAt);
+  await page.locator(rowSelector).first().waitFor({ state: "visible", timeout: 10_000 });
+  const firstRowsMs = Math.round(performance.now() - navigationStartedAt);
+  const beforeEnrichment = await page.locator(rowSelector).evaluateAll((rows) => ({
+    addresses: rows.map((row) => row.querySelector(".rmtSearchContract")?.textContent?.trim().toLowerCase()).filter(Boolean),
+    firstText: rows[0]?.textContent ?? ""
+  }));
+  if (enrichmentResolved) throw new Error(`${label}: optional enrichment resolved before canonical rows were usable`);
+  if (firstRowsMs > (directoryDelayMs > 0 ? 4_000 : 1_000)) throw new Error(`${label}: first canonical rows exceeded the performance budget (${firstRowsMs}ms)`);
+  const active = page.getByRole("button", { name: /^Active\s+/ });
+  if (await active.getAttribute("aria-pressed") !== "true") throw new Error(`${label}: Active is not the default view`);
+  const search = page.getByRole("textbox", { name: "Search Robinhood Chain markets" });
+  await search.fill("R01");
+  await page.locator(rowSelector).first().waitFor({ state: "visible" });
+  await search.fill("");
+  await page.locator(rowSelector).first().click();
+  await page.waitForFunction(() => new URL(location.href).searchParams.has("market"), undefined, { timeout: 5_000 });
+  const selectedBeforeEnrichment = new URL(page.url()).searchParams.get("market")?.toLowerCase();
+  await page.waitForFunction(() => performance.getEntriesByName("rmt:market-enrichment:request-publish").length > 0, undefined, { timeout: 5_000 });
+  const afterEnrichment = await page.locator(rowSelector).evaluateAll((rows) => ({
+    addresses: rows.map((row) => row.querySelector(".rmtSearchContract")?.textContent?.trim().toLowerCase()).filter(Boolean),
+    firstText: rows[0]?.textContent ?? ""
+  }));
+  const selectedAfterEnrichment = new URL(page.url()).searchParams.get("market")?.toLowerCase();
+  const timing = await page.evaluate(() => ({
+    parsePublishMs: performance.getEntriesByName("rmt:market-directory:parse-publish").at(-1)?.duration ?? null,
+    requestPublishMs: performance.getEntriesByName("rmt:market-directory:request-publish").at(-1)?.duration ?? null,
+    enrichmentMs: performance.getEntriesByName("rmt:market-enrichment:request-publish").at(-1)?.duration ?? null
+  }));
+  const uniqueAfter = new Set(afterEnrichment.addresses);
+  if (!enrichmentStarted || !enrichmentResolved) throw new Error(`${label}: delayed enrichment never completed`);
+  if (uniqueAfter.size !== afterEnrichment.addresses.length) throw new Error(`${label}: enrichment created duplicate markets`);
+  if (!selectedBeforeEnrichment || selectedAfterEnrichment !== selectedBeforeEnrichment) throw new Error(`${label}: selected market identity drifted during enrichment`);
+  if (afterEnrichment.addresses.length > 0 && !beforeEnrichment.addresses.every((address) => uniqueAfter.has(address))) throw new Error(`${label}: enrichment replaced canonical row identity`);
+  if (afterEnrichment.firstText && beforeEnrichment.firstText === afterEnrichment.firstText) throw new Error(`${label}: optional enrichment did not incrementally enhance the visible row`);
+  await context.close();
+  return {
+    label,
+    shellMs,
+    firstRowsMs,
+    parsePublishMs: timing.parsePublishMs,
+    directoryRequestPublishMs: timing.requestPublishMs,
+    enrichmentMs: timing.enrichmentMs,
+    canonicalRowsBeforeEnrichment: true,
+    searchDuringEnrichment: true,
+    selectionDuringEnrichment: true,
+    duplicateMarkets: 0,
+    tokenIdentityDrift: "none"
+  };
+}
+
+async function inspectMarketLoadPerformanceMatrix(browser) {
+  return {
+    desktopCold: await inspectMarketLoadPerformance(browser, { viewport: { width: 1_440, height: 900 }, deviceScaleFactor: 1 }, "desktop-cold", 200),
+    desktopWarm: await inspectMarketLoadPerformance(browser, { viewport: { width: 1_440, height: 900 }, deviceScaleFactor: 1 }, "desktop-warm", 0),
+    mobileCold: await inspectMarketLoadPerformance(browser, { viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, isMobile: true, hasTouch: true }, "mobile-cold", 200),
+    mobileWarm: await inspectMarketLoadPerformance(browser, { viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, isMobile: true, hasTouch: true }, "mobile-warm", 0)
+  };
 }
 
 async function createWalletAcceptanceContext(browser, options, transactionTargets = {}) {
@@ -2792,8 +2906,9 @@ async function inspectMobile(browser, viewport, label) {
   if (!mobileBuyActionHandle) throw new Error(`${label}: mobile Buy action was unavailable`);
   const selectedSymbol = (await page.locator("#vn-asset-heading b").innerText()).trim();
   if (!selectedSymbol) throw new Error(`${label}: selected asset symbol is unavailable`);
+  const previewDock = (await page.locator(".rmtMobileTradeDock").getAttribute("aria-label"))?.startsWith("Preview ") ?? false;
   await mobileBuyAction.click();
-  const mobileDialog = page.getByRole("dialog", { name: `Trade ${selectedSymbol}` });
+  const mobileDialog = page.getByRole("dialog", { name: `${previewDock ? "Preview" : "Trade"} ${selectedSymbol}` });
   await mobileDialog.waitFor({ state: "visible" });
   const tradeAudit = await page.evaluate(() => {
     const trade = document.querySelector(".rmtMobileTradeSheet");
@@ -2810,11 +2925,11 @@ async function inspectMobile(browser, viewport, label) {
     };
   });
   if (!tradeAudit || tradeAudit.width > tradeAudit.viewportWidth + 2 || tradeAudit.height > tradeAudit.viewportHeight || tradeAudit.horizontalOverflow > 2 || !tradeAudit.bodyLocked || !tradeAudit.backdropVisible) throw new Error(`${label}: trade sheet failed its viewport/containment contract ${JSON.stringify(tradeAudit)}`);
-  const sell = page.getByRole("tab", { name: "Sell" });
+  const sell = page.getByRole("tab", { name: previewDock ? "Sell quote" : "Sell", exact: true });
   await sell.click();
   if (await sell.getAttribute("aria-selected") !== "true") throw new Error("mobile: Sell tab did not activate");
   await page.screenshot({ path: `${output}/sheet-sell-${label}.png`, fullPage: false, animations: "disabled" });
-  const buy = page.getByRole("tab", { name: "Buy" });
+  const buy = page.getByRole("tab", { name: previewDock ? "Buy quote" : "Buy", exact: true });
   await buy.click();
   if (await buy.getAttribute("aria-selected") !== "true") throw new Error("mobile: Buy tab did not activate");
   await page.screenshot({ path: `${output}/sheet-${label}.png`, fullPage: false, animations: "disabled" });
@@ -2888,7 +3003,16 @@ try {
     ? JSON.parse(await readFile(`${output}/v2-fixture.json`, "utf8"))
     : null;
   const v4WalletReviewOnly = process.env.RMT_ACCEPTANCE_ONLY_V4_WALLET_REVIEW === "true";
-  if (v4WalletReviewOnly) {
+  const marketLoadPerformanceOnly = process.env.RMT_ACCEPTANCE_ONLY_MARKET_LOAD_PERFORMANCE === "true";
+  const compatibilityOnly = process.env.RMT_ACCEPTANCE_ONLY_COMPATIBILITY === "true";
+  if (compatibilityOnly) {
+    const compatibilityEntries = await inspectCompatibilityEntries(browser);
+    console.log(`Terminal compatibility acceptance passed: ${JSON.stringify(compatibilityEntries)}`);
+  } else if (marketLoadPerformanceOnly) {
+    const marketLoadPerformance = await inspectMarketLoadPerformanceMatrix(browser);
+    await writeFile(`${output}/report.json`, JSON.stringify({ marketLoadPerformance }, null, 2));
+    console.log(`Terminal market-load performance acceptance passed: ${JSON.stringify(marketLoadPerformance)}`);
+  } else if (v4WalletReviewOnly) {
     if (!browserAcceptanceFixture) throw new Error("V4 wallet-review acceptance requires the loopback-only browser fixture profile.");
     const v4FreshWalletSellEvidence = await inspectV4FreshWalletSellJourney(browser, browserAcceptanceFixture);
     const v4WalletReviewEvidence = await inspectV4WalletReviewJourney(browser, browserAcceptanceFixture);
@@ -2906,6 +3030,7 @@ try {
     await writeFile(`${output}/report.json`, JSON.stringify({ previewEvidence, v4PreviewEvidence }, null, 2));
     console.log(`Terminal Preview-mode acceptance passed: ${JSON.stringify({ previewEvidence, v4PreviewEvidence })}`);
   } else {
+  const marketLoadPerformance = await inspectMarketLoadPerformanceMatrix(browser);
   const v2BrowserEvidence = browserAcceptanceFixture
     ? await (async () => {
         return {
@@ -2979,7 +3104,7 @@ try {
   }
   await writeFile(
     `${output}/report.json`,
-    JSON.stringify({ productAcceptanceEvidence, workspaceEvidence, marketsHierarchy, discoveryDesktop, discoveryMobile, projectIdentityQuarantine, desktop, laptop, laptop720, compact, wide, seamDesktop, marketAudit, compatibilityEntries, publicRoutes, touch1023, mobile430, mobile393, mobile390, mobile375, mobile360, v2BrowserEvidence, v4WalletReviewEvidence, v4FreshWalletSellEvidence, exploratoryTouch }, null, 2)
+    JSON.stringify({ productAcceptanceEvidence, marketLoadPerformance, workspaceEvidence, marketsHierarchy, discoveryDesktop, discoveryMobile, projectIdentityQuarantine, desktop, laptop, laptop720, compact, wide, seamDesktop, marketAudit, compatibilityEntries, publicRoutes, touch1023, mobile430, mobile393, mobile390, mobile375, mobile360, v2BrowserEvidence, v4WalletReviewEvidence, v4FreshWalletSellEvidence, exploratoryTouch }, null, 2)
   );
   console.log(`Terminal active discovery product acceptance passed: ${JSON.stringify(productAcceptanceEvidence)}`);
   }
