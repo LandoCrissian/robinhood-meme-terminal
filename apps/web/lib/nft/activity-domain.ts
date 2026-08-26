@@ -9,6 +9,7 @@ import {
 import {
   RMT_CURATED_NFT_PROJECTS,
   RMT_NFT_CHAIN_ID,
+  type RmtCuratedNftProject,
   type RmtNftCollectionStandard
 } from "./project-registry";
 
@@ -133,7 +134,8 @@ function movementKind(from: Address, to: Address): RmtNftMovementKind | null {
 }
 
 function admittedCollection(address: Address, verifiedStandard: RmtNftCollectionStandard): RmtNftActivityCollectionContext | null {
-  for (const project of RMT_CURATED_NFT_PROJECTS) {
+  const projects = RMT_CURATED_NFT_PROJECTS as readonly RmtCuratedNftProject[];
+  for (const project of projects) {
     if (project.status === "REMOVED") continue;
     for (const collection of project.collections) {
       if (!isAddressEqual(collection.contractAddress, address)) continue;
@@ -202,6 +204,7 @@ export function decodeVerifiedRmtNftActivityLog(
 
   const topic0 = log.topics[0]?.toLowerCase();
   if (!topic0) return { status: "IGNORED", reason: "UNSUPPORTED_TOPIC" };
+  const topics = [...log.topics] as [Hex, ...Hex[]];
 
   if (topic0 === ERC721_TRANSFER_TOPIC) {
     if (collection.standard !== "ERC721") return { status: "IGNORED", reason: "STANDARD_EVENT_MISMATCH" };
@@ -209,7 +212,7 @@ export function decodeVerifiedRmtNftActivityLog(
       const decoded = decodeEventLog({
         abi: ERC721_TRANSFER_ABI,
         data: log.data,
-        topics: log.topics,
+        topics,
         strict: true
       });
       const item = movement(decoded.args.tokenId, 1n, decoded.args.from, decoded.args.to);
@@ -242,7 +245,7 @@ export function decodeVerifiedRmtNftActivityLog(
       const decoded = decodeEventLog({
         abi: ERC1155_TRANSFER_SINGLE_ABI,
         data: log.data,
-        topics: log.topics,
+        topics,
         strict: true
       });
       const item = movement(decoded.args.id, decoded.args.value, decoded.args.from, decoded.args.to);
@@ -273,7 +276,7 @@ export function decodeVerifiedRmtNftActivityLog(
       const decoded = decodeEventLog({
         abi: ERC1155_TRANSFER_BATCH_ABI,
         data: log.data,
-        topics: log.topics,
+        topics,
         strict: true
       });
       const ids = decoded.args.ids;
