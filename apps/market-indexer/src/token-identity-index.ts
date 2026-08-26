@@ -336,7 +336,7 @@ export async function refreshCanonicalTokenIdentityIndex(
   );
   const reads = await Promise.all(batches.map(async (batch) => {
     try {
-      const results = await rpc.multicall({
+      const aggregate = await rpc.multicall({
           allowFailure: true,
           blockNumber: observedBlock,
           multicallAddress: ROBINHOOD_MULTICALL3,
@@ -346,9 +346,12 @@ export async function refreshCanonicalTokenIdentityIndex(
             { address, abi: erc20Abi, functionName: "decimals" as const },
             { address, abi: erc20Abi, functionName: "totalSupply" as const }
           ])
-        }).catch(async () => (await Promise.all(
+        });
+      const results = aggregate.some((result) =>
+        result.status === "failure" && isTransientReadFailure(result.error)
+      ) ? (await Promise.all(
           batch.map((address) => readIdentityIndividually(rpc, address, observedBlock))
-        )).flat());
+        )).flat() : aggregate;
       return { batch, results, failed: false };
     } catch {
       return { batch, results: [], failed: true };
