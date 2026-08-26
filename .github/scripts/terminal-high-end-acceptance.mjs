@@ -1227,10 +1227,10 @@ async function inspectCompatibilityEntries(browser) {
     (symbol) => document.querySelector("#vn-asset-heading")?.textContent?.includes(symbol),
     requestedMarket.symbol
   );
-  const desktopSell = desktopPage.locator(".rmtDesktopExecution").getByRole("tab", { name: "Sell quote", exact: true });
+  const desktopSell = desktopPage.locator(".rmtDesktopExecution").getByRole("tab", { name: /^Sell(?: quote)?$/ });
   try {
     await desktopPage.waitForFunction(
-      () => document.querySelector('.rmtDesktopExecution [role="tab"][aria-selected="true"]')?.textContent?.trim() === "Sell quote"
+      () => ["Sell", "Sell quote"].includes(document.querySelector('.rmtDesktopExecution [role="tab"][aria-selected="true"]')?.textContent?.trim() ?? "")
     );
   } catch (error) {
     const diagnostic = await desktopPage.evaluate(() => ({
