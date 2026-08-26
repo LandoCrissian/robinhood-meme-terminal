@@ -472,7 +472,21 @@ function notAdmittedResponse() {
   );
 }
 
+function withExternalMarketTiming(response: NextResponse, startedAt: number, cacheState: "fresh" | "last-known" | "error") {
+  const totalMs = Math.max(0, Math.round((performance.now() - startedAt) * 10) / 10);
+  response.headers.set("Server-Timing", `external_enrichment;dur=${totalMs}`);
+  response.headers.set("X-RMT-Enrichment-Freshness", cacheState);
+  console.info(JSON.stringify({
+    event: "external_market_enrichment_timing",
+    totalMs,
+    status: response.status,
+    cacheState
+  }));
+  return response;
+}
+
 export async function GET(request: Request) {
+  const startedAt = performance.now();
   const lookupParameter = new URL(request.url).searchParams.get("contract");
   const requestedContract = canonicalExternalMarketLookupAddress(lookupParameter);
   if (lookupParameter !== null && !requestedContract) {
@@ -784,24 +798,24 @@ export async function GET(request: Request) {
       ...(rmtOrigins.coverage !== "complete" ? ["rmt-origin"] : [])
     ];
 
-    return NextResponse.json(
+    return withExternalMarketTiming(NextResponse.json(
       {
         ...snapshot,
         resolution,
         ...(delayedSources.length > 0 ? { delayedSources } : {})
       },
       { headers: { "Cache-Control": "public, s-maxage=30, stale-while-revalidate=90" } }
-    );
+    ), startedAt, "fresh");
   } catch (error) {
     console.error(JSON.stringify({
       event: "external_market_refresh_failed",
       error: error instanceof Error ? error.message.slice(0, 1_000) : "unknown"
     }));
     const stale = requestedContract ? null : staleResponse();
-    if (stale) return stale;
-    return NextResponse.json(
+    if (stale) return withExternalMarketTiming(stale, startedAt, "last-known");
+    return withExternalMarketTiming(NextResponse.json(
       { error: "External Robinhood Chain markets are temporarily unavailable." },
       { status: 503, headers: { "Cache-Control": "no-store" } }
-    );
+    ), startedAt, "error");
   }
 }

@@ -30,6 +30,7 @@ const IDENTITY_LOOKUP_TIMEOUT_MS = 5_000;
 const UNIVERSAL_SEARCH_TIMEOUT_MS = 6_000;
 
 export type DirectoryStatus = "loading" | "ready" | "stale" | "error";
+export type DirectoryEnrichmentStatus = "pending" | "ready" | "delayed";
 export type IdentityStatus = "idle" | "checking" | "verified" | "unverified";
 type DirectoryServingMode = "unknown" | "legacy" | "canonical";
 
@@ -99,9 +100,26 @@ function sameAsset(left: AssetMetadata | null | undefined, right: AssetMetadata)
   );
 }
 
+function replacePerformanceMark(name: string) {
+  if (typeof performance === "undefined") return;
+  performance.clearMarks(name);
+  performance.mark(name);
+}
+
+function replacePerformanceMeasure(name: string, start: string, end: string) {
+  if (typeof performance === "undefined") return;
+  performance.clearMeasures(name);
+  try {
+    performance.measure(name, start, end);
+  } catch {
+    // Timing evidence is diagnostic and must never alter directory behavior.
+  }
+}
+
 export function useVNextMarketDirectory() {
   const [markets, setMarkets] = useState<VNextDirectoryMarket[]>([]);
   const [status, setStatus] = useState<DirectoryStatus>("loading");
+  const [enrichmentStatus, setEnrichmentStatus] = useState<DirectoryEnrichmentStatus>("pending");
   const [selectedAddress, setSelectedAddress] = useState<string | null>(null);
   const [selectedAsset, setSelectedAsset] = useState<AssetMetadata>();
   const [identityStatus, setIdentityStatus] = useState<IdentityStatus>("idle");
@@ -127,6 +145,7 @@ export function useVNextMarketDirectory() {
   const completedCanonicalExactQueries = useRef(new Set<string>());
   const explicitSelectionRequests = useRef(new Map<string, Promise<VNextDirectoryMarket | undefined>>());
   const searchMarketsRef = useRef<VNextDirectoryMarket[]>([]);
+  const initialEnrichmentStarted = useRef(false);
 
   const publishMarkets = useCallback(() => {
     const byAddress = new Map<string, VNextDirectoryMarket>();
@@ -347,12 +366,14 @@ export function useVNextMarketDirectory() {
   const refresh = useCallback(async () => {
     const requestSequence = canonicalRequestSequence.current + 1;
     canonicalRequestSequence.current = requestSequence;
+    replacePerformanceMark("rmt:market-directory:request-start");
     try {
       const response = await fetch("/api/vnext/market-directory", {
         method: "GET",
         headers: { Accept: "application/json" }
       });
       const rawPayload: unknown = await response.json();
+      replacePerformanceMark("rmt:market-directory:parsed");
       if (claimsCanonicalDirectory(rawPayload)) {
         directoryServingMode.current = "canonical";
         legacyDirectoryMarkets.current = [];
@@ -378,6 +399,17 @@ export function useVNextMarketDirectory() {
         legacyDirectoryMarkets.current = legacyMarkets;
       }
       const nextMarkets = publishMarkets();
+      replacePerformanceMark("rmt:market-directory:published");
+      replacePerformanceMeasure(
+        "rmt:market-directory:parse-publish",
+        "rmt:market-directory:parsed",
+        "rmt:market-directory:published"
+      );
+      replacePerformanceMeasure(
+        "rmt:market-directory:request-publish",
+        "rmt:market-directory:request-start",
+        "rmt:market-directory:published"
+      );
       setSelectedAddress((current) => current && nextMarkets.some((market) => market.address.toLowerCase() === current.toLowerCase())
         ? current
         : nextMarkets[0].address);
@@ -426,19 +458,48 @@ export function useVNextMarketDirectory() {
   }, [publishMarkets]);
 
   const refreshEcosystemDirectory = useCallback(async () => {
+    if (!hasData.current) return;
+    replacePerformanceMark("rmt:market-enrichment:request-start");
     try {
       const response = await fetch("/api/markets/external");
       const payload = await response.json() as ExternalMarketResponse;
-      if (!response.ok) return;
+      if (!response.ok) {
+        setEnrichmentStatus("delayed");
+        return;
+      }
       providerEnrichmentMarkets.current = normalizeDirectoryMarkets(payload);
       publishMarkets();
+      setEnrichmentStatus("ready");
+      replacePerformanceMark("rmt:market-enrichment:published");
+      replacePerformanceMeasure(
+        "rmt:market-enrichment:request-publish",
+        "rmt:market-enrichment:request-start",
+        "rmt:market-enrichment:published"
+      );
     } catch {
       // The selected serving mode retains its last-good browse inventory.
+      setEnrichmentStatus("delayed");
     }
   }, [publishMarkets]);
 
   useVisibilityRefresh(refresh, VNEXT_CLIENT_REFRESH_POLICY.marketDirectoryMs);
   useVisibilityRefresh(refreshEcosystemDirectory, VNEXT_CLIENT_REFRESH_POLICY.ecosystemDirectoryMs);
+
+  useEffect(() => {
+    if (!hasData.current || initialEnrichmentStarted.current) return;
+    initialEnrichmentStarted.current = true;
+    const start = () => void refreshEcosystemDirectory();
+    const windowWithIdleCallback = window as Window & {
+      requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
+      cancelIdleCallback?: (handle: number) => void;
+    };
+    if (windowWithIdleCallback.requestIdleCallback) {
+      const handle = windowWithIdleCallback.requestIdleCallback(start, { timeout: 500 });
+      return () => windowWithIdleCallback.cancelIdleCallback?.(handle);
+    }
+    const handle = window.setTimeout(start, 0);
+    return () => window.clearTimeout(handle);
+  }, [refreshEcosystemDirectory, status]);
 
   const selected = useMemo(
     () => markets.find((market) => market.address.toLowerCase() === selectedAddress?.toLowerCase()),
@@ -505,6 +566,7 @@ export function useVNextMarketDirectory() {
   return {
     markets,
     status,
+    enrichmentStatus,
     selected,
     selectedAsset,
     identityStatus,
