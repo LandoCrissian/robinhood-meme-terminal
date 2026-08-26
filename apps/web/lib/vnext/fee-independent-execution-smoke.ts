@@ -113,9 +113,9 @@ assert.throws(() => parseVNextAuthorizationPlan({
   feeV2Authorization: undefined
 }, FEE_V2_SMOKE_SWAP_EVIDENCE, DIRECT_SMOKE_NOW_MS + 1), /without complete V2 fee authority/);
 assert.equal(VNEXT_PROVIDER_FEE_SETTLEMENT_REGISTRY["uniswap-v4"].state, "QUOTE_ONLY");
-assert.equal(VNEXT_PROVIDER_FEE_SETTLEMENT_REGISTRY["uniswap-v4"].walletCodecImplemented, false);
-assert.equal(vNextUniswapV4Adapter.capabilities.walletAuthorization, false);
-assert.equal(vNextUniswapV4Adapter.capabilities.strictVerification, false);
+assert.equal(VNEXT_PROVIDER_FEE_SETTLEMENT_REGISTRY["uniswap-v4"].walletCodecImplemented, true);
+assert.equal(vNextUniswapV4Adapter.capabilities.walletAuthorization, true);
+assert.equal(vNextUniswapV4Adapter.capabilities.strictVerification, true);
 
 console.log("RMT fee-independent execution and adversarial binding checks passed.");
 }

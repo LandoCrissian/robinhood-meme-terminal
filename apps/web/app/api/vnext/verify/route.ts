@@ -17,18 +17,40 @@ export const runtime = "nodejs";
 const requestSchema = z.object({
   chainId: z.literal(4_663),
   quoteRequestId: z.string().uuid(),
-  provider: z.enum(["sushi", "uniswap-v3", "up-v2", "up-cl"]),
+  provider: z.enum(["sushi", "uniswap-v3", "uniswap-v4", "up-v2", "up-cl"]),
   inputAsset: z.string().refine((value) => isAddress(value, { strict: false })),
   outputAsset: z.string().refine((value) => isAddress(value, { strict: false })),
   inputAmountAtomic: z.string().regex(/^[1-9][0-9]*$/),
   protectedOutputFloorAtomic: z.string().regex(/^[1-9][0-9]*$/),
-  recipient: z.string().refine((value) => isAddress(value, { strict: false }))
+  recipient: z.string().refine((value) => isAddress(value, { strict: false })),
+  canonicalMarket: z.object({
+    sourceId: z.literal("uniswap-v4"),
+    poolId: z.string().regex(/^0x[0-9a-fA-F]{64}$/)
+  }).optional(),
+  v4QuoteEvidence: z.object({
+    poolId: z.string().regex(/^0x[0-9a-fA-F]{64}$/),
+    currency0: z.string().refine((value) => isAddress(value, { strict: false })),
+    currency1: z.string().refine((value) => isAddress(value, { strict: false })),
+    fee: z.number().int().nonnegative().max(16_777_215),
+    tickSpacing: z.number().int().positive().max(32_767),
+    hooks: z.string().refine((value) => isAddress(value, { strict: false })),
+    recipient: z.string().refine((value) => isAddress(value, { strict: false })),
+    observedBlock: z.string().regex(/^[1-9][0-9]*$/),
+    observedBlockHash: z.string().regex(/^0x[0-9a-fA-F]{64}$/),
+    observedAtMs: z.number().int().positive(),
+    quotedAtMs: z.number().int().positive(),
+    expiresAtMs: z.number().int().positive()
+  }).optional()
 });
 
 export async function POST(request: Request) {
   try {
     const parsed = requestSchema.safeParse(await request.json());
     if (!parsed.success) return Response.json({ error: "Invalid VNext verification request." }, { status: 400, headers: { "Cache-Control": "no-store" } });
+    const hasCompleteV4Binding = Boolean(parsed.data.canonicalMarket && parsed.data.v4QuoteEvidence);
+    if ((parsed.data.provider === "uniswap-v4") !== hasCompleteV4Binding) {
+      return Response.json({ error: "Invalid VNext V4 verification binding." }, { status: 400, headers: { "Cache-Control": "no-store" } });
+    }
     const recipient = getAddress(parsed.data.recipient);
     const inputAsset = getAddress(parsed.data.inputAsset);
     const outputAsset = getAddress(parsed.data.outputAsset);
@@ -54,7 +76,9 @@ export async function POST(request: Request) {
       recipient,
       indicativeProtectedOutputFloorAtomic: BigInt(parsed.data.protectedOutputFloorAtomic),
       settlementMode: VNEXT_DIRECT_NO_RMT_FEE,
-      executionId
+      executionId,
+      ...(parsed.data.canonicalMarket ? { canonicalMarket: parsed.data.canonicalMarket as { sourceId: "uniswap-v4"; poolId: `0x${string}` } } : {}),
+      ...(parsed.data.v4QuoteEvidence ? { v4QuoteEvidence: parsed.data.v4QuoteEvidence as typeof parsed.data.v4QuoteEvidence & { poolId: `0x${string}`; observedBlockHash: `0x${string}` } } : {})
     });
     return Response.json({
       verificationId: randomUUID(),
@@ -68,7 +92,7 @@ export async function POST(request: Request) {
     if (projectIdentityResponse) return projectIdentityResponse;
     const stockTokenResponse = stockTokenExecutionPolicyErrorResponse(cause);
     if (stockTokenResponse) return stockTokenResponse;
-    const message = cause instanceof Error && /No canonical Uniswap|No up-|runtime bytecode is not approved|dependencies changed|strict verification is not available|moved below the indicative protected-output floor|quote block was reorganized/.test(cause.message)
+    const message = cause instanceof Error && /No canonical Uniswap|No up-|runtime bytecode is not approved|dependencies changed|strict verification is not available|moved below the indicative protected-output floor|quote block was reorganized|rejected Uniswap V4 execution/.test(cause.message)
       ? cause.message
       : "Unable to produce strict pre-sign evidence.";
     return Response.json({ error: message }, { status: 422, headers: { "Cache-Control": "no-store" } });

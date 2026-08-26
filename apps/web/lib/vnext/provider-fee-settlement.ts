@@ -1,5 +1,6 @@
 import { getAddress, isAddress, type Address, type Hex } from "viem";
 import type { VNextQuoteProvider } from "./quote-observation";
+export { hasVNextWalletAuthorizationCodec } from "./provider-execution-capability";
 import {
   assertRmtExecutionFeeV2EconomicsMatchesPolicy,
   type RmtExecutionFeeV2Economics,
@@ -36,8 +37,8 @@ export const VNEXT_PROVIDER_FEE_SETTLEMENT_REGISTRY: Readonly<Record<VNextQuoteP
   }),
   "uniswap-v4": Object.freeze({
     state: "QUOTE_ONLY", requiredMode: "v2-atomic-input-fee", implementationId: null,
-    walletCodecImplemented: false,
-    currentSettlement: "Canonical PoolKey quote observation only; no wallet calldata or authorization codec.",
+    walletCodecImplemented: true,
+    currentSettlement: "DIRECT_NO_RMT_FEE uses the official Universal Router; RMT fee settlement remains disabled.",
     requiredImplementation: "A separately audited Uniswap V4 atomic input-fee settlement path."
   }),
   "up-v2": Object.freeze({
@@ -123,10 +124,6 @@ function invariant(condition: unknown, message: string): asserts condition {
 
 function atomic(value: string) {
   return /^(0|[1-9][0-9]*)$/.test(value);
-}
-
-export function hasVNextWalletAuthorizationCodec(provider: VNextQuoteProvider) {
-  return VNEXT_PROVIDER_FEE_SETTLEMENT_REGISTRY[provider].walletCodecImplemented;
 }
 
 export function isVNextWalletFeeSettlementAdmitted(provider: VNextQuoteProvider) {

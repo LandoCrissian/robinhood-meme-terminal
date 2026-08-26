@@ -9,7 +9,12 @@ import { vNextExecutionProviderLabel, type VNextExecutionRecord } from "../../li
 import { affordableDefaultAmount, createExactInputIntent, percentageOfAtomic, type TradeSide } from "../../lib/vnext/intent-draft";
 import { parseVNextQuoteResponse, selectVNextRoute, type VNextQuoteResponse } from "../../lib/vnext/quote-observation";
 import { parseVNextPreSignEvidence, type VNextPreSignEvidence } from "../../lib/vnext/pre-sign-evidence";
-import { postApprovalVerificationOutcome, resolvedVNextExecutionOutcome } from "../../lib/vnext/post-approval";
+import {
+  postApprovalVerificationOutcome,
+  repeatsConfirmedVNextApproval,
+  resolvedVNextExecutionOutcome,
+  type VNextApprovalAuthority
+} from "../../lib/vnext/post-approval";
 import { parseVNextAuthorizationBundle, type VNextAuthorizationPlan } from "../../lib/vnext/authorization-plan";
 import { cachedVNextQuoteForRequest, isVNextQuoteReusableForTrade, VNEXT_BACKGROUND_QUOTE_DEBOUNCE_MS, VNEXT_BACKGROUND_QUOTE_REFRESH_MS, type VNextCachedQuote } from "../../lib/vnext/background-quote";
 import type { VNextExecutionUiState, VNextSelectedMarketExecutionState } from "../../lib/vnext/market-directory";
@@ -101,6 +106,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
     | { state: "idle" }
     | { state: "approval_confirmed"; message: string }
     | { state: "refreshing"; message: string }
+    | { state: "next_approval_ready"; message: string }
     | { state: "swap_ready"; message: string }
     | { state: "blocked"; message: string }
     | { state: "swap_confirmed"; message: string }
@@ -110,6 +116,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
   const handledExecution = useRef<string | undefined>(undefined);
   const pendingTradeAfterLogin = useRef(false);
   const continuedApproval = useRef<string | undefined>(undefined);
+  const preparedApprovalAuthority = useRef<VNextApprovalAuthority | undefined>(undefined);
   const autoFitBuyAmount = useRef(true);
   const backgroundQuoteEpoch = useRef(0);
   const backgroundQuoteImmediate = useRef(false);
@@ -254,6 +261,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
     lastReadyVerification.current = undefined;
     pendingTradeAfterLogin.current = false;
     continuedApproval.current = undefined;
+    preparedApprovalAuthority.current = undefined;
   }, [requestKey]);
   useEffect(() => {
     const outcome = resolvedVNextExecutionOutcome({
@@ -269,6 +277,9 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
     setQuoteState({ state: "idle" });
     setVerificationState({ state: "idle" });
     setAuthorizationState({ state: "idle" });
+    lastReadyQuote.current = undefined;
+    lastReadyVerification.current = undefined;
+    if (outcome.state !== "approval_confirmed") preparedApprovalAuthority.current = undefined;
     setPostExecutionState(outcome);
   }, [address, draft.intent, executionRecord, inputAddress, outputAddress]);
   useEffect(() => {
@@ -545,7 +556,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
       || !identity.identityToken
       || !identity.userId
       || !winningQuote
-      || (winningQuote.provider !== "uniswap-v3" && winningQuote.provider !== "up-v2" && winningQuote.provider !== "up-cl")
+      || (winningQuote.provider !== "uniswap-v3" && winningQuote.provider !== "uniswap-v4" && winningQuote.provider !== "up-v2" && winningQuote.provider !== "up-cl")
       || !winningQuote.protectedOutputAtomic
     ) throw new Error("No observed route is supported by a strict verifier yet.");
     const expected = {
@@ -555,7 +566,17 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
       inputAmountAtomic: draft.intent.amountAtomic,
       provider: winningQuote.provider,
       protectedOutputFloorAtomic: winningQuote.protectedOutputAtomic,
-      recipient: address
+      recipient: address,
+      ...(winningQuote.provider === "uniswap-v4" && winningQuote.v4Evidence && winningQuote.quotedAtMs && winningQuote.expiresAtMs
+        ? {
+            canonicalMarket: { sourceId: "uniswap-v4", poolId: winningQuote.v4Evidence.poolId },
+            v4QuoteEvidence: {
+              ...winningQuote.v4Evidence,
+              quotedAtMs: winningQuote.quotedAtMs,
+              expiresAtMs: winningQuote.expiresAtMs
+            }
+          }
+        : {})
     };
     const response = await requestTradeQuote("/api/vnext/verify", {
       chainId: ROBINHOOD_MAINNET_CHAIN_ID,
@@ -565,7 +586,17 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
       outputAsset: outputAddress,
       inputAmountAtomic: draft.intent.amountAtomic,
       protectedOutputFloorAtomic: winningQuote.protectedOutputAtomic,
-      recipient: address
+      recipient: address,
+      ...(winningQuote.provider === "uniswap-v4" && winningQuote.v4Evidence && winningQuote.quotedAtMs && winningQuote.expiresAtMs
+        ? {
+            canonicalMarket: { sourceId: "uniswap-v4", poolId: winningQuote.v4Evidence.poolId },
+            v4QuoteEvidence: {
+              ...winningQuote.v4Evidence,
+              quotedAtMs: winningQuote.quotedAtMs,
+              expiresAtMs: winningQuote.expiresAtMs
+            }
+          }
+        : {})
     }, {
       identityScope: identity.userId,
       identityToken: identity.identityToken,
@@ -604,6 +635,21 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
       expectedStatus: evidence.status,
       indicativeProtectedOutputFloorAtomic: evidence.indicativeProtectedOutputFloorAtomic,
       expectedProtectedOutputAtomic: evidence.protectedOutputAtomic,
+      ...(evidence.provider === "uniswap-v4" && evidence.v4Execution
+        ? {
+            canonicalMarket: { sourceId: "uniswap-v4", poolId: evidence.v4Execution.poolId },
+            v4QuoteEvidence: {
+              poolId: evidence.v4Execution.poolId,
+              ...evidence.v4Execution.poolKey,
+              recipient: evidence.recipient,
+              observedBlock: evidence.v4Execution.quoteObservedBlock,
+              observedBlockHash: evidence.v4Execution.quoteObservedBlockHash,
+              observedAtMs: evidence.v4Execution.quoteObservedAtMs,
+              quotedAtMs: evidence.v4Execution.quotedAtMs,
+              expiresAtMs: evidence.v4Execution.quoteExpiresAtMs
+            }
+          }
+        : {}),
       ...(evidence.feeExecution ? { executionId: evidence.feeExecution.executionId } : {})
     }, {
       identityScope: identity.userId,
@@ -659,6 +705,14 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
       lastReadyVerification.current = authorization.evidence;
       setVerificationState({ state: "ready", evidence: authorization.evidence });
       setAuthorizationState({ state: "ready", plan: authorization.plan });
+      preparedApprovalAuthority.current = authorization.plan.kind === "erc20_approval"
+        ? {
+            approvalKind: authorization.evidence.approvalKind!,
+            target: authorization.evidence.nextActionTarget!,
+            spender: authorization.evidence.approvalSpender!,
+            amountAtomic: authorization.evidence.inputAmountAtomic
+          }
+        : undefined;
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : "RMT could not prepare this trade.";
       if (stage === "quote") {
@@ -676,11 +730,15 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
 
   const continueAfterApproval = async () => {
     if (!authorizationEnabled || stockTokenViewOnly) return;
+    const confirmedApprovalAuthority = preparedApprovalAuthority.current;
+    preparedApprovalAuthority.current = undefined;
     backgroundQuoteEpoch.current += 1;
-    setPostExecutionState({ state: "refreshing", message: "Approval confirmed. RMT is refreshing and verifying the swap automatically…" });
+    setPostExecutionState({ state: "refreshing", message: "Approval confirmed. RMT discarded the prior payload and is refreshing the exact next action…" });
     setQuoteState({ state: "loading" });
     setVerificationState({ state: "loading" });
     setAuthorizationState({ state: "loading" });
+    lastReadyQuote.current = undefined;
+    lastReadyVerification.current = undefined;
     clearTradeQuoteCache();
     try {
       const freshQuote = await requestLiveRoutes();
@@ -689,13 +747,28 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
       const freshEvidence = await requestStrictVerification(freshQuote);
       lastReadyVerification.current = freshEvidence;
       setVerificationState({ state: "ready", evidence: freshEvidence });
+      if (repeatsConfirmedVNextApproval(confirmedApprovalAuthority, freshEvidence)) {
+        throw new Error("The confirmed approval did not update the expected allowance. RMT stopped before repeating the same wallet request.");
+      }
       const outcome = postApprovalVerificationOutcome(freshEvidence);
-      setPostExecutionState(outcome);
-      if (outcome.state !== "swap_ready") throw new Error(outcome.message);
+      if (outcome.state === "blocked") throw new Error(outcome.message);
       const authorization = await requestAuthorizationPlan(freshEvidence);
+      if (
+        (outcome.state === "next_approval_ready" && authorization.plan.kind !== "erc20_approval")
+        || (outcome.state === "swap_ready" && authorization.plan.kind !== "swap")
+      ) throw new Error("Fresh verification and wallet authorization disagreed about the next action.");
       lastReadyVerification.current = authorization.evidence;
       setVerificationState({ state: "ready", evidence: authorization.evidence });
       setAuthorizationState({ state: "ready", plan: authorization.plan });
+      preparedApprovalAuthority.current = authorization.plan.kind === "erc20_approval"
+        ? {
+            approvalKind: authorization.evidence.approvalKind!,
+            target: authorization.evidence.nextActionTarget!,
+            spender: authorization.evidence.approvalSpender!,
+            amountAtomic: authorization.evidence.inputAmountAtomic
+          }
+        : undefined;
+      setPostExecutionState(outcome);
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : "Fresh post-approval verification failed.";
       setVerificationState({ state: "error", message });
@@ -913,6 +986,8 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
             ? "Revalidating after approval"
             : postExecutionState.state === "swap_ready"
               ? "Fresh swap verification passed"
+              : postExecutionState.state === "next_approval_ready"
+                ? "Next exact approval ready"
               : postExecutionState.state === "swap_confirmed"
                 ? "Settlement confirmed"
                 : postExecutionState.state === "reverted"
@@ -975,7 +1050,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
               ? "Last verified evidence remains stable while its replacement is checked"
               : authorizationEnabled ? "RMT completed the internal checks from your single trade action" : "Authorization remains disabled in this preview"}</small></span>
             <dl>
-              <div><dt>Route</dt><dd>{visibleVerification.route === "direct" ? "Direct V3" : "V3 via WETH"}</dd></div>
+              <div><dt>Route</dt><dd>{visibleVerification.route === "v4_pool" ? "Canonical V4 PoolKey" : visibleVerification.route === "direct" ? "Direct V3" : "V3 via WETH"}</dd></div>
               <div><dt>Protected</dt><dd>{formatAtomicDisplay(visibleVerification.protectedOutputAtomic, verificationQuote?.outputDecimals ?? 18)} {outputSymbol}</dd></div>
               <div><dt>Quote continuity</dt><dd>{describeProtectedOutputContinuity(visibleVerification.protectedOutputAtomic, visibleVerification.indicativeProtectedOutputFloorAtomic)}</dd></div>
               <div><dt>Simulation</dt><dd>{visibleVerification.exactSimulationPassed ? "Passed" : "Not passed"}</dd></div>

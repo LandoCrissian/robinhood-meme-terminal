@@ -40,6 +40,21 @@ export type VNextProviderQuoteRequest = {
   canonicalMarket?: { sourceId: "uniswap-v4"; poolId: Hex };
 };
 
+export type VNextUniswapV4QuoteBinding = {
+  poolId: Hex;
+  currency0: Address;
+  currency1: Address;
+  fee: number;
+  tickSpacing: number;
+  hooks: Address;
+  recipient: Address;
+  observedBlock: string;
+  observedBlockHash: Hex;
+  observedAtMs: number;
+  quotedAtMs: number;
+  expiresAtMs: number;
+};
+
 export type VNextProviderSettlementSelection =
   | typeof VNEXT_DIRECT_NO_RMT_FEE
   | typeof VNEXT_V2_ATOMIC_INPUT_FEE;
@@ -50,6 +65,8 @@ export type VNextProviderVerificationRequest = Pick<VNextProviderQuoteRequest,
   indicativeProtectedOutputFloorAtomic: bigint;
   executionId?: Hex;
   settlementMode?: VNextProviderSettlementSelection;
+  canonicalMarket?: { sourceId: "uniswap-v4"; poolId: Hex };
+  v4QuoteEvidence?: VNextUniswapV4QuoteBinding;
 };
 
 export type VNextProviderVerificationEvidence = Record<string, unknown> & {
@@ -81,6 +98,8 @@ export type VNextProviderVerificationEvidence = Record<string, unknown> & {
   feeV2Settlement?: VNextAtomicFeeSettlementProof;
   settlementMode: VNextExecutionSettlementMode;
   directNoRmtFee?: VNextDirectNoRmtFeeSettlement;
+  approvalKind?: "erc20_to_permit2" | "permit2_to_router" | null;
+  v4Execution?: import("./vnext-uniswap-v4-execution").VNextUniswapV4ExecutionEvidence;
 };
 
 export type VNextProviderAuthorizationRequest = VNextProviderVerificationRequest & {

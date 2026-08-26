@@ -219,6 +219,7 @@ export function buildExternalV4Swap(params: {
   quoteOut: bigint;
   deadline: bigint;
   executionFee?: RmtExecutionFeeConfig;
+  minimumOutFloor?: bigint;
 }) {
   const nativeIsCurrency0 = params.market.poolKey.currency0.toLowerCase() === zeroAddress;
   const nativeIsCurrency1 = params.market.poolKey.currency1.toLowerCase() === zeroAddress;
@@ -228,7 +229,10 @@ export function buildExternalV4Swap(params: {
   const inputCurrency = params.side === "buy" ? zeroAddress : params.market.token;
   const outputCurrency = params.side === "buy" ? params.market.token : zeroAddress;
   const zeroForOne = params.market.poolKey.currency0.toLowerCase() === inputCurrency.toLowerCase();
-  const grossMinimumOut = params.quoteOut * 99n / 100n;
+  const quotedMinimumOut = params.quoteOut * 99n / 100n;
+  const grossMinimumOut = params.minimumOutFloor && params.minimumOutFloor > quotedMinimumOut
+    ? params.minimumOutFloor
+    : quotedMinimumOut;
   const feeConfig = params.executionFee?.enabled ? params.executionFee : undefined;
   const quoteAmounts = calculateRmtExecutionFee(params.quoteOut, feeConfig?.feeBps ?? 0);
   const minimumAmounts = calculateRmtExecutionFee(grossMinimumOut, feeConfig?.feeBps ?? 0);

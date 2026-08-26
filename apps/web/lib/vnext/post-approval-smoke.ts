@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import type { VNextExecutionRecord } from "./execution-recovery";
-import { postApprovalVerificationOutcome, resolvedVNextExecutionOutcome } from "./post-approval";
+import {
+  postApprovalVerificationOutcome,
+  repeatsConfirmedVNextApproval,
+  resolvedVNextExecutionOutcome
+} from "./post-approval";
 import type { VNextPreSignEvidence } from "./pre-sign-evidence";
 
 const record: VNextExecutionRecord = {
@@ -37,7 +41,29 @@ assert.equal(resolvedVNextExecutionOutcome({ ...matching, outputAsset: record.in
 assert.equal(resolvedVNextExecutionOutcome({ ...matching, inputAmountAtomic: "999999" }), null);
 assert.equal(resolvedVNextExecutionOutcome({ ...matching, handledTxHash: record.txHash }), null);
 assert.equal(postApprovalVerificationOutcome({ status: "verified" } as VNextPreSignEvidence).state, "swap_ready");
-assert.equal(postApprovalVerificationOutcome({ status: "approval_required" } as VNextPreSignEvidence).state, "blocked");
+assert.equal(postApprovalVerificationOutcome({ status: "approval_required" } as VNextPreSignEvidence).state, "next_approval_ready");
+const confirmedApproval = {
+  approvalKind: "permit2_to_router" as const,
+  target: "0x4444444444444444444444444444444444444444",
+  spender: "0x5555555555555555555555555555555555555555",
+  amountAtomic: "1000"
+};
+assert.equal(repeatsConfirmedVNextApproval(confirmedApproval, {
+  status: "approval_required",
+  approvalKind: confirmedApproval.approvalKind,
+  nextActionTarget: confirmedApproval.target,
+  nextActionCalldataHash: `0x${"c".repeat(64)}`,
+  approvalSpender: confirmedApproval.spender,
+  inputAmountAtomic: confirmedApproval.amountAtomic
+} as unknown as VNextPreSignEvidence), true);
+assert.equal(repeatsConfirmedVNextApproval(confirmedApproval, {
+  status: "approval_required",
+  approvalKind: "erc20_to_permit2",
+  nextActionTarget: confirmedApproval.target,
+  nextActionCalldataHash: `0x${"d".repeat(64)}`,
+  approvalSpender: confirmedApproval.spender,
+  inputAmountAtomic: confirmedApproval.amountAtomic
+} as unknown as VNextPreSignEvidence), false);
 
 const composer = readFileSync(new URL("../../app/vnext/trade-intent-composer.tsx", import.meta.url), "utf8");
 const verifier = readFileSync(new URL("../server/vnext-uniswap-quote.ts", import.meta.url), "utf8");
@@ -45,8 +71,10 @@ assert.match(composer, /resolvedVNextExecutionOutcome/);
 assert.match(composer, /clearTradeQuoteCache\(\)/);
 assert.match(composer, /const freshQuote = await requestLiveRoutes\(\)/);
 assert.match(composer, /const freshEvidence = await requestStrictVerification\(freshQuote\)/);
-assert.match(composer, /Approval confirmed\. RMT is refreshing and verifying the swap automatically/);
+assert.match(composer, /Approval confirmed\. RMT discarded the prior payload/);
 assert.match(composer, /continuedApproval\.current/);
+assert.match(composer, /repeatsConfirmedVNextApproval/);
+assert.match(composer, /preparedApprovalAuthority\.current = undefined/);
 assert.match(composer, /requestAuthorizationPlan\(freshEvidence\)/);
 assert.match(composer, /lastReadyQuote\.current = \{ requestKey, response: freshQuote \}/);
 assert.match(composer, /lastReadyVerification\.current = freshEvidence/);

@@ -1,8 +1,9 @@
-import { getAddress, isAddress, isHash, keccak256, type Hex } from "viem";
+import { decodeFunctionData, erc20Abi, getAddress, isAddress, isHash, keccak256, type Hex } from "viem";
 import { authorizationPayloadHash, type VNextAuthorizationPlan } from "./authorization-plan";
 import { assertRmtExecutionFeeV2Economics } from "./execution-fee-policy-v2";
 import { assertVNextAtomicFeeAuthorizationBinding } from "./provider-fee-settlement";
 import { assertVNextDirectExecutionBinding, assertVNextDirectNoRmtFeeSettlement, VNEXT_DIRECT_NO_RMT_FEE } from "./execution-settlement";
+import { PERMIT2_ADDRESS, ROBINHOOD_UNIVERSAL_ROUTER, permit2Abi } from "../uniswap-v4";
 
 const PRIVY_RESOURCE_ID = /^[A-Za-z0-9_-]{8,160}$/;
 const SELECTOR = /^0x[0-9a-fA-F]{8}$/;
@@ -133,6 +134,7 @@ export function vnextSpotTradeInstruction(plan: VNextAuthorizationPlan): VNextEx
     throw new Error("RMT rejected a spot plan that bypasses wallet authorization.");
   }
   if (plan.settlementMode === VNEXT_DIRECT_NO_RMT_FEE) {
+    const approvalSpender = plan.directAuthorization?.approvalSpender ?? plan.router;
     assertVNextDirectNoRmtFeeSettlement(plan.directNoRmtFee, plan.inputAmountAtomic);
     assertVNextDirectExecutionBinding({
       binding: plan.directAuthorization,
@@ -146,7 +148,7 @@ export function vnextSpotTradeInstruction(plan: VNextAuthorizationPlan): VNextEx
       recipient: plan.recipient,
       providerTarget: plan.router,
       executionTarget: plan.target,
-      approvalSpender: plan.router,
+      approvalSpender,
       data: plan.data,
       valueAtomic: plan.value,
       deadline: plan.deadline
@@ -154,9 +156,31 @@ export function vnextSpotTradeInstruction(plan: VNextAuthorizationPlan): VNextEx
     if (
       plan.feeV2Economics !== undefined
       || plan.feeV2Authorization !== undefined
-      || getAddress(plan.target) !== getAddress(plan.router)
+      || (plan.kind === "swap" && getAddress(plan.target) !== getAddress(plan.router))
       || plan.payloadHash.toLowerCase() !== authorizationPayloadHash(plan).toLowerCase()
     ) throw new Error("RMT rejected changed fee-free spot execution authority.");
+    if (plan.kind === "erc20_approval") {
+      if (plan.provider === "uniswap-v4" && getAddress(plan.target) === getAddress(PERMIT2_ADDRESS)) {
+        const decoded = decodeFunctionData({ abi: permit2Abi, data: plan.data });
+        if (decoded.functionName !== "approve") throw new Error("RMT rejected non-approval Permit2 authority.");
+        const [token, spender, amount, expiration] = decoded.args;
+        if (
+          getAddress(token) !== getAddress(plan.inputAsset)
+          || getAddress(spender) !== getAddress(ROBINHOOD_UNIVERSAL_ROUTER)
+          || amount !== BigInt(plan.inputAmountAtomic)
+          || BigInt(expiration) !== BigInt(plan.deadline)
+        ) throw new Error("RMT rejected broadened Permit2 authority.");
+      } else {
+        if (getAddress(plan.target) !== getAddress(plan.inputAsset)) throw new Error("RMT rejected changed approval target.");
+        const decoded = decodeFunctionData({ abi: erc20Abi, data: plan.data });
+        if (decoded.functionName !== "approve") throw new Error("RMT rejected non-approval token authority.");
+        const [spender, amount] = decoded.args;
+        const requiredSpender = plan.provider === "uniswap-v4" ? PERMIT2_ADDRESS : plan.router;
+        if (getAddress(spender) !== getAddress(requiredSpender) || amount !== BigInt(plan.inputAmountAtomic)) {
+          throw new Error("RMT rejected broadened token approval authority.");
+        }
+      }
+    }
   } else {
     if (!plan.feeV2Economics || !plan.feeV2Authorization) {
       throw new Error("RMT rejected spot execution authority without complete V2 fee settlement.");

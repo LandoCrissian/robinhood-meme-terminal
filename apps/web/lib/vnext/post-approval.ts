@@ -36,11 +36,40 @@ export function resolvedVNextExecutionOutcome(input: {
 }
 
 export function postApprovalVerificationOutcome(evidence: VNextPreSignEvidence) {
-  return evidence.status === "verified" ? {
+  if (evidence.status === "verified") return {
     state: "swap_ready" as const,
     message: "Fresh allowance, balance, gas, route, and exact simulation passed. Prepare a separate swap review when ready."
-  } : {
-    state: "blocked" as const,
-    message: `Fresh verification returned ${evidence.status.replaceAll("_", " ")}. No swap payload was prepared.`
   };
+  if (evidence.status === "approval_required") return {
+    state: "next_approval_ready" as const,
+    message: "Fresh chain state requires one more exact approval. Review it separately in your wallet."
+  };
+  return {
+    state: "blocked" as const,
+    message: `Fresh verification returned ${evidence.status.replaceAll("_", " ")}. No wallet payload was prepared.`
+  };
+}
+
+export type VNextApprovalAuthority = {
+  approvalKind: NonNullable<VNextPreSignEvidence["approvalKind"]>;
+  target: string;
+  spender: string;
+  amountAtomic: string;
+};
+
+export function repeatsConfirmedVNextApproval(
+  confirmed: VNextApprovalAuthority | undefined,
+  evidence: VNextPreSignEvidence
+) {
+  return Boolean(
+    confirmed
+    && evidence.status === "approval_required"
+    && evidence.approvalKind
+    && evidence.nextActionTarget
+    && evidence.approvalSpender
+    && confirmed.approvalKind === evidence.approvalKind
+    && confirmed.target.toLowerCase() === evidence.nextActionTarget.toLowerCase()
+    && confirmed.spender.toLowerCase() === evidence.approvalSpender.toLowerCase()
+    && confirmed.amountAtomic === evidence.inputAmountAtomic
+  );
 }

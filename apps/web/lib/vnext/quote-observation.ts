@@ -10,10 +10,10 @@ import {
 } from "./execution-fee-policy-v2";
 import {
   hasVNextWalletAuthorizationCodec,
-  isVNextWalletFeeSettlementAdmitted
-} from "./provider-fee-settlement";
+  isVNextWalletExecutionAdmitted
+} from "./provider-execution-capability";
 
-export { hasVNextWalletAuthorizationCodec } from "./provider-fee-settlement";
+export { hasVNextWalletAuthorizationCodec } from "./provider-execution-capability";
 
 const MAX_CLOCK_SKEW_MS = 5_000;
 
@@ -342,19 +342,13 @@ export type VNextRouteSelection = {
   netOutcomeReady: false;
 };
 
-function isLoopbackBrowserAcceptanceAdmission(provider: VNextQuoteProvider) {
-  if (provider !== "uniswap-v3" || process.env.NEXT_PUBLIC_RMT_BROWSER_ACCEPTANCE_PROFILE !== "true") return false;
-  if (typeof window === "undefined") return false;
-  return window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost";
-}
-
 export function selectVNextRoute(attempts: VNextQuoteAttempt[]): VNextRouteSelection {
   const bestObserved = bestIndicativeAttempt(attempts);
   const verificationCandidate = bestIndicativeAttempt(
     attempts.filter((attempt) => (
       attempt.strictVerificationAvailable
       && hasVNextWalletAuthorizationCodec(attempt.provider)
-      && (isVNextWalletFeeSettlementAdmitted(attempt.provider) || isLoopbackBrowserAcceptanceAdmission(attempt.provider))
+      && isVNextWalletExecutionAdmitted(attempt.provider)
     ))
   );
   return {

@@ -11,7 +11,7 @@ import {
   RMT_UNISWAP_V3_V2_PROVIDER_ID,
   rmtUniswapV3FeeExecutorV2Abi
 } from "./uniswap-v3-fee-executor-v2";
-import { ROBINHOOD_SWAP_ROUTER_02, ROBINHOOD_WETH } from "../uniswap-v4";
+import { ROBINHOOD_SWAP_ROUTER_02, ROBINHOOD_V4_POOL_MANAGER, ROBINHOOD_WETH } from "../uniswap-v4";
 import { isRobinhoodNativeAsset } from "./robinhood-assets";
 import { UP_CL_EXECUTION_ROUTER, UP_V2_EXECUTION_ROUTER } from "./up-authorization-codec";
 
@@ -39,6 +39,19 @@ const withdrawalEventAbi = [{
   inputs: [
     { indexed: true, name: "src", type: "address" },
     { indexed: false, name: "wad", type: "uint256" }
+  ]
+}] as const;
+const v4SwapEventAbi = [{
+  type: "event", name: "Swap", anonymous: false,
+  inputs: [
+    { indexed: true, name: "id", type: "bytes32" },
+    { indexed: true, name: "sender", type: "address" },
+    { indexed: false, name: "amount0", type: "int128" },
+    { indexed: false, name: "amount1", type: "int128" },
+    { indexed: false, name: "sqrtPriceX96", type: "uint160" },
+    { indexed: false, name: "liquidity", type: "uint128" },
+    { indexed: false, name: "tick", type: "int24" },
+    { indexed: false, name: "fee", type: "uint24" }
   ]
 }] as const;
 
@@ -96,6 +109,14 @@ export type VNextExecutionRecord = {
     actualRmtFeeAtomic?: string;
     actualProviderOutputAtomic?: string;
   };
+  v4DirectSettlement?: {
+    poolId: Hex;
+    poolManager: Address;
+    outputCurrencyIndex: 0 | 1;
+    protectedOutputAtomic: string;
+    rmtFeeAtomic: "0";
+    treasuryTransferAtomic: "0";
+  };
   planId: string;
   payloadHash: Hex;
   txHash: Hash;
@@ -115,10 +136,11 @@ function normalizeTimestamp(value: unknown) {
   return typeof value === "number" && Number.isSafeInteger(value) && value > 0 ? value : null;
 }
 
-const JOURNAL_PROVIDERS = new Set<VNextAuthorizationPlan["provider"]>(["uniswap-v3", "up-v2", "up-cl"]);
+const JOURNAL_PROVIDERS = new Set<VNextAuthorizationPlan["provider"]>(["uniswap-v3", "uniswap-v4", "up-v2", "up-cl"]);
 
 export function vNextExecutionProviderLabel(provider?: VNextExecutionRecord["provider"]) {
   if (provider === "uniswap-v3") return "Uniswap V3";
+  if (provider === "uniswap-v4") return "Uniswap V4";
   if (provider === "up-v2") return "UP V2";
   if (provider === "up-cl") return "UP CL";
   return null;
@@ -243,6 +265,26 @@ function normalizeRecord(value: unknown): VNextExecutionRecord | null {
       ...(actualProviderOutputAtomic !== undefined ? { actualProviderOutputAtomic } : {})
     };
   })();
+  const v4Candidate = candidate.kind === "swap" ? candidate.v4DirectSettlement : undefined;
+  const v4DirectSettlement = v4Candidate === undefined ? undefined : (
+    candidate.provider === "uniswap-v4"
+    && isHash(v4Candidate.poolId)
+    && isAddress(v4Candidate.poolManager, { strict: false })
+    && getAddress(v4Candidate.poolManager) === getAddress(ROBINHOOD_V4_POOL_MANAGER)
+    && (v4Candidate.outputCurrencyIndex === 0 || v4Candidate.outputCurrencyIndex === 1)
+    && /^[1-9][0-9]*$/.test(v4Candidate.protectedOutputAtomic)
+    && v4Candidate.rmtFeeAtomic === "0"
+    && v4Candidate.treasuryTransferAtomic === "0"
+      ? {
+          poolId: v4Candidate.poolId.toLowerCase() as Hex,
+          poolManager: ROBINHOOD_V4_POOL_MANAGER,
+          outputCurrencyIndex: v4Candidate.outputCurrencyIndex,
+          protectedOutputAtomic: v4Candidate.protectedOutputAtomic,
+          rmtFeeAtomic: "0" as const,
+          treasuryTransferAtomic: "0" as const
+        }
+      : null
+  );
   const provider = candidate.provider === undefined
     ? undefined
     : JOURNAL_PROVIDERS.has(candidate.provider) ? candidate.provider : null;
@@ -257,9 +299,11 @@ function normalizeRecord(value: unknown): VNextExecutionRecord | null {
     || !candidate.planId || !/^[0-9a-f-]{36}$/i.test(candidate.planId)
     || !candidate.inputAmountAtomic || !/^[1-9][0-9]*$/.test(candidate.inputAmountAtomic)
     || outputAmountAtomic === null
-    || feeSettlement === null || feeV2Settlement === null || provider === null
+    || feeSettlement === null || feeV2Settlement === null || v4DirectSettlement === null || provider === null
     || (feeSettlement !== undefined && feeV2Settlement !== undefined)
     || (feeV2Settlement !== undefined && provider !== "uniswap-v3")
+    || (v4DirectSettlement !== undefined && provider !== "uniswap-v4")
+    || (provider === "uniswap-v4" && candidate.kind === "swap" && v4DirectSettlement === undefined)
     || !submittedAtMs || !updatedAtMs || updatedAtMs < submittedAtMs
     || !["erc20_approval", "swap"].includes(candidate.kind ?? "")
     || !["submitted", "confirmed", "reverted"].includes(candidate.state ?? "")
@@ -277,6 +321,7 @@ function normalizeRecord(value: unknown): VNextExecutionRecord | null {
     ...(outputAmountAtomic ? { outputAmountAtomic } : {}),
     ...(feeSettlement ? { feeSettlement } : {}),
     ...(feeV2Settlement ? { feeV2Settlement } : {}),
+    ...(v4DirectSettlement ? { v4DirectSettlement } : {}),
     planId: candidate.planId,
     payloadHash: candidate.payloadHash.toLowerCase() as Hex,
     txHash: candidate.txHash.toLowerCase() as Hash,
@@ -424,6 +469,16 @@ export function recordSubmittedVNextExecution(input: {
     ? v2SettlementFromPlan(input.plan, wallet)
     : undefined;
   if (input.plan.kind === "swap" && carriesV2Authority && !feeV2Settlement) return null;
+  const v4DirectSettlement = input.plan.kind === "swap" && input.plan.provider === "uniswap-v4" && input.plan.v4Execution
+    ? {
+        poolId: input.plan.v4Execution.poolId,
+        poolManager: getAddress(input.plan.v4Execution.poolManager),
+        outputCurrencyIndex: getAddress(input.plan.outputAsset) === getAddress(input.plan.v4Execution.poolKey.currency0) ? 0 as const : 1 as const,
+        protectedOutputAtomic: input.plan.protectedOutputAtomic,
+        rmtFeeAtomic: "0" as const,
+        treasuryTransferAtomic: "0" as const
+      }
+    : undefined;
   const record: VNextExecutionRecord = {
     schemaVersion: SCHEMA_VERSION,
     chainId: 4_663,
@@ -449,6 +504,7 @@ export function recordSubmittedVNextExecution(input: {
       maximumFeeAtomic: input.plan.feeExecution.maximumFeeAtomic
     } } : {}),
     ...(feeV2Settlement ? { feeV2Settlement } : {}),
+    ...(v4DirectSettlement ? { v4DirectSettlement } : {}),
     planId: input.plan.planId,
     payloadHash: input.plan.payloadHash.toLowerCase() as Hex,
     txHash: normalizedHash,
@@ -581,6 +637,27 @@ export function settledVNextOutputAtomic(record: VNextExecutionRecord, logs: rea
   if (record.kind !== "swap") return null;
   if (record.feeV2Settlement) return null;
   if (isRobinhoodNativeAsset(record.outputAsset)) {
+    if (record.provider === "uniswap-v4") {
+      const expected = record.v4DirectSettlement;
+      if (!expected) return null;
+      const swaps = logs.flatMap((log) => {
+        if (!isAddress(log.address, { strict: false }) || getAddress(log.address) !== expected.poolManager || log.topics.length === 0) return [];
+        try {
+          const decoded = decodeEventLog({
+            abi: v4SwapEventAbi,
+            eventName: "Swap",
+            data: log.data,
+            topics: log.topics as [Hex, ...Hex[]]
+          });
+          if (decoded.eventName !== "Swap" || decoded.args.id.toLowerCase() !== expected.poolId.toLowerCase()) return [];
+          const delta = expected.outputCurrencyIndex === 0 ? decoded.args.amount0 : decoded.args.amount1;
+          return delta > 0n && delta >= BigInt(expected.protectedOutputAtomic) ? [delta] : [];
+        } catch {
+          return [];
+        }
+      });
+      return swaps.length === 1 ? swaps[0].toString() : null;
+    }
     const withdrawals = logs.flatMap((log) => {
       if (!isAddress(log.address, { strict: false }) || getAddress(log.address) !== getAddress(ROBINHOOD_WETH) || log.topics.length === 0) return [];
       try {
