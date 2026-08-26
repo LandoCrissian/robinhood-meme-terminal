@@ -5,7 +5,11 @@
   "type": "module",
   "exports": {
     "./chains": "./src/chains.ts",
-    "./market-origin": "./src/market-origin.ts"
+    "./market-origin": "./src/market-origin.ts",
+    "./nft/project-registry": "./src/nft/project-registry.ts",
+    "./nft/activity-domain": "./src/nft/activity-domain.ts",
+    "./nft/ownership-projection": "./src/nft/ownership-projection.ts",
+    "./nft/activity-ingestion": "./src/nft/activity-ingestion.ts"
   },
   "dependencies": {
     "viem": "2.55.5"
