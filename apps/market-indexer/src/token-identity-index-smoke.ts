@@ -17,6 +17,9 @@ import {
 const identity = (index: number) => {
   const address = index.toString(16).padStart(40, "0");
   if (index === 1) return [address, "r", "First Canonical", "FIRST", 18] as const;
+  if (index === 2) return [address, "r", "StonkBroker", "STONKBROKER", 18] as const;
+  if (index === 3) return [address, "r", "Shared Alpha", "SHARED", 18] as const;
+  if (index === 4) return [address, "r", "Shared Beta", "SHARED", 18] as const;
   if (index === 2_049) return [address, "r", "After Old Boundary", "POSTBOUND", 18] as const;
   return [address, "r", `Canonical Token ${index}`, `T${index}`, 18] as const;
 };
@@ -46,6 +49,7 @@ const pool = {
 const normalized = normalizeTokenIdentitySearch("  $After-old_boundary  ");
 assert.equal(normalized.normalized, "after-old_boundary");
 assert.equal(normalized.compact, "afteroldboundary");
+assert.equal(normalizeTokenIdentitySearch("Stonk Brokers").singular, "stonkbroker");
 
 const stats = await readCanonicalTokenIdentityIndexStats(pool);
 assert.deepEqual(stats, {
@@ -65,6 +69,29 @@ for (const query of ["POSTBOUND", "After Old Boundary", "after-old_boundary"]) {
 }
 assert.equal((await searchCanonicalTokenIdentityIndex(pool, "FIRST", 512))[0]?.address.toLowerCase(),
   "0x0000000000000000000000000000000000000001");
+for (const query of [
+  "STONKBROKER",
+  "StonkBroker",
+  "StonkBrokers",
+  "$STONKBROKER",
+  "Stonk Broker",
+  "Stonk-Broker",
+  "Stonk_Broker",
+  "Stonk Brokers",
+  "Stonk-Brokers",
+  "Stonk_Brokers"
+]) {
+  const result = await searchCanonicalTokenIdentityIndex(pool, query, 512);
+  assert.equal(result[0]?.address.toLowerCase(), "0x0000000000000000000000000000000000000002", query);
+}
+assert.deepEqual(await searchCanonicalTokenIdentityIndex(pool, "STONK", 512), []);
+assert.deepEqual(
+  (await searchCanonicalTokenIdentityIndex(pool, "SHARED", 512)).map((result) => result.address.toLowerCase()),
+  [
+    "0x0000000000000000000000000000000000000003",
+    "0x0000000000000000000000000000000000000004"
+  ]
+);
 
 const fallbackAddress = "0x1234567890123456789012345678901234567890";
 const fallbackPool = {

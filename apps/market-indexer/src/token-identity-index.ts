@@ -108,12 +108,13 @@ async function readIdentityIndividually(rpc: PublicClient, address: Address, blo
 
 export function normalizeTokenIdentitySearch(value: string) {
   const normalized = value.trim().replace(/^\$/, "").replace(/\s+/g, " ").toLowerCase();
+  const compact = normalized.replace(/[\s_-]+/g, "");
   return {
     normalized,
-    compact: normalized.replace(/[\s_-]+/g, ""),
-    singular: normalized.length > 1 && normalized.endsWith("s")
-      ? normalized.slice(0, -1)
-      : normalized
+    compact,
+    singular: compact.length > 1 && compact.endsWith("s")
+      ? compact.slice(0, -1)
+      : compact
   };
 }
 
@@ -449,16 +450,15 @@ export async function searchCanonicalTokenIdentityIndex(pool: Pool, query: strin
   for (const identity of state.readyIdentities.values()) {
     const nameSearch = normalizeTokenIdentitySearch(identity[2]);
     const symbolSearch = normalizeTokenIdentitySearch(identity[3]);
-    const priority = [
-      symbolSearch.normalized,
-      nameSearch.normalized,
-      symbolSearch.compact,
-      nameSearch.compact,
-      symbolSearch.singular,
-      nameSearch.singular
-    ].findIndex((key) =>
-      key === normalized.normalized || key === normalized.compact || key === normalized.singular
-    );
+    const priority = normalized.normalized === symbolSearch.normalized ? 0
+      : normalized.normalized === nameSearch.normalized ? 1
+        : normalized.compact === symbolSearch.compact ? 2
+          : normalized.compact === nameSearch.compact ? 3
+            : normalized.compact !== "" && (
+                normalized.singular === symbolSearch.singular ||
+                normalized.singular === nameSearch.singular
+              ) ? 4
+              : -1;
     if (priority >= 0) matches.push({ priority, identity });
   }
   return matches
