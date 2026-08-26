@@ -15,6 +15,7 @@ const ROBINHOOD_MULTICALL3 = getAddress("0xcA11bde05977b3631167028862bE2a173976C
 // Robinhood Chain's public eth_call gas ceiling rejects larger aggregate3
 // identity reads. Five identities (20 calls) stays below the observed ceiling.
 const IDENTITIES_PER_MULTICALL = 5;
+const MAX_CONCURRENT_IDENTITY_MULTICALLS = 2;
 const CATALOG_RESCAN_MS = 15 * 60_000;
 const RETRY_ERROR_AFTER_MS = 15 * 60_000;
 const MAXIMUM_SHARD_BYTES = 8 * 1024 * 1024;
@@ -28,6 +29,9 @@ type ReadyStoredIdentity = readonly [
   decimals: number
 ];
 type StoredIdentity = readonly [address: string, status: "i"] | ReadyStoredIdentity;
+type IdentityRead =
+  | { status: "success"; result: unknown }
+  | { status: "failure"; error: unknown };
 
 type TokenIdentityIndexStats = Readonly<{
   totalCanonicalMarkets: number;
@@ -334,9 +338,22 @@ export async function refreshCanonicalTokenIdentityIndex(
     { length: Math.ceil(addresses.length / IDENTITIES_PER_MULTICALL) },
     (_, index) => addresses.slice(index * IDENTITIES_PER_MULTICALL, (index + 1) * IDENTITIES_PER_MULTICALL)
   );
-  const reads = await Promise.all(batches.map(async (batch) => {
-    try {
-      const aggregate = await rpc.multicall({
+  const reads: Array<{
+    batch: Address[];
+    results: IdentityRead[];
+    failed: boolean;
+  }> = [];
+  let nextBatch = 0;
+  await Promise.all(Array.from(
+    { length: Math.min(MAX_CONCURRENT_IDENTITY_MULTICALLS, batches.length) },
+    async () => {
+      while (true) {
+        const batchIndex = nextBatch;
+        nextBatch += 1;
+        const batch = batches[batchIndex];
+        if (!batch) return;
+        try {
+          const aggregate = await rpc.multicall({
           allowFailure: true,
           blockNumber: observedBlock,
           multicallAddress: ROBINHOOD_MULTICALL3,
@@ -346,17 +363,22 @@ export async function refreshCanonicalTokenIdentityIndex(
             { address, abi: erc20Abi, functionName: "decimals" as const },
             { address, abi: erc20Abi, functionName: "totalSupply" as const }
           ])
-        });
-      const results = aggregate.some((result) =>
-        result.status === "failure" && isTransientReadFailure(result.error)
-      ) ? (await Promise.all(
-          batch.map((address) => readIdentityIndividually(rpc, address, observedBlock))
-        )).flat() : aggregate;
-      return { batch, results, failed: false };
-    } catch {
-      return { batch, results: [], failed: true };
+          });
+          const rawResults = aggregate.some((result) =>
+            result.status === "failure" && isTransientReadFailure(result.error)
+          ) ? (await Promise.all(
+              batch.map((address) => readIdentityIndividually(rpc, address, observedBlock))
+            )).flat() : aggregate;
+          const results: IdentityRead[] = rawResults.map((result) => result.status === "success"
+            ? { status: "success", result: result.result }
+            : { status: "failure", error: result.error });
+          reads.push({ batch, results, failed: false });
+        } catch {
+          reads.push({ batch, results: [], failed: true });
+        }
+      }
     }
-  }));
+  ));
   const shard = state.shards.get(selectedShard) ?? new Map<string, StoredIdentity>();
   state.shards.set(selectedShard, shard);
   let evaluatedAdded = 0;
