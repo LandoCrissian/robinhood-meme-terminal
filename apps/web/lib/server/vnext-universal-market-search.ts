@@ -46,6 +46,7 @@ const MAXIMUM_PROVIDER_RESPONSE_BYTES = 1_000_000;
 const MAXIMUM_CANDIDATE_TOKENS = 12;
 const MAXIMUM_RESULTS = 12;
 const INVENTORY_LIMIT = 100;
+const CANONICAL_PROVIDER_SUPPLEMENT_GRACE_MS = 150;
 
 const ADDRESS_INPUT_PATTERN = /^0x[0-9a-fA-F]{40}$/;
 const BYTES32_INPUT_PATTERN = /^0x[0-9a-fA-F]{64}$/;
@@ -560,55 +561,14 @@ async function textSearch(
   query: string,
   dependencies: Required<VNextUniversalMarketSearchDependencies>
 ): Promise<VNextUniversalMarketSearchResult> {
-  const providerMatchesPromise = discoverCandidates(
+  const discoveryPromise = discoverCandidates(
     query,
     dependencies.fetch,
     dependencies.timeoutMs
-  ).then(async (discovery) => {
-    if (discovery.status === "unavailable") {
-      return { status: "unavailable" as const, candidates: [] };
-    }
-    const candidates = await Promise.all(
-      discovery.addresses.map(async (address) => {
-        const [identityRead, inventoryRead] = await Promise.allSettled([
-          dependencies.readIdentity(getAddress(address)),
-          dependencies.readInventory({ token: address, limit: INVENTORY_LIMIT })
-        ]);
-        if (identityRead.status !== "fulfilled" || !identityRead.value) return null;
-        const identity = normalizeVerifiedIdentity(identityRead.value, address);
-        if (!identity) return null;
-        const match = matchIdentity(query, identity);
-        if (!match) return null;
-        const inventory = inventoryRead.status === "fulfilled" &&
-          inventoryRead.value.status === "verified_shadow"
-          ? inventoryRead.value
-          : null;
-        return {
-          priority: match.priority,
-          result: {
-            address,
-            name: identity.name,
-            symbol: identity.symbol,
-            decimals: identity.decimals,
-            matchedBy: match.matchedBy,
-            markets: (inventory?.pools ?? []).map(publicMarket)
-          } satisfies VNextUniversalMarketSearchResultItem
-        };
-      })
-    );
-    return {
-      status: "ready" as const,
-      candidates: candidates.filter(
-        (candidate): candidate is NonNullable<typeof candidate> => candidate !== null
-      )
-    };
-  }).catch(() => ({ status: "unavailable" as const, candidates: [] }));
-  const [catalog, providerMatches] = await Promise.all([
-    dependencies.readCanonicalCatalog().catch(
-      (): VNextCanonicalSearchCatalog => ({ status: "unavailable", entries: [] })
-    ),
-    providerMatchesPromise
-  ]);
+  ).catch((): CandidateDiscoveryResult => ({ status: "unavailable" }));
+  const catalog = await dependencies.readCanonicalCatalog().catch(
+    (): VNextCanonicalSearchCatalog => ({ status: "unavailable", entries: [] })
+  );
   const canonicalMatches = catalog.status === "ready"
     ? catalog.entries.flatMap((entry) => {
         const match = matchIdentity(query, entry.identity);
@@ -627,19 +587,67 @@ async function textSearch(
         (left, right) => left.priority - right.priority || left.result.address.localeCompare(right.result.address)
       )
     : [];
-  if (canonicalMatches.length === 0 && providerMatches.status === "unavailable") {
+  let supplementTimeout: ReturnType<typeof setTimeout> | undefined;
+  const discovery = canonicalMatches.length === 0
+    ? await discoveryPromise
+    : await Promise.race([
+        discoveryPromise,
+        new Promise<CandidateDiscoveryResult>((resolve) => {
+          supplementTimeout = setTimeout(
+            () => resolve({ status: "ready", addresses: [] }),
+            CANONICAL_PROVIDER_SUPPLEMENT_GRACE_MS
+          );
+        })
+      ]).finally(() => {
+        if (supplementTimeout !== undefined) clearTimeout(supplementTimeout);
+      });
+  if (canonicalMatches.length === 0 && discovery.status === "unavailable") {
     return emptyResult(query, "text", "candidate_discovery_unavailable");
   }
+  const providerCandidates = discovery.status === "ready"
+    ? (await Promise.all(
+        discovery.addresses.map(async (address) => {
+          const [identityRead, inventoryRead] = await Promise.allSettled([
+            dependencies.readIdentity(getAddress(address)),
+            dependencies.readInventory({ token: address, limit: INVENTORY_LIMIT })
+          ]);
+          if (identityRead.status !== "fulfilled" || !identityRead.value) return null;
+          const identity = normalizeVerifiedIdentity(identityRead.value, address);
+          if (!identity) return null;
+          const match = matchIdentity(query, identity);
+          if (!match) return null;
+          const inventory = inventoryRead.status === "fulfilled" &&
+            inventoryRead.value.status === "verified_shadow"
+            ? inventoryRead.value
+            : null;
+          return {
+            priority: match.priority,
+            result: {
+              address,
+              name: identity.name,
+              symbol: identity.symbol,
+              decimals: identity.decimals,
+              matchedBy: match.matchedBy,
+              markets: (inventory?.pools ?? []).map(publicMarket)
+            } satisfies VNextUniversalMarketSearchResultItem
+          };
+        })
+      )).filter((candidate): candidate is NonNullable<typeof candidate> => candidate !== null)
+    : [];
   const matchedCandidates = [...new Map(
-    [...canonicalMatches, ...providerMatches.candidates]
+    [...canonicalMatches, ...providerCandidates]
       .sort(
-        (left, right) => left.priority - right.priority || left.result.address.localeCompare(right.result.address)
+        (left, right) =>
+          left.priority - right.priority ||
+          Number(right.result.markets.length > 0) - Number(left.result.markets.length > 0) ||
+          left.result.address.localeCompare(right.result.address)
       )
       .map((candidate) => [candidate.result.address, candidate] as const)
   ).values()]
     .sort(
       (left, right) =>
         left.priority - right.priority ||
+        Number(right.result.markets.length > 0) - Number(left.result.markets.length > 0) ||
         left.result.address.localeCompare(right.result.address)
     );
   const admittedCandidates = await dependencies.admitProjectIdentities(matchedCandidates.map((candidate) => ({

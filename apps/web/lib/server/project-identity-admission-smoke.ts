@@ -219,7 +219,7 @@ async function main() {
   const combinedAdmission = universalSearch.indexOf("admitProjectIdentities(matchedCandidates");
   const combinedLimit = universalSearch.indexOf(".slice(0, MAXIMUM_RESULTS)", combinedAdmission);
   assert.ok(
-    universalSearch.indexOf("[...canonicalMatches, ...providerMatches.candidates]") < combinedAdmission,
+    universalSearch.indexOf("[...canonicalMatches, ...providerCandidates]") < combinedAdmission,
     "canonical and supplemental candidates must be combined before quarantine"
   );
   assert.ok(combinedAdmission >= 0 && combinedAdmission < combinedLimit, "quarantine must happen before result limits");

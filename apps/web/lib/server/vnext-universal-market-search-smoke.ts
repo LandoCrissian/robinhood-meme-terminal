@@ -31,6 +31,7 @@ const cannaCatAddress = "0x1139d423c1706bdead91f03507f521635591ed92";
 const cannaCatPoolId = "0x5f5ec0e1016bae2f04c122bbcd2c141a4177cc681d7c2e4463a1d172ed8430b3";
 const hopiumAddress = "0xb6ce51925c2e397ebf1a443b343d19267b3d4225";
 const hopiumPoolId = "0xc1dbd75280b6d117b4ac1e27fcd00c6dccb1a2b2fbfa9923a2c492711299d337";
+const supplementalPeepAddress = "0x0dadc46063c8a4ece0a2c1d7c65f4363053c66b2";
 const zeroAddress = `0x${"0".repeat(40)}`;
 const manifestHash = `0x${"1".repeat(64)}`;
 const blockHash = `0x${"2".repeat(64)}`;
@@ -887,7 +888,10 @@ async function assertCanonicalInventoryIsAnIndependentTextCandidateLane() {
 
   const peep = await searchVNextUniversalMarkets("PEEP", {
     ...base,
-    fetch: candidateFetch({ pairs: [], items: [] }),
+    fetch: candidateFetch({ pairs: [providerPair(supplementalPeepAddress)], items: [] }),
+    readIdentity: async (address) => address.toLowerCase() === supplementalPeepAddress
+      ? { address, name: "PEEP Community", symbol: "PEEP", decimals: 18 }
+      : null,
     readCanonicalCatalog: async () => catalog([{
       identity: { address: peepAddress, name: "PEEP", symbol: "PEEP", decimals: 18 },
       markets: [peepMarket]
@@ -897,6 +901,11 @@ async function assertCanonicalInventoryIsAnIndependentTextCandidateLane() {
   assert.equal(peep.results[0]?.address, peepAddress);
   assert.equal(peep.results[0]?.markets[0]?.sourceId, "uniswap-v2");
   assert.equal(peep.results[0]?.markets[0]?.poolAddress, peepPairAddress);
+  assert.equal(
+    peep.results.some(({ address }) => address === supplementalPeepAddress),
+    true,
+    "Fast supplemental matches may remain visible without outranking exact canonical market evidence"
+  );
 
   const globalDistractors = Array.from({ length: 24 }, (_, index) => providerPair(
     `0x${(index + 4_000).toString(16).padStart(40, "0")}`,
