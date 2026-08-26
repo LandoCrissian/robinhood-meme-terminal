@@ -1337,9 +1337,9 @@ async function inspectProjectIdentityQuarantine(browser) {
   return { exactContractWorkspace: "absent", quoteSurfaces: 0, ...executionRequests };
 }
 
-async function createWalletAcceptanceContext(browser, options) {
+async function createWalletAcceptanceContext(browser, options, transactionTargets = {}) {
   const context = await createContext(browser, options);
-  await context.addInitScript(({ wallet }) => {
+  await context.addInitScript(({ wallet, secondApprovalTarget, swapTarget }) => {
     const listeners = new Map();
     let pendingWalletRequest = null;
     window.__RMT_ACCEPTANCE_WALLET_METHODS__ = [];
@@ -1377,8 +1377,9 @@ async function createWalletAcceptanceContext(browser, options) {
         }
         if (method === "eth_sendTransaction") {
           const transaction = params?.[0] ?? {};
-          const approval = String(transaction.to ?? "").toLowerCase() !== "0x5555555555555555555555555555555555555555";
-          const canonicalHash = `0x${(approval ? "b" : "c").repeat(64)}`;
+          const target = String(transaction.to ?? "").toLowerCase();
+          const approval = target !== "0x5555555555555555555555555555555555555555" && target !== swapTarget;
+          const canonicalHash = `0x${(target === secondApprovalTarget ? "d" : approval ? "b" : "c").repeat(64)}`;
           return await new Promise((resolve, reject) => {
             pendingWalletRequest = { resolve, reject, hash: canonicalHash };
           });
@@ -1389,12 +1390,21 @@ async function createWalletAcceptanceContext(browser, options) {
         return null;
       }
     };
-  }, { wallet: acceptanceWallet });
+  }, {
+    wallet: acceptanceWallet,
+    secondApprovalTarget: String(transactionTargets.secondApprovalTarget ?? "").toLowerCase(),
+    swapTarget: String(transactionTargets.swapTarget ?? "").toLowerCase()
+  });
   return context;
 }
 
 function rpcReceipt(hash, fixture, state) {
-  const approval = hash.toLowerCase() === `0x${"b".repeat(64)}`;
+  const normalizedHash = hash.toLowerCase();
+  const approvalIndex = normalizedHash === `0x${"b".repeat(64)}` ? 0 : normalizedHash === `0x${"d".repeat(64)}` ? 1 : -1;
+  const approval = approvalIndex >= 0;
+  const approvalPlan = approval
+    ? state.approvalPlans?.[approvalIndex] ?? fixture.erc20.approvalPlan
+    : null;
   if (!state.receiptsAvailable) return null;
   const logs = approval || state.missingSettlementEvent ? [] : [{
     ...fixture.erc20.settlementLog,
@@ -1416,7 +1426,7 @@ function rpcReceipt(hash, fixture, state) {
     logs,
     logsBloom: `0x${"0".repeat(512)}`,
     status: "0x1",
-    to: approval ? fixture.erc20.approvalPlan.target : fixture.executor,
+    to: approvalPlan?.target ?? fixture.executor,
     transactionHash: hash,
     transactionIndex: "0x0",
     type: "0x2"
@@ -1457,7 +1467,12 @@ async function installV2WalletAcceptanceRoutes(page, fixture, state) {
       }
       else if (method === "eth_getTransactionReceipt") result = rpcReceipt(hash, fixture, state);
       else if (method === "eth_getTransactionByHash") {
-        const approval = hash.toLowerCase() === `0x${"b".repeat(64)}`;
+        const normalizedHash = hash.toLowerCase();
+        const approvalIndex = normalizedHash === `0x${"b".repeat(64)}` ? 0 : normalizedHash === `0x${"d".repeat(64)}` ? 1 : -1;
+        const approvalPlan = approvalIndex >= 0
+          ? state.approvalPlans?.[approvalIndex] ?? fixture.erc20.approvalPlan
+          : null;
+        const approval = approvalPlan !== null;
         result = {
           blockHash: `0x${"d".repeat(64)}`,
           blockNumber: "0x2faf080",
@@ -1466,9 +1481,9 @@ async function installV2WalletAcceptanceRoutes(page, fixture, state) {
           gas: approval ? "0xea60" : "0x1d4c0",
           gasPrice: "0x3b9aca00",
           hash,
-          input: approval ? fixture.erc20.approvalPlan.data : fixture.erc20.swapPlan.data,
+          input: approvalPlan?.data ?? fixture.erc20.swapPlan.data,
           nonce: approval ? "0x1" : "0x2",
-          to: approval ? fixture.erc20.approvalPlan.target : fixture.executor,
+          to: approvalPlan?.target ?? fixture.executor,
           transactionIndex: "0x0",
           type: "0x0",
           value: "0x0",
@@ -1884,6 +1899,8 @@ async function inspectV4WalletReviewJourney(browser, fixture) {
   const context = await createWalletAcceptanceContext(browser, {
     viewport: { width: 1_440, height: 900 },
     deviceScaleFactor: 1
+  }, {
+    swapTarget: fixture.v4.plan.target
   });
   const page = await context.newPage();
   await page.emulateMedia({ reducedMotion: "reduce" });
@@ -2120,6 +2137,267 @@ async function inspectV4WalletReviewJourney(browser, fixture) {
     signingRequests: walletMethods.filter((method) => method.includes("sign")).length,
     rmtFeeAtomic: fixture.v4.plan.v4Execution.rmtFeeAtomic,
     treasuryTransferAtomic: fixture.v4.plan.v4Execution.treasuryTransferAtomic
+  };
+}
+
+async function inspectV4FreshWalletSellJourney(browser, fixture) {
+  const sell = fixture.v4.sell;
+  const stages = [sell.tokenApproval, sell.permit2Approval, sell.swap];
+  const state = {
+    approved: false,
+    receiptsAvailable: true,
+    missingSettlementEvent: false,
+    quotes: 0,
+    verifications: 0,
+    authorizations: 0,
+    rpcMethods: [],
+    blockNumber: 50_000_016,
+    quoteRequests: [],
+    verifyRequests: [],
+    authorizeRequests: [],
+    searchRouteHits: 0,
+    sellStage: 0,
+    approvalPlans: [sell.tokenApproval.plan, sell.permit2Approval.plan]
+  };
+  const context = await createWalletAcceptanceContext(browser, {
+    viewport: { width: 1_440, height: 900 },
+    deviceScaleFactor: 1
+  }, {
+    secondApprovalTarget: sell.permit2,
+    swapTarget: sell.universalRouter
+  });
+  const page = await context.newPage();
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await installRoutes(page);
+  await installV2WalletAcceptanceRoutes(page, fixture, state);
+
+  await page.route(/\/api\/vnext\/market-search(?:\?.*)?$/, async (route) => {
+    const query = new URL(route.request().url()).searchParams.get("q") ?? "";
+    const normalized = query.trim().replace(/^\$/, "").toLowerCase().replace(/[\s_-]+/g, "");
+    if (normalized !== "cannacat" && query.trim().toLowerCase() !== cannaCatToken) return route.fallback();
+    state.searchRouteHits += 1;
+    universalSearchQueries.set(page, [...(universalSearchQueries.get(page) ?? []), query]);
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        query,
+        queryKind: query.trim().toLowerCase() === cannaCatToken ? "token-or-pool-address" : "text",
+        status: "found",
+        results: [{
+          address: cannaCatToken,
+          name: "CannaCat",
+          symbol: "CANNACAT",
+          decimals: 18,
+          matchedBy: query.trim().toLowerCase() === cannaCatToken ? "token" : "symbol",
+          markets: [{
+            sourceId: "uniswap-v4",
+            protocol: "uniswap",
+            version: 4,
+            poolKey: cannaCatPoolId,
+            poolAddress: null,
+            token0: nativeAsset,
+            token1: cannaCatToken,
+            stable: null,
+            fee: 0,
+            tickSpacing: 200,
+            hooks: cannaCatHooks,
+            transactionHash: txHash(0x7373),
+            blockNumber: "49000000",
+            blockHash: txHash(0x7474),
+            stateStatus: null,
+            liveFee: null,
+            feeDenominator: null,
+            gaugeAddress: null,
+            gaugeAlive: null,
+            gaugeWeight: null,
+            gaugeClaimable: null,
+            feesAddress: null,
+            bribeAddress: null,
+            stateObservedBlock: null,
+            stateObservedBlockHash: null
+          }]
+        }]
+      })
+    });
+  });
+
+  const freshQuote = (scenario, request) => {
+    const nowMs = Date.now();
+    return {
+      ...scenario.quote,
+      inputAsset: request.inputAsset,
+      outputAsset: request.outputAsset,
+      inputAmountAtomic: request.inputAmountAtomic,
+      requestedAtMs: nowMs,
+      completedAtMs: nowMs + 1,
+      attempts: scenario.quote.attempts.map((attempt) => ({
+        ...attempt,
+        inputAsset: request.inputAsset,
+        outputAsset: request.outputAsset,
+        inputAmountAtomic: request.inputAmountAtomic,
+        quotedAtMs: nowMs,
+        expiresAtMs: nowMs + 60_000,
+        v4Evidence: {
+          ...attempt.v4Evidence,
+          recipient: request.recipient,
+          observedAtMs: nowMs - 100
+        }
+      }))
+    };
+  };
+  const freshEvidence = (scenario) => {
+    const nowMs = Date.now();
+    return {
+      ...scenario.evidence,
+      verifiedAtMs: nowMs,
+      expiresAtMs: Math.min(nowMs + 240_000, Number(BigInt(scenario.evidence.deadline) * 1_000n)),
+      v4Execution: {
+        ...scenario.evidence.v4Execution,
+        quoteObservedAtMs: nowMs - 100,
+        quotedAtMs: nowMs - 90,
+        quoteExpiresAtMs: nowMs + 60_000
+      }
+    };
+  };
+  const freshPlan = (scenario) => {
+    const nowMs = Date.now();
+    return {
+      ...scenario.plan,
+      preparedAtMs: nowMs,
+      expiresAtMs: Math.min(nowMs + 60_000, Number(BigInt(scenario.plan.deadline) * 1_000n))
+    };
+  };
+  await page.route(/\/api\/vnext\/quotes$/, async (route) => {
+    const request = route.request().postDataJSON();
+    state.quotes += 1;
+    state.quoteRequests.push(request);
+    const exact = request.chainId === 4_663
+      && String(request.inputAsset).toLowerCase() === cannaCatToken
+      && String(request.outputAsset).toLowerCase() === nativeAsset
+      && String(request.recipient).toLowerCase() === acceptanceWallet
+      && request.inputAmountAtomic === sell.inputAmountAtomic
+      && request.canonicalMarket?.sourceId === "uniswap-v4"
+      && request.canonicalMarket?.poolId === cannaCatPoolId;
+    if (!exact) throw new Error(`V4 fresh-wallet sell quote lost canonical binding: ${JSON.stringify(request)}`);
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(freshQuote(stages[state.sellStage], request))
+    });
+  });
+  await page.route(/\/api\/vnext\/verify$/, async (route) => {
+    const request = route.request().postDataJSON();
+    state.verifications += 1;
+    state.verifyRequests.push(request);
+    const exact = request.provider === "uniswap-v4"
+      && request.chainId === 4_663
+      && String(request.inputAsset).toLowerCase() === cannaCatToken
+      && String(request.outputAsset).toLowerCase() === nativeAsset
+      && request.inputAmountAtomic === sell.inputAmountAtomic
+      && request.canonicalMarket?.poolId === cannaCatPoolId
+      && request.v4QuoteEvidence?.poolId === cannaCatPoolId
+      && String(request.v4QuoteEvidence?.hooks).toLowerCase() === cannaCatHooks;
+    if (!exact) throw new Error(`V4 fresh-wallet sell verification lost exact binding: ${JSON.stringify(request)}`);
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(freshEvidence(stages[state.sellStage]))
+    });
+  });
+  await page.route(/\/api\/vnext\/authorize$/, async (route) => {
+    const request = route.request().postDataJSON();
+    state.authorizations += 1;
+    state.authorizeRequests.push(request);
+    const scenario = stages[state.sellStage];
+    const exact = request.provider === "uniswap-v4"
+      && request.quoteRequestId === scenario.evidence.sourceQuoteRequestId
+      && request.verificationId === scenario.evidence.verificationId
+      && request.expectedStatus === scenario.evidence.status
+      && request.canonicalMarket?.poolId === cannaCatPoolId
+      && request.v4QuoteEvidence?.poolId === cannaCatPoolId
+      && String(request.recipient).toLowerCase() === acceptanceWallet;
+    if (!exact) throw new Error(`V4 fresh-wallet sell authorization lost stage binding: ${JSON.stringify(request)}`);
+    const evidence = freshEvidence(scenario);
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ evidence, plan: freshPlan(scenario) })
+    });
+  });
+
+  await gotoReady(page, base, ".rmtDesktopTerminal .rmtMarketTableRow");
+  const search = page.getByRole("textbox", { name: "Search Robinhood Chain markets" });
+  await search.fill("CannaCat");
+  await search.press("Enter");
+  await page.locator('.rmtDesktopTerminal[data-terminal-context="asset"] #vn-asset-heading').waitFor({ state: "visible" });
+  const panel = page.locator(".vnTradePanel").last();
+  await panel.getByRole("tab", { name: "Sell", exact: true }).click();
+  await panel.getByLabel("Receive asset").selectOption("eip155:4663/native");
+  await panel.getByLabel("Exact input amount").fill("1");
+  await panel.locator(".vnReviewButton").click();
+
+  try {
+    await page.waitForFunction(() => window.__RMT_ACCEPTANCE_WALLET_METHODS__.filter((method) => method === "eth_sendTransaction").length === 1);
+  } catch (error) {
+    const panelText = await panel.innerText().catch(() => "<trade panel unavailable>");
+    throw new Error(`V4 fresh-wallet sell did not reach the first wallet review: ${JSON.stringify({ state, panelText })}`, { cause: error });
+  }
+  if (state.authorizeRequests.length !== 1 || stages[0].evidence.approvalKind !== "erc20_to_permit2") {
+    throw new Error(`V4 fresh-wallet sell did not prepare ERC20 -> Permit2 first: ${JSON.stringify(state)}`);
+  }
+  state.sellStage = 1;
+  await page.evaluate(() => window.__RMT_ACCEPTANCE_RELEASE_WALLET__("approve"));
+
+  await page.waitForFunction(() => window.__RMT_ACCEPTANCE_WALLET_METHODS__.filter((method) => method === "eth_sendTransaction").length === 2, null, { timeout: 30_000 });
+  await page.getByText("Next exact approval ready", { exact: true }).waitFor({ state: "visible", timeout: 30_000 });
+  if (state.authorizeRequests.length !== 2 || stages[1].evidence.approvalKind !== "permit2_to_router") {
+    throw new Error(`V4 fresh-wallet sell blocked the Permit2 -> Router approval: ${JSON.stringify(state)}`);
+  }
+  state.sellStage = 2;
+  await page.evaluate(() => window.__RMT_ACCEPTANCE_RELEASE_WALLET__("approve"));
+
+  await page.waitForFunction(() => window.__RMT_ACCEPTANCE_WALLET_METHODS__.filter((method) => method === "eth_sendTransaction").length === 3, null, { timeout: 30_000 });
+  await page.getByText("Fresh swap verification passed", { exact: true }).waitFor({ state: "visible", timeout: 30_000 });
+  await panel.locator(".vnRouteCard summary").click();
+  await page.locator(".vnWalletFeeDisclosure").last().waitFor({ state: "visible" });
+  const finalReview = await page.locator(".vnWalletFeeDisclosure").last().innerText();
+  for (const required of ["RMT platform fee: 0", "Direct · no RMT platform fee", "RMT receives no treasury transfer"]) {
+    if (!finalReview.includes(required)) throw new Error(`V4 fresh-wallet sell review omitted ${required}: ${finalReview}`);
+  }
+  const quoteIds = state.authorizeRequests.map((request) => request.quoteRequestId);
+  const verificationIds = state.authorizeRequests.map((request) => request.verificationId);
+  if (new Set(quoteIds).size !== 3 || new Set(verificationIds).size !== 3) {
+    throw new Error(`V4 fresh-wallet sell reused a discarded quote or verification payload: ${JSON.stringify({ quoteIds, verificationIds })}`);
+  }
+  if (stages[0].plan.target.toLowerCase() !== cannaCatToken
+    || stages[1].plan.target.toLowerCase() !== sell.permit2.toLowerCase()
+    || stages[2].plan.target.toLowerCase() !== sell.universalRouter.toLowerCase()
+    || stages[0].plan.inputAmountAtomic !== sell.inputAmountAtomic
+    || stages[1].plan.inputAmountAtomic !== sell.inputAmountAtomic
+    || stages[2].plan.v4Execution?.rmtFeeAtomic !== "0"
+    || stages[2].plan.v4Execution?.treasuryTransferAtomic !== "0") {
+    throw new Error("V4 fresh-wallet sell authority changed across the approval chain");
+  }
+  await page.screenshot({ path: `${output}/v4-fresh-wallet-sell-review-cannacat-desktop-1440x900.png`, fullPage: false, animations: "disabled" });
+  await page.evaluate(() => window.__RMT_ACCEPTANCE_RELEASE_WALLET__("cancel"));
+  await page.getByText("Wallet review was cancelled. Nothing was submitted.", { exact: true }).waitFor({ state: "visible" });
+  const walletMethods = await page.evaluate(() => window.__RMT_ACCEPTANCE_WALLET_METHODS__);
+  await context.close();
+  return {
+    sequence: ["erc20_to_permit2", "permit2_to_router", "verified_swap"],
+    quoteRequests: state.quotes,
+    verifyRequests: state.verifications,
+    authorizeRequests: state.authorizations,
+    distinctQuotePayloads: new Set(quoteIds).size,
+    distinctVerificationPayloads: new Set(verificationIds).size,
+    finalTarget: stages[2].plan.target,
+    finalExactSimulation: stages[2].evidence.exactSimulationPassed,
+    walletReview: "present",
+    walletTransactionApproved: false,
+    signingRequests: walletMethods.filter((method) => method.includes("sign")).length,
+    rmtFeeAtomic: stages[2].plan.v4Execution.rmtFeeAtomic,
+    treasuryTransferAtomic: stages[2].plan.v4Execution.treasuryTransferAtomic
   };
 }
 
@@ -2561,9 +2839,10 @@ try {
   const v4WalletReviewOnly = process.env.RMT_ACCEPTANCE_ONLY_V4_WALLET_REVIEW === "true";
   if (v4WalletReviewOnly) {
     if (!browserAcceptanceFixture) throw new Error("V4 wallet-review acceptance requires the loopback-only browser fixture profile.");
+    const v4FreshWalletSellEvidence = await inspectV4FreshWalletSellJourney(browser, browserAcceptanceFixture);
     const v4WalletReviewEvidence = await inspectV4WalletReviewJourney(browser, browserAcceptanceFixture);
-    await writeFile(`${output}/report.json`, JSON.stringify({ v4WalletReviewEvidence }, null, 2));
-    console.log(`Terminal V4 wallet-review acceptance passed: ${JSON.stringify(v4WalletReviewEvidence)}`);
+    await writeFile(`${output}/report.json`, JSON.stringify({ v4WalletReviewEvidence, v4FreshWalletSellEvidence }, null, 2));
+    console.log(`Terminal V4 wallet-review acceptance passed: ${JSON.stringify({ v4WalletReviewEvidence, v4FreshWalletSellEvidence })}`);
   } else if (previewOnly) {
     if (!browserAcceptanceFixture) throw new Error("Preview acceptance requires the loopback-only browser fixture profile.");
     const previewEvidence = {
@@ -2590,6 +2869,9 @@ try {
     : null;
   const v4WalletReviewEvidence = browserAcceptanceFixture && !mobileOnly
     ? await inspectV4WalletReviewJourney(browser, browserAcceptanceFixture)
+    : null;
+  const v4FreshWalletSellEvidence = browserAcceptanceFixture && !mobileOnly
+    ? await inspectV4FreshWalletSellJourney(browser, browserAcceptanceFixture)
     : null;
   const workspaceEvidence = mobileOnly ? null : {
     v4: await inspectV4PoolIdWorkspace(browser),
@@ -2646,7 +2928,7 @@ try {
   }
   await writeFile(
     `${output}/report.json`,
-    JSON.stringify({ productAcceptanceEvidence, workspaceEvidence, marketsHierarchy, discoveryDesktop, discoveryMobile, projectIdentityQuarantine, desktop, laptop, laptop720, compact, wide, seamDesktop, marketAudit, compatibilityEntries, publicRoutes, touch1023, mobile430, mobile393, mobile390, mobile375, mobile360, v2BrowserEvidence, v4WalletReviewEvidence, exploratoryTouch }, null, 2)
+    JSON.stringify({ productAcceptanceEvidence, workspaceEvidence, marketsHierarchy, discoveryDesktop, discoveryMobile, projectIdentityQuarantine, desktop, laptop, laptop720, compact, wide, seamDesktop, marketAudit, compatibilityEntries, publicRoutes, touch1023, mobile430, mobile393, mobile390, mobile375, mobile360, v2BrowserEvidence, v4WalletReviewEvidence, v4FreshWalletSellEvidence, exploratoryTouch }, null, 2)
   );
   console.log(`Terminal active discovery product acceptance passed: ${JSON.stringify(productAcceptanceEvidence)}`);
   }

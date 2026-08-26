@@ -9,7 +9,12 @@ import { vNextExecutionProviderLabel, type VNextExecutionRecord } from "../../li
 import { affordableDefaultAmount, createExactInputIntent, percentageOfAtomic, type TradeSide } from "../../lib/vnext/intent-draft";
 import { parseVNextQuoteResponse, selectVNextRoute, type VNextQuoteResponse } from "../../lib/vnext/quote-observation";
 import { parseVNextPreSignEvidence, type VNextPreSignEvidence } from "../../lib/vnext/pre-sign-evidence";
-import { postApprovalVerificationOutcome, resolvedVNextExecutionOutcome } from "../../lib/vnext/post-approval";
+import {
+  postApprovalVerificationOutcome,
+  repeatsConfirmedVNextApproval,
+  resolvedVNextExecutionOutcome,
+  type VNextApprovalAuthority
+} from "../../lib/vnext/post-approval";
 import { parseVNextAuthorizationBundle, type VNextAuthorizationPlan } from "../../lib/vnext/authorization-plan";
 import { cachedVNextQuoteForRequest, isVNextQuoteReusableForTrade, VNEXT_BACKGROUND_QUOTE_DEBOUNCE_MS, VNEXT_BACKGROUND_QUOTE_REFRESH_MS, type VNextCachedQuote } from "../../lib/vnext/background-quote";
 import type { VNextExecutionUiState, VNextSelectedMarketExecutionState } from "../../lib/vnext/market-directory";
@@ -101,6 +106,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
     | { state: "idle" }
     | { state: "approval_confirmed"; message: string }
     | { state: "refreshing"; message: string }
+    | { state: "next_approval_ready"; message: string }
     | { state: "swap_ready"; message: string }
     | { state: "blocked"; message: string }
     | { state: "swap_confirmed"; message: string }
@@ -110,6 +116,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
   const handledExecution = useRef<string | undefined>(undefined);
   const pendingTradeAfterLogin = useRef(false);
   const continuedApproval = useRef<string | undefined>(undefined);
+  const preparedApprovalAuthority = useRef<VNextApprovalAuthority | undefined>(undefined);
   const autoFitBuyAmount = useRef(true);
   const backgroundQuoteEpoch = useRef(0);
   const backgroundQuoteImmediate = useRef(false);
@@ -254,6 +261,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
     lastReadyVerification.current = undefined;
     pendingTradeAfterLogin.current = false;
     continuedApproval.current = undefined;
+    preparedApprovalAuthority.current = undefined;
   }, [requestKey]);
   useEffect(() => {
     const outcome = resolvedVNextExecutionOutcome({
@@ -269,6 +277,9 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
     setQuoteState({ state: "idle" });
     setVerificationState({ state: "idle" });
     setAuthorizationState({ state: "idle" });
+    lastReadyQuote.current = undefined;
+    lastReadyVerification.current = undefined;
+    if (outcome.state !== "approval_confirmed") preparedApprovalAuthority.current = undefined;
     setPostExecutionState(outcome);
   }, [address, draft.intent, executionRecord, inputAddress, outputAddress]);
   useEffect(() => {
@@ -694,6 +705,14 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
       lastReadyVerification.current = authorization.evidence;
       setVerificationState({ state: "ready", evidence: authorization.evidence });
       setAuthorizationState({ state: "ready", plan: authorization.plan });
+      preparedApprovalAuthority.current = authorization.plan.kind === "erc20_approval"
+        ? {
+            approvalKind: authorization.evidence.approvalKind!,
+            target: authorization.evidence.nextActionTarget!,
+            spender: authorization.evidence.approvalSpender!,
+            amountAtomic: authorization.evidence.inputAmountAtomic
+          }
+        : undefined;
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : "RMT could not prepare this trade.";
       if (stage === "quote") {
@@ -711,11 +730,15 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
 
   const continueAfterApproval = async () => {
     if (!authorizationEnabled || stockTokenViewOnly) return;
+    const confirmedApprovalAuthority = preparedApprovalAuthority.current;
+    preparedApprovalAuthority.current = undefined;
     backgroundQuoteEpoch.current += 1;
-    setPostExecutionState({ state: "refreshing", message: "Approval confirmed. RMT is refreshing and verifying the swap automatically…" });
+    setPostExecutionState({ state: "refreshing", message: "Approval confirmed. RMT discarded the prior payload and is refreshing the exact next action…" });
     setQuoteState({ state: "loading" });
     setVerificationState({ state: "loading" });
     setAuthorizationState({ state: "loading" });
+    lastReadyQuote.current = undefined;
+    lastReadyVerification.current = undefined;
     clearTradeQuoteCache();
     try {
       const freshQuote = await requestLiveRoutes();
@@ -724,13 +747,28 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
       const freshEvidence = await requestStrictVerification(freshQuote);
       lastReadyVerification.current = freshEvidence;
       setVerificationState({ state: "ready", evidence: freshEvidence });
+      if (repeatsConfirmedVNextApproval(confirmedApprovalAuthority, freshEvidence)) {
+        throw new Error("The confirmed approval did not update the expected allowance. RMT stopped before repeating the same wallet request.");
+      }
       const outcome = postApprovalVerificationOutcome(freshEvidence);
-      setPostExecutionState(outcome);
-      if (outcome.state !== "swap_ready") throw new Error(outcome.message);
+      if (outcome.state === "blocked") throw new Error(outcome.message);
       const authorization = await requestAuthorizationPlan(freshEvidence);
+      if (
+        (outcome.state === "next_approval_ready" && authorization.plan.kind !== "erc20_approval")
+        || (outcome.state === "swap_ready" && authorization.plan.kind !== "swap")
+      ) throw new Error("Fresh verification and wallet authorization disagreed about the next action.");
       lastReadyVerification.current = authorization.evidence;
       setVerificationState({ state: "ready", evidence: authorization.evidence });
       setAuthorizationState({ state: "ready", plan: authorization.plan });
+      preparedApprovalAuthority.current = authorization.plan.kind === "erc20_approval"
+        ? {
+            approvalKind: authorization.evidence.approvalKind!,
+            target: authorization.evidence.nextActionTarget!,
+            spender: authorization.evidence.approvalSpender!,
+            amountAtomic: authorization.evidence.inputAmountAtomic
+          }
+        : undefined;
+      setPostExecutionState(outcome);
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : "Fresh post-approval verification failed.";
       setVerificationState({ state: "error", message });
@@ -948,6 +986,8 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
             ? "Revalidating after approval"
             : postExecutionState.state === "swap_ready"
               ? "Fresh swap verification passed"
+              : postExecutionState.state === "next_approval_ready"
+                ? "Next exact approval ready"
               : postExecutionState.state === "swap_confirmed"
                 ? "Settlement confirmed"
                 : postExecutionState.state === "reverted"

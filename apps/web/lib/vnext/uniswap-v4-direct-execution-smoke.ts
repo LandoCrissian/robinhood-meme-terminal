@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
-import { encodeAbiParameters, encodeEventTopics, getAddress, zeroAddress, type Hex } from "viem";
+import { decodeFunctionData, encodeAbiParameters, encodeEventTopics, erc20Abi, getAddress, zeroAddress, type Hex } from "viem";
 import {
+  PERMIT2_MIN_REMAINING_VALIDITY_SECONDS,
   prepareVNextUniswapV4Authorization,
   verifyVNextUniswapV4Route,
   type VNextUniswapV4ExecutionDependencies
@@ -9,6 +10,7 @@ import type { VNextCanonicalMarketInventoryResult } from "../server/vnext-market
 import {
   MAX_UINT160,
   PERMIT2_ADDRESS,
+  permit2Abi,
   ROBINHOOD_UNIVERSAL_ROUTER,
   ROBINHOOD_V4_POOL_MANAGER,
   ROBINHOOD_V4_QUOTER
@@ -301,17 +303,40 @@ async function main() {
   assert.equal(tokenApproval.transaction.target, token);
   assert.equal(tokenApproval.evidence.approvalKind, "erc20_to_permit2");
   assert.equal(tokenApproval.evidence.approvalSpender, PERMIT2_ADDRESS);
+  const decodedTokenApproval = decodeFunctionData({ abi: erc20Abi, data: tokenApproval.transaction.data });
+  assert.equal(decodedTokenApproval.functionName, "approve");
+  assert.deepEqual(decodedTokenApproval.args, [getAddress(PERMIT2_ADDRESS), sellRequest.amountIn]);
 
   const permit2Approval = await prepareVNextUniswapV4Authorization({
     ...sellRequest,
     deadlineSeconds: deadline,
     protectedOutputFloorAtomic: 3_900_000n,
     nowMs: now
-  }, dependencies({ permit2Amount: 0n }));
+  }, dependencies({ tokenAllowance: sellRequest.amountIn, permit2Amount: 0n }));
   assert.equal(permit2Approval.transaction.kind, "erc20_approval");
   assert.equal(permit2Approval.transaction.target, PERMIT2_ADDRESS);
   assert.equal(permit2Approval.evidence.approvalKind, "permit2_to_router");
   assert.equal(permit2Approval.evidence.approvalSpender, ROBINHOOD_UNIVERSAL_ROUTER);
+  const decodedPermit2Approval = decodeFunctionData({ abi: permit2Abi, data: permit2Approval.transaction.data });
+  assert.equal(decodedPermit2Approval.functionName, "approve");
+  assert.deepEqual(decodedPermit2Approval.args, [token, getAddress(ROBINHOOD_UNIVERSAL_ROUTER), sellRequest.amountIn, Number(deadline)]);
+
+  const currentSeconds = BigInt(Math.floor(now / 1_000));
+  const refreshedSell = await prepareVNextUniswapV4Authorization({
+    ...sellRequest,
+    deadlineSeconds: deadline,
+    protectedOutputFloorAtomic: 3_900_000n,
+    nowMs: now
+  }, dependencies({
+    tokenAllowance: sellRequest.amountIn,
+    permit2Amount: sellRequest.amountIn,
+    permit2Expiration: currentSeconds + PERMIT2_MIN_REMAINING_VALIDITY_SECONDS
+  }));
+  assert.equal(refreshedSell.evidence.status, "verified");
+  assert.equal(refreshedSell.evidence.approvalKind, null);
+  assert.equal(refreshedSell.evidence.exactSimulationPassed, true);
+  assert.equal(refreshedSell.transaction.kind, "swap");
+  assert.equal(refreshedSell.transaction.target, ROBINHOOD_UNIVERSAL_ROUTER);
 
   for (const change of [
     { poolId: `0x${"9".repeat(64)}` as Hex },

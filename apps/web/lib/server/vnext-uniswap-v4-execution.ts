@@ -32,6 +32,7 @@ const MAX_UINT128 = (1n << 128n) - 1n;
 const MAX_UINT48 = (1n << 48n) - 1n;
 const DEFAULT_AUTHORIZATION_WINDOW_SECONDS = 240n;
 const MAX_AUTHORIZATION_WINDOW_SECONDS = 300n;
+export const PERMIT2_MIN_REMAINING_VALIDITY_SECONDS = 90n;
 const MAX_QUOTE_AGE_MS = 30_000;
 const WALLET_FEE_CEILING_MULTIPLIER = 3n;
 const BUY_COMMANDS = "0x100404";
@@ -364,7 +365,10 @@ async function evaluateVNextUniswapV4Route(
     nextTarget = token;
     nextValue = 0n;
     nextData = encodeFunctionData({ abi: erc20Abi, functionName: "approve", args: [PERMIT2_ADDRESS, input.amountIn] });
-  } else if (!nativeInput && (permit2State.amount < input.amountIn || permit2State.expiration < deadline)) {
+  } else if (!nativeInput && (
+    permit2State.amount < input.amountIn
+    || permit2State.expiration < currentSeconds + PERMIT2_MIN_REMAINING_VALIDITY_SECONDS
+  )) {
     approvalRequired = true;
     approvalKind = "permit2_to_router";
     approvalSpender = ROBINHOOD_UNIVERSAL_ROUTER;

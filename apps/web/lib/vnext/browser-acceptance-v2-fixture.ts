@@ -26,6 +26,7 @@ import {
 import { ROBINHOOD_SWAP_ROUTER_02 } from "../uniswap-v4";
 import {
   MAX_UINT160,
+  PERMIT2_ADDRESS,
   ROBINHOOD_UNIVERSAL_ROUTER
 } from "../uniswap-v4";
 import {
@@ -378,21 +379,29 @@ async function buildV4BrowserScenario() {
       stateObservedBlockHash: `0x${"4".repeat(64)}`
     }]
   };
-  const dependencies: VNextUniswapV4ExecutionDependencies = {
+  const dependencies = (allowances: {
+    tokenToPermit2?: bigint;
+    permit2ToRouter?: bigint;
+    permit2Expiration?: bigint;
+    quoteOut?: bigint;
+  } = {}): VNextUniswapV4ExecutionDependencies => ({
     readInventory: async () => inventory,
-    quote: async () => BigInt(expectedOutputAtomic),
+    quote: async () => allowances.quoteOut ?? BigInt(expectedOutputAtomic),
     readBlock: async (blockNumber) => blockNumber === 50_000_001n
       ? { number: 50_000_001n, hash: v4QuoteBlockHash, timestamp: BigInt(Math.floor(generatedAtMs / 1_000) - 1) }
       : { number: 50_000_002n, hash: v4SimulationBlockHash, timestamp: BigInt(Math.floor(generatedAtMs / 1_000)) },
     getBytecode: async () => "0x60006000",
     getNativeBalance: async () => 10n ** 20n,
-    getTokenState: async () => ({ balance: 10n ** 24n, permit2Allowance: MAX_UINT160 }),
-    getPermit2Allowance: async () => ({ amount: MAX_UINT160, expiration: v4Deadline + 1_000n }),
+    getTokenState: async () => ({ balance: 10n ** 24n, permit2Allowance: allowances.tokenToPermit2 ?? MAX_UINT160 }),
+    getPermit2Allowance: async () => ({
+      amount: allowances.permit2ToRouter ?? MAX_UINT160,
+      expiration: allowances.permit2Expiration ?? v4Deadline + 1_000n
+    }),
     call: async () => undefined,
     estimateGas: async () => 200_000n,
     getGasPrice: async () => 1_000_000_000n,
     now: () => generatedAtMs
-  };
+  });
   const quoteEvidence = {
     poolId: v4PoolId,
     currency0: zeroAddress,
@@ -420,7 +429,7 @@ async function buildV4BrowserScenario() {
     deadlineSeconds: v4Deadline,
     protectedOutputFloorAtomic: BigInt(protectedOutputAtomic),
     nowMs: generatedAtMs
-  }, dependencies);
+  }, dependencies());
   const evidence = {
     verificationId,
     sourceQuoteRequestId,
@@ -528,6 +537,151 @@ async function buildV4BrowserScenario() {
       detail: "Canonical Uniswap V4 PoolKey quote. Exact Universal Router simulation is required before wallet review."
     }]
   } as const;
+
+  const sellInputAmountAtomic = "1000000000000000000";
+  const sellExpectedOutputAtomic = "4000000000000";
+  const sellProtectedOutputAtomic = "3960000000000";
+  const stageUuid = (suffix: string) => `00000000-0000-4000-8000-0000000000${suffix}`;
+  const buildSellStage = async (input: {
+    suffix: string;
+    tokenToPermit2: bigint;
+    permit2ToRouter: bigint;
+    permit2Expiration: bigint;
+  }) => {
+    const stageQuoteRequestId = stageUuid(`${input.suffix}1`);
+    const stageVerificationId = stageUuid(`${input.suffix}2`);
+    const stagePlanId = stageUuid(`${input.suffix}3`);
+    const preparedStage = await prepareVNextUniswapV4Authorization({
+      chainId: 4_663,
+      inputAsset: v4Token,
+      outputAsset: zeroAddress,
+      inputAmountAtomic: sellInputAmountAtomic,
+      amountIn: BigInt(sellInputAmountAtomic),
+      recipient: wallet,
+      indicativeProtectedOutputFloorAtomic: BigInt(sellProtectedOutputAtomic),
+      canonicalMarket: { sourceId: "uniswap-v4", poolId: v4PoolId },
+      v4QuoteEvidence: quoteEvidence,
+      deadlineSeconds: v4Deadline,
+      protectedOutputFloorAtomic: BigInt(sellProtectedOutputAtomic),
+      nowMs: generatedAtMs
+    }, dependencies({
+      tokenToPermit2: input.tokenToPermit2,
+      permit2ToRouter: input.permit2ToRouter,
+      permit2Expiration: input.permit2Expiration,
+      quoteOut: BigInt(sellExpectedOutputAtomic)
+    }));
+    const stageEvidence = {
+      verificationId: stageVerificationId,
+      sourceQuoteRequestId: stageQuoteRequestId,
+      ...preparedStage.evidence
+    } as unknown as VNextPreSignEvidence;
+    const stagePlanWithoutHash: Omit<VNextAuthorizationPlan, "payloadHash"> = {
+      planId: stagePlanId,
+      sourceQuoteRequestId: stageQuoteRequestId,
+      sourceVerificationId: stageVerificationId,
+      provider: "uniswap-v4",
+      kind: preparedStage.transaction.kind,
+      chainId: 4_663,
+      target: preparedStage.transaction.target,
+      data: preparedStage.transaction.data,
+      value: preparedStage.transaction.value,
+      gasLimit: preparedStage.transaction.gasLimit,
+      inputAsset: v4Token,
+      outputAsset: zeroAddress,
+      inputAmountAtomic: sellInputAmountAtomic,
+      protectedOutputAtomic: stageEvidence.protectedOutputAtomic,
+      recipient: wallet,
+      router: ROBINHOOD_UNIVERSAL_ROUTER,
+      settlementMode: VNEXT_DIRECT_NO_RMT_FEE,
+      directNoRmtFee: stageEvidence.directNoRmtFee,
+      directAuthorization: directExecutionBinding({
+        provider: "uniswap-v4",
+        kind: preparedStage.transaction.kind,
+        chainId: 4_663,
+        inputAsset: v4Token,
+        outputAsset: zeroAddress,
+        inputAmountAtomic: sellInputAmountAtomic,
+        protectedOutputAtomic: stageEvidence.protectedOutputAtomic,
+        recipient: wallet,
+        providerTarget: ROBINHOOD_UNIVERSAL_ROUTER,
+        executionTarget: preparedStage.transaction.target,
+        approvalSpender: stageEvidence.approvalSpender,
+        approvalAmountAtomic: sellInputAmountAtomic,
+        data: preparedStage.transaction.data,
+        valueAtomic: preparedStage.transaction.value,
+        deadline: stageEvidence.deadline
+      }),
+      netEconomics: stageEvidence.netEconomics,
+      feeExecution: null,
+      v4Execution: stageEvidence.v4Execution,
+      deadline: stageEvidence.deadline,
+      preparedAtMs: generatedAtMs,
+      expiresAtMs: generatedAtMs + 60_000,
+      userAuthorizationRequired: true,
+      serverSubmissionEnabled: false
+    };
+    const stagePlan: VNextAuthorizationPlan = {
+      ...stagePlanWithoutHash,
+      payloadHash: authorizationPayloadHash(stagePlanWithoutHash)
+    };
+    const stageQuote = {
+      ...quote,
+      requestId: stageQuoteRequestId,
+      inputAsset: v4Token,
+      outputAsset: zeroAddress,
+      inputAmountAtomic: sellInputAmountAtomic,
+      attempts: quote.attempts.map((attempt) => ({
+        ...attempt,
+        inputAsset: v4Token,
+        outputAsset: zeroAddress,
+        inputAmountAtomic: sellInputAmountAtomic,
+        expectedOutputAtomic: sellExpectedOutputAtomic,
+        protectedOutputAtomic: sellProtectedOutputAtomic,
+        netEconomics: stageEvidence.netEconomics
+      }))
+    };
+    parseVNextQuoteResponse(stageQuote, {
+      inputAsset: v4Token,
+      outputAsset: zeroAddress,
+      inputAmountAtomic: sellInputAmountAtomic
+    }, generatedAtMs);
+    const parsedStageEvidence = parseVNextPreSignEvidence(stageEvidence, {
+      quoteRequestId: stageQuoteRequestId,
+      inputAsset: v4Token,
+      outputAsset: zeroAddress,
+      inputAmountAtomic: sellInputAmountAtomic,
+      provider: "uniswap-v4",
+      protectedOutputFloorAtomic: sellProtectedOutputAtomic,
+      recipient: wallet
+    }, generatedAtMs + 1);
+    parseVNextAuthorizationBundle({ evidence: stageEvidence, plan: stagePlan }, parsedStageEvidence, {
+      quoteRequestId: stageQuoteRequestId,
+      inputAsset: v4Token,
+      outputAsset: zeroAddress,
+      inputAmountAtomic: sellInputAmountAtomic,
+      recipient: wallet
+    }, generatedAtMs + 1);
+    return { quote: stageQuote, evidence: stageEvidence, plan: stagePlan };
+  };
+  const currentSeconds = BigInt(Math.floor(generatedAtMs / 1_000));
+  const sellTokenApproval = await buildSellStage({
+    suffix: "a",
+    tokenToPermit2: 0n,
+    permit2ToRouter: 0n,
+    permit2Expiration: 0n
+  });
+  const sellPermit2Approval = await buildSellStage({
+    suffix: "b",
+    tokenToPermit2: BigInt(sellInputAmountAtomic),
+    permit2ToRouter: 0n,
+    permit2Expiration: 0n
+  });
+  const sellSwap = await buildSellStage({
+    suffix: "c",
+    tokenToPermit2: BigInt(sellInputAmountAtomic),
+    permit2ToRouter: BigInt(sellInputAmountAtomic),
+    permit2Expiration: currentSeconds + 90n
+  });
   parseVNextQuoteResponse(quote, {
     inputAsset: zeroAddress,
     outputAsset: v4Token,
@@ -559,7 +713,15 @@ async function buildV4BrowserScenario() {
     protectedOutputAtomic,
     quote,
     evidence,
-    plan
+    plan,
+    sell: {
+      inputAmountAtomic: sellInputAmountAtomic,
+      tokenApproval: sellTokenApproval,
+      permit2Approval: sellPermit2Approval,
+      swap: sellSwap,
+      permit2: PERMIT2_ADDRESS,
+      universalRouter: ROBINHOOD_UNIVERSAL_ROUTER
+    }
   };
 }
 
