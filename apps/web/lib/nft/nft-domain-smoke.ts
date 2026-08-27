@@ -18,6 +18,9 @@ import {
 import { verifyRmtNftCollection } from "./collection-verification";
 import { verifyRmtNftProjectToken } from "./project-token-verification";
 import {
+  RMT_ERC721_TRANSFER_TOPIC,
+  RMT_ERC1155_TRANSFER_BATCH_TOPIC,
+  RMT_ERC1155_TRANSFER_SINGLE_TOPIC,
   compareRmtNftActivityObservations,
   decodeRmtNftActivityLog,
   decodeVerifiedRmtNftActivityLog,
@@ -27,9 +30,6 @@ import {
 } from "./activity-domain";
 
 const CCFF00_COLLECTION = "0x505A22Ffed8d37ebE580FfD98d2Cdb0021189146" as const;
-const ERC721_TRANSFER_TOPIC = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef" as const;
-const ERC1155_TRANSFER_SINGLE_TOPIC = "0xc3d58168c5bfaa9351fbc5f840f6c7baf2dcae18fe59842dc89e1c74c0b7f2ce" as const;
-const ERC1155_TRANSFER_BATCH_TOPIC = "0x4a39dc06d4c0dbc64b70d8c0e2d859b21b56f6e12c9015d8f932ffad8afc9f07" as const;
 const RECEIVER = getAddress("0x3333333333333333333333333333333333333333");
 const SENDER = getAddress("0x4444444444444444444444444444444444444444");
 const OPERATOR = getAddress("0x5555555555555555555555555555555555555555");
@@ -48,7 +48,7 @@ function rawLog(overrides: Partial<RmtNftRawLog> = {}): RmtNftRawLog {
     chainId: RMT_NFT_CHAIN_ID,
     address: CCFF00_COLLECTION,
     topics: [
-      ERC721_TRANSFER_TOPIC,
+      RMT_ERC721_TRANSFER_TOPIC,
       addressTopic(zeroAddress),
       addressTopic(RECEIVER),
       uintTopic(470n)
@@ -243,7 +243,7 @@ async function main() {
 
   const ccff00Transfer = decodeRmtNftActivityLog(rawLog({
     topics: [
-      ERC721_TRANSFER_TOPIC,
+      RMT_ERC721_TRANSFER_TOPIC,
       addressTopic(SENDER),
       addressTopic(RECEIVER),
       uintTopic(470n)
@@ -254,7 +254,7 @@ async function main() {
 
   const ccff00Burn = decodeRmtNftActivityLog(rawLog({
     topics: [
-      ERC721_TRANSFER_TOPIC,
+      RMT_ERC721_TRANSFER_TOPIC,
       addressTopic(SENDER),
       addressTopic(zeroAddress),
       uintTopic(470n)
@@ -282,7 +282,7 @@ async function main() {
   const erc1155Single = decodeVerifiedRmtNftActivityLog(rawLog({
     address: ERC1155_FIXTURE,
     topics: [
-      ERC1155_TRANSFER_SINGLE_TOPIC,
+      RMT_ERC1155_TRANSFER_SINGLE_TOPIC,
       addressTopic(OPERATOR),
       addressTopic(SENDER),
       addressTopic(RECEIVER)
@@ -305,7 +305,7 @@ async function main() {
   const erc1155Batch = decodeVerifiedRmtNftActivityLog(rawLog({
     address: ERC1155_FIXTURE,
     topics: [
-      ERC1155_TRANSFER_BATCH_TOPIC,
+      RMT_ERC1155_TRANSFER_BATCH_TOPIC,
       addressTopic(OPERATOR),
       addressTopic(zeroAddress),
       addressTopic(RECEIVER)
@@ -326,7 +326,7 @@ async function main() {
   const invalidBatch = decodeVerifiedRmtNftActivityLog(rawLog({
     address: ERC1155_FIXTURE,
     topics: [
-      ERC1155_TRANSFER_BATCH_TOPIC,
+      RMT_ERC1155_TRANSFER_BATCH_TOPIC,
       addressTopic(OPERATOR),
       addressTopic(SENDER),
       addressTopic(RECEIVER)
