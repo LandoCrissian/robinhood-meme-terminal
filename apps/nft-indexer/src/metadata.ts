@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import type { RmtNftItemMetadata, RmtNftTokenUriKind } from "@rmt/shared/nft/project-inventory";
+import { isSafeRmtNftInlineSvg } from "@rmt/shared/nft/inline-svg-safety";
 
 export const MAX_TOKEN_URI_BYTES = 256 * 1024;
 export const MAX_METADATA_JSON_BYTES = 128 * 1024;
@@ -54,23 +55,7 @@ function safeSvgDataUri(value: unknown): string | null {
   const encoded = value.slice("data:image/svg+xml;base64,".length);
   const bytes = strictBase64(encoded, MAX_SVG_BYTES);
   const svg = utf8(bytes);
-  if (!/^\s*<svg\b[\s\S]*<\/svg>\s*$/.test(svg)) throw new Error("Malformed SVG");
-  if (/<\/?(?:script|foreignObject|image|use|style|iframe|object|embed|audio|video|a)\b/i.test(svg)
-    || /\son[a-z]+\s*=/i.test(svg) || /javascript\s*:/i.test(svg)
-    || /\b(?:href|src)\s*=/i.test(svg) || /url\s*\(/i.test(svg)) throw new Error("Unsafe SVG");
-  const tags = [...svg.matchAll(/<\/?([A-Za-z][\w:-]*)\b/g)].map((match) => match[1]!.toLowerCase());
-  if (tags.some((tag) => !["svg", "rect"].includes(tag))) throw new Error("Unsupported SVG element");
-  for (const element of svg.matchAll(/<(svg|rect)\b([^>]*)>/gi)) {
-    const tag = element[1]!.toLowerCase();
-    const attributes = element[2]!;
-    const allowed = new Set(tag === "svg" ? ["xmlns", "width", "height", "viewBox"] : ["x", "y", "width", "height", "fill", "rx", "ry"]);
-    let remainder = attributes;
-    for (const attribute of attributes.matchAll(/([A-Za-z_:][\w:.-]*)\s*=\s*("[^"]*"|'[^']*')/g)) {
-      if (!allowed.has(attribute[1]!)) throw new Error("Unsupported SVG attribute");
-      remainder = remainder.replace(attribute[0], "");
-    }
-    if (remainder.replace(/\//g, "").trim()) throw new Error("Malformed SVG attribute");
-  }
+  if (!isSafeRmtNftInlineSvg(svg)) throw new Error("Unsafe or unsupported SVG");
   return `data:image/svg+xml;base64,${Buffer.from(svg, "utf8").toString("base64")}`;
 }
 

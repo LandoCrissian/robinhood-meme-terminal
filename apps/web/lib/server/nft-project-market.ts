@@ -12,6 +12,7 @@ import type {
 import { RMT_NFT_ACTIVITY_SOURCES } from "@rmt/shared/nft/activity-sources";
 import { RMT_SEAPORT_1_6_ADDRESS } from "@rmt/shared/nft/marketplace-evidence";
 import { rmtCuratedNftProject } from "@rmt/shared/nft/project-registry";
+import { isSafeRmtNftInlineSvg } from "@rmt/shared/nft/inline-svg-safety";
 import { isAddress, isAddressEqual, zeroAddress } from "viem";
 
 type ReaderOptions = {
@@ -106,24 +107,7 @@ function safeInlineSvg(value: unknown): value is string {
     const bytes = Buffer.from(encoded, "base64");
     if (bytes.byteLength > 256 * 1024 || bytes.toString("base64") !== encoded) return false;
     const svg = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
-    if (!/^\s*<svg\b[\s\S]*<\/svg>\s*$/.test(svg)
-      || /<\/?(?:script|foreignObject|image|use|style|iframe|object|embed|audio|video|a)\b/i.test(svg)
-      || /\son[a-z]+\s*=/i.test(svg) || /javascript\s*:/i.test(svg)
-      || /\b(?:href|src)\s*=/i.test(svg) || /url\s*\(/i.test(svg)) return false;
-    const tags = [...svg.matchAll(/<\/?([A-Za-z][\w:-]*)\b/g)].map((match) => match[1]!.toLowerCase());
-    if (tags.some((tag) => !["svg", "rect"].includes(tag))) return false;
-    for (const element of svg.matchAll(/<(svg|rect)\b([^>]*)>/gi)) {
-      const tag = element[1]!.toLowerCase();
-      const attributes = element[2]!;
-      const allowed = new Set(tag === "svg" ? ["xmlns", "width", "height", "viewBox"] : ["x", "y", "width", "height", "fill", "rx", "ry"]);
-      let remainder = attributes;
-      for (const attribute of attributes.matchAll(/([A-Za-z_:][\w:.-]*)\s*=\s*("[^"]*"|'[^']*')/g)) {
-        if (!allowed.has(attribute[1]!)) return false;
-        remainder = remainder.replace(attribute[0], "");
-      }
-      if (remainder.replace(/\//g, "").trim()) return false;
-    }
-    return true;
+    return isSafeRmtNftInlineSvg(svg);
   } catch {
     return false;
   }
