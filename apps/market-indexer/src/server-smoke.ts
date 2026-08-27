@@ -56,6 +56,18 @@ const worker = {
     lastCycleCompletedAt: now,
     lastCycleDurationMs: 42,
     lastFinalizedHead: "110",
+    tokenIdentityReconciliation: {
+      status: "ready" as const,
+      pageSize: 5_000,
+      rowsScanned: totalPools,
+      pagesScanned: 1,
+      uniqueCandidateTokens: 1,
+      lastDurationMs: 12,
+      lastSuccessfulAt: now,
+      nextReconciliationAt: new Date(Date.parse(now) + 6 * 60 * 60_000).toISOString(),
+      consecutiveFailures: 0,
+      lastError: null
+    },
     telemetry: {
       capturedAt: now,
       finalizedHead: "110",
@@ -235,6 +247,8 @@ try {
   assert.equal(health.totalPools, totalPools);
   assert.equal(health.stateReadyPools, 2);
   assert.equal(health.stateErrorPools, 1);
+  assert.equal(health.tokenIdentityReconciliation.status, "ready");
+  assert.equal(health.tokenIdentityReconciliation.rowsScanned, totalPools);
   assert.equal(healthText.includes(readToken), false);
   assert.equal(healthText.includes(config.databaseUrl), false);
 
@@ -266,6 +280,7 @@ try {
   assert.equal(statusResponse.status, 200);
   assert.equal(status.activationLocked, true);
   assert.equal(status.telemetry.totalPools, totalPools);
+  assert.equal(status.tokenIdentityReconciliation.status, "ready");
   assert.equal(statusText.includes(readToken), false);
   assert.equal(statusText.includes(config.databaseUrl), false);
 

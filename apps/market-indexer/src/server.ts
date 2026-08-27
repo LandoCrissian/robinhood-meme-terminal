@@ -288,6 +288,7 @@ export function createMarketIndexerServer(
           totalPools: telemetry?.totalPools ?? null,
           stateReadyPools: telemetry?.stateReadyPools ?? null,
           stateErrorPools: telemetry?.stateErrorPools ?? null,
+          tokenIdentityReconciliation: worker.status.tokenIdentityReconciliation,
           database: telemetry?.database ?? {
             scope: "logical-database-only",
             logicalBytes: null,
@@ -350,6 +351,7 @@ export function createMarketIndexerServer(
           lastError: worker.status.lastError,
           heartbeat: heartbeat(worker, config),
           positionGuardEvaluator: positionGuardHeartbeat?.status ?? null,
+          tokenIdentityReconciliation: worker.status.tokenIdentityReconciliation,
           telemetry: worker.status.telemetry
         });
         return;

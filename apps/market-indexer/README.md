@@ -187,6 +187,30 @@ closed before derived table growth can consume the reserved recovery space.
 This is a rehearsal guardrail, not a substitute for correctly sized production
 storage and monitoring.
 
+For a 5 GB physical PostgreSQL volume, the recommended post-resize value is
+`MARKET_INDEXER_MAX_DATABASE_MB=2048`. The 2 GB logical ceiling deliberately
+leaves substantial physical headroom for WAL, bounded PostgreSQL temporary
+work, and filesystem/provider overhead; it must not be removed merely because
+the physical volume is larger.
+
+### Token identity reconciliation
+
+Token identity discovery reconstructs its canonical token universe at process
+startup by walking `market_pools` in 5,000-row primary-key pages ordered by
+`(source_code, pool_key)`. Uniqueness is accumulated in the worker's
+application state, so PostgreSQL does not perform a whole-universe token
+`UNION`, `DISTINCT`, grouping, or global token sort. Newly indexed pools enqueue
+their tokens immediately.
+
+A complete reconciliation runs every six hours. This is sufficient for reorg
+cleanup because current market attachment still reads `market_pools`, while
+new identities do not wait for reconciliation. Failures use exponential retry
+starting at 30 minutes and capped at six hours; they are reported as delayed
+secondary-stage telemetry without retrying on every five-second worker poll or
+stopping the seven source indexers. Structured heartbeat/status evidence
+includes reconciliation duration, rows/pages scanned, unique candidates, last
+success, next retry, status, and the bounded error description.
+
 ### Observability and storage scope
 
 The worker emits a structured `market_indexer_heartbeat` log at most once per

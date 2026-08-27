@@ -8,7 +8,7 @@ import {
   type Hex,
   type PublicClient
 } from "viem";
-import type { Pool } from "pg";
+import type { Pool, QueryResult } from "pg";
 
 const ZERO_ADDRESS_BYTES = Buffer.alloc(20);
 const ROBINHOOD_MULTICALL3 = getAddress("0xcA11bde05977b3631167028862bE2a173976CA11");
@@ -16,7 +16,10 @@ const ROBINHOOD_MULTICALL3 = getAddress("0xcA11bde05977b3631167028862bE2a173976C
 // identity reads. Five identities (20 calls) stays below the observed ceiling.
 const IDENTITIES_PER_MULTICALL = 5;
 const MAX_CONCURRENT_IDENTITY_MULTICALLS = 2;
-const CATALOG_RESCAN_MS = 15 * 60_000;
+export const CANONICAL_TOKEN_SCAN_PAGE_SIZE = 5_000;
+export const CATALOG_RECONCILIATION_INTERVAL_MS = 6 * 60 * 60_000;
+export const CATALOG_RECONCILIATION_RETRY_BASE_MS = 30 * 60_000;
+export const CATALOG_RECONCILIATION_RETRY_MAX_MS = 6 * 60 * 60_000;
 const RETRY_ERROR_AFTER_MS = 15 * 60_000;
 const MAXIMUM_SHARD_BYTES = 8 * 1024 * 1024;
 const ADDRESS_PATTERN = /^[0-9a-f]{40}$/;
@@ -42,13 +45,38 @@ type TokenIdentityIndexStats = Readonly<{
   complete: boolean;
 }>;
 
+export type TokenIdentityReconciliationStatus = Readonly<{
+  status: "pending" | "running" | "ready" | "delayed";
+  pageSize: number;
+  rowsScanned: number;
+  pagesScanned: number;
+  uniqueCandidateTokens: number;
+  lastDurationMs: number | null;
+  lastSuccessfulAt: string | null;
+  nextReconciliationAt: string | null;
+  consecutiveFailures: number;
+  lastError: string | null;
+}>;
+
+type MutableReconciliationStatus = {
+  status: TokenIdentityReconciliationStatus["status"];
+  rowsScanned: number;
+  pagesScanned: number;
+  uniqueCandidateTokens: number;
+  lastDurationMs: number | null;
+  lastSuccessfulAt: number | null;
+  nextReconciliationAt: number;
+  consecutiveFailures: number;
+  lastError: string | null;
+};
+
 type IdentityIndexState = {
   shards: Map<number, Map<string, StoredIdentity>>;
   readyIdentities: Map<string, ReadyStoredIdentity>;
   canonicalTokens: Set<string> | null;
   pendingByShard: Map<number, string[]>;
   retryAfter: Map<string, number>;
-  lastScanAt: number;
+  reconciliation: MutableReconciliationStatus;
   stats: TokenIdentityIndexStats;
 };
 
@@ -183,7 +211,17 @@ async function loadState(pool: Pool): Promise<IdentityIndexState> {
     canonicalTokens: null,
     pendingByShard: new Map(),
     retryAfter: new Map(),
-    lastScanAt: 0,
+    reconciliation: {
+      status: "pending",
+      rowsScanned: 0,
+      pagesScanned: 0,
+      uniqueCandidateTokens: 0,
+      lastDurationMs: null,
+      lastSuccessfulAt: null,
+      nextReconciliationAt: 0,
+      consecutiveFailures: 0,
+      lastError: null
+    },
     stats: {
       totalCanonicalMarkets: catalog?.total_canonical_markets ?? 0,
       totalUniqueCanonicalTokens,
@@ -231,19 +269,97 @@ async function persistStats(pool: Pool, stats: TokenIdentityIndexStats) {
   );
 }
 
+type CanonicalMarketTokenRow = {
+  source_code: number;
+  pool_key: Buffer;
+  token0: Buffer;
+  token1: Buffer;
+};
+
+function canonicalTokenAddress(value: Buffer) {
+  if (!Buffer.isBuffer(value) || value.length !== 20) {
+    throw new Error("canonical token reconciliation received an invalid token address");
+  }
+  return value.equals(ZERO_ADDRESS_BYTES) ? null : `0x${value.toString("hex")}`;
+}
+
+async function scanCanonicalTokensByPrimaryKey(pool: Pool) {
+  const canonicalTokens = new Set<string>();
+  let rowsScanned = 0;
+  let pagesScanned = 0;
+  let previousSource: number | null = null;
+  let previousPoolKey: Buffer | null = null;
+  while (true) {
+    const result: QueryResult<CanonicalMarketTokenRow> = previousSource === null
+      ? await pool.query<CanonicalMarketTokenRow>(
+          `SELECT source_code,pool_key,token0,token1
+           FROM market_pools
+           ORDER BY source_code,pool_key
+           LIMIT $1`,
+          [CANONICAL_TOKEN_SCAN_PAGE_SIZE]
+        )
+      : await pool.query<CanonicalMarketTokenRow>(
+          `SELECT source_code,pool_key,token0,token1
+           FROM market_pools
+           WHERE (source_code,pool_key) > ($1::smallint,$2::bytea)
+           ORDER BY source_code,pool_key
+           LIMIT $3`,
+          [previousSource, previousPoolKey, CANONICAL_TOKEN_SCAN_PAGE_SIZE]
+        );
+    if (result.rows.length === 0) break;
+    if (result.rows.length > CANONICAL_TOKEN_SCAN_PAGE_SIZE) {
+      throw new Error("canonical token reconciliation exceeded its page bound");
+    }
+    pagesScanned += 1;
+    rowsScanned += result.rows.length;
+    for (const row of result.rows) {
+      const token0 = canonicalTokenAddress(row.token0);
+      const token1 = canonicalTokenAddress(row.token1);
+      if (token0) canonicalTokens.add(token0);
+      if (token1) canonicalTokens.add(token1);
+    }
+    const last: CanonicalMarketTokenRow = result.rows.at(-1)!;
+    if (!Number.isInteger(last.source_code) || last.source_code < 1 || last.source_code > 7 ||
+        !Buffer.isBuffer(last.pool_key) || ![20, 32].includes(last.pool_key.length)) {
+      throw new Error("canonical token reconciliation received an invalid primary-key cursor");
+    }
+    if (previousSource !== null && previousPoolKey !== null &&
+        (last.source_code < previousSource ||
+          (last.source_code === previousSource && Buffer.compare(last.pool_key, previousPoolKey) <= 0))) {
+      throw new Error("canonical token reconciliation primary-key cursor did not advance");
+    }
+    previousSource = last.source_code;
+    previousPoolKey = last.pool_key;
+    if (result.rows.length < CANONICAL_TOKEN_SCAN_PAGE_SIZE) break;
+  }
+  return { canonicalTokens, rowsScanned, pagesScanned };
+}
+
+function reconciliationStatus(state: IdentityIndexState): TokenIdentityReconciliationStatus {
+  const reconciliation = state.reconciliation;
+  return {
+    status: reconciliation.status,
+    pageSize: CANONICAL_TOKEN_SCAN_PAGE_SIZE,
+    rowsScanned: reconciliation.rowsScanned,
+    pagesScanned: reconciliation.pagesScanned,
+    uniqueCandidateTokens: reconciliation.uniqueCandidateTokens,
+    lastDurationMs: reconciliation.lastDurationMs,
+    lastSuccessfulAt: reconciliation.lastSuccessfulAt === null
+      ? null
+      : new Date(reconciliation.lastSuccessfulAt).toISOString(),
+    nextReconciliationAt: reconciliation.nextReconciliationAt <= 0
+      ? null
+      : new Date(reconciliation.nextReconciliationAt).toISOString(),
+    consecutiveFailures: reconciliation.consecutiveFailures,
+    lastError: reconciliation.lastError
+  };
+}
+
 async function rescanCanonicalTokens(pool: Pool, state: IdentityIndexState) {
-  const [marketResult, tokenResult] = await Promise.all([
-    pool.query<{ count: string }>("SELECT COUNT(*)::text AS count FROM market_pools"),
-    pool.query<{ token: string }>(
-      `SELECT encode(token,'hex') AS token FROM (
-         SELECT token0 AS token FROM market_pools WHERE token0 <> $1
-         UNION
-         SELECT token1 AS token FROM market_pools WHERE token1 <> $1
-       ) AS canonical_tokens ORDER BY token`,
-      [ZERO_ADDRESS_BYTES]
-    )
-  ]);
-  const canonicalTokens = new Set(tokenResult.rows.map((row) => `0x${row.token}`));
+  const startedAt = Date.now();
+  state.reconciliation.status = "running";
+  state.reconciliation.lastError = null;
+  const { canonicalTokens, rowsScanned, pagesScanned } = await scanCanonicalTokensByPrimaryKey(pool);
   const dirtyShards = new Set<number>();
   for (const [shardNumber, shard] of state.shards) {
     for (const address of shard.keys()) {
@@ -276,9 +392,8 @@ async function rescanCanonicalTokens(pool: Pool, state: IdentityIndexState) {
   const totalUniqueCanonicalTokens = canonicalTokens.size;
   state.canonicalTokens = canonicalTokens;
   state.pendingByShard = pendingByShard;
-  state.lastScanAt = now;
   state.stats = {
-    totalCanonicalMarkets: Number(marketResult.rows[0]?.count ?? 0),
+    totalCanonicalMarkets: rowsScanned,
     totalUniqueCanonicalTokens,
     totalVerifiedErc20Identities: verified,
     indexedSearchTokenIdentities: verified,
@@ -286,10 +401,69 @@ async function rescanCanonicalTokens(pool: Pool, state: IdentityIndexState) {
     complete: evaluated === totalUniqueCanonicalTokens
   };
   await persistStats(pool, state.stats);
+  const completedAt = Date.now();
+  state.reconciliation = {
+    status: "ready",
+    rowsScanned,
+    pagesScanned,
+    uniqueCandidateTokens: totalUniqueCanonicalTokens,
+    lastDurationMs: completedAt - startedAt,
+    lastSuccessfulAt: completedAt,
+    nextReconciliationAt: completedAt + CATALOG_RECONCILIATION_INTERVAL_MS,
+    consecutiveFailures: 0,
+    lastError: null
+  };
+  console.info(JSON.stringify({
+    event: "market_token_identity_reconciliation_completed",
+    durationMs: completedAt - startedAt,
+    rowsScanned,
+    pagesScanned,
+    uniqueCandidateTokens: totalUniqueCanonicalTokens,
+    nextReconciliationAt: new Date(state.reconciliation.nextReconciliationAt).toISOString()
+  }));
+}
+
+async function reconcileCanonicalTokensIfDue(pool: Pool, state: IdentityIndexState) {
+  const now = Date.now();
+  if (state.reconciliation.status === "running" || state.reconciliation.nextReconciliationAt > now) {
+    return;
+  }
+  const startedAt = now;
+  try {
+    await rescanCanonicalTokens(pool, state);
+  } catch (error) {
+    const completedAt = Date.now();
+    const consecutiveFailures = state.reconciliation.consecutiveFailures + 1;
+    const retryDelayMs = Math.min(
+      CATALOG_RECONCILIATION_RETRY_BASE_MS * (2 ** Math.min(consecutiveFailures - 1, 8)),
+      CATALOG_RECONCILIATION_RETRY_MAX_MS
+    );
+    const message = (error instanceof Error ? error.message : String(error)).slice(0, 4_096);
+    state.reconciliation = {
+      ...state.reconciliation,
+      status: "delayed",
+      lastDurationMs: completedAt - startedAt,
+      nextReconciliationAt: completedAt + retryDelayMs,
+      consecutiveFailures,
+      lastError: message
+    };
+    console.warn(JSON.stringify({
+      event: "market_token_identity_reconciliation_delayed",
+      durationMs: completedAt - startedAt,
+      consecutiveFailures,
+      retryDelayMs,
+      nextReconciliationAt: new Date(state.reconciliation.nextReconciliationAt).toISOString(),
+      error: message
+    }));
+  }
 }
 
 export async function readCanonicalTokenIdentityIndexStats(pool: Pool) {
   return (await stateFor(pool)).stats;
+}
+
+export async function readCanonicalTokenIdentityReconciliationStatus(pool: Pool) {
+  return reconciliationStatus(await stateFor(pool));
 }
 
 export async function warmCanonicalTokenIdentityIndex(pool: Pool) {
@@ -303,7 +477,6 @@ export async function enqueueCanonicalTokenIdentityCandidates(
 ) {
   const state = await stateFor(pool);
   if (state.canonicalTokens === null) {
-    state.lastScanAt = 0;
     return;
   }
   let addedTokens = 0;
@@ -337,8 +510,9 @@ export async function refreshCanonicalTokenIdentityIndex(
   _observedBlockHash: Hex
 ) {
   const state = await stateFor(pool);
-  if (state.canonicalTokens === null || state.lastScanAt + CATALOG_RESCAN_MS <= Date.now()) {
-    await rescanCanonicalTokens(pool, state);
+  await reconcileCanonicalTokensIfDue(pool, state);
+  if (state.canonicalTokens === null) {
+    return { processed: 0, reconciliation: reconciliationStatus(state) };
   }
   const selected: string[] = [];
   let selectedShard: number | null = null;
@@ -349,7 +523,9 @@ export async function refreshCanonicalTokenIdentityIndex(
     selected.push(...pending.splice(0, batchSize));
     break;
   }
-  if (selected.length === 0 || selectedShard === null) return 0;
+  if (selected.length === 0 || selectedShard === null) {
+    return { processed: 0, reconciliation: reconciliationStatus(state) };
+  }
   const addresses = selected.map((address) => getAddress(address));
   const batches = Array.from(
     { length: Math.ceil(addresses.length / IDENTITIES_PER_MULTICALL) },
@@ -440,7 +616,7 @@ export async function refreshCanonicalTokenIdentityIndex(
     complete: evaluated === state.stats.totalUniqueCanonicalTokens
   };
   await persistStats(pool, state.stats);
-  return selected.length;
+  return { processed: selected.length, reconciliation: reconciliationStatus(state) };
 }
 
 export async function searchCanonicalTokenIdentityIndex(pool: Pool, query: string, limit: number) {

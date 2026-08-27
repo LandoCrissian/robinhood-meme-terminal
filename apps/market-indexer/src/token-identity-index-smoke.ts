@@ -8,8 +8,13 @@ import {
   type PublicClient
 } from "viem";
 import {
+  CANONICAL_TOKEN_SCAN_PAGE_SIZE,
+  CATALOG_RECONCILIATION_INTERVAL_MS,
+  CATALOG_RECONCILIATION_RETRY_BASE_MS,
+  enqueueCanonicalTokenIdentityCandidates,
   normalizeTokenIdentitySearch,
   readCanonicalTokenIdentityIndexStats,
+  readCanonicalTokenIdentityReconciliationStatus,
   refreshCanonicalTokenIdentityIndex,
   searchCanonicalTokenIdentityIndex
 } from "./token-identity-index.js";
@@ -94,12 +99,20 @@ assert.deepEqual(
 );
 
 const fallbackAddress = "0x1234567890123456789012345678901234567890";
+let fallbackScanRequests = 0;
 const fallbackPool = {
   query: async (text: string) => {
     if (text.startsWith("SELECT shard,payload")) return { rows: [] };
     if (text.startsWith("SELECT total_canonical_markets")) return { rows: [] };
-    if (text.includes("COUNT(*)::text AS count")) return { rows: [{ count: "1" }] };
-    if (text.includes("encode(token,'hex')")) return { rows: [{ token: fallbackAddress.slice(2) }] };
+    if (text.includes("FROM market_pools")) {
+      fallbackScanRequests += 1;
+      return { rows: [{
+        source_code: 1,
+        pool_key: Buffer.from("11".repeat(20), "hex"),
+        token0: Buffer.from(fallbackAddress.slice(2), "hex"),
+        token1: Buffer.alloc(20)
+      }] };
+    }
     if (text.startsWith("INSERT INTO market_token_identity_")) return { rows: [] };
     throw new Error(`unexpected fallback query: ${text}`);
   }
@@ -126,4 +139,185 @@ await refreshCanonicalTokenIdentityIndex(
 );
 assert.equal((await searchCanonicalTokenIdentityIndex(fallbackPool, "FALLBACK", 1))[0]?.address.toLowerCase(),
   fallbackAddress);
-console.log("Compressed canonical identity shards preserve exact search beyond the retired 2048-token/4000-market catalog bounds.");
+assert.equal(fallbackScanRequests, 1);
+
+const bufferFromIndex = (index: number) => Buffer.from(
+  BigInt(index).toString(16).padStart(40, "0"),
+  "hex"
+);
+const PRODUCTION_SCALE_ROWS = 940_000;
+const PRODUCTION_SCALE_UNIQUE_TOKENS = 758_634;
+let scaleOffset = 0;
+let scaleScanRequests = 0;
+let maximumPageRows = 0;
+let largestPagePayloadBytes = 0;
+let peakHeapBytes = process.memoryUsage().heapUsed;
+const scaleQueries: string[] = [];
+const scalePool = {
+  query: async (text: string, values: unknown[] = []) => {
+    if (text.startsWith("SELECT shard,payload")) return { rows: [] };
+    if (text.startsWith("SELECT total_canonical_markets")) return { rows: [] };
+    if (text.includes("FROM market_pools")) {
+      scaleQueries.push(text);
+      scaleScanRequests += 1;
+      assert.match(text, /ORDER BY source_code,pool_key\s+LIMIT \$/);
+      assert.doesNotMatch(text, /\b(?:UNION|DISTINCT|GROUP\s+BY)\b|ORDER BY token/i);
+      if (scaleOffset > 0) {
+        assert.match(text, /WHERE \(source_code,pool_key\) > \(\$1::smallint,\$2::bytea\)/);
+        assert.equal(values[0], Math.min(Math.floor((scaleOffset - 1) / 140_000) + 1, 7));
+        assert.deepEqual(values[1], bufferFromIndex(scaleOffset));
+      }
+      const count = Math.min(CANONICAL_TOKEN_SCAN_PAGE_SIZE, PRODUCTION_SCALE_ROWS - scaleOffset);
+      const rows = Array.from({ length: Math.max(count, 0) }, (_, pageIndex) => {
+        const index = scaleOffset + pageIndex;
+        return {
+          source_code: Math.min(Math.floor(index / 140_000) + 1, 7),
+          pool_key: bufferFromIndex(index + 1),
+          token0: bufferFromIndex((index % PRODUCTION_SCALE_UNIQUE_TOKENS) + 1),
+          token1: index % 100 === 0
+            ? Buffer.alloc(20)
+            : bufferFromIndex(((index + 37_000) % PRODUCTION_SCALE_UNIQUE_TOKENS) + 1)
+        };
+      });
+      scaleOffset += rows.length;
+      maximumPageRows = Math.max(maximumPageRows, rows.length);
+      largestPagePayloadBytes = Math.max(
+        largestPagePayloadBytes,
+        rows.reduce((bytes, row) => bytes + 2 + row.pool_key.length + row.token0.length + row.token1.length, 0)
+      );
+      peakHeapBytes = Math.max(peakHeapBytes, process.memoryUsage().heapUsed);
+      return { rows };
+    }
+    if (text.startsWith("INSERT INTO market_token_identity_")) return { rows: [] };
+    throw new Error(`unexpected production-scale query: ${text}`);
+  }
+} as unknown as Pool;
+const scaleRpc = {
+  multicall: async ({ contracts }: { contracts: Array<{ functionName: string }> }) =>
+    contracts.map(({ functionName }) => ({
+      status: "success" as const,
+      result: functionName === "name" ? "Scale Token"
+        : functionName === "symbol" ? "SCALE"
+          : functionName === "decimals" ? 18 : 1_000n
+    }))
+} as unknown as PublicClient;
+const scaleHeapBefore = process.memoryUsage().heapUsed;
+const scaleStartedAt = Date.now();
+const scaleRefresh = await refreshCanonicalTokenIdentityIndex(
+  scalePool,
+  scaleRpc,
+  25,
+  1n,
+  `0x${"2".repeat(64)}`
+);
+const scaleDurationMs = Date.now() - scaleStartedAt;
+peakHeapBytes = Math.max(peakHeapBytes, process.memoryUsage().heapUsed);
+const scaleStats = await readCanonicalTokenIdentityIndexStats(scalePool);
+assert.equal(scaleStats.totalCanonicalMarkets, PRODUCTION_SCALE_ROWS);
+assert.equal(scaleStats.totalUniqueCanonicalTokens, PRODUCTION_SCALE_UNIQUE_TOKENS);
+assert.equal(scaleRefresh.reconciliation.status, "ready");
+assert.equal(scaleRefresh.reconciliation.rowsScanned, PRODUCTION_SCALE_ROWS);
+assert.equal(scaleRefresh.reconciliation.pagesScanned, Math.ceil(PRODUCTION_SCALE_ROWS / CANONICAL_TOKEN_SCAN_PAGE_SIZE));
+assert.equal(scaleRefresh.reconciliation.uniqueCandidateTokens, PRODUCTION_SCALE_UNIQUE_TOKENS);
+assert.equal(maximumPageRows, CANONICAL_TOKEN_SCAN_PAGE_SIZE);
+assert.equal(scaleScanRequests, Math.ceil(PRODUCTION_SCALE_ROWS / CANONICAL_TOKEN_SCAN_PAGE_SIZE) + 1);
+assert.ok(scaleRefresh.reconciliation.nextReconciliationAt);
+assert.ok(
+  Date.parse(scaleRefresh.reconciliation.nextReconciliationAt!) - Date.now() >
+    CATALOG_RECONCILIATION_INTERVAL_MS - 60_000
+);
+assert.equal(scaleQueries.some((query) => /\bUNION\b|ORDER BY token/i.test(query)), false);
+
+const incrementalAddress = "0xffffffffffffffffffffffffffffffffffffffff";
+await enqueueCanonicalTokenIdentityCandidates(scalePool, [incrementalAddress, `0x${"0".repeat(40)}`], 1);
+const incrementalStats = await readCanonicalTokenIdentityIndexStats(scalePool);
+assert.equal(incrementalStats.totalCanonicalMarkets, PRODUCTION_SCALE_ROWS + 1);
+assert.equal(incrementalStats.totalUniqueCanonicalTokens, PRODUCTION_SCALE_UNIQUE_TOKENS + 1);
+assert.equal(incrementalStats.unresolvedTokenIdentities, scaleStats.unresolvedTokenIdentities + 1);
+
+let failedScanRequests = 0;
+const failingPool = {
+  query: async (text: string) => {
+    if (text.startsWith("SELECT shard,payload")) return { rows: [] };
+    if (text.startsWith("SELECT total_canonical_markets")) return { rows: [] };
+    if (text.includes("FROM market_pools")) {
+      failedScanRequests += 1;
+      throw new Error("could not write to file base/pgsql_tmp/test: No space left on device");
+    }
+    throw new Error(`unexpected failure-path query: ${text}`);
+  }
+} as unknown as Pool;
+const failureStartedAt = Date.now();
+const firstFailure = await refreshCanonicalTokenIdentityIndex(
+  failingPool,
+  scaleRpc,
+  25,
+  1n,
+  `0x${"3".repeat(64)}`
+);
+const secondFailure = await refreshCanonicalTokenIdentityIndex(
+  failingPool,
+  scaleRpc,
+  25,
+  1n,
+  `0x${"3".repeat(64)}`
+);
+assert.equal(firstFailure.processed, 0);
+assert.equal(firstFailure.reconciliation.status, "delayed");
+assert.equal(secondFailure.reconciliation.status, "delayed");
+assert.equal(failedScanRequests, 1);
+assert.ok(Date.parse(firstFailure.reconciliation.nextReconciliationAt!) - failureStartedAt >=
+  CATALOG_RECONCILIATION_RETRY_BASE_MS);
+assert.match(firstFailure.reconciliation.lastError ?? "", /No space left on device/);
+assert.deepEqual(
+  await readCanonicalTokenIdentityReconciliationStatus(failingPool),
+  secondFailure.reconciliation
+);
+
+let restartScanRequests = 0;
+const restartAddress = "0xabcdefabcdefabcdefabcdefabcdefabcdefabcd";
+const restartPool = {
+  query: async (text: string) => {
+    if (text.startsWith("SELECT shard,payload")) return { rows: [] };
+    if (text.startsWith("SELECT total_canonical_markets")) return { rows: [] };
+    if (text.includes("FROM market_pools")) {
+      restartScanRequests += 1;
+      return { rows: [{
+        source_code: 7,
+        pool_key: Buffer.from("44".repeat(20), "hex"),
+        token0: Buffer.from(restartAddress.slice(2), "hex"),
+        token1: Buffer.alloc(20)
+      }] };
+    }
+    if (text.startsWith("INSERT INTO market_token_identity_")) return { rows: [] };
+    throw new Error(`unexpected restart query: ${text}`);
+  }
+} as unknown as Pool;
+await refreshCanonicalTokenIdentityIndex(
+  restartPool,
+  scaleRpc,
+  25,
+  1n,
+  `0x${"4".repeat(64)}`
+);
+assert.equal(restartScanRequests, 1);
+assert.equal((await readCanonicalTokenIdentityIndexStats(restartPool)).totalUniqueCanonicalTokens, 1);
+
+console.log(JSON.stringify({
+  event: "token_identity_reconciliation_scale_evidence",
+  productionScaleRows: PRODUCTION_SCALE_ROWS,
+  uniqueTokens: PRODUCTION_SCALE_UNIQUE_TOKENS,
+  pageSize: CANONICAL_TOKEN_SCAN_PAGE_SIZE,
+  pagesScanned: scaleRefresh.reconciliation.pagesScanned,
+  maximumPageRows,
+  largestPagePayloadBytes,
+  scanDurationMs: scaleDurationMs,
+  peakNodeHeapBytes: peakHeapBytes,
+  heapDeltaBytes: Math.max(peakHeapBytes - scaleHeapBefore, 0),
+  globalTokenUnion: false,
+  globalTokenOrderBy: false,
+  perPollFailureRetry: false,
+  restartReconstruction: true,
+  incrementalEnqueue: true
+}));
+console.log("Bounded primary-key reconciliation preserves canonical token identity coverage without PostgreSQL global token sorting.");

@@ -40,7 +40,9 @@ import {
 import { isUpSource, readUpPoolEvidence } from "./up-enrichment.js";
 import {
   enqueueCanonicalTokenIdentityCandidates,
-  refreshCanonicalTokenIdentityIndex
+  readCanonicalTokenIdentityReconciliationStatus,
+  refreshCanonicalTokenIdentityIndex,
+  type TokenIdentityReconciliationStatus
 } from "./token-identity-index.js";
 
 export type WorkerStatus = {
@@ -55,6 +57,7 @@ export type WorkerStatus = {
   lastCycleCompletedAt: string | null;
   lastCycleDurationMs: number | null;
   lastFinalizedHead: string | null;
+  tokenIdentityReconciliation: TokenIdentityReconciliationStatus | null;
   telemetry: MarketIndexerTelemetry | null;
 };
 
@@ -155,6 +158,7 @@ export class MarketIndexerWorker {
     lastCycleCompletedAt: null,
     lastCycleDurationMs: null,
     lastFinalizedHead: null,
+    tokenIdentityReconciliation: null,
     telemetry: null
   };
 
@@ -606,6 +610,7 @@ export class MarketIndexerWorker {
         stateReadyPools: telemetry?.stateReadyPools ?? null,
         stateErrorPools: telemetry?.stateErrorPools ?? null,
         database: telemetry?.database ?? null,
+        tokenIdentityReconciliation: this.status.tokenIdentityReconciliation,
         sources:
           telemetry?.sources.map((source) => ({
             sourceId: source.sourceId,
@@ -665,15 +670,22 @@ export class MarketIndexerWorker {
         failure ??= new Error(`up enrichment: ${errorText(error)}`);
       }
       try {
-        await refreshCanonicalTokenIdentityIndex(
+        const identityRefresh = await refreshCanonicalTokenIdentityIndex(
           this.pool,
           this.rpc,
           this.config.tokenIdentityBatchSize,
           finalizedHead,
           finalizedBlock.hash
         );
+        this.status.tokenIdentityReconciliation = identityRefresh.reconciliation;
       } catch (error) {
         failure ??= new Error(`token identity index: ${errorText(error)}`);
+        try {
+          this.status.tokenIdentityReconciliation =
+            await readCanonicalTokenIdentityReconciliationStatus(this.pool);
+        } catch {
+          // The primary token-identity error above remains the truthful failure.
+        }
       }
       this.status.lastError = failure?.message ?? null;
     } catch (error) {
