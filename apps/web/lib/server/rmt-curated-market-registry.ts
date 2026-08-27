@@ -4,6 +4,7 @@ import {
   RMT_CURATED_MARKET_REGISTRY,
   RMT_CURATED_MARKET_MANIFEST_HASH,
   RMT_CURATED_UNISWAP_FACTORIES,
+  isRmtCuratedMarketIdentity,
   type RmtCuratedMarketEntry
 } from "../vnext/curated-market-registry";
 import { directoryMarketsFromCanonicalPools, type VNextDirectoryMarket } from "../vnext/market-directory";
@@ -13,7 +14,14 @@ import {
   ROBINHOOD_WETH_ADDRESS
 } from "../vnext/robinhood-assets";
 import { ROBINHOOD_V4_STATE_VIEW } from "../uniswap-v4";
-import { readRobinhoodTokenIdentities } from "./universal-market-resolver";
+import {
+  readRobinhoodTokenIdentities,
+  readRobinhoodTokenIdentity
+} from "./universal-market-resolver";
+import {
+  applyProjectIdentityDirectoryAdmission,
+  type ProjectIdentityAdmissionCandidate
+} from "./project-identity-admission";
 import type {
   VNextCanonicalMarketInventoryQuery,
   VNextCanonicalMarketInventoryPool,
@@ -84,6 +92,50 @@ export class RmtCuratedMarketAdmissionError extends Error {
   }
 }
 
+type RmtCuratedContractListingDependencies = {
+  readIdentity?: typeof readRobinhoodTokenIdentity;
+  admitProjectIdentities?: (
+    candidates: readonly ProjectIdentityAdmissionCandidate[]
+  ) => Promise<{ quarantined: readonly unknown[] }>;
+};
+
+export type RmtCuratedContractListing =
+  | { status: "listed" }
+  | { status: "not_found" }
+  | {
+      status: "not_listed";
+      identity: NonNullable<Awaited<ReturnType<typeof readRobinhoodTokenIdentity>>>;
+    }
+  | {
+      status: "not_admitted";
+      identity: NonNullable<Awaited<ReturnType<typeof readRobinhoodTokenIdentity>>>;
+    };
+
+export async function classifyRmtCuratedContractListing(
+  address: Address,
+  dependencies: RmtCuratedContractListingDependencies = {}
+): Promise<RmtCuratedContractListing> {
+  if (isRmtCuratedMarketIdentity(address)) {
+    return { status: "listed" };
+  }
+  const readIdentity = dependencies.readIdentity ?? readRobinhoodTokenIdentity;
+  const identity = await readIdentity(address);
+  if (!identity) return { status: "not_found" };
+  const admitProjectIdentities = dependencies.admitProjectIdentities
+    ?? applyProjectIdentityDirectoryAdmission;
+  const admission = await admitProjectIdentities([{
+    address: identity.address,
+    verifiedIdentity: {
+      address: identity.address,
+      name: identity.name,
+      symbol: identity.symbol
+    }
+  }]);
+  return admission.quarantined.length > 0
+    ? { status: "not_admitted", identity }
+    : { status: "not_listed", identity };
+}
+
 export function requireRmtCuratedExecutionAssets(inputAsset: Address, outputAsset: Address) {
   const assets = [inputAsset, outputAsset].map((address) => address.toLowerCase());
   const marketAssets = assets.filter((address) => !SETTLEMENT_ASSETS.has(address));
@@ -95,7 +147,7 @@ export function requireRmtCuratedExecutionAssets(inputAsset: Address, outputAsse
 
 export function rmtCuratedMarketAdmissionErrorResponse(cause: unknown) {
   return cause instanceof RmtCuratedMarketAdmissionError
-    ? Response.json({ error: cause.message, directoryAdmission: "not_admitted" }, {
+    ? Response.json({ error: cause.message, listingAdmission: "not_listed" }, {
         status: 409,
         headers: { "Cache-Control": "no-store" }
       })

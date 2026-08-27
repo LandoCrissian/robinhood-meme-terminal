@@ -169,7 +169,10 @@ async function main() {
     }).catch((cause) => cause)
   );
   assert.equal(conflictResponse?.status, 409);
-  assert.deepEqual(await conflictResponse?.json(), { error: "Not admitted to the RMT directory." });
+  assert.deepEqual(await conflictResponse?.json(), {
+    error: "Not admitted to the RMT directory.",
+    directoryAdmission: "not_admitted"
+  });
 
   const boundaryMarkets = Array.from({ length: VNEXT_MARKET_DIRECTORY_PAGE_SIZE + 1 }, (_, index) => ({
     address: getAddress(`0x${(index + 1).toString(16).padStart(40, "0")}`),

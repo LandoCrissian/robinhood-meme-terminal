@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { getAddress } from "viem";
 import {
   deriveVNextMarketState,
   directoryMarketFromUniversalSearchResult,
@@ -29,8 +30,11 @@ import {
   rmtCuratedMarketSearchCandidates
 } from "./curated-market-registry";
 import {
+  classifyRmtCuratedContractListing,
   readRmtCuratedMarketSnapshot,
+  RmtCuratedMarketAdmissionError,
   requireRmtCuratedExecutionAssets,
+  rmtCuratedMarketAdmissionErrorResponse,
   resetRmtCuratedMarketSnapshotForTests
 } from "../server/rmt-curated-market-registry";
 import { searchRmtCuratedMarkets } from "../server/rmt-curated-market-search";
@@ -382,6 +386,10 @@ console.log("VNext Terminal universal search integration preserves local-first f
 async function curatedRegistryChecks() {
   assert.equal(RMT_CURATED_MARKET_REGISTRY.length, 8);
   assert.equal(new Set(RMT_CURATED_MARKET_REGISTRY.map((entry) => entry.token.toLowerCase())).size, 8);
+  assert.deepEqual(
+    RMT_CURATED_MARKET_REGISTRY.map((entry) => entry.aliases[0]),
+    ["STONKBROKER", "PONS", "PIPEDOG", "CASHCAT", "LEMON.FUN", "PEEP", "HOPIUM", "CANNACAT"]
+  );
   assert.equal(rmtCuratedMarketByToken("0xf0821f2bf570ca4e7499a9ed9db7c788fed9946f")?.market.sourceId, "uniswap-v2");
   assert.equal(rmtCuratedMarketByPool("0xc1dbd75280b6d117b4ac1e27fcd00c6dccb1a2b2fbfa9923a2c492711299d337")?.token.toLowerCase(), "0xb6ce51925c2e397ebf1a443b343d19267b3d4225");
   assert.equal(rmtCuratedMarketSearchCandidates("Canna Cat")[0]?.token.toLowerCase(), "0x1139d423c1706bdead91f03507f521635591ed92");
@@ -414,6 +422,42 @@ async function curatedRegistryChecks() {
   });
   assert.equal(unlisted.status, "not_listed");
   assert.equal(unlisted.results.length, 0);
+  assert.equal((await classifyRmtCuratedContractListing(RMT_CURATED_MARKET_REGISTRY[0].token, {
+    readIdentity: async () => { throw new Error("curated identity must not require unlisted classification"); }
+  })).status, "listed");
+  assert.equal((await classifyRmtCuratedContractListing(
+    getAddress(RMT_CURATED_MARKET_REGISTRY.find((entry) => entry.market.poolAddress)?.market.poolAddress ?? TOKEN_TWO),
+    { readIdentity: async () => { throw new Error("curated pool must remain a listed lookup identity"); } }
+  )).status, "listed");
+  const verifiedUnlistedIdentity = {
+    address: getAddress(TOKEN_TWO),
+    name: "Unlisted",
+    symbol: "UNLISTED",
+    decimals: 18,
+    totalSupply: "1"
+  };
+  const validUnlisted = await classifyRmtCuratedContractListing(getAddress(TOKEN_TWO), {
+    readIdentity: async () => verifiedUnlistedIdentity,
+    admitProjectIdentities: async () => ({ quarantined: [] })
+  });
+  assert.equal(validUnlisted.status, "not_listed");
+  const invalidContract = await classifyRmtCuratedContractListing(getAddress(TOKEN_TWO), {
+    readIdentity: async () => null
+  });
+  assert.equal(invalidContract.status, "not_found");
+  const positiveConflict = await classifyRmtCuratedContractListing(getAddress(TOKEN_THREE), {
+    readIdentity: async (address) => ({ ...verifiedUnlistedIdentity, address }),
+    admitProjectIdentities: async () => ({ quarantined: [{}] })
+  });
+  assert.equal(positiveConflict.status, "not_admitted");
+  const unlistedAdmissionResponse = rmtCuratedMarketAdmissionErrorResponse(
+    new RmtCuratedMarketAdmissionError()
+  );
+  assert.equal(unlistedAdmissionResponse?.status, 409);
+  assert.deepEqual(await unlistedAdmissionResponse?.json(), {
+    error: "Token exists but is not currently listed on RMT.",
+    listingAdmission: "not_listed"
+  });
   assert.doesNotThrow(() => requireRmtCuratedExecutionAssets(
     ROBINHOOD_NATIVE_ASSET_ADDRESS,
     RMT_CURATED_MARKET_REGISTRY[0].token
@@ -429,7 +473,14 @@ async function curatedRegistryChecks() {
   ]) {
     const routeSource = readFileSync(new URL(routePath, import.meta.url), "utf8");
     assert.match(routeSource, /requireRmtCuratedExecutionAssets\(inputAsset, outputAsset\)/);
+    assert.match(routeSource, /rmtCuratedMarketAdmissionErrorResponse\(cause\)/);
   }
+  const externalRoute = readFileSync(new URL("../../app/api/markets/external/route.ts", import.meta.url), "utf8");
+  assert.match(externalRoute, /classifyRmtCuratedContractListing\(getAddress\(requestedContract\)\)/);
+  assert.match(externalRoute, /listing\.status === "not_listed"/);
+  assert.match(externalRoute, /listing\.status === "not_found"/);
+  assert.match(externalRoute, /listing\.status === "not_admitted"/);
+  assert.doesNotMatch(externalRoute, /!isRmtCuratedMarketIdentity\(requestedContract\)/);
   console.log("RMT curated market registry, verified identity boundary, and not-listed exact-contract state passed.");
 }
 
