@@ -170,16 +170,20 @@ export class NftIndexerWorker {
     });
     let expectedNextBlock = checkpoint.nextBlock;
     for (const range of plan.ranges) {
+      const beforeLogs = await this.rpc.getBlock({ blockNumber: range.toBlock });
       const logs = await this.rpc.getLogs({
         address: source.collectionAddress,
         fromBlock: range.fromBlock,
         toBlock: range.toBlock,
         topics: activityTopicsForStandard(source.standard)
       });
+      const afterLogs = await this.rpc.getBlock({ blockNumber: range.toBlock });
+      if (beforeLogs.hash.toLowerCase() !== afterLogs.hash.toLowerCase()) {
+        throw new Error(`RANGE_REORG_DETECTED: canonical range-end hash changed at block ${range.toBlock}`);
+      }
       const events = this.decodeLogs(source, logs);
-      const end = await this.rpc.getBlock({ blockNumber: range.toBlock });
       await persistProcessedRange({
-        pool: this.pool, source, expectedNextBlock, toBlock: range.toBlock, toBlockHash: end.hash, events
+        pool: this.pool, source, expectedNextBlock, toBlock: range.toBlock, toBlockHash: afterLogs.hash, events
       });
       expectedNextBlock = range.toBlock + 1n;
     }

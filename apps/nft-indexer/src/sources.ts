@@ -3,13 +3,40 @@ import { RMT_NFT_ACTIVITY_SOURCES, type RmtNftActivitySource } from '@rmt/shared
 // Project intake is deliberately absent: only the reviewed activity-source manifest is runtime input.
 export const NFT_INDEXER_SOURCES: readonly RmtNftActivitySource[] = RMT_NFT_ACTIVITY_SOURCES;
 
-export function assertReviewedSourceSet(sources: readonly RmtNftActivitySource[]) {
-  const reviewed = new Set(RMT_NFT_ACTIVITY_SOURCES.map((source) =>
-    `${source.chainId}:${source.collectionAddress.toLowerCase()}:${source.deploymentTransaction.toLowerCase()}:${source.startBlock}`
-  ));
-  for (const source of sources) {
-    const key = `${source.chainId}:${source.collectionAddress.toLowerCase()}:${source.deploymentTransaction.toLowerCase()}:${source.startBlock}`;
-    if (!reviewed.has(key)) throw new Error('NFT indexer source is not in the reviewed activity-source manifest');
+function sourceKey(source: RmtNftActivitySource) {
+  return [
+    source.chainId,
+    source.projectId,
+    source.collectionAddress.toLowerCase(),
+    source.standard,
+    source.deploymentTransaction.toLowerCase(),
+    source.startBlock
+  ].join(':');
+}
+
+export function assertExactReviewedSourceSet(
+  reviewedSources: readonly RmtNftActivitySource[],
+  suppliedSources: readonly RmtNftActivitySource[]
+) {
+  const reviewed = new Set<string>();
+  for (const source of reviewedSources) {
+    const key = sourceKey(source);
+    if (reviewed.has(key)) throw new Error('Reviewed NFT activity-source manifest contains a duplicate source key');
+    reviewed.add(key);
   }
-  if (sources.length !== reviewed.size) throw new Error('NFT indexer must verify every reviewed activity source');
+
+  const supplied = new Set<string>();
+  for (const source of suppliedSources) {
+    const key = sourceKey(source);
+    if (supplied.has(key)) throw new Error('NFT indexer runtime source set contains a duplicate source key');
+    if (!reviewed.has(key)) throw new Error('NFT indexer source is not in the reviewed activity-source manifest');
+    supplied.add(key);
+  }
+  for (const key of reviewed) {
+    if (!supplied.has(key)) throw new Error('NFT indexer runtime source set omits a reviewed activity source');
+  }
+}
+
+export function assertReviewedSourceSet(sources: readonly RmtNftActivitySource[]) {
+  assertExactReviewedSourceSet(RMT_NFT_ACTIVITY_SOURCES, sources);
 }
