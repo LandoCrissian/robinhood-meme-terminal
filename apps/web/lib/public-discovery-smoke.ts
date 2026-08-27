@@ -27,7 +27,7 @@ assert.ok(publicRule?.disallow?.includes("/admin/"));
 
 const sitemapUrls = staticPublicSitemap().map((entry) => entry.url);
 for (const route of [
-  "/", "/rmt", "/robinhood-chain", "/markets/robinhood-chain", "/status",
+  "/", "/rmt", "/robinhood-chain", "/markets/robinhood-chain", "/nft", "/status",
   "/sources", "/support", "/risks", "/terms", "/privacy", "/experience"
 ]) assert.ok(sitemapUrls.includes(`${appUrl}${route}`), `Sitemap must include ${route}`);
 for (const route of [

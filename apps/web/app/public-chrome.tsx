@@ -67,6 +67,7 @@ function VisiblePublicChrome({ pathname }: { pathname: string }) {
           <div className="publicNavLinks">
             <PublicLink href="/">Terminal</PublicLink>
             <PublicLink href="/markets/robinhood-chain">Markets</PublicLink>
+            <PublicLink href="/nft">NFTs</PublicLink>
             <PublicLink href="/protection">Protection</PublicLink>
             <PublicLink href="/watchlist">Watchlist</PublicLink>
             <span className="networkPulse" aria-label={`${isMainnetRelease ? "Robinhood Chain Mainnet" : "Robinhood Chain Testnet"} live`}><i aria-hidden="true" />RHC <b>{isMainnetRelease ? "MAINNET" : "TESTNET"}</b></span>
@@ -79,6 +80,7 @@ function VisiblePublicChrome({ pathname }: { pathname: string }) {
                 <div>
                   <span>Markets &amp; evidence</span>
                   <PublicLink href="/markets/robinhood-chain">Robinhood Chain markets<small>Discovery and market evidence inside the RMT Terminal</small></PublicLink>
+                  <PublicLink href="/nft">NFT Terminal<small>RMT-curated NFT projects and Project Markets</small></PublicLink>
                   <PublicLink href="/?panel=portfolio">Portfolio<small>Your connected-wallet holdings in Terminal</small></PublicLink>
                   <PublicLink href="/protection">Protection Center<small>Prior permissions, recovery, and execution history</small></PublicLink>
                   <PublicLink href="/watchlist">Watchlist<small>Tokens saved on this device</small></PublicLink>
@@ -103,9 +105,9 @@ function VisiblePublicChrome({ pathname }: { pathname: string }) {
       <nav className="mobileDock" aria-label="Mobile navigation">
         <PublicLink href="/"><span aria-hidden="true">◉</span>Terminal</PublicLink>
         <PublicLink href="/markets/robinhood-chain"><span aria-hidden="true">⌕</span>Markets</PublicLink>
+        <PublicLink href="/nft"><span aria-hidden="true">▣</span>NFTs</PublicLink>
         <PublicLink href="/watchlist"><span aria-hidden="true">☆</span>Watchlist</PublicLink>
         <PublicLink href="/protection"><span aria-hidden="true">◇</span>Protection</PublicLink>
-        <PublicLink href="/sources"><span aria-hidden="true">◎</span>Sources</PublicLink>
       </nav>
     </>
   );

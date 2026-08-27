@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useCallback, useEffect, useRef, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent, type RefObject } from "react";
 import type { AssetMetadata } from "../../lib/vnext/execution-domain";
 import type { VNextExecutionRecord } from "../../lib/vnext/execution-recovery";
@@ -283,6 +284,7 @@ function DesktopHeader(props: TerminalPresentationProps) {
     <RmtBrand onActivate={props.onShowMarkets} />
     <nav aria-label="Terminal navigation">
       <button data-terminal-nav="markets" className={props.context === "markets" && props.directoryView !== "rwa" ? "isActive" : ""} type="button" onClick={props.onShowMarkets}>Markets</button>
+      <Link data-terminal-nav="nft" href="/nft">NFTs</Link>
       <button data-terminal-nav="portfolio" className={props.context === "portfolio" ? "isActive" : ""} type="button" onClick={props.onShowPortfolio}>Portfolio</button>
       <button data-terminal-nav="distribution" className={props.context === "distribution" ? "isActive" : ""} type="button" onClick={props.onShowDistribution}>Distribution</button>
       <button data-terminal-nav="rwa" className={props.context === "markets" && props.directoryView === "rwa" ? "isActive" : ""} type="button" onClick={props.onShowRwa}>RWA</button>
@@ -362,6 +364,7 @@ function MobileHeader(props: TerminalPresentationProps) {
     <header className="rmtMobileHeader"><RmtBrand compact onActivate={props.onShowMarkets} /><span className="rmtMobileChain"><i aria-hidden="true" /> 4663</span><VNextWalletConnection showFunding={false} compact /></header>
     <nav className="rmtMobilePrimaryNav" aria-label="Terminal navigation">
       <button className={props.context === "markets" || props.context === "asset" ? "isActive" : ""} type="button" onClick={props.onShowMarkets}>Markets</button>
+      <Link data-terminal-nav="nft" href="/nft">NFTs</Link>
       <button className={props.context === "portfolio" ? "isActive" : ""} type="button" onClick={props.onShowPortfolio}>Portfolio</button>
       <button className={props.context === "distribution" ? "isActive" : ""} type="button" onClick={props.onShowDistribution}>Distribution</button>
     </nav>
