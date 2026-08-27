@@ -154,8 +154,9 @@ try {
   assert.equal(rewound.nextBlock, start + 2n);
   assert.equal(rewound.lastProcessedBlock?.hash, hash('c'));
   assert.equal((await pool.query(`SELECT owner_address FROM nft_erc721_ownership`)).rows[0]?.owner_address, bob.toLowerCase());
-  assert.equal((await pool.query(`SELECT count(*)::int AS count FROM nft_erc1155_balances`)).rows[0]?.count, 0);
-  assert.equal((await pool.query(`SELECT count(*)::int AS count FROM nft_activity_events WHERE block_number>$1`, [(start + 1n).toString()])).rows[0]?.count, 0);
+  assert.equal((await pool.query(`SELECT count(*)::int AS count FROM nft_erc1155_balances WHERE collection_address=$1`, [source.collectionAddress.toLowerCase()])).rows[0]?.count, 0);
+  assert.equal((await pool.query(`SELECT count(*)::int AS count FROM nft_erc1155_balances WHERE collection_address=$1`, [erc1155Source.collectionAddress.toLowerCase()])).rows[0]?.count, 3);
+  assert.equal((await pool.query(`SELECT count(*)::int AS count FROM nft_activity_events WHERE collection_address=$1 AND block_number>$2`, [source.collectionAddress.toLowerCase(), (start + 1n).toString()])).rows[0]?.count, 0);
 
   console.info('nft-indexer PostgreSQL storage smoke: PASS');
 } finally {
