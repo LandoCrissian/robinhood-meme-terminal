@@ -3,6 +3,8 @@ import type { RmtNftCollectionStandard } from "./project-registry.js";
 
 export const RMT_NFT_MARKETPLACE_PROVIDER = "OPENSEA" as const;
 export const RMT_NFT_MARKETPLACE_PROTOCOL = "SEAPORT_1_6" as const;
+export const RMT_SEAPORT_1_6_ADDRESS =
+  "0x0000000000000068F116a894984e2DB1123eB395" as Address;
 export const RMT_NFT_MARKETPLACE_ORDER_STATUSES = [
   "ACTIVE",
   "INACTIVE",

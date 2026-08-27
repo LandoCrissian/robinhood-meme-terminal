@@ -100,7 +100,7 @@ const rpc: NftIndexerRpc = {
 const config: NftIndexerConfig = {
   databaseUrl, databaseSsl: false, rpcUrl: 'https://rpc.example.test/',
   finalityDepth: 0, batchSize: 1, maxBatchesPerCycle: 1,
-  pollIntervalMs: 5_000, databasePoolSize: 2, port: 3_009
+  pollIntervalMs: 5_000, databasePoolSize: 2, port: 3_009, readToken: 'a'.repeat(64)
 };
 
 try {

@@ -6,6 +6,7 @@ const appDirectory = path.dirname(fileURLToPath(import.meta.url));
 /** @type {import("next").NextConfig} */
 const nextConfig = {
   outputFileTracingRoot: path.resolve(appDirectory, "../.."),
+  transpilePackages: ["@rmt/shared"],
   async redirects() {
     return [
       {
@@ -30,6 +31,20 @@ const nextConfig = {
       "@react-native-async-storage/async-storage": false,
       "@farcaster/mini-app-solana": false
     };
+    // @rmt/shared publishes raw TypeScript with Node ESM `.js` sibling
+    // specifiers. Limit the TypeScript fallback to that package's source;
+    // application and dependency resolution retain Webpack's defaults.
+    config.module.rules.push({
+      include: [
+        path.resolve(appDirectory, "../../packages/shared/src"),
+        /[\\/]node_modules[\\/](?:\.pnpm[\\/][^\\/]+[\\/]node_modules[\\/])?@rmt[\\/]shared[\\/]src[\\/]/
+      ],
+      resolve: {
+        extensionAlias: {
+          ".js": [".ts", ".tsx", ".js"]
+        }
+      }
+    });
     return config;
   }
 };
