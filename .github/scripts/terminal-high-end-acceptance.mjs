@@ -602,8 +602,11 @@ async function installRoutes(page) {
     const query = new URL(route.request().url()).searchParams.get("q") ?? "";
     const exactIdentityUnavailable = query.toLowerCase() === exactIdentityToken.toLowerCase();
     const conflictingProjectIdentity = query.toLowerCase() === conflictingDtfToken;
-    const stonkBrokerResult = stonkBrokerSearchResponse(query);
+    const controlResult = controlSearchResponse(query);
     universalSearchQueries.set(page, [...(universalSearchQueries.get(page) ?? []), query]);
+    if (query.trim().toLowerCase() === "peep") {
+      await new Promise((resolve) => setTimeout(resolve, 750));
+    }
     await route.fulfill({
       status: exactIdentityUnavailable ? 503 : 200,
       contentType: "application/json",
@@ -612,7 +615,7 @@ async function installRoutes(page) {
         queryKind: "token-or-pool-address",
         status: "not_admitted",
         results: []
-      } : stonkBrokerResult ?? {
+      } : controlResult ?? {
         query,
         queryKind: "token-or-pool-address",
         status: exactIdentityUnavailable ? "inventory_unavailable" : "not_found",
@@ -815,6 +818,60 @@ function hopiumSearchResponse(query) {
       markets: hopiumCanonicalDirectoryMarket().canonicalMarkets
     }]
   };
+}
+
+function cannaCatSearchResponse(query) {
+  const normalized = query.trim().toLowerCase();
+  const isAddress = normalized === cannaCatToken;
+  const isPoolId = normalized === cannaCatPoolId;
+  const isText = normalized.replace(/^\$/, "").replace(/[\s_-]+/g, "") === "cannacat";
+  if (!isAddress && !isPoolId && !isText) return null;
+  return {
+    query,
+    queryKind: isPoolId ? "v4-pool-id" : isAddress ? "token-or-pool-address" : "text",
+    status: "found",
+    results: [{
+      address: cannaCatToken,
+      name: "CannaCat",
+      symbol: "CANNACAT",
+      decimals: 18,
+      matchedBy: isPoolId ? "pool-id" : isAddress ? "token" : "symbol",
+      markets: [{
+        sourceId: "uniswap-v4",
+        protocol: "uniswap",
+        version: 4,
+        poolKey: cannaCatPoolId,
+        poolAddress: null,
+        token0: nativeAsset,
+        token1: cannaCatToken,
+        stable: null,
+        fee: 0,
+        tickSpacing: 200,
+        hooks: cannaCatHooks,
+        transactionHash: txHash(0x7171),
+        blockNumber: "12471717",
+        blockHash: txHash(0x7272),
+        stateStatus: null,
+        liveFee: null,
+        feeDenominator: null,
+        gaugeAddress: null,
+        gaugeAlive: null,
+        gaugeWeight: null,
+        gaugeClaimable: null,
+        feesAddress: null,
+        bribeAddress: null,
+        stateObservedBlock: null,
+        stateObservedBlockHash: null
+      }]
+    }]
+  };
+}
+
+function controlSearchResponse(query) {
+  return stonkBrokerSearchResponse(query)
+    ?? peepSearchResponse(query)
+    ?? hopiumSearchResponse(query)
+    ?? cannaCatSearchResponse(query);
 }
 
 async function createContext(browser, options) {
@@ -1183,6 +1240,127 @@ async function inspectDesktop(browser, viewport, label) {
   if (exactIdentityQueries.length !== 1 || exactIdentityQueries[0]?.toLowerCase() !== exactIdentityToken.toLowerCase()) throw new Error(`${label}: identity-only fallback did not follow exactly one universal inventory attempt ${JSON.stringify(exactIdentityQueries)}`);
   await context.close();
   return { ...audit, marketsComposition, assetComposition, assetQuickLinks };
+}
+
+async function inspectRealUserSearchAcceptance(browser, options, label, mobile) {
+  const context = await createContext(browser, options);
+  const page = await context.newPage();
+  const pageErrors = [];
+  page.on("pageerror", (error) => pageErrors.push(error.message));
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await installRoutes(page);
+  await page.unroute(/\/api\/markets\/external(?:\?.*)?$/);
+  let enrichmentResolved = false;
+  let releaseEnrichment;
+  const enrichmentGate = new Promise((resolve) => {
+    releaseEnrichment = resolve;
+  });
+  await page.route(/\/api\/markets\/external(?:\?.*)?$/, async (route) => {
+    const contract = new URL(route.request().url()).searchParams.get("contract")?.toLowerCase();
+    if (!contract) {
+      await enrichmentGate;
+      enrichmentResolved = true;
+    }
+    const selected = contract
+      ? markets.filter((item) => item.address.toLowerCase() === contract || item.pairAddress.toLowerCase() === contract)
+      : markets;
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        markets: selected,
+        source: "delayed-search-acceptance",
+        rankingVersion: "terminal-v10",
+        thresholds: {},
+        originCoverage: "complete",
+        rmtOriginCoverage: "complete",
+        stockAssetCoverage: "complete",
+        delayedSources: [],
+        updatedAt: now,
+        stale: false
+      })
+    });
+  });
+  const terminalSelector = mobile ? ".rmtMobileTerminal" : ".rmtDesktopTerminal";
+  const rowSelector = mobile ? ".rmtMobileMarketRow" : ".rmtMarketTableRow";
+  await gotoReady(page, base, `${terminalSelector} ${rowSelector}`);
+  const search = page.getByRole("textbox", { name: "Search Robinhood Chain markets" });
+  const controls = [
+    { query: "STONKBROKER", symbol: "STONKBROKER", address: stonkBrokerToken },
+    { query: "PEEP", symbol: "PEEP", address: peepToken },
+    { query: "HOPIUM", symbol: "HOPIUM", address: hopiumToken },
+    { query: "CannaCat", symbol: "CANNACAT", address: cannaCatToken }
+  ];
+  const typeWithoutSubmitting = async (control) => {
+    await search.fill("");
+    const requestCountBefore = (universalSearchQueries.get(page) ?? []).length;
+    await search.pressSequentially(control.query, { delay: 20 });
+    const resultRow = page.locator(`${terminalSelector} ${rowSelector}`).filter({ hasText: control.symbol });
+    await resultRow.waitFor({ state: "visible", timeout: 5_000 });
+    const renderedContract = (await resultRow.locator(".rmtSearchContract").textContent())?.trim().toLowerCase();
+    if (renderedContract !== control.address) throw new Error(`${label}: passive ${control.symbol} result lost exact contract ${renderedContract}`);
+    if (new URL(page.url()).searchParams.has("market")) throw new Error(`${label}: passive ${control.symbol} search navigated without submission`);
+    const requests = (universalSearchQueries.get(page) ?? []).slice(requestCountBefore);
+    if (requests.length !== 1 || requests[0] !== control.query) {
+      throw new Error(`${label}: ${control.symbol} generated per-keystroke or duplicate requests ${JSON.stringify(requests)}`);
+    }
+    return resultRow;
+  };
+
+  const firstResult = await typeWithoutSubmitting(controls[0]);
+  if (enrichmentResolved) throw new Error(`${label}: optional enrichment gated passive search results`);
+  releaseEnrichment();
+  for (let attempt = 0; attempt < 20 && !enrichmentResolved; attempt += 1) await page.waitForTimeout(25);
+  if (!enrichmentResolved || !(await firstResult.isVisible())) throw new Error(`${label}: search result did not survive enrichment publication`);
+  for (const control of controls.slice(1)) await typeWithoutSubmitting(control);
+
+  await search.fill("");
+  await search.pressSequentially("PEEP", { delay: 20 });
+  await page.waitForTimeout(450);
+  const staleRequestCount = (universalSearchQueries.get(page) ?? []).length;
+  await search.fill("HOPIUM");
+  const hopiumRow = page.locator(`${terminalSelector} ${rowSelector}`).filter({ hasText: "HOPIUM" });
+  await hopiumRow.waitFor({ state: "visible", timeout: 5_000 });
+  await page.waitForTimeout(800);
+  if (!(await hopiumRow.isVisible()) || await page.locator(`${terminalSelector} ${rowSelector}`).filter({ hasText: "PEEP" }).count()) {
+    throw new Error(`${label}: stale PEEP response overwrote HOPIUM`);
+  }
+  const staleSequence = (universalSearchQueries.get(page) ?? []).slice(staleRequestCount - 1);
+  if (staleSequence[0] !== "PEEP" || staleSequence.at(-1) !== "HOPIUM") throw new Error(`${label}: stale request order was not exercised ${JSON.stringify(staleSequence)}`);
+
+  await search.fill("");
+  await search.fill("PEEP");
+  if (mobile) await search.press("Enter");
+  else await page.locator(terminalSelector).getByRole("button", { name: "Find", exact: true }).click();
+  await page.locator(`${terminalSelector}[data-terminal-context="asset"] #vn-asset-heading`).waitFor({ state: "visible" });
+  if (new URL(page.url()).searchParams.get("market")?.toLowerCase() !== peepToken) throw new Error(`${label}: explicit PEEP submission did not open the exact token`);
+  await page.getByRole("button", { name: "Markets", exact: true }).click();
+  await page.locator(`${terminalSelector}[data-terminal-context="markets"]`).waitFor({ state: "visible" });
+  await search.fill("");
+  await search.fill("STONKBROKER");
+  await search.press("Enter");
+  await page.locator(`${terminalSelector}[data-terminal-context="asset"] #vn-asset-heading`).waitFor({ state: "visible" });
+  if (new URL(page.url()).searchParams.get("market")?.toLowerCase() !== stonkBrokerToken) throw new Error(`${label}: Enter did not open the exact STONKBROKER token`);
+  await page.screenshot({ path: `${output}/real-user-search-${label}.png`, fullPage: false, animations: "disabled" });
+  const renderState = await page.evaluate(() => ({
+    hasContent: document.body.innerText.trim().length > 0,
+    errorOverlay: Boolean(document.querySelector("[data-nextjs-dialog], .vite-error-overlay, #webpack-dev-server-client-overlay"))
+  }));
+  if (!renderState.hasContent || renderState.errorOverlay || pageErrors.length) {
+    throw new Error(`${label}: browser render verification failed ${JSON.stringify({ renderState, pageErrors })}`);
+  }
+  const result = {
+    controls: Object.fromEntries(controls.map((control) => [control.symbol, control.address])),
+    debounceMs: 400,
+    requestPerKeystroke: false,
+    passiveSingleResultNavigation: false,
+    explicitSubmitMethod: mobile ? "enter-plus-enter-control" : "find-plus-enter-control",
+    staleResponseRejected: true,
+    resultSurvivedEnrichment: true,
+    browserErrors: 0
+  };
+  await context.close();
+  return result;
 }
 
 async function inspectDiscoveryAcceptance(browser, options, label, mobile) {
@@ -3211,6 +3389,7 @@ try {
   const v4WalletReviewOnly = process.env.RMT_ACCEPTANCE_ONLY_V4_WALLET_REVIEW === "true";
   const marketLoadPerformanceOnly = process.env.RMT_ACCEPTANCE_ONLY_MARKET_LOAD_PERFORMANCE === "true";
   const compatibilityOnly = process.env.RMT_ACCEPTANCE_ONLY_COMPATIBILITY === "true";
+  const realUserSearchOnly = process.env.RMT_ACCEPTANCE_ONLY_REAL_USER_SEARCH === "true";
   if (compatibilityOnly) {
     const compatibilityEntries = await inspectCompatibilityEntries(browser);
     console.log(`Terminal compatibility acceptance passed: ${JSON.stringify(compatibilityEntries)}`);
@@ -3218,6 +3397,21 @@ try {
     const marketLoadPerformance = await inspectMarketLoadPerformanceMatrix(browser);
     await writeFile(`${output}/report.json`, JSON.stringify({ marketLoadPerformance }, null, 2));
     console.log(`Terminal market-load performance acceptance passed: ${JSON.stringify(marketLoadPerformance)}`);
+  } else if (realUserSearchOnly) {
+    const desktop = await inspectRealUserSearchAcceptance(
+      browser,
+      { viewport: { width: 1_440, height: 900 }, deviceScaleFactor: 1 },
+      "desktop-1440x900",
+      false
+    );
+    const mobile = await inspectRealUserSearchAcceptance(
+      browser,
+      { viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, isMobile: true, hasTouch: true },
+      "mobile-390x844",
+      true
+    );
+    await writeFile(`${output}/report.json`, JSON.stringify({ desktop, mobile }, null, 2));
+    console.log(`Terminal real-user search acceptance passed: ${JSON.stringify({ desktop, mobile })}`);
   } else if (v4WalletReviewOnly) {
     if (!browserAcceptanceFixture) throw new Error("V4 wallet-review acceptance requires the loopback-only browser fixture profile.");
     const v4FreshWalletSellEvidence = await inspectV4FreshWalletSellJourney(browser, browserAcceptanceFixture);

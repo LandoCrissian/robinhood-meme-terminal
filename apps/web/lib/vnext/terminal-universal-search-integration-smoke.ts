@@ -308,6 +308,16 @@ const serverSearch = readFileSync(new URL("../server/vnext-universal-market-sear
 
 const updateQuery = shell.slice(shell.indexOf("const updateQuery"), shell.indexOf("const selectMarket"));
 assert.doesNotMatch(updateQuery, /fetch\(|submitUniversalSearch/);
+assert.match(shell, /UNIVERSAL_SEARCH_DEBOUNCE_MS = 400/);
+assert.match(shell, /MINIMUM_AUTO_SEARCH_QUERY_LENGTH = 2/);
+const passiveSearch = shell.slice(
+  shell.indexOf("const searchQuery = query.trim()"),
+  shell.indexOf("const writeLocation")
+);
+assert.match(passiveSearch, /searchQuery\.length < MINIMUM_AUTO_SEARCH_QUERY_LENGTH/);
+assert.match(passiveSearch, /window\.setTimeout/);
+assert.match(passiveSearch, /submitUniversalSearch\(searchQuery\)/);
+assert.doesNotMatch(passiveSearch, /selectMarket|writeLocation|setContext/);
 assert.match(presentation, /onChange=\{\(event\) => setQuery\(event\.target\.value\)\}/);
 assert.match(presentation, /onSubmit=\{\(event\) => \{ event\.preventDefault\(\); onSubmit\(\); \}\}/);
 assert.match(shell, /exactVNextLocalDirectoryMatches/);
@@ -362,4 +372,4 @@ assert.doesNotMatch(serverSearch, /export type VNextUniversalMarketSearchResult\
 assert.doesNotMatch(serverSearch, /stateError: pool\.stateError/);
 assert.doesNotMatch(hook + shell + presentation, /rmt-market-indexer-shadow-production|RMT_MARKET_INDEXER_READ_TOKEN|sendTransaction|signTransaction|writeContract/);
 
-console.log("VNext Terminal universal search integration preserves local-first filtering, canonical evidence, null metrics, ambiguity, and race-safe explicit submission.");
+console.log("VNext Terminal universal search integration preserves local-first filtering, debounced passive expansion, canonical evidence, null metrics, ambiguity, and race-safe explicit submission.");

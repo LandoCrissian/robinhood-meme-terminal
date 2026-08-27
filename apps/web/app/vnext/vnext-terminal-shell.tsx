@@ -21,6 +21,9 @@ import { useDesktopTerminalPresentation } from "./use-terminal-presentation";
 import { useVNextExecutionRecovery } from "./use-vnext-execution-recovery";
 import { useVNextMarketDirectory } from "./use-vnext-market-directory";
 
+const UNIVERSAL_SEARCH_DEBOUNCE_MS = 400;
+const MINIMUM_AUTO_SEARCH_QUERY_LENGTH = 2;
+
 export function VNextTerminalShell() {
   const desktop = useDesktopTerminalPresentation();
   const [context, setContext] = useState<TerminalContext>("markets");
@@ -33,6 +36,7 @@ export function VNextTerminalShell() {
   const [directoryView, setDirectoryView] = useState<VNextMarketDirectoryView>("active");
   const [visibleMarketLimit, setVisibleMarketLimit] = useState(VNEXT_MARKET_DIRECTORY_PAGE_SIZE);
   const marketSearch = useRef<HTMLInputElement>(null);
+  const passiveSearchTimeout = useRef<number | undefined>(undefined);
   const locationSyncEpoch = useRef(0);
   const executionRecovery = useVNextExecutionRecovery();
   const {
@@ -85,6 +89,20 @@ export function VNextTerminalShell() {
     selectAddressRef.current = selectAddress;
   }, [selectAddress]);
 
+  useEffect(() => {
+    const searchQuery = query.trim();
+    if (searchQuery.length < MINIMUM_AUTO_SEARCH_QUERY_LENGTH) return;
+    const timeout = window.setTimeout(() => {
+      if (passiveSearchTimeout.current === timeout) passiveSearchTimeout.current = undefined;
+      void submitUniversalSearch(searchQuery);
+    }, UNIVERSAL_SEARCH_DEBOUNCE_MS);
+    passiveSearchTimeout.current = timeout;
+    return () => {
+      window.clearTimeout(timeout);
+      if (passiveSearchTimeout.current === timeout) passiveSearchTimeout.current = undefined;
+    };
+  }, [query, submitUniversalSearch]);
+
   const writeLocation = useCallback((nextContext: TerminalContext, market?: string, side?: "buy" | "sell", replace = false) => {
     const url = new URL(window.location.href);
     url.searchParams.delete("market");
@@ -116,6 +134,10 @@ export function VNextTerminalShell() {
     });
   }, [clearUniversalSearch, writeLocation]);
   const updateQuery = useCallback((nextQuery: string) => {
+    if (passiveSearchTimeout.current !== undefined) {
+      window.clearTimeout(passiveSearchTimeout.current);
+      passiveSearchTimeout.current = undefined;
+    }
     clearUniversalSearch();
     setQuery(nextQuery);
     setVisibleMarketLimit(VNEXT_MARKET_DIRECTORY_PAGE_SIZE);
@@ -131,6 +153,10 @@ export function VNextTerminalShell() {
   const submitSearch = useCallback(() => {
     const submitted = query.trim();
     if (!submitted) return;
+    if (passiveSearchTimeout.current !== undefined) {
+      window.clearTimeout(passiveSearchTimeout.current);
+      passiveSearchTimeout.current = undefined;
+    }
     const exactLocalMatches = exactVNextLocalDirectoryMatches(markets, submitted);
     if (exactLocalMatches.length === 1) {
       selectMarket(exactLocalMatches[0].address);
