@@ -2,8 +2,11 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { formatUnits } from "viem";
 import { robinhoodChain } from "@rmt/shared/chains";
-import { readRmtNftProjectMarket } from "../../../lib/server/nft-project-market";
+import Link from "next/link";
+import { readRmtNftProjectInventory, readRmtNftProjectMarket } from "../../../lib/server/nft-project-market";
+import { NftItemMedia } from "../_components/nft-item-media";
 import styles from "./project-market.module.css";
+import inventoryStyles from "./inventory.module.css";
 
 export const dynamic = "force-dynamic";
 
@@ -24,9 +27,16 @@ export async function generateMetadata({ params }: { params: Promise<{ projectId
     : { robots: { index: false, follow: false } };
 }
 
-export default async function NftProjectMarketPage({ params }: { params: Promise<{ projectId: string }> }) {
-  const { projectId } = await params;
-  const model = await readRmtNftProjectMarket(projectId);
+export default async function NftProjectMarketPage({ params, searchParams }: {
+  params: Promise<{ projectId: string }>;
+  searchParams: Promise<{ afterTokenId?: string }>;
+}) {
+  const [{ projectId }, query] = await Promise.all([params, searchParams]);
+  const afterTokenId = typeof query.afterTokenId === "string" && /^(0|[1-9]\d*)$/.test(query.afterTokenId) ? query.afterTokenId : undefined;
+  const [model, inventory] = await Promise.all([
+    readRmtNftProjectMarket(projectId),
+    readRmtNftProjectInventory(projectId, afterTokenId),
+  ]);
   if (!model) notFound();
   const collection = model.project.collections[0]!;
   const onchain = "sourceStatus" in model.onchain ? model.onchain : null;
@@ -58,6 +68,22 @@ export default async function NftProjectMarketPage({ params }: { params: Promise
         {marketplace?.recentProviderSales.length ? <ol className={styles.feed}>{marketplace.recentProviderSales.map((sale, index) => <li key={`${sale.orderHash ?? sale.transactionHash ?? sale.eventTimestamp}:${index}`}><div><b className={styles.sale}>OPENSEA REPORTED SALE</b><span>Token #{sale.tokenId} · quantity {sale.quantity}</span></div><p>{sale.paymentAsset && sale.grossAmount ? `${amount(sale.grossAmount, sale.paymentAsset.decimals)} ${sale.paymentAsset.symbol}` : "Payment evidence unavailable"}</p><small>Provider report · Seaport settlement not verified</small></li>)}</ol> : <p className={styles.empty}>No recent provider-reported sales are available.</p>}
       </section>
     </div>
+
+    <section className={inventoryStyles.collection} aria-labelledby="collection-heading">
+      <div className={inventoryStyles.collectionHead}><div><p>CANONICAL ONCHAIN INVENTORY</p><h2 id="collection-heading">Collection</h2><span>Current ERC721 ownership · metadata from onchain tokenURI</span></div>
+        {afterTokenId ? <Link href={`/nft/${model.project.projectId}`}>Back to start</Link> : null}
+      </div>
+      {inventory && "items" in inventory && inventory.availability === "AVAILABLE" && inventory.items.length > 0
+        ? <div className={inventoryStyles.itemGrid}>{inventory.items.map((item) => <Link className={inventoryStyles.itemCard} href={`/nft/${model.project.projectId}/${item.tokenId}`} key={item.tokenId}>
+            <NftItemMedia metadata={item.metadata} alt={`${model.project.displayName} token ${item.tokenId}`} className={inventoryStyles.cardMedia} />
+            <div><strong>#{item.tokenId}</strong><span>{short(item.owner)}</span></div>
+            <small>{item.metadata.status === "READY" ? "ONCHAIN" : "METADATA UNAVAILABLE"}</small>
+          </Link>)}</div>
+        : <p className={inventoryStyles.collectionUnavailable}>Canonical collection inventory is currently unavailable.</p>}
+      {inventory && "items" in inventory && inventory.nextCursor
+        ? <nav className={inventoryStyles.pagination} aria-label="Collection pages"><Link href={`/nft/${model.project.projectId}?afterTokenId=${inventory.nextCursor}`}>Next 24 →</Link></nav>
+        : null}
+    </section>
 
     <section className={styles.marketplace}><div><p>MARKETPLACE</p><h2>OpenSea · Seaport 1.6</h2><span>Order identity verification and provider evidence remain separate from execution authorization.</span></div>{openSea ? <a href={openSea.url} target="_blank" rel="noreferrer">View on OpenSea ↗</a> : null}</section>
   </main>;
