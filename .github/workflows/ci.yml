@@ -191,6 +191,38 @@ jobs:
       - run: pnpm --filter nft-indexer build
       - run: pnpm --filter nft-indexer test
 
+  nft-marketplace-indexer:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: rmt_nft_marketplace
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d rmt_nft_marketplace"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      NFT_MARKETPLACE_TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/rmt_nft_marketplace
+      PGSSLMODE: disable
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a # v4.4.0
+        with:
+          version: 10.12.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter nft-marketplace-indexer typecheck
+      - run: pnpm --filter nft-marketplace-indexer build
+      - run: pnpm --filter nft-marketplace-indexer test
+
   contracts:
     runs-on: ubuntu-latest
     defaults:
