@@ -6,6 +6,7 @@ const appDirectory = path.dirname(fileURLToPath(import.meta.url));
 /** @type {import("next").NextConfig} */
 const nextConfig = {
   outputFileTracingRoot: path.resolve(appDirectory, "../.."),
+  transpilePackages: ["@rmt/shared"],
   async redirects() {
     return [
       {
@@ -29,6 +30,10 @@ const nextConfig = {
       ...config.resolve.alias,
       "@react-native-async-storage/async-storage": false,
       "@farcaster/mini-app-solana": false
+    };
+    config.resolve.extensionAlias = {
+      ...config.resolve.extensionAlias,
+      ".js": [".ts", ".tsx", ".js"]
     };
     return config;
   }

@@ -8,11 +8,18 @@ export type NftIndexerConfig = Readonly<{
   pollIntervalMs: number;
   databasePoolSize: number;
   port: number;
+  readToken: string;
 }>;
 
 function required(name: string, env: NodeJS.ProcessEnv) {
   const value = env[name]?.trim();
   if (!value) throw new Error(`${name} is required`);
+  return value;
+}
+
+function readToken(env: NodeJS.ProcessEnv) {
+  const value = required('NFT_INDEXER_READ_TOKEN', env);
+  if (!/^[A-Za-z0-9._~-]{32,512}$/.test(value)) throw new Error('NFT_INDEXER_READ_TOKEN must contain 32 to 512 URL-safe characters');
   return value;
 }
 
@@ -92,6 +99,7 @@ export function loadNftIndexerConfig(env: NodeJS.ProcessEnv = process.env): NftI
     maxBatchesPerCycle: integer('NFT_INDEXER_MAX_BATCHES_PER_CYCLE', 16, 1, 512, env),
     pollIntervalMs: integer('NFT_INDEXER_POLL_INTERVAL_MS', 5_000, 250, 3_600_000, env),
     databasePoolSize: integer('NFT_INDEXER_DATABASE_POOL_SIZE', 8, 1, 64, env),
-    port: integer('NFT_INDEXER_PORT', 3_009, 1, 65_535, env)
+    port: integer('NFT_INDEXER_PORT', 3_009, 1, 65_535, env),
+    readToken: readToken(env)
   });
 }

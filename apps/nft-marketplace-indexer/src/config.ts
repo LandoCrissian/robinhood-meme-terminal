@@ -11,10 +11,16 @@ export type NftMarketplaceConfig = {
   pageSize: number;
   maxLowestListingCandidates: number;
   port: number;
+  readToken: string;
 };
 function required(env: NodeJS.ProcessEnv, name: string) {
   const value = env[name]?.trim();
   if (!value) throw new Error(`${name} is required.`);
+  return value;
+}
+function readToken(env: NodeJS.ProcessEnv) {
+  const value = required(env, "NFT_MARKETPLACE_READ_TOKEN");
+  if (!/^[A-Za-z0-9._~-]{32,512}$/.test(value)) throw new Error("NFT_MARKETPLACE_READ_TOKEN must contain 32 to 512 URL-safe characters.");
   return value;
 }
 function integer(
@@ -134,5 +140,6 @@ export function loadNftMarketplaceConfig(
       32,
     ),
     port: integer(env, "NFT_MARKETPLACE_PORT", 3012, 1, 65535),
+    readToken: readToken(env),
   };
 }

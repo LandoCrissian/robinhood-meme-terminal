@@ -14,7 +14,7 @@ const pool = new Pool({
 await migrateNftIndexer(pool);
 const worker = new NftIndexerWorker(pool, config, createNftIndexerRpc(config.rpcUrl));
 await worker.verifySources();
-const server = createNftIndexerServer(worker);
+const server = createNftIndexerServer(worker, pool, config.readToken);
 
 server.listen(config.port, '0.0.0.0', () => {
   console.info(JSON.stringify({

@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
 import { loadNftMarketplaceConfig } from "./config.js";
+import { isMarketplaceReadAuthorized } from "./server.js";
 const valid = {
   NFT_MARKETPLACE_DATABASE_URL:
     "postgresql://marketplace:secret@localhost:5432/rmt_nft_marketplace?sslmode=disable",
   NFT_MARKETPLACE_OPENSEA_API_KEY: "server-secret",
   NFT_MARKETPLACE_RPC_URL: "https://rpc.example.test",
+  NFT_MARKETPLACE_READ_TOKEN: "b".repeat(64),
 } as NodeJS.ProcessEnv;
 assert.throws(
   () =>
@@ -14,6 +16,8 @@ assert.throws(
     }),
   /DATABASE_URL is required/,
 );
+assert.throws(() => loadNftMarketplaceConfig({ ...valid, NFT_MARKETPLACE_READ_TOKEN: undefined }), /READ_TOKEN is required/);
+assert.throws(() => loadNftMarketplaceConfig({ ...valid, NFT_MARKETPLACE_READ_TOKEN: "short" }), /32 to 512/);
 assert.throws(
   () =>
     loadNftMarketplaceConfig({
@@ -64,6 +68,8 @@ for (const [key, value] of [
   );
 const config = loadNftMarketplaceConfig(valid);
 assert.equal(config.apiKey, "server-secret");
+assert.equal(isMarketplaceReadAuthorized(`Bearer ${valid.NFT_MARKETPLACE_READ_TOKEN}`, valid.NFT_MARKETPLACE_READ_TOKEN!), true);
+assert.equal(isMarketplaceReadAuthorized("Bearer invalid", valid.NFT_MARKETPLACE_READ_TOKEN!), false);
 assert.equal(
   JSON.stringify({ baseUrl: config.baseUrl, rpcUrl: config.rpcUrl }).includes(
     "server-secret",

@@ -14,6 +14,7 @@ import {
   rollbackToCommonAncestor
 } from './storage.js';
 import type { VerifiedNftSource } from './source-verification.js';
+import { readNftProjectOnchain } from './project-read.js';
 
 const databaseUrl = process.env.NFT_INDEXER_TEST_DATABASE_URL?.trim() ?? process.env.NFT_INDEXER_DATABASE_URL?.trim();
 if (!databaseUrl) throw new Error('NFT_INDEXER_TEST_DATABASE_URL is required for PostgreSQL storage smoke coverage');
@@ -157,6 +158,25 @@ try {
   assert.equal((await pool.query(`SELECT count(*)::int AS count FROM nft_erc1155_balances WHERE collection_address=$1`, [source.collectionAddress.toLowerCase()])).rows[0]?.count, 0);
   assert.equal((await pool.query(`SELECT count(*)::int AS count FROM nft_erc1155_balances WHERE collection_address=$1`, [erc1155Source.collectionAddress.toLowerCase()])).rows[0]?.count, 3);
   assert.equal((await pool.query(`SELECT count(*)::int AS count FROM nft_activity_events WHERE collection_address=$1 AND block_number>$2`, [source.collectionAddress.toLowerCase(), (start + 1n).toString()])).rows[0]?.count, 0);
+
+  await recordSourceSuccess(pool, source, 'SYNCED', syncedAt);
+  const completeRead = await readNftProjectOnchain(pool, 'ccff00', syncedAt);
+  assert.equal(completeRead.availability, 'AVAILABLE');
+  assert.equal(completeRead.holderCount, '1');
+  assert.equal(completeRead.circulatingTokenCount, '1');
+  assert.ok(completeRead.recentActivity.length <= 20);
+  assert.equal(completeRead.recentActivity[0]?.kind, 'TRANSFER');
+  assert.equal(completeRead.recentActivity[0]?.marketMeaning, 'NOT_ESTABLISHED');
+  await recordSourceSuccess(pool, source, 'BACKFILLING', syncedAt);
+  const partialRead = await readNftProjectOnchain(pool, 'ccff00', syncedAt);
+  assert.equal(partialRead.availability, 'PARTIAL');
+  assert.equal(partialRead.holderCount, null);
+  assert.equal(partialRead.circulatingTokenCount, null);
+  await recordSourceError(pool, source, new Error('read unavailable'));
+  const unavailableRead = await readNftProjectOnchain(pool, 'ccff00', syncedAt);
+  assert.equal(unavailableRead.availability, 'UNAVAILABLE');
+  assert.equal(unavailableRead.recentActivity.length, 0);
+  await assert.rejects(() => readNftProjectOnchain(pool, 'unknown'), /not publicly admitted/);
 
   console.info('nft-indexer PostgreSQL storage smoke: PASS');
 } finally {

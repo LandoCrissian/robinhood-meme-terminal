@@ -13,6 +13,7 @@
     "./nft/ownership-projection": "./src/nft/ownership-projection.ts",
     "./nft/activity-ingestion": "./src/nft/activity-ingestion.ts",
     "./nft/marketplace-evidence": "./src/nft/marketplace-evidence.ts",
+    "./nft/project-market": "./src/nft/project-market.ts",
     "./nft/seaport-order-hash": "./src/nft/seaport-order-hash.ts"
   },
   "dependencies": {

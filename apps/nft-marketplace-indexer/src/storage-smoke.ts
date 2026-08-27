@@ -12,6 +12,7 @@ import {
 import { normalizeListing, normalizeSale } from "./normalization.js";
 import { OpenSeaClient } from "./opensea-client.js";
 import { MarketplaceWorker } from "./worker.js";
+import { readNftProjectMarketplace } from "./project-read.js";
 import {
   assertDedicatedMarketplaceDatabase,
   migrateMarketplace,
@@ -215,6 +216,7 @@ try {
       pageSize: 25,
       maxLowestListingCandidates: 8,
       port: 3012,
+      readToken: "b".repeat(64),
     },
     { client: mockClient, rpc: { getChainId: async () => 4663 } },
   );
@@ -278,6 +280,23 @@ try {
   );
   assert.ok(history.rows.some((row) => row.normalized_status === "ACTIVE"));
   assert.ok(history.rows.some((row) => row.normalized_status === "CANCELLED"));
+  await pool.query(`INSERT INTO nft_marketplace_sales(provider,chain_id,evidence_digest,project_id,collection_address,token_id,quantity,seller,buyer,payment_kind,payment_address,payment_symbol,payment_decimals,gross_amount,transaction_hash,order_hash,protocol_address,event_timestamp,authority,settlement_status,retrieved_at)
+    SELECT provider,chain_id,$1,project_id,collection_address,token_id,quantity,seller,buyer,'ERC20',$2,'WETH',18,300,NULL,NULL,protocol_address,event_timestamp,authority,settlement_status,retrieved_at
+    FROM nft_marketplace_sales LIMIT 1`, [`0x${"c".repeat(64)}`, "0x0bd7d308f8e1639fab988df18a8011f41eacad73"]);
+  const exactTime = (await pool.query("SELECT exact_revalidated_at FROM nft_marketplace_orders WHERE order_hash=$1", [listingBActive.order_hash])).rows[0].exact_revalidated_at as Date;
+  const readNow = new Date(exactTime.getTime() + 60_000);
+  const freshRead = await readNftProjectMarketplace(pool, "ccff00", 60_000, readNow);
+  assert.equal(freshRead.lowestNormalizedListing?.orderHash, listingBActive.order_hash);
+  assert.equal(freshRead.lowestNormalizedListing?.authority, "LOWEST_NORMALIZED_OPENSEA_LISTING");
+  assert.ok(freshRead.recentProviderSales.every((sale) => sale.authority === "PROVIDER_REPORTED_SALE" && sale.settlementVerificationStatus === "NOT_VERIFIED"));
+  assert.equal(freshRead.volume24hByPaymentAsset.length, 2);
+  assert.deepEqual(new Set(freshRead.volume24hByPaymentAsset.map((volume) => volume.paymentAsset.kind)), new Set(["NATIVE", "ERC20"]));
+  await pool.query("UPDATE nft_marketplace_orders SET exact_revalidated_at=$2 WHERE order_hash=$1", [listingBActive.order_hash, new Date(readNow.getTime() - 600_000)]);
+  const staleRead = await readNftProjectMarketplace(pool, "ccff00", 60_000, readNow);
+  assert.equal(staleRead.lowestNormalizedListing, null);
+  assert.equal(staleRead.availabilityReason, "STALE");
+  await pool.query("UPDATE nft_marketplace_orders SET exact_revalidated_at=$2 WHERE order_hash=$1", [listingBActive.order_hash, exactTime]);
+  await assert.rejects(() => readNftProjectMarketplace(pool, "unknown", 60_000, readNow), /not publicly admitted/);
   phase = 3;
   await worker.runCycle();
   assert.equal(

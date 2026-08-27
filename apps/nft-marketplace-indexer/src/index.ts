@@ -13,7 +13,7 @@ async function main() {
   await migrateMarketplace(pool);
   const worker = new MarketplaceWorker(pool, config);
   await worker.initialize();
-  const server = createStatusServer(worker);
+  const server = createStatusServer(worker, pool, config.readToken, config.pollIntervalMs);
   await new Promise<void>((resolve, reject) => {
     server.once("error", reject);
     server.listen(config.port, resolve);
