@@ -8,6 +8,11 @@ import {
 import { robinhoodChain } from "@rmt/shared/chains";
 import { fetchVerifiedContractLogs } from "../server/blockscout-contract-logs";
 import {
+  RMT_ERC721_TRANSFER_TOPIC,
+  RMT_ERC1155_TRANSFER_BATCH_TOPIC,
+  RMT_ERC1155_TRANSFER_SINGLE_TOPIC
+} from "./activity-domain";
+import {
   RMT_NFT_CHAIN_ID,
   type RmtNftCollectionRegistryEntry,
   type RmtNftCollectionStandard
@@ -41,10 +46,6 @@ const ERC721_INTERFACE_ID = "0x80ac58cd" as const;
 const ERC721_METADATA_INTERFACE_ID = "0x5b5e139f" as const;
 const ERC1155_INTERFACE_ID = "0xd9b67a26" as const;
 const ERC1155_METADATA_URI_INTERFACE_ID = "0x0e89341c" as const;
-
-const ERC721_TRANSFER_TOPIC = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
-const ERC1155_TRANSFER_SINGLE_TOPIC = "0xc3d58168c5bfaa9351fbc5f840f6c7baf2dcae18fe59842dc89e1c74c0b7f2ce";
-const ERC1155_TRANSFER_BATCH_TOPIC = "0x4a39dc06d4c0dbc64b70d8c0e2d859b21b56f6e12c9015d8f932ffad8afc9f07";
 
 export type RmtNftMetadataCapability =
   | "ERC721_METADATA"
@@ -132,8 +133,8 @@ async function readIdentity(client: PublicClient, address: Address) {
 
 function activityTopics(standard: RmtNftCollectionStandard) {
   return standard === "ERC721"
-    ? new Set([ERC721_TRANSFER_TOPIC])
-    : new Set([ERC1155_TRANSFER_SINGLE_TOPIC, ERC1155_TRANSFER_BATCH_TOPIC]);
+    ? new Set([RMT_ERC721_TRANSFER_TOPIC])
+    : new Set([RMT_ERC1155_TRANSFER_SINGLE_TOPIC, RMT_ERC1155_TRANSFER_BATCH_TOPIC]);
 }
 
 export async function readSampledRmtNftActivityEvidence(
