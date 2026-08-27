@@ -25,7 +25,8 @@ import { directNoRmtFeeSettlement, VNEXT_DIRECT_NO_RMT_FEE } from "../vnext/exec
 import { assertUniswapTransactionIntegrity } from "../uniswap-transaction-integrity";
 import { buildExternalV4Swap } from "./external-uniswap-v4-simulation";
 import type { VerifiedExternalUniswapV4Market } from "./external-uniswap-v4-market";
-import { readVNextCanonicalMarketInventory, type VNextCanonicalMarketInventoryResult } from "./vnext-market-indexer";
+import type { VNextCanonicalMarketInventoryResult } from "./vnext-market-indexer";
+import { readRmtCuratedCanonicalMarketInventory } from "./rmt-curated-market-registry";
 import { disabledVNextFeeEconomics, type VNextProviderAuthorizationRequest, type VNextProviderVerificationEvidence, type VNextProviderVerificationRequest } from "./vnext-provider-adapter";
 
 const MAX_UINT128 = (1n << 128n) - 1n;
@@ -235,7 +236,7 @@ async function evaluateVNextUniswapV4Route(
   const deadline = input.deadlineSeconds ?? currentSeconds + DEFAULT_AUTHORIZATION_WINDOW_SECONDS;
   invariant(deadline > currentSeconds + 30n && deadline <= currentSeconds + MAX_AUTHORIZATION_WINDOW_SECONDS && deadline <= MAX_UINT48, "deadline is stale or outside the supported window");
 
-  const inventory = await (dependencies.readInventory ?? readVNextCanonicalMarketInventory)({
+  const inventory = await (dependencies.readInventory ?? readRmtCuratedCanonicalMarketInventory)({
     token: token.toLowerCase(),
     poolKey: input.canonicalMarket?.poolId.toLowerCase(),
     source: "uniswap-v4",

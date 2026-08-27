@@ -11,6 +11,10 @@ import {
   requireProjectIdentityDirectoryAdmitted
 } from "../../../../lib/server/project-identity-admission";
 import { directExecutionBinding, VNEXT_DIRECT_NO_RMT_FEE } from "../../../../lib/vnext/execution-settlement";
+import {
+  requireRmtCuratedExecutionAssets,
+  rmtCuratedMarketAdmissionErrorResponse
+} from "../../../../lib/server/rmt-curated-market-registry";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -73,6 +77,7 @@ export async function POST(request: Request) {
     if (!inputIdentity || !outputIdentity) {
       return Response.json({ error: "Both assets require verified Robinhood Chain identity before wallet review." }, { status: 422, headers: noStore });
     }
+    requireRmtCuratedExecutionAssets(inputAsset, outputAsset);
     await requireProjectIdentityDirectoryAdmitted([
       { address: inputAsset },
       { address: outputAsset }
@@ -168,6 +173,8 @@ export async function POST(request: Request) {
   } catch (cause) {
     const identityResponse = tradeIdentityErrorResponse(cause);
     if (identityResponse) return identityResponse;
+    const curatedResponse = rmtCuratedMarketAdmissionErrorResponse(cause);
+    if (curatedResponse) return curatedResponse;
     const projectIdentityResponse = projectIdentityAdmissionErrorResponse(cause);
     if (projectIdentityResponse) return projectIdentityResponse;
     const stockTokenResponse = stockTokenExecutionPolicyErrorResponse(cause);

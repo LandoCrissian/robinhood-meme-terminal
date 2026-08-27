@@ -662,10 +662,11 @@ assert.equal((hook.match(/useVisibilityRefresh/g) ?? []).length, 3);
 assert.match(hook, /VNEXT_CLIENT_REFRESH_POLICY\.marketDirectoryMs/);
 assert.match(hook, /VNEXT_CLIENT_REFRESH_POLICY\.ecosystemDirectoryMs/);
 assert.match(route, /readVNextMarketDirectoryRequest/);
-assert.match(directoryRouteServer, /RMT_CANONICAL_BROWSE_ENABLED === "true"/);
+assert.match(directoryRouteServer, /return true;/);
+assert.doesNotMatch(directoryRouteServer, /RMT_CANONICAL_BROWSE_ENABLED === "true"/);
 assert.match(directoryRouteServer, /private, no-store, max-age=0/);
 assert.match(envExample, /RMT_CANONICAL_BROWSE_ENABLED=false/);
-assert.match(canonicalDirectoryServer, /readVNextCanonicalMarketInventory/);
+assert.match(canonicalDirectoryServer, /readRmtCuratedMarketSnapshot/);
 assert.match(canonicalDirectoryServer, /coverage\.complete/);
 assert.match(canonicalDirectoryServer, /VNEXT_CANONICAL_DIRECTORY_PAGE_LIMIT/);
 assert.match(canonicalDirectoryServer, /cursor/);
@@ -766,9 +767,9 @@ const canonicalResult = (
   pools
 });
 
-assert.equal(vNextCanonicalBrowseEnabled({}), false, "A missing canonical browse gate must default off");
-assert.equal(vNextCanonicalBrowseEnabled({ RMT_CANONICAL_BROWSE_ENABLED: "false" }), false);
-assert.equal(vNextCanonicalBrowseEnabled({ RMT_CANONICAL_BROWSE_ENABLED: "TRUE" }), false);
+assert.equal(vNextCanonicalBrowseEnabled({}), true, "The curated directory is the only runtime browse authority");
+assert.equal(vNextCanonicalBrowseEnabled({ RMT_CANONICAL_BROWSE_ENABLED: "false" }), true);
+assert.equal(vNextCanonicalBrowseEnabled({ RMT_CANONICAL_BROWSE_ENABLED: "TRUE" }), true);
 assert.equal(vNextCanonicalBrowseEnabled({ RMT_CANONICAL_BROWSE_ENABLED: "true" }), true);
 
 async function verifyCanonicalBrowsePages() {
@@ -965,17 +966,17 @@ async function verifyCanonicalBrowsePages() {
     gatedDependencies
   );
   assert.equal(missingGate.status, 200);
-  assert.equal("canonical" in missingGate.body, false, "A missing gate must preserve the legacy response");
+  assert.equal("canonical" in missingGate.body && missingGate.body.canonical, true, "Curated canonical browse must not depend on a legacy gate");
   const falseGate = await readVNextMarketDirectoryRequest(
     "http://localhost/api/vnext/market-directory",
     { RMT_CANONICAL_BROWSE_ENABLED: "false" },
     gatedDependencies
   );
   assert.equal(falseGate.status, 200);
-  assert.equal("canonical" in falseGate.body, false, "Complete coverage must not auto-activate canonical browse");
+  assert.equal("canonical" in falseGate.body && falseGate.body.canonical, true, "A stale environment flag cannot restore historical browse");
   assert.equal(falseGate.headers["Cache-Control"], "private, no-store, max-age=0");
-  assert.equal(canonicalCalls, 0);
-  assert.equal(legacyCalls, 2);
+  assert.equal(canonicalCalls, 2);
+  assert.equal(legacyCalls, 0);
 
   const enabledGate = await readVNextMarketDirectoryRequest(
     "http://localhost/api/vnext/market-directory",
@@ -985,8 +986,8 @@ async function verifyCanonicalBrowsePages() {
   assert.equal(enabledGate.status, 200);
   assert.equal("canonical" in enabledGate.body && enabledGate.body.canonical, true);
   const enabledMarketCount = "markets" in enabledGate.body ? enabledGate.body.markets?.length ?? 0 : 0;
-  assert.equal(canonicalCalls, 1);
-  assert.equal(legacyCalls, 2);
+  assert.equal(canonicalCalls, 3);
+  assert.equal(legacyCalls, 0);
 
   const quarantinedDirectory = await readVNextMarketDirectoryRequest(
     "http://localhost/api/vnext/market-directory",
@@ -1121,14 +1122,14 @@ async function verifyCanonicalBrowsePages() {
       performanceDependencies as never
     );
   }
-  const readsBeforeEvictedRoot = coalescedCanonicalReads;
-  const evictedRoot = await readVNextMarketDirectoryRequest(
+  const readsBeforePreservedRoot = coalescedCanonicalReads;
+  const preservedRoot = await readVNextMarketDirectoryRequest(
     "http://localhost/api/vnext/market-directory?irrelevant=root",
     { RMT_CANONICAL_BROWSE_ENABLED: "true" },
     performanceDependencies as never
   );
-  assert.equal(evictedRoot.headers["X-RMT-Directory-Cache"], "MISS");
-  assert.equal(coalescedCanonicalReads, readsBeforeEvictedRoot + 1, "the LRU page cache must remain hard bounded");
+  assert.equal(preservedRoot.headers["X-RMT-Directory-Cache"], "HIT");
+  assert.equal(coalescedCanonicalReads, readsBeforePreservedRoot, "cursor requests must never evict or populate the one-page curated presentation cache");
 
   const conflictingAddress = getAddress("0x6666666666666666666666666666666666666601");
   const establishedAddress = getAddress("0x6666666666666666666666666666666666666602");

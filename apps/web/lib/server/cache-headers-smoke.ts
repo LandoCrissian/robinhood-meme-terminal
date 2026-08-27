@@ -31,6 +31,7 @@ const systemHealth = fs.readFileSync(new URL("./system-health.ts", import.meta.u
 assert.match(systemHealth, /latestBlock = blockNumber\.toString\(\)/);
 assert.match(systemHealth, /schemaVersion: 2/);
 assert.match(systemHealth, /product: "rmt-terminal"/);
-assert.match(systemHealth, /readInventory\(\{ limit: 1 \}\)/);
+assert.match(systemHealth, /readRmtCuratedMarketSnapshot/);
+assert.match(systemHealth, /historicalMarketIndexerRequired: false/);
 
 console.info("Web cache header smoke test passed");

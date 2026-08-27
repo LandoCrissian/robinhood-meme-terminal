@@ -18,15 +18,15 @@ function health(overrides = {}) {
     latencyMs: 45,
     checkedAt: new Date(now - 1_000).toISOString(),
     terminalEvidence: {
-      canonicalBrowseEnabled: true,
-      marketIndexerConfigured: true,
-      inventoryStatus: "partial",
-      canonicalCoverage: "partial"
+      curatedRegistryReady: true,
+      curatedMarketsVerified: true,
+      curatedMarketCount: 8,
+      historicalMarketIndexerRequired: false
     },
     checks: [
       { key: "rpc", state: "operational" },
-      { key: "market-indexer", state: "operational" },
-      { key: "canonical-inventory", state: "operational" }
+      { key: "curated-registry", state: "operational" },
+      { key: "curated-markets", state: "operational" }
     ],
     ...overrides
   };
@@ -44,7 +44,7 @@ try {
   write(health());
   assert.deepEqual(verifyProductionLivenessArtifacts(directory, now), {
     latestBlock: "2000",
-    coverage: "partial"
+    curatedMarketCount: 8
   });
 
   write(health({ ok: false }));

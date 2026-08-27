@@ -6,13 +6,16 @@ import { hasSharedCachePolicy } from "./production-health-policy.mjs";
 const CHAIN_ID = 4_663;
 const ZERO_ADDRESS = `0x${"0".repeat(40)}`;
 const ADDRESS_PATTERN = /^0x[0-9a-fA-F]{40}$/;
-const TERMINAL_CHECK_KEYS = new Set(["rpc", "market-indexer", "canonical-inventory"]);
+const TERMINAL_CHECK_KEYS = new Set(["rpc", "curated-registry", "curated-markets"]);
 const CURRENT_MARKET_CONTROLS = [
   ["stonkbroker", "0xe934e36a439c94017b64a3fece66af12099abf50"],
   ["pons", "0x39dbed3a2bd333467115de45665cc57f813c4571"],
   ["pipedog", "0x5cb6f181081301b44905f3ae15419112ecabd8a6"],
   ["cashcat", "0x020bfc650a365f8bb26819deaabf3e21291018b4"],
-  ["lemon", "0xf0e17e54239cd945cd7bea471a3a2ca6a8c7f7a3"]
+  ["lemon", "0xf0e17e54239cd945cd7bea471a3a2ca6a8c7f7a3"],
+  ["peep", "0xf0821f2bf570ca4e7499a9ed9db7c788fed9946f"],
+  ["hopium", "0xb6ce51925c2e397ebf1a443b343d19267b3d4225"],
+  ["cannacat", "0x1139d423c1706bdead91f03507f521635591ed92"]
 ];
 
 function timestamp(value, label) {
@@ -103,26 +106,18 @@ export function verifyProductionHealthArtifacts(
   const evidence = health.terminalEvidence;
   if (
     !evidence
-    || evidence.canonicalBrowseEnabled !== true
-    || evidence.marketIndexerConfigured !== true
-    || !["ready", "partial"].includes(evidence.inventoryStatus)
-    || !["complete", "partial"].includes(evidence.canonicalCoverage)
-    || (evidence.canonicalCoverage === "partial" && evidence.inventoryStatus !== "partial")
-    || (evidence.canonicalCoverage === "complete" && evidence.inventoryStatus !== "ready")
+    || evidence.curatedRegistryReady !== true
+    || evidence.curatedMarketsVerified !== true
+    || evidence.curatedMarketCount !== CURRENT_MARKET_CONTROLS.length
+    || evidence.historicalMarketIndexerRequired !== false
   ) {
     throw new Error("Terminal inventory health evidence is unavailable or inconsistent.");
   }
 
   const directory = JSON.parse(read("directory.json"));
-  const directoryNext = JSON.parse(read("directory-next.json"));
-  const firstAddresses = validateDirectoryPage(directory, "Canonical directory page one", { requireCursor: true });
-  const nextAddresses = validateDirectoryPage(directoryNext, "Canonical directory page two", { requireCursor: false });
-  if (JSON.stringify(firstAddresses) === JSON.stringify(nextAddresses)) {
-    throw new Error("Canonical directory pagination repeated page one.");
-  }
-  if (directoryNext.nextCursor === directory.nextCursor) {
-    throw new Error("Canonical directory cursor progression is stuck.");
-  }
+  const firstAddresses = validateDirectoryPage(directory, "Curated directory", { requireCursor: false });
+  if (directory.nextCursor !== null || directory.coverage !== "complete") throw new Error("Curated directory must be one complete bounded page.");
+  if (firstAddresses.length !== CURRENT_MARKET_CONTROLS.length) throw new Error("Curated directory count is inconsistent.");
 
   for (const [name, address] of CURRENT_MARKET_CONTROLS) {
     const result = JSON.parse(read(`search-${name}.json`));
@@ -135,16 +130,11 @@ export function verifyProductionHealthArtifacts(
       throw new Error(`Current ${name} exact-search control is invalid.`);
     }
   }
-  const stonkbrokerText = JSON.parse(read("search-stonkbroker-text.json"));
-  if (
-    stonkbrokerText.status !== "found"
-    || stonkbrokerText.queryKind !== "text"
-    || !Array.isArray(stonkbrokerText.results)
-    || !stonkbrokerText.results.some(
-      (market) => lower(market?.address) === CURRENT_MARKET_CONTROLS[0][1]
-    )
-  ) {
-    throw new Error("Current STONKBROKER text-search control is invalid.");
+  for (const [name, address] of CURRENT_MARKET_CONTROLS) {
+    const textResult = JSON.parse(read(`search-${name}-text.json`));
+    if (textResult.status !== "found" || textResult.queryKind !== "text" || !textResult.results.some((market) => lower(market?.address) === address)) {
+      throw new Error(`Current ${name} text-search control is invalid.`);
+    }
   }
 
   requireHtml(read, "home", "Terminal root");
@@ -154,7 +144,6 @@ export function verifyProductionHealthArtifacts(
     latestBlock: health.latestBlock,
     coverage: directory.coverage,
     firstPageMarkets: directory.markets.length,
-    secondPageMarkets: directoryNext.markets.length,
     exactSearchControls: CURRENT_MARKET_CONTROLS.length
   };
 }
@@ -165,7 +154,7 @@ if (isMain) {
   const result = verifyProductionHealthArtifacts(process.argv[2] ?? "health-artifacts");
   console.info(
     `Terminal healthy at block ${result.latestBlock}; canonical coverage ${result.coverage}; `
-      + `${result.firstPageMarkets} + ${result.secondPageMarkets} paginated markets; `
-      + `${result.exactSearchControls} exact-search controls and STONKBROKER text search passed.`
+      + `${result.firstPageMarkets} curated markets; `
+      + `${result.exactSearchControls} exact and text search controls passed.`
   );
 }

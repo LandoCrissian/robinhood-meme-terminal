@@ -223,12 +223,12 @@ async function main() {
     "canonical and supplemental candidates must be combined before quarantine"
   );
   assert.ok(combinedAdmission >= 0 && combinedAdmission < combinedLimit, "quarantine must happen before result limits");
-  assert.match(canonicalDirectory, /applyProjectIdentityDirectoryAdmission/);
+  assert.match(canonicalDirectory, /excludeKnownPositiveProjectIdentityQuarantines/);
   assert.match(providerDirectory, /directoryAdmission: "not_admitted"/);
   assert.match(providerDirectory, /applyProjectIdentityDirectoryAdmission/);
   assert.match(directoryHook, /canonicalPayload\?\.status === "not_admitted"/);
   assert.match(directoryHook, /marketPayload\?\.directoryAdmission === "not_admitted"/);
-  assert.match(presentation, /Not admitted to the RMT directory\./);
+  assert.match(presentation, /Not admitted to the RMT directory/);
   for (const route of [quoteRoute, verifyRoute, authorizeRoute]) {
     assert.match(route, /requireProjectIdentityDirectoryAdmitted/);
     assert.match(route, /projectIdentityAdmissionErrorResponse/);

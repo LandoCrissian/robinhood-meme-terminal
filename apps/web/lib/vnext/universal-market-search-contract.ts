@@ -58,6 +58,7 @@ export type VNextUniversalMarketSearchResult = {
   status:
     | "found"
     | "not_found"
+    | "not_listed"
     | "not_admitted"
     | "invalid_query"
     | "inventory_unavailable"
@@ -216,7 +217,7 @@ export function parseVNextUniversalMarketSearchResult(value: unknown): VNextUniv
   const candidate = record(value);
   if (!candidate || typeof candidate.query !== "string" || candidate.query.length > 160) return null;
   if (candidate.queryKind !== "token-or-pool-address" && candidate.queryKind !== "v4-pool-id" && candidate.queryKind !== "text") return null;
-  if (candidate.status !== "found" && candidate.status !== "not_found" && candidate.status !== "not_admitted" && candidate.status !== "invalid_query" && candidate.status !== "inventory_unavailable" && candidate.status !== "candidate_discovery_unavailable") return null;
+  if (candidate.status !== "found" && candidate.status !== "not_found" && candidate.status !== "not_listed" && candidate.status !== "not_admitted" && candidate.status !== "invalid_query" && candidate.status !== "inventory_unavailable" && candidate.status !== "candidate_discovery_unavailable") return null;
   if (!Array.isArray(candidate.results) || candidate.results.length > 12) return null;
   const results = candidate.results.flatMap((value): VNextUniversalMarketSearchResultItem[] => {
     const item = record(value);

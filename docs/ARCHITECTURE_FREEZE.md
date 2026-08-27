@@ -8,7 +8,7 @@ This document records the durable product and system boundaries. It supersedes h
 
 ## Product
 
-RMT is a Robinhood Chain:
+RMT is an owner-curated Robinhood Chain:
 
 - discovery and market-intelligence terminal;
 - execution terminal;
@@ -18,6 +18,8 @@ RMT is a Robinhood Chain:
 - RWA market surface.
 
 The core loop is **scan → verify → analyze → execute → reconcile → manage**. New token launches, creator profiles, social profiles, NFT/marketplace creation and community chat are not part of the terminal-completion program.
+
+Normal Search, Active, Trending, New, market workspace and trading admission are bounded by `RMT_CURATED_MARKET_REGISTRY`. Token existence is separate from RMT directory admission. Registry aliases are discovery hints; displayed ERC20 identity and canonical market bindings remain independently verified. Exhaustive historical market or token-identity completion is not a Terminal dependency.
 
 ## Canonical architecture
 
@@ -66,7 +68,7 @@ Paused source and tests remain available as preservation evidence. Paused worker
 
 - `apps/indexer`: canonical deployed RMT V6 compatibility and history. It is not the universal ecosystem indexer.
 - `apps/external-origin-indexer`: external project-origin attribution. `source-listed` never implies `token-created`.
-- `apps/market-indexer`: external market discovery and enrichment. It remains read-oriented.
+- `apps/market-indexer`: preserved historical external-market index. It is optional to the curated Terminal and may be stopped after the cutover recovery window.
 - future execution workers: separate explicit domain; never hidden inside the market indexer.
 
 Project origin, market venue and execution origin are separate dimensions. RMT-originated volume or fees require authoritative RMT session/receipt evidence and may not be inferred from origin, pool, wallet, page view or route observation.
