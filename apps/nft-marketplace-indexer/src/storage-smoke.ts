@@ -298,8 +298,26 @@ try {
   assert.equal(freshRead.volume24hByPaymentAsset.length, 2);
   assert.deepEqual(new Set(freshRead.volume24hByPaymentAsset.map((volume) => volume.paymentAsset.kind)), new Set(["NATIVE", "ERC20"]));
 
-  const laterRequestRead = await readNftProjectMarketplace(pool, "ccff00", 60_000, new Date(readNow.getTime() + 60_000));
+  await pool.query("UPDATE nft_marketplace_sales SET event_timestamp=$1", [new Date(persistedPoll.getTime() - 25 * 60 * 60_000)]);
+  const insertBoundarySale = async (digest: string, grossAmount: string, eventTimestamp: Date) => {
+    await pool.query(`INSERT INTO nft_marketplace_sales(provider,chain_id,evidence_digest,project_id,collection_address,token_id,quantity,seller,buyer,payment_kind,payment_address,payment_symbol,payment_decimals,gross_amount,transaction_hash,order_hash,protocol_address,event_timestamp,authority,settlement_status,retrieved_at)
+      SELECT provider,chain_id,$1,project_id,collection_address,token_id,quantity,seller,buyer,'NATIVE',NULL,'ETH',18,$2,NULL,NULL,protocol_address,$3,authority,settlement_status,retrieved_at
+      FROM nft_marketplace_sales WHERE payment_kind='NATIVE' LIMIT 1`,
+    [digest, grossAmount, eventTimestamp]);
+  };
+  await insertBoundarySale(`0x${"d".repeat(64)}`, "230", new Date(persistedPoll.getTime() - 23 * 60 * 60_000));
+  await insertBoundarySale(`0x${"e".repeat(64)}`, "1000", new Date(persistedPoll.getTime() + 60_000));
+  const firstObservationRead = await readNftProjectMarketplace(pool, "ccff00", 60_000, new Date(persistedPoll.getTime() + 30_000));
+  const laterRequestRead = await readNftProjectMarketplace(pool, "ccff00", 60_000, new Date(persistedPoll.getTime() + 4 * 60_000));
+  assert.equal(firstObservationRead.asOf, persistedPoll.toISOString());
   assert.equal(laterRequestRead.asOf, persistedPoll.toISOString());
+  assert.deepEqual(laterRequestRead.volume24hByPaymentAsset, firstObservationRead.volume24hByPaymentAsset);
+  assert.deepEqual(firstObservationRead.volume24hByPaymentAsset, [{
+    authority: "OPENSEA_REPORTED_24H_VOLUME",
+    paymentAsset: { kind: "NATIVE", chainId: 4663, address: null, symbol: "ETH", decimals: 18 },
+    grossAmount: "230",
+    saleCount: 1,
+  }]);
 
   const historyBeforeStaleRead = {
     orders: Number((await pool.query("SELECT count(*) FROM nft_marketplace_orders")).rows[0].count),

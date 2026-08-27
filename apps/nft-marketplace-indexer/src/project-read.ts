@@ -106,12 +106,19 @@ export async function readNftProjectMarketplace(
   );
 
   const volumes = new Map<string, RmtNftPaymentAssetVolume>();
+  const observationTime = identity.last_successful_poll;
+  if (!observationTime) throw new Error("Fresh marketplace source lacks a persisted observation time.");
   const volumeRows = (await pool.query<SaleRow>(
     `SELECT payment_kind,payment_address,payment_symbol,payment_decimals,gross_amount::text
      FROM nft_marketplace_sales WHERE provider='OPENSEA' AND chain_id=4663 AND project_id=$1
-       AND lower(collection_address)=lower($2) AND event_timestamp >= $3
+       AND lower(collection_address)=lower($2) AND event_timestamp >= $3 AND event_timestamp <= $4
        AND payment_kind IS NOT NULL AND payment_symbol IS NOT NULL AND payment_decimals IS NOT NULL AND gross_amount IS NOT NULL`,
-    [source.projectId, source.collectionAddress, new Date(now.getTime() - 86_400_000).toISOString()],
+    [
+      source.projectId,
+      source.collectionAddress,
+      new Date(observationTime.getTime() - 86_400_000).toISOString(),
+      observationTime.toISOString(),
+    ],
   )).rows;
   for (const sale of volumeRows) {
     if (!sale.payment_kind || sale.payment_symbol === null || sale.payment_decimals === null || sale.gross_amount === null) continue;

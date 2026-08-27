@@ -139,8 +139,21 @@ function validateMarketplace(input: unknown, projectId: string, address: `0x${st
       || value.recentProviderSales.length !== 0 || value.volume24hByPaymentAsset.length !== 0)) {
     throw new Error("NFT marketplace unavailable source contains current evidence.");
   }
+  if (["AVAILABLE", "PARTIAL"].includes(value.availability) && value.asOf === null) {
+    throw new Error("NFT marketplace current evidence lacks observation provenance.");
+  }
+  if (value.availabilityReason === "STALE" && value.lowestNormalizedListing !== null) {
+    throw new Error("NFT marketplace stale exact-order state contains a current listing.");
+  }
+  if (value.sourceStatus !== "ERROR" && value.availability === "UNAVAILABLE"
+    && !["SOURCE_STALE", "SOURCE_NOT_READY"].includes(value.availabilityReason ?? "")) {
+    throw new Error("NFT marketplace unavailable source reason is contradictory.");
+  }
   if (value.availabilityReason === "SOURCE_NOT_READY" && value.asOf !== null) {
     throw new Error("NFT marketplace not-ready source has observation provenance.");
+  }
+  if (value.availabilityReason === "SOURCE_STALE" && value.asOf === null) {
+    throw new Error("NFT marketplace stale source lacks historical observation provenance.");
   }
   if ((value.sourceStatus === "ERROR") !== (value.availabilityReason === "SOURCE_ERROR")
     || (value.sourceStatus === "ERROR" && value.availability !== "UNAVAILABLE")) {

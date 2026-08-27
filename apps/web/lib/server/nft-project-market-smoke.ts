@@ -83,6 +83,28 @@ async function main() {
   await expectMarketplaceRejected({ ...marketplace, lowestNormalizedListing: { ...marketplace.lowestNormalizedListing!, paymentAsset: { kind: "ERC20", chainId: 4663, address: otherAddress, symbol: "WETH", decimals: 18 } } });
   await expectMarketplaceRejected({ ...marketplace, recentProviderSales: [{ ...marketplace.recentProviderSales[0]!, settlementVerificationStatus: "VERIFIED" }] });
   await expectMarketplaceRejected({ ...marketplace, availability: "UNAVAILABLE", availabilityReason: "SOURCE_STALE", lowestNormalizedListing: null, recentProviderSales: [] });
+  await expectMarketplaceRejected({ ...marketplace, asOf: null });
+  await expectMarketplaceRejected({ ...marketplace, sourceStatus: "BACKFILLING", availability: "PARTIAL", asOf: null });
+  await expectMarketplaceRejected({ ...marketplace, availabilityReason: "STALE" });
+  await expectMarketplaceRejected({ ...marketplace, availability: "UNAVAILABLE", availabilityReason: null, lowestNormalizedListing: null, recentProviderSales: [], volume24hByPaymentAsset: [] });
+  await expectMarketplaceRejected({ ...marketplace, availability: "UNAVAILABLE", availabilityReason: "SOURCE_STALE", asOf: null, lowestNormalizedListing: null, recentProviderSales: [], volume24hByPaymentAsset: [] });
+  await expectMarketplaceRejected({ ...marketplace, sourceStatus: "BACKFILLING", availability: "UNAVAILABLE", availabilityReason: "SOURCE_NOT_READY", lowestNormalizedListing: null, recentProviderSales: [], volume24hByPaymentAsset: [] });
+
+  for (const coherentUnavailable of [
+    { ...marketplace, sourceStatus: "BACKFILLING", availability: "UNAVAILABLE", availabilityReason: "SOURCE_NOT_READY", asOf: null, lowestNormalizedListing: null, recentProviderSales: [], volume24hByPaymentAsset: [] },
+    { ...marketplace, availability: "UNAVAILABLE", availabilityReason: "SOURCE_STALE", lowestNormalizedListing: null, recentProviderSales: [], volume24hByPaymentAsset: [] },
+    { ...marketplace, sourceStatus: "ERROR", availability: "UNAVAILABLE", availabilityReason: "SOURCE_ERROR", asOf: null, lowestNormalizedListing: null, recentProviderSales: [], volume24hByPaymentAsset: [] },
+  ]) {
+    const result = await readRmtNftProjectMarket("ccff00", { env, fetchImpl: fetchFor(onchain, coherentUnavailable) });
+    assert.equal("provider" in result!.marketplace, true);
+  }
+  const exactOrderStale = await readRmtNftProjectMarket("ccff00", {
+    env,
+    fetchImpl: fetchFor(onchain, { ...marketplace, availabilityReason: "STALE", lowestNormalizedListing: null }),
+  });
+  assert.ok(exactOrderStale);
+  assert.equal("provider" in exactOrderStale.marketplace && exactOrderStale.marketplace.availabilityReason, "STALE");
+  assert.equal("provider" in exactOrderStale.marketplace && exactOrderStale.marketplace.recentProviderSales.length, 1);
 
   const page = readFileSync(new URL("../../app/nft/[projectId]/page.tsx", import.meta.url), "utf8");
   assert.match(page, /RMT CURATED/);
