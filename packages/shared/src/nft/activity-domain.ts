@@ -13,9 +13,9 @@ import {
   type RmtNftCollectionStandard
 } from "./project-registry.js";
 
-const ERC721_TRANSFER_TOPIC = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef" as const;
-const ERC1155_TRANSFER_SINGLE_TOPIC = "0xc3d58168c5bfaa9351fbc5f840f6c7baf2dcae18fe59842dc89e1c74c0b7f2ce" as const;
-const ERC1155_TRANSFER_BATCH_TOPIC = "0x4a39dc06d4c0dbc64b70d8c0e2d859b21b56f6e12c9015d8f932ffad8afc9f07" as const;
+export const RMT_ERC721_TRANSFER_TOPIC = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef" as const;
+export const RMT_ERC1155_TRANSFER_SINGLE_TOPIC = "0xc3d58168c5ae7397731d063d5bbf3d657854427343f4c083240f7aacaa2d0f62" as const;
+export const RMT_ERC1155_TRANSFER_BATCH_TOPIC = "0x4a39dc06d4c0dbc64b70af90fd698a233a518aa5d07e595d983b8c0526c8f7fb" as const;
 const MAX_ERC1155_BATCH_ITEMS = 1_024;
 
 const ERC721_TRANSFER_ABI = [{
@@ -206,7 +206,7 @@ export function decodeVerifiedRmtNftActivityLog(
   if (!topic0) return { status: "IGNORED", reason: "UNSUPPORTED_TOPIC" };
   const topics = [...log.topics] as [Hex, ...Hex[]];
 
-  if (topic0 === ERC721_TRANSFER_TOPIC) {
+  if (topic0 === RMT_ERC721_TRANSFER_TOPIC) {
     if (collection.standard !== "ERC721") return { status: "IGNORED", reason: "STANDARD_EVENT_MISMATCH" };
     try {
       const decoded = decodeEventLog({
@@ -237,7 +237,7 @@ export function decodeVerifiedRmtNftActivityLog(
     }
   }
 
-  if (topic0 === ERC1155_TRANSFER_SINGLE_TOPIC) {
+  if (topic0 === RMT_ERC1155_TRANSFER_SINGLE_TOPIC) {
     if (collection.standard !== "ERC1155") return { status: "IGNORED", reason: "STANDARD_EVENT_MISMATCH" };
     try {
       const decoded = decodeEventLog({
@@ -268,7 +268,7 @@ export function decodeVerifiedRmtNftActivityLog(
     }
   }
 
-  if (topic0 === ERC1155_TRANSFER_BATCH_TOPIC) {
+  if (topic0 === RMT_ERC1155_TRANSFER_BATCH_TOPIC) {
     if (collection.standard !== "ERC1155") return { status: "IGNORED", reason: "STANDARD_EVENT_MISMATCH" };
     try {
       const decoded = decodeEventLog({
