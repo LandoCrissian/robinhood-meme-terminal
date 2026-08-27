@@ -3,10 +3,17 @@ import type {
   RmtNftProjectMarketplaceRead,
   RmtNftProjectOnchainRead,
 } from "@rmt/shared/nft/project-market";
+import type {
+  RmtNftInventoryItem,
+  RmtNftItemMetadata,
+  RmtNftItemRead,
+  RmtNftProjectInventoryRead,
+} from "@rmt/shared/nft/project-inventory";
 import { RMT_NFT_ACTIVITY_SOURCES } from "@rmt/shared/nft/activity-sources";
 import { RMT_SEAPORT_1_6_ADDRESS } from "@rmt/shared/nft/marketplace-evidence";
 import { rmtCuratedNftProject } from "@rmt/shared/nft/project-registry";
-import { isAddress, isAddressEqual } from "viem";
+import { isSafeRmtNftInlineSvg } from "@rmt/shared/nft/inline-svg-safety";
+import { isAddress, isAddressEqual, zeroAddress } from "viem";
 
 type ReaderOptions = {
   env?: Partial<NodeJS.ProcessEnv>;
@@ -27,13 +34,19 @@ function configuration(env: Partial<NodeJS.ProcessEnv>, prefix: "NFT_INDEXER" | 
   }
 }
 
+class NftServiceResponseError extends Error {
+  constructor(readonly status: number) {
+    super(`Internal NFT evidence service returned ${status}.`);
+  }
+}
+
 async function readService<T>(fetchImpl: typeof fetch, url: string, token: string, timeoutMs: number): Promise<T> {
   const response = await fetchImpl(url, {
     headers: { authorization: `Bearer ${token}`, accept: "application/json" },
     cache: "no-store",
     signal: AbortSignal.timeout(timeoutMs),
   });
-  if (!response.ok) throw new Error(`Internal NFT evidence service returned ${response.status}.`);
+  if (!response.ok) throw new NftServiceResponseError(response.status);
   return await response.json() as T;
 }
 
@@ -75,11 +88,143 @@ function validAddress(value: unknown): value is `0x${string}` {
   return typeof value === "string" && isAddress(value);
 }
 
+function validNonzeroAddress(value: unknown): value is `0x${string}` {
+  return validAddress(value) && !isAddressEqual(value, zeroAddress);
+}
+
 function validPaymentAsset(value: unknown): boolean {
   if (!isRecord(value) || value.chainId !== 4663 || typeof value.symbol !== "string"
     || !Number.isInteger(value.decimals) || (value.decimals as number) < 0 || (value.decimals as number) > 255) return false;
   if (value.kind === "NATIVE") return value.address === null;
   return value.kind === "ERC20" && typeof value.address === "string" && isAddress(value.address);
+}
+
+function safeInlineSvg(value: unknown): value is string {
+  if (typeof value !== "string" || !value.startsWith("data:image/svg+xml;base64,")) return false;
+  try {
+    const encoded = value.slice("data:image/svg+xml;base64,".length);
+    if (!encoded || encoded.length % 4 !== 0 || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(encoded)) return false;
+    const bytes = Buffer.from(encoded, "base64");
+    if (bytes.byteLength > 256 * 1024 || bytes.toString("base64") !== encoded) return false;
+    const svg = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+    return isSafeRmtNftInlineSvg(svg);
+  } catch {
+    return false;
+  }
+}
+
+function validateMetadata(input: unknown): RmtNftItemMetadata {
+  if (!isRecord(input) || input.authority !== "ONCHAIN_TOKEN_URI"
+    || !["READY", "UNAVAILABLE", "INVALID", "UNSUPPORTED"].includes(String(input.status))
+    || !["DATA_JSON_BASE64", "IPFS", "HTTPS", "OTHER"].includes(String(input.tokenUriKind))
+    || (input.metadataDigest !== null && !isHex32(input.metadataDigest))
+    || !Array.isArray(input.attributes) || input.attributes.length > 64
+    || input.attributes.some((attribute) => !isRecord(attribute) || typeof attribute.traitType !== "string"
+      || attribute.traitType.length > 120 || typeof attribute.value !== "string" || attribute.value.length > 500)
+    || (input.name !== null && (typeof input.name !== "string" || input.name.length > 200))
+    || (input.description !== null && (typeof input.description !== "string" || input.description.length > 2_000))) {
+    throw new Error("NFT metadata response is malformed.");
+  }
+  if (input.status === "READY" && (input.tokenUriKind !== "DATA_JSON_BASE64"
+    || input.metadataDigest === null || (input.image !== null && !safeInlineSvg(input.image)))) {
+    throw new Error("NFT metadata authority is contradictory.");
+  }
+  if (input.status !== "READY" && (input.name !== null || input.description !== null || input.image !== null || input.attributes.length !== 0)) {
+    throw new Error("Unavailable NFT metadata contains presentation claims.");
+  }
+  if (input.status === "UNSUPPORTED" && !["IPFS", "HTTPS"].includes(String(input.tokenUriKind))) {
+    throw new Error("NFT remote metadata classification is contradictory.");
+  }
+  return input as unknown as RmtNftItemMetadata;
+}
+
+function validateInventoryItem(input: unknown): RmtNftInventoryItem {
+  if (!isRecord(input) || !isDecimalInteger(input.tokenId) || !validNonzeroAddress(input.owner)) {
+    throw new Error("NFT inventory item is malformed.");
+  }
+  return { tokenId: input.tokenId, owner: input.owner, metadata: validateMetadata(input.metadata) };
+}
+
+function validateInventory(input: unknown, projectId: string, address: `0x${string}`, standard: "ERC721" | "ERC1155", afterTokenId?: string) {
+  if (!isRecord(input) || input.schemaVersion !== 1 || input.projectId !== projectId || input.chainId !== 4663
+    || !sameAddress(input.collectionAddress, address) || input.collectionStandard !== standard
+    || !["AVAILABLE", "PARTIAL", "UNAVAILABLE"].includes(String(input.availability))
+    || ![null, "SOURCE_BACKFILLING", "SOURCE_ERROR", "SOURCE_STALE"].includes(input.availabilityReason as never)
+    || (input.asOf !== null && !isTimestamp(input.asOf)) || !Array.isArray(input.items) || input.items.length > 24
+    || (input.nextCursor !== null && !isDecimalInteger(input.nextCursor))) {
+    throw new Error("NFT inventory response is malformed.");
+  }
+  const items = input.items.map(validateInventoryItem);
+  for (let index = 1; index < items.length; index++) {
+    if (BigInt(items[index - 1]!.tokenId) >= BigInt(items[index]!.tokenId)) throw new Error("NFT inventory ordering is invalid.");
+  }
+  const coherent = input.availability === "AVAILABLE"
+    ? input.availabilityReason === null && input.asOf !== null
+      && (afterTokenId === undefined || items.length === 0 || BigInt(items[0]!.tokenId) > BigInt(afterTokenId))
+      && (input.nextCursor === null || (items.length > 0 && input.nextCursor === items.at(-1)!.tokenId))
+    : input.availability === "PARTIAL"
+      ? input.availabilityReason === "SOURCE_BACKFILLING" && items.length === 0 && input.nextCursor === null
+      : ["SOURCE_ERROR", "SOURCE_STALE"].includes(String(input.availabilityReason)) && items.length === 0 && input.nextCursor === null;
+  if (!coherent) throw new Error("NFT inventory response state is contradictory.");
+  return { ...input, items } as unknown as RmtNftProjectInventoryRead;
+}
+
+function validateItem(input: unknown, projectId: string, address: `0x${string}`, standard: "ERC721" | "ERC1155", tokenId: string) {
+  if (!isRecord(input) || input.schemaVersion !== 1 || input.projectId !== projectId || input.chainId !== 4663
+    || !sameAddress(input.collectionAddress, address) || standard !== "ERC721" || input.collectionStandard !== "ERC721"
+    || input.tokenId !== tokenId || !isDecimalInteger(input.tokenId) || !validNonzeroAddress(input.owner) || !isTimestamp(input.asOf)
+    || !isRecord(input.tokenBoundAccount) || input.tokenBoundAccount.authority !== "ONCHAIN_ERC6551_ACCOUNT"
+    || input.tokenBoundAccount.chainId !== 4663 || !sameAddress(input.tokenBoundAccount.collectionAddress, address)
+    || input.tokenBoundAccount.tokenId !== tokenId || !validNonzeroAddress(input.tokenBoundAccount.accountAddress)) {
+    throw new Error("NFT item response identity mismatch.");
+  }
+  return { ...input, metadata: validateMetadata(input.metadata) } as unknown as RmtNftItemRead;
+}
+
+export type RmtNftInventoryReaderResult = RmtNftProjectInventoryRead | { availability: "UNAVAILABLE"; reason: "DATA_UNAVAILABLE" };
+export type RmtNftItemReaderResult = RmtNftItemRead | { availability: "UNAVAILABLE"; reason: "DATA_UNAVAILABLE" };
+
+export async function readRmtNftProjectInventory(
+  projectId: string,
+  afterTokenId?: string,
+  options: ReaderOptions = {},
+): Promise<RmtNftInventoryReaderResult | null> {
+  const project = rmtCuratedNftProject(projectId);
+  if (!project || project.status !== "ACTIVE") return null;
+  const source = RMT_NFT_ACTIVITY_SOURCES.find((item) => item.projectId === project.projectId);
+  if (!source) return null;
+  const config = configuration(options.env ?? process.env, "NFT_INDEXER");
+  if (!config) return { availability: "UNAVAILABLE", reason: "DATA_UNAVAILABLE" };
+  const query = new URLSearchParams({ limit: "24" });
+  if (afterTokenId !== undefined) query.set("afterTokenId", afterTokenId);
+  try {
+    const raw = await readService<unknown>(options.fetchImpl ?? fetch,
+      `${config.url}/internal/v1/projects/${project.projectId}/inventory?${query}`, config.token, options.timeoutMs ?? 5_000);
+    return validateInventory(raw, project.projectId, source.collectionAddress, source.standard, afterTokenId);
+  } catch {
+    return { availability: "UNAVAILABLE", reason: "DATA_UNAVAILABLE" };
+  }
+}
+
+export async function readRmtNftItem(
+  projectId: string,
+  tokenId: string,
+  options: ReaderOptions = {},
+): Promise<RmtNftItemReaderResult | null> {
+  const project = rmtCuratedNftProject(projectId);
+  if (!project || project.status !== "ACTIVE") return null;
+  const source = RMT_NFT_ACTIVITY_SOURCES.find((item) => item.projectId === project.projectId);
+  if (!source || !isDecimalInteger(tokenId)) return null;
+  const config = configuration(options.env ?? process.env, "NFT_INDEXER");
+  if (!config) return { availability: "UNAVAILABLE", reason: "DATA_UNAVAILABLE" };
+  try {
+    const raw = await readService<unknown>(options.fetchImpl ?? fetch,
+      `${config.url}/internal/v1/projects/${project.projectId}/items/${tokenId}`, config.token, options.timeoutMs ?? 5_000);
+    return validateItem(raw, project.projectId, source.collectionAddress, source.standard, tokenId);
+  } catch (error) {
+    if (error instanceof NftServiceResponseError && error.status === 404) return null;
+    return { availability: "UNAVAILABLE", reason: "DATA_UNAVAILABLE" };
+  }
 }
 
 function validateOnchain(

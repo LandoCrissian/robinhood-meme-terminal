@@ -25,6 +25,7 @@ import {
   retainedSyncPoints,
   rollbackToCommonAncestor
 } from './storage.js';
+import type { NftInventoryRpc } from './project-read.js';
 
 type RpcLog = {
   address: Address; topics: readonly Hex[]; data: Hex; transactionHash: Hex | null; blockHash: Hex | null;
@@ -37,13 +38,18 @@ export type NftIndexerRpc = SourceVerificationRpc & {
   getLogs(input: { address: Address; fromBlock: bigint; toBlock: bigint; topics: readonly Hex[] }): Promise<readonly RpcLog[]>;
 };
 
+const CCFF00_ITEM_ABI = [
+  { type: 'function', name: 'tokenURI', stateMutability: 'view', inputs: [{ name: 'tokenId', type: 'uint256' }], outputs: [{ name: '', type: 'string' }] },
+  { type: 'function', name: 'getTokenBoundAccount', stateMutability: 'view', inputs: [{ name: 'tokenId', type: 'uint256' }], outputs: [{ name: '', type: 'address' }] }
+] as const;
+
 export function activityTopicsForStandard(standard: VerifiedNftSource['standard']): readonly Hex[] {
   return standard === 'ERC721'
     ? [RMT_ERC721_TRANSFER_TOPIC]
     : [RMT_ERC1155_TRANSFER_SINGLE_TOPIC, RMT_ERC1155_TRANSFER_BATCH_TOPIC];
 }
 
-export function createNftIndexerRpc(rpcUrl: string): NftIndexerRpc {
+export function createNftIndexerRpc(rpcUrl: string): NftIndexerRpc & NftInventoryRpc {
   const client = createPublicClient({ chain: robinhoodChain, transport: http(rpcUrl) });
   return {
     getChainId: () => client.getChainId(),
@@ -76,7 +82,9 @@ export function createNftIndexerRpc(rpcUrl: string): NftIndexerRpc {
         }]
       });
       return result as readonly RpcLog[];
-    }
+    },
+    readTokenUri: (input) => client.readContract({ address: input.address, abi: CCFF00_ITEM_ABI, functionName: 'tokenURI', args: [input.tokenId] }),
+    readTokenBoundAccount: (input) => client.readContract({ address: input.address, abi: CCFF00_ITEM_ABI, functionName: 'getTokenBoundAccount', args: [input.tokenId] })
   };
 }
 

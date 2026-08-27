@@ -14,7 +14,7 @@ import {
   rollbackToCommonAncestor
 } from './storage.js';
 import type { VerifiedNftSource } from './source-verification.js';
-import { readNftProjectOnchain } from './project-read.js';
+import { readNftProjectInventory, readNftProjectItem, readNftProjectOnchain } from './project-read.js';
 
 const databaseUrl = process.env.NFT_INDEXER_TEST_DATABASE_URL?.trim() ?? process.env.NFT_INDEXER_DATABASE_URL?.trim();
 if (!databaseUrl) throw new Error('NFT_INDEXER_TEST_DATABASE_URL is required for PostgreSQL storage smoke coverage');
@@ -24,6 +24,11 @@ const alice = getAddress('0x1111111111111111111111111111111111111111');
 const bob = getAddress('0x2222222222222222222222222222222222222222');
 const carol = getAddress('0x3333333333333333333333333333333333333333');
 const hash = (character: string) => `0x${character.repeat(64)}` as Hex;
+const metadataUri = `data:application/json;base64,${Buffer.from(JSON.stringify({
+  name: '#CCFF00', description: 'This is Robin Neon.',
+  image: `data:image/svg+xml;base64,${Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><rect width="100" height="100" fill="#CCFF00"/></svg>').toString('base64')}`,
+  attributes: [{ trait_type: 'Color', value: '#CCFF00' }]
+})).toString('base64')}`;
 const erc1155Source = {
   chainId: 4663,
   projectId: 'synthetic-erc1155-storage-fixture',
@@ -177,6 +182,68 @@ try {
   assert.equal(unavailableRead.availability, 'UNAVAILABLE');
   assert.equal(unavailableRead.recentActivity.length, 0);
   await assert.rejects(() => readNftProjectOnchain(pool, 'unknown'), /not publicly admitted/);
+
+  const metadataRpc = {
+    readTokenUri: async ({ tokenId }: { tokenId: bigint }) => tokenId === 2n ? 'data:application/json;base64,not-base64' : metadataUri,
+    readTokenBoundAccount: async () => carol,
+  };
+  await assert.rejects(() => readNftProjectInventory({
+    pool, rpc: metadataRpc, projectId: 'unknown', pollIntervalMs: 5_000, now: syncedAt
+  }), /not publicly admitted/);
+  await pool.query(`INSERT INTO nft_erc721_ownership(chain_id,collection_address,token_id,owner_address) VALUES
+    (4663,$1,1,$2),(4663,$1,2,$3),(4663,$1,3,$2) ON CONFLICT DO NOTHING`,
+  [source.collectionAddress.toLowerCase(), alice.toLowerCase(), bob.toLowerCase()]);
+  await recordSourceSuccess(pool, source, 'SYNCED', syncedAt);
+  const firstInventory = await readNftProjectInventory({
+    pool, rpc: metadataRpc, projectId: 'ccff00', limit: 2, pollIntervalMs: 5_000, now: syncedAt
+  });
+  assert.equal(firstInventory.availability, 'AVAILABLE');
+  assert.deepEqual(firstInventory.items.map((item) => item.tokenId), ['1', '2']);
+  assert.equal(firstInventory.items[0]?.metadata.status, 'READY');
+  assert.equal(firstInventory.items[1]?.metadata.status, 'INVALID');
+  assert.equal(firstInventory.nextCursor, '2');
+  assert.equal((await readSourceOperationalState(pool, source)).status, 'SYNCED');
+  const secondInventory = await readNftProjectInventory({
+    pool, rpc: metadataRpc, projectId: 'ccff00', afterTokenId: firstInventory.nextCursor!, limit: 2,
+    pollIntervalMs: 5_000, now: syncedAt
+  });
+  assert.deepEqual(secondInventory.items.map((item) => item.tokenId), ['3', (2n ** 255n).toString()]);
+  assert.equal(new Set([...firstInventory.items, ...secondInventory.items].map((item) => item.tokenId)).size, 4);
+  await assert.rejects(() => readNftProjectInventory({
+    pool, rpc: metadataRpc, projectId: 'ccff00', limit: 49, pollIntervalMs: 5_000, now: syncedAt
+  }), /limit must be between/);
+  const staleInventory = await readNftProjectInventory({
+    pool, rpc: metadataRpc, projectId: 'ccff00', pollIntervalMs: 5_000,
+    now: new Date(syncedAt.getTime() + 5 * 60_000 + 1)
+  });
+  assert.equal(staleInventory.availabilityReason, 'SOURCE_STALE');
+  assert.deepEqual(staleInventory.items, []);
+  await pool.query(`UPDATE nft_indexer_source_state SET last_sync_at=NULL WHERE chain_id=$1 AND collection_address=$2`,
+    [source.chainId, source.collectionAddress.toLowerCase()]);
+  const missingObservation = await readNftProjectInventory({
+    pool, rpc: metadataRpc, projectId: 'ccff00', pollIntervalMs: 5_000, now: syncedAt
+  });
+  assert.equal(missingObservation.availabilityReason, 'SOURCE_STALE');
+  assert.equal(missingObservation.asOf, null);
+  assert.deepEqual(missingObservation.items, []);
+  await recordSourceSuccess(pool, source, 'SYNCED', syncedAt);
+  const itemRead = await readNftProjectItem({
+    pool, rpc: metadataRpc, projectId: 'ccff00', tokenId: '1', pollIntervalMs: 5_000, now: syncedAt
+  });
+  assert.equal(itemRead.owner, alice);
+  assert.equal(itemRead.tokenBoundAccount.authority, 'ONCHAIN_ERC6551_ACCOUNT');
+  assert.equal(itemRead.tokenBoundAccount.accountAddress, carol);
+  await assert.rejects(() => readNftProjectItem({
+    pool, rpc: metadataRpc, projectId: 'ccff00', tokenId: '999', pollIntervalMs: 5_000, now: syncedAt
+  }), /absent from current canonical ownership/);
+  await recordSourceSuccess(pool, source, 'BACKFILLING', syncedAt);
+  assert.deepEqual((await readNftProjectInventory({
+    pool, rpc: metadataRpc, projectId: 'ccff00', pollIntervalMs: 5_000, now: syncedAt
+  })).items, []);
+  await recordSourceError(pool, source, new Error('inventory unavailable'));
+  assert.deepEqual((await readNftProjectInventory({
+    pool, rpc: metadataRpc, projectId: 'ccff00', pollIntervalMs: 5_000, now: syncedAt
+  })).items, []);
 
   console.info('nft-indexer PostgreSQL storage smoke: PASS');
 } finally {
